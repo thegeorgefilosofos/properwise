@@ -339,7 +339,18 @@ export const MUTATIONS = {
   // γύριζε 401 σε κάθε εκτέλεση επί μήνες.
   'cron-auth': { file: 'supabase/functions/ical-sync/index.ts',
     from: 'await authorizeCron(req', to: 'handRolledCronCheck(req' },
-  'ci-minutes': { file: '.github/workflows/health.yml', from: 'cron:', to: "cron: '*/5 * * * *'   # μετάλλαξη\n    # cron:" },
+  // Πλωτό στοιχείο σε άκρη οθόνης χωρίς όριο ασφαλείας: ακριβώς η πάνω μπάρα
+  // που καθόταν κάτω από το Dynamic Island σε κάθε iPhone από το X και μετά.
+  'safe-area': { file: 'app/globals.css',
+    from: 'padding-top: env(safe-area-inset-top, 0px);\n    padding-bottom: env(safe-area-inset-bottom, 0px);',
+    to: 'padding-top: 0;' },
+  // Η ΜΕΤΑΛΛΑΞΗ ΜΕΤΑΚΟΜΙΣΕ ΑΠΟ ΤΟ health.yml. Εκεί χτυπούσε το ωριαίο πρόγραμμα
+  // του ελέγχου υγείας· στις 04/09/2026 ο έλεγχος έφυγε στη Supabase και το
+  // workflow έμεινε ΧΩΡΙΣ `cron:`, οπότε η μετάλλαξη δεν εφαρμοζόταν πια και ο
+  // φύλακας έπαψε να αποδεικνύει ότι πιάνει κάτι. Ο πάγκος το είπε αμέσως.
+  // Το db-backup είναι ο σωστός νέος στόχος: πραγματικό ημερήσιο πρόγραμμα που
+  // αν γίνει πεντάλεπτο τινάζει τον προϋπολογισμό, ακριβώς ό,τι φυλάει.
+  'ci-minutes': { file: '.github/workflows/db-backup.yml', from: 'cron:', to: "cron: '*/5 * * * *'   # μετάλλαξη\n    # cron:" },
   // Ένα npm script που δείχνει σε αρχείο του scripts/ και δεν το καλεί κανένα
   // workflow: ακριβώς το «γραμμένος και μη συνδεδεμένος».
   'ci-coverage': { steps: [
