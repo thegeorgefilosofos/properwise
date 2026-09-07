@@ -1592,38 +1592,71 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
       </Section>
 
       <Section title="Απαραίτητα έγγραφα" sub={`${LOAN_TYPES[loanType].label} · ${propTypeLabel}`}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',gap:12,alignItems:'start'}}>
-          <DocChecklist
-            compact
-            docs={isNewBuilding
-              ? [...LOAN_TYPES[loanType].docs, { name:'Άδεια οικοδομής και βεβαίωση ΦΠΑ', where:'Πολεοδομία' }]
-              : LOAN_TYPES[loanType].docs}
-            storageKey={`${propertyId}:calc:${loanType}${isNewBuilding?':new':''}`}
-            title="Γενικά δικαιολογητικά"/>
-          {(()=>{
-            const borrowerDocs:string[] = borrower==='professional'?['Φορολογικές δηλώσεις δύο ετών','Βεβαίωση δραστηριότητας ΔΟΥ']
-              : borrower==='company'?['Καταστατικό','Ισολογισμοί τριών ετών','Απόφαση διοικητικού συμβουλίου']
-              : borrower==='military'?['Βεβαίωση υπηρεσίας','Μισθολογική κατάσταση']
-              : borrower==='abroad'?['Αποδεικτικό κατοικίας εξωτερικού','Εισοδήματα ξένης χώρας','Επίσημες μεταφράσεις']
-              : ['Μισθοδοτικές τριών μηνών','Εκκαθαριστικό σημείωμα']
-            return (
-              <div>
-                <p style={{fontSize: 'var(--fs-xs)',fontWeight:700,color:'var(--text-secondary)',fontFamily: T.font.sans,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:10}}>Ανά τύπο δανειολήπτη</p>
-                <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                  {borrowerDocs.map((d,i)=>(
-                    <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 11px',borderRadius:10,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)'}}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{flexShrink:0}} aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                      <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>{d}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{marginTop:8,padding:'9px 11px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
-                  <p style={{fontSize:12,color:'var(--text-tertiary)',lineHeight:1.5,fontFamily: T.font.sans}}>{BORROWER_PROFILES[borrower].tax_benefits}</p>
-                </div>
+        {/* ΔΥΟ ΣΤΗΛΕΣ ΠΟΥ ΔΕΝ ΜΠΟΡΟΥΣΑΝ ΝΑ ΖΥΓΙΣΟΥΝ, ΜΕΤΡΗΜΕΝΟ ΣΕ ΤΑΜΠΛΕΤΑ.
+            Το πλέγμα ήταν `auto-fit` με ελάχιστο 240 εικονοστοιχεία. Στα 768 η
+            ενότητα δίνει 712 εικονοστοιχεία περιεχομένου, δηλαδή ακριβώς ΔΥΟ
+            ίσες στήλες των 350. Αριστερά η λίστα των γενικών δικαιολογητικών:
+            κεφαλίδα, μπάρα προόδου και έξι σειρές που οι πέντε σηκώνουν δεύτερη
+            γραμμή «Από:», περίπου 350 εικονοστοιχεία ύψος. Δεξιά δύο ώς τρία
+            μονόγραμμα πλακίδια του τύπου δανειολήπτη συν μια σημείωση φόρου
+            μέσα σε κουτί, 145 ώς 185. Δηλαδή 165 ώς 205 εικονοστοιχεία κενά
+            στο κάτω μισό της δεξιάς στήλης, σε κάθε τύπο δανείου.
+
+            ΤΟ ΠΛΑΤΟΣ ΔΕΝ ΤΟ ΔΙΟΡΘΩΝΕΙ. Το ύψος μιας στήλης το ορίζει το ΠΛΗΘΟΣ
+            των σειρών της, όχι τα εικονοστοιχεία της: όποια αναλογία κι αν
+            πάρουν οι δύο στήλες, η μία μένει τεσσάρων ώς εφτά σειρών και η
+            άλλη δύο ώς τριών. Ούτε ροή τύπου masonry, που θα έκοβε τη λίστα
+            από την κεφαλίδα και την μπάρα προόδου της· και η σειρά του
+            πληκτρολογίου θα άλλαζε στήλη στη μέση της λίστας. Ούτε μοίρασμα
+            των στοιχείων ανά πλήθος: αριστερά είναι λίστα που τικάρεται και
+            θυμάται, δεξιά είναι αναφορά που δεν τικάρεται. Ενα στοιχείο που
+            αλλάζει πλευρά αλλάζει και τον παρονομαστή της προόδου.
+
+            ΟΙ ΔΥΟ ΟΜΑΔΕΣ ΔΕΝ ΕΙΝΑΙ ΕΠΙΛΟΓΕΣ, ΕΙΝΑΙ ΣΤΑΔΙΑ: τα γενικά · κι
+            επιπλέον όσα ζητά ο τύπος του δανειολήπτη. Μπαίνουν λοιπόν η μία
+            κάτω από την άλλη σε ΟΛΟ το πλάτος, χωρισμένες με λεπτή γραμμή. Τα
+            δύο ώς τρία πλακίδια απλώνονται σε ευέλικτη ροή που μεγαλώνει: όσα
+            χωρούν στη σειρά τη γεμίζουν και το τελευταίο πιάνει το υπόλοιπο
+            πλάτος, οπότε δεν μένει τρύπα σε κανένα πλάτος οθόνης. Στα 712
+            χωρούν και τα τρία σε μία σειρά και η ενότητα κλείνει γύρω στα 445
+            χωρίς κανένα κενό.
+
+            ΚΑΙ Η ΣΗΜΕΙΩΣΗ ΦΟΡΟΥ ΒΓΗΚΕ ΑΠΟ ΤΟ ΚΟΥΤΙ ΤΗΣ, όπως είχαν βγει και οι
+            ασφάλειες παρακάτω: μία αράδα δεν χρειάζεται φόντο, περίγραμμα και
+            γέμισμα. Πάει στη δεξιά άκρη της κεφαλίδας της ομάδας, εκεί ακριβώς
+            που η λίστα από πάνω γράφει «3/6 έτοιμα». Δύο κεφαλίδες με την ίδια
+            τυπογραφία, ετικέτα αριστερά και μετα-πληροφορία δεξιά· το κείμενο
+            δεν άλλαξε λέξη. */}
+        <DocChecklist
+          compact
+          docs={isNewBuilding
+            ? [...LOAN_TYPES[loanType].docs, { name:'Άδεια οικοδομής και βεβαίωση ΦΠΑ', where:'Πολεοδομία' }]
+            : LOAN_TYPES[loanType].docs}
+          storageKey={`${propertyId}:calc:${loanType}${isNewBuilding?':new':''}`}
+          title="Γενικά δικαιολογητικά"/>
+        {(()=>{
+          const borrowerDocs:string[] = borrower==='professional'?['Φορολογικές δηλώσεις δύο ετών','Βεβαίωση δραστηριότητας ΔΟΥ']
+            : borrower==='company'?['Καταστατικό','Ισολογισμοί τριών ετών','Απόφαση διοικητικού συμβουλίου']
+            : borrower==='military'?['Βεβαίωση υπηρεσίας','Μισθολογική κατάσταση']
+            : borrower==='abroad'?['Αποδεικτικό κατοικίας εξωτερικού','Εισοδήματα ξένης χώρας','Επίσημες μεταφράσεις']
+            : ['Μισθοδοτικές τριών μηνών','Εκκαθαριστικό σημείωμα']
+          return (
+            <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid var(--border-subtle)'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',marginBottom:10}}>
+                <p style={{fontSize: 'var(--fs-xs)',fontWeight:700,color:'var(--text-secondary)',fontFamily: T.font.sans,textTransform:'uppercase',letterSpacing:'0.06em'}}>Ανά τύπο δανειολήπτη</p>
+                <span style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,lineHeight:1.5}}>{BORROWER_PROFILES[borrower].tax_benefits}</span>
               </div>
-            )
-          })()}
-        </div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                {borrowerDocs.map((d,i)=>(
+                  <div key={i} style={{flex:'1 1 220px',minWidth:0,display:'flex',alignItems:'center',gap:10,padding:'8px 11px',borderRadius:10,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)'}}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{flexShrink:0}} aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>{d}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </Section>
 
       <div style={cardStyle}>
