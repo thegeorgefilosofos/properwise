@@ -624,15 +624,20 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
   // κελί για την ημερομηνία. Σιωπηλό πήδημα σε άλλον μήνα θα άλλαζε ό,τι
   // βλέπει η οθόνη χωρίς να το ζητήσει κανείς.
   const [focusKey, setFocusKey] = useState('')
-  const cellRefs = useRef(new Map<string, HTMLDivElement>())
   const p2 = (n: number) => String(n).padStart(2, '0')
   const shift = (from: string, days: number) => {
     const d = new Date(from + 'T00:00:00')
     d.setDate(d.getDate() + days)
     return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`
   }
+  // ΤΟ ΚΕΛΙ ΒΡΙΣΚΕΤΑΙ ΑΠΟ ΤΟ DOM, ΟΧΙ ΑΠΟ ΜΗΤΡΩΟ REF. Ενα `ref` που γεμίζει
+  // μέσα στο δέντρο απόδοσης είναι πρόσβαση σε ref την ώρα του render — ο
+  // κανόνας `react-hooks/refs` το κόβει — σωστά. Η ημερομηνία υπάρχει ήδη
+  // πάνω στο κελί ως `data-drop-date` (τη βάζει η μεταφορά γεγονότος) και είναι
+  // μοναδική στη σελίδα· η αναζήτηση τρέχει ΜΟΝΟ μέσα σε χειριστή πλήκτρου,
+  // όπου το DOM είναι ήδη ζωγραφισμένο.
   const moveTo = (next: string) => {
-    const el = cellRefs.current.get(next)
+    const el = document.querySelector<HTMLElement>(`[data-drop-date="${next}"]`)
     if (!el) return
     setFocusKey(next)
     el.focus()
@@ -804,7 +809,6 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
                    «κουμπί» χωρίς τίποτε άλλο. Το `onDayClick` είχε ήδη φρένο
                    (`day&&`), δηλαδή το πάτημα δεν έκανε ποτέ τίποτα. */
                 <div key={idx} className="cal-cell"
-                  ref={el=>{ if(day==null) return; if(el) cellRefs.current.set(dateStr, el); else cellRefs.current.delete(dateStr) }}
                   {...(day!=null ? (()=>{ const pr = pressable(()=>{ if(coarse&&dayEvents.length) onDayOpen(dateStr); else onDayClick(dateStr) }, `${day} ${monthGen(month)}${coarse&&dayEvents.length?`, ${dayEvents.length} ${dayEvents.length===1?'γεγονός':'γεγονότα'}`:''}`)
                     // Το `pressable` δίνει tabIndex 0 σε ΚΑΘΕ κελί. Εδώ μένει μία
                     // στάση για όλο το πλέγμα και τα υπόλοιπα κελιά βγαίνουν από

@@ -371,6 +371,41 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   const pastCount = useMemo(() => months.filter(([k]) => isPastMonth(k)).length, [months, pyear, nowYear]);
   const visibleMonths = useMemo(() => months.filter(([k]) => showPast || !isPastMonth(k)), [months, showPast, pyear, nowYear]);
 
+  // ═══ ΕΚΑΤΟΝ ΕΙΚΟΣΙ ΔΥΟ ΣΤΑΣΕΙΣ TAB ΓΙΑ ΝΑ ΠΕΡΑΣΕΙΣ ΤΟ ΗΜΕΡΟΛΟΓΙΟ ═══════════
+  // ΜΕΤΡΗΜΕΝΟ ΣΤΑ 1280: η καρτέλα έχει 148 στάσεις πληκτρολογίου συνολικά και
+  // οι 122 είναι κελιά ημέρας. Είναι το ίδιο ελάττωμα με το ημερολόγιο
+  // γεγονότων, τέσσερις φορές μεγαλύτερο — εδώ φαίνονται τέσσερις μήνες μαζί.
+  //
+  // Ιδια λύση, γιατί είναι το ίδιο πρόβλημα: μία στάση ανά μήνα · μέσα του
+  // κινείσαι με βελάκια. Η μετακίνηση ΔΕΝ σταματά στο τέλος του μήνα: δεξιά
+  // από τις 31 Ιανουαρίου βρίσκεται η 1η Φεβρουαρίου, γιατί ο επόμενος μήνας
+  // είναι ήδη στην οθόνη — η αναζήτηση γίνεται σε ΟΛΟ το ημερολόγιο, όχι μέσα
+  // στο πλαίσιο ενός μήνα.
+  const [focusDate, setFocusDate] = useState('');
+  const dayShift = (from: string, days: number) => {
+    const d = new Date(from + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    const p2 = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  };
+  // Το κελί βρίσκεται από το DOM μέσα σε χειριστή πλήκτρου, ποτέ στο render:
+  // ένα μητρώο από ref γεμισμένο μέσα στο δέντρο απόδοσης είναι πρόσβαση σε ref
+  // την ώρα του render, που ο κανόνας `react-hooks/refs` κόβει — σωστά.
+  const focusDay = (next: string) => {
+    const el = document.querySelector<HTMLElement>(`[data-price-date="${next}"]`);
+    if (!el) return;
+    setFocusDate(next);
+    el.focus();
+  };
+  const dayKeys = (e: React.KeyboardEvent, date: string) => {
+    const step = ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 } as Record<string, number>)[e.key];
+    if (step != null) { e.preventDefault(); focusDay(dayShift(date, step)); return; }
+    // Δευτέρα πρώτη, όπως το πλέγμα: 0 η Δευτέρα, 6 η Κυριακή.
+    const wd = (new Date(date + 'T00:00:00').getDay() + 6) % 7;
+    if (e.key === 'Home') { e.preventDefault(); focusDay(dayShift(date, -wd)); }
+    else if (e.key === 'End') { e.preventDefault(); focusDay(dayShift(date, 6 - wd)); }
+  };
+
   // Σταθερός τίτλος ανά κενό, για ταύτιση της εγγραφής στο Ημερολόγιο.
   const gapTitle = (g: Gap) => `Γέμισε κενές μέρες ${fd(g.start)} - ${fd(g.end)}`;
 
@@ -721,13 +756,19 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 const firstDow = new Date(Date.UTC(yy, mm - 1, 1)).getUTCDay();
                 const lead = (firstDow + 6) % 7;
                 const byDay = new Map(days.map(d => [Number(d.date.slice(8, 10)), d]));
+                // Η ΜΙΑ ΣΤΑΣΗ ΤΟΥ ΜΗΝΑ. Προτεραιότητα στην ημέρα που κρατά ήδη την
+                // εστίαση, μετά στην επιλεγμένη· αλλιώς η πρώτη του μήνα. Ο έλεγχος
+                // προθέματος κόβει τιμές από άλλον μήνα, ώστε κάθε κάρτα να έχει
+                // ΠΑΝΤΑ ακριβώς ένα εστιάσιμο κελί.
+                const monthKey = `${yy}-${String(mm).padStart(2, '0')}`;
+                const rovingDate = [focusDate, sel?.date].find(k => k?.startsWith(monthKey)) ?? days[0]?.date ?? '';
                 const daysInMonth = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
                 return (
                   <div key={key} className="cal-month" style={{ flex: '1 1 300px', minWidth: 280, background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 16, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>{MONTHS_NOM[mm - 1]} {yy}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-                      {WEEKDAYS.map(w => <div key={w} style={{ textAlign: 'center', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', paddingBottom: 4 }}>{w}</div>)}
-                      {Array.from({ length: lead }).map((_, i) => <div key={'b' + i} />)}
+                    <div role="grid" aria-label={`${MONTHS_NOM[mm - 1]} ${yy}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                      {WEEKDAYS.map(w => <div key={w} role="columnheader" style={{ textAlign: 'center', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', paddingBottom: 4 }}>{w}</div>)}
+                      {Array.from({ length: lead }).map((_, i) => <div key={'b' + i} role="gridcell" />)}
                       {Array.from({ length: daysInMonth }).map((_, i) => {
                         const dayNum = i + 1;
                         const d = byDay.get(dayNum);
@@ -736,9 +777,17 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                         const t = past ? 0 : norm(d.price);
                         const top = !past && t > 0.82 && !d.booked;     // κορυφαία αιχμή: έξτρα έμφαση
                         return (
-                          <button key={dayNum} onClick={() => setSel(d)} title={[d.holidayName, d.booked ? 'Ήδη κλεισμένη' : `Προτεινόμενη τιμή ${fe(d.price)}`].filter(Boolean).join(' · ')}
+                          <button key={dayNum} onClick={() => setSel(d)} role="gridcell"
+                            data-price-date={d.date}
+                            tabIndex={d.date === rovingDate ? 0 : -1}
+                            onKeyDown={e => dayKeys(e, d.date)}
+                            title={[d.holidayName, d.booked ? 'Ήδη κλεισμένη' : `Προτεινόμενη τιμή ${fe(d.price)}`].filter(Boolean).join(' · ')}
                             aria-label={`${fd(d.date)}: ${d.booked ? 'ήδη κλεισμένη' : `προτεινόμενη τιμή ${fe(d.price)}`}${d.holidayName ? `, ${d.holidayName}` : ''}`}
-                            aria-pressed={sel?.date === d.date} className="cal-day" style={{
+                            /* ΤΟ `aria-pressed` ΔΕΝ ΥΠΑΡΧΕΙ ΣΕ ΚΕΛΙ ΠΛΕΓΜΑΤΟΣ. Ηταν σωστό όσο
+                               το κελί ήταν κουμπί-διακόπτης· μέσα σε `grid` η επιλογή
+                               λέγεται `aria-selected` και είναι αυτή που ανακοινώνει ο
+                               αναγνώστης μαζί με τη θέση «γραμμή 3, στήλη 5». */
+                            aria-selected={sel?.date === d.date} className="cal-day" style={{
                             position: 'relative', aspectRatio: '1', borderRadius: 8, cursor: 'pointer', overflow: 'hidden',
                             border: sel?.date === d.date ? '2px solid var(--accent)' : top ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
                             background: d.booked ? 'var(--bg-base)' : 'var(--surface-raised)', padding: 0,
