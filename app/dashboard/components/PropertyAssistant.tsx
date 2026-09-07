@@ -1375,6 +1375,30 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     const r = fabRef.current?.getBoundingClientRect();
     return { w: r?.width || FAB_H, h: r?.height || FAB_H };
   };
+  // ═══ ΤΟ ΠΛΩΤΟ ΚΟΥΜΠΙ ΕΜΕΝΕ ΟΠΟΥ ΤΟ ΑΦΗΝΕ ΤΟ ΔΑΧΤΥΛΟ ═══════════════════════
+  // ΤΙ ΦΩΤΟΓΡΑΦΗΘΗΚΕ, ΣΕ ΤΑΜΠΛΕΤΑ: το «Ν» ψηλά δεξιά, στην ΙΔΙΑ θέση σε δέκα
+  // διαφορετικές οθόνες, καθισμένο πάνω σε «Τράπεζα Πειραιώς 2,40%», πάνω στο
+  // κουμπί «Δόση στις Δαπάνες», πάνω στη λεζάντα του γραφήματος απόσβεσης.
+  //
+  // ΓΙΑΤΙ. Η θέση θυμάται ένα σύρσιμο και δεν επιστρέφει πουθενά. Ομως χώρο
+  // κρατά ΜΟΝΟ η κάτω άκρη: το `.app-content` έχει `padding-bottom` που
+  // καθαρίζει το κουμπί. Κάθε άλλη θέση κάθεται πάνω σε στήλη περιεχομένου —
+  // δεν είναι θέμα του πού το άφησε ο χρήστης, είναι ότι δεν υπάρχει άλλη
+  // ασφαλής θέση να το αφήσει.
+  //
+  // Η ΔΙΟΡΘΩΣΗ ΕΙΝΑΙ ΤΟ ΚΟΥΜΠΩΜΑ, ΟΧΙ Η ΑΦΑΙΡΕΣΗ ΤΟΥ ΣΥΡΣΙΜΑΤΟΣ. Το σύρσιμο
+  // υπάρχει για έναν πραγματικό λόγο: «το κουμπί μου κρύβει κάτι εδώ κάτω, θέλω
+  // να το πάω αλλού». Κρατιέται ΟΛΟ, αλλά ο προορισμός είναι πάντα μία από τις
+  // δύο ΚΑΤΩ γωνίες — οι μόνες δύο θέσεις που η διάταξη έχει κρατήσει άδειες.
+  // Ιδιο ιδίωμα με κάθε καλοφτιαγμένο πλωτό κουμπί.
+  const snapCorner = (x: number, w: number) => {
+    if (typeof window === 'undefined') return null;
+    const m = 16;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const bottom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--float-bottom')) || 24;
+    const right = x + w / 2 > vw / 2;
+    return { x: right ? vw - w - m : m, y: vh - FAB_H - bottom };
+  };
   // ═══ ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΔΕΝ ΣΕΡΝΟΤΑΝ ΜΕ ΤΟ ΔΑΧΤΥΛΟ ══════════════════════════
   // Με ποντίκι το σύρσιμο δούλευε. Με δάχτυλο όχι· ο λόγος δεν ήταν ο
   // κώδικας εδώ: ο περιηγητής κρίνει μόνος του, στην πρώτη κίνηση, αν η
@@ -1414,7 +1438,10 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         && p.x >= m && p.y >= m
         && p.x <= window.innerWidth - w - m
         && p.y <= window.innerHeight - h - m;
-      if (inView) setFabPos(p);
+      // Η αποθηκευμένη τιμή ΚΟΥΜΠΩΝΕΙ, δεν εφαρμόζεται όπως είναι: όποιος έχει
+      // ήδη αφήσει το κουμπί πάνω σε περιεχόμενο το βρίσκει διορθωμένο στην
+      // επόμενη φόρτωση, χωρίς να χρειαστεί να κάνει τίποτα.
+      if (inView) setFabPos(snapCorner(p.x, w) ?? p);
       else localStorage.removeItem('pa_fab_pos');
     } catch { /* ignore */ }
     });
@@ -1424,6 +1451,19 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     if (!fabPos || dragging) return;
     try { localStorage.setItem('pa_fab_pos', JSON.stringify(fabPos)); } catch { /* ignore */ }
   }, [fabPos, dragging]);
+  // Η ΠΕΡΙΣΤΡΟΦΗ ΤΟΥ ΤΑΜΠΛΕΤ ΑΛΛΑΖΕΙ ΚΑΙ ΤΙΣ ΔΥΟ ΔΙΑΣΤΑΣΕΙΣ. Μια γωνία της
+  // κατακόρυφης οθόνης δεν είναι γωνία της οριζόντιας: χωρίς αυτό, το κουμπί
+  // βρίσκεται στη μέση της σελίδας μόλις γυρίσει η συσκευή.
+  useEffect(() => {
+    if (!fabPos) return;
+    const onResize = () => setFabPos(prev => (prev ? snapCorner(prev.x, fabBox().w) ?? prev : prev));
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, [fabPos]);
   useEffect(() => {
     const move = (e: PointerEvent) => {
       const d = fabDrag.current; if (!d || e.pointerId !== d.id) return;
@@ -1450,7 +1490,12 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       // τον κατεβάζει η ΕΠΟΜΕΝΗ χειρονομία, στο `pointerdown` της. Ετσι κανένα
       // αυθαίρετο χρονικό όριο δεν κρίνει πότε «τελείωσε» το σύρσιμο: ένα
       // άγγιγμα αμέσως μετά ανοίγει κανονικά τον βοηθό.
-      if (d?.moved) justDragged.current = true;
+      if (d?.moved) {
+        justDragged.current = true;
+        // Το κουμπί πέφτει στην πλησιέστερη ΚΑΤΩ γωνία: εκεί — μόνο εκεί —
+        // η διάταξη έχει κρατήσει χώρο γι' αυτό.
+        setFabPos(prev => (prev ? snapCorner(prev.x, fabBox().w) ?? prev : prev));
+      }
       setDragging(false);
     };
     window.addEventListener('pointermove', move, { passive: false });

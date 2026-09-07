@@ -1096,7 +1096,11 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         { label:'Δάνειο προς αξία', value:`${fp(ltv)}`, sub:`ίδια κεφάλαια ${fmtEur(PV-LA)}`, title:'Ποσοστό δανείου ως προς την αξία του ακινήτου', tone: ltv>90 ? 'warning' : undefined },
       ]}/>
 
-      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+      {/* ΠΕΝΤΕ ΕΝΕΡΓΕΙΕΣ ΠΟΥ ΤΥΛΙΓΟΝΤΑΝ 3+2 ΚΑΙ 4+1. Μετρημένο σε 768 και 834: το
+          `flex-wrap` έδινε σε κάθε κουμπί το πλάτος του κειμένου του και η
+          τελευταία σειρά κρεμόταν αριστερά με τρύπα δεξιά. Τώρα κάθε γραμμή
+          απλώνει τα δικά της κουμπιά ώστε να τη γεμίσει. */}
+      <div className="po-ctlrow">
         {[
           {label:saving?'Αποθήκευση…':'Αποθήκευση δανείου',fn:handleSave,disabled:saving,color:'var(--accent)',bg:'var(--accent-dim)',border:'var(--border-accent)'},
           {label:'Δόσεις στο Ημερολόγιο',fn:async()=>{await onSaveToCalendar(monthly,Y,startDate,bankName);notifyOk('Οι δόσεις προστέθηκαν στο ημερολόγιο')},disabled:false,color:'var(--text-secondary)',bg:'var(--bg-elevated)',border:'var(--border-subtle)'},
@@ -1104,7 +1108,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           {label:'+ Προσθήκη σεναρίου',fn:addScen,disabled:false,color:'var(--text-secondary)',bg:'var(--bg-elevated)',border:'var(--border-subtle)'},
           {label:'Επαναφορά',fn:resetAll,disabled:false,color:'var(--text-tertiary)',bg:'transparent',border:'var(--border-subtle)'},
         ].map(a=>(
-          <button key={a.label} onClick={a.fn} disabled={a.disabled} style={{display:'flex',alignItems:'center',gap: 8,padding:'0 18px',height:T.h.md,background:a.bg,border:`1px solid ${a.border}`,borderRadius: T.radius.modal,cursor:a.disabled?'wait':'pointer',color:a.color,fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',whiteSpace:'nowrap' as const}}>
+          <button key={a.label} onClick={a.fn} disabled={a.disabled} style={{display:'flex',alignItems:'center',gap: 8,padding:'0 18px',height:T.h.md,background:a.bg,border:`1px solid ${a.border}`,borderRadius: T.radius.modal,cursor:a.disabled?'wait':'pointer',color:a.color,fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s'}}>
             {a.label}
           </button>
         ))}

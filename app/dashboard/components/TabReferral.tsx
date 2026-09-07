@@ -540,7 +540,11 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
           </button>
         </div>
         <span aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{copied ? 'Ο σύνδεσμος αντιγράφηκε' : msgCopied ? 'Το μήνυμα αντιγράφηκε' : ''}</span>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* ΕΠΤΑ ΚΑΝΑΛΙΑ ΠΟΥ ΕΒΓΑΙΝΑΝ 5+2 ΚΑΙ 6+1 ΣΕ ΤΑΜΠΛΕΤΑ. Το τύλιγμα άφηνε τα
+            τελευταία ένα δύο κρεμασμένα αριστερά, σαν να είναι δεύτερης
+            κατηγορίας — ενώ είναι επτά ισότιμοι τρόποι να στείλεις τον ίδιο
+            σύνδεσμο. Κάθε γραμμή απλώνεται τώρα ολόκληρη. */}
+        <div className="po-ctlrow" style={{ ['--ctl-basis' as string]: '7rem', marginTop: 12 }}>
           {shares.map(s => (
             <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="ref-chip" style={CHIP}>
               <Ic d={s.d} s={15} c="var(--text-tertiary)" />{s.label}

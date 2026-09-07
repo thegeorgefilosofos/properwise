@@ -360,13 +360,20 @@ const ic = (d: string) => <svg aria-hidden="true" viewBox="0 0 24 24" fill="none
 //
 // Παράγοντάς τη, τα ονόματα και τα εικονίδια δεν ξαναγράφονται: έρχονται από
 // NAV_LABEL/NAV_ICON. Πριν, το ίδιο εικονίδιο υπήρχε δύο φορές στο αρχείο.
-const BOTTOM_NAV = [
-  ...CORE_TABS
-    .filter(id => id !== 'settings')   // ο λογαριασμός ζει στο υποσέλιδο της πλαϊνής μπάρας
-    .slice(0, 4)
-    .map(id => ({ id, label: NAV_LABEL[id], icon: ic(NAV_ICON[id]) })),
-  { id:'more', label:'Μενού', icon: ic('M4 6h16|M4 12h16|M4 18h16') },
-];
+// ═══ ΔΥΟ ΠΟΡΤΕΣ ΓΙΑ ΤΟ ΙΔΙΟ ΔΩΜΑΤΙΟ ═══════════════════════════════════════
+// Η εφαρμογή είχε χάμπουργκερ πάνω αριστερά ΚΑΙ «Μενού» κάτω δεξιά, που
+// άνοιγαν και τα δύο την ΙΔΙΑ πλαϊνή μπάρα (`setSidebarOpen`). Δύο σημεία για
+// μία ενέργεια δεν είναι διευκόλυνση: είναι δύο πράγματα να μάθει ο χρήστης
+// αντί για ένα — με μία θέση λιγότερη για πραγματικό προορισμό.
+//
+// ΜΕΝΕΙ ΤΟ ΠΑΝΩ ΑΡΙΣΤΕΡΑ, γιατί εκεί το ψάχνει το χέρι σε κάθε εφαρμογή και
+// γιατί είναι ορατό ΚΑΙ σε υπολογιστή, όπου η κάτω μπάρα δεν υπάρχει καν. Η
+// κάτω μπάρα κρατά τέσσερις προορισμούς — μεγαλύτερος στόχος ο καθένας, με
+// τον χώρο μοιρασμένο στα τέσσερα αντί για στα πέντε.
+const BOTTOM_NAV = CORE_TABS
+  .filter(id => id !== 'settings')   // ο λογαριασμός ζει στο υποσέλιδο της πλαϊνής μπάρας
+  .slice(0, 4)
+  .map(id => ({ id, label: NAV_LABEL[id], icon: ic(NAV_ICON[id]) }));
 
 // ═══ ΔΥΟ ΤΥΠΟΙ ΠΟΣΟΥ ΣΤΗΝ ΙΔΙΑ ΕΦΑΡΜΟΓΗ, ΚΑΙ Ο ΕΝΑΣ ΕΒΓΑΖΕ ΠΑΥΛΑ ══════════
 // Ο τοπικός `fmtEur` έγραφε ακέραια ευρώ («1.234 €») ενώ ο κοινός `fe` γράφει
@@ -2085,7 +2092,15 @@ export default function Dashboard() {
 
       <main className="app-main">
         <header className="app-topbar">
-          <button className="nav-toggle" onClick={()=>setSidebarOpen(v=>!v)} aria-label="Μενού">
+          {/* ΤΟ ΣΗΜΑ ΑΚΟΛΟΥΘΕΙ ΤΗΝ ΠΟΡΤΑ. Οι εκκρεμότητες Απογραφής και Λίστας
+              ζουν σε καρτέλες που ανοίγουν ΜΟΝΟ από την πλαϊνή μπάρα· όσο
+              υπήρχαν δύο πόρτες, το σήμα ήταν στην κάτω. Τώρα είναι εδώ. */}
+          <button className="nav-toggle" onClick={()=>setSidebarOpen(v=>!v)}
+            aria-label={inventoryAlerts + checklistAlerts > 0
+              ? `Μενού, ${inventoryAlerts + checklistAlerts} ${inventoryAlerts + checklistAlerts === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`
+              : 'Μενού'}
+            style={{ position: 'relative' }}>
+            {inventoryAlerts + checklistAlerts > 0 && <span className="bottom-nav-badge"/>}
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
           </button>
           {selected ? (
@@ -2436,21 +2451,17 @@ export default function Dashboard() {
       {selected && (
         <nav className="bottom-nav" aria-label="Κύρια πλοήγηση">
           {BOTTOM_NAV.map(item => {
-            const isActive = item.id !== 'more' && nav === item.id;
-            const onTap = item.id === 'more' ? () => setSidebarOpen(true) : () => setNav(item.id);
-            const alerts = inventoryAlerts + checklistAlerts;
-            const badge = item.id === 'more' && alerts > 0;
+            const isActive = nav === item.id;
+            const onTap = () => setNav(item.id);
             return (
               // Η ΕΝΕΡΓΗ ΚΑΡΤΕΛΑ ΛΕΓΟΤΑΝ ΜΟΝΟ ΜΕ ΧΡΩΜΑ και η κόκκινη τελεία
               // ήταν σκέτη τελεία: δύο πληροφορίες που ο αναγνώστης οθόνης δεν
               // μπορούσε να μεταφέρει με κανέναν τρόπο. Το `aria-current` λέει
               // πού βρίσκεσαι και το σήμα αποκτά τον αριθμό του.
               <button key={item.id} className={`bottom-nav-item ${isActive?'active':''}`} onClick={onTap}
-                aria-current={isActive ? 'page' : undefined} style={{position:'relative'}}>
-                {badge && <span className="bottom-nav-badge"/>}
+                aria-current={isActive ? 'page' : undefined}>
                 {item.icon}
                 <span>{item.label}</span>
-                {badge && <span className="sr-only">{alerts === 1 ? '1 εκκρεμότητα' : `${alerts} εκκρεμότητες`}</span>}
               </button>
             );
           })}
