@@ -1230,7 +1230,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               ))}
             </div>
           )}
-          <ActionMenu label="Εργαλεία και αναφορές" title="Αναφορές και εργαλεία διαχείρισης" icon={<Printer size={14}/>} items={[
+          <ActionMenu label="Εργαλεία και αναφορές" icon={<Printer size={14}/>} items={[
             { key:'print', label:'Λογιστική αναφορά', description:'Σύνοψη εσόδων, φόρου και καθαρού σε PDF, έτοιμη για τον λογιστή σου', icon:<Printer size={16}/>, onClick:printReport },
             { key:'official', label:'Επίσημη αναφορά', description:'Υπογεγραμμένο PDF με αριθμό εγγράφου και QR επαλήθευσης', icon:<ShieldCheck size={16}/>, onClick:officialReport, busy:genOfficial },
             { key:'adjust', label:'Αναπροσαρμογή ενοικίου', description:'Νόμιμη ειδοποίηση προς τον μισθωτή, με ηλεκτρονική υπογραφή', icon:<svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>, onClick:()=>setAdjustOpen(true) },

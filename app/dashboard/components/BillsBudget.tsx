@@ -1887,7 +1887,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
           {secHdr('Εξαιρέσεις', 'exclusions',
             excludedCount > 0 ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{excludedCount} εκτός</span> : undefined,
-            <InfoDot text="Απενεργοποίησε όσα δεν θέλεις να μετρούν στα στατιστικά και στον προϋπολογισμό: είτε γιατί τα πληρώνει κάποιος άλλος, είτε επειδή απλώς δεν θες να προσμετρώνται. Μπορείς να εξαιρέσεις ολόκληρη την εγγραφή ή μόνο ένα μέρος του ποσού (π.χ. το μισό το πλήρωσε άλλος) και προαιρετικά να σημειώσεις τον λόγο." />)}
+            <InfoDot text="Απενεργοποίησε όσα δεν θέλεις να μετρούν στα στατιστικά και στον προϋπολογισμό. Εξαίρεσε ολόκληρη την εγγραφή ή μέρος του ποσού (π.χ. το μισό το πλήρωσε άλλος) και σημείωσε προαιρετικά τον λόγο." />)}
           {!collapsed.has('exclusions') && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {viewItems.map((it, idx) => {

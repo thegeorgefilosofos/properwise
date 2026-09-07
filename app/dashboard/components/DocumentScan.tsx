@@ -524,7 +524,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   ? ['Τράβα τη φωτογραφία με καλό φως, ίσια, να χωράει όλο το έγγραφο', 'Αν έχεις PDF από τον πάροχο/φορέα, ανέβασέ το, διαβάζεται καλύτερα']
                   : error === 'key_missing' ? ['Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά', 'Για αυτόματη ανάγνωση χρειάζεται το κλειδί AI στις ρυθμίσεις']
                   : error === 'save' ? ['Δοκίμασε ξανά, τα στοιχεία σου διατηρούνται']
-                  : ['Δοκίμασε ξανά σε λίγο', 'Μπορείς να συμπληρώσεις τα πεδία χειροκίνητα'];
+                  : ['Δοκίμασε ξανά σε λίγο', 'Συμπλήρωσε τα πεδία χειροκίνητα'];
                 return (
                   <div style={{ marginTop: 12, background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '12px 16px' }}>
                     <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--warning)', marginBottom: 8 }}>{title}</div>
