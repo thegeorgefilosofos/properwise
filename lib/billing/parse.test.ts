@@ -51,6 +51,13 @@ const providers = [
   { desc: 'ΕΥΔΑΠ ΑΕ ΥΔΡΕΥΣΗ', cat: 'water' },
   { desc: 'EYATH THESSALONIKI', cat: 'water' },
   { desc: 'COSMOTE ΣΤΑΘΕΡΑ', cat: 'internet' },
+  // Η ΜΕΤΟΝΟΜΑΣΙΑ ΠΡΟΣΘΕΤΕΙ, ΔΕΝ ΑΝΤΙΚΑΘΙΣΤΑ. Ο πάροχος γράφεται Telekom από
+  // 07/09/2026, αλλά οι κινήσεις των προηγούμενων ετών λένε ακόμη COSMOTE και
+  // OTE AE: αν έφευγαν τα παλιά κλειδιά, κάθε παλιός λογαριασμός θα έμενε
+  // αχαρακτήριστος. Και τα τρία ονόματα δείχνουν στην ίδια κατηγορία.
+  { desc: 'TELEKOM ΣΤΑΘΕΡΑ', cat: 'internet' },
+  { desc: 'OTE AE ΛΟΓΑΡΙΑΣΜΟΣ', cat: 'internet' },
+  { desc: 'MAGENTATV ΣΥΝΔΡΟΜΗ', cat: 'streaming' },
   { desc: 'VODAFONE ΕΛΛΑΔΟΣ', cat: 'internet' },
   { desc: 'NETFLIX.COM', cat: 'streaming' },
   { desc: 'SPOTIFY AB STOCKHOLM', cat: 'streaming' },

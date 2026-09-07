@@ -171,7 +171,7 @@ const GROUPS = [
   {
     id: 'telecom', label: 'Τηλεφωνία και Internet', color: 'var(--accent)', Icon: Wifi,
     roles: [
-      { value: 'tel_ote', label: 'Cosmote (OTE)' },
+      { value: 'tel_ote', label: 'Telekom (πρώην Cosmote)' },
       { value: 'tel_vodafone', label: 'Vodafone' },
       { value: 'tel_nova', label: 'Nova' },
       { value: 'tel_inalan', label: 'Inalan' },

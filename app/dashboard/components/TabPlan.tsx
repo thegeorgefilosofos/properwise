@@ -422,7 +422,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
 
   // ══ ΠΟΙΑ ΒΗΜΑΤΑ ΕΧΟΥΝ ΗΔΗ ΓΙΝΕΙ ΕΡΓΑΣΙΕΣ ═════════════════════════════════
   // Διαβάζεται ΜΙΑ φορά, από τη βάση, με πρόθεμα `plan:`. Χωρίς αυτό το κουμπί
-  // θα έλεγε «Βάλ᾽ το στις Εργασίες» και μετά από ανανέωση σελίδας θα το ξανάλεγε
+  // θα έλεγε «Πρόσθεσε στις Εργασίες» και μετά από ανανέωση σελίδας θα το ξανάλεγε
   // για εργασία που υπάρχει ήδη — δηλαδή θα υποσχόταν κάτι που δεν θα έκανε.
   const [pushedIds, setPushedIds] = useState<string[]>([]);
   const [pushing, setPushing] = useState(false);
@@ -693,7 +693,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
             <Btn variant="primary" onClick={() => toggle(plan.next!.id)}>Ολοκληρώθηκε</Btn>
             {pushedIds.includes(plan.next.id)
               ? <Btn onClick={() => removeFromTasks(plan.next!)} disabled={pushing}>Βγάλ᾽ το από τις Εργασίες</Btn>
-              : <Btn onClick={() => pushToTasks(plan.next!)} disabled={pushing}>Βάλ᾽ το στις Εργασίες</Btn>}
+              : <Btn onClick={() => pushToTasks(plan.next!)} disabled={pushing}>Πρόσθεσε στις Εργασίες</Btn>}
           </div>
         </Card>
       )}

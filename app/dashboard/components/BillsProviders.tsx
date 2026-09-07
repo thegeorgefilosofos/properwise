@@ -9,7 +9,7 @@ import { T, fe, feRate, fieldRow, fixedCols, fp, Spinner, pressable } from '@/co
 import { waterMonthly, waterMonthlyText } from '@/lib/energy/tariff';
 
 const INTERNET_PROVIDERS = [
-  { value: 'cosmote',   label: 'Cosmote',   url: 'https://www.cosmote.gr',    color: '#009fe3' },
+  { value: 'cosmote',   label: 'Telekom',   url: 'https://www.telekom.gr',    color: '#e20074' },
   { value: 'nova',      label: 'Nova',       url: 'https://www.nova.gr',       color: '#e4002b' },
   { value: 'vodafone',  label: 'Vodafone',   url: 'https://www.vodafone.gr',   color: '#e60000' },
   { value: 'inalan',    label: 'Inalan',     url: 'https://www.inalan.gr',     color: '#0073ff' },
@@ -23,7 +23,7 @@ const INTERNET_PROVIDERS = [
 // ΤΑ ΠΑΚΕΤΑ ΣΥΝΔΡΟΜΗΤΙΚΗΣ ΤΗΛΕΟΡΑΣΗΣ
 // ─────────────────────────────────────────────────────────────────────────
 // ΗΤΑΝ ΑΔΕΙΟΣ, ΚΑΙ ΣΩΣΤΑ: οι τιμές των πακέτων αλλάζουν και το μόνο που τα
-// κάνει χρήσιμα είναι να είναι ΣΩΣΤΑ. Ένα επινοημένο «Cosmote TV Full, 30 €»
+// κάνει χρήσιμα είναι να είναι ΣΩΣΤΑ. Ένα επινοημένο «MagentaTV Full, 30 €»
 // δεν είναι προσέγγιση — είναι λάθος νούμερο σε οθόνη που ο ιδιοκτήτης θα
 // συγκρίνει με τον λογαριασμό του. Γέμισε από τις επίσημες σελίδες.
 //
@@ -41,7 +41,7 @@ const INTERNET_PROVIDERS = [
 // επιβεβαιώνεται, μπαίνει το πακέτο χωρίς ποσό και το γράφει ο χρήστης.
 // ═══════════════════════════════════════════════════════════════════════════
 const TV_PROVIDERS = [
-  { value: 'cosmote',     label: 'Cosmote TV',  url: 'https://www.cosmote.gr/static/residential/el/cosmote-tv-packs' },
+  { value: 'cosmote',     label: 'MagentaTV',   url: 'https://www.telekom.gr/static/residential/el/tv' },
   { value: 'nova',        label: 'Nova / EON',  url: 'https://nova.gr/eon-tv/programmata/eon' },
   { value: 'vodafone',    label: 'Vodafone TV', url: 'https://www.vodafone.gr/tv' },
   { value: 'skyshowtime', label: 'SkyShowtime', url: 'https://www.skyshowtime.com/gr' },
@@ -123,22 +123,38 @@ const INTERNET_PLANS: Record<string, {
 }[]> = {
   cosmote: [
     // ── Double Play (Σταθερή + Internet) ─────────────────────────────────
-    { id:'c_dp_24',    name: 'Double Play Unlimited 24',    speed: '24 Mbps',   price: 19.90, hasPhone: true,  note: 'ADSL. Απεριόριστα λεπτά σταθερά και κινητά.', networkType: 'ADSL', contract: '24 μήνες' },
-    { id:'c_dp_50',    name: 'Double Play Advanced 50',     speed: '50 Mbps',   price: 22.90, hasPhone: true,  note: 'VDSL. Απεριόριστα λεπτά σταθερά και κινητά.', networkType: 'VDSL', contract: '24 μήνες' },
-    { id:'c_f100',     name: 'Fiber 100 Unlimited',         speed: '100 Mbps',  price: 23.71, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f300',     name: 'Fiber 300 Unlimited',         speed: '300 Mbps',  price: 27.90, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f500',     name: 'Fiber 500 Unlimited',         speed: '500 Mbps',  price: 31.90, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f1g',      name: 'Fiber 1 Gbps Unlimited',      speed: '1 Gbps',    price: 35.90, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f3g',      name: 'Fiber 3 Gbps Unlimited',      speed: '3 Gbps',    price: 70.39, hasPhone: true,  note: 'Υπερ-γρήγορο οπτική ίνα FTTH.', networkType: 'Fiber', contract: '24 μήνες' },
+    // ═══ ΤΟ ΠΑΛΙΟ ADSL ΤΩΝ 24 Mbps ΔΕΝ ΠΩΛΕΙΤΑΙ ΠΙΑ ══════════════════════════
+    // Ο κατάλογος του eshop (07/09/2026) φιλτράρει ταχύτητες 50, 100, 300 και
+    // 500 — καμία εγγραφή στα 24. Η γραμμή ΜΕΝΕΙ γιατί το `internetPlanId`
+    // αποθηκεύεται: όποιος είναι ήδη σε αυτό το συμβόλαιο πρέπει να μπορεί να
+    // το κρατήσει επιλεγμένο. Το λέει όμως η ίδια, ώστε κανείς να μη νομίσει
+    // ότι μπορεί να το πάρει σήμερα.
+    { id:'c_dp_24',    name: 'Double Play Unlimited 24 (παλαιό)', speed: '24 Mbps', price: 19.90, hasPhone: true,  note: 'ADSL. Δεν προσφέρεται πλέον σε νέες συνδέσεις· μένει για όσους το έχουν ήδη.', networkType: 'ADSL', contract: '24 μήνες' },
+    { id:'c_dp_50',    name: 'Telekom Double Play Advanced Unlimited', speed: '50 Mbps', price: 22.90, hasPhone: true,  note: '100% οπτική ίνα ώς την πρίζα, με εγγύηση καλής εγκατάστασης.', networkType: 'Fiber', contract: '24 μήνες' },
+    // ═══ ΔΥΟ ΠΑΚΕΤΑ ΜΕ ΤΟ ΙΔΙΟ ΟΝΟΜΑ ΚΑΙ ΔΙΑΦΟΡΕΤΙΚΗ ΤΙΜΗ ══════════════════
+    // Ο κατάλογος δείχνει ΔΥΟ «Fiber 100 Unlimited»: ένα στα 24,90 € με «έως
+    // 100 Mbps» και μόνο δωρεάν router. Το δεύτερο είναι στα 23,71 €, διαγραμμένο από
+    // 24,90 € — με 100% οπτική ίνα ώς την πρίζα και εγγύηση εγκατάστασης. Το
+    // φθηνότερο είναι το ΚΑΛΥΤΕΡΟ· αυτό δεν διαβάζεται από την τιμή: όποιος
+    // δει μόνο «24,90» θα νομίσει ότι πληρώνει λιγότερο για το ίδιο πράγμα.
+    { id:'c_f100',     name: 'Telekom Fiber 100 Unlimited', speed: '100 Mbps',  price: 23.71, hasPhone: true,  note: '100% οπτική ίνα ώς την πρίζα, με εγγύηση καλής εγκατάστασης. Τιμή προσφοράς από 24,90 €.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f100_vdsl', name: 'Telekom Fiber 100 Unlimited (έως 100)', speed: '100 Mbps', price: 24.90, hasPhone: true, note: 'Έως 100 Mbps, χωρίς εγγύηση εγκατάστασης. Δωρεάν ασύρματο router.', networkType: 'VDSL', contract: '24 μήνες' },
+    { id:'c_f300',     name: 'Telekom Fiber 300 Unlimited', speed: '300 Mbps',  price: 27.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 150 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f500',     name: 'Telekom Fiber 500 Unlimited', speed: '500 Mbps',  price: 31.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 250 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f1g',      name: 'Telekom Fiber 1Gbps Unlimited', speed: '1 Gbps',  price: 35.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 500 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f3g',      name: 'Telekom Fiber 3Gbps Unlimited', speed: '3 Gbps',  price: 70.39, hasPhone: true,  note: 'Οπτική ίνα FTTH, 1.500 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
     // ── 5G WiFi (Internet backup μέσω 5G) ────────────────────────────────
+    // ΔΕΝ ΞΑΝΑΕΠΙΒΕΒΑΙΩΘΗΚΑΝ ΜΕΤΑ ΤΗ ΜΕΤΟΝΟΜΑΣΙΑ. Ο κατάλογος που ελέγχθηκε
+    // στις 07/09/2026 ήταν των Double Play οπτικής ίνας· τα ασύρματα ζουν σε
+    // άλλη σελίδα. Τα ποσά μένουν ως έχουν, χωρίς να δηλώνονται ελεγμένα.
     { id:'c_5g50',     name: '5G WiFi Double Play 50',      speed: '50 Mbps',   price: 30.90, hasPhone: true,  note: 'Ασύρματο 5G, Internet backup. Χωρίς καλωδίωση.', networkType: '5G', backup: true },
     { id:'c_5g300',    name: '5G WiFi Double Play 300',     speed: '300 Mbps',  price: 35.90, hasPhone: true,  note: 'Ασύρματο 5G, Internet backup. Χωρίς καλωδίωση.', networkType: '5G', backup: true },
     { id:'c_5g_free',  name: '5G WiFi 300 Χωρίς Σύμβαση',  speed: '300 Mbps',  price: 35.90, hasPhone: true,  note: 'Ασύρματο 5G χωρίς δέσμευση. Εξοπλισμός 349 €.', networkType: '5G', backup: true },
     // ── Triple Play (Σταθερή + Internet + Τηλεόραση) ─────────────────────
-    { id:'c_f100_tv',  name: 'Fiber 100 + Cosmote TV Full', speed: '100 Mbps',  price: 48.77, hasPhone: true, hasTV: true, note: 'FTTH + Cosmote TV πλήρες πακέτο. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f300_tv',  name: 'Fiber 300 + Cosmote TV Full', speed: '300 Mbps',  price: 51.85, hasPhone: true, hasTV: true, note: 'FTTH + Cosmote TV πλήρες πακέτο. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f500_tv',  name: 'Fiber 500 + TV + Netflix',    speed: '500 Mbps',  price: 62.06, hasPhone: true, hasTV: true, note: 'FTTH + Cosmote TV + Netflix. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f1g_tv',   name: 'Fiber 1 Gbps + TV + Netflix', speed: '1 Gbps',    price: 65.30, hasPhone: true, hasTV: true, note: 'FTTH + Cosmote TV + Netflix. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f100_tv',  name: 'Fiber 100 + MagentaTV Full', speed: '100 Mbps',  price: 48.77, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV πλήρες πακέτο. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f300_tv',  name: 'Fiber 300 + MagentaTV Full', speed: '300 Mbps',  price: 51.85, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV πλήρες πακέτο. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f500_tv',  name: 'Fiber 500 + TV + Netflix',    speed: '500 Mbps',  price: 62.06, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV + Netflix. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f1g_tv',   name: 'Fiber 1 Gbps + TV + Netflix', speed: '1 Gbps',    price: 65.30, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV + Netflix. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   nova: [
     // ── Double Play (Σταθερή + Internet) ─────────────────────────────────
