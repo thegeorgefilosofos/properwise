@@ -37,6 +37,8 @@ import * as calendar from '@/lib/data/calendar'
 import { T, PageTitle, KPIGrid, InfoBanner, Btn, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, fd, fp, fn, pressable, formGrid, fieldRow, Bar } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { shortTermYearSummary, isHouseType } from '@/lib/tax/shortTermTax';
+import { isIndividualTaxpayer } from '@/lib/accounting/taxProfile';
+import type { LegalForm } from '@/lib/accounting/dossier';
 import { shortTermCashflow } from '@/lib/tax/shortTermCashflow';
 import { mergeLedger, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
 import { notify, notifyOk, notifyError } from '@/components/Toast';
@@ -57,6 +59,9 @@ import { failed } from '@/lib/core/dbError';
 
 interface Props {
   propertyId: string; userId: string; propertyName?: string; propertySqm?: number;
+  /** ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΡΩΤΑΕΙ ΑΝ ΕΙΣΑΙ ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ. Δες `isIndividualTaxpayer`. */
+  profileType?: 'individual' | 'professional';
+  legalForm?: LegalForm;
   /** ΔΕΝ ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ ΠΙΑ. Το `page.tsx` το περνά ακόμη· έμεινε στον τύπο για
    *  να μη σπάσει η κλήση. Τροφοδοτούσε το `suggestBaseFallback`, που πρότεινε
    *  τιμή/νύχτα από `(ενοίκιο/30) × 2,2` χωρίς τοποθεσία. Δες dynamicPricing.ts. */
@@ -131,7 +136,7 @@ const MoneySteps = ({ steps, scale = 'lead' }: { steps: MoneyStep[]; scale?: 'le
   );
 };
 
-export default function TabPricing({ propertyId, userId, propertyName, propertySqm }: Props) {
+export default function TabPricing({ propertyId, userId, propertyName, propertySqm, profileType = 'individual', legalForm = 'individual' }: Props) {
   const supabase = createClient();
   const [stays, setStays] = useState<PriceStay[]>([]);
   const [isHouse, setIsHouse] = useState(false);
@@ -327,8 +332,10 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // ιδιοκτήτης έπρεπε να επισκεφθεί και τις τρεις και να κάνει την αφαίρεση
   // μόνος του — δηλαδή να κάνει ό,τι υποτίθεται ότι κάνει η εφαρμογή.
   const taxSummary = useMemo(
-    () => shortTermYearSummary(stays, nowYear, { sqm: propertySqm ?? null, isHouse, propertyCount: propCount, individual: true }),
-    [stays, nowYear, propertySqm, isHouse, propCount],
+    // ΗΤΑΝ ΚΑΡΦΩΜΕΝΟ «ναι, φυσικό πρόσωπο». Το νομικό πρόσωπο έβλεπε μηδέν
+    // δημοτικό τέλος εδώ, δίπλα στο σωστό ποσό της Λογιστικής.
+    () => shortTermYearSummary(stays, nowYear, { sqm: propertySqm ?? null, isHouse, propertyCount: propCount, individual: isIndividualTaxpayer(profileType, legalForm) }),
+    [stays, nowYear, propertySqm, isHouse, propCount, profileType, legalForm],
   );
   const cashflow = useMemo(
     () => shortTermCashflow({

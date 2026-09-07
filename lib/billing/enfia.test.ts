@@ -66,6 +66,31 @@ const near = (a: number, b: number, eps = 0.5) => Math.abs(a - b) <= eps
   ok('κρατά τη μεγαλύτερη (100% → μηδέν)', big.reductionPct === 100 && big.annual === 0)
 }
 
+// ── Ασφαλισμένη κατοικία: 20% ώς τις 500.000, 10% πάνω από εκεί ────────────
+// ΤΟ ΚΑΤΩΦΛΙ ΗΤΑΝ ΓΡΑΜΜΕΝΟ ΜΟΝΟ ΣΤΗ ΣΗΜΕΙΩΣΗ ΤΟΥ ΠΙΝΑΚΑ. Ο υπολογισμός έπαιρνε
+// σκέτο 20% για κάθε αξία, δηλαδή η οθόνη έγραφε τον σωστό κανόνα δίπλα σε
+// νούμερο που δεν τον τηρούσε. Κάθε ισχυρισμός εδώ έπεφτε πριν τη διόρθωση.
+{
+  const low = estimateENFIA({ sqm: 100, zone: '751_1500', totalValue: 450000, propertyValue: 450000, reductions: ['insurance'] })!
+  ok('κατοικία 450.000 → 20%', low.reductionPct === 20)
+
+  const high = estimateENFIA({ sqm: 100, zone: '751_1500', totalValue: 600000, propertyValue: 600000, reductions: ['insurance'] })!
+  // Πάνω από 400.000 η αυτόματη μείωση είναι 0, οπότε το ποσοστό είναι σκέτο το χειροκίνητο.
+  ok('κατοικία 600.000 → 10%, όχι 20%', high.reductionPct === 10)
+
+  // Στο ΙΔΙΟ το κατώφλι ισχύει ακόμη το μεγάλο ποσοστό: ο κανόνας λέει «≤500.000».
+  const edge = estimateENFIA({ sqm: 100, zone: '751_1500', totalValue: 500000, propertyValue: 500000, reductions: ['insurance'] })!
+  ok('ακριβώς 500.000 → 20%', edge.reductionPct === 20)
+
+  // Χωρίς αξία ακινήτου κρίνει η συνολική: εφεδρεία που σφάλλει ΠΡΟΣ ΤΑ ΠΑΝΩ στον φόρο.
+  const noProp = estimateENFIA({ sqm: 100, zone: '751_1500', totalValue: 600000, reductions: ['insurance'] })!
+  ok('χωρίς αξία ακινήτου πέφτει στη συνολική', noProp.reductionPct === 10)
+
+  // Οι εκπτώσεις χωρίς κατώφλι δεν αγγίζονται από την αλλαγή.
+  const fixed = estimateENFIA({ sqm: 100, zone: '751_1500', totalValue: 600000, propertyValue: 600000, reductions: ['low_income'] })!
+  ok('χαμηλό εισόδημα μένει 50% σε κάθε αξία', fixed.reductionPct === 50)
+}
+
 // ── Συνδυασμός αυτόματης + χειροκίνητης μείωσης (πολλαπλασιαστικά) ──────────
 {
   const c = estimateENFIA({ sqm: 100, zone: '751_1500', totalValue: 90000, reductions: ['insurance'] })! // 30% & 20%

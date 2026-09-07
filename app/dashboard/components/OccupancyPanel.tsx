@@ -56,14 +56,19 @@ import { T, fe, fp, Skeleton, pressable } from '@/components/Theme';
 import { readStatus, type StatusRow } from '@/lib/property/status';
 import { occupancyFromMonths, type ReportStay } from '@/lib/clients/reports';
 import { isHouseType, shortTermYearSummary } from '@/lib/tax/shortTermTax';
+import { isIndividualTaxpayer } from '@/lib/accounting/taxProfile';
+import type { LegalForm } from '@/lib/accounting/dossier';
 import { FIRST_YEAR_CURRENT_LEVY } from '@/lib/billing/greekTax';
 import { MONTHS_SHORT, MONTHS_ACC } from '@/lib/core/months';
 
 interface StayRow extends ReportStay { declared_at?: string | null }
 interface PropInfo extends StatusRow { prop_type?: string | null; sqm?: number | null }
 
-export default function OccupancyPanel({ propertyId, userId }: {
+export default function OccupancyPanel({ propertyId, userId, profileType = 'individual', legalForm = 'individual' }: {
   propertyId: string; userId: string;
+  /** ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΡΩΤΑΕΙ ΑΝ ΕΙΣΑΙ ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ. Δες `isIndividualTaxpayer`. */
+  profileType?: 'individual' | 'professional';
+  legalForm?: LegalForm;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [prop, setProp] = useState<PropInfo | null>(null);
@@ -97,8 +102,12 @@ export default function OccupancyPanel({ propertyId, userId }: {
 
   const isHouse = isHouseType(prop?.prop_type);
   const tax = useMemo(() => shortTermYearSummary(stays, year, {
-    sqm: prop?.sqm ?? null, isHouse, propertyCount: shortTermCount ?? 1, individual: true,
-  }), [stays, year, prop?.sqm, isHouse, shortTermCount]);
+    // ΤΟ «individual» ΗΤΑΝ ΚΑΡΦΩΜΕΝΟ, ΟΠΩΣ ΗΤΑΝ ΚΑΙ ΤΟ ΠΛΗΘΟΣ ΠΡΙΝ ΔΙΟΡΘΩΘΕΙ.
+    // Η εταιρεία με ένα βραχυχρόνιο ακίνητο έβλεπε μηδέν δημοτικό τέλος εδώ,
+    // ενώ η Λογιστική δίπλα της το χρέωνε σωστά.
+    sqm: prop?.sqm ?? null, isHouse, propertyCount: shortTermCount ?? 1,
+    individual: isIndividualTaxpayer(profileType, legalForm),
+  }), [stays, year, prop?.sqm, isHouse, shortTermCount, profileType, legalForm]);
 
   // ΕΝΑΣ ΜΕΤΡΗΤΗΣ ΝΥΧΤΩΝ ΓΙΑ ΟΛΗ ΤΗΝ ΚΑΡΤΑ. Η πληρότητα τρέφεται από τον ΙΔΙΟ
   // πίνακα μηνών που παράγει το τέλος και τον φόρο, ώστε να μην μπορεί να

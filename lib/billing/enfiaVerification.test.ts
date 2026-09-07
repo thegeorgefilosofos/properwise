@@ -35,7 +35,17 @@ function enfiaOracle(sqm: number, zone: string, floor: string, age: string, owne
   const suppl = kyrios * surchargePct(totalVal) / 100
   const subtotal = kyrios + suppl
   const wealthPct = wealthReductionPct(totalVal)
-  const manualPct = Math.max(0, ...reductions.map(r => ENFIA_REDUCTIONS.find(rd => rd.key === r)?.pct || 0))
+  // ΤΟ ΚΑΤΩΦΛΙ ΤΗΣ ΑΣΦΑΛΙΣΜΕΝΗΣ ΚΑΤΟΙΚΙΑΣ ΞΑΝΑΓΡΑΦΕΤΑΙ ΕΔΩ ΕΠΙΤΗΔΕΣ.
+  // Το μαντείο δεν επιτρέπεται να καλέσει την `enfiaReductionPct` της μηχανής:
+  // τότε θα συμφωνούσαν και οι δύο σε ένα λάθος. Ο νόμος γράφεται δεύτερη φορά,
+  // με τα δικά του νούμερα — 20% ώς τις 500.000 της ΚΑΤΟΙΚΙΑΣ, 10% πάνω από
+  // εκεί — ώστε λάθος `pctOver` στον πίνακα να κοκκινίζει 40.000 περιπτώσεις.
+  const homeVal = propVal || totalVal
+  const manualPct = Math.max(0, ...reductions.map(r => {
+    const rd = ENFIA_REDUCTIONS.find(x => x.key === r)
+    if (!rd) return 0
+    return r === 'insurance' && homeVal > 500000 ? 10 : rd.pct
+  }))
   const combined = 1 - (1 - wealthPct / 100) * (1 - manualPct / 100)
   const annual = Math.max(0, subtotal * (1 - combined))
   return { basic: round2(basic), extra: round2(extra), suppl: round2(suppl), annual: round2(annual) }

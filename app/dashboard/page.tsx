@@ -455,10 +455,15 @@ function useChecklistAlerts(propertyId: string | null) {
 // Μία λέξη το λύνει: εξάγεται, ο πάγκος τη στήνει με τα δικά του δεδομένα και
 // από εδώ και πέρα περνά κι αυτή από τους δώδεκα ελέγχους διάταξης και από τον
 // έλεγχο προσβασιμότητας, όπως κάθε άλλη οθόνη.
-export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }: { prop: Property;
+export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, profileType = 'individual', legalForm = 'individual' }: { prop: Property;
   /** ΟΛΑ τα ακίνητα του χρήστη — χρειάζονται για τον φόρο: η κλίμακα των ενοικίων
    *  είναι προοδευτική στο σύνολο του φορολογούμενου, όχι ανά ακίνητο. */
   properties: Property[];
+  /** ΠΕΡΝΑΝΕ ΜΟΝΟ ΓΙΑ ΤΟ ΠΑΝΕΛ ΠΛΗΡΟΤΗΤΑΣ, ΠΟΥ ΥΠΟΛΟΓΙΖΕΙ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ.
+   *  Εκείνο περνούσε καρφωμένο «φυσικό πρόσωπο», οπότε η εταιρεία έβλεπε μηδέν
+   *  τέλος στην Επισκόπηση και το σωστό ποσό στη Λογιστική. */
+  profileType?: 'individual' | 'professional';
+  legalForm?: LegalForm;
   // ΤΟ ΟΝΟΜΑ ΙΔΙΟΚΤΗΤΗ ΕΦΥΓΕ ΑΠΟ ΕΔΩ. Περνούσε ως prop μαζί με χειριστή
   // αποθήκευσης και ΚΑΝΕΝΑ από τα δύο δεν χρησιμοποιήθηκε ποτέ μέσα στο σώμα:
   // η οθόνη δεν το έδειχνε και δεν το άλλαζε. Το όνομα ζει στο
@@ -1277,7 +1282,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }
           Και η κεφαλίδα ενότητας έφυγε μαζί: με ένα στοιχείο κάθε φορά, ένας
           τίτλος «Διαχείριση και εργαλεία» ονομάτιζε ομάδα που δεν υπάρχει. */}
       {readStatus(prop) === 'rent_long' && <PortalShare propertyId={prop.id} userId={userId} />}
-      <OccupancyPanel propertyId={prop.id} userId={userId} />
+      <OccupancyPanel propertyId={prop.id} userId={userId} profileType={profileType} legalForm={legalForm} />
 
     </div>
   );
@@ -2312,7 +2317,7 @@ export default function Dashboard() {
                   πίνακας. Ό,τι επιστρέψει από την προηγούμενη φόρτωση γράφει σε
                   component που δεν υπάρχει πια και η React το αγνοεί. Το ίδιο
                   ισχύει για κάθε καρτέλα που φορτώνει δικά της δεδομένα. */}
-              {navSafe==='overview'  && <OverviewTab key={selected.id} prop={selected} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : setNav(t)} tabVisible={navVisible}/>}
+              {navSafe==='overview'  && <OverviewTab key={selected.id} prop={selected} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : setNav(t)} tabVisible={navVisible} profileType={effProfileType} legalForm={taxForm}/>}
               {nav==='finances'  && <TabFinances key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} profileType={effProfileType} legalForm={taxForm} onScan={()=>setQuickAddOpen(true)}openAddNonce={manualExpense} />}
               {nav==='calendar'  && <TabCalendar key={selected.id} propertyId={selected.id} userId={user.id} openTasks={checklistAlerts} onOpenTasks={()=>setNav('checklist')}/>}
               {/* ═══ Η ΒΡΑΧΥΧΡΟΝΙΑ ΣΤΕΚΕΤΑΙ ΜΟΝΗ ΤΗΣ ═══════════════════════════
@@ -2323,7 +2328,7 @@ export default function Dashboard() {
                   επαγγελματικό εργαλείο· η βραχυχρόνια μίσθωση δεν είναι. */}
               {navSafe==='pricing'   && (<>
                 <AmaStrip userId={user.id} propertyId={selected.id}/>
-                <TabPricing key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} propertyRent={(selected.target_rent??undefined)} propertySqm={selected.sqm??undefined}/>
+                <TabPricing key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} propertyRent={(selected.target_rent??undefined)} propertySqm={selected.sqm??undefined} profileType={effProfileType} legalForm={taxForm}/>
               </>)}
               {/* Η ΚΕΦΑΛΙΔΑ ΤΗΣ ΑΞΙΟΠΟΙΗΣΗΣ ΕΦΥΓΕ ΑΠΟ ΕΔΩ. Γραφόταν δύο φορές:
                   εδώ ως «ΑΞΙΟΠΟΙΗΣΗ ΑΚΙΝΗΤΟΥ / Κενό· πώς θα μισθωθεί…» και

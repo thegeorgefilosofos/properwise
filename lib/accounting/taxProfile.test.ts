@@ -9,7 +9,7 @@
 // Ο έλεγχος διατρέχει ΚΑΘΕ τιμή του τύπου, οπότε μια πέμπτη νομική μορφή που
 // θα προστεθεί αύριο δεν μπορεί να ξεχαστεί: θα πέσει εδώ.
 // ═══════════════════════════════════════════════════════════════════════════
-import { businessFormOf } from './taxProfile';
+import { businessFormOf, isIndividualTaxpayer } from './taxProfile';
 import { LEGAL_FORMS, HAS_BUSINESS, type LegalForm } from './dossier';
 import { CORPORATE_TAX_RATE_2026 } from '../billing/greekTax';
 
@@ -43,6 +43,23 @@ ok('μόνο το φυσικό πρόσωπο δεν έχει επιχείρησ
 ok('η δυαδική περίληψη ΔΕΝ αρκεί: ατομική και νομικό πρόσωπο διαφέρουν',
    businessFormOf('sole_trader') !== businessFormOf('company')
    && HAS_BUSINESS.has('sole_trader') && HAS_BUSINESS.has('company'));
+
+// ── Φυσικό ή νομικό πρόσωπο για το τέλος παρεπιδημούντων ──────────────────
+// Η ΙΔΙΑ ΚΡΙΣΗ ΗΤΑΝ ΣΕ ΤΡΙΑ ΣΗΜΕΙΑ ΚΑΙ ΣΩΣΤΗ ΣΤΟ ΕΝΑ. Δύο οθόνες περνούσαν
+// καρφωμένο «φυσικό πρόσωπο», οπότε η εταιρεία έβλεπε μηδέν τέλος δίπλα στο
+// σωστό ποσό της Λογιστικής.
+ok('ιδιώτης είναι πάντα φυσικό πρόσωπο',
+   isIndividualTaxpayer('individual', 'company') && isIndividualTaxpayer('individual', 'individual'));
+ok('επαγγελματίας με εταιρεία ΔΕΝ είναι φυσικό πρόσωπο',
+   !isIndividualTaxpayer('professional', 'company') && !isIndividualTaxpayer('professional', 'partnership'));
+ok('επαγγελματίας με ατομική μένει φυσικό πρόσωπο',
+   isIndividualTaxpayer('professional', 'sole_trader') && isIndividualTaxpayer('professional', 'individual'));
+// Ο διακόπτης της Λογιστικής: όταν ο χρήστης δηλώνει ως ιδιώτης, μετράει αυτό.
+ok('δήλωση ως ιδιώτης νικά τη νομική μορφή',
+   isIndividualTaxpayer('professional', 'company', false));
+// Η προεπιλογή είναι η ΑΥΣΤΗΡΟΤΕΡΗ: οθόνη χωρίς διακόπτη χρεώνει το τέλος.
+ok('χωρίς διακόπτη ισχύει η αυστηρότερη εκδοχή',
+   isIndividualTaxpayer('professional', 'company') === isIndividualTaxpayer('professional', 'company', true));
 
 // ── Ο συντελεστής υπάρχει και είναι αυτός που περιμένουν τα παραπάνω ──────
 ok('ο εταιρικός συντελεστής είναι 22%', CORPORATE_TAX_RATE_2026 === 0.22);

@@ -70,6 +70,18 @@ ok('καθαρά = μεικτά − φόρος − ακάλυπτο ΤΑΚΚ', n
 ok('effectiveRate = φόρος/μεικτά', near(sum.effectiveRate, sum.incomeTax / 1500));
 // Gate 5%: με μετρητά (όχι τραπεζική είσπραξη) φορολογείται το 100% των μεικτών
 ok('μετρητά → φόρος επί 100% μεικτών', near(shortTermYearSummary(stays, 2026, { rentsPaidViaBank: false }).incomeTax, rentalIncomeTax(1500)));
+// ΚΑΙ ΤΟ ΕΤΟΣ ΦΡΑΖΕΙ ΤΟΝ ΚΑΝΟΝΑ ΤΗΣ ΤΡΑΠΕΖΗΣ. Η προϋπόθεση ισχύει από τη χρήση
+// 2026· σε παλιότερη, τα μετρητά ΔΕΝ αφαιρούν την έκπτωση που ο νόμος έδινε.
+// Το τεστ έπεφτε πριν, γιατί η συνάρτηση καλούσε την άφρακτη εκδοχή.
+{
+  // Ο ίδιος πίνακας κρατά μια διαμονή του 2025· η σύνοψη φιλτράρει μόνη της.
+  const bank2025 = shortTermYearSummary(stays, 2025, { rentsPaidViaBank: true });
+  const cash2025 = shortTermYearSummary(stays, 2025, { rentsPaidViaBank: false });
+  ok('χρήση 2025: μετρητά κρατούν την έκπτωση 5%', near(cash2025.incomeTax, bank2025.incomeTax));
+  const cash2026 = shortTermYearSummary(stays, 2026, { rentsPaidViaBank: false });
+  const bank2026 = shortTermYearSummary(stays, 2026, { rentsPaidViaBank: true });
+  ok('χρήση 2026: τα μετρητά κοστίζουν την έκπτωση', cash2026.incomeTax > bank2026.incomeTax);
+}
 ok('κενό set → μηδενικά', shortTermYearSummary([], 2026).grossRevenue === 0 && shortTermYearSummary([], 2026).effectiveRate === 0);
 
 // ── yearsWithStays ───────────────────────────────────────────────────────────

@@ -564,12 +564,28 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // μόνο το ταμείο. (Μακροχρόνια.)
   const rentAccruedYear = useMemo(()=>mine(rent.filter(p=>p.period_year===year).reduce((s,p)=>s+(p.amount||0),0)),[rent,year,mine])
   const rentCollectedYear = useMemo(()=>mine(rent.filter(p=>p.paid&&p.period_year===year).reduce((s,p)=>s+(p.amount||0),0)),[rent,year,mine])
+  // Τι λένε τα δεδομένα και τι ισχύει τελικά (η παράκαμψη του χρήστη νικά).
+  const collection = useMemo(() => rentCollectionMode(rent, year, leaseViaBank), [rent, year, leaseViaBank])
+  // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΜΕΤΡΑΕΙ ΜΟΝΟ ΑΠΟ ΤΗ ΧΡΗΣΗ 2026. Ο δημόσιος υπολογιστής
+  // το φράζει σωστά με το έτος· εδώ περνούσε ωμό για κάθε χρονιά, οπότε μία
+  // είσπραξη σε μετρητά μέσα στο 2025 αφαιρούσε την τεκμαρτή έκπτωση 5% που ο
+  // νόμος έδινε: σε ενοίκια 20.000,00 € ο φόρος έβγαινε 4.600,00 € αντί για
+  // 4.250,00 €· το νούμερο έφευγε στον φάκελο του λογιστή ως δικός μας
+  // υπολογισμός. Η σύγκριση ζει πλέον στο lib/billing/consolidate.ts.
+  const bankMatters = bankReceiptMatters(year)
+  const rentsBank = bankMatters ? (rentsBankOverride ?? collection.viaBank) : true
+  // ΑΝΕΒΗΚΕ ΠΑΝΩ ΑΠΟ ΤΗ ΒΡΑΧΥΧΡΟΝΙΑ ΣΥΝΟΨΗ, ΓΙΑΤΙ ΤΗ ΧΡΕΙΑΖΕΤΑΙ ΚΙ ΕΚΕΙΝΗ.
+  // Το `useMemo` της σύνοψης τρέχει τη στιγμή της απόδοσης, στη σειρά που είναι
+  // γραμμένο: με το `rentsBank` δηλωμένο από κάτω, η αναφορά θα έσκαγε σε
+  // ReferenceError. Οι εξαρτήσεις του (`rent`, `year`, `leaseViaBank`,
+  // `rentsBankOverride`) δηλώνονται όλες πιο πάνω, οπότε η μετακίνηση είναι
+  // ασφαλής και δεν αλλάζει καμία τιμή.
   // ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΡΩΤΑΕΙ ΑΝ ΕΙΣΑΙ ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ. Εδώ περνούσε
   // καρφωμένο «ναι», για κάθε λογαριασμό: το νομικό πρόσωπο με ένα ακίνητο δεν
   // χρεωνόταν καθόλου το δημοτικό τέλος, δηλαδή 150,00 € σε ακαθάριστα
   // 30.000,00 €. Η ίδια κρίση γίνεται σωστά δίπλα, στις Αποδόσεις.
   const individualPerson = !(mode==='professional' && elp==='business' && elpForm==='company')
-  const shortSummary = useMemo(()=>shortTermYearSummary(stays, year, { sqm: prop?.sqm, isHouse: isHouseType(prop?.prop_type), propertyCount:propCount, individual:individualPerson }),[stays,year,prop,propCount,individualPerson])
+  const shortSummary = useMemo(()=>shortTermYearSummary(stays, year, { sqm: prop?.sqm, isHouse: isHouseType(prop?.prop_type), propertyCount:propCount, individual:individualPerson, rentsPaidViaBank:rentsBank }),[stays,year,prop,propCount,individualPerson,rentsBank])
   const expensesYear = useMemo(()=>expenses.filter(e=>(e.date||'').slice(0,4)===String(year)&&(e.amount||0)>0),[expenses,year])
   // ── Η ΠΡΟΜΗΘΕΙΑ ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ ΕΙΝΑΙ ΔΑΠΑΝΗ, ΚΑΙ ΜΠΑΙΝΕΙ ΣΤΑ ΒΙΒΛΙΑ ──────
   // Καταγραφόταν ανά κράτηση, φαινόταν σε τέσσερις οθόνες ως «δαπάνη που
@@ -666,16 +682,6 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     Math.round(assets.filter(a=>a.elp===EQUIPMENT_ACCOUNT).reduce((s,a)=>s+chargeForYear(a,year),0)),[assets,year])
   const grossIncome = regime==='individual_shortterm' ? mine(shortSummary.grossRevenue) : rentAccruedYear
   const uncollectedRent = regime==='individual_shortterm' ? 0 : Math.max(0, rentAccruedYear - rentCollectedYear)
-  // Τι λένε τα δεδομένα και τι ισχύει τελικά (η παράκαμψη του χρήστη νικά).
-  const collection = useMemo(() => rentCollectionMode(rent, year, leaseViaBank), [rent, year, leaseViaBank])
-  // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΜΕΤΡΑΕΙ ΜΟΝΟ ΑΠΟ ΤΗ ΧΡΗΣΗ 2026. Ο δημόσιος υπολογιστής
-  // το φράζει σωστά με το έτος· εδώ περνούσε ωμό για κάθε χρονιά, οπότε μία
-  // είσπραξη σε μετρητά μέσα στο 2025 αφαιρούσε την τεκμαρτή έκπτωση 5% που ο
-  // νόμος έδινε: σε ενοίκια 20.000,00 € ο φόρος έβγαινε 4.600,00 € αντί για
-  // 4.250,00 €· το νούμερο έφευγε στον φάκελο του λογιστή ως δικός μας
-  // υπολογισμός. Η σύγκριση ζει πλέον στο lib/billing/consolidate.ts.
-  const bankMatters = bankReceiptMatters(year)
-  const rentsBank = bankMatters ? (rentsBankOverride ?? collection.viaBank) : true
 
   // Ενοποίηση χαρτοφυλακίου (φυσικό πρόσωπο): ο φόρος είναι προοδευτικός στο ΣΥΝΟΛΟ
   // των ενοικίων (Ε1), όχι ανά ακίνητο. Υπολογίζεται ΠΑΝΤΑ, ώστε ο φόρος του τρέχοντος
@@ -685,7 +691,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       const rmode:TaxRegime = readStatus(p as StatusRow) === 'rent_short' ? 'individual_shortterm' : 'individual_longterm'
       const pRentAccrued = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).reduce((s,r)=>s+(r.amount||0),0)
       const pStays = allStays.filter(s=>s.property_id===p.id)
-      const pShort = shortTermYearSummary(pStays, year, { sqm:p.sqm??null, isHouse: isHouseType(p.prop_type), propertyCount:propCount, individual:individualPerson })
+      const pShort = shortTermYearSummary(pStays, year, { sqm:p.sqm??null, isHouse: isHouseType(p.prop_type), propertyCount:propCount, individual:individualPerson, rentsPaidViaBank:rentsBank })
       // Κάθε ακίνητο με ΤΟ ΔΙΚΟ ΤΟΥ ποσοστό: ένα χαρτοφυλάκιο μπορεί να έχει
       // δύο κληρονομιές στο ένα τρίτο και ένα διαμέρισμα ολόκληρο.
       const pPct = pctOf(p.id)

@@ -22,7 +22,7 @@ import {
 } from '@/lib/clients/stayAmounts';
 import { STAY_CHANNEL_LABELS, type StayChannel } from '@/lib/clients/clients';
 import { categoryLabel } from '@/lib/expenses/taxonomy';
-import { presumptiveDeductionRate } from '@/lib/billing/consolidate';
+import { presumptiveDeductionRateForYear } from '@/lib/billing/consolidate';
 import {
   climateLevyForNights, climateLevyRates, isHighSeasonMonth,
   rentalIncomeTax, rentalBracketsForYear, municipalAccommodationTax,
@@ -254,7 +254,16 @@ export function shortTermYearSummary(stays: TaxStay[], year: number, meta?: Prop
   // του ποσοστού έχει ΗΔΗ αλλάξει μία φορά (ν.5246/2025 πρόσθεσε την
   // προϋπόθεση τραπέζης)· την επόμενη φορά η Λογιστική θα ενημερωνόταν και η
   // Πληρότητα όχι, με δύο φόρους για την ίδια χρονιά σε διπλανές οθόνες.
-  const taxableFactor = 1 - presumptiveDeductionRate(meta?.rentsPaidViaBank !== false);
+  // ΚΑΙ ΤΟ ΕΤΟΣ ΜΕΤΡΑΕΙ, ΟΧΙ ΜΟΝΟ Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ.
+  //
+  // Εδώ καλούσε την ΑΦΡΑΚΤΗ `presumptiveDeductionRate`, ενώ η φραγμένη με το
+  // έτος —`presumptiveDeductionRateForYear`— ζει στο ίδιο αρχείο δίπλα της και
+  // γράφτηκε ακριβώς γι' αυτό. Η προϋπόθεση της τραπέζης ισχύει από τη χρήση
+  // 2026 (ν.5246/2025): σε παλιότερη χρήση ένα «με μετρητά» θα αφαιρούσε
+  // έκπτωση που ο νόμος ΕΔΙΝΕ. Δεν είχε σπάσει ακόμη μόνο επειδή κανένας
+  // καλών δεν περνούσε τον τρόπο είσπραξης — δηλαδή η μία παράλειψη έκρυβε
+  // την άλλη. Η Λογιστική φράζει ήδη σωστά με το έτος στην ίδια απόφαση.
+  const taxableFactor = 1 - presumptiveDeductionRateForYear(year, meta?.rentsPaidViaBank !== false);
   // Η ΚΛΙΜΑΚΑ ΤΟΥ ΕΤΟΥΣ, ΟΧΙ ΠΑΝΤΑ ΤΟΥ 2026. Η συνάρτηση δέχεται `year` από
   // την πρώτη μέρα και το χρησιμοποιούσε παντού ΕΚΤΟΣ από τον φόρο — που είναι
   // το νούμερο για το οποίο υπάρχει.
