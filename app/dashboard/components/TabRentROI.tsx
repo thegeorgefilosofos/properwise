@@ -1644,12 +1644,11 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
 
                 ΤΟ ΚΑΤΩΦΛΙ ΕΙΝΑΙ ΟΣΟ ΔΙΝΕΙ ΤΟ ΤΗΛΕΦΩΝΟ. Δύο κάρτες δίπλα δίπλα
                 μόνο όταν η καθεμία παίρνει τα 364 που δίνει η οθόνη των 430. Με
-                το ίδιο πλέγμα `auto-fit` που κρατά τα άλλα πέντε πάνελ βγαίνει
-                χωρίς media query: κάτω από 744 διαθέσιμα εικονοστοιχεία —
+                η κοινή `.po-panelrow` βγάζει το σπάσιμο χωρίς media query: κάτω από 744 διαθέσιμα εικονοστοιχεία —
                 δύο φορές 364 συν το κενό 16 — οι κάρτες στοιβάζονται.
 
                 ΔΟΚΙΜΑΣΤΗΚΕ ΠΡΩΤΑ ΜΕ `.field-row` ΚΑΙ ΗΤΑΝ ΛΑΘΟΣ ΚΛΑΣΗ. Η
-                `.field-row` δηλώνει ΣΕΙΡΑ ΠΕΔΙΩΝ, κι ο σαρωτής διάταξης απαιτεί
+                `.field-row` δηλώνει ΣΕΙΡΑ ΠΕΔΙΩΝ· ο σαρωτής διάταξης απαιτεί
                 σωστά τα κουτιά γραφής της να ξεκινούν στην ίδια γραμμή. Εδώ
                 μέσα κάθονται ΔΥΟ ΟΛΟΚΛΗΡΕΣ ΚΑΡΤΕΣ με δικά τους φωλιασμένα πεδία,
                 οπότε ο έλεγχος έβρισκε τα πεδία της μιας 7 ώς 44 εικονοστοιχεία
@@ -1664,7 +1663,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
 
                 ΤΟ ΤΙΜΗΜΑ ΕΙΝΑΙ ΥΨΟΣ ΣΤΗ ΖΩΝΗ 481 ΩΣ 833: η ενότητα ψηλώνει από
                 593,4 σε 730,8 στα 768 · από 675,4 σε 828,2 στα 481. ══ */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 364px), 1fr))', gap: 16, alignItems: 'stretch' }}>
+            <div className="po-panelrow" style={{ '--panel-min': '364px' } as React.CSSProperties}>
               {/* Ανατοκισμός */}
               <div className="po-fig-card" tabIndex={0} style={toolCard}>
                 <p style={{ ...titleStyle, marginBottom: 12, display: 'flex', alignItems: 'center' }}>Ανατοκισμός επανεπένδυσης<TermInfo text={G.compound} /></p>
