@@ -934,7 +934,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               ΜΕΣΑ, το ημερολόγιο βγάζει τις προθεσμίες ΕΞΩ, εκεί που ο
               ιδιοκτήτης κοιτάζει ήδη κάθε μέρα. */}
           <CalendarFeedRow userId={userId} />
-          <SetRow title="Εξαγωγή όλων των δεδομένων" desc="Κάθε εγγραφή που σε αφορά, σε ένα αρχείο JSON, για μεταφορά σε άλλη υπηρεσία ή για δικό σου αντίγραφο. Είναι μορφή για μηχανές: το δικαίωμα φορητότητας τη ζητά έτσι. Για να διαβάσεις δεδομένα, κάθε καρτέλα έχει τη δική της εξαγωγή σε Excel."
+          <SetRow title="Εξαγωγή όλων των δεδομένων" desc="Κάθε εγγραφή που σε αφορά, σε ένα αρχείο JSON, για μεταφορά σε άλλη υπηρεσία ή για δικό σου αντίγραφο. Μορφή για μηχανές, όπως τη ζητά το δικαίωμα φορητότητας. Για ανάγνωση, κάθε καρτέλα έχει δική της εξαγωγή Excel."
             control={<Btn variant="secondary" onClick={exportAll} disabled={exporting}>{exporting ? 'Εξαγωγή…' : 'Εξαγωγή όλων'}</Btn>}>
             {exportErr && <div style={{ ...TT.bodySm, color: 'var(--negative)' }}>{exportErr}</div>}
             {exportOk && <div style={{ ...TT.bodySm }}>{exportOk}</div>}

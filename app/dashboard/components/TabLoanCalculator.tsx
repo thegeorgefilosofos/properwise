@@ -733,7 +733,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   },[actualRent,PV,areaYield.pct])
   const rentAssumptionText = rentRef.source==='actual'
     ? `Πραγματικό μηνιαίο ενοίκιο του ακινήτου, από τα στοιχεία που έχεις καταχωρήσει: ${fmtEur(rentRef.monthly)}.`
-    : `Δεν έχεις καταχωρήσει ενοίκιο, οπότε χρησιμοποιείται η τεκμηριωμένη μεικτή απόδοση της περιοχής (${areaYield.label}, ${fmtPct1(areaYield.pct)} ετησίως, δεδομένα ${MARKET_DATA_ASOF}): ${fmtEur(rentRef.monthly)} τον μήνα. Συμπλήρωσε το ενοίκιο στο ακίνητο και ο υπολογισμός γίνεται δικός σου.`
+    : `Χωρίς καταχωρημένο ενοίκιο, χρησιμοποιείται η τεκμηριωμένη μεικτή απόδοση της περιοχής (${areaYield.label}, ${fmtPct1(areaYield.pct)} ετησίως, δεδομένα ${MARKET_DATA_ASOF}): ${fmtEur(rentRef.monthly)} τον μήνα. Συμπλήρωσε το ενοίκιο στο ακίνητο για δικό σου υπολογισμό.`
   const renInc   = loanType==='investment'?rentRef.monthly*12:0
   // Ο φόρος από τη ΜΟΝΑΔΙΚΗ πηγή, με τη τεκμαρτή έκπτωση υπό τον όρο του 2026.
   const renTax   = calcRentalTax(taxableRental(renInc, rentsBank))
@@ -1260,7 +1260,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.6,marginBottom:14,fontFamily: T.font.sans}}>
           {rateType==='variable'
             ? <>Το κυμαινόμενο είναι το δικό σου: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν περιθώριο {fmtPct(R)}. Το σταθερό αναφοράς είναι το χαμηλότερο καταχωρημένο σταθερό επιτόκιο {BANKS.length} τραπεζών ({fmtPct(fixedRefRate)}, επιβεβαιωμένα {BANKS_VERIFIED}).</>
-            : <>Το σταθερό είναι το δικό σου ({fmtPct(effRate)}). Το κυμαινόμενο αναφοράς είναι Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν <strong style={{color:'var(--text-secondary)'}}>διάμεσο περιθώριο {fmtPct(refVarSpread.pct)}</strong>: ο διάμεσος των ελάχιστων περιθωρίων {refVarSpread.count} τραπεζών, από τα ίδια καταχωρημένα επιτόκια που δείχνει η σύγκριση τραπεζών (επιβεβαιωμένα {BANKS_VERIFIED}), όχι στρογγυλή υπόθεση. Το περιθώριο που θα πάρεις εξαρτάται από το προφίλ σου και μπορεί να είναι υψηλότερο.</>}
+            : <>Το σταθερό είναι το δικό σου ({fmtPct(effRate)}). Κυμαινόμενο αναφοράς: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν <strong style={{color:'var(--text-secondary)'}}>διάμεσο περιθώριο {fmtPct(refVarSpread.pct)}</strong>: ο διάμεσος των ελάχιστων περιθωρίων {refVarSpread.count} τραπεζών, από τα ίδια καταχωρημένα επιτόκια της σύγκρισης τραπεζών (επιβεβαιωμένα {BANKS_VERIFIED}), όχι στρογγυλή υπόθεση. Το δικό σου περιθώριο εξαρτάται από το προφίλ σου· μπορεί να είναι υψηλότερο.</>}
         </p>
         <p style={{...labelStyle,marginBottom:10}}>Σωρευτικοί τόκοι στη διάρκεια</p>
         <DualLine data={fvChartData} keyA="Σταθερό" keyB="Κυμαινόμενο" fmt={fmtEur}/>
@@ -1414,7 +1414,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           <span style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily: T.font.sans}}><span style={{width:14,height:2.4,background:'var(--accent)',display:'inline-block'}}/>Αγορά (καθαρό)</span>
           <span style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily: T.font.sans}}><span style={{width:14,height:2,borderTop:'2px dashed var(--text-tertiary)',display:'inline-block'}}/>Ενοικίαση</span>
         </div>
-        <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:10,lineHeight:1.6,fontFamily: T.font.sans}}>Το «καθαρό κόστος αγοράς» αφαιρεί την περιουσία που χτίζεις (αξία μείον υπόλοιπο δανείου) και υποθέτει ήπια ανατίμηση και αύξηση ενοικίου ~2% τον χρόνο. Ενδεικτικό.</p>
+        <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:10,lineHeight:1.6,fontFamily: T.font.sans}}>«Καθαρό κόστος αγοράς» = κόστος μείον περιουσία (αξία μείον υπόλοιπο δανείου). Υποθέτει ήπια ανατίμηση ~2% · αύξηση ενοικίου ~2% τον χρόνο. Ενδεικτικό.</p>
       </Section>
         )
       })()}
