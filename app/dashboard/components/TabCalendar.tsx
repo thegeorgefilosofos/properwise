@@ -1461,7 +1461,7 @@ function EventModal({ form, setForm, onSave, onClose, editing, saving, conflicts
               δεύτερη γραμμή με τρύπα δεξιά, σε ταμπλέτα και σε κινητό. Η σειρά
               απλώνεται τώρα ολόκληρη — μία επιλογή δεν διαβάζεται ως υποσύνολο
               άλλης επειδή έτυχε να τυλιχτεί. */}
-          <div className="po-ctlrow" style={{ ['--ctl-basis' as string]: '6rem', gap: 6 }}>
+          <div className="po-ctlrow ctl-2up">
             {/* Η επιλεγμένη κατάσταση βαφόταν με το ΣΗΜΑΣΙΟΛΟΓΙΚΟ χρώμα της:
                 πορτοκαλί το «Εκκρεμεί», πράσινο το «Πληρώθηκε», κόκκινο το
                 «Ακυρώθηκε». Δηλαδή η φόρμα έβγαζε ετυμηγορία για μια επιλογή
@@ -1469,7 +1469,7 @@ function EventModal({ form, setForm, onSave, onClose, editing, saving, conflicts
                 κάθε νέου γεγονότος— άνοιγε πάντα με προειδοποιητικό χρώμα.
                 Η επιλογή δείχνει ΕΠΙΛΟΓΗ, με το χρώμα της επιλογής. */}
             {Object.entries(STATUSES).map(([k,v])=>(
-              <button key={k} onClick={()=>setForm(f=>({...f,status:k as EventStatus}))} style={{ height:T.h.sm, padding:'0 14px', borderRadius: T.radius.modal, cursor:'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:form.status===k?600:500, border:`1px solid ${form.status===k?'var(--accent-border)':'var(--border-subtle)'}`, background:form.status===k?'var(--accent-soft)':'transparent', color:form.status===k?'var(--accent)':'var(--text-secondary)', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{v.label}</button>
+              <button key={k} onClick={()=>setForm(f=>({...f,status:k as EventStatus}))} style={{ minHeight:T.h.sm, padding:'4px 14px', borderRadius: T.radius.modal, cursor:'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:form.status===k?600:500, border:`1px solid ${form.status===k?'var(--accent-border)':'var(--border-subtle)'}`, background:form.status===k?'var(--accent-soft)':'transparent', color:form.status===k?'var(--accent)':'var(--text-secondary)', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{v.label}</button>
             ))}
           </div>
         </div>

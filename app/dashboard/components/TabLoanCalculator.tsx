@@ -1108,7 +1108,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           {label:'+ Προσθήκη σεναρίου',fn:addScen,disabled:false,color:'var(--text-secondary)',bg:'var(--bg-elevated)',border:'var(--border-subtle)'},
           {label:'Επαναφορά',fn:resetAll,disabled:false,color:'var(--text-tertiary)',bg:'transparent',border:'var(--border-subtle)'},
         ].map(a=>(
-          <button key={a.label} onClick={a.fn} disabled={a.disabled} style={{display:'flex',alignItems:'center',gap: 8,padding:'0 18px',height:T.h.md,background:a.bg,border:`1px solid ${a.border}`,borderRadius: T.radius.modal,cursor:a.disabled?'wait':'pointer',color:a.color,fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s'}}>
+          <button key={a.label} onClick={a.fn} disabled={a.disabled} style={{display:'flex',alignItems:'center',gap: 8,padding:'6px 18px',minHeight:T.h.md,background:a.bg,border:`1px solid ${a.border}`,borderRadius: T.radius.modal,cursor:a.disabled?'wait':'pointer',color:a.color,fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s'}}>
             {a.label}
           </button>
         ))}

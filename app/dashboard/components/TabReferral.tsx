@@ -86,7 +86,7 @@ const PAD = T.sp.xl;
 // ένα· τα υπόλοιπα τα έδωσαν δύο ετικέτες που ήταν διπλάσιες από κάθε αδελφή
 // τους σε σειρά όπου όλες οι άλλες είναι μία λέξη.
 const CHIP: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.md, padding: '0 12px',
+  display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: T.h.md, padding: '4px 12px',
   background: 'transparent', border: '1px solid var(--border-default)', borderRadius: T.radius.pill,
   fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textDecoration: 'none',
 };
@@ -544,7 +544,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
             τελευταία ένα δύο κρεμασμένα αριστερά, σαν να είναι δεύτερης
             κατηγορίας — ενώ είναι επτά ισότιμοι τρόποι να στείλεις τον ίδιο
             σύνδεσμο. Κάθε γραμμή απλώνεται τώρα ολόκληρη. */}
-        <div className="po-ctlrow" style={{ ['--ctl-basis' as string]: '7rem', marginTop: 12 }}>
+        <div className="po-ctlrow" style={{ marginTop: 12 }}>
           {shares.map(s => (
             <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="ref-chip" style={CHIP}>
               <Ic d={s.d} s={15} c="var(--text-tertiary)" />{s.label}
