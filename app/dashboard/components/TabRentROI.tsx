@@ -445,7 +445,20 @@ function LeverCard({ lever }: { lever: YieldLever }) {
               βελάκι: ο σαρωτής το βρήκε σε πέντε κάρτες επί έξι σκηνές. Ο
               στόχος θέλει ΚΑΙ τις δύο διαστάσεις· και το εικονίδιο κεντράρεται
               μέσα του. */}
-          {lever.href && <a href={lever.href} target="_blank" rel="noreferrer" aria-label={`Πηγή: ${lever.title}`} style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: T.h.md, minHeight: T.h.md, marginRight: -8 }}><ArrowUpRight size={14} /></a>}
+          {/* ═══ Η ΘΕΣΗ ΤΟΥ ΒΕΛΑΚΙΟΥ ΚΡΑΤΙΕΤΑΙ ΚΑΙ ΟΤΑΝ ΔΕΝ ΥΠΑΡΧΕΙ ΒΕΛΑΚΙ ══════
+              ΦΩΤΟΓΡΑΦΗΘΗΚΕ: «20% λιγότερος ΕΝΦΙΑ» τελειώνει σε άλλη κατακόρυφο
+              από «φόρος στο 95%», επειδή ο πρώτος μοχλός έχει πηγή και ο
+              δεύτερος όχι. Ο σύνδεσμος πιάνει 44 πλάτος με −8 περιθώριο,
+              δηλαδή 36 πραγματικά: όταν λείπει, η τιμή γλιστράει 36 δεξιότερα
+              και οι έξι μοχλοί παύουν να συγκρίνονται με μια κατακόρυφη ματιά.
+
+              Το κενό δεν είναι διακόσμηση, είναι ΣΤΗΛΗ. Ενα αόρατο κουτί ίδιου
+              πλάτους την κρατά, ώστε κάθε τιμή να τελειώνει στο ίδιο σημείο
+              ανεξάρτητα από το αν ο μοχλός παραπέμπει κάπου. Το `aria-hidden`
+              το κρύβει από τον αναγνώστη οθόνης: δεν είναι πληροφορία. */}
+          {lever.href
+            ? <a href={lever.href} target="_blank" rel="noreferrer" aria-label={`Πηγή: ${lever.title}`} style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: T.h.md, minHeight: T.h.md, marginRight: -8 }}><ArrowUpRight size={14} /></a>
+            : <span aria-hidden style={{ display: 'inline-block', minWidth: T.h.md, marginRight: -8 }} />}
         </span>
       </div>
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, fontFamily: SANS, lineHeight: 1.55 }}>{lever.impact}</p>
