@@ -1,9 +1,10 @@
 'use client'
-import { T } from '@/components/Theme'
+import { T, Btn } from '@/components/Theme'
 import { useState, useEffect } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/supabase/lazy';
+import { secondStepPending, MFA_SAY } from '@/lib/auth/mfa';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
 import AuthAside from '../AuthAside'
@@ -32,11 +33,59 @@ export default function LoginPage() {
   const [sessionEmail, setSessionEmail] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
 
+  // ── ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ─────────────────────────────────────────────────────
+  // Το `factorId` ΕΙΝΑΙ ΚΑΙ Η ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΟΘΟΝΗΣ: όσο κρατά αναγνωριστικό
+  // συσκευής, η ίδια φόρμα δείχνει το πεδίο του εξαψήφιου κωδικού αντί για το
+  // ζεύγος email και κωδικού. Δεν υπάρχει δεύτερη σημαία που θα μπορούσε
+  // κάποτε να αποκλίνει από αυτό.
+  const [factorId, setFactorId] = useState<string | null>(null)
+  const [code, setCode] = useState('')
+  const [verifying, setVerifying] = useState(false)
+
   const trans = (m: string) =>
     /invalid login/i.test(m) ? 'Λάθος email ή κωδικός.'
     : /email not confirmed/i.test(m) ? 'Επιβεβαίωσε πρώτα το email σου από τον σύνδεσμο που σου στείλαμε.'
     : /rate limit|too many/i.test(m) ? SAY.tooManyTries
     : m
+
+  /**
+   * Ζητά τον εξαψήφιο κωδικό της δηλωμένης συσκευής.
+   *
+   * ΑΝ Η ΣΥΣΚΕΥΗ ΔΕΝ ΒΡΕΘΕΙ, Η ΣΥΝΕΔΡΙΑ ΚΛΕΙΝΕΙ. Το `listFactors` επιστρέφει
+   * μόνο ΕΠΑΛΗΘΕΥΜΕΝΟΥΣ παράγοντες· σφάλμα ή κενή απάντηση σημαίνει είτε
+   * αποτυχία δικτύου είτε παράγοντα άλλου τύπου, που αυτή η οθόνη δεν ξέρει να
+   * ζητήσει. Και στις δύο περιπτώσεις η συνεδρία «aal1» ΔΕΝ επιτρέπεται να
+   * μείνει ζωντανή: θα ήταν ακριβώς η παράκαμψη που ο έλεγχος κλείνει.
+   */
+  async function askSecondStep(supabase: Awaited<ReturnType<typeof authClient>>) {
+    const { data: list, error: listError } = await supabase.auth.mfa.listFactors()
+    const device = listError ? undefined : (list?.totp ?? [])[0]
+    if (!device) {
+      await supabase.auth.signOut()
+      setSessionEmail(null); setFactorId(null)
+      setError(MFA_SAY.stuck)
+      return
+    }
+    setCode(''); setError('')
+    setFactorId(device.id)
+  }
+
+  /** Η επαλήθευση του εξαψήφιου. Επιτυχία σημαίνει συνεδρία «aal2». */
+  async function verifySecondStep(e: React.FormEvent) {
+    e.preventDefault()
+    if (!factorId) return
+    setVerifying(true); setError('')
+    const supabase = await authClient()
+    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId })
+    if (challengeError || !challenge) { setError(MFA_SAY.wrong); setVerifying(false); return }
+    const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code })
+    if (error) {
+      // ΕΝΑ ΜΗΝΥΜΑ ΓΙΑ ΚΑΘΕ ΑΠΟΤΥΧΙΑ. Το «λάθος κωδικός» και το «έληξε η
+      // πρόκληση» δεν επιτρέπεται να ξεχωρίζουν από έξω.
+      setError(MFA_SAY.wrong); setCode(''); setVerifying(false); return
+    }
+    router.push('/dashboard')
+  }
 
   useEffect(() => {
     // Ο πελάτης φορτώνεται μετά το πρώτο σχεδίασμα, οπότε το effect ξετυλίγεται
@@ -44,8 +93,18 @@ export default function LoginPage() {
     // επιστρέψει υπόσχεση, γιατί η React διαβάζει την επιστροφή ως καθαρισμό.
     void (async () => {
     const supabase = await authClient()
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       setSessionEmail(data.user?.email ?? null)
+      // ── Η ΣΥΝΕΔΡΙΑ ΠΟΥ ΧΡΩΣΤΑΕΙ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ──────────────────────
+      // Ο διαμεσολαβητής στέλνει εδώ όποιον κρατά συνεδρία «aal1» ενώ έχει
+      // δηλωμένη συσκευή. Χωρίς αυτή τη γραμμή θα έβλεπε «είσαι ήδη
+      // συνδεδεμένος» με ένα κουμπί που τον γυρίζει πίσω εδώ: κλειστός
+      // βρόχος, χωρίς κανένα σημείο να δώσει τον εξαψήφιο κωδικό.
+      if (data.user) {
+        const { data: levels, error: levelError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+        if (levelError) { setError(MFA_SAY.stuck); return }
+        if (secondStepPending(levels)) await askSecondStep(supabase)
+      }
       // Ο ΣΥΝΔΕΣΜΟΣ ΕΠΙΒΕΒΑΙΩΣΗΣ ΠΟΥ ΔΕΝ ΔΟΥΛΕΨΕ ΛΕΓΕΤΑΙ ΜΕ ΛΕΞΕΙΣ. Η
       // ανταλλαγή του διακριτικού (app/auth/callback) καταλήγει εδώ όταν
       // αποτύχει· χωρίς αυτό, όποιος μόλις πάτησε «Επιβεβαίωση» στο email του
@@ -68,6 +127,9 @@ export default function LoginPage() {
     // δεν περνούν στον επόμενο.
     leaveDevice()
     setSessionEmail(null); setSigningOut(false)
+    // Η μισοτελειωμένη πρόκληση φεύγει μαζί με τη συνεδρία: αλλιώς η οθόνη θα
+    // ζητούσε κωδικό για συσκευή που δεν ανήκει πια σε καμία συνεδρία.
+    setFactorId(null); setCode('')
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -76,8 +138,25 @@ export default function LoginPage() {
     setLoading(true)
     const supabase = await authClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setError(failed('Η σύνδεση δεν έγινε', error)); setLoading(false) }
-    else router.push('/dashboard')
+    if (error) { setError(failed('Η σύνδεση δεν έγινε', error)); setLoading(false); return }
+
+    // ═══ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ, ΠΟΥ ΔΕΝ ΖΗΤΙΟΤΑΝ ΠΟΤΕ ══════════════════════════
+    // ΤΙ ΜΕΤΡΗΘΗΚΕ: μηδέν αναφορές «aal2» σε app, lib και supabase. Εδώ η
+    // γραμμή ήταν `else router.push('/dashboard')`. Η συνεδρία που γεννά το
+    // `signInWithPassword` είναι «aal1»: ένας κωδικός που διέρρευσε άνοιγε
+    // ολόκληρο τον λογαριασμό ΜΕ τη συσκευή TOTP δηλωμένη, ενεργή στην οθόνη
+    // των Ρυθμίσεων και γραμμένη στο ιστορικό ασφαλείας.
+    const { data: levels, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aalError) {
+      // ΑΓΝΩΣΤΟ ΕΠΙΠΕΔΟ ΣΗΜΑΙΝΕΙ ΚΛΕΙΣΤΑ. Το «δεν ξέραμε, άρα προχώρα» είναι
+      // ακριβώς η παράκαμψη που ήρθε να κλείσει ο έλεγχος. Η συνεδρία «aal1»
+      // δεν μένει ζωντανή στο παρασκήνιο.
+      await supabase.auth.signOut()
+      setError(MFA_SAY.stuck); setLoading(false); return
+    }
+    if (!secondStepPending(levels)) { router.push('/dashboard'); return }
+    await askSecondStep(supabase)
+    setLoading(false)
   }
 
   // Η `signInWithOAuth` ΕΙΝΑΙ ΚΑΙ ΕΓΓΡΑΦΗ. Οποιος πατούσε εδώ χωρίς λογαριασμό
@@ -93,6 +172,11 @@ export default function LoginPage() {
     const supabase = await authClient()
     await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/signup?oauth=login` } })
   }
+
+  // ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ ΕΝΑ, ΟΠΟΤΕ ΚΑΙ Η ΣΗΜΑΙΑ ΤΟΥ ΕΙΝΑΙ ΜΙΑ. Δύο ξεχωριστές
+  // συνθήκες μέσα στο `disabled` και μέσα στο `opacity` θα απέκλιναν την πρώτη
+  // φορά που θα άλλαζε η μία.
+  const busy = factorId ? (verifying || code.length !== 6) : loading
 
   const field: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
@@ -123,19 +207,36 @@ export default function LoginPage() {
       {/* RIGHT, form */}
       <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
-          {sessionEmail ? (
+          {/* ── ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΜΙΑ ΦΟΡΜΑ ─────────────────────────────────
+              ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ΔΕΝ ΠΗΡΕ ΔΙΚΗ ΤΟΥ ΦΟΡΜΑ, ΕΠΙΤΗΔΕΣ. Μια δεύτερη θα
+              σήμαινε δεύτερο κουμπί υποβολής ζωγραφισμένο στο χέρι, δηλαδή
+              δεύτερη όψη για την ίδια ενέργεια — και ο φύλακας των κουμπιών
+              μετρά ακριβώς αυτό. Εδώ αλλάζουν τα πεδία, όχι το κουμπί.
+
+              ΚΑΙ Η «ΗΔΗ ΣΥΝΔΕΔΕΜΕΝΟΣ» ΥΠΟΧΩΡΕΙ ΟΣΟ ΕΚΚΡΕΜΕΙ ΤΟ ΒΗΜΑ: αλλιώς
+              όποιον στέλνει εδώ ο διαμεσολαβητής θα έβλεπε «μετάβαση στον
+              πίνακα» και θα γύριζε αμέσως πίσω. Κλειστός βρόχος. */}
+          {sessionEmail && !factorId ? (
             <AlreadySignedIn email={sessionEmail} onSignOut={signOut} signingOut={signingOut} mode="login" />
           ) : (<>
           {/* ΣΕ ΚΙΝΗΤΟ ΔΕΝ ΥΠΗΡΧΕ ΚΑΝΕΝΑΣ ΔΡΟΜΟΣ ΠΙΣΩ. Το λογότυπο ζει στο
               αριστερό πάνελ, που κρύβεται κάτω από τις 900 και δεν ήταν καν
               σύνδεσμος. Όποιος άνοιγε τη Σύνδεση από την αρχική έμενε εκεί. */}
           <BackLink home />
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 6px' }}>Καλώς όρισες ξανά</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 6px' }}>
+            {factorId ? 'Επαλήθευση δύο βημάτων' : 'Καλώς όρισες ξανά'}
+          </h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.5 }}>
-            Δεν έχεις λογαριασμό;{' '}
-            <Link href="/signup" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Δημιούργησε λογαριασμό</Link>
+            {factorId ? MFA_SAY.ask : (<>
+              Δεν έχεις λογαριασμό;{' '}
+              <Link href="/signup" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Δημιούργησε λογαριασμό</Link>
+            </>)}
           </p>
 
+          {/* Ο πάροχος ταυτότητας ΞΕΚΙΝΑΕΙ σύνδεση. Στο δεύτερο βήμα η σύνδεση
+              έχει ήδη ξεκινήσει: ένα κουμπί που την ξαναρχίζει θα ήταν δρόμος
+              γύρω από την πρόκληση, όχι επιλογή. */}
+          {!factorId && (<>
           <button type="button" onClick={signInWithGoogle} className="auth-hov" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, color: 'var(--text-primary)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             <GoogleG />Συνέχισε με Google
           </button>
@@ -145,8 +246,19 @@ export default function LoginPage() {
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>ή</span>
             <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
           </div>
+          </>)}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <form onSubmit={factorId ? verifySecondStep : handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {factorId ? (
+              <div>
+                <label htmlFor="login-mfa-code" style={label}>Εξαψήφιος κωδικός</label>
+                <input id="login-mfa-code" name="one-time-code" inputMode="numeric" maxLength={6} autoComplete="one-time-code"
+                  value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456"
+                  style={{ ...field, maxWidth: 200, fontFamily: T.font.mono, letterSpacing: '0.3em' }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+              </div>
+            ) : (<>
             <div>
               <label htmlFor="login-email" style={label}>Ηλεκτρονικό ταχυδρομείο</label>
               <input id="login-email" name="email" autoComplete="email" type="email" value={email} required onChange={e => setEmail(e.target.value)} placeholder="onoma@email.com" style={field}
@@ -170,6 +282,7 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+            </>)}
 
             {error && (
               <div role="alert" style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }}>
@@ -177,16 +290,31 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button type="submit" disabled={loading} className="auth-cta" style={{ width: '100%', padding: '12px', background: 'var(--accent)', border: 'none', borderRadius: T.radius.pill, color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, letterSpacing: '-0.01em', marginTop: 4, fontFamily: 'inherit' }}>
-              {loading ? 'Σύνδεση…' : 'Σύνδεση'}
+            <button type="submit" disabled={busy} className="auth-cta" style={{ width: '100%', padding: '12px', background: 'var(--accent)', border: 'none', borderRadius: T.radius.pill, color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1, letterSpacing: '-0.01em', marginTop: 4, fontFamily: 'inherit' }}>
+              {factorId
+                ? (verifying ? 'Επαλήθευση…' : 'Επαλήθευση')
+                : (loading ? 'Σύνδεση…' : 'Σύνδεση')}
             </button>
           </form>
 
+          {/* ── Ο ΔΡΟΜΟΣ ΓΙΑ ΟΠΟΙΟΝ ΕΧΑΣΕ ΤΟ ΤΗΛΕΦΩΝΟ ΤΟΥ ────────────────────
+              ΧΩΡΙΣ ΑΥΤΟ, Η ΟΘΟΝΗ ΕΙΝΑΙ ΑΔΙΕΞΟΔΟ: η συνεδρία «aal1» ζει, ο
+              διαμεσολαβητής τον γυρίζει εδώ από κάθε σελίδα και δεν υπάρχει
+              κουμπί να την κλείσει. Η έξοδος δεν παρακάμπτει τίποτα — σβήνει
+              τη μισή συνεδρία αντί να την αφήσει ζωντανή. */}
+          {factorId ? (
+            <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <Btn variant="ghost" onClick={signOut} disabled={signingOut}>
+                {signingOut ? 'Έξοδος…' : 'Έξοδος από τη σύνδεση'}
+              </Btn>
+            </div>
+          ) : (
           <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 24, lineHeight: 1.6 }}>
             Συνεχίζοντας, αποδέχεσαι τους{' '}
             <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Όρους χρήσης</Link>{' '}και την{' '}
             <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Πολιτική απορρήτου</Link>.
           </p>
+          )}
           </>)}
         </div>
       </main>

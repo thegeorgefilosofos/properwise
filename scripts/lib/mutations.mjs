@@ -223,6 +223,28 @@ export const MUTATIONS = {
   'password-leak': { add: 'components/__mut__.tsx', content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
   'api-auth': { add: 'app/api/__mut__/route.ts', content: "export async function GET() {\n  return new Response('ok')\n}\n" },
 
+  // ── ΟΙ ΔΥΟ ΚΑΙΝΟΥΡΙΟΙ ΤΗΣ ΑΣΦΑΛΕΙΑΣ ───────────────────────────────────
+  // ΓΙΑΤΙ «every» ΚΑΙ ΟΧΙ ΠΙΝΑΚΑΣ. Ο πίνακας είναι εφεδρική αλυσίδα: αρκεί μία
+  // μετάλλαξη να πιαστεί. Και οι δύο φύλακες εδώ έχουν ΠΟΛΛΟΥΣ ανεξάρτητους
+  // κανόνες, οπότε ο καθένας θέλει τη δική του απόδειξη — αλλιώς ο φύλακας
+  // περνά τον πάγκο αποδεικνύοντας μόνο τον πρώτο.
+  //
+  // Οι τρεις μεταλλάξεις του «security-claims» είναι μία ανά ΑΛΥΣΙΔΑ
+  // υπόσχεσης: το δεύτερο βήμα, το κρυπτογραφημένο αντίγραφο, το ιστορικό.
+  'security-claims': { every: [
+    { remove: 'lib/auth/mfa.ts' },
+    { file: '.github/workflows/db-backup.yml', from: '--cipher-algo AES256', to: '--cipher-algo AES128' },
+    { file: 'app/dashboard/components/SecuritySettings.tsx', from: "'mfa_enabled', 'security'", to: "'mfa_on', 'security'" },
+  ] },
+  // Ο «write-origin» δοκιμάζεται ΚΑΙ ΣΤΙΣ ΔΥΟ κατευθύνσεις: διαδρομή που
+  // γράφει με συνεδρία και δεν ρωτά προέλευση (με POST χωρίς παράμετρο,
+  // ακριβώς το σφάλμα που βρέθηκε) και το ΑΝΤΙΣΤΡΟΦΟ, webhook που ελέγχει
+  // προέλευση και θα απέρριπτε κάθε γνήσια πληρωμή.
+  'write-origin': { every: [
+    { add: 'app/api/__mut__/route.ts', content: "export async function POST() {\n  const db = { auth: { getUser: async () => ({ data: { user: null } }) } }\n  await db.auth.getUser()\n  return new Response('ok')\n}\n" },
+    { add: 'app/api/__mut__/route.ts', content: "import { sameOrigin } from '@/lib/api/origin'\nimport { verifySignature } from '@/lib/inbound/signature'\nexport async function POST(request: Request) {\n  if (!verifySignature('', request.headers, 'k')) return new Response('no', { status: 401 })\n  if (!sameOrigin(request.headers)) return new Response('no', { status: 403 })\n  return new Response('ok')\n}\n" },
+  ] },
+
   // ── Πηγές αλήθειας και μονά σημεία ────────────────────────────────────
   'data-layer': { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('bills').select('*')\n" },
   'service-only-tables': { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('cron_secrets').select('*')\n" },

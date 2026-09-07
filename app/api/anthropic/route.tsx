@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import {
   MAX_PER_MINUTE, PLAN_RANK_ORDER,
   dailyLimitsByRank, monthlyLimitsByRank, FREE_POOL_PER_MONTH, TRIAL_LIMITS, TESTER_LIMITS,
@@ -70,6 +71,15 @@ function sweepRateLimit(now: number) {
 }
 
 export async function POST(req: NextRequest) {
+  // ── ΑΠΟ ΠΟΥ ΗΡΘΕ ────────────────────────────────────────────
+  // ΑΥΤΗ Η ΔΙΑΔΡΟΜΗ ΞΟΔΕΥΕΙ ΧΡΗΜΑΤΑ ΣΕ ΚΑΘΕ ΚΛΗΣΗ. Το φράγμα κόστους μετρά
+  // ανά χρήστη (`bump_ai_usage`), οπότε χωρίς έλεγχο προέλευσης μια ξένη
+  // σελίδα άδειαζε το μηνιαίο υπόλοιπο κάθε συνδεδεμένου επισκέπτη της με το
+  // cookie του — και ο λογαριασμός του παρόχου AI τον πληρώνει ο ιδιοκτήτης.
+  if (!sameOrigin(req.headers)) {
+    return NextResponse.json({ error: ORIGIN_DENIED }, { status: 403 });
+  }
+
   // ── Auth check ──────────────────────────────────────────────
   // Έλεγχος πραγματικής συνεδρίας Supabase (μέσω cookies), δουλεύει και σε dev
   // και σε production, χωρίς να χρειάζεται ο client να στέλνει header.

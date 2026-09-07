@@ -19,6 +19,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import { createServiceClient } from '@/lib/supabase/service';
 import { testerCodeMatches, testerCodeIsSet, TESTER_CODE_ENV } from '@/lib/billing/testerCode';
 import * as billing from '@/lib/data/billing';
@@ -26,6 +27,14 @@ import * as billing from '@/lib/data/billing';
 const WRONG = { error: 'Ο κωδικός δεν αναγνωρίζεται.' };
 
 export async function POST(request: Request) {
+  // ΠΡΙΝ ΑΠΟ ΤΟΝ ΜΕΤΡΗΤΗ ΠΡΟΣΠΑΘΕΙΩΝ, ΕΠΙΤΗΔΕΣ. Πέντε προσπάθειες το
+  // εικοσιτετράωρο μετρώνται ανά ΧΡΗΣΤΗ: χωρίς έλεγχο προέλευσης, μια ξένη
+  // σελίδα θα κατανάλωνε το υπόλοιπο του κάθε επισκέπτη της χωρίς να δει ποτέ
+  // την απάντηση, δηλαδή θα έκλεινε την πόρτα σε αθώους.
+  if (!sameOrigin(request.headers)) {
+    return NextResponse.json({ error: ORIGIN_DENIED }, { status: 403 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
