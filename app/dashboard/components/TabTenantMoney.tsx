@@ -216,7 +216,17 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
         />
       )}
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:16 }}>
+      {/* ΜΕΤΡΗΘΗΚΕ ΜΕΣΑ ΣΤΟ ΝΤΟΣΙΕ (SideSheet xl), όχι στο .app-content: ωφέλιμο
+          πλάτος 381 στα 430, 719 στα 768, 785 στα 834, 931 από τα 1024 επάνω.
+          Με κατώφλι 200 οι δύο στήλες άνοιγαν ήδη στα 416 ωφέλιμα, οπότε στα 768
+          κάθε πάνελ έπαιρνε 351,5 · ΛΙΓΟΤΕΡΟ από τα 381 του τηλεφώνου των 430.
+          Μαζί του στένευε το πεδίο έτους σε 301,5 από 331 του τηλεφώνου · η
+          λωρίδα «Ιστορικό ΔΤΚ» έπεφτε σε 2 πλακίδια ανά σειρά από 3, δηλαδή 6
+          σειρές για 11 έτη αντί για 4. Με 380 το σπάσιμο πάει στα 776 ωφέλιμα:
+          στα 768 μία στήλη 719 με 6 πλακίδια ανά σειρά, στα 834 μένουν οι δύο
+          στήλες των 384,5 · στα 1024 οι δύο των 457,5. Το τηλέφωνο δεν αλλάζει
+          καθόλου: στα 320, 390, 430 μετρήθηκε ταυτόσημο με πριν. */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap:16 }}>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
           <SectionTitle>Υπολογιστής αναπροσαρμογής</SectionTitle>
 
@@ -1042,7 +1052,19 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
   return (
     <div>
       {/* Δύο βάσεις πρότασης: νόμος (ΔΤΚ) και αγορά/περιοχή */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap:16, marginBottom:16 }}>
+      {/* ΤΟ ΚΑΤΩΦΛΙ ΕΙΝΑΙ 380, ΟΧΙ 260. ΜΕΤΡΗΘΗΚΕ στον πάγκο, μέσα στο πλαϊνό
+          φύλλο του ντοσιέ (size xl: min(980, οθόνη) με γέμισμα 24 ανά πλευρά),
+          οπότε το πλέγμα παίρνει οθόνη μείον 49, με ταβάνι 931.
+          ΜΕ ΚΑΤΩΦΛΙ 260 έσπαγε σε δύο στήλες ήδη από πλέγμα 536 (οθόνη 585) με
+          στήλες των 260: 121 εικονοστοιχεία ΛΙΓΟΤΕΡΑ ανά κάρτα από το τηλέφωνο
+          των 430, που δίνει μία στήλη 381. Η ζώνη όπου η μεγαλύτερη οθόνη
+          έδινε στενότερη κάρτα ήταν 585 έως 826· στα 768 έβγαζε δύο στήλες των
+          351,5 σε δύο πάνελ με σειρές ετικέτα-τιμή. ΜΕ 380 το σπάσιμο πέφτει
+          σε πλέγμα 776 (οθόνη 825). Μετρημένα: 320/390/430 αμετάβλητα με μία
+          στήλη · 768 μία στήλη 719 · 834 δύο των 384,5 αμετάβλητο · 1024 έως
+          1440 δύο των 457,5 αμετάβλητο. Κόστος: το ύψος του πλέγματος στα 768
+          πάει από 250,5 σε 377 · το ύψος κύλισης του φύλλου από 4634 σε 4761. */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap:16, marginBottom:16 }}>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
           <SectionTitle>Με βάση τον νόμο (ΔΤΚ)</SectionTitle>
           <DataRow label="Τρέχον μίσθωμα" value={<span style={{ fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(rent)}</span>}/>

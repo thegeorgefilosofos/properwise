@@ -203,8 +203,18 @@ function AnalysisCards({items,repairs,kwhPrice,kwhControl}:{items:InventoryItem[
   )
 
   if(electricItems.length===0) return categoriesCard
+  // ΔΥΟ ΣΤΗΛΕΣ ΜΟΝΟ ΟΤΑΝ Η ΚΑΘΕ ΜΙΑ ΒΓΑΙΝΕΙ ΠΙΟ ΦΑΡΔΙΑ ΑΠΟ ΤΟ ΤΗΛΕΦΩΝΟ.
+  // ΤΙ ΜΕΤΡΗΘΗΚΕ (σκηνή inventory, με κατανάλωση σε πέντε συσκευές). Με κατώφλι
+  // 300 οι δύο κάρτες έσπαγαν σε δύο στήλες ήδη στα 768, όπου το ωφέλιμο πλάτος
+  // είναι 720: κάθε κάρτα έπαιρνε 352, δηλαδή λιγότερο από τα 406 που της δίνει
+  // το τηλέφωνο των 430. Η κάρτα του ρεύματος ψήλωνε από 304 σε 345, επειδή το
+  // χειριστήριο «€/kWh» έπεφτε κάτω από τον τίτλο κι η επεξήγηση πήγαινε στις
+  // τρεις γραμμές: μεγαλύτερη οθόνη, χειρότερη κάρτα. Με κατώφλι 406 το σπάσιμο
+  // πηγαίνει στα 828 ωφέλιμα. Στα 768 και στα 834 βγαίνει μία στήλη των 720 και
+  // 786 αντίστοιχα. Από τα 828 ωφέλιμα και πάνω μένουν δύο στήλες, όπως πριν:
+  // 480 στα 976 του υπολογιστή με το πλαϊνό στη ροή, 560 στα 1136.
   return (
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,300px),1fr))',gap:16,alignItems:'start'}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,406px),1fr))',gap:16,alignItems:'start'}}>
       <div style={cardStyle}>
         <SectionLabel label="Κατανάλωση ρεύματος" right={kwhControl}/>
         {topEnergy.map(item=>{
