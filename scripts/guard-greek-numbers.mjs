@@ -37,7 +37,7 @@ const walk = d => {
     else if (/\.tsx?$/.test(p) && !/\.test\.tsx?$/.test(p)) files.push(p)
   }
 }
-for (const root of ['app', 'lib', 'components']) { try { walk(root) } catch {} }
+for (const root of ['app', 'lib', 'components', 'supabase/functions']) { try { walk(root) } catch {} }
 
 // Οι ίδιοι οι τύποι ορίζονται εδώ — δεν ελέγχουν τον εαυτό τους.
 const SELF = ['components/tokens.ts']
