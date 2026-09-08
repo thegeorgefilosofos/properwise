@@ -196,7 +196,7 @@ export function InfoDot({ text }: { text: string }) {
       {/* Ορατή κουκκίδα 15px, αλλά περιοχή αφής ~32px (αρνητικά margins ώστε να μη μεγαλώνει η σειρά). */}
       <button ref={ref} type="button" aria-label="Επεξήγηση"
         onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); open ? hide() : show(); }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (open) { hide() } else { show() } }}
         style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', marginLeft: 0, marginTop: -9, marginBottom: -9, padding: 0, width: T.h.sm, height: T.h.sm, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'help', flexShrink: 0 }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 15, height: 15, borderRadius: '50%', border: '1px solid var(--border-default)' }}>
           <svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 8h.01M11 12h1v4h1" /></svg>

@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { qrDataUrl } from '@/lib/qr'
-import { T, TT, Modal, SecHdr, Btn, pressable, fp, Bar } from '@/components/Theme'
+import { T, TT, Modal, SecHdr, Btn, pressable, fp, Bar, RuntimeImg } from '@/components/Theme'
 // Το πλαίσιο επιλογής ζει στο Theme, ένα για όλη την εφαρμογή. Ξαναβγαίνει από
 // εδώ ώστε τα σημεία που το εισάγουν από τα Bits να μη χρειαστεί να αλλάξουν.
 export { SelectBox } from '@/components/Theme'
@@ -365,7 +365,7 @@ export function QRModal({item,onClose}:{item:InventoryItem;onClose:()=>void}) {
     <Modal open onClose={onClose} size="sm" ariaLabel="QR αντικειμένου"
       title={<span title="Κωδικός QR: γρήγορη σάρωση στοιχείων αντικειμένου με κινητό">QR αντικειμένου</span>}
       footer={<Btn variant="primary" onClick={print}>Εκτύπωση καρτέλας</Btn>}>
-      <div style={{background:'var(--qr-paper)',padding:12,borderRadius:T.radius.card,alignSelf:'center'}}><img src={qr} width={200} height={200} alt="QR"/></div>
+      <div style={{background:'var(--qr-paper)',padding:12,borderRadius:T.radius.card,alignSelf:'center'}}><RuntimeImg src={qr} width={200} height={200} alt="QR"/></div>
       <div style={{textAlign:'center'}}>
         <p style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:2}}>{item.name}</p>
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{item.brand} {item.model}{item.serial_number?` · Σειριακός ${item.serial_number}`:''}</p>

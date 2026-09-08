@@ -1,7 +1,7 @@
 import { rentCollectionMode, collectionModeReason } from './rentCollectionMode';
 
 let pass = 0, fail = 0;
-const ok = (name: string, cond: boolean) => { cond ? pass++ : (fail++, console.error('✗', name)); };
+const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗', name) } };
 const p = (year: number, method: string | null, paid = true) => ({ paid, period_year: year, method });
 
 // ── Η ΑΠΟΔΕΙΞΗ ΝΙΚΑ ─────────────────────────────────────────────────────────

@@ -406,7 +406,14 @@ function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, onSelect
       )}
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontFamily: T.font.sans, fontSize:14, fontWeight:500, color:done?'var(--text-tertiary)':'var(--text-primary)', textDecoration:done?'line-through':'none', letterSpacing:'0.1px', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+          {/* Η ΑΠΟΚΟΠΗ ΕΙΝΑΙ ΑΠΟΦΑΣΗ ΚΑΙ ΓΡΑΦΕΤΑΙ ΩΣ ΤΕΤΟΙΑ. Οι τέσσερις ιδιότητες
+              ήταν γραμμένες στο χέρι και έκαναν ΑΚΡΙΒΩΣ ό,τι κάνει το `.po-elide`,
+              χωρίς όμως να το δηλώνουν: ο σαρωτής διάταξης ανέφερε στα 320 το
+              «Λογαριασμός ΕΥΔΑΠ» ως κομμένο κείμενο, γιατί δεν έχει τρόπο να
+              ξεχωρίσει το όνομα που ΔΕΝ έχει ταβάνι μήκους από την ετικέτα που
+              απλώς δεν χώρεσε. Η κλάση είναι η δήλωση· οι ιδιότητες ζουν σε
+              ένα σημείο (globals.css) αντί για δύο. */}
+          <span className="po-elide" style={{ fontFamily: T.font.sans, fontSize:14, fontWeight:500, color:done?'var(--text-tertiary)':'var(--text-primary)', textDecoration:done?'line-through':'none', letterSpacing:'0.1px' }}>
             {event.title}
           </span>
           {event.recurring&&<Tooltip text="Επαναλαμβανόμενο"><RotateCcw size={11} color="var(--text-tertiary)" style={{ flexShrink:0 }}/></Tooltip>}

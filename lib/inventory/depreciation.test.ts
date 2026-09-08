@@ -6,7 +6,7 @@ import {
 } from './depreciation'
 
 let passed = 0, failed = 0
-function ok(name: string, cond: boolean) { cond ? passed++ : (failed++, console.error('FAIL:', name)) }
+function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.error('FAIL:', name) } }
 function near(name: string, a: number, b: number, tol = 1) { ok(`${name} (${a}≈${b})`, Math.abs(a - b) <= tol) }
 
 // Σταθερό «τώρα» για ντετερμινιστικά τεστ: 2026-07-08

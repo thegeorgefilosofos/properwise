@@ -110,7 +110,7 @@ function LensPanel({title,subtitle,right,children}:{title:string;subtitle?:strin
 function MiniSection({title,badges,meta,defaultOpen,order,flat,open:openProp,onToggle,children}:{title:string;badges?:React.ReactNode;meta?:React.ReactNode;defaultOpen?:boolean;order?:number;flat?:boolean;open?:boolean;onToggle?:(v:boolean)=>void;children:React.ReactNode}) {
   const [openOwn,setOpenOwn] = useState(!!defaultOpen)
   const open = openProp ?? openOwn
-  const setOpen = (fn:(o:boolean)=>boolean) => { const next = fn(open); onToggle ? onToggle(next) : setOpenOwn(next) }
+  const setOpen = (fn:(o:boolean)=>boolean) => { const next = fn(open); if (onToggle) { onToggle(next) } else { setOpenOwn(next) } }
   // flat: χωρίς περίγραμμα/φόντο — για ένθετες ενότητες, ώστε να μη διπλασιάζεται το πλαίσιο.
   return (
     <div style={flat

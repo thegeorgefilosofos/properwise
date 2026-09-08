@@ -26,24 +26,7 @@ import {
   CustomSelect as SelectField,
   DatePicker,
 } from './UIComponents';
-import {
-  T,
-  InfoBanner,
-  Badge,
-  Btn,
-  EmptyState,
-  Modal,
-  fe,
-  fdLong,
-  fn,
-  fp,
-  Spinner,
-  ExportButton,
-  ABSENT,
-  ABSENT_DATE,
-  TT,
-  pressable,
-} from '@/components/Theme';
+import { T, InfoBanner, Badge, Btn, EmptyState, Modal, fe, fdLong, fn, fp, Spinner, ExportButton, ABSENT, ABSENT_DATE, TT, pressable, RuntimeImg } from '@/components/Theme';
 import {
   Banknote,
 } from 'lucide-react';
@@ -875,7 +858,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           {tenant.rent_iban?(
             <>
               <div style={{ display:'flex', flexDirection:'column' as const, alignItems:'center' }}>
-                <img src={qrSrc(epcPayload(tenant.rent_iban,landlordName,req.amount,reqRef(req)))} alt="QR πληρωμής" width={200} height={200} style={{ borderRadius:12, border:'1px solid var(--border-subtle)', background:'var(--qr-paper)', padding:8 }}/>
+                <RuntimeImg src={qrSrc(epcPayload(tenant.rent_iban,landlordName,req.amount,reqRef(req)))} alt="QR πληρωμής" width={200} height={200} style={{ borderRadius:12, border:'1px solid var(--border-subtle)', background:'var(--qr-paper)', padding:8 }}/>
                 <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:8, textAlign:'center' as const }}>Σάρωση από την τραπεζική εφαρμογή (SEPA/IRIS) για προσυμπλήρωση της μεταφοράς.</div>
               </div>
               <div>

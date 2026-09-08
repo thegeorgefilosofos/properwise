@@ -93,7 +93,7 @@ export async function sweep(browser, o) {
         // δεν είχε δει. Πάνω από ένα πέρασμα, γιατί ενότητα κρύβει ενότητα.
         for (let pass = 0; pass < (o.passes ?? 0); pass++) {
           await page.evaluate(() => {
-            for (const b of document.querySelectorAll('[aria-expanded="false"]')) (b instanceof HTMLElement) && b.click()
+            for (const b of document.querySelectorAll('[aria-expanded="false"]')) { if (b instanceof HTMLElement) b.click() }
           })
           await page.waitForTimeout(o.passWait ?? 400)
         }

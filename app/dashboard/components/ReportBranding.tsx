@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, Btn, InfoBanner, Spinner, Card, SecHdr, fixedCols } from '@/components/Theme';
+import { T, TT, Btn, InfoBanner, Spinner, Card, SecHdr, fixedCols, RuntimeImg } from '@/components/Theme';
 import { TextInput, Toggle } from './UIComponents';
 import { PLANS, type PlanId } from '@/lib/billing/plans';
 import { planAtLeast, FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
@@ -161,7 +161,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
           <div style={{ minWidth: 220 }}>
             <div style={rowLabel}>Λογότυπο</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              {logoUrl && <img src={logoUrl} alt="Λογότυπο επιχείρησης" style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: 4 }} />}
+              {logoUrl && <RuntimeImg src={logoUrl} alt="Λογότυπο επιχείρησης" style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: 4 }} />}
               <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onFile} style={{ display: 'none' }} />
               <Btn variant="secondary" size="lg" onClick={() => fileRef.current?.click()}>{logoUrl ? 'Αλλαγή' : 'Μεταφόρτωση'}</Btn>
               {logoUrl && <Btn variant="ghost" onClick={() => setLogoUrl('')}>Αφαίρεση</Btn>}
@@ -195,12 +195,12 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
           <div style={{ height: 4, background: sanitizeAccent(accent) }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px', borderBottom: `2px solid ${sanitizeAccent(accent)}` }}>
             {logoUrl
-              ? <img src={logoUrl} alt="Λογότυπο επιχείρησης" style={{ height: 34, width: 'auto', maxWidth: 150, objectFit: 'contain' }} />
+              ? <RuntimeImg src={logoUrl} alt="Λογότυπο επιχείρησης" style={{ height: 34, width: 'auto', maxWidth: 150, objectFit: 'contain' }} />
               /* Η ΠΡΟΕΠΙΣΚΟΠΗΣΗ ΔΕΙΧΝΕΙ ΟΤΙ ΘΑ ΤΥΠΩΘΕΙ. Εδώ έμπαινε το αρχικό
                  γράμμα της επωνυμίας σε έγχρωμο τετράγωνο, ενώ το PDF τύπωνε
                  σταθερά «P»: η προεπισκόπηση έλεγε άλλα από το αρχείο. Και τα
                  δύο δείχνουν πλέον το ΙΔΙΟ σήμα, από την ίδια πηγή. */
-              : <img src={BRAND_MARK_DATA_URL} alt="Σήμα PROPERWISE" style={{ height: 34, width: 34, objectFit: 'contain' }} />}
+              : <RuntimeImg src={BRAND_MARK_DATA_URL} alt="Σήμα PROPERWISE" style={{ height: 34, width: 34, objectFit: 'contain' }} />}
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: INK, fontFamily: T.font.sans }}>{previewName}</div>
               <div style={{ fontSize: 'var(--fs-xs)', color: INK_MUTED, fontFamily: T.font.sans }}>Αναφορά ακινήτου</div>

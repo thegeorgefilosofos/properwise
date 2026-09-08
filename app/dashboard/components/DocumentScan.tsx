@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 // Οι επαφές έχουν ένα σπίτι: lib/data/contacts.
 import * as contacts from '@/lib/data/contacts';
 import { BankLinkTile } from './BankLink';
-import { T, fe, formGrid } from '@/components/Theme';
+import { T, fe, formGrid, RuntimeImg } from '@/components/Theme';
 import { CustomSelect, DatePicker } from './UIComponents';
 import {
   validateDoc, docSummaryLine,
@@ -505,7 +505,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', wordBreak: 'break-all' }}>{file.name}</div>
                 </div>
               ) : (
-                <img src={image} alt="Έγγραφο" style={{ width: '100%', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)', maxHeight: 480, objectFit: 'contain', background: 'var(--bg-base)' }} />
+                <RuntimeImg src={image} alt="Έγγραφο" style={{ width: '100%', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)', maxHeight: 480, objectFit: 'contain', background: 'var(--bg-base)' }} />
               )}
               {scanning && (
                 <div style={{ marginTop: 12, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>

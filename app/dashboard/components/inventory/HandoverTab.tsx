@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useId } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
-import { T, Btn, EmptyState, ABSENT, formGrid, fieldRow } from '@/components/Theme'
+import { T, Btn, EmptyState, ABSENT, formGrid, fieldRow, RuntimeImg } from '@/components/Theme'
 import { CustomSelect, TextInput, DatePicker } from '../UIComponents'
 import { ClipboardCheck } from 'lucide-react'
 import { notifyError } from '@/components/Toast'
@@ -201,9 +201,9 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
               {(()=>{const cp=itemConds[item.id]?.photo;const busy=uploadingId===item.id;return (
                 <label title={cp?'Φωτογραφία κατάστασης (πάτησε για αλλαγή)':'Τράβα φωτογραφία της τρέχουσας κατάστασης'} style={{position:'relative',width:44,height:44,borderRadius:10,overflow:'hidden',flexShrink:0,cursor:'pointer',display:'block',border:cp?'2px solid var(--accent)':'1px solid var(--border-subtle)'}}>
                   {cp
-                    ?<img src={cp} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+                    ?<RuntimeImg src={cp} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
                     :item.photo_url
-                      ?<img src={item.photo_url} style={{width:'100%',height:'100%',objectFit:'cover',opacity:0.5}} alt=""/>
+                      ?<RuntimeImg src={item.photo_url} style={{width:'100%',height:'100%',objectFit:'cover',opacity:0.5}} alt=""/>
                       :<div style={{width:'100%',height:'100%',background:'var(--accent-soft)',color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center'}}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>}
                   <span style={{position:'absolute',right:2,bottom:2,width:16,height:16,borderRadius:6,background:cp?'var(--accent)':'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center'}}>
                     {busy?<span style={{width:9,height:9,border:`1.5px solid ${cp?'var(--accent-text)':'#fff'}`,borderTopColor:'transparent',borderRadius:'50%',animation:'invSpin 0.7s linear infinite'}}/>:<svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={cp?'var(--accent-text)':'#fff'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg>}

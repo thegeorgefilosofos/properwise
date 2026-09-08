@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useRef } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
-import { T, Modal, Btn, fe, feRate, pressable, formGrid } from '@/components/Theme'
+import { T, Modal, Btn, fe, feRate, pressable, formGrid, RuntimeImg } from '@/components/Theme'
 import { NOT_TAX_DEPRECIATION_NOTE } from '@/lib/inventory/depreciation'
 import { CustomSelect, NumberInput, TextInput, DatePicker, Textarea } from '../UIComponents'
 import { formFields, INVENTORY_FIELDS, type FieldContext, type FieldDecision } from '@/lib/property/fields'
@@ -234,7 +234,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(84px,1fr))',gap:8}}>
             {(form.photos||[]).map((url,i)=>(
               <div key={i} {...pressable(()=>set('photo_url',url), url===form.photo_url?'Κύρια φωτογραφία':'Ορισμός ως κύρια φωτογραφία')} title={url===form.photo_url?'Κύρια φωτογραφία':'Ορισμός ως κύρια'} style={{position:'relative',height:84,borderRadius:10,overflow:'hidden',border:`2px solid ${url===form.photo_url?'var(--accent)':'var(--border-subtle)'}`,cursor:'pointer'}}>
-                <img src={url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+                <RuntimeImg src={url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
                 <button onClick={e=>{e.stopPropagation();removePhoto(url)}} aria-label="Αφαίρεση" style={{position:'absolute',top:5,right:5,width:20,height:20,borderRadius:'50%',background:'rgba(0,0,0,0.55)',border:'none',color:'var(--on-media)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}><svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
                 {url===form.photo_url&&<div style={{position:'absolute',inset:'auto 0 0 0',background:'var(--accent)',fontSize: 'var(--fs-xs)',color:'var(--accent-text)',textAlign:'center',fontWeight:700,fontFamily:T.font.sans,padding:'2px',letterSpacing:'0.5px'}}>ΚΥΡΙΑ</div>}
               </div>

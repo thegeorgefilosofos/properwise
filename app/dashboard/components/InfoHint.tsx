@@ -92,7 +92,7 @@ export function InfoHint({ children, size = 14, label = 'Περισσότερα'
         // `:focus-visible` είναι αληθές μόνο όταν η εστίαση ήρθε με Tab.
         onFocus={(e) => { if (e.target.matches(':focus-visible')) show() }}
         onBlur={hide}
-        onClick={(e) => { e.stopPropagation(); pos ? hide() : show() }}
+        onClick={(e) => { e.stopPropagation(); if (pos) { hide() } else { show() } }}
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle',
           width: size, height: size, borderRadius: '50%', border: 'none', padding: 0, margin: '0 0 0 4px',

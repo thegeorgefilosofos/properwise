@@ -22,23 +22,7 @@ import {
   CustomSelect as SelectField,
   DatePicker,
 } from './UIComponents';
-import {
-  T,
-  KPIGrid,
-  InfoBanner,
-  Badge,
-  EmptyState,
-  fe,
-  fn,
-  fp,
-  Spinner,
-  type KPIItem,
-  ABSENT,
-  ABSENT_DATE,
-  TT,
-  localDay,
-  formGrid,
-} from '@/components/Theme';
+import { T, KPIGrid, InfoBanner, Badge, EmptyState, fe, fn, fp, Spinner, type KPIItem, ABSENT, ABSENT_DATE, TT, localDay, formGrid, RuntimeImg } from '@/components/Theme';
 import {
   MessageSquare,
   Hammer,
@@ -751,7 +735,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const, marginBottom:12 }}>
                       {signed[m.id].map((url,pi)=>(
                         <a key={pi} href={url} target="_blank" rel="noopener noreferrer" style={{ display:'block', width:64, height:64, borderRadius:8, overflow:'hidden', border:'1px solid var(--border-subtle)' }}>
-                          <img src={url} alt="Φωτογραφία βλάβης" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+                          <RuntimeImg src={url} alt="Φωτογραφία βλάβης" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
                         </a>
                       ))}
                     </div>

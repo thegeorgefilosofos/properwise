@@ -16,7 +16,7 @@
 // --negative, --bg-*, --text-*, --border-*).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { ReactNode, CSSProperties, useState, useEffect, useRef, useSyncExternalStore } from 'react';
+import { ReactNode, CSSProperties, type MouseEvent, useState, useEffect, useRef, useSyncExternalStore } from 'react';
 
 // Τα tokens ζουν σε module ΧΩΡΙΣ React (components/tokens.ts) ώστε να μπορεί να
 // τα εισάγει και Server Component. Εδώ ξανα-εξάγονται αυτούσια, ώστε τα ~600
@@ -24,6 +24,43 @@ import { ReactNode, CSSProperties, useState, useEffect, useRef, useSyncExternalS
 export { T, TT, formGrid, fieldRow, fixedCols, tileGrid, tileRow, fe, feAuto, feRate, feCompact, fp, feOr, fpOr, DASH, fn, fd, fdLong, localDay, histInputStyle, ABSENT, ABSENT_DATE, ABSENT_SHORT, grUpper } from './tokens';
 export type { Tone } from './tokens';
 import { T, TT, isBlankMetric, type Tone } from './tokens';
+
+// ═══ RuntimeImg, η εικόνα που ΔΕΝ υπάρχει τη στιγμή του build ════════════
+//
+// ΤΙ ΖΗΤΑΕΙ Ο ΚΑΝΟΝΑΣ ΚΑΙ ΤΙ ΕΙΝΑΙ ΣΩΣΤΟ. Το `@next/next/no-img-element` έβγαζε
+// δεκαεννιά προειδοποιήσεις και προτείνει το `next/image`. Ο λόγος του είναι
+// πραγματικός: μια ασυμπίεστη εικόνα κοστίζει LCP και δεδομένα κινητού. Η
+// πρότασή του όμως δεν εφαρμόζεται εδώ, γιατί καμία από τις δεκαεννιά δεν
+// υπάρχει τη στιγμή του build:
+//
+//   · σαρωμένο έγγραφο και προεπισκόπηση φωτογραφίας — `data:` URL από την
+//     κάμερα του χρήστη. Ο βελτιστοποιητής του Next ΠΕΤΑΕΙ σε `data:`.
+//   · λογότυπο επιχείρησης, άβαταρ επαφής, φωτογραφία αντικειμένου, φωτογραφία
+//     βλάβης — υπογεγραμμένα URL του Supabase Storage, με υποδοχέα που αλλάζει
+//     ανά εγκατάσταση. Θα ζητούσαν `remotePatterns` για κάθε έργο ξεχωριστά.
+//   · κωδικός QR — φτιάχνεται στον περιηγητή ως `data:` — είναι ήδη το
+//     μικρότερο δυνατό αρχείο. Βελτιστοποίηση δεν έχει τι να αφαιρέσει.
+//
+// ΤΟ ΣΥΣΤΑΤΙΚΟ ΔΕΝ ΣΩΠΑΙΝΕΙ ΤΟΝ ΚΑΝΟΝΑ, ΤΟΝ ΕΚΤΕΛΕΙ. Ο,τι από το `next/image`
+// ΙΣΧΥΕΙ για εικόνα χρόνου εκτέλεσης μπαίνει εδώ, μία φορά, για όλες: οκνηρή
+// φόρτωση (καμία εικόνα εκτός οθόνης δεν κατεβαίνει), ασύγχρονη αποκωδικοποίηση
+// (η αποκωδικοποίηση δεν μπλοκάρει το νήμα που ζωγραφίζει) και `alt` που ΔΕΝ
+// έχει προεπιλογή, ώστε η κενή περίπτωση να γράφεται ρητά ως διακοσμητική.
+// Πριν, καμία από τις δεκαεννιά δεν είχε τίποτα από τα τρία.
+//
+// Και μένει ΕΝΑ σημείο: αν αύριο μπει πάροχος εικόνας ή placeholder θολώματος,
+// μπαίνει εδώ και τον παίρνουν και οι δεκαεννιά. Ο κανόνας μένει αναμμένος για
+// κάθε ΝΕΟ σκέτο `<img>` που θα γραφτεί κατά λάθος.
+export function RuntimeImg(
+  { src, alt, className, style, width, height, onClick, title }:
+  { src: string; alt: string; className?: string; style?: CSSProperties; width?: number; height?: number; onClick?: (e: MouseEvent<HTMLImageElement>) => void; title?: string },
+) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- δες την εξήγηση από πάνω: εικόνα χρόνου εκτέλεσης, `data:`/Storage, που το next/image δεν μπορεί να επεξεργαστεί
+    <img src={src} alt={alt} className={className} style={style} width={width} height={height}
+      onClick={onClick} title={title} loading="lazy" decoding="async" />
+  );
+}
 
 // ═══ Skeleton, placeholder φόρτωσης (αντικαθιστά τα «Φόρτωση…») ══════════
 export function Skeleton({ w = '100%', h = 14, r = 8, style }: { w?: number | string; h?: number | string; r?: number; style?: CSSProperties }) {
