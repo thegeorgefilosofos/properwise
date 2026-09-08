@@ -165,7 +165,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     // πόσες διαμονές δεν έχουν Δήλωση Βραχυχρόνιας και ανά ποιο κανάλι.
     const data = await stayStore.ofProperty<PriceStay>(supabase, propertyId, stayStore.ACCOUNTING_COLUMNS, userId);
     setStays(data);
-  }, [userId, propertyId]);
+  }, [userId, propertyId, supabase]);
 
   // Ο τύπος του ακινήτου κρίνει το κλιμάκιο του τέλους ανθεκτικότητας: το
   // υψηλότερο (15/4 €) ισχύει ΜΟΝΟ για μονοκατοικίες άνω των 80 τ.μ., όχι για
@@ -173,7 +173,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   const loadPropType = useCallback(async () => {
     const data = await properties.one<{ prop_type: string }>(supabase, propertyId, 'prop_type', userId);
     setIsHouse(isHouseType(data?.prop_type));
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   const loadSettings = useCallback(async () => {
     const { data } = await supabase.from('pricing_settings').select('*').eq('user_id', userId).eq('property_id', propertyId).maybeSingle();
@@ -185,7 +185,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       if (data.min_stay != null) setMinStay(Number(data.min_stay));
       setTouched(true); // υπάρχουν αποθηκευμένες τιμές, μην τις παρακάμψεις με auto
     }
-  }, [userId, propertyId]);
+  }, [userId, propertyId, supabase]);
 
   // ═══ ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ ΠΟΥ ΕΛΕΙΠΑΝ ΓΙΑ ΝΑ ΚΛΕΙΣΕΙ Η ΑΛΥΣΙΔΑ ═══════════════════
   // Οι λειτουργικές δαπάνες της χρονιάς και πόσα ακίνητα έχει ο φορολογούμενος
@@ -204,12 +204,12 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     const { entries } = mergeLedger(bil as LedgerBill[], (exp || []) as LedgerExpense[]);
     setOpex(entries.filter(e => e.date.slice(0, 4) === String(nowYear)).reduce((sum, e) => sum + e.amount, 0));
     setPropCount(Math.max(1, count || 1));
-  }, [propertyId, userId, nowYear]);
+  }, [propertyId, userId, nowYear, supabase]);
 
   // Ποια κενά έχουν ήδη υπενθύμιση στο Ημερολόγιο (για toggle προσθήκη/αφαίρεση).
   const loadGapEvents = useCallback(async () => {
     setGapTitles(new Set(await calendar.titles(supabase, propertyId, { source: 'pricing_gap' })));
-  }, [propertyId]);
+  }, [propertyId, supabase]);
 
   useEffect(() => {
     (async () => { setLoading(true); await Promise.all([loadStays(), loadSettings(), loadGapEvents(), loadPropType(), loadCashflowInputs()]); setLoading(false); })();
@@ -223,7 +223,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pricing_settings', filter: `user_id=eq.${userId}` }, () => loadSettings())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [userId, propertyId, loadStays, loadSettings]);
+  }, [userId, propertyId, loadStays, loadSettings, supabase]);
 
   // Τιμές ανταγωνισμού: τοπική αποθήκευση (βοήθημα βαθμονόμησης, ανά ακίνητο).
   useEffect(() => { try { localStorage.setItem(compsKey, JSON.stringify(comps)); } catch { /* ignore */ } }, [comps, compsKey]);
@@ -254,7 +254,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     saved('Η τιμολόγηση δεν αποθηκεύτηκε', supabase.from('pricing_settings').upsert({
       user_id: userId, property_id: propertyId, base: v.base, min_price: v.min || null, max_price: v.max || null,
       weekend_premium: v.wknd / 100, min_stay: v.minStay, updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,property_id' })), [userId, propertyId]);
+    }, { onConflict: 'user_id,property_id' })), [userId, propertyId, supabase]);
   useEffect(() => {
     if (!touched || base <= 0) return;
     const t = setTimeout(async () => {
@@ -374,9 +374,15 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     return [...m.entries()];
   }, [yearRows]);
   const todayMonth = todayIso().slice(0, 7);
-  const isPastMonth = (key: string) => pyear === nowYear && key < todayMonth;
-  const pastCount = useMemo(() => months.filter(([k]) => isPastMonth(k)).length, [months, pyear, nowYear]);
-  const visibleMonths = useMemo(() => months.filter(([k]) => showPast || !isPastMonth(k)), [months, showPast, pyear, nowYear]);
+  // ── ΤΟ `todayMonth` ΕΛΕΙΠΕ ΚΑΙ ΑΠΟ ΤΙΣ ΔΥΟ ΛΙΣΤΕΣ ────────────────────────
+  // Η συνάρτηση κλείνει μέσα της τρεις τιμές και οι εξαρτήσεις ανέφεραν δύο.
+  // Καρτέλα ανοιχτή τη νύχτα της αλλαγής μήνα κρατούσε τον περασμένο μήνα ως
+  // «τρέχοντα»: ο Ιανουάριος έμενε ορατός μέσα στον Φεβρουάριο, με τιμές που
+  // ο οικοδεσπότης δεν μπορεί πια να αλλάξει. Ως `useCallback` η εξάρτηση
+  // γίνεται ΜΙΑ και ο μεταγλωττιστής δεν μπορεί να την ξεχάσει.
+  const isPastMonth = useCallback((key: string) => pyear === nowYear && key < todayMonth, [pyear, nowYear, todayMonth]);
+  const pastCount = useMemo(() => months.filter(([k]) => isPastMonth(k)).length, [months, isPastMonth]);
+  const visibleMonths = useMemo(() => months.filter(([k]) => showPast || !isPastMonth(k)), [months, showPast, isPastMonth]);
 
   // ═══ ΕΚΑΤΟΝ ΕΙΚΟΣΙ ΔΥΟ ΣΤΑΣΕΙΣ TAB ΓΙΑ ΝΑ ΠΕΡΑΣΕΙΣ ΤΟ ΗΜΕΡΟΛΟΓΙΟ ═══════════
   // ΜΕΤΡΗΜΕΝΟ ΣΤΑ 1280: η καρτέλα έχει 148 στάσεις πληκτρολογίου συνολικά και

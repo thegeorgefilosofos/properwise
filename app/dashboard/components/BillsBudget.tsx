@@ -718,7 +718,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       // στην οθόνη δεν άλλαζε. Διαγράφηκε αντί να κρυφτεί.
       .subscribe();
     return () => { mounted = false; supabase.removeChannel(ch); };
-  }, [propertyId, loadData]);
+  }, [propertyId, loadData, supabase]);
 
   // Η ΠΡΩΤΗ ΦΟΡΤΩΣΗ ΧΩΡΙΣΤΑ ΑΠΟ ΤΗ ΣΥΝΔΡΟΜΗ. Ηταν και τα δύο στο ίδιο effect:
   // «φέρε τα δεδομένα» και «άκου τις αλλαγές» είναι δύο δουλειές με ένα σώμα.
@@ -733,7 +733,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         settings.put(supabase, propertyId, userId, 'budgets', data));
       setSaving(false);
     }, 800);
-  }, [propertyId, userId]);
+  }, [propertyId, userId, supabase]);
 
   // ΔΥΟ ΑΛΛΑΓΕΣ ΣΤΟΝ ΙΔΙΟ ΚΥΚΛΟ ΕΧΑΝΑΝ Η ΜΙΑ ΤΗΝ ΑΛΛΗ. Και οι δύο συναρτήσεις
   // έγραφαν `{ ...budgets, … }` διαβάζοντας το `budgets` από το κλείσιμο της

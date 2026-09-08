@@ -6,7 +6,7 @@
 // υποεργασιών, συντάκτης σχολίων, μενού εξαγωγών. Κανένα δεν ξέρει από βάση:
 // παίρνουν ό,τι δείχνουν και επιστρέφουν ό,τι άλλαξε.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { T, EmptyState } from '@/components/Theme'
 import { CustomSelect } from '../UIComponents'
@@ -77,7 +77,7 @@ export function FilterSelect({ value, onChange, options, minWidth = 168, idle }:
   const [pos, setPos] = useState<{ top: number; left: number; width: number; maxH: number }>({ top: 0, left: 0, width: minWidth, maxH: 320 })
   const current = options.find(o => o.value === value) || options[0]
   const active = value !== 'all'
-  const reposition = () => {
+  const reposition = useCallback(() => {
     if (!btnRef.current) return
     const r = btnRef.current.getBoundingClientRect()
     const menuH = Math.min(options.length * 40 + 12, 320)
@@ -86,7 +86,7 @@ export function FilterSelect({ value, onChange, options, minWidth = 168, idle }:
     // να μη ξεπερνά τον χώρο και το πλεόνασμα να κάνει εσωτερικό scroll (αντί να κόβεται).
     const avail = openUp ? r.top - 8 : window.innerHeight - r.bottom - 8
     setPos({ top: openUp ? r.top - menuH - 6 : r.bottom + 6, left: r.left, width: r.width, maxH: Math.max(120, Math.min(menuH, avail - 6)) })
-  }
+  }, [options.length])
   useEffect(() => {
     if (!open) return
     reposition()
@@ -94,7 +94,7 @@ export function FilterSelect({ value, onChange, options, minWidth = 168, idle }:
     const s = () => reposition()
     document.addEventListener('mousedown', h); window.addEventListener('scroll', s, true); window.addEventListener('resize', s)
     return () => { document.removeEventListener('mousedown', h); window.removeEventListener('scroll', s, true); window.removeEventListener('resize', s) }
-  }, [open])
+  }, [open, reposition])
   return (
     <>
       <button ref={btnRef} type="button" onClick={() => setOpen(o => !o)}

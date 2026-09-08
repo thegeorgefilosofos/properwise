@@ -222,7 +222,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     setPropSqm(Number.isFinite(sq)&&sq>0?sq:null);
     setPropertyCount(Math.max(1, pc||1));
     setLoadedFor(propertyId);
-  },[propertyId,userId]);
+  },[propertyId,userId,supabase]);
 
   useLoad(fetch_);
 

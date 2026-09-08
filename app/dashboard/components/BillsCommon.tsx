@@ -130,7 +130,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
       await saved('Οι ρυθμίσεις κοινοχρήστων δεν αποθηκεύτηκαν',
         settings.put(supabase, propertyId, userId, 'common', patch));
     }, 800);
-  }, [propertyId, userId]);
+  }, [propertyId, userId, supabase]);
 
   const upd = useCallback((patch: Record<string, unknown>) => {
     save({ mgmtType, mgmtCost, mgmtDueDay, fundBalance, fundMyPct, fundMonthly, fundLastDate, extras, history, millesimi, catData, ...patch });

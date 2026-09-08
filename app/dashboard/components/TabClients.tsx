@@ -304,17 +304,17 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
     setProps(pr);
     setInv(it);
     setLoading(false);
-  }, [userId]);
+  }, [userId, supabase]);
 
   const loadStays = useCallback(async () => {
     const data = await stayStore.ofUser<Stay>(supabase, userId, '*');
     setStays((data || []) as Stay[]);
-  }, [userId]);
+  }, [userId, supabase]);
 
   const loadNotes = useCallback(async (clientId: string) => {
     const { data } = await supabase.from('client_notes').select('*').eq('user_id', userId).eq('client_id', clientId).order('created_at', { ascending: false });
     setNotesOf({ clientId, rows: (data || []) as Note[] });
-  }, [userId]);
+  }, [userId, supabase]);
 
   const loadDocs = useCallback(async (clientId: string) => {
     const { data } = await supabase.from('client_documents').select('*').eq('user_id', userId).eq('client_id', clientId).order('created_at', { ascending: false });
@@ -325,12 +325,12 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
       if (signed) list.forEach((d, i) => { d.signedUrl = signed[i]?.signedUrl ?? undefined; });
     }
     setDocsOf({ clientId, rows: list });
-  }, [userId]);
+  }, [userId, supabase]);
 
   const loadIcalFeeds = useCallback(async () => {
     const { data } = await supabase.from('ical_feeds').select('*').eq('user_id', userId).order('created_at', { ascending: false });
     setIcalFeeds((data || []) as IcalFeed[]);
-  }, [userId]);
+  }, [userId, supabase]);
 
   // Τρεις φορτώσεις που ξεκινούν μαζί, δηλωμένες ως μία.
   const loadAll = useCallback(() => Promise.all([load(), loadStays(), loadIcalFeeds()]), [load, loadStays, loadIcalFeeds]);
@@ -347,7 +347,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_properties', filter: `user_id=eq.${userId}` }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [userId, load, loadStays, loadNotes, loadDocs, loadIcalFeeds]);
+  }, [userId, load, loadStays, loadNotes, loadDocs, loadIcalFeeds, supabase]);
 
   // ΤΟ ΑΔΕΙΟ ΔΕΝ ΑΠΟΘΗΚΕΥΕΤΑΙ, ΠΡΟΚΥΠΤΕΙ. Εδώ ένα effect άδειαζε τέσσερις
   // καταστάσεις σε κάθε αλλαγή πελάτη — και δεν προλάβαινε: μια αργοπορημένη

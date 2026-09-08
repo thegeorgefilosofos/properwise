@@ -416,7 +416,7 @@ export default function TabDocuments({
 
     setItems(out.map(enrich));
     setLoadedFor(propertyId);
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   useLoad(fetchAll);
   // Καθάρισε την επιλογή όταν αλλάζει το πλαίσιο πλοήγησης (φάκελος, αναζήτηση).

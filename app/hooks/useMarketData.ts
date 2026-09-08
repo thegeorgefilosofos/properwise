@@ -167,7 +167,7 @@ export function useMarketRates() {
       }
     }
     load()
-  }, [])
+  }, [supabase])
 
   return data
 }
@@ -237,7 +237,7 @@ export function useMarketFeedHealth(enabled: boolean) {
     }
     check()
     return () => { alive = false }
-  }, [enabled])
+  }, [enabled, supabase])
 
   return health
 }
@@ -331,7 +331,7 @@ export function useIsAdmin() {
       setChecked(true)
     }
     check()
-  }, [])
+  }, [supabase])
 
   return { isAdmin, checked }
 }
@@ -357,7 +357,7 @@ export function useLoanPrograms() {
     // Ανανέωση κάθε τριάντα λεπτά
     const interval = setInterval(load, 30 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [supabase])
 
   return { programs, loading }
 }

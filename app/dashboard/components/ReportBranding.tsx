@@ -46,7 +46,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
       }
       setLoading(false);
     })();
-  }, [userId]);
+  }, [userId, supabase]);
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError('');

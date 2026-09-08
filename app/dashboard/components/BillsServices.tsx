@@ -121,10 +121,17 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
   // ══ ΤΑ ΔΗΜΟΤΙΚΑ ΤΕΛΗ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΟΥΣ ΛΟΓΑΡΙΑΣΜΟΥΣ ΠΟΥ ΥΠΑΡΧΟΥΝ ══════
   // Ο κανόνας και οι έλεγχοι ζουν στο lib/expenses/municipalFees.ts. Εδώ μένει
   // μόνο η ανάγνωση: οι δαπάνες ρεύματος του έτους, μία φορά.
-  const share = feeShare(parseFloat(s.lastBillTotal), parseFloat(s.lastBillDimotika));
+  // Το `share` ΕΙΝΑΙ αντικείμενο, οπότε αλλάζει ταυτότητα σε κάθε απόδοση. Οι
+  // εξαρτήσεις ανέφεραν τα δύο πεδία του για να μη χαλάσει το memo — σωστή
+  // πρόθεση, λάθος σημείο: αν αύριο το `feeShare` αποκτήσει τρίτο πεδίο, καμία
+  // γραμμή δεν θα το θυμηθεί. Απομνημονεύεται η ΠΗΓΗ και εξαρτάται ολόκληρη.
+  const share = useMemo(
+    () => feeShare(parseFloat(s.lastBillTotal), parseFloat(s.lastBillDimotika)),
+    [s.lastBillTotal, s.lastBillDimotika],
+  );
   const dimotikaMonths = useMemo(
     () => monthlyFees(elecRows, feeYear, share, s.dimotikaHistory || []),
-    [elecRows, feeYear, share.pct, share.implausible, s.dimotikaHistory],
+    [elecRows, feeYear, share, s.dimotikaHistory],
   );
   const dimotikaAvg = averageMonthly(dimotikaMonths) ?? 0;
   const originNote = feeOriginNote(dimotikaMonths);

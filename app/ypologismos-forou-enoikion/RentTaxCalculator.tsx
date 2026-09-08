@@ -108,7 +108,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
       // (45%) — ένα ποσοστό στη θέση αυτού του αριθμού θα ήταν λάθος.
       cashCost: rentalIncomeTax(gross, brackets) - rentalIncomeTax(gross * (1 - PRESUMPTIVE_DEDUCTION_RATE), brackets),
     };
-  }, [monthly, months, viaBank, brackets, bankMatters]);
+  }, [monthly, months, viaBank, brackets, year]);
 
   const field: React.CSSProperties = {
     width: '100%', height: T.h.lg, padding: '0 14px', borderRadius: T.radius.btn,

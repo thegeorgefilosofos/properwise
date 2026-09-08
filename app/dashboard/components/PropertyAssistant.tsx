@@ -486,7 +486,19 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     // βοηθός δεν είχε καμία εικόνα συνέπειας πληρωμών και ότι τα δεδουλευμένα
     // έσοδα της χρονιάς έπρεπε να μαντευτούν από το ενοίκιο επί δώδεκα.
     const rentAll = await rentStore.chronological<RentPaymentsRow>(supabase, propertyId, `id,due_date,${rentStore.PERIOD_COLUMNS}`, userId);
-    setOpenRent(rentAll.filter(r => !r.paid).map(r => ({ id: r.id, label: `Ενοίκιο ${MONTHS_GEN[(r.period_month || 1) - 1]} ${r.period_year}`, amount: r.amount || 0, due: r.due_date })));
+    // ── ΤΟ ΓΡΑΦΕ ΚΑΙ ΤΟ ΔΙΑΒΑΖΕ ΣΤΗΝ ΙΔΙΑ ΕΚΤΕΛΕΣΗ ─────────────────────────
+    // Η κατάσταση της React ΔΕΝ αλλάζει μέσα στην ίδια συνάρτηση: το
+    // `setOpenRent` προγραμματίζει, δεν αναθέτει. Εκατό γραμμές πιο κάτω το
+    // `openRent.reduce(...)` και η γραμμή «Ανεξόφλητες δόσεις ενοικίου»
+    // διάβαζαν την ΠΡΟΗΓΟΥΜΕΝΗ τιμή, δηλαδή κενή λίστα στο πρώτο άνοιγμα του
+    // πάνελ. Ο ιδιοκτήτης με τρεις ανείσπρακτες δόσεις άνοιγε τη Νόα και οι
+    // προτάσεις εκκίνησης δεν ανέφεραν ούτε μία — και τα συμφραζόμενα που
+    // έφταναν στο μοντέλο έλεγαν ότι δεν υπάρχουν καθυστερήσεις.
+    //
+    // Ο πίνακας υπολογίζεται ΜΙΑ φορά σε τοπική μεταβλητή· η κατάσταση παίρνει
+    // την ίδια τιμή· όλοι οι αναγνώστες αυτής της εκτέλεσης διαβάζουν αυτήν.
+    const openRentNow = rentAll.filter(r => !r.paid).map(r => ({ id: r.id, label: `Ενοίκιο ${MONTHS_GEN[(r.period_month || 1) - 1]} ${r.period_year}`, amount: r.amount || 0, due: r.due_date }));
+    setOpenRent(openRentNow);
     const t = ten?.[0];
     const rent = resolveRent({ tenantRent: t?.monthly_rent, targetRent: propContext.targetRent }).value;
     const value = resolveValue(propContext.value).value;
@@ -580,7 +592,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       propertyValue: value || undefined,
       expensesYtd: total || undefined,
       openTasks: openTasks.length,
-      overdueRent: openRent.reduce((sum, r) => sum + (r.amount || 0), 0) || undefined,
+      overdueRent: openRentNow.reduce((sum, r) => sum + (r.amount || 0), 0) || undefined,
       hasLoan: loanRows.length > 0,
       isShortTerm: propStays.length > 0,
       propertyCount: allProperties.length || undefined,
@@ -640,7 +652,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       `Δαπάνες ${year}: σύνολο ${eur(total)} (πληρωμένες ${eur(paid)}, εκκρεμείς ${eur(owed)}). Κάθε ευρώ μετρημένο μία φορά· οι απλήρωτοι λογαριασμοί μετρούν στην ημερομηνία που λήγουν· ίδιος υπολογισμός με τις Δαπάνες και τη Σύγκριση.`,
       topCats.length ? `Μεγαλύτερες κατηγορίες: ${topCats.map(([c, a]) => `${c} ${eur(a)}`).join(', ')}` : '',
       unpaid.length ? `Απλήρωτοι λογαριασμοί (${unpaid.length}): ${unpaid.slice(0, 12).map(b => `${b.name || 'λογαριασμός'} ${eur(b.amount)}${b.due_date ? ` λήξη ${b.due_date}` : ''}`).join('; ')}` : 'Δεν υπάρχουν απλήρωτοι λογαριασμοί.',
-      openRent.length ? `Ανεξόφλητες δόσεις ενοικίου (${openRent.length}): ${openRent.slice(0, 12).map(r => `${r.label} ${eur(r.amount)}`).join('; ')}` : '',
+      openRentNow.length ? `Ανεξόφλητες δόσεις ενοικίου (${openRentNow.length}): ${openRentNow.slice(0, 12).map(r => `${r.label} ${eur(r.amount)}`).join('; ')}` : '',
       t ? `Ενοικιαστής: ${t.full_name || 'καταχωρημένος'}${t.deposit_amount ? `, εγγύηση ${eur(t.deposit_amount)}` : ''}` : 'Δεν έχει καταχωρηθεί ενοικιαστής.',
       leaseEnd ? `Λήξη μίσθωσης: ${leaseEnd}${daysLease != null ? ` (σε ${daysLease} ημέρες)` : ''}` : '',
       insurance?.insurance_company || insurance?.insurance_expiry ? `Ασφάλεια: ${insurance?.insurance_company || 'εταιρεία άγνωστη'}${insurance?.insurance_expiry ? `, λήξη ${insurance.insurance_expiry}` : ''}` : 'Ασφάλεια: δεν έχει καταχωρηθεί.',
@@ -747,7 +759,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       });
       setTechStr(`Σύνολο επαφών: ${techRoster.length}\n${tLines.join('\n')}`);
     } else setTechStr('');
-  }, [propertyId, userId, propContext, supabase]);
+  }, [propertyId, userId, propContext, supabase, allProperties.length]);
 
   // Τα συμφραζόμενα φορτώνονται ΜΙΑ φορά, όταν ανοίξει το πάνελ. Μέσα από το
   // κοινό `useLoad`, γιατί είναι ασύγχρονη φόρτωση όπως κάθε άλλη.

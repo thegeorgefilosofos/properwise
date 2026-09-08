@@ -95,7 +95,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
       const elecData = await settings.section<{ elecProvider?: unknown }>(supabase, propertyId, 'electricity', userId);
       if (elecData?.elecProvider) setElecProvider(String(elecData.elecProvider));
     })();
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   // ΗΤΑΝ ΤΡΙΤΟΣ ΚΑΤΑΛΟΓΟΣ ΠΑΡΟΧΩΝ, ΓΡΑΜΜΕΝΟΣ ΜΕ ΤΟ ΧΕΡΙ. Μια λίστα επτά τιμών
   // έπρεπε να μένει συγχρονισμένη με δύο καταλόγους. Δεν έμενε: η «Φυσικό αέριο
@@ -119,7 +119,13 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
 
   // ── Auto-sync λήξης σύμβασης → calendar_events ───────────────────────────────
   useEffect(() => {
-    if (!propertyId || !s.gasContractStart || !s.gasContractMonths || calendarSynced) return;
+    // ── ΤΟ `userId` ΕΛΕΙΠΕ ΚΑΙ ΑΠΟ ΤΟΝ ΦΡΟΥΡΟ ΚΑΙ ΑΠΟ ΤΙΣ ΕΞΑΡΤΗΣΕΙΣ ────────
+    // Η γραμμή ημερολογίου γράφεται με `{ propertyId, userId }`. Οταν το εφέ
+    // προλάβαινε τον έλεγχο ταυτότητας, το `user_id` έφευγε κενό, η πολιτική
+    // RLS απέρριπτε την εγγραφή και ο χρήστης έβλεπε «Η υπενθύμιση λήξης δεν
+    // μπήκε στο ημερολόγιο» για κάτι που δεν έκανε ο ίδιος. Με τον φρουρό η
+    // εγγραφή περιμένει τον χρήστη· με την εξάρτηση ξανατρέχει όταν έρθει.
+    if (!propertyId || !userId || !s.gasContractStart || !s.gasContractMonths || calendarSynced) return;
     const months = parseInt(s.gasContractMonths) || 0;
     if (months <= 0) return;
     // Ίδιο σφάλμα θερινής ώρας: η λήξη του συμβολαίου αερίου έπεφτε μία μέρα
@@ -147,7 +153,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
           notes: `Η σύμβαση ${tariff?.name ?? ''} λήγει. Σύγκρινε νέα τιμολόγια πριν ανανεώσεις.`,
         })]))) setCalendarSynced(true);
     })();
-  }, [propertyId, s.gasContractStart, s.gasContractMonths]);
+  }, [propertyId, userId, supabase, s.gasContractStart, s.gasContractMonths, calendarSynced, effective, provider?.label, tariff?.name]);
 
   const allTariffs = useMemo(() => {
     return GAS_PROVIDERS.flatMap(p => p.tariffs

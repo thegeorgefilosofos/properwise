@@ -277,7 +277,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
         if (d) setInsData({ eq: !!d.insCustomEarthquake, fl: !!d.insCustomFlood });
       } catch (_) {}
     })();
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   // Οι δικές του κιλοβατώρες, από τους δικούς του λογαριασμούς ρεύματος.
   useEffect(() => {
@@ -288,7 +288,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
         setBillsKwh((data ?? []).map(b => Number((b as { kwh?: number }).kwh)).filter(n => Number.isFinite(n) && n > 0));
       } catch (_) {}
     })();
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   const save = (patch: Record<string, unknown>) => su({ elecProvider: provider, elecTariff: tariffId, useEbill, kwhMonthly, nightPct, kwhHistory, contractStart, contractMonths, manualMonthly, ...patch });
 

@@ -77,7 +77,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
     const { data: r } = await supabase.from('maintenance_requests').select('*').eq('property_id', propertyId).eq('user_id', userId).order('created_at', { ascending: false });
     setReqs((r as Req[]) || []);
     setLoading(false);
-  }, [propertyId, userId]);
+  }, [propertyId, userId, supabase]);
 
   const saveLink = async () => {
     setBusy(true);

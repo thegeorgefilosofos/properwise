@@ -288,7 +288,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
       if (alive) setCalendarTaxRefs(refs)
     })()
     return () => { alive = false }
-  }, [propertyId, supabase])
+  }, [propertyId])
 
   const pendingObligations = useMemo(() => {
     const today = athensToday()

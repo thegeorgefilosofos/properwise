@@ -62,7 +62,7 @@ export default function ExpenseSwitchAlert({ propertyId, userId, onOpen }: {
       } catch { /* σιωπηλά: μια ειδοποίηση που δεν ήρθε δεν χαλάει καμία οθόνη */ }
     })();
     return () => { alive = false; };
-  }, [propertyId, userId]);
+  }, [propertyId, userId, supabase]);
 
   const visible = rows.filter(r => !dismissed.has(r.section));
   if (visible.length === 0) return null;

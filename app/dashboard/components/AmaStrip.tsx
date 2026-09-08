@@ -46,7 +46,7 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
     const { data } = await q.order('created_at');
     setProps((data || []) as AmaProperty[]);
     setLoaded(true);
-  }, [userId, propertyId]);
+  }, [userId, propertyId, supabase]);
 
   useLoad(load);
 
@@ -65,7 +65,7 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_properties', filter: `user_id=eq.${userId}` }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [userId, propertyId, load]);
+  }, [userId, propertyId, load, supabase]);
 
   const sum = useMemo(() => amaSummary(props), [props]);
 

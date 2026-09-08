@@ -212,7 +212,7 @@ export default function TabBills({
       // απαντήσεις στην ίδια ερώτηση, στην ίδια οθόνη.
       setStrip({ recurringPerMonth: totalMonthly(cards) || null, cards });
     } catch (_) {} finally { setStripLoading(false); }
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -223,7 +223,7 @@ export default function TabBills({
       .subscribe();
     channelRef.current = ch;
     return () => { mounted = false; supabase.removeChannel(ch); channelRef.current = null; };
-  }, [propertyId, loadStrip]);
+  }, [propertyId, loadStrip, supabase]);
 
   // Η ΠΡΩΤΗ ΦΟΡΤΩΣΗ ΔΕΝ ΕΙΝΑΙ ΔΟΥΛΕΙΑ ΤΗΣ ΣΥΝΔΡΟΜΗΣ. Ηταν γραμμένη μέσα στο ίδιο
   // effect που ανοίγει το κανάλι realtime, δηλαδή δύο άσχετες δουλειές με ένα

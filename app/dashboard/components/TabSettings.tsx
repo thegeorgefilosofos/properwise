@@ -509,7 +509,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
       setAccountEmail(data.user?.email || '');
       setAccountCreatedAt(data.user?.created_at ?? null);
     });
-  }, []);
+  }, [supabase.auth]);
 
   useEffect(() => {
     billing.profile<{ plan: string | null; comp_plan: string | null; comp_until: string | null; trial_used_at: string | null; hold_plan: string | null; hold_until: string | null; bonus_properties: number | null; bonus_properties_until: string | null }>(

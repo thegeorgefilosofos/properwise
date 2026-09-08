@@ -409,7 +409,7 @@ function useInventoryAlerts(propertyId: string | null, userId: string | null) {
       setAlertCount(count);
     };
     check();
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
   return { alertCount, itemCount };
 }
 
@@ -429,7 +429,7 @@ function useChecklistAlerts(propertyId: string | null) {
       setAlertCount(count);
     };
     check();
-  }, [propertyId]);
+  }, [propertyId, supabase]);
   return alertCount;
 }
 
@@ -1573,7 +1573,7 @@ export default function Dashboard() {
     setProperties(props);
     if (props.length > 0 && !selected) setSelected(props[0]);
     else if (selected) setSelected(props.find(p => p.id === selected.id) || props[0] || null);
-  }, [selected]);
+  }, [selected, supabase]);
 
   useEffect(() => {
     const init = async () => {
@@ -1657,6 +1657,16 @@ export default function Dashboard() {
       setLoading(false);
     };
     init();
+    // ── ΤΡΕΧΕΙ ΜΙΑ ΦΟΡΑ, ΚΑΙ ΠΡΕΠΕΙ ΝΑ ΤΡΕΧΕΙ ΜΙΑ ΦΟΡΑ ──────────────────────
+    // Ο κανόνας ζητά `fetchProperties` στις εξαρτήσεις. Το `fetchProperties`
+    // είναι `useCallback` με το `selected` μέσα του, δηλαδή αλλάζει ταυτότητα
+    // κάθε φορά που ο χρήστης διαλέγει άλλο ακίνητο. Βάζοντάς το εδώ, ολόκληρη
+    // η `init()` —έλεγχος ταυτότητας, προφίλ, πλάνο, συστάσεις, προσκλήσεις,
+    // δώδεκα ερωτήματα— θα ξανάτρεχε σε ΚΑΘΕ αλλαγή ακινήτου.
+    //
+    // Η σιωπή δεν είναι άγνοια: γράφεται εδώ ώστε ο επόμενος να μη «διορθώσει»
+    // μια εξάρτηση που είναι λάθος.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Προσθήκη ακινήτου με έλεγχο ορίου πλάνου: αν έφτασες το όριο, δείξε αναβάθμιση.

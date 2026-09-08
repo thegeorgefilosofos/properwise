@@ -5,7 +5,7 @@
 // εργαλεία, με διάκριση φυσικού/νομικού προσώπου όπου έχει σημασία.
 // Πραγματικά δεδομένα αγοράς (lib/market/greekMarket) + μηχανή (lib/market/returns).
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState, useEffect, useMemo, useId } from 'react';
+import { useState, useEffect, useMemo, useId, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
 import * as loanStore from '@/lib/data/loans';
@@ -657,7 +657,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   // Ενοίκια των ΑΛΛΩΝ ακινήτων του χρήστη — για τον προοδευτικό φόρο στο σύνολο.
   const [otherRents, setOtherRents] = useState<{ id: string; annualRent: number; shortTerm: boolean }[]>([]);
 
-  const K = (s: string) => `roi_${propertyId}_${s}`;
+  const K = useCallback((s: string) => `roi_${propertyId}_${s}`, [propertyId]);
   // ΑΚΥΡΩΣΗ ΑΝΑ ΑΚΙΝΗΤΟ. Έξι παράλληλα ερωτήματα γεμίζουν δώδεκα πεδία. Με αλλαγή
   // ακινήτου στη διάρκειά τους, η παλιά απάντηση έγραφε αξία, ενοίκιο, ετήσια
   // έξοδα, τετραγωνικά και τύπο του ΠΡΟΗΓΟΥΜΕΝΟΥ ακινήτου. Και επειδή αυτά τα
@@ -742,10 +742,10 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       finally { if (alive) setLoading(false); }
     })();
     return () => { alive = false };
-  }, [propertyId, propertyValue]);
+  }, [propertyId, propertyValue, supabase, userId, K]);
 
   // Persist ελαφριά (τοπικά) — δεν χρειάζεται νέος πίνακας.
-  useEffect(() => { try { localStorage.setItem(K('value'), value); localStorage.setItem(K('rent'), rent); localStorage.setItem(K('opex'), opex); localStorage.setItem(K('region'), region); } catch { } }, [value, rent, opex, region]);
+  useEffect(() => { try { localStorage.setItem(K('value'), value); localStorage.setItem(K('rent'), rent); localStorage.setItem(K('opex'), opex); localStorage.setItem(K('region'), region); } catch { } }, [value, rent, opex, region, K]);
 
   // Prefill πληρότητας/τιμής βραχυχρόνιας από την αναφορά της περιοχής (επαναφορά όταν
   // αλλάζει η περιοχή· ο χρήστης μπορεί πάντα να διορθώσει).

@@ -825,7 +825,7 @@ export default function BillsInsurance({ propertyId, userId = '', only, legalFor
         }
       } catch (_) {}
     })();
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   const [ps, updPs, loading] = useBillsSettings(propertyId, userId, 'insurance', {
     // ΚΑΜΙΑ ΠΡΟΕΠΙΛΕΓΜΕΝΗ ΑΣΦΑΛΙΣΤΙΚΗ. Ήταν 'hellas_direct'/'hd_full': ένας
@@ -1063,7 +1063,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
       setSyncError(!!error);
     }, 1200); // debounce, αποφυγή write σε κάθε keystroke
     return () => { if (propertySyncTimer.current) clearTimeout(propertySyncTimer.current); };
-  }, [propertyId, loading, insSignature, insCompany?.label, insCost, insRenewalDate]);
+  }, [propertyId, loading, insSignature, insCompany?.label, insCost, insRenewalDate, supabase, userId]);
 
   // ── Auto-sync ανανέωσης ασφάλειας → calendar_events ──────────────────────────
   useEffect(() => {
@@ -1087,7 +1087,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
       })]);
       if (!error) setCalendarSynced(true);
     })();
-  }, [propertyId, insRenewalDate]);
+  }, [propertyId, userId, supabase, insRenewalDate, calendarSynced, insCompany?.label, insCompany?.plans, insCost, insPlanId]);
 
   // ── ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΑΥΤΟ ΤΟ ΑΚΙΝΗΤΟ ────────────────────────────────────────
   // Οι ανάγκες βγαίνουν από όσα ξέρουμε γι' αυτό το συγκεκριμένο ακίνητο, με

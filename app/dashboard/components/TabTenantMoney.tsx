@@ -392,7 +392,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
   // Ο πίνακας λέγεται `user_properties`. Το `properties` δεν υπήρξε ΠΟΤΕ, οπότε
   // το `prop` έμενε πάντα null και το ακίνητο ΔΕΝ αναγραφόταν στη βεβαίωση
   // ενοικίου ούτε στα μηνύματα υπενθύμισης — χωρίς κανένα σφάλμα στην οθόνη.
-  useEffect(()=>{ properties.one<{name:string;address:string|null}>(supabase, propertyId, 'name,address').then(setProp); },[propertyId]);
+  useEffect(()=>{ properties.one<{name:string;address:string|null}>(supabase, propertyId, 'name,address').then(setProp); },[propertyId,supabase]);
 
   // ── Η ΠΥΛΗ ΤΟΥ ΜΙΣΘΩΤΗ, ΓΙΑ ΝΑ ΤΑΞΙΔΕΨΕΙ ΜΕ ΤΟ ΜΗΝΥΜΑ ────────────────────
   // Η πύλη υπήρχε και ΚΑΝΕΝΑ μήνυμα δεν την έστελνε: ο σύνδεσμος αντιγραφόταν
@@ -429,7 +429,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     // η Πύλη ενοικιαστή, η οφειλή και το Ε2.
     if(error) { notifyError(failed('Οι δόσεις δεν δημιουργήθηκαν', error)); return false; }
     return true;
-  },[tenant,propertyId,userId]);
+  },[tenant,propertyId,userId,supabase]);
 
   // Lazy: όταν ανοίγει η προβολή και λείπουν δόσεις, δημιούργησέ τες μία φορά.
   const didLazy=React.useRef(false);

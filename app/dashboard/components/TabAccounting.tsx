@@ -484,7 +484,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       setInventory(invR.rows)
     }catch(_){ if(alive) setReadFailed(true) /* διατηρούμε ό,τι ήδη έχει φορτωθεί· το UI δεν κολλάει */ }
     finally{ if(alive) setLoading(false) }
-  })(); return ()=>{ alive = false } },[propertyId,userId,refreshKey])
+  })(); return ()=>{ alive = false } },[propertyId,userId,refreshKey,supabase])
 
   // ΩΜΟ `rental_mode` ΕΧΑΝΕ ΤΑ ΒΡΑΧΥΧΡΟΝΙΑ ΑΚΙΝΗΤΑ. Όσα σημάνθηκαν πριν από τη
   // μετάβαση κρατούν `status_detail: 'seasonal'` χωρίς `rental_mode` — και το
@@ -619,7 +619,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   const expensesTotal = useMemo(()=>expensesYear.filter(e=>e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear),[expensesYear,platformFeesYear,ownPct,mine])
   const deductibleTotal = useMemo(()=>expensesYear.filter(e=>isGroupDeductible(e.expense_group)&&e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear),[expensesYear,platformFeesYear,ownPct,mine])
   // Δόσεις δανείων ΜΟΝΟ όσο το δάνειο είναι ενεργό στη χρήση (όχι φαντάσματα).
-  const loanAnnual = useMemo(()=>loans.reduce((s,l)=>{ if(!loanActiveInYear(l))return s; const m=annuityMonthly(Number(l.amount)||0,Number(l.rate)||0,Number(l.years)||0); return s+m*12 },0),[loans,year,loanActiveInYear])
+  const loanAnnual = useMemo(()=>loans.reduce((s,l)=>{ if(!loanActiveInYear(l))return s; const m=annuityMonthly(Number(l.amount)||0,Number(l.rate)||0,Number(l.years)||0); return s+m*12 },0),[loans,loanActiveInYear])
   const loanInterestYear = useMemo(()=>loans.reduce((s,l)=>{ const amount=Number(l.amount)||0, rate=Number(l.rate)||0, yrs=Number(l.years)||0; const startY=l.start_date?Number(String(l.start_date).slice(0,4)):year; const idx=year-startY+1; return s+interestForYear(amount,rate,yrs,idx) },0),[loans,year])
 
   const businessMode = mode==='professional' && elp==='business'
@@ -743,7 +743,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           municipalTax: regime==='individual_shortterm' ? shortSummary.municipalTax : 0,
           otherCashExpenses: expensesTotal, loanPrincipal: loanAnnual, uncollectedIncome:uncollectedRent,
           legallyClaimedUncollected: claimedUncollected, brackets: rentalBracketsForYear(year) }
-  ),[businessMode,year,elpForm,age,firstYears,distribution,ekfa,buildingDepr,claimedUncollected,rentsBank,regime,grossIncome,enfia,myTaxShare,shortSummary,expensesTotal,deductibleTotal,inventoryDepr,loanInterestYear,loanAnnual,uncollectedRent])
+  ),[businessMode,year,elpForm,age,firstYears,distribution,ekfa,buildingDepr,claimedUncollected,rentsBank,regime,grossIncome,enfia,myTaxShare,shortSummary,expensesTotal,deductibleTotal,inventoryDepr,loanInterestYear,loanAnnual,uncollectedRent,minNetIncome.amount])
 
   // Συμβουλευτική, προτάσεις με αξία από τα πραγματικά δεδομένα (καθαρές, όχι θόρυβος).
   const advisory = useMemo(()=>buildAdvisory({
@@ -751,7 +751,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     grossIncome, taxableIncome: statement.taxableIncome,
     rentalMode: prop?.rental_mode, propertyCount: propCount,
     hasLoan: loans.some(l=>loanActiveInYear(l)), loanInterestYear,
-  }),[businessMode,regime,elpForm,age,grossIncome,statement,prop,propCount,loans,year,loanInterestYear,loanActiveInYear])
+  }),[businessMode,regime,elpForm,age,grossIncome,statement,prop,propCount,loans,loanInterestYear,loanActiveInYear])
 
   // «Τι άλλαξε»: επίκαιροι κανόνες 2026 σχετικοί με το προφίλ (καθεστώς + δάνειο).
   const relevantChanges = useMemo(()=>{
@@ -761,7 +761,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     else aud.add('long_term')
     if(loans.some(l=>loanActiveInYear(l))) aud.add('borrower')
     return REGULATORY_UPDATES_2026.filter(u=>u.audiences.some(a=>aud.has(a)))
-  },[businessMode,regime,loans,year,loanActiveInYear])
+  },[businessMode,regime,loans,loanActiveInYear])
 
   // Κόστος μεταβίβασης: προεπιλογή τιμήματος η αξία του ακινήτου (αν υπάρχει).
   const xferEffectivePrice = xferPrice!=='' ? Number(xferPrice) : (Number(prop?.value)||0)
@@ -942,14 +942,14 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     if(!alive) return
     if(error){ setClosingErr(failed('Η κατάσταση της χρήσης δεν διαβάστηκε', error)); setClosing(null); console.warn('book_closings', error) }
     else { setClosingErr(null); setClosing((data as { snapshot:BookSnapshot; locked_at:string }|null)||null) }
-  })(); return ()=>{ alive = false } },[propertyId,userId,year,refreshKey])
+  })(); return ()=>{ alive = false } },[propertyId,userId,year,refreshKey,supabase])
   useEffect(()=>{ let alive = true; (async()=>{
     // Ο ΤΡΕΧΩΝ ΜΙΣΘΩΤΗΣ, ΟΧΙ Ο ΤΕΛΕΥΤΑΙΟΣ ΠΟΥ ΓΡΑΦΤΗΚΕ. Το όνομα που βγαίνει από
     // εδώ τυπώνεται στη βεβαίωση ενοικίου: με «πιο πρόσφατα δημιουργημένος», η
     // βεβαίωση έβγαινε στο όνομα άλλου ανθρώπου από αυτόν που έδειχνε η Επισκόπηση.
     const data = await tenantStore.current<{ full_name?:string; afm?:string }>(supabase, propertyId, 'full_name,afm', userId)
     if(alive) setTenant(data||null)
-  })(); return ()=>{ alive = false } },[propertyId,userId,refreshKey])
+  })(); return ()=>{ alive = false } },[propertyId,userId,refreshKey,supabase])
   // Ετήσια βεβαίωση ενοικίου: μόνο εισπραγμένα μισθώματα του έτους, ανά μήνα.
   function printCertificate(){
     const paid = rent.filter(p=>p.paid&&p.period_year===year).sort((a,b)=>(a.period_month||0)-(b.period_month||0))

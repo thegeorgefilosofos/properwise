@@ -1,6 +1,6 @@
 'use client'
 import { navLabel } from '@/lib/nav/labels';
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import * as expenses from '@/lib/data/expenses'
 import * as loanStore from '@/lib/data/loans'
@@ -389,9 +389,13 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
     monthly:calcMonthly(initAmount,3.5,25),totalInterest:0,propertyValue:initValue,
   })
 
-  useEffect(()=>{loadSaved()},[propertyId])
-
-  async function loadSaved(){
+  // ── ΤΟ `userId` ΕΛΕΙΠΕ ΑΠΟ ΤΙΣ ΕΞΑΡΤΗΣΕΙΣ ΚΑΙ Η ΑΝΑΓΝΩΣΗ ΤΟ ΧΡΗΣΙΜΟΠΟΙΕΙ ──
+  // Η `loadSaved` διαβάζει με `(supabase, propertyId, userId)` και το εφέ άκουγε
+  // ΜΟΝΟ το `propertyId`. Ο έλεγχος ταυτότητας απαντά μετά την πρώτη απόδοση:
+  // όταν το `userId` έφτανε αργότερα, η λίστα δανείων δεν ξαναδιαβαζόταν και η
+  // καρτέλα έμενε με το αποτέλεσμα της κλήσης χωρίς χρήστη. Ως `useCallback`,
+  // οι τρεις είσοδοι της ανάγνωσης είναι ΜΙΑ εξάρτηση και δεν ξεχνιούνται.
+  const loadSaved = useCallback(async function loadSaved(){
     try{
       const rows = await loanStore.ofProperty(supabase,propertyId,userId) as SavedLoan[]
       setSaved(rows)
@@ -401,7 +405,10 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
       // θα ήταν πάντα ανοιχτό στο πρώτο render και θα «πηδούσε» κλείνοντας.
       if(rows.length > 0) setCalcOpen(false)
     } finally { setLoadingSaved(false) }
-  }
+  },[supabase,propertyId,userId])
+
+  useEffect(()=>{loadSaved()},[loadSaved])
+
   async function handleSaveLoan(loan:Partial<SavedLoan>){
     // ΤΟ ΜΗΝΥΜΑ ΕΠΙΤΥΧΙΑΣ ΗΤΑΝ ΨΕΜΑ. Το insert έγραφε `amount`, `rate`,
     // `loan_type`, `status`, `property_value` — πέντε στήλες που δεν υπήρχαν —
