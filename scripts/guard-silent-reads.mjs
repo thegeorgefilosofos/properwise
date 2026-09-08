@@ -33,7 +33,17 @@ import { tightened } from './lib/ratchet.mjs'
 
 const BASELINE = JSON.parse(readFileSync('scripts/silent-reads-baseline.json', 'utf8'))
 
-const files = projectFiles("'app/**/*.ts' 'app/**/*.tsx' 'lib/**/*.ts' 'lib/**/*.tsx'").filter(f => !f.includes('.test.'))
+// ── ΤΟ ΠΕΔΙΟ ΗΤΑΝ app/ ΚΑΙ lib/, ΚΑΙ ΕΛΕΙΠΕ ΕΚΕΙ ΠΟΥ ΠΟΝΑΕΙ ΠΕΡΙΣΣΟΤΕΡΟ ─────
+// Οι προγραμματισμένες εργασίες (supabase/functions) είχαν 48 σιωπηλές
+// αναγνώσεις που δεν τις μετρούσε ΚΑΜΙΑ καστάνια. Και εκεί η σιωπή κοστίζει
+// περισσότερο από ό,τι σε οθόνη: μια οθόνη που δείχνει κενό την κοιτά άνθρωπος
+// και απορεί, μια εργασία που δεν βρήκε τίποτα απαντά «success» και κανείς δεν
+// τη ρωτά ξανά. Η μία από αυτές έσβηνε ΟΛΟΚΛΗΡΗ την αποστολή υπενθυμίσεων με
+// πράσινο: αποτυχία ανάγνωσης → κενός πίνακας → 200 «No users».
+//
+// Το components/ έλειπε για τον ίδιο λόγο που έλειπε από δέκα άλλους φύλακες:
+// κανείς δεν το πρόσθεσε ποτέ.
+const files = projectFiles("'app/**/*.ts' 'app/**/*.tsx' 'lib/**/*.ts' 'lib/**/*.tsx' 'components/**/*.ts' 'components/**/*.tsx' 'supabase/functions/**/*.ts'").filter(f => !f.includes('.test.'))
 
 /** `const { data } = await …` — η απάντηση διαβάζεται χωρίς το σφάλμα της. */
 const SILENT = /const\s*\{\s*data(?:\s*:\s*\w+)?\s*\}\s*=\s*await\b/
@@ -54,7 +64,10 @@ if (hits.length > BASELINE.max) {
   console.error(`
   Μια ανάγνωση που αγνοεί το \`error\` γυρίζει άδειο και όταν αποτύχει.
   Οπου το άδειο γίνεται ΠΟΣΟ, γράψε εκδοχή που επιστρέφει το σφάλμα
-  (δες \`ledgerWithError\`, \`ofPropertyWithError\`) και δείξ' το στην οθόνη.`)
+  (δες \`ledgerWithError\`, \`ofPropertyWithError\`) και δείξ' το στην οθόνη.
+  Σε προγραμματισμένη εργασία δεν υπάρχει οθόνη: εκεί η αποτυχία απαντά 500 ή,
+  αν αφορά έναν παραλήπτη, τον πηδά ΚΑΙ μπαίνει σε μετρητή που ταξιδεύει στην
+  απάντηση — «success» με σιωπηλές παραλείψεις είναι το ίδιο ψέμα.`)
   process.exit(1)
 }
 

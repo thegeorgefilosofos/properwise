@@ -184,7 +184,26 @@ Deno.serve(async (req) => {
   const fmt = (d: Date) => d.toISOString().split('T')[0]
 
   try {
-    const { data: prefs } = await supabase.from('notification_preferences').select('*').eq('email_enabled', true)
+    // ═══ ΔΥΟ ΑΝΑΓΝΩΣΕΙΣ ΠΟΥ ΕΣΒΗΝΑΝ ΟΛΟΚΛΗΡΗ ΤΗΝ ΕΡΓΑΣΙΑ ΜΕ ΠΡΑΣΙΝΟ ══════════
+    // ΤΟ ΣΦΑΛΜΑ. Και οι δύο αγνοούσαν το `error`. Μια αποτυχία —δίκτυο, policy,
+    // χρονικό όριο— γύριζε `undefined`, που εδώ διαβαζόταν ΑΚΡΙΒΩΣ όπως «κανείς
+    // δεν θέλει ειδοποιήσεις»: η εργασία απαντούσε 200 «No users» και τελείωνε.
+    // Καμία υπενθύμιση σε κανέναν ιδιοκτήτη εκείνη τη μέρα — και ένα πράσινο
+    // τρέξιμο στον πίνακα για να το επιβεβαιώσει.
+    //
+    // Η ΔΕΥΤΕΡΗ ΕΙΝΑΙ ΧΕΙΡΟΤΕΡΗ, ΓΙΑΤΙ ΔΕΝ ΣΤΑΜΑΤΑΕΙ ΚΑΝ. Ο κατάλογος των
+    // επιτρεπτών παραληπτών, άδειος από αποτυχία, κάνει το `mailbox()` να
+    // γυρίζει κενό για ΚΑΘΕ χρήστη: η εργασία τρέχει ώς το τέλος, δεν στέλνει
+    // ούτε ένα email και απαντά `success: true, sent: 0`.
+    //
+    // Το σφάλμα των τριών παρακολουθητών που έγραφαν `raise warning` πάνω σε
+    // αποτυχία ήταν το ίδιο πράγμα. Οταν μια εργασία δεν μπορεί να κάνει τη
+    // δουλειά της, το λέει με 500.
+    const { data: prefs, error: prefsErr } = await supabase.from('notification_preferences').select('*').eq('email_enabled', true)
+    if (prefsErr) {
+      console.error('[send-reminders] οι προτιμήσεις δεν διαβάστηκαν:', prefsErr)
+      return new Response(JSON.stringify({ error: 'notification_preferences unreadable', detail: prefsErr.message }), { status: 500 })
+    }
     if (!prefs?.length) return new Response(JSON.stringify({ message: 'No users' }), { status: 200 })
 
     // ── ΣΕ ΠΟΙΟΝ ΕΠΙΤΡΕΠΕΤΑΙ ΝΑ ΣΤΑΛΕΙ ────────────────────────────────────
@@ -197,7 +216,11 @@ Deno.serve(async (req) => {
     // επαλήθευσε η εγγραφή), κάθε άλλη μόνο αφού επιβεβαιωθεί και η αλλαγή
     // διεύθυνσης ακυρώνει την επιβεβαίωση. Αν αύριο γραφτεί δεύτερος αποστολέας,
     // θα ρωτήσει το ίδιο πράγμα και θα πάρει την ίδια απάντηση.
-    const { data: allowed } = await supabase.rpc('reminder_recipients')
+    const { data: allowed, error: allowedErr } = await supabase.rpc('reminder_recipients')
+    if (allowedErr) {
+      console.error('[send-reminders] οι επιτρεπτοί παραλήπτες δεν διαβάστηκαν:', allowedErr)
+      return new Response(JSON.stringify({ error: 'reminder_recipients unreadable', detail: allowedErr.message }), { status: 500 })
+    }
     const inbox = new Map<string, string>()
     for (const r of ((allowed || []) as { user_id: string; email: string | null }[])) {
       if (r.email) inbox.set(r.user_id, r.email)
@@ -227,6 +250,8 @@ Deno.serve(async (req) => {
     //      ιδιοκτήτη («Ανοιγμα PROPERWISE»), δεν διαβάζεται από τρίτον.
 
     let totalSent = 0
+    /** Πόσοι παραλήπτες πηδήχτηκαν επειδή μια ανάγνωση απέτυχε. Μπαίνει στην απάντηση. */
+    let skipped = 0
 
     for (const pref of prefs) {
       const to = mailbox(pref.user_id)
@@ -248,7 +273,12 @@ Deno.serve(async (req) => {
         if (!check.enabled) continue
         const matching = events.filter(e => e.event_date === check.date)
         if (!matching.length) continue
-        const { data: sent } = await supabase.from('notification_log').select('event_id').in('event_id', matching.map(e=>e.id)).eq('reminder_type', check.type)
+        // ΤΟ ΜΗΤΡΩΟ ΑΠΕΣΤΑΛΜΕΝΩΝ ΕΙΝΑΙ Ο ΜΟΝΟΣ ΦΡΑΓΜΟΣ ΓΙΑ ΔΙΠΛΑ EMAIL. Αγνοώντας
+        // το `error`, μια αποτυχία γινόταν «δεν έχει σταλεί τίποτα» και η ίδια
+        // υπενθύμιση έφευγε ΞΑΝΑ στον ίδιο άνθρωπο. Το να μη σταλεί σήμερα μια
+        // υπενθύμιση διορθώνεται αύριο· ένα διπλό email δεν ξαναπαίρνεται πίσω.
+        const { data: sent, error: sentErr } = await supabase.from('notification_log').select('event_id').in('event_id', matching.map(e=>e.id)).eq('reminder_type', check.type)
+        if (sentErr) { console.error('[send-reminders] μητρώο απεσταλμένων:', sentErr); skipped++; continue }
         const sentIds = new Set(((sent||[]) as Pick<NotificationLogRow,'event_id'>[]).map(l=>l.event_id))
         const toSend  = matching.filter(e => !sentIds.has(e.id))
         if (!toSend.length) continue
@@ -263,7 +293,8 @@ Deno.serve(async (req) => {
       // Το ίδιο ίσχυε για τα εκπρόθεσμα: ο διακόπτης υπήρχε και κανείς δεν τον διάβαζε.
       const overdue = pref.reminder_overdue === false ? [] : events.filter(e => e.event_date < todayStr)
       if (overdue.length) {
-        const { data: sentOD } = await supabase.from('notification_log').select('event_id').in('event_id', overdue.map(e=>e.id)).eq('reminder_type','overdue')
+        const { data: sentOD, error: sentODErr } = await supabase.from('notification_log').select('event_id').in('event_id', overdue.map(e=>e.id)).eq('reminder_type','overdue')
+        if (sentODErr) { console.error('[send-reminders] μητρώο εκπρόθεσμων:', sentODErr); skipped++ }
         const sentODIds = new Set(((sentOD||[]) as Pick<NotificationLogRow,'event_id'>[]).map(l=>l.event_id))
         const toSendOD  = overdue.filter(e => !sentODIds.has(e.id))
         if (toSendOD.length) {
@@ -310,9 +341,13 @@ Deno.serve(async (req) => {
       const overdueIds = overdue.map(r => r.id)
       if (!overdueIds.length) continue
       // ΟΛΑ τα προηγούμενα dunning logs για αυτές τις δόσεις με μία query.
-      const { data: priorLogs } = await supabase.from('notification_log')
+      const { data: priorLogs, error: priorErr } = await supabase.from('notification_log')
         .select('event_id, created_at').eq('reminder_type', 'rent_overdue')
         .in('event_id', overdueIds)
+      // Ιδιο σκεπτικό: χωρίς το ιστορικό, ΚΑΘΕ ληξιπρόθεσμη δόση θα φαινόταν
+      // ανειδοποίητη και η όχληση θα ξανάφευγε από την αρχή, με τον αριθμό
+      // ειδοποίησης μηδενισμένο. Καλύτερα καμία όχληση σήμερα.
+      if (priorErr) { console.error('[send-reminders] ιστορικό οχλήσεων:', priorErr); skipped++; continue }
 
       // Per-instalment: COUNT προηγούμενων ειδοποιήσεων + MAX(created_at) (πιο πρόσφατη).
       const priorCount: Record<string, number> = {}
@@ -365,7 +400,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, sent: totalSent, dunningSent }), { status: 200 })
+    // ΟΙ ΠΑΡΑΛΕΙΨΕΙΣ ΤΑΞΙΔΕΥΟΥΝ ΣΤΗΝ ΑΠΑΝΤΗΣΗ. Μια εργασία που πήδηξε δέκα
+    // παραλήπτες επειδή δεν διάβασε το μητρώο τους ΔΕΝ είναι ίδια με μια που
+    // δεν είχε τίποτα να στείλει· ο πίνακας πρέπει να ξεχωρίζει τις δύο.
+    return new Response(JSON.stringify({ success: true, sent: totalSent, dunningSent, skipped }), { status: 200 })
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500 })
   }
