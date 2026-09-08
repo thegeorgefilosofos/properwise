@@ -111,7 +111,7 @@ export type ReadEvent =
   | { ok: false; reason: string; ours: boolean; config?: boolean };
 
 /** Οι πάροχοι που ξέρει το έργο. */
-export type MerchantId = 'lemon';
+export type MerchantId = 'lemon' | 'creem';
 
 /**
  * Η θύρα. Καμία μέθοδος δεν δέχεται ή επιστρέφει έννοια του παρόχου.

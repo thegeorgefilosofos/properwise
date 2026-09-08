@@ -9,6 +9,7 @@
 // όποιος τη ρύθμισε. Πετά, ώστε να φανεί στο πρώτο κιόλας αίτημα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { lemonPort } from './lemon';
+import { creemPort } from './creem';
 import type { MerchantPort, MerchantId, BillingEnv } from './port';
 
 export * from './port';
@@ -16,6 +17,7 @@ export * from './port';
 /** Ο κατάλογος. Ενας νέος πάροχος μπαίνει εδώ και πουθενά αλλού. */
 const PORTS: Record<MerchantId, MerchantPort> = {
   lemon: lemonPort,
+  creem: creemPort,
 };
 
 /** Το όνομα της μεταβλητής που διαλέγει πάροχο. */
