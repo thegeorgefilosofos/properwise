@@ -50,6 +50,10 @@ function enfiaOracle(sqm: number, zone: string, floor: string, age: string, owne
     const rd = ENFIA_REDUCTIONS.find(x => x.key === r)
     if (!rd) return 0
     if (rd.untilYear != null && (year == null || year > rd.untilYear)) return 0
+    // ΤΟ ΑΝΩΤΑΤΟ ΟΡΙΟ ΑΞΙΑΣ, ΓΡΑΜΜΕΝΟ ΚΙ ΑΥΤΟ ΜΕ ΤΑ ΔΙΚΑ ΤΟΥ ΝΟΥΜΕΡΑ: πάνω από
+    // 400.000 € κατοικίας, η μείωση του μικρού οικισμού δεν δίνεται καθόλου —
+    // άλλος κανόνας από το `pctOver`, που απλώς μικραίνει το ποσοστό.
+    if (r === 'small_settlement_2026' && homeVal > 400000) return 0
     return r === 'insurance' && homeVal > 500000 ? 10 : rd.pct
   }))
   const combined = 1 - (1 - wealthPct / 100) * (1 - manualPct / 100)

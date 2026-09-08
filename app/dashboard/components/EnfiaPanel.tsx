@@ -452,7 +452,12 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
               // ΤΟ ΜΕΤΡΟ ΠΟΥ ΕΛΗΞΕ ΦΑΙΝΕΤΑΙ, ΔΕΝ ΕΞΑΦΑΝΙΖΕΤΑΙ. Ο λογιστής που το
               // έψαχνε πρέπει να μάθει ΓΙΑΤΙ δεν είναι πια εκεί· ένας κατάλογος
               // που σιωπηλά κονταίνει διαβάζεται ως σφάλμα της εφαρμογής.
-              const inForce = enfiaReductionInForce(r.key, enfiaYear);
+              // Η ΑΞΙΑ ΠΟΥ ΚΡΙΝΕΙ ΕΙΝΑΙ Η ΙΔΙΑ ΠΟΥ ΚΡΙΝΕΙ ΣΤΗ ΜΗΧΑΝΗ: του ακινήτου
+              // όταν δηλώθηκε, αλλιώς της συνολικής περιουσίας. Δύο διαφορετικές
+              // απαντήσεις στην ίδια ερώτηση θα ήταν χειρότερες από καμία.
+              const homeVal = (parseFloat(s.enfiaPropVal) || 0) || (parseFloat(s.enfiaTotalVal) || 0);
+              const inForce = enfiaReductionInForce(r.key, enfiaYear, homeVal);
+              const lapsed = r.untilYear != null && enfiaYear > r.untilYear;
               const active = inForce && (s.enfiaReductions || []).includes(r.key);
               return (
                 <button key={r.key} type="button" disabled={!inForce}
@@ -475,7 +480,9 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
                     <span style={{ ...TT.caption, display: 'block', marginTop: 2 }}>{r.note}</span>
                     {!inForce && (
                       <span style={{ ...TT.caption, display: 'block', marginTop: 2, color: 'var(--text-tertiary)' }}>
-                        Δεν ισχύει για τον ΕΝΦΙΑ {enfiaYear}: το μέτρο εφαρμόστηκε ώς και το {r.untilYear}.
+                        {lapsed
+                          ? `Δεν ισχύει για τον ΕΝΦΙΑ ${enfiaYear}: το μέτρο εφαρμόστηκε ώς και το ${r.untilYear}.`
+                          : `Δεν δίνεται σε αυτή την αξία: το όριο του μέτρου είναι ${fe(r.maxHomeValue!)}.`}
                       </span>
                     )}
                   </span>

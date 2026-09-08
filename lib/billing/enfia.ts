@@ -207,9 +207,29 @@ export const ENFIA_REDUCTIONS: {
    * Χωρίς τιμή, το μέτρο δεν έχει ημερομηνία λήξης στον νόμο.
    */
   untilYear?: number
+  /**
+   * ΑΝΩΤΑΤΗ ΑΞΙΑ ΚΑΤΟΙΚΙΑΣ ΠΑΝΩ ΑΠΟ ΤΗΝ ΟΠΟΙΑ ΤΟ ΜΕΤΡΟ ΔΕΝ ΔΙΝΕΤΑΙ ΚΑΘΟΛΟΥ.
+   *
+   * ΔΕΥΤΕΡΗ ΦΟΡΑ ΤΟ ΙΔΙΟ ΣΦΑΛΜΑ, ΣΤΟΝ ΙΔΙΟ ΠΙΝΑΚΑ. Το `pctOver` γράφτηκε επειδή
+   * το κατώφλι της ασφαλισμένης κατοικίας ζούσε ΜΟΝΟ στη σημείωση και η μηχανή
+   * δεν το τηρούσε. Ακριβώς δίπλα του, η μείωση του μικρού οικισμού έλεγε στη
+   * σημείωσή της «αξία κατοικίας ≤400.000 €» και έδινε το 50% σε κάθε αξία —
+   * με τη μηχανή να ΕΧΕΙ τον αριθμό στα χέρια της, τον ίδιο που ήδη διαβάζει
+   * για το `pctOver`. Η οθόνη τύπωνε τον σωστό κανόνα δίπλα σε νούμερο που τον
+   * παραβίαζε, σε φόρο 800 € με 400 € διαφορά.
+   *
+   * ΔΙΑΦΕΡΕΙ ΑΠΟ ΤΟ `pctOver`: εκεί το ποσοστό ΑΛΛΑΖΕΙ πάνω από το κατώφλι,
+   * εδώ το μέτρο ΠΑΥΕΙ. Δύο διαφορετικοί κανόνες του νόμου, δύο πεδία.
+   *
+   * ΚΡΙΝΕΙ ΜΟΝΟ ΟΤΑΝ ΞΕΡΟΥΜΕ ΤΗΝ ΑΞΙΑ. Οσο ο χρήστης δεν την έχει δηλώσει, τα
+   * υπόλοιπα κριτήρια (πληθυσμός οικισμού, κύρια κατοικία) τα βεβαιώνει ο ίδιος
+   * τσεκάροντας το κουτί· να του κόψουμε τη μείωση επειδή δεν συμπλήρωσε ένα
+   * πεδίο θα ήταν σιωπηλή τιμωρία για κενό, όχι εφαρμογή του νόμου.
+   */
+  maxHomeValue?: number
 }[] = [
   { key: 'low_income', label: 'Χαμηλό εισόδημα (κύρια κατοικία)', pct: 50, note: 'Μείωση 50% με κριτήρια: εισόδημα ≤9.000 € (+1.000 €/μέλος), κτίσματα ≤150 τ.μ., περιουσία ≤85.000 € (άγαμος) / 200.000 € (έγγαμος με 2 τέκνα)' },
-  { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού (2026)', pct: 50, untilYear: 2026, note: 'Αυτόματη μείωση 50% ΕΝΦΙΑ 2026 για οικισμούς ≤1.500 κατ., αξία κατοικίας ≤400.000 €' },
+  { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού (2026)', pct: 50, untilYear: 2026, maxHomeValue: 400_000, note: 'Αυτόματη μείωση 50% ΕΝΦΙΑ 2026 για οικισμούς ≤1.500 κατ., αξία κατοικίας ≤400.000 €' },
   { key: 'large_family', label: 'Τρίτεκνοι / Πολύτεκνοι', pct: 100, note: '100% απαλλαγή με κριτήρια: εισόδημα ≤12.000 € (+1.000 €/μέλος), κτίσματα ≤150 τ.μ.' },
   { key: 'disability', label: 'Αναπηρία ≥80%', pct: 100, note: '100% απαλλαγή με τα ίδια εισοδηματικά/περιουσιακά κριτήρια' },
   { key: 'insurance', label: 'Ασφαλισμένη κατοικία', pct: 20, pctOver: { above: 500_000, pct: 10 }, note: '20% (αξία ≤500.000 €) ή 10% (>500.000 €), κάλυψη σεισμού+πυρκαγιάς+πλημμύρας ≥3 μήνες' },
@@ -287,13 +307,21 @@ export function enfiaReductionPct(key: string, homeValue: number, year?: number)
   const rd = ENFIA_REDUCTIONS.find(r => r.key === key)
   if (!rd) return 0
   if (rd.untilYear != null && (year == null || year > rd.untilYear)) return 0
+  if (rd.maxHomeValue != null && homeValue > rd.maxHomeValue) return 0
   return rd.pctOver && homeValue > rd.pctOver.above ? rd.pctOver.pct : rd.pct
 }
 
-/** Ισχύει το μέτρο για αυτό το έτος ΕΝΦΙΑ; Το χρησιμοποιεί και η οθόνη. */
-export function enfiaReductionInForce(key: string, year: number): boolean {
+/**
+ * Μπορεί αυτό το μέτρο να δοθεί εδώ; Το χρησιμοποιεί και η οθόνη, ώστε να λέει
+ * ΓΙΑΤΙ ένα κουτί δεν τσεκάρεται αντί να το αφήνει να τσεκαριστεί χωρίς αποτέλεσμα.
+ *
+ * @param homeValue η αξία της κατοικίας, ή 0 όταν δεν έχει δηλωθεί
+ */
+export function enfiaReductionInForce(key: string, year: number, homeValue = 0): boolean {
   const rd = ENFIA_REDUCTIONS.find(r => r.key === key)
-  return !!rd && (rd.untilYear == null || year <= rd.untilYear)
+  if (!rd) return false
+  if (rd.untilYear != null && year > rd.untilYear) return false
+  return !(rd.maxHomeValue != null && homeValue > rd.maxHomeValue)
 }
 
 export function wealthReductionPct(totalValue: number): number {
