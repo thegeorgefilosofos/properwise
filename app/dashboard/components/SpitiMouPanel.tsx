@@ -14,7 +14,6 @@ import { athensToday } from '@/lib/core/time'
 // δόση και εξοικονόμηση έναντι κανονικού δανείου, τα κριτήρια ένα-ένα (ναι/όχι),
 // τις συμμετέχουσες τράπεζες και την αντίστροφη μέτρηση ως τη λήξη συμβολαίων.
 const FONT = "'Inter',sans-serif"
-const MONO = "'Roboto Mono',monospace"
 
 type Crit = { label: string; status: 'pass' | 'fail' | 'unknown'; detail: string }
 
@@ -83,7 +82,6 @@ export default function SpitiMouPanel({
   const daysLeft = Math.ceil((deadline.getTime() - nowMs) / 86400000)
   const deadlineStr = deadline.toLocaleDateString('el-GR', { day: '2-digit', month: 'long', year: 'numeric' })
 
-  const tri = (s: Crit['status']) => s === 'pass' ? 'var(--accent)' : s === 'fail' ? 'var(--negative)' : 'var(--text-tertiary)'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

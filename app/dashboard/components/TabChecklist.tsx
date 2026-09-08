@@ -872,7 +872,6 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
           {CATEGORIES.filter(c => grouped[c.id]?.length).map(cat => {
             const catItems = grouped[cat.id]
             const catDone = catItems.filter(i => i.status === 'done').length
-            const catPct = catItems.length > 0 ? Math.round((catDone / catItems.length) * 100) : 0
             const catEst = catItems.reduce((s, i) => s + (i.estimated_cost || 0), 0)
             return (
               <div key={cat.id}>
@@ -899,7 +898,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
                     δίνει ποτέ. Η γενική μπάρα της σελίδας μένει, γιατί εκεί
                     είναι η ΜΟΝΗ που λέει την αναλογία. */}
                 <div style={{ background: 'var(--bg-surface)', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
-                  {catItems.map((item, idx) => (
+                  {catItems.map((item) => (
                     <ItemRow key={item.id} item={item} allItems={items}
                       onToggle={() => toggleItem(item)}
                       onEdit={() => { setEditItem(item); setShowAddModal(true) }}

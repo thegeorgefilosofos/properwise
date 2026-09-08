@@ -2,7 +2,7 @@
 import { ALL_TARIFFS, COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE } from './catalogue';
 import {
   monthlyCost, compareTariffs, estimateUsage, waterMonthly, waterMonthlyText,
-  ETMEAR, type Tariff, type Usage,
+  type Tariff, type Usage,
 } from './tariff';
 
 let pass = 0, fail = 0;

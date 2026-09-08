@@ -24,7 +24,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ClientStaysRow } from '@/lib/supabase/tables';
 // ΤΟ `rows` ΠΑΙΡΝΕΙ ΨΕΥΔΩΝΥΜΟ: οι εγγραφές του αρχείου (`add`, `addBatched`)
 // έχουν ήδη παράμετρο με το όνομα `rows`.
-import { read, rows as readRows, type ReadResult, type ReadOneResult } from './read';
+import { read, rows as readRows, type ReadResult } from './read';
 
 const TABLE = 'client_stays';
 

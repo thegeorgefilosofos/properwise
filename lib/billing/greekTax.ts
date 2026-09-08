@@ -91,8 +91,13 @@ export function marginalRate(taxable: number, brackets: TaxBracket[] = RENTAL_TA
 }
 
 /** Μέσος (πραγματικός) συντελεστής: φόρος / εισόδημα. */
-export function effectiveRentalRate(taxable: number): number {
-  return taxable > 0 ? rentalIncomeTax(taxable) / taxable : 0;
+// ── ΗΤΑΝ ΤΥΦΛΗ ΩΣ ΠΡΟΣ ΤΟ ΕΤΟΣ ────────────────────────────────────────────
+// Δεν δεχόταν κλιμάκια, οπότε απαντούσε ΠΑΝΤΑ με τα προεπιλεγμένα — κι έτσι ο
+// υπολογιστής ενοικίων έγραφε τον ίδιο τύπο ΞΑΝΑ, στο χέρι, για να μπορεί να
+// περάσει τα κλιμάκια της χρονιάς που διάλεξε ο χρήστης. Δύο εκδοχές του ίδιου
+// κλάσματος: η μία σωστή στην οθόνη, η άλλη σωστή μόνο για το τρέχον έτος.
+export function effectiveRentalRate(taxable: number, brackets: TaxBracket[] = RENTAL_TAX_BRACKETS_2026): number {
+  return taxable > 0 ? rentalIncomeTax(taxable, brackets) / taxable : 0;
 }
 
 /** Γραμμές κλίμακας για εμφάνιση σε πίνακα UI. */

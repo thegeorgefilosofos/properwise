@@ -96,7 +96,7 @@ import { taxProfileOf } from '@/lib/tax/greekTaxCalendar';
 import PortalShare from './components/PortalShare';
 import OccupancyPanel from './components/OccupancyPanel';
 import BillingNudge from './components/BillingNudge';
-import { athensToday, daysUntilOrNull, isoYear, isoMonth } from '@/lib/core/time';
+import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
 // Το Αρχείο έχει ένα σπίτι: lib/data/documents.
 import * as documents from '@/lib/data/documents';
 import { saved, savedData } from '@/components/dbWrite';
@@ -759,7 +759,6 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // ο πίνακας ήταν τρίτη, αόρατη μηχανή που πλήρωνε ερωτήματα χωρίς αποδέκτη.
   // Μένουν μόνο τα μεγέθη που εμφανίζονται πραγματικά στα πλακίδια.
   // Ιδια πολιτική με τις άλλες οθόνες, γραμμένη μία φορά (lib/core/time).
-  const daysUntil = daysUntilOrNull;
   const openChk = chk.length;
 
   // ── ΦΟΡΟΣ: ΕΝΑΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ, ΟΧΙ ΤΡΕΙΣ ────────────────────────────────
@@ -2410,7 +2409,7 @@ export default function Dashboard() {
                   στέλνει ο βοηθός— και οδηγεί εκεί που όντως είναι οι επαφές. */}
               {(nav==='documents' || nav==='contacts') && (
                 <>
-                  <TabDocuments key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType}/>
+                  <TabDocuments key={selected.id} propertyId={selected.id} userId={user.id}/>
                   {/* Η επικεφαλίδα ζει ΜΕΣΑ στο component, μαζί με τις ενέργειές
                       της. Εδώ γραφόταν δεύτερη φορά και από κάτω το ίδιο το
                       component τύπωνε τίτλο σελίδας με υπότιτλο που έλεγε την

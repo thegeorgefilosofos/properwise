@@ -34,7 +34,7 @@
 //     node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-layout.mjs
 //     (οι δημόσιες σελίδες ελέγχονται μόνο αν απαντά το E2E_BASE)
 // ═══════════════════════════════════════════════════════════════════════════
-import { launchEngine, engineLabel, engineName } from './lib/engine.mjs'
+import { launchEngine, engineLabel } from './lib/engine.mjs'
 import { SCENES } from './lib/scenes.mjs'
 import { abortIfStyleless } from './lib/served-css.mjs'
 import { benchUrl } from './lib/paths.mjs'
@@ -352,7 +352,6 @@ const PROBE = () => {
     // (sticky κεφαλίδα, πλωτό υποσέλιδο, στοίβα εναλλασσόμενης λέξης) ΠΡΕΠΕΙ να
     // περνά από πάνω: αυτός είναι ο λόγος που υπάρχει. Χωρίς αυτόν τον όρο ο
     // ανιχνευτής έβγαζε 146 «συγκρούσεις» που ήταν όλες σωστός σχεδιασμός.
-    const cs = getComputedStyle(el)
     // ═══ ΤΟ «relative» ΧΩΡΙΣ ΜΕΤΑΤΟΠΙΣΗ ΔΕΝ ΒΓΑΖΕΙ ΤΙΠΟΤΑ ΑΠΟ ΤΗ ΡΟΗ ═══════
     // ΨΕΥΔΩΣ ΑΘΩΩΘΗΚΕ ΜΙΑ ΠΡΑΓΜΑΤΙΚΗ ΣΥΓΚΡΟΥΣΗ. Ο όρος ήταν «position !==
     // static» για ΚΑΘΕ πρόγονο, δηλαδή αρκούσε ένα `position: relative` κάπου
@@ -593,7 +592,6 @@ const PROBE = () => {
     // ΕΝΑ μόνο του, με κενό όσο τρία δεξιά του, διαβάζεται ως λάθος. Και το
     // πλήθος συχνά το ορίζουν τα δεδομένα: μια απαίτηση για γεμάτη τελευταία
     // σειρά είναι απαίτηση να έχει ο χρήστης τον σωστό αριθμό εγγραφών.
-    const full = Math.max(...counts), last = counts[counts.length - 1]
     if (last > 1) continue
     // ΚΑΙ ΤΟ ΜΟΝΟ ΠΛΑΚΙΔΙΟ ΠΟΥ ΑΠΛΩΝΕΤΑΙ ΔΕΝ ΕΙΝΑΙ ΟΡΦΑΝΟ, ΕΙΝΑΙ Η ΔΙΟΡΘΩΣΗ.
     // Ο κανόνας `:last-child:nth-child(odd) { grid-column: 1 / -1 }` υπάρχει

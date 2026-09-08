@@ -264,7 +264,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         {secHdr('Ανάλυση Κοινοχρήστων ανά Κατηγορία')}
 
         <div style={{ ...formGrid(), marginBottom: 16 }}>
-          <NumberInput label="Τα χιλιοστά μου (‰)" value={millesimi} onChange={sMill} suffix="‰" step={1} max={1000}/>
+          <NumberInput label="Τα χιλιοστά μου (‰)" value={millesimi} onChange={sMill} suffix="‰" max={1000}/>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
             <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 6, fontFamily: T.font.sans }}>Το μερίδιό μου</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fp((millRatio * 100))}</div>
@@ -358,8 +358,8 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         {/* FIX: 3 cols so DatePicker has enough room, was 4 cols causing overflow */}
         <div {...fieldRow(180, 14, { marginBottom: 14 })}>
           <CustomSelect label="Τύπος διαχείρισης" labelInfo={mgmtInfo} value={mgmtType} onChange={sMgmt} options={MGMT_TYPES}/>
-          <NumberInput  label="Μηνιαίο κόστος" value={mgmtCost}   onChange={sMgmtC} suffix="€" step={5}/>
-          <NumberInput  label="Ημέρα χρέωσης"       value={mgmtDueDay} onChange={sMgmtD} suffix="η" step={1}/>
+          <NumberInput  label="Μηνιαίο κόστος" value={mgmtCost}   onChange={sMgmtC} suffix="€"/>
+          <NumberInput  label="Ημέρα χρέωσης"       value={mgmtDueDay} onChange={sMgmtD} suffix="η"/>
         </div>
 
         {/* ═══ ΤΡΙΑ ΤΜΗΜΑΤΑ ΕΦΥΓΑΝ ΑΠΟ ΕΔΩ ═══════════════════════════════════
@@ -392,9 +392,9 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
             μισή κάρτα άδεια δεξιά — όχι επιλογή, αλλά ό,τι απέμενε από ένα
             πλέγμα με σταθερό μέγιστο στήλης. Μία σειρά, ίσα μοιρασμένη. */}
         <div {...fieldRow(180, 14, { marginBottom: 14 })}>
-          <NumberInput label="Υπόλοιπο ταμείου"    value={fundBalance}  onChange={sFundBal} suffix="€" step={100}/>
-          <NumberInput label="Μερίδιό μου"         value={fundMyPct}    onChange={sFundPct} suffix="%" step={1} max={100}/>
-          <NumberInput label="Μηνιαία εισφορά"     value={fundMonthly}  onChange={sFundM}   suffix="€" step={5}/>
+          <NumberInput label="Υπόλοιπο ταμείου"    value={fundBalance}  onChange={sFundBal} suffix="€"/>
+          <NumberInput label="Μερίδιό μου"         value={fundMyPct}    onChange={sFundPct} suffix="%" max={100}/>
+          <NumberInput label="Μηνιαία εισφορά"     value={fundMonthly}  onChange={sFundM}   suffix="€"/>
           <DatePicker  label="Τελευταία ενημέρωση" value={fundLastDate} onChange={sFundD}/>
         </div>
 
@@ -434,7 +434,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
               3+1. Ο κανόνας των διαιρετών δίνει 4 ή 2+2, ποτέ ορφανό. */}
           <div {...fixedCols(4, 14)}>
             <TextInput   label="Αιτία"      value={extraReason} onChange={setExtraReason} placeholder="ταράτσα"/>
-            <NumberInput label="Ποσό"       value={extraAmount} onChange={setExtraAmount} suffix="€" step={50}/>
+            <NumberInput label="Ποσό"       value={extraAmount} onChange={setExtraAmount} suffix="€"/>
             <DatePicker  label="Ημερομηνία" value={extraDate}   onChange={setExtraDate}/>
             <button type="button" disabled={!extraReason.trim() || !extraAmount} onClick={addExtra}
               style={addBtn(!extraReason.trim() || !extraAmount)}>

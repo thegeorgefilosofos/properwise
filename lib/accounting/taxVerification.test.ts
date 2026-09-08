@@ -162,7 +162,6 @@ const SCALES: { name: string; brackets: TaxBracket[]; oracle: (x: number) => num
 
 // ── 3) ΑΝΑΛΛΟΙΩΤΕΣ (invariants) σε χιλιάδες τιμές ──────────────────────────
 {
-  const rnd = rng(77777)
   const N = 8000
   for (const s of SCALES) {
     let prev = 0

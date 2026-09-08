@@ -22,7 +22,6 @@ let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
 
 const FREE_USERS_TARGET = 10
-const EUR_TO_USD = 1.08
 
 // ── Ο ΣΚΛΗΡΟΣ οικονομικός έλεγχος: η κοινή δεξαμενή ────────────────────────
 // Τα ατομικά όρια ΔΕΝ αρκούν: δεσμεύουν έναν χρήστη, δεν δεσμεύουν το άθροισμα.

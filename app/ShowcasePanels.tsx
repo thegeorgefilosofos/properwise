@@ -3,6 +3,7 @@
 import BrandMark from '@/components/BrandMark';
 import { T } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
+import { ASSISTANT_NAME, ASSISTANT_INITIAL } from '@/lib/assistant/identity';
 // ═══════════════════════════════════════════════════════════════════════════
 // Τα τρία «πάνελ προϊόντος» (Σάρωση · Πίνακας · Βοηθός), ΜΙΑ πηγή αλήθειας
 // για το showcase του hero ΚΑΙ το scrollytelling «Πώς δουλεύει». Μαζί τους
@@ -317,9 +318,9 @@ export function PanelAssistant() {
   return (
     <div style={{ maxWidth: 460, margin: '0 auto', textAlign: 'left' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 12, marginBottom: 4, borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15 }}>Ν</div>
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15 }}>{ASSISTANT_INITIAL}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>Νόα</div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{ASSISTANT_NAME}</div>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Ο βοηθός σου για τα ακίνητα</div>
         </div>
         {/* Η κουκκίδα «ενεργός» ήταν πράσινη. Στην εφαρμογή το «εδώ είσαι, εδώ

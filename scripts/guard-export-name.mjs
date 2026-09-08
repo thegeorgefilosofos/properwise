@@ -30,7 +30,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs';
 import { projectFiles } from './lib/git-files.mjs'
-import { execSync } from 'node:child_process';
 
 const files = projectFiles("'app/**/*.tsx' 'app/**/*.ts' 'components/**/*.tsx' 'components/**/*.ts'");
 

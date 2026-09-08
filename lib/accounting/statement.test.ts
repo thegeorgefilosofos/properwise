@@ -39,6 +39,11 @@ const near = (a: number, b: number, eps = 0.02) => Math.abs(a - b) <= eps
   const gross = 30000
   const taxable = gross * 0.95 // 28500
   const st = incomeStatement({ regime: 'individual_longterm', grossIncome: gross })
+  // Η ΒΑΣΗ ΕΛΕΓΧΕΤΑΙ, ΔΕΝ ΥΠΟΝΟΕΙΤΑΙ. Το 28.500 ήταν γραμμένο ως σχόλιο και
+  // υπολογισμένο σε μεταβλητή που κανείς δεν διάβαζε: αν η τεκμαρτή έκπτωση
+  // άλλαζε, ο φόρος θα άλλαζε και το τεστ θα κοκκίνιζε λέγοντας «6375», χωρίς
+  // να πει ΠΟΥ έσπασε. Τώρα σπάει στη βάση, εκεί που είναι η αιτία.
+  ok('longterm taxable base = gross − τεκμαρτή έκπτωση', near(st.taxableIncome, taxable))
   // 12000*.15 + 12000*.25 + 4500*.35 = 1800+3000+1575 = 6375
   ok('longterm progressive 28500 → 6375', near(st.incomeTax, 6375))
   ok('longterm marginal reflected (eff between 15% and 35%)', st.effectiveRate > 0.15 && st.effectiveRate < 0.35)

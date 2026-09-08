@@ -1090,7 +1090,6 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
         const chRows = revenueByChannel(yStays);
         const maxCh = Math.max(1, ...chRows.map(r => r.revenue));
         const months = revenueByMonth(yStays, reportYear);
-        const maxMonth = Math.max(1, ...months);
         // ═══ ΔΥΟ ΜΕΤΡΗΤΕΣ ΝΥΧΤΩΝ, ΔΙΠΛΑ ΔΙΠΛΑ, ΜΕ ΔΙΑΦΟΡΕΤΙΚΟ ΑΠΟΤΕΛΕΣΜΑ ══
         //
         // Το `yearOccupancy` μετρά με `nightsInRange`, που απαιτεί ΚΑΙ
@@ -1107,7 +1106,6 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
         // πίνακα νυχτών, ώστε η οθόνη να μετρά μία φορά. Ο μετρητής είναι ο
         // ίδιος που χρησιμοποιεί και η φορολογική σύνοψη.
         const occ = occupancyFromMonths(nightsByMonthForYear(yStays, reportYear), reportYear);
-        const monthInitials = ['Ι', 'Φ', 'Μ', 'Α', 'Μ', 'Ι', 'Ι', 'Α', 'Σ', 'Ο', 'Ν', 'Δ'];
         return (
           <div style={{ marginTop: 26 }}>
             <SecHdr label={`Ακαθάριστα ${reportYear}`} sub="Δηλωτέο ακαθάριστο ανά κανάλι και ανά μήνα, χωρίς το τέλος ανθεκτικότητας, χωρίς αφαίρεση προμήθειας"
@@ -1469,11 +1467,11 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                         επισκέπτης, τι πάει στο κράτος, τι εκπίπτει. Το ίδιο
                         πράγμα δύο φορές, τη μία με ποντίκι από πάνω. */}
                     <NumberInput label="Πλήρωσε ο επισκέπτης"
-                      value={stayForm.gross_guest_paid} onChange={v => setStayForm(f => ({ ...f, gross_guest_paid: v }))} suffix="€" step={10} />
+                      value={stayForm.gross_guest_paid} onChange={v => setStayForm(f => ({ ...f, gross_guest_paid: v }))} suffix="€" />
                     <NumberInput label="Τέλος ανθεκτικότητας"
-                      value={stayForm.climate_levy} onChange={v => setStayForm(f => ({ ...f, climate_levy: v }))} suffix="€" step={2} />
+                      value={stayForm.climate_levy} onChange={v => setStayForm(f => ({ ...f, climate_levy: v }))} suffix="€" />
                     <NumberInput label="Προμήθεια πλατφόρμας"
-                      value={stayForm.platform_fee} onChange={v => setStayForm(f => ({ ...f, platform_fee: v }))} suffix="€" step={5} />
+                      value={stayForm.platform_fee} onChange={v => setStayForm(f => ({ ...f, platform_fee: v }))} suffix="€" />
                   </div>
 
                   {/* Πρόταση τέλους από τους συντελεστές της ΑΑΔΕ και τον τύπο/
@@ -1810,9 +1808,9 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
             {/* Το ένα, διφορούμενο «Ποσό (payout)» έγινε τρία ξεχωριστά.
                 Εκεί γεννιόταν η αντίφαση: ό,τι μπαινε εδώ ως payout
                 διαβαζόταν αλλού ως ακαθάριστο και φορολογούνταν. */}
-            <NumberInput label="Πλήρωσε ο επισκέπτης" labelInfo="Το σύνολο που πλήρωσε ο επισκέπτης, πριν την προμήθεια." value={emailDraft.gross} onChange={v => setEmailDraft(d => d && { ...d, gross: v })} suffix="€" step={10} />
-            <NumberInput label="Τέλος ανθεκτικότητας" labelInfo="Δεν είναι έσοδό σου· αφαιρείται από το δηλωτέο ακαθάριστο." value={emailDraft.levy} onChange={v => setEmailDraft(d => d && { ...d, levy: v })} suffix="€" step={2} />
-            <NumberInput label="Προμήθεια πλατφόρμας" labelInfo="Δαπάνη που εκπίπτει· ΔΕΝ μειώνει το δηλωτέο ακαθάριστο." value={emailDraft.fee} onChange={v => setEmailDraft(d => d && { ...d, fee: v })} suffix="€" step={5} />
+            <NumberInput label="Πλήρωσε ο επισκέπτης" labelInfo="Το σύνολο που πλήρωσε ο επισκέπτης, πριν την προμήθεια." value={emailDraft.gross} onChange={v => setEmailDraft(d => d && { ...d, gross: v })} suffix="€" />
+            <NumberInput label="Τέλος ανθεκτικότητας" labelInfo="Δεν είναι έσοδό σου· αφαιρείται από το δηλωτέο ακαθάριστο." value={emailDraft.levy} onChange={v => setEmailDraft(d => d && { ...d, levy: v })} suffix="€" />
+            <NumberInput label="Προμήθεια πλατφόρμας" labelInfo="Δαπάνη που εκπίπτει· ΔΕΝ μειώνει το δηλωτέο ακαθάριστο." value={emailDraft.fee} onChange={v => setEmailDraft(d => d && { ...d, fee: v })} suffix="€" />
             <CustomSelect label="Κανάλι" value={emailDraft.channel} onChange={v => setEmailDraft(d => d && { ...d, channel: v })} options={channelOptions} />
           </div>
           {(parseFloat(emailDraft.gross) || 0) > 0 && (

@@ -100,7 +100,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
       deduction: gross - taxable,
       net: gross - tax,
       marginal: marginalRate(taxable, brackets),
-      effective: taxable > 0 ? rentalIncomeTax(taxable, brackets) / taxable : 0,
+      effective: effectiveRentalRate(taxable, brackets),
       monthlyNet: n > 0 ? (gross - tax) / n : 0,
       // ΤΙ ΚΟΣΤΙΖΟΥΝ ΤΑ ΜΕΤΡΗΤΑ, ΣΕ ΕΥΡΩ. Η διαφορά των δύο φόρων, όχι το 5%
       // του ενοικίου: η έκπτωση μειώνει τη ΒΑΣΗ, οπότε το κόστος εξαρτάται από

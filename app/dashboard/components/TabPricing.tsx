@@ -623,7 +623,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
                 <div style={{ ...formGrid(130, 190), gap: 10, marginBottom: 12 }}>
                   {[0, 1, 2, 3].map(i => (
-                    <NumberInput key={i} label={`Ανταγωνιστής ${i + 1}`} value={comps[i] || ''} onChange={v => setComp(i, v)} suffix="€" step={5} placeholder="" />
+                    <NumberInput key={i} label={`Ανταγωνιστής ${i + 1}`} value={comps[i] || ''} onChange={v => setComp(i, v)} suffix="€" placeholder="" />
                   ))}
                 </div>
                 {compBase > 0 ? (

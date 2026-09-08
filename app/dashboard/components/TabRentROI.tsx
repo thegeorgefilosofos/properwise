@@ -1310,13 +1310,13 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         </button>
         {inputsOpen && (<div style={{ marginTop: 16 }}>
         <div {...g4}>
-          <NumberInput label="Αξία ακινήτου" value={value} onChange={setValue} suffix="€" step={5000} />
+          <NumberInput label="Αξία ακινήτου" value={value} onChange={setValue} suffix="€" />
           {/* Η ΜΟΝΑΔΑ ΧΡΟΝΟΥ ΔΕΝ ΦΕΥΓΕΙ ΑΠΟ ΤΗΝ ΕΤΙΚΕΤΑ ΟΤΑΝ ΑΛΛΑΖΕΙ Ο ΤΡΟΠΟΣ.
               Σε βραχυχρόνια η ετικέτα γινόταν σκέτο «Ενοίκιο μακροχρόνιας» και
               καθόταν δίπλα στα «Ετήσια έξοδα»: δύο πεδία, ένα με μονάδα και ένα
               χωρίς, ενώ το ποσό είναι μηνιαίο και πολλαπλασιάζεται επί δώδεκα. */}
-          <NumberInput label={term === 'short' ? 'Μηνιαίο ενοίκιο μακροχρόνιας' : 'Μηνιαίο ενοίκιο'} value={rent} onChange={setRent} suffix="€" step={50} />
-          <NumberInput label="Ετήσια έξοδα" value={opex} onChange={v => { setOpex(v); setOpexYear(null); }} suffix="€" step={100} />
+          <NumberInput label={term === 'short' ? 'Μηνιαίο ενοίκιο μακροχρόνιας' : 'Μηνιαίο ενοίκιο'} value={rent} onChange={setRent} suffix="€" />
+          <NumberInput label="Ετήσια έξοδα" value={opex} onChange={v => { setOpex(v); setOpexYear(null); }} suffix="€" />
           <CustomSelect label="Περιοχή" value={region} onChange={setRegion} options={REGIONS.map((r, i) => ({ value: r.key, label: r.label, header: r.region !== REGIONS[i - 1]?.region ? r.region : undefined }))} />
         </div>
         {opexYear !== null && (
@@ -1339,9 +1339,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
             </div>
             <div {...g4}>
               <NumberInput label="Ετήσια πληρότητα" value={stOcc} onChange={setStOcc} suffix="%" max={100} labelInfo={<TermInfo text={G.occupancy} />} />
-              <NumberInput label="Μέση τιμή ανά νύχτα" value={stAdr} onChange={setStAdr} suffix="€" step={5} labelInfo={<TermInfo text={G.adr} />} />
-              <NumberInput label="Καθαρισμός ανά διαμονή" value={stClean} onChange={setStClean} suffix="€" step={5} />
-              <NumberInput label="Προμήθεια πλατφόρμας" value={stFee} onChange={setStFee} suffix="%" max={100} step={0.5} labelInfo={<TermInfo text={G.platform_fee} />} />
+              <NumberInput label="Μέση τιμή ανά νύχτα" value={stAdr} onChange={setStAdr} suffix="€" labelInfo={<TermInfo text={G.adr} />} />
+              <NumberInput label="Καθαρισμός ανά διαμονή" value={stClean} onChange={setStClean} suffix="€" />
+              <NumberInput label="Προμήθεια πλατφόρμας" value={stFee} onChange={setStFee} suffix="%" max={100} labelInfo={<TermInfo text={G.platform_fee} />} />
             </div>
             {!empty && y.grossYield > MAX_ST_GROSS_YIELD_WARN && (
               <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
@@ -1511,7 +1511,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                   αριθμό, που ζητά 29 για το «6,8». Μετρημένο σε Chromium και
                   στα οκτώ πλάτη. Τα 120 αφήνουν 52, δηλαδή χωρούν και το
                   «10,5» με περιθώριο. */}
-              <div style={{ width: 120 }}><NumberInput id={apprId} value={apprShown} onChange={v => { setAppreciation(v); setApprTouched(true); }} suffix="%" step={0.5} max={20} /></div>
+              <div style={{ width: 120 }}><NumberInput id={apprId} value={apprShown} onChange={v => { setAppreciation(v); setApprTouched(true); }} suffix="%" max={20} /></div>
               {/* Το ίδιο σήμα με δύο λεκτικά· το στυλ γραφόταν δύο φορές. */}
               <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: SANS, border: '1px solid var(--border-default)', borderRadius: 8, padding: '3px 7px' }}>{apprTouched ? 'δική σου υπόθεση' : 'δείκτης ΤτΕ'}</span>
               {apprTouched && (
@@ -1668,7 +1668,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               <div className="po-fig-card" tabIndex={0} style={toolCard}>
                 <p style={{ ...titleStyle, marginBottom: 12, display: 'flex', alignItems: 'center' }}>Ανατοκισμός επανεπένδυσης<TermInfo text={G.compound} /></p>
                 <div {...fixedCols(2, 12)}>
-                  <NumberInput label="Απόδοση επανεπένδυσης" value={compRate} onChange={setCompRate} suffix="%" step={0.5} />
+                  <NumberInput label="Απόδοση επανεπένδυσης" value={compRate} onChange={setCompRate} suffix="%" />
                   <div><label style={fieldLabelStyle}>Ορίζοντας ανατοκισμού</label><SegmentControl ariaLabel="Ορίζοντας ανατοκισμού" value={compYears} onChange={v => setCompYears(v as typeof compYears)} options={yearOpts(10, 20)} /></div>
                 </div>
                 {/* Ενα μέγεθος για τη σειρά, από το μακρύτερο νούμερο: αλλιώς
@@ -1704,11 +1704,11 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                 </div>
                 <div {...fixedCols(2, 12)}>
                   <NumberInput label="Δάνειο (% αξίας)" value={ltv} onChange={setLtv} suffix="%" max={100} />
-                  <NumberInput label="Επιτόκιο" value={loanRate} onChange={setLoanRate} suffix="%" step={0.1} />
+                  <NumberInput label="Επιτόκιο" value={loanRate} onChange={setLoanRate} suffix="%" />
                   {/* Η διάρκεια ήταν καρφωμένη στα 25 έτη μέσα στη κλήση της
                       μηχανής: καθόριζε δόση, ταμειακή ροή, DSCR και IRR χωρίς να
                       φαίνεται πουθενά. Τώρα είναι πεδίο, με την προεπιλογή ρητή. */}
-                  <NumberInput label="Διάρκεια δανείου" value={loanYears} onChange={setLoanYears} suffix="έτη" step={5} max={40} />
+                  <NumberInput label="Διάρκεια δανείου" value={loanYears} onChange={setLoanYears} suffix="έτη" max={40} />
                   {/* Η παρένθεση «(Σπίτι μου ΙΙ)» έκανε την ετικέτα 27 χαρακτήρες και σε
                       μισή κάρτα τσάκιζε σε δεύτερη γραμμή, ενώ η «Διάρκεια δανείου»
                       δίπλα της έμενε σε μία. Δεν είναι μέρος του ονόματος: είναι ο
@@ -1775,11 +1775,11 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                 τη γραμμή. Τέσσερις ίσες στήλες, μία γραμμή βάσης. */}
             <div {...fixedCols(4, 12)} style={{ ...fixedCols(4, 12).style, marginBottom: 14 }}>
               <div><label style={fieldLabelStyle}>Ορίζοντας κατοχής</label><SegmentControl ariaLabel="Ορίζοντας κατοχής" value={holdYears} onChange={v => setHoldYears(v as typeof holdYears)} options={yearOpts(5, 10, 20)} /></div>
-              <NumberInput label="Αύξηση ενοικίου" value={rentGrowth} onChange={setRentGrowth} suffix="%" step={0.5} />
-              <NumberInput label="Επιτόκιο προεξόφλησης" value={discountRate} onChange={setDiscountRate} suffix="%" step={0.5} labelInfo={<TermInfo text={G.npv} />} />
+              <NumberInput label="Αύξηση ενοικίου" value={rentGrowth} onChange={setRentGrowth} suffix="%" />
+              <NumberInput label="Επιτόκιο προεξόφλησης" value={discountRate} onChange={setDiscountRate} suffix="%" labelInfo={<TermInfo text={G.npv} />} />
               {/* Τα κόστη πώλησης ήταν σταθερά 3% μέσα στην κλήση: αφαιρούνταν από
                   το προϊόν της πώλησης και άρα από το IRR, χωρίς να φαίνονται. */}
-              <NumberInput label="Κόστη πώλησης" value={sellCosts} onChange={setSellCosts} suffix="%" step={0.5} max={15}
+              <NumberInput label="Κόστη πώλησης" value={sellCosts} onChange={setSellCosts} suffix="%" max={15}
                 labelInfo={<TermInfo text="Κόστη που βαρύνουν τον πωλητή στην έξοδο: μεσιτική αμοιβή, τυπικά περίπου 2% συν ΦΠΑ, νομικός και συμβολαιογραφικός έλεγχος, τεχνικά πιστοποιητικά. Ο φόρος μεταβίβασης 3% βαρύνει τον αγοραστή, γι’ αυτό δεν περιλαμβάνεται εδώ. Προεπιλογή 3%· άλλαξέ το αν γνωρίζεις τα δικά σου κόστη." />} />
             </div>
             {/* Τέσσερις δείκτες με πολύ διαφορετικό μήκος — ποσοστό, ποσό, λόγος

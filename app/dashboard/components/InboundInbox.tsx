@@ -207,7 +207,7 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
                     του ποσού. Ο,τι διαβάζει μηχανή, ο άνθρωπος το διορθώνει.
                     ══════════════════════════════════════════════════════════ */}
                 <NumberInput label="Ποσό" value={draft.amount} suffix="€"
-                  onChange={v => patch(r.id, { amount: v })} placeholder="" step={0.01} />
+                  onChange={v => patch(r.id, { amount: v })} placeholder="" />
                 <DatePicker label={dateLabel} value={draft.date} onChange={v => patch(r.id, { date: v })} />
               </div>
 

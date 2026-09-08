@@ -203,11 +203,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div><label htmlFor={named.native ? id : undefined} style={labelStyle}>{label}</label>{named.node}</div>;
 }
 
-// Επικεφαλίδα υποενότητας (ίδιο accent uppercase look με το panel απόδοσης)
-const sectionLabelStyle: React.CSSProperties = {
-  fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 600,
-  textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent)', marginBottom: 4,
-};
 
 interface ExistingProperty {
   id: string; name?: string | null; prop_type?: string | null; address?: string | null;

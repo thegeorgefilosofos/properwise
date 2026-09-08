@@ -8,7 +8,6 @@ import {
 let passed = 0, failed = 0
 const fails: string[] = []
 const ok = (name: string, cond: boolean) => { if (cond) passed++; else { failed++; if (fails.length < 80) fails.push(name) } }
-const near = (a: number, b: number, eps = 1e-6) => Math.abs(a - b) <= eps
 
 // ── buildLedger: σειρά + τρέχον υπόλοιπο ──────────────────────────────────────
 {

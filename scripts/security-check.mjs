@@ -6,7 +6,6 @@
 // git-TRACKED file for committed credentials and other must-never-ship patterns,
 // and fails the build (exit 1) on any hit. Add allow-listed exceptions sparingly.
 
-import { execSync } from 'node:child_process'
 import { projectFiles } from './lib/git-files.mjs'
 import { readFileSync } from 'node:fs'
 

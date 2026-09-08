@@ -27,7 +27,7 @@
 //    λάθος λογαριασμό ή σε κανέναν.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { PLANS, normalizePlan, BILLING_CYCLES, type PlanId, type BillingCycle } from './plans';
+import { PLANS, normalizePlan, BILLING_CYCLES, type BillingCycle } from './plans';
 import { type VariantPlan, type MorStatus, type MorSubscription, isMorStatus } from './subscription';
 
 // ΟΙ ΤΥΠΟΙ ΞΑΝΑΒΓΑΙΝΟΥΝ ΑΠΟ ΕΔΩ ΜΟΝΟ ΓΙΑ ΤΗ ΘΥΡΑ. Ο υπόλοιπος κώδικας τους

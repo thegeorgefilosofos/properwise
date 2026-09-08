@@ -659,7 +659,7 @@ export function SubscriptionSection({ label, catalog, active, onToggle, onUpdate
                 <CustomSelect label="Μοιράζεται" value={String(a.splitActive && a.splitPeople > 1 ? a.splitPeople : 1)}
                   onChange={v => { const n = parseInt(v) || 1; onUpdate(a.service, 'splitPeople', n); onUpdate(a.service, 'splitActive', n > 1); }}
                   options={SPLIT_OPTIONS}/>
-                <NumberInput label="Τιμή αν διαφέρει" value={a.customPrice} onChange={v => onUpdate(a.service, 'customPrice', v)} suffix="€" step={0.5}/>
+                <NumberInput label="Τιμή αν διαφέρει" value={a.customPrice} onChange={v => onUpdate(a.service, 'customPrice', v)} suffix="€"/>
                 {/* Το προεπιλεγμένο «Επιλογή ημερομηνίας» τσάκιζε σε δύο γραμμές και
                     έσπαγε τη στοίχιση της σειράς. Η ετικέτα λέει ήδη «Ανανέωση»·
                     το κενό λέει ότι είναι προαιρετικό. */}
@@ -669,7 +669,7 @@ export function SubscriptionSection({ label, catalog, active, onToggle, onUpdate
                     είναι και τα δύο χρεώνονται στην ίδια κάρτα. Προεπιλογή
                     ολόκληρη, γιατί αυτό ισχύει στις περισσότερες. */}
                 <NumberInput label="Στις δαπάνες" value={String(a.expensePct ?? DEFAULT_EXPENSE_PCT)}
-                  onChange={v => onUpdate(a.service, 'expensePct', expensePct(v))} suffix="%" step={10} max={100}/>
+                  onChange={v => onUpdate(a.service, 'expensePct', expensePct(v))} suffix="%" max={100}/>
                 {business && (
                   <CustomSelect label="Χώρα παρόχου" value={a.supplierCountry || ''}
                     onChange={v => onUpdate(a.service, 'supplierCountry', v)}
@@ -709,7 +709,6 @@ export default function BillsInsurance({ propertyId, userId = '', only, legalFor
   const isBusiness = HAS_BUSINESS.has(legalForm);
   const supabase = createClient();
   const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 20, marginBottom: 16 };
-  const g2: React.CSSProperties  = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14, marginBottom: 14 };
   // ΤΡΙΑ ΠΕΔΙΑ ΣΕ ΔΥΟ ΣΤΗΛΕΣ ΑΦΗΝΟΥΝ ΤΟ ΤΡΙΤΟ ΜΟΝΟ ΤΟΥ. Μετρημένο στα 430:
   // «2+1», με το «Πραγματικό κόστος τον μήνα» σε μισό πλάτος και τρύπα δίπλα.
   // Ιδια κλάση και ίδιοι κανόνες με τους δείκτες του KPIGrid: στα στενά πλάτη
@@ -1414,7 +1413,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               <CustomSelect label="Πρόγραμμα ασφάλισης" value={insPlanId}
                 onChange={v => u({ insPlanId: v, insEditCovers: false })}
                 options={insPlanOptions}/>
-              <NumberInput label="Πραγματικό κόστος τον μήνα" value={insCustomPrice} onChange={v => u({ insCustomPrice: v })} suffix="€" step={1}/>
+              <NumberInput label="Πραγματικό κόστος τον μήνα" value={insCustomPrice} onChange={v => u({ insCustomPrice: v })} suffix="€"/>
             </div>
             <div style={g4}>
               <TextInput   label={insCompany?.agent_label || 'Ασφαλιστής'} value={insAgentName}    onChange={v => u({ insAgentName: v })}    placeholder="Ονοματεπώνυμο"/>
@@ -1532,10 +1531,10 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
             {/* Τέσσερα στοιχεία του ίδιου ακινήτου, σε μία σειρά ίσα μοιρασμένη
                 αντί για δύο σειρές των δύο με μισή κάρτα άδεια δεξιά. */}
             <div {...fieldRow(180, 14, { marginBottom: 14 })}>
-              <NumberInput label="Εμβαδόν"           value={effectiveSqm}    onChange={v => u({ insSqm: v })}          suffix="τ.μ." step={5}/>
+              <NumberInput label="Εμβαδόν"           value={effectiveSqm}    onChange={v => u({ insSqm: v })}          suffix="τ.μ."/>
               <TextInput   label="Πόλη ή περιοχή"    value={effectiveCity}   onChange={v => u({ insCity: v })}         placeholder="Αθήνα"/>
-              <NumberInput label="Αξία κτιρίου"      value={insPropValue}    onChange={v => u({ insPropValue: v })}    suffix="€" step={5000}/>
-              <NumberInput label="Αξία περιεχομένου" value={insContentValue} onChange={v => u({ insContentValue: v })} suffix="€" step={1000}/>
+              <NumberInput label="Αξία κτιρίου"      value={insPropValue}    onChange={v => u({ insPropValue: v })}    suffix="€"/>
+              <NumberInput label="Αξία περιεχομένου" value={insContentValue} onChange={v => u({ insContentValue: v })} suffix="€"/>
             </div>
           </div>
 
@@ -1801,7 +1800,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                 «Παράδειγμα: » έπιανε 105 από τα 132 του κουτιού. */}
             <div {...fixedCols(4, 14)}>
               <TextInput   label="Ονομασία"             value={newSubName}    onChange={setNewSubName}    placeholder="Netflix"/>
-              <NumberInput label="Κόστος τον μήνα"      value={newSubPrice}   onChange={setNewSubPrice}   suffix="€" step={1}/>
+              <NumberInput label="Κόστος τον μήνα"      value={newSubPrice}   onChange={setNewSubPrice}   suffix="€"/>
               <DatePicker  label="Ημερομηνία ανανέωσης" value={newSubRenewal} onChange={setNewSubRenewal}/>
               <button type="button" disabled={!newSubName.trim() || !newSubPrice}
                 onClick={() => { u({ otherSubs: [...(otherSubs || []), { name: newSubName, price: newSubPrice, renewalDate: newSubRenewal }] }); setNewSubName(''); setNewSubPrice(''); setNewSubRenewal(''); }}

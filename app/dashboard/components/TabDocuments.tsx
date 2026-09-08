@@ -226,33 +226,9 @@ const periodLabel = (r: { period_from?: string | null; period_to?: string | null
 
 /* ── Εικονίδια (inline SVG, stroke=currentColor) ─────────────────────────── */
 const S = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-const FolderGlyph = ({ k, size = 22 }: { k: FolderKey; size?: number }) => {
-  const p: Record<FolderKey, React.ReactNode> = {
-    contracts:  <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 14h6M9 17h4"/></>,
-    property:   <><path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-5h4v5"/></>,
-    taxes:      <><path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/></>,
-    bills:      <><path d="M6 2h9l3 3v17l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h3"/></>,
-    providers:  <><path d="M14.5 5.5a3.5 3.5 0 0 1-4.9 4.9L4 16v4h4l5.6-5.6a3.5 3.5 0 0 0 4.9-4.9l-2.3 2.3-2-2z"/></>,
-    warranties: <><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z"/><path d="M9 12l2 2 4-4"/></>,
-    invoices:   <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></>,
-    bank:       <><path d="M3 10 12 4l9 6"/><path d="M5 10v8M10 10v8M14 10v8M19 10v8"/><path d="M3 21h18"/></>,
-    photos:     <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-4 4 3 3-2 4 3"/></>,
-    other:      <><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></>,
-  };
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">{p[k]}</svg>;
-};
-// Εικονίδιο υποφακέλου (πάροχος ή έτος) — ΕΝΑ σημείο αλήθειας αντί για διπλό inline SVG.
-const SubfolderGlyph = ({ mode, size = 20 }: { mode: 'provider' | 'date'; size?: number }) => (
-  <svg aria-hidden="true" {...S} width={size} height={size}>{mode === 'provider'
-    ? <><path d="M4 20V8a2 2 0 0 1 2-2h3l2-2h4a2 2 0 0 1 2 2v2"/><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V12a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/></>
-    : <><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></>}</svg>
-);
 // Σταθερό «×» (κλείσιμο/διαγραφή) — αντικαθιστά τα επαναλαμβανόμενα inline SVG.
 const IconX = ({ size = 13 }: { size?: number }) => (
   <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-);
-const IconCheck = ({ size = 12 }: { size?: number }) => (
-  <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
 );
 const IconPencil = ({ size = 14 }: { size?: number }) => (
   <svg aria-hidden="true" {...S} width={size} height={size}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
@@ -285,12 +261,15 @@ function BulkBtn({ icon, label, onClick, disabled, danger }: { icon: React.React
   );
 }
 
+// ΤΟ `profileType` ΕΦΥΓΕ ΑΠΟ ΤΗΝ ΥΠΟΓΡΑΦΗ. Το ταμπλό το περνούσε σε κάθε
+// απόδοση και εδώ δεν το διάβαζε τίποτα: το Αρχείο εγγράφων δεν κλειδώνει
+// τίποτα ανά προφίλ. Μια παράμετρος που δεν διαβάζεται δεν είναι αθώα — λέει
+// στον επόμενο ότι η οθόνη ΕΧΕΙ συμπεριφορά ανά προφίλ και τον βάζει να ψάχνει.
 export default function TabDocuments({
-  propertyId, userId, embedded, profileType = 'individual',
-}: Props & { embedded?: boolean; profileType?: 'individual' | 'professional' }) {
+  propertyId, userId, embedded,
+}: Props & { embedded?: boolean }) {
   const supabase = createClient();
   const { prefs } = useAppPreferences(propertyId);
-  const isPro = profileType === 'professional';
 
   const [items, setItems] = useState<Item[]>([]);
   // Ο ΔΕΙΚΤΗΣ ΦΟΡΤΩΣΗΣ ΔΕΝ ΕΙΝΑΙ ΞΕΧΩΡΙΣΤΗ ΚΑΤΑΣΤΑΣΗ, ΕΙΝΑΙ ΕΡΩΤΗΣΗ. Ηταν
@@ -613,11 +592,6 @@ export default function TabDocuments({
   const bulkDownload = () => { selItems.filter(i => i.url).forEach(i => window.open(i.url!, '_blank', 'noopener')); };
 
   /* ── Παράγωγα δεδομένα ─────────────────────────────────────────────────── */
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {}; const v: Record<string, number> = {};
-    items.forEach(i => { c[i.folder] = (c[i.folder] || 0) + 1; if (i.value) v[i.folder] = (v[i.folder] || 0) + i.value; });
-    return { count: c, value: v };
-  }, [items]);
 
   // ── Η ΑΝΕΞΑΡΤΗΤΗ ΑΠΟΔΕΙΞΗ: πόσα λένε ΤΑ ΔΙΚΑ ΜΟΥ ΧΑΡΤΙΑ ────────────────────
   // Αθροίζει ΜΟΝΟ σαρωμένα/ανεβασμένα παραστατικά (source 'document'), όχι τα
@@ -667,7 +641,6 @@ export default function TabDocuments({
 
   const photoCount = items.filter(i => i.folder === 'photos').length;
   const docCount = items.length - photoCount;
-  const activeCategories = FOLDERS.filter(f => counts.count[f.key]).length;
 
   // Η αξία φεύγει ως ΑΡΙΘΜΟΣ: το φύλλο αθροίζεται στα χέρια του λογιστή. Ως
   // κείμενο «1.234,56 €» έδειχνε σωστά και έβγαζε άθροισμα μηδέν.

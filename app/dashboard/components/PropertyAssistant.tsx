@@ -50,10 +50,10 @@ import {
   NAV_MAP, buildSystemBlocks, parseAction, cleanForSpeech, loadPrefs, savePrefs,
   PREFS_KEY, readPrefs, memKey,
   loadHistory, saveHistory, clearHistory,
-  loadMemories, addMemory, removeMemory, clearMemories, actionReachable,
+  addMemory, removeMemory, clearMemories, actionReachable,
 } from './assistantPersona';
 import {
-  ASSISTANT_NAME, ASSISTANT_INITIAL, tagline, askCta, askPlaceholder, openAria,
+  ASSISTANT_NAME, tagline, askCta, askPlaceholder, openAria,
   speakingLabel, settingsTitle, noKeyNotice,
 } from '@/lib/assistant/identity';
 import { classifyExpense } from '@/lib/expenses/classify';
@@ -426,7 +426,6 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   const loadContext = useCallback(async () => {
     const now = new Date();
     const year = now.getFullYear();
-    const month = `${year}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     // Το «σήμερα» της εφαρμογής είναι ώρα Ελλάδας, όχι UTC: αλλιώς για δύο ως
     // τρεις ώρες κάθε νύχτα η Νόα νόμιζε ότι είναι χθες.
     const todayStr = athensToday(now);
@@ -503,8 +502,14 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       const startY = l.start_date ? Number(String(l.start_date).slice(0, 4)) : year;
       return s + interestForYear(l.amount || 0, l.rate || 0, l.years || 0, year - startY + 1);
     }, 0);
+    // ── Ο ΤΟΚΟΣ ΥΠΟΛΟΓΙΖΟΤΑΝ ΚΑΙ ΔΕΝ ΕΛΕΓΕΤΑΙ ΠΟΤΕ ───────────────────────────
+    // Η γραμμή έλεγε μόνο τη ΔΟΣΗ. Στη δήλωση όμως δεν εκπίπτει η δόση —
+    // εκπίπτει ο τόκος: το κεφάλαιο είναι εξόφληση χρέους, όχι δαπάνη. Ρωτώντας
+    // «τι εκπίπτει από το δάνειο;» η Νόα είχε μπροστά της τον σωστό αριθμό
+    // (`loanInterestYear`, υπολογισμένο τέσσερις γραμμές πιο πάνω) και απαντούσε
+    // με τη δόση, γιατί ο τόκος δεν έμπαινε ποτέ στο κείμενο που της δινόταν.
     const loanLine = loanRows.length
-      ? `Δάνεια (${loanRows.length}): εκτιμώμενη συνολική μηνιαία δόση ${eur(Math.round(monthlyDebt))}. ${loanRows.map(l => `${l.bank || 'τράπεζα'} ${eur(l.amount || 0)} με ${fp(Number(l.rate || 0))} ${rateTypeGr(l.rate_type ?? undefined)} σε ${l.years || 0} έτη`).join('; ')}`
+      ? `Δάνεια (${loanRows.length}): εκτιμώμενη συνολική μηνιαία δόση ${eur(Math.round(monthlyDebt))}. Από τις δόσεις του ${year}, τόκοι περίπου ${eur(Math.round(loanInterestYear))}: ΜΟΝΟ αυτό το μέρος εκπίπτει, το κεφάλαιο όχι. ${loanRows.map(l => `${l.bank || 'τράπεζα'} ${eur(l.amount || 0)} με ${fp(Number(l.rate || 0))} ${rateTypeGr(l.rate_type ?? undefined)} σε ${l.years || 0} έτη`).join('; ')}`
       : 'Δεν έχει καταχωρηθεί δάνειο για αυτό το ακίνητο.';
 
     // Έσοδα φιλοξενίας (διαμονές επισκεπτών από το Πελατολόγιο συνδεδεμένες σε αυτό το ακίνητο).
@@ -1022,7 +1027,6 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     const priority = a.priority || 'normal';
     const due = a.due_date || null;
     const est = a.est_cost || 0;
-    const today = athensToday();
     try {
       const ins = await must(checklist.addReturning(supabase, {
         property_id: propertyId, user_id: userId, description: d,
@@ -1031,11 +1035,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         estimated_cost: est, actual_cost: 0, sort_order: 0,
       }));
       const newId = (ins as { id?: string } | null)?.id;
-      // Κύκλωμα: ημερολόγιο (email υπενθύμιση) + εκκρεμής δαπάνη.
-      // Η κατηγορία της δαπάνης βγαίνει από την ταξινομία (μία πηγή), όχι από
-      // σταθερό κείμενο: ένα χειρόγραφο «Συντήρηση & Επισκευές» ήταν πέμπτη
-      // εκδοχή ονόματος κατηγορίας και η ομάδα του δίπλα του ήταν ανεξάρτητη.
-      const taskCat = classifyExpense(d);
+      // Κύκλωμα: μόνο ημερολόγιο (email υπενθύμιση). Δαπάνη ΔΕΝ γράφεται — γιατί, πιο κάτω.
       let calId: string | null = null;
       if (newId && due) { const data = await must(calendar.add(supabase, { propertyId, userId }, 'checklist', { title: d, event_date: due, category: 'maintenance', amount: est, priority: priority === 'normal' ? 'medium' : priority as calendar.EventPriority })); calId = data?.id || null; }
       // ΜΙΑ ΕΚΤΙΜΗΣΗ ΔΕΝ ΓΙΝΕΤΑΙ ΔΑΠΑΝΗ. Εδώ γραφόταν γραμμή στον πίνακα

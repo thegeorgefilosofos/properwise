@@ -20,6 +20,7 @@ import { randomSuffix } from '@/lib/core/uploadPath';
 import { notify } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { forecastMonthEnd, categoryStatus, annualSummary, periodTrend, detectRecurring, RecurringCharge } from '@/lib/billing/budget';
+import { presumptiveDeductionRate } from '@/lib/billing/consolidate';
 import { rolloverNext, strWaterfall, investmentReturns } from '@/lib/billing/budgetPro';
 import { incomeStatement } from '@/lib/accounting/statement';
 import { interestForYear } from '@/lib/loans/recommend';
@@ -319,6 +320,17 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   // Απόδοση επένδυσης (μόνο επαγγελματίας) και πλήθος βραχυχρόνιων ακινήτων (μόνο ιδιώτης, όριο 3+).
   const [invReturns,   setInvReturns]   = useState<{ noi: number; preTaxCashFlow: number; capRatePct: number; cashOnCashPct: number } | null>(null);
   const [strPropCount, setStrPropCount] = useState(0);
+  // ── Ο ΣΥΝΤΕΛΕΣΤΗΣ ΤΗΣ ΚΡΑΤΗΣΗΣ ΦΟΡΟΥ ΒΓΑΙΝΕΙ ΑΠΟ ΤΑ ΚΛΙΜΑΚΙΑ, ΟΧΙ ΑΠΟ ΤΟ 15 ──
+  // Το «15%» ήταν το ΠΡΩΤΟ κλιμάκιο γραμμένο ως προεπιλογή για κάθε εισόδημα.
+  // Σε ακαθάριστα 30.000 € η κλίμακα δίνει 15% ώς 12.000, 25% ώς 24.000 και 35%
+  // παραπάνω: πραγματικός φόρος 6.375 €, δηλαδή 22,4% του φορολογητέου. Η οθόνη
+  // πρότεινε να κρατήσει 4.275 € — δύο χιλιάδες λιγότερα από την οφειλή, με τη
+  // βεβαιότητα αριθμού που δείχνει το ίδιο πλακίδιο δίπλα στο «καθαρό».
+  //
+  // Ο σωστός συντελεστής υπολογιζόταν ΗΔΗ, δέκα γραμμές πιο κάτω, από το
+  // `incomeStatement` — και δεν τον διάβαζε κανείς. Ο μεταγλωττιστής το έλεγε
+  // («assigned a value but never used») και η προειδοποίηση διαβαζόταν ως σκουπίδι.
+  const [taxPctAuto,   setTaxPctAuto]   = useState<number | null>(null);
   const [loading,      setLoading]      = useState(true);
   const [saving,       setSaving]       = useState(false);
   const [hoverCat,     setHoverCat]     = useState<string | null>(null);
@@ -661,6 +673,13 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         // ανάγκη 1ου έτους) — ώστε το αποθεματικό να μην υπολείπεται.
         taxTargetAnnual = Math.round(stmt.incomeTax) + (isPro ? Math.round(stmt.advanceTax) : 0);
       }
+      // Ο συντελεστής εφαρμόζεται στη ΦΟΡΟΛΟΓΗΤΕΑ βάση του waterfall (ακαθάριστο
+      // μείον την τεκμαρτή έκπτωση), οπότε διαιρείται με την ίδια βάση — αλλιώς
+      // η αναγωγή θα έδινε συντελεστή μικρότερο από τον πραγματικό.
+      const taxableAnnual = annualGross * (1 - presumptiveDeductionRate());
+      setTaxPctAuto(taxableAnnual > 0 && taxTargetAnnual > 0
+        ? Math.min(100, Math.round(taxTargetAnnual / taxableAnnual * 1000) / 10)
+        : null);
       const propValue = Number(propRes?.value) || 0;
 
       // ── Απόδοση επένδυσης (μόνο επαγγελματίας) — NOI/cap rate/cash-on-cash από τον πυρήνα ──
@@ -1030,7 +1049,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const isSTR          = rentalMode === 'short_term';
   const strPlatformPct = budgetVal(budgets.strPlatformPct, 15);
   const strMgmtPct     = budgetVal(budgets.strMgmtPct, 0);
-  const strTaxPct      = budgetVal(budgets.strTaxPct, 15);
+  const strTaxPct      = budgetVal(budgets.strTaxPct, taxPctAuto ?? 15);
   // ── ΤΕΛΟΣ ΑΝΘΕΚΤΙΚΟΤΗΤΑΣ: ΜΙΑ πηγή ──────────────────────────────────────────
   // Εδώ καλούνταν τοπικό climateFeePerNight() του budgetPro.ts, που επέστρεφε
   // 1,50 €/νύχτα υψηλή περίοδο. Η πηγή αλήθειας (lib/billing/greekTax.ts) λέει
@@ -1421,7 +1440,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
               <span>Προμήθεια πλατφόρμας <InfoDot text="Το ποσοστό προμήθειας της πλατφόρμας κράτησης (π.χ. Airbnb, Booking) επί του μεικτού εσόδου." /> <InlineNumber raw={budgets.strPlatformPct ?? '15'} display={`${fn(strPlatformPct, 0)}%`} onCommit={v => updateBudget('strPlatformPct', v)} width={44} ariaLabel="Προμήθεια πλατφόρμας %" /></span>
               <span>Διαχείριση <InlineNumber raw={budgets.strMgmtPct ?? '0'} display={`${fn(strMgmtPct, 0)}%`} onCommit={v => updateBudget('strMgmtPct', v)} width={44} ariaLabel="Διαχείριση %" /></span>
-              <span>Συντελεστής φόρου <InlineNumber raw={budgets.strTaxPct ?? '15'} display={`${fn(strTaxPct, 0)}%`} onCommit={v => updateBudget('strTaxPct', v)} width={44} ariaLabel="Συντελεστής φόρου %" /></span>
+              <span>Συντελεστής φόρου <InlineNumber raw={budgets.strTaxPct ?? String(taxPctAuto ?? 15)} display={`${fn(strTaxPct, 0)}%`} onCommit={v => updateBudget('strTaxPct', v)} width={44} ariaLabel="Συντελεστής φόρου %" /></span>
             </div>
           </div>
         );
@@ -1577,7 +1596,6 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         const ytdPct = annual.ytdBudget > 0 ? Math.min((annual.ytdActual / annual.ytdBudget) * 100, 100) : 0;
         const ytdOver = annual.ytdActual > annual.ytdBudget;
         const ytdCol = ytdOver ? 'var(--negative)' : 'color-mix(in srgb, var(--text-primary) 34%, transparent)';
-        const trDir = monthTrend.direction;
         const shut = collapsed.has('annual');
         const hasAnnualData = annual.ytdActual > 0 || Object.keys(monthTotals).length > 0;
         return (

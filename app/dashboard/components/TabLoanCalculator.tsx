@@ -33,13 +33,6 @@ import { useChartWidth } from '@/app/hooks/useChartWidth'
 
 // ── MD3 tokens ────────────────────────────────────────────────────────────────
 const labelStyle: React.CSSProperties = { ...TT.label, display:'block', marginBottom:6 }
-const pillBtn = (active:boolean, accentColor='var(--accent)'): React.CSSProperties => ({
-  padding:'0 14px',height:T.h.md,borderRadius: T.radius.modal,border:`1px solid ${active?accentColor:'var(--border-subtle)'}`,
-  background:active?`color-mix(in srgb, ${accentColor} 10%, transparent)`:'none',color:active?accentColor:'var(--text-secondary)',
-  cursor:'pointer',fontSize:12,fontFamily: T.font.sans,fontWeight:active?500:400,
-  transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',display:'flex',alignItems:'center',gap:6,whiteSpace:'nowrap' as const,
-})
-
 const SectionLabel = ({label,right}:{label:string;right?:React.ReactNode}) => (
   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
     <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:700,fontFamily: T.font.sans}}>{label}</p>
@@ -400,10 +393,20 @@ function StressBars({stress,limit,INC,fmt,fmtPct,fmtPct1}:{stress:{label:string;
               <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Αύξηση</span>
               <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{hi===0?fmt(0):diff>=0?`+${fmt(diff)}`:`-${fmt(-diff)}`}</span>
             </div>
+            {/* ══ ΤΟ «ΠΑΝΩ ΑΠΟ ΤΟ ΟΡΙΟ» ΥΠΟΛΟΓΙΖΟΤΑΝ ΚΑΙ ΔΕΝ ΦΑΙΝΟΤΑΝ ═════════
+                Το `over` (δόση > όριο αντοχής) υπολογιζόταν σε κάθε άγγιγμα και
+                δεν το διάβαζε καμία γραμμή. Το γράφημα ζωγραφίζει διακεκομμένη
+                «Όριο δόσης» — άρα το όριο ΕΧΕΙ νόημα — αλλά το πλαίσιο έδειχνε το
+                σενάριο που το ξεπερνά με το ίδιο ακριβώς χρώμα με ένα που δεν
+                το ξεπερνά. Ο χρήστης έσερνε το δάχτυλο πάνω σε τέσσερα σενάρια
+                επιτοκίου για να δει ΑΚΡΙΒΩΣ αυτό: πού σπάει. */}
             <div style={{display:'flex',alignItems:'center',gap:14,paddingTop: 4,marginTop:2,borderTop:'1px solid var(--border-subtle)'}}>
               <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Δόση προς εισόδημα</span>
-              <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmtPct1(dti)}</span>
+              <span style={{fontSize: 'var(--fs-base)',color:over?'var(--negative)':'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmtPct1(dti)}</span>
             </div>
+            {over&&(
+              <p style={{fontSize: 'var(--fs-xs)',color:'var(--negative)',fontFamily: T.font.sans,marginTop:6,fontWeight:600,textAlign:'center' as const}}>Πάνω από το όριο δόσης</p>
+            )}
           </div>
         )
       })()}
@@ -999,7 +1002,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                 που ήρθε μετά — ενώ είναι κόστος της ίδιας αγοράς με τον φόρο
                 μεταβίβασης και τα συμβολαιογραφικά. Κελί του πλέγματος. */}
             <ToggleField label="Αμοιβή μεσίτη" on={hasAgent} onChange={setHasAgent}/>
-            {hasAgent&&<NumberInput label="Ποσοστό μεσίτη" value={agentPct} onChange={setAgentPct} suffix="%" step={0.5}/>}
+            {hasAgent&&<NumberInput label="Ποσοστό μεσίτη" value={agentPct} onChange={setAgentPct} suffix="%"/>}
             {hasAgent&&(
               <div>
                 <label style={fieldLabelStyle}>Αμοιβή μεσίτη</label>
@@ -1052,7 +1055,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                 «Τύπος επιτοκίου» και η τιμή του είναι σε έτη. */}
             {(rateType==='fixed'||rateType==='mixed')&&<CustomSelect label="Σταθερή περίοδος" value={fixedPeriod} onChange={setFixedPeriod} options={FIXED_PERIOD_OPTIONS}/>}
             <div title={rateType==='variable'?'Περιθώριο τράπεζας πάνω από το Euribor':undefined}>
-              <NumberInput label={rateType==='variable'?'Περιθώριο τράπεζας (%)':'Ετήσιο επιτόκιο (%)'} value={rate} onChange={v=>{setRate(v);setActivePreset(null)}} suffix="%" step={0.05}/>
+              <NumberInput label={rateType==='variable'?'Περιθώριο τράπεζας (%)':'Ετήσιο επιτόκιο (%)'} value={rate} onChange={v=>{setRate(v);setActivePreset(null)}} suffix="%"/>
               {rateType==='variable'&&(
                 <div style={{marginTop: 8,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
                   <p style={{fontSize:12,fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}><span title="Διατραπεζικό επιτόκιο ευρώ: βάση κυμαινόμενων δανείων">Euribor</span> {fmtPct(market.euribor_3m)} + {fmtPct(R)} = <strong>{fmtPct(effRate)}</strong></p>
@@ -1414,7 +1417,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           <span style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily: T.font.sans}}><span style={{width:14,height:2.4,background:'var(--accent)',display:'inline-block'}}/>Αγορά (καθαρό)</span>
           <span style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily: T.font.sans}}><span style={{width:14,height:2,borderTop:'2px dashed var(--text-tertiary)',display:'inline-block'}}/>Ενοικίαση</span>
         </div>
-        <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:10,lineHeight:1.6,fontFamily: T.font.sans}}>«Καθαρό κόστος αγοράς» = κόστος μείον περιουσία (αξία μείον υπόλοιπο δανείου). Υποθέτει ήπια ανατίμηση ~2% · αύξηση ενοικίου ~2% τον χρόνο. Ενδεικτικό.</p>
+        <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:10,lineHeight:1.6,fontFamily: T.font.sans}}>«Καθαρό κόστος αγοράς» = κόστος μείον περιουσία (αξία μείον υπόλοιπο δανείου). Από αυτό, <strong style={{color:'var(--text-secondary)',fontFamily:T.font.num}}>{fmtEur(rvb.interestAtHorizon)}</strong> είναι τόκοι: το μέρος που πληρώνεις χωρίς να γίνεται περιουσία σου, δηλαδή το αντίστοιχο του ενοικίου. Υποθέτει ήπια ανατίμηση ~2% · αύξηση ενοικίου ~2% τον χρόνο. Ενδεικτικό.</p>
       </Section>
         )
       })()}
@@ -1524,8 +1527,8 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         <div {...fixedCols(5, 10, 'end', '', 3)} style={{...fixedCols(5, 10, 'end', '', 3).style, marginBottom:14}}>
           <NumberInput label="Υπόλοιπο" value={remBal} onChange={setRemBal} suffix="€"/>
           <NumberInput label="Χρόνια που μένουν" value={remYears} onChange={setRemYears} suffix="έτη"/>
-          <NumberInput label="Τρέχον επιτόκιο" value={curRate} onChange={setCurRate} suffix="%" step={0.05}/>
-          <NumberInput label="Νέο επιτόκιο" value={newRate} onChange={setNewRate} suffix="%" step={0.05}/>
+          <NumberInput label="Τρέχον επιτόκιο" value={curRate} onChange={setCurRate} suffix="%"/>
+          <NumberInput label="Νέο επιτόκιο" value={newRate} onChange={setNewRate} suffix="%"/>
           <NumberInput label="Κόστος μεταφοράς" value={xferCost} onChange={setXferCost} suffix="€"/>
         </div>
         {(()=>{ const brk=brkEven?`${brkEven} μήνες`:'Δεν αποσβένεται', w=widestOf(fmtEur(currM), fmtEur(newM), fmtEur(Math.max(0,refSav)), brk); return (

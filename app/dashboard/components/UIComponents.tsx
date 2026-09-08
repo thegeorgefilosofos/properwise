@@ -289,7 +289,12 @@ interface NumberInputProps {
   prefix?: string;
   min?: number;
   max?: number;
-  step?: number;
+  // ΤΟ `step` ΕΦΥΓΕ. Το πεδίο είναι `type="text"` με `inputMode="decimal"` —
+  // επιλογή συνειδητή, γιατί ο Έλληνας γράφει «12,5» και ο αριθμητικός τύπος
+  // απορρίπτει το κόμμα. Σε πεδίο κειμένου το `step` δεν κάνει ΤΙΠΟΤΑ: ήταν
+  // δηλωμένο σε 75 κλήσεις («step={0,5}», «step={10}») που όλες πίστευαν ότι
+  // ορίζουν βήμα. Ιδιότητα που δεν ισχύει είναι χειρότερη από ιδιότητα που
+  // λείπει: η δεύτερη ρωτιέται, η πρώτη θεωρείται δεδομένη.
   disabled?: boolean;
   className?: string;
 }
@@ -313,7 +318,7 @@ interface NumberInputProps {
  */
 export function NumberInput({
   label, ariaLabel, id, labelInfo, value, onChange, placeholder = '', suffix, prefix,
-  min = 0, max, step = 1, disabled, className,
+  min = 0, max, disabled, className,
 }: NumberInputProps) {
   const [focused, setFocused] = useState(false);
   // ═══ ΤΟ ΠΡΟΧΕΙΡΟ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΣΟ ΓΡΑΦΕΙ Ο ΧΡΗΣΤΗΣ ══════════════════════

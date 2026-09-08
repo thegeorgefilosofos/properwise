@@ -1363,7 +1363,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         <div className="po-fig-card" style={card}>
           <p style={cardTitle}>Κατάσταση αποτελεσμάτων</p>
           <div style={{ display:'flex', flexDirection:'column' }}>
-            {statement.lines.map((l,i)=>{
+            {statement.lines.map((l)=>{
               const strong = l.kind==='subtotal'||l.kind==='result'
               return (
                 <div key={l.key} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderTop:l.kind==='result'?'1px solid var(--border-subtle)':'none' }}>

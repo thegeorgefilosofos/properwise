@@ -225,7 +225,6 @@ export function electricitySwitchFinding(
 export default function BillsElectricity({ propertyId, userId, onNavigateTab }: { propertyId: string; userId?: string; onNavigateTab?: (tab: string) => void }) {
   const supabase   = createClient();
   const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 20, marginBottom: 16 };
-  const g2: React.CSSProperties   = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14, marginBottom: 14 };
   const currentMonth = new Date().getMonth();
   const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
 
@@ -595,9 +594,9 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
       <div style={card}>
         {secHdr('Κατανάλωση και εκτιμώμενο κόστος')}
         <div style={{ display: 'grid', gridTemplateColumns: tariff.kwh_night ? '1fr 1fr 1fr' : '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <NumberInput label="Μέση μηνιαία κατανάλωση" value={kwhMonthly} onChange={v => { setKwhMonthly(v); save({ kwhMonthly: v }); }} suffix="kWh" step={10}/>
-          {tariff.kwh_night != null && <NumberInput label="Νυχτερινή κατανάλωση" value={nightPct} onChange={v => { setNightPct(v); save({ nightPct: v }); }} suffix="%" step={5}/>}
-          {tariff.type === 'dynamic' && <NumberInput label="Μηνιαίο κόστος (€), από τον λογαριασμό" value={manualMonthly} onChange={v => { setManualMonthly(v); save({ manualMonthly: v }); }} suffix="€" step={1}/>}
+          <NumberInput label="Μέση μηνιαία κατανάλωση" value={kwhMonthly} onChange={v => { setKwhMonthly(v); save({ kwhMonthly: v }); }} suffix="kWh"/>
+          {tariff.kwh_night != null && <NumberInput label="Νυχτερινή κατανάλωση" value={nightPct} onChange={v => { setNightPct(v); save({ nightPct: v }); }} suffix="%"/>}
+          {tariff.type === 'dynamic' && <NumberInput label="Μηνιαίο κόστος (€), από τον λογαριασμό" value={manualMonthly} onChange={v => { setManualMonthly(v); save({ manualMonthly: v }); }} suffix="€"/>}
         </div>
 
         {/* ΑΠΟ ΠΟΥ ΒΓΗΚΕ Ο ΑΡΙΘΜΟΣ. Χωρίς αυτό, ο χρήστης δεν έχει τρόπο να

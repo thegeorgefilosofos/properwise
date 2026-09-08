@@ -179,9 +179,9 @@ export default function BankRatesAdmin({ onSaved }:{
                       </div>
                       <p style={{...labelStyle}}>Παράμετροι</p>
                       <div style={{...formGrid(150, 210),gap:10}}>
-                        <NumberInput label="Ελάχιστο σταθερό" value={String(edit.fixed_min ?? '')} onChange={v=>set('fixed_min', Number(v))} suffix="%" step={0.05}/>
-                        <NumberInput label="Περιθώριο ελάχιστο" value={String(edit.variable_spread_min ?? '')} onChange={v=>set('variable_spread_min', Number(v))} suffix="%" step={0.05}/>
-                        <NumberInput label="Περιθώριο μέγιστο" value={String(edit.variable_spread_max ?? '')} onChange={v=>set('variable_spread_max', Number(v))} suffix="%" step={0.05}/>
+                        <NumberInput label="Ελάχιστο σταθερό" value={String(edit.fixed_min ?? '')} onChange={v=>set('fixed_min', Number(v))} suffix="%"/>
+                        <NumberInput label="Περιθώριο ελάχιστο" value={String(edit.variable_spread_min ?? '')} onChange={v=>set('variable_spread_min', Number(v))} suffix="%"/>
+                        <NumberInput label="Περιθώριο μέγιστο" value={String(edit.variable_spread_max ?? '')} onChange={v=>set('variable_spread_max', Number(v))} suffix="%"/>
                         <NumberInput label="Μέγιστο δάνειο προς αξία" value={String(edit.max_ltv ?? '')} onChange={v=>set('max_ltv', Number(v))} suffix="%"/>
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>

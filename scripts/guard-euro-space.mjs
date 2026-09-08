@@ -25,7 +25,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs';
 import { projectFiles } from './lib/git-files.mjs'
-import { execSync } from 'node:child_process';
 
 const files = projectFiles("'app/**/*.ts' 'app/**/*.tsx' 'lib/**/*.ts' 'lib/**/*.tsx' 'components/**/*.ts' 'components/**/*.tsx'");
 

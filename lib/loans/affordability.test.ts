@@ -48,6 +48,18 @@ ok('limits exported', DSTI_LIMIT.firstTimeBuyer === 0.5 && DSTI_LIMIT.other === 
   ok('advantage = rent - buy', r.advantageAtHorizon === r.rentAtHorizon - r.buyNetAtHorizon)
   // Με λογική ανατίμηση, η αγορά συνήθως βγαίνει φθηνότερη κάποια στιγμή
   ok('breakEven is null or within horizon', r.breakEvenYear === null || (r.breakEvenYear >= 1 && r.breakEvenYear <= 15))
+  // ── ΤΟΚΟΙ: ΤΟ ΜΕΓΕΘΟΣ ΠΟΥ ΠΡΙΝ ΔΕΝ ΕΒΓΑΙΝΕ ΑΠΟ ΤΗ ΣΥΝΑΡΤΗΣΗ ──────────────
+  // Δάνειο 160.000 € με 3,5% σε 25 έτη: η δόση είναι ~801 €, δηλαδή ~144.100 €
+  // πληρωμές στα 15 έτη. Απο αυτές οι τόκοι είναι ~70.500 € και το κεφάλαιο
+  // ~73.600 €. Το φράγμα ελέγχει και ότι δεν ξεπερνούν ΠΟΤΕ τις πληρωμές.
+  ok('interest is positive and bounded', r.interestAtHorizon > 60000 && r.interestAtHorizon < 80000)
+  ok('interest below cumulative payments', r.interestAtHorizon < 801 * 12 * 15)
+}
+{
+  // ΜΗΔΕΝΙΚΟ ΔΑΝΕΙΟ: αγορά τοις μετρητοίς, μηδέν τόκοι. Χωρίς αυτόν τον έλεγχο
+  // ένα `cumInterest` που θα κρατούσε τιμή απο προηγούμενη κλήση θα περνούσε.
+  const cash = rentVsBuy({ price: 200000, downPayment: 200000, ratePct: 3.5, years: 25, monthlyRent: 700, horizonYears: 15 })
+  ok('cash purchase → zero interest', cash.interestAtHorizon === 0)
 }
 {
   // Ακραία υψηλό ενοίκιο → η αγορά συμφέρει γρήγορα

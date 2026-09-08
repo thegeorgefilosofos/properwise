@@ -103,7 +103,7 @@ const CASH = new Set(['cash', 'cash_black']);
 const KIND_ORDER: Record<InsightKind, number> = { urgent: 0, attention: 1, opportunity: 2, positive: 3 };
 
 export function computeInsights(input: InsightInput): Insight[] {
-  const { now, property: p, tenant, rent, propValue, grossYield, netYield, expensesYTD, expenses, bills, tasks, checklist, inventory, loanPayment = 0 } = input;
+  const { now, property: p, tenant, rent, propValue, netYield, expensesYTD, expenses, bills, tasks, checklist, inventory, loanPayment = 0 } = input;
   const out: Insight[] = [];
 
   // Είναι το ακίνητο βραχυχρόνιας μίσθωσης (Airbnb/τουριστικό); Το «κενό» και τα

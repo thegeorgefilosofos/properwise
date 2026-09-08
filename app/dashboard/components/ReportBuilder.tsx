@@ -118,7 +118,6 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
     setBusy(true);
     try {
       const ids = selProps.map(p => p.id);
-      const nameById = new Map(selProps.map(p => [p.id, p.name]));
 
       // ── Άντληση δεδομένων περιόδου (RLS: μόνο του χρήστη) ──────────────────
       const rentQ = rentStore.ofProperties<{ property_id: string; period_year: number; period_month: number; amount: number | null; paid: boolean | null }>(

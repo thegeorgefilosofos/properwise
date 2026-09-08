@@ -13,13 +13,11 @@
 // χρέωσης από κάτω, που ανοίγει το ταμείο του παρόχου πληρωμών.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { PLANS, PLAN_ORDER, annualPerMonth, type PlanId } from '@/lib/billing/plans';
-import { aiLimitsFor } from '@/lib/billing/aiLimits';
-import { ASSISTANT_NAME, ASSISTANT_ACC } from '@/lib/assistant/identity';
-import { FEATURE_LABEL, FEATURE_MIN_PLAN, planAtLeast, type Feature } from '@/lib/billing/entitlements';
+import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { isPlanAllowedForProfile } from '@/lib/billing/entitlements';
-import { T, TT, Card, SecHdr, Btn, Chip, feAuto, fn, fixedCols } from '@/components/Theme';
+import { T, TT, Card, SecHdr, Btn, Chip, feAuto, fixedCols } from '@/components/Theme';
 
 // ── Ποια πλάνα συγκρίνονται εδώ ─────────────────────────────────────────────
 // ΟΧΙ όλα. Το «Γραφείο» είναι πλάνο για χαρτοφυλάκια άνω των 40 ακινήτων και δεν
@@ -40,78 +38,14 @@ import { T, TT, Card, SecHdr, Btn, Chip, feAuto, fn, fixedCols } from '@/compone
 //
 // Μια στήλη με τιμή 0 € δίπλα σε τέσσερις με τιμή δεν είναι διαφάνεια — είναι
 // πρόσκληση να μείνεις εκεί.
-type ComparedPlan = Extract<PlanId, 'solo' | 'owner' | 'agency' | 'office'>;
-const COMPARED: ComparedPlan[] = ['solo', 'owner', 'agency', 'office'];
-
-// ── Πίνακας δυνατοτήτων (μία πηγή, καθρεφτίζει τα entitlements) ─────────────
-type CellValue = boolean | string;
-interface FeatureRow { label: string; values: Record<ComparedPlan, CellValue> }
-
-/** Το όριο ακινήτων γράφεται ΠΑΝΤΑ από τα PLANS, ποτέ με το χέρι: αλλιώς ο
- *  πίνακας αποκλίνει σιωπηλά από αυτό που επιβάλλει ο server. */
-const limitLabel = (id: ComparedPlan): string => {
-  const n = PLANS[id].maxProperties;
-  if (!Number.isFinite(n)) return 'Απεριόριστα';
-  return n === 1 ? '1' : `Έως ${n}`;
-};
-
-// ── Ο ΠΙΝΑΚΑΣ ΔΕΝ ΞΑΝΑΛΕΕΙ ΤΟΥΣ ΚΑΝΟΝΕΣ· ΤΟΥΣ ΔΙΑΒΑΖΕΙ ────────────────────
-// Οι γραμμές ήταν γραμμένες με το χέρι ως booleans ανά πλάνο και είχαν ήδη
-// αποκλίνει από αυτό που ΕΠΙΒΑΛΛΕΙ ο κώδικας:
-//
-//   · «Εξαγωγή Ε2» έλεγε ότι θέλει «Ιδιοκτήτης». Το `FEATURE_MIN_PLAN` το
-//     ξεκλειδώνει από το «Ένα ακίνητο», που κοστίζει πολλαπλάσια λιγότερο.
-//   · Το ίδιο και η «Διαχείριση ενοικιαστών & εισπράξεις».
-//
-// Δηλαδή ο πίνακας τιμών έλεγε στον χρήστη να αγοράσει ακριβότερο πλάνο από όσο
-// χρειαζόταν. Δεν είναι θέμα αισθητικής· είναι λάθος τιμολόγηση στην οθόνη που
-// ζητά την κάρτα του. Τώρα κάθε κλειδωμένη γραμμή παράγεται από το ίδιο μητρώο
-// που κρίνει και την πρόσβαση — δεν μπορούν να διαφωνήσουν.
-const gated = (f: Feature): FeatureRow => ({
-  label: FEATURE_LABEL[f],
-  values: Object.fromEntries(COMPARED.map(p => [p, planAtLeast(p, FEATURE_MIN_PLAN[f])])) as Record<ComparedPlan, CellValue>,
-});
-/** Γραμμή που ισχύει για όλους — δεν περνά από entitlement. */
-const forAll = (label: string): FeatureRow => ({
-  label, values: Object.fromEntries(COMPARED.map(p => [p, true])) as Record<ComparedPlan, CellValue>,
-});
-
-const MATRIX: FeatureRow[] = [
-  { label: 'Ακίνητα', values: Object.fromEntries(COMPARED.map(p => [p, limitLabel(p)])) as Record<ComparedPlan, CellValue> },
-  // Ο ΙΣΧΥΡΙΣΜΟΣ ΓΙΝΕΤΑΙ ΑΡΙΘΜΟΣ. Η γραμμή από πάνω λέει «αλλάζει μόνο πόσες
-  // ερωτήσεις έχει το καθένα» — και ο πίνακας δεν έδειχνε πουθενά πόσες. Μια
-  // υπόσχεση που ο αναγνώστης δεν μπορεί να επαληθεύσει στην ίδια οθόνη είναι
-  // διαφήμιση· με τη σειρά, γίνεται σύγκριση.
-  { label: `Ερωτήσεις στη ${ASSISTANT_NAME} τον μήνα`,
-    values: Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perMonth)])) as Record<ComparedPlan, CellValue> },
-  forAll('Σάρωση εγγράφων και φωνητική καταχώρηση'),
-  forAll('Αποδόσεις, δαπάνες, ενέργεια και φόρος 2026'),
-  forAll('Έξυπνες ειδοποιήσεις και υπενθυμίσεις'),
-  gated('e2_export'),
-  gated('rent_collection'),
-  gated('multi_property'),
-  gated('comparison'),
-  gated('accounting_journal'),
-  gated('bank_import'),
-  gated('early_access'),
-  gated('clients'),
-  gated('portfolio'),
-  gated('report_branding'),
-  gated('investment_analysis'),
-];
-
-// Πλέγμα του πίνακα: ετικέτα + 3 στήλες πλάνων. Ελάχιστο πλάτος ώστε σε στενές
-// οθόνες να κυλάει μέσα στο δικό του container (η σελίδα δεν σπρώχνεται ποτέ).
-const MATRIX_GRID = `minmax(184px, 1.7fr) repeat(${COMPARED.length}, minmax(84px, 1fr))`;
+// ΟΙ ΣΤΗΛΕΣ ΟΡΙΖΟΝΤΑΙ ΜΙΑ ΦΟΡΑ, ΣΤΟΝ ΠΙΝΑΚΑ. Εδώ ήταν γραμμένες δεύτερη φορά,
+// μαζί με ολόκληρο αντίγραφο του πίνακα των δεκαέξι γραμμών — που κανείς δεν
+// ζωγράφιζε, αφού ο πίνακας μετακόμισε στο /paketa. Ενα αντίγραφο που δεν
+// φαίνεται είναι χειρότερο από ένα που φαίνεται: όποιος διόρθωνε ΑΥΤΟ δεν θα
+// έβλεπε καμία αλλαγή στην οθόνη και θα νόμιζε ότι διόρθωσε.
+import { COMPARED } from '@/components/PlanMatrix';
 
 // ── Μικρά εικονίδια ────────────────────────────────────────────────────────
-function Check({ tone }: { tone: 'accent' | 'muted' }) {
-  return (
-    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={tone === 'accent' ? 'var(--accent)' : 'var(--text-secondary)'} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
 function LockGlyph() {
   return (
     <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -142,19 +76,6 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
   const lockHint = profileType === 'professional'
     ? 'Διαθέσιμο στον τρόπο «Ιδιώτης»'
     : 'Διαθέσιμο στον τρόπο «Επαγγελματίας»';
-
-  // Κέρδος: κελί ανώτερου πλάνου που προσφέρει κάτι που δεν έχει το τρέχον.
-  // boolean → true εκεί & false στο τρέχον. string («Ακίνητα») → κάθε ανώτερο
-  // πλάνο (περισσότερα ακίνητα). Η στήλη του τρέχοντος δεν γίνεται ποτέ «κέρδος».
-  const isGain = (row: FeatureRow, id: ComparedPlan): boolean => {
-    if (rankOf(id) <= curRank) return false;
-    const v = row.values[id];
-    if (typeof v === 'string') return true;
-    // Το «Γραφείο» δεν εμφανίζεται στον πίνακα· αν ο χρήστης είναι ήδη εκεί,
-    // δεν έχει τίποτα να «κερδίσει» από τις στήλες που βλέπει.
-    const shown = COMPARED.includes(currentPlan as ComparedPlan) ? (currentPlan as ComparedPlan) : 'agency';
-    return v === true && row.values[shown] === false;
-  };
 
   return (
     <div>

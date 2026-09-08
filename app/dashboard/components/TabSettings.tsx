@@ -617,7 +617,6 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   const planMeta = PLANS[effPlan];
   const isProPlan = effPlan === 'agency';
   const proEligible = planAtLeast(effPlan, 'agency');
-  const tier: 'owner' | 'agency' | 'partner' = partner ? 'partner' : profileType === 'professional' ? 'agency' : 'owner';
 
   // ── Η ΕΞΑΓΩΓΗ ΡΥΘΜΙΣΕΩΝ ΗΤΑΝ ΧΩΜΑΤΕΡΗ ΤΗΣ ΒΑΣΗΣ ────────────────────────
   // Εγραφε `Object.entries` της γραμμής, δηλαδή έστελνε στον χρήστη ελληνικού

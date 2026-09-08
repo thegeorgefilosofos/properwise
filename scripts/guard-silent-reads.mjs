@@ -28,7 +28,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { projectFiles } from './lib/git-files.mjs'
-import { execSync } from 'node:child_process'
 import { tightened } from './lib/ratchet.mjs'
 
 const BASELINE = JSON.parse(readFileSync('scripts/silent-reads-baseline.json', 'utf8'))

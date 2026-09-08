@@ -22,7 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useSyncExternalStore } from 'react';
 import { T } from '@/components/Theme';
-import { ASSISTANT_NAME } from '@/lib/assistant/identity';
+import { ASSISTANT_NAME, ASSISTANT_INITIAL } from '@/lib/assistant/identity';
 import { greeting, suggestedOpeners, type OpenerContext } from '@/lib/assistant/openers';
 import { loadPrefs, PREFS_EVENT } from './assistantPersona';
 
@@ -65,7 +65,7 @@ export default function AssistantStrip({ ctx }: { ctx: OpenerContext | null }) {
         background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
         color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 700,
-      }} aria-hidden>{ASSISTANT_NAME.charAt(0)}</div>
+      }} aria-hidden>{ASSISTANT_INITIAL}</div>
 
       <div style={{ flex: 1, minWidth: 220 }}>
         <p style={{

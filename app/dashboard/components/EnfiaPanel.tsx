@@ -362,9 +362,9 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
         {activeRoute === 'lastYear' && (<>
           <div {...fixedCols(3, 14)}>
             <NumberInput label="Περσινός ΕΝΦΙΑ, σύνολο έτους" value={s.enfiaLastAnnual}
-              onChange={v => upd({ enfiaLastAnnual: v })} suffix="€" step={10}/>
+              onChange={v => upd({ enfiaLastAnnual: v })} suffix="€"/>
             <NumberInput label="Ποσό μίας δόσης" value={s.enfiaLastInstalment}
-              onChange={v => upd({ enfiaLastInstalment: v })} suffix="€" step={5}/>
+              onChange={v => upd({ enfiaLastInstalment: v })} suffix="€"/>
             <CustomSelect label="Σε πόσες δόσεις" value={s.enfiaLastCount}
               onChange={v => upd({ enfiaLastCount: v })} options={INSTALMENT_OPTIONS}/>
           </div>
@@ -402,7 +402,7 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
             <NumberInput label="Φετινός ΕΝΦΙΑ, σύνολο έτους"
               value={s.enfiaAnnual || (declaredAnnual > 0 ? declaredAnnual.toFixed(2) : '')}
               onChange={v => upd({ enfiaAnnual: v, enfiaMonthly: '' })}
-              suffix="€" step={10}/>
+              suffix="€"/>
           </div>
         </>)}
 

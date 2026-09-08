@@ -696,7 +696,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
     if(data.length===0){setCloning(false);notifyError('Το ακίνητο δεν έχει αντικείμενα προς αντιγραφή.');return}
     // Η αντιγραφή κρατά ό,τι δεν ανήκει στο ακίνητο-πηγή: το κλειδί, οι σφραγίδες
     // χρόνου και ο δεσμός ακινήτου ξαναγράφονται από το στρώμα.
-    const rows=data.map(({id,created_at,updated_at,property_id,user_id,...rest})=>rest)
+    const rows=data.map(({id:_id,created_at:_c,updated_at:_u,property_id:_p,user_id:_uid,...rest})=>rest)
     const {error}=await inventory.add(supabase,propertyId,userId,rows)
     setCloning(false)
     if(error){notifyError(failed('Η αντιγραφή από το άλλο ακίνητο δεν ολοκληρώθηκε',error));return}
@@ -766,8 +766,6 @@ export default function TabInventory({propertyId,userId,profileType='individual'
   // περιβάλλον με τη σημαία της επίπλωσης ανοιχτή· η καρτέλα κρατά το δικό της.
   const formCtx: FieldContext = { ...fieldCtx, furnished: true }
 
-  const overdueCount=schedules.filter(s=>daysUntil(s.next_due)<0).length
-  const warnCount=schedules.filter(s=>{const d=daysUntil(s.next_due);return d>=0&&d<=30}).length
   // ═══ ΤΑ ΤΕΣΣΕΡΑ ΝΟΥΜΕΡΑ ΤΗΣ ΑΠΟΓΡΑΦΗΣ ════════════════════════════════════
   // Υπολογίζονται ΕΔΩ, μία φορά και εμφανίζονται ΕΔΩ, μία φορά: η σειρά μετρικών
   // στέκει πάνω από τις υποκαρτέλες και φαίνεται σε όλες τους. Καμία υποκαρτέλα

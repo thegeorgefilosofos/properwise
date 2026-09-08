@@ -23,7 +23,7 @@ import { ReactNode, CSSProperties, useState, useEffect, useRef, useSyncExternalS
 // σημεία που γράφουν `from '@/components/Theme'` να μη χρειαστεί να αλλάξουν.
 export { T, TT, formGrid, fieldRow, fixedCols, tileGrid, tileRow, fe, feAuto, feRate, feCompact, fp, feOr, fpOr, DASH, fn, fd, fdLong, localDay, histInputStyle, ABSENT, ABSENT_DATE, ABSENT_SHORT, grUpper } from './tokens';
 export type { Tone } from './tokens';
-import { T, TT, fe, isBlankMetric, type Tone } from './tokens';
+import { T, TT, isBlankMetric, type Tone } from './tokens';
 
 // ═══ Skeleton, placeholder φόρτωσης (αντικαθιστά τα «Φόρτωση…») ══════════
 export function Skeleton({ w = '100%', h = 14, r = 8, style }: { w?: number | string; h?: number | string; r?: number; style?: CSSProperties }) {

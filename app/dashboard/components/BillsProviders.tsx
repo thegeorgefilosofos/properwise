@@ -406,7 +406,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
             ) : (
               <TextInput label="Ονομασία προγράμματος" value={s.internetPlan} onChange={v => upd({ internetPlan: v })} placeholder="Fiber 500"/>
             )}
-            <NumberInput label="Μηνιαίο κόστος"  value={s.internetPrice} onChange={v => upd({ internetPrice: v })} suffix="€" step={1}/>
+            <NumberInput label="Μηνιαίο κόστος"  value={s.internetPrice} onChange={v => upd({ internetPrice: v })} suffix="€"/>
           </div>
 
           {selectedPlan && (
@@ -429,7 +429,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
               από το νούμερο με το οποίο συγκρίνεται. */}
           <div {...g3}>
             <TextInput   label="Ταχύτητα συμβολαίου" value={s.internetSpeed} onChange={v => upd({ internetSpeed: v })} placeholder="500 Mbps"/>
-            <NumberInput label="Πραγματική ταχύτητα λήψης" value={s.internetSpeedReal || ''}  onChange={v => upd({ internetSpeedReal: v })} suffix="Mbps" step={10}/>
+            <NumberInput label="Πραγματική ταχύτητα λήψης" value={s.internetSpeedReal || ''}  onChange={v => upd({ internetSpeedReal: v })} suffix="Mbps"/>
             <DatePicker  label="Λήξη συμβολαίου"                      value={s.internetContractEnd || ''} onChange={v => upd({ internetContractEnd: v })}/>
           </div>
           <div style={{ marginBottom: 14 }}>
@@ -555,7 +555,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                 ) : (
                   <TextInput label="Πακέτο" value={s.tvPlan} onChange={v => upd({ tvPlan: v })} placeholder="Ονομασία πακέτου"/>
                 )}
-                <NumberInput label="Μηνιαίο κόστος" value={s.tvPrice} onChange={v => upd({ tvPrice: v })} suffix="€" step={1}/>
+                <NumberInput label="Μηνιαίο κόστος" value={s.tvPrice} onChange={v => upd({ tvPrice: v })} suffix="€"/>
                 {/* Ο ΔΙΑΚΟΠΤΗΣ «ΑΘΛΗΤΙΚΑ» ΕΦΥΓΕ, ΓΙΑΤΙ ΔΕΝ ΕΚΑΝΕ ΤΙΠΟΤΑ. Το
                     `tvHasSports` γραφόταν σε τρία σημεία και ΔΕΝ διαβαζόταν σε
                     κανένα: ούτε σε υπολογισμό κόστους, ούτε σε σύγκριση
@@ -598,14 +598,14 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
             />
             <NumberInput  label="Λογαριασμός νερού" value={s.waterBiMonthly}
               onChange={v => upd({ waterBiMonthly: v, waterMonthly: waterMonthlyText(v, s.waterPeriodMonths) })}
-              suffix="€" step={5}/>
+              suffix="€"/>
             {/* ΤΟ ΠΕΔΙΟ «ΜΗΝΙΑΙΑ ΑΝΑΓΩΓΗ» ΗΤΑΝ ΝΕΚΡΟ ΚΟΥΤΙ. Ήταν ο λογαριασμός
                 διά τους μήνες, δηλαδή τιμή που την ξέρει ήδη η οθόνη — και μόλις
                 υπήρχε λογαριασμός, ΚΑΙ ΟΙ ΔΥΟ αναγνώστες (η σύνοψη εδώ και ο
                 προϋπολογισμός) αγνοούσαν ό,τι πληκτρολογούσε ο χρήστης μέσα του.
                 Έγραφε άλλο νούμερο και δεν άλλαζε τίποτα πουθενά. Ο μηνιαίος
                 φαίνεται από κάτω, υπολογισμένος. */}
-            <NumberInput  label="Άτομα στο ακίνητο"      value={s.waterPersons}  onChange={v => upd({ waterPersons: v })}  suffix="άτομα"  step={1}/>
+            <NumberInput  label="Άτομα στο ακίνητο"      value={s.waterPersons}  onChange={v => upd({ waterPersons: v })}  suffix="άτομα"/>
           </div>
           {waterM > 0 && (
             <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '10px 14px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, border: '1px solid var(--border-subtle)' }}>
@@ -633,16 +633,16 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
             {/* Το μηνιαίο κόστος δεν έχει νόημα όπου το κόστος βγαίνει από
                 λίτρα ή κιλά, ούτε όπου δεν υπάρχει θέρμανση. */}
             {!['autonomous_oil', 'pellet', 'none', ''].includes(heatingType) && (
-              <NumberInput label="Μέσο μηνιαίο κόστος" value={s.heatingMonthly} onChange={v => upd({ heatingMonthly: v })} suffix="€" step={5}/>
+              <NumberInput label="Μέσο μηνιαίο κόστος" value={s.heatingMonthly} onChange={v => upd({ heatingMonthly: v })} suffix="€"/>
             )}
             {heatingType === 'autonomous_oil' && (
-              <><NumberInput label="Λίτρα τον χρόνο"     value={s.heatingLitersPerYear}    onChange={v => upd({ heatingLitersPerYear: v })}    suffix="L"   step={50}/><NumberInput label="Τιμή ανά λίτρο" value={s.heatingOilPricePerLiter} onChange={v => upd({ heatingOilPricePerLiter: v })} suffix="€" step={0.01}/></>
+              <><NumberInput label="Λίτρα τον χρόνο"     value={s.heatingLitersPerYear}    onChange={v => upd({ heatingLitersPerYear: v })}    suffix="L"/><NumberInput label="Τιμή ανά λίτρο" value={s.heatingOilPricePerLiter} onChange={v => upd({ heatingOilPricePerLiter: v })} suffix="€"/></>
             )}
             {heatingType === 'pellet' && (
-              <><NumberInput label="Kg / έτος"     value={s.heatingKgPellet}    onChange={v => upd({ heatingKgPellet: v })}    suffix="kg" step={50}/><NumberInput label="Τιμή ανά κιλό" value={s.heatingPelletPrice} onChange={v => upd({ heatingPelletPrice: v })} suffix="€" step={0.01}/></>
+              <><NumberInput label="Kg / έτος"     value={s.heatingKgPellet}    onChange={v => upd({ heatingKgPellet: v })}    suffix="kg"/><NumberInput label="Τιμή ανά κιλό" value={s.heatingPelletPrice} onChange={v => upd({ heatingPelletPrice: v })} suffix="€"/></>
             )}
             {isCentralHeating(heatingType) && (
-              <NumberInput label="Μερίδιο ιδιοκτησίας" value={s.heatingCentralShare} onChange={v => upd({ heatingCentralShare: v })} suffix="%" step={1}/>
+              <NumberInput label="Μερίδιο ιδιοκτησίας" value={s.heatingCentralShare} onChange={v => upd({ heatingCentralShare: v })} suffix="%"/>
             )}
           </div>
           {heatingM > 0 && (
@@ -672,7 +672,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
           <div {...g3}>
             <CustomSelect label="Εταιρεία"            value={s.securityCompany}  onChange={v => upd({ securityCompany: v })}  options={SECURITY_COMPANIES.map(c => ({ value: c.value, label: c.label }))}/>
             <TextInput    label="Πρόγραμμα ή πακέτο" value={s.securityPlan}    onChange={v => upd({ securityPlan: v })}    placeholder="Basic"/>
-            <NumberInput  label="Μηνιαίο κόστος" value={s.securityMonthly} onChange={v => upd({ securityMonthly: v })} suffix="€" step={2}/>
+            <NumberInput  label="Μηνιαίο κόστος" value={s.securityMonthly} onChange={v => upd({ securityMonthly: v })} suffix="€"/>
           </div>
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' as const, marginBottom: 12 }}>
             <Toggle on={s.securityHasRemote} onChange={v => upd({ securityHasRemote: v })} label="Τηλεχειρισμός από εφαρμογή"/>

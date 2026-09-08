@@ -290,7 +290,6 @@ export const CLOUD = tidy([
 // Οι δύο εγγραφές συνδρομής ήταν λέξη προς λέξη ίδιες. Η μία περιγραφή αρκεί:
 // αν αύριο προστεθεί πεδίο στη μία, δεν υπάρχει δεύτερη να ξεχαστεί.
 export interface SubscriptionEntry { service: string; planId: string; customPrice: string; splitPeople: number; splitActive: boolean; renewalDate: string; }
-interface OtherSub       { name: string; price: string; renewalDate: string; }
 
 /**
  * Η ΠΡΟΤΑΣΗ ΠΟΥ ΧΡΩΣΤΑΕΙ Η ΟΘΟΝΗ ΟΤΑΝ ΤΟ ΠΟΣΟ ΔΕΝ ΕΙΝΑΙ ΑΥΤΟ ΠΟΥ ΠΛΗΡΩΣΕ.
