@@ -98,23 +98,41 @@ Deno.serve(async (req) => {
   // Ο έλεγχος διπλής συναίνεσης γράφτηκε ακριβώς γι' αυτό (20260810070000) και
   // η `send-reminders` τον χρησιμοποιεί. Αυτός ο αποστολέας διάβαζε την
   // ανεπιβεβαίωτη διεύθυνση κατευθείαν από τον πίνακα και έστελνε.
-  const { data: allowedRows } = await supabase.rpc('reminder_recipients')
+  // ΑΠΟΤΥΧΙΑ ΕΔΩ ΔΕΝ ΕΙΝΑΙ «ΚΑΝΕΝΑΣ ΧΡΗΣΤΗΣ». Χωρίς το `error`, μια αποτυχία
+  // γύριζε `undefined`, το `|| []` το έκανε κενό — και η εργασία απαντούσε 200
+  // «no_users»: καμία μηνιαία κατάσταση σε κανέναν ιδιοκτήτη, με πράσινο
+  // τρέξιμο στον πίνακα. Ιδιο σφάλμα με την αποστολή υπενθυμίσεων, ίδια λύση.
+  const { data: allowedRows, error: allowedErr } = await supabase.rpc('reminder_recipients')
+  if (allowedErr) {
+    console.error('[monthly-statements] οι επιτρεπτοί παραλήπτες δεν διαβάστηκαν:', allowedErr)
+    return json({ error: 'reminder_recipients unreadable', detail: allowedErr.message }, 500)
+  }
   const prefs = ((allowedRows || []) as { user_id: string; email: string | null }[])
     .filter(r => !!r.email)
     .map(r => ({ user_id: r.user_id, reminder_email: r.email }))
   if (!prefs.length) return json({ message: 'no_users' })
 
-  let sent = 0, skipped = 0, failed = 0
+  // ΤΟ «ΠΑΡΑΛΕΙΦΘΗΚΕ» ΚΑΙ ΤΟ «ΔΕΝ ΔΙΑΒΑΣΤΗΚΕ» ΕΙΝΑΙ ΔΥΟ ΔΙΑΦΟΡΕΤΙΚΑ ΠΡΑΓΜΑΤΑ
+  // ΚΑΙ ΦΑΙΝΟΝΤΑΝ ΙΔΙΑ. Ο ιδιοκτήτης χωρίς ενοίκια τον μήνα και ο ιδιοκτήτης
+  // που τα ενοίκιά του δεν διαβάστηκαν μετριούνταν και οι δύο ως `skipped`:
+  // το ένα είναι φυσιολογικό, το άλλο είναι κατάσταση που δεν έφυγε ποτέ.
+  let sent = 0, skipped = 0, failed = 0, unreadable = 0
   for (const pref of prefs as { user_id: string; reminder_email: string | null }[]) {
     if (!pref.reminder_email) { skipped++; continue }
 
     // Idempotency: αν έχει ήδη σταλεί κατάσταση αυτόν τον μήνα, παράλειψε.
-    const { data: already } = await supabase.from('notification_log')
+    // Ο ΜΟΝΟΣ ΦΡΑΓΜΟΣ ΓΙΑ ΔΕΥΤΕΡΗ ΚΑΤΑΣΤΑΣΗ ΤΟΝ ΙΔΙΟ ΜΗΝΑ. Αγνοώντας το `error`,
+    // μια αποτυχία γινόταν «δεν έχει σταλεί» και ο ιδιοκτήτης έπαιρνε την ίδια
+    // κατάσταση δεύτερη φορά. Το να λείψει μια κατάσταση φαίνεται τον επόμενο
+    // μήνα· ένα διπλό email δεν ξαναπαίρνεται πίσω.
+    const { data: already, error: alreadyErr } = await supabase.from('notification_log')
       .select('id').eq('user_id', pref.user_id).eq('reminder_type', 'monthly_statement').gte('created_at', monthStart).limit(1)
+    if (alreadyErr) { console.error('[monthly-statements] μητρώο απεσταλμένων:', alreadyErr); unreadable++; continue }
     if (already?.length) { skipped++; continue }
 
-    const { data: rentData } = await supabase.from('rent_payments')
+    const { data: rentData, error: rentErr } = await supabase.from('rent_payments')
       .select('property_id,tenant_id,amount,paid').eq('user_id', pref.user_id).eq('period_year', py).eq('period_month', pm)
+    if (rentErr) { console.error('[monthly-statements] τα ενοίκια δεν διαβάστηκαν:', rentErr); unreadable++; continue }
     const rents = (rentData || []) as Rent[]
     if (!rents.length) { skipped++; continue }
 
@@ -145,5 +163,5 @@ Deno.serve(async (req) => {
     } catch { failed++ }
   }
 
-  return json({ sent, skipped, failed, period: periodLabel })
+  return json({ sent, skipped, failed, unreadable, period: periodLabel })
 })

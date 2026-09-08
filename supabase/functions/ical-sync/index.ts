@@ -263,8 +263,13 @@ interface Feed {
 
 async function ensureChannelClient(userId: string, channel: string): Promise<string> {
   const name = channel === 'airbnb' ? 'Κρατήσεις Airbnb' : channel === 'booking' ? 'Κρατήσεις Booking' : 'Κρατήσεις καναλιού'
-  const { data: existing } = await admin.from('clients').select('id')
+  // ΑΠΟΤΥΧΙΑ ΕΔΩ ΔΕΝ ΕΙΝΑΙ «ΔΕΝ ΥΠΑΡΧΕΙ». Χωρίς το `error`, μια αποτυχία γύριζε
+  // `undefined` και ο κώδικας δημιουργούσε ΔΕΥΤΕΡΟ συγκεντρωτικό πελάτη με το
+  // ίδιο όνομα. Το πέταγμα το πιάνει το `catch` της `syncFeed`, που το γράφει
+  // στο `last_status` της ροής — ο χρήστης βλέπει γιατί δεν συγχρονίστηκε.
+  const { data: existing, error: existErr } = await admin.from('clients').select('id')
     .eq('user_id', userId).eq('full_name', name).eq('type', 'client').limit(1).maybeSingle()
+  if (existErr) throw new Error(`ο συγκεντρωτικός πελάτης δεν διαβάστηκε: ${existErr.message}`)
   if (existing) return (existing as { id: string }).id
   const { data, error } = await admin.from('clients').insert({
     user_id: userId, type: 'client', full_name: name, stage: 'closed',
@@ -300,9 +305,14 @@ async function syncFeed(feed: Feed): Promise<Record<string, unknown>> {
     // Ο ΠΑΛΙΟΣ ΕΛΕΓΧΟΣ ΜΕΝΕΙ, ΚΑΙ ΜΟΝΟ ΓΙΑ ΤΙΣ ΠΑΛΙΕΣ ΓΡΑΜΜΕΣ. Όσες μπήκαν
     // πριν υπάρξει η στήλη δεν έχουν UID, οπότε η σύγκρουση δεν θα τις έβρισκε
     // και θα ξαναγράφονταν ολόκληρες.
-    const { data: existing } = await admin.from('client_stays')
+    // ΚΑΙ ΑΥΤΗ Η ΑΝΑΓΝΩΣΗ ΕΙΝΑΙ ΦΡΑΓΜΟΣ, ΟΧΙ ΠΛΗΡΟΦΟΡΙΑ. Οι κλειδαριές που
+    // βγαίνουν από εδώ κρατούν τις παλιές γραμμές (χωρίς UID) από το να
+    // ξαναμπούν. Αγνοώντας το `error`, μια αποτυχία άδειαζε το σύνολο και ΚΑΘΕ
+    // παλιά κράτηση ξαναγραφόταν: διπλές διαμονές στο ημερολόγιο του ιδιοκτήτη.
+    const { data: existing, error: existingErr } = await admin.from('client_stays')
       .select('property_id,check_in,check_out')
       .eq('user_id', feed.user_id).eq('property_id', feed.property_id).is('source_uid', null)
+    if (existingErr) throw new Error(`οι υπάρχουσες διαμονές δεν διαβάστηκαν: ${existingErr.message}`)
     const keys = new Set((existing || []).map((s: { property_id: string; check_in: string; check_out: string }) => `${s.property_id}|${s.check_in}|${s.check_out}`))
     const fresh = toImport.filter(d => !keys.has(`${feed.property_id}|${d.start}|${d.end}`))
 
@@ -354,12 +364,16 @@ async function syncFeed(feed: Feed): Promise<Record<string, unknown>> {
     if (looksLikeCalendar) {
       const live = new Set(events.filter(e => !e.cancelled).map(e => uidOf(e.uid)))
       const today = new Date().toISOString().slice(0, 10)
-      const { data: mine } = await admin.from('client_stays')
+      const { data: mine, error: mineErr } = await admin.from('client_stays')
         .select('id,source_uid')
         .eq('user_id', feed.user_id).eq('property_id', feed.property_id)
         .like('source_uid', `${feed.channel}:%`)
         .gte('check_in', today)
         .is('cancelled_at', null)
+      // Αποτυχία εδώ έδινε κενή λίστα, δηλαδή «καμία ακύρωση» — και η ροή
+      // ανέφερε «ok: 0 ακυρώθηκαν» ενώ δεν είχε κοιτάξει καθόλου. Κρατήσεις
+      // που ο επισκέπτης ακύρωσε έμεναν ζωντανές στο ημερολόγιο.
+      if (mineErr) throw new Error(`οι δικές μας διαμονές δεν διαβάστηκαν: ${mineErr.message}`)
       const gone = (mine || [])
         .filter((r: { source_uid: string | null }) => r.source_uid && !live.has(r.source_uid))
         .map((r: { id: string }) => r.id)
@@ -392,7 +406,14 @@ Deno.serve(async (req) => {
     // ── Cron/service: συγχρονισμός ΟΛΩΝ των ενεργών συνδέσμων ──
     if (action === 'sync-all' || cronHeader) {
       if (!(await authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase: admin, dbSecretName: ['ical_cron', 'email_cron'] }))) return json({ error: 'unauthorized' }, 401)
-      const { data: feeds } = await admin.from('ical_feeds').select('*').eq('active', true)
+      // ΑΠΟΤΥΧΙΑ ΕΔΩ ΣΗΜΑΙΝΕ «ΚΑΜΙΑ ΕΝΕΡΓΗ ΡΟΗ» ΚΑΙ ΑΠΑΝΤΟΥΣΕ ok. Ο συγχρονισμός
+      // όλων των ημερολογίων δεν γινόταν, καμία κράτηση δεν έμπαινε, καμία
+      // ακύρωση δεν περνούσε — και το προγραμματισμένο τρέξιμο ήταν πράσινο.
+      const { data: feeds, error: feedsErr } = await admin.from('ical_feeds').select('*').eq('active', true)
+      if (feedsErr) {
+        console.error('[ical-sync] οι ροές δεν διαβάστηκαν:', feedsErr)
+        return json({ error: 'ical_feeds unreadable', detail: feedsErr.message }, 500)
+      }
       const results = []
       for (const f of (feeds || []) as Feed[]) results.push(await syncFeed(f))
       return json({ ok: true, feeds: results.length, results })
@@ -436,7 +457,13 @@ Deno.serve(async (req) => {
     if (action === 'sync') {
       let q = admin.from('ical_feeds').select('*').eq('user_id', userId).eq('active', true)
       if (body.propertyId) q = q.eq('property_id', String(body.propertyId))
-      const { data: feeds } = await q
+      // Ιδιο με τη διαδρομή του cron: κενό από αποτυχία θα έλεγε στον χρήστη
+      // «συγχρονίστηκαν 0 ημερολόγια» ενώ έχει ενεργά.
+      const { data: feeds, error: feedsErr } = await q
+      if (feedsErr) {
+        console.error('[ical-sync] οι ροές του χρήστη δεν διαβάστηκαν:', feedsErr)
+        return json({ error: 'Οι σύνδεσμοι ημερολογίου δεν διαβάστηκαν. Δοκίμασε ξανά.' }, 500)
+      }
       const results = []
       for (const f of (feeds || []) as Feed[]) results.push(await syncFeed(f))
       const inserted = results.reduce((s, r) => s + (Number(r.inserted) || 0), 0)
