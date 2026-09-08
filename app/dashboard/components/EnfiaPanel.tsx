@@ -58,7 +58,7 @@ import { useBillsSettings } from './BillsSettings';
 import { AadePill } from '@/components/AadeLink';
 import {
   estimateENFIA, enfiaInUse, enfiaLastYearAnnual,
-  ENFIA_REDUCTIONS, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF,
+  ENFIA_REDUCTIONS, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF, enfiaReductionInForce,
 } from '@/lib/billing/enfia';
 
 // Το «Δεν γνωρίζω» ΔΕΝ είναι απουσία επιλογής: είναι η ουδέτερη επιλογή, με
@@ -224,6 +224,12 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
     return () => { live = false; };
   }, [propertyId, supabase]);
 
+  // ΤΟ ΕΤΟΣ ΤΗΣ ΕΚΤΙΜΗΣΗΣ, ΔΙΑΒΑΣΜΕΝΟ ΜΙΑ ΦΟΡΑ. Ο ΕΝΦΙΑ βεβαιώνεται ανά έτος
+  // και κάποια μέτρα ψηφίζονται για ΕΝΑ έτος: χωρίς αυτό, ένα μέτρο του 2026
+  // θα συνέχιζε να κόβει τον φόρο στη μισή τον Ιανουάριο του 2027. Η μηχανή
+  // είναι καθαρή και δεν διαβάζει ρολόι — το ρολόι είναι δουλειά της οθόνης.
+  const enfiaYear = useMemo(() => new Date().getFullYear(), []);
+
   const lastYear = useMemo(() => enfiaLastYearAnnual({
     annual: s.enfiaLastAnnual, instalment: s.enfiaLastInstalment, instalments: s.enfiaLastCount,
   }), [s.enfiaLastAnnual, s.enfiaLastInstalment, s.enfiaLastCount]);
@@ -239,7 +245,8 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
     totalValue: parseFloat(s.enfiaTotalVal) || 0,
     propertyValue: parseFloat(s.enfiaPropVal) || 0,
     reductions: s.enfiaReductions || [],
-  }), [s.enfiaSqm, s.enfiaZone, s.enfiaFloor, s.enfiaAge, s.enfiaOwnership, s.enfiaTotalVal, s.enfiaPropVal, s.enfiaReductions]);
+    year: enfiaYear,
+  }), [s.enfiaSqm, s.enfiaZone, s.enfiaFloor, s.enfiaAge, s.enfiaOwnership, s.enfiaTotalVal, s.enfiaPropVal, s.enfiaReductions, enfiaYear]);
 
   const inUse = enfiaInUse(s.enfiaAnnual, s.enfiaMonthly, est?.annual, lastYear);
 
@@ -442,15 +449,22 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
           <div style={{ ...TT.label, color: 'var(--text-secondary)', margin: '20px 0 8px' }}>Μειώσεις</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {ENFIA_REDUCTIONS.map(r => {
-              const active = (s.enfiaReductions || []).includes(r.key);
+              // ΤΟ ΜΕΤΡΟ ΠΟΥ ΕΛΗΞΕ ΦΑΙΝΕΤΑΙ, ΔΕΝ ΕΞΑΦΑΝΙΖΕΤΑΙ. Ο λογιστής που το
+              // έψαχνε πρέπει να μάθει ΓΙΑΤΙ δεν είναι πια εκεί· ένας κατάλογος
+              // που σιωπηλά κονταίνει διαβάζεται ως σφάλμα της εφαρμογής.
+              const inForce = enfiaReductionInForce(r.key, enfiaYear);
+              const active = inForce && (s.enfiaReductions || []).includes(r.key);
               return (
-                <button key={r.key} type="button" onClick={() => toggleReduction(r.key)} aria-pressed={active}
+                <button key={r.key} type="button" disabled={!inForce}
+                  onClick={() => inForce && toggleReduction(r.key)} aria-pressed={active}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', width: '100%',
-                    textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+                    textAlign: 'left', fontFamily: 'inherit',
                     background: active ? 'var(--accent-soft)' : 'var(--bg-elevated)',
                     border: `1px solid ${active ? 'var(--accent)' : 'var(--border-subtle)'}`,
                     borderRadius: T.radius.inner,
+                    opacity: inForce ? 1 : 0.55,
+                    cursor: inForce ? 'pointer' : 'default',
                     transition: 'background-color .15s, border-color .15s',
                   }}>
                   <span aria-hidden style={{ width: 16, height: 16, borderRadius: T.radius.xs, flexShrink: 0, border: `2px solid ${active ? 'var(--accent)' : 'var(--border-default)'}`, background: active ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -459,6 +473,11 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: active ? 600 : 400, display: 'block' }}>{r.label}</span>
                     <span style={{ ...TT.caption, display: 'block', marginTop: 2 }}>{r.note}</span>
+                    {!inForce && (
+                      <span style={{ ...TT.caption, display: 'block', marginTop: 2, color: 'var(--text-tertiary)' }}>
+                        Δεν ισχύει για τον ΕΝΦΙΑ {enfiaYear}: το μέτρο εφαρμόστηκε ώς και το {r.untilYear}.
+                      </span>
+                    )}
                   </span>
                   <span style={{ ...TT.figure, fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>{fp(r.pct)}</span>
                 </button>

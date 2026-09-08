@@ -4,6 +4,7 @@ import { enfiaLastYearAnnual,
   ENFIA_ZONE_TAX, enfiaInUse, enfiaAgeCoef, enfiaFloorCoef,
   enfiaAgeKeyFromYears, enfiaAgeKeyFromYearBuilt, enfiaFloorKeyFromValue,
   enfiaTypeBlock, ENFIA_TYPE_BLOCK_NOTE,
+  enfiaReductionPct, enfiaReductionInForce, ENFIA_REDUCTIONS,
 } from './enfia'
 
 let passed = 0, failed = 0
@@ -365,6 +366,40 @@ ok('μηδέν έτη → νεόδμητο (κανονική περίπτωση)
   ok('ο κύριος φόρος είναι ακριβώς ο μισός', Math.abs(half.basic - small.basic / 2) < 0.02)
   ok('η μείωση περιουσίας μεγαλώνει', half.reductionPct > small.reductionPct)
   ok('άρα το ετήσιο είναι λιγότερο από το μισό', half.annual < small.annual / 2)
+}
+
+// ── ΤΟ ΜΕΤΡΟ ΠΟΥ ΛΗΓΕΙ ΠΑΥΕΙ ΝΑ ΚΟΒΕΙ ΤΟΝ ΦΟΡΟ ────────────────────────────
+// ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΚΛΕΙΝΕΙ ΑΥΤΗ Η ΕΝΟΤΗΤΑ. Η μείωση του μικρού οικισμού ψηφίστηκε
+// ΓΙΑ ΤΟΝ ΕΝΦΙΑ 2026 και μόνο, αλλά ο κατάλογος δεν είχε έννοια χρόνου: την 1η
+// Ιανουαρίου 2027 η ίδια επιλογή θα εξακολουθούσε να κόβει τον φόρο στη μισή.
+// Ο τύπος σωστός, το ποσοστό σωστό, λάθος η ΧΡΟΝΙΑ — κανένα τεστ δεν το έβλεπε.
+{
+  const KEY = 'small_settlement_2026'
+  const rd = ENFIA_REDUCTIONS.find(r => r.key === KEY)!
+  ok('το μέτρο του μικρού οικισμού δηλώνει πότε λήγει', rd.untilYear === 2026)
+
+  ok('μέσα στη χρονιά του ισχύει', enfiaReductionPct(KEY, 200000, 2026) === 50)
+  ok('την επόμενη χρονιά δεν ισχύει', enfiaReductionPct(KEY, 200000, 2027) === 0)
+  ok('και η οθόνη το ξέρει', enfiaReductionInForce(KEY, 2026) && !enfiaReductionInForce(KEY, 2027))
+
+  // ΤΟ ΑΓΝΩΣΤΟ ΕΤΟΣ ΔΕΝ ΔΙΝΕΙ ΕΚΠΤΩΣΗ ΠΟΥ ΛΗΓΕΙ. Το να δεις φόρο μεγαλύτερο
+  // από τον πραγματικό κοστίζει μια ερώτηση· μικρότερο, πρόστιμο.
+  ok('χωρίς έτος, το μέτρο που λήγει δεν εφαρμόζεται', enfiaReductionPct(KEY, 200000) === 0)
+
+  // ΚΑΙ ΤΑ ΜΟΝΙΜΑ ΜΕΤΡΑ ΔΕΝ ΠΑΡΑΣΥΡΟΝΤΑΙ. Χωρίς αυτόν τον έλεγχο, ένα «μηδέν
+  // παντού όταν λείπει το έτος» θα περνούσε πράσινο και θα ακρίβαινε κάθε
+  // εκτίμηση που δεν δηλώνει χρονιά.
+  ok('η αναπηρία δεν λήγει και ισχύει χωρίς έτος', enfiaReductionPct('disability', 200000) === 100)
+  ok('το ίδιο και με έτος πολύ μπροστά', enfiaReductionPct('disability', 200000, 2031) === 100)
+
+  // ΚΑΙ ΤΟ ΤΕΛΙΚΟ ΠΟΣΟ ΑΛΛΑΖΕΙ, ΟΧΙ ΜΟΝΟ ΤΟ ΠΟΣΟΣΤΟ. Χωρίς αυτό, η μηχανή θα
+  // μπορούσε να αγνοεί το έτος και οι παραπάνω έλεγχοι να μένουν πράσινοι.
+  const base = { sqm: 100, zone: '751_1500', totalValue: 200000, propertyValue: 200000, reductions: [KEY] }
+  const y26 = estimateENFIA({ ...base, year: 2026 })!
+  const y27 = estimateENFIA({ ...base, year: 2027 })!
+  ok('ο ΕΝΦΙΑ του 2026 είναι μειωμένος', y26.annual < y27.annual)
+  ok('και του 2027 ίδιος με το να μη ζητηθεί καθόλου',
+    y27.annual === estimateENFIA({ ...base, reductions: [], year: 2027 })!.annual)
 }
 
 console.log(`enfia.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)

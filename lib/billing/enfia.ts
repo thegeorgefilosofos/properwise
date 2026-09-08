@@ -193,9 +193,23 @@ export const ENFIA_REDUCTIONS: {
    * που δεν τον τηρούσε. Το κατώφλι μπαίνει εδώ, ώστε να ισχύει.
    */
   pctOver?: { above: number; pct: number }
+  /**
+   * ΤΟ ΤΕΛΕΥΤΑΙΟ ΕΤΟΣ ΕΝΦΙΑ ΠΟΥ ΙΣΧΥΕΙ ΤΟ ΜΕΤΡΟ.
+   *
+   * ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΗΤΑΝ. Η μείωση του μικρού οικισμού ψηφίστηκε ΓΙΑ ΤΟ ΕΝΦΙΑ
+   * 2026 και μόνο. Ο κατάλογος όμως δεν είχε έννοια χρόνου: την 1η Ιανουαρίου
+   * 2027 η ίδια επιλογή θα εξακολουθούσε να κόβει τον φόρο στη ΜΙΣΗ, για μέτρο
+   * που δεν υπάρχει. Κανένα τεστ δεν θα το έπιανε — ο τύπος είναι σωστός, το
+   * ποσοστό είναι σωστό, λάθος είναι η ΧΡΟΝΙΑ. Και δεν είναι μικρό λάθος: σε
+   * κύριο φόρο 800 € είναι 400 € που ο ιδιοκτήτης δεν χρωστά κατά την οθόνη
+   * και χρωστά κατά την ΑΑΔΕ.
+   *
+   * Χωρίς τιμή, το μέτρο δεν έχει ημερομηνία λήξης στον νόμο.
+   */
+  untilYear?: number
 }[] = [
   { key: 'low_income', label: 'Χαμηλό εισόδημα (κύρια κατοικία)', pct: 50, note: 'Μείωση 50% με κριτήρια: εισόδημα ≤9.000 € (+1.000 €/μέλος), κτίσματα ≤150 τ.μ., περιουσία ≤85.000 € (άγαμος) / 200.000 € (έγγαμος με 2 τέκνα)' },
-  { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού (2026)', pct: 50, note: 'Αυτόματη μείωση 50% ΕΝΦΙΑ 2026 για οικισμούς ≤1.500 κατ., αξία κατοικίας ≤400.000 €' },
+  { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού (2026)', pct: 50, untilYear: 2026, note: 'Αυτόματη μείωση 50% ΕΝΦΙΑ 2026 για οικισμούς ≤1.500 κατ., αξία κατοικίας ≤400.000 €' },
   { key: 'large_family', label: 'Τρίτεκνοι / Πολύτεκνοι', pct: 100, note: '100% απαλλαγή με κριτήρια: εισόδημα ≤12.000 € (+1.000 €/μέλος), κτίσματα ≤150 τ.μ.' },
   { key: 'disability', label: 'Αναπηρία ≥80%', pct: 100, note: '100% απαλλαγή με τα ίδια εισοδηματικά/περιουσιακά κριτήρια' },
   { key: 'insurance', label: 'Ασφαλισμένη κατοικία', pct: 20, pctOver: { above: 500_000, pct: 10 }, note: '20% (αξία ≤500.000 €) ή 10% (>500.000 €), κάλυψη σεισμού+πυρκαγιάς+πλημμύρας ≥3 μήνες' },
@@ -256,10 +270,30 @@ export function enfiaExtraPropertyTax(propertyValue: number, ownership = 100): n
  * επιτρέπεται να μαντεύει υπέρ του χρήστη: αυτό θα ήταν υποεκτίμηση φόρου που
  * ο ιδιοκτήτης θα τη μάθαινε από την ΑΑΔΕ.
  */
-export function enfiaReductionPct(key: string, homeValue: number): number {
+/**
+ * Το ποσοστό μιας έκπτωσης για ένα ΣΥΓΚΕΚΡΙΜΕΝΟ έτος ΕΝΦΙΑ.
+ *
+ * ΓΙΑΤΙ ΤΟ ΑΓΝΩΣΤΟ ΕΤΟΣ ΔΕΝ ΔΙΝΕΙ ΤΗΝ ΕΚΠΤΩΣΗ. Παντού αλλού σε αυτό το αρχείο
+ * το άγνωστο είναι ΟΥΔΕΤΕΡΟ και ποτέ ακριβότερο. Εδώ η φορά αντιστρέφεται
+ * επίτηδες: μια έκπτωση που δίνεται χωρίς να ξέρουμε αν ίσχυε τη χρονιά της
+ * δεν είναι αισιοδοξία, είναι απαίτηση απέναντι στην ΑΑΔΕ που ο ιδιοκτήτης
+ * δεν έχει. Το να δεις φόρο μεγαλύτερο από τον πραγματικό κοστίζει μια
+ * ερώτηση· το να δεις μικρότερο κοστίζει πρόστιμο.
+ *
+ * @param year το έτος ΕΝΦΙΑ. Χωρίς αυτό, τα μέτρα με ημερομηνία λήξης δεν
+ *             εφαρμόζονται· όσα δεν λήγουν, εφαρμόζονται κανονικά.
+ */
+export function enfiaReductionPct(key: string, homeValue: number, year?: number): number {
   const rd = ENFIA_REDUCTIONS.find(r => r.key === key)
   if (!rd) return 0
+  if (rd.untilYear != null && (year == null || year > rd.untilYear)) return 0
   return rd.pctOver && homeValue > rd.pctOver.above ? rd.pctOver.pct : rd.pct
+}
+
+/** Ισχύει το μέτρο για αυτό το έτος ΕΝΦΙΑ; Το χρησιμοποιεί και η οθόνη. */
+export function enfiaReductionInForce(key: string, year: number): boolean {
+  const rd = ENFIA_REDUCTIONS.find(r => r.key === key)
+  return !!rd && (rd.untilYear == null || year <= rd.untilYear)
 }
 
 export function wealthReductionPct(totalValue: number): number {
@@ -277,6 +311,14 @@ export interface ENFIAInput {
   totalValue?: number  // συνολική αξία ακίνητης περιουσίας (για μείωση & προσαύξηση)
   propertyValue?: number // αντικειμενική αξία ΤΟΥ ακινήτου (για Ενότητα Γ, >400.000 €)
   reductions?: string[]
+  /**
+   * Το έτος ΕΝΦΙΑ. Κρίνει ποια μέτρα ισχύουν ακόμη.
+   *
+   * ΔΕΝ ΔΙΑΒΑΖΕΤΑΙ ΤΟ ΡΟΛΟΪ ΕΔΩ ΜΕΣΑ. Το αρχείο είναι καθαρές συναρτήσεις και
+   * μια εκτίμηση που αλλάζει επειδή πέρασαν τα μεσάνυχτα δεν δοκιμάζεται. Το
+   * έτος το δίνει η οθόνη, που ξέρει για ποια χρονιά ρωτά ο χρήστης.
+   */
+  year?: number
 }
 export interface ENFIAResult {
   basic: number
@@ -321,7 +363,7 @@ export function estimateENFIA(input: ENFIAInput): ENFIAResult | null {
   const wealthPct = wealthReductionPct(totalVal)
   // Η ΑΞΙΑ ΠΟΥ ΚΡΙΝΕΙ ΤΟ ΚΑΤΩΦΛΙ ΕΙΝΑΙ ΤΗΣ ΚΑΤΟΙΚΙΑΣ. Δες `enfiaReductionPct`.
   const homeVal = propVal || totalVal
-  const manualPct = Math.max(0, ...(input.reductions ?? []).map(r => enfiaReductionPct(r, homeVal)))
+  const manualPct = Math.max(0, ...(input.reductions ?? []).map(r => enfiaReductionPct(r, homeVal, input.year)))
   const combinedFrac = 1 - (1 - wealthPct / 100) * (1 - manualPct / 100)
   const reductionAmount = subtotal * combinedFrac
   // ΚΑΜΙΑ ΔΟΣΗ ΔΕΝ ΒΓΑΙΝΕΙ ΑΠΟ ΕΔΩ. Η μηχανή επέστρεφε `installment` ίσο με

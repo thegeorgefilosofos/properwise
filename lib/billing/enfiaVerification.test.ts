@@ -27,7 +27,7 @@ function surchargePct(totalVal: number): number {
   const b = ENFIA_SURCHARGE_BRACKETS.find(x => totalVal <= x.limit)
   return b ? b.pct : 0
 }
-function enfiaOracle(sqm: number, zone: string, floor: string, age: string, ownership: number, totalVal: number, propVal: number, reductions: string[]) {
+function enfiaOracle(sqm: number, zone: string, floor: string, age: string, ownership: number, totalVal: number, propVal: number, reductions: string[], year?: number) {
   const own = Math.max(0, Math.min(100, ownership)) / 100
   const basic = sqm * ENFIA_ZONE_TAX[zone] * ENFIA_FLOOR_COEF[floor] * ENFIA_AGE_COEF[age] * own
   const extra = totalVal > ENFIA_EXTRA_WEALTH_THRESHOLD ? enfiaExtraPropertyTax(propVal, ownership) : 0
@@ -40,10 +40,16 @@ function enfiaOracle(sqm: number, zone: string, floor: string, age: string, owne
   // τότε θα συμφωνούσαν και οι δύο σε ένα λάθος. Ο νόμος γράφεται δεύτερη φορά,
   // με τα δικά του νούμερα — 20% ώς τις 500.000 της ΚΑΤΟΙΚΙΑΣ, 10% πάνω από
   // εκεί — ώστε λάθος `pctOver` στον πίνακα να κοκκινίζει 40.000 περιπτώσεις.
+  // ΚΑΙ Η ΔΙΑΡΚΕΙΑ ΤΟΥ ΜΕΤΡΟΥ ΞΑΝΑΓΡΑΦΕΤΑΙ, ΓΙΑ ΤΟΝ ΙΔΙΟ ΛΟΓΟ. Ενα μέτρο που
+  // ψηφίστηκε για μία χρονιά δεν ισχύει την επόμενη· και όταν δεν ξέρουμε για
+  // ποια χρονιά ρωτάμε, δεν το δίνουμε — μια έκπτωση που δεν δικαιούσαι είναι
+  // χειρότερο λάθος από μια που έχασες. Ο κανόνας γράφεται εδώ με τα δικά του
+  // λόγια, όχι με κλήση στη μηχανή, αλλιώς θα συμφωνούσαν και οι δύο σε λάθος.
   const homeVal = propVal || totalVal
   const manualPct = Math.max(0, ...reductions.map(r => {
     const rd = ENFIA_REDUCTIONS.find(x => x.key === r)
     if (!rd) return 0
+    if (rd.untilYear != null && (year == null || year > rd.untilYear)) return 0
     return r === 'insurance' && homeVal > 500000 ? 10 : rd.pct
   }))
   const combined = 1 - (1 - wealthPct / 100) * (1 - manualPct / 100)
@@ -88,10 +94,14 @@ const REDS = ENFIA_REDUCTIONS.map(r => r.key)
     const reductions: string[] = []
     if (rnd() < 0.3) reductions.push(REDS[Math.floor(rnd() * REDS.length)])
     if (rnd() < 0.15) reductions.push(REDS[Math.floor(rnd() * REDS.length)])
+    // ΤΟ ΕΤΟΣ ΜΠΑΙΝΕΙ ΣΤΟΝ ΚΛΗΡΟ ΜΑΖΙ ΜΕ ΤΑ ΥΠΟΛΟΙΠΑ, ΚΑΙ ΜΕΡΙΚΕΣ ΦΟΡΕΣ ΛΕΙΠΕΙ.
+    // Ετσι οι ίδιες χιλιάδες περιπτώσεις κρίνουν και τα τρία: μέσα στη χρονιά
+    // του μέτρου, μετά από αυτήν, ή χωρίς χρονιά καθόλου.
+    const yr = rnd() < 0.2 ? undefined : 2024 + Math.floor(rnd() * 5)
 
-    const eng = estimateENFIA({ sqm, zone, floor, age, ownership, totalValue: totalVal, propertyValue: propVal, reductions })
+    const eng = estimateENFIA({ sqm, zone, floor, age, ownership, totalValue: totalVal, propertyValue: propVal, reductions, year: yr })
     if (sqm <= 0) { ok(`enfia null @${i}`, eng === null); continue }
-    const orc = enfiaOracle(sqm, zone, floor, age, ownership, totalVal, propVal, reductions)
+    const orc = enfiaOracle(sqm, zone, floor, age, ownership, totalVal, propVal, reductions, yr)
     ok(`enfia βασικός @${i}`, near(eng!.basic, orc.basic))
     ok(`enfia extra @${i}`, near(eng!.extra, orc.extra))
     ok(`enfia προσαύξηση @${i}`, near(eng!.supplementary, orc.suppl))
