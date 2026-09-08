@@ -920,11 +920,28 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   }
   const [closing,setClosing] = useState<{ snapshot:BookSnapshot; locked_at:string }|null>(null)
   const [lockErr,setLockErr] = useState<string|null>(null)
+  // ═══ Η ΣΙΩΠΗΛΗ ΑΝΑΓΝΩΣΗ ΕΚΑΝΕ ΤΗΝ ΚΛΕΙΔΩΜΕΝΗ ΧΡΗΣΗ ΝΑ ΦΑΙΝΕΤΑΙ ΑΝΟΙΧΤΗ ═══
+  // ΤΟ ΣΦΑΛΜΑ, ΩΣ ΑΛΥΣΙΔΑ. Η ανάγνωση αγνοούσε το `error`: μια αποτυχία —δίκτυο,
+  // policy, χρονικό όριο— γύριζε `undefined`, που εδώ διαβαζόταν ΑΚΡΙΒΩΣ όπως το
+  // «δεν υπάρχει κλείσιμο». Η οθόνη έγραφε ΑΝΟΙΧΤΟ και έδειχνε «Κλείδωμα έτους».
+  //
+  // ΚΑΙ ΤΟ ΚΛΕΙΔΩΜΑ ΚΑΝΕΙ delete-then-insert. Δηλαδή ο λογιστής που πατούσε το
+  // κουμπί ΕΣΒΗΝΕ το υπάρχον στιγμιότυπο και την αρχική ημερομηνία κλειδώματος,
+  // και τα αντικαθιστούσε με τους σημερινούς αριθμούς. Ο λόγος ύπαρξης του
+  // κλειδώματος —«αυτοί ήταν οι αριθμοί την ημέρα της υποβολής»— χανόταν, από
+  // μια αποτυχία δικτύου που κανείς δεν είδε.
+  //
+  // ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΟΧΙ ΔΥΟ: κλειδωμένο, ανοιχτό, ΔΕΝ ΞΕΡΟΥΜΕ. Στην τρίτη
+  // δεν εμφανίζεται κανένα κουμπί που γράφει: ό,τι κι αν πατούσε ο χρήστης εκεί,
+  // θα το πατούσε χωρίς να ξέρει τι υπάρχει από κάτω.
+  const [closingErr,setClosingErr] = useState<string|null>(null)
   // Ίδιο κενό, ίδια λύση: χωρίς ακύρωση, το κλείδωμα χρήσης και το όνομα του
   // μισθωτή του προηγούμενου ακινήτου τυπώνονταν στη βεβαίωση του νέου.
   useEffect(()=>{ let alive = true; (async()=>{
-    const { data } = await supabase.from('book_closings').select('snapshot,locked_at').eq('property_id',propertyId).eq('user_id',userId).eq('year',year).maybeSingle()
-    if(alive) setClosing((data as { snapshot:BookSnapshot; locked_at:string }|null)||null)
+    const { data, error } = await supabase.from('book_closings').select('snapshot,locked_at').eq('property_id',propertyId).eq('user_id',userId).eq('year',year).maybeSingle()
+    if(!alive) return
+    if(error){ setClosingErr(failed('Η κατάσταση της χρήσης δεν διαβάστηκε', error)); setClosing(null); console.warn('book_closings', error) }
+    else { setClosingErr(null); setClosing((data as { snapshot:BookSnapshot; locked_at:string }|null)||null) }
   })(); return ()=>{ alive = false } },[propertyId,userId,year,refreshKey])
   useEffect(()=>{ let alive = true; (async()=>{
     // Ο ΤΡΕΧΩΝ ΜΙΣΘΩΤΗΣ, ΟΧΙ Ο ΤΕΛΕΥΤΑΙΟΣ ΠΟΥ ΓΡΑΦΤΗΚΕ. Το όνομα που βγαίνει από
@@ -1611,20 +1628,21 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         {/* Κλείσιμο χρήσης, premium κατάσταση με σαφή ένδειξη ανοιχτό/κλειστό */}
         {(()=>{ const isCurrent = year===athensYear()
           const isFuture = year>athensYear()
-          const st = drift?'drift':closing?'locked':'open'
-          const meta = { open:{ c:isCurrent?'var(--accent)':'var(--text-tertiary)', label:'ΑΝΟΙΧΤΟ' }, locked:{ c:'var(--positive)', label:'ΚΛΕΙΣΜΕΝΟ' }, drift:{ c:'var(--warning)', label:'ΑΠΟΚΛΙΣΗ' } }[st]
+          const st = closingErr?'unknown':drift?'drift':closing?'locked':'open'
+          const meta = { open:{ c:isCurrent?'var(--accent)':'var(--text-tertiary)', label:'ΑΝΟΙΧΤΟ' }, locked:{ c:'var(--positive)', label:'ΚΛΕΙΣΜΕΝΟ' }, drift:{ c:'var(--warning)', label:'ΑΠΟΚΛΙΣΗ' }, unknown:{ c:'var(--text-tertiary)', label:'ΑΓΝΩΣΤΗ ΚΑΤΑΣΤΑΣΗ' } }[st]
           return (
           <div style={{ ...card, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', borderColor: st==='drift'?'var(--warning)':'var(--border-subtle)' }}>
             <span style={{ display:'inline-flex', alignItems:'center', gap:6, height:26, padding:'0 10px', borderRadius:8, background: st==='drift' ? `color-mix(in srgb, var(--warning) 12%, transparent)` : 'var(--bg-elevated)', color: st==='drift' ? 'var(--warning)' : 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.5px', fontFamily: T.font.sans }}>
-              {st==='open'?(isCurrent?<span className="live-dot" style={{ width:7, height:7, borderRadius:'50%', background:'var(--accent)', flexShrink:0 }}/>:<Unlock size={12}/>):<Lock size={12}/>}{meta.label}
+              {st==='unknown'?<Unlock size={12}/>:st==='open'?(isCurrent?<span className="live-dot" style={{ width:7, height:7, borderRadius:'50%', background:'var(--accent)', flexShrink:0 }}/>:<Unlock size={12}/>):<Lock size={12}/>}{meta.label}
             </span>
             <span style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily: T.font.sans }}>
-              {st==='open'?(isCurrent?<>Χρήση {year} σε εξέλιξη · μήνας {provMonth} από 12.</>:isFuture?<>Η χρήση {year} δεν έχει ξεκινήσει ακόμη.</>:<>Χρήση {year} ολοκληρωμένη, έτοιμη για κλείδωμα.</>):st==='drift'?<>Η χρήση {year} κλειδώθηκε, αλλά τα δεδομένα άλλαξαν έκτοτε.</>:<>Χρήση {year}, κλειδωμένη στις {new Date(closing!.locked_at).toLocaleDateString('el-GR')}.</>}
+              {st==='unknown'?<>Δεν μπορέσαμε να διαβάσουμε αν η χρήση {year} είναι κλειδωμένη. Δεν εμφανίζεται κουμπί κλειδώματος: αν είναι ήδη κλειδωμένη, ένα νέο κλείδωμα θα έσβηνε το αρχικό στιγμιότυπο. Ανανέωσε τη σελίδα.</>:st==='open'?(isCurrent?<>Χρήση {year} σε εξέλιξη · μήνας {provMonth} από 12.</>:isFuture?<>Η χρήση {year} δεν έχει ξεκινήσει ακόμη.</>:<>Χρήση {year} ολοκληρωμένη, έτοιμη για κλείδωμα.</>):st==='drift'?<>Η χρήση {year} κλειδώθηκε, αλλά τα δεδομένα άλλαξαν έκτοτε.</>:<>Χρήση {year}, κλειδωμένη στις {new Date(closing!.locked_at).toLocaleDateString('el-GR')}.</>}
               <InfoHint>Το κλείδωμα κρατά αμετάβλητο στιγμιότυπο των αριθμών του έτους (χρήσιμο μετά την υποβολή στην ΑΑΔΕ). Αν αργότερα αλλάξεις ενοίκια ή έξοδα, εμφανίζεται προειδοποίηση απόκλισης, χωρίς να χαθεί το αρχικό κλείδωμα.</InfoHint>
               {lockErr && <span style={{ display:'block', marginTop:4, color:'var(--negative)', fontSize:12 }}>Το κλείδωμα δεν αποθηκεύτηκε: {lockErr}. Έλεγξε ότι έχει εφαρμοστεί το migration book_closings στη βάση.</span>}
+              {closingErr && <span style={{ display:'block', marginTop:4, color:'var(--negative)', fontSize:12 }}>{closingErr}</span>}
             </span>
             <div style={{ flex:1 }}/>
-            {st==='open'
+            {st==='unknown' ? null : st==='open'
               ? (isFuture ? null : <button onClick={lockYear} style={{ display:'inline-flex', alignItems:'center', gap:6, height:T.h.sm, padding:'0 14px', borderRadius: T.radius.card, border:'1px solid var(--border-default)', background:'var(--bg-elevated)', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans, transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s' }} onMouseEnter={e=>{e.currentTarget.style.color='var(--accent)';e.currentTarget.style.borderColor='var(--accent)'}} onMouseLeave={e=>{e.currentTarget.style.color='var(--text-secondary)';e.currentTarget.style.borderColor='var(--border-default)'}}><Lock size={13}/>Κλείδωμα έτους</button>)
               : <>
                   {st==='drift'&&<button onClick={lockYear} style={{ height:T.h.sm, padding:'0 13px', borderRadius: T.radius.card, border:'1px solid var(--warning)', background:'transparent', color:'var(--warning)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans }}>Ενημέρωση</button>}
