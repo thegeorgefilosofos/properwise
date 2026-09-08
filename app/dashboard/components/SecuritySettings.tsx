@@ -178,11 +178,34 @@ export default function SecuritySettings() {
     }
     setMfaBusy(true);
     setMfaErr(null);
+    // ═══ Η ΟΘΟΝΗ ΕΛΕΓΕ «ΑΝΕΝΕΡΓΗ» ΧΩΡΙΣ ΝΑ ΤΟ ΕΧΕΙ ΚΑΝΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ ═══════
+    // ΤΟ ΣΦΑΛΜΑ, ΩΣ ΑΛΥΣΙΔΑ. Η απαρίθμηση των factors αγνοούσε το `error`: μια
+    // αποτυχία γύριζε `undefined`, το `?? []` το έκανε ΚΕΝΟ ΠΙΝΑΚΑ, ο βρόχος δεν
+    // έτρεχε ποτέ — και το `setMfaState('off')` εκτελούνταν ΕΤΣΙ ΚΙ ΑΛΛΙΩΣ. Το
+    // ίδιο και όταν η απεγγραφή ενός factor αποτύγχανε: το `catch` το κατάπινε.
+    //
+    // ΤΙ ΣΗΜΑΙΝΕΙ ΓΙΑ ΤΟΝ ΧΡΗΣΤΗ. Πιστεύει ότι έκλεισε τη δεύτερη επαλήθευση,
+    // σβήνει την εφαρμογή αυθεντικοποίησης από το κινητό — και στην επόμενη
+    // σύνδεση ο διακομιστής ζητά κωδικό που δεν μπορεί πια να παραγάγει.
+    // Κλείδωμα έξω από τον ίδιο του τον λογαριασμό, από μήνυμα που έλεγε ψέματα.
+    //
+    // ΤΟ «ΑΝΕΝΕΡΓΗ» ΛΕΓΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΤΟ ΕΠΙΒΕΒΑΙΩΣΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ: κάθε
+    // απεγγραφή ελέγχεται και, αν έστω μία δεν πέρασε, η κατάσταση ΔΕΝ αλλάζει.
     try {
-      const { data: list } = await supabase.auth.mfa.listFactors();
+      const { data: list, error: listErr } = await supabase.auth.mfa.listFactors();
+      if (listErr) {
+        setMfaErr(failed('Η επαλήθευση δύο βημάτων ΔΕΝ απενεργοποιήθηκε', listErr));
+        return;
+      }
       const totp = (list?.totp ?? []) as MfaFactor[];
+      const stuck: string[] = [];
       for (const f of totp) {
-        try { await supabase.auth.mfa.unenroll({ factorId: f.id }); } catch { /* αγνόησε */ }
+        const { error } = await supabase.auth.mfa.unenroll({ factorId: f.id });
+        if (error) { stuck.push(f.id); console.warn('mfa.unenroll', error); }
+      }
+      if (stuck.length) {
+        setMfaErr('Η επαλήθευση δύο βημάτων ΔΕΝ απενεργοποιήθηκε: ο διακομιστής κράτησε τη συσκευή σου. Μη σβήσεις την εφαρμογή αυθεντικοποίησης και δοκίμασε ξανά.');
+        return;
       }
       setMfaState('off');
       setConfirmDisable(false);
