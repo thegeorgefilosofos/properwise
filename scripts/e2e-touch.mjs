@@ -21,6 +21,14 @@
 //   φεύγει ο ακροατής του pointercancel             2 από 22 κόβουν
 //   γυρίζει το κούμπωμα στο parseFloat του calc()   6 από 22 κόβουν
 //
+// Η ΣΕΙΡΑ ΤΩΝ ΕΛΕΓΧΩΝ ΕΙΝΑΙ ΚΑΝΟΝΑΣ, ΟΧΙ ΤΥΧΑΙΑ. Οι έλεγχοι της γωνίας μπήκαν
+// πρώτα ΠΡΙΝ από το «άγγιγμα μετά το σύρσιμο» και το CI κοκκίνισε στο iPad:
+// ο περιηγητής καταπίνει το πάτημα που έρχεται αμέσως μετά από χειρονομία·
+// τρία σύρσιμα στη σειρά έσπρωξαν το παράθυρο καταπίνοντας το άγγιγμα. Τοπικά
+// περνούσε — σε φορτωμένο μηχάνημα του CI όχι. Πριν από το άγγιγμα υπάρχει
+// πλέον ΜΙΑ χειρονομία, όπως ήταν πάντα· οι έλεγχοι της γωνίας έγιναν μετά,
+// πάνω στο κουμπί κλεισίματος, που τρέχει τον ίδιο κώδικα κουμπώματος.
+//
 // ΚΑΙ ΕΝΑ ΚΕΝΟ, ΓΡΑΜΜΕΝΟ ΩΣΤΕ ΝΑ ΜΗ ΘΕΩΡΗΘΕΙ ΚΑΛΥΨΗ. Αν φύγει η σύλληψη του
 // δείκτη (setPointerCapture), ο πάγκος μένει ΟΛΟΚΛΗΡΟΣ πράσινος: μετρήθηκε.
 // Η σύλληψη μετράει μόνο σε γρήγορο σύρσιμο που προσπερνά το κουμπί, ενώ κάθε
@@ -160,22 +168,6 @@ for (const d of DEVICES) {
   ok(`το σήκωμα του δαχτύλου το γυρίζει στην κάτω δεξιά γωνία (${Math.round(parked.x)},${Math.round(parked.y)} έναντι ${Math.round(home.x)},${Math.round(home.y)})`,
     Math.abs(parked.x - home.x) < 3 && Math.abs(parked.y - home.y) < 3)
 
-  // ── 2γ. Η ΓΩΝΙΑ ΤΗ ΔΙΑΛΕΓΕΙ Ο ΧΡΗΣΤΗΣ, ΑΛΛΙΩΣ ΤΟ ΣΥΡΣΙΜΟ ΕΙΝΑΙ ΨΕΥΤΙΚΟ ──
-  // Χωρίς αυτόν τον έλεγχο, ένα κουμπί που αγνοεί εντελώς το σύρσιμο και
-  // επιστρέφει πάντα στην ίδια γωνία θα περνούσε τον 2β πράσινο.
-  const pk = await box(p, '.pa-fab')
-  await fingerDrag(cdp, { x: pk.cx, y: pk.cy }, { x: 40, y: pk.cy - 120 })
-  await p.waitForTimeout(150)
-  const left = await box(p, '.pa-fab')
-  const leftMargin = view.vw - (home.x + home.w)
-  ok(`σύρσιμο στο αριστερό μισό το κουμπώνει αριστερά (${Math.round(left.x)},${Math.round(left.y)} έναντι ${Math.round(leftMargin)},${Math.round(home.y)})`,
-    Math.abs(left.x - leftMargin) < 3 && Math.abs(left.y - home.y) < 3)
-
-  // Και πίσω δεξιά, ώστε οι επόμενοι έλεγχοι να ξεκινούν από γνωστή θέση.
-  const lb = await box(p, '.pa-fab')
-  await fingerDrag(cdp, { x: lb.cx, y: lb.cy }, { x: view.vw - 40, y: lb.cy })
-  await p.waitForTimeout(150)
-
   // ── 3. ΤΟ ΣΥΡΣΙΜΟ ΔΕΝ ΑΝΟΙΓΕΙ ΤΟΝ ΒΟΗΘΟ ────────────────────────────────
   ok('το σύρσιμο δεν άνοιξε το παράθυρο', !(await p.$('.pa-panel')))
 
@@ -208,6 +200,21 @@ for (const d of DEVICES) {
     const closeRight = view.vw - cbParked.w - side
     ok(`και μετά κουμπώνει κι αυτό (${Math.round(cbParked.x)},${Math.round(cbParked.y)} έναντι ${Math.round(closeRight)},${Math.round(home.y)})`,
       Math.abs(cbParked.x - closeRight) < 3 && Math.abs(cbParked.y - home.y) < 3)
+
+    // ── 5β. Η ΓΩΝΙΑ ΤΗ ΔΙΑΛΕΓΕΙ Ο ΧΡΗΣΤΗΣ, ΑΛΛΙΩΣ ΤΟ ΣΥΡΣΙΜΟ ΕΙΝΑΙ ΨΕΥΤΙΚΟ
+    // Χωρίς αυτόν τον έλεγχο, ένα κουμπί που αγνοεί ΕΝΤΕΛΩΣ το σύρσιμο και
+    // γυρίζει πάντα στην ίδια γωνία θα περνούσε πράσινο κάθε έλεγχο πιο πάνω.
+    const pk = await box(p, '.pa-fab-close')
+    await fingerDrag(cdp, { x: pk.cx, y: pk.cy }, { x: 40, y: pk.cy - 120 })
+    await p.waitForTimeout(150)
+    const left = await box(p, '.pa-fab-close')
+    ok(`σύρσιμο στο αριστερό μισό το κουμπώνει αριστερά (${Math.round(left.x)},${Math.round(left.y)} έναντι ${Math.round(side)},${Math.round(home.y)})`,
+      Math.abs(left.x - side) < 3 && Math.abs(left.y - home.y) < 3)
+
+    // Και πίσω δεξιά, ώστε οι έλεγχοι 6 και 7 να ξεκινούν από γνωστή θέση.
+    const lb = await box(p, '.pa-fab-close')
+    await fingerDrag(cdp, { x: lb.cx, y: lb.cy }, { x: view.vw - 40, y: lb.cy })
+    await p.waitForTimeout(150)
   } else { ok('το κουμπί κλεισίματος υπάρχει', false); await ctx.close(); continue }
 
   // ── 6. ΤΟ ΣΥΡΣΙΜΟ ΔΕΝ ΑΦΗΝΕΙ ΤΟ ΚΟΥΜΠΙ ΚΟΛΛΗΜΕΝΟ ΣΕ ΚΑΤΑΣΤΑΣΗ ─────────
