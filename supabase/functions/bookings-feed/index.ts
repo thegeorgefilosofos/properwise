@@ -55,7 +55,16 @@ Deno.serve(async (req) => {
 
   let q = supabase.from('client_stays').select('id,check_in,check_out,channel').eq('user_id', row.user_id).order('check_in')
   if (property) q = q.eq('property_id', property)
-  const { data: stays } = await q
+  // ΚΕΝΟ ΗΜΕΡΟΛΟΓΙΟ ΔΕΝ ΕΙΝΑΙ «ΚΑΜΙΑ ΚΡΑΤΗΣΗ». Χωρίς το `error`, μια αποτυχία
+  // γύριζε `undefined` και η ροή απαντούσε ΕΓΚΥΡΟ ημερολόγιο με μηδέν γεγονότα.
+  // Οι εφαρμογές ημερολογίου ΑΝΤΙΚΑΘΙΣΤΟΥΝ το περιεχόμενο σε κάθε ανανέωση:
+  // ο ιδιοκτήτης θα έβλεπε τις κρατήσεις του να εξαφανίζονται από το τηλέφωνό
+  // του, χωρίς να έχει χαθεί τίποτα. Με 500 η εφαρμογή κρατά ό,τι είχε.
+  const { data: stays, error: staysErr } = await q
+  if (staysErr) {
+    console.error('[bookings-feed] οι διαμονές δεν διαβάστηκαν:', staysErr)
+    return new Response('Οι κρατήσεις δεν διαβάστηκαν', { status: 500 })
+  }
 
   const now = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const lines = [

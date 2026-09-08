@@ -91,9 +91,13 @@ Deno.serve(async (req) => {
   if (!(await authorized(req))) return json({ error: 'unauthorized' }, 401)
   if (!RESEND_API_KEY) return json({ error: 'no_resend_key' }, 500)
 
-  const { data: rows } = await supabase.from('market_rates')
+  const { data: rows, error: rowsErr } = await supabase.from('market_rates')
     .select('euribor_3m,euribor_6m,euribor_12m,ecb_rate,bog_housing_new,updated_at')
     .order('updated_at', { ascending: false }).limit(2)
+  if (rowsErr) {
+    console.error('[send-market-digest] τα επιτόκια δεν διαβάστηκαν:', rowsErr)
+    return json({ error: 'market_rates unreadable', detail: rowsErr.message }, 500)
+  }
   if (!rows?.length) return json({ message: 'no_data' })
   const cur = rows[0] as Record<string, number | null>
   const prev = (rows[1] || {}) as Record<string, number | null>
@@ -105,7 +109,17 @@ Deno.serve(async (req) => {
   const users = await listUsers()
   if (!users.length) return json({ message: 'no_users' })
   await supabase.from('email_marketing_prefs').upsert(users.map(u => ({ user_id: u.id })), { onConflict: 'user_id', ignoreDuplicates: true })
-  const { data: prefs } = await supabase.from('email_marketing_prefs').select('user_id,market_news,unsubscribe_token')
+  // ΙΔΙΟ ΣΦΑΛΜΑ ΜΕ ΤΟ ΕΝΗΜΕΡΩΤΙΚΟ ΔΕΛΤΙΟ, ΔΕΥΤΕΡΟΣ ΑΠΟΣΤΟΛΕΑΣ. Χωρίς το
+  // `error`, αποτυχία γύριζε `undefined`, το `|| []` έφτιαχνε ΚΕΝΟ χάρτη — και
+  // το φίλτρο `prefMap.get(u.id)?.market_news !== false` γινόταν ΑΛΗΘΕΣ για
+  // κάθε χρήστη: το μήνυμα έφευγε και σε όσους είχαν απεγγραφεί, με σύνδεσμο
+  // απεγγραφής «/unsubscribe/undefined». Δύο αποστολείς, ένα αντιγραμμένο
+  // μοτίβο, δύο φορές το ίδιο λάθος.
+  const { data: prefs, error: prefsErr } = await supabase.from('email_marketing_prefs').select('user_id,market_news,unsubscribe_token')
+  if (prefsErr) {
+    console.error('[send-market-digest] οι προτιμήσεις μάρκετινγκ δεν διαβάστηκαν:', prefsErr)
+    return json({ error: 'email_marketing_prefs unreadable', detail: prefsErr.message }, 500)
+  }
   // Ο χάρτης προτιμήσεων ανά χρήστη. Το «any» έσβηνε τον έλεγχο του κλειδιού.
   type PrefRow = { user_id: string } & Record<string, unknown>
   const prefMap = new Map(((prefs || []) as PrefRow[]).map(p => [p.user_id, p]))

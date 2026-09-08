@@ -283,6 +283,10 @@ export const MUTATIONS = {
     // οπότε ο έλεγχος εκεί δεν είναι «μην το γράφεις» αλλά «γράψε τον σωστό».
     { add: 'docs/legal/__mut__.md', content: '# Δοκιμή\n\nΧρέωση μέσω Creem ως merchant of record.\n' },
   ] },
+  // Η ΣΥΝΑΙΝΕΣΗ ΠΟΥ ΓΙΝΕΤΑΙ «ΝΑΙ» ΑΠΟ ΑΠΟΤΥΧΙΑ. Ακριβώς η γραμμή που έστελνε
+  // το δελτίο σε όσους είχαν απεγγραφεί, σε νέα συνάρτηση άκρης.
+  'consent-reads': { add: 'supabase/functions/__mut__/index.ts', content: "import { createClient } from 'jsr:@supabase/supabase-js@2'\nconst supabase = createClient('x', 'y')\nexport async function probe() {\n  const { data: prefs } = await supabase.from('email_marketing_prefs').select('user_id,product_news')\n  return prefs\n}\n" },
+
   'presumptive-rate': { add: 'lib/core/__mut__.ts', content: 'export const taxable = (gross: number) => gross * 0.95\n' },
   'stay-gross': { add: 'lib/core/__mut__.ts', content: 'export const income = (stay: { total: number }) => { const amount = stay.total; return amount }\n' },
   'local-formatters': { add: 'lib/core/__mut__.ts', content: "export const eur = (n: number) => `${n.toLocaleString('el-GR', { minimumFractionDigits: 2 })} €`\n" },

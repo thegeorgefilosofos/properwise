@@ -53,6 +53,7 @@
     "test-tail": "node scripts/guard-test-tail.mjs",
     "ci-coverage": "node scripts/guard-ci-coverage.mjs",
     "ci-minutes": "node scripts/guard-ci-minutes.mjs",
+    "consent-reads": "node scripts/guard-consent-reads.mjs",
     "guards": "node scripts/run-guards.mjs",
     "stay-gross": "node scripts/guard-stay-gross.mjs",
     "rendered-zero": "node scripts/guard-rendered-zero.mjs",
