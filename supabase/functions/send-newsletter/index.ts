@@ -73,8 +73,12 @@ Deno.serve(async (req) => {
   if (!(await authorized(req))) return json({ error: 'unauthorized' }, 401)
   if (!RESEND_API_KEY) return json({ error: 'no_resend_key' }, 500)
 
-  const { data: updates } = await supabase.from('product_updates')
+  const { data: updates, error: updErr } = await supabase.from('product_updates')
     .select('id,title,body_html,cta_label,cta_url').eq('published', true).is('emailed_at', null).order('created_at', { ascending: true })
+  if (updErr) {
+    console.error('[send-newsletter] οι ανακοινώσεις δεν διαβάστηκαν:', updErr)
+    return json({ error: 'product_updates unreadable', detail: updErr.message }, 500)
+  }
   if (!updates?.length) return json({ message: 'no_updates' })
 
   const users = await listUsers()
@@ -82,7 +86,24 @@ Deno.serve(async (req) => {
 
   // Εξασφάλισε γραμμή προτιμήσεων (default: εγγεγραμμένος) → μοναδικό token ανά χρήστη.
   await supabase.from('email_marketing_prefs').upsert(users.map(u => ({ user_id: u.id })), { onConflict: 'user_id', ignoreDuplicates: true })
-  const { data: prefs } = await supabase.from('email_marketing_prefs').select('user_id,product_news,unsubscribe_token')
+  // ═══ Η ΑΠΟΤΥΧΙΑ ΕΔΩ ΕΣΤΕΛΝΕ ΣΕ ΟΣΟΥΣ ΕΙΧΑΝ ΑΠΕΓΓΡΑΦΕΙ ══════════════════════
+  // ΤΟ ΣΦΑΛΜΑ, ΓΡΑΜΜΗ ΠΡΟΣ ΓΡΑΜΜΗ. Χωρίς το `error`, μια αποτυχία γύριζε
+  // `undefined` και το `|| []` έφτιαχνε ΚΕΝΟ χάρτη προτιμήσεων. Το φίλτρο από
+  // κάτω ρωτά `prefMap.get(u.id)?.product_news !== false`: με κενό χάρτη η
+  // απάντηση είναι `undefined !== false`, δηλαδή ΑΛΗΘΗΣ για ΚΑΘΕ χρήστη.
+  //
+  // Δηλαδή το μήνυμα έφευγε σε ΟΛΟΥΣ, μαζί με όσους είχαν πατήσει απεγγραφή.
+  // Και το `unsubscribe_token` του καθενός ήταν κι αυτό `undefined`, οπότε ο
+  // σύνδεσμος απεγγραφής του email γινόταν «/unsubscribe/undefined»: ο
+  // παραλήπτης που δεν ήθελε το μήνυμα δεν είχε ούτε τρόπο να το σταματήσει.
+  //
+  // Δεν είναι σφάλμα παράδοσης, είναι παράβαση συναίνεσης. Οταν ο κατάλογος
+  // προτιμήσεων δεν διαβάζεται, ΔΕΝ φεύγει τίποτα.
+  const { data: prefs, error: prefsErr } = await supabase.from('email_marketing_prefs').select('user_id,product_news,unsubscribe_token')
+  if (prefsErr) {
+    console.error('[send-newsletter] οι προτιμήσεις μάρκετινγκ δεν διαβάστηκαν:', prefsErr)
+    return json({ error: 'email_marketing_prefs unreadable', detail: prefsErr.message }, 500)
+  }
   // Ο χάρτης προτιμήσεων ανά χρήστη. Το «any» έσβηνε τον έλεγχο του κλειδιού.
   type PrefRow = { user_id: string } & Record<string, unknown>
   const prefMap = new Map(((prefs || []) as PrefRow[]).map(p => [p.user_id, p]))
@@ -97,7 +118,7 @@ Deno.serve(async (req) => {
     const chunk = recipients.slice(i, i + 100)
     const payload = chunk.map(u => ({
       from: FROM_EMAIL, to: u.email, subject,
-      html: layout(inner, `${APP_URL}/unsubscribe/${prefMap.get(u.id)?.unsubscribe_token}`),
+      html: layout(inner, `${APP_URL}/unsubscribe/${prefMap.get(u.id)?.unsubscribe_token ?? ''}`),
     }))
     try {
       const res = await fetch('https://api.resend.com/emails/batch', {

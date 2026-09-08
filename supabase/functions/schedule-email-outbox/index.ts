@@ -70,8 +70,19 @@ Deno.serve(async (req) => {
 
   // Single-flight: if another run holds the advisory lock, exit cleanly so two
   // overlapping cron ticks never plan the same rows.
-  const { data: gotLock } = await supabase.rpc('try_email_schedule_lock')
-  if (gotLock === false) return json({ skipped: 'locked' })
+  // ΤΟ `=== false` ΑΦΗΝΕ ΤΗΝ ΑΠΟΤΥΧΙΑ ΝΑ ΠΕΡΑΣΕΙ. Χωρίς το `error`, μια αποτυχία
+  // της RPC γύριζε `undefined` — και το `undefined === false` είναι ΨΕΥΔΕΣ,
+  // οπότε η εργασία συνέχιζε ΧΩΡΙΣ να κρατά το κλείδωμα. Δύο επικαλυπτόμενα
+  // τικ του cron θα προγραμμάτιζαν τις ίδιες γραμμές: διπλά email από την ουρά,
+  // από τον μηχανισμό που υπάρχει ΑΚΡΙΒΩΣ για να το αποτρέψει.
+  //
+  // Ο,τι δεν είναι ρητό «πήρα το κλείδωμα» σημαίνει «δεν το πήρα».
+  const { data: gotLock, error: lockErr } = await supabase.rpc('try_email_schedule_lock')
+  if (lockErr) {
+    console.error('[schedule-email-outbox] το κλείδωμα δεν απαντήθηκε:', lockErr)
+    return json({ error: 'lock unavailable', detail: lockErr.message }, 500)
+  }
+  if (gotLock !== true) return json({ skipped: 'locked' })
 
   try {
   const nowISO = new Date().toISOString()

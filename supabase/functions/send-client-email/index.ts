@@ -73,7 +73,15 @@ Deno.serve(async (req) => {
   // arbitrary list under our sending domain. The caller's JWT already scopes
   // `clients` via RLS; we build the allow-set from it (+ the owner's own address
   // for self-tests) and silently drop anything else, reporting the count.
-  const { data: myClients } = await supabase.from('clients').select('email').eq('user_id', user.id)
+  // Η ΑΠΟΤΥΧΙΑ ΕΔΩ ΑΠΟΤΥΓΧΑΝΕΙ ΚΛΕΙΣΤΑ, ΚΑΙ ΕΙΝΑΙ ΣΩΣΤΟ: κενός κατάλογος
+  // επιτρεπτών σημαίνει ότι κόβονται ΟΛΟΙ οι παραλήπτες. Λάθος ήταν μόνο η
+  // ΑΙΤΙΑ που διάβαζε ο χρήστης — «οι παραλήπτες πρέπει να είναι καταχωρημένοι
+  // πελάτες», ενώ οι δικοί του πελάτες απλώς δεν διαβάστηκαν.
+  const { data: myClients, error: clientsErr } = await supabase.from('clients').select('email').eq('user_id', user.id)
+  if (clientsErr) {
+    console.error('[send-client-email] οι πελάτες δεν διαβάστηκαν:', clientsErr)
+    return json({ error: 'clients unreadable', detail: 'Οι πελάτες σου δεν διαβάστηκαν, οπότε δεν στάλθηκε τίποτα. Δοκίμασε ξανά.' }, 500)
+  }
   const allow = new Set<string>(
     (myClients || []).map((c: { email: string | null }) => (c.email || '').trim().toLowerCase()).filter(Boolean),
   )
