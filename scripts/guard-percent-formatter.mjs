@@ -26,6 +26,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { findSources } from './lib/find-tests.mjs'
+import { tightened } from './lib/ratchet.mjs'
 
 const BASELINE = JSON.parse(readFileSync('scripts/percent-baseline.json', 'utf8'))
 
@@ -68,8 +69,4 @@ if (findings.length > BASELINE.max) {
   console.error('\n  Στα ελληνικά το ποσοστό είναι «87,50%». Πέρασέ το από fp().')
   process.exit(1)
 }
-if (findings.length < BASELINE.max) {
-  console.log(`✓ ${findings.length} ποσοστά χωρίς μορφοποιητή (όριο ${BASELINE.max}) — κατέβασε το όριο στο scripts/percent-baseline.json`)
-} else {
-  console.log(`✓ ${findings.length} ποσοστά χωρίς μορφοποιητή, στο όριο — κανένα νέο`)
-}
+if (!tightened({ total: findings.length, max: BASELINE.max, what: 'ποσοστά χωρίς μορφοποιητή', file: 'scripts/percent-baseline.json', key: 'max' })) process.exit(1)

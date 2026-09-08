@@ -28,6 +28,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { projectFiles } from './lib/git-files.mjs'
+import { tightened } from './lib/ratchet.mjs'
 
 const BASELINE = JSON.parse(readFileSync('scripts/space-baseline.json', 'utf8'))
 
@@ -70,7 +71,4 @@ if (total > BASELINE.maxOffScale) {
 `)
   process.exit(1)
 }
-if (total < BASELINE.maxOffScale)
-  console.log(`✓ ${total} αποστάσεις εκτός πλέγματος, κάτω από το όριο ${BASELINE.maxOffScale}. Κατέβασε το όριο.`)
-else
-  console.log(`✓ ${total} αποστάσεις εκτός πλέγματος, όσες και το όριο`)
+if (!tightened({ total, max: BASELINE.maxOffScale, what: 'αποστάσεις εκτός πλέγματος', file: 'scripts/space-baseline.json', key: 'maxOffScale' })) process.exit(1)

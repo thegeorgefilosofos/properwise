@@ -29,6 +29,7 @@
 import { readFileSync } from 'node:fs'
 import { projectFiles } from './lib/git-files.mjs'
 import { execSync } from 'node:child_process'
+import { tightened } from './lib/ratchet.mjs'
 
 const BASELINE = JSON.parse(readFileSync('scripts/silent-reads-baseline.json', 'utf8'))
 
@@ -57,6 +58,4 @@ if (hits.length > BASELINE.max) {
   process.exit(1)
 }
 
-const better = BASELINE.max - hits.length
-console.log(`✓ ${hits.length} σιωπηλές αναγνώσεις ≤ όριο ${BASELINE.max}`
-  + (better > 0 ? `\n   ↓ Βελτίωση κατά ${better}. Κατέβασε το "max" στο scripts/silent-reads-baseline.json στο ${hits.length}.` : ''))
+if (!tightened({ total: hits.length, max: BASELINE.max, what: 'σιωπηλές αναγνώσεις', file: 'scripts/silent-reads-baseline.json', key: 'max' })) process.exit(1)

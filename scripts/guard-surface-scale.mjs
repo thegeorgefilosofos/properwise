@@ -36,6 +36,7 @@
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { projectFiles } from './lib/git-files.mjs'
 import { execSync } from 'node:child_process';
+import { tightened } from './lib/ratchet.mjs';
 
 const BASELINE = 'scripts/surface-baseline.json';
 
@@ -127,7 +128,8 @@ if (fail.length) {
   process.exit(1);
 }
 
-console.log(`✅ Καστάνια επιφάνειας πέρασε — ${found.rawHeights} ύψη ≤ ${base.rawHeights}, ${found.rawColors} χρώματα ≤ ${base.rawColors}.`);
-for (const [k, label] of [['rawHeights', 'ύψη'], ['rawColors', 'χρώματα']]) {
-  if (found[k] < base[k]) console.log(`   ↓ Βελτίωση κατά ${base[k] - found[k]} στα ${label}. Κατέβασε το "${k}" στο ${BASELINE} στο ${found[k]}.`);
+let tight = true;
+for (const [k, label] of [['rawHeights', 'ύψη γραμμένα ως αριθμός'], ['rawColors', 'χρώματα γραμμένα ωμά']]) {
+  if (!tightened({ total: found[k], max: base[k], what: label, file: BASELINE, key: k })) tight = false;
 }
+if (!tight) process.exit(1);
