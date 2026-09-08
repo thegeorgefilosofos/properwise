@@ -29,6 +29,7 @@
 // λάθος, γιατί ο πελάτης μπορεί να πληρώσει με άλλο.
 // ═══════════════════════════════════════════════════════════════════════════
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { MERCHANT_NAMES } from '@/lib/legal/merchant';
 import { parseVariantMap, planOfVariant } from '../lemon';
 import type { MorStatus, MorSubscription } from '../subscription';
 import { isMorStatus } from '../subscription';
@@ -168,7 +169,7 @@ async function fetchSubscription(
 
 export const creemPort: MerchantPort = {
   id: 'creem',
-  name: 'Creem',
+  name: MERCHANT_NAMES.creem,
 
   // ΠΩΛΗΣΗ ΘΕΛΕΙ ΚΛΕΙΔΙ ΚΑΙ ΧΑΡΤΗ. Χωρίς χάρτη προϊόντων το ταμείο δεν ξέρει
   // τι πουλά, οπότε δεν ανοίγει καθόλου.

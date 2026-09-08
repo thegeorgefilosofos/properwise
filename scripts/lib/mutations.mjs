@@ -269,6 +269,14 @@ export const MUTATIONS = {
   'billing-claims': { every: [
     { add: 'lib/core/__mut__.tsx', content: tsx('    <div>Η συνδρομή σου: δεν γίνεται καμία πληρωμή τώρα.</div>') },
     { add: 'lib/core/__mut2__.tsx', content: tsx('    <div>{price === 0 ? \'για πάντα\' : \'τον μήνα\'}</div>') },
+    // ΤΟ ΟΝΟΜΑ ΤΟΥ ΕΜΠΟΡΟΥ, ΓΡΑΜΜΕΝΟ ΜΕ ΤΟ ΧΕΡΙ ΣΕ ΚΩΔΙΚΑ. Ακριβώς όπως ήταν
+    // στα λόγια της χρέωσης: μια πρόταση που θα ονόμαζε τον προηγούμενο
+    // έμπορο την ημέρα που η μεταβλητή γύριζε στον επόμενο.
+    { add: 'lib/core/__mut3__.tsx', content: tsx('    <div>Η χρέωση γίνεται μέσω της Lemon Squeezy.</div>') },
+    // ΚΑΙ ΤΟ ΙΔΙΟ ΣΕ ΔΗΜΟΣΙΕΥΜΕΝΟ ΝΟΜΙΚΟ ΕΓΓΡΑΦΟ, ΜΕ ΟΝΟΜΑ ΠΟΥ ΔΕΝ ΕΙΣΠΡΑΤΤΕΙ.
+    // Δεύτερος κανόνας, δεύτερη απόδειξη: τα έγγραφα ΟΦΕΙΛΟΥΝ να ονομάζουν,
+    // οπότε ο έλεγχος εκεί δεν είναι «μην το γράφεις» αλλά «γράψε τον σωστό».
+    { add: 'docs/legal/__mut__.md', content: '# Δοκιμή\n\nΧρέωση μέσω Creem ως merchant of record.\n' },
   ] },
   'presumptive-rate': { add: 'lib/core/__mut__.ts', content: 'export const taxable = (gross: number) => gross * 0.95\n' },
   'stay-gross': { add: 'lib/core/__mut__.ts', content: 'export const income = (stay: { total: number }) => { const amount = stay.total; return amount }\n' },

@@ -8,11 +8,14 @@
 import { billingWords } from './billingWords'
 import { checkoutIsLive } from '../billing/lemonCheckout'
 import { subprocessors, activeSubprocessors, plannedSubprocessors } from './subprocessors'
-import { PAYMENTS_PROVIDER } from './merchant'
+import { MERCHANT_NAMES, merchantId, PROVIDER_ENV } from './merchant'
 import { TRIAL_DAYS, ACCOUNT_GRACE_DAYS } from '../billing/plans'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
+
+/** Ο έμπορος αυτού του περιβάλλοντος, ονομαστικά. */
+const mor = (env: Record<string, string | undefined>) => MERCHANT_NAMES[merchantId(env)]
 
 const LIVE = {
   LEMON_SQUEEZY_API_KEY: 'κλειδί',
@@ -20,6 +23,13 @@ const LIVE = {
   LEMON_VARIANTS: '811223:solo:monthly',
 }
 const DARK = {}
+// Ο ΔΕΥΤΕΡΟΣ ΕΜΠΟΡΟΣ, ΖΩΝΤΑΝΟΣ. Ιδιο προϊόν, άλλος εισπράκτορας: εδώ κρίνεται
+// αν τα νομικά κείμενα ονομάζουν αυτόν που ΟΝΤΩΣ εισπράττει.
+const LIVE_2 = {
+  [PROVIDER_ENV]: 'creem',
+  CREEM_API_KEY: 'κλειδί',
+  CREEM_PRODUCTS: 'prod_811223:solo:monthly',
+}
 
 // ── Η ΣΥΝΘΗΚΗ ─────────────────────────────────────────────────────────────
 ok('με τη ρύθμιση πλήρη, το ταμείο είναι ζωντανό', checkoutIsLive(LIVE))
@@ -45,7 +55,7 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
   ok('όταν χρεώνουμε, δεν λέμε ότι δεν χρεώνουμε',
     !live.chargingToday.includes('δεν έχει ενεργοποιηθεί') && !live.cardData.includes('δεν έχει ενεργοποιηθεί'))
   ok('όταν ΔΕΝ χρεώνουμε, το λέμε', dark.chargingToday.includes('δεν έχει ενεργοποιηθεί'))
-  ok('ο έμπορος ονομάζεται όταν χρεώνει', live.chargingToday.includes(PAYMENTS_PROVIDER))
+  ok('ο έμπορος ονομάζεται όταν χρεώνει', live.chargingToday.includes(mor(LIVE)))
   // Καμία φράση δεν μένει κενή: μια κενή πρόταση σε νομικό κείμενο είναι
   // παράλειψη ενημέρωσης, όχι συντομία.
   for (const k of keys) ok(`καμία κενή φράση: ${k}`, live[k].length > 20 && dark[k].length > 20)
@@ -131,18 +141,50 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
 // εκεί δεν είναι σχόλιο, είναι δήλωση προς το υποκείμενο.
 {
   const merchantOf = (env: Record<string, string | undefined>) =>
-    subprocessors(env).find(s => s.name === PAYMENTS_PROVIDER)!
+    subprocessors(env).find(s => s.name === mor(env))!
   ok('με ζωντανό ταμείο ο πάροχος πληρωμών είναι ενεργός', merchantOf(LIVE).active === true)
   ok('χωρίς ταμείο δεν είναι', merchantOf(DARK).active === false)
   ok('και μετακινείται ανάμεσα στους δύο καταλόγους',
-    activeSubprocessors(LIVE).some(s => s.name === PAYMENTS_PROVIDER)
-    && plannedSubprocessors(DARK).some(s => s.name === PAYMENTS_PROVIDER))
+    activeSubprocessors(LIVE).some(s => s.name === mor(LIVE))
+    && plannedSubprocessors(DARK).some(s => s.name === mor(DARK)))
   ok('η αιτιολόγηση του παρόχου δανείζεται τη μία διατύπωση',
     merchantOf(DARK).purpose.includes(billingWords(DARK).cardData))
   // Οι υπόλοιποι πάροχοι δεν παρασύρονται από τη μεταβλητή της χρέωσης.
   const others = (env: Record<string, string | undefined>) =>
-    subprocessors(env).filter(s => s.name !== PAYMENTS_PROVIDER).map(s => `${s.name}:${s.active}`).join()
+    subprocessors(env).filter(s => s.name !== mor(env)).map(s => `${s.name}:${s.active}`).join()
   ok('κανένας άλλος πάροχος δεν αλλάζει κατάσταση', others(LIVE) === others(DARK))
+}
+
+// ── ΑΛΛΑΖΕΙ Ο ΕΜΠΟΡΟΣ, ΑΛΛΑΖΟΥΝ ΚΑΙ ΤΑ ΚΕΙΜΕΝΑ ───────────────────────────
+// ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΓΕΝΝΑ ΑΥΤΗ ΤΗΝ ΕΝΟΤΗΤΑ. Το όνομα του εμπόρου ήταν σταθερά, ενώ
+// ο κώδικας είχε ήδη δύο εμπόρους και μεταβλητή που διαλέγει ποιος εισπράττει.
+// Την ημέρα που η μεταβλητή γύριζε, η Πολιτική απορρήτου, οι Οροι και το
+// μητρώο υπεργολάβων θα ονόμαζαν τον προηγούμενο: θα δήλωναν στο υποκείμενο
+// ως εκτελούντα την επεξεργασία εταιρεία που δεν αγγίζει τα δεδομένα του.
+{
+  ok('χωρίς μεταβλητή ισχύει ο σημερινός έμπορος', merchantId(DARK) === 'lemon')
+  ok('η μεταβλητή διαλέγει τον δεύτερο', merchantId(LIVE_2) === 'creem')
+  ok('κεφαλαία και κενά δεν χαλούν το όνομα',
+    merchantId({ [PROVIDER_ENV]: '  CREEM ' }) === 'creem')
+
+  // ΑΓΝΩΣΤΟ ΟΝΟΜΑ ΠΕΤΑ. Σιωπηλή πτώση στον προεπιλεγμένο θα σήμαινε ότι η
+  // εφαρμογή χρεώνει από άλλον πάροχο απ' ό,τι νομίζει όποιος τη ρύθμισε.
+  let threw = ''
+  try { merchantId({ [PROVIDER_ENV]: 'stripe' }) } catch (e) { threw = String(e) }
+  ok('άγνωστο όνομα δεν πέφτει σιωπηλά στον προεπιλεγμένο', threw.includes(PROVIDER_ENV))
+
+  const other = MERCHANT_NAMES.lemon
+  const w2 = billingWords(LIVE_2)
+  ok('ο δεύτερος έμπορος είναι ζωντανός με τα δικά του κλειδιά', w2.live === true)
+  ok('τα λόγια ονομάζουν αυτόν που εισπράττει',
+    w2.chargingToday.includes(MERCHANT_NAMES.creem) && w2.cardData.includes(MERCHANT_NAMES.creem))
+  ok('και ΔΕΝ ονομάζουν τον προηγούμενο',
+    !w2.chargingToday.includes(other) && !w2.cardData.includes(other))
+
+  const reg2 = subprocessors(LIVE_2)
+  ok('το μητρώο υπεργολάβων γράφει τον ίδιο έμπορο',
+    reg2.some(s => s.name === MERCHANT_NAMES.creem && s.active))
+  ok('και δεν γράφει τον προηγούμενο', !reg2.some(s => s.name === other))
 }
 
 console.log(fail === 0 ? `✓ billingWords: ${pass} έλεγχοι πέρασαν` : `✗ billingWords: ${fail} απέτυχαν από ${pass + fail}`)
