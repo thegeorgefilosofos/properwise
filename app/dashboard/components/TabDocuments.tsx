@@ -898,7 +898,12 @@ export default function TabDocuments({
                     }}>
                     {o.value}
                     <span style={{ fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)',
-                      opacity: o.selected ? 0.85 : 0.6 }}>{o.count}</span>
+                      // Η ΔΙΑΦΑΝΕΙΑ ΕΡΙΧΝΕ ΤΟΝ ΑΡΙΘΜΟ ΚΑΤΩ ΑΠΟ ΤΟ ΠΡΟΤΥΠΟ. Μετρημένο
+                      // στη σάρωση προσβασιμότητας: 3,46:1 στα 11px, όριο 4,5:1. Ο
+                      // μετρητής ΕΙΝΑΙ η πληροφορία του φίλτρου — πόσα έγγραφα έχει ο
+                      // φάκελος — και ήταν το λιγότερο ευανάγνωστο πράγμα στη σειρά.
+                      // Το βάρος το κάνει πλέον το χρώμα, όχι το ξεθώριασμα.
+                      color: o.selected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{o.count}</span>
                   </button>
                 ))}
               </div>

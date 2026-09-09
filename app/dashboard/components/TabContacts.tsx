@@ -1839,7 +1839,9 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
                   background: on ? 'var(--accent)' : 'var(--bg-elevated)',
                   color: on ? 'var(--on-tone)' : 'var(--text-secondary)', transition: 'background .14s, border-color .14s' }}>
                 {a.label}
-                <span style={{ fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', opacity: on ? 0.85 : 0.6 }}>{fn(a.count)}</span>
+                {/* Ιδιο με τα φίλτρα του Αρχείου: η διαφάνεια έριχνε τον μετρητή στο
+                    3,46:1. Το βάρος το δίνει το χρώμα, όχι το ξεθώριασμα. */}
+                <span style={{ fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fn(a.count)}</span>
               </button>
             )
           })}

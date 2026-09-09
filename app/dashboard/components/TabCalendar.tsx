@@ -885,7 +885,7 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
                       {dayAmt>0&&(
                         <div className="cal-day-amt" style={{ marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                           <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--accent)', opacity:0.8 }}>
-                            {fn(dayAmt)}<span style={{ marginLeft:1.5, opacity:0.7 }}>€</span>
+                            {fn(dayAmt)}<span style={{ marginLeft:1.5, opacity:0.82 }}>€</span>
                           </span>
                         </div>
                       )}
