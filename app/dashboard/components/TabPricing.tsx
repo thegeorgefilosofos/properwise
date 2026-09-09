@@ -34,7 +34,7 @@ import * as stayStore from '@/lib/data/stays';
 import * as billStore from '@/lib/data/bills';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
-import { T, PageTitle, KPIGrid, InfoBanner, Btn, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, fd, fp, fn, pressable, formGrid, fieldRow, Bar } from '@/components/Theme';
+import { T, PageTitle, KPIGrid, InfoBanner, Btn, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { shortTermYearSummary, isHouseType } from '@/lib/tax/shortTermTax';
 import { isIndividualTaxpayer } from '@/lib/accounting/taxProfile';
@@ -804,7 +804,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                             position: 'relative', aspectRatio: '1', borderRadius: T.radius.chip, cursor: 'pointer', overflow: 'hidden',
                             border: sel?.date === d.date ? '2px solid var(--accent)' : top ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
                             background: d.booked ? 'var(--bg-base)' : 'var(--surface-raised)', padding: 0,
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5,
                             opacity: past ? 0.4 : 1,
                           }}>
                             {/* Το κελί δεν μεγαλώνει πια στην αιχμή: ένα κελί που
@@ -839,22 +839,29 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                             {/* Κλεισμένη ημέρα: δεν έχει προτεινόμενη τιμή και η
                                 παύλα που έμπαινε στη θέση της διαβαζόταν ως
                                 «λείπει τιμή» αντί για «είναι πιασμένη». */}
-                            {/* ══ ΤΟ ΕΥΡΩ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΣΤΟ ΥΠΟΜΝΗΜΑ ══
-                                Το σύμβολο έμπαινε ΜΕΣΑ σε κάθε κελί, μικρότερο
-                                από τον αριθμό ώστε να χωρέσει: 9, 8 ή και 7
-                                εικονοστοιχεία. Στα 7 δεν είναι σύμβολο, είναι
-                                μουτζούρα· επαναλαμβανόταν τριάντα φορές τον
-                                μήνα για να πει κάτι που ισχύει για όλο τον πίνακα.
-                                Μαζί του έφυγε και ο λόγος να μικραίνει ο αριθμός:
-                                μετρημένο σε Chromium στο στενότερο κελί (41,8px
-                                στα 375 της οθόνης κινητού), το «12.500» στα 11px
-                                θέλει 37,8. Καμία τιμή δεν κόβεται πια και κανένα
-                                γράμμα δεν πέφτει κάτω από το δάπεδο των 11.
-                                Η μονάδα ζει στο υπόμνημα από κάτω, στην υπόδειξη
-                                του κελιού και στην ετικέτα προσιτότητας. */}
+                            {/* ══ ΤΟ ΠΟΣΟ ΓΡΑΦΕΙ ΤΗ ΜΟΝΑΔΑ ΤΟΥ, ΜΕ ΤΟ ΙΔΙΟ ΜΕΓΕΘΟΣ ══
+                                ΠΡΩΤΗ ΓΡΑΦΗ ΕΙΧΕ ΣΥΜΒΟΛΟ ΚΑΙ ΤΟ ΕΒΓΑΛΕ, ΓΙΑ ΛΑΘΟΣ
+                                ΛΟΓΟ. Το «€» έμπαινε ΜΙΚΡΟΤΕΡΟ από τον αριθμό ώστε
+                                να χωρέσει — 9, 8 ή σε στενή οθόνη 7
+                                εικονοστοιχεία, όπου παύει να είναι σύμβολο και
+                                γίνεται μουτζούρα. Η διόρθωση ήταν να φύγει το
+                                σύμβολο· η σωστή διόρθωση ήταν να φύγουν τα ΛΕΠΤΑ.
+
+                                ΤΩΡΑ: `feWhole` δίνει «205€» αντί για «205,00€».
+                                ΜΕΤΡΗΜΕΝΟ ΣΕ ΠΕΝΤΕ ΠΛΑΤΗ (320, 375, 768, 1.280,
+                                1.440): το στενότερο κελί βγαίνει 39,3 και το
+                                «120€» πιάνει 30,6 — μηδέν κομμένα ποσά, με 8,7
+                                να περισσεύουν. Η τιμή τεσσάρων ψηφίων θα ήθελε
+                                46 και δεν θα χωρούσε· γι' αυτό το κελί έγινε
+                                θήκη container και το ποσό αποσύρεται μόνο του
+                                κάτω από το κατώφλι, αντί να κοπεί.
+
+                                Το σύμβολο είναι ΙΔΙΟ μέγεθος με τον αριθμό, όπως
+                                παντού στο προϊόν — κολλητά πάνω του. Δεν
+                                μικραίνει κανένα γράμμα κάτω από το δάπεδο των 11. */}
                             {!d.booked && (
-                              <span style={{ position: 'relative', fontSize: 'var(--fs-xs)', fontWeight: top ? 700 : 600, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                                {fn(d.price)}
+                              <span className="cal-day-amt" style={{ position: 'relative', fontSize: 'var(--fs-xs)', fontWeight: top ? 700 : 600, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                                {feWhole(d.price)}
                               </span>
                             )}
                             {d.isHoliday && !d.booked && <span style={{ position: 'absolute', top: 3, right: 3, width: 4, height: 4, borderRadius: '50%', background: 'var(--text-secondary)' }} />}
@@ -867,7 +874,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
               })}
             </div>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', alignItems: 'center' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 44, height: 10, borderRadius: 3, background: 'linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent), var(--accent))' }} />τιμή ανά νύχτα σε ευρώ, από χαμηλή σε υψηλή</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 44, height: 10, borderRadius: 3, background: 'linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent), var(--accent))' }} />τιμή ανά νύχτα, από χαμηλή σε υψηλή</span>
               {/* «υψηλή ζήτηση» έφυγε: το σημάδι δηλώνει ΑΡΓΙΑ, που είναι
                   ημερολογιακό γεγονός. Δεδομένο ζήτησης δεν έχουμε. */}
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)' }} />αργία</span>

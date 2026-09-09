@@ -1125,8 +1125,8 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
 
           {/* Πλήρης πίνακας επιτοκίων — πτυσσόμενος */}
           <MiniSection title="Πλήρης πίνακας επιτοκίων" meta={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{banksUpdStr}</span>}>
-            <div style={{overflowX:'auto'}}>
-              <div className="table-wrap">
+            <div className="po-table-box">
+              <div className="po-scroll-x">
               {/* Η ΠΡΩΤΗ ΣΤΗΛΗ ΚΑΡΦΩΝΕΤΑΙ, ΓΙΑΤΙ ΕΝΝΕΑ ΣΤΗΛΕΣ ΔΕΝ ΧΩΡΑΝΕ ΠΟΥΘΕΝΑ.
                   Ο πίνακας κυλά οριζόντια σε κάθε πλάτος κάτω από τα 1.100: ο
                   χρήστης σέρνει για να δει το «Δάνειο προς αξία» και το όνομα
@@ -1134,26 +1134,26 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   ποσοστών χωρίς κάτοχο. Το `--row-bg` γράφεται μαζί με το φόντο
                   της γραμμής, ώστε το καρφωμένο κελί να μη μένει πίσω στο
                   πέρασμα του δείκτη και οι αριθμοί να μη φαίνονται από μέσα. */}
-              <table className="pin-1" style={{width:'100%',borderCollapse:'collapse',fontSize:12,'--row-bg':'var(--surface-raised)'}}>
+              <table className="po-table pin-1" style={{'--tbl-min':'900px','--row-bg':'var(--surface-raised)'}}>
                 <thead>
-                  <tr style={{borderBottom:'1px solid var(--border-subtle)'}}>
+                  <tr>
                     {([['Τράπεζα','left'],['3 έτη','right'],['5 έτη','right'],['10 έτη','right'],['15 έτη','right'],['20 έτη','right'],['Κυμαινόμενο περιθώριο','right'],['Δάνειο προς αξία','right'],['Σπίτι μου ΙΙ','left']] as const).map(([h,al])=>(
-                      <th key={h} style={{padding:'8px 12px',textAlign:al,fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase',letterSpacing:'0.05em',fontWeight:600,fontFamily: T.font.sans,whiteSpace:'nowrap' as const}}>{h}</th>
+                      <th key={h} scope="col" style={{textAlign:al,whiteSpace:'nowrap' as const}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {BANKS.filter(b=>!filterSpiti||b.spiti_mou).map((bank,i)=>(
-                    <tr key={bank.id||bank.name} onMouseEnter={()=>setHoverBankRow(i)} onMouseLeave={()=>setHoverBankRow(null)} onTouchStart={()=>setHoverBankRow(i)} onTouchEnd={()=>setHoverBankRow(null)} style={{borderBottom:'1px solid var(--border-subtle)','--row-bg':hoverBankRow===i?'var(--bg-hover)':'var(--surface-raised)',background:hoverBankRow===i?'var(--bg-hover)':'transparent',transition:'background 0.12s'}}>
-                      <td style={{padding:'10px 12px'}}>
-                        <span style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily: T.font.sans,color:'var(--text-primary)'}}>{bank.name}</span>
+                    <tr key={bank.id||bank.name} onMouseEnter={()=>setHoverBankRow(i)} onMouseLeave={()=>setHoverBankRow(null)} onTouchStart={()=>setHoverBankRow(i)} onTouchEnd={()=>setHoverBankRow(null)} style={{'--row-bg':hoverBankRow===i?'var(--bg-hover)':'var(--surface-raised)',background:hoverBankRow===i?'var(--bg-hover)':'transparent',transition:'background 0.12s'}}>
+                      <td>
+                        <span style={{fontSize: 'var(--fs-base)',fontWeight:500,color:'var(--text-primary)'}}>{bank.name}</span>
                       </td>
                       {FIXED_TERM_COLUMNS.map(k=>(
-                        <td key={k} style={{padding:'10px 12px',textAlign:'right' as const,fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontSize: 'var(--fs-base)',color:bank[k]?(hoverBankRow===i?'var(--accent)':'var(--text-primary)'):'var(--text-tertiary)',fontWeight:500,transition:'color 0.12s'}}>{cellRate(bank[k])}</td>
+                        <td key={k} className="num" style={{fontSize: 'var(--fs-base)',color:bank[k]?(hoverBankRow===i?'var(--accent)':'var(--text-primary)'):'var(--text-tertiary)',fontWeight:500,transition:'color 0.12s'}}>{cellRate(bank[k])}</td>
                       ))}
-                      <td style={{padding:'10px 12px',textAlign:'right' as const,fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontSize: 'var(--fs-base)',color:hoverBankRow===i?'var(--accent)':'var(--text-primary)',transition:'color 0.12s'}}>{bank.variable_spread_min!==undefined?`+${fp(bank.variable_spread_min)} έως +${fp(bank.variable_spread_max)}`:NO_RATE}</td>
-                      <td style={{padding:'10px 12px',textAlign:'right' as const,fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontSize: 'var(--fs-base)',color:bank.max_ltv?(hoverBankRow===i?'var(--accent)':'var(--text-primary)'):'var(--text-tertiary)',fontWeight:500,transition:'color 0.12s'}}>{bank.max_ltv?fp(bank.max_ltv):NO_RATE}</td>
-                      <td style={{padding:'10px 12px'}}>
+                      <td className="num" style={{fontSize: 'var(--fs-base)',color:hoverBankRow===i?'var(--accent)':'var(--text-primary)',transition:'color 0.12s'}}>{bank.variable_spread_min!==undefined?`+${fp(bank.variable_spread_min)} έως +${fp(bank.variable_spread_max)}`:NO_RATE}</td>
+                      <td className="num" style={{fontSize: 'var(--fs-base)',color:bank.max_ltv?(hoverBankRow===i?'var(--accent)':'var(--text-primary)'):'var(--text-tertiary)',fontWeight:500,transition:'color 0.12s'}}>{bank.max_ltv?fp(bank.max_ltv):NO_RATE}</td>
+                      <td>
                         {bank.spiti_mou
                           ?<span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>Ναι</span>
                           :<span style={{fontSize:12,color:'var(--text-tertiary)'}}>Όχι</span>

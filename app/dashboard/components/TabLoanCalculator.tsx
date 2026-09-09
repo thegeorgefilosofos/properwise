@@ -1129,12 +1129,12 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
       {scenarios.length>0&&(
         <div style={cardStyle}>
           <SectionLabel label="Σύγκριση σεναρίων"/>
-          <div style={{overflowX:'auto',marginBottom:16}}>
-            <div className="table-wrap">
-            {/* Οκτώ στήλες, ίδιος κανόνας με τον πίνακα αντοχής: το όνομα του
-                σεναρίου μένει ορατό όσο ο χρήστης σέρνει προς τη «Διαφορά». */}
-            <table className="pin-1" style={{width:'100%',borderCollapse:'collapse',fontSize:12,'--row-bg':'var(--surface-raised)'}}>
-              <thead><tr style={{borderBottom:'1px solid var(--border-subtle)'}}>{['Σενάριο','Ποσό','Επιτόκιο','Χρόνια','Δόση τον μήνα','Συνολικοί τόκοι','Διαφορά',''].map(h=><th key={h} style={{padding:'7px 10px',textAlign:'left',fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:500,fontFamily: T.font.sans}}>{h}</th>)}</tr></thead>
+          {/* Οκτώ στήλες, ίδιος κανόνας με τον πίνακα αντοχής: το όνομα του
+              σεναρίου μένει ορατό όσο ο χρήστης σέρνει προς τη «Διαφορά». */}
+          <div className="po-table-box" style={{marginBottom:16}}>
+            <div className="po-scroll-x">
+            <table className="po-table pin-1" style={{'--tbl-min':'760px','--row-bg':'var(--surface-raised)'}}>
+              <thead><tr>{['Σενάριο','Ποσό','Επιτόκιο','Χρόνια','Δόση τον μήνα','Συνολικοί τόκοι','Διαφορά',''].map((h,i)=><th key={h} scope="col" style={{textAlign:i>=1&&i<=6?'right' as const:undefined}}>{h}</th>)}</tr></thead>
               <tbody>
                 {scenarios.map(s=>{
                   const m=calcMonthly(s.amount,s.rate,s.years),ti=m*s.years*12-s.amount,saved=totalInt-ti
@@ -1142,15 +1142,15 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                   const isEd=editingId===s.id
                   const cell=(v:string,f:'label'|'amount'|'rate'|'years',w:number)=><input value={v} aria-label={SCEN_NAME[f]} onChange={e=>{ if(f==='label') updScen(s.id,'label',e.target.value); else updScen(s.id,f,Number(e.target.value)); }} style={{background:'var(--bg-surface)',border:'1px solid var(--accent)',borderRadius:10,padding:'5px 8px',color:'var(--text-primary)',fontSize:12,letterSpacing:0,outline:'none',width:w,fontFamily:f==='label'?"'Inter',sans-serif":"'Roboto Mono',monospace",fontVariantNumeric:'tabular-nums'}} type={f==='label'?'text':'number'} step={f==='rate'?0.05:1}/>
                   return(
-                    <tr key={s.id} style={{borderBottom:'1px solid var(--border-subtle)','--row-bg':isBest?'var(--bg-surface)':'var(--surface-raised)',background:isBest?'var(--bg-surface)':'transparent'}}>
-                      <td style={{padding:'9px 10px'}}>{isEd?cell(s.label,'label',120):<div style={{display:'flex',alignItems:'center',gap: 8}}><span style={{color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>{s.label}</span>{isBest&&<Badge tone="accent">Βέλτιστο</Badge>}</div>}</td>
-                      <td style={{padding:'9px 10px'}}>{isEd?cell(String(s.amount),'amount',90):<span style={{fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{fmtEur(s.amount)}</span>}</td>
-                      <td style={{padding:'9px 10px'}}>{isEd?cell(String(s.rate),'rate',65):<span style={{fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}>{fmtPct(s.rate)}</span>}</td>
-                      <td style={{padding:'9px 10px'}}>{isEd?cell(String(s.years),'years',55):<span style={{color:'var(--text-secondary)',fontFamily: T.font.sans}}>{s.years} έτη</span>}</td>
-                      <td style={{padding:'9px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{fmtEur(m)}</td>
-                      <td style={{padding:'9px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}>{fmtEur(ti)}</td>
-                      <td style={{padding:'9px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:saved>0?'var(--accent)':'var(--text-tertiary)',fontWeight:600}}>{saved>0?`-${fmtEur(saved)}`:`+${fmtEur(-saved)}`}</td>
-                      <td style={{padding:'9px 10px'}}>
+                    <tr key={s.id} style={{'--row-bg':isBest?'var(--bg-surface)':'var(--surface-raised)',background:isBest?'var(--bg-surface)':'transparent'}}>
+                      <td>{isEd?cell(s.label,'label',120):<div style={{display:'flex',alignItems:'center',gap: 8}}><span style={{color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>{s.label}</span>{isBest&&<Badge tone="accent">Βέλτιστο</Badge>}</div>}</td>
+                      <td className="num">{isEd?cell(String(s.amount),'amount',90):<span style={{color:'var(--text-primary)',fontWeight:600}}>{fmtEur(s.amount)}</span>}</td>
+                      <td className="num">{isEd?cell(String(s.rate),'rate',65):<span>{fmtPct(s.rate)}</span>}</td>
+                      <td className="num">{isEd?cell(String(s.years),'years',55):<span>{s.years} έτη</span>}</td>
+                      <td className="num" style={{color:'var(--text-primary)',fontWeight:600}}>{fmtEur(m)}</td>
+                      <td className="num">{fmtEur(ti)}</td>
+                      <td className="num" style={{color:saved>0?'var(--accent)':'var(--text-tertiary)',fontWeight:600}}>{saved>0?`-${fmtEur(saved)}`:`+${fmtEur(-saved)}`}</td>
+                      <td>
                         <div style={{display:'flex',gap: 4,alignItems:'center'}}>
                           {isEd
                             ?<button onClick={()=>setEditingId(null)} aria-label="Αποθήκευση σεναρίου" title="Αποθήκευση" style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',display:'flex',padding:8,margin:-4}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></button>
@@ -1522,22 +1522,24 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
             δεν χωρούν σε τηλέφωνο: ο πίνακας κυλά και το «Τρέχον», το «+1%», το
             «+3%» —δηλαδή ΠΟΙΟ σενάριο διαβάζεις— φεύγουν αριστερά. Μένουν
             τέσσερις στήλες ποσών χωρίς να λένε ποιανού είναι. */}
-        <div className="table-wrap">
-        <table className="pin-1" style={{width:'100%',borderCollapse:'collapse',fontSize:12,'--row-bg':'var(--surface-raised)'}}>
-          <thead><tr style={{borderBottom:'1px solid var(--border-subtle)'}}>{['Σενάριο','Επιτόκιο','Δόση τον μήνα','Αύξηση','Δόση προς εισόδημα'].map(h=><th key={h} style={{padding:'7px 10px',textAlign:'left',fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:500,fontFamily: T.font.sans}}>{h}</th>)}</tr></thead>
+        <div className="po-table-box">
+         <div className="po-scroll-x">
+          <table className="po-table pin-1" style={{'--tbl-min':'500px','--row-bg':'var(--surface-raised)'}}>
+            <thead><tr>{['Σενάριο','Επιτόκιο','Δόση τον μήνα','Αύξηση','Δόση προς εισόδημα'].map((h,i)=><th key={h} scope="col" style={{textAlign:i?'right' as const:undefined}}>{h}</th>)}</tr></thead>
           <tbody>
             {stress.map((s,i)=>{
               const diff=s.monthly-stress[0].monthly,dti=(s.monthly/INC)*100
-              return <tr key={i} style={{borderBottom:'1px solid var(--border-subtle)','--row-bg':i===0?'var(--bg-elevated)':'var(--surface-raised)',background:i===0?'var(--bg-elevated)':'transparent'}}>
-                <td style={{padding:'8px 10px',color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:i===0?600:400}}>{s.label}</td>
-                <td style={{padding:'8px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}>{fmtPct(s.rate)}</td>
-                <td style={{padding:'8px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{fmtEur(s.monthly)}</td>
-                <td style={{padding:'8px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:i===0?'var(--text-tertiary)':'var(--text-secondary)'}}>{i===0?fmtEur(0):diff>=0?`+${fmtEur(diff)}`:`-${fmtEur(-diff)}`}</td>
-                <td style={{padding:'8px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:"var(--text-primary)",fontWeight:dti>40?700:500}}>{fmtPct1(dti)}</td>
+              return <tr key={i} style={{'--row-bg':i===0?'var(--bg-elevated)':'var(--surface-raised)',background:i===0?'var(--bg-elevated)':'transparent'}}>
+                <td style={{color:'var(--text-primary)',fontWeight:i===0?600:400}}>{s.label}</td>
+                <td className="num">{fmtPct(s.rate)}</td>
+                <td className="num" style={{color:'var(--text-primary)',fontWeight:600}}>{fmtEur(s.monthly)}</td>
+                <td className="num" style={{color:i===0?'var(--text-tertiary)':'var(--text-secondary)'}}>{i===0?fmtEur(0):diff>=0?`+${fmtEur(diff)}`:`-${fmtEur(-diff)}`}</td>
+                <td className="num" style={{color:"var(--text-primary)",fontWeight:dti>40?700:500}}>{fmtPct1(dti)}</td>
               </tr>
             })}
           </tbody>
         </table>
+         </div>
         </div>
         {rateType==='fixed'&&<div style={{marginTop:10,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Σταθερό {fixedPeriod} χρόνια, προστατευμένος από ανατιμήσεις Euribor</p></div>}
       </Section>
@@ -1595,12 +1597,19 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           </button>
         </div>
         {/* Κύλιση με κολλημένη κεφαλίδα· ομοιόμορφοι λευκοί αριθμοί, γαλάζιο μόνο στη γραμμή που εξετάζεις */}
-        <div style={{maxHeight:268,overflow:'auto',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup}}>
-          <table style={{width:'100%',minWidth:480,borderCollapse:'separate',borderSpacing:0,fontSize:12}}>
+        {/* Ο ΤΕΛΕΥΤΑΙΟΣ ΧΕΙΡΟΠΟΙΗΤΟΣ ΠΙΝΑΚΑΣ ΤΟΥ ΤΑΜΠΛΟ. Εγραφε τη δική του
+            κεφαλίδα, το δικό του κελί —έξι φορές το ίδιο `padding: 9px 14px`—
+            και το δικό του κουτί με περίγραμμα. Παίρνει την `.po-table` με τη
+            μεταλλαγή `tbl-sticky`, που κρατά την κεφαλίδα καρφωμένη όσο κυλούν
+            οι τριακόσιες εξήντα δόσεις. Η γραμμή που αρχίζει νέο έτος κρατά το
+            πιο σκούρο περίγραμμά της: είναι η μόνη πληροφορία που δεν βγαίνει
+            από την κλάση. */}
+        <div className="po-table-box" style={{maxHeight:268,overflow:'auto'}}>
+          <table className="po-table tbl-sticky" style={{'--tbl-min':'480px'}}>
             <thead>
               <tr>
                 {['Μήνας','Δόση','Κεφάλαιο','Τόκος','Υπόλοιπο','Συνολικοί τόκοι'].map(h=>(
-                  <th key={h} style={{position:'sticky',top:0,zIndex:1,background:'var(--bg-elevated)',padding:'10px 14px',textAlign:'right',fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600,fontFamily: T.font.sans,borderBottom:'1px solid var(--border-default)',whiteSpace:'nowrap' as const}}>{h}</th>
+                  <th key={h} scope="col" style={{textAlign:'right',borderBottom:'1px solid var(--border-default)',whiteSpace:'nowrap' as const}}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1608,18 +1617,18 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
               {amort.map((row,i)=>{
                 const on=hoverRow===i
                 const yearStart=i>0&&row.month%12===1
-                const cell:React.CSSProperties={padding:'9px 14px',textAlign:'right',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:on?'var(--accent)':'var(--text-primary)',borderBottom:'1px solid var(--border-subtle)',borderTop:yearStart?'1px solid var(--border-default)':undefined,transition:'color 0.12s'}
+                const cell:React.CSSProperties={color:on?'var(--accent)':'var(--text-primary)',borderTop:yearStart?'1px solid var(--border-default)':undefined,transition:'color 0.12s'}
                 return (
                   <tr key={row.month}
                     onMouseEnter={()=>setHoverRow(i)} onMouseLeave={()=>setHoverRow(null)}
                     onTouchStart={()=>setHoverRow(i)} onTouchEnd={()=>setHoverRow(null)}
                     style={{background:on?'var(--bg-hover)':'transparent',transition:'background 0.12s'}}>
-                    <td style={{...cell,fontWeight:on?600:400}}>{row.month}</td>
-                    <td style={{...cell,fontWeight:on?700:600}}>{fmtEur(row.payment)}</td>
-                    <td style={cell}>{fmtEur(row.principal)}</td>
-                    <td style={cell}>{fmtEur(row.interest)}</td>
-                    <td style={cell}>{fmtEur(row.balance)}</td>
-                    <td style={cell}>{fmtEur(row.totalInterestPaid)}</td>
+                    <td className="num" style={{...cell,fontWeight:on?600:400}}>{row.month}</td>
+                    <td className="num" style={{...cell,fontWeight:on?700:600}}>{fmtEur(row.payment)}</td>
+                    <td className="num" style={cell}>{fmtEur(row.principal)}</td>
+                    <td className="num" style={cell}>{fmtEur(row.interest)}</td>
+                    <td className="num" style={cell}>{fmtEur(row.balance)}</td>
+                    <td className="num" style={cell}>{fmtEur(row.totalInterestPaid)}</td>
                   </tr>
                 )
               })}
