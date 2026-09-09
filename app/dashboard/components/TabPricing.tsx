@@ -15,7 +15,7 @@
 // 2. «Προβολή εσόδων». Ίδια ρίζα: πολλαπλασιασμός των προτάσεών μας με
 //    πληρότητα που εν μέρει επινοήσαμε.
 // 3. Η αυτόματη βάση από τ.μ./ενοίκιο (`suggestBaseFallback`). 60 τ.μ. στη
-//    Λάρισα έβγαζαν 96 €/νύχτα. Χωρίς ιστορικό δεν προτείνουμε βάση: μένει το
+//    Λάρισα έβγαζαν 96€/νύχτα. Χωρίς ιστορικό δεν προτείνουμε βάση: μένει το
 //    EmptyState και η βαθμονόμηση από πραγματικές αγγελίες ανταγωνιστών.
 // 4. Το τρίτο έτος (nowYear+2) — 1.096 υπολογισμένες ημέρες για τιμές που
 //    κανείς δεν ορίζει δύο χρόνια μπροστά.
@@ -168,7 +168,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   }, [userId, propertyId, supabase]);
 
   // Ο τύπος του ακινήτου κρίνει το κλιμάκιο του τέλους ανθεκτικότητας: το
-  // υψηλότερο (15/4 €) ισχύει ΜΟΝΟ για μονοκατοικίες άνω των 80 τ.μ., όχι για
+  // υψηλότερο (15/4€) ισχύει ΜΟΝΟ για μονοκατοικίες άνω των 80 τ.μ., όχι για
   // κάθε ακίνητο άνω των 80 τ.μ. Χωρίς αυτό, η ανάλυση τιμής θα ήταν λάθος.
   const loadPropType = useCallback(async () => {
     const data = await properties.one<{ prop_type: string }>(supabase, propertyId, 'prop_type', userId);
@@ -465,7 +465,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
 
 
   // ── Η γραμμή που κανείς δεν επινοεί ────────────────────────────────────────
-  // Ο οικοδεσπότης βλέπει «85 €/νύχτα» και νομίζει ότι εισπράττει 85 και δηλώνει
+  // Ο οικοδεσπότης βλέπει «85€/νύχτα» και νομίζει ότι εισπράττει 85 και δηλώνει
   // 85. Κανένα από τα δύο. Το τέλος ανθεκτικότητας ΔΕΝ είναι έσοδό του (το κρατά
   // για το κράτος) και η προμήθεια είναι ΔΑΠΑΝΗ που δεν μειώνει το δηλωτέο έσοδο.
   // Τίποτα εδώ δεν είναι επινοημένο: το τέλος από τους συντελεστές της ΑΑΔΕ, η
@@ -474,8 +474,8 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // Το ΤΑΚΚ έχει δύο συντελεστές, με σύνορο την 1η Απριλίου και την 1η
   // Νοεμβρίου. Η γραμμή του κενού υπολόγιζε το τέλος ΜΟΝΟ από την ημερομηνία
   // έναρξης και το τύπωνε σαν να ισχύει για όλο το διάστημα: ένα κενό «24 Σεπ
-  // έως 31 Δεκ» έγραφε 8,00 € για ενενήντα εννέα νύχτες, ενώ οι εξήντα ένα από
-  // αυτές πληρώνουν 2,00 €. Το «μένει σε εσένα» της γραμμής ήταν αντίστοιχα
+  // έως 31 Δεκ» έγραφε 8,00€ για ενενήντα εννέα νύχτες, ενώ οι εξήντα ένα από
+  // αυτές πληρώνουν 2,00€. Το «μένει σε εσένα» της γραμμής ήταν αντίστοιχα
   // λάθος προς τα κάτω. Οταν το διάστημα περνά το σύνορο, το λέμε και δίνουμε
   // την ημερομηνία — δεν διαλέγουμε σιωπηλά τη μία από τις δύο τιμές.
   const levyChange = (start: string, end?: string) => {
@@ -501,7 +501,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
      είναι ΑΥΤΟΥΣΙΑ η τιμή που δίνει ο καλών: στην κάρτα του κενού γράφεται τρεις
      γραμμές πιο πάνω ως «πρόταση πλήρωσης» και στη λεπτομέρεια ημέρας ως
      «Προτεινόμενη τιμή», με έντονα και σε χρώμα τόνου. Μετρημένο στον πάγκο:
-     «120,00 €» δύο φορές στην ίδια κάρτα.
+     «120,00€» δύο φορές στην ίδια κάρτα.
 
      Μένει η αφαίρεση και μόνο: τι φεύγει και τι απομένει, δύο φορές. */
   const priceLine = (date: string, price: number, end?: string) => {
@@ -785,7 +785,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                       {Array.from({ length: daysInMonth }).map((_, i) => {
                         const dayNum = i + 1;
                         const d = byDay.get(dayNum);
-                        if (!d) return <div key={dayNum} style={{ aspectRatio: '1', borderRadius: 8, background: 'var(--bg-base)', opacity: 0.4 }} />;
+                        if (!d) return <div key={dayNum} style={{ aspectRatio: '1', borderRadius: T.radius.chip, background: 'var(--bg-base)', opacity: 0.4 }} />;
                         const past = pyear === nowYear && d.date < todayIso();
                         const t = past ? 0 : norm(d.price);
                         const top = !past && t > 0.82 && !d.booked;     // κορυφαία αιχμή: έξτρα έμφαση
@@ -801,7 +801,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                                λέγεται `aria-selected` και είναι αυτή που ανακοινώνει ο
                                αναγνώστης μαζί με τη θέση «γραμμή 3, στήλη 5». */
                             aria-selected={sel?.date === d.date} className="cal-day" style={{
-                            position: 'relative', aspectRatio: '1', borderRadius: 8, cursor: 'pointer', overflow: 'hidden',
+                            position: 'relative', aspectRatio: '1', borderRadius: T.radius.chip, cursor: 'pointer', overflow: 'hidden',
                             border: sel?.date === d.date ? '2px solid var(--accent)' : top ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
                             background: d.booked ? 'var(--bg-base)' : 'var(--surface-raised)', padding: 0,
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,

@@ -46,8 +46,8 @@ const LAND_LIKE = new Set(['land', 'parking', 'storage', 'warehouse']);
 // υπόθεση. Και το `target_rent` δεν μένει στον οδηγό: το `computeYields` το
 // πολλαπλασιάζει ×12 στη Σύγκριση, στις Αποδόσεις, στο Χαρτοφυλάκιο και στη
 // δανειακή ικανότητα και το `buildE2Row` το χρησιμοποιεί ως ακαθάριστο σε
-// ΦΟΡΟΛΟΓΙΚΟ ΕΝΤΥΠΟ όταν λείπουν καταγεγραμμένες διαμονές. Για 70 € τη νύχτα
-// ήταν 15.330 € τον χρόνο, ενώ ο ίδιος άνθρωπος είχε εισπράξει 6.300 €.
+// ΦΟΡΟΛΟΓΙΚΟ ΕΝΤΥΠΟ όταν λείπουν καταγεγραμμένες διαμονές. Για 70€ τη νύχτα
+// ήταν 15.330€ τον χρόνο, ενώ ο ίδιος άνθρωπος είχε εισπράξει 6.300€.
 //
 // Ο ίδιος ο δημόσιος υπολογιστής (ShortVsLongCalculator) το κάνει ήδη σωστά:
 // ΖΗΤΑΕΙ την πληρότητα, δείχνει πίνακα ευαισθησίας και γράφει ρητά ότι τα ποσά
@@ -118,7 +118,7 @@ const num = (s: string) => { const v = parseFloat(s.replace(',', '.')); return i
 const inputStyle: React.CSSProperties = {
   // Ύψος από την κοινή κλίμακα: ήταν καρφωμένο 40 σε ~25 πεδία του οδηγού, άρα
   // δεν ακολουθούσε το 44 που ζητά ο δείκτης-δάχτυλο (globals.css, pointer: coarse).
-  width: '100%', padding: '10px 16px', height: T.h.lg, borderRadius: 6,
+  width: '100%', padding: '10px 16px', height: T.h.lg, borderRadius: T.radius.xs,
   border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
   color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans,
   letterSpacing: 0, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
@@ -334,7 +334,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
   // Στη βραχυχρόνια το πεδίο ζητά τιμή ΑΝΑ ΔΙΑΝΥΚΤΕΡΕΥΣΗ, ενώ η βάση κρατά
   // μηνιαίο. Το πεδίο φόρτωνε ωμό το `target_rent`: άνοιγες ένα Airbnb ακίνητο
   // για να αλλάξεις τη διεύθυνση και έβρισκες 3.000 στην «τιμή ανά
-  // διανυκτέρευση», με την προεπισκόπηση να λέει 657.000 € ετήσια έσοδα. Κάθε
+  // διανυκτέρευση», με την προεπισκόπηση να λέει 657.000€ ετήσια έσοδα. Κάθε
   // αποθήκευση πολλαπλασίαζε ξανά το νούμερο.
   const [rent, setRent] = useState(() =>
     s(existing?.target_rent)
@@ -679,7 +679,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
                 return (
                   <button key={t} onClick={() => setPropType(t)} style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 8px',
-                    borderRadius: 12, cursor: 'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
+                    borderRadius: T.radius.popup, cursor: 'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
                     // Η επιλογή ΔΕΝ παχαίνει το περίγραμμα: το δεύτερο εικονοστοιχείο
                     // έκανε το επιλεγμένο πλακίδιο 82 ψηλό δίπλα σε γείτονες των 80.
                     // Ο δακτύλιος δίνει την ίδια έμφαση χωρίς να πειράξει τη διάταξη,
@@ -938,7 +938,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
       {/* STEP 5, Σύνοψη */}
       {step === 4 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup }}>
             <div style={{ color: 'var(--accent)' }}><TypeIcon type={propType} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: T.font.sans, fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name.trim() || ABSENT}</div>

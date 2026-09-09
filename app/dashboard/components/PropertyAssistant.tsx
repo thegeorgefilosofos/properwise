@@ -117,7 +117,7 @@ import { MONTHS_SHORT, MONTHS_GEN } from '@/lib/core/months';
 import { useRemembered } from '@/components/useRememberedFlag';
 import { useLoad } from '@/app/hooks/useLoad';
 
-// Ο άγνωστος αριθμός γράφεται 0,00 €, όχι παύλα: η παύλα δεν στοιχίζεται με
+// Ο άγνωστος αριθμός γράφεται 0,00€, όχι παύλα: η παύλα δεν στοιχίζεται με
 // τίποτα και σε στήλη ποσών διαβάζεται ως σφάλμα (lib/core/format.ts).
 const eur = (n?: number | null) => n == null ? feOr(null) : feAuto(n);
 // Η ερώτηση συμφωνίας σε μία πρόταση. Οι ίδιοι λόγοι που δείχνει και η οθόνη
@@ -417,8 +417,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   const allPropsContext = prefs.compare && allProperties.length > 1
     ? allProperties.map((p, i) => {
         const gy = computeYields(resolveRent({ targetRent: p.targetRent }).value, resolveValue(p.value).value, 0).grossYield;
-        const y = gy > 0 ? gy.toFixed(1) : null;
-        return `${i + 1}. ${p.name}${p.propType ? ` (${p.propType})` : ''}: αξία ${eur(p.value)}, ενοίκιο-στόχος ${eur(p.targetRent)}/μήνα${y ? `, μεικτή απόδοση ~${y}%` : ''}${p.sqm ? `, ${p.sqm} τ.μ.` : ''}${p.status ? `, ${p.status}` : ''}`;
+        // ΤΟ `toFixed` ΒΓΑΖΕΙ ΤΕΛΕΙΑ, ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟ. Εγραφε
+        // «6.7%» μέσα στα συμφραζόμενα που διαβάζει το μοντέλο — δίπλα σε ποσά
+        // «1.234,56€» της ίδιας γραμμής, όπου η τελεία χωρίζει ΧΙΛΙΑΔΕΣ.
+        const y = gy > 0 ? fp(gy) : null;
+        return `${i + 1}. ${p.name}${p.propType ? ` (${p.propType})` : ''}: αξία ${eur(p.value)}, ενοίκιο-στόχος ${eur(p.targetRent)}/μήνα${y ? `, μεικτή απόδοση ~${y}` : ''}${p.sqm ? `, ${p.sqm} τ.μ.` : ''}${p.status ? `, ${p.status}` : ''}`;
       }).join('\n')
     : undefined;
 
@@ -565,8 +568,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       // και δεν εκπίπτει τον τόκο πουθενά.
       //
       // Το αποτέλεσμα ήταν δύο διαφορετικά ταμειακά υπόλοιπα για το ίδιο ακίνητο
-      // και το ίδιο έτος: η Νόα έλεγε 6.591,88 € περισσότερα από τη Λογιστική σε
-      // δάνειο 190.000 € με 3,5%. Όποιος έβλεπε και τα δύο, δεν πίστευε κανένα.
+      // και το ίδιο έτος: η Νόα έλεγε 6.591,88€ περισσότερα από τη Λογιστική σε
+      // δάνειο 190.000€ με 3,5%. Όποιος έβλεπε και τα δύο, δεν πίστευε κανένα.
       loanPrincipal: Math.max(0, Math.round(monthlyDebt * 12)),
       uncollectedIncome: isShortAcct || rentFromTarget ? 0 : Math.max(0, accruedRent - collectedRent),
     });
@@ -633,7 +636,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     const bData = (await settings.section(supabase, propertyId, 'budgets', userId)) || {};
     // ΧΩΡΙΣ ΟΡΙΣΜΕΝΟ ΣΤΟΧΟ, ΚΑΝΕΝΑΣ ΑΡΙΘΜΟΣ.
     // Ήταν `|| 390`. Ο χρήστης που δεν είχε ορίσει ποτέ προϋπολογισμό, έπαιρνε
-    // από τη Νόα προτάσεις πάνω σε «μηνιαίο στόχο 390 €» — νούμερο που δεν
+    // από τη Νόα προτάσεις πάνω σε «μηνιαίο στόχο 390€» — νούμερο που δεν
     // είπε ποτέ, διατυπωμένο σαν δικό του.
     const rawTarget = parseFloat(String(bData.total ?? ''));
     const monthlyTarget: number | null = Number.isFinite(rawTarget) && rawTarget > 0 ? rawTarget : null;

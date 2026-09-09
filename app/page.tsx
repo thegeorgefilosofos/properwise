@@ -393,11 +393,11 @@ const REFERRAL = [
 // ΔΕΝ ΥΠΑΡΧΕΙ ΔΩΡΕΑΝ ΠΑΚΕΤΟ, ΥΠΑΡΧΕΙ ΔΩΡΕΑΝ ΔΟΚΙΜΗ. Η σελίδα υποσχόταν «το
 // πρώτο ακίνητο δωρεάν για πάντα» και «μετά τη δοκιμή συνεχίζεις δωρεάν με ένα
 // ακίνητο». Δεν ισχύει: δωρεάν είναι οι τριάντα ημέρες και μετά το φθηνότερο
-// πακέτο είναι 3,90 € τον μήνα για ένα ακίνητο. Μια υπόσχεση που καταρρέει την
+// πακέτο είναι 3,90€ τον μήνα για ένα ακίνητο. Μια υπόσχεση που καταρρέει την
 // τριακοστή πρώτη ημέρα κοστίζει περισσότερο από όσους πελάτες φέρνει.
 const LANDING_PLANS = PLAN_ORDER.filter(id => PLANS[id].priceMonthly > 0);
 // Το προτεινόμενο είναι το «Ιδιοκτήτης+»: εκεί υπάρχει περιθώριο να μεγαλώσει το
-// χαρτοφυλάκιο (τρία ακίνητα και +2 € το καθένα), ενώ ο «Ιδιοκτήτης» είναι
+// χαρτοφυλάκιο (τρία ακίνητα και +2€ το καθένα), ενώ ο «Ιδιοκτήτης» είναι
 // τελικός σταθμός για ένα σπίτι. Ο μέσος αγοραστής δεν οδηγείται στο φθηνότερο,
 // οδηγείται σε αυτό που δεν θα χρειαστεί να αλλάξει σε έξι μήνες.
 const FEATURED_PLAN = 'owner';
@@ -1284,7 +1284,7 @@ export default async function Landing() {
         <div className="lp-feat" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
           {FEATURES.map((f, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
-              <div style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}>{ic(f.i)}</div>
+              <div style={{ width: 38, height: 38, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}>{ic(f.i)}</div>
               <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 7px', letterSpacing: '-0.02em' }}>{f.t}</h3>
               <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: 0 }}>{f.d}</p>
             </div>
@@ -1473,7 +1473,7 @@ export default async function Landing() {
         {/* ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΙΣ ΤΙΜΕΣ ΚΑΙ ΤΑ ΧΑΡΑΚΤΗΡΙΣΤΙΚΑ.
             Οι κάρτες ήταν γραμμένες με το χέρι: τιμές, ετήσιες τιμές και λίστες
             χαρακτηριστικά αντιγραμμένα από το lib/billing/plans.ts. Είχαν ήδη
-            αποκλίνει — η σελίδα δεν ανέφερε πουθενά τα +2 € ανά επιπλέον
+            αποκλίνει — η σελίδα δεν ανέφερε πουθενά τα +2€ ανά επιπλέον
             ακίνητο (το πιο δυνατό επιχείρημα του τιμοκαταλόγου) και ΔΕΝ έδειχνε
             καθόλου το πακέτο «Γραφείο», που υπάρχει και χρεώνεται κανονικά.
             Τώρα παράγονται από το PLANS: μία αλλαγή τιμής, παντού σωστή. */}
@@ -1481,8 +1481,8 @@ export default async function Landing() {
             πέμπτο πακέτο σε δεύτερη σειρά, οπότε ο τιμοκατάλογος διαβαζόταν ως
             «τέσσερα και κάτι ακόμη» αντί για μία σκάλα. Ρητές πέντε στήλες πάνω
             από 1000px, δύο στο tablet, μία στο κινητό (globals.css). */}
-        {/* ΤΕΣΣΕΡΑ ΠΑΚΕΤΑ, ΟΧΙ ΠΕΝΤΕ. Η κάρτα «Δωρεάν 0 €» δεν είναι πακέτο: είναι
-            εκεί που καταλήγεις όταν δεν αγοράζεις. Ως πέμπτη στήλη με τιμή «0 €»
+        {/* ΤΕΣΣΕΡΑ ΠΑΚΕΤΑ, ΟΧΙ ΠΕΝΤΕ. Η κάρτα «Δωρεάν 0€» δεν είναι πακέτο: είναι
+            εκεί που καταλήγεις όταν δεν αγοράζεις. Ως πέμπτη στήλη με τιμή «0€»
             έμπαινε στην ίδια σύγκριση με τα υπόλοιπα και έσπαγε τη σκάλα στην
             αρχή της. Λέγεται μία φορά, στα ψιλά γράμματα από κάτω.
 
@@ -1495,7 +1495,7 @@ export default async function Landing() {
             επισκέπτης που κοιτούσε το φθηνότερο έβγαζε το ακριβώς αντίθετο
             συμπέρασμα από την αλήθεια: ότι δεν τον έχει. Λέγεται μία φορά, πάνω
             από τη σκάλα, γιατί αφορά ΟΛΗ τη σκάλα. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '13px 16px', marginBottom: 14, borderRadius: 12, background: PANEL, border: `1px solid ${LINE}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '13px 16px', marginBottom: 14, borderRadius: T.radius.popup, background: PANEL, border: `1px solid ${LINE}` }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--accent-dim)', color: ACCENT, flexShrink: 0 }}>
             <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12" /><path d="M8.5 12h.01M12 12h.01M15.5 12h.01" /></svg>
           </span>
@@ -1558,7 +1558,7 @@ export default async function Landing() {
           {REFERRAL.map((r, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(22px, 2.6vw, 30px)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{ic(r.i)}</div>
+                <div style={{ width: 44, height: 44, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{ic(r.i)}</div>
                 <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: ACCENT }}>{r.tag}</span>
               </div>
               <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{r.t}</h3>
@@ -1765,13 +1765,13 @@ function PlanCard({ planId, name, nameColor, sub, price, per, note, annual, inhe
       {featured && <span style={{ position: 'absolute', top: -9, left: 16, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: T.radius.pill, padding: '2px 9px', whiteSpace: 'nowrap' }}>Προτεινόμενο</span>}
       <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, marginBottom: 4 }}>{name}</div>
       <div style={{ fontSize: 12, color: FAINT, marginBottom: 14, lineHeight: 1.35 }}>{sub}</div>
-      {/* ΤΟ ΠΟΣΟ ΚΑΙ Η ΠΕΡΙΟΔΟΣ ΕΙΝΑΙ ΕΝΑ ΠΡΑΓΜΑ: «3,90 € τον μήνα» διαβάζεται
+      {/* ΤΟ ΠΟΣΟ ΚΑΙ Η ΠΕΡΙΟΔΟΣ ΕΙΝΑΙ ΕΝΑ ΠΡΑΓΜΑ: «3,90€ τον μήνα» διαβάζεται
           σαν φράση, όχι σαν αριθμός με λεζάντα από κάτω. Το `baseline` τα
           στοιχίζει στη γραμμή γραφής, οπότε το μικρό «τον μήνα» κάθεται πάνω
           στη βάση του μεγάλου ποσού αντί να αιωρείται στο κέντρο του.
 
           Το `nowrap` είναι απαραίτητο, όχι διακοσμητικό: χωρίς αυτό το «τον
-          μήνα» έπεφτε κάτω από το «24,90 €» και «79,90 €» —τα δύο μεγαλύτερα
+          μήνα» έπεφτε κάτω από το «24,90€» και «79,90€» —τα δύο μεγαλύτερα
           ποσά— και οι λίστες ξεκινούσαν σε διαφορετικό ύψος σε κάθε κάρτα. */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
         <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'clamp(24px, 2.4vw, 29px)', fontWeight: 680, letterSpacing: '-0.03em', color: TEXT, lineHeight: 1.1 }}>{price}</span>

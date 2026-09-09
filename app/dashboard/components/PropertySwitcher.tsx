@@ -139,7 +139,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
     position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 100,
     width: 320, maxWidth: 'calc(100vw - 32px)',
     background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-    borderRadius: 12, boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
+    borderRadius: T.radius.popup, boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
   };
 
   return (
@@ -178,7 +178,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
                 aria-label="Αναζήτηση ακινήτου"
                 aria-controls={listId} aria-activedescendant={activeOptionId}
                 style={{
-                  width: '100%', height: 36, padding: '0 10px', borderRadius: 8,
+                  width: '100%', height: T.h.md, padding: '0 10px', borderRadius: T.radius.chip,
                   border: '1px solid var(--border-default)', background: 'var(--bg-base)',
                   color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 'var(--fs-base)',
                 }} />
@@ -201,7 +201,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
                   onClick={() => choose(it.id)} onMouseEnter={() => setCursor(k)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10, minHeight: 44,
-                    padding: '6px 10px', borderRadius: 8, cursor: 'pointer',
+                    padding: '6px 10px', borderRadius: T.radius.chip, cursor: 'pointer',
                     background: isCursor ? 'var(--bg-hover)' : 'transparent',
                   }}>
                   <span style={{ flex: 1, minWidth: 0 }}>

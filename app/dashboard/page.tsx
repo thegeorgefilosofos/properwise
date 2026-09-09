@@ -376,11 +376,11 @@ const BOTTOM_NAV = CORE_TABS
   .map(id => ({ id, label: NAV_LABEL[id], icon: ic(NAV_ICON[id]) }));
 
 // ═══ ΔΥΟ ΤΥΠΟΙ ΠΟΣΟΥ ΣΤΗΝ ΙΔΙΑ ΕΦΑΡΜΟΓΗ, ΚΑΙ Ο ΕΝΑΣ ΕΒΓΑΖΕ ΠΑΥΛΑ ══════════
-// Ο τοπικός `fmtEur` έγραφε ακέραια ευρώ («1.234 €») ενώ ο κοινός `fe` γράφει
-// πάντα δύο δεκαδικά («1.234,50 €»): στην ΙΔΙΑ οθόνη, το πλακίδιο «Δαπάνες»
+// Ο τοπικός `fmtEur` έγραφε ακέραια ευρώ («1.234€») ενώ ο κοινός `fe` γράφει
+// πάντα δύο δεκαδικά («1.234,50€»): στην ΙΔΙΑ οθόνη, το πλακίδιο «Δαπάνες»
 // στοιχιζόταν αλλού από το «Καθαρό αποτέλεσμα». Και για `null` επέστρεφε «—»,
 // δηλαδή σύμβολο σε θέση ποσού, σε δεκαοκτώ σημεία της Επισκόπησης.
-// Ο κοινός τύπος τα λύνει και τα δύο: `feOr` γράφει «0,00 €» για το άγνωστο.
+// Ο κοινός τύπος τα λύνει και τα δύο: `feOr` γράφει «0,00€» για το άγνωστο.
 const fmtEur = feOr;
 
 // MD3 form styles
@@ -729,8 +729,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // ΤΟ ΠΛΑΚΙΔΙΟ ΕΛΕΓΕ ΔΥΟ ΝΟΥΜΕΡΑ ΑΠΟ ΔΥΟ ΠΗΓΕΣ.
   // Η τιμή έβγαινε ΜΟΝΟ από τον πίνακα `expenses`, ενώ ο υπότιτλος «X ως
   // σήμερα» από το ενιαίο ημερολόγιο (λογαριασμοί + δαπάνες). Αρκούσε ένας
-  // απλήρωτος λογαριασμός για να γράφει το πλακίδιο «Δαπάνες 1.200,00 € ·
-  // 1.800,00 € ως σήμερα»: το σύνολο του έτους μικρότερο από το μέχρι σήμερα.
+  // απλήρωτος λογαριασμός για να γράφει το πλακίδιο «Δαπάνες 1.200,00€ ·
+  // 1.800,00€ ως σήμερα»: το σύνολο του έτους μικρότερο από το μέχρι σήμερα.
   // Δηλαδή στη συνηθισμένη περίπτωση. Τώρα και τα δύο πατούν στο ημερολόγιο.
   const projectedExpYear = allExpenses.reduce((s,e) => s + e.amount * occMonths(e, year).length, 0) + unbilledOfYear;
   const recurringCount = allExpenses.filter(e => e.is_recurring && occMonths(e, year).length > 0).length;
@@ -763,8 +763,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
 
   // ── ΦΟΡΟΣ: ΕΝΑΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ, ΟΧΙ ΤΡΕΙΣ ────────────────────────────────
   // Πριν: rentalIncomeTax(annualRent) ανά ακίνητο. Ο ιδιοκτήτης τριών
-  // διαμερισμάτων με 8.000 € έκαστο έβλεπε 3 × 1.140 € = 3.420 € αντί για τον
-  // πραγματικό φόρο των 24.000 € (4.500 €) — υποεκτίμηση 1.080 €, με τίτλο
+  // διαμερισμάτων με 8.000€ έκαστο έβλεπε 3 × 1.140€ = 3.420€ αντί για τον
+  // πραγματικό φόρο των 24.000€ (4.500€) — υποεκτίμηση 1.080€, με τίτλο
   // «Εκτιμώμενος Φόρος». Τώρα ο φόρος υπολογίζεται μία φορά στο σύνολο του
   // χαρτοφυλακίου και εμφανίζεται το μερίδιο αυτού του ακινήτου, με την εξήγηση
   // από κάτω. Το ενοίκιο του τρέχοντος ακινήτου έρχεται από το resolveRent, ώστε
@@ -798,8 +798,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // ΑΠΟ ΤΟ ΙΔΙΟ ΗΜΕΡΟΛΟΓΙΟ ΜΕ ΤΟ ΠΛΑΚΙΔΙΟ ΤΩΝ ΔΑΠΑΝΩΝ, τετρακόσια εικονοστοιχεία
   // πιο κάτω. Εδώ περνούσαν οι ωμοί πίνακες `bills` και `expenses` και
   // προστίθεντο: η σάρωση παραστατικού γράφει ΚΑΙ λογαριασμό ΚΑΙ δαπάνη με
-  // `bill_id` και οι δύο απλήρωτες, οπότε ένας λογαριασμός ΔΕΗ 84,50 € έβγαινε
-  // 169,00 € — στο πρώτο νούμερο που βλέπει ο ιδιοκτήτης όταν ανοίγει το ακίνητο,
+  // `bill_id` και οι δύο απλήρωτες, οπότε ένας λογαριασμός ΔΕΗ 84,50€ έβγαινε
+  // 169,00€ — στο πρώτο νούμερο που βλέπει ο ιδιοκτήτης όταν ανοίγει το ακίνητο,
   // ενώ η ίδια οθόνη πιο κάτω έδειχνε το σωστό.
   //
   // ΧΩΡΙΣ ΦΙΛΤΡΟ ΕΤΟΥΣ, επίτηδες: ο απλήρωτος λογαριασμός του περασμένου
@@ -939,7 +939,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // δηλαδή για το είδος με την πιο συγκεκριμένη ημερομηνία που υπάρχει.
       //
       // Το επείγον δεν χάνεται: πέρασε εκεί που είναι το ποσό. Το
-      // `cashSideNote` γράφει πλέον «2 εκκρεμότητες · 120,00 € ληξιπρόθεσμα,
+      // `cashSideNote` γράφει πλέον «2 εκκρεμότητες · 120,00€ ληξιπρόθεσμα,
       // η παλαιότερη 18 ημέρες πίσω», χρησιμοποιώντας το `overdue` που
       // υπολογιζόταν και δεν το τύπωνε καμία οθόνη.
       //
@@ -1202,7 +1202,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             sub: [`${fmtEur(totalExpYTD)} ως σήμερα`, recurringCount>0 ? `${recurringCount} πάγιες` : null].filter(Boolean).join(' · '),
             title:`Οι δαπάνες που έχεις καταχωρήσει για το ${year}, μετρημένες όσες φορές πραγματικά συμβαίνουν.` },
           // Χωρίς εμπορική ΚΑΙ χωρίς αντικειμενική αξία, το πλακίδιο έγραφε
-          // «0,00 €»: όχι μέτρηση, αλλά απουσία μέτρησης ντυμένη σαν μέτρηση.
+          // «0,00€»: όχι μέτρηση, αλλά απουσία μέτρησης ντυμένη σαν μέτρηση.
           ...(propValue>0 ? [{ label:'Αξία ακινήτου', value: fmtEur(propValue),
             title: prop.value ? 'Εμπορική αξία, όπως την έχεις καταχωρήσει.' : 'Αντικειμενική αξία από το έντυπο Ε9, επειδή δεν έχει καταχωρηθεί εμπορική.' }] : []),
         ];
@@ -1218,9 +1218,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           sub: debtLtv>0 ? `δάνειο προς αξία ${fp(debtLtv)}` : undefined,
           title:'Εκτιμώμενη τοκοχρεολυτική δόση. ΔΕΝ αφαιρείται από το καθαρό αποτέλεσμα παραπάνω· το κεφάλαιο δεν είναι δαπάνη.' });
         // ── ΕΙΣΠΡΑΞΕΙΣ, ΟΧΙ ΕΣΟΔΑ. ΔΥΟ ΣΩΣΤΑ ΝΟΥΜΕΡΑ ΓΙΑ ΤΗΝ ΙΔΙΑ ΔΙΑΜΟΝΗ ──────
-        // Ο επισκέπτης πληρώνει 1.000,00 €, η πλατφόρμα κρατά 150,00 € προμήθεια
-        // και εισπράττει 50,00 € τέλος ανθεκτικότητας. Στον λογαριασμό μπαίνουν
-        // 800,00 €· δηλωτέο ακαθάριστο είναι 950,00 €. Και τα δύο είναι σωστά,
+        // Ο επισκέπτης πληρώνει 1.000,00€, η πλατφόρμα κρατά 150,00€ προμήθεια
+        // και εισπράττει 50,00€ τέλος ανθεκτικότητας. Στον λογαριασμό μπαίνουν
+        // 800,00€· δηλωτέο ακαθάριστο είναι 950,00€. Και τα δύο είναι σωστά,
         // απαντούν σε ΑΛΛΗ ερώτηση — και έλεγαν και τα δύο «έσοδα», σε δύο
         // καρτέλες της ίδιας εφαρμογής, χωρίς να το εξηγεί κανείς.
         //
@@ -2148,7 +2148,7 @@ export default function Dashboard() {
                     canAdd={canAddProperty(ent, properties.length)} />
                   {/* Ένα κουμπί: κατάσταση ακινήτου + εργαλεία (επεξεργασία, διαγραφή) στο ίδιο μενού. */}
                   <div style={{position:'relative',minWidth:0}}>
-                    <button onClick={()=>setStatusDropdown(v=>!v)} className="topbar-status" title="Κατάσταση ακινήτου και εργαλεία (επεξεργασία, διαγραφή)" aria-haspopup="menu" aria-expanded={statusDropdown} style={{display:'flex',alignItems:'center',gap: 8,minHeight:T.h.sm,padding:'0 10px 0 12px',borderRadius:8,border:'1px solid var(--border-default)',background:statusDropdown?'var(--bg-hover)':'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:12,fontWeight:500,color:'var(--text-primary)',transition:'background 0.15s'}} onMouseEnter={e=>{if(!statusDropdown)e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{if(!statusDropdown)e.currentTarget.style.background='transparent'}}>
+                    <button onClick={()=>setStatusDropdown(v=>!v)} className="topbar-status" title="Κατάσταση ακινήτου και εργαλεία (επεξεργασία, διαγραφή)" aria-haspopup="menu" aria-expanded={statusDropdown} style={{display:'flex',alignItems:'center',gap: 8,minHeight:T.h.sm,padding:'0 10px 0 12px',borderRadius: T.radius.chip,border:'1px solid var(--border-default)',background:statusDropdown?'var(--bg-hover)':'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:12,fontWeight:500,color:'var(--text-primary)',transition:'background 0.15s'}} onMouseEnter={e=>{if(!statusDropdown)e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{if(!statusDropdown)e.currentTarget.style.background='transparent'}}>
                       <div style={{width:6,height:6,borderRadius:'50%',background:statusColor,flexShrink:0}}/>
                       {/* ΤΟ ΨΑΛΙΔΙ ΘΕΛΕΙ ΣΤΟΙΧΕΙΟ ΓΙΑ ΝΑ ΠΙΑΣΕΙ. Η ετικέτα ήταν
                           γυμνό κείμενο ανάμεσα σε δύο στοιχεία, οπότε το
@@ -2227,7 +2227,7 @@ export default function Dashboard() {
                   ξένο σώμα σε μια επίπεδη, ήσυχη διεπαφή. */}
               <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',marginRight:4,flexShrink:0}} >
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                <span className="desktop-only" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.mono,color:'var(--text-tertiary)',border:'1px solid var(--border-subtle)',borderRadius:6,padding:'1px 5px'}}>{kbdHint}</span>
+                <span className="desktop-only" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.mono,color:'var(--text-tertiary)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.xs,padding:'1px 5px'}}>{kbdHint}</span>
               </button>
             </>
           ) : (
@@ -2259,7 +2259,7 @@ export default function Dashboard() {
                   {t:'Λογαριασμοί και Ενέργεια',d:'Σύγκριση 11 παρόχων ρεύματος/αερίου'},
                   {t:'Ενοικιαστής και Συμβόλαιο',d:'Πληρωμές, λήξεις, εγγύηση, ιστορικό'},
                 ].map((f,i)=>(
-                  <div key={i} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:12,padding:'14px 16px'}}>
+                  <div key={i} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,padding:'14px 16px'}}>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:700,color:'var(--text-primary)',marginBottom:4}}>{f.t}</div>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.5}}>{f.d}</div>
                   </div>
@@ -2442,7 +2442,7 @@ export default function Dashboard() {
                   <div style={{marginTop:T.sp.section}}>
                     <SecHdr label={navLabel('inventory')} sub="Αξία, εγγυήσεις, συντήρηση και παράδοση"/>
                     <button onClick={()=>setNav('inventory')}
-                      style={{display:'flex',alignItems:'center',gap:12,width:'100%',textAlign:'left',padding:'14px 16px',borderRadius:12,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',cursor:'pointer',fontFamily:'inherit'}}>
+                      style={{display:'flex',alignItems:'center',gap:12,width:'100%',textAlign:'left',padding:'14px 16px',borderRadius: T.radius.popup,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',cursor:'pointer',fontFamily:'inherit'}}>
                       <div style={{minWidth:0,flex:1}}>
                         <p style={{fontSize:14,fontWeight:500,color:'var(--text-primary)',marginBottom:2}}>Άνοιγμα απογραφής</p>
                         <p style={{fontSize:12,color:'var(--text-tertiary)',lineHeight:1.5}}>Ό,τι υπάρχει μέσα στο ακίνητο, με την αξία του, την εγγύησή του και το πρωτόκολλο παράδοσης.</p>

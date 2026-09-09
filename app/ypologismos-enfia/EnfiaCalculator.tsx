@@ -208,7 +208,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
                 πρόσθετο φόρο και χωρίς προσαύξηση ισούται με τον κύριο φόρο,
                 δηλαδή τύπωνε το ΙΔΙΟ νούμερο δύο σειρές πιο κάτω.
 
-                Η ΔΟΣΗ ΕΔΕΙΧΝΕ 16,00 € ΔΙΠΛΑ ΣΕ 180,28 € ΕΤΗΣΙΩΣ. Το `installment`
+                Η ΔΟΣΗ ΕΔΕΙΧΝΕ 16,00€ ΔΙΠΛΑ ΣΕ 180,28€ ΕΤΗΣΙΩΣ. Το `installment`
                 του lib είναι `ceil(ετήσιο/12)`, δηλαδή στρογγυλεμένο προς τα πάνω
                 σε ακέραια ευρώ και υπάρχει για την πρόβλεψη ταμείου μέσα στην
                 εφαρμογή. Εδώ όμως στεκόταν δίπλα στο ετήσιο και δώδεκα φορές το
@@ -221,8 +221,8 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
               <Row k="Συντελεστής ορόφου" v={fn(enfiaFloorCoef(floor), 2)}/>
               <Row k="Συντελεστής παλαιότητας" v={fn(enfiaAgeCoef(age), 2)}/>
               <Row k="Κύριος φόρος κτίσματος" v={feAuto(r.basic)}/>
-              {r.extra > 0 && <Row k="Πρόσθετος φόρος (αξία πάνω από 400.000 €)" v={feAuto(r.extra)}/>}
-              {r.supplementary > 0 && <Row k="Προσαύξηση (περιουσία πάνω από 500.000 €)" v={feAuto(r.supplementary)}/>}
+              {r.extra > 0 && <Row k="Πρόσθετος φόρος (αξία πάνω από 400.000€)" v={feAuto(r.extra)}/>}
+              {r.supplementary > 0 && <Row k="Προσαύξηση (περιουσία πάνω από 500.000€)" v={feAuto(r.supplementary)}/>}
               {r.reductionPct > 0 && <Row k={`Μείωση ${fp(r.reductionPct)}`} v={`− ${feAuto(r.reductionAmount)}`}/>}
             </dl>
           </>

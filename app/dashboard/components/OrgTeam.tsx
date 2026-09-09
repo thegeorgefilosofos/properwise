@@ -536,7 +536,7 @@ export default function OrgTeam({ userId }: { userId: string }) {
                             <Btn variant="secondary" onClick={() => setMemberEdit(m.email, false)} disabled={busy}>Όχι</Btn>
                           </div>
                         ) : (
-                          <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: 8, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
+                          <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
                             <SegBtn active={!m.can_edit} disabled={busy} onClick={() => { if (m.can_edit) void setMemberEdit(m.email, false); }}>Ανάγνωση</SegBtn>
                             <SegBtn active={m.can_edit} disabled={busy} divider onClick={() => { if (!m.can_edit) void setMemberEdit(m.email, true); }}>Επεξεργασία</SegBtn>
                           </div>
@@ -568,13 +568,13 @@ export default function OrgTeam({ userId }: { userId: string }) {
                       </button>
 
                       {permsOpen && (
-                        <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div style={{ marginTop: 12, padding: 14, borderRadius: T.radius.popup, background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', gap: 14 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                             <div style={{ minWidth: 0, flex: 1 }}>
                               <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>Οικονομικά στοιχεία</div>
                               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2 }}>Ενοίκια, δαπάνες, λογαριασμοί, δάνεια και λογιστική.</div>
                             </div>
-                            <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: 8, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
+                            <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
                               <SegBtn active={m.can_view_financials} disabled={busy} onClick={() => { if (!m.can_view_financials) void setMemberScope(m.email, { can_view_financials: true }); }}>Ορατά</SegBtn>
                               <SegBtn active={!m.can_view_financials} disabled={busy} divider onClick={() => { if (m.can_view_financials) void setMemberScope(m.email, { can_view_financials: false }); }}>Κρυφά</SegBtn>
                             </div>
@@ -586,7 +586,7 @@ export default function OrgTeam({ userId }: { userId: string }) {
                                 <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>Ακίνητα</div>
                                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2 }}>Σε ποια ακίνητα έχει πρόσβαση το μέλος.</div>
                               </div>
-                              <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: 8, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
+                              <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
                                 <SegBtn active={!scoped} disabled={busy} onClick={() => { if (scoped) void setMemberScope(m.email, { property_scope: null }); }}>Όλα</SegBtn>
                                 <SegBtn active={scoped} disabled={busy} divider onClick={() => { if (!scoped && orgProps[0]) void setMemberScope(m.email, { property_scope: [orgProps[0].id] }); }}>Επιλεγμένα</SegBtn>
                               </div>

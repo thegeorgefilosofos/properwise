@@ -182,7 +182,7 @@ export function withinDays(a?: string | null, b?: string | null, days = 25): boo
 
 export interface PendingBill { id: string; category: string; amount: number; due_date?: string | null; created_at?: string | null; }
 
-// Ανοχή συμφωνίας ποσού: έως 1% ΚΑΙ το πολύ έως 0,20 € για μικρά ποσά.
+// Ανοχή συμφωνίας ποσού: έως 1% ΚΑΙ το πολύ έως 0,20€ για μικρά ποσά.
 // (Σφιχτή, ώστε να αποφεύγονται λανθασμένα ματσαρίσματα.)
 export function amountTolerance(amount: number): number {
   return Math.max(0.20, amount * 0.01);

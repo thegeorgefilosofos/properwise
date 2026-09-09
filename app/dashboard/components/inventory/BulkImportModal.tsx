@@ -107,7 +107,7 @@ export function BulkImportModal({propertyId,userId,onImported,onClose}:{property
       </>):undefined}>
       {step==='upload'&&(
         <>
-          <button onClick={downloadTemplate} style={{padding:'10px',borderRadius:8,border:'1px solid var(--border-default)',background:'var(--bg-elevated)',color:'var(--text-primary)',fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,cursor:'pointer'}}>Κατέβασμα προτύπου</button>
+          <button onClick={downloadTemplate} style={{padding:'10px',borderRadius: T.radius.chip,border:'1px solid var(--border-default)',background:'var(--bg-elevated)',color:'var(--text-primary)',fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,cursor:'pointer'}}>Κατέβασμα προτύπου</button>
           {/* Ρητά, όχι με spread: δες DocumentScan — το spread κρύβει τις ιδιότητες
               από τον μεταγλωττιστή και ξυπνά τα σφάλματα των διπλανών χειριστών. */}
           <div role="button" tabIndex={0} onClick={openFilePicker} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openFilePicker()}}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)handleFile(f)}} style={{border:'2px dashed var(--border-accent)',borderRadius:T.radius.card,padding:'40px 20px',textAlign:'center',cursor:'pointer',background:'var(--accent-dim)'}}>
@@ -115,7 +115,7 @@ export function BulkImportModal({propertyId,userId,onImported,onClose}:{property
             <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>Excel ή CSV</p>
           </div>
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)handleFile(f)}}/>
-          {errors.length>0&&<div style={{padding:'10px 14px',background:'var(--negative-dim)',borderRadius:8,border:'1px solid var(--negative-border)'}}>{errors.map((e,i)=><p key={i} style={{fontSize: 'var(--fs-xs)',color:'var(--negative)',fontFamily:T.font.sans}}>{e}</p>)}</div>}
+          {errors.length>0&&<div style={{padding:'10px 14px',background:'var(--negative-dim)',borderRadius: T.radius.chip,border:'1px solid var(--negative-border)'}}>{errors.map((e,i)=><p key={i} style={{fontSize: 'var(--fs-xs)',color:'var(--negative)',fontFamily:T.font.sans}}>{e}</p>)}</div>}
         </>
       )}
       {step==='preview'&&(

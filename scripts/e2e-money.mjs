@@ -122,7 +122,7 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
   const s = await open('rent-three');
   await s.page.getByRole('button', { name: 'Όλες' }).click();
   const label = (await s.primary().innerText()).replace(/[\n\r\t]+/g, ' ').trim();
-  eq('3. το κουμπί λέει πλήθος και άθροισμα', label, 'Καταχώρηση 3 δόσεων · 1.350,00\u00A0€');
+  eq('3. το κουμπί λέει πλήθος και άθροισμα', label, 'Καταχώρηση 3 δόσεων · 1.350,00€');
   await s.primary().click();
   await settle(s.page);
   const w = await s.writes('rent_payments');

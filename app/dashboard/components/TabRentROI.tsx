@@ -86,7 +86,7 @@ const card: React.CSSProperties = { position: 'relative', background: 'linear-gr
 const titleStyle: React.CSSProperties = { fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: SANS, letterSpacing: '0.1px' };
 const subStyle: React.CSSProperties = { fontSize: 12, color: 'var(--text-tertiary)', margin: '2px 0 0', fontFamily: SANS };
 /** Οι δύο κάρτες των «Εργαλείων απόδοσης»: ίδιο κουτί, ίδια σημείωση, ίδιο ύψος. */
-const toolCard: React.CSSProperties = { padding: 14, borderRadius: 12, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column' };
+const toolCard: React.CSSProperties = { padding: 14, borderRadius: T.radius.popup, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column' };
 const toolNote: React.CSSProperties = { fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: 0, fontFamily: SANS, lineHeight: 1.5 };
 
 // ── Επεξήγηση όρου (διακριτικό εικονίδιο· επαγγελματικός ορισμός) ─────────────
@@ -133,7 +133,7 @@ function Section({ icon, title, sub, info, children, defaultOpen = false }: { ic
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={() => setOpen(o => !o)} aria-expanded={open} aria-label={title} className="acc-toggle"
           style={{ position: 'absolute', inset: 0, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} />
-        <span style={{ position: 'relative', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}>{icon}</span>
+        <span style={{ position: 'relative', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}>{icon}</span>
         <div style={{ position: 'relative', pointerEvents: 'none', flex: 1, minWidth: 0 }}>
           <p style={titleStyle}>{title}</p>
           {sub && <p style={subStyle}>{sub}</p>}
@@ -590,7 +590,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   // Αν κάτι είναι λάθος, διορθώνεται εκεί που δηλώθηκε.
   // Η αντιστοίχιση ζει σε ένα σημείο, με τεστ. Εδώ γραφόταν ως έκφραση, ΚΑΙ
   // έπαιρνε τη δυαδική περίληψη της νομικής μορφής, όπου η ατομική επιχείρηση
-  // είχε ήδη γίνει «νομικό πρόσωπο»: σε κέρδος 100.000 € ο φόρος έβγαινε 25.900
+  // είχε ήδη γίνει «νομικό πρόσωπο»: σε κέρδος 100.000€ ο φόρος έβγαινε 25.900
   // αντί 34.300 και στα μικρά εισοδήματα υπερδιπλάσιος.
   const entity = businessFormOf(legalForm);
   const [term, setTerm] = useState<'long' | 'short'>('long');
@@ -813,7 +813,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   // ── ΦΟΡΟΣ: ΕΝΑΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ, ΟΧΙ ΕΝΑ ΑΚΙΝΗΤΟ ─────────────────────────────
   // Πριν, ο φόρος υπολογιζόταν πάνω ΜΟΝΟ στα έσοδα αυτού του ακινήτου, με
   // `rentsPaidViaBank: true` καρφωμένο. Δύο λάθη σε δύο γραμμές: (α) η κλίμακα
-  // είναι προοδευτική στο σύνολο των ενοικίων του Ε1, οπότε ένα ακίνητο 8.000 €
+  // είναι προοδευτική στο σύνολο των ενοικίων του Ε1, οπότε ένα ακίνητο 8.000€
   // ανάμεσα σε τρία δεν φορολογείται με 15% αλλά συμμετέχει στο 25%· (β) η
   // τεκμαρτή έκπτωση 5% δεν είναι δεδομένη — από 1/1/2026 θέλει τραπεζική
   // είσπραξη. Τώρα ενοποιούμε το χαρτοφυλάκιο (με το ΕΠΕΞΕΡΓΑΣΜΕΝΟ εδώ ενοίκιο
@@ -892,7 +892,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
     // ΚΑΜΙΑ ΣΥΓΚΡΙΣΗ ΧΩΡΙΣ ΑΞΙΑ ΑΚΙΝΗΤΟΥ.
     //
     // Ήταν `nVal || 100000`: χωρίς καταχωρημένη αξία, ολόκληρη η σύγκριση
-    // επενδύσεων έτρεχε πάνω σε 100.000 € που δεν έδωσε ποτέ ο χρήστης — και
+    // επενδύσεων έτρεχε πάνω σε 100.000€ που δεν έδωσε ποτέ ο χρήστης — και
     // το νούμερο διέρρεε ΚΑΙ στην εκτύπωση ΚΑΙ στην εξαγωγή, όπου φαίνεται σαν
     // δικό του στοιχείο. Χωρίς αξία δεν υπάρχει τι να συγκριθεί· ζητάμε την αξία.
     if (!(nVal > 0)) return [];
@@ -953,9 +953,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   //
   // ΙΔΙΟ ΑΚΙΝΗΤΟ, ΙΔΙΕΣ ΠΑΡΑΔΟΧΕΣ. Εδώ έλειπαν τα `sqm`, `isHouse` και
   // `highSeasonShare` — άρα η μηχανή έπεφτε στις προεπιλογές της (βασικό κλιμάκιο
-  // ΤΑΚΚ 8/2 € και 60% νύχτες σε υψηλή περίοδο), ενώ η εκτίμηση από πάνω έτρεχε με
+  // ΤΑΚΚ 8/2€ και 60% νύχτες σε υψηλή περίοδο), ενώ η εκτίμηση από πάνω έτρεχε με
   // τα ΠΡΑΓΜΑΤΙΚΑ στοιχεία του ακινήτου. Για μια βίλα 120 τ.μ. σε νησί αυτό σήμαινε
-  // 5,60 € ΤΑΚΚ ανά νύχτα εδώ και 13,35 € δύο κάρτες πιο πάνω: ο χρήστης έβλεπε
+  // 5,60€ ΤΑΚΚ ανά νύχτα εδώ και 13,35€ δύο κάρτες πιο πάνω: ο χρήστης έβλεπε
   // «Τέλος Ανθεκτικότητας Χ € τον χρόνο» και δίπλα μια πληρότητα ισοσκελισμού που
   // είχε υπολογιστεί σαν να μην πλήρωνε αυτό το τέλος — δηλαδή η βραχυχρόνια
   // έδειχνε ότι «βγαίνει» με χαμηλότερη πληρότητα απ' ό,τι πραγματικά χρειάζεται.
@@ -1283,7 +1283,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       <div style={card}>
         <button onClick={() => setInputsPinned(!inputsOpen)} aria-expanded={inputsOpen} className="acc-toggle"
           style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}><Percent size={15} /></span>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}><Percent size={15} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={titleStyle}>Στοιχεία υπολογισμού</p>
             {/* ΟΤΑΝ ΕΙΝΑΙ ΟΔΗΓΙΑ, ΔΙΑΒΑΖΕΤΑΙ ΟΛΟΚΛΗΡΗ. Η ίδια γραμμή έχει δύο ρόλους:
@@ -1513,10 +1513,10 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                   «10,5» με περιθώριο. */}
               <div style={{ width: 120 }}><NumberInput id={apprId} value={apprShown} onChange={v => { setAppreciation(v); setApprTouched(true); }} suffix="%" max={20} /></div>
               {/* Το ίδιο σήμα με δύο λεκτικά· το στυλ γραφόταν δύο φορές. */}
-              <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: SANS, border: '1px solid var(--border-default)', borderRadius: 8, padding: '3px 7px' }}>{apprTouched ? 'δική σου υπόθεση' : 'δείκτης ΤτΕ'}</span>
+              <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: SANS, border: '1px solid var(--border-default)', borderRadius: T.radius.chip, padding: '3px 7px' }}>{apprTouched ? 'δική σου υπόθεση' : 'δείκτης ΤτΕ'}</span>
               {apprTouched && (
                 <button type="button" onClick={() => { setAppreciation(''); setApprTouched(false); }} className="acc-toggle"
-                  style={{ height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontFamily: SANS, fontWeight: 600, cursor: 'pointer' }}>
+                  style={{ height: 26, padding: '0 10px', borderRadius: T.radius.chip, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontFamily: SANS, fontWeight: 600, cursor: 'pointer' }}>
                   Επαναφορά στο τεκμηριωμένο ({fp(apprRef.pct)})
                 </button>
               )}
@@ -1569,7 +1569,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           </p>
           {/* Προβολή-γραμμή: ακίνητο vs κορυφαία εναλλακτική στον χρόνο */}
           {projSeries.length === 0 ? (
-            <div style={{ padding: '18px 16px', borderRadius: 12, border: '1px dashed var(--border-default)', background: 'var(--bg-elevated)', marginBottom: 12 }}>
+            <div style={{ padding: '18px 16px', borderRadius: T.radius.popup, border: '1px dashed var(--border-default)', background: 'var(--bg-elevated)', marginBottom: 12 }}>
               <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, fontFamily: SANS, lineHeight: 1.55 }}>
                 Συμπλήρωσε την <strong style={{ color: 'var(--text-primary)' }}>αξία του ακινήτου</strong> για να συγκριθεί με τις εναλλακτικές επενδύσεις.
                 Χωρίς αυτήν δεν υπάρχει ποσό να προβληθεί και ένα νούμερο βγαλμένο από το πουθενά θα διάβαζε σαν δικό σου.
@@ -1639,7 +1639,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                 τα 480 ενώ κάθε κάρτα κουβαλά μέσα της φωλιασμένο πλέγμα πεδίων.
                 Και κοβόταν: ο επιλογέας «10 έτη · 20 έτη» ζητά 159 εικονοστοιχεία
                 και έπαιρνε 78,8 στα 481, 108,5 στα 600, 144,5 στα 768. Στα 481
-                κόβονταν μαζί του το «335.343,55 €» (106 σε 76,8) · το «έτη»
+                κόβονταν μαζί του το «335.343,55€» (106 σε 76,8) · το «έτη»
                 (99 σε 78,8) · το «%» (92 σε 78,8).
 
                 ΤΟ ΚΑΤΩΦΛΙ ΕΙΝΑΙ ΟΣΟ ΔΙΝΕΙ ΤΟ ΤΗΛΕΦΩΝΟ. Δύο κάρτες δίπλα δίπλα
@@ -1672,7 +1672,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                   <div><label style={fieldLabelStyle}>Ορίζοντας ανατοκισμού</label><SegmentControl ariaLabel="Ορίζοντας ανατοκισμού" value={compYears} onChange={v => setCompYears(v as typeof compYears)} options={yearOpts(10, 20)} /></div>
                 </div>
                 {/* Ενα μέγεθος για τη σειρά, από το μακρύτερο νούμερο: αλλιώς
-                    το «335.343,55 €» και το «123.313,55 €» βγαίνουν σε δύο
+                    το «335.343,55€» και το «123.313,55€» βγαίνουν σε δύο
                     μεγέθη δίπλα δίπλα και το μάτι το διαβάζει ως σημασία. */}
                 <div {...fixedCols(2, 16, 'start')} style={{ ...fixedCols(2, 16, 'start').style, marginTop: 14 }}>
                   <Figure label="Τελική αξία" value={fe(comp.futureValue)} chars={widestOf(fe(comp.futureValue), fe(comp.totalGrowth))} />
@@ -1800,7 +1800,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                 για να βρεις με ποιο επιτόκιο υπολογίστηκε η NPV έπρεπε να
                 διαβάσεις πενήντα λέξεις. Ό,τι είναι ζευγάρι «όνομα, τιμή» δεν
                 είναι πρόταση, είναι γραμμή. */}
-            <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
               <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: SANS, margin: '0 0 10px' }}>Οι παραδοχές του υπολογισμού</p>
               <div {...fixedCols(3, 14, 'start')}>
                 {[
@@ -1907,8 +1907,8 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                     Η παράγραφος ξεκινούσε λέγοντας ότι το Τέλος Ανθεκτικότητας
                     χρεώνεται ανά διανυκτέρευση με υψηλότερη τιμή στην υψηλή
                     περίοδο. Το κυκλάκι δίπλα στην ίδια την ετικέτα το λέει ήδη
-                    και ΚΑΛΥΤΕΡΑ: δίνει τα ποσά (2 € και 8 € για διαμερίσματα,
-                    4 € και 15 € για μονοκατοικίες άνω των 80 τετραγωνικών) και
+                    και ΚΑΛΥΤΕΡΑ: δίνει τα ποσά (2€ και 8€ για διαμερίσματα,
+                    4€ και 15€ για μονοκατοικίες άνω των 80 τετραγωνικών) και
                     τους μήνες κάθε περιόδου.
 
                     Η δεύτερη πρόταση έλεγε ότι το τέλος παρεπιδημούντων 0,5%
@@ -1948,7 +1948,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
             {/* Η ΔΕΥΤΕΡΗ ΠΑΡΑΔΟΧΗ ΗΤΑΝ ΚΑΡΦΩΜΕΝΗ ΚΑΙ ΑΟΡΑΤΗ, ΟΠΩΣ ΗΤΑΝ ΚΑΙ Η
                 ΠΡΩΤΗ. Η οθόνη αφαιρούσε ολόκληρο το ΤΑΚΚ από τα καθαρά, ενώ η
                 Λογιστική αφαιρεί μόνο όσο δεν εισπράχθηκε: δύο αλήθειες για το
-                ίδιο τέλος, με διαφορά ώς 1.500 € τον χρόνο. Τώρα το λέει ο
+                ίδιο τέλος, με διαφορά ώς 1.500€ τον χρόνο. Τώρα το λέει ο
                 ιδιοκτήτης μία φορά· το ακολουθούν και οι δύο. */}
             {term === 'short' && (
               <div style={{ marginTop: 10 }}>
@@ -1965,7 +1965,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                        μία φορά και μετά σε ενδιαφέρει μόνο πού πέφτεις. */}
                     Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου. Οριακός συντελεστής <strong style={{ color: 'var(--text-primary)' }}>{fp(portfolioTax.marginalRate * 100)}</strong>.{' '}
                     <InfoHint label="Η κλίμακα ενοικίων 2026">
-                      <span style={{ display: 'block' }}>Ο φόρος υπολογίζεται με την προοδευτική κλίμακα ενοικίων 2026, στο σύνολο των ενοικίων σου: 15% έως 12.000 €, 25% έως 24.000 €, 35% έως 35.000 € και 45% πάνω από αυτά.</span>
+                      <span style={{ display: 'block' }}>Ο φόρος υπολογίζεται με την προοδευτική κλίμακα ενοικίων 2026, στο σύνολο των ενοικίων σου: 15% έως 12.000€, 25% έως 24.000€, 35% έως 35.000€ και 45% πάνω από αυτά.</span>
                     </InfoHint></>}
             </p>
           </div>

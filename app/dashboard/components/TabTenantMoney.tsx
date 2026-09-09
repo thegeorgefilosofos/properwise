@@ -535,8 +535,8 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
   };
 
   // ΤΑ ΜΗΝΥΜΑΤΑ ΠΡΟΣ ΤΟΝ ΕΝΟΙΚΙΑΣΤΗ ΓΡΑΦΟΥΝ ΤΟ ΠΟΣΟ ΟΠΩΣ Η ΟΘΟΝΗ. Έγραφαν
-  // «μίσθωμα 450 €» με τοπικό μορφοποιητή χωρίς δεκαδικά, ενώ ο ίδιος αριθμός
-  // στην καρτέλα από πάνω έγραφε «450,00 €». Είναι το κείμενο που φεύγει σε
+  // «μίσθωμα 450€» με τοπικό μορφοποιητή χωρίς δεκαδικά, ενώ ο ίδιος αριθμός
+  // στην καρτέλα από πάνω έγραφε «450,00€». Είναι το κείμενο που φεύγει σε
   // WhatsApp και SMS — εκεί η ασυνέπεια δεν φαίνεται ως στιλ, φαίνεται ως λάθος
   // ποσό.
   // ΤΑ ΤΡΙΑ ΜΗΝΥΜΑΤΑ ΖΟΥΝ ΣΤΟ lib/tenant/rentMessage.ts, ΔΟΚΙΜΑΣΜΕΝΑ. Ηταν
@@ -858,7 +858,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           {tenant.rent_iban?(
             <>
               <div style={{ display:'flex', flexDirection:'column' as const, alignItems:'center' }}>
-                <RuntimeImg src={qrSrc(epcPayload(tenant.rent_iban,landlordName,req.amount,reqRef(req)))} alt="QR πληρωμής" width={200} height={200} style={{ borderRadius:12, border:'1px solid var(--border-subtle)', background:'var(--qr-paper)', padding:8 }}/>
+                <RuntimeImg src={qrSrc(epcPayload(tenant.rent_iban,landlordName,req.amount,reqRef(req)))} alt="QR πληρωμής" width={200} height={200} style={{ borderRadius: T.radius.popup, border:'1px solid var(--border-subtle)', background:'var(--qr-paper)', padding:8 }}/>
                 <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:8, textAlign:'center' as const }}>Σάρωση από την τραπεζική εφαρμογή (SEPA/IRIS) για προσυμπλήρωση της μεταφοράς.</div>
               </div>
               <div>

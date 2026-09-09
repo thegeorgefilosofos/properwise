@@ -270,8 +270,8 @@ const near = (a: number, b: number, eps = 0.02) => Math.abs(a - b) <= eps
 // Ο κανόνας που κλειδώνει εδώ: αυτό που περνά στο climateLevy είναι το
 // ΑΚΑΛΥΠΤΟ τέλος (levyShortfall), όχι το οφειλόμενο.
 {
-  // 20 νύχτες Αυγούστου, διαμέρισμα ≤80 τ.μ. → ΤΑΚΚ 20 × 8 = 160 €.
-  // Ο επισκέπτης πλήρωσε 2.160 €, από τα οποία 160 € είναι τέλος.
+  // 20 νύχτες Αυγούστου, διαμέρισμα ≤80 τ.μ. → ΤΑΚΚ 20 × 8 = 160€.
+  // Ο επισκέπτης πλήρωσε 2.160€, από τα οποία 160€ είναι τέλος.
   const stays = [{ check_in: '2026-08-01', check_out: '2026-08-21', nights: 20, total: 2000,
                    amount_basis: 'gross', gross_guest_paid: 2160, climate_levy: 160, platform_fee: 0 }]
   const sum = shortTermYearSummary(stays, 2026)
@@ -287,7 +287,7 @@ const near = (a: number, b: number, eps = 0.02) => Math.abs(a - b) <= eps
   // ΛΑΘΟΣ: περνάμε το οφειλόμενο (160). Το ταμείο πέφτει κατά ολόκληρο το ΤΑΚΚ.
   const wrong = incomeStatement({ regime: 'individual_shortterm', grossIncome: sum.grossRevenue,
                                   climateLevy: sum.levy, municipalTax: sum.municipalTax })
-  ok('η παλιά συμπεριφορά έχανε ακριβώς 160 €', near(right.netCash - wrong.netCash, 160))
+  ok('η παλιά συμπεριφορά έχανε ακριβώς 160€', near(right.netCash - wrong.netCash, 160))
   ok('και δεν συμφωνούσε με τη φορολογική σύνοψη', !near(wrong.netCash, sum.net))
 }
 

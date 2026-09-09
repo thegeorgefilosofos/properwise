@@ -425,7 +425,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
             </Field>
           )}
           {/* ΤΟ ΚΟΣΤΟΣ ΕΜΦΑΝΙΖΕΤΑΙ ΜΟΝΟ ΜΕ ΔΗΛΩΜΕΝΗ ΤΙΜΗ ΡΕΥΜΑΤΟΣ. Πριν, εδώ
-              πολλαπλασιαζόταν με σταθερά 0,22 €/kWh — νούμερο που κανείς δεν είχε
+              πολλαπλασιαζόταν με σταθερά 0,22€/kWh — νούμερο που κανείς δεν είχε
               δηλώσει και που άλλαζε το συμπέρασμα κάθε συσκευής. */}
           {liveKwh>0&&(
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 110px), 1fr))',gap:8,padding:'12px 14px',background:'var(--bg-elevated)',borderRadius:T.radius.inner,border:'1px solid var(--border-subtle)'}}>

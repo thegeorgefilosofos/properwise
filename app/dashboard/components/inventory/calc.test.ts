@@ -92,7 +92,7 @@ const inDays = (n: number) => {
 {
   const washer = item({ energy_mode: 'cycles', kwh_per_100_cycles: 35, cycles_per_month: 20 })
   ok('πλυντήριο: 7 kWh τον μήνα', Math.abs(calcMonthlyKwh(washer) - 7) < 0.01)
-  ok('…και 1,26 € στα 0,18 €/kWh', Math.abs(calcMonthlyCost(washer, 0.18) - 1.26) < 0.01)
+  ok('…και 1,26€ στα 0,18€/kWh', Math.abs(calcMonthlyCost(washer, 0.18) - 1.26) < 0.01)
   ok('…και ξέρουμε την κατανάλωσή του', hasEnergy(washer) === true)
 
   const unknown = item({ energy_mode: 'cycles', kwh_per_100_cycles: 35 })

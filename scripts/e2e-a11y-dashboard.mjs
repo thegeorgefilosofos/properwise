@@ -71,6 +71,7 @@ import { createRequire } from 'node:module'
 import { chromePath } from './lib/chrome.mjs'
 import { SCENES } from './lib/scenes.mjs'
 import { benchUrl } from './lib/paths.mjs'
+import { TAP, tinyTargets } from './lib/tap-targets.mjs'
 
 const require = createRequire(import.meta.url)
 let pkg
@@ -101,6 +102,7 @@ const LABELS = {
   headingJump: 'επικεφαλίδα που πηδά επίπεδο',
   blindFocus: 'εστίαση που δεν φαίνεται με Tab',
   lowContrast: 'κείμενο κάτω από την αντίθεση WCAG AA',
+  tinyTap: 'στόχος αφής κάτω από τα 44 εικονοστοιχεία',
 }
 
 let findings = 0
@@ -111,7 +113,21 @@ for (const scene of RUN) {
   await page.goto(benchUrl(scene), { waitUntil: 'load' })
   await page.waitForTimeout(1800)
 
-  const found = { anonymous: [], selfNamed: [], loudImage: [], namelessDialog: [], headingJump: [], blindFocus: [], lowContrast: [] }
+  const found = { anonymous: [], selfNamed: [], loudImage: [], namelessDialog: [], headingJump: [], blindFocus: [], lowContrast: [], tinyTap: [] }
+
+  // ── ΣΤΟΧΟΙ ΑΦΗΣ ────────────────────────────────────────────────────────
+  // Ο κανόνας των 44 έτρεχε ΜΟΝΟ στις οκτώ δημόσιες σελίδες: οι τριάντα εννέα
+  // οθόνες του ταμπλό —εκεί που ο χρήστης καταχωρεί δαπάνες με το δάχτυλο— δεν
+  // τον είχαν δει ποτέ. Η μέτρηση γίνεται σε δικό της περιβάλλον με `hasTouch`,
+  // γιατί τα ύψη της κλίμακας ανεβαίνουν στα 44 ΜΟΝΟ σε χοντρό δείκτη.
+  {
+    const touchCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: 'el-GR' })
+    const tp = await touchCtx.newPage()
+    await tp.goto(benchUrl(scene), { waitUntil: 'load' })
+    await tp.waitForTimeout(1200)
+    found.tinyTap.push(...await tp.evaluate(tinyTargets, TAP))
+    await touchCtx.close()
+  }
 
   // ── ΑΝΤΙΘΕΣΗ ────────────────────────────────────────────────────────────
   // Το φόντο βρίσκεται ανεβαίνοντας τους προγόνους ώσπου να πάψει να είναι

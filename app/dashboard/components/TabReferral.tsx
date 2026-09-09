@@ -340,8 +340,8 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
   // 1) Ο δωρεάν μήνας δεν αποδίδεται στο πακέτο της επιλογής: η
   //    sync_comp_from_referrals γράφει comp_plan από τον ΤΥΠΟ ΠΡΟΦΙΛ, άρα
   //    «Ιδιοκτήτης+» στον Ιδιώτη και «Επαγγελματίας» στον Επαγγελματία. Ο
-  //    φίλος που διάλεγε «Επαγγελματίας+» (79,90 €) διάβαζε μήνα σε αυτό και
-  //    έπαιρνε ένα σκαλί πιο κάτω (24,90 €).
+  //    φίλος που διάλεγε «Επαγγελματίας+» (79,90€) διάβαζε μήνα σε αυτό και
+  //    έπαιρνε ένα σκαλί πιο κάτω (24,90€).
   // 2) Η ίδια φράση μπαίνει και στο τρίτο βήμα, όπου ο υποκείμενος είναι ο
   //    φίλος: έβγαινε «Εκείνος παίρνει έναν μήνα δωρεάν στο πακέτο που θα
   //    διαλέξεις», δηλαδή δεύτερο πρόσωπο μέσα σε πρόταση τρίτου προσώπου.
@@ -534,7 +534,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
           {/* Το 44 μένει σκόπιμα εκτός κλίμακας (T.h.lg = 40): είναι το ελάχιστο μέγεθος
               στόχου αφής και ζευγαρώνει με το minHeight:44 του πλαισίου συνδέσμου δίπλα.
               Αν πέσει στα 40, τα δύο στοιχεία της ίδιας γραμμής παύουν να ευθυγραμμίζονται. */}
-          <button onClick={copy} className="ref-cta" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 44, padding: '0 20px', background: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: T.radius.inner, fontSize: 'var(--fs-base)', fontWeight: 700, fontFamily: T.font.sans, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <button onClick={copy} className="ref-cta" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.lg, padding: '0 20px', background: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: T.radius.inner, fontSize: 'var(--fs-base)', fontWeight: 700, fontFamily: T.font.sans, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <Ic d={copied ? 'M20 6 9 17l-5-5' : 'M8 4h10a2 2 0 0 1 2 2v10|M4 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z'} s={15} />
             {copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}
           </button>

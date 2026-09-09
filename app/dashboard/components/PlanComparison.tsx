@@ -26,7 +26,7 @@ import { T, TT, Card, SecHdr, Btn, Chip, feAuto, fixedCols } from '@/components/
 // ιδίως σε κινητό, για να διαφημίσει κάτι που αφορά ελάχιστους. Αναφέρεται με μία
 // γραμμή κάτω από τον πίνακα, εκεί που ανήκει.
 // ΟΙ ΣΤΗΛΕΣ ΕΙΝΑΙ ΤΑ ΠΛΑΝΑ ΠΟΥ ΜΠΟΡΕΙ ΝΑ ΑΓΟΡΑΣΕΙ ΚΑΠΟΙΟΣ — ΟΛΑ ΤΟΥΣ.
-// Έλειπαν το «Ένα ακίνητο» (3,90 €) και το «Γραφείο»: ο συνδρομητής του πρώτου
+// Έλειπαν το «Ένα ακίνητο» (3,90€) και το «Γραφείο»: ο συνδρομητής του πρώτου
 // άνοιγε τη σύγκριση πλάνων και δεν έβρισκε το δικό του πλάνο πουθενά.
 // ═══ ΤΕΣΣΕΡΑ ΠΑΚΕΤΑ. ΤΟ «ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ» ΔΕΝ ΕΙΝΑΙ ΠΑΚΕΤΟ ══════════════════
 //
@@ -36,7 +36,7 @@ import { T, TT, Card, SecHdr, Btn, Chip, feAuto, fixedCols } from '@/components/
 // να διαλέξεις. Δωρεάν είναι μόνο η δοκιμαστική περίοδος και το λέει η
 // υποδοχή, η αρχική σελίδα και οι Όροι.
 //
-// Μια στήλη με τιμή 0 € δίπλα σε τέσσερις με τιμή δεν είναι διαφάνεια — είναι
+// Μια στήλη με τιμή 0€ δίπλα σε τέσσερις με τιμή δεν είναι διαφάνεια — είναι
 // πρόσκληση να μείνεις εκεί.
 // ΟΙ ΣΤΗΛΕΣ ΟΡΙΖΟΝΤΑΙ ΜΙΑ ΦΟΡΑ, ΣΤΟΝ ΠΙΝΑΚΑ. Εδώ ήταν γραμμένες δεύτερη φορά,
 // μαζί με ολόκληρο αντίγραφο του πίνακα των δεκαέξι γραμμών — που κανείς δεν
@@ -66,7 +66,7 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
 }) {
   // ΞΕΚΙΝΑ ΣΤΗΝ ΕΤΗΣΙΑ, ΚΑΙ ΕΙΝΑΙ ΤΙΜΙΟ ΕΠΕΙΔΗ ΦΑΙΝΟΝΤΑΙ ΚΑΙ ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ.
   // Η κάρτα δείχνει το μηνιαίο ισοδύναμο ΚΑΙ το ετήσιο σύνολο δίπλα του, οπότε
-  // κανείς δεν μπορεί να νομίσει ότι πληρώνει 3,58 € τον μήνα χωρίς δέσμευση
+  // κανείς δεν μπορεί να νομίσει ότι πληρώνει 3,58€ τον μήνα χωρίς δέσμευση
   // έτους. Χωρίς το ετήσιο σύνολο ορατό, η προεπιλογή θα ήταν παραπλάνηση.
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('annual');
 
@@ -100,7 +100,7 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
             αλήθεια: ότι δεν τον έχει. Λέγεται μία φορά, πάνω από τη σκάλα,
             γιατί αφορά ΟΛΗ τη σκάλα. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '11px 14px', marginBottom: 14, borderRadius: T.radius.inner, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8, background: 'var(--accent-dim)', color: 'var(--accent)', flexShrink: 0 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: T.radius.chip, background: 'var(--accent-dim)', color: 'var(--accent)', flexShrink: 0 }}>
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12" /><path d="M8.5 12h.01M12 12h.01M15.5 12h.01" /></svg>
           </span>
           {/* Η αρχική σελίδα γράφει «ο βοηθός», γιατί ο επισκέπτης δεν ξέρει

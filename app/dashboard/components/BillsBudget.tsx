@@ -87,7 +87,7 @@ function MonthBars({ data, activeYm }: { data: { ym: string; label: string; valu
             style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'default' }}>
             <div style={{ position: 'relative', width: '100%', maxWidth: 26, height: H, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
               {on && d.value > 0 && (
-                <div style={{ position: 'absolute', bottom: h + 8, left: '50%', transform: 'translateX(-50%)', background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, padding: '3px 8px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', zIndex: 3 }}>{feAuto(d.value)}</div>
+                <div style={{ position: 'absolute', bottom: h + 8, left: '50%', transform: 'translateX(-50%)', background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, padding: '3px 8px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', zIndex: 3 }}>{feAuto(d.value)}</div>
               )}
               <div style={{ width: '100%', height: Math.max(h, 3), borderRadius: '6px 6px 2px 2px', background: d.value > 0 ? `linear-gradient(180deg, color-mix(in srgb, var(--accent) ${top}%, transparent), color-mix(in srgb, var(--accent) ${bot}%, transparent))` : 'color-mix(in srgb, var(--text-primary) 8%, transparent)', transition: 'height 0.5s cubic-bezier(0.22,1,0.36,1), background 0.18s ease' }} />
             </div>
@@ -152,7 +152,7 @@ function Donut({ slices }: { slices: { label: string; value: number }[] }) {
           const on = hi === i;
           return (
             <div key={i} onMouseEnter={() => setHi(i)} onMouseLeave={() => setHi(null)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontFamily: T.font.sans, padding: '4px 8px', margin: '0 -8px', borderRadius: 8, background: on ? 'var(--bg-elevated)' : 'transparent', cursor: 'default', transition: 'background 0.15s' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontFamily: T.font.sans, padding: '4px 8px', margin: '0 -8px', borderRadius: T.radius.chip, background: on ? 'var(--bg-elevated)' : 'transparent', cursor: 'default', transition: 'background 0.15s' }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: shade(i, on), flexShrink: 0, transition: 'background 0.15s' }} />
               <span style={{ flex: 1, minWidth: 0, color: on ? 'var(--text-primary)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.15s' }}>{s.label}</span>
               <span style={{ color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)' }}>{feAuto(s.value)}</span>
@@ -190,7 +190,7 @@ function InlineNumber({ raw, display, onCommit, width = 66, align = 'right', ari
              μέτρησε 31 σε 17· σε Chromium ήταν 21 σε 17, οριακά κάτω από το
              κατώφλι, γι' αυτό δεν είχε αναφερθεί ποτέ. Ηταν σπασμένο και στα
              δύο — απλώς ο ένας μετρητής δεν το έλεγε. */
-          style={{ width, flexShrink: 0, height: big ? 30 : 22, padding: '0 6px', textAlign: align, borderRadius: 6, border: '1px solid var(--border-accent)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: big ? 18 : 12, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', outline: 'none' }} />
+          style={{ width, flexShrink: 0, height: big ? 30 : 22, padding: '0 6px', textAlign: align, borderRadius: T.radius.xs, border: '1px solid var(--border-accent)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: big ? 18 : 12, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', outline: 'none' }} />
       </span>
     );
   }
@@ -218,7 +218,7 @@ function InlineText({ value, onCommit, ariaLabel }: { value: string; onCommit: (
         onClick={e => e.stopPropagation()}
         onKeyDown={e => { if (e.key === 'Enter') { const v = draft.trim(); if (v) onCommit(v); setEditing(false); } else if (e.key === 'Escape') setEditing(false); }}
         onBlur={() => { const v = draft.trim(); if (v && v !== value) onCommit(v); setEditing(false); }}
-        style={{ width: 160, height: 26, padding: '0 7px', borderRadius: 6, border: '1px solid var(--border-accent)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, outline: 'none' }} />
+        style={{ width: 160, height: 26, padding: '0 7px', borderRadius: T.radius.xs, border: '1px solid var(--border-accent)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, outline: 'none' }} />
     );
   }
   return (
@@ -239,7 +239,7 @@ const CATS = [
   { key: 'heating',      label: 'Θέρμανση',            default: 60  },
   { key: 'insurance',    label: 'Ασφάλεια',            default: 30  },
   // ΔΙΚΟΣ ΤΟΥΣ ΣΤΟΧΟΣ, ΓΙΑΤΙ ΔΙΚΗ ΤΟΥΣ ΣΥΜΠΕΡΙΦΟΡΑ. Οι συνδρομές ήταν στον
-  // κουβά της ασφάλειας: μία υπέρβαση 20 € σε streaming κρυβόταν πίσω από ένα
+  // κουβά της ασφάλειας: μία υπέρβαση 20€ σε streaming κρυβόταν πίσω από ένα
   // ασφάλιστρο που δεν χρεώθηκε ακόμη αυτόν τον μήνα. Και είναι το μόνο πάγιο
   // που ΜΕΓΑΛΩΝΕΙ μόνο του, μια χρέωση τη φορά, χωρίς κανείς να το αποφασίσει.
   { key: 'subscriptions',label: 'Συνδρομές',           default: 25  },
@@ -322,9 +322,9 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const [strPropCount, setStrPropCount] = useState(0);
   // ── Ο ΣΥΝΤΕΛΕΣΤΗΣ ΤΗΣ ΚΡΑΤΗΣΗΣ ΦΟΡΟΥ ΒΓΑΙΝΕΙ ΑΠΟ ΤΑ ΚΛΙΜΑΚΙΑ, ΟΧΙ ΑΠΟ ΤΟ 15 ──
   // Το «15%» ήταν το ΠΡΩΤΟ κλιμάκιο γραμμένο ως προεπιλογή για κάθε εισόδημα.
-  // Σε ακαθάριστα 30.000 € η κλίμακα δίνει 15% ώς 12.000, 25% ώς 24.000 και 35%
-  // παραπάνω: πραγματικός φόρος 6.375 €, δηλαδή 22,4% του φορολογητέου. Η οθόνη
-  // πρότεινε να κρατήσει 4.275 € — δύο χιλιάδες λιγότερα από την οφειλή, με τη
+  // Σε ακαθάριστα 30.000€ η κλίμακα δίνει 15% ώς 12.000, 25% ώς 24.000 και 35%
+  // παραπάνω: πραγματικός φόρος 6.375€, δηλαδή 22,4% του φορολογητέου. Η οθόνη
+  // πρότεινε να κρατήσει 4.275€ — δύο χιλιάδες λιγότερα από την οφειλή, με τη
   // βεβαιότητα αριθμού που δείχνει το ίδιο πλακίδιο δίπλα στο «καθαρό».
   //
   // Ο σωστός συντελεστής υπολογιζόταν ΗΔΗ, δέκα γραμμές πιο κάτω, από το
@@ -489,7 +489,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       const catLabelOf = (k: string): string => catLabels[k] ?? 'Λοιπές δαπάνες';
       // Εξαιρέσεις: δαπάνες/λογαριασμοί που ΔΕΝ μετράνε (ή μετράνε μερικώς) στον προϋπολογισμό.
       // Χωρίς 'amount' → εξαιρείται ΟΛΟ το ποσό· με 'amount' → εξαιρείται μόνο αυτό το μέρος
-      // (π.χ. πλήρωσε 50 € ο ενοικιαστής και 50 € εγώ → εξαιρώ 50 €, μετρούν 50 €).
+      // (π.χ. πλήρωσε 50€ ο ενοικιαστής και 50€ εγώ → εξαιρώ 50€, μετρούν 50€).
       let excluded: Record<string, ExclRule> = {};
       try { const o = JSON.parse(String((budgetRes as { __excluded?: string } | null)?.__excluded ?? '{}')); if (o && typeof o === 'object') excluded = o; } catch { /* ignore */ }
       const exclAmt = (id: string | null | undefined, full: number): number => {
@@ -610,7 +610,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         // Εδώ διαβαζόταν ΜΟΝΟ το χειροκίνητο ποσό. Όποιος χρησιμοποίησε τον
         // υπολογιστή ΕΝΦΙΑ (ζώνη, όροφος, παλαιότητα) και δεν πληκτρολόγησε
         // ξεχωριστά το ετήσιο, έβλεπε δεκάδες ευρώ τον μήνα στις Υπηρεσίες και
-        // 0 € εδώ — για το ίδιο ακίνητο, την ίδια στιγμή. Ο κανόνας «το δηλωμένο
+        // 0€ εδώ — για το ίδιο ακίνητο, την ίδια στιγμή. Ο κανόνας «το δηλωμένο
         // νικά την εκτίμηση» ζει τώρα σε ένα σημείο, στο lib/billing/enfia.ts.
         const enfia = enfiaInUse(
           svc.enfiaAnnual, svc.enfiaMonthly,
@@ -972,14 +972,14 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
     // ─────────────────────────────────────────────────────────────────────
     // ΜΕΤΡΗΜΕΝΟ ΣΤΗΝ ΟΘΟΝΗ ΤΟΥ ΧΡΗΣΤΗ, ΜΕ ΤΑ ΔΙΚΑ ΤΟΥ ΔΕΔΟΜΕΝΑ:
     //
-    //   «Η κατηγορία «Νερό» έχει ξεπεράσει τον στόχο κατά 6,20 €.»
+    //   «Η κατηγορία «Νερό» έχει ξεπεράσει τον στόχο κατά 6,20€.»
     //   ...ενώ ΑΚΡΙΒΩΣ από πάνω η λωρίδα υπέρβασης έγραφε ήδη
-    //   «Νερό υπέρβαση +6,20 € (31,20 € έναντι 25,00 €)», δηλαδή το ίδιο
+    //   «Νερό υπέρβαση +6,20€ (31,20€ έναντι 25,00€)», δηλαδή το ίδιο
     //   γεγονός ΜΕ ΠΕΡΙΣΣΟΤΕΡΑ στοιχεία.
     //
-    //   «Πρόβλεψη τέλους μήνα 31,00 €: εντός στόχου κατά 359,00 €.»
-    //   ...ενώ δύο πλακίδια από πάνω γράφουν «ΠΡΟΒΛΕΨΗ ΜΗΝΑ 31,00 €» και
-    //   «ΔΙΑΘΕΣΙΜΟ 358,80 €». Και τα δύο «διαθέσιμα» διέφεραν κατά είκοσι
+    //   «Πρόβλεψη τέλους μήνα 31,00€: εντός στόχου κατά 359,00€.»
+    //   ...ενώ δύο πλακίδια από πάνω γράφουν «ΠΡΟΒΛΕΨΗ ΜΗΝΑ 31,00€» και
+    //   «ΔΙΑΘΕΣΙΜΟ 358,80€». Και τα δύο «διαθέσιμα» διέφεραν κατά είκοσι
     //   λεπτά, γιατί το ένα βγαίνει από την πρόβλεψη και το άλλο από τα
     //   πραγματικά: δύο αριθμοί που παριστάνουν τον ίδιο, με διαφορά.
     //
@@ -992,7 +992,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       out.push(`Με τον τρέχοντα ρυθμό, η «${projectedOver[0].label}» θα ξεπεράσει τον στόχο πριν το τέλος του μήνα.`);
     }
     if (monthTrend.avgPrior > 0 && Math.abs(monthTrend.deltaPct) >= 8) {
-      out.push(`Ο μήνας τρέχει ${Math.abs(monthTrend.deltaPct)}% ${monthTrend.direction === 'up' ? 'πάνω από' : 'κάτω από'} τον μέσο όρο του τριμήνου.`);
+      out.push(`Ο μήνας τρέχει ${fp(Math.abs(monthTrend.deltaPct))} ${monthTrend.direction === 'up' ? 'πάνω από' : 'κάτω από'} τον μέσο όρο του τριμήνου.`);
     }
     const biggest = activeCats.map(c => ({ label: c.label, v: actuals[c.key] || 0 })).filter(x => x.v > 0).sort((a, b) => b.v - a.v)[0];
     if (biggest && out.length < 3) out.push(`Η μεγαλύτερη δαπάνη του μήνα είναι η «${biggest.label}» με ${feAuto(biggest.v)}.`);
@@ -1052,12 +1052,12 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const strTaxPct      = budgetVal(budgets.strTaxPct, taxPctAuto ?? 15);
   // ── ΤΕΛΟΣ ΑΝΘΕΚΤΙΚΟΤΗΤΑΣ: ΜΙΑ πηγή ──────────────────────────────────────────
   // Εδώ καλούνταν τοπικό climateFeePerNight() του budgetPro.ts, που επέστρεφε
-  // 1,50 €/νύχτα υψηλή περίοδο. Η πηγή αλήθειας (lib/billing/greekTax.ts) λέει
-  // 8 € για διαμέρισμα και 15 € για μονοκατοικία >80 τ.μ. — πενταπλάσια ως
+  // 1,50€/νύχτα υψηλή περίοδο. Η πηγή αλήθειας (lib/billing/greekTax.ts) λέει
+  // 8€ για διαμέρισμα και 15€ για μονοκατοικία >80 τ.μ. — πενταπλάσια ως
   // δεκαπλάσια διαφορά, στο ΙΔΙΟ ακίνητο, με το ίδιο νομικό όνομα στην οθόνη.
   //
-  // Ο Προϋπολογισμός έδειχνε 30 € εκεί που η Λογιστική έδειχνε 160 € και ο
-  // οικοδεσπότης προγραμμάτιζε με 130 € λιγότερη οφειλή προς την ΑΑΔΕ τον μήνα.
+  // Ο Προϋπολογισμός έδειχνε 30€ εκεί που η Λογιστική έδειχνε 160€ και ο
+  // οικοδεσπότης προγραμμάτιζε με 130€ λιγότερη οφειλή προς την ΑΑΔΕ τον μήνα.
   const climateFeeNight = isHighSeasonMonth(_now.getMonth())
     ? climateLevyRates(propSqm, propIsHouse).high
     : climateLevyRates(propSqm, propIsHouse).low;
@@ -1229,7 +1229,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         // Η υποσημείωση έγραφε «λογαριασμοί και δόση» ΠΑΝΤΑ και τα σκέλη
         // γράφονταν ξανά από κάτω ως πλακίδια. Σε ακίνητο χωρίς δάνειο η φράση
         // υποσχόταν δόση που δεν υπάρχει και όταν το μόνο σκέλος ήταν τα πάγια
-        // το πλακίδιο «ΠΑΓΙΑ 51,34 €» καθόταν ακριβώς κάτω από το ίδιο 51,34 €
+        // το πλακίδιο «ΠΑΓΙΑ 51,34€» καθόταν ακριβώς κάτω από το ίδιο 51,34€
         // του τίτλου: ο ίδιος αριθμός, δύο φορές, με απόσταση μιας ανάσας.
         //
         // Τώρα η σύνθεση γράφεται μία φορά, από τα ΙΔΙΑ τα δεδομένα και τα
@@ -1275,7 +1275,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 ────────────────────────────────────────────────────────────
                 Η ανάλυση (μπάρα και σκέλη) εμφανιζόταν ΜΟΝΟ όταν είχε δηλωθεί
                 εισόδημα, γιατί μοιράζει τα έσοδα. Ο ιδιοκτήτης που δεν έχει
-                δηλώσει ενοίκιο έβλεπε «51,34 €» και «λογαριασμοί και δόση» σε
+                δηλώσει ενοίκιο έβλεπε «51,34€» και «λογαριασμοί και δόση» σε
                 πλαίσιο εκατόν είκοσι εικονοστοιχείων: ένα νούμερο που δεν λέει
                 ΑΠΟ ΤΙ βγήκε, σε χώρο που θα το χωρούσε τρεις φορές.
 
@@ -1286,7 +1286,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 ══════════════════════════════════════════════════════════════ */}
             {!hasIncome && (() => {
               const prev  = monthTotals[_prevYm] || 0;
-              // ΤΟ «ΕΝΑΝΤΙ» ΘΕΛΕΙ ΓΕΝΙΚΗ, ΚΑΙ Ο ΜΗΝΑΣ ΤΗΝ ΕΧΕΙ. Έγραφε «751,00 €
+              // ΤΟ «ΕΝΑΝΤΙ» ΘΕΛΕΙ ΓΕΝΙΚΗ, ΚΑΙ Ο ΜΗΝΑΣ ΤΗΝ ΕΧΕΙ. Έγραφε «751,00€
               // τον Ιούλιος»: ονομαστική μετά από πρόθεση, από τα πιο ορατά λάθη
               // σε ελληνικό κείμενο. Η αιτιατική και η γενική υπάρχουν ήδη στο
               // lib/core/months.ts ακριβώς γι' αυτό — απλώς δεν είχαν κληθεί εδώ.
@@ -1343,7 +1343,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             })()}
             {hasIncome && (
               <>
-                <div style={{ display: 'flex', height: 8, borderRadius: 6, overflow: 'hidden', marginTop: 16, marginBottom: 10, background: 'var(--bg-overlay)' }}>
+                <div style={{ display: 'flex', height: 8, borderRadius: T.radius.xs, overflow: 'hidden', marginTop: 16, marginBottom: 10, background: 'var(--bg-overlay)' }}>
                   <div title="Λογαριασμοί" style={{ width: `${seg(committedBills)}%`, background: 'color-mix(in srgb, var(--text-primary) 32%, transparent)' }}/>
                   <div title="Δόση δανείου" style={{ width: `${seg(loanMonthly)}%`, background: 'color-mix(in srgb, var(--text-primary) 20%, transparent)' }}/>
                   <div title="Διαθέσιμο" style={{ flex: 1, background: safeRaw < 0 ? 'var(--negative)' : 'var(--accent)' }}/>
@@ -1619,8 +1619,8 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                   <span>Από την αρχή του έτους</span>
                   <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{feAuto(annual.ytdActual)} <span style={{ color: 'var(--text-tertiary)' }}>/ {feAuto(annual.ytdBudget)}</span></span>
                 </div>
-                <div style={{ height: 8, background: 'var(--bg-overlay)', borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}>
-                  <div style={{ height: '100%', width: `${ytdPct}%`, background: ytdCol, borderRadius: 6, transition: 'width 0.6s ease' }}/>
+                <div style={{ height: 8, background: 'var(--bg-overlay)', borderRadius: T.radius.xs, overflow: 'hidden', marginBottom: 8 }}>
+                  <div style={{ height: '100%', width: `${ytdPct}%`, background: ytdCol, borderRadius: T.radius.xs, transition: 'width 0.6s ease' }}/>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
                   <span className="po-fig" data-tone={annual.variance > 0 ? 'negative' : undefined}>{annual.variance > 0 ? `Υπέρβαση ${feAuto(annual.variance)} έναντι στόχου` : `Εντός στόχου κατά ${feAuto(-annual.variance)}`}</span>
@@ -1664,8 +1664,8 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 <div key={c.label} onMouseEnter={() => setHoverWeek(c.label)} onMouseLeave={() => setHoverWeek(null)}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px', margin: '0 -6px', borderRadius: T.radius.inner, background: on ? 'var(--bg-elevated)' : 'transparent', transition: 'background 0.15s' }}>
                   <span style={{ width: 120, flexShrink: 0, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
-                  <div style={{ flex: 1, height: 8, background: 'var(--bg-overlay)', borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${(c.value / weekMax) * 100}%`, background: `color-mix(in srgb, var(--accent) ${on ? 100 : 66}%, transparent)`, borderRadius: 6, transition: 'width 0.5s ease, background 0.18s' }} />
+                  <div style={{ flex: 1, height: 8, background: 'var(--bg-overlay)', borderRadius: T.radius.xs, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${(c.value / weekMax) * 100}%`, background: `color-mix(in srgb, var(--accent) ${on ? 100 : 66}%, transparent)`, borderRadius: T.radius.xs, transition: 'width 0.5s ease, background 0.18s' }} />
                   </div>
                   <span style={{ minWidth: 62, textAlign: 'right', flexShrink: 0, fontSize: 'var(--fs-base)', fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: on ? 'var(--accent)' : 'var(--text-primary)', transition: 'color 0.15s' }}>{feAuto(c.value)}</span>
                 </div>
@@ -1791,7 +1791,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                     {/* ΙΔΙΟ ΜΕΓΕΘΟΣ ΚΑΙ ΣΤΙΣ ΔΥΟ ΠΕΡΙΠΤΩΣΕΙΣ. Το «καμία δαπάνη» ήταν
                         παύλα σε 11 στιγμές δίπλα σε ποσό των 14: δύο διαφορετικά ύψη
                         στην ίδια στήλη, που δεν στοιχίζονται μεταξύ τους σε καμία
-                        σειρά. Τώρα είναι ποσό, γράφεται 0,00 € και η απουσία λέγεται
+                        σειρά. Τώρα είναι ποσό, γράφεται 0,00€ και η απουσία λέγεται
                         από το χρώμα και το βάρος. */}
                     <span style={{ fontSize: 14, fontWeight: actual > 0 ? 700 : 500, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: actual > 0 ? (hov ? 'var(--accent)' : 'var(--text-primary)') : 'var(--text-tertiary)', transition: 'color 0.15s' }}>{feAuto(actual > 0 ? actual : 0)}</span>
                     {/* Στόχος — κλικ για επιτόπου αλλαγή */}
@@ -1804,7 +1804,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                   <button type="button" title="Αφαίρεση κατηγορίας" aria-label={`Αφαίρεση «${cat.label}»`}
                     onClick={e => { e.stopPropagation(); removeCategory(cat.key); }}
                     onMouseEnter={() => setDelCatHover(cat.key)} onMouseLeave={() => setDelCatHover(null)}
-                    style={{ width: 22, height: 22, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: delCatHover === cat.key ? 'var(--negative)' : 'var(--text-tertiary)', cursor: 'pointer', transition: 'opacity 0.15s, color 0.15s', padding: 0, opacity: (hov || coarse) ? 1 : 0, pointerEvents: (hov || coarse) ? 'auto' : 'none' }}>
+                    style={{ width: 22, height: 22, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: T.radius.xs, border: 'none', background: 'transparent', color: delCatHover === cat.key ? 'var(--negative)' : 'var(--text-tertiary)', cursor: 'pointer', transition: 'opacity 0.15s, color 0.15s', padding: 0, opacity: (hov || coarse) ? 1 : 0, pointerEvents: (hov || coarse) ? 'auto' : 'none' }}>
                     <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                   {hasBd && (
@@ -1960,7 +1960,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
 
                         ΚΑΙ ΕΝΑ ΚΕΙΜΕΝΟ ΕΦΥΓΕ. Το «όλη η εγγραφή εξαιρείται» έλεγε
                         ό,τι λέει ήδη η διαγραμμένη τιμή στη γραμμή από πάνω· το
-                        «μετρά 15,60 €» της μερικής εξαίρεσης γράφεται κιόλας
+                        «μετρά 15,60€» της μερικής εξαίρεσης γράφεται κιόλας
                         εκεί, κάτω από το ποσό. */}
                     {isEx && (
                       <div style={{ marginTop: 8, padding: '9px 11px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -1980,10 +1980,10 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                         {/* Μερική εξαίρεση: πόσο από το ποσό να εξαιρεθεί (κενό = όλο)
 
                             ΤΟ ΕΥΡΩ ΓΡΑΦΟΤΑΝ ΔΥΟ ΦΟΡΕΣ, ΚΑΙ Η ΠΑΡΕΝΘΕΣΗ ΚΟΒΟΤΑΝ. Το
-                            κείμενο υπόδειξης ήταν «όλο (31,20 €)» μέσα σε πεδίο 108
+                            κείμενο υπόδειξης ήταν «όλο (31,20€)» μέσα σε πεδίο 108
                             εικονοστοιχείων που κρατά 22 δεξιά για το δικό του «€»:
                             έμεναν 76 για δεκατρείς χαρακτήρες. Η οθόνη έγραφε «όλο
-                            (31,20 € €», με κομμένη παρένθεση και δύο σύμβολα
+                            (31,20€ €», με κομμένη παρένθεση και δύο σύμβολα
                             νομίσματος στη σειρά. Το ποσό το λέει ήδη η ίδια η γραμμή,
                             διαγραμμένο στο δεξί άκρο· η υπόδειξη λέει μόνο τι σημαίνει
                             το κενό πεδίο. */}
@@ -1992,7 +1992,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                           <input aria-label="Ποσό που εξαιρείται" inputMode="decimal" value={amtVal}
                             onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setExclAmtDraft(d => ({ ...d, [it.id]: raw })); const n = parseFloat(raw.replace(',', '.')); patchExcl(it.id, { amount: isFinite(n) && n > 0 ? n : undefined }); }}
                             placeholder="όλο"
-                            style={{ width: '100%', height: 28, padding: '0 22px 0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', outline: 'none', transition: 'border-color 0.15s' }}
+                            style={{ width: '100%', height: 28, padding: '0 22px 0 10px', borderRadius: T.radius.xs, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', outline: 'none', transition: 'border-color 0.15s' }}
                             onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-accent)'; }}
                             onBlur={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-subtle)'; }} />
                           <span style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, pointerEvents: 'none' }}>€</span>
@@ -2002,7 +2002,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                         <input aria-label="Σημείωση εξαίρεσης" type="text" value={ex?.note ?? ''} maxLength={120}
                           onChange={e => patchExcl(it.id, { note: e.target.value })}
                           placeholder="το μισό το πλήρωσε ο συγκάτοικος"
-                          style={{ flex: '1 1 180px', minWidth: 0, height: 28, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans, outline: 'none', transition: 'border-color 0.15s' }}
+                          style={{ flex: '1 1 180px', minWidth: 0, height: 28, padding: '0 10px', borderRadius: T.radius.xs, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans, outline: 'none', transition: 'border-color 0.15s' }}
                           onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-accent)'; }}
                           onBlur={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-subtle)'; }} />
                       </div>

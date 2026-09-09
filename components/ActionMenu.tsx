@@ -170,7 +170,7 @@ export function ActionMenu({
             position: 'fixed', top: pos.top, left: pos.left,
             width: pos.width, minWidth: Math.min(MENU_WIDTH, pos.width),
             maxHeight: pos.maxHeight, overflowY: 'auto', overscrollBehavior: 'contain',
-            background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 12,
+            background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup,
             boxShadow: 'var(--elev-3)', padding: 6, zIndex: 200,
             opacity: shown ? 1 : 0, transform: shown ? 'translateY(0)' : 'translateY(-4px)',
             transition: 'opacity 0.14s ease, transform 0.14s ease',
@@ -190,13 +190,13 @@ export function ActionMenu({
                   display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '9px 10px',
                   // Το `background: transparent` το δίνει η `po-hov-row`· γραμμένο εδώ
                   // ακύρωνε το άναμμα της γραμμής σε αιώρηση και σε εστίαση.
-                  borderRadius: 8, border: 'none', cursor: inert ? 'default' : 'pointer',
+                  borderRadius: T.radius.chip, border: 'none', cursor: inert ? 'default' : 'pointer',
                   opacity: it.disabled ? 0.5 : 1, fontFamily: T.font.sans, transition: 'background 0.12s',
                 }}
               >
                 {it.icon && (
                   <span style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip,
                     background: 'var(--bg-elevated)', color: it.danger ? 'var(--negative)' : 'var(--text-secondary)', flexShrink: 0,
                   }}>{it.icon}</span>
                 )}

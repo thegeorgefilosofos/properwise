@@ -68,15 +68,15 @@ const UNKNOWN = '';
 
 const ZONE_OPTIONS = [
   { value: UNKNOWN,      label: 'Δεν γνωρίζω ακόμη'                 },
-  { value: '0_750',      label: 'Έως 750 € ανά τετραγωνικό'         },
-  { value: '751_1500',   label: '751 έως 1.500 € ανά τετραγωνικό'   },
-  { value: '1501_2500',  label: '1.501 έως 2.500 € ανά τετραγωνικό' },
-  { value: '2501_3000',  label: '2.501 έως 3.000 € ανά τετραγωνικό' },
-  { value: '3001_3500',  label: '3.001 έως 3.500 € ανά τετραγωνικό' },
-  { value: '3501_4000',  label: '3.501 έως 4.000 € ανά τετραγωνικό' },
-  { value: '4001_4500',  label: '4.001 έως 4.500 € ανά τετραγωνικό' },
-  { value: '4501_5000',  label: '4.501 έως 5.000 € ανά τετραγωνικό' },
-  { value: 'over_5000',  label: 'Πάνω από 5.000 € ανά τετραγωνικό'  },
+  { value: '0_750',      label: 'Έως 750€ ανά τετραγωνικό'         },
+  { value: '751_1500',   label: '751 έως 1.500€ ανά τετραγωνικό'   },
+  { value: '1501_2500',  label: '1.501 έως 2.500€ ανά τετραγωνικό' },
+  { value: '2501_3000',  label: '2.501 έως 3.000€ ανά τετραγωνικό' },
+  { value: '3001_3500',  label: '3.001 έως 3.500€ ανά τετραγωνικό' },
+  { value: '3501_4000',  label: '3.501 έως 4.000€ ανά τετραγωνικό' },
+  { value: '4001_4500',  label: '4.001 έως 4.500€ ανά τετραγωνικό' },
+  { value: '4501_5000',  label: '4.501 έως 5.000€ ανά τετραγωνικό' },
+  { value: 'over_5000',  label: 'Πάνω από 5.000€ ανά τετραγωνικό'  },
 ];
 
 const FLOOR_LABEL: Record<keyof typeof ENFIA_FLOOR_COEF | string, string> = {
@@ -435,9 +435,9 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
           <div {...fixedCols(3, 14)} style={{ ...fixedCols(3, 14).style, marginTop: 14 }}>
             <CustomSelect label="Παλαιότητα" value={s.enfiaAge} onChange={v => upd({ enfiaAge: v })} options={AGE_OPTIONS}/>
             <NumberInput label="Συνολική αξία όλων των ακινήτων" value={s.enfiaTotalVal} onChange={v => upd({ enfiaTotalVal: v })} suffix="€"
-              labelInfo="Από αυτήν εξαρτάται η αυτόματη μείωση και η προσαύξηση πάνω από τις 500.000 €."/>
+              labelInfo="Από αυτήν εξαρτάται η αυτόματη μείωση και η προσαύξηση πάνω από τις 500.000€."/>
             <NumberInput label="Αντικειμενική αξία αυτού του ακινήτου" value={s.enfiaPropVal} onChange={v => upd({ enfiaPropVal: v })} suffix="€"
-              labelInfo="Πρόσθετος φόρος επιβάλλεται όταν η αξία του ενός ακινήτου ξεπερνά τις 400.000 €."/>
+              labelInfo="Πρόσθετος φόρος επιβάλλεται όταν η αξία του ενός ακινήτου ξεπερνά τις 400.000€."/>
           </div>
 
           {insured && !(s.enfiaReductions || []).includes('insurance') && (
@@ -502,8 +502,8 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
             <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
               {[
                 { label: 'Κύριος φόρος κτισμάτων', val: est.basic },
-                ...(est.extra > 0 ? [{ label: 'Πρόσθετος φόρος, αξία πάνω από 400.000 €', val: est.extra }] : []),
-                ...(est.supplementary > 0 ? [{ label: 'Προσαύξηση, συνολική αξία πάνω από 500.000 €', val: est.supplementary }] : []),
+                ...(est.extra > 0 ? [{ label: 'Πρόσθετος φόρος, αξία πάνω από 400.000€', val: est.extra }] : []),
+                ...(est.supplementary > 0 ? [{ label: 'Προσαύξηση, συνολική αξία πάνω από 500.000€', val: est.supplementary }] : []),
                 // Το ποσοστό ΕΔΩ είναι το συνδυασμένο, όχι το ονομαστικό της κάθε
               // μείωσης που γράφεται πιο πάνω δίπλα στην επιλογή. Διάλεγες 50%
               // και διάβαζες 65% χωρίς λέξη που να το εξηγεί.

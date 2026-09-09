@@ -214,7 +214,7 @@ export default function TenantPortal() {
 
   const wrap: React.CSSProperties = { maxWidth: 560, margin: '0 auto', padding: '0 clamp(16px,5vw,24px)' };
   const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 'clamp(18px,4vw,24px)', marginBottom: 16 };
-  const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit' };
+  const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit' };
   const label: React.CSSProperties = { fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' };
   // ═══ Η ΓΡΑΜΜΗ ΤΗΣ ΜΙΣΘΩΣΗΣ ═══════════════════════════════════════════════════
   // ΤΟ MONO ΕΦΥΓΕ. Η στήλη τιμών γραφόταν σε γραμματοσειρά σταθερού πλάτους,
@@ -231,7 +231,7 @@ export default function TenantPortal() {
   /**
    * Η ΓΡΑΜΜΗ ΠΟΥ ΔΕΝ ΕΧΕΙ ΤΙΜΗ ΔΕΝ ΓΡΑΦΕΤΑΙ.
    *
-   * Ο ενοικιαστής διάβαζε «Μηνιαίο ενοίκιο 0,00 €» και «Έναρξη μίσθωσης: Χωρίς
+   * Ο ενοικιαστής διάβαζε «Μηνιαίο ενοίκιο 0,00€» και «Έναρξη μίσθωσης: Χωρίς
    * ημερομηνία» επειδή ο ιδιοκτήτης δεν τα είχε συμπληρώσει. Δεν είναι κενό
    * πεδίο για εκείνον: είναι ΔΗΛΩΣΗ ότι το ενοίκιό του είναι μηδέν. Η πύλη
    * είναι το πρόσωπο του ιδιοκτήτη προς τον ενοικιαστή του και ένα μηδενικό
@@ -412,7 +412,7 @@ export default function TenantPortal() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all', flex: 1 }}>{data.tenant.rent_iban}</span>
                         <button type="button" onClick={() => copyIban(data.tenant.rent_iban as string)}
-                          style={{ minHeight: 44, background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: 8, padding: '0 16px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                          style={{ minHeight: 44, background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: T.radius.chip, padding: '0 16px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
                           {copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}
                         </button>
                       </div>
@@ -424,7 +424,7 @@ export default function TenantPortal() {
 
             {/* ═══ ΤΟ ΣΠΙΤΙ, ΚΑΙ ΜΟΝΟ ΟΣΑ ΞΕΡΟΥΜΕ ΓΙ' ΑΥΤΟ ══════════════════════════
                 Οι τέσσερις γραμμές γράφονταν πάντα, ακόμη κι όταν ήταν κενές:
-                ο ενοικιαστής διάβαζε «Μηνιαίο ενοίκιο 0,00 €» και δύο φορές
+                ο ενοικιαστής διάβαζε «Μηνιαίο ενοίκιο 0,00€» και δύο φορές
                 «Χωρίς ημερομηνία». Οταν δεν ξέρουμε τίποτα, το λέει μία γραμμή
                 αντί για τέσσερις που μοιάζουν με απάντηση. */}
             {(() => {
@@ -478,7 +478,7 @@ export default function TenantPortal() {
 
                   <div>
                     <label style={label}>Φωτογραφίες (προαιρετικό)</label>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: 8, padding: '9px 14px', cursor: photos.length >= MAX_PHOTOS ? 'not-allowed' : 'pointer', opacity: photos.length >= MAX_PHOTOS ? 0.6 : 1, fontFamily: 'inherit' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: T.radius.chip, padding: '9px 14px', cursor: photos.length >= MAX_PHOTOS ? 'not-allowed' : 'pointer', opacity: photos.length >= MAX_PHOTOS ? 0.6 : 1, fontFamily: 'inherit' }}>
                       Προσθήκη φωτογραφιών
                       <input type="file" accept="image/*" multiple aria-label="Φωτογραφίες του προβλήματος" disabled={photos.length >= MAX_PHOTOS} onChange={onPickFiles} style={{ display: 'none' }} />
                     </label>

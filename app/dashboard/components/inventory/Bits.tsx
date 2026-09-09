@@ -95,7 +95,7 @@ export function BulkPicker({label,icon,options,onPick,accent}:{label:string;icon
           {options.length===0
             ?<p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily:T.font.sans,padding:'8px 12px'}}>Καμία επιλογή</p>
             :options.map(o=>(
-              <div key={o} {...pressable(()=>{onPick(o);setOpen(false)})} style={{padding:'8px 12px',cursor:'pointer',borderRadius:8,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,color:'var(--text-primary)'}}
+              <div key={o} {...pressable(()=>{onPick(o);setOpen(false)})} style={{padding:'8px 12px',cursor:'pointer',borderRadius: T.radius.chip,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,color:'var(--text-primary)'}}
                 onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>{o}</div>
             ))}
         </div>,
@@ -114,17 +114,17 @@ export const EnergyBadge = ({cls}:{cls:string}) => { if(!cls) return null; const
   const bg = tone?`var(--${tone}-soft)`:'var(--bg-elevated)'
   const bd = tone?`var(--${tone}-border)`:'var(--border-subtle)'
   return (
-  <span title={`Ενεργειακή κλάση ${cls}`} style={{display:'inline-flex',alignItems:'center',padding:'2px 8px',borderRadius:6,fontSize: 'var(--fs-xs)',fontWeight:700,color:fg,background:bg,border:`1px solid ${bd}`,letterSpacing:'0.5px',fontFamily:T.font.sans}}>{cls}</span>
+  <span title={`Ενεργειακή κλάση ${cls}`} style={{display:'inline-flex',alignItems:'center',padding:'2px 8px',borderRadius: T.radius.xs,fontSize: 'var(--fs-xs)',fontWeight:700,color:fg,background:bg,border:`1px solid ${bd}`,letterSpacing:'0.5px',fontFamily:T.font.sans}}>{cls}</span>
 ) }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΜΠΑΡΑ ΔΕΝ ΜΙΛΑ ΓΙΑ ΑΝΤΙΚΕΙΜΕΝΟ ΠΟΥ ΔΕΝ ΞΕΡΕΙ
 // ─────────────────────────────────────────────────────────────────────────
 // ΤΙ ΕΒΛΕΠΕ Ο ΧΡΗΣΤΗΣ. Δεκατρία αντικείμενα χωρίς τιμή αγοράς έδειχναν, ΟΛΑ,
-// «0,00 € ΤΡΕΧΟΥΣΑ ΑΞΙΑ», «Εκτιμώμενη υπολειπόμενη αξία 100%», γεμάτη μπάρα και
+// «0,00€ ΤΡΕΧΟΥΣΑ ΑΞΙΑ», «Εκτιμώμενη υπολειπόμενη αξία 100%», γεμάτη μπάρα και
 // «περίπου 9 χρόνια». Τέσσερα νούμερα, κανένα αληθινό:
 //
-//   · το «0,00 €» δεν είναι αξία, είναι ΑΠΟΥΣΙΑ αξίας
+//   · το «0,00€» δεν είναι αξία, είναι ΑΠΟΥΣΙΑ αξίας
 //   · το «100%» είναι εκατό τοις εκατό του τίποτα
 //   · η γεμάτη μπάρα σε κάθε κάρτα δεν διακρίνει τίποτα από τίποτα
 //   · τα «περίπου 9 χρόνια» είναι η ωφέλιμη ζωή ΤΗΣ ΚΑΤΗΓΟΡΙΑΣ, όχι αυτού του
@@ -236,7 +236,7 @@ export function InlineConditionEdit({item,onUpdate}:{item:InventoryItem;onUpdate
           style={{position:'fixed',top:rect.top,left:rect.left,transform:rect.up?'translateY(-100%)':'none',maxHeight:rect.maxH,overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.card,padding:6,zIndex:9000,minWidth:Math.max(160,rect.width),boxShadow:'var(--shadow-xl)'}}>
           {CONDITIONS.map(c=>(
             <div key={c} {...pressable(()=>{onUpdate(item.id,c);setOpen(false)})}
-              style={{padding:'8px 12px',cursor:'pointer',borderRadius:8,fontSize:12,fontFamily:T.font.sans,color:CONDITION_COLOR[c],background:item.condition===c?CONDITION_COLOR[c]+'15':'transparent',fontWeight:item.condition===c?600:400,transition:'background 0.1s'}}
+              style={{padding:'8px 12px',cursor:'pointer',borderRadius: T.radius.chip,fontSize:12,fontFamily:T.font.sans,color:CONDITION_COLOR[c],background:item.condition===c?CONDITION_COLOR[c]+'15':'transparent',fontWeight:item.condition===c?600:400,transition:'background 0.1s'}}
               onMouseEnter={e=>(e.currentTarget.style.background=CONDITION_COLOR[c]+'10')}
               onMouseLeave={e=>(e.currentTarget.style.background=item.condition===c?CONDITION_COLOR[c]+'15':'transparent')}
             >{c}</div>
@@ -298,7 +298,7 @@ export function OverflowMenu({actions,align='right',dark}:{actions:OverflowActio
           style={{position:'fixed',top:rect.top,...(align==='right'?{right:rect.right}:{left:rect.left}),transform:rect.up?'translateY(-100%)':'none',maxHeight:rect.maxH,overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.card,padding: 4,zIndex:9000,minWidth:180,boxShadow:'var(--shadow-xl)'}}>
           {actions.map((a,i)=>(
             <button key={i} onClick={()=>{a.onClick();setOpen(false)}}
-              style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',padding:'8px 12px',borderRadius:8,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,fontWeight:500,color:a.danger?'var(--negative)':'var(--text-primary)',background:'transparent',border:'none',cursor:'pointer'}}
+              style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',padding:'8px 12px',borderRadius: T.radius.chip,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,fontWeight:500,color:a.danger?'var(--negative)':'var(--text-primary)',background:'transparent',border:'none',cursor:'pointer'}}
               onMouseEnter={e=>e.currentTarget.style.background=a.danger?'var(--negative-dim)':'var(--bg-hover)'}
               onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
               <span style={{display:'flex',width:15,color:a.danger?'var(--negative)':'var(--text-tertiary)',flexShrink:0}}>{a.icon}</span>
@@ -333,7 +333,7 @@ export function RoomInput({value,onChange}:{value:string;onChange:(v:string)=>vo
         options={options}/>
       {custom&&(
         <input aria-label="Χώρος" value={value} onChange={e=>onChange(e.target.value)} placeholder="Πληκτρολογήστε τον χώρο (π.χ. Ξενώνας)" onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
-          style={{background:'var(--bg-surface)',border:`1px solid ${focused?'var(--accent)':'var(--border-default)'}`,boxShadow:focused?'0 0 0 3px var(--accent-dim)':'none',borderRadius:6,padding:'0 16px',height:T.h.lg,color:'var(--text-primary)',fontSize:14,letterSpacing:0,outline:'none',fontFamily:T.font.sans,width:'100%',boxSizing:'border-box'}}
+          style={{background:'var(--bg-surface)',border:`1px solid ${focused?'var(--accent)':'var(--border-default)'}`,boxShadow:focused?'0 0 0 3px var(--accent-dim)':'none',borderRadius: T.radius.xs,padding:'0 16px',height:T.h.lg,color:'var(--text-primary)',fontSize:14,letterSpacing:0,outline:'none',fontFamily:T.font.sans,width:'100%',boxSizing:'border-box'}}
         />
       )}
     </div>

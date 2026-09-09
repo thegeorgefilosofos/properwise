@@ -265,7 +265,7 @@ export function ToolCta({ title, body }: { title: string; body: ReactNode }) {
         </p>
       </div>
       <Link href="/signup" className="lp-cta lp-primary" style={{
-        display: 'inline-flex', alignItems: 'center', height: 44, padding: '0 24px',
+        display: 'inline-flex', alignItems: 'center', height: T.h.lg, padding: '0 24px',
         borderRadius: T.radius.pill, fontSize: 14, fontWeight: 700,
         textDecoration: 'none', whiteSpace: 'nowrap',
       }}>

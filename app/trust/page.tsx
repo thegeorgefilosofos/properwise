@@ -18,6 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { Metadata } from 'next';
+import { T } from '@/components/tokens';
 import { IDENTITY } from '@/lib/legal/identity';
 import { DISCLOSURE } from '@/lib/legal/disclosure';
 import { subprocessors } from '@/lib/legal/subprocessors';
@@ -244,7 +245,7 @@ export default function TrustPage() {
             γνωστοποιούμε με email πριν προστεθεί νέος. Όσοι είναι εκτός ΕΕ απαιτούν Τυποποιημένες Συμβατικές
             Ρήτρες· η υπογραφή τους ολοκληρώνεται πριν την εμπορική κυκλοφορία και το δηλώνουμε εδώ όταν γίνει.
           </p>
-          <div style={{ marginTop: 16, border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ marginTop: 16, border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, overflow: 'hidden' }}>
             {subprocessorRows().map((s, i) => (
               <div key={s.name} style={{ display: 'grid', gridTemplateColumns: 'minmax(84px, 0.62fr) minmax(0, 1.7fr) minmax(96px, 0.72fr)', gap: 14, padding: '13px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: s.planned ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{s.name}</span>

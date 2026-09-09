@@ -89,7 +89,7 @@ const S = (extra: Record<string, unknown> = {}) => ({
 });
 ok(subscriptionsMonthly(null) === 0, 'κενές ρυθμίσεις δίνουν μηδέν');
 ok(subscriptionsMonthly({}) === 0, 'ρυθμίσεις χωρίς συνδρομές δίνουν μηδέν');
-ok(subscriptionsMonthly(S()) === 12.49, 'μία συνδρομή: 12,49 €');
+ok(subscriptionsMonthly(S()) === 12.49, 'μία συνδρομή: 12,49€');
 ok(subscriptionsMonthly(S({ activeSports: [{ service: 'f1tv', planId: 'f1_access_year', customPrice: '', splitPeople: 2, splitActive: false, renewalDate: '' }] }))
    === 12.49 + 29.99 / 12, 'η προπληρωμή μετράει ως μηνιαίο δωδέκατο');
 ok(subscriptionsMonthly(S({ otherSubs: [{ name: 'Canva Pro', price: '11.99' }] })) === 12.49 + 11.99,

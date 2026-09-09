@@ -68,11 +68,11 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         {!busy && (
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={reset}
-              style={{ height: 44, padding: '0 24px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ height: T.h.lg, padding: '0 24px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
               Δοκίμασε ξανά
             </button>
             <button onClick={() => { setBusy(true); void recoverFromStaleBuild(true); }}
-              style={{ height: 44, padding: '0 24px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-primary)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ height: T.h.lg, padding: '0 24px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-primary)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               Καθαρισμός και επαναφόρτωση
             </button>
           </div>

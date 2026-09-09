@@ -233,7 +233,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
     else if(d<=60&&d>=31) reminders.push({label:`Λήξη σε ${d} ημέρες, ενημέρωσε τον ενοικιαστή`,urgent:false});
     else if(d<=90&&d>=61) reminders.push({label:`Λήξη σε ${d} ημέρες, ξεκίνα συζήτηση ανανέωσης`,urgent:false});
   }
-  const inputStyle:React.CSSProperties={width:'100%',height:42,background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',boxSizing:'border-box'};
+  const inputStyle:React.CSSProperties={width:'100%',height: T.h.lg,background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',boxSizing:'border-box'};
 
   return (
     <div>
@@ -734,7 +734,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                   {(signed[m.id]?.length??0)>0&&(
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const, marginBottom:12 }}>
                       {signed[m.id].map((url,pi)=>(
-                        <a key={pi} href={url} target="_blank" rel="noopener noreferrer" style={{ display:'block', width:64, height:64, borderRadius:8, overflow:'hidden', border:'1px solid var(--border-subtle)' }}>
+                        <a key={pi} href={url} target="_blank" rel="noopener noreferrer" style={{ display:'block', width:64, height:64, borderRadius: T.radius.chip, overflow:'hidden', border:'1px solid var(--border-subtle)' }}>
                           <RuntimeImg src={url} alt="Φωτογραφία βλάβης" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
                         </a>
                       ))}

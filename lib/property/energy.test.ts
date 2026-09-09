@@ -26,8 +26,8 @@ const eq = (a: number | null, b: number, tol = 0.02) => a != null && Math.abs(a 
   const washer: EnergyInput = { energy_mode: 'cycles', kwh_per_100_cycles: 35, cycles_per_month: 20 }
   ok('ετήσια 84 kWh', eq(annualKwh(washer), 84))
   ok('μηνιαία 7 kWh', eq(monthlyKwh(washer), 7))
-  // Τιμή ρεύματος 0,18 €/kWh ⇒ 7 × 0,18 = 1,26 € τον μήνα.
-  ok('κόστος 1,26 € τον μήνα στα 0,18 €/kWh', eq(monthlyEnergyCost(washer, 0.18), 1.26))
+  // Τιμή ρεύματος 0,18€/kWh ⇒ 7 × 0,18 = 1,26€ τον μήνα.
+  ok('κόστος 1,26€ τον μήνα στα 0,18€/kWh', eq(monthlyEnergyCost(washer, 0.18), 1.26))
 
   // ΤΟ ΛΑΘΟΣ ΠΟΥ ΔΙΟΡΘΩΝΕΤΑΙ, ΣΕ ΝΟΥΜΕΡΑ. Ο παλιός τρόπος ζητούσε Watt και
   // ώρες. Ένα πλυντήριο τραβά περίπου 2.000 W· αν ο χρήστης έγραφε «2 ώρες την
@@ -45,7 +45,7 @@ const eq = (a: number | null, b: number, tol = 0.02) => a != null && Math.abs(a 
   const fridge: EnergyInput = { energy_mode: 'annual', annual_kwh: 180 }
   ok('ετήσια 180 kWh, όπως δηλώθηκαν', eq(annualKwh(fridge), 180))
   ok('μηνιαία 15 kWh', eq(monthlyKwh(fridge), 15))
-  ok('κόστος 2,70 € τον μήνα', eq(monthlyEnergyCost(fridge, 0.18), 2.7))
+  ok('κόστος 2,70€ τον μήνα', eq(monthlyEnergyCost(fridge, 0.18), 2.7))
   // Τα Watt και οι ώρες αγνοούνται εντελώς σε αυτόν τον τρόπο.
   ok('τα άσχετα πεδία δεν επηρεάζουν',
      eq(annualKwh({ ...fridge, power_watts: 900, daily_hours_use: 24 }), 180))

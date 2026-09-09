@@ -23,7 +23,7 @@ const INTERNET_PROVIDERS = [
 // ΤΑ ΠΑΚΕΤΑ ΣΥΝΔΡΟΜΗΤΙΚΗΣ ΤΗΛΕΟΡΑΣΗΣ
 // ─────────────────────────────────────────────────────────────────────────
 // ΗΤΑΝ ΑΔΕΙΟΣ, ΚΑΙ ΣΩΣΤΑ: οι τιμές των πακέτων αλλάζουν και το μόνο που τα
-// κάνει χρήσιμα είναι να είναι ΣΩΣΤΑ. Ένα επινοημένο «MagentaTV Full, 30 €»
+// κάνει χρήσιμα είναι να είναι ΣΩΣΤΑ. Ένα επινοημένο «MagentaTV Full, 30€»
 // δεν είναι προσέγγιση — είναι λάθος νούμερο σε οθόνη που ο ιδιοκτήτης θα
 // συγκρίνει με τον λογαριασμό του. Γέμισε από τις επίσημες σελίδες.
 //
@@ -88,10 +88,10 @@ const TV_PACKS: Record<string, TvPack[]> = Object.fromEntries(Object.entries({
     { id: 'eonp_nobox',  name: 'EON+, χωρίς Smart Box', price: 26, sports: true },
     { id: 'eonp',        name: 'EON+', price: 28, sports: true },
   ],
-  // ΤΟ VODAFONE TV START ΕΙΝΑΙ 3,90 €, ΟΠΩΣ ΤΟ ΓΡΑΦΕΙ Η ΣΕΛΙΔΑ ΤΟΥ.
+  // ΤΟ VODAFONE TV START ΕΙΝΑΙ 3,90€, ΟΠΩΣ ΤΟ ΓΡΑΦΕΙ Η ΣΕΛΙΔΑ ΤΟΥ.
   //
-  // Είχε γίνει 9,90 € από δημοσιεύματα για την αναπροσαρμογή της 17ης Μαρτίου
-  // 2026 (6,30 € → 9,90 €). Η ζωντανή σελίδα δείχνει «Μόνο 3,90 €/μήνα» και η
+  // Είχε γίνει 9,90€ από δημοσιεύματα για την αναπροσαρμογή της 17ης Μαρτίου
+  // 2026 (6,30€ → 9,90€). Η ζωντανή σελίδα δείχνει «Μόνο 3,90€/μήνα» και η
   // σελίδα του παρόχου υπερισχύει κάθε δημοσιεύματος: μια ανακοίνωση αύξησης
   // δεν είναι η τιμή που θα δει ο ιδιοκτήτης στο καλάθι του.
   //
@@ -132,12 +132,12 @@ const INTERNET_PLANS: Record<string, {
     { id:'c_dp_24',    name: 'Double Play Unlimited 24 (παλαιό)', speed: '24 Mbps', price: 19.90, hasPhone: true,  note: 'ADSL. Δεν προσφέρεται πλέον σε νέες συνδέσεις· μένει για όσους το έχουν ήδη.', networkType: 'ADSL', contract: '24 μήνες' },
     { id:'c_dp_50',    name: 'Telekom Double Play Advanced Unlimited', speed: '50 Mbps', price: 22.90, hasPhone: true,  note: '100% οπτική ίνα ώς την πρίζα, με εγγύηση καλής εγκατάστασης.', networkType: 'Fiber', contract: '24 μήνες' },
     // ═══ ΔΥΟ ΠΑΚΕΤΑ ΜΕ ΤΟ ΙΔΙΟ ΟΝΟΜΑ ΚΑΙ ΔΙΑΦΟΡΕΤΙΚΗ ΤΙΜΗ ══════════════════
-    // Ο κατάλογος δείχνει ΔΥΟ «Fiber 100 Unlimited»: ένα στα 24,90 € με «έως
-    // 100 Mbps» και μόνο δωρεάν router. Το δεύτερο είναι στα 23,71 €, διαγραμμένο από
-    // 24,90 € — με 100% οπτική ίνα ώς την πρίζα και εγγύηση εγκατάστασης. Το
+    // Ο κατάλογος δείχνει ΔΥΟ «Fiber 100 Unlimited»: ένα στα 24,90€ με «έως
+    // 100 Mbps» και μόνο δωρεάν router. Το δεύτερο είναι στα 23,71€, διαγραμμένο από
+    // 24,90€ — με 100% οπτική ίνα ώς την πρίζα και εγγύηση εγκατάστασης. Το
     // φθηνότερο είναι το ΚΑΛΥΤΕΡΟ· αυτό δεν διαβάζεται από την τιμή: όποιος
     // δει μόνο «24,90» θα νομίσει ότι πληρώνει λιγότερο για το ίδιο πράγμα.
-    { id:'c_f100',     name: 'Telekom Fiber 100 Unlimited', speed: '100 Mbps',  price: 23.71, hasPhone: true,  note: '100% οπτική ίνα ώς την πρίζα, με εγγύηση καλής εγκατάστασης. Τιμή προσφοράς από 24,90 €.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f100',     name: 'Telekom Fiber 100 Unlimited', speed: '100 Mbps',  price: 23.71, hasPhone: true,  note: '100% οπτική ίνα ώς την πρίζα, με εγγύηση καλής εγκατάστασης. Τιμή προσφοράς από 24,90€.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'c_f100_vdsl', name: 'Telekom Fiber 100 Unlimited (έως 100)', speed: '100 Mbps', price: 24.90, hasPhone: true, note: 'Έως 100 Mbps, χωρίς εγγύηση εγκατάστασης. Δωρεάν ασύρματο router.', networkType: 'VDSL', contract: '24 μήνες' },
     { id:'c_f300',     name: 'Telekom Fiber 300 Unlimited', speed: '300 Mbps',  price: 27.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 150 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'c_f500',     name: 'Telekom Fiber 500 Unlimited', speed: '500 Mbps',  price: 31.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 250 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
@@ -149,7 +149,7 @@ const INTERNET_PLANS: Record<string, {
     // άλλη σελίδα. Τα ποσά μένουν ως έχουν, χωρίς να δηλώνονται ελεγμένα.
     { id:'c_5g50',     name: '5G WiFi Double Play 50',      speed: '50 Mbps',   price: 30.90, hasPhone: true,  note: 'Ασύρματο 5G, Internet backup. Χωρίς καλωδίωση.', networkType: '5G', backup: true },
     { id:'c_5g300',    name: '5G WiFi Double Play 300',     speed: '300 Mbps',  price: 35.90, hasPhone: true,  note: 'Ασύρματο 5G, Internet backup. Χωρίς καλωδίωση.', networkType: '5G', backup: true },
-    { id:'c_5g_free',  name: '5G WiFi 300 Χωρίς Σύμβαση',  speed: '300 Mbps',  price: 35.90, hasPhone: true,  note: 'Ασύρματο 5G χωρίς δέσμευση. Εξοπλισμός 349 €.', networkType: '5G', backup: true },
+    { id:'c_5g_free',  name: '5G WiFi 300 Χωρίς Σύμβαση',  speed: '300 Mbps',  price: 35.90, hasPhone: true,  note: 'Ασύρματο 5G χωρίς δέσμευση. Εξοπλισμός 349€.', networkType: '5G', backup: true },
     // ── Triple Play (Σταθερή + Internet + Τηλεόραση) ─────────────────────
     { id:'c_f100_tv',  name: 'Fiber 100 + MagentaTV Full', speed: '100 Mbps',  price: 48.77, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV πλήρες πακέτο. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'c_f300_tv',  name: 'Fiber 300 + MagentaTV Full', speed: '300 Mbps',  price: 51.85, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV πλήρες πακέτο. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
@@ -181,17 +181,17 @@ const INTERNET_PLANS: Record<string, {
     // σκέτο Vodafone TV Start. Γράφονται με την τιμή εκκίνησης που δηλώνει η
     // ίδια η σελίδα («Από») και με το τέλος ενεργοποίησης στη σημείωση: είναι
     // εφάπαξ, δεν μπαίνει στο μηνιαίο.
-    { id:'v_f100_tv',  name: 'Fiber 100 με Vodafone TV',     speed: '100 Mbps', price: 33.90, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 93 Mbps, απεριόριστα σταθερά και 360 λεπτά κινητά. HBO Max και Viaplay. Τέλος ενεργοποίησης 6,00 € εφάπαξ.', networkType: 'Fiber' },
-    { id:'v_ff300p_tv', name: 'Full Fiber 300 Plus με Vodafone TV Plus', speed: '300 Mbps', price: 37.00, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 100%, router Wi-Fi 6, απεριόριστα σταθερά και κινητά. HBO Max, Disney+ και Viaplay. Τέλος ενεργοποίησης 6,00 € εφάπαξ.', networkType: 'Fiber' },
+    { id:'v_f100_tv',  name: 'Fiber 100 με Vodafone TV',     speed: '100 Mbps', price: 33.90, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 93 Mbps, απεριόριστα σταθερά και 360 λεπτά κινητά. HBO Max και Viaplay. Τέλος ενεργοποίησης 6,00€ εφάπαξ.', networkType: 'Fiber' },
+    { id:'v_ff300p_tv', name: 'Full Fiber 300 Plus με Vodafone TV Plus', speed: '300 Mbps', price: 37.00, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 100%, router Wi-Fi 6, απεριόριστα σταθερά και κινητά. HBO Max, Disney+ και Viaplay. Τέλος ενεργοποίησης 6,00€ εφάπαξ.', networkType: 'Fiber' },
     { id:'v_ff300_tv', name: 'Full Fiber 300 + Vodafone TV', speed: '300 Mbps', price: 44.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV (45 κανάλια, HBO).', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff500_tv', name: 'Full Fiber 500 + Vodafone TV', speed: '500 Mbps', price: 51.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV + αποκωδικοποιητής +2,50 €.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff1g_tv',  name: 'Full Fiber 1 Gbps + TV',       speed: '1 Gbps',   price: 58.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV + αποκωδικοποιητής +2,50 €.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff500_tv', name: 'Full Fiber 500 + Vodafone TV', speed: '500 Mbps', price: 51.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV + αποκωδικοποιητής +2,50€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff1g_tv',  name: 'Full Fiber 1 Gbps + TV',       speed: '1 Gbps',   price: 58.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV + αποκωδικοποιητής +2,50€.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   dei: [
     { id:'dei_f500',   name: 'ΔΕΗ Fiber 500',              speed: '500 Mbps',  price: 17.90, hasPhone: false, note: 'Φθηνότερο fiber στην αγορά. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'dei_f1g',    name: 'ΔΕΗ Fiber 1 Gbps',           speed: '1 Gbps',    price: 24.90, hasPhone: false, note: 'Οπτική ίνα. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'dei_f25g',   name: 'ΔΕΗ Fiber 2.5 Gbps',         speed: '2.5 Gbps',  price: 52.90, hasPhone: false, note: 'Ultra broadband. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'dei_f500_v', name: 'ΔΕΗ Fiber 500 + Φωνή',       speed: '500 Mbps',  price: 21.90, hasPhone: true,  note: 'Fiber + τηλεφωνία (+4 €). Απεριόριστα λεπτά σταθερά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'dei_f500_v', name: 'ΔΕΗ Fiber 500 + Φωνή',       speed: '500 Mbps',  price: 21.90, hasPhone: true,  note: 'Fiber + τηλεφωνία (+4€). Απεριόριστα λεπτά σταθερά.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   inalan: [
     // ── Οικιακά (με σύμβαση 24 μηνών) ────────────────────────────────────
@@ -229,7 +229,7 @@ const SECURITY_COMPANIES = [
 
 const BENCHMARKS = {
   internet: { avg: 22.50, label: 'Μέσος Όρος Ελλάδας'              },
-  water:    { avg: 12.00, label: 'Μέσος Όρος Αττικής, ~24 € / 2 μήνες' },
+  water:    { avg: 12.00, label: 'Μέσος Όρος Αττικής, ~24€ / 2 μήνες' },
   heating:  { avg: 70.00, label: 'Μέσος Όρος χειμώνα'               },
   security: { avg: 18.00, label: 'Μέσος Όρος αγοράς'                },
 };
@@ -356,7 +356,11 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
           <div style={{ height: '100%', width: `${pct}%`, background: 'var(--series-in)', borderRadius: 3 }}/>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-          <span>0 €</span><span style={{ color: 'var(--text-secondary)' }}>μέσος όρος {avg} €</span><span>{fe((avg * 2))}</span>
+          {/* ΤΡΙΑ ΠΟΣΑ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ, ΜΕ ΤΡΕΙΣ ΓΡΑΦΕΣ. Τα δύο άκρα περνούσαν από
+              μορφοποιητή («0€», «45,00€») και ο μέσος όρος γραφόταν ωμός: το
+              22,50 έβγαινε με αγγλική υποδιαστολή, ένα δεκαδικό και κενό πριν
+              το σύμβολο, ανάμεσα σε δύο σωστά. */}
+          <span>{fe(0)}</span><span style={{ color: 'var(--text-secondary)' }}>μέσος όρος {fe(avg)}</span><span>{fe((avg * 2))}</span>
         </div>
       </div>
     );

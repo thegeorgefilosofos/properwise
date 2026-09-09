@@ -314,7 +314,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   // ΜΟΝΟ από το ReceiptScanModal και μόνο με παραστατικό (expenseFromReceipt).
   //
   // Το `amount` του γεγονότος έγινε επίσης null: ένα ημερολόγιο που δείχνει
-  // «300 €» σε μια υπενθύμιση χωρίς παραστατικό λέει το ίδιο ψέμα πιο ήσυχα.
+  // «300€» σε μια υπενθύμιση χωρίς παραστατικό λέει το ίδιο ψέμα πιο ήσυχα.
   const calPriorityOf = (p: Priority) => (p === 'normal' ? 'medium' : p)
   const taskTitleOf = (it: { description: string; assigned_contact_name?: string | null }) => (it.assigned_contact_name ? `${it.description} · ${it.assigned_contact_name}` : it.description)
   const makeTaskCal = async (it: { description: string; assigned_contact_name?: string | null; due_date: string | null; priority: Priority; recurring: Recurring; estimated_cost: number }): Promise<string | null> => {

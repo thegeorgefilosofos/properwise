@@ -465,7 +465,7 @@ export default function AccountantDossier({
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {(Object.keys(LEGAL_FORM_LABEL) as LegalForm[]).map(f => (
                   <button key={f} onClick={() => setProfile({ form: f })}
-                    style={{ height: T.h.sm, padding: '0 13px', borderRadius: 8, cursor: 'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
+                    style={{ height: T.h.sm, padding: '0 13px', borderRadius: T.radius.chip, cursor: 'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
                       fontWeight: profile.form === f ? 600 : 500,
                       border: `1px solid ${profile.form === f ? 'var(--accent)' : 'var(--border-subtle)'}`,
                       background: profile.form === f ? 'var(--accent)' : 'var(--bg-surface)',
@@ -481,7 +481,7 @@ export default function AccountantDossier({
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {(['single_entry', 'double_entry'] as BookKeeping[]).map(b => (
                     <button key={b} onClick={() => setProfile({ books: b })}
-                      style={{ height: T.h.sm, padding: '0 13px', borderRadius: 8, cursor: 'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
+                      style={{ height: T.h.sm, padding: '0 13px', borderRadius: T.radius.chip, cursor: 'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
                         fontWeight: profile.books === b ? 600 : 500,
                         border: `1px solid ${profile.books === b ? 'var(--accent)' : 'var(--border-subtle)'}`,
                         background: profile.books === b ? 'var(--accent)' : 'var(--bg-surface)',
@@ -566,7 +566,7 @@ function AccountantAsks() {
     // ΡΗΤΟ ΥΨΟΣ 28 ΕΙΝΑΙ ΧΕΙΡΟΤΕΡΟ ΑΠΟ ΥΨΟΣ ΑΠΟ PADDING: δεν μεγαλώνει ποτέ,
     // ούτε με μεγαλύτερη γραμματοσειρά ούτε σε δείκτη αφής. Η κλίμακα το κάνει.
     display: 'inline-flex', alignItems: 'center', minHeight: T.h.sm,
-    padding: '0 11px', borderRadius: 8, border: '1px solid var(--border-subtle)',
+    padding: '0 11px', borderRadius: T.radius.chip, border: '1px solid var(--border-subtle)',
     background: 'transparent', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600,
     fontFamily: T.font.sans, cursor: 'pointer', flexShrink: 0,
   }

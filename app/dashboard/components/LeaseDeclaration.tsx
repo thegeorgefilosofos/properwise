@@ -207,7 +207,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
         </span>
         {f.value && f.status === 'ok' && (
           <button onClick={() => copy(f.key, f.value)} title="Αντιγραφή"
-            style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: copied === f.key ? 'var(--positive)' : 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            style={{ flexShrink: 0, width: 30, height: 30, borderRadius: T.radius.chip, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: copied === f.key ? 'var(--positive)' : 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {copied === f.key ? <Check size={14} /> : <Copy size={13} />}
           </button>
         )}

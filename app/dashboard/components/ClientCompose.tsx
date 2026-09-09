@@ -225,7 +225,7 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                   <div style={{ ...TT.bodySm }}>{summary?.sent || 0} επιτυχή{summary?.failed ? ` · ${summary.failed} απέτυχαν` : ''}</div>
                 </div>
               </div>
-              <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, overflow: 'hidden' }}>
                 {(results || []).map((r, i) => (
                   <div key={r.email + i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderTop: i ? '1px solid var(--border-subtle)' : 'none' }}>
                     <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -257,15 +257,15 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                       <button style={chip(false)} onClick={() => setMany([])}>Καθαρισμός</button>
                     </div>
                     <input value={q} onChange={e => setQ(e.target.value)} placeholder="Όνομα ή email" aria-label="Αναζήτηση πελατών" style={{ ...field, marginBottom: 8 }} />
-                    <div style={{ maxHeight: 208, overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 12 }}>
+                    <div style={{ maxHeight: 208, overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup }}>
                       {visible.map((c, i) => {
                         const on = selected.has(c.id);
                         return (
                           <button key={c.id} onClick={() => toggle(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', borderTop: i ? '1px solid var(--border-subtle)' : 'none', background: on ? 'var(--accent-soft)' : 'transparent', cursor: 'pointer', fontFamily: T.font.sans }}>
-                            <span style={{ width: 18, height: 18, borderRadius: 6, flexShrink: 0, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ width: 18, height: 18, borderRadius: T.radius.xs, flexShrink: 0, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               {on && <svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
                             </span>
-                            <span style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', fontWeight: 700, fontSize: 'var(--fs-xs)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{initials(c.full_name)}</span>
+                            <span style={{ width: 26, height: 26, borderRadius: T.radius.chip, flexShrink: 0, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', fontWeight: 700, fontSize: 'var(--fs-xs)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{initials(c.full_name)}</span>
                             <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                               <span style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.full_name}</span>
                               <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</span>
@@ -290,7 +290,7 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                 </div>
 
                 {aiOpen && (
-                  <div style={{ border: '1px solid var(--accent-border)', background: 'var(--accent-soft)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
+                  <div style={{ border: '1px solid var(--accent-border)', background: 'var(--accent-soft)', borderRadius: T.radius.popup, padding: 14, marginBottom: 12 }}>
                     <div style={{ ...TT.bodySm, marginBottom: 8 }}>Πες μου με λίγα λόγια τι θέλεις να πεις· θα το γράψω επαγγελματικά.</div>
                     <textarea aria-label="Τι θέλεις να λέει το μήνυμα" value={aiBrief} onChange={e => setAiBrief(e.target.value)} rows={2}
                       placeholder="Ευχαριστήριο μετά τη διαμονή + κάλεσμα για κράτηση με 10% έκπτωση την επόμενη φορά"
@@ -305,7 +305,7 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                   placeholder="Γράψε το μήνυμά σου εδώ…" style={{ ...field, resize: 'vertical', lineHeight: 1.6 }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Προσωποποίηση:</span>
-                  <code style={{ fontSize: 'var(--fs-xs)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '2px 6px', fontFamily: T.font.mono, color: 'var(--text-secondary)' }}>{'{{name}}'}</code>
+                  <code style={{ fontSize: 'var(--fs-xs)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.xs, padding: '2px 6px', fontFamily: T.font.mono, color: 'var(--text-secondary)' }}>{'{{name}}'}</code>
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>γίνεται το όνομα κάθε παραλήπτη</span>
                 </div>
               </div>

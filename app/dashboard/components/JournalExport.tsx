@@ -62,7 +62,7 @@ const FORMATS: { key: ExportFormat; label: string; hint: string; ext: string }[]
   { key: 'quickbooks', label: 'QuickBooks', hint: 'Journal Entry', ext: 'csv' },
   { key: 'xero', label: 'Xero', hint: 'Manual Journal', ext: 'csv' },
 ];
-const eur = (n: number) => `${(n || 0).toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+const eur = (n: number) => `${(n || 0).toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}€`;
 
 export default function JournalExport({ open, onClose, userId, supabase }: {
   open: boolean; onClose: () => void; userId: string; supabase: SupabaseClient;
@@ -324,7 +324,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                 <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontWeight: 600 }}>{showBalance ? 'Σύμπτυξη' : 'Προβολή'}</span>
               </button>
               {showBalance && (<>
-              <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, overflow: 'hidden' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 12, padding: '10px 16px', background: 'var(--bg-elevated)', fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-tertiary)' }}>
                   <span>ΛΟΓΑΡΙΑΣΜΟΣ</span><span style={{ textAlign: 'right' }}>ΧΡΕΩΣΗ</span><span style={{ textAlign: 'right' }}>ΠΙΣΤΩΣΗ</span>
                 </div>
@@ -390,7 +390,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                                   <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.5 }}>{c.detail}</div>
                                   {!isPass && c.fix && (
                                     <>
-                                      <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 11px', borderRadius: 8, background: 'var(--bg-elevated)' }}>
+                                      <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 11px', borderRadius: T.radius.chip, background: 'var(--bg-elevated)' }}>
                                         <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 1 }}><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/></svg>
                                         <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)' }}><b style={{ color: 'var(--text-primary)', fontWeight: 640 }}>Πρόταση:</b> {c.fix}</span>
                                       </div>

@@ -142,7 +142,7 @@ export function SubTaskEditor({ subtasks, onChange }: { subtasks: SubTask[]; onC
         {subtasks.map(st => (
           <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg-surface)', borderRadius: T.radius.inner, border: '1px solid var(--border-subtle)' }}>
             <button type="button" onClick={() => onChange(subtasks.map(s => s.id === st.id ? { ...s, done: !s.done } : s))}
-              style={{ width: 18, height: 18, borderRadius: 6, border: '2px solid ' + (st.done ? 'var(--accent)' : 'var(--border-default)'), background: st.done ? 'var(--accent)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+              style={{ width: 18, height: 18, borderRadius: T.radius.xs, border: '2px solid ' + (st.done ? 'var(--accent)' : 'var(--border-default)'), background: st.done ? 'var(--accent)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
               {st.done && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" fill="none" stroke="var(--text-inverse)" strokeWidth="2" strokeLinecap="round"/></svg>}
             </button>
             <span style={{ flex: 1, fontSize: 'var(--fs-base)', color: st.done ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: st.done ? 'line-through' : 'none' }}>{st.text}</span>

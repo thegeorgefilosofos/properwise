@@ -633,7 +633,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                     </>}
                     actions={
                       <button title="Διαγραφή" onClick={e=>{e.stopPropagation();delTenant(t);}}
-                        style={{ background:'none', border:'none', borderRadius:8, width:T.h.sm, height:T.h.sm, display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-tertiary)', padding:0, flexShrink:0 }}>
+                        style={{ background:'none', border:'none', borderRadius: T.radius.chip, width:T.h.sm, height:T.h.sm, display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-tertiary)', padding:0, flexShrink:0 }}>
                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
                       </button>
                     }>
@@ -732,7 +732,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
               {DTABS.map(tb=>(
                 <button key={tb.id} onClick={()=>setDossierTab(tb.id)} style={{ ...s.tabBtn(dossierTab===tb.id), display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
                   {tb.label}
-                  {(tb.badge??0)>0&&<span style={{ minWidth:18, height:18, borderRadius:8, background:'var(--negative)', color:'var(--text-inverse)', fontSize: 'var(--fs-xs)', fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'0 4px' }}>{tb.badge}</span>}
+                  {(tb.badge??0)>0&&<span style={{ minWidth:18, height:18, borderRadius: T.radius.chip, background:'var(--negative)', color:'var(--text-inverse)', fontSize: 'var(--fs-xs)', fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'0 4px' }}>{tb.badge}</span>}
                 </button>
               ))}
             </div>

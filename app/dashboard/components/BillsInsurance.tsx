@@ -195,7 +195,7 @@ const INSURANCE_COMPANIES: InsuranceCompany[] = [
     ] },
   { value: 'cosmote_ins',   label: 'Magenta Insurance',         url: 'https://www.magentainsurance.gr/home', agent_label: 'Online, Magenta',
     propertyTypes: ['Κύρια Κατοικία','Εξοχική Κατοικία'],
-    note: 'Πρώην COSMOTE Insurance. Σύγκριση και online ασφάλιση κατοικίας από 90 €/έτος, με δυνατότητα έκπτωσης έως 20% στον ΕΝΦΙΑ υπό προϋποθέσεις.',
+    note: 'Πρώην COSMOTE Insurance. Σύγκριση και online ασφάλιση κατοικίας από 90€/έτος, με δυνατότητα έκπτωσης έως 20% στον ΕΝΦΙΑ υπό προϋποθέσεις.',
     plans: [
       { id: 'ci_basic',   name: 'Magenta Home Βασικό',       monthly: 8.00,  annual: 96,  covers: ['Πυρκαγιά','Θραύση Σωληνώσεων','Φυσικά Φαινόμενα','Βραχυκύκλωμα','Αστική Ευθύνη'], earthquake: false, flood: false, natural: false },
       { id: 'ci_plus',    name: 'Magenta Home Πλήρες',       monthly: 14.50, annual: 139, covers: ['Πυρκαγιά','Κλοπή','Πλημμύρα','Φυσικά Φαινόμενα','Αστική Ευθύνη'], earthquake: false, flood: true,  natural: true  },
@@ -296,10 +296,10 @@ function computeLiveQuotes(sqm: number, propValue: number, contentValue: number,
   // Συντελεστές τιμολόγησης από τα χαρακτηριστικά του ακινήτου
   const sqmFactor    = Math.max(0.7, Math.min(1.5, sqm / 100));
   const valueFactor  = Math.max(0.8, Math.min(2.0, propValue / 150000));
-  // ΣΗΜΕΙΟ ΑΝΑΦΟΡΑΣ, ΟΧΙ ΔΗΛΩΜΕΝΗ ΑΞΙΑ. Το 20.000 € είναι ο παρονομαστής της
+  // ΣΗΜΕΙΟ ΑΝΑΦΟΡΑΣ, ΟΧΙ ΔΗΛΩΜΕΝΗ ΑΞΙΑ. Το 20.000€ είναι ο παρονομαστής της
   // κλίμακας, όχι οικοσκευή που ισχυριζόμαστε ότι έχει ο χρήστης. Ήταν γραμμένο
   // `(contentValue || 20000) / 20000`, που δίνει ακριβώς 1 όταν λείπει η τιμή —
-  // σωστό αριθμητικά, αλλά διαβαζόταν σαν να υποθέτουμε οικοσκευή 20.000 €.
+  // σωστό αριθμητικά, αλλά διαβαζόταν σαν να υποθέτουμε οικοσκευή 20.000€.
   // Χωρίς δηλωμένη αξία δεν προσαρμόζουμε καθόλου: συντελεστής 1.
   const CONTENT_REFERENCE = 20000;
   const contentF     = contentValue > 0 ? Math.max(0.9, Math.min(1.4, contentValue / CONTENT_REFERENCE)) : 1;
@@ -592,7 +592,7 @@ export function SubscriptionSection({ label, catalog, active, onToggle, onUpdate
           const entry = active.find(a => a.service === svc.value);
           const on = !!entry;
           const amount = entry ? subShare(svc, entry) : planMonthly(entryPlan(svc));
-          // ΤΟ ΜΗΔΕΝ ΔΕΝ ΕΙΝΑΙ ΤΙΜΗ. Ένα «0,00 €» σε πλακίδιο υπηρεσίας λέει
+          // ΤΟ ΜΗΔΕΝ ΔΕΝ ΕΙΝΑΙ ΤΙΜΗ. Ένα «0,00€» σε πλακίδιο υπηρεσίας λέει
           // «δεν πληρώνω γι' αυτό», ενώ σημαίνει «δεν ξέρουμε ακόμη πόσο».
           const priceLabel = amount > 0 ? fe(amount) : ABSENT_SHORT;
           return (
@@ -921,7 +921,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
 
   const insPlan    = (insCompany?.plans ?? []).find(p => p.id === insPlanId);
   const insCost    = parseFloat(insCustomPrice) || insPlan?.monthly || 0;
-  /** Ξέρουμε ασφάλιστρο; Χωρίς αυτό, το «0,00 €» θα σήμαινε «δεν πληρώνω». */
+  /** Ξέρουμε ασφάλιστρο; Χωρίς αυτό, το «0,00€» θα σήμαινε «δεν πληρώνω». */
 
   const effectiveCovers     = insEditCovers && insCustomCovers ? insCustomCovers.split(',').map(s => s.trim()).filter(Boolean) : (insPlan?.covers || []);
   const effectiveEarthquake = insEditCovers ? insCustomEarthquake : (insPlan?.earthquake || false);
@@ -986,7 +986,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
     : INSURANCE_COMPANIES;
 
   const insOptions     = relevantCompanies.filter(c => c.value && c.label).map(c => ({ value: c.value!, label: c.label! }));
-  // ΤΟ ΚΟΜΜΑ ΕΙΝΑΙ Η ΥΠΟΔΙΑΣΤΟΛΗ. «HOME EXTRA, ~14,50 €» έβαζε δύο κόμματα σε
+  // ΤΟ ΚΟΜΜΑ ΕΙΝΑΙ Η ΥΠΟΔΙΑΣΤΟΛΗ. «HOME EXTRA, ~14,50€» έβαζε δύο κόμματα σε
   // πέντε λέξεις, με δύο εντελώς διαφορετικές δουλειές: το ένα χώριζε όνομα από
   // τιμή, το άλλο ευρώ από λεπτά. Ο διαχωριστής της εφαρμογής είναι το «·».
   //
@@ -1022,7 +1022,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
   // ανάγνωση» και «δεν υπάρχει γραμμή» καταλήγουν στην ΙΔΙΑ κατάσταση.
   //
   // Με φύλακα μόνο το `loading`, 1,2 δευτερόλεπτα μετά το άνοιγμα της καρτέλας
-  // το effect θα έγραφε «Hellas Direct», 8,50 € και ΚΕΝΗ ημερομηνία λήξης πάνω
+  // το effect θα έγραφε «Hellas Direct», 8,50€ και ΚΕΝΗ ημερομηνία λήξης πάνω
   // από την πραγματική ασφαλιστική του χρήστη — σιωπηλά, χωρίς καμία ενέργειά
   // του. Θα έσβηνε μαζί και την υποχρέωση και το insight που διαβάζουν το
   // insurance_expiry, δηλαδή ΑΚΡΙΒΩΣ την υπενθύμιση που αυτή η διόρθωση
@@ -1727,7 +1727,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               sub={`${monthNom(Number(curMonth.slice(5, 7)) - 1)}, με τα ποσοστά που όρισες.`}
               right={<span style={{ ...TT.kpi, fontSize: 18 }}>{fe(chargesTotal)}</span>}/>
 
-            {/* Η ΓΡΑΜΜΗ ΤΟΥ ΦΟΡΟΥ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΤΑΝ ΥΠΑΡΧΕΙ ΦΟΡΟΣ. Ένα «0,00 €
+            {/* Η ΓΡΑΜΜΗ ΤΟΥ ΦΟΡΟΥ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΤΑΝ ΥΠΑΡΧΕΙ ΦΟΡΟΣ. Ένα «0,00€
                 αντίστροφη χρέωση» σε ιδιώτη είναι θόρυβος με νομικό ύφος. */}
             {isBusiness && vatTotal > 0 && (
               <p style={{ ...TT.bodySm, margin: '0 0 12px', lineHeight: 1.6 }}>

@@ -13,7 +13,7 @@
 // 2. Εθνικότητα, αριθμός ταυτότητας, διεύθυνση, ΑΦΜ, πηγή γνωριμίας, ελεύθερες
 //    ετικέτες, 5 αστέρια, VIP, τμηματοποίηση. Δεδομένα προσωπικού χαρακτήρα και
 //    πεδία πωλήσεων που δεν προκαλούσαν ΚΑΜΙΑ ενέργεια στην εφαρμογή.
-// 3. Το κατώφλι VIP στα 1.000 €: επινοημένο και άσχετο με το μέγεθος του ακινήτου.
+// 3. Το κατώφλι VIP στα 1.000€: επινοημένο και άσχετο με το μέγεθος του ακινήτου.
 // 4. Το KPI «Επαναλαμβανόμενοι». Ο επισκέπτης του Airbnb έρχεται μία φορά· το
 //    νούμερο θα έδειχνε 0 για πάντα, δηλαδή κατέλαβε μια θέση KPI για να πει
 //    ψέματα για την αξία του προϊόντος.
@@ -886,7 +886,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
       title: 'Διαμονές επισκεπτών',
       // Οι επικεφαλίδες φέρουν το «(€)» ώστε ο κοινός exporter να δώσει στη
       // στήλη μορφή νομίσματος και ζωντανό άθροισμα. Πριν, τα ποσά γράφονταν ως
-      // κείμενο «1.234,56 €» και το φύλλο των βραχυχρόνιων διαμονών — αυτό
+      // κείμενο «1.234,56€» και το φύλλο των βραχυχρόνιων διαμονών — αυτό
       // ακριβώς που πάει στον λογιστή για τη δήλωση — δεν αθροιζόταν πουθενά.
       headers: [
         'Επισκέπτης', 'Ακίνητο', 'Άφιξη', 'Αναχώρηση', 'Νύχτες', 'Κανάλι',
@@ -899,7 +899,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   };
 
   // ── Κοινά inline styles ────────────────────────────────────────────────────
-  const inp: React.CSSProperties = { background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, height: T.h.lg, width: '100%', outline: 'none', boxSizing: 'border-box', fontFamily: T.font.sans };
+  const inp: React.CSSProperties = { background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, height: T.h.lg, width: '100%', outline: 'none', boxSizing: 'border-box', fontFamily: T.font.sans };
   const lbl: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', display: 'block', marginBottom: 8, fontFamily: T.font.sans };
   // Το φίλτρο κάθεται στην ίδια σειρά με το πεδίο αναζήτησης, οπότε παίρνει το
   // ύψος του πεδίου. Με `minHeight: T.h.sm` και γέμισμα 8 έβγαινε 32 δίπλα σε 40.
@@ -992,7 +992,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               το ταβάνι των 280 κρατά το πεδίο στο ίδιο μέγεθος. */
           style={{ ...inp, maxWidth: 280, width: 'auto', flex: '1 1 240px' }} />
         {/* Ένα φίλτρο και είναι το χρήσιμο. Τα «VIP / Επαναλαμβανόμενοι /
-            Με επισήμανση» έφυγαν: το πρώτο είχε επινοημένο κατώφλι 1.000 €, το
+            Με επισήμανση» έφυγαν: το πρώτο είχε επινοημένο κατώφλι 1.000€, το
             δεύτερο θα ήταν πάντα κενό, το τρίτο ήταν η μαύρη λίστα. */}
         <button style={chip(undeclaredOnly)} onClick={() => setUndeclaredOnly(v => !v)}>Με αδήλωτες διαμονές</button>
       </div>
@@ -1024,7 +1024,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                 </>}
                 actions={
                   <button title="Διαγραφή" onClick={e => { e.stopPropagation(); del(c); }}
-                    style={{ background: 'none', border: 'none', borderRadius: 8, width: T.h.sm, height: T.h.sm, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0, flexShrink: 0 }}>
+                    style={{ background: 'none', border: 'none', borderRadius: T.radius.chip, width: T.h.sm, height: T.h.sm, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0, flexShrink: 0 }}>
                     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                   </button>
                 }>
@@ -1062,7 +1062,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                 {linked.length > 0 && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 2 }}>
                     {linked.map(p => (
-                      <button key={p.id} onClick={e => { e.stopPropagation(); onSelectProperty?.(p.id); }} title={`Άνοιγμα: ${p.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', padding: '4px 9px', borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--accent)', cursor: 'pointer', fontFamily: T.font.sans }}>
+                      <button key={p.id} onClick={e => { e.stopPropagation(); onSelectProperty?.(p.id); }} title={`Άνοιγμα: ${p.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', padding: '4px 9px', borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--accent)', cursor: 'pointer', fontFamily: T.font.sans }}>
                         <svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5 12 3l9 6.5" /><path d="M5 10v10h14V10" /></svg>{p.name}
                       </button>
                     ))}
@@ -1119,7 +1119,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                   onKeyDown={e => { if (e.key === 'Escape' && reportYearMenu) { e.stopPropagation(); setReportYearMenu(false); } }}>
                   <button type="button" onClick={() => setReportYearMenu(m => !m)}
                     aria-haspopup="listbox" aria-expanded={reportYearMenu}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: T.h.sm, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.mono, fontSize: 'var(--fs-base)', fontWeight: 700, cursor: 'pointer' }}>
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: T.h.sm, padding: '0 10px', borderRadius: T.radius.chip, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.mono, fontSize: 'var(--fs-base)', fontWeight: 700, cursor: 'pointer' }}>
                     {reportYear}
                     <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: reportYearMenu ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', opacity: 0.7 }}><path d="m6 9 6 6 6-6" /></svg>
                   </button>
@@ -1143,7 +1143,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                       <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 50, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, boxShadow: 'var(--elev-3)', padding: 6, minWidth: 96, maxHeight: 220, overflowY: 'auto' }}>
                         {yearsAvail.map(y => (
                           <button key={y} type="button" onClick={() => { setReportYear(y); setReportYearMenu(false); }}
-                            style={{ display: 'block', width: '100%', padding: '7px 10px', borderRadius: 8, border: 'none', background: y === reportYear ? 'var(--accent-dim)' : 'transparent', color: y === reportYear ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.mono, fontSize: 'var(--fs-base)', fontWeight: y === reportYear ? 700 : 500, cursor: 'pointer', textAlign: 'left' }}>{y}</button>
+                            style={{ display: 'block', width: '100%', padding: '7px 10px', borderRadius: T.radius.chip, border: 'none', background: y === reportYear ? 'var(--accent-dim)' : 'transparent', color: y === reportYear ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.mono, fontSize: 'var(--fs-base)', fontWeight: y === reportYear ? 700 : 500, cursor: 'pointer', textAlign: 'left' }}>{y}</button>
                         ))}
                       </div>
                     </>
@@ -1166,7 +1166,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               {statTile('Προμήθειες πλατφορμών', tot.platformFees > 0 ? fe(tot.platformFees) : fe(0), { title: 'Δαπάνη που εκπίπτει. ΔΕΝ μειώνει το δηλωτέο έσοδο.' })}
               {/* ΤΟ ΠΟΣΟΣΤΟ ΠΕΡΝΑ ΑΠΟ ΤΟΝ ΜΟΡΦΟΠΟΙΗΤΗ. Γραφόταν `${occ.pct}%`,
                   δηλαδή ο ωμός αριθμός με τελεία: «87.5%» ακριβώς δίπλα σε
-                  «1.234,56 €» της ίδιας γραμμής — δύο συστήματα αρίθμησης σε
+                  «1.234,56€» της ίδιας γραμμής — δύο συστήματα αρίθμησης σε
                   ένα πλαίσιο και στα ελληνικά η τελεία χωρίζει χιλιάδες. */}
               {statTile(
                 'Πληρότητα',
@@ -1224,15 +1224,15 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                         aria-label={`${r.label}: ${fe(r.revenue)}, ${r.nights} νύχτες, ${r.count} ${r.count === 1 ? 'διαμονή' : 'διαμονές'}`}>
                         {/* ΤΡΕΙΣ ΣΤΗΛΕΣ, ΩΣΤΕ ΤΑ ΕΥΡΩ ΝΑ ΠΕΦΤΟΥΝ ΤΟ ΕΝΑ ΚΑΤΩ ΑΠΟ
                             ΤΟ ΑΛΛΟ. Ηταν ένα `span` με ποσό και μετρήσεις μαζί,
-                            στοιχισμένο δεξιά: «3.400,00 € 20 νύχτες · 5 διαμονές»
-                            και από κάτω «400,00 € 4 νύχτες · 1 διαμονές». Καμία
+                            στοιχισμένο δεξιά: «3.400,00€ 20 νύχτες · 5 διαμονές»
+                            και από κάτω «400,00€ 4 νύχτες · 1 διαμονές». Καμία
                             κάθετη δεν έπεφτε πάνω σε άλλη. */}
                         <div className="cl-ch-head">
                           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
                           <span style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>{fe(r.revenue)}</span>
                           <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }}>{r.nights} νύχτες · {r.count} {r.count === 1 ? 'διαμονή' : 'διαμονές'}</span>
                         </div>
-                        <div style={{ height: 8, borderRadius: 6, background: 'var(--ring-track)', overflow: 'hidden', marginTop: 6 }}>
+                        <div style={{ height: 8, borderRadius: T.radius.xs, background: 'var(--ring-track)', overflow: 'hidden', marginTop: 6 }}>
                           <div className="cl-ch-fill" style={{ width: `${pct}%` }} />
                         </div>
                         {r.unresolved > 0 && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>{r.unresolved} με απροσδιόριστο ποσό</div>}
@@ -1329,7 +1329,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               <div style={{ ...lbl, marginBottom: 8 }}>Συνδεδεμένα ακίνητα</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {(propsByClient.get(dc.id) || []).map(p => (
-                  <span key={p.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '6px 11px', borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+                  <span key={p.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '6px 11px', borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
                     <button onClick={() => onSelectProperty?.(p.id)} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: T.font.sans }}>{p.name}</button>
                     {/* 15 δεν υπάρχει στην κλίμακα (…13, 14, 16…) — το δίδυμό
                         του στα αρχικά της κεφαλίδας διορθώθηκε, αυτό είχε μείνει. */}
@@ -1916,7 +1916,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
                   {toImport.slice(0, 40).map((d, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, color: 'var(--text-secondary)', padding: '6px 10px', background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: 8 }}>
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, color: 'var(--text-secondary)', padding: '6px 10px', background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.chip }}>
                       <span>{fd(d.check_in)} έως {fd(d.check_out)}</span>
                       <span style={{ color: 'var(--text-tertiary)' }}>{d.nights} νύχτες{d.blocked ? ' · μπλοκάρισμα' : ''}</span>
                     </div>

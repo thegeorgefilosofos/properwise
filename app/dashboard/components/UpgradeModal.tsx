@@ -41,7 +41,7 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
   // ΚΑΝΟΝΑΣ: δεν προτείνουμε ΠΟΤΕ πλάνο που δεν λύνει το πρόβλημα. Ούτε αυτό που
   // ήδη έχει (θα έγραφε «Προτεινόμενο» και «Το τρέχον πλάνο σου» στο ίδιο κουτί),
   // ούτε ένα που δεν χωράει ούτε ένα ακίνητο παραπάνω — που ήταν το χειρότερο:
-  // πλήρωνες 9,90 € για ακριβώς τη χωρητικότητα που είχες ήδη εξαντλήσει.
+  // πλήρωνες 9,90€ για ακριβώς τη χωρητικότητα που είχες ήδη εξαντλήσει.
   const recommended: PlanId | null =
     atCeiling || allowed === current || PLANS[allowed].maxProperties <= currentCount ? null : allowed;
 
@@ -57,9 +57,9 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
             Για περισσότερα, στήνουμε πακέτο στα μέτρα σου. Γράψε μας στο <strong style={{ color: 'var(--text-primary)' }}>{IDENTITY.supportEmail}</strong> και απαντάμε την ίδια ημέρα.
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <button onClick={onClose} style={{ height: 44, padding: '0 20px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Κλείσιμο</button>
+            <button onClick={onClose} style={{ height: T.h.lg, padding: '0 20px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Κλείσιμο</button>
             <a href={`mailto:${IDENTITY.supportEmail}?subject=Χαρτοφυλάκιο%20άνω%20των%20ακινήτων%20του%20πακέτου`}
-              style={{ height: 44, padding: '0 24px', borderRadius: T.radius.pill, background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Επικοινώνησε μαζί μας</a>
+              style={{ height: T.h.lg, padding: '0 24px', borderRadius: T.radius.pill, background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Επικοινώνησε μαζί μας</a>
           </div>
         </div>
       </div>
@@ -97,7 +97,7 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
                   <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{feAuto(p.priceMonthly)}</span>
                   {p.priceMonthly > 0 && <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>/μήνα</span>}
                 </div>
-                {/* ΤΟ «ΓΙΑ ΠΑΝΤΑ» ΚΑΤΩ ΑΠΟ ΤΟ 0,00 € ΗΤΑΝ ΥΠΟΣΧΕΣΗ ΠΟΥ ΔΕΝ ΤΗΡΕΙΤΑΙ.
+                {/* ΤΟ «ΓΙΑ ΠΑΝΤΑ» ΚΑΤΩ ΑΠΟ ΤΟ 0,00€ ΗΤΑΝ ΥΠΟΣΧΕΣΗ ΠΟΥ ΔΕΝ ΤΗΡΕΙΤΑΙ.
                     Το «Χωρίς συνδρομή» δεν είναι δωρεάν πακέτο: είναι η κατάσταση
                     ΩΣΠΟΥ να διαλέξεις πακέτο, με ένα ακίνητο και χωρίς τα φορολογικά
                     εργαλεία. Δωρεάν είναι μόνο η δοκιμή και οι μήνες από συστάσεις.
@@ -126,8 +126,8 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
         </div>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button onClick={onClose} style={{ height: 44, padding: '0 20px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Όχι τώρα</button>
-          <button onClick={onManage} style={{ height: 44, padding: '0 24px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Δες τα πακέτα και αναβάθμισε</button>
+          <button onClick={onClose} style={{ height: T.h.lg, padding: '0 20px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Όχι τώρα</button>
+          <button onClick={onManage} style={{ height: T.h.lg, padding: '0 24px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Δες τα πακέτα και αναβάθμισε</button>
         </div>
       </div>
     </div>

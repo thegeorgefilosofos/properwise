@@ -57,7 +57,7 @@ export function PortalBar({ year, onYear, back }: {
               υποσέλιδο. Το ύψος είναι 44, όσο θέλει ένα δάχτυλο. */}
           {back && (
             <a href={back.href} aria-label={back.label} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8, height: 44, padding: '0 12px 0 8px',
+              display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.lg, padding: '0 12px 0 8px',
               marginLeft: -8, borderRadius: T.radius.btn, color: 'var(--text-secondary)',
               textDecoration: 'none', fontSize: 13, fontWeight: 600, fontFamily: T.font.sans, whiteSpace: 'nowrap',
             }}>

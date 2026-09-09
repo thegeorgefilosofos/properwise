@@ -57,9 +57,9 @@ const supabase = createSupabaseClient()
 //
 // 2. «Αναβάθμιση N συσκευών → X €/χρόνο» σε πράσινο πλαίσιο. Τρία επινοημένα
 //    μαζί: σταθερά 0,5 (κάθε αντικατάσταση κόβει τη μισή κατανάλωση), η κλάση A
-//    μετρημένη στα «κακά» και τιμή ρεύματος 0,22 €/kWh που σωζόταν σιωπηλά ως
+//    μετρημένη στα «κακά» και τιμή ρεύματος 0,22€/kWh που σωζόταν σιωπηλά ως
 //    δεδομένο σε κάθε άκυρη είσοδο — και χωρίς να αφαιρείται το κόστος αγοράς
-//    («θα κερδίσεις 180 €/χρόνο» για συσκευή 1.200 €). → Μένει μόνο η ΜΕΤΡΗΣΗ:
+//    («θα κερδίσεις 180€/χρόνο» για συσκευή 1.200€). → Μένει μόνο η ΜΕΤΡΗΣΗ:
 //    τι κοστίζει η συσκευή τον μήνα, ΣΤΗΝ ΤΙΜΗ ΠΟΥ ΔΗΛΩΝΕΙ Ο ΛΟΓΑΡΙΑΣΜΟΣ ΣΟΥ.
 //    Χωρίς τιμή δεν εμφανίζεται κόστος: εμφανίζονται kWh και ζητείται η τιμή.
 //
@@ -166,7 +166,7 @@ function AnalysisCards({items,repairs,kwhPrice,kwhControl}:{items:InventoryItem[
   const byCategory = [...INVENTORY_CATEGORIES].map(cat=>{const ci=items.filter(i=>i.category===cat);return{cat,count:ci.length,val:ci.reduce((s,i)=>s+calcCurrentValue(i),0)}}).filter(x=>x.count>0)
   const maxVal = Math.max(...byCategory.map(x=>x.val),1)
   // ΚΑΤΑΝΟΜΗ ΧΩΡΙΣ ΤΙΠΟΤΑ ΝΑ ΚΑΤΑΝΕΜΗΘΕΙ. Οταν κανένα αντικείμενο δεν έχει
-  // δηλωμένη τιμή αγοράς, η κάρτα τύπωνε τέσσερις γραμμές «0,00 €» με μπάρες
+  // δηλωμένη τιμή αγοράς, η κάρτα τύπωνε τέσσερις γραμμές «0,00€» με μπάρες
   // ίδιου μήκους: ένα γράφημα που δείχνει ότι όλα είναι ίσα με το μηδέν. Το
   // πλήθος ανά κατηγορία το λέει ήδη το πλακίδιο «Αντικείμενα» και το φίλτρο.
   const hasAnyValue = byCategory.some(x=>x.val>0)
@@ -439,7 +439,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                     </div>
                   }
                   {selectMode
-                    ?<div style={{position:'absolute',top:8,left:8,background:'rgba(0,0,0,0.35)',borderRadius:8,padding: 4,backdropFilter:'blur(4px)'}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
+                    ?<div style={{position:'absolute',top:8,left:8,background:'rgba(0,0,0,0.35)',borderRadius: T.radius.chip,padding: 4,backdropFilter:'blur(4px)'}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
                     :<>
                       <div style={{position:'absolute',top:8,left:8}} onClick={e=>e.stopPropagation()}>
                         <InlineConditionEdit item={item} onUpdate={onUpdateCondition}/>
@@ -450,7 +450,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                     </>}
                   {(item.energy_class||photos.length>1)&&<div style={{position:'absolute',bottom:8,left:8,display:'flex',gap:4,alignItems:'center'}}>
                     {item.energy_class&&<EnergyBadge cls={item.energy_class}/>}
-                    {photos.length>1&&<span style={{padding:'2px 6px',borderRadius:6,background:'rgba(0,0,0,0.6)',color:'var(--on-media)',fontSize: 'var(--fs-xs)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums'}}>+{photos.length-1}</span>}
+                    {photos.length>1&&<span style={{padding:'2px 6px',borderRadius: T.radius.xs,background:'rgba(0,0,0,0.6)',color:'var(--on-media)',fontSize: 'var(--fs-xs)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums'}}>+{photos.length-1}</span>}
                   </div>}
                 </div>
                 <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:8,flex:1}}>
@@ -459,7 +459,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                       <p className="po-elide" style={{fontSize:14,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:2,lineHeight:1.3}}>{item.name}</p>
                       <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{item.category}{item.room?` · ${item.room}`:''}</p>
                     </div>
-                    {/* ΤΟ «0,00 €» ΕΦΥΓΕ ΑΠΟ ΤΗ ΘΕΣΗ ΤΗΣ ΑΠΑΝΤΗΣΗΣ. Ενα αντικείμενο
+                    {/* ΤΟ «0,00€» ΕΦΥΓΕ ΑΠΟ ΤΗ ΘΕΣΗ ΤΗΣ ΑΠΑΝΤΗΣΗΣ. Ενα αντικείμενο
                         χωρίς δηλωμένη τιμή αγοράς δεν αξίζει μηδέν: δεν ξέρουμε πόσο
                         αξίζει. Και η ετικέτα «ΤΡΕΧΟΥΣΑ ΑΞΙΑ» γραφόταν σε κάθε μία από
                         τις δεκατρείς κάρτες· λέγεται μόνο όταν υπάρχει ποσό να
@@ -569,7 +569,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
   const [repairs,setRepairs] = useState<InventoryRepair[]>([])
   const [handovers,setHandovers] = useState<InventoryHandover[]>([])
   const [schedules,setSchedules] = useState<MaintenanceSchedule[]>([])
-  // ΚΑΜΙΑ ΠΡΟΕΠΙΛΟΓΗ 0,22 €/kWh. Ήταν σταθερά που (α) πολλαπλασίαζε κάθε συσκευή
+  // ΚΑΜΙΑ ΠΡΟΕΠΙΛΟΓΗ 0,22€/kWh. Ήταν σταθερά που (α) πολλαπλασίαζε κάθε συσκευή
   // και (β) ΓΡΑΦΟΤΑΝ ΣΤΗ ΒΑΣΗ ως δήλωση του χρήστη σε κάθε άκυρη είσοδο. Η τιμή
   // έρχεται από τον λογαριασμό ρεύματος που το app ήδη διαβάζει (bills_electricity)
   // ή από ρητή δήλωση. Όσο λείπει, δείχνουμε kWh και όχι ευρώ.
@@ -922,13 +922,13 @@ export default function TabInventory({propertyId,userId,profileType='individual'
         : page==='handover' ? null : (
             // ΚΑΝΕΝΑ ΜΗΔΕΝΙΚΟ ΠΛΑΚΙΔΙΟ. Ρεύμα εμφανίζεται μόνο όταν υπάρχει
             // μετρημένη κατανάλωση, κόστος αντικατάστασης μόνο όταν έχει δηλωθεί
-            // έστω μία φορά. Ένα πλακίδιο που γράφει «0,00 €» δεν λέει «δεν
+            // έστω μία φορά. Ένα πλακίδιο που γράφει «0,00€» δεν λέει «δεν
             // υπάρχει μέτρηση», λέει «μετρήσαμε μηδέν» — και είναι ψέμα.
             <KPIGrid items={[
               {label:'Αντικείμενα',value:fn(items.length),sub:`${categoryCount} ${categoryCount===1?'κατηγορία':'κατηγορίες'}`},
               // ΤΟ ΙΔΙΟ ΠΛΑΚΙΔΙΟ ΕΣΠΑΖΕ ΤΟΝ ΚΑΝΟΝΑ ΠΟΥ ΓΡΑΦΕΙ ΑΠΟ ΠΑΝΩ ΤΟΥ. Οταν
               // κανένα αντικείμενο δεν έχει δηλωμένη τιμή αγοράς, το άθροισμα
-              // είναι μηδέν και το πλακίδιο τύπωνε «0,00 €» με υπότιτλο
+              // είναι μηδέν και το πλακίδιο τύπωνε «0,00€» με υπότιτλο
               // «εκτίμηση, όχι φορολογική απόσβεση»: ανακοίνωνε αποτέλεσμα
               // εκτίμησης εκεί που δεν έγινε καμία εκτίμηση. Εμφανίζεται μόνο
               // όταν υπάρχει έστω μία τιμή αγοράς να αθροιστεί.

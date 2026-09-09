@@ -361,7 +361,7 @@ export default function AccountantWorkspace() {
                       {lastMove(c.lastActivity)}
                     </p>
                     {/* ΤΟ ΜΗΔΕΝ ΔΕΝ ΓΡΑΦΕΤΑΙ ΩΣ ΠΟΣΟ. Πελάτης χωρίς καμία
-                        καταχώρηση δεν έχει έσοδα «0,00 €»: δεν έχει μέτρηση. Και
+                        καταχώρηση δεν έχει έσοδα «0,00€»: δεν έχει μέτρηση. Και
                         όποιος δεν απάντησε λείπει, δεν μηδενίζεται. */}
                     {showMoney && money && (
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '6px 0 0', fontFamily: T.font.mono }}>

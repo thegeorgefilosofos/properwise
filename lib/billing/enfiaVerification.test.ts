@@ -51,7 +51,7 @@ function enfiaOracle(sqm: number, zone: string, floor: string, age: string, owne
     if (!rd) return 0
     if (rd.untilYear != null && (year == null || year > rd.untilYear)) return 0
     // ΤΟ ΑΝΩΤΑΤΟ ΟΡΙΟ ΑΞΙΑΣ, ΓΡΑΜΜΕΝΟ ΚΙ ΑΥΤΟ ΜΕ ΤΑ ΔΙΚΑ ΤΟΥ ΝΟΥΜΕΡΑ: πάνω από
-    // 400.000 € κατοικίας, η μείωση του μικρού οικισμού δεν δίνεται καθόλου —
+    // 400.000€ κατοικίας, η μείωση του μικρού οικισμού δεν δίνεται καθόλου —
     // άλλος κανόνας από το `pctOver`, που απλώς μικραίνει το ποσοστό.
     if (r === 'small_settlement_2026' && homeVal > 400000) return 0
     return r === 'insurance' && homeVal > 500000 ? 10 : rd.pct
@@ -70,10 +70,10 @@ const REDS = ENFIA_REDUCTIONS.map(r => r.key)
 {
   // Βασικός: 100 τ.μ. × ΣΒΦ(1501-2500=3,70) × όροφος(2ος=1,01) × παλαιότητα(10-20=1,15).
   const r = estimateENFIA({ sqm: 100, zone: '1501_2500', floor: 'second', age: '10_20', ownership: 100 })!
-  ok('GOLDEN βασικός = 100×3,70×1,01×1,15 = 429,76 €', near(r.basic, 100 * 3.70 * 1.01 * 1.15, 0.02))
-  // Ενότητα Γ: ακίνητο 600.000 € (συνολ. >300k) → 100k×0,20% + 100k×0,30% = 500 €.
-  ok('GOLDEN Ενότητα Γ 600k → 500 €', near(enfiaExtraPropertyTax(600000), 500))
-  ok('GOLDEN Ενότητα Γ 1.000.000 → 2.700 €', near(enfiaExtraPropertyTax(1000000), 2700))
+  ok('GOLDEN βασικός = 100×3,70×1,01×1,15 = 429,76€', near(r.basic, 100 * 3.70 * 1.01 * 1.15, 0.02))
+  // Ενότητα Γ: ακίνητο 600.000€ (συνολ. >300k) → 100k×0,20% + 100k×0,30% = 500€.
+  ok('GOLDEN Ενότητα Γ 600k → 500€', near(enfiaExtraPropertyTax(600000), 500))
+  ok('GOLDEN Ενότητα Γ 1.000.000 → 2.700€', near(enfiaExtraPropertyTax(1000000), 2700))
   // Προσαύξηση >500k: 700.000 → κλιμάκιο 10% επί του κύριου φόρου.
   const s = estimateENFIA({ sqm: 120, zone: '1501_2500', totalValue: 700000 })!
   ok('GOLDEN προσαύξηση 700k = 10% κύριου', near(s.supplementary, (s.basic + s.extra) * 0.10))
@@ -164,8 +164,8 @@ const REDS = ENFIA_REDUCTIONS.map(r => r.key)
   const sqm = 100, zone = ENFIA_ZONE_TAX['1501_2500'] ?? 3.70
   const swra = sqm * zone * 1.00 * enfiaAgeCoef('y15_19')
   const palio = sqm * zone * 1.00 * 1.15
-  ok('κτίσμα 17 ετών: 407 € και όχι 425,50 €', Math.round(swra * 100) / 100 === 407)
-  ok('η υπερχρέωση ήταν 18,50 €', Math.round((palio - swra) * 100) / 100 === 18.50)
+  ok('κτίσμα 17 ετών: 407€ και όχι 425,50€', Math.round(swra * 100) / 100 === 407)
+  ok('η υπερχρέωση ήταν 18,50€', Math.round((palio - swra) * 100) / 100 === 18.50)
 }
 
 // ═══ ΤΟ ΚΛΕΙΔΙ ΠΑΛΑΙΟΤΗΤΑΣ ΔΙΑΒΑΖΕΤΑΙ ΚΑΙ ΕΞΩ ΑΠΟ ΤΟΝ ΕΝΦΙΑ ══════════════════

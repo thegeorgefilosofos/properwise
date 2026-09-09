@@ -206,7 +206,7 @@ function Check({ checked, onChange, label, hint, align='center' }:{ checked:bool
   return (
     <button type="button" role="checkbox" aria-checked={checked} onClick={()=>onChange(!checked)} title={hint}
       style={{ display:'inline-flex', alignItems:align==='start'?'flex-start':'center', gap: 8, background:'none', border:'none', padding:0, cursor:'pointer', fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily: T.font.sans, textAlign:'left', lineHeight:1.5 }}>
-      <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:17, height:17, borderRadius:6, border:`1.5px solid ${checked?'var(--accent)':'var(--border-default)'}`, background:checked?'var(--accent)':'var(--bg-surface)', transition:'border-color 0.14s, background 0.14s', flexShrink:0, marginTop:align==='start'?1:0 }}>
+      <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:17, height:17, borderRadius: T.radius.xs, border:`1.5px solid ${checked?'var(--accent)':'var(--border-default)'}`, background:checked?'var(--accent)':'var(--bg-surface)', transition:'border-color 0.14s, background 0.14s', flexShrink:0, marginTop:align==='start'?1:0 }}>
         {checked&&<svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.3l2.2 2.2L9.5 3.6" stroke="var(--accent-text)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>}
       </span>
       <span>{label}</span>
@@ -277,7 +277,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // φυσικού προσώπου φορολογείται με το ΑΡΘΡΟ 40 (δική του κλίμακα, τεκμαρτή
   // έκπτωση 5%), όχι με το άρθρο 15. Το κριτήριο είναι αν το ΑΚΙΝΗΤΟ ανήκει
   // στην επιχείρηση, όχι αν ο ιδιοκτήτης έχει ΑΦΜ επιχείρησης για άσχετη
-  // δραστηριότητα. Σε ενοίκια 18.000 €, η παραγωγή έβγαζε φόρο 2.012 αντί
+  // δραστηριότητα. Σε ενοίκια 18.000€, η παραγωγή έβγαζε φόρο 2.012 αντί
   // 3.075 και πρόβλεψη 167,70 τον μήνα αντί 292,75: ο χρήστης θα έβρισκε το
   // κενό στο εκκαθαριστικό.
   //
@@ -417,7 +417,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // ζητούνταν εδώ, οπότε η αυτόματη εκτίμηση ΕΝΦΙΑ έπεφτε στις προεπιλογές της
   // (2ος όροφος, 10-20 ετών) και έβγαινε 16,15% ψηλότερα από την ουδέτερη βάση.
   // Και ο `prop_type`: χωρίς αυτόν η εκτίμηση χρέωνε αποθήκη 20 τ.μ. με τον
-  // πίνακα των κατοικιών (39,20 € τον χρόνο) και οικόπεδο 400 τ.μ. με 600,00 €.
+  // πίνακα των κατοικιών (39,20€ τον χρόνο) και οικόπεδο 400 τ.μ. με 600,00€.
   type PropRow     = Pick<UserPropertiesRow, 'id'|'name'|'address'|'rental_mode'|'enfia'|'sqm'|'value'|'year_built'|'floor'|'purchase_price'|'purchase_date'|'prop_type'|'ownership'>
   type PropListRow = Pick<UserPropertiesRow, 'id'|'name'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'ownership'|'prop_type'>
   type InventoryRow = Pick<InventoryItemsRow, 'name'|'purchase_value'|'category'|'purchase_date'>
@@ -501,8 +501,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // Το ερώτημα προς τη βάση δεν ζητούσε τη στήλη `ownership`. Ο ιδιοκτήτης με
   // 33,33% σε τρία κληρονομημένα διαμερίσματα έβλεπε τα ακαθάριστα, τις
   // δαπάνες, τον φόρο και το «βάλε στην άκρη» ΟΛΟΚΛΗΡΟΥ του ακινήτου, χωρίς
-  // καμία γραμμή να το λέει. Μετρημένο: φόρος 8.803 € αντί για 3.835 € και
-  // μηνιαία πρόβλεψη 733,58 € αντί για 319,57 €.
+  // καμία γραμμή να το λέει. Μετρημένο: φόρος 8.803€ αντί για 3.835€ και
+  // μηνιαία πρόβλεψη 733,58€ αντί για 319,57€.
   //
   // Το Ε2 της ΙΔΙΑΣ εφαρμογής έκοβε σωστά στο μερίδιο (lib/billing/e2.ts:144),
   // οπότε οι δύο οθόνες έδιναν διαφορετική απάντηση στην ίδια ερώτηση.
@@ -526,11 +526,11 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     // ΤΟ ΚΑΤΑΧΩΡΗΜΕΝΟ ΠΟΣΟ ΕΙΝΑΙ ΗΔΗ ΔΙΚΟ ΤΟΥ. Το πεδίο ζητά «ΕΝΦΙΑ που
     // πληρώνεις», δηλαδή το νούμερο του εκκαθαριστικού του, που έρχεται από την
     // ΑΑΔΕ ήδη περασμένο από το ποσοστό. Το να ξαναδιαιρεθεί εδώ θα το έκοβε
-    // δεύτερη φορά: 76,51 € αντί για 229,55 € σε μερίδιο ενός τρίτου.
+    // δεύτερη φορά: 76,51€ αντί για 229,55€ σε μερίδιο ενός τρίτου.
     const stored = resolveEnfia({ propertyEnfia: prop?.enfia }).annual
     if(stored>0) return stored
     // Η ΕΚΤΙΜΗΣΗ ΠΑΙΡΝΕΙ ΤΟ ΜΕΡΙΔΙΟ ΜΕΣΑ ΤΗΣ, ΟΧΙ ΑΠ' ΕΞΩ. Ο ΕΝΦΙΑ έχει
-    // κατώφλια (πρόσθετος φόρος στις 400.000 €, προσαύξηση στις 500.000 €,
+    // κατώφλια (πρόσθετος φόρος στις 400.000€, προσαύξηση στις 500.000€,
     // κλιμακωτή μείωση), οπότε η διαίρεση του ετήσιου ποσού στο τέλος χρεώνει
     // τον συνιδιοκτήτη με κλάσμα φόρων που δεν οφείλει καθόλου.
     //
@@ -569,8 +569,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΜΕΤΡΑΕΙ ΜΟΝΟ ΑΠΟ ΤΗ ΧΡΗΣΗ 2026. Ο δημόσιος υπολογιστής
   // το φράζει σωστά με το έτος· εδώ περνούσε ωμό για κάθε χρονιά, οπότε μία
   // είσπραξη σε μετρητά μέσα στο 2025 αφαιρούσε την τεκμαρτή έκπτωση 5% που ο
-  // νόμος έδινε: σε ενοίκια 20.000,00 € ο φόρος έβγαινε 4.600,00 € αντί για
-  // 4.250,00 €· το νούμερο έφευγε στον φάκελο του λογιστή ως δικός μας
+  // νόμος έδινε: σε ενοίκια 20.000,00€ ο φόρος έβγαινε 4.600,00€ αντί για
+  // 4.250,00€· το νούμερο έφευγε στον φάκελο του λογιστή ως δικός μας
   // υπολογισμός. Η σύγκριση ζει πλέον στο lib/billing/consolidate.ts.
   const bankMatters = bankReceiptMatters(year)
   const rentsBank = bankMatters ? (rentsBankOverride ?? collection.viaBank) : true
@@ -582,8 +582,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // ασφαλής και δεν αλλάζει καμία τιμή.
   // ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΡΩΤΑΕΙ ΑΝ ΕΙΣΑΙ ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ. Εδώ περνούσε
   // καρφωμένο «ναι», για κάθε λογαριασμό: το νομικό πρόσωπο με ένα ακίνητο δεν
-  // χρεωνόταν καθόλου το δημοτικό τέλος, δηλαδή 150,00 € σε ακαθάριστα
-  // 30.000,00 €. Η ίδια κρίση γίνεται σωστά δίπλα, στις Αποδόσεις.
+  // χρεωνόταν καθόλου το δημοτικό τέλος, δηλαδή 150,00€ σε ακαθάριστα
+  // 30.000,00€. Η ίδια κρίση γίνεται σωστά δίπλα, στις Αποδόσεις.
   const individualPerson = !(mode==='professional' && elp==='business' && elpForm==='company')
   const shortSummary = useMemo(()=>shortTermYearSummary(stays, year, { sqm: prop?.sqm, isHouse: isHouseType(prop?.prop_type), propertyCount:propCount, individual:individualPerson, rentsPaidViaBank:rentsBank }),[stays,year,prop,propCount,individualPerson,rentsBank])
   const expensesYear = useMemo(()=>expenses.filter(e=>(e.date||'').slice(0,4)===String(year)&&(e.amount||0)>0),[expenses,year])
@@ -598,10 +598,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // βαρύ από τον υπολογισμό μας.
   //
   // ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΕΚΛΕΙΣΕ ΕΔΩ. Ο κανόνας εφαρμοζόταν «όλα ή τίποτα» για ΟΛΗ τη
-  // χρήση: ΜΙΑ απόδειξη 24 € μηδένιζε τις υπολογισμένες προμήθειες και των
+  // χρήση: ΜΙΑ απόδειξη 24€ μηδένιζε τις υπολογισμένες προμήθειες και των
   // υπόλοιπων έντεκα κρατήσεων. Μετρημένο σε χαρτοφυλάκιο δώδεκα κρατήσεων
-  // Airbnb: εκπεστέες δαπάνες 24,00 € αντί για 288,00 €, δηλαδή 264,00 € χαμένη
-  // έκπτωση και 39,60 € επιπλέον φόρος με τον χαμηλότερο συντελεστή. Και ήταν
+  // Airbnb: εκπεστέες δαπάνες 24,00€ αντί για 288,00€, δηλαδή 264,00€ χαμένη
+  // έκπτωση και 39,60€ επιπλέον φόρος με τον χαμηλότερο συντελεστή. Και ήταν
   // αόρατο: ο χρήστης έκανε το σωστό, πέρασε το τιμολόγιο και τιμωρήθηκε.
   //
   // Το τιμολόγιο πλατφόρμας καλύπτει ΠΕΡΙΟΔΟ, τυπικά μήνα, όχι μία κράτηση —
@@ -667,7 +667,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // κατηγορία, που το ίδιο του το αρχείο (lib/inventory/depreciation.ts)
   // δηλώνει ρητά ότι ΔΕΝ είναι φορολογική απόσβεση και ότι δεν πρέπει να μπει
   // σε δήλωση. Το νούμερο όμως περνούσε αυτούσιο στην κατάσταση αποτελεσμάτων
-  // και μείωνε τη φορολογητέα βάση: ένα πλυντήριο 650 € «αποσβενόταν» σε εννιά
+  // και μείωνε τη φορολογητέα βάση: ένα πλυντήριο 650€ «αποσβενόταν» σε εννιά
   // χρόνια (11,1%) αντί για τα δέκα του νόμου και ένα έπιπλο σε δώδεκα (8,3%).
   //
   // Ο πίνακας του άρθρου 24 §4 δίνει τον σωστό συντελεστή για όλα: «λοιπά πάγια
@@ -724,7 +724,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           ekfaContributions: elpForm==='sole'&&ekfa!=='' ? Number(ekfa) : 0,
           // ΤΟ ΤΕΚΜΑΡΤΟ ΕΛΑΧΙΣΤΟ ΕΙΝΑΙ ΠΟΣΟ ΤΟΥ ΕΤΟΥΣ: ακολουθεί τον κατώτατο
           // μισθό. Περνιόταν καρφωμένο στο ποσό του 2025 ό,τι έτος κι αν είχε
-          // διαλέξει ο χρήστης — 700 € φανταστικό εισόδημα στη χρήση 2024.
+          // διαλέξει ο χρήστης — 700€ φανταστικό εισόδημα στη χρήση 2024.
           presumptiveMinIncome: elpForm==='sole'&&grossIncome>0 ? Math.round(minNetIncome.amount*(firstYears?0.5:1)) : undefined, enfia:0,
           climateLevy: regime==='individual_shortterm'?shortSummary.levyShortfall:0, municipalTax: regime==='individual_shortterm'?shortSummary.municipalTax:0,
           otherCashExpenses: Math.max(0,expensesTotal-deductibleTotal), loanPrincipal: Math.max(0,loanAnnual-loanInterestYear), uncollectedIncome:uncollectedRent, brackets: rentalBracketsForYear(year) }
@@ -734,7 +734,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         // που έχει ΗΔΗ αφαιρέσει το εισπραγμένο τέλος (gross_guest_paid −
         // collectedLevy). Περνώντας και το ΣΥΝΟΛΙΚΟ `levy` ως έξοδο, το
         // incomeStatement το έβγαζε δεύτερη φορά. Σε γεμάτη σεζόν 200 νυχτών
-        // υψηλής περιόδου η τρύπα φτάνει 3.000 € — και το ίδιο νούμερο πήγαινε
+        // υψηλής περιόδου η τρύπα φτάνει 3.000€ — και το ίδιο νούμερο πήγαινε
         // στο «πόσα να βάλεις στην άκρη για φόρο» και στο Excel του λογιστή.
         // Το `levyShortfall` είναι ό,τι ΟΦΕΙΛΕΤΑΙ και δεν εισπράχθηκε: μηδέν
         // όταν ο επισκέπτης το πλήρωσε κανονικά. Ο ίδιος κανόνας που εφαρμόζει
@@ -1097,7 +1097,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   if(loading) return (<><SkeletonKPIs n={1} /><Skeleton h={280} r={14} /></>)
 
   const regimeLabel = businessMode ? 'Επιχείρηση (ΕΛΠ)' : (regime==='individual_shortterm' ? 'Βραχυχρόνια μίσθωση' : 'Μακροχρόνια μίσθωση')
-  // Έχει το έτος πραγματική κίνηση; Αν όχι, αντί για τοίχο από «0 €» δείχνουμε μια
+  // Έχει το έτος πραγματική κίνηση; Αν όχι, αντί για τοίχο από «0€» δείχνουμε μια
   // ήρεμη, καθοδηγητική αφετηρία (τι θα ξεκλειδώσει μόλις μπουν δεδομένα).
   const hasActivity = grossIncome>0 || expensesTotal>0 || rentAccruedYear>0 || book.length>0
 
@@ -1151,7 +1151,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       </div>
       {acctLink && (
         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10, padding:'8px 8px 8px 12px', borderRadius:T.radius.inner, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', flexWrap:'wrap' }}>
-          <span style={{ display:'inline-flex', width:24, height:24, borderRadius:8, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', alignItems:'center', justifyContent:'center', color:'var(--text-tertiary)', flexShrink:0 }}>
+          <span style={{ display:'inline-flex', width:24, height:24, borderRadius: T.radius.chip, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', alignItems:'center', justifyContent:'center', color:'var(--text-tertiary)', flexShrink:0 }}>
             <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
           </span>
           <input aria-label="Σύνδεσμος λογιστή" readOnly value={acctLink} onFocus={e=>e.currentTarget.select()} style={{ flex:1, minWidth:150, border:'none', background:'transparent', color:'var(--text-secondary)', fontSize:12, fontFamily: T.font.sans, outline:'none', textOverflow:'ellipsis' }} />
@@ -1239,7 +1239,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               {([['personal','Ενοίκια ιδιώτη'],['business','Μέσω επιχείρησης']] as [typeof elp,string][]).map(([e,label])=>(
                 <button key={e} onClick={()=>setElp(e)}
                   title={e==='personal'?'Άρθρο 40: δική του κλίμακα, με τεκμαρτή έκπτωση 5%':'Άρθρο 15 ή εταιρικός συντελεστής, όταν το ακίνητο ανήκει στην επιχείρηση'}
-                  style={{ height:T.h.sm, padding:'0 12px', border:'none', borderRadius:8, cursor:'pointer', fontFamily:T.font.sans, fontSize:12,
+                  style={{ height:T.h.sm, padding:'0 12px', border:'none', borderRadius: T.radius.chip, cursor:'pointer', fontFamily:T.font.sans, fontSize:12,
                     fontWeight: elp===e?600:400, background: elp===e?'var(--bg-surface)':'transparent',
                     color: elp===e?'var(--text-primary)':'var(--text-secondary)' }}>
                   {label}
@@ -1278,7 +1278,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       {!hasActivity && (
         <div style={{ ...card, padding:'26px 24px' }}>
           <div style={{ display:'flex', alignItems:'flex-start', gap:16, flexWrap:'wrap' }}>
-            <span style={{ width:44, height:44, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)' }}>
+            <span style={{ width:44, height:44, borderRadius: T.radius.popup, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)' }}>
               <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
             </span>
             <div style={{ flex:1, minWidth:240 }}>
@@ -1632,7 +1632,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           const meta = { open:{ c:isCurrent?'var(--accent)':'var(--text-tertiary)', label:'ΑΝΟΙΧΤΟ' }, locked:{ c:'var(--positive)', label:'ΚΛΕΙΣΜΕΝΟ' }, drift:{ c:'var(--warning)', label:'ΑΠΟΚΛΙΣΗ' }, unknown:{ c:'var(--text-tertiary)', label:'ΑΓΝΩΣΤΗ ΚΑΤΑΣΤΑΣΗ' } }[st]
           return (
           <div style={{ ...card, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', borderColor: st==='drift'?'var(--warning)':'var(--border-subtle)' }}>
-            <span style={{ display:'inline-flex', alignItems:'center', gap:6, height:26, padding:'0 10px', borderRadius:8, background: st==='drift' ? `color-mix(in srgb, var(--warning) 12%, transparent)` : 'var(--bg-elevated)', color: st==='drift' ? 'var(--warning)' : 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.5px', fontFamily: T.font.sans }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6, height:26, padding:'0 10px', borderRadius: T.radius.chip, background: st==='drift' ? `color-mix(in srgb, var(--warning) 12%, transparent)` : 'var(--bg-elevated)', color: st==='drift' ? 'var(--warning)' : 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.5px', fontFamily: T.font.sans }}>
               {st==='unknown'?<Unlock size={12}/>:st==='open'?(isCurrent?<span className="live-dot" style={{ width:7, height:7, borderRadius:'50%', background:'var(--accent)', flexShrink:0 }}/>:<Unlock size={12}/>):<Lock size={12}/>}{meta.label}
             </span>
             <span style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily: T.font.sans }}>
@@ -1675,7 +1675,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <div {...fixedCols(taxRows.length, 10, 'stretch')}>
               {taxRows.map((r,i)=>{ const active=statement.taxableIncome>r.from&&statement.taxableIncome<=r.to; const hot=hoverBracket===i; return (
                 <div key={r.range} onMouseEnter={()=>setHoverBracket(i)} onMouseLeave={()=>setHoverBracket(null)}
-                  style={{ padding:'10px 12px', borderRadius:12, minWidth:0, border:`1px solid ${hot?'var(--accent)':active?'var(--border-default)':'var(--border-subtle)'}`, background:active?'var(--bg-elevated)':'var(--bg-surface)', transition:'border-color 0.15s, background 0.15s', cursor:'default' }}>
+                  style={{ padding:'10px 12px', borderRadius: T.radius.popup, minWidth:0, border:`1px solid ${hot?'var(--accent)':active?'var(--border-default)':'var(--border-subtle)'}`, background:active?'var(--bg-elevated)':'var(--bg-surface)', transition:'border-color 0.15s, background 0.15s', cursor:'default' }}>
                   <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:0, fontFamily: T.font.sans }}>{r.range}</p>
                   <p style={{ fontSize:16, fontWeight:700, color:hot?'var(--accent)':'var(--text-primary)', margin:'2px 0 0', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans, transition:'color 0.16s ease' }}>{r.rate}</p>
                 </div>
@@ -1688,7 +1688,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               <p style={{ ...cardTitle, margin:0 }}>Νομικό πρόσωπο</p>
               <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'7px 0 0', fontFamily: T.font.sans, lineHeight:1.6, maxWidth:560 }}>Σταθερός φόρος <strong style={{ color:'var(--text-primary)' }}>22%</strong> επί των καθαρών κερδών, ανεξαρτήτως ύψους εισοδήματος (ΑΕ, ΕΠΕ, ΙΚΕ, ΟΕ, ΕΕ). Στη διανομή μερίσματος προστίθεται φόρος 5% και ισχύει προκαταβολή φόρου για το επόμενο έτος.</p>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:104, height:76, borderRadius:12, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', flexShrink:0 }}>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:104, height:76, borderRadius: T.radius.popup, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', flexShrink:0 }}>
               <span style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>22%</span>
               <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', letterSpacing:'0.5px', textTransform:'uppercase', fontFamily: T.font.sans, marginTop: 4 }}>Συντελεστής</span>
             </div>
@@ -1702,7 +1702,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             αριστερά (αφήνει 406) και η κάρτα άλλα 16, οπότε το πλέγμα πιάνει
             374 και βγάζει μία στήλη των 374. Με ελάχιστο 320 έσπαγε σε δύο
             στήλες ήδη στα 768, δηλαδή 336 η καθεμιά: 38 ΛΙΓΟΤΕΡΑ ΑΠΟ ΤΟ
-            ΤΗΛΕΦΩΝΟ. Εκεί το «75.600,00 €» ζητούσε 96 σε κουτί 91 (κομμένο) ·
+            ΤΗΛΕΦΩΝΟ. Εκεί το «75.600,00€» ζητούσε 96 σε κουτί 91 (κομμένο) ·
             τα ονόματα των ακινήτων 73 σε 62 (με αποσιωπητικά). Στα 834 έβγαζε
             369, πάλι κάτω από το τηλέφωνο. Με ελάχιστο 380 οι δύο στήλες
             ξεκινούν στα 856 του παραθύρου με 380 η καθεμιά, δηλαδή ποτέ
@@ -1751,7 +1751,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               {/* ΤΟ ΖΕΥΓΟΣ ΠΟΥ ΠΡΕΠΕΙ ΝΑ ΔΙΑΒΑΖΕΤΑΙ ΜΑΖΙ. Δύο ποσά που αθροίζουν
                   στο σύνολο των δαπανών, γραμμένα με το χέρι στα 16 και με
                   ετικέτα άλλου ρυθμού από το βιβλίο. Ενα μέγεθος, από το
-                  μακρύτερο: αλλιώς το «1.152,00 €» δίπλα στο «0,00 €» φαίνεται
+                  μακρύτερο: αλλιώς το «1.152,00€» δίπλα στο «0,00€» φαίνεται
                   σημαντικότερο επειδή είναι απλώς μακρύτερο. */}
               {(() => { const row = [
                 ['Εκπιπτόμενα', eur(deductibleTotal)] as const,
@@ -1771,7 +1771,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         {advisory.length>0 && (
         <div ref={advisoryRef} style={card}>
           <button onClick={()=>{ setAdvisoryOpen(o=>!o); setOpenAdvisory(null) }} aria-expanded={advisoryOpen} className="acc-toggle" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' }}>
-            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius:8, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Lightbulb size={15}/></span>
+            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius: T.radius.chip, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Lightbulb size={15}/></span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ ...cardTitle, margin:0 }}>Συμβουλευτική</p>
               <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{advisory.length} ιδέες φορολογίας, χρηματοδότησης και αξιοποίησης, από τα δικά σου δεδομένα.</p>
@@ -1783,10 +1783,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             {advisory.map(a=>{
               const open = openAdvisory===a.id
               return (
-                <div key={a.id} style={{ borderRadius:12, background:'var(--bg-surface)', border:`1px solid ${open?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
+                <div key={a.id} style={{ borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${open?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
                   <button onClick={()=>setOpenAdvisory(open?null:a.id)} aria-expanded={open} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
                     <div style={{ flex:1, minWidth:0 }}>
-                      <span style={{ display:'inline-flex', alignItems:'center', height:20, padding:'0 9px', borderRadius:6, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.5px', textTransform:'uppercase', color:'var(--text-tertiary)' }}>{ADVISORY_TONE[a.tone]}</span>
+                      <span style={{ display:'inline-flex', alignItems:'center', height:20, padding:'0 9px', borderRadius: T.radius.xs, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.5px', textTransform:'uppercase', color:'var(--text-tertiary)' }}>{ADVISORY_TONE[a.tone]}</span>
                       <p style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)', margin:'7px 0 0', lineHeight:1.35 }}>{a.title}</p>
                     </div>
                     <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:open?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
@@ -1817,7 +1817,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         {relevantChanges.length>0 && (
         <div ref={changesRef} style={card}>
           <button onClick={()=>{ setChangesOpen(o=>!o); setOpenChange(null) }} aria-expanded={changesOpen} className="acc-toggle" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' }}>
-            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius:8, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Landmark size={15}/></span>
+            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius: T.radius.chip, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Landmark size={15}/></span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ ...cardTitle, margin:0 }}>Τι άλλαξε το 2026</p>
               <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{relevantChanges.length} επίκαιροι κανόνες για το προφίλ σου.</p>
@@ -1829,7 +1829,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               {relevantChanges.map((u:RegulatoryUpdate)=>{
                 const uo = openChange===u.id
                 return (
-                  <div key={u.id} style={{ borderRadius:12, background:'var(--bg-surface)', border:`1px solid ${uo?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
+                  <div key={u.id} style={{ borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${uo?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
                     <button onClick={()=>setOpenChange(uo?null:u.id)} aria-expanded={uo} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'13px 15px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
                       <p style={{ flex:1, minWidth:0, fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', margin:0, lineHeight:1.35, fontFamily: T.font.sans }}>{u.title}</p>
                       <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:uo?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
@@ -1873,7 +1873,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             {xferOpen&&(
             <div style={{ display:'flex', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:2, gap:2 }}>
               {([['buy','Αγορά'],['sell','Πώληση']] as ['buy'|'sell',string][]).map(([s,label])=>(
-                <button key={s} onClick={()=>setXferSide(s)} style={{ height:T.h.sm, padding:'0 15px', border:'none', borderRadius:8, cursor:'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:xferSide===s?600:500, background:xferSide===s?'var(--accent)':'transparent', color:xferSide===s?'var(--accent-text)':'var(--text-secondary)', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{label}</button>
+                <button key={s} onClick={()=>setXferSide(s)} style={{ height:T.h.sm, padding:'0 15px', border:'none', borderRadius: T.radius.chip, cursor:'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:xferSide===s?600:500, background:xferSide===s?'var(--accent)':'transparent', color:xferSide===s?'var(--accent-text)':'var(--text-secondary)', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{label}</button>
               ))}
             </div>
             )}
@@ -1888,7 +1888,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               <span style={{ color:'var(--text-tertiary)' }}>€</span>
             </label>
             {xferSide==='buy'&&(
-              <Check checked={xferFirstHome} onChange={setXferFirstHome} label="Πρώτη κατοικία" hint="Απαλλαγή φόρου μεταβίβασης έως το όριο αξίας (200.000 € άγαμος / 250.000 € έγγαμος)." />
+              <Check checked={xferFirstHome} onChange={setXferFirstHome} label="Πρώτη κατοικία" hint="Απαλλαγή φόρου μεταβίβασης έως το όριο αξίας (200.000€ άγαμος / 250.000€ έγγαμος)." />
             )}
             <Check checked={xferAgent} onChange={setXferAgent} label="Μεσίτης" hint="Μεσιτική αμοιβή ~2% + ΦΠΑ." />
           </div>
@@ -1936,11 +1936,11 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <span style={{ width:104, flexShrink:0 }}/>
             <div style={{ flex:1, display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
               <span style={{ flex:1, textAlign:'right', display:'inline-flex', alignItems:'center', justifyContent:'flex-end', gap:6, fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>
-                <span style={{ width:8, height:8, borderRadius:2, background:'var(--series-out)' }}/>Έξοδα
+                <span style={{ width:8, height:8, borderRadius: T.radius.hair, background:'var(--series-out)' }}/>Έξοδα
               </span>
               <span style={{ width:1, flexShrink:0 }}/>
               <span style={{ flex:1, display:'inline-flex', alignItems:'center', gap:6, fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>
-                <span style={{ width:8, height:8, borderRadius:2, background:'var(--series-in)' }}/>Έσοδα
+                <span style={{ width:8, height:8, borderRadius: T.radius.hair, background:'var(--series-in)' }}/>Έσοδα
               </span>
             </div>
             <span style={{ width:110, flexShrink:0, textAlign:'right', fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>Καθαρή ροή</span>
@@ -1990,7 +1990,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           {trial.length===0?(
             <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-tertiary)', fontFamily: T.font.sans, padding:'2px 0' }}>Δεν υπάρχουν εισπράξεις ή πληρωμές για το {year} ώστε να σχηματιστεί ισοζύγιο.</p>
           ):(
-            <div style={{ borderRadius:12, border:'1px solid var(--border-subtle)', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
+            <div style={{ borderRadius: T.radius.popup, border:'1px solid var(--border-subtle)', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
               <div style={{ minWidth:TRIAL_MIN }}>
               <div style={{ display:'grid', gridTemplateColumns:TRIAL_COLS, gap:8, padding:'9px 14px', background:'var(--bg-elevated)', borderBottom:'1px solid var(--border-subtle)' }}>
                 {[['Κωδικός ΕΛΠ','left'],['Λογαριασμός','left'],['Χρέωση','right'],['Πίστωση','right'],['Υπόλοιπο','right']].map(([h,a])=>(

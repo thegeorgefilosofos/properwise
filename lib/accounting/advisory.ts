@@ -54,7 +54,7 @@ const REFER_LABEL: Record<ReferProfessional, string> = {
 export const referLabel = (r?: ReferProfessional): string | undefined => (r ? REFER_LABEL[r] : undefined)
 
 // Ο ΜΟΡΦΟΠΟΙΗΤΗΣ ΕΥΡΩ ΔΕΝ ΞΑΝΑΓΡΑΦΕΤΑΙ. Αυτός εδώ στρογγυλοποιούσε στο ακέραιο
-// («1.200 €» αντί για «1.200,00 €»), δηλαδή παραβίαζε τον κανόνα των δύο
+// («1.200€» αντί για «1.200,00€»), δηλαδή παραβίαζε τον κανόνα των δύο
 // δεκαδικών σε κάθε πρόταση που παρήγαγε. Ο κανονικός ζει στο lib/core/format.ts
 // και δεν εξαρτάται από React, ακριβώς ώστε να τον βλέπουν και οι βιβλιοθήκες.
 const eur = fe;
@@ -85,7 +85,7 @@ export function buildAdvisory(input: AdvisoryInput, limit = 6): AdvisoryItem[] {
   // 1) Μειωμένη κλίμακα νέων (μόνο επιχειρηματική δραστηριότητα, όχι παθητικά ενοίκια).
   if (age != null && age <= 30) {
     if (business) {
-      const rate = age <= 25 ? '0% έως 20.000 €' : '9% έως 20.000 €'
+      const rate = age <= 25 ? '0% έως 20.000€' : '9% έως 20.000€'
       items.push({
         id: 'youth-business', tone: 'opportunity',
         title: `Μειωμένη κλίμακα νέων, ${age <= 25 ? 'έως 25' : '26–30'} ετών`,

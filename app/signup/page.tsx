@@ -408,11 +408,11 @@ export default function SignupPage() {
                 </p>
               )}
               <button type="button" onClick={acceptOauthConsent} className="auth-hov"
-                style={{ width: '100%', minHeight: 44, borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ width: '100%', minHeight: 44, borderRadius: T.radius.chip, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Συνέχεια
               </button>
               <button type="button" onClick={signOut} disabled={signingOut}
-                style={{ width: '100%', minHeight: 44, marginTop: 10, borderRadius: 8, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ width: '100%', minHeight: 44, marginTop: 10, borderRadius: T.radius.chip, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 {signingOut ? 'Ακύρωση…' : 'Ακύρωση'}
               </button>
             </div>
@@ -514,7 +514,7 @@ export default function SignupPage() {
                   ΚΑΙ ΤΟ ΠΟΣΟ ΓΡΑΦΕΤΑΙ ΟΛΟΚΛΗΡΟ, ΜΕ ΤΟΝ ΚΥΚΛΟ ΤΟΥ. Το επόμενο
                   βήμα μετά την επιβεβαίωση του email είναι το ταμείο, δηλαδή
                   μια κάρτα. Ο άνθρωπος που πάτησε «ετήσια, με δύο μήνες
-                  δωρεάν» πρέπει να δει ΕΔΩ τα 99,00 € που θα δει και εκεί: μια
+                  δωρεάν» πρέπει να δει ΕΔΩ τα 99,00€ που θα δει και εκεί: μια
                   εγγραφή που δείχνει άλλο ποσό από την πληρωμή είναι ο πιο
                   σίγουρος τρόπος να εγκαταλειφθεί το ταμείο.
 
@@ -544,7 +544,7 @@ export default function SignupPage() {
                   ΤΟ ΣΧΗΜΑ ΕΙΝΑΙ ΠΛΕΓΜΑ, ΟΧΙ ΔΥΟ ΠΑΡΑΓΡΑΦΟΙ. Δύο στήλες, δύο
                   σειρές, ένας άξονας αριστερά και ένας δεξιά:
 
-                      Επαγγελματίας+            799,00 €
+                      Επαγγελματίας+            799,00€
                       Ετήσια χρέωση        30 ημέρες δωρεάν
 
                   Αριστερά ΤΙ ΕΙΝΑΙ, δεξιά ΤΙ ΠΛΗΡΩΝΕΙΣ. Η πάνω σειρά κρατά την

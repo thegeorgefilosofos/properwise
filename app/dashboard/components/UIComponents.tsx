@@ -389,7 +389,7 @@ export function NumberInput({
   // ΤΑ ΠΟΣΑ ΣΕ ΕΥΡΩ ΓΡΑΦΟΝΤΑΙ ΩΣ ΠΟΣΑ, ΚΑΙ ΟΤΑΝ ΕΙΝΑΙ ΠΕΔΙΟ.
   //
   // Το πεδίο έδειχνε ό,τι του έδινε ο κώδικας: «3.9» εκεί που ολόκληρη η
-  // εφαρμογή γράφει «3,90 €» και «1112» εκεί που γράφει «1.112,00 €». Δεν
+  // εφαρμογή γράφει «3,90€» και «1112» εκεί που γράφει «1.112,00€». Δεν
   // ήταν αθώο: το ίδιο ποσό εμφανιζόταν με δύο μορφές στην ίδια οθόνη και η
   // τελεία διαβάζεται από Έλληνα ως διαχωριστικό χιλιάδων.
   //
@@ -564,7 +564,7 @@ export function NumberInput({
             // Το ίδιο ποσό φαινόταν δύο διαφορετικά πράγματα σε απόσταση δέκα
             // εικονοστοιχείων: «84,50» μέσα στο πεδίο σε Roboto Mono, με σταθερό
             // βήμα και τελεία-κουκκίδα· το «€» ακριβώς δίπλα του σε Inter. Στην
-            // ίδια κάρτα, το σύνολο «1.152,00 €» έβγαινε πάλι σε Inter. Ο κανόνας
+            // ίδια κάρτα, το σύνολο «1.152,00€» έβγαινε πάλι σε Inter. Ο κανόνας
             // «μία γραμματοσειρά για τους αριθμούς» είχε ήδη γραφτεί για τον
             // πίνακα του Χαρτοφυλακίου· τα πεδία είχαν μείνει έξω.
             //
@@ -855,7 +855,7 @@ export function CustomSelect({
               onClick={() => { onChange(opt.value); setOpen(false); triggerRef.current?.focus(); }}
               style={{
                 padding: '9px 12px',
-                borderRadius: 8,
+                borderRadius: T.radius.chip,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
@@ -1189,7 +1189,7 @@ interface ToggleProps {
 // ═══ Η ΜΠΑΡΑ ΜΑΖΙΚΩΝ ΕΝΕΡΓΕΙΩΝ ════════════════════════════════════════════
 //
 // ΗΤΑΝ ΓΡΑΜΜΕΝΗ ΔΥΟ ΦΟΡΕΣ ΣΤΟ ΧΕΡΙ, στις Εκκρεμότητες και στο Χαρτοφυλάκιο και
-// είχε ΗΔΗ αποκλίνει σε πέντε σημεία: το σήμα του πλήθους με `borderRadius: 6`
+// είχε ΗΔΗ αποκλίνει σε πέντε σημεία: το σήμα του πλήθους με `borderRadius: T.radius.xs`
 // εδώ και `T.radius.pill` εκεί, βάρος 800 έναντι 700, γραμματοσειρά `mono`
 // έναντι `num`, εσωτερική απόσταση κουμπιού 4 έναντι 6 και το κλείσιμο άλλοτε
 // εικονίδιο και άλλοτε ο χαρακτήρας «✕».
@@ -1590,7 +1590,7 @@ export function SegmentControl({ options, value, onChange, ariaLabel }: { option
       display: 'flex',
       background: 'var(--bg-surface)',
       border: '1px solid var(--border-subtle)',
-      borderRadius: 8,
+      borderRadius: T.radius.chip,
       padding: 4,
       gap: 2,
     }}>
@@ -1610,7 +1610,7 @@ export function SegmentControl({ options, value, onChange, ariaLabel }: { option
             fontWeight: value === o.value ? 500 : 400,
             letterSpacing: '0.1px',
             cursor: 'pointer',
-            borderRadius: 6,
+            borderRadius: T.radius.xs,
             border: 'none',
             background: value === o.value ? 'var(--bg-elevated)' : 'transparent',
             color: value === o.value ? 'var(--accent)' : 'var(--text-secondary)',
