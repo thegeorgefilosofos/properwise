@@ -295,33 +295,30 @@ function Instalments({ annual, year }: { annual: number; year: number }) {
 
   return (
     <div style={{ marginTop: 26 }}>
-      <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 300 }}>
+      <div className="po-table-box">
+       <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
+        <table className="po-table" style={{ '--tbl-min': '300px' }}>
           {/* Ίδια τυπογραφία λεζάντας με τον πίνακα κλιμακίων του αδελφού
               υπολογιστή: οι δύο σελίδες διαβάζονται ως ένα εργαλείο. */}
-          <caption style={{ captionSide: 'top', textAlign: 'left', fontSize: 11, fontWeight: 700,
-            letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-            paddingBottom: 10 }}>
-            Οι {ENFIA_INSTALMENTS} δόσεις του {year}
-          </caption>
+          <caption>Οι {ENFIA_INSTALMENTS} δόσεις του {year}</caption>
           <thead>
             <tr>
-              <th scope="col" style={th}>Δόση</th>
-              <th scope="col" style={th}>Καταληκτική ημερομηνία</th>
-              <th scope="col" style={{ ...th, textAlign: 'right' }}>Ποσό</th>
+              <th scope="col">Δόση</th>
+              <th scope="col">Καταληκτική ημερομηνία</th>
+              <th scope="col" className="num">Ποσό</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(row => (
               <tr key={row.no}>
-                <td style={{ ...td, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', width: '1%', whiteSpace: 'nowrap' }}>{row.no}</td>
-                <td style={{ ...td, whiteSpace: 'nowrap' }}>{row.label}</td>
-                <td style={{ ...td, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums',
-                  color: 'var(--text-primary)', fontWeight: 600 }}>{feAuto(row.amount)}</td>
+                <td style={{ fontVariantNumeric: 'tabular-nums', width: '1%', whiteSpace: 'nowrap' }}>{row.no}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{row.label}</td>
+                <td className="num" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{feAuto(row.amount)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+       </div>
       </div>
       {/* ΤΕΣΣΕΡΙΣ ΠΡΟΤΑΣΕΙΣ ΠΕΡΑ ΠΕΡΑ, ΣΕ ΥΨΟΣ ΓΡΑΜΜΗΣ 1,6. Μετρημένο από τον σαρωτή
           στα 1.024, στα 1.280 και στα 1.440: 134 χαρακτήρες ανά γραμμή. Το κείμενο
@@ -336,15 +333,6 @@ function Instalments({ annual, year }: { annual: number; year: number }) {
     </div>
   );
 }
-
-const th: React.CSSProperties = {
-  textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 700,
-  letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-  borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap',
-};
-const td: React.CSSProperties = {
-  padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)',
-};
 
 function Figure({ label, value, big }: { label: string; value: string; big?: boolean }) {
   return (

@@ -121,7 +121,7 @@ export default function BankRatesAdmin({ onSaved }:{
   return (
     <div style={{border:'1px solid var(--border-subtle)',borderRadius: T.radius.card,background:'var(--bg-surface)',overflow:'hidden'}}>
       {/* Κεφαλίδα — συμπτυσσόμενη */}
-      <button onClick={()=>setOpen(o=>!o)} style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'11px 14px',background:'transparent',border:'none',cursor:'pointer',textAlign:'left' as const}}>
+      <button onClick={()=>setOpen(o=>!o)} className="acc-toggle acc-row" style={{ '--acc-pad': '12px 16px' }}>
         <span style={{flex:1,fontSize: 'var(--fs-base)',fontWeight:600,color:'var(--text-primary)',fontFamily: T.font.sans}}>Διαχείριση επιτοκίων</span>
         <InfoDot text="Ορατό μόνο σε διαχειριστές. Διόρθωσε χειροκίνητα ένα επιτόκιο ή τρέξε αυτόματη επικαιροποίηση με έρευνα ιστού. Η ημερομηνία επιβεβαίωσης ενημερώνεται αυτόματα."/>
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:open?'rotate(180deg)':'none',transition:'transform 0.2s',flexShrink:0}}><polyline points="6 9 12 15 18 9"/></svg>
@@ -163,7 +163,7 @@ export default function BankRatesAdmin({ onSaved }:{
               const on = selId===b.bank_id
               return (
                 <div key={b.bank_id} style={{border:`1px solid ${on?'var(--border-accent)':'var(--border-subtle)'}`,borderRadius:10,background:'var(--bg-elevated)',overflow:'hidden'}}>
-                  <button onClick={()=>pick(b)} style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'9px 12px',background:'transparent',border:'none',cursor:'pointer',textAlign:'left' as const}}>
+                  <button onClick={()=>pick(b)} className="acc-toggle acc-row" style={{ '--acc-pad': '8px 12px' }}>
                     <span style={{flex:1,fontSize: 'var(--fs-base)',fontWeight:600,color:'var(--text-primary)',fontFamily: T.font.sans}}>{b.bank_name}</span>
                     <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums'}}>από {String(b.fixed_min).replace('.',',')}%</span>
                     <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{b.verified_at}</span>

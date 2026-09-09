@@ -294,11 +294,10 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
              τέσσερα δίνουν ακριβώς τα καθαρά. Ένας πίνακας που δεν κλείνει
              μπροστά στον αναγνώστη είναι χειρότερος από κανέναν πίνακα. */}
       <div style={{ marginTop: 26 }}>
-        <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="pin-1" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 380, tableLayout: 'fixed' }}>
-            <caption style={{ captionSide: 'top', textAlign: 'left', fontSize: 11, fontWeight: 700,
-              letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-              paddingBottom: 10 }}>
+        <div className="po-table-box">
+         <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
+          <table className="po-table" style={{ '--tbl-min': '380px', tableLayout: 'fixed' }}>
+            <caption>
               Πού πάνε τα χρήματα, τον χρόνο
             </caption>
             {/* ΟΙ ΔΥΟ ΠΛΕΥΡΕΣ ΤΗΣ ΣΥΓΚΡΙΣΗΣ ΕΠΑΙΡΝΑΝ ΔΙΑΦΟΡΕΤΙΚΟ ΠΛΑΤΟΣ.
@@ -315,9 +314,9 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col" style={th}> </th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Μακροχρόνια</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Βραχυχρόνια</th>
+                <th scope="col"> </th>
+                <th scope="col" className="num">Μακροχρόνια</th>
+                <th scope="col" className="num">Βραχυχρόνια</th>
               </tr>
             </thead>
             <tbody>
@@ -329,6 +328,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
               <Line k="Καθαρά" a={r.long.net} b={r.short.net} strong />
             </tbody>
           </table>
+         </div>
         </div>
       </div>
 
@@ -341,13 +341,10 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
           Η γραμμή που περνά το κατώφλι σημειώνεται με την ίδια απαλή επιφάνεια
           που χρησιμοποιεί ο υπολογιστής φόρου για το ενεργό κλιμάκιο. */}
       <div style={{ marginTop: 26 }}>
-        <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="pin-1" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 500, tableLayout: 'fixed' }}>
-            <caption style={{ captionSide: 'top', textAlign: 'left', fontSize: 11, fontWeight: 700,
-              letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-              paddingBottom: 10 }}>
-              Αν πέσεις έξω στην πληρότητα
-            </caption>
+        <div className="po-table-box">
+         <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
+          <table className="po-table" style={{ '--tbl-min': '500px', tableLayout: 'fixed' }}>
+            <caption>Αν πέσεις έξω στην πληρότητα</caption>
             {/* ΚΑΙ ΟΙ ΤΕΣΣΕΡΙΣ ΣΤΗΛΕΣ ΕΙΝΑΙ ΑΡΙΘΜΟΙ, ΑΡΑ ΙΣΕΣ ΚΑΙ ΔΕΞΙΑ.
                 Μετρημένο στα 1280: 175,4 · 246 · 311,9 · 310,7. Τέσσερα
                 διαφορετικά πλάτη για το ίδιο είδος περιεχομένου, με την
@@ -363,28 +360,27 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Πληρότητα</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Διανυκτερεύσεις</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Καθαρά βραχυχρόνιας</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Έναντι μακροχρόνιας</th>
+                <th scope="col" className="num">Πληρότητα</th>
+                <th scope="col" className="num">Διανυκτερεύσεις</th>
+                <th scope="col" className="num">Καθαρά βραχυχρόνιας</th>
+                <th scope="col" className="num">Έναντι μακροχρόνιας</th>
               </tr>
             </thead>
             <tbody>
               {curve.map(row => {
                 const ahead = row.net >= r.long.net;
                 return (
-                  <tr key={row.pct} style={{ background: ahead ? 'var(--accent-soft)' : 'transparent' }}>
-                    <td style={{ ...numTd,
-                      fontWeight: ahead ? 650 : 400, color: ahead ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fp(row.pct)}</td>
-                    <td style={numTd}>{fn(row.nights)}</td>
-                    <td style={{ ...numTd, fontWeight: ahead ? 650 : 400,
-                      color: ahead ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{feAuto(row.net)}</td>
-                    <td style={numTd}>{feSigned(row.net - r.long.net)}</td>
+                  <tr key={row.pct} className={ahead ? 'is-on' : undefined}>
+                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{fp(row.pct)}</td>
+                    <td className="num">{fn(row.nights)}</td>
+                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{feAuto(row.net)}</td>
+                    <td className="num">{feSigned(row.net - r.long.net)}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+         </div>
         </div>
       </div>
 
@@ -456,26 +452,14 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
 // εικονοστοιχεία μέσα σε κελί 88 στα 390: ξεχυνόταν πάνω στη διπλανή στήλη.
 // Μετρημένο: επτά κελιά ξεχείλιζαν στα 360. Δύο γραμμές επικεφαλίδας κοστίζουν
 // λιγότερο από 250 εικονοστοιχεία οριζόντιας κύλισης.
-const th: React.CSSProperties = {
-  textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 700,
-  letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-  borderBottom: '1px solid var(--border-default)', lineHeight: 1.3,
-};
-const td: React.CSSProperties = {
-  padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)',
-};
-const numTd: React.CSSProperties = {
-  ...td, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums',
-};
-
 function Line({ k, a, b, strong }: { k: string; a: number; b: number; strong?: boolean }) {
   const weight = strong ? 700 : 400;
   const ink = strong ? 'var(--text-primary)' : 'var(--text-secondary)';
   return (
-    <tr>
-      <td style={{ ...td, fontWeight: strong ? 650 : 400, color: ink }}>{k}</td>
-      <td style={{ ...numTd, fontWeight: weight, color: ink }}>{feAuto(a)}</td>
-      <td style={{ ...numTd, fontWeight: weight, color: ink }}>{feAuto(b)}</td>
+    <tr className={strong ? 'is-total' : undefined}>
+      <td style={{ fontWeight: strong ? 600 : 400, color: ink }}>{k}</td>
+      <td className="num" style={{ fontWeight: weight, color: ink }}>{feAuto(a)}</td>
+      <td className="num" style={{ fontWeight: weight, color: ink }}>{feAuto(b)}</td>
     </tr>
   );
 }

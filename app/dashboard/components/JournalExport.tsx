@@ -317,7 +317,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
           {/* Ισοζύγιο & έλεγχος */}
           {preview && totals && (
             <div>
-              <button onClick={() => setShowBalance(s => !s)} aria-expanded={showBalance} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: showBalance ? 10 : 0, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
+              <button onClick={() => setShowBalance(s => !s)} aria-expanded={showBalance} className="acc-toggle acc-row" style={{ marginBottom: showBalance ? 8 : 0 }}>
                 <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', transform: showBalance ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}><path d="M9 6l6 6-6 6"/></svg>
                 <span style={{ ...TT.label }}>ΙΣΟΖΥΓΙΟ</span>
                 <Badge tone={audit ? (audit.tone === 'positive' ? 'neutral' : audit.tone) : (totals.balanced ? 'neutral' : 'negative')}>{audit ? (audit.tone === 'positive' ? 'Ισοσκελισμένο' : audit.tone === 'warning' ? 'Ισοσκελισμένο · προσοχή' : 'Απαιτεί διόρθωση') : (totals.balanced ? 'Ισοσκελισμένο' : 'Ασυμφωνία')}</Badge>

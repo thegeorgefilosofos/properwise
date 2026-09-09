@@ -1615,7 +1615,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           δεύτερα. Ζουν εδώ, ένα κλικ μακριά, αντί να γεμίζουν την πρώτη ματιά
           του ανθρώπου που θέλει μόνο να ξέρει πού βρίσκεται. */}
       <div style={card}>
-        <button onClick={()=>setAdvancedOpen(o=>!o)} aria-expanded={advancedOpen} className="acc-toggle" style={{ display:'flex', alignItems:'center', gap: 8, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' }}>
+        <button onClick={()=>setAdvancedOpen(o=>!o)} aria-expanded={advancedOpen} className="acc-toggle acc-row">
           <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:advancedOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
           <div style={{ flex:1, minWidth:0 }}>
             <p style={{ ...cardTitle, margin:0 }}>Προχωρημένα εργαλεία</p>
@@ -1770,7 +1770,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         {/* Συμβουλευτική, καθαρές, στοχευμένες προτάσεις με αξία (ανοιγοκλείνει ομοιόμορφα) */}
         {advisory.length>0 && (
         <div ref={advisoryRef} style={card}>
-          <button onClick={()=>{ setAdvisoryOpen(o=>!o); setOpenAdvisory(null) }} aria-expanded={advisoryOpen} className="acc-toggle" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' }}>
+          <button onClick={()=>{ setAdvisoryOpen(o=>!o); setOpenAdvisory(null) }} aria-expanded={advisoryOpen} className="acc-toggle acc-row">
             <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius: T.radius.chip, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Lightbulb size={15}/></span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ ...cardTitle, margin:0 }}>Συμβουλευτική</p>
@@ -1816,7 +1816,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         {/* «Τι άλλαξε» — επίκαιροι κανόνες 2026 σχετικοί με το προφίλ (διακριτικό) */}
         {relevantChanges.length>0 && (
         <div ref={changesRef} style={card}>
-          <button onClick={()=>{ setChangesOpen(o=>!o); setOpenChange(null) }} aria-expanded={changesOpen} className="acc-toggle" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' }}>
+          <button onClick={()=>{ setChangesOpen(o=>!o); setOpenChange(null) }} aria-expanded={changesOpen} className="acc-toggle acc-row">
             <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius: T.radius.chip, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Landmark size={15}/></span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ ...cardTitle, margin:0 }}>Τι άλλαξε το 2026</p>

@@ -33,6 +33,12 @@ const OWNS = {
   'po-hov-fill':   ['background', 'backgroundColor'],
   'po-choice':     ['background', 'backgroundColor', 'border', 'borderColor'],
   'po-btn':        ['background', 'backgroundColor', 'color'],
+  // ΤΟ ΣΧΗΜΑ ΤΗΣ ΠΤΥΣΣΟΜΕΝΗΣ ΚΕΦΑΛΙΔΑΣ. Η `.acc-row` γράφει ΟΛΟΚΛΗΡΗ τη σειρά·
+  // ένα ενσωματωμένο `gap: 10` δίπλα της δεν «προσαρμόζει», ξαναφτιάχνει το
+  // κενό που μόλις έγινε ένα. Το γέμισμα και το κενό αλλάζουν με `--acc-pad`
+  // και `--acc-gap`, που είναι μεταβλητές ΤΟΥ κανόνα και όχι παράκαμψή του.
+  'acc-row':       ['display', 'alignItems', 'width', 'padding', 'background',
+                    'border', 'cursor', 'textAlign', 'gap', 'fontFamily'],
 }
 
 function openTag(src, at) {
@@ -77,7 +83,10 @@ for (const file of projectFiles("'app/**/*.tsx' 'app/*.tsx' 'components/**/*.tsx
     for (const cls of classes) {
       for (const prop of OWNS[cls]) {
         // `background` σε άλλη λέξη (backgroundImage, backgroundSize) δεν μετρά.
-        const re = new RegExp('(^|[{,\\s])' + prop + "\\s*:\\s*['\"`]")
+        // ΚΑΙ ΟΙ ΑΡΙΘΜΗΤΙΚΕΣ ΤΙΜΕΣ. Το μοτίβο ζητούσε εισαγωγικά μετά την άνω
+        // κάτω τελεία, οπότε ένα `padding: 0` ή `gap: 10` περνούσε αθόρυβα —
+        // δηλαδή ακριβώς οι δύο γραφές που ξαναφτιάχνουν μια σειρά πεδίων.
+        const re = new RegExp('(^|[{,\\s])' + prop + "\\s*:\\s*['\"`0-9]")
         if (re.test(style)) {
           const line = src.slice(0, m.index).split('\n').length
           bad.push({ file, line, cls, prop })

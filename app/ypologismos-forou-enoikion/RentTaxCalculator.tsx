@@ -292,18 +292,15 @@ export function RentTaxCalculator({ today }: { today: string }) {
           Είναι λεζάντα του πίνακα, οπότε γράφεται ως λεζάντα: ίδια τυπογραφία
           με τις άλλες ετικέτες αυτής της κάρτας και σωστή σημασιολογία. */}
       <div style={{ marginTop: 26 }}>
-        <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="pin-1" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 300 }}>
-            <caption style={{ captionSide: 'top', textAlign: 'left', fontSize: 11, fontWeight: 700,
-              letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-              paddingBottom: 10 }}>
-              Η κλίμακα του {year}
-            </caption>
+        <div className="po-table-box">
+         <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
+          <table className="po-table" style={{ '--tbl-min': '300px' }}>
+            <caption>Η κλίμακα του {year}</caption>
             <thead>
               <tr>
-                <th scope="col" style={th}>Εισόδημα</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Συντελεστής</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Φόρος σε αυτό το κλιμάκιο</th>
+                <th scope="col">Εισόδημα</th>
+                <th scope="col" className="num">Συντελεστής</th>
+                <th scope="col" className="num">Φόρος σε αυτό το κλιμάκιο</th>
               </tr>
             </thead>
             <tbody>
@@ -330,16 +327,14 @@ export function RentTaxCalculator({ today }: { today: string }) {
                   ? `Πάνω από ${feAuto(b.from)}`
                   : `${feAuto(b.from === 0 ? 0 : b.from + 1)} – ${feAuto(b.to)}`;
                 return (
-                  <tr key={b.from} style={{ background: active ? 'var(--accent-soft)' : 'transparent' }}>
-                    <td style={{ ...td, fontWeight: active ? 650 : 400, color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{range}</td>
+                  <tr key={b.from} className={active ? 'is-on' : undefined}>
+                    <td style={{ fontWeight: active ? 600 : 400 }}>{range}</td>
                     {/* ΤΡΙΤΗ ΓΡΑΦΗ ΓΙΑ ΤΟ ΙΔΙΟ ΕΙΔΟΣ ΝΟΥΜΕΡΟΥ. Η στήλη έγραφε «15%»
                         ενώ δύο εκατοστά πιο πάνω ο πραγματικός συντελεστής γράφει
                         «15,00%»: ο αναγνώστης ψάχνει τη διαφορά που υπονοούν τα
                         δεκαδικά και δεν υπάρχει. Ενας μορφοποιητής ποσοστού. */}
-                    <td style={{ ...td, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fp(b.rate * 100)}</td>
-                    <td style={{ ...td, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums',
-                      fontWeight: active ? 650 : 400,
-                      color: active ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                    <td className="num">{fp(b.rate * 100)}</td>
+                    <td className="num" style={{ fontWeight: active ? 600 : 400, color: active ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
                       {feAuto(slice * b.rate)}
                     </td>
                   </tr>
@@ -347,6 +342,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
               })}
             </tbody>
           </table>
+         </div>
         </div>
       </div>
 
@@ -384,15 +380,6 @@ export function RentTaxCalculator({ today }: { today: string }) {
     </div>
   );
 }
-
-const th: React.CSSProperties = {
-  textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 700,
-  letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-  borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap',
-};
-const td: React.CSSProperties = {
-  padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)',
-};
 
 /**
  * Ένα μετρημένο νούμερο με την ετικέτα του.

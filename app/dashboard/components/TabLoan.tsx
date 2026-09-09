@@ -116,7 +116,7 @@ function MiniSection({title,badges,meta,defaultOpen,order,flat,open:openProp,onT
     <div style={flat
       ? {order,borderTop:'1px solid var(--border-subtle)'}
       : {order,...panelStyle,border:`1px solid ${open?'var(--border-default)':'var(--border-raised)'}`,transition:'border-color 0.2s'}}>
-      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,padding:flat?'13px 2px':'15px 18px',background:'none',border:'none',cursor:'pointer',textAlign:'left' as const}}>
+      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} className="acc-toggle acc-row acc-apart" style={{ '--acc-pad': flat ? '12px 2px' : '16px 16px' }}>
         <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0,flexWrap:'wrap'}}>
           <span style={{fontSize:flat?13:15,fontWeight:600,color:'var(--text-primary)',fontFamily: T.font.sans,letterSpacing:'-0.01em'}}>{title}</span>
           {badges}
@@ -173,7 +173,7 @@ function CatRow({title,desc,url,linkLabel,last}:{title:string;desc:string;url?:s
   const [open,setOpen] = useState(false)
   return (
     <div style={{borderBottom:last?'none':'1px solid var(--border-subtle)'}}>
-      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,padding:'12px 2px',background:'none',border:'none',cursor:'pointer',textAlign:'left' as const}}>
+      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} className="acc-toggle acc-row acc-apart" style={{ '--acc-pad': '12px 2px' }}>
         <span style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)',minWidth:0}}>{title}</span>
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{flexShrink:0,transform:open?'rotate(180deg)':'none',transition:'transform 0.2s'}}><polyline points="6 9 12 15 18 9"/></svg>
       </button>

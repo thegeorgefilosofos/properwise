@@ -1281,8 +1281,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           με ένα κλικ. Όταν λείπουν στοιχεία, ανοίγουν μόνα τους: τότε ΕΙΝΑΙ το
           περιεχόμενο. */}
       <div style={card}>
-        <button onClick={() => setInputsPinned(!inputsOpen)} aria-expanded={inputsOpen} className="acc-toggle"
-          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
+        <button onClick={() => setInputsPinned(!inputsOpen)} aria-expanded={inputsOpen} className="acc-toggle acc-row">
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}><Percent size={15} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={titleStyle}>Στοιχεία υπολογισμού</p>

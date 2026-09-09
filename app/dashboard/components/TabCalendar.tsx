@@ -2186,8 +2186,8 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           «Μήνας» — γιατί μόνο εκεί λείπει. */}
       {viewMode==='month'&&overdue.length>0&&(
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.card, overflow:'hidden' }}>
-          <button onClick={()=>setShowOverdue(o=>!o)} aria-expanded={showOverdue}
-            style={{ display:'flex', alignItems:'center', gap: 12, width:'100%', textAlign:'left', background:'transparent', border:'none', borderBottom:showOverdue?'1px solid var(--border-subtle)':'none', padding:'11px 16px', cursor:'pointer' }}>
+          <button onClick={()=>setShowOverdue(o=>!o)} aria-expanded={showOverdue} className="acc-toggle acc-row"
+            style={{ '--acc-pad': '12px 16px', borderBottom: showOverdue ? '1px solid var(--border-subtle)' : 'none' }}>
             <AlertTriangle size={14} color="var(--negative)"/>
             <p style={{ fontSize:14, color:'var(--text-secondary)', fontFamily: T.font.sans, letterSpacing:'0.1px', margin:0, flex:1 }}>
               {overdue.length===1?'1 εκπρόθεσμο':`${overdue.length} εκπρόθεσμα`} · <span style={{ color:'var(--text-primary)' }}>{showOverdue?'Απόκρυψη':'Εμφάνιση'}</span>

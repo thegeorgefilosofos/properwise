@@ -805,7 +805,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
             ενοικιαστή, που αλλιώς δεν θα φαίνονταν πουθενά. Μαζεμένο by default. */}
         {others.length>0&&(
           <div style={{ borderTop:'1px solid var(--border-subtle)', marginTop:20, paddingTop:14 }}>
-            <button onClick={()=>setHistOpen(o=>!o)} style={{ display:'flex', alignItems:'center', gap: 8, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' as const, fontFamily:T.font.sans }}>
+            <button onClick={()=>setHistOpen(o=>!o)} className="acc-toggle acc-row">
               <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ color:'var(--text-tertiary)', transform:histOpen?'rotate(90deg)':'none', transition:'transform 0.2s', flexShrink:0 }}><path d="M9 6l6 6-6 6"/></svg>
               <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-secondary)' }}>Ιστορικό ακινήτου</span>
               <span style={{ marginLeft:'auto', fontSize:12, color:'var(--text-tertiary)', fontWeight:600 }}>{others.length} {others.length===1?'αίτημα':'αιτήματα'}</span>

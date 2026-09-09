@@ -1010,7 +1010,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                     γραμμή που ανοίγει με παντού: ετικέτα, μέτρημα, βελάκι — και
                     η εξήγηση στο κυκλάκι της. */}
                 <button type="button" onClick={()=>setMoreOpen(o=>!o)} aria-expanded={moreOpen} aria-label="Περισσότερα πεδία"
-                  className="acc-toggle" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', minHeight:44, background:'none', border:'none', cursor:'pointer', textAlign:'left' as const, padding:0, fontFamily:T.font.sans }}>
+                  className="acc-toggle acc-row" style={{ minHeight: 44 }}>
                   <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', flex:1, minWidth:0, display:'flex', alignItems:'center' }}>
                     Περισσότερα
                     <InfoDot text="Τίποτα εδώ δεν είναι υποχρεωτικό για τη δήλωση. Είναι όσα χρειάζονται σπάνια και γι’ αυτό δεν στέκονται μπροστά σου."/>

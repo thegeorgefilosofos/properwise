@@ -1499,8 +1499,8 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
           Η κλειστή γραμμή ΛΕΕΙ ΤΙ ΚΡΥΒΕΙ: σκέτο «Περισσότερα» ζητά από τον
           χρήστη να πατήσει για να μάθει αν τον αφορά. */}
       <button type="button" onClick={() => setMoreOpen(o => !o)} aria-expanded={moreOpen}
-        className="acc-toggle"
-        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: T.h.sm, marginTop: 12, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: 0, fontFamily: T.font.sans }}>
+        className="acc-toggle acc-row"
+        style={{ minHeight: T.h.sm, marginTop: 12 }}>
         <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', flex: 1, minWidth: 0 }}>
           {moreOpen ? 'Λιγότερα' : `Περισσότερα: ποιος πληρώνει${paid ? ', ΑΦΜ προμηθευτή' : ''}`}
         </span>

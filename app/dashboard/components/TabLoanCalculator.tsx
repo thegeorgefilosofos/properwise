@@ -45,7 +45,7 @@ function Section({title,sub,children,defaultOpen=false,badge}:{title:string;sub?
   const [open,setOpen] = useState(defaultOpen)
   return (
     <div style={panelStyle}>
-      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',background:'none',border:'none',cursor:'pointer',textAlign:'left' as const}}>
+      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} className="acc-toggle acc-row acc-apart" style={{ '--acc-pad': '16px 16px' }}>
         <div>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
             <p style={{fontSize:14,color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:600}}>{title}</p>
