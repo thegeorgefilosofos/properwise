@@ -2946,7 +2946,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   width: 100%;
   min-width: var(--tbl-min, 0);
   border-collapse: collapse;
-  font-size: 13px;
+  /* ΤΟ ΜΕΓΕΘΟΣ ΕΙΝΑΙ ΜΕΤΑΒΛΗΤΟ, ΓΙΑΤΙ ΟΙ ΝΟΜΙΚΕΣ ΣΕΛΙΔΕΣ ΤΟ ΖΗΤΟΥΝ. Στον
+     υπολογιστή ο πίνακας είναι στήλη αριθμών δίπλα σε αποτέλεσμα και τα 13
+     είναι σωστά. Στο «Ποιοι είμαστε» ο ίδιος πίνακας κρατά τα στοιχεία της
+     εταιρείας μέσα σε κείμενο των 15: εκεί τα 13 θα ήταν ψιλά γράμματα, που
+     είναι ακριβώς ό,τι υπόσχεται να μην κάνει η σελίδα. */
+  font-size: var(--tbl-fs, 13px);
 }
 /* Η λεζάντα είναι η ταινία τίτλου του κουτιού, όχι ελεύθερο κείμενο από πάνω. */
 .po-table caption {
@@ -2957,19 +2962,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border-subtle);
 }
-.po-table th {
+/* Η ΚΕΦΑΛΙΔΑ ΤΗΣ ΣΤΗΛΗΣ: κεφαλαία, δεύτερος τόνος, πιο σκούρα γραμμή από κάτω. */
+.po-table thead th {
   text-align: left; padding: 9px 14px;
   font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--text-tertiary); line-height: 1.3;
   border-bottom: 1px solid var(--border-default);
 }
+/* Η ΚΕΦΑΛΙΔΑ ΤΗΣ ΓΡΑΜΜΗΣ ΕΙΝΑΙ ΑΛΛΟ ΠΡΑΓΜΑ, ΚΑΙ ΤΟ ΔΕΙΧΝΕ.
+   Ενα `<th scope="row">` —η ετικέτα «Διακριτικός τίτλος» δίπλα στην τιμή της—
+   έπαιρνε τον κανόνα της κεφαλίδας στήλης: κεφαλαία, έντονα και ΓΡΑΜΜΗ ΑΛΛΟΥ
+   ΧΡΩΜΑΤΟΣ από το κελί δίπλα του. Στην τελευταία σειρά, όπου ο κανόνας σβήνει
+   τη γραμμή μόνο από τα `td`, η γραμμή έμενε κάτω από την ετικέτα και έκοβε
+   στη μέση της σειράς. Η κεφαλίδα γραμμής διαβάζεται ως ετικέτα κειμένου. */
+.po-table tbody th {
+  text-align: left; padding: 10px 14px; font: inherit;
+  color: var(--text-tertiary);
+}
 .po-table td {
   padding: 10px 14px;
   color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-subtle);
 }
+.po-table tbody th, .po-table tbody td { border-bottom: 1px solid var(--border-subtle); }
 /* Η τελευταία γραμμή δεν έχει τι να χωρίσει από κάτω της. */
-.po-table tbody tr:last-child td { border-bottom: none; }
+.po-table tbody tr:last-child > * { border-bottom: none; }
 /* Οι στήλες αριθμών: δεξιά, με στοιχεία σταθερού πλάτους ώστε να στοιχίζονται
    οι υποδιαστολές κάθετα. Καμία δήλωση γραμματοσειράς: το `T.font.num` του
    έργου ΕΙΝΑΙ το ίδιο Inter με το κείμενο — τα τρία αρχεία που το έγραφαν εδώ
@@ -3914,11 +3930,13 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   display: grid; grid-template-columns: minmax(0, 1fr) 250px;
   gap: 40px; align-items: last baseline; max-width: 1044px;
 }
-.lg-lede > p:first-child { text-align: justify; text-wrap: pretty; }
+.lg-lede > p:first-child { text-wrap: pretty; }
 .lg-lede > p:last-child:not(:first-child) { text-align: right; }
 @media (max-width: 760px) {
   .lg-lede { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .lg-lede > p:first-child { text-align: left; }
+  /* Η ημερομηνία κατεβαίνει κάτω από την εισαγωγή, οπότε παύει να είναι δεξιά
+     στήλη και στοιχίζεται σαν κείμενο. Η ίδια η εισαγωγή δεν χρειάζεται πια
+     δήλωση: αριστερά είναι πλέον η προεπιλογή της. */
   .lg-lede > p:last-child:not(:first-child) { text-align: left; }
 }
 
@@ -3960,22 +3978,32 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 /* Τρεχούμενο κείμενο νομικής σελίδας. Στα 15, όσο και η αρχική: ό,τι δεσμεύει
    τον χρήστη δεν επιτρέπεται να είναι το πιο δυσανάγνωστο κείμενο του
    προϊόντος και ήταν, στα 14. */
-/* ΓΙΑΤΙ ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΕΔΩ, ΚΑΙ ΜΟΝΟ ΕΔΩ. Μετρημένο στον περιηγητή, το ίδιο
-   κείμενο με ελεύθερο δεξί άκρο έβγαζε γραμμές στο 83%, στο 90%, στο 99% και
-   ξανά στο 85%: το δεξί περιθώριο πριονωτό σε σαράντα εφτά παραγράφους. Με
-   πλήρη στοίχιση κάθε γραμμή πλην της τελευταίας πιάνει ακριβώς το 100%, που
-   είναι και ο τρόπος που τυπώνεται κάθε σύμβαση. Δεν επεκτείνεται στην αρχική
-   ούτε στην εφαρμογή: εκεί τα κείμενα είναι κοντά και οι στήλες στενές, όπου
-   η πλήρης στοίχιση ανοίγει κενά αντί να τα κλείνει — γι' αυτό και φεύγει
-   κάτω από τα 560. Το `pretty` μένει για να μην ξεμένει μία λέξη μόνη της
-   στην τελευταία σειρά. */
-.lg-p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; text-align: justify; text-wrap: pretty; }
+/* Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΕΦΥΓΕ, ΚΑΙ ΤΗΝ ΕΒΓΑΛΕ Η ΜΕΤΡΗΣΗ ΠΟΥ ΤΗΝ ΕΙΧΕ ΒΑΛΕΙ.
+   Ο λόγος που είχε μπει ήταν αληθινός: με ελεύθερο δεξί άκρο οι γραμμές
+   έκλειναν στο 83%, στο 90%, στο 99%, δηλαδή πριονωτό περιθώριο σε σαράντα
+   εφτά παραγράφους. Αυτό όμως που ΑΓΟΡΑΖΕ το ίσιο περιθώριο δεν είχε μετρηθεί.
+
+   ΤΟ ΝΟΥΜΕΡΟ. Σε 195 κενά μεταξύ λέξεων της σελίδας «Ποιοι είμαστε», στα 1440:
+   διάμεσο κενό 5,5 · ενενηκοστό εκατοστημόριο 14 · μέγιστο 16,9. Το φυσικό
+   κενό της Inter στα 15 είναι περίπου 4,2 — άρα η μία στις δέκα γραμμές είχε
+   κενά ΤΡΙΠΛΑΣΙΑ και η χειρότερη τετραπλάσια. Αυτό δεν είναι ίσιο περιθώριο,
+   είναι ποτάμια λευκού μέσα στην παράγραφο, ορατά σε κάθε στιγμιότυπο.
+
+   ΚΑΙ ΔΕΝ ΣΩΖΕΤΑΙ ΜΕ ΣΥΛΛΑΒΙΣΜΟ. Δοκιμάστηκε `hyphens: auto` με `lang="el"`:
+   ΙΔΙΑ ακριβώς νούμερα, ώς το δέκατο. Ο Chromium δεν έχει λεξικό συλλαβισμού
+   για τα ελληνικά, οπότε η μόνη άμυνα της τυπογραφίας απέναντι στα τεντωμένα
+   κενά δεν υπάρχει εδώ. Η σύμβαση σε χαρτί στοιχίζεται πλήρως ΕΠΕΙΔΗ
+   συλλαβίζεται· χωρίς συλλαβισμό η ίδια επιλογή δίνει το αντίθετο.
+
+   Το `pretty` μένει: κρατά τη μία λέξη να μην ξεμένει μόνη της στην τελευταία
+   σειρά, που ήταν πάντα το πραγματικό πρόβλημα του ελεύθερου άκρου. */
+.lg-p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; text-wrap: pretty; }
 .lg-p strong, .lg-ul strong { color: var(--text-primary); font-weight: 600; }
 .lg-p:last-child, .lg-ul:last-child { margin-bottom: 0; }
 .lg-ul { margin: 2px 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
-.lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-align: justify; text-wrap: pretty; }
+.lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-wrap: pretty; }
 .lg-note {
-  font-size: 14px; color: var(--text-tertiary); line-height: 1.65; text-align: justify;
+  font-size: 14px; color: var(--text-tertiary); line-height: 1.65;
   margin: 12px 0 0; padding: 13px 16px;
   background: var(--bg-elevated); border: 1px solid var(--border-subtle);
   border-radius: 12px;
@@ -3993,7 +4021,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-part-first { margin-top: 0; padding-top: 0; border-top: 0; }
 /* Ίδια στοίχιση για τα κείμενα που δεν είναι παράγραφοι, π.χ. οι εγγυήσεις
    του «Ποιοι είμαστε»: αλλιώς η μισή σελίδα κλείνει ίσια και η άλλη μισή όχι. */
-.lg-just { text-align: justify; text-wrap: pretty; }
+.lg-just { text-wrap: pretty; }
 
 @media (max-width: 900px) {
   .lg-grid { grid-template-columns: minmax(0, 1fr); }
@@ -4010,8 +4038,9 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   .lg-body { max-width: 720px; }
 }
 @media (max-width: 560px) {
+  /* Εδώ καθόταν και το «αριστερά κάτω από τα 560» για τέσσερις κλάσεις: ήταν η
+     εξαίρεση της πλήρους στοίχισης, που δεν υπάρχει πια. */
   .lg-toc-list { grid-template-columns: minmax(0, 1fr); }
-  .lg-p, .lg-ul li, .lg-note, .lg-just { text-align: left; }
 }
 
 /* ══════════════════════════════════════════════════════════════
