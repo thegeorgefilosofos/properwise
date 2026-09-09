@@ -21,7 +21,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
-import { authorizeCron, type MinimalSupabaseClient } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial, type CronAuth, type MinimalSupabaseClient } from '../_shared/auth.ts'
 import {
   diffBank, decide, changeKey, MIN_BANKS,
   type CurrentBank, type ProposedBank, type Change, type CheckedField,
@@ -116,14 +116,15 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json' } })
 
 const CRON_SECRET = Deno.env.get('BANK_RATES_CRON_SECRET') || ''
-async function authorized(req: Request, sb: MinimalSupabaseClient): Promise<boolean> {
+async function authorized(req: Request, sb: MinimalSupabaseClient): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: SUPABASE_SERVICE_KEY, envSecret: CRON_SECRET, supabase: sb })
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-  if (!(await authorized(req, supabase))) return json({ error: 'unauthorized' }, 401)
+  const auth = await authorized(req, supabase)
+  if (!auth.ok) return json(...cronDenial(auth))
 
   // ΤΟ ΙΧΝΟΣ ΓΡΑΦΕΤΑΙ ΣΕ ΚΑΘΕ ΕΞΟΔΟ. Ενα πέρασμα που απέτυχε και δεν το είπε
   // είναι ίδιο με πέρασμα που δεν έγινε — και αυτή ακριβώς η σιωπή κράτησε την

@@ -12,7 +12,7 @@
 import { useState, useEffect, CSSProperties } from 'react';
 import { leaveDevice } from '@/lib/localPrivacy';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, Btn, settingsField, Spinner, ABSENT, ABSENT_DATE, fixedCols } from '@/components/Theme';
+import { T, TT, Btn, settingsField, Spinner, ABSENT, ABSENT_DATE, fixedCols, InfoBanner } from '@/components/Theme';
 import { SetList, SetRow, SetFact } from './SettingsKit';
 import { logActivity } from '@/lib/activity';
 import { checkPassword, PASSWORD_MSG } from '@/lib/auth/password';
@@ -57,14 +57,19 @@ export default function SecuritySettings() {
   const [code, setCode] = useState('');
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaErr, setMfaErr] = useState<string | null>(null);
+  const [identityErr, setIdentityErr] = useState('');
   const [mfaUnavailable, setMfaUnavailable] = useState(false);
   const [confirmDisable, setConfirmDisable] = useState(false);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const { data } = await supabase.auth.getUser();
+      // «ΔΕΝ ΞΕΡΩ ΠΟΤΕ ΣΥΝΔΕΘΗΚΕΣ» ΔΕΝ ΓΡΑΦΕΤΑΙ «—». Σε οθόνη ασφαλείας η
+      // παύλα διαβάζεται ως «καμία σύνδεση», που είναι το πιο καθησυχαστικό
+      // ψέμα που μπορεί να πει αυτό το πεδίο.
+      const { data, error: err } = await supabase.auth.getUser();
       if (!alive) return;
+      if (err) { setIdentityErr(failed('Τα στοιχεία του λογαριασμού δεν διαβάστηκαν', err)); return; }
       setEmail(data.user?.email ?? '');
       setLastSignIn(data.user?.last_sign_in_at ?? null);
     })();
@@ -103,7 +108,12 @@ export default function SecuritySettings() {
     setMfaUnavailable(false);
     try {
       // Καθάρισε τυχόν εκκρεμείς factors, ώστε το enroll να μη βρει «factor already exists».
-      const { data: list } = await supabase.auth.mfa.listFactors();
+      // ΑΝ Η ΑΝΑΓΝΩΣΗ ΑΠΟΤΥΧΕΙ, ΤΟ ΚΑΘΑΡΙΣΜΑ ΔΕΝ ΕΓΙΝΕ. Χωρίς το `error`, ο
+      // κατάλογος ερχόταν κενός, ο βρόχος δεν έτρεχε ποτέ και το enroll από κάτω
+      // έσκαγε με «factor already exists» — μήνυμα που ο χρήστης διάβαζε ως δικό
+      // του λάθος και ξαναπατούσε το ίδιο κουμπί για πάντα.
+      const { data: list, error: listErr } = await supabase.auth.mfa.listFactors();
+      if (listErr) { setMfaErr(failed('Η επαλήθευση δύο βημάτων δεν ενεργοποιήθηκε', listErr)); return; }
       const totp = (list?.totp ?? []) as MfaFactor[];
       for (const f of totp) {
         if (f.status === 'unverified') {
@@ -261,6 +271,7 @@ export default function SecuritySettings() {
 
   return (
     <SetList>
+      {identityErr && <InfoBanner tone="negative">{identityErr} Ανανέωσε τη σελίδα: ώσπου να διαβαστούν, τα στοιχεία σύνδεσης παρακάτω δεν είναι έγκυρα.</InfoBanner>}
 
       {/* 1. Κωδικός πρόσβασης */}
       <SetRow title="Κωδικός πρόσβασης"

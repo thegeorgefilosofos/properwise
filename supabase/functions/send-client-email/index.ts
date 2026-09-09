@@ -63,7 +63,13 @@ Deno.serve(async (req) => {
   if (recipients.length > 2000) return json({ error: 'too_many', detail: 'Έως 2000 παραλήπτες ανά αποστολή.' }, 400)
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, { global: { headers: { Authorization: authHeader } } })
-  const { data: userData } = await supabase.auth.getUser()
+  // Η ίδια διάκριση με τους πελάτες πιο κάτω: «δεν είσαι συνδεδεμένος» και «δεν
+  // απάντησε η υπηρεσία ταυτοποίησης» έδιναν και τα δύο 401.
+  const { data: userData, error: userErr } = await supabase.auth.getUser()
+  if (userErr) {
+    console.error('[send-client-email] η ταυτότητα δεν διαβάστηκε:', userErr)
+    return json({ error: 'identity_unavailable', detail: userErr.message }, 503)
+  }
   const user = userData?.user
   if (!user) return json({ error: 'unauthorized' }, 401)
   const replyTo = user.email || undefined

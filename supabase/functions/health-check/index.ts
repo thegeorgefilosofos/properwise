@@ -27,7 +27,7 @@
 // Deploy: supabase functions deploy health-check
 // ═══════════════════════════════════════════════════════════════════════════
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { runHealth, diagnose } from '../_shared/probe.mjs'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -105,10 +105,11 @@ async function alertOnTransition(wasOk: boolean | null, isOk: boolean, results: 
 }
 
 Deno.serve(async (req) => {
-  if (!(await authorizeCron(req, {
+  const auth = await authorizeCron(req, {
     serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase,
     dbSecretName: ['lifecycle_cron', 'email_cron'],
-  }))) return json({ error: 'unauthorized' }, 401)
+  })
+  if (!auth.ok) return json(...cronDenial(auth))
 
   const base = baseUrl()
   // ═══ ΤΟ 200 ΗΤΑΝ ΤΟ ΙΔΙΟ ΤΟ ΕΛΑΤΤΩΜΑ ══════════════════════════════════════

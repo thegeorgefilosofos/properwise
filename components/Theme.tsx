@@ -338,24 +338,21 @@ export function CloseButton({ onClose, tone = 'default', style, label = 'Κλε�
   style?: CSSProperties;
   label?: string;
 }) {
+  // ΤΟ ΚΛΕΙΣΙΜΟ ΔΕΝ ΕΧΕΙ ΔΙΚΗ ΤΟΥ ΓΕΩΜΕΤΡΙΑ ΠΙΑ. Το κουτί, ο στόχος αφής, η
+  // ακτίνα και η αιώρηση είναι ΤΟΥ ΕΙΚΟΝΙΔΙΟΥ — δηλαδή του `IconBtn` — και το
+  // μόνο που μένει εδώ είναι ΠΟΙΟ εικονίδιο, με ποιο όνομα. Οι δύο χειριστές
+  // `onMouseEnter/onMouseLeave` που έγραφαν `style.color` έφυγαν μαζί: η
+  // `.po-ico` ξέρει επιπλέον τι είναι `:focus-visible` και τι είναι αφή, που
+  // αυτοί δεν ήξεραν. Η μία ορατή διαφορά είναι ότι στην αιώρηση ανάβει τώρα
+  // και φόντο, όπως σε κάθε άλλο κουμπί εικονιδίου της εφαρμογής.
   return (
-    <button type="button" onClick={onClose} aria-label={label} title={label}
-      style={{
-        width: T.h.md, height: T.h.md, flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        borderRadius: T.radius.badge, border: 'none', cursor: 'pointer',
-        background: tone === 'onMedia' ? 'rgba(255,255,255,0.14)' : 'transparent',
-        color: tone === 'onMedia' ? 'var(--on-media)' : 'var(--text-tertiary)',
-        transition: 'color 0.13s, background-color 0.13s',
-        ...style,
-      }}
-      onMouseEnter={e => { if (tone !== 'onMedia') e.currentTarget.style.color = 'var(--text-primary)'; }}
-      onMouseLeave={e => { if (tone !== 'onMedia') e.currentTarget.style.color = 'var(--text-tertiary)'; }}>
+    <IconBtn onClick={onClose} label={label} title={label} size="md" round
+      tone={tone === 'onMedia' ? 'media' : undefined} style={style}>
       <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor"
         strokeWidth={2} strokeLinecap="round" aria-hidden="true">
         <path d="M18 6 6 18M6 6l12 12" />
       </svg>
-    </button>
+    </IconBtn>
   );
 }
 
@@ -1219,8 +1216,11 @@ export function pressable<E extends { key: string; preventDefault: () => void }>
 }
 
 // ═══ Btn, κουμπιά σε 3 ρόλους ═════════════════════════════════════════════
-export function Btn({ children, onClick, variant = 'secondary', disabled, type, href, newTab, field, size }: {
+export function Btn({ children, onClick, variant = 'secondary', disabled, type, href, newTab, field, size, title }: {
   children: ReactNode; onClick?: () => void; variant?: 'primary' | 'secondary' | 'ghost'; disabled?: boolean; type?: 'button' | 'submit';
+  /** Συμπλήρωμα του λεκτικού, όχι αντικατάστασή του: «Εξαγωγή Excel» με τίτλο
+   *  «Εξαγωγή σε Excel (.xlsx)». Οταν δεν προσθέτει πληροφορία, μένει κενό. */
+  title?: string;
   /**
    * ΟΤΑΝ Η ΕΝΕΡΓΕΙΑ ΕΙΝΑΙ ΠΡΟΟΡΙΣΜΟΣ, ΤΟ ΣΤΟΙΧΕΙΟ ΕΙΝΑΙ ΣΥΝΔΕΣΜΟΣ.
    *
@@ -1319,6 +1319,7 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
         href={href}
         className="po-btn"
         data-variant={variant}
+        title={title}
         target={newTab ? '_blank' : undefined}
         rel={newTab ? 'noopener noreferrer' : undefined}
         style={{ ...base, textDecoration: 'none' }}
@@ -1330,9 +1331,137 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
       type={type ?? 'button'}
       className="po-btn"
       data-variant={variant}
+      title={title}
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
       style={base}
+    >{children}</button>
+  );
+}
+
+// ═══ IconBtn · ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΕΙΝΑΙ ΜΟΝΟ ΕΙΚΟΝΙΔΙΟ ══════════════════════════
+//
+// ΓΙΑΤΙ ΔΕΝ ΗΤΑΝ ΠΟΤΕ `Btn`. Το `Btn` γράφει `padding: 9px 18px` και λεκτικό
+// 12/700: ένα «×» των 13 εικονοστοιχείων μέσα του βγαίνει κουτί 49 φαρδύ για
+// γλυφή 13. Εξήντα εννέα σημεία το ζωγράφιζαν μόνα τους, με άλλο μέγεθος και
+// άλλο αρνητικό περιθώριο το καθένα.
+//
+// ΤΟ ΚΟΥΤΙ ΕΙΝΑΙ Ο ΣΤΟΧΟΣ ΑΦΗΣ, ΟΧΙ Η ΓΛΥΦΗ. Το εικονίδιο μένει 12 ή 14· το
+// κουτί γύρω του ανεβαίνει στα 44 όταν ο δείκτης είναι δάχτυλο, με το ίδιο
+// `T.h` που χρησιμοποιεί κάθε άλλο χειριστήριο. Χωρίς αυτό, μια «×» των 20 δεν
+// πατιέται σε κανένα κινητό — και ήταν έτσι σε δεκάδες σημεία.
+//
+// Η ΟΨΗ ΖΕΙ ΣΤΟ `.po-ico` του globals.css, όπως και του `Btn`: εκεί το CSS ξέρει
+// τι είναι αιώρηση, τι είναι εστίαση με πληκτρολόγιο και τι είναι οθόνη αφής.
+export function IconBtn({ children, onClick, label, tone, size = 'sm', round, disabled, type, title, style }: {
+  children: ReactNode;
+  onClick?: () => void;
+  /** Το όνομα για τον αναγνώστη οθόνης. ΥΠΟΧΡΕΩΤΙΚΟ: χωρίς λεκτικό, είναι το μόνο που ακούγεται. */
+  label: string;
+  /** «media» για πάνω σε φωτογραφία, όπου το τριτεύον γκρι εξαφανίζεται. */
+  tone?: 'danger' | 'accent' | 'media';
+  size?: 'sm' | 'md';
+  /** Κύκλος αντί για τετράγωνο — για δείκτες και μετρητές, όχι για ενέργειες. */
+  round?: boolean;
+  disabled?: boolean;
+  type?: 'button' | 'submit';
+  title?: string;
+  /**
+   * ΜΟΝΟ ΘΕΣΗ, ΟΧΙ ΟΨΗ. Το κουμπί κλεισίματος καρφώνεται πότε στη γωνία ενός
+   * παραθύρου και πότε τραβιέται με αρνητικό περιθώριο για να μη σπρώξει την
+   * κεφαλίδα. Χρώμα, φόντο και περίγραμμα μένουν στην `.po-ico`.
+   */
+  style?: CSSProperties;
+}) {
+  const box = size === 'md' ? T.h.md : T.h.sm;
+  return (
+    <button
+      type={type ?? 'button'}
+      className="po-ico"
+      data-tone={tone}
+      aria-label={label}
+      title={title}
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: box, height: box, minWidth: box, minHeight: box,
+        borderRadius: round ? '50%' : T.radius.chip,
+        cursor: disabled ? 'not-allowed' : 'pointer', flexShrink: 0, padding: 0,
+        ...style,
+      }}
+    >{children}</button>
+  );
+}
+
+// ═══ ChipToggle · ΤΟ ΠΛΑΚΙΔΙΟ ΠΟΥ ΘΥΜΑΤΑΙ ΤΙ ΔΙΑΛΕΞΕΣ ═════════════════════
+//
+// ΔΕΝ ΕΙΝΑΙ ΕΝΕΡΓΕΙΑ, ΕΙΝΑΙ ΚΑΤΑΣΤΑΣΗ. Το `Btn` έχει ΡΟΛΟ (κύριο, δευτερεύον,
+// ήσυχο)· αυτό εδώ έχει ΚΑΤΑΣΤΑΣΗ (επιλεγμένο ή όχι) και τη λέει με
+// `aria-pressed`, ώστε ο αναγνώστης οθόνης να ανακοινώσει «πατημένο». Εβδομήντα
+// τρία σημεία το έγραφαν μόνα τους — φίλτρα, ετικέτες, τμηματικοί επιλογείς —
+// και τα μισά ΔΕΝ δήλωναν καθόλου την κατάσταση στην προσιτότητα: φαινόταν
+// μόνο με χρώμα.
+//
+// ΤΟ `seg` ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΠΡΑΓΜΑ ΜΕΣΑ ΣΕ ΡΑΓΑ. Οταν τα πλακίδια κάθονται σε
+// κουτί που έχει ήδη περίγραμμα — ένα δεύτερο περίγραμμα ανά πλακίδιο δίνει
+// διπλή γραμμή· εκεί το ενεργό ξεχωρίζει με επιφάνεια και σκιά.
+export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, title, grow }: {
+  children: ReactNode;
+  on: boolean;
+  onClick?: () => void;
+  shape?: 'chip' | 'seg';
+  disabled?: boolean;
+  title?: string;
+  /** Μοιράζεται ίσα το πλάτος της σειράς — για τμηματικό επιλογέα δύο ή τριών επιλογών. */
+  grow?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className="po-chip"
+      data-shape={shape}
+      aria-pressed={on}
+      title={title}
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        minHeight: T.h.sm, padding: '0 12px', borderRadius: T.radius.chip,
+        fontSize: 'var(--fs-xs)', fontWeight: on ? 600 : 500, fontFamily: T.font.sans,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        ...(grow ? { flex: 1, minWidth: 0 } : null),
+      }}
+    >{children}</button>
+  );
+}
+
+// ═══ LinkBtn · ΕΝΕΡΓΕΙΑ ΠΟΥ ΔΙΑΒΑΖΕΤΑΙ ΩΣ ΣΥΝΔΕΣΜΟΣ ═══════════════════════
+//
+// ΓΙΑΤΙ ΟΧΙ `<a>`. Δεν πάει πουθενά: ανοίγει πεδίο, επαναφέρει τιμή, αποκαλύπτει
+// ενότητα. Ενα `<a href="#">` θα το ανακοίνωνε ως σύνδεσμο, θα άλλαζε το URL και
+// θα άνοιγε σε νέα καρτέλα με μεσαίο κλικ — τρία ψέματα. Μένει `<button>` και
+// δανείζεται μόνο την ΟΨΗ του συνδέσμου.
+//
+// ΚΑΙ ΓΙΑΤΙ ΥΠΟΓΡΑΜΜΙΣΜΕΝΟ. Εικοσι έξι σημεία το έγραφαν με σκέτο χρώμα accent
+// μέσα σε πρόταση: για όποιον δεν διακρίνει το μπλε από το γκρι, δεν υπήρχε
+// καμία ένδειξη ότι πατιέται.
+export function LinkBtn({ children, onClick, tone, disabled, type, title }: {
+  children: ReactNode;
+  onClick?: () => void;
+  tone?: 'quiet' | 'danger';
+  disabled?: boolean;
+  type?: 'button' | 'submit';
+  title?: string;
+}) {
+  return (
+    <button
+      type={type ?? 'button'}
+      className="po-link"
+      data-tone={tone}
+      title={title}
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
     >{children}</button>
   );
 }
@@ -1404,16 +1533,18 @@ export function SelectBox({ checked, indeterminate, onChange, label }: {
 
 export function ExportButton({ onClick, label = 'Εξαγωγή Excel', disabled }: { onClick: () => void; label?: string; disabled?: boolean }) {
   const icon = <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>;
-  // Το `background` έφυγε από εδώ: το έγραφε ενσωματωμένα και έτσι νικούσε τον
-  // κανόνα της `po-hov-row`, που δεν άναβε ποτέ — ούτε με ποντίκι ούτε με Tab.
-  // Την ηρεμία (διάφανο) τη δίνει πλέον η ίδια η κλάση.
-  const base: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.md, border: '1px solid var(--border-default)', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, whiteSpace: 'nowrap' };
+  // ΤΟ ΙΔΙΟ ΚΟΥΜΠΙ ΠΟΥ ΕΙΝΑΙ ΚΑΙ ΤΟ «ΑΚΥΡΩΣΗ» ΔΙΠΛΑ ΤΟΥ. Το τοπικό `base`
+  // απαριθμούσε διάφανο φόντο, περίγραμμα `--border-default` και κείμενο
+  // `--text-secondary`: γράμμα προς γράμμα ό,τι λέει ήδη το
+  // `.po-btn[data-variant="secondary"]`. Οι δύο διαφορές του — γέμισμα 14 αντί
+  // 18 και ακτίνα χαπιού αντί για 10 — δεν ήταν απόφαση· ήταν το ότι γράφτηκε
+  // χωριστά. Ενα κουμπί εξαγωγής δεν έχει λόγο να είναι στρογγυλότερο από το
+  // κουμπί δίπλα του. Ο τίτλος μένει, γιατί ΠΡΟΣΘΕΤΕΙ την επέκταση του αρχείου
+  // που το λεκτικό δεν λέει.
   return (
-    <button onClick={disabled ? undefined : onClick} title="Εξαγωγή σε Excel (.xlsx)" disabled={disabled}
-      className="po-hov-row"
-      style={{ ...base, padding: '0 14px', borderRadius: T.radius.pill }}>
+    <Btn variant="secondary" onClick={onClick} disabled={disabled} title="Εξαγωγή σε Excel (.xlsx)">
       {icon}{label}
-    </button>
+    </Btn>
   );
 }
 

@@ -550,6 +550,120 @@ body {
   .po-btn[data-variant="ghost"]:hover:not(:disabled)     { background: var(--bg-hover); color: var(--text-primary); }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   ΤΑ ΤΡΙΑ ΠΟΥ ΕΛΕΙΠΑΝ ΑΠΟ ΤΟ ΛΕΞΙΛΟΓΙΟ ΤΟΥ ΚΟΥΜΠΙΟΥ
+
+   ΤΙ ΜΕΤΡΗΘΗΚΕ (09/09/2026). Τα 542 `<button>` με ενσωματωμένο στυλ
+   χαρτογραφήθηκαν ένα προς ένα, σε 106 αρχεία. Δεν ήταν ένα πράγμα· ήταν έξι:
+
+       166  δευτερεύουσα ενέργεια        → <Btn variant="secondary">
+        76  κύρια ενέργεια               → <Btn variant="primary">
+        26  ήσυχη ενέργεια               → <Btn variant="ghost">
+        73  πλακίδιο επιλογής με on/off  → ΔΕΝ ΥΠΗΡΧΕ
+        69  μόνο εικονίδιο               → ΔΕΝ ΥΠΗΡΧΕ
+        26  σύνδεσμος μέσα σε πρόταση    → ΔΕΝ ΥΠΗΡΧΕ
+        87  πραγματικά ιδιαίτερα         → μένουν, με γραμμένο τον λόγο
+        19  ψευδή ευρήματα του φύλακα    → το στυλ περνά μόνο μεταβλητή CSS
+
+   ΓΙ' ΑΥΤΟ ΤΑ 268 ΔΕΝ ΕΓΙΝΑΝ ΠΟΤΕ `Btn`. Το `Btn` ξέρει τρεις ρόλους και τα
+   άλλα τρία σχήματα δεν χωρούσαν σε κανέναν: ένα εικονίδιο 12×12 μέσα σε
+   κουμπί με `padding: 9px 18px` γίνεται 48 φαρδύ, ένα πλακίδιο φίλτρου δεν
+   έχει «ρόλο» αλλά ΚΑΤΑΣΤΑΣΗ· ένας σύνδεσμος μέσα σε πρόταση δεν έχει
+   κουτί καθόλου. Οποιος τα ήθελε, τα ζωγράφιζε. Εκατόν έξι φορές.
+
+   Η ΟΨΗ ΕΔΩ, Η ΓΕΩΜΕΤΡΙΑ ΣΤΟ component — ίδιος κανόνας με το `.po-btn`. Ο
+   λόγος είναι ο ίδιος και μετρημένος: ενσωματωμένο στυλ νικά κάθε κανόνα
+   κλάσης, οπότε όσο το χρώμα γράφεται στο στοιχείο, κανένα `:hover` και
+   κανένα `:focus-visible` δεν μπορεί ΠΟΤΕ να ισχύσει.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── .po-ico · ΜΟΝΟ ΕΙΚΟΝΙΔΙΟ ────────────────────────────────────────────────
+   Εξήντα εννέα σημεία: το «×» που κλείνει, το μολύβι που επεξεργάζεται, ο
+   κάδος που διαγράφει, τα βελάκια του ημερολογίου. Κοινό σχήμα: τετράγωνο ή
+   κύκλος, διάφανο στην ηρεμία, γεμίζει στην αιώρηση.
+
+   ΤΟ ΜΕΓΕΘΟΣ ΕΙΝΑΙ ΤΟΥ ΚΟΥΤΙΟΥ, ΟΧΙ ΤΟΥ ΕΙΚΟΝΙΔΙΟΥ. Το εικονίδιο μένει 12, 14
+   ή 16· το ΚΟΥΤΙ γύρω του είναι ο στόχος αφής. Τα 44 σε δάχτυλο δεν είναι
+   διαπραγματεύσιμα: μια «×» των 20 εικονοστοιχείων αστοχεί σε κάθε κινητό.
+   Ο τόνος `danger` υπάρχει γιατί ο κάδος δεν γεμίζει με γκρι. */
+.po-ico {
+  -webkit-tap-highlight-color: transparent;
+  background: transparent; border: none; color: var(--text-tertiary);
+  transition: background .12s, color .12s;
+}
+@media (hover: hover) {
+  .po-ico:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-secondary); }
+  .po-ico[data-tone="danger"]:hover:not(:disabled) { background: var(--negative-dim); color: var(--negative); }
+  .po-ico[data-tone="accent"]:hover:not(:disabled) { background: var(--accent-dim); color: var(--accent); }
+  /* Πάνω σε φωτογραφία δεν υπάρχει «φόντο επιφάνειας» να ανάψει: η αιώρηση
+     ανεβάζει το ίδιο πέπλο από 0,14 σε 0,24 αδιαφάνεια. */
+  .po-ico[data-tone="media"]:hover:not(:disabled) { background: rgba(255,255,255,0.24); color: var(--on-media); }
+}
+.po-ico[data-tone="danger"] { color: var(--negative); }
+.po-ico[data-tone="accent"] { color: var(--accent); }
+/* ΤΟ ΚΛΕΙΣΙΜΟ ΠΑΝΩ ΣΕ ΦΩΤΟΓΡΑΦΙΑ. Το τριτεύον γκρι χάνεται σε μια σκούρα
+   εικόνα και κόβεται σε μια ανοιχτή· το πέπλο του δίνει σταθερή αντίθεση
+   ό,τι κι αν έχει από κάτω. Το χρώμα ΔΕΝ είναι θεματικό εδώ: η φωτογραφία
+   δεν αλλάζει με το θέμα της εφαρμογής. */
+.po-ico[data-tone="media"] { background: rgba(255,255,255,0.14); color: var(--on-media); }
+.po-ico:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── .po-chip · ΠΛΑΚΙΔΙΟ ΜΕ ΚΑΤΑΣΤΑΣΗ ───────────────────────────────────────
+   Εβδομήντα τρία σημεία: φίλτρα, ετικέτες, τμηματικοί επιλογείς, γρήγορες
+   συμπληρώσεις. ΔΕΝ είναι κουμπί ενέργειας — είναι επιλογή που θυμάται τι
+   διάλεξες — το λέει με `aria-pressed`.
+
+   ΔΥΟ ΣΧΗΜΑΤΑ, ΓΙΑΤΙ ΜΕΤΡΗΘΗΚΑΝ ΔΥΟ. Το `chip` στέκεται μόνο του και έχει
+   δικό του περίγραμμα· το `seg` ζει ΜΕΣΑ σε ράγα που έχει ήδη περίγραμμα:
+   εκεί ένα δεύτερο περίγραμμα ανά πλακίδιο δίνει διπλή γραμμή. Το ενεργό
+   ανασηκώνεται από τη ράγα με επιφάνεια και σκιά, δεν χρωματίζεται. */
+.po-chip {
+  -webkit-tap-highlight-color: transparent;
+  background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  transition: background .12s, border-color .12s, color .12s;
+}
+.po-chip[aria-pressed="true"] {
+  background: var(--accent-soft); border-color: var(--border-accent); color: var(--accent);
+}
+@media (hover: hover) {
+  .po-chip:hover:not(:disabled) { border-color: var(--border-default); color: var(--text-primary); }
+  .po-chip[aria-pressed="true"]:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+}
+.po-chip[data-shape="seg"] { border-color: transparent; }
+.po-chip[data-shape="seg"][aria-pressed="true"] {
+  background: var(--bg-elevated); border-color: transparent;
+  box-shadow: var(--shadow-sm); color: var(--accent);
+}
+.po-chip:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── .po-link · ΚΟΥΜΠΙ ΠΟΥ ΔΙΑΒΑΖΕΤΑΙ ΩΣ ΣΥΝΔΕΣΜΟΣ ──────────────────────────
+   Εικοσι έξι σημεία, όλα μέσα σε πρόταση: «Επαναφορά στο τεκμηριωμένο»,
+   «Δες τι θυμάται», «Αλλαγή διεύθυνσης». Είναι ΕΝΕΡΓΕΙΑ, όχι προορισμός, άρα
+   πρέπει να μείνει `<button>` — αλλά δεν έχει κουτί: χωρίς φόντο, χωρίς
+   περίγραμμα, χωρίς γέμισμα, στη ροή του κειμένου.
+
+   ΤΟ ΥΠΟΓΡΑΜΜΙΣΜΕΝΟ ΕΙΝΑΙ Η ΜΟΝΗ ΤΟΥ ΕΝΔΕΙΞΗ. Χρώμα και μόνο δεν αρκεί: ο
+   αναγνώστης με αχρωματοψία δεν βλέπει «πατιέται». Το `underline-offset`
+   κρατά τη γραμμή μακριά από τους ουρές των γραμμάτων (γ, ρ, φ, χ, ψ), που
+   στα ελληνικά είναι πέντε από τα είκοσι τέσσερα. */
+.po-link {
+  -webkit-tap-highlight-color: transparent;
+  background: none; border: none; padding: 0;
+  color: var(--accent); font: inherit; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color .12s, text-decoration-color .12s;
+}
+.po-link[data-tone="quiet"]  { color: var(--text-tertiary); }
+.po-link[data-tone="danger"] { color: var(--negative); }
+@media (hover: hover) {
+  .po-link:hover:not(:disabled) { color: var(--accent-hover); }
+  .po-link[data-tone="quiet"]:hover:not(:disabled)  { color: var(--text-secondary); }
+  .po-link[data-tone="danger"]:hover:not(:disabled) { color: var(--negative); text-decoration-thickness: 2px; }
+}
+.po-link:disabled { opacity: .5; cursor: not-allowed; text-decoration: none; }
+
 /* ── Η ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ ΣΤΟ ΤΑΜΕΙΟ ─────────────────────────────────────────
    Σειρά που πατιέται. Η αιώρηση ΜΟΝΟ όπου υπάρχει δείκτης, όπως και στα
    κουμπιά: σε οθόνη αφής το `:hover` κολλάει μετά το πάτημα και η σειρά
@@ -3095,6 +3209,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    spread — σβήνει την ιδιότητα από το ενσωματωμένο και αφήνει την κλάση να
    μιλήσει. */
 .po-prose { line-height: 1.7; }
+
+/* ═══ ΤΟ ΕΝΑ ΕΙΚΟΝΟΣΤΟΙΧΕΙΟ ΠΟΥ ΔΕΝ ΕΙΝΑΙ ΑΠΟΣΤΑΣΗ ═══════════════════════════
+   Μετρήθηκαν 49 σημεία με `marginTop: 1`. Ο φύλακας των αποστάσεων τα έβλεπε
+   ως 49 παραβάσεις του πλέγματος — και είχε άδικο, γιατί ΔΕΝ είναι αέρας
+   ανάμεσα σε δύο πράγματα. Είναι δύο τυπογραφικές ρυθμίσεις που έτυχε να
+   γράφονται με τον ίδιο αριθμό:
+
+   ΟΙ 24: ΕΙΚΟΝΙΔΙΟ ΔΙΠΛΑ ΣΕ ΚΕΙΜΕΝΟ. Ενα εικονίδιο 16-20 εικονοστοιχείων
+   στοιχισμένο στην κορυφή μιας γραμμής κάθεται οπτικά ΨΗΛΟΤΕΡΑ από τα
+   κεφαλαία δίπλα του: το πλαίσιό του ξεκινά στο ίδιο ύψος με το κουτί της
+   γραμμής, ενώ το γράμμα ξεκινά χαμηλότερα κατά τη διαφορά κουτιού-κεφαλαίου.
+   Το ένα εικονοστοιχείο κλείνει αυτή τη διαφορά. Το μηδέν το αφήνει ψηλά· τα
+   δύο το ρίχνουν κάτω από τη γραμμή βάσης. Δεν στρογγυλεύει.
+
+   ΟΙ 25: ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΚΑΤΩ ΑΠΟ ΤΙΤΛΟ. Η υπογραμμή είναι μικρότερη —
+   `--fs-xs` έναντι `--fs-base` — οπότε το δικό της ύψος γραμμής ήδη ανοίγει
+   κενό πάνω της. Το ένα εικονοστοιχείο δεν προσθέτει αέρα· ισοσκελίζει τη
+   διαφορά των δύο κουτιών ώστε οι δύο γραμμές να διαβάζονται ως ΜΙΑ μονάδα.
+
+   ΓΙΑΤΙ ΚΛΑΣΗ ΚΑΙ ΟΧΙ ΕΞΑΙΡΕΣΗ ΣΤΟΝ ΦΥΛΑΚΑ. Μια εξαίρεση θα άφηνε το επόμενο
+   `marginTop: 1` να περάσει χωρίς να ξέρει κανείς ποιο από τα δύο εννοεί. Με
+   όνομα, το σημείο δηλώνει τι κάνει· και όταν κάποτε αλλάξει η βασική
+   γραμματοσειρά, αλλάζουν δύο γραμμές εδώ αντί για σαράντα εννέα σημεία. */
+.po-lead-ico { flex-shrink: 0; margin-top: 1px; }
+.po-subline  { margin-top: 1px; }
 .po-table tbody th, .po-table tbody td { border-bottom: 1px solid var(--border-subtle); }
 /* Η τελευταία γραμμή δεν έχει τι να χωρίσει από κάτω της. */
 .po-table tbody tr:last-child > * { border-bottom: none; }

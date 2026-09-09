@@ -1,7 +1,7 @@
 import { emailHeader, eyebrow } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { APP_URL } from '../_shared/site.ts'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 // Οι τύποι των γραμμών βγαίνουν από τα ίδια τα migrations (npm run db-types).
 // Η εισαγωγή είναι μόνο τύπων: σβήνεται στη μεταγλώττιση και δεν φτάνει στο Deno.
 import type { CalendarEventsRow, NotificationLogRow, RentPaymentsRow, TenantsRow, UserPropertiesRow } from '../../../lib/supabase/tables.ts'
@@ -29,7 +29,7 @@ type PropertyName = Pick<UserPropertiesRow, 'id' | 'name'>
 // Η (γ) είναι η κύρια, μηδενικής-ρύθμισης οδός: το pg_cron στέλνει την ίδια τιμή
 // από τον πίνακα και το function την επαληθεύει με τον service-role client του —
 // άρα δεν χρειάζεται κανένα χειροκίνητο μυστικό στο dashboard.
-async function authorized(req: Request): Promise<boolean> {
+async function authorized(req: Request): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: SUPABASE_KEY, envSecret: CRON_SECRET, supabase })
 }
 
@@ -172,8 +172,10 @@ async function sendEmail(to: string, subject: string, html: string) {
 }
 
 Deno.serve(async (req) => {
-  if (!(await authorized(req))) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+  const auth = await authorized(req)
+  if (!auth.ok) {
+    const [body, status] = cronDenial(auth)
+    return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
   }
 
   const today = new Date(); today.setHours(0,0,0,0)

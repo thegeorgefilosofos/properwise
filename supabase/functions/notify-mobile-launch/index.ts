@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
 
     if (rowsErr) {
       console.error('[notify-mobile-launch] λίστα αναμονής:', rowsErr)
-      return json({ error: 'waitlist_unreadable', detail: rowsErr.message }, 500)
+      return new Response(JSON.stringify({ error: 'waitlist_unreadable', detail: rowsErr.message }), { status: 500, headers: { 'Content-Type': 'application/json' } })
     }
     if (!rows?.length) {
       return new Response(JSON.stringify({ message: 'Κανένας εκκρεμής παραλήπτης', sent: 0 }), { status: 200, headers: { 'Content-Type': 'application/json' } })

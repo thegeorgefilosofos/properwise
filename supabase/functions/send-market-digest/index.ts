@@ -11,7 +11,7 @@
 import { emailHeader, eyebrow } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { APP_URL } from '../_shared/site.ts'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { pct } from '../_shared/format.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
@@ -27,7 +27,7 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 // (β) το προαιρετικό x-cron-secret env, ή (γ) το κοινό μυστικό cron από τη ΒΔ
 // (public.cron_secrets) — η κύρια, μηδενικής-ρύθμισης οδός. Το pg_cron στέλνει
 // την τιμή του πίνακα, το function την επαληθεύει με τον service-role client του.
-async function authorized(req: Request): Promise<boolean> {
+async function authorized(req: Request): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase })
 }
 
@@ -88,7 +88,8 @@ async function listUsers(): Promise<{ id: string; email: string }[]> {
 }
 
 Deno.serve(async (req) => {
-  if (!(await authorized(req))) return json({ error: 'unauthorized' }, 401)
+  const auth = await authorized(req)
+  if (!auth.ok) return json(...cronDenial(auth))
   if (!RESEND_API_KEY) return json({ error: 'no_resend_key' }, 500)
 
   const { data: rows, error: rowsErr } = await supabase.from('market_rates')

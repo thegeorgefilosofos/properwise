@@ -46,8 +46,17 @@ Deno.serve(async (req) => {
 
   // Enforce token expiry server-side (mirror of calendar-feed): a leaked/rotated token
   // must stop working. expires_at is set on issue; legacy NULL rows never expire.
-  const { data: row } = await supabase.from('calendar_feed_tokens')
+  // ΤΟ ΙΔΙΟ ΛΑΘΟΣ ΜΕ ΤΙΣ ΔΙΑΜΟΝΕΣ ΠΙΟ ΚΑΤΩ, ΕΝΑ ΒΗΜΑ ΝΩΡΙΤΕΡΑ. Χωρίς το `error`
+  // μια αποτυχία ανάγνωσης έδινε `row = null` — δηλαδή την ίδια απάντηση με ένα
+  // ανακληθέν token: 404. Οι εφαρμογές ημερολογίου ΔΙΑΓΡΑΦΟΥΝ μια συνδρομή που
+  // απαντά 404 σταθερά· ο ιδιοκτήτης θα έχανε τη ροή του για μια στιγμιαία
+  // διακοπή της βάσης. Το 503 λέει «ξαναδοκίμασε» και η συνδρομή επιβιώνει.
+  const { data: row, error: rowErr } = await supabase.from('calendar_feed_tokens')
     .select('user_id, expires_at').eq('token', token).maybeSingle()
+  if (rowErr) {
+    console.error('[bookings-feed] το token δεν διαβάστηκε:', rowErr)
+    return new Response('Η ροή δεν είναι διαθέσιμη αυτή τη στιγμή', { status: 503 })
+  }
   if (!row?.user_id) return new Response('Δεν βρέθηκε', { status: 404 })
   if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) {
     return new Response('Το token έχει λήξει', { status: 401 })

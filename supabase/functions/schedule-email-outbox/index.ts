@@ -21,7 +21,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { APP_URL } from '../_shared/site.ts'
 import { scheduleBatch, policyFor, type OutboxRow } from '../_shared/emailPolicy.ts'
 import { CATALOG, DIGESTS } from '../_shared/emailCopy.ts'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -34,7 +34,7 @@ const titleOf = (copyId: string): string => {
   try { return ({ ...CATALOG, ...DIGESTS })[copyId]?.({ appUrl: APP_URL })?.subject || copyId } catch { return copyId }
 }
 
-async function authorized(req: Request): Promise<boolean> {
+async function authorized(req: Request): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase })
 }
 
@@ -66,7 +66,8 @@ function tomorrowMorningISO(): string {
 }
 
 Deno.serve(async (req) => {
-  if (!(await authorized(req))) return json({ error: 'unauthorized' }, 401)
+  const auth = await authorized(req)
+  if (!auth.ok) return json(...cronDenial(auth))
 
   // Single-flight: if another run holds the advisory lock, exit cleanly so two
   // overlapping cron ticks never plan the same rows.

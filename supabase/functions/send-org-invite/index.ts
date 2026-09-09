@@ -73,18 +73,38 @@ Deno.serve(async (req) => {
   // Client με το JWT του καλούντος: όλα τα queries περνούν από RLS.
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, { global: { headers: { Authorization: authHeader } } })
 
-  const { data: userData } = await supabase.auth.getUser()
+  // ═══ ΤΡΕΙΣ ΕΛΕΓΧΟΙ ΠΟΥ ΕΛΕΓΑΝ ΟΛΟΙ «ΟΧΙ» ΚΑΙ ΓΙΑ ΤΟΝ ΙΔΙΟ ΛΟΓΟ ═══════════
+  // Ταυτότητα, κυριότητα οργανισμού, ιδιότητα μέλους: και οι τρεις διάβαζαν
+  // μόνο το `data`. Οταν η υπηρεσία ταυτοποίησης ή η βάση δεν απαντούσε, το
+  // αποτέλεσμα ήταν κενό — δηλαδή ΤΑΥΤΟΣΗΜΟ με «δεν είσαι συνδεδεμένος», «δεν
+  // είσαι ιδιοκτήτης», «δεν είναι μέλος». Ο χρήστης έβλεπε τρία διαφορετικά
+  // μηνύματα λάθους για ΕΝΑ πρόβλημα που δεν ήταν δικό του, ξανάγραφε το email
+  // του και ξαναδοκίμαζε. Η άρνηση μένει άρνηση· το 503 λέει «ξαναδοκίμασε σε
+  // λίγο» αντί για «δεν έχεις δικαίωμα».
+  const { data: userData, error: userErr } = await supabase.auth.getUser()
+  if (userErr) {
+    console.error('[send-org-invite] η ταυτότητα δεν διαβάστηκε:', userErr)
+    return json({ error: 'identity_unavailable', detail: userErr.message }, 503)
+  }
   const inviter = userData?.user?.email || ''
   if (!userData?.user) return json({ error: 'unauthorized' }, 401)
 
   // Ο καλών πρέπει να είναι ιδιοκτήτης οργανισμού (RLS: owner-only select).
-  const { data: orgRow } = await supabase
+  const { data: orgRow, error: orgErr } = await supabase
     .from('organizations').select('id, name').eq('owner_user_id', userData.user.id).maybeSingle()
+  if (orgErr) {
+    console.error('[send-org-invite] ο οργανισμός δεν διαβάστηκε:', orgErr)
+    return json({ error: 'org_unreadable', detail: orgErr.message }, 503)
+  }
   if (!orgRow) return json({ error: 'not_owner' }, 403)
 
   // Το email πρέπει να είναι όντως προσκεκλημένο μέλος αυτού του οργανισμού.
-  const { data: member } = await supabase
+  const { data: member, error: memberErr } = await supabase
     .from('organization_members').select('role, status').eq('org_id', orgRow.id).eq('email', email).maybeSingle()
+  if (memberErr) {
+    console.error('[send-org-invite] το μέλος δεν διαβάστηκε:', memberErr)
+    return json({ error: 'membership_unreadable', detail: memberErr.message }, 503)
+  }
   if (!member) return json({ error: 'not_a_member' }, 404)
 
   // ── ΤΟ «ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΜΕΛΟΣ» ΔΕΝ ΕΙΝΑΙ ΦΡΑΓΜΟΣ, ΕΙΝΑΙ ΚΥΚΛΟΣ ──────────

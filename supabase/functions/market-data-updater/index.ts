@@ -5,7 +5,7 @@
 // Deploy: supabase functions deploy market-data-updater --project-ref aromvduuxtcrzmwwvnej
 
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 // Η ΤΡΟΦΟΔΟΣΙΑ ΖΕΙ ΜΙΑ ΦΟΡΑ, ΣΤΟ lib/market/ecb.ts. Το αρχείο δεν έχει καμία
 // σχετική εισαγωγή ακριβώς για να φορτώνεται και από το Deno εδώ και από την
 // εφαρμογή· η ροή ανάπτυξης παρακολουθεί τον φάκελο lib/market, ώστε μια αλλαγή
@@ -23,7 +23,7 @@ const supabase = createClient(
 // Accepts the service-role bearer, an optional env secret, or the shared cron
 // secret stored in public.cron_secrets (the zero-config path pg_cron uses).
 const CRON_SECRET = Deno.env.get('MARKET_DATA_CRON_SECRET') || ''
-async function authorized(req: Request): Promise<boolean> {
+async function authorized(req: Request): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '', envSecret: CRON_SECRET, supabase })
 }
 
@@ -57,8 +57,10 @@ async function authorized(req: Request): Promise<boolean> {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
-  if (!(await authorized(req))) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } })
+  const auth = await authorized(req)
+  if (!auth.ok) {
+    const [body, status] = cronDenial(auth)
+    return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
   }
   console.log('=== Market Data Updater ===', new Date().toISOString())
 

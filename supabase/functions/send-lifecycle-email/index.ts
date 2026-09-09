@@ -22,7 +22,7 @@ import {
 } from '../_shared/emailTemplates.ts'
 import { CATALOG, DIGESTS } from '../_shared/emailCopy.ts'
 import { guessGender } from '../_shared/gender.ts'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -34,7 +34,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } })
 const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
 
-async function authorized(req: Request): Promise<boolean> {
+async function authorized(req: Request): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase })
 }
 
@@ -107,7 +107,8 @@ function render(event: string, ctx: Ctx, params: Record<string, unknown>): { sub
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
-  if (!(await authorized(req))) return json({ error: 'unauthorized' }, 401)
+  const auth = await authorized(req)
+  if (!auth.ok) return json(...cronDenial(auth))
   if (!RESEND_API_KEY) return json({ error: 'no_resend_key' }, 500)
 
   let event = '', copyId = '', email = '', name = '', params: Record<string, unknown> = {}

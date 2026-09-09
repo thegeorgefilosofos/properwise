@@ -15,7 +15,7 @@
 import { emailHeader, eyebrow, grUp } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { APP_URL } from '../_shared/site.ts'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { eur } from '../_shared/format.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
@@ -30,7 +30,7 @@ const MONTHS = ['Ιανουαρίου', 'Φεβρουαρίου', 'Μαρτίο�
 
 // Εξουσιοδότηση cron (zero-config): service-role bearer, ή x-cron-secret env, ή το
 // κοινό μυστικό του πίνακα cron_secrets (το στέλνει το pg_cron).
-async function authorized(req: Request): Promise<boolean> {
+async function authorized(req: Request): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase })
 }
 
@@ -80,7 +80,8 @@ function statementHtml(ownerRows: { primary: string; secondary: string; expected
 }
 
 Deno.serve(async (req) => {
-  if (!(await authorized(req))) return json({ error: 'unauthorized' }, 401)
+  const auth = await authorized(req)
+  if (!auth.ok) return json(...cronDenial(auth))
   if (!RESEND_API_KEY) return json({ error: 'no_resend_key' }, 500)
 
   // Προηγούμενος μήνας.

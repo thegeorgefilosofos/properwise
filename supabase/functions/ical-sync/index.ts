@@ -15,7 +15,7 @@
 //   • Απλός έλεγχος SSRF: μπλοκάρει localhost/ιδιωτικά δίκτυα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { reportEdgeError } from '../_shared/report.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -405,7 +405,8 @@ Deno.serve(async (req) => {
 
     // ── Cron/service: συγχρονισμός ΟΛΩΝ των ενεργών συνδέσμων ──
     if (action === 'sync-all' || cronHeader) {
-      if (!(await authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase: admin, dbSecretName: ['ical_cron', 'email_cron'] }))) return json({ error: 'unauthorized' }, 401)
+      const auth = await authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase: admin, dbSecretName: ['ical_cron', 'email_cron'] })
+      if (!auth.ok) return json(...cronDenial(auth))
       // ΑΠΟΤΥΧΙΑ ΕΔΩ ΣΗΜΑΙΝΕ «ΚΑΜΙΑ ΕΝΕΡΓΗ ΡΟΗ» ΚΑΙ ΑΠΑΝΤΟΥΣΕ ok. Ο συγχρονισμός
       // όλων των ημερολογίων δεν γινόταν, καμία κράτηση δεν έμπαινε, καμία
       // ακύρωση δεν περνούσε — και το προγραμματισμένο τρέξιμο ήταν πράσινο.

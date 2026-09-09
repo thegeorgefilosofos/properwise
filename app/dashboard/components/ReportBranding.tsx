@@ -25,6 +25,12 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  // ΑΝ Η ΑΝΑΓΝΩΣΗ ΑΠΕΤΥΧΕ, Η ΦΟΡΜΑ ΔΕΝ ΕΧΕΙ ΔΙΚΑΙΩΜΑ ΝΑ ΓΡΑΨΕΙ. Τα πεδία μένουν
+  // στις αρχικές τους τιμές — κενή επωνυμία, χωρίς λογότυπο — που ΔΕΝ είναι οι
+  // αποθηκευμένες· είναι απλώς άδεια. Ενα «Αποθήκευση» πάνω σε αυτά σβήνει το
+  // λογότυπο και τα στοιχεία της επιχείρησης με upsert, χωρίς να το ζητήσει
+  // κανείς. Οσο δεν ξέρουμε τι υπάρχει, δεν το αντικαθιστούμε.
+  const [loadError, setLoadError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -35,7 +41,12 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
       // ο δοκιμαστής, ο προσκεκλημένος και ο συνεργάτης έβλεπαν κλειδωμένη μια
       // δυνατότητα που είχαν, ενώ κάθε άλλη οθόνη τους την έδινε. Το ενεργό
       // πακέτο υπολογίζεται ΜΙΑ φορά, στη σελίδα και κατεβαίνει ως ιδιότητα.
-      const { data: rb } = await supabase.from('report_branding').select('*').eq('user_id', userId).maybeSingle();
+      const { data: rb, error: rbErr } = await supabase.from('report_branding').select('*').eq('user_id', userId).maybeSingle();
+      if (rbErr) {
+        setLoadError(failed('Η επωνυμία δεν διαβάστηκε', rbErr));
+        setLoading(false);
+        return;
+      }
       if (rb) {
         setEnabled(rb.enabled !== false);
         setCompanyName((rb.company_name as string) || '');
@@ -220,9 +231,10 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
             της επόμενης και το κουμπί κολλητά πάνω της. Καμία άλλη ενότητα των
             Ρυθμίσεων δεν κάνει κάτι τέτοιο — οι ενέργειες κάθε ενότητας ζουν
             ΜΕΣΑ στην κάρτα της και η κάρτα κρατά τον ρυθμό των αποστάσεων. */}
+        {loadError && <div style={{ marginTop: 16 }}><InfoBanner tone="negative">{loadError} Ανανέωσε τη σελίδα· ώσπου να διαβαστεί, η αποθήκευση μένει κλειστή ώστε να μη γραφτούν κενά πάνω στα στοιχεία σου.</InfoBanner></div>}
         {error && <div style={{ marginTop: 16 }}><InfoBanner tone="warning">{error}</InfoBanner></div>}
         <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-          <Btn variant="primary" onClick={save} disabled={saving}>{saving ? 'Αποθήκευση…' : saved ? 'Αποθηκεύτηκε' : 'Αποθήκευση επωνυμίας'}</Btn>
+          <Btn variant="primary" onClick={save} disabled={saving || !!loadError}>{saving ? 'Αποθήκευση…' : saved ? 'Αποθηκεύτηκε' : 'Αποθήκευση επωνυμίας'}</Btn>
         </div>
       </Card>
     </div>

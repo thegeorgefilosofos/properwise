@@ -41,9 +41,15 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
     let alive = true;
     (async () => {
       try {
-        const { data } = await supabase.rpc('my_feedback_status');
+        // ΕΔΩ Η ΥΠΟΒΑΘΜΙΣΗ ΕΙΝΑΙ ΟΝΤΩΣ ΑΚΙΝΔΥΝΗ ΚΑΙ ΓΙ' ΑΥΤΟ ΜΕΝΕΙ. Χωρίς την
+        // κατάσταση η φόρμα εμφανίζεται κανονικά: το χειρότερο που συμβαίνει
+        // είναι να ξαναρωτηθεί κάποιος που έχει ήδη απαντήσει. Καμία τιμή,
+        // κανένα ποσό, καμία απόφαση δεν κρέμεται από αυτό. Αυτό που ΔΕΝ ήταν
+        // εντάξει ήταν να μη μαθαίνει κανείς ότι η κλήση αποτυγχάνει.
+        const { data, error: err } = await supabase.rpc('my_feedback_status');
+        if (err) console.error('[Feedback] η κατάσταση δεν διαβάστηκε:', err);
         if (alive && data) setStatus(data as Status);
-      } catch { /* σιωπηλά: το UI δουλεύει και χωρίς την κατάσταση */ }
+      } catch (err) { console.error('[Feedback] η κατάσταση δεν διαβάστηκε:', err); }
       if (alive) setLoading(false);
     })();
     return () => { alive = false; };
