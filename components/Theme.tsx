@@ -1402,7 +1402,10 @@ export function SelectBox({ checked, indeterminate, onChange, label }: {
 
 export function ExportButton({ onClick, label = 'Εξαγωγή Excel', disabled }: { onClick: () => void; label?: string; disabled?: boolean }) {
   const icon = <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>;
-  const base: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.md, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, whiteSpace: 'nowrap' };
+  // Το `background` έφυγε από εδώ: το έγραφε ενσωματωμένα και έτσι νικούσε τον
+  // κανόνα της `po-hov-row`, που δεν άναβε ποτέ — ούτε με ποντίκι ούτε με Tab.
+  // Την ηρεμία (διάφανο) τη δίνει πλέον η ίδια η κλάση.
+  const base: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.md, border: '1px solid var(--border-default)', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, whiteSpace: 'nowrap' };
   return (
     <button onClick={disabled ? undefined : onClick} title="Εξαγωγή σε Excel (.xlsx)" disabled={disabled}
       className="po-hov-row"

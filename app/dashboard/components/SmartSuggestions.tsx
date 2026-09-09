@@ -359,10 +359,7 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
                     {isAdded ? <Check size={12} aria-hidden /> : <Plus size={12} aria-hidden />}
                     {isAdded ? 'Προστέθηκε' : 'Στο ημερολόγιο'}
                   </button>
-                  <button onClick={() => dismiss(idx)} aria-label={`Απόρριψη: ${s.title}`} title="Απόρριψη"
-                    style={{ width: T.h.sm, height: T.h.sm, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-tertiary)' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                  <button className="po-hov-fill" onClick={() => dismiss(idx)} aria-label={`Απόρριψη: ${s.title}`} title="Απόρριψη" style={{ width: T.h.sm, height: T.h.sm, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-tertiary)' }} >
                     <X size={13} aria-hidden />
                   </button>
                 </div>

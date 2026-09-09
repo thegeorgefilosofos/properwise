@@ -1295,7 +1295,7 @@ function TimeField({ value, onChange }: { value:string; onChange:(v:string)=>voi
       </button>
       {open&&rect&&createPortal(
         <div ref={listRef} style={{ position:'fixed', left:rect.left, top:rect.top, width:rect.width, maxHeight:244, overflowY:'auto', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:12, boxShadow:'var(--elev-3)', padding: 4, zIndex:2000 }}>
-          <button type="button" onClick={()=>{ onChange(''); setOpen(false) }} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', border:'none', background:'transparent', color:'var(--text-tertiary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, borderRadius:8, cursor:'pointer' }} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>Καμία ώρα</button>
+          <button className="po-hov-fill" type="button" onClick={()=>{ onChange(''); setOpen(false) }} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', border:'none', color:'var(--text-tertiary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, borderRadius:8, cursor:'pointer' }} >Καμία ώρα</button>
           {times.map(t=>{ const active=t===value; return (
             <button key={t} type="button" onClick={()=>{ onChange(t); setOpen(false) }} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', border:'none', background:active?'var(--accent-soft)':'transparent', color:active?'var(--accent)':'var(--text-primary)', fontSize:14, fontWeight:active?600:400, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', borderRadius:8, cursor:'pointer' }} onMouseEnter={e=>{ if(!active)e.currentTarget.style.background='var(--bg-hover)' }} onMouseLeave={e=>{ if(!active)e.currentTarget.style.background='transparent' }}>{t}</button>
           )})}
@@ -2197,7 +2197,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           {showOverdue&&(
             <div>
               {[...overdue].sort((a,b)=>a.event_date.localeCompare(b.event_date)).map((e,i,arr)=>{ const late=Math.abs(daysUntil(e.event_date)); const cat=CATEGORIES[e.category]; return (
-                <button key={e.id} onClick={()=>openEdit(e)} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', textAlign:'left', padding:'11px 16px', border:'none', borderBottom:i<arr.length-1?'1px solid var(--border-subtle)':'none', background:'transparent', cursor:'pointer', transition:'background 0.12s' }} onMouseEnter={ev=>ev.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={ev=>ev.currentTarget.style.background='transparent'}>
+                <button className="po-hov-fill" key={e.id} onClick={()=>openEdit(e)} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', textAlign:'left', padding:'11px 16px', border:'none', borderBottom:i<arr.length-1?'1px solid var(--border-subtle)':'none', cursor:'pointer', transition:'background 0.12s' }} >
                   <span style={{ width:7, height:7, borderRadius:3, background:cat.color, flexShrink:0 }}/>
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>{e.title}</p>
@@ -2237,9 +2237,9 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
 
         {viewMode!=='agenda'&&(
           <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <button aria-label="Προηγούμενο" title="Προηγούμενο" onClick={prevPeriod} style={{ width:34, height:34, borderRadius:'50%', border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><ChevronLeft size={18}/></button>
+            <button className="po-hov-fill" aria-label="Προηγούμενο" title="Προηγούμενο" onClick={prevPeriod} style={{ width:34, height:34, borderRadius:'50%', border:'none', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }} ><ChevronLeft size={18}/></button>
             <span aria-live="polite" style={{ fontSize:15, fontWeight:600, fontFamily: T.font.sans, color:'var(--text-primary)', minWidth:150, textAlign:'center', letterSpacing:'0.1px' }}>{periodLabel()}</span>
-            <button aria-label="Επόμενο" title="Επόμενο" onClick={nextPeriod} style={{ width:34, height:34, borderRadius:'50%', border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><ChevronRight size={18}/></button>
+            <button className="po-hov-fill" aria-label="Επόμενο" title="Επόμενο" onClick={nextPeriod} style={{ width:34, height:34, borderRadius:'50%', border:'none', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }} ><ChevronRight size={18}/></button>
             <button onClick={()=>setCurrentDate(athensNow())} style={{ height:T.h.lg, padding:'0 14px', borderRadius: T.radius.modal, border:'1px solid var(--border-default)', background:'var(--bg-surface)', cursor:'pointer', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, fontFamily: T.font.sans }} onMouseEnter={e=>{e.currentTarget.style.background='var(--bg-hover)';e.currentTarget.style.color='var(--text-primary)'}} onMouseLeave={e=>{e.currentTarget.style.background='var(--bg-surface)';e.currentTarget.style.color='var(--text-secondary)'}}>Σήμερα</button>
           </div>
         )}
@@ -2309,7 +2309,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                 }},
                 {label:'Εκτύπωση', icon:<Printer size={15}/>, on:()=>{printCalendar();setShowMenu(false)}},
               ] as {label:string;icon:React.ReactNode;on:()=>void}[]).map(it=>(
-                <button key={it.label} onClick={it.on} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'9px 12px', border:'none', background:'transparent', cursor:'pointer', textAlign:'left', color:'var(--text-primary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, borderRadius:8, transition:'background 0.12s' }} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                <button className="po-hov-fill" key={it.label} onClick={it.on} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'9px 12px', border:'none', cursor:'pointer', textAlign:'left', color:'var(--text-primary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, borderRadius:8, transition:'background 0.12s' }} >
                   <span style={{ color:'var(--text-tertiary)', display:'flex', flexShrink:0 }}>{it.icon}</span>{it.label}
                 </button>
               ))}

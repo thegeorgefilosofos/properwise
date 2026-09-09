@@ -1012,18 +1012,12 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
                 { Icon: QrCode, label: 'QR Code', onClick: onShowQR, color: 'var(--accent)' },
                 { Icon: Printer, label: 'Εκτύπωση Κάρτας', onClick: () => printContactCard(contact, branding), color: 'var(--text-secondary)' },
               ].map((a, i) => (
-                <button key={i} type="button" role="menuitem" onClick={() => { a.onClick(); setShowActions(false) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--text-primary)', textAlign: 'left' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-surface)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <button className="po-hov-fill" key={i} type="button" role="menuitem" onClick={() => { a.onClick(); setShowActions(false) }} style={{ '--hov-fill': 'var(--bg-surface)', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--text-primary)', textAlign: 'left' }} >
                   <a.Icon size={14} color={a.color} style={{ flexShrink: 0 }} />{a.label}
                 </button>
               ))}
               <div style={{ height: 1, background: 'var(--border-subtle)', margin: '5px 8px' }} />
-              <button type="button" role="menuitem" onClick={() => { onDelete(); setShowActions(false) }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--negative)', textAlign: 'left' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--negative) 8%, transparent)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+              <button className="po-hov-fill" type="button" role="menuitem" onClick={() => { onDelete(); setShowActions(false) }} style={{ '--hov-fill': 'color-mix(in srgb, var(--negative) 8%, transparent)', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--negative)', textAlign: 'left' }} >
                 <Trash2 size={14} color="var(--negative)" style={{ flexShrink: 0 }} />Διαγραφή
               </button>
             </div>

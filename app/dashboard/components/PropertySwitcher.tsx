@@ -225,15 +225,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
           </div>
 
           {canAdd && (
-            <button type="button" onClick={() => { closePanel(false); onAdd(); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
-                padding: '0 14px', border: 'none', borderTop: '1px solid var(--border-subtle)',
-                background: 'transparent', cursor: 'pointer', textAlign: 'left',
-                fontFamily: T.font.sans, fontSize: 14, color: 'var(--accent)',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            <button className="po-hov-fill" type="button" onClick={() => { closePanel(false); onAdd(); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '0 14px', border: 'none', borderTop: '1px solid var(--border-subtle)', cursor: 'pointer', textAlign: 'left', fontFamily: T.font.sans, fontSize: 14, color: 'var(--accent)' }} >
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                 <path d="M12 5v14M5 12h14" />
               </svg>

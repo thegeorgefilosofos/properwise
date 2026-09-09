@@ -565,7 +565,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
       // πρώτη οθόνη που βλέπει όποιος μόλις έγραψε λογαριασμό.
       title={isEdit ? 'Επεξεργασία ακινήτου' : 'Νέο ακίνητο'}
       footer={<>
-        <button onClick={() => (step === 0 ? requestClose() : setStep(s => s - 1))} style={{ height: T.h.lg, padding: '0 20px', borderRadius: T.radius.pill, border: 'none', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-overlay)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+        <button className="po-hov-fill" onClick={() => (step === 0 ? requestClose() : setStep(s => s - 1))} style={{ '--hov-fill': 'var(--bg-overlay)', height: T.h.lg, padding: '0 20px', borderRadius: T.radius.pill, border: 'none', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: 'pointer' }} >
           {step === 0 ? 'Ακύρωση' : 'Πίσω'}
         </button>
 

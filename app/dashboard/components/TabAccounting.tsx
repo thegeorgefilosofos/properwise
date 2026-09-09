@@ -1784,8 +1784,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               const open = openAdvisory===a.id
               return (
                 <div key={a.id} style={{ borderRadius:12, background:'var(--bg-surface)', border:`1px solid ${open?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
-                  <button onClick={()=>setOpenAdvisory(open?null:a.id)} aria-expanded={open} className="acc-toggle" style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'none', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }}
-                    onMouseEnter={e=>{e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{e.currentTarget.style.background='none'}}>
+                  <button onClick={()=>setOpenAdvisory(open?null:a.id)} aria-expanded={open} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
                     <div style={{ flex:1, minWidth:0 }}>
                       <span style={{ display:'inline-flex', alignItems:'center', height:20, padding:'0 9px', borderRadius:6, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.5px', textTransform:'uppercase', color:'var(--text-tertiary)' }}>{ADVISORY_TONE[a.tone]}</span>
                       <p style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)', margin:'7px 0 0', lineHeight:1.35 }}>{a.title}</p>
@@ -1831,8 +1830,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 const uo = openChange===u.id
                 return (
                   <div key={u.id} style={{ borderRadius:12, background:'var(--bg-surface)', border:`1px solid ${uo?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
-                    <button onClick={()=>setOpenChange(uo?null:u.id)} aria-expanded={uo} className="acc-toggle" style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'13px 15px', background:'none', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }}
-                      onMouseEnter={e=>{e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{e.currentTarget.style.background='none'}}>
+                    <button onClick={()=>setOpenChange(uo?null:u.id)} aria-expanded={uo} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'13px 15px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
                       <p style={{ flex:1, minWidth:0, fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', margin:0, lineHeight:1.35, fontFamily: T.font.sans }}>{u.title}</p>
                       <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:uo?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
                     </button>

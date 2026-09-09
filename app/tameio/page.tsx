@@ -157,8 +157,11 @@ export default function CheckoutLanding() {
                     className="po-choice"
                     style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 14, rowGap: 2,
                       alignItems: 'baseline', width: '100%', minHeight: 58, padding: '11px 14px', textAlign: 'left',
-                      borderRadius: T.radius.inner, border: '1px solid var(--border-default)',
-                      background: 'var(--bg-surface)', cursor: 'pointer', fontFamily: T.font.sans }}>
+                      // ΤΟ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΦΟΝΤΟ ΤΑ ΔΙΝΕΙ Η `po-choice`. Γραμμένα εδώ,
+                      // ακύρωναν την κλάση: στην οθόνη που ΖΗΤΑΕΙ ΤΗΝ ΚΑΡΤΑ, η σειρά του
+                      // πακέτου δεν αντιδρούσε ούτε στο ποντίκι ούτε στο πληκτρολόγιο.
+                      borderRadius: T.radius.inner, borderWidth: 1, borderStyle: 'solid',
+                      cursor: 'pointer', fontFamily: T.font.sans }}>
                     <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.015em' }}>{p.name}</span>
                     <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right',
                       fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fe(price)}</span>

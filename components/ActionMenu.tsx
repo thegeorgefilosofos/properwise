@@ -148,8 +148,13 @@ export function ActionMenu({
           // `Btn` δίπλα του είναι 36: μετρημένο στις Επαφές, «Περισσότερα» και
           // «Σάρωση κάρτας» στην ίδια σειρά με τέσσερα εικονοστοιχεία διαφορά.
           display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: T.h.md, padding: '0 13px', borderRadius: T.radius.modal,
-          border: `1px solid ${open ? 'var(--accent)' : 'var(--border-default)'}`, background: 'var(--bg-surface)',
-          color: open ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight: 500, cursor: 'pointer',
+          // ΤΟ ΧΡΩΜΑ ΤΟΥ ΠΕΡΙΓΡΑΜΜΑΤΟΣ ΚΑΙ ΤΟΥ ΚΕΙΜΕΝΟΥ ΤΑ ΔΙΝΕΙ Η ΚΛΑΣΗ. Ηταν
+          // γραμμένα εδώ ως τριαδικοί πάνω στο `open`· επειδή το ενσωματωμένο
+          // στυλ νικά κάθε κανόνα κλάσης, η `po-hov-accent` ΔΕΝ ίσχυε ποτέ: ούτε
+          // αιώρηση ούτε εστίαση πληκτρολογίου. Το `aria-expanded` που ήδη
+          // υπάρχει λέει στο CSS πότε είναι ανοιχτό — μία πηγή, όχι δύο.
+          borderWidth: 1, borderStyle: 'solid', background: 'var(--bg-surface)',
+          fontSize: 'var(--fs-base)', fontWeight: 500, cursor: 'pointer',
           fontFamily: T.font.sans, transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s', whiteSpace: 'nowrap',
         }}
       >
@@ -183,7 +188,9 @@ export function ActionMenu({
                 className="po-hov-row"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '9px 10px',
-                  borderRadius: 8, border: 'none', background: 'transparent', cursor: inert ? 'default' : 'pointer',
+                  // Το `background: transparent` το δίνει η `po-hov-row`· γραμμένο εδώ
+                  // ακύρωνε το άναμμα της γραμμής σε αιώρηση και σε εστίαση.
+                  borderRadius: 8, border: 'none', cursor: inert ? 'default' : 'pointer',
                   opacity: it.disabled ? 0.5 : 1, fontFamily: T.font.sans, transition: 'background 0.12s',
                 }}
               >

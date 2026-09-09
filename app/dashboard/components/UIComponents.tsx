@@ -1078,17 +1078,13 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
           boxShadow: 'var(--shadow-lg)',
         }} className="dp-pop">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <button onClick={prevMonth} aria-label="Προηγούμενος μήνας" style={{ width: T.h.sm, height: T.h.sm, borderRadius: T.radius.card, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <button className="po-hov-fill" onClick={prevMonth} aria-label="Προηγούμενος μήνας" style={{ width: T.h.sm, height: T.h.sm, borderRadius: T.radius.card, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }} >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
             </button>
             <span style={{ fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '0.1px' }}>
               {MONTHS_SHORT[month]} {year}
             </span>
-            <button onClick={nextMonth} aria-label="Επόμενος μήνας" style={{ width: T.h.sm, height: T.h.sm, borderRadius: T.radius.card, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <button className="po-hov-fill" onClick={nextMonth} aria-label="Επόμενος μήνας" style={{ width: T.h.sm, height: T.h.sm, borderRadius: T.radius.card, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }} >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
             </button>
           </div>
@@ -1145,10 +1141,7 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
             })}
           </div>
           <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
-            <button onClick={() => { onChange(''); setOpen(false); }}
-              style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.modal, border: 'none', background: 'transparent', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-dim)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <button className="po-hov-fill" onClick={() => { onChange(''); setOpen(false); }} style={{ '--hov-fill': 'var(--accent-dim)', height: T.h.md, padding: '0 16px', borderRadius: T.radius.modal, border: 'none', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: 'pointer' }} >
               Εκκαθάριση
             </button>
             <button onClick={() => { onChange(today); setOpen(false); }}
@@ -1242,10 +1235,7 @@ export function BulkActionBar({ count, countLabel, actions, onClear, minWidth = 
           </button>
         ))}
       </div>
-      <button type="button" aria-label="Ακύρωση επιλογής" onClick={onClear}
-        style={{ padding: '12px 16px', border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 18, lineHeight: 1, flexShrink: 0, transition: 'background 0.15s' }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-surface)'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+      <button className="po-hov-fill" type="button" aria-label="Ακύρωση επιλογής" onClick={onClear} style={{ '--hov-fill': 'var(--bg-surface)', padding: '12px 16px', border: 'none', borderLeft: '1px solid var(--border-subtle)', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 18, lineHeight: 1, flexShrink: 0, transition: 'background 0.15s' }} >
         <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>

@@ -208,10 +208,7 @@ export function ExportMenu({ onExcel, onPdf, onHandover }: { onExcel: () => void
       {open && (
         <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 6, zIndex: 9999, minWidth: 250, boxShadow: 'var(--elev-3)' }}>
           {opts.map((o, i) => (
-            <button key={i} type="button" onClick={() => { o.fn(); setOpen(false) }}
-              style={{ display: 'flex', flexDirection: 'column', width: '100%', padding: '9px 12px', borderRadius: T.radius.inner, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', transition: 'background 0.1s' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-surface)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            <button className="po-hov-fill" key={i} type="button" onClick={() => { o.fn(); setOpen(false) }} style={{ '--hov-fill': 'var(--bg-surface)', display: 'flex', flexDirection: 'column', width: '100%', padding: '9px 12px', borderRadius: T.radius.inner, border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 0.1s' }} >
               <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontWeight: 600, fontFamily: T.font.sans }}>{o.label}</div>
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1 }}>{o.sub}</div>
             </button>

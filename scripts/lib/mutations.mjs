@@ -22,6 +22,10 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Η κλάση αιώρησης ακυρωμένη από ενσωματωμένο στυλ: το ΑΚΡΙΒΩΣ σφάλμα που
+  // μετρήθηκε στον περιηγητή — φοράει `po-hov-accent` και ξαναγράφει `color`.
+  'hover-class-blocked': { add: 'components/__mut__.tsx', content: "export default function MutationProbe() {\n  return (\n    <button className=\"po-hov-accent\" style={{ color: 'var(--text-secondary)', padding: 8 }}>Ενέργειες</button>\n  )\n}\n" },
+
   // ══ ΤΑ ΔΕΚΑΠΕΝΤΕ ΠΟΥ ΕΛΕΙΠΑΝ (02/09/2026) ═══════════════════════════════
   // Ο πάγκος τα κατήγγειλλε ως «ΧΩΡΙΣ ΜΕΤΑΛΛΑΞΗ»: δεκαπέντε φύλακες που δεν
   // κοκκίνισαν ποτέ, δηλαδή διαβάζονταν ως «ελέγχθηκε» χωρίς να ελέγχουν. Ενα

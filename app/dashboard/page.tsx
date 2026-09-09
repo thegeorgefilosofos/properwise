@@ -2169,7 +2169,7 @@ export default function Dashboard() {
                         {STATUSES.map(({ key: k, label: v, hint }) => {
                           const active = readStatus(selected)===k;
                           return (
-                            <button key={k} role="menuitem" onClick={()=>updateStatus(k)} style={{display:'flex',alignItems:'flex-start',gap:12,width:'100%',padding:'10px 16px',border:'none',background:'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,fontWeight:active?600:400,color:'var(--text-primary)',textAlign:'left'}} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                            <button className="po-hov-fill" key={k} role="menuitem" onClick={()=>updateStatus(k)} style={{display:'flex',alignItems:'flex-start',gap:12,width:'100%',padding:'10px 16px',border:'none',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,fontWeight:active?600:400,color:'var(--text-primary)',textAlign:'left'}} >
                               <div style={{width:8,height:8,borderRadius:'50%',background:STATUS_COLORS[k],flexShrink:0,marginTop:4}}/>
                               {/* Η εξήγηση δεν είναι διακόσμηση: «Βραχυχρόνια»
                                   και «Μακροχρόνια» καθορίζουν ΠΟΙΑ εργαλεία
@@ -2185,11 +2185,11 @@ export default function Dashboard() {
                         })}
                         <div style={{height:1,background:'var(--border-subtle)',margin:'6px 12px'}}/>
                         <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase',color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>Εργαλεία ακινήτου</div>
-                        <button role="menuitem" onClick={()=>{setStatusDropdown(false);setEditProperty(selected);}} style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',background:'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--text-primary)',textAlign:'left'}} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                        <button className="po-hov-fill" role="menuitem" onClick={()=>{setStatusDropdown(false);setEditProperty(selected);}} style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--text-primary)',textAlign:'left'}} >
                           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                           Επεξεργασία στοιχείων
                         </button>
-                        <button role="menuitem" onClick={deleteProperty} style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',background:'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--negative)',textAlign:'left'}} onMouseEnter={e=>e.currentTarget.style.background='var(--negative-dim)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                        <button className="po-hov-fill" role="menuitem" onClick={deleteProperty} style={{ '--hov-fill': 'var(--negative-dim)',display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--negative)',textAlign:'left'}} >
                           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/></svg>
                           Διαγραφή ακινήτου
                         </button>
@@ -2225,7 +2225,7 @@ export default function Dashboard() {
                   είναι ιδιώτης. Δεν πατιόταν, δεν άλλαζε, δεν προειδοποιούσε.
                   Και το σκεύωμα του μεταλλίου —γυαλάδες, στεφάνες, σκιές— ήταν
                   ξένο σώμα σε μια επίπεδη, ήσυχη διεπαφή. */}
-              <button onClick={()=>setCmdkOpen(true)} className="topbar-search" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',marginRight:4,flexShrink:0}} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',marginRight:4,flexShrink:0}} >
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
                 <span className="desktop-only" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.mono,color:'var(--text-tertiary)',border:'1px solid var(--border-subtle)',borderRadius:6,padding:'1px 5px'}}>{kbdHint}</span>
               </button>
