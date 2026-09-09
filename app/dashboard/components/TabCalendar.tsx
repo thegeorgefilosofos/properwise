@@ -883,7 +883,7 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
                           πάτημα δείχνοντας το πλήρες ποσό, οπότε το δίχτυ
                           υπάρχει. Ενα μέγεθος, το ελάχιστο επιτρεπτό. */}
                       {dayAmt>0&&(
-                        <div className="cal-day-amt" style={{ marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        <div className="cal-day-amt po-elide" style={{ marginTop:2 }}>
                           <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--accent)', opacity:0.8 }}>
                             {fn(dayAmt)}<span style={{ marginLeft:1.5, opacity:0.82 }}>€</span>
                           </span>
@@ -1536,7 +1536,13 @@ function SeriesCard({ group, onToggle, onEdit, onDelete, bulkMode, selectedIds, 
           <Repeat size={9}/>
         </span>
         <div style={{ flex:1, minWidth:0 }}>
-          <p style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.title}</p>
+          {/* ΙΔΙΑ ΑΠΟΦΑΣΗ ΜΕ ΤΗΝ EventCard, ΓΡΑΜΜΕΝΗ ΟΠΩΣ ΕΚΕΙ. Οι τρεις ιδιότητες
+              αποκοπής ήταν στο χέρι: ο σαρωτής διάταξης δεν έχει τρόπο να ξεχωρίσει
+              τον τίτλο που ΔΕΝ έχει ταβάνι μήκους από την ετικέτα που απλώς δεν
+              χώρεσε, οπότε ανέφερε στα 320 τη «Συντήρηση καυστήρα» ως κομμένη. Η
+              κλάση ΕΙΝΑΙ η δήλωση. Η αδελφή κάρτα το είχε ήδη διορθώσει· αυτή εδώ
+              έμεινε πίσω, γιατί η διόρθωση έγινε σε ένα σημείο αντί για δύο. */}
+          <p className="po-elide" style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>{lead.title}</p>
           <p style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'3px 0 0' }}>
             {[cadence, `επόμενη ${fmt(lead.event_date)}`, `${count} συνολικά έως ${fmt(lastDate)}`].filter(Boolean).join(' · ')}
             {totalAmount!=null&&<> · σύνολο <span style={{ fontVariantNumeric:'tabular-nums' }}>{fe(totalAmount)}</span></>}
