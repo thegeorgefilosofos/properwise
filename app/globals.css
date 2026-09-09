@@ -3930,7 +3930,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   display: grid; grid-template-columns: minmax(0, 1fr) 250px;
   gap: 40px; align-items: last baseline; max-width: 1044px;
 }
-.lg-lede > p:first-child { text-wrap: pretty; }
+.lg-lede > p:first-child { text-align: justify; text-wrap: pretty; }
 .lg-lede > p:last-child:not(:first-child) { text-align: right; }
 @media (max-width: 760px) {
   .lg-lede { grid-template-columns: minmax(0, 1fr); gap: 10px; }
@@ -3978,32 +3978,31 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 /* Τρεχούμενο κείμενο νομικής σελίδας. Στα 15, όσο και η αρχική: ό,τι δεσμεύει
    τον χρήστη δεν επιτρέπεται να είναι το πιο δυσανάγνωστο κείμενο του
    προϊόντος και ήταν, στα 14. */
-/* Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΕΦΥΓΕ, ΚΑΙ ΤΗΝ ΕΒΓΑΛΕ Η ΜΕΤΡΗΣΗ ΠΟΥ ΤΗΝ ΕΙΧΕ ΒΑΛΕΙ.
-   Ο λόγος που είχε μπει ήταν αληθινός: με ελεύθερο δεξί άκρο οι γραμμές
-   έκλειναν στο 83%, στο 90%, στο 99%, δηλαδή πριονωτό περιθώριο σε σαράντα
-   εφτά παραγράφους. Αυτό όμως που ΑΓΟΡΑΖΕ το ίσιο περιθώριο δεν είχε μετρηθεί.
+/* ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ, ΜΕ ΑΛΗΘΙΝΟ ΣΥΛΛΑΒΙΣΜΟ ΑΠΟ ΚΑΤΩ ΤΗΣ.
+   Το νομικό κείμενο κλείνει και δεξιά, όπως κάθε σύμβαση. Αυτό όμως στέκει
+   ΜΟΝΟ με συλλαβισμό: χωρίς αυτόν, η στοίχιση δεν σπάει λέξη για να κλείσει
+   τη γραμμή — τεντώνει τα κενά. Μετρημένο σε 195 κενά, στα 1440: διάμεσο 5,5 ·
+   p90 14 · μέγιστο 16,9, όταν το φυσικό κενό της Inter στα 15 είναι ~4,2.
 
-   ΤΟ ΝΟΥΜΕΡΟ. Σε 195 κενά μεταξύ λέξεων της σελίδας «Ποιοι είμαστε», στα 1440:
-   διάμεσο κενό 5,5 · ενενηκοστό εκατοστημόριο 14 · μέγιστο 16,9. Το φυσικό
-   κενό της Inter στα 15 είναι περίπου 4,2 — άρα η μία στις δέκα γραμμές είχε
-   κενά ΤΡΙΠΛΑΣΙΑ και η χειρότερη τετραπλάσια. Αυτό δεν είναι ίσιο περιθώριο,
-   είναι ποτάμια λευκού μέσα στην παράγραφο, ορατά σε κάθε στιγμιότυπο.
+   ΚΑΙ ΤΟ `hyphens: auto` ΔΕΝ ΤΟ ΔΙΝΕΙ. Δοκιμάστηκε με `lang="el"` και έβγαλε
+   ΙΔΙΑ ακριβώς νούμερα: ο περιηγητής θέλει λεξικό συλλαβισμού που για τα
+   ελληνικά μπορεί να μην υπάρχει, ανάλογα με έκδοση και πλατφόρμα. Δηλαδή η
+   στοίχιση του κειμένου μας θα ήταν λοταρία ανά συσκευή.
 
-   ΚΑΙ ΔΕΝ ΣΩΖΕΤΑΙ ΜΕ ΣΥΛΛΑΒΙΣΜΟ. Δοκιμάστηκε `hyphens: auto` με `lang="el"`:
-   ΙΔΙΑ ακριβώς νούμερα, ώς το δέκατο. Ο Chromium δεν έχει λεξικό συλλαβισμού
-   για τα ελληνικά, οπότε η μόνη άμυνα της τυπογραφίας απέναντι στα τεντωμένα
-   κενά δεν υπάρχει εδώ. Η σύμβαση σε χαρτί στοιχίζεται πλήρως ΕΠΕΙΔΗ
-   συλλαβίζεται· χωρίς συλλαβισμό η ίδια επιλογή δίνει το αντίθετο.
+   Ο ΣΥΛΛΑΒΙΣΜΟΣ ΓΙΝΕΤΑΙ ΑΠΟ ΕΜΑΣ. Το `lib/core/hyphenate.ts` εφαρμόζει τους
+   κανόνες της ελληνικής γραμματικής και εμφυτεύει μαλακά ενωτικά (U+00AD) στα
+   σημεία τομής· εδώ αρκεί το `hyphens: manual`, που είναι και η προεπιλογή:
+   ο περιηγητής σπάει ΜΟΝΟ εκεί που του δείξαμε, σε κάθε μηχανή και στο χαρτί.
 
-   Το `pretty` μένει: κρατά τη μία λέξη να μην ξεμένει μόνη της στην τελευταία
-   σειρά, που ήταν πάντα το πραγματικό πρόβλημα του ελεύθερου άκρου. */
-.lg-p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; text-wrap: pretty; }
+   Το `pretty` μένει, για να μην ξεμένει μία λέξη μόνη της στην τελευταία
+   σειρά της παραγράφου. */
+.lg-p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; text-align: justify; text-wrap: pretty; }
 .lg-p strong, .lg-ul strong { color: var(--text-primary); font-weight: 600; }
 .lg-p:last-child, .lg-ul:last-child { margin-bottom: 0; }
 .lg-ul { margin: 2px 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
-.lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-wrap: pretty; }
+.lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-align: justify; text-wrap: pretty; }
 .lg-note {
-  font-size: 14px; color: var(--text-tertiary); line-height: 1.65;
+  font-size: 14px; color: var(--text-tertiary); line-height: 1.65; text-align: justify;
   margin: 12px 0 0; padding: 13px 16px;
   background: var(--bg-elevated); border: 1px solid var(--border-subtle);
   border-radius: 12px;
@@ -4021,7 +4020,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-part-first { margin-top: 0; padding-top: 0; border-top: 0; }
 /* Ίδια στοίχιση για τα κείμενα που δεν είναι παράγραφοι, π.χ. οι εγγυήσεις
    του «Ποιοι είμαστε»: αλλιώς η μισή σελίδα κλείνει ίσια και η άλλη μισή όχι. */
-.lg-just { text-wrap: pretty; }
+.lg-just { text-align: justify; text-wrap: pretty; }
 
 @media (max-width: 900px) {
   .lg-grid { grid-template-columns: minmax(0, 1fr); }
@@ -4038,9 +4037,11 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   .lg-body { max-width: 720px; }
 }
 @media (max-width: 560px) {
-  /* Εδώ καθόταν και το «αριστερά κάτω από τα 560» για τέσσερις κλάσεις: ήταν η
-     εξαίρεση της πλήρους στοίχισης, που δεν υπάρχει πια. */
   .lg-toc-list { grid-template-columns: minmax(0, 1fr); }
+  /* ΣΤΟ ΤΗΛΕΦΩΝΟ Η ΣΤΟΙΧΙΣΗ ΦΕΥΓΕΙ. Η στήλη πέφτει κάτω από τα 330
+     εικονοστοιχεία, δηλαδή γύρω στους σαράντα χαρακτήρες: εκεί ακόμη και με
+     συλλαβισμό μία μακριά λέξη αφήνει τρύπα σε ολόκληρη γραμμή. */
+  .lg-p, .lg-ul li, .lg-note, .lg-just, .lg-lede > p:first-child { text-align: left; }
 }
 
 /* ══════════════════════════════════════════════════════════════

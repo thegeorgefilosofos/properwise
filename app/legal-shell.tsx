@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { cloneElement, Fragment, isValidElement, type ReactNode } from 'react';
+import { hyphenate } from '@/lib/core/hyphenate';
 import { T } from '@/components/tokens';
 import { PublicHeader, PublicFooter, WRAP, WRAP_PAD } from './PublicChrome';
 import { BackLink } from './BackLink';
@@ -34,6 +35,27 @@ import { BackLink } from './BackLink';
 // Η ΚΕΦΑΛΙΔΑ ΚΑΙ ΤΟ ΥΠΟΣΕΛΙΔΟ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΟ PublicChrome, όπως και στον
 // υπολογιστή φόρου: ένα μέτρο, ένα κουμπί, ένα υποσέλιδο παντού.
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * ΒΑΖΕΙ ΜΑΛΑΚΑ ΕΝΩΤΙΚΑ ΣΕ ΟΛΟ ΤΟ ΤΡΕΧΟΥΜΕΝΟ ΚΕΙΜΕΝΟ ΜΙΑΣ ΕΝΟΤΗΤΑΣ.
+ *
+ * ΓΙΑΤΙ ΕΔΩ ΚΑΙ ΟΧΙ ΣΤΗΝ ΠΗΓΗ. Το κείμενο των σελίδων γράφεται από ανθρώπους
+ * ως κανονικές ελληνικές προτάσεις· κανείς δεν πρέπει να πληκτρολογεί αόρατους
+ * χαρακτήρες για να στοιχιστεί μια παράγραφος. Ο συλλαβισμός μπαίνει τη στιγμή
+ * της απόδοσης, σε ένα σημείο· το αρχείο μένει αναγνώσιμο.
+ *
+ * ΔΙΑΣΧΙΖΕΙ ΤΟ ΔΕΝΤΡΟ, ΔΕΝ ΑΓΓΙΖΕΙ ΤΗ ΔΟΜΗ. Μόνο τα κείμενα αλλάζουν· τα
+ * `<strong>`, οι σύνδεσμοι και οι πίνακες μένουν ό,τι ήταν, με τα κλειδιά τους.
+ */
+function hy(node: ReactNode): ReactNode {
+  if (typeof node === 'string') return hyphenate(node);
+  if (Array.isArray(node)) return node.map((n, i) => <Fragment key={i}>{hy(n)}</Fragment>);
+  if (isValidElement(node)) {
+    const kids = (node.props as { children?: ReactNode }).children;
+    return kids === undefined ? node : cloneElement(node, undefined, hy(kids));
+  }
+  return node;
+}
 
 /** Οι τρεις σελίδες εμπιστοσύνης, για τους συνδέσμους στο τέλος καθεμιάς. */
 const TRUST_PAGES: [string, string][] = [
@@ -99,7 +121,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing }: {
             από μόνη της άφηνε τριακόσια εικονοστοιχεία λευκά στα δεξιά της. Η
             ημερομηνία τα γεμίζει και η σειρά κλείνει πέρα ως πέρα. */}
         <div className="lg-lede">
-          <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{intro}</p>
+          <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{hy(intro)}</p>
           {meta && <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0, whiteSpace: 'nowrap' }}>{meta}</p>}
         </div>
 
@@ -134,11 +156,11 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing }: {
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 18 }}>{i + 1}</span>
                   <span style={{ textWrap: 'balance' }}>{b.h}</span>
                 </h2>
-                {b.body}
+                {hy(b.body)}
               </section>
             ))}
 
-            {closing}
+            {hy(closing)}
 
             <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               {TRUST_PAGES.map(([href, label]) => (
