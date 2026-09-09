@@ -159,7 +159,7 @@ function FindingRow({lead,title,body,right,last}:{lead?:React.ReactNode;title:Re
             σειρά να φαίνεται δύο φορές ψηλότερη απ' όσο χρειάζεται. Το
             `pretty` μοιράζει τις τελευταίες δύο γραμμές ώστε να μη μένει
             ορφανή λέξη, χωρίς να κόψει τίποτα από το νόημα. */}
-        {body&&<p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans,marginTop: 4,textWrap:'pretty' as const}}>{body}</p>}
+        {body&&<p className="po-prose" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,marginTop: 4,textWrap:'pretty' as const}}>{body}</p>}
       </div>
       {right}
     </div>
@@ -178,7 +178,7 @@ function CatRow({title,desc,url,linkLabel,last}:{title:string;desc:string;url?:s
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{flexShrink:0,transform:open?'rotate(180deg)':'none',transition:'transform 0.2s'}}><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       {open&&(
-        <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans,padding:'0 2px 12px'}}>{desc}{url&&<> <InlineLink href={url}>{linkLabel}</InlineLink></>}</p>
+        <p className="po-prose" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,padding:'0 2px 12px'}}>{desc}{url&&<> <InlineLink href={url}>{linkLabel}</InlineLink></>}</p>
       )}
     </div>
   )
@@ -211,19 +211,35 @@ function SourceLinkPill({href,children}:{href:string;children:React.ReactNode}) 
 
 // Τυποποιημένη κάρτα-σύνδεσμος για επίσημες πηγές: ενιαία στοίχιση, ήπιο βάθος,
 // τίτλος και εικονίδιο αποκτούν χρώμα μόνο στο hover. Καμία «λίστα σούπερ μάρκετ».
+/* ═══ Η ΚΑΡΤΑ ΠΗΓΗΣ ΕΚΟΒΕ ΤΑ ΔΙΚΑ ΤΗΣ ΛΟΓΙΑ ══════════════════════════════════
+   Ο τίτλος και η επεξήγηση ήταν και οι δύο `nowrap` με αποσιωπητικά, μέσα σε
+   πλέγμα που δίνει στήλη 300 εικονοστοιχείων. Μετρημένο στον σαρωτή διάταξης,
+   σε είκοσι δύο πλάτη: «Κατάλογος αδειοδοτημένων ε…» με 157 εικονοστοιχεία
+   κομμένα, «Ελληνική Αναπτυξιακή Τράπε…» με 13, «Ανεξάρτητη αρχή, εξωδικαστ…»
+   με 7 — δεκαεπτά κάρτες συνολικά.
+
+   ΤΑ ΑΠΟΣΙΩΠΗΤΙΚΑ ΕΙΝΑΙ ΓΙΑ ΔΕΔΟΜΕΝΑ ΤΟΥ ΧΡΗΣΤΗ, ΟΧΙ ΓΙΑ ΔΙΚΑ ΜΑΣ ΛΟΓΙΑ. Το
+   όνομα ενός ανθρώπου ή ενός ακινήτου δεν έχει ταβάνι και κόβεται κομψά· αυτό
+   το δηλώνει η κλάση `.po-elide`. Τα λεκτικά ΕΔΩ τα γράψαμε εμείς, ξέρουμε το
+   μήκος τους και δεν έχουν λόγο να μη χωρούν: τυλίγονται σε δεύτερη γραμμή και
+   διαβάζονται ολόκληρα. Οι κάρτες μιας σειράς τεντώνονται ήδη στο ίδιο ύψος.
+
+   ΚΑΙ Η ΚΑΘΕΤΗ ΣΤΟΙΧΙΣΗ ΠΑΕΙ ΣΤΗΝ ΚΟΡΥΦΗ. Με κεντραρισμένη, μια κάρτα δύο
+   γραμμών δίπλα σε μια κάρτα μιας γραμμής έβγαζε τους δύο τίτλους σε άλλο ύψος
+   και η σειρά δεν διαβαζόταν οριζόντια. */
 function LinkCard({href,label,sub}:{href:string;label:string;sub?:string}) {
   const [h,setH] = useState(false)
   return (
     <a href={href} target="_blank" rel="noreferrer"
       onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} onFocus={()=>setH(true)} onBlur={()=>setH(false)}
-      style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,padding:'11px 14px',background:'var(--bg-surface)',
+      style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,padding:'11px 14px',background:'var(--bg-surface)',
         border:`1px solid ${h?'var(--border-default)':'var(--border-subtle)'}`,borderRadius:10,textDecoration:'none',
         transition:'border-color 0.15s, box-shadow 0.15s',boxShadow:h?'0 1px 2px color-mix(in srgb, var(--text-primary) 7%, transparent)':'none'}}>
       <div style={{minWidth:0}}>
-        <p style={{fontSize: 'var(--fs-base)',color:h?'var(--accent)':'var(--text-primary)',fontWeight:500,fontFamily: T.font.sans,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',transition:'color 0.15s'}}>{label}</p>
-        {sub&&<p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:2,fontFamily: T.font.sans,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sub}</p>}
+        <p style={{fontSize: 'var(--fs-base)',color:h?'var(--accent)':'var(--text-primary)',fontWeight:500,fontFamily: T.font.sans,lineHeight:1.4,transition:'color 0.15s'}}>{label}</p>
+        {sub&&<p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:2,fontFamily: T.font.sans,lineHeight:1.45}}>{sub}</p>}
       </div>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={h?'var(--accent)':'var(--text-tertiary)'} strokeWidth="2" style={{flexShrink:0,transition:'stroke 0.15s'}} aria-hidden="true"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={h?'var(--accent)':'var(--text-tertiary)'} strokeWidth="2" style={{flexShrink:0,marginTop:4,transition:'stroke 0.15s'}} aria-hidden="true"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
     </a>
   )
 }
@@ -1111,7 +1127,14 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           <MiniSection title="Πλήρης πίνακας επιτοκίων" meta={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{banksUpdStr}</span>}>
             <div style={{overflowX:'auto'}}>
               <div className="table-wrap">
-              <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              {/* Η ΠΡΩΤΗ ΣΤΗΛΗ ΚΑΡΦΩΝΕΤΑΙ, ΓΙΑΤΙ ΕΝΝΕΑ ΣΤΗΛΕΣ ΔΕΝ ΧΩΡΑΝΕ ΠΟΥΘΕΝΑ.
+                  Ο πίνακας κυλά οριζόντια σε κάθε πλάτος κάτω από τα 1.100: ο
+                  χρήστης σέρνει για να δει το «Δάνειο προς αξία» και το όνομα
+                  της τράπεζας φεύγει από την οθόνη. Του μένει μια σειρά
+                  ποσοστών χωρίς κάτοχο. Το `--row-bg` γράφεται μαζί με το φόντο
+                  της γραμμής, ώστε το καρφωμένο κελί να μη μένει πίσω στο
+                  πέρασμα του δείκτη και οι αριθμοί να μη φαίνονται από μέσα. */}
+              <table className="pin-1" style={{width:'100%',borderCollapse:'collapse',fontSize:12,'--row-bg':'var(--surface-raised)'}}>
                 <thead>
                   <tr style={{borderBottom:'1px solid var(--border-subtle)'}}>
                     {([['Τράπεζα','left'],['3 έτη','right'],['5 έτη','right'],['10 έτη','right'],['15 έτη','right'],['20 έτη','right'],['Κυμαινόμενο περιθώριο','right'],['Δάνειο προς αξία','right'],['Σπίτι μου ΙΙ','left']] as const).map(([h,al])=>(
@@ -1121,7 +1144,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 </thead>
                 <tbody>
                   {BANKS.filter(b=>!filterSpiti||b.spiti_mou).map((bank,i)=>(
-                    <tr key={bank.id||bank.name} onMouseEnter={()=>setHoverBankRow(i)} onMouseLeave={()=>setHoverBankRow(null)} onTouchStart={()=>setHoverBankRow(i)} onTouchEnd={()=>setHoverBankRow(null)} style={{borderBottom:'1px solid var(--border-subtle)',background:hoverBankRow===i?'var(--bg-hover)':'transparent',transition:'background 0.12s'}}>
+                    <tr key={bank.id||bank.name} onMouseEnter={()=>setHoverBankRow(i)} onMouseLeave={()=>setHoverBankRow(null)} onTouchStart={()=>setHoverBankRow(i)} onTouchEnd={()=>setHoverBankRow(null)} style={{borderBottom:'1px solid var(--border-subtle)','--row-bg':hoverBankRow===i?'var(--bg-hover)':'var(--surface-raised)',background:hoverBankRow===i?'var(--bg-hover)':'transparent',transition:'background 0.12s'}}>
                       <td style={{padding:'10px 12px'}}>
                         <span style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily: T.font.sans,color:'var(--text-primary)'}}>{bank.name}</span>
                       </td>
@@ -1195,9 +1218,9 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             >
               {/* Η ΠΡΟΤΑΣΗ ΠΟΥ ΕΛΕΙΠΕ. Χωρίς αυτήν, δύο ημερομηνίες κάθονταν
                   δίπλα-δίπλα και ο χρήστης μάντευε ποια τον αφορά. */}
-              {st.note&&<p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.6,fontFamily: T.font.sans,marginBottom:12,padding:'9px 12px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>{st.note}</p>}
+              {st.note&&<p className="po-prose" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,marginBottom:12,padding:'9px 12px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>{st.note}</p>}
               <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginBottom:10,fontWeight:600,fontFamily: T.font.sans,textTransform:'uppercase' as const,letterSpacing:'0.05em'}}>{prog.type}</p>
-              <p style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,fontFamily: T.font.sans,marginBottom:16}}>{prog.desc}</p>
+              <p className="po-prose" style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',fontFamily: T.font.sans,marginBottom:16}}>{prog.desc}</p>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',gap:14,marginBottom:12}}>
                 <div>
                   <p style={{...labelStyle,marginBottom:10}}>Κριτήρια επιλεξιμότητας</p>
@@ -1223,7 +1246,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               {(prog.howItWorks||prog.extra||prog.savingsExample)&&(
                 <div style={{padding:'12px 14px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,marginBottom:12,display:'flex',flexDirection:'column',gap: 8}}>
                   {prog.howItWorks&&<p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.6,fontFamily: T.font.sans}}>{prog.howItWorks}</p>}
-                  {prog.extra&&<p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{prog.extra}</p>}
+                  {prog.extra&&<p className="po-prose" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>{prog.extra}</p>}
                   {prog.savingsExample&&<p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{prog.savingsExample}</p>}
                 </div>
               )}
@@ -1632,7 +1655,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',marginBottom:otherRecs.length?12:0,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
                 <div style={{minWidth:0}}>
                   <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)'}}>Σπίτι μου ΙΙ: {spiti.eligible?'πιθανώς επιλέξιμο':'μη επιλέξιμο'} <span style={{color:'var(--text-secondary)',fontWeight:400}}>· {Math.round(spiti.interestFreeShare*100)}% άτοκο</span></p>
-                  <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.5,marginTop:2,fontFamily: T.font.sans}}>{spiti.reasons.slice(0,3).join(' · ')}. Ενδεικτικό, επιβεβαίωσε στην πύλη.</p>
+                  <p className="po-prose" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:2,fontFamily: T.font.sans}}>{spiti.reasons.slice(0,3).join(' · ')}. Ενδεικτικό, επιβεβαίωσε στην πύλη.</p>
                 </div>
               </div>
               )}
@@ -1647,8 +1670,16 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                         onTouchStart={()=>setOtherHover(r.bankId)} onTouchEnd={()=>setOtherHover(null)}
                         onClick={r.eligible?()=>applyBank(r.nominalRatePct, r.rateType, r.bankName):undefined}
                         role={r.eligible?'button':undefined} title={r.eligible?'Εφαρμογή επιτοκίου στον Υπολογιστή':undefined}
-                        style={{display:'flex',alignItems:'center',gap: 8,padding:'10px 13px',background:'var(--bg-surface)',border:`1px solid ${on?'var(--border-default)':'var(--border-subtle)'}`,borderRadius:10,opacity:r.eligible?1:0.6,transition:'border-color 0.15s',cursor:r.eligible?'pointer':'default'}}>
-                        <span style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0}}>{r.bankName||'Τράπεζα'}</span>
+                        /* Η ΣΕΙΡΑ ΤΥΛΙΓΕΤΑΙ, ΤΟ ΟΝΟΜΑ ΔΕΝ ΚΟΒΕΤΑΙ. Ονομα τράπεζας, σήμα
+                           προγράμματος, δόση και επιτόκιο δεν χωρούν σε μία γραμμή σε
+                           τηλέφωνο: μετρημένο, «Τράπεζα Πειραιώς» έχανε 16 εικονοστοιχεία
+                           στα 375 και 67 στα 320, δηλαδή διαβαζόταν «Τράπεζα Πειρ…». Το
+                           όνομα το γράφει ο κατάλογός μας και είναι δύο λέξεις· τα
+                           αποσιωπητικά ανήκουν σε δεδομένα του χρήστη, όχι εδώ. Με
+                           `flex-wrap` τα νούμερα κατεβαίνουν σε δεύτερη γραμμή, δεξιά
+                           στοιχισμένα από το `margin-left: auto` που έχουν ήδη. */
+                        style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap: 8,padding:'10px 13px',background:'var(--bg-surface)',border:`1px solid ${on?'var(--border-default)':'var(--border-subtle)'}`,borderRadius:10,opacity:r.eligible?1:0.6,transition:'border-color 0.15s',cursor:r.eligible?'pointer':'default'}}>
+                        <span style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)',minWidth:0}}>{r.bankName||'Τράπεζα'}</span>
                         {r.spitiMouApplied&&<span style={{flexShrink:0,fontSize: 'var(--fs-xs)',padding:'2px 7px',borderRadius: T.radius.chip,background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',color:'var(--text-secondary)',fontWeight:500,fontFamily: T.font.sans}}>Σπίτι μου ΙΙ</span>}
                         <div style={{marginLeft:'auto',flexShrink:0,display:'flex',alignItems:'baseline',gap:12}}>
                           <span style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap' as const}}>{fmtEur(r.monthlyPayment)}/μήνα</span>
@@ -1777,7 +1808,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             {k:'Δάνειο προς αξία έως',  v:fp(info.typical_ltv)},
           ]; return (
             <MiniSection title={info.label} meta={<span style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,whiteSpace:'nowrap' as const}}>{info.docs.length} δικαιολογητικά</span>}>
-              <p style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,fontFamily: T.font.sans,margin:'0 0 4px'}}>{info.desc}. {info.notes}.</p>
+              <p className="po-prose" style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',fontFamily: T.font.sans,margin:'0 0 4px'}}>{info.desc}. {info.notes}.</p>
               {/* Ευέλικτη ροή, όχι πλέγμα auto-fit: σε φαρδιά κάρτα το auto-fit
                   θα άνοιγε τρίτη κενή στήλη και η γραμμή θα σταματούσε στη μέση. */}
               <div style={{display:'flex',flexWrap:'wrap'}}>
@@ -1827,7 +1858,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                     <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',background:'var(--bg-surface)',padding:'2px 8px',borderRadius: T.radius.chip,border:'1px solid var(--border-subtle)',fontFamily: T.font.sans,fontWeight:500,whiteSpace:'nowrap' as const}}>{step.time}</span>
                     <InfoDot text={step.tip}/>
                   </div>
-                  <p style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.65,fontFamily: T.font.sans}}>{step.desc}</p>
+                  <p className="po-prose" style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',fontFamily: T.font.sans}}>{step.desc}</p>
                   {/* Η ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΔΙΑΒΑΖΟΤΑΝ ΣΑΝ ΔΕΥΤΕΡΗ ΠΡΟΤΑΣΗ ΤΗΣ
                       ΠΕΡΙΓΡΑΦΗΣ. Ίδιο γκρι, ίδια στοίχιση, ένα εικονοστοιχείο
                       διαφορά στο μέγεθος: τίποτα δεν έλεγε ότι εδώ μπλοκάρει η
@@ -1900,8 +1931,8 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           {/* Γλωσσάρι — σωστά ελληνικά, καθαρή λίστα ορισμών, ανάλογα με το προφίλ */}
           {/* ── Διαχειριστές (servicers) & κόκκινα δάνεια ── */}
           <MiniSection title="Δάνεια σε διαχειριστές και κόκκινα δάνεια">
-            <p style={{fontSize:15,color:'var(--text-primary)',lineHeight:1.55,fontFamily: T.font.sans,fontWeight:500,letterSpacing:'-0.01em',marginBottom:8}}>{SERVICERS_GUIDE.lead}</p>
-            <p style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.7,fontFamily: T.font.sans,marginBottom:16}}>{SERVICERS_GUIDE.intro}</p>
+            <p className="po-prose" style={{fontSize:15,color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500,letterSpacing:'-0.01em',marginBottom:8}}>{SERVICERS_GUIDE.lead}</p>
+            <p className="po-prose" style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.7,fontFamily: T.font.sans,marginBottom:16}}>{SERVICERS_GUIDE.intro}</p>
 
             {/* Μαζεμένες σειρές· η επεξήγηση κρύβεται πίσω από ⓘ (όχι κατεβατό). */}
             <p style={{...labelStyle,marginBottom:10}}>Τα δικαιώματά σου</p>
@@ -2011,7 +2042,15 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             ].map(group=>(
               <div key={group.category} style={{marginBottom:16}}>
                 <p style={{...labelStyle,marginBottom:8}}>{group.category}</p>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',gap:8}}>
+                {/* ΟΧΙ `auto-fit`: ΟΡΦΑΝΕΥΕ ΤΗΝ ΤΕΛΕΥΤΑΙΑ ΚΑΡΤΑ. Οι ομάδες έχουν
+                    πέντε, πέντε, τέσσερις, τρεις και τέσσερις συνδέσμους· με
+                    «όσες στήλες χωρέσουν» έβγαινε 4+1 στα φαρδιά και 2+2+1 στα
+                    μεσαία, δηλαδή μία κάρτα μόνη της με τρύπα δεξιά της, έξι
+                    φορές στη σάρωση. Η `.card-row` είναι η κλάση του έργου
+                    ακριβώς γι' αυτό: τρεις στήλες, δύο σε ταμπλέτα, μία σε
+                    τηλέφωνο — και το τελευταίο ορφανό απλώνεται σε όλο το
+                    πλάτος αντί να αφήσει κενό. */}
+                <div className="card-row" style={{gap:8}}>
                   {group.links.map(link=>(
                     <LinkCard key={link.url} href={link.url} label={link.label} sub={link.sub}/>
                   ))}

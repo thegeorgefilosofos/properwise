@@ -269,7 +269,7 @@ export default function TrustPage() {
               τρία ασύνδετα κείμενα ανά γραμμή αντί για γραμμή πίνακα. */}
           <div className="po-table-box" style={{ marginTop: 16 }}>
            <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-            <table className="po-table" style={{ '--tbl-fs': '14px', '--tbl-min': '440px' }}>
+            <table className="po-table tbl-fixed" style={{ '--tbl-fs': '14px', '--tbl-min': '440px' }}>
               <caption>Ποιοι επεξεργάζονται δεδομένα για λογαριασμό μας</caption>
               {/* ΧΩΡΙΣ ΡΗΤΑ ΠΛΑΤΗ, Ο ΠΕΡΙΗΓΗΤΗΣ ΔΙΝΕΙ ΤΑ ΠΑΝΤΑ ΣΤΗ ΜΕΣΑΙΑ.
                   Μετρημένο στα 1440: η στήλη του τόπου έμενε στα 150 και το
@@ -291,7 +291,7 @@ export default function TrustPage() {
               <tbody>
                 {subprocessorRows().map(s => (
                   <tr key={s.name}>
-                    <th scope="row" style={{ whiteSpace: 'nowrap', fontWeight: 600,
+                    <th scope="row" style={{ fontWeight: 600,
                       color: s.planned ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{s.name}</th>
                     <td>{s.what}</td>
                     <td style={{ color: 'var(--text-tertiary)' }}>{s.where}</td>
