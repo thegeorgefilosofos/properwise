@@ -9,7 +9,7 @@
 import { IDENTITY } from '@/lib/legal/identity';
 import { PLANS, PLAN_ORDER, normalizePlan, planForCount, annualPerMonth, type PlanId } from '@/lib/billing/plans';
 import { isPlanAllowedForProfile, paidPlanForProfile, type ProfileType } from '@/lib/billing/entitlements';
-import { T, feAuto, CloseButton } from '@/components/Theme';
+import { T, feAuto, Btn, CloseButton } from '@/components/Theme';
 
 export default function UpgradeModal({ currentCount, planId, profileType = 'individual', onClose, onManage }: {
   currentCount: number;
@@ -57,9 +57,9 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
             Για περισσότερα, στήνουμε πακέτο στα μέτρα σου. Γράψε μας στο <strong style={{ color: 'var(--text-primary)' }}>{IDENTITY.supportEmail}</strong> και απαντάμε την ίδια ημέρα.
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <button onClick={onClose} style={{ height: T.h.lg, padding: '0 20px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Κλείσιμο</button>
-            <a href={`mailto:${IDENTITY.supportEmail}?subject=Χαρτοφυλάκιο%20άνω%20των%20ακινήτων%20του%20πακέτου`}
-              style={{ height: T.h.lg, padding: '0 24px', borderRadius: T.radius.pill, background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Επικοινώνησε μαζί μας</a>
+            <Btn size="lg" onClick={onClose}>Κλείσιμο</Btn>
+            {/* Ο προορισμός είναι mailto, άρα μένει σύνδεσμος — το `href` του Btn του δίνει την ίδια όψη με το ζευγάρι του χωρίς να γίνει κουμπί. */}
+            <Btn variant="primary" size="lg" href={`mailto:${IDENTITY.supportEmail}?subject=Χαρτοφυλάκιο%20άνω%20των%20ακινήτων%20του%20πακέτου`}>Επικοινώνησε μαζί μας</Btn>
           </div>
         </div>
       </div>
@@ -126,8 +126,8 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
         </div>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button onClick={onClose} style={{ height: T.h.lg, padding: '0 20px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Όχι τώρα</button>
-          <button onClick={onManage} style={{ height: T.h.lg, padding: '0 24px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Δες τα πακέτα και αναβάθμισε</button>
+          <Btn size="lg" onClick={onClose}>Όχι τώρα</Btn>
+          <Btn variant="primary" size="lg" onClick={onManage}>Δες τα πακέτα και αναβάθμισε</Btn>
         </div>
       </div>
     </div>

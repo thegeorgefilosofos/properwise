@@ -1,5 +1,5 @@
 'use client'
-import { T, TT } from '@/components/Theme'
+import { T, TT, ChipToggle } from '@/components/Theme'
 
 // ── Κοινά primitives του Δανείου (μία πηγή αλήθειας για TabLoan + TabLoanCalculator) ──
 // Πριν υπήρχαν διπλά αντίγραφα που είχαν αποκλίνει (διαφορετικές ακτίνες/μεγέθη).
@@ -66,12 +66,13 @@ export function LensBar({value,onChange,items,barRef}:{value:string;onChange:(v:
        από έναν κρυμμένο. Ο κανόνας ζει στο `.lens-bar` του globals.css,
        γιατί χρειάζεται πλέγμα με κατώφλι στήλης. ══════════════════════ */
     <div ref={barRef} className="lens-bar" style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:T.radius.card,padding:4}}>
-      {items.map(it=>{const on=value===it.id;return(
-        <button key={it.id} onClick={()=>onChange(it.id)} aria-pressed={on} style={{minWidth:0,borderRadius:T.radius.inner,padding:'9px 14px',cursor:'pointer',fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:on?600:500,border:'none',
-          color:on?'var(--accent)':'var(--text-tertiary)',background:on?'var(--bg-elevated)':'transparent',
-          boxShadow:on?'0 1px 2px color-mix(in srgb, var(--text-primary) 10%, transparent), 0 2px 8px -4px color-mix(in srgb, var(--text-primary) 18%, transparent)':'none',
-          transition:'color 0.2s, background 0.2s, box-shadow 0.2s'}}>{it.label}</button>
-      )})}
+      {/* `seg` επειδή η ράγα έχει ήδη δικό της περίγραμμα: το ενεργό ανασηκώνεται
+          με επιφάνεια και σκιά αντί να αποκτήσει δεύτερη γραμμή. Το `grow` ΔΕΝ
+          μπαίνει — το πλάτος το μοιράζει το `.lens-bar > *` με δική του βάση 168
+          και ένα ενσωματωμένο `flex: 1` θα της έτρωγε τη βάση. */}
+      {items.map(it=>(
+        <ChipToggle key={it.id} on={value===it.id} shape="seg" onClick={()=>onChange(it.id)}>{it.label}</ChipToggle>
+      ))}
     </div>
   )
 }

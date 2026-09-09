@@ -15,7 +15,7 @@ import { readStatus, type StatusRow } from '@/lib/property/status'
 import { useChartWidth } from '@/app/hooks/useChartWidth'
 import { businessFormOf } from '@/lib/accounting/taxProfile'
 import type { LegalForm as DossierLegalForm } from '@/lib/accounting/dossier'
-import { Skeleton, SkeletonKPIs, PageTitle, fe, feCompact, fp, fn, ABSENT, ABSENT_SHORT, T, fixedCols, Bar, Tile, widestOf, Stat } from '@/components/Theme';
+import { Skeleton, SkeletonKPIs, PageTitle, fe, feCompact, fp, fn, ABSENT, ABSENT_SHORT, T, fixedCols, Bar, Tile, widestOf, Stat, Btn } from '@/components/Theme';
 import { NumberInput, CustomSelect, fieldLabelStyle, SegmentControl, Toggle as Switch } from './UIComponents';
 import { ChevronRight, TrendingUp, Landmark, Percent, Wallet, Layers, ArrowUpRight, Info, ShieldCheck } from 'lucide-react';
 import { yields, compound, leverage, compareInvestments, propertyTotalReturn, projectLine, yieldGrade, dealAnalysis, type LeverageResult, type YieldGrade } from '@/lib/market/returns';
@@ -1261,12 +1261,12 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         title={navLabel('roi')}
         sub={`${regimeLabel} · η απόδοση του ακινήτου σου και σύγκριση με την αγορά.`}
         right={empty ? undefined : (<>
-          <button onClick={printReport} className="acc-toggle" style={{ height: T.h.md, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontFamily: SANS, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <Btn variant="secondary" onClick={printReport}>
             <ArrowUpRight size={14} /> Για μένα
-          </button>
-          <button onClick={officialReport} disabled={genOfficial} className="acc-toggle" title="Επίσημο true-PDF με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς" style={{ height: T.h.md, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontFamily: SANS, fontWeight: 600, cursor: genOfficial ? 'wait' : 'pointer', opacity: genOfficial ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          </Btn>
+          <Btn variant="secondary" onClick={officialReport} disabled={genOfficial} title="Επίσημο true-PDF με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς">
             <ShieldCheck size={14} /> {genOfficial ? 'Δημιουργία…' : 'Για τράπεζα ή λογιστή'}
-          </button>
+          </Btn>
         </>)}
       />
 
@@ -1327,7 +1327,10 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 'var(--fs-base)', fontFamily: SANS, color: 'var(--text-secondary)' }}>
             <span>Ενδεικτική εκτίμηση αξίας για την περιοχή{pSqm ? ` (${pSqm} τ.μ.)` : ''}: <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fe(estValue)}</strong></span>
             <TermInfo text={`Ενδεικτικός υπολογισμός: μέση τιμή ανά τετραγωνικό μέτρο στην περιοχή, επί τα τ.μ. και τον συντελεστή τύπου του ακινήτου. Δεν υποκαθιστά την αντικειμενική αξία ούτε την εκτίμηση πιστοποιημένου εκτιμητή. Χρησιμοποίησέ την ως αφετηρία και προσάρμοσέ την στην πραγματική κατάσταση, τον όροφο και τη θέση του ακινήτου.`} />
-            <button onClick={() => setValue(String(estValue))} className="acc-toggle" style={{ height: 28, padding: '0 12px', borderRadius: 10, border: '1px solid var(--border-accent)', background: 'var(--accent-dim)', color: 'var(--accent)', fontSize: 12, fontFamily: SANS, fontWeight: 600, cursor: 'pointer' }}>Χρήση</button>
+            {/* Ο τόνος accent δεν ταξιδεύει: η όψη ζει στο `.po-btn` και το κουμπί
+                είναι δευτερεύουσα ενέργεια, όχι η κύρια της κάρτας. Το ύψος 28
+                ανεβαίνει στην κοινή κλίμακα, που σε δάχτυλο γίνεται στόχος αφής. */}
+            <Btn variant="secondary" onClick={() => setValue(String(estValue))}>Χρήση</Btn>
           </div>
         )}
         {term === 'short' && (
@@ -1514,10 +1517,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               {/* Το ίδιο σήμα με δύο λεκτικά· το στυλ γραφόταν δύο φορές. */}
               <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: SANS, border: '1px solid var(--border-default)', borderRadius: T.radius.chip, padding: '3px 7px' }}>{apprTouched ? 'δική σου υπόθεση' : 'δείκτης ΤτΕ'}</span>
               {apprTouched && (
-                <button type="button" onClick={() => { setAppreciation(''); setApprTouched(false); }} className="acc-toggle"
-                  style={{ height: 26, padding: '0 10px', borderRadius: T.radius.chip, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontFamily: SANS, fontWeight: 600, cursor: 'pointer' }}>
+                <Btn variant="secondary" onClick={() => { setAppreciation(''); setApprTouched(false); }}>
                   Επαναφορά στο τεκμηριωμένο ({fp(apprRef.pct)})
-                </button>
+                </Btn>
               )}
             </div>
             {/* ═══ ΔΥΟ ΟΜΑΔΕΣ ΣΕ ΜΙΑ ΣΕΙΡΑ, ΚΑΙ ΦΑΙΝΟΤΑΝ ΜΙΑ ═════════════════
@@ -1688,17 +1690,16 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
                   <p style={{ ...titleStyle, margin: 0, display: 'flex', alignItems: 'center' }}>Μόχλευση (δανεισμός)<TermInfo text={G.leverage} /></p>
                   {savedLoan && savedLoan.amount > 0 && (
-                    <button
+                    <Btn variant="secondary"
                       onClick={() => {
                         const base = (savedLoan.property_value || parseFloat(value) || 0);
                         if (base > 0) setLtv(String(Math.min(100, Math.round((savedLoan.amount / base) * 100))));
                         setLoanRate(String(savedLoan.rate));
                         setIfree(savedLoan.loan_type === 'first_home' ? '50' : '0');
-                      }}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 12px', borderRadius: 10, border: '1px solid var(--border-accent)', background: 'var(--accent-dim)', color: 'var(--accent)', fontSize: 12, fontFamily: SANS, fontWeight: 500, cursor: 'pointer' }}>
+                      }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M21 12a9 9 0 11-6.2-8.5"/><polyline points="21 3 21 9 15 9"/></svg>
                       Χρησιμοποίησε το πραγματικό μου δάνειο
-                    </button>
+                    </Btn>
                   )}
                 </div>
                 <div {...fixedCols(2, 12)}>

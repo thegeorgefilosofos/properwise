@@ -22,7 +22,7 @@ import {
   CustomSelect as SelectField,
   DatePicker,
 } from './UIComponents';
-import { T, KPIGrid, InfoBanner, Badge, EmptyState, fe, fn, fp, Spinner, type KPIItem, ABSENT, ABSENT_DATE, TT, localDay, formGrid, RuntimeImg } from '@/components/Theme';
+import { T, KPIGrid, InfoBanner, Badge, EmptyState, fe, fn, fp, Spinner, type KPIItem, ABSENT, ABSENT_DATE, TT, localDay, formGrid, RuntimeImg, Btn, LinkBtn } from '@/components/Theme';
 import {
   MessageSquare,
   Hammer,
@@ -271,7 +271,11 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
           <SectionTitle>Ιστορικό επικοινωνίας</SectionTitle>
-          <button style={s.btnSm} onClick={()=>setShowAdd(v=>!v)}>{showAdd?'Κλείσιμο':'+ Νέα Καταχώρηση'}</button>
+          {/* Το `s.btnSm` ήταν περίγραμμα accent σε bg-elevated: γεωμετρικά
+              δευτερεύον κουμπί, οπότε δευτερεύον μένει. Ο τόνος accent του
+              λεκτικού ήταν η μόνη του διαφορά από το `s.btnGhost` και δεν έχει
+              ρόλο στο `Btn` — η κύρια ενέργεια δηλώνεται με primary. */}
+          <Btn variant="secondary" onClick={()=>setShowAdd(v=>!v)}>{showAdd?'Κλείσιμο':'+ Νέα Καταχώρηση'}</Btn>
         </div>
 
         {showAdd&&(
@@ -297,8 +301,8 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
                 style={{ width:'100%', background:'var(--bg-surface)', border:'1px solid var(--border-default)', borderRadius:T.radius.inner, padding:'10px 14px', color:'var(--text-primary)', fontSize:14, letterSpacing:0, fontFamily:T.font.sans, outline:'none', boxSizing:'border-box' as const, resize:'vertical' as const, lineHeight:1.6 }}/>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <button style={s.btnGhost} onClick={()=>setShowAdd(false)}>Ακύρωση</button>
-              <button style={s.btnGold} onClick={saveLog} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση'}</button>
+              <Btn variant="secondary" onClick={()=>setShowAdd(false)}>Ακύρωση</Btn>
+              <Btn variant="primary" onClick={saveLog} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση'}</Btn>
             </div>
           </div>
         )}
@@ -317,6 +321,9 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
               </div>
               <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{log.summary}</div>
             </div>
+            {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `s.btnDng` είναι γεωμετρικά δευτερεύον κουμπί, αλλά
+                ο κόκκινος τόνος του δεν έχει ρόλο στο `Btn`: με `secondary` η διαγραφή
+                θα έχανε το χρώμα που την ξεχωρίζει από τις υπόλοιπες ενέργειες. */}
             <button style={s.btnDng} onClick={async()=>{if(!(await confirmDialog('Διαγραφή καταγραφής επικοινωνίας;',{tone:'negative'})))return;if(await saved('Η καταγραφή δεν διαγράφηκε',supabase.from('tenant_comm_log').delete().eq('id',log.id)))loadLogs();}}>Διαγραφή</button>
           </div>
         ))}
@@ -563,7 +570,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, gap:12, flexWrap:'wrap' as const }}>
           <SectionTitle>Φθορές και επισκευές</SectionTitle>
-          <button style={s.btnSm} onClick={()=>addOpen?setAddOpen(false):openNew()}>{addOpen?'Κλείσιμο':'+ Νέα καταγραφή'}</button>
+          <Btn variant="secondary" onClick={()=>addOpen?setAddOpen(false):openNew()}>{addOpen?'Κλείσιμο':'+ Νέα καταγραφή'}</Btn>
         </div>
 
         {addOpen&&(
@@ -582,8 +589,8 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
               <TextInput label="Σημείωση" value={f.notes} onChange={v=>setF(x=>({...x,notes:v}))} placeholder="προαιρετικό"/>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <button style={s.btnGhost} onClick={()=>{setAddOpen(false);setEditId(null);}}>Ακύρωση</button>
-              <button style={s.btnGold} onClick={save} disabled={busy}>{busy?'Αποθήκευση…':editId?'Αποθήκευση':'Καταχώρηση'}</button>
+              <Btn variant="secondary" onClick={()=>{setAddOpen(false);setEditId(null);}}>Ακύρωση</Btn>
+              <Btn variant="primary" onClick={save} disabled={busy}>{busy?'Αποθήκευση…':editId?'Αποθήκευση':'Καταχώρηση'}</Btn>
             </div>
           </div>
         )}
@@ -611,9 +618,12 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
                     </div>
                     <div style={{ textAlign:'right' as const, flexShrink:0 }}>
                       <div style={{ fontSize:14, fontWeight:700, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', color:'var(--text-primary)' }}>{fmt(d.cost)}</div>
-                      <div style={{ display:'flex', gap:6, marginTop:6, justifyContent:'flex-end' }}>
-                        <button onClick={()=>openEdit(d)} style={{ background:'none', border:'none', color:'var(--accent)', cursor:'pointer', fontSize:12, fontFamily:T.font.sans, padding:0 }}>Επεξεργασία</button>
-                        <button onClick={()=>del(d)} style={{ background:'none', border:'none', color:'var(--text-tertiary)', cursor:'pointer', fontSize:12, fontFamily:T.font.sans, padding:0 }}>Διαγραφή</button>
+                      {/* Δύο κείμενα χωρίς κουτί κάτω από το ποσό: `LinkBtn` και όχι
+                          `Btn`. Το μέγεθος γράφεται στο δοχείο γιατί ο σύνδεσμος
+                          κληρονομεί τη γραμματοσειρά της πρότασης που τον περιέχει. */}
+                      <div style={{ display:'flex', gap:6, marginTop:6, justifyContent:'flex-end', fontSize:12 }}>
+                        <LinkBtn onClick={()=>openEdit(d)}>Επεξεργασία</LinkBtn>
+                        <LinkBtn tone="quiet" onClick={()=>del(d)}>Διαγραφή</LinkBtn>
                       </div>
                     </div>
                   </div>
@@ -767,17 +777,18 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                           <div style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-tertiary)', fontFamily:T.font.sans, marginBottom:6 }}>Από τις επαφές σου</div>
                           <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
                             {savedContacts.slice(0,8).map(c=>(
-                              <button key={c.id} onClick={()=>setAf({ name:c.full_name||'', contact:c.phone||c.email||'' })}
-                                style={{ ...s.btnGhost, padding:'6px 11px', fontSize: 'var(--fs-xs)' }}>
+                              // Μοιάζει με πλακίδιο αλλά δεν κρατά κατάσταση: συμπληρώνει τη
+                              // φόρμα και τελειώνει, άρα κουμπί ενέργειας και όχι ChipToggle.
+                              <Btn key={c.id} variant="secondary" onClick={()=>setAf({ name:c.full_name||'', contact:c.phone||c.email||'' })}>
                                 {c.full_name}{c.role?` · ${roleLabel(c.role)}`:''}
-                              </button>
+                              </Btn>
                             ))}
                           </div>
                         </div>
                       )}
                       <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
-                        <button style={s.btnGhost} onClick={()=>setAssignFor(null)}>Ακύρωση</button>
-                        <button style={s.btnGold} disabled={busy} onClick={()=>saveAssign(m)}>Αποθήκευση</button>
+                        <Btn variant="secondary" onClick={()=>setAssignFor(null)}>Ακύρωση</Btn>
+                        <Btn variant="primary" disabled={busy} onClick={()=>saveAssign(m)}>Αποθήκευση</Btn>
                       </div>
                     </div>
                   )}
@@ -791,19 +802,27 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                           <TextInput label="Κόστος" suffix="€" value={doneCost} onChange={setDoneCost} placeholder="Προαιρετικό"/>
                         </div>
                         <div style={{ flex:1 }}/>
-                        <button style={s.btnGhost} onClick={()=>setDoneFor(null)}>Ακύρωση</button>
-                        <button style={s.btnGold} disabled={busy} onClick={()=>completeWithCost(m)}>Ολοκλήρωση</button>
+                        <Btn variant="secondary" onClick={()=>setDoneFor(null)}>Ακύρωση</Btn>
+                        <Btn variant="primary" disabled={busy} onClick={()=>completeWithCost(m)}>Ολοκλήρωση</Btn>
                       </div>
                     </div>
                   )}
                   <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
-                    {m.status!=='new'&&<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} disabled={busy} onClick={()=>setStatus(m,'new')}>Νέο</button>}
-                    {m.status!=='in_progress'&&<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} disabled={busy} onClick={()=>setStatus(m,'in_progress')}>Σε εξέλιξη</button>}
-                    {m.status!=='done'&&<button style={s.btnSm} disabled={busy} onClick={()=>{ setDoneFor(m.id); setDoneCost(''); }}>Ολοκληρώθηκε</button>}
-                    <button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} disabled={busy} onClick={()=>openAssign(m)}>{(m.assignee_name||m.assignee_contact)?'Ανάθεση':'Ανάθεση σε συνεργείο'}</button>
-                    {m.assignee_contact&&normalizePhone(m.assignee_contact).length>=10&&<a href={whatsappLink(msgDigits(m.assignee_contact),contractorText(m))} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>WhatsApp συνεργείου</a>}
-                    {m.assignee_contact&&m.assignee_contact.includes('@')&&<a href={`mailto:${m.assignee_contact}?subject=${encodeURIComponent('Εργασία: '+m.title)}&body=${encodeURIComponent(contractorText(m))}`} style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>Μήνυμα στο συνεργείο</a>}
-                    <button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} disabled={busy} onClick={()=>toDamage(m)}>Καταγραφή ως φθορά</button>
+                    {/* ΟΛΗ Η ΣΕΙΡΑ ΕΙΝΑΙ ΕΝΕΡΓΕΙΕΣ, ΟΧΙ ΠΛΑΚΙΔΙΑ ΜΕ ΚΑΤΑΣΤΑΣΗ: η τρέχουσα
+                        κατάσταση ΚΡΥΒΕΤΑΙ αντί να δείχνεται πατημένη, οπότε δεν υπάρχει
+                        «επιλεγμένο» να ανακοινωθεί — άρα `Btn` και όχι `ChipToggle`.
+                        Τα δύο μηνύματα προς το συνεργείο είναι ΠΡΟΟΡΙΣΜΟΙ: μένουν
+                        σύνδεσμοι, με το `href` του ίδιου κουμπιού, ώστε η σειρά να μη
+                        σπάει σε δύο μεγέθη. */}
+                    {m.status!=='new'&&<Btn variant="secondary" disabled={busy} onClick={()=>setStatus(m,'new')}>Νέο</Btn>}
+                    {m.status!=='in_progress'&&<Btn variant="secondary" disabled={busy} onClick={()=>setStatus(m,'in_progress')}>Σε εξέλιξη</Btn>}
+                    {m.status!=='done'&&<Btn variant="secondary" disabled={busy} onClick={()=>{ setDoneFor(m.id); setDoneCost(''); }}>Ολοκληρώθηκε</Btn>}
+                    <Btn variant="secondary" disabled={busy} onClick={()=>openAssign(m)}>{(m.assignee_name||m.assignee_contact)?'Ανάθεση':'Ανάθεση σε συνεργείο'}</Btn>
+                    {m.assignee_contact&&normalizePhone(m.assignee_contact).length>=10&&<Btn variant="secondary" href={whatsappLink(msgDigits(m.assignee_contact),contractorText(m))} newTab>WhatsApp συνεργείου</Btn>}
+                    {m.assignee_contact&&m.assignee_contact.includes('@')&&<Btn variant="secondary" href={`mailto:${m.assignee_contact}?subject=${encodeURIComponent('Εργασία: '+m.title)}&body=${encodeURIComponent(contractorText(m))}`}>Μήνυμα στο συνεργείο</Btn>}
+                    <Btn variant="secondary" disabled={busy} onClick={()=>toDamage(m)}>Καταγραφή ως φθορά</Btn>
+                    {/* Ιδιος λόγος με τη διαγραφή του ιστορικού επικοινωνίας: το κόκκινο
+                        του `s.btnDng` δεν υπάρχει σε κανέναν από τους τρεις ρόλους του `Btn`. */}
                     <button style={s.btnDng} disabled={busy} onClick={()=>del(m)}>Διαγραφή</button>
                   </div>
                 </div>

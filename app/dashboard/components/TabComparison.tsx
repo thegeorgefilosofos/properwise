@@ -8,7 +8,7 @@ import * as tenantStore from '@/lib/data/tenants';
 import * as loanStore from '@/lib/data/loans';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
-import { T, fe, fn, fp, ABSENT, ABSENT_SHORT, Skeleton, ExportButton, EmptyState, InfoBanner, PageTitle } from '@/components/Theme';
+import { T, fe, fn, fp, ABSENT, ABSENT_SHORT, Skeleton, ExportButton, EmptyState, InfoBanner, PageTitle, ChipToggle } from '@/components/Theme';
 import { Building2 } from 'lucide-react';
 import { comparableGroups } from '@/lib/property/visibility';
 import { propertyTypePlural } from '@/lib/property/types';
@@ -493,13 +493,9 @@ export default function TabComparison({ properties, userId }: Props) {
           {groups.map(g => {
             const on = g.key === group.key;
             return (
-              <button key={g.key} type="button" onClick={() => setGroupKey(g.key)} aria-pressed={on}
-                style={{ height: 28, padding: '0 12px', borderRadius: T.radius.pill, cursor: 'pointer', fontFamily: T.font.sans, fontSize: 12, fontWeight: on ? 700 : 500,
-                  border: `1px solid ${on ? 'var(--border-default)' : 'var(--border-subtle)'}`,
-                  background: on ? 'var(--bg-hover)' : 'transparent',
-                  color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+              <ChipToggle key={g.key} on={on} onClick={() => setGroupKey(g.key)}>
                 {typeLabel(g.key)} ({g.ids.length})
-              </button>
+              </ChipToggle>
             );
           })}
         </div>

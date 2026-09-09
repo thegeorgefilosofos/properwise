@@ -130,10 +130,7 @@ export function BankLinkRow() {
           ? 'Κάθε χρέωση και είσπραξη έτοιμη για καταχώρηση, με ένα πάτημα.'
           : 'Κάθε χρέωση και είσπραξη έτοιμη για καταχώρηση. Ετοιμάζεται.'}
       </span>
-      <button onClick={() => setOpen(true)}
-        style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '6px 14px', cursor: 'pointer', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0 }}>
-        Τι είναι
-      </button>
+      <Btn variant="secondary" onClick={() => setOpen(true)}>Τι είναι</Btn>
     </div>
     <BankLinkModal open={open} onClose={() => setOpen(false)} />
   </>);

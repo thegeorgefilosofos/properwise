@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { T } from '@/components/tokens'
+import { Btn } from '@/components/Theme'
 import { BackLink } from './BackLink'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -38,11 +39,16 @@ export default function AlreadySignedIn({
         Άνοιξε τον πίνακά σου
       </Link>
 
-      <button onClick={onSignOut} disabled={signingOut} className="auth-hov" style={{ width: '100%', marginTop: 12, padding: '12px', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, cursor: signingOut ? 'not-allowed' : 'pointer', opacity: signingOut ? 0.6 : 1, fontFamily: 'inherit' }}>
-        {signingOut
-          ? 'Αποσύνδεση…'
-          : mode === 'signup' ? 'Αποσύνδεση και δημιουργία νέου λογαριασμού' : 'Αποσύνδεση και αλλαγή λογαριασμού'}
-      </button>
+      {/* `field` γιατί η ενέργεια κρατά όλο το πλάτος κάτω από το κύριο κουμπί, όπως πριν.
+          Το `.auth-hov` έφυγε μαζί με το στυλ: την αιώρηση τη δίνει πλέον το
+          `.po-btn[data-variant=secondary]`, που ξέρει και εστίαση με πληκτρολόγιο. */}
+      <div style={{ marginTop: 12 }}>
+        <Btn variant="secondary" field onClick={onSignOut} disabled={signingOut}>
+          {signingOut
+            ? 'Αποσύνδεση…'
+            : mode === 'signup' ? 'Αποσύνδεση και δημιουργία νέου λογαριασμού' : 'Αποσύνδεση και αλλαγή λογαριασμού'}
+        </Btn>
+      </div>
     </div>
   )
 }

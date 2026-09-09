@@ -160,6 +160,12 @@ export function ItemRow({ item, allItems, onToggle, onEdit, onDelete, onAddToCal
       </div>
 
       {/* Μία διακριτική ενέργεια «···» — όλες οι λειτουργίες μαζεμένες, καθαρή σειρά. */}
+      {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `menuBtnRef` δείχνει στο ΙΔΙΟ το κουμπί: από εκεί
+          βγαίνει το getBoundingClientRect που τοποθετεί το μενού από πάνω ή από
+          κάτω. Το `IconBtn` δεν προωθεί ref, οπότε θα χρειαζόταν περιτύλιγμα που
+          μετράει άλλο ορθογώνιο. Δεν παίρνει ούτε className για την αποκάλυψη στο
+          hover (opacity) ούτε την κατάσταση «ανοιχτό μενού» (γέμισμα + περίγραμμα),
+          που θα ξανάγραφαν ενσωματωμένο στυλ πάνω στην `.po-ico`. */}
       {!selecting && (
         <button ref={menuBtnRef} type="button" className="po-box" onClick={openMenu} title="Ενέργειες" aria-label="Ενέργειες"
           style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px solid ' + (showMenu ? 'var(--border-default)' : 'transparent'), background: showMenu ? 'var(--bg-elevated)' : 'transparent', color: 'var(--text-secondary)', opacity: hov || coarse || showMenu ? 1 : 0, transition: 'opacity 0.15s, background 0.15s' }}

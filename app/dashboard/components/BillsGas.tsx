@@ -9,7 +9,7 @@ import { NumberInput, CustomSelect, DatePicker } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
 import { usePropertyHeating } from './usePropertyHeating';
 import { usesGas } from '@/lib/property/heating';
-import { T, fe, feRate, Spinner, fixedCols } from '@/components/Theme';
+import { T, fe, feRate, Spinner, fixedCols, ChipToggle } from '@/components/Theme';
 import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
 // Ο κατάλογος είναι δεδομένα και ζει στο lib, όπως και του ρεύματος. Η οθόνη
 // τον διαβάζει, δεν τον φιλοξενεί: 130 γραμμές τιμών μέσα σε React component
@@ -302,13 +302,11 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, flexWrap: 'wrap' as const, gap: 10 }}>
             {secHdr('Σύγκριση παρόχων', `${allTariffs.length} τιμολόγια της ΡΑΑΕΥ σε ${kwh} kWh τον μήνα, χρέωση προμήθειας`)}
             <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: T.radius.pill, padding: 4, border: '1px solid var(--border-default)' }}>
+              {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της περίγραμμα. */}
               {(['residential', 'business'] as const).map(seg => (
-                <button key={seg} onClick={() => setSegmentFilter(seg)}
-                  style={{ padding: '6px 16px', borderRadius: T.radius.pill, border: 'none', cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 700,
-                    background: segmentFilter === seg ? 'var(--accent)' : 'transparent',
-                    color: segmentFilter === seg ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
+                <ChipToggle key={seg} on={segmentFilter === seg} shape="seg" onClick={() => setSegmentFilter(seg)}>
                   {seg === 'residential' ? 'Οικιακό' : 'Επιχειρηματικό'}
-                </button>
+                </ChipToggle>
               ))}
             </div>
           </div>

@@ -997,7 +997,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               Μένει η ώρα Ελλάδας, που δεν τη λέει κανείς άλλος και που δίνει
               νόημα στο «ως σήμερα» κάθε ποσού από κάτω. */}
         </div>
-        <button onClick={()=>printPropertyStatement({
+        <Btn onClick={()=>printPropertyStatement({
           propName: prop.name, address: prop.address||undefined, postalCode: prop.postal_code||undefined,
           propType: propertyTypeLabel(prop.prop_type)||'Ακίνητο',
           status: statusLabelOf(prop), year, propValue: propValue||undefined,
@@ -1010,13 +1010,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           shortTerm: isShortTerm(prop),
           monthlyRent: rent, annualRent, grossYield, netYield,
           expensesYTD: totalExpYTD, categories: catEntries, branding,
-        })}
-          style={{display:'inline-flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 16px',borderRadius: T.radius.pill,border:'1px solid var(--border-default)',background:'transparent',color:'var(--text-secondary)',fontFamily: T.font.sans,fontSize:12,fontWeight:700,cursor:'pointer'}}
-          onMouseEnter={e=>{e.currentTarget.style.background='var(--bg-hover)';e.currentTarget.style.color='var(--text-primary)';}}
-          onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-secondary)';}}>
+        })}>
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
           Αναφορά σε PDF
-        </button>
+        </Btn>
       </div>
 
 
@@ -2147,6 +2144,10 @@ export default function Dashboard() {
                     onAdd={()=>tryAddProperty()}
                     canAdd={canAddProperty(ent, properties.length)} />
                   {/* Ένα κουμπί: κατάσταση ακινήτου + εργαλεία (επεξεργασία, διαγραφή) στο ίδιο μενού. */}
+                  {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Δεν είναι πλακίδιο επιλογής αλλά άνοιγμα μενού:
+                      θέλει `aria-haspopup` και `aria-expanded` που το ChipToggle δεν
+                      δέχεται — και την κλάση `topbar-status`, που κάνει το ψαλίδισμα
+                      της ετικέτας σε στενή οθόνη. */}
                   <div style={{position:'relative',minWidth:0}}>
                     <button onClick={()=>setStatusDropdown(v=>!v)} className="topbar-status" title="Κατάσταση ακινήτου και εργαλεία (επεξεργασία, διαγραφή)" aria-haspopup="menu" aria-expanded={statusDropdown} style={{display:'flex',alignItems:'center',gap: 8,minHeight:T.h.sm,padding:'0 10px 0 12px',borderRadius: T.radius.chip,border:'1px solid var(--border-default)',background:statusDropdown?'var(--bg-hover)':'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:12,fontWeight:500,color:'var(--text-primary)',transition:'background 0.15s'}} onMouseEnter={e=>{if(!statusDropdown)e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{if(!statusDropdown)e.currentTarget.style.background='transparent'}}>
                       <div style={{width:6,height:6,borderRadius:'50%',background:statusColor,flexShrink:0}}/>
@@ -2225,6 +2226,10 @@ export default function Dashboard() {
                   είναι ιδιώτης. Δεν πατιόταν, δεν άλλαζε, δεν προειδοποιούσε.
                   Και το σκεύωμα του μεταλλίου —γυαλάδες, στεφάνες, σκιές— ήταν
                   ξένο σώμα σε μια επίπεδη, ήσυχη διεπαφή. */}
+              {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `IconBtn` δεν δέχεται className και εδώ η
+                  `topbar-search` είναι που το κάνει 44 κεντραρισμένο στο κινητό·
+                  σε υπολογιστή δείχνει και το πλακίδιο του ⌘K, άρα δεν είναι
+                  ούτε καθαρό εικονοκούμπι. */}
               <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',marginRight:4,flexShrink:0}} >
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
                 <span className="desktop-only" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.mono,color:'var(--text-tertiary)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.xs,padding:'1px 5px'}}>{kbdHint}</span>
@@ -2242,7 +2247,7 @@ export default function Dashboard() {
               <p style={{fontFamily: T.font.sans,fontSize:14,color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 20px',maxWidth:400}}>
                 Τα δεδομένα σου είναι ασφαλή· απλώς δεν φορτώθηκαν τώρα. Συνήθως φταίει η σύνδεση.
               </p>
-              <button onClick={()=>{ if(user) fetchProperties(user.id); }} style={{padding:'0 20px',height:T.h.md,borderRadius:T.radius.pill,background:'var(--accent)',border:'none',color:'var(--accent-text)',fontSize:14,fontWeight:600,fontFamily:T.font.sans,cursor:'pointer'}}>Δοκίμασε ξανά</button>
+              <Btn variant="primary" onClick={()=>{ if(user) fetchProperties(user.id); }}>Δοκίμασε ξανά</Btn>
             </div>
           </div>
         ) : !selected ? (
@@ -2292,6 +2297,10 @@ export default function Dashboard() {
                   «υπάρχει επίπεδο από πάνω;». Δεν υπάρχει σε δύο: στην ίδια την
                   Επισκόπηση και στο Χαρτοφυλάκιο που στέκει πάνω από αυτήν. */}
               {navSafe !== 'overview' && navSafe !== 'portfolio' && (
+                // ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το γέμισμα «4px 4px 4px 0» ακουμπά το βελάκι
+                // στο αριστερό όριο του κειμένου της σελίδας· το `Btn` γράφει
+                // «9px 18px» και θα το έσπρωχνε δεκαοκτώ μέσα, δηλαδή το «Πίσω»
+                // θα έπαυε να στοιχίζεται με τον τίτλο από κάτω του.
                 <button onClick={()=>setNav(backTab)} title={`Πίσω: ${backLabel}`} aria-label={`Πίσω: ${backLabel}`}
                   style={{display:'inline-flex',alignItems:'center',gap:6,marginBottom:14,padding:'4px 4px 4px 0',border:'none',background:'transparent',color:'var(--text-tertiary)',fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:600,cursor:'pointer'}}
                   onMouseEnter={e=>e.currentTarget.style.color='var(--text-primary)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-tertiary)'}>

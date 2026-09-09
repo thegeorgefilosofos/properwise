@@ -293,17 +293,17 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
                 </div>
               </div>
 
-              <button onClick={genLetter} style={{ width:'100%', height:T.h.lg, borderRadius:T.radius.btn, border:'none', background:'var(--accent)', color:'var(--accent-text)', cursor:'pointer', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:700, letterSpacing:'0.04em', marginBottom:12 }}>
-                Εκτύπωση Ειδοποίησης Αναπροσαρμογής
-              </button>
+              {/* Το περιτύλιγμα κρατά ΜΟΝΟ την απόσταση από τα επόμενα: το Btn δεν δέχεται style. */}
+              <div style={{ marginBottom:12 }}>
+                <Btn variant="primary" field onClick={genLetter}>Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>
+              </div>
             </>
           )}
           {/* Χωρίς ποσοστό δεν βγαίνει έγγραφο: το κουμπί απενεργοποιείται και λέει γιατί */}
           {rent>0&&!hasPct&&(
             <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:18, marginBottom:14 }}>
-              <button disabled title="Δώσε πρώτα το ποσοστό αναπροσαρμογής" style={{ width:'100%', height:T.h.lg, borderRadius:T.radius.btn, border:'1px solid var(--border-default)', background:'transparent', color:'var(--text-tertiary)', cursor:'not-allowed', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:600 }}>
-                Εκτύπωση Ειδοποίησης Αναπροσαρμογής
-              </button>
+              {/* Δευτερεύον, όχι κύριο: η ανενεργή όψη είναι διάφανη με περίγραμμα — το ίδιο που δίνει το secondary. */}
+              <Btn variant="secondary" field disabled title="Δώσε πρώτα το ποσοστό αναπροσαρμογής">Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>
               <div style={{ marginTop:10, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
                 Η ειδοποίηση φεύγει σε άλλον άνθρωπο και μένει στα χαρτιά του. Δεν την εκτυπώνουμε με νούμερο που δεν έχει προέλευση. Συμπλήρωσε το ποσοστό της σύμβασης ή επίλεξε έτος με επιβεβαιωμένο δείκτη.
               </div>
@@ -717,11 +717,13 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                   options={Array.from({length:28},(_,i)=>i+1).map(d=>({ value:String(d), label:String(d) }))}/>
               </div>
             </div>
-            <button style={s.btnSm} onClick={()=>fileRef.current?.click()}>Σάρωσε απόδειξη</button>
+            {/* Χωρίς size lg: το ExportButton της ίδιας σειράς είναι κανονικό ύψος κουμπιού
+                και τα τρία δικά μας ζυγίζουν μαζί του. */}
+            <Btn variant="secondary" onClick={()=>fileRef.current?.click()}>Σάρωσε απόδειξη</Btn>
             <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display:'none' }} onChange={e=>{const f=e.target.files?.[0];if(f)runScan(f);e.target.value='';}}/>
-            <button style={s.btnSm} onClick={generateNow} disabled={busy}>{busy?'…':'Δημιουργία δόσεων'}</button>
+            <Btn variant="secondary" onClick={generateNow} disabled={busy}>{busy?'…':'Δημιουργία δόσεων'}</Btn>
             <ExportButton disabled={payments.length===0} onClick={exportPaymentsXlsx}/>
-            <button style={s.btnSm} onClick={()=>setAddOpen(v=>!v)}>{addOpen?'Κλείσιμο':'+ Καταχώρηση'}</button>
+            <Btn variant="secondary" onClick={()=>setAddOpen(v=>!v)}>{addOpen?'Κλείσιμο':'+ Καταχώρηση'}</Btn>
           </div>
         </div>
 
@@ -742,7 +744,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                     <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans }}>{monthLabel(p)} · <span style={{ fontFamily:T.font.mono }}>{fmt(p.amount)}</span></div>
                     {p.tenant_note&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2, whiteSpace:'pre-wrap' as const }}>{p.tenant_note}</div>}
                   </div>
-                  <button style={s.btnSm} onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>Επιβεβαίωση είσπραξης</button>
+                  <Btn variant="secondary" onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>Επιβεβαίωση είσπραξης</Btn>
                 </div>
               ))}
             </div>
@@ -754,7 +756,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
             <span style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.5 }}>
               {fn(staleUnpaid.length)} εκκρεμείς δόσεις δεν αντιστοιχούν στο τρέχον ποσό ({fmt(targetAmt)}{svcCharge>0?`: ενοίκιο ${fmt(baseRent)} + υπηρεσίες ${fmt(svcCharge)}`:''}).
             </span>
-            <button style={s.btnSm} onClick={syncUnpaidToTarget} disabled={busy}>{busy?'…':'Ενημέρωση εκκρεμών'}</button>
+            <Btn variant="secondary" onClick={syncUnpaidToTarget} disabled={busy}>{busy?'…':'Ενημέρωση εκκρεμών'}</Btn>
           </div>
         )}
 
@@ -772,8 +774,8 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
               <TextInput label="Σημείωση" value={payF.notes} onChange={v=>setPayF(f=>({...f,notes:v}))} placeholder="προαιρετικό"/>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <button style={s.btnGhost} onClick={()=>setAddOpen(false)}>Ακύρωση</button>
-              <button style={s.btnGold} onClick={savePay} disabled={busy}>{busy?'Αποθήκευση…':'Καταχώρηση'}</button>
+              <Btn variant="secondary" onClick={()=>setAddOpen(false)}>Ακύρωση</Btn>
+              <Btn variant="primary" onClick={savePay} disabled={busy}>{busy?'Αποθήκευση…':'Καταχώρηση'}</Btn>
             </div>
           </div>
         )}
@@ -808,6 +810,11 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                   <td>{fmtD(p.paid_date)}</td>
                   <td>{fmtD(p.due_date)}{p.days_late&&p.days_late>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', color:p.days_late>14?'var(--negative)':'var(--warning)' }}>+{days(p.days_late)}</span>:null}</td>
                   <td>
+                    {/* ΕΔΩ ΤΑ ΚΟΥΜΠΙΑ ΜΕΝΟΥΝ ΧΕΙΡΟΠΟΙΗΤΑ. Το κελί ενεργειών είναι πυκνό —
+                        γέμισμα 6×10 με λεκτικό fs-xs — και μοιράζεται τη σειρά με τρεις
+                        συνδέσμους και με τη «Διαγραφή» που κρατούν την ίδια πυκνότητα. Το Btn
+                        στα 36 ύψος με γέμισμα 9×18 θα φάρδαινε τη στήλη ενεργειών
+                        και θα άφηνε τη σειρά μισή στοιχισμένη. */}
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
                       {!p.paid
                         ?<button style={s.btnSm} onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>Πληρωμένο</button>
@@ -843,8 +850,8 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           title="Σήμανση ως πληρωμένο"
           subtitle={`${monthLabel(mark.p)} · ${fmt(mark.p.amount)}`}
           footer={<>
-            <button style={s.btnGhost} onClick={()=>setMark(null)}>Ακύρωση</button>
-            <button style={s.btnGold} onClick={async()=>{const mm=mark;setMark(null);await doMarkPaid(mm.p,mm.method,mm.receipt,todayISO());}}>Καταχώρηση</button>
+            <Btn variant="secondary" onClick={()=>setMark(null)}>Ακύρωση</Btn>
+            <Btn variant="primary" onClick={async()=>{const mm=mark;setMark(null);await doMarkPaid(mm.p,mm.method,mm.receipt,todayISO());}}>Καταχώρηση</Btn>
           </>}>
           <SelectField label="Τρόπος πληρωμής" value={mark.method} onChange={v=>setMark(m=>m?{...m,method:v as PayMethod}:m)} options={PAY_METHODS.map(m=>({value:m,label:m}))}/>
           <TextInput label="Σύνδεσμος απόδειξης (προαιρετικό)" value={mark.receipt} onChange={v=>setMark(m=>m?{...m,receipt:v}:m)} placeholder="https://..."/>
@@ -860,8 +867,8 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           ariaLabel="Αίτημα πληρωμής"
           subtitle={<>{monthLabel(req)} · {fmt(req.amount)}{req.services_charge&&req.services_charge>0?<span style={{ color:'var(--text-tertiary)' }}> (ενοίκιο {fmt(req.base_rent)} + υπηρεσίες {fmt(req.services_charge)})</span>:null}</>}
           footer={<>
-            <button style={{ ...s.btnGhost, fontSize: 'var(--fs-xs)' }} onClick={()=>{const rp=req;setReq(null);setMark({p:rp,method:'Τραπεζική κατάθεση',receipt:''});}}>Σήμανση εξόφλησης</button>
-            <button style={s.btnGold} onClick={()=>setReq(null)}>Κλείσιμο</button>
+            <Btn variant="secondary" onClick={()=>{const rp=req;setReq(null);setMark({p:rp,method:'Τραπεζική κατάθεση',receipt:''});}}>Σήμανση εξόφλησης</Btn>
+            <Btn variant="primary" onClick={()=>setReq(null)}>Κλείσιμο</Btn>
           </>}>
           {tenant.rent_iban?(
             <>
@@ -873,7 +880,8 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                 <div style={{ ...labelStyle, marginBottom:6 }}>IBAN πληρωμής</div>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <div style={{ flex:1, fontFamily:T.font.mono, fontSize: 'var(--fs-base)', color:'var(--text-primary)', background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius:T.radius.inner, padding:'10px 12px', wordBreak:'break-all' as const }}>{tenant.rent_iban}</div>
-                  <button style={s.btnSm} onClick={()=>{ try{ navigator.clipboard.writeText(tenant.rent_iban||''); setCopied(true); }catch{} }}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</button>
+                  {/* size lg γιατί κάθεται δίπλα στο κουτί του IBAN, που έχει ύψος πεδίου. */}
+                  <Btn variant="secondary" size="lg" onClick={()=>{ try{ navigator.clipboard.writeText(tenant.rent_iban||''); setCopied(true); }catch{} }}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</Btn>
                 </div>
               </div>
             </>
@@ -884,12 +892,14 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           <div>
             <div style={{ ...labelStyle, marginBottom:8 }}>Κοινοποίηση αιτήματος</div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
-              {tenant.phone&&<a href={whatsappLink(msgDigits(tenant.phone),paymentRequestText(req))} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGhost, textDecoration:'none' }}>WhatsApp</a>}
-              {tenant.phone&&<a href={viberLink(paymentRequestText(req))} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGhost, textDecoration:'none' }}>Viber</a>}
-              {tenant.email&&<a href={`mailto:${tenant.email}?subject=${encodeURIComponent(requestSubject(periodGen(req)))}&body=${encodeURIComponent(paymentRequestText(req))}`} style={{ ...s.btnGhost, textDecoration:'none' }}>Ηλεκτρονικό ταχυδρομείο</a>}
+              {/* Οι τρεις προορισμοί μένουν σύνδεσμοι — το `href` του Btn δίνει την ίδια όψη —
+                  ώστε η σειρά κοινοποίησης να μη γίνει τρία πλακίδια των 32 δίπλα σε ένα κουμπί των 36. */}
+              {tenant.phone&&<Btn variant="secondary" href={whatsappLink(msgDigits(tenant.phone),paymentRequestText(req))} newTab>WhatsApp</Btn>}
+              {tenant.phone&&<Btn variant="secondary" href={viberLink(paymentRequestText(req))} newTab>Viber</Btn>}
+              {tenant.email&&<Btn variant="secondary" href={`mailto:${tenant.email}?subject=${encodeURIComponent(requestSubject(periodGen(req)))}&body=${encodeURIComponent(paymentRequestText(req))}`}>Ηλεκτρονικό ταχυδρομείο</Btn>}
               {/* Το catch ήταν κενό: αν η αντιγραφή αποτύγχανε (άρνηση δικαιώματος, μη ασφαλές
                   context), ο χρήστης νόμιζε ότι το κείμενο ήταν στο πρόχειρο και το επικολλούσε στο κενό. */}
-              <button style={s.btnGhost} onClick={()=>{ try{ navigator.clipboard.writeText(paymentRequestText(req)); notifyOk('Το κείμενο αντιγράφηκε'); }catch{ notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); } }}>Αντιγραφή κειμένου</button>
+              <Btn variant="secondary" onClick={()=>{ try{ navigator.clipboard.writeText(paymentRequestText(req)); notifyOk('Το κείμενο αντιγράφηκε'); }catch{ notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); } }}>Αντιγραφή κειμένου</Btn>
             </div>
           </div>
         </Modal>
@@ -905,10 +915,10 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
         <Modal open onClose={()=>{ if(scan.stage!=='scanning') setScan(null); }} size="sm"
           title="Σάρωση απόδειξης"
           footer={
-            scan.stage==='error' ? <button style={s.btnGhost} onClick={()=>setScan(null)}>Κλείσιμο</button>
+            scan.stage==='error' ? <Btn variant="secondary" onClick={()=>setScan(null)}>Κλείσιμο</Btn>
             : scan.stage==='match'&&scan.doc ? <>
-                <button style={s.btnGhost} onClick={()=>setScan(null)}>Ακύρωση</button>
-                <button style={s.btnGold} onClick={confirmScan} disabled={open.length===0||!scan.periodId}>Σήμανση ως πληρωμένο</button>
+                <Btn variant="secondary" onClick={()=>setScan(null)}>Ακύρωση</Btn>
+                <Btn variant="primary" onClick={confirmScan} disabled={open.length===0||!scan.periodId}>Σήμανση ως πληρωμένο</Btn>
               </>
             : undefined
           }>
@@ -969,11 +979,14 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
         <DataRow label="Ημερομηνία καταβολής" value={fmtD(tenant.deposit_paid_on)}/>
         <DataRow label="Κατάσταση" value={tenant.deposit_returned?<StatusBadge label="Επεστράφη" color="var(--positive)" bg="var(--positive-dim)"/>:<StatusBadge label="Σε κατοχή" color="var(--accent)" bg="var(--accent-dim)"/>}/>
         {tenant.deposit_returned&&tenant.deposit_return_date&&<DataRow label="Ημερομηνία επιστροφής" value={fmtD(tenant.deposit_return_date)}/>}
+        {/* Το πλάτος το δίνει το `field`· στο περιτύλιγμα μένει μόνο η απόσταση από τη σειρά από πάνω. */}
         {!tenant.deposit_returned&&deposit>0&&(
-          <button style={{ ...s.btnSm, marginTop:14, width:'100%', textAlign:'center' as const }}
-            onClick={async()=>{await saved('Η επιστροφή εγγύησης δεν καταχωρήθηκε', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
-            Σήμανση ως Επεστράφη
-          </button>
+          <div style={{ marginTop:14 }}>
+            <Btn variant="secondary" field
+              onClick={async()=>{await saved('Η επιστροφή εγγύησης δεν καταχωρήθηκε', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
+              Σήμανση ως Επεστράφη
+            </Btn>
+          </div>
         )}
         <div style={{ marginTop:14, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
           Η εγγύηση δεν είναι έσοδό σου: δεν μπαίνει στα ακαθάριστα και δεν φορολογείται. Την κρατάς και την επιστρέφεις.
@@ -1100,10 +1113,12 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
           <>
             <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'14px 16px', fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.7, marginBottom:14 }}>{proposalText}</div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
-              {tenant.phone&&<a href={whatsappLink(phoneDigits,proposalText)} target="_blank" rel="noopener noreferrer" style={{ ...s.btnSm, textDecoration:'none' }}>WhatsApp</a>}
-              {tenant.phone&&<a href={viberLink(proposalText)} target="_blank" rel="noopener noreferrer" style={{ ...s.btnSm, textDecoration:'none' }}>Viber</a>}
-              <button style={s.btnSm} onClick={()=>navigator.clipboard?.writeText(proposalText)}>Αντιγραφή</button>
-              {tenant.email&&<a href={`mailto:${tenant.email}?subject=${encodeURIComponent('Πρόταση ανανέωσης μίσθωσης')}&body=${encodeURIComponent(proposalText)}`} style={{ ...s.btnSm, textDecoration:'none' }}>Ηλεκτρονικό ταχυδρομείο</a>}
+              {/* Ιδια σειρά, ίδια όψη: οι τρεις προορισμοί κρατούν το `href` του Btn
+                  ώστε να μη μείνουν χαμηλότεροι από το κουμπί της αντιγραφής. */}
+              {tenant.phone&&<Btn variant="secondary" href={whatsappLink(phoneDigits,proposalText)} newTab>WhatsApp</Btn>}
+              {tenant.phone&&<Btn variant="secondary" href={viberLink(proposalText)} newTab>Viber</Btn>}
+              <Btn variant="secondary" onClick={()=>navigator.clipboard?.writeText(proposalText)}>Αντιγραφή</Btn>
+              {tenant.email&&<Btn variant="secondary" href={`mailto:${tenant.email}?subject=${encodeURIComponent('Πρόταση ανανέωσης μίσθωσης')}&body=${encodeURIComponent(proposalText)}`}>Ηλεκτρονικό ταχυδρομείο</Btn>}
             </div>
           </>
         )}

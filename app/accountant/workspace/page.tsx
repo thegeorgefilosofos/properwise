@@ -409,22 +409,18 @@ export default function AccountantWorkspace() {
                               color: g.blocking ? 'var(--text-primary)' : 'var(--text-secondary)',
                               fontWeight: g.blocking ? 600 : 400,
                             }}>{g.item}</span>
-                            <button
-                              type="button"
-                              onClick={() => (writing ? void ask(c.ownerId, g.key, g.item) : setOpenNote(k))}
-                              disabled={sent}
-                              className="po-noprint"
-                              // ΣΑΡΑΝΤΑ ΤΕΣΣΕΡΑ, ΟΧΙ ΤΡΙΑΝΤΑ. Ηταν 30 εικονοστοιχεία ψηλό,
-                              // δηλαδή κάτω από το δάπεδο αφής, σε κουμπί που ο λογιστής
-                              // πατά μία φορά ανά εκκρεμότητα ανά πελάτη.
-                              style={{
-                                flexShrink: 0, minHeight: 44, padding: '0 14px', borderRadius: T.radius.btn,
-                                border: '1px solid var(--border-subtle)', background: 'transparent',
-                                color: sent ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                                fontSize: 12, fontWeight: 600, fontFamily: T.font.sans,
-                                cursor: sent ? 'default' : 'pointer',
-                              }}
-                            >{sent ? 'Ζητήθηκε' : writing ? 'Στείλ᾽ το' : 'Ζήτησέ το'}</button>
+                            {/* ΤΟ ΥΨΟΣ ΔΕΝ ΓΡΑΦΕΤΑΙ ΠΙΑ ΕΔΩ. Τα 44 ήταν καρφωμένα για να μην
+                                πέσει το κουμπί κάτω από το δάπεδο αφής· η κλίμακα του `Btn`
+                                τα δίνει μόνη της σε δάχτυλο (T.h.md) και κρατά τα 36 στο
+                                ποντίκι. Το `po-noprint` ζει στο δοχείο — ίδιο μοτίβο με την
+                                «Αφαίρεση» πιο πάνω: το `Btn` δεν δέχεται className. */}
+                            <span className="po-noprint" style={{ flexShrink: 0 }}>
+                              <Btn
+                                variant="secondary"
+                                onClick={() => (writing ? void ask(c.ownerId, g.key, g.item) : setOpenNote(k))}
+                                disabled={sent}
+                              >{sent ? 'Ζητήθηκε' : writing ? 'Στείλ᾽ το' : 'Ζήτησέ το'}</Btn>
+                            </span>
                           </div>
                           {/* Η ΣΗΜΕΙΩΣΗ ΕΙΝΑΙ ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΜΗΝΥΜΑ. Το εργαλείο
                               έλεγε στον ιδιοκτήτη «λείπει δαπάνη» και τον λογιστή

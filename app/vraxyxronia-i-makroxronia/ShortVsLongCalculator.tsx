@@ -21,6 +21,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
 import { T, feAuto, fp, fixedCols } from '@/components/tokens';
+import { ChipToggle } from '@/components/Theme';
 import { fn, feSigned } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { compareShortVsLong, netByOccupancy, NIGHTS_PER_YEAR, HIGH_SEASON_NIGHTS, type SeasonSpread } from '@/lib/tools/shortVsLong';
@@ -91,18 +92,6 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
     display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
     textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8,
   };
-  // Ίδιο σχήμα με τους επιλογείς της εφαρμογής: ενεργό γεμάτο, ανενεργό διάφανο.
-  // Τα δύο κουμπιά της σεζόν είναι αυτοτελή χειριστήρια, όχι λέξεις σε πρόταση:
-  // παίρνουν το κοινό ιδίωμα των 44 εικονοστοιχείων σε συσκευή αφής. Στα 40 που
-  // είχαν, δύο κουμπιά κολλητά σε τηλέφωνο αστοχούν το ένα στο άλλο.
-  const segStyle = (on: boolean): React.CSSProperties => ({
-    height: T.h.sm, padding: '0 14px', borderRadius: T.radius.inner, border: 'none',
-    background: on ? 'var(--accent)' : 'transparent',
-    color: on ? 'var(--accent-text)' : 'var(--text-secondary)',
-    fontSize: 13, fontWeight: 600, fontFamily: T.font.sans, cursor: 'pointer',
-    whiteSpace: 'nowrap', transition: 'background-color 0.15s, color 0.15s',
-  });
-
   const unit: React.CSSProperties = {
     position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)',
     color: 'var(--text-tertiary)', fontSize: 14, pointerEvents: 'none',
@@ -202,7 +191,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         </div>
         {/* ── Η ΕΝΕΡΓΗ ΕΠΙΛΟΓΗ ΔΕΝ ΛΕΓΕΤΑΙ ΜΟΝΟ ΜΕ ΧΡΩΜΑ ─────────────────────
                Τα δύο κουμπιά δήλωναν ποιο είναι πατημένο αποκλειστικά με το
-               φόντο που δίνει το segStyle. Μετρημένο σε πραγματικό Chromium,
+               φόντο του τοπικού στυλ. Μετρημένο σε πραγματικό Chromium,
                aria-pressed, aria-selected και aria-current ήταν και τα τρία
                κενά: ο αναγνώστης οθόνης άκουγε δύο ίδια κουμπιά και καμία
                κατάσταση, δηλαδή η παραδοχή που αλλάζει το τέλος ανθεκτικότητας
@@ -218,8 +207,10 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             Πάνω από εκεί τα δύο χωράνε δίπλα και τίποτα δεν αλλάζει. */}
         <div className="po-seg" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 4, background: 'var(--bg-surface)',
           border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-          <button type="button" onClick={() => set('sezon', 'even')} aria-pressed={input.season === 'even'} className="po-tap" style={segStyle(input.season === 'even')}>Όλο τον χρόνο</button>
-          <button type="button" onClick={() => set('sezon', 'high')} aria-pressed={input.season === 'high'} className="po-tap" style={segStyle(input.season === 'high')}>Κυρίως το καλοκαίρι</button>
+          {/* `seg` γιατί η ράγα από πάνω έχει ήδη δικό της περίγραμμα. Το aria-pressed
+              το βάζει πλέον μόνο του το πρωτογενές, με την ίδια συνθήκη που δίνει το χρώμα. */}
+          <ChipToggle shape="seg" on={input.season === 'even'} onClick={() => set('sezon', 'even')}>Όλο τον χρόνο</ChipToggle>
+          <ChipToggle shape="seg" on={input.season === 'high'} onClick={() => set('sezon', 'high')}>Κυρίως το καλοκαίρι</ChipToggle>
         </div>
       </div>
 

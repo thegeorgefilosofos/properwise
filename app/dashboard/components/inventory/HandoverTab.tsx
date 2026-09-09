@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useId } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
-import { T, Btn, EmptyState, ABSENT, formGrid, fieldRow, RuntimeImg } from '@/components/Theme'
+import { T, Btn, ChipToggle, EmptyState, ABSENT, formGrid, fieldRow, RuntimeImg } from '@/components/Theme'
 import { CustomSelect, TextInput, DatePicker } from '../UIComponents'
 import { ClipboardCheck } from 'lucide-react'
 import { notifyError } from '@/components/Toast'
@@ -134,7 +134,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
       <div style={{display:'flex',flexDirection:'column',gap:16}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <p style={{fontSize:18,fontWeight:400,fontFamily:T.font.sans,color:'var(--text-primary)'}}>Σύγκριση πρωτοκόλλων</p>
-          <button onClick={()=>setMode('list')} style={{padding:'0 16px',height:T.h.md,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'none',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily:T.font.sans,cursor:'pointer'}}>Πίσω</button>
+          <Btn variant="secondary" onClick={()=>setMode('list')}>Πίσω</Btn>
         </div>
         <div style={{...formGrid(200, 270),gap:12}}>
           {[{v:cmpA,sv:setCmpA},{v:cmpB,sv:setCmpB}].map(({v,sv},i)=>(
@@ -171,7 +171,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
       <style>{`@keyframes invSpin{to{transform:rotate(360deg)}}`}</style>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <p style={{fontSize:18,fontWeight:400,fontFamily:T.font.sans,color:'var(--text-primary)'}}>Νέο πρωτόκολλο παράδοσης</p>
-        <button onClick={()=>setMode('list')} style={{padding:'0 16px',height:T.h.md,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'none',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily:T.font.sans,cursor:'pointer'}}>Πίσω</button>
+        <Btn variant="secondary" onClick={()=>setMode('list')}>Πίσω</Btn>
       </div>
       {fromTenant&&(
         <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'var(--accent-soft)',border:'1px solid var(--accent-border)',borderRadius:T.radius.inner}}>
@@ -181,9 +181,11 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
       )}
       <div style={{...formGrid(200, 270),gap:10}}>
         {(['check_in','check_out'] as const).map(t=>(
-          <button key={t} onClick={()=>setType(t)} style={{padding:'14px',borderRadius:T.radius.card,cursor:'pointer',fontWeight:500,fontFamily:T.font.sans,fontSize: 'var(--fs-base)',border:`1px solid ${type===t?'var(--accent)':'var(--border-subtle)'}`,background:type===t?'var(--accent)':'var(--bg-elevated)',color:type===t?'var(--accent-text)':'var(--text-secondary)',transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s'}}>
+          // shape «chip» και όχι «seg»: τα δύο πλακίδια κάθονται σε πλέγμα φόρμας
+          // χωρίς δική του ράγα, οπότε το καθένα κρατά το δικό του περίγραμμα.
+          <ChipToggle key={t} on={type===t} onClick={()=>setType(t)}>
             {t==='check_in'?'Είσοδος ενοικιαστή':'Έξοδος ενοικιαστή'}
-          </button>
+          </ChipToggle>
         ))}
       </div>
       <div {...fieldRow(180, 12)}>
@@ -222,10 +224,10 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
         </div>
       </div>
       <div style={{display:'flex',justifyContent:'flex-end',gap:10}}>
-        <button onClick={()=>setMode('list')} style={{padding:'0 20px',height:T.h.lg,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'none',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily:T.font.sans,cursor:'pointer'}}>Ακύρωση</button>
-        <button onClick={handleSave} disabled={saving} style={{padding:'0 24px',height:T.h.lg,borderRadius:T.radius.pill,background:saving?'var(--bg-elevated)':'var(--accent)',border:'none',color:saving?'var(--text-tertiary)':'var(--accent-text)',fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,cursor:saving?'wait':'pointer'}}>
+        <Btn variant="secondary" onClick={()=>setMode('list')}>Ακύρωση</Btn>
+        <Btn variant="primary" onClick={handleSave} disabled={saving}>
           {saving?'Αποθήκευση…':'Αποθήκευση Πρωτοκόλλου'}
-        </button>
+        </Btn>
       </div>
     </div>
   )
@@ -237,8 +239,8 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
           <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily:T.font.sans,marginTop:2,maxWidth:560,lineHeight:1.5}}>Καταγράφει την κατάσταση κάθε αντικειμένου κατά την είσοδο & έξοδο του ενοικιαστή, απόδειξη για την επιστροφή της εγγύησης σε περίπτωση φθορών.</p>
         </div>
         <div style={{display:'flex',gap:8,flexShrink:0}}>
-          {handovers.length>=2&&<button onClick={()=>setMode('compare')} style={{padding:'0 14px',height:T.h.md,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',color:'var(--text-secondary)',fontSize:12,fontFamily:T.font.sans,fontWeight:500,cursor:'pointer'}}>Σύγκριση εισόδου/εξόδου</button>}
-          {handovers.length>0&&<button onClick={()=>setMode('new')} style={{padding:'0 18px',height:T.h.md,borderRadius:T.radius.pill,background:'var(--accent)',border:'none',color:'var(--accent-text)',fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,cursor:'pointer'}}>Νέο πρωτόκολλο</button>}
+          {handovers.length>=2&&<Btn variant="secondary" onClick={()=>setMode('compare')}>Σύγκριση εισόδου/εξόδου</Btn>}
+          {handovers.length>0&&<Btn variant="primary" onClick={()=>setMode('new')}>Νέο πρωτόκολλο</Btn>}
         </div>
       </div>
       {handovers.length===0
@@ -263,7 +265,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
                   </div>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
                     {bad>0&&<Badge label={`${bad} προβλήματα`} color="var(--negative)"/>}
-                    <button onClick={()=>printHandover(h)} style={{padding:'0 12px',height:T.h.sm,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'none',color:'var(--accent)',fontSize:12,fontFamily:T.font.sans,cursor:'pointer',fontWeight:500}}>Εκτύπωση</button>
+                    <Btn variant="secondary" onClick={()=>printHandover(h)}>Εκτύπωση</Btn>
                   </div>
                 </div>
                 {bad>0&&(

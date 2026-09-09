@@ -305,18 +305,8 @@ export default function TenantPortal() {
                 style={{ ...field, textAlign: 'center', letterSpacing: '0.3em' }}
               />
               {pinErr && <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)' }}>{pinErr}</div>}
-              <button
-                type="button"
-                onClick={submitPin}
-                disabled={pinChecking || !pin.trim()}
-                // minHeight αντί για height και σκόπιμα 44 αντί για T.h.lg (40): δημόσια
-                // σελίδα που ανοίγει σχεδόν πάντα σε κινητό, όπου το 44 είναι το ελάχιστο
-                // αξιόπιστο μέγεθος στόχου αφής. Το minHeight αφήνει το κουμπί να ψηλώσει
-                // αν το κείμενο τυλιχτεί σε δύο γραμμές, αντί να το κόψει.
-                style={{ minHeight: 44, borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, cursor: (pinChecking || !pin.trim()) ? 'not-allowed' : 'pointer', opacity: (pinChecking || !pin.trim()) ? 0.6 : 1, fontFamily: 'inherit' }}
-              >
-                {pinChecking ? 'Έλεγχος…' : 'Είσοδος'}
-              </button>
+              {/* size="lg" γιατί είναι δημόσια σελίδα κινητού: το ύψος πεδίου φτάνει τα 44 στο δάχτυλο. */}
+              <Btn variant="primary" size="lg" onClick={submitPin} disabled={pinChecking || !pin.trim()}>{pinChecking ? 'Έλεγχος…' : 'Είσοδος'}</Btn>
             </div>
           </div>
         )}
@@ -358,14 +348,7 @@ export default function TenantPortal() {
                                   Δηλώθηκε, σε επιβεβαίωση από τον ιδιοκτήτη
                                 </span>
                               ) : (
-                                <button
-                                  type="button"
-                                  disabled={declareBusyId === item.id}
-                                  onClick={() => declarePayment(item.id)}
-                                  style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: 10, padding: '9px 16px', cursor: declareBusyId === item.id ? 'not-allowed' : 'pointer', opacity: declareBusyId === item.id ? 0.6 : 1, fontFamily: 'inherit' }}
-                                >
-                                  {declareBusyId === item.id ? 'Αποστολή…' : 'Δήλωσα την πληρωμή'}
-                                </button>
+                                <Btn variant="secondary" onClick={() => declarePayment(item.id)} disabled={declareBusyId === item.id}>{declareBusyId === item.id ? 'Αποστολή…' : 'Δήλωσα την πληρωμή'}</Btn>
                               )}
                             </div>
                           </div>
@@ -411,10 +394,7 @@ export default function TenantPortal() {
                       <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, lineHeight: 1.5 }}>Τραπεζικό έμβασμα στον IBAN και μετά δήλωσε την πληρωμή.</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all', flex: 1 }}>{data.tenant.rent_iban}</span>
-                        <button type="button" onClick={() => copyIban(data.tenant.rent_iban as string)}
-                          style={{ minHeight: 44, background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: T.radius.chip, padding: '0 16px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-                          {copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}
-                        </button>
+                        <Btn variant="secondary" onClick={() => copyIban(data.tenant.rent_iban as string)}>{copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
                       </div>
                     </>
                   )}
@@ -488,6 +468,8 @@ export default function TenantPortal() {
                           <div key={p.url} style={{ position: 'relative', width: 72, height: 72, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={p.url} alt="Προεπισκόπηση φωτογραφίας" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                            {/* Μένει χειροποίητο: κύκλος 20×20 απόλυτα τοποθετημένος πάνω σε μικρογραφία 72×72.
+                                Το IconBtn έχει κουτί T.h.sm που στο δάχτυλο γίνεται 44, δηλαδή θα σκέπαζε τη φωτογραφία. */}
                             <button
                               type="button"
                               aria-label="Αφαίρεση φωτογραφίας"
@@ -504,9 +486,7 @@ export default function TenantPortal() {
                   </div>
 
                   {err && <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)' }}>{err}</div>}
-                  <button type="submit" disabled={sending || !title.trim()} style={{ minHeight: 44, borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, cursor: (sending || !title.trim()) ? 'not-allowed' : 'pointer', opacity: (sending || !title.trim()) ? 0.6 : 1, fontFamily: 'inherit' }}>
-                    {sending ? 'Αποστολή…' : 'Αποστολή αιτήματος'}
-                  </button>
+                  <Btn variant="primary" size="lg" type="submit" disabled={sending || !title.trim()}>{sending ? 'Αποστολή…' : 'Αποστολή αιτήματος'}</Btn>
                 </form>
               )}
             </div>

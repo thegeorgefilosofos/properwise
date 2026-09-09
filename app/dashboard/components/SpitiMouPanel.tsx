@@ -6,7 +6,7 @@ import {
   annuityMonthly, rankLoans, type UserLoanNeeds, type BankInput,
 } from '@/lib/loans/recommend'
 import { T } from '@/components/tokens'
-import { Bar } from '@/components/Theme'
+import { Bar, LinkBtn, fixedCols } from '@/components/Theme'
 import { athensToday } from '@/lib/core/time'
 
 // ── «Σπίτι μου ΙΙ — για σένα» ────────────────────────────────────────────────
@@ -106,7 +106,13 @@ export default function SpitiMouPanel({
       </div>
 
       {/* KPI: δόση vs κανονική + εξοικονόμηση */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 10 }}>
+      {/* ΤΡΙΑ ΠΛΑΚΙΔΙΑ ΘΕΛΟΥΝ ΤΡΕΙΣ ΣΤΗΛΕΣ Η ΜΙΑ, ΠΟΤΕ ΔΥΟ. Το `auto-fit` με
+          ελάχιστο 150 έδινε ΟΣΕΣ χωρούσαν: σε κάθε τηλέφωνο από 360 ώς 440
+          χωρούσαν ακριβώς δύο, οπότε η σειρά έσπαγε 2+1 με την «Εξοικονόμηση
+          τον μήνα» μόνη της σε δεύτερη γραμμή — το πιο σημαντικό νούμερο του
+          πάνελ, ξεκρέμαστο. Το `fixedCols` δηλώνει το ΠΛΗΘΟΣ και πέφτει μόνο σε
+          διαιρέτη του: για τα τρία, σε ένα. */}
+      <div {...fixedCols(3, 10, 'stretch')}>
         {[
           { k: 'Δόση με Σπίτι μου ΙΙ', v: fmtEur(pay.monthly), s: 'τον μήνα' },
           { k: 'Κανονική δόση', v: fmtEur(normalMonthly), s: `με ${fmtPct(bankRatePct)}` },
@@ -188,7 +194,7 @@ export default function SpitiMouPanel({
       <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.6, fontFamily: FONT }}>
         Επιτρέπεται αίτηση σε <strong style={{ color: 'var(--text-secondary)' }}>μία μόνο τράπεζα</strong>, οπότε επίλεξε προσεκτικά με βάση το συνολικό κόστος. Ενδεικτικά στοιχεία, επιβεβαίωσε την επιλεξιμότητα στην{' '}
         <a href="https://www.gov.gr/ipiresies/periousia-kai-phorologia/akinhta/elegkhos-epile3imotetas-programmatos-spiti-mou-ii" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>επίσημη πύλη</a>.
-        {onOpenCalculator && <> Συμπλήρωσε ηλικία, εισόδημα και στοιχεία ακινήτου στον <button onClick={onOpenCalculator} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--accent)', cursor: 'pointer', fontWeight: 500, fontFamily: FONT, fontSize: 'var(--fs-xs)' }}>Υπολογιστή</button> για ακριβέστερο έλεγχο.</>}
+        {onOpenCalculator && <> Συμπλήρωσε ηλικία, εισόδημα και στοιχεία ακινήτου στον <LinkBtn onClick={onOpenCalculator}>Υπολογιστή</LinkBtn> για ακριβέστερο έλεγχο.</>}
       </p>
     </div>
   )

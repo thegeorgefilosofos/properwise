@@ -10,7 +10,7 @@ import { BulkActionBar } from './UIComponents'
 import * as loanStore from '@/lib/data/loans'
 import * as contactStore from '@/lib/data/contacts'
 import * as billing from '@/lib/data/billing'
-import { T, fn, fe, PageTitle, InfoBanner, Btn, EmptyState, Skeleton, SkeletonKPIs, isOverlayOpen, pageShell } from '@/components/Theme'
+import { T, fn, fe, PageTitle, InfoBanner, Btn, IconBtn, ChipToggle, EmptyState, Skeleton, SkeletonKPIs, isOverlayOpen, pageShell } from '@/components/Theme'
 import { confirmDialog } from '@/components/confirmBus'
 import { notify, notifyOk } from '@/components/Toast'
 import { saved, savedData, optimistic } from '@/components/dbWrite'
@@ -750,7 +750,10 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
             σειρά και παίρνει όλο το πλάτος. */}
         <div style={{ flex: 1, minWidth: 240, position: 'relative' }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Εργασία, ετικέτα ή επαφή" aria-label="Αναζήτηση εκκρεμοτήτων" style={iStyle} />
-          {search && <button type="button" onClick={() => setSearch('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 18 }}><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>}
+          {/* Η απόλυτη θέση φεύγει σε γονέα-span: το κουτί του IconBtn είναι ο στόχος αφής και το πρωτογενές δεν δέχεται style. */}
+          {search && <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', display: 'flex' }}>
+            <IconBtn label="Καθαρισμός αναζήτησης" onClick={() => setSearch('')}><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></IconBtn>
+          </span>}
         </div>
         <FilterSelect value={filterStatus} onChange={v => setFilterStatus(v as FilterStatus)} minWidth={172} idle="Κατάσταση"
           options={[{ value: 'all', label: 'Όλες οι καταστάσεις' }, ...STATUSES.map(s => ({ value: s.value, label: s.label })), { value: 'overdue', label: 'Ληξιπρόθεσμα' }]} />
@@ -763,11 +766,10 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
             χειριστήρια που λένε αντίθετα πράγματα για το ίδιο πεδίο. Έμεινε το
             φίλτρο, που είναι το γενικό και το εξηγήσιμο. */}
         {viewMode === 'list' && items.length > 3 && (
-          <button type="button" onClick={() => { if (selectMode) exitSelectMode(); else setSelectMode(true) }}
-            title="Επιλογή εργασιών για μαζικές ενέργειες"
-            style={{ height: T.h.lg, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid ' + (selectMode ? 'var(--accent)' : 'var(--border-subtle)'), background: selectMode ? 'var(--accent-soft)' : 'var(--bg-surface)', color: selectMode ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 'var(--fs-base)', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+          <ChipToggle on={selectMode} onClick={() => { if (selectMode) exitSelectMode(); else setSelectMode(true) }}
+            title="Επιλογή εργασιών για μαζικές ενέργειες">
             {selectMode ? 'Τέλος επιλογής' : 'Επιλογή'}
-          </button>
+          </ChipToggle>
         )}
         {/* Η ΟΜΑΔΑ ΤΩΝ ΔΥΟ ΔΙΑΤΑΞΕΩΝ ΠΙΑΝΕΙ ΟΛΟ ΤΟ ΠΛΑΤΟΣ ΣΕ ΚΙΝΗΤΟ. Οι δύο
             ετικέτες θέλουν 187 μαζί και το κελί του πλέγματος δίνει 164:
@@ -781,30 +783,30 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
               η αλλαγή κατάστασης γίνεται ήδη με ένα κλικ στη σειρά. Έμειναν οι
               δύο που απαντούν σε πραγματικές ερωτήσεις: «τι έχω ανά κατηγορία»
               και «τι λήγει πότε». */}
+          {/* `seg` κι όχι `chip`: η ράγα .seg-two έχει ήδη δικό της περίγραμμα — δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */}
           {(['list', 'timeline'] as ViewMode[]).map(v => (
-            <button key={v} type="button" title={v === 'timeline' ? 'Κατά προθεσμία' : 'Ανά κατηγορία'} onClick={() => { setViewMode(v); if (v !== 'list') exitSelectMode() }} style={{ height: T.h.sm, padding: '0 12px', borderRadius: T.radius.badge, border: 'none', background: viewMode === v ? 'var(--accent)' : 'transparent', color: viewMode === v ? 'var(--accent-text)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontWeight: viewMode === v ? 700 : 400, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s', fontFamily: T.font.sans }}>
+            <ChipToggle key={v} on={viewMode === v} title={v === 'timeline' ? 'Κατά προθεσμία' : 'Ανά κατηγορία'} shape="seg" onClick={() => { setViewMode(v); if (v !== 'list') exitSelectMode() }}>
               {v === 'list' ? 'Ανά κατηγορία' : 'Κατά προθεσμία'}
-            </button>
+            </ChipToggle>
           ))}
         </div>
         {/* Ο καθαρισμός φίλτρων ήταν κόκκινος, σαν διαγραφή. Δεν σβήνει τίποτα:
             επαναφέρει την όψη. */}
-        {hasFilters && <button type="button" onClick={clearFilters} style={{ height: T.h.lg, padding: '0 12px', borderRadius: T.radius.btn, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: T.font.sans }}>Καθαρισμός φίλτρων</button>}
+        {hasFilters && <Btn size="lg" onClick={clearFilters}>Καθαρισμός φίλτρων</Btn>}
       </div>}
 
       {usedCats.length > 0 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
-          <button type="button" onClick={() => setFilterCat('all')} style={{ padding: '5px 12px', borderRadius: T.radius.pill, border: '1px solid ' + (filterCat === 'all' ? 'var(--accent)' : 'var(--border-subtle)'), background: filterCat === 'all' ? 'var(--accent-soft)' : 'transparent', color: filterCat === 'all' ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontWeight: filterCat === 'all' ? 700 : 400 }}>Όλα ({items.length})</button>
+          <ChipToggle on={filterCat === 'all'} onClick={() => setFilterCat('all')}>Όλα ({items.length})</ChipToggle>
           {usedCats.map(c => {
             const count = items.filter(i => i.category === c.id).length
             const catDone = items.filter(i => i.category === c.id && i.status === 'done').length
             return (
-              <button key={c.id} type="button" onClick={() => setFilterCat(filterCat === c.id ? 'all' : c.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: T.radius.pill, border: '1px solid ' + (filterCat === c.id ? 'var(--accent)' : 'var(--border-subtle)'), background: filterCat === c.id ? 'var(--accent-soft)' : 'transparent', color: filterCat === c.id ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontWeight: filterCat === c.id ? 700 : 400, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+              <ChipToggle key={c.id} on={filterCat === c.id} onClick={() => setFilterCat(filterCat === c.id ? 'all' : c.id)}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
                 {c.label}
                 <span style={{ fontSize: 'var(--fs-xs)', opacity: 0.8, fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{catDone}/{count}</span>
-              </button>
+              </ChipToggle>
             )
           })}
         </div>

@@ -10,7 +10,7 @@ import * as tenantStore from '@/lib/data/tenants';
 import { rentCollectionMode, collectionModeReason } from '@/lib/tax/rentCollectionMode';
 import * as expenseStore from '@/lib/data/expenses'
 import { ownerShareOf, ownerShareOfAmount } from '@/lib/expenses/sharing';
-import { T, TT, Skeleton, SkeletonKPIs, fe, fp, fn, fixedCols, Stat, widestOf } from '@/components/Theme'
+import { T, TT, Btn, IconBtn, ChipToggle, LinkBtn, Skeleton, SkeletonKPIs, fe, fp, fn, fixedCols, Stat, widestOf } from '@/components/Theme'
 import { ActionMenu } from '@/components/ActionMenu'
 import { ChevronLeft, ChevronRight, Download, Layers, Lightbulb, ArrowUpRight } from 'lucide-react'
 import { buildAdvisory, referLabel, type AdvisoryTone } from '@/lib/accounting/advisory'
@@ -1118,35 +1118,41 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // Ο φάκελος είναι το κύριο κουμπί και μένει εκεί· εδώ κάθονται τα τρία που
   // δεν είναι ο φάκελος: το σκέτο Excel (για όποιον θέλει μόνο τα νούμερα),
   // η ζωντανή πύλη και το ημερολόγιο άρθρων όπου υπάρχει.
-  const pillBtn:React.CSSProperties = { display:'inline-flex', alignItems:'center', gap:8, height:T.h.md, padding:'0 14px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'transparent', color:'var(--text-secondary)', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily: T.font.sans, whiteSpace:'nowrap' }
+  // ΤΟ `title` ΖΕΙ ΣΤΟ ΠΕΡΙΤΥΛΙΓΜΑ ΚΑΙ ΟΧΙ ΣΤΟ ΚΟΥΜΠΙ. Το `Btn` δέχεται `title`,
+  // όμως η ζωντανή πύλη απενεργοποιείται όσο δημιουργείται ο σύνδεσμος και το
+  // απενεργοποιημένο στοιχείο δεν δέχεται γεγονότα ποντικιού σε κάθε περιηγητή:
+  // η εξήγηση θα χανόταν ακριβώς την ώρα της αναμονής. Στο περιτύλιγμα φαίνεται
+  // πάντα· ο περιηγητής δείχνει το `title` του πλησιέστερου γονέα, οπότε ο
+  // χρήστης βλέπει ό,τι έβλεπε — και οι τρεις της σειράς γράφονται ίδια.
   const accountantActions = (
     <>
       <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-        <button onClick={exportBundle} title="Μόνο τα νούμερα: αναλυτικές κινήσεις και κατάσταση αποτελεσμάτων σε ένα αρχείο Excel. Περιέχεται ήδη μέσα στον φάκελο." style={pillBtn}
-          onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='var(--accent)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border-default)';e.currentTarget.style.color='var(--text-secondary)'}}>
-          <Download size={13}/>Μόνο το Excel
-        </button>
-        <button onClick={shareWithAccountant} disabled={acctBusy} title={canAccountantPortal ? "Ζωντανός σύνδεσμος για τον λογιστή σου, χωρίς σύνδεση και χωρίς email. Καλύπτει ΟΛΑ τα ακίνητά σου, όχι μόνο αυτό: διεύθυνση, ΑΤΑΚ, μίσθωμα, έσοδα και δαπάνες της χρονιάς." : "Η ζωντανή πύλη λογιστή περιλαμβάνεται από το πακέτο «Ένα ακίνητο» και πάνω, όπως και η εξαγωγή Ε2."}
-          style={{ ...pillBtn, borderColor:acctLink?'var(--accent)':'var(--border-default)', color:acctLink?'var(--accent)':'var(--text-secondary)', cursor:acctBusy?'wait':'pointer', transition:'color 0.15s, border-color 0.15s' }}
-          onMouseEnter={e=>{ if(!acctLink){ e.currentTarget.style.borderColor='var(--accent)'; e.currentTarget.style.color='var(--accent)' } }} onMouseLeave={e=>{ if(!acctLink){ e.currentTarget.style.borderColor='var(--border-default)'; e.currentTarget.style.color='var(--text-secondary)' } }}>
+        <span style={{ display:'inline-flex' }} title="Μόνο τα νούμερα: αναλυτικές κινήσεις και κατάσταση αποτελεσμάτων σε ένα αρχείο Excel. Περιέχεται ήδη μέσα στον φάκελο.">
+          <Btn variant="secondary" onClick={exportBundle}><Download size={13}/>Μόνο το Excel</Btn>
+        </span>
+        {/* Το accent περίγραμμα του «έτοιμη» ήταν ΚΑΤΑΣΤΑΣΗ και όχι ρόλος: τη λένε
+            πλέον μόνο το εικονίδιο και το λεκτικό, όπως και η αναμονή. */}
+        <span style={{ display:'inline-flex' }} title={canAccountantPortal ? "Ζωντανός σύνδεσμος για τον λογιστή σου, χωρίς σύνδεση και χωρίς email. Καλύπτει ΟΛΑ τα ακίνητά σου, όχι μόνο αυτό: διεύθυνση, ΑΤΑΚ, μίσθωμα, έσοδα και δαπάνες της χρονιάς." : "Η ζωντανή πύλη λογιστή περιλαμβάνεται από το πακέτο «Ένα ακίνητο» και πάνω, όπως και η εξαγωγή Ε2."}>
+          <Btn variant="secondary" onClick={shareWithAccountant} disabled={acctBusy}>
           {canAccountantPortal
             ? <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>
             : <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
           {acctBusy?'Δημιουργία…':acctLink?'Πύλη λογιστή έτοιμη':'Ζωντανή πύλη λογιστή'}
-        </button>
+          </Btn>
+        </span>
         {/* ΤΟ ΚΛΕΙΔΩΜΕΝΟ ΦΑΙΝΕΤΑΙ ΕΚΕΙ ΠΟΥ ΠΑΤΙΕΤΑΙ. Ίδιος κανόνας με τη διπλανή
             πύλη λογιστή: το λουκέτο μπαίνει στη θέση του εικονιδίου, το κουμπί
             πάει στα πακέτα. Μόνο σε όποιον κρατά διπλογραφικά βιβλία, δηλαδή
             σε όποιον το ημερολόγιο άρθρων του χρησιμεύει. */}
         {doubleEntry && (
-        <button onClick={()=>{ if(!canJournal){ onNavigate?.('settings'); return } setJournalOpen(true) }}
-          title={canJournal?"Πλήρες ημερολόγιο άρθρων και εξαγωγή CSV (SoftOne/Epsilon/QuickBooks/Xero)":`Το ημερολόγιο άρθρων και το ισοζύγιο διπλογραφικής περιλαμβάνονται από το πακέτο «${journalPlanName}» και πάνω.`} style={pillBtn}
-          onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='var(--accent)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border-default)';e.currentTarget.style.color='var(--text-secondary)'}}>
+        <span style={{ display:'inline-flex' }} title={canJournal?"Πλήρες ημερολόγιο άρθρων και εξαγωγή CSV (SoftOne/Epsilon/QuickBooks/Xero)":`Το ημερολόγιο άρθρων και το ισοζύγιο διπλογραφικής περιλαμβάνονται από το πακέτο «${journalPlanName}» και πάνω.`}>
+          <Btn variant="secondary" onClick={()=>{ if(!canJournal){ onNavigate?.('settings'); return } setJournalOpen(true) }}>
           {canJournal
             ? <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg>
             : <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
           Ημερολόγιο άρθρων
-        </button>
+          </Btn>
+        </span>
         )}
       </div>
       {acctLink && (
@@ -1155,6 +1161,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
           </span>
           <input aria-label="Σύνδεσμος λογιστή" readOnly value={acctLink} onFocus={e=>e.currentTarget.select()} style={{ flex:1, minWidth:150, border:'none', background:'transparent', color:'var(--text-secondary)', fontSize:12, fontFamily: T.font.sans, outline:'none', textOverflow:'ellipsis' }} />
+          {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: κάθεται σε σειρά με το «Άνοιγμα πύλης» των T.h.sm
+              και το minHeight T.h.md του Btn θα ψήλωνε μόνο αυτό, σπάζοντας τη
+              στοίχιση της γραμμής. */}
           <button onClick={()=>{ try{ navigator.clipboard?.writeText(acctLink); setAcctCopied(true); setTimeout(()=>setAcctCopied(false),2000) }catch{ /* ignore */ } }} style={{ height:T.h.sm, padding:'0 12px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:acctCopied?'var(--positive)':'var(--text-secondary)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>{acctCopied?'Αντιγράφηκε':'Αντιγραφή'}</button>
           <a href={acctLink} target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap: 4, height:T.h.sm, padding:'0 13px', borderRadius:T.radius.pill, background:'var(--accent)', color:'var(--accent-text)', fontSize:12, fontWeight:600, textDecoration:'none', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>Άνοιγμα πύλης<ArrowUpRight size={13}/></a>
           <div style={{ width:'100%', display:'flex', alignItems:'center', gap:10, marginTop:2, paddingLeft:2 }}>
@@ -1165,7 +1174,13 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 ΕΝΟΣ ακινήτου, οπότε η φυσική ανάγνωση ήταν «μοιράζομαι αυτό
                 εδώ». Η μόνη ένδειξη ήταν σε tooltip που δεν ανοίγει σε κινητό. */}
             <span style={{ fontSize: 'var(--fs-xs)', color:acctRevoked?'var(--positive)':'var(--text-tertiary)', fontFamily: T.font.sans }}>{acctRevoked?'Ο παλιός σύνδεσμος ακυρώθηκε και ο λογιστής βγήκε.':`Πρόσβαση μόνο για ανάγνωση, σε ΟΛΑ τα ακίνητά σου, όχι μόνο σε αυτό.${acctUntil?` Ισχύει ${acctUntil}.`:''}`}</span>
-            <button onClick={revokeAccountantLink} disabled={acctBusy} title="Ακυρώνει τον τρέχοντα σύνδεσμο και δημιουργεί καινούριο· ο παλιός παύει αμέσως να λειτουργεί και όποιος λογιστής τον είχε ήδη ανοίξει χάνει την πρόσβαση" style={{ marginLeft:'auto', background:'none', border:'none', padding:0, color:'var(--text-tertiary)', fontSize: 'var(--fs-xs)', fontWeight:700, cursor:acctBusy?'wait':'pointer', fontFamily: T.font.sans, whiteSpace:'nowrap' }} onMouseEnter={e=>{ if(!acctBusy) e.currentTarget.style.color='var(--negative)' }} onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-tertiary)' }}>Ανάκληση</button>
+            {/* LinkBtn και όχι Btn ghost: η ενέργεια κάθεται στο τέλος μιας
+                πρότασης χωρίς κουτί, οπότε το γέμισμα ενός κουμπιού θα
+                μετακινούσε τη γραμμή. Ο τόνος `danger` κρατά το κόκκινο που
+                έδινε η χειροκίνητη αιώρηση: η ανάκληση σβήνει τον σύνδεσμο. */}
+            <span style={{ marginLeft:'auto' }}>
+              <LinkBtn tone="danger" onClick={revokeAccountantLink} disabled={acctBusy} title="Ακυρώνει τον τρέχοντα σύνδεσμο και δημιουργεί καινούριο· ο παλιός παύει αμέσως να λειτουργεί και όποιος λογιστής τον είχε ήδη ανοίξει χάνει την πρόσβαση">Ανάκληση</LinkBtn>
+            </span>
           </div>
         </div>
       )}
@@ -1193,9 +1208,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           από αυτή την οθόνη βγαίνουν το Ε2, η βεβαίωση ενοικίου και ο φάκελος του
           λογιστή. Δοκίμασε ξανά· τα δεδομένα σου δεν έχουν χαθεί.
         </p>
-        <button onClick={()=>setRefreshKey(k=>k+1)} style={{ marginTop:12, height:T.h.md, padding:'0 16px', borderRadius:T.radius.btn, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-primary)', fontSize: 'var(--fs-base)', fontWeight:600, cursor:'pointer', fontFamily:T.font.sans }}>
-          Δοκίμασε ξανά
-        </button>
+        <div style={{ marginTop:12 }}>
+          <Btn variant="secondary" onClick={()=>setRefreshKey(k=>k+1)}>Δοκίμασε ξανά</Btn>
+        </div>
       </div>
     </div>
   )
@@ -1236,14 +1251,12 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               ιδιοκτήτης έχει επιχείρηση για κάτι άλλο. */}
           {mode==='professional'&&(
             <div style={{ display:'flex', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:2, gap:2 }}>
+              {/* `seg` και όχι `chip`: η ράγα από πάνω έχει ήδη δικό της περίγραμμα. */}
               {([['personal','Ενοίκια ιδιώτη'],['business','Μέσω επιχείρησης']] as [typeof elp,string][]).map(([e,label])=>(
-                <button key={e} onClick={()=>setElp(e)}
-                  title={e==='personal'?'Άρθρο 40: δική του κλίμακα, με τεκμαρτή έκπτωση 5%':'Άρθρο 15 ή εταιρικός συντελεστής, όταν το ακίνητο ανήκει στην επιχείρηση'}
-                  style={{ height:T.h.sm, padding:'0 12px', border:'none', borderRadius: T.radius.chip, cursor:'pointer', fontFamily:T.font.sans, fontSize:12,
-                    fontWeight: elp===e?600:400, background: elp===e?'var(--bg-surface)':'transparent',
-                    color: elp===e?'var(--text-primary)':'var(--text-secondary)' }}>
+                <ChipToggle key={e} on={elp===e} shape="seg" onClick={()=>setElp(e)}
+                  title={e==='personal'?'Άρθρο 40: δική του κλίμακα, με τεκμαρτή έκπτωση 5%':'Άρθρο 15 ή εταιρικός συντελεστής, όταν το ακίνητο ανήκει στην επιχείρηση'}>
                   {label}
-                </button>
+                </ChipToggle>
               ))}
             </div>
           )}
@@ -1262,9 +1275,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             ] : []),
           ]}/>
           <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <button onClick={()=>setYear(y=>y-1)} aria-label="Προηγούμενο έτος" style={{ width:34, height:34, borderRadius:10, border:'1px solid var(--border-subtle)', background:'var(--bg-surface)', color:'var(--text-secondary)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><ChevronLeft size={17}/></button>
+            <IconBtn label="Προηγούμενο έτος" onClick={()=>setYear(y=>y-1)}><ChevronLeft size={17}/></IconBtn>
             <span style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, minWidth:60, textAlign:'center', fontVariantNumeric:'tabular-nums' }}>{year}</span>
-            <button onClick={()=>setYear(y=>y+1)} aria-label="Επόμενο έτος" style={{ width:34, height:34, borderRadius:10, border:'1px solid var(--border-subtle)', background:'var(--bg-surface)', color:'var(--text-secondary)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><ChevronRight size={17}/></button>
+            <IconBtn label="Επόμενο έτος" onClick={()=>setYear(y=>y+1)}><ChevronRight size={17}/></IconBtn>
           </div>
         </div>
       </div>
@@ -1314,13 +1327,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                     δεν υπάρχει έσοδο, κύρια ενέργεια γίνεται το έξοδο — που
                     είναι και η μόνη καρτέλα ορατή σε κάθε κατάσταση. */}
                 {income && (
-                  <button onClick={()=>onNavigate?.(income.tab)} style={{ height:T.h.md, padding:'0 17px', borderRadius:10, border:'none', background:'var(--accent)', color:'var(--accent-text)', fontSize: 'var(--fs-base)', fontWeight:600, cursor:'pointer', fontFamily: T.font.sans }}>{income.label}</button>
+                  <Btn variant="primary" onClick={()=>onNavigate?.(income.tab)}>{income.label}</Btn>
                 )}
-                <button onClick={()=>onNavigate?.('finances')} style={income
-                  ? { height:T.h.md, padding:'0 16px', borderRadius:10, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans }
-                  : { height:T.h.md, padding:'0 17px', borderRadius:10, border:'none', background:'var(--accent)', color:'var(--accent-text)', fontSize: 'var(--fs-base)', fontWeight:600, cursor:'pointer', fontFamily: T.font.sans }}
-                  onMouseEnter={e=>{ if(income){ e.currentTarget.style.borderColor='var(--accent)'; e.currentTarget.style.color='var(--accent)' } }}
-                  onMouseLeave={e=>{ if(income){ e.currentTarget.style.borderColor='var(--border-default)'; e.currentTarget.style.color='var(--text-secondary)' } }}>Προσθήκη εξόδου</button>
+                {/* Το έξοδο γίνεται κύρια ενέργεια μόνο όταν δεν υπάρχει έσοδο δίπλα του. */}
+                <Btn variant={income?'secondary':'primary'} onClick={()=>onNavigate?.('finances')}>Προσθήκη εξόδου</Btn>
               </div>
             </div>
           </div>
@@ -1562,8 +1572,16 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           )}
           {rs.collectedTotal>0&&(
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginTop:12 }}>
-              <button onClick={printCertificate} title="Ετήσια βεβαίωση καταβληθέντων ενοικίων (PDF) για τον μισθωτή" style={{ display:'inline-flex', alignItems:'center', gap:6, height:T.h.sm, padding:'0 12px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans }} onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='var(--accent)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border-default)';e.currentTarget.style.color='var(--text-secondary)'}}><Printer size={13}/>Βεβαίωση ενοικίου</button>
-              <button onClick={officialRentCertificate} disabled={genOfficialCert} title="Επίσημο true-PDF βεβαίωσης ενοικίου με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς" style={{ display:'inline-flex', alignItems:'center', gap:6, height:T.h.sm, padding:'0 12px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:genOfficialCert?'wait':'pointer', opacity:genOfficialCert?0.6:1, fontFamily: T.font.sans }} onMouseEnter={e=>{if(!genOfficialCert){e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='var(--accent)'}}} onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border-default)';e.currentTarget.style.color='var(--text-secondary)'}}><ShieldCheck size={14}/>{genOfficialCert?'Δημιουργία…':'Επίσημο PDF'}</button>
+              {/* Το `title` κάθε βεβαίωσης λέει ΤΙ ακριβώς βγαίνει και για ποιον·
+                  ζει στο περιτύλιγμα γιατί το «Επίσημο PDF» απενεργοποιείται όσο
+                  ετοιμάζεται το αρχείο και το απενεργοποιημένο κουμπί δεν δείχνει
+                  παντού το δικό του tooltip. */}
+              <span style={{ display:'inline-flex' }} title="Ετήσια βεβαίωση καταβληθέντων ενοικίων (PDF) για τον μισθωτή">
+                <Btn variant="secondary" onClick={printCertificate}><Printer size={13}/>Βεβαίωση ενοικίου</Btn>
+              </span>
+              <span style={{ display:'inline-flex' }} title="Επίσημο true-PDF βεβαίωσης ενοικίου με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς">
+                <Btn variant="secondary" onClick={officialRentCertificate} disabled={genOfficialCert}><ShieldCheck size={14}/>{genOfficialCert?'Δημιουργία…':'Επίσημο PDF'}</Btn>
+              </span>
             </div>
           )}
           </Fold>
@@ -1643,10 +1661,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             </span>
             <div style={{ flex:1 }}/>
             {st==='unknown' ? null : st==='open'
-              ? (isFuture ? null : <button onClick={lockYear} style={{ display:'inline-flex', alignItems:'center', gap:6, height:T.h.sm, padding:'0 14px', borderRadius: T.radius.card, border:'1px solid var(--border-default)', background:'var(--bg-elevated)', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans, transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s' }} onMouseEnter={e=>{e.currentTarget.style.color='var(--accent)';e.currentTarget.style.borderColor='var(--accent)'}} onMouseLeave={e=>{e.currentTarget.style.color='var(--text-secondary)';e.currentTarget.style.borderColor='var(--border-default)'}}><Lock size={13}/>Κλείδωμα έτους</button>)
+              ? (isFuture ? null : <Btn variant="secondary" onClick={lockYear}><Lock size={13}/>Κλείδωμα έτους</Btn>)
               : <>
+                  {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το περίγραμμα και το κείμενο είναι --warning
+                      και ο τόνος προειδοποίησης δεν είναι ρόλος του Btn· ως secondary
+                      θα έχανε τη μόνη ένδειξη ότι τα δεδομένα άλλαξαν μετά το κλείδωμα. */}
                   {st==='drift'&&<button onClick={lockYear} style={{ height:T.h.sm, padding:'0 13px', borderRadius: T.radius.card, border:'1px solid var(--warning)', background:'transparent', color:'var(--warning)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans }}>Ενημέρωση</button>}
-                  <button onClick={unlockYear} style={{ display:'inline-flex', alignItems:'center', gap:6, height:T.h.sm, padding:'0 13px', borderRadius: T.radius.card, border:'none', background:'transparent', color:'var(--text-tertiary)', fontSize: 'var(--fs-base)', cursor:'pointer', fontFamily: T.font.sans }} onMouseEnter={e=>{e.currentTarget.style.color='var(--text-secondary)'}} onMouseLeave={e=>{e.currentTarget.style.color='var(--text-tertiary)'}}><Unlock size={13}/>Ξεκλείδωμα</button>
+                  {/* `ghost`: ήταν ήδη διάφανο και χωρίς περίγραμμα, δίπλα στο
+                      «Ενημέρωση» που κρατά τον τόνο της προειδοποίησης. */}
+                  <Btn variant="ghost" onClick={unlockYear}><Unlock size={13}/>Ξεκλείδωμα</Btn>
                 </>}
           </div>
         )})()}
@@ -1872,8 +1895,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             </button>
             {xferOpen&&(
             <div style={{ display:'flex', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:2, gap:2 }}>
+              {/* `seg` και όχι `chip`: το πλαίσιο γύρω τους έχει ήδη περίγραμμα. */}
               {([['buy','Αγορά'],['sell','Πώληση']] as ['buy'|'sell',string][]).map(([s,label])=>(
-                <button key={s} onClick={()=>setXferSide(s)} style={{ height:T.h.sm, padding:'0 15px', border:'none', borderRadius: T.radius.chip, cursor:'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:xferSide===s?600:500, background:xferSide===s?'var(--accent)':'transparent', color:xferSide===s?'var(--accent-text)':'var(--text-secondary)', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{label}</button>
+                <ChipToggle key={s} on={xferSide===s} shape="seg" onClick={()=>setXferSide(s)}>{label}</ChipToggle>
               ))}
             </div>
             )}

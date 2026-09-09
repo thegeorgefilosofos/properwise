@@ -25,7 +25,7 @@ import * as properties from '@/lib/data/properties';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
 import { TextInput, CustomSelect, FIELD_LABEL_ROW } from './UIComponents';
-import { T, Btn, InfoBanner, Spinner, Card, SecHdr, fixedCols, fe, fd } from '@/components/Theme';
+import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, fixedCols, fe, fd } from '@/components/Theme';
 import { PLANS, PLAN_ORDER, normalizePlan, annualPerMonth, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 // Η ΦΑΣΗ ΤΗΣ ΣΥΝΔΡΟΜΗΣ ΔΕΝ ΚΡΙΝΕΤΑΙ ΕΔΩ. Οι καταστάσεις τις ονομάζει ο
 // έμπορος και τις γράφει ο webhook· η οθόνη τις διαβάζει από την ίδια πηγή.
@@ -366,11 +366,6 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
   // ── Ο ΚΩΔΙΚΟΣ ΠΡΟΣΚΛΗΣΗΣ ─────────────────────────────────────────────
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState('');
-  const linkish: React.CSSProperties = {
-    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-    fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: 'var(--text-secondary)',
-    textDecoration: 'underline', textUnderlineOffset: 3,
-  };
 
   /**
    * Η εξαργύρωση.
@@ -593,7 +588,9 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           κωδικό ξέρει ότι τον έχει. */}
       <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
         {!codeOpen ? (
-          <button type="button" onClick={() => setCodeOpen(true)} style={linkish}>Έχω κωδικό πρόσκλησης</button>
+          /* `quiet` γιατί ο σύνδεσμος ήταν ήδη σβησμένος: το accent θα τον έκανε
+             πιο δυνατό από την τιμή δίπλα του. */
+          <LinkBtn tone="quiet" onClick={() => setCodeOpen(true)}>Έχω κωδικό πρόσκλησης</LinkBtn>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             {/* ΤΟ `placeholder` ΔΕΝ ΟΝΟΜΑΖΕΙ: σβήνεται με τον πρώτο χαρακτήρα και

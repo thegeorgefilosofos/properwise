@@ -7,7 +7,7 @@ import * as billStore from '@/lib/data/bills';
 import * as settings from '@/lib/data/settings';
 import { NumberInput, CustomSelect, ToggleField, DatePicker } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
-import { T, fe, fn, feRate, Skeleton, histInputStyle, ABSENT_SHORT, fixedCols } from '@/components/Theme';
+import { T, fe, fn, feRate, Skeleton, histInputStyle, ABSENT_SHORT, fixedCols, Btn, ChipToggle } from '@/components/Theme';
 import { monthlyCost, compareTariffs, estimateUsage, type Tariff, type Usage } from '@/lib/energy/tariff';
 import { PROVIDERS, COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE } from '@/lib/energy/catalogue';
 import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
@@ -684,17 +684,12 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             {secHdr('Κατάταξη Τιμολογίων',
               `${allTariffs.length} τιμολόγια για ${kwh} κιλοβατώρες τον μήνα, τιμές ${LAST_UPDATED}`)}
             <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: T.radius.pill, padding: 4, border: '1px solid var(--border-default)' }}>
+              {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της
+                  περίγραμμα, οπότε δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */}
               {(['residential', 'business'] as const).map(seg => (
-                <button key={seg} onClick={() => setSegmentFilter(seg)}
-                  style={{
-                    padding: '6px 16px', borderRadius: T.radius.pill, border: 'none', cursor: 'pointer',
-                    fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.sans,
-                    background: segmentFilter === seg ? 'var(--accent)' : 'transparent',
-                    color: segmentFilter === seg ? 'var(--accent-text)' : 'var(--text-secondary)',
-                    transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-                  }}>
+                <ChipToggle key={seg} on={segmentFilter === seg} shape="seg" onClick={() => setSegmentFilter(seg)}>
                   {seg === 'residential' ? 'Οικιακό' : 'Επιχειρηματικό'}
-                </button>
+                </ChipToggle>
               ))}
             </div>
           </div>
@@ -839,17 +834,14 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
           </div>
 
           {allTariffs.length > RANK_VISIBLE && (
-            <button onClick={() => setShowAllTariffs(v => !v)}
-              style={{
-                marginTop: 12, width: '100%', padding: '10px 16px', cursor: 'pointer',
-                background: 'transparent', border: '1px solid var(--border-default)',
-                borderRadius: T.radius.inner, fontFamily: T.font.sans, fontSize: 'var(--fs-xs)',
-                fontWeight: 600, color: 'var(--text-secondary)',
-              }}>
-              {showAllTariffs
-                ? `Δείξε μόνο τα ${RANK_VISIBLE} φθηνότερα`
-                : `Δείξε και τα υπόλοιπα ${allTariffs.length - RANK_VISIBLE} τιμολόγια`}
-            </button>
+            <div style={{ marginTop: 12 }}>
+              {/* `field` γιατί έπιανε ήδη όλο το πλάτος κάτω από την κατάταξη. */}
+              <Btn variant="secondary" field onClick={() => setShowAllTariffs(v => !v)}>
+                {showAllTariffs
+                  ? `Δείξε μόνο τα ${RANK_VISIBLE} φθηνότερα`
+                  : `Δείξε και τα υπόλοιπα ${allTariffs.length - RANK_VISIBLE} τιμολόγια`}
+              </Btn>
+            </div>
           )}
 
           {/* ΤΙ ΑΚΡΙΒΩΣ ΣΥΓΚΡΙΝΕΤΑΙ ΚΑΙ ΑΠΟ ΠΟΥ. Χωρίς αυτή τη γραμμή, ο χρήστης
@@ -980,6 +972,9 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                   <div style={{ flex: 1, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                     {h.text}
                   </div>
+                  {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το περίγραμμα και το χρώμα βγαίνουν από τη
+                      σοβαρότητα (SEV_STYLE) και το Btn δεν έχει τόνο, οπότε η
+                      διαβάθμιση warning/tip θα χανόταν. */}
                   {h.action && h.tab && (
                     <button
                       onClick={() => onNavigateTab?.(h.tab!)}

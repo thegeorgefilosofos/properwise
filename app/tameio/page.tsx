@@ -25,6 +25,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import BrandMark from '@/components/BrandMark';
 import { T } from '@/components/tokens';
+import { ChipToggle } from '@/components/Theme';
 import { authClient } from '@/lib/supabase/lazy';
 import { PLANS, PLAN_ORDER, TRIAL_DAYS, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 import { planFromParam, cycleFromParam } from '@/lib/billing/entitlements';
@@ -132,16 +133,15 @@ export default function CheckoutLanding() {
             είναι το μόνο που αποφασίζει πραγματικά ποιο πακέτο χρειάζεται. */}
         {stage === 'choose' && (
           <div style={{ paddingTop: 18 }}>
-            <div style={{ display: 'flex', gap: 4, padding: 4, marginBottom: 14, background: 'var(--bg-elevated)',
+            {/* Η ράγα έμεινε χωρίς γέμισμα: το ενεργό `seg` ανεβαίνει με ΤΟ ΙΔΙΟ --bg-elevated
+                και πάνω σε γεμισμένη ράγα δεν θα ξεχώριζε από αυτήν. */}
+            <div style={{ display: 'flex', gap: 4, padding: 4, marginBottom: 14,
               border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
               {([['monthly', 'Μηνιαία'], ['annual', 'Ετήσια']] as const).map(([v, lab]) => (
-                <button key={v} type="button" onClick={() => setCycle(v)} aria-pressed={cycle === v}
-                  style={{ flex: 1, minHeight: 40, borderRadius: T.radius.inner, border: 'none', cursor: 'pointer',
-                    background: cycle === v ? 'var(--accent)' : 'transparent',
-                    color: cycle === v ? 'var(--accent-text)' : 'var(--text-secondary)',
-                    fontFamily: T.font.sans, fontSize: 13, fontWeight: 600 }}>
+                // seg επειδή η ράγα από πάνω έχει ήδη δικό της περίγραμμα, grow για ίσα μερίδια
+                <ChipToggle key={v} on={cycle === v} onClick={() => setCycle(v)} shape="seg" grow>
                   {lab}
-                </button>
+                </ChipToggle>
               ))}
             </div>
 

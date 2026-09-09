@@ -21,6 +21,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
 import { T, TT, feAuto, fn, fp, fixedCols } from '@/components/tokens';
+import { ChipToggle } from '@/components/Theme';
 import {
   rentalIncomeTax, marginalRate, effectiveRentalRate,
   rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS,
@@ -165,19 +166,21 @@ export function RentTaxCalculator({ today }: { today: string }) {
           εφάρμοζε σιωπηλά το 2026 σε ανθρώπους που ρωτούσαν για το 2025. */}
       <div className="po-tool-controls" style={{ marginTop: 16 }}>
         <div style={{ ...TT.label, marginBottom: 8 }}>Εισόδημα ποιας χρονιάς</div>
-        <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-elevated)',
+        {/* `seg` και όχι `chip`: η ράγα έχει ήδη δικό της περίγραμμα. Η ράγα
+            κατεβαίνει σε `bg-base` ώστε το ανασηκωμένο τμήμα να ξεχωρίζει.
+            Οι δύο σειρές μπαίνουν σε ΕΝΑ παιδί: το πλακίδιο είναι flex, οπότε
+            δύο ξεχωριστά παιδιά θα κάθονταν το ένα δίπλα στο άλλο. */}
+        <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-base)',
           border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
           {([['2025', '2025', 'δηλώνεται τώρα'], ['2026', '2026', 'δηλώνεται το 2027']] as const).map(([val, lab, sub]) => {
             const on = v.etos === val;
             return (
-              <button key={val} type="button" onClick={() => set('etos', val)} aria-pressed={on}
-                style={{ flex: 1, minHeight: 44, borderRadius: T.radius.inner, border: 'none', cursor: 'pointer',
-                  background: on ? 'var(--accent)' : 'transparent',
-                  color: on ? 'var(--accent-text)' : 'var(--text-secondary)',
-                  fontFamily: T.font.sans, fontSize: 13, fontWeight: 600, lineHeight: 1.25 }}>
-                {lab}
-                <span style={{ display: 'block', fontSize: 11, fontWeight: 400, opacity: on ? 0.85 : 1 }}>{sub}</span>
-              </button>
+              <ChipToggle key={val} shape="seg" grow on={on} onClick={() => set('etos', val)}>
+                <span style={{ display: 'block', textAlign: 'center', fontSize: 13, lineHeight: 1.25 }}>
+                  {lab}
+                  <span style={{ display: 'block', fontSize: 11, fontWeight: 400, opacity: on ? 0.85 : 1 }}>{sub}</span>
+                </span>
+              </ChipToggle>
             );
           })}
         </div>

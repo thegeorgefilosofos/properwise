@@ -22,7 +22,7 @@ import * as calendar from '@/lib/data/calendar'
 import { Check, Plus, X, RotateCcw, CircleCheckBig } from 'lucide-react';
 import { isoDate } from '@/lib/core/time';
 import { AssistantMark } from './AssistantMark';
-import { T, TT, fe, EmptyState } from '@/components/Theme';
+import { T, TT, fe, EmptyState, Btn, IconBtn, LinkBtn } from '@/components/Theme';
 import { saved } from '@/components/dbWrite';
 import { ASSISTANT_ACC, suggestionsTitle, suggestionsSub, suggestionsTeaser } from '@/lib/assistant/identity';
 
@@ -255,10 +255,7 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
             υπότιτλος έμενε χωρίς υποκείμενο: «Διαβάζει τα δεδομένα σου» — ποιος;
             Εδώ μπαίνει η εκδοχή που κουβαλά το όνομα μαζί της. */}
         <span style={{ ...TT.caption }}>{suggestionsTeaser()}</span>
-        <button onClick={() => { setCollapsed(false); generateSuggestions(); }} style={{
-          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-          color: 'var(--accent)', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans,
-        }}>{collapsed && visibleSuggestions.length > 0 ? `Δες τις προτάσεις (${visibleSuggestions.length})` : 'Δες τι έρχεται'}</button>
+        <LinkBtn onClick={() => { setCollapsed(false); generateSuggestions(); }}>{collapsed && visibleSuggestions.length > 0 ? `Δες τις προτάσεις (${visibleSuggestions.length})` : 'Δες τι έρχεται'}</LinkBtn>
       </div>
     );
   }
@@ -276,29 +273,14 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <button onClick={generateSuggestions} disabled={loadingSugg} style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          height: T.h.md, padding: '0 16px',
-          background: 'transparent',
-          border: `1px solid ${loadingSugg ? 'var(--border-subtle)' : 'var(--border-default)'}`,
-          borderRadius: T.radius.pill,
-          cursor: loadingSugg ? 'default' : 'pointer',
-          color: loadingSugg ? 'var(--text-tertiary)' : 'var(--text-primary)',
-          fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, whiteSpace: 'nowrap',
-          transition: 'background 0.15s, border-color 0.15s',
-        }}
-          onMouseEnter={e => { if (!loadingSugg) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 45%, transparent)'; } }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = loadingSugg ? 'var(--border-subtle)' : 'var(--border-default)'; }}>
+        <Btn variant="secondary" onClick={generateSuggestions} disabled={loadingSugg}>
           {loadingSugg ? 'Διαβάζει το ακίνητο…' : 'Δες τι έρχεται'}
-        </button>
+        </Btn>
         {/* Η κάρτα κλείνει. Οι προτάσεις δεν χάνονται: η γραμμή που μένει τις
             ξαναφέρνει με το πλήθος τους, ώστε το κλείσιμο να μη μοιάζει διαγραφή. */}
-        <button onClick={() => setCollapsed(true)} aria-label="Σύμπτυξη προτάσεων" title="Σύμπτυξη"
-          style={{ width: T.h.md, height: T.h.md, borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}>
+        <IconBtn label="Σύμπτυξη προτάσεων" title="Σύμπτυξη" size="md" round onClick={() => setCollapsed(true)}>
           <X size={14} aria-hidden />
-        </button>
+        </IconBtn>
         </div>
       </div>
 
@@ -345,23 +327,13 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                  <button onClick={() => addSuggestion(s, idx)} disabled={isAdded} style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                    height: T.h.sm, padding: '0 13px',
-                    background: 'transparent', border: `1px solid ${isAdded ? 'var(--border-subtle)' : 'var(--border-default)'}`,
-                    borderRadius: T.radius.pill, cursor: isAdded ? 'default' : 'pointer',
-                    color: isAdded ? 'var(--text-tertiary)' : 'var(--text-secondary)',
-                    fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, whiteSpace: 'nowrap',
-                    transition: 'background 0.15s, color 0.15s, border-color 0.15s',
-                  }}
-                    onMouseEnter={e => { if (!isAdded) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = isAdded ? 'var(--text-tertiary)' : 'var(--text-secondary)'; }}>
+                  <Btn variant="secondary" onClick={() => addSuggestion(s, idx)} disabled={isAdded}>
                     {isAdded ? <Check size={12} aria-hidden /> : <Plus size={12} aria-hidden />}
                     {isAdded ? 'Προστέθηκε' : 'Στο ημερολόγιο'}
-                  </button>
-                  <button className="po-hov-fill" onClick={() => dismiss(idx)} aria-label={`Απόρριψη: ${s.title}`} title="Απόρριψη" style={{ width: T.h.sm, height: T.h.sm, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-tertiary)' }} >
+                  </Btn>
+                  <IconBtn label={`Απόρριψη: ${s.title}`} title="Απόρριψη" round onClick={() => dismiss(idx)}>
                     <X size={13} aria-hidden />
-                  </button>
+                  </IconBtn>
                 </div>
               </div>
             );

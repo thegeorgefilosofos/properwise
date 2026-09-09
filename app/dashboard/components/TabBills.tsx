@@ -33,7 +33,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenseStore from '@/lib/data/expenses'
 import * as billStore from '@/lib/data/bills'
-import { T, fe, fixedCols, Skeleton } from '@/components/Theme';
+import { T, fe, fixedCols, Skeleton, Btn } from '@/components/Theme';
 import { mergeLedger, type LedgerEntry } from '@/lib/expenses/ledger';
 import { cadenceLabel } from '@/lib/expenses/expected';
 import { contractOverview, totalMonthly, CONTRACT_EMPTY_HINT, CONTRACT_LABEL, type ContractCard, type ContractKind } from '@/lib/contracts/overview';
@@ -325,10 +325,9 @@ export default function TabBills({
               και γι᾽ αυτό το «Νερό» άνοιγε «Πάροχοι». */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, minWidth: 0 }}>{CONTRACT_LABEL[tool]}</span>
-            <button type="button" onClick={() => setTool(null)}
-              style={{ height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, flexShrink: 0 }}>
+            <Btn variant="secondary" onClick={() => setTool(null)}>
               Κλείσιμο
-            </button>
+            </Btn>
           </div>
           <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 18, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
             {tool === 'electricity'   && <BillsElectricity propertyId={propertyId} userId={userId} onNavigateTab={t => openTool(t as ContractKind)}/>}

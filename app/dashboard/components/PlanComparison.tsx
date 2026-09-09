@@ -17,7 +17,7 @@ import { useState } from 'react';
 import { PLANS, PLAN_ORDER, annualPerMonth, type PlanId } from '@/lib/billing/plans';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { isPlanAllowedForProfile } from '@/lib/billing/entitlements';
-import { T, TT, Card, SecHdr, Btn, Chip, feAuto, fixedCols } from '@/components/Theme';
+import { T, TT, Card, SecHdr, Btn, ChipToggle, Chip, feAuto, fixedCols } from '@/components/Theme';
 
 // ── Ποια πλάνα συγκρίνονται εδώ ─────────────────────────────────────────────
 // ΟΧΙ όλα. Το «Γραφείο» είναι πλάνο για χαρτοφυλάκια άνω των 40 ακινήτων και δεν
@@ -83,11 +83,12 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
       <Card className="acc-section" style={{ animationDelay: '0ms' }}>
         <SecHdr label="Σύγκριση πακέτων" right={
           <div style={{ display: 'inline-flex', padding: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill }}>
+            {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της περίγραμμα,
+                οπότε δεύτερο περίγραμμα ανά πλακίδιο θα έδινε διπλή γραμμή. */}
             {(['monthly', 'annual'] as const).map(c => (
-              <button key={c} onClick={() => setCycle(c)}
-                style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '5px 12px', borderRadius: T.radius.pill, fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, color: cycle === c ? 'var(--text-primary)' : 'var(--text-tertiary)', background: cycle === c ? 'var(--bg-surface)' : 'transparent', boxShadow: cycle === c ? 'var(--elev-1)' : 'none', transition: 'background-color 0.15s cubic-bezier(0.2,0,0,1), border-color 0.15s cubic-bezier(0.2,0,0,1), color 0.15s cubic-bezier(0.2,0,0,1), box-shadow 0.15s cubic-bezier(0.2,0,0,1), transform 0.15s cubic-bezier(0.2,0,0,1), opacity 0.15s cubic-bezier(0.2,0,0,1)' }}>
+              <ChipToggle key={c} on={cycle === c} onClick={() => setCycle(c)} shape="seg">
                 {c === 'monthly' ? 'Μηνιαία' : 'Ετήσια'}
-              </button>
+              </ChipToggle>
             ))}
           </div>
         } />

@@ -15,10 +15,10 @@
 // ιδιοκτήτη). Η όψη επιλέγεται αυτόματα κατά τη φόρτωση.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
-import { T, Btn, Chip, EmptyState, Skeleton, settingsField, ABSENT } from '@/components/Theme';
+import { T, Btn, ChipToggle, Chip, EmptyState, Skeleton, settingsField, ABSENT } from '@/components/Theme';
 import { Users } from 'lucide-react';
 import { logActivity } from '@/lib/activity';
 
@@ -105,26 +105,6 @@ function StatusChip({ status }: { status: Status }) {
 
 function AccessChip({ canEdit }: { canEdit: boolean }) {
   return <Chip tone="neutral">{canEdit ? 'Επεξεργασία' : 'Ανάγνωση'}</Chip>;
-}
-
-// ── Πλήκτρο τμηματικού ελέγχου «Ανάγνωση | Επεξεργασία» ────────────────────
-function SegBtn({ active, disabled, divider, onClick, children }: {
-  active: boolean; disabled?: boolean; divider?: boolean; onClick: () => void; children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={disabled ? undefined : onClick}
-      style={{
-        display: 'inline-flex', alignItems: 'center', minHeight: T.h.sm,
-        padding: '0 12px', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans,
-        cursor: disabled ? 'default' : 'pointer', whiteSpace: 'nowrap',
-        border: 'none', borderLeft: divider ? '1px solid var(--border-default)' : 'none',
-        background: active ? 'var(--accent-soft)' : 'transparent',
-        color: active ? 'var(--accent)' : 'var(--text-secondary)',
-      }}
-    >{children}</button>
-  );
 }
 
 export default function OrgTeam({ userId }: { userId: string }) {
@@ -536,9 +516,10 @@ export default function OrgTeam({ userId }: { userId: string }) {
                             <Btn variant="secondary" onClick={() => setMemberEdit(m.email, false)} disabled={busy}>Όχι</Btn>
                           </div>
                         ) : (
+                          // seg επειδή η ράγα έχει ήδη δικό της περίγραμμα με ακτίνα: το ενεργό ξεχωρίζει με επιφάνεια αντί για δεύτερη γραμμή
                           <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
-                            <SegBtn active={!m.can_edit} disabled={busy} onClick={() => { if (m.can_edit) void setMemberEdit(m.email, false); }}>Ανάγνωση</SegBtn>
-                            <SegBtn active={m.can_edit} disabled={busy} divider onClick={() => { if (!m.can_edit) void setMemberEdit(m.email, true); }}>Επεξεργασία</SegBtn>
+                            <ChipToggle on={!m.can_edit} disabled={busy} shape="seg" onClick={() => { if (m.can_edit) void setMemberEdit(m.email, false); }}>Ανάγνωση</ChipToggle>
+                            <ChipToggle on={m.can_edit} disabled={busy} shape="seg" onClick={() => { if (!m.can_edit) void setMemberEdit(m.email, true); }}>Επεξεργασία</ChipToggle>
                           </div>
                         )
                       )}
@@ -575,8 +556,8 @@ export default function OrgTeam({ userId }: { userId: string }) {
                               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2 }}>Ενοίκια, δαπάνες, λογαριασμοί, δάνεια και λογιστική.</div>
                             </div>
                             <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
-                              <SegBtn active={m.can_view_financials} disabled={busy} onClick={() => { if (!m.can_view_financials) void setMemberScope(m.email, { can_view_financials: true }); }}>Ορατά</SegBtn>
-                              <SegBtn active={!m.can_view_financials} disabled={busy} divider onClick={() => { if (m.can_view_financials) void setMemberScope(m.email, { can_view_financials: false }); }}>Κρυφά</SegBtn>
+                              <ChipToggle on={m.can_view_financials} disabled={busy} shape="seg" onClick={() => { if (!m.can_view_financials) void setMemberScope(m.email, { can_view_financials: true }); }}>Ορατά</ChipToggle>
+                              <ChipToggle on={!m.can_view_financials} disabled={busy} shape="seg" onClick={() => { if (m.can_view_financials) void setMemberScope(m.email, { can_view_financials: false }); }}>Κρυφά</ChipToggle>
                             </div>
                           </div>
 
@@ -587,8 +568,8 @@ export default function OrgTeam({ userId }: { userId: string }) {
                                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2 }}>Σε ποια ακίνητα έχει πρόσβαση το μέλος.</div>
                               </div>
                               <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
-                                <SegBtn active={!scoped} disabled={busy} onClick={() => { if (scoped) void setMemberScope(m.email, { property_scope: null }); }}>Όλα</SegBtn>
-                                <SegBtn active={scoped} disabled={busy} divider onClick={() => { if (!scoped && orgProps[0]) void setMemberScope(m.email, { property_scope: [orgProps[0].id] }); }}>Επιλεγμένα</SegBtn>
+                                <ChipToggle on={!scoped} disabled={busy} shape="seg" onClick={() => { if (scoped) void setMemberScope(m.email, { property_scope: null }); }}>Όλα</ChipToggle>
+                                <ChipToggle on={scoped} disabled={busy} shape="seg" onClick={() => { if (!scoped && orgProps[0]) void setMemberScope(m.email, { property_scope: [orgProps[0].id] }); }}>Επιλεγμένα</ChipToggle>
                               </div>
                             </div>
                             {scoped && (
@@ -596,16 +577,15 @@ export default function OrgTeam({ userId }: { userId: string }) {
                                 {orgProps.map(p => {
                                   const on = m.property_scope!.includes(p.id);
                                   return (
-                                    <button key={p.id} disabled={busy}
+                                    <ChipToggle key={p.id} on={on} disabled={busy}
                                       onClick={() => {
                                         const next = on ? m.property_scope!.filter(x => x !== p.id) : [...m.property_scope!, p.id];
                                         // Ποτέ κενή λίστα: κενό θα σήμαινε «όλα» και θα άνοιγε σιωπηλά την πρόσβαση.
                                         void setMemberScope(m.email, { property_scope: next.length ? next : [p.id] });
-                                      }}
-                                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 12px', borderRadius: T.radius.card, cursor: busy ? 'default' : 'pointer', fontFamily: T.font.sans, fontSize: 12, fontWeight: 600, border: `1px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: 'var(--bg-surface)', color: on ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                                      {on && <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                                      }}>
+                                      {on && <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
                                       {p.name}
-                                    </button>
+                                    </ChipToggle>
                                   );
                                 })}
                               </div>

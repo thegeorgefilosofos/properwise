@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
-import { T, Btn, fd } from '@/components/Theme';
+import { T, Btn, LinkBtn, fd } from '@/components/Theme';
 import { saved } from '@/components/dbWrite';
 import { TextInput } from './UIComponents';
 import { amaState, amaSummary, cleanAma, isValidAmaFormat, amaLengthLooksUnusual, AMA_COPY, type AmaRow } from '@/lib/property/ama';
@@ -151,10 +151,7 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
                   ) : (
                     <>
                       <span style={{ fontSize: 12, fontFamily: T.font.mono, color: 'var(--text-secondary)' }}>ΑΜΑ {p.ama}</span>
-                      <button onClick={() => { setEditing(p.id); setDraft(cleanAma(p.ama || '')); }}
-                        style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, padding: 0 }}>
-                        Αλλαγή
-                      </button>
+                      <LinkBtn onClick={() => { setEditing(p.id); setDraft(cleanAma(p.ama || '')); }}>Αλλαγή</LinkBtn>
                       {/* Η επιβεβαίωση είναι ρητή πράξη με ημερομηνία, όχι σιωπηλή
                           παραδοχή: όποιος αλλάξει αγγελία πρέπει να την ξανακάνει. */}
                       <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)' }}>

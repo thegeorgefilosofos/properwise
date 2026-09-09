@@ -35,7 +35,7 @@ import * as calendar from '@/lib/data/calendar'
 import { speechRecognizer, speechSupported, type SpeechEvent, type SpeechErrorEvent, type SpeechRecognizer } from '@/lib/core/speech';
 import type { BillsRow, ChecklistItemsRow, ClientStaysRow, ClientsRow, ContactsRow, ExpensesRow, RentPaymentsRow, UserPropertiesRow } from '@/lib/supabase/tables';
 import { AssistantMark } from './AssistantMark';
-import { T, TT, Modal, fe, feAuto, feOr, fp } from '@/components/Theme';
+import { T, TT, Modal, Btn, IconBtn, ChipToggle, LinkBtn, fe, feAuto, feOr, fp } from '@/components/Theme';
 import Feedback from './Feedback';
 import { resolveRent, resolveValue, computeYields } from '@/lib/billing/propertyFacts';
 import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger';
@@ -1609,22 +1609,24 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
               <div style={{ ...TT.caption, marginTop: 1 }}>{tagline(prefs.formal)}</div>
             </div>
             {(supportsSTT || supportsTTS) && (
-              <button onClick={() => { const next = !handsFree; setHandsFree(next); if (next && supportsSTT) { setOpen(true); startListening(); } else { stopListening(); stopSpeaking(); } }}
-                title={handsFree ? 'Κλείσε τη λειτουργία φωνής' : 'Λειτουργία φωνής (μίλα ελεύθερα)'} aria-label="Λειτουργία φωνής"
-                style={{ width: 30, height: 30, borderRadius: 10, border: 'none', background: handsFree ? 'var(--accent)' : 'transparent', color: handsFree ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              // Η αναμμένη κατάσταση περνά από γεμάτο πλακίδιο σε μελάνι accent: η `.po-ico` δεν έχει «πατημένο» και το κέρδος εδώ είναι ο στόχος αφής (ήταν 30)
+              <IconBtn onClick={() => { const next = !handsFree; setHandsFree(next); if (next && supportsSTT) { setOpen(true); startListening(); } else { stopListening(); stopSpeaking(); } }}
+                title={handsFree ? 'Κλείσε τη λειτουργία φωνής' : 'Λειτουργία φωνής (μίλα ελεύθερα)'} label="Λειτουργία φωνής"
+                tone={handsFree ? 'accent' : undefined}>
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 18 0" /><path d="M21 12v3a2 2 0 0 1-2 2h-1v-5h3z" /><path d="M3 12v3a2 2 0 0 0 2 2h1v-5H3z" /></svg>
-              </button>
+              </IconBtn>
             )}
-            <button onClick={() => setEditing(e => !e)} title={settingsTitle()} aria-label={settingsTitle()}
-              style={{ width: 30, height: 30, borderRadius: 10, border: 'none', background: editing ? 'var(--accent-dim)' : 'transparent', color: editing ? 'var(--accent)' : 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <IconBtn onClick={() => setEditing(e => !e)} title={settingsTitle()} label={settingsTitle()}
+              tone={editing ? 'accent' : undefined}>
               <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-            </button>
+            </IconBtn>
           </div>
           {(listening || speaking) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'var(--accent-dim)', borderBottom: '1px solid var(--border-subtle)' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: listening ? 'var(--negative)' : 'var(--accent)', animation: 'pa-pulse 1.1s infinite' }} />
               <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>{listening ? 'Ακούω…' : speakingLabel()}</span>
-              {speaking && <button onClick={stopSpeaking} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700 }}>Σταμάτα</button>}
+              {/* Το περιτύλιγμα κρατά την τυπογραφία των 12/700: το LinkBtn κληρονομεί γραμματοσειρά από τον γονέα του */}
+              {speaking && <span style={{ fontFamily: T.font.sans, fontSize: 12, fontWeight: 700 }}><LinkBtn onClick={stopSpeaking}>Σταμάτα</LinkBtn></span>}
             </div>
           )}
 
@@ -1689,15 +1691,19 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                       const c = findContact(ract.name);
                       const link = c ? buildReachLink(c, ract.channel, ract.text) : null;
                       if (!link?.url) return null;
-                      const style = { display: 'inline-flex', alignItems: 'center', gap: 6, height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid var(--accent)', background: 'var(--accent-dim)', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' } as const;
-                      const inner = (<>{reachLabel(ract.channel, ract.name)}<svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>);
-                      return (ract.channel === 'call' || ract.channel === 'email')
-                        ? <a href={link.url} style={style}>{inner}</a>
-                        : <button onClick={() => window.open(link.url!, '_blank')} style={style}>{inner}</button>;
+                      // Ενα στοιχείο αντί για δύο: το `href` του Btn δίνει το <a> που ήθελε το tel:/mailto:
+                      // και το `newTab` κάνει ό,τι έκανε το window.open για WhatsApp/Viber.
+                      const sameTab = ract.channel === 'call' || ract.channel === 'email';
+                      return (
+                        <Btn variant="secondary" href={link.url} newTab={!sameTab}>
+                          {reachLabel(ract.channel, ract.name)}
+                          <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                        </Btn>
+                      );
                     })() : (() => {
                       const used = consumedActions.has(i);
                       return (
-                      <button disabled={used} onClick={() => { if (used) return; setConsumedActions(s => new Set(s).add(i)); runAction(m.action); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: `1px solid ${used ? 'var(--border-subtle)' : 'var(--accent)'}`, background: used ? 'var(--bg-elevated)' : 'var(--accent-dim)', color: used ? 'var(--text-tertiary)' : 'var(--accent)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: used ? 'default' : 'pointer' }}>
+                      <Btn variant="secondary" disabled={used} onClick={() => { if (used) return; setConsumedActions(s => new Set(s).add(i)); runAction(m.action); }}>
                         {m.action.type === 'scan' ? 'Σάρωσε έγγραφο'
                           : m.action.type === 'book' ? `Κλείσε ραντεβού: ${new Date(m.action.date).toLocaleDateString('el-GR')}`
                           : m.action.type === 'client' ? `Καταχώρησε: ${m.action.name}`
@@ -1711,7 +1717,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                           : m.action.type === 'feedback' ? 'Γράψε την αξιολόγησή σου'
                           : `Πήγαινε: ${navLabel(m.action.tab)}`}
                         <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                      </button>
+                      </Btn>
                       ); })()
                     )}
                   </div>
@@ -1927,10 +1933,9 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
           {ADDRESS_OPTIONS.map(a => {
             const active = formal === a.value;
             return (
-              <button key={String(a.value)} onClick={() => setFormal(a.value)}
-                style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, fontFamily: T.font.sans, fontSize: 12, fontWeight: active ? 700 : 500, padding: '8px 14px', borderRadius: T.radius.pill, cursor: 'pointer', border: `1px solid ${active ? 'var(--accent)' : 'var(--border-default)'}`, background: active ? 'var(--accent)' : 'transparent', color: active ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
+              <ChipToggle key={String(a.value)} on={active} onClick={() => setFormal(a.value)}>
                 {a.label}<span style={{ fontSize: 'var(--fs-xs)', fontWeight: 500, opacity: 0.8 }}>{a.hint}</span>
-              </button>
+              </ChipToggle>
             );
           })}
         </div>
@@ -1946,13 +1951,16 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
           <Toggle on={memory} onChange={setMemory} ariaLabel="Μνήμη" />
         </div>
         {memory && hasMemory && (
-          <button onClick={onClearMemory} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--negative)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 600 }}>Σβήσε τη μνήμη αυτού του ακινήτου</button>
+          // Το περιτύλιγμα κρατά τη θέση με το alignSelf και την τυπογραφία που κληρονομεί το LinkBtn
+          <span style={{ alignSelf: 'flex-start', fontFamily: T.font.sans, fontSize: 12, fontWeight: 600 }}>
+            <LinkBtn tone="danger" onClick={onClearMemory}>Σβήσε τη μνήμη αυτού του ακινήτου</LinkBtn>
+          </span>
         )}
         {memory && facts.length > 0 && (
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '11px 12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
               <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)' }}>Τι θυμάται για σένα</div>
-              <button onClick={onForgetAllFacts} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 600 }}>Ξέχασέ τα όλα</button>
+              <span style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 600 }}><LinkBtn tone="quiet" onClick={onForgetAllFacts}>Ξέχασέ τα όλα</LinkBtn></span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {facts.map(f => (
@@ -1976,8 +1984,11 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-        <button onClick={onCancel} style={{ flex: '0 0 auto', height: T.h.lg, padding: '0 18px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, cursor: 'pointer' }}>Ακύρωση</button>
-        <button onClick={() => onSave({ memory, compare, formal })} style={{ flex: 1, height: T.h.lg, borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 700, cursor: 'pointer' }}>Αποθήκευση</button>
+        <Btn variant="secondary" size="lg" onClick={onCancel}>Ακύρωση</Btn>
+        {/* Το flex: 1 μετακόμισε στο περιτύλιγμα και το `field` δίνει στο κουμπί όλο το πλάτος με ύψος πεδίου */}
+        <div style={{ flex: 1 }}>
+          <Btn variant="primary" field onClick={() => onSave({ memory, compare, formal })}>Αποθήκευση</Btn>
+        </div>
       </div>
     </div>
   );

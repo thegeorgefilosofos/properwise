@@ -15,11 +15,11 @@ import { athensToday, monthEndIso } from '@/lib/core/time'
 import { monthNom } from '@/lib/core/months'
 import { notify } from '@/components/Toast'
 import { saved } from '@/components/dbWrite'
-import { NumberInput, CustomSelect, TextInput, DatePicker, addBtn } from './UIComponents';
+import { NumberInput, CustomSelect, TextInput, DatePicker } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
 import { ReminderLinks } from './ReminderLinks';
 import { findDuplicates, type ExpenseLike } from '@/lib/expenses/duplicates';
-import { T, TT, fe, fieldRow, fixedCols, SecHdr, InfoBanner, Skeleton, SkeletonKPIs, localDay, ABSENT_SHORT, pressable } from '@/components/Theme';
+import { T, TT, fe, fieldRow, fixedCols, SecHdr, InfoBanner, Skeleton, SkeletonKPIs, localDay, ABSENT_SHORT, pressable, Btn, IconBtn, ChipToggle } from '@/components/Theme';
 // Ο κατάλογος συνδρομών ζει στο lib: τον διαβάζει και ο Προϋπολογισμός.
 import { SUB_INCLUDES, SUB_GROUPS, planMonthly, entryPlan, entryPlanId,
          planNote, subShare, type SubService, type SubKey } from '@/lib/expenses/subscriptions';
@@ -1439,10 +1439,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                       άδεια για να πατήσεις μια κάλυψη· χρειάζεται όμως δρόμος
                       πίσω, όταν τα άλλαξες και θέλεις ό,τι λέει ο κατάλογος. */}
                   {insEditCovers && (
-                    <button type="button" onClick={() => u({ insEditCovers: false })}
-                      style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, padding: '5px 12px', cursor: 'pointer', fontFamily: T.font.sans, fontWeight: 600 }}>
-                      Επαναφορά προγράμματος
-                    </button>
+                    <Btn variant="secondary" onClick={() => u({ insEditCovers: false })}>Επαναφορά προγράμματος</Btn>
                   )}
                 </div>
                 {/* ══════════════════════════════════════════════════════════
@@ -1559,15 +1556,14 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {QUOTE_FILTERS.map(f => (
-                    <button key={f.key} onClick={() => setQuotesFilter(f.key)}
-                      style={{ fontSize: 'var(--fs-xs)', padding: '4px 10px', borderRadius: T.radius.pill, border: `1px solid ${quotesFilter === f.key ? 'var(--accent)' : 'var(--border-subtle)'}`, background: quotesFilter === f.key ? 'var(--accent-soft)' : 'transparent', color: quotesFilter === f.key ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', fontFamily: T.font.sans, fontWeight: quotesFilter === f.key ? 700 : 400 }}>
-                      {f.label}
-                    </button>
+                    <ChipToggle key={f.key} on={quotesFilter === f.key} onClick={() => setQuotesFilter(f.key)}>{f.label}</ChipToggle>
                   ))}
-                  <button onClick={() => setShowQuotes(v => !v)}
-                    style={{ fontSize: 'var(--fs-xs)', padding: '4px 10px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: T.font.sans }}>
+                  {/* Πλακίδιο και όχι κουμπί: κάθεται στην ίδια σειρά με τα φίλτρα
+                      και κρατά κατάσταση (ανοιχτό ή κλειστό), οπότε τη λέει με
+                      aria-pressed αντί να την αφήνει μόνο στο βελάκι. */}
+                  <ChipToggle on={showQuotes} onClick={() => setShowQuotes(v => !v)}>
                     {showQuotes ? '▲ Σύμπτυξη' : '▼ Ανάπτυξη'}
-                  </button>
+                  </ChipToggle>
                 </div>
               </div>
 
@@ -1761,10 +1757,12 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button type="button" onClick={bookMonth} disabled={booking || chargesTotal <= 0}
-                style={addBtn(booking || chargesTotal <= 0)}>
+              {/* `field` και όχι size="lg": το addBtn έδινε ΚΑΙ πλήρες πλάτος, οπότε
+                  το μήνυμα από δίπλα τυλιγόταν από κάτω. Μόνο το `field` κρατά
+                  και το ύψος πεδίου και το πλάτος της σειράς. */}
+              <Btn variant="primary" field onClick={bookMonth} disabled={booking || chargesTotal <= 0}>
                 {booking ? 'Καταχωρείται…' : 'Καταχώρηση στις δαπάνες'}
-              </button>
+              </Btn>
               {bookedCount > 0 && (
                 <span style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
                   {bookedCount === 1 ? 'Μία γραμμή μπήκε' : `${bookedCount} γραμμές μπήκαν`} στο καθολικό.
@@ -1813,11 +1811,10 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               <TextInput   label="Ονομασία"             value={newSubName}    onChange={setNewSubName}    placeholder="Netflix"/>
               <NumberInput label="Κόστος τον μήνα"      value={newSubPrice}   onChange={setNewSubPrice}   suffix="€"/>
               <DatePicker  label="Ημερομηνία ανανέωσης" value={newSubRenewal} onChange={setNewSubRenewal}/>
-              <button type="button" disabled={!newSubName.trim() || !newSubPrice}
-                onClick={() => { u({ otherSubs: [...(otherSubs || []), { name: newSubName, price: newSubPrice, renewalDate: newSubRenewal }] }); setNewSubName(''); setNewSubPrice(''); setNewSubRenewal(''); }}
-                style={addBtn(!newSubName.trim() || !newSubPrice)}>
+              <Btn variant="primary" field disabled={!newSubName.trim() || !newSubPrice}
+                onClick={() => { u({ otherSubs: [...(otherSubs || []), { name: newSubName, price: newSubPrice, renewalDate: newSubRenewal }] }); setNewSubName(''); setNewSubPrice(''); setNewSubRenewal(''); }}>
                 Προσθήκη
-              </button>
+              </Btn>
             </div>
           </div>
           {(otherSubs || []).map((s, i) => {
@@ -1830,8 +1827,11 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(parseFloat(s.price))} / μήνα</span>
-                  <button onClick={() => u({ otherSubs: (otherSubs || []).filter((_, j) => j !== i) })}
-                    style={{ width: 26, height: 26, borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                  {/* `round` γιατί το παλιό radius ήταν 100, δηλαδή κύκλος. Το λεκτικό
+                      έλειπε εντελώς: ο αναγνώστης οθόνης άκουγε μόνο «✕». */}
+                  <IconBtn label={`Διαγραφή συνδρομής ${s.name}`} round onClick={() => u({ otherSubs: (otherSubs || []).filter((_, j) => j !== i) })}>
+                    <span style={{ fontSize: 12 }}>✕</span>
+                  </IconBtn>
                 </div>
               </div>
             );

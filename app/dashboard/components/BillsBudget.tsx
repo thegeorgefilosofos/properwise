@@ -13,7 +13,7 @@ import * as tenantStore from '@/lib/data/tenants';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
 import { TextInput, Toggle, ToggleTrack } from './UIComponents';
-import { T, fe, feAuto, fp, fn, grUpper, KPIGrid, Skeleton, SkeletonKPIs, pressable } from '@/components/Theme';
+import { T, fe, feAuto, fp, fn, grUpper, KPIGrid, Skeleton, SkeletonKPIs, pressable, Btn, IconBtn, ChipToggle, LinkBtn } from '@/components/Theme';
 import { waterMonthly } from '@/lib/energy/tariff';
 import { monthAcc, monthGen, monthYearLabel } from '@/lib/core/months';
 import { randomSuffix } from '@/lib/core/uploadPath';
@@ -1164,16 +1164,18 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em' }}>Προϋπολογισμός</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
-            <button className="po-box" onClick={() => canGoOlder && setMonthOffset(o => o - 1)} disabled={!canGoOlder} aria-label="Προηγούμενος μήνας"
-              style={{ display: 'flex', border: 'none', background: 'transparent', cursor: canGoOlder ? 'pointer' : 'default', color: canGoOlder ? 'var(--text-secondary)' : 'var(--border-default)', padding: 2, margin: '0 -2px' }}>
+            {/* Το κουτί είναι ο στόχος αφής, το βελάκι μένει 15: ό,τι κάνει η
+                `.po-ico` για κάθε άλλο εικονοκουμπί της εφαρμογής. */}
+            <IconBtn onClick={() => canGoOlder && setMonthOffset(o => o - 1)} disabled={!canGoOlder} label="Προηγούμενος μήνας">
               <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
+            </IconBtn>
             <span style={{ minWidth: 96, textAlign: 'center', textTransform: 'capitalize' }}>{viewMonthLabel}</span>
-            <button className="po-box" onClick={() => canGoNewer && setMonthOffset(o => o + 1)} disabled={!canGoNewer} aria-label="Επόμενος μήνας"
-              style={{ display: 'flex', border: 'none', background: 'transparent', cursor: canGoNewer ? 'pointer' : 'default', color: canGoNewer ? 'var(--text-secondary)' : 'var(--border-default)', padding: 2, margin: '0 -2px' }}>
+            <IconBtn onClick={() => canGoNewer && setMonthOffset(o => o + 1)} disabled={!canGoNewer} label="Επόμενος μήνας">
               <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-            {!isCurMonth && <button onClick={() => setMonthOffset(0)} style={{ marginLeft: 4, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600, borderRadius: T.radius.pill, padding: '2px 9px', fontFamily: T.font.sans }}>Τρέχων</button>}
+            </IconBtn>
+            {/* Δευτερεύον: έχει λεκτικό και περίγραμμα σε διάφανο φόντο. Το μελάνι
+                γίνεται ουδέτερο, γιατί το χρώμα του ρόλου ζει πλέον στην `.po-btn`. */}
+            {!isCurMonth && <Btn variant="secondary" onClick={() => setMonthOffset(0)}>Τρέχων</Btn>}
             <span style={{ marginLeft: 8, color: 'var(--text-tertiary)' }}>· {isPro ? 'Επιχείρηση' : 'Ιδιώτης'}</span>
             {saving && <span style={{ marginLeft: 10, color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)' }}>· Αποθήκευση…</span>}
           </div>
@@ -1187,10 +1189,11 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
           <span style={{ flex: 1, minWidth: 0 }}>
             Τα σύνολα μετρούν πλέον λογαριασμούς και δαπάνες μαζί, με το ποσό που όντως πληρώθηκε και στον μήνα που πληρώθηκε. Αν κάποιο νούμερο δείχνει αλλαγμένο, τώρα είναι το σωστό.
           </span>
-          <button type="button" onClick={dismissLedgerNote}
-            style={{ flexShrink: 0, appearance: 'none', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', fontFamily: T.font.sans, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+          {/* Ήσυχο και όχι δευτερεύον: η σημείωση δεν ζητά απόφαση, οπότε η
+              απόρριψή της δεν παίρνει περίγραμμα. */}
+          <Btn variant="ghost" onClick={dismissLedgerNote}>
             Το κατάλαβα
-          </button>
+          </Btn>
         </div>
       )}
 
@@ -1201,10 +1204,12 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 4 }}>Δες πώς λειτουργεί σε 10 δευτερόλεπτα</div>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>Θα προσθέσουμε ένα δείγμα δαπανών του μήνα, ώστε να ζωντανέψουν τα γραφήματα και οι κατηγορίες. Τα αφαιρείς με ένα άγγιγμα όποτε θες.</div>
           </div>
-          <button type="button" onClick={seedDemo} disabled={demoBusy}
-            style={{ height: T.h.md, padding: '0 18px', flexShrink: 0, borderRadius: T.radius.inner, border: '1px solid var(--border-accent)', background: 'var(--accent-dim)', color: 'var(--accent)', fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: T.font.sans, cursor: demoBusy ? 'default' : 'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+          {/* Δευτερεύον και όχι κύριο: το γέμισμα ήταν απόχρωση του τονισμού με
+              ορατό περίγραμμα, δηλαδή κουμπί με περίμετρο. Το ύψος T.h.md είναι
+              ήδη το προεπιλεγμένο του Btn, οπότε η γραμμή δεν κουνιέται. */}
+          <Btn variant="secondary" onClick={seedDemo} disabled={demoBusy}>
             {demoBusy ? 'Δημιουργία…' : 'Δείξε μου'}
-          </button>
+          </Btn>
         </div>
       )}
 
@@ -1213,10 +1218,11 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         <div className="budget-rise" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '11px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
           <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>Εμφανίζονται δείγματα δεδομένων για επίδειξη.</span>
-          <button type="button" onClick={removeDemo} disabled={demoBusy}
-            style={{ border: 'none', background: 'transparent', color: 'var(--accent)', fontSize: 12, fontWeight: 700, fontFamily: T.font.sans, cursor: demoBusy ? 'default' : 'pointer', padding: 0, flexShrink: 0 }}>
+          {/* Ήσυχο: μέσα σε γραμμή ειδοποίησης, χωρίς φόντο και χωρίς περίγραμμα.
+              Το μελάνι γίνεται ουδέτερο — ο τονισμός ανήκει στην κύρια ενέργεια. */}
+          <Btn variant="ghost" onClick={removeDemo} disabled={demoBusy}>
             {demoBusy ? 'Αφαίρεση…' : 'Αφαίρεση δείγματος'}
-          </button>
+          </Btn>
         </div>
       )}
 
@@ -1558,14 +1564,14 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
               <div key={s.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{s.text}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  <button type="button" onClick={s.apply}
-                    style={{ height: 28, padding: '0 12px', borderRadius: T.radius.inner, border: '1px solid var(--border-accent)', background: 'var(--accent-dim)', color: 'var(--accent)', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+                  {/* Δευτερεύον: ίδιο σχήμα με το «Δείξε μου», απόχρωση τονισμού με
+                      περίγραμμα. Το ύψος 28 ανεβαίνει στο κοινό ύψος κουμπιού. */}
+                  <Btn variant="secondary" onClick={s.apply}>
                     Εφαρμογή
-                  </button>
-                  <button type="button" className="po-box" aria-label="Απόρριψη" title="Απόρριψη" onClick={() => dismissSuggestion(s.key)}
-                    style={{ display: 'inline-flex', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4, margin: '-3px' }}>
+                  </Btn>
+                  <IconBtn onClick={() => dismissSuggestion(s.key)} label="Απόρριψη" title="Απόρριψη">
                     <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
+                  </IconBtn>
                 </div>
               </div>
             ))}
@@ -1841,14 +1847,6 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
 
         {!collapsed.has('cats') && (() => {
           const sumCats = activeCats.reduce((s, c) => s + catBudget(c.key), 0);
-          const linkBtn = (label: string, on: boolean, onClick: () => void) => (
-            <button type="button" onClick={onClick}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', color: on ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, cursor: 'pointer', padding: 0, transition: 'color 0.15s' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = on ? 'var(--accent)' : 'var(--text-secondary)'; }}>
-              {label}
-            </button>
-          );
           return (
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
               {/* Σύνολο + ενέργειες (χωρίς λειτουργία επεξεργασίας — όλα επιτόπου) */}
@@ -1856,8 +1854,11 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 <span>Μηνιαίος στόχος <InlineNumber raw={budgets.total ?? String(Math.round(masterBudget))} display={feAuto(masterBudget)} onCommit={v => updateBudget('total', v)} width={70} ariaLabel="Συνολικός μηνιαίος στόχος" /></span>
                 <span style={{ color: 'var(--text-tertiary)' }}>Άθροισμα κατηγοριών <strong style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{feAuto(sumCats)}</strong></span>
                 <span style={{ flex: 1 }} />
-                {linkBtn(addingCat ? 'Κλείσιμο' : '+ Προσθήκη κατηγορίας', addingCat, () => setAddingCat(v => !v))}
-                {linkBtn('Ρυθμίσεις', showSettings, () => setShowSettings(v => !v))}
+                {/* Σύνδεσμοι μέσα στη γραμμή του συνόλου, όχι κουμπιά: δεν έχουν
+                    κουτί και ζουν ανάμεσα σε νούμερα. Ο ήσυχος τόνος κρατά τη
+                    διάκριση «ανοιχτό ή κλειστό» που έδινε πριν το μελάνι. */}
+                <LinkBtn tone={addingCat ? undefined : 'quiet'} onClick={() => setAddingCat(v => !v)}>{addingCat ? 'Κλείσιμο' : '+ Προσθήκη κατηγορίας'}</LinkBtn>
+                <LinkBtn tone={showSettings ? undefined : 'quiet'} onClick={() => setShowSettings(v => !v)}>Ρυθμίσεις</LinkBtn>
               </div>
 
               {addingCat && (
@@ -1866,11 +1867,12 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                     <TextInput label="Νέα κατηγορία" value={newCatName} onChange={setNewCatName} placeholder="Καθαριότητα, Φύλαξη…"
                       onKeyDown={e => { if (e.key === 'Enter' && newCatName.trim()) { addCategory(newCatName); setNewCatName(''); } }}/>
                   </div>
-                  <button type="button" disabled={!newCatName.trim()}
-                    onClick={() => { addCategory(newCatName); setNewCatName(''); }}
-                    style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.inner, border: '1px solid var(--border-default)', background: newCatName.trim() ? 'color-mix(in srgb, var(--text-primary) 88%, transparent)' : 'var(--bg-elevated)', color: newCatName.trim() ? 'var(--bg-surface)' : 'var(--text-tertiary)', fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: T.font.sans, cursor: newCatName.trim() ? 'pointer' : 'default', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s', whiteSpace: 'nowrap' }}>
+                  {/* Κύρια ενέργεια της σειράς: συμπαγές γέμισμα με ανεστραμμένο
+                      μελάνι. Το χρώμα του γεμίσματος το δίνει πλέον η `.po-btn`. */}
+                  <Btn variant="primary" disabled={!newCatName.trim()}
+                    onClick={() => { addCategory(newCatName); setNewCatName(''); }}>
                     Προσθήκη
-                  </button>
+                  </Btn>
                 </div>
               )}
 
@@ -1969,12 +1971,11 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                         {PAYERS.map(p => {
                             const sel = ex?.payer === p;
                           return (
-                            <button key={p} type="button" onClick={() => patchExcl(it.id, { payer: sel ? '' : p })}
-                              style={{ border: `1px solid ${sel ? 'var(--border-accent)' : 'var(--border-subtle)'}`, background: sel ? 'var(--accent-dim)' : 'transparent', color: sel ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight: 500, cursor: 'pointer', fontFamily: T.font.sans, padding: '3px 10px', borderRadius: T.radius.pill, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}
-                              onMouseEnter={e => { if (!sel) { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-accent)'; (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; } }}
-                              onMouseLeave={e => { if (!sel) { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-subtle)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; } }}>
+                            // Σχήμα `chip` και όχι `seg`: τα πλακίδια κάθονται ελεύθερα
+                            // μέσα στη γραμμή, χωρίς ράγα με δικό της περίγραμμα.
+                            <ChipToggle key={p} on={sel} onClick={() => patchExcl(it.id, { payer: sel ? '' : p })}>
                               {p}
-                            </button>
+                            </ChipToggle>
                           );
                         })}
                         {/* Μερική εξαίρεση: πόσο από το ποσό να εξαιρεθεί (κενό = όλο)

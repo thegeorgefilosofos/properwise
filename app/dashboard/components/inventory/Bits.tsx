@@ -58,19 +58,20 @@ export const SectionLabel = ({label,right}:{label:string;right?:React.ReactNode}
  * με τρία διαφορετικά στυλ στο χέρι και φαινόταν: διαφορετικό ύψος,
  * διαφορετικό φόντο, διαφορετικό κενό. Το μάτι έψαχνε ποια είναι η σημαντική,
  * ενώ καμία δεν είναι — είναι τρεις δρόμοι για την ίδια δουλειά.
+ *
+ * ΤΟ ΤΟΠΙΚΟ `quietAction` ΕΦΥΓΕ ΜΑΖΙ ΜΕ ΤΗΝ ΠΑΡΑΛΛΑΓΗ `accent`. Το σχήμα
+ * είναι το `Btn variant="secondary"`: ίδιο ύψος από την κοινή κλίμακα, όψη και
+ * αιώρηση στο `.po-btn`. Ο τόνος accent ήταν ΚΑΤΑΣΤΑΣΗ και όχι δεύτερος ρόλος,
+ * δεν τον ζητούσε καμία κλήση σε όλο το repo και δεν είχε τρόπο να ανακοινωθεί.
+ *
+ * Η ΑΓΚΥΡΑ ΤΟΥ ΜΕΝΟΥ ΠΕΡΑΣΕ ΣΤΟ ΠΕΡΙΤΥΛΙΓΜΑ. Το `Btn` δεν δέχεται `ref`, οπότε
+ * το ορθογώνιο το δίνει το περιτύλιγμα — που είναι `inline-flex` και τυλίγει το
+ * κουμπί χωρίς κενό γραμμής, άρα μετρά ακριβώς το ίδιο ορθογώνιο με πριν.
  */
-export const quietAction: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 6,
-  height: T.h.sm, padding: '0 12px', borderRadius: T.radius.pill,
-  border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)',
-  color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight: 500,
-  fontFamily: T.font.sans, cursor: 'pointer',
-}
-
-export function BulkPicker({label,icon,options,onPick,accent}:{label:string;icon:React.ReactNode;options:string[];onPick:(v:string)=>void;accent?:boolean}) {
+export function BulkPicker({label,icon,options,onPick}:{label:string;icon:React.ReactNode;options:string[];onPick:(v:string)=>void}) {
   const [open,setOpen] = useState(false)
   const [rect,setRect] = useState<{top:number;left:number}|null>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
+  const btnRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const place = useCallback(()=>{const b=btnRef.current?.getBoundingClientRect();if(b)setRect({top:b.bottom+4,left:b.left})},[])
   useEffect(()=>{
@@ -82,14 +83,11 @@ export function BulkPicker({label,icon,options,onPick,accent}:{label:string;icon
     return()=>{document.removeEventListener('mousedown',close);window.removeEventListener('scroll',s,true);window.removeEventListener('resize',s)}
   },[open,place])
   return (
-    <div style={{display:'inline-block'}}>
-      <button ref={btnRef} onClick={()=>setOpen(v=>!v)}
-        style={accent
-          ? {...quietAction, border:'1px solid var(--accent-border)', background:'var(--accent-soft)', color:'var(--accent)'}
-          : quietAction}>
+    <div ref={btnRef} style={{display:'inline-flex'}}>
+      <Btn variant="secondary" onClick={()=>setOpen(v=>!v)}>
         <span style={{display:'flex'}}>{icon}</span>{label}
         <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 4l3 3 3-3"/></svg>
-      </button>
+      </Btn>
       {open&&rect&&typeof document!=='undefined'&&createPortal(
         <div ref={menuRef} style={{position:'fixed',top:rect.top,left:rect.left,background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.card,padding: 4,zIndex:9000,minWidth:180,maxHeight:300,overflowY:'auto',boxShadow:'var(--shadow-xl)'}}>
           {options.length===0

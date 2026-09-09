@@ -13,7 +13,7 @@ import { inferRole } from '@/lib/contacts/roles'
 import { alphaBucket, buildAlphaIndex, compareNames, initialsOf, type AlphaEntry } from '@/lib/contacts/alpha'
 import { Phone, Mail, X, Search, Globe, MapPin, FileText, QrCode, Printer, History, Receipt, CalendarPlus, Users, Building2, Wrench, Trees, UserCheck, Zap, Wifi, Landmark, Shield, Pencil, Trash2, Copy, MessageSquare, UserPlus, Camera, SearchX } from 'lucide-react'
 import { DatePicker, CustomSelect, Toggle, InfoDot } from './UIComponents'
-import { T, PageTitle, fieldRow, SecHdr, Btn, EmptyState, fn, fe, Skeleton, SkeletonKPIs, SelectBox, ABSENT, ABSENT_SHORT, Modal, SideSheet, localDay, pressable, pageShell, RuntimeImg } from '@/components/Theme'
+import { T, PageTitle, fieldRow, SecHdr, Btn, IconBtn, ChipToggle, LinkBtn, EmptyState, fn, fe, Skeleton, SkeletonKPIs, SelectBox, ABSENT, ABSENT_SHORT, Modal, SideSheet, localDay, pressable, pageShell, RuntimeImg } from '@/components/Theme'
 import { showTool, SHOW_FROM } from '@/lib/ui/thresholds'
 import { ActionMenu } from '@/components/ActionMenu'
 import { notify, notifyOk, notifyError } from '@/components/Toast'
@@ -44,7 +44,7 @@ const DossierRow = ({ icon: Ic, children, onCopy }: { icon: React.ComponentType<
   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
     <Ic size={14} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
     <span style={{ flex: 1, fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', minWidth: 0, wordBreak: 'break-word' }}>{children}</span>
-    {onCopy && <button type="button" onClick={onCopy} title="Αντιγραφή" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', padding: 4, flexShrink: 0 }}><Copy size={13} /></button>}
+    {onCopy && <IconBtn label="Αντιγραφή" title="Αντιγραφή" onClick={onCopy}><Copy size={13} /></IconBtn>}
   </div>
 )
 const DossierSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -398,6 +398,10 @@ function QuickAct({ as, href, target, rel, onClick, title, label, children }: {
   // και το κουμπί γινόταν 30 επί 44, δηλαδή δύο ΔΙΑΦΟΡΕΤΙΚΟΙ στόχοι για δύο
   // κουμπιά που φαίνονται ίδια. Το `po-box` τα εξισώνει και στα δύο, χωρίς να
   // πειραχτεί ο κύκλος: αόρατη ζώνη −13 γύρω γύρω.
+  // ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ, ΓΙΑ ΔΥΟ ΛΟΓΟΥΣ. Το ίδιο σχήμα βγαίνει άλλοτε <a> άλλοτε
+  // <button> με ΤΑΥΤΟΣΗΜΗ όψη — το IconBtn ξέρει μόνο <button>, οπότε η μία από
+  // τις δύο μορφές θα άλλαζε. Και ο κύκλος εδώ είναι τονικός (bg-elevated +
+  // περίγραμμα + elev-1) ενώ η `.po-ico` είναι διάφανη χωρίς περίγραμμα.
   if (as === 'a') return <a className="po-box" href={href} target={target} rel={rel} title={title} aria-label={title} style={base} onMouseEnter={enter} onMouseLeave={leave}>{content}</a>
   return <button type="button" className="po-box" onClick={onClick} title={title} aria-label={title} style={base} onMouseEnter={enter} onMouseLeave={leave}>{content}</button>
 }
@@ -412,6 +416,9 @@ function TagEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[])
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
           {tags.map(t => (
             <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 11px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', fontSize: 12, color: 'var(--accent)', fontWeight: 500 }}>
+              {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ ΓΙΑ ΤΗ ΓΕΩΜΕΤΡΙΑ ΤΟΥ ΠΛΑΚΙΔΙΟΥ. Το πλακίδιο είναι ~24
+                  ψηλό (12px, γέμισμα 4×11): ένα κουτί T.h.sm των 32 μέσα του θα το
+                  φούσκωνε στα 40 σε κάθε ετικέτα. */}
               {t}<button type="button" onClick={() => onChange(tags.filter(x => x !== t))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', padding: 0 }}><X size={12} /></button>
             </span>
           ))}
@@ -419,7 +426,10 @@ function TagEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[])
       )}
       <div style={{ display: 'flex', gap: 8 }}>
         <input value={input} aria-label="Νέα ετικέτα" onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add(input))} placeholder="Νέα ετικέτα…" style={{ ...iStyle, flex: 1 }} />
-        <button type="button" onClick={() => add(input)} style={{ padding: '10px 16px', borderRadius: T.radius.inner, border: '1px solid var(--accent-border)', background: 'var(--accent-soft)', color: 'var(--accent)', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>+</button>
+        {/* `size="md"` γιατί κάθεται δίπλα σε πεδίο· το «+» δεν έχει λεκτικό, οπότε το όνομα το δίνει το `label`. */}
+        <IconBtn label="Προσθήκη ετικέτας" title="Προσθήκη ετικέτας" tone="accent" size="md" onClick={() => add(input)}>
+          <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1 }}>+</span>
+        </IconBtn>
       </div>
     </div>
   )
@@ -485,10 +495,12 @@ function FileUploader({ files, onChange, contactId }: { files: ContactFile[]; on
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.mono }}>{f.size} · {new Date(f.uploaded).toLocaleDateString('el-GR')}</div>
             </div>
             <Btn variant="ghost" onClick={() => open(f)}>Άνοιγμα</Btn>
-            <button type="button" onClick={() => drop(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center' }}><X size={15} /></button>
+            <IconBtn label={`Αφαίρεση αρχείου: ${f.name}`} title="Αφαίρεση" onClick={() => drop(i)}><X size={15} /></IconBtn>
           </div>
         ))}
       </div>
+      {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το διακεκομμένο περίγραμμα είναι η «ζώνη προσθήκης» —
+          δεν υπάρχει σε καμία παραλλαγή του Btn ούτε περνά className. */}
       <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: T.radius.inner, border: '1px dashed var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 'var(--fs-base)', width: '100%' }}>
         {uploading ? 'Ανέβασμα…' : '+ Προσθήκη Αρχείου (PDF, DOC, JPG, Excel)'}
@@ -921,6 +933,9 @@ function exportContactsPDF(contacts: Contact[], branding?: ReportBranding | null
 // ─── Bulk Action Button ───────────────────────────────────────────────────────
 // Ουδέτερο κουμπί (Google-clean) που αποκαλύπτει accent —ή κόκκινο για διαγραφή—
 // μόνο στο hover. Γίνεται ανενεργό/ξεθωριασμένο όταν δεν υπάρχει επιλογή.
+// ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: η «Διαγραφή» ανάβει ΚΟΚΚΙΝΗ στην αιώρηση. Οι τρεις ρόλοι
+// του Btn δεν έχουν καταστροφικό τόνο, οπότε η μετάβαση θα έσβηνε το μόνο σημάδι
+// που ξεχωρίζει τη διαγραφή από τις άλλες δύο μαζικές ενέργειες.
 function BulkBtn({ icon: Icon, label, onClick, disabled, danger }: { icon: ElementType; label: string; onClick: () => void; disabled?: boolean; danger?: boolean }) {
   const [hov, setHov] = useState(false)
   const active = hov && !disabled
@@ -1021,6 +1036,11 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
                 { Icon: QrCode, label: 'QR Code', onClick: onShowQR, color: 'var(--accent)' },
                 { Icon: Printer, label: 'Εκτύπωση Κάρτας', onClick: () => printContactCard(contact, branding), color: 'var(--text-secondary)' },
               ].map((a, i) => (
+                /* ΜΕΝΟΥΝ ΧΕΙΡΟΠΟΙΗΤΕΣ ΚΑΙ ΟΙ ΔΥΟ ΓΡΑΜΜΕΣ. Το Btn δεν προωθεί ούτε
+                   `role="menuitem"` —που το ζητά το role="menu" από πάνω— ούτε
+                   className, δηλαδή θα έχανε την `.po-hov-fill` με τον δικό της
+                   τόνο ανά γραμμή. Και η γραμμή μενού είναι πλήρους πλάτους με
+                   αριστερή στοίχιση ενώ το Btn κεντράρει. */
                 <button className="po-hov-fill" key={i} type="button" role="menuitem" onClick={() => { a.onClick(); setShowActions(false) }} style={{ '--hov-fill': 'var(--bg-surface)', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--text-primary)', textAlign: 'left' }} >
                   <a.Icon size={14} color={a.color} style={{ flexShrink: 0 }} />{a.label}
                 </button>
@@ -1386,6 +1406,9 @@ function CompactRow({ contact, onOpen, onEdit, onDelete, selected, onSelect, bul
         {extra.whatsapp && contact.phone && <a href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '4px 6px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', borderRadius: T.radius.xs }}>WA</a>}
         {extra.viber && contact.phone && <a href={'viber://chat?number=' + contact.phone.replace(/\D/g, '')} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '4px 6px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', borderRadius: T.radius.xs }}>VB</a>}
         {contact.email && <a href={'mailto:' + contact.email} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: 4, color: 'var(--text-secondary)' }}><Mail size={14} /></a>}
+        {/* ΜΕΝΟΥΝ ΧΕΙΡΟΠΟΙΗΤΑ ΓΙΑ ΤΗ ΓΕΩΜΕΤΡΙΑ ΤΗΣ ΓΡΑΜΜΗΣ. Είναι ~26 ψηλά μέσα σε
+            ζώνη σταθερού πλάτους CONTACT_ACTIONS_W: τα 36 —44 στο δάχτυλο— του Btn
+            θα ψήλωναν κάθε γραμμή της λίστας ενώ το γέμισμα 9×18 θα ξεχείλιζε τη ζώνη. */}
         <button type="button" onClick={onEdit} style={{ fontSize: 12, padding: '4px 10px', borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Επεξεργασία</button>
         <button type="button" onClick={onDelete} style={{ fontSize: 12, padding: '4px 10px', borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Διαγραφή</button>
       </div>
@@ -1434,19 +1457,11 @@ function AlphaRail({ entries, active, onPick }: {
         return (
           <span key={e.letter} style={{ display: 'contents' }}>
             {boundary && <span aria-hidden style={{ width: 1, height: 14, background: 'var(--border-default)', margin: '0 7px', flexShrink: 0 }} />}
-            <button type="button" onClick={() => onPick(on ? null : e.letter)} aria-pressed={on}
-              title={`${e.count} ${e.count === 1 ? 'επαφή' : 'επαφές'}`}
-              style={{
-                minWidth: 26, height: 26, padding: '0 4px', border: 'none', cursor: 'pointer',
-                borderRadius: T.radius.chip, background: on ? 'var(--accent)' : 'transparent',
-                color: on ? 'var(--accent-text)' : 'var(--text-secondary)',
-                fontFamily: T.font.sans, fontSize: 12, fontWeight: on ? 700 : 500,
-                fontVariantNumeric: 'tabular-nums', transition: 'background .14s, color .14s',
-              }}
-              onMouseEnter={ev => { if (!on) ev.currentTarget.style.background = 'var(--bg-hover)' }}
-              onMouseLeave={ev => { if (!on) ev.currentTarget.style.background = 'transparent' }}>
+            {/* `chip` επειδή η ράγα δεν έχει δικό της περίγραμμα: κάθε γράμμα στέκεται μόνο του. */}
+            <ChipToggle on={on} onClick={() => onPick(on ? null : e.letter)}
+              title={`${e.count} ${e.count === 1 ? 'επαφή' : 'επαφές'}`}>
               {e.letter}
-            </button>
+            </ChipToggle>
           </span>
         )
       })}
@@ -1840,18 +1855,12 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           {needsAttention.map(a => {
             const on = attention === a.id
             return (
-              <button key={a.id} type="button" onClick={() => setAttention(on ? null : a.id)} aria-pressed={on}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.sm, padding: '0 14px',
-                  borderRadius: T.radius.pill, cursor: 'pointer', fontFamily: T.font.sans, fontSize: 12,
-                  fontWeight: on ? 700 : 500,
-                  border: '1px solid ' + (on ? 'var(--accent)' : 'var(--border-subtle)'),
-                  background: on ? 'var(--accent)' : 'var(--bg-elevated)',
-                  color: on ? 'var(--on-tone)' : 'var(--text-secondary)', transition: 'background .14s, border-color .14s' }}>
+              <ChipToggle key={a.id} on={on} onClick={() => setAttention(on ? null : a.id)}>
                 {a.label}
                 {/* Ιδιο με τα φίλτρα του Αρχείου: η διαφάνεια έριχνε τον μετρητή στο
                     3,46:1. Το βάρος το δίνει το χρώμα, όχι το ξεθώριασμα. */}
                 <span style={{ fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fn(a.count)}</span>
-              </button>
+              </ChipToggle>
             )
           })}
         </div>
@@ -1877,7 +1886,10 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
               <BulkBtn icon={FileText} label="Εξαγωγή vCard" onClick={bulkVcard} disabled={none} />
               <BulkBtn icon={Trash2} label="Διαγραφή" onClick={bulkDelete} disabled={none} danger />
             </div>
-            <button type="button" onClick={() => { setBulkMode(false); setSelected(new Set()) }} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: T.radius.chip, border: 'none', background: 'transparent', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: T.font.sans }}><X size={14} />Τέλος</button>
+            {/* Το `marginLeft: auto` ζει στον γονέα: το Btn δεν παίρνει θέση, μόνο ρόλο. */}
+            <div style={{ marginLeft: 'auto' }}>
+              <Btn variant="ghost" onClick={() => { setBulkMode(false); setSelected(new Set()) }}><X size={14} />Τέλος</Btn>
+            </div>
           </div>
         )
       })()}
@@ -1940,14 +1952,15 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         {showTool('sort', contacts.length) && (
         <div style={{ display: 'flex', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, overflow: 'hidden', background: 'var(--bg-elevated)', padding: 4, gap: 2 }}>
           {([['recent', 'Πρόσφατες'], ['alpha', 'Αλφαβητικά']] as const).map(([m, label]) => (
-            <button key={m} type="button" onClick={() => setSortMode(m)} style={{ padding: '5px 15px', border: 'none', borderRadius: T.radius.pill, background: sortMode === m ? 'var(--bg-surface)' : 'transparent', color: sortMode === m ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontWeight: sortMode === m ? 700 : 500, fontFamily: T.font.sans, boxShadow: sortMode === m ? 'var(--elev-1)' : 'none', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{label}</button>
+            /* `seg` επειδή η πίλλα γύρω έχει ήδη περίγραμμα: δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */
+            <ChipToggle key={m} on={sortMode === m} onClick={() => setSortMode(m)} shape="seg">{label}</ChipToggle>
           ))}
         </div>
         )}
         {showTool('view', contacts.length) && (
         <div style={{ display: 'flex', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, overflow: 'hidden', background: 'var(--bg-elevated)', padding: 4, gap: 2 }}>
           {(['cards', 'compact'] as ViewMode[]).map(v => (
-            <button key={v} type="button" onClick={() => setViewMode(v)} style={{ padding: '5px 15px', border: 'none', borderRadius: T.radius.pill, background: viewMode === v ? 'var(--bg-surface)' : 'transparent', color: viewMode === v ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontWeight: viewMode === v ? 700 : 500, fontFamily: T.font.sans, boxShadow: viewMode === v ? 'var(--elev-1)' : 'none', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{v === 'cards' ? 'Κάρτες' : 'Λίστα'}</button>
+            <ChipToggle key={v} on={viewMode === v} onClick={() => setViewMode(v)} shape="seg">{v === 'cards' ? 'Κάρτες' : 'Λίστα'}</ChipToggle>
           ))}
         </div>
         )}
@@ -1972,9 +1985,9 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
             { id: 'portfolio' as const, label: 'Όλο το χαρτοφυλάκιο', Icon: Globe },
             { id: 'property' as const, label: 'Ανά ακίνητο', Icon: Building2 },
           ]).map(o => { const active = filterScope === o.id; const Ico = o.Icon; return (
-            <button key={o.id} type="button" onClick={() => setFilterScope(o.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 13px', borderRadius: T.radius.pill, border: '1px solid ' + (active ? 'var(--border-default)' : 'var(--border-subtle)'), background: active ? 'var(--bg-elevated)' : 'transparent', cursor: 'pointer', fontSize: 12, color: active ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: active ? 600 : 400, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+            <ChipToggle key={o.id} on={active} onClick={() => setFilterScope(o.id)}>
               <Ico size={12} />{o.label}
-            </button>
+            </ChipToggle>
           )})}
         </div>
       )}
@@ -1986,9 +1999,9 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         {groupsPresent.map(g => {
             const count = contacts.filter(c => ROLE_META[c.role]?.groupId === g.id).length; const active = filterGroup === g.id; const GroupIcon = g.Icon
             return (
-              <button key={g.id} type="button" onClick={() => setFilterGroup(active ? 'all' : g.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 13px', borderRadius: T.radius.pill, border: '1px solid ' + (active ? 'var(--border-default)' : 'var(--border-subtle)'), background: active ? 'var(--bg-elevated)' : 'transparent', cursor: 'pointer', fontSize: 12, color: active ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: active ? 600 : 400, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+              <ChipToggle key={g.id} on={active} onClick={() => setFilterGroup(active ? 'all' : g.id)}>
                 <GroupIcon size={12} />{g.label}<span style={{ background: active ? 'var(--border-raised)' : 'var(--bg-elevated)', color: active ? 'var(--text-primary)' : 'var(--text-secondary)', borderRadius: T.radius.pill, padding: '1px 7px', fontSize: 'var(--fs-xs)', fontWeight: 700 }}>{count}</span>
-              </button>
+              </ChipToggle>
             )
           })}
       </div>
@@ -2005,11 +2018,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
             : `${fn(processed.length)} από ${fn(contacts.length)}`}
         </span>
         {!bulkMode && showTool('bulk', processed.length) && (
-          <button type="button" onClick={() => { setBulkMode(true); setSelected(new Set()) }}
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12,
-              fontFamily: T.font.sans, color: 'var(--accent)' }}>
-            Επιλογή πολλαπλών
-          </button>
+          <LinkBtn onClick={() => { setBulkMode(true); setSelected(new Set()) }}>Επιλογή πολλαπλών</LinkBtn>
         )}
       </div>
       </>)}
@@ -2162,6 +2171,8 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
             </div>
 
             {/* ── Πτυσσόμενες λεπτομέρειες ── */}
+            {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: ίδιος λόγος με τη ζώνη προσθήκης αρχείου — το
+                διακεκομμένο περίγραμμα της αποκάλυψης δεν υπάρχει στο Btn. */}
             <button type="button" onClick={() => setShowMore(m => !m)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', border: '1px dashed var(--border-default)', borderRadius: T.radius.inner, background: 'transparent', color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight: 600, cursor: 'pointer', fontFamily: T.font.sans }}>
               {showMore ? 'Λιγότερες λεπτομέρειες' : 'Περισσότερες λεπτομέρειες'}
               <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showMore ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="m6 9 6 6 6-6" /></svg>
@@ -2221,9 +2232,9 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {([{ v: 'property' as const, label: 'Συγκεκριμένο ακίνητο', Icon: Building2 }, { v: 'portfolio' as const, label: 'Όλο το χαρτοφυλάκιο', Icon: Globe }]).map(o => {
                         const active = (form.extra.scope || 'property') === o.v; const Ico = o.Icon; return (
-                          <button key={o.v} type="button" onClick={() => setExtra('scope', o.v)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 15px', borderRadius: T.radius.pill, border: '1px solid ' + (active ? 'var(--accent-border)' : 'var(--border-subtle)'), background: active ? 'var(--accent-soft)' : 'transparent', color: active ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 'var(--fs-base)', cursor: 'pointer', fontWeight: active ? 600 : 400, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+                          <ChipToggle key={o.v} on={active} onClick={() => setExtra('scope', o.v)}>
                             <Ico size={14} />{o.label}
-                          </button>
+                          </ChipToggle>
                         )
                       })}
                     </div>

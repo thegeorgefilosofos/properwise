@@ -64,7 +64,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { T, TT, Btn, Card, SecHdr, PageTitle, fixedCols, settingsField, feAuto, pageShell, Bar } from '@/components/Theme';
+import { T, TT, Btn, ChipToggle, Card, SecHdr, PageTitle, fixedCols, settingsField, feAuto, pageShell, Bar } from '@/components/Theme';
 import { InfoHint, HintedText } from './InfoHint';
 import { SegmentControl } from './UIComponents';
 import { createClient } from '@/lib/supabase/client';
@@ -238,25 +238,6 @@ const quietBtn: CSSProperties = {
   appearance: 'none', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
   fontFamily: T.font.sans, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
 };
-
-/** Χειριστήριο επιλογής ενός από λίγα: ίδιο σχήμα σε είδος εκκρεμότητας και σε μεσίτη. */
-function Pick({ on, onClick, small, children }: { on: boolean; onClick: () => void; small?: boolean; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={on}
-      style={{
-        appearance: 'none', cursor: 'pointer', height: small ? T.h.sm : T.h.md, padding: small ? '0 14px' : '0 16px',
-        borderRadius: T.radius.pill, fontFamily: T.font.sans, fontSize: small ? 12 : 13,
-        fontWeight: on ? 700 : 500,
-        background: on ? 'var(--bg-elevated)' : 'transparent',
-        border: `1px solid ${on ? 'var(--border-default)' : 'var(--border-subtle)'}`,
-        color: on ? 'var(--text-primary)' : 'var(--text-secondary)',
-        boxShadow: on ? 'var(--highlight-inset), var(--elev-1)' : 'none',
-        transition: 'background .15s, color .15s',
-      }}>
-      {children}
-    </button>
-  );
-}
 
 /**
  * Πεδίο ποσού: ετικέτα, κουτί και το ευρώ ΜΕΣΑ στο κουτί, δεξιά.
@@ -607,6 +588,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
               στα άκρα του κρίκου και η γραμμή δεν μετακινείται ούτε κατά ένα.
               Χωρίς αυτό, γύρω από κάθε κρίκο έμενε κενό δώδεκα εικονοστοιχείων
               και η συνεχής ράγα διαβαζόταν ως διακεκομμένη. */}
+          {/* Μένει χειροποίητο: το IconBtn δεν παίρνει ούτε aria-pressed ούτε το αρνητικό περιθώριο των 12 που κρατά τη ράγα συνεχή. */}
           <button type="button" onClick={() => toggle(s.id)} aria-pressed={on}
             aria-label={on ? `Αναίρεση: ${s.title}` : `Ολοκληρώθηκε: ${s.title}`}
             style={{
@@ -710,7 +692,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
           </InfoHint>}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {DISPUTE_KINDS.map(k => (
-              <Pick key={k.key} on={k.key === kind} onClick={() => pickKind(k.key)}>{k.label}</Pick>
+              <ChipToggle key={k.key} on={k.key === kind} onClick={() => pickKind(k.key)}>{k.label}</ChipToggle>
             ))}
           </div>
         </Panel>
@@ -726,6 +708,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
             Μόνο όσα φεύγουν από τον λογαριασμό σου. Το ενοίκιο που δεν εισπράττεις είναι άλλη συζήτηση.
           </InfoHint>}
           right={drain.monthly > 0
+            /* Μένει χειροποίητο: το LinkBtn δεν δέχεται aria-expanded και η αποκάλυψη θα έπαυε να ανακοινώνεται. */
             ? <button type="button" style={quietBtn} onClick={() => setCostsOpen(o => !o)} aria-expanded={costsOpen}>
                 {costsOpen ? 'Σύμπτυξη' : 'Αλλαγή δεδομένων'}
               </button>

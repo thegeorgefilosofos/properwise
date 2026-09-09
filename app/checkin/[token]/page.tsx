@@ -160,9 +160,11 @@ export default function GuestCheckin() {
                   </div>
 
                   {err && <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)' }}>{err}</div>}
-                  <button type="submit" disabled={sending || !fullName.trim() || !privacyConsent} style={{ height: T.h.lg, borderRadius: 10, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, cursor: (sending || !fullName.trim() || !privacyConsent) ? 'not-allowed' : 'pointer', opacity: (sending || !fullName.trim() || !privacyConsent) ? 0.6 : 1, fontFamily: 'inherit' }}>
+                  {/* `field` γιατί η φόρμα είναι μία στήλη: το κουμπί παίρνει το πλάτος
+                      και το ύψος των πεδίων από πάνω του, όπως είχε. */}
+                  <Btn variant="primary" type="submit" field disabled={sending || !fullName.trim() || !privacyConsent}>
                     {sending ? 'Αποστολή…' : 'Αποστολή στοιχείων'}
-                  </button>
+                  </Btn>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
                     Τα στοιχεία σου διαβιβάζονται κρυπτογραφημένα και τα βλέπει μόνο ο οικοδεσπότης. Μπορείς να ζητήσεις διαγραφή τους όποτε θες.
                   </div>

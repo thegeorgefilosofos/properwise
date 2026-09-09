@@ -18,7 +18,7 @@ import { declarableGrossOrTotal } from '@/lib/clients/stayAmounts';
 import { STAY_CHANNEL_LABELS, type StayChannel } from '@/lib/clients/clients';
 import { platformFeeExpenses, type TaxStay } from '@/lib/tax/shortTermTax';
 import { resolveCategory } from '@/lib/expenses/taxonomy';
-import { T, TT, Btn, Badge, Modal } from '@/components/Theme';
+import { T, TT, Btn, Badge, Modal, ChipToggle, LinkBtn } from '@/components/Theme';
 import PropertyPicker from './PropertyPicker';
 import { CustomSelect } from './UIComponents';
 import {
@@ -259,13 +259,14 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
   const footerInfo = <>{selIds.length} {selIds.length === 1 ? 'ακίνητο' : 'ακίνητα'} · {periodLabel}</>;
   const footer = (
     <>
-      <button onClick={e => { e.currentTarget.blur(); doPreview(); }} disabled={busy || !selIds.length}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 13px', borderRadius: T.radius.btn, background: 'none', border: 'none', fontFamily: T.font.sans, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', cursor: (busy || !selIds.length) ? 'not-allowed' : 'pointer', opacity: (busy || !selIds.length) ? 0.5 : 1, transition: 'background 0.15s, color 0.15s' }}
-        onMouseEnter={e => { if (!(busy || !selIds.length)) { e.currentTarget.style.background = 'var(--bg-elevated)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}>
+      {/* Ήσυχο και όχι δευτερεύον: κάθεται δίπλα στη «Λήψη» χωρίς περίγραμμα, ώστε
+          η κύρια ενέργεια της γραμμής να μένει μία. Το `blur` έμεινε — έφευγε το
+          δαχτυλίδι μετά το κλικ — αλλά τώρα το ζητά από το ενεργό στοιχείο,
+          γιατί το `onClick` του Btn δεν παίρνει γεγονός. */}
+      <Btn variant="ghost" onClick={() => { (document.activeElement as HTMLElement | null)?.blur(); doPreview(); }} disabled={busy || !selIds.length}>
         <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
         {busy ? 'Έλεγχος…' : preview ? 'Επανέλεγχος' : 'Έλεγχος ισοζυγίου'}
-      </button>
+      </Btn>
       <Btn variant="primary" onClick={download} disabled={busy || !selIds.length}>{busy ? 'Εξαγωγή…' : (format === 'excel' ? 'Λήψη Excel' : 'Λήψη CSV')}</Btn>
     </>
   );
@@ -302,13 +303,19 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
               {FORMATS.map(f => {
                 const on = format === f.key;
                 return (
-                  <button key={f.key} onClick={() => setFormat(f.key)} style={{ textAlign: 'left', padding: '9px 12px', borderRadius: 10, border: `1px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent-soft)' : 'var(--bg-surface)', cursor: 'pointer', fontFamily: T.font.sans, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, transition: 'border-color 0.15s, background 0.15s' }}>
-                    <span style={{ minWidth: 0 }}>
+                  // ΔΕΝ ΕΙΝΑΙ ΕΝΕΡΓΕΙΑ, ΕΙΝΑΙ ΕΠΙΛΟΓΗ: το `aria-pressed` το λέει πλέον
+                  // μόνο του, ενώ πριν η μορφή φαινόταν μόνο με χρώμα. Σχήμα `chip`
+                  // και όχι `seg` γιατί τα πλακάκια κάθονται σε πλέγμα χωρίς ράγα,
+                  // άρα το καθένα κρατά δικό του περίγραμμα. Το κάθετο γέμισμα και
+                  // η αριστερή στοίχιση μένουν στο περιεχόμενο, γιατί το πλακίδιο
+                  // είναι δύο γραμμές — τίτλος και επεξήγηση.
+                  <ChipToggle key={f.key} on={on} onClick={() => setFormat(f.key)}>
+                    <span style={{ minWidth: 0, flex: 1, textAlign: 'left', padding: '9px 0' }}>
                       <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 660, letterSpacing: '-0.01em', color: on ? 'var(--accent)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.label}</span>
-                      <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.hint}</span>
+                      <span style={{ display: 'block', fontSize: 'var(--fs-xs)', fontWeight: 400, color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.hint}</span>
                     </span>
-                    {on && <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M20 6 9 17l-5-5"/></svg>}
-                  </button>
+                    {on && <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: 11 }}><path d="M20 6 9 17l-5-5"/></svg>}
+                  </ChipToggle>
                 );
               })}
             </div>
@@ -394,10 +401,15 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                                         <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 1 }}><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/></svg>
                                         <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)' }}><b style={{ color: 'var(--text-primary)', fontWeight: 640 }}>Πρόταση:</b> {c.fix}</span>
                                       </div>
-                                      <button onClick={() => askAboutCheck(c)} style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontFamily: T.font.sans, fontSize: 12, fontWeight: 600, color: 'var(--accent)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                        <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4z"/></svg>
-                                        {askCta()}
-                                      </button>
+                                      {/* Το περιθώριο και η γραμματοσειρά ζουν στο περιτύλιγμα:
+                                          ο σύνδεσμος κληρονομεί το `font` και δεν κρατά δική
+                                          του θέση, όπως κάθε ενέργεια μέσα σε πρόταση. */}
+                                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, fontFamily: T.font.sans }}>
+                                        <LinkBtn onClick={() => askAboutCheck(c)}>
+                                          <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: -2, marginRight: 6 }}><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4z"/></svg>
+                                          {askCta()}
+                                        </LinkBtn>
+                                      </div>
                                     </>
                                   )}
                                 </span>

@@ -11,7 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import * as properties from '@/lib/data/properties';
 import * as tenantStore from '@/lib/data/tenants';
 import { saved } from '@/components/dbWrite';
-import { T, TT, Btn, Spinner, EmptyState, Modal, fixedCols } from '@/components/Theme';
+import { T, TT, Btn, ChipToggle, Spinner, EmptyState, Modal, fixedCols } from '@/components/Theme';
 import { Building2 } from 'lucide-react';
 import { InfoHint } from './InfoHint';
 
@@ -314,9 +314,6 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
   const lbl = { ...TT.label, marginBottom: 6 } as React.CSSProperties;
   const onFieldFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--accent)'; };
   const onFieldBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)'; };
-  // Ύψος από την κοινή κλίμακα: το ίδιο segmented control ζει αυτούσιο και στο
-  // LeaseModal με το ίδιο literal 34, οπότε κάθε τοπική αλλαγή τα ξεσυγχρόνιζε.
-  const seg = (m: AdjMethod): React.CSSProperties => ({ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 600, height: T.h.md, borderRadius: T.radius.inner, cursor: 'pointer', textAlign: 'center', border: 'none', background: method === m ? 'var(--accent)' : 'transparent', color: method === m ? 'var(--accent-text)' : 'var(--text-secondary)', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' });
   // ΤΟ ΔΙΑΚΡΙΤΙΚΟ ΠΟΥ ΛΕΕΙ ΑΠΟ ΠΟΥ ΗΡΘΕ Ο ΑΡΙΘΜΟΣ, ΓΙΑ ΠΟΙΑ ΠΕΡΙΟΔΟ ΚΑΙ ΠΟΤΕ
   // ΕΝΗΜΕΡΩΘΗΚΕ. Ένα πεδίο που γεμίζει μόνο του χωρίς να πει από πού, σε έγγραφο
   // που θα υπογραφεί, είναι χειρότερο από άδειο πεδίο: ο χρήστης δεν ξέρει τι
@@ -332,9 +329,6 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
         </>,
     manual: 'Όρισε απευθείας το νέο μίσθωμα, όπως το συμφωνήσατε.',
   };
-  // Ίδιο σχήμα με τον επιλογέα μεθόδου, ώστε οι δύο σειρές να διαβάζονται ως
-  // ερώτηση και υποερώτηση και όχι ως δύο άσχετα χειριστήρια.
-  const share = (on: boolean): React.CSSProperties => ({ ...seg('cpi'), background: cpiShare75 === on ? 'var(--accent)' : 'transparent', color: cpiShare75 === on ? 'var(--accent-text)' : 'var(--text-secondary)' });
 
   // ΤΟ ΠΟΣΟΣΤΟ ΤΟΥ ΔΤΚ ΔΕΝ ΠΛΗΚΤΡΟΛΟΓΕΙΤΑΙ. Είναι κρατικό στοιχείο: αν το άφηνε
   // κανείς επεξεργάσιμο, το έγγραφο θα μπορούσε να γράφει «βάσει της μεταβολής
@@ -451,9 +445,10 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
               <div>
                 <div style={lbl}>Μέθοδος αναπροσαρμογής</div>
                 <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-                  <button onClick={() => setMethod('percent')} style={seg('percent')}>Ποσοστό</button>
-                  <button onClick={() => setMethod('cpi')} style={seg('cpi')}>ΔΤΚ (ΕΛΣΤΑΤ)</button>
-                  <button onClick={() => setMethod('manual')} style={seg('manual')}>Χειροκίνητο</button>
+                  {/* `seg` γιατί η ράγα γύρω τους έχει ήδη περίγραμμα, `grow` για τα τρία ίσα μερίδια. */}
+                  <ChipToggle shape="seg" grow on={method === 'percent'} onClick={() => setMethod('percent')}>Ποσοστό</ChipToggle>
+                  <ChipToggle shape="seg" grow on={method === 'cpi'} onClick={() => setMethod('cpi')}>ΔΤΚ (ΕΛΣΤΑΤ)</ChipToggle>
+                  <ChipToggle shape="seg" grow on={method === 'manual'} onClick={() => setMethod('manual')}>Χειροκίνητο</ChipToggle>
                 </div>
                 <div style={{ ...TT.bodySm, marginTop: 8, lineHeight: 1.5 }}>{METHOD_HINT[method]}</div>
                 {/* ΠΟΙΑ ΒΑΣΗ, ΤΟ ΛΕΕΙ ΤΟ ΜΙΣΘΩΤΗΡΙΟ. Ο νόμος δίνει δύο και δίνουν
@@ -463,8 +458,8 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
                 {method === 'cpi' && (
                   <>
                     <div style={{ display: 'flex', gap: 4, padding: 4, marginTop: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-                      <button onClick={() => setCpiShare75(false)} style={share(false)}>Ολόκληρη η μεταβολή</button>
-                      <button onClick={() => setCpiShare75(true)} style={share(true)}>75% της μεταβολής</button>
+                      <ChipToggle shape="seg" grow on={cpiShare75 === false} onClick={() => setCpiShare75(false)}>Ολόκληρη η μεταβολή</ChipToggle>
+                      <ChipToggle shape="seg" grow on={cpiShare75 === true} onClick={() => setCpiShare75(true)}>75% της μεταβολής</ChipToggle>
                     </div>
                     <div style={{ ...TT.bodySm, marginTop: 8, lineHeight: 1.5 }}>
                       Το 75% ισχύει τυπικά στις επαγγελματικές μισθώσεις. Ο όρος του μισθωτηρίου αποφασίζει.

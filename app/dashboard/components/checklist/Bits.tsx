@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { T, EmptyState } from '@/components/Theme'
+import { T, EmptyState, Btn, IconBtn } from '@/components/Theme'
 import { CustomSelect } from '../UIComponents'
 import { MessageSquare } from 'lucide-react'
 import { getPri, priDotColor, priShowDot } from './calc'
@@ -97,6 +97,10 @@ export function FilterSelect({ value, onChange, options, minWidth = 168, idle }:
   }, [open, reposition])
   return (
     <>
+      {/* ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟ. Το `ChipToggle` δεν προωθεί `ref` — εδώ ο ref μετρά τη
+          θέση του κουμπιού ώστε να τοποθετηθεί το μενού του portal. Και το ύψος
+          διαφέρει: T.h.lg (40), το σκαλί της γραμμής φίλτρων, ενώ το πλακίδιο
+          κάθεται στα 32. */}
       <button ref={btnRef} type="button" onClick={() => setOpen(o => !o)}
         style={{ display: 'flex', alignItems: 'center', gap: 8, height: T.h.lg, padding: '0 12px 0 14px', minWidth, borderRadius: T.radius.pill, border: '1px solid ' + (open || active ? 'var(--accent)' : 'var(--border-subtle)'), background: active ? 'var(--accent-soft)' : 'var(--bg-surface)', color: active ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight: active ? 600 : 500, cursor: 'pointer', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s', whiteSpace: 'nowrap' }}>
         <span style={{ flex: 1, textAlign: 'left', whiteSpace: 'nowrap' }}>{!active && idle ? idle : current.label}</span>
@@ -146,13 +150,14 @@ export function SubTaskEditor({ subtasks, onChange }: { subtasks: SubTask[]; onC
               {st.done && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" fill="none" stroke="var(--text-inverse)" strokeWidth="2" strokeLinecap="round"/></svg>}
             </button>
             <span style={{ flex: 1, fontSize: 'var(--fs-base)', color: st.done ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: st.done ? 'line-through' : 'none' }}>{st.text}</span>
-            <button type="button" onClick={() => onChange(subtasks.filter(s => s.id !== st.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 16, lineHeight: 1 }}><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            <IconBtn label={`Διαγραφή βήματος: ${st.text}`} onClick={() => onChange(subtasks.filter(s => s.id !== st.id))}><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></IconBtn>
           </div>
         ))}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <input value={input} aria-label="Νέο βήμα" onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add())} placeholder="Νέο βήμα…" style={{ ...iStyle, flex: 1 }} />
-        <button type="button" onClick={add} style={{ padding: '10px 16px', borderRadius: T.radius.inner, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>+</button>
+        {/* size="lg" και όχι `field`: το ύψος του διπλανού πεδίου χωρίς το πλήρες πλάτος του κελιού. */}
+        <Btn variant="primary" size="lg" onClick={add}>+</Btn>
       </div>
     </div>
   )
@@ -165,7 +170,7 @@ export function CommentsEditor({ comments, onChange }: { comments: Comment[]; on
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 8 }}>
         <input value={input} aria-label="Νέο σχόλιο" onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add())} placeholder="Γράψε σχόλιο…" style={{ ...iStyle, flex: 1 }} />
-        <button type="button" onClick={add} style={{ padding: '10px 16px', borderRadius: T.radius.inner, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>+</button>
+        <Btn variant="primary" size="lg" onClick={add}>+</Btn>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 240, overflowY: 'auto' }}>
         {comments.length === 0 && <EmptyState icon={<MessageSquare size={20} />} title="Κανένα σχόλιο ακόμη" hint="Γράψε σημείωση για να κρατήσεις το ιστορικό της εκκρεμότητας." />}
@@ -173,7 +178,11 @@ export function CommentsEditor({ comments, onChange }: { comments: Comment[]; on
           <div key={c.id} style={{ background: 'var(--bg-surface)', borderRadius: T.radius.inner, padding: '10px 14px', border: '1px solid var(--border-subtle)', position: 'relative' }}>
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 4, fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{new Date(c.ts).toLocaleString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
             <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 1.5, paddingRight: 20 }}>{c.text}</div>
-            <button type="button" onClick={() => onChange(comments.filter(x => x.id !== c.id))} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 16 }}><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            {/* Η τοποθέτηση έρχεται απ' έξω: το κοινό εικονοκούμπι δίνει το σχήμα
+                του στόχου αφής, όχι τη θέση του μέσα στην κάρτα. */}
+            <span style={{ position: 'absolute', top: 2, right: 4 }}>
+              <IconBtn label="Διαγραφή σχολίου" onClick={() => onChange(comments.filter(x => x.id !== c.id))}><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></IconBtn>
+            </span>
           </div>
         ))}
       </div>
@@ -199,6 +208,10 @@ export function ExportMenu({ onExcel, onPdf, onHandover }: { onExcel: () => void
   ]
   return (
     <div ref={ref} style={{ position: 'relative' }}>
+      {/* ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟ ΩΣΠΟΥ ΤΟ `Btn` ΝΑ ΔΕΧΤΕΙ ΚΑΤΑΣΤΑΣΗ ΑΝΟΙΓΜΑΤΟΣ. Το
+          πρωτογενές δεν παίρνει ούτε `title` ούτε `aria-expanded`, οπότε θα
+          χανόταν η επεξήγηση «Εξαγωγή δεδομένων» μαζί με το τονισμένο περίγραμμα
+          που δείχνει ότι το μενού είναι ανοιχτό. */}
       <button type="button" onClick={() => setOpen(o => !o)} title="Εξαγωγή δεδομένων"
         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.md, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid ' + (open ? 'var(--accent)' : 'var(--border-default)'), background: open ? 'var(--accent-soft)' : 'transparent', color: open ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
         <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>

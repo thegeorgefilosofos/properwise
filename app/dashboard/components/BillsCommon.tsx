@@ -5,8 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
-import { NumberInput, TextInput, DatePicker, CustomSelect, addBtn } from './UIComponents';
-import { T, TT, fe, formGrid, fieldRow, fixedCols, InfoBanner, Card, EmptyState, fp, histInputStyle, localDay, ABSENT_SHORT, Bar } from '@/components/Theme';
+import { NumberInput, TextInput, DatePicker, CustomSelect } from './UIComponents';
+import { T, TT, fe, formGrid, fieldRow, fixedCols, InfoBanner, Card, EmptyState, fp, histInputStyle, localDay, ABSENT_SHORT, Bar, Btn, IconBtn } from '@/components/Theme';
 import { notifyOk } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { HandCoins, BarChart3 } from 'lucide-react';
@@ -436,10 +436,9 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
             <TextInput   label="Αιτία"      value={extraReason} onChange={setExtraReason} placeholder="ταράτσα"/>
             <NumberInput label="Ποσό"       value={extraAmount} onChange={setExtraAmount} suffix="€"/>
             <DatePicker  label="Ημερομηνία" value={extraDate}   onChange={setExtraDate}/>
-            <button type="button" disabled={!extraReason.trim() || !extraAmount} onClick={addExtra}
-              style={addBtn(!extraReason.trim() || !extraAmount)}>
+            <Btn variant="primary" field disabled={!extraReason.trim() || !extraAmount} onClick={addExtra}>
               Προσθήκη
-            </button>
+            </Btn>
           </div>
         </div>
 
@@ -465,15 +464,13 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{fe(parseFloat(e.amount))}</span>
               {!e.transferredToExpenses && (
-                <button onClick={() => transferToExpenses(i)} disabled={transferring === i}
-                  style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.badge, padding: '5px 12px', cursor: transferring === i ? 'not-allowed' : 'pointer', fontFamily: T.font.sans, whiteSpace: 'nowrap' as const, fontWeight: 600, opacity: transferring === i ? 0.6 : 1, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+                <Btn variant="secondary" onClick={() => transferToExpenses(i)} disabled={transferring === i}>
                   {transferring === i ? 'Μεταφορά…' : 'Μεταφορά στις Δαπάνες'}
-                </button>
+                </Btn>
               )}
-              <button onClick={() => delExtra(i)}
-                style={{ width: 26, height: 26, borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                ✕
-              </button>
+              {/* Το «✕» δεν είχε λεκτικό, μόνο σχήμα: το `label` είναι ό,τι ακούει
+                  ο αναγνώστης οθόνης και λέει ΠΟΙΑ εισφορά φεύγει. */}
+              <IconBtn label={`Διαγραφή έκτακτης εισφοράς: ${e.reason}`} onClick={() => delExtra(i)}><span style={{ fontSize: 12 }}>✕</span></IconBtn>
             </div>
           </div>
         ))}

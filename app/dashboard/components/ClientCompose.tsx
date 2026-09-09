@@ -162,13 +162,6 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
     border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
     color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box',
   };
-  const chip = (on: boolean): React.CSSProperties => ({
-    display: 'inline-flex', alignItems: 'center', minHeight: T.h.sm,
-    fontSize: 'var(--fs-xs)', fontWeight: 700, padding: '6px 12px', borderRadius: T.radius.pill, cursor: 'pointer',
-    border: `1px solid ${on ? 'var(--accent-border)' : 'var(--border-default)'}`,
-    background: on ? 'var(--accent-soft)' : 'transparent', color: on ? 'var(--accent)' : 'var(--text-secondary)',
-    fontFamily: T.font.sans, whiteSpace: 'nowrap',
-  });
 
   // ── ΤΟ ΠΑΡΑΘΥΡΟ ΕΓΙΝΕ <Modal> ────────────────────────────────────────────
   // Τέταρτο αντίγραφο του ίδιου χειρόγραφου κελύφους (scrim, radius 18,
@@ -252,9 +245,11 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                 ) : (
                   <>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                      <button style={chip(false)} onClick={() => setMany(emailable.filter(c => !c.do_not_rent).map(c => c.id))}>Όλοι</button>
+                      {/* Δευτερεύοντα και όχι πλακίδια: δεν κρατούν κατάσταση, είναι
+                          ενέργειες μαζικής επιλογής που τις καλείς και τελειώνουν. */}
+                      <Btn variant="secondary" onClick={() => setMany(emailable.filter(c => !c.do_not_rent).map(c => c.id))}>Όλοι</Btn>
 
-                      <button style={chip(false)} onClick={() => setMany([])}>Καθαρισμός</button>
+                      <Btn variant="secondary" onClick={() => setMany([])}>Καθαρισμός</Btn>
                     </div>
                     <input value={q} onChange={e => setQ(e.target.value)} placeholder="Όνομα ή email" aria-label="Αναζήτηση πελατών" style={{ ...field, marginBottom: 8 }} />
                     <div style={{ maxHeight: 208, overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup }}>

@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenseStore from '@/lib/data/expenses';
-import { NumberInput, CustomSelect, TextInput, Toggle, DatePicker, addBtn, FIELD_HEIGHT, FIELD_RADIUS, fieldLabelStyle } from './UIComponents';
+import { NumberInput, CustomSelect, TextInput, Toggle, DatePicker, FIELD_HEIGHT, FIELD_RADIUS, fieldLabelStyle } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
-import { T, fe, fieldRow, fixedCols, fp, Spinner, histInputStyle, Bar } from '@/components/Theme';
+import { T, fe, fieldRow, fixedCols, fp, Spinner, histInputStyle, Bar, Btn, IconBtn } from '@/components/Theme';
 import { estimateENFIA, enfiaInUse, enfiaLastYearAnnual } from '@/lib/billing/enfia';
 import { MONTHS_SHORT } from '@/lib/core/months';
 import { averageMonthly, feeOriginNote, feeShare, monthlyFees, TYPICAL_SHARE, type FeeSourceRow } from '@/lib/expenses/municipalFees';
@@ -509,10 +509,11 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             <TextInput    label="Τηλέφωνο"           value={newPhone}   onChange={setNewPhone}   placeholder="69xxxxxxxx"/>
             <NumberInput  label="Κόστος"             value={newCost}    onChange={setNewCost}    suffix="€"/>
             <CustomSelect label="Συχνότητα"          value={newFreq}    onChange={setNewFreq}    options={FREQ}/>
-            <button type="button" disabled={!newName.trim() || !newCost} onClick={addOther}
-              style={addBtn(!newName.trim() || !newCost)}>
+            {/* `field` και όχι size="lg": κάθεται σε κελί του πλέγματος δίπλα στα
+                πεδία, οπότε θέλει και το ύψος και το πλήρες πλάτος τους. */}
+            <Btn variant="primary" field disabled={!newName.trim() || !newCost} onClick={addOther}>
               Προσθήκη
-            </button>
+            </Btn>
           </div>
         </div>
         {(s.otherServices || []).map((o, i) => (
@@ -525,8 +526,10 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(toMonthly(o.cost, o.freq))} / μήνα</span>
-              <button onClick={() => delOther(i)}
-                style={{ width: T.h.sm, height: T.h.sm, borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}>✕</button>
+              {/* Το κουμπί δεν είχε καθόλου όνομα: ο αναγνώστης οθόνης άκουγε μόνο «✕». */}
+              <IconBtn onClick={() => delOther(i)} label={`Διαγραφή υπηρεσίας ${o.name}`} round>
+                <span style={{ fontSize: 12 }}>✕</span>
+              </IconBtn>
             </div>
           </div>
         ))}

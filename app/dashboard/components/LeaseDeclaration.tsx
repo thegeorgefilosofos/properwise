@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as properties from '@/lib/data/properties';
 import * as tenantStore from '@/lib/data/tenants';
-import { T, TT, Btn, Modal, Spinner } from '@/components/Theme';
+import { T, TT, Btn, IconBtn, Modal, Spinner } from '@/components/Theme';
 import { Copy, Check, ExternalLink, Printer, AlertTriangle, Clock } from 'lucide-react';
 import { notifyError } from '@/components/Toast';
 import { must } from '@/lib/supabase/must';
@@ -205,11 +205,12 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
             {f.hint}{f.fixIn && <> <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Συμπληρώνεται στην καρτέλα {TAB_LABEL[f.fixIn]}</span></>}
           </div>}
         </span>
+        {/* Το πράσινο της επιβεβαίωσης ταξιδεύει με το ίδιο το εικονίδιο: το κουτί
+            κρατά την ήσυχη όψη της `.po-ico` και δεν ξαναγράφει χρώμα. */}
         {f.value && f.status === 'ok' && (
-          <button onClick={() => copy(f.key, f.value)} title="Αντιγραφή"
-            style={{ flexShrink: 0, width: 30, height: 30, borderRadius: T.radius.chip, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: copied === f.key ? 'var(--positive)' : 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {copied === f.key ? <Check size={14} /> : <Copy size={13} />}
-          </button>
+          <IconBtn onClick={() => copy(f.key, f.value)} label={`Αντιγραφή ${f.label}`} title="Αντιγραφή">
+            {copied === f.key ? <Check size={14} color="var(--positive)" /> : <Copy size={13} />}
+          </IconBtn>
         )}
       </div>
     );

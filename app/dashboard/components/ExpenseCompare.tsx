@@ -16,7 +16,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { Fragment, useMemo, useState } from 'react';
-import { T, TT, Card, fe, fn } from '@/components/Theme';
+import { T, TT, Card, ChipToggle, fe, fn } from '@/components/Theme';
 import { fpSigned } from '@/lib/core/format';
 import MonthBars from '@/components/MonthBars';
 import {
@@ -82,26 +82,15 @@ function BasisSwitch({ value, onChange, enabled, labels }: {
   const opts: Basis[] = ['previous_month', 'same_month_last_year'];
   return (
     <div style={{ display: 'inline-flex', gap: 2, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, padding: 4 }}>
-      {opts.map(id => {
-        const on = value === id;
-        const can = enabled[id];
-        return (
-          <button key={id} type="button" disabled={!can} aria-pressed={on}
-            onClick={() => can && onChange(id)}
-            aria-label={`Σύγκριση με ${labels[id]}`}
-            title={can ? undefined : 'Δεν υπάρχουν καταχωρημένες δαπάνες σε αυτή την περίοδο.'}
-            style={{
-              minHeight: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: 'none',
-              cursor: can ? 'pointer' : 'not-allowed', opacity: can ? 1 : 0.45,
-              fontSize: 12, fontWeight: on ? 700 : 500, fontFamily: T.font.sans,
-              background: on ? 'var(--accent)' : 'transparent',
-              color: on ? 'var(--accent-text)' : 'var(--text-secondary)',
-              transition: 'background 0.15s, color 0.15s', whiteSpace: 'nowrap',
-            }}>
-            {labels[id]}
-          </button>
-        );
-      })}
+      {/* `seg` και όχι `chip`: η ράγα έχει ήδη δικό της περίγραμμα, οπότε ένα
+          δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */}
+      {opts.map(id => (
+        <ChipToggle key={id} on={value === id} disabled={!enabled[id]} shape="seg"
+          onClick={() => onChange(id)}
+          title={enabled[id] ? undefined : 'Δεν υπάρχουν καταχωρημένες δαπάνες σε αυτή την περίοδο.'}>
+          {labels[id]}
+        </ChipToggle>
+      ))}
     </div>
   );
 }

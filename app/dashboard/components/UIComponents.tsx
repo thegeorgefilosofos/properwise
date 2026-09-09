@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useId, ReactNode, Fragment, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { T, localDay } from '@/components/Theme';
+import { T, localDay, Btn, IconBtn, ChipToggle } from '@/components/Theme';
 import { acceptNumeric, forDisplay } from '@/lib/core/numInput';
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
 import { MONTHS_SHORT } from '@/lib/core/months';
@@ -73,21 +73,12 @@ export function ToggleField({ label, labelInfo, on, onChange }: { label: string;
   );
 }
 
-export const addBtn = (disabled = false): React.CSSProperties => ({
-  height: FIELD_HEIGHT,
-  width: '100%',
-  borderRadius: FIELD_RADIUS,
-  border: disabled ? '1px solid var(--border-default)' : 'none',
-  background: disabled ? 'transparent' : 'var(--accent)',
-  color: disabled ? 'var(--text-tertiary)' : 'var(--accent-text)',
-  fontSize: 'var(--fs-base)',
-  fontWeight: 700,
-  fontFamily: T.font.sans,
-  letterSpacing: 0,
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  boxSizing: 'border-box',
-  transition: 'background 0.15s, color 0.15s, border-color 0.15s',
-});
+// ΤΟ `addBtn` ΕΦΥΓΕ. Ηταν το «κύριο κουμπί σε κελί φόρμας» γραμμένο δεύτερη
+// φορά: ύψος πεδίου, πλήρες πλάτος, φόντο `--accent`, 700 — δηλαδή ό,τι δίνει
+// το `<Btn variant="primary" field>`, με τη διαφορά ότι εδώ η αιώρηση δεν
+// υπήρχε καθόλου. Ολες οι χρήσεις του πέρασαν στο πρωτογενές· ένα εξαγόμενο
+// αντικείμενο στυλ που δεν το καλεί κανείς διαβάζεται ως κανόνας της
+// εφαρμογής χωρίς να είναι.
 
 const mdInputBase: React.CSSProperties = {
   width: '100%',
@@ -1078,15 +1069,15 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
           boxShadow: 'var(--shadow-lg)',
         }} className="dp-pop">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <button className="po-hov-fill" onClick={prevMonth} aria-label="Προηγούμενος μήνας" style={{ width: T.h.sm, height: T.h.sm, borderRadius: T.radius.card, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }} >
+            <IconBtn label="Προηγούμενος μήνας" onClick={prevMonth}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
-            </button>
+            </IconBtn>
             <span style={{ fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '0.1px' }}>
               {MONTHS_SHORT[month]} {year}
             </span>
-            <button className="po-hov-fill" onClick={nextMonth} aria-label="Επόμενος μήνας" style={{ width: T.h.sm, height: T.h.sm, borderRadius: T.radius.card, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }} >
+            <IconBtn label="Επόμενος μήνας" onClick={nextMonth}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
-            </button>
+            </IconBtn>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 0, marginBottom: 4 }}>
             {DAYS_GR.map(d => (
@@ -1141,13 +1132,11 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
             })}
           </div>
           <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
-            <button className="po-hov-fill" onClick={() => { onChange(''); setOpen(false); }} style={{ '--hov-fill': 'var(--accent-dim)', height: T.h.md, padding: '0 16px', borderRadius: T.radius.modal, border: 'none', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: 'pointer' }} >
-              Εκκαθάριση
-            </button>
-            <button onClick={() => { onChange(today); setOpen(false); }}
-              style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.modal, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
-              Σήμερα
-            </button>
+            {/* ghost και όχι secondary: η εκκαθάριση ήταν χωρίς φόντο και χωρίς
+                περίγραμμα δίπλα στο γεμάτο «Σήμερα». Το accent μελάνι της γίνεται
+                text-secondary, που είναι ακριβώς η ιεραρχία της δευτερεύουσας εξόδου. */}
+            <Btn variant="ghost" onClick={() => { onChange(''); setOpen(false); }}>Εκκαθάριση</Btn>
+            <Btn variant="primary" onClick={() => { onChange(today); setOpen(false); }}>Σήμερα</Btn>
           </div>
         </div>,
         document.body
@@ -1235,9 +1224,13 @@ export function BulkActionBar({ count, countLabel, actions, onClear, minWidth = 
           </button>
         ))}
       </div>
-      <button className="po-hov-fill" type="button" aria-label="Ακύρωση επιλογής" onClick={onClear} style={{ '--hov-fill': 'var(--bg-surface)', padding: '12px 16px', border: 'none', borderLeft: '1px solid var(--border-subtle)', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 18, lineHeight: 1, flexShrink: 0, transition: 'background 0.15s' }} >
-        <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
+      {/* Το διαχωριστικό ήταν γραμμένο πάνω στο κουμπί. Μετακόμισε στο περιτύλιγμα,
+          ώστε το κουμπί να μείνει το τετράγωνο του IconBtn — δηλαδή στόχος αφής. */}
+      <div style={{ borderLeft: '1px solid var(--border-subtle)', padding: '0 10px', display: 'flex', alignItems: 'center', alignSelf: 'stretch', flexShrink: 0 }}>
+        <IconBtn label="Ακύρωση επιλογής" onClick={onClear}>
+          <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </IconBtn>
+      </div>
     </div>
   );
 }
@@ -1594,35 +1587,12 @@ export function SegmentControl({ options, value, onChange, ariaLabel }: { option
       padding: 4,
       gap: 2,
     }}>
+      {/* `seg` γιατί η ράγα από πάνω έχει ήδη περίγραμμα: δεύτερο περίγραμμα ανά
+          πλακίδιο θα έδινε διπλή γραμμή. Το ενεργό ξεχωρίζει με επιφάνεια και σκιά. */}
       {options.map(o => (
-        <button
-          key={o.value}
-          type="button"
-          aria-pressed={o.value === value}
-          onClick={() => onChange(o.value)}
-          style={{
-            flex: 1,
-            height: T.h.sm,
-            paddingLeft: 16,
-            paddingRight: 16,
-            fontFamily: T.font.sans,
-            fontSize: 'var(--fs-base)',
-            fontWeight: value === o.value ? 500 : 400,
-            letterSpacing: '0.1px',
-            cursor: 'pointer',
-            borderRadius: T.radius.xs,
-            border: 'none',
-            background: value === o.value ? 'var(--bg-elevated)' : 'transparent',
-            color: value === o.value ? 'var(--accent)' : 'var(--text-secondary)',
-            transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-            whiteSpace: 'nowrap',
-            boxShadow: value === o.value ? 'var(--shadow-sm)' : 'none',
-          }}
-          onMouseEnter={e => { if (value !== o.value) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-          onMouseLeave={e => { if (value !== o.value) e.currentTarget.style.background = 'transparent'; }}
-        >
+        <ChipToggle key={o.value} shape="seg" grow on={o.value === value} onClick={() => onChange(o.value)}>
           {o.label}
-        </button>
+        </ChipToggle>
       ))}
     </div>
   );

@@ -52,7 +52,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
-import { T, TT, fe, fp, SecHdr, Spinner, fixedCols } from '@/components/Theme';
+import { T, TT, fe, fp, SecHdr, Spinner, fixedCols, Btn } from '@/components/Theme';
 import { NumberInput, CustomSelect } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
 import { AadePill } from '@/components/AadeLink';
@@ -445,10 +445,7 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
               <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', flex: 1, minWidth: 240 }}>
                 Το ασφαλιστήριό σου καλύπτει φυσικές καταστροφές, άρα δικαιούσαι μείωση ΕΝΦΙΑ. Δεν εφαρμόζεται μόνη της.
               </span>
-              <button type="button" onClick={() => toggleReduction('insurance')}
-                style={{ height: T.h.sm, padding: '0 16px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 700, fontFamily: T.font.sans, cursor: 'pointer' }}>
-                Εφαρμογή
-              </button>
+              <Btn variant="primary" onClick={() => toggleReduction('insurance')}>Εφαρμογή</Btn>
             </div>
           )}
 

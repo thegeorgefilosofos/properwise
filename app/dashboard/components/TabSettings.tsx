@@ -16,7 +16,7 @@ import * as settings from '@/lib/data/settings';
 import * as billing from '@/lib/data/billing';
 import NotificationSettings from './NotificationSettings';
 import { CustomSelect, Toggle } from './UIComponents';
-import { T, TT, Card, SecHdr, Btn, PageTitle, fdLong, fn, settingsField, ABSENT, pageShell, Bar } from '@/components/Theme';
+import { T, TT, Card, SecHdr, Btn, LinkBtn, PageTitle, fdLong, fn, settingsField, ABSENT, pageShell, Bar } from '@/components/Theme';
 import { SetList, SetRow, SaveNote, useAutosave } from './SettingsKit';
 import { AppPreferences, DEFAULT_PREFERENCES } from './useAppPreferences';
 import { downloadTableXlsx } from './exportCsv';
@@ -292,22 +292,18 @@ function DeleteAccount() {
           <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 12 }}>
             {leftover}
           </div>
-          <button onClick={signOut}
-            style={{ appearance: 'none', cursor: 'pointer', minHeight: 44, padding: '9px 18px', borderRadius: T.radius.btn, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700 }}>
+          <Btn variant="secondary" onClick={signOut}>
             Αποσύνδεση
-          </button>
+          </Btn>
         </div>
       ) : !open ? (
-        // Ουδέτερο ως προεπιλογή· γίνεται κόκκινο μόνο στο hover/focus, ώστε να μη
-        // «σπρώχνει» τον χρήστη προς την έξοδο, αλλά να είναι σαφές όταν το πλησιάζει.
-        <button onClick={() => setOpen(true)}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--negative-border)'; e.currentTarget.style.color = 'var(--negative)'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-          onFocus={e => { e.currentTarget.style.borderColor = 'var(--negative-border)'; e.currentTarget.style.color = 'var(--negative)'; }}
-          onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-          style={{ appearance: 'none', cursor: 'pointer', padding: '9px 18px', borderRadius: T.radius.btn, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, transition: 'color 0.15s, border-color 0.15s' }}>
+        // Ουδέτερο ως προεπιλογή, ώστε να μη «σπρώχνει» τον χρήστη προς την
+        // έξοδο. Δεν είναι η οριστική πράξη — απλώς ανοίγει την επιβεβαίωση —
+        // οπότε μένει δευτερεύον. Οι τέσσερις χειριστές που έβαφαν κόκκινο σε
+        // hover/focus έφυγαν: η `.po-btn` ξέρει και `:focus-visible` και αφή.
+        <Btn variant="secondary" onClick={() => setOpen(true)}>
           Διαγραφή του λογαριασμού μου
-        </button>
+        </Btn>
       ) : (
         <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: 16 }}>
           <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 10 }}>
@@ -326,10 +322,9 @@ function DeleteAccount() {
               style={{ appearance: 'none', cursor: ready && !busy ? 'pointer' : 'not-allowed', padding: '9px 18px', borderRadius: T.radius.btn, border: '1px solid var(--border-default)', background: 'transparent', color: ready && !busy ? 'var(--text-primary)' : 'var(--text-tertiary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, transition: 'background 0.15s, color 0.15s, border-color 0.15s' }}>
               {busy ? 'Διαγραφή…' : 'Οριστική διαγραφή'}
             </button>
-            <button onClick={() => { setOpen(false); setConfirmText(''); setError(null); }} disabled={busy}
-              style={{ appearance: 'none', cursor: 'pointer', padding: '9px 18px', borderRadius: T.radius.btn, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 500 }}>
+            <Btn variant="secondary" onClick={() => { setOpen(false); setConfirmText(''); setError(null); }} disabled={busy}>
               Ακύρωση
-            </button>
+            </Btn>
           </div>
         </div>
       )}
@@ -375,12 +370,11 @@ function IdentityRow({ label, value, empty, type = 'text', placeholder, locked =
             <div style={{ ...TT.bodySm }}>{label}</div>
             <div style={{ ...TT.body, fontWeight: 600, color: value ? 'var(--text-primary)' : 'var(--text-tertiary)', marginTop: 2, overflowWrap: 'anywhere' }}>{value || empty}</div>
           </div>
-          <button onClick={() => { setDraft(value); setMsg(null); setEdit(true); }} disabled={locked}
-            onMouseEnter={e => { if (!locked) e.currentTarget.style.color = 'var(--accent)'; }}
-            onMouseLeave={e => { if (!locked) e.currentTarget.style.color = 'var(--text-secondary)'; }}
-            style={{ appearance: 'none', border: 'none', background: 'transparent', cursor: locked ? 'default' : 'pointer', color: locked ? 'var(--text-tertiary)' : 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, padding: 0, flexShrink: 0, transition: 'color 0.15s' }}>
+          {/* Τόνος `quiet`: στην ηρεμία ήταν γκρι και όχι τονισμένο — μια σειρά
+              ρύθμισης δεν θέλει μπλε στην άκρη της. */}
+          <LinkBtn tone="quiet" onClick={() => { setDraft(value); setMsg(null); setEdit(true); }} disabled={locked}>
             Αλλαγή
-          </button>
+          </LinkBtn>
         </div>
       ) : (
         <div>

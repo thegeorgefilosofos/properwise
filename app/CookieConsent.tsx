@@ -7,7 +7,7 @@
 // αποδεικτικό και να ζητείται εκ νέου όταν η πολιτική αλλάξει ουσιωδώς.
 import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { T } from '@/components/Theme';
+import { T, Btn } from '@/components/Theme';
 
 const KEY = 'pos-cookie-consent';
 // Συγχρονίζεται με την ημερομηνία «Τελευταία ενημέρωση» της Πολιτικής απορρήτου.
@@ -79,10 +79,7 @@ export default function CookieConsent() {
         Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Καμία παρακολούθηση, καμία διαφήμιση.{' '}
         <Link href="/privacy" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Απόρρητο</Link>
       </div>
-      <button onClick={acknowledge} style={{ flexShrink: 0, height: T.h.md, padding: '0 22px', borderRadius: T.radius.pill, border: 'none',
-        background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-        Το κατάλαβα
-      </button>
+      <Btn variant="primary" onClick={acknowledge}>Το κατάλαβα</Btn>
     </div>
   );
 }

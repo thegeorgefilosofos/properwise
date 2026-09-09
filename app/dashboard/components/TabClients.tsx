@@ -48,7 +48,7 @@ import * as properties from '@/lib/data/properties';
 import * as stayStore from '@/lib/data/stays';
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory';
-import { T, PageTitle, KPIGrid, Badge, InfoBanner, Btn, ExportButton, EmptyState, Skeleton, SkeletonKPIs, SecHdr, Modal, SideSheet, fe, fd, fp, ABSENT_DATE, formGrid, fixedCols, Tile, RecordCard, StatStrip } from '@/components/Theme';
+import { T, PageTitle, KPIGrid, Badge, InfoBanner, Btn, IconBtn, ChipToggle, LinkBtn, ExportButton, EmptyState, Skeleton, SkeletonKPIs, SecHdr, Modal, SideSheet, fe, fd, fp, ABSENT_DATE, formGrid, fixedCols, Tile, RecordCard, StatStrip } from '@/components/Theme';
 import { confirmDialog } from '@/components/confirmBus';
 import { NumberInput, TextInput, CustomSelect, DatePicker, Textarea, Toggle } from './UIComponents';
 import MonthBars from '@/components/MonthBars';
@@ -901,9 +901,6 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   // ── Κοινά inline styles ────────────────────────────────────────────────────
   const inp: React.CSSProperties = { background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, height: T.h.lg, width: '100%', outline: 'none', boxSizing: 'border-box', fontFamily: T.font.sans };
   const lbl: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', display: 'block', marginBottom: 8, fontFamily: T.font.sans };
-  // Το φίλτρο κάθεται στην ίδια σειρά με το πεδίο αναζήτησης, οπότε παίρνει το
-  // ύψος του πεδίου. Με `minHeight: T.h.sm` και γέμισμα 8 έβγαινε 32 δίπλα σε 40.
-  const chip = (active: boolean): React.CSSProperties => ({ display: 'inline-flex', alignItems: 'center', height: T.h.lg, padding: '0 14px', borderRadius: T.radius.pill, border: `1px solid ${active ? 'var(--accent)' : 'var(--border-subtle)'}`, background: active ? 'var(--accent-soft)' : 'transparent', color: active ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, fontWeight: 500, whiteSpace: 'nowrap' });
   const msgLink: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: T.h.sm, fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', padding: '3px 9px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', background: 'var(--accent-soft)', whiteSpace: 'nowrap' };
   // Chip επικοινωνίας (ίδιο ύφος με msgLink, με inline εικονίδιο).
   const contactChip: React.CSSProperties = { ...msgLink, display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' };
@@ -994,7 +991,12 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
         {/* Ένα φίλτρο και είναι το χρήσιμο. Τα «VIP / Επαναλαμβανόμενοι /
             Με επισήμανση» έφυγαν: το πρώτο είχε επινοημένο κατώφλι 1.000€, το
             δεύτερο θα ήταν πάντα κενό, το τρίτο ήταν η μαύρη λίστα. */}
-        <button style={chip(undeclaredOnly)} onClick={() => setUndeclaredOnly(v => !v)}>Με αδήλωτες διαμονές</button>
+        {/* Το φίλτρο κάθεται στην ίδια σειρά με το πεδίο αναζήτησης, οπότε παίρνει το
+            ύψος του πεδίου: το περιτύλιγμα δίνει T.h.lg και το πλακίδιο τεντώνεται σε
+            αυτό. Με το φυσικό T.h.sm του πλακιδίου έβγαινε 32 δίπλα σε 40. */}
+        <span style={{ display: 'inline-flex', height: T.h.lg }}>
+          <ChipToggle on={undeclaredOnly} onClick={() => setUndeclaredOnly(v => !v)}>Με αδήλωτες διαμονές</ChipToggle>
+        </span>
       </div>
 
       {clients.length === 0 ? (
@@ -1023,10 +1025,13 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                   {st.hasDamage && <Badge>Φθορές</Badge>}
                 </>}
                 actions={
-                  <button title="Διαγραφή" onClick={e => { e.stopPropagation(); del(c); }}
-                    style={{ background: 'none', border: 'none', borderRadius: T.radius.chip, width: T.h.sm, height: T.h.sm, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0, flexShrink: 0 }}>
-                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                  </button>
+                  // Το σταμάτημα της φυσαλίδας μένει στο περιτύλιγμα: το κλικ δεν
+                  // πρέπει να φτάσει στην κάρτα, που ανοίγει το ντοσιέ.
+                  <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                    <IconBtn label="Διαγραφή πελάτη" title="Διαγραφή" onClick={() => del(c)}>
+                      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                    </IconBtn>
+                  </span>
                 }>
 
                 {/* Λωρίδα στατιστικών: το βυθισμένο well του βιβλίου. Οι ετικέτες
@@ -1117,9 +1122,19 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                    άκουγε καθολικά θα έκλεινε μαζί και το ντοσιέ από πίσω. */
                 <div style={{ position: 'relative' }}
                   onKeyDown={e => { if (e.key === 'Escape' && reportYearMenu) { e.stopPropagation(); setReportYearMenu(false); } }}>
+                  {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Ανοίγει λίστα, οπότε θέλει `aria-haspopup` και
+                      `aria-expanded` που το `Btn` δεν δέχεται· χωρίς αυτά ο αναγνώστης
+                      οθόνης δεν μαθαίνει ούτε ότι υπάρχουν χρονιές από κάτω.
+
+                      Η ΧΡΟΝΙΑ ΕΙΝΑΙ ΕΤΙΚΕΤΑ ΧΕΙΡΙΣΤΗΡΙΟΥ, ΟΧΙ ΣΤΗΛΗ ΠΙΝΑΚΑ. Η
+                      γραμματοσειρά πυκνών πινάκων βάζει πλατιά κενά γύρω από κάθε
+                      ψηφίο: μέσα σε πλακίδιο δίπλα σε ελληνικά λεκτικά διαβάζεται
+                      ως κώδικας. Η γραμματοσειρά αριθμών είναι το ΙΔΙΟ Inter με το
+                      υπόλοιπο κείμενο και το `tabular-nums` κρατά τα ψηφία
+                      στοιχισμένα όταν αλλάζει η χρονιά. */}
                   <button type="button" onClick={() => setReportYearMenu(m => !m)}
                     aria-haspopup="listbox" aria-expanded={reportYearMenu}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: T.h.sm, padding: '0 10px', borderRadius: T.radius.chip, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.mono, fontSize: 'var(--fs-base)', fontWeight: 700, cursor: 'pointer' }}>
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: T.h.sm, padding: '0 10px', borderRadius: T.radius.chip, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: 700, cursor: 'pointer' }}>
                     {reportYear}
                     <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: reportYearMenu ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', opacity: 0.7 }}><path d="m6 9 6 6 6-6" /></svg>
                   </button>
@@ -1330,10 +1345,13 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {(propsByClient.get(dc.id) || []).map(p => (
                   <span key={p.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '6px 11px', borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-                    <button onClick={() => onSelectProperty?.(p.id)} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: T.font.sans }}>{p.name}</button>
-                    {/* 15 δεν υπάρχει στην κλίμακα (…13, 14, 16…) — το δίδυμό
-                        του στα αρχικά της κεφαλίδας διορθώθηκε, αυτό είχε μείνει. */}
-                    <button onClick={() => unlinkProperty(p.id)} title="Αποσύνδεση" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: 14 }}>×</button>
+                    <LinkBtn onClick={() => onSelectProperty?.(p.id)}>{p.name}</LinkBtn>
+                    {/* Το αρνητικό περιθώριο είναι ΘΕΣΗ: το κουτί των 32 τραβιέται μέσα
+                        στο γέμισμα του πλακιδίου, ώστε ο στόχος αφής να μεγαλώσει χωρίς
+                        να ψηλώσει η σειρά των συνδεδεμένων ακινήτων. */}
+                    <IconBtn label="Αποσύνδεση ακινήτου" title="Αποσύνδεση" onClick={() => unlinkProperty(p.id)} style={{ margin: -6 }}>
+                      <span style={{ fontSize: 14, lineHeight: 1 }}>×</span>
+                    </IconBtn>
                   </span>
                 ))}
                 {(propsByClient.get(dc.id) || []).length === 0 && unlinkedProps.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Κανένα ακίνητο</span>}
@@ -1639,13 +1657,16 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                             {/* Η λέξη «Φθορά» λέει ήδη ό,τι θα έλεγε το κόκκινο. */}
                             {s.damages && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Φθορά {fe(s.damage_cost || 0)}{dmgItem ? ` · ${dmgItem.name}` : s.damage_note ? ` · ${s.damage_note}` : ''}</span>}
                           </div>
-                          <div style={{ display: 'flex', gap: 10 }}>
+                          {/* Το μέγεθος γράφεται ΜΙΑ φορά στη σειρά: το `LinkBtn` κληρονομεί
+                              τη γραμματοσειρά του κειμένου μέσα στο οποίο κάθεται. */}
+                          <div style={{ display: 'flex', gap: 10, fontSize: 12 }}>
                             {/* Ένα κλικ. Η προθεσμία της δήλωσης δεν περιμένει φόρμα. */}
-                            <button onClick={() => toggleDeclared(s)} style={{ background: 'none', border: 'none', color: declared ? 'var(--text-tertiary)' : 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, padding: 0 }}>
+                            {/* `quiet` όταν είναι ήδη δηλωμένη: η αναίρεση δεν διεκδικεί το μάτι. */}
+                            <LinkBtn tone={declared ? 'quiet' : undefined} onClick={() => toggleDeclared(s)}>
                               {declared ? 'Αναίρεση δήλωσης' : 'Σημείωσε ως δηλωμένη'}
-                            </button>
-                            <button onClick={() => openStayEdit(s)} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, padding: 0 }}>Επεξεργασία</button>
-                            <button onClick={() => delStay(s)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, padding: 0 }}>Διαγραφή</button>
+                            </LinkBtn>
+                            <LinkBtn onClick={() => openStayEdit(s)}>Επεξεργασία</LinkBtn>
+                            <LinkBtn tone="quiet" onClick={() => delStay(s)}>Διαγραφή</LinkBtn>
                           </div>
                         </div>
                         {s.notes && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-subtle)' }}>{s.notes}</div>}
@@ -1665,8 +1686,8 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               <SecHdr label="Μηνύματα" sub="Έτοιμα πρότυπα για WhatsApp, Viber ή αντιγραφή" />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
                 {MSG_TEMPLATES.map(t => (
-                  <button key={t.id} style={chip(t.id === msgId)}
-                    onClick={() => { setMsgId(t.id); setMsgCopied(false); }}>{t.label}</button>
+                  <ChipToggle key={t.id} on={t.id === msgId}
+                    onClick={() => { setMsgId(t.id); setMsgCopied(false); }}>{t.label}</ChipToggle>
                 ))}
               </div>
               {(() => {
@@ -1676,10 +1697,12 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                   <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 16, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
                     <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{text}</div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-                      <a href={whatsappLink(dc.phone ? msgDigits(dc.phone) : '', text)} target="_blank" rel="noopener noreferrer" style={msgLink}>WhatsApp</a>
-                      <a href={viberTextLink(text)} style={msgLink}>Viber</a>
-                      <button onClick={() => { navigator.clipboard?.writeText(text); setMsgCopied(true); }}
-                        style={{ ...msgLink, cursor: 'pointer', fontFamily: T.font.sans }}>{msgCopied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</button>
+                      {/* Τα δύο πρώτα είναι ΠΡΟΟΡΙΣΜΟΣ, οπότε παίρνουν `href` και μένουν
+                          σύνδεσμοι με την όψη του κουμπιού. Και τα τρία στον ίδιο ρόλο,
+                          γιατί καμία από τις τρεις εξόδους δεν είναι πιο κύρια. */}
+                      <Btn href={whatsappLink(dc.phone ? msgDigits(dc.phone) : '', text)} newTab>WhatsApp</Btn>
+                      <Btn href={viberTextLink(text)}>Viber</Btn>
+                      <Btn onClick={() => { navigator.clipboard?.writeText(text); setMsgCopied(true); }}>{msgCopied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
                       {!dc.phone && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Χωρίς αποθηκευμένο τηλέφωνο θα διαλέξεις επαφή μέσα στην εφαρμογή.</span>}
                     </div>
                   </div>
@@ -1725,9 +1748,9 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                           {DOC_KIND_LABELS[d.kind] || 'Άλλο'}{fmtBytes(d.size) ? ` · ${fmtBytes(d.size)}` : ''} · {fd(d.created_at)}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', fontSize: 12 }}>
                         {d.signedUrl && <a href={d.signedUrl} target="_blank" rel="noopener noreferrer" style={msgLink}>Άνοιγμα</a>}
-                        <button onClick={() => delDoc(d)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, padding: 0 }}>Διαγραφή</button>
+                        <LinkBtn tone="quiet" onClick={() => delDoc(d)}>Διαγραφή</LinkBtn>
                       </div>
                     </div>
                   ))}
@@ -1763,7 +1786,9 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                         </div>
                         <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 1.5 }}>{nt.body}</div>
                       </div>
-                      <button onClick={() => delNote(nt)} title="Διαγραφή" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 16, padding: 0, flexShrink: 0 }}>×</button>
+                      <IconBtn label="Διαγραφή σημείωσης" title="Διαγραφή" onClick={() => delNote(nt)}>
+                        <span style={{ fontSize: 16, lineHeight: 1 }}>×</span>
+                      </IconBtn>
                     </div>
                   ))}
                 </div>
@@ -1874,9 +1899,9 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                         {f.last_synced_at ? `Τελευταίος συγχρονισμός: ${fd(f.last_synced_at)}${f.last_status ? ` · ${f.last_status}` : ''}` : 'Δεν έχει συγχρονιστεί ακόμη'}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      <button onClick={() => syncIcalNow(f.property_id)} disabled={icalBusy} style={{ ...msgLink, cursor: 'pointer', fontFamily: T.font.sans }}>Συγχρονισμός τώρα</button>
-                      <button onClick={() => delIcalFeed(f)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, padding: 0 }}>Αφαίρεση</button>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', fontSize: 12 }}>
+                      <Btn onClick={() => syncIcalNow(f.property_id)} disabled={icalBusy}>Συγχρονισμός τώρα</Btn>
+                      <LinkBtn tone="quiet" onClick={() => delIcalFeed(f)}>Αφαίρεση</LinkBtn>
                     </div>
                   </div>
                 </div>

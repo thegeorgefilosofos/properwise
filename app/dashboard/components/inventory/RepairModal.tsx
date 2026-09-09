@@ -96,7 +96,8 @@ export function RepairModal({item,repairs,onAdd,onClose,propertyId,userId}:{item
             <div style={{flex:1}}><TextInput id={techId} value={form.technician} onChange={v=>setForm(f=>({...f,technician:v}))} placeholder="Παράδειγμα: Ηλεκτρολόγος Γεωργίου"/></div>
             {contacts.length>0&&(
               <div ref={pickerRef} style={{position:'relative',flexShrink:0}}>
-                <button type="button" onClick={()=>setShowContactPicker(s=>!s)} style={{padding:'0 12px',height:T.h.lg,borderRadius: T.radius.chip,border:'1px solid var(--border-subtle)',background:showContactPicker?'var(--accent-dim)':'var(--bg-elevated)',color:showContactPicker?'var(--accent)':'var(--text-secondary)',fontSize:12,fontFamily:T.font.sans,cursor:'pointer'}}>Επαφές</button>
+                {/* size="lg" για να ζυγίσει με το διπλανό πεδίο. Η απόχρωση accent όσο ο επιλογέας είναι ανοιχτός φεύγει: είναι όψη και δεν γράφεται ενσωματωμένα. */}
+                <Btn size="lg" onClick={()=>setShowContactPicker(s=>!s)}>Επαφές</Btn>
                 {showContactPicker&&(
                   <div style={{position:'absolute',top:'calc(100% + 6px)',right:0,background:'var(--bg-surface)',border:'1px solid var(--border-accent)',borderRadius:T.radius.card,padding:8,zIndex:700,minWidth:200,maxHeight:200,overflowY:'auto',boxShadow:'var(--shadow-lg)'}}>
                     <div style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',padding:'4px 8px 8px',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:500,fontFamily:T.font.sans,borderBottom:'1px solid var(--border-subtle)',marginBottom:4}}>Επιλογή επαφής</div>

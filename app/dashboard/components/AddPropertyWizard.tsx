@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
-import { T, fe, fn, fp, fd, fixedCols, ABSENT, Modal, TT } from '@/components/Theme';
+import { T, fe, fn, fp, fd, fixedCols, ABSENT, Modal, TT, Btn, ChipToggle } from '@/components/Theme';
 import { CustomSelect, DatePicker } from './UIComponents';
 import { cleanAma, isValidAmaFormat, amaLengthLooksUnusual } from '@/lib/property/ama';
 import { ATAK_SOURCE, atakDigits } from '@/lib/property/atak';
@@ -565,9 +565,12 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
       // πρώτη οθόνη που βλέπει όποιος μόλις έγραψε λογαριασμό.
       title={isEdit ? 'Επεξεργασία ακινήτου' : 'Νέο ακίνητο'}
       footer={<>
-        <button className="po-hov-fill" onClick={() => (step === 0 ? requestClose() : setStep(s => s - 1))} style={{ '--hov-fill': 'var(--bg-overlay)', height: T.h.lg, padding: '0 20px', borderRadius: T.radius.pill, border: 'none', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: 'pointer' }} >
+        {/* Ήσυχο: είναι η έξοδος του βήματος και δεν διεκδικεί το μάτι από τη
+            «Συνέχεια». Το `size="lg"` κρατά το ύψος T.h.lg που είχε ήδη όλη η
+            σειρά, ώστε τα τέσσερα κουμπιά του υποσέλιδου να μένουν ίσα. */}
+        <Btn variant="ghost" size="lg" onClick={() => (step === 0 ? requestClose() : setStep(s => s - 1))}>
           {step === 0 ? 'Ακύρωση' : 'Πίσω'}
-        </button>
+        </Btn>
 
         {/* ══════════════════════════════════════════════════════════════
             Η ΕΞΟΔΟΣ ΥΠΑΡΧΕΙ ΑΠΟ ΤΗ ΣΤΙΓΜΗ ΠΟΥ ΤΟ ΑΚΙΝΗΤΟ ΣΤΕΚΕΤΑΙ
@@ -585,26 +588,13 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
             «μισό» ακίνητο — υπάρχει ακίνητο με λιγότερα συμπληρωμένα.
             ══════════════════════════════════════════════════════════════ */}
         {step > 0 && step < STEPS.length - 1 && (
-          <button onClick={save} disabled={saving || !name.trim()} style={{
-            height: T.h.lg, padding: '0 20px', borderRadius: T.radius.pill,
-            border: '1px solid var(--border-default)', background: 'transparent',
-            color: saving || !name.trim() ? 'var(--text-tertiary)' : 'var(--text-primary)',
-            fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: saving || !name.trim() ? 'not-allowed' : 'pointer',
-          }}>{saving ? 'Αποθήκευση…' : isEdit ? 'Αποθήκευση' : 'Αποθήκευση τώρα'}</button>
+          <Btn variant="secondary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit ? 'Αποθήκευση' : 'Αποθήκευση τώρα'}</Btn>
         )}
 
         {step < STEPS.length - 1 ? (
-          <button onClick={() => canNext && setStep(s => s + 1)} disabled={!canNext} style={{
-            height: T.h.lg, padding: '0 24px', borderRadius: T.radius.pill, border: 'none',
-            background: canNext ? 'var(--accent)' : 'var(--bg-overlay)', color: canNext ? 'var(--accent-text)' : 'var(--text-tertiary)',
-            fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: canNext ? 'pointer' : 'not-allowed',
-          }}>Συνέχεια</button>
+          <Btn variant="primary" size="lg" onClick={() => canNext && setStep(s => s + 1)} disabled={!canNext}>Συνέχεια</Btn>
         ) : (
-          <button onClick={save} disabled={saving || !name.trim()} style={{
-            height: T.h.lg, padding: '0 24px', borderRadius: T.radius.pill, border: 'none',
-            background: saving || !name.trim() ? 'var(--bg-overlay)' : 'var(--accent)', color: saving || !name.trim() ? 'var(--text-tertiary)' : 'var(--accent-text)',
-            fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: saving || !name.trim() ? 'not-allowed' : 'pointer',
-          }}>{saving ? 'Αποθήκευση…' : isEdit ? 'Αποθήκευση αλλαγών' : 'Προσθήκη ακινήτου'}</button>
+          <Btn variant="primary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit ? 'Αποθήκευση αλλαγών' : 'Προσθήκη ακινήτου'}</Btn>
         )}
       </>}>
 
@@ -677,23 +667,17 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
               {PROPERTY_TYPES.map(t => {
                 const sel = propType === t;
                 return (
-                  <button key={t} onClick={() => setPropType(t)} style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 8px',
-                    borderRadius: T.radius.popup, cursor: 'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-                    // Η επιλογή ΔΕΝ παχαίνει το περίγραμμα: το δεύτερο εικονοστοιχείο
-                    // έκανε το επιλεγμένο πλακίδιο 82 ψηλό δίπλα σε γείτονες των 80.
-                    // Ο δακτύλιος δίνει την ίδια έμφαση χωρίς να πειράξει τη διάταξη,
-                    // όπως ήδη κάνουν τα πλακίδια της κατάστασης από κάτω.
-                    border: `1px solid ${sel ? 'var(--accent)' : 'var(--border-default)'}`,
-                    boxShadow: sel ? '0 0 0 1px var(--accent)' : 'none',
-                    background: sel ? 'var(--accent-soft)' : 'var(--bg-surface)',
-                    color: sel ? 'var(--accent)' : 'var(--text-secondary)',
-                  }}
-                    onMouseEnter={e => { if (!sel) e.currentTarget.style.background = 'var(--bg-overlay)'; }}
-                    onMouseLeave={e => { if (!sel) e.currentTarget.style.background = 'var(--bg-surface)'; }}>
-                    <TypeIcon type={t} />
-                    <span style={{ fontFamily: T.font.sans, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? 'var(--text-primary)' : 'var(--text-secondary)', textAlign: 'center' }}>{propertyTypeLabel(t)}</span>
-                  </button>
+                  // Πλακίδιο με ΚΑΤΑΣΤΑΣΗ, όχι ενέργεια: το `aria-pressed` το δηλώνει
+                  // πλέον μόνο του και η επιλογή δεν παχαίνει περίγραμμα, οπότε το
+                  // ύψος της γραμμής μένει ίδιο χωρίς τον δακτύλιο. Το σχήμα της
+                  // στήλης —εικονίδιο πάνω από το όνομα— είναι γεωμετρία του σημείου
+                  // χρήσης και μένει εδώ.
+                  <ChipToggle key={t} on={sel} onClick={() => setPropType(t)}>
+                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', flex: 1 }}>
+                      <TypeIcon type={t} />
+                      <span style={{ fontFamily: T.font.sans, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? 'var(--text-primary)' : 'var(--text-secondary)', textAlign: 'center' }}>{propertyTypeLabel(t)}</span>
+                    </span>
+                  </ChipToggle>
                 );
               })}
             </div>
@@ -720,17 +704,16 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
               const tile = (st: typeof STATUSES[number]) => {
                 const sel = statusKey === st.key;
                 return (
-                  <button key={st.key} onClick={() => setStatusKey(st.key)} aria-pressed={sel} style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2,
-                    padding: '10px 14px', borderRadius: T.radius.inner, cursor: 'pointer', textAlign: 'left',
-                    transition: `border-color .15s ${T.ease.standard}, background .15s ${T.ease.standard}`,
-                    border: `1px solid ${sel ? 'var(--accent)' : 'var(--border-default)'}`,
-                    background: sel ? 'var(--accent-soft)' : 'var(--bg-surface)',
-                    fontFamily: T.font.sans, width: '100%',
-                  }}>
-                    <span style={{ fontSize: 'var(--fs-base)', fontWeight: sel ? 700 : 500, color: 'var(--text-primary)' }}>{st.label}</span>
-                    <span style={{ fontSize: 'var(--fs-xs)', lineHeight: 1.4, color: 'var(--text-tertiary)' }}>{st.hint}</span>
-                  </button>
+                  // Ίδια οικογένεια με τα πλακίδια του τύπου από πάνω: κατάσταση με
+                  // `aria-pressed`, όχι ενέργεια. Σχήμα `chip` και όχι `seg`, γιατί
+                  // τα πλακίδια δεν κάθονται σε ράγα με δικό της περίγραμμα. Οι δύο
+                  // γραμμές —τίτλος και επεξήγηση— κρατούν το γέμισμά τους εδώ.
+                  <ChipToggle key={st.key} on={sel} onClick={() => setStatusKey(st.key)}>
+                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '10px 2px', textAlign: 'left', flex: 1 }}>
+                      <span style={{ fontSize: 'var(--fs-base)', fontWeight: sel ? 700 : 500, color: 'var(--text-primary)' }}>{st.label}</span>
+                      <span style={{ fontSize: 'var(--fs-xs)', lineHeight: 1.4, color: 'var(--text-tertiary)' }}>{st.hint}</span>
+                    </span>
+                  </ChipToggle>
                 );
               };
               return (

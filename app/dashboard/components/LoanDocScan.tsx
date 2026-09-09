@@ -1,6 +1,6 @@
 'use client'
 import { useRef, useState, type ReactNode } from 'react'
-import { T, TT, Spinner } from '@/components/Theme'
+import { T, TT, Spinner, Btn } from '@/components/Theme'
 import { rankLoans, type UserLoanNeeds, type BankInput } from '@/lib/loans/recommend'
 import { fmtEur, fmtPct, type SavedLoan } from './TabLoanData'
 import { MAX_SCAN_MB } from './scanDoc'
@@ -157,11 +157,11 @@ export function ScanUploadRow({ title, description, action, icon, scanning, onFi
             μέσα από το spread· αλλιώς το ενσωματωμένο στυλ νικά την κλάση. */}
         <p className="po-prose" style={{ ...TT.bodySm, lineHeight: undefined, color: 'var(--text-tertiary)' }}>{description}</p>
       </div>
-      <button onClick={() => inputRef.current?.click()} disabled={scanning}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 16px', height: T.h.lg, borderRadius: T.radius.inner, background: 'var(--accent)', border: '1px solid transparent', color: 'var(--accent-text)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight: 600, cursor: scanning ? 'wait' : 'pointer', flexShrink: 0 }}>
+      {/* size="lg" γιατί το ύψος ήταν καρφωμένο στο T.h.lg δίπλα στην περιγραφή. */}
+      <Btn variant="primary" size="lg" onClick={() => inputRef.current?.click()} disabled={scanning}>
         {icon}
         {scanning ? 'Ανάλυση…' : action}
-      </button>
+      </Btn>
     </div>
   )
 }
@@ -425,9 +425,10 @@ export default function LoanDocScan({ banks, euribor, defaultPropertyValue, onAp
 
           {needs && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={applyToCalc} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 16px', height: T.h.lg, borderRadius: 10, background: 'var(--accent)', border: 'none', color: 'var(--accent-text)', fontSize: 'var(--fs-base)', fontFamily: font, fontWeight: 600, cursor: 'pointer' }}>Εφαρμογή στον υπολογιστή</button>
-              {onSaveLoan && best && <button onClick={saveAsLoan} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 16px', height: T.h.lg, borderRadius: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontFamily: font, fontWeight: 500, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Αποθήκευση…' : 'Αποθήκευση ως δάνειο'}</button>}
-              <button onClick={() => setEx(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 14px', height: T.h.lg, borderRadius: 10, background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)', fontSize: 'var(--fs-base)', fontFamily: font, fontWeight: 500, cursor: 'pointer' }}>Καθαρισμός</button>
+              {/* Και τα τρία ήταν T.h.lg, οπότε κρατούν το ύψος τους με size="lg". */}
+              <Btn variant="primary" size="lg" onClick={applyToCalc}>Εφαρμογή στον υπολογιστή</Btn>
+              {onSaveLoan && best && <Btn variant="secondary" size="lg" onClick={saveAsLoan} disabled={saving}>{saving ? 'Αποθήκευση…' : 'Αποθήκευση ως δάνειο'}</Btn>}
+              <Btn variant="secondary" size="lg" onClick={() => setEx(null)}>Καθαρισμός</Btn>
             </div>
           )}
           <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.6, fontFamily: font }}>Ενδεικτική ανάλυση βάσει των στοιχείων του εγγράφου. Επιβεβαίωσε τους ακριβείς όρους με την τράπεζα.</p>

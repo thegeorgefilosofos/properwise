@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import * as tenantStore from '@/lib/data/tenants'
 import { CustomSelect, TextInput } from './UIComponents'
-import { T, PageTitle, KPIGrid, Btn, EmptyState, Skeleton, SkeletonKPIs, fe, feRate, fn, pressable, Bar, RuntimeImg } from '@/components/Theme'
+import { T, PageTitle, KPIGrid, Btn, IconBtn, ChipToggle, EmptyState, Skeleton, SkeletonKPIs, fe, feRate, fn, pressable, Bar, RuntimeImg } from '@/components/Theme'
 import { PackageOpen, SearchX, Archive } from 'lucide-react'
 import { portfolioSummary, replacementSuggestion, NOT_TAX_DEPRECIATION_NOTE } from '@/lib/inventory/depreciation'
 import type { FieldContext } from '@/lib/property/fields'
@@ -31,7 +31,7 @@ import { INVENTORY_CATEGORIES, type InventoryItem, type InventoryRepair, type In
 import { calcCurrentValue, calcDepreciationPct, calcYearsLeft, calcAgeDisplay, calcMonthlyKwh, calcMonthlyCost, hasEnergy, fmtDate, daysUntil, warrantyStatus, needsAction } from './inventory/calc'
 import { DOCS_BUCKET } from './inventory/storage'
 import { InfoHint } from './InfoHint'
-import { Badge, EnergyBadge, DepBar, ReplacementHint, InlineConditionEdit, OverflowMenu, SelectBox, BulkPicker, SectionLabel, QRModal, cardStyle, quietAction, IconEdit, IconRepair, IconQR, IconCal, IconTrash, type OverflowAction } from './inventory/Bits'
+import { Badge, EnergyBadge, DepBar, ReplacementHint, InlineConditionEdit, OverflowMenu, SelectBox, BulkPicker, SectionLabel, QRModal, cardStyle, IconEdit, IconRepair, IconQR, IconCal, IconTrash, type OverflowAction } from './inventory/Bits'
 import { ItemFormModal } from './inventory/ItemFormModal'
 import { RepairModal } from './inventory/RepairModal'
 import { BulkImportModal } from './inventory/BulkImportModal'
@@ -142,14 +142,10 @@ function AttentionCard({items,onEdit,onWarrantyReminder}:{items:InventoryItem[];
                 Πριν, η γραμμή έδειχνε ένα σήμα κατάστασης, δηλαδή ξανάλεγε την
                 αιτία που μόλις διαβάστηκε δίπλα και δεν πρόσφερε τίποτα να κάνεις. */}
             {kind==='warr'
-              ? <button onClick={()=>{onWarrantyReminder(item);setPushed(p=>new Set(p).add(item.id))}} disabled={pushed.has(item.id)}
-                  style={{flexShrink:0,padding:'0 12px',height:T.h.sm,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-surface)',color:pushed.has(item.id)?'var(--text-tertiary)':'var(--text-secondary)',fontSize:12,fontFamily:T.font.sans,fontWeight:500,cursor:pushed.has(item.id)?'default':'pointer',whiteSpace:'nowrap'}}>
+              ? <Btn onClick={()=>{onWarrantyReminder(item);setPushed(p=>new Set(p).add(item.id))}} disabled={pushed.has(item.id)}>
                   {pushed.has(item.id)?'Στο ημερολόγιο':'Υπενθύμιση'}
-                </button>
-              : <button onClick={()=>onEdit(item)}
-                  style={{flexShrink:0,padding:'0 12px',height:T.h.sm,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-surface)',color:'var(--text-secondary)',fontSize:12,fontFamily:T.font.sans,fontWeight:500,cursor:'pointer',whiteSpace:'nowrap'}}>
-                  Άνοιγμα
-                </button>}
+                </Btn>
+              : <Btn onClick={()=>onEdit(item)}>Άνοιγμα</Btn>}
           </div>
         ))}
       </div>
@@ -253,7 +249,8 @@ function HandoverCard({handovers,onOpenHandover}:{handovers:InventoryHandover[];
           φόρτωση, για πάντα. Τώρα διαβάζεται με πάτημα, από όποιον τη θέλει. */}
       <SectionLabel label="Παραδόσεις και παραλαβές" right={<span style={{display:'inline-flex',alignItems:'center',gap:8}}>
         <InfoHint label="Τι είναι το πρωτόκολλο παράδοσης">Καταγραφή της κατάστασης του εξοπλισμού στην είσοδο και στην έξοδο του ενοικιαστή. Είναι η απόδειξη για την εγγύηση.</InfoHint>
-        <button onClick={onOpenHandover} style={{padding:'0 12px',height:28,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',color:'var(--text-secondary)',fontSize:12,fontFamily:T.font.sans,fontWeight:500,cursor:'pointer'}}>{handovers.length>0?'Άνοιγμα':'Νέο πρωτόκολλο'}</button>
+        {/* Το ύψος ήταν καρφωμένο 28 — κάτω από κάθε στόχο αφής· με το Btn ανεβαίνει στην κοινή κλίμακα και η κεφαλίδα ψηλώνει λίγο. */}
+        <Btn onClick={onOpenHandover}>{handovers.length>0?'Άνοιγμα':'Νέο πρωτόκολλο'}</Btn>
       </span>}/>
       {handovers.length===0
         ? null
@@ -369,20 +366,22 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
         {allRooms.length>0&&<div style={{width:190}}><CustomSelect ariaLabel="Δωμάτιο" value={filterRoom} onChange={setFilterRoom} options={[{value:'Όλα',label:'Όλα τα δωμάτια'},...allRooms.map(r=>({value:r,label:r}))]}/></div>}
         <div style={{display:'flex',alignItems:'center',gap:6}}>
           <div style={{width:212}}><CustomSelect ariaLabel="Ταξινόμηση" value={sortKey} onChange={v=>setSortKey(v as SortKey)} options={(Object.keys(SORT_LABELS) as SortKey[]).map(k=>({value:k,label:SORT_LABELS[k]}))}/></div>
-          <button title={sortDir==='asc'?'Αύξουσα':'Φθίνουσα'} aria-label="Κατεύθυνση ταξινόμησης" onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')} style={{width:T.h.md,height:T.h.md,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:T.font.sans,fontSize:14,flexShrink:0,display:'inline-flex',alignItems:'center',justifyContent:'center'}}><svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{sortDir==='asc'?<path d="M12 19V5M5 12l7-7 7 7"/>:<path d="M12 5v14M19 12l-7 7-7-7"/>}</svg></button>
+          <IconBtn label="Κατεύθυνση ταξινόμησης" title={sortDir==='asc'?'Αύξουσα':'Φθίνουσα'} size="md" round onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}><svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{sortDir==='asc'?<path d="M12 19V5M5 12l7-7 7 7"/>:<path d="M12 5v14M19 12l-7 7-7-7"/>}</svg></IconBtn>
         </div>
-        {actionCount>0&&<button onClick={()=>setShowNeedsAction(v=>!v)} title="Προβολή μόνο όσων χρειάζονται προσοχή" style={{padding:'0 12px',height:T.h.md,borderRadius:T.radius.pill,fontSize:12,cursor:'pointer',fontFamily:T.font.sans,fontWeight:500,border:`1px solid ${showNeedsAction?'var(--warning-border)':'var(--border-subtle)'}`,background:showNeedsAction?'var(--warning-soft)':'var(--bg-elevated)',color:showNeedsAction?'var(--warning)':'var(--text-secondary)',display:'flex',alignItems:'center',gap:6,whiteSpace:'nowrap'}}>
+        {/* Το πλακίδιο λέει ΚΑΤΑΣΤΑΣΗ κι όχι τόνο: το ανοιχτό βάφεται accent από το .po-chip. Το πορτοκαλί μένει εκεί που μετράει, στο σήμα του αριθμού. */}
+        {actionCount>0&&<ChipToggle on={showNeedsAction} onClick={()=>setShowNeedsAction(v=>!v)} title="Προβολή μόνο όσων χρειάζονται προσοχή">
           Προσοχή <span style={{background:showNeedsAction?'var(--warning)':'var(--text-tertiary)',color:'var(--text-inverse)',borderRadius:T.radius.inner,padding:'0 6px',fontSize: 'var(--fs-xs)',fontWeight:700}}>{actionCount}</span>
-        </button>}
-        <button onClick={()=>selectMode?exitSelect():setSelectMode(true)} title="Επιλογή πολλών αντικειμένων" style={{padding:'0 12px',height:T.h.lg,borderRadius:T.radius.pill,fontSize:12,cursor:'pointer',fontFamily:T.font.sans,fontWeight:500,border:`1px solid ${selectMode?'var(--accent-border)':'var(--border-subtle)'}`,background:selectMode?'var(--accent-soft)':'var(--bg-elevated)',color:selectMode?'var(--accent)':'var(--text-secondary)',display:'flex',alignItems:'center',gap:6,whiteSpace:'nowrap'}}>
+        </ChipToggle>}
+        <ChipToggle on={selectMode} onClick={()=>selectMode?exitSelect():setSelectMode(true)} title="Επιλογή πολλών αντικειμένων">
           <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           {selectMode?'Ακύρωση':'Επιλογή'}
-        </button>
+        </ChipToggle>
         {/* 32 το κουμπί, 3 το γέμισμα, 1 το περίγραμμα: η ομάδα βγαίνει 40, όσο
             και οι επιλογείς δίπλα της. Με γέμισμα 2 έβγαινε 38. */}
         <div style={{display:'flex',border:'1px solid var(--border-subtle)',borderRadius:T.radius.pill,overflow:'hidden',padding: 4,background:'var(--bg-elevated)'}}>
+          {/* `seg` κι όχι `chip`: η ομάδα έχει ήδη δικό της περίγραμμα — δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */}
           {(['grid','list'] as const).map(m=>(
-            <button key={m} onClick={()=>setViewMode(m)} style={{height:T.h.sm,padding:'0 14px',fontSize:12,fontFamily:T.font.sans,cursor:'pointer',border:'none',borderRadius:T.radius.pill,background:viewMode===m?'var(--accent)':'transparent',color:viewMode===m?'var(--accent-text)':'var(--text-secondary)',fontWeight:viewMode===m?500:400,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s'}}>{m==='grid'?'Κάρτες':'Λίστα'}</button>
+            <ChipToggle key={m} on={viewMode===m} shape="seg" onClick={()=>setViewMode(m)}>{m==='grid'?'Κάρτες':'Λίστα'}</ChipToggle>
           ))}
         </div>
       </div>
@@ -392,6 +391,9 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
           <span style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{visIds.length} επιλεγμένα</span>
           <div style={{flex:1}}/>
           <BulkPicker label="Δωμάτιο" icon={<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M4 21V7l8-4v18M20 21V11l-8-4"/></svg>} options={ROOM_PRESETS} onPick={r=>{if(visIds.length){onBulkRoom(visIds,r);exitSelect()}}}/>
+          {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Είναι καταστροφική ενέργεια με περίγραμμα negative-border
+              και φόντο negative-dim· το Btn ξέρει τρεις ρόλους χωρίς τόνο κινδύνου, οπότε
+              η μετατροπή θα έσβηνε το κόκκινο από τη μαζική διαγραφή. */}
           <button onClick={async()=>{ /* Ρητό στιγμιότυπο ΠΡΙΝ την ερώτηση: ο διάλογος δεν παγώνει πια τη σελίδα, άρα φίλτρο και επιλογή μπορούν να αλλάξουν όσο περιμένουμε απάντηση. Διαγράφονται ακριβώς όσα ανακοίνωσε το μήνυμα. */
             const ids=visIds
             if(ids.length && await confirmDialog(`Διαγραφή ${ids.length} αντικειμένων;`,{tone:'negative'})){ onBulkDelete(ids); exitSelect() } }} disabled={visIds.length===0} style={{display:'inline-flex',alignItems:'center',gap:6,height:T.h.sm,padding:'0 12px',borderRadius:T.radius.pill,fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,cursor:visIds.length?'pointer':'not-allowed',border:'1px solid var(--negative-border)',background:visIds.length?'var(--negative-dim)':'var(--bg-elevated)',color:visIds.length?'var(--negative)':'var(--text-tertiary)'}}>
@@ -908,14 +910,14 @@ export default function TabInventory({propertyId,userId,profileType='individual'
               <Btn onClick={()=>{setEditingItem(null);setFormManual(true);setShowItemForm(true)}}>Με το χέρι</Btn>
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap',alignItems:'center'}}>
-              <button onClick={()=>setShowBulkImport(true)} style={quietAction}>
+              <Btn onClick={()=>setShowBulkImport(true)}>
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                 Μαζική εισαγωγή
-              </button>
-              <button onClick={insertStarterPack} disabled={cloning} style={{...quietAction,cursor:cloning?'wait':'pointer'}}>
+              </Btn>
+              <Btn onClick={insertStarterPack} disabled={cloning}>
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
                 {cloning?'Δημιουργία…':`Πρότυπο επιπλωμένου (${STARTER_PACK.length})`}
-              </button>
+              </Btn>
               {otherProps.length>0&&<BulkPicker label="Αντιγραφή από ακίνητο" icon={<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>} options={otherProps.map(p=>p.label)} onPick={label=>{const p=otherProps.find(x=>x.label===label);if(p)cloneFromProperty(p.id)}}/>}
             </div>
           </div>
@@ -947,10 +949,13 @@ export default function TabInventory({propertyId,userId,profileType='individual'
 
       {!loading && items.length>0 && page==='handover' && (
         <div style={{marginTop:8}}>
-          <button onClick={()=>setPage('main')} style={{display:'inline-flex',alignItems:'center',gap:6,height:T.h.sm,padding:'0 12px',marginBottom:16,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily:T.font.sans,cursor:'pointer'}}>
-            <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            Πίσω στα έπιπλα και τον εξοπλισμό
-          </button>
+          {/* Το κενό των 16 ήταν στο ίδιο το κουμπί· περνά στον γονέα, γιατί το Btn κρατά μόνο τη δική του γεωμετρία. */}
+          <div style={{marginBottom:16}}>
+            <Btn onClick={()=>setPage('main')}>
+              <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              Πίσω στα έπιπλα και τον εξοπλισμό
+            </Btn>
+          </div>
           <HandoverTab items={items} handovers={handovers} propertyId={propertyId} userId={userId} onSaved={fetchData} seed={handoverSeed}/>
         </div>
       )}

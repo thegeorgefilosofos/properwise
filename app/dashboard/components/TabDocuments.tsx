@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
 import * as billStore from '@/lib/data/bills';
-import { T, fd, fe, fn, Modal, Skeleton, EmptyState, InfoBanner, PageTitle, SecHdr, SelectBox, Chip, Btn, ExportButton, ABSENT_DATE, pressable, CloseButton, RuntimeImg } from '@/components/Theme';
+import { T, fd, fe, fn, Modal, Skeleton, EmptyState, InfoBanner, PageTitle, SecHdr, SelectBox, Chip, Btn, IconBtn, ChipToggle, LinkBtn, ExportButton, ABSENT_DATE, pressable, CloseButton, RuntimeImg } from '@/components/Theme';
 import { useCoarsePointer } from '@/components/useCoarsePointer';
 import { showTool } from '@/lib/ui/thresholds';
 import { fmtBytes } from '@/lib/core/bytes';
@@ -245,20 +245,15 @@ const IconDownload = ({ size = 14 }: { size?: number }) => (
 
 // Premium custom checkbox (ίδια γλώσσα με τις Επαφές): στρογγυλό τετράγωνο,
 // accent γέμισμα, tick, προσβάσιμο με πληκτρολόγιο.
-// Ουδέτερο κουμπί μαζικής ενέργειας που αποκαλύπτει accent —ή κόκκινο για διαγραφή— στο hover.
-function BulkBtn({ icon, label, onClick, disabled, danger }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; danger?: boolean }) {
-  const [hov, setHov] = useState(false);
-  const active = hov && !disabled;
-  return (
-    <button type="button" disabled={disabled} onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: T.radius.btn, fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
-        border: `1px solid ${active ? (danger ? 'var(--negative-border)' : 'var(--accent-border)') : 'var(--border-subtle)'}`,
-        background: active ? (danger ? 'var(--negative-soft)' : 'var(--accent-soft)') : 'var(--bg-elevated)',
-        color: active ? (danger ? 'var(--negative)' : 'var(--accent)') : 'var(--text-secondary)',
-        transition: `background 0.14s ${T.ease.standard}, border-color 0.14s ${T.ease.standard}, color 0.14s ${T.ease.standard}` }}>
-      {icon}{label}
-    </button>
-  );
+// Κουμπί μαζικής ενέργειας: εικονίδιο συν λεκτικό, με ήρεμο περίγραμμα.
+// ΓΙΑΤΙ secondary. Η όψη ηρεμίας ήταν ακριβώς αυτή — περίγραμμα σε ήσυχη
+// επιφάνεια — ενώ ο τόνος (accent ή κόκκινο για τη διαγραφή) ερχόταν μόνο από
+// χειροκίνητη αιώρηση, που δεν ήξερε ούτε από πληκτρολόγιο ούτε από αφή.
+// ΤΙ ΧΑΝΕΤΑΙ: το `Btn` δεν έχει καταστροφικό ρόλο, οπότε η «Διαγραφή» αιωρείται
+// πλέον ουδέτερη όπως οι διπλανές της. Το προειδοποιητικό βάρος το σηκώνουν το
+// λεκτικό της συν η επιβεβαίωση που ακολουθεί.
+function BulkBtn({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
+  return <Btn variant="secondary" onClick={onClick} disabled={disabled}>{icon}{label}</Btn>;
 }
 
 // ΤΟ `profileType` ΕΦΥΓΕ ΑΠΟ ΤΗΝ ΥΠΟΓΡΑΦΗ. Το ταμπλό το περνούσε σε κάθε
@@ -819,11 +814,7 @@ export default function TabDocuments({
             </span>
           )}
           {filtering && (
-            <button onClick={() => { setSel(clearAll()); setQuery(''); }}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12,
-                fontFamily: T.font.sans, color: 'var(--accent)', textDecoration: 'underline' }}>
-              Καθαρισμός φίλτρων
-            </button>
+            <LinkBtn onClick={() => { setSel(clearAll()); setQuery(''); }}>Καθαρισμός φίλτρων</LinkBtn>
           )}
         </div>
 
@@ -842,7 +833,9 @@ export default function TabDocuments({
               απαριθμεί τι δέχεται το πεδίο. */}
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Όνομα ή πάροχος" aria-label="Αναζήτηση στο αρχείο, με όνομα, πάροχο ή έτος"
             style={{ width: '100%', height: T.h.lg, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '0 34px 0 34px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans, boxSizing: 'border-box' }}/>
-          {query && <button onClick={() => setQuery('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 'var(--fs-base)' }}><IconX/></button>}
+          {/* Η θέση μένει εδώ, στο περιτύλιγμα: το κοινό εικονοκούμπι δίνει το
+              σχήμα του στόχου αφής, όχι απόλυτη τοποθέτηση. */}
+          {query && <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}><IconBtn label="Καθαρισμός αναζήτησης" onClick={() => setQuery('')}><IconX/></IconBtn></span>}
         </div>
         )}
 
@@ -855,10 +848,9 @@ export default function TabDocuments({
         <div style={{ display: 'flex', gap: 0, height: T.h.lg, alignItems: 'stretch', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, overflow: 'hidden', boxSizing: 'border-box' }}>
           {([['grid', 'Πλέγμα', <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>],
              ['list', 'Λίστα', <><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></>]] as const).map(([k, title, ic]) => (
-            <button key={k} onClick={() => setView(k)} title={title}
-              style={{ width: 38, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', background: view === k ? 'var(--accent)' : 'transparent', color: view === k ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
+            <ChipToggle key={k} on={view === k} onClick={() => setView(k)} title={title} shape="seg">
               <svg aria-hidden="true" {...S} width={15} height={15}>{ic}</svg>
-            </button>
+            </ChipToggle>
           ))}
         </div>
         )}
@@ -883,19 +875,8 @@ export default function TabDocuments({
               </span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {options.map(o => (
-                  <button key={o.value} onClick={() => setSel(s => toggleValue(s, key, o.value))}
-                    aria-pressed={o.selected}
-                    title={o.selected ? `Αφαίρεση φίλτρου «${o.value}»` : `${o.count} ${o.count === 1 ? 'αρχείο' : 'αρχεία'}`}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6, height: T.h.sm, padding: '0 12px',
-                      borderRadius: T.radius.pill, cursor: 'pointer', fontFamily: T.font.sans,
-                      fontSize: 12, fontWeight: o.selected ? 700 : 500,
-                      border: `1px solid ${o.selected ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                      background: o.selected ? 'var(--accent)' : 'var(--bg-elevated)',
-                      color: o.selected ? 'var(--on-tone)' : 'var(--text-secondary)',
-                      opacity: !o.selected && o.count === 0 ? 0.45 : 1,
-                      transition: `background .15s ${T.ease.standard}, border-color .15s ${T.ease.standard}`,
-                    }}>
+                  <ChipToggle key={o.value} on={o.selected} onClick={() => setSel(s => toggleValue(s, key, o.value))}
+                    title={o.selected ? `Αφαίρεση φίλτρου «${o.value}»` : `${o.count} ${o.count === 1 ? 'αρχείο' : 'αρχεία'}`}>
                     {o.value}
                     <span style={{ fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)',
                       // Η ΔΙΑΦΑΝΕΙΑ ΕΡΙΧΝΕ ΤΟΝ ΑΡΙΘΜΟ ΚΑΤΩ ΑΠΟ ΤΟ ΠΡΟΤΥΠΟ. Μετρημένο
@@ -904,7 +885,7 @@ export default function TabDocuments({
                       // φάκελος — και ήταν το λιγότερο ευανάγνωστο πράγμα στη σειρά.
                       // Το βάρος το κάνει πλέον το χρώμα, όχι το ξεθώριασμα.
                       color: o.selected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{o.count}</span>
-                  </button>
+                  </ChipToggle>
                 ))}
               </div>
             </div>
@@ -920,9 +901,10 @@ export default function TabDocuments({
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <BulkBtn icon={<IconDownload/>} label="Λήψη" onClick={bulkDownload} disabled={!selItems.some(i => i.url)}/>
             <BulkBtn icon={<IconMoveFolder/>} label="Διόρθωση αναγνώρισης" onClick={() => selDocs.length && setFixItems(selDocs)} disabled={!selDocs.length}/>
-            <BulkBtn icon={<IconTrash/>} label="Διαγραφή" onClick={bulkDelete} disabled={!selRaw.length} danger/>
+            <BulkBtn icon={<IconTrash/>} label="Διαγραφή" onClick={bulkDelete} disabled={!selRaw.length}/>
           </div>
-          <button onClick={() => setSelected(new Set())} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: T.radius.btn, border: 'none', background: 'transparent', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: T.font.sans }}><IconX/>Ακύρωση</button>
+          {/* Το `marginLeft: auto` είναι θέση μέσα στη μπάρα, όχι όψη κουμπιού: μένει στο περιτύλιγμα. */}
+          <div style={{ marginLeft: 'auto' }}><Btn variant="ghost" onClick={() => setSelected(new Set())}><IconX/>Ακύρωση</Btn></div>
         </div>
       )}
 
@@ -1098,6 +1080,10 @@ function FileInner({ items, a }: { items: Item[]; a: FileActions }) {
 }
 
 // Στρογγυλό κουμπί ενέργειας πάνω από thumbnail (grid) — σκουρόχρωμο για αντίθεση.
+// ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟ. Το κοινό `IconBtn` ξέρει μόνο διάφανο φόντο με τριτεύον
+// μελάνι — πάνω σε φωτογραφία το γκρι εξαφανίζεται. Εδώ το φόντο είναι σκίαστρο
+// με θόλωμα. Το μελάνι είναι `--on-media`. Τόνος «πάνω σε μέσο» δεν υπάρχει στο
+// πρωτογενές, οπότε η μετατροπή θα έσβηνε το κουμπί μέσα στην εικόνα.
 const OverlayBtn = ({ title, onClick, children }: { title: string; onClick: (e: React.MouseEvent) => void; children: React.ReactNode }) => (
   <button onClick={onClick} title={title} className="po-box"
     style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', background: T.scrim, color: 'var(--on-media)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)' }}>{children}</button>
@@ -1152,9 +1138,10 @@ function FileCard({ i, a }: { i: Item; a: FileActions }) {
 }
 
 // Μικρό κουμπί ενέργειας σε γραμμή λίστας (εμφανίζεται στο hover).
+// Το `title` γίνεται ΚΑΙ aria-label: πριν, ο αναγνώστης οθόνης άκουγε «κουμπί»
+// και τίποτε άλλο σε τρεις ενέργειες ανά γραμμή.
 const RowBtn = ({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) => (
-  <button onClick={onClick} title={title} className="po-box"
-    style={{ width: 28, height: 28, borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{children}</button>
+  <IconBtn label={title} title={title} onClick={onClick}>{children}</IconBtn>
 );
 
 function FileRow({ i, a }: { i: Item; a: FileActions }) {
@@ -1299,13 +1286,16 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
             {v.blocking.length ? 'Χρειάζεται συμπλήρωση' : 'Έλεγξε τα στοιχεία'}
           </span>
         )}
+        {/* ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟ ΓΙΑ ΤΗ ΓΕΩΜΕΤΡΙΑ ΤΗΣ ΣΕΙΡΑΣ. Είναι ~22 ψηλό (fs-xs,
+            γέμισμα 4×9) μέσα σε πυκνή κεφαλίδα γραμμής ανεβάσματος: το ελάχιστο
+            ύψος 36 του `Btn` —44 στο δάχτυλο— θα ψήλωνε κάθε γραμμή της λίστας. */}
         {d.status === 'ready' && (
           <button onClick={onToggle} style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight: 600, padding: '4px 9px', cursor: 'pointer', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
             {d.open ? 'Σύμπτυξη' : 'Διόρθωση'}
           </button>
         )}
         {(d.status === 'ready' || d.status === 'failed' || d.status === 'error') && (
-          <button onClick={onRemove} title="Αφαίρεση από τη λίστα" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX/></button>
+          <IconBtn label="Αφαίρεση από τη λίστα" title="Αφαίρεση από τη λίστα" onClick={onRemove}><IconX/></IconBtn>
         )}
       </div>
 

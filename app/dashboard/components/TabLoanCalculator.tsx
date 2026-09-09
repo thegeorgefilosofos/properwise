@@ -6,7 +6,7 @@ import { downloadTableXlsx } from './exportCsv'
 import { fp, fe } from '@/lib/core/format'
 import DocChecklist from './DocChecklist'
 import { reportHead, reportHeader, reportSection, reportRow, reportKpi, reportDisclaimer, openReport, rEur, rPct, rEsc } from './reportPdf'
-import { T, Badge, ABSENT, TT, fixedCols, KPIGrid, Tile, widestOf, Stat } from '@/components/Theme'
+import { T, Badge, ABSENT, TT, fixedCols, KPIGrid, Tile, widestOf, Stat, Btn, IconBtn, ChipToggle, LinkBtn } from '@/components/Theme'
 import { affordability, rentVsBuy } from '@/lib/loans/affordability'
 import { AADE_HOME } from '@/lib/tax/aade'
 import { createClient } from '@/lib/supabase/client'
@@ -973,10 +973,10 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           {PRESETS.map(p=>{
             const on = activePreset===p.id
             return (
-              <button key={p.id} onClick={()=>applyPreset(p)} title={p.desc} style={{display:'inline-flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 14px',borderRadius: T.radius.modal,cursor:'pointer',background:on?'var(--accent-dim)':'var(--bg-surface)',border:`1px solid ${on?'var(--border-accent)':'var(--border-subtle)'}`,color:on?'var(--accent)':'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s'}}>
+              <ChipToggle key={p.id} on={on} onClick={()=>applyPreset(p)} title={p.desc}>
                 {on&&<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>}
                 {p.label}
-              </button>
+              </ChipToggle>
             )
           })}
         </div>
@@ -1113,16 +1113,18 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           τελευταία σειρά κρεμόταν αριστερά με τρύπα δεξιά. Τώρα κάθε γραμμή
           απλώνει τα δικά της κουμπιά ώστε να τη γεμίσει. */}
       <div className="po-ctlrow">
-        {[
-          {label:saving?'Αποθήκευση…':'Αποθήκευση δανείου',fn:handleSave,disabled:saving,color:'var(--accent)',bg:'var(--accent-dim)',border:'var(--border-accent)'},
-          {label:'Δόσεις στο Ημερολόγιο',fn:async()=>{await onSaveToCalendar(monthly,Y,startDate,bankName);notifyOk('Οι δόσεις προστέθηκαν στο ημερολόγιο')},disabled:false,color:'var(--text-secondary)',bg:'var(--bg-elevated)',border:'var(--border-subtle)'},
-          {label:'Δόση στις Δαπάνες',fn:async()=>{await onSaveToExpenses(monthly,bankName);notifyOk('Η δόση προστέθηκε στις δαπάνες')},disabled:false,color:'var(--text-secondary)',bg:'var(--bg-elevated)',border:'var(--border-subtle)'},
-          {label:'+ Προσθήκη σεναρίου',fn:addScen,disabled:false,color:'var(--text-secondary)',bg:'var(--bg-elevated)',border:'var(--border-subtle)'},
-          {label:'Επαναφορά',fn:resetAll,disabled:false,color:'var(--text-tertiary)',bg:'transparent',border:'var(--border-subtle)'},
-        ].map(a=>(
-          <button key={a.label} onClick={a.fn} disabled={a.disabled} style={{display:'flex',alignItems:'center',gap: 8,padding:'6px 18px',minHeight:T.h.md,background:a.bg,border:`1px solid ${a.border}`,borderRadius: T.radius.modal,cursor:a.disabled?'wait':'pointer',color:a.color,fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s'}}>
+        {/* Το χρώμα του πίνακα έγινε ρόλος: η αποθήκευση είναι η κύρια ενέργεια
+            της κάρτας, οι άλλες τέσσερις έχουν περίγραμμα άρα δευτερεύουσες. */}
+        {([
+          {label:saving?'Αποθήκευση…':'Αποθήκευση δανείου',fn:handleSave,disabled:saving,variant:'primary'},
+          {label:'Δόσεις στο Ημερολόγιο',fn:async()=>{await onSaveToCalendar(monthly,Y,startDate,bankName);notifyOk('Οι δόσεις προστέθηκαν στο ημερολόγιο')},disabled:false,variant:'secondary'},
+          {label:'Δόση στις Δαπάνες',fn:async()=>{await onSaveToExpenses(monthly,bankName);notifyOk('Η δόση προστέθηκε στις δαπάνες')},disabled:false,variant:'secondary'},
+          {label:'+ Προσθήκη σεναρίου',fn:addScen,disabled:false,variant:'secondary'},
+          {label:'Επαναφορά',fn:resetAll,disabled:false,variant:'secondary'},
+        ] as const).map(a=>(
+          <Btn key={a.label} variant={a.variant} onClick={a.fn} disabled={a.disabled}>
             {a.label}
-          </button>
+          </Btn>
         ))}
       </div>
 
@@ -1153,13 +1155,13 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                       <td>
                         <div style={{display:'flex',gap: 4,alignItems:'center'}}>
                           {isEd
-                            ?<button onClick={()=>setEditingId(null)} aria-label="Αποθήκευση σεναρίου" title="Αποθήκευση" style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',display:'flex',padding:8,margin:-4}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></button>
+                            ?<IconBtn onClick={()=>setEditingId(null)} label="Αποθήκευση σεναρίου" title="Αποθήκευση" tone="accent" style={{margin:-4}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></IconBtn>
                             :<>
-                              <button onClick={()=>setEditingId(s.id)} aria-label="Επεξεργασία σεναρίου" title="Επεξεργασία" style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-secondary)',display:'flex',padding:8,margin:-4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                              <IconBtn onClick={()=>setEditingId(s.id)} label="Επεξεργασία σεναρίου" title="Επεξεργασία" style={{margin:-4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></IconBtn>
                               <button onClick={()=>applyScen(s)} style={{background:'var(--accent-dim)',border:'1px solid var(--border-accent)',borderRadius: T.radius.chip,cursor:'pointer',color:'var(--accent)',display:'flex',alignItems:'center',gap: 4,padding:'3px 7px',fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fontWeight:500}}>Εφαρμογή</button>
                             </>
                           }
-                          <button onClick={()=>delScen(s.id)} aria-label="Διαγραφή σεναρίου" title="Διαγραφή" style={{background:'none',border:'none',cursor:'pointer',color:'var(--border-default)',display:'flex',padding:8,margin:-4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>
+                          <IconBtn onClick={()=>delScen(s.id)} label="Διαγραφή σεναρίου" title="Διαγραφή" style={{margin:-4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></IconBtn>
                         </div>
                       </td>
                     </tr>
@@ -1419,7 +1421,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         <div style={{marginBottom:6,maxWidth:280}}><NumberInput label="Μηνιαίο ενοίκιο αντίστοιχου ακινήτου" value={rentShown} onChange={v=>{setMonthlyRent(v);setRentTouched(true)}} suffix="€"/></div>
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginBottom:12,lineHeight:1.55,fontFamily: T.font.sans}}>
           {rentTouched ? 'Δική σου υπόθεση.' : rentAssumptionText}
-          {rentTouched && <> <button type="button" onClick={()=>{setMonthlyRent('');setRentTouched(false)}} style={{border:'none',background:'none',padding:0,color:'var(--accent)',fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fontWeight:600,cursor:'pointer',textDecoration:'underline'}}>Επαναφορά στο τεκμηριωμένο ({fmtEur(rentRef.monthly)})</button></>}
+          {rentTouched && <> <LinkBtn onClick={()=>{setMonthlyRent('');setRentTouched(false)}}>Επαναφορά στο τεκμηριωμένο ({fmtEur(rentRef.monthly)})</LinkBtn></>}
         </p>
         {/* Ενα μέγεθος για όλη τη σειρά: το μακρύτερο ποσό δίνει τον ρυθμό.
 
@@ -1583,18 +1585,18 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
       {lens==='table' && (<>
       <Section title="Πίνακας αποπληρωμής" sub={`${Y*12} δόσεις αναλυτικά`} defaultOpen>
         <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
-          <button onClick={exportAmortPdf} style={{display:'inline-flex',alignItems:'center',gap: 8,height:T.h.md,padding:'0 14px',borderRadius: T.radius.modal,border:'1px solid var(--border-accent)',background:'var(--accent-dim)',color:'var(--accent)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,cursor:'pointer'}}>
+          <Btn variant="primary" onClick={exportAmortPdf}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
             Εκτύπωση / PDF
-          </button>
-          <button onClick={officialAmort} disabled={genOfficial} title="Επίσημο true-PDF με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς" style={{display:'inline-flex',alignItems:'center',gap: 8,height:T.h.md,padding:'0 14px',borderRadius: T.radius.modal,border:'1px solid var(--border-accent)',background:'var(--accent-dim)',color:'var(--accent)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,cursor:genOfficial?'wait':'pointer',opacity:genOfficial?0.6:1}}>
+          </Btn>
+          <Btn variant="primary" onClick={officialAmort} disabled={genOfficial} title="Επίσημο true-PDF με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς">
             <ShieldCheck size={15}/>
             {genOfficial?'Δημιουργία…':'Επίσημο PDF'}
-          </button>
-          <button onClick={exportAmortCsv} style={{display:'inline-flex',alignItems:'center',gap: 8,height:T.h.md,padding:'0 14px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',background:'var(--bg-surface)',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,cursor:'pointer'}}>
+          </Btn>
+          <Btn variant="secondary" onClick={exportAmortCsv}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Λήψη για Excel
-          </button>
+          </Btn>
         </div>
         {/* Κύλιση με κολλημένη κεφαλίδα· ομοιόμορφοι λευκοί αριθμοί, γαλάζιο μόνο στη γραμμή που εξετάζεις */}
         {/* Ο ΤΕΛΕΥΤΑΙΟΣ ΧΕΙΡΟΠΟΙΗΤΟΣ ΠΙΝΑΚΑΣ ΤΟΥ ΤΑΜΠΛΟ. Εγραφε τη δική του

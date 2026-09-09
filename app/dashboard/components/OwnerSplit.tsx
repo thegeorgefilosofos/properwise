@@ -11,7 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import * as properties from '@/lib/data/properties';
 import * as rentStore from '@/lib/data/rent';
 import * as expenses from '@/lib/data/expenses';
-import { T, TT, Btn, Badge, EmptyState, Modal, Spinner, ABSENT } from '@/components/Theme';
+import { T, TT, Btn, IconBtn, Badge, EmptyState, Modal, Spinner, ABSENT } from '@/components/Theme';
 import { acceptNumeric, PCT_MAX } from '@/lib/core/numInput';
 import { Building2 } from 'lucide-react';
 import { InfoHint } from './InfoHint';
@@ -292,13 +292,19 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
                   <input aria-label="Ποσοστό συνιδιοκτησίας" value={r.pct} onChange={e => { const v = acceptNumeric(e.target.value, PCT_MAX); if (v !== null) setRow(i, 'pct', v); }} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="" style={{ ...field, width: '100%', paddingRight: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} inputMode="decimal" />
                   <span style={{ position: 'absolute', right: 13, top: 0, height: T.h.lg, display: 'flex', alignItems: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--fs-base)', pointerEvents: 'none' }}>%</span>
                 </div>
-                <button onClick={() => delRow(i)} aria-label="Αφαίρεση ιδιοκτήτη" title="Αφαίρεση"
-                  style={{ width: 26, flexShrink: 0, background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, visibility: rows.length > 1 && hoverRow === i ? 'visible' : 'hidden', transition: 'opacity 0.14s' }}
-                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--negative)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; }}>×</button>
+                {/* Ο τόνος `danger` κρατά το κόκκινο που έδιναν οι δύο χειριστές
+                    ποντικιού — τώρα από την `.po-ico`, που ξέρει και εστίαση με
+                    πληκτρολόγιο και οθόνη αφής. Το «×» μένει 18 όπως ήταν· μεγαλώνει
+                    μόνο το κουτί γύρω του, που είναι ο στόχος αφής. */}
+                <IconBtn onClick={() => delRow(i)} label="Αφαίρεση ιδιοκτήτη" title="Αφαίρεση" tone="danger"
+                  style={{ fontSize: 18, lineHeight: 1, visibility: rows.length > 1 && hoverRow === i ? 'visible' : 'hidden' }}>×</IconBtn>
               </div>
             ))}
           </div>
-          <button onClick={addRow} style={{ ...TT.caption, marginTop: 10, background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontWeight: 700 }}>+ Προσθήκη ιδιοκτήτη</button>
+          {/* Το περιθώριο μένει στο δοχείο: το κουμπί δεν κουβαλά δικά του κενά. */}
+          <div style={{ marginTop: 10 }}>
+            <Btn variant="ghost" onClick={addRow}>+ Προσθήκη ιδιοκτήτη</Btn>
+          </div>
         </div>
 
         {/* Αμοιβή διαχείρισης */}

@@ -5,7 +5,7 @@ import { SITE } from '@/lib/core/site';
 import { downloadTableXlsx, csvDate } from './exportCsv';
 import { saved } from '@/components/dbWrite';
 import { drawQrToCanvas } from '@/lib/qr';
-import { T, TT, Badge, PageTitle, ExportButton, EmptyState, Modal, SkeletonKPIs, fn, fixedCols, pageShell, Bar } from '@/components/Theme';
+import { T, TT, Badge, Btn, PageTitle, ExportButton, EmptyState, Modal, SkeletonKPIs, fn, fixedCols, pageShell, Bar } from '@/components/Theme';
 import { PLANS, TRIAL_DAYS, type PlanId } from '@/lib/billing/plans';
 import { UserPlus } from 'lucide-react';
 import {
@@ -73,23 +73,16 @@ const card: React.CSSProperties = {
   borderRadius: T.radius.card, boxShadow: 'var(--highlight-inset), var(--elev-1)',
 };
 const PAD = T.sp.xl;
-// Κοινό στυλ «chip» για τα κανάλια κοινοποίησης (ενιαία εμφάνιση).
-// Το ύψος έρχεται από την κοινή κλίμακα (T.h.md): τα chips κοινοποίησης κάθονται
-// στην ίδια γραμμή με κουμπιά άλλων αρχείων και κάθε literal εδώ τα ξεσυγχρόνιζε.
 // ═══ ΕΠΤΑ ΤΡΟΠΟΙ ΚΟΙΝΟΠΟΙΗΣΗΣ, ΜΙΑ ΣΕΙΡΑ ═══════════════════════════════════
 // Μετρημένο στα 1.440: τα επτά πλακίδια ζητούσαν 1.019 εικονοστοιχεία μέσα σε
 // 846, οπότε η «Κοινοποίηση» έπεφτε μόνη της σε δεύτερη σειρά — ένα κουμπί
 // κάτω αριστερά, χωρίς λόγο να ξεχωρίζει από τα άλλα έξι.
 //
-// ΤΑ 173 ΠΟΥ ΕΛΕΙΠΑΝ ΒΓΗΚΑΝ ΑΠΟ ΤΙΣ ΛΕΞΕΙΣ, ΟΧΙ ΑΠΟ ΤΟΝ ΣΤΟΧΟ ΑΦΗΣ. Το ύψος
-// μένει `T.h.md`, δηλαδή 44 με δάχτυλο. Το γέμισμα κατεβαίνει δύο και το κενό
-// ένα· τα υπόλοιπα τα έδωσαν δύο ετικέτες που ήταν διπλάσιες από κάθε αδελφή
-// τους σε σειρά όπου όλες οι άλλες είναι μία λέξη.
-const CHIP: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: T.h.md, padding: '4px 12px',
-  background: 'transparent', border: '1px solid var(--border-default)', borderRadius: T.radius.pill,
-  fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textDecoration: 'none',
-};
+// ΤΟ ΤΟΠΙΚΟ `CHIP` ΕΦΥΓΕ. Ηταν ένα ακόμη χειροποίητο κουμπί με δικό του ύψος,
+// δική του ακτίνα και δική του αιώρηση σε κλάση `.ref-chip`. Τα επτά κανάλια
+// είναι δευτερεύουσες ενέργειες και μόνο: `Btn variant="secondary"`, με τα
+// τέσσερα πρώτα να είναι πραγματικοί σύνδεσμοι μέσω `href`. Το τύλιγμα της
+// σειράς το κρατά το `.po-ctlrow`, που μοιράζει το πλάτος από το περιεχόμενο.
 // Επικεφαλίδα ενότητας: πραγματικό <h2> (σημασιολογία + πλοήγηση αναγνώστη οθόνης).
 function SectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return <h2 style={{ ...TT.label, margin: '0 0 12px', ...style }}>{children}</h2>;
@@ -244,7 +237,7 @@ function Milestone({ title, icon, count, target, unit, kind, rewardTitle, claimS
           <div style={{ marginTop: 12 }}>
             {st === 'done'
               ? <span role="status" style={{ ...TT.bodySm, color: 'var(--positive)', fontWeight: 600 }}>Το δώρο σου καταχωρήθηκε. Πιστώνεται στη συνδρομή σου.</span>
-              : <button onClick={() => onClaim(kind)} disabled={st === 'saving'} className="ref-cta" style={{ height: T.h.md, padding: '0 16px', background: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: T.radius.pill, fontSize: 12, fontWeight: 700, fontFamily: T.font.sans, cursor: st === 'saving' ? 'default' : 'pointer', opacity: st === 'saving' ? 0.6 : 1 }}>{st === 'saving' ? 'Καταχώρηση…' : 'Πάρ’ το δώρο σου'}</button>}
+              : <Btn variant="primary" onClick={() => onClaim(kind)} disabled={st === 'saving'}>{st === 'saving' ? 'Καταχώρηση…' : 'Πάρ’ το δώρο σου'}</Btn>}
             {st === 'error' && <div role="alert" style={{ ...TT.caption, color: 'var(--warning)', marginTop: 8 }}>Το δώρο δεν καταχωρήθηκε. Δοκίμασε ξανά.</div>}
           </div>
         )}
@@ -432,15 +425,10 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
   const youBase = individualReferrerReward(referrerPaying, 'free');   // τι κερδίζεις για δωρεάν φίλο
   const styleBlock = (
     <style>{`
-      .ref-chip { transition: border-color .16s ${T.ease.standard}, background .16s, color .16s, transform .16s; }
-      .ref-chip:hover { border-color: var(--accent-border); background: var(--accent-dim); color: var(--accent); transform: translateY(-1px); }
-      .ref-chip:hover svg { stroke: var(--accent); }
       .ref-step { transition: transform .18s ${T.ease.standard}, box-shadow .18s, border-color .18s; }
       .ref-step:hover { transform: translateY(-2px); box-shadow: var(--highlight-inset-strong), var(--elev-3); border-color: var(--accent-border); }
       .ref-step:hover .ref-step-ic { color: var(--accent); }
       .ref-step:hover .ref-step-n { background: var(--accent-dim); color: var(--accent); }
-      .ref-cta { transition: filter .15s, transform .15s; }
-      .ref-cta:hover { filter: brightness(1.06); transform: translateY(-1px); }
       .ref-linkbox { transition: border-color .16s ${T.ease.standard}; }
       .ref-linkbox:hover { border-color: var(--accent-border); }
       .ref-lift { transition: transform .18s ${T.ease.standard}, box-shadow .18s, border-color .18s; }
@@ -450,7 +438,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
       .ref-hover-accent:hover .ref-kpi-hover { color: var(--accent); }
       @keyframes ref-rise { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
       .ref-rise { animation: ref-rise .5s ${T.ease.decel} both; }
-      @media (prefers-reduced-motion: reduce) { .ref-chip:hover, .ref-step:hover, .ref-cta:hover, .ref-lift:hover { transform: none; } .ref-rise { animation: none; } }
+      @media (prefers-reduced-motion: reduce) { .ref-step:hover, .ref-lift:hover { transform: none; } .ref-rise { animation: none; } }
     `}</style>
   );
 
@@ -468,7 +456,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
         ariaLabel="Κωδικός QR πρόσκλησης"
         title="Σάρωσε για να προσκαλέσεις"
         subtitle="Δείξε τον κωδικό ώστε να ανοίξει τον σύνδεσμό σου από το κινητό."
-        footer={<button onClick={() => setQrOpen(false)} className="ref-cta" style={{ height: T.h.lg, padding: '0 22px', background: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: T.radius.pill, fontSize: 'var(--fs-base)', fontWeight: 700, fontFamily: T.font.sans, cursor: 'pointer' }}>Έτοιμο</button>}>
+        footer={<Btn variant="primary" size="lg" onClick={() => setQrOpen(false)}>Έτοιμο</Btn>}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ background: 'var(--qr-paper)', padding: 14, borderRadius: T.radius.inner, display: 'inline-block', boxShadow: 'var(--well-inset)' }}>
             <canvas ref={qrCanvasRef} role="img" aria-label="Κωδικός QR πρόσκλησης" style={{ display: 'block' }} />
@@ -531,13 +519,13 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
             <Ic d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1|M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" s={15} c="var(--text-tertiary)" />
             <span style={{ ...TT.body, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{link}</span>
           </div>
-          {/* Το 44 μένει σκόπιμα εκτός κλίμακας (T.h.lg = 40): είναι το ελάχιστο μέγεθος
-              στόχου αφής και ζευγαρώνει με το minHeight:44 του πλαισίου συνδέσμου δίπλα.
-              Αν πέσει στα 40, τα δύο στοιχεία της ίδιας γραμμής παύουν να ευθυγραμμίζονται. */}
-          <button onClick={copy} className="ref-cta" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.lg, padding: '0 20px', background: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: T.radius.inner, fontSize: 'var(--fs-base)', fontWeight: 700, fontFamily: T.font.sans, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          {/* Το πλαίσιο του συνδέσμου δίπλα έχει minHeight 44 και ακτίνα T.radius.inner:
+              το `size="lg"` δίνει το ίδιο ύψος πεδίου και η ακτίνα του κουμπιού
+              (T.radius.btn) είναι η ίδια τιμή, οπότε τα δύο εξακολουθούν να ζευγαρώνουν. */}
+          <Btn variant="primary" size="lg" onClick={copy}>
             <Ic d={copied ? 'M20 6 9 17l-5-5' : 'M8 4h10a2 2 0 0 1 2 2v10|M4 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z'} s={15} />
             {copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}
-          </button>
+          </Btn>
         </div>
         <span aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{copied ? 'Ο σύνδεσμος αντιγράφηκε' : msgCopied ? 'Το μήνυμα αντιγράφηκε' : ''}</span>
         {/* ΕΠΤΑ ΚΑΝΑΛΙΑ ΠΟΥ ΕΒΓΑΙΝΑΝ 5+2 ΚΑΙ 6+1 ΣΕ ΤΑΜΠΛΕΤΑ. Το τύλιγμα άφηνε τα
@@ -545,20 +533,23 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
             κατηγορίας — ενώ είναι επτά ισότιμοι τρόποι να στείλεις τον ίδιο
             σύνδεσμο. Κάθε γραμμή απλώνεται τώρα ολόκληρη. */}
         <div className="po-ctlrow" style={{ marginTop: 12 }}>
+          {/* Και τα επτά είναι το ΙΔΙΟ πράγμα: ένας τρόπος να φύγει ο ίδιος σύνδεσμος.
+              Δευτερεύον και όχι πλακίδιο επιλογής — καμία τους δεν κρατά κατάσταση.
+              Τα τέσσερα πρώτα είναι προορισμοί, οπότε παίρνουν `href` και μένουν <a>. */}
           {shares.map(s => (
-            <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="ref-chip" style={CHIP}>
+            <Btn key={s.label} variant="secondary" href={s.href} newTab>
               <Ic d={s.d} s={15} c="var(--text-tertiary)" />{s.label}
-            </a>
+            </Btn>
           ))}
-          <button onClick={copyMsg} className="ref-chip" style={{ ...CHIP, cursor: 'pointer', fontFamily: T.font.sans }}>
+          <Btn variant="secondary" onClick={copyMsg}>
             <Ic d={msgCopied ? 'M20 6 9 17l-5-5' : 'M8 4h10a2 2 0 0 1 2 2v10|M4 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z'} s={15} c="var(--text-tertiary)" />{msgCopied ? 'Αντιγράφηκε' : 'Μήνυμα'}
-          </button>
-          <button onClick={() => setQrOpen(true)} className="ref-chip" style={{ ...CHIP, cursor: 'pointer', fontFamily: T.font.sans }}>
+          </Btn>
+          <Btn variant="secondary" onClick={() => setQrOpen(true)}>
             <Ic d="M3 3h7v7H3z|M14 3h7v7h-7z|M3 14h7v7H3z|M14 14h3v3|M20 20h1|M20 14h1|M14 20h1" s={15} c="var(--text-tertiary)" />QR
-          </button>
-          <button onClick={nativeShare} className="ref-chip" style={{ ...CHIP, cursor: 'pointer', fontFamily: T.font.sans }}>
+          </Btn>
+          <Btn variant="secondary" onClick={nativeShare}>
             <Ic d="M4 12v8h16v-8|M12 16V4|M8 8l4-4 4 4" s={15} c="var(--text-tertiary)" />Κοινοποίηση
-          </button>
+          </Btn>
         </div>
       </div>
 
@@ -597,9 +588,13 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
           {/* Ήταν «Κάρτα προόδου»: ένα PNG 1080×1350 με νόμισμα, ακτίνες και τέσσερα
               καρφωμένα χρώματα εκτός του σχεδιαστικού συστήματος. Στη θέση του, η
               ενέργεια που όντως φέρνει την επόμενη ανταμοιβή. */}
-          <button onClick={async () => { await nativeShare(); copy(); }} className="ref-cta" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.lg, padding: '0 18px', background: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: T.radius.pill, fontSize: 'var(--fs-base)', fontWeight: 700, fontFamily: T.font.sans, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <Ic d="M4 12v8h16v-8|M12 16V4|M8 8l4-4 4 4" s={15} />Στείλε άλλη πρόσκληση
-          </button>
+          {/* Το `marginLeft: 'auto'` είναι θέση μέσα στη σειρά, όχι όψη του κουμπιού:
+              μένει στο περιτύλιγμα. */}
+          <div style={{ marginLeft: 'auto' }}>
+            <Btn variant="primary" size="lg" onClick={async () => { await nativeShare(); copy(); }}>
+              <Ic d="M4 12v8h16v-8|M12 16V4|M8 8l4-4 4 4" s={15} />Στείλε άλλη πρόσκληση
+            </Btn>
+          </div>
         </div>
       )}
 

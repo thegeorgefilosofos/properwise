@@ -226,6 +226,11 @@ export function ServicesEditor({ value, onChange }: { value: ServiceLine[] | nul
             <TextInput label="Περιγραφή" value={l.name} onChange={v => upd(i, { name: v })} placeholder="Συντήρηση καυστήρα" />
             <NumberInput label="Κόστος τον μήνα" value={l.cost ? String(l.cost) : ''} onChange={v => upd(i, { cost: parseFloat(v) || 0 })} suffix="€" />
             <UIServiceBySelect label="Ποιος πληρώνει" value={l.payer} onChange={v => upd(i, { payer: v })} />
+            {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `s.btnDng` είναι γεωμετρικά δευτερεύον κουμπί
+                αλλά το μελάνι του είναι ο κίνδυνος: το `Btn` έχει τρεις ρόλους
+                και κανένας τους δεν είναι ο κόκκινος, οπότε η μετατροπή θα έσβηνε
+                τη μόνη ένδειξη ότι η γραμμή χάνεται. Το ύψος T.h.lg είναι εδώ για
+                να ζυγίσει με τα πεδία του πλέγματος δίπλα του. */}
             <button type="button" onClick={() => del(i)} title="Αφαίρεση γραμμής"
               style={{ ...s.btnDng, height:T.h.lg, whiteSpace:'nowrap' as const }}>Αφαίρεση</button>
           </div>

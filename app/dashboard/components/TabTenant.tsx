@@ -47,6 +47,8 @@ import {
   Skeleton,
   SkeletonKPIs,
   ExportButton,
+  IconBtn,
+  ChipToggle,
   fixedCols,
   type KPIItem,
   TT,
@@ -573,7 +575,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     <div style={{ fontFamily:T.font.sans, color:'var(--text-primary)' }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-      {error&&<div style={{ background:'var(--negative-dim)', border:'1px solid var(--negative-border)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.inner, padding:'11px 18px', marginBottom:14, color:'var(--negative)', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:500, display:'flex', justifyContent:'space-between', alignItems:'center' }}><span>{error}</span><button onClick={()=>setError(null)} style={{ background:'none', border:'none', color:'var(--negative)', cursor:'pointer', fontSize:18, lineHeight:1, padding:0 }}>×</button></div>}
+      {error&&<div style={{ background:'var(--negative-dim)', border:'1px solid var(--negative-border)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.inner, padding:'11px 18px', marginBottom:14, color:'var(--negative)', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:500, display:'flex', justifyContent:'space-between', alignItems:'center' }}><span>{error}</span><IconBtn label="Κλείσιμο μηνύματος σφάλματος" tone="danger" onClick={()=>setError(null)}><span style={{ fontSize:18, lineHeight:1 }}>×</span></IconBtn></div>}
 
       <PageTitle title="Ενοικιαστής" sub="Τρέχουσα και προηγούμενες μισθώσεις, με πλήρη φάκελο ανά ενοικιαστή"
         right={tenants.length>0?<>
@@ -602,7 +604,9 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
               τρία διπλανά κουμπιά που φιλτράρουν ΛΙΣΤΑ. Το «Τρέχων» είναι σωστό
               στη σήμανση ΕΝΟΣ ενοικιαστή — και εκεί μένει· εδώ μετρά πόσοι. */}
           {([['all','Όλοι'],['current','Τρέχοντες'],['past','Προηγούμενοι']] as [typeof segment,string][]).map(([v,l])=>(
-            <button key={v} onClick={()=>setSegment(v)} style={{ height:T.h.lg, padding:'0 14px', borderRadius: T.radius.modal, border:`1px solid ${segment===v?'var(--accent)':'var(--border-subtle)'}`, background:segment===v?'var(--accent-soft)':'transparent', color:segment===v?'var(--accent)':'var(--text-secondary)', cursor:'pointer', fontSize:12, fontFamily:T.font.sans, fontWeight:500, whiteSpace:'nowrap' as const }}>{l}</button>
+            // shape «chip»: τα τρία φίλτρα κάθονται ελεύθερα στη γραμμή εργαλείων,
+            // χωρίς ράγα γύρω τους, οπότε το καθένα κρατά δικό του περίγραμμα.
+            <ChipToggle key={v} on={segment===v} onClick={()=>setSegment(v)}>{l}</ChipToggle>
           ))}
         </div>
       </div>
@@ -632,10 +636,15 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                       {(declaredByTenant.get(t.id)||0)>0&&<Badge tone="accent">Δηλωμένη πληρωμή</Badge>}
                     </>}
                     actions={
-                      <button title="Διαγραφή" onClick={e=>{e.stopPropagation();delTenant(t);}}
-                        style={{ background:'none', border:'none', borderRadius: T.radius.chip, width:T.h.sm, height:T.h.sm, display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-tertiary)', padding:0, flexShrink:0 }}>
-                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                      </button>
+                      // ΤΟ ΦΡΕΝΟ ΤΗΣ ΑΝΑΔΥΣΗΣ ΜΕΝΕΙ ΣΤΟ ΔΟΧΕΙΟ. Ολη η κάρτα είναι κουμπί
+                      // ανοίγματος· χωρίς αυτό, η διαγραφή θα άνοιγε ΚΑΙ το ντοσιέ. Το
+                      // `IconBtn` δέχεται ενέργεια χωρίς συμβάν, οπότε το φρένο ζει έξω του.
+                      <div onClick={e=>e.stopPropagation()} style={{ display:'flex' }}>
+                        {/* Το «×» δεν είχε λεκτικό, μόνο σχήμα: το `label` λέει ΠΟΙΟΣ ενοικιαστής φεύγει. */}
+                        <IconBtn label={`Διαγραφή ενοικιαστή: ${t.full_name}`} title="Διαγραφή" onClick={()=>delTenant(t)}>
+                          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </IconBtn>
+                      </div>
                     }>
                     <StatStrip items={[
                       { label:'Μηνιαίο ενοίκιο', value:fmt(t.monthly_rent), strong:true },
@@ -774,7 +783,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                       </div>
                       <button style={s.btnDng} onClick={async()=>{if(!dc.lease_doc_name)return;await supabase.storage.from('lease-documents').remove([`${userId}/${dc.id}/${dc.lease_doc_name}`]);if(!await saved('Το συμβόλαιο δεν αποσυνδέθηκε',tenantStore.update(supabase,dc.id,{lease_doc_url:null,lease_doc_name:null})))return;notify('PDF διαγράφηκε');fetch_();}}>Διαγραφή</button>
                     </div>
-                    <button onClick={()=>openLeaseDoc(dc)} style={{ ...s.btnGold, display:'inline-block', marginBottom:10 }}>Άνοιγμα PDF</button>
+                    {/* Το κάτω περιθώριο είναι θέση μέσα στη στήλη, όχι όψη του κουμπιού. */}
+                    <div style={{ marginBottom:10 }}><Btn variant="primary" onClick={()=>openLeaseDoc(dc)}>Άνοιγμα PDF</Btn></div>
                     <div style={{ marginTop:10 }}>
                       <label style={{ ...s.btnSm, cursor:'pointer', display:'inline-block' }}>
                         {uploading?'Ανέβασμα…':'Αντικατάσταση PDF'}
@@ -826,8 +836,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
             {/* Και τα δύο κουμπιά κλειδώνουν όσο γράφει: το «Ακύρωση» δεν
                 επιτρέπεται να εξαφανίσει τη φόρμα στη μέση της αποθήκευσης
                 (ίδιος φρουρός με το closeForm, ώστε να μη μοιάζει ενεργό). */}
-            <button style={s.btnGhost} onClick={closeForm} disabled={saving}>Ακύρωση</button>
-            <button style={s.btnGold} onClick={save} disabled={saving}>{saving?'Αποθήκευση…':editId?'Αποθήκευση αλλαγών':'Προσθήκη ενοικιαστή'}</button>
+            <Btn variant="secondary" onClick={closeForm} disabled={saving}>Ακύρωση</Btn>
+            <Btn variant="primary" onClick={save} disabled={saving}>{saving?'Αποθήκευση…':editId?'Αποθήκευση αλλαγών':'Προσθήκη ενοικιαστή'}</Btn>
           </>}>
           {/* ΕΝΑ παιδί, όχι τριάντα. Το σώμα του Modal είναι flex column με
               gap 20· η φόρμα έχει ~30 αδέλφια πρώτου επιπέδου με δικά τους,
@@ -1121,7 +1131,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
             {error&&(
               <div role="alert" style={{ marginTop:24, background:'var(--negative-dim)', border:'1px solid var(--negative-border)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.inner, padding:'12px 16px', color:'var(--negative)', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:500, display:'flex', gap:12, alignItems:'flex-start', justifyContent:'space-between' }}>
                 <span style={{ lineHeight:1.55, wordBreak:'break-word' as const }}>{error}</span>
-                <button onClick={()=>setError(null)} style={{ background:'none', border:'none', color:'var(--negative)', cursor:'pointer', fontSize:18, lineHeight:1, padding:0, flexShrink:0 }}>×</button>
+                <IconBtn label="Κλείσιμο μηνύματος σφάλματος" tone="danger" onClick={()=>setError(null)}><span style={{ fontSize:18, lineHeight:1 }}>×</span></IconBtn>
               </div>
             )}
             {/* ΜΙΑ φόρμα, χωρίς βήματα: όσα πεδία έμειναν χωρούν σε μία οθόνη και

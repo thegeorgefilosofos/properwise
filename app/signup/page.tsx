@@ -1,5 +1,5 @@
 'use client'
-import { T } from '@/components/Theme'
+import { T, Btn, LinkBtn } from '@/components/Theme'
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { authClient } from '@/lib/supabase/lazy';
@@ -407,14 +407,15 @@ export default function SignupPage() {
                   Χρειάζεται να αποδεχθείς τους Όρους και την Πολιτική απορρήτου για να συνεχίσεις.
                 </p>
               )}
-              <button type="button" onClick={acceptOauthConsent} className="auth-hov"
-                style={{ width: '100%', minHeight: 44, borderRadius: T.radius.chip, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {/* `field` γιατί και τα δύο έπιαναν όλο το πλάτος της κάρτας. */}
+              <Btn variant="primary" field onClick={acceptOauthConsent}>
                 Συνέχεια
-              </button>
-              <button type="button" onClick={signOut} disabled={signingOut}
-                style={{ width: '100%', minHeight: 44, marginTop: 10, borderRadius: T.radius.chip, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                {signingOut ? 'Ακύρωση…' : 'Ακύρωση'}
-              </button>
+              </Btn>
+              <div style={{ marginTop: 10 }}>
+                <Btn variant="secondary" field onClick={signOut} disabled={signingOut}>
+                  {signingOut ? 'Ακύρωση…' : 'Ακύρωση'}
+                </Btn>
+              </div>
             </div>
           ) : sessionEmail ? (
             <AlreadySignedIn email={sessionEmail} onSignOut={signOut} signingOut={signingOut} mode="signup" />
@@ -438,9 +439,10 @@ export default function SignupPage() {
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 24px' }}>
                 Σου στείλαμε έναν σύνδεσμο επιβεβαίωσης στο <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{email}</strong>. Πάτησέ τον για να μπεις στον λογαριασμό σου{chosenPlan ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Δες και τον φάκελο ανεπιθύμητων.
               </p>
-              <button onClick={resend} disabled={resent} style={{ display: 'inline-block', padding: '12px 24px', background: resent ? 'var(--bg-elevated)' : 'var(--accent)', border: resent ? '1px solid var(--border-default)' : 'none', borderRadius: T.radius.pill, color: resent ? 'var(--text-secondary)' : 'var(--accent-text)', fontSize: 15, fontWeight: 700, cursor: resent ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+              {/* Η σβηστή όψη μετά την αποστολή είναι το disabled του .po-btn. */}
+              <Btn variant="primary" onClick={resend} disabled={resent}>
                 {resent ? 'Το ξαναστείλαμε ✓' : 'Ξαναστείλε το email'}
-              </button>
+              </Btn>
               {/* Η αποτυχία κάθεται ΚΑΤΩ από το κουμπί που την προκάλεσε, με το
                   κουμπί ακόμη πατήσιμο: ο χρήστης έχει και την εξήγηση και τον
                   δρόμο. */}
@@ -449,10 +451,9 @@ export default function SignupPage() {
               )}
               <p style={{ margin: '18px 0 0', fontSize: 13, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
                 Λάθος διεύθυνση;{' '}
-                <button type="button" onClick={() => { setDone(false); setResent(false); setResendErr(''); }}
-                  style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', textDecoration: 'underline' }}>
+                <LinkBtn onClick={() => { setDone(false); setResent(false); setResendErr(''); }}>
                   Γράψε άλλη
-                </button>
+                </LinkBtn>
                 {' · '}
                 <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
               </p>
@@ -577,10 +578,10 @@ export default function SignupPage() {
                 </div>
               )}
 
-              <button type="button" onClick={signInWithGoogle} className="auth-hov"
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, color: 'var(--text-primary)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {/* Η αιώρηση ερχόταν από την `.auth-hov`· τώρα τη δίνει το `.po-btn`. */}
+              <Btn variant="secondary" field onClick={signInWithGoogle}>
                 <GoogleG />Συνέχισε με Google
-              </button>
+              </Btn>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>ή</span>
@@ -600,6 +601,8 @@ export default function SignupPage() {
                   <label htmlFor="su-password" style={label}>Κωδικός</label>
                   <div style={{ position: 'relative' }}>
                     <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_LABEL} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
+                    {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το IconBtn δεν περνά `aria-pressed`, οπότε
+                        ο αναγνώστης οθόνης θα έχανε την κατάσταση του ματιού. */}
                     <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Απόκρυψη κωδικού' : 'Εμφάνιση κωδικού'} aria-pressed={show}
                       style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {show
@@ -700,6 +703,9 @@ export default function SignupPage() {
                     κουμπί σβησμένο και μαντεύει· ο χρήστης αναγνώστη οθόνης δεν
                     έχει ούτε αυτό. */}
                 <p id="su-cta-why" className="sr-only">{why}</p>
+                {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το Btn δεν περνά `aria-describedby`, που εδώ
+                    λέει με λέξεις γιατί το κουμπί δείχνει σβησμένο ενώ παραμένει
+                    πατήσιμο — ούτε την ημιδιαφάνεια χωρίς `disabled`. */}
                 <button type="submit" aria-describedby={why ? 'su-cta-why' : undefined} className="auth-cta" style={{ width: '100%', padding: '12px', background: 'var(--accent)', border: 'none', borderRadius: T.radius.pill, color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, cursor: blocked ? 'not-allowed' : 'pointer', opacity: blocked ? 0.6 : 1, letterSpacing: '-0.01em', marginTop: 4, fontFamily: 'inherit' }}>
                   {loading ? 'Δημιουργία…' : 'Ξεκίνα τη δοκιμή'}
                 </button>

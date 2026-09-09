@@ -13,7 +13,7 @@ import { fdLong, ABSENT } from '@/components/tokens'
 import { loanProgress } from '@/lib/loans/progress'
 import { AADE_HOME } from '@/lib/tax/aade'
 import { programStatus, programDateLabel, PROGRAM_ORDER } from '@/lib/loans/programStatus'
-import { T, ExportButton, EmptyState, fixedCols, Bar, Tile, widestOf } from '@/components/Theme'
+import { T, ExportButton, EmptyState, fixedCols, Bar, Tile, widestOf, Btn, IconBtn, ChipToggle } from '@/components/Theme'
 import { loanEventTitle, UNSET_BANK } from './TabCalendar'
 import { notifyOk, notifyError } from '@/components/Toast'
 import { confirmDialog } from '@/components/confirmBus'
@@ -372,7 +372,6 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
   const [selBank,setSelBank] = useState<string|null>(null)
   const [appliedLoan,setAppliedLoan] = useState<AppliedLoan|undefined>(undefined)
   const [recHover,setRecHover] = useState(false)
-  const [applyHover,setApplyHover] = useState(false)
   const [scoreHover,setScoreHover] = useState(false)
   const [otherHover,setOtherHover] = useState<string|null>(null)
   const [hoverBank,setHoverBank] = useState<string|null>(null)
@@ -755,10 +754,9 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               </div>
               {/* Ήταν «×» — το σύμβολο του κλεισίματος, πάνω δεξιά, εκεί ακριβώς
                   όπου ο χρήστης το πατά για να ΦΥΓΕΙ. Διέγραφε το δάνειο. */}
-              <button onClick={()=>deleteLoan(loan.id)} aria-label="Διαγραφή δανείου" title="Διαγραφή δανείου"
-                style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-tertiary)',padding:8,margin:-4,display:'flex',borderRadius: T.radius.chip,flexShrink:0}}>
+              <IconBtn onClick={()=>deleteLoan(loan.id)} label="Διαγραφή δανείου" title="Διαγραφή δανείου" style={{margin:-4}}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
-              </button>
+              </IconBtn>
             </div>
 
             {prog ? (<>
@@ -1016,9 +1014,9 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             </div>
           )}
           <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-            <button onClick={()=>setFS(f=>!f)} style={{display:'flex',alignItems:'center',gap: 8,padding:'0 14px',height:T.h.md,background:filterSpiti?'var(--accent-dim)':'var(--bg-elevated)',border:`1px solid ${filterSpiti?'var(--border-accent)':'var(--border-subtle)'}`,borderRadius: T.radius.modal,cursor:'pointer',color:filterSpiti?'var(--accent)':'var(--text-secondary)',fontSize:12,fontFamily: T.font.sans,fontWeight:500}}>
+            <ChipToggle on={filterSpiti} onClick={()=>setFS(f=>!f)}>
               Σπίτι μου ΙΙ
-            </button>
+            </ChipToggle>
             <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginLeft:'auto',fontFamily: T.font.sans}}>
               {banksLoading?'Φόρτωση…':feedFresh?`Ελέγχθηκαν ${feedCheckedStr} · επιβεβαιωμένα ${banksUpdStr}`:`vresdaneio.gr · ${banksUpdStr}`}
               {liveBanks.length>0&&!feedFresh&&<span style={{color:'var(--text-secondary)',marginLeft:6}}>Ενημερωμένα στοιχεία</span>}
@@ -1083,7 +1081,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   </div>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
                     {bank.url&&<a href={bank.url} target="_blank" rel="noreferrer" style={{padding:'0 16px',height:T.h.md,borderRadius: T.radius.modal,border:'1px solid var(--border-default)',background:'none',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,textDecoration:'none',fontWeight:500,display:'flex',alignItems:'center'}}>Επίσκεψη</a>}
-                    <button disabled={bankRate===null} title={bankRate===null?'Η τράπεζα δεν έχει δημοσιεύσει επιτόκιο· δεν υπάρχει τιμή να εφαρμοστεί':undefined} onClick={()=>{ if(bankRate!==null) applyBank(bankRate, 'fixed', bank.name) }} style={{padding:'0 16px',height:T.h.md,borderRadius: T.radius.modal,background:bankRate===null?'var(--bg-elevated)':'var(--accent)',border:bankRate===null?'1px solid var(--border-subtle)':'none',color:bankRate===null?'var(--text-tertiary)':'var(--accent-text)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,cursor:bankRate===null?'not-allowed':'pointer',fontWeight:600}}>Υπολόγισε τη δόση</button>
+                    <Btn variant="primary" disabled={bankRate===null} title={bankRate===null?'Η τράπεζα δεν έχει δημοσιεύσει επιτόκιο· δεν υπάρχει τιμή να εφαρμοστεί':undefined} onClick={()=>{ if(bankRate!==null) applyBank(bankRate, 'fixed', bank.name) }}>Υπολόγισε τη δόση</Btn>
                     {/* ΤΟ ΠΑΝΕΛ ΑΝΟΙΓΕ ΚΑΙ ΔΕΝ ΕΚΛΕΙΝΕ ΑΠΟ ΠΟΥΘΕΝΑ. Η μόνη έξοδος
                         ήταν να ξαναβρεί ο χρήστης το πλακίδιο της τράπεζας ΠΑΝΩ από
                         το πάνελ και να το ξαναπατήσει — δηλαδή να κυλήσει προς τα
@@ -1092,8 +1090,8 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                         περιεχομένου χωρίς κουμπί κλεισίματος. Το «×» κάθεται εκεί
                         που κάθεται σε κάθε παράθυρο της εφαρμογής: δεξιά στην
                         κεφαλίδα, με ζώνη αφής 44. */}
-                    <button type="button" onClick={()=>setSelBank(null)} aria-label={`Κλείσιμο: ${bank.name}`}
-                      style={{width:T.h.md,height:T.h.md,display:'flex',alignItems:'center',justifyContent:'center',borderRadius: T.radius.modal,border:'1px solid var(--border-subtle)',background:'none',color:'var(--text-tertiary)',cursor:'pointer',fontSize:18,lineHeight:1,fontFamily: T.font.sans,padding:0}}>×</button>
+                    <IconBtn size="md" onClick={()=>setSelBank(null)} label={`Κλείσιμο: ${bank.name}`}
+                      style={{fontSize:18,lineHeight:1,fontFamily: T.font.sans}}>×</IconBtn>
                   </div>
                 </div>
                 <p style={{...labelStyle,marginBottom:10}}>Σταθερά επιτόκια «από», ανά διάρκεια</p>
@@ -1632,13 +1630,12 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                       <p style={{fontSize:16,fontWeight:700,color:'var(--text-primary)',fontFamily: T.font.sans,letterSpacing:'-0.02em',lineHeight:1.1}}>{topRec.bankName}</p>
                       <p style={{fontSize:12,color:'var(--text-secondary)',marginTop: 4,lineHeight:1.45,fontFamily: T.font.sans}}>{topRec.eligible?topRec.why:topRec.blockers.join(' · ')}</p>
                       {topRec.eligible&&(
-                        <button onClick={()=>applyBank(topRec.nominalRatePct, topRec.rateType, topRec.bankName)}
-                          onMouseEnter={()=>setApplyHover(true)} onMouseLeave={()=>setApplyHover(false)}
-                          onTouchStart={()=>setApplyHover(true)} onTouchEnd={()=>setApplyHover(false)}
-                          style={{marginTop:10,display:'inline-flex',alignItems:'center',gap:6,height:T.h.sm,padding:'0 13px',borderRadius: T.radius.card,background:applyHover?'var(--accent-dim)':'var(--bg-elevated)',border:`1px solid ${applyHover?'var(--border-accent)':'var(--border-subtle)'}`,color:applyHover?'var(--accent)':'var(--text-secondary)',fontSize:12,fontWeight:600,fontFamily: T.font.sans,cursor:'pointer',transition:'color 0.15s, background 0.15s, border-color 0.15s'}}>
-                          <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                          Εφαρμογή στον Υπολογιστή
-                        </button>
+                        <div style={{marginTop:10}}>
+                          <Btn variant="secondary" onClick={()=>applyBank(topRec.nominalRatePct, topRec.rateType, topRec.bankName)}>
+                            <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                            Εφαρμογή στον Υπολογιστή
+                          </Btn>
+                        </div>
                       )}
                     </div>
                     <div style={{textAlign:'right' as const,flexShrink:0}}>
@@ -1823,10 +1820,10 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   <p style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{info.tax_note}</p>
                 </div>
               </div>
-              <button type="button" onClick={openCalcDocs} style={{display:'inline-flex',alignItems:'center',gap: 8,height:T.h.md,padding:'0 16px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:T.radius.btn,cursor:'pointer',color:'var(--text-primary)',fontSize: 'var(--fs-base)',fontWeight:500,fontFamily: T.font.sans}}>
+              <Btn variant="secondary" onClick={openCalcDocs}>
                 Απαραίτητα έγγραφα
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-              </button>
+              </Btn>
             </MiniSection>
           ); })()}
           {/* Ο ΠΑΡΑΓΡΑΦΟΣ ΠΟΥ ΕΔΕΙΧΝΕ ΤΟ ΑΜΕΣΩΣ ΑΠΟ ΚΑΤΩ ΕΦΥΓΕ. Ελεγε «Δες πρώτα

@@ -81,6 +81,10 @@ export default function AssistantStrip({ ctx }: { ctx: OpenerContext | null }) {
                 // «Από τα 620,00€ τον μήνα, πόσο μου μένει καθαρά;» έγραφε «Από
                 // τα 620,00€ τον μήνα, πόσο…» — μια ερώτηση χωρίς το ερώτημά της.
                 // Η πρόταση είναι το ΟΛΟ κουμπί· αν δεν διαβάζεται, δεν την πατά κανείς.
+                //
+                // ΓΙ᾽ ΑΥΤΟ ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ ΚΑΙ ΔΕΝ ΓΙΝΕΤΑΙ <Btn>: το Btn κεντράρει
+                // τις γραμμές του και γράφει 12/700, οπότε μια ερώτηση δύο σειρών
+                // θα σταματούσε να διαβάζεται ως πρόταση.
                 style={{
                   padding: '6px 13px', minHeight: T.h.sm, borderRadius: T.radius.pill,
                   border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)',

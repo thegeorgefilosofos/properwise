@@ -28,6 +28,7 @@ import { useSearchParams } from 'next/navigation';
 import { readTool, toolQuery, toolLink, type ToolSpec, type ToolValues } from '@/lib/tools/permalink';
 import { SITE_HOST } from '@/lib/core/site';
 import { T, fdLong } from '@/components/tokens';
+import { Btn } from '@/components/Theme';
 
 /**
  * Τα πεδία ενός εργαλείου, με τη διεύθυνση να τα ακολουθεί.
@@ -53,14 +54,6 @@ export function useToolState<S extends ToolSpec>(spec: S, path: string) {
 
   return [values, set] as const;
 }
-
-const btn: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.sm,
-  padding: '0 14px', borderRadius: T.radius.pill,
-  border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
-  color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600,
-  fontFamily: T.font.sans, cursor: 'pointer', whiteSpace: 'nowrap',
-};
 
 function IconLink() {
   return (
@@ -113,14 +106,14 @@ export function ToolActions<S extends ToolSpec>(
       <div className="po-noprint" style={{
         marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end',
       }}>
-        <button type="button" onClick={copy} style={btn}>
+        <Btn onClick={copy}>
           <IconLink/>
           {copied ? 'Ο σύνδεσμος αντιγράφηκε' : 'Αντιγραφή συνδέσμου'}
-        </button>
-        <button type="button" onClick={() => window.print()} style={btn}>
+        </Btn>
+        <Btn onClick={() => window.print()}>
           <IconPrint/>
           Εκτύπωση
-        </button>
+        </Btn>
       </div>
 
       {manual !== null && (

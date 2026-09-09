@@ -12,7 +12,7 @@ import * as expenses from '@/lib/data/expenses';
 import * as calendar from '@/lib/data/calendar'
 import * as tenantStore from '@/lib/data/tenants';
 import * as portalStore from '@/lib/data/portal';
-import { T, fd, fe, EmptyState, Skeleton, pressable } from '@/components/Theme';
+import { T, fd, fe, EmptyState, Skeleton, pressable, Btn } from '@/components/Theme';
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import { athensToday } from '@/lib/core/time';
 import { saved, savedData } from '@/components/dbWrite';
@@ -243,7 +243,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
           ) : !token ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, flex: 1, minWidth: 200 }}>Ενεργοποίησε έναν ασφαλή σύνδεσμο που μπορεί να μοιραστεί ο ενοικιαστής σου, βλέπει ενοίκιο/σύμβαση και στέλνει αιτήματα.</div>
-              <button onClick={enable} disabled={busy} style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{busy ? 'Ενεργοποίηση…' : 'Ενεργοποίηση πύλης'}</button>
+              <Btn variant="primary" onClick={enable} disabled={busy}>{busy ? 'Ενεργοποίηση…' : 'Ενεργοποίηση πύλης'}</Btn>
             </div>
           ) : (
             <>
@@ -255,6 +255,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                   <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--warning-on-container)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
                     Ο σύνδεσμος ανήκει στον προηγούμενο ενοικιαστή. Έκδωσε νέον για <strong>{tenant?.full_name || 'τον σημερινό ενοικιαστή'}</strong>, ο παλιός παύει αμέσως να ισχύει.
                   </div>
+                  {/* Μένει χειροποίητο: το γέμισμα είναι var(--warning) και το Btn έχει μόνο accent, οπότε η προειδοποιητική σήμανση θα χανόταν. */}
                   <button onClick={reissue} disabled={busy} style={{ height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: 'none', background: 'var(--warning)', color: 'var(--on-tone)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: busy ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{busy ? 'Έκδοση…' : 'Έκδοση νέου συνδέσμου'}</button>
                 </div>
               )}
@@ -263,13 +264,13 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                   <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
                     Ο σύνδεσμος δεν είναι δεμένος σε ενοικιαστή, οπότε θα ακολουθεί όποιον μένει κάθε φορά. Δέσ&apos; τον στον <strong>{tenant?.full_name || 'σημερινό ενοικιαστή'}</strong>, ο ίδιος σύνδεσμος συνεχίζει να δουλεύει.
                   </div>
-                  <button onClick={bind} disabled={busy} style={{ height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: busy ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{busy ? 'Δέσιμο…' : 'Δέσιμο στον ενοικιαστή'}</button>
+                  <Btn variant="secondary" onClick={bind} disabled={busy}>{busy ? 'Δέσιμο…' : 'Δέσιμο στον ενοικιαστή'}</Btn>
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
                 <input aria-label="Σύνδεσμος πύλης" readOnly value={url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 200, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '9px 12px', fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.mono, outline: 'none' }} />
-                <button onClick={copy} style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</button>
-                <a href={url} target="_blank" rel="noopener noreferrer" style={{ height: T.h.md, display: 'inline-flex', alignItems: 'center', padding: '0 16px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Άνοιγμα</a>
+                <Btn variant="secondary" onClick={copy}>{copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
+                <Btn variant="secondary" href={url} newTab>Άνοιγμα</Btn>
               </div>
 
               {/* Ρυθμίσεις πύλης: κωδικός προστασίας + σύνδεσμος πληρωμής */}
@@ -288,7 +289,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 8, lineHeight: 1.5 }}>Επικόλλησε τον σύνδεσμο του παρόχου σου (Stripe, Viva, PayPal, Revolut). Ο ενοικιαστής βλέπει κουμπί «Πληρωμή τώρα» και πληρώνει εκεί, όχι εδώ.</div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <input aria-label="Σύνδεσμος πληρωμής" value={payLink} onChange={e => setPayLink(e.target.value)} placeholder="https://..." style={{ flex: 1, minWidth: 180, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '9px 12px', fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.mono, outline: 'none' }} />
-                        <button onClick={saveLink} disabled={busy} style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Αποθήκευση</button>
+                        <Btn variant="secondary" onClick={saveLink} disabled={busy}>Αποθήκευση</Btn>
                       </div>
                     </div>
                     <div>
@@ -296,8 +297,8 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 8, lineHeight: 1.5 }}>Χωρίς αυτόν δεν ανοίγει η πύλη. Δώσ&apos; τον μόνο στον ενοικιαστή σου.</div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <input aria-label="Κωδικός PIN" value={pinInput} onChange={e => setPinInput(e.target.value)} inputMode="numeric" placeholder={pinSet ? 'Νέος κωδικός' : 'π.χ. 4 ψηφία'} style={{ flex: 1, minWidth: 140, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '9px 12px', fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.num, outline: 'none' }} />
-                        <button onClick={savePin} disabled={busy || !pinInput.trim()} style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: pinInput.trim() ? 'pointer' : 'not-allowed', opacity: pinInput.trim() ? 1 : 0.6 }}>{pinSet ? 'Αλλαγή' : 'Ορισμός'}</button>
-                        {pinSet && <button onClick={clearPin} disabled={busy} style={{ height: T.h.md, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Κατάργηση</button>}
+                        <Btn variant="primary" onClick={savePin} disabled={busy || !pinInput.trim()}>{pinSet ? 'Αλλαγή' : 'Ορισμός'}</Btn>
+                        {pinSet && <Btn variant="secondary" onClick={clearPin} disabled={busy}>Κατάργηση</Btn>}
                       </div>
                     </div>
                   </div>
@@ -333,17 +334,17 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                           <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>{fd(r.created_at)}{r.contact ? ` · ${r.contact}` : ''}</div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                          {r.status === 'new' && <button onClick={() => setStatus(r.id, 'in_progress')} style={{ height: T.h.sm, padding: '0 10px', borderRadius: T.radius.pill, border: '1px solid var(--accent-border)', background: 'var(--bg-surface)', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Ξεκίνησε</button>}
-                          {r.status === 'in_progress' && <button onClick={() => setStatus(r.id, 'done')} style={{ height: T.h.sm, padding: '0 10px', borderRadius: T.radius.pill, border: '1px solid var(--accent-border)', background: 'var(--bg-surface)', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Ολοκλήρωση</button>}
-                          {!done && <button onClick={() => toCalendar(r)} disabled={synced.has(r.id)} style={{ height: T.h.sm, padding: '0 10px', borderRadius: T.radius.pill, border: '1px solid var(--accent-border)', background: 'transparent', color: synced.has(r.id) ? 'var(--text-tertiary)' : 'var(--accent)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: synced.has(r.id) ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: synced.has(r.id) ? 0.6 : 1 }}>{synced.has(r.id) ? 'Στο Ημερολόγιο' : 'Ημερολόγιο'}</button>}
-                          {done && costFor !== r.id && <button onClick={() => { setCostFor(r.id); setCost(''); }} style={{ height: T.h.sm, padding: '0 10px', borderRadius: T.radius.pill, border: '1px solid var(--accent-border)', background: 'transparent', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>ως Δαπάνη</button>}
+                          {r.status === 'new' && <Btn variant="secondary" onClick={() => setStatus(r.id, 'in_progress')}>Ξεκίνησε</Btn>}
+                          {r.status === 'in_progress' && <Btn variant="secondary" onClick={() => setStatus(r.id, 'done')}>Ολοκλήρωση</Btn>}
+                          {!done && <Btn variant="secondary" onClick={() => toCalendar(r)} disabled={synced.has(r.id)}>{synced.has(r.id) ? 'Στο Ημερολόγιο' : 'Ημερολόγιο'}</Btn>}
+                          {done && costFor !== r.id && <Btn variant="secondary" onClick={() => { setCostFor(r.id); setCost(''); }}>ως Δαπάνη</Btn>}
                           {done && costFor === r.id && (
                             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                               <input aria-label="Ποσό δαπάνης σε ευρώ" autoFocus value={cost} onChange={e => setCost(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') toExpense(r); if (e.key === 'Escape') setCostFor(null); }} placeholder="€" inputMode="decimal" style={{ width: 56, height: T.h.sm, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '0 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-primary)', fontFamily: T.font.mono, outline: 'none', textAlign: 'right' }} />
-                              <button onClick={() => toExpense(r)} style={{ height: T.h.sm, padding: '0 8px', borderRadius: T.radius.badge, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer' }}>OK</button>
+                              <Btn variant="primary" onClick={() => toExpense(r)}>OK</Btn>
                             </div>
                           )}
-                          {done && <button onClick={() => setStatus(r.id, 'new')} style={{ height: T.h.sm, padding: '0 10px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Επαναφορά</button>}
+                          {done && <Btn variant="secondary" onClick={() => setStatus(r.id, 'new')}>Επαναφορά</Btn>}
                         </div>
                       </div>
                     );

@@ -34,7 +34,7 @@ import * as stayStore from '@/lib/data/stays';
 import * as billStore from '@/lib/data/bills';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
-import { T, PageTitle, KPIGrid, InfoBanner, Btn, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar } from '@/components/Theme';
+import { T, PageTitle, KPIGrid, InfoBanner, Btn, ChipToggle, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { shortTermYearSummary, isHouseType } from '@/lib/tax/shortTermTax';
 import { isIndividualTaxpayer } from '@/lib/accounting/taxProfile';
@@ -589,16 +589,13 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
             τα ψηφία έβγαιναν εκτός κέντρου, γιατί το ορατό κομμάτι ήταν η μέση
             ενός ψηλότερου κουμπιού. Μετρημένο στην Αξιοποίηση, 360×800.
 
-            Με ΕΛΑΧΙΣΤΟ ύψος, σε ποντίκι μένει 28 όπως ήταν και σε δάχτυλο το
-            κουτί ακολουθεί τα κουμπιά του. */}
+            Με ΕΛΑΧΙΣΤΟ ύψος, το κουτί ακολουθεί τα πλακίδιά του: παίρνει το ύψος
+            της κλίμακας στο ποντίκι και τα 44 στο δάχτυλο. */}
         <div style={{ display: 'inline-flex', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, overflow: 'hidden', minHeight: 28 }}>
+          {/* `seg` επειδή η πιλούλα από πάνω έχει ήδη δικό της περίγραμμα: ένα
+              δεύτερο ανά τμήμα θα έδινε διπλή γραμμή στη μέση. */}
           {[nowYear, nowYear + 1].map(y => (
-            <button key={y} onClick={() => setPyear(y)} style={{
-              border: 'none', cursor: 'pointer', fontFamily: T.font.sans, fontSize: 12,
-              fontWeight: pyear === y ? 700 : 500, padding: '0 14px',
-              background: pyear === y ? 'var(--accent-soft)' : 'transparent',
-              color: pyear === y ? 'var(--accent)' : 'var(--text-tertiary)',
-            }}>{y}</button>
+            <ChipToggle key={y} shape="seg" on={pyear === y} onClick={() => setPyear(y)}>{y}</ChipToggle>
           ))}
         </div>
       </div>
@@ -762,7 +759,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           {/* Ημερολόγιο-heatmap */}
           <div style={{ marginTop: 24 }}>
             <SecHdr label="Ημερολόγιο τιμών" sub="Όσο πιο σκούρη η ημέρα, τόσο υψηλότερη η προτεινόμενη τιμή. Πάτησε μια ημέρα για ανάλυση."
-              right={pastCount > 0 ? <button onClick={() => setShowPast(v => !v)} style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '6px 14px', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, color: 'var(--text-secondary)', cursor: 'pointer' }}>{showPast ? 'Κρύψε προηγούμενους μήνες' : `Δείξε προηγούμενους μήνες (${pastCount})`}</button> : undefined} />
+              right={pastCount > 0 ? <Btn variant="secondary" onClick={() => setShowPast(v => !v)}>{showPast ? 'Κρύψε προηγούμενους μήνες' : `Δείξε προηγούμενους μήνες (${pastCount})`}</Btn> : undefined} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
               {visibleMonths.map(([key, days]) => {
                 const [yy, mm] = key.split('-').map(Number);

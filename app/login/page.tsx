@@ -237,9 +237,12 @@ export default function LoginPage() {
               έχει ήδη ξεκινήσει: ένα κουμπί που την ξαναρχίζει θα ήταν δρόμος
               γύρω από την πρόκληση, όχι επιλογή. */}
           {!factorId && (<>
-          <button type="button" onClick={signInWithGoogle} className="auth-hov" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, color: 'var(--text-primary)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {/* `field` γιατί ο πάροχος κρατά όλο το πλάτος της στήλης, όπως πριν.
+              Το `.auth-hov` έφυγε μαζί με το στυλ: την αιώρηση τη δίνει πλέον το
+              `.po-btn[data-variant=secondary]`, που ξέρει και εστίαση με πληκτρολόγιο. */}
+          <Btn variant="secondary" field onClick={signInWithGoogle}>
             <GoogleG />Συνέχισε με Google
-          </button>
+          </Btn>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
             <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
@@ -274,6 +277,8 @@ export default function LoginPage() {
                 <input id="login-password" name="password" autoComplete="current-password" type={show ? 'text' : 'password'} value={password} required onChange={e => setPassword(e.target.value)} placeholder="Ο κωδικός σου" style={{ ...field, paddingRight: 48 }}
                   onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                   onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+                {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το IconBtn δεν προωθεί `aria-pressed` και το μάτι
+                    είναι διακόπτης — ο στόχος αφής είναι ήδη 44×44. */}
                 <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Απόκρυψη κωδικού' : 'Εμφάνιση κωδικού'} aria-pressed={show}
                   style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {show
@@ -290,11 +295,11 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button type="submit" disabled={busy} className="auth-cta" style={{ width: '100%', padding: '12px', background: 'var(--accent)', border: 'none', borderRadius: T.radius.pill, color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1, letterSpacing: '-0.01em', marginTop: 4, fontFamily: 'inherit' }}>
+            <Btn variant="primary" type="submit" field disabled={busy}>
               {factorId
                 ? (verifying ? 'Επαλήθευση…' : 'Επαλήθευση')
                 : (loading ? 'Σύνδεση…' : 'Σύνδεση')}
-            </button>
+            </Btn>
           </form>
 
           {/* ── Ο ΔΡΟΜΟΣ ΓΙΑ ΟΠΟΙΟΝ ΕΧΑΣΕ ΤΟ ΤΗΛΕΦΩΝΟ ΤΟΥ ────────────────────
