@@ -151,9 +151,19 @@ Deno.serve(async (req) => {
   const { kind, failed } = diagnose(results) as { kind: string; failed: Outcome[] }
   const ok = kind === 'ok'
 
-  const { data: prev } = await supabase
+  // Η ΠΙΟ ΑΚΡΙΒΗ ΣΙΩΠΗ ΤΟΥ ΑΠΟΘΕΤΗΡΙΟΥ ΗΤΑΝ ΕΔΩ. Ο συναγερμός χτυπά στη
+  // ΜΕΤΑΒΑΣΗ: «ήταν καλά — τώρα δεν είναι». Το `wasOk === null` σημαίνει «δεν
+  // ξέρω πώς ήταν» — τότε καμία μετάβαση δεν αναγνωρίζεται — δηλαδή δεν
+  // στέλνεται ειδοποίηση. Χωρίς το `error`, μια αποτυχημένη ανάγνωση έδινε
+  // ακριβώς αυτό το `null`: ο μηχανισμός που υπάρχει για να ξυπνήσει άνθρωπο
+  // όταν πέσει η υπηρεσία, έμενε σιωπηλός επειδή έπεσε και η βάση του.
+  const { data: prev, error: prevErr } = await supabase
     .from('health_checks').select('ok').order('ran_at', { ascending: false }).limit(1)
-  const wasOk = prev && prev.length ? Boolean(prev[0].ok) : null
+  if (prevErr) console.error('[health-check] προηγούμενη κατάσταση:', prevErr)
+  // Με αποτυχία ανάγνωσης δεν προσποιούμαστε ότι ξέρουμε: αν η τωρινή μέτρηση
+  // είναι ΚΑΚΗ, τη δηλώνουμε ως μετάβαση από «καλά», ώστε να φύγει ειδοποίηση.
+  // Ενας συναγερμός παραπάνω είναι φθηνότερος από έναν που δεν χτύπησε.
+  const wasOk = prev && prev.length ? Boolean(prev[0].ok) : prevErr ? true : null
 
   const alert = await alertOnTransition(wasOk, ok, results, kind)
 

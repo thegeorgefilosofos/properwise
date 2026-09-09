@@ -140,8 +140,20 @@ Deno.serve(async (req) => {
     const propIds = [...new Set(rents.map(r => r.property_id).filter((v): v is string => v != null))]
     const tenantIds = [...new Set(rents.map(r => r.tenant_id).filter((v): v is string => v != null))]
     const propMap: Record<string, string> = {}, tenMap: Record<string, string> = {}
-    if (propIds.length) { const { data } = await supabase.from('user_properties').select('id,name').in('id', propIds); for (const p of data || []) propMap[p.id] = p.name }
-    if (tenantIds.length) { const { data } = await supabase.from('tenants').select('id,full_name').in('id', tenantIds); for (const t of data || []) tenMap[t.id] = t.full_name }
+    // ΚΑΤΑΣΤΑΣΗ ΜΕ ΚΕΝΑ ΟΝΟΜΑΤΑ ΔΕΝ ΕΙΝΑΙ ΚΑΤΑΣΤΑΣΗ. Το έγγραφο φεύγει σε
+    // ιδιοκτήτη και αντιστοιχεί ποσά σε ακίνητα και ενοικιαστές· αν οι χάρτες
+    // μείνουν άδειοι από αποτυχημένη ανάγνωση, τα ποσά μένουν και τα ονόματα
+    // χάνονται. Καλύτερα να μη φύγει καθόλου παρά να φύγει έτσι.
+    if (propIds.length) {
+      const { data, error } = await supabase.from('user_properties').select('id,name').in('id', propIds)
+      if (error) throw new Error(`ονόματα ακινήτων: ${error.message}`)
+      for (const p of data || []) propMap[p.id] = p.name
+    }
+    if (tenantIds.length) {
+      const { data, error } = await supabase.from('tenants').select('id,full_name').in('id', tenantIds)
+      if (error) throw new Error(`ονόματα ενοικιαστών: ${error.message}`)
+      for (const t of data || []) tenMap[t.id] = t.full_name
+    }
 
     const rows = rents.map(r => {
       const prop = r.property_id ? propMap[r.property_id] : null

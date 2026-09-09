@@ -69,12 +69,24 @@ Deno.serve(async (req: Request) => {
   // ── 1. Η προηγούμενη ταυτότητα, πριν από οτιδήποτε άλλο ────────────────────
   // Διαβάζεται ΠΡΩΤΗ γιατί ο κανόνας συγχώνευσης χτίζει πάνω της: ό,τι δεν
   // απαντήσει σήμερα μένει ακριβώς όπως ήταν, με την ΠΑΛΙΑ του ημερομηνία.
-  const { data: last } = await supabase
+  // ΚΑΙ ΑΝ ΔΕΝ ΔΙΑΒΑΣΤΕΙ, Η ΕΡΓΑΣΙΑ ΔΕΝ ΕΧΕΙ ΔΟΥΛΕΙΑ ΝΑ ΚΑΝΕΙ. Ο κανόνας
+  // συγχώνευσης χτίζει ΠΑΝΩ σε αυτή τη γραμμή: ό,τι δεν απαντήσει σήμερα
+  // κρατά την παλιά του τιμή. Με `last === null` από αποτυχία —όχι από άδεια
+  // βάση— κάθε δείκτης που δεν απάντησε γράφεται ως κενός και η ιστορία
+  // σβήνεται σιωπηλά. Η διαφορά «δεν υπάρχει ακόμη γραμμή» και «δεν μπόρεσα να
+  // τη διαβάσω» φαίνεται μόνο από το `error`.
+  const { data: last, error: lastErr } = await supabase
     .from('market_rates')
     .select('*')
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+  if (lastErr) {
+    console.error('[market-data-updater] προηγούμενη ταυτότητα:', lastErr)
+    return new Response(JSON.stringify({ error: 'previous_snapshot_unreadable', detail: lastErr.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
   const previous: Provenance = (last?.provenance ?? {}) as Provenance
   const fb: Record<string, number> = (last as Record<string, number>) ?? {}
@@ -134,8 +146,11 @@ Deno.serve(async (req: Request) => {
   if (rateErr) console.error('market_rates insert error:', rateErr)
 
   // Cleanup old entries (keep 365)
-  const { data: old } = await supabase
+  const { data: old, error: oldErr } = await supabase
     .from('market_rates').select('id').order('updated_at', { ascending: true })
+  // Το καθάρισμα δεν σταματά την εργασία — αλλά μια αποτυχία που δεν
+  // καταγράφεται σημαίνει πίνακα που μεγαλώνει για μήνες χωρίς να το δει κανείς.
+  if (oldErr) console.error('[market-data-updater] καθάρισμα ιστορικού:', oldErr)
   if (old && old.length > 365) {
     const toDelete = (old.slice(0, old.length - 365) as { id: string }[]).map(r => r.id)
     await supabase.from('market_rates').delete().in('id', toDelete)
@@ -192,11 +207,15 @@ Deno.serve(async (req: Request) => {
 // Μια στήλη `is_active` θα ήταν δεύτερη και θα απέκλιναν.
 async function manageProgramDeadlines() {
   const today = new Date()
-  const { data: programs } = await supabase
+  // Κενή λίστα προγραμμάτων σημαίνει «καμία προθεσμία δεν πλησιάζει», που είναι
+  // ακριβώς η απάντηση που δίνει και μια αποτυχημένη ανάγνωση: καμία υπενθύμιση
+  // δεν δημιουργείται και η εργασία απαντά «ολοκληρώθηκε».
+  const { data: programs, error: progErr } = await supabase
     .from('loan_programs')
     .select('*')
     .neq('status', 'ended')
     .not('deadline', 'is', null)
+  if (progErr) { console.error('[market-data-updater] προθεσμίες προγραμμάτων:', progErr); return }
 
   const results: string[] = []
 
@@ -235,17 +254,24 @@ interface ProgramRow {
 }
 
 async function createProgramReminders(prog: ProgramRow, daysLeft: number) {
-  const { data: loans } = await supabase
+  const { data: loans, error: loansErr } = await supabase
     .from('loans').select('user_id, property_id').eq('status', 'active')
+  if (loansErr) { console.error('[market-data-updater] ενεργά δάνεια:', loansErr); return }
 
   for (const loan of (loans ?? [])) {
-    const { data: existing } = await supabase
+    // ΕΔΩ Η ΣΙΩΠΗ ΔΕΝ ΠΑΡΑΛΕΙΠΕΙ, ΔΗΜΙΟΥΡΓΕΙ. Η ανάγνωση ρωτά «υπάρχει ήδη
+    // υπενθύμιση γι' αυτό το πρόγραμμα;» και η αποτυχία της απαντά «όχι»:
+    // η εργασία γράφει ΔΕΥΤΕΡΗ εγγραφή ημερολογίου· τρίτη αύριο· τέταρτη
+    // μεθαύριο. Είναι η μόνη από τις πέντε αναγνώσεις αυτού του
+    // αρχείου όπου η αποτυχία ΠΡΟΣΘΕΤΕΙ αντί να παραλείψει.
+    const { data: existing, error: exErr } = await supabase
       .from('calendar_events').select('id')
       .eq('user_id', loan.user_id)
       .like('title', `%${prog.name}%`)
       .gte('event_date', prog.deadline)
       .limit(1)
 
+    if (exErr) { console.error('[market-data-updater] έλεγχος διπλής υπενθύμισης:', exErr); continue }
     if (existing?.length) continue
 
     await supabase.from('calendar_events').insert({

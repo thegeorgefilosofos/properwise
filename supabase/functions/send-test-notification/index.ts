@@ -118,9 +118,16 @@ Deno.serve(async (req) => {
   // τη φήμη αποστολής του domain με χιλιάδες πανομοιότυπα μηνύματα.
   //
   // Δέκα είναι γενναιόδωρο για μια δοκιμή που ή δουλεύει ή δεν δουλεύει.
-  const { data: quota } = await supabase.rpc('bump_send_quota', {
+  // Ιδιο με την πρόσκληση οργανισμού: «έφτασες τις 10» και «ο έλεγχος έσπασε»
+  // δεν επιτρέπεται να είναι η ίδια απάντηση — πόσο μάλλον σε οθόνη που
+  // υπάρχει για να ΔΙΑΓΝΩΣΕΙ γιατί δεν φτάνουν ειδοποιήσεις.
+  const { data: quota, error: quotaErr } = await supabase.rpc('bump_send_quota', {
     p_kind: 'test_notification', p_units: 1, p_max: 10, p_window: '24 hours',
   })
+  if (quotaErr) {
+    console.error('[send-test-notification] μέτρηση ορίου:', quotaErr)
+    return json({ error: 'quota_unavailable', detail: 'Ο έλεγχος ορίου απέτυχε. Δοκίμασε ξανά σε λίγο.' }, 500)
+  }
   if (!quota?.allowed) {
     return json({
       error: 'daily_cap',

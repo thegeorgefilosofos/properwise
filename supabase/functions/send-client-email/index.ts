@@ -100,9 +100,16 @@ Deno.serve(async (req) => {
   // αποστολή από το domain μας, με χρέωση στον λογαριασμό μας.
   //
   // Ο μετρητής ζει τώρα στο `send_quota`, που κανένας ρόλος πελάτη δεν αγγίζει.
-  const { data: quota } = await supabase.rpc('bump_send_quota', {
+  // Και εδώ: αν η μέτρηση αποτύχει, ο χρήστης διάβαζε «ξεπέρασες τις 3.000
+  // αποστολές» έχοντας στείλει δέκα. Η κατεύθυνση μένει ασφαλής, η αιτία
+  // γίνεται αληθινή.
+  const { data: quota, error: quotaErr } = await supabase.rpc('bump_send_quota', {
     p_kind: 'client_email', p_units: recipients.length, p_max: 3000, p_window: '24 hours',
   })
+  if (quotaErr) {
+    console.error('[send-client-email] μέτρηση ορίου:', quotaErr)
+    return json({ error: 'quota_unavailable', detail: 'Ο έλεγχος ορίου απέτυχε. Δοκίμασε ξανά σε λίγο.' }, 500)
+  }
   if (!quota?.allowed) {
     return json({
       error: 'daily_cap',

@@ -256,7 +256,13 @@ Deno.serve(async (req) => {
     for (const pref of prefs) {
       const to = mailbox(pref.user_id)
       if (!to) continue
-      const { data: events } = await supabase.from('calendar_events').select('*').eq('user_id', pref.user_id).eq('status', 'pending')
+      // ΑΠΟΤΥΧΙΑ ΑΝΑΓΝΩΣΗΣ ΔΕΝ ΕΙΝΑΙ «ΔΕΝ ΕΧΕΙ ΠΡΟΘΕΣΜΙΕΣ». Χωρίς το `error`, μια
+      // πεσμένη σύνδεση ή ένα δικαίωμα που άλλαξε έδινε κενή λίστα: ο ιδιοκτήτης
+      // δεν έπαιρνε ΚΑΜΙΑ υπενθύμιση και η εργασία απαντούσε «success». Ο
+      // μετρητής `skipped` ταξιδεύει ήδη στην απάντηση, όπως και στις άλλες
+      // τρεις αναγνώσεις αυτού του βρόχου.
+      const { data: events, error: evErr } = await supabase.from('calendar_events').select('*').eq('user_id', pref.user_id).eq('status', 'pending')
+      if (evErr) { console.error('[send-reminders] γεγονότα ημερολογίου:', evErr); skipped++; continue }
       if (!events?.length) continue
 
       const checks = [
@@ -331,8 +337,11 @@ Deno.serve(async (req) => {
       const maxNotices = Number.isFinite(pref.dunning_max) && pref.dunning_max > 0 ? pref.dunning_max : 3
       if (!dunningEnabled) continue
 
-      const { data: overdueRent } = await supabase.from('rent_payments')
+      // Ιδιο σχήμα με τα γεγονότα: κενό σύνολο εκπρόθεσμων σημαίνει «πληρώθηκαν
+      // όλα» — και είναι ψέμα όταν η ανάγνωση απέτυχε.
+      const { data: overdueRent, error: odErr } = await supabase.from('rent_payments')
         .select('*').eq('user_id', pref.user_id).eq('paid', false).lt('due_date', todayStr)
+      if (odErr) { console.error('[send-reminders] εκπρόθεσμες δόσεις:', odErr); skipped++; continue }
       // Μόνο δόσεις με non-null due_date αυστηρά πριν από σήμερα (belt-and-suspenders·
       // η .lt() ήδη αποκλείει NULL due_date στην Postgres).
       const overdue = ((overdueRent || []) as RentPaymentsRow[]).filter(r => r.due_date != null && r.due_date < todayStr)
@@ -381,12 +390,18 @@ Deno.serve(async (req) => {
       const propIds   = [...new Set(toNotify.map(r => r.property_id).filter((v): v is string => v != null))]
       const tenantMap: Record<string, TenantName> = {}
       const propMap: Record<string, PropertyName> = {}
+      // ΤΑ ΟΝΟΜΑΤΑ ΔΕΝ ΕΙΝΑΙ ΔΙΑΚΟΣΜΗΣΗ ΣΕ ΟΧΛΗΣΗ ΟΦΕΙΛΗΣ. Αν η αναζήτηση
+      // αποτύχει, οι χάρτες μένουν άδειοι και το μήνυμα φεύγει λέγοντας «ο
+      // ενοικιαστής» και «το ακίνητο» για συγκεκριμένο χρέος: έγγραφο που ο
+      // παραλήπτης δεν μπορεί να αντιστοιχίσει σε τίποτα. Καλύτερα να μη φύγει.
       if (tenantIds.length) {
-        const { data: tRows } = await supabase.from('tenants').select('id, full_name').in('id', tenantIds)
+        const { data: tRows, error: tErr } = await supabase.from('tenants').select('id, full_name').in('id', tenantIds)
+        if (tErr) { console.error('[send-reminders] ονόματα ενοικιαστών:', tErr); skipped++; continue }
         for (const t of (tRows || []) as TenantName[]) tenantMap[t.id] = t
       }
       if (propIds.length) {
-        const { data: pRows } = await supabase.from('user_properties').select('id, name').in('id', propIds)
+        const { data: pRows, error: pErr } = await supabase.from('user_properties').select('id, name').in('id', propIds)
+        if (pErr) { console.error('[send-reminders] ονόματα ακινήτων:', pErr); skipped++; continue }
         for (const p of (pRows || []) as PropertyName[]) propMap[p.id] = p
       }
 

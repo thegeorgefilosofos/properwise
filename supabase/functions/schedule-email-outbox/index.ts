@@ -108,11 +108,17 @@ Deno.serve(async (req) => {
     try {
       // Non-transactional volume already committed (sent OR already planned) this
       // Athens-day / rolling week — so a later run cannot hand out a fresh budget.
-      const { data: committed } = await supabase
+      // ΕΔΩ Η ΣΙΩΠΗ ΔΕΝ ΠΑΡΑΛΕΙΠΕΙ, ΞΟΔΕΥΕΙ. Το σχόλιο από πάνω το λέει ρητά:
+      // η ανάγνωση υπάρχει ώστε μια επόμενη εκτέλεση να ΜΗΝ μοιράσει φρέσκο
+      // προϋπολογισμό. Με `committed === null` από αποτυχία, το «όσα έχουν ήδη
+      // σταλεί» γίνεται μηδέν και ο παραλήπτης παίρνει δεύτερη πλήρη μερίδα
+      // μηνυμάτων την ίδια μέρα — ακριβώς το αντίθετο από ό,τι φυλάει ο κώδικας.
+      const { data: committed, error: commErr } = await supabase
         .from('email_outbox')
         .select('sent_at,scheduled_for,status,send_window')
         .eq('to_email', email).neq('category', 'transactional').gte('scheduled_for', weekAgoISO)
         .or('status.eq.sent,send_window.not.is.null')
+      if (commErr) { console.error('[schedule-email-outbox] δεσμευμένος όγκος:', commErr); continue }
       const eff = (r: { sent_at?: string; scheduled_for?: string }) => r.sent_at || r.scheduled_for || ''
       const sentThisWeekNonTx = (committed || []).length
       const sentTodayNonTx = (committed || []).filter(r => eff(r) >= dayStartISO).length

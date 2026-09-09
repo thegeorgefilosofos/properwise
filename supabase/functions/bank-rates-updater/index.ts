@@ -164,8 +164,14 @@ Deno.serve(async (req) => {
 
     // ── Οι κρατημένες προτάσεις των τελευταίων ημερών, για δεύτερη επιβεβαίωση ──
     const since = new Date(Date.now() - 3 * 86400000).toISOString()
-    const { data: held } = await supabase.from('bank_rate_changes')
+    // ΑΔΕΙΟ ΣΥΝΟΛΟ ΣΗΜΑΙΝΕΙ «ΤΙΠΟΤΑ ΔΕΝ ΕΧΕΙ ΕΠΙΒΕΒΑΙΩΘΕΙ», δηλαδή καμία
+    // μεταβολή δεν εφαρμόζεται σήμερα. Είναι σωστό όταν όντως δεν υπάρχουν
+    // κρατημένες προτάσεις — και είναι σιωπηλή απενεργοποίηση ολόκληρου του
+    // μηχανισμού όταν απλώς δεν διαβάστηκε ο πίνακας: τα επιτόκια μένουν
+    // παγωμένα και η εργασία απαντά «ολοκληρώθηκε» κάθε μέρα.
+    const { data: held, error: heldErr } = await supabase.from('bank_rate_changes')
       .select('bank_id,field,new_value').eq('applied', false).gte('ran_at', since)
+    if (heldErr) throw new Error(`κρατημένες προτάσεις: ${heldErr.message}`)
     const confirmed = new Set<string>((held ?? []).map((h: { bank_id: string; field: string; new_value: number }) =>
       changeKey({ bank_id: h.bank_id, field: h.field, next: Number(h.new_value) })))
 

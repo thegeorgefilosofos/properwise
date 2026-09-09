@@ -13,7 +13,7 @@ import * as tenantStore from '@/lib/data/tenants';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
 import { TextInput, Toggle, ToggleTrack } from './UIComponents';
-import { T, fe, feAuto, fp, fn, KPIGrid, Skeleton, SkeletonKPIs, pressable } from '@/components/Theme';
+import { T, fe, feAuto, fp, fn, grUpper, KPIGrid, Skeleton, SkeletonKPIs, pressable } from '@/components/Theme';
 import { waterMonthly } from '@/lib/energy/tariff';
 import { monthAcc, monthGen, monthYearLabel } from '@/lib/core/months';
 import { randomSuffix } from '@/lib/core/uploadPath';
@@ -143,7 +143,7 @@ function Donut({ slices }: { slices: { label: string; value: number }[] }) {
             return el;
           })}
         </g>
-        <text x="76" y="70" textAnchor="middle" style={{ fontSize: 'var(--fs-xs)', fill: 'var(--text-tertiary)', fontFamily: T.font.sans, letterSpacing: '0.04em', transition: 'fill 0.15s' }}>{active ? active.label.slice(0, 16).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '') : 'ΣΥΝΟΛΟ'}</text>
+        <text x="76" y="70" textAnchor="middle" style={{ fontSize: 'var(--fs-xs)', fill: 'var(--text-tertiary)', fontFamily: T.font.sans, letterSpacing: '0.04em', transition: 'fill 0.15s' }}>{active ? grUpper(active.label.slice(0, 16)) : 'ΣΥΝΟΛΟ'}</text>
         <text x="76" y="87" textAnchor="middle" style={{ fontSize: 16, fontWeight: 700, fill: active ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.num, transition: 'fill 0.15s' }}>{feAuto(active ? active.value : total)}</text>
         {active && <text x="76" y="101" textAnchor="middle" style={{ fontSize: 'var(--fs-xs)', fill: 'var(--text-tertiary)', fontFamily: T.font.num }}>{Math.round((active.value / total) * 100)}%</text>}
       </svg>

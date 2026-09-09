@@ -433,9 +433,16 @@ Deno.serve(async (req) => {
       // διακομιστής μας τη ζητά. Ο προορισμός ελέγχεται, το μέγεθος και ο χρόνος
       // επίσης — έμενε το πλήθος: εξήντα δοκιμές την ώρα φτάνουν και περισσεύουν
       // για να συνδέσει κανείς ένα ημερολόγιο και δεν φτάνουν για σαρωτή.
-      const { data: quota } = await authClient.rpc('bump_send_quota', {
+      const { data: quota, error: quotaErr } = await authClient.rpc('bump_send_quota', {
         p_kind: 'ical_preview', p_units: 1, p_max: 60, p_window: '1 hour',
       })
+      // «Πολλές δοκιμές» και «ο μετρητής έσπασε» είναι δύο διαφορετικά
+      // πράγματα· ο χρήστης που συνδέει ημερολόγιο πρέπει να ξέρει ποιο
+      // από τα δύο τον σταμάτησε: στο πρώτο περιμένει· στο δεύτερο όχι.
+      if (quotaErr) {
+        console.error('[ical-sync] μέτρηση ορίου προεπισκόπησης:', quotaErr)
+        return json({ error: 'Ο έλεγχος ορίου απέτυχε. Δοκίμασε ξανά σε λίγο.' }, 500)
+      }
       if (!quota?.allowed) {
         return json({ error: 'Πολλές δοκιμές σύνδεσης. Δοκίμασε ξανά σε λίγο.', resetsAt: quota?.resets_at ?? null }, 429)
       }
