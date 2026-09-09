@@ -43,6 +43,59 @@ const TABLE = 'billing_profiles';
 
 const log = (...parts: unknown[]) => console.info(`[${merchant().id}]`, ...parts);
 
+// ═══ ΟΙ ΑΠΟΦΑΣΕΙΣ, ΧΩΡΙΣΤΑ ΑΠΟ ΤΗ ΜΕΤΑΦΟΡΑ ══════════════════════════════════
+// ΓΙΑΤΙ ΒΓΗΚΑΝ ΕΞΩ. Το `applyMerchantEvent` δένεται με τον έμπορο, με τον
+// πελάτη υπηρεσίας και με το `NextResponse`: για να ελεγχθεί ολόκληρο θα
+// χρειαζόταν να πλαστογραφηθούν τρία modules — ένας τέτοιος έλεγχος
+// δοκιμάζει κυρίως τα πλαστά. Οι κρίσεις όμως —ποιος κωδικός σε ποια αποτυχία,
+// ποιο γεγονός είναι παλιό, πότε σφραγίζεται η δοκιμή— είναι ΠΟΛΙΤΙΚΗ· η
+// πολιτική πρέπει να διαβάζεται και να ελέγχεται χωρίς δίκτυο.
+//
+// Καμία αλλαγή συμπεριφοράς: οι ίδιες γραμμές, σε συναρτήσεις με όνομα.
+
+/**
+ * ΤΟ ΓΕΓΟΝΟΣ ΠΟΥ ΗΡΘΕ ΑΡΓΟΤΕΡΑ ΑΛΛΑ ΣΥΝΕΒΗ ΝΩΡΙΤΕΡΑ.
+ *
+ * Τα webhook δεν φτάνουν με σειρά. Ενα καθυστερημένο «ακυρώθηκε» που γράφει
+ * πάνω από ένα νεότερο «ανανεώθηκε» κλείνει τη συνδρομή πελάτη που πλήρωσε.
+ *
+ * Οταν ο έμπορος ΔΕΝ στέλνει ώρα, το γεγονός εφαρμόζεται: δεν εφευρίσκουμε
+ * ώρα για να δικαιολογήσουμε απόρριψη.
+ */
+export function isStaleEvent(eventAt: string | null | undefined, seenAt: string | null | undefined): boolean {
+  if (!eventAt || !seenAt) return false;
+  const a = new Date(eventAt).getTime(), b = new Date(seenAt).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b)) return false;   // ώρα που δεν διαβάζεται δεν κρίνει
+  return a < b;
+}
+
+/**
+ * Η ΣΦΡΑΓΙΔΑ ΤΗΣ ΔΟΚΙΜΗΣ ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ.
+ *
+ * Οταν υπάρχει ήδη, μένει: χωρίς αυτό κάθε επόμενο γεγονός θα μετακινούσε την
+ * ημερομηνία προς τα εμπρός και το «η δοκιμή χρησιμοποιήθηκε» θα κρινόταν από
+ * την τελευταία ανανέωση αντί από την πρώτη δοκιμή.
+ *
+ * Και σφραγίζεται μόνο όταν ο ΕΜΠΟΡΟΣ λέει `on_trial` — όχι όταν άνοιξε το
+ * ταμείο. Ταμείο που εγκαταλείφθηκε δεν καίει τη δοκιμή κανενός.
+ */
+export function trialStamp(seenTrialAt: string | null | undefined, status: string, eventAt: string | null | undefined): string | null {
+  return seenTrialAt ?? (status === 'on_trial' ? (eventAt ?? null) : null);
+}
+
+/**
+ * Ο ΤΥΠΟΣ ΠΡΟΦΙΛ ΓΡΑΦΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΛΕΙΠΕΙ.
+ *
+ * Δήλωση που έκανε ο ίδιος ο χρήστης δεν ξαναγράφεται από webhook. Οταν λείπει,
+ * τη συμπληρώνει η ΑΓΟΡΑ: όποιος πέρασε από τον τιμοκατάλογο κατευθείαν στο
+ * ταμείο έφτασε εδώ χωρίς τύπο· χωρίς τύπο λογίζεται «ιδιώτης» — δηλαδή ο
+ * πελάτης που μόλις πλήρωσε «Επαγγελματία» θα έβλεπε κλειδωμένες ακριβώς τις
+ * καρτέλες που αγόρασε.
+ */
+export function profileTypeToWrite(seenType: string | null | undefined, plan: Parameters<typeof profileForPlan>[0]): string | null {
+  return (seenType || '').trim() ? null : profileForPlan(plan);
+}
+
 /**
  * Ο,ΤΙ ΓΙΝΕΤΑΙ ΑΦΟΥ Η ΥΠΟΓΡΑΦΗ ΕΧΕΙ ΗΔΗ ΕΠΑΛΗΘΕΥΤΕΙ.
  *
@@ -134,7 +187,7 @@ export async function applyMerchantEvent(raw: string) {
       .select('mor_event_at').eq('user_id', userId).maybeSingle();
     if (readError) log('η ώρα του τελευταίου γεγονότος δεν διαβάστηκε:', readError.message);
     const seen = (data as { mor_event_at?: string | null } | null)?.mor_event_at;
-    if (seen && new Date(eventAt) < new Date(seen)) {
+    if (isStaleEvent(eventAt, seen)) {
       log(`γεγονός ${read.event.name} παλαιότερο από το καταγεγραμμένο· αγνοήθηκε`);
       return NextResponse.json({ ok: true, skipped: 'stale' });
     }
@@ -155,7 +208,7 @@ export async function applyMerchantEvent(raw: string) {
   // στιγμή της τελευταίας ανανέωσης αντί της πρώτης δοκιμής.
   const seen = (await db.from(TABLE).select('trial_used_at, profile_type').eq('user_id', userId).maybeSingle())
     .data as { trial_used_at?: string | null; profile_type?: string | null } | null;
-  const trialUsedAt = seen?.trial_used_at ?? (sub.status === 'on_trial' ? eventAt : null);
+  const trialUsedAt = trialStamp(seen?.trial_used_at, sub.status, eventAt);
 
   // ── Ο ΤΥΠΟΣ ΠΡΟΦΙΛ ΓΡΑΦΕΤΑΙ ΟΤΑΝ ΤΟΝ ΑΠΟΔΕΙΚΝΥΕΙ Η ΑΓΟΡΑ ────────────────
   // Ο τύπος ζητιέται στο καλωσόρισμα, δηλαδή ΜΕΤΑ την εγγραφή· όποιος πέρασε
@@ -170,7 +223,7 @@ export async function applyMerchantEvent(raw: string) {
   // μόνο πακέτα των 24,90 €. Εδώ ξέρουμε τι ΑΓΟΡΑΣΕ.
   //
   // ΚΑΙ ΜΟΝΟ ΟΤΑΝ ΛΕΙΠΕΙ: δήλωση που έκανε ο ίδιος ο χρήστης δεν ξαναγράφεται.
-  const profileType = (seen?.profile_type || '').trim() ? null : profileForPlan(variant.plan);
+  const profileType = profileTypeToWrite(seen?.profile_type, variant.plan);
 
   const { error } = await db.from(TABLE).upsert({
     user_id: userId,

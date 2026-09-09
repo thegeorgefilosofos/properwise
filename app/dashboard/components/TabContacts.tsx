@@ -22,6 +22,7 @@ import { confirmDialog } from '@/components/confirmBus'
 import { useReportBranding, type ReportBranding } from '@/lib/reportBranding'
 import { reportHead, reportHeader, reportSection, reportKpi, reportDisclaimer, openReport, rEsc } from './reportPdf'
 import { uploadUserScoped } from '@/lib/storage/scopedUpload';
+import { uploadPath } from '@/lib/core/uploadPath';
 import { CONTACT_BUCKET, removeFiles, linkFor, type ContactFile } from '@/lib/storage/contactFiles';
 import { formFields, CONTACT_FIELDS, type FieldContext, type FieldDecision } from '@/lib/property/fields';
 import { athensToday, isoDate, daysUntilOrNull } from '@/lib/core/time';
@@ -438,7 +439,15 @@ function FileUploader({ files, onChange, contactId }: { files: ContactFile[]; on
     // ΙΔΙΩΤΙΚΟΣ ΚΑΔΟΣ, ΚΑΙ ΑΠΟΘΗΚΕΥΕΤΑΙ ΤΟ ΜΟΝΟΠΑΤΙ ΑΝΤΙ ΓΙΑ ΤΗ ΔΙΕΥΘΥΝΣΗ. Ο
     // «avatars» είναι δηλωμένος δημόσιος: το μισθωτήριο και το τιμολόγιο με το
     // ΑΦΜ κατέβαιναν από οποιονδήποτε ήξερε τη διεύθυνση.
-    const { path, error } = await uploadUserScoped(supabase, CONTACT_BUCKET, `contact-files/${contactId || 'new'}/${Date.now()}.${file.name.split('.').pop()}`, file, { upsert: true, contentType: file.type || undefined })
+    // ΤΟ ΜΟΝΟΠΑΤΙ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗΝ ΙΔΙΑ ΣΥΝΑΡΤΗΣΗ ΜΕ ΤΑ ΑΛΛΑ ΔΥΟ ΣΗΜΕΙΑ. Ηταν
+    // γραμμένο εδώ με το χέρι, παίρνοντας την ΚΑΤΑΛΗΞΗ ωμή από το όνομα που
+    // διάλεξε ο χρήστης (`file.name.split('.').pop()`) — δηλαδή κείμενο του
+    // χρήστη μέσα σε μονοπάτι αποθήκευσης, στο μόνο από τα τρία σημεία που δεν
+    // περνούσε από το `uploadPath()`. Το `uploadPath` μεταγράφει τα ελληνικά,
+    // κόβει τα «..», κρατά μοναδικό επίθεμα και δίνει ΟΛΟΚΛΗΡΟ το όνομα αντί
+    // για μια χρονοσφραγίδα: ο λογιστής που κατεβάζει τον φάκελο βλέπει
+    // «μισθωτήριο.pdf» και όχι «1757386421.pdf».
+    const { path, error } = await uploadUserScoped(supabase, CONTACT_BUCKET, uploadPath(file.name, `contact-files/${contactId || 'new'}`), file, { upsert: true, contentType: file.type || undefined })
     if (error) notifyError('Το αρχείο δεν ανέβηκε')
     else onChange([...files, { name: file.name, url: '', path, size: file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${(file.size / 1024).toFixed(0)} KB`, uploaded: new Date().toISOString() }])
     setUploading(false); if (fileRef.current) fileRef.current.value = ''

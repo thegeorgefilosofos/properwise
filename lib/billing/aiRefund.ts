@@ -42,19 +42,36 @@ export const REFUND_LOG = 'η επιστροφή μονάδας AI δεν έγι
  *   (χρονικό όριο, σώμα που δεν διαβάζεται).
  * @returns `true` μόνο αν η βάση όντως μείωσε τους μετρητές.
  */
+/**
+ * Η ΑΠΟΦΑΣΗ, ΧΩΡΙΣΤΑ ΑΠΟ ΤΗ ΜΕΤΑΦΟΡΑ.
+ *
+ * ΓΙΑΤΙ ΧΩΡΙΣΤΑ. Ο έλεγχος αυτού του αρχείου δοκίμαζε ΑΝΤΙΓΡΑΦΟ της λογικής,
+ * γιατί η αληθινή ήταν κλεισμένη γύρω από έναν πελάτη που θέλει κλειδί
+ * υπηρεσίας και δίκτυο. Ενας έλεγχος που δοκιμάζει αντίγραφο μένει πράσινος
+ * όταν αλλάξει το πρωτότυπο — δηλαδή είναι χειρότερος από κανέναν, γιατί
+ * διαβάζεται ως κάλυψη. Η κρίση ζει τώρα σε καθαρή συνάρτηση.
+ *
+ * ΟΙ ΤΡΕΙΣ ΑΠΑΝΤΗΣΕΙΣ ΔΕΝ ΕΙΝΑΙ Η ΙΔΙΑ. Η συνάρτηση της βάσης απαντά
+ * `{"refunded": false, "reason": "no_row"}` όταν δεν βρήκε γραμμή να μειώσει.
+ * ΔΕΝ είναι σφάλμα — είναι «δεν έγινε» — ο καλών πρέπει να το ξεχωρίζει
+ * γιατί από αυτό κρίνει αν θα διορθώσει τις κεφαλίδες υπολοίπου. Ενα
+ * `return !error` θα έλεγε «επιστράφηκε» για μονάδα που ΔΕΝ επιστράφηκε.
+ *
+ * Το `=== true` είναι αυστηρό επίτηδες: μια απάντηση `"true"` ή `1` δεν
+ * αποδεικνύει ότι μειώθηκε μετρητής — αποδεικνύει ότι κάτι άλλαξε στο σχήμα.
+ */
+export function refundOutcome(res: { data: unknown; error: { message: string } | null }): boolean {
+  if (res.error) {
+    console.error(REFUND_LOG, res.error.message);
+    return false;
+  }
+  return (res.data as { refunded?: boolean } | null)?.refunded === true;
+}
+
 export async function refundAiUsage(userId: string, pool = true): Promise<boolean> {
   try {
-    const { data, error } = await createServiceClient()
-      .rpc('refund_ai_usage', { p_uid: userId, p_pool: pool });
-    if (error) {
-      console.error(REFUND_LOG, error.message);
-      return false;
-    }
-    // Η συνάρτηση απαντά `{"refunded": false, "reason": "no_row"}` όταν δεν
-    // βρήκε γραμμή να μειώσει. Δεν είναι σφάλμα της βάσης — είναι «δεν έγινε»
-    // και ο καλών πρέπει να το ξεχωρίζει, γιατί από αυτό κρίνει αν θα
-    // διορθώσει τις κεφαλίδες υπολοίπου.
-    return (data as { refunded?: boolean } | null)?.refunded === true;
+    return refundOutcome(await createServiceClient()
+      .rpc('refund_ai_usage', { p_uid: userId, p_pool: pool }));
   } catch (err) {
     console.error(REFUND_LOG, err instanceof Error ? err.message : err);
     return false;
