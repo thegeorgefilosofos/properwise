@@ -157,9 +157,16 @@ export const s = {
   kpi:      { background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:'16px', padding:'14px 16px' } as React.CSSProperties,
   kpiV:     { fontSize:'22px', fontWeight:700, letterSpacing:'-0.5px', lineHeight:1, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' } as React.CSSProperties,
   kpiL:     { fontSize:'9px', letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'var(--text-secondary)', marginTop:'5px' } as React.CSSProperties,
-  th:       { fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase' as const, color:'var(--text-secondary)', padding:'8px 12px', borderBottom:'1px solid var(--border-subtle)', textAlign:'left' as const, fontWeight:400 } as React.CSSProperties,
-  td:       { padding:'10px 12px', borderBottom:'1px solid var(--border-subtle)', color:'var(--text-primary)', fontSize:'12px', verticalAlign:'middle' as const } as React.CSSProperties,
-  tdM:      { padding:'10px 12px', borderBottom:'1px solid var(--border-subtle)', color:'var(--text-secondary)', fontSize:'12px', verticalAlign:'middle' as const } as React.CSSProperties,
+  // ══ ΤΑ `th`, `td` ΚΑΙ `tdM` ΕΦΥΓΑΝ, ΚΑΙ ΓΡΑΦΕΤΑΙ ΓΙΑΤΙ ══════════════════════
+  // Ηταν ΔΕΥΤΕΡΟ σύστημα πίνακα, παράλληλο με την `.po-table` του globals.css
+  // και ασύμφωνο μαζί της σε κάθε νούμερο: κεφαλίδα 9 εικονοστοιχείων αντί για
+  // 11, απόσταση γραμμάτων 0,12em αντί για 0,06em, γέμισμα 8×12 και 10×12 αντί
+  // για 9×14 και 10×14, βάρος 400 αντί για 700 — και καμία επιφάνεια, κανένα
+  // περίγραμμα, οπότε οι γραμμές αιωρούνταν πάνω στην κάρτα.
+  //
+  // Το χρησιμοποιούσαν δύο οθόνες, ο Ενοικιαστής και η Φροντίδα. Και οι δύο
+  // γράφουν πλέον `.po-table`, δηλαδή τον ίδιο πίνακα με τα δημόσια εργαλεία,
+  // με τις τρεις σελίδες εμπιστοσύνης και με το Δάνειο. Μία κλίμακα.
   // ── ΤΟ ΔΑΧΤΥΛΟ ─────────────────────────────────────────────────────────
   // Τα τέσσερα κουμπιά της καρτέλας ενοικιαστή είναι το πυκνότερο σημείο της
   // εφαρμογής: εξήντα δύο σημεία κλήσης σε τρία αρχεία. Το ύψος τους έβγαινε

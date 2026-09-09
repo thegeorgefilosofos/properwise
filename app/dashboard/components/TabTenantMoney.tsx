@@ -786,21 +786,28 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
             action={tenant.lease_start&&tenant.monthly_rent?<Btn variant="primary" onClick={generateNow} disabled={busy}>Δημιουργία δόσεων</Btn>:undefined}
           />
         ):(
-          <div className="table-wrap" style={{ marginTop:14 }}>
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead><tr>{['Περίοδος','Ποσό','Κατάσταση','Τρόπος','Ημερομηνία Πληρωμής','Λήξη','Ενέργειες'].map((h,i)=><th key={i} style={s.th}>{h}</th>)}</tr></thead>
+          /* Ο ΠΙΝΑΚΑΣ ΤΟΥ ΠΡΟΪΟΝΤΟΣ, ΟΧΙ ΤΟ ΔΕΥΤΕΡΟ ΣΥΣΤΗΜΑ. Τα `s.th`/`s.td`/
+             `s.tdM` του TabTenantHelpers έγραφαν κεφαλίδα 9 εικονοστοιχείων και
+             γέμισμα 8×12 — άλλη κλίμακα από τους υπόλοιπους πίνακες, χωρίς
+             κουτί και χωρίς επιφάνεια. Η `.po-table` τα δίνει όλα μία φορά· η
+             `.pin-1` κρατά την περίοδο ορατή όσο ο χρήστης σέρνει προς τις
+             ενέργειες, που είναι εφτά στήλες παρακάτω. */
+          <div className="po-table-box" style={{ marginTop:14 }}>
+           <div className="po-scroll-x">
+            <table className="po-table pin-1" style={{ '--tbl-min': '820px', '--row-bg': 'var(--bg-surface)' }}>
+              <thead><tr>{['Περίοδος','Ποσό','Κατάσταση','Τρόπος','Ημερομηνία Πληρωμής','Λήξη','Ενέργειες'].map((h,i)=><th key={i} scope="col" style={{ textAlign: i===1 ? ('right' as const) : undefined }}>{h}</th>)}</tr></thead>
             <tbody>
               {sorted.map(p=>(
                 <tr key={p.id}>
-                  <td style={s.td}><strong style={{ fontFamily:T.font.sans }}>{MONTHS_SHORT[p.period_month-1]}</strong> <span style={{ color:'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{p.period_year}</span></td>
-                  <td style={{ ...s.td, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(p.amount)}
+                  <td><strong style={{ fontFamily:T.font.sans }}>{MONTHS_SHORT[p.period_month-1]}</strong> <span style={{ color:'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{p.period_year}</span></td>
+                  <td className="num" style={{ fontWeight:600, color:'var(--text-primary)' }}>{fmt(p.amount)}
                     {p.services_charge&&p.services_charge>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', fontWeight:400, color:'var(--text-tertiary)', fontFamily:T.font.sans }}>ενοίκιο {fmt(p.base_rent)} + υπηρεσίες {fmt(p.services_charge)}</span>:null}
                   </td>
-                  <td style={s.td}><StatusPill p={p}/>{p.tenant_declared&&!p.paid?<span style={{ display:'block', marginTop:4, fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans, fontWeight:600 }}>Δηλώθηκε από μισθωτή</span>:null}</td>
-                  <td style={s.tdM}>{p.method||ABSENT}</td>
-                  <td style={s.tdM}>{fmtD(p.paid_date)}</td>
-                  <td style={s.tdM}>{fmtD(p.due_date)}{p.days_late&&p.days_late>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', color:p.days_late>14?'var(--negative)':'var(--warning)' }}>+{days(p.days_late)}</span>:null}</td>
-                  <td style={s.td}>
+                  <td><StatusPill p={p}/>{p.tenant_declared&&!p.paid?<span style={{ display:'block', marginTop:4, fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans, fontWeight:600 }}>Δηλώθηκε από μισθωτή</span>:null}</td>
+                  <td>{p.method||ABSENT}</td>
+                  <td>{fmtD(p.paid_date)}</td>
+                  <td>{fmtD(p.due_date)}{p.days_late&&p.days_late>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', color:p.days_late>14?'var(--negative)':'var(--warning)' }}>+{days(p.days_late)}</span>:null}</td>
+                  <td>
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
                       {!p.paid
                         ?<button style={s.btnSm} onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>Πληρωμένο</button>
@@ -820,8 +827,9 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+           </div>
           </div>
         )}
       </div>

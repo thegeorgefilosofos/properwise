@@ -42,7 +42,11 @@ const PROBE = (min) => {
   for (const el of document.querySelectorAll('body *')) {
     if (el.children.length) continue;
     if (el.closest('[aria-live], .sr-only, [class*="skip"], .po-prose')) continue;
-    const t = (el.textContent || '').trim();
+    // ΤΑ ΜΑΛΑΚΑ ΕΝΩΤΙΚΑ ΔΕΝ ΕΙΝΑΙ ΧΑΡΑΚΤΗΡΕΣ ΠΟΥ ΔΙΑΒΑΖΟΝΤΑΙ. Οι νομικές σελίδες
+    // συλλαβίζονται στην απόδοση, δηλαδή κάθε λέξη κουβαλά αόρατα U+00AD. Χωρίς
+    // αφαίρεσή τους το μέτρημα φούσκωνε κατά ένα τρίτο: «105 χαρακτήρες» για
+    // γραμμή που το μάτι διαβάζει ως εβδομήντα πέντε — δηλαδή σωστή.
+    const t = (el.textContent || '').replace(/\u00AD/g, '').trim();
     if (t.length < min * 2) continue;
     if (!el.checkVisibility?.()) continue;
     const cs = getComputedStyle(el);
@@ -64,6 +68,32 @@ const PROBE = (min) => {
 };
 
 const browser = await chromium.launch({ executablePath: chromePath() });
+
+// ═══ Ο ΜΠΑΓΙΑΤΙΚΟΣ ΔΙΑΚΟΜΙΣΤΗΣ ΕΒΓΑΛΕ 143 ΨΕΥΤΙΚΑ ΕΥΡΗΜΑΤΑ ══════════════════
+// Ο διακομιστής απαντούσε 200 σε κάθε σελίδα και 500 στο φύλλο στυλ της, επειδή
+// το .next είχε ξαναχτιστεί από κάτω του. Οι σελίδες έφταναν ΓΥΜΝΕΣ: κάθε
+// κείμενο στα 16 εικονοστοιχεία με ύψος γραμμής «normal», δηλαδή ακριβώς οι
+// συνθήκες που παράγουν τις μακρύτερες γραμμές που μπορεί να δει ο σαρωτής.
+// Το εργαλείο ανέφερε 143 κείμενα πάνω από το μέτρο και κανένα δεν ήταν
+// αληθινό. Ο ίδιος έλεγχος υπάρχει ήδη στον σαρωτή απόδοσης, με το ίδιο ακριβώς
+// ιστορικό· εδώ έλειπε.
+if (PAGES.length) {
+  const p = await browser.newPage();
+  let rules = 0;
+  try {
+    await p.goto(BASE + '/', { waitUntil: 'networkidle', timeout: 30000 });
+    rules = await p.evaluate(() => [...document.styleSheets]
+      .reduce((n, sh) => { try { return n + sh.cssRules.length } catch { return n } }, 0));
+  } catch { /* το μήνυμα από κάτω τα λέει όλα */ }
+  await p.close();
+  if (rules < 400) {
+    await browser.close();
+    console.error(`✗ ΤΟ ${BASE} ΣΕΡΒΙΡΕΙ ΣΕΛΙΔΕΣ ΧΩΡΙΣ ΦΥΛΛΟ ΣΤΥΛ (${rules} κανόνες).`);
+    console.error('  Κάθε μέτρηση θα ήταν ψεύτικη. Σκότωσέ τον, ξαναχτίσε, ξεκίνα τον:');
+    console.error('    kill $(fuser -n tcp 3000) ; npm run build ; PORT=3000 nohup npm start &');
+    process.exit(2);
+  }
+}
 let total = 0;
 for (const w of WIDTHS) {
   const ctx = await browser.newContext({ viewport: { width: w, height: 900 }, reducedMotion: 'reduce' });

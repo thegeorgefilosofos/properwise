@@ -493,14 +493,19 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
           {(INTERNET_PLANS[s.internetProvider] || []).length > 0 && (
             <div>
               <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 10, fontFamily: T.font.sans }}>Διαθέσιμα Προγράμματα {provData?.label}</div>
-              <div style={{ overflowX: 'auto' }}>
-                {/* Η πρώτη στήλη μένει όσο ο πίνακας κυλά: ο λόγος είναι γραμμένος
-                    στην `.pin-1` του globals.css. Χωρίς αυτό, μόλις ο χρήστης
-                    σύρει για να δει τιμή, το όνομα του προγράμματος φεύγει. */}
-                <table className="pin-1" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--fs-xs)', minWidth: 500 }}>
+              {/* Η πρώτη στήλη μένει όσο ο πίνακας κυλά: ο λόγος είναι γραμμένος
+                  στην `.pin-1` του globals.css. Χωρίς αυτό, μόλις ο χρήστης
+                  σύρει για να δει τιμή, το όνομα του προγράμματος φεύγει.
+
+                  ΚΑΙ ΤΟ ΚΕΛΙ ΤΟ ΓΡΑΦΕΙ Η `.po-table`, ΟΧΙ Η ΚΑΘΕ ΓΡΑΜΜΗ. Εξι
+                  στήλες με έξι αντίγραφα του ίδιου `padding: 7px 10px`: το ίδιο
+                  στυλ, γραμμένο έξι φορές, που αποκλίνει με την πρώτη αλλαγή. */}
+              <div className="po-table-box">
+               <div className="po-scroll-x">
+                <table className="po-table pin-1" style={{ '--tbl-fs': 'var(--fs-xs)', '--tbl-min': '560px', '--row-bg': 'var(--bg-surface)' }}>
                   <thead>
                     <tr>{['Πρόγραμμα','Ταχύτητα','Σταθερό Τηλέφωνο','Δέσμευση','Μηνιαίο','Ετήσιο'].map((h, i) => (
-                      <th key={i} style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--text-secondary)', padding: '6px 10px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', fontWeight: 600, fontFamily: T.font.sans, background: 'var(--bg-elevated)', whiteSpace: 'nowrap' as const }}>{h}</th>
+                      <th key={i} scope="col" style={{ background: 'var(--bg-elevated)', whiteSpace: 'nowrap' as const, textAlign: i === 2 ? ('center' as const) : i >= 4 ? ('right' as const) : undefined }}>{h}</th>
                     ))}</tr>
                   </thead>
                   <tbody>
@@ -509,20 +514,22 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                       return (
                         <tr key={plan.id}
                           onClick={() => upd({ internetPlanId: plan.id, internetPlan: plan.name, internetSpeed: plan.speed, internetPrice: String(plan.price), internetPhone: plan.hasPhone })}
-                          style={{ cursor: 'pointer', background: isCur ? 'var(--accent-soft)' : 'transparent', transition: 'background 0.15s',
-                            // Το καρφωμένο κελί διαβάζει από εδώ το φόντο της γραμμής του.
-                            ['--row-bg' as string]: isCur ? 'var(--accent-soft)' : 'var(--bg-surface)' } as React.CSSProperties}>
-                          <td style={{ padding: '7px 10px', fontWeight: isCur ? 700 : 400, color: isCur ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.sans }}>{plan.name}{isCur ? ' ✓' : ''}</td>
-                          <td style={{ padding: '7px 10px', color: 'var(--text-secondary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)' }}>{plan.speed}</td>
-                          <td style={{ padding: '7px 10px', color: plan.hasPhone ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: 700, textAlign: 'center' as const }}>{plan.hasPhone ? 'Ναι' : 'Όχι'}</td>
-                          <td style={{ padding: '7px 10px', color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)', fontFamily: T.font.sans }}>{plan.contract || 'Χωρίς δέσμευση'}</td>
-                          <td style={{ padding: '7px 10px', fontWeight: 600, color: isCur ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' as const }}>{fe(plan.price)}</td>
-                          <td style={{ padding: '7px 10px', color: 'var(--text-tertiary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', whiteSpace: 'nowrap' as const }}>{fe(plan.price * 12)}</td>
+                          className={isCur ? 'is-on' : undefined}
+                          // Το καρφωμένο κελί διαβάζει από εδώ το φόντο της γραμμής του.
+                          style={{ cursor: 'pointer', transition: 'background 0.15s',
+                            '--row-bg': isCur ? 'var(--accent-soft)' : 'var(--bg-surface)' }}>
+                          <td style={{ fontWeight: isCur ? 700 : 400, color: isCur ? 'var(--accent)' : 'var(--text-primary)' }}>{plan.name}{isCur ? ' ✓' : ''}</td>
+                          <td className="num" style={{ textAlign: 'left' as const }}>{plan.speed}</td>
+                          <td style={{ color: plan.hasPhone ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: 700, textAlign: 'center' as const }}>{plan.hasPhone ? 'Ναι' : 'Όχι'}</td>
+                          <td style={{ color: 'var(--text-tertiary)' }}>{plan.contract || 'Χωρίς δέσμευση'}</td>
+                          <td className="num" style={{ fontWeight: 600, color: isCur ? 'var(--accent)' : 'var(--text-primary)', whiteSpace: 'nowrap' as const }}>{fe(plan.price)}</td>
+                          <td className="num" style={{ color: 'var(--text-tertiary)', whiteSpace: 'nowrap' as const }}>{fe(plan.price * 12)}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
+               </div>
               </div>
             </div>
           )}

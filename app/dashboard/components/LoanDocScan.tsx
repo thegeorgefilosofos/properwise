@@ -153,7 +153,9 @@ export function ScanUploadRow({ title, description, action, icon, scanning, onFi
             13 × 1,6 δίνει 20,7969 και η αναλογία ξαναβγαίνει 1,5997, δηλαδή
             ακριβώς κάτω από το όριο. Το ίδιο το κατώφλι γραμμένο ως τιμή πέφτει
             στη λάθος μεριά της στρογγυλοποίησης. */}
-        <p style={{ ...TT.bodySm, color: 'var(--text-tertiary)', lineHeight: 1.65 }}>{description}</p>
+        {/* Το `lineHeight: undefined` σβήνει το 1,50 που φέρνει το `TT.bodySm`
+            μέσα από το spread· αλλιώς το ενσωματωμένο στυλ νικά την κλάση. */}
+        <p className="po-prose" style={{ ...TT.bodySm, lineHeight: undefined, color: 'var(--text-tertiary)' }}>{description}</p>
       </div>
       <button onClick={() => inputRef.current?.click()} disabled={scanning}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 16px', height: T.h.lg, borderRadius: T.radius.inner, background: 'var(--accent)', border: '1px solid transparent', color: 'var(--accent-text)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight: 600, cursor: scanning ? 'wait' : 'pointer', flexShrink: 0 }}>

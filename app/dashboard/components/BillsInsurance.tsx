@@ -1657,12 +1657,20 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                 </div>
               )}
 
+              {/* Ο ΙΔΙΟΣ ΠΙΝΑΚΑΣ ΜΕ ΤΟΥ ΡΕΥΜΑΤΟΣ, ΜΕ ΤΗΝ ΙΔΙΑ ΚΛΑΣΗ. Οκτώ στήλες
+                  και οκτώ αντίγραφα του ίδιου `padding: 6px 8px`. Οι τρεις
+                  στήλες κάλυψης είναι «Ναι» ή «Όχι» και κεντράρονται· οι
+                  τέσσερις των ποσών στοιχίζονται δεξιά, όπως κάθε στήλη αριθμών
+                  του προϊόντος. Η `.pin-1` κρατά την εταιρεία ορατή όσο ο
+                  χρήστης σέρνει προς την «Εξοικονόμηση». */}
               {showQuotes && !quotesLoading && filteredQuotes.length > 0 && (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--fs-xs)', minWidth: 700 }}>
+                <>
+                <div className="po-table-box">
+                 <div className="po-scroll-x">
+                  <table className="po-table pin-1" style={{ '--tbl-fs': 'var(--fs-xs)', '--tbl-min': '760px', '--row-bg': 'var(--bg-surface)' }}>
                     <thead>
                       <tr>{['Εταιρεία','Πρόγραμμα','Σεισμός','Πλημμύρα','Φυσικές καταστροφές','Εκτιμώμενο Μηνιαίο','Εκτιμώμενο Ετήσιο','Εξοικονόμηση/μήνα'].map((h, i) => (
-                        <th key={i} style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--text-secondary)', padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', fontWeight: 600, fontFamily: T.font.sans, background: 'var(--bg-elevated)', whiteSpace: 'nowrap' as const }}>{h}</th>
+                        <th key={i} scope="col" style={{ background: 'var(--bg-elevated)', whiteSpace: i < 4 ? ('nowrap' as const) : undefined, textAlign: i > 1 && i < 5 ? ('center' as const) : i >= 5 ? ('right' as const) : undefined }}>{h}</th>
                       ))}</tr>
                     </thead>
                     <tbody>
@@ -1670,15 +1678,16 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                         const isCur = q.company === insProvider && q.plan === insPlanId;
                         return (
                           <tr key={q.plan} onClick={() => { u({ insProvider: q.company, insPlanId: q.plan, insEditCovers: false }); }}
-                            style={{ cursor: 'pointer', background: isCur ? 'var(--accent-soft)' : 'transparent', transition: 'background 0.15s' }}>
-                            <td style={{ padding: '6px 8px', fontWeight: isCur ? 700 : 400, color: isCur ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.sans }}>{q.companyLabel}{isCur ? ' ✓' : ''}</td>
-                            <td style={{ padding: '6px 8px', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)' }}>{q.planLabel}</td>
-                            <td style={{ padding: '6px 8px', color: q.earthquake ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.earthquake ? 'Ναι' : 'Όχι'}</td>
-                            <td style={{ padding: '6px 8px', color: q.flood     ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.flood     ? 'Ναι' : 'Όχι'}</td>
-                            <td style={{ padding: '6px 8px', color: q.natural   ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.natural   ? 'Ναι' : 'Όχι'}</td>
-                            <td style={{ padding: '6px 8px', fontWeight: 600, color: isCur ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' as const }}>{fe(q.monthlyEstimate)}</td>
-                            <td style={{ padding: '6px 8px', color: 'var(--text-secondary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', whiteSpace: 'nowrap' as const }}>{fe(q.annualEstimate)}</td>
-                            <td style={{ padding: '6px 8px', fontWeight: 700, fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' as const, color: 'var(--text-secondary)' }}>
+                            className={isCur ? 'is-on' : undefined}
+                            style={{ cursor: 'pointer', transition: 'background 0.15s' }}>
+                            <td style={{ fontWeight: isCur ? 700 : 400, color: isCur ? 'var(--accent)' : 'var(--text-primary)' }}>{q.companyLabel}{isCur ? ' ✓' : ''}</td>
+                            <td>{q.planLabel}</td>
+                            <td style={{ color: q.earthquake ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.earthquake ? 'Ναι' : 'Όχι'}</td>
+                            <td style={{ color: q.flood     ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.flood     ? 'Ναι' : 'Όχι'}</td>
+                            <td style={{ color: q.natural   ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.natural   ? 'Ναι' : 'Όχι'}</td>
+                            <td className="num" style={{ fontWeight: 600, color: isCur ? 'var(--accent)' : 'var(--text-primary)', whiteSpace: 'nowrap' as const }}>{fe(q.monthlyEstimate)}</td>
+                            <td className="num" style={{ whiteSpace: 'nowrap' as const }}>{fe(q.annualEstimate)}</td>
+                            <td className="num" style={{ fontWeight: 700, whiteSpace: 'nowrap' as const }}>
                               {q.savings !== undefined && q.savings !== 0 ? `${q.savings > 0 ? '+' : ''}${fe(q.savings)}` : fe(0)}
                             </td>
                           </tr>
@@ -1686,10 +1695,12 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                       })}
                     </tbody>
                   </table>
-                  <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, background: 'var(--bg-elevated)', padding: '6px 12px', borderRadius: T.radius.badge }}>
-                    * Εκτιμώμενες τιμές βάσει στοιχείων ακινήτου, Χρησιμοποίησε <a href="https://www.insurancemarket.gr/katoikia/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>insurancemarket.gr</a> για ακριβή προσφορά · Πάτα γραμμή για επιλογή
-                  </div>
+                 </div>
                 </div>
+                <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, background: 'var(--bg-elevated)', padding: '6px 12px', borderRadius: T.radius.badge }}>
+                  * Εκτιμώμενες τιμές βάσει στοιχείων ακινήτου, Χρησιμοποίησε <a href="https://www.insurancemarket.gr/katoikia/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>insurancemarket.gr</a> για ακριβή προσφορά · Πάτα γραμμή για επιλογή
+                </div>
+                </>
               )}
             </div>
           )}

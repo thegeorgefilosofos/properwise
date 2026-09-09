@@ -1606,7 +1606,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               ΚΑΙ Η ΚΡΙΣΗ ΑΝΑΦΕΡΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΕΙΝΑΙ ΜΕΣΑ ΣΤΟΝ ΟΡΙΖΟΝΤΑ. Η
               πρόταση για τη 20ετία γραφόταν και με επιλεγμένη τη 10ετία, δηλαδή
               περιέγραφε γράφημα που ο χρήστης δεν έβλεπε. */}
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '12px 0 0', fontFamily: SANS, lineHeight: 1.55 }}>
+          <p className="po-prose" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '12px 0 0', fontFamily: SANS }}>
             Οι εναλλακτικές τρέχουν με τη <strong style={{ color: 'var(--text-secondary)' }}>μέση ετήσια ονομαστική απόδοσή τους της τελευταίας {cmpYears}ετίας</strong>, ως συνολική απόδοση σε ευρώ από επίσημες πηγές, με ορίζοντα {BENCHMARKS_ASOF}. Το ακίνητο τρέχει με τη δική σου καθαρή απόδοση συν ανατίμηση. Όλα προ φόρου εισοδήματος.{' '}
             <InfoHint label="Τι δεν δείχνει η σύγκριση">
               <span style={{ display: 'block' }}>Τα νούμερα είναι μετρημένα, όχι εξομαλυμένες υποθέσεις. Ονομαστικά και τα δύο σκέλη, χωρίς αφαίρεση πληθωρισμού: γι’ αυτό ο πληθωρισμός στέκει ως δική του γραμμή αναφοράς παραπάνω.{cmpYears === '20' ? ' Η 20ετία περιλαμβάνει την κρίση: το Χρηματιστήριο Αθηνών και το ομόλογο είναι σχεδόν μηδενικά.' : ''}</span>
@@ -1956,7 +1956,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                   note="Ο νόμος το βάζει στον επισκέπτη και ο ιδιοκτήτης το αποδίδει. Οι πλατφόρμες όμως δεν έχουν πεδίο γι᾽ αυτό στην Ελλάδα: αν δεν το ζητήσεις ρητά, βγαίνει από την τσέπη σου." />
               </div>
             )}
-            <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.55 }}>
+            <p className="po-prose" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS }}>
               {consolidated
                 ? <>{CONSOLIDATION_NOTE} Το χαρτοφυλάκιό σου: <strong style={{ color: 'var(--text-primary)' }}>{portfolioTax.count} ακίνητα</strong> με ενοίκια {fe(portfolioTax.totalAnnualRent)} και συνολικό φόρο {fe(portfolioTax.totalTax)} (μέσος συντελεστής {fp(portfolioTax.effectiveRate * 100)}, οριακός {fp(portfolioTax.marginalRate * 100)}). Το μερίδιο αυτού του ακινήτου είναι <strong style={{ color: 'var(--text-primary)' }}>{fe(annualTax)}</strong>. Αν υπολογιζόταν μόνο του, θα έδειχνε {fe(portfolioTax.perProperty.find(p => p.id === propertyId)?.standaloneTax ?? 0)}, δηλαδή λιγότερα από την πραγματικότητα.</>
                 : <>{/* Μένει ο ΔΙΚΟΣ ΣΟΥ συντελεστής, που είναι το νούμερο της

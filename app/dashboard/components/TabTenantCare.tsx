@@ -409,21 +409,32 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
         {/* Φόρος εισοδήματος από ενοίκια */}
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
           <SectionTitle>Φόρος εισοδήματος από ενοίκια ({taxYear})</SectionTitle>
-          <div className="table-wrap">
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead><tr>{['Κλιμάκιο Εισοδήματος','Συντελεστής'].map((h,i)=><th key={i} style={{ ...s.th, textAlign:i?'right' as const:'left' as const }}>{h}</th>)}</tr></thead>
-            <tbody>
-              {rentalRowsForYear(taxYear).map((r,i)=>{
-                const active=taxable>r.from&&(r.to===Infinity||taxable<=r.to);
-                return (
-                  <tr key={i} style={{ background:active?'var(--accent-soft)':'transparent' }}>
-                    <td style={{ ...s.td, display:'flex', alignItems:'center', gap:8 }}>{r.range}{active&&<Badge tone="accent">εδώ</Badge>}</td>
-                    <td style={{ ...s.td, textAlign:'right' as const, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:active?700:400 }}>{r.rate}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {/* ═══ ΔΕΥΤΕΡΟ ΣΥΣΤΗΜΑ ΠΙΝΑΚΑ, ΚΑΙ ΤΕΛΟΣ ═══════════════════════════════
+              Τα `s.th` και `s.td` του TabTenantHelpers ήταν ΑΛΛΟΣ πίνακας από
+              τον πίνακα του προϊόντος: κεφαλίδα 9 εικονοστοιχείων αντί 11,
+              γέμισμα 8×12 αντί 9×14, καμία επιφάνεια και κανένα περίγραμμα — οι
+              γραμμές αιωρούνταν πάνω στην κάρτα. Δύο κλίμακες που περιγράφουν το
+              ίδιο πράγμα διαφέρουν στην οθόνη και αποκλίνουν στον κώδικα.
+
+              Η γραμμή του ενεργού κλιμακίου το λέει με την κλάση `is-on`, την
+              ίδια που χρησιμοποιούν τα τέσσερα δημόσια εργαλεία. */}
+          <div className="po-table-box">
+           <div className="po-scroll-x">
+            <table className="po-table" style={{ '--tbl-min': '320px' }}>
+              <thead><tr>{['Κλιμάκιο Εισοδήματος','Συντελεστής'].map((h,i)=><th key={i} scope="col" style={{ textAlign:i?'right' as const:'left' as const }}>{h}</th>)}</tr></thead>
+              <tbody>
+                {rentalRowsForYear(taxYear).map((r,i)=>{
+                  const active=taxable>r.from&&(r.to===Infinity||taxable<=r.to);
+                  return (
+                    <tr key={i} className={active?'is-on':undefined}>
+                      <td><span style={{ display:'inline-flex', alignItems:'center', gap:8 }}>{r.range}{active&&<Badge tone="accent">εδώ</Badge>}</span></td>
+                      <td className="num" style={{ fontWeight:active?700:400 }}>{r.rate}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+           </div>
           </div>
           <div style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>Ο φόρος υπολογίζεται προοδευτικά ανά κλιμάκιο επί του φορολογητέου ({fe(taxable)} = ακαθάριστα {fe(annualRent)}{viaBank?` μείον τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))}`:''}), σύνολο {fe(tax)} για αυτό το ακίνητο. Επιβεβαίωσε την τελική δήλωση με λογιστή ή την ΑΑΔΕ.</div>
         </div>
