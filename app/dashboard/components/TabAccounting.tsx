@@ -42,7 +42,7 @@ import {
   incomeStatement, taxProvision, consolidateIndividual,
   type TaxRegime, type StatementInput, type IncomeStatement,
 } from '@/lib/accounting/statement'
-import { shortTermYearSummary, platformFeeExpenses, staysMissingPlatformFee, isHouseType } from '@/lib/tax/shortTermTax'
+import { shortTermYearSummary, derivedPlatformFees, monthsWithOwnPlatformFee, staysMissingPlatformFee, isHouseType } from '@/lib/tax/shortTermTax'
 import { bankReceiptMatters } from '@/lib/billing/consolidate'
 import { resolveEnfia } from '@/lib/billing/propertyFacts'
 import { estimateENFIAFromFacts, enfiaTypeBlock, ENFIA_TYPE_BLOCK_NOTE } from '@/lib/billing/enfia'
@@ -59,7 +59,7 @@ import { exportAccountantBundle } from './sheets';
 import { buildRegister, chargeForYear, RENTED_PROPERTY_ACCOUNT, EQUIPMENT_ACCOUNT } from '@/lib/accounting/fixedAssets'
 import { declarableGrossOrTotal } from '@/lib/clients/stayAmounts'
 import { CAPITALISABLE } from '@/lib/tax/elpAccounts'
-import { CATEGORIES, resolveCategory } from '@/lib/expenses/taxonomy'
+import { CATEGORIES } from '@/lib/expenses/taxonomy'
 import EnfiaPanel from './EnfiaPanel';
 import AccountantDossier, { useAccountantDossier } from './AccountantDossier'
 import { fetchDossierPapers } from './dossierPapers'
@@ -645,12 +645,11 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // και μια αντιστοίχιση ανά κράτηση δεν είναι δυνατή με τα δεδομένα που έχουμε.
   // Ο κανόνας εφαρμόζεται λοιπόν ανά ΜΗΝΑ: όποιος μήνας έχει δική του απόδειξη
   // δεν παράγει τίποτα, οι υπόλοιποι μένουν ακέραιοι.
-  const ownFeeMonths = useMemo(()=>{
-    const m=new Set<string>()
-    for(const e of expensesYear) if(resolveCategory(e.category)==='platform_fee'&&e.date) m.add(String(e.date).slice(0,7))
-    return m
-  },[expensesYear])
-  const platformFeeRows = useMemo(()=>platformFeeExpenses(stays,year).filter(r=>!ownFeeMonths.has(r.date.slice(0,7))),[ownFeeMonths,stays,year])
+  // Ο κανόνας ήταν γραμμένος εδώ κι ΞΑΝΑ, αλλιώς, στο ημερολόγιο: εκεί ρωτούσε
+  // ναι/όχι για όλη τη χρονιά κι μία καταχωρημένη προμήθεια έκοβε τις άλλες
+  // πενήντα εννέα. Ζει πλέον στο lib/tax/shortTermTax.ts, μία φορά.
+  const ownFeeMonths = useMemo(()=>monthsWithOwnPlatformFee(expensesYear),[expensesYear])
+  const platformFeeRows = useMemo(()=>derivedPlatformFees(stays,year,ownFeeMonths),[ownFeeMonths,stays,year])
   const platformFeesYear = useMemo(()=>platformFeeRows.reduce((s,r)=>s+r.amount,0),[platformFeeRows])
   // Εξαιρούμε τον ΕΝΦΙΑ ως δαπάνη, τον μετράμε ξεχωριστά (αποφυγή διπλομέτρησης).
   const expensesTotal = useMemo(()=>expensesYear.filter(e=>e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear),[expensesYear,platformFeesYear,ownPct,mine])

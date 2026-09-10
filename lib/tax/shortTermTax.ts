@@ -21,7 +21,7 @@ import {
   isDeclared, type StayAmountLike,
 } from '@/lib/clients/stayAmounts';
 import { STAY_CHANNEL_LABELS, type StayChannel } from '@/lib/clients/clients';
-import { categoryLabel } from '@/lib/expenses/taxonomy';
+import { categoryLabel, resolveCategory } from '@/lib/expenses/taxonomy';
 import { presumptiveDeductionRateForYear } from '@/lib/billing/consolidate';
 import {
   climateLevyForNights, climateLevyRates, isHighSeasonMonth,
@@ -351,6 +351,51 @@ export function platformFeeExpenses(stays: TaxStay[], year: number): DerivedExpe
     });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΠΟΤΕ ΥΠΕΡΙΣΧΥΕΙ Η ΔΙΚΗ ΤΟΥ ΚΑΤΑΧΩΡΗΣΗ: ΤΟΝ ΜΗΝΑ ΤΗΣ, ΟΧΙ ΤΗ ΧΡΟΝΙΑ ΟΛΟΚΛΗΡΗ
+// ─────────────────────────────────────────────────────────────────────────
+// ΤΟ ΣΦΑΛΜΑ. Το ημερολόγιο ρωτούσε μια σκέτη ερώτηση ναι/όχι πάνω σε ΟΛΗ την
+// περίοδο: «υπάρχει έστω μία καταχωρημένη προμήθεια πλατφόρμας;». Οταν ναι,
+// έκοβε ΚΑΘΕ παραγόμενη γραμμή. Ο οικοδεσπότης με εξήντα κρατήσεις που είχε
+// περάσει με το χέρι ΜΙΑ προμήθεια —του Ιουλίου— έχανε τις άλλες πενήντα
+// εννέα: κέρδος φουσκωμένο, φόρος φουσκωμένος, ισοζύγιο που δεν κλείνει.
+//
+// Ο ΣΩΣΤΟΣ ΚΑΝΟΝΑΣ ΥΠΗΡΧΕ ΗΔΗ ΔΙΠΛΑ, ΣΤΗ ΛΟΓΙΣΤΙΚΗ, ΚΙ ΗΤΑΝ ΑΝΑ ΜΗΝΑ. Το
+// σχόλιο του ημερολογίου έγραφε μάλιστα «ίδιος έλεγχος με το TabAccounting» —
+// δεν ήταν. Δύο αντίγραφα του ίδιου κανόνα, με το ένα να έχει αποκλίνει
+// σιωπηλά: ακριβώς ο λόγος που γράφεται εδώ, μία φορά.
+//
+// ΓΙΑΤΙ Ο ΜΗΝΑΣ ΚΙ ΟΧΙ Η ΔΙΑΜΟΝΗ. Μια χειροκίνητη δαπάνη προμήθειας δεν φέρει
+// πάνω της σε ποια κράτηση ανήκει: ο οικοδεσπότης γράφει «Προμήθεια Airbnb
+// Ιουλίου» με ένα ποσό για όλον τον μήνα, όπως του το δίνει η πλατφόρμα. Ο
+// μήνας είναι η πιο λεπτή διάκριση που τα δεδομένα ΣΤΗΡΙΖΟΥΝ· οτιδήποτε
+// λεπτότερο θα ήταν μαντεψιά — κι εδώ τίποτα δεν επινοείται.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Μια δαπάνη όπως τη βλέπει αυτός ο κανόνας: κατηγορία κι ημερομηνία. */
+export interface CategorisedExpense { category?: string | null; date?: string | null }
+
+/** Οι μήνες («YYYY-MM») όπου ο χρήστης έχει ήδη καταχωρήσει προμήθεια πλατφόρμας. */
+export function monthsWithOwnPlatformFee(rows: readonly CategorisedExpense[] | null | undefined): Set<string> {
+  const out = new Set<string>();
+  for (const e of rows || []) {
+    if (e?.date && resolveCategory(e.category) === 'platform_fee') out.add(String(e.date).slice(0, 7));
+  }
+  return out;
+}
+
+/**
+ * Οι προμήθειες που ΠΡΟΚΥΠΤΟΥΝ, χωρίς τους μήνες που ο χρήστης έγραψε μόνος του.
+ *
+ * Το `stays` μπορεί να είναι μία διαμονή: το ημερολόγιο τις περνά μία μία, ώστε
+ * κάθε γραμμή να κρατά το ακίνητό της.
+ */
+export function derivedPlatformFees(
+  stays: TaxStay[], year: number, ownFeeMonths: ReadonlySet<string>,
+): DerivedExpense[] {
+  return platformFeeExpenses(stays, year).filter(r => !ownFeeMonths.has(r.date.slice(0, 7)));
 }
 
 /**

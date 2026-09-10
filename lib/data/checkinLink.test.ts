@@ -63,7 +63,7 @@ void (async () => {
   // Πελάτης χωρίς συνδεδεμένο ακίνητο: ο σύνδεσμος βγαίνει ούτως ή άλλως.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await issue(db as any, 'u1', 'c1', null, NOW);
-  ok('χωρίς ακίνητο δεν σκάει', (wrote as Record<string, unknown>)?.property_id === null);
+  ok('χωρίς ακίνητο δεν σκάει', (wrote as unknown as Record<string, unknown>)?.property_id === null);
 
   console.log(fail === 0 ? `✓ checkinLink: ${pass} έλεγχοι πέρασαν` : `✗ checkinLink: ${fail} απέτυχαν από ${pass + fail}\n  ${fails.join('\n  ')}`);
   if (fail > 0) process.exit(1);

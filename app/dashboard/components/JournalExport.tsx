@@ -16,8 +16,7 @@ import * as expenseStore from '@/lib/data/expenses';
 import * as stayStore from '@/lib/data/stays';
 import { declarableGrossOrTotal } from '@/lib/clients/stayAmounts';
 import { STAY_CHANNEL_LABELS, type StayChannel } from '@/lib/clients/clients';
-import { platformFeeExpenses, type TaxStay } from '@/lib/tax/shortTermTax';
-import { resolveCategory } from '@/lib/expenses/taxonomy';
+import { derivedPlatformFees, monthsWithOwnPlatformFee, type TaxStay } from '@/lib/tax/shortTermTax';
 import { T, TT, Btn, Badge, Modal, ChipToggle, LinkBtn } from '@/components/Theme';
 import PropertyPicker from './PropertyPicker';
 import { CustomSelect } from './UIComponents';
@@ -208,15 +207,18 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
     // το ημερολόγιο έγραφε το ακαθάριστο ως είσπραξη και ο 38 έδειχνε χρήματα
     // που δεν μπήκαν ποτέ. Ο κανόνας ζει στο lib/tax/shortTermTax.ts και
     // καλείται ανά διαμονή ώστε η δαπάνη να κρατά το κέντρο κόστους του εσόδου.
-    // ΔΕΝ ΔΙΠΛΟΓΡΑΦΕΤΑΙ: αν ο χρήστης έχει ήδη περάσει προμήθεια ως δαπάνη της
-    // περιόδου, η καταχώρησή του υπερισχύει — ίδιος έλεγχος με το TabAccounting.
-    const ownPlatformFees = ((expData || []) as ExpRow[])
-      .some(e => resolveCategory(e.category) === 'platform_fee');
-    if (!ownPlatformFees) {
-      for (const s of stays) {
-        const property = s.property_id ? nameById.get(String(s.property_id)) : undefined;
-        for (const f of platformFeeExpenses([s], year)) expenses.push({ ...f, property });
-      }
+    // ΔΕΝ ΔΙΠΛΟΓΡΑΦΕΤΑΙ: αν ο χρήστης έχει ήδη περάσει προμήθεια ως δαπάνη ενός
+    // ΜΗΝΑ, η καταχώρησή του υπερισχύει για εκείνον τον μήνα.
+    //
+    // ΕΔΩ Η ΕΡΩΤΗΣΗ ΗΤΑΝ ΝΑΙ/ΟΧΙ ΓΙΑ ΟΛΗ ΤΗΝ ΠΕΡΙΟΔΟ. Μία καταχωρημένη προμήθεια
+    // —του Ιουλίου— έκοβε ΚΑΘΕ παραγόμενη γραμμή της χρονιάς: ο οικοδεσπότης με
+    // εξήντα κρατήσεις έχανε τις άλλες πενήντα εννέα, με κέρδος κι φόρο
+    // φουσκωμένα. Το σχόλιο έγραφε «ίδιος έλεγχος με το TabAccounting» κι ΔΕΝ
+    // ήταν: εκείνο έκρινε ανά μήνα. Ο κανόνας ζει πλέον σε ένα σημείο.
+    const ownFeeMonths = monthsWithOwnPlatformFee((expData || []) as ExpRow[]);
+    for (const s of stays) {
+      const property = s.property_id ? nameById.get(String(s.property_id)) : undefined;
+      for (const f of derivedPlatformFees([s], year, ownFeeMonths)) expenses.push({ ...f, property });
     }
     return buildJournal({ incomes, expenses, loanPayments });
   };

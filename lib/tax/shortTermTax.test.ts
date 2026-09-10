@@ -1,5 +1,5 @@
 // Δοκιμές φορολογικής σύνοψης βραχυχρόνιας. Τρέξε: npx tsx lib/tax/shortTermTax.test.ts
-import { nightsByMonthForYear, channelBreakdownForYear, shortTermYearSummary, yearsWithStays, guestPriceBreakdown, type TaxStay } from './shortTermTax';
+import { nightsByMonthForYear, channelBreakdownForYear, shortTermYearSummary, yearsWithStays, guestPriceBreakdown, monthsWithOwnPlatformFee, derivedPlatformFees, type TaxStay } from './shortTermTax';
 import { climateLevyForNights, rentalIncomeTax, CLIMATE_LEVY_FROM_2025 } from '../billing/greekTax';
 
 let passed = 0, failed = 0; const fails: string[] = [];
@@ -282,6 +282,45 @@ ok('η προμήθεια δεν αγγίζει το δηλωτέο ακαθάρ
   ok('χρήση 2024 → το καθεστώς του τέλους σημαδεύεται', shortTermYearSummary(st, 2024).levyRegimeAssumed === true);
   ok('χρήση 2025 → δεν σημαδεύεται', shortTermYearSummary(st, 2025).levyRegimeAssumed === false);
   ok('χρήση 2026 → δεν σημαδεύεται', shortTermYearSummary(st, 2026).levyRegimeAssumed === false);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΜΙΑ ΧΕΙΡΟΚΙΝΗΤΗ ΠΡΟΜΗΘΕΙΑ ΕΣΒΗΝΕ ΤΙΣ ΑΛΛΕΣ ΠΕΝΗΝΤΑ ΕΝΝΕΑ
+// ─────────────────────────────────────────────────────────────────────────
+// ΤΟ ΣΦΑΛΜΑ. Το ημερολόγιο ρωτούσε ναι/όχι πάνω σε ΟΛΗ την περίοδο: «υπάρχει
+// έστω μία καταχωρημένη προμήθεια πλατφόρμας;» — κι όταν ναι, έκοβε ΚΑΘΕ
+// παραγόμενη γραμμή της χρονιάς. Ο οικοδεσπότης με εξήντα κρατήσεις που είχε
+// περάσει με το χέρι μία προμήθεια του Ιουλίου έχανε τις υπόλοιπες: κέρδος
+// φουσκωμένο, φόρος φουσκωμένος, ισοζύγιο που δεν κλείνει.
+//
+// Ο σωστός κανόνας —ανά ΜΗΝΑ— υπήρχε ήδη στη Λογιστική. Το ίδιο το σχόλιο του
+// ημερολογίου έγραφε «ίδιος έλεγχος με το TabAccounting» κι δεν ήταν: δύο
+// αντίγραφα, με το ένα να έχει αποκλίνει σιωπηλά.
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const stay = (checkIn: string, gross: number, fee: number): TaxStay => ({
+    check_in: checkIn, check_out: checkIn.slice(0, 8) + String(Number(checkIn.slice(8)) + 3).padStart(2, '0'),
+    gross_guest_paid: gross, platform_fee: fee, channel: 'airbnb',
+  } as TaxStay);
+  const stays = [stay('2026-05-10', 600, 90), stay('2026-07-14', 800, 120), stay('2026-08-02', 900, 135)];
+
+  ok('χωρίς δικές του καταχωρήσεις, όλες οι προμήθειες παράγονται',
+     derivedPlatformFees(stays, 2026, new Set()).length === 3);
+
+  // Ο χρήστης πέρασε ΜΟΝΟ την προμήθεια του Ιουλίου.
+  const own = monthsWithOwnPlatformFee([{ category: 'Προμήθεια πλατφόρμας', date: '2026-07-31' }]);
+  ok('ο μήνας του εντοπίζεται', own.has('2026-07') && own.size === 1);
+  const kept = derivedPlatformFees(stays, 2026, own);
+  ok('ΟΙ ΑΛΛΟΙ ΔΥΟ ΜΗΝΕΣ ΕΠΙΒΙΩΝΟΥΝ', kept.length === 2);
+  ok('κι λείπει ακριβώς ο Ιούλιος', !kept.some(r => r.date.startsWith('2026-07')));
+  ok('τα ποσά μένουν ανέπαφα', kept.map(r => r.amount).join(',') === '90,135');
+
+  // Δαπάνη άλλης κατηγορίας δεν κόβει τίποτα.
+  ok('άλλη κατηγορία δεν μετράει',
+     monthsWithOwnPlatformFee([{ category: 'Κοινόχρηστα', date: '2026-07-31' }]).size === 0);
+  ok('ούτε γραμμή χωρίς ημερομηνία',
+     monthsWithOwnPlatformFee([{ category: 'Προμήθεια πλατφόρμας', date: null }]).size === 0);
+  ok('κενή είσοδος δεν σκάει', monthsWithOwnPlatformFee(null).size === 0);
 }
 
 console.log(`\nshortTermTax — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`);
