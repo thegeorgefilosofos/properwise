@@ -519,7 +519,19 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // μηδέν πρόβλεψη — σε PDF με αριθμό εγγράφου και κωδικό QR επαλήθευσης.
   const isShort = readStatus(prop as StatusRow) === 'rent_short'
   const regime:TaxRegime = isShort ? 'individual_shortterm' : 'individual_longterm'
-  const propCount = Math.max(1, allProps.length)
+  // ══ ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΜΕΤΡΑΕΙ ΒΡΑΧΥΧΡΟΝΙΑ ΑΚΙΝΗΤΑ, ΟΧΙ ΑΚΙΝΗΤΑ ══════
+  // Ο νόμος (ν.5073/2023) εξαιρεί τα φυσικά πρόσωπα που εκμισθώνουν ΒΡΑΧΥΧΡΟΝΙΑ
+  // έως δύο ακίνητα. Εδώ μετριούνταν ΟΛΑ όσα έχει ο χρήστης: μακροχρόνιες
+  // μισθώσεις, η ίδια του η κατοικία, μια αποθήκη, ένα οικόπεδο. Ενας ιδιοκτήτης
+  // με ένα Airbnb κι δύο διαμερίσματα σε μακροχρόνια έβγαινε «τρία ακίνητα»,
+  // έχανε την εξαίρεση κι χρεωνόταν 0,5% επί των ακαθαρίστων: σε 30.000,00€
+  // βραχυχρόνιας, 150,00€ τον χρόνο που δεν οφείλει. Το ίδιο νούμερο έμπαινε
+  // στο «πόσα να βάλεις στην άκρη» κι στον φάκελο του λογιστή.
+  //
+  // Το `Math.max(1, …)` μένει: όσο ο κατάλογος δεν έχει φορτώσει, το ανοιχτό
+  // ακίνητο μετράει ως ένα — κι η εξαίρεση ισχύει, που είναι η σωστή στάση
+  // απέναντι σε δεδομένα που λείπουν.
+  const propCount = Math.max(1, allProps.filter(p=>readStatus(p as StatusRow)==='rent_short').length)
   // ══════════════════════════════════════════════════════════════════════════
   // ΤΟ ΜΕΡΙΔΙΟ ΤΟΥ ΣΥΝΙΔΙΟΚΤΗΤΗ, ΠΟΥ Η ΚΑΡΤΕΛΑ ΔΕΝ ΡΩΤΟΥΣΕ ΚΑΝ
   //
@@ -706,6 +718,21 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   const inventoryDepr = useMemo(()=>
     Math.round(assets.filter(a=>a.elp===EQUIPMENT_ACCOUNT).reduce((s,a)=>s+chargeForYear(a,year),0)),[assets,year])
   const grossIncome = regime==='individual_shortterm' ? mine(shortSummary.grossRevenue) : rentAccruedYear
+  // ══ ΤΟ ΜΕΡΙΔΙΟ ΕΠΙΑΝΕ ΤΑ ΕΣΟΔΑ ΚΙ ΑΦΗΝΕ ΤΑ ΤΕΛΗ ΟΛΟΚΛΗΡΑ ═══════════════════
+  // Τα ακαθάριστα από πάνω περνούν από τη `mine()`, δηλαδή κόβονται στο ποσοστό
+  // ιδιοκτησίας — κι το ίδιο κάνει κι ο ΕΝΦΙΑ. Το ΤΑΚΚ κι το τέλος
+  // παρεπιδημούντων περνούσαν ΟΛΟΚΛΗΡΑ. Ο συνιδιοκτήτης στο ένα τρίτο έβλεπε
+  // έσοδα του ενός τρίτου κι τέλη ολόκληρου του ακινήτου: το «καθαρό» κι το
+  // «πόσα να βάλεις στην άκρη» έβγαιναν λάθος προς τα κάτω.
+  //
+  // Το δημοτικό τέλος το δείχνει μόνο του: είναι 0,5% ΕΠΙ ΤΩΝ ΑΚΑΘΑΡΙΣΤΩΝ.
+  // Υπολογισμένο στο 100% κι τοποθετημένο δίπλα σε έσοδα 33% δεν είναι πια
+  // μισό τοις εκατό τίποτα.
+  //
+  // Ο κανόνας είναι ο ίδιος του `lib/expenses/sharing.ts`: ποσό που ανήκει
+  // ΟΛΟΚΛΗΡΟ στο ακίνητο —ενοίκιο, ΕΝΦΙΑ, τέλη— κόβεται στο μερίδιο.
+  const shortLevy = regime==='individual_shortterm' ? mine(shortSummary.levyShortfall) : 0
+  const shortMunicipal = regime==='individual_shortterm' ? mine(shortSummary.municipalTax) : 0
   const uncollectedRent = regime==='individual_shortterm' ? 0 : Math.max(0, rentAccruedYear - rentCollectedYear)
 
   // Ενοποίηση χαρτοφυλακίου (φυσικό πρόσωπο): ο φόρος είναι προοδευτικός στο ΣΥΝΟΛΟ
@@ -740,7 +767,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       const pPct = pctOf(p.id)
       const gross = ownerShareOfAmount(rmode==='individual_shortterm' ? pShort.grossRevenue : Math.max(0, pRentAccrued - pRelief), pPct)
       const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct), rentsPaidViaBank: pViaBank,
-        climateLevy: rmode==='individual_shortterm'?pShort.levyShortfall:0, municipalTax: rmode==='individual_shortterm'?pShort.municipalTax:0 }
+        // Ο ίδιος κανόνας του μεριδίου με τα ακαθάριστα κι τον ΕΝΦΙΑ από πάνω:
+        // τέλος υπολογισμένο στο 100% δίπλα σε έσοδα 33% δεν ισοσκελίζει.
+        climateLevy: rmode==='individual_shortterm'?ownerShareOfAmount(pShort.levyShortfall, pPct):0,
+        municipalTax: rmode==='individual_shortterm'?ownerShareOfAmount(pShort.municipalTax, pPct):0 }
       return { id:p.id, name:p.name||'Ακίνητο', input }
     }).filter(x=>x.input.grossIncome>0)
     if(items.length===0) return null
@@ -769,7 +799,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           // μισθό. Περνιόταν καρφωμένο στο ποσό του 2025 ό,τι έτος κι αν είχε
           // διαλέξει ο χρήστης — 700€ φανταστικό εισόδημα στη χρήση 2024.
           presumptiveMinIncome: elpForm==='sole'&&grossIncome>0 ? Math.round(minNetIncome.amount*(firstYears?0.5:1)) : undefined, enfia:0,
-          climateLevy: regime==='individual_shortterm'?shortSummary.levyShortfall:0, municipalTax: regime==='individual_shortterm'?shortSummary.municipalTax:0,
+          climateLevy: shortLevy, municipalTax: shortMunicipal,
           otherCashExpenses: Math.max(0,expensesTotal-deductibleTotal), loanPrincipal: Math.max(0,loanAnnual-loanInterestYear), uncollectedIncome:uncollectedRent, brackets: rentalBracketsForYear(year) }
       : { regime, grossIncome, enfia, overrideIncomeTax: myTaxShare, rentsPaidViaBank: rentsBank,
         // ΤΟ ΤΕΛΟΣ ΑΝΘΕΚΤΙΚΟΤΗΤΑΣ ΕΦΕΥΓΕ ΔΥΟ ΦΟΡΕΣ ΑΠΟ ΤΟ ΤΑΜΕΙΟ.
@@ -782,11 +812,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         // Το `levyShortfall` είναι ό,τι ΟΦΕΙΛΕΤΑΙ και δεν εισπράχθηκε: μηδέν
         // όταν ο επισκέπτης το πλήρωσε κανονικά. Ο ίδιος κανόνας που εφαρμόζει
         // ήδη μέσα του το lib/tax/shortTermTax.ts.
-          climateLevy: regime==='individual_shortterm' ? shortSummary.levyShortfall : 0,
-          municipalTax: regime==='individual_shortterm' ? shortSummary.municipalTax : 0,
+          climateLevy: shortLevy, municipalTax: shortMunicipal,
           otherCashExpenses: expensesTotal, loanPrincipal: loanAnnual, uncollectedIncome:uncollectedRent,
           legallyClaimedUncollected: claimedUncollected, brackets: rentalBracketsForYear(year) }
-  ),[businessMode,year,elpForm,age,firstYears,distribution,ekfa,buildingDepr,claimedUncollected,rentsBank,regime,grossIncome,enfia,myTaxShare,shortSummary,expensesTotal,deductibleTotal,inventoryDepr,loanInterestYear,loanAnnual,uncollectedRent,minNetIncome.amount])
+  ),[businessMode,year,elpForm,age,firstYears,distribution,ekfa,buildingDepr,claimedUncollected,rentsBank,regime,grossIncome,enfia,myTaxShare,expensesTotal,deductibleTotal,inventoryDepr,loanInterestYear,loanAnnual,uncollectedRent,shortLevy,shortMunicipal,minNetIncome.amount])
 
   // Συμβουλευτική, προτάσεις με αξία από τα πραγματικά δεδομένα (καθαρές, όχι θόρυβος).
   const advisory = useMemo(()=>buildAdvisory({
