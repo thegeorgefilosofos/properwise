@@ -65,8 +65,26 @@ export default function CookieConsent() {
     // δηλαδή υποσχόταν συμπεριφορά που δεν είχε και ο αναγνώστης οθόνης
     // ανακοίνωνε «διάλογος» για κάτι που ο χρήστης μπορεί απλώς να προσπεράσει.
     // Ενημερωτική περιοχή με όνομα: ούτε λιγότερο, ούτε ψέματα.
-    <div role="region" aria-label="Ενημέρωση για cookies" className="po-noprint" style={{ position: 'fixed', left: 12, right: 12, bottom: 'calc(12px + env(safe-area-inset-bottom))', zIndex: 2000, maxWidth: 720, margin: '0 auto',
-      background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.card, boxShadow: 'var(--shadow-lg)',
+    // ── ΤΟ ΜΟΝΟ ΠΛΩΤΟ ΣΤΟΙΧΕΙΟ ΠΟΥ ΔΕΝ ΜΙΛΟΥΣΕ ΤΗ ΓΛΩΣΣΑ ΤΩΝ ΑΛΛΩΝ ──────────
+    // ΤΙ ΕΣΠΑΣΕ, ΚΑΙ ΠΟΥ ΤΟ ΕΙΔΑ. Το πλαίσιο καθόταν σε `bottom: 12px` με
+    // `zIndex: 2000`. Σε κινητό όμως υπάρχει σταθερή `.bottom-nav` στο
+    // `bottom: 0` με `z-index: 900` — δηλαδή η ΚΥΡΙΑ ΠΛΟΗΓΗΣΗ. Το πλαίσιο
+    // καθόταν ολόκληρο από πάνω της: ο επισκέπτης έβλεπε τις καρτέλες
+    // «Λογαριασμοί», «Δαπάνες», «Ημερολόγιο», «Φάκελος Ακινήτου» κομμένες πίσω
+    // από μια ενημέρωση για cookies, στο πρώτο δευτερόλεπτο της πρώτης του
+    // επίσκεψης.
+    //
+    // Η ΣΥΜΒΑΣΗ ΥΠΗΡΧΕ ΗΔΗ. Το `--float-bottom` (globals.css) υπολογίζει
+    // ακριβώς αυτό: ύψος πλοήγησης, συν τη μπάρα αφής του iPhone, συν το πλωτό
+    // κουμπί του βοηθού. Το μιλούν ήδη τέσσερα στοιχεία — το toast, η μπάρα
+    // μαζικών ενεργειών, η υπενθύμιση γνώμης κι ο βοηθός. Αυτό εδώ ήταν το
+    // μόνο που είχε δικό του νούμερο γραμμένο στο χέρι — κι ήταν λάθος.
+    //
+    // Το `--float-z` (950) μπαίνει για τον ίδιο λόγο: το 2000 το έβαζε πάνω
+    // ΚΑΙ από τα μηνύματα επιβεβαίωσης, δηλαδή μια ενημέρωση χωρίς επείγον
+    // σκέπαζε ό,τι ο χρήστης μόλις ζήτησε.
+    <div role="region" aria-label="Ενημέρωση για cookies" className="po-noprint po-cookie" style={{ position: 'fixed', left: 12, right: 12, bottom: 'var(--float-bottom)', zIndex: 'var(--float-z)', maxWidth: 720, margin: '0 auto',
+      background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.card, boxShadow: 'var(--elev-3)',
       padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontFamily: T.font.sans }}>
       {/* ΓΙΑΤΙ ΤΟΣΟ ΣΥΝΤΟΜΟ: το κείμενο ήταν τέσσερις σειρές σε desktop και έξι σε
           κινητό, οπότε το πλαίσιο σκέπαζε το προϊόν ακριβώς στην πρώτη οθόνη —
@@ -75,9 +93,15 @@ export default function CookieConsent() {
           λεπτομέρειες ανήκουν στην Πολιτική απορρήτου, όπου τις ψάχνει όποιος
           τις θέλει. Καμία πληροφορία δεν χάθηκε: η δήλωση «μόνο απαραίτητα, καμία
           παρακολούθηση» είναι ακριβώς το ουσιώδες περιεχόμενο της προηγούμενης. */}
-      <div style={{ flex: 1, minWidth: 200, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+      <div style={{ flex: 1, minWidth: 200, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty' }}>
         Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Καμία παρακολούθηση, καμία διαφήμιση.{' '}
-        <Link href="/privacy" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Απόρρητο</Link>
+        {/* ΥΠΟΓΡΑΜΜΙΣΜΕΝΟΣ, ΓΙΑΤΙ ΤΟ ΧΡΩΜΑ ΜΟΝΟ ΤΟΥ ΔΕΝ ΕΙΝΑΙ ΣΥΝΔΕΣΜΟΣ. Με
+            `textDecoration: none` το «Απόρρητο» ξεχώριζε ΜΟΝΟ από το χρώμα:
+            όποιος δεν ξεχωρίζει το γαλάζιο από το γκρι —δαλτωνισμός, φως ήλιου
+            στην οθόνη, ασπρόμαυρη εκτύπωση— διάβαζε έμφαση, όχι σύνδεσμο. Είναι
+            ο μοναδικός δρόμος προς την πολιτική απορρήτου μέσα από αυτό το
+            πλαίσιο. */}
+        <Link href="/privacy" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Απόρρητο</Link>
       </div>
       <Btn variant="primary" onClick={acknowledge}>Το κατάλαβα</Btn>
     </div>
