@@ -69,6 +69,8 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState('');
   const [results, setResults] = useState<Result[] | null>(null);
+  /** Η ανά-παραλήπτη ανάλυση δεν διαβάστηκε. Η αποστολή δεν επηρεάζεται· η ΕΙΚΟΝΑ της ναι. */
+  const [detailUnread, setDetailUnread] = useState(false);
   const [summary, setSummary] = useState<{ sent: number; failed: number } | null>(null);
 
   // Αρχικοποίηση: όλοι οι non-blacklist επιλεγμένοι, μία φορά κατά το άνοιγμα.
@@ -91,7 +93,7 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
 
   if (!open) return null;
 
-  const reset = () => { setResults(null); setSummary(null); setErr(''); };
+  const reset = () => { setResults(null); setSummary(null); setErr(''); setDetailUnread(false); };
 
   const generateAI = async () => {
     if (!aiBrief.trim()) return;
@@ -145,8 +147,16 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
       setSummary({ sent: Number(data?.sent) || 0, failed: Number(data?.failed) || 0 });
       // Ζωντανό αποτέλεσμα ανά παραλήπτη από τον πίνακα email_recipients.
       if (campaignId) {
-        const { data: rows } = await supabase.from('email_recipients')
+        // ΤΟ ΑΔΕΙΟ ΚΟΥΤΙ ΕΙΝΑΙ ΑΚΡΙΒΩΣ Η ΖΗΜΙΑ ΠΟΥ ΠΕΡΙΓΡΑΦΕΙ ΤΟ ΣΧΟΛΙΟ ΠΙΟ
+        // ΚΑΤΩ. Η αποστολή έχει ήδη γίνει κι το άθροισμα («3 απέτυχαν») έρχεται
+        // από την απάντηση της συνάρτησης, όχι από εδώ. Αυτή η ανάγνωση λέει
+        // ΠΟΙΟΙ — κι όταν αποτύγχανε, το `rows || []` ζωγράφιζε ένα άδειο
+        // πλαίσιο κάτω από μια κεφαλίδα που μιλά για αποτυχίες. Ο ιδιοκτήτης
+        // που έστειλε σε σαράντα πελάτες μάθαινε ότι τρεις δεν παραδόθηκαν κι
+        // δεν είχε κανέναν τρόπο να δει ποιοι.
+        const { data: rows, error: rowsErr } = await supabase.from('email_recipients')
           .select('email,name,status,error').eq('campaign_id', campaignId).order('email');
+        setDetailUnread(!!rowsErr);
         setResults((rows || []) as Result[]);
       } else {
         setResults(recips.map(r => ({ email: r.email, name: r.name, status: 'sent' })));
@@ -219,6 +229,11 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                 </div>
               </div>
               <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, overflow: 'hidden' }}>
+                {detailUnread && (
+                  <div style={{ padding: '11px 14px', fontSize: 'var(--fs-xs)', color: 'var(--warning)', lineHeight: 1.55 }}>
+                    Η αναλυτική λίστα ανά παραλήπτη δεν διαβάστηκε. Τα μηνύματα στάλθηκαν κανονικά· αυτό που λείπει είναι μόνο η εικόνα του ποιος τα έλαβε. Ανοιξε ξανά το ιστορικό σε λίγο.
+                  </div>
+                )}
                 {(results || []).map((r, i) => (
                   <div key={r.email + i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderTop: i ? '1px solid var(--border-subtle)' : 'none' }}>
                     <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

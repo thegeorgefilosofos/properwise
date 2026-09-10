@@ -473,6 +473,8 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
 
   // Ρυθμίσεις ακινήτου (μόνο για την εξαγωγή τους σε φύλλο)
   const [s, setS] = useState<S>({});
+  /** Η ανάγνωση των ρυθμίσεων απέτυχε: το `s` είναι άδειο επειδή ΔΕΝ ΞΕΡΟΥΜΕ, όχι επειδή δεν υπάρχει. */
+  const [sUnread, setSUnread] = useState(false);
 
   // Προτιμήσεις εφαρμογής: κρατούνται ΟΛΕΣ, γράφεται πίσω το πλήρες αντικείμενο.
   const [prefs, setPrefs] = useState<AppPreferences>(DEFAULT_PREFERENCES);
@@ -517,8 +519,21 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  // ── ΤΟ ΑΔΕΙΟ ΚΑΙ ΤΟ ΑΔΙΑΒΑΣΤΟ ΔΕΝ ΕΙΝΑΙ ΤΟ ΙΔΙΟ ─────────────────────────
+  // Η ανάγνωση έγραφε `const { data }` κι πετούσε το σφάλμα. Το `s` έμενε `{}`
+  // — ακριβώς ό,τι σημαίνει «αυτό το ακίνητο δεν έχει ρυθμίσεις ακόμη». Το
+  // `s` όμως το διαβάζει ΜΟΝΟ η εξαγωγή, που σε άδειο λέει στον χρήστη «δεν
+  // υπάρχει καμία καταχωρημένη ρύθμιση σε αυτό το ακίνητο»: μια ΒΕΒΑΙΩΣΗ για
+  // κάτι που δεν ελέγχθηκε ποτέ. Ο ιδιοκτήτης που έχει συμπληρώσει ΑΦΜ,
+  // παρόχους κι διαχειριστή διαβάζει ότι δεν έχει τίποτα· το πιστεύει.
+  //
+  // Το σχόλιο τριάντα γραμμές πιο κάτω περιγράφει ΤΟ ΙΔΙΟ σφάλμα σε
+  // προηγούμενη μορφή του: «δεν μπορεί να ξεχωρίσει αν δεν έχει δεδομένα ή αν
+  // η εξαγωγή χάλασε». Διορθώθηκε τότε η εξαγωγή· η ανάγνωση από πάνω της
+  // έμεινε να λέει το ίδιο ψέμα.
   async function loadSettings() {
-    const { data } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle();
+    const { data, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle();
+    setSUnread(!!error);
     if (data) setS(data);
   }
   async function loadPrefs() {
@@ -628,7 +643,9 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
       .map(([key, label]) => [label, String((s as Record<string, unknown>)[key] ?? '').trim()])
       .filter(([, value]) => value !== '');
     if (rows.length === 0) {
-      setSheetNote('Δεν υπάρχει καμία καταχωρημένη ρύθμιση σε αυτό το ακίνητο.');
+      setSheetNote(sUnread
+        ? 'Δεν διαβάστηκαν οι ρυθμίσεις του ακινήτου, οπότε δεν ξέρουμε τι υπάρχει. Ανανέωσε τη σελίδα κι δοκίμασε ξανά.'
+        : 'Δεν υπάρχει καμία καταχωρημένη ρύθμιση σε αυτό το ακίνητο.');
       return;
     }
     setSheetNote('');

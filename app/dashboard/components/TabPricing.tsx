@@ -151,6 +151,8 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   const [showPast, setShowPast] = useState(false); // εμφάνιση περασμένων μηνών
   const [sel, setSel] = useState<DayPrice | null>(null);
   const [touched, setTouched] = useState(false);
+  /** Η ανάγνωση των αποθηκευμένων τιμών απέτυχε: δεν ξέρουμε τι υπάρχει, άρα δεν γράφουμε. */
+  const [unread, setUnread] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
   const [gapTitles, setGapTitles] = useState<Set<string>>(new Set()); // κενά ήδη στο Ημερολόγιο
   const compsKey = `pos-pricing-comps-${propertyId}`;
@@ -175,8 +177,23 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     setIsHouse(isHouseType(data?.prop_type));
   }, [propertyId, supabase, userId]);
 
+  // ═══ ΟΤΑΝ Η ΑΝΑΓΝΩΣΗ ΑΠΟΤΥΓΧΑΝΕΙ, Η ΑΠΟΘΗΚΕΥΣΗ ΣΒΗΝΕΙ ΤΙΜΕΣ ══════════════
+  // Η ανάγνωση πετούσε το σφάλμα κι το `touched` έμενε ψευδές — που μοιάζει
+  // ασφαλές, επειδή η αυτόματη αποθήκευση δεν τρέχει χωρίς αυτό. Δεν είναι:
+  //
+  //   · Το `mark()` (γρ. 464) ανάβει το `touched` με ΤΟ ΠΡΩΤΟ πάτημα σε
+  //     οποιοδήποτε χειριστήριο. Το `upsert` γράφει κι τα ΠΕΝΤΕ πεδία από τη
+  //     μνήμη, που μετά από αποτυχημένη ανάγνωση κρατά προεπιλογές. Ο χρήστης
+  //     αλλάζει την ελάχιστη διαμονή κι χάνει βάση, κατώτατη, ανώτατη κι
+  //     προσαύξηση Σαββατοκύριακου — τιμές που είχε δουλέψει.
+  //   · Το ίδιο ψευδές `touched` αφήνει την αυτόματη πρόταση να γράψει από
+  //     πάνω τους, που είναι ακριβώς ό,τι απαγορεύει το σχόλιο δίπλα του.
+  //
+  // Οσο δεν ξέρουμε τι υπάρχει, ΔΕΝ ΓΡΑΦΟΥΜΕ. Ιδια απόφαση με την επωνυμία
+  // αναφορών: η άρνηση είναι φθηνή, το σβήσιμο δεν ξεγίνεται.
   const loadSettings = useCallback(async () => {
-    const { data } = await supabase.from('pricing_settings').select('*').eq('user_id', userId).eq('property_id', propertyId).maybeSingle();
+    const { data, error } = await supabase.from('pricing_settings').select('*').eq('user_id', userId).eq('property_id', propertyId).maybeSingle();
+    setUnread(!!error);
     if (data) {
       if (data.base != null) setBase(Number(data.base));
       if (data.min_price != null) setMin(Number(data.min_price));
@@ -246,8 +263,8 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   }
 
   // ── Αποθήκευση ρυθμίσεων (debounced) ──────────────────────────────────────
-  const settingsRef = useRef({ base, min, max, wknd, minStay, touched });
-  useEffect(() => { settingsRef.current = { base, min, max, wknd, minStay, touched }; });
+  const settingsRef = useRef({ base, min, max, wknd, minStay, touched, unread });
+  useEffect(() => { settingsRef.current = { base, min, max, wknd, minStay, touched, unread }; });
   // Ο έλεγχος ζει ΕΔΩ, μαζί με το γράψιμο και όχι στον καλούντα: έτσι δεν
   // υπάρχει διαδρομή που να αποθηκεύει χωρίς να ρωτά αν αποθηκεύτηκε.
   const persist = useCallback((v: { base: number; min: number; max: number; wknd: number; minStay: number }) =>
@@ -256,7 +273,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       weekend_premium: v.wknd / 100, min_stay: v.minStay, updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,property_id' })), [userId, propertyId, supabase]);
   useEffect(() => {
-    if (!touched || base <= 0) return;
+    if (unread || !touched || base <= 0) return;
     const t = setTimeout(async () => {
       // «Αποθηκεύτηκε» χωρίς έλεγχο είναι το χειρότερο μήνυμα που υπάρχει.
       if (!await persist({ base, min, max, wknd, minStay })) return;
@@ -266,13 +283,13 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       setSaveNote(`Αποθηκεύτηκε. Βάση ${fe(base)}, εύρος ${range}, Σαββατοκύριακο +${wknd}%, ελάχιστη διαμονή ${minStay} ${minStay === 1 ? 'νύχτα' : 'νύχτες'}.`);
     }, 700);
     return () => clearTimeout(t);
-  }, [base, min, max, wknd, minStay, touched, persist]);
+  }, [base, min, max, wknd, minStay, touched, unread, persist]);
   // Το μήνυμα σβήνει διακριτικά μετά από λίγο — μένει «ζωντανό», όχι μόνιμο.
   useEffect(() => { if (!saveNote) return; const t = setTimeout(() => setSaveNote(null), 5200); return () => clearTimeout(t); }, [saveNote]);
   // Flush κατά την έξοδο: η τελευταία αλλαγή δεν χάνεται αν φύγεις μέσα στα 700ms.
   useEffect(() => () => {
     const v = settingsRef.current;
-    if (v.touched && v.base > 0) persist(v);
+    if (!v.unread && v.touched && v.base > 0) persist(v);
   }, [persist]);
 
   const bookedDates = useMemo(() => bookedDatesFromStays(stays), [stays]);
@@ -602,6 +619,9 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 16, minHeight: 16 }}>
         {adr > 0 && <>Μέση πραγματική τιμή (ADR): <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fe(adr)}</strong> / νύχτα από {stays.length} διαμονές. </>}
         {saveNote && <span style={{ color: 'var(--text-secondary)' }}>{saveNote}</span>}
+        {/* Η άρνηση λέγεται ΕΚΕΙ που ο χρήστης περιμένει το «αποθηκεύτηκε». Σιωπηλή
+            αποθήκευση που δεν γίνεται είναι χειρότερη από αποτυχία που φαίνεται. */}
+        {unread && <span style={{ color: 'var(--warning)' }}>Οι αποθηκευμένες τιμές δεν διαβάστηκαν, οπότε η αυτόματη αποθήκευση είναι κλειστή για να μη σβηστούν. Ανανέωσε τη σελίδα.</span>}
       </div>
 
       {/* Βαθμονόμηση βάσης από τον ανταγωνισμό (προαιρετικό, τοπικό) */}
