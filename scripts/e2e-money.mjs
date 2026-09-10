@@ -18,6 +18,7 @@
 //  ΧΡΗΣΗ:  npm run e2e:money
 // ═══════════════════════════════════════════════════════════════════════════
 import { chromePath } from './lib/chrome.mjs';
+import { plain, bodyText } from './lib/plain-text.mjs';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
@@ -121,7 +122,7 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 {
   const s = await open('rent-three');
   await s.page.getByRole('button', { name: 'Όλες' }).click();
-  const label = (await s.primary().innerText()).replace(/[\n\r\t]+/g, ' ').trim();
+  const label = plain(await s.primary().innerText()).replace(/[\n\r\t]+/g, ' ').trim();
   eq('3. το κουμπί λέει πλήθος και άθροισμα', label, 'Καταχώρηση 3 δόσεων · 1.350,00€');
   await s.primary().click();
   await settle(s.page);
@@ -158,7 +159,7 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // άλλο από αυτό που είδε ο ιδιοκτήτης.
 {
   const s = await open('rent-cash');
-  const body = await s.page.evaluate(() => document.body.innerText);
+  const body = await bodyText(s.page);
   ok('5. με μετρητά, η οθόνη προειδοποιεί για την έκπτωση 5%',
     body.includes('τεκμαρτή έκπτωση 5%') && body.includes('5246'));
   await s.primary().click();
@@ -278,7 +279,7 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
   // χρήστης· αν κάποιος ξαναβάλει κενό, ο σαρωτής κοκκινίζει στη ζωγραφισμένη
   // οθόνη, όχι μόνο στον πηγαίο.
   await s.page.waitForFunction(
-    () => document.body.innerText.includes('Από το μήνυμα διαβάστηκε 87,45€'),
+    () => document.body.innerText.replace(/\u00AD/g, '').includes('Από το μήνυμα διαβάστηκε 87,45€'),
     null, { timeout: 5000 })
   ok('10β. και λέγεται τι διαβάστηκε, ώστε να μη χαθεί το ίχνος', true)
   eq('10β. το πεδίο κρατά τη νέα τιμή', await field.inputValue(), '92,10')
