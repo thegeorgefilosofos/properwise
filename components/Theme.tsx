@@ -1140,12 +1140,19 @@ export function Chip({ children, tone = 'neutral', title }: { children: ReactNod
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══ InfoBanner, η γραμμή ειδοποίησης με την τελεία (dot) των Bills ═══════
-export function InfoBanner({ children, tone = 'info' }: { children: ReactNode; tone?: Tone }) {
+// ΤΟ `className` ΠΑΕΙ ΣΤΟ ΚΕΙΜΕΝΟ, ΟΧΙ ΣΤΟ ΠΛΑΙΣΙΟ. Το πλαίσιο —χρώμα τόνου,
+// κουκκίδα, γέμισμα— είναι η ταυτότητα του στοιχείου και δεν παραμετροποιείται.
+// Αυτό που αλλάζει κατά περίπτωση είναι το ΜΕΤΡΟ του κειμένου: μια επεξήγηση
+// τριών γραμμών μέσα σε στήλη 361 εικονοστοιχείων θέλει `po-just`, ενώ μια
+// προειδοποίηση μιας γραμμής δεν έχει τι να στοιχίσει. Χωρίς αυτή την υποδοχή
+// το μόνο που έμενε ήταν να βγει το κείμενο έξω από το InfoBanner — δηλαδή να
+// χαθεί ο τόνος για χάρη της στοίχισης.
+export function InfoBanner({ children, tone = 'info', className }: { children: ReactNode; tone?: Tone; className?: string }) {
   const tv = toneVars(tone);
   return (
     <div style={{ background: tv.bg, border: `1px solid ${tv.border}`, borderRadius: T.radius.inner, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
       <div style={{ width: 6, height: 6, borderRadius: '50%', background: tv.color, flexShrink: 0, marginTop: 6 }}/>
-      <div style={{ flex: 1, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.6 }}>{children}</div>
+      <div className={className} style={{ flex: 1, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.6 }}>{children}</div>
     </div>
   );
 }
