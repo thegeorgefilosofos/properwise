@@ -305,7 +305,8 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col"> </th>
+                {/* Η γωνία δεν λέει τίποτα στο μάτι· στον αναγνώστη οθόνης λέει τι είναι η στήλη. */}
+                <th scope="col"><span className="sr-only">Κατηγορία</span></th>
                 <th scope="col" className="num">Μακροχρόνια</th>
                 <th scope="col" className="num">Βραχυχρόνια</th>
               </tr>
@@ -446,9 +447,18 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
 function Line({ k, a, b, strong }: { k: string; a: number; b: number; strong?: boolean }) {
   const weight = strong ? 700 : 400;
   const ink = strong ? 'var(--text-primary)' : 'var(--text-secondary)';
+  // ── Η ΕΤΙΚΕΤΑ ΤΗΣ ΓΡΑΜΜΗΣ ΕΙΝΑΙ ΚΕΦΑΛΙΔΑ, ΟΧΙ ΚΕΛΙ ─────────────────────────
+  // Γραφόταν `<td>`. Δύο συνέπειες· κι οι δύο μετρημένες:
+  //   · Ο αναγνώστης οθόνης διάβαζε σκέτο ποσό χωρίς να πει ΠΟΙΟΥ πράγματος.
+  //     Ενα `<th scope="row">` το λέει μία φορά κι για κάθε κελί της σειράς.
+  //   · Ο πίνακας κυλά οριζόντια σε στενή οθόνη — μετρημένο 102 εικονοστοιχεία
+  //     στα 320. Ο κανόνας που καρφώνει την πρώτη στήλη πιάνει `th[scope="row"]`,
+  //     οπότε το `td` γλιστρούσε έξω κι τα δύο ποσά έμεναν χωρίς όνομα. Ο σαρωτής
+  //     διάταξης το ονόμασε «ΧΑΝΕΤΑΙ Η ΤΑΥΤΟΤΗΤΑ ΤΗΣ ΓΡΑΜΜΗΣ» σε εννέα πλάτη.
+  // Η σωστή σημασιολογία κι η σωστή συμπεριφορά ήταν το ΙΔΙΟ πράγμα.
   return (
     <tr className={strong ? 'is-total' : undefined}>
-      <td style={{ fontWeight: strong ? 600 : 400, color: ink }}>{k}</td>
+      <th scope="row" style={{ fontWeight: strong ? 600 : 400, color: ink }}>{k}</th>
       <td className="num" style={{ fontWeight: weight, color: ink }}>{feAuto(a)}</td>
       <td className="num" style={{ fontWeight: weight, color: ink }}>{feAuto(b)}</td>
     </tr>
