@@ -611,11 +611,11 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
         const compBase = median ? Math.max(5, Math.round((median * 0.9) / 5) * 5) : 0;
         const setComp = (i: number, v: string) => setComps(prev => { const n = [...prev]; n[i] = v; return n; });
         return (
-          <div className="card" style={{ marginBottom: 18 }}>
+          <div className="card" style={{ marginBottom: T.sp.lg }}>
             <div className="po-disclosure" {...pressable(() => setCompsOpen(o => !o))}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Βαθμονόμηση από τον ανταγωνισμό</div>
-                <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1 }}>Βάλε τιμές/νύχτα παρόμοιων ακινήτων της περιοχής και δες μια προτεινόμενη βάση</div>
+                <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Βάλε τιμές/νύχτα παρόμοιων ακινήτων της περιοχής και δες μια προτεινόμενη βάση</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                 {median > 0 && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num }}>διάμεση {fe(median)}</span>}
@@ -801,7 +801,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                             position: 'relative', aspectRatio: '1', borderRadius: T.radius.chip, cursor: 'pointer', overflow: 'hidden',
                             border: sel?.date === d.date ? '2px solid var(--accent)' : top ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
                             background: d.booked ? 'var(--bg-base)' : 'var(--surface-raised)', padding: 0,
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5,
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: T.sp.xs,
                             opacity: past ? 0.4 : 1,
                           }}>
                             {/* Το κελί δεν μεγαλώνει πια στην αιχμή: ένα κελί που
@@ -891,7 +891,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
 
           {/* Λεπτομέρεια επιλεγμένης ημέρας */}
           {sel && (
-            <div className="po-fig-card" tabIndex={0} style={{ marginTop: 20, background: 'var(--bg-base)', boxShadow: 'var(--well-inset)', borderRadius: T.radius.card, padding: 18 }}>
+            <div className="po-fig-card" tabIndex={0} style={{ marginTop: 20, background: 'var(--bg-base)', boxShadow: 'var(--well-inset)', borderRadius: T.radius.card, padding: T.sp.lg }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700 }}>{fd(sel.date)}{sel.holidayName ? ` · ${sel.holidayName}` : ''}</div>
@@ -914,7 +914,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
                       <span style={{ minWidth: 0 }}>
                         {f.label}
-                        <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 1 }}>από: {f.source}</span>
+                        <span className="po-subline" style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>από: {f.source}</span>
                       </span>
                       <span className="po-fig" data-tone={pct > 0 ? 'positive' : pct < 0 ? 'negative' : undefined} style={{ fontFamily: T.font.num, flexShrink: 0 }}>{pct > 0 ? '+' : ''}{pct}%</span>
                     </div>

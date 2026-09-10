@@ -400,7 +400,7 @@ function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, onSelect
           μετέτρεπε μια μέτρηση σε επιβράβευση. Το ημερολόγιο δεν πήρε ποτέ την
           ίδια διόρθωση. Το μπλε μένει το χρώμα της πράξης, εδώ και εκεί. */}
       {!bulkMode&&(
-        <button className="po-box" aria-label={done?'Αναίρεση':'Ολοκλήρωση'} onClick={()=>onToggleStatus(event)} style={{ marginTop:1, flexShrink:0, width:18, height:18, borderRadius:'50%', border:`2px solid ${done?'var(--accent)':'var(--border-default)'}`, background:done?'var(--accent)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+        <button className="po-box po-lead-ico" aria-label={done?'Αναίρεση':'Ολοκλήρωση'} onClick={()=>onToggleStatus(event)} style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${done?'var(--accent)':'var(--border-default)'}`, background:done?'var(--accent)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
           {done&&<Check size={9} color="var(--accent-text)"/>}
         </button>
       )}
@@ -1249,7 +1249,7 @@ function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { propertyId:
               <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:36, height:36, borderRadius:10, flexShrink:0, background:isBusy?'linear-gradient(135deg, var(--accent), var(--accent-hover))':'var(--bg-elevated)', color:isBusy?'var(--accent-text)':'var(--text-tertiary)', border:isBusy?'none':'1px solid var(--border-subtle)', boxShadow:isBusy?'0 4px 12px -6px var(--accent)':'none' }}>{isBusy?<RefreshCw size={16} style={{ animation:'spin 1s linear infinite' }}/>:meta.icon}</span>
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ fontSize:14, fontFamily: T.font.sans, fontWeight:600, color:isBusy?'var(--accent)':'var(--text-primary)' }}>{meta.label}</p>
-                <p style={{ fontSize:12, color:d?'var(--positive)':'var(--text-tertiary)', fontFamily: T.font.sans, marginTop:1 }}>{isBusy?'Συγχρονισμός…':d?`Ενημερώθηκε · ${d.n}`:counts===null?'…':has?meta.unit(c!):meta.empty}</p>
+                <p className="po-subline" style={{ fontSize:12, color:d?'var(--positive)':'var(--text-tertiary)', fontFamily: T.font.sans }}>{isBusy?'Συγχρονισμός…':d?`Ενημερώθηκε · ${d.n}`:counts===null?'…':has?meta.unit(c!):meta.empty}</p>
               </div>
               {has&&!isBusy&&(d?<Check size={17} style={{ color:'var(--positive)', flexShrink:0 }}/>:<RefreshCw size={15} style={{ color:'var(--text-tertiary)', flexShrink:0 }}/>)}
             </button>
@@ -1558,7 +1558,7 @@ function SeriesCard({ group, onToggle, onEdit, onDelete, bulkMode, selectedIds, 
         </button>
       </div>
       {open&&(
-        <div style={{ display:'flex', flexDirection:'column', gap: 8, paddingLeft:18, borderLeft:'1px solid var(--border-subtle)', marginLeft: 8 }}>
+        <div style={{ display:'flex', flexDirection:'column', gap: 8, paddingLeft: T.sp.lg, borderLeft:'1px solid var(--border-subtle)', marginLeft: 8 }}>
           {[lead,...rest].map(e=>(
             <EventCard key={e.id} event={e} onToggleStatus={onToggle} onEdit={onEdit} onDelete={onDelete}
               selected={selectedIds?.has(e.id)} onSelect={onSelect} bulkMode={bulkMode}/>
@@ -1714,7 +1714,7 @@ function SubscribeModal({ token, propertyId, onClose }: { token:string|null; pro
             πλέον δίπλα στον ίδιο τον σύνδεσμο, όπου την αφορά. Εδώ μένουν μόνο
             οι οδηγίες για όποιον προτιμά τη χειροκίνητη διαδρομή. */}
         <div style={{ display:'flex', gap:8, padding:'10px 12px', background:'var(--accent-soft)', border:'1px solid var(--accent-border)', borderRadius:T.radius.inner }}>
-          <Info size={15} color="var(--accent)" style={{ flexShrink:0, marginTop:1 }}/>
+          <Info size={15} color="var(--accent)" className="po-lead-ico"/>
           <p style={{ fontSize:12, color:'var(--text-secondary)', lineHeight:1.5, margin:0, fontFamily: T.font.sans }}>Με το χέρι στο Google Calendar: «Άλλα ημερολόγια», μετά «Από URL» και επικόλλησε τον σύνδεσμο.</p>
         </div>
         {/* Αμφίδρομος συγχρονισμός καναλιών (Airbnb/Booking auto-block) */}

@@ -139,6 +139,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
         <div>
           <label htmlFor={monthlyId} style={label}>Μηνιαίο ενοίκιο</label>
           <div style={{ position: 'relative' }}>
+            {/* Το δεξί κενό δεν είναι αέρας: είναι ο χώρος της μονάδας «€» πάνω στο δεξί άκρο του πεδίου. */}
             <input id={monthlyId} inputMode="decimal" value={monthly}
               onChange={e => set('enoikio', e.target.value)}
               style={{ ...field, paddingRight: 34 }} aria-describedby={`${monthlyId}-unit`}/>
@@ -294,7 +295,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
           σελίδα είχε δύο τίτλους που μοιάζουν ίδιοι και δεν είναι.
           Είναι λεζάντα του πίνακα, οπότε γράφεται ως λεζάντα: ίδια τυπογραφία
           με τις άλλες ετικέτες αυτής της κάρτας και σωστή σημασιολογία. */}
-      <div style={{ marginTop: 26 }}>
+      <div style={{ marginTop: T.sp.xxl }}>
         <div className="po-table-box">
          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
           <table className="po-table" style={{ '--tbl-min': '300px' }}>
@@ -361,7 +362,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
           ακριβώς όπως προσπερνά κάθε κίτρινο πλαίσιο. Ουδέτερη επιφάνεια και
           το βάρος του το δίνει η θέση του: ακριβώς κάτω από τον αριθμό. */}
       <div className="po-tool-note" style={{
-        marginTop: 22, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
+        marginTop: T.sp.xxl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>

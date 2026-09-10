@@ -151,7 +151,7 @@ export default function ResetPasswordPage() {
                 {/* `field` γιατί η υποβολή κρατά όλο το πλάτος της φόρμας, όπως πριν. */}
                 <Btn variant="primary" type="submit" field disabled={loading}>{loading ? 'Αποστολή…' : 'Στείλε σύνδεσμο'}</Btn>
               </form>
-              <p style={{ fontSize: 13, marginTop: 22 }}>
+              <p style={{ fontSize: 13, marginTop: T.sp.xxl }}>
                 <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Επιστροφή στη σύνδεση</Link>
               </p>
             </>

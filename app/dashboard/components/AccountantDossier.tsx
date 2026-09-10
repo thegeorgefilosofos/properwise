@@ -160,7 +160,7 @@ export function useAccountantDossier(userId: string, year: number, seed?: Partia
 
 // ═══ Εικόνα ════════════════════════════════════════════════════════════════
 
-const card: React.CSSProperties = { position: 'relative', background: 'var(--surface-raised)', border: 'none', borderRadius: T.radius.card, padding: 18, boxShadow: 'var(--elev-1)' }
+const card: React.CSSProperties = { position: 'relative', background: 'var(--surface-raised)', border: 'none', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--elev-1)' }
 const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 }
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFamily: T.font.sans }
 
@@ -559,7 +559,7 @@ function AccountantAsks() {
       <p style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
         {asks.length === 1 ? 'Ο λογιστής σου ζήτησε' : `Ο λογιστής σου ζήτησε ${asks.length} πράγματα`}
       </p>
-      <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'grid', gap: 1 }}>
+      <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'grid', gap: 0 }}>
         {asks.map(a => (
           <li key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 0', borderTop: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>

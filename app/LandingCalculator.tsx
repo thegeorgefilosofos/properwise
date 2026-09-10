@@ -120,7 +120,7 @@ export default function LandingCalculator() {
       `}</style>
 
       {/* Αριστερά: τα δικά σου δεδομένα */}
-      <div className="calc-panel" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      <div className="calc-panel" style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xxl }}>
         <Control label="Μηνιαίο ενοίκιο" hint="Το μεικτό μηνιαίο μίσθωμα" value={rent} set={setRent} min={100} max={5000} step={10} format={fe} />
         <Control label="Αξία ακινήτου" hint="Τρέχουσα εμπορική αξία, για τον υπολογισμό απόδοσης" value={value} set={setValue} min={2000} max={1000000} step={1000} format={fe} />
         <Control label="Ετήσιες δαπάνες" hint="ΕΝΦΙΑ, ασφάλεια, συντήρηση, κοινόχρηστα ιδιοκτήτη" value={costs} set={setCosts} min={0} max={10000} step={100} format={fe} />
@@ -146,10 +146,10 @@ export default function LandingCalculator() {
       </div>
 
       {/* Δεξιά: το αποτέλεσμα, ζωντανά */}
-      <div className="calc-panel" style={{ display: 'flex', flexDirection: 'column', gap: 22, background: 'var(--bg-elevated)' }}>
+      <div className="calc-panel" style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xxl, background: 'var(--bg-elevated)' }}>
         <Stat label="Καθαρή απόδοση, μετά τον φόρο" value={pct(netYield)} big />
         <LiveResult say={`Καθαρή απόδοση μετά τον φόρο ${pct(netYield)}. Καθαρά τον μήνα ${fe(monthlyNet)}.`} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, paddingTop: 4, borderTop: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: T.sp.lg, paddingTop: 4, borderTop: '1px solid var(--border-subtle)' }}>
           <Stat label="Καθαρά τον μήνα" value={fe(monthlyNet)} />
           <Stat label="Ακαθάριστη απόδοση" value={pct(grossYield)} />
           <Stat label="Ετήσιος φόρος ενοικίων" value={fe(tax)} />
@@ -159,7 +159,7 @@ export default function LandingCalculator() {
         <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
           Ενδεικτικός υπολογισμός με την κλίμακα ενοικίων 2026 και τεκμαρτή έκπτωση {fp(PRESUMPTIVE_DEDUCTION_RATE * 100)} για δαπάνες, που από 1/1/2026 προϋποθέτει είσπραξη μέσω τραπέζης. Δεν υποκαθιστά τον λογιστή σου.
         </p>
-        <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px', borderRadius: T.radius.pill }}>
+        <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
           Δες τα δικά σου δεδομένα, αυτόματα
         </Link>
       </div>

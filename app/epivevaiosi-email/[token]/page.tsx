@@ -59,7 +59,7 @@ export default function ConfirmReminderEmail() {
   return (
     <div style={wrap}>
       <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 18, borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.xl, borderBottom: '1px solid var(--border-subtle)' }}>
           <BrandMark size={34} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 700 }}>PROPERWISE</div>
@@ -79,7 +79,7 @@ export default function ConfirmReminderEmail() {
 
         {state === 'ok' && (
           <div style={{ paddingTop: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '11px 14px', marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '11px 14px', marginBottom: T.sp.lg }}>
               <span style={{ color: 'var(--positive)', fontWeight: 700 }}>✓</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--positive)' }}>Η διεύθυνση επιβεβαιώθηκε.</span>
             </div>
@@ -90,7 +90,7 @@ export default function ConfirmReminderEmail() {
         )}
 
         {state === 'invalid' && (
-          <p style={{ paddingTop: 22, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          <p style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
             Ο σύνδεσμος δεν είναι έγκυρος, έχει λήξει ή χρησιμοποιήθηκε ήδη. Ζήτησε νέα επιβεβαίωση από τις Ρυθμίσεις της εφαρμογής, στις Ειδοποιήσεις.
           </p>
         )}
@@ -98,7 +98,7 @@ export default function ConfirmReminderEmail() {
         {/* Ο σύνδεσμος δεν κρίθηκε. Το λέμε έτσι ακριβώς, με κουμπί: η μόνη
             σωστή ενέργεια είναι να ξαναρωτήσεις. */}
         {state === 'offline' && (
-          <div style={{ paddingTop: 22 }}>
+          <div style={{ paddingTop: T.sp.xl }}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
               Δεν λάβαμε απάντηση, οπότε ο σύνδεσμος δεν ελέγχθηκε. Μπορεί να είναι μια χαρά έγκυρος.
             </p>

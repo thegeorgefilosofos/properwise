@@ -19,7 +19,7 @@ const LockIcon = ({ size = 22 }: { size?: number }) => (
 );
 
 const Check = () => (
-  <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+  <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico">
     <path d="M20 6 9 17l-5-5" />
   </svg>
 );

@@ -338,7 +338,7 @@ export default function AccountantPortal() {
                 τη στιγμή που κρατά τον έναν σύνδεσμο και σκέφτεται τους άλλους
                 εβδομήντα εννιά. Και μαθαίνει ΚΑΙ ότι θέλει λογαριασμό, γιατί
                 αλλιώς το κλικ τον βγάζει σε τοίχο σύνδεσης χωρίς εξήγηση. */}
-            <div className="po-noprint" style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)', marginTop: 26, lineHeight: 1.8 }}>
+            <div className="po-noprint" style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)', marginTop: T.sp.xxl, lineHeight: 1.8 }}>
               Έχεις κι άλλους πελάτες με PROPERWISE;{' '}
               <Link href="/accountant/workspace" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Δες τους όλους μαζί</Link>, με ό,τι λείπει από τον καθένα.
               <div style={{ ...meta, marginTop: 4 }}>Χρειάζεται δικός σου λογαριασμός, μία φορά.</div>

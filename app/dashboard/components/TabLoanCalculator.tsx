@@ -1208,7 +1208,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
 
       {lens==='amort' && (
       <Section title="Γράφημα αποπληρωμής" sub="Κεφάλαιο έναντι τόκων στη διάρκεια" defaultOpen>
-        <div style={{display:'flex',gap:18,alignItems:'center',flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:T.sp.lg,alignItems:'center',flexWrap:'wrap'}}>
           <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
             <AmortDonut principal={LA} interest={totalInt}/>
             <div style={{display:'flex',gap:14}}>

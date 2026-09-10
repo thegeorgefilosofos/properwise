@@ -131,7 +131,7 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
           position: 'relative', overflow: 'hidden',
           background: 'var(--surface-hero)', border: '1px solid var(--border-raised)',
           borderRadius: T.radius.card, boxShadow: 'var(--highlight-inset), var(--elev-2)',
-          padding: 18, marginBottom: 16, animationDelay: '60ms',
+          padding: T.sp.lg, marginBottom: 16, animationDelay: '60ms',
         }}
       >
         {/* Διακριτικό «ζωντανό» phone glyph στο βάθος (metaverse depth) */}

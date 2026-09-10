@@ -449,7 +449,7 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ ...TT.h2 }}>{title}</div>
-            {subtitle && <div style={{ ...TT.bodySm, marginTop: 1 }}>{subtitle}</div>}
+            {subtitle && <div className="po-subline" style={{ ...TT.bodySm }}>{subtitle}</div>}
           </div>
           <CloseButton onClose={onClose} style={{ margin: -6 }} />
         </div>
@@ -1406,7 +1406,7 @@ export function IconBtn({ children, onClick, label, tone, size = 'sm', round, di
 // ΤΟ `seg` ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΠΡΑΓΜΑ ΜΕΣΑ ΣΕ ΡΑΓΑ. Οταν τα πλακίδια κάθονται σε
 // κουτί που έχει ήδη περίγραμμα — ένα δεύτερο περίγραμμα ανά πλακίδιο δίνει
 // διπλή γραμμή· εκεί το ενεργό ξεχωρίζει με επιφάνεια και σκιά.
-export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, title, grow }: {
+export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, title, grow, size = 'sm' }: {
   children: ReactNode;
   on: boolean;
   onClick?: () => void;
@@ -1415,6 +1415,21 @@ export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, ti
   title?: string;
   /** Μοιράζεται ίσα το πλάτος της σειράς — για τμηματικό επιλογέα δύο ή τριών επιλογών. */
   grow?: boolean;
+  /**
+   * ΤΟ ΥΨΟΣ ΟΤΑΝ ΤΟ ΠΛΑΚΙΔΙΟ ΚΑΘΕΤΑΙ ΣΕ ΣΕΙΡΑ ΜΕ ΠΕΔΙΟ.
+   *
+   * ΤΙ ΜΕΤΡΗΘΗΚΕ, ΚΑΙ ΓΙΑΤΙ ΑΞΙΖΕΙ ΝΑ ΓΡΑΦΤΕΙ. Το `Btn` έχει ήδη αυτή την
+   * επιλογή, με ολόκληρο κείμενο από πάνω του: «κάθε γραμμή εργαλείων που έχει
+   * και τα δύο είναι εξ ορισμού αστοίχιστη». Το πλακίδιο δεν την πήρε ποτέ,
+   * γιατί όσο τα φίλτρα γράφονταν στο χέρι ο καθένας έβαζε το ύψος που
+   * χρειαζόταν — 40 δίπλα σε πεδίο, 32 όταν ήταν μόνο του.
+   *
+   * Με τη μετανάστευση όλα προσγειώθηκαν στο ένα πρωτογενές, που έγραφε ΜΟΝΟ
+   * `T.h.sm`: ο σαρωτής στοίχισης βρήκε αμέσως «Όλοι» στα 32 δίπλα σε
+   * αναζήτηση στα 40, στις καρτέλες Ενοικιαστές και Απογραφή, στα 768 και στα
+   * 1280. Δηλαδή έλειπε το ΙΔΙΟ πράγμα που έλειπε από το `Btn` πριν από αυτό.
+   */
+  size?: 'sm' | 'lg';
 }) {
   return (
     <button
@@ -1427,7 +1442,7 @@ export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, ti
       onClick={disabled ? undefined : onClick}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        minHeight: T.h.sm, padding: '0 12px', borderRadius: T.radius.chip,
+        minHeight: size === 'lg' ? T.h.lg : T.h.sm, padding: '0 12px', borderRadius: T.radius.chip,
         fontSize: 'var(--fs-xs)', fontWeight: on ? 600 : 500, fontFamily: T.font.sans,
         cursor: disabled ? 'not-allowed' : 'pointer',
         ...(grow ? { flex: 1, minWidth: 0 } : null),

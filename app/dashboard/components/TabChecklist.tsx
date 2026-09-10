@@ -776,7 +776,15 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
             μετρημένο σε Galaxy A, το «Κατά προθεσμία» κοβόταν στη μέση μέσα
             στο ίδιο του το κουμπί. Με μία σειρά δική της, οι δύο διατάξεις
             μοιράζονται τα 340 και γράφονται ολόκληρες. */}
-        <div className="seg-two" style={{ display: 'flex', gap: 2, padding: '3px', background: 'var(--bg-surface)', borderRadius: T.radius.btn, border: '1px solid var(--border-subtle)' }}>
+        {/* ΤΟ ΥΨΟΣ ΤΗΣ ΡΑΓΑΣ ΔΗΛΩΝΕΤΑΙ. Ηταν γέμισμα 3, δηλαδή «32 του πλακιδίου
+            συν 3 συν 3 συν δύο περιγράμματα βγάζει 40, όσο το πεδίο δίπλα» —
+            σωστή αριθμητική που όμως κρέμεται από τρεις τιμές ταυτόχρονα και
+            σπάει μόλις αλλάξει μία. Ως `T.h.lg` η ράγα ΕΙΝΑΙ το ύψος του
+            πεδίου, χωρίς πράξη· και το 3 έφυγε από το πλέγμα των αποστάσεων.
+            Ελάχιστο ΚΑΙ όχι σταθερό, για τον ίδιο λόγο με τη ράγα της απογραφής:
+            στην αφή το πλακίδιο πιάνει το δάπεδο των 44 και μια ράγα καρφωμένη
+            στα 44 θα το έκοβε με το `overflow` της. */}
+        <div className="seg-two" style={{ display: 'flex', alignItems: 'center', minHeight: T.h.lg, boxSizing: 'border-box', gap: 2, padding: '0 4px', background: 'var(--bg-surface)', borderRadius: T.radius.btn, border: '1px solid var(--border-subtle)' }}>
           {/* ΔΥΟ ΔΙΑΤΑΞΕΙΣ, ΟΧΙ ΤΡΕΙΣ. Ο «Πίνακας» ήταν kanban: τέσσερις στήλες
               κατάστασης, με κάρτες που μετακινούνται. Για έξι εκκρεμότητες ενός
               διαμερίσματος είναι εργαλείο ομάδας λογισμικού, όχι ιδιοκτήτη — και
@@ -796,7 +804,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
       </div>}
 
       {usedCats.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: T.sp.xl, flexWrap: 'wrap' }}>
           <ChipToggle on={filterCat === 'all'} onClick={() => setFilterCat('all')}>Όλα ({items.length})</ChipToggle>
           {usedCats.map(c => {
             const count = items.filter(i => i.category === c.id).length

@@ -286,7 +286,7 @@ export default function TenantPortal() {
         {state === 'locked' && (
           <div style={{ ...card, textAlign: 'center' }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Απαιτείται κωδικός</div>
-            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: 18 }}>Ζήτησε τον κωδικό από τον ιδιοκτήτη.</div>
+            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: T.sp.lg }}>Ζήτησε τον κωδικό από τον ιδιοκτήτη.</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 280, margin: '0 auto' }}>
               <input
                 type="password"
@@ -332,7 +332,7 @@ export default function TenantPortal() {
                     <>
                       <div style={{ ...label, marginBottom: 12 }}>Οφειλή</div>
                       <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: T.font.mono, color: 'var(--text-primary)', marginBottom: 4 }}>{eur(data.total_due)}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 18 }}>Συνολικό εκκρεμές ποσό προς εξόφληση</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: T.sp.lg }}>Συνολικό εκκρεμές ποσό προς εξόφληση</div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 4 }}>
                         {data.due.map(item => (

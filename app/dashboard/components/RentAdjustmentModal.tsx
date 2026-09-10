@@ -351,6 +351,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
   // στο πεδίο. Τρεις κλήσεις, τρία διαφορετικά νοήματα.
   const money = (value: string, on: (v: string) => void, suffix: string, name: string, max?: number) => (
     <div style={{ position: 'relative' }}>
+      {/* Το paddingRight δεν είναι αέρας: βγαίνει από το «€» ή το «%» που κάθεται στο right: 13 του πεδίου — 13 του περιθωρίου συν το πλάτος του συμβόλου. */}
       <input value={value} aria-label={name} onChange={e => { const v = acceptNumeric(e.target.value, max); if (v !== null) on(v); }}
         onFocus={onFieldFocus} onBlur={onFieldBlur} inputMode="decimal" placeholder=""
         style={{ ...field, paddingRight: 30, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} />
@@ -558,7 +559,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
               </div>
 
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '11px 13px', borderRadius: T.radius.inner, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-                <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55, fontFamily: T.font.sans }}>
                   Ιδιωτική ειδοποίηση με ισχύ έγγραφης απόδειξης. Η <strong style={{ color: 'var(--text-primary)' }}>αλλαγή μισθώματος</strong> δηλώνεται επίσημα στη «Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης» στο <a href={MYAADE} target="_blank" rel="noreferrer" title={aadeTitle('lease')} style={{ color: 'var(--accent)', textDecoration: 'none' }}>myAADE</a>.
                 </div>

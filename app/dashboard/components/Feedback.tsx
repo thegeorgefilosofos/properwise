@@ -84,7 +84,7 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
         position: 'relative' as const, overflow: 'hidden' as const,
         background: 'var(--surface-hero)', border: '1px solid var(--border-raised)',
         borderRadius: T.radius.card, boxShadow: 'var(--highlight-inset), var(--elev-1)',
-        padding: 18,
+        padding: T.sp.lg,
       };
 
   // ── Ολοκληρωμένο (ευχαριστία) ──────────────────────────────────────────────
@@ -217,7 +217,7 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
 
         {/* Κίνητρο κλήρωσης */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
-          <span aria-hidden style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 1 }}>
+          <span aria-hidden className="po-lead-ico" style={{ color: 'var(--text-tertiary)' }}>
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12v10H4V12" /><path d="M2 7h20v5H2z" /><path d="M12 22V7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></svg>
           </span>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>

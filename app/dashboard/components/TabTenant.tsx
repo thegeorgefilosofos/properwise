@@ -606,7 +606,9 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           {([['all','Όλοι'],['current','Τρέχοντες'],['past','Προηγούμενοι']] as [typeof segment,string][]).map(([v,l])=>(
             // shape «chip»: τα τρία φίλτρα κάθονται ελεύθερα στη γραμμή εργαλείων,
             // χωρίς ράγα γύρω τους, οπότε το καθένα κρατά δικό του περίγραμμα.
-            <ChipToggle key={v} on={segment===v} onClick={()=>setSegment(v)}>{l}</ChipToggle>
+            // size «lg»: δίπλα τους κάθεται το πεδίο αναζήτησης με ύψος T.h.lg
+            // — το προεπιλεγμένο T.h.sm άφηνε τη σειρά 40 δίπλα σε 32.
+            <ChipToggle key={v} size="lg" on={segment===v} onClick={()=>setSegment(v)}>{l}</ChipToggle>
           ))}
         </div>
       </div>
@@ -794,7 +796,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                   </div>
                 ):(
                   <div style={{ border:'2px dashed var(--border-default)', borderRadius:T.radius.inner, padding:'40px 28px', textAlign:'center' as const }}>
-                    <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:18 }}>Ανέβασε το μισθωτήριο σε μορφή PDF</div>
+                    <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:T.sp.lg }}>Ανέβασε το μισθωτήριο σε μορφή PDF</div>
                     <label style={{ ...s.btnGold, cursor:'pointer', display:'inline-block', padding:'11px 28px' }}>
                       {uploading?'Ανέβασμα…':'Επιλογή PDF'}
                       <input type="file" accept=".pdf" style={{ display:'none' }} onChange={e=>{const f=e.target.files?.[0];if(f)uploadPDF(dc,f);}} disabled={uploading}/>
@@ -986,7 +988,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
 
             {/* Οι παρεχόμενες υπηρεσίες υπάρχουν ΜΟΝΟ σε επιπλωμένο — το λέει το μητρώο */}
             {show('tenant.services')&&(
-              <div style={{ marginTop:18 }}>
+              <div style={{ marginTop:T.sp.lg }}>
                 <SectionTitle info={whyOf('tenant.services')}>Τι πληρώνεις εσύ, τι ο ενοικιαστής</SectionTitle>
                 <ServicesEditor value={form.services} onChange={v=>sf('services',v)}/>
               </div>

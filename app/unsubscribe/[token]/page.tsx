@@ -92,7 +92,7 @@ export default function Unsubscribe() {
   return (
     <div style={wrap}>
       <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 18, borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.xl, borderBottom: '1px solid var(--border-subtle)' }}>
           <BrandMark size={34} />
           {/* Ο τίτλος της σελίδας είναι η δεύτερη γραμμή· το «PROPERWISE» είναι
               σήμα. Χωρίς `h1` η σελίδα ανακοινωνόταν ανώνυμη. */}
@@ -100,12 +100,12 @@ export default function Unsubscribe() {
         </div>
 
         {state === 'loading' && <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Φόρτωση…</div>}
-        {state === 'notfound' && <p style={{ paddingTop: 22, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει. Μπορείς να διαχειριστείς τις προτιμήσεις σου από τις Ρυθμίσεις μέσα στην εφαρμογή.</p>}
+        {state === 'notfound' && <p style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει. Μπορείς να διαχειριστείς τις προτιμήσεις σου από τις Ρυθμίσεις μέσα στην εφαρμογή.</p>}
         {/* Ο σύνδεσμος δεν κρίθηκε: δεν πήραμε απάντηση. Το λέμε με αυτά τα
             λόγια και δίνουμε το κουμπί, γιατί η μόνη σωστή ενέργεια είναι να
             ξαναρωτήσεις — όχι να φύγεις νομίζοντας ότι έχασες το δικαίωμά σου. */}
         {state === 'error' && (
-          <div style={{ paddingTop: 22 }}>
+          <div style={{ paddingTop: T.sp.xl }}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
               Δεν καταφέραμε να διαβάσουμε τις προτιμήσεις σου. Ο σύνδεσμος δεν ελέγχθηκε, οπότε μπορεί κάλλιστα να είναι έγκυρος.
             </p>

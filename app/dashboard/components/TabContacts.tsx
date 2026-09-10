@@ -1024,7 +1024,7 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
             {extra.whatsapp && contact.phone && <QuickAct as="a" href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" title="WhatsApp" label="WA" />}
             {extra.viber && contact.phone && <QuickAct as="a" href={'viber://chat?number=' + contact.phone.replace(/\D/g, '')} title="Viber" label="VB" />}
             {contact.email && <QuickAct as="a" href={'mailto:' + contact.email} title="Ηλεκτρονικό ταχυδρομείο"><Mail size={13} /></QuickAct>}
-            <QuickAct as="button" onClick={() => setShowActions(s => !s)} title="Περισσότερες ενέργειες"><span style={{ fontSize: 16, fontWeight: 700, lineHeight: 0, marginTop: -5 }}>···</span></QuickAct>
+            <QuickAct as="button" onClick={() => setShowActions(s => !s)} title="Περισσότερες ενέργειες"><span style={{ fontSize: 16, fontWeight: 700, lineHeight: 0, marginTop: -4 }}>···</span></QuickAct>
           </div>
           {showActions && (
             <div role="menu" style={{ position: 'absolute', top: 38, right: 0, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '6px', minWidth: 210, boxShadow: 'var(--elev-3)' }}>
@@ -1060,7 +1060,7 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: T.font.sans, marginBottom: 1 }}>{contact.full_name}</div>
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><GroupIcon size={11} style={{ flexShrink: 0 }} />{meta.label || contact.role}</div>
-            {extra.specialty && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{extra.specialty}</div>}
+            {extra.specialty && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{extra.specialty}</div>}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -1237,7 +1237,7 @@ function ContactDossier({ contact, propertyId, onClose, onEdit, onDelete, onQuic
   return (
     <SideSheet open onClose={onClose} ariaLabel="Καρτέλα επαφής" size="sm"
       header={<>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.lg }}>
           {extra.avatar_url
             ? <RuntimeImg src={extra.avatar_url} alt="" style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--accent-border)', flexShrink: 0 }} />
             : <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--accent-soft)', border: '3px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{initials || <GroupIcon size={26} />}</div>}
@@ -1266,7 +1266,7 @@ function ContactDossier({ contact, propertyId, onClose, onEdit, onDelete, onQuic
           <div>
             <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Πληρωμές</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>{fe(exp.total)}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>{exp.count} {exp.count === 1 ? 'καταχώρηση' : 'καταχωρήσεις'}{exp.docs > 0 ? ` · ${exp.docs} ${exp.docs === 1 ? 'παραστατικό' : 'παραστατικά'} με το ΑΦΜ του` : ''}</div>
+            <div className="po-subline" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{exp.count} {exp.count === 1 ? 'καταχώρηση' : 'καταχωρήσεις'}{exp.docs > 0 ? ` · ${exp.docs} ${exp.docs === 1 ? 'παραστατικό' : 'παραστατικά'} με το ΑΦΜ του` : ''}</div>
           </div>
           <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>Πλήρες ιστορικό ›</span>
         </button>
@@ -1449,7 +1449,7 @@ function AlphaRail({ entries, active, onPick }: {
 }) {
   if (entries.length < 2) return null   // Ένα γράμμα δεν είναι ευρετήριο.
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', marginBottom: 18 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', marginBottom: T.sp.lg }}>
       {entries.map((e, i) => {
         const on = active === e.letter
         // Η αλλαγή αλφαβήτου σημαδεύεται μία φορά, στο σημείο που συμβαίνει.
@@ -1873,7 +1873,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         const hasEmail = contacts.some(c => selected.has(c.id) && c.email)
         const none = selected.size === 0
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '11px 16px', marginBottom: 18, flexWrap: 'wrap', boxShadow: 'var(--elev-1)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '11px 16px', marginBottom: T.sp.lg, flexWrap: 'wrap', boxShadow: 'var(--elev-1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <SelectBox checked={allOn} indeterminate={someOn} onChange={masterToggle} label="Επιλογή όλων" />
               <span style={{ fontSize: 14, fontWeight: 600, color: none ? 'var(--text-secondary)' : 'var(--text-primary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
@@ -1895,7 +1895,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       })()}
 
       {preferred.length > 0 && (
-        <div style={{ marginBottom: 22, padding: '16px 20px', background: 'var(--bg-surface)', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)' }}>
+        <div style={{ marginBottom: T.sp.xl, padding: '16px 20px', background: 'var(--bg-surface)', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)' }}>
           <SecHdr label="Γρήγορη πρόσβαση" />
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {preferred.map(c => {
@@ -1938,6 +1938,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         {showTool('search', contacts.length) && (
         <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
           <Search size={14} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+          {/* Το γέμισμα κρατά το κείμενο έξω από το εικονίδιο: ξεκινά στα 13 με πλάτος 14. */}
           <input value={search} aria-label="Αναζήτηση επαφής" onChange={e => setSearch(e.target.value)} placeholder="Όνομα, τηλέφωνο, email, ΑΦΜ ή IBAN" style={{ ...iStyle, paddingLeft: 38 }} onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-dim)' }} onBlur={e => { e.target.style.borderColor = 'var(--border-default)'; e.target.style.boxShadow = 'none' }} />
         </div>
         )}
@@ -1995,7 +1996,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       {/* Ένα chip φίλτρου που επιλέγει τα πάντα δεν φιλτράρει τίποτα: με μία
           μόνο ομάδα, η σειρά είναι ετικέτα μεταμφιεσμένη σε χειριστήριο. */}
       {groupsPresent.length >= SHOW_FROM.filter && (
-      <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: T.sp.xl, flexWrap: 'wrap' }}>
         {groupsPresent.map(g => {
             const count = contacts.filter(c => ROLE_META[c.role]?.groupId === g.id).length; const active = filterGroup === g.id; const GroupIcon = g.Icon
             return (
@@ -2082,7 +2083,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           ))}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 42 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
           {GROUPS.filter(g => groupedFiltered[g.id]?.length).map(g => (
             <div key={g.id}>
               <GroupDivider group={g} count={groupedFiltered[g.id].length} />
@@ -2191,7 +2192,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
                     </CField>
                   </div>
                   <CField d={cf('contact.messaging')}>
-                    <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-surface)', borderRadius: T.radius.inner, border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', gap: T.sp.xl, flexWrap: 'wrap', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-surface)', borderRadius: T.radius.inner, border: '1px solid var(--border-subtle)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Toggle on={!!form.extra.whatsapp} onChange={v => setExtra('whatsapp', v)} ariaLabel="WhatsApp" /><span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>WhatsApp</span></div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Toggle on={!!form.extra.viber} onChange={v => setExtra('viber', v)} ariaLabel="Viber" /><span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>Viber</span></div>
                     </div>

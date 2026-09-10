@@ -270,7 +270,9 @@ function MoneyField({ label, hint, value, onChange }: {
         <input type="number" min={0} inputMode="decimal" className="po-field" placeholder=""
           value={value ?? ''}
           onChange={e => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-          style={{ ...settingsField, height: T.h.md, fontSize: 'var(--fs-base)', paddingRight: 30 }} />
+          style={{ ...settingsField, height: T.h.md, fontSize: 'var(--fs-base)',
+            // Ο χώρος του «€» δεξιά: απόσταση 11 συν το πλάτος του συμβόλου συν κενό ώς τον αριθμό.
+            paddingRight: 30 }} />
         <span aria-hidden style={{
           position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)',
           fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.num, pointerEvents: 'none',

@@ -174,7 +174,7 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
 
             return (
               <div key={id} className={locked ? undefined : 'acc-choice'} title={locked ? lockHint : undefined}
-                style={{ position: 'relative', display: 'flex', flexDirection: 'column', opacity: locked ? 0.55 : 1, background: heroBg, border: `1.5px solid ${borderColor}`, borderRadius: T.radius.card, boxShadow, padding: 18 }}>
+                style={{ position: 'relative', display: 'flex', flexDirection: 'column', opacity: locked ? 0.55 : 1, background: heroBg, border: `1.5px solid ${borderColor}`, borderRadius: T.radius.card, boxShadow, padding: T.sp.lg }}>
 
                 {/* ══ Η ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΣΤΗΛΗΣ ΕΧΕΙ ΜΙΑ ΘΕΣΗ, ΚΑΙ ΕΙΝΑΙ ΑΥΤΗ ══════
                     Το «Πιο δημοφιλές» καθόταν ως κορδέλα πάνω από την κάρτα και

@@ -213,7 +213,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
           <SectionTitle>Υπολογιστής αναπροσαρμογής</SectionTitle>
 
-          <div style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'16px 18px', marginBottom:18 }}>
+          <div style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'16px 18px', marginBottom:T.sp.lg }}>
             <div style={{ fontSize: 'var(--fs-xs)', letterSpacing:'0.12em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:6 }}>Τρέχον μηνιαίο μίσθωμα</div>
             <div style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{fmtE(rent)}</div>
             {tenant.lease_end&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:4 }}>Λήξη: {fmtDate(tenant.lease_end)}</div>}
@@ -281,7 +281,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
                 </div>
               </div>
 
-              <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:18, marginBottom:14 }}>
+              <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg, marginBottom:14 }}>
                 {[{label:hasCustom?'Ποσοστό σύμβασης':`ΔΤΚ ${yr}`,value:`${pct>=0?'+':''}${fp(pct)}`},
                   {label:'Μεταβολή ανά Μήνα',value:`${diff>=0?'+':''}${fmtE(diff)}`},
                   {label:'Μεταβολή ανά Έτος',value:`${diff>=0?'+':''}${fmtE(diff*12)}`}
@@ -301,7 +301,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
           )}
           {/* Χωρίς ποσοστό δεν βγαίνει έγγραφο: το κουμπί απενεργοποιείται και λέει γιατί */}
           {rent>0&&!hasPct&&(
-            <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:18, marginBottom:14 }}>
+            <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg, marginBottom:14 }}>
               {/* Δευτερεύον, όχι κύριο: η ανενεργή όψη είναι διάφανη με περίγραμμα — το ίδιο που δίνει το secondary. */}
               <Btn variant="secondary" field disabled title="Δώσε πρώτα το ποσοστό αναπροσαρμογής">Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>
               <div style={{ marginTop:10, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
@@ -310,7 +310,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
             </div>
           )}
 
-          <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:18 }}>
+          <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg }}>
             <SectionTitle>Υποχρεώσεις και Σύνδεσμοι</SectionTitle>
             {/* ΤΕΣΣΕΡΑ ΛΑΘΗ ΣΕ ΤΡΕΙΣ ΓΡΑΜΜΕΣ, ΚΑΙ ΤΑ ΤΕΣΣΕΡΑ ΟΡΑΤΑ ΣΤΗΝ ΟΘΟΝΗ:
              *

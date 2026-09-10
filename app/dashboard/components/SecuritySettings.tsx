@@ -339,7 +339,7 @@ export default function SecuritySettings() {
 
         {/* ENROLLING: QR + secret + 6ψήφιος κωδικός */}
         {mfaState === 'enrolling' && enrollFactor && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
             <div>
               <div style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600, marginBottom: 10 }}>
                 1. Σάρωσε τον κωδικό QR με την εφαρμογή επαλήθευσης

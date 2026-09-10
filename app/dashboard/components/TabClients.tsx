@@ -1112,7 +1112,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
         // ίδιος που χρησιμοποιεί και η φορολογική σύνοψη.
         const occ = occupancyFromMonths(nightsByMonthForYear(yStays, reportYear), reportYear);
         return (
-          <div style={{ marginTop: 26 }}>
+          <div style={{ marginTop: T.sp.xxl }}>
             <SecHdr label={`Ακαθάριστα ${reportYear}`} sub="Δηλωτέο ακαθάριστο ανά κανάλι και ανά μήνα, χωρίς το τέλος ανθεκτικότητας, χωρίς αφαίρεση προμήθειας"
               right={
                 /* Το Escape κλείνει το popover και ο χρήστης πληκτρολογίου δεν

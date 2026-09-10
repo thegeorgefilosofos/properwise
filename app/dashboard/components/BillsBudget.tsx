@@ -125,7 +125,7 @@ function Donut({ slices }: { slices: { label: string; value: number }[] }) {
   const starts = segs.reduce<number[]>((acc, sgm, i) =>
     [...acc, i === 0 ? 0 : acc[i - 1] + (segs[i - 1].value / total) * C], []);
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 26, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.xxl, flexWrap: 'wrap' }}>
       <svg aria-hidden="true" width="152" height="152" viewBox="0 0 152 152" style={{ flexShrink: 0, overflow: 'visible' }}>
         {/* Κανάλι δαχτυλιδιού */}
         <circle cx="76" cy="76" r={r} fill="none" stroke="color-mix(in srgb, var(--accent) 10%, transparent)" strokeWidth={sw} />
@@ -1639,7 +1639,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                       μορφές — και η μία από τις δύο εκτός θέματος. */}
                 </div>
                 {/* Ετήσιο εργαλείο: ράβδοι εξόδων ανά μήνα (με ήπια κατάσταση όταν δεν υπάρχει ιστορικό) */}
-                <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+                <div style={{ marginTop: T.sp.lg, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
                   <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, fontFamily: T.font.sans }}>Έξοδα ανά μήνα</div>
                   {yearBars.some(b => b.value > 0)
                     ? <MonthBars data={yearBars} activeYm={_curYm} />
@@ -1721,7 +1721,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                       <div style={{ width: 3, height: 26, borderRadius: 3, background: 'color-mix(in srgb, var(--text-primary) 26%, transparent)', flexShrink: 0 }} />
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</div>
-                        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 1 }}>{cadLabel(r.cadence)} · επόμενη {parseLocalDate(r.nextExpected).toLocaleDateString('el-GR', { day: 'numeric', month: 'short' })}</div>
+                        <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{cadLabel(r.cadence)} · επόμενη {parseLocalDate(r.nextExpected).toLocaleDateString('el-GR', { day: 'numeric', month: 'short' })}</div>
                       </div>
                       <div style={{ textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>
                         <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: hov ? 'var(--accent)' : 'var(--text-primary)', transition: 'color 0.15s' }}>{feAuto(r.monthlyEquivalent)}<span style={{ fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text-tertiary)' }}>/μήνα</span></div>
@@ -1828,7 +1828,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
 
                 {/* Ανάλυση κατηγορίας: πάροχος/περιγραφή, ποσό και ημερομηνία της κάθε πληρωμής */}
                 {hasBd && openCat && (
-                  <div style={{ marginLeft: 12, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <div style={{ marginLeft: 12, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {bdItems.map((it, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 8px', margin: '0 -8px', borderRadius: T.radius.inner }}>
                         <span style={{ width: 4, height: 4, borderRadius: '50%', background: it.paid ? 'color-mix(in srgb, var(--text-primary) 40%, transparent)' : 'var(--border-default)', flexShrink: 0 }} />

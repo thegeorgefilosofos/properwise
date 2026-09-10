@@ -415,7 +415,7 @@ export default function LoanDocScan({ banks, euribor, defaultPropertyValue, onAp
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent)', fontFamily: font, fontVariantNumeric: 'tabular-nums', lineHeight: 1, letterSpacing: '-0.02em' }}>{fmtPct(best.effectiveRatePct)}</p>
                   <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 4, fontFamily: font, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(best.monthlyPayment)} τον μήνα</p>
-                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1, fontFamily: font, fontVariantNumeric: 'tabular-nums' }}>Σύνολο {fmtEur(best.totalCost)}</p>
+                  <p className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: font, fontVariantNumeric: 'tabular-nums' }}>Σύνολο {fmtEur(best.totalCost)}</p>
                 </div>
               </div>
             </div>

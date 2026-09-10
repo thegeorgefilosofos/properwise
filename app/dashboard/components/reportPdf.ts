@@ -79,7 +79,7 @@ export const REPORT_CSS = `
   .page{max-width:760px;margin:0 auto;padding:40px}
   @media print{.page{padding:16mm 15mm}@page{margin:0}}
   .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid ${INK};padding-bottom:16px}
-  .brand{display:flex;align-items:center;gap:11px}
+  .brand{display:flex;align-items:center;gap:12px}
   .mark{width:34px;height:34px;border-radius:8px;color:${BRAND_MARK_INK};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px}
   .bname{font-size:15px;font-weight:700;color:${INK}}
   .muted{color:${INK_MUTED}}

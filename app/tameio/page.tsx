@@ -104,7 +104,7 @@ export default function CheckoutLanding() {
   return (
     <div style={wrap}>
       <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 18, borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.xl, borderBottom: '1px solid var(--border-subtle)' }}>
           <BrandMark size={34} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 700 }}>PROPERWISE</div>
@@ -118,7 +118,7 @@ export default function CheckoutLanding() {
             οθόνες πριν και ανάμεσα μεσολάβησε ένα email: το να τη δει
             γραμμένη είναι η μόνη απόδειξη ότι ταξίδεψε σωστά. */}
         {what && (
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, paddingTop: 18 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, paddingTop: T.sp.xl }}>
             Το πακέτο σου: <strong style={{ color: 'var(--text-primary)' }}>{what}</strong>.
           </div>
         )}
@@ -132,7 +132,7 @@ export default function CheckoutLanding() {
             ΤΟ ΟΡΙΟ ΑΚΙΝΗΤΩΝ ΕΙΝΑΙ ΤΟ ΜΟΝΟ ΧΑΡΑΚΤΗΡΙΣΤΙΚΟ ΠΟΥ ΜΕΝΕΙ, γιατί
             είναι το μόνο που αποφασίζει πραγματικά ποιο πακέτο χρειάζεται. */}
         {stage === 'choose' && (
-          <div style={{ paddingTop: 18 }}>
+          <div style={{ paddingTop: T.sp.xl }}>
             {/* Η ράγα έμεινε χωρίς γέμισμα: το ενεργό `seg` ανεβαίνει με ΤΟ ΙΔΙΟ --bg-elevated
                 και πάνω σε γεμισμένη ράγα δεν θα ξεχώριζε από αυτήν. */}
             <div style={{ display: 'flex', gap: 4, padding: 4, marginBottom: 14,

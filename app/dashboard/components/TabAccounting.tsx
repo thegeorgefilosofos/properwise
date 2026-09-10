@@ -1408,11 +1408,12 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                   {/* ΑΠΟ ΠΟΥ ΤΟ ΞΕΡΕΙ. Χωρίς αυτή τη γραμμή, ο χρήστης βλέπει ένα
                       τσεκαρισμένο κουτάκι και δεν έχει λόγο να το ελέγξει — που
                       είναι ακριβώς πώς περνά απαρατήρητος ένας μικρότερος φόρος. */}
-                  <p style={{ margin:'4px 0 0', paddingLeft:26, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5 }}>
+                  {/* Οι δύο γραμμές κρέμονται κάτω από την ετικέτα: κουτάκι 17 συν το κενό της σειράς. */}
+                  <p style={{ margin:'4px 0 0', paddingLeft: 17 + T.sp.sm, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5 }}>
                     {collectionModeReason(collection)}
                     {rentsBankOverride !== null && ' Το άλλαξες εσύ· μετράει η δική σου απάντηση.'}
                   </p>
-                  {!rentsBank && <p style={{ margin:'4px 0 0', paddingLeft:26, fontSize:12, color:'var(--negative)', fontFamily: T.font.sans }}>Χωρίς τραπεζική είσπραξη ο φόρος υπολογίζεται στο 100% των ενοικίων.</p>}
+                  {!rentsBank && <p style={{ margin:'4px 0 0', paddingLeft: 17 + T.sp.sm, fontSize:12, color:'var(--negative)', fontFamily: T.font.sans }}>Χωρίς τραπεζική είσπραξη ο φόρος υπολογίζεται στο 100% των ενοικίων.</p>}
                 </div>
               )}
               {uncollectedRent>0 && (
@@ -1521,7 +1522,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           )}
           <div style={{ display:'flex', flexDirection:'column', gap:6, justifyContent:'center', paddingLeft:14, borderLeft:'1px solid var(--border-subtle)', minWidth:220 }}>
             <Check checked={firstYears} onChange={updateFirstYears} label={<span style={{ fontWeight:500, color:'var(--text-primary)' }}>Νέα επιχείρηση (πρώτη τριετία)</span>} align="start" />
-            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5, paddingLeft:26 }}>Τα πρώτα 3 έτη δραστηριότητας: 1ο κλιμάκιο 4,5% (αντί 9%) και προκαταβολή φόρου μειωμένη κατά 50%.</span>
+            {/* Κρέμασμα κάτω από την ετικέτα: κουτάκι 17 συν το κενό της σειράς. */}
+            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5, paddingLeft: 17 + T.sp.sm }}>Τα πρώτα 3 έτη δραστηριότητας: 1ο κλιμάκιο 4,5% (αντί 9%) και προκαταβολή φόρου μειωμένη κατά 50%.</span>
           </div>
         </div>
       )}

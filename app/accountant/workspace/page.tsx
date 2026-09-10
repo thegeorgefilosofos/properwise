@@ -261,7 +261,7 @@ export default function AccountantWorkspace() {
       {/* ΟΣΑ ΔΕΝ ΠΑΤΙΟΥΝΤΑΙ, ΔΕΝ ΤΥΠΩΝΟΝΤΑΙ. Ο λογιστής τυπώνει τη λίστα για να
           την πάρει μαζί του: η προσθήκη πελάτη, η αναζήτηση και τα κουμπιά είναι
           χειριστήρια, όχι πληροφορία. */}
-      <Card style={{ marginTop: 22 }} className="po-noprint">
+      <Card style={{ marginTop: T.sp.xl }} className="po-noprint">
         <p style={label}>Νέος πελάτης</p>
         {/* ΤΟ ΠΕΔΙΟ ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ ΤΑ ΚΟΙΝΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ. Ηταν ζωγραφισμένα
             εδώ, με δικό τους ύψος, δικό τους περίγραμμα και δική τους
@@ -396,7 +396,7 @@ export default function AccountantWorkspace() {
                 </div>
 
                 {gaps.length > 0 && (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'grid', gap: 1 }}>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'grid', gap: 0 }}>
                     {gaps.map(g => {
                       const k = `${c.ownerId}:${g.key}`;
                       const sent = asked[k] || c.requests.some(r => r.item === g.item);
@@ -451,7 +451,7 @@ export default function AccountantWorkspace() {
                 {c.requests.length > 0 && (
                   <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
                     <p style={label}>Σε εκκρεμότητα</p>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0', display: 'grid', gap: 1 }}>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0', display: 'grid', gap: 0 }}>
                       {c.requests.map(r => (
                         <li key={r.id} style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '6px 0',

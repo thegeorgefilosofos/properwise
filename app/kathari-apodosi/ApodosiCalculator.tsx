@@ -143,7 +143,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           Τρία πεδία που ξεκινούν στο μηδέν, με τη βοήθεια από κάτω τους. Το
           μηδέν δεν κρύβεται: το αποτέλεσμα λέει ρητά τι δεν περιλαμβάνει όσο
           μένουν άδεια. */}
-      <div className="po-tool-controls" style={{ marginTop: 22 }}>
+      <div className="po-tool-controls" style={{ marginTop: T.sp.xl }}>
         <p style={GROUP}>Τι το βαραίνει</p>
         <div {...fixedCols(3, 14, 'start')}>
           <div>
@@ -258,7 +258,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
             τα τρία βάρη διαβαθμίσεις του ίδιου ουδέτερου. Ο φόρος δεν είναι
             σφάλμα, είναι υποχρέωση που μετρήθηκε. */}
         {r.gross > 0 && (
-          <div aria-hidden style={{ marginBottom: 18 }}>
+          <div aria-hidden style={{ marginBottom: T.sp.lg }}>
             <div style={{
               display: 'flex', gap: 2, height: 10, borderRadius: T.radius.pill, overflow: 'hidden',
               background: 'var(--bg-elevated)',
@@ -320,7 +320,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ───────────────────────────────────────── */}
       <div className="po-tool-note" style={{
-        marginTop: 22, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
+        marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>

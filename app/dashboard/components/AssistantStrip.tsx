@@ -58,10 +58,10 @@ export default function AssistantStrip({ ctx }: { ctx: OpenerContext | null }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap',
-      marginBottom: 18, paddingBottom: 16, borderBottom: '1px solid var(--border-subtle)',
+      marginBottom: T.sp.lg, paddingBottom: 16, borderBottom: '1px solid var(--border-subtle)',
     }}>
-      <div style={{
-        width: 30, height: 30, borderRadius: '50%', flexShrink: 0, marginTop: 1,
+      <div className="po-lead-ico" style={{
+        width: 30, height: 30, borderRadius: '50%',
         background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
         color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 700,

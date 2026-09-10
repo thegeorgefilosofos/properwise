@@ -329,7 +329,7 @@ export default function TabBills({
               Κλείσιμο
             </Btn>
           </div>
-          <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 18, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
+          <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
             {tool === 'electricity'   && <BillsElectricity propertyId={propertyId} userId={userId} onNavigateTab={t => openTool(t as ContractKind)}/>}
             {/* Ο ίδιος λογαριασμός ζεσταίνει το σπίτι: το αέριο και ο τρόπος
                 θέρμανσης απαντούν στην ίδια ερώτηση και μπαίνουν μαζί. */}

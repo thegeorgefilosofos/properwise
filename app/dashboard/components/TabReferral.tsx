@@ -515,13 +515,22 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
           <span style={{ ...TT.caption }}>Κωδικός <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num, letterSpacing: '0.04em' }}>{code}</strong></span>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div className="ref-linkbox" style={{ flex: 1, minWidth: 240, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '11px 14px', minHeight: 44, boxSizing: 'border-box', boxShadow: 'var(--well-inset)' }}>
+          <div className="ref-linkbox" style={{ flex: 1, minWidth: 240, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '0 14px', height: T.h.lg, boxSizing: 'border-box', boxShadow: 'var(--well-inset)' }}>
             <Ic d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1|M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" s={15} c="var(--text-tertiary)" />
             <span style={{ ...TT.body, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{link}</span>
           </div>
-          {/* Το πλαίσιο του συνδέσμου δίπλα έχει minHeight 44 και ακτίνα T.radius.inner:
-              το `size="lg"` δίνει το ίδιο ύψος πεδίου και η ακτίνα του κουμπιού
-              (T.radius.btn) είναι η ίδια τιμή, οπότε τα δύο εξακολουθούν να ζευγαρώνουν. */}
+          {/* ΤΟ 44 ΗΤΑΝ ΓΡΑΜΜΕΝΟ ΩΜΟ ΚΑΙ ΔΕΝ ΤΑΙΡΙΑΖΕ ΜΕ ΤΙΠΟΤΑ. Το `size="lg"` του
+              κουμπιού δίνει `T.h.lg`, που είναι 40 στο ποντίκι — όχι 44. Ο σαρωτής
+              στοίχισης μέτρησε τη σειρά 44/40 στα 768 και στα 1280, δηλαδή το
+              πλαίσιο ήταν τέσσερα εικονοστοιχεία ψηλότερο από το κουμπί του. Ως
+              `T.h.lg` τα δύο κουμπώνουν σε ΚΑΘΕ δείκτη: 40 στο ποντίκι, 44 στο
+              δάχτυλο, όπου η ίδια μεταβλητή ανεβαίνει μόνη της. Η ακτίνα
+              T.radius.inner και T.radius.btn είναι ήδη η ίδια τιμή.
+
+              ΚΑΙ ΤΟ ΥΨΟΣ ΕΙΝΑΙ `height`, ΟΧΙ `minHeight`. Με ελάχιστο ύψος το
+              κάθετο γέμισμα των 11 συν η γραμμή του κειμένου έβγαζαν 44 και το
+              ελάχιστο δεν είχε ποτέ λόγο — μετρήθηκε ξανά 44/40. Το γέμισμα
+              μένει μόνο οριζόντιο· το ύψος το λέει η κλίμακα. */}
           <Btn variant="primary" size="lg" onClick={copy}>
             <Ic d={copied ? 'M20 6 9 17l-5-5' : 'M8 4h10a2 2 0 0 1 2 2v10|M4 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z'} s={15} />
             {copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}
@@ -685,7 +694,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
               if (!(streak >= 1 && r > 0 && d <= 10)) return null;
               return (
                 <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 12px', borderRadius: T.radius.inner, background: 'color-mix(in srgb, var(--warning) 9%, transparent)', border: '1px solid color-mix(in srgb, var(--warning) 26%, transparent)' }}>
-                  <span style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }}><Ic d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z|M12 9v4|M12 17h.01" s={15} /></span>
+                  <span className="po-lead-ico" style={{ color: 'var(--warning)' }}><Ic d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z|M12 9v4|M12 17h.01" s={15} /></span>
                   <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                     {d === 1 ? 'Ο μήνας κλείνει αύριο.' : `Ο μήνας κλείνει σε ${d} ημέρες.`} {r === 1 ? 'Σου λείπει ένας συνδρομητής' : `Σου λείπουν ${r} συνδρομητές`} {partner ? 'για να εξασφαλίσεις τον δωρεάν μήνα.' : 'για να διατηρήσεις τους συνεχόμενους μήνες σου.'}
                   </span>
@@ -752,7 +761,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
       <SectionLabel>Πώς λειτουργεί</SectionLabel>
       <div {...cardGrid(3)}>
         {steps.map((st, i) => (
-          <div key={i} className="ref-step" style={{ ...card, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div key={i} className="ref-step" style={{ ...card, padding: T.sp.lg, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span className="ref-step-n" style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--bg-overlay)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, transition: 'background .18s, color .18s' }}>{st.n}</span>
               <span className="ref-step-ic" style={{ color: 'var(--text-tertiary)', transition: 'color .18s' }}><Ic d={st.d2} s={20} /></span>

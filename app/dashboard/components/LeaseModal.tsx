@@ -363,7 +363,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
               </div>
               {res.belowLegalMinimum && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '11px 13px', borderRadius: T.radius.inner, background: 'var(--warning-soft)', border: '1px solid var(--warning-border)' }}>
-                  <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
+                  <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55, fontFamily: T.font.sans }}>Στην κατοικία ισχύει η <strong style={{ color: 'var(--text-primary)' }}>ελάχιστη τριετής διάρκεια</strong> κατά νόμο, ακόμη και με μικρότερη συμφωνία.</div>
                 </div>
               )}
@@ -385,7 +385,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
               </div>
 
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '11px 13px', borderRadius: T.radius.inner, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-                <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                 {/* ΤΟ «ΜΕΤΑ ΤΗΝ ΥΠΟΓΡΑΦΗ» ΗΤΑΝ ΔΕΚΑΕΝΝΙΑ ΧΑΡΑΚΤΗΡΕΣ ΠΟΥ ΔΕΝ ΕΛΕΓΑΝ
                     ΤΙΠΟΤΑ: το κείμενο ζει ΜΕΣΑ στο παράθυρο υπογραφής, οπότε το
                     «μετά» είναι δεδομένο. Τα κουβαλούσε όμως αρκετά ώστε η

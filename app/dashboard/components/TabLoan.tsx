@@ -733,7 +733,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
         const m = prog ? prog.monthly : calcMonthly(loan.amount,loan.rate,loan.years)
         const ltv = loan.property_value>0?(loan.amount/loan.property_value)*100:0
         return(
-          <div key={loan.id} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.card,padding:18}}>
+          <div key={loan.id} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.card,padding:T.sp.lg}}>
 
             {/* Ταυτότητα: τράπεζα, κατάσταση, είδος. */}
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,marginBottom:16}}>
@@ -823,7 +823,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 του υπολοίπου χωρίς να είναι το υπόλοιπο. Ο ήρωας της κάρτας
                 είναι ΕΝΑΣ, το υπόλοιπο· τα υπόλοιπα είναι στοιχεία και ζουν στη
                 γραμμή στοιχείων. Ιδια πληροφορία, μισό ύψος, μία ιεραρχία. */}
-            <div style={{display:'flex',gap:22,flexWrap:'wrap',paddingTop:12,borderTop:'1px solid var(--border-subtle)'}}>
+            <div style={{display:'flex',gap:T.sp.xl,flexWrap:'wrap',paddingTop:12,borderTop:'1px solid var(--border-subtle)'}}>
               <div><p style={{...labelStyle,marginBottom:2}}>Επιτόκιο</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{fp(loan.rate)} · {loan.rate_type==='variable'?'κυμαινόμενο':'σταθερό'}</p></div>
               {ltv>0&&<div><p style={{...labelStyle,marginBottom:2}}>Δάνειο προς αξία</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{fp(ltv)}</p></div>}
               {loan.start_date&&<div><p style={{...labelStyle,marginBottom:2}}>Έναρξη</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{fdLong(loan.start_date)}</p></div>}
@@ -850,10 +850,10 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
       <h1 className="sr-only">{navLabel('loan')}</h1>
 
       {/* Header — compact, premium, ήσυχο */}
-      <div style={{...cardStyle,padding:'13px 18px',display:'flex',alignItems:'center',gap:18,flexWrap:'wrap'}}>
+      <div style={{...cardStyle,padding:'13px 18px',display:'flex',alignItems:'center',gap:T.sp.lg,flexWrap:'wrap'}}>
         <div style={{minWidth:0}}>
           <p style={{fontSize:16,color:'var(--text-primary)',fontWeight:700,fontFamily: T.font.sans,letterSpacing:'-0.02em'}}>Στεγαστικό δάνειο</p>
-          <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:1,fontFamily: T.font.sans}}>Ελληνική αγορά · δεδομένα ΕΚΤ και Τράπεζας Ελλάδος</p>
+          <p className="po-subline" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>Ελληνική αγορά · δεδομένα ΕΚΤ και Τράπεζας Ελλάδος</p>
         </div>
         {/* ══ ΤΕΣΣΕΡΑ ΕΠΙΤΟΚΙΑ ΑΝΑΦΟΡΑΣ ΔΕΝ ΕΙΝΑΙ ΤΕΣΣΕΡΙΣ ΔΕΙΚΤΕΣ ═══════════
             ΗΤΑΝ ΤΕΣΣΕΡΑ ΠΛΑΚΙΔΙΑ ΜΕ ΣΤΟΙΧΙΣΗ ΣΤΟ ΚΕΝΤΡΟ, ΕΤΙΚΕΤΑ ΠΑΝΩ ΚΑΙ
@@ -924,7 +924,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
       {isAdmin && feedHealth.checked && !feedHealth.ok && (
         <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'10px 13px',marginTop:-4,
           background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:10}}>
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round" style={{flexShrink:0,marginTop:1}}><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+          <svg aria-hidden="true" className="po-lead-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
           <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>
             Η τροφοδοσία επιτοκίων χρειάζεται έλεγχο: {feedHealth.reason}. Οι τιμές που βλέπεις είναι οι τελευταίες που ήρθαν, με τη δική τους ημερομηνία η καθεμία.
           </p>
@@ -1009,7 +1009,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           {isAdmin && <BankRatesAdmin onSaved={reloadBanks}/>}
           {banksStale&&(
             <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'11px 14px',background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:10}}>
-              <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round" style={{flexShrink:0,marginTop:1}}><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+              <svg aria-hidden="true" className="po-lead-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
               <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{feed.checked && !feed.ok ? `Ο αυτόματος έλεγχος επιτοκίων δεν τρέχει (${feed.reason}). ` : ''}Τα επιτόκια επιβεβαιώθηκαν πριν από {banksAgeDays} ημέρες και ενδέχεται να έχουν αλλάξει. Για δεσμευτική προσφορά επιβεβαιώστε απευθείας με την τράπεζα ή στο <a href="https://vresdaneio.gr/epitokia/index.html" target="_blank" rel="noreferrer" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>vresdaneio.gr</a>.</p>
             </div>
           )}
@@ -1352,7 +1352,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             {/* ── Insight της ημέρας ── */}
             {insight&&(
               <div style={{display:'flex',alignItems:'flex-start',gap: 12,padding:'12px 16px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderLeft:'3px solid var(--border-default)',borderRadius: T.radius.popup}}>
-                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,marginTop:1}}><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.6.5 1 1.3 1 2.1v.2h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0012 2z"/></svg>
+                <svg aria-hidden="true" className="po-lead-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.6.5 1 1.3 1 2.1v.2h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0012 2z"/></svg>
                 <p style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',lineHeight:1.55,fontFamily: T.font.sans}}>{insight}</p>
               </div>
             )}
@@ -1396,7 +1396,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               const varFix = issues.includes('Κυμαινόμενο') ? ' Το σταθερό κλειδώνει τη δόση για όλη τη διάρκεια.' : ''
               return (
               <MiniSection title="Ανάλυση δανείου" defaultOpen meta={<span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:600,whiteSpace:'nowrap' as const}}>{scoreLabel}</span>}>
-                <div style={{display:'flex',alignItems:'center',gap:22,flexWrap:'wrap'}}>
+                <div style={{display:'flex',alignItems:'center',gap:T.sp.xl,flexWrap:'wrap'}}>
                   <div onMouseEnter={()=>setScoreHover(true)} onMouseLeave={()=>setScoreHover(false)}
                     onTouchStart={()=>setScoreHover(true)} onTouchEnd={()=>setScoreHover(false)}
                     style={{display:'flex',alignItems:'baseline',gap: 4,flexShrink:0,cursor:'default'}}>
@@ -1590,7 +1590,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 <div>
                   {sorted.map((item,i)=>(
                     <FindingRow key={item.id} last={i===sorted.length-1}
-                      lead={<span style={{width:20,height:20,marginTop:1,borderRadius:'50%',background:item.el?'var(--accent-dim)':'var(--bg-elevated)',border:item.el?'none':'1px solid var(--border-subtle)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      lead={<span className="po-lead-ico" style={{width:20,height:20,borderRadius:'50%',background:item.el?'var(--accent-dim)':'var(--bg-elevated)',border:item.el?'none':'1px solid var(--border-subtle)',display:'flex',alignItems:'center',justifyContent:'center'}}>
                         {item.el
                           ?<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
                           :<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
@@ -1940,7 +1940,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 μιας γραμμής κάθεται χαμηλότερα από το διπλανό του των δύο και
                 τα τέσσερα πλακίδια διαβάζονται σαν σκαλοπάτια. Τεντωμένα στο ίδιο
                 ύψος, το κείμενο κεντράρεται και η σειρά είναι μία ευθεία. */}
-            <div {...fixedCols(4, 8, 'stretch')} style={{...fixedCols(4, 8, 'stretch').style, marginBottom:18}}>
+            <div {...fixedCols(4, 8, 'stretch')} style={{...fixedCols(4, 8, 'stretch').style, marginBottom:T.sp.lg}}>
               {SERVICERS_GUIDE.rights.map(r=>(
                 <InfoChip key={r.t} label={r.t} detail={r.d}
                   icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>}/>
@@ -1951,7 +1951,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             {/* Τρία εργαλεία, τρεις στήλες ίδιου ύψους: οι τρεις σύνδεσμοι
                 «Επίσημη πηγή» κάθονται στην ίδια γραμμή βάσης, όσο άνισο κι αν
                 είναι το κείμενο από πάνω τους. */}
-            <div {...fixedCols(3, 12, 'stretch')} style={{...fixedCols(3, 12, 'stretch').style, marginBottom:18}}>
+            <div {...fixedCols(3, 12, 'stretch')} style={{...fixedCols(3, 12, 'stretch').style, marginBottom:T.sp.lg}}>
               {SERVICERS_GUIDE.tools.map(t=>(
                 <div key={t.name} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:T.radius.inner,padding:14,display:'flex',flexDirection:'column'}}>
                   {/* Τίτλος κάρτας σε βάρος τίτλου. Στο 500 διαβαζόταν ίδιος με
@@ -1976,7 +1976,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:16}}>
               {SERVICERS_GUIDE.redFlags.map((f,i)=>(
                 <div key={i} style={{display:'flex',gap:10,padding:'10px 14px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderLeft:'3px solid var(--border-default)',borderRadius: T.radius.chip}}>
-                  <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" style={{flexShrink:0,marginTop:1}}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  <svg aria-hidden="true" className="po-lead-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                   <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{f}</p>
                 </div>
               ))}

@@ -207,7 +207,7 @@ export function ItemRow({ item, allItems, onToggle, onEdit, onDelete, onAddToCal
               <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={a.danger ? 'var(--negative)' : 'var(--text-tertiary)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>{a.icon.split(' M').map((seg, j) => <path key={j} d={(j === 0 ? '' : 'M') + seg} />)}</svg>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--fs-base)', color: a.danger ? 'var(--negative)' : 'var(--text-primary)', fontWeight: 500, fontFamily: T.font.sans }}>{a.label}</div>
-                {a.sub ? <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1 }}>{a.sub}</div> : null}
+                {a.sub ? <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{a.sub}</div> : null}
               </div>
             </button>
           ))}

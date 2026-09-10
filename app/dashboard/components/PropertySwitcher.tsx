@@ -209,8 +209,8 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
                       display: 'block', fontFamily: T.font.sans, fontSize: 14,
                       fontWeight: isActive ? 600 : 400, color: 'var(--text-primary)',
                     }}>{it.name}</span>
-                    <span className="po-elide" style={{
-                      display: 'block', fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1,
+                    <span className="po-elide po-subline" style={{
+                      display: 'block', fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-tertiary)',
                     }}>{[it.status, it.address].filter(Boolean).join(' · ')}</span>
                   </span>
                   {isActive && (

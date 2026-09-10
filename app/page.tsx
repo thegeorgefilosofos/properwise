@@ -423,7 +423,7 @@ const wrap: React.CSSProperties = { maxWidth: 1140, margin: '0 auto', padding: '
 // Ίδιο ιδίωμα με τα τικ του ScrollStory και με τις τέσσερις σελίδες εργαλείων,
 // όπου οι ανώνυμοι κόμβοι role=image είναι ήδη μηδέν.
 const ic = (d: string) => <svg width={21} height={21} viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d.split('M').filter(Boolean).map((p, i) => <path key={i} d={'M' + p} />)}</svg>;
-const check = <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={FAINT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}><path d="M20 6 9 17l-5-5" /></svg>;
+const check = <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={FAINT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="po-lead-ico"><path d="M20 6 9 17l-5-5" /></svg>;
 
 export default async function Landing() {
   // Η συνεδρία χρησιμοποιείται ΜΟΝΟ για να γράφει το κουμπί «Πίνακας» αντί για
@@ -1236,7 +1236,7 @@ export default async function Landing() {
               <Link href="/login" style={{ background: 'transparent', color: 'var(--text-primary)', textDecoration: 'none', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: T.radius.pill, border: '1px solid var(--border-strong)', transition: 'border-color .15s, background .15s' }}>Έχω λογαριασμό</Link>
             </>)}
           </div>
-          <div className="lp-rise-4" style={{ marginTop: 18, fontSize: 13, color: 'var(--text-tertiary)' }}>{TRIAL_DAYS} ημέρες δωρεάν δοκιμή · Διαλέγεις πακέτο από την αρχή · Ακυρώνεις όποτε θέλεις</div>
+          <div className="lp-rise-4" style={{ marginTop: T.sp.xl, fontSize: 13, color: 'var(--text-tertiary)' }}>{TRIAL_DAYS} ημέρες δωρεάν δοκιμή · Διαλέγεις πακέτο από την αρχή · Ακυρώνεις όποτε θέλεις</div>
 
           <LandingShowcase />
         </div>
@@ -1295,7 +1295,7 @@ export default async function Landing() {
         <div className="lp-feat" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
           {FEATURES.map((f, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
-              <div style={{ width: 38, height: 38, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}>{ic(f.i)}</div>
+              <div style={{ width: 38, height: 38, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg }}>{ic(f.i)}</div>
               <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 7px', letterSpacing: '-0.02em' }}>{f.t}</h3>
               <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: 0 }}>{f.d}</p>
             </div>
@@ -1802,7 +1802,7 @@ function PlanCard({ planId, name, nameColor, sub, price, per, note, annual, inhe
           {/* Το ΞΕΧΩΡΙΣΤΟ εικονίδιο εξυπηρετεί το μάτι, που το βρίσκει στην ίδια
               θέση σε κάθε κάρτα. Δεν κουβαλά όμως πληροφορία που δεν λέει η
               διπλανή γραμμή, γι’ αυτό μένει έξω από το προσβάσιμο δέντρο. */}
-          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12" /></svg>
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="po-lead-ico"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12" /></svg>
           <span className="lp-even" style={{ fontSize: 12, color: TEXT, lineHeight: 1.4 }}>{ai} ερωτήσεις τον μήνα</span>
         </div>
         {items.map((t, i) => (

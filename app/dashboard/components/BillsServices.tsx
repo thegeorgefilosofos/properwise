@@ -164,7 +164,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontFamily: T.font.sans }}>{label}</div>
-        {sub && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 1 }}>{sub}</div>}
+        {sub && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{sub}</div>}
       </div>
       {link?.url && (
         <a href={link.url} target="_blank" rel="noopener noreferrer"

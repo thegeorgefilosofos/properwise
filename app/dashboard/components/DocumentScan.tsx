@@ -346,13 +346,13 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
           <svg aria-hidden="true" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="var(--positive)" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
         </div>
         <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, letterSpacing: '-0.01em' }}>Καταχωρήθηκε</div>
-        <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: 18 }}>{docSummaryLine(edited)}</div>
+        <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: T.sp.xl }}>{docSummaryLine(edited)}</div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
           {savedInfo.map(s => (
             <span key={s} style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--positive)', background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: T.radius.pill, padding: '4px 12px', fontFamily: T.font.sans }}>{s}</span>
           ))}
         </div>
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 26 }}>Ενημερώθηκαν αυτόματα οι σχετικές καρτέλες.</div>
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: T.sp.xxl }}>Ενημερώθηκαν αυτόματα οι σχετικές καρτέλες.</div>
 
         {/* Πρόταση αποθήκευσης εκδότη στις Επαφές (μόνο για λογαριασμό/απόδειξη με όνομα
             προμηθευτή και εφόσον ξέρουμε ποιος χρήστης — αλλιώς σιωπηλά παραλείπεται). */}
@@ -529,7 +529,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                 return (
                   <div style={{ marginTop: 12, background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '12px 16px' }}>
                     <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--warning)', marginBottom: 8 }}>{title}</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <ul style={{ margin: 0, paddingLeft: T.sp.lg, display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {tips.map((t, i) => <li key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t}</li>)}
                     </ul>
                   </div>

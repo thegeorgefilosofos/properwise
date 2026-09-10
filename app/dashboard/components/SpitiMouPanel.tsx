@@ -151,7 +151,7 @@ export default function SpitiMouPanel({
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: 'var(--fs-base)', color: c.status === 'fail' ? 'var(--negative)' : 'var(--text-primary)', fontFamily: FONT, fontWeight: 500 }}>{c.label}</span>
-                <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: FONT, marginTop: 1 }}>{c.detail}</span>
+                <span className="po-subline" style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: FONT }}>{c.detail}</span>
               </span>
             </div>
           ))}

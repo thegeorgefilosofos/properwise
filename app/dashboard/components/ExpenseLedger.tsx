@@ -1229,8 +1229,9 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
         {/* Ίδια γεωμετρία με την καταχώρηση: το ευρώ μέσα στο πεδίο, δεξιά. */}
         <label style={{ minWidth: 0, position: 'relative' }}>
           <span style={LAB}>Ποσό</span>
+          {/* Το δεξί περιθώριο του πεδίου (14) συν 20 για το «€» που κάθεται πάνω του. */}
           <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal"
-            style={{ ...FIELD, paddingRight: 34, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
+            style={{ ...FIELD, paddingRight: 14 + T.sp.xl, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
             placeholder="0,00" />
           <span aria-hidden style={{ position: 'absolute', right: 14, bottom: 0, height: T.h.lg, display: 'flex', alignItems: 'center', fontSize: 14, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>€</span>
         </label>
@@ -1445,8 +1446,9 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
             έλεγε καν σε τι μονάδα απαντά ο χρήστης. */}
         <label style={{ minWidth: 0, position: 'relative' }}>
           <span style={LAB}>Ποσό</span>
+          {/* Το δεξί περιθώριο του πεδίου (14) συν 20 για το «€» που κάθεται πάνω του. */}
           <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal"
-            style={{ ...FIELD, paddingRight: 34, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
+            style={{ ...FIELD, paddingRight: 14 + T.sp.xl, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
             placeholder="0,00" />
           <span aria-hidden style={{ position: 'absolute', right: 14, bottom: 0, height: T.h.lg, display: 'flex', alignItems: 'center', fontSize: 14, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>€</span>
         </label>

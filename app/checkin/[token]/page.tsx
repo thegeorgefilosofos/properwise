@@ -151,7 +151,7 @@ export default function GuestCheckin() {
                   {/* GDPR: ρητή συγκατάθεση επεξεργασίας προσωπικών δεδομένων (υποχρεωτική) */}
                   <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px' }}>
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                      <input type="checkbox" checked={privacyConsent} onChange={e => setPrivacyConsent(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--accent)', flexShrink: 0, marginTop: 1 }} />
+                      <input type="checkbox" checked={privacyConsent} onChange={e => setPrivacyConsent(e.target.checked)} className="po-lead-ico" style={{ width: 18, height: 18, accentColor: 'var(--accent)' }} />
                       <span>
                         Συναινώ στην επεξεργασία των στοιχείων μου από τον οικοδεσπότη, αποκλειστικά για τη νόμιμη δήλωση διαμονής και την επικοινωνία της κράτησης. Έλαβα γνώση της{' '}
                         <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline' }}>Πολιτικής απορρήτου</a>.

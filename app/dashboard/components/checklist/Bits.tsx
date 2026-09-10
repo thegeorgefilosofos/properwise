@@ -223,7 +223,7 @@ export function ExportMenu({ onExcel, onPdf, onHandover }: { onExcel: () => void
           {opts.map((o, i) => (
             <button className="po-hov-fill" key={i} type="button" onClick={() => { o.fn(); setOpen(false) }} style={{ '--hov-fill': 'var(--bg-surface)', display: 'flex', flexDirection: 'column', width: '100%', padding: '9px 12px', borderRadius: T.radius.inner, border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 0.1s' }} >
               <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontWeight: 600, fontFamily: T.font.sans }}>{o.label}</div>
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1 }}>{o.sub}</div>
+              <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{o.sub}</div>
             </button>
           ))}
         </div>

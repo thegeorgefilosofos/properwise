@@ -369,16 +369,28 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
           <IconBtn label="Κατεύθυνση ταξινόμησης" title={sortDir==='asc'?'Αύξουσα':'Φθίνουσα'} size="md" round onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}><svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{sortDir==='asc'?<path d="M12 19V5M5 12l7-7 7 7"/>:<path d="M12 5v14M19 12l-7 7-7-7"/>}</svg></IconBtn>
         </div>
         {/* Το πλακίδιο λέει ΚΑΤΑΣΤΑΣΗ κι όχι τόνο: το ανοιχτό βάφεται accent από το .po-chip. Το πορτοκαλί μένει εκεί που μετράει, στο σήμα του αριθμού. */}
-        {actionCount>0&&<ChipToggle on={showNeedsAction} onClick={()=>setShowNeedsAction(v=>!v)} title="Προβολή μόνο όσων χρειάζονται προσοχή">
+        {actionCount>0&&<ChipToggle size="lg" on={showNeedsAction} onClick={()=>setShowNeedsAction(v=>!v)} title="Προβολή μόνο όσων χρειάζονται προσοχή">
           Προσοχή <span style={{background:showNeedsAction?'var(--warning)':'var(--text-tertiary)',color:'var(--text-inverse)',borderRadius:T.radius.inner,padding:'0 6px',fontSize: 'var(--fs-xs)',fontWeight:700}}>{actionCount}</span>
         </ChipToggle>}
-        <ChipToggle on={selectMode} onClick={()=>selectMode?exitSelect():setSelectMode(true)} title="Επιλογή πολλών αντικειμένων">
+        <ChipToggle size="lg" on={selectMode} onClick={()=>selectMode?exitSelect():setSelectMode(true)} title="Επιλογή πολλών αντικειμένων">
           <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           {selectMode?'Ακύρωση':'Επιλογή'}
         </ChipToggle>
-        {/* 32 το κουμπί, 3 το γέμισμα, 1 το περίγραμμα: η ομάδα βγαίνει 40, όσο
-            και οι επιλογείς δίπλα της. Με γέμισμα 2 έβγαινε 38. */}
-        <div style={{display:'flex',border:'1px solid var(--border-subtle)',borderRadius:T.radius.pill,overflow:'hidden',padding: 4,background:'var(--bg-elevated)'}}>
+        {/* ΤΟ ΥΨΟΣ ΔΗΛΩΝΕΤΑΙ, ΔΕΝ ΒΓΑΙΝΕΙ ΑΠΟ ΓΕΜΙΣΜΑ. Το σχόλιο εδώ έλεγε «3 το
+            γέμισμα, η ομάδα βγαίνει 40» ενώ ο κώδικας από κάτω έγραφε 4: η ράγα
+            έβγαινε 42 δίπλα σε επιλογείς των 40 και ο σαρωτής στοίχισης τη
+            μέτρησε. Ενα ύψος που προκύπτει από αριθμητική γεμισμάτων σπάει με
+            την πρώτη στρογγυλοποίηση — και ΕΣΠΑΣΕ. Γραμμένο ως `T.h.lg`, η ράγα
+            είναι εξ ορισμού όσο το πεδίο δίπλα της.
+
+            ΚΑΙ ΕΙΝΑΙ `minHeight`, ΟΧΙ `height`. Με σταθερό ύψος η ράγα ΕΚΟΒΕ τα
+            πλακίδιά της στην αφή: εκεί το `--h-sm` του πλακιδίου ανεβαίνει στα 44
+            —το δάπεδο του δαχτύλου— όσο ΚΑΙ το `--h-lg` της ράγας, οπότε τα δύο
+            περιγράμματα δεν χωρούσαν πια μέσα της και το `overflow: hidden`
+            έκοβε ένα εικονοστοιχείο από κάθε πλακίδιο. Το μέτρησε ο σαρωτής του
+            ζωγραφισμένου. Ως ελάχιστο, η ράγα πιάνει το ύψος του πεδίου στο
+            ποντίκι ΚΑΙ μεγαλώνει όσο χρειάζεται στο δάχτυλο, χωρίς να κόψει. */}
+        <div style={{display:'flex',alignItems:'center',minHeight:T.h.lg,boxSizing:'border-box',border:'1px solid var(--border-subtle)',borderRadius:T.radius.pill,overflow:'hidden',padding:'0 4px',background:'var(--bg-elevated)'}}>
           {/* `seg` κι όχι `chip`: η ομάδα έχει ήδη δικό της περίγραμμα — δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */}
           {(['grid','list'] as const).map(m=>(
             <ChipToggle key={m} on={viewMode===m} shape="seg" onClick={()=>setViewMode(m)}>{m==='grid'?'Κάρτες':'Λίστα'}</ChipToggle>

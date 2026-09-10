@@ -385,7 +385,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
       <div>
         <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</div>
-        {sub && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1, fontFamily: T.font.sans }}>{sub}</div>}
+        {sub && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{sub}</div>}
       </div>
     </div>
   );
@@ -528,7 +528,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, fontFamily: T.font.sans }}>{tariff.desc}</div>
             {tariff.desc.includes('ΜΔΚΑ') && (
               <div style={{ marginTop: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, padding: '6px 12px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" className="po-lead-ico"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                   <strong>ΜΔΚΑ</strong> = Μηχανισμός Διακύμανσης Κόστους Αγοράς. Δεν είναι πάγια χρέωση αλλά ΜΗΧΑΝΙΣΜΟΣ: ο πάροχος ορίζει ζώνη γύρω από τη χονδρεμπορική τιμή και, όσο η αγορά μένει μέσα σε αυτήν, δεν ενεργοποιείται καθόλου. Ενεργοποιείται μόνο όταν η τιμή βγει εκτός ορίων και τότε αναπροσαρμόζει την κιλοβατώρα, προς τα πάνω ή προς τα κάτω. Αφορά τα κυμαινόμενα τιμολόγια («κίτρινα») και αντικατέστησε τις παλιές ρήτρες αναπροσαρμογής. <a href="https://www.raaey.gr" target="_blank" title={RAAEY_NAME} style={{ color: "var(--accent)", fontWeight: 600 }}>ΡΑΑΕΥ</a>
                 </span>
@@ -537,7 +537,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             {/* Τα σταθερά μηνιαία πακέτα δεν εξηγούσαν πουθενά την ανοχή, την υπέρβαση και την ετήσια εκκαθάριση: ο χρήστης έβλεπε ένα ποσό και δεν ήξερε τι το σπάει. */}
             {tariff.type === 'fixed_monthly' && tariff.flat_annual_kwh != null && tariff.flat_overage_rate != null && (
               <div style={{ marginTop: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, padding: '6px 12px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" className="po-lead-ico"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                   Σταθερό μηνιαίο ποσό για {tariff.contract_months || 12} μήνες (προμήθεια + ρυθμιζόμενες χρεώσεις, όχι υπέρ τρίτων). Ανοχή υπέρβασης 5% χωρίς χρέωση· πάνω από αυτό, {fk(tariff.flat_overage_rate)}/kWh. Ετήσια εκκαθάριση.
                 </span>

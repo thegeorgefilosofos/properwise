@@ -1606,7 +1606,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
             <div aria-hidden style={{ width: 34, height: 34, borderRadius: T.radius.inner, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}><AssistantMark size={17} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ ...TT.h2, fontSize: 14 }}>{ASSISTANT_NAME}</div>
-              <div style={{ ...TT.caption, marginTop: 1 }}>{tagline(prefs.formal)}</div>
+              <div className="po-subline" style={{ ...TT.caption }}>{tagline(prefs.formal)}</div>
             </div>
             {(supportsSTT || supportsTTS) && (
               // Η αναμμένη κατάσταση περνά από γεμάτο πλακίδιο σε μελάνι accent: η `.po-ico` δεν έχει «πατημένο» και το κέρδος εδώ είναι ο στόχος αφής (ήταν 30)
@@ -1655,7 +1655,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     σαν κείμενο και όχι σαν μήνυμα. Από κάτω, οι ερωτήσεις-εκκίνησης σε
                     στήλη: τέσσερις γραμμές που πατιούνται, χωρίς να μοιάζουν με μενού. */}
                 {msgs.length === 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
                     <p style={{ ...TT.body, fontSize: 14, lineHeight: 1.6, margin: 0, maxWidth: '36ch' }}>{greeting}</p>
                     <div>
                       <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 6 }}>Ρώτα κάτι δικό σου</div>
@@ -1920,7 +1920,7 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
   const [formal, setFormal] = useState(draft.formal);
   const row = { display: 'flex', alignItems: 'center', gap: 12 } as const;
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
       <div>
         <div style={{ ...TT.h2, fontSize: 'var(--fs-base)' }}>{settingsTitle()}</div>
         <div style={{ ...TT.bodySm, marginTop: 4 }}>Πώς θέλεις να δουλεύει μαζί σου. Αλλάζει όποτε θες.</div>

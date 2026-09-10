@@ -630,7 +630,7 @@ export function SubscriptionSection({ label, catalog, active, onToggle, onUpdate
 
       {/* Ο ΕΠΕΞΕΡΓΑΣΤΗΣ: μία γραμμή ανά ενεργή, όλες στο ίδιο πλέγμα. */}
       {active.length > 0 && (
-        <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ marginTop: T.sp.lg, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {active.map(a => {
             const svc = catalog.find(x => x.value === a.service);
             if (!svc) return null;

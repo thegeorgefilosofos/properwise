@@ -598,7 +598,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
         {damages.length===0?(
           <EmptyState icon={<Hammer size={20}/>} title="Καμία φθορά ή επισκευή ακόμη" hint="Κατέγραψε φθορές με φωτογραφίες και κόστος, για τεκμηρίωση στην απόδοση της εγγύησης." />
         ):groups.map(g=>(
-          <div key={g.label} style={{ marginBottom:18 }}>
+          <div key={g.label} style={{ marginBottom:T.sp.lg }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
               <span style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans }}>{g.label}</span>
               <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{fmt(g.items.reduce((a,d)=>a+(d.cost||0),0))}</span>

@@ -159,8 +159,9 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
         <div>
           <label htmlFor={ids.own} style={label}>Ποσοστό ιδιοκτησίας</label>
           <div style={{ position: 'relative' }}>
+            {/* Το δεξί περιθώριο του πεδίου (14) συν 20 για το «%» που κάθεται πάνω του. */}
             <input id={ids.own} inputMode="numeric" value={ownership} onChange={e => set('pososto', e.target.value)}
-              style={{ ...numField, paddingRight: 34 }} aria-describedby={`${ids.own}-unit`}/>
+              style={{ ...numField, paddingRight: 14 + T.sp.xl }} aria-describedby={`${ids.own}-unit`}/>
             <span id={`${ids.own}-unit`} aria-hidden style={unitStyle}>%</span>
           </div>
         </div>
@@ -251,7 +252,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ──────────────────────────────────────────── */}
       <div className="po-tool-note" style={{
-        marginTop: 22, padding: '14px 16px', borderRadius: T.radius.inner,
+        marginTop: T.sp.xl, padding: '14px 16px', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
@@ -294,7 +295,7 @@ function Instalments({ annual, year }: { annual: number; year: number }) {
   if (!rows.length) return null;
 
   return (
-    <div style={{ marginTop: 26 }}>
+    <div style={{ marginTop: T.sp.xxl }}>
       <div className="po-table-box">
        <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
         <table className="po-table" style={{ '--tbl-min': '300px' }}>

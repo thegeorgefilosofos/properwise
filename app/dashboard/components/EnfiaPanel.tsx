@@ -441,7 +441,7 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
           </div>
 
           {insured && !(s.enfiaReductions || []).includes('insurance') && (
-            <div style={{ marginTop: 18, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ marginTop: T.sp.lg, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
               <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', flex: 1, minWidth: 240 }}>
                 Το ασφαλιστήριό σου καλύπτει φυσικές καταστροφές, άρα δικαιούσαι μείωση ΕΝΦΙΑ. Δεν εφαρμόζεται μόνη της.
               </span>
@@ -496,7 +496,7 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
           </div>
 
           {est ? (
-            <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+            <div style={{ marginTop: T.sp.lg, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
               {[
                 { label: 'Κύριος φόρος κτισμάτων', val: est.basic },
                 ...(est.extra > 0 ? [{ label: 'Πρόσθετος φόρος, αξία πάνω από 400.000€', val: est.extra }] : []),
@@ -521,7 +521,7 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
               </div>
             </div>
           ) : (
-            <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+            <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: T.sp.lg, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
               Χρειάζονται εμβαδόν και τιμή ζώνης. Το εμβαδόν το βρίσκεις στο Ε9 σου, την τιμή ζώνης στον χάρτη αντικειμενικών αξιών.
             </div>
           )}

@@ -199,7 +199,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
 
         {/* ── ΟΙ ΕΡΩΤΗΣΕΙΣ, ΜΟΝΟ ΣΤΗΝ ΤΕΛΕΥΤΑΙΑ ΚΑΡΤΑ ────────────────────── */}
         {last && (
-          <div style={{ marginTop: 22, paddingTop: 20, borderTop: '1px solid var(--border-subtle)' }}>
+          <div style={{ marginTop: T.sp.xl, paddingTop: 20, borderTop: '1px solid var(--border-subtle)' }}>
             <div style={capLabel}>ΤΙ ΣΕ ΠΕΡΙΓΡΑΦΕΙ</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {([['individual', 'Ιδιώτης', 'δικά μου ακίνητα'], ['professional', 'Επαγγελματίας', 'διαχείριση πολλών']] as const).map(([v, t, sub]) => {
@@ -213,7 +213,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
               })}
             </div>
 
-            <div style={{ ...capLabel, marginTop: 18 }}>ΦΟΡΟΛΟΓΙΚΑ, ΤΙ ΕΙΣΑΙ</div>
+            <div style={{ ...capLabel, marginTop: T.sp.lg }}>ΦΟΡΟΛΟΓΙΚΑ, ΤΙ ΕΙΣΑΙ</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {([[false, 'Φυσικό πρόσωπο', 'μόνο δήλωση'], [true, 'Έχω επιχείρηση', 'ή ελεύθ. επαγγελματίας']] as const).map(([v, t, sub]) => (
                 <button key={String(v)} onClick={() => chooseBiz(v)} style={choice(hasBiz === v)}>
@@ -248,7 +248,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
         )}
 
         {/* ── ΔΕΙΚΤΕΣ ΚΑΙ ΕΝΕΡΓΕΙΕΣ, ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.md, marginTop: 22, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.md, marginTop: T.sp.xl, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 8, flex: 1 }}>
             {cards.map((_, i) => (
               <span key={i} style={{ width: i === step ? 22 : 7, height: 7, borderRadius: T.radius.xs, background: i === step ? 'var(--accent)' : 'var(--border-default)', transition: `width 0.28s ${T.ease.standard}, background-color 0.28s ${T.ease.standard}` }} />

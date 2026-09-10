@@ -261,7 +261,7 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
   }
 
   return (
-    <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 18, boxShadow: 'var(--highlight-inset), var(--elev-1)', marginBottom: 16 }}>
+    <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--highlight-inset), var(--elev-1)', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           {/* Το σήμα είναι το αρχικό του ονόματος: ίδιο με το πλωτό κουμπί, ώστε

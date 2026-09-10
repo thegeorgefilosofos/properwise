@@ -137,7 +137,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
           `Πληρότητα και βραχυχρόνια${occ.availableDays > 0 ? `, ${fp(occ.pct)}` : ''}`, open)}>
         <div style={{ minWidth: 0 }}>
           <div style={label}>Πληρότητα και βραχυχρόνια</div>
-          <div style={{ ...note, marginTop: 1 }}>Από τις καταγεγραμμένες κρατήσεις σου, όχι από πληκτρολόγηση</div>
+          <div className="po-subline" style={note}>Από τις καταγεγραμμένες κρατήσεις σου, όχι από πληκτρολόγηση</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {/* Η ΠΛΗΡΟΤΗΤΑ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΕΔΩ. Ηταν και σήμα και πλακίδιο, δύο
@@ -245,7 +245,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
                   υπόλοιπο, είναι υποχρέωση — και γι' αυτό δεν αθροίζεται με
                   τίποτα. */}
               {(tax.levy > 0 || (tax.grossRevenue === 0 && tax.totalNights > 0)) && (
-                <div style={{ marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+                <div style={{ marginTop: T.sp.xl, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
                   <div style={label}>Τι οφείλεται για τη χρήση {year}</div>
                   {tax.levy > 0 && (
                     <>
@@ -291,7 +291,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
                   Χωρίς σημασιολογικό κόκκινο: η ιεραρχία βγαίνει από τη θέση και
                   το βάρος, όπως παντού αλλού στο προϊόν. */}
               {(tax.unresolvedCount > 0 || tax.undeclaredCount > 0) && (
-                <div style={{ marginTop: 18, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ marginTop: T.sp.lg, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {tax.undeclaredCount > 0 && (
                     <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                       <strong style={{ color: 'var(--text-primary)' }}>{tax.undeclaredCount} {tax.undeclaredCount === 1 ? 'αδήλωτη διαμονή' : 'αδήλωτες διαμονές'}.</strong>{' '}

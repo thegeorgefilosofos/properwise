@@ -2178,7 +2178,7 @@ export default function Dashboard() {
                                   συνειδητή και όχι μαντεψιά. */}
                               <span style={{flex:1,minWidth:0}}>
                                 <span style={{display:'block'}}>{v}</span>
-                                <span style={{display:'block',fontSize:12,color:'var(--text-tertiary)',fontWeight:400,marginTop:1,lineHeight:1.4}}>{hint}</span>
+                                <span className="po-subline" style={{display:'block',fontSize:12,color:'var(--text-tertiary)',fontWeight:400,lineHeight:1.4}}>{hint}</span>
                               </span>
                               {active && <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
                             </button>

@@ -521,7 +521,7 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           συνδρομή γίνεται από την πύλη, που την τροποποιεί· το ταμείο θα
           έφτιαχνε δεύτερη συνδρομή δίπλα στην πρώτη. */}
       {(live === true && !running) || hasCustomer ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 18 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: T.sp.lg }}>
           {live === true && !running && (
             <Btn variant="primary" onClick={go} disabled={busy}>{busy ? 'Ανοίγει…' : 'Πληρωμή με κάρτα'}</Btn>
           )}
@@ -565,7 +565,7 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           υπόσχεση που δεν τηρείται με το πάτημα· η πρόταση λέει το ίδιο πράγμα
           με τους Ορους και την Πολιτική απορρήτου, από την ίδια πηγή. */}
       {live === false && (
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: T.sp.lg }}>
           <InfoBanner tone="info">{note} Συμπλήρωσε από τώρα τα στοιχεία τιμολόγησης, ώστε η ενεργοποίηση να μη σου ζητήσει τίποτα άλλο.</InfoBanner>
         </div>
       )}
@@ -586,7 +586,7 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           τιμή λέει σε κάθε επισκέπτη ότι κάπου υπάρχει έκπτωση που δεν του
           δόθηκε και τον στέλνει να τη ψάξει αντί να πληρώσει. Οποιος έχει
           κωδικό ξέρει ότι τον έχει. */}
-      <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+      <div style={{ marginTop: T.sp.lg, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
         {!codeOpen ? (
           /* `quiet` γιατί ο σύνδεσμος ήταν ήδη σβησμένος: το accent θα τον έκανε
              πιο δυνατό από την τιμή δίπλα του. */

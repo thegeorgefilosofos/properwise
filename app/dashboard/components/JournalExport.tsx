@@ -367,7 +367,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                 const warn = audit.checks.filter(c => c.status === 'warn').length;
                 const fail = audit.checks.filter(c => c.status === 'fail').length;
                 return (
-                  <div style={{ marginTop: 18 }}>
+                  <div style={{ marginTop: T.sp.lg }}>
                     {/* Ετυμηγορία — ήρεμη, σαν λογιστής */}
                     <div style={{ paddingLeft: 14, borderLeft: `2px solid ${toneVar}` }}>
                       <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.55 }}>{audit.summary}</div>
@@ -398,7 +398,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                                   {!isPass && c.fix && (
                                     <>
                                       <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 11px', borderRadius: T.radius.chip, background: 'var(--bg-elevated)' }}>
-                                        <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 1 }}><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/></svg>
+                                        <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico" style={{ color: 'var(--text-tertiary)' }}><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/></svg>
                                         <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)' }}><b style={{ color: 'var(--text-primary)', fontWeight: 640 }}>Πρόταση:</b> {c.fix}</span>
                                       </div>
                                       {/* Το περιθώριο και η γραμματοσειρά ζουν στο περιτύλιγμα:
@@ -413,7 +413,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                                     </>
                                   )}
                                 </span>
-                                <span style={{ flexShrink: 0, marginTop: 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', fontWeight: 600, ...(isPass ? { color: 'var(--text-tertiary)' } : { color: ink, background: `color-mix(in srgb, ${col} 12%, transparent)`, padding: '3px 10px', borderRadius: T.radius.pill }) }}>
+                                <span className="po-lead-ico" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', fontWeight: 600, ...(isPass ? { color: 'var(--text-tertiary)' } : { color: ink, background: `color-mix(in srgb, ${col} 12%, transparent)`, padding: '3px 10px', borderRadius: T.radius.pill }) }}>
                                   {isPass && <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                                   {c.status === 'pass' ? 'Εντάξει' : c.status === 'warn' ? 'Προσοχή' : 'Σφάλμα'}
                                 </span>

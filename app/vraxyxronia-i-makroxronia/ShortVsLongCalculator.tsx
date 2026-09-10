@@ -284,7 +284,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
              πίνακας διαβάζεται ως αφαίρεση που κλείνει: εισπράξεις μείον τα
              τέσσερα δίνουν ακριβώς τα καθαρά. Ένας πίνακας που δεν κλείνει
              μπροστά στον αναγνώστη είναι χειρότερος από κανέναν πίνακα. */}
-      <div style={{ marginTop: 26 }}>
+      <div style={{ marginTop: T.sp.xxl }}>
         <div className="po-table-box">
          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
           <table className="po-table" style={{ '--tbl-min': '380px', tableLayout: 'fixed' }}>
@@ -331,7 +331,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
           μονάδες — και δεν ζητούν τίποτα παραπάνω από τον χρήστη.
           Η γραμμή που περνά το κατώφλι σημειώνεται με την ίδια απαλή επιφάνεια
           που χρησιμοποιεί ο υπολογιστής φόρου για το ενεργό κλιμάκιο. */}
-      <div style={{ marginTop: 26 }}>
+      <div style={{ marginTop: T.sp.xxl }}>
         <div className="po-table-box">
          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
           <table className="po-table" style={{ '--tbl-min': '500px', tableLayout: 'fixed' }}>
@@ -379,7 +379,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ──────────────────────────────────────────── */}
       <div className="po-tool-note" style={{
-        marginTop: 22, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
+        marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>

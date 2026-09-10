@@ -67,7 +67,7 @@ export function PublicHeader() {
         <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'var(--text-primary)' }}>
           <BrandLogo size={24} />
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.lg }}>
           {/* Ο ΤΙΜΟΚΑΤΑΛΟΓΟΣ ΔΕΝ ΕΙΧΕ ΔΡΟΜΟ. Η ενότητα υπάρχει, έχει άγκυρα
               `#pricing` και καμία σελίδα δεν έδειχνε προς τα εκεί: ο
               επισκέπτης που έφτανε από τον υπολογιστή ΕΝΦΙΑ ή από τους Όρους
@@ -142,7 +142,7 @@ export function PublicFooter() {
               στοιχεία δεν ψάχνει· φεύγει. */}
           <FootCol label="Εμπιστοσύνη" links={[['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], [`mailto:${IDENTITY.supportEmail}`, 'Επικοινωνία']]} />
         </div>
-        <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 18, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
+        <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: T.sp.lg, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
           <span>© {new Date().getFullYear()} PROPERWISE</span>
           <span>Βάση δεδομένων στην ΕΕ · Σχεδιασμένο για GDPR</span>
         </div>

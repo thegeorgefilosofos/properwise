@@ -325,7 +325,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
         {/* Αποτέλεσμα */}
         {figures && (
           <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'center', padding: '14px 16px', background: 'var(--bg-elevated)' }}>
+            <div style={{ display: 'flex', gap: T.sp.xl, flexWrap: 'wrap', alignItems: 'center', padding: '14px 16px', background: 'var(--bg-elevated)' }}>
               {miniStat('Εισπράχθηκαν', pEur(result.gross))}
               {miniStat('Έξοδα', pEur(result.expenses))}
               {miniStat('Αμοιβή', pEur(result.managementFee))}

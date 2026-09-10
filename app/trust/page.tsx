@@ -110,7 +110,7 @@ function Never({ children }: { children: React.ReactNode }) {
   );
 }
 
-const STACK: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 15, marginTop: 4 };
+const STACK: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 };
 
 /**
  * «Η επωνυμία, η έδρα και το ΑΦΜ» — μία σειρά αντί για μία γραμμή πίνακα ανά
