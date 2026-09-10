@@ -5,7 +5,7 @@
 // τον σύνδεσμο και εμφανίζει τα εισερχόμενα αιτήματα βλάβης (cross-tab).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, type CSSProperties } from 'react';
 import { Inbox } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
@@ -34,6 +34,16 @@ interface Req { id: string; title: string; description: string | null; contact: 
 // στον σημερινό ενοικιαστή και όταν αλλάξει ενοικιαστής ο ιδιοκτήτης το βλέπει
 // και εκδίδει νέο. Το ίδιο σχήμα με τη βάση (uuid χωρίς παύλες).
 const newToken = () => crypto.randomUUID().replace(/-/g, '');
+
+// Το σήμα των εκκρεμών αιτημάτων: κουτί 20×20 που γίνεται χάπι όταν μπει διψήφιος
+// αριθμός. Η γωνία είναι το κουπόνι `pill` της κλίμακας — σε ύψος 20 το πρόγραμμα
+// περιήγησης το περιορίζει σε τέλειο κύκλο, δηλαδή ίδια εικόνα με το χειροκίνητο 10
+// που υπήρχε, χωρίς όμως νούμερο γραμμένο στο χέρι.
+const pendingBadge: CSSProperties = {
+  minWidth: 20, height: 20, borderRadius: T.radius.pill,
+  fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.sans,
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px',
+};
 
 export default function PortalShare({ propertyId, userId }: { propertyId: string; userId: string }) {
   const supabase = createClient();
@@ -64,9 +74,21 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   // Ιδιος λόγος με την καρτέλα φροντίδας: κενός χάρτης σημαίνει και «καμία
   // φωτογραφία» και «δεν φόρτωσαν». Το δεύτερο λέγεται.
   const [photoErr, setPhotoErr] = useState('');
+  // Το ίδιο κενό με τις φωτογραφίες, ένα επίπεδο πιο πάνω: η άδεια λίστα
+  // αιτημάτων σημαίνει και «κανένα αίτημα» και «δεν διαβάστηκαν».
+  const [reqsErr, setReqsErr] = useState('');
+  // Και το ίδιο για τον ίδιο τον σύνδεσμο: άδεια γραμμή σημαίνει και «δεν έχει
+  // ενεργοποιηθεί πύλη» και «δεν ξέρουμε αν έχει».
+  const [linkErr, setLinkErr] = useState('');
 
   const load = useCallback(async () => {
-    const { row } = await portalStore.link(supabase, propertyId, userId);
+    // «ΔΕΝ ΕΧΕΙΣ ΠΥΛΗ» ΕΝΩ ΕΧΕΙ. Το `error` πεταγόταν κι η άδεια γραμμή έβγαζε
+    // την κάρτα ενεργοποίησης: ο ιδιοκτήτης διάβαζε ότι ο ενοικιαστής δεν έχει
+    // πρόσβαση, ενώ ο σύνδεσμος ζούσε κι άνοιγε σε όποιον τον είχε — και το
+    // κουμπί «Ενεργοποίηση πύλης» ήταν το μόνο που του προσφερόταν. Σε αποτυχία
+    // δεν λέγεται πια τίποτα για την πύλη ούτε προσφέρεται ενεργοποίηση.
+    const { row, error: linkError } = await portalStore.link(supabase, propertyId, userId);
+    setLinkErr(linkError ? failed('Η πύλη ενοικιαστή δεν διαβάστηκε', linkError) : '');
     setToken(row?.token || null);
     setPayLink(row?.payment_link || '');
     setPinSet(!!row?.pin_hash);
@@ -77,8 +99,15 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
     // ιδιοκτήτης διορθώσει παλιά καταχώρηση.
     const t = await tenantStore.current<{ id: string; full_name: string }>(supabase, propertyId, tenantStore.NAME_COLUMNS, userId);
     setTenant(t || null);
-    const { data: r } = await supabase.from('maintenance_requests').select('*').eq('property_id', propertyId).eq('user_id', userId).order('created_at', { ascending: false });
-    setReqs((r as Req[]) || []);
+    // ΤΟΝ ΜΕΤΡΗΤΗ ΤΟΝ ΔΙΑΒΑΖΕΙ Ο ΙΔΙΟΚΤΗΤΗΣ ΩΣ ΒΕΒΑΙΩΣΗ. Το `error` πεταγόταν:
+    // σε αποτυχία ανάγνωσης έσβηνε ο αριθμός δίπλα στον τίτλο, η κάρτα έγραφε
+    // «Αιτήματα (0 εκκρεμή)» κι από κάτω «Κανένα αίτημα ακόμη» — ό,τι ακριβώς
+    // δείχνει κι όταν πράγματι δεν έχει στείλει τίποτα ο ενοικιαστής. Μια
+    // βλάβη που τρέχει έμενε έτσι αδιάβαστη. Τώρα λέγεται η τρίτη κατάσταση:
+    // δεν ξέρουμε, χωρίς αριθμό και χωρίς βεβαίωση.
+    const { data: r, error: reqsError } = await supabase.from('maintenance_requests').select('*').eq('property_id', propertyId).eq('user_id', userId).order('created_at', { ascending: false });
+    setReqsErr(reqsError ? failed('Τα αιτήματα βλάβης δεν διαβάστηκαν', reqsError) : '');
+    setReqs(reqsError ? [] : ((r as Req[]) || []));
     setLoading(false);
   }, [propertyId, userId, supabase]);
 
@@ -231,7 +260,17 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {pending.length > 0 && <span style={{ minWidth: 20, height: 20, borderRadius: 10, background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 'var(--fs-xs)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', fontFamily: T.font.sans }}>{pending.length}</span>}
+          {/* ΤΟ ΣΗΜΑ ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ. Οι δύο εκδοχές —αριθμός εκκρεμών, ή «!»
+              όταν δεν ξέρουμε— διαφέρουν σε ΔΥΟ πράγματα, το χρώμα κι το
+              περιεχόμενο· οι υπόλοιπες δώδεκα ιδιότητες είναι ίδιες. Γραμμένες
+              δύο φορές, η δεύτερη έφερε μαζί της κι δεύτερη ωμή γωνία. */}
+          {(reqsErr || pending.length > 0) && (
+            <span
+              title={reqsErr ? 'Τα αιτήματα δεν διαβάστηκαν' : undefined}
+              style={{ ...pendingBadge, background: reqsErr ? 'var(--warning)' : 'var(--accent)', color: reqsErr ? 'var(--on-tone)' : 'var(--accent-text)' }}>
+              {reqsErr ? '!' : pending.length}
+            </span>
+          )}
           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="m6 9 6 6 6-6"/></svg>
         </div>
       </div>
@@ -243,6 +282,8 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
               <Skeleton h={T.h.md} r={10} />
               {[0, 1].map(i => <Skeleton key={i} h={56} r={10} />)}
             </div>
+          ) : linkErr ? (
+            <InfoBanner tone="negative">{linkErr} Ανανέωσε τη σελίδα· ώσπου να διαβαστεί, δεν ξέρουμε αν η πύλη είναι ήδη ενεργή· η ενεργοποίηση μένει κλειστή ώστε να μη χαθεί ο σύνδεσμος που ίσως έχει ήδη ο ενοικιαστής.</InfoBanner>
           ) : !token ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, flex: 1, minWidth: 200 }}>Ενεργοποίησε έναν ασφαλή σύνδεσμο που μπορεί να μοιραστεί ο ενοικιαστής σου, βλέπει ενοίκιο/σύμβαση και στέλνει αιτήματα.</div>
@@ -308,12 +349,14 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                 )}
               </div>
 
-              <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Αιτήματα ({pending.length} εκκρεμή)</div>
+              <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Αιτήματα{reqsErr ? '' : ` (${pending.length} εκκρεμή)`}</div>
               {/* ΜΙΑ ΦΟΡΑ ΠΑΝΩ ΑΠΟ ΤΗ ΛΙΣΤΑ, ΟΧΙ ΜΙΑ ΑΝΑ ΑΙΤΗΜΑ: η υπογραφή γίνεται
                   με ΜΙΑ κλήση για όλες τις φωτογραφίες όλων των αιτημάτων, οπότε η
                   αποτυχία είναι επίσης μία. */}
               {photoErr && <InfoBanner tone="negative">{photoErr} Τα αιτήματα φαίνονται κανονικά· λείπουν μόνο οι εικόνες τους.</InfoBanner>}
-              {reqs.length === 0 ? (
+              {reqsErr ? (
+                <InfoBanner tone="negative">{reqsErr} Ανανέωσε τη σελίδα· ώσπου να διαβαστούν, δεν ξέρουμε αν σε περιμένει αίτημα βλάβης.</InfoBanner>
+              ) : reqs.length === 0 ? (
                 <EmptyState icon={<Inbox size={20} />} title="Κανένα αίτημα ακόμη" hint="Όταν ο ενοικιαστής στείλει αίτημα βλάβης από την πύλη, θα εμφανιστεί εδώ." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

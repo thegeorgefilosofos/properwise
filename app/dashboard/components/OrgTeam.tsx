@@ -111,6 +111,8 @@ export default function OrgTeam({ userId }: { userId: string }) {
   const [orgProps, setOrgProps] = useState<{ id: string; name: string }[]>([]);
   const [openPerms, setOpenPerms] = useState<string | null>(null);   // email γραμμής με ανοιχτά δικαιώματα
   const [loading, setLoading] = useState(true);
+  // Η τρίτη κατάσταση της φόρτωσης: «δεν ξέρουμε» (η ανάγνωση δεν έγινε).
+  const [loadError, setLoadError] = useState(false);
 
   // Όψη: ιδιοκτήτης (διαχείριση) ή μέλος (προβολή + αιτήματα)
   const [mode, setMode] = useState<'owner' | 'member' | null>(null);
@@ -182,12 +184,19 @@ export default function OrgTeam({ userId }: { userId: string }) {
     let active = true;
     (async () => {
       // 1) Είμαι ήδη μέλος ενεργού οργανισμού κάποιου άλλου;
-      const { data: mine } = await supabase
+      const { data: mine, error: mineError } = await supabase
         .from('organization_members')
         .select('org_id, role, can_edit, edit_requested_at, status')
         .eq('user_id', userId)
         .eq('status', 'active');
       if (!active) return;
+      // ΤΟ ΜΕΛΟΣ ΕΒΛΕΠΕ ΤΗΝ ΟΨΗ ΤΟΥ ΙΔΙΟΚΤΗΤΗ ΟΤΑΝ Η ΑΝΑΓΝΩΣΗ ΑΠΕΤΥΧΕ.
+      // Η αποτυχία γύριζε κενό, δηλαδή ό,τι ακριβώς και το «δεν ανήκω πουθενά»:
+      // η οθόνη περνούσε στο ensure_organization κι έστηνε ΝΕΟ οργανισμό με
+      // ιδιοκτήτη τον ίδιο τον χρήστη, με ενεργά «Πρόσκληση» και «Αλλαγή»
+      // ονόματος, ενώ ο άνθρωπος ήταν ήδη μέλος της ομάδας κάποιου άλλου.
+      // Τώρα η άγνωστη κατάσταση λέγεται καθαρά και δεν εμφανίζεται κουμπί.
+      if (mineError) { setLoadError(true); setLoading(false); return; }
 
       const memberRow = (mine as MyRow[] | null)?.find(r => r.role !== 'owner');
       if (memberRow) {
@@ -317,6 +326,17 @@ export default function OrgTeam({ userId }: { userId: string }) {
         <Skeleton w={120} h={11} />
         {[0, 1, 2].map(i => <Skeleton key={i} h={48} r={10} />)}
       </div>
+    );
+  }
+
+  // Ούτε όψη ιδιοκτήτη ούτε όψη μέλους: δεν διαβάστηκε η ιδιότητα του χρήστη.
+  if (loadError) {
+    return (
+      <EmptyState
+        icon={<Users size={20} />}
+        title="Δεν φορτώθηκαν τα στοιχεία της ομάδας"
+        hint="Δεν καταφέραμε να διαβάσουμε αν ανήκεις σε οργανισμό. Ανανέωσε τη σελίδα και δοκίμασε ξανά σε λίγο."
+      />
     );
   }
 

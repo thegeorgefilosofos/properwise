@@ -391,13 +391,26 @@ const fmtEur = feOr;
 function useInventoryAlerts(propertyId: string | null, userId: string | null) {
   const [alertCount, setAlertCount] = useState(0);
   const [itemCount, setItemCount] = useState(0);
+  // Η ΤΡΙΤΗ ΚΑΤΑΣΤΑΣΗ ΤΟΥ ΜΕΤΡΗΤΗ: «δεν ξέρουμε». Χωρίς αυτήν είχε δύο · η
+  // αποτυχία φορούσε τα ρούχα του μηδενός.
+  const [alertsUnknown, setAlertsUnknown] = useState(false);
   const supabase = createClient();
   useEffect(() => {
     if (!propertyId || !userId) return;
     const check = async () => {
-      const items = await inventory.ofProperty<{ warranty_expiry: string | null; condition: string | null; purchase_date: string | null }>(supabase, propertyId, 'warranty_expiry,condition,purchase_date', userId);
-      const { data: schedules } = await supabase.from('inventory_maintenance').select('next_due').eq('property_id', propertyId);
-      if (!items) return;
+      // ΤΟ ΣΗΜΑ ΤΟΥ ΜΕΝΟΥ ΕΛΕΓΕ «ΚΑΜΙΑ ΕΚΚΡΕΜΟΤΗΤΑ» ΧΩΡΙΣ ΝΑ ΕΧΕΙ ΔΙΑΒΑΣΕΙ.
+      // Και οι δύο αναγνώσεις πετούσαν το `error`: σε αποτυχία η λίστα γύριζε
+      // άδεια, ο μετρητής έμενε μηδέν, η κουκκίδα δεν αποδιδόταν και ο
+      // φωνητικός αναγνώστης άκουγε σκέτο «Μενού». Ο ιδιοκτήτης με ληγμένη
+      // συντήρηση καυστήρα ή εγγύηση που τρέχει έβλεπε καθαρή μπάρα και δεν
+      // άνοιγε την Απογραφή. Τώρα η αποτυχία δηλώνεται: κανένας αριθμός δεν
+      // λέγεται όταν δεν μετρήθηκε.
+      const { rows: items, error: itemsErr } = await inventory.ofPropertyWithError<{ warranty_expiry: string | null; condition: string | null; purchase_date: string | null }>(supabase, propertyId, 'warranty_expiry,condition,purchase_date', userId);
+      const { data: schedules, error: schedErr } = await supabase.from('inventory_maintenance').select('next_due').eq('property_id', propertyId);
+      setAlertsUnknown(!!itemsErr || !!schedErr);
+      // Χωρίς τα αντικείμενα δεν μετριέται τίποτα: ούτε το πλήθος τους, ούτε οι
+      // ειδοποιήσεις τους. Ο μετρητής μένει όπως ήταν, σημαδεμένος ως άγνωστος.
+      if (itemsErr) return;
       setItemCount(items.length);
       let count = 0; const now = Date.now();
       items.forEach(item => {
@@ -410,7 +423,7 @@ function useInventoryAlerts(propertyId: string | null, userId: string | null) {
     };
     check();
   }, [propertyId, supabase, userId]);
-  return { alertCount, itemCount };
+  return { alertCount, itemCount, alertsUnknown };
 }
 
 function useChecklistAlerts(propertyId: string | null) {
@@ -1451,8 +1464,14 @@ export default function Dashboard() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const { alertCount: inventoryAlerts, itemCount: inventoryItems } = useInventoryAlerts(selected?.id||null, user?.id||null);
+  const { alertCount: inventoryAlerts, itemCount: inventoryItems, alertsUnknown: inventoryAlertsUnknown } = useInventoryAlerts(selected?.id||null, user?.id||null);
   const checklistAlerts = useChecklistAlerts(selected?.id||null);
+  /** Οσες εκκρεμότητες ΞΕΡΟΥΜΕ: από την Απογραφή κι από τη Λίστα εργασιών. */
+  const pendingCount = inventoryAlerts + checklistAlerts;
+  /** Αν μια από τις αναγνώσεις δεν έγινε, το άθροισμα δεν είναι βεβαιότητα.
+   *  Το δηλώνει προς το παρόν μόνο η Απογραφή: η `checklist.open` πετά το δικό
+   *  της σφάλμα κι η διόρθωση ανήκει στο lib/data/checklist.ts. */
+  const pendingUnknown = inventoryAlertsUnknown;
 
   // Δικαιώματα συνδρομής: το «ενεργό» πλάνο ορίζει τι βλέπεις (βασικό πλάνο,
   // ανυψωμένο από ενεργούς δωρεάν μήνες ή ιδιότητα Συνεργάτη).
@@ -2106,12 +2125,20 @@ export default function Dashboard() {
           {/* ΤΟ ΣΗΜΑ ΑΚΟΛΟΥΘΕΙ ΤΗΝ ΠΟΡΤΑ. Οι εκκρεμότητες Απογραφής και Λίστας
               ζουν σε καρτέλες που ανοίγουν ΜΟΝΟ από την πλαϊνή μπάρα· όσο
               υπήρχαν δύο πόρτες, το σήμα ήταν στην κάτω. Τώρα είναι εδώ. */}
+          {/* ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΟΧΙ ΔΥΟ. Οταν η ανάγνωση της Απογραφής αποτύχει, το
+              κουμπί έλεγε «Μενού» σκέτο: ίδια οθόνη με το «όλα καθαρά», ενώ
+              μπορεί να τρέχει ληγμένη συντήρηση. Η κουκκίδα μένει ώστε να μη
+              χαθεί η προειδοποίηση, ο αριθμός όμως δεν λέγεται και το μήνυμα
+              λέει τι δεν έγινε και τι να κάνει ο χρήστης. */}
           <button className="nav-toggle" onClick={()=>setSidebarOpen(v=>!v)}
-            aria-label={inventoryAlerts + checklistAlerts > 0
-              ? `Μενού, ${inventoryAlerts + checklistAlerts} ${inventoryAlerts + checklistAlerts === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`
-              : 'Μενού'}
+            aria-label={pendingUnknown
+              ? 'Μενού, οι εκκρεμότητες δεν ελέγχθηκαν: ανανέωσε τη σελίδα'
+              : pendingCount > 0
+                ? `Μενού, ${pendingCount} ${pendingCount === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`
+                : 'Μενού'}
+            title={pendingUnknown ? 'Οι εκκρεμότητες δεν ελέγχθηκαν. Ανανέωσε τη σελίδα.' : undefined}
             style={{ position: 'relative' }}>
-            {inventoryAlerts + checklistAlerts > 0 && <span className="bottom-nav-badge"/>}
+            {(pendingCount > 0 || pendingUnknown) && <span className="bottom-nav-badge"/>}
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
           </button>
           {selected ? (

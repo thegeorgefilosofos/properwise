@@ -604,7 +604,14 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
 
     // ── Δυναμική τιμολόγηση: βάση + ενδεικτικός πίνακας ανά μήνα ──
     // Προτίμησε τη ΒΑΣΗ που έχει ορίσει ο χρήστης στην καρτέλα Τιμολόγηση (αν υπάρχει).
-    const { data: pset } = await supabase.from('pricing_settings').select('base,weekend_premium').eq('user_id', userId).eq('property_id', propertyId).maybeSingle();
+    // ── ΤΟ «ΔΕΝ ΔΙΑΒΑΣΤΗΚΕ» ΔΕΝ ΕΙΝΑΙ «ΔΕΝ ΕΧΕΙ ΟΡΙΣΕΙ ΒΑΣΗ» ─────────────────
+    // Το σφάλμα πεταγόταν: σε αποτυχία το `pset` έρχεται null, ακριβώς όπως
+    // στον χρήστη που δεν όρισε ποτέ βάση. Η Νόα έλεγε «Δεν έχει οριστεί
+    // βασική τιμή» σε ιδιοκτήτη που την είχε ορίσει ή, με ιστορικό διαμονών,
+    // έχτιζε πίνακα δώδεκα μηνών με ποσά ανά νύχτα πάνω σε δική της εκτίμηση:
+    // τιμές που ο ιδιοκτήτης θα ανέβαζε στα κανάλια. Τώρα το «δεν ξέρουμε»
+    // λέγεται: ούτε πίνακας ούτε βεβαίωση.
+    const { data: pset, error: psetErr } = await supabase.from('pricing_settings').select('base,weekend_premium').eq('user_id', userId).eq('property_id', propertyId).maybeSingle();
     const wkndPrem = pset?.weekend_premium != null ? Number(pset.weekend_premium) : 0.18;
     // ΚΑΜΙΑ ΒΑΣΗ ΑΠΟ ΤΟ ΠΟΥΘΕΝΑ. Εδώ υπήρχε τρίτο εναλλακτικό:
     // `(ενοίκιο-στόχος / 30) × 2,2`. Είναι ακριβώς ο τύπος που το
@@ -618,7 +625,9 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     // Το `else` παρακάτω λέει ήδη τη σωστή αλήθεια: χωρίς ιστορικό, ο χρήστης
     // ορίζει βάση στην Τιμολόγηση.
     const priceBase = (pset?.base != null ? Number(pset.base) : 0) || suggestBase(propStays);
-    if (priceBase > 0) {
+    if (psetErr) {
+      setPricingStr(`Οι ρυθμίσεις τιμολόγησης αυτού του ακινήτου δεν διαβάστηκαν. Μη λες τιμή ανά νύχτα, μη δίνεις πίνακα μηνών· μην πεις ούτε ότι υπάρχει βάση ούτε ότι δεν έχει οριστεί. Πες ότι τα στοιχεία τιμολόγησης δεν φορτώθηκαν τώρα κι ότι ο χρήστης τα βλέπει στην καρτέλα ${navLabel('pricing')}.`);
+    } else if (priceBase > 0) {
       const adrVal = realizedAdr(propStays);
       const table = indicativeMonthly(priceBase, wkndPrem).map(r => `${MONTHS_SHORT[r.month]} ${r.weekday}/${r.weekend}`).join(', ');
       setPricingStr([

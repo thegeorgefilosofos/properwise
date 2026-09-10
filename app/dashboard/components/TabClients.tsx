@@ -227,7 +227,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   const [clients, setClients] = useState<Client[]>([]);
   const [props, setProps] = useState<PropRow[]>([]);
   const [stays, setStays] = useState<Stay[]>([]);
-  const [notesOf, setNotesOf] = useState<{ clientId: string; rows: Note[] } | null>(null);
+  const [notesOf, setNotesOf] = useState<{ clientId: string; rows: Note[]; failed: boolean } | null>(null);
   const [inv, setInv] = useState<InvItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -266,6 +266,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   const [icalBusy, setIcalBusy] = useState(false);
   const [icalMsg, setIcalMsg] = useState<{ text: string; error?: boolean } | null>(null);
   const [icalFeeds, setIcalFeeds] = useState<IcalFeed[]>([]);
+  const [icalFeedsFailed, setIcalFeedsFailed] = useState(false);
 
   // Φόρμα νέου/επεξεργασίας πελάτη
   const [modalOpen, setModalOpen] = useState(false);
@@ -287,7 +288,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   const [noteForm, setNoteForm] = useState<{ kind: string; body: string }>({ kind: 'note', body: '' });
 
   // Έγγραφα πελάτη (ταυτότητα, συμβόλαιο, αποδείξεις)
-  const [docsOf, setDocsOf] = useState<{ clientId: string; rows: ClientDoc[] } | null>(null);
+  const [docsOf, setDocsOf] = useState<{ clientId: string; rows: ClientDoc[]; failed: boolean } | null>(null);
   const [docKindOf, setDocKindOf] = useState<{ clientId: string; kind: string } | null>(null);
   const [docBusy, setDocBusy] = useState(false);
   const [docMsgOf, setDocMsgOf] = useState<{ clientId: string; msg: { text: string; error?: boolean } | null } | null>(null);
@@ -312,24 +313,43 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
     setStays((data || []) as Stay[]);
   }, [userId, supabase]);
 
+  // ΤΟ «ΚΑΝΕΝΑ ΣΧΟΛΙΟ ΑΚΟΜΗ» ΗΤΑΝ ΒΕΒΑΙΩΣΗ ΠΟΥ ΔΕΝ ΕΙΧΑΜΕ ΔΙΚΑΙΩΜΑ ΝΑ ΠΟΥΜΕ.
+  // Οταν η ανάγνωση αποτύγχανε το `data` γύριζε null, το χρονολόγιο άδειαζε κι ο
+  // οικοδεσπότης διάβαζε «Κανένα σχόλιο ακόμη»: ίδια ακριβώς εικόνα με επισκέπτη
+  // που όντως δεν έχει ιστορικό, ενώ εκεί μπορεί να κάθεται καταγραμμένη μια
+  // φθορά ή μια συνεννόηση για την επόμενη διαμονή. Πλέον η αποτυχία ταξιδεύει
+  // μαζί με τη λίστα κι η οθόνη λέει ότι δεν πήραμε απάντηση.
   const loadNotes = useCallback(async (clientId: string) => {
-    const { data } = await supabase.from('client_notes').select('*').eq('user_id', userId).eq('client_id', clientId).order('created_at', { ascending: false });
-    setNotesOf({ clientId, rows: (data || []) as Note[] });
+    const { data, error } = await supabase.from('client_notes').select('*').eq('user_id', userId).eq('client_id', clientId).order('created_at', { ascending: false });
+    setNotesOf({ clientId, rows: (data || []) as Note[], failed: !!error });
   }, [userId, supabase]);
 
+  // «ΔΕΝ ΕΧΟΥΝ ΑΠΟΘΗΚΕΥΤΕΙ ΕΓΓΡΑΦΑ»: το έλεγε η οθόνη κι όταν απλώς δεν
+  // διαβάστηκε ο φάκελος του επισκέπτη. Ο οικοδεσπότης που ψάχνει το διαβατήριο
+  // ή το υπογεγραμμένο συμβόλαιο συμπέραινε ότι δεν το ανέβασε ποτέ, οπότε ή το
+  // ξαναζητούσε από τον άνθρωπο ή προχωρούσε χωρίς αυτό. Η αποτυχία ανάγνωσης
+  // φτάνει τώρα στην οθόνη ως τρίτη κατάσταση, ξεχωριστή από το άδειο.
   const loadDocs = useCallback(async (clientId: string) => {
-    const { data } = await supabase.from('client_documents').select('*').eq('user_id', userId).eq('client_id', clientId).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('client_documents').select('*').eq('user_id', userId).eq('client_id', clientId).order('created_at', { ascending: false });
     const list = (data || []) as ClientDoc[];
     const paths = list.map(d => d.file_path);
     if (paths.length) {
       const { data: signed } = await supabase.storage.from('property-files').createSignedUrls(paths, 60 * 60 * 24);
       if (signed) list.forEach((d, i) => { d.signedUrl = signed[i]?.signedUrl ?? undefined; });
     }
-    setDocsOf({ clientId, rows: list });
+    setDocsOf({ clientId, rows: list, failed: !!error });
   }, [userId, supabase]);
 
+  // ΟΙ ΑΠΟΘΗΚΕΥΜΕΝΟΙ ΣΥΝΔΕΣΜΟΙ ΚΡΥΒΟΝΤΑΝ ΑΘΟΡΥΒΑ. Σε αποτυχία η λίστα άδειαζε,
+  // οπότε το κουτί των ροών εξαφανιζόταν ολόκληρο μαζί με την κατάσταση του
+  // τελευταίου συγχρονισμού: ο οικοδεσπότης δεν έβλεπε ούτε τη ροή που έχει
+  // σταματήσει να φέρνει κρατήσεις ούτε ότι υπάρχει ήδη σύνδεσμος για το
+  // ακίνητο, οπότε αποθήκευε δεύτερο σύνδεσμο στα τυφλά. Τώρα κρατάμε ό,τι
+  // διαβάστηκε από πριν και σημαδεύουμε την αποτυχία, ώστε να τη δει.
   const loadIcalFeeds = useCallback(async () => {
-    const { data } = await supabase.from('ical_feeds').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('ical_feeds').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    setIcalFeedsFailed(!!error);
+    if (error) return;
     setIcalFeeds((data || []) as IcalFeed[]);
   }, [userId, supabase]);
 
@@ -358,6 +378,9 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   const notes = notesOf?.clientId === openId ? notesOf.rows : [];
   const docs  = docsOf?.clientId  === openId ? docsOf.rows  : [];
   const docMsg = docMsgOf?.clientId === openId ? docMsgOf.msg : null;
+  // «Δεν ξέρουμε»: η ανάγνωση του ανοιχτού επισκέπτη απάντησε με σφάλμα.
+  const notesFailed = notesOf?.clientId === openId && notesOf?.failed === true;
+  const docsFailed  = docsOf?.clientId  === openId && docsOf?.failed  === true;
   const docKind = docKindOf?.clientId === openId ? docKindOf.kind : 'other';
   // Οι σημειώσεις και τα έγγραφα του ανοιχτού πελάτη. Χωρίς ανοιχτό πελάτη δεν
   // υπάρχει τι να φορτωθεί και η υπόσχεση λύνεται αμέσως.
@@ -1740,7 +1763,14 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                 </div>
               </div>
               {docMsg && <div style={{ fontSize: 12, color: docMsg.error ? 'var(--negative)' : 'var(--text-secondary)', marginBottom: 12 }}>{docMsg.text}</div>}
-              {docs.length === 0 ? (
+              {/* ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ: έχει έγγραφα, δεν έχει, δεν ξέρουμε. Το «Δεν
+                  έχουν αποθηκευτεί έγγραφα.» βγαίνει μόνο όταν το ξέρουμε. */}
+              {docsFailed ? (
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '8px 0', lineHeight: 1.6 }}>
+                  Τα έγγραφα δεν διαβάστηκαν. Δεν σημαίνει ότι δεν υπάρχουν: δεν πήραμε απάντηση.{' '}
+                  <LinkBtn onClick={() => { if (openId) loadDocs(openId); }}>Δοκιμή ξανά</LinkBtn>
+                </div>
+              ) : docs.length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '8px 0' }}>Δεν έχουν αποθηκευτεί έγγραφα.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1779,7 +1809,14 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                   <Btn variant="primary" field onClick={saveNote} disabled={!noteForm.body.trim()}>Προσθήκη</Btn>
                 </div>
               </div>
-              {notes.length === 0 ? (
+              {/* Ιδιο τρίτο σκαλί με τα έγγραφα από πάνω: «κανένα σχόλιο» είναι
+                  συμπέρασμα, όχι προεπιλογή για ό,τι δεν απάντησε. */}
+              {notesFailed ? (
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '4px 0', lineHeight: 1.6 }}>
+                  Τα σχόλια δεν διαβάστηκαν. Δεν σημαίνει ότι δεν υπάρχουν: δεν πήραμε απάντηση.{' '}
+                  <LinkBtn onClick={() => { if (openId) loadNotes(openId); }}>Δοκιμή ξανά</LinkBtn>
+                </div>
+              ) : notes.length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '4px 0' }}>Κανένα σχόλιο ακόμη</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1893,6 +1930,17 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
             <Btn variant="primary" onClick={saveIcalFeed} disabled={icalBusy || !icalUrl.trim() || !icalPropertyId}>Αποθήκευση και αυτόματος συγχρονισμός</Btn>
           </div>
 
+          {/* ΤΟ ΚΕΝΟ ΕΔΩ ΔΙΑΒΑΖΟΤΑΝ «ΔΕΝ ΕΧΕΙΣ ΑΥΤΟΜΑΤΟ ΣΥΓΧΡΟΝΙΣΜΟ». Οταν οι
+              ροές δεν διαβάζονταν, το κουτί απλώς δεν εμφανιζόταν: ο οικοδεσπότης
+              δεν έβλεπε ούτε ότι μια ροή είχε σταματήσει με σφάλμα ούτε ότι ο
+              σύνδεσμος υπάρχει ήδη, οπότε τον αποθήκευε ξανά γράφοντας από πάνω
+              κανάλι κι επιλογή μπλοκαρισμάτων. Η άγνοια λέγεται πλέον ρητά. */}
+          {icalPropertyId && icalFeedsFailed && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              Οι αποθηκευμένοι σύνδεσμοι δεν διαβάστηκαν. Δεν ξέρουμε αν υπάρχει ήδη σύνδεσμος για αυτό το ακίνητο ούτε αν πέτυχε ο τελευταίος συγχρονισμός.{' '}
+              <LinkBtn onClick={() => { void loadIcalFeeds(); }}>Δοκιμή ξανά</LinkBtn>
+            </div>
+          )}
           {/* Αποθηκευμένοι σύνδεσμοι (ανά επιλεγμένο ακίνητο) */}
           {icalPropertyId && icalFeeds.filter(f => f.property_id === icalPropertyId).length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

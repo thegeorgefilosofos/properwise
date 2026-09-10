@@ -276,6 +276,11 @@ export default function TabDocuments({
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const loading = loadedFor !== propertyId
   const [colWarn, setColWarn] = useState(false); // αν λείπει το attachment_url στα expenses
+  // ΟΤΑΝ ΔΕΝ ΕΤΟΙΜΑΣΤΗΚΑΝ ΟΙ ΣΥΝΔΕΣΜΟΙ ΤΩΝ ΑΝΕΒΑΣΜΕΝΩΝ ΑΡΧΕΙΩΝ. Χωρίς αυτή τη
+  // σημαία η αποτυχία ήταν αόρατη: η καρτέλα του σαρωμένου μισθωτηρίου έμενε στη
+  // θέση της χωρίς «Άνοιγμα», ίδια στην όψη με έναν λογαριασμό που ΔΕΝ έχει
+  // αρχείο. Ο ιδιοκτήτης που ζητούσε το χαρτί του συμπέραινε ότι χάθηκε.
+  const [linksWarn, setLinksWarn] = useState(false);
 
   // ── ΟΨΕΙΣ ΑΝΤΙ ΓΙΑ ΦΑΚΕΛΟΥΣ ──────────────────────────────────────────────
   // Πριν εδώ ζούσε πλοήγηση τριών επιπέδων: folderKey → subKey → αρχεία. Κάθε
@@ -323,10 +328,19 @@ export default function TabDocuments({
     // Υπογεγραμμένα URL για τα ανεβασμένα αρχεία (bucket property-files)
     const paths = docs.map(r => r.file_path).filter(Boolean);
     const signedMap: Record<string, string> = {};
+    // ΤΟ `error` ΠΕΤΑΓΟΤΑΝ ΚΙ Η ΑΠΟΤΥΧΙΑ ΓΙΝΟΤΑΝ «ΔΕΝ ΕΧΕΙ ΑΡΧΕΙΟ». Οταν η
+    // υπογραφή των συνδέσμων αποτύγχανε, το `signed` ερχόταν null: κάθε
+    // ανεβασμένο χαρτί έχανε το `url` του κι η οθόνη το εμφάνιζε χωρίς κουμπί
+    // «Άνοιγμα», χωρίς μικρογραφία, με τη «Λήψη» σβηστή. Ολα αυτά είναι ακριβώς
+    // η όψη ενός στοιχείου που δεν έχει αρχείο, οπότε ο ιδιοκτήτης διάβαζε «το
+    // σαρωμένο μου συμβόλαιο δεν είναι εδώ». Τώρα η τρίτη κατάσταση δηλώνεται.
+    let linksFailed = false;
     if (paths.length) {
-      const { data: signed } = await supabase.storage.from('property-files').createSignedUrls(paths, 60 * 60 * 24);
+      const { data: signed, error: signErr } = await supabase.storage.from('property-files').createSignedUrls(paths, 60 * 60 * 24);
+      linksFailed = !!signErr || !signed;
       signed?.forEach((s, i) => { if (s?.signedUrl) signedMap[paths[i]] = s.signedUrl; });
     }
+    setLinksWarn(linksFailed);
 
     const out: RawItem[] = [];
 
@@ -717,6 +731,12 @@ export default function TabDocuments({
       )}
 
       {colWarn && <InfoBanner tone="warning">Ορισμένα Έξοδα δεν διαθέτουν στήλη συνημμένου αρχείου· εμφανίζονται μόνο όσα έχουν επισυναπτόμενη απόδειξη/τιμολόγιο.</InfoBanner>}
+
+      {/* Η ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΠΟΥ ΕΛΕΙΠΕ. Στην αποτυχία υπογραφής των συνδέσμων η
+          οθόνη δεν έλεγε τίποτα: τα ανεβασμένα χαρτιά έδειχναν σκέτα, χωρίς
+          «Άνοιγμα» κι με τη «Λήψη» ανενεργή, σαν να μην είχαν ποτέ αρχείο.
+          Τώρα ο χρήστης ξέρει ότι φταίει η στιγμή, όχι το αρχείο του. */}
+      {linksWarn && <InfoBanner tone="warning">Τα ανεβασμένα αρχεία δεν μπορούν να ανοίξουν αυτή τη στιγμή: η προετοιμασία των συνδέσμων δεν ολοκληρώθηκε. Όπου λείπει το «Άνοιγμα», δεν σημαίνει ότι λείπει το αρχείο: δοκίμασε ξανά σε λίγο ή ανανέωσε τη σελίδα.</InfoBanner>}
 
       {/* ══ Η ΜΙΑ ΕΠΙΦΑΝΕΙΑ: «Φωτογράφισε ή σύρε» ══════════════════════════ */}
       {showUpload && (

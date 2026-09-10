@@ -32,6 +32,7 @@ import {
   notifyOk,
 } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
+import { failed } from '@/lib/core/dbError';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import { roleLabel } from '@/lib/contacts/roles';
 import { rentalIncomeTax, rentalRowsForYear, rentalBracketsForYear } from '@/lib/billing/greekTax';
@@ -183,6 +184,13 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
   const supabase=createClient();
   const [logs,setLogs]=useState<CommLog[]>([]);
   const [loadedFor,setLoadedFor]=useState<string|null>(null);
+  // ΤΟ ΑΔΕΙΟ ΗΜΕΡΟΛΟΓΙΟ ΔΕΝ ΕΙΝΑΙ ΑΠΟΔΕΙΞΗ ΣΙΩΠΗΣ. Οταν η ανάγνωση αποτύγχανε
+  // το `data` ερχόταν null · η οθόνη απαντούσε «Καμία επικοινωνία ακόμη». Ο
+  // ιδιοκτήτης που ψάχνει αν ειδοποίησε τον ενοικιαστή για τη λήξη διάβαζε ότι
+  // δεν του μίλησε ποτέ · ξαναχτυπούσε το τηλέφωνο ή ξανακατέγραφε την ίδια
+  // κλήση. Τώρα το σφάλμα κρατιέται χωριστά: το άγνωστο ιστορικό λέγεται με το
+  // όνομά του κι όσο μένει άγνωστο δεν προσφέρεται καταχώρηση που το διπλογράφει.
+  const [logsErr,setLogsErr]=useState('');
   const loading=loadedFor!==tenant.id;
   const [showAdd,setShowAdd]=useState(false);
   const [form,setForm]=useState({type:'call' as CommLog['type'],summary:'',date:athensToday(),outcome:''});
@@ -208,8 +216,9 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
   // σύγχρονη γραφή, δεύτερη απόδοση και μια στιγμή όπου το ημερολόγιο του ΕΝΟΣ
   // ενοικιαστή φαινόταν κάτω από το όνομα του άλλου.
   const loadLogs=useCallback(async()=>{
-    const{data}=await supabase.from('tenant_comm_log').select('*').eq('tenant_id',tenant.id).order('date',{ascending:false});
-    setLogs(data||[]);setLoadedFor(tenant.id);
+    const{data,error}=await supabase.from('tenant_comm_log').select('*').eq('tenant_id',tenant.id).order('date',{ascending:false});
+    if(error){ setLogs([]);setLogsErr(failed('Το ιστορικό επικοινωνίας δεν διαβάστηκε',error));setLoadedFor(tenant.id);return; }
+    setLogsErr('');setLogs(data||[]);setLoadedFor(tenant.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[tenant.id]);
 
@@ -276,7 +285,9 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
               δευτερεύον κουμπί, οπότε δευτερεύον μένει. Ο τόνος accent του
               λεκτικού ήταν η μόνη του διαφορά από το `s.btnGhost` και δεν έχει
               ρόλο στο `Btn` — η κύρια ενέργεια δηλώνεται με primary. */}
-          <Btn variant="secondary" onClick={()=>setShowAdd(v=>!v)}>{showAdd?'Κλείσιμο':'+ Νέα Καταχώρηση'}</Btn>
+          {/* Χωρίς διαβασμένο ιστορικό η νέα καταχώρηση γράφεται στα τυφλά:
+              πάνω από ένα ημερολόγιο που κανείς δεν ξέρει τι έχει ήδη μέσα. */}
+          {!logsErr&&<Btn variant="secondary" onClick={()=>setShowAdd(v=>!v)}>{showAdd?'Κλείσιμο':'+ Νέα Καταχώρηση'}</Btn>}
         </div>
 
         {showAdd&&(
@@ -309,7 +320,8 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
         )}
 
         {loading&&<Spinner label="Φόρτωση…" />}
-        {!loading&&logs.length===0&&<EmptyState icon={<MessageSquare size={20}/>} title="Καμία επικοινωνία ακόμη" hint="Κατέγραψε κλήσεις, μηνύματα και επισκέψεις για να έχεις πλήρες ιστορικό με τον ενοικιαστή." />}
+        {!loading&&logsErr&&<InfoBanner tone="negative">{logsErr} Ωσπου να διαβαστεί δεν ξέρουμε αν το ιστορικό είναι κενό: μην καταγράψεις ξανά επικοινωνία που ίσως υπάρχει ήδη.</InfoBanner>}
+        {!loading&&!logsErr&&logs.length===0&&<EmptyState icon={<MessageSquare size={20}/>} title="Καμία επικοινωνία ακόμη" hint="Κατέγραψε κλήσεις, μηνύματα και επισκέψεις για να έχεις πλήρες ιστορικό με τον ενοικιαστή." />}
         {!loading&&logs.map(log=>(
           <div key={log.id} style={{ display:'flex', gap:14, alignItems:'flex-start', padding:'14px 0', borderBottom:'1px solid var(--border-subtle)' }}>
             <div style={{ width:38, height:38, borderRadius: T.radius.modal, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:16 }}>

@@ -60,14 +60,24 @@ export default function BankRatesAdmin({ onSaved }:{
   type Held = { ran_at:string; bank_id:string; field:string; old_value:number|null; new_value:number; reason:string }
   const [health,setHealth] = useState<Health|null>(null)
   const [held,setHeld] = useState<Held[]>([])
+  // ΤΙ ΕΛΕΓΕ Η ΟΘΟΝΗ ΣΕ ΑΠΟΤΥΧΙΑ: όταν η ανάγνωση έσκαγε, το `data` ερχόταν κενό
+  // κι η οθόνη έγραφε «Καμία ζωντανή εγγραφή επιτοκίων ακόμη», ενώ οι μεταβολές
+  // που περιμένουν δεύτερη επιβεβαίωση εξαφανίζονταν αθόρυβα.
+  // ΓΙΑΤΙ ΕΧΕΙ ΣΗΜΑΣΙΑ: ο διαχειριστής είναι ο μόνος που μπορεί να διορθώσει
+  // λάθος επιτόκιο. Πίστευε πως ο πίνακας ήταν άδειος ή πως δεν εκκρεμούσε
+  // τίποτα κι έφευγε. ΤΩΡΑ: κρατάμε τρίτη κατάσταση «δεν ξέρουμε» κι το λέμε.
+  const [ratesErr,setRatesErr] = useState(false)
+  const [feedErr,setFeedErr] = useState(false)
 
   async function load() {
-    const { data } = await supabase.from('bank_rates').select('*').order('fixed_min',{ascending:true})
+    const { data, error } = await supabase.from('bank_rates').select('*').order('fixed_min',{ascending:true})
     if (data) setRows(data as AdminBank[])
-    const [{ data: h }, { data: hd }] = await Promise.all([supabase.rpc('bank_feed_health'), supabase.rpc('bank_feed_held')])
+    setRatesErr(!!error)
+    const [{ data: h, error: hErr }, { data: hd, error: hdErr }] = await Promise.all([supabase.rpc('bank_feed_health'), supabase.rpc('bank_feed_held')])
     const row = Array.isArray(h) ? h[0] : h
     if (row) setHealth(row as Health)
     if (Array.isArray(hd)) setHeld(hd as Held[])
+    setFeedErr(!!hErr || !!hdErr)
   }
   // Φορτώνει μία φορά, όταν ανοίξει το πάνελ. Το `rows.length` δεν είναι
   // εξάρτηση: αν ήταν, η φόρτωση θα ξανάτρεχε μόλις γέμιζε ο πίνακας.
@@ -145,6 +155,11 @@ export default function BankRatesAdmin({ onSaved }:{
                 : `Καθημερινός έλεγχος: ${health.reason}.`}
             </p>
           )}
+          {feedErr && (
+            <p style={{fontSize:12,color:'var(--negative)',fontFamily: T.font.sans,lineHeight:1.5}}>
+              Η κατάσταση του καθημερινού ελέγχου δεν διαβάστηκε. Δεν φαίνεται αν υπάρχουν μεταβολές που περιμένουν επιβεβαίωση: δοκιμάστε ξανά σε λίγο.
+            </p>
+          )}
           {held.length>0 && (
             <div style={{border:'1px solid var(--warning-border)',background:'var(--warning-soft)',borderRadius: T.radius.inner,padding:'10px 12px',display:'flex',flexDirection:'column',gap:4}}>
               <p style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',fontFamily: T.font.sans}}>Μεταβολές που περιμένουν δεύτερη επιβεβαίωση</p>
@@ -198,7 +213,12 @@ export default function BankRatesAdmin({ onSaved }:{
                 </div>
               )
             })}
-            {rows.length===0 && <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,padding:'4px 2px'}}>Καμία ζωντανή εγγραφή επιτοκίων ακόμη</p>}
+            {ratesErr && (
+              <p style={{fontSize:12,color:'var(--negative)',fontFamily: T.font.sans,padding:'4px 2px',lineHeight:1.5}}>
+                Ο κατάλογος επιτοκίων δεν διαβάστηκε: δεν ξέρουμε τι ισχύει αυτή τη στιγμή. Κλείστε κι ανοίξτε ξανά τη διαχείριση.
+              </p>
+            )}
+            {!ratesErr && rows.length===0 && <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,padding:'4px 2px'}}>Καμία ζωντανή εγγραφή επιτοκίων ακόμη</p>}
           </div>
         </div>
       )}
