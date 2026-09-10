@@ -312,7 +312,16 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   const [ekfa,setEkfa] = useRemembered<number|''>('acc_ekfa', readNum, writeNum, '')
   const [firstYears,updateFirstYears] = useRememberedFlag('acc_first3')
   const [distribution,setDistribution] = useState<number|''>('')
-  const [claimedUncollected,setClaimedUncollected] = useState(false)
+  // ══ ΤΟ ΤΣΕΚ ΤΩΝ ΑΝΕΙΣΠΡΑΚΤΩΝ ΑΝΗΚΕΙ ΣΕ ΑΚΙΝΗΤΟ, ΟΧΙ ΣΤΗΝ ΟΘΟΝΗ ═══════════
+  // Ηταν σκέτο `useState(false)` κι η καρτέλα δεν ξεφορτώνεται με την αλλαγή
+  // ακινήτου: τσεκαρισμένο στην «Αλεξάνδρας 12» έμενε τσεκαρισμένο κι στην
+  // «Πατησίων 5», όπου η ετικέτα έγραφε ΑΛΛΟ ποσό ανείσπρακτων. Η απαλλαγή του
+  // άρθρου 39 §4 θέλει διαταγή πληρωμής ή αγωγή για ΤΗ ΣΥΓΚΕΚΡΙΜΕΝΗ μίσθωση·
+  // δεν ταξιδεύει. Κρατιέται το id, όχι μια σημαία: η κατάσταση δεν χρειάζεται
+  // effect για να καθαρίσει — η αλλαγή ακινήτου την ακυρώνει από μόνη της.
+  const [claimedFor,setClaimedFor] = useState('')
+  const claimedUncollected = !!propertyId && claimedFor === propertyId
+  const setClaimedUncollected = useCallback((v:boolean)=>setClaimedFor(v?propertyId:''),[propertyId])
   // ═══════════════════════════════════════════════════════════════════════
   // Η ΤΡΑΠΕΖΙΚΗ ΕΙΣΠΡΑΞΗ ΠΑΡΑΓΕΤΑΙ, ΔΕΝ ΠΡΟΕΠΙΛΕΓΕΤΑΙ.
   // ─────────────────────────────────────────────────────────────────────
@@ -706,19 +715,30 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     const items = (allProps.length?allProps:[{id:propertyId,name:prop?.name,rental_mode:prop?.rental_mode,enfia:prop?.enfia,sqm:prop?.sqm,prop_type:prop?.prop_type}]).map(p=>{
       const rmode:TaxRegime = readStatus(p as StatusRow) === 'rent_short' ? 'individual_shortterm' : 'individual_longterm'
       const pRentAccrued = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).reduce((s,r)=>s+(r.amount||0),0)
+      // ══ Ο ΦΟΡΟΣ ΑΓΝΟΟΥΣΕ ΤΗΝ ΑΠΑΛΛΑΓΗ ΠΟΥ Η ΙΔΙΑ ΚΑΡΤΑ ΕΔΕΙΧΝΕ ══════════════
+      // Το `incomeStatement` κατεβάζει το ΦΟΡΟΛΟΓΗΤΕΟ κατά τα διεκδικημένα
+      // ανείσπρακτα, αλλά ο ΦΟΡΟΣ δεν βγαίνει από εκεί: για φυσικό πρόσωπο
+      // υπερισχύει το `overrideIncomeTax`, δηλαδή το μερίδιο του προοδευτικού
+      // φόρου του χαρτοφυλακίου — κι η ενοποίηση δεν είχε ακούσει ποτέ για την
+      // απαλλαγή. Η κάρτα έγραφε «φόρος 3.550€ σε φορολογητέο 7.600€», δηλαδή
+      // 46,7% εκεί που ο ανώτατος συντελεστής της κλίμακας είναι 45%.
+      // Το αδύνατο ποσοστό ήταν το μόνο ορατό ίχνος.
+      const pUncollected = allRent.filter(r=>r.property_id===p.id&&r.period_year===year&&!r.paid).reduce((s,r)=>s+(r.amount||0),0)
+      // Μόνο για ΤΟ ακίνητο του τσεκ: η απαλλαγή είναι ανά μίσθωση.
+      const pRelief = claimedUncollected && p.id===propertyId ? pUncollected : 0
       const pStays = allStays.filter(s=>s.property_id===p.id)
       const pShort = shortTermYearSummary(pStays, year, { sqm:p.sqm??null, isHouse: isHouseType(p.prop_type), propertyCount:propCount, individual:individualPerson, rentsPaidViaBank:rentsBank })
       // Κάθε ακίνητο με ΤΟ ΔΙΚΟ ΤΟΥ ποσοστό: ένα χαρτοφυλάκιο μπορεί να έχει
       // δύο κληρονομιές στο ένα τρίτο και ένα διαμέρισμα ολόκληρο.
       const pPct = pctOf(p.id)
-      const gross = ownerShareOfAmount(rmode==='individual_shortterm' ? pShort.grossRevenue : pRentAccrued, pPct)
+      const gross = ownerShareOfAmount(rmode==='individual_shortterm' ? pShort.grossRevenue : Math.max(0, pRentAccrued - pRelief), pPct)
       const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct), rentsPaidViaBank: rentsBank,
         climateLevy: rmode==='individual_shortterm'?pShort.levyShortfall:0, municipalTax: rmode==='individual_shortterm'?pShort.municipalTax:0 }
       return { id:p.id, name:p.name||'Ακίνητο', input }
     }).filter(x=>x.input.grossIncome>0)
     if(items.length===0) return null
     return { con: consolidateIndividual(items.map(i=>({id:i.id,input:i.input})), rentalBracketsForYear(year)), names:Object.fromEntries(items.map(i=>[i.id,i.name])), count:items.length }
-  },[allProps,allRent,allStays,year,propCount,prop,propertyId,rentsBank,pctOf,individualPerson])
+  },[allProps,allRent,allStays,year,propCount,prop,propertyId,rentsBank,pctOf,individualPerson,claimedUncollected])
   const myTaxShare = useMemo(()=>consolidation?.con.perProperty.find(p=>p.id===propertyId)?.taxShare,[consolidation,propertyId])
   const portfolio = (mode==='professional' && elp==='personal') ? consolidation : null
 
