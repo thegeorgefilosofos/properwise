@@ -136,17 +136,47 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
 
   useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
 
+  const FAILED = 'Οι ρυθμίσεις κοινοχρήστων δεν αποθηκεύτηκαν';
+  const put = useCallback((patch: Record<string, unknown>, what = FAILED) =>
+    saved(what, settings.put(supabase, propertyId, userId, 'common', patch)),
+  [propertyId, userId, supabase]);
+
+  // Η αναμονή των 800 χιλιοστών υπάρχει για ΠΛΗΚΤΡΟΛΟΓΗΣΗ: κάθε χαρακτήρας σε
+  // πεδίο ποσού δεν αξίζει ένα αίτημα.
   const save = useCallback((patch: Record<string, unknown>) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      await saved('Οι ρυθμίσεις κοινοχρήστων δεν αποθηκεύτηκαν',
-        settings.put(supabase, propertyId, userId, 'common', patch));
-    }, 800);
-  }, [propertyId, userId, supabase]);
+    saveTimer.current = setTimeout(() => { void put(patch); }, 800);
+  }, [put]);
 
-  const upd = useCallback((patch: Record<string, unknown>) => {
-    save({ mgmtType, mgmtCost, mgmtDueDay, fundBalance, fundMyPct, fundMonthly, fundLastDate, extras, history, millesimi, catData, ...patch });
-  }, [mgmtType, mgmtCost, mgmtDueDay, fundBalance, fundMyPct, fundMonthly, fundLastDate, extras, history, millesimi, catData, save]);
+  // ══ ΚΑΙ Η ΑΝΑΜΟΝΗ ΑΚΥΡΩΝΟΤΑΝ ΑΠΟ ΤΗΝ ΕΞΟΔΟ, ΜΕ ΤΙΜΗΜΑ 1.800€ ══════════════
+  // ΤΟ ΣΦΑΛΜΑ, ΒΗΜΑ ΒΗΜΑ. Το «Μεταφορά στις Δαπάνες» καταχωρεί την έκτακτη
+  // δαπάνη ΑΜΕΣΩΣ κι μετά σημειώνει `transferredToExpenses: true` — μέσα από
+  // την ίδια αναμονή των 800 χιλιοστών. Το effect καθαρισμού από πάνω κάνει
+  // `clearTimeout` στην αποπροσάρτηση. Οποιος πατούσε το κουμπί κι άλλαζε
+  // αμέσως καρτέλα έχανε ΜΟΝΟ τη σημείωση: η δαπάνη των 1.800€ είχε ήδη γραφτεί.
+  //
+  // Την επόμενη φορά η έκτακτη εμφανιζόταν αμετάφερτη, με ενεργό κουμπί. Δεύτερο
+  // πάτημα, δεύτερη δαπάνη 1.800€ — σε ακίνητο όπου το Ε2 κι η απόδοση βγαίνουν
+  // από αυτόν ακριβώς τον πίνακα. Κανένα μήνυμα σφάλματος πουθενά: η γραφή δεν
+  // απέτυχε, δεν ΕΓΙΝΕ.
+  //
+  // Ο ΔΙΑΧΩΡΙΣΜΟΣ ΕΙΝΑΙ Ο ΚΑΝΟΝΑΣ, ΟΧΙ Η ΕΞΑΙΡΕΣΗ. Πληκτρολόγηση περιμένει·
+  // διακριτή πράξη —πρόσθεσε, σβήσε, μετέφερε— γράφεται τώρα κι απαντά αν
+  // πέτυχε. Η αναμονή που τρέχει ακυρώνεται πρώτη, αλλιώς θα ξαναέγραφε από
+  // πάνω παλιότερο στιγμιότυπο.
+  const saveNow = useCallback((patch: Record<string, unknown>, what?: string) => {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    return put(patch, what);
+  }, [put]);
+
+  /** Ολο το state με το μπάλωμα από πάνω: ό,τι ταξιδεύει στη βάση. */
+  const snapshot = useCallback((patch: Record<string, unknown>) =>
+    ({ mgmtType, mgmtCost, mgmtDueDay, fundBalance, fundMyPct, fundMonthly, fundLastDate, extras, history, millesimi, catData, ...patch }),
+  [mgmtType, mgmtCost, mgmtDueDay, fundBalance, fundMyPct, fundMonthly, fundLastDate, extras, history, millesimi, catData]);
+
+  const upd = useCallback((patch: Record<string, unknown>) => { save(snapshot(patch)); }, [save, snapshot]);
+  /** Για διακριτές πράξεις: γράφει ΤΩΡΑ κι λέει αν πέτυχε. */
+  const updNow = useCallback((patch: Record<string, unknown>, what?: string) => saveNow(snapshot(patch), what), [saveNow, snapshot]);
 
   const sMgmt    = (v: string) => { setMgmtType(v);    upd({ mgmtType: v    }); };
   const sMgmtC   = (v: string) => { setMgmtCost(v);    upd({ mgmtCost: v    }); };
@@ -170,11 +200,11 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
   const addExtra = () => {
     if (!extraReason || !extraAmount) return;
     const n = [...extras, { reason: extraReason, amount: extraAmount, date: extraDate, transferredToExpenses: false }];
-    setExtras(n); upd({ extras: n });
+    setExtras(n); void updNow({ extras: n });
     setExtraReason(''); setExtraAmount(''); setExtraDate('');
   };
   const delExtra = (i: number) => {
-    const n = extras.filter((_, j) => j !== i); setExtras(n); upd({ extras: n });
+    const n = extras.filter((_, j) => j !== i); setExtras(n); void updNow({ extras: n });
   };
   const transferToExpenses = async (i: number) => {
     const e = extras[i];
@@ -194,8 +224,17 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
     )]));
     setTransferring(null);
     if (!ok) return;
+    // Η ΣΗΜΕΙΩΣΗ ΕΙΝΑΙ Ο ΦΥΛΑΚΑΣ ΤΗΣ ΔΙΠΛΗΣ ΕΓΓΡΑΦΗΣ, ΑΡΑ ΠΕΡΙΜΕΝΕΤΑΙ. Η δαπάνη
+    // έχει ήδη μπει· αν το σημάδι δεν γραφτεί, το κουμπί ξαναζωντανεύει στην
+    // επόμενη φόρτωση κι η ίδια δαπάνη μπαίνει δεύτερη φορά.
+    //
+    // ΤΟ ΜΗΝΥΜΑ ΕΙΝΑΙ ΔΙΚΟ ΤΟΥ, ΓΙΑΤΙ ΤΟ ΓΕΝΙΚΟ ΘΑ ΕΛΕΓΕ ΛΑΘΟΣ ΠΡΑΓΜΑ. «Οι
+    // ρυθμίσεις κοινοχρήστων δεν αποθηκεύτηκαν» αφήνει τον χρήστη να νομίζει ότι
+    // χάθηκε κι η δαπάνη — κι να ξαναπατήσει, που είναι ακριβώς το σφάλμα.
     const n = extras.map((ex, j) => j === i ? { ...ex, transferredToExpenses: true } : ex);
-    setExtras(n); upd({ extras: n });
+    setExtras(n);
+    if (!await updNow({ extras: n },
+      'Η δαπάνη ΚΑΤΑΧΩΡΗΘΗΚΕ, αλλά δεν σημειώθηκε ως μεταφερμένη. Μην την ξαναμεταφέρεις')) return;
     // Ο τόνος (θετικό/αρνητικό) δηλώνεται πια ρητά. Πριν, η επιτυχία ξεχώριζε από
     // την αποτυχία με `transferMsg.startsWith('Σφάλμα')` — αν άλλαζε η διατύπωση
     // του μηνύματος, η αποτυχία εμφανιζόταν ουδέτερη και διαβαζόταν ως επιτυχία.
