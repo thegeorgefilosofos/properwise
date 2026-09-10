@@ -154,7 +154,7 @@ export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
           <tbody>
             {MATRIX.map(row => (
               <tr key={row.label}>
-                <th scope="row" className="plan-matrix-row-label" style={{ color: 'var(--text-secondary)' }}>{row.label}</th>
+                <th scope="row" style={{ color: 'var(--text-secondary)' }}>{row.label}</th>
                 {COMPARED.map(id => {
                   const v = row.values[id];
                   return (
