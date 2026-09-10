@@ -6,7 +6,6 @@ import CookieConsent from "./CookieConsent";
 import PwaProvider from "./PwaProvider";
 import { ToastHost } from "@/components/Toast";
 import ErrorListener from "@/components/ErrorListener";
-import CopyPlain from "@/components/CopyPlain";
 import { ConfirmHost } from "@/components/ConfirmDialog";
 import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/core/site";
 
@@ -113,6 +112,50 @@ const themeInitScript = `
 })();
 `;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Ο ΚΑΘΑΡΙΣΤΗΣ ΤΗΣ ΑΝΤΙΓΡΑΦΗΣ ΤΡΕΧΕΙ ΠΡΙΝ ΤΗΝ ΕΝΥΔΑΤΩΣΗ, ΟΧΙ ΜΕΤΑ
+// ─────────────────────────────────────────────────────────────────────────
+// ΤΙ ΗΤΑΝ ΛΑΘΟΣ ΣΤΗΝ ΠΡΩΤΗ ΜΟΡΦΗ. Γράφτηκε ως συστατικό React με `useEffect`,
+// οπότε ο χειριστής έμπαινε ΜΟΝΟ αφού ενυδατωθεί η σελίδα. Μετρημένο σε
+// προσομοίωση μεσαίου Android, το δάπεδο κάθε διαδρομής είναι 565 χιλιοστά
+// ανάλυσης κι μεταγλώττισης — δηλαδή υπήρχε μισό δευτερόλεπτο κατά το οποίο η
+// σελίδα φαινόταν ολόκληρη, το κείμενο επιλεγόταν κανονικά κι η αντιγραφή
+// έδινε ΠΑΛΙ τα αόρατα ενωτικά. Ακριβώς η περίπτωση που έπρεπε να καλύψει.
+//
+// ΓΙΑΤΙ ΔΕΝ ΧΡΕΙΑΖΟΤΑΝ ΠΟΤΕ React. Είναι ένας ακροατής συμβάντος στο
+// `document`: καμία κατάσταση, καμία απόδοση, τίποτα να ξαναζωγραφιστεί.
+// Ως συστατικό πελάτη πλήρωνε ενυδάτωση για να μην κάνει τίποτα ορατό.
+//
+// ΙΔΙΟ ΠΡΟΤΥΠΟ ΜΕ ΤΟ ΘΕΜΑ, δύο δεκάδες γραμμές πιο πάνω: ενσωματωμένο σενάριο
+// με nonce στο `<head>`, που τρέχει πριν από κάθε ζωγραφική. Το `document`
+// υπάρχει ήδη όταν τρέχει ένα σενάριο στο head — ο ακροατής μπαίνει στο
+// `document`, όχι σε κόμβο που δεν έχει φτιαχτεί.
+const copyPlainScript = `
+(function() {
+  try {
+    var SHY = /\u00AD/g;
+    document.addEventListener('copy', function (e) {
+      var sel = window.getSelection();
+      var text = sel ? sel.toString() : '';
+      if (!text || text.indexOf('\u00AD') === -1) return;
+      var data = e.clipboardData;
+      if (!data) return;
+      var html = '';
+      try {
+        if (sel && sel.rangeCount > 0) {
+          var box = document.createElement('div');
+          box.appendChild(sel.getRangeAt(0).cloneContents());
+          html = box.innerHTML.replace(SHY, '');
+        }
+      } catch (err) { html = ''; }
+      data.setData('text/plain', text.replace(SHY, ''));
+      if (html) data.setData('text/html', html);
+      e.preventDefault();
+    });
+  } catch (e) {}
+})();
+`;
+
 export default async function RootLayout({
   children,
 }: {
@@ -131,12 +174,13 @@ export default async function RootLayout({
         {/* Καμία εξωτερική γραμματοσειρά: όλα self-hosted (Inter/Roboto Mono) + inline SVG εικονίδια. */}
         {/* Αρχικοποίηση θέματος: πρέπει να τρέξει πριν τη ζωγραφική, αλλιώς αναβοσβήνει */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* Ο συλλαβισμός μένει στη σελίδα· δεν φεύγει στο πρόχειρο. Πριν τη ζωγραφική,
+            ώστε να ισχύει κι για όποιον αντιγράψει προτού ενυδατωθεί η σελίδα. */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: copyPlainScript }} />
       </head>
       <body>
         <ThemeProvider>
           <ErrorListener />
-          {/* Ο συλλαβισμός μένει στη σελίδα· δεν φεύγει στο πρόχειρο του χρήστη. */}
-          <CopyPlain />
           {/* ── ΤΟ ΠΛΑΙΣΙΟ COOKIES ΜΠΡΟΣΤΑ ΑΠΟ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ, ΣΤΗ ΣΕΙΡΑ TAB ──
               Είναι `position: fixed`, οπότε η σειρά στο DOM δεν αλλάζει τίποτα
               οπτικά — αλλάζει ΜΟΝΟ πού το συναντά το πληκτρολόγιο. Οσο ερχόταν
