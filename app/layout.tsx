@@ -6,6 +6,7 @@ import CookieConsent from "./CookieConsent";
 import PwaProvider from "./PwaProvider";
 import { ToastHost } from "@/components/Toast";
 import ErrorListener from "@/components/ErrorListener";
+import CopyPlain from "@/components/CopyPlain";
 import { ConfirmHost } from "@/components/ConfirmDialog";
 import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/core/site";
 
@@ -134,6 +135,8 @@ export default async function RootLayout({
       <body>
         <ThemeProvider>
           <ErrorListener />
+          {/* Ο συλλαβισμός μένει στη σελίδα· δεν φεύγει στο πρόχειρο του χρήστη. */}
+          <CopyPlain />
           {/* ── ΤΟ ΠΛΑΙΣΙΟ COOKIES ΜΠΡΟΣΤΑ ΑΠΟ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ, ΣΤΗ ΣΕΙΡΑ TAB ──
               Είναι `position: fixed`, οπότε η σειρά στο DOM δεν αλλάζει τίποτα
               οπτικά — αλλάζει ΜΟΝΟ πού το συναντά το πληκτρολόγιο. Οσο ερχόταν
