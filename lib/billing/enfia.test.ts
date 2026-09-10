@@ -433,6 +433,56 @@ ok('μηδέν έτη → νεόδμητο (κανονική περίπτωση)
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ΤΟ ΠΟΣΟΣΤΟ ΙΔΙΟΚΤΗΣΙΑΣ ΕΦΑΡΜΟΖΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΚΙ ΜΟΝΟ ΟΠΟΥ ΠΡΕΠΕΙ
+// ─────────────────────────────────────────────────────────────────────────
+// Οι δύο αξίες που δέχεται η μηχανή ΔΕΝ είναι η ίδια:
+//
+//   `totalValue`     συνολική περιουσία ΤΟΥ ΦΟΡΟΛΟΓΟΥΜΕΝΟΥ → ΜΕΡΙΔΙΟ
+//   `propertyValue`  αντικειμενική αξία ΤΟΥ ΑΚΙΝΗΤΟΥ       → ΟΛΟΚΛΗΡΗ
+//
+// Ο δημόσιος υπολογιστής περνούσε κι τις δύο ίσες με το μερίδιο. Η
+// `enfiaExtraPropertyTax` κόβει η ίδια στο ποσοστό, οπότε το 50% έμπαινε
+// δεύτερη φορά — κι μαζί έπεφτε κι το κατώφλι των 400.000€, κάτω από το οποίο
+// ο πρόσθετος φόρος δεν υπάρχει καθόλου. Ο έλεγχος από κάτω κλειδώνει κι τη
+// διαφορά κι τη σιωπή της: με ιδιοκτησία 100% τα δύο μονοπάτια ταυτίζονται.
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const base = { sqm: 300, zone: '2501_3000', floor: 'second', age: 'y26_plus' }
+  const FULL = 300 * 3000            // 900.000€ η αξία του ακινήτου
+  const HALF = FULL / 2              // 450.000€ το μερίδιο του συνιδιοκτήτη
+
+  const doubled = estimateENFIA({ ...base, ownership: 50, totalValue: HALF, propertyValue: HALF })!
+  const correct = estimateENFIA({ ...base, ownership: 50, totalValue: HALF, propertyValue: FULL })!
+
+  ok('ο βασικός φόρος δεν επηρεάζεται: το ποσοστό ήταν πάντα σωστό εκεί',
+     doubled.basic === correct.basic)
+  ok('ο πρόσθετος φόρος της Ενότητας Γ έλειπε σχεδόν ολόκληρος',
+     near(doubled.extra, 50) && near(correct.extra, 1000))
+  ok('το ετήσιο έβγαινε 950,00€ χαμηλότερο',
+     near(correct.annual - doubled.annual, 950))
+  ok('κι το λάθος ήταν ΠΑΝΤΑ προς τα κάτω', doubled.annual < correct.annual)
+
+  // ΚΑΜΙΑ ΑΛΛΑΓΗ ΓΙΑ ΟΠΟΙΟΝ ΕΧΕΙ ΟΛΟΚΛΗΡΟ ΤΟ ΑΚΙΝΗΤΟ — δηλαδή για τη
+  // συντριπτική πλειοψηφία όσων ανοίγουν τη δημόσια σελίδα.
+  // Γράφεται όπως το κάνει η οθόνη: μερίδιο = αξία × ποσοστό. Στο 100% το
+  // μερίδιο ΕΙΝΑΙ η αξία, οπότε παλιά κι νέα είσοδος συμπίπτουν.
+  const asScreen = (own: number, propertyValue: number) =>
+    estimateENFIA({ ...base, ownership: own, totalValue: FULL * own / 100, propertyValue })!.annual
+  ok('στο 100% τα δύο μονοπάτια είναι ταυτόσημα',
+     asScreen(100, FULL * 100 / 100) === asScreen(100, FULL))
+  ok('κι στο 50% διαφέρουν, που είναι όλο το εύρημα',
+     asScreen(50, FULL * 50 / 100) !== asScreen(50, FULL))
+
+  // Κάτω από το αφορολόγητο των 400.000€ η Ενότητα Γ δεν παίζει καθόλου, οπότε
+  // το σφάλμα ήταν αόρατο: γι' αυτό επιβίωσε σε δημόσια σελίδα.
+  const small = { sqm: 85, zone: '751_1500', floor: 'second', age: 'y26_plus' }
+  const sFull = 85 * 1400, sHalf = sFull / 2
+  ok('σε μικρό διαμέρισμα δεν υπήρχε καμία διαφορά',
+     estimateENFIA({ ...small, ownership: 50, totalValue: sHalf, propertyValue: sHalf })!.annual ===
+     estimateENFIA({ ...small, ownership: 50, totalValue: sHalf, propertyValue: sFull })!.annual)
+}
+
 console.log(`enfia.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed > 0) { process.exit(1) }
 console.log('όλα πέρασαν')
