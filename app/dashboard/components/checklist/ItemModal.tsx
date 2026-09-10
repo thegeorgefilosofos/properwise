@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import { T, Modal, Btn, ChipToggle, fe, fieldRow } from '@/components/Theme'
+import { hy } from '@/components/Hyphen'
 import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { DatePicker, CustomSelect } from '../UIComponents'
 import { FL, Inp, Sel, SubTaskEditor, CommentsEditor, iStyle } from './Bits'
@@ -104,8 +105,13 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0, flex: 1, minWidth: 180, lineHeight: 1.5 }}>
-              Μπαίνει μόνο από το τιμολόγιο ή την απόδειξη. Φωτογράφισέ το και καταχωρείται το ποσό, το αρχείο και η δαπάνη μαζί.
+            {/* ΤΟ ΚΕΙΜΕΝΟ ΔΙΠΛΑ ΣΤΟ ΚΟΥΜΠΙ ΘΕΛΕΙ ΚΛΕΙΣΤΗ ΔΕΞΙΑ ΑΚΡΗ. Το παράθυρο «md»
+                είναι 620· μείον το γέμισμα των 24, το πλαίσιο των 14 κι το κουμπί της
+                φωτογράφισης, στην παράγραφο μένουν περίπου 342 — τρεις γραμμές στα 12.
+                Το minWidth 180 το λέει ήδη μόνο του: η στήλη είναι στενή επίτηδες.
+                Στοίχιση μαζί με συλλαβισμό, γιατί μόνη της τεντώνει τα κενά. */}
+            <p className="po-just" style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0, flex: 1, minWidth: 180, lineHeight: 1.5 }}>
+              {hy(<>Μπαίνει μόνο από το τιμολόγιο ή την απόδειξη. Φωτογράφισέ το και καταχωρείται το ποσό, το αρχείο και η δαπάνη μαζί.</>)}
             </p>
             {onScan && <Btn variant="primary" onClick={onScan}>Φωτογράφισε το τιμολόγιο</Btn>}
           </div>

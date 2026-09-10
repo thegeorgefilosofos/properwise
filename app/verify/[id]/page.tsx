@@ -10,6 +10,7 @@ import { TriangleAlert, CircleCheckBig } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { ABSENT, T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 import { useCallback, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -155,9 +156,15 @@ export default function VerifyDocument() {
               <div><div style={label}>Αριθμός εγγράφου</div><div style={{ ...value, fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em' }}>{doc.id}</div></div>
             </div>
 
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: 24, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-              Η σελίδα επιβεβαιώνει ότι το έγγραφο με τον παραπάνω κωδικό δημιουργήθηκε από την πλατφόρμα PROPERWISE.
-              Δεν εμφανίζονται ποσά ή ευαίσθητα στοιχεία. Το περιεχόμενο του εγγράφου παραμένει ευθύνη του εκδότη.
+            {/* ΤΑ ΨΙΛΑ ΓΡΑΜΜΑΤΑ ΤΗΣ ΕΠΑΛΗΘΕΥΣΗΣ ΚΛΕΙΝΟΥΝ ΚΑΙ ΔΕΞΙΑ. Η κάρτα κόβει στα
+                460 κι το γέμισμα των 30 αφήνει 400 στο κείμενο: 204 χαρακτήρες στα 11,
+                δηλαδή τέσσερις γραμμές. Σε δημόσια σελίδα που βεβαιώνει γνησιότητα
+                εγγράφου, η ριγμένη άκρη είναι το μόνο σημείο που δεν μοιάζει με χαρτί.
+                Η στοίχιση πάει μαζί με τον συλλαβισμό — αλλιώς τεντώνει τα κενά. Το
+                «PROPERWISE» είναι λατινικό: μένει ακέραιο. */}
+            <p className="po-just" style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: 24, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+              {hy(<>Η σελίδα επιβεβαιώνει ότι το έγγραφο με τον παραπάνω κωδικό δημιουργήθηκε από την πλατφόρμα PROPERWISE.
+              Δεν εμφανίζονται ποσά ή ευαίσθητα στοιχεία. Το περιεχόμενο του εγγράφου παραμένει ευθύνη του εκδότη.</>)}
             </p>
           </div>
         )}

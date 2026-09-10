@@ -49,6 +49,7 @@ import * as stayStore from '@/lib/data/stays';
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory';
 import { T, PageTitle, KPIGrid, Badge, InfoBanner, Btn, IconBtn, ChipToggle, LinkBtn, ExportButton, EmptyState, Skeleton, SkeletonKPIs, SecHdr, Modal, SideSheet, fe, fd, fp, ABSENT_DATE, formGrid, fixedCols, Tile, RecordCard, StatStrip } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 import { confirmDialog } from '@/components/confirmBus';
 import { NumberInput, TextInput, CustomSelect, DatePicker, Textarea, Toggle } from './UIComponents';
 import MonthBars from '@/components/MonthBars';
@@ -1509,9 +1510,15 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                   {(() => {
                     const g = parseFloat(stayForm.gross_guest_paid) || 0;
                     if (g <= 0) {
+                      // 281 χαρακτήρες σε μέτρο ~583 (φύλλο 720, μείον τα γεμίσματα
+                      // του φύλλου και της ταινίας): τρεις γραμμές στα 11, με ριγμένη
+                      // δεξιά άκρη μέσα σε πλαίσιο που έχει τη δική του. Το className
+                      // του InfoBanner προσγειώνεται στο ΚΕΙΜΕΝΟ, όχι στο πλαίσιο,
+                      // οπότε εκεί πάει η po-just· το hy() τυλίγει όλο το περιεχόμενο
+                      // ώστε να πιάσει και τα λεκτικά μέσα στα έντονα.
                       return stayForm.basis === 'unknown' && (parseFloat(stayForm.legacyTotal) || 0) > 0 ? (
-                        <InfoBanner tone="warning">
-                          Αυτή η διαμονή έχει καταγεγραμμένο ποσό <strong>{fe(parseFloat(stayForm.legacyTotal))}</strong> αλλά <strong>δεν ξέρουμε τι είναι</strong>: ακαθάριστο ή καθαρή είσπραξη. Καταγράφηκε πριν η εφαρμογή τα ξεχωρίσει και δεν μαντεύουμε. Συμπλήρωσε «Πλήρωσε ο επισκέπτης» και το ακαθάριστο θα υπολογιστεί σωστά, ή δήλωσε παρακάτω τι σημαίνει το ποσό.
+                        <InfoBanner tone="warning" className="po-just">
+                          {hy(<>Αυτή η διαμονή έχει καταγεγραμμένο ποσό <strong>{fe(parseFloat(stayForm.legacyTotal))}</strong> αλλά <strong>δεν ξέρουμε τι είναι</strong>: ακαθάριστο ή καθαρή είσπραξη. Καταγράφηκε πριν η εφαρμογή τα ξεχωρίσει και δεν μαντεύουμε. Συμπλήρωσε «Πλήρωσε ο επισκέπτης» και το ακαθάριστο θα υπολογιστεί σωστά, ή δήλωσε παρακάτω τι σημαίνει το ποσό.</>)}
                         </InfoBanner>
                       ) : null;
                     }

@@ -6,6 +6,7 @@ import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2026, taxRateLabel } from '@/lib/b
 import { fe, fp } from '@/lib/core/format'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
 import LiveResult from '@/components/LiveResult'
+import { hy } from '@/components/Hyphen'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ζωντανό εργαλείο απόδοσης μέσα στο landing. Τρέχει την ΙΔΙΑ ακριβή φορολογική
@@ -156,8 +157,13 @@ export default function LandingCalculator() {
           <Stat label="Μέσος συντελεστής" value={pct(effRate)} />
         </div>
         <div style={{ flex: 1 }} />
-        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
-          Ενδεικτικός υπολογισμός με την κλίμακα ενοικίων 2026 και τεκμαρτή έκπτωση {fp(PRESUMPTIVE_DEDUCTION_RATE * 100)} για δαπάνες, που από 1/1/2026 προϋποθέτει είσπραξη μέσω τραπέζης. Δεν υποκαθιστά τον λογιστή σου.
+        {/* Η ΕΠΙΦΥΛΑΞΗ ΔΙΑΒΑΖΕΤΑΙ ΣΑΝ ΟΡΟΣ, ΑΡΑ ΚΛΕΙΝΕΙ ΚΑΙ ΔΕΞΙΑ. Το πλέγμα των 1140
+            δίνει στήλη 508 και το γέμισμα των 32 αφήνει 444: 174 χαρακτήρες στα 12
+            βγάζουν τρεις γραμμές με ριγμένη άκρη, ακριβώς κάτω από τον αριθμό που
+            πρέπει να πείσει. Ο συλλαβισμός συνοδεύει τη στοίχιση — μόνη της τεντώνει
+            τα κενά. Το ποσοστό κι οι ημερομηνίες είναι ψηφία: μένουν ακέραια. */}
+        <p className="po-just" style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
+          {hy(<>Ενδεικτικός υπολογισμός με την κλίμακα ενοικίων 2026 και τεκμαρτή έκπτωση {fp(PRESUMPTIVE_DEDUCTION_RATE * 100)} για δαπάνες, που από 1/1/2026 προϋποθέτει είσπραξη μέσω τραπέζης. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
           Δες τα δικά σου δεδομένα, αυτόματα

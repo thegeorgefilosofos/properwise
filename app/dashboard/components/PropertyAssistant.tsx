@@ -109,6 +109,7 @@ type ContactLite = { name: string; role: string; phone: string; email: string };
 
 import { suggestedOpeners, greeting as buildGreeting, type OpenerContext } from '@/lib/assistant/openers';
 import { modelFor } from '@/lib/assistant/model';
+import { hy } from '@/components/Hyphen';
 import { scanFile, commitScannedDoc, RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT, type ReconcileQuestion } from './scanDoc';
 import { DOC_TYPE_LABELS, type ScannedDoc } from '@/lib/billing/documents';
 import { remainingLine, type QuotaSnapshot } from '@/lib/billing/aiLimits';
@@ -1656,7 +1657,12 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     στήλη: τέσσερις γραμμές που πατιούνται, χωρίς να μοιάζουν με μενού. */}
                 {msgs.length === 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
-                    <p style={{ ...TT.body, fontSize: 14, lineHeight: 1.6, margin: 0, maxWidth: '36ch' }}>{greeting}</p>
+                    {/* ΤΟ ΣΤΕΝΟΤΕΡΟ ΚΕΙΜΕΝΟ ΤΗΣ ΕΦΑΡΜΟΓΗΣ. Ο χαιρετισμός της κενής
+                        κατάστασης είναι 159 χαρακτήρες σε μέτρο 36ch — μετρημένο,
+                        τέσσερις γραμμές μέσα σε πάνελ 390 και πέντε στα 288 του
+                        κινητού, με ριγμένη δεξιά άκρη. Η στοίχιση ΧΩΡΙΣ συλλαβισμό
+                        τεντώνει τα κενά, γι' αυτό η po-just πάει πάντα μαζί με hy(). */}
+                    <p className="po-just" style={{ ...TT.body, fontSize: 14, lineHeight: 1.6, margin: 0, maxWidth: '36ch' }}>{hy(greeting)}</p>
                     <div>
                       <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 6 }}>Ρώτα κάτι δικό σου</div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1744,13 +1750,19 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                   </div>
                 )}
                 {busy && <div style={{ display: 'flex', gap: 4, padding: '4px 2px' }}>{[0, 1, 2].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)', animation: `pa-bounce 1s ${i * 0.15}s infinite ease-in-out` }} />)}</div>}
+                {/* Το κουτί του σφάλματος μετρά 332 εικονοστοιχεία: πάνελ 390,
+                    μείον 32 το γέμισμα του σώματος, μείον 26 το δικό του. Το μήνυμα
+                    του κλειδιού είναι 126 χαρακτήρες στα 12 — τρεις γραμμές με
+                    ριγμένη δεξιά άκρη. Πάει πέρα πέρα με συλλαβισμό· τα μηνύματα
+                    μιας γραμμής από κάτω δεν επηρεάζονται, αφού η τελευταία γραμμή
+                    δεν τεντώνεται ποτέ. */}
                 {err && (
-                  <div style={{ background: err === 'key' ? 'var(--bg-elevated)' : 'var(--warning-soft)', border: `1px solid ${err === 'key' ? 'var(--border-subtle)' : 'var(--warning-border)'}`, borderRadius: T.radius.inner, padding: '10px 13px', fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    {err === 'key'
+                  <div className="po-just" style={{ background: err === 'key' ? 'var(--bg-elevated)' : 'var(--warning-soft)', border: `1px solid ${err === 'key' ? 'var(--border-subtle)' : 'var(--warning-border)'}`, borderRadius: T.radius.inner, padding: '10px 13px', fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    {hy(err === 'key'
                       ? noKeyNotice(prefs.formal)
                       : err === 'limit'
                         ? (limitMsg || 'Έφτασες το όριο ερωτήσεων. Ανανεώνεται σύντομα.')
-                        : 'Δεν μπόρεσα να απαντήσω τώρα, δοκίμασε ξανά σε λίγο.'}
+                        : 'Δεν μπόρεσα να απαντήσω τώρα, δοκίμασε ξανά σε λίγο.')}
                   </div>
                 )}
               </div>

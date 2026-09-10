@@ -10,6 +10,7 @@ import GoogleG from '../GoogleG'
 import { BackLink } from '../BackLink'
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
+import { hy } from '@/components/Hyphen'
 import { SAY, failed } from '@/lib/core/dbError';
 import { PLANS, TRIAL_DAYS, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 // Καθαρή λογική, χωρίς React/Supabase: ασφαλής σε 'use client'.
@@ -496,8 +497,14 @@ export default function SignupPage() {
               {isReferralCode(refCode) && (
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', marginBottom: chosenPlan ? 12 : 24, borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)', flexShrink: 0, marginTop: 8 }} />
-                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                    Ηρθες με πρόσκληση. Ο κωδικός <strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong> καταγράφεται στον λογαριασμό σου με την εγγραφή και μετράει σε εκείνον που σε κάλεσε. Η δοκιμή των {TRIAL_DAYS} ημερών είναι η ίδια για κάθε νέο λογαριασμό, με πρόσκληση ή χωρίς.
+                  {/* ΤΕΣΣΕΡΙΣ ΩΣ ΠΕΝΤΕ ΓΡΑΜΜΕΣ ΣΕ ΣΤΗΛΗ 400. Το πλαίσιο αφαιρεί το γέμισμα των 14 κι
+                      την κουκκίδα με το κενό της, οπότε στο κείμενο μένουν 354: 208 χαρακτήρες
+                      στα 13. Ριγμένη δεξιά άκρη ακριβώς πάνω από το πλαίσιο του τιμοκαταλόγου
+                      διαβάζεται ως δεύτερη, πρόχειρη σημείωση. Στοίχιση με συλλαβισμό, ποτέ
+                      χωρίς. Ο κωδικός είναι PO με επτά λατινικά ή ψηφία: ο συλλαβισμός
+                      δεν αγγίζει λατινικά, οπότε μένει ακέραιος. */}
+                  <span className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                    {hy(<>Ηρθες με πρόσκληση. Ο κωδικός <strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong> καταγράφεται στον λογαριασμό σου με την εγγραφή και μετράει σε εκείνον που σε κάλεσε. Η δοκιμή των {TRIAL_DAYS} ημερών είναι η ίδια για κάθε νέο λογαριασμό, με πρόσκληση ή χωρίς.</>)}
                   </span>
                 </div>
               )}

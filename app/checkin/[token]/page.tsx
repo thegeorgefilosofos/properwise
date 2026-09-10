@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { T, Btn, formGrid } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 
 interface CheckinContext { property: { name: string; address: string | null } }
 
@@ -152,9 +153,15 @@ export default function GuestCheckin() {
                   <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px' }}>
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
                       <input type="checkbox" checked={privacyConsent} onChange={e => setPrivacyConsent(e.target.checked)} className="po-lead-ico" style={{ width: 18, height: 18, accentColor: 'var(--accent)' }} />
-                      <span>
-                        Συναινώ στην επεξεργασία των στοιχείων μου από τον οικοδεσπότη, αποκλειστικά για τη νόμιμη δήλωση διαμονής και την επικοινωνία της κράτησης. Έλαβα γνώση της{' '}
-                        <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline' }}>Πολιτικής απορρήτου</a>.
+                      {/* ΝΟΜΙΚΟ ΚΕΙΜΕΝΟ ΜΕ ΚΛΕΙΣΤΗ ΔΕΞΙΑ ΑΚΡΗ. Το κουτί των 560 μείον το γέμισμα
+                          της κάρτας, του πλαισίου και το κουτάκι επιλογής αφήνει 406 στο κείμενο:
+                          177 χαρακτήρες στα 12, δηλαδή τρεις γραμμές. Ριγμένη άκρη σε συγκατάθεση
+                          που διαβάζει ξένος άνθρωπος από κινητό μοιάζει με σημείωση αντί για όρο.
+                          Το po-just δεν πάει ποτέ μόνο του: χωρίς συλλαβισμό η στοίχιση τεντώνει
+                          τα κενά αντί να σπάσει λέξη. */}
+                      <span className="po-just">
+                        {hy(<>Συναινώ στην επεξεργασία των στοιχείων μου από τον οικοδεσπότη, αποκλειστικά για τη νόμιμη δήλωση διαμονής και την επικοινωνία της κράτησης. Έλαβα γνώση της{' '}
+                        <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline' }}>Πολιτικής απορρήτου</a>.</>)}
                       </span>
                     </label>
                   </div>
