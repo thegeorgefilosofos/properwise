@@ -4570,6 +4570,19 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .po-table tbody tr:last-child > .plan-matrix-row-label { box-shadow: none; }
 /* Ο πίνακας κυλά μέσα στο κουτί του· το κουτί κρατά τη στρογγυλή γωνία. */
 .plan-matrix { overflow-x: auto; }
+/* Η ΚΕΦΑΛΙΔΑ ΣΤΗΛΗΣ ΔΕΝ ΣΠΑΕΙ ΠΟΤΕ ΜΕΣΑ ΣΤΗ ΛΕΞΗ. Ο γενικός κανόνας του
+   `.po-table` δίνει `overflow-wrap: anywhere` στα κελιά, που είναι σωστό για
+   περιεχόμενο —μια μακριά διεύθυνση πρέπει να σπάσει κάπου— και ΛΑΘΟΣ για το
+   όνομα μιας στήλης: το «ΙΔΙΟΚΤΗΤΗΣ» έγινε «ΙΔΙΟΚΤΗΤ / ΗΣ» στα 390. Ενα όνομα
+   που σπάει στη μέση δεν διαβάζεται ως όνομα. Εδώ η κεφαλίδα ή χωράει ολόκληρη
+   ή ΞΕΧΕΙΛΙΖΕΙ ορατά — και τότε το πιάνει ο σαρωτής διάταξης, που είναι ακριβώς
+   ό,τι θέλουμε: να φανεί, όχι να κρυφτεί ως σπασμένη λέξη. */
+.po-table thead th { overflow-wrap: normal; }
+/* Οι στήλες των πακέτων είναι στενές και κεντραρισμένες: το γέμισμα των 14 ανά
+   πλευρά έτρωγε 28 από τα 155 που έχει η στήλη. Δέκα αρκούν όταν το κείμενο
+   είναι κεντραρισμένο και δεν ακουμπά σε γείτονα. */
+.plan-matrix .po-table thead th + th,
+.plan-matrix .po-table tbody td { padding-left: 10px; padding-right: 10px; }
 
 .po-scroll-x, .lp-plans, .lp-aud, .lp-duo {
   overscroll-behavior-x: contain;
