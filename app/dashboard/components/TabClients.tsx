@@ -54,6 +54,8 @@ import { confirmDialog } from '@/components/confirmBus';
 import { NumberInput, TextInput, CustomSelect, DatePicker, Textarea, Toggle } from './UIComponents';
 import MonthBars from '@/components/MonthBars';
 import { downloadTableXlsx } from './exportCsv';
+import * as checkinLink from '@/lib/data/checkinLink';
+import { notifyError } from '@/components/Toast';
 import { saved, savedData } from '@/components/dbWrite';
 
 import ClientCompose from './ClientCompose';
@@ -526,12 +528,26 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
     supabase.from('guest_checkins').select('id,full_name,created_at,id_number,nationality,birth_date,phone,arrival_date,guests_count,accepts_rules').eq('client_id', openId).order('created_at', { ascending: false }).then(({ data }) => setCheckinsOf({ clientId: openId, rows: (data || []) as Checkin[] }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId]);
+  // Ο ΣΥΝΔΕΣΜΟΣ ΚΙ Η ΛΗΞΗ ΤΟΥ ΖΟΥΝ ΣΤΟ lib/data/checkinLink.ts, ΜΑΖΙ. Εδώ ήταν
+  // γραμμένο το `upsert` με το χέρι κι η διεύθυνση από τον περιηγητή· ο βοηθός
+  // είχε το ΙΔΙΟ ζευγάρι σφαλμάτων, αντιγραμμένο. Το γιατί είναι εκεί.
   const copyCheckinLink = async () => {
     if (!openId) return;
     const propId = (propsByClient.get(openId) || [])[0]?.id || null;
-    const data = await savedData<{ token?: string }>('Ο σύνδεσμος προ-άφιξης δεν δημιουργήθηκε',
-      supabase.from('checkin_links').upsert({ user_id: userId, client_id: openId, property_id: propId, active: true }, { onConflict: 'user_id,client_id' }).select('token').maybeSingle());
-    if (data?.token) { try { await navigator.clipboard.writeText(`${window.location.origin}/checkin/${data.token}`); } catch { /* ignore */ } setCopiedFor(openId); setTimeout(() => setCopiedFor(null), 2600); }
+    const data = await savedData<{ token: string }>('Ο σύνδεσμος προ-άφιξης δεν δημιουργήθηκε',
+      checkinLink.issue(supabase, userId, openId, propId, new Date()));
+    if (!data?.token) return;
+    // «ΑΝΤΙΓΡΑΦΗΚΕ» ΜΟΝΟ ΟΤΑΝ ΑΝΤΙΓΡΑΦΤΗΚΕ. Το `catch` κατάπινε την αποτυχία
+    // του προχείρου κι το κουμπί έλεγε «Ο σύνδεσμος αντιγράφηκε» με άδειο
+    // πρόχειρο — σε Safari χωρίς άδεια, ή σε σελίδα χωρίς ασφαλές πλαίσιο, ο
+    // ιδιοκτήτης πήγαινε να επικολλήσει στο WhatsApp κι δεν είχε τίποτα.
+    try {
+      await navigator.clipboard.writeText(checkinLink.checkinUrl(data.token));
+    } catch {
+      notifyError('Ο σύνδεσμος δεν μπήκε στο πρόχειρο. Άνοιξε την καρτέλα του πελάτη κι αντίγραψέ τον από εκεί.');
+      return;
+    }
+    setCopiedFor(openId); setTimeout(() => setCopiedFor(null), 2600);
   };
 
   // Εισαγωγή κράτησης από email: ανάλυση με AI → πρόχειρη διαμονή προς αποθήκευση.

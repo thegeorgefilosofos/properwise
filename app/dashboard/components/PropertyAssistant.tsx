@@ -117,6 +117,7 @@ import { athensToday, athensNowLabel, daysUntil, isoMonth } from '@/lib/core/tim
 import { MONTHS_SHORT, MONTHS_GEN } from '@/lib/core/months';
 import { useRemembered } from '@/components/useRememberedFlag';
 import { useLoad } from '@/app/hooks/useLoad';
+import * as checkinLink from '@/lib/data/checkinLink';
 
 // Ο άγνωστος αριθμός γράφεται 0,00€, όχι παύλα: η παύλα δεν στοιχίζεται με
 // τίποτα και σε στήλη ποσών διαβάζεται ως σφάλμα (lib/core/format.ts).
@@ -1001,9 +1002,12 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     const c = findClient(who);
     if (!c) { setMsgs(m => [...m, { role: 'assistant', text: `Δεν βρήκα ξεκάθαρα τον πελάτη «${who}». Πες μου ακριβές όνομα ή τηλέφωνο, ή άνοιξε τους ${navLabel('clients')}.`, action: { type: 'go', tab: 'clients' } }]); return; }
     try {
-      const data = await must(supabase.from('checkin_links').upsert({ user_id: userId, client_id: c.id, property_id: propertyId, active: true }, { onConflict: 'user_id,client_id' }).select('token').maybeSingle());
+      // Το ίδιο ζευγάρι σφαλμάτων ήταν κι εδώ, αντιγραμμένο από την καρτέλα
+      // Πελατών: διεύθυνση από τον περιηγητή κι κουπόνι που δεν ανανεωνόταν. Ο
+      // κανόνας ζει πλέον σε ένα σημείο, στο `lib/data/checkinLink.ts`.
+      const data = await must(checkinLink.issue(supabase, userId, c.id, propertyId, new Date()));
       if (data?.token) {
-        const url = `${window.location.origin}/checkin/${data.token}`;
+        const url = checkinLink.checkinUrl(data.token);
         try { await navigator.clipboard.writeText(url); } catch { /* το εμφανίζουμε ούτως ή άλλως */ }
         setMsgs(m => [...m, { role: 'assistant', text: `Έτοιμο. Αντέγραψα τον σύνδεσμο check-in για τον/την «${c.name}». Στείλ’ τον στον επισκέπτη σε WhatsApp ή Viber:\n${url}`, action: { type: 'go', tab: 'clients' } }]);
       } else throw new Error('no token');
