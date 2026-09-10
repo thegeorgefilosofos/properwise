@@ -74,9 +74,34 @@ export function propertyLines(props: readonly PortalProperty[]): PropertyLine[] 
   });
 }
 
+/** Πόσα δηλώνονται από αυτή τη γραμμή, με το ποσοστό συνιδιοκτησίας. */
+export const shareOf = (amount: number, ownership: number | null | undefined) => {
+  const pct = Number(ownership);
+  return Number.isFinite(pct) && pct > 0 && pct < 100 ? amount * (pct / 100) : amount;
+};
+
+/** Εχει έστω ένα ακίνητο ποσοστό μικρότερο του 100; */
+export const hasCoOwnership = (lines: readonly PropertyLine[]): boolean =>
+  lines.some(l => Number(l.p.ownership) > 0 && Number(l.p.ownership) < 100);
+
 /** Τα σύνολα της χρήσης. */
 export interface StatementTotals {
   income: number; expenses: number;
+  // ══ ΤΟ ΜΕΡΙΔΙΟ ΥΠΟΛΟΓΙΖΕΤΑΙ ΕΔΩ, ΓΙΑΤΙ ΕΔΩ ΤΟ ΔΙΑΒΑΖΟΥΝ ΚΑΙ ΟΙ ΔΥΟ ═══════
+  // ΤΟ ΣΦΑΛΜΑ. Η οθόνη του λογιστή έδειχνε τα σύνολα στο 100% κι υπολόγιζε τον
+  // ενδεικτικό φόρο πάνω τους. Το αρχείο .xlsx που κατεβαίνει από ΤΗΝ ΙΔΙΑ
+  // σελίδα είχε δικές του στήλες «Αναλογία», κομμένες στο ποσοστό, με σημείωση
+  // που το εξηγεί. Ο συνιδιοκτήτης στο 50% διάβαζε 12.000€ στην οθόνη κι
+  // 6.000€ στο αρχείο — κι ο φόρος της οθόνης ήταν υπολογισμένος στα 12.000.
+  //
+  // Η οθόνη μάλιστα ΤΥΠΩΝΕ «συνιδιοκτησία 50%» δίπλα στο νούμερο του 100%.
+  //
+  // Τα δύο μεγέθη μπαίνουν πλέον στα ίδια σύνολα, από την ΙΔΙΑ `shareOf`: δεν
+  // υπάρχει τρόπος να αποκλίνουν, γιατί δεν υπάρχουν δύο υπολογισμοί.
+  /** Το μερίδιο του ιδιοκτήτη. Ισο με το ολικό όταν δεν υπάρχει συνιδιοκτησία. */
+  incomeShare: number; expensesShare: number;
+  /** Υπάρχει έστω ένα ακίνητο με ποσοστό κάτω του 100; Τότε τα δύο διαφέρουν. */
+  hasShare: boolean;
   /** Καμία καταχώρηση εσόδου ή δαπάνης: δεν υπολογίζεται τίποτα πάνω σε αυτό. */
   hasEntries: boolean;
   staysUnresolved: number;
@@ -87,6 +112,9 @@ export function statementTotals(lines: readonly PropertyLine[]): StatementTotals
   const expenses = sum(lines.map(l => l.expenses));
   return {
     income, expenses,
+    incomeShare: sum(lines.map(l => shareOf(l.income, l.p.ownership))),
+    expensesShare: sum(lines.map(l => shareOf(l.expenses, l.p.ownership))),
+    hasShare: hasCoOwnership(lines),
     hasEntries: income > 0 || expenses > 0,
     staysUnresolved: sum(lines.map(l => l.staysUnresolved)),
   };
@@ -142,12 +170,6 @@ export function statementGaps(lines: readonly PropertyLine[]): Gap[] {
 /** Κενό κελί, όχι παύλα: η παύλα σε στήλη τιμών διαβάζεται ως τιμή. */
 const BLANK = '';
 
-/** Πόσα δηλώνονται από αυτή τη γραμμή, με το ποσοστό συνιδιοκτησίας. */
-const shareOf = (amount: number, ownership: number | null | undefined) => {
-  const pct = Number(ownership);
-  return Number.isFinite(pct) && pct > 0 && pct < 100 ? amount * (pct / 100) : amount;
-};
-
 export interface StatementFileInput {
   owner: string;
   year: number;
@@ -169,7 +191,7 @@ export function statementSheets(inp: StatementFileInput): XlsxSheet[] {
   ];
   // ΟΤΑΝ ΥΠΑΡΧΕΙ ΣΥΝΙΔΙΟΚΤΗΣΙΑ, ΛΕΓΕΤΑΙ. Δύο στήλες με το ίδιο ακίνητο και
   // διαφορετικό ποσό είναι ερώτηση, όχι πληροφορία, αν δεν εξηγηθεί.
-  if (lines.some(l => Number(l.p.ownership) > 0 && Number(l.p.ownership) < 100)) {
+  if (hasCoOwnership(lines)) {
     notes.push('Οι στήλες «Αναλογία» δείχνουν το μερίδιο του ιδιοκτήτη, στα έσοδα ΚΑΙ στις δαπάνες, με το ποσοστό συνιδιοκτησίας του ακινήτου. Δαπάνη δηλωμένη ρητά ως μοιρασμένη ή πληρωμένη από τρίτον δεν ξεχωρίζει σε αυτό το φύλλο.');
   }
   if (totals.staysUnresolved > 0) {
