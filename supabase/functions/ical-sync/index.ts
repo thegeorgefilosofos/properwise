@@ -279,6 +279,31 @@ async function ensureChannelClient(userId: string, channel: string): Promise<str
   return (data as { id: string }).id
 }
 
+/**
+ * Η γραμμή διαμονής που γράφει ο συγχρονισμός. ΑΝΤΙΓΡΑΦΟ του
+ * `lib/clients/ical.ts` — ο `guard-ical-mirror` κρατά τα δύο ίδια. Το γιατί
+ * κατέχει η ροή άλλες στήλες κι ο άνθρωπος άλλες είναι γραμμένο εκεί.
+ */
+interface SyncDraft { start: string; end: string; nights: number }
+interface SyncStay { client_id: string; notes: string | null }
+
+function syncStayRow(
+  d: SyncDraft, feed: Feed, uid: string, channelClientId: string, prev: SyncStay | null,
+): Record<string, unknown> {
+  return {
+    user_id: feed.user_id,
+    client_id: prev ? prev.client_id : channelClientId,
+    property_id: feed.property_id,
+    check_in: d.start,
+    check_out: d.end,
+    nights: d.nights,
+    channel: feed.channel,
+    source_uid: uid,
+    cancelled_at: null,
+    notes: prev ? prev.notes : 'Εισαγωγή iCal',
+  }
+}
+
 async function syncFeed(feed: Feed): Promise<Record<string, unknown>> {
   try {
     const text = await fetchIcal(feed.url)
@@ -309,26 +334,33 @@ async function syncFeed(feed: Feed): Promise<Record<string, unknown>> {
     // βγαίνουν από εδώ κρατούν τις παλιές γραμμές (χωρίς UID) από το να
     // ξαναμπούν. Αγνοώντας το `error`, μια αποτυχία άδειαζε το σύνολο και ΚΑΘΕ
     // παλιά κράτηση ξαναγραφόταν: διπλές διαμονές στο ημερολόγιο του ιδιοκτήτη.
+    //
+    // ΚΑΙ Η ΙΔΙΑ ΑΝΑΓΝΩΣΗ ΦΕΡΝΕΙ ΟΣΑ ΕΓΡΑΨΕ Ο ΑΝΘΡΩΠΟΣ. Το φίλτρο `source_uid is
+    // null` έφευγε κι οι στήλες `client_id` κι `notes` μπήκαν στην επιλογή: μία
+    // διαδρομή στον διακομιστή αντί για δύο — κι από αυτήν βγαίνουν κι τα δύο
+    // σύνολα που χρειάζεται η γραφή — οι παλιές κλειδαριές χωρίς UID κι ό,τι
+    // κατέχει ο χρήστης πάνω στις γραμμές που έχουν UID.
     const { data: existing, error: existingErr } = await admin.from('client_stays')
-      .select('property_id,check_in,check_out')
-      .eq('user_id', feed.user_id).eq('property_id', feed.property_id).is('source_uid', null)
+      .select('property_id,check_in,check_out,source_uid,client_id,notes')
+      .eq('user_id', feed.user_id).eq('property_id', feed.property_id)
     if (existingErr) throw new Error(`οι υπάρχουσες διαμονές δεν διαβάστηκαν: ${existingErr.message}`)
-    const keys = new Set((existing || []).map((s: { property_id: string; check_in: string; check_out: string }) => `${s.property_id}|${s.check_in}|${s.check_out}`))
+    type Known = { property_id: string; check_in: string; check_out: string; source_uid: string | null; client_id: string; notes: string | null }
+    const rowsNow = (existing || []) as Known[]
+    const keys = new Set(rowsNow.filter(s => s.source_uid === null)
+      .map(s => `${s.property_id}|${s.check_in}|${s.check_out}`))
+    const mine = new Map(rowsNow.filter(s => s.source_uid !== null)
+      .map(s => [s.source_uid as string, { client_id: s.client_id, notes: s.notes }]))
     const fresh = toImport.filter(d => !keys.has(`${feed.property_id}|${d.start}|${d.end}`))
 
     let inserted = 0
     if (fresh.length) {
       const clientId = await ensureChannelClient(feed.user_id, feed.channel)
-      const rows = fresh.map(d => ({
-        user_id: feed.user_id, client_id: clientId, property_id: feed.property_id,
-        check_in: d.start, check_out: d.end, nights: d.nights, channel: feed.channel,
-        source_uid: uidOf(d.uid),
-        // Η ΑΚΥΡΩΣΗ ΑΝΑΙΡΕΙΤΑΙ. Κράτηση που ξαναφαίνεται στη ροή —ο επισκέπτης
-        // την επανέφερε, ή ο προηγούμενος γύρος έπεσε σε στιγμιαίο κενό— καθαρίζει
-        // τη σήμανσή της εδώ. Με διαγραφή αντί για σήμανση, αυτό θα ήταν αδύνατο.
-        cancelled_at: null,
-        notes: 'Εισαγωγή iCal',
-      }))
+      // Η ΑΚΥΡΩΣΗ ΑΝΑΙΡΕΙΤΑΙ, ΚΙ ΤΑ ΣΧΟΛΙΑ ΜΕΝΟΥΝ. Κράτηση που ξαναφαίνεται στη
+      // ροή —ο επισκέπτης την επανέφερε, ή ο προηγούμενος γύρος έπεσε σε
+      // στιγμιαίο κενό— καθαρίζει τη σήμανσή της. Ο,τι έγραψε ο ιδιοκτήτης
+      // πάνω στη γραμμή επιβιώνει: το κρίνει η `syncStayRow`, δοκιμασμένη στο
+      // `lib/clients/ical.ts` κι κρατημένη ίδια από τον `guard-ical-mirror`.
+      const rows = fresh.map(d => syncStayRow(d, feed, uidOf(d.uid), clientId, mine.get(uidOf(d.uid)) ?? null))
       for (let i = 0; i < rows.length; i += 100) {
         // Η ίδια κράτηση με νέες ημερομηνίες ΕΝΗΜΕΡΩΝΕΙ τη γραμμή της αντί να
         // γεννά δεύτερη. Το upsert κλείνει και τον αγώνα δρόμου: δύο
