@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { PAPER } from '@/lib/print/ink';
+import { failed } from '@/lib/core/dbError';
 
 export interface ReportBranding {
   enabled: boolean;
@@ -67,35 +68,99 @@ export function brandContactLine(b?: ReportBranding | null): string {
   return [b?.phone?.trim(), b?.email?.trim()].filter(Boolean).map(escHtml).join(' · ');
 }
 
-/** Φόρτωση προφίλ επωνυμίας ανά χρήστη. null όταν λείπει ή enabled=false. */
+/** Το προφίλ ΚΑΙ η αιτία όταν δεν διαβάστηκε. */
+export interface LoadedBranding {
+  /** null όταν λείπει, όταν είναι enabled=false, ή όταν η ανάγνωση απέτυχε. */
+  branding: ReportBranding | null;
+  /** Κενό όταν όλα πήγαν καλά. Αλλιώς το «γιατί», έτοιμο για την οθόνη. */
+  error: string;
+}
+
+/**
+ * Φόρτωση προφίλ επωνυμίας ανά χρήστη.
+ *
+ * ═══ Η ΣΙΩΠΗ ΕΔΩ ΤΗ ΒΛΕΠΕΙ Ο ΠΕΛΑΤΗΣ ΤΟΥ ΣΥΝΔΡΟΜΗΤΗ ══════════════════════
+ *
+ * Η συνάρτηση γύριζε `null` και για τις ΤΡΕΙΣ περιπτώσεις: «δεν έχει ορίσει
+ * επωνυμία», «την έχει σβηστή» και «δεν μπόρεσα να τη διαβάσω». Οι δύο πρώτες
+ * είναι επιλογή του χρήστη· η τρίτη είναι βλάβη — και η μόνη με συνέπεια που
+ * φεύγει από την εφαρμογή: η αναφορά εξάγεται ΧΩΡΙΣ το λογότυπο και τα
+ * στοιχεία της επιχείρησης — και τη στέλνει ο συνδρομητής στον δικό του πελάτη.
+ * Το λάθος δηλαδή δεν το βλέπει αυτός που μπορεί να το διορθώσει.
+ *
+ * Το `enabled === false` ΔΕΝ είναι σφάλμα: είναι «δεν τη θέλω». Μένει σιωπηλό.
+ */
 export async function loadReportBranding(
   supabase: ReturnType<typeof createClient>,
   userId: string,
-): Promise<ReportBranding | null> {
-  const { data } = await supabase
+): Promise<LoadedBranding> {
+  const { data, error } = await supabase
     .from('report_branding')
     .select('enabled, company_name, logo_url, accent_color, phone, email')
     .eq('user_id', userId)
     .maybeSingle();
-  if (!data || data.enabled === false) return null;
+  if (error) {
+    console.error('[loadReportBranding] η επωνυμία δεν διαβάστηκε:', error);
+    return { branding: null, error: failed('Η επωνυμία των αναφορών δεν διαβάστηκε', error) };
+  }
+  if (!data || data.enabled === false) return { branding: null, error: '' };
   return {
-    enabled: true,
-    companyName: (data.company_name as string) || '',
-    logoUrl: sanitizeLogo(data.logo_url as string),
-    accentColor: sanitizeAccent(data.accent_color as string),
-    phone: (data.phone as string) || '',
-    email: (data.email as string) || '',
+    branding: {
+      enabled: true,
+      companyName: (data.company_name as string) || '',
+      logoUrl: sanitizeLogo(data.logo_url as string),
+      accentColor: sanitizeAccent(data.accent_color as string),
+      phone: (data.phone as string) || '',
+      email: (data.email as string) || '',
+    },
+    error: '',
   };
 }
 
-/** Client hook: φορτώνει το προφίλ επωνυμίας εκ των προτέρων (για να είναι έτοιμο πριν το window.open). */
+/**
+ * ΜΙΑ ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΑΝΑ ΧΡΗΣΤΗ ΑΝΑ ΣΥΝΕΔΡΙΑ, ΟΧΙ ΜΙΑ ΑΝΑ ΟΘΟΝΗ. Το hook το
+ * καλούν έντεκα καρτέλες· αν η βάση δεν απαντά, θα ειδοποιούσαν έντεκα φορές
+ * για το ίδιο πράγμα. Η πρώτη λέει ό,τι υπάρχει να ειπωθεί.
+ */
+const brandingWarned = new Set<string>();
+
+/**
+ * Client hook: φορτώνει το προφίλ επωνυμίας εκ των προτέρων (για να είναι έτοιμο
+ * πριν το window.open).
+ *
+ * Η ΥΠΟΓΡΑΦΗ ΤΟΥ ΔΕΝ ΑΛΛΑΞΕ ΚΑΙ ΕΙΝΑΙ ΣΚΟΠΙΜΟ. Οι έντεκα καρτέλες που το καλούν
+ * περνούν το `branding` σε κοινό κατασκευαστή αναφοράς· καμία τους δεν έχει θέση
+ * να δείξει σφάλμα φόρτωσης, ούτε πρέπει να αποκτήσει έντεκα φορές την ίδια. Η
+ * αποτυχία λέγεται εκεί που ανήκει μια στιγμιαία βλάβη: στον κοινό δίαυλο του
+ * toast, μία φορά.
+ *
+ * ΚΑΙ ΔΟΚΙΜΑΖΕΙ ΔΕΥΤΕΡΗ ΦΟΡΑ ΠΡΙΝ ΕΝΟΧΛΗΣΕΙ. Μια στιγμιαία διακοπή δικτύου δεν
+ * αξίζει μήνυμα· μια επίμονη αξίζει. Η δεύτερη προσπάθεια ξεχωρίζει τις δύο.
+ */
 export function useReportBranding(userId?: string): ReportBranding | null {
   const [branding, setBranding] = useState<ReportBranding | null>(null);
   useEffect(() => {
     if (!userId) return;
     const supabase = createClient();
     let alive = true;
-    loadReportBranding(supabase, userId).then(b => { if (alive) setBranding(b); });
+    (async () => {
+      let r = await loadReportBranding(supabase, userId);
+      if (r.error) {
+        await new Promise(res => setTimeout(res, 800));
+        if (!alive) return;
+        r = await loadReportBranding(supabase, userId);
+      }
+      if (!alive) return;
+      setBranding(r.branding);
+      if (r.error && !brandingWarned.has(userId)) {
+        brandingWarned.add(userId);
+        // Δυναμική εισαγωγή: ο δίαυλος του toast είναι client module ΚΑΙ αυτό το
+        // αρχείο το εισάγει το statement.ts, που ΔΕΝ είναι 'use client'. Μέσα στο
+        // effect τρέχει μόνο στον περιηγητή, οπότε η διαδρομή του διακομιστή μένει καθαρή.
+        const { notifyError } = await import('@/components/toastBus');
+        notifyError(`${r.error} Οι αναφορές θα βγουν χωρίς την επωνυμία σου.`);
+      }
+    })();
     return () => { alive = false; };
   }, [userId]);
   return branding;
