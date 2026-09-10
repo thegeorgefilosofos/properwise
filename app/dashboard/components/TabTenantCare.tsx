@@ -659,10 +659,14 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
   // Signed URLs ανά αίτημα (id → λίστα προσωρινών URL). Το ιδιωτικό bucket
   // απαιτεί υπογραφή· η ανάγνωση περνά από την owns_portal_token SELECT policy.
   const [signed,setSigned]=useState<Record<string,string[]>>({});
+  // ΚΕΝΟΣ ΧΑΡΤΗΣ ΔΕΝ ΣΗΜΑΙΝΕΙ «ΚΑΜΙΑ ΦΩΤΟΓΡΑΦΙΑ». Οι εικόνες μιας βλάβης είναι
+  // τα στοιχεία πάνω στα οποία αποφασίζεται αν θα πάει τεχνίτης: αν δεν
+  // φορτώσουν, ο ιδιοκτήτης πρέπει να το ΞΕΡΕΙ, όχι να κρίνει με λιγότερα.
+  const [photoErr,setPhotoErr]=useState('');
   const photoSig=useMemo(()=>photosKey(requests),[requests]);
   useEffect(()=>{
     let alive=true;
-    signMaintenancePhotos(supabase,requests).then(map=>{ if(alive) setSigned(map); });
+    signMaintenancePhotos(supabase,requests).then(r=>{ if(alive){ setSigned(r.map); setPhotoErr(r.error); } });
     return ()=>{ alive=false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[photoSig]);
@@ -736,6 +740,9 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
         <div style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6, margin:'6px 0 18px' }}>
           Αιτήματα που στέλνει ο ενοικιαστής μέσω της πύλης. Διαχειρίσου την κατάστασή τους και, αν πρόκειται για φθορά, κατέγραψέ τα στο ιστορικό φθορών.
         </div>
+        {/* ΜΙΑ ΦΟΡΑ ΠΑΝΩ ΑΠΟ ΤΗ ΛΙΣΤΑ: η υπογραφή γίνεται με ΜΙΑ κλήση για όλες τις
+            φωτογραφίες όλων των αιτημάτων, οπότε η αποτυχία είναι επίσης μία. */}
+        {photoErr&&<InfoBanner tone="negative">{photoErr} Τα αιτήματα φαίνονται κανονικά· λείπουν μόνο οι εικόνες τους, που είναι και το βασικό στοιχείο για να κριθεί αν χρειάζεται τεχνίτης.</InfoBanner>}
         {list.length===0?(
           <EmptyState icon={<Wrench size={20}/>} title="Κανένα αίτημα βλάβης ακόμη" hint="Όταν ο ενοικιαστής στείλει αίτημα από την πύλη, θα εμφανιστεί εδώ για διαχείριση." />
         ):(

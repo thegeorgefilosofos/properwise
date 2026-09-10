@@ -12,7 +12,7 @@ import * as expenses from '@/lib/data/expenses';
 import * as calendar from '@/lib/data/calendar'
 import * as tenantStore from '@/lib/data/tenants';
 import * as portalStore from '@/lib/data/portal';
-import { T, fd, fe, EmptyState, Skeleton, pressable, Btn } from '@/components/Theme';
+import { T, fd, fe, EmptyState, Skeleton, pressable, Btn, InfoBanner } from '@/components/Theme';
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import { athensToday } from '@/lib/core/time';
 import { saved, savedData } from '@/components/dbWrite';
@@ -61,6 +61,9 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   // σπασμένη εικόνα σε κάθε αίτημα με φωτογραφίες. Ιδια υπογραφή με το
   // MaintenanceView, από το ίδιο σημείο.
   const [signedPhotos, setSignedPhotos] = useState<Record<string, string[]>>({});
+  // Ιδιος λόγος με την καρτέλα φροντίδας: κενός χάρτης σημαίνει και «καμία
+  // φωτογραφία» και «δεν φόρτωσαν». Το δεύτερο λέγεται.
+  const [photoErr, setPhotoErr] = useState('');
 
   const load = useCallback(async () => {
     const { row } = await portalStore.link(supabase, propertyId, userId);
@@ -123,7 +126,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   const photoSig = useMemo(() => photosKey(reqs), [reqs]);
   useEffect(() => {
     let alive = true;
-    signMaintenancePhotos(supabase, reqs).then(map => { if (alive) setSignedPhotos(map); });
+    signMaintenancePhotos(supabase, reqs).then(r => { if (alive) { setSignedPhotos(r.map); setPhotoErr(r.error); } });
     return () => { alive = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoSig]);
@@ -306,6 +309,10 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
               </div>
 
               <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Αιτήματα ({pending.length} εκκρεμή)</div>
+              {/* ΜΙΑ ΦΟΡΑ ΠΑΝΩ ΑΠΟ ΤΗ ΛΙΣΤΑ, ΟΧΙ ΜΙΑ ΑΝΑ ΑΙΤΗΜΑ: η υπογραφή γίνεται
+                  με ΜΙΑ κλήση για όλες τις φωτογραφίες όλων των αιτημάτων, οπότε η
+                  αποτυχία είναι επίσης μία. */}
+              {photoErr && <InfoBanner tone="negative">{photoErr} Τα αιτήματα φαίνονται κανονικά· λείπουν μόνο οι εικόνες τους.</InfoBanner>}
               {reqs.length === 0 ? (
                 <EmptyState icon={<Inbox size={20} />} title="Κανένα αίτημα ακόμη" hint="Όταν ο ενοικιαστής στείλει αίτημα βλάβης από την πύλη, θα εμφανιστεί εδώ." />
               ) : (
