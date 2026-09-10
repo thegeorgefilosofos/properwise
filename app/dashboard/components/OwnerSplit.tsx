@@ -18,7 +18,7 @@ import { InfoHint } from './InfoHint';
 import { CustomSelect as Select } from './UIComponents';
 import ScanButton from './ScanButton';
 import { num } from './docUtils';
-import { computeSplit, type OwnerShare } from '@/lib/accounting/ownerSplit';
+import { computeSplit, ownersExpenseTotal, type OwnerShare } from '@/lib/accounting/ownerSplit';
 import { issueDocument } from '@/lib/documents/issue';
 import { generateReportPdf, pEur, pSigned, pPct, type PdfReportModel } from '@/lib/pdf/pdfReport';
 import type { ReportBranding } from '@/lib/reportBranding';
@@ -54,8 +54,14 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
   // αυτής της χρονιάς και αυτού του μήνα, δεν υπάρχουν. Μαζί έφυγε και το
   // `setFigures(null)` που ήταν σύγχρονη γραφή μέσα σε effect.
   const [loadedFigures, setFigures] = useState<{ key: string; gross: number; expenses: number } | null>(null);
+  // ── Η ΑΠΟΤΥΧΙΑ ΦΕΡΕΙ ΚΙ ΑΥΤΗ ΤΟ ΚΛΕΙΔΙ ΤΗΣ ────────────────────────────────
+  // Αλλιώς μια αποτυχία του Ιανουαρίου θα κοκκίνιζε τον Φεβρουάριο, ή —
+  // χειρότερα — θα έσβηνε μόνη της με την αλλαγή μήνα κι θα ξανάνοιγε τον
+  // δρόμο προς το μηδενικό χαρτί.
+  const [failedFigures, setFiguresFailed] = useState<string>('');
   const figuresKey = open && propId ? `${propId}|${year}|${month}` : '';
   const figures = loadedFigures && loadedFigures.key === figuresKey ? loadedFigures : null;
+  const figuresFailed = !!figuresKey && failedFigures === figuresKey;
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -121,36 +127,57 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
     if (!figuresKey) return;
     let alive = true;
     (async () => {
-      const from = `${year}-${String(month || 1).padStart(2, '0')}-01`;
-      const to = month > 0 ? monthEndIso(year, month) : `${year}-12-31`;
-      // ── ΤΑΜΕΙΑΚΗ ΒΑΣΗ, ΓΙΑΤΙ Η ΚΑΤΑΝΟΜΗ ΜΟΙΡΑΖΕΙ ΜΕΤΡΗΤΑ ─────────────────────
-      // Το ερώτημα φιλτράριζε με `period_year/period_month`, δηλαδή μετρούσε τα
-      // μισθώματα ΠΟΥ ΑΦΟΡΟΥΝ τον μήνα, όχι αυτά που ΜΠΗΚΑΝ μέσα στον μήνα. Μια
-      // δόση Δεκεμβρίου που εισπράχθηκε στις 8 Ιανουαρίου πιστωνόταν στον
-      // Δεκέμβριο: ο συνιδιοκτήτης έπαιρνε χαρτί που του αναλογούσε μερίδιο από
-      // χρήματα που δεν είχαν μπει ακόμη στον λογαριασμό. Και η ίδια δόση
-      // ξαναφαινόταν στο ταμειακό ημερολόγιο του Ιανουαρίου.
-      //
-      // Ο κανόνας είναι γραμμένος μία φορά, στο lib/data/rent.ts: «το βιβλίο
-      // είναι ΤΑΜΕΙΑΚΟ, μια δόση ανήκει στη χρήση που εισπράχθηκε». Η κατανομή
-      // μοιράζει μετρητά, άρα ακολουθεί τον ίδιο κανόνα — και η ετικέτα
-      // «Εισπράχθηκαν» λέει επιτέλους την αλήθεια.
-      //
-      // Το ερώτημα δεν φιλτράρει πια περίοδο: μια δόση που εισπράχθηκε φέτος
-      // μπορεί να ανήκει σε περσινό μήνα και θα έλειπε. Το φιλτράρισμα το
-      // κάνει η `collectedIn` πάνω στην ημερομηνία βιβλίου.
-      const [rAll, e] = await Promise.all([
-        rentStore.ofProperties<rentStore.BookableRent>(
-          supabase, [propId], rentStore.LEDGER_COLUMNS, userId, { paid: true }),
-        expenses.inRangeOfProperty(supabase, propId, from, to),
-      ]);
-      const r = rentStore.collectedIn((rAll || []) as rentStore.BookableRent[], year, month);
-      // Και τα δύο ερωτήματα ζητούν `amount`: αυτό είναι ό,τι χρειάζεται εδώ και
-      // αυτό δηλώνεται. Το `any` έκρυβε ότι ένα λάθος όνομα στήλης θα έδινε μηδέν.
-      const sumAmount = (rows: { amount?: number | string | null }[] | null) =>
-        (rows || []).reduce((s, x) => s + num(x.amount ?? 0), 0);
-      if (!alive) return;
-      setFigures({ key: figuresKey, gross: sumAmount(r), expenses: sumAmount(e as { amount: number | null }[]) });
+      try {
+        const from = `${year}-${String(month || 1).padStart(2, '0')}-01`;
+        const to = month > 0 ? monthEndIso(year, month) : `${year}-12-31`;
+        // ── ΤΑΜΕΙΑΚΗ ΒΑΣΗ, ΓΙΑΤΙ Η ΚΑΤΑΝΟΜΗ ΜΟΙΡΑΖΕΙ ΜΕΤΡΗΤΑ ─────────────────────
+        // Το ερώτημα φιλτράριζε με `period_year/period_month`, δηλαδή μετρούσε τα
+        // μισθώματα ΠΟΥ ΑΦΟΡΟΥΝ τον μήνα, όχι αυτά που ΜΠΗΚΑΝ μέσα στον μήνα. Μια
+        // δόση Δεκεμβρίου που εισπράχθηκε στις 8 Ιανουαρίου πιστωνόταν στον
+        // Δεκέμβριο: ο συνιδιοκτήτης έπαιρνε χαρτί που του αναλογούσε μερίδιο από
+        // χρήματα που δεν είχαν μπει ακόμη στον λογαριασμό. Και η ίδια δόση
+        // ξαναφαινόταν στο ταμειακό ημερολόγιο του Ιανουαρίου.
+        //
+        // Ο κανόνας είναι γραμμένος μία φορά, στο lib/data/rent.ts: «το βιβλίο
+        // είναι ΤΑΜΕΙΑΚΟ, μια δόση ανήκει στη χρήση που εισπράχθηκε». Η κατανομή
+        // μοιράζει μετρητά, άρα ακολουθεί τον ίδιο κανόνα — και η ετικέτα
+        // «Εισπράχθηκαν» λέει επιτέλους την αλήθεια.
+        //
+        // Το ερώτημα δεν φιλτράρει πια περίοδο: μια δόση που εισπράχθηκε φέτος
+        // μπορεί να ανήκει σε περσινό μήνα και θα έλειπε. Το φιλτράρισμα το
+        // κάνει η `collectedIn` πάνω στην ημερομηνία βιβλίου.
+        const [rAll, e] = await Promise.all([
+          rentStore.ofProperties<rentStore.BookableRent>(
+            supabase, [propId], rentStore.LEDGER_COLUMNS, userId, { paid: true }),
+          // ── ΤΟ `paid_by` ΖΗΤΕΙΤΑΙ ΡΗΤΑ, ΓΙΑΤΙ ΧΩΡΙΣ ΑΥΤΟ Η ΣΤΗΛΗ ΔΕΝ ΥΠΑΡΧΕΙ ────
+          // Η προεπιλογή της `inRangeOfProperty` είναι `amount,date`. Χωρίς το
+          // `paid_by` κάθε γραμμή έμοιαζε πληρωμένη από τον ιδιοκτήτη κι ο
+          // κανόνας του `ownersExpenseTotal` δεν είχε τι να κρίνει.
+          expenses.inRangeOfProperty(supabase, propId, from, to, 'amount,paid_by'),
+        ]);
+        const r = rentStore.collectedIn((rAll || []) as rentStore.BookableRent[], year, month);
+        // Και τα δύο ερωτήματα ζητούν `amount`: αυτό είναι ό,τι χρειάζεται εδώ και
+        // αυτό δηλώνεται. Το `any` έκρυβε ότι ένα λάθος όνομα στήλης θα έδινε μηδέν.
+        const sumAmount = (rows: { amount?: number | string | null }[] | null) =>
+          (rows || []).reduce((s, x) => s + num(x.amount ?? 0), 0);
+        if (!alive) return;
+        // Τα έσοδα αθροίζονται σκέτα· οι δαπάνες περνούν από τον κανόνα «ποιος
+        // πλήρωσε», που είναι γραμμένος κι δοκιμασμένος στο lib/accounting.
+        setFigures({ key: figuresKey, gross: sumAmount(r), expenses: ownersExpenseTotal(e) });
+        // Η επιτυχία σβήνει ΚΑΘΕ παλιά αποτυχία: εδώ φτάνει μόνο η τρέχουσα
+        // περίοδος (το `alive` κόβει τις άλλες), οπότε δεν χρειάζεται σύγκριση.
+        setFiguresFailed('');
+        // ══ Η ΑΠΟΤΥΧΗΜΕΝΗ ΑΝΑΓΝΩΣΗ ΕΒΓΑΖΕ ΕΠΙΣΗΜΟ ΧΑΡΤΙ ΜΕ ΜΗΔΕΝΙΚΑ ═══════════
+        // Το ερώτημα δεν είχε `catch`: μια πεσμένη σύνδεση ή ένας κανόνας RLS
+        // άφηναν τα ποσά `null` κι η οθόνη δεν έλεγε τίποτα. Ο πίνακας δεν
+        // ζωγραφιζόταν —είναι κάτω από `{figures && …}`— αλλά το κουμπί της
+        // εξαγωγής κοιτούσε ΜΟΝΟ τα ποσοστά, που έρχονται αποθηκευμένα κι
+        // αθροίζουν 100 από την πρώτη στιγμή. Πάτημα εκεί καταχωρούσε έγγραφο
+        // στο μητρώο —αριθμός εγγράφου κι QR επαλήθευσης— κι έστελνε στον συνιδιοκτήτη
+        // «Κατάσταση κατανομής» όπου έσοδα, δαπάνες κι καθαρό ήταν 0,00€.
+        // Η ίδια σιωπή έδινε κι δεύτερο δώρο: `unhandled rejection` στην κονσόλα
+        // κι τίποτα στην οθόνη.
+      } catch { if (alive) setFiguresFailed(figuresKey); }
     })();
     return () => { alive = false; };
   // Το `userId` χρησιμοποιείται μέσα στο ερώτημα και λείπει από τις εξαρτήσεις:
@@ -187,6 +214,10 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
   const exportPdf = async () => {
     setErr('');
     if (!prop) { setErr('Διάλεξε ακίνητο.'); return; }
+    // ΤΑ ΠΟΣΑ ΠΡΩΤΑ, ΤΑ ΠΟΣΟΣΤΑ ΜΕΤΑ. Τα ποσοστά έρχονται από τον περιηγητή κι
+    // είναι έγκυρα πριν καν ξεκινήσει το ερώτημα· μόνο τους δεν αρκούν για να
+    // εκδοθεί έγγραφο. Οσο δεν υπάρχουν ποσά περιόδου, δεν υπάρχει κατανομή.
+    if (!figures) { setErr(figuresFailed ? 'Τα ποσά της περιόδου δεν διαβάστηκαν. Άλλαξε περίοδο κι ξαναδοκίμασε.' : 'Τα ποσά της περιόδου φορτώνονται ακόμη.'); return; }
     if (!result.valid) { setErr(result.warning || 'Έλεγξε τα ποσοστά.'); return; }
     setBusy(true);
     try {
@@ -250,7 +281,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
       footerInfo={`${prop?.name || ABSENT} · ${periodLabel}`}
       footer={<>
         <Btn variant="secondary" onClick={() => { saveLayout(); onClose(); }}>Αποθήκευση και κλείσιμο</Btn>
-        <Btn variant="primary" onClick={exportPdf} disabled={busy || !result.valid}>{busy ? 'Δημιουργία…' : 'Κατάσταση κατανομής (PDF)'}</Btn>
+        <Btn variant="primary" onClick={exportPdf} disabled={busy || !result.valid || !figures}>{busy ? 'Δημιουργία…' : 'Κατάσταση κατανομής (PDF)'}</Btn>
       </>}>
       {loading ? <Spinner size={18} label="Φόρτωση…" /> : props.length === 0 ? <EmptyState icon={<Building2 size={20} />} title="Κανένα ακίνητο ακόμη" hint="Πρόσθεσε ακίνητο για να ορίσεις ποσοστά συνιδιοκτησίας." /> : (
       <>
@@ -403,6 +434,11 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
             </table>
           </div>
         )}
+
+        {/* Η ΑΠΟΤΥΧΙΑ ΕΧΕΙ ΦΩΝΗ. Πριν, η οθόνη απλώς δεν ζωγράφιζε τον πίνακα:
+            ο χρήστης έβλεπε ιδιοκτήτες, ποσοστά κι ένα κουμπί εξαγωγής, χωρίς
+            τίποτα να λέει ότι τα ποσά της περιόδου λείπουν. */}
+        {figuresFailed && <div role="status" style={{ fontSize: 'var(--fs-base)', color: 'var(--negative)', background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: T.radius.inner, padding: '10px 14px' }}>Τα ποσά της περιόδου δεν διαβάστηκαν. Άλλαξε περίοδο κι ξαναδοκίμασε.</div>}
 
         {err && <div style={{ fontSize: 'var(--fs-base)', color: 'var(--negative)', background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 14px' }}>{err}</div>}
       </>

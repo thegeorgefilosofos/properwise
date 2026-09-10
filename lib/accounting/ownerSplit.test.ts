@@ -1,5 +1,5 @@
 // Τεστ για την κατανομή συνιδιοκτητών + διαχειριστική αμοιβή (ownerSplit.ts).
-import { computeSplit } from './ownerSplit'
+import { computeSplit, ownersExpenseTotal } from './ownerSplit'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
@@ -44,6 +44,36 @@ ok('no owners → not valid', !none.valid && !!none.warning)
 const noFee = computeSplit({ grossIncome: 800, expenses: 300, owners: [{ name: 'Α', pct: 100 }] })
 ok('no fee → distributable 500', noFee.managementFee === 0 && noFee.distributable === 500)
 ok('single owner gets all', noFee.owners[0].net === 500)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΟΙ ΔΑΠΑΝΕΣ ΤΟΥ ΕΝΟΙΚΙΑΣΤΗ ΔΕΝ ΜΕΙΩΝΟΥΝ ΤΟ ΔΙΑΝΕΜΗΤΕΟ
+// ─────────────────────────────────────────────────────────────────────────
+// Το κοινόχρηστο ρεύμα που πληρώνει ο ενοικιαστής αφαιρούνταν από το ποσό
+// που μοιράζονται οι συνιδιοκτήτες. Εκατό ευρώ τον μήνα είναι 1.200,00€ τον
+// χρόνο, τυπωμένα σε επίσημη κατάσταση με αριθμό εγγράφου.
+// ═══════════════════════════════════════════════════════════════════════════
+ok('ο ενοικιαστής δεν χρεώνει τους ιδιοκτήτες', ownersExpenseTotal([
+  { amount: 300, paid_by: 'owner' },
+  { amount: 100, paid_by: 'tenant' },
+]) === 300)
+ok('κενό paid_by βαραίνει ολόκληρο', ownersExpenseTotal([{ amount: 250, paid_by: null }]) === 250)
+ok('χωρίς πεδίο βαραίνει ολόκληρο', ownersExpenseTotal([{ amount: 80 }]) === 80)
+// Η ΜΟΙΡΑΣΜΕΝΗ ΜΕΝΕΙ ΟΛΟΚΛΗΡΗ, ΕΠΙΤΗΔΕΣ. Ο πίνακας από κάτω τη μοιράζει στα
+// ποσοστά· κόψιμο στο `share_percent` εδώ θα την έκοβε δεύτερη φορά.
+ok('μοιρασμένη με συνιδιοκτήτη μένει ολόκληρη', ownersExpenseTotal([
+  { amount: 100, paid_by: 'co_owner' },
+]) === 100)
+ok('εταιρεία βαραίνει ολόκληρη', ownersExpenseTotal([{ amount: 60, paid_by: 'company' }]) === 60)
+ok('κείμενο σε ποσό διαβάζεται', ownersExpenseTotal([{ amount: '12.5' }]) === 12.5)
+ok('κενή λίστα → 0', ownersExpenseTotal([]) === 0 && ownersExpenseTotal(null) === 0)
+ok('σκουπίδι σε ποσό → 0, όχι NaN', ownersExpenseTotal([{ amount: 'άκυρο' }]) === 0)
+
+// Κι το αποτέλεσμα στο διανεμητέο, από άκρη σε άκρη: 1.000,00€ εισπραγμένα,
+// 300,00€ δαπάνες ιδιοκτήτη κι 100,00€ που πλήρωσε ο ενοικιαστής.
+const borne = ownersExpenseTotal([{ amount: 300, paid_by: 'owner' }, { amount: 100, paid_by: 'tenant' }])
+const fair = computeSplit({ grossIncome: 1000, expenses: borne, owners: [{ name: 'Α', pct: 50 }, { name: 'Β', pct: 50 }] })
+ok('διανεμητέο 700 κι όχι 600', fair.distributable === 700)
+ok('ο καθένας παίρνει 350', fair.owners[0].net === 350 && fair.owners[1].net === 350)
 
 function r2(n: number) { return Math.round(n * 100) / 100 }
 
