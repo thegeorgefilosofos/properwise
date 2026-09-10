@@ -28,6 +28,7 @@ import {
   BANK_LINK_TITLE, BANK_LINK_TAGLINE, BANK_LINK_POINTS,
   bankLinkState, bankLinkStatusLine, bankLinkPriceLine,
 } from '@/lib/bank/link';
+import { hy } from '@/components/Hyphen';
 
 const BankGlyph = ({ size = 30 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -63,10 +64,17 @@ function BankLinkModal({ open, onClose }: { open: boolean; onClose: () => void }
         <Btn onClick={onClose}>Κλείσιμο</Btn>
       </>}>
 
+      {/* ΤΕΣΣΕΡΙΣ ΠΑΡΑΓΡΑΦΟΙ, ΜΙΑ ΔΕΞΙΑ ΑΚΡΗ. Το παράθυρο είναι `md`: 620 μείον
+          το γέμισμα των 24 αφήνει 572 στο κείμενο. Η δεύτερη παράγραφος έχει
+          261 χαρακτήρες στα 12 — τρεις γραμμές· η τρίτη τέσσερις. Στοιχισμένες
+          διαβάζονται ως ένα σώμα κειμένου αντί για τέσσερα κομμάτια με
+          διαφορετικό δεξί περίγραμμα. Το `hy()` μπαίνει ΕΔΩ, στην απόδοση — κι
+          όχι στον ορισμό του `lib/bank/link.ts`: οι δοκιμές του διαβάζουν τα
+          ίδια λεκτικά και τα μαλακά ενωτικά δεν είναι αόρατα σε regexp. */}
       {BANK_LINK_POINTS.map(p => (
         <div key={p.title}>
           <div style={{ ...TT.h2, fontSize: 14 }}>{p.title}</div>
-          <div style={{ ...TT.bodySm, marginTop: 6 }}>{p.body}</div>
+          <div className="po-just" style={{ ...TT.bodySm, marginTop: 6 }}>{hy(p.body)}</div>
         </div>
       ))}
 

@@ -24,6 +24,7 @@ import { useMarketRates, useBankRates, useLoanPrograms, useIsAdmin, useMarketFee
 import { greekWhen, seriesPage, ECB_SERIES } from '@/lib/market/ecb'
 import { BANKS_NORM, PROGRAMS_NORM, mergeBanks, mergePrograms, BANKS_VERIFIED, RATES_DISCLAIMER, type ComparisonBank, type ComparisonProgram, LOAN_TYPES, rateRange, GLOSSARY, EURIBOR_HISTORY, SERVICERS_GUIDE, calcMonthly, fmtEur, fmtPct, LoanType, RateType, SavedLoan, MARKET_FALLBACK } from './TabLoanData'
 import { rankLoans, spitiMouEligibility, type UserLoanNeeds } from '@/lib/loans/recommend'
+import { hy } from '@/components/Hyphen'
 import { euriborInsight } from '@/lib/loans/affordability'
 import LoanDocScan, { type AppliedLoan } from './LoanDocScan'
 import Glossary from './Glossary'
@@ -1958,7 +1959,14 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                       το κείμενο από κάτω και οι τρεις κάρτες έμοιαζαν με τρεις
                       παραγράφους χωρίς επικεφαλίδα. */}
                   <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)',lineHeight:1.4,marginBottom:6}}>{t.name}</p>
-                  <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans,marginBottom:10}}>{t.d}</p>
+                  {/* ΟΡΙΣΜΟΣ ΘΕΣΜΟΥ ΜΕΣΑ ΣΕ ΣΤΗΛΗ, ΜΕ ΡΙΓΜΕΝΗ ΑΚΡΗ. Τρεις στήλες
+                      με κενό 12 κι γέμισμα κάρτας 14: στα 1440 το κείμενο πέφτει
+                      περίπου στα 335. Ο Εξωδικαστικός γράφει 218 χαρακτήρες στα
+                      12 — τέσσερις γραμμές, τρεις ακόμη κι στα 1920. Η στοίχιση
+                      κλείνει τη δεξιά άκρη και στις τρεις κάρτες μαζί· το `hy()`
+                      μπαίνει εδώ, στην απόδοση, ώστε ο ορισμός στο TabLoanData
+                      να μείνει καθαρό κείμενο. */}
+                  <p className="po-just" style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans,marginBottom:10}}>{hy(t.d)}</p>
                   <div style={{display:'flex',flexDirection:'column',gap: 4,marginBottom:10}}>
                     {t.facts.map((f,i)=>(
                       <div key={i} style={{display:'flex',alignItems:'flex-start',gap: 8}}>

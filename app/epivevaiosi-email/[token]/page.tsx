@@ -17,6 +17,7 @@
 import BrandMark from '@/components/BrandMark';
 import { T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 import { useCallback, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -83,15 +84,24 @@ export default function ConfirmReminderEmail() {
               <span style={{ color: 'var(--positive)', fontWeight: 700 }}>✓</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--positive)' }}>Η διεύθυνση επιβεβαιώθηκε.</span>
             </div>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Από εδώ και πέρα οι υπενθυμίσεις για λογαριασμούς, ενοίκια και γεγονότα του ημερολογίου θα φτάνουν σε αυτή τη διεύθυνση. Μπορείς να την αλλάξεις ή να τη σβήσεις οποτεδήποτε, από τις Ρυθμίσεις της εφαρμογής.
+            {/* ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΜΕ ΤΥΧΑΙΑ ΤΕΛΗ, ΣΕ ΚΑΡΤΑ 384. Η κάρτα είναι 440
+                μείον 2×28 γέμισμα, δηλαδή μέτρο ~58 χαρακτήρων στα 13 — στενή
+                στήλη, όπου η ριγμένη δεξιά άκρη φαίνεται σε κάθε γραμμή. Στοίχιση
+                πέρα πέρα με δικά μας μαλακά ενωτικά: χωρίς αυτά η ίδια στοίχιση
+                θα τέντωνε τα κενά αντί να σπάσει λέξη. */}
+            <p className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              {hy(<>Από εδώ και πέρα οι υπενθυμίσεις για λογαριασμούς, ενοίκια και γεγονότα του ημερολογίου θα φτάνουν σε αυτή τη διεύθυνση. Μπορείς να την αλλάξεις ή να τη σβήσεις οποτεδήποτε, από τις Ρυθμίσεις της εφαρμογής.</>)}
             </p>
           </div>
         )}
 
+        {/* Τρεις γραμμές στην ίδια κάρτα των 384 (μέτρο ~58 χαρακτήρων στα 13).
+            Ιδια μεταχείριση με το μήνυμα επιτυχίας από πάνω: οι δύο καταστάσεις
+            της σελίδας διαβάζονται η μία στη θέση της άλλης, οπότε δεν έχει
+            νόημα η μία να κλείνει δεξιά κι η άλλη όχι. */}
         {state === 'invalid' && (
-          <p style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Ο σύνδεσμος δεν είναι έγκυρος, έχει λήξει ή χρησιμοποιήθηκε ήδη. Ζήτησε νέα επιβεβαίωση από τις Ρυθμίσεις της εφαρμογής, στις Ειδοποιήσεις.
+          <p className="po-just" style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            {hy(<>Ο σύνδεσμος δεν είναι έγκυρος, έχει λήξει ή χρησιμοποιήθηκε ήδη. Ζήτησε νέα επιβεβαίωση από τις Ρυθμίσεις της εφαρμογής, στις Ειδοποιήσεις.</>)}
           </p>
         )}
 

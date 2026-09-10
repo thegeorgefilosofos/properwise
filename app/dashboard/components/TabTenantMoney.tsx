@@ -47,6 +47,7 @@ import {
 import { MONTHS_NOM, MONTHS_SHORT, monthNom, monthGen } from '@/lib/core/months';
 import { INK, INK_MUTED, RULE } from '@/lib/print/ink';
 import { AadeLinks } from '@/components/AadeLink';
+import { hy } from '@/components/Hyphen';
 import { failed } from '@/lib/core/dbError';
 // Το Αρχείο έχει ένα σπίτι: lib/data/documents.
 import * as documents from '@/lib/data/documents';
@@ -227,8 +228,14 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
 
           {/* Έτος χωρίς δείκτη: το λέμε, δεν το μπαλώνουμε */}
           {official===null&&(
-            <div style={{ background:'var(--warning-dim)', border:'1px solid color-mix(in srgb, var(--warning) 26%, transparent)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.inner, padding:'11px 14px', marginBottom:16, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-              Για το {yr} δεν έχουμε επιβεβαιωμένη μέση ετήσια μεταβολή ΔΤΚ. Ο τελευταίος δείκτης που έχουμε είναι του {CPI_LATEST_YEAR}. Δώσε το ποσοστό που προβλέπει η σύμβασή σου. Θα γραφτεί στο έγγραφο ως ποσοστό που όρισες εσύ, όχι ως στοιχείο της ΕΛΣΤΑΤ.
+            /* ΠΕΝΤΕ ΓΡΑΜΜΕΣ ΜΕ ΡΙΓΜΕΝΗ ΔΕΞΙΑ ΑΚΡΗ. Το κουτί κρατά 305 ωφέλιμα
+               στα 430 της οθόνης — πάνελ 381 μείον 48 γέμισμα μείον 30 πλαίσιο —
+               και 377 στα 1024. Τα 232 γράμματα στα 12 δίνουν πέντε γραμμές που
+               τελείωναν σε τυχαίο σημείο, δίπλα σε κουτί με ίσιο περίγραμμα.
+               Τώρα κλείνουν και δεξιά· τα μαλακά ενωτικά του hy() κρατούν τα
+               κενά στο φυσικό τους μέγεθος αντί να τα τεντώσει η στοίχιση. */
+            <div className="po-just" style={{ background:'var(--warning-dim)', border:'1px solid color-mix(in srgb, var(--warning) 26%, transparent)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.inner, padding:'11px 14px', marginBottom:16, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
+              {hy(<>Για το {yr} δεν έχουμε επιβεβαιωμένη μέση ετήσια μεταβολή ΔΤΚ. Ο τελευταίος δείκτης που έχουμε είναι του {CPI_LATEST_YEAR}. Δώσε το ποσοστό που προβλέπει η σύμβασή σου. Θα γραφτεί στο έγγραφο ως ποσοστό που όρισες εσύ, όχι ως στοιχείο της ΕΛΣΤΑΤ.</>)}
             </div>
           )}
 
@@ -304,8 +311,14 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
             <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg, marginBottom:14 }}>
               {/* Δευτερεύον, όχι κύριο: η ανενεργή όψη είναι διάφανη με περίγραμμα — το ίδιο που δίνει το secondary. */}
               <Btn variant="secondary" field disabled title="Δώσε πρώτα το ποσοστό αναπροσαρμογής">Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>
-              <div style={{ marginTop:10, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-                Η ειδοποίηση φεύγει σε άλλον άνθρωπο και μένει στα χαρτιά του. Δεν την εκτυπώνουμε με νούμερο που δεν έχει προέλευση. Συμπλήρωσε το ποσοστό της σύμβασης ή επίλεξε έτος με επιβεβαιωμένο δείκτη.
+              {/* ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΠΟΥ ΕΞΗΓΟΥΝ ΓΙΑΤΙ ΤΟ ΚΟΥΜΠΙ ΑΠΟ ΠΑΝΩ ΔΕΝ ΠΑΤΙΕΤΑΙ.
+                  Το κουτί μετρήθηκε 347 ωφέλιμα στα 430 της οθόνης και 423 στα 1024
+                  (στήλη 457,5 μείον 32 γέμισμα μείον 2 περίγραμμα): 190 γράμματα
+                  στα 12 πιάνουν τρεις με τέσσερις γραμμές. Στοίχιση πέρα πέρα με
+                  τα ενωτικά του hy(), ώστε το κείμενο να κάθεται στο ίδιο ορθογώνιο
+                  με το πλαίσιο που το κρατά. */}
+              <div className="po-just" style={{ marginTop:10, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
+                {hy(<>Η ειδοποίηση φεύγει σε άλλον άνθρωπο και μένει στα χαρτιά του. Δεν την εκτυπώνουμε με νούμερο που δεν έχει προέλευση. Συμπλήρωσε το ποσοστό της σύμβασης ή επίλεξε έτος με επιβεβαιωμένο δείκτη.</>)}
               </div>
             </div>
           )}
@@ -1075,8 +1088,14 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
           {legalNew!==null&&cpiPct!==null
             ?<DataRow label={`Με ΔΤΚ ${CPI_LATEST_YEAR} (${cpiPct>=0?'+':''}${fp(cpiPct)})`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(legalNew)}</span>}/>
             :<DataRow label="Με ΔΤΚ" value="δεν υπάρχει επιβεβαιωμένος δείκτης"/>}
-          <div style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-            Ετήσια αναπροσαρμογή βάσει ΔΤΚ, <strong>εφόσον προβλέπεται στη σύμβαση</strong>. Δεν είναι πλαφόν: για το 2026 δεν ισχύει γενικό κρατικό όριο στα ενοίκια κατοικίας. {cpiConfirmedLabel()}.
+          {/* ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΟΡΙΣΜΟΥ ΣΕ ΣΤΗΛΗ 409. Το πάνελ δίνει 333 ωφέλιμα στα 430
+              της οθόνης και 409 στα 1024 (στήλη 457,5 μείον 48 γέμισμα): τα ~200
+              γράμματα στα 11 πιάνουν τρεις με τέσσερις γραμμές. Στοίχιση πέρα
+              πέρα με τα ενωτικά του hy(), που διασχίζει και το στοιχείο έμφασης χωρίς
+              να το πειράξει. Το ίδιο λεκτικό της πηγής πάει και στο έγγραφο PDF από
+              άλλο σημείο κλήσης — εκεί δεν μπαίνει ενωτικό. */}
+          <div className="po-just" style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
+            {hy(<>Ετήσια αναπροσαρμογή βάσει ΔΤΚ, <strong>εφόσον προβλέπεται στη σύμβαση</strong>. Δεν είναι πλαφόν: για το 2026 δεν ισχύει γενικό κρατικό όριο στα ενοίκια κατοικίας. {cpiConfirmedLabel()}.</>)}
           </div>
         </div>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
@@ -1092,13 +1111,21 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
               </div>
             </>
           ):(
-            <InfoBanner tone="info">
-              {rentComps.length===0
-                ?'Δεν υπάρχουν καταχωρημένα συγκρίσιμα ενοίκια για την περιοχή. Πρόσθεσε αγγελίες στην καρτέλα «Ενοίκιο/Αγορά».'
-                :!sqm||sqm<=0
-                  ?`Υπάρχουν ${fn(rentComps.length)} συγκρίσιμα, αλλά το ακίνητο δεν έχει καταχωρημένα τ.μ.. Χωρίς τα δικά σου τ.μ. ο μέσος όρος της περιοχής δεν λέει τίποτα για το δικό σου ακίνητο, οπότε δεν προτείνουμε ποσό.`
-                  : `Τα ${fn(rentComps.length)} συγκρίσιμα δεν έχουν τ.μ., οπότε δεν βγαίνει τιμή ανά τ.μ. Χωρίς αυτήν, ο ωμός μέσος όρος θα σύγκρινε ανόμοια ακίνητα.`}
-              {' '}Έως τότε, χρησιμοποίησε την πρόταση με βάση τον νόμο (ΔΤΚ).
+            /* ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΜΕΣΑ ΣΕ 361. Το κείμενο του InfoBanner παίρνει τη στήλη
+               μείον 32 γέμισμα, 6 κουκκίδα και 10 κενό: 285 στα 430 της οθόνης,
+               361 στα 1024. Τα ~230 γράμματα στα 11 δίνουν τρεις με τέσσερις
+               γραμμές με ριγμένη δεξιά άκρη, μέσα σε πλαίσιο με ίσιες πλευρές.
+               Η κλάση πάει στο κείμενο μέσω του className που δέχεται πλέον το
+               InfoBanner, όχι σε δικό μας περιτύλιγμα που θα έσπαγε τον τόνο. */
+            <InfoBanner tone="info" className="po-just">
+              {hy(<>
+                {rentComps.length===0
+                  ?'Δεν υπάρχουν καταχωρημένα συγκρίσιμα ενοίκια για την περιοχή. Πρόσθεσε αγγελίες στην καρτέλα «Ενοίκιο/Αγορά».'
+                  :!sqm||sqm<=0
+                    ?`Υπάρχουν ${fn(rentComps.length)} συγκρίσιμα, αλλά το ακίνητο δεν έχει καταχωρημένα τ.μ.. Χωρίς τα δικά σου τ.μ. ο μέσος όρος της περιοχής δεν λέει τίποτα για το δικό σου ακίνητο, οπότε δεν προτείνουμε ποσό.`
+                    : `Τα ${fn(rentComps.length)} συγκρίσιμα δεν έχουν τ.μ., οπότε δεν βγαίνει τιμή ανά τ.μ. Χωρίς αυτήν, ο ωμός μέσος όρος θα σύγκρινε ανόμοια ακίνητα.`}
+                {' '}Έως τότε, χρησιμοποίησε την πρόταση με βάση τον νόμο (ΔΤΚ).
+              </>)}
             </InfoBanner>
           )}
         </div>

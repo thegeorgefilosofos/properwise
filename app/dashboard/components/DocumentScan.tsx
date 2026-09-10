@@ -24,6 +24,7 @@ import {
   RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT, type ReconcileQuestion,
 } from './scanDoc';
 import { inferRole } from '@/lib/contacts/roles';
+import { hy } from '@/components/Hyphen';
 
 // Το prompt ζει στο scanDoc.ts (μαζί με όλη τη μηχανή σάρωσης). Επανεξάγεται εδώ
 // επειδή οθόνες που δεν ανήκουν σε αυτή τη ροή (Ενοικιαστής, Αρχείο) το εισάγουν
@@ -563,20 +564,31 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             </div>
 
             {/* Τι δεν διάβασα και τι δεν βγάζει νόημα — ξεχωριστά και τα δύο ειλικρινά. */}
+            {/* ΤΑ ΔΥΟ ΠΛΑΙΣΙΑ ΣΤΟΙΧΙΖΟΝΤΑΙ ΜΑΖΙ, ΓΙΑΤΙ ΕΜΦΑΝΙΖΟΝΤΑΙ ΜΑΖΙ. Στο
+                παράθυρο `lg` (760) η δεξιά στήλη του πλέγματος βγαίνει 345 και
+                μετά το γέμισμα των 14 στο κείμενο μένουν 318. Το πρώτο μήνυμα
+                πιάνει τρεις γραμμές εκεί μέσα, το δεύτερο στη συνηθισμένη του
+                μορφή («Δεν διάβασα…») επίσης τρεις. Στοιβάζονται το ένα πάνω
+                στο άλλο: αν στοιχιζόταν μόνο το ένα, ο χρήστης θα έβλεπε δύο
+                γειτονικά πλαίσια με διαφορετική δεξιά άκρη — γι' αυτό παίρνουν
+                και τα δύο `po-just` + `hy()`, ακόμη κι όταν η σύντομη παραλλαγή
+                «Χρειάζονται τα βασικά» μένει στις δύο γραμμές. */}
             {v.invalid.length > 0 && (
               <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: T.radius.inner, padding: '10px 14px', marginBottom: 10 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                <div className="po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                  {hy(<>
                   Διάβασα <strong>{v.invalid.map(label).join(', ')}</strong> αλλά δεν είναι έγκυρο{v.invalid.length > 1 ? 'α' : ''}
                   {v.invalid.includes('provider_afm') || v.invalid.includes('afm') ? ' (το ΑΦΜ δεν περνά τον έλεγχο της ΑΑΔΕ)' : ''}. Διόρθωσέ το ή άφησέ το κενό: δεν το αποθηκεύω για σωστό.
+                  </>)}
                 </div>
               </div>
             )}
             {(v.blocking.length > 0 || v.recommended.length > 0) && (
               <div style={{ background: v.blocking.length ? 'var(--warning-soft)' : 'var(--bg-elevated)', border: `1px solid ${v.blocking.length ? 'var(--warning-border)' : 'var(--border-subtle)'}`, borderRadius: T.radius.inner, padding: '10px 14px', marginBottom: 14 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                  {v.blocking.length
+                <div className="po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                  {hy(v.blocking.length
                     ? <>Χρειάζονται τα βασικά: <strong>{v.blocking.map(label).join(', ')}</strong>. Συμπλήρωσέ τα για να αποθηκεύσω σωστά.</>
-                    : <>Δεν διάβασα: <strong>{v.recommended.map(label).join(', ')}</strong>. Μπορείς να αποθηκεύσεις έτσι, αλλά με αυτά ο έλεγχος «πληρώθηκε» γίνεται σίγουρος.</>}
+                    : <>Δεν διάβασα: <strong>{v.recommended.map(label).join(', ')}</strong>. Μπορείς να αποθηκεύσεις έτσι, αλλά με αυτά ο έλεγχος «πληρώθηκε» γίνεται σίγουρος.</>)}
                 </div>
               </div>
             )}

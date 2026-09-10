@@ -10,6 +10,7 @@ import { IDENTITY } from '@/lib/legal/identity';
 import { PLANS, PLAN_ORDER, normalizePlan, planForCount, annualPerMonth, type PlanId } from '@/lib/billing/plans';
 import { isPlanAllowedForProfile, paidPlanForProfile, type ProfileType } from '@/lib/billing/entitlements';
 import { T, feAuto, Btn, CloseButton } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 
 export default function UpgradeModal({ currentCount, planId, profileType = 'individual', onClose, onManage }: {
   currentCount: number;
@@ -52,9 +53,15 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
         className="md-scrim" style={{ fontFamily: T.font.sans }}>
         <div style={{ background: 'var(--bg-surface)', borderRadius: T.radius.modal, width: '100%', maxWidth: 520, boxShadow: 'var(--shadow-xl)', padding: 'clamp(24px, 3vw, 34px)' }}>
           <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: '0 0 8px' }}>Διαχειρίζεσαι μεγάλο χαρτοφυλάκιο</h2>
-          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 0 20px', lineHeight: 1.6 }}>
-            Το πακέτο Επαγγελματίας καλύπτει έως {PLANS.agency.maxProperties} ακίνητα και τα έχεις ήδη συμπληρώσει.
-            Για περισσότερα, στήνουμε πακέτο στα μέτρα σου. Γράψε μας στο <strong style={{ color: 'var(--text-primary)' }}>{IDENTITY.supportEmail}</strong> και απαντάμε την ίδια ημέρα.
+          {/* Η ΕΠΕΞΗΓΗΣΗ ΤΟΥ ΤΑΒΑΝΙΟΥ ΕΠΙΑΝΕ ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΜΕ ΡΙΓΜΕΝΗ ΑΚΡΗ.
+              Το κουτί είναι 452 εικονοστοιχεία (520 πλάτος μείον 2×34 γέμισμα),
+              δηλαδή μέτρο ~64 χαρακτήρων στα 14 — μέσα στο εύρος 60-80 όπου η
+              πλήρης στοίχιση κλείνει τα κενά αντί να τα τεντώσει. Η στοίχιση μπαίνει
+              στο στοιχείο που κρατά το κείμενο, τα σημεία τομής στο ίδιο το
+              κείμενο· η διεύθυνση αλληλογραφίας είναι λατινική, ο συλλαβισμός δεν την αγγίζει. */}
+          <p className="po-just" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 0 20px', lineHeight: 1.6 }}>
+            {hy(<>Το πακέτο Επαγγελματίας καλύπτει έως {PLANS.agency.maxProperties} ακίνητα και τα έχεις ήδη συμπληρώσει.
+            Για περισσότερα, στήνουμε πακέτο στα μέτρα σου. Γράψε μας στο <strong style={{ color: 'var(--text-primary)' }}>{IDENTITY.supportEmail}</strong> και απαντάμε την ίδια ημέρα.</>)}
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             <Btn size="lg" onClick={onClose}>Κλείσιμο</Btn>
