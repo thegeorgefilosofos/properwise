@@ -183,7 +183,10 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
             φορολογικοί κανόνες που κουβαλούν πραγματική πληροφορία και μένουν.
             Αυτή εδώ δεν κουβαλούσε καμία. */}
 
-        {/* Πεδίο */}
+        {/* ΤΡΕΙΣ ΣΕΙΡΕΣ, ΟΧΙ ΤΕΣΣΕΡΙΣ. Το κουτί άνοιγε 96 εικονοστοιχεία κενά πριν
+            γραφτεί λέξη: ένα άδειο ορθογώνιο που ζητά έκθεση, όχι σχόλιο. Με
+            τρεις σειρές η πρόσκληση διαβάζεται ως «δυο κουβέντες» — και το
+            `resize: vertical` μένει, για όποιον θέλει να γράψει περισσότερα. */}
         <textarea
           aria-label="Το μήνυμά σου"
           value={body}
@@ -191,10 +194,10 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder="Γράψε ελεύθερα, με δικά σου λόγια. Τι θα σε βοηθούσε περισσότερο;"
-          rows={4}
+          rows={3}
           maxLength={4000}
           style={{
-            width: '100%', boxSizing: 'border-box', marginTop: 14, resize: 'vertical', minHeight: 96,
+            width: '100%', boxSizing: 'border-box', marginTop: 14, resize: 'vertical', minHeight: 76,
             padding: '12px 14px', borderRadius: T.radius.inner,
             border: `1px solid ${focused ? 'var(--accent)' : 'var(--border-default)'}`,
             boxShadow: focused ? '0 0 0 3px var(--accent-dim)' : 'none',

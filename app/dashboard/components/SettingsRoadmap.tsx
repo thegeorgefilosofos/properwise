@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
 import { T, Btn, Chip, fixedCols } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 
 type ChipTone = 'accent' | 'neutral';
 
@@ -242,9 +243,9 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.boxShadow = 'none'; }}
               style={{
                 display: 'flex', flexDirection: 'column',
-                width: '100%', minHeight: 190, textAlign: 'left', cursor: 'pointer',
+                width: '100%', minHeight: 168, textAlign: 'left', cursor: 'pointer',
                 background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-                borderRadius: T.radius.inner, padding: 12, fontFamily: T.font.sans,
+                borderRadius: T.radius.inner, padding: '12px 14px', fontFamily: T.font.sans,
                 animationDelay: `${120 + i * 55}ms`,
               }}
             >
@@ -258,14 +259,18 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
               }}>{it.name}</span>
 
-              <div style={{
-                fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.45, marginTop: 6,
+              {/* ΠΕΡΑ ΠΕΡΑ, ΟΧΙ ΡΙΓΜΕΝΑ. Τρεις κάρτες δίπλα δίπλα με ριγμένη δεξιά
+                  άκρη δίνουν τρία διαφορετικά περιγράμματα κειμένου μέσα σε τρία
+                  ίδια κουτιά: το μάτι βλέπει ανισότητα εκεί που δεν υπάρχει. Η
+                  πλήρης στοίχιση με συλλαβισμό τα κάνει τρεις ίσες στήλες. */}
+              <div className="po-just" style={{
+                fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 6,
                 ...(isOpen ? {} : { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
-              }}>{it.line}</div>
+              }}>{hy(it.line)}</div>
 
               {isOpen && (
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border-subtle)' }}>
-                  {it.detail}
+                <div className="po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border-subtle)' }}>
+                  {hy(it.detail)}
                 </div>
               )}
 

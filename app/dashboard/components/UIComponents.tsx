@@ -7,6 +7,7 @@ import { acceptNumeric, forDisplay } from '@/lib/core/numInput';
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
 import { MONTHS_SHORT } from '@/lib/core/months';
 import { fn } from '@/lib/core/format';
+import { hy } from '@/components/Hyphen';
 
 // ── ΕΝΙΑΙΟ σύστημα πεδίων (ένα μέγεθος/σχήμα/focus παντού) ───────────────────
 // Γωνία 10, 1px border + accent focus-ring (χωρίς μετατόπιση layout — δεν
@@ -194,8 +195,11 @@ export function InfoDot({ text }: { text: string }) {
         </span>
       </button>
       {open && typeof document !== 'undefined' && createPortal(
-        <div role="tooltip" style={{ position: 'fixed', top: pos.top, left: pos.left, transform: pos.up ? 'translateY(-100%)' : 'none', width: 260, maxWidth: 'calc(100vw - 16px)', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '10px 12px', boxShadow: 'var(--elev-3)', zIndex: 3000, pointerEvents: 'none' }}>
-          <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>{text}</p>
+        /* Ιδιο μέτρο και ίδια στοίχιση με το ⓘ του InfoHint: δύο επεξηγήσεις
+           δίπλα δίπλα δεν επιτρέπεται να διαβάζονται αλλιώς επειδή τις γράφουν
+           δύο αρχεία. Πλάτος 280, πλήρης στοίχιση, συλλαβισμός στην απόδοση. */
+        <div role="tooltip" style={{ position: 'fixed', top: pos.top, left: pos.left, transform: pos.up ? 'translateY(-100%)' : 'none', width: 280, maxWidth: 'calc(100vw - 16px)', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px', boxShadow: 'var(--elev-3)', zIndex: 3000, pointerEvents: 'none' }}>
+          <p className="po-just" style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.6 }}>{hy(text)}</p>
         </div>,
         document.body,
       )}

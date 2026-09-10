@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { cloneElement, Fragment, isValidElement, type ReactNode } from 'react';
-import { hyphenate } from '@/lib/core/hyphenate';
+import { type ReactNode } from 'react';
+import { hy } from '@/components/Hyphen';
 import { T } from '@/components/tokens';
 import { PublicHeader, PublicFooter, WRAP, WRAP_PAD } from './PublicChrome';
 import { BackLink } from './BackLink';
@@ -36,36 +36,6 @@ import { BackLink } from './BackLink';
 // υπολογιστή φόρου: ένα μέτρο, ένα κουμπί, ένα υποσέλιδο παντού.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * ΒΑΖΕΙ ΜΑΛΑΚΑ ΕΝΩΤΙΚΑ ΣΕ ΟΛΟ ΤΟ ΤΡΕΧΟΥΜΕΝΟ ΚΕΙΜΕΝΟ ΜΙΑΣ ΕΝΟΤΗΤΑΣ.
- *
- * ΓΙΑΤΙ ΕΔΩ ΚΑΙ ΟΧΙ ΣΤΗΝ ΠΗΓΗ. Το κείμενο των σελίδων γράφεται από ανθρώπους
- * ως κανονικές ελληνικές προτάσεις· κανείς δεν πρέπει να πληκτρολογεί αόρατους
- * χαρακτήρες για να στοιχιστεί μια παράγραφος. Ο συλλαβισμός μπαίνει τη στιγμή
- * της απόδοσης, σε ένα σημείο· το αρχείο μένει αναγνώσιμο.
- *
- * ΔΙΑΣΧΙΖΕΙ ΤΟ ΔΕΝΤΡΟ, ΔΕΝ ΑΓΓΙΖΕΙ ΤΗ ΔΟΜΗ. Μόνο τα κείμενα αλλάζουν· τα
- * `<strong>` και οι σύνδεσμοι μένουν ό,τι ήταν, με τα κλειδιά τους.
- *
- * ΚΑΙ ΣΤΑΜΑΤΑ ΣΤΟΝ ΠΙΝΑΚΑ. Ο συλλαβισμός είναι εργαλείο της ΠΛΗΡΟΥΣ ΣΤΟΙΧΙΣΗΣ:
- * σε παράγραφο πλάτους εξήντα ώς ογδόντα χαρακτήρων κλείνει τα κενά και η
- * γραμμή στέκει πέρα πέρα. Σε κελί πίνακα δεν υπάρχει τέτοια δουλειά να κάνει
- * και το αποτέλεσμα είναι το αντίθετο από καθαρό: μετρημένο στα 1.280, η στήλη
- * του τόπου είναι 168 εικονοστοιχεία και έβγαζε «Ευρωπαϊ-κή Ένωση», η στήλη της
- * περιγραφής «Ενερ-γοποιείται», «στοι-χεία», «ταξι-δεύει» — τέσσερα κομμένα
- * λεκτικά σε μία ματιά, σε πίνακα που υποτίθεται ότι διαβάζεται με το βλέμμα
- * κάθετα. Το κελί τυλίγεται στα κενά του και μένει ακέραιο.
- */
-export function hy(node: ReactNode): ReactNode {
-  if (typeof node === 'string') return hyphenate(node);
-  if (Array.isArray(node)) return node.map((n, i) => <Fragment key={i}>{hy(n)}</Fragment>);
-  if (isValidElement(node)) {
-    if (node.type === 'table') return node;
-    const kids = (node.props as { children?: ReactNode }).children;
-    return kids === undefined ? node : cloneElement(node, undefined, hy(kids));
-  }
-  return node;
-}
 
 /** Οι τρεις σελίδες εμπιστοσύνης, για τους συνδέσμους στο τέλος καθεμιάς. */
 const TRUST_PAGES: [string, string][] = [

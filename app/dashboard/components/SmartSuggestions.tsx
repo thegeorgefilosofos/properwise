@@ -25,6 +25,7 @@ import { AssistantMark } from './AssistantMark';
 import { T, TT, fe, EmptyState, Btn, IconBtn, LinkBtn } from '@/components/Theme';
 import { saved } from '@/components/dbWrite';
 import { ASSISTANT_ACC, suggestionsTitle, suggestionsSub, suggestionsTeaser } from '@/lib/assistant/identity';
+import { hy } from '@/components/Hyphen';
 
 interface Suggestion {
   title: string;
@@ -286,12 +287,17 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
 
       {/* Μία στήλη, χωρισμένη με γραμμές αντί για κάρτες: πέντε πλαίσια μέσα σε
           πλαίσιο διαβάζονται σαν θόρυβος, πέντε γραμμές σαν λίστα. */}
+      {/* ΤΟ ΜΗΝΥΜΑ ΑΠΟΤΥΧΙΑΣ ΗΤΑΝ ΚΟΛΛΗΜΕΝΟ ΣΤΗΝ ΚΕΦΑΛΙΔΑ. Καθόταν τέσσερα
+          εικονοστοιχεία κάτω από μια σειρά που έχει ήδη εικονίδιο, τίτλο,
+          υπότιτλο και δύο κουμπιά: διαβαζόταν ως τέταρτη σειρά της κεφαλίδας,
+          όχι ως απάντηση σε αυτό που μόλις πάτησε ο χρήστης. Παίρνει δική του
+          γραμμή χωρισμού και αέρα — και πλήρη στοίχιση με συλλαβισμό, ώστε οι
+          δύο γραμμές του να κλείνουν και δεξιά αντί να ξεμένουν ριγμένες. */}
       {failed && (
-        <p style={{ ...TT.bodySm, marginTop: 4 }}>
-          {serverMessage ? serverMessage : <>
-          Δεν κατάφερα να διαβάσω το ακίνητο αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο· δεν θα
-          σου δείξω προτάσεις με νούμερα που δεν προέρχονται από τα δικά σου στοιχεία.
-          </>}
+        <p className="po-just" style={{ ...TT.bodySm, marginTop: 4, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+          {serverMessage ? hy(serverMessage) : hy(
+            'Δεν κατάφερα να διαβάσω το ακίνητο αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο· δεν θα σου δείξω προτάσεις με νούμερα που δεν προέρχονται από τα δικά σου στοιχεία.',
+          )}
         </p>
       )}
 

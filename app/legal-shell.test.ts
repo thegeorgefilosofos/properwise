@@ -20,7 +20,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { hy } from './legal-shell';
+import { hy } from '../components/Hyphen';
 import { SHY } from '@/lib/core/hyphenate';
 
 let passed = 0, failed = 0;
