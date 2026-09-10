@@ -1835,24 +1835,68 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         {/* Ανάλυση ευαισθησίας & αντοχή — πακέτο «Επαγγελματίας» */}
         {canInvest && (
           <Section icon={<TrendingUp size={15} />} title="Ανάλυση ευαισθησίας" sub="Πώς αντέχει η επένδυση σε μεταβολές επιτοκίου και ανατίμησης" info={G.sensitivity}>
-            <div style={{ overflowX: 'auto' }}>
-              <div className="po-fig-card" tabIndex={0} style={{ minWidth: 460, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr', gap: 8, padding: '0 12px 8px' }}>
-                  {['Σενάριο', 'Συνολική απόδοση', 'Απόδοση ιδίων', 'Ετήσια ροή'].map((h, i) => (
-                    <span key={h} style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: SANS, textAlign: i === 0 ? 'left' : 'right' }}>{h}</span>
-                  ))}
-                </div>
-                {scenarios.map(s => (
-                  <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr', gap: 8, alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: s.key === 'base' ? 'var(--bg-elevated)' : 'transparent', border: `1px solid ${s.key === 'base' ? 'var(--border-subtle)' : 'transparent'}` }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', margin: 0, fontFamily: SANS }}>{s.label}</p>
-                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '1px 0 0', fontFamily: SANS }}>{s.note}</p>
-                    </div>
-                    <span className="po-fig" style={{ textAlign: 'right', fontSize: 'var(--fs-base)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', fontFamily: SANS }}>{fp(s.totalReturn)}</span>
-                    <span className="po-fig" data-tone={s.roe >= 0 ? undefined : 'negative'} style={{ textAlign: 'right', fontSize: 'var(--fs-base)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', fontFamily: SANS }}>{fp(s.roe)}</span>
-                    <span className="po-fig" data-tone={s.cashFlow >= 0 ? undefined : 'negative'} style={{ textAlign: 'right', fontSize: 'var(--fs-base)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', fontFamily: SANS }}>{fe(s.cashFlow)}</span>
-                  </div>
-                ))}
+            {/* ═══ ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs ══════════════════════════════════
+                ΤΙ ΗΤΑΝ. Τρία σενάρια επί τρία μεγέθη, χτισμένα με δύο `display:
+                grid` — ένα για την κεφαλίδα, ένα ανά γραμμή — και το ΙΔΙΟ
+                `1.6fr 1fr 1fr 1fr` γραμμένο δύο φορές. Δεκαέξι κελιά που
+                ΜΟΙΑΖΑΝ πίνακας χωρίς να είναι: ο αναγνώστης οθόνης τα διάβαζε
+                ως δεκαέξι ασύνδετα κείμενα, χωρίς «Δυσμενές, Απόδοση ιδίων».
+                ΤΩΡΑ. Οι δύο δηλώσεις πλάτους έγιναν ΕΝΑ `<colgroup>` με
+                `.tbl-fixed`· το χειρόγραφο `overflowX: auto` με `minWidth: 460`
+                έγινε `.po-scroll-x` με `--tbl-min`. Η ίδια πληροφορία ήταν ήδη
+                πίνακας στην αναφορά HTML κι στο PDF — μόνο η οθόνη έμενε πίσω.
+                Το `.po-fig-card` κρατά την αποκάλυψη του τόνου στην αιώρηση κι
+                κάθεται πάνω στο ΙΔΙΟ το κουτί: σε εσωτερικό στοιχείο το
+                `overflow: hidden` της `.po-table-box` θα έκοβε το δαχτυλίδι
+                εστίασης του πληκτρολογίου. */}
+            <div className="po-table-box po-fig-card" tabIndex={0}>
+              <div className="po-scroll-x">
+                <table className="po-table tbl-fixed" style={{ '--tbl-min': '460px' }}>
+                  {/* Ο τίτλος γράφεται ήδη από το `Section` ακριβώς από πάνω:
+                      ορατή ταινία τίτλου εδώ θα τον έλεγε δεύτερη φορά. Η λεζάντα
+                      μένει για όποιον ακούει τον πίνακα αντί να τον βλέπει. */}
+                  <caption className="sr-only">Ανάλυση ευαισθησίας</caption>
+                  <colgroup>
+                    <col style={{ width: '34.8%' }} />
+                    <col style={{ width: '21.7%' }} />
+                    <col style={{ width: '21.7%' }} />
+                    <col style={{ width: '21.8%' }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      {['Σενάριο', 'Συνολική απόδοση', 'Απόδοση ιδίων', 'Ετήσια ροή'].map((h, i) => (
+                        <th key={h} scope="col" className={i === 0 ? undefined : 'num'}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scenarios.map(s => (
+                      /* Η γραμμή του βασικού σεναρίου κρατά ΤΟ ΙΔΙΟ φόντο που είχε.
+                         Η `tr.is-on` θα την έβαφε με τον τόνο της επιλογής, που εδώ
+                         λέει ψέματα: κανείς δεν την επέλεξε — είναι το σενάριο των
+                         τρεχουσών παραδοχών. */
+                      <tr key={s.key} style={{ background: s.key === 'base' ? 'var(--bg-elevated)' : undefined }}>
+                        <th scope="row">
+                          <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', margin: 0, fontFamily: SANS }}>{s.label}</p>
+                          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '1px 0 0', fontFamily: SANS }}>{s.note}</p>
+                        </th>
+                        {/* Η κεφαλίδα της γραμμής πιάνει δύο γραμμές, το ποσό μία:
+                            με στοίχιση στην κορυφή —την προεπιλογή του `.po-table`—
+                            το ποσό θα κάθεται δίπλα στο «Δυσμενές» κι όχι στη μέση
+                            της γραμμής, όπως το είχε το `alignItems: center`. */}
+                        <td className="num" style={{ verticalAlign: 'middle' }}>
+                          <span className="po-fig" style={{ fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: SANS }}>{fp(s.totalReturn)}</span>
+                        </td>
+                        <td className="num" style={{ verticalAlign: 'middle' }}>
+                          <span className="po-fig" data-tone={s.roe >= 0 ? undefined : 'negative'} style={{ fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: SANS }}>{fp(s.roe)}</span>
+                        </td>
+                        <td className="num" style={{ verticalAlign: 'middle' }}>
+                          <span className="po-fig" data-tone={s.cashFlow >= 0 ? undefined : 'negative'} style={{ fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: SANS }}>{fe(s.cashFlow)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
             {term === 'short' && breakEvenOcc !== null && (

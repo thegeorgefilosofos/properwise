@@ -331,21 +331,60 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                 <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontWeight: 600 }}>{showBalance ? 'Σύμπτυξη' : 'Προβολή'}</span>
               </button>
               {showBalance && (<>
-              <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 12, padding: '10px 16px', background: 'var(--bg-elevated)', fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-tertiary)' }}>
-                  <span>ΛΟΓΑΡΙΑΣΜΟΣ</span><span style={{ textAlign: 'right' }}>ΧΡΕΩΣΗ</span><span style={{ textAlign: 'right' }}>ΠΙΣΤΩΣΗ</span>
-                </div>
-                {preview.map(r => (
-                  <div key={r.code} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 12, padding: '9px 16px', borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--fs-base)' }}>
-                    <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ fontFamily: T.font.mono, fontSize: 12, color: 'var(--text-tertiary)', marginRight: 10 }}>{r.code}</span>{r.account}</span>
-                    <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.debit ? eur(r.debit) : ''}</span>
-                    <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.credit ? eur(r.credit) : ''}</span>
-                  </div>
-                ))}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 12, padding: '12px 16px', borderTop: '1px solid var(--border-default)', background: 'var(--bg-elevated)', fontSize: 'var(--fs-base)', fontWeight: 700 }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>ΣΥΝΟΛΑ</span>
-                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{eur(totals.debit)}</span>
-                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{eur(totals.credit)}</span>
+              {/* ═══ ΤΟ ΙΣΟΖΥΓΙΟ ΕΙΝΑΙ ΠΙΝΑΚΑΣ, ΟΧΙ ΤΡΙΑ ΠΛΕΓΜΑΤΑ ══════════════
+                  ΤΙ ΗΤΑΝ. Το `'1fr 120px 120px'` γραμμένο ΤΡΕΙΣ φορές —
+                  κεφαλίδα, γραμμές, σύνολα — δηλαδή τρία σημεία να αποκλίνουν
+                  για μία στοίχιση. Και για τον αναγνώστη οθόνης το ισοζύγιο
+                  ήταν σειρά ασύνδετων κειμένων: ένα ποσό δεν ανακοινωνόταν ποτέ
+                  μαζί με τον λογαριασμό του ούτε με τη στήλη «Χρέωση».
+
+                  ΤΙ ΚΑΝΕΙ ΤΩΡΑ. Τα πλάτη ζουν μία φορά σε `<colgroup>` με
+                  `.tbl-fixed` ώστε να ισχύσουν, ο λογαριασμός είναι
+                  `<th scope="row">`, τα ποσά κελιά `.num` και τα ΣΥΝΟΛΑ
+                  `<tfoot>`. Η γωνία περνά από 12 σε 14: είναι η μία γωνία που
+                  έχει κάθε πίνακας του προϊόντος. */}
+              <div className="po-table-box">
+                {/* ΟΙ ΔΥΟ ΣΤΗΛΕΣ ΠΟΣΩΝ ΚΡΑΤΟΥΝ 240 ΣΤΑΘΕΡΑ. Μέσα σε παράθυρο
+                    `lg` στα 760 δεν φαίνεται· στο τηλέφωνο, με το παράθυρο να
+                    πέφτει στο πλάτος της οθόνης, από τα 320 έμεναν κάτω από 60
+                    για το όνομα του λογαριασμού — δηλαδή τρεις χαρακτήρες και
+                    αποσιωπητικά. Με ελάχιστο 420 ο πίνακας κυλά οριζόντια αντί
+                    να στριμώξει τη στήλη που κουβαλά το νόημα. */}
+                <div className="po-scroll-x">
+                  <table className="po-table tbl-fixed" style={{ ['--tbl-min' as string]: '420px', ['--tbl-fs' as string]: 'var(--fs-base)' }}>
+                    <caption>Ισοζύγιο περιόδου</caption>
+                    <colgroup>
+                      <col />
+                      <col style={{ width: 132 }} />
+                      <col style={{ width: 132 }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th scope="col">ΛΟΓΑΡΙΑΣΜΟΣ</th>
+                        <th scope="col" className="num">ΧΡΕΩΣΗ</th>
+                        <th scope="col" className="num">ΠΙΣΤΩΣΗ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.map(r => (
+                        <tr key={r.code}>
+                          <th scope="row" style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ fontFamily: T.font.mono, fontSize: 12, color: 'var(--text-tertiary)', marginRight: 10 }}>{r.code}</span>{r.account}</th>
+                          <td className="num">{r.debit ? eur(r.debit) : ''}</td>
+                          <td className="num">{r.credit ? eur(r.credit) : ''}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      {/* Η `tr.is-total` βάφει τη σκούρα γραμμή ΜΟΝΟ στα `td`. Η
+                          κεφαλίδα της γραμμής τη γράφει μόνη της, αλλιώς η
+                          γραμμή των συνόλων ξεκινούσε από τη δεύτερη στήλη. */}
+                      <tr className="is-total" style={{ background: 'var(--bg-elevated)', fontWeight: 700 }}>
+                        <th scope="row" style={{ borderTop: '1px solid var(--border-default)', fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>ΣΥΝΟΛΑ</th>
+                        <td className="num">{eur(totals.debit)}</td>
+                        <td className="num">{eur(totals.credit)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
               </div>
 

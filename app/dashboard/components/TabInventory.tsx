@@ -501,42 +501,97 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
           })}
         </div>
       ):(
-        <div style={{overflowX:'auto',margin:'0 -4px',WebkitOverflowScrolling:'touch'}}>
-        <div style={{display:'flex',flexDirection:'column',gap:1,background:'var(--surface-raised)',borderRadius:T.radius.card,border:'1px solid var(--border-raised)',boxShadow:'var(--highlight-inset), var(--elev-1)',overflow:'hidden',minWidth:560}}>
-          <div style={{display:'grid',gridTemplateColumns:`${selectMode?'32px ':''}minmax(0,2fr) 130px 96px 90px 44px`,gap:10,padding:'10px 16px',borderBottom:'2px solid var(--border-subtle)',background:'var(--bg-elevated)'}}>
-            {selectMode&&<div/>}
-            {['Αντικείμενο','Κατάσταση','Αξία','Ρεύμα/μήνα',''].map(h=><p key={h} style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:500,fontFamily:T.font.sans}}>{h}</p>)}
+        /* ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs. Η προβολή «λίστα» ήταν δεκατρία divs με το
+           ΙΔΙΟ `gridTemplateColumns` γραμμένο δύο φορές —μία στην κεφαλίδα, μία στη
+           σειρά— κι με δοχείο που κουβαλούσε ήδη `minWidth: 560` με `overflowX: auto`:
+           όλη η συμπεριφορά πίνακα, χωρίς τη δομή του. Πρακτικά: οι δύο δηλώσεις
+           πλατών μπορούσαν να ξεφύγουν η μία από την άλλη χωρίς να το δει κανείς —
+           κι όποιος ακούει τη σελίδα δεν μάθαινε ποτέ ότι το ποσό δεξιά είναι η
+           «Αξία» του αντικειμένου αριστερά. Τώρα το λένε τα `<th scope>` κι τα πλάτη
+           ζουν σε ένα `<colgroup>`. Οι σειρές είναι όσα τα αντικείμενα του ακινήτου,
+           τυπικά δεκάδες. */
+        <div className="po-table-box" style={{boxShadow:'var(--highlight-inset), var(--elev-1)'}}>
+          <div className="po-scroll-x">
+            {/* ΤΟ ΕΛΑΧΙΣΤΟ ΠΛΑΤΟΣ ΕΙΝΑΙ ΤΟ ΙΔΙΟ 560 ΠΟΥ ΕΓΡΑΦΕ ΤΟ ΧΕΡΙ. Αλλάζει μόνο
+                ποιος το κρατά: ήταν `minWidth: 560` σε ενσωματωμένο στυλ πάνω στο
+                πλέγμα, τώρα είναι η μεταβλητή που διαβάζει η κοινή `.po-table`. */}
+            <table className="po-table" style={{ ['--tbl-min' as string]: '560px' }}>
+              {/* Η ΛΕΖΑΝΤΑ ΔΕΝ ΦΑΙΝΕΤΑΙ, ΓΙΑΤΙ ΔΕΝ ΥΠΗΡΧΕ ΤΙΤΛΟΣ ΝΑ ΦΑΝΕΙ. Πάνω από τη
+                  λίστα κάθονται ήδη τα φίλτρα με τον μετρητή αντικειμένων· μια ταινία
+                  τίτλου θα πρόσθετε λεκτικό που δεν ζήτησε κανείς. Ως `sr-only` ο
+                  πίνακας αποκτά όνομα για τη βοηθητική τεχνολογία χωρίς να αλλάξει
+                  ούτε ένα εικονοστοιχείο στην οθόνη. */}
+              <caption className="sr-only">Απογραφή αντικειμένων</caption>
+              {/* ΧΩΡΙΣ `tbl-fixed`, ΕΠΙΤΗΔΕΣ. Με σταθερή διάταξη τα 44 της στήλης των
+                  ενεργειών είναι ΟΛΟ το κελί: τα 14+14 του γεμίσματος της `.po-table`
+                  θα άφηναν 16 για ένα κουμπί 28 πλατύ κι το μενού θα έβγαινε έξω. Σε
+                  αυτόματη διάταξη τα πλάτη εδώ είναι στόχος, όχι ταβάνι — κι η στήλη
+                  του ονόματος παίρνει ό,τι περισσεύει, όπως το `minmax(0,2fr)`. */}
+              <colgroup>
+                {selectMode&&<col style={{width:32}}/>}
+                <col/>
+                <col style={{width:130}}/>
+                <col style={{width:96}}/>
+                <col style={{width:90}}/>
+                <col style={{width:44}}/>
+              </colgroup>
+              <thead>
+                <tr>
+                  {selectMode&&<th scope="col"><span className="sr-only">Επιλογή</span></th>}
+                  <th scope="col">Αντικείμενο</th>
+                  <th scope="col">Κατάσταση</th>
+                  <th scope="col" className="num">Αξία</th>
+                  <th scope="col" className="num">Ρεύμα/μήνα</th>
+                  {/* Η στήλη των ενεργειών έγραφε κενό `<p>`: υπάρχει για τη δομή. */}
+                  <th scope="col"><span className="sr-only">Ενέργειες</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(item=>{
+                  const curVal=calcCurrentValue(item); const mc=calcMonthlyCost(item,kwhPrice); const age=calcAgeDisplay(item.purchase_date)
+                  // Ιδιος κανόνας με τις κάρτες: χωρίς τιμή αγοράς δεν υπάρχει ποσό.
+                  const hasValue=(item.purchase_value||0)>0; const hasDate=!!item.purchase_date
+                  const sel=selected.has(item.id)
+                  return (
+                    /* Η ΕΠΙΛΕΓΜΕΝΗ ΓΡΑΜΜΗ ΒΑΦΕΤΑΙ ΜΕ ΤΗΝ ΚΟΙΝΗ `is-on`. Το ενσωματωμένο
+                       στυλ έγραφε το ίδιο `--accent-soft` με το χέρι· ως κλάση το ξέρει
+                       κι το καρφωμένο πρώτο κελί, που αλλιώς θα ζωγράφιζε από πάνω του
+                       άλλο φόντο. Το πάτημα της σειράς μένει στον ίδιο βοηθό `pressable`
+                       που είχε το div. */
+                    <tr key={item.id} {...pressable(()=>selectMode?toggleSel(item.id):onEdit(item))} className={sel?'is-on':undefined} style={{transition:'background 0.15s',cursor:'pointer'}}
+                      onMouseEnter={e=>{if(!sel)(e.currentTarget as HTMLTableRowElement).style.background='var(--bg-elevated)'}}
+                      onMouseLeave={e=>{if(!sel)(e.currentTarget as HTMLTableRowElement).style.background='var(--bg-surface)'}}
+                    >
+                      {/* ΤΟ `verticalAlign: middle` ΕΙΝΑΙ Η ΠΑΛΙΑ ΣΤΟΙΧΙΣΗ, ΓΡΑΜΜΕΝΗ ΞΑΝΑ.
+                          Το πλέγμα είχε `alignItems: center`, ενώ η `.po-table` στοιχίζει
+                          κάθε κελί στην κορυφή. Χωρίς αυτό, το κουτάκι επιλογής με το
+                          μενού ενεργειών θα κρέμονταν στην κορυφή μιας σειράς που το
+                          όνομα με τη μπάρα κάνουν 70 ψηλή. Η στήλη του ονόματος μένει
+                          στην κορυφή: είναι η ψηλότερη, δεν έχει τι να κεντραριστεί. */}
+                      {selectMode&&<td style={{verticalAlign:'middle'}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></td>}
+                      <th scope="row" style={{minWidth:0}}>
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <p className="po-elide" style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{item.name}</p>
+                          {item.energy_class&&<EnergyBadge cls={item.energy_class}/>}
+                        </div>
+                        <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,margin:'2px 0 4px'}}>{item.category}{item.room?` · ${item.room}`:''}{age?` · ${age}`:''}</p>
+                        <DepBar pct={calcDepreciationPct(item)} left={calcYearsLeft(item)} hasData={hasDate} hasValue={hasValue} compact/>
+                        {replacementSuggestion(item).suggested&&<div style={{marginTop:4}}><ReplacementHint item={item} compact/></div>}
+                      </th>
+                      <td style={{verticalAlign:'middle'}} onClick={e=>e.stopPropagation()}><InlineConditionEdit item={item} onUpdate={onUpdateCondition}/></td>
+                      <td className="num" style={{verticalAlign:'middle'}}>
+                        {hasValue
+                          ? <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(curVal)}</p>
+                          : <p style={{fontSize:12,fontFamily:T.font.sans,color:'var(--text-tertiary)'}}>Χωρίς αξία</p>}
+                      </td>
+                      <td className="num" style={{verticalAlign:'middle'}}>{mc>0&&<p style={{fontSize:12,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(mc)}</p>}</td>
+                      <td style={{verticalAlign:'middle'}}><div style={{display:'flex',justifyContent:'flex-end'}}><OverflowMenu actions={itemActions(item)}/></div></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-          {filtered.map(item=>{
-            const curVal=calcCurrentValue(item); const mc=calcMonthlyCost(item,kwhPrice); const age=calcAgeDisplay(item.purchase_date)
-            // Ιδιος κανόνας με τις κάρτες: χωρίς τιμή αγοράς δεν υπάρχει ποσό.
-            const hasValue=(item.purchase_value||0)>0; const hasDate=!!item.purchase_date
-            const sel=selected.has(item.id)
-            return (
-              <div key={item.id} {...pressable(()=>selectMode?toggleSel(item.id):onEdit(item))} style={{display:'grid',gridTemplateColumns:`${selectMode?'32px ':''}minmax(0,2fr) 130px 96px 90px 44px`,gap:10,padding:'11px 16px',background:sel?'var(--accent-soft)':'var(--bg-surface)',borderBottom:'1px solid var(--border-subtle)',alignItems:'center',transition:'background 0.15s',cursor:'pointer'}}
-                onMouseEnter={e=>{if(!sel)(e.currentTarget as HTMLDivElement).style.background='var(--bg-elevated)'}}
-                onMouseLeave={e=>{if(!sel)(e.currentTarget as HTMLDivElement).style.background='var(--bg-surface)'}}
-              >
-                {selectMode&&<div onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>}
-                <div style={{minWidth:0}}>
-                  <div style={{display:'flex',alignItems:'center',gap:6}}>
-                    <p className="po-elide" style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{item.name}</p>
-                    {item.energy_class&&<EnergyBadge cls={item.energy_class}/>}
-                  </div>
-                  <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,margin:'2px 0 4px'}}>{item.category}{item.room?` · ${item.room}`:''}{age?` · ${age}`:''}</p>
-                  <DepBar pct={calcDepreciationPct(item)} left={calcYearsLeft(item)} hasData={hasDate} hasValue={hasValue} compact/>
-                  {replacementSuggestion(item).suggested&&<div style={{marginTop:4}}><ReplacementHint item={item} compact/></div>}
-                </div>
-                <div onClick={e=>e.stopPropagation()}><InlineConditionEdit item={item} onUpdate={onUpdateCondition}/></div>
-                {hasValue
-                  ? <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(curVal)}</p>
-                  : <p style={{fontSize:12,fontFamily:T.font.sans,color:'var(--text-tertiary)'}}>Χωρίς αξία</p>}
-                <div>{mc>0&&<p style={{fontSize:12,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(mc)}</p>}</div>
-                <div style={{display:'flex',justifyContent:'flex-end'}}><OverflowMenu actions={itemActions(item)}/></div>
-              </div>
-            )
-          })}
-        </div>
         </div>
       )}
     </div>

@@ -123,6 +123,12 @@ function Panel({ label, info, right, children }: {
 
 const ROW_BLEED: CSSProperties = { margin: '0 -12px', padding: '0 12px' };
 
+// Οι τρεις άξονες κρατούν το βάρος και το χρώμα που είχαν ως `.plan-axis`, τώρα
+// που τα κελιά τους είναι `<td>`: το `.po-table td` γράφει --text-secondary σε
+// κανονικό βάρος, δηλαδή θα έσβηνε τις τιμές δίπλα σε ονόματα επιλογών του ίδιου
+// ακριβώς τόνου. Ιδιο κείμενο, ίδια έμφαση — άλλη μόνο η δομή.
+const AXIS_CELL: CSSProperties = { color: 'var(--text-primary)', fontWeight: 600 };
+
 /**
  * Το περιεχόμενο ενός κυκλακιού: μία πρόταση· από κάτω ό,τι έχει ετικέτα.
  *
@@ -812,47 +818,58 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
         )}
       </Panel>
 
-      {/* ── Η ΣΥΓΚΡΙΣΗ, ΩΣ ΠΙΝΑΚΑΣ ────────────────────────────────────────
-          ΟΙ ΤΡΕΙΣ ΑΞΟΝΕΣ ΗΤΑΝ ΤΡΕΙΣ ΕΤΙΚΕΤΕΣ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ. Σε έξι επιλογές
-          αυτό είναι δεκαοκτώ ετικέτες για τρία πράγματα· οι τιμές δεν
-          στοίχιζαν ποτέ μεταξύ τους: το «Μέτριο» της δεύτερης γραμμής ξεκινούσε
-          εκεί που τελείωνε το «Λίγος» της πρώτης. Δηλαδή πίνακας σύγκρισης όπου
-          η σύγκριση απαιτούσε να θυμάσαι.
+      {/* ── Η ΣΥΓΚΡΙΣΗ, ΩΣ ΠΡΑΓΜΑΤΙΚΟΣ ΠΙΝΑΚΑΣ ──────────────────────────────
+          ΗΤΑΝ ΠΛΕΓΜΑ ΑΠΟ span. Τέσσερις στήλες επί έξι επιλογές είναι είκοσι
+          τέσσερα κελιά που ΜΟΙΑΖΑΝ πίνακας χωρίς να είναι: η κεφαλίδα ήταν
+          `aria-hidden` και κάθε κελί κουβαλούσε κρυφό αντίγραφο της λέξης του
+          άξονα («Λίγος κόπος») για να ακούγεται σωστά — δεκαοκτώ αντίγραφα για
+          τρεις λέξεις. Δηλαδή, γραμμένη στο χέρι, η δουλειά ενός `<th scope>`.
 
-          Τώρα είναι ΕΝΑ πλέγμα για όλη την ενότητα: η κεφαλίδα και κάθε γραμμή
-          μοιράζονται τις ίδιες τέσσερις στήλες, οπότε τα «Λίγος / Πολύς /
-          Μέτριος» πέφτουν το ένα κάτω από το άλλο. Το `display: contents` στο
-          δοχείο των τριών τιμών είναι που το επιτρέπει: σε φαρδιά οθόνη οι τρεις
-          τιμές είναι κελιά του ίδιου πλέγματος, σε στενή γίνεται το δοχείο
-          κανονικό flex και τις μαζεύει σε μία σειρά. */}
+          Τώρα το λέει η δομή: `<th scope="col">` για τον άξονα του πίνακα και
+          `<th scope="row">` για την επιλογή. Τα κρυφά αντίγραφα έφυγαν επειδή
+          έλεγαν ό,τι λέει πια το `scope` — ούτε λέξη παραπάνω. */}
       {plan.options.length > 0 && (
         <Panel label={plan.optionsTitle}>
-          <div className="plan-table">
-            <span className="plan-head" aria-hidden />
-            <span className="plan-head" aria-hidden>Κόπος</span>
-            <span className="plan-head" aria-hidden>Ρίσκο</span>
-            <span className="plan-head" aria-hidden>Χρόνος</span>
-            <span className="plan-head-rule" aria-hidden />
-            {plan.options.map((o: Option, i: number) => (
-              <div key={o.id} style={{ display: 'contents' }}>
-                {i > 0 && <span className="plan-span" style={{ borderTop: '1px solid var(--border-subtle)' }} />}
-                <span className="plan-name">
-                  <RowTitle state="plain" text={o.title}
-                    hint={{ label: `Τι σημαίνει: ${o.title}`, body: <Tip lead={o.payoff} rows={[['Ταιριάζει αν', o.fits], ['Τι πληρώνεις', o.cost]]} /> }} />
-                </span>
-                {/* Η ΛΕΞΗ ΤΟΥ ΑΞΟΝΑ ΕΙΝΑΙ ΚΡΥΦΗ ΣΤΗ ΦΑΡΔΙΑ ΟΘΟΝΗ, ΟΧΙ ΑΝΥΠΑΡΚΤΗ.
-                    Την τυπώνει η κεφαλίδα των στηλών, οπότε το μάτι δεν τη
-                    χρειάζεται· ο αναγνώστης οθόνης όμως δεν βλέπει στήλες και θα
-                    άκουγε «Λίγος, Μέτριο, Αμέσως» χωρίς να ξέρει τι είναι τι.
-                    Στη στενή οθόνη, όπου η κεφαλίδα δεν υπάρχει, η ίδια λέξη
-                    γίνεται ορατή και ενώνεται με την τιμή: «Λίγος κόπος». */}
-                <span className="plan-axes">
-                  <span className="plan-axis">{EFFORT_LABEL[o.effort]}<span className="plan-axis-k"> κόπος</span></span>
-                  <span className="plan-axis">{RISK_LABEL[o.risk]}<span className="plan-axis-k"> ρίσκο</span></span>
-                  <span className="plan-axis"><span className="sr-only">Χρόνος: </span>{o.speed}</span>
-                </span>
-              </div>
-            ))}
+          {/* ΤΟ ΠΛΑΙΣΙΟ ΤΟ ΔΙΝΕΙ ΗΔΗ Η ΚΑΡΤΑ ΤΗΣ ΕΝΟΤΗΤΑΣ: δεύτερο `.po-table-box`
+              θα έβαζε περίγραμμα μέσα σε περίγραμμα. Το ελάχιστο πλάτος είναι
+              άθροισμα, όχι εκτίμηση: οι 92 + 92 + 172 του παλιού πλέγματος κάνουν
+              356 κειμένου, το γέμισμα των 28 επί τέσσερις στήλες άλλα 112 — και η
+              στήλη του ονόματος θέλει 232 για να χωρά σε δύο γραμμές το
+              «Παραχώρηση σε δικό σου άνθρωπο». Σύνολο 700. */}
+          <div className="po-scroll-x">
+            <table className="po-table tbl-fixed" style={{ ['--tbl-min' as string]: '700px' }}>
+              {/* Ονομα για τον αναγνώστη οθόνης, χωρίς ταινία τίτλου: την ίδια
+                  λέξη τη γράφει ήδη η επικεφαλίδα της ενότητας από πάνω. */}
+              <caption className="sr-only">{plan.optionsTitle}</caption>
+              <colgroup>
+                <col />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '200px' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  {/* Το κενό κελί της γωνίας: υπάρχει για τη δομή, δεν λέει τίποτα. */}
+                  <th scope="col"><span className="sr-only">Επιλογή</span></th>
+                  <th scope="col">Κόπος</th>
+                  <th scope="col">Ρίσκο</th>
+                  <th scope="col">Χρόνος</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plan.options.map((o: Option) => (
+                  <tr key={o.id}>
+                    <th scope="row">
+                      <RowTitle state="plain" text={o.title}
+                        hint={{ label: `Τι σημαίνει: ${o.title}`, body: <Tip lead={o.payoff} rows={[['Ταιριάζει αν', o.fits], ['Τι πληρώνεις', o.cost]]} /> }} />
+                    </th>
+                    <td style={AXIS_CELL}>{EFFORT_LABEL[o.effort]}</td>
+                    <td style={AXIS_CELL}>{RISK_LABEL[o.risk]}</td>
+                    <td style={AXIS_CELL}>{o.speed}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Panel>
       )}

@@ -15,7 +15,7 @@
 // ιδιοκτήτη). Η όψη επιλέγεται αυτόματα κατά τη φόρτωση.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useEffect, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useState, type CSSProperties } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
 import { T, Btn, ChipToggle, Chip, EmptyState, Skeleton, settingsField, ABSENT } from '@/components/Theme';
@@ -84,11 +84,6 @@ const fieldStyle: CSSProperties = settingsField;
 const subLabel: CSSProperties = { fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans };
 const descStyle: CSSProperties = { fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5, fontFamily: T.font.sans, marginTop: 4 };
 const errStyle: CSSProperties = { fontSize: 12, color: 'var(--negative)', fontFamily: T.font.sans, marginTop: 8 };
-const microLabel: CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans };
-
-// Πλέγμα σειράς μητρώου (κοινό σε κεφαλίδα & γραμμές, για τέλεια ευθυγράμμιση).
-const ROW_COLS = 'minmax(180px, 1fr) 104px 116px 250px 232px';
-const ROW_MIN = 960;
 
 // Chips μητρώου: ουδέτερα (η ετικέτα λέει τα πάντα). Κρατάμε το χρώμα μόνο για
 // ό,τι είναι πραγματικά actionable (π.χ. εκκρεμές αίτημα), όχι για διακόσμηση.
@@ -461,143 +456,176 @@ export default function OrgTeam({ userId }: { userId: string }) {
             hint="Πρόσκαλεσε συνεργάτες και δώσε τους πρόσβαση σε συγκεκριμένα ακίνητα."
           />
         ) : (
-          <div style={{ overflowX: 'auto', marginTop: 12 }}>
-            <div style={{ minWidth: ROW_MIN }}>
-              {/* Κεφαλίδα στηλών */}
-              <div style={{
-                display: 'grid', gridTemplateColumns: ROW_COLS, gap: 16, alignItems: 'center',
-                padding: '0 0 8px', borderBottom: '1px solid var(--border-subtle)',
-              }}>
-                <div style={microLabel}>Μέλος</div>
-                <div style={microLabel}>Ρόλος</div>
-                <div style={microLabel}>Κατάσταση</div>
-                <div style={microLabel}>Πρόσβαση</div>
-                <div style={microLabel} />
-              </div>
+          /* ΤΟ ΜΗΤΡΩΟ ΗΤΑΝ ΠΛΕΓΜΑ ΑΠΟ divs ΜΕ ΤΙΣ ΣΤΗΛΕΣ ΓΡΑΜΜΕΝΕΣ ΔΥΟ ΦΟΡΕΣ.
+             Η κεφαλίδα κι η γραμμή δεδομένων μοιράζονταν τη σταθερά ROW_COLS —
+             πέντε στήλες που έμεναν ευθυγραμμισμένες μόνο όσο κανείς δεν ξεχνούσε
+             το ένα από τα δύο σημεία. Και καμία σχέση κελιού-κεφαλίδας δεν έφτανε
+             στον αναγνώστη οθόνης: πέντε ανώνυμα divs ανά μέλος.
 
-              {members.map((m, i) => {
-                const isOwner = m.role === 'owner';
-                const isYou = m.user_id != null && m.user_id === userId;
-                const canAct = !isOwner && m.status !== 'revoked';
-                const busy = rowBusy === m.email;
-                const permsOpen = openPerms === m.email;
-                const scoped = (m.property_scope?.length ?? 0) > 0;
-                return (
-                  <div key={m.email || `row-${i}`} style={{ borderBottom: i < members.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
-                  <div
-                    style={{
-                      display: 'grid', gridTemplateColumns: ROW_COLS, gap: 16, alignItems: 'center',
-                      padding: '12px 0',
-                      opacity: m.status === 'revoked' ? 0.55 : 1,
-                    }}
-                  >
-                    {/* Μέλος (email + «Εσύ») */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <span style={{
-                        fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>{m.email || ABSENT}</span>
-                      {isYou && <Chip tone="neutral">Εσύ</Chip>}
-                    </div>
-
-                    {/* Ρόλος */}
-                    <div><RoleChip role={m.role} /></div>
-
-                    {/* Κατάσταση */}
-                    <div><StatusChip status={m.status} /></div>
-
-                    {/* Πρόσβαση: έγκριση αιτήματος ή τμηματικός έλεγχος Ανάγνωση/Επεξεργασία */}
-                    <div style={{ minWidth: 0 }}>
-                      {canAct && (
-                        m.edit_requested_at && !m.can_edit ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <Chip tone="accent">Ζητά επεξεργασία</Chip>
-                            <Btn variant="primary" onClick={() => setMemberEdit(m.email, true)} disabled={busy}>Έγκριση</Btn>
-                            <Btn variant="secondary" onClick={() => setMemberEdit(m.email, false)} disabled={busy}>Όχι</Btn>
+             Τώρα το `<th scope>` λέει ποια στήλη κρατά το κελί, τα πλάτη γράφονται
+             ΜΙΑ φορά στο `<colgroup>`. Το ελάχιστο πλάτος ξαναμετρήθηκε, γιατί το
+             πλέγμα χώριζε τις στήλες με κενά 16 ενώ ο πίνακας τις χωρίζει με το
+             γέμισμα των κελιών (14 εκατέρωθεν): 882 περιεχόμενο + 112 στα τέσσερα
+             εσωτερικά όρια + 28 στις δύο άκρες = 1.022, στη θέση των 960. */
+          <div className="po-table-box" style={{ marginTop: 12 }}>
+            <div className="po-scroll-x">
+              <table className="po-table tbl-fixed" style={{ ['--tbl-min' as string]: '1022px' } as CSSProperties}>
+                <caption>Μέλη του οργανισμού</caption>
+                {/* Τα πλάτη του παλιού gridTemplateColumns, με το γέμισμα του κελιού
+                    μέσα τους. Η πρώτη στήλη μένει αδήλωτη: παίρνει ό,τι περισσεύει,
+                    όπως έκανε το minmax(180px, 1fr). */}
+                <colgroup>
+                  <col />
+                  <col style={{ width: 132 }} />
+                  <col style={{ width: 144 }} />
+                  <col style={{ width: 278 }} />
+                  <col style={{ width: 260 }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Μέλος</th>
+                    <th scope="col">Ρόλος</th>
+                    <th scope="col">Κατάσταση</th>
+                    <th scope="col">Πρόσβαση</th>
+                    {/* Η στήλη των ενεργειών ήταν κενό div: για το μάτι μένει κενή,
+                        ο αναγνώστης οθόνης όμως χρειάζεται όνομα στη στήλη. */}
+                    <th scope="col"><span className="sr-only">Ενέργειες</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((m, i) => {
+                    const isOwner = m.role === 'owner';
+                    const isYou = m.user_id != null && m.user_id === userId;
+                    const canAct = !isOwner && m.status !== 'revoked';
+                    const busy = rowBusy === m.email;
+                    const permsOpen = openPerms === m.email;
+                    const scoped = (m.property_scope?.length ?? 0) > 0;
+                    // Η ΤΡΙΧΑ ΧΩΡΙΣΜΟΥ ΑΝΗΚΕΙ ΣΤΟ ΜΕΛΟΣ, ΟΧΙ ΣΤΗ ΣΕΙΡΑ. Το πλαίσιο
+                    // δικαιωμάτων είναι δεύτερο <tr> του ΙΔΙΟΥ μέλους, οπότε η γραμμή
+                    // του πίνακα σβήνει από την πρώτη σειρά κι πέφτει κάτω από τη
+                    // δεύτερη — αλλιώς κάθε μέλος θα φαινόταν σαν δύο.
+                    // Κατακόρυφα στο κέντρο: ο πίνακας κρεμά τα κελιά από πάνω, όμως
+                    // το κουμπί της σειράς είναι 36 ψηλό δίπλα σε γραμμή email 20,
+                    // δηλαδή το email έπεφτε 8 πάνω από το κέντρο του.
+                    const cell: CSSProperties = { verticalAlign: 'middle', ...(canAct ? { borderBottom: 'none' } : null) };
+                    return (
+                      <Fragment key={m.email || `row-${i}`}>
+                      <tr style={{ opacity: m.status === 'revoked' ? 0.55 : 1 }}>
+                        {/* Μέλος (email + «Εσύ») */}
+                        <th scope="row" style={cell}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <span style={{
+                              fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>{m.email || ABSENT}</span>
+                            {isYou && <Chip tone="neutral">Εσύ</Chip>}
                           </div>
-                        ) : (
-                          // seg επειδή η ράγα έχει ήδη δικό της περίγραμμα με ακτίνα: το ενεργό ξεχωρίζει με επιφάνεια αντί για δεύτερη γραμμή
-                          <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
-                            <ChipToggle on={!m.can_edit} disabled={busy} shape="seg" onClick={() => { if (m.can_edit) void setMemberEdit(m.email, false); }}>Ανάγνωση</ChipToggle>
-                            <ChipToggle on={m.can_edit} disabled={busy} shape="seg" onClick={() => { if (!m.can_edit) void setMemberEdit(m.email, true); }}>Επεξεργασία</ChipToggle>
-                          </div>
-                        )
-                      )}
-                    </div>
+                        </th>
 
-                    {/* Ενέργειες */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {canAct && (
-                        <>
-                          <Btn variant="secondary" onClick={() => revoke(m.email)} disabled={busy}>Αφαίρεση</Btn>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                        {/* Ρόλος */}
+                        <td style={cell}><RoleChip role={m.role} /></td>
 
-                  {/* Δικαιώματα ανά μέλος: εύρος ακινήτων και ορατότητα οικονομικών.
-                      Μαζεμένα by default — η γραμμή μένει καθαρή, οι λεπτομέρειες on demand. */}
-                  {canAct && (
-                    <div style={{ paddingBottom: 12 }}>
-                      <button onClick={() => setOpenPerms(permsOpen ? null : m.email)} aria-expanded={!!permsOpen}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: T.font.sans }}>
-                        <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', transform: permsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}><path d="M9 6l6 6-6 6" /></svg>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Δικαιώματα</span>
-                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                          {scoped ? `${m.property_scope!.length} ακίνητα` : 'Όλα τα ακίνητα'} · {m.can_view_financials ? 'με οικονομικά' : 'χωρίς οικονομικά'}
-                        </span>
-                      </button>
+                        {/* Κατάσταση */}
+                        <td style={cell}><StatusChip status={m.status} /></td>
 
-                      {permsOpen && (
-                        <div style={{ marginTop: 12, padding: 14, borderRadius: T.radius.popup, background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>Οικονομικά στοιχεία</div>
-                              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2 }}>Ενοίκια, δαπάνες, λογαριασμοί, δάνεια και λογιστική.</div>
-                            </div>
-                            <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
-                              <ChipToggle on={m.can_view_financials} disabled={busy} shape="seg" onClick={() => { if (!m.can_view_financials) void setMemberScope(m.email, { can_view_financials: true }); }}>Ορατά</ChipToggle>
-                              <ChipToggle on={!m.can_view_financials} disabled={busy} shape="seg" onClick={() => { if (m.can_view_financials) void setMemberScope(m.email, { can_view_financials: false }); }}>Κρυφά</ChipToggle>
-                            </div>
-                          </div>
-
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: scoped ? 10 : 0 }}>
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>Ακίνητα</div>
-                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2 }}>Σε ποια ακίνητα έχει πρόσβαση το μέλος.</div>
+                        {/* Πρόσβαση: έγκριση αιτήματος ή τμηματικός έλεγχος Ανάγνωση/Επεξεργασία */}
+                        <td style={cell}>
+                          {canAct && (
+                            m.edit_requested_at && !m.can_edit ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <Chip tone="accent">Ζητά επεξεργασία</Chip>
+                                <Btn variant="primary" onClick={() => setMemberEdit(m.email, true)} disabled={busy}>Έγκριση</Btn>
+                                <Btn variant="secondary" onClick={() => setMemberEdit(m.email, false)} disabled={busy}>Όχι</Btn>
                               </div>
+                            ) : (
+                              // seg επειδή η ράγα έχει ήδη δικό της περίγραμμα με ακτίνα: το ενεργό ξεχωρίζει με επιφάνεια αντί για δεύτερη γραμμή
                               <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
-                                <ChipToggle on={!scoped} disabled={busy} shape="seg" onClick={() => { if (scoped) void setMemberScope(m.email, { property_scope: null }); }}>Όλα</ChipToggle>
-                                <ChipToggle on={scoped} disabled={busy} shape="seg" onClick={() => { if (!scoped && orgProps[0]) void setMemberScope(m.email, { property_scope: [orgProps[0].id] }); }}>Επιλεγμένα</ChipToggle>
+                                <ChipToggle on={!m.can_edit} disabled={busy} shape="seg" onClick={() => { if (m.can_edit) void setMemberEdit(m.email, false); }}>Ανάγνωση</ChipToggle>
+                                <ChipToggle on={m.can_edit} disabled={busy} shape="seg" onClick={() => { if (!m.can_edit) void setMemberEdit(m.email, true); }}>Επεξεργασία</ChipToggle>
                               </div>
-                            </div>
-                            {scoped && (
-                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                {orgProps.map(p => {
-                                  const on = m.property_scope!.includes(p.id);
-                                  return (
-                                    <ChipToggle key={p.id} on={on} disabled={busy}
-                                      onClick={() => {
-                                        const next = on ? m.property_scope!.filter(x => x !== p.id) : [...m.property_scope!, p.id];
-                                        // Ποτέ κενή λίστα: κενό θα σήμαινε «όλα» και θα άνοιγε σιωπηλά την πρόσβαση.
-                                        void setMemberScope(m.email, { property_scope: next.length ? next : [p.id] });
-                                      }}>
-                                      {on && <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
-                                      {p.name}
-                                    </ChipToggle>
-                                  );
-                                })}
-                              </div>
+                            )
+                          )}
+                        </td>
+
+                        {/* Ενέργειες */}
+                        <td style={cell}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {canAct && (
+                              <Btn variant="secondary" onClick={() => revoke(m.email)} disabled={busy}>Αφαίρεση</Btn>
                             )}
                           </div>
-                        </div>
+                        </td>
+                      </tr>
+
+                      {/* Δικαιώματα ανά μέλος: εύρος ακινήτων και ορατότητα οικονομικών.
+                          Μαζεμένα by default — η γραμμή μένει καθαρή, οι λεπτομέρειες on demand.
+                          Δεύτερη σειρά με colSpan: το πλαίσιο κάθεται κάτω από το μέλος του,
+                          μέσα στον ίδιο πίνακα, χωρίς να σπάει τις πέντε στήλες. */}
+                      {canAct && (
+                        <tr>
+                          <td colSpan={5} style={{ paddingTop: 0, paddingBottom: 12 }}>
+                            <button onClick={() => setOpenPerms(permsOpen ? null : m.email)} aria-expanded={!!permsOpen}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: T.font.sans }}>
+                              <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', transform: permsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}><path d="M9 6l6 6-6 6" /></svg>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Δικαιώματα</span>
+                              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                                {scoped ? `${m.property_scope!.length} ακίνητα` : 'Όλα τα ακίνητα'} · {m.can_view_financials ? 'με οικονομικά' : 'χωρίς οικονομικά'}
+                              </span>
+                            </button>
+
+                            {permsOpen && (
+                              <div style={{ marginTop: 12, padding: 14, borderRadius: T.radius.popup, background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>Οικονομικά στοιχεία</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2 }}>Ενοίκια, δαπάνες, λογαριασμοί, δάνεια και λογιστική.</div>
+                                  </div>
+                                  <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
+                                    <ChipToggle on={m.can_view_financials} disabled={busy} shape="seg" onClick={() => { if (!m.can_view_financials) void setMemberScope(m.email, { can_view_financials: true }); }}>Ορατά</ChipToggle>
+                                    <ChipToggle on={!m.can_view_financials} disabled={busy} shape="seg" onClick={() => { if (m.can_view_financials) void setMemberScope(m.email, { can_view_financials: false }); }}>Κρυφά</ChipToggle>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: scoped ? 10 : 0 }}>
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>Ακίνητα</div>
+                                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2 }}>Σε ποια ακίνητα έχει πρόσβαση το μέλος.</div>
+                                    </div>
+                                    <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
+                                      <ChipToggle on={!scoped} disabled={busy} shape="seg" onClick={() => { if (scoped) void setMemberScope(m.email, { property_scope: null }); }}>Όλα</ChipToggle>
+                                      <ChipToggle on={scoped} disabled={busy} shape="seg" onClick={() => { if (!scoped && orgProps[0]) void setMemberScope(m.email, { property_scope: [orgProps[0].id] }); }}>Επιλεγμένα</ChipToggle>
+                                    </div>
+                                  </div>
+                                  {scoped && (
+                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                      {orgProps.map(p => {
+                                        const on = m.property_scope!.includes(p.id);
+                                        return (
+                                          <ChipToggle key={p.id} on={on} disabled={busy}
+                                            onClick={() => {
+                                              const next = on ? m.property_scope!.filter(x => x !== p.id) : [...m.property_scope!, p.id];
+                                              // Ποτέ κενή λίστα: κενό θα σήμαινε «όλα» και θα άνοιγε σιωπηλά την πρόσβαση.
+                                              void setMemberScope(m.email, { property_scope: next.length ? next : [p.id] });
+                                            }}>
+                                            {on && <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                                            {p.name}
+                                          </ChipToggle>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                  )}
-                  </div>
-                );
-              })}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
