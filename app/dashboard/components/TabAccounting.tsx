@@ -7,7 +7,7 @@ import * as loanStore from '@/lib/data/loans';
 import * as stayStore from '@/lib/data/stays';
 import * as rentStore from '@/lib/data/rent';
 import * as tenantStore from '@/lib/data/tenants';
-import { rentCollectionMode, collectionModeReason } from '@/lib/tax/rentCollectionMode';
+import { rentCollectionMode, collectionModeReason, collectionViaBankOf } from '@/lib/tax/rentCollectionMode';
 import * as expenseStore from '@/lib/data/expenses'
 import { ownerShareOf, ownerShareOfAmount } from '@/lib/expenses/sharing';
 import { T, TT, Btn, IconBtn, ChipToggle, LinkBtn, Skeleton, SkeletonKPIs, fe, fp, fn, fixedCols, Stat, widestOf } from '@/components/Theme'
@@ -726,19 +726,26 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       const pUncollected = allRent.filter(r=>r.property_id===p.id&&r.period_year===year&&!r.paid).reduce((s,r)=>s+(r.amount||0),0)
       // Μόνο για ΤΟ ακίνητο του τσεκ: η απαλλαγή είναι ανά μίσθωση.
       const pRelief = claimedUncollected && p.id===propertyId ? pUncollected : 0
+      // ══ Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΕΙΝΑΙ ΤΟΥ ΑΚΙΝΗΤΟΥ, ΟΧΙ ΤΗΣ ΑΝΟΙΧΤΗΣ ΚΑΡΤΕΛΑΣ ══
+      // Εδώ περνούσε το `rentsBank` του ΤΡΕΧΟΝΤΟΣ ακινήτου σε ΟΛΑ. Ακίνητο που
+      // εισπράττεται σε μετρητά έπαιρνε την τεκμαρτή έκπτωση 5% επειδή ήταν
+      // ανοιχτή η καρτέλα ενός άλλου — κι ο συνολικός φόρος άλλαζε ανάλογα με
+      // το ποια καρτέλα κοιτούσε ο χρήστης. Ο κανόνας ζει στο lib/tax.
+      const pViaBank = !bankMatters || p.id === propertyId ? rentsBank
+        : collectionViaBankOf(allRent.filter(r=>r.property_id===p.id), year, rentsBank)
       const pStays = allStays.filter(s=>s.property_id===p.id)
-      const pShort = shortTermYearSummary(pStays, year, { sqm:p.sqm??null, isHouse: isHouseType(p.prop_type), propertyCount:propCount, individual:individualPerson, rentsPaidViaBank:rentsBank })
+      const pShort = shortTermYearSummary(pStays, year, { sqm:p.sqm??null, isHouse: isHouseType(p.prop_type), propertyCount:propCount, individual:individualPerson, rentsPaidViaBank:pViaBank })
       // Κάθε ακίνητο με ΤΟ ΔΙΚΟ ΤΟΥ ποσοστό: ένα χαρτοφυλάκιο μπορεί να έχει
       // δύο κληρονομιές στο ένα τρίτο και ένα διαμέρισμα ολόκληρο.
       const pPct = pctOf(p.id)
       const gross = ownerShareOfAmount(rmode==='individual_shortterm' ? pShort.grossRevenue : Math.max(0, pRentAccrued - pRelief), pPct)
-      const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct), rentsPaidViaBank: rentsBank,
+      const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct), rentsPaidViaBank: pViaBank,
         climateLevy: rmode==='individual_shortterm'?pShort.levyShortfall:0, municipalTax: rmode==='individual_shortterm'?pShort.municipalTax:0 }
       return { id:p.id, name:p.name||'Ακίνητο', input }
     }).filter(x=>x.input.grossIncome>0)
     if(items.length===0) return null
     return { con: consolidateIndividual(items.map(i=>({id:i.id,input:i.input})), rentalBracketsForYear(year)), names:Object.fromEntries(items.map(i=>[i.id,i.name])), count:items.length }
-  },[allProps,allRent,allStays,year,propCount,prop,propertyId,rentsBank,pctOf,individualPerson,claimedUncollected])
+  },[allProps,allRent,allStays,year,propCount,prop,propertyId,rentsBank,bankMatters,pctOf,individualPerson,claimedUncollected])
   const myTaxShare = useMemo(()=>consolidation?.con.perProperty.find(p=>p.id===propertyId)?.taxShare,[consolidation,propertyId])
   const portfolio = (mode==='professional' && elp==='personal') ? consolidation : null
 
