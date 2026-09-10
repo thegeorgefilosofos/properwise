@@ -11,6 +11,7 @@ import { rentCollectionMode, collectionModeReason } from '@/lib/tax/rentCollecti
 import * as expenseStore from '@/lib/data/expenses'
 import { ownerShareOf, ownerShareOfAmount } from '@/lib/expenses/sharing';
 import { T, TT, Btn, IconBtn, ChipToggle, LinkBtn, Skeleton, SkeletonKPIs, fe, fp, fn, fixedCols, Stat, widestOf } from '@/components/Theme'
+import { hy } from '@/components/Hyphen'
 import { ActionMenu } from '@/components/ActionMenu'
 import { ChevronLeft, ChevronRight, Download, Layers, Lightbulb, ArrowUpRight } from 'lucide-react'
 import { buildAdvisory, referLabel, type AdvisoryTone } from '@/lib/accounting/advisory'
@@ -187,15 +188,24 @@ function Fold({ open, onToggle, title, sub, right, children }: {
   )
 }
 
-// Οι στήλες του ισοζυγίου, ΜΙΑ φορά: επικεφαλίδες, γραμμές και σύνολα διαβάζουν
-// την ίδια τιμή. Γραμμένες τρεις φορές, μια αλλαγή σε δύο από τις τρεις έδινε
-// πίνακα με μετατοπισμένα σύνολα — που δεν σκάει πουθενά, απλώς είναι λάθος.
+// Τα ΠΕΡΙΕΧΟΜΕΝΑ πλάτη των στηλών του ισοζυγίου, ΜΙΑ φορά: το `<colgroup>` και
+// το ελάχιστο πλάτος του πίνακα διαβάζουν την ίδια τιμή. Γραμμένα τρεις φορές
+// —κεφαλίδα, γραμμές, σύνολα— μια αλλαγή σε δύο από τις τρεις έδινε πίνακα με
+// μετατοπισμένα σύνολα: δεν σκάει πουθενά, απλώς είναι λάθος.
 // Η πρώτη στήλη χωρά την επικεφαλίδα της. Ήταν 72px με «Κωδικός», στένεψε σε
 // 64px ενώ η επικεφαλίδα μεγάλωνε σε «Κωδικός ΕΛΠ» και έσπαγε σε δύο γραμμές.
-const TRIAL_COLS = '86px minmax(120px,1fr) 92px 92px 100px'
-// Το άθροισμα των στηλών, των πέντε κενών και του padding. Κάτω από αυτό ο
-// πίνακας κυλά· δεν συμπιέζεται, γιατί συμπίεση εδώ σημαίνει στήλη που χάνεται.
-const TRIAL_MIN = 86 + 120 + 92 + 92 + 100 + 8 * 4 + 28
+const TRIAL_W = { code: 86, account: 120, debit: 92, credit: 92, balance: 100 } as const
+// ΤΟ ΓΕΜΙΣΜΑ ΤΟΥ ΚΕΛΙΟΥ ΜΕΤΡΑΕΙ ΜΕΣΑ ΣΤΟ ΠΛΑΤΟΣ ΤΗΣ ΣΤΗΛΗΣ. Στο πλέγμα τα
+// παραπάνω ήταν καθαρό περιεχόμενο κι ο αέρας ερχόταν από gap 8 συν 14 στις
+// άκρες. Σε `table-layout: fixed` η στήλη μετρά ΚΑΙ τα 14+14 της `.po-table`,
+// οπότε σκέτο το 86 θα άφηνε 58 για επικεφαλίδα που ζητά ~78 — δηλαδή πάλι δύο
+// γραμμές, ακριβώς ό,τι διόρθωσε το 86. Κάθε στήλη παίρνει τα 28 της.
+const TRIAL_PAD = 28
+const trialCol = (w: number) => `${w + TRIAL_PAD}px`
+// Κάτω από αυτό ο πίνακας κυλά· δεν συμπιέζεται, γιατί συμπίεση εδώ σημαίνει
+// στήλη που χάνεται. Ήταν 550 με τα κενά του πλέγματος, τώρα 630 με το γέμισμα
+// των πέντε κελιών: η οριζόντια κύλιση αρχίζει 80 εικονοστοιχεία νωρίτερα.
+const TRIAL_MIN = TRIAL_W.code + TRIAL_W.account + TRIAL_W.debit + TRIAL_W.credit + TRIAL_W.balance + TRIAL_PAD * 5
 
 // Χρώμα μόνο στη γραμμή αποτελέσματος, αλλού ουδέτερο (χωρίς θόρυβο).
 // Ήπια, ουδέτερη ένδειξη τόνου για τη συμβουλευτική (χωρίς έντονα χρώματα/λίστες).
@@ -1433,7 +1443,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             ΞΕΧΩΡΙΣΤΗ ΚΑΡΤΑ για μία πρόταση, έγινε το υποσέλιδό της. */}
         <div className="po-fig-card" style={{ ...card, display:'flex', flexDirection:'column' }}>
           <p style={cardTitle}>Πώς βγαίνει ο φόρος</p>
-          <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.6 }}>
+          {/* ΠΕΡΑ ΠΕΡΑ, ΟΧΙ ΡΙΓΜΕΝΗ ΔΕΞΙΑ ΑΚΡΗ. Με όλες τις προτάσεις παρούσες η
+              εξήγηση βγαίνει 283 χαρακτήρες σε κουτί 510 — δύο στήλες του
+              πλέγματος μείον το γέμισμα της κάρτας — δηλαδή τέσσερις γραμμές
+              που τελείωναν η καθεμιά αλλού. Η στοίχιση ΜΟΝΗ ΤΗΣ όμως τεντώνει
+              τα κενά: μετρημένο σε 195 κενά, διάμεσο 5,5 έναντι φυσικού 4,2.
+              Πάνε μαζί — `po-just` στο κουτί που κρατά το κείμενο, `hy()` γύρω
+              από το κείμενο. */}
+          <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.6 }}>
+            {hy(<>
             {businessMode
               ? (elpForm==='company' ? <>Σταθερός συντελεστής <strong style={{ color:'var(--text-primary)' }}>22%</strong> στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, αποσβέσεις και τόκους.</> : <>Κλίμακα άρθρου 15 στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, εισφορές ΕΦΚΑ, αποσβέσεις και τόκους.</>)
               : (regime==='individual_longterm'
@@ -1448,6 +1466,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             {provision.propertyTaxes>0?<> Από το ετήσιο σύνολο, {eur(provision.propertyTaxes)} είναι φόροι και τέλη ακινήτου.</>:''}
             {year===athensYear()?<> Για να προλάβεις τη χρονιά, <strong style={{ color:'var(--text-primary)' }}>{eur(provision.perRemainingMonth)} τον μήνα</strong> ως τον Δεκέμβριο.</>:''}
             {provision.advanceTax>0?<> Συν προκαταβολή {eur(provision.advanceTax)}, που πιστώνεται τον επόμενο χρόνο: σύνολο πρώτου έτους {eur(provision.firstYearTotal)}.</>:''}
+            </>)}
           </p>
           <div style={{ flex:1 }}/>
           <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'14px 0 0', paddingTop:12, borderTop:'1px solid var(--border-subtle)', fontFamily: T.font.sans, lineHeight:1.55 }}>
@@ -1711,7 +1730,13 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           <div style={{ ...card, display:'flex', alignItems:'center', justifyContent:'space-between', gap:20, flexWrap:'wrap' }}>
             <div style={{ minWidth:0, flex:1 }}>
               <p style={{ ...cardTitle, margin:0 }}>Νομικό πρόσωπο</p>
-              <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'7px 0 0', fontFamily: T.font.sans, lineHeight:1.6, maxWidth:560 }}>Σταθερός φόρος <strong style={{ color:'var(--text-primary)' }}>22%</strong> επί των καθαρών κερδών, ανεξαρτήτως ύψους εισοδήματος (ΑΕ, ΕΠΕ, ΙΚΕ, ΟΕ, ΕΕ). Στη διανομή μερίσματος προστίθεται φόρος 5% και ισχύει προκαταβολή φόρου για το επόμενο έτος.</p>
+              {/* ΙΔΙΟ ΣΧΗΜΑ ΜΕ ΤΗΝ ΕΞΗΓΗΣΗ ΤΟΥ ΦΟΡΟΥ, ΙΔΙΑ ΔΟΥΛΕΙΑ. 190 χαρακτήρες
+                  σε κουτί 560 —το `maxWidth` της ίδιας γραμμής— βγάζουν τρεις
+                  γραμμές στον υπολογιστή· στα 430 το κουτί πέφτει κοντά στα 380
+                  κι οι γραμμές γίνονται τέσσερις. Στοίχιση πέρα πέρα με μαλακά
+                  ενωτικά από κάτω: χωριστά, η μία τεντώνει τα κενά κι ο άλλος
+                  δεν έχει τι να κλείσει. */}
+              <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'7px 0 0', fontFamily: T.font.sans, lineHeight:1.6, maxWidth:560 }}>{hy(<>Σταθερός φόρος <strong style={{ color:'var(--text-primary)' }}>22%</strong> επί των καθαρών κερδών, ανεξαρτήτως ύψους εισοδήματος (ΑΕ, ΕΠΕ, ΙΚΕ, ΟΕ, ΕΕ). Στη διανομή μερίσματος προστίθεται φόρος 5% και ισχύει προκαταβολή φόρου για το επόμενο έτος.</>)}</p>
             </div>
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:104, height:76, borderRadius: T.radius.popup, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', flexShrink:0 }}>
               <span style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>22%</span>
@@ -1818,7 +1843,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                   </button>
                   {open&&(
                     <div style={{ padding:'0 16px 15px' }}>
-                      <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.6 }}>{a.body}</p>
+                      {/* ΤΟ ΣΩΜΑ ΤΗΣ ΙΔΕΑΣ ΕΙΝΑΙ ΤΟ ΜΟΝΟ ΠΡΑΓΜΑΤΙΚΟ ΚΕΙΜΕΝΟ ΤΗΣ ΚΑΡΤΑΣ.
+                          Κάθεται σε κελί του `.card-row`, που είναι τρεις στήλες με κενό 12
+                          (globals.css:1975) κι πέφτει σε δύο κάτω από τα 900 — δηλαδή στήλη
+                          ~450 στο επιτραπέζιο, μείον 16+16 γέμισμα της κάρτας: ~418. Οι
+                          προτάσεις είναι 250 ώς 450 χαρακτήρες, δηλαδή έξι ώς δέκα γραμμές.
+                          Ριγμένες, κάθε μία τελείωνε αλλού κι η κάρτα δεν έκλεινε πουθενά.
+                          Ο συλλαβισμός πάει μαζί: χωρίς αυτόν, δέκα γραμμές κλείνουν
+                          τεντώνοντας τα κενά κι βγαίνουν ποτάμια λευκού. */}
+                      <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.6 }}>{hy(a.body)}</p>
                       {(a.refer||a.linkHref)&&(
                         <div style={{ display:'flex', alignItems:'center', gap:14, marginTop: 12, flexWrap:'wrap' }}>
                           {a.refer&&<span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans }}>{referLabel(a.refer)}</span>}
@@ -1861,7 +1894,14 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                     </button>
                     {uo && (
                       <div style={{ padding:'0 15px 14px' }}>
-                        <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, lineHeight:1.6, fontFamily: T.font.sans }}>{u.summary}</p>
+                        {/* ΙΔΙΟ ΣΧΗΜΑ, ΙΔΙΑ ΑΠΑΝΤΗΣΗ. Η περίληψη του κανόνα κάθεται σε
+                            `auto-fit, minmax(min(100%, 300px), 1fr)` με κενό 12, δηλαδή στήλη
+                            300 ώς ~450 ανάλογα με το πλάτος, μείον 15+15 γέμισμα. Οι
+                            περιλήψεις είναι νομικό κείμενο με άρθρα κι ποσά — η «Εκπτωση
+                            φόρου ανακαίνισης» πιάνει οκτώ γραμμές. Οι δύο κάρτες είναι
+                            δίπλα δίπλα στην ίδια οθόνη: αν στοιχιστεί μόνο η μία, η
+                            διαφορά φαίνεται με μια ματιά. */}
+                        <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, lineHeight:1.6, fontFamily: T.font.sans }}>{hy(u.summary)}</p>
                         <div style={{ display:'flex', alignItems:'center', gap:12, marginTop: 12, flexWrap:'wrap' }}>
                           <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans, letterSpacing:'0.3px' }}>Ισχύς: {u.effective} · {u.legalBasis}</span>
                           {u.sourceHref && <OutLink href={u.sourceHref} label={u.sourceLabel||'Πηγή'}/>}
@@ -2016,31 +2056,76 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           {trial.length===0?(
             <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-tertiary)', fontFamily: T.font.sans, padding:'2px 0' }}>Δεν υπάρχουν εισπράξεις ή πληρωμές για το {year} ώστε να σχηματιστεί ισοζύγιο.</p>
           ):(
-            <div style={{ borderRadius: T.radius.popup, border:'1px solid var(--border-subtle)', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
-              <div style={{ minWidth:TRIAL_MIN }}>
-              <div style={{ display:'grid', gridTemplateColumns:TRIAL_COLS, gap:8, padding:'9px 14px', background:'var(--bg-elevated)', borderBottom:'1px solid var(--border-subtle)' }}>
-                {[['Κωδικός ΕΛΠ','left'],['Λογαριασμός','left'],['Χρέωση','right'],['Πίστωση','right'],['Υπόλοιπο','right']].map(([h,a])=>(
-                  <span key={h} style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-tertiary)', fontFamily: T.font.sans, textAlign:a as 'left'|'right' }}>{h}</span>
-                ))}
-              </div>
-              {trial.map((r,i)=>(
-                <div key={r.code} style={{ display:'grid', gridTemplateColumns:TRIAL_COLS, gap:8, padding:'8px 14px', borderBottom:i<trial.length-1?'1px solid var(--border-subtle)':'none', alignItems:'center' }}>
-                  <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums' }}>{r.code}</span>
-                  <span className="po-elide" style={{ fontSize: 'var(--fs-base)', color:'var(--text-primary)', fontFamily: T.font.sans }} title={r.account}>{r.account}</span>
-                  <span style={{ fontSize: 'var(--fs-base)', color:r.debit?'var(--text-secondary)':'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right' }}>{r.debit?eur(r.debit):fe(0)}</span>
-                  <span style={{ fontSize: 'var(--fs-base)', color:r.credit?'var(--text-secondary)':'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right' }}>{r.credit?eur(r.credit):fe(0)}</span>
-                  <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right' }}>{eur(r.balance)}</span>
-                </div>
-              ))}
-              <div style={{ display:'grid', gridTemplateColumns:TRIAL_COLS, gap:8, padding:'10px 14px', background:'var(--bg-elevated)', borderTop:'1px solid var(--border-default)', alignItems:'center' }}>
-                <span/>
-                <span style={{ fontSize: 'var(--fs-xs)', fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, textTransform:'uppercase', letterSpacing:'0.05em' }}>Σύνολα</span>
-                <span style={{ fontSize: 'var(--fs-base)', fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right' }}>{eur(jTotals.debit)}</span>
-                <span style={{ fontSize: 'var(--fs-base)', fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right' }}>{eur(jTotals.credit)}</span>
-                <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'flex-end', gap: 4, fontSize: 'var(--fs-xs)', fontWeight:600, color:jTotals.balanced?'var(--text-tertiary)':'var(--negative)', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>
-                  {jTotals.balanced?<><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--positive)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><path d="M20 6 9 17l-5-5"/></svg>Ισοσκελισμένο</>:<>Διαφορά {eur(jTotals.debit-jTotals.credit)}</>}
-                </span>
-              </div>
+            /* ΤΟ ΙΣΟΖΥΓΙΟ ΗΤΑΝ ΠΙΝΑΚΑΣ ΓΡΑΜΜΕΝΟΣ ΜΕ divs. Πέντε στήλες ανά σειρά,
+               κεφαλίδα από `span` κι ένα πλέγμα που κρατούσε τα πλάτη: για τον
+               αναγνώστη οθόνης, εξήντα ασύνδετα κείμενα χωρίς κανένα να λέει σε
+               ποια στήλη ανήκει ή σε ποιον λογαριασμό. Ιδιες στήλες, ίδια σειρά,
+               ίδια λεκτικά — αλλάζει ΜΟΝΟ η δομή: thead/tbody/tfoot, ο κωδικός
+               ΕΛΠ κλειδί της γραμμής (th scope="row"), τα ποσά `.num`. Το
+               χειροποίητο overflowX+minWidth έγινε `.po-scroll-x` + `--tbl-min`
+               κι το κουτί `.po-table-box` (radius 14 αντί 12, όπως οι άλλοι
+               εννιά πίνακες). Το `--tbl-fs` δένεται στο `--fs-base` επειδή οι
+               σειρές έγραφαν `var(--fs-base)`: σκέτη η κλάση θα τις κάρφωνε στα
+               13 κι η αφή χάνει το εικονοστοιχείο που της δίνει το
+               `pointer: coarse`. */
+            <div className="po-table-box">
+              <div className="po-scroll-x" style={{ WebkitOverflowScrolling:'touch' }}>
+              <table className="po-table tbl-fixed" style={{ '--tbl-min': `${TRIAL_MIN}px`, '--tbl-fs': 'var(--fs-base)' }}>
+                <caption>Ισοζύγιο διπλογραφικής</caption>
+                <colgroup>
+                  <col style={{ width: trialCol(TRIAL_W.code) }}/>
+                  {/* Ο λογαριασμός παίρνει ό,τι περισσεύει, όπως το `1fr` του πλέγματος. */}
+                  <col/>
+                  <col style={{ width: trialCol(TRIAL_W.debit) }}/>
+                  <col style={{ width: trialCol(TRIAL_W.credit) }}/>
+                  <col style={{ width: trialCol(TRIAL_W.balance) }}/>
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Κωδικός ΕΛΠ</th>
+                    <th scope="col">Λογαριασμός</th>
+                    <th scope="col" className="num">Χρέωση</th>
+                    <th scope="col" className="num">Πίστωση</th>
+                    <th scope="col" className="num">Υπόλοιπο</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trial.map(r=>(
+                    <tr key={r.code}>
+                      <th scope="row">{r.code}</th>
+                      <td className="po-elide" style={{ color:'var(--text-primary)' }} title={r.account}>{r.account}</td>
+                      <td className="num" style={{ color:r.debit?'var(--text-secondary)':'var(--text-tertiary)' }}>{r.debit?eur(r.debit):fe(0)}</td>
+                      <td className="num" style={{ color:r.credit?'var(--text-secondary)':'var(--text-tertiary)' }}>{r.credit?eur(r.credit):fe(0)}</td>
+                      <td className="num" style={{ fontWeight:600, color:'var(--text-primary)' }}>{eur(r.balance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  {/* Η σειρά των συνόλων κρατά το φόντο που είχε· τη σκουρότερη
+                      γραμμή από πάνω τη δίνει πλέον η `is-total`. Το «Σύνολα»
+                      κάθεται στη στήλη του λογαριασμού, όπως πριν, οπότε το
+                      πρώτο κελί μένει κενό αντί για colSpan που θα το μετακινούσε.
+                      ΤΑ ΔΥΟ ΕΝΣΩΜΑΤΩΜΕΝΑ ΣΤΟ «Σύνολα» ΕΙΝΑΙ ΑΝΑΓΚΗ, ΟΧΙ ΓΟΥΣΤΟ:
+                      η `.is-total` ζωγραφίζει τη γραμμή μόνο σε `td`, οπότε χωρίς
+                      το `borderTop` η σκούρα γραμμή θα έσπαγε στη μέση της σειράς
+                      — κι ένα `th` εκτός `thead`/`tbody` το κεντράρει ο περιηγητής
+                      από μόνος του, ενώ στο πλέγμα η ετικέτα ήταν αριστερά. */}
+                  <tr className="is-total" style={{ background:'var(--bg-elevated)' }}>
+                    <td/>
+                    <th scope="row" style={{ textAlign:'left', borderTop:'1px solid var(--border-default)', fontSize: 'var(--fs-xs)', fontWeight:700, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Σύνολα</th>
+                    <td className="num" style={{ fontWeight:700 }}>{eur(jTotals.debit)}</td>
+                    <td className="num" style={{ fontWeight:700 }}>{eur(jTotals.credit)}</td>
+                    <td className="num" style={{ fontSize: 'var(--fs-xs)', fontWeight:600, color:jTotals.balanced?'var(--text-tertiary)':'var(--negative)' }}>
+                      {/* Το εικονίδιο με το λεκτικό του μένουν σε μία γραμμή: το
+                          flex μπαίνει σε span μέσα στο κελί, γιατί `display:flex`
+                          πάνω στο `<td>` σβήνει το κελί από τη διάταξη πίνακα. */}
+                      <span style={{ display:'inline-flex', alignItems:'center', gap: 4, whiteSpace:'nowrap' }}>
+                        {jTotals.balanced?<><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--positive)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><path d="M20 6 9 17l-5-5"/></svg>Ισοσκελισμένο</>:<>Διαφορά {eur(jTotals.debit-jTotals.credit)}</>}
+                      </span>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
               </div>
             </div>
             )}

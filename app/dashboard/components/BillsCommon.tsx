@@ -6,7 +6,7 @@ import * as expenses from '@/lib/data/expenses';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
 import { NumberInput, TextInput, DatePicker, CustomSelect } from './UIComponents';
-import { T, TT, fe, formGrid, fieldRow, fixedCols, InfoBanner, Card, EmptyState, fp, histInputStyle, localDay, ABSENT_SHORT, Bar, Btn, IconBtn } from '@/components/Theme';
+import { T, fe, formGrid, fieldRow, fixedCols, InfoBanner, Card, EmptyState, fp, histInputStyle, localDay, ABSENT_SHORT, Bar, Btn, IconBtn } from '@/components/Theme';
 import { notifyOk } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { HandCoins, BarChart3 } from 'lucide-react';
@@ -56,6 +56,18 @@ const COMMON_CATEGORIES: { key: string; label: string; payer: 'tenant' | 'owner'
 // για να πέφτει πάνω από τα ψηφία και όχι πάνω από το περίγραμμα.
 const FIELD_COL = 150
 const FIELD_PAD = 12
+// Το οριζόντιο γέμισμα κελιού της `.po-table` (globals.css) και το πλάτος της
+// στήλης του μεριδίου. Οι δύο σταθερές στήλες του πίνακα δηλώνονται ως
+// «περιεχόμενο συν τα δύο γεμίσματα», ώστε να κρατήσουν ΑΚΡΙΒΩΣ το πλάτος που
+// είχαν ως στήλες πλέγματος με κενό 14.
+const CELL_PAD  = 14
+const SHARE_COL = 110
+// Η `.po-table` στοιχίζει κάθε κελί στην ΚΟΡΥΦΗ — σωστό για κείμενο πολλών
+// γραμμών, λάθος όπου δίπλα στην ετικέτα κάθεται πεδίο. Μετρημένο: η ετικέτα
+// ξεκινά 10 κάτω από την κορυφή του κελιού και τα ψηφία του πεδίου 19, δηλαδή
+// σκαλοπάτι εννέα εικονοστοιχείων μέσα στην ίδια γραμμή. Το πλέγμα κεντράριζε
+// κατακόρυφα· ο πίνακας το ξαναδηλώνει ανά κελί.
+const CELL_MID = { verticalAlign: 'middle' as const }
 
 interface Props { propertyId: string; userId?: string; }
 
@@ -290,41 +302,73 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         {(['tenant', 'owner'] as const).map(payer => {
           const rows = catRows.filter(r => r.payer === payer);
           if (!rows.length) return null;
+          /* ═══ ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs ══════════════════════════════════
+             ΤΙ ΗΤΑΝ. Εννέα γραμμές επί τρεις στήλες σε `display: grid`, με το
+             ΙΔΙΟ `gridTemplateColumns` γραμμένο δύο φορές — μία στη σειρά της
+             κεφαλίδας και μία στη σειρά δεδομένων: δύο σημεία που έπρεπε να
+             συμφωνούν στο χέρι για να μη στραβώσουν οι στήλες.
+
+             ΤΙ ΚΕΡΔΙΖΕΙ ΚΑΙ ΔΕΝ ΦΑΙΝΕΤΑΙ. Είκοσι επτά κελιά χωρίς γραμμές και
+             στήλες: ο αναγνώστης οθόνης τα διάβαζε ως ασύνδετα κείμενα, ποτέ ως
+             «Καθαρισμός, Μερίδιό μου». Με `th scope` κάθε κελί ανακοινώνεται με
+             τους δύο τίτλους του και η `.po-table` δίνει τα γεμίσματα, τις τρίχες
+             διαχωρισμού και το κουτί που πριν ήταν γραμμένα στο χέρι. */
           return (
-        <div key={payer} style={{ marginTop: payer === 'owner' ? 20 : 0 }}>
-        {/* ═══ Η ΕΠΙΚΕΦΑΛΙΔΑ ΣΤΟΙΧΙΖΟΤΑΝ ΣΤΟ ΠΕΡΙΓΡΑΜΜΑ, Η ΤΙΜΗ ΣΤΟ ΜΕΛΑΝΙ ══
-            Το «Σύνολο κτιρίου» ήταν δεξιά στοιχισμένο στο ΑΚΡΟ της στήλης, ενώ
-            τα ψηφία που τιτλοφορεί κάθονται δώδεκα εικονοστοιχεία πιο μέσα —
-            όσο το padding του πεδίου. Δηλαδή η ετικέτα δεν κάθεται ποτέ πάνω
-            από τον αριθμό της· κάθεται πάνω από το πλαίσιο. Με άδεια πεδία, που
-            είναι και η πρώτη εικόνα που βλέπει ο χρήστης, η απόκλιση διαβάζεται
-            ως στραβή στοίχιση.
-
-            Η στοίχιση βγαίνει τώρα από ΤΟ ΙΔΙΟ νούμερο με το πεδίο (FIELD_PAD),
-            οπότε δεν μπορεί να ξαναποκλίνει. Η διπλανή στήλη δεν έχει πλαίσιο,
-            άρα το μελάνι της είναι ήδη στο άκρο και μένει όπως είναι. */}
-        <div style={{ display: 'grid', gridTemplateColumns: `minmax(0, 1fr) ${FIELD_COL}px 110px`, gap: 14, padding: '0 4px 8px', borderBottom: '1px solid var(--border-subtle)', marginBottom: 4, alignItems: 'baseline' }}>
-          <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>{payer === 'tenant' ? 'Βαρύνουν τον ενοικιαστή' : 'Βαρύνουν εσένα'}</div>
-          <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', textAlign: 'right', paddingRight: FIELD_PAD }}>Σύνολο κτιρίου</div>
-          <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', textAlign: 'right' }}>Μερίδιό μου</div>
-        </div>
-
-        {rows.map(r => (
-          <div key={r.key} style={{ display: 'grid', gridTemplateColumns: `minmax(0, 1fr) ${FIELD_COL}px 110px`, gap: 14, alignItems: 'center', padding: '8px 4px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.sans, fontWeight: 500 }}>{r.label}</div>
-            {/* ΤΟ ΣΚΟΥΡΟ «ΧΑΠΙ» ΕΓΙΝΕ ΠΕΔΙΟ. Ήταν `background: bg-base` με ακτίνα
-                σήματος: μέσα σε σκούρο θέμα διαβαζόταν ως τρύπα, όχι ως κουτί
-                που δέχεται γράψιμο και δεν έμοιαζε με κανένα άλλο πεδίο της
-                εφαρμογής. Ίδια επιφάνεια, ίδιο περίγραμμα, ίδια ακτίνα, ίδιο
-                δαχτυλίδι εστίασης με τα υπόλοιπα. */}
-            <input
-              aria-label={`${r.label}, μηνιαίο σύνολο κτιρίου σε ευρώ`}
-              type="number" min={0} inputMode="decimal" value={catData[r.key] ?? ''} onChange={e => sCat(r.key, e.target.value)}
-              className="po-field"
-              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: `8px ${FIELD_PAD}px`, fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}/>
-            <div style={{ fontSize: 12, fontWeight: 600, color: r.myShare > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{r.myShare > 0 ? fe(r.myShare) : ''}</div>
+        <div key={payer} className="po-table-box" style={{ marginTop: payer === 'owner' ? 20 : 0 }}>
+          {/* ΤΟ ΕΛΑΧΙΣΤΟ ΠΛΑΤΟΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΙΣ ΣΤΗΛΕΣ, ΟΧΙ ΑΠΟ ΕΚΤΙΜΗΣΗ: 178 το
+              πεδίο μαζί με τα γεμίσματα του κελιού, 138 το μερίδιο, 174 όσο θέλει
+              η επικεφαλίδα «Βαρύνουν τον ενοικιαστή» σε δύο γραμμές. Κάτω από τα
+              490 ο πίνακας κυλά αντί να στριμωχτεί — στα 375 το πλέγμα άφηνε 12
+              εικονοστοιχεία στην ετικέτα της κατηγορίας. */}
+          <div className="po-scroll-x">
+            <table className="po-table tbl-fixed" style={{ '--tbl-fs': 'var(--fs-sm)', '--tbl-min': '490px' }}>
+              {/* Τα πλάτη του `gridTemplateColumns` ζουν πια εδώ. Το `tbl-fixed`
+                  είναι απαραίτητο: χωρίς αυτό το `<colgroup>` είναι πρόταση και
+                  το πλάτος το αποφασίζει το μακρύτερο λεκτικό της στήλης. */}
+              <colgroup>
+                <col />
+                <col style={{ width: FIELD_COL + CELL_PAD * 2 }} />
+                <col style={{ width: SHARE_COL + CELL_PAD * 2 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col" style={{ color: 'var(--text-secondary)' }}>{payer === 'tenant' ? 'Βαρύνουν τον ενοικιαστή' : 'Βαρύνουν εσένα'}</th>
+                  {/* ═══ Η ΕΠΙΚΕΦΑΛΙΔΑ ΣΤΟΙΧΙΖΟΤΑΝ ΣΤΟ ΠΕΡΙΓΡΑΜΜΑ, Η ΤΙΜΗ ΣΤΟ ΜΕΛΑΝΙ
+                      Τα ψηφία του πεδίου κάθονται 26 μέσα από την άκρη της στήλης:
+                      14 το γέμισμα του κελιού και 12 του ίδιου του πεδίου. Με σκέτο
+                      δεξιό στοίχισμα η ετικέτα πέφτει στα 14, δηλαδή πάνω από το
+                      πλαίσιο κι όχι πάνω από τον αριθμό που τιτλοφορεί. Με άδεια
+                      πεδία —η πρώτη εικόνα του χρήστη— διαβάζεται ως στραβή στοίχιση. */}
+                  <th scope="col" className="num" style={{ paddingRight: CELL_PAD + FIELD_PAD }}>Σύνολο κτιρίου</th>
+                  <th scope="col" className="num">Μερίδιό μου</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.key}>
+                    <th scope="row" style={{ ...CELL_MID, color: 'var(--text-primary)', fontWeight: 500 }}>{r.label}</th>
+                    {/* ΤΟ ΣΚΟΥΡΟ «ΧΑΠΙ» ΕΓΙΝΕ ΠΕΔΙΟ. Ήταν `background: bg-base` με ακτίνα
+                        σήματος: μέσα σε σκούρο θέμα διαβαζόταν ως τρύπα, όχι ως κουτί
+                        που δέχεται γράψιμο και δεν έμοιαζε με κανένα άλλο πεδίο της
+                        εφαρμογής. Ίδια επιφάνεια, ίδιο περίγραμμα, ίδια ακτίνα, ίδιο
+                        δαχτυλίδι εστίασης με τα υπόλοιπα. */}
+                    <td style={CELL_MID}>
+                      {/* ΤΟ `aria-label` ΜΕΝΕΙ. Το `th scope="row"` ονοματίζει το ΚΕΛΙ,
+                          όχι το πεδίο μέσα του: σε λειτουργία φόρμας ο αναγνώστης οθόνης
+                          ακούει σκέτο «πεδίο αριθμού». Και το «σε ευρώ» δεν γράφεται
+                          πουθενά αλλού — αυτό το πεδίο δεν κουβαλά κατάληξη «€». */}
+                      <input
+                        aria-label={`${r.label}, μηνιαίο σύνολο κτιρίου σε ευρώ`}
+                        type="number" min={0} inputMode="decimal" value={catData[r.key] ?? ''} onChange={e => sCat(r.key, e.target.value)}
+                        className="po-field"
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: `8px ${FIELD_PAD}px`, fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}/>
+                    </td>
+                    <td className="num" style={{ ...CELL_MID, fontWeight: 600, color: r.myShare > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontFamily: T.font.mono }}>{r.myShare > 0 ? fe(r.myShare) : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
         </div>
           );
         })}

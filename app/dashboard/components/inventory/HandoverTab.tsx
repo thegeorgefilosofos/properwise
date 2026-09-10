@@ -145,22 +145,56 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
           ))}
         </div>
         {hA&&hB&&(
-          <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',gap:0,padding:'8px 14px',borderBottom:'2px solid var(--border-subtle)'}}>
-              {['Αντικείμενο',`${hA.handover_type==='check_in'?'Είσοδος':'Έξοδος'} · ${hA.tenant_name}`,`${hB.handover_type==='check_in'?'Είσοδος':'Έξοδος'} · ${hB.tenant_name}`].map(h=><p key={h} style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:500,fontFamily:T.font.sans}}>{h}</p>)}
+          /* ═══ ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs ══════════════════════════════════
+             ΤΙ ΗΤΑΝ. Η κεφαλίδα και κάθε σειρά ήταν ξεχωριστό `display:grid` με
+             το ΙΔΙΟ `repeat(auto-fit, minmax(min(100%,150px),1fr))` γραμμένο δύο
+             φορές. Το `auto-fit` μετρά ΚΑΘΕ πλέγμα χωριστά: στα 390 του
+             τηλεφώνου, με 332 ωφέλιμα μετά τα γεμίσματα, χωρούσαν δύο στήλες των
+             150 — η σειρά έσπαγε 2+1 και η κεφαλίδα από πάνω το ίδιο, οπότε το
+             όνομα του δεύτερου πρωτοκόλλου κάθισε πάνω από την κατάσταση του
+             πρώτου. ΤΩΡΑ οι στήλες δηλώνονται μία φορά για όλες τις γραμμές —
+             δεν μπορούν να ξεσυμφωνήσουν — και με `th scope` κάθε κατάσταση
+             ανακοινώνεται με το αντικείμενό της μαζί με το πρωτόκολλό της: τα 36
+             κελιά ενός μέτριου εξοπλισμού διαβάζονταν ως ασύνδετα κείμενα. */
+          <div className="po-table-box">
+            {/* ΤΟ ΕΛΑΧΙΣΤΟ ΠΛΑΤΟΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΣΗΜΑ. Το «Εκτός Λειτουργίας»
+                έχει `white-space: nowrap`: 105 το λεκτικό στα 11, 16 το γέμισμά
+                του, 2 το περίγραμμα — 123, δηλαδή 151 η στήλη με τα 28 του
+                κελιού. Οι τρεις στήλες μένουν ίσες όπως πριν, άρα το ελάχιστο
+                είναι 3 × 180 = 540: τα 180 αφήνουν αέρα ώστε ένα όνομα δύο
+                λέξεων να στέκει δίπλα στο βελάκι της υποβάθμισης. */}
+            <div className="po-scroll-x">
+              <table className="po-table tbl-fixed" style={{'--tbl-min':'540px','--tbl-fs':'var(--fs-sm)'}}>
+                {/* Ο τίτλος της οθόνης μένει πάνω από τα δύο πεδία επιλογής —
+                    τα τιτλοφορεί ΚΑΙ πριν διαλεγεί δεύτερο πρωτόκολλο, όταν
+                    πίνακας δεν υπάρχει. Η λεζάντα είναι το όνομα ΤΟΥ ΠΙΝΑΚΑ:
+                    χωρίς αυτήν ο αναγνώστης οθόνης τον ανακοινώνει ως «πίνακας
+                    τριών στηλών» χωρίς να πει τίνος. */}
+                <caption>Σύγκριση πρωτοκόλλων</caption>
+                {/* Τα τρία ίσα `1fr` του πλέγματος ζουν πια εδώ. Το `tbl-fixed`
+                    είναι απαραίτητο: χωρίς αυτό το `<colgroup>` είναι πρόταση
+                    και τα πλάτη τα αποφασίζει το μακρύτερο λεκτικό. */}
+                <colgroup><col style={{width:'34%'}}/><col style={{width:'33%'}}/><col style={{width:'33%'}}/></colgroup>
+                <thead><tr>{['Αντικείμενο',`${hA.handover_type==='check_in'?'Είσοδος':'Έξοδος'} · ${hA.tenant_name}`,`${hB.handover_type==='check_in'?'Είσοδος':'Έξοδος'} · ${hB.tenant_name}`].map((h,i)=><th key={i} scope="col" style={{color:'var(--text-secondary)'}}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {allNames.map(name=>{
+                    const sA=hA.items_snapshot?.find(s=>s.name===name); const sB=hB.items_snapshot?.find(s=>s.name===name)
+                    const cA=sA?.condition_at_handover||null; const cB=sB?.condition_at_handover||null
+                    const degraded=cA!==cB&&cA!=null&&cB!=null&&condOrder.indexOf(cB)>condOrder.indexOf(cA)
+                    return (
+                      /* Η υποβαθμισμένη γραμμή κρατά το χρώμα της. Το περίγραμμα
+                         και η στρογγυλή γωνία κάθε σειράς έφυγαν: το πλαίσιο το
+                         δίνει τώρα το κουτί του πίνακα μία φορά για όλες. */
+                      <tr key={name} style={degraded?{background:'var(--negative-dim)'}:undefined}>
+                        <th scope="row" style={{fontWeight:500,color:'var(--text-primary)'}}>{name}{degraded&&<span title="Υποβαθμισμένη κατάσταση" style={{display:'inline-flex',color:'var(--negative)',marginLeft:6,verticalAlign:'middle'}}><svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg></span>}</th>
+                        <td>{cA!=null?<Badge label={cA} color={CONDITION_COLOR[cA]||'var(--text-tertiary)'}/>:<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)'}}>Δεν υπήρχε</span>}</td>
+                        <td>{cB!=null?<Badge label={cB} color={CONDITION_COLOR[cB]||'var(--text-tertiary)'}/>:<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)'}}>Δεν υπήρχε</span>}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-            {allNames.map(name=>{
-              const sA=hA.items_snapshot?.find(s=>s.name===name); const sB=hB.items_snapshot?.find(s=>s.name===name)
-              const cA=sA?.condition_at_handover||null; const cB=sB?.condition_at_handover||null
-              const degraded=cA!==cB&&cA!=null&&cB!=null&&condOrder.indexOf(cB)>condOrder.indexOf(cA)
-              return (
-                <div key={name} style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',gap:0,padding:'10px 14px',background:degraded?'var(--negative-dim)':'var(--bg-elevated)',borderRadius: T.radius.chip,marginBottom:4,border:`1px solid ${degraded?'var(--negative-border)':'var(--border-subtle)'}`}}>
-                  <p style={{fontSize:12,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{name}{degraded&&<span title="Υποβαθμισμένη κατάσταση" style={{display:'inline-flex',color:'var(--negative)',marginLeft:6,verticalAlign:'middle'}}><svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg></span>}</p>
-                  <div>{cA!=null?<Badge label={cA} color={CONDITION_COLOR[cA]||'var(--text-tertiary)'}/>:<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>Δεν υπήρχε</span>}</div>
-                  <div>{cB!=null?<Badge label={cB} color={CONDITION_COLOR[cB]||'var(--text-tertiary)'}/>:<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>Δεν υπήρχε</span>}</div>
-                </div>
-              )
-            })}
           </div>
         )}
       </div>

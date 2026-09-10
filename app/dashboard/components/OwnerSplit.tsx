@@ -343,34 +343,64 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
                 <Badge>Ποσοστά {result.valid ? pPct(result.pctSum) : `${pPct(result.pctSum)} από ${pPct(100)}`}</Badge>
               </span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 12, padding: '8px 16px', borderTop: '1px solid var(--border-subtle)' }}>
-              <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Ιδιοκτήτης</span>
-              <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans, textAlign: 'right' }}>Ποσοστό</span>
-              <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans, textAlign: 'right' }}>Παρακράτηση</span>
-              <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans, textAlign: 'right', minWidth: 84 }}>Καθαρό</span>
-            </div>
-            {result.owners.map((o, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 12, padding: '9px 16px', borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--fs-base)', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: T.font.sans }}>{o.name}</span>
-                <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: T.font.sans }}>{pPct(o.pct)}</span>
-                <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums', textAlign: 'right', fontFamily: T.font.sans }}>{o.expenseShare + o.feeShare > 0 ? `−${pEur(o.expenseShare + o.feeShare)}` : pEur(0)}</span>
-                <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', minWidth: 84, fontFamily: T.font.sans, color: 'var(--text-primary)' }}>{pEur(o.net)}</span>
-              </div>
-            ))}
-            {/* Το αδιάθετο υπόλοιπο, ονομαστικά.
-                Όταν τα ποσοστά δεν αθροίζουν 100, ο πίνακας ΔΕΝ κλείνει πια στο
-                «Προς διανομή» — και σωστά: ο υπολογισμός σταμάτησε να φορτώνει
-                σιωπηλά τη διαφορά στον μεγαλύτερο ιδιοκτήτη. Αντί ο χρήστης να
-                ψάχνει γιατί οι γραμμές δεν βγάζουν το σύνολο, το λείπον ποσό
-                γράφεται εδώ σε ευρώ: δείχνει ακριβώς πόσα δεν έχουν ιδιοκτήτη. */}
-            {unassigned !== null && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 12, padding: '9px 16px', borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--fs-base)', alignItems: 'center', background: 'var(--bg-elevated)' }}>
-                <span style={{ color: 'var(--text-secondary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: T.font.sans }}>{unassigned.label}</span>
-                <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: T.font.sans }}>{pPct(unassigned.pct)}</span>
-                <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums', textAlign: 'right', fontFamily: T.font.sans }}>{pEur(0)}</span>
-                <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', minWidth: 84, fontFamily: T.font.sans, color: 'var(--text-secondary)' }}>{pSigned(unassigned.amount)}</span>
-              </div>
-            )}
+            {/* ΤΕΣΣΕΡΙΣ ΣΤΗΛΕΣ ΠΟΥ ΔΕΝ ΗΞΕΡΑΝ ΟΤΙ ΕΙΝΑΙ ΣΤΗΛΕΣ. Η κατανομή ήταν τρία
+                χωριστά πλέγματα από div —κεφαλίδα, γραμμές ιδιοκτητών, αδιάθετο
+                υπόλοιπο— που έγραφαν τρεις φορές το ίδιο `1fr auto auto auto` και 28
+                δηλώσεις στυλ μόνο στα τέσσερα span της κεφαλίδας· κανένα ποσό δεν
+                ήταν δεμένο με τη στήλη του, σε οθόνη που εκδίδει επίσημη κατάσταση
+                με ποσοστά συνιδιοκτησίας. Τώρα το `scope` το λέει. */}
+            {/* Το πλαίσιο το δίνει ήδη το κουτί από πάνω, που κρατά ΚΑΙ τη λωρίδα
+                της σύνοψης: δεύτερο `.po-table-box` θα έβαζε περίγραμμα μέσα σε
+                περίγραμμα. Το `--tbl-fs` δηλώνεται ρητά γιατί η προεπιλογή των 13
+                μικραίνει τη γραμμή σε οθόνη αφής, όπου το `--fs-base` είναι 14. */}
+            <table className="po-table" style={{ ['--tbl-fs' as string]: 'var(--fs-base)', borderTop: '1px solid var(--border-subtle)' } as React.CSSProperties}>
+              {/* Ονομα για τον αναγνώστη οθόνης, χωρίς ταινία τίτλου: από πάνω
+                  κάθεται ήδη η λωρίδα της σύνοψης στο ίδιο `--bg-elevated`. */}
+              <caption className="sr-only">Κατανομή ανά ιδιοκτήτη</caption>
+              {/* Το «1fr» της πρώτης στήλης γίνεται `<col>` στο 100%: με αυτόματη
+                  διάταξη παίρνει ό,τι περισσεύει και κάθε στήλη ποσού όσο ζητά ο
+                  αριθμός της — γι' αυτό δεν μπαίνει `tbl-fixed`. Το όνομα κοβόταν
+                  πριν με αποσιωπητικά σε μία γραμμή· μέσα σε κελί αυτό θα φάρδαινε
+                  τον πίνακα έξω από το κουτί του. Τυλίγεται, όπως κάθε κελί. */}
+              <colgroup><col style={{ width: '100%' }} /></colgroup>
+              <thead>
+                <tr>
+                  <th scope="col">Ιδιοκτήτης</th>
+                  <th scope="col" className="num">Ποσοστό</th>
+                  <th scope="col" className="num">Παρακράτηση</th>
+                  <th scope="col" className="num" style={{ minWidth: 84 }}>Καθαρό</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.owners.map((o, i) => (
+                  <tr key={i}>
+                    <th scope="row" style={{ color: 'var(--text-primary)' }}>{o.name}</th>
+                    <td className="num" style={{ color: 'var(--text-tertiary)', fontSize: 12, whiteSpace: 'nowrap' }}>{pPct(o.pct)}</td>
+                    <td className="num" style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{o.expenseShare + o.feeShare > 0 ? `−${pEur(o.expenseShare + o.feeShare)}` : pEur(0)}</td>
+                    <td className="num" style={{ fontWeight: 700, color: 'var(--text-primary)', minWidth: 84 }}>{pEur(o.net)}</td>
+                  </tr>
+                ))}
+                {/* Το αδιάθετο υπόλοιπο, ονομαστικά.
+                    Όταν τα ποσοστά δεν αθροίζουν 100, ο πίνακας ΔΕΝ κλείνει πια στο
+                    «Προς διανομή» — και σωστά: ο υπολογισμός σταμάτησε να φορτώνει
+                    σιωπηλά τη διαφορά στον μεγαλύτερο ιδιοκτήτη. Αντί ο χρήστης να
+                    ψάχνει γιατί οι γραμμές δεν βγάζουν το σύνολο, το λείπον ποσό
+                    γράφεται εδώ σε ευρώ: δείχνει ακριβώς πόσα δεν έχουν ιδιοκτήτη. */}
+                {/* Μένει τελευταία γραμμή του `tbody`, όχι `tfoot` με `is-total`: δεν
+                    αθροίζει τις από πάνω — είναι ό,τι ΠΕΡΙΣΣΕΨΕ όταν τα ποσοστά δεν
+                    κλείνουν στα 100. Και το `is-total` ζωγραφίζει τη γραμμή του μόνο
+                    σε `td`: εδώ το πρώτο κελί είναι `th`, οπότε η γραμμή θα έκοβε στη
+                    μέση της σειράς. Το φόντο μένει όπως ήταν. */}
+                {unassigned !== null && (
+                  <tr style={{ background: 'var(--bg-elevated)' }}>
+                    <th scope="row" style={{ color: 'var(--text-secondary)' }}>{unassigned.label}</th>
+                    <td className="num" style={{ color: 'var(--text-tertiary)', fontSize: 12, whiteSpace: 'nowrap' }}>{pPct(unassigned.pct)}</td>
+                    <td className="num" style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{pEur(0)}</td>
+                    <td className="num" style={{ fontWeight: 700, color: 'var(--text-secondary)', minWidth: 84 }}>{pSigned(unassigned.amount)}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         )}
 
