@@ -1100,10 +1100,12 @@ function FileInner({ items, a }: { items: Item[]; a: FileActions }) {
 }
 
 // Στρογγυλό κουμπί ενέργειας πάνω από thumbnail (grid) — σκουρόχρωμο για αντίθεση.
-// ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟ. Το κοινό `IconBtn` ξέρει μόνο διάφανο φόντο με τριτεύον
-// μελάνι — πάνω σε φωτογραφία το γκρι εξαφανίζεται. Εδώ το φόντο είναι σκίαστρο
-// με θόλωμα. Το μελάνι είναι `--on-media`. Τόνος «πάνω σε μέσο» δεν υπάρχει στο
-// πρωτογενές, οπότε η μετατροπή θα έσβηνε το κουμπί μέσα στην εικόνα.
+// ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟ, ΓΙΑ ΑΛΛΟ ΛΟΓΟ ΑΠΟ ΟΤΙ ΕΛΕΓΕ ΕΔΩ. Ο τόνος «πάνω σε μέσο»
+// ΥΠΑΡΧΕΙ πλέον στο `IconBtn` (`tone="media"`), οπότε το μελάνι δεν εμποδίζει.
+// Εμποδίζει το ΚΟΥΤΙ: το `IconBtn` έχει μόνο sm=32 · md=36 ενώ το σχήμα εδώ
+// είναι 26. Και δεν φοράει `po-box`, άρα στο δάχτυλο το δάπεδο αφής θα το
+// τέντωνε σε 44 × 44 πάνω σε μικρογραφία 4/3. Διαφέρει κι το πέπλο: ο τόνος
+// media βάφει λευκό 0,14 χωρίς θόλωμα, εδώ είναι το σκίαστρο 0,55 με blur(2px).
 const OverlayBtn = ({ title, onClick, children }: { title: string; onClick: (e: React.MouseEvent) => void; children: React.ReactNode }) => (
   <button onClick={onClick} title={title} className="po-box"
     style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', background: T.scrim, color: 'var(--on-media)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)' }}>{children}</button>

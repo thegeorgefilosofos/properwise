@@ -173,6 +173,9 @@ function Fold({ open, onToggle, title, sub, right, children }: {
             20px αντί για 44 και ο τίτλος ξεχείλιζε έξω από το κουτί του.
             Με βάση 190 (ποτέ πάνω από το πλάτος του γονέα) η σειρά τυλίγεται
             όπως σχεδιάστηκε. */}
+        {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το `aria-expanded` δεν περνά σε κανένα πρωτογενές. Το
+            ChipToggle λέει `aria-pressed` («πατημένο»), που είναι άλλη πληροφορία:
+            ο αναγνώστης οθόνης θα έπαυε να ακούει αν η ενότητα είναι ανοιχτή. */}
         <button type="button" onClick={onToggle} aria-expanded={open} className="acc-toggle"
           style={{ display:'flex', alignItems:'center', gap: 8, flex:'1 1 190px', minWidth:'min(100%, 190px)', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }}>
           <ChevronRight size={16} aria-hidden style={{ color:'var(--text-tertiary)', flexShrink:0, transform:open?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
@@ -213,6 +216,9 @@ const ADVISORY_TONE:Record<AdvisoryTone,string> = { opportunity:'Ευκαιρί�
 
 // Minimal, premium checkbox (Google-level): μικρό, καθαρό, με ήπιο animation.
 function Check({ checked, onChange, label, hint, align='center' }:{ checked:boolean; onChange:(v:boolean)=>void; label:React.ReactNode; hint?:string; align?:'center'|'start' }){
+  // ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: `role="checkbox"` με `aria-checked`. Το μόνο πρωτογενές με
+  // κατάσταση είναι το ChipToggle · λέει `aria-pressed`, δηλαδή «πατημένο» αντί για
+  // «επιλεγμένο» · κι έχει δικό του κουτί αντί για το ζωγραφισμένο τετραγωνάκι.
   return (
     <button type="button" role="checkbox" aria-checked={checked} onClick={()=>onChange(!checked)} title={hint}
       style={{ display:'inline-flex', alignItems:align==='start'?'flex-start':'center', gap: 8, background:'none', border:'none', padding:0, cursor:'pointer', fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily: T.font.sans, textAlign:'left', lineHeight:1.5 }}>
@@ -1834,6 +1840,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               const open = openAdvisory===a.id
               return (
                 <div key={a.id} style={{ borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${open?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
+                  {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: κεφαλίδα σε ΟΛΟ το πλάτος της κάρτας. Το Btn
+                      είναι inline-flex κεντραρισμένο, χωρίς πλήρες πλάτος. */}
                   <button onClick={()=>setOpenAdvisory(open?null:a.id)} aria-expanded={open} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
                     <div style={{ flex:1, minWidth:0 }}>
                       <span style={{ display:'inline-flex', alignItems:'center', height:20, padding:'0 9px', borderRadius: T.radius.xs, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.5px', textTransform:'uppercase', color:'var(--text-tertiary)' }}>{ADVISORY_TONE[a.tone]}</span>
@@ -1888,6 +1896,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 const uo = openChange===u.id
                 return (
                   <div key={u.id} style={{ borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${uo?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
+                    {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: η αιώρηση γεμίσματος έρχεται από την κλάση
+                        `po-hov-fill` · κανένα πρωτογενές δεν δέχεται className. */}
                     <button onClick={()=>setOpenChange(uo?null:u.id)} aria-expanded={uo} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'13px 15px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
                       <p style={{ flex:1, minWidth:0, fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', margin:0, lineHeight:1.35, fontFamily: T.font.sans }}>{u.title}</p>
                       <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:uo?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
@@ -1928,6 +1938,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         {/* Κόστος αγοράς & πώλησης, δομημένη εκτίμηση μεταβίβασης */}
         <div style={card}>
           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:xferOpen?16:0 }}>
+            {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: μοιράζεται τη σειρά με τον επιλογέα Αγορά/Πώληση
+                (flex:1 · minWidth:0). Το Btn δεν δέχεται style θέσης, όπως το IconBtn. */}
             <button onClick={()=>setXferOpen(o=>!o)} aria-expanded={xferOpen} className="acc-toggle" style={{ display:'flex', alignItems:'center', gap: 8, background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left', flex:1, minWidth:0 }}>
               <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:xferOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
               <div>

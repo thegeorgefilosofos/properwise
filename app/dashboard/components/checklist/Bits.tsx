@@ -98,9 +98,11 @@ export function FilterSelect({ value, onChange, options, minWidth = 168, idle }:
   return (
     <>
       {/* ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟ. Το `ChipToggle` δεν προωθεί `ref` — εδώ ο ref μετρά τη
-          θέση του κουμπιού ώστε να τοποθετηθεί το μενού του portal. Και το ύψος
-          διαφέρει: T.h.lg (40), το σκαλί της γραμμής φίλτρων, ενώ το πλακίδιο
-          κάθεται στα 32. */}
+          θέση του κουμπιού ώστε να τοποθετηθεί το μενού του portal. Το ύψος
+          δεν είναι πια ο λόγος: το πλακίδιο πήρε `size="lg"`, δηλαδή το ίδιο
+          T.h.lg της γραμμής φίλτρων. Μένουν η ακτίνα χαπιού αντί για 8, το
+          ελάχιστο πλάτος 168 ώστε τα δύο φίλτρα να ισοφαρίζουν και το λεκτικό
+          `--fs-base` αριστερά με το βελάκι δεξιά. */}
       <button ref={btnRef} type="button" onClick={() => setOpen(o => !o)}
         style={{ display: 'flex', alignItems: 'center', gap: 8, height: T.h.lg, padding: '0 12px 0 14px', minWidth, borderRadius: T.radius.pill, border: '1px solid ' + (open || active ? 'var(--accent)' : 'var(--border-subtle)'), background: active ? 'var(--accent-soft)' : 'var(--bg-surface)', color: active ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight: active ? 600 : 500, cursor: 'pointer', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s', whiteSpace: 'nowrap' }}>
         <span style={{ flex: 1, textAlign: 'left', whiteSpace: 'nowrap' }}>{!active && idle ? idle : current.label}</span>
@@ -209,9 +211,11 @@ export function ExportMenu({ onExcel, onPdf, onHandover }: { onExcel: () => void
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       {/* ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟ ΩΣΠΟΥ ΤΟ `Btn` ΝΑ ΔΕΧΤΕΙ ΚΑΤΑΣΤΑΣΗ ΑΝΟΙΓΜΑΤΟΣ. Το
-          πρωτογενές δεν παίρνει ούτε `title` ούτε `aria-expanded`, οπότε θα
-          χανόταν η επεξήγηση «Εξαγωγή δεδομένων» μαζί με το τονισμένο περίγραμμα
-          που δείχνει ότι το μενού είναι ανοιχτό. */}
+          `title` το παίρνει πλέον, οπότε η επεξήγηση «Εξαγωγή δεδομένων» δεν
+          κινδυνεύει· το `aria-expanded` όχι, δηλαδή ο αναγνώστης οθόνης δεν
+          μαθαίνει ποτέ ότι το μενού άνοιξε. Μαζί του θα έφευγε κι ο τόνος
+          «ανοιχτό» (περίγραμμα και φόντο accent) που δεν τον έχει καμία από τις
+          τρεις παραλλαγές, με την ακτίνα χαπιού να πέφτει στα 10. */}
       <button type="button" onClick={() => setOpen(o => !o)} title="Εξαγωγή δεδομένων"
         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.md, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid ' + (open ? 'var(--accent)' : 'var(--border-default)'), background: open ? 'var(--accent-soft)' : 'transparent', color: open ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
         <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
