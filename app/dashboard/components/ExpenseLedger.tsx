@@ -245,8 +245,8 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   // ═══ Η ΣΥΓΚΡΙΣΗ ΕΒΛΕΠΕ ΑΛΛΟ ΣΥΝΟΛΟ ΑΠΟ ΤΗΝ ΙΔΙΑ ΤΗΝ ΟΘΟΝΗ ΠΟΥ ΤΗ ΦΙΛΟΞΕΝΕΙ
   //
   // ΤΟ ΣΦΑΛΜΑ, ΜΕΤΡΗΜΕΝΟ ΣΤΟΝ ΠΑΓΚΟ. Τον Αύγουστο 2026 η κάρτα της σύγκρισης
-  // έγραφε 228,00 € σε γράμματα ύψους 28 και τετρακόσια εξήντα εικονοστοιχεία
-  // πιο κάτω το πλακίδιο «Μηνιαίες δαπάνες» έγραφε 273,00 €, με την κεφαλίδα
+  // έγραφε 228,00€ σε γράμματα ύψους 28 και τετρακόσια εξήντα εικονοστοιχεία
+  // πιο κάτω το πλακίδιο «Μηνιαίες δαπάνες» έγραφε 273,00€, με την κεφαλίδα
   // «ΑΥΓΟΥΣΤΟΣ 2026» της λίστας να συμφωνεί με το δεύτερο. Ιδιος μήνας, ίδια
   // οθόνη, δύο σύνολα. Ο χρήστης δεν έχει τρόπο να μαντέψει ποιο ισχύει.
   //
@@ -600,7 +600,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           πλακιδίων, οπότε καμία σειρά δεν μένει μισή. */}
       {/* ΤΡΙΑ ΝΟΥΜΕΡΑ, ΤΡΕΙΣ ΣΕΙΡΕΣ ΣΤΟ ΤΗΛΕΦΩΝΟ. Το `.fixed-cols` πέφτει σε μία
           στήλη κάτω από τα 420 ως δίχτυ ασφαλείας για φόρμες με μακριές
-          ετικέτες. Εδώ όμως τα παιδιά είναι «αυτόν τον μήνα 45,00 €»: σε Galaxy
+          ετικέτες. Εδώ όμως τα παιδιά είναι «αυτόν τον μήνα 45,00€»: σε Galaxy
           A έπιαναν 360 εικονοστοιχεία για τρεις αριθμούς.
 
           Με το ιδίωμα των δεικτών γίνονται 2+1, με το τρίτο απλωμένο σε όλο το
@@ -824,7 +824,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
            διαφήμιζαν το κουμπί που ήταν από κάτω τους.
 
            Και η ΤΡΙΤΗ φορά που λεγόταν το ίδιο πράγμα: οι τρεις μετρητές από
-           πάνω γράφουν ήδη 0,00 € ο καθένας. Ενα άδειο βιβλίο δαπανών δεν
+           πάνω γράφουν ήδη 0,00€ ο καθένας. Ενα άδειο βιβλίο δαπανών δεν
            χρειάζεται να ανακοινωθεί τρεις φορές.
 
            Η σάρωση έφυγε από εδώ και ανέβηκε στη σειρά των καρτελών, όπου
@@ -846,7 +846,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           {shown.map(m => (
             <div key={m.month}>
               {/* ΣΥΝΟΛΟ ΜΙΑΣ ΓΡΑΜΜΗΣ ΕΙΝΑΙ Η ΓΡΑΜΜΗ. Ο μήνας με μία δαπάνη έγραφε
-                  «69,00 €» στην κεφαλίδα και «69,00 €» πενήντα πέντε
+                  «69,00€» στην κεφαλίδα και «69,00€» πενήντα πέντε
                   εικονοστοιχεία πιο κάτω, στη μοναδική του σειρά, με το δεύτερο
                   να παριστάνει άθροισμα. Χρειάζονται δύο προσθετέοι για να
                   υπάρχει άθροισμα· ο ίδιος κανόνας ισχύει ήδη για τον μέσο όρο
@@ -927,7 +927,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
 // ΤΕΤΑΡΤΗ ΓΡΑΦΗ ΤΟΥ ΙΔΙΟΥ ΠΡΑΓΜΑΤΟΣ. Ετικέτα και μεγάλος αριθμός, με δικό της
 // μέγεθος 20 αντί για την κοινή κλίμακα και χωρίς όσα ξέρει ο κοινός αριθμός:
 // μέχρι πριν λίγο κανένας από τους τέσσερις τρόπους δεν κοίταζε πόσα ψηφία
-// ζητήθηκε να χωρέσει, οπότε στα 320 το «1.278,00 €» δούλευε μόνο κατά τύχη.
+// ζητήθηκε να χωρέσει, οπότε στα 320 το «1.278,00€» δούλευε μόνο κατά τύχη.
 // Ενα σημείο γράφει τον αριθμό· εδώ μένει η σκάλα της φόρτωσης, που είναι το
 // μόνο δικό της.
 // ── Μία γραμμή ────────────────────────────────────────────────────────────
@@ -1118,8 +1118,8 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
   const [what, setWhat] = useState((row.description || '').trim());
   // ═══ ΔΕΥΤΕΡΟΣ ΜΟΡΦΟΠΟΙΗΤΗΣ ΠΟΣΟΥ, ΣΤΟ ΙΔΙΟ ΑΡΧΕΙΟ, ΜΕ ΑΛΛΗ ΕΞΟΔΟ ═══════════
   // Εδώ ζούσε ένα `n.toFixed(2).replace('.', ',')`, δηλαδή ποσό χωρίς τελεία
-  // χιλιάδων. Δαπάνη 1.234,50 € γραφόταν «1.234,50 €» στη γραμμή της λίστας,
-  // «1.234,50 €» στην επιβεβαίωση διαγραφής της ίδιας γραμμής και «1234,50»
+  // χιλιάδων. Δαπάνη 1.234,50€ γραφόταν «1.234,50€» στη γραμμή της λίστας,
+  // «1.234,50€» στην επιβεβαίωση διαγραφής της ίδιας γραμμής και «1234,50»
   // μέσα στο πεδίο που ανοίγει από εκείνη τη γραμμή. Το ίδιο ποσό, τρεις
   // θέσεις, δύο γραφές.
   //
@@ -1229,8 +1229,9 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
         {/* Ίδια γεωμετρία με την καταχώρηση: το ευρώ μέσα στο πεδίο, δεξιά. */}
         <label style={{ minWidth: 0, position: 'relative' }}>
           <span style={LAB}>Ποσό</span>
+          {/* Το δεξί περιθώριο του πεδίου (14) συν 20 για το «€» που κάθεται πάνω του. */}
           <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal"
-            style={{ ...FIELD, paddingRight: 34, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
+            style={{ ...FIELD, paddingRight: 14 + T.sp.xl, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
             placeholder="0,00" />
           <span aria-hidden style={{ position: 'absolute', right: 14, bottom: 0, height: T.h.lg, display: 'flex', alignItems: 'center', fontSize: 14, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>€</span>
         </label>
@@ -1445,8 +1446,9 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
             έλεγε καν σε τι μονάδα απαντά ο χρήστης. */}
         <label style={{ minWidth: 0, position: 'relative' }}>
           <span style={LAB}>Ποσό</span>
+          {/* Το δεξί περιθώριο του πεδίου (14) συν 20 για το «€» που κάθεται πάνω του. */}
           <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal"
-            style={{ ...FIELD, paddingRight: 34, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
+            style={{ ...FIELD, paddingRight: 14 + T.sp.xl, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
             placeholder="0,00" />
           <span aria-hidden style={{ position: 'absolute', right: 14, bottom: 0, height: T.h.lg, display: 'flex', alignItems: 'center', fontSize: 14, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>€</span>
         </label>
@@ -1499,8 +1501,8 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
           Η κλειστή γραμμή ΛΕΕΙ ΤΙ ΚΡΥΒΕΙ: σκέτο «Περισσότερα» ζητά από τον
           χρήστη να πατήσει για να μάθει αν τον αφορά. */}
       <button type="button" onClick={() => setMoreOpen(o => !o)} aria-expanded={moreOpen}
-        className="acc-toggle"
-        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: T.h.sm, marginTop: 12, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: 0, fontFamily: T.font.sans }}>
+        className="acc-toggle acc-row"
+        style={{ minHeight: T.h.sm, marginTop: 12 }}>
         <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', flex: 1, minWidth: 0 }}>
           {moreOpen ? 'Λιγότερα' : `Περισσότερα: ποιος πληρώνει${paid ? ', ΑΦΜ προμηθευτή' : ''}`}
         </span>

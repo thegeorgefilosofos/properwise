@@ -43,6 +43,25 @@
 //   6. Η ΕΣΤΙΑΣΗ ΦΑΙΝΕΤΑΙ, ΜΕ ΑΛΗΘΙΝΟ TAB. Ο δακτύλιος του `:focus-visible`
 //      εμφανίζεται μόνο σε πλοήγηση πληκτρολογίου· γι' αυτό εδώ πατιέται Tab
 //      και όχι `focus()`.
+//   7. ΤΟ ΚΕΙΜΕΝΟ ΔΙΑΒΑΖΕΤΑΙ. Λόγος φωτεινότητας προς το φόντο κατά WCAG 2.2
+//      AA: 4,5:1 για κανονικό κείμενο, 3:1 για μεγάλο (≥24px, ή ≥18,66px
+//      έντονο). Ελειπε — και ήταν το μόνο από τα επτά που δεν μετριόταν
+//      πουθενά στο έργο.
+//
+//      ΤΙ ΒΡΗΚΕ ΜΟΛΙΣ ΜΠΗΚΕ. Τα tokens του θέματος είναι όλα εντάξει (5,4:1 ώς
+//      13,4:1 πάνω σε κάθε επιφάνεια). Το πρόβλημα ήταν η ΔΙΑΦΑΝΕΙΑ πάνω τους:
+//      οι μετρητές των φίλτρων στο Αρχείο και στις Επαφές έγραφαν
+//      `opacity: 0.6` και έπεφταν στο 3,46:1 στα 11px — δηλαδή το ΝΟΥΜΕΡΟ, που
+//      είναι όλη η πληροφορία του φίλτρου, ήταν το λιγότερο ευανάγνωστο πράγμα
+//      στη σειρά. Το σύμβολο του ευρώ στο Ημερολόγιο έβγαινε 4,13:1.
+//
+//      ΤΑ ΑΠΕΝΕΡΓΟΠΟΙΗΜΕΝΑ ΕΞΑΙΡΟΥΝΤΑΙ, ΚΑΙ ΤΟ ΛΕΕΙ ΤΟ ΠΡΟΤΥΠΟ. Το WCAG 1.4.3
+//      εξαιρεί ρητά τα «inactive user interface components»: το ξεθώριασμα ΕΙΝΑΙ
+//      το μήνυμα «δεν πατιέται τώρα». Χωρίς την εξαίρεση, ο έλεγχος θα ζητούσε
+//      να γίνει ευανάγνωστο ακριβώς ό,τι πρέπει να φαίνεται ανενεργό.
+//
+//      Το ίδιο και το `.sr-only`: κείμενο ΓΙΑ τον αναγνώστη οθόνης, επίτηδες
+//      αόρατο στο μάτι. Μετρήθηκε 1,3:1 — σωστή μέτρηση, λάθος ερώτηση.
 //
 // ΚΑΘΕ ΕΥΡΗΜΑ ΤΥΠΩΝΕΤΑΙ ΜΕ ΤΗ ΣΚΗΝΗ ΚΑΙ ΤΟ ΣΤΟΙΧΕΙΟ. Χωρίς ευρήματα δεν
 // τυπώνεται τίποτα πέρα από τη σύνοψη: ο έλεγχος που γεμίζει την οθόνη με
@@ -52,6 +71,7 @@ import { createRequire } from 'node:module'
 import { chromePath } from './lib/chrome.mjs'
 import { SCENES } from './lib/scenes.mjs'
 import { benchUrl } from './lib/paths.mjs'
+import { TAP, tinyTargets } from './lib/tap-targets.mjs'
 
 const require = createRequire(import.meta.url)
 let pkg
@@ -81,6 +101,8 @@ const LABELS = {
   namelessDialog: 'παράθυρο χωρίς όνομα',
   headingJump: 'επικεφαλίδα που πηδά επίπεδο',
   blindFocus: 'εστίαση που δεν φαίνεται με Tab',
+  lowContrast: 'κείμενο κάτω από την αντίθεση WCAG AA',
+  tinyTap: 'στόχος αφής κάτω από τα 44 εικονοστοιχεία',
 }
 
 let findings = 0
@@ -91,7 +113,63 @@ for (const scene of RUN) {
   await page.goto(benchUrl(scene), { waitUntil: 'load' })
   await page.waitForTimeout(1800)
 
-  const found = { anonymous: [], selfNamed: [], loudImage: [], namelessDialog: [], headingJump: [], blindFocus: [] }
+  const found = { anonymous: [], selfNamed: [], loudImage: [], namelessDialog: [], headingJump: [], blindFocus: [], lowContrast: [], tinyTap: [] }
+
+  // ── ΣΤΟΧΟΙ ΑΦΗΣ ────────────────────────────────────────────────────────
+  // Ο κανόνας των 44 έτρεχε ΜΟΝΟ στις οκτώ δημόσιες σελίδες: οι τριάντα εννέα
+  // οθόνες του ταμπλό —εκεί που ο χρήστης καταχωρεί δαπάνες με το δάχτυλο— δεν
+  // τον είχαν δει ποτέ. Η μέτρηση γίνεται σε δικό της περιβάλλον με `hasTouch`,
+  // γιατί τα ύψη της κλίμακας ανεβαίνουν στα 44 ΜΟΝΟ σε χοντρό δείκτη.
+  {
+    const touchCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: 'el-GR' })
+    const tp = await touchCtx.newPage()
+    await tp.goto(benchUrl(scene), { waitUntil: 'load' })
+    await tp.waitForTimeout(1200)
+    found.tinyTap.push(...await tp.evaluate(tinyTargets, TAP))
+    await touchCtx.close()
+  }
+
+  // ── ΑΝΤΙΘΕΣΗ ────────────────────────────────────────────────────────────
+  // Το φόντο βρίσκεται ανεβαίνοντας τους προγόνους ώσπου να πάψει να είναι
+  // διάφανο· αλλιώς κάθε στοιχείο θα φαινόταν να κάθεται σε λευκό.
+  found.lowContrast.push(...await page.evaluate(() => {
+    const lum = c => { const [r, g, b] = c.map(v => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4) }); return 0.2126 * r + 0.7152 * g + 0.0722 * b }
+    const rgba = s => { const m = String(s).match(/rgba?\(([^)]+)\)/); if (!m) return null
+      const p = m[1].split(',').map(x => parseFloat(x)); return { c: p.slice(0, 3), a: p.length > 3 ? p[3] : 1 } }
+    const over = (f, b) => f.c.map((v, i) => v * f.a + b[i] * (1 - f.a))
+    const bgOf = el => {
+      let n = el, acc = null
+      while (n && n !== document.documentElement) {
+        const b = rgba(getComputedStyle(n).backgroundColor)
+        if (b && b.a > 0) { acc = acc ? over({ c: acc, a: 1 }, over(b, [255, 255, 255])) : over(b, [255, 255, 255]); if (b.a === 1) return acc }
+        n = n.parentElement
+      }
+      const root = rgba(getComputedStyle(document.documentElement).backgroundColor)
+      return acc || (root && root.a > 0 ? over(root, [255, 255, 255]) : [255, 255, 255])
+    }
+    const skip = new Set(document.querySelectorAll('[aria-hidden="true"], [aria-hidden="true"] *, .skeleton, .skeleton *, .sr-only, .sr-only *'))
+    const out = []
+    for (const el of document.querySelectorAll('body *')) {
+      if (skip.has(el)) continue
+      if (el.closest('[disabled], [aria-disabled="true"]')) continue
+      const r = el.getBoundingClientRect()
+      if (!(r.width > 0 && r.height > 0) || getComputedStyle(el).visibility === 'hidden') continue
+      // Μόνο στοιχεία με ΔΙΚΟ τους κείμενο: αλλιώς κάθε πρόγονος κρίνεται ξανά.
+      const own = [...el.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim()).map(n => n.textContent.trim()).join(' ')
+      if (!own) continue
+      const cs = getComputedStyle(el)
+      if (cs.opacity === '0') continue
+      const f = rgba(cs.color); if (!f) continue
+      const bg = bgOf(el)
+      const fg = over({ c: f.c, a: f.a * parseFloat(cs.opacity || '1') }, bg)
+      const L1 = lum(fg), L2 = lum(bg)
+      const ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05)
+      const px = parseFloat(cs.fontSize), bold = Number(cs.fontWeight) >= 700
+      const need = px >= 24 || (bold && px >= 18.66) ? 3 : 4.5
+      if (ratio < need - 0.05) out.push(`«${own.slice(0, 26)}» ${Math.round(ratio * 100) / 100}:1 (θέλει ${need}, ${Math.round(px)}px)`)
+    }
+    return [...new Set(out)]
+  }))
 
   // ── ΤΟ ΔΕΝΤΡΟ ΟΠΩΣ ΤΟ ΒΛΕΠΕΙ Ο ΑΝΑΓΝΩΣΤΗΣ ────────────────────────────────
   const cdp = await ctx.newCDPSession(page)
@@ -231,6 +309,6 @@ for (const scene of RUN) {
 await browser.close()
 console.log('')
 console.log(findings === 0
-  ? 'Προσβασιμότητα πίνακα ελέγχου — κάθε χειριστήριο έχει όνομα, κάθε εστίαση φαίνεται, κανένα σχήμα δεν μιλά χωρίς λόγο'
+  ? 'Προσβασιμότητα πίνακα ελέγχου — κάθε χειριστήριο έχει όνομα, κάθε εστίαση φαίνεται, κάθε κείμενο διαβάζεται, κανένα σχήμα δεν μιλά χωρίς λόγο'
   : `Προσβασιμότητα πίνακα ελέγχου — ${findings} ευρήματα`)
 process.exit(findings === 0 ? 0 : 1)

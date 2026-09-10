@@ -58,11 +58,31 @@ const subprocessorRows = () => subprocessors().map(s => ({
   name: s.name, what: s.purpose, where: s.where, planned: !s.active,
 }));
 
-function Row({ label, value }: { label: string; value: string }) {
+/**
+ * ΤΑ ΣΤΟΙΧΕΙΑ ΤΗΣ ΕΤΑΙΡΕΙΑΣ ΕΙΝΑΙ ΠΙΝΑΚΑΣ, ΚΑΙ ΓΡΑΦΕΤΑΙ ΩΣ ΠΙΝΑΚΑΣ.
+ *
+ * Ηταν σειρές `<div>` με ενσωματωμένη γραμμή από κάτω, χωρίς επιφάνεια και
+ * χωρίς περίγραμμα — και ακριβώς από κάτω τους καθόταν σημείωση ΜΕΣΑ σε κουτί.
+ * Δηλαδή στην ίδια ενότητα, τα ΔΕΔΟΜΕΝΑ αιωρούνταν και η επιφύλαξη είχε πλαίσιο.
+ *
+ * ΚΑΙ ΔΕΝ ΗΤΑΝ ΜΟΝΟ ΟΨΗ. Ζεύγη ετικέτας-τιμής σε `<div>` δεν έχουν σχέση
+ * μεταξύ τους για αναγνώστη οθόνης: διαβάζονται έξι ανεξάρτητα κείμενα στη
+ * σειρά. Σε `<table>` με `<th scope="row">` η ετικέτα ΑΝΗΚΕΙ στην τιμή της.
+ */
+function DataTable({ caption, rows }: { caption: string; rows: { label: string; value: string }[] }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 20, padding: '11px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-      <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>{label}</span>
-      <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    <div className="po-table-box" style={{ marginTop: 14 }}>
+      <table className="po-table" style={{ '--tbl-fs': '14px' }}>
+        <caption>{caption}</caption>
+        <tbody>
+          {rows.map(r => (
+            <tr key={r.label}>
+              <th scope="row">{r.label}</th>
+              <td className="num" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{r.value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -90,7 +110,7 @@ function Never({ children }: { children: React.ReactNode }) {
   );
 }
 
-const STACK: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 15, marginTop: 4 };
+const STACK: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 };
 
 /**
  * «Η επωνυμία, η έδρα και το ΑΦΜ» — μία σειρά αντί για μία γραμμή πίνακα ανά
@@ -116,7 +136,7 @@ export default function TrustPage() {
       h: 'Τα στοιχεία μας',
       body: (
         <>
-          <div>{known.map(r => <Row key={r.label} label={r.label} value={r.value as string} />)}</div>
+          <DataTable caption="Στοιχεία εταιρείας" rows={known.map(r => ({ label: r.label, value: r.value as string }))} />
           {pending.length > 0 && (
             <p className="lg-note">
               {words.chargingToday} Τα όρια
@@ -244,14 +264,42 @@ export default function TrustPage() {
             γνωστοποιούμε με email πριν προστεθεί νέος. Όσοι είναι εκτός ΕΕ απαιτούν Τυποποιημένες Συμβατικές
             Ρήτρες· η υπογραφή τους ολοκληρώνεται πριν την εμπορική κυκλοφορία και το δηλώνουμε εδώ όταν γίνει.
           </p>
-          <div style={{ marginTop: 16, border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
-            {subprocessorRows().map((s, i) => (
-              <div key={s.name} style={{ display: 'grid', gridTemplateColumns: 'minmax(84px, 0.62fr) minmax(0, 1.7fr) minmax(96px, 0.72fr)', gap: 14, padding: '13px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: s.planned ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{s.name}</span>
-                <span style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{s.what}</span>
-                <span style={{ fontSize: 14, color: 'var(--text-tertiary)', textAlign: 'right' }}>{s.where}</span>
-              </div>
-            ))}
+          {/* ΤΡΕΙΣ ΣΤΗΛΕΣ ΧΩΡΙΣ ΚΕΦΑΛΙΔΑ: ο αναγνώστης μάντευε ότι η τρίτη είναι
+              τόπος. Ηταν και πλέγμα από `<div>`, δηλαδή για αναγνώστη οθόνης
+              τρία ασύνδετα κείμενα ανά γραμμή αντί για γραμμή πίνακα. */}
+          <div className="po-table-box" style={{ marginTop: 16 }}>
+           <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
+            <table className="po-table tbl-fixed" style={{ '--tbl-fs': '14px', '--tbl-min': '440px' }}>
+              <caption>Ποιοι επεξεργάζονται δεδομένα για λογαριασμό μας</caption>
+              {/* ΧΩΡΙΣ ΡΗΤΑ ΠΛΑΤΗ, Ο ΠΕΡΙΗΓΗΤΗΣ ΔΙΝΕΙ ΤΑ ΠΑΝΤΑ ΣΤΗ ΜΕΣΑΙΑ.
+                  Μετρημένο στα 1440: η στήλη του τόπου έμενε στα 150 και το
+                  «Ευρωπαϊκή Ένωση, Φρανκφούρτη» έσπαγε σε ΤΡΕΙΣ σειρές, ενώ
+                  δίπλα του η περιγραφή είχε χώρο να απλωθεί. Ο τόπος είναι
+                  σύντομη φράση με κόμμα: θέλει δύο σειρές το πολύ. */}
+              <colgroup>
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '56%' }} />
+                <col style={{ width: '24%' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col">Πάροχος</th>
+                  <th scope="col">Τι κάνει</th>
+                  <th scope="col">Πού βρίσκεται</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subprocessorRows().map(s => (
+                  <tr key={s.name}>
+                    <th scope="row" style={{ fontWeight: 600,
+                      color: s.planned ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{s.name}</th>
+                    <td>{s.what}</td>
+                    <td style={{ color: 'var(--text-tertiary)' }}>{s.where}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+           </div>
           </div>
         </>
       ),
@@ -264,11 +312,11 @@ export default function TrustPage() {
             Τα μηνύματά σου τα διαβάζει και τα απαντά άνθρωπος. Αν κάτι δεν δουλεύει ή αν κάτι εδώ σου φαίνεται
             ασαφές, γράψε μας.
           </p>
-          <div style={{ marginTop: 14 }}>
-            <Row label="Υποστήριξη" value={IDENTITY.supportEmail} />
-            <Row label="Προσωπικά δεδομένα" value={IDENTITY.privacyEmail} />
-            <Row label="Αναφορά ευπάθειας ασφαλείας" value={IDENTITY.securityEmail} />
-          </div>
+          <DataTable caption="Διευθύνσεις επικοινωνίας" rows={[
+            { label: 'Υποστήριξη', value: IDENTITY.supportEmail },
+            { label: 'Προσωπικά δεδομένα', value: IDENTITY.privacyEmail },
+            { label: 'Αναφορά ευπάθειας ασφαλείας', value: IDENTITY.securityEmail },
+          ]} />
           {/* Η ΔΙΕΥΘΥΝΣΗ ΤΟΥ ΑΡΧΕΙΟΥ ΔΕΝ ΓΡΑΦΕΤΑΙ ΜΕΣΑ ΣΤΗΝ ΠΡΟΤΑΣΗ. Τυπωμένη
               ολόκληρη, έσπαγε στη μέση («/.well-» και από κάτω «known/…»),
               γιατί είναι ένα μακρύ κομμάτι χωρίς κενά μέσα σε στοιχισμένο

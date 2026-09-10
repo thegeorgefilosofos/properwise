@@ -3,7 +3,7 @@ import { analyzeEsis, esisVerdictLabel, type EsisInput } from './esis'
 import { annuityMonthly } from './recommend'
 
 let passed = 0, failed = 0
-function ok(name: string, cond: boolean) { cond ? passed++ : (failed++, console.error('FAIL:', name)) }
+function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.error('FAIL:', name) } }
 
 const base: EsisInput = {
   amount: 200000, years: 25, nominalRatePct: 3.4, aprcPct: 3.6,

@@ -25,7 +25,10 @@ const APP  = 'lib/clients/ical.ts'
 const EDGE = 'supabase/functions/ical-sync/index.ts'
 
 /** Οι συναρτήσεις που ΠΡΕΠΕΙ να λένε το ίδιο και στις δύο πλευρές. */
-const SHARED = ['unfold', 'toIsoDate', 'parseICal', 'isBlocked']
+// Το `syncStayRow` ΔΕΝ είναι αναλυτής: είναι ο κανόνας για το ποιος κατέχει
+// ποια στήλη της διαμονής. Μπαίνει εδώ γιατί έχει το ΙΔΙΟ πρόβλημα — γράφεται
+// δύο φορές κι τρέχει μόνο η μία, εκείνη που κανείς δεν δοκιμάζει τοπικά.
+const SHARED = ['unfold', 'toIsoDate', 'parseICal', 'isBlocked', 'syncStayRow']
 
 /**
  * Κόβει το σώμα μιας `function <name>(` μετρώντας άγκιστρα.

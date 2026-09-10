@@ -210,7 +210,7 @@ for (const [text, code] of [
   });
   const bank = lines.filter(l => l.code === '38');
   const net = bank.reduce((s, l) => s + l.debit - l.credit, 0);
-  ok('στο ταμείο μπήκαν 850,00 €', Math.abs(net - 850) < 0.005);
+  ok('στο ταμείο μπήκαν 850,00€', Math.abs(net - 850) < 0.005);
 }
 
 

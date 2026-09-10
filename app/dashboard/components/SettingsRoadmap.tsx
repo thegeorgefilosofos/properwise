@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
 import { T, Btn, Chip, fixedCols } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 
 type ChipTone = 'accent' | 'neutral';
 
@@ -40,13 +41,13 @@ const ITEMS: RoadItem[] = [
   {
     name: 'Τραπεζικές ροές (open banking)',
     line: 'Αυτόματη άντληση κινήσεων λογαριασμού, χωρίς χειρωνακτική καταχώρηση.',
-    detail: 'Συνδέεις τον λογαριασμό σου με ασφάλεια και οι κινήσεις αντιστοιχίζονται μόνες τους στα ακίνητα.',
+    detail: 'Συνδέεις τον λογαριασμό σου με ασφάλεια· οι κινήσεις αντιστοιχίζονται μόνες τους στα ακίνητα.',
     chip: 'Σχεδιάζεται', tone: 'neutral',
   },
   {
     name: 'Δεδομένα αγοράς από την κοινότητα',
     line: 'Ανώνυμα, συγκεντρωτικά στοιχεία τιμών και αποδόσεων από τα ακίνητα των χρηστών που συμμετέχουν.',
-    detail: 'Δεν είναι επίσημη πηγή: είναι όσα δηλώνουν οι ίδιοι οι ιδιοκτήτες, ανώνυμα και συγκεντρωτικά και εμφανίζονται μόνο όπου υπάρχουν αρκετά ακίνητα στην περιοχή για να μη ταυτοποιείται κανείς. Η συμμετοχή είναι δική σου επιλογή και ξεκινά κλειστή, στην ενότητα δεδομένων της κοινότητας παρακάτω. Τα δημοσιευμένα στοιχεία (Τράπεζα της Ελλάδος, ΕΛΣΤΑΤ) υπάρχουν ήδη στις Αποδόσεις, με αναγραφόμενες πηγές.',
+    detail: 'Δεν είναι επίσημη πηγή: δηλώσεις ιδιοκτητών, ανώνυμες και συγκεντρωτικές, ορατές μόνο σε περιοχές με αρκετά ακίνητα ώστε να μην ταυτοποιείται κανείς. Η συμμετοχή ξεκινά κλειστή. Τα επίσημα στοιχεία (ΤτΕ, ΕΛΣΤΑΤ) υπάρχουν ήδη στις Αποδόσεις.',
     chip: 'Σχεδιάζεται', tone: 'neutral',
   },
 ];
@@ -131,7 +132,7 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
           position: 'relative', overflow: 'hidden',
           background: 'var(--surface-hero)', border: '1px solid var(--border-raised)',
           borderRadius: T.radius.card, boxShadow: 'var(--highlight-inset), var(--elev-2)',
-          padding: 18, marginBottom: 16, animationDelay: '60ms',
+          padding: T.sp.lg, marginBottom: 16, animationDelay: '60ms',
         }}
       >
         {/* Διακριτικό «ζωντανό» phone glyph στο βάθος (metaverse depth) */}
@@ -150,7 +151,7 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
           <div
             aria-hidden
             style={{
-              width: 46, height: 46, borderRadius: 12, flexShrink: 0,
+              width: 46, height: 46, borderRadius: T.radius.popup, flexShrink: 0,
               background: 'var(--accent)', color: 'var(--on-tone)',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: 'var(--highlight-inset), var(--elev-1)',
@@ -171,18 +172,17 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
             </div>
 
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: '8px 0 0' }}>
-              Όλη η διαχείριση των ακινήτων σου στο κινητό: φωτογραφίζεις ένα παραστατικό και
-              καταχωρείται μόνο του, όπου κι αν βρίσκεσαι.
+              Φωτογραφίζεις ένα παραστατικό και καταχωρείται μόνο του, όπου κι αν βρίσκεσαι.
             </p>
 
             {/* Μέχρι να βγει η αυτόνομη εφαρμογή, το PROPERWISE εγκαθίσταται ήδη
                 στην αρχική οθόνη. Το λέμε εδώ, δίπλα στην αναμονή, αντί να
                 αφήνουμε τον χρήστη να περιμένει κάτι που έχει ήδη σε άλλη μορφή. */}
             <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Μέχρι τότε, βάλ’ το ήδη στην αρχική σου οθόνη.</strong>{' '}
-              Ανοίγει σαν κανονική εφαρμογή, με δικό της εικονίδιο και χωρίς μπάρα διεύθυνσης.
-              Σε <strong style={{ color: 'var(--text-primary)' }}>Android</strong> από το μενού «⋮» και μετά «Εγκατάσταση εφαρμογής».
-              Σε <strong style={{ color: 'var(--text-primary)' }}>iPhone</strong> από το κουμπί «Κοινή χρήση» και μετά «Πρόσθεση στην αρχική οθόνη».
+              <strong style={{ color: 'var(--text-primary)' }}>Εγκατέστησέ το ήδη στην αρχική σου οθόνη.</strong>{' '}
+              Ανοίγει με δικό του εικονίδιο, χωρίς μπάρα διεύθυνσης.
+              Σε <strong style={{ color: 'var(--text-primary)' }}>Android</strong>: μενού «⋮» · «Εγκατάσταση εφαρμογής».
+              Σε <strong style={{ color: 'var(--text-primary)' }}>iPhone</strong>: «Κοινή χρήση» · «Πρόσθεση στην αρχική οθόνη».
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -243,9 +243,9 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.boxShadow = 'none'; }}
               style={{
                 display: 'flex', flexDirection: 'column',
-                width: '100%', minHeight: 190, textAlign: 'left', cursor: 'pointer',
+                width: '100%', minHeight: 168, textAlign: 'left', cursor: 'pointer',
                 background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-                borderRadius: T.radius.inner, padding: 12, fontFamily: T.font.sans,
+                borderRadius: T.radius.inner, padding: '12px 14px', fontFamily: T.font.sans,
                 animationDelay: `${120 + i * 55}ms`,
               }}
             >
@@ -259,14 +259,18 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
               }}>{it.name}</span>
 
-              <div style={{
-                fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.45, marginTop: 6,
+              {/* ΠΕΡΑ ΠΕΡΑ, ΟΧΙ ΡΙΓΜΕΝΑ. Τρεις κάρτες δίπλα δίπλα με ριγμένη δεξιά
+                  άκρη δίνουν τρία διαφορετικά περιγράμματα κειμένου μέσα σε τρία
+                  ίδια κουτιά: το μάτι βλέπει ανισότητα εκεί που δεν υπάρχει. Η
+                  πλήρης στοίχιση με συλλαβισμό τα κάνει τρεις ίσες στήλες. */}
+              <div className="po-just" style={{
+                fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 6,
                 ...(isOpen ? {} : { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
-              }}>{it.line}</div>
+              }}>{hy(it.line)}</div>
 
               {isOpen && (
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border-subtle)' }}>
-                  {it.detail}
+                <div className="po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border-subtle)' }}>
+                  {hy(it.detail)}
                 </div>
               )}
 

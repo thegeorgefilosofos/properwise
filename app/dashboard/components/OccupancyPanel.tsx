@@ -18,9 +18,9 @@
 // 2. ΔΥΟ ΔΙΑΦΟΡΕΤΙΚΑ ΑΚΑΘΑΡΙΣΤΑ ΣΤΗΝ ΙΔΙΑ ΚΑΡΤΑ. Το πλακίδιο έπαιρνε το
 //    `totals()` (ολόκληρο το ποσό, φιλτραρισμένο με check_in) ενώ ο φόρος και
 //    τα καθαρά χτίζονταν στο `tax.grossRevenue` (αναλογία νυχτών ανά έτος). Για
-//    μία διαμονή 28/12/2025 → 5/1/2026 των 800 €: η κάρτα του 2026 έγραφε
-//    «Δηλωτέα ακαθάριστα 0,00 €» και «Μένει καθαρά 336,14 €» — χρήματα από το
-//    πουθενά. Και του 2025 έγραφε 784,00 € ενώ φορολογούσε 392,00 €.
+//    μία διαμονή 28/12/2025 → 5/1/2026 των 800€: η κάρτα του 2026 έγραφε
+//    «Δηλωτέα ακαθάριστα 0,00€» και «Μένει καθαρά 336,14€» — χρήματα από το
+//    πουθενά. Και του 2025 έγραφε 784,00€ ενώ φορολογούσε 392,00€.
 //
 // 3. ΟΙ ΠΡΟΜΗΘΕΙΕΣ ΔΕΝ ΑΚΟΛΟΥΘΟΥΣΑΝ ΤΟΝ ΙΔΙΟ ΚΑΝΟΝΑ ΜΕ ΤΟ ΕΣΟΔΟ ΤΟΥΣ. Το ίδιο
 //    έξοδο κατανεμόταν 100/0 στα δύο έτη ενώ το έσοδό του κατανεμόταν 50/50.
@@ -56,14 +56,19 @@ import { T, fe, fp, Skeleton, pressable } from '@/components/Theme';
 import { readStatus, type StatusRow } from '@/lib/property/status';
 import { occupancyFromMonths, type ReportStay } from '@/lib/clients/reports';
 import { isHouseType, shortTermYearSummary } from '@/lib/tax/shortTermTax';
+import { isIndividualTaxpayer } from '@/lib/accounting/taxProfile';
+import type { LegalForm } from '@/lib/accounting/dossier';
 import { FIRST_YEAR_CURRENT_LEVY } from '@/lib/billing/greekTax';
 import { MONTHS_SHORT, MONTHS_ACC } from '@/lib/core/months';
 
 interface StayRow extends ReportStay { declared_at?: string | null }
 interface PropInfo extends StatusRow { prop_type?: string | null; sqm?: number | null }
 
-export default function OccupancyPanel({ propertyId, userId }: {
+export default function OccupancyPanel({ propertyId, userId, profileType = 'individual', legalForm = 'individual' }: {
   propertyId: string; userId: string;
+  /** ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΡΩΤΑΕΙ ΑΝ ΕΙΣΑΙ ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ. Δες `isIndividualTaxpayer`. */
+  profileType?: 'individual' | 'professional';
+  legalForm?: LegalForm;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [prop, setProp] = useState<PropInfo | null>(null);
@@ -97,8 +102,12 @@ export default function OccupancyPanel({ propertyId, userId }: {
 
   const isHouse = isHouseType(prop?.prop_type);
   const tax = useMemo(() => shortTermYearSummary(stays, year, {
-    sqm: prop?.sqm ?? null, isHouse, propertyCount: shortTermCount ?? 1, individual: true,
-  }), [stays, year, prop?.sqm, isHouse, shortTermCount]);
+    // ΤΟ «individual» ΗΤΑΝ ΚΑΡΦΩΜΕΝΟ, ΟΠΩΣ ΗΤΑΝ ΚΑΙ ΤΟ ΠΛΗΘΟΣ ΠΡΙΝ ΔΙΟΡΘΩΘΕΙ.
+    // Η εταιρεία με ένα βραχυχρόνιο ακίνητο έβλεπε μηδέν δημοτικό τέλος εδώ,
+    // ενώ η Λογιστική δίπλα της το χρέωνε σωστά.
+    sqm: prop?.sqm ?? null, isHouse, propertyCount: shortTermCount ?? 1,
+    individual: isIndividualTaxpayer(profileType, legalForm),
+  }), [stays, year, prop?.sqm, isHouse, shortTermCount, profileType, legalForm]);
 
   // ΕΝΑΣ ΜΕΤΡΗΤΗΣ ΝΥΧΤΩΝ ΓΙΑ ΟΛΗ ΤΗΝ ΚΑΡΤΑ. Η πληρότητα τρέφεται από τον ΙΔΙΟ
   // πίνακα μηνών που παράγει το τέλος και τον φόρο, ώστε να μην μπορεί να
@@ -128,7 +137,7 @@ export default function OccupancyPanel({ propertyId, userId }: {
           `Πληρότητα και βραχυχρόνια${occ.availableDays > 0 ? `, ${fp(occ.pct)}` : ''}`, open)}>
         <div style={{ minWidth: 0 }}>
           <div style={label}>Πληρότητα και βραχυχρόνια</div>
-          <div style={{ ...note, marginTop: 1 }}>Από τις καταγεγραμμένες κρατήσεις σου, όχι από πληκτρολόγηση</div>
+          <div className="po-subline" style={note}>Από τις καταγεγραμμένες κρατήσεις σου, όχι από πληκτρολόγηση</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {/* Η ΠΛΗΡΟΤΗΤΑ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΕΔΩ. Ηταν και σήμα και πλακίδιο, δύο
@@ -236,7 +245,7 @@ export default function OccupancyPanel({ propertyId, userId }: {
                   υπόλοιπο, είναι υποχρέωση — και γι' αυτό δεν αθροίζεται με
                   τίποτα. */}
               {(tax.levy > 0 || (tax.grossRevenue === 0 && tax.totalNights > 0)) && (
-                <div style={{ marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+                <div style={{ marginTop: T.sp.xl, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
                   <div style={label}>Τι οφείλεται για τη χρήση {year}</div>
                   {tax.levy > 0 && (
                     <>
@@ -282,7 +291,7 @@ export default function OccupancyPanel({ propertyId, userId }: {
                   Χωρίς σημασιολογικό κόκκινο: η ιεραρχία βγαίνει από τη θέση και
                   το βάρος, όπως παντού αλλού στο προϊόν. */}
               {(tax.unresolvedCount > 0 || tax.undeclaredCount > 0) && (
-                <div style={{ marginTop: 18, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ marginTop: T.sp.lg, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {tax.undeclaredCount > 0 && (
                     <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                       <strong style={{ color: 'var(--text-primary)' }}>{tax.undeclaredCount} {tax.undeclaredCount === 1 ? 'αδήλωτη διαμονή' : 'αδήλωτες διαμονές'}.</strong>{' '}

@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { hy } from '@/components/Hyphen';
 import { T } from '@/components/tokens';
 import { PublicHeader, PublicFooter, WRAP, WRAP_PAD } from './PublicChrome';
 import { BackLink } from './BackLink';
@@ -34,6 +35,7 @@ import { BackLink } from './BackLink';
 // Η ΚΕΦΑΛΙΔΑ ΚΑΙ ΤΟ ΥΠΟΣΕΛΙΔΟ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΟ PublicChrome, όπως και στον
 // υπολογιστή φόρου: ένα μέτρο, ένα κουμπί, ένα υποσέλιδο παντού.
 // ═══════════════════════════════════════════════════════════════════════════
+
 
 /** Οι τρεις σελίδες εμπιστοσύνης, για τους συνδέσμους στο τέλος καθεμιάς. */
 const TRUST_PAGES: [string, string][] = [
@@ -99,7 +101,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing }: {
             από μόνη της άφηνε τριακόσια εικονοστοιχεία λευκά στα δεξιά της. Η
             ημερομηνία τα γεμίζει και η σειρά κλείνει πέρα ως πέρα. */}
         <div className="lg-lede">
-          <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{intro}</p>
+          <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{hy(intro)}</p>
           {meta && <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0, whiteSpace: 'nowrap' }}>{meta}</p>}
         </div>
 
@@ -134,11 +136,11 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing }: {
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 18 }}>{i + 1}</span>
                   <span style={{ textWrap: 'balance' }}>{b.h}</span>
                 </h2>
-                {b.body}
+                {hy(b.body)}
               </section>
             ))}
 
-            {closing}
+            {hy(closing)}
 
             <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               {TRUST_PAGES.map(([href, label]) => (

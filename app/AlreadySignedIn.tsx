@@ -1,6 +1,8 @@
 'use client'
 import Link from 'next/link'
 import { T } from '@/components/tokens'
+import { Btn } from '@/components/Theme'
+import { hy } from '@/components/Hyphen'
 import { BackLink } from './BackLink'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -28,21 +30,32 @@ export default function AlreadySignedIn({
       <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 8px' }}>
         Έχεις ήδη συνδεθεί
       </h1>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 28px' }}>
-        Ο λογαριασμός <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> είναι ενεργός σε αυτή τη συσκευή. Μπορείς να συνεχίσεις στον πίνακά σου{mode === 'signup'
+      {/* ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΜΕ ΡΙΓΜΕΝΗ ΔΕΞΙΑ ΑΚΡΗ, ΣΕ ΣΤΗΛΗ 400 — το `maxWidth: 400`
+          της Σύνδεσης και της Εγγραφής που καλούν αυτή την κατάσταση. Μέτρο ~61
+          χαρακτήρων στα 13: οι δύο πρώτες γραμμές τελείωναν όπου τύχει και στις
+          δύο διατυπώσεις (σύνδεση - εγγραφή). Η στοίχιση κλείνει τη δεξιά άκρη,
+          ο συλλαβισμός κρατά τα κενά στο φυσικό τους πλάτος αντί να τα τεντώσει.
+          Η διεύθυνση μέσα στο `<strong>` είναι λατινική, μένει ακέραιη. */}
+      <p className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 28px' }}>
+        {hy(<>Ο λογαριασμός <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> είναι ενεργός σε αυτή τη συσκευή. Μπορείς να συνεχίσεις στον πίνακά σου{mode === 'signup'
           ? ' ή, αν θέλεις, να αποσυνδεθείς για να δημιουργήσεις νέο λογαριασμό'
-          : ' ή να αποσυνδεθείς για να συνδεθείς με άλλον λογαριασμό'}.
+          : ' ή να αποσυνδεθείς για να συνδεθείς με άλλον λογαριασμό'}.</>)}
       </p>
 
       <Link href="/dashboard" className="auth-cta" style={{ display: 'block', textAlign: 'center', padding: '12px', background: 'var(--accent)', borderRadius: T.radius.pill, color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, textDecoration: 'none', letterSpacing: '-0.01em' }}>
         Άνοιξε τον πίνακά σου
       </Link>
 
-      <button onClick={onSignOut} disabled={signingOut} className="auth-hov" style={{ width: '100%', marginTop: 12, padding: '12px', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, cursor: signingOut ? 'not-allowed' : 'pointer', opacity: signingOut ? 0.6 : 1, fontFamily: 'inherit' }}>
-        {signingOut
-          ? 'Αποσύνδεση…'
-          : mode === 'signup' ? 'Αποσύνδεση και δημιουργία νέου λογαριασμού' : 'Αποσύνδεση και αλλαγή λογαριασμού'}
-      </button>
+      {/* `field` γιατί η ενέργεια κρατά όλο το πλάτος κάτω από το κύριο κουμπί, όπως πριν.
+          Το `.auth-hov` έφυγε μαζί με το στυλ: την αιώρηση τη δίνει πλέον το
+          `.po-btn[data-variant=secondary]`, που ξέρει και εστίαση με πληκτρολόγιο. */}
+      <div style={{ marginTop: 12 }}>
+        <Btn variant="secondary" field onClick={onSignOut} disabled={signingOut}>
+          {signingOut
+            ? 'Αποσύνδεση…'
+            : mode === 'signup' ? 'Αποσύνδεση και δημιουργία νέου λογαριασμού' : 'Αποσύνδεση και αλλαγή λογαριασμού'}
+        </Btn>
+      </div>
     </div>
   )
 }

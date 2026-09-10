@@ -47,7 +47,7 @@ export default function DocChecklist({ docs, storageKey, title = 'Δικαιολ
               background: on ? 'var(--accent-dim)' : 'var(--bg-surface)', border: `1px solid ${on ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
             }}>
               <span style={{
-                width: compact ? 18 : 20, height: compact ? 18 : 20, flexShrink: 0, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: compact ? 18 : 20, height: compact ? 18 : 20, flexShrink: 0, borderRadius: T.radius.xs, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 background: on ? 'var(--accent)' : 'transparent', border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, transition: 'background 0.15s, border-color 0.15s',
               }}>
                 {on && <svg aria-hidden="true" width={compact ? 11 : 12} height={compact ? 11 : 12} viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}

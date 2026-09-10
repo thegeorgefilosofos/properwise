@@ -32,6 +32,7 @@ import { PUBLIC, BENCH, benchUrl, SIZES, BASE, dismissConsent } from './rendered
 import { AUDIT, LAYOUT_BUG } from './rendered/layout.mjs';
 import { MEASURE, CONTRAST_BUG } from './rendered/contrast.mjs';
 import { NO_CARET, FOCUSABLE, measureFocus } from './rendered/focus.mjs';
+import { abortIfStyleless } from './lib/served-css.mjs';
 
 import { readFileSync } from 'node:fs';
 const PROVE = process.argv.includes('--prove');
@@ -58,6 +59,24 @@ const report = (title, rows) => {
 };
 
 const browser = await chromium.launch({ executablePath: chromePath(), args: ['--no-sandbox'] });
+
+// ═══ 0. ΑΠΑΝΤΑΕΙ ΔΕΝ ΣΗΜΑΙΝΕΙ ΣΕΡΒΙΡΕΙ ═════════════════════════════════════
+// Ο ΑΝΙΧΝΕΥΤΗΣ ΥΠΗΡΧΕ ΗΔΗ ΚΑΙ ΑΥΤΟΣ Ο ΣΑΡΩΤΗΣ ΔΕΝ ΤΟΝ ΚΑΛΟΥΣΕ. Το
+// scripts/lib/served-css.mjs γράφει μόνο του «ένας ανιχνευτής που ζει σε ένα
+// αρχείο προστατεύει ένα αρχείο». Ομως τον καλούσαν μόνο το e2e-layout και
+// το e2e-mobile. Ο τρίτος σαρωτής δημόσιων σελίδων ήταν αυτός εδώ.
+//
+// ΤΙ ΚΟΣΤΙΣΕ, ΜΕΤΡΗΜΕΝΟ (07/09/2026). Δύο διακομιστές έτρεχαν μαζί· ο παλιός
+// κρατούσε τη θύρα κι έδειχνε σε κομμάτια που είχε αντικαταστήσει το νέο
+// χτίσιμο, οπότε το φύλλο στυλ επέστρεφε 500. Ο έλεγχος πέρασε το `fetch` από
+// πάνω —απαντούσε 200— και μέτρησε ΓΥΜΝΟ HTML: **1.378 ευρήματα**, με κανόνες
+// CSS να εμφανίζονται ως κείμενο μέσα στη σελίδα. Καμία από αυτές τις
+// μετρήσεις δεν υπήρχε στην εφαρμογή· το ψάξιμό τους κόστισε δύο πλήρεις
+// σαρώσεις πριν φανεί η αιτία.
+//
+// Το `fetch` από πάνω μένει: απαντά στην ερώτηση «υπάρχει διακομιστής;». Αυτό
+// εδώ απαντά στη διαφορετική ερώτηση «σερβίρει την εφαρμογή ή το σκελετό της;».
+await abortIfStyleless(browser, BASE);
 
 // ═══ 1. ΔΙΑΤΑΞΗ, ΣΕ ΚΑΘΕ ΠΑΡΑΘΥΡΟ ══════════════════════════════════════════
 console.log('\n╔═══ ΔΙΑΤΑΞΗ ═══════════════════════════════════════════════');

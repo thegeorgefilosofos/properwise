@@ -63,7 +63,13 @@ Deno.serve(async (req) => {
   if (recipients.length > 2000) return json({ error: 'too_many', detail: 'Έως 2000 παραλήπτες ανά αποστολή.' }, 400)
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, { global: { headers: { Authorization: authHeader } } })
-  const { data: userData } = await supabase.auth.getUser()
+  // Η ίδια διάκριση με τους πελάτες πιο κάτω: «δεν είσαι συνδεδεμένος» και «δεν
+  // απάντησε η υπηρεσία ταυτοποίησης» έδιναν και τα δύο 401.
+  const { data: userData, error: userErr } = await supabase.auth.getUser()
+  if (userErr) {
+    console.error('[send-client-email] η ταυτότητα δεν διαβάστηκε:', userErr)
+    return json({ error: 'identity_unavailable', detail: userErr.message }, 503)
+  }
   const user = userData?.user
   if (!user) return json({ error: 'unauthorized' }, 401)
   const replyTo = user.email || undefined
@@ -73,7 +79,15 @@ Deno.serve(async (req) => {
   // arbitrary list under our sending domain. The caller's JWT already scopes
   // `clients` via RLS; we build the allow-set from it (+ the owner's own address
   // for self-tests) and silently drop anything else, reporting the count.
-  const { data: myClients } = await supabase.from('clients').select('email').eq('user_id', user.id)
+  // Η ΑΠΟΤΥΧΙΑ ΕΔΩ ΑΠΟΤΥΓΧΑΝΕΙ ΚΛΕΙΣΤΑ, ΚΑΙ ΕΙΝΑΙ ΣΩΣΤΟ: κενός κατάλογος
+  // επιτρεπτών σημαίνει ότι κόβονται ΟΛΟΙ οι παραλήπτες. Λάθος ήταν μόνο η
+  // ΑΙΤΙΑ που διάβαζε ο χρήστης — «οι παραλήπτες πρέπει να είναι καταχωρημένοι
+  // πελάτες», ενώ οι δικοί του πελάτες απλώς δεν διαβάστηκαν.
+  const { data: myClients, error: clientsErr } = await supabase.from('clients').select('email').eq('user_id', user.id)
+  if (clientsErr) {
+    console.error('[send-client-email] οι πελάτες δεν διαβάστηκαν:', clientsErr)
+    return json({ error: 'clients unreadable', detail: 'Οι πελάτες σου δεν διαβάστηκαν, οπότε δεν στάλθηκε τίποτα. Δοκίμασε ξανά.' }, 500)
+  }
   const allow = new Set<string>(
     (myClients || []).map((c: { email: string | null }) => (c.email || '').trim().toLowerCase()).filter(Boolean),
   )
@@ -92,9 +106,16 @@ Deno.serve(async (req) => {
   // αποστολή από το domain μας, με χρέωση στον λογαριασμό μας.
   //
   // Ο μετρητής ζει τώρα στο `send_quota`, που κανένας ρόλος πελάτη δεν αγγίζει.
-  const { data: quota } = await supabase.rpc('bump_send_quota', {
+  // Και εδώ: αν η μέτρηση αποτύχει, ο χρήστης διάβαζε «ξεπέρασες τις 3.000
+  // αποστολές» έχοντας στείλει δέκα. Η κατεύθυνση μένει ασφαλής, η αιτία
+  // γίνεται αληθινή.
+  const { data: quota, error: quotaErr } = await supabase.rpc('bump_send_quota', {
     p_kind: 'client_email', p_units: recipients.length, p_max: 3000, p_window: '24 hours',
   })
+  if (quotaErr) {
+    console.error('[send-client-email] μέτρηση ορίου:', quotaErr)
+    return json({ error: 'quota_unavailable', detail: 'Ο έλεγχος ορίου απέτυχε. Δοκίμασε ξανά σε λίγο.' }, 500)
+  }
   if (!quota?.allowed) {
     return json({
       error: 'daily_cap',

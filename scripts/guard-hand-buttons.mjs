@@ -23,6 +23,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { projectFiles } from './lib/git-files.mjs'
+import { tightened } from './lib/ratchet.mjs'
 
 const BASELINE = JSON.parse(readFileSync('scripts/hand-buttons-baseline.json', 'utf8'))
 
@@ -69,7 +70,4 @@ if (total > BASELINE.max) {
 `)
   process.exit(1)
 }
-if (total < BASELINE.max)
-  console.log(`✓ ${total} κουμπιά ζωγραφισμένα στο χέρι, κάτω από το όριο ${BASELINE.max}. Κατέβασε το όριο.`)
-else
-  console.log(`✓ ${total} κουμπιά ζωγραφισμένα στο χέρι, όσα και το όριο`)
+if (!tightened({ total, max: BASELINE.max, what: 'κουμπιά ζωγραφισμένα στο χέρι', file: 'scripts/hand-buttons-baseline.json', key: 'max' })) process.exit(1)

@@ -27,7 +27,7 @@
 //    λάθος λογαριασμό ή σε κανέναν.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { PLANS, normalizePlan, BILLING_CYCLES, type PlanId, type BillingCycle } from './plans';
+import { PLANS, normalizePlan, BILLING_CYCLES, type BillingCycle } from './plans';
 import { type VariantPlan, type MorStatus, type MorSubscription, isMorStatus } from './subscription';
 
 // ΟΙ ΤΥΠΟΙ ΞΑΝΑΒΓΑΙΝΟΥΝ ΑΠΟ ΕΔΩ ΜΟΝΟ ΓΙΑ ΤΗ ΘΥΡΑ. Ο υπόλοιπος κώδικας τους
@@ -51,10 +51,14 @@ export interface VariantMapResult {
   error: string;
 }
 
-export function parseVariantMap(raw: string | undefined | null): VariantMapResult {
+export function parseVariantMap(raw: string | undefined | null, envName = 'LEMON_VARIANTS'): VariantMapResult {
   const map = new Map<string, VariantPlan>();
   const text = (raw || '').trim();
-  if (!text) return { map, error: 'Ο χάρτης παραλλαγών είναι κενός. Ορισε τη μεταβλητή LEMON_VARIANTS.' };
+  // ΤΟ ΟΝΟΜΑ ΤΗΣ ΜΕΤΑΒΛΗΤΗΣ ΕΙΝΑΙ ΟΡΙΣΜΑ, ΓΙΑΤΙ Ο ΧΑΡΤΗΣ ΔΕΝ ΕΙΝΑΙ ΕΝΟΣ ΠΑΡΟΧΟΥ.
+  // Η μορφή «αναγνωριστικό:πακέτο:κύκλος» είναι δική ΜΑΣ σύμβαση· μόνο το όνομα
+  // της μεταβλητής αλλάζει ανά έμπορο. Αντιγράφοντας τη συνάρτηση θα είχαμε δύο
+  // αναλυτές να αποκλίνουν, με τον έναν να δέχεται ό,τι ο άλλος απορρίπτει.
+  if (!text) return { map, error: `Ο χάρτης παραλλαγών είναι κενός. Ορισε τη μεταβλητή ${envName}.` };
 
   const bad: string[] = [];
   for (const entry of text.split(',').map(e => e.trim()).filter(Boolean)) {

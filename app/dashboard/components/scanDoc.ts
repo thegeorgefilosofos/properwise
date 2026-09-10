@@ -32,7 +32,7 @@ import {
   classifyDocType, planDocSave, normalizeScannedDoc, archiveCategoryFor,
   type ScannedDoc, type ArchivePlan,
 } from '@/lib/billing/documents';
-import { fillOnlyEmpty } from '@/lib/core/prefill';
+import { fillOnlyEmpty, stripEmpty } from '@/lib/core/prefill';
 import { athensToday } from '@/lib/core/time';
 import { saved, savedData } from '@/components/dbWrite';
 import { uploadPath } from '@/lib/core/uploadPath';
@@ -452,9 +452,6 @@ export interface CommitResult {
 }
 
 const nrm = (s?: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-const stripEmpty = (o: Record<string, unknown>) =>
-  Object.fromEntries(Object.entries(o).filter(([, v]) => v != null && v !== ''));
-
 /** Οι εκκρεμείς λογαριασμοί ενός ακινήτου, σε μορφή υποψηφίου ταιριάσματος. */
 async function pendingCandidates(propertyId: string, userId: string): Promise<MatchCandidate[]> {
   const supabase = createClient();
@@ -654,10 +651,31 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
     }
 
     // ── 6) Ασφάλεια → property_settings.
+    //
+    // ══ Η ΣΑΡΩΣΗ ΕΓΡΑΦΕ `null` ΠΑΝΩ ΑΠΟ ΟΣΑ ΕΙΧΕ ΓΡΑΨΕΙ Ο ΙΔΙΟΚΤΗΤΗΣ ══════════
+    // ΤΟ ΣΦΑΛΜΑ. Το `plan.settings` της ασφάλισης έχει ΠΑΝΤΑ κι τα τρία κλειδιά
+    // —εταιρεία, αριθμός συμβολαίου, ημερομηνία λήξης— με `null` όπου η
+    // αναγνώριση δεν βρήκε τίποτα. Το `upsert` τα έστελνε όλα, οπότε μια σάρωση
+    // που διάβασε μόνο την εταιρεία έσβηνε τον αριθμό συμβολαίου κι τη λήξη που
+    // ο χρήστης είχε πληκτρολογήσει. Μαζί έφευγε κι η υπενθύμιση ανανέωσης, που
+    // γεννιέται μόνο όταν υπάρχει ημερομηνία λήξης: το ασφαλιστήριο έληγε
+    // αθόρυβα.
+    //
+    // ΤΟ ΣΩΣΤΟ ΕΡΓΑΛΕΙΟ ΕΙΝΑΙ ΤΟ `stripEmpty`, ΟΧΙ ΤΟ `fillOnlyEmpty`. Η
+    // διπλανή διαδρομή του ακινήτου (βήμα 5) χρησιμοποιεί το δεύτερο, γιατί
+    // εκεί μια θολή αναγνώριση ΔΕΝ πρέπει να διορθώσει τετραγωνικά που ξέρει ο
+    // ιδιοκτήτης. Η ασφάλιση όμως ΑΝΑΝΕΩΝΕΤΑΙ κάθε χρόνο: το `fillOnlyEmpty` θα
+    // κρατούσε για πάντα την περσινή λήξη κι το νέο ασφαλιστήριο δεν θα
+    // περνούσε ποτέ. Ο κανόνας που θέλει αυτό το βήμα είναι «γράψε ό,τι ΔΙΑΒΑΣΕΣ,
+    // μη σβήνεις ό,τι δεν διάβασες» — ακριβώς ό,τι κάνει το `stripEmpty`, όπως
+    // ήδη στη διαδρομή του ενοικιαστή δύο βήματα πιο πάνω.
     if (plan.settings) {
-      const { error: sErr } = await supabase.from('property_settings')
-        .upsert({ property_id: propertyId, user_id: userId, ...plan.settings }, { onConflict: 'property_id' });
-      if (!sErr) add('Ασφάλεια');
+      const patch = stripEmpty(plan.settings);
+      if (Object.keys(patch).length) {
+        const { error: sErr } = await supabase.from('property_settings')
+          .upsert({ property_id: propertyId, user_id: userId, ...patch }, { onConflict: 'property_id' });
+        if (!sErr) add('Ασφάλεια');
+      }
     }
 
     // ── 7) Κοινόχρηστα → bills_settings section 'common'.

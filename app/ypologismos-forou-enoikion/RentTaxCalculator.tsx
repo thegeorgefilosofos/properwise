@@ -21,6 +21,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
 import { T, TT, feAuto, fn, fp, fixedCols } from '@/components/tokens';
+import { ChipToggle } from '@/components/Theme';
 import {
   rentalIncomeTax, marginalRate, effectiveRentalRate,
   rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS,
@@ -56,8 +57,8 @@ import LiveResult from '@/components/LiveResult';
 // ΤΟ ΕΤΟΣ ΕΙΝΑΙ ΠΕΔΙΟ, ΚΑΙ ΗΤΑΝ ΤΟ ΣΟΒΑΡΟΤΕΡΟ ΠΟΥ ΕΛΕΙΠΕ.
 // Η σελίδα εφάρμοζε ΠΑΝΤΑ την κλίμακα του 2026 (15/25/35/45). Η δήλωση όμως
 // που υποβάλλεται σήμερα αφορά εισοδήματα 2025, όπου δεν υπάρχει το ενδιάμεσο
-// 25%: για 20.000 € ενοίκια ο σωστός φόρος είναι 4.250 € και η σελίδα έδειχνε
-// 3.850 €. Υποεκτίμηση 400 €, στην ΠΡΩΤΗ επαφή του επισκέπτη με το προϊόν και
+// 25%: για 20.000€ ενοίκια ο σωστός φόρος είναι 4.250€ και η σελίδα έδειχνε
+// 3.850€. Υποεκτίμηση 400€, στην ΠΡΩΤΗ επαφή του επισκέπτη με το προϊόν και
 // προς την πλευρά που τον εφησυχάζει. Ο πυρήνας ήξερε ήδη τη διάκριση
 // (`rentalBracketsForYear`)· η δημόσια σελίδα δεν τον ρωτούσε ποτέ.
 const SPEC = { enoikio: '600', mines: '12', trapeza: '1', etos: '2025' } as const;
@@ -100,15 +101,15 @@ export function RentTaxCalculator({ today }: { today: string }) {
       deduction: gross - taxable,
       net: gross - tax,
       marginal: marginalRate(taxable, brackets),
-      effective: taxable > 0 ? rentalIncomeTax(taxable, brackets) / taxable : 0,
+      effective: effectiveRentalRate(taxable, brackets),
       monthlyNet: n > 0 ? (gross - tax) / n : 0,
       // ΤΙ ΚΟΣΤΙΖΟΥΝ ΤΑ ΜΕΤΡΗΤΑ, ΣΕ ΕΥΡΩ. Η διαφορά των δύο φόρων, όχι το 5%
       // του ενοικίου: η έκπτωση μειώνει τη ΒΑΣΗ, οπότε το κόστος εξαρτάται από
-      // το κλιμάκιο. Στα 7.200 € είναι 54,00 € (15%), στα 48.000 € είναι 108,00 €
+      // το κλιμάκιο. Στα 7.200€ είναι 54,00€ (15%), στα 48.000€ είναι 108,00€
       // (45%) — ένα ποσοστό στη θέση αυτού του αριθμού θα ήταν λάθος.
       cashCost: rentalIncomeTax(gross, brackets) - rentalIncomeTax(gross * (1 - PRESUMPTIVE_DEDUCTION_RATE), brackets),
     };
-  }, [monthly, months, viaBank, brackets, bankMatters]);
+  }, [monthly, months, viaBank, brackets, year]);
 
   const field: React.CSSProperties = {
     width: '100%', height: T.h.lg, padding: '0 14px', borderRadius: T.radius.btn,
@@ -138,6 +139,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
         <div>
           <label htmlFor={monthlyId} style={label}>Μηνιαίο ενοίκιο</label>
           <div style={{ position: 'relative' }}>
+            {/* Το δεξί κενό δεν είναι αέρας: είναι ο χώρος της μονάδας «€» πάνω στο δεξί άκρο του πεδίου. */}
             <input id={monthlyId} inputMode="decimal" value={monthly}
               onChange={e => set('enoikio', e.target.value)}
               style={{ ...field, paddingRight: 34 }} aria-describedby={`${monthlyId}-unit`}/>
@@ -165,19 +167,21 @@ export function RentTaxCalculator({ today }: { today: string }) {
           εφάρμοζε σιωπηλά το 2026 σε ανθρώπους που ρωτούσαν για το 2025. */}
       <div className="po-tool-controls" style={{ marginTop: 16 }}>
         <div style={{ ...TT.label, marginBottom: 8 }}>Εισόδημα ποιας χρονιάς</div>
-        <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-elevated)',
+        {/* `seg` και όχι `chip`: η ράγα έχει ήδη δικό της περίγραμμα. Η ράγα
+            κατεβαίνει σε `bg-base` ώστε το ανασηκωμένο τμήμα να ξεχωρίζει.
+            Οι δύο σειρές μπαίνουν σε ΕΝΑ παιδί: το πλακίδιο είναι flex, οπότε
+            δύο ξεχωριστά παιδιά θα κάθονταν το ένα δίπλα στο άλλο. */}
+        <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-base)',
           border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
           {([['2025', '2025', 'δηλώνεται τώρα'], ['2026', '2026', 'δηλώνεται το 2027']] as const).map(([val, lab, sub]) => {
             const on = v.etos === val;
             return (
-              <button key={val} type="button" onClick={() => set('etos', val)} aria-pressed={on}
-                style={{ flex: 1, minHeight: 44, borderRadius: T.radius.inner, border: 'none', cursor: 'pointer',
-                  background: on ? 'var(--accent)' : 'transparent',
-                  color: on ? 'var(--accent-text)' : 'var(--text-secondary)',
-                  fontFamily: T.font.sans, fontSize: 13, fontWeight: 600, lineHeight: 1.25 }}>
-                {lab}
-                <span style={{ display: 'block', fontSize: 11, fontWeight: 400, opacity: on ? 0.85 : 1 }}>{sub}</span>
-              </button>
+              <ChipToggle key={val} shape="seg" grow on={on} onClick={() => set('etos', val)}>
+                <span style={{ display: 'block', textAlign: 'center', fontSize: 13, lineHeight: 1.25 }}>
+                  {lab}
+                  <span style={{ display: 'block', fontSize: 11, fontWeight: 400, opacity: on ? 0.85 : 1 }}>{sub}</span>
+                </span>
+              </ChipToggle>
             );
           })}
         </div>
@@ -271,7 +275,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
         <dl {...fixedCols(2, 24, 'start')} style={{ ...fixedCols(2, 24, 'start').style, rowGap: 12, margin: 0 }}>
           <Row k="Ετήσιο ενοίκιο" v={feAuto(r.gross)} />
           {/* Η ΕΤΙΚΕΤΑ ΕΛΕΓΕ «5%» ΚΑΙ ΜΕ ΤΟΝ ΔΙΑΚΟΠΤΗ ΚΛΕΙΣΤΟ ΘΑ ΕΛΕΓΕ ΨΕΜΑ:
-              «Τεκμαρτή έκπτωση 5%: 0,00 €». Ο συντελεστής ζει πλέον στην
+              «Τεκμαρτή έκπτωση 5%: 0,00€». Ο συντελεστής ζει πλέον στην
               εξήγηση του διακόπτη, δηλαδή εκεί που αποφασίζεται. */}
           <Row k="Τεκμαρτή έκπτωση" v={feAuto(r.deduction)} />
           <Row k="Φορολογητέο" v={feAuto(r.taxable)} />
@@ -291,19 +295,16 @@ export function RentTaxCalculator({ today }: { today: string }) {
           σελίδα είχε δύο τίτλους που μοιάζουν ίδιοι και δεν είναι.
           Είναι λεζάντα του πίνακα, οπότε γράφεται ως λεζάντα: ίδια τυπογραφία
           με τις άλλες ετικέτες αυτής της κάρτας και σωστή σημασιολογία. */}
-      <div style={{ marginTop: 26 }}>
-        <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="pin-1" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 300 }}>
-            <caption style={{ captionSide: 'top', textAlign: 'left', fontSize: 11, fontWeight: 700,
-              letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-              paddingBottom: 10 }}>
-              Η κλίμακα του {year}
-            </caption>
+      <div style={{ marginTop: T.sp.xxl }}>
+        <div className="po-table-box">
+         <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
+          <table className="po-table" style={{ '--tbl-min': '300px' }}>
+            <caption>Η κλίμακα του {year}</caption>
             <thead>
               <tr>
-                <th scope="col" style={th}>Εισόδημα</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Συντελεστής</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Φόρος σε αυτό το κλιμάκιο</th>
+                <th scope="col">Εισόδημα</th>
+                <th scope="col" className="num">Συντελεστής</th>
+                <th scope="col" className="num">Φόρος σε αυτό το κλιμάκιο</th>
               </tr>
             </thead>
             <tbody>
@@ -325,21 +326,33 @@ export function RentTaxCalculator({ today }: { today: string }) {
                 const active = slice > 0;
                 // Τα όρια είναι ποσά, άρα περνούν από τον μορφοποιητή όπως κάθε
                 // άλλο ποσό της εφαρμογής: ο φύλακας euro-space το ζήτησε και έχει
-                // δίκιο — μια στήλη με «12.000 €» δίπλα σε «1.800,00 €» δεν στοιχίζεται.
+                // δίκιο — μια στήλη με «12.000€» δίπλα σε «1.800,00€» δεν στοιχίζεται.
+                // ── ΤΟ ΠΟΣΟ ΔΕΝ ΣΠΑΕΙ ΣΤΗ ΜΕΣΗ ΤΟΥ ────────────────────────────
+                // Το `.po-table` δίνει `overflow-wrap: anywhere` σε κάθε κελί — σωστά: κρατά μια μακριά λέξη μέσα στη στήλη αντί να τη βγάλει
+                // έξω. Σε ΕΥΡΟΣ ΠΟΣΩΝ όμως το «anywhere» σημαίνει σπάσιμο μέσα
+                // στο νούμερο. Μετρημένο στα 360: το «12.001,00€ – 35.000,00€»
+                // έβγαινε σε ΤΕΣΣΕΡΙΣ σειρές, με τα ψηφία μοιρασμένα.
+                //
+                // Κάθε άκρο τυλίγεται ώστε να μένει ακέραιο· η γραμμή σπάει μόνο
+                // στα κενά γύρω από την παύλα, δηλαδή εκεί που το εννοεί κι ο
+                // αναγνώστης: δύο σειρές, ένα ποσό η καθεμιά.
+                const amount = (v: number) => <span style={{ whiteSpace: 'nowrap' }}>{feAuto(v)}</span>;
                 const range = b.to === Infinity
-                  ? `Πάνω από ${feAuto(b.from)}`
-                  : `${feAuto(b.from === 0 ? 0 : b.from + 1)} – ${feAuto(b.to)}`;
+                  ? <>Πάνω από {amount(b.from)}</>
+                  : <>{amount(b.from === 0 ? 0 : b.from + 1)} – {amount(b.to)}</>;
                 return (
-                  <tr key={b.from} style={{ background: active ? 'var(--accent-soft)' : 'transparent' }}>
-                    <td style={{ ...td, fontWeight: active ? 650 : 400, color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{range}</td>
+                  <tr key={b.from} className={active ? 'is-on' : undefined}>
+                    {/* Το κλιμάκιο ΕΙΝΑΙ η ταυτότητα της γραμμής: ο συντελεστής κι
+                        ο φόρος δίπλα του δεν σημαίνουν τίποτα χωρίς αυτό. Ως `th
+                        scope="row"` το λέει μία φορά σε κάθε κελί της σειράς — κι
+                        μένει καρφωμένο αριστερά όταν ο πίνακας κυλά. */}
+                    <th scope="row" style={{ fontWeight: active ? 600 : 400 }}>{range}</th>
                     {/* ΤΡΙΤΗ ΓΡΑΦΗ ΓΙΑ ΤΟ ΙΔΙΟ ΕΙΔΟΣ ΝΟΥΜΕΡΟΥ. Η στήλη έγραφε «15%»
                         ενώ δύο εκατοστά πιο πάνω ο πραγματικός συντελεστής γράφει
                         «15,00%»: ο αναγνώστης ψάχνει τη διαφορά που υπονοούν τα
                         δεκαδικά και δεν υπάρχει. Ενας μορφοποιητής ποσοστού. */}
-                    <td style={{ ...td, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fp(b.rate * 100)}</td>
-                    <td style={{ ...td, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums',
-                      fontWeight: active ? 650 : 400,
-                      color: active ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                    <td className="num">{fp(b.rate * 100)}</td>
+                    <td className="num" style={{ fontWeight: active ? 600 : 400, color: active ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
                       {feAuto(slice * b.rate)}
                     </td>
                   </tr>
@@ -347,6 +360,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
               })}
             </tbody>
           </table>
+         </div>
         </div>
       </div>
 
@@ -362,7 +376,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
           ακριβώς όπως προσπερνά κάθε κίτρινο πλαίσιο. Ουδέτερη επιφάνεια και
           το βάρος του το δίνει η θέση του: ακριβώς κάτω από τον αριθμό. */}
       <div className="po-tool-note" style={{
-        marginTop: 22, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
+        marginTop: T.sp.xxl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
@@ -384,15 +398,6 @@ export function RentTaxCalculator({ today }: { today: string }) {
     </div>
   );
 }
-
-const th: React.CSSProperties = {
-  textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 700,
-  letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-  borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap',
-};
-const td: React.CSSProperties = {
-  padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)',
-};
 
 /**
  * Ένα μετρημένο νούμερο με την ετικέτα του.

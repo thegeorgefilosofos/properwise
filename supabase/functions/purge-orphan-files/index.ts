@@ -24,7 +24,7 @@
 // Deploy: supabase functions deploy purge-orphan-files
 // ═══════════════════════════════════════════════════════════════════════════
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -48,8 +48,8 @@ function byBucket(rows: readonly Row[]): Map<string, Row[]> {
 }
 
 Deno.serve(async (req) => {
-  if (!(await authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase })))
-    return json({ error: 'unauthorized' }, 401)
+  const auth = await authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase })
+  if (!auth.ok) return json(...cronDenial(auth))
 
   const { data, error } = await supabase.rpc('storage_purge_batch', { p_limit: 200 })
   if (error) return json({ error: error.message }, 502)

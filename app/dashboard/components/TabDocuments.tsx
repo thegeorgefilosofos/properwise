@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
 import * as billStore from '@/lib/data/bills';
-import { T, fd, fe, fn, Modal, Skeleton, EmptyState, InfoBanner, PageTitle, SecHdr, SelectBox, Chip, Btn, ExportButton, ABSENT_DATE, pressable, CloseButton } from '@/components/Theme';
+import { T, fd, fe, fn, Modal, Skeleton, EmptyState, InfoBanner, PageTitle, SecHdr, SelectBox, Chip, Btn, IconBtn, ChipToggle, LinkBtn, ExportButton, ABSENT_DATE, pressable, CloseButton, RuntimeImg } from '@/components/Theme';
 import { useCoarsePointer } from '@/components/useCoarsePointer';
 import { showTool } from '@/lib/ui/thresholds';
 import { fmtBytes } from '@/lib/core/bytes';
@@ -226,33 +226,9 @@ const periodLabel = (r: { period_from?: string | null; period_to?: string | null
 
 /* ── Εικονίδια (inline SVG, stroke=currentColor) ─────────────────────────── */
 const S = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-const FolderGlyph = ({ k, size = 22 }: { k: FolderKey; size?: number }) => {
-  const p: Record<FolderKey, React.ReactNode> = {
-    contracts:  <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 14h6M9 17h4"/></>,
-    property:   <><path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-5h4v5"/></>,
-    taxes:      <><path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/></>,
-    bills:      <><path d="M6 2h9l3 3v17l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h3"/></>,
-    providers:  <><path d="M14.5 5.5a3.5 3.5 0 0 1-4.9 4.9L4 16v4h4l5.6-5.6a3.5 3.5 0 0 0 4.9-4.9l-2.3 2.3-2-2z"/></>,
-    warranties: <><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z"/><path d="M9 12l2 2 4-4"/></>,
-    invoices:   <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></>,
-    bank:       <><path d="M3 10 12 4l9 6"/><path d="M5 10v8M10 10v8M14 10v8M19 10v8"/><path d="M3 21h18"/></>,
-    photos:     <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-4 4 3 3-2 4 3"/></>,
-    other:      <><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></>,
-  };
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">{p[k]}</svg>;
-};
-// Εικονίδιο υποφακέλου (πάροχος ή έτος) — ΕΝΑ σημείο αλήθειας αντί για διπλό inline SVG.
-const SubfolderGlyph = ({ mode, size = 20 }: { mode: 'provider' | 'date'; size?: number }) => (
-  <svg aria-hidden="true" {...S} width={size} height={size}>{mode === 'provider'
-    ? <><path d="M4 20V8a2 2 0 0 1 2-2h3l2-2h4a2 2 0 0 1 2 2v2"/><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V12a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/></>
-    : <><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></>}</svg>
-);
 // Σταθερό «×» (κλείσιμο/διαγραφή) — αντικαθιστά τα επαναλαμβανόμενα inline SVG.
 const IconX = ({ size = 13 }: { size?: number }) => (
   <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-);
-const IconCheck = ({ size = 12 }: { size?: number }) => (
-  <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
 );
 const IconPencil = ({ size = 14 }: { size?: number }) => (
   <svg aria-hidden="true" {...S} width={size} height={size}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
@@ -269,28 +245,26 @@ const IconDownload = ({ size = 14 }: { size?: number }) => (
 
 // Premium custom checkbox (ίδια γλώσσα με τις Επαφές): στρογγυλό τετράγωνο,
 // accent γέμισμα, tick, προσβάσιμο με πληκτρολόγιο.
-// Ουδέτερο κουμπί μαζικής ενέργειας που αποκαλύπτει accent —ή κόκκινο για διαγραφή— στο hover.
-function BulkBtn({ icon, label, onClick, disabled, danger }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; danger?: boolean }) {
-  const [hov, setHov] = useState(false);
-  const active = hov && !disabled;
-  return (
-    <button type="button" disabled={disabled} onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: T.radius.btn, fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
-        border: `1px solid ${active ? (danger ? 'var(--negative-border)' : 'var(--accent-border)') : 'var(--border-subtle)'}`,
-        background: active ? (danger ? 'var(--negative-soft)' : 'var(--accent-soft)') : 'var(--bg-elevated)',
-        color: active ? (danger ? 'var(--negative)' : 'var(--accent)') : 'var(--text-secondary)',
-        transition: `background 0.14s ${T.ease.standard}, border-color 0.14s ${T.ease.standard}, color 0.14s ${T.ease.standard}` }}>
-      {icon}{label}
-    </button>
-  );
+// Κουμπί μαζικής ενέργειας: εικονίδιο συν λεκτικό, με ήρεμο περίγραμμα.
+// ΓΙΑΤΙ secondary. Η όψη ηρεμίας ήταν ακριβώς αυτή — περίγραμμα σε ήσυχη
+// επιφάνεια — ενώ ο τόνος (accent ή κόκκινο για τη διαγραφή) ερχόταν μόνο από
+// χειροκίνητη αιώρηση, που δεν ήξερε ούτε από πληκτρολόγιο ούτε από αφή.
+// ΤΙ ΧΑΝΕΤΑΙ: το `Btn` δεν έχει καταστροφικό ρόλο, οπότε η «Διαγραφή» αιωρείται
+// πλέον ουδέτερη όπως οι διπλανές της. Το προειδοποιητικό βάρος το σηκώνουν το
+// λεκτικό της συν η επιβεβαίωση που ακολουθεί.
+function BulkBtn({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
+  return <Btn variant="secondary" onClick={onClick} disabled={disabled}>{icon}{label}</Btn>;
 }
 
+// ΤΟ `profileType` ΕΦΥΓΕ ΑΠΟ ΤΗΝ ΥΠΟΓΡΑΦΗ. Το ταμπλό το περνούσε σε κάθε
+// απόδοση και εδώ δεν το διάβαζε τίποτα: το Αρχείο εγγράφων δεν κλειδώνει
+// τίποτα ανά προφίλ. Μια παράμετρος που δεν διαβάζεται δεν είναι αθώα — λέει
+// στον επόμενο ότι η οθόνη ΕΧΕΙ συμπεριφορά ανά προφίλ και τον βάζει να ψάχνει.
 export default function TabDocuments({
-  propertyId, userId, embedded, profileType = 'individual',
-}: Props & { embedded?: boolean; profileType?: 'individual' | 'professional' }) {
+  propertyId, userId, embedded,
+}: Props & { embedded?: boolean }) {
   const supabase = createClient();
   const { prefs } = useAppPreferences(propertyId);
-  const isPro = profileType === 'professional';
 
   const [items, setItems] = useState<Item[]>([]);
   // Ο ΔΕΙΚΤΗΣ ΦΟΡΤΩΣΗΣ ΔΕΝ ΕΙΝΑΙ ΞΕΧΩΡΙΣΤΗ ΚΑΤΑΣΤΑΣΗ, ΕΙΝΑΙ ΕΡΩΤΗΣΗ. Ηταν
@@ -302,6 +276,11 @@ export default function TabDocuments({
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const loading = loadedFor !== propertyId
   const [colWarn, setColWarn] = useState(false); // αν λείπει το attachment_url στα expenses
+  // ΟΤΑΝ ΔΕΝ ΕΤΟΙΜΑΣΤΗΚΑΝ ΟΙ ΣΥΝΔΕΣΜΟΙ ΤΩΝ ΑΝΕΒΑΣΜΕΝΩΝ ΑΡΧΕΙΩΝ. Χωρίς αυτή τη
+  // σημαία η αποτυχία ήταν αόρατη: η καρτέλα του σαρωμένου μισθωτηρίου έμενε στη
+  // θέση της χωρίς «Άνοιγμα», ίδια στην όψη με έναν λογαριασμό που ΔΕΝ έχει
+  // αρχείο. Ο ιδιοκτήτης που ζητούσε το χαρτί του συμπέραινε ότι χάθηκε.
+  const [linksWarn, setLinksWarn] = useState(false);
 
   // ── ΟΨΕΙΣ ΑΝΤΙ ΓΙΑ ΦΑΚΕΛΟΥΣ ──────────────────────────────────────────────
   // Πριν εδώ ζούσε πλοήγηση τριών επιπέδων: folderKey → subKey → αρχεία. Κάθε
@@ -349,10 +328,19 @@ export default function TabDocuments({
     // Υπογεγραμμένα URL για τα ανεβασμένα αρχεία (bucket property-files)
     const paths = docs.map(r => r.file_path).filter(Boolean);
     const signedMap: Record<string, string> = {};
+    // ΤΟ `error` ΠΕΤΑΓΟΤΑΝ ΚΙ Η ΑΠΟΤΥΧΙΑ ΓΙΝΟΤΑΝ «ΔΕΝ ΕΧΕΙ ΑΡΧΕΙΟ». Οταν η
+    // υπογραφή των συνδέσμων αποτύγχανε, το `signed` ερχόταν null: κάθε
+    // ανεβασμένο χαρτί έχανε το `url` του κι η οθόνη το εμφάνιζε χωρίς κουμπί
+    // «Άνοιγμα», χωρίς μικρογραφία, με τη «Λήψη» σβηστή. Ολα αυτά είναι ακριβώς
+    // η όψη ενός στοιχείου που δεν έχει αρχείο, οπότε ο ιδιοκτήτης διάβαζε «το
+    // σαρωμένο μου συμβόλαιο δεν είναι εδώ». Τώρα η τρίτη κατάσταση δηλώνεται.
+    let linksFailed = false;
     if (paths.length) {
-      const { data: signed } = await supabase.storage.from('property-files').createSignedUrls(paths, 60 * 60 * 24);
+      const { data: signed, error: signErr } = await supabase.storage.from('property-files').createSignedUrls(paths, 60 * 60 * 24);
+      linksFailed = !!signErr || !signed;
       signed?.forEach((s, i) => { if (s?.signedUrl) signedMap[paths[i]] = s.signedUrl; });
     }
+    setLinksWarn(linksFailed);
 
     const out: RawItem[] = [];
 
@@ -437,7 +425,7 @@ export default function TabDocuments({
 
     setItems(out.map(enrich));
     setLoadedFor(propertyId);
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   useLoad(fetchAll);
   // Καθάρισε την επιλογή όταν αλλάζει το πλαίσιο πλοήγησης (φάκελος, αναζήτηση).
@@ -613,11 +601,6 @@ export default function TabDocuments({
   const bulkDownload = () => { selItems.filter(i => i.url).forEach(i => window.open(i.url!, '_blank', 'noopener')); };
 
   /* ── Παράγωγα δεδομένα ─────────────────────────────────────────────────── */
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {}; const v: Record<string, number> = {};
-    items.forEach(i => { c[i.folder] = (c[i.folder] || 0) + 1; if (i.value) v[i.folder] = (v[i.folder] || 0) + i.value; });
-    return { count: c, value: v };
-  }, [items]);
 
   // ── Η ΑΝΕΞΑΡΤΗΤΗ ΑΠΟΔΕΙΞΗ: πόσα λένε ΤΑ ΔΙΚΑ ΜΟΥ ΧΑΡΤΙΑ ────────────────────
   // Αθροίζει ΜΟΝΟ σαρωμένα/ανεβασμένα παραστατικά (source 'document'), όχι τα
@@ -667,10 +650,9 @@ export default function TabDocuments({
 
   const photoCount = items.filter(i => i.folder === 'photos').length;
   const docCount = items.length - photoCount;
-  const activeCategories = FOLDERS.filter(f => counts.count[f.key]).length;
 
   // Η αξία φεύγει ως ΑΡΙΘΜΟΣ: το φύλλο αθροίζεται στα χέρια του λογιστή. Ως
-  // κείμενο «1.234,56 €» έδειχνε σωστά και έβγαζε άθροισμα μηδέν.
+  // κείμενο «1.234,56€» έδειχνε σωστά και έβγαζε άθροισμα μηδέν.
   const exportCsv = () => downloadTableXlsx('Αρχείο εγγράφων', {
     title: 'Αρχείο εγγράφων',
     headers: ['Όνομα', 'Φάκελος', 'Πάροχος', 'ΑΦΜ παρόχου', 'Ημερομηνία', 'Περίοδος από', 'Περίοδος έως', 'Αξία (€)', 'Πηγή'],
@@ -749,6 +731,12 @@ export default function TabDocuments({
       )}
 
       {colWarn && <InfoBanner tone="warning">Ορισμένα Έξοδα δεν διαθέτουν στήλη συνημμένου αρχείου· εμφανίζονται μόνο όσα έχουν επισυναπτόμενη απόδειξη/τιμολόγιο.</InfoBanner>}
+
+      {/* Η ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΠΟΥ ΕΛΕΙΠΕ. Στην αποτυχία υπογραφής των συνδέσμων η
+          οθόνη δεν έλεγε τίποτα: τα ανεβασμένα χαρτιά έδειχναν σκέτα, χωρίς
+          «Άνοιγμα» κι με τη «Λήψη» ανενεργή, σαν να μην είχαν ποτέ αρχείο.
+          Τώρα ο χρήστης ξέρει ότι φταίει η στιγμή, όχι το αρχείο του. */}
+      {linksWarn && <InfoBanner tone="warning">Τα ανεβασμένα αρχεία δεν μπορούν να ανοίξουν αυτή τη στιγμή: η προετοιμασία των συνδέσμων δεν ολοκληρώθηκε. Όπου λείπει το «Άνοιγμα», δεν σημαίνει ότι λείπει το αρχείο: δοκίμασε ξανά σε λίγο ή ανανέωσε τη σελίδα.</InfoBanner>}
 
       {/* ══ Η ΜΙΑ ΕΠΙΦΑΝΕΙΑ: «Φωτογράφισε ή σύρε» ══════════════════════════ */}
       {showUpload && (
@@ -846,11 +834,7 @@ export default function TabDocuments({
             </span>
           )}
           {filtering && (
-            <button onClick={() => { setSel(clearAll()); setQuery(''); }}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12,
-                fontFamily: T.font.sans, color: 'var(--accent)', textDecoration: 'underline' }}>
-              Καθαρισμός φίλτρων
-            </button>
+            <LinkBtn onClick={() => { setSel(clearAll()); setQuery(''); }}>Καθαρισμός φίλτρων</LinkBtn>
           )}
         </div>
 
@@ -869,7 +853,9 @@ export default function TabDocuments({
               απαριθμεί τι δέχεται το πεδίο. */}
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Όνομα ή πάροχος" aria-label="Αναζήτηση στο αρχείο, με όνομα, πάροχο ή έτος"
             style={{ width: '100%', height: T.h.lg, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '0 34px 0 34px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans, boxSizing: 'border-box' }}/>
-          {query && <button onClick={() => setQuery('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 'var(--fs-base)' }}><IconX/></button>}
+          {/* Η θέση μένει εδώ, στο περιτύλιγμα: το κοινό εικονοκούμπι δίνει το
+              σχήμα του στόχου αφής, όχι απόλυτη τοποθέτηση. */}
+          {query && <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}><IconBtn label="Καθαρισμός αναζήτησης" onClick={() => setQuery('')}><IconX/></IconBtn></span>}
         </div>
         )}
 
@@ -882,10 +868,9 @@ export default function TabDocuments({
         <div style={{ display: 'flex', gap: 0, height: T.h.lg, alignItems: 'stretch', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, overflow: 'hidden', boxSizing: 'border-box' }}>
           {([['grid', 'Πλέγμα', <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>],
              ['list', 'Λίστα', <><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></>]] as const).map(([k, title, ic]) => (
-            <button key={k} onClick={() => setView(k)} title={title}
-              style={{ width: 38, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', background: view === k ? 'var(--accent)' : 'transparent', color: view === k ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
+            <ChipToggle key={k} on={view === k} onClick={() => setView(k)} title={title} shape="seg">
               <svg aria-hidden="true" {...S} width={15} height={15}>{ic}</svg>
-            </button>
+            </ChipToggle>
           ))}
         </div>
         )}
@@ -910,23 +895,17 @@ export default function TabDocuments({
               </span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {options.map(o => (
-                  <button key={o.value} onClick={() => setSel(s => toggleValue(s, key, o.value))}
-                    aria-pressed={o.selected}
-                    title={o.selected ? `Αφαίρεση φίλτρου «${o.value}»` : `${o.count} ${o.count === 1 ? 'αρχείο' : 'αρχεία'}`}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6, height: T.h.sm, padding: '0 12px',
-                      borderRadius: T.radius.pill, cursor: 'pointer', fontFamily: T.font.sans,
-                      fontSize: 12, fontWeight: o.selected ? 700 : 500,
-                      border: `1px solid ${o.selected ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                      background: o.selected ? 'var(--accent)' : 'var(--bg-elevated)',
-                      color: o.selected ? 'var(--on-tone)' : 'var(--text-secondary)',
-                      opacity: !o.selected && o.count === 0 ? 0.45 : 1,
-                      transition: `background .15s ${T.ease.standard}, border-color .15s ${T.ease.standard}`,
-                    }}>
+                  <ChipToggle key={o.value} on={o.selected} onClick={() => setSel(s => toggleValue(s, key, o.value))}
+                    title={o.selected ? `Αφαίρεση φίλτρου «${o.value}»` : `${o.count} ${o.count === 1 ? 'αρχείο' : 'αρχεία'}`}>
                     {o.value}
                     <span style={{ fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)',
-                      opacity: o.selected ? 0.85 : 0.6 }}>{o.count}</span>
-                  </button>
+                      // Η ΔΙΑΦΑΝΕΙΑ ΕΡΙΧΝΕ ΤΟΝ ΑΡΙΘΜΟ ΚΑΤΩ ΑΠΟ ΤΟ ΠΡΟΤΥΠΟ. Μετρημένο
+                      // στη σάρωση προσβασιμότητας: 3,46:1 στα 11px, όριο 4,5:1. Ο
+                      // μετρητής ΕΙΝΑΙ η πληροφορία του φίλτρου — πόσα έγγραφα έχει ο
+                      // φάκελος — και ήταν το λιγότερο ευανάγνωστο πράγμα στη σειρά.
+                      // Το βάρος το κάνει πλέον το χρώμα, όχι το ξεθώριασμα.
+                      color: o.selected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{o.count}</span>
+                  </ChipToggle>
                 ))}
               </div>
             </div>
@@ -942,9 +921,10 @@ export default function TabDocuments({
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <BulkBtn icon={<IconDownload/>} label="Λήψη" onClick={bulkDownload} disabled={!selItems.some(i => i.url)}/>
             <BulkBtn icon={<IconMoveFolder/>} label="Διόρθωση αναγνώρισης" onClick={() => selDocs.length && setFixItems(selDocs)} disabled={!selDocs.length}/>
-            <BulkBtn icon={<IconTrash/>} label="Διαγραφή" onClick={bulkDelete} disabled={!selRaw.length} danger/>
+            <BulkBtn icon={<IconTrash/>} label="Διαγραφή" onClick={bulkDelete} disabled={!selRaw.length}/>
           </div>
-          <button onClick={() => setSelected(new Set())} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: T.radius.btn, border: 'none', background: 'transparent', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: T.font.sans }}><IconX/>Ακύρωση</button>
+          {/* Το `marginLeft: auto` είναι θέση μέσα στη μπάρα, όχι όψη κουμπιού: μένει στο περιτύλιγμα. */}
+          <div style={{ marginLeft: 'auto' }}><Btn variant="ghost" onClick={() => setSelected(new Set())}><IconX/>Ακύρωση</Btn></div>
         </div>
       )}
 
@@ -1007,7 +987,7 @@ export default function TabDocuments({
               χρώμα διεπαφής — δεν γίνεται token. */}
           {isPdfItem(lightbox)
             ? <iframe title={lightbox.title} src={lightbox.url} onClick={e => e.stopPropagation()} style={{ width: 'min(100%, 900px)', height: '82%', border: 'none', borderRadius: T.radius.inner, background: '#fff' }}/>
-            : <img src={lightbox.url} alt={lightbox.title} onClick={e => e.stopPropagation()} style={{ maxWidth: '92%', maxHeight: '82%', objectFit: 'contain', borderRadius: T.radius.inner }}/>}
+            : <RuntimeImg src={lightbox.url} alt={lightbox.title} onClick={e => e.stopPropagation()} style={{ maxWidth: '92%', maxHeight: '82%', objectFit: 'contain', borderRadius: T.radius.inner }}/>}
           <div style={{ color: 'var(--on-media)', fontSize: 12, fontFamily: T.font.sans, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <div style={{ fontWeight: 700 }}>{lightbox.title}</div>
             <div style={{ opacity: 0.7, marginTop: 2 }}>{[lightbox.category, lightbox.provider, lightbox.date ? fd(lightbox.date) : null].filter(Boolean).join(' · ')}</div>
@@ -1120,6 +1100,12 @@ function FileInner({ items, a }: { items: Item[]; a: FileActions }) {
 }
 
 // Στρογγυλό κουμπί ενέργειας πάνω από thumbnail (grid) — σκουρόχρωμο για αντίθεση.
+// ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟ, ΓΙΑ ΑΛΛΟ ΛΟΓΟ ΑΠΟ ΟΤΙ ΕΛΕΓΕ ΕΔΩ. Ο τόνος «πάνω σε μέσο»
+// ΥΠΑΡΧΕΙ πλέον στο `IconBtn` (`tone="media"`), οπότε το μελάνι δεν εμποδίζει.
+// Εμποδίζει το ΚΟΥΤΙ: το `IconBtn` έχει μόνο sm=32 · md=36 ενώ το σχήμα εδώ
+// είναι 26. Και δεν φοράει `po-box`, άρα στο δάχτυλο το δάπεδο αφής θα το
+// τέντωνε σε 44 × 44 πάνω σε μικρογραφία 4/3. Διαφέρει κι το πέπλο: ο τόνος
+// media βάφει λευκό 0,14 χωρίς θόλωμα, εδώ είναι το σκίαστρο 0,55 με blur(2px).
 const OverlayBtn = ({ title, onClick, children }: { title: string; onClick: (e: React.MouseEvent) => void; children: React.ReactNode }) => (
   <button onClick={onClick} title={title} className="po-box"
     style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', background: T.scrim, color: 'var(--on-media)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)' }}>{children}</button>
@@ -1141,9 +1127,9 @@ function FileCard({ i, a }: { i: Item; a: FileActions }) {
       <div style={{ position: 'relative', aspectRatio: '4 / 3', background: 'var(--bg-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: preview ? 'pointer' : 'default' }}
         onClick={() => { if (preview) a.onOpenLightbox(i); }}>
         {i.isImage && i.url
-          ? <img src={i.url} alt={i.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+          ? <RuntimeImg src={i.url} alt={i.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
           : <span style={{ color: 'var(--accent)' }}><svg aria-hidden="true" {...S} width={30} height={30}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>}
-        {isPdfItem(i) && <span style={{ position: 'absolute', bottom: 6, left: 6, fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--on-media)', background: T.scrim, padding: '2px 6px', borderRadius: 6 }}>PDF</span>}
+        {isPdfItem(i) && <span style={{ position: 'absolute', bottom: 6, left: 6, fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--on-media)', background: T.scrim, padding: '2px 6px', borderRadius: T.radius.xs }}>PDF</span>}
         {selectable && (shown || sel) && <div style={{ position: 'absolute', top: 6, left: 6 }} onClick={e => e.stopPropagation()}><SelectBox checked={sel} onChange={() => a.onToggleSel(i.id)} label={`Επιλογή ${i.title}`}/></div>}
         {shown && i.raw && (
           <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4 }}>
@@ -1174,9 +1160,10 @@ function FileCard({ i, a }: { i: Item; a: FileActions }) {
 }
 
 // Μικρό κουμπί ενέργειας σε γραμμή λίστας (εμφανίζεται στο hover).
+// Το `title` γίνεται ΚΑΙ aria-label: πριν, ο αναγνώστης οθόνης άκουγε «κουμπί»
+// και τίποτε άλλο σε τρεις ενέργειες ανά γραμμή.
 const RowBtn = ({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) => (
-  <button onClick={onClick} title={title} className="po-box"
-    style={{ width: 28, height: 28, borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{children}</button>
+  <IconBtn label={title} title={title} onClick={onClick}>{children}</IconBtn>
 );
 
 function FileRow({ i, a }: { i: Item; a: FileActions }) {
@@ -1191,7 +1178,7 @@ function FileRow({ i, a }: { i: Item; a: FileActions }) {
       style={{ display: 'flex', alignItems: 'center', gap: 12, background: sel ? 'var(--accent-soft)' : 'var(--bg-elevated)', border: `1px solid ${sel ? 'var(--accent-border)' : 'var(--border-subtle)'}`, borderRadius: T.radius.inner, padding: '10px 14px', transition: `background 0.14s ${T.ease.standard}` }}>
       <div style={{ width: 18, display: 'flex', flexShrink: 0 }}>{selectable && (shown || sel) && <SelectBox checked={sel} onChange={() => a.onToggleSel(i.id)} label={`Επιλογή ${i.title}`}/>}</div>
       {i.isImage && i.url
-        ? <img src={i.url} alt="" onClick={() => a.onOpenLightbox(i)} style={{ width: 40, height: 40, borderRadius: T.radius.badge, objectFit: 'cover', flexShrink: 0, cursor: 'pointer', border: '1px solid var(--border-subtle)' }}/>
+        ? <RuntimeImg src={i.url} alt="" onClick={() => a.onOpenLightbox(i)} style={{ width: 40, height: 40, borderRadius: T.radius.badge, objectFit: 'cover', flexShrink: 0, cursor: 'pointer', border: '1px solid var(--border-subtle)' }}/>
         : <div {...pressable(() => { if (canPreview(i)) a.onOpenLightbox(i); })} style={{ width: 40, height: 40, borderRadius: T.radius.badge, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--accent)', cursor: canPreview(i) ? 'pointer' : 'default' }}>
             <svg aria-hidden="true" {...S} width={17} height={17}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           </div>}
@@ -1321,13 +1308,16 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
             {v.blocking.length ? 'Χρειάζεται συμπλήρωση' : 'Έλεγξε τα στοιχεία'}
           </span>
         )}
+        {/* ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟ ΓΙΑ ΤΗ ΓΕΩΜΕΤΡΙΑ ΤΗΣ ΣΕΙΡΑΣ. Είναι ~22 ψηλό (fs-xs,
+            γέμισμα 4×9) μέσα σε πυκνή κεφαλίδα γραμμής ανεβάσματος: το ελάχιστο
+            ύψος 36 του `Btn` —44 στο δάχτυλο— θα ψήλωνε κάθε γραμμή της λίστας. */}
         {d.status === 'ready' && (
           <button onClick={onToggle} style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight: 600, padding: '4px 9px', cursor: 'pointer', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
             {d.open ? 'Σύμπτυξη' : 'Διόρθωση'}
           </button>
         )}
         {(d.status === 'ready' || d.status === 'failed' || d.status === 'error') && (
-          <button onClick={onRemove} title="Αφαίρεση από τη λίστα" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX/></button>
+          <IconBtn label="Αφαίρεση από τη λίστα" title="Αφαίρεση από τη λίστα" onClick={onRemove}><IconX/></IconBtn>
         )}
       </div>
 

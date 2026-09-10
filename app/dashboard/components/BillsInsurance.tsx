@@ -15,11 +15,11 @@ import { athensToday, monthEndIso } from '@/lib/core/time'
 import { monthNom } from '@/lib/core/months'
 import { notify } from '@/components/Toast'
 import { saved } from '@/components/dbWrite'
-import { NumberInput, CustomSelect, TextInput, DatePicker, addBtn } from './UIComponents';
+import { NumberInput, CustomSelect, TextInput, DatePicker } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
 import { ReminderLinks } from './ReminderLinks';
 import { findDuplicates, type ExpenseLike } from '@/lib/expenses/duplicates';
-import { T, TT, fe, fieldRow, fixedCols, SecHdr, InfoBanner, Skeleton, SkeletonKPIs, localDay, ABSENT_SHORT, pressable } from '@/components/Theme';
+import { T, TT, fe, fieldRow, fixedCols, SecHdr, InfoBanner, Skeleton, SkeletonKPIs, localDay, ABSENT_SHORT, pressable, Btn, IconBtn, ChipToggle } from '@/components/Theme';
 // Ο κατάλογος συνδρομών ζει στο lib: τον διαβάζει και ο Προϋπολογισμός.
 import { SUB_INCLUDES, SUB_GROUPS, planMonthly, entryPlan, entryPlanId,
          planNote, subShare, type SubService, type SubKey } from '@/lib/expenses/subscriptions';
@@ -195,7 +195,7 @@ const INSURANCE_COMPANIES: InsuranceCompany[] = [
     ] },
   { value: 'cosmote_ins',   label: 'Magenta Insurance',         url: 'https://www.magentainsurance.gr/home', agent_label: 'Online, Magenta',
     propertyTypes: ['Κύρια Κατοικία','Εξοχική Κατοικία'],
-    note: 'Πρώην COSMOTE Insurance. Σύγκριση και online ασφάλιση κατοικίας από 90 €/έτος, με δυνατότητα έκπτωσης έως 20% στον ΕΝΦΙΑ υπό προϋποθέσεις.',
+    note: 'Πρώην COSMOTE Insurance. Σύγκριση και online ασφάλιση κατοικίας από 90€/έτος, με δυνατότητα έκπτωσης έως 20% στον ΕΝΦΙΑ υπό προϋποθέσεις.',
     plans: [
       { id: 'ci_basic',   name: 'Magenta Home Βασικό',       monthly: 8.00,  annual: 96,  covers: ['Πυρκαγιά','Θραύση Σωληνώσεων','Φυσικά Φαινόμενα','Βραχυκύκλωμα','Αστική Ευθύνη'], earthquake: false, flood: false, natural: false },
       { id: 'ci_plus',    name: 'Magenta Home Πλήρες',       monthly: 14.50, annual: 139, covers: ['Πυρκαγιά','Κλοπή','Πλημμύρα','Φυσικά Φαινόμενα','Αστική Ευθύνη'], earthquake: false, flood: true,  natural: true  },
@@ -296,10 +296,10 @@ function computeLiveQuotes(sqm: number, propValue: number, contentValue: number,
   // Συντελεστές τιμολόγησης από τα χαρακτηριστικά του ακινήτου
   const sqmFactor    = Math.max(0.7, Math.min(1.5, sqm / 100));
   const valueFactor  = Math.max(0.8, Math.min(2.0, propValue / 150000));
-  // ΣΗΜΕΙΟ ΑΝΑΦΟΡΑΣ, ΟΧΙ ΔΗΛΩΜΕΝΗ ΑΞΙΑ. Το 20.000 € είναι ο παρονομαστής της
+  // ΣΗΜΕΙΟ ΑΝΑΦΟΡΑΣ, ΟΧΙ ΔΗΛΩΜΕΝΗ ΑΞΙΑ. Το 20.000€ είναι ο παρονομαστής της
   // κλίμακας, όχι οικοσκευή που ισχυριζόμαστε ότι έχει ο χρήστης. Ήταν γραμμένο
   // `(contentValue || 20000) / 20000`, που δίνει ακριβώς 1 όταν λείπει η τιμή —
-  // σωστό αριθμητικά, αλλά διαβαζόταν σαν να υποθέτουμε οικοσκευή 20.000 €.
+  // σωστό αριθμητικά, αλλά διαβαζόταν σαν να υποθέτουμε οικοσκευή 20.000€.
   // Χωρίς δηλωμένη αξία δεν προσαρμόζουμε καθόλου: συντελεστής 1.
   const CONTENT_REFERENCE = 20000;
   const contentF     = contentValue > 0 ? Math.max(0.9, Math.min(1.4, contentValue / CONTENT_REFERENCE)) : 1;
@@ -592,7 +592,7 @@ export function SubscriptionSection({ label, catalog, active, onToggle, onUpdate
           const entry = active.find(a => a.service === svc.value);
           const on = !!entry;
           const amount = entry ? subShare(svc, entry) : planMonthly(entryPlan(svc));
-          // ΤΟ ΜΗΔΕΝ ΔΕΝ ΕΙΝΑΙ ΤΙΜΗ. Ένα «0,00 €» σε πλακίδιο υπηρεσίας λέει
+          // ΤΟ ΜΗΔΕΝ ΔΕΝ ΕΙΝΑΙ ΤΙΜΗ. Ένα «0,00€» σε πλακίδιο υπηρεσίας λέει
           // «δεν πληρώνω γι' αυτό», ενώ σημαίνει «δεν ξέρουμε ακόμη πόσο».
           const priceLabel = amount > 0 ? fe(amount) : ABSENT_SHORT;
           return (
@@ -630,7 +630,7 @@ export function SubscriptionSection({ label, catalog, active, onToggle, onUpdate
 
       {/* Ο ΕΠΕΞΕΡΓΑΣΤΗΣ: μία γραμμή ανά ενεργή, όλες στο ίδιο πλέγμα. */}
       {active.length > 0 && (
-        <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ marginTop: T.sp.lg, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {active.map(a => {
             const svc = catalog.find(x => x.value === a.service);
             if (!svc) return null;
@@ -659,7 +659,7 @@ export function SubscriptionSection({ label, catalog, active, onToggle, onUpdate
                 <CustomSelect label="Μοιράζεται" value={String(a.splitActive && a.splitPeople > 1 ? a.splitPeople : 1)}
                   onChange={v => { const n = parseInt(v) || 1; onUpdate(a.service, 'splitPeople', n); onUpdate(a.service, 'splitActive', n > 1); }}
                   options={SPLIT_OPTIONS}/>
-                <NumberInput label="Τιμή αν διαφέρει" value={a.customPrice} onChange={v => onUpdate(a.service, 'customPrice', v)} suffix="€" step={0.5}/>
+                <NumberInput label="Τιμή αν διαφέρει" value={a.customPrice} onChange={v => onUpdate(a.service, 'customPrice', v)} suffix="€"/>
                 {/* Το προεπιλεγμένο «Επιλογή ημερομηνίας» τσάκιζε σε δύο γραμμές και
                     έσπαγε τη στοίχιση της σειράς. Η ετικέτα λέει ήδη «Ανανέωση»·
                     το κενό λέει ότι είναι προαιρετικό. */}
@@ -669,7 +669,7 @@ export function SubscriptionSection({ label, catalog, active, onToggle, onUpdate
                     είναι και τα δύο χρεώνονται στην ίδια κάρτα. Προεπιλογή
                     ολόκληρη, γιατί αυτό ισχύει στις περισσότερες. */}
                 <NumberInput label="Στις δαπάνες" value={String(a.expensePct ?? DEFAULT_EXPENSE_PCT)}
-                  onChange={v => onUpdate(a.service, 'expensePct', expensePct(v))} suffix="%" step={10} max={100}/>
+                  onChange={v => onUpdate(a.service, 'expensePct', expensePct(v))} suffix="%" max={100}/>
                 {business && (
                   <CustomSelect label="Χώρα παρόχου" value={a.supplierCountry || ''}
                     onChange={v => onUpdate(a.service, 'supplierCountry', v)}
@@ -709,7 +709,6 @@ export default function BillsInsurance({ propertyId, userId = '', only, legalFor
   const isBusiness = HAS_BUSINESS.has(legalForm);
   const supabase = createClient();
   const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 20, marginBottom: 16 };
-  const g2: React.CSSProperties  = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14, marginBottom: 14 };
   // ΤΡΙΑ ΠΕΔΙΑ ΣΕ ΔΥΟ ΣΤΗΛΕΣ ΑΦΗΝΟΥΝ ΤΟ ΤΡΙΤΟ ΜΟΝΟ ΤΟΥ. Μετρημένο στα 430:
   // «2+1», με το «Πραγματικό κόστος τον μήνα» σε μισό πλάτος και τρύπα δίπλα.
   // Ιδια κλάση και ίδιοι κανόνες με τους δείκτες του KPIGrid: στα στενά πλάτη
@@ -826,7 +825,7 @@ export default function BillsInsurance({ propertyId, userId = '', only, legalFor
         }
       } catch (_) {}
     })();
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   const [ps, updPs, loading] = useBillsSettings(propertyId, userId, 'insurance', {
     // ΚΑΜΙΑ ΠΡΟΕΠΙΛΕΓΜΕΝΗ ΑΣΦΑΛΙΣΤΙΚΗ. Ήταν 'hellas_direct'/'hd_full': ένας
@@ -922,7 +921,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
 
   const insPlan    = (insCompany?.plans ?? []).find(p => p.id === insPlanId);
   const insCost    = parseFloat(insCustomPrice) || insPlan?.monthly || 0;
-  /** Ξέρουμε ασφάλιστρο; Χωρίς αυτό, το «0,00 €» θα σήμαινε «δεν πληρώνω». */
+  /** Ξέρουμε ασφάλιστρο; Χωρίς αυτό, το «0,00€» θα σήμαινε «δεν πληρώνω». */
 
   const effectiveCovers     = insEditCovers && insCustomCovers ? insCustomCovers.split(',').map(s => s.trim()).filter(Boolean) : (insPlan?.covers || []);
   const effectiveEarthquake = insEditCovers ? insCustomEarthquake : (insPlan?.earthquake || false);
@@ -987,7 +986,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
     : INSURANCE_COMPANIES;
 
   const insOptions     = relevantCompanies.filter(c => c.value && c.label).map(c => ({ value: c.value!, label: c.label! }));
-  // ΤΟ ΚΟΜΜΑ ΕΙΝΑΙ Η ΥΠΟΔΙΑΣΤΟΛΗ. «HOME EXTRA, ~14,50 €» έβαζε δύο κόμματα σε
+  // ΤΟ ΚΟΜΜΑ ΕΙΝΑΙ Η ΥΠΟΔΙΑΣΤΟΛΗ. «HOME EXTRA, ~14,50€» έβαζε δύο κόμματα σε
   // πέντε λέξεις, με δύο εντελώς διαφορετικές δουλειές: το ένα χώριζε όνομα από
   // τιμή, το άλλο ευρώ από λεπτά. Ο διαχωριστής της εφαρμογής είναι το «·».
   //
@@ -1023,7 +1022,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
   // ανάγνωση» και «δεν υπάρχει γραμμή» καταλήγουν στην ΙΔΙΑ κατάσταση.
   //
   // Με φύλακα μόνο το `loading`, 1,2 δευτερόλεπτα μετά το άνοιγμα της καρτέλας
-  // το effect θα έγραφε «Hellas Direct», 8,50 € και ΚΕΝΗ ημερομηνία λήξης πάνω
+  // το effect θα έγραφε «Hellas Direct», 8,50€ και ΚΕΝΗ ημερομηνία λήξης πάνω
   // από την πραγματική ασφαλιστική του χρήστη — σιωπηλά, χωρίς καμία ενέργειά
   // του. Θα έσβηνε μαζί και την υποχρέωση και το insight που διαβάζουν το
   // insurance_expiry, δηλαδή ΑΚΡΙΒΩΣ την υπενθύμιση που αυτή η διόρθωση
@@ -1064,7 +1063,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
       setSyncError(!!error);
     }, 1200); // debounce, αποφυγή write σε κάθε keystroke
     return () => { if (propertySyncTimer.current) clearTimeout(propertySyncTimer.current); };
-  }, [propertyId, loading, insSignature, insCompany?.label, insCost, insRenewalDate]);
+  }, [propertyId, loading, insSignature, insCompany?.label, insCost, insRenewalDate, supabase, userId]);
 
   // ── Auto-sync ανανέωσης ασφάλειας → calendar_events ──────────────────────────
   useEffect(() => {
@@ -1088,7 +1087,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
       })]);
       if (!error) setCalendarSynced(true);
     })();
-  }, [propertyId, insRenewalDate]);
+  }, [propertyId, userId, supabase, insRenewalDate, calendarSynced, insCompany?.label, insCompany?.plans, insCost, insPlanId]);
 
   // ── ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΑΥΤΟ ΤΟ ΑΚΙΝΗΤΟ ────────────────────────────────────────
   // Οι ανάγκες βγαίνουν από όσα ξέρουμε γι' αυτό το συγκεκριμένο ακίνητο, με
@@ -1414,7 +1413,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               <CustomSelect label="Πρόγραμμα ασφάλισης" value={insPlanId}
                 onChange={v => u({ insPlanId: v, insEditCovers: false })}
                 options={insPlanOptions}/>
-              <NumberInput label="Πραγματικό κόστος τον μήνα" value={insCustomPrice} onChange={v => u({ insCustomPrice: v })} suffix="€" step={1}/>
+              <NumberInput label="Πραγματικό κόστος τον μήνα" value={insCustomPrice} onChange={v => u({ insCustomPrice: v })} suffix="€"/>
             </div>
             <div style={g4}>
               <TextInput   label={insCompany?.agent_label || 'Ασφαλιστής'} value={insAgentName}    onChange={v => u({ insAgentName: v })}    placeholder="Ονοματεπώνυμο"/>
@@ -1440,10 +1439,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                       άδεια για να πατήσεις μια κάλυψη· χρειάζεται όμως δρόμος
                       πίσω, όταν τα άλλαξες και θέλεις ό,τι λέει ο κατάλογος. */}
                   {insEditCovers && (
-                    <button type="button" onClick={() => u({ insEditCovers: false })}
-                      style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, padding: '5px 12px', cursor: 'pointer', fontFamily: T.font.sans, fontWeight: 600 }}>
-                      Επαναφορά προγράμματος
-                    </button>
+                    <Btn variant="secondary" onClick={() => u({ insEditCovers: false })}>Επαναφορά προγράμματος</Btn>
                   )}
                 </div>
                 {/* ══════════════════════════════════════════════════════════
@@ -1532,10 +1528,10 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
             {/* Τέσσερα στοιχεία του ίδιου ακινήτου, σε μία σειρά ίσα μοιρασμένη
                 αντί για δύο σειρές των δύο με μισή κάρτα άδεια δεξιά. */}
             <div {...fieldRow(180, 14, { marginBottom: 14 })}>
-              <NumberInput label="Εμβαδόν"           value={effectiveSqm}    onChange={v => u({ insSqm: v })}          suffix="τ.μ." step={5}/>
+              <NumberInput label="Εμβαδόν"           value={effectiveSqm}    onChange={v => u({ insSqm: v })}          suffix="τ.μ."/>
               <TextInput   label="Πόλη ή περιοχή"    value={effectiveCity}   onChange={v => u({ insCity: v })}         placeholder="Αθήνα"/>
-              <NumberInput label="Αξία κτιρίου"      value={insPropValue}    onChange={v => u({ insPropValue: v })}    suffix="€" step={5000}/>
-              <NumberInput label="Αξία περιεχομένου" value={insContentValue} onChange={v => u({ insContentValue: v })} suffix="€" step={1000}/>
+              <NumberInput label="Αξία κτιρίου"      value={insPropValue}    onChange={v => u({ insPropValue: v })}    suffix="€"/>
+              <NumberInput label="Αξία περιεχομένου" value={insContentValue} onChange={v => u({ insContentValue: v })} suffix="€"/>
             </div>
           </div>
 
@@ -1560,15 +1556,14 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {QUOTE_FILTERS.map(f => (
-                    <button key={f.key} onClick={() => setQuotesFilter(f.key)}
-                      style={{ fontSize: 'var(--fs-xs)', padding: '4px 10px', borderRadius: T.radius.pill, border: `1px solid ${quotesFilter === f.key ? 'var(--accent)' : 'var(--border-subtle)'}`, background: quotesFilter === f.key ? 'var(--accent-soft)' : 'transparent', color: quotesFilter === f.key ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', fontFamily: T.font.sans, fontWeight: quotesFilter === f.key ? 700 : 400 }}>
-                      {f.label}
-                    </button>
+                    <ChipToggle key={f.key} on={quotesFilter === f.key} onClick={() => setQuotesFilter(f.key)}>{f.label}</ChipToggle>
                   ))}
-                  <button onClick={() => setShowQuotes(v => !v)}
-                    style={{ fontSize: 'var(--fs-xs)', padding: '4px 10px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: T.font.sans }}>
+                  {/* Πλακίδιο και όχι κουμπί: κάθεται στην ίδια σειρά με τα φίλτρα
+                      και κρατά κατάσταση (ανοιχτό ή κλειστό), οπότε τη λέει με
+                      aria-pressed αντί να την αφήνει μόνο στο βελάκι. */}
+                  <ChipToggle on={showQuotes} onClick={() => setShowQuotes(v => !v)}>
                     {showQuotes ? '▲ Σύμπτυξη' : '▼ Ανάπτυξη'}
-                  </button>
+                  </ChipToggle>
                 </div>
               </div>
 
@@ -1658,12 +1653,20 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                 </div>
               )}
 
+              {/* Ο ΙΔΙΟΣ ΠΙΝΑΚΑΣ ΜΕ ΤΟΥ ΡΕΥΜΑΤΟΣ, ΜΕ ΤΗΝ ΙΔΙΑ ΚΛΑΣΗ. Οκτώ στήλες
+                  και οκτώ αντίγραφα του ίδιου `padding: 6px 8px`. Οι τρεις
+                  στήλες κάλυψης είναι «Ναι» ή «Όχι» και κεντράρονται· οι
+                  τέσσερις των ποσών στοιχίζονται δεξιά, όπως κάθε στήλη αριθμών
+                  του προϊόντος. Η `.pin-1` κρατά την εταιρεία ορατή όσο ο
+                  χρήστης σέρνει προς την «Εξοικονόμηση». */}
               {showQuotes && !quotesLoading && filteredQuotes.length > 0 && (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--fs-xs)', minWidth: 700 }}>
+                <>
+                <div className="po-table-box">
+                 <div className="po-scroll-x">
+                  <table className="po-table pin-1" style={{ '--tbl-fs': 'var(--fs-xs)', '--tbl-min': '760px', '--row-bg': 'var(--bg-surface)' }}>
                     <thead>
                       <tr>{['Εταιρεία','Πρόγραμμα','Σεισμός','Πλημμύρα','Φυσικές καταστροφές','Εκτιμώμενο Μηνιαίο','Εκτιμώμενο Ετήσιο','Εξοικονόμηση/μήνα'].map((h, i) => (
-                        <th key={i} style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--text-secondary)', padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', fontWeight: 600, fontFamily: T.font.sans, background: 'var(--bg-elevated)', whiteSpace: 'nowrap' as const }}>{h}</th>
+                        <th key={i} scope="col" style={{ background: 'var(--bg-elevated)', whiteSpace: i < 4 ? ('nowrap' as const) : undefined, textAlign: i > 1 && i < 5 ? ('center' as const) : i >= 5 ? ('right' as const) : undefined }}>{h}</th>
                       ))}</tr>
                     </thead>
                     <tbody>
@@ -1671,15 +1674,16 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                         const isCur = q.company === insProvider && q.plan === insPlanId;
                         return (
                           <tr key={q.plan} onClick={() => { u({ insProvider: q.company, insPlanId: q.plan, insEditCovers: false }); }}
-                            style={{ cursor: 'pointer', background: isCur ? 'var(--accent-soft)' : 'transparent', transition: 'background 0.15s' }}>
-                            <td style={{ padding: '6px 8px', fontWeight: isCur ? 700 : 400, color: isCur ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.sans }}>{q.companyLabel}{isCur ? ' ✓' : ''}</td>
-                            <td style={{ padding: '6px 8px', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)' }}>{q.planLabel}</td>
-                            <td style={{ padding: '6px 8px', color: q.earthquake ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.earthquake ? 'Ναι' : 'Όχι'}</td>
-                            <td style={{ padding: '6px 8px', color: q.flood     ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.flood     ? 'Ναι' : 'Όχι'}</td>
-                            <td style={{ padding: '6px 8px', color: q.natural   ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.natural   ? 'Ναι' : 'Όχι'}</td>
-                            <td style={{ padding: '6px 8px', fontWeight: 600, color: isCur ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' as const }}>{fe(q.monthlyEstimate)}</td>
-                            <td style={{ padding: '6px 8px', color: 'var(--text-secondary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', whiteSpace: 'nowrap' as const }}>{fe(q.annualEstimate)}</td>
-                            <td style={{ padding: '6px 8px', fontWeight: 700, fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' as const, color: 'var(--text-secondary)' }}>
+                            className={isCur ? 'is-on' : undefined}
+                            style={{ cursor: 'pointer', transition: 'background 0.15s' }}>
+                            <td style={{ fontWeight: isCur ? 700 : 400, color: isCur ? 'var(--accent)' : 'var(--text-primary)' }}>{q.companyLabel}{isCur ? ' ✓' : ''}</td>
+                            <td>{q.planLabel}</td>
+                            <td style={{ color: q.earthquake ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.earthquake ? 'Ναι' : 'Όχι'}</td>
+                            <td style={{ color: q.flood     ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.flood     ? 'Ναι' : 'Όχι'}</td>
+                            <td style={{ color: q.natural   ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.natural   ? 'Ναι' : 'Όχι'}</td>
+                            <td className="num" style={{ fontWeight: 600, color: isCur ? 'var(--accent)' : 'var(--text-primary)', whiteSpace: 'nowrap' as const }}>{fe(q.monthlyEstimate)}</td>
+                            <td className="num" style={{ whiteSpace: 'nowrap' as const }}>{fe(q.annualEstimate)}</td>
+                            <td className="num" style={{ fontWeight: 700, whiteSpace: 'nowrap' as const }}>
                               {q.savings !== undefined && q.savings !== 0 ? `${q.savings > 0 ? '+' : ''}${fe(q.savings)}` : fe(0)}
                             </td>
                           </tr>
@@ -1687,10 +1691,12 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                       })}
                     </tbody>
                   </table>
-                  <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, background: 'var(--bg-elevated)', padding: '6px 12px', borderRadius: T.radius.badge }}>
-                    * Εκτιμώμενες τιμές βάσει στοιχείων ακινήτου, Χρησιμοποίησε <a href="https://www.insurancemarket.gr/katoikia/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>insurancemarket.gr</a> για ακριβή προσφορά · Πάτα γραμμή για επιλογή
-                  </div>
+                 </div>
                 </div>
+                <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, background: 'var(--bg-elevated)', padding: '6px 12px', borderRadius: T.radius.badge }}>
+                  * Εκτιμώμενες τιμές βάσει στοιχείων ακινήτου, Χρησιμοποίησε <a href="https://www.insurancemarket.gr/katoikia/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>insurancemarket.gr</a> για ακριβή προσφορά · Πάτα γραμμή για επιλογή
+                </div>
+                </>
               )}
             </div>
           )}
@@ -1728,7 +1734,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               sub={`${monthNom(Number(curMonth.slice(5, 7)) - 1)}, με τα ποσοστά που όρισες.`}
               right={<span style={{ ...TT.kpi, fontSize: 18 }}>{fe(chargesTotal)}</span>}/>
 
-            {/* Η ΓΡΑΜΜΗ ΤΟΥ ΦΟΡΟΥ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΤΑΝ ΥΠΑΡΧΕΙ ΦΟΡΟΣ. Ένα «0,00 €
+            {/* Η ΓΡΑΜΜΗ ΤΟΥ ΦΟΡΟΥ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΤΑΝ ΥΠΑΡΧΕΙ ΦΟΡΟΣ. Ένα «0,00€
                 αντίστροφη χρέωση» σε ιδιώτη είναι θόρυβος με νομικό ύφος. */}
             {isBusiness && vatTotal > 0 && (
               <p style={{ ...TT.bodySm, margin: '0 0 12px', lineHeight: 1.6 }}>
@@ -1751,10 +1757,12 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button type="button" onClick={bookMonth} disabled={booking || chargesTotal <= 0}
-                style={addBtn(booking || chargesTotal <= 0)}>
+              {/* `field` και όχι size="lg": το addBtn έδινε ΚΑΙ πλήρες πλάτος, οπότε
+                  το μήνυμα από δίπλα τυλιγόταν από κάτω. Μόνο το `field` κρατά
+                  και το ύψος πεδίου και το πλάτος της σειράς. */}
+              <Btn variant="primary" field onClick={bookMonth} disabled={booking || chargesTotal <= 0}>
                 {booking ? 'Καταχωρείται…' : 'Καταχώρηση στις δαπάνες'}
-              </button>
+              </Btn>
               {bookedCount > 0 && (
                 <span style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
                   {bookedCount === 1 ? 'Μία γραμμή μπήκε' : `${bookedCount} γραμμές μπήκαν`} στο καθολικό.
@@ -1801,13 +1809,12 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                 «Παράδειγμα: » έπιανε 105 από τα 132 του κουτιού. */}
             <div {...fixedCols(4, 14)}>
               <TextInput   label="Ονομασία"             value={newSubName}    onChange={setNewSubName}    placeholder="Netflix"/>
-              <NumberInput label="Κόστος τον μήνα"      value={newSubPrice}   onChange={setNewSubPrice}   suffix="€" step={1}/>
+              <NumberInput label="Κόστος τον μήνα"      value={newSubPrice}   onChange={setNewSubPrice}   suffix="€"/>
               <DatePicker  label="Ημερομηνία ανανέωσης" value={newSubRenewal} onChange={setNewSubRenewal}/>
-              <button type="button" disabled={!newSubName.trim() || !newSubPrice}
-                onClick={() => { u({ otherSubs: [...(otherSubs || []), { name: newSubName, price: newSubPrice, renewalDate: newSubRenewal }] }); setNewSubName(''); setNewSubPrice(''); setNewSubRenewal(''); }}
-                style={addBtn(!newSubName.trim() || !newSubPrice)}>
+              <Btn variant="primary" field disabled={!newSubName.trim() || !newSubPrice}
+                onClick={() => { u({ otherSubs: [...(otherSubs || []), { name: newSubName, price: newSubPrice, renewalDate: newSubRenewal }] }); setNewSubName(''); setNewSubPrice(''); setNewSubRenewal(''); }}>
                 Προσθήκη
-              </button>
+              </Btn>
             </div>
           </div>
           {(otherSubs || []).map((s, i) => {
@@ -1820,8 +1827,11 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(parseFloat(s.price))} / μήνα</span>
-                  <button onClick={() => u({ otherSubs: (otherSubs || []).filter((_, j) => j !== i) })}
-                    style={{ width: 26, height: 26, borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                  {/* `round` γιατί το παλιό radius ήταν 100, δηλαδή κύκλος. Το λεκτικό
+                      έλειπε εντελώς: ο αναγνώστης οθόνης άκουγε μόνο «✕». */}
+                  <IconBtn label={`Διαγραφή συνδρομής ${s.name}`} round onClick={() => u({ otherSubs: (otherSubs || []).filter((_, j) => j !== i) })}>
+                    <span style={{ fontSize: 12 }}>✕</span>
+                  </IconBtn>
                 </div>
               </div>
             );

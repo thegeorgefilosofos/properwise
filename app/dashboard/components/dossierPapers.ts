@@ -100,7 +100,16 @@ export async function fetchDossierPapers(
   // Υπογεγραμμένα URL για όλα μαζί, μία κλήση.
   const paths = candidates.map(r => r.file_path)
   const signed: Record<string, string> = {}
-  const { data } = await db.storage.from(BUCKET).createSignedUrls(paths, 60 * 10)
+  // ΕΝΑΣ ΛΟΓΟΣ, ΜΙΑ ΣΗΜΕΙΩΣΗ — ΟΧΙ ΜΙΑ ΑΝΑ ΠΑΡΑΣΤΑΤΙΚΟ. Οταν η υπογραφή των
+  // συνδέσμων αποτύγχανε, ο χάρτης `signed` έμενε άδειος, κάθε αρχείο έπεφτε
+  // στο `!url` παρακάτω και ο φάκελος έβγαινε με σαράντα σημειώσεις «δεν
+  // κατέβηκε» — που έλεγαν ΛΑΘΟΣ αιτία: δεν απέτυχε η λήψη, δεν ζητήθηκε ποτέ.
+  const { data, error: signErr } = await db.storage.from(BUCKET).createSignedUrls(paths, 60 * 10)
+  if (signErr) {
+    console.error('[dossierPapers] οι σύνδεσμοι δεν υπογράφηκαν:', signErr)
+    notes.push(`Τα ${candidates.length} παραστατικά δεν συνοδεύουν αυτόν τον φάκελο: δεν ήταν δυνατή η πρόσβαση στο Αρχείο. Δοκίμασε ξανά σε λίγο· βρίσκονται όλα στο Αρχείο της εφαρμογής.`)
+    return { files: [], notes }
+  }
   data?.forEach((s, i) => { if (s?.signedUrl) signed[paths[i]] = s.signedUrl })
 
   const files: DossierAttachment[] = []

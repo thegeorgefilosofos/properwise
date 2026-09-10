@@ -22,7 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useSyncExternalStore } from 'react';
 import { T } from '@/components/Theme';
-import { ASSISTANT_NAME } from '@/lib/assistant/identity';
+import { ASSISTANT_NAME, ASSISTANT_INITIAL } from '@/lib/assistant/identity';
 import { greeting, suggestedOpeners, type OpenerContext } from '@/lib/assistant/openers';
 import { loadPrefs, PREFS_EVENT } from './assistantPersona';
 
@@ -58,14 +58,14 @@ export default function AssistantStrip({ ctx }: { ctx: OpenerContext | null }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap',
-      marginBottom: 18, paddingBottom: 16, borderBottom: '1px solid var(--border-subtle)',
+      marginBottom: T.sp.lg, paddingBottom: 16, borderBottom: '1px solid var(--border-subtle)',
     }}>
-      <div style={{
-        width: 30, height: 30, borderRadius: '50%', flexShrink: 0, marginTop: 1,
+      <div className="po-lead-ico" style={{
+        width: 30, height: 30, borderRadius: '50%',
         background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
         color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 700,
-      }} aria-hidden>{ASSISTANT_NAME.charAt(0)}</div>
+      }} aria-hidden>{ASSISTANT_INITIAL}</div>
 
       <div style={{ flex: 1, minWidth: 220 }}>
         <p style={{
@@ -78,9 +78,13 @@ export default function AssistantStrip({ ctx }: { ctx: OpenerContext | null }) {
             {asks.map(q => (
               <button key={q} type="button" onClick={() => askAssistant(q, true)}
                 // ΤΥΛΙΓΕΙ, ΔΕΝ ΚΟΒΕΤΑΙ. Ηταν `nowrap` με αποσιωπητικά: στα 360 το
-                // «Από τα 620,00 € τον μήνα, πόσο μου μένει καθαρά;» έγραφε «Από
-                // τα 620,00 € τον μήνα, πόσο…» — μια ερώτηση χωρίς το ερώτημά της.
+                // «Από τα 620,00€ τον μήνα, πόσο μου μένει καθαρά;» έγραφε «Από
+                // τα 620,00€ τον μήνα, πόσο…» — μια ερώτηση χωρίς το ερώτημά της.
                 // Η πρόταση είναι το ΟΛΟ κουμπί· αν δεν διαβάζεται, δεν την πατά κανείς.
+                //
+                // ΓΙ᾽ ΑΥΤΟ ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ ΚΑΙ ΔΕΝ ΓΙΝΕΤΑΙ <Btn>: το Btn κεντράρει
+                // τις γραμμές του και γράφει 12/700, οπότε μια ερώτηση δύο σειρών
+                // θα σταματούσε να διαβάζεται ως πρόταση.
                 style={{
                   padding: '6px 13px', minHeight: T.h.sm, borderRadius: T.radius.pill,
                   border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)',

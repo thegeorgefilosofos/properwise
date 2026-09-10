@@ -15,7 +15,7 @@
 // 2. «Προβολή εσόδων». Ίδια ρίζα: πολλαπλασιασμός των προτάσεών μας με
 //    πληρότητα που εν μέρει επινοήσαμε.
 // 3. Η αυτόματη βάση από τ.μ./ενοίκιο (`suggestBaseFallback`). 60 τ.μ. στη
-//    Λάρισα έβγαζαν 96 €/νύχτα. Χωρίς ιστορικό δεν προτείνουμε βάση: μένει το
+//    Λάρισα έβγαζαν 96€/νύχτα. Χωρίς ιστορικό δεν προτείνουμε βάση: μένει το
 //    EmptyState και η βαθμονόμηση από πραγματικές αγγελίες ανταγωνιστών.
 // 4. Το τρίτο έτος (nowYear+2) — 1.096 υπολογισμένες ημέρες για τιμές που
 //    κανείς δεν ορίζει δύο χρόνια μπροστά.
@@ -34,9 +34,11 @@ import * as stayStore from '@/lib/data/stays';
 import * as billStore from '@/lib/data/bills';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
-import { T, PageTitle, KPIGrid, InfoBanner, Btn, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, fd, fp, fn, pressable, formGrid, fieldRow, Bar } from '@/components/Theme';
+import { T, PageTitle, KPIGrid, InfoBanner, Btn, ChipToggle, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { shortTermYearSummary, isHouseType } from '@/lib/tax/shortTermTax';
+import { isIndividualTaxpayer } from '@/lib/accounting/taxProfile';
+import type { LegalForm } from '@/lib/accounting/dossier';
 import { shortTermCashflow } from '@/lib/tax/shortTermCashflow';
 import { mergeLedger, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
 import { notify, notifyOk, notifyError } from '@/components/Toast';
@@ -57,6 +59,9 @@ import { failed } from '@/lib/core/dbError';
 
 interface Props {
   propertyId: string; userId: string; propertyName?: string; propertySqm?: number;
+  /** ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΡΩΤΑΕΙ ΑΝ ΕΙΣΑΙ ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ. Δες `isIndividualTaxpayer`. */
+  profileType?: 'individual' | 'professional';
+  legalForm?: LegalForm;
   /** ΔΕΝ ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ ΠΙΑ. Το `page.tsx` το περνά ακόμη· έμεινε στον τύπο για
    *  να μη σπάσει η κλήση. Τροφοδοτούσε το `suggestBaseFallback`, που πρότεινε
    *  τιμή/νύχτα από `(ενοίκιο/30) × 2,2` χωρίς τοποθεσία. Δες dynamicPricing.ts. */
@@ -131,7 +136,7 @@ const MoneySteps = ({ steps, scale = 'lead' }: { steps: MoneyStep[]; scale?: 'le
   );
 };
 
-export default function TabPricing({ propertyId, userId, propertyName, propertySqm }: Props) {
+export default function TabPricing({ propertyId, userId, propertyName, propertySqm, profileType = 'individual', legalForm = 'individual' }: Props) {
   const supabase = createClient();
   const [stays, setStays] = useState<PriceStay[]>([]);
   const [isHouse, setIsHouse] = useState(false);
@@ -146,6 +151,8 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   const [showPast, setShowPast] = useState(false); // εμφάνιση περασμένων μηνών
   const [sel, setSel] = useState<DayPrice | null>(null);
   const [touched, setTouched] = useState(false);
+  /** Η ανάγνωση των αποθηκευμένων τιμών απέτυχε: δεν ξέρουμε τι υπάρχει, άρα δεν γράφουμε. */
+  const [unread, setUnread] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
   const [gapTitles, setGapTitles] = useState<Set<string>>(new Set()); // κενά ήδη στο Ημερολόγιο
   const compsKey = `pos-pricing-comps-${propertyId}`;
@@ -160,18 +167,33 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     // πόσες διαμονές δεν έχουν Δήλωση Βραχυχρόνιας και ανά ποιο κανάλι.
     const data = await stayStore.ofProperty<PriceStay>(supabase, propertyId, stayStore.ACCOUNTING_COLUMNS, userId);
     setStays(data);
-  }, [userId, propertyId]);
+  }, [userId, propertyId, supabase]);
 
   // Ο τύπος του ακινήτου κρίνει το κλιμάκιο του τέλους ανθεκτικότητας: το
-  // υψηλότερο (15/4 €) ισχύει ΜΟΝΟ για μονοκατοικίες άνω των 80 τ.μ., όχι για
+  // υψηλότερο (15/4€) ισχύει ΜΟΝΟ για μονοκατοικίες άνω των 80 τ.μ., όχι για
   // κάθε ακίνητο άνω των 80 τ.μ. Χωρίς αυτό, η ανάλυση τιμής θα ήταν λάθος.
   const loadPropType = useCallback(async () => {
     const data = await properties.one<{ prop_type: string }>(supabase, propertyId, 'prop_type', userId);
     setIsHouse(isHouseType(data?.prop_type));
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
+  // ═══ ΟΤΑΝ Η ΑΝΑΓΝΩΣΗ ΑΠΟΤΥΓΧΑΝΕΙ, Η ΑΠΟΘΗΚΕΥΣΗ ΣΒΗΝΕΙ ΤΙΜΕΣ ══════════════
+  // Η ανάγνωση πετούσε το σφάλμα κι το `touched` έμενε ψευδές — που μοιάζει
+  // ασφαλές, επειδή η αυτόματη αποθήκευση δεν τρέχει χωρίς αυτό. Δεν είναι:
+  //
+  //   · Το `mark()` (γρ. 464) ανάβει το `touched` με ΤΟ ΠΡΩΤΟ πάτημα σε
+  //     οποιοδήποτε χειριστήριο. Το `upsert` γράφει κι τα ΠΕΝΤΕ πεδία από τη
+  //     μνήμη, που μετά από αποτυχημένη ανάγνωση κρατά προεπιλογές. Ο χρήστης
+  //     αλλάζει την ελάχιστη διαμονή κι χάνει βάση, κατώτατη, ανώτατη κι
+  //     προσαύξηση Σαββατοκύριακου — τιμές που είχε δουλέψει.
+  //   · Το ίδιο ψευδές `touched` αφήνει την αυτόματη πρόταση να γράψει από
+  //     πάνω τους, που είναι ακριβώς ό,τι απαγορεύει το σχόλιο δίπλα του.
+  //
+  // Οσο δεν ξέρουμε τι υπάρχει, ΔΕΝ ΓΡΑΦΟΥΜΕ. Ιδια απόφαση με την επωνυμία
+  // αναφορών: η άρνηση είναι φθηνή, το σβήσιμο δεν ξεγίνεται.
   const loadSettings = useCallback(async () => {
-    const { data } = await supabase.from('pricing_settings').select('*').eq('user_id', userId).eq('property_id', propertyId).maybeSingle();
+    const { data, error } = await supabase.from('pricing_settings').select('*').eq('user_id', userId).eq('property_id', propertyId).maybeSingle();
+    setUnread(!!error);
     if (data) {
       if (data.base != null) setBase(Number(data.base));
       if (data.min_price != null) setMin(Number(data.min_price));
@@ -180,7 +202,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       if (data.min_stay != null) setMinStay(Number(data.min_stay));
       setTouched(true); // υπάρχουν αποθηκευμένες τιμές, μην τις παρακάμψεις με auto
     }
-  }, [userId, propertyId]);
+  }, [userId, propertyId, supabase]);
 
   // ═══ ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ ΠΟΥ ΕΛΕΙΠΑΝ ΓΙΑ ΝΑ ΚΛΕΙΣΕΙ Η ΑΛΥΣΙΔΑ ═══════════════════
   // Οι λειτουργικές δαπάνες της χρονιάς και πόσα ακίνητα έχει ο φορολογούμενος
@@ -199,12 +221,12 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     const { entries } = mergeLedger(bil as LedgerBill[], (exp || []) as LedgerExpense[]);
     setOpex(entries.filter(e => e.date.slice(0, 4) === String(nowYear)).reduce((sum, e) => sum + e.amount, 0));
     setPropCount(Math.max(1, count || 1));
-  }, [propertyId, userId, nowYear]);
+  }, [propertyId, userId, nowYear, supabase]);
 
   // Ποια κενά έχουν ήδη υπενθύμιση στο Ημερολόγιο (για toggle προσθήκη/αφαίρεση).
   const loadGapEvents = useCallback(async () => {
     setGapTitles(new Set(await calendar.titles(supabase, propertyId, { source: 'pricing_gap' })));
-  }, [propertyId]);
+  }, [propertyId, supabase]);
 
   useEffect(() => {
     (async () => { setLoading(true); await Promise.all([loadStays(), loadSettings(), loadGapEvents(), loadPropType(), loadCashflowInputs()]); setLoading(false); })();
@@ -218,7 +240,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pricing_settings', filter: `user_id=eq.${userId}` }, () => loadSettings())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [userId, propertyId, loadStays, loadSettings]);
+  }, [userId, propertyId, loadStays, loadSettings, supabase]);
 
   // Τιμές ανταγωνισμού: τοπική αποθήκευση (βοήθημα βαθμονόμησης, ανά ακίνητο).
   useEffect(() => { try { localStorage.setItem(compsKey, JSON.stringify(comps)); } catch { /* ignore */ } }, [comps, compsKey]);
@@ -241,17 +263,17 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   }
 
   // ── Αποθήκευση ρυθμίσεων (debounced) ──────────────────────────────────────
-  const settingsRef = useRef({ base, min, max, wknd, minStay, touched });
-  useEffect(() => { settingsRef.current = { base, min, max, wknd, minStay, touched }; });
+  const settingsRef = useRef({ base, min, max, wknd, minStay, touched, unread });
+  useEffect(() => { settingsRef.current = { base, min, max, wknd, minStay, touched, unread }; });
   // Ο έλεγχος ζει ΕΔΩ, μαζί με το γράψιμο και όχι στον καλούντα: έτσι δεν
   // υπάρχει διαδρομή που να αποθηκεύει χωρίς να ρωτά αν αποθηκεύτηκε.
   const persist = useCallback((v: { base: number; min: number; max: number; wknd: number; minStay: number }) =>
     saved('Η τιμολόγηση δεν αποθηκεύτηκε', supabase.from('pricing_settings').upsert({
       user_id: userId, property_id: propertyId, base: v.base, min_price: v.min || null, max_price: v.max || null,
       weekend_premium: v.wknd / 100, min_stay: v.minStay, updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,property_id' })), [userId, propertyId]);
+    }, { onConflict: 'user_id,property_id' })), [userId, propertyId, supabase]);
   useEffect(() => {
-    if (!touched || base <= 0) return;
+    if (unread || !touched || base <= 0) return;
     const t = setTimeout(async () => {
       // «Αποθηκεύτηκε» χωρίς έλεγχο είναι το χειρότερο μήνυμα που υπάρχει.
       if (!await persist({ base, min, max, wknd, minStay })) return;
@@ -261,13 +283,13 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       setSaveNote(`Αποθηκεύτηκε. Βάση ${fe(base)}, εύρος ${range}, Σαββατοκύριακο +${wknd}%, ελάχιστη διαμονή ${minStay} ${minStay === 1 ? 'νύχτα' : 'νύχτες'}.`);
     }, 700);
     return () => clearTimeout(t);
-  }, [base, min, max, wknd, minStay, touched, persist]);
+  }, [base, min, max, wknd, minStay, touched, unread, persist]);
   // Το μήνυμα σβήνει διακριτικά μετά από λίγο — μένει «ζωντανό», όχι μόνιμο.
   useEffect(() => { if (!saveNote) return; const t = setTimeout(() => setSaveNote(null), 5200); return () => clearTimeout(t); }, [saveNote]);
   // Flush κατά την έξοδο: η τελευταία αλλαγή δεν χάνεται αν φύγεις μέσα στα 700ms.
   useEffect(() => () => {
     const v = settingsRef.current;
-    if (v.touched && v.base > 0) persist(v);
+    if (!v.unread && v.touched && v.base > 0) persist(v);
   }, [persist]);
 
   const bookedDates = useMemo(() => bookedDatesFromStays(stays), [stays]);
@@ -327,8 +349,10 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // ιδιοκτήτης έπρεπε να επισκεφθεί και τις τρεις και να κάνει την αφαίρεση
   // μόνος του — δηλαδή να κάνει ό,τι υποτίθεται ότι κάνει η εφαρμογή.
   const taxSummary = useMemo(
-    () => shortTermYearSummary(stays, nowYear, { sqm: propertySqm ?? null, isHouse, propertyCount: propCount, individual: true }),
-    [stays, nowYear, propertySqm, isHouse, propCount],
+    // ΗΤΑΝ ΚΑΡΦΩΜΕΝΟ «ναι, φυσικό πρόσωπο». Το νομικό πρόσωπο έβλεπε μηδέν
+    // δημοτικό τέλος εδώ, δίπλα στο σωστό ποσό της Λογιστικής.
+    () => shortTermYearSummary(stays, nowYear, { sqm: propertySqm ?? null, isHouse, propertyCount: propCount, individual: isIndividualTaxpayer(profileType, legalForm) }),
+    [stays, nowYear, propertySqm, isHouse, propCount, profileType, legalForm],
   );
   const cashflow = useMemo(
     () => shortTermCashflow({
@@ -367,9 +391,15 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     return [...m.entries()];
   }, [yearRows]);
   const todayMonth = todayIso().slice(0, 7);
-  const isPastMonth = (key: string) => pyear === nowYear && key < todayMonth;
-  const pastCount = useMemo(() => months.filter(([k]) => isPastMonth(k)).length, [months, pyear, nowYear]);
-  const visibleMonths = useMemo(() => months.filter(([k]) => showPast || !isPastMonth(k)), [months, showPast, pyear, nowYear]);
+  // ── ΤΟ `todayMonth` ΕΛΕΙΠΕ ΚΑΙ ΑΠΟ ΤΙΣ ΔΥΟ ΛΙΣΤΕΣ ────────────────────────
+  // Η συνάρτηση κλείνει μέσα της τρεις τιμές και οι εξαρτήσεις ανέφεραν δύο.
+  // Καρτέλα ανοιχτή τη νύχτα της αλλαγής μήνα κρατούσε τον περασμένο μήνα ως
+  // «τρέχοντα»: ο Ιανουάριος έμενε ορατός μέσα στον Φεβρουάριο, με τιμές που
+  // ο οικοδεσπότης δεν μπορεί πια να αλλάξει. Ως `useCallback` η εξάρτηση
+  // γίνεται ΜΙΑ και ο μεταγλωττιστής δεν μπορεί να την ξεχάσει.
+  const isPastMonth = useCallback((key: string) => pyear === nowYear && key < todayMonth, [pyear, nowYear, todayMonth]);
+  const pastCount = useMemo(() => months.filter(([k]) => isPastMonth(k)).length, [months, isPastMonth]);
+  const visibleMonths = useMemo(() => months.filter(([k]) => showPast || !isPastMonth(k)), [months, showPast, isPastMonth]);
 
   // ═══ ΕΚΑΤΟΝ ΕΙΚΟΣΙ ΔΥΟ ΣΤΑΣΕΙΣ TAB ΓΙΑ ΝΑ ΠΕΡΑΣΕΙΣ ΤΟ ΗΜΕΡΟΛΟΓΙΟ ═══════════
   // ΜΕΤΡΗΜΕΝΟ ΣΤΑ 1280: η καρτέλα έχει 148 στάσεις πληκτρολογίου συνολικά και
@@ -452,7 +482,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
 
 
   // ── Η γραμμή που κανείς δεν επινοεί ────────────────────────────────────────
-  // Ο οικοδεσπότης βλέπει «85 €/νύχτα» και νομίζει ότι εισπράττει 85 και δηλώνει
+  // Ο οικοδεσπότης βλέπει «85€/νύχτα» και νομίζει ότι εισπράττει 85 και δηλώνει
   // 85. Κανένα από τα δύο. Το τέλος ανθεκτικότητας ΔΕΝ είναι έσοδό του (το κρατά
   // για το κράτος) και η προμήθεια είναι ΔΑΠΑΝΗ που δεν μειώνει το δηλωτέο έσοδο.
   // Τίποτα εδώ δεν είναι επινοημένο: το τέλος από τους συντελεστές της ΑΑΔΕ, η
@@ -461,8 +491,8 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // Το ΤΑΚΚ έχει δύο συντελεστές, με σύνορο την 1η Απριλίου και την 1η
   // Νοεμβρίου. Η γραμμή του κενού υπολόγιζε το τέλος ΜΟΝΟ από την ημερομηνία
   // έναρξης και το τύπωνε σαν να ισχύει για όλο το διάστημα: ένα κενό «24 Σεπ
-  // έως 31 Δεκ» έγραφε 8,00 € για ενενήντα εννέα νύχτες, ενώ οι εξήντα ένα από
-  // αυτές πληρώνουν 2,00 €. Το «μένει σε εσένα» της γραμμής ήταν αντίστοιχα
+  // έως 31 Δεκ» έγραφε 8,00€ για ενενήντα εννέα νύχτες, ενώ οι εξήντα ένα από
+  // αυτές πληρώνουν 2,00€. Το «μένει σε εσένα» της γραμμής ήταν αντίστοιχα
   // λάθος προς τα κάτω. Οταν το διάστημα περνά το σύνορο, το λέμε και δίνουμε
   // την ημερομηνία — δεν διαλέγουμε σιωπηλά τη μία από τις δύο τιμές.
   const levyChange = (start: string, end?: string) => {
@@ -488,7 +518,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
      είναι ΑΥΤΟΥΣΙΑ η τιμή που δίνει ο καλών: στην κάρτα του κενού γράφεται τρεις
      γραμμές πιο πάνω ως «πρόταση πλήρωσης» και στη λεπτομέρεια ημέρας ως
      «Προτεινόμενη τιμή», με έντονα και σε χρώμα τόνου. Μετρημένο στον πάγκο:
-     «120,00 €» δύο φορές στην ίδια κάρτα.
+     «120,00€» δύο φορές στην ίδια κάρτα.
 
      Μένει η αφαίρεση και μόνο: τι φεύγει και τι απομένει, δύο φορές. */
   const priceLine = (date: string, price: number, end?: string) => {
@@ -576,22 +606,22 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
             τα ψηφία έβγαιναν εκτός κέντρου, γιατί το ορατό κομμάτι ήταν η μέση
             ενός ψηλότερου κουμπιού. Μετρημένο στην Αξιοποίηση, 360×800.
 
-            Με ΕΛΑΧΙΣΤΟ ύψος, σε ποντίκι μένει 28 όπως ήταν και σε δάχτυλο το
-            κουτί ακολουθεί τα κουμπιά του. */}
+            Με ΕΛΑΧΙΣΤΟ ύψος, το κουτί ακολουθεί τα πλακίδιά του: παίρνει το ύψος
+            της κλίμακας στο ποντίκι και τα 44 στο δάχτυλο. */}
         <div style={{ display: 'inline-flex', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, overflow: 'hidden', minHeight: 28 }}>
+          {/* `seg` επειδή η πιλούλα από πάνω έχει ήδη δικό της περίγραμμα: ένα
+              δεύτερο ανά τμήμα θα έδινε διπλή γραμμή στη μέση. */}
           {[nowYear, nowYear + 1].map(y => (
-            <button key={y} onClick={() => setPyear(y)} style={{
-              border: 'none', cursor: 'pointer', fontFamily: T.font.sans, fontSize: 12,
-              fontWeight: pyear === y ? 700 : 500, padding: '0 14px',
-              background: pyear === y ? 'var(--accent-soft)' : 'transparent',
-              color: pyear === y ? 'var(--accent)' : 'var(--text-tertiary)',
-            }}>{y}</button>
+            <ChipToggle key={y} shape="seg" on={pyear === y} onClick={() => setPyear(y)}>{y}</ChipToggle>
           ))}
         </div>
       </div>
       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 16, minHeight: 16 }}>
         {adr > 0 && <>Μέση πραγματική τιμή (ADR): <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fe(adr)}</strong> / νύχτα από {stays.length} διαμονές. </>}
         {saveNote && <span style={{ color: 'var(--text-secondary)' }}>{saveNote}</span>}
+        {/* Η άρνηση λέγεται ΕΚΕΙ που ο χρήστης περιμένει το «αποθηκεύτηκε». Σιωπηλή
+            αποθήκευση που δεν γίνεται είναι χειρότερη από αποτυχία που φαίνεται. */}
+        {unread && <span style={{ color: 'var(--warning)' }}>Οι αποθηκευμένες τιμές δεν διαβάστηκαν, οπότε η αυτόματη αποθήκευση είναι κλειστή για να μη σβηστούν. Ανανέωσε τη σελίδα.</span>}
       </div>
 
       {/* Βαθμονόμηση βάσης από τον ανταγωνισμό (προαιρετικό, τοπικό) */}
@@ -601,11 +631,11 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
         const compBase = median ? Math.max(5, Math.round((median * 0.9) / 5) * 5) : 0;
         const setComp = (i: number, v: string) => setComps(prev => { const n = [...prev]; n[i] = v; return n; });
         return (
-          <div className="card" style={{ marginBottom: 18 }}>
+          <div className="card" style={{ marginBottom: T.sp.lg }}>
             <div className="po-disclosure" {...pressable(() => setCompsOpen(o => !o))}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Βαθμονόμηση από τον ανταγωνισμό</div>
-                <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1 }}>Βάλε τιμές/νύχτα παρόμοιων ακινήτων της περιοχής και δες μια προτεινόμενη βάση</div>
+                <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Βάλε τιμές/νύχτα παρόμοιων ακινήτων της περιοχής και δες μια προτεινόμενη βάση</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                 {median > 0 && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num }}>διάμεση {fe(median)}</span>}
@@ -616,7 +646,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
                 <div style={{ ...formGrid(130, 190), gap: 10, marginBottom: 12 }}>
                   {[0, 1, 2, 3].map(i => (
-                    <NumberInput key={i} label={`Ανταγωνιστής ${i + 1}`} value={comps[i] || ''} onChange={v => setComp(i, v)} suffix="€" step={5} placeholder="" />
+                    <NumberInput key={i} label={`Ανταγωνιστής ${i + 1}`} value={comps[i] || ''} onChange={v => setComp(i, v)} suffix="€" placeholder="" />
                   ))}
                 </div>
                 {compBase > 0 ? (
@@ -749,7 +779,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           {/* Ημερολόγιο-heatmap */}
           <div style={{ marginTop: 24 }}>
             <SecHdr label="Ημερολόγιο τιμών" sub="Όσο πιο σκούρη η ημέρα, τόσο υψηλότερη η προτεινόμενη τιμή. Πάτησε μια ημέρα για ανάλυση."
-              right={pastCount > 0 ? <button onClick={() => setShowPast(v => !v)} style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '6px 14px', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, color: 'var(--text-secondary)', cursor: 'pointer' }}>{showPast ? 'Κρύψε προηγούμενους μήνες' : `Δείξε προηγούμενους μήνες (${pastCount})`}</button> : undefined} />
+              right={pastCount > 0 ? <Btn variant="secondary" onClick={() => setShowPast(v => !v)}>{showPast ? 'Κρύψε προηγούμενους μήνες' : `Δείξε προηγούμενους μήνες (${pastCount})`}</Btn> : undefined} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
               {visibleMonths.map(([key, days]) => {
                 const [yy, mm] = key.split('-').map(Number);
@@ -772,7 +802,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                       {Array.from({ length: daysInMonth }).map((_, i) => {
                         const dayNum = i + 1;
                         const d = byDay.get(dayNum);
-                        if (!d) return <div key={dayNum} style={{ aspectRatio: '1', borderRadius: 8, background: 'var(--bg-base)', opacity: 0.4 }} />;
+                        if (!d) return <div key={dayNum} style={{ aspectRatio: '1', borderRadius: T.radius.chip, background: 'var(--bg-base)', opacity: 0.4 }} />;
                         const past = pyear === nowYear && d.date < todayIso();
                         const t = past ? 0 : norm(d.price);
                         const top = !past && t > 0.82 && !d.booked;     // κορυφαία αιχμή: έξτρα έμφαση
@@ -788,10 +818,10 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                                λέγεται `aria-selected` και είναι αυτή που ανακοινώνει ο
                                αναγνώστης μαζί με τη θέση «γραμμή 3, στήλη 5». */
                             aria-selected={sel?.date === d.date} className="cal-day" style={{
-                            position: 'relative', aspectRatio: '1', borderRadius: 8, cursor: 'pointer', overflow: 'hidden',
+                            position: 'relative', aspectRatio: '1', borderRadius: T.radius.chip, cursor: 'pointer', overflow: 'hidden',
                             border: sel?.date === d.date ? '2px solid var(--accent)' : top ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
                             background: d.booked ? 'var(--bg-base)' : 'var(--surface-raised)', padding: 0,
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: T.sp.xs,
                             opacity: past ? 0.4 : 1,
                           }}>
                             {/* Το κελί δεν μεγαλώνει πια στην αιχμή: ένα κελί που
@@ -826,22 +856,29 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                             {/* Κλεισμένη ημέρα: δεν έχει προτεινόμενη τιμή και η
                                 παύλα που έμπαινε στη θέση της διαβαζόταν ως
                                 «λείπει τιμή» αντί για «είναι πιασμένη». */}
-                            {/* ══ ΤΟ ΕΥΡΩ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΣΤΟ ΥΠΟΜΝΗΜΑ ══
-                                Το σύμβολο έμπαινε ΜΕΣΑ σε κάθε κελί, μικρότερο
-                                από τον αριθμό ώστε να χωρέσει: 9, 8 ή και 7
-                                εικονοστοιχεία. Στα 7 δεν είναι σύμβολο, είναι
-                                μουτζούρα· επαναλαμβανόταν τριάντα φορές τον
-                                μήνα για να πει κάτι που ισχύει για όλο τον πίνακα.
-                                Μαζί του έφυγε και ο λόγος να μικραίνει ο αριθμός:
-                                μετρημένο σε Chromium στο στενότερο κελί (41,8px
-                                στα 375 της οθόνης κινητού), το «12.500» στα 11px
-                                θέλει 37,8. Καμία τιμή δεν κόβεται πια και κανένα
-                                γράμμα δεν πέφτει κάτω από το δάπεδο των 11.
-                                Η μονάδα ζει στο υπόμνημα από κάτω, στην υπόδειξη
-                                του κελιού και στην ετικέτα προσιτότητας. */}
+                            {/* ══ ΤΟ ΠΟΣΟ ΓΡΑΦΕΙ ΤΗ ΜΟΝΑΔΑ ΤΟΥ, ΜΕ ΤΟ ΙΔΙΟ ΜΕΓΕΘΟΣ ══
+                                ΠΡΩΤΗ ΓΡΑΦΗ ΕΙΧΕ ΣΥΜΒΟΛΟ ΚΑΙ ΤΟ ΕΒΓΑΛΕ, ΓΙΑ ΛΑΘΟΣ
+                                ΛΟΓΟ. Το «€» έμπαινε ΜΙΚΡΟΤΕΡΟ από τον αριθμό ώστε
+                                να χωρέσει — 9, 8 ή σε στενή οθόνη 7
+                                εικονοστοιχεία, όπου παύει να είναι σύμβολο και
+                                γίνεται μουτζούρα. Η διόρθωση ήταν να φύγει το
+                                σύμβολο· η σωστή διόρθωση ήταν να φύγουν τα ΛΕΠΤΑ.
+
+                                ΤΩΡΑ: `feWhole` δίνει «205€» αντί για «205,00€».
+                                ΜΕΤΡΗΜΕΝΟ ΣΕ ΠΕΝΤΕ ΠΛΑΤΗ (320, 375, 768, 1.280,
+                                1.440): το στενότερο κελί βγαίνει 39,3 και το
+                                «120€» πιάνει 30,6 — μηδέν κομμένα ποσά, με 8,7
+                                να περισσεύουν. Η τιμή τεσσάρων ψηφίων θα ήθελε
+                                46 και δεν θα χωρούσε· γι' αυτό το κελί έγινε
+                                θήκη container και το ποσό αποσύρεται μόνο του
+                                κάτω από το κατώφλι, αντί να κοπεί.
+
+                                Το σύμβολο είναι ΙΔΙΟ μέγεθος με τον αριθμό, όπως
+                                παντού στο προϊόν — κολλητά πάνω του. Δεν
+                                μικραίνει κανένα γράμμα κάτω από το δάπεδο των 11. */}
                             {!d.booked && (
-                              <span style={{ position: 'relative', fontSize: 'var(--fs-xs)', fontWeight: top ? 700 : 600, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                                {fn(d.price)}
+                              <span className="cal-day-amt" style={{ position: 'relative', fontSize: 'var(--fs-xs)', fontWeight: top ? 700 : 600, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                                {feWhole(d.price)}
                               </span>
                             )}
                             {d.isHoliday && !d.booked && <span style={{ position: 'absolute', top: 3, right: 3, width: 4, height: 4, borderRadius: '50%', background: 'var(--text-secondary)' }} />}
@@ -854,7 +891,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
               })}
             </div>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', alignItems: 'center' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 44, height: 10, borderRadius: 3, background: 'linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent), var(--accent))' }} />τιμή ανά νύχτα σε ευρώ, από χαμηλή σε υψηλή</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 44, height: 10, borderRadius: 3, background: 'linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent), var(--accent))' }} />τιμή ανά νύχτα, από χαμηλή σε υψηλή</span>
               {/* «υψηλή ζήτηση» έφυγε: το σημάδι δηλώνει ΑΡΓΙΑ, που είναι
                   ημερολογιακό γεγονός. Δεδομένο ζήτησης δεν έχουμε. */}
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)' }} />αργία</span>
@@ -874,7 +911,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
 
           {/* Λεπτομέρεια επιλεγμένης ημέρας */}
           {sel && (
-            <div className="po-fig-card" tabIndex={0} style={{ marginTop: 20, background: 'var(--bg-base)', boxShadow: 'var(--well-inset)', borderRadius: T.radius.card, padding: 18 }}>
+            <div className="po-fig-card" tabIndex={0} style={{ marginTop: 20, background: 'var(--bg-base)', boxShadow: 'var(--well-inset)', borderRadius: T.radius.card, padding: T.sp.lg }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700 }}>{fd(sel.date)}{sel.holidayName ? ` · ${sel.holidayName}` : ''}</div>
@@ -897,7 +934,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
                       <span style={{ minWidth: 0 }}>
                         {f.label}
-                        <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 1 }}>από: {f.source}</span>
+                        <span className="po-subline" style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>από: {f.source}</span>
                       </span>
                       <span className="po-fig" data-tone={pct > 0 ? 'positive' : pct < 0 ? 'negative' : undefined} style={{ fontFamily: T.font.num, flexShrink: 0 }}>{pct > 0 ? '+' : ''}{pct}%</span>
                     </div>

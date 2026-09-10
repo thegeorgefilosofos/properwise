@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { readSheetAsCsv, SheetError } from '@/lib/core/readSheet';
 import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
-import { T, feAuto } from '@/components/Theme';
+import { T, feAuto, Btn } from '@/components/Theme';
 import { CustomSelect } from './UIComponents';
 import { parseCSV } from '@/lib/billing/parse';
 
@@ -39,7 +39,6 @@ export default function BudgetImport({ propertyId, userId = '', cats, onImported
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [fileName, setFileName] = useState('');
-  const [hover, setHover] = useState(false);
 
   const catOptions = cats.map(c => ({ value: c.key, label: c.label }));
 
@@ -98,12 +97,10 @@ export default function BudgetImport({ propertyId, userId = '', cats, onImported
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.currentTarget.value = ''; }} />
 
       {!rows && (
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={busy}
-          onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: T.radius.inner, border: `1px solid ${hover ? 'var(--border-default)' : 'var(--border-subtle)'}`, background: hover ? 'var(--bg-elevated)' : 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, cursor: busy ? 'default' : 'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+        <Btn variant="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>
           <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           {busy ? 'Ανάγνωση…' : 'Εισαγωγή από αρχείο (CSV / Excel)'}
-        </button>
+        </Btn>
       )}
 
       {err && !rows && <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--negative)', fontFamily: T.font.sans }}>{err}</div>}
@@ -114,7 +111,8 @@ export default function BudgetImport({ propertyId, userId = '', cats, onImported
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{fileName}</span>
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{rows.length} εγγραφές αναγνωρίστηκαν</span>
             <span style={{ flex: 1 }} />
-            <button type="button" onClick={reset} style={{ border: 'none', background: 'transparent', color: 'var(--text-tertiary)', fontSize: 12, cursor: 'pointer', fontFamily: T.font.sans }}>Ακύρωση</button>
+            {/* ghost: κάθεται σε γραμμή εργαλείων δίπλα στο όνομα αρχείου, όχι μέσα σε πρόταση */}
+            <Btn variant="ghost" onClick={reset}>Ακύρωση</Btn>
           </div>
 
           {err && <div style={{ marginBottom: 10, fontSize: 'var(--fs-xs)', color: 'var(--negative)', fontFamily: T.font.sans }}>{err}</div>}
@@ -124,7 +122,7 @@ export default function BudgetImport({ propertyId, userId = '', cats, onImported
               {rows.map(r => (
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: T.radius.inner, border: '1px solid var(--border-subtle)', background: r.selected ? 'var(--bg-elevated)' : 'transparent', opacity: r.selected ? 1 : 0.5, transition: 'opacity 0.15s, background 0.15s' }}>
                   <button type="button" onClick={() => setRows(rs => rs!.map(x => x.id === r.id ? { ...x, selected: !x.selected } : x))} aria-label="Επιλογή"
-                    style={{ width: 18, height: 18, flexShrink: 0, borderRadius: 6, border: `1.5px solid ${r.selected ? 'var(--accent)' : 'var(--border-default)'}`, background: r.selected ? 'var(--accent)' : 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                    style={{ width: 18, height: 18, flexShrink: 0, borderRadius: T.radius.xs, border: `1.5px solid ${r.selected ? 'var(--accent)' : 'var(--border-default)'}`, background: r.selected ? 'var(--accent)' : 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                     {r.selected && <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </button>
                   <span style={{ width: 66, flexShrink: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{/^\d{4}-\d{2}-\d{2}$/.test(r.date) ? `${r.date.slice(8, 10)}/${r.date.slice(5, 7)}/${r.date.slice(2, 4)}` : '·'}</span>
@@ -140,10 +138,9 @@ export default function BudgetImport({ propertyId, userId = '', cats, onImported
 
           {rows.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
-              <button type="button" onClick={doImport} disabled={busy || !selectedCount}
-                style={{ height: T.h.md, padding: '0 18px', borderRadius: T.radius.inner, border: 'none', background: selectedCount && !busy ? 'var(--accent)' : 'var(--bg-elevated)', color: selectedCount && !busy ? 'var(--accent-text)' : 'var(--text-tertiary)', fontSize: 12, fontWeight: 700, fontFamily: T.font.sans, cursor: selectedCount && !busy ? 'pointer' : 'default', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+              <Btn variant="primary" onClick={doImport} disabled={busy || !selectedCount}>
                 {busy ? 'Εισαγωγή…' : `Εισαγωγή ${selectedCount} δαπανών`}
-              </button>
+              </Btn>
               {selectedCount > 0 && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Σύνολο <span style={{ fontFamily: T.font.num, color: 'var(--text-secondary)' }}>{feAuto(selectedTotal)}</span></span>}
             </div>
           )}

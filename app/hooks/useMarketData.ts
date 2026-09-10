@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useLoad } from '@/app/hooks/useLoad';
 import { staleKeys, type Provenance, type MarketKey } from '@/lib/market/ecb'
 import { athensToday } from '@/lib/core/time'
+import { failed } from '@/lib/core/dbError'
 
 export interface LiveMarketRates {
   euribor_3m: number
@@ -128,12 +129,17 @@ export function useMarketRates() {
   useEffect(() => {
     async function load() {
       try {
-        const { data: row } = await supabase
+        // Η ΕΦΕΔΡΕΙΑ ΕΙΝΑΙ ΣΧΕΔΙΑΣΜΕΝΗ ΚΑΙ ΤΟ ΛΕΕΙ: το `source_euribor: 'fallback'`
+        // ταξιδεύει ώς την οθόνη. Αυτό που ΕΛΕΙΠΕ ήταν το ίχνος — η αποτυχία δεν
+        // ξεχώριζε από «δεν υπάρχει ακόμη γραμμή», οπότε κανείς δεν μάθαινε ποτέ
+        // ότι ο πίνακας δεν διαβάζεται.
+        const { data: row, error: rowErr } = await supabase
           .from('market_rates')
           .select('*')
           .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle()
+        if (rowErr) console.error('[useMarketRates] τα επιτόκια δεν διαβάστηκαν:', rowErr)
 
         if (row) {
           // Η ΠΑΛΑΙΟΤΗΤΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΙΣ ΤΙΜΕΣ, ΟΧΙ ΑΠΟ ΤΗ ΓΡΑΜΜΗ. Και κάθε
@@ -167,7 +173,7 @@ export function useMarketRates() {
       }
     }
     load()
-  }, [])
+  }, [supabase])
 
   return data
 }
@@ -237,7 +243,7 @@ export function useMarketFeedHealth(enabled: boolean) {
     }
     check()
     return () => { alive = false }
-  }, [enabled])
+  }, [enabled, supabase])
 
   return health
 }
@@ -272,18 +278,29 @@ export function useBankRates() {
   const [loading, setLoading] = useState(true)
   const [verifiedAt, setVerifiedAt] = useState<string>('')
   const [health, setHealth] = useState<BankFeedHealth>(NO_BANK_HEALTH)
+  const [error, setError] = useState('')
   const supabase = createClient()
 
   const reload = useCallback(async () => {
-    const { data } = await supabase
+    // ΚΕΝΟΣ ΚΑΤΑΛΟΓΟΣ ΤΡΑΠΕΖΩΝ ΔΕΝ ΕΙΝΑΙ «ΚΑΜΙΑ ΠΡΟΣΦΟΡΑ». Χωρίς το `error`, μια
+    // αποτυχία ανάγνωσης άφηνε το `banks` άδειο και η σύγκριση δανείων έδειχνε
+    // κενή σελίδα — δηλαδή έλεγε στον χρήστη ότι δεν υπάρχουν προσφορές, ενώ
+    // απλώς δεν διαβάστηκαν. Το `error` βγαίνει τώρα στον καλούντα.
+    const { data, error: err } = await supabase
       .from('bank_rates')
       .select('*')
       .eq('is_active', true)
       .order('fixed_min', { ascending: true })
 
-    if (data?.length) {
-      setBanks(data)
-      setVerifiedAt(data[0].verified_at)
+    if (err) {
+      console.error('[useBankRates] τα επιτόκια τραπεζών δεν διαβάστηκαν:', err)
+      setError(failed('Τα επιτόκια των τραπεζών δεν διαβάστηκαν', err))
+    } else {
+      setError('')
+      if (data?.length) {
+        setBanks(data)
+        setVerifiedAt(data[0].verified_at)
+      }
     }
     setLoading(false)
     // Σφάλμα ανάγνωσης δεν είναι «όλα καλά»: μένει `checked: false` και η
@@ -303,7 +320,7 @@ export function useBankRates() {
   const boot = useCallback(() => reload().catch(() => setLoading(false)), [reload])
   useLoad(boot)
 
-  return { banks, loading, verifiedAt, health, reload }
+  return { banks, loading, verifiedAt, health, reload, error }
 }
 
 // Ελέγχει αν ο συνδεδεμένος χρήστης ανήκει στη λίστα διαχειριστών (app_admins).
@@ -317,21 +334,26 @@ export function useIsAdmin() {
   useEffect(() => {
     async function check() {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        // ΑΠΟΤΥΓΧΑΝΕΙ ΚΛΕΙΣΤΑ ΚΑΙ ΕΤΣΙ ΠΡΕΠΕΙ: αποτυχία ανάγνωσης δεν δίνει
+        // δικαιώματα διαχειριστή. Ηταν όμως ΚΑΙ αόρατη — ένας διαχειριστής
+        // έχανε τα εργαλεία του χωρίς να μάθει ποτέ γιατί.
+        const { data: { user }, error: userErr } = await supabase.auth.getUser()
+        if (userErr) console.error('[useIsAdmin] η ταυτότητα δεν διαβάστηκε:', userErr)
         const email = user?.email
         if (email) {
-          const { data } = await supabase
+          const { data, error: adminErr } = await supabase
             .from('app_admins')
             .select('email')
             .eq('email', email)
             .maybeSingle()
+          if (adminErr) console.error('[useIsAdmin] ο κατάλογος διαχειριστών δεν διαβάστηκε:', adminErr)
           setIsAdmin(!!data)
         }
-      } catch {}
+      } catch (err) { console.error('[useIsAdmin] ο έλεγχος διαχειριστή απέτυχε:', err) }
       setChecked(true)
     }
     check()
-  }, [])
+  }, [supabase])
 
   return { isAdmin, checked }
 }
@@ -339,25 +361,29 @@ export function useIsAdmin() {
 export function useLoanPrograms() {
   const [programs, setPrograms] = useState<LiveProgram[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const supabase = createClient()
 
   useEffect(() => {
     async function load() {
       try {
         // Χρησιμοποιεί την όψη της βάσης, που φιλτράρει μόνη της τα ληγμένα προγράμματα
-        const { data } = await supabase
+        const { data, error: err } = await supabase
           .from('active_loan_programs')
           .select('*')
 
-        if (data?.length) setPrograms(data)
-      } catch {}
+        // Ιδιο μοτίβο με τις τράπεζες: «δεν τρέχει κανένα πρόγραμμα» και «δεν
+        // διαβάστηκαν τα προγράμματα» έδιναν την ίδια κενή οθόνη.
+        if (err) { console.error('[useLoanPrograms] τα προγράμματα δεν διαβάστηκαν:', err); setError(failed('Τα προγράμματα δανείων δεν διαβάστηκαν', err)) }
+        else { setError(''); if (data?.length) setPrograms(data) }
+      } catch (err) { setError(failed('Τα προγράμματα δανείων δεν διαβάστηκαν', err)) }
       setLoading(false)
     }
     load()
     // Ανανέωση κάθε τριάντα λεπτά
     const interval = setInterval(load, 30 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [supabase])
 
-  return { programs, loading }
+  return { programs, loading, error }
 }

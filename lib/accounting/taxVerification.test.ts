@@ -7,7 +7,7 @@
 //
 // Μεθοδολογία (όπως επαληθεύεται επαγγελματικό φορολογικό λογισμικό):
 //   1) GOLDEN — πραγματικά δημοσιευμένα παραδείγματα/αριθμοί από επίσημες & έγκυρες
-//      πηγές (ν.5246/2025). Π.χ. ενοίκιο 20.000 € → φόρος 3.800 €.
+//      πηγές (ν.5246/2025). Π.χ. ενοίκιο 20.000€ → φόρος 3.800€.
 //   2) ΑΝΕΞΑΡΤΗΤΟΣ ORACLE — δεύτερη, διαφορετικά γραμμένη υλοποίηση του προοδευτικού
 //      φόρου (σωρευτικός πίνακας φόρου στα ΟΡΙΑ των κλιμακίων, υπολογισμένος με το
 //      χέρι από τον νόμο) → σύγκριση με τη μηχανή σε χιλιάδες τυχαία εισοδήματα.
@@ -18,7 +18,7 @@
 //
 // Πηγές κλιμάκων 2026 (διασταυρωμένες, πολλαπλές):
 //   • Ενοίκια (άρθρο 40): 15% (0–12k) / 25% (12–24k) / 35% (24–35k) / 45% (>35k).
-//     nerally.gr, taxrevenue.gr, ΠΟΜΙΔΑ, capital.gr — παράδειγμα 20.000 → 3.800 €.
+//     nerally.gr, taxrevenue.gr, ΠΟΜΙΔΑ, capital.gr — παράδειγμα 20.000 → 3.800€.
 //   • Εισόδημα/επιχ. (άρθρο 15, ν.5246/2025): 9/20/26/34/39/44 στα 10/20/30/40/60k.
 //     taxheaven.gr, forin.gr, Grant Thornton, ΝΟΜΙΚΗ ΒΙΒΛΙΟΘΗΚΗ.
 //   • Νέοι: ≤25 → 0% έως 20k· 26–30 → 9% έως 20k (ν.5246/2025).
@@ -114,24 +114,24 @@ const SCALES: { name: string; brackets: TaxBracket[]; oracle: (x: number) => num
 
 // ── 1) GOLDEN: πραγματικά δημοσιευμένα/νομικά νούμερα ──────────────────────
 {
-  // Δημοσιευμένο παράδειγμα (nerally.gr / taxrevenue.gr): 20.000 → 3.800 €.
-  ok('GOLDEN ενοίκιο 20.000 → 3.800 € (δημοσιευμένο)', near(rentalIncomeTax(20000), 3800))
+  // Δημοσιευμένο παράδειγμα (nerally.gr / taxrevenue.gr): 20.000 → 3.800€.
+  ok('GOLDEN ενοίκιο 20.000 → 3.800€ (δημοσιευμένο)', near(rentalIncomeTax(20000), 3800))
   // Σωρευτικά στα όρια (αριθμητική του νόμου):
-  ok('GOLDEN ενοίκιο 12.000 → 1.800 €', near(rentalIncomeTax(12000), 1800))
-  ok('GOLDEN ενοίκιο 24.000 → 4.800 €', near(rentalIncomeTax(24000), 4800))
-  ok('GOLDEN ενοίκιο 35.000 → 8.650 €', near(rentalIncomeTax(35000), 8650))
-  ok('GOLDEN ενοίκιο 50.000 → 15.400 €', near(rentalIncomeTax(50000), 8650 + 15000 * 0.45))
+  ok('GOLDEN ενοίκιο 12.000 → 1.800€', near(rentalIncomeTax(12000), 1800))
+  ok('GOLDEN ενοίκιο 24.000 → 4.800€', near(rentalIncomeTax(24000), 4800))
+  ok('GOLDEN ενοίκιο 35.000 → 8.650€', near(rentalIncomeTax(35000), 8650))
+  ok('GOLDEN ενοίκιο 50.000 → 15.400€', near(rentalIncomeTax(50000), 8650 + 15000 * 0.45))
   // Εισόδημα/επιχ. στα όρια:
-  ok('GOLDEN εισόδημα 10.000 → 900 €', near(rentalIncomeTax(10000, BUSINESS_INCOME_BRACKETS_2026), 900))
-  ok('GOLDEN εισόδημα 20.000 → 2.900 €', near(rentalIncomeTax(20000, BUSINESS_INCOME_BRACKETS_2026), 2900))
-  ok('GOLDEN εισόδημα 30.000 → 5.500 €', near(rentalIncomeTax(30000, BUSINESS_INCOME_BRACKETS_2026), 5500))
-  ok('GOLDEN εισόδημα 40.000 → 8.900 €', near(rentalIncomeTax(40000, BUSINESS_INCOME_BRACKETS_2026), 8900))
-  ok('GOLDEN εισόδημα 60.000 → 16.700 €', near(rentalIncomeTax(60000, BUSINESS_INCOME_BRACKETS_2026), 16700))
+  ok('GOLDEN εισόδημα 10.000 → 900€', near(rentalIncomeTax(10000, BUSINESS_INCOME_BRACKETS_2026), 900))
+  ok('GOLDEN εισόδημα 20.000 → 2.900€', near(rentalIncomeTax(20000, BUSINESS_INCOME_BRACKETS_2026), 2900))
+  ok('GOLDEN εισόδημα 30.000 → 5.500€', near(rentalIncomeTax(30000, BUSINESS_INCOME_BRACKETS_2026), 5500))
+  ok('GOLDEN εισόδημα 40.000 → 8.900€', near(rentalIncomeTax(40000, BUSINESS_INCOME_BRACKETS_2026), 8900))
+  ok('GOLDEN εισόδημα 60.000 → 16.700€', near(rentalIncomeTax(60000, BUSINESS_INCOME_BRACKETS_2026), 16700))
   // Νέοι ≤25: 0% έως 20k.
-  ok('GOLDEN νέος≤25 20.000 → 0 €', near(rentalIncomeTax(20000, YOUTH_UP_TO_25_BRACKETS_2026), 0))
-  ok('GOLDEN νέος≤25 25.000 → 1.300 €', near(rentalIncomeTax(25000, YOUTH_UP_TO_25_BRACKETS_2026), 1300))
-  // Νέοι 26–30: 9% έως 20k → 1.800 €.
-  ok('GOLDEN νέος26-30 20.000 → 1.800 €', near(rentalIncomeTax(20000, YOUTH_26_30_BRACKETS_2026), 1800))
+  ok('GOLDEN νέος≤25 20.000 → 0€', near(rentalIncomeTax(20000, YOUTH_UP_TO_25_BRACKETS_2026), 0))
+  ok('GOLDEN νέος≤25 25.000 → 1.300€', near(rentalIncomeTax(25000, YOUTH_UP_TO_25_BRACKETS_2026), 1300))
+  // Νέοι 26–30: 9% έως 20k → 1.800€.
+  ok('GOLDEN νέος26-30 20.000 → 1.800€', near(rentalIncomeTax(20000, YOUTH_26_30_BRACKETS_2026), 1800))
 }
 
 // ── 2) ORACLE σε χιλιάδες τυχαία εισοδήματα (ανά κλίμακα) ───────────────────
@@ -140,7 +140,7 @@ const SCALES: { name: string; brackets: TaxBracket[]; oracle: (x: number) => num
   const N = 12000 // × 5 κλίμακες = 60.000 συγκρίσεις
   for (const s of SCALES) {
     for (let i = 0; i < N; i++) {
-      const x = round2(rnd() * 120000) // 0–120.000 €, με λεπτά
+      const x = round2(rnd() * 120000) // 0–120.000€, με λεπτά
       ok(`oracle ${s.name} @${x}`, near(rentalIncomeTax(x, s.brackets), s.oracle(x)))
     }
   }
@@ -162,7 +162,6 @@ const SCALES: { name: string; brackets: TaxBracket[]; oracle: (x: number) => num
 
 // ── 3) ΑΝΑΛΛΟΙΩΤΕΣ (invariants) σε χιλιάδες τιμές ──────────────────────────
 {
-  const rnd = rng(77777)
   const N = 8000
   for (const s of SCALES) {
     let prev = 0

@@ -7,7 +7,7 @@ import * as billStore from '@/lib/data/bills';
 import * as settings from '@/lib/data/settings';
 import { NumberInput, CustomSelect, ToggleField, DatePicker } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
-import { T, fe, fn, feRate, Skeleton, histInputStyle, ABSENT_SHORT, fixedCols } from '@/components/Theme';
+import { T, fe, fn, feRate, Skeleton, histInputStyle, ABSENT_SHORT, fixedCols, Btn, ChipToggle } from '@/components/Theme';
 import { monthlyCost, compareTariffs, estimateUsage, type Tariff, type Usage } from '@/lib/energy/tariff';
 import { PROVIDERS, COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE } from '@/lib/energy/catalogue';
 import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
@@ -20,7 +20,7 @@ import { MONTHS_SHORT } from '@/lib/core/months';
  * Ήταν γραμμένο `fe(n, 4)` — που διαβάζεται σαν «τέσσερα δεκαδικά», αλλά το
  * δεύτερο όρισμα του `fe` ΑΓΝΟΕΙΤΑΙ ρητά και τεκμηριωμένα στο
  * `lib/core/format.ts`: τα ποσά έχουν πάντα δύο δεκαδικά, ώστε να στοιχίζονται
- * οι στήλες. Έτσι το 0,1450 και το 0,1489 γράφονταν και τα δύο «0,15 €» — σε
+ * οι στήλες. Έτσι το 0,1450 και το 0,1489 γράφονταν και τα δύο «0,15€» — σε
  * μια στήλη που υπάρχει ακριβώς για να ξεχωρίζει τα τιμολόγια μεταξύ τους.
  * Δώδεκα τιμολόγια της ΔΕΗ έδειχναν την ίδια τιμή κιλοβατώρας.
  *
@@ -225,7 +225,6 @@ export function electricitySwitchFinding(
 export default function BillsElectricity({ propertyId, userId, onNavigateTab }: { propertyId: string; userId?: string; onNavigateTab?: (tab: string) => void }) {
   const supabase   = createClient();
   const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 20, marginBottom: 16 };
-  const g2: React.CSSProperties   = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14, marginBottom: 14 };
   const currentMonth = new Date().getMonth();
   const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
 
@@ -278,7 +277,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
         if (d) setInsData({ eq: !!d.insCustomEarthquake, fl: !!d.insCustomFlood });
       } catch (_) {}
     })();
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   // Οι δικές του κιλοβατώρες, από τους δικούς του λογαριασμούς ρεύματος.
   useEffect(() => {
@@ -289,7 +288,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
         setBillsKwh((data ?? []).map(b => Number((b as { kwh?: number }).kwh)).filter(n => Number.isFinite(n) && n > 0));
       } catch (_) {}
     })();
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   const save = (patch: Record<string, unknown>) => su({ elecProvider: provider, elecTariff: tariffId, useEbill, kwhMonthly, nightPct, kwhHistory, contractStart, contractMonths, manualMonthly, ...patch });
 
@@ -386,7 +385,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
       <div>
         <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</div>
-        {sub && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1, fontFamily: T.font.sans }}>{sub}</div>}
+        {sub && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{sub}</div>}
       </div>
     </div>
   );
@@ -468,7 +467,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
           {/* ΤΟ ΚΟΙΝΟ ΠΕΔΙΟ ΔΙΑΚΟΠΤΗ, ΑΝΤΙ ΓΙΑ ΤΡΙΤΗ ΧΕΙΡΟΓΡΑΦΗ ΓΕΩΜΕΤΡΙΑ. Εδώ
               ζούσε δική του ετικέτα, δικό του ύψος και `whiteSpace: nowrap` για
               να χωρέσει το κείμενο «Ενεργό, μειωμένο πάγιο» — που έλεγε ξανά ό,τι
-              γράφει ήδη το κουτί του τιμολογίου από κάτω («3,50 € με e-bill»). Το
+              γράφει ήδη το κουτί του τιμολογίου από κάτω («3,50€ με e-bill»). Το
               `ToggleField` υπάρχει ακριβώς γι' αυτή τη θέση: ετικέτα από πάνω,
               ίδιο ύψος με τα διπλανά κουτιά, όνομα στον αναγνώστη οθόνης. */}
           {tariff.fixed_ebill != null && (
@@ -529,7 +528,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, fontFamily: T.font.sans }}>{tariff.desc}</div>
             {tariff.desc.includes('ΜΔΚΑ') && (
               <div style={{ marginTop: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, padding: '6px 12px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" className="po-lead-ico"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                   <strong>ΜΔΚΑ</strong> = Μηχανισμός Διακύμανσης Κόστους Αγοράς. Δεν είναι πάγια χρέωση αλλά ΜΗΧΑΝΙΣΜΟΣ: ο πάροχος ορίζει ζώνη γύρω από τη χονδρεμπορική τιμή και, όσο η αγορά μένει μέσα σε αυτήν, δεν ενεργοποιείται καθόλου. Ενεργοποιείται μόνο όταν η τιμή βγει εκτός ορίων και τότε αναπροσαρμόζει την κιλοβατώρα, προς τα πάνω ή προς τα κάτω. Αφορά τα κυμαινόμενα τιμολόγια («κίτρινα») και αντικατέστησε τις παλιές ρήτρες αναπροσαρμογής. <a href="https://www.raaey.gr" target="_blank" title={RAAEY_NAME} style={{ color: "var(--accent)", fontWeight: 600 }}>ΡΑΑΕΥ</a>
                 </span>
@@ -538,7 +537,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             {/* Τα σταθερά μηνιαία πακέτα δεν εξηγούσαν πουθενά την ανοχή, την υπέρβαση και την ετήσια εκκαθάριση: ο χρήστης έβλεπε ένα ποσό και δεν ήξερε τι το σπάει. */}
             {tariff.type === 'fixed_monthly' && tariff.flat_annual_kwh != null && tariff.flat_overage_rate != null && (
               <div style={{ marginTop: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, padding: '6px 12px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" className="po-lead-ico"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                   Σταθερό μηνιαίο ποσό για {tariff.contract_months || 12} μήνες (προμήθεια + ρυθμιζόμενες χρεώσεις, όχι υπέρ τρίτων). Ανοχή υπέρβασης 5% χωρίς χρέωση· πάνω από αυτό, {fk(tariff.flat_overage_rate)}/kWh. Ετήσια εκκαθάριση.
                 </span>
@@ -560,7 +559,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                   </span>
                 )}
                 {/* Το «Χωρίς πάγιο» το λέει ήδη η σήμανση από πάνω. Ένα
-                    «Πάγιο: 0,00 €» δίπλα της είναι η ίδια πληροφορία δεύτερη
+                    «Πάγιο: 0,00€» δίπλα της είναι η ίδια πληροφορία δεύτερη
                     φορά — και μάλιστα χωρίς τη μονάδα που έχουν τα υπόλοιπα. */}
                 {!tariff.no_fixed && (
                   <span style={FACT}>
@@ -595,9 +594,9 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
       <div style={card}>
         {secHdr('Κατανάλωση και εκτιμώμενο κόστος')}
         <div style={{ display: 'grid', gridTemplateColumns: tariff.kwh_night ? '1fr 1fr 1fr' : '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <NumberInput label="Μέση μηνιαία κατανάλωση" value={kwhMonthly} onChange={v => { setKwhMonthly(v); save({ kwhMonthly: v }); }} suffix="kWh" step={10}/>
-          {tariff.kwh_night != null && <NumberInput label="Νυχτερινή κατανάλωση" value={nightPct} onChange={v => { setNightPct(v); save({ nightPct: v }); }} suffix="%" step={5}/>}
-          {tariff.type === 'dynamic' && <NumberInput label="Μηνιαίο κόστος (€), από τον λογαριασμό" value={manualMonthly} onChange={v => { setManualMonthly(v); save({ manualMonthly: v }); }} suffix="€" step={1}/>}
+          <NumberInput label="Μέση μηνιαία κατανάλωση" value={kwhMonthly} onChange={v => { setKwhMonthly(v); save({ kwhMonthly: v }); }} suffix="kWh"/>
+          {tariff.kwh_night != null && <NumberInput label="Νυχτερινή κατανάλωση" value={nightPct} onChange={v => { setNightPct(v); save({ nightPct: v }); }} suffix="%"/>}
+          {tariff.type === 'dynamic' && <NumberInput label="Μηνιαίο κόστος (€), από τον λογαριασμό" value={manualMonthly} onChange={v => { setManualMonthly(v); save({ manualMonthly: v }); }} suffix="€"/>}
         </div>
 
         {/* ΑΠΟ ΠΟΥ ΒΓΗΚΕ Ο ΑΡΙΘΜΟΣ. Χωρίς αυτό, ο χρήστης δεν έχει τρόπο να
@@ -685,17 +684,12 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             {secHdr('Κατάταξη Τιμολογίων',
               `${allTariffs.length} τιμολόγια για ${kwh} κιλοβατώρες τον μήνα, τιμές ${LAST_UPDATED}`)}
             <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: T.radius.pill, padding: 4, border: '1px solid var(--border-default)' }}>
+              {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της
+                  περίγραμμα, οπότε δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */}
               {(['residential', 'business'] as const).map(seg => (
-                <button key={seg} onClick={() => setSegmentFilter(seg)}
-                  style={{
-                    padding: '6px 16px', borderRadius: T.radius.pill, border: 'none', cursor: 'pointer',
-                    fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.sans,
-                    background: segmentFilter === seg ? 'var(--accent)' : 'transparent',
-                    color: segmentFilter === seg ? 'var(--accent-text)' : 'var(--text-secondary)',
-                    transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-                  }}>
+                <ChipToggle key={seg} on={segmentFilter === seg} shape="seg" onClick={() => setSegmentFilter(seg)}>
                   {seg === 'residential' ? 'Οικιακό' : 'Επιχειρηματικό'}
-                </button>
+                </ChipToggle>
               ))}
             </div>
           </div>
@@ -756,7 +750,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                 // η ΡΑΑΕΥ δεν έχει ακόμη τιμή γι' αυτόν τον μήνα, όχι δωρεάν ρεύμα.
                 // Στα αναδρομικά ο αριθμός του καταλόγου είναι η ΒΑΣΙΚΗ τιμή, όχι
                 // η τελική. Δίπλα σε «Χωρίς τιμή» στη στήλη του ποσού, ένα σκέτο
-                // «0,148 € ανά κιλοβατώρα» διαβάζεται ως αντίφαση: εδώ λέγεται τι
+                // «0,148€ ανά κιλοβατώρα» διαβάζεται ως αντίφαση: εδώ λέγεται τι
                 // είναι. Και όταν ούτε βασική τιμή υπάρχει, δεν γράφεται μηδέν.
                 facts.push(t.priceStatus !== 'retro' ? `${fk(t.kwh_day)} ανά κιλοβατώρα`
                   : t.kwh_day > 0 ? `${fk(t.kwh_day)} βασική τιμή, κλείνει αναδρομικά`
@@ -765,8 +759,8 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
               }
               facts.push(t.contract_months ? `Δέσμευση ${t.contract_months} μήνες` : 'Χωρίς δέσμευση');
 
-              // Η ΔΙΑΦΟΡΑ ΓΡΑΜΜΕΝΗ ΜΕ ΛΕΞΕΙΣ, ΟΧΙ ΜΕ ΠΡΟΣΗΜΟ. Το «+2,10 €» δίπλα
-              // σε «−3,40 €» απαιτεί από τον αναγνώστη να θυμάται ως προς τι
+              // Η ΔΙΑΦΟΡΑ ΓΡΑΜΜΕΝΗ ΜΕ ΛΕΞΕΙΣ, ΟΧΙ ΜΕ ΠΡΟΣΗΜΟ. Το «+2,10€» δίπλα
+              // σε «−3,40€» απαιτεί από τον αναγνώστη να θυμάται ως προς τι
               // μετριέται. Και τα τρία «—» της παλιάς στήλης (τρέχον, μηδενική
               // διαφορά, δυναμικό) έλεγαν τρία διαφορετικά πράγματα με το ίδιο
               // σύμβολο, που είναι ακριβώς ο λόγος που η παύλα δεν είναι τιμή.
@@ -840,17 +834,14 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
           </div>
 
           {allTariffs.length > RANK_VISIBLE && (
-            <button onClick={() => setShowAllTariffs(v => !v)}
-              style={{
-                marginTop: 12, width: '100%', padding: '10px 16px', cursor: 'pointer',
-                background: 'transparent', border: '1px solid var(--border-default)',
-                borderRadius: T.radius.inner, fontFamily: T.font.sans, fontSize: 'var(--fs-xs)',
-                fontWeight: 600, color: 'var(--text-secondary)',
-              }}>
-              {showAllTariffs
-                ? `Δείξε μόνο τα ${RANK_VISIBLE} φθηνότερα`
-                : `Δείξε και τα υπόλοιπα ${allTariffs.length - RANK_VISIBLE} τιμολόγια`}
-            </button>
+            <div style={{ marginTop: 12 }}>
+              {/* `field` γιατί έπιανε ήδη όλο το πλάτος κάτω από την κατάταξη. */}
+              <Btn variant="secondary" field onClick={() => setShowAllTariffs(v => !v)}>
+                {showAllTariffs
+                  ? `Δείξε μόνο τα ${RANK_VISIBLE} φθηνότερα`
+                  : `Δείξε και τα υπόλοιπα ${allTariffs.length - RANK_VISIBLE} τιμολόγια`}
+              </Btn>
+            </div>
           )}
 
           {/* ΤΙ ΑΚΡΙΒΩΣ ΣΥΓΚΡΙΝΕΤΑΙ ΚΑΙ ΑΠΟ ΠΟΥ. Χωρίς αυτή τη γραμμή, ο χρήστης
@@ -891,7 +882,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
         //     κιλοβατωρών ΑΛΛΑ όχι τιμή υπέρβασης· η προειδοποίηση σιωπούσε
         //     τελείως, ενώ ξέραμε ότι το όριο ξεπερνιέται. Το ποσό της χρέωσης
         //     είναι άγνωστο· το ΓΕΓΟΝΟΣ της υπέρβασης όχι.
-        //  2. ΤΑ ΠΑΚΕΤΑ ΧΩΡΙΣ ΟΡΙΟ ΦΑΙΝΟΝΤΑΝ ΑΠΕΡΙΟΡΙΣΤΑ. Ένα «60 € τον μήνα
+        //  2. ΤΑ ΠΑΚΕΤΑ ΧΩΡΙΣ ΟΡΙΟ ΦΑΙΝΟΝΤΑΝ ΑΠΕΡΙΟΡΙΣΤΑ. Ένα «60€ τον μήνα
         //     all-in» χωρίς καμία επιφύλαξη διαβάζεται ως «όσο θέλω».
         if (tariff.type === 'fixed_monthly') {
           const projectedAnnual = kwhNum * 12;
@@ -910,7 +901,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
           } else if (tariff.settled) {
             // Το ποσό που πληρώνει κάθε μήνα δεν είναι το κόστος του: η ΔΕΗ
             // εκκαθαρίζει την πραγματική κατανάλωση δύο φορές τον χρόνο. Χωρίς
-            // αυτή τη γραμμή ο ιδιοκτήτης βλέπει «60 € τον μήνα» στην κάρτα του
+            // αυτή τη γραμμή ο ιδιοκτήτης βλέπει «60€ τον μήνα» στην κάρτα του
             // και περιμένει ότι αυτό είναι όλο.
             hints.push({
               text: `Το «${tariff.name}» χρεώνει σταθερό ποσό κάθε μήνα έναντι της κατανάλωσης. Η εκκαθάριση γίνεται δύο φορές τον χρόνο με τις μετρήσεις του δικτύου, οπότε ο λογαριασμός της εκκαθάρισης μπορεί να διαφέρει αισθητά. Γι’ αυτό το πρόγραμμα δεν μπαίνει στη σύγκριση παρόχων.`,
@@ -981,6 +972,9 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                   <div style={{ flex: 1, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                     {h.text}
                   </div>
+                  {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το περίγραμμα και το χρώμα βγαίνουν από τη
+                      σοβαρότητα (SEV_STYLE) και το Btn δεν έχει τόνο, οπότε η
+                      διαβάθμιση warning/tip θα χανόταν. */}
                   {h.action && h.tab && (
                     <button
                       onClick={() => onNavigateTab?.(h.tab!)}

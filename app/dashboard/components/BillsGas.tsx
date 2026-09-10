@@ -9,7 +9,7 @@ import { NumberInput, CustomSelect, DatePicker } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
 import { usePropertyHeating } from './usePropertyHeating';
 import { usesGas } from '@/lib/property/heating';
-import { T, fe, feRate, Spinner, fixedCols } from '@/components/Theme';
+import { T, fe, feRate, Spinner, fixedCols, ChipToggle } from '@/components/Theme';
 import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
 // Ο κατάλογος είναι δεδομένα και ζει στο lib, όπως και του ρεύματος. Η οθόνη
 // τον διαβάζει, δεν τον φιλοξενεί: 130 γραμμές τιμών μέσα σε React component
@@ -22,8 +22,8 @@ import { athensToday } from '@/lib/core/time';
  * Η ΤΙΜΗ ΤΗΣ ΚΙΛΟΒΑΤΩΡΑΣ ΑΕΡΙΟΥ, ΜΕ ΤΑ ΔΕΚΑΔΙΚΑ ΠΟΥ ΤΗΝ ΞΕΧΩΡΙΖΟΥΝ.
  * Το ίδιο σφάλμα με το ρεύμα, στην επόμενη οθόνη: ήταν `fe(n, 4)`, που
  * διαβάζεται σαν «τέσσερα δεκαδικά» ενώ το δεύτερο όρισμα αγνοούνταν. Οι
- * χρεώσεις αερίου κινούνται στα 0,0398–0,0870 €/kWh — στα δύο δεκαδικά όλες
- * γίνονταν «0,05 €», δηλαδή η στήλη σύγκρισης έδειχνε τα πάντα ίδια.
+ * χρεώσεις αερίου κινούνται στα 0,0398–0,0870€/kWh — στα δύο δεκαδικά όλες
+ * γίνονταν «0,05€», δηλαδή η στήλη σύγκρισης έδειχνε τα πάντα ίδια.
  */
 const fk = feRate;
 
@@ -95,7 +95,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
       const elecData = await settings.section<{ elecProvider?: unknown }>(supabase, propertyId, 'electricity', userId);
       if (elecData?.elecProvider) setElecProvider(String(elecData.elecProvider));
     })();
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   // ΗΤΑΝ ΤΡΙΤΟΣ ΚΑΤΑΛΟΓΟΣ ΠΑΡΟΧΩΝ, ΓΡΑΜΜΕΝΟΣ ΜΕ ΤΟ ΧΕΡΙ. Μια λίστα επτά τιμών
   // έπρεπε να μένει συγχρονισμένη με δύο καταλόγους. Δεν έμενε: η «Φυσικό αέριο
@@ -119,7 +119,13 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
 
   // ── Auto-sync λήξης σύμβασης → calendar_events ───────────────────────────────
   useEffect(() => {
-    if (!propertyId || !s.gasContractStart || !s.gasContractMonths || calendarSynced) return;
+    // ── ΤΟ `userId` ΕΛΕΙΠΕ ΚΑΙ ΑΠΟ ΤΟΝ ΦΡΟΥΡΟ ΚΑΙ ΑΠΟ ΤΙΣ ΕΞΑΡΤΗΣΕΙΣ ────────
+    // Η γραμμή ημερολογίου γράφεται με `{ propertyId, userId }`. Οταν το εφέ
+    // προλάβαινε τον έλεγχο ταυτότητας, το `user_id` έφευγε κενό, η πολιτική
+    // RLS απέρριπτε την εγγραφή και ο χρήστης έβλεπε «Η υπενθύμιση λήξης δεν
+    // μπήκε στο ημερολόγιο» για κάτι που δεν έκανε ο ίδιος. Με τον φρουρό η
+    // εγγραφή περιμένει τον χρήστη· με την εξάρτηση ξανατρέχει όταν έρθει.
+    if (!propertyId || !userId || !s.gasContractStart || !s.gasContractMonths || calendarSynced) return;
     const months = parseInt(s.gasContractMonths) || 0;
     if (months <= 0) return;
     // Ίδιο σφάλμα θερινής ώρας: η λήξη του συμβολαίου αερίου έπεφτε μία μέρα
@@ -147,7 +153,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
           notes: `Η σύμβαση ${tariff?.name ?? ''} λήγει. Σύγκρινε νέα τιμολόγια πριν ανανεώσεις.`,
         })]))) setCalendarSynced(true);
     })();
-  }, [propertyId, s.gasContractStart, s.gasContractMonths]);
+  }, [propertyId, userId, supabase, s.gasContractStart, s.gasContractMonths, calendarSynced, effective, provider?.label, tariff?.name]);
 
   const allTariffs = useMemo(() => {
     return GAS_PROVIDERS.flatMap(p => p.tariffs
@@ -296,13 +302,11 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, flexWrap: 'wrap' as const, gap: 10 }}>
             {secHdr('Σύγκριση παρόχων', `${allTariffs.length} τιμολόγια της ΡΑΑΕΥ σε ${kwh} kWh τον μήνα, χρέωση προμήθειας`)}
             <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: T.radius.pill, padding: 4, border: '1px solid var(--border-default)' }}>
+              {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της περίγραμμα. */}
               {(['residential', 'business'] as const).map(seg => (
-                <button key={seg} onClick={() => setSegmentFilter(seg)}
-                  style={{ padding: '6px 16px', borderRadius: T.radius.pill, border: 'none', cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 700,
-                    background: segmentFilter === seg ? 'var(--accent)' : 'transparent',
-                    color: segmentFilter === seg ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
+                <ChipToggle key={seg} on={segmentFilter === seg} shape="seg" onClick={() => setSegmentFilter(seg)}>
                   {seg === 'residential' ? 'Οικιακό' : 'Επιχειρηματικό'}
-                </button>
+                </ChipToggle>
               ))}
             </div>
           </div>
@@ -324,8 +328,16 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
             </div>
           )}
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--fs-xs)' }}>
+          {/* ═══ Ο ΠΙΝΑΚΑΣ ΓΡΑΦΕΤΑΙ ΜΕ ΤΗΝ ΚΛΑΣΗ ΤΟΥ ΕΡΓΟΥ ══════════════════════
+              Εννέα στήλες — κάθε κελί κουβαλούσε γραμμένο με το χέρι το ίδιο
+              `padding: 8px 10px` και το ίδιο κάτω περίγραμμα: δεκαοχτώ αντίγραφα
+              του ίδιου στυλ σε έναν πίνακα. Η `.po-table` τα λέει μία φορά, μαζί
+              με το κουτί, την ταινία της κεφαλίδας και τη γραμμή που σβήνει στο
+              τέλος. Η `.pin-1` κρατά τον πάροχο ορατό όσο ο χρήστης σέρνει προς
+              τη «Διαφορά» — αλλιώς μένουν εννέα αριθμοί χωρίς όνομα. */}
+          <div className="po-table-box">
+           <div className="po-scroll-x">
+            <table className="po-table pin-1" style={{ '--tbl-fs': 'var(--fs-xs)', '--tbl-min': '760px', '--row-bg': 'var(--bg-surface)' }}>
               <thead>
                 {/* Η στήλη «Τιμή» έδειχνε τη σήμανση αξιοπιστίας, όχι τιμή, δίπλα
                     στη στήλη «kWh» που έδειχνε την πραγματική τιμή. Δύο κεφαλίδες
@@ -333,7 +345,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
                     μπαίνει η δέσμευση, που ο ιδιοκτήτης πρέπει να ξέρει πριν
                     αλλάξει πάροχο. */}
                 <tr>{['Πάροχος', 'Τιμολόγιο', 'Τύπος', 'Δέσμευση', 'kWh', 'Πάγιο', 'Μήνας', 'Έτος', 'Διαφορά'].map(h => (
-                  <th key={h} style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', fontFamily: T.font.sans, whiteSpace: 'nowrap' as const, background: 'var(--bg-elevated)' }}>{h}</th>
+                  <th key={h} scope="col" style={{ whiteSpace: 'nowrap' as const, background: 'var(--bg-elevated)' }}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
@@ -341,25 +353,27 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
                   const isBest = i === 0;
                   const diff   = t.monthly - bestMonthly;
                   return (
-                    <tr key={t.id} style={{ background: t.isCurrent ? 'var(--accent-soft)' : isBest ? 'var(--bg-elevated)' : 'transparent' }}>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600 }}>
+                    <tr key={t.id} className={t.isCurrent ? 'is-on' : undefined}
+                      style={{ '--row-bg': t.isCurrent ? 'var(--accent-soft)' : isBest ? 'var(--bg-elevated)' : 'var(--bg-surface)',
+                        background: t.isCurrent ? undefined : isBest ? 'var(--bg-elevated)' : 'transparent' }}>
+                      <td style={{ fontWeight: 600 }}>
                         {canRank && !t.isCurrent && isBest && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginRight: 6, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Φθηνότερο</span>}
                         {t.providerLabel}
                       </td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)' }}>{t.name}</td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <td>{t.name}</td>
+                      <td>
                         <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, padding: '2px 8px', borderRadius: T.radius.badge, ...badgeStyle }}>{t.badge}</span>
                       </td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{t.contract_months != null ? `${t.contract_months} μήνες` : 'Χωρίς'}</td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{fk(t.kwh)}</td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{fe(t.fixed)}</td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--accent)' }}>{fe(t.monthly)}</td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', color: 'var(--text-tertiary)' }}>{fe(t.monthly * 12)}</td>
+                      <td className="num">{t.contract_months != null ? `${t.contract_months} μήνες` : 'Χωρίς'}</td>
+                      <td className="num">{fk(t.kwh)}</td>
+                      <td className="num">{fe(t.fixed)}</td>
+                      <td className="num" style={{ fontWeight: 700, color: 'var(--accent)' }}>{fe(t.monthly)}</td>
+                      <td className="num" style={{ color: 'var(--text-tertiary)' }}>{fe(t.monthly * 12)}</td>
                       {/* Ο πίνακας είναι ήδη ταξινομημένος από το φθηνότερο: η
                           κατεύθυνση της διαφοράς φαίνεται από τη θέση, δεν
                           χρειάζεται φανάρι. Και το μηδέν λέγεται με μηδέν, όχι
                           με παύλα που διαβάζεται ως «λείπει». */}
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>
+                      <td className="num">
                         {diff > 0 ? `+${fe(diff)}` : fe(diff)}
                       </td>
                     </tr>
@@ -367,6 +381,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
                 })}
               </tbody>
             </table>
+           </div>
           </div>
           <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, background: 'var(--bg-elevated)', padding: '6px 12px', borderRadius: T.radius.badge, lineHeight: 1.5 }}>
             * Χρέωση προμήθειας χωρίς δίκτυο, ΕΦΚ και ΦΠΑ. Πηγή: εργαλείο σύγκρισης της ΡΑΑΕΥ, {GAS_LABEL}. Οι εκπτώσεις συνέπειας και συνδυασμού που περιγράφονται είναι ήδη μέσα στην τιμή· χάνονται με μία εκπρόθεσμη πληρωμή.

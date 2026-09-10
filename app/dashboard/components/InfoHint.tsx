@@ -2,6 +2,7 @@
 import { T } from '@/components/Theme'
 import { useState, useRef, useCallback, useId, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { hy } from '@/components/Hyphen'
 
 // Μικρό, ενιαίο ⓘ με premium popover που εμφανίζεται στο hover/focus. Portal →
 // δεν κόβεται από overflow. Θεματικό (light/dark). Χρήση με μέτρο: μόνο εκεί που
@@ -92,7 +93,7 @@ export function InfoHint({ children, size = 14, label = 'Περισσότερα'
         // `:focus-visible` είναι αληθές μόνο όταν η εστίαση ήρθε με Tab.
         onFocus={(e) => { if (e.target.matches(':focus-visible')) show() }}
         onBlur={hide}
-        onClick={(e) => { e.stopPropagation(); pos ? hide() : show() }}
+        onClick={(e) => { e.stopPropagation(); if (pos) { hide() } else { show() } }}
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle',
           width: size, height: size, borderRadius: '50%', border: 'none', padding: 0, margin: '0 0 0 4px',
@@ -112,20 +113,37 @@ export function InfoHint({ children, size = 14, label = 'Περισσότερα'
           globals.css τον βγάζει από την εικόνα χωρίς να τον βγάλει από το
           δέντρο προσβασιμότητας. */}
       <span id={descId} className="sr-only">{children}</span>
+      {/* ═══ Η ΕΠΕΞΗΓΗΣΗ ΕΙΝΑΙ ΣΤΕΝΗ ΣΤΗΛΗ ΚΑΙ ΤΗΝ ΘΕΛΕΙ ═══════════════════════
+          Το `width: max-content` με ταβάνι 280 έδινε κουτί που άλλαζε πλάτος με
+          το κείμενό του: μια εξήγηση δύο λέξεων έβγαινε λωρίδα, ένα ολόκληρο
+          άρθρο νόμου έπιανε το ταβάνι με ριγμένη δεξιά άκρη και γραμμές που
+          τελείωναν σε τυχαία σημεία. Δύο σχήματα για το ίδιο πράγμα.
+
+          ΔΑΠΕΔΟ ΚΑΙ ΤΑΒΑΝΙ, ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΚΛΕΙΝΕΙ ΚΑΙ ΔΕΞΙΑ. Το `minWidth: 220`
+          δίνει σε κάθε επεξήγηση την ίδια στήλη· η `po-just` με τον συλλαβισμό
+          του `hy()` κλείνει τη δεξιά άκρη χωρίς να τεντώσει τα κενά. Το ταβάνι
+          ανέβηκε στα 300 ώστε το μέτρο να πιάνει τους ~52 χαρακτήρες που θέλει
+          η στοίχιση για να μη φαίνονται τα σπασίματα.
+
+          ΚΑΙ Ο ΣΥΛΛΑΒΙΣΜΟΣ ΕΙΝΑΙ ΔΙΚΟΣ ΜΑΣ, ΟΧΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ. Το `hyphens: auto`
+          θέλει ελληνικό λεξικό που μπορεί να μην υπάρχει στη συσκευή· εδώ τα
+          μαλακά ενωτικά μπαίνουν στην απόδοση, οπότε το σπάσιμο είναι το ίδιο
+          παντού. */}
       {pos && typeof document !== 'undefined' && createPortal(
         <div
           role="tooltip"
           style={{
             position: 'fixed', top: pos.top, left: pos.left,
             transform: `translate(-50%, ${pos.place === 'bottom' ? '0' : '-100%'})`,
-            zIndex: 9999, maxWidth: 280, width: 'max-content',
+            zIndex: 9999, maxWidth: 300, minWidth: 220, width: 'max-content',
             background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
             border: '1px solid var(--border-default)', borderRadius: 10,
-            padding: '12px', fontSize: 12, lineHeight: 1.55, fontFamily: T.font.sans,
+            padding: '12px 14px', fontSize: 12, lineHeight: 1.6, fontFamily: T.font.sans,
             boxShadow: 'var(--elev-3)', pointerEvents: 'none',
           }}
+          className="po-just"
         >
-          {children}
+          {hy(children)}
         </div>,
         document.body,
       )}

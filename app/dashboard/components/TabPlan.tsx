@@ -64,7 +64,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { T, TT, Btn, Card, SecHdr, PageTitle, fixedCols, settingsField, feAuto, pageShell, Bar } from '@/components/Theme';
+import { T, TT, Btn, ChipToggle, Card, SecHdr, PageTitle, fixedCols, settingsField, feAuto, pageShell, Bar } from '@/components/Theme';
 import { InfoHint, HintedText } from './InfoHint';
 import { SegmentControl } from './UIComponents';
 import { createClient } from '@/lib/supabase/client';
@@ -122,6 +122,12 @@ function Panel({ label, info, right, children }: {
 }
 
 const ROW_BLEED: CSSProperties = { margin: '0 -12px', padding: '0 12px' };
+
+// Οι τρεις άξονες κρατούν το βάρος και το χρώμα που είχαν ως `.plan-axis`, τώρα
+// που τα κελιά τους είναι `<td>`: το `.po-table td` γράφει --text-secondary σε
+// κανονικό βάρος, δηλαδή θα έσβηνε τις τιμές δίπλα σε ονόματα επιλογών του ίδιου
+// ακριβώς τόνου. Ιδιο κείμενο, ίδια έμφαση — άλλη μόνο η δομή.
+const AXIS_CELL: CSSProperties = { color: 'var(--text-primary)', fontWeight: 600 };
 
 /**
  * Το περιεχόμενο ενός κυκλακιού: μία πρόταση· από κάτω ό,τι έχει ετικέτα.
@@ -239,25 +245,6 @@ const quietBtn: CSSProperties = {
   fontFamily: T.font.sans, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
 };
 
-/** Χειριστήριο επιλογής ενός από λίγα: ίδιο σχήμα σε είδος εκκρεμότητας και σε μεσίτη. */
-function Pick({ on, onClick, small, children }: { on: boolean; onClick: () => void; small?: boolean; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={on}
-      style={{
-        appearance: 'none', cursor: 'pointer', height: small ? T.h.sm : T.h.md, padding: small ? '0 14px' : '0 16px',
-        borderRadius: T.radius.pill, fontFamily: T.font.sans, fontSize: small ? 12 : 13,
-        fontWeight: on ? 700 : 500,
-        background: on ? 'var(--bg-elevated)' : 'transparent',
-        border: `1px solid ${on ? 'var(--border-default)' : 'var(--border-subtle)'}`,
-        color: on ? 'var(--text-primary)' : 'var(--text-secondary)',
-        boxShadow: on ? 'var(--highlight-inset), var(--elev-1)' : 'none',
-        transition: 'background .15s, color .15s',
-      }}>
-      {children}
-    </button>
-  );
-}
-
 /**
  * Πεδίο ποσού: ετικέτα, κουτί και το ευρώ ΜΕΣΑ στο κουτί, δεξιά.
  *
@@ -289,7 +276,9 @@ function MoneyField({ label, hint, value, onChange }: {
         <input type="number" min={0} inputMode="decimal" className="po-field" placeholder=""
           value={value ?? ''}
           onChange={e => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-          style={{ ...settingsField, height: T.h.md, fontSize: 'var(--fs-base)', paddingRight: 30 }} />
+          style={{ ...settingsField, height: T.h.md, fontSize: 'var(--fs-base)',
+            // Ο χώρος του «€» δεξιά: απόσταση 11 συν το πλάτος του συμβόλου συν κενό ώς τον αριθμό.
+            paddingRight: 30 }} />
         <span aria-hidden style={{
           position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)',
           fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.num, pointerEvents: 'none',
@@ -422,7 +411,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
 
   // ══ ΠΟΙΑ ΒΗΜΑΤΑ ΕΧΟΥΝ ΗΔΗ ΓΙΝΕΙ ΕΡΓΑΣΙΕΣ ═════════════════════════════════
   // Διαβάζεται ΜΙΑ φορά, από τη βάση, με πρόθεμα `plan:`. Χωρίς αυτό το κουμπί
-  // θα έλεγε «Βάλ᾽ το στις Εργασίες» και μετά από ανανέωση σελίδας θα το ξανάλεγε
+  // θα έλεγε «Πρόσθεσε στις Εργασίες» και μετά από ανανέωση σελίδας θα το ξανάλεγε
   // για εργασία που υπάρχει ήδη — δηλαδή θα υποσχόταν κάτι που δεν θα έκανε.
   const [pushedIds, setPushedIds] = useState<string[]>([]);
   const [pushing, setPushing] = useState(false);
@@ -607,6 +596,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
               στα άκρα του κρίκου και η γραμμή δεν μετακινείται ούτε κατά ένα.
               Χωρίς αυτό, γύρω από κάθε κρίκο έμενε κενό δώδεκα εικονοστοιχείων
               και η συνεχής ράγα διαβαζόταν ως διακεκομμένη. */}
+          {/* Μένει χειροποίητο: το IconBtn δεν παίρνει ούτε aria-pressed ούτε το αρνητικό περιθώριο των 12 που κρατά τη ράγα συνεχή. */}
           <button type="button" onClick={() => toggle(s.id)} aria-pressed={on}
             aria-label={on ? `Αναίρεση: ${s.title}` : `Ολοκληρώθηκε: ${s.title}`}
             style={{
@@ -693,7 +683,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
             <Btn variant="primary" onClick={() => toggle(plan.next!.id)}>Ολοκληρώθηκε</Btn>
             {pushedIds.includes(plan.next.id)
               ? <Btn onClick={() => removeFromTasks(plan.next!)} disabled={pushing}>Βγάλ᾽ το από τις Εργασίες</Btn>
-              : <Btn onClick={() => pushToTasks(plan.next!)} disabled={pushing}>Βάλ᾽ το στις Εργασίες</Btn>}
+              : <Btn onClick={() => pushToTasks(plan.next!)} disabled={pushing}>Πρόσθεσε στις Εργασίες</Btn>}
           </div>
         </Card>
       )}
@@ -710,7 +700,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
           </InfoHint>}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {DISPUTE_KINDS.map(k => (
-              <Pick key={k.key} on={k.key === kind} onClick={() => pickKind(k.key)}>{k.label}</Pick>
+              <ChipToggle key={k.key} on={k.key === kind} onClick={() => pickKind(k.key)}>{k.label}</ChipToggle>
             ))}
           </div>
         </Panel>
@@ -726,6 +716,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
             Μόνο όσα φεύγουν από τον λογαριασμό σου. Το ενοίκιο που δεν εισπράττεις είναι άλλη συζήτηση.
           </InfoHint>}
           right={drain.monthly > 0
+            /* Μένει χειροποίητο: το LinkBtn δεν δέχεται aria-expanded και η αποκάλυψη θα έπαυε να ανακοινώνεται. */
             ? <button type="button" style={quietBtn} onClick={() => setCostsOpen(o => !o)} aria-expanded={costsOpen}>
                 {costsOpen ? 'Σύμπτυξη' : 'Αλλαγή δεδομένων'}
               </button>
@@ -827,47 +818,58 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
         )}
       </Panel>
 
-      {/* ── Η ΣΥΓΚΡΙΣΗ, ΩΣ ΠΙΝΑΚΑΣ ────────────────────────────────────────
-          ΟΙ ΤΡΕΙΣ ΑΞΟΝΕΣ ΗΤΑΝ ΤΡΕΙΣ ΕΤΙΚΕΤΕΣ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ. Σε έξι επιλογές
-          αυτό είναι δεκαοκτώ ετικέτες για τρία πράγματα· οι τιμές δεν
-          στοίχιζαν ποτέ μεταξύ τους: το «Μέτριο» της δεύτερης γραμμής ξεκινούσε
-          εκεί που τελείωνε το «Λίγος» της πρώτης. Δηλαδή πίνακας σύγκρισης όπου
-          η σύγκριση απαιτούσε να θυμάσαι.
+      {/* ── Η ΣΥΓΚΡΙΣΗ, ΩΣ ΠΡΑΓΜΑΤΙΚΟΣ ΠΙΝΑΚΑΣ ──────────────────────────────
+          ΗΤΑΝ ΠΛΕΓΜΑ ΑΠΟ span. Τέσσερις στήλες επί έξι επιλογές είναι είκοσι
+          τέσσερα κελιά που ΜΟΙΑΖΑΝ πίνακας χωρίς να είναι: η κεφαλίδα ήταν
+          `aria-hidden` και κάθε κελί κουβαλούσε κρυφό αντίγραφο της λέξης του
+          άξονα («Λίγος κόπος») για να ακούγεται σωστά — δεκαοκτώ αντίγραφα για
+          τρεις λέξεις. Δηλαδή, γραμμένη στο χέρι, η δουλειά ενός `<th scope>`.
 
-          Τώρα είναι ΕΝΑ πλέγμα για όλη την ενότητα: η κεφαλίδα και κάθε γραμμή
-          μοιράζονται τις ίδιες τέσσερις στήλες, οπότε τα «Λίγος / Πολύς /
-          Μέτριος» πέφτουν το ένα κάτω από το άλλο. Το `display: contents` στο
-          δοχείο των τριών τιμών είναι που το επιτρέπει: σε φαρδιά οθόνη οι τρεις
-          τιμές είναι κελιά του ίδιου πλέγματος, σε στενή γίνεται το δοχείο
-          κανονικό flex και τις μαζεύει σε μία σειρά. */}
+          Τώρα το λέει η δομή: `<th scope="col">` για τον άξονα του πίνακα και
+          `<th scope="row">` για την επιλογή. Τα κρυφά αντίγραφα έφυγαν επειδή
+          έλεγαν ό,τι λέει πια το `scope` — ούτε λέξη παραπάνω. */}
       {plan.options.length > 0 && (
         <Panel label={plan.optionsTitle}>
-          <div className="plan-table">
-            <span className="plan-head" aria-hidden />
-            <span className="plan-head" aria-hidden>Κόπος</span>
-            <span className="plan-head" aria-hidden>Ρίσκο</span>
-            <span className="plan-head" aria-hidden>Χρόνος</span>
-            <span className="plan-head-rule" aria-hidden />
-            {plan.options.map((o: Option, i: number) => (
-              <div key={o.id} style={{ display: 'contents' }}>
-                {i > 0 && <span className="plan-span" style={{ borderTop: '1px solid var(--border-subtle)' }} />}
-                <span className="plan-name">
-                  <RowTitle state="plain" text={o.title}
-                    hint={{ label: `Τι σημαίνει: ${o.title}`, body: <Tip lead={o.payoff} rows={[['Ταιριάζει αν', o.fits], ['Τι πληρώνεις', o.cost]]} /> }} />
-                </span>
-                {/* Η ΛΕΞΗ ΤΟΥ ΑΞΟΝΑ ΕΙΝΑΙ ΚΡΥΦΗ ΣΤΗ ΦΑΡΔΙΑ ΟΘΟΝΗ, ΟΧΙ ΑΝΥΠΑΡΚΤΗ.
-                    Την τυπώνει η κεφαλίδα των στηλών, οπότε το μάτι δεν τη
-                    χρειάζεται· ο αναγνώστης οθόνης όμως δεν βλέπει στήλες και θα
-                    άκουγε «Λίγος, Μέτριο, Αμέσως» χωρίς να ξέρει τι είναι τι.
-                    Στη στενή οθόνη, όπου η κεφαλίδα δεν υπάρχει, η ίδια λέξη
-                    γίνεται ορατή και ενώνεται με την τιμή: «Λίγος κόπος». */}
-                <span className="plan-axes">
-                  <span className="plan-axis">{EFFORT_LABEL[o.effort]}<span className="plan-axis-k"> κόπος</span></span>
-                  <span className="plan-axis">{RISK_LABEL[o.risk]}<span className="plan-axis-k"> ρίσκο</span></span>
-                  <span className="plan-axis"><span className="sr-only">Χρόνος: </span>{o.speed}</span>
-                </span>
-              </div>
-            ))}
+          {/* ΤΟ ΠΛΑΙΣΙΟ ΤΟ ΔΙΝΕΙ ΗΔΗ Η ΚΑΡΤΑ ΤΗΣ ΕΝΟΤΗΤΑΣ: δεύτερο `.po-table-box`
+              θα έβαζε περίγραμμα μέσα σε περίγραμμα. Το ελάχιστο πλάτος είναι
+              άθροισμα, όχι εκτίμηση: οι 92 + 92 + 172 του παλιού πλέγματος κάνουν
+              356 κειμένου, το γέμισμα των 28 επί τέσσερις στήλες άλλα 112 — και η
+              στήλη του ονόματος θέλει 232 για να χωρά σε δύο γραμμές το
+              «Παραχώρηση σε δικό σου άνθρωπο». Σύνολο 700. */}
+          <div className="po-scroll-x">
+            <table className="po-table tbl-fixed" style={{ ['--tbl-min' as string]: '700px' }}>
+              {/* Ονομα για τον αναγνώστη οθόνης, χωρίς ταινία τίτλου: την ίδια
+                  λέξη τη γράφει ήδη η επικεφαλίδα της ενότητας από πάνω. */}
+              <caption className="sr-only">{plan.optionsTitle}</caption>
+              <colgroup>
+                <col />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '200px' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  {/* Το κενό κελί της γωνίας: υπάρχει για τη δομή, δεν λέει τίποτα. */}
+                  <th scope="col"><span className="sr-only">Επιλογή</span></th>
+                  <th scope="col">Κόπος</th>
+                  <th scope="col">Ρίσκο</th>
+                  <th scope="col">Χρόνος</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plan.options.map((o: Option) => (
+                  <tr key={o.id}>
+                    <th scope="row">
+                      <RowTitle state="plain" text={o.title}
+                        hint={{ label: `Τι σημαίνει: ${o.title}`, body: <Tip lead={o.payoff} rows={[['Ταιριάζει αν', o.fits], ['Τι πληρώνεις', o.cost]]} /> }} />
+                    </th>
+                    <td style={AXIS_CELL}>{EFFORT_LABEL[o.effort]}</td>
+                    <td style={AXIS_CELL}>{RISK_LABEL[o.risk]}</td>
+                    <td style={AXIS_CELL}>{o.speed}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Panel>
       )}
@@ -1045,13 +1047,16 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
         )}
       </Card>
 
-      {/* ΤΟ ΥΨΟΣ ΓΡΑΜΜΗΣ ΤΗΣ ΛΕΖΑΝΤΑΣ ΕΙΝΑΙ 1,45 ΚΑΙ Η ΓΡΑΜΜΗ ΕΔΩ ΦΤΑΝΕΙ 101
-          ΧΑΡΑΚΤΗΡΕΣ. Μετρημένο από τον σαρωτή σε πέντε πλάτη, από τα 768 ώς τα
-          1.440: δύο προτάσεις που πάνε πέρα πέρα, σε ύψος γραμμής φτιαγμένο για
-          λεζάντα τριών λέξεων. Το κείμενο ΔΕΝ στενεύει — ο κανόνας του έργου
-          είναι να πηγαίνει πέρα πέρα — οπότε παίρνει τον αέρα του: 1,7, όπως
-          κάθε άλλο κείμενο πλήρους πλάτους της εφαρμογής. */}
-      <p style={{ ...TT.caption, lineHeight: 1.7, color: 'var(--text-tertiary)', margin: 0, padding: '0 2px' }}>
+      {/* Η ΓΡΑΜΜΗ ΕΔΩ ΦΤΑΝΕΙ 101 ΧΑΡΑΚΤΗΡΕΣ, ΣΕ ΥΨΟΣ ΓΡΑΜΜΗΣ ΛΕΖΑΝΤΑΣ. Μετρημένο
+          σε πέντε πλάτη, από τα 768 ώς τα 1.440: δύο προτάσεις πέρα πέρα, σε
+          ύψος φτιαγμένο για λεζάντα τριών λέξεων. Το κείμενο δεν στενεύει —
+          παίρνει τον αέρα του από την `.po-prose`, όπως κάθε άλλη παράγραφος
+          πλήρους πλάτους. */}
+      {/* Το `lineHeight: undefined` ΣΒΗΝΕΙ την ιδιότητα από το ενσωματωμένο στυλ,
+          ώστε να ισχύσει η κλάση. Χωρίς αυτό το 1,45 του `TT.caption` έρχεται
+          μέσα από το spread και το ενσωματωμένο κερδίζει ΠΑΝΤΑ την κλάση: ο
+          σαρωτής το έπιασε σε τέσσερις σκηνές στα 768 και στα 810. */}
+      <p className="po-prose" style={{ ...TT.caption, lineHeight: undefined, color: 'var(--text-tertiary)', margin: 0, padding: '0 2px' }}>
         {PLAN_DISCLAIMER}
       </p>
     </div>

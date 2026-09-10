@@ -27,6 +27,7 @@
 import { Component, type ReactNode } from 'react';
 import { captureError } from '@/lib/observability/report';
 import { T } from '@/components/tokens';
+import { Btn } from '@/components/Theme';
 
 interface Props {
   /** Ποια καρτέλα, για το μήνυμα και την αναφορά. */
@@ -83,15 +84,11 @@ export default class TabBoundary extends Component<Props, State> {
             {this.props.name}: {error.message}
           </pre>
 
-          <button
-            onClick={() => this.setState({ error: null })}
-            style={{
-              height: T.h.lg, padding: '0 20px', borderRadius: T.radius.pill, border: 'none',
-              background: 'var(--accent)', color: 'var(--accent-text)',
-              fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-            }}>
+          {/* size="lg" γιατί είναι η μοναδική ενέργεια της οθόνης σφάλματος
+              και κρατά το ύψος πεδίου που είχε ήδη. */}
+          <Btn variant="primary" size="lg" onClick={() => this.setState({ error: null })}>
             Δοκίμασε ξανά
-          </button>
+          </Btn>
         </div>
       </div>
     );

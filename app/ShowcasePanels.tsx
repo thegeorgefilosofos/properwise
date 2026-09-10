@@ -3,6 +3,7 @@
 import BrandMark from '@/components/BrandMark';
 import { T } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
+import { ASSISTANT_NAME, ASSISTANT_INITIAL } from '@/lib/assistant/identity';
 // ═══════════════════════════════════════════════════════════════════════════
 // Τα τρία «πάνελ προϊόντος» (Σάρωση · Πίνακας · Βοηθός), ΜΙΑ πηγή αλήθειας
 // για το showcase του hero ΚΑΙ το scrollytelling «Πώς δουλεύει». Μαζί τους
@@ -148,7 +149,7 @@ export function PanelDashboard() {
   // έπιαναν δύο σειρές, «ΠΛΗΡΟΤΗΤΑ» μία: η σειρά διαβαζόταν ακανόνιστη ό,τι κι αν
   // έκανε το κατώφλι ύψους από κάτω. Μία λέξη η καθεμία, μία σειρά, τίποτα να
   // ζυγίσει. Και τα ποσά με δύο δεκαδικά, όπως παντού στην εφαρμογή.
-  const kpis = [['Απόδοση', '4,80%'], ['Έσοδα/μήνα', '1.250,00 €'], ['Πληρότητα', '92%']];
+  const kpis = [['Απόδοση', '4,80%'], ['Έσοδα/μήνα', '1.250,00€'], ['Πληρότητα', '92%']];
   return (
     <div style={{ display: 'flex', gap: 16, textAlign: 'left' }}>
       <div className="lp-rail" style={{ width: 150, flexShrink: 0, flexDirection: 'column', gap: 6 }}>
@@ -157,14 +158,14 @@ export function PanelDashboard() {
           <div style={{ fontSize: 13, fontWeight: 700 }}>PROPERWISE</div>
         </div>
         {['Επισκόπηση', 'Ενοίκιο', 'Δαπάνες', 'Λογαριασμοί', 'Ημερολόγιο'].map((r, i) => (
-          <div key={i} className="lp-live" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', borderRadius: 8, background: i === 0 ? 'var(--bg-elevated)' : 'transparent', border: i === 0 ? '1px solid var(--border-subtle)' : '1px solid transparent', color: i === 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 13, fontWeight: i === 0 ? 700 : 500 }}>
+          <div key={i} className="lp-live" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', borderRadius: T.radius.chip, background: i === 0 ? 'var(--bg-elevated)' : 'transparent', border: i === 0 ? '1px solid var(--border-subtle)' : '1px solid transparent', color: i === 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 13, fontWeight: i === 0 ? 700 : 500 }}>
             <span style={{ width: 6, height: 6, borderRadius: 3, background: i === 0 ? 'var(--text-secondary)' : 'var(--border-strong)' }} />{r}
           </div>
         ))}
       </div>
       <div style={{ flex: 1, minWidth: 0, containerType: 'inline-size', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* ═══ ΤΟ ΠΟΣΟ ΕΒΓΑΙΝΕ ΕΞΩ ΑΠΟ ΤΟ ΠΛΑΚΙΔΙΟ ═════════════════════════════
-            ΤΙ ΣΥΝΕΒΑΙΝΕ. Το «1.250,00 €» είναι δέκα χαρακτήρες· τα άλλα δύο
+            ΤΙ ΣΥΝΕΒΑΙΝΕ. Το «1.250,00€» είναι δέκα χαρακτήρες· τα άλλα δύο
             πλακίδια έχουν πέντε και τρεις. Με μέγεθος δεμένο στο ΠΛΑΤΟΣ ΟΘΟΝΗΣ
             (2.1vw) και χωρίς αναδίπλωση, το ποσό δεν είχε πού να χωρέσει σε στήλη που
             είναι το ένα τρίτο ενός πάνελ: το ευρώ έβγαινε έξω από το περίγραμμα.
@@ -208,7 +209,7 @@ export function PanelDashboard() {
             κάθε πλευρά είναι οκτώ παραπάνω για το κείμενο, σε πλακίδιο 84. */}
         <div className="lp-kpis" style={{ containerType: 'inline-size', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gridTemplateRows: 'auto auto', gap: 10 }}>
           {kpis.map(([l, v], i) => (
-            <div key={i} className="lp-live" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: '13px 10px', minWidth: 0, overflow: 'hidden', textAlign: 'center', gridRow: 'span 2', display: 'grid', gridTemplateRows: 'subgrid', alignContent: 'start', gap: 0 }}>
+            <div key={i} className="lp-live" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, padding: '13px 10px', minWidth: 0, overflow: 'hidden', textAlign: 'center', gridRow: 'span 2', display: 'grid', gridTemplateRows: 'subgrid', alignContent: 'start', gap: 0 }}>
               {/* ═══ ΤΟ ΜΕΓΕΘΟΣ ΔΕΝ ΕΙΝΑΙ ΤΟ ΕΡΓΑΛΕΙΟ ΓΙΑ ΝΑ ΧΩΡΕΣΕΙ ΜΙΑ ΛΕΞΗ ══
                   Η ετικέτα κοβόταν με αποσιωπητικά όταν τα ονόματα ήταν δύο
                   λέξεις («ΚΑΘΑΡΗ ΑΠΟΔΟΣΗ», «ΕΣΟΔΑ/ΜΗΝΑ») και η απάντηση τότε
@@ -227,7 +228,7 @@ export function PanelDashboard() {
             </div>
           ))}
         </div>
-        <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: '16px 16px 14px' }}>
+        <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, padding: '16px 16px 14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700 }}>Έσοδα ανά μήνα</div>
             {/* ΗΤΑΝ ΠΡΑΣΙΝΟ ΜΕ ΤΡΙΓΩΝΟ. Ο κανόνας του προϊόντος είναι ένας: καμία
@@ -246,16 +247,16 @@ export function PanelDashboard() {
             δηλαδή κάτω από 520 εικονοστοιχεία εξαφανιζόταν. Μέναν οι μπάρες
             χωρίς την πρόταση που τις εξηγεί και η σκηνή «Πίνακας» έδειχνε
             γράφημα αντί για όφελος. Ο επισκέπτης από κινητό είναι ο πιο πιθανός
-            μας χρήστης· η γραμμή που λέει «γλιτώνεις 184,00 €» είναι το ΜΟΝΟ
+            μας χρήστης· η γραμμή που λέει «γλιτώνεις 184,00€» είναι το ΜΟΝΟ
             νούμερο εκεί μέσα με νόημα για αυτόν και ήταν το πρώτο που κόβαμε.
             Το κουτί είναι μία σειρά με εικονίδιο και κείμενο: αναδιπλώνεται
             μόνο του, δεν χρειάζεται απόκρυψη. */}
-        <div className="lp-live" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 22%, transparent)', borderRadius: 12, padding: '12px 14px' }}>
-          <div style={{ width: 26, height: 26, borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div className="lp-live" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 22%, transparent)', borderRadius: T.radius.popup, padding: '12px 14px' }}>
+          <div style={{ width: 26, height: 26, borderRadius: T.radius.chip, background: 'var(--accent)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7z" /></svg>
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-            <strong style={{ color: 'var(--text-primary)' }}>Πρόταση:</strong> αλλάζοντας πάροχο ρεύματος, γλιτώνεις 184,00 € τον χρόνο.
+            <strong style={{ color: 'var(--text-primary)' }}>Πρόταση:</strong> αλλάζοντας πάροχο ρεύματος, γλιτώνεις 184,00€ τον χρόνο.
           </div>
         </div>
       </div>
@@ -268,7 +269,7 @@ export function PanelScan() {
   const filed = ['Λογαριασμοί', 'Δαπάνες', 'Ημερολόγιο', navLabel('documents')];
   return (
     <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'left' }}>
-      <div className="lp-live" style={{ position: 'relative', overflow: 'hidden', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: '18px 18px 16px' }}>
+      <div className="lp-live" style={{ position: 'relative', overflow: 'hidden', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, padding: '18px 18px 16px' }}>
         <div className="lp-scan-sweep" aria-hidden="true">
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, var(--accent), transparent)', boxShadow: '0 0 12px color-mix(in srgb, var(--accent) 60%, transparent)' }} />
         </div>
@@ -281,7 +282,7 @@ export function PanelScan() {
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
           <span style={{ fontSize: 12, fontWeight: 700 }}>Πληρωτέο</span>
-          <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>88,50&nbsp;€</span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>88,50€</span>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 10px', fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -317,9 +318,9 @@ export function PanelAssistant() {
   return (
     <div style={{ maxWidth: 460, margin: '0 auto', textAlign: 'left' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 12, marginBottom: 4, borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15 }}>Ν</div>
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15 }}>{ASSISTANT_INITIAL}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>Νόα</div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{ASSISTANT_NAME}</div>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Ο βοηθός σου για τα ακίνητα</div>
         </div>
         {/* Η κουκκίδα «ενεργός» ήταν πράσινη. Στην εφαρμογή το «εδώ είσαι, εδώ
@@ -330,7 +331,7 @@ export function PanelAssistant() {
       <div style={{ padding: '12px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="lp-pop lp-live" style={{ animationDelay: '.1s', alignSelf: 'flex-end', maxWidth: '82%', padding: '10px 14px', borderRadius: T.radius.card, borderBottomRightRadius: 4, background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 13, lineHeight: 1.5 }}>Νόα, πόσα ξόδεψα σε ρεύμα φέτος;</div>
         <div className="lp-pop lp-live" style={{ animationDelay: '.5s', alignSelf: 'flex-start', maxWidth: '90%', padding: '10px 14px', borderRadius: T.radius.card, borderBottomLeftRadius: 4, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', fontSize: 13, lineHeight: 1.55, color: 'var(--text-primary)' }}>
-          Φέτος ξόδεψες <strong>1.240,00&nbsp;€</strong> σε ρεύμα, 18% περισσότερα από πέρσι, ενώ η κατανάλωση έμεινε σχεδόν σταθερή. Θέλεις να σου προτείνω οικονομικότερο πρόγραμμα ή πάροχο για το ακίνητό σου;
+          Φέτος ξόδεψες <strong>1.240,00€</strong> σε ρεύμα, 18% περισσότερα από πέρσι, ενώ η κατανάλωση έμεινε σχεδόν σταθερή. Θέλεις να σου προτείνω οικονομικότερο πρόγραμμα ή πάροχο για το ακίνητό σου;
         </div>
         <div className="lp-pop" style={{ animationDelay: '.9s', alignSelf: 'flex-start' }}>
           <span className="lp-live" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 26%, transparent)', borderRadius: T.radius.pill, padding: '6px 12px' }}>

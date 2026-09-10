@@ -29,7 +29,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RentPaymentsRow } from '@/lib/supabase/tables';
 // ΤΑ `rows`/`row` ΠΑΙΡΝΟΥΝ ΨΕΥΔΩΝΥΜΟ: το αρχείο έχει ήδη παραμέτρους με αυτά τα
 // ονόματα (`collectedIn(rows, …)`, `upsertPeriod(db, row, …)`).
-import { read, rows as readRows, row as readRow, type ReadResult, type ReadOneResult } from './read';
+import { read, rows as readRows, row as readRow, type ReadResult } from './read';
 
 const TABLE = 'rent_payments';
 

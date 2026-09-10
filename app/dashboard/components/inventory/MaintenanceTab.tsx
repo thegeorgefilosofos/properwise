@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useId } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
-import { T, fe, formGrid } from '@/components/Theme'
+import { T, fe, formGrid, Btn } from '@/components/Theme'
 import { CustomSelect, NumberInput, TextInput, DatePicker } from '../UIComponents'
 import * as calendar from '@/lib/data/calendar'
 import * as expenses from '@/lib/data/expenses'
@@ -111,7 +111,7 @@ export function MaintenanceTab({items,schedules,propertyId,userId,onSaved}:{item
         </div>
         <Badge label={days<0?`${Math.abs(days)===1?'1 ημέρα':`${Math.abs(days)} ημέρες`} καθυστέρηση`:days===0?'Σήμερα':days===1?'Αύριο':`σε ${days} ημέρες`} color={c}/>
         <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',whiteSpace:'nowrap',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums'}}>{fmtDate(s.next_due)}</span>
-        <button onClick={()=>markDone(s)} disabled={doneBusy===s.id} title="Καταγράφει την εκτέλεση, ρολάρει στην επόμενη ημερομηνία και ενημερώνει δαπάνες/ημερολόγιο" style={{padding:'0 12px',height:T.h.sm,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'none',color:doneBusy===s.id?'var(--text-tertiary)':'var(--text-secondary)',fontSize: 'var(--fs-xs)',fontFamily:T.font.sans,cursor:doneBusy===s.id?'wait':'pointer',fontWeight:500,whiteSpace:'nowrap'}}>{doneBusy===s.id?'…':'Έγινε'}</button>
+        <Btn variant="secondary" onClick={()=>markDone(s)} disabled={doneBusy===s.id} title="Καταγράφει την εκτέλεση, ρολάρει στην επόμενη ημερομηνία και ενημερώνει δαπάνες/ημερολόγιο">{doneBusy===s.id?'…':'Έγινε'}</Btn>
         <OverflowMenu actions={[
           {label:'Διαγραφή',icon:IconTrash,danger:true,onClick:async()=>{ if(await confirmDialog('Διαγραφή; Θα αφαιρεθεί και η προγραμματισμένη υπενθύμιση/δαπάνη.',{tone:'negative'})) await deleteSched(s) }},
         ]}/>
@@ -152,8 +152,8 @@ export function MaintenanceTab({items,schedules,propertyId,userId,onSaved}:{item
             <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.5}}>Με την αποθήκευση μπαίνει αυτόματα στο <strong style={{color:'var(--text-primary)'}}>ημερολόγιο</strong> (με υπενθύμιση email πριν λήξει){form.est_cost>0?<> και ως <strong style={{color:'var(--text-primary)'}}>εκκρεμής δαπάνη</strong> στον προϋπολογισμό «Συντήρηση»</>:''}.</p>
           </div>
           <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:12}}>
-            <button onClick={()=>setAdding(false)} style={{padding:'0 16px',height:T.h.md,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'none',color:'var(--text-secondary)',fontSize:12,fontFamily:T.font.sans,cursor:'pointer'}}>Ακύρωση</button>
-            <button onClick={handleSave} disabled={saving} style={{padding:'0 20px',height:T.h.md,borderRadius:T.radius.pill,background:saving?'var(--bg-elevated)':'var(--accent)',border:'none',color:saving?'var(--text-tertiary)':'var(--accent-text)',fontSize:12,fontWeight:500,fontFamily:T.font.sans,cursor:saving?'wait':'pointer'}}>{saving?'Αποθήκευση…':'Αποθήκευση'}</button>
+            <Btn variant="secondary" onClick={()=>setAdding(false)}>Ακύρωση</Btn>
+            <Btn variant="primary" onClick={handleSave} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση'}</Btn>
           </div>
         </div>
       )}

@@ -21,7 +21,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { APP_URL } from '../_shared/site.ts'
 import { scheduleBatch, policyFor, type OutboxRow } from '../_shared/emailPolicy.ts'
 import { CATALOG, DIGESTS } from '../_shared/emailCopy.ts'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -34,7 +34,7 @@ const titleOf = (copyId: string): string => {
   try { return ({ ...CATALOG, ...DIGESTS })[copyId]?.({ appUrl: APP_URL })?.subject || copyId } catch { return copyId }
 }
 
-async function authorized(req: Request): Promise<boolean> {
+async function authorized(req: Request): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase })
 }
 
@@ -66,12 +66,24 @@ function tomorrowMorningISO(): string {
 }
 
 Deno.serve(async (req) => {
-  if (!(await authorized(req))) return json({ error: 'unauthorized' }, 401)
+  const auth = await authorized(req)
+  if (!auth.ok) return json(...cronDenial(auth))
 
   // Single-flight: if another run holds the advisory lock, exit cleanly so two
   // overlapping cron ticks never plan the same rows.
-  const { data: gotLock } = await supabase.rpc('try_email_schedule_lock')
-  if (gotLock === false) return json({ skipped: 'locked' })
+  // ΤΟ `=== false` ΑΦΗΝΕ ΤΗΝ ΑΠΟΤΥΧΙΑ ΝΑ ΠΕΡΑΣΕΙ. Χωρίς το `error`, μια αποτυχία
+  // της RPC γύριζε `undefined` — και το `undefined === false` είναι ΨΕΥΔΕΣ,
+  // οπότε η εργασία συνέχιζε ΧΩΡΙΣ να κρατά το κλείδωμα. Δύο επικαλυπτόμενα
+  // τικ του cron θα προγραμμάτιζαν τις ίδιες γραμμές: διπλά email από την ουρά,
+  // από τον μηχανισμό που υπάρχει ΑΚΡΙΒΩΣ για να το αποτρέψει.
+  //
+  // Ο,τι δεν είναι ρητό «πήρα το κλείδωμα» σημαίνει «δεν το πήρα».
+  const { data: gotLock, error: lockErr } = await supabase.rpc('try_email_schedule_lock')
+  if (lockErr) {
+    console.error('[schedule-email-outbox] το κλείδωμα δεν απαντήθηκε:', lockErr)
+    return json({ error: 'lock unavailable', detail: lockErr.message }, 500)
+  }
+  if (gotLock !== true) return json({ skipped: 'locked' })
 
   try {
   const nowISO = new Date().toISOString()
@@ -97,11 +109,17 @@ Deno.serve(async (req) => {
     try {
       // Non-transactional volume already committed (sent OR already planned) this
       // Athens-day / rolling week — so a later run cannot hand out a fresh budget.
-      const { data: committed } = await supabase
+      // ΕΔΩ Η ΣΙΩΠΗ ΔΕΝ ΠΑΡΑΛΕΙΠΕΙ, ΞΟΔΕΥΕΙ. Το σχόλιο από πάνω το λέει ρητά:
+      // η ανάγνωση υπάρχει ώστε μια επόμενη εκτέλεση να ΜΗΝ μοιράσει φρέσκο
+      // προϋπολογισμό. Με `committed === null` από αποτυχία, το «όσα έχουν ήδη
+      // σταλεί» γίνεται μηδέν και ο παραλήπτης παίρνει δεύτερη πλήρη μερίδα
+      // μηνυμάτων την ίδια μέρα — ακριβώς το αντίθετο από ό,τι φυλάει ο κώδικας.
+      const { data: committed, error: commErr } = await supabase
         .from('email_outbox')
         .select('sent_at,scheduled_for,status,send_window')
         .eq('to_email', email).neq('category', 'transactional').gte('scheduled_for', weekAgoISO)
         .or('status.eq.sent,send_window.not.is.null')
+      if (commErr) { console.error('[schedule-email-outbox] δεσμευμένος όγκος:', commErr); continue }
       const eff = (r: { sent_at?: string; scheduled_for?: string }) => r.sent_at || r.scheduled_for || ''
       const sentThisWeekNonTx = (committed || []).length
       const sentTodayNonTx = (committed || []).filter(r => eff(r) >= dayStartISO).length

@@ -28,7 +28,7 @@ import { propertyYield } from '@/lib/tools/apodosi';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
-import { ToolCta } from '@/app/PublicChrome';
+import { ToolCta, EstimateNote } from '@/app/PublicChrome';
 
 import LiveResult from '@/components/LiveResult';
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
@@ -143,13 +143,21 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           Τρία πεδία που ξεκινούν στο μηδέν, με τη βοήθεια από κάτω τους. Το
           μηδέν δεν κρύβεται: το αποτέλεσμα λέει ρητά τι δεν περιλαμβάνει όσο
           μένουν άδεια. */}
-      <div className="po-tool-controls" style={{ marginTop: 22 }}>
+      <div className="po-tool-controls" style={{ marginTop: T.sp.xl }}>
         <p style={GROUP}>Τι το βαραίνει</p>
         <div {...fixedCols(3, 14, 'start')}>
           <div>
             <MoneyField id={ids.enfia} name="ΕΝΦΙΑ τον χρόνο" value={v.enfia} onChange={x => set('enfia', x)}/>
+            {/* ΤΡΕΙΣ ΥΠΟΔΕΙΞΕΙΣ, ΤΡΕΙΣ ΓΡΑΜΜΕΣ — ΜΕΤΡΗΜΕΝΟ ΣΤΑ 339. Η στήλη είναι
+                339 εικονοστοιχεία και οι τρεις υποδείξεις έπιαναν 2, 3 και 2
+                γραμμές (386, 500 και 527 εικονοστοιχεία κειμένου). Δύο σειρές
+                πεδίων με ανισοϋψείς υποσημειώσεις από κάτω τους διαβάζονται ως
+                ραγισμένη διάταξη· η καθεμιά κόπηκε ώστε να χωρά σε ΜΙΑ γραμμή
+                χωρίς να χάσει το γεγονός που κουβαλά. Εδώ: ότι ο ΕΝΦΙΑ
+                πληρώνεται και σε άδειο ακίνητο. Το «φόρος κατοχής» έφυγε — το
+                λέει η ίδια η ονομασία του φόρου. */}
             <p style={HINT}>
-              Φόρος κατοχής: τον πληρώνεις και άδειο.{' '}
+              Τον πληρώνεις κι άδειο.{' '}
               <Link href="/ypologismos-enfia" className="lp-link"
                 style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
                 Υπολόγισέ τον
@@ -162,21 +170,36 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
                 δικός μας εμπειρικός κανόνας: είναι η τεκμαρτή δαπάνη επισκευών
                 που αναγνωρίζει ο νόμος χωρίς παραστατικά. Μπαίνει με ένα
                 πάτημα και ο χρήστης το αλλάζει. */}
+            {/* ΕΔΩ ΤΟ ΓΕΓΟΝΟΣ ΕΙΝΑΙ Η ΑΠΑΡΙΘΜΗΣΗ: η ετικέτα λέει «Δαπάνες τον
+                χρόνο» και δεν λέει ΠΟΙΕΣ. Η φράση «ο νόμος τεκμαίρει» έγινε
+                άνω-κάτω τελεία· η πηγή δεν χάνεται, γιατί την γράφει ολόκληρη
+                η ερώτηση «Τι δαπάνες να βάλω;» της ίδιας σελίδας: τεκμαρτή
+                δαπάνη 5% του ενοικίου χωρίς παραστατικά. */}
             <p style={HINT}>
-              Συντήρηση, ασφάλιση, κοινόχρηστα δικά σου. Ο νόμος τεκμαίρει{' '}
+              Συντήρηση, ασφάλιση, κοινόχρηστα:{' '}
               {/* ΤΟ ΠΡΟΣΒΑΣΙΜΟ ΟΝΟΜΑ ΗΤΑΝ ΣΚΕΤΟ ΤΟ ΠΟΣΟ. Στη λίστα κουμπιών ενός
-                  αναγνώστη οθόνης ακουγόταν «420,00 €» και τίποτε άλλο: ούτε
+                  αναγνώστη οθόνης ακουγόταν «420,00€» και τίποτε άλλο: ούτε
                   ότι είναι κουμπί συμπλήρωσης, ούτε ποιο πεδίο γεμίζει. */}
+              {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `LinkBtn` δίνει την ίδια όψη συνδέσμου αλλά δεν
+                  παίρνει className: θα έχανε την `po-tap-inline`, δηλαδή ΟΛΗ τη ζώνη
+                  αφής των 44 που περιγράφεται από κάτω. Μαζί της θα έφευγε το ζεύγος
+                  γέμισμα 3 / περιθώριο −3 που κρατά τις λέξεις της πρότασης στη θέση
+                  τους μαζί με τα ψηφία tabular του T.font.num. */}
               <button type="button" onClick={() => set('dapanes', presumed.toFixed(2))}
                 aria-label={`Συμπλήρωση ${feAuto(presumed)} στις δαπάνες τον χρόνο`}
                 className="po-tap-inline"
                 /* ΤΟ ΔΑΧΤΥΛΟ ΕΙΧΕ ΔΕΚΑΠΕΝΤΕ ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ ΝΑ ΠΙΑΣΕΙ. Μετρημένο
-                   στα 390: 56 × 15 και με το γέμισμα 62 × 31. Ούτε αυτό φτάνει
-                   στα 44 και το γέμισμα δεν μπορεί να το φτάσει: μετρημένο,
-                   ψηλώνει μαζί και την παράγραφο. Τα υπόλοιπα 13 τα δίνει το
-                   .po-tap-inline ως ψευδοστοιχείο, χωρίς να κουνηθεί τίποτα. */
+                   στα 390: 56 × 15. Τα 44 τα δίνει ΟΛΑ το .po-tap-inline ως
+                   ψευδοστοιχείο, που απλώνεται πάνω και κάτω από το στοιχείο.
+
+                   ΤΟ ΚΑΘΕΤΟ ΓΕΜΙΣΜΑ ΕΦΥΓΕ, ΓΙΑΤΙ ΨΗΛΩΝΕ ΤΗ ΓΡΑΜΜΗ. Ηταν 8
+                   εικονοστοιχεία πάνω-κάτω· δεν χρειάζονταν για τον στόχο (ο
+                   υπολογισμός του ψευδοστοιχείου δίνει 44 είτε έτσι είτε
+                   αλλιώς) και σήκωναν το κουτί γραμμής της παραγράφου κατά 16.
+                   Δίπλα σε δύο διπλανές υποδείξεις μιας γραμμής, αυτή η μία
+                   καθόταν οκτώ εικονοστοιχεία πιο χαμηλά. */
                 style={{
-                  border: 'none', background: 'none', padding: '8px 3px', margin: '0 -3px', cursor: 'pointer',
+                  border: 'none', background: 'none', padding: '0 3px', margin: '0 -3px', cursor: 'pointer',
                   color: 'var(--accent)', fontWeight: 600, fontSize: 13,
                   fontFamily: T.font.num, textDecoration: 'underline',
                 }}>{feAuto(presumed)}</button>.
@@ -184,7 +207,10 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           </div>
           <div>
             <MoneyField id={ids.alla} name="Άλλα ενοίκια που δηλώνεις" value={v.alla} onChange={x => set('alla', x)}/>
-            <p style={HINT}>Ακαθάριστα, από τα υπόλοιπα ακίνητά σου. Ανεβάζουν το κλιμάκιο αυτού εδώ.</p>
+            {/* Το «από τα υπόλοιπα ακίνητά σου» το λέει ήδη η ετικέτα «Άλλα
+                ενοίκια που δηλώνεις». Μένουν τα δύο που ΔΕΝ λέει: ότι θέλουμε
+                ακαθάριστα και ότι ανεβάζουν το κλιμάκιο ΑΥΤΟΥ του ακινήτου. */}
+            <p style={HINT}>Ακαθάριστα. Ανεβάζουν το κλιμάκιο αυτού εδώ.</p>
           </div>
         </div>
       </div>
@@ -232,7 +258,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
             τα τρία βάρη διαβαθμίσεις του ίδιου ουδέτερου. Ο φόρος δεν είναι
             σφάλμα, είναι υποχρέωση που μετρήθηκε. */}
         {r.gross > 0 && (
-          <div aria-hidden style={{ marginBottom: 18 }}>
+          <div aria-hidden style={{ marginBottom: T.sp.lg }}>
             <div style={{
               display: 'flex', gap: 2, height: 10, borderRadius: T.radius.pill, overflow: 'hidden',
               background: 'var(--bg-elevated)',
@@ -294,28 +320,26 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ───────────────────────────────────────── */}
       <div className="po-tool-note" style={{
-        marginTop: 22, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
+        marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-primary)' }}>Τι δεν περιλαμβάνει.</strong>{' '}
-          Ο φόρος υπολογίζεται με την κλίμακα ενοικίων του {year}
-          {year >= FIRST_YEAR_NEW_BRACKETS ? ' (15 / 25 / 35 / 45%)' : ' (15 / 35 / 45%)'} και με
-          την τεκμαρτή έκπτωση 5%, που από 1/1/2026 προϋποθέτει είσπραξη μέσω
-          τραπέζης (ν.5246/2025): ο υπολογισμός την υποθέτει. Δεν περιλαμβάνει
-          μεταβολή της αξίας του ακινήτου, δάνειο και τόκους, έξοδα αγοράς ή
-          πώλησης, ανακαίνιση, ανείσπρακτα ενοίκια, βραχυχρόνια μίσθωση, νομικό
-          πρόσωπο, ούτε άλλα εισοδήματά σου εκτός ενοικίων. Είναι{' '}
-          <strong>εκτίμηση</strong> για να ξέρεις την τάξη μεγέθους, όχι
-          επενδυτική ή φορολογική συμβουλή.
+          Κλίμακα ενοικίων {year}
+          {year >= FIRST_YEAR_NEW_BRACKETS ? ' (15 / 25 / 35 / 45%)' : ' (15 / 35 / 45%)'} και
+          τεκμαρτή έκπτωση 5%, που από 1/1/2026 θέλει είσπραξη μέσω τραπέζης
+          (ν.5246/2025)· εδώ θεωρείται δεδομένη. Απ’ έξω μένουν: μεταβολή της
+          αξίας, δάνειο και τόκοι, έξοδα αγοράς ή πώλησης, ανακαίνιση,
+          ανείσπρακτα, βραχυχρόνια, νομικό πρόσωπο και τα άλλα σου
+          εισοδήματα. <EstimateNote investment />
         </p>
       </div>
 
       <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
 
       <ToolCta
-        title="Θέλεις να το βλέπεις για όλα σου τα ακίνητα, χωρίς να το ξαναϋπολογίσεις;"
-        body="Το PROPERWISE κρατά ενοίκια, ΕΝΦΙΑ και δαπάνες ανά ακίνητο όλη τη χρονιά και δείχνει ποιο αποδίδει και ποιο σε βαραίνει."
+        title="Για όλα σου τα ακίνητα, χωρίς να το ξαναϋπολογίσεις;"
+        body="Το PROPERWISE κρατά ενοίκια, ΕΝΦΙΑ και δαπάνες ανά ακίνητο και δείχνει ποιο αποδίδει, ποιο σε βαραίνει."
       />
     </div>
   );

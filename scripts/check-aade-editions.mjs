@@ -48,7 +48,7 @@ const newer = (a, b) => {
 const findings = [];
 let failed = 0;
 
-for (const [key, s] of watched) {
+for (const [, s] of watched) {
   let html;
   try {
     const res = await fetch(s.watch, {

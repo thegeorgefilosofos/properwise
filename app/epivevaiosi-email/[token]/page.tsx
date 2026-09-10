@@ -17,6 +17,7 @@
 import BrandMark from '@/components/BrandMark';
 import { T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 import { useCallback, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -59,7 +60,7 @@ export default function ConfirmReminderEmail() {
   return (
     <div style={wrap}>
       <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 18, borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.xl, borderBottom: '1px solid var(--border-subtle)' }}>
           <BrandMark size={34} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 700 }}>PROPERWISE</div>
@@ -79,26 +80,35 @@ export default function ConfirmReminderEmail() {
 
         {state === 'ok' && (
           <div style={{ paddingTop: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '11px 14px', marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '11px 14px', marginBottom: T.sp.lg }}>
               <span style={{ color: 'var(--positive)', fontWeight: 700 }}>✓</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--positive)' }}>Η διεύθυνση επιβεβαιώθηκε.</span>
             </div>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Από εδώ και πέρα οι υπενθυμίσεις για λογαριασμούς, ενοίκια και γεγονότα του ημερολογίου θα φτάνουν σε αυτή τη διεύθυνση. Μπορείς να την αλλάξεις ή να τη σβήσεις οποτεδήποτε, από τις Ρυθμίσεις της εφαρμογής.
+            {/* ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΜΕ ΤΥΧΑΙΑ ΤΕΛΗ, ΣΕ ΚΑΡΤΑ 384. Η κάρτα είναι 440
+                μείον 2×28 γέμισμα, δηλαδή μέτρο ~58 χαρακτήρων στα 13 — στενή
+                στήλη, όπου η ριγμένη δεξιά άκρη φαίνεται σε κάθε γραμμή. Στοίχιση
+                πέρα πέρα με δικά μας μαλακά ενωτικά: χωρίς αυτά η ίδια στοίχιση
+                θα τέντωνε τα κενά αντί να σπάσει λέξη. */}
+            <p className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              {hy(<>Από εδώ και πέρα οι υπενθυμίσεις για λογαριασμούς, ενοίκια και γεγονότα του ημερολογίου θα φτάνουν σε αυτή τη διεύθυνση. Μπορείς να την αλλάξεις ή να τη σβήσεις οποτεδήποτε, από τις Ρυθμίσεις της εφαρμογής.</>)}
             </p>
           </div>
         )}
 
+        {/* Τρεις γραμμές στην ίδια κάρτα των 384 (μέτρο ~58 χαρακτήρων στα 13).
+            Ιδια μεταχείριση με το μήνυμα επιτυχίας από πάνω: οι δύο καταστάσεις
+            της σελίδας διαβάζονται η μία στη θέση της άλλης, οπότε δεν έχει
+            νόημα η μία να κλείνει δεξιά κι η άλλη όχι. */}
         {state === 'invalid' && (
-          <p style={{ paddingTop: 22, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Ο σύνδεσμος δεν είναι έγκυρος, έχει λήξει ή χρησιμοποιήθηκε ήδη. Ζήτησε νέα επιβεβαίωση από τις Ρυθμίσεις της εφαρμογής, στις Ειδοποιήσεις.
+          <p className="po-just" style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            {hy(<>Ο σύνδεσμος δεν είναι έγκυρος, έχει λήξει ή χρησιμοποιήθηκε ήδη. Ζήτησε νέα επιβεβαίωση από τις Ρυθμίσεις της εφαρμογής, στις Ειδοποιήσεις.</>)}
           </p>
         )}
 
         {/* Ο σύνδεσμος δεν κρίθηκε. Το λέμε έτσι ακριβώς, με κουμπί: η μόνη
             σωστή ενέργεια είναι να ξαναρωτήσεις. */}
         {state === 'offline' && (
-          <div style={{ paddingTop: 22 }}>
+          <div style={{ paddingTop: T.sp.xl }}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
               Δεν λάβαμε απάντηση, οπότε ο σύνδεσμος δεν ελέγχθηκε. Μπορεί να είναι μια χαρά έγκυρος.
             </p>

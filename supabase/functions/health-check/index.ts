@@ -27,7 +27,7 @@
 // Deploy: supabase functions deploy health-check
 // ═══════════════════════════════════════════════════════════════════════════
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { runHealth, diagnose } from '../_shared/probe.mjs'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -105,23 +105,66 @@ async function alertOnTransition(wasOk: boolean | null, isOk: boolean, results: 
 }
 
 Deno.serve(async (req) => {
-  if (!(await authorizeCron(req, {
+  const auth = await authorizeCron(req, {
     serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase,
     dbSecretName: ['lifecycle_cron', 'email_cron'],
-  }))) return json({ error: 'unauthorized' }, 401)
+  })
+  if (!auth.ok) return json(...cronDenial(auth))
 
   const base = baseUrl()
-  // ΠΑΡΑΛΕΙΠΕΤΑΙ ΘΟΡΥΒΩΔΩΣ, ΔΕΝ ΤΡΕΧΕΙ ΣΤΑ ΤΥΦΛΑ. Και δεν γράφει γραμμή: μια
-  // ψεύτικη αποτυχία στο ιστορικό είναι χειρότερη από ένα κενό στο ιστορικό.
-  if (!base) return json({ skipped: 'λείπει το HEALTH_BASE_URL' }, 200)
+  // ═══ ΤΟ 200 ΗΤΑΝ ΤΟ ΙΔΙΟ ΤΟ ΕΛΑΤΤΩΜΑ ══════════════════════════════════════
+  // ΤΙ ΜΕΤΡΗΘΗΚΕ ΣΤΗΝ ΠΑΡΑΓΩΓΗ (07/09/2026, με ερωτήματα στη βάση):
+  //
+  //   public.health_checks                              0 γραμμές, ποτέ καμία
+  //   public.health_status()                            ok = false
+  //   cron.job_run_details, jobid 53 «health-every-15»   59 succeeded, 0 failed
+  //   net._http_response, 24 γραμμές ώς 16:45 UTC        200 {"skipped":"λείπει…"}
+  //
+  // Το HEALTH_BASE_URL δεν μπήκε ποτέ στα secrets της συνάρτησης: υπάρχει μόνο
+  // ως secret του GitHub, για το health.yml. Καθε μία από τις 59 κλήσεις
+  // σταμάτησε εδώ. Το «ΠΑΡΑΛΕΙΠΕΤΑΙ ΘΟΡΥΒΩΔΩΣ» ήταν λάθος περιγραφή: ένα 200 με
+  // σώμα που δεν το διαβάζει άνθρωπος δεν είναι θόρυβος, είναι σιωπή.
+  //
+  // ΤΟ ΣΧΗΜΑ ΕΙΝΑΙ ΑΥΤΟ ΤΩΝ ΑΔΕΛΦΩΝ. Εξι συναρτήσεις άκρου αρνούνται σε μυστικό
+  // που λείπει με `json({ error: … }, 500)`: send-client-email · send-newsletter
+  // · send-market-digest · send-lifecycle-email · send-monthly-statements ·
+  // send-test-notification. Ηταν η μόνη που απαντούσε 2xx.
+  //
+  // ΚΑΙ ΤΙ ΔΕΝ ΚΑΝΕΙ ΤΟ 500, ΓΡΑΜΜΕΝΟ ΩΣΤΕ ΝΑ ΜΗΝ ΞΑΝΑΠΙΣΤΕΥΤΕΙ: ΔΕΝ κοκκινίζει
+  // το pg_cron. Η εργασία τρέχει `select net.http_post(...)`, που είναι
+  // ασύγχρονο: γυρίζει αναγνωριστικό μόλις μπει το αίτημα στην ουρά, οπότε το
+  // `cron.job_run_details` κρίνει την ΟΥΡΑ, όχι την απάντηση. Μετρημένο: και οι
+  // 54 αποτυχίες που έχει καταγράψει ποτέ αυτή η βάση λένε «invalid URL … Bad
+  // hostname», δηλαδή σφάλμα ΠΡΙΝ φύγει το αίτημα. Αυτό που κερδίζει το 500
+  // είναι ότι η άρνηση γίνεται αναγνώσιμη εκεί που καταγράφεται η απάντηση
+  // (`net._http_response`) χωρίς να διαβαστεί σώμα. Το κόκκινο στο pg_cron το
+  // δίνει η `watch_health()`.
+  //
+  // ΚΑΙ ΔΕΝ ΓΡΑΦΕΙ ΓΡΑΜΜΗ: ΤΟ ΠΡΟΗΓΟΥΜΕΝΟ ΣΧΟΛΙΟ ΕΙΧΕ ΔΙΚΙΟ, ΜΕ ΕΝΑΝ ΛΟΓΟ
+  // ΠΑΡΑΠΑΝΩ. Η `alertOnTransition` διαβάζει την ΤΕΛΕΥΤΑΙΑ γραμμή. Μια γραμμή
+  // ok = false από λάθος ρύθμισης θα έστελνε, τη στιγμή που ο ιδιοκτήτης βάζει
+  // το μυστικό, email «η παραγωγή απαντά ξανά» για διακοπή που δεν συνέβη ποτέ.
+  // Και το κενό είναι ΗΔΗ ορισμένο ως βλάβη: η `health_status()` απαντά
+  // «δεν έχει τρέξει ποτέ έλεγχος υγείας».
+  if (!base) return json({ error: 'no_health_base_url', detail: 'Λείπει το HEALTH_BASE_URL στα secrets της function.' }, 500)
 
   const results = (await runHealth(base)) as Outcome[]
   const { kind, failed } = diagnose(results) as { kind: string; failed: Outcome[] }
   const ok = kind === 'ok'
 
-  const { data: prev } = await supabase
+  // Η ΠΙΟ ΑΚΡΙΒΗ ΣΙΩΠΗ ΤΟΥ ΑΠΟΘΕΤΗΡΙΟΥ ΗΤΑΝ ΕΔΩ. Ο συναγερμός χτυπά στη
+  // ΜΕΤΑΒΑΣΗ: «ήταν καλά — τώρα δεν είναι». Το `wasOk === null` σημαίνει «δεν
+  // ξέρω πώς ήταν» — τότε καμία μετάβαση δεν αναγνωρίζεται — δηλαδή δεν
+  // στέλνεται ειδοποίηση. Χωρίς το `error`, μια αποτυχημένη ανάγνωση έδινε
+  // ακριβώς αυτό το `null`: ο μηχανισμός που υπάρχει για να ξυπνήσει άνθρωπο
+  // όταν πέσει η υπηρεσία, έμενε σιωπηλός επειδή έπεσε και η βάση του.
+  const { data: prev, error: prevErr } = await supabase
     .from('health_checks').select('ok').order('ran_at', { ascending: false }).limit(1)
-  const wasOk = prev && prev.length ? Boolean(prev[0].ok) : null
+  if (prevErr) console.error('[health-check] προηγούμενη κατάσταση:', prevErr)
+  // Με αποτυχία ανάγνωσης δεν προσποιούμαστε ότι ξέρουμε: αν η τωρινή μέτρηση
+  // είναι ΚΑΚΗ, τη δηλώνουμε ως μετάβαση από «καλά», ώστε να φύγει ειδοποίηση.
+  // Ενας συναγερμός παραπάνω είναι φθηνότερος από έναν που δεν χτύπησε.
+  const wasOk = prev && prev.length ? Boolean(prev[0].ok) : prevErr ? true : null
 
   const alert = await alertOnTransition(wasOk, ok, results, kind)
 

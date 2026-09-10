@@ -5,7 +5,7 @@
 // εργαλεία, με διάκριση φυσικού/νομικού προσώπου όπου έχει σημασία.
 // Πραγματικά δεδομένα αγοράς (lib/market/greekMarket) + μηχανή (lib/market/returns).
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState, useEffect, useMemo, useId } from 'react';
+import { useState, useEffect, useMemo, useId, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
 import * as loanStore from '@/lib/data/loans';
@@ -15,7 +15,7 @@ import { readStatus, type StatusRow } from '@/lib/property/status'
 import { useChartWidth } from '@/app/hooks/useChartWidth'
 import { businessFormOf } from '@/lib/accounting/taxProfile'
 import type { LegalForm as DossierLegalForm } from '@/lib/accounting/dossier'
-import { Skeleton, SkeletonKPIs, PageTitle, fe, feCompact, fp, fn, ABSENT, ABSENT_SHORT, T, fixedCols, Bar, Tile, widestOf, Stat } from '@/components/Theme';
+import { Skeleton, SkeletonKPIs, PageTitle, fe, feCompact, fp, fn, ABSENT, ABSENT_SHORT, T, fixedCols, Bar, Tile, widestOf, Stat, Btn } from '@/components/Theme';
 import { NumberInput, CustomSelect, fieldLabelStyle, SegmentControl, Toggle as Switch } from './UIComponents';
 import { ChevronRight, TrendingUp, Landmark, Percent, Wallet, Layers, ArrowUpRight, Info, ShieldCheck } from 'lucide-react';
 import { yields, compound, leverage, compareInvestments, propertyTotalReturn, projectLine, yieldGrade, dealAnalysis, type LeverageResult, type YieldGrade } from '@/lib/market/returns';
@@ -86,7 +86,7 @@ const card: React.CSSProperties = { position: 'relative', background: 'linear-gr
 const titleStyle: React.CSSProperties = { fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: SANS, letterSpacing: '0.1px' };
 const subStyle: React.CSSProperties = { fontSize: 12, color: 'var(--text-tertiary)', margin: '2px 0 0', fontFamily: SANS };
 /** Οι δύο κάρτες των «Εργαλείων απόδοσης»: ίδιο κουτί, ίδια σημείωση, ίδιο ύψος. */
-const toolCard: React.CSSProperties = { padding: 14, borderRadius: 12, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column' };
+const toolCard: React.CSSProperties = { padding: 14, borderRadius: T.radius.popup, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column' };
 const toolNote: React.CSSProperties = { fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: 0, fontFamily: SANS, lineHeight: 1.5 };
 
 // ── Επεξήγηση όρου (διακριτικό εικονίδιο· επαγγελματικός ορισμός) ─────────────
@@ -133,7 +133,7 @@ function Section({ icon, title, sub, info, children, defaultOpen = false }: { ic
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={() => setOpen(o => !o)} aria-expanded={open} aria-label={title} className="acc-toggle"
           style={{ position: 'absolute', inset: 0, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} />
-        <span style={{ position: 'relative', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}>{icon}</span>
+        <span style={{ position: 'relative', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}>{icon}</span>
         <div style={{ position: 'relative', pointerEvents: 'none', flex: 1, minWidth: 0 }}>
           <p style={titleStyle}>{title}</p>
           {sub && <p style={subStyle}>{sub}</p>}
@@ -165,7 +165,7 @@ function Section({ icon, title, sub, info, children, defaultOpen = false }: { ic
 function GradeCard({ grade, note }: { grade: YieldGrade; note: string }) {
   const strong = grade.grade === 'A' || grade.grade === 'B';
   return (
-    <div style={{ ...card, display: 'flex', alignItems: 'center', gap: 18 }}>
+    <div style={{ ...card, display: 'flex', alignItems: 'center', gap: T.sp.lg }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: T.radius.card, background: 'var(--bg-elevated)', border: `1px solid ${strong ? 'var(--border-accent)' : 'var(--border-subtle)'}`, flexShrink: 0 }}>
         <span style={{ fontSize: 28, fontWeight: 700, color: strong ? 'var(--accent)' : 'var(--text-primary)', fontFamily: SANS, lineHeight: 1 }}>{grade.grade}</span>
       </div>
@@ -445,7 +445,20 @@ function LeverCard({ lever }: { lever: YieldLever }) {
               βελάκι: ο σαρωτής το βρήκε σε πέντε κάρτες επί έξι σκηνές. Ο
               στόχος θέλει ΚΑΙ τις δύο διαστάσεις· και το εικονίδιο κεντράρεται
               μέσα του. */}
-          {lever.href && <a href={lever.href} target="_blank" rel="noreferrer" aria-label={`Πηγή: ${lever.title}`} style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: T.h.md, minHeight: T.h.md, marginRight: -8 }}><ArrowUpRight size={14} /></a>}
+          {/* ═══ Η ΘΕΣΗ ΤΟΥ ΒΕΛΑΚΙΟΥ ΚΡΑΤΙΕΤΑΙ ΚΑΙ ΟΤΑΝ ΔΕΝ ΥΠΑΡΧΕΙ ΒΕΛΑΚΙ ══════
+              ΦΩΤΟΓΡΑΦΗΘΗΚΕ: «20% λιγότερος ΕΝΦΙΑ» τελειώνει σε άλλη κατακόρυφο
+              από «φόρος στο 95%», επειδή ο πρώτος μοχλός έχει πηγή και ο
+              δεύτερος όχι. Ο σύνδεσμος πιάνει 44 πλάτος με −8 περιθώριο,
+              δηλαδή 36 πραγματικά: όταν λείπει, η τιμή γλιστράει 36 δεξιότερα
+              και οι έξι μοχλοί παύουν να συγκρίνονται με μια κατακόρυφη ματιά.
+
+              Το κενό δεν είναι διακόσμηση, είναι ΣΤΗΛΗ. Ενα αόρατο κουτί ίδιου
+              πλάτους την κρατά, ώστε κάθε τιμή να τελειώνει στο ίδιο σημείο
+              ανεξάρτητα από το αν ο μοχλός παραπέμπει κάπου. Το `aria-hidden`
+              το κρύβει από τον αναγνώστη οθόνης: δεν είναι πληροφορία. */}
+          {lever.href
+            ? <a href={lever.href} target="_blank" rel="noreferrer" aria-label={`Πηγή: ${lever.title}`} style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: T.h.md, minHeight: T.h.md, marginRight: -8 }}><ArrowUpRight size={14} /></a>
+            : <span aria-hidden style={{ display: 'inline-block', minWidth: T.h.md, marginRight: -8 }} />}
         </span>
       </div>
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, fontFamily: SANS, lineHeight: 1.55 }}>{lever.impact}</p>
@@ -577,7 +590,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   // Αν κάτι είναι λάθος, διορθώνεται εκεί που δηλώθηκε.
   // Η αντιστοίχιση ζει σε ένα σημείο, με τεστ. Εδώ γραφόταν ως έκφραση, ΚΑΙ
   // έπαιρνε τη δυαδική περίληψη της νομικής μορφής, όπου η ατομική επιχείρηση
-  // είχε ήδη γίνει «νομικό πρόσωπο»: σε κέρδος 100.000 € ο φόρος έβγαινε 25.900
+  // είχε ήδη γίνει «νομικό πρόσωπο»: σε κέρδος 100.000€ ο φόρος έβγαινε 25.900
   // αντί 34.300 και στα μικρά εισοδήματα υπερδιπλάσιος.
   const entity = businessFormOf(legalForm);
   const [term, setTerm] = useState<'long' | 'short'>('long');
@@ -644,7 +657,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   // Ενοίκια των ΑΛΛΩΝ ακινήτων του χρήστη — για τον προοδευτικό φόρο στο σύνολο.
   const [otherRents, setOtherRents] = useState<{ id: string; annualRent: number; shortTerm: boolean }[]>([]);
 
-  const K = (s: string) => `roi_${propertyId}_${s}`;
+  const K = useCallback((s: string) => `roi_${propertyId}_${s}`, [propertyId]);
   // ΑΚΥΡΩΣΗ ΑΝΑ ΑΚΙΝΗΤΟ. Έξι παράλληλα ερωτήματα γεμίζουν δώδεκα πεδία. Με αλλαγή
   // ακινήτου στη διάρκειά τους, η παλιά απάντηση έγραφε αξία, ενοίκιο, ετήσια
   // έξοδα, τετραγωνικά και τύπο του ΠΡΟΗΓΟΥΜΕΝΟΥ ακινήτου. Και επειδή αυτά τα
@@ -729,10 +742,10 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       finally { if (alive) setLoading(false); }
     })();
     return () => { alive = false };
-  }, [propertyId, propertyValue]);
+  }, [propertyId, propertyValue, supabase, userId, K]);
 
   // Persist ελαφριά (τοπικά) — δεν χρειάζεται νέος πίνακας.
-  useEffect(() => { try { localStorage.setItem(K('value'), value); localStorage.setItem(K('rent'), rent); localStorage.setItem(K('opex'), opex); localStorage.setItem(K('region'), region); } catch { } }, [value, rent, opex, region]);
+  useEffect(() => { try { localStorage.setItem(K('value'), value); localStorage.setItem(K('rent'), rent); localStorage.setItem(K('opex'), opex); localStorage.setItem(K('region'), region); } catch { } }, [value, rent, opex, region, K]);
 
   // Prefill πληρότητας/τιμής βραχυχρόνιας από την αναφορά της περιοχής (επαναφορά όταν
   // αλλάζει η περιοχή· ο χρήστης μπορεί πάντα να διορθώσει).
@@ -800,7 +813,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   // ── ΦΟΡΟΣ: ΕΝΑΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ, ΟΧΙ ΕΝΑ ΑΚΙΝΗΤΟ ─────────────────────────────
   // Πριν, ο φόρος υπολογιζόταν πάνω ΜΟΝΟ στα έσοδα αυτού του ακινήτου, με
   // `rentsPaidViaBank: true` καρφωμένο. Δύο λάθη σε δύο γραμμές: (α) η κλίμακα
-  // είναι προοδευτική στο σύνολο των ενοικίων του Ε1, οπότε ένα ακίνητο 8.000 €
+  // είναι προοδευτική στο σύνολο των ενοικίων του Ε1, οπότε ένα ακίνητο 8.000€
   // ανάμεσα σε τρία δεν φορολογείται με 15% αλλά συμμετέχει στο 25%· (β) η
   // τεκμαρτή έκπτωση 5% δεν είναι δεδομένη — από 1/1/2026 θέλει τραπεζική
   // είσπραξη. Τώρα ενοποιούμε το χαρτοφυλάκιο (με το ΕΠΕΞΕΡΓΑΣΜΕΝΟ εδώ ενοίκιο
@@ -879,7 +892,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
     // ΚΑΜΙΑ ΣΥΓΚΡΙΣΗ ΧΩΡΙΣ ΑΞΙΑ ΑΚΙΝΗΤΟΥ.
     //
     // Ήταν `nVal || 100000`: χωρίς καταχωρημένη αξία, ολόκληρη η σύγκριση
-    // επενδύσεων έτρεχε πάνω σε 100.000 € που δεν έδωσε ποτέ ο χρήστης — και
+    // επενδύσεων έτρεχε πάνω σε 100.000€ που δεν έδωσε ποτέ ο χρήστης — και
     // το νούμερο διέρρεε ΚΑΙ στην εκτύπωση ΚΑΙ στην εξαγωγή, όπου φαίνεται σαν
     // δικό του στοιχείο. Χωρίς αξία δεν υπάρχει τι να συγκριθεί· ζητάμε την αξία.
     if (!(nVal > 0)) return [];
@@ -940,9 +953,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   //
   // ΙΔΙΟ ΑΚΙΝΗΤΟ, ΙΔΙΕΣ ΠΑΡΑΔΟΧΕΣ. Εδώ έλειπαν τα `sqm`, `isHouse` και
   // `highSeasonShare` — άρα η μηχανή έπεφτε στις προεπιλογές της (βασικό κλιμάκιο
-  // ΤΑΚΚ 8/2 € και 60% νύχτες σε υψηλή περίοδο), ενώ η εκτίμηση από πάνω έτρεχε με
+  // ΤΑΚΚ 8/2€ και 60% νύχτες σε υψηλή περίοδο), ενώ η εκτίμηση από πάνω έτρεχε με
   // τα ΠΡΑΓΜΑΤΙΚΑ στοιχεία του ακινήτου. Για μια βίλα 120 τ.μ. σε νησί αυτό σήμαινε
-  // 5,60 € ΤΑΚΚ ανά νύχτα εδώ και 13,35 € δύο κάρτες πιο πάνω: ο χρήστης έβλεπε
+  // 5,60€ ΤΑΚΚ ανά νύχτα εδώ και 13,35€ δύο κάρτες πιο πάνω: ο χρήστης έβλεπε
   // «Τέλος Ανθεκτικότητας Χ € τον χρόνο» και δίπλα μια πληρότητα ισοσκελισμού που
   // είχε υπολογιστεί σαν να μην πλήρωνε αυτό το τέλος — δηλαδή η βραχυχρόνια
   // έδειχνε ότι «βγαίνει» με χαμηλότερη πληρότητα απ' ό,τι πραγματικά χρειάζεται.
@@ -1248,12 +1261,12 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         title={navLabel('roi')}
         sub={`${regimeLabel} · η απόδοση του ακινήτου σου και σύγκριση με την αγορά.`}
         right={empty ? undefined : (<>
-          <button onClick={printReport} className="acc-toggle" style={{ height: T.h.md, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontFamily: SANS, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <Btn variant="secondary" onClick={printReport}>
             <ArrowUpRight size={14} /> Για μένα
-          </button>
-          <button onClick={officialReport} disabled={genOfficial} className="acc-toggle" title="Επίσημο true-PDF με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς" style={{ height: T.h.md, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontFamily: SANS, fontWeight: 600, cursor: genOfficial ? 'wait' : 'pointer', opacity: genOfficial ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          </Btn>
+          <Btn variant="secondary" onClick={officialReport} disabled={genOfficial} title="Επίσημο true-PDF με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς">
             <ShieldCheck size={14} /> {genOfficial ? 'Δημιουργία…' : 'Για τράπεζα ή λογιστή'}
-          </button>
+          </Btn>
         </>)}
       />
 
@@ -1268,9 +1281,8 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           με ένα κλικ. Όταν λείπουν στοιχεία, ανοίγουν μόνα τους: τότε ΕΙΝΑΙ το
           περιεχόμενο. */}
       <div style={card}>
-        <button onClick={() => setInputsPinned(!inputsOpen)} aria-expanded={inputsOpen} className="acc-toggle"
-          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}><Percent size={15} /></span>
+        <button onClick={() => setInputsPinned(!inputsOpen)} aria-expanded={inputsOpen} className="acc-toggle acc-row">
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}><Percent size={15} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={titleStyle}>Στοιχεία υπολογισμού</p>
             {/* ΟΤΑΝ ΕΙΝΑΙ ΟΔΗΓΙΑ, ΔΙΑΒΑΖΕΤΑΙ ΟΛΟΚΛΗΡΗ. Η ίδια γραμμή έχει δύο ρόλους:
@@ -1297,13 +1309,13 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         </button>
         {inputsOpen && (<div style={{ marginTop: 16 }}>
         <div {...g4}>
-          <NumberInput label="Αξία ακινήτου" value={value} onChange={setValue} suffix="€" step={5000} />
+          <NumberInput label="Αξία ακινήτου" value={value} onChange={setValue} suffix="€" />
           {/* Η ΜΟΝΑΔΑ ΧΡΟΝΟΥ ΔΕΝ ΦΕΥΓΕΙ ΑΠΟ ΤΗΝ ΕΤΙΚΕΤΑ ΟΤΑΝ ΑΛΛΑΖΕΙ Ο ΤΡΟΠΟΣ.
               Σε βραχυχρόνια η ετικέτα γινόταν σκέτο «Ενοίκιο μακροχρόνιας» και
               καθόταν δίπλα στα «Ετήσια έξοδα»: δύο πεδία, ένα με μονάδα και ένα
               χωρίς, ενώ το ποσό είναι μηνιαίο και πολλαπλασιάζεται επί δώδεκα. */}
-          <NumberInput label={term === 'short' ? 'Μηνιαίο ενοίκιο μακροχρόνιας' : 'Μηνιαίο ενοίκιο'} value={rent} onChange={setRent} suffix="€" step={50} />
-          <NumberInput label="Ετήσια έξοδα" value={opex} onChange={v => { setOpex(v); setOpexYear(null); }} suffix="€" step={100} />
+          <NumberInput label={term === 'short' ? 'Μηνιαίο ενοίκιο μακροχρόνιας' : 'Μηνιαίο ενοίκιο'} value={rent} onChange={setRent} suffix="€" />
+          <NumberInput label="Ετήσια έξοδα" value={opex} onChange={v => { setOpex(v); setOpexYear(null); }} suffix="€" />
           <CustomSelect label="Περιοχή" value={region} onChange={setRegion} options={REGIONS.map((r, i) => ({ value: r.key, label: r.label, header: r.region !== REGIONS[i - 1]?.region ? r.region : undefined }))} />
         </div>
         {opexYear !== null && (
@@ -1315,7 +1327,10 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 'var(--fs-base)', fontFamily: SANS, color: 'var(--text-secondary)' }}>
             <span>Ενδεικτική εκτίμηση αξίας για την περιοχή{pSqm ? ` (${pSqm} τ.μ.)` : ''}: <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fe(estValue)}</strong></span>
             <TermInfo text={`Ενδεικτικός υπολογισμός: μέση τιμή ανά τετραγωνικό μέτρο στην περιοχή, επί τα τ.μ. και τον συντελεστή τύπου του ακινήτου. Δεν υποκαθιστά την αντικειμενική αξία ούτε την εκτίμηση πιστοποιημένου εκτιμητή. Χρησιμοποίησέ την ως αφετηρία και προσάρμοσέ την στην πραγματική κατάσταση, τον όροφο και τη θέση του ακινήτου.`} />
-            <button onClick={() => setValue(String(estValue))} className="acc-toggle" style={{ height: 28, padding: '0 12px', borderRadius: 10, border: '1px solid var(--border-accent)', background: 'var(--accent-dim)', color: 'var(--accent)', fontSize: 12, fontFamily: SANS, fontWeight: 600, cursor: 'pointer' }}>Χρήση</button>
+            {/* Ο τόνος accent δεν ταξιδεύει: η όψη ζει στο `.po-btn` και το κουμπί
+                είναι δευτερεύουσα ενέργεια, όχι η κύρια της κάρτας. Το ύψος 28
+                ανεβαίνει στην κοινή κλίμακα, που σε δάχτυλο γίνεται στόχος αφής. */}
+            <Btn variant="secondary" onClick={() => setValue(String(estValue))}>Χρήση</Btn>
           </div>
         )}
         {term === 'short' && (
@@ -1326,9 +1341,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
             </div>
             <div {...g4}>
               <NumberInput label="Ετήσια πληρότητα" value={stOcc} onChange={setStOcc} suffix="%" max={100} labelInfo={<TermInfo text={G.occupancy} />} />
-              <NumberInput label="Μέση τιμή ανά νύχτα" value={stAdr} onChange={setStAdr} suffix="€" step={5} labelInfo={<TermInfo text={G.adr} />} />
-              <NumberInput label="Καθαρισμός ανά διαμονή" value={stClean} onChange={setStClean} suffix="€" step={5} />
-              <NumberInput label="Προμήθεια πλατφόρμας" value={stFee} onChange={setStFee} suffix="%" max={100} step={0.5} labelInfo={<TermInfo text={G.platform_fee} />} />
+              <NumberInput label="Μέση τιμή ανά νύχτα" value={stAdr} onChange={setStAdr} suffix="€" labelInfo={<TermInfo text={G.adr} />} />
+              <NumberInput label="Καθαρισμός ανά διαμονή" value={stClean} onChange={setStClean} suffix="€" />
+              <NumberInput label="Προμήθεια πλατφόρμας" value={stFee} onChange={setStFee} suffix="%" max={100} labelInfo={<TermInfo text={G.platform_fee} />} />
             </div>
             {!empty && y.grossYield > MAX_ST_GROSS_YIELD_WARN && (
               <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
@@ -1498,14 +1513,13 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                   αριθμό, που ζητά 29 για το «6,8». Μετρημένο σε Chromium και
                   στα οκτώ πλάτη. Τα 120 αφήνουν 52, δηλαδή χωρούν και το
                   «10,5» με περιθώριο. */}
-              <div style={{ width: 120 }}><NumberInput id={apprId} value={apprShown} onChange={v => { setAppreciation(v); setApprTouched(true); }} suffix="%" step={0.5} max={20} /></div>
+              <div style={{ width: 120 }}><NumberInput id={apprId} value={apprShown} onChange={v => { setAppreciation(v); setApprTouched(true); }} suffix="%" max={20} /></div>
               {/* Το ίδιο σήμα με δύο λεκτικά· το στυλ γραφόταν δύο φορές. */}
-              <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: SANS, border: '1px solid var(--border-default)', borderRadius: 8, padding: '3px 7px' }}>{apprTouched ? 'δική σου υπόθεση' : 'δείκτης ΤτΕ'}</span>
+              <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: SANS, border: '1px solid var(--border-default)', borderRadius: T.radius.chip, padding: '3px 7px' }}>{apprTouched ? 'δική σου υπόθεση' : 'δείκτης ΤτΕ'}</span>
               {apprTouched && (
-                <button type="button" onClick={() => { setAppreciation(''); setApprTouched(false); }} className="acc-toggle"
-                  style={{ height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontFamily: SANS, fontWeight: 600, cursor: 'pointer' }}>
+                <Btn variant="secondary" onClick={() => { setAppreciation(''); setApprTouched(false); }}>
                   Επαναφορά στο τεκμηριωμένο ({fp(apprRef.pct)})
-                </button>
+                </Btn>
               )}
             </div>
             {/* ═══ ΔΥΟ ΟΜΑΔΕΣ ΣΕ ΜΙΑ ΣΕΙΡΑ, ΚΑΙ ΦΑΙΝΟΤΑΝ ΜΙΑ ═════════════════
@@ -1556,7 +1570,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           </p>
           {/* Προβολή-γραμμή: ακίνητο vs κορυφαία εναλλακτική στον χρόνο */}
           {projSeries.length === 0 ? (
-            <div style={{ padding: '18px 16px', borderRadius: 12, border: '1px dashed var(--border-default)', background: 'var(--bg-elevated)', marginBottom: 12 }}>
+            <div style={{ padding: '18px 16px', borderRadius: T.radius.popup, border: '1px dashed var(--border-default)', background: 'var(--bg-elevated)', marginBottom: 12 }}>
               <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, fontFamily: SANS, lineHeight: 1.55 }}>
                 Συμπλήρωσε την <strong style={{ color: 'var(--text-primary)' }}>αξία του ακινήτου</strong> για να συγκριθεί με τις εναλλακτικές επενδύσεις.
                 Χωρίς αυτήν δεν υπάρχει ποσό να προβληθεί και ένα νούμερο βγαλμένο από το πουθενά θα διάβαζε σαν δικό σου.
@@ -1594,7 +1608,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               ΚΑΙ Η ΚΡΙΣΗ ΑΝΑΦΕΡΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΕΙΝΑΙ ΜΕΣΑ ΣΤΟΝ ΟΡΙΖΟΝΤΑ. Η
               πρόταση για τη 20ετία γραφόταν και με επιλεγμένη τη 10ετία, δηλαδή
               περιέγραφε γράφημα που ο χρήστης δεν έβλεπε. */}
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '12px 0 0', fontFamily: SANS, lineHeight: 1.55 }}>
+          <p className="po-prose" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '12px 0 0', fontFamily: SANS }}>
             Οι εναλλακτικές τρέχουν με τη <strong style={{ color: 'var(--text-secondary)' }}>μέση ετήσια ονομαστική απόδοσή τους της τελευταίας {cmpYears}ετίας</strong>, ως συνολική απόδοση σε ευρώ από επίσημες πηγές, με ορίζοντα {BENCHMARKS_ASOF}. Το ακίνητο τρέχει με τη δική σου καθαρή απόδοση συν ανατίμηση. Όλα προ φόρου εισοδήματος.{' '}
             <InfoHint label="Τι δεν δείχνει η σύγκριση">
               <span style={{ display: 'block' }}>Τα νούμερα είναι μετρημένα, όχι εξομαλυμένες υποθέσεις. Ονομαστικά και τα δύο σκέλη, χωρίς αφαίρεση πληθωρισμού: γι’ αυτό ο πληθωρισμός στέκει ως δική του γραμμή αναφοράς παραπάνω.{cmpYears === '20' ? ' Η 20ετία περιλαμβάνει την κρίση: το Χρηματιστήριο Αθηνών και το ομόλογο είναι σχεδόν μηδενικά.' : ''}</span>
@@ -1616,16 +1630,50 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
 
                 Τώρα: πεδία σε δύο στήλες, νούμερα σε δικό τους πλέγμα, σημείωση
                 στο κάτω άκρο. Ό,τι διαβάζεις αριστερά το βρίσκεις δεξιά. */}
-            <div {...fixedCols(2, 16, 'stretch')}>
+            {/* ══ ΣΤΗΝ ΤΑΜΠΛΕΤΑ ΟΙ ΔΥΟ ΚΑΡΤΕΣ ΕΠΑΙΡΝΑΝ ΛΙΓΟΤΕΡΟ ΠΛΑΤΟΣ ΑΠΟ ΤΟ ΤΗΛΕΦΩΝΟ
+                Μετρημένο στον πάγκο, σκηνή «roi-pro», με ανοιχτά τα «Εργαλεία
+                απόδοσης»: στα 430 η κάρτα παίρνει 364 εικονοστοιχεία και κάθε
+                πεδίο της 334. Στα 481 πέφτει στα 199,5 με πεδίο 78,8· στα 600
+                στα 259 με πεδίο 108,5· στα 768 στα 331 με πεδίο 144,5. Η
+                μεγαλύτερη οθόνη έδινε ΛΙΓΟΤΕΡΟ πλάτος ανά κάρτα από το τηλέφωνο,
+                επειδή το `fixed-cols` κρατά δύο στήλες σε κάθε πλάτος πάνω από
+                τα 480 ενώ κάθε κάρτα κουβαλά μέσα της φωλιασμένο πλέγμα πεδίων.
+                Και κοβόταν: ο επιλογέας «10 έτη · 20 έτη» ζητά 159 εικονοστοιχεία
+                και έπαιρνε 78,8 στα 481, 108,5 στα 600, 144,5 στα 768. Στα 481
+                κόβονταν μαζί του το «335.343,55€» (106 σε 76,8) · το «έτη»
+                (99 σε 78,8) · το «%» (92 σε 78,8).
+
+                ΤΟ ΚΑΤΩΦΛΙ ΕΙΝΑΙ ΟΣΟ ΔΙΝΕΙ ΤΟ ΤΗΛΕΦΩΝΟ. Δύο κάρτες δίπλα δίπλα
+                μόνο όταν η καθεμία παίρνει τα 364 που δίνει η οθόνη των 430. Με
+                η κοινή `.po-panelrow` βγάζει το σπάσιμο χωρίς media query: κάτω από 744 διαθέσιμα εικονοστοιχεία —
+                δύο φορές 364 συν το κενό 16 — οι κάρτες στοιβάζονται.
+
+                ΔΟΚΙΜΑΣΤΗΚΕ ΠΡΩΤΑ ΜΕ `.field-row` ΚΑΙ ΗΤΑΝ ΛΑΘΟΣ ΚΛΑΣΗ. Η
+                `.field-row` δηλώνει ΣΕΙΡΑ ΠΕΔΙΩΝ· ο σαρωτής διάταξης απαιτεί
+                σωστά τα κουτιά γραφής της να ξεκινούν στην ίδια γραμμή. Εδώ
+                μέσα κάθονται ΔΥΟ ΟΛΟΚΛΗΡΕΣ ΚΑΡΤΕΣ με δικά τους φωλιασμένα πεδία,
+                οπότε ο έλεγχος έβρισκε τα πεδία της μιας 7 ώς 44 εικονοστοιχεία
+                πιο ψηλά από της άλλης: 12 ευρήματα σε 834, 1.180, 1.280, 1.366
+                και 1.440. Το πλέγμα λέει το ίδιο πράγμα χωρίς να υπόσχεται
+                στοίχιση πεδίων που δεν ανήκουν στην ίδια σειρά.
+
+                Μετρημένο ξανά:
+                από τα 481 ως τα 833 μία στήλη χωρίς τίποτα κομμένο, με πεδίο
+                186,5 ως 350,5· από τα 834 δύο στήλες των 364 όπως πριν· στα 1024
+                δύο των 459· στα 1280 δύο των 587. Στα 430 τίποτα δεν αλλάζει.
+
+                ΤΟ ΤΙΜΗΜΑ ΕΙΝΑΙ ΥΨΟΣ ΣΤΗ ΖΩΝΗ 481 ΩΣ 833: η ενότητα ψηλώνει από
+                593,4 σε 730,8 στα 768 · από 675,4 σε 828,2 στα 481. ══ */}
+            <div className="po-panelrow" style={{ '--panel-min': '364px' } as React.CSSProperties}>
               {/* Ανατοκισμός */}
               <div className="po-fig-card" tabIndex={0} style={toolCard}>
                 <p style={{ ...titleStyle, marginBottom: 12, display: 'flex', alignItems: 'center' }}>Ανατοκισμός επανεπένδυσης<TermInfo text={G.compound} /></p>
                 <div {...fixedCols(2, 12)}>
-                  <NumberInput label="Απόδοση επανεπένδυσης" value={compRate} onChange={setCompRate} suffix="%" step={0.5} />
+                  <NumberInput label="Απόδοση επανεπένδυσης" value={compRate} onChange={setCompRate} suffix="%" />
                   <div><label style={fieldLabelStyle}>Ορίζοντας ανατοκισμού</label><SegmentControl ariaLabel="Ορίζοντας ανατοκισμού" value={compYears} onChange={v => setCompYears(v as typeof compYears)} options={yearOpts(10, 20)} /></div>
                 </div>
                 {/* Ενα μέγεθος για τη σειρά, από το μακρύτερο νούμερο: αλλιώς
-                    το «335.343,55 €» και το «123.313,55 €» βγαίνουν σε δύο
+                    το «335.343,55€» και το «123.313,55€» βγαίνουν σε δύο
                     μεγέθη δίπλα δίπλα και το μάτι το διαβάζει ως σημασία. */}
                 <div {...fixedCols(2, 16, 'start')} style={{ ...fixedCols(2, 16, 'start').style, marginTop: 14 }}>
                   <Figure label="Τελική αξία" value={fe(comp.futureValue)} chars={widestOf(fe(comp.futureValue), fe(comp.totalGrowth))} />
@@ -1642,26 +1690,25 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
                   <p style={{ ...titleStyle, margin: 0, display: 'flex', alignItems: 'center' }}>Μόχλευση (δανεισμός)<TermInfo text={G.leverage} /></p>
                   {savedLoan && savedLoan.amount > 0 && (
-                    <button
+                    <Btn variant="secondary"
                       onClick={() => {
                         const base = (savedLoan.property_value || parseFloat(value) || 0);
                         if (base > 0) setLtv(String(Math.min(100, Math.round((savedLoan.amount / base) * 100))));
                         setLoanRate(String(savedLoan.rate));
                         setIfree(savedLoan.loan_type === 'first_home' ? '50' : '0');
-                      }}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 12px', borderRadius: 10, border: '1px solid var(--border-accent)', background: 'var(--accent-dim)', color: 'var(--accent)', fontSize: 12, fontFamily: SANS, fontWeight: 500, cursor: 'pointer' }}>
+                      }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M21 12a9 9 0 11-6.2-8.5"/><polyline points="21 3 21 9 15 9"/></svg>
                       Χρησιμοποίησε το πραγματικό μου δάνειο
-                    </button>
+                    </Btn>
                   )}
                 </div>
                 <div {...fixedCols(2, 12)}>
                   <NumberInput label="Δάνειο (% αξίας)" value={ltv} onChange={setLtv} suffix="%" max={100} />
-                  <NumberInput label="Επιτόκιο" value={loanRate} onChange={setLoanRate} suffix="%" step={0.1} />
+                  <NumberInput label="Επιτόκιο" value={loanRate} onChange={setLoanRate} suffix="%" />
                   {/* Η διάρκεια ήταν καρφωμένη στα 25 έτη μέσα στη κλήση της
                       μηχανής: καθόριζε δόση, ταμειακή ροή, DSCR και IRR χωρίς να
                       φαίνεται πουθενά. Τώρα είναι πεδίο, με την προεπιλογή ρητή. */}
-                  <NumberInput label="Διάρκεια δανείου" value={loanYears} onChange={setLoanYears} suffix="έτη" step={5} max={40} />
+                  <NumberInput label="Διάρκεια δανείου" value={loanYears} onChange={setLoanYears} suffix="έτη" max={40} />
                   {/* Η παρένθεση «(Σπίτι μου ΙΙ)» έκανε την ετικέτα 27 χαρακτήρες και σε
                       μισή κάρτα τσάκιζε σε δεύτερη γραμμή, ενώ η «Διάρκεια δανείου»
                       δίπλα της έμενε σε μία. Δεν είναι μέρος του ονόματος: είναι ο
@@ -1728,11 +1775,11 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                 τη γραμμή. Τέσσερις ίσες στήλες, μία γραμμή βάσης. */}
             <div {...fixedCols(4, 12)} style={{ ...fixedCols(4, 12).style, marginBottom: 14 }}>
               <div><label style={fieldLabelStyle}>Ορίζοντας κατοχής</label><SegmentControl ariaLabel="Ορίζοντας κατοχής" value={holdYears} onChange={v => setHoldYears(v as typeof holdYears)} options={yearOpts(5, 10, 20)} /></div>
-              <NumberInput label="Αύξηση ενοικίου" value={rentGrowth} onChange={setRentGrowth} suffix="%" step={0.5} />
-              <NumberInput label="Επιτόκιο προεξόφλησης" value={discountRate} onChange={setDiscountRate} suffix="%" step={0.5} labelInfo={<TermInfo text={G.npv} />} />
+              <NumberInput label="Αύξηση ενοικίου" value={rentGrowth} onChange={setRentGrowth} suffix="%" />
+              <NumberInput label="Επιτόκιο προεξόφλησης" value={discountRate} onChange={setDiscountRate} suffix="%" labelInfo={<TermInfo text={G.npv} />} />
               {/* Τα κόστη πώλησης ήταν σταθερά 3% μέσα στην κλήση: αφαιρούνταν από
                   το προϊόν της πώλησης και άρα από το IRR, χωρίς να φαίνονται. */}
-              <NumberInput label="Κόστη πώλησης" value={sellCosts} onChange={setSellCosts} suffix="%" step={0.5} max={15}
+              <NumberInput label="Κόστη πώλησης" value={sellCosts} onChange={setSellCosts} suffix="%" max={15}
                 labelInfo={<TermInfo text="Κόστη που βαρύνουν τον πωλητή στην έξοδο: μεσιτική αμοιβή, τυπικά περίπου 2% συν ΦΠΑ, νομικός και συμβολαιογραφικός έλεγχος, τεχνικά πιστοποιητικά. Ο φόρος μεταβίβασης 3% βαρύνει τον αγοραστή, γι’ αυτό δεν περιλαμβάνεται εδώ. Προεπιλογή 3%· άλλαξέ το αν γνωρίζεις τα δικά σου κόστη." />} />
             </div>
             {/* Τέσσερις δείκτες με πολύ διαφορετικό μήκος — ποσοστό, ποσό, λόγος
@@ -1753,7 +1800,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                 για να βρεις με ποιο επιτόκιο υπολογίστηκε η NPV έπρεπε να
                 διαβάσεις πενήντα λέξεις. Ό,τι είναι ζευγάρι «όνομα, τιμή» δεν
                 είναι πρόταση, είναι γραμμή. */}
-            <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
               <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: SANS, margin: '0 0 10px' }}>Οι παραδοχές του υπολογισμού</p>
               <div {...fixedCols(3, 14, 'start')}>
                 {[
@@ -1788,24 +1835,68 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         {/* Ανάλυση ευαισθησίας & αντοχή — πακέτο «Επαγγελματίας» */}
         {canInvest && (
           <Section icon={<TrendingUp size={15} />} title="Ανάλυση ευαισθησίας" sub="Πώς αντέχει η επένδυση σε μεταβολές επιτοκίου και ανατίμησης" info={G.sensitivity}>
-            <div style={{ overflowX: 'auto' }}>
-              <div className="po-fig-card" tabIndex={0} style={{ minWidth: 460, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr', gap: 8, padding: '0 12px 8px' }}>
-                  {['Σενάριο', 'Συνολική απόδοση', 'Απόδοση ιδίων', 'Ετήσια ροή'].map((h, i) => (
-                    <span key={h} style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: SANS, textAlign: i === 0 ? 'left' : 'right' }}>{h}</span>
-                  ))}
-                </div>
-                {scenarios.map(s => (
-                  <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr', gap: 8, alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: s.key === 'base' ? 'var(--bg-elevated)' : 'transparent', border: `1px solid ${s.key === 'base' ? 'var(--border-subtle)' : 'transparent'}` }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', margin: 0, fontFamily: SANS }}>{s.label}</p>
-                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '1px 0 0', fontFamily: SANS }}>{s.note}</p>
-                    </div>
-                    <span className="po-fig" style={{ textAlign: 'right', fontSize: 'var(--fs-base)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', fontFamily: SANS }}>{fp(s.totalReturn)}</span>
-                    <span className="po-fig" data-tone={s.roe >= 0 ? undefined : 'negative'} style={{ textAlign: 'right', fontSize: 'var(--fs-base)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', fontFamily: SANS }}>{fp(s.roe)}</span>
-                    <span className="po-fig" data-tone={s.cashFlow >= 0 ? undefined : 'negative'} style={{ textAlign: 'right', fontSize: 'var(--fs-base)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', fontFamily: SANS }}>{fe(s.cashFlow)}</span>
-                  </div>
-                ))}
+            {/* ═══ ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs ══════════════════════════════════
+                ΤΙ ΗΤΑΝ. Τρία σενάρια επί τρία μεγέθη, χτισμένα με δύο `display:
+                grid` — ένα για την κεφαλίδα, ένα ανά γραμμή — και το ΙΔΙΟ
+                `1.6fr 1fr 1fr 1fr` γραμμένο δύο φορές. Δεκαέξι κελιά που
+                ΜΟΙΑΖΑΝ πίνακας χωρίς να είναι: ο αναγνώστης οθόνης τα διάβαζε
+                ως δεκαέξι ασύνδετα κείμενα, χωρίς «Δυσμενές, Απόδοση ιδίων».
+                ΤΩΡΑ. Οι δύο δηλώσεις πλάτους έγιναν ΕΝΑ `<colgroup>` με
+                `.tbl-fixed`· το χειρόγραφο `overflowX: auto` με `minWidth: 460`
+                έγινε `.po-scroll-x` με `--tbl-min`. Η ίδια πληροφορία ήταν ήδη
+                πίνακας στην αναφορά HTML κι στο PDF — μόνο η οθόνη έμενε πίσω.
+                Το `.po-fig-card` κρατά την αποκάλυψη του τόνου στην αιώρηση κι
+                κάθεται πάνω στο ΙΔΙΟ το κουτί: σε εσωτερικό στοιχείο το
+                `overflow: hidden` της `.po-table-box` θα έκοβε το δαχτυλίδι
+                εστίασης του πληκτρολογίου. */}
+            <div className="po-table-box po-fig-card" tabIndex={0}>
+              <div className="po-scroll-x">
+                <table className="po-table tbl-fixed" style={{ '--tbl-min': '460px' }}>
+                  {/* Ο τίτλος γράφεται ήδη από το `Section` ακριβώς από πάνω:
+                      ορατή ταινία τίτλου εδώ θα τον έλεγε δεύτερη φορά. Η λεζάντα
+                      μένει για όποιον ακούει τον πίνακα αντί να τον βλέπει. */}
+                  <caption className="sr-only">Ανάλυση ευαισθησίας</caption>
+                  <colgroup>
+                    <col style={{ width: '34.8%' }} />
+                    <col style={{ width: '21.7%' }} />
+                    <col style={{ width: '21.7%' }} />
+                    <col style={{ width: '21.8%' }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      {['Σενάριο', 'Συνολική απόδοση', 'Απόδοση ιδίων', 'Ετήσια ροή'].map((h, i) => (
+                        <th key={h} scope="col" className={i === 0 ? undefined : 'num'}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scenarios.map(s => (
+                      /* Η γραμμή του βασικού σεναρίου κρατά ΤΟ ΙΔΙΟ φόντο που είχε.
+                         Η `tr.is-on` θα την έβαφε με τον τόνο της επιλογής, που εδώ
+                         λέει ψέματα: κανείς δεν την επέλεξε — είναι το σενάριο των
+                         τρεχουσών παραδοχών. */
+                      <tr key={s.key} style={{ background: s.key === 'base' ? 'var(--bg-elevated)' : undefined }}>
+                        <th scope="row">
+                          <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', margin: 0, fontFamily: SANS }}>{s.label}</p>
+                          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '1px 0 0', fontFamily: SANS }}>{s.note}</p>
+                        </th>
+                        {/* Η κεφαλίδα της γραμμής πιάνει δύο γραμμές, το ποσό μία:
+                            με στοίχιση στην κορυφή —την προεπιλογή του `.po-table`—
+                            το ποσό θα κάθεται δίπλα στο «Δυσμενές» κι όχι στη μέση
+                            της γραμμής, όπως το είχε το `alignItems: center`. */}
+                        <td className="num" style={{ verticalAlign: 'middle' }}>
+                          <span className="po-fig" style={{ fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: SANS }}>{fp(s.totalReturn)}</span>
+                        </td>
+                        <td className="num" style={{ verticalAlign: 'middle' }}>
+                          <span className="po-fig" data-tone={s.roe >= 0 ? undefined : 'negative'} style={{ fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: SANS }}>{fp(s.roe)}</span>
+                        </td>
+                        <td className="num" style={{ verticalAlign: 'middle' }}>
+                          <span className="po-fig" data-tone={s.cashFlow >= 0 ? undefined : 'negative'} style={{ fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: SANS }}>{fe(s.cashFlow)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
             {term === 'short' && breakEvenOcc !== null && (
@@ -1860,8 +1951,8 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                     Η παράγραφος ξεκινούσε λέγοντας ότι το Τέλος Ανθεκτικότητας
                     χρεώνεται ανά διανυκτέρευση με υψηλότερη τιμή στην υψηλή
                     περίοδο. Το κυκλάκι δίπλα στην ίδια την ετικέτα το λέει ήδη
-                    και ΚΑΛΥΤΕΡΑ: δίνει τα ποσά (2 € και 8 € για διαμερίσματα,
-                    4 € και 15 € για μονοκατοικίες άνω των 80 τετραγωνικών) και
+                    και ΚΑΛΥΤΕΡΑ: δίνει τα ποσά (2€ και 8€ για διαμερίσματα,
+                    4€ και 15€ για μονοκατοικίες άνω των 80 τετραγωνικών) και
                     τους μήνες κάθε περιόδου.
 
                     Η δεύτερη πρόταση έλεγε ότι το τέλος παρεπιδημούντων 0,5%
@@ -1901,7 +1992,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
             {/* Η ΔΕΥΤΕΡΗ ΠΑΡΑΔΟΧΗ ΗΤΑΝ ΚΑΡΦΩΜΕΝΗ ΚΑΙ ΑΟΡΑΤΗ, ΟΠΩΣ ΗΤΑΝ ΚΑΙ Η
                 ΠΡΩΤΗ. Η οθόνη αφαιρούσε ολόκληρο το ΤΑΚΚ από τα καθαρά, ενώ η
                 Λογιστική αφαιρεί μόνο όσο δεν εισπράχθηκε: δύο αλήθειες για το
-                ίδιο τέλος, με διαφορά ώς 1.500 € τον χρόνο. Τώρα το λέει ο
+                ίδιο τέλος, με διαφορά ώς 1.500€ τον χρόνο. Τώρα το λέει ο
                 ιδιοκτήτης μία φορά· το ακολουθούν και οι δύο. */}
             {term === 'short' && (
               <div style={{ marginTop: 10 }}>
@@ -1910,7 +2001,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                   note="Ο νόμος το βάζει στον επισκέπτη και ο ιδιοκτήτης το αποδίδει. Οι πλατφόρμες όμως δεν έχουν πεδίο γι᾽ αυτό στην Ελλάδα: αν δεν το ζητήσεις ρητά, βγαίνει από την τσέπη σου." />
               </div>
             )}
-            <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.55 }}>
+            <p className="po-prose" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS }}>
               {consolidated
                 ? <>{CONSOLIDATION_NOTE} Το χαρτοφυλάκιό σου: <strong style={{ color: 'var(--text-primary)' }}>{portfolioTax.count} ακίνητα</strong> με ενοίκια {fe(portfolioTax.totalAnnualRent)} και συνολικό φόρο {fe(portfolioTax.totalTax)} (μέσος συντελεστής {fp(portfolioTax.effectiveRate * 100)}, οριακός {fp(portfolioTax.marginalRate * 100)}). Το μερίδιο αυτού του ακινήτου είναι <strong style={{ color: 'var(--text-primary)' }}>{fe(annualTax)}</strong>. Αν υπολογιζόταν μόνο του, θα έδειχνε {fe(portfolioTax.perProperty.find(p => p.id === propertyId)?.standaloneTax ?? 0)}, δηλαδή λιγότερα από την πραγματικότητα.</>
                 : <>{/* Μένει ο ΔΙΚΟΣ ΣΟΥ συντελεστής, που είναι το νούμερο της
@@ -1918,7 +2009,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                        μία φορά και μετά σε ενδιαφέρει μόνο πού πέφτεις. */}
                     Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου. Οριακός συντελεστής <strong style={{ color: 'var(--text-primary)' }}>{fp(portfolioTax.marginalRate * 100)}</strong>.{' '}
                     <InfoHint label="Η κλίμακα ενοικίων 2026">
-                      <span style={{ display: 'block' }}>Ο φόρος υπολογίζεται με την προοδευτική κλίμακα ενοικίων 2026, στο σύνολο των ενοικίων σου: 15% έως 12.000 €, 25% έως 24.000 €, 35% έως 35.000 € και 45% πάνω από αυτά.</span>
+                      <span style={{ display: 'block' }}>Ο φόρος υπολογίζεται με την προοδευτική κλίμακα ενοικίων 2026, στο σύνολο των ενοικίων σου: 15% έως 12.000€, 25% έως 24.000€, 35% έως 35.000€ και 45% πάνω από αυτά.</span>
                     </InfoHint></>}
             </p>
           </div>

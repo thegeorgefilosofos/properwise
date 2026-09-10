@@ -56,8 +56,13 @@ export async function abortIfStyleless(browser, base) {
   console.log(`\n✗ ΤΟ ${base} ΣΕΡΒΙΡΕΙ ΣΕΛΙΔΕΣ ΧΩΡΙΣ ΦΥΛΛΟ ΣΤΥΛ (${rules} κανόνες).`);
   console.log('  Είναι μπαγιάτικος διακομιστής από παλιό χτίσιμο. Κάθε μέτρηση');
   console.log('  δημόσιας σελίδας θα ήταν ψεύτικη, οπότε ο έλεγχος σταματά εδώ.');
+  // Η ΟΔΗΓΙΑ ΕΓΡΑΦΕ ΚΑΡΦΩΤΑ ΤΗ ΘΥΡΑ 3100, ΚΑΙ ΟΙ ΣΑΡΩΤΕΣ ΔΕΝ ΔΕΙΧΝΟΥΝ ΟΛΟΙ ΕΚΕΙ:
+  // το e2e-layout προεπιλέγει 3100, το e2e-rendered 3000. Οποιος διάβαζε το
+  // μήνυμα από τον δεύτερο σκότωνε λάθος διακομιστή και ξανάπεφτε στο ίδιο.
+  // Η θύρα βγαίνει τώρα από τη διεύθυνση που όντως ελέγχθηκε.
+  const port = (() => { try { return new URL(base).port || '3000' } catch { return '3000' } })();
   console.log('  Σκότωσέ τον, ξαναχτίσε και ξεκίνα τον:');
-  console.log('    kill $(fuser -n tcp 3100) ; npm run build ; PORT=3100 nohup npm start &');
+  console.log(`    kill $(fuser -n tcp ${port}) ; npm run build ; PORT=${port} nohup npm start &`);
   await browser.close();
   process.exit(1);
 }

@@ -6,7 +6,7 @@
 // «είδα/έκλεισα» μένει τοπικά ανά μήνα.
 
 import { useSyncExternalStore } from 'react';
-import { T, CloseButton } from '@/components/Theme';
+import { T, CloseButton, Btn } from '@/components/Theme';
 
 const monthKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 const KEY = 'pos_feedback_nudge';
@@ -79,8 +79,13 @@ export default function MonthlyFeedbackNudge() {
           μια λεπτή γραμμή, όπου ζουν οι νομικές λεπτομέρειες σε κάθε σοβαρή
           εφαρμογή πληρωμών. Πάνω μένουν δύο πράξεις με σαφή ιεραρχία. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
-        <button onClick={give} style={{ flex: 1, height: T.h.lg, background: 'var(--accent)', color: 'var(--on-tone)', border: 0, borderRadius: T.radius.pill, padding: '0 16px', fontSize: 'var(--fs-base)', fontWeight: 600, cursor: 'pointer', fontFamily: T.font.sans }}>Πες τη γνώμη σου</button>
-        <button onClick={close} style={{ height: T.h.lg, padding: '0 14px', background: 'none', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', cursor: 'pointer', fontFamily: T.font.sans }}>Άλλη φορά</button>
+        {/* Το `flex: 1` ζει στον γονέα του κουμπιού: το Btn είναι inline-flex και δεν απλώνεται μόνο του,
+            οπότε το `field` του δίνει το πλήρες πλάτος του κελιού και το ύψος πεδίου που είχε. */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex' }}>
+          <Btn variant="primary" onClick={give} field>Πες τη γνώμη σου</Btn>
+        </div>
+        {/* `size="lg"` και όχι `field`: κρατά το ύψος πεδίου χωρίς να διεκδικήσει πλάτος. */}
+        <Btn variant="secondary" onClick={close} size="lg">Άλλη φορά</Btn>
       </div>
       <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
         <a href="/terms#klirosi" target="_blank" rel="noreferrer" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>Όροι κλήρωσης</a>

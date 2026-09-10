@@ -42,7 +42,7 @@ const joinedFullName = (v: unknown): string | null => {
   if (!one || typeof one !== 'object' || !('full_name' in one)) return null
   return typeof one.full_name === 'string' ? one.full_name : null
 }
-import { T, Btn, Modal, Spinner, Skeleton, EmptyState, Chip, feAuto, fe, fn, localDay, pressable, CloseButton } from '@/components/Theme'
+import { T, Btn, IconBtn, ChipToggle, LinkBtn, Modal, Spinner, Skeleton, EmptyState, Chip, feAuto, fe, fn, localDay, pressable, CloseButton } from '@/components/Theme'
 import { fixedCols } from '@/components/tokens'
 import { useCoarsePointer } from '@/components/useCoarsePointer'
 import type { XlsxSheet, XlsxCol } from './exportXlsx';
@@ -193,7 +193,7 @@ const EMPTY_FORM: FormState = {
 }
 
 function fmt(date: string) { if (!date) return ''; const [y,m,d]=date.split('-'); return `${d}/${m}/${y}` }
-function fmtShort(date: string) { if (!date) return ''; const [y,m,d]=date.split('-'); return `${d} ${MONTHS_SHORT[parseInt(m)-1]}` }
+function fmtShort(date: string) { if (!date) return ''; const [,m,d]=date.split('-'); return `${d} ${MONTHS_SHORT[parseInt(m)-1]}` }
 // Τρέχουσα στιγμή σε ώρα Ελλάδας (Europe/Athens), ανεξάρτητα από τη ζώνη της
 // συσκευής — ώστε «σήμερα», η γραμμή «τώρα» και οι υπενθυμίσεις να είναι σωστές.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -257,7 +257,7 @@ function Tooltip({ text, children, fill }: { text: string; children: React.React
     <div ref={ref} style={fill?{ display:'flex', width:'100%', height:'100%' }:{ display:'inline-flex' }} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}>
       {children}
       {show && text && createPortal(
-        <div style={{ position:'fixed', left:pos.left, top:pos.top, transform:`translate(-50%, ${pos.below?'0':'-100%'})`, background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius:8, padding:'9px 13px', fontSize:12, lineHeight:1.5, color:'var(--text-primary)', fontFamily: T.font.sans, zIndex:3000, pointerEvents:'none', width:W, maxWidth:'calc(100vw - 16px)', whiteSpace:'pre-wrap' as const, boxShadow:'var(--elev-3)' }}>
+        <div style={{ position:'fixed', left:pos.left, top:pos.top, transform:`translate(-50%, ${pos.below?'0':'-100%'})`, background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius: T.radius.chip, padding:'9px 13px', fontSize:12, lineHeight:1.5, color:'var(--text-primary)', fontFamily: T.font.sans, zIndex:3000, pointerEvents:'none', width:W, maxWidth:'calc(100vw - 16px)', whiteSpace:'pre-wrap' as const, boxShadow:'var(--elev-3)' }}>
           {text}
         </div>, document.body)}
     </div>
@@ -310,10 +310,10 @@ function AddToCalendarMenu({ event, onEdit, onDelete, onOpenChange }: { event: C
     const maxH = Math.max(140, Math.min(avail - GAP, DESIRED));
     setPos({ top: up ? r.top - GAP : r.bottom + GAP, left, maxH, up });
   }
-  useEffect(()=>{ if(!open)return; reposition(); const h=(ev:MouseEvent)=>{const t=ev.target as Node; if(btnRef.current&&!btnRef.current.contains(t)&&popRef.current&&!popRef.current.contains(t))setOpenX(false)}; const s=()=>reposition(); document.addEventListener('mousedown',h); window.addEventListener('scroll',s,true); window.addEventListener('resize',s); return ()=>{document.removeEventListener('mousedown',h); window.removeEventListener('scroll',s,true); window.removeEventListener('resize',s)} },[open])
+  useEffect(()=>{ if(!open)return; reposition(); const h=(ev:MouseEvent)=>{const t=ev.target as Node; if(btnRef.current&&!btnRef.current.contains(t)&&popRef.current&&!popRef.current.contains(t))setOpenX(false)}; const s=()=>reposition(); document.addEventListener('mousedown',h); window.addEventListener('scroll',s,true); window.addEventListener('resize',s); return ()=>{document.removeEventListener('mousedown',h); window.removeEventListener('scroll',s,true); window.removeEventListener('resize',s)} },[open,setOpenX])
   const links=allCalendarLinks(toCalInput(event))
   const row=(label:string,onClick:()=>void,icon:React.ReactNode,danger?:boolean)=>(
-    <button key={label} type="button" onClick={()=>{onClick();setOpenX(false)}} style={{ display:'flex',alignItems:'center',gap:10,width:'100%',padding:'9px 12px',border:'none',background:'transparent',cursor:'pointer',textAlign:'left',color:'var(--text-primary)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,borderRadius:8,transition:'background 0.12s, color 0.12s' }} onMouseEnter={e=>{e.currentTarget.style.background=danger?'var(--negative-dim)':'var(--bg-hover)';if(danger)e.currentTarget.style.color='var(--negative)'}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';if(danger)e.currentTarget.style.color='var(--text-primary)'}}>
+    <button key={label} type="button" onClick={()=>{onClick();setOpenX(false)}} style={{ display:'flex',alignItems:'center',gap:10,width:'100%',padding:'9px 12px',border:'none',background:'transparent',cursor:'pointer',textAlign:'left',color:'var(--text-primary)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,borderRadius: T.radius.chip,transition:'background 0.12s, color 0.12s' }} onMouseEnter={e=>{e.currentTarget.style.background=danger?'var(--negative-dim)':'var(--bg-hover)';if(danger)e.currentTarget.style.color='var(--negative)'}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';if(danger)e.currentTarget.style.color='var(--text-primary)'}}>
       <span style={{ color:danger?'inherit':'var(--text-tertiary)',display:'flex',flexShrink:0 }}>{icon}</span>{label}
     </button>
   )
@@ -325,7 +325,7 @@ function AddToCalendarMenu({ event, onEdit, onDelete, onOpenChange }: { event: C
         <MoreHorizontal size={16}/>
       </button>
       {open&&createPortal(
-        <div ref={popRef} style={{ position:'fixed',top:pos.top,left:pos.left,transform:pos.up?'translateY(-100%)':'none',width:232,maxHeight:pos.maxH,overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:12,boxShadow:'var(--elev-3)',padding:6,zIndex:2000 }}>
+        <div ref={popRef} style={{ position:'fixed',top:pos.top,left:pos.left,transform:pos.up?'translateY(-100%)':'none',width:232,maxHeight:pos.maxH,overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,boxShadow:'var(--elev-3)',padding:6,zIndex:2000 }}>
           <div style={{ fontSize: 'var(--fs-xs)',fontWeight:700,letterSpacing:'0.07em',textTransform:'uppercase',color:'var(--text-tertiary)',padding:'6px 12px 4px',fontFamily: T.font.sans }}>Πρόσθεσε σε ημερολόγιο</div>
           {row('Google Calendar',()=>openExt(links.google),<Calendar size={15}/>)}
           {row('Outlook',()=>openExt(links.outlook),<Calendar size={15}/>)}
@@ -389,7 +389,7 @@ function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, onSelect
     }}>
       {bulkMode&&onSelect&&(
         <button aria-label="Επιλογή" aria-pressed={selected} onClick={()=>onSelect(event.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'flex', flexShrink:0, marginTop:2 }}>
-          <span style={{ width:18, height:18, borderRadius:6, border:`2px solid ${selected?'var(--accent)':'var(--border-default)'}`, background:selected?'var(--accent)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s' }}>
+          <span style={{ width:18, height:18, borderRadius: T.radius.xs, border:`2px solid ${selected?'var(--accent)':'var(--border-default)'}`, background:selected?'var(--accent)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s' }}>
             {selected&&<Check size={12} color="var(--accent-text)" strokeWidth={3}/>}
           </span>
         </button>
@@ -400,13 +400,20 @@ function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, onSelect
           μετέτρεπε μια μέτρηση σε επιβράβευση. Το ημερολόγιο δεν πήρε ποτέ την
           ίδια διόρθωση. Το μπλε μένει το χρώμα της πράξης, εδώ και εκεί. */}
       {!bulkMode&&(
-        <button className="po-box" aria-label={done?'Αναίρεση':'Ολοκλήρωση'} onClick={()=>onToggleStatus(event)} style={{ marginTop:1, flexShrink:0, width:18, height:18, borderRadius:'50%', border:`2px solid ${done?'var(--accent)':'var(--border-default)'}`, background:done?'var(--accent)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+        <button className="po-box po-lead-ico" aria-label={done?'Αναίρεση':'Ολοκλήρωση'} onClick={()=>onToggleStatus(event)} style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${done?'var(--accent)':'var(--border-default)'}`, background:done?'var(--accent)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
           {done&&<Check size={9} color="var(--accent-text)"/>}
         </button>
       )}
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontFamily: T.font.sans, fontSize:14, fontWeight:500, color:done?'var(--text-tertiary)':'var(--text-primary)', textDecoration:done?'line-through':'none', letterSpacing:'0.1px', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+          {/* Η ΑΠΟΚΟΠΗ ΕΙΝΑΙ ΑΠΟΦΑΣΗ ΚΑΙ ΓΡΑΦΕΤΑΙ ΩΣ ΤΕΤΟΙΑ. Οι τέσσερις ιδιότητες
+              ήταν γραμμένες στο χέρι και έκαναν ΑΚΡΙΒΩΣ ό,τι κάνει το `.po-elide`,
+              χωρίς όμως να το δηλώνουν: ο σαρωτής διάταξης ανέφερε στα 320 το
+              «Λογαριασμός ΕΥΔΑΠ» ως κομμένο κείμενο, γιατί δεν έχει τρόπο να
+              ξεχωρίσει το όνομα που ΔΕΝ έχει ταβάνι μήκους από την ετικέτα που
+              απλώς δεν χώρεσε. Η κλάση είναι η δήλωση· οι ιδιότητες ζουν σε
+              ένα σημείο (globals.css) αντί για δύο. */}
+          <span className="po-elide" style={{ fontFamily: T.font.sans, fontSize:14, fontWeight:500, color:done?'var(--text-tertiary)':'var(--text-primary)', textDecoration:done?'line-through':'none', letterSpacing:'0.1px' }}>
             {event.title}
           </span>
           {event.recurring&&<Tooltip text="Επαναλαμβανόμενο"><RotateCcw size={11} color="var(--text-tertiary)" style={{ flexShrink:0 }}/></Tooltip>}
@@ -690,7 +697,7 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
   // ώστε να μη διπλογράφονται.
   const eventsForDay=(day:number)=>{ const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; return events.filter(e=>e.event_date===ds&&!(e.source||'').startsWith('booking:')) }
   // Έπαιρνε τα ΕΠΤΑ ΠΡΩΤΑ εκκρεμή. Με δάνειο εικοσαετίας και τα επτά ήταν δόσεις
-  // του ίδιου δανείου: η ράγα «Επόμενα» έγραφε επτά φορές «Δόση δανείου 751,00 €»
+  // του ίδιου δανείου: η ράγα «Επόμενα» έγραφε επτά φορές «Δόση δανείου 751,00€»
   // και δεν έδειχνε ΠΟΤΕ τίποτε άλλο — ούτε λήξη μίσθωσης, ούτε φορολογική
   // προθεσμία. Τώρα μαζεύεται πρώτα η σειρά και μετά κρατιούνται επτά ΘΕΣΕΙΣ.
   const upcomingRows=groupSeries(
@@ -842,7 +849,7 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
                       <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
                         {dayEvents.slice(0,3).map(ev=>(
                           <Tooltip key={ev.id} text={`${ev.title}${ev.event_time?` · ${ev.event_time}`:''}${ev.amount?` · ${fe(ev.amount)}` :''}${ev._virtual?'\n(επαναλαμβανόμενο)':''}${ev.notes?`\n${ev.notes}`:''}`}>
-                            <div {...(coarse ? {} : { onPointerDown: !ev._virtual&&drag?drag.onDown(ev.id,ev.title):undefined, role:'button', tabIndex:0, 'aria-label':`Άνοιγμα: ${ev.title}`, onKeyDown:(e:React.KeyboardEvent)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();onEventClick(ev)}}, onClick:(e:React.MouseEvent)=>{e.stopPropagation();onEventClick(ev)} })} className="po-elide cal-chip" style={{ touchAction:'none', padding:'1px 4px', borderRadius:6, background:CATEGORIES[ev.category].bg, color:CATEGORIES[ev.category].color, cursor:coarse?'inherit':ev._virtual?'pointer':'grab', width:'100%', opacity:ev.status==='paid'?0.4:ev._virtual?0.72:1, textDecoration:ev.status==='paid'?'line-through':'none', fontFamily: T.font.sans, letterSpacing:'0.25px' }}>
+                            <div {...(coarse ? {} : { onPointerDown: !ev._virtual&&drag?drag.onDown(ev.id,ev.title):undefined, role:'button', tabIndex:0, 'aria-label':`Άνοιγμα: ${ev.title}`, onKeyDown:(e:React.KeyboardEvent)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();onEventClick(ev)}}, onClick:(e:React.MouseEvent)=>{e.stopPropagation();onEventClick(ev)} })} className="po-elide cal-chip" style={{ touchAction:'none', padding:'1px 4px', borderRadius: T.radius.xs, background:CATEGORIES[ev.category].bg, color:CATEGORIES[ev.category].color, cursor:coarse?'inherit':ev._virtual?'pointer':'grab', width:'100%', opacity:ev.status==='paid'?0.4:ev._virtual?0.72:1, textDecoration:ev.status==='paid'?'line-through':'none', fontFamily: T.font.sans, letterSpacing:'0.25px' }}>
                               {(ev.recurring||ev._virtual)&&<RotateCcw size={9} style={{ marginRight: 4, verticalAlign:'middle', opacity:0.7 }}/>}{ev.event_time?ev.event_time+' ':''}{ev.title}
                             </div>
                           </Tooltip>
@@ -851,7 +858,7 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
                       </div>
                       {/* ══ ΤΟ ΠΟΣΟ ΤΗΣ ΗΜΕΡΑΣ ΓΡΑΦΟΤΑΝ ΠΑΝΩ ΣΤΗΝ ΕΠΟΜΕΝΗ ══
                           Μετρημένο σε 360: το κελί δίνει 36,28 εικονοστοιχεία
-                          ωφέλιμα και το «751,00 €» θέλει 44,47 — κάθε ενοίκιο,
+                          ωφέλιμα και το «751,00€» θέλει 44,47 — κάθε ενοίκιο,
                           δόση, λογαριασμός και ΕΝΦΙΑ έβγαινε από το κελί του.
                           Οταν είχαν ποσό δύο διαδοχικές ημέρες, τα ψηφία
                           επικαλύπτονταν και τα δύο ποσά διαβάζονταν ως ένας
@@ -876,9 +883,9 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
                           πάτημα δείχνοντας το πλήρες ποσό, οπότε το δίχτυ
                           υπάρχει. Ενα μέγεθος, το ελάχιστο επιτρεπτό. */}
                       {dayAmt>0&&(
-                        <div className="cal-day-amt" style={{ marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        <div className="cal-day-amt po-elide" style={{ marginTop:2 }}>
                           <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--accent)', opacity:0.8 }}>
-                            {fn(dayAmt)}<span style={{ marginLeft:1.5, opacity:0.7 }}>€</span>
+                            {fn(dayAmt)}<span style={{ marginLeft:1.5, opacity:0.82 }}>€</span>
                           </span>
                         </div>
                       )}
@@ -1174,7 +1181,7 @@ function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { propertyId:
         const src='loan_schedule:'+(bank||'γενικό').toLowerCase().replace(/\s+/g,'_').slice(0,40)
         const d=new Date(start); const cnt2=Math.min(years*12,60); const rows:calendar.EventDraft[]=[]
                 // ΤΟ ΠΟΣΟ ΚΡΑΤΑΕΙ ΤΑ ΛΕΠΤΑ ΤΟΥ. Ήταν `Math.round(monthly)`: μια δόση
-        // 751,43 € αποθηκευόταν ως 751 και το ημερολόγιο διαφωνούσε με την
+        // 751,43€ αποθηκευόταν ως 751 και το ημερολόγιο διαφωνούσε με την
         // τράπεζα κατά 43 λεπτά τον μήνα, δηλαδή πάνω από πέντε ευρώ τον χρόνο.
         const monthlyExact=Math.round(monthly*100)/100
         // Τοπικά μεσάνυχτα σε UTC = χθες: οι δόσεις έμπαιναν μία μέρα νωρίτερα.
@@ -1238,11 +1245,11 @@ function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { propertyId:
           const c=counts?.[k]; const has=(c||0)>0; const meta=META[k]
           const isBusy=busy===k; const d=done[k]; const disabled=!has||(busy!==null&&!isBusy)
           return (
-            <button key={k} onClick={()=>has&&runOne(k)} disabled={disabled} style={{ display:'flex', alignItems:'center', gap: 12, padding:'13px 15px', background:isBusy?'color-mix(in srgb, var(--accent) 9%, var(--bg-surface))':'var(--bg-surface)', border:`1px solid ${isBusy?'var(--accent-border)':'var(--border-subtle)'}`, borderRadius:12, cursor:has&&!disabled?'pointer':'default', opacity:has?(disabled&&!isBusy?0.6:1):0.5, textAlign:'left', boxShadow:isBusy?'0 6px 18px -12px var(--accent)':'var(--elev-1)', transition:'transform 0.14s, box-shadow 0.14s, border-color 0.14s, background 0.14s' }} onMouseEnter={e=>{if(has&&!disabled){e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='var(--elev-2)';e.currentTarget.style.borderColor='var(--accent-border)'}}} onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow=isBusy?'0 6px 18px -12px var(--accent)':'var(--elev-1)';e.currentTarget.style.borderColor=isBusy?'var(--accent-border)':'var(--border-subtle)'}}>
+            <button key={k} onClick={()=>has&&runOne(k)} disabled={disabled} style={{ display:'flex', alignItems:'center', gap: 12, padding:'13px 15px', background:isBusy?'color-mix(in srgb, var(--accent) 9%, var(--bg-surface))':'var(--bg-surface)', border:`1px solid ${isBusy?'var(--accent-border)':'var(--border-subtle)'}`, borderRadius: T.radius.popup, cursor:has&&!disabled?'pointer':'default', opacity:has?(disabled&&!isBusy?0.6:1):0.5, textAlign:'left', boxShadow:isBusy?'0 6px 18px -12px var(--accent)':'var(--elev-1)', transition:'transform 0.14s, box-shadow 0.14s, border-color 0.14s, background 0.14s' }} onMouseEnter={e=>{if(has&&!disabled){e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='var(--elev-2)';e.currentTarget.style.borderColor='var(--accent-border)'}}} onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow=isBusy?'0 6px 18px -12px var(--accent)':'var(--elev-1)';e.currentTarget.style.borderColor=isBusy?'var(--accent-border)':'var(--border-subtle)'}}>
               <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:36, height:36, borderRadius:10, flexShrink:0, background:isBusy?'linear-gradient(135deg, var(--accent), var(--accent-hover))':'var(--bg-elevated)', color:isBusy?'var(--accent-text)':'var(--text-tertiary)', border:isBusy?'none':'1px solid var(--border-subtle)', boxShadow:isBusy?'0 4px 12px -6px var(--accent)':'none' }}>{isBusy?<RefreshCw size={16} style={{ animation:'spin 1s linear infinite' }}/>:meta.icon}</span>
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ fontSize:14, fontFamily: T.font.sans, fontWeight:600, color:isBusy?'var(--accent)':'var(--text-primary)' }}>{meta.label}</p>
-                <p style={{ fontSize:12, color:d?'var(--positive)':'var(--text-tertiary)', fontFamily: T.font.sans, marginTop:1 }}>{isBusy?'Συγχρονισμός…':d?`Ενημερώθηκε · ${d.n}`:counts===null?'…':has?meta.unit(c!):meta.empty}</p>
+                <p className="po-subline" style={{ fontSize:12, color:d?'var(--positive)':'var(--text-tertiary)', fontFamily: T.font.sans }}>{isBusy?'Συγχρονισμός…':d?`Ενημερώθηκε · ${d.n}`:counts===null?'…':has?meta.unit(c!):meta.empty}</p>
               </div>
               {has&&!isBusy&&(d?<Check size={17} style={{ color:'var(--positive)', flexShrink:0 }}/>:<RefreshCw size={15} style={{ color:'var(--text-tertiary)', flexShrink:0 }}/>)}
             </button>
@@ -1283,14 +1290,14 @@ function TimeField({ value, onChange }: { value:string; onChange:(v:string)=>voi
   useEffect(()=>{ if(open&&listRef.current){ let idx=times.indexOf(value); if(idx<0)idx=36; const el=listRef.current.children[idx+1] as HTMLElement; el?.scrollIntoView({block:'center'}) } },[open,value,times])
   return (
     <>
-      <button ref={ref} type="button" onClick={openMenu} style={{ width:'100%', boxSizing:'border-box', height:44, background:'var(--bg-surface)', border:'1px solid '+(open?'var(--accent)':'var(--border-subtle)'), borderRadius:12, padding:'0 12px', color:value?'var(--text-primary)':'var(--text-tertiary)', fontSize:14, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', outline:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, transition:'border-color 0.15s' }}>
+      <button ref={ref} type="button" onClick={openMenu} style={{ width:'100%', boxSizing:'border-box', height: T.h.lg, background:'var(--bg-surface)', border:'1px solid '+(open?'var(--accent)':'var(--border-subtle)'), borderRadius: T.radius.popup, padding:'0 12px', color:value?'var(--text-primary)':'var(--text-tertiary)', fontSize:14, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', outline:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, transition:'border-color 0.15s' }}>
         <span>{value||'--:--'}</span><Clock size={15} style={{ color:'var(--text-tertiary)', flexShrink:0 }}/>
       </button>
       {open&&rect&&createPortal(
-        <div ref={listRef} style={{ position:'fixed', left:rect.left, top:rect.top, width:rect.width, maxHeight:244, overflowY:'auto', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:12, boxShadow:'var(--elev-3)', padding: 4, zIndex:2000 }}>
-          <button type="button" onClick={()=>{ onChange(''); setOpen(false) }} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', border:'none', background:'transparent', color:'var(--text-tertiary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, borderRadius:8, cursor:'pointer' }} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>Καμία ώρα</button>
+        <div ref={listRef} style={{ position:'fixed', left:rect.left, top:rect.top, width:rect.width, maxHeight:244, overflowY:'auto', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.popup, boxShadow:'var(--elev-3)', padding: 4, zIndex:2000 }}>
+          <button className="po-hov-fill" type="button" onClick={()=>{ onChange(''); setOpen(false) }} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', border:'none', color:'var(--text-tertiary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, borderRadius: T.radius.chip, cursor:'pointer' }} >Καμία ώρα</button>
           {times.map(t=>{ const active=t===value; return (
-            <button key={t} type="button" onClick={()=>{ onChange(t); setOpen(false) }} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', border:'none', background:active?'var(--accent-soft)':'transparent', color:active?'var(--accent)':'var(--text-primary)', fontSize:14, fontWeight:active?600:400, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', borderRadius:8, cursor:'pointer' }} onMouseEnter={e=>{ if(!active)e.currentTarget.style.background='var(--bg-hover)' }} onMouseLeave={e=>{ if(!active)e.currentTarget.style.background='transparent' }}>{t}</button>
+            <button key={t} type="button" onClick={()=>{ onChange(t); setOpen(false) }} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', border:'none', background:active?'var(--accent-soft)':'transparent', color:active?'var(--accent)':'var(--text-primary)', fontSize:14, fontWeight:active?600:400, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', borderRadius: T.radius.chip, cursor:'pointer' }} onMouseEnter={e=>{ if(!active)e.currentTarget.style.background='var(--bg-hover)' }} onMouseLeave={e=>{ if(!active)e.currentTarget.style.background='transparent' }}>{t}</button>
           )})}
         </div>,
         document.body
@@ -1326,7 +1333,7 @@ function EventModal({ form, setForm, onSave, onClose, editing, saving, conflicts
   const titleRef=useRef<HTMLInputElement>(null)
   useEffect(()=>{ titleRef.current?.focus() },[])
   // Ενιαία, καθαρά πεδία — ίδιο ύψος/καμπύλη/χρώμα παντού (Google λογική).
-  const fld: React.CSSProperties = { width:'100%', boxSizing:'border-box', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-default)', borderRadius:6, padding:'0 16px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none', transition:'border-color 0.15s' }
+  const fld: React.CSSProperties = { width:'100%', boxSizing:'border-box', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-default)', borderRadius: T.radius.xs, padding:'0 16px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none', transition:'border-color 0.15s' }
   const focus=(e:React.FocusEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>)=>e.currentTarget.style.borderColor='var(--accent)'
   const blur=(e:React.FocusEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>)=>e.currentTarget.style.borderColor='var(--border-default)'
   // Το βέλος-εικόνα και το στυλ του ντόπιου <select> έφυγαν μαζί με τα ίδια τα
@@ -1337,10 +1344,11 @@ function EventModal({ form, setForm, onSave, onClose, editing, saving, conflicts
   const canSave=!!form.title.trim()&&!!form.event_date
   return (
     <Modal open onClose={onClose} title={editing?'Επεξεργασία':'Νέο γεγονός'} size="sm" footer={<>
-      <button onClick={onClose} style={{ height:T.h.lg, padding:'0 18px', borderRadius:T.radius.btn, border:'1px solid var(--border-subtle)', background:'transparent', color:'var(--text-secondary)', fontSize:14, cursor:'pointer', fontFamily: T.font.sans }}>Ακύρωση</button>
-      <button onClick={onSave} disabled={saving||!canSave} style={{ height:T.h.lg, padding:'0 22px', borderRadius:T.radius.btn, border:'none', background:canSave&&!saving?'var(--accent)':'var(--bg-surface)', color:canSave&&!saving?'var(--accent-text)':'var(--text-tertiary)', fontSize:14, fontWeight:600, cursor:canSave&&!saving?'pointer':'not-allowed', fontFamily: T.font.sans }}>
+      <Btn size="lg" onClick={onClose}>Ακύρωση</Btn>
+      {/* Τα γραμμένα γκρίζα χρώματα του «δεν μπορεί να αποθηκευτεί» είναι το `disabled` του Btn. */}
+      <Btn variant="primary" size="lg" onClick={onSave} disabled={saving||!canSave}>
         {saving?'Αποθήκευση…':editing?'Αποθήκευση':'Προσθήκη'}
-      </button>
+      </Btn>
     </>}>
       {/* Τίτλος + έξυπνη ανάγνωση φυσικής γλώσσας (quick-add) */}
       <div>
@@ -1437,15 +1445,15 @@ function EventModal({ form, setForm, onSave, onClose, editing, saving, conflicts
         {(()=>{ if(!form.title.trim()||!form.event_date)return null
           const inv={title:form.title,date:form.event_date,time:form.event_time||undefined,durationMinutes:form.duration?+form.duration:undefined,details:form.notes||undefined,attendeeEmail:form.email||undefined,attendeePhone:form.phone||undefined}
           const cap=canInvite(inv); if(!cap.email&&!cap.phone)return null
-          const btn:React.CSSProperties={ display:'inline-flex', alignItems:'center', gap:6, height:34, padding:'0 12px', borderRadius:10, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-primary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans, textDecoration:'none' }
           return (
             <div>
               <label style={lbl}>Πρόσκληση</label>
+              {/* Τα τρία πρώτα είναι προορισμοί, άρα `href` και όχι onClick: το Btn τα κάνει <a> με την ίδια όψη. */}
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                {cap.email&&<a href={inviteMailto(inv)} style={btn} onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'} onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border-default)'}><FileText size={13}/>Με μήνυμα</a>}
-                {cap.phone&&<a href={inviteWhatsApp(inv)} target="_blank" rel="noreferrer" style={btn} onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'} onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border-default)'}>WhatsApp</a>}
-                {cap.phone&&<a href={inviteViber(inv)} style={btn} onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'} onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border-default)'}>Viber</a>}
-                <button type="button" onClick={()=>downloadFile(buildInviteICS(inv), 'πρόσκληση.ics', 'text/calendar;charset=utf-8')} style={btn} onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'} onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border-default)'}><CalendarPlus size={13}/>Αρχείο ημερολογίου</button>
+                {cap.email&&<Btn href={inviteMailto(inv)}><FileText size={13}/>Με μήνυμα</Btn>}
+                {cap.phone&&<Btn href={inviteWhatsApp(inv)} newTab>WhatsApp</Btn>}
+                {cap.phone&&<Btn href={inviteViber(inv)}>Viber</Btn>}
+                <Btn onClick={()=>downloadFile(buildInviteICS(inv), 'πρόσκληση.ics', 'text/calendar;charset=utf-8')}><CalendarPlus size={13}/>Αρχείο ημερολογίου</Btn>
               </div>
             </div>
           )
@@ -1457,7 +1465,11 @@ function EventModal({ form, setForm, onSave, onClose, editing, saving, conflicts
         {/* Κατάσταση */}
         <div>
           <label style={lbl}>Κατάσταση</label>
-          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+          {/* ΤΕΣΣΕΡΑ ΤΣΙΠΑΚΙΑ ΠΟΥ ΕΒΓΑΙΝΑΝ 3+1. Το «Ακυρώθηκε» έπεφτε μόνο του σε
+              δεύτερη γραμμή με τρύπα δεξιά, σε ταμπλέτα και σε κινητό. Η σειρά
+              απλώνεται τώρα ολόκληρη — μία επιλογή δεν διαβάζεται ως υποσύνολο
+              άλλης επειδή έτυχε να τυλιχτεί. */}
+          <div className="po-ctlrow ctl-2up">
             {/* Η επιλεγμένη κατάσταση βαφόταν με το ΣΗΜΑΣΙΟΛΟΓΙΚΟ χρώμα της:
                 πορτοκαλί το «Εκκρεμεί», πράσινο το «Πληρώθηκε», κόκκινο το
                 «Ακυρώθηκε». Δηλαδή η φόρμα έβγαζε ετυμηγορία για μια επιλογή
@@ -1465,7 +1477,7 @@ function EventModal({ form, setForm, onSave, onClose, editing, saving, conflicts
                 κάθε νέου γεγονότος— άνοιγε πάντα με προειδοποιητικό χρώμα.
                 Η επιλογή δείχνει ΕΠΙΛΟΓΗ, με το χρώμα της επιλογής. */}
             {Object.entries(STATUSES).map(([k,v])=>(
-              <button key={k} onClick={()=>setForm(f=>({...f,status:k as EventStatus}))} style={{ height:T.h.sm, padding:'0 14px', borderRadius: T.radius.modal, cursor:'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:form.status===k?600:500, border:`1px solid ${form.status===k?'var(--accent-border)':'var(--border-subtle)'}`, background:form.status===k?'var(--accent-soft)':'transparent', color:form.status===k?'var(--accent)':'var(--text-secondary)', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{v.label}</button>
+              <ChipToggle key={k} on={form.status===k} onClick={()=>setForm(f=>({...f,status:k as EventStatus}))}>{v.label}</ChipToggle>
             ))}
           </div>
         </div>
@@ -1524,7 +1536,13 @@ function SeriesCard({ group, onToggle, onEdit, onDelete, bulkMode, selectedIds, 
           <Repeat size={9}/>
         </span>
         <div style={{ flex:1, minWidth:0 }}>
-          <p style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.title}</p>
+          {/* ΙΔΙΑ ΑΠΟΦΑΣΗ ΜΕ ΤΗΝ EventCard, ΓΡΑΜΜΕΝΗ ΟΠΩΣ ΕΚΕΙ. Οι τρεις ιδιότητες
+              αποκοπής ήταν στο χέρι: ο σαρωτής διάταξης δεν έχει τρόπο να ξεχωρίσει
+              τον τίτλο που ΔΕΝ έχει ταβάνι μήκους από την ετικέτα που απλώς δεν
+              χώρεσε, οπότε ανέφερε στα 320 τη «Συντήρηση καυστήρα» ως κομμένη. Η
+              κλάση ΕΙΝΑΙ η δήλωση. Η αδελφή κάρτα το είχε ήδη διορθώσει· αυτή εδώ
+              έμεινε πίσω, γιατί η διόρθωση έγινε σε ένα σημείο αντί για δύο. */}
+          <p className="po-elide" style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>{lead.title}</p>
           <p style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'3px 0 0' }}>
             {[cadence, `επόμενη ${fmt(lead.event_date)}`, `${count} συνολικά έως ${fmt(lastDate)}`].filter(Boolean).join(' · ')}
             {totalAmount!=null&&<> · σύνολο <span style={{ fontVariantNumeric:'tabular-nums' }}>{fe(totalAmount)}</span></>}
@@ -1540,7 +1558,7 @@ function SeriesCard({ group, onToggle, onEdit, onDelete, bulkMode, selectedIds, 
         </button>
       </div>
       {open&&(
-        <div style={{ display:'flex', flexDirection:'column', gap: 8, paddingLeft:18, borderLeft:'1px solid var(--border-subtle)', marginLeft: 8 }}>
+        <div style={{ display:'flex', flexDirection:'column', gap: 8, paddingLeft: T.sp.lg, borderLeft:'1px solid var(--border-subtle)', marginLeft: 8 }}>
           {[lead,...rest].map(e=>(
             <EventCard key={e.id} event={e} onToggleStatus={onToggle} onEdit={onEdit} onDelete={onDelete}
               selected={selectedIds?.has(e.id)} onSelect={onSelect} bulkMode={bulkMode}/>
@@ -1560,7 +1578,7 @@ function Section({ title, color, events, onToggle, onEdit, onDelete, collapsed=f
   // ═══ ΕΚΑΤΟΝ ΔΕΚΑΕΝΝΕΑ ΓΡΑΜΜΕΣ ΠΟΥ ΕΛΕΓΑΝ ΤΟ ΙΔΙΟ ══════════════════════════
   // Ένα δάνειο εικοσαετίας γράφει μία εγγραφή ανά δόση. Στην «Αργότερα» αυτό
   // γινόταν εκατόν δεκαεννέα διαδοχικές, πανομοιότυπες γραμμές «Δόση δανείου ·
-  // 751,00 €» και ό,τι άλλο είχε το ημερολόγιο —μια λήξη μίσθωσης, ένας
+  // 751,00€» και ό,τι άλλο είχε το ημερολόγιο —μια λήξη μίσθωσης, ένας
   // έλεγχος λέβητα— θαβόταν από κάτω. Στη μαζική επιλογή, το πρώτο πράγμα που
   // έβλεπε ο χρήστης ήταν εκατό κουτάκια για το ίδιο δάνειο.
   //
@@ -1609,7 +1627,8 @@ function ScopeModal({ title, hint, danger, onPick, onClose }: { title:string; hi
   const opts:[('this'|'following'|'all'),string][]=[['this','Μόνο αυτό το γεγονός'],['following','Αυτό και τα επόμενα'],['all','Όλη τη σειρά']]
   return (
     <Modal open onClose={onClose} title={title} subtitle={hint} size="sm"
-      footer={<button onClick={onClose} style={{ height:T.h.lg, padding:'0 18px', borderRadius:T.radius.btn, border:'none', background:'transparent', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', cursor:'pointer', fontFamily: T.font.sans }}>Ακύρωση</button>}>
+      /* ghost και όχι secondary: αυτό το «Ακύρωση» ήταν εξαρχής χωρίς περίγραμμα. */
+      footer={<Btn variant="ghost" size="lg" onClick={onClose}>Ακύρωση</Btn>}>
       <div style={{ display:'flex', flexDirection:'column', gap:T.sp.sm }}>
         {opts.map(([v,label])=>(
           <button key={v} onClick={()=>onPick(v)} style={{ display:'flex', alignItems:'center', gap:10, height:T.h.lg, padding:'0 16px', borderRadius:T.radius.btn, border:'1px solid var(--border-subtle)', background:'var(--bg-surface)', cursor:'pointer', fontSize:14, fontWeight:500, color:danger&&v==='all'?'var(--negative)':'var(--text-primary)', fontFamily: T.font.sans, textAlign:'left', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}
@@ -1640,7 +1659,7 @@ function FeedLink({ label, hint, url, onCopy, copied }: {
     <div>
       <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:12, marginBottom:6 }}>
         <span style={{ fontSize: 'var(--fs-xs)', fontWeight:600, color:'var(--text-secondary)', textTransform:'uppercase', letterSpacing:'0.06em', fontFamily: T.font.sans }}>{label}</span>
-        <button onClick={onCopy} style={{ flexShrink:0, height:T.h.sm, padding:'0 12px', borderRadius:T.radius.btn, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily: T.font.sans }}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</button>
+        <Btn onClick={onCopy}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</Btn>
       </div>
       <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'0 0 8px', lineHeight:1.5, fontFamily: T.font.sans }}>{hint}</p>
       {/* ΤΟ ΚΕΙΜΕΝΟ ΕΠΙΛΕΓΕΤΑΙ ΜΕ ΤΟ ΧΕΡΙ ΟΠΩΣ ΠΡΙΝ. Το `user-select: all` δίνει
@@ -1674,7 +1693,6 @@ function SubscribeModal({ token, propertyId, onClose }: { token:string|null; pro
   const webcalUrl=httpsUrl.replace(/^https?:\/\//,'webcal://')
   const googleUrl=`https://calendar.google.com/calendar/r/settings/addbyurl?url=${encodeURIComponent(httpsUrl)}`
   const copy=async()=>{ try{ await navigator.clipboard.writeText(httpsUrl); setCopied(true); setTimeout(()=>setCopied(false),1800) }catch{} }
-  const linkBtn:React.CSSProperties={ display:'flex', alignItems:'center', justifyContent:'center', gap:8, height:T.h.lg, borderRadius:T.radius.btn, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-primary)', fontSize:14, fontWeight:500, textDecoration:'none', fontFamily: T.font.sans, cursor:'pointer' }
   return (
     <Modal open onClose={onClose} size="md" icon={<CalendarPlus size={19}/>}
       title="Ζωντανή συνδρομή"
@@ -1688,14 +1706,15 @@ function SubscribeModal({ token, propertyId, onClose }: { token:string|null; pro
             κατευθείαν την οθόνη προσθήκης του Google, το δεύτερο παραδίδει τον
             σύνδεσμο στην εφαρμογή ημερολογίου του λειτουργικού. */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-          <a href={googleUrl} target="_blank" rel="noreferrer" style={linkBtn} onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'} onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border-default)'}><Calendar size={16}/>Google Calendar</a>
-          <a href={webcalUrl} style={linkBtn} onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'} onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border-default)'}><CalendarDays size={16}/>Apple / Outlook</a>
+          {/* `field` γιατί καθένα γεμίζει το κελί του πλέγματος, με το ύψος πεδίου που είχε το τοπικό `linkBtn`. */}
+          <Btn href={googleUrl} newTab field><Calendar size={16}/>Google Calendar</Btn>
+          <Btn href={webcalUrl} field><CalendarDays size={16}/>Apple / Outlook</Btn>
         </div>
         {/* Η ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΓΙΑ ΤΟΝ ΠΡΟΣΩΠΙΚΟ ΣΥΝΔΕΣΜΟ ΕΦΥΓΕ ΑΠΟ ΕΔΩ: λέγεται
             πλέον δίπλα στον ίδιο τον σύνδεσμο, όπου την αφορά. Εδώ μένουν μόνο
             οι οδηγίες για όποιον προτιμά τη χειροκίνητη διαδρομή. */}
         <div style={{ display:'flex', gap:8, padding:'10px 12px', background:'var(--accent-soft)', border:'1px solid var(--accent-border)', borderRadius:T.radius.inner }}>
-          <Info size={15} color="var(--accent)" style={{ flexShrink:0, marginTop:1 }}/>
+          <Info size={15} color="var(--accent)" className="po-lead-ico"/>
           <p style={{ fontSize:12, color:'var(--text-secondary)', lineHeight:1.5, margin:0, fontFamily: T.font.sans }}>Με το χέρι στο Google Calendar: «Άλλα ημερολόγια», μετά «Από URL» και επικόλλησε τον σύνδεσμο.</p>
         </div>
         {/* Αμφίδρομος συγχρονισμός καναλιών (Airbnb/Booking auto-block) */}
@@ -2147,11 +2166,12 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           γλιτώνει μια γραμμή και η καρτέλα βρίσκεται εκεί που τη σκέφτεσαι. */}
       {onOpenTasks && (
         <div style={{ display:'flex', justifyContent:'flex-end' }}>
-          <button onClick={onOpenTasks}
-            style={{ background:'none', border:'none', padding:0, cursor:'pointer', fontFamily: T.font.sans, fontSize:12, fontWeight:600, color:'var(--accent)', display:'inline-flex', alignItems:'center', gap:6 }}>
-            Εκκρεμότητες
-            {openTasks > 0 && <span style={{ fontFamily: T.font.mono, fontVariantNumeric:'tabular-nums', color:'var(--text-tertiary)', fontWeight:500 }}>{openTasks}</span>}
-          </button>
+          {/* Σύνδεσμος και όχι κουμπί: δεν έχει κουτί, κάθεται ως λέξη πάνω δεξιά.
+              Το κενό πριν από το πλήθος ήταν `gap` του flex και ζει τώρα στο ίδιο
+              το σήμα, γιατί το LinkBtn είναι κείμενο σε ροή. */}
+          <LinkBtn onClick={onOpenTasks}>
+            Εκκρεμότητες{openTasks > 0 && <span style={{ fontFamily: T.font.num, fontVariantNumeric:'tabular-nums', color:'var(--text-tertiary)', fontWeight:500, marginLeft:6 }}>{openTasks}</span>}
+          </LinkBtn>
         </div>
       )}
 
@@ -2175,8 +2195,8 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           «Μήνας» — γιατί μόνο εκεί λείπει. */}
       {viewMode==='month'&&overdue.length>0&&(
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.card, overflow:'hidden' }}>
-          <button onClick={()=>setShowOverdue(o=>!o)} aria-expanded={showOverdue}
-            style={{ display:'flex', alignItems:'center', gap: 12, width:'100%', textAlign:'left', background:'transparent', border:'none', borderBottom:showOverdue?'1px solid var(--border-subtle)':'none', padding:'11px 16px', cursor:'pointer' }}>
+          <button onClick={()=>setShowOverdue(o=>!o)} aria-expanded={showOverdue} className="acc-toggle acc-row"
+            style={{ '--acc-pad': '12px 16px', borderBottom: showOverdue ? '1px solid var(--border-subtle)' : 'none' }}>
             <AlertTriangle size={14} color="var(--negative)"/>
             <p style={{ fontSize:14, color:'var(--text-secondary)', fontFamily: T.font.sans, letterSpacing:'0.1px', margin:0, flex:1 }}>
               {overdue.length===1?'1 εκπρόθεσμο':`${overdue.length} εκπρόθεσμα`} · <span style={{ color:'var(--text-primary)' }}>{showOverdue?'Απόκρυψη':'Εμφάνιση'}</span>
@@ -2186,7 +2206,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           {showOverdue&&(
             <div>
               {[...overdue].sort((a,b)=>a.event_date.localeCompare(b.event_date)).map((e,i,arr)=>{ const late=Math.abs(daysUntil(e.event_date)); const cat=CATEGORIES[e.category]; return (
-                <button key={e.id} onClick={()=>openEdit(e)} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', textAlign:'left', padding:'11px 16px', border:'none', borderBottom:i<arr.length-1?'1px solid var(--border-subtle)':'none', background:'transparent', cursor:'pointer', transition:'background 0.12s' }} onMouseEnter={ev=>ev.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={ev=>ev.currentTarget.style.background='transparent'}>
+                <button className="po-hov-fill" key={e.id} onClick={()=>openEdit(e)} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', textAlign:'left', padding:'11px 16px', border:'none', borderBottom:i<arr.length-1?'1px solid var(--border-subtle)':'none', cursor:'pointer', transition:'background 0.12s' }} >
                   <span style={{ width:7, height:7, borderRadius:3, background:cat.color, flexShrink:0 }}/>
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>{e.title}</p>
@@ -2217,19 +2237,21 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
             γέμισμα και 1 περίγραμμα πάνω κάτω, δηλαδή 40, όσο και τα υπόλοιπα
             χειριστήρια της γραμμής. Με γέμισμα 2 έβγαινε 38. */}
         <div style={{ display:'flex', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding: 4, gap:2 }}>
+          {/* shape="seg" και όχι "chip": το κουτί από πάνω έχει ήδη δικό του περίγραμμα. */}
           {([['month','Μήνας',Calendar],['agenda','Ατζέντα',List]] as [ViewMode,string,typeof Calendar][]).map(([v,label,Icon])=>(
-            <button key={v} onClick={()=>setViewMode(v)} style={{ display:'flex', alignItems:'center', gap:6, height:T.h.sm, padding:'0 12px', border:'none', borderRadius:8, cursor:'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:viewMode===v?600:500, background:viewMode===v?'var(--accent)':'transparent', color:viewMode===v?'var(--accent-text)':'var(--text-secondary)', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s', letterSpacing:'0.1px' }}>
+            <ChipToggle key={v} on={viewMode===v} shape="seg" onClick={()=>setViewMode(v)}>
               <Icon size={13}/>{label}
-            </button>
+            </ChipToggle>
           ))}
         </div>
 
         {viewMode!=='agenda'&&(
           <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <button aria-label="Προηγούμενο" title="Προηγούμενο" onClick={prevPeriod} style={{ width:34, height:34, borderRadius:'50%', border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><ChevronLeft size={18}/></button>
+            <IconBtn label="Προηγούμενο" title="Προηγούμενο" size="md" round onClick={prevPeriod}><ChevronLeft size={18}/></IconBtn>
             <span aria-live="polite" style={{ fontSize:15, fontWeight:600, fontFamily: T.font.sans, color:'var(--text-primary)', minWidth:150, textAlign:'center', letterSpacing:'0.1px' }}>{periodLabel()}</span>
-            <button aria-label="Επόμενο" title="Επόμενο" onClick={nextPeriod} style={{ width:34, height:34, borderRadius:'50%', border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><ChevronRight size={18}/></button>
-            <button onClick={()=>setCurrentDate(athensNow())} style={{ height:T.h.lg, padding:'0 14px', borderRadius: T.radius.modal, border:'1px solid var(--border-default)', background:'var(--bg-surface)', cursor:'pointer', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, fontFamily: T.font.sans }} onMouseEnter={e=>{e.currentTarget.style.background='var(--bg-hover)';e.currentTarget.style.color='var(--text-primary)'}} onMouseLeave={e=>{e.currentTarget.style.background='var(--bg-surface)';e.currentTarget.style.color='var(--text-secondary)'}}>Σήμερα</button>
+            <IconBtn label="Επόμενο" title="Επόμενο" size="md" round onClick={nextPeriod}><ChevronRight size={18}/></IconBtn>
+            {/* size="lg" γιατί η γραμμή εργαλείων είναι όλη στα 40, μαζί με το πεδίο αναζήτησης δίπλα. */}
+            <Btn size="lg" onClick={()=>setCurrentDate(athensNow())}>Σήμερα</Btn>
           </div>
         )}
 
@@ -2242,15 +2264,15 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
             onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-subtle)'}/>
         </div>
 
-        <button onClick={()=>openNew()} title="Νέο γεγονός" style={{ display:'flex', alignItems:'center', gap:6, height:T.h.lg, padding:'0 18px', background:'var(--accent)', border:'none', borderRadius: T.radius.modal, cursor:'pointer', color:'var(--accent-text)', fontSize:14, fontFamily: T.font.sans, fontWeight:600, letterSpacing:'0.1px', boxShadow:'var(--shadow-sm)' }}>
+        <Btn variant="primary" size="lg" onClick={()=>openNew()} title="Νέο γεγονός">
           <Plus size={15}/>Νέο
-        </button>
+        </Btn>
 
         {/* Ένα ήσυχο μενού για όλα τα δευτερεύοντα */}
         <div ref={menuRef} style={{ position:'relative' }}>
           <button ref={menuBtnRef} aria-label="Περισσότερα" aria-haspopup="menu" aria-expanded={showMenu} title="Περισσότερα" onClick={()=>setShowMenu(m=>!m)} style={{ width:T.h.md, height:T.h.md, borderRadius:'50%', border:'1px solid '+(showMenu?'var(--border-default)':'var(--border-subtle)'), background:showMenu?'var(--bg-elevated)':'var(--bg-surface)', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }}><MoreHorizontal size={18}/></button>
           {showMenu&&createPortal(
-            <div ref={menuPopRef} role="menu" style={{ position:'fixed', top:menuCoords.top, left:menuCoords.left, transform:menuCoords.up?'translateY(-100%)':'none', width:248, maxHeight:'min(392px, 80vh)', overflowY:'auto', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:12, boxShadow:'var(--elev-3)', padding:6, zIndex:3000 }}>
+            <div ref={menuPopRef} role="menu" style={{ position:'fixed', top:menuCoords.top, left:menuCoords.left, transform:menuCoords.up?'translateY(-100%)':'none', width:248, maxHeight:'min(392px, 80vh)', overflowY:'auto', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.popup, boxShadow:'var(--elev-3)', padding:6, zIndex:3000 }}>
               {([
                 {label: bulkMode?'Τέλος επιλογής':'Μαζική επιλογή', icon:<CheckSquare size={15}/>, on:()=>{setBulkMode(b=>!b);setSelectedIds(new Set());setShowMenu(false)}},
                 {label: showFilters?'Απόκρυψη φίλτρων':'Φίλτρα', icon:<Filter size={15}/>, on:()=>{setShowFilters(f=>!f);setShowMenu(false)}},
@@ -2298,7 +2320,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                 }},
                 {label:'Εκτύπωση', icon:<Printer size={15}/>, on:()=>{printCalendar();setShowMenu(false)}},
               ] as {label:string;icon:React.ReactNode;on:()=>void}[]).map(it=>(
-                <button key={it.label} onClick={it.on} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'9px 12px', border:'none', background:'transparent', cursor:'pointer', textAlign:'left', color:'var(--text-primary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, borderRadius:8, transition:'background 0.12s' }} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                <button className="po-hov-fill" key={it.label} onClick={it.on} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'9px 12px', border:'none', cursor:'pointer', textAlign:'left', color:'var(--text-primary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, borderRadius: T.radius.chip, transition:'background 0.12s' }} >
                   <span style={{ color:'var(--text-tertiary)', display:'flex', flexShrink:0 }}>{it.icon}</span>{it.label}
                 </button>
               ))}
@@ -2309,7 +2331,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       </div>
 
       {bulkMode&&selectedIds.size>0&&(
-        <div style={{ display:'flex', alignItems:'center', gap:12, background:'var(--accent-dim)', border:'1px solid var(--border-accent)', borderRadius:8, padding:'10px 16px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, background:'var(--accent-dim)', border:'1px solid var(--border-accent)', borderRadius: T.radius.chip, padding:'10px 16px' }}>
           <span style={{ fontSize:14, fontFamily: T.font.sans, fontWeight:500, color:'var(--accent)' }}>{selectedIds.size} επιλεγμένα</span>
           <button onClick={bulkMarkPaid} style={{ height:T.h.sm, padding:'0 16px', background:'var(--accent-dim)', border:'1px solid var(--accent)', borderRadius: T.radius.card, cursor:'pointer', fontSize: 'var(--fs-base)', color:'var(--accent)', fontFamily: T.font.sans, fontWeight:500 }}>Πληρωμένα</button>
           <button onClick={bulkDelete} style={{ height:T.h.sm, padding:'0 16px', background:'var(--negative-dim)', border:'1px solid var(--negative)', borderRadius: T.radius.card, cursor:'pointer', fontSize: 'var(--fs-base)', color:'var(--negative)', fontFamily: T.font.sans, fontWeight:500 }}>Διαγραφή</button>
@@ -2333,7 +2355,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           <button onClick={onClick} style={{ display:'inline-flex', alignItems:'center', gap: 8, height:T.h.sm, padding:'0 13px', borderRadius: T.radius.modal, fontSize: 'var(--fs-base)', cursor:'pointer', border:`1px solid ${active?color:'var(--border-subtle)'}`, background:active?`color-mix(in srgb, ${color} 15%, var(--bg-surface))`:'var(--bg-surface)', color:active?color:'var(--text-secondary)', fontFamily: T.font.sans, fontWeight:600, opacity:count===0&&!active?0.5:1, transition:'background 0.13s, border-color 0.13s, color 0.13s' }} onMouseEnter={e=>{if(!active)e.currentTarget.style.borderColor='var(--border-default)'}} onMouseLeave={e=>{if(!active)e.currentTarget.style.borderColor='var(--border-subtle)'}}>
             {dot&&<span style={{ width:8, height:8, borderRadius:3, background:dot, flexShrink:0 }}/>}
             {label}
-            <span style={{ fontSize: 'var(--fs-xs)', fontVariantNumeric:'tabular-nums', color:active?color:'var(--text-tertiary)', background:'var(--bg-elevated)', borderRadius:8, padding:'1px 6px', minWidth:16, boxSizing:'border-box', textAlign:'center' }}>{count}</span>
+            <span style={{ fontSize: 'var(--fs-xs)', fontVariantNumeric:'tabular-nums', color:active?color:'var(--text-tertiary)', background:'var(--bg-elevated)', borderRadius: T.radius.chip, padding:'1px 6px', minWidth:16, boxSizing:'border-box', textAlign:'center' }}>{count}</span>
           </button>
         )
         const activeCount=(filterCat!=='all'?1:0)+(filterStatus!=='all'?1:0)+(searchQ?1:0)+((dateFrom||dateTo)?1:0)
@@ -2346,8 +2368,9 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
               {activeCount>0&&<span style={{ fontSize: 'var(--fs-xs)', fontWeight:700, color:'var(--accent)', background:'var(--accent-soft)', border:'1px solid var(--accent-border)', borderRadius: T.radius.modal, padding:'1px 8px', fontFamily: T.font.sans }}>{activeCount} ενεργά</span>}
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <button onClick={()=>{setFilterCat('all');setFilterStatus('all');setSearchQ('');setDateFrom('');setDateTo('')}} disabled={!anyActive} style={{ display:'inline-flex', alignItems:'center', gap:6, height:28, padding:'0 12px', borderRadius: T.radius.card, border:'1px solid '+(anyActive?'var(--border-default)':'var(--border-subtle)'), background:'var(--bg-surface)', color:anyActive?'var(--text-secondary)':'var(--text-tertiary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:anyActive?'pointer':'not-allowed', opacity:anyActive?1:0.5, fontFamily: T.font.sans, transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s' }} onMouseEnter={e=>{if(anyActive){e.currentTarget.style.borderColor='var(--negative)';e.currentTarget.style.color='var(--negative)'}}} onMouseLeave={e=>{e.currentTarget.style.borderColor=anyActive?'var(--border-default)':'var(--border-subtle)';e.currentTarget.style.color=anyActive?'var(--text-secondary)':'var(--text-tertiary)'}}><RotateCcw size={12}/>Καθάρισε</button>
-              <button aria-label="Κλείσιμο φίλτρων" onClick={()=>setShowFilters(false)} style={{ width:T.h.sm, height:T.h.sm, borderRadius:10, border:'1px solid var(--border-subtle)', background:'var(--bg-surface)', color:'var(--text-secondary)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s' }} onMouseEnter={e=>{e.currentTarget.style.background='var(--bg-hover)';e.currentTarget.style.borderColor='var(--border-default)';e.currentTarget.style.color='var(--text-primary)'}} onMouseLeave={e=>{e.currentTarget.style.background='var(--bg-surface)';e.currentTarget.style.borderColor='var(--border-subtle)';e.currentTarget.style.color='var(--text-secondary)'}}><X size={16}/></button>
+              {/* Το κόκκινο της αιώρησης ήταν χειρόγραφο και δεν ήξερε ούτε εστίαση ούτε αφή. Το `disabled` λέει πλέον μόνο του ότι δεν υπάρχει ενεργό φίλτρο. */}
+              <Btn onClick={()=>{setFilterCat('all');setFilterStatus('all');setSearchQ('');setDateFrom('');setDateTo('')}} disabled={!anyActive}><RotateCcw size={12}/>Καθάρισε</Btn>
+              <IconBtn label="Κλείσιμο φίλτρων" onClick={()=>setShowFilters(false)}><X size={16}/></IconBtn>
             </div>
           </div>
           <div>
@@ -2386,10 +2409,11 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
               {label:'Φέτος', from:`${an.getFullYear()}-01-01`, to:`${an.getFullYear()}-12-31`},
             ]; return (
               <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginTop:10 }}>
+                {/* Προεπιλογή εύρους: ξαναπατιέται για ακύρωση, άρα κατάσταση και όχι ενέργεια. */}
                 {presets.map(p=>{ const on=dateFrom===p.from&&dateTo===p.to; return (
-                  <button key={p.label} onClick={()=>{setDateFrom(on?'':p.from);setDateTo(on?'':p.to)}} style={{ height:28, padding:'0 11px', borderRadius: T.radius.card, border:`1px solid ${on?'var(--accent-border)':'var(--border-subtle)'}`, background:on?'var(--accent-soft)':'var(--bg-surface)', color:on?'var(--accent)':'var(--text-secondary)', fontSize:12, fontWeight:on?600:500, cursor:'pointer', fontFamily: T.font.sans, transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s' }} onMouseEnter={e=>{if(!on)e.currentTarget.style.borderColor='var(--border-default)'}} onMouseLeave={e=>{if(!on)e.currentTarget.style.borderColor='var(--border-subtle)'}}>{p.label}</button>
+                  <ChipToggle key={p.label} on={on} onClick={()=>{setDateFrom(on?'':p.from);setDateTo(on?'':p.to)}}>{p.label}</ChipToggle>
                 )})}
-                {(dateFrom||dateTo)&&<button onClick={()=>{setDateFrom('');setDateTo('')}} style={{ display:'inline-flex', alignItems:'center', gap: 4, height:28, padding:'0 10px', borderRadius: T.radius.card, border:'none', background:'transparent', color:'var(--text-tertiary)', fontSize:12, cursor:'pointer', fontFamily: T.font.sans }} onMouseEnter={e=>e.currentTarget.style.color='var(--negative)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-tertiary)'}><X size={12}/>Καθαρισμός</button>}
+                {(dateFrom||dateTo)&&<Btn variant="ghost" onClick={()=>{setDateFrom('');setDateTo('')}}><X size={12}/>Καθαρισμός</Btn>}
               </div>
             )})()}
           </div>
@@ -2462,7 +2486,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       {scopePrompt&&<ScopeModal title="Επεξεργασία επαναλαμβανόμενου" hint="Σε ποιες εμφανίσεις να εφαρμοστούν οι αλλαγές;" onPick={applyEditScope} onClose={()=>setScopePrompt(false)}/>}
       {deleteScope&&<ScopeModal title="Διαγραφή επαναλαμβανόμενου" hint="Τι θέλεις να διαγράψεις;" danger onPick={applyDeleteScope} onClose={()=>setDeleteScope(null)}/>}
       {drag.ghost&&createPortal(
-        <div style={{ position:'fixed', left:drag.ghost.x+14, top:drag.ghost.y+14, pointerEvents:'none', zIndex:3000, background:'var(--accent)', color:'var(--accent-text)', fontSize:12, fontWeight:600, padding:'5px 11px', borderRadius:8, boxShadow:'var(--elev-2)', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily: T.font.sans }}>{drag.ghost.label}</div>,
+        <div style={{ position:'fixed', left:drag.ghost.x+14, top:drag.ghost.y+14, pointerEvents:'none', zIndex:3000, background:'var(--accent)', color:'var(--accent-text)', fontSize:12, fontWeight:600, padding:'5px 11px', borderRadius: T.radius.chip, boxShadow:'var(--elev-2)', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily: T.font.sans }}>{drag.ghost.label}</div>,
         document.body
       )}
     </div>

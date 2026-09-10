@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import * as tenantStore from '@/lib/data/tenants'
 import { CustomSelect, TextInput } from './UIComponents'
-import { T, PageTitle, KPIGrid, Btn, EmptyState, Skeleton, SkeletonKPIs, fe, feRate, fn, pressable, Bar } from '@/components/Theme'
+import { T, PageTitle, KPIGrid, Btn, IconBtn, ChipToggle, EmptyState, Skeleton, SkeletonKPIs, fe, feRate, fn, pressable, Bar, RuntimeImg } from '@/components/Theme'
 import { PackageOpen, SearchX, Archive } from 'lucide-react'
 import { portfolioSummary, replacementSuggestion, NOT_TAX_DEPRECIATION_NOTE } from '@/lib/inventory/depreciation'
 import type { FieldContext } from '@/lib/property/fields'
@@ -31,7 +31,7 @@ import { INVENTORY_CATEGORIES, type InventoryItem, type InventoryRepair, type In
 import { calcCurrentValue, calcDepreciationPct, calcYearsLeft, calcAgeDisplay, calcMonthlyKwh, calcMonthlyCost, hasEnergy, fmtDate, daysUntil, warrantyStatus, needsAction } from './inventory/calc'
 import { DOCS_BUCKET } from './inventory/storage'
 import { InfoHint } from './InfoHint'
-import { Badge, EnergyBadge, DepBar, ReplacementHint, InlineConditionEdit, OverflowMenu, SelectBox, BulkPicker, SectionLabel, QRModal, cardStyle, quietAction, IconEdit, IconRepair, IconQR, IconCal, IconTrash, type OverflowAction } from './inventory/Bits'
+import { Badge, EnergyBadge, DepBar, ReplacementHint, InlineConditionEdit, OverflowMenu, SelectBox, BulkPicker, SectionLabel, QRModal, cardStyle, IconEdit, IconRepair, IconQR, IconCal, IconTrash, type OverflowAction } from './inventory/Bits'
 import { ItemFormModal } from './inventory/ItemFormModal'
 import { RepairModal } from './inventory/RepairModal'
 import { BulkImportModal } from './inventory/BulkImportModal'
@@ -57,9 +57,9 @@ const supabase = createSupabaseClient()
 //
 // 2. «Αναβάθμιση N συσκευών → X €/χρόνο» σε πράσινο πλαίσιο. Τρία επινοημένα
 //    μαζί: σταθερά 0,5 (κάθε αντικατάσταση κόβει τη μισή κατανάλωση), η κλάση A
-//    μετρημένη στα «κακά» και τιμή ρεύματος 0,22 €/kWh που σωζόταν σιωπηλά ως
+//    μετρημένη στα «κακά» και τιμή ρεύματος 0,22€/kWh που σωζόταν σιωπηλά ως
 //    δεδομένο σε κάθε άκυρη είσοδο — και χωρίς να αφαιρείται το κόστος αγοράς
-//    («θα κερδίσεις 180 €/χρόνο» για συσκευή 1.200 €). → Μένει μόνο η ΜΕΤΡΗΣΗ:
+//    («θα κερδίσεις 180€/χρόνο» για συσκευή 1.200€). → Μένει μόνο η ΜΕΤΡΗΣΗ:
 //    τι κοστίζει η συσκευή τον μήνα, ΣΤΗΝ ΤΙΜΗ ΠΟΥ ΔΗΛΩΝΕΙ Ο ΛΟΓΑΡΙΑΣΜΟΣ ΣΟΥ.
 //    Χωρίς τιμή δεν εμφανίζεται κόστος: εμφανίζονται kWh και ζητείται η τιμή.
 //
@@ -142,14 +142,10 @@ function AttentionCard({items,onEdit,onWarrantyReminder}:{items:InventoryItem[];
                 Πριν, η γραμμή έδειχνε ένα σήμα κατάστασης, δηλαδή ξανάλεγε την
                 αιτία που μόλις διαβάστηκε δίπλα και δεν πρόσφερε τίποτα να κάνεις. */}
             {kind==='warr'
-              ? <button onClick={()=>{onWarrantyReminder(item);setPushed(p=>new Set(p).add(item.id))}} disabled={pushed.has(item.id)}
-                  style={{flexShrink:0,padding:'0 12px',height:T.h.sm,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-surface)',color:pushed.has(item.id)?'var(--text-tertiary)':'var(--text-secondary)',fontSize:12,fontFamily:T.font.sans,fontWeight:500,cursor:pushed.has(item.id)?'default':'pointer',whiteSpace:'nowrap'}}>
+              ? <Btn onClick={()=>{onWarrantyReminder(item);setPushed(p=>new Set(p).add(item.id))}} disabled={pushed.has(item.id)}>
                   {pushed.has(item.id)?'Στο ημερολόγιο':'Υπενθύμιση'}
-                </button>
-              : <button onClick={()=>onEdit(item)}
-                  style={{flexShrink:0,padding:'0 12px',height:T.h.sm,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-surface)',color:'var(--text-secondary)',fontSize:12,fontFamily:T.font.sans,fontWeight:500,cursor:'pointer',whiteSpace:'nowrap'}}>
-                  Άνοιγμα
-                </button>}
+                </Btn>
+              : <Btn onClick={()=>onEdit(item)}>Άνοιγμα</Btn>}
           </div>
         ))}
       </div>
@@ -166,7 +162,7 @@ function AnalysisCards({items,repairs,kwhPrice,kwhControl}:{items:InventoryItem[
   const byCategory = [...INVENTORY_CATEGORIES].map(cat=>{const ci=items.filter(i=>i.category===cat);return{cat,count:ci.length,val:ci.reduce((s,i)=>s+calcCurrentValue(i),0)}}).filter(x=>x.count>0)
   const maxVal = Math.max(...byCategory.map(x=>x.val),1)
   // ΚΑΤΑΝΟΜΗ ΧΩΡΙΣ ΤΙΠΟΤΑ ΝΑ ΚΑΤΑΝΕΜΗΘΕΙ. Οταν κανένα αντικείμενο δεν έχει
-  // δηλωμένη τιμή αγοράς, η κάρτα τύπωνε τέσσερις γραμμές «0,00 €» με μπάρες
+  // δηλωμένη τιμή αγοράς, η κάρτα τύπωνε τέσσερις γραμμές «0,00€» με μπάρες
   // ίδιου μήκους: ένα γράφημα που δείχνει ότι όλα είναι ίσα με το μηδέν. Το
   // πλήθος ανά κατηγορία το λέει ήδη το πλακίδιο «Αντικείμενα» και το φίλτρο.
   const hasAnyValue = byCategory.some(x=>x.val>0)
@@ -203,8 +199,18 @@ function AnalysisCards({items,repairs,kwhPrice,kwhControl}:{items:InventoryItem[
   )
 
   if(electricItems.length===0) return categoriesCard
+  // ΔΥΟ ΣΤΗΛΕΣ ΜΟΝΟ ΟΤΑΝ Η ΚΑΘΕ ΜΙΑ ΒΓΑΙΝΕΙ ΠΙΟ ΦΑΡΔΙΑ ΑΠΟ ΤΟ ΤΗΛΕΦΩΝΟ.
+  // ΤΙ ΜΕΤΡΗΘΗΚΕ (σκηνή inventory, με κατανάλωση σε πέντε συσκευές). Με κατώφλι
+  // 300 οι δύο κάρτες έσπαγαν σε δύο στήλες ήδη στα 768, όπου το ωφέλιμο πλάτος
+  // είναι 720: κάθε κάρτα έπαιρνε 352, δηλαδή λιγότερο από τα 406 που της δίνει
+  // το τηλέφωνο των 430. Η κάρτα του ρεύματος ψήλωνε από 304 σε 345, επειδή το
+  // χειριστήριο «€/kWh» έπεφτε κάτω από τον τίτλο κι η επεξήγηση πήγαινε στις
+  // τρεις γραμμές: μεγαλύτερη οθόνη, χειρότερη κάρτα. Με κατώφλι 406 το σπάσιμο
+  // πηγαίνει στα 828 ωφέλιμα. Στα 768 και στα 834 βγαίνει μία στήλη των 720 και
+  // 786 αντίστοιχα. Από τα 828 ωφέλιμα και πάνω μένουν δύο στήλες, όπως πριν:
+  // 480 στα 976 του υπολογιστή με το πλαϊνό στη ροή, 560 στα 1136.
   return (
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,300px),1fr))',gap:16,alignItems:'start'}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,406px),1fr))',gap:16,alignItems:'start'}}>
       <div style={cardStyle}>
         <SectionLabel label="Κατανάλωση ρεύματος" right={kwhControl}/>
         {topEnergy.map(item=>{
@@ -243,7 +249,8 @@ function HandoverCard({handovers,onOpenHandover}:{handovers:InventoryHandover[];
           φόρτωση, για πάντα. Τώρα διαβάζεται με πάτημα, από όποιον τη θέλει. */}
       <SectionLabel label="Παραδόσεις και παραλαβές" right={<span style={{display:'inline-flex',alignItems:'center',gap:8}}>
         <InfoHint label="Τι είναι το πρωτόκολλο παράδοσης">Καταγραφή της κατάστασης του εξοπλισμού στην είσοδο και στην έξοδο του ενοικιαστή. Είναι η απόδειξη για την εγγύηση.</InfoHint>
-        <button onClick={onOpenHandover} style={{padding:'0 12px',height:28,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',color:'var(--text-secondary)',fontSize:12,fontFamily:T.font.sans,fontWeight:500,cursor:'pointer'}}>{handovers.length>0?'Άνοιγμα':'Νέο πρωτόκολλο'}</button>
+        {/* Το ύψος ήταν καρφωμένο 28 — κάτω από κάθε στόχο αφής· με το Btn ανεβαίνει στην κοινή κλίμακα και η κεφαλίδα ψηλώνει λίγο. */}
+        <Btn onClick={onOpenHandover}>{handovers.length>0?'Άνοιγμα':'Νέο πρωτόκολλο'}</Btn>
       </span>}/>
       {handovers.length===0
         ? null
@@ -359,20 +366,34 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
         {allRooms.length>0&&<div style={{width:190}}><CustomSelect ariaLabel="Δωμάτιο" value={filterRoom} onChange={setFilterRoom} options={[{value:'Όλα',label:'Όλα τα δωμάτια'},...allRooms.map(r=>({value:r,label:r}))]}/></div>}
         <div style={{display:'flex',alignItems:'center',gap:6}}>
           <div style={{width:212}}><CustomSelect ariaLabel="Ταξινόμηση" value={sortKey} onChange={v=>setSortKey(v as SortKey)} options={(Object.keys(SORT_LABELS) as SortKey[]).map(k=>({value:k,label:SORT_LABELS[k]}))}/></div>
-          <button title={sortDir==='asc'?'Αύξουσα':'Φθίνουσα'} aria-label="Κατεύθυνση ταξινόμησης" onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')} style={{width:T.h.md,height:T.h.md,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:T.font.sans,fontSize:14,flexShrink:0,display:'inline-flex',alignItems:'center',justifyContent:'center'}}><svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{sortDir==='asc'?<path d="M12 19V5M5 12l7-7 7 7"/>:<path d="M12 5v14M19 12l-7 7-7-7"/>}</svg></button>
+          <IconBtn label="Κατεύθυνση ταξινόμησης" title={sortDir==='asc'?'Αύξουσα':'Φθίνουσα'} size="md" round onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}><svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{sortDir==='asc'?<path d="M12 19V5M5 12l7-7 7 7"/>:<path d="M12 5v14M19 12l-7 7-7-7"/>}</svg></IconBtn>
         </div>
-        {actionCount>0&&<button onClick={()=>setShowNeedsAction(v=>!v)} title="Προβολή μόνο όσων χρειάζονται προσοχή" style={{padding:'0 12px',height:T.h.md,borderRadius:T.radius.pill,fontSize:12,cursor:'pointer',fontFamily:T.font.sans,fontWeight:500,border:`1px solid ${showNeedsAction?'var(--warning-border)':'var(--border-subtle)'}`,background:showNeedsAction?'var(--warning-soft)':'var(--bg-elevated)',color:showNeedsAction?'var(--warning)':'var(--text-secondary)',display:'flex',alignItems:'center',gap:6,whiteSpace:'nowrap'}}>
+        {/* Το πλακίδιο λέει ΚΑΤΑΣΤΑΣΗ κι όχι τόνο: το ανοιχτό βάφεται accent από το .po-chip. Το πορτοκαλί μένει εκεί που μετράει, στο σήμα του αριθμού. */}
+        {actionCount>0&&<ChipToggle size="lg" on={showNeedsAction} onClick={()=>setShowNeedsAction(v=>!v)} title="Προβολή μόνο όσων χρειάζονται προσοχή">
           Προσοχή <span style={{background:showNeedsAction?'var(--warning)':'var(--text-tertiary)',color:'var(--text-inverse)',borderRadius:T.radius.inner,padding:'0 6px',fontSize: 'var(--fs-xs)',fontWeight:700}}>{actionCount}</span>
-        </button>}
-        <button onClick={()=>selectMode?exitSelect():setSelectMode(true)} title="Επιλογή πολλών αντικειμένων" style={{padding:'0 12px',height:T.h.lg,borderRadius:T.radius.pill,fontSize:12,cursor:'pointer',fontFamily:T.font.sans,fontWeight:500,border:`1px solid ${selectMode?'var(--accent-border)':'var(--border-subtle)'}`,background:selectMode?'var(--accent-soft)':'var(--bg-elevated)',color:selectMode?'var(--accent)':'var(--text-secondary)',display:'flex',alignItems:'center',gap:6,whiteSpace:'nowrap'}}>
+        </ChipToggle>}
+        <ChipToggle size="lg" on={selectMode} onClick={()=>selectMode?exitSelect():setSelectMode(true)} title="Επιλογή πολλών αντικειμένων">
           <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           {selectMode?'Ακύρωση':'Επιλογή'}
-        </button>
-        {/* 32 το κουμπί, 3 το γέμισμα, 1 το περίγραμμα: η ομάδα βγαίνει 40, όσο
-            και οι επιλογείς δίπλα της. Με γέμισμα 2 έβγαινε 38. */}
-        <div style={{display:'flex',border:'1px solid var(--border-subtle)',borderRadius:T.radius.pill,overflow:'hidden',padding: 4,background:'var(--bg-elevated)'}}>
+        </ChipToggle>
+        {/* ΤΟ ΥΨΟΣ ΔΗΛΩΝΕΤΑΙ, ΔΕΝ ΒΓΑΙΝΕΙ ΑΠΟ ΓΕΜΙΣΜΑ. Το σχόλιο εδώ έλεγε «3 το
+            γέμισμα, η ομάδα βγαίνει 40» ενώ ο κώδικας από κάτω έγραφε 4: η ράγα
+            έβγαινε 42 δίπλα σε επιλογείς των 40 και ο σαρωτής στοίχισης τη
+            μέτρησε. Ενα ύψος που προκύπτει από αριθμητική γεμισμάτων σπάει με
+            την πρώτη στρογγυλοποίηση — και ΕΣΠΑΣΕ. Γραμμένο ως `T.h.lg`, η ράγα
+            είναι εξ ορισμού όσο το πεδίο δίπλα της.
+
+            ΚΑΙ ΕΙΝΑΙ `minHeight`, ΟΧΙ `height`. Με σταθερό ύψος η ράγα ΕΚΟΒΕ τα
+            πλακίδιά της στην αφή: εκεί το `--h-sm` του πλακιδίου ανεβαίνει στα 44
+            —το δάπεδο του δαχτύλου— όσο ΚΑΙ το `--h-lg` της ράγας, οπότε τα δύο
+            περιγράμματα δεν χωρούσαν πια μέσα της και το `overflow: hidden`
+            έκοβε ένα εικονοστοιχείο από κάθε πλακίδιο. Το μέτρησε ο σαρωτής του
+            ζωγραφισμένου. Ως ελάχιστο, η ράγα πιάνει το ύψος του πεδίου στο
+            ποντίκι ΚΑΙ μεγαλώνει όσο χρειάζεται στο δάχτυλο, χωρίς να κόψει. */}
+        <div style={{display:'flex',alignItems:'center',minHeight:T.h.lg,boxSizing:'border-box',border:'1px solid var(--border-subtle)',borderRadius:T.radius.pill,overflow:'hidden',padding:'0 4px',background:'var(--bg-elevated)'}}>
+          {/* `seg` κι όχι `chip`: η ομάδα έχει ήδη δικό της περίγραμμα — δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */}
           {(['grid','list'] as const).map(m=>(
-            <button key={m} onClick={()=>setViewMode(m)} style={{height:T.h.sm,padding:'0 14px',fontSize:12,fontFamily:T.font.sans,cursor:'pointer',border:'none',borderRadius:T.radius.pill,background:viewMode===m?'var(--accent)':'transparent',color:viewMode===m?'var(--accent-text)':'var(--text-secondary)',fontWeight:viewMode===m?500:400,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s'}}>{m==='grid'?'Κάρτες':'Λίστα'}</button>
+            <ChipToggle key={m} on={viewMode===m} shape="seg" onClick={()=>setViewMode(m)}>{m==='grid'?'Κάρτες':'Λίστα'}</ChipToggle>
           ))}
         </div>
       </div>
@@ -382,6 +403,9 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
           <span style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{visIds.length} επιλεγμένα</span>
           <div style={{flex:1}}/>
           <BulkPicker label="Δωμάτιο" icon={<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M4 21V7l8-4v18M20 21V11l-8-4"/></svg>} options={ROOM_PRESETS} onPick={r=>{if(visIds.length){onBulkRoom(visIds,r);exitSelect()}}}/>
+          {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Είναι καταστροφική ενέργεια με περίγραμμα negative-border
+              και φόντο negative-dim· το Btn ξέρει τρεις ρόλους χωρίς τόνο κινδύνου, οπότε
+              η μετατροπή θα έσβηνε το κόκκινο από τη μαζική διαγραφή. */}
           <button onClick={async()=>{ /* Ρητό στιγμιότυπο ΠΡΙΝ την ερώτηση: ο διάλογος δεν παγώνει πια τη σελίδα, άρα φίλτρο και επιλογή μπορούν να αλλάξουν όσο περιμένουμε απάντηση. Διαγράφονται ακριβώς όσα ανακοίνωσε το μήνυμα. */
             const ids=visIds
             if(ids.length && await confirmDialog(`Διαγραφή ${ids.length} αντικειμένων;`,{tone:'negative'})){ onBulkDelete(ids); exitSelect() } }} disabled={visIds.length===0} style={{display:'inline-flex',alignItems:'center',gap:6,height:T.h.sm,padding:'0 12px',borderRadius:T.radius.pill,fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,cursor:visIds.length?'pointer':'not-allowed',border:'1px solid var(--negative-border)',background:visIds.length?'var(--negative-dim)':'var(--bg-elevated)',color:visIds.length?'var(--negative)':'var(--text-tertiary)'}}>
@@ -423,13 +447,13 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
               >
                 <div style={{height:118,background:'var(--bg-elevated)',position:'relative',overflow:'hidden',flexShrink:0}}>
                   {displayPhoto
-                    ?<img src={displayPhoto} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+                    ?<RuntimeImg src={displayPhoto} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
                     :<div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center',opacity:0.18}}>
                       <svg aria-hidden="true" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
                     </div>
                   }
                   {selectMode
-                    ?<div style={{position:'absolute',top:8,left:8,background:'rgba(0,0,0,0.35)',borderRadius:8,padding: 4,backdropFilter:'blur(4px)'}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
+                    ?<div style={{position:'absolute',top:8,left:8,background:'rgba(0,0,0,0.35)',borderRadius: T.radius.chip,padding: 4,backdropFilter:'blur(4px)'}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
                     :<>
                       <div style={{position:'absolute',top:8,left:8}} onClick={e=>e.stopPropagation()}>
                         <InlineConditionEdit item={item} onUpdate={onUpdateCondition}/>
@@ -440,7 +464,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                     </>}
                   {(item.energy_class||photos.length>1)&&<div style={{position:'absolute',bottom:8,left:8,display:'flex',gap:4,alignItems:'center'}}>
                     {item.energy_class&&<EnergyBadge cls={item.energy_class}/>}
-                    {photos.length>1&&<span style={{padding:'2px 6px',borderRadius:6,background:'rgba(0,0,0,0.6)',color:'var(--on-media)',fontSize: 'var(--fs-xs)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums'}}>+{photos.length-1}</span>}
+                    {photos.length>1&&<span style={{padding:'2px 6px',borderRadius: T.radius.xs,background:'rgba(0,0,0,0.6)',color:'var(--on-media)',fontSize: 'var(--fs-xs)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums'}}>+{photos.length-1}</span>}
                   </div>}
                 </div>
                 <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:8,flex:1}}>
@@ -449,7 +473,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                       <p className="po-elide" style={{fontSize:14,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:2,lineHeight:1.3}}>{item.name}</p>
                       <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{item.category}{item.room?` · ${item.room}`:''}</p>
                     </div>
-                    {/* ΤΟ «0,00 €» ΕΦΥΓΕ ΑΠΟ ΤΗ ΘΕΣΗ ΤΗΣ ΑΠΑΝΤΗΣΗΣ. Ενα αντικείμενο
+                    {/* ΤΟ «0,00€» ΕΦΥΓΕ ΑΠΟ ΤΗ ΘΕΣΗ ΤΗΣ ΑΠΑΝΤΗΣΗΣ. Ενα αντικείμενο
                         χωρίς δηλωμένη τιμή αγοράς δεν αξίζει μηδέν: δεν ξέρουμε πόσο
                         αξίζει. Και η ετικέτα «ΤΡΕΧΟΥΣΑ ΑΞΙΑ» γραφόταν σε κάθε μία από
                         τις δεκατρείς κάρτες· λέγεται μόνο όταν υπάρχει ποσό να
@@ -477,42 +501,97 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
           })}
         </div>
       ):(
-        <div style={{overflowX:'auto',margin:'0 -4px',WebkitOverflowScrolling:'touch'}}>
-        <div style={{display:'flex',flexDirection:'column',gap:1,background:'var(--surface-raised)',borderRadius:T.radius.card,border:'1px solid var(--border-raised)',boxShadow:'var(--highlight-inset), var(--elev-1)',overflow:'hidden',minWidth:560}}>
-          <div style={{display:'grid',gridTemplateColumns:`${selectMode?'32px ':''}minmax(0,2fr) 130px 96px 90px 44px`,gap:10,padding:'10px 16px',borderBottom:'2px solid var(--border-subtle)',background:'var(--bg-elevated)'}}>
-            {selectMode&&<div/>}
-            {['Αντικείμενο','Κατάσταση','Αξία','Ρεύμα/μήνα',''].map(h=><p key={h} style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:500,fontFamily:T.font.sans}}>{h}</p>)}
+        /* ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs. Η προβολή «λίστα» ήταν δεκατρία divs με το
+           ΙΔΙΟ `gridTemplateColumns` γραμμένο δύο φορές —μία στην κεφαλίδα, μία στη
+           σειρά— κι με δοχείο που κουβαλούσε ήδη `minWidth: 560` με `overflowX: auto`:
+           όλη η συμπεριφορά πίνακα, χωρίς τη δομή του. Πρακτικά: οι δύο δηλώσεις
+           πλατών μπορούσαν να ξεφύγουν η μία από την άλλη χωρίς να το δει κανείς —
+           κι όποιος ακούει τη σελίδα δεν μάθαινε ποτέ ότι το ποσό δεξιά είναι η
+           «Αξία» του αντικειμένου αριστερά. Τώρα το λένε τα `<th scope>` κι τα πλάτη
+           ζουν σε ένα `<colgroup>`. Οι σειρές είναι όσα τα αντικείμενα του ακινήτου,
+           τυπικά δεκάδες. */
+        <div className="po-table-box" style={{boxShadow:'var(--highlight-inset), var(--elev-1)'}}>
+          <div className="po-scroll-x">
+            {/* ΤΟ ΕΛΑΧΙΣΤΟ ΠΛΑΤΟΣ ΕΙΝΑΙ ΤΟ ΙΔΙΟ 560 ΠΟΥ ΕΓΡΑΦΕ ΤΟ ΧΕΡΙ. Αλλάζει μόνο
+                ποιος το κρατά: ήταν `minWidth: 560` σε ενσωματωμένο στυλ πάνω στο
+                πλέγμα, τώρα είναι η μεταβλητή που διαβάζει η κοινή `.po-table`. */}
+            <table className="po-table" style={{ ['--tbl-min' as string]: '560px' }}>
+              {/* Η ΛΕΖΑΝΤΑ ΔΕΝ ΦΑΙΝΕΤΑΙ, ΓΙΑΤΙ ΔΕΝ ΥΠΗΡΧΕ ΤΙΤΛΟΣ ΝΑ ΦΑΝΕΙ. Πάνω από τη
+                  λίστα κάθονται ήδη τα φίλτρα με τον μετρητή αντικειμένων· μια ταινία
+                  τίτλου θα πρόσθετε λεκτικό που δεν ζήτησε κανείς. Ως `sr-only` ο
+                  πίνακας αποκτά όνομα για τη βοηθητική τεχνολογία χωρίς να αλλάξει
+                  ούτε ένα εικονοστοιχείο στην οθόνη. */}
+              <caption className="sr-only">Απογραφή αντικειμένων</caption>
+              {/* ΧΩΡΙΣ `tbl-fixed`, ΕΠΙΤΗΔΕΣ. Με σταθερή διάταξη τα 44 της στήλης των
+                  ενεργειών είναι ΟΛΟ το κελί: τα 14+14 του γεμίσματος της `.po-table`
+                  θα άφηναν 16 για ένα κουμπί 28 πλατύ κι το μενού θα έβγαινε έξω. Σε
+                  αυτόματη διάταξη τα πλάτη εδώ είναι στόχος, όχι ταβάνι — κι η στήλη
+                  του ονόματος παίρνει ό,τι περισσεύει, όπως το `minmax(0,2fr)`. */}
+              <colgroup>
+                {selectMode&&<col style={{width:32}}/>}
+                <col/>
+                <col style={{width:130}}/>
+                <col style={{width:96}}/>
+                <col style={{width:90}}/>
+                <col style={{width:44}}/>
+              </colgroup>
+              <thead>
+                <tr>
+                  {selectMode&&<th scope="col"><span className="sr-only">Επιλογή</span></th>}
+                  <th scope="col">Αντικείμενο</th>
+                  <th scope="col">Κατάσταση</th>
+                  <th scope="col" className="num">Αξία</th>
+                  <th scope="col" className="num">Ρεύμα/μήνα</th>
+                  {/* Η στήλη των ενεργειών έγραφε κενό `<p>`: υπάρχει για τη δομή. */}
+                  <th scope="col"><span className="sr-only">Ενέργειες</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(item=>{
+                  const curVal=calcCurrentValue(item); const mc=calcMonthlyCost(item,kwhPrice); const age=calcAgeDisplay(item.purchase_date)
+                  // Ιδιος κανόνας με τις κάρτες: χωρίς τιμή αγοράς δεν υπάρχει ποσό.
+                  const hasValue=(item.purchase_value||0)>0; const hasDate=!!item.purchase_date
+                  const sel=selected.has(item.id)
+                  return (
+                    /* Η ΕΠΙΛΕΓΜΕΝΗ ΓΡΑΜΜΗ ΒΑΦΕΤΑΙ ΜΕ ΤΗΝ ΚΟΙΝΗ `is-on`. Το ενσωματωμένο
+                       στυλ έγραφε το ίδιο `--accent-soft` με το χέρι· ως κλάση το ξέρει
+                       κι το καρφωμένο πρώτο κελί, που αλλιώς θα ζωγράφιζε από πάνω του
+                       άλλο φόντο. Το πάτημα της σειράς μένει στον ίδιο βοηθό `pressable`
+                       που είχε το div. */
+                    <tr key={item.id} {...pressable(()=>selectMode?toggleSel(item.id):onEdit(item))} className={sel?'is-on':undefined} style={{transition:'background 0.15s',cursor:'pointer'}}
+                      onMouseEnter={e=>{if(!sel)(e.currentTarget as HTMLTableRowElement).style.background='var(--bg-elevated)'}}
+                      onMouseLeave={e=>{if(!sel)(e.currentTarget as HTMLTableRowElement).style.background='var(--bg-surface)'}}
+                    >
+                      {/* ΤΟ `verticalAlign: middle` ΕΙΝΑΙ Η ΠΑΛΙΑ ΣΤΟΙΧΙΣΗ, ΓΡΑΜΜΕΝΗ ΞΑΝΑ.
+                          Το πλέγμα είχε `alignItems: center`, ενώ η `.po-table` στοιχίζει
+                          κάθε κελί στην κορυφή. Χωρίς αυτό, το κουτάκι επιλογής με το
+                          μενού ενεργειών θα κρέμονταν στην κορυφή μιας σειράς που το
+                          όνομα με τη μπάρα κάνουν 70 ψηλή. Η στήλη του ονόματος μένει
+                          στην κορυφή: είναι η ψηλότερη, δεν έχει τι να κεντραριστεί. */}
+                      {selectMode&&<td style={{verticalAlign:'middle'}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></td>}
+                      <th scope="row" style={{minWidth:0}}>
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <p className="po-elide" style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{item.name}</p>
+                          {item.energy_class&&<EnergyBadge cls={item.energy_class}/>}
+                        </div>
+                        <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,margin:'2px 0 4px'}}>{item.category}{item.room?` · ${item.room}`:''}{age?` · ${age}`:''}</p>
+                        <DepBar pct={calcDepreciationPct(item)} left={calcYearsLeft(item)} hasData={hasDate} hasValue={hasValue} compact/>
+                        {replacementSuggestion(item).suggested&&<div style={{marginTop:4}}><ReplacementHint item={item} compact/></div>}
+                      </th>
+                      <td style={{verticalAlign:'middle'}} onClick={e=>e.stopPropagation()}><InlineConditionEdit item={item} onUpdate={onUpdateCondition}/></td>
+                      <td className="num" style={{verticalAlign:'middle'}}>
+                        {hasValue
+                          ? <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(curVal)}</p>
+                          : <p style={{fontSize:12,fontFamily:T.font.sans,color:'var(--text-tertiary)'}}>Χωρίς αξία</p>}
+                      </td>
+                      <td className="num" style={{verticalAlign:'middle'}}>{mc>0&&<p style={{fontSize:12,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(mc)}</p>}</td>
+                      <td style={{verticalAlign:'middle'}}><div style={{display:'flex',justifyContent:'flex-end'}}><OverflowMenu actions={itemActions(item)}/></div></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-          {filtered.map(item=>{
-            const curVal=calcCurrentValue(item); const mc=calcMonthlyCost(item,kwhPrice); const age=calcAgeDisplay(item.purchase_date)
-            // Ιδιος κανόνας με τις κάρτες: χωρίς τιμή αγοράς δεν υπάρχει ποσό.
-            const hasValue=(item.purchase_value||0)>0; const hasDate=!!item.purchase_date
-            const sel=selected.has(item.id)
-            return (
-              <div key={item.id} {...pressable(()=>selectMode?toggleSel(item.id):onEdit(item))} style={{display:'grid',gridTemplateColumns:`${selectMode?'32px ':''}minmax(0,2fr) 130px 96px 90px 44px`,gap:10,padding:'11px 16px',background:sel?'var(--accent-soft)':'var(--bg-surface)',borderBottom:'1px solid var(--border-subtle)',alignItems:'center',transition:'background 0.15s',cursor:'pointer'}}
-                onMouseEnter={e=>{if(!sel)(e.currentTarget as HTMLDivElement).style.background='var(--bg-elevated)'}}
-                onMouseLeave={e=>{if(!sel)(e.currentTarget as HTMLDivElement).style.background='var(--bg-surface)'}}
-              >
-                {selectMode&&<div onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>}
-                <div style={{minWidth:0}}>
-                  <div style={{display:'flex',alignItems:'center',gap:6}}>
-                    <p className="po-elide" style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{item.name}</p>
-                    {item.energy_class&&<EnergyBadge cls={item.energy_class}/>}
-                  </div>
-                  <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,margin:'2px 0 4px'}}>{item.category}{item.room?` · ${item.room}`:''}{age?` · ${age}`:''}</p>
-                  <DepBar pct={calcDepreciationPct(item)} left={calcYearsLeft(item)} hasData={hasDate} hasValue={hasValue} compact/>
-                  {replacementSuggestion(item).suggested&&<div style={{marginTop:4}}><ReplacementHint item={item} compact/></div>}
-                </div>
-                <div onClick={e=>e.stopPropagation()}><InlineConditionEdit item={item} onUpdate={onUpdateCondition}/></div>
-                {hasValue
-                  ? <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(curVal)}</p>
-                  : <p style={{fontSize:12,fontFamily:T.font.sans,color:'var(--text-tertiary)'}}>Χωρίς αξία</p>}
-                <div>{mc>0&&<p style={{fontSize:12,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(mc)}</p>}</div>
-                <div style={{display:'flex',justifyContent:'flex-end'}}><OverflowMenu actions={itemActions(item)}/></div>
-              </div>
-            )
-          })}
-        </div>
         </div>
       )}
     </div>
@@ -559,7 +638,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
   const [repairs,setRepairs] = useState<InventoryRepair[]>([])
   const [handovers,setHandovers] = useState<InventoryHandover[]>([])
   const [schedules,setSchedules] = useState<MaintenanceSchedule[]>([])
-  // ΚΑΜΙΑ ΠΡΟΕΠΙΛΟΓΗ 0,22 €/kWh. Ήταν σταθερά που (α) πολλαπλασίαζε κάθε συσκευή
+  // ΚΑΜΙΑ ΠΡΟΕΠΙΛΟΓΗ 0,22€/kWh. Ήταν σταθερά που (α) πολλαπλασίαζε κάθε συσκευή
   // και (β) ΓΡΑΦΟΤΑΝ ΣΤΗ ΒΑΣΗ ως δήλωση του χρήστη σε κάθε άκυρη είσοδο. Η τιμή
   // έρχεται από τον λογαριασμό ρεύματος που το app ήδη διαβάζει (bills_electricity)
   // ή από ρητή δήλωση. Όσο λείπει, δείχνουμε kWh και όχι ευρώ.
@@ -686,7 +765,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
     if(data.length===0){setCloning(false);notifyError('Το ακίνητο δεν έχει αντικείμενα προς αντιγραφή.');return}
     // Η αντιγραφή κρατά ό,τι δεν ανήκει στο ακίνητο-πηγή: το κλειδί, οι σφραγίδες
     // χρόνου και ο δεσμός ακινήτου ξαναγράφονται από το στρώμα.
-    const rows=data.map(({id,created_at,updated_at,property_id,user_id,...rest})=>rest)
+    const rows=data.map(({id:_id,created_at:_c,updated_at:_u,property_id:_p,user_id:_uid,...rest})=>rest)
     const {error}=await inventory.add(supabase,propertyId,userId,rows)
     setCloning(false)
     if(error){notifyError(failed('Η αντιγραφή από το άλλο ακίνητο δεν ολοκληρώθηκε',error));return}
@@ -756,8 +835,6 @@ export default function TabInventory({propertyId,userId,profileType='individual'
   // περιβάλλον με τη σημαία της επίπλωσης ανοιχτή· η καρτέλα κρατά το δικό της.
   const formCtx: FieldContext = { ...fieldCtx, furnished: true }
 
-  const overdueCount=schedules.filter(s=>daysUntil(s.next_due)<0).length
-  const warnCount=schedules.filter(s=>{const d=daysUntil(s.next_due);return d>=0&&d<=30}).length
   // ═══ ΤΑ ΤΕΣΣΕΡΑ ΝΟΥΜΕΡΑ ΤΗΣ ΑΠΟΓΡΑΦΗΣ ════════════════════════════════════
   // Υπολογίζονται ΕΔΩ, μία φορά και εμφανίζονται ΕΔΩ, μία φορά: η σειρά μετρικών
   // στέκει πάνω από τις υποκαρτέλες και φαίνεται σε όλες τους. Καμία υποκαρτέλα
@@ -900,27 +977,27 @@ export default function TabInventory({propertyId,userId,profileType='individual'
               <Btn onClick={()=>{setEditingItem(null);setFormManual(true);setShowItemForm(true)}}>Με το χέρι</Btn>
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap',alignItems:'center'}}>
-              <button onClick={()=>setShowBulkImport(true)} style={quietAction}>
+              <Btn onClick={()=>setShowBulkImport(true)}>
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                 Μαζική εισαγωγή
-              </button>
-              <button onClick={insertStarterPack} disabled={cloning} style={{...quietAction,cursor:cloning?'wait':'pointer'}}>
+              </Btn>
+              <Btn onClick={insertStarterPack} disabled={cloning}>
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
                 {cloning?'Δημιουργία…':`Πρότυπο επιπλωμένου (${STARTER_PACK.length})`}
-              </button>
+              </Btn>
               {otherProps.length>0&&<BulkPicker label="Αντιγραφή από ακίνητο" icon={<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>} options={otherProps.map(p=>p.label)} onPick={label=>{const p=otherProps.find(x=>x.label===label);if(p)cloneFromProperty(p.id)}}/>}
             </div>
           </div>
         : page==='handover' ? null : (
             // ΚΑΝΕΝΑ ΜΗΔΕΝΙΚΟ ΠΛΑΚΙΔΙΟ. Ρεύμα εμφανίζεται μόνο όταν υπάρχει
             // μετρημένη κατανάλωση, κόστος αντικατάστασης μόνο όταν έχει δηλωθεί
-            // έστω μία φορά. Ένα πλακίδιο που γράφει «0,00 €» δεν λέει «δεν
+            // έστω μία φορά. Ένα πλακίδιο που γράφει «0,00€» δεν λέει «δεν
             // υπάρχει μέτρηση», λέει «μετρήσαμε μηδέν» — και είναι ψέμα.
             <KPIGrid items={[
               {label:'Αντικείμενα',value:fn(items.length),sub:`${categoryCount} ${categoryCount===1?'κατηγορία':'κατηγορίες'}`},
               // ΤΟ ΙΔΙΟ ΠΛΑΚΙΔΙΟ ΕΣΠΑΖΕ ΤΟΝ ΚΑΝΟΝΑ ΠΟΥ ΓΡΑΦΕΙ ΑΠΟ ΠΑΝΩ ΤΟΥ. Οταν
               // κανένα αντικείμενο δεν έχει δηλωμένη τιμή αγοράς, το άθροισμα
-              // είναι μηδέν και το πλακίδιο τύπωνε «0,00 €» με υπότιτλο
+              // είναι μηδέν και το πλακίδιο τύπωνε «0,00€» με υπότιτλο
               // «εκτίμηση, όχι φορολογική απόσβεση»: ανακοίνωνε αποτέλεσμα
               // εκτίμησης εκεί που δεν έγινε καμία εκτίμηση. Εμφανίζεται μόνο
               // όταν υπάρχει έστω μία τιμή αγοράς να αθροιστεί.
@@ -939,10 +1016,13 @@ export default function TabInventory({propertyId,userId,profileType='individual'
 
       {!loading && items.length>0 && page==='handover' && (
         <div style={{marginTop:8}}>
-          <button onClick={()=>setPage('main')} style={{display:'inline-flex',alignItems:'center',gap:6,height:T.h.sm,padding:'0 12px',marginBottom:16,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily:T.font.sans,cursor:'pointer'}}>
-            <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            Πίσω στα έπιπλα και τον εξοπλισμό
-          </button>
+          {/* Το κενό των 16 ήταν στο ίδιο το κουμπί· περνά στον γονέα, γιατί το Btn κρατά μόνο τη δική του γεωμετρία. */}
+          <div style={{marginBottom:16}}>
+            <Btn onClick={()=>setPage('main')}>
+              <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              Πίσω στα έπιπλα και τον εξοπλισμό
+            </Btn>
+          </div>
           <HandoverTab items={items} handovers={handovers} propertyId={propertyId} userId={userId} onSaved={fetchData} seed={handoverSeed}/>
         </div>
       )}

@@ -85,7 +85,11 @@ Deno.serve(async (req) => {
   if (!authHeader.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401)
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, { global: { headers: { Authorization: authHeader } } })
-  const { data: userData } = await supabase.auth.getUser()
+  const { data: userData, error: userErr } = await supabase.auth.getUser()
+  if (userErr) {
+    console.error('[send-test-notification] η ταυτότητα δεν διαβάστηκε:', userErr)
+    return json({ error: 'identity_unavailable', detail: userErr.message }, 503)
+  }
   if (!userData?.user) return json({ error: 'unauthorized' }, 401)
 
   // ── ΠΟΤΕ ΔΕΝ ΣΤΕΛΝΕΤΑΙ ΔΙΕΥΘΥΝΣΗ ΑΠΟ ΤΟ ΣΩΜΑ ΤΟΥ ΑΙΤΗΜΑΤΟΣ ────────────────
@@ -102,7 +106,17 @@ Deno.serve(async (req) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountEmail)) return json({ error: 'invalid_email' }, 400)
 
   // Ποια διεύθυνση θέλει να επιβεβαιώσει; Το ερώτημα εκδίδει και το διακριτικό.
-  const { data: issued } = await supabase.rpc('issue_reminder_email_token')
+  // ΑΠΟΤΥΧΙΑ ΕΔΩ ΔΕΝ ΕΙΝΑΙ «ΔΕΝ ΕΧΕΙ ΑΠΟΘΗΚΕΥΜΕΝΗ ΔΙΕΥΘΥΝΣΗ». Χωρίς το `error`,
+  // το `issued` ερχόταν κενό, το `saved` έμενε '' και το `needsConfirm` έπεφτε
+  // σε `false`: η function έστελνε ΔΟΚΙΜΗ στη διεύθυνση του λογαριασμού αντί για
+  // ΕΠΙΒΕΒΑΙΩΣΗ στη διεύθυνση που ζήτησε ο χρήστης — και το διακριτικό δεν
+  // εκδόθηκε ποτέ. Ο χρήστης έβλεπε «στάλθηκε», περίμενε το email επιβεβαίωσης
+  // στην άλλη του διεύθυνση και δεν ερχόταν τίποτα.
+  const { data: issued, error: issuedErr } = await supabase.rpc('issue_reminder_email_token')
+  if (issuedErr) {
+    console.error('[send-test-notification] το διακριτικό δεν εκδόθηκε:', issuedErr)
+    return json({ error: 'token_not_issued', detail: issuedErr.message }, 503)
+  }
   const row = (Array.isArray(issued) ? issued[0] : issued) as { email?: string; token?: string } | null
   const saved = String(row?.email || '').trim()
   const needsConfirm = !!saved && saved.toLowerCase() !== accountEmail.toLowerCase()
@@ -118,9 +132,16 @@ Deno.serve(async (req) => {
   // τη φήμη αποστολής του domain με χιλιάδες πανομοιότυπα μηνύματα.
   //
   // Δέκα είναι γενναιόδωρο για μια δοκιμή που ή δουλεύει ή δεν δουλεύει.
-  const { data: quota } = await supabase.rpc('bump_send_quota', {
+  // Ιδιο με την πρόσκληση οργανισμού: «έφτασες τις 10» και «ο έλεγχος έσπασε»
+  // δεν επιτρέπεται να είναι η ίδια απάντηση — πόσο μάλλον σε οθόνη που
+  // υπάρχει για να ΔΙΑΓΝΩΣΕΙ γιατί δεν φτάνουν ειδοποιήσεις.
+  const { data: quota, error: quotaErr } = await supabase.rpc('bump_send_quota', {
     p_kind: 'test_notification', p_units: 1, p_max: 10, p_window: '24 hours',
   })
+  if (quotaErr) {
+    console.error('[send-test-notification] μέτρηση ορίου:', quotaErr)
+    return json({ error: 'quota_unavailable', detail: 'Ο έλεγχος ορίου απέτυχε. Δοκίμασε ξανά σε λίγο.' }, 500)
+  }
   if (!quota?.allowed) {
     return json({
       error: 'daily_cap',

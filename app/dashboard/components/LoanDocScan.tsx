@@ -1,6 +1,6 @@
 'use client'
 import { useRef, useState, type ReactNode } from 'react'
-import { T, TT, Spinner } from '@/components/Theme'
+import { T, TT, Spinner, Btn } from '@/components/Theme'
 import { rankLoans, type UserLoanNeeds, type BankInput } from '@/lib/loans/recommend'
 import { fmtEur, fmtPct, type SavedLoan } from './TabLoanData'
 import { MAX_SCAN_MB } from './scanDoc'
@@ -100,7 +100,50 @@ export function ScanUploadRow({ title, description, action, icon, scanning, onFi
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
       <input ref={inputRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); e.currentTarget.value = '' }} />
-      <div style={{ flex: 1, minWidth: 240 }}>
+      {/* ΤΟ ΚΟΥΜΠΙ ΕΤΡΩΓΕ ΤΗ ΣΤΗΛΗ ΤΟΥ ΚΕΙΜΕΝΟΥ ΣΤΗΝ ΤΑΜΠΛΕΤΑ
+
+          ΤΙ ΜΕΤΡΗΘΗΚΕ (Chromium, το self-hosted Inter, τα tokens της εφαρμογής).
+          Σε συσκευή αφής το `--fs-base` γίνεται 14 και το `--h-lg` 44, οπότε το
+          «Ανέβασε στοιχεία δανειολήπτη» πιάνει 273 εικονοστοιχεία· με
+          `flexShrink: 0` δεν δίνει ούτε ένα πίσω. Η σειρά της κάρτας σε iPad
+          όρθιο είναι 678 στα 768, 720 στα 810, 730 στα 820 και 744 στα 834. Με
+          `flex: 1` (βάση 0) η στήλη του κειμένου δεν ζητούσε πλάτος: έπαιρνε ό,τι
+          περίσσευε, δηλαδή 385 ώς 451, οπότε η περιγραφή έσπαγε σε τέσσερις
+          γραμμές των 57 ώς 62 χαρακτήρων (τρεις στα 834). Το κουμπί όμως είναι 44
+          ψηλό δίπλα σε κείμενο 84 ώς 125: από κάτω του έμεναν 40 ώς 81 άδεια
+          στήλη. Η κάρτα δεν φαινόταν μισοάδεια, ΗΤΑΝ.
+
+          ΤΙ ΑΛΛΑΞΕ. Η στήλη δηλώνει πλέον πόσο πλάτος ΧΡΕΙΑΖΕΤΑΙ, όχι πόσο της
+          περισσεύει: βάση 520, κάτω από την οποία η περιγραφή παύει να διαβάζεται
+          ως παράγραφος. Όσο η σειρά χωράει 520 συν 20 συν το κουμπί, τίποτα δεν
+          κουνιέται: στα 934 της πλάγιας iPad και στα 933 του 1280 η στήλη μένει
+          641 και 653 με δύο γραμμές, ίδια με πριν ώς τα 1920. Όταν δεν χωράει, το
+          `flexWrap` της σειράς κατεβάζει το κουμπί σε δική του γραμμή: το κείμενο
+          παίρνει ΟΛΟ το πλάτος της κάρτας και η άδεια στήλη μηδενίζεται. Στα 768
+          η περιγραφή γίνεται δύο γραμμές των 97 και 105 χαρακτήρων, δηλαδή το
+          ΙΔΙΟ σχήμα που μετρήθηκε στα 1.280 και ζητά το ύψος γραμμής από κάτω.
+          Το ίδιο κερδίζει το δελτίο ESIS, που μοιράζεται αυτή τη σειρά: από τα
+          768 ώς τα 820 πέφτει από τέσσερις γραμμές με κενό 35 σε τρεις χωρίς
+          κενό, ενώ από τα 834 και πάνω μένει ως έχει.
+
+          ΤΟ ΤΙΜΗΜΑ, ΓΡΑΜΜΕΝΟ. Η τυλιγμένη σειρά είναι ΨΗΛΟΤΕΡΗ: 128 αντί για 125
+          στα 768, αντί για 104 στα 810 και στα 820, αντί για 84 στα 834. Ώς 44
+          εικονοστοιχεία ύψους για να φύγει μια άδεια στήλη ώς 81 και να διαβαστεί
+          η περιγραφή σε παράγραφο αντί για στήλη εφημερίδας.
+
+          ΓΙΑΤΙ 520 ΚΑΙ ΟΧΙ ΜΕΓΑΛΥΤΕΡΟ. Για να μη γυρίσει η πλάγια iPad (σειρά
+          934, κουμπί 273) η βάση δεν επιτρέπεται να ξεπεράσει τα 641· για το 1280
+          (σειρά 933, κουμπί 260) το όριο είναι 653. Τα 520 αφήνουν πάνω από 120
+          εικονοστοιχεία περιθώριο, ώστε ένα μακρύτερο λεκτικό κουμπιού να μη
+          σύρει το κατώφλι πάνω σε οθόνη που σήμερα δεν τυλίγεται.
+
+          ΤΟ `minWidth` ΑΠΟ 240 ΣΕ 0. Το κατώφλι της αναδίπλωσης το ορίζει τώρα η
+          βάση, όχι ένα φρένο. Τα 240 δεν έπιαναν πουθενά από τα 320 και πάνω·
+          στα 300 κρατούσαν τη στήλη 240 μέσα σε σειρά 238, δηλαδή δύο
+          εικονοστοιχεία έξω από την κάρτα· το μηδέν τα μαζεύει. Η υπερχείλιση
+          των 17 σε εκείνο το πλάτος είναι του κουμπιού που δεν συρρικνώνεται·
+          δεν την αγγίζει αυτή η αλλαγή. */}
+      <div style={{ flex: '1 1 520px', minWidth: 0 }}>
         {title && <p style={{ ...TT.h2, marginBottom: 4 }}>{title}</p>}
         {/* ΓΡΑΜΜΗ 101 ΧΑΡΑΚΤΗΡΩΝ ΜΕ ΥΨΟΣ 1,55. Πάνω από τους 95 χαρακτήρες το μάτι
             χάνει την αρχή της επόμενης γραμμής και χρειάζεται 1,6 για να τη βρει.
@@ -110,13 +153,15 @@ export function ScanUploadRow({ title, description, action, icon, scanning, onFi
             13 × 1,6 δίνει 20,7969 και η αναλογία ξαναβγαίνει 1,5997, δηλαδή
             ακριβώς κάτω από το όριο. Το ίδιο το κατώφλι γραμμένο ως τιμή πέφτει
             στη λάθος μεριά της στρογγυλοποίησης. */}
-        <p style={{ ...TT.bodySm, color: 'var(--text-tertiary)', lineHeight: 1.65 }}>{description}</p>
+        {/* Το `lineHeight: undefined` σβήνει το 1,50 που φέρνει το `TT.bodySm`
+            μέσα από το spread· αλλιώς το ενσωματωμένο στυλ νικά την κλάση. */}
+        <p className="po-prose" style={{ ...TT.bodySm, lineHeight: undefined, color: 'var(--text-tertiary)' }}>{description}</p>
       </div>
-      <button onClick={() => inputRef.current?.click()} disabled={scanning}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 16px', height: T.h.lg, borderRadius: T.radius.inner, background: 'var(--accent)', border: '1px solid transparent', color: 'var(--accent-text)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight: 600, cursor: scanning ? 'wait' : 'pointer', flexShrink: 0 }}>
+      {/* size="lg" γιατί το ύψος ήταν καρφωμένο στο T.h.lg δίπλα στην περιγραφή. */}
+      <Btn variant="primary" size="lg" onClick={() => inputRef.current?.click()} disabled={scanning}>
         {icon}
         {scanning ? 'Ανάλυση…' : action}
-      </button>
+      </Btn>
     </div>
   )
 }
@@ -370,7 +415,7 @@ export default function LoanDocScan({ banks, euribor, defaultPropertyValue, onAp
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent)', fontFamily: font, fontVariantNumeric: 'tabular-nums', lineHeight: 1, letterSpacing: '-0.02em' }}>{fmtPct(best.effectiveRatePct)}</p>
                   <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 4, fontFamily: font, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(best.monthlyPayment)} τον μήνα</p>
-                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1, fontFamily: font, fontVariantNumeric: 'tabular-nums' }}>Σύνολο {fmtEur(best.totalCost)}</p>
+                  <p className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: font, fontVariantNumeric: 'tabular-nums' }}>Σύνολο {fmtEur(best.totalCost)}</p>
                 </div>
               </div>
             </div>
@@ -380,9 +425,10 @@ export default function LoanDocScan({ banks, euribor, defaultPropertyValue, onAp
 
           {needs && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={applyToCalc} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 16px', height: T.h.lg, borderRadius: 10, background: 'var(--accent)', border: 'none', color: 'var(--accent-text)', fontSize: 'var(--fs-base)', fontFamily: font, fontWeight: 600, cursor: 'pointer' }}>Εφαρμογή στον υπολογιστή</button>
-              {onSaveLoan && best && <button onClick={saveAsLoan} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 16px', height: T.h.lg, borderRadius: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontFamily: font, fontWeight: 500, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Αποθήκευση…' : 'Αποθήκευση ως δάνειο'}</button>}
-              <button onClick={() => setEx(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 14px', height: T.h.lg, borderRadius: 10, background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)', fontSize: 'var(--fs-base)', fontFamily: font, fontWeight: 500, cursor: 'pointer' }}>Καθαρισμός</button>
+              {/* Και τα τρία ήταν T.h.lg, οπότε κρατούν το ύψος τους με size="lg". */}
+              <Btn variant="primary" size="lg" onClick={applyToCalc}>Εφαρμογή στον υπολογιστή</Btn>
+              {onSaveLoan && best && <Btn variant="secondary" size="lg" onClick={saveAsLoan} disabled={saving}>{saving ? 'Αποθήκευση…' : 'Αποθήκευση ως δάνειο'}</Btn>}
+              <Btn variant="secondary" size="lg" onClick={() => setEx(null)}>Καθαρισμός</Btn>
             </div>
           )}
           <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.6, fontFamily: font }}>Ενδεικτική ανάλυση βάσει των στοιχείων του εγγράφου. Επιβεβαίωσε τους ακριβείς όρους με την τράπεζα.</p>

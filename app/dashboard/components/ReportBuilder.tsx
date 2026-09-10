@@ -118,7 +118,6 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
     setBusy(true);
     try {
       const ids = selProps.map(p => p.id);
-      const nameById = new Map(selProps.map(p => [p.id, p.name]));
 
       // ── Άντληση δεδομένων περιόδου (RLS: μόνο του χρήστη) ──────────────────
       const rentQ = rentStore.ofProperties<{ property_id: string; period_year: number; period_month: number; amount: number | null; paid: boolean | null }>(
@@ -378,7 +377,7 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
                 const on = sections.has(s.key);
                 return (
                   <button key={s.key} onClick={() => toggle(sections, s.key, setSections)} style={{ ...pill(on), display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <span style={{ width: 16, height: 16, marginTop: 1, borderRadius: 6, flexShrink: 0, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="po-lead-ico" style={{ width: 16, height: 16, borderRadius: T.radius.xs, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {on && <svg aria-hidden="true" width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
                     </span>
                     <span>

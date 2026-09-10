@@ -21,6 +21,7 @@
 //     npm i -D playwright-core
 // ═══════════════════════════════════════════════════════════════════════════
 import { chromePath } from './lib/chrome.mjs';
+import { plain } from './lib/plain-text.mjs';
 import { createRequire } from 'node:module'
 const require = createRequire(import.meta.url)
 let pkg
@@ -42,7 +43,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   const p = await page(ctx,'/ypologismos-forou-enoikion')
   const inputs = p.locator('input')
   const read = async () => {
-    const txt = await p.locator('body').innerText()
+    const txt = await p.locator('body').innerText().then(plain)
     const m = txt.match(/ΦΟΡΟΣ\s*\n\s*([\d.,]+)\s*€/); return m ? num(m[1]) : null
   }
   ok('αρχική κατάσταση δείχνει 1.026 € (600×12)', await read() === 1026)
@@ -73,7 +74,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   await inputs.nth(0).fill('δεν ξέρω'); await p.waitForTimeout(250)
   const junk = await read()
   ok('σκουπίδια στο πεδίο δεν σπάνε τη σελίδα', junk === 0)
-  ok('…και δεν εμφανίζεται NaN', !(await p.locator('body').innerText()).includes('NaN'))
+  ok('…και δεν εμφανίζεται NaN', !(await p.locator('body').innerText().then(plain)).includes('NaN'))
 
   // Ρητά ΚΑΙ τα δύο πεδία: το πεδίο μηνών είχε μείνει στο 6 από το προηγούμενο
   // βήμα και η πρώτη εκδοχή αυτού του ελέγχου απέτυχε γι' αυτόν τον λόγο.
@@ -94,7 +95,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   const ctx = await b.newContext({ viewport:{width:1280,height:1000}, locale:'el-GR' })
   const p = await page(ctx,'/ypologismos-enfia')
   const read = async () => {
-    const txt = await p.locator('body').innerText()
+    const txt = await p.locator('body').innerText().then(plain)
     const m = txt.match(/ΕΝΦΙΑ ΕΤΗΣΙΩΣ\s*\n\s*([\d.,]+)\s*€/); return m ? num(m[1]) : null
   }
   ok('αρχική κατάσταση δείχνει 180,28 € (85τμ, ζώνη 1400)', Math.abs((await read()) - 180.28) < 0.02)
@@ -124,7 +125,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   ok('50% ιδιοκτησία μειώνει το ποσό', half < 1026)
 
   await inputs.nth(1).fill('0'); await p.waitForTimeout(300)
-  const txt = await p.locator('body').innerText()
+  const txt = await p.locator('body').innerText().then(plain)
   ok('χωρίς τιμή ζώνης δεν δείχνει ψεύτικο αποτέλεσμα', txt.includes('Συμπλήρωσε'))
   ok('πουθενά NaN', !txt.includes('NaN'))
   ok('υπάρχει σύνδεσμος προς τον άλλο υπολογιστή',
@@ -140,12 +141,12 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   const ctx = await b.newContext({ viewport:{width:1280,height:1100}, locale:'el-GR' })
   const p = await page(ctx,'/kathari-apodosi')
   const pct = async label => {
-    const txt = await p.locator('body').innerText()
+    const txt = await p.locator('body').innerText().then(plain)
     const m = txt.match(new RegExp(label + '\\s*\\n\\s*([\\d.,]+)\\s*%'))
     return m ? num(m[1]) : null
   }
   const eur = async label => {
-    const txt = await p.locator('body').innerText()
+    const txt = await p.locator('body').innerText().then(plain)
     const m = txt.match(new RegExp(label + '\\s+([\\d.,]+)\\s*€'))
     return m ? num(m[1]) : null
   }
@@ -170,14 +171,14 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
 
   // ── ΧΩΡΙΣ ΑΞΙΑ ΔΕΝ ΓΡΑΦΕΤΑΙ ΠΟΣΟΣΤΟ ────────────────────────────────────
   await inputs.nth(0).fill('0'); await p.waitForTimeout(300)
-  const body0 = await p.locator('body').innerText()
+  const body0 = await p.locator('body').innerText().then(plain)
   ok('χωρίς αξία δεν εμφανίζεται απόδοση', !body0.includes('ΚΑΘΑΡΗ ΑΠΟΔΟΣΗ'))
   ok('…και δεν εμφανίζεται Infinity ή NaN', !/Infinity|NaN/.test(body0))
   await inputs.nth(0).fill('200000'); await p.waitForTimeout(250)
 
   // ── ΣΚΟΥΠΙΔΙΑ ΣΤΟ ΠΕΔΙΟ ────────────────────────────────────────────────
   await inputs.nth(1).fill('δεν ξέρω'); await p.waitForTimeout(300)
-  const bodyJunk = await p.locator('body').innerText()
+  const bodyJunk = await p.locator('body').innerText().then(plain)
   ok('σκουπίδια δεν σπάνε τη σελίδα', !/Infinity|NaN/.test(bodyJunk))
   ok('και το ακίνητο που δεν αποδίδει δεν βγάζει αρνητικά χρόνια', bodyJunk.includes('Δεν επιστρέφει'))
 

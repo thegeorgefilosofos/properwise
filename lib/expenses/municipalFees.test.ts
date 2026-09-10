@@ -1,7 +1,7 @@
 import { TYPICAL_SHARE, averageMonthly, feeOriginNote, feeShare, monthlyFees, type FeeSourceRow } from './municipalFees';
 
 let pass = 0, fail = 0;
-const ok = (name: string, cond: boolean) => { cond ? pass++ : (fail++, console.error('✗', name)); };
+const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗', name) } };
 const near = (a: number | null, b: number) => a != null && Math.abs(a - b) < 0.005;
 
 // ── ΤΟ ΠΟΣΟΣΤΟ ────────────────────────────────────────────────────────────

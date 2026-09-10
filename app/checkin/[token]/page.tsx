@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { T, Btn, formGrid } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 
 interface CheckinContext { property: { name: string; address: string | null } }
 
@@ -68,7 +69,7 @@ export default function GuestCheckin() {
 
   const wrap: React.CSSProperties = { maxWidth: 560, margin: '0 auto', padding: '0 clamp(16px,5vw,24px)' };
   const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 'clamp(18px,4vw,24px)', marginBottom: 16 };
-  const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '10px 16px', height: T.h.lg, color: 'var(--text-primary)', fontSize: 14, outline: 'none', fontFamily: 'inherit' };
+  const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '10px 16px', height: T.h.lg, color: 'var(--text-primary)', fontSize: 14, outline: 'none', fontFamily: 'inherit' };
   const label: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, display: 'block', marginBottom: 6, letterSpacing: '0.5px' };
 
   return (
@@ -151,18 +152,26 @@ export default function GuestCheckin() {
                   {/* GDPR: ρητή συγκατάθεση επεξεργασίας προσωπικών δεδομένων (υποχρεωτική) */}
                   <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px' }}>
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                      <input type="checkbox" checked={privacyConsent} onChange={e => setPrivacyConsent(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--accent)', flexShrink: 0, marginTop: 1 }} />
-                      <span>
-                        Συναινώ στην επεξεργασία των στοιχείων μου από τον οικοδεσπότη, αποκλειστικά για τη νόμιμη δήλωση διαμονής και την επικοινωνία της κράτησης. Έλαβα γνώση της{' '}
-                        <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline' }}>Πολιτικής απορρήτου</a>.
+                      <input type="checkbox" checked={privacyConsent} onChange={e => setPrivacyConsent(e.target.checked)} className="po-lead-ico" style={{ width: 18, height: 18, accentColor: 'var(--accent)' }} />
+                      {/* ΝΟΜΙΚΟ ΚΕΙΜΕΝΟ ΜΕ ΚΛΕΙΣΤΗ ΔΕΞΙΑ ΑΚΡΗ. Το κουτί των 560 μείον το γέμισμα
+                          της κάρτας, του πλαισίου και το κουτάκι επιλογής αφήνει 406 στο κείμενο:
+                          177 χαρακτήρες στα 12, δηλαδή τρεις γραμμές. Ριγμένη άκρη σε συγκατάθεση
+                          που διαβάζει ξένος άνθρωπος από κινητό μοιάζει με σημείωση αντί για όρο.
+                          Το po-just δεν πάει ποτέ μόνο του: χωρίς συλλαβισμό η στοίχιση τεντώνει
+                          τα κενά αντί να σπάσει λέξη. */}
+                      <span className="po-just">
+                        {hy(<>Συναινώ στην επεξεργασία των στοιχείων μου από τον οικοδεσπότη, αποκλειστικά για τη νόμιμη δήλωση διαμονής και την επικοινωνία της κράτησης. Έλαβα γνώση της{' '}
+                        <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline' }}>Πολιτικής απορρήτου</a>.</>)}
                       </span>
                     </label>
                   </div>
 
                   {err && <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)' }}>{err}</div>}
-                  <button type="submit" disabled={sending || !fullName.trim() || !privacyConsent} style={{ height: T.h.lg, borderRadius: 10, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, cursor: (sending || !fullName.trim() || !privacyConsent) ? 'not-allowed' : 'pointer', opacity: (sending || !fullName.trim() || !privacyConsent) ? 0.6 : 1, fontFamily: 'inherit' }}>
+                  {/* `field` γιατί η φόρμα είναι μία στήλη: το κουμπί παίρνει το πλάτος
+                      και το ύψος των πεδίων από πάνω του, όπως είχε. */}
+                  <Btn variant="primary" type="submit" field disabled={sending || !fullName.trim() || !privacyConsent}>
                     {sending ? 'Αποστολή…' : 'Αποστολή στοιχείων'}
-                  </button>
+                  </Btn>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
                     Τα στοιχεία σου διαβιβάζονται κρυπτογραφημένα και τα βλέπει μόνο ο οικοδεσπότης. Μπορείς να ζητήσεις διαγραφή τους όποτε θες.
                   </div>

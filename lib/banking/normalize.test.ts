@@ -2,7 +2,7 @@ import { BOOK_CURRENCY, apiDedupKey, normalizeTxns, rejectionNote } from './norm
 import type { ProviderTxn } from './types';
 
 let pass = 0, fail = 0;
-const ok = (name: string, cond: boolean) => { cond ? pass++ : (fail++, console.error('✗', name)); };
+const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗', name) } };
 
 const txn = (over: Partial<ProviderTxn> = {}): ProviderTxn => ({
   providerTxnId: 'T1',

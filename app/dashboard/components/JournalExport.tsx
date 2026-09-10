@@ -16,9 +16,8 @@ import * as expenseStore from '@/lib/data/expenses';
 import * as stayStore from '@/lib/data/stays';
 import { declarableGrossOrTotal } from '@/lib/clients/stayAmounts';
 import { STAY_CHANNEL_LABELS, type StayChannel } from '@/lib/clients/clients';
-import { platformFeeExpenses, type TaxStay } from '@/lib/tax/shortTermTax';
-import { resolveCategory } from '@/lib/expenses/taxonomy';
-import { T, TT, Btn, Badge, Modal } from '@/components/Theme';
+import { derivedPlatformFees, monthsWithOwnPlatformFee, type TaxStay } from '@/lib/tax/shortTermTax';
+import { T, TT, Btn, Badge, Modal, ChipToggle, LinkBtn } from '@/components/Theme';
 import PropertyPicker from './PropertyPicker';
 import { CustomSelect } from './UIComponents';
 import {
@@ -62,7 +61,7 @@ const FORMATS: { key: ExportFormat; label: string; hint: string; ext: string }[]
   { key: 'quickbooks', label: 'QuickBooks', hint: 'Journal Entry', ext: 'csv' },
   { key: 'xero', label: 'Xero', hint: 'Manual Journal', ext: 'csv' },
 ];
-const eur = (n: number) => `${(n || 0).toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+const eur = (n: number) => `${(n || 0).toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}€`;
 
 export default function JournalExport({ open, onClose, userId, supabase }: {
   open: boolean; onClose: () => void; userId: string; supabase: SupabaseClient;
@@ -208,15 +207,18 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
     // το ημερολόγιο έγραφε το ακαθάριστο ως είσπραξη και ο 38 έδειχνε χρήματα
     // που δεν μπήκαν ποτέ. Ο κανόνας ζει στο lib/tax/shortTermTax.ts και
     // καλείται ανά διαμονή ώστε η δαπάνη να κρατά το κέντρο κόστους του εσόδου.
-    // ΔΕΝ ΔΙΠΛΟΓΡΑΦΕΤΑΙ: αν ο χρήστης έχει ήδη περάσει προμήθεια ως δαπάνη της
-    // περιόδου, η καταχώρησή του υπερισχύει — ίδιος έλεγχος με το TabAccounting.
-    const ownPlatformFees = ((expData || []) as ExpRow[])
-      .some(e => resolveCategory(e.category) === 'platform_fee');
-    if (!ownPlatformFees) {
-      for (const s of stays) {
-        const property = s.property_id ? nameById.get(String(s.property_id)) : undefined;
-        for (const f of platformFeeExpenses([s], year)) expenses.push({ ...f, property });
-      }
+    // ΔΕΝ ΔΙΠΛΟΓΡΑΦΕΤΑΙ: αν ο χρήστης έχει ήδη περάσει προμήθεια ως δαπάνη ενός
+    // ΜΗΝΑ, η καταχώρησή του υπερισχύει για εκείνον τον μήνα.
+    //
+    // ΕΔΩ Η ΕΡΩΤΗΣΗ ΗΤΑΝ ΝΑΙ/ΟΧΙ ΓΙΑ ΟΛΗ ΤΗΝ ΠΕΡΙΟΔΟ. Μία καταχωρημένη προμήθεια
+    // —του Ιουλίου— έκοβε ΚΑΘΕ παραγόμενη γραμμή της χρονιάς: ο οικοδεσπότης με
+    // εξήντα κρατήσεις έχανε τις άλλες πενήντα εννέα, με κέρδος κι φόρο
+    // φουσκωμένα. Το σχόλιο έγραφε «ίδιος έλεγχος με το TabAccounting» κι ΔΕΝ
+    // ήταν: εκείνο έκρινε ανά μήνα. Ο κανόνας ζει πλέον σε ένα σημείο.
+    const ownFeeMonths = monthsWithOwnPlatformFee((expData || []) as ExpRow[]);
+    for (const s of stays) {
+      const property = s.property_id ? nameById.get(String(s.property_id)) : undefined;
+      for (const f of derivedPlatformFees([s], year, ownFeeMonths)) expenses.push({ ...f, property });
     }
     return buildJournal({ incomes, expenses, loanPayments });
   };
@@ -255,19 +257,18 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
     finally { setBusy(false); }
   };
 
-  const field: React.CSSProperties = { height: T.h.lg, padding: '0 12px', borderRadius: T.radius.inner, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box' };
-  const pill = (on: boolean): React.CSSProperties => ({ fontSize: 12, fontWeight: 600, padding: '8px 12px', borderRadius: T.radius.inner, cursor: 'pointer', textAlign: 'left', border: `1px solid ${on ? 'var(--accent-border)' : 'var(--border-default)'}`, background: on ? 'var(--accent-soft)' : 'transparent', color: on ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: T.font.sans });
 
   const footerInfo = <>{selIds.length} {selIds.length === 1 ? 'ακίνητο' : 'ακίνητα'} · {periodLabel}</>;
   const footer = (
     <>
-      <button onClick={e => { e.currentTarget.blur(); doPreview(); }} disabled={busy || !selIds.length}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 13px', borderRadius: T.radius.btn, background: 'none', border: 'none', fontFamily: T.font.sans, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', cursor: (busy || !selIds.length) ? 'not-allowed' : 'pointer', opacity: (busy || !selIds.length) ? 0.5 : 1, transition: 'background 0.15s, color 0.15s' }}
-        onMouseEnter={e => { if (!(busy || !selIds.length)) { e.currentTarget.style.background = 'var(--bg-elevated)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}>
+      {/* Ήσυχο και όχι δευτερεύον: κάθεται δίπλα στη «Λήψη» χωρίς περίγραμμα, ώστε
+          η κύρια ενέργεια της γραμμής να μένει μία. Το `blur` έμεινε — έφευγε το
+          δαχτυλίδι μετά το κλικ — αλλά τώρα το ζητά από το ενεργό στοιχείο,
+          γιατί το `onClick` του Btn δεν παίρνει γεγονός. */}
+      <Btn variant="ghost" onClick={() => { (document.activeElement as HTMLElement | null)?.blur(); doPreview(); }} disabled={busy || !selIds.length}>
         <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
         {busy ? 'Έλεγχος…' : preview ? 'Επανέλεγχος' : 'Έλεγχος ισοζυγίου'}
-      </button>
+      </Btn>
       <Btn variant="primary" onClick={download} disabled={busy || !selIds.length}>{busy ? 'Εξαγωγή…' : (format === 'excel' ? 'Λήψη Excel' : 'Λήψη CSV')}</Btn>
     </>
   );
@@ -304,13 +305,19 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
               {FORMATS.map(f => {
                 const on = format === f.key;
                 return (
-                  <button key={f.key} onClick={() => setFormat(f.key)} style={{ textAlign: 'left', padding: '9px 12px', borderRadius: 10, border: `1px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent-soft)' : 'var(--bg-surface)', cursor: 'pointer', fontFamily: T.font.sans, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, transition: 'border-color 0.15s, background 0.15s' }}>
-                    <span style={{ minWidth: 0 }}>
+                  // ΔΕΝ ΕΙΝΑΙ ΕΝΕΡΓΕΙΑ, ΕΙΝΑΙ ΕΠΙΛΟΓΗ: το `aria-pressed` το λέει πλέον
+                  // μόνο του, ενώ πριν η μορφή φαινόταν μόνο με χρώμα. Σχήμα `chip`
+                  // και όχι `seg` γιατί τα πλακάκια κάθονται σε πλέγμα χωρίς ράγα,
+                  // άρα το καθένα κρατά δικό του περίγραμμα. Το κάθετο γέμισμα και
+                  // η αριστερή στοίχιση μένουν στο περιεχόμενο, γιατί το πλακίδιο
+                  // είναι δύο γραμμές — τίτλος και επεξήγηση.
+                  <ChipToggle key={f.key} on={on} onClick={() => setFormat(f.key)}>
+                    <span style={{ minWidth: 0, flex: 1, textAlign: 'left', padding: '9px 0' }}>
                       <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 660, letterSpacing: '-0.01em', color: on ? 'var(--accent)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.label}</span>
-                      <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.hint}</span>
+                      <span style={{ display: 'block', fontSize: 'var(--fs-xs)', fontWeight: 400, color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.hint}</span>
                     </span>
-                    {on && <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M20 6 9 17l-5-5"/></svg>}
-                  </button>
+                    {on && <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: 11 }}><path d="M20 6 9 17l-5-5"/></svg>}
+                  </ChipToggle>
                 );
               })}
             </div>
@@ -319,28 +326,67 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
           {/* Ισοζύγιο & έλεγχος */}
           {preview && totals && (
             <div>
-              <button onClick={() => setShowBalance(s => !s)} aria-expanded={showBalance} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: showBalance ? 10 : 0, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
+              <button onClick={() => setShowBalance(s => !s)} aria-expanded={showBalance} className="acc-toggle acc-row" style={{ marginBottom: showBalance ? 8 : 0 }}>
                 <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', transform: showBalance ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}><path d="M9 6l6 6-6 6"/></svg>
                 <span style={{ ...TT.label }}>ΙΣΟΖΥΓΙΟ</span>
                 <Badge tone={audit ? (audit.tone === 'positive' ? 'neutral' : audit.tone) : (totals.balanced ? 'neutral' : 'negative')}>{audit ? (audit.tone === 'positive' ? 'Ισοσκελισμένο' : audit.tone === 'warning' ? 'Ισοσκελισμένο · προσοχή' : 'Απαιτεί διόρθωση') : (totals.balanced ? 'Ισοσκελισμένο' : 'Ασυμφωνία')}</Badge>
                 <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontWeight: 600 }}>{showBalance ? 'Σύμπτυξη' : 'Προβολή'}</span>
               </button>
               {showBalance && (<>
-              <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 12, padding: '10px 16px', background: 'var(--bg-elevated)', fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-tertiary)' }}>
-                  <span>ΛΟΓΑΡΙΑΣΜΟΣ</span><span style={{ textAlign: 'right' }}>ΧΡΕΩΣΗ</span><span style={{ textAlign: 'right' }}>ΠΙΣΤΩΣΗ</span>
-                </div>
-                {preview.map(r => (
-                  <div key={r.code} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 12, padding: '9px 16px', borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--fs-base)' }}>
-                    <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ fontFamily: T.font.mono, fontSize: 12, color: 'var(--text-tertiary)', marginRight: 10 }}>{r.code}</span>{r.account}</span>
-                    <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.debit ? eur(r.debit) : ''}</span>
-                    <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.credit ? eur(r.credit) : ''}</span>
-                  </div>
-                ))}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 12, padding: '12px 16px', borderTop: '1px solid var(--border-default)', background: 'var(--bg-elevated)', fontSize: 'var(--fs-base)', fontWeight: 700 }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>ΣΥΝΟΛΑ</span>
-                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{eur(totals.debit)}</span>
-                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{eur(totals.credit)}</span>
+              {/* ═══ ΤΟ ΙΣΟΖΥΓΙΟ ΕΙΝΑΙ ΠΙΝΑΚΑΣ, ΟΧΙ ΤΡΙΑ ΠΛΕΓΜΑΤΑ ══════════════
+                  ΤΙ ΗΤΑΝ. Το `'1fr 120px 120px'` γραμμένο ΤΡΕΙΣ φορές —
+                  κεφαλίδα, γραμμές, σύνολα — δηλαδή τρία σημεία να αποκλίνουν
+                  για μία στοίχιση. Και για τον αναγνώστη οθόνης το ισοζύγιο
+                  ήταν σειρά ασύνδετων κειμένων: ένα ποσό δεν ανακοινωνόταν ποτέ
+                  μαζί με τον λογαριασμό του ούτε με τη στήλη «Χρέωση».
+
+                  ΤΙ ΚΑΝΕΙ ΤΩΡΑ. Τα πλάτη ζουν μία φορά σε `<colgroup>` με
+                  `.tbl-fixed` ώστε να ισχύσουν, ο λογαριασμός είναι
+                  `<th scope="row">`, τα ποσά κελιά `.num` και τα ΣΥΝΟΛΑ
+                  `<tfoot>`. Η γωνία περνά από 12 σε 14: είναι η μία γωνία που
+                  έχει κάθε πίνακας του προϊόντος. */}
+              <div className="po-table-box">
+                {/* ΟΙ ΔΥΟ ΣΤΗΛΕΣ ΠΟΣΩΝ ΚΡΑΤΟΥΝ 240 ΣΤΑΘΕΡΑ. Μέσα σε παράθυρο
+                    `lg` στα 760 δεν φαίνεται· στο τηλέφωνο, με το παράθυρο να
+                    πέφτει στο πλάτος της οθόνης, από τα 320 έμεναν κάτω από 60
+                    για το όνομα του λογαριασμού — δηλαδή τρεις χαρακτήρες και
+                    αποσιωπητικά. Με ελάχιστο 420 ο πίνακας κυλά οριζόντια αντί
+                    να στριμώξει τη στήλη που κουβαλά το νόημα. */}
+                <div className="po-scroll-x">
+                  <table className="po-table tbl-fixed" style={{ ['--tbl-min' as string]: '420px', ['--tbl-fs' as string]: 'var(--fs-base)' }}>
+                    <caption>Ισοζύγιο περιόδου</caption>
+                    <colgroup>
+                      <col />
+                      <col style={{ width: 132 }} />
+                      <col style={{ width: 132 }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th scope="col">ΛΟΓΑΡΙΑΣΜΟΣ</th>
+                        <th scope="col" className="num">ΧΡΕΩΣΗ</th>
+                        <th scope="col" className="num">ΠΙΣΤΩΣΗ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.map(r => (
+                        <tr key={r.code}>
+                          <th scope="row" style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ fontFamily: T.font.mono, fontSize: 12, color: 'var(--text-tertiary)', marginRight: 10 }}>{r.code}</span>{r.account}</th>
+                          <td className="num">{r.debit ? eur(r.debit) : ''}</td>
+                          <td className="num">{r.credit ? eur(r.credit) : ''}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      {/* Η `tr.is-total` βάφει τη σκούρα γραμμή ΜΟΝΟ στα `td`. Η
+                          κεφαλίδα της γραμμής τη γράφει μόνη της, αλλιώς η
+                          γραμμή των συνόλων ξεκινούσε από τη δεύτερη στήλη. */}
+                      <tr className="is-total" style={{ background: 'var(--bg-elevated)', fontWeight: 700 }}>
+                        <th scope="row" style={{ borderTop: '1px solid var(--border-default)', fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>ΣΥΝΟΛΑ</th>
+                        <td className="num">{eur(totals.debit)}</td>
+                        <td className="num">{eur(totals.credit)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
               </div>
 
@@ -362,7 +408,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                 const warn = audit.checks.filter(c => c.status === 'warn').length;
                 const fail = audit.checks.filter(c => c.status === 'fail').length;
                 return (
-                  <div style={{ marginTop: 18 }}>
+                  <div style={{ marginTop: T.sp.lg }}>
                     {/* Ετυμηγορία — ήρεμη, σαν λογιστής */}
                     <div style={{ paddingLeft: 14, borderLeft: `2px solid ${toneVar}` }}>
                       <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.55 }}>{audit.summary}</div>
@@ -392,18 +438,23 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                                   <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.5 }}>{c.detail}</div>
                                   {!isPass && c.fix && (
                                     <>
-                                      <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 11px', borderRadius: 8, background: 'var(--bg-elevated)' }}>
-                                        <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 1 }}><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/></svg>
+                                      <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 11px', borderRadius: T.radius.chip, background: 'var(--bg-elevated)' }}>
+                                        <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico" style={{ color: 'var(--text-tertiary)' }}><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/></svg>
                                         <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)' }}><b style={{ color: 'var(--text-primary)', fontWeight: 640 }}>Πρόταση:</b> {c.fix}</span>
                                       </div>
-                                      <button onClick={() => askAboutCheck(c)} style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontFamily: T.font.sans, fontSize: 12, fontWeight: 600, color: 'var(--accent)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                        <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4z"/></svg>
-                                        {askCta()}
-                                      </button>
+                                      {/* Το περιθώριο και η γραμματοσειρά ζουν στο περιτύλιγμα:
+                                          ο σύνδεσμος κληρονομεί το `font` και δεν κρατά δική
+                                          του θέση, όπως κάθε ενέργεια μέσα σε πρόταση. */}
+                                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, fontFamily: T.font.sans }}>
+                                        <LinkBtn onClick={() => askAboutCheck(c)}>
+                                          <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: -2, marginRight: 6 }}><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4z"/></svg>
+                                          {askCta()}
+                                        </LinkBtn>
+                                      </div>
                                     </>
                                   )}
                                 </span>
-                                <span style={{ flexShrink: 0, marginTop: 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', fontWeight: 600, ...(isPass ? { color: 'var(--text-tertiary)' } : { color: ink, background: `color-mix(in srgb, ${col} 12%, transparent)`, padding: '3px 10px', borderRadius: T.radius.pill }) }}>
+                                <span className="po-lead-ico" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', fontWeight: 600, ...(isPass ? { color: 'var(--text-tertiary)' } : { color: ink, background: `color-mix(in srgb, ${col} 12%, transparent)`, padding: '3px 10px', borderRadius: T.radius.pill }) }}>
                                   {isPass && <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                                   {c.status === 'pass' ? 'Εντάξει' : c.status === 'warn' ? 'Προσοχή' : 'Σφάλμα'}
                                 </span>

@@ -110,8 +110,11 @@ export type ReadEvent =
   | { ok: true; event: MerchantEvent }
   | { ok: false; reason: string; ours: boolean; config?: boolean };
 
-/** Οι πάροχοι που ξέρει το έργο. */
-export type MerchantId = 'lemon';
+// ΤΟ ΑΝΑΓΝΩΡΙΣΤΙΚΟ ΤΟΥ ΕΜΠΟΡΟΥ ΔΕΝ ΟΡΙΖΕΤΑΙ ΕΔΩ. Ορίζεται μαζί με το εμπορικό
+// του όνομα, στο lib/legal/merchant.ts, γιατί τα νομικά κείμενα χρειάζονται
+// ΜΟΝΟ το όνομα και δεν επιτρέπεται να φορτώνουν τις υλοποιήσεις των θυρών.
+export type { MerchantId } from '@/lib/legal/merchant';
+import type { MerchantId } from '@/lib/legal/merchant';
 
 /**
  * Η θύρα. Καμία μέθοδος δεν δέχεται ή επιστρέφει έννοια του παρόχου.

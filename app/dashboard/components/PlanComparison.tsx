@@ -13,13 +13,11 @@
 // χρέωσης από κάτω, που ανοίγει το ταμείο του παρόχου πληρωμών.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { PLANS, PLAN_ORDER, annualPerMonth, type PlanId } from '@/lib/billing/plans';
-import { aiLimitsFor } from '@/lib/billing/aiLimits';
-import { ASSISTANT_NAME, ASSISTANT_ACC } from '@/lib/assistant/identity';
-import { FEATURE_LABEL, FEATURE_MIN_PLAN, planAtLeast, type Feature } from '@/lib/billing/entitlements';
+import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { isPlanAllowedForProfile } from '@/lib/billing/entitlements';
-import { T, TT, Card, SecHdr, Btn, Chip, feAuto, fn, fixedCols } from '@/components/Theme';
+import { T, TT, Card, SecHdr, Btn, ChipToggle, Chip, feAuto, fixedCols } from '@/components/Theme';
 
 // ── Ποια πλάνα συγκρίνονται εδώ ─────────────────────────────────────────────
 // ΟΧΙ όλα. Το «Γραφείο» είναι πλάνο για χαρτοφυλάκια άνω των 40 ακινήτων και δεν
@@ -28,7 +26,7 @@ import { T, TT, Card, SecHdr, Btn, Chip, feAuto, fn, fixedCols } from '@/compone
 // ιδίως σε κινητό, για να διαφημίσει κάτι που αφορά ελάχιστους. Αναφέρεται με μία
 // γραμμή κάτω από τον πίνακα, εκεί που ανήκει.
 // ΟΙ ΣΤΗΛΕΣ ΕΙΝΑΙ ΤΑ ΠΛΑΝΑ ΠΟΥ ΜΠΟΡΕΙ ΝΑ ΑΓΟΡΑΣΕΙ ΚΑΠΟΙΟΣ — ΟΛΑ ΤΟΥΣ.
-// Έλειπαν το «Ένα ακίνητο» (3,90 €) και το «Γραφείο»: ο συνδρομητής του πρώτου
+// Έλειπαν το «Ένα ακίνητο» (3,90€) και το «Γραφείο»: ο συνδρομητής του πρώτου
 // άνοιγε τη σύγκριση πλάνων και δεν έβρισκε το δικό του πλάνο πουθενά.
 // ═══ ΤΕΣΣΕΡΑ ΠΑΚΕΤΑ. ΤΟ «ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ» ΔΕΝ ΕΙΝΑΙ ΠΑΚΕΤΟ ══════════════════
 //
@@ -38,80 +36,16 @@ import { T, TT, Card, SecHdr, Btn, Chip, feAuto, fn, fixedCols } from '@/compone
 // να διαλέξεις. Δωρεάν είναι μόνο η δοκιμαστική περίοδος και το λέει η
 // υποδοχή, η αρχική σελίδα και οι Όροι.
 //
-// Μια στήλη με τιμή 0 € δίπλα σε τέσσερις με τιμή δεν είναι διαφάνεια — είναι
+// Μια στήλη με τιμή 0€ δίπλα σε τέσσερις με τιμή δεν είναι διαφάνεια — είναι
 // πρόσκληση να μείνεις εκεί.
-type ComparedPlan = Extract<PlanId, 'solo' | 'owner' | 'agency' | 'office'>;
-const COMPARED: ComparedPlan[] = ['solo', 'owner', 'agency', 'office'];
-
-// ── Πίνακας δυνατοτήτων (μία πηγή, καθρεφτίζει τα entitlements) ─────────────
-type CellValue = boolean | string;
-interface FeatureRow { label: string; values: Record<ComparedPlan, CellValue> }
-
-/** Το όριο ακινήτων γράφεται ΠΑΝΤΑ από τα PLANS, ποτέ με το χέρι: αλλιώς ο
- *  πίνακας αποκλίνει σιωπηλά από αυτό που επιβάλλει ο server. */
-const limitLabel = (id: ComparedPlan): string => {
-  const n = PLANS[id].maxProperties;
-  if (!Number.isFinite(n)) return 'Απεριόριστα';
-  return n === 1 ? '1' : `Έως ${n}`;
-};
-
-// ── Ο ΠΙΝΑΚΑΣ ΔΕΝ ΞΑΝΑΛΕΕΙ ΤΟΥΣ ΚΑΝΟΝΕΣ· ΤΟΥΣ ΔΙΑΒΑΖΕΙ ────────────────────
-// Οι γραμμές ήταν γραμμένες με το χέρι ως booleans ανά πλάνο και είχαν ήδη
-// αποκλίνει από αυτό που ΕΠΙΒΑΛΛΕΙ ο κώδικας:
-//
-//   · «Εξαγωγή Ε2» έλεγε ότι θέλει «Ιδιοκτήτης». Το `FEATURE_MIN_PLAN` το
-//     ξεκλειδώνει από το «Ένα ακίνητο», που κοστίζει πολλαπλάσια λιγότερο.
-//   · Το ίδιο και η «Διαχείριση ενοικιαστών & εισπράξεις».
-//
-// Δηλαδή ο πίνακας τιμών έλεγε στον χρήστη να αγοράσει ακριβότερο πλάνο από όσο
-// χρειαζόταν. Δεν είναι θέμα αισθητικής· είναι λάθος τιμολόγηση στην οθόνη που
-// ζητά την κάρτα του. Τώρα κάθε κλειδωμένη γραμμή παράγεται από το ίδιο μητρώο
-// που κρίνει και την πρόσβαση — δεν μπορούν να διαφωνήσουν.
-const gated = (f: Feature): FeatureRow => ({
-  label: FEATURE_LABEL[f],
-  values: Object.fromEntries(COMPARED.map(p => [p, planAtLeast(p, FEATURE_MIN_PLAN[f])])) as Record<ComparedPlan, CellValue>,
-});
-/** Γραμμή που ισχύει για όλους — δεν περνά από entitlement. */
-const forAll = (label: string): FeatureRow => ({
-  label, values: Object.fromEntries(COMPARED.map(p => [p, true])) as Record<ComparedPlan, CellValue>,
-});
-
-const MATRIX: FeatureRow[] = [
-  { label: 'Ακίνητα', values: Object.fromEntries(COMPARED.map(p => [p, limitLabel(p)])) as Record<ComparedPlan, CellValue> },
-  // Ο ΙΣΧΥΡΙΣΜΟΣ ΓΙΝΕΤΑΙ ΑΡΙΘΜΟΣ. Η γραμμή από πάνω λέει «αλλάζει μόνο πόσες
-  // ερωτήσεις έχει το καθένα» — και ο πίνακας δεν έδειχνε πουθενά πόσες. Μια
-  // υπόσχεση που ο αναγνώστης δεν μπορεί να επαληθεύσει στην ίδια οθόνη είναι
-  // διαφήμιση· με τη σειρά, γίνεται σύγκριση.
-  { label: `Ερωτήσεις στη ${ASSISTANT_NAME} τον μήνα`,
-    values: Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perMonth)])) as Record<ComparedPlan, CellValue> },
-  forAll('Σάρωση εγγράφων και φωνητική καταχώρηση'),
-  forAll('Αποδόσεις, δαπάνες, ενέργεια και φόρος 2026'),
-  forAll('Έξυπνες ειδοποιήσεις και υπενθυμίσεις'),
-  gated('e2_export'),
-  gated('rent_collection'),
-  gated('multi_property'),
-  gated('comparison'),
-  gated('accounting_journal'),
-  gated('bank_import'),
-  gated('early_access'),
-  gated('clients'),
-  gated('portfolio'),
-  gated('report_branding'),
-  gated('investment_analysis'),
-];
-
-// Πλέγμα του πίνακα: ετικέτα + 3 στήλες πλάνων. Ελάχιστο πλάτος ώστε σε στενές
-// οθόνες να κυλάει μέσα στο δικό του container (η σελίδα δεν σπρώχνεται ποτέ).
-const MATRIX_GRID = `minmax(184px, 1.7fr) repeat(${COMPARED.length}, minmax(84px, 1fr))`;
+// ΟΙ ΣΤΗΛΕΣ ΟΡΙΖΟΝΤΑΙ ΜΙΑ ΦΟΡΑ, ΣΤΟΝ ΠΙΝΑΚΑ. Εδώ ήταν γραμμένες δεύτερη φορά,
+// μαζί με ολόκληρο αντίγραφο του πίνακα των δεκαέξι γραμμών — που κανείς δεν
+// ζωγράφιζε, αφού ο πίνακας μετακόμισε στο /paketa. Ενα αντίγραφο που δεν
+// φαίνεται είναι χειρότερο από ένα που φαίνεται: όποιος διόρθωνε ΑΥΤΟ δεν θα
+// έβλεπε καμία αλλαγή στην οθόνη και θα νόμιζε ότι διόρθωσε.
+import { COMPARED } from '@/components/PlanMatrix';
 
 // ── Μικρά εικονίδια ────────────────────────────────────────────────────────
-function Check({ tone }: { tone: 'accent' | 'muted' }) {
-  return (
-    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={tone === 'accent' ? 'var(--accent)' : 'var(--text-secondary)'} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
 function LockGlyph() {
   return (
     <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -132,7 +66,7 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
 }) {
   // ΞΕΚΙΝΑ ΣΤΗΝ ΕΤΗΣΙΑ, ΚΑΙ ΕΙΝΑΙ ΤΙΜΙΟ ΕΠΕΙΔΗ ΦΑΙΝΟΝΤΑΙ ΚΑΙ ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ.
   // Η κάρτα δείχνει το μηνιαίο ισοδύναμο ΚΑΙ το ετήσιο σύνολο δίπλα του, οπότε
-  // κανείς δεν μπορεί να νομίσει ότι πληρώνει 3,58 € τον μήνα χωρίς δέσμευση
+  // κανείς δεν μπορεί να νομίσει ότι πληρώνει 3,58€ τον μήνα χωρίς δέσμευση
   // έτους. Χωρίς το ετήσιο σύνολο ορατό, η προεπιλογή θα ήταν παραπλάνηση.
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('annual');
 
@@ -143,30 +77,18 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
     ? 'Διαθέσιμο στον τρόπο «Ιδιώτης»'
     : 'Διαθέσιμο στον τρόπο «Επαγγελματίας»';
 
-  // Κέρδος: κελί ανώτερου πλάνου που προσφέρει κάτι που δεν έχει το τρέχον.
-  // boolean → true εκεί & false στο τρέχον. string («Ακίνητα») → κάθε ανώτερο
-  // πλάνο (περισσότερα ακίνητα). Η στήλη του τρέχοντος δεν γίνεται ποτέ «κέρδος».
-  const isGain = (row: FeatureRow, id: ComparedPlan): boolean => {
-    if (rankOf(id) <= curRank) return false;
-    const v = row.values[id];
-    if (typeof v === 'string') return true;
-    // Το «Γραφείο» δεν εμφανίζεται στον πίνακα· αν ο χρήστης είναι ήδη εκεί,
-    // δεν έχει τίποτα να «κερδίσει» από τις στήλες που βλέπει.
-    const shown = COMPARED.includes(currentPlan as ComparedPlan) ? (currentPlan as ComparedPlan) : 'agency';
-    return v === true && row.values[shown] === false;
-  };
-
   return (
     <div>
       {/* ── 1+2. Κεφαλίδα με διακόπτη κύκλου + στήλες πλάνων ───────────────── */}
       <Card className="acc-section" style={{ animationDelay: '0ms' }}>
         <SecHdr label="Σύγκριση πακέτων" right={
           <div style={{ display: 'inline-flex', padding: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill }}>
+            {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της περίγραμμα,
+                οπότε δεύτερο περίγραμμα ανά πλακίδιο θα έδινε διπλή γραμμή. */}
             {(['monthly', 'annual'] as const).map(c => (
-              <button key={c} onClick={() => setCycle(c)}
-                style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '5px 12px', borderRadius: T.radius.pill, fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, color: cycle === c ? 'var(--text-primary)' : 'var(--text-tertiary)', background: cycle === c ? 'var(--bg-surface)' : 'transparent', boxShadow: cycle === c ? 'var(--elev-1)' : 'none', transition: 'background-color 0.15s cubic-bezier(0.2,0,0,1), border-color 0.15s cubic-bezier(0.2,0,0,1), color 0.15s cubic-bezier(0.2,0,0,1), box-shadow 0.15s cubic-bezier(0.2,0,0,1), transform 0.15s cubic-bezier(0.2,0,0,1), opacity 0.15s cubic-bezier(0.2,0,0,1)' }}>
+              <ChipToggle key={c} on={cycle === c} onClick={() => setCycle(c)} shape="seg">
                 {c === 'monthly' ? 'Μηνιαία' : 'Ετήσια'}
-              </button>
+              </ChipToggle>
             ))}
           </div>
         } />
@@ -179,7 +101,7 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
             αλήθεια: ότι δεν τον έχει. Λέγεται μία φορά, πάνω από τη σκάλα,
             γιατί αφορά ΟΛΗ τη σκάλα. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '11px 14px', marginBottom: 14, borderRadius: T.radius.inner, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8, background: 'var(--accent-dim)', color: 'var(--accent)', flexShrink: 0 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: T.radius.chip, background: 'var(--accent-dim)', color: 'var(--accent)', flexShrink: 0 }}>
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12" /><path d="M8.5 12h.01M12 12h.01M15.5 12h.01" /></svg>
           </span>
           {/* Η αρχική σελίδα γράφει «ο βοηθός», γιατί ο επισκέπτης δεν ξέρει
@@ -252,7 +174,7 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
 
             return (
               <div key={id} className={locked ? undefined : 'acc-choice'} title={locked ? lockHint : undefined}
-                style={{ position: 'relative', display: 'flex', flexDirection: 'column', opacity: locked ? 0.55 : 1, background: heroBg, border: `1.5px solid ${borderColor}`, borderRadius: T.radius.card, boxShadow, padding: 18 }}>
+                style={{ position: 'relative', display: 'flex', flexDirection: 'column', opacity: locked ? 0.55 : 1, background: heroBg, border: `1.5px solid ${borderColor}`, borderRadius: T.radius.card, boxShadow, padding: T.sp.lg }}>
 
                 {/* ══ Η ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΣΤΗΛΗΣ ΕΧΕΙ ΜΙΑ ΘΕΣΗ, ΚΑΙ ΕΙΝΑΙ ΑΥΤΗ ══════
                     Το «Πιο δημοφιλές» καθόταν ως κορδέλα πάνω από την κάρτα και

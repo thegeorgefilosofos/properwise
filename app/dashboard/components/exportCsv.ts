@@ -70,7 +70,7 @@ export async function downloadTableXlsx(filename: string, t: TableExport): Promi
   const columns: XlsxCol[] = t.headers.map(h => ({ header: h, kind: kindFromHeader(h) }));
   const rows = t.rows.map(r => t.headers.map((_, i) => { const v = r[i]; return v == null ? '' : v; }));
   // Άθροισμα μόνο εκεί που η στήλη ΕΧΕΙ αριθμούς: μια στήλη ποσών γεμάτη κείμενο
-  // θα έβγαζε «0,00 €» κάτω από ορατά νούμερα, που είναι χειρότερο από κανένα σύνολο.
+  // θα έβγαζε «0,00€» κάτω από ορατά νούμερα, που είναι χειρότερο από κανένα σύνολο.
   const totalCols = columns
     .map((c, i) => (c.kind === 'eur' && rows.some(r => typeof r[i] === 'number') ? i : -1))
     .filter(i => i >= 0);

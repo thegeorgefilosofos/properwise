@@ -13,7 +13,7 @@
 // 2. Εθνικότητα, αριθμός ταυτότητας, διεύθυνση, ΑΦΜ, πηγή γνωριμίας, ελεύθερες
 //    ετικέτες, 5 αστέρια, VIP, τμηματοποίηση. Δεδομένα προσωπικού χαρακτήρα και
 //    πεδία πωλήσεων που δεν προκαλούσαν ΚΑΜΙΑ ενέργεια στην εφαρμογή.
-// 3. Το κατώφλι VIP στα 1.000 €: επινοημένο και άσχετο με το μέγεθος του ακινήτου.
+// 3. Το κατώφλι VIP στα 1.000€: επινοημένο και άσχετο με το μέγεθος του ακινήτου.
 // 4. Το KPI «Επαναλαμβανόμενοι». Ο επισκέπτης του Airbnb έρχεται μία φορά· το
 //    νούμερο θα έδειχνε 0 για πάντα, δηλαδή κατέλαβε μια θέση KPI για να πει
 //    ψέματα για την αξία του προϊόντος.
@@ -48,11 +48,14 @@ import * as properties from '@/lib/data/properties';
 import * as stayStore from '@/lib/data/stays';
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory';
-import { T, PageTitle, KPIGrid, Badge, InfoBanner, Btn, ExportButton, EmptyState, Skeleton, SkeletonKPIs, SecHdr, Modal, SideSheet, fe, fd, fp, ABSENT_DATE, formGrid, fixedCols, Tile, RecordCard, StatStrip } from '@/components/Theme';
+import { T, PageTitle, KPIGrid, Badge, InfoBanner, Btn, IconBtn, ChipToggle, LinkBtn, ExportButton, EmptyState, Skeleton, SkeletonKPIs, SecHdr, Modal, SideSheet, fe, fd, fp, ABSENT_DATE, formGrid, fixedCols, Tile, RecordCard, StatStrip } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 import { confirmDialog } from '@/components/confirmBus';
 import { NumberInput, TextInput, CustomSelect, DatePicker, Textarea, Toggle } from './UIComponents';
 import MonthBars from '@/components/MonthBars';
 import { downloadTableXlsx } from './exportCsv';
+import * as checkinLink from '@/lib/data/checkinLink';
+import { notifyError } from '@/components/Toast';
 import { saved, savedData } from '@/components/dbWrite';
 
 import ClientCompose from './ClientCompose';
@@ -226,7 +229,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   const [clients, setClients] = useState<Client[]>([]);
   const [props, setProps] = useState<PropRow[]>([]);
   const [stays, setStays] = useState<Stay[]>([]);
-  const [notesOf, setNotesOf] = useState<{ clientId: string; rows: Note[] } | null>(null);
+  const [notesOf, setNotesOf] = useState<{ clientId: string; rows: Note[]; failed: boolean } | null>(null);
   const [inv, setInv] = useState<InvItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -265,6 +268,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   const [icalBusy, setIcalBusy] = useState(false);
   const [icalMsg, setIcalMsg] = useState<{ text: string; error?: boolean } | null>(null);
   const [icalFeeds, setIcalFeeds] = useState<IcalFeed[]>([]);
+  const [icalFeedsFailed, setIcalFeedsFailed] = useState(false);
 
   // Φόρμα νέου/επεξεργασίας πελάτη
   const [modalOpen, setModalOpen] = useState(false);
@@ -286,7 +290,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   const [noteForm, setNoteForm] = useState<{ kind: string; body: string }>({ kind: 'note', body: '' });
 
   // Έγγραφα πελάτη (ταυτότητα, συμβόλαιο, αποδείξεις)
-  const [docsOf, setDocsOf] = useState<{ clientId: string; rows: ClientDoc[] } | null>(null);
+  const [docsOf, setDocsOf] = useState<{ clientId: string; rows: ClientDoc[]; failed: boolean } | null>(null);
   const [docKindOf, setDocKindOf] = useState<{ clientId: string; kind: string } | null>(null);
   const [docBusy, setDocBusy] = useState(false);
   const [docMsgOf, setDocMsgOf] = useState<{ clientId: string; msg: { text: string; error?: boolean } | null } | null>(null);
@@ -304,33 +308,52 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
     setProps(pr);
     setInv(it);
     setLoading(false);
-  }, [userId]);
+  }, [userId, supabase]);
 
   const loadStays = useCallback(async () => {
     const data = await stayStore.ofUser<Stay>(supabase, userId, '*');
     setStays((data || []) as Stay[]);
-  }, [userId]);
+  }, [userId, supabase]);
 
+  // ΤΟ «ΚΑΝΕΝΑ ΣΧΟΛΙΟ ΑΚΟΜΗ» ΗΤΑΝ ΒΕΒΑΙΩΣΗ ΠΟΥ ΔΕΝ ΕΙΧΑΜΕ ΔΙΚΑΙΩΜΑ ΝΑ ΠΟΥΜΕ.
+  // Οταν η ανάγνωση αποτύγχανε το `data` γύριζε null, το χρονολόγιο άδειαζε κι ο
+  // οικοδεσπότης διάβαζε «Κανένα σχόλιο ακόμη»: ίδια ακριβώς εικόνα με επισκέπτη
+  // που όντως δεν έχει ιστορικό, ενώ εκεί μπορεί να κάθεται καταγραμμένη μια
+  // φθορά ή μια συνεννόηση για την επόμενη διαμονή. Πλέον η αποτυχία ταξιδεύει
+  // μαζί με τη λίστα κι η οθόνη λέει ότι δεν πήραμε απάντηση.
   const loadNotes = useCallback(async (clientId: string) => {
-    const { data } = await supabase.from('client_notes').select('*').eq('user_id', userId).eq('client_id', clientId).order('created_at', { ascending: false });
-    setNotesOf({ clientId, rows: (data || []) as Note[] });
-  }, [userId]);
+    const { data, error } = await supabase.from('client_notes').select('*').eq('user_id', userId).eq('client_id', clientId).order('created_at', { ascending: false });
+    setNotesOf({ clientId, rows: (data || []) as Note[], failed: !!error });
+  }, [userId, supabase]);
 
+  // «ΔΕΝ ΕΧΟΥΝ ΑΠΟΘΗΚΕΥΤΕΙ ΕΓΓΡΑΦΑ»: το έλεγε η οθόνη κι όταν απλώς δεν
+  // διαβάστηκε ο φάκελος του επισκέπτη. Ο οικοδεσπότης που ψάχνει το διαβατήριο
+  // ή το υπογεγραμμένο συμβόλαιο συμπέραινε ότι δεν το ανέβασε ποτέ, οπότε ή το
+  // ξαναζητούσε από τον άνθρωπο ή προχωρούσε χωρίς αυτό. Η αποτυχία ανάγνωσης
+  // φτάνει τώρα στην οθόνη ως τρίτη κατάσταση, ξεχωριστή από το άδειο.
   const loadDocs = useCallback(async (clientId: string) => {
-    const { data } = await supabase.from('client_documents').select('*').eq('user_id', userId).eq('client_id', clientId).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('client_documents').select('*').eq('user_id', userId).eq('client_id', clientId).order('created_at', { ascending: false });
     const list = (data || []) as ClientDoc[];
     const paths = list.map(d => d.file_path);
     if (paths.length) {
       const { data: signed } = await supabase.storage.from('property-files').createSignedUrls(paths, 60 * 60 * 24);
       if (signed) list.forEach((d, i) => { d.signedUrl = signed[i]?.signedUrl ?? undefined; });
     }
-    setDocsOf({ clientId, rows: list });
-  }, [userId]);
+    setDocsOf({ clientId, rows: list, failed: !!error });
+  }, [userId, supabase]);
 
+  // ΟΙ ΑΠΟΘΗΚΕΥΜΕΝΟΙ ΣΥΝΔΕΣΜΟΙ ΚΡΥΒΟΝΤΑΝ ΑΘΟΡΥΒΑ. Σε αποτυχία η λίστα άδειαζε,
+  // οπότε το κουτί των ροών εξαφανιζόταν ολόκληρο μαζί με την κατάσταση του
+  // τελευταίου συγχρονισμού: ο οικοδεσπότης δεν έβλεπε ούτε τη ροή που έχει
+  // σταματήσει να φέρνει κρατήσεις ούτε ότι υπάρχει ήδη σύνδεσμος για το
+  // ακίνητο, οπότε αποθήκευε δεύτερο σύνδεσμο στα τυφλά. Τώρα κρατάμε ό,τι
+  // διαβάστηκε από πριν και σημαδεύουμε την αποτυχία, ώστε να τη δει.
   const loadIcalFeeds = useCallback(async () => {
-    const { data } = await supabase.from('ical_feeds').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('ical_feeds').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    setIcalFeedsFailed(!!error);
+    if (error) return;
     setIcalFeeds((data || []) as IcalFeed[]);
-  }, [userId]);
+  }, [userId, supabase]);
 
   // Τρεις φορτώσεις που ξεκινούν μαζί, δηλωμένες ως μία.
   const loadAll = useCallback(() => Promise.all([load(), loadStays(), loadIcalFeeds()]), [load, loadStays, loadIcalFeeds]);
@@ -347,7 +370,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_properties', filter: `user_id=eq.${userId}` }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [userId, load, loadStays, loadNotes, loadDocs, loadIcalFeeds]);
+  }, [userId, load, loadStays, loadNotes, loadDocs, loadIcalFeeds, supabase]);
 
   // ΤΟ ΑΔΕΙΟ ΔΕΝ ΑΠΟΘΗΚΕΥΕΤΑΙ, ΠΡΟΚΥΠΤΕΙ. Εδώ ένα effect άδειαζε τέσσερις
   // καταστάσεις σε κάθε αλλαγή πελάτη — και δεν προλάβαινε: μια αργοπορημένη
@@ -357,6 +380,9 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   const notes = notesOf?.clientId === openId ? notesOf.rows : [];
   const docs  = docsOf?.clientId  === openId ? docsOf.rows  : [];
   const docMsg = docMsgOf?.clientId === openId ? docMsgOf.msg : null;
+  // «Δεν ξέρουμε»: η ανάγνωση του ανοιχτού επισκέπτη απάντησε με σφάλμα.
+  const notesFailed = notesOf?.clientId === openId && notesOf?.failed === true;
+  const docsFailed  = docsOf?.clientId  === openId && docsOf?.failed  === true;
   const docKind = docKindOf?.clientId === openId ? docKindOf.kind : 'other';
   // Οι σημειώσεις και τα έγγραφα του ανοιχτού πελάτη. Χωρίς ανοιχτό πελάτη δεν
   // υπάρχει τι να φορτωθεί και η υπόσχεση λύνεται αμέσως.
@@ -502,12 +528,26 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
     supabase.from('guest_checkins').select('id,full_name,created_at,id_number,nationality,birth_date,phone,arrival_date,guests_count,accepts_rules').eq('client_id', openId).order('created_at', { ascending: false }).then(({ data }) => setCheckinsOf({ clientId: openId, rows: (data || []) as Checkin[] }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId]);
+  // Ο ΣΥΝΔΕΣΜΟΣ ΚΙ Η ΛΗΞΗ ΤΟΥ ΖΟΥΝ ΣΤΟ lib/data/checkinLink.ts, ΜΑΖΙ. Εδώ ήταν
+  // γραμμένο το `upsert` με το χέρι κι η διεύθυνση από τον περιηγητή· ο βοηθός
+  // είχε το ΙΔΙΟ ζευγάρι σφαλμάτων, αντιγραμμένο. Το γιατί είναι εκεί.
   const copyCheckinLink = async () => {
     if (!openId) return;
     const propId = (propsByClient.get(openId) || [])[0]?.id || null;
-    const data = await savedData<{ token?: string }>('Ο σύνδεσμος προ-άφιξης δεν δημιουργήθηκε',
-      supabase.from('checkin_links').upsert({ user_id: userId, client_id: openId, property_id: propId, active: true }, { onConflict: 'user_id,client_id' }).select('token').maybeSingle());
-    if (data?.token) { try { await navigator.clipboard.writeText(`${window.location.origin}/checkin/${data.token}`); } catch { /* ignore */ } setCopiedFor(openId); setTimeout(() => setCopiedFor(null), 2600); }
+    const data = await savedData<{ token: string }>('Ο σύνδεσμος προ-άφιξης δεν δημιουργήθηκε',
+      checkinLink.issue(supabase, userId, openId, propId, new Date()));
+    if (!data?.token) return;
+    // «ΑΝΤΙΓΡΑΦΗΚΕ» ΜΟΝΟ ΟΤΑΝ ΑΝΤΙΓΡΑΦΤΗΚΕ. Το `catch` κατάπινε την αποτυχία
+    // του προχείρου κι το κουμπί έλεγε «Ο σύνδεσμος αντιγράφηκε» με άδειο
+    // πρόχειρο — σε Safari χωρίς άδεια, ή σε σελίδα χωρίς ασφαλές πλαίσιο, ο
+    // ιδιοκτήτης πήγαινε να επικολλήσει στο WhatsApp κι δεν είχε τίποτα.
+    try {
+      await navigator.clipboard.writeText(checkinLink.checkinUrl(data.token));
+    } catch {
+      notifyError('Ο σύνδεσμος δεν μπήκε στο πρόχειρο. Άνοιξε την καρτέλα του πελάτη κι αντίγραψέ τον από εκεί.');
+      return;
+    }
+    setCopiedFor(openId); setTimeout(() => setCopiedFor(null), 2600);
   };
 
   // Εισαγωγή κράτησης από email: ανάλυση με AI → πρόχειρη διαμονή προς αποθήκευση.
@@ -886,7 +926,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
       title: 'Διαμονές επισκεπτών',
       // Οι επικεφαλίδες φέρουν το «(€)» ώστε ο κοινός exporter να δώσει στη
       // στήλη μορφή νομίσματος και ζωντανό άθροισμα. Πριν, τα ποσά γράφονταν ως
-      // κείμενο «1.234,56 €» και το φύλλο των βραχυχρόνιων διαμονών — αυτό
+      // κείμενο «1.234,56€» και το φύλλο των βραχυχρόνιων διαμονών — αυτό
       // ακριβώς που πάει στον λογιστή για τη δήλωση — δεν αθροιζόταν πουθενά.
       headers: [
         'Επισκέπτης', 'Ακίνητο', 'Άφιξη', 'Αναχώρηση', 'Νύχτες', 'Κανάλι',
@@ -899,11 +939,8 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   };
 
   // ── Κοινά inline styles ────────────────────────────────────────────────────
-  const inp: React.CSSProperties = { background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, height: T.h.lg, width: '100%', outline: 'none', boxSizing: 'border-box', fontFamily: T.font.sans };
+  const inp: React.CSSProperties = { background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, height: T.h.lg, width: '100%', outline: 'none', boxSizing: 'border-box', fontFamily: T.font.sans };
   const lbl: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', display: 'block', marginBottom: 8, fontFamily: T.font.sans };
-  // Το φίλτρο κάθεται στην ίδια σειρά με το πεδίο αναζήτησης, οπότε παίρνει το
-  // ύψος του πεδίου. Με `minHeight: T.h.sm` και γέμισμα 8 έβγαινε 32 δίπλα σε 40.
-  const chip = (active: boolean): React.CSSProperties => ({ display: 'inline-flex', alignItems: 'center', height: T.h.lg, padding: '0 14px', borderRadius: T.radius.pill, border: `1px solid ${active ? 'var(--accent)' : 'var(--border-subtle)'}`, background: active ? 'var(--accent-soft)' : 'transparent', color: active ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, fontWeight: 500, whiteSpace: 'nowrap' });
   const msgLink: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: T.h.sm, fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', padding: '3px 9px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', background: 'var(--accent-soft)', whiteSpace: 'nowrap' };
   // Chip επικοινωνίας (ίδιο ύφος με msgLink, με inline εικονίδιο).
   const contactChip: React.CSSProperties = { ...msgLink, display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' };
@@ -992,9 +1029,14 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               το ταβάνι των 280 κρατά το πεδίο στο ίδιο μέγεθος. */
           style={{ ...inp, maxWidth: 280, width: 'auto', flex: '1 1 240px' }} />
         {/* Ένα φίλτρο και είναι το χρήσιμο. Τα «VIP / Επαναλαμβανόμενοι /
-            Με επισήμανση» έφυγαν: το πρώτο είχε επινοημένο κατώφλι 1.000 €, το
+            Με επισήμανση» έφυγαν: το πρώτο είχε επινοημένο κατώφλι 1.000€, το
             δεύτερο θα ήταν πάντα κενό, το τρίτο ήταν η μαύρη λίστα. */}
-        <button style={chip(undeclaredOnly)} onClick={() => setUndeclaredOnly(v => !v)}>Με αδήλωτες διαμονές</button>
+        {/* Το φίλτρο κάθεται στην ίδια σειρά με το πεδίο αναζήτησης, οπότε παίρνει το
+            ύψος του πεδίου: το περιτύλιγμα δίνει T.h.lg και το πλακίδιο τεντώνεται σε
+            αυτό. Με το φυσικό T.h.sm του πλακιδίου έβγαινε 32 δίπλα σε 40. */}
+        <span style={{ display: 'inline-flex', height: T.h.lg }}>
+          <ChipToggle on={undeclaredOnly} onClick={() => setUndeclaredOnly(v => !v)}>Με αδήλωτες διαμονές</ChipToggle>
+        </span>
       </div>
 
       {clients.length === 0 ? (
@@ -1023,10 +1065,13 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                   {st.hasDamage && <Badge>Φθορές</Badge>}
                 </>}
                 actions={
-                  <button title="Διαγραφή" onClick={e => { e.stopPropagation(); del(c); }}
-                    style={{ background: 'none', border: 'none', borderRadius: 8, width: T.h.sm, height: T.h.sm, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0, flexShrink: 0 }}>
-                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                  </button>
+                  // Το σταμάτημα της φυσαλίδας μένει στο περιτύλιγμα: το κλικ δεν
+                  // πρέπει να φτάσει στην κάρτα, που ανοίγει το ντοσιέ.
+                  <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                    <IconBtn label="Διαγραφή πελάτη" title="Διαγραφή" onClick={() => del(c)}>
+                      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                    </IconBtn>
+                  </span>
                 }>
 
                 {/* Λωρίδα στατιστικών: το βυθισμένο well του βιβλίου. Οι ετικέτες
@@ -1062,7 +1107,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                 {linked.length > 0 && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 2 }}>
                     {linked.map(p => (
-                      <button key={p.id} onClick={e => { e.stopPropagation(); onSelectProperty?.(p.id); }} title={`Άνοιγμα: ${p.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', padding: '4px 9px', borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--accent)', cursor: 'pointer', fontFamily: T.font.sans }}>
+                      <button key={p.id} onClick={e => { e.stopPropagation(); onSelectProperty?.(p.id); }} title={`Άνοιγμα: ${p.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', padding: '4px 9px', borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--accent)', cursor: 'pointer', fontFamily: T.font.sans }}>
                         <svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5 12 3l9 6.5" /><path d="M5 10v10h14V10" /></svg>{p.name}
                       </button>
                     ))}
@@ -1090,7 +1135,6 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
         const chRows = revenueByChannel(yStays);
         const maxCh = Math.max(1, ...chRows.map(r => r.revenue));
         const months = revenueByMonth(yStays, reportYear);
-        const maxMonth = Math.max(1, ...months);
         // ═══ ΔΥΟ ΜΕΤΡΗΤΕΣ ΝΥΧΤΩΝ, ΔΙΠΛΑ ΔΙΠΛΑ, ΜΕ ΔΙΑΦΟΡΕΤΙΚΟ ΑΠΟΤΕΛΕΣΜΑ ══
         //
         // Το `yearOccupancy` μετρά με `nightsInRange`, που απαιτεί ΚΑΙ
@@ -1107,9 +1151,8 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
         // πίνακα νυχτών, ώστε η οθόνη να μετρά μία φορά. Ο μετρητής είναι ο
         // ίδιος που χρησιμοποιεί και η φορολογική σύνοψη.
         const occ = occupancyFromMonths(nightsByMonthForYear(yStays, reportYear), reportYear);
-        const monthInitials = ['Ι', 'Φ', 'Μ', 'Α', 'Μ', 'Ι', 'Ι', 'Α', 'Σ', 'Ο', 'Ν', 'Δ'];
         return (
-          <div style={{ marginTop: 26 }}>
+          <div style={{ marginTop: T.sp.xxl }}>
             <SecHdr label={`Ακαθάριστα ${reportYear}`} sub="Δηλωτέο ακαθάριστο ανά κανάλι και ανά μήνα, χωρίς το τέλος ανθεκτικότητας, χωρίς αφαίρεση προμήθειας"
               right={
                 /* Το Escape κλείνει το popover και ο χρήστης πληκτρολογίου δεν
@@ -1119,9 +1162,19 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                    άκουγε καθολικά θα έκλεινε μαζί και το ντοσιέ από πίσω. */
                 <div style={{ position: 'relative' }}
                   onKeyDown={e => { if (e.key === 'Escape' && reportYearMenu) { e.stopPropagation(); setReportYearMenu(false); } }}>
+                  {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Ανοίγει λίστα, οπότε θέλει `aria-haspopup` και
+                      `aria-expanded` που το `Btn` δεν δέχεται· χωρίς αυτά ο αναγνώστης
+                      οθόνης δεν μαθαίνει ούτε ότι υπάρχουν χρονιές από κάτω.
+
+                      Η ΧΡΟΝΙΑ ΕΙΝΑΙ ΕΤΙΚΕΤΑ ΧΕΙΡΙΣΤΗΡΙΟΥ, ΟΧΙ ΣΤΗΛΗ ΠΙΝΑΚΑ. Η
+                      γραμματοσειρά πυκνών πινάκων βάζει πλατιά κενά γύρω από κάθε
+                      ψηφίο: μέσα σε πλακίδιο δίπλα σε ελληνικά λεκτικά διαβάζεται
+                      ως κώδικας. Η γραμματοσειρά αριθμών είναι το ΙΔΙΟ Inter με το
+                      υπόλοιπο κείμενο και το `tabular-nums` κρατά τα ψηφία
+                      στοιχισμένα όταν αλλάζει η χρονιά. */}
                   <button type="button" onClick={() => setReportYearMenu(m => !m)}
                     aria-haspopup="listbox" aria-expanded={reportYearMenu}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: T.h.sm, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.mono, fontSize: 'var(--fs-base)', fontWeight: 700, cursor: 'pointer' }}>
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: T.h.sm, padding: '0 10px', borderRadius: T.radius.chip, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: 700, cursor: 'pointer' }}>
                     {reportYear}
                     <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: reportYearMenu ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', opacity: 0.7 }}><path d="m6 9 6 6 6-6" /></svg>
                   </button>
@@ -1145,7 +1198,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                       <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 50, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, boxShadow: 'var(--elev-3)', padding: 6, minWidth: 96, maxHeight: 220, overflowY: 'auto' }}>
                         {yearsAvail.map(y => (
                           <button key={y} type="button" onClick={() => { setReportYear(y); setReportYearMenu(false); }}
-                            style={{ display: 'block', width: '100%', padding: '7px 10px', borderRadius: 8, border: 'none', background: y === reportYear ? 'var(--accent-dim)' : 'transparent', color: y === reportYear ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.mono, fontSize: 'var(--fs-base)', fontWeight: y === reportYear ? 700 : 500, cursor: 'pointer', textAlign: 'left' }}>{y}</button>
+                            style={{ display: 'block', width: '100%', padding: '7px 10px', borderRadius: T.radius.chip, border: 'none', background: y === reportYear ? 'var(--accent-dim)' : 'transparent', color: y === reportYear ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.mono, fontSize: 'var(--fs-base)', fontWeight: y === reportYear ? 700 : 500, cursor: 'pointer', textAlign: 'left' }}>{y}</button>
                         ))}
                       </div>
                     </>
@@ -1168,7 +1221,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               {statTile('Προμήθειες πλατφορμών', tot.platformFees > 0 ? fe(tot.platformFees) : fe(0), { title: 'Δαπάνη που εκπίπτει. ΔΕΝ μειώνει το δηλωτέο έσοδο.' })}
               {/* ΤΟ ΠΟΣΟΣΤΟ ΠΕΡΝΑ ΑΠΟ ΤΟΝ ΜΟΡΦΟΠΟΙΗΤΗ. Γραφόταν `${occ.pct}%`,
                   δηλαδή ο ωμός αριθμός με τελεία: «87.5%» ακριβώς δίπλα σε
-                  «1.234,56 €» της ίδιας γραμμής — δύο συστήματα αρίθμησης σε
+                  «1.234,56€» της ίδιας γραμμής — δύο συστήματα αρίθμησης σε
                   ένα πλαίσιο και στα ελληνικά η τελεία χωρίζει χιλιάδες. */}
               {statTile(
                 'Πληρότητα',
@@ -1226,15 +1279,15 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                         aria-label={`${r.label}: ${fe(r.revenue)}, ${r.nights} νύχτες, ${r.count} ${r.count === 1 ? 'διαμονή' : 'διαμονές'}`}>
                         {/* ΤΡΕΙΣ ΣΤΗΛΕΣ, ΩΣΤΕ ΤΑ ΕΥΡΩ ΝΑ ΠΕΦΤΟΥΝ ΤΟ ΕΝΑ ΚΑΤΩ ΑΠΟ
                             ΤΟ ΑΛΛΟ. Ηταν ένα `span` με ποσό και μετρήσεις μαζί,
-                            στοιχισμένο δεξιά: «3.400,00 € 20 νύχτες · 5 διαμονές»
-                            και από κάτω «400,00 € 4 νύχτες · 1 διαμονές». Καμία
+                            στοιχισμένο δεξιά: «3.400,00€ 20 νύχτες · 5 διαμονές»
+                            και από κάτω «400,00€ 4 νύχτες · 1 διαμονές». Καμία
                             κάθετη δεν έπεφτε πάνω σε άλλη. */}
                         <div className="cl-ch-head">
                           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
                           <span style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>{fe(r.revenue)}</span>
                           <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }}>{r.nights} νύχτες · {r.count} {r.count === 1 ? 'διαμονή' : 'διαμονές'}</span>
                         </div>
-                        <div style={{ height: 8, borderRadius: 6, background: 'var(--ring-track)', overflow: 'hidden', marginTop: 6 }}>
+                        <div style={{ height: 8, borderRadius: T.radius.xs, background: 'var(--ring-track)', overflow: 'hidden', marginTop: 6 }}>
                           <div className="cl-ch-fill" style={{ width: `${pct}%` }} />
                         </div>
                         {r.unresolved > 0 && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>{r.unresolved} με απροσδιόριστο ποσό</div>}
@@ -1331,11 +1384,14 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               <div style={{ ...lbl, marginBottom: 8 }}>Συνδεδεμένα ακίνητα</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {(propsByClient.get(dc.id) || []).map(p => (
-                  <span key={p.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '6px 11px', borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-                    <button onClick={() => onSelectProperty?.(p.id)} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: T.font.sans }}>{p.name}</button>
-                    {/* 15 δεν υπάρχει στην κλίμακα (…13, 14, 16…) — το δίδυμό
-                        του στα αρχικά της κεφαλίδας διορθώθηκε, αυτό είχε μείνει. */}
-                    <button onClick={() => unlinkProperty(p.id)} title="Αποσύνδεση" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: 14 }}>×</button>
+                  <span key={p.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '6px 11px', borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+                    <LinkBtn onClick={() => onSelectProperty?.(p.id)}>{p.name}</LinkBtn>
+                    {/* Το αρνητικό περιθώριο είναι ΘΕΣΗ: το κουτί των 32 τραβιέται μέσα
+                        στο γέμισμα του πλακιδίου, ώστε ο στόχος αφής να μεγαλώσει χωρίς
+                        να ψηλώσει η σειρά των συνδεδεμένων ακινήτων. */}
+                    <IconBtn label="Αποσύνδεση ακινήτου" title="Αποσύνδεση" onClick={() => unlinkProperty(p.id)} style={{ margin: -6 }}>
+                      <span style={{ fontSize: 14, lineHeight: 1 }}>×</span>
+                    </IconBtn>
                   </span>
                 ))}
                 {(propsByClient.get(dc.id) || []).length === 0 && unlinkedProps.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Κανένα ακίνητο</span>}
@@ -1469,11 +1525,11 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                         επισκέπτης, τι πάει στο κράτος, τι εκπίπτει. Το ίδιο
                         πράγμα δύο φορές, τη μία με ποντίκι από πάνω. */}
                     <NumberInput label="Πλήρωσε ο επισκέπτης"
-                      value={stayForm.gross_guest_paid} onChange={v => setStayForm(f => ({ ...f, gross_guest_paid: v }))} suffix="€" step={10} />
+                      value={stayForm.gross_guest_paid} onChange={v => setStayForm(f => ({ ...f, gross_guest_paid: v }))} suffix="€" />
                     <NumberInput label="Τέλος ανθεκτικότητας"
-                      value={stayForm.climate_levy} onChange={v => setStayForm(f => ({ ...f, climate_levy: v }))} suffix="€" step={2} />
+                      value={stayForm.climate_levy} onChange={v => setStayForm(f => ({ ...f, climate_levy: v }))} suffix="€" />
                     <NumberInput label="Προμήθεια πλατφόρμας"
-                      value={stayForm.platform_fee} onChange={v => setStayForm(f => ({ ...f, platform_fee: v }))} suffix="€" step={5} />
+                      value={stayForm.platform_fee} onChange={v => setStayForm(f => ({ ...f, platform_fee: v }))} suffix="€" />
                   </div>
 
                   {/* Πρόταση τέλους από τους συντελεστές της ΑΑΔΕ και τον τύπο/
@@ -1493,9 +1549,15 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                   {(() => {
                     const g = parseFloat(stayForm.gross_guest_paid) || 0;
                     if (g <= 0) {
+                      // 281 χαρακτήρες σε μέτρο ~583 (φύλλο 720, μείον τα γεμίσματα
+                      // του φύλλου και της ταινίας): τρεις γραμμές στα 11, με ριγμένη
+                      // δεξιά άκρη μέσα σε πλαίσιο που έχει τη δική του. Το className
+                      // του InfoBanner προσγειώνεται στο ΚΕΙΜΕΝΟ, όχι στο πλαίσιο,
+                      // οπότε εκεί πάει η po-just· το hy() τυλίγει όλο το περιεχόμενο
+                      // ώστε να πιάσει και τα λεκτικά μέσα στα έντονα.
                       return stayForm.basis === 'unknown' && (parseFloat(stayForm.legacyTotal) || 0) > 0 ? (
-                        <InfoBanner tone="warning">
-                          Αυτή η διαμονή έχει καταγεγραμμένο ποσό <strong>{fe(parseFloat(stayForm.legacyTotal))}</strong> αλλά <strong>δεν ξέρουμε τι είναι</strong>: ακαθάριστο ή καθαρή είσπραξη. Καταγράφηκε πριν η εφαρμογή τα ξεχωρίσει και δεν μαντεύουμε. Συμπλήρωσε «Πλήρωσε ο επισκέπτης» και το ακαθάριστο θα υπολογιστεί σωστά, ή δήλωσε παρακάτω τι σημαίνει το ποσό.
+                        <InfoBanner tone="warning" className="po-just">
+                          {hy(<>Αυτή η διαμονή έχει καταγεγραμμένο ποσό <strong>{fe(parseFloat(stayForm.legacyTotal))}</strong> αλλά <strong>δεν ξέρουμε τι είναι</strong>: ακαθάριστο ή καθαρή είσπραξη. Καταγράφηκε πριν η εφαρμογή τα ξεχωρίσει και δεν μαντεύουμε. Συμπλήρωσε «Πλήρωσε ο επισκέπτης» και το ακαθάριστο θα υπολογιστεί σωστά, ή δήλωσε παρακάτω τι σημαίνει το ποσό.</>)}
                         </InfoBanner>
                       ) : null;
                     }
@@ -1641,13 +1703,16 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                             {/* Η λέξη «Φθορά» λέει ήδη ό,τι θα έλεγε το κόκκινο. */}
                             {s.damages && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Φθορά {fe(s.damage_cost || 0)}{dmgItem ? ` · ${dmgItem.name}` : s.damage_note ? ` · ${s.damage_note}` : ''}</span>}
                           </div>
-                          <div style={{ display: 'flex', gap: 10 }}>
+                          {/* Το μέγεθος γράφεται ΜΙΑ φορά στη σειρά: το `LinkBtn` κληρονομεί
+                              τη γραμματοσειρά του κειμένου μέσα στο οποίο κάθεται. */}
+                          <div style={{ display: 'flex', gap: 10, fontSize: 12 }}>
                             {/* Ένα κλικ. Η προθεσμία της δήλωσης δεν περιμένει φόρμα. */}
-                            <button onClick={() => toggleDeclared(s)} style={{ background: 'none', border: 'none', color: declared ? 'var(--text-tertiary)' : 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, padding: 0 }}>
+                            {/* `quiet` όταν είναι ήδη δηλωμένη: η αναίρεση δεν διεκδικεί το μάτι. */}
+                            <LinkBtn tone={declared ? 'quiet' : undefined} onClick={() => toggleDeclared(s)}>
                               {declared ? 'Αναίρεση δήλωσης' : 'Σημείωσε ως δηλωμένη'}
-                            </button>
-                            <button onClick={() => openStayEdit(s)} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, padding: 0 }}>Επεξεργασία</button>
-                            <button onClick={() => delStay(s)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, padding: 0 }}>Διαγραφή</button>
+                            </LinkBtn>
+                            <LinkBtn onClick={() => openStayEdit(s)}>Επεξεργασία</LinkBtn>
+                            <LinkBtn tone="quiet" onClick={() => delStay(s)}>Διαγραφή</LinkBtn>
                           </div>
                         </div>
                         {s.notes && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-subtle)' }}>{s.notes}</div>}
@@ -1667,8 +1732,8 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               <SecHdr label="Μηνύματα" sub="Έτοιμα πρότυπα για WhatsApp, Viber ή αντιγραφή" />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
                 {MSG_TEMPLATES.map(t => (
-                  <button key={t.id} style={chip(t.id === msgId)}
-                    onClick={() => { setMsgId(t.id); setMsgCopied(false); }}>{t.label}</button>
+                  <ChipToggle key={t.id} on={t.id === msgId}
+                    onClick={() => { setMsgId(t.id); setMsgCopied(false); }}>{t.label}</ChipToggle>
                 ))}
               </div>
               {(() => {
@@ -1678,10 +1743,12 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                   <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 16, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
                     <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{text}</div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-                      <a href={whatsappLink(dc.phone ? msgDigits(dc.phone) : '', text)} target="_blank" rel="noopener noreferrer" style={msgLink}>WhatsApp</a>
-                      <a href={viberTextLink(text)} style={msgLink}>Viber</a>
-                      <button onClick={() => { navigator.clipboard?.writeText(text); setMsgCopied(true); }}
-                        style={{ ...msgLink, cursor: 'pointer', fontFamily: T.font.sans }}>{msgCopied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</button>
+                      {/* Τα δύο πρώτα είναι ΠΡΟΟΡΙΣΜΟΣ, οπότε παίρνουν `href` και μένουν
+                          σύνδεσμοι με την όψη του κουμπιού. Και τα τρία στον ίδιο ρόλο,
+                          γιατί καμία από τις τρεις εξόδους δεν είναι πιο κύρια. */}
+                      <Btn href={whatsappLink(dc.phone ? msgDigits(dc.phone) : '', text)} newTab>WhatsApp</Btn>
+                      <Btn href={viberTextLink(text)}>Viber</Btn>
+                      <Btn onClick={() => { navigator.clipboard?.writeText(text); setMsgCopied(true); }}>{msgCopied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
                       {!dc.phone && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Χωρίς αποθηκευμένο τηλέφωνο θα διαλέξεις επαφή μέσα στην εφαρμογή.</span>}
                     </div>
                   </div>
@@ -1712,7 +1779,14 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                 </div>
               </div>
               {docMsg && <div style={{ fontSize: 12, color: docMsg.error ? 'var(--negative)' : 'var(--text-secondary)', marginBottom: 12 }}>{docMsg.text}</div>}
-              {docs.length === 0 ? (
+              {/* ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ: έχει έγγραφα, δεν έχει, δεν ξέρουμε. Το «Δεν
+                  έχουν αποθηκευτεί έγγραφα.» βγαίνει μόνο όταν το ξέρουμε. */}
+              {docsFailed ? (
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '8px 0', lineHeight: 1.6 }}>
+                  Τα έγγραφα δεν διαβάστηκαν. Δεν σημαίνει ότι δεν υπάρχουν: δεν πήραμε απάντηση.{' '}
+                  <LinkBtn onClick={() => { if (openId) loadDocs(openId); }}>Δοκιμή ξανά</LinkBtn>
+                </div>
+              ) : docs.length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '8px 0' }}>Δεν έχουν αποθηκευτεί έγγραφα.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1727,9 +1801,9 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                           {DOC_KIND_LABELS[d.kind] || 'Άλλο'}{fmtBytes(d.size) ? ` · ${fmtBytes(d.size)}` : ''} · {fd(d.created_at)}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', fontSize: 12 }}>
                         {d.signedUrl && <a href={d.signedUrl} target="_blank" rel="noopener noreferrer" style={msgLink}>Άνοιγμα</a>}
-                        <button onClick={() => delDoc(d)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, padding: 0 }}>Διαγραφή</button>
+                        <LinkBtn tone="quiet" onClick={() => delDoc(d)}>Διαγραφή</LinkBtn>
                       </div>
                     </div>
                   ))}
@@ -1751,7 +1825,14 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                   <Btn variant="primary" field onClick={saveNote} disabled={!noteForm.body.trim()}>Προσθήκη</Btn>
                 </div>
               </div>
-              {notes.length === 0 ? (
+              {/* Ιδιο τρίτο σκαλί με τα έγγραφα από πάνω: «κανένα σχόλιο» είναι
+                  συμπέρασμα, όχι προεπιλογή για ό,τι δεν απάντησε. */}
+              {notesFailed ? (
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '4px 0', lineHeight: 1.6 }}>
+                  Τα σχόλια δεν διαβάστηκαν. Δεν σημαίνει ότι δεν υπάρχουν: δεν πήραμε απάντηση.{' '}
+                  <LinkBtn onClick={() => { if (openId) loadNotes(openId); }}>Δοκιμή ξανά</LinkBtn>
+                </div>
+              ) : notes.length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '4px 0' }}>Κανένα σχόλιο ακόμη</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1765,7 +1846,9 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                         </div>
                         <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 1.5 }}>{nt.body}</div>
                       </div>
-                      <button onClick={() => delNote(nt)} title="Διαγραφή" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 16, padding: 0, flexShrink: 0 }}>×</button>
+                      <IconBtn label="Διαγραφή σημείωσης" title="Διαγραφή" onClick={() => delNote(nt)}>
+                        <span style={{ fontSize: 16, lineHeight: 1 }}>×</span>
+                      </IconBtn>
                     </div>
                   ))}
                 </div>
@@ -1810,9 +1893,9 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
             {/* Το ένα, διφορούμενο «Ποσό (payout)» έγινε τρία ξεχωριστά.
                 Εκεί γεννιόταν η αντίφαση: ό,τι μπαινε εδώ ως payout
                 διαβαζόταν αλλού ως ακαθάριστο και φορολογούνταν. */}
-            <NumberInput label="Πλήρωσε ο επισκέπτης" labelInfo="Το σύνολο που πλήρωσε ο επισκέπτης, πριν την προμήθεια." value={emailDraft.gross} onChange={v => setEmailDraft(d => d && { ...d, gross: v })} suffix="€" step={10} />
-            <NumberInput label="Τέλος ανθεκτικότητας" labelInfo="Δεν είναι έσοδό σου· αφαιρείται από το δηλωτέο ακαθάριστο." value={emailDraft.levy} onChange={v => setEmailDraft(d => d && { ...d, levy: v })} suffix="€" step={2} />
-            <NumberInput label="Προμήθεια πλατφόρμας" labelInfo="Δαπάνη που εκπίπτει· ΔΕΝ μειώνει το δηλωτέο ακαθάριστο." value={emailDraft.fee} onChange={v => setEmailDraft(d => d && { ...d, fee: v })} suffix="€" step={5} />
+            <NumberInput label="Πλήρωσε ο επισκέπτης" labelInfo="Το σύνολο που πλήρωσε ο επισκέπτης, πριν την προμήθεια." value={emailDraft.gross} onChange={v => setEmailDraft(d => d && { ...d, gross: v })} suffix="€" />
+            <NumberInput label="Τέλος ανθεκτικότητας" labelInfo="Δεν είναι έσοδό σου· αφαιρείται από το δηλωτέο ακαθάριστο." value={emailDraft.levy} onChange={v => setEmailDraft(d => d && { ...d, levy: v })} suffix="€" />
+            <NumberInput label="Προμήθεια πλατφόρμας" labelInfo="Δαπάνη που εκπίπτει· ΔΕΝ μειώνει το δηλωτέο ακαθάριστο." value={emailDraft.fee} onChange={v => setEmailDraft(d => d && { ...d, fee: v })} suffix="€" />
             <CustomSelect label="Κανάλι" value={emailDraft.channel} onChange={v => setEmailDraft(d => d && { ...d, channel: v })} options={channelOptions} />
           </div>
           {(parseFloat(emailDraft.gross) || 0) > 0 && (
@@ -1863,6 +1946,17 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
             <Btn variant="primary" onClick={saveIcalFeed} disabled={icalBusy || !icalUrl.trim() || !icalPropertyId}>Αποθήκευση και αυτόματος συγχρονισμός</Btn>
           </div>
 
+          {/* ΤΟ ΚΕΝΟ ΕΔΩ ΔΙΑΒΑΖΟΤΑΝ «ΔΕΝ ΕΧΕΙΣ ΑΥΤΟΜΑΤΟ ΣΥΓΧΡΟΝΙΣΜΟ». Οταν οι
+              ροές δεν διαβάζονταν, το κουτί απλώς δεν εμφανιζόταν: ο οικοδεσπότης
+              δεν έβλεπε ούτε ότι μια ροή είχε σταματήσει με σφάλμα ούτε ότι ο
+              σύνδεσμος υπάρχει ήδη, οπότε τον αποθήκευε ξανά γράφοντας από πάνω
+              κανάλι κι επιλογή μπλοκαρισμάτων. Η άγνοια λέγεται πλέον ρητά. */}
+          {icalPropertyId && icalFeedsFailed && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              Οι αποθηκευμένοι σύνδεσμοι δεν διαβάστηκαν. Δεν ξέρουμε αν υπάρχει ήδη σύνδεσμος για αυτό το ακίνητο ούτε αν πέτυχε ο τελευταίος συγχρονισμός.{' '}
+              <LinkBtn onClick={() => { void loadIcalFeeds(); }}>Δοκιμή ξανά</LinkBtn>
+            </div>
+          )}
           {/* Αποθηκευμένοι σύνδεσμοι (ανά επιλεγμένο ακίνητο) */}
           {icalPropertyId && icalFeeds.filter(f => f.property_id === icalPropertyId).length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1876,9 +1970,9 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                         {f.last_synced_at ? `Τελευταίος συγχρονισμός: ${fd(f.last_synced_at)}${f.last_status ? ` · ${f.last_status}` : ''}` : 'Δεν έχει συγχρονιστεί ακόμη'}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      <button onClick={() => syncIcalNow(f.property_id)} disabled={icalBusy} style={{ ...msgLink, cursor: 'pointer', fontFamily: T.font.sans }}>Συγχρονισμός τώρα</button>
-                      <button onClick={() => delIcalFeed(f)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, padding: 0 }}>Αφαίρεση</button>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', fontSize: 12 }}>
+                      <Btn onClick={() => syncIcalNow(f.property_id)} disabled={icalBusy}>Συγχρονισμός τώρα</Btn>
+                      <LinkBtn tone="quiet" onClick={() => delIcalFeed(f)}>Αφαίρεση</LinkBtn>
                     </div>
                   </div>
                 </div>
@@ -1918,7 +2012,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
                   {toImport.slice(0, 40).map((d, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, color: 'var(--text-secondary)', padding: '6px 10px', background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: 8 }}>
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, color: 'var(--text-secondary)', padding: '6px 10px', background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.chip }}>
                       <span>{fd(d.check_in)} έως {fd(d.check_out)}</span>
                       <span style={{ color: 'var(--text-tertiary)' }}>{d.nights} νύχτες{d.blocked ? ' · μπλοκάρισμα' : ''}</span>
                     </div>

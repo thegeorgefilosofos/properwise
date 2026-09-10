@@ -24,7 +24,7 @@ const full: DeadlineSources = {
 eq(deadlineItems(full).length, 4, 'και οι τέσσερις πηγές δίνουν γεγονός');
 eq(titles(full).join('|'), 'Ενοίκιο|ΔΕΗ|Αλλαγή κλειδαριάς|Συντήρηση καυστήρα', 'με σειρά ημερομηνίας');
 eq(uids(full).join('|'), 'rent-r1@properwise|bill-b1@properwise|task-t1@properwise|event-e1@properwise', 'κάθε πηγή έχει δικό της πρόθεμα');
-ok(deadlineItems(full)[1].note === '87,45 €', 'το ποσό μπαίνει ως σημείωση, με δύο δεκαδικά');
+ok(deadlineItems(full)[1].note === '87,45€', 'το ποσό μπαίνει ως σημείωση, με δύο δεκαδικά');
 
 // ── Ο,τι τελείωσε δεν ταξιδεύει ────────────────────────────────────────────
 eq(deadlineItems({ ...full, bills: [{ ...full.bills[0], paid: true }] }).length, 3,

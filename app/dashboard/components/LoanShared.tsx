@@ -1,5 +1,5 @@
 'use client'
-import { T, TT } from '@/components/Theme'
+import { T, TT, ChipToggle } from '@/components/Theme'
 
 // ── Κοινά primitives του Δανείου (μία πηγή αλήθειας για TabLoan + TabLoanCalculator) ──
 // Πριν υπήρχαν διπλά αντίγραφα που είχαν αποκλίνει (διαφορετικές ακτίνες/μεγέθη).
@@ -66,12 +66,13 @@ export function LensBar({value,onChange,items,barRef}:{value:string;onChange:(v:
        από έναν κρυμμένο. Ο κανόνας ζει στο `.lens-bar` του globals.css,
        γιατί χρειάζεται πλέγμα με κατώφλι στήλης. ══════════════════════ */
     <div ref={barRef} className="lens-bar" style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:T.radius.card,padding:4}}>
-      {items.map(it=>{const on=value===it.id;return(
-        <button key={it.id} onClick={()=>onChange(it.id)} aria-pressed={on} style={{minWidth:0,borderRadius:T.radius.inner,padding:'9px 14px',cursor:'pointer',fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:on?600:500,border:'none',
-          color:on?'var(--accent)':'var(--text-tertiary)',background:on?'var(--bg-elevated)':'transparent',
-          boxShadow:on?'0 1px 2px color-mix(in srgb, var(--text-primary) 10%, transparent), 0 2px 8px -4px color-mix(in srgb, var(--text-primary) 18%, transparent)':'none',
-          transition:'color 0.2s, background 0.2s, box-shadow 0.2s'}}>{it.label}</button>
-      )})}
+      {/* `seg` επειδή η ράγα έχει ήδη δικό της περίγραμμα: το ενεργό ανασηκώνεται
+          με επιφάνεια και σκιά αντί να αποκτήσει δεύτερη γραμμή. Το `grow` ΔΕΝ
+          μπαίνει — το πλάτος το μοιράζει το `.lens-bar > *` με δική του βάση 168
+          και ένα ενσωματωμένο `flex: 1` θα της έτρωγε τη βάση. */}
+      {items.map(it=>(
+        <ChipToggle key={it.id} on={value===it.id} shape="seg" onClick={()=>onChange(it.id)}>{it.label}</ChipToggle>
+      ))}
     </div>
   )
 }
@@ -81,7 +82,7 @@ export function LensBar({value,onChange,items,barRef}:{value:string;onChange:(v:
 // ─────────────────────────────────────────────────────────────────────────
 // ΗΤΑΝ 52 ΚΑΙ 56 ΚΑΙ 58, ΓΡΑΜΜΕΝΑ ΓΙΑ ΕΝΑ viewBox 620 ΠΟΥ ΣΜΙΚΡΥΝΟΤΑΝ. Οταν το
 // διάγραμμα άρχισε να μετρά σε πραγματικά εικονοστοιχεία, οι σταθερές έμειναν
-// ίδιες ενώ οι ετικέτες μεγάλωσαν στο κανονικό τους μέγεθος: το «4.506,00 €»
+// ίδιες ενώ οι ετικέτες μεγάλωσαν στο κανονικό τους μέγεθος: το «4.506,00€»
 // θέλει 62 εικονοστοιχεία και είχε 46, δηλαδή έβγαινε 13 έξω από το πλαίσιο.
 // Μετρημένο στα 375, 430, 768, 820, 900, 1.024, 1.280 και 1.440.
 //
@@ -96,7 +97,7 @@ export function LensBar({value,onChange,items,barRef}:{value:string;onChange:(v:
 // Ειναι το πλάτος ψηφίου ΓΙΑ 11 ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ. Οταν το κείμενο μεγαλώσει —
 // από τη ρύθμιση «Μεγαλύτερο κείμενο», από το λειτουργικό, από τον περιηγητή —
 // τα ψηφία πλαταίνουν και το περιθώριο μένει πίσω. Μετρημένο στη σάρωση με
-// κλίμακα ×1,3 στα 320: το «4.506,00 €» έβγαινε 8 εικονοστοιχεία έξω.
+// κλίμακα ×1,3 στα 320: το «4.506,00€» έβγαινε 8 εικονοστοιχεία έξω.
 //
 // ΟΠΟΤΕ ΤΟ ΠΕΡΙΘΩΡΙΟ ΔΕΝ ΕΙΝΑΙ Η ΕΓΓΥΗΣΗ· ΕΙΝΑΙ Η ΚΡΑΤΗΣΗ. Καμία αριθμητική
 // πρόβλεψη πλάτους δεν αντέχει σε άγνωστο μέγεθος γραμματοσειράς. Η εγγύηση

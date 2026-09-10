@@ -1,7 +1,7 @@
-import { rentCollectionMode, collectionModeReason } from './rentCollectionMode';
+import { rentCollectionMode, collectionModeReason, collectionViaBankOf } from './rentCollectionMode';
 
 let pass = 0, fail = 0;
-const ok = (name: string, cond: boolean) => { cond ? pass++ : (fail++, console.error('✗', name)); };
+const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗', name) } };
 const p = (year: number, method: string | null, paid = true) => ({ paid, period_year: year, method });
 
 // ── Η ΑΠΟΔΕΙΞΗ ΝΙΚΑ ─────────────────────────────────────────────────────────
@@ -52,6 +52,21 @@ ok('αιτιολόγηση μίσθωσης το λέει',
   collectionModeReason(rentCollectionMode([], 2026, true)).startsWith('Από τη μίσθωση'));
 ok('αιτιολόγηση άγνοιας δεν υπόσχεται έκπτωση',
   collectionModeReason(rentCollectionMode([], 2026, null)).includes('δεν εφαρμόζεται'));
+
+// ── ΤΟ ΑΛΛΟ ΑΚΙΝΗΤΟ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ──────────────────────────────────────
+// Το σφάλμα: ο τρόπος είσπραξης του ΑΝΟΙΧΤΟΥ ακινήτου εφαρμοζόταν σε όλα, οπότε
+// ένα ακίνητο που εισπράττεται σε μετρητά έπαιρνε την τεκμαρτή έκπτωση 5% κι ο
+// φόρος άλλαζε ανάλογα με το ποια καρτέλα κοιτούσε ο χρήστης.
+ok('η δική του απόδειξη νικά την απάντηση της οθόνης',
+  collectionViaBankOf([p(2026, 'Μετρητά')], 2026, true) === false);
+ok('κι όταν η οθόνη λέει μετρητά αλλά αυτό εισπράττεται μέσω τραπέζης',
+  collectionViaBankOf([p(2026, 'Τραπεζική κατάθεση')], 2026, false) === true);
+ok('χωρίς καμία απόδειξη ισχύει η απάντηση της οθόνης',
+  collectionViaBankOf([], 2026, true) === true && collectionViaBankOf([], 2026, false) === false);
+ok('εισπράξεις άλλης χρήσης δεν μετρούν',
+  collectionViaBankOf([p(2025, 'Μετρητά')], 2026, true) === true);
+ok('μία μόνο είσπραξη σε μετρητά αρκεί',
+  collectionViaBankOf([p(2026, 'Κάρτα'), p(2026, 'Μετρητά')], 2026, true) === false);
 
 console.log(`rentCollectionMode: ✓ ${pass} · ✗ ${fail}`);
 if (fail) process.exit(1);

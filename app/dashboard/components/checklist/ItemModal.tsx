@@ -3,7 +3,8 @@
 // Η ΚΑΡΤΕΛΑ ΜΙΑΣ ΕΚΚΡΕΜΟΤΗΤΑΣ
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react'
-import { T, Modal, Btn, fe, fieldRow } from '@/components/Theme'
+import { T, Modal, Btn, ChipToggle, fe, fieldRow } from '@/components/Theme'
+import { hy } from '@/components/Hyphen'
 import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { DatePicker, CustomSelect } from '../UIComponents'
 import { FL, Inp, Sel, SubTaskEditor, CommentsEditor, iStyle } from './Bits'
@@ -81,11 +82,12 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
       <div>
         <FL>Ετικέτες</FL>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {/* chip και όχι seg: η σειρά των ετικετών δεν έχει δική της ράγα με περίγραμμα */}
           {ITEM_TAGS.map(t => (
-            <button key={t} type="button" title={t === 'DIY' ? 'Do It Yourself, εργασία που κάνεις μόνος σου' : undefined} onClick={() => setForm(f => ({ ...f, tags: f.tags.includes(t) ? f.tags.filter(x => x !== t) : [...f.tags, t] }))}
-              style={{ padding: '7px 14px', borderRadius: T.radius.pill, border: '1px solid ' + (form.tags.includes(t) ? 'var(--accent)' : 'var(--border-subtle)'), background: form.tags.includes(t) ? 'var(--accent-soft)' : 'transparent', color: form.tags.includes(t) ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontWeight: form.tags.includes(t) ? 600 : 400, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s', fontFamily: T.font.sans }}>
+            <ChipToggle key={t} on={form.tags.includes(t)} title={t === 'DIY' ? 'Do It Yourself, εργασία που κάνεις μόνος σου' : undefined}
+              onClick={() => setForm(f => ({ ...f, tags: f.tags.includes(t) ? f.tags.filter(x => x !== t) : [...f.tags, t] }))}>
               {t}
-            </button>
+            </ChipToggle>
           ))}
         </div>
       </div>
@@ -99,14 +101,19 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
             <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
               {item._receipt.provider ? `${item._receipt.provider} · ` : ''}{fmtDate(item._receipt.date)} · {item._receipt.name}
             </span>
-            {onScan && <button type="button" onClick={onScan} style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontFamily: T.font.sans }}>Άλλαξέ το</button>}
+            {onScan && <span style={{ marginLeft: 'auto', display: 'inline-flex' }}><Btn onClick={onScan}>Άλλαξέ το</Btn></span>}
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0, flex: 1, minWidth: 180, lineHeight: 1.5 }}>
-              Μπαίνει μόνο από το τιμολόγιο ή την απόδειξη. Φωτογράφισέ το και καταχωρείται το ποσό, το αρχείο και η δαπάνη μαζί.
+            {/* ΤΟ ΚΕΙΜΕΝΟ ΔΙΠΛΑ ΣΤΟ ΚΟΥΜΠΙ ΘΕΛΕΙ ΚΛΕΙΣΤΗ ΔΕΞΙΑ ΑΚΡΗ. Το παράθυρο «md»
+                είναι 620· μείον το γέμισμα των 24, το πλαίσιο των 14 κι το κουμπί της
+                φωτογράφισης, στην παράγραφο μένουν περίπου 342 — τρεις γραμμές στα 12.
+                Το minWidth 180 το λέει ήδη μόνο του: η στήλη είναι στενή επίτηδες.
+                Στοίχιση μαζί με συλλαβισμό, γιατί μόνη της τεντώνει τα κενά. */}
+            <p className="po-just" style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0, flex: 1, minWidth: 180, lineHeight: 1.5 }}>
+              {hy(<>Μπαίνει μόνο από το τιμολόγιο ή την απόδειξη. Φωτογράφισέ το και καταχωρείται το ποσό, το αρχείο και η δαπάνη μαζί.</>)}
             </p>
-            {onScan && <button type="button" onClick={onScan} style={{ padding: '8px 14px', borderRadius: T.radius.pill, border: '1px solid var(--accent-border)', background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: 'var(--fs-base)', fontWeight: 600, cursor: 'pointer', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>Φωτογράφισε το τιμολόγιο</button>}
+            {onScan && <Btn variant="primary" onClick={onScan}>Φωτογράφισε το τιμολόγιο</Btn>}
           </div>
         )}
       </div>

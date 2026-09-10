@@ -16,7 +16,7 @@
 // lib/home/start.ts, με δικές του δοκιμές. Εδώ μένει μόνο η απόδοση.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { T, TT } from '@/components/Theme';
+import { T, TT, Btn } from '@/components/Theme';
 import { daysLabel, stepsLabel, type StartPanelState } from '@/lib/home/start';
 
 const Tick = ({ state }: { state: 'done' | 'now' | 'todo' }) => {
@@ -44,13 +44,6 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
 }) {
   if (!state.visible) return null;
 
-  const quiet: React.CSSProperties = {
-    background: 'none', border: 'none', cursor: 'pointer',
-    // Το ύψος βγαίνει από την κλίμακα και όχι από το padding: γυμνό κουμπί
-    // κειμένου με padding 6 είναι στόχος 27 εικονοστοιχείων.
-    display: 'inline-flex', alignItems: 'center', minHeight: T.h.sm,
-    fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', padding: '6px 4px',
-  };
   const shell: React.CSSProperties = {
     border: '1px solid var(--accent-border)', borderRadius: T.radius.card,
     background: 'var(--surface-raised)', boxShadow: 'var(--highlight-inset), var(--elev-1)',
@@ -65,7 +58,7 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
       <span style={{ ...TT.caption, flex: 1, minWidth: 0 }}>
         {stepsLabel(state.open)}, απομένουν <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{daysLabel(state.daysLeft)}</span>
       </span>
-      <button onClick={() => onToggle(false)} style={quiet}>Άνοιγμα</button>
+      <Btn variant="ghost" onClick={() => onToggle(false)}>Άνοιγμα</Btn>
     </div>
   );
 
@@ -114,9 +107,11 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
                   το αφήνουν ήσυχο. Δύο χωριστά <button> για το ίδιο πράγμα θα
                   ήταν το ίδιο κουμπί γραμμένο δύο φορές. */}
               {!s.done && (
-                <button onClick={() => onNavigate(s.nav)} style={isNow
-                  ? { ...quiet, flexShrink: 0, minHeight: 32, padding: '0 14px', borderRadius: T.radius.pill, background: 'var(--accent)', color: 'var(--accent-text)', fontWeight: 700 }
-                  : { ...quiet, color: 'var(--accent)', flexShrink: 0 }}>Άνοιγμα</button>
+                // ΤΟ flexShrink ΖΕΙ ΣΤΟ ΔΟΧΕΙΟ. Το κείμενο δίπλα έχει `flex: 1`, δηλαδή
+                // βάση μηδέν: σε στενή οθόνη όλη η συρρίκνωση θα έπεφτε στο κουμπί.
+                <div style={{ flexShrink: 0 }}>
+                  <Btn variant={isNow ? 'primary' : 'ghost'} onClick={() => onNavigate(s.nav)}>Άνοιγμα</Btn>
+                </div>
               )}
             </li>
           );
@@ -124,9 +119,12 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
       </ul>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
-        <button onClick={onPreview} style={{ ...quiet, color: 'var(--text-secondary)', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '7px 14px' }}>Δες ένα παράδειγμα</button>
-        <button onClick={onAsk} style={{ ...quiet, color: 'var(--text-secondary)', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '7px 14px' }}>Ρώτησε τη Νόα</button>
-        <button onClick={() => onToggle(true)} style={{ ...quiet, marginLeft: 'auto' }}>Σύμπτυξη</button>
+        <Btn variant="secondary" onClick={onPreview}>Δες ένα παράδειγμα</Btn>
+        <Btn variant="secondary" onClick={onAsk}>Ρώτησε τη Νόα</Btn>
+        {/* Ghost και όχι secondary: η σύμπτυξη κλείνει το πάνελ και δεν διεκδικεί
+            το βλέμμα μαζί με τις δύο πόρτες δίπλα της. Το `marginLeft` είναι θέση
+            μέσα στη σειρά — μένει στο δοχείο, έξω από την όψη του κουμπιού. */}
+        <div style={{ marginLeft: 'auto' }}><Btn variant="ghost" onClick={() => onToggle(true)}>Σύμπτυξη</Btn></div>
       </div>
       <div style={{ ...TT.caption, marginTop: 10 }}>
         Το παράδειγμα αποτελείται από ένα ακίνητο που χρησιμοποίησε το PROPERWISE μια ολόκληρη χρονιά, ώστε να διαπιστώσεις εύκολα και γρήγορα τις δυνατότητές του.

@@ -148,8 +148,13 @@ export function ActionMenu({
           // `Btn` δίπλα του είναι 36: μετρημένο στις Επαφές, «Περισσότερα» και
           // «Σάρωση κάρτας» στην ίδια σειρά με τέσσερα εικονοστοιχεία διαφορά.
           display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: T.h.md, padding: '0 13px', borderRadius: T.radius.modal,
-          border: `1px solid ${open ? 'var(--accent)' : 'var(--border-default)'}`, background: 'var(--bg-surface)',
-          color: open ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight: 500, cursor: 'pointer',
+          // ΤΟ ΧΡΩΜΑ ΤΟΥ ΠΕΡΙΓΡΑΜΜΑΤΟΣ ΚΑΙ ΤΟΥ ΚΕΙΜΕΝΟΥ ΤΑ ΔΙΝΕΙ Η ΚΛΑΣΗ. Ηταν
+          // γραμμένα εδώ ως τριαδικοί πάνω στο `open`· επειδή το ενσωματωμένο
+          // στυλ νικά κάθε κανόνα κλάσης, η `po-hov-accent` ΔΕΝ ίσχυε ποτέ: ούτε
+          // αιώρηση ούτε εστίαση πληκτρολογίου. Το `aria-expanded` που ήδη
+          // υπάρχει λέει στο CSS πότε είναι ανοιχτό — μία πηγή, όχι δύο.
+          borderWidth: 1, borderStyle: 'solid', background: 'var(--bg-surface)',
+          fontSize: 'var(--fs-base)', fontWeight: 500, cursor: 'pointer',
           fontFamily: T.font.sans, transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s', whiteSpace: 'nowrap',
         }}
       >
@@ -165,7 +170,7 @@ export function ActionMenu({
             position: 'fixed', top: pos.top, left: pos.left,
             width: pos.width, minWidth: Math.min(MENU_WIDTH, pos.width),
             maxHeight: pos.maxHeight, overflowY: 'auto', overscrollBehavior: 'contain',
-            background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 12,
+            background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup,
             boxShadow: 'var(--elev-3)', padding: 6, zIndex: 200,
             opacity: shown ? 1 : 0, transform: shown ? 'translateY(0)' : 'translateY(-4px)',
             transition: 'opacity 0.14s ease, transform 0.14s ease',
@@ -183,13 +188,15 @@ export function ActionMenu({
                 className="po-hov-row"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '9px 10px',
-                  borderRadius: 8, border: 'none', background: 'transparent', cursor: inert ? 'default' : 'pointer',
+                  // Το `background: transparent` το δίνει η `po-hov-row`· γραμμένο εδώ
+                  // ακύρωνε το άναμμα της γραμμής σε αιώρηση και σε εστίαση.
+                  borderRadius: T.radius.chip, border: 'none', cursor: inert ? 'default' : 'pointer',
                   opacity: it.disabled ? 0.5 : 1, fontFamily: T.font.sans, transition: 'background 0.12s',
                 }}
               >
                 {it.icon && (
                   <span style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip,
                     background: 'var(--bg-elevated)', color: it.danger ? 'var(--negative)' : 'var(--text-secondary)', flexShrink: 0,
                   }}>{it.icon}</span>
                 )}
@@ -198,7 +205,7 @@ export function ActionMenu({
                     {it.busy ? (it.busyLabel || 'Δημιουργία…') : it.label}
                   </span>
                   {it.description && (
-                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.35, marginTop: 1 }}>
+                    <span className="po-subline" style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.35 }}>
                       {it.description}
                     </span>
                   )}

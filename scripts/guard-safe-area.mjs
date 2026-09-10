@@ -38,7 +38,6 @@ const ALLOWED = new Map([
   ['pa-backdrop', 'φόντο του βοηθού: το ίδιο'],
 ])
 
-const EDGE = /(^|[;{\s])(top|bottom|left|right)\s*:\s*0(px)?\s*(;|})/
 const FIXED = /position\s*:\s*fixed/
 
 /** Οι κανόνες ενός φύλλου, χοντρικά: επιλογέας + σώμα. */

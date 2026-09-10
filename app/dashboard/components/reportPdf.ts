@@ -4,7 +4,7 @@
 // Ένα, ενιαίο, ΑΣΠΡΟΜΑΥΡΟ πρότυπο (Google-minimal, Inter, tabular numerals):
 // ίδια τυπογραφία, κενά, ιεραρχία, στοίχιση και disclaimer παντού. ΜΟΝΑΔΙΚΟ
 // σημείο χρώματος: το σήμα/λογότυπο του brand (ώστε ένας επαγγελματίας να
-// βάζει τα δικά του διακριτικά). Χρήματα «1.234,56 €», αρνητικά σφιχτό «−»,
+// βάζει τα δικά του διακριτικά). Χρήματα «1.234,56€», αρνητικά σφιχτό «−»,
 // ποσοστά «18,00%». XSS-ασφαλές (rEsc σε κάθε δυναμικό κείμενο).
 // ═══════════════════════════════════════════════════════════════════════════
 import { brandMarkSvg } from '@/components/BrandMark';
@@ -24,9 +24,9 @@ export const rEsc = (v: unknown): string => String(v ?? '').replace(/[&<>"']/g, 
 // τα επίσημα PDF. Μετρημένα, οι δύο του χαρτιού διέφεραν από της οθόνης σε τρία
 // πράγματα και στα τρία ήταν οι ΛΑΘΟΣ:
 //
-//   ποσό      οθόνη «1.250,00 €» (άθραυστο κενό)  ·  χαρτί «1.250,00 €» (σπάει)
+//   ποσό      οθόνη «1.250,00€» (άθραυστο κενό)  ·  χαρτί «1.250,00€» (σπάει)
 //   ποσοστό   οθόνη «12,50%»                       ·  χαρτί «12,50 %»
-//   χαλασμένο οθόνη «0,00 €»                       ·  χαρτί «NaN €», «∞ €»
+//   χαλασμένο οθόνη «0,00€»                       ·  χαρτί «NaN €», «∞ €»
 //
 // Το άθραυστο κενό είναι ο λόγος που υπάρχει το `fe`: με κανονικό κενό, σε στενή
 // στήλη πίνακα το «€» πέφτει μόνο του στην επόμενη γραμμή. Μια στήλη ποσών σε
@@ -79,7 +79,7 @@ export const REPORT_CSS = `
   .page{max-width:760px;margin:0 auto;padding:40px}
   @media print{.page{padding:16mm 15mm}@page{margin:0}}
   .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid ${INK};padding-bottom:16px}
-  .brand{display:flex;align-items:center;gap:11px}
+  .brand{display:flex;align-items:center;gap:12px}
   .mark{width:34px;height:34px;border-radius:8px;color:${BRAND_MARK_INK};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px}
   .bname{font-size:15px;font-weight:700;color:${INK}}
   .muted{color:${INK_MUTED}}

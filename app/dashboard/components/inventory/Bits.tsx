@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { qrDataUrl } from '@/lib/qr'
-import { T, TT, Modal, SecHdr, Btn, pressable, fp, Bar } from '@/components/Theme'
+import { T, TT, Modal, SecHdr, Btn, pressable, fp, Bar, RuntimeImg } from '@/components/Theme'
 // Το πλαίσιο επιλογής ζει στο Theme, ένα για όλη την εφαρμογή. Ξαναβγαίνει από
 // εδώ ώστε τα σημεία που το εισάγουν από τα Bits να μη χρειαστεί να αλλάξουν.
 export { SelectBox } from '@/components/Theme'
@@ -58,19 +58,20 @@ export const SectionLabel = ({label,right}:{label:string;right?:React.ReactNode}
  * με τρία διαφορετικά στυλ στο χέρι και φαινόταν: διαφορετικό ύψος,
  * διαφορετικό φόντο, διαφορετικό κενό. Το μάτι έψαχνε ποια είναι η σημαντική,
  * ενώ καμία δεν είναι — είναι τρεις δρόμοι για την ίδια δουλειά.
+ *
+ * ΤΟ ΤΟΠΙΚΟ `quietAction` ΕΦΥΓΕ ΜΑΖΙ ΜΕ ΤΗΝ ΠΑΡΑΛΛΑΓΗ `accent`. Το σχήμα
+ * είναι το `Btn variant="secondary"`: ίδιο ύψος από την κοινή κλίμακα, όψη και
+ * αιώρηση στο `.po-btn`. Ο τόνος accent ήταν ΚΑΤΑΣΤΑΣΗ και όχι δεύτερος ρόλος,
+ * δεν τον ζητούσε καμία κλήση σε όλο το repo και δεν είχε τρόπο να ανακοινωθεί.
+ *
+ * Η ΑΓΚΥΡΑ ΤΟΥ ΜΕΝΟΥ ΠΕΡΑΣΕ ΣΤΟ ΠΕΡΙΤΥΛΙΓΜΑ. Το `Btn` δεν δέχεται `ref`, οπότε
+ * το ορθογώνιο το δίνει το περιτύλιγμα — που είναι `inline-flex` και τυλίγει το
+ * κουμπί χωρίς κενό γραμμής, άρα μετρά ακριβώς το ίδιο ορθογώνιο με πριν.
  */
-export const quietAction: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 6,
-  height: T.h.sm, padding: '0 12px', borderRadius: T.radius.pill,
-  border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)',
-  color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight: 500,
-  fontFamily: T.font.sans, cursor: 'pointer',
-}
-
-export function BulkPicker({label,icon,options,onPick,accent}:{label:string;icon:React.ReactNode;options:string[];onPick:(v:string)=>void;accent?:boolean}) {
+export function BulkPicker({label,icon,options,onPick}:{label:string;icon:React.ReactNode;options:string[];onPick:(v:string)=>void}) {
   const [open,setOpen] = useState(false)
   const [rect,setRect] = useState<{top:number;left:number}|null>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
+  const btnRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const place = useCallback(()=>{const b=btnRef.current?.getBoundingClientRect();if(b)setRect({top:b.bottom+4,left:b.left})},[])
   useEffect(()=>{
@@ -82,20 +83,17 @@ export function BulkPicker({label,icon,options,onPick,accent}:{label:string;icon
     return()=>{document.removeEventListener('mousedown',close);window.removeEventListener('scroll',s,true);window.removeEventListener('resize',s)}
   },[open,place])
   return (
-    <div style={{display:'inline-block'}}>
-      <button ref={btnRef} onClick={()=>setOpen(v=>!v)}
-        style={accent
-          ? {...quietAction, border:'1px solid var(--accent-border)', background:'var(--accent-soft)', color:'var(--accent)'}
-          : quietAction}>
+    <div ref={btnRef} style={{display:'inline-flex'}}>
+      <Btn variant="secondary" onClick={()=>setOpen(v=>!v)}>
         <span style={{display:'flex'}}>{icon}</span>{label}
         <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 4l3 3 3-3"/></svg>
-      </button>
+      </Btn>
       {open&&rect&&typeof document!=='undefined'&&createPortal(
         <div ref={menuRef} style={{position:'fixed',top:rect.top,left:rect.left,background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.card,padding: 4,zIndex:9000,minWidth:180,maxHeight:300,overflowY:'auto',boxShadow:'var(--shadow-xl)'}}>
           {options.length===0
             ?<p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily:T.font.sans,padding:'8px 12px'}}>Καμία επιλογή</p>
             :options.map(o=>(
-              <div key={o} {...pressable(()=>{onPick(o);setOpen(false)})} style={{padding:'8px 12px',cursor:'pointer',borderRadius:8,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,color:'var(--text-primary)'}}
+              <div key={o} {...pressable(()=>{onPick(o);setOpen(false)})} style={{padding:'8px 12px',cursor:'pointer',borderRadius: T.radius.chip,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,color:'var(--text-primary)'}}
                 onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>{o}</div>
             ))}
         </div>,
@@ -114,17 +112,17 @@ export const EnergyBadge = ({cls}:{cls:string}) => { if(!cls) return null; const
   const bg = tone?`var(--${tone}-soft)`:'var(--bg-elevated)'
   const bd = tone?`var(--${tone}-border)`:'var(--border-subtle)'
   return (
-  <span title={`Ενεργειακή κλάση ${cls}`} style={{display:'inline-flex',alignItems:'center',padding:'2px 8px',borderRadius:6,fontSize: 'var(--fs-xs)',fontWeight:700,color:fg,background:bg,border:`1px solid ${bd}`,letterSpacing:'0.5px',fontFamily:T.font.sans}}>{cls}</span>
+  <span title={`Ενεργειακή κλάση ${cls}`} style={{display:'inline-flex',alignItems:'center',padding:'2px 8px',borderRadius: T.radius.xs,fontSize: 'var(--fs-xs)',fontWeight:700,color:fg,background:bg,border:`1px solid ${bd}`,letterSpacing:'0.5px',fontFamily:T.font.sans}}>{cls}</span>
 ) }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΜΠΑΡΑ ΔΕΝ ΜΙΛΑ ΓΙΑ ΑΝΤΙΚΕΙΜΕΝΟ ΠΟΥ ΔΕΝ ΞΕΡΕΙ
 // ─────────────────────────────────────────────────────────────────────────
 // ΤΙ ΕΒΛΕΠΕ Ο ΧΡΗΣΤΗΣ. Δεκατρία αντικείμενα χωρίς τιμή αγοράς έδειχναν, ΟΛΑ,
-// «0,00 € ΤΡΕΧΟΥΣΑ ΑΞΙΑ», «Εκτιμώμενη υπολειπόμενη αξία 100%», γεμάτη μπάρα και
+// «0,00€ ΤΡΕΧΟΥΣΑ ΑΞΙΑ», «Εκτιμώμενη υπολειπόμενη αξία 100%», γεμάτη μπάρα και
 // «περίπου 9 χρόνια». Τέσσερα νούμερα, κανένα αληθινό:
 //
-//   · το «0,00 €» δεν είναι αξία, είναι ΑΠΟΥΣΙΑ αξίας
+//   · το «0,00€» δεν είναι αξία, είναι ΑΠΟΥΣΙΑ αξίας
 //   · το «100%» είναι εκατό τοις εκατό του τίποτα
 //   · η γεμάτη μπάρα σε κάθε κάρτα δεν διακρίνει τίποτα από τίποτα
 //   · τα «περίπου 9 χρόνια» είναι η ωφέλιμη ζωή ΤΗΣ ΚΑΤΗΓΟΡΙΑΣ, όχι αυτού του
@@ -236,7 +234,7 @@ export function InlineConditionEdit({item,onUpdate}:{item:InventoryItem;onUpdate
           style={{position:'fixed',top:rect.top,left:rect.left,transform:rect.up?'translateY(-100%)':'none',maxHeight:rect.maxH,overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.card,padding:6,zIndex:9000,minWidth:Math.max(160,rect.width),boxShadow:'var(--shadow-xl)'}}>
           {CONDITIONS.map(c=>(
             <div key={c} {...pressable(()=>{onUpdate(item.id,c);setOpen(false)})}
-              style={{padding:'8px 12px',cursor:'pointer',borderRadius:8,fontSize:12,fontFamily:T.font.sans,color:CONDITION_COLOR[c],background:item.condition===c?CONDITION_COLOR[c]+'15':'transparent',fontWeight:item.condition===c?600:400,transition:'background 0.1s'}}
+              style={{padding:'8px 12px',cursor:'pointer',borderRadius: T.radius.chip,fontSize:12,fontFamily:T.font.sans,color:CONDITION_COLOR[c],background:item.condition===c?CONDITION_COLOR[c]+'15':'transparent',fontWeight:item.condition===c?600:400,transition:'background 0.1s'}}
               onMouseEnter={e=>(e.currentTarget.style.background=CONDITION_COLOR[c]+'10')}
               onMouseLeave={e=>(e.currentTarget.style.background=item.condition===c?CONDITION_COLOR[c]+'15':'transparent')}
             >{c}</div>
@@ -298,7 +296,7 @@ export function OverflowMenu({actions,align='right',dark}:{actions:OverflowActio
           style={{position:'fixed',top:rect.top,...(align==='right'?{right:rect.right}:{left:rect.left}),transform:rect.up?'translateY(-100%)':'none',maxHeight:rect.maxH,overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.card,padding: 4,zIndex:9000,minWidth:180,boxShadow:'var(--shadow-xl)'}}>
           {actions.map((a,i)=>(
             <button key={i} onClick={()=>{a.onClick();setOpen(false)}}
-              style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',padding:'8px 12px',borderRadius:8,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,fontWeight:500,color:a.danger?'var(--negative)':'var(--text-primary)',background:'transparent',border:'none',cursor:'pointer'}}
+              style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',padding:'8px 12px',borderRadius: T.radius.chip,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,fontWeight:500,color:a.danger?'var(--negative)':'var(--text-primary)',background:'transparent',border:'none',cursor:'pointer'}}
               onMouseEnter={e=>e.currentTarget.style.background=a.danger?'var(--negative-dim)':'var(--bg-hover)'}
               onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
               <span style={{display:'flex',width:15,color:a.danger?'var(--negative)':'var(--text-tertiary)',flexShrink:0}}>{a.icon}</span>
@@ -333,7 +331,7 @@ export function RoomInput({value,onChange}:{value:string;onChange:(v:string)=>vo
         options={options}/>
       {custom&&(
         <input aria-label="Χώρος" value={value} onChange={e=>onChange(e.target.value)} placeholder="Πληκτρολογήστε τον χώρο (π.χ. Ξενώνας)" onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
-          style={{background:'var(--bg-surface)',border:`1px solid ${focused?'var(--accent)':'var(--border-default)'}`,boxShadow:focused?'0 0 0 3px var(--accent-dim)':'none',borderRadius:6,padding:'0 16px',height:T.h.lg,color:'var(--text-primary)',fontSize:14,letterSpacing:0,outline:'none',fontFamily:T.font.sans,width:'100%',boxSizing:'border-box'}}
+          style={{background:'var(--bg-surface)',border:`1px solid ${focused?'var(--accent)':'var(--border-default)'}`,boxShadow:focused?'0 0 0 3px var(--accent-dim)':'none',borderRadius: T.radius.xs,padding:'0 16px',height:T.h.lg,color:'var(--text-primary)',fontSize:14,letterSpacing:0,outline:'none',fontFamily:T.font.sans,width:'100%',boxSizing:'border-box'}}
         />
       )}
     </div>
@@ -365,7 +363,7 @@ export function QRModal({item,onClose}:{item:InventoryItem;onClose:()=>void}) {
     <Modal open onClose={onClose} size="sm" ariaLabel="QR αντικειμένου"
       title={<span title="Κωδικός QR: γρήγορη σάρωση στοιχείων αντικειμένου με κινητό">QR αντικειμένου</span>}
       footer={<Btn variant="primary" onClick={print}>Εκτύπωση καρτέλας</Btn>}>
-      <div style={{background:'var(--qr-paper)',padding:12,borderRadius:T.radius.card,alignSelf:'center'}}><img src={qr} width={200} height={200} alt="QR"/></div>
+      <div style={{background:'var(--qr-paper)',padding:12,borderRadius:T.radius.card,alignSelf:'center'}}><RuntimeImg src={qr} width={200} height={200} alt="QR"/></div>
       <div style={{textAlign:'center'}}>
         <p style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:2}}>{item.name}</p>
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{item.brand} {item.model}{item.serial_number?` · Σειριακός ${item.serial_number}`:''}</p>

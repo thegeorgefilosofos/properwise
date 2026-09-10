@@ -1,5 +1,5 @@
 // Δοκιμές φορολογικής σύνοψης βραχυχρόνιας. Τρέξε: npx tsx lib/tax/shortTermTax.test.ts
-import { nightsByMonthForYear, channelBreakdownForYear, shortTermYearSummary, yearsWithStays, guestPriceBreakdown, type TaxStay } from './shortTermTax';
+import { nightsByMonthForYear, channelBreakdownForYear, shortTermYearSummary, yearsWithStays, guestPriceBreakdown, monthsWithOwnPlatformFee, derivedPlatformFees, type TaxStay } from './shortTermTax';
 import { climateLevyForNights, rentalIncomeTax, CLIMATE_LEVY_FROM_2025 } from '../billing/greekTax';
 
 let passed = 0, failed = 0; const fails: string[] = [];
@@ -58,7 +58,7 @@ ok('>2 ακίνητα → 0,5% = 7,5', shortTermYearSummary(stays, 2026, { sqm: 
 //
 // ΠΡΟΣΟΧΗ ΣΤΟ ΤΑΚΚ ΕΔΩ: αυτές οι γραμμές είναι ΙΣΤΟΡΙΚΕΣ (ωμό `total`, χωρίς
 // ανάλυση). Το ακαθάριστο των 1.500 έχει το τέλος ΜΕΣΑ και δεν υπάρχει
-// καταγεγραμμένη είσπραξη (collectedLevy = 0), ενώ οφείλονται 52 €. Άρα το
+// καταγεγραμμένη είσπραξη (collectedLevy = 0), ενώ οφείλονται 52€. Άρα το
 // ακάλυπτο ΤΑΚΚ είναι 52 και φεύγει από τα καθαρά — μία φορά, όχι δύο.
 // Καθαρά = 1.500 − 213,75 − 7,50 − 52 = 1.226,75.
 const sumMuni = shortTermYearSummary(stays, 2026, { sqm: 60, propertyCount: 3 });
@@ -70,6 +70,18 @@ ok('καθαρά = μεικτά − φόρος − ακάλυπτο ΤΑΚΚ', n
 ok('effectiveRate = φόρος/μεικτά', near(sum.effectiveRate, sum.incomeTax / 1500));
 // Gate 5%: με μετρητά (όχι τραπεζική είσπραξη) φορολογείται το 100% των μεικτών
 ok('μετρητά → φόρος επί 100% μεικτών', near(shortTermYearSummary(stays, 2026, { rentsPaidViaBank: false }).incomeTax, rentalIncomeTax(1500)));
+// ΚΑΙ ΤΟ ΕΤΟΣ ΦΡΑΖΕΙ ΤΟΝ ΚΑΝΟΝΑ ΤΗΣ ΤΡΑΠΕΖΗΣ. Η προϋπόθεση ισχύει από τη χρήση
+// 2026· σε παλιότερη, τα μετρητά ΔΕΝ αφαιρούν την έκπτωση που ο νόμος έδινε.
+// Το τεστ έπεφτε πριν, γιατί η συνάρτηση καλούσε την άφρακτη εκδοχή.
+{
+  // Ο ίδιος πίνακας κρατά μια διαμονή του 2025· η σύνοψη φιλτράρει μόνη της.
+  const bank2025 = shortTermYearSummary(stays, 2025, { rentsPaidViaBank: true });
+  const cash2025 = shortTermYearSummary(stays, 2025, { rentsPaidViaBank: false });
+  ok('χρήση 2025: μετρητά κρατούν την έκπτωση 5%', near(cash2025.incomeTax, bank2025.incomeTax));
+  const cash2026 = shortTermYearSummary(stays, 2026, { rentsPaidViaBank: false });
+  const bank2026 = shortTermYearSummary(stays, 2026, { rentsPaidViaBank: true });
+  ok('χρήση 2026: τα μετρητά κοστίζουν την έκπτωση', cash2026.incomeTax > bank2026.incomeTax);
+}
 ok('κενό set → μηδενικά', shortTermYearSummary([], 2026).grossRevenue === 0 && shortTermYearSummary([], 2026).effectiveRate === 0);
 
 // ── yearsWithStays ───────────────────────────────────────────────────────────
@@ -98,14 +110,14 @@ ok('φόρος πάνω στο ΑΚΑΘΑΡΙΣΤΟ (95%), όχι στο payout'
 //
 // ΥΠΟΛΟΓΙΣΜΟΣ ΣΤΟ ΧΕΡΙ — 5 νύχτες Αυγούστου (υψηλή περίοδος), διαμέρισμα ≤80 τ.μ.:
 //   1. ο επισκέπτης πλήρωσε                          1.000,00
-//   2. ΤΑΚΚ 5 νύχτες × 8 € (υψηλή, small)         −     40,00
+//   2. ΤΑΚΚ 5 νύχτες × 8€ (υψηλή, small)         −     40,00
 //   3. ΔΗΛΩΤΕΟ ΑΚΑΘΑΡΙΣΤΟ                           =  960,00
 //   4. φορολογητέα βάση 960 × 0,95 (τεκμαρτή 5%)    =  912,00
 //   5. φόρος 912 × 0,15 (κλιμάκιο ≤12.000)          =  136,80
 //   6. τέλος παρεπιδημούντων (φυσ. πρόσωπο, 1 ακίνητο) = 0
 //   7. ΚΑΘΑΡΑ = 960 − 136,80 − 0                    =  823,20
 // Διασταύρωση από την άλλη μεριά: 1.000 − 40 (ΤΑΚΚ) − 136,80 (φόρος) = 823,20.
-// Πριν τη διόρθωση έβγαινε 783,20 — λιγότερα κατά ολόκληρο το ΤΑΚΚ (40 €).
+// Πριν τη διόρθωση έβγαινε 783,20 — λιγότερα κατά ολόκληρο το ΤΑΚΚ (40€).
 const levyOnce = [
   { check_in: '2026-08-10', check_out: '2026-08-15', nights: 5, channel: 'airbnb', total: 810, amount_basis: 'gross', gross_guest_paid: 1000, climate_levy: 40, platform_fee: 150 },
 ];
@@ -128,7 +140,7 @@ ok('τέλος παρεπ. = 4,80 και αφαιρείται μία φορά', 
 // του. Η ίδια διαμονή, με μηδενική είσπραξη τέλους:
 //   ο επισκέπτης πλήρωσε 1.000, τέλος που εισπράχθηκε 0 → ακαθάριστο 1.000
 //   φόρος 1.000 × 0,95 × 0,15                          = 142,50
-//   ΤΑΚΚ 5 νύχτες Αυγούστου × 8 €, ακάλυπτο            =  40,00
+//   ΤΑΚΚ 5 νύχτες Αυγούστου × 8€, ακάλυπτο            =  40,00
 //   ΚΑΘΑΡΑ = 1.000 − 142,50 − 40                       = 817,50
 const levyUncollected = [
   { check_in: '2026-08-10', check_out: '2026-08-15', nights: 5, channel: 'airbnb', total: 850, amount_basis: 'gross', gross_guest_paid: 1000, climate_levy: 0, platform_fee: 150 },
@@ -185,7 +197,7 @@ ok('η προμήθεια δεν αγγίζει το δηλωτέο ακαθάρ
   const b = shortTermYearSummary(nye, 2026, meta)
 
   ok('οι διανυκτερεύσεις μοιράζονται στα δύο έτη', a.totalNights === 4 && b.totalNights === 4)
-  // Το εισπραγμένο ακολουθεί τις διανυκτερεύσεις: 8 € σε κάθε έτος, όχι 16 και 0.
+  // Το εισπραγμένο ακολουθεί τις διανυκτερεύσεις: 8€ σε κάθε έτος, όχι 16 και 0.
   ok('το εισπραγμένο τέλος μοιράζεται κι αυτό', Math.abs(a.collectedLevy - 8) < 0.01 && Math.abs(b.collectedLevy - 8) < 0.01)
   ok('το σύνολο του εισπραγμένου παραμένει 16', Math.abs((a.collectedLevy + b.collectedLevy) - 16) < 0.01)
   // ΤΟ ΚΑΘΑΥΤΟ ΣΦΑΛΜΑ: το δεύτερο έτος δεν ξαναχρεώνει.
@@ -212,7 +224,7 @@ ok('η προμήθεια δεν αγγίζει το δηλωτέο ακαθάρ
 
 // ═══ Η ΔΙΑΜΟΝΗ ΠΟΥ ΠΕΡΝΑ ΤΗΝ ΠΡΩΤΟΧΡΟΝΙΑ, ΜΕ ΕΝΑΝ ΚΑΝΟΝΑ ══════════════════
 //
-// ΠΡΙΝ: το 2026 έβγαινε με ΤΑΚΚ 8 € πάνω σε τζίρο 0 € και ο φόρος του 2025
+// ΠΡΙΝ: το 2026 έβγαινε με ΤΑΚΚ 8€ πάνω σε τζίρο 0€ και ο φόρος του 2025
 // υπολογιζόταν σε οκτώ νύχτες εκ των οποίων οι τέσσερις ανήκουν στο 2026.
 {
   const straddle: TaxStay[] = [{
@@ -270,6 +282,45 @@ ok('η προμήθεια δεν αγγίζει το δηλωτέο ακαθάρ
   ok('χρήση 2024 → το καθεστώς του τέλους σημαδεύεται', shortTermYearSummary(st, 2024).levyRegimeAssumed === true);
   ok('χρήση 2025 → δεν σημαδεύεται', shortTermYearSummary(st, 2025).levyRegimeAssumed === false);
   ok('χρήση 2026 → δεν σημαδεύεται', shortTermYearSummary(st, 2026).levyRegimeAssumed === false);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΜΙΑ ΧΕΙΡΟΚΙΝΗΤΗ ΠΡΟΜΗΘΕΙΑ ΕΣΒΗΝΕ ΤΙΣ ΑΛΛΕΣ ΠΕΝΗΝΤΑ ΕΝΝΕΑ
+// ─────────────────────────────────────────────────────────────────────────
+// ΤΟ ΣΦΑΛΜΑ. Το ημερολόγιο ρωτούσε ναι/όχι πάνω σε ΟΛΗ την περίοδο: «υπάρχει
+// έστω μία καταχωρημένη προμήθεια πλατφόρμας;» — κι όταν ναι, έκοβε ΚΑΘΕ
+// παραγόμενη γραμμή της χρονιάς. Ο οικοδεσπότης με εξήντα κρατήσεις που είχε
+// περάσει με το χέρι μία προμήθεια του Ιουλίου έχανε τις υπόλοιπες: κέρδος
+// φουσκωμένο, φόρος φουσκωμένος, ισοζύγιο που δεν κλείνει.
+//
+// Ο σωστός κανόνας —ανά ΜΗΝΑ— υπήρχε ήδη στη Λογιστική. Το ίδιο το σχόλιο του
+// ημερολογίου έγραφε «ίδιος έλεγχος με το TabAccounting» κι δεν ήταν: δύο
+// αντίγραφα, με το ένα να έχει αποκλίνει σιωπηλά.
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const stay = (checkIn: string, gross: number, fee: number): TaxStay => ({
+    check_in: checkIn, check_out: checkIn.slice(0, 8) + String(Number(checkIn.slice(8)) + 3).padStart(2, '0'),
+    gross_guest_paid: gross, platform_fee: fee, channel: 'airbnb',
+  } as TaxStay);
+  const stays = [stay('2026-05-10', 600, 90), stay('2026-07-14', 800, 120), stay('2026-08-02', 900, 135)];
+
+  ok('χωρίς δικές του καταχωρήσεις, όλες οι προμήθειες παράγονται',
+     derivedPlatformFees(stays, 2026, new Set()).length === 3);
+
+  // Ο χρήστης πέρασε ΜΟΝΟ την προμήθεια του Ιουλίου.
+  const own = monthsWithOwnPlatformFee([{ category: 'Προμήθεια πλατφόρμας', date: '2026-07-31' }]);
+  ok('ο μήνας του εντοπίζεται', own.has('2026-07') && own.size === 1);
+  const kept = derivedPlatformFees(stays, 2026, own);
+  ok('ΟΙ ΑΛΛΟΙ ΔΥΟ ΜΗΝΕΣ ΕΠΙΒΙΩΝΟΥΝ', kept.length === 2);
+  ok('κι λείπει ακριβώς ο Ιούλιος', !kept.some(r => r.date.startsWith('2026-07')));
+  ok('τα ποσά μένουν ανέπαφα', kept.map(r => r.amount).join(',') === '90,135');
+
+  // Δαπάνη άλλης κατηγορίας δεν κόβει τίποτα.
+  ok('άλλη κατηγορία δεν μετράει',
+     monthsWithOwnPlatformFee([{ category: 'Κοινόχρηστα', date: '2026-07-31' }]).size === 0);
+  ok('ούτε γραμμή χωρίς ημερομηνία',
+     monthsWithOwnPlatformFee([{ category: 'Προμήθεια πλατφόρμας', date: null }]).size === 0);
+  ok('κενή είσοδος δεν σκάει', monthsWithOwnPlatformFee(null).size === 0);
 }
 
 console.log(`\nshortTermTax — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`);

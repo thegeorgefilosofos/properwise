@@ -7,10 +7,11 @@ import * as loanStore from '@/lib/data/loans';
 import * as stayStore from '@/lib/data/stays';
 import * as rentStore from '@/lib/data/rent';
 import * as tenantStore from '@/lib/data/tenants';
-import { rentCollectionMode, collectionModeReason } from '@/lib/tax/rentCollectionMode';
+import { rentCollectionMode, collectionModeReason, collectionViaBankOf } from '@/lib/tax/rentCollectionMode';
 import * as expenseStore from '@/lib/data/expenses'
 import { ownerShareOf, ownerShareOfAmount } from '@/lib/expenses/sharing';
-import { T, TT, Skeleton, SkeletonKPIs, fe, fp, fn, fixedCols, Stat, widestOf } from '@/components/Theme'
+import { T, TT, Btn, IconBtn, ChipToggle, LinkBtn, Skeleton, SkeletonKPIs, fe, fp, fn, fixedCols, Stat, widestOf } from '@/components/Theme'
+import { hy } from '@/components/Hyphen'
 import { ActionMenu } from '@/components/ActionMenu'
 import { ChevronLeft, ChevronRight, Download, Layers, Lightbulb, ArrowUpRight } from 'lucide-react'
 import { buildAdvisory, referLabel, type AdvisoryTone } from '@/lib/accounting/advisory'
@@ -41,7 +42,7 @@ import {
   incomeStatement, taxProvision, consolidateIndividual,
   type TaxRegime, type StatementInput, type IncomeStatement,
 } from '@/lib/accounting/statement'
-import { shortTermYearSummary, platformFeeExpenses, staysMissingPlatformFee, isHouseType } from '@/lib/tax/shortTermTax'
+import { shortTermYearSummary, derivedPlatformFees, monthsWithOwnPlatformFee, staysMissingPlatformFee, isHouseType } from '@/lib/tax/shortTermTax'
 import { bankReceiptMatters } from '@/lib/billing/consolidate'
 import { resolveEnfia } from '@/lib/billing/propertyFacts'
 import { estimateENFIAFromFacts, enfiaTypeBlock, ENFIA_TYPE_BLOCK_NOTE } from '@/lib/billing/enfia'
@@ -58,7 +59,7 @@ import { exportAccountantBundle } from './sheets';
 import { buildRegister, chargeForYear, RENTED_PROPERTY_ACCOUNT, EQUIPMENT_ACCOUNT } from '@/lib/accounting/fixedAssets'
 import { declarableGrossOrTotal } from '@/lib/clients/stayAmounts'
 import { CAPITALISABLE } from '@/lib/tax/elpAccounts'
-import { CATEGORIES, resolveCategory } from '@/lib/expenses/taxonomy'
+import { CATEGORIES } from '@/lib/expenses/taxonomy'
 import EnfiaPanel from './EnfiaPanel';
 import AccountantDossier, { useAccountantDossier } from './AccountantDossier'
 import { fetchDossierPapers } from './dossierPapers'
@@ -172,6 +173,9 @@ function Fold({ open, onToggle, title, sub, right, children }: {
             20px αντί για 44 και ο τίτλος ξεχείλιζε έξω από το κουτί του.
             Με βάση 190 (ποτέ πάνω από το πλάτος του γονέα) η σειρά τυλίγεται
             όπως σχεδιάστηκε. */}
+        {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το `aria-expanded` δεν περνά σε κανένα πρωτογενές. Το
+            ChipToggle λέει `aria-pressed` («πατημένο»), που είναι άλλη πληροφορία:
+            ο αναγνώστης οθόνης θα έπαυε να ακούει αν η ενότητα είναι ανοιχτή. */}
         <button type="button" onClick={onToggle} aria-expanded={open} className="acc-toggle"
           style={{ display:'flex', alignItems:'center', gap: 8, flex:'1 1 190px', minWidth:'min(100%, 190px)', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }}>
           <ChevronRight size={16} aria-hidden style={{ color:'var(--text-tertiary)', flexShrink:0, transform:open?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
@@ -187,15 +191,24 @@ function Fold({ open, onToggle, title, sub, right, children }: {
   )
 }
 
-// Οι στήλες του ισοζυγίου, ΜΙΑ φορά: επικεφαλίδες, γραμμές και σύνολα διαβάζουν
-// την ίδια τιμή. Γραμμένες τρεις φορές, μια αλλαγή σε δύο από τις τρεις έδινε
-// πίνακα με μετατοπισμένα σύνολα — που δεν σκάει πουθενά, απλώς είναι λάθος.
+// Τα ΠΕΡΙΕΧΟΜΕΝΑ πλάτη των στηλών του ισοζυγίου, ΜΙΑ φορά: το `<colgroup>` και
+// το ελάχιστο πλάτος του πίνακα διαβάζουν την ίδια τιμή. Γραμμένα τρεις φορές
+// —κεφαλίδα, γραμμές, σύνολα— μια αλλαγή σε δύο από τις τρεις έδινε πίνακα με
+// μετατοπισμένα σύνολα: δεν σκάει πουθενά, απλώς είναι λάθος.
 // Η πρώτη στήλη χωρά την επικεφαλίδα της. Ήταν 72px με «Κωδικός», στένεψε σε
 // 64px ενώ η επικεφαλίδα μεγάλωνε σε «Κωδικός ΕΛΠ» και έσπαγε σε δύο γραμμές.
-const TRIAL_COLS = '86px minmax(120px,1fr) 92px 92px 100px'
-// Το άθροισμα των στηλών, των πέντε κενών και του padding. Κάτω από αυτό ο
-// πίνακας κυλά· δεν συμπιέζεται, γιατί συμπίεση εδώ σημαίνει στήλη που χάνεται.
-const TRIAL_MIN = 86 + 120 + 92 + 92 + 100 + 8 * 4 + 28
+const TRIAL_W = { code: 86, account: 120, debit: 92, credit: 92, balance: 100 } as const
+// ΤΟ ΓΕΜΙΣΜΑ ΤΟΥ ΚΕΛΙΟΥ ΜΕΤΡΑΕΙ ΜΕΣΑ ΣΤΟ ΠΛΑΤΟΣ ΤΗΣ ΣΤΗΛΗΣ. Στο πλέγμα τα
+// παραπάνω ήταν καθαρό περιεχόμενο κι ο αέρας ερχόταν από gap 8 συν 14 στις
+// άκρες. Σε `table-layout: fixed` η στήλη μετρά ΚΑΙ τα 14+14 της `.po-table`,
+// οπότε σκέτο το 86 θα άφηνε 58 για επικεφαλίδα που ζητά ~78 — δηλαδή πάλι δύο
+// γραμμές, ακριβώς ό,τι διόρθωσε το 86. Κάθε στήλη παίρνει τα 28 της.
+const TRIAL_PAD = 28
+const trialCol = (w: number) => `${w + TRIAL_PAD}px`
+// Κάτω από αυτό ο πίνακας κυλά· δεν συμπιέζεται, γιατί συμπίεση εδώ σημαίνει
+// στήλη που χάνεται. Ήταν 550 με τα κενά του πλέγματος, τώρα 630 με το γέμισμα
+// των πέντε κελιών: η οριζόντια κύλιση αρχίζει 80 εικονοστοιχεία νωρίτερα.
+const TRIAL_MIN = TRIAL_W.code + TRIAL_W.account + TRIAL_W.debit + TRIAL_W.credit + TRIAL_W.balance + TRIAL_PAD * 5
 
 // Χρώμα μόνο στη γραμμή αποτελέσματος, αλλού ουδέτερο (χωρίς θόρυβο).
 // Ήπια, ουδέτερη ένδειξη τόνου για τη συμβουλευτική (χωρίς έντονα χρώματα/λίστες).
@@ -203,10 +216,13 @@ const ADVISORY_TONE:Record<AdvisoryTone,string> = { opportunity:'Ευκαιρί�
 
 // Minimal, premium checkbox (Google-level): μικρό, καθαρό, με ήπιο animation.
 function Check({ checked, onChange, label, hint, align='center' }:{ checked:boolean; onChange:(v:boolean)=>void; label:React.ReactNode; hint?:string; align?:'center'|'start' }){
+  // ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: `role="checkbox"` με `aria-checked`. Το μόνο πρωτογενές με
+  // κατάσταση είναι το ChipToggle · λέει `aria-pressed`, δηλαδή «πατημένο» αντί για
+  // «επιλεγμένο» · κι έχει δικό του κουτί αντί για το ζωγραφισμένο τετραγωνάκι.
   return (
     <button type="button" role="checkbox" aria-checked={checked} onClick={()=>onChange(!checked)} title={hint}
       style={{ display:'inline-flex', alignItems:align==='start'?'flex-start':'center', gap: 8, background:'none', border:'none', padding:0, cursor:'pointer', fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily: T.font.sans, textAlign:'left', lineHeight:1.5 }}>
-      <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:17, height:17, borderRadius:6, border:`1.5px solid ${checked?'var(--accent)':'var(--border-default)'}`, background:checked?'var(--accent)':'var(--bg-surface)', transition:'border-color 0.14s, background 0.14s', flexShrink:0, marginTop:align==='start'?1:0 }}>
+      <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:17, height:17, borderRadius: T.radius.xs, border:`1.5px solid ${checked?'var(--accent)':'var(--border-default)'}`, background:checked?'var(--accent)':'var(--bg-surface)', transition:'border-color 0.14s, background 0.14s', flexShrink:0, marginTop:align==='start'?1:0 }}>
         {checked&&<svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.3l2.2 2.2L9.5 3.6" stroke="var(--accent-text)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>}
       </span>
       <span>{label}</span>
@@ -277,7 +293,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // φυσικού προσώπου φορολογείται με το ΑΡΘΡΟ 40 (δική του κλίμακα, τεκμαρτή
   // έκπτωση 5%), όχι με το άρθρο 15. Το κριτήριο είναι αν το ΑΚΙΝΗΤΟ ανήκει
   // στην επιχείρηση, όχι αν ο ιδιοκτήτης έχει ΑΦΜ επιχείρησης για άσχετη
-  // δραστηριότητα. Σε ενοίκια 18.000 €, η παραγωγή έβγαζε φόρο 2.012 αντί
+  // δραστηριότητα. Σε ενοίκια 18.000€, η παραγωγή έβγαζε φόρο 2.012 αντί
   // 3.075 και πρόβλεψη 167,70 τον μήνα αντί 292,75: ο χρήστης θα έβρισκε το
   // κενό στο εκκαθαριστικό.
   //
@@ -296,7 +312,16 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   const [ekfa,setEkfa] = useRemembered<number|''>('acc_ekfa', readNum, writeNum, '')
   const [firstYears,updateFirstYears] = useRememberedFlag('acc_first3')
   const [distribution,setDistribution] = useState<number|''>('')
-  const [claimedUncollected,setClaimedUncollected] = useState(false)
+  // ══ ΤΟ ΤΣΕΚ ΤΩΝ ΑΝΕΙΣΠΡΑΚΤΩΝ ΑΝΗΚΕΙ ΣΕ ΑΚΙΝΗΤΟ, ΟΧΙ ΣΤΗΝ ΟΘΟΝΗ ═══════════
+  // Ηταν σκέτο `useState(false)` κι η καρτέλα δεν ξεφορτώνεται με την αλλαγή
+  // ακινήτου: τσεκαρισμένο στην «Αλεξάνδρας 12» έμενε τσεκαρισμένο κι στην
+  // «Πατησίων 5», όπου η ετικέτα έγραφε ΑΛΛΟ ποσό ανείσπρακτων. Η απαλλαγή του
+  // άρθρου 39 §4 θέλει διαταγή πληρωμής ή αγωγή για ΤΗ ΣΥΓΚΕΚΡΙΜΕΝΗ μίσθωση·
+  // δεν ταξιδεύει. Κρατιέται το id, όχι μια σημαία: η κατάσταση δεν χρειάζεται
+  // effect για να καθαρίσει — η αλλαγή ακινήτου την ακυρώνει από μόνη της.
+  const [claimedFor,setClaimedFor] = useState('')
+  const claimedUncollected = !!propertyId && claimedFor === propertyId
+  const setClaimedUncollected = useCallback((v:boolean)=>setClaimedFor(v?propertyId:''),[propertyId])
   // ═══════════════════════════════════════════════════════════════════════
   // Η ΤΡΑΠΕΖΙΚΗ ΕΙΣΠΡΑΞΗ ΠΑΡΑΓΕΤΑΙ, ΔΕΝ ΠΡΟΕΠΙΛΕΓΕΤΑΙ.
   // ─────────────────────────────────────────────────────────────────────
@@ -417,7 +442,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // ζητούνταν εδώ, οπότε η αυτόματη εκτίμηση ΕΝΦΙΑ έπεφτε στις προεπιλογές της
   // (2ος όροφος, 10-20 ετών) και έβγαινε 16,15% ψηλότερα από την ουδέτερη βάση.
   // Και ο `prop_type`: χωρίς αυτόν η εκτίμηση χρέωνε αποθήκη 20 τ.μ. με τον
-  // πίνακα των κατοικιών (39,20 € τον χρόνο) και οικόπεδο 400 τ.μ. με 600,00 €.
+  // πίνακα των κατοικιών (39,20€ τον χρόνο) και οικόπεδο 400 τ.μ. με 600,00€.
   type PropRow     = Pick<UserPropertiesRow, 'id'|'name'|'address'|'rental_mode'|'enfia'|'sqm'|'value'|'year_built'|'floor'|'purchase_price'|'purchase_date'|'prop_type'|'ownership'>
   type PropListRow = Pick<UserPropertiesRow, 'id'|'name'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'ownership'|'prop_type'>
   type InventoryRow = Pick<InventoryItemsRow, 'name'|'purchase_value'|'category'|'purchase_date'>
@@ -484,7 +509,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       setInventory(invR.rows)
     }catch(_){ if(alive) setReadFailed(true) /* διατηρούμε ό,τι ήδη έχει φορτωθεί· το UI δεν κολλάει */ }
     finally{ if(alive) setLoading(false) }
-  })(); return ()=>{ alive = false } },[propertyId,userId,refreshKey])
+  })(); return ()=>{ alive = false } },[propertyId,userId,refreshKey,supabase])
 
   // ΩΜΟ `rental_mode` ΕΧΑΝΕ ΤΑ ΒΡΑΧΥΧΡΟΝΙΑ ΑΚΙΝΗΤΑ. Όσα σημάνθηκαν πριν από τη
   // μετάβαση κρατούν `status_detail: 'seasonal'` χωρίς `rental_mode` — και το
@@ -494,15 +519,27 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // μηδέν πρόβλεψη — σε PDF με αριθμό εγγράφου και κωδικό QR επαλήθευσης.
   const isShort = readStatus(prop as StatusRow) === 'rent_short'
   const regime:TaxRegime = isShort ? 'individual_shortterm' : 'individual_longterm'
-  const propCount = Math.max(1, allProps.length)
+  // ══ ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΜΕΤΡΑΕΙ ΒΡΑΧΥΧΡΟΝΙΑ ΑΚΙΝΗΤΑ, ΟΧΙ ΑΚΙΝΗΤΑ ══════
+  // Ο νόμος (ν.5073/2023) εξαιρεί τα φυσικά πρόσωπα που εκμισθώνουν ΒΡΑΧΥΧΡΟΝΙΑ
+  // έως δύο ακίνητα. Εδώ μετριούνταν ΟΛΑ όσα έχει ο χρήστης: μακροχρόνιες
+  // μισθώσεις, η ίδια του η κατοικία, μια αποθήκη, ένα οικόπεδο. Ενας ιδιοκτήτης
+  // με ένα Airbnb κι δύο διαμερίσματα σε μακροχρόνια έβγαινε «τρία ακίνητα»,
+  // έχανε την εξαίρεση κι χρεωνόταν 0,5% επί των ακαθαρίστων: σε 30.000,00€
+  // βραχυχρόνιας, 150,00€ τον χρόνο που δεν οφείλει. Το ίδιο νούμερο έμπαινε
+  // στο «πόσα να βάλεις στην άκρη» κι στον φάκελο του λογιστή.
+  //
+  // Το `Math.max(1, …)` μένει: όσο ο κατάλογος δεν έχει φορτώσει, το ανοιχτό
+  // ακίνητο μετράει ως ένα — κι η εξαίρεση ισχύει, που είναι η σωστή στάση
+  // απέναντι σε δεδομένα που λείπουν.
+  const propCount = Math.max(1, allProps.filter(p=>readStatus(p as StatusRow)==='rent_short').length)
   // ══════════════════════════════════════════════════════════════════════════
   // ΤΟ ΜΕΡΙΔΙΟ ΤΟΥ ΣΥΝΙΔΙΟΚΤΗΤΗ, ΠΟΥ Η ΚΑΡΤΕΛΑ ΔΕΝ ΡΩΤΟΥΣΕ ΚΑΝ
   //
   // Το ερώτημα προς τη βάση δεν ζητούσε τη στήλη `ownership`. Ο ιδιοκτήτης με
   // 33,33% σε τρία κληρονομημένα διαμερίσματα έβλεπε τα ακαθάριστα, τις
   // δαπάνες, τον φόρο και το «βάλε στην άκρη» ΟΛΟΚΛΗΡΟΥ του ακινήτου, χωρίς
-  // καμία γραμμή να το λέει. Μετρημένο: φόρος 8.803 € αντί για 3.835 € και
-  // μηνιαία πρόβλεψη 733,58 € αντί για 319,57 €.
+  // καμία γραμμή να το λέει. Μετρημένο: φόρος 8.803€ αντί για 3.835€ και
+  // μηνιαία πρόβλεψη 733,58€ αντί για 319,57€.
   //
   // Το Ε2 της ΙΔΙΑΣ εφαρμογής έκοβε σωστά στο μερίδιο (lib/billing/e2.ts:144),
   // οπότε οι δύο οθόνες έδιναν διαφορετική απάντηση στην ίδια ερώτηση.
@@ -526,11 +563,11 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     // ΤΟ ΚΑΤΑΧΩΡΗΜΕΝΟ ΠΟΣΟ ΕΙΝΑΙ ΗΔΗ ΔΙΚΟ ΤΟΥ. Το πεδίο ζητά «ΕΝΦΙΑ που
     // πληρώνεις», δηλαδή το νούμερο του εκκαθαριστικού του, που έρχεται από την
     // ΑΑΔΕ ήδη περασμένο από το ποσοστό. Το να ξαναδιαιρεθεί εδώ θα το έκοβε
-    // δεύτερη φορά: 76,51 € αντί για 229,55 € σε μερίδιο ενός τρίτου.
+    // δεύτερη φορά: 76,51€ αντί για 229,55€ σε μερίδιο ενός τρίτου.
     const stored = resolveEnfia({ propertyEnfia: prop?.enfia }).annual
     if(stored>0) return stored
     // Η ΕΚΤΙΜΗΣΗ ΠΑΙΡΝΕΙ ΤΟ ΜΕΡΙΔΙΟ ΜΕΣΑ ΤΗΣ, ΟΧΙ ΑΠ' ΕΞΩ. Ο ΕΝΦΙΑ έχει
-    // κατώφλια (πρόσθετος φόρος στις 400.000 €, προσαύξηση στις 500.000 €,
+    // κατώφλια (πρόσθετος φόρος στις 400.000€, προσαύξηση στις 500.000€,
     // κλιμακωτή μείωση), οπότε η διαίρεση του ετήσιου ποσού στο τέλος χρεώνει
     // τον συνιδιοκτήτη με κλάσμα φόρων που δεν οφείλει καθόλου.
     //
@@ -564,12 +601,28 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // μόνο το ταμείο. (Μακροχρόνια.)
   const rentAccruedYear = useMemo(()=>mine(rent.filter(p=>p.period_year===year).reduce((s,p)=>s+(p.amount||0),0)),[rent,year,mine])
   const rentCollectedYear = useMemo(()=>mine(rent.filter(p=>p.paid&&p.period_year===year).reduce((s,p)=>s+(p.amount||0),0)),[rent,year,mine])
+  // Τι λένε τα δεδομένα και τι ισχύει τελικά (η παράκαμψη του χρήστη νικά).
+  const collection = useMemo(() => rentCollectionMode(rent, year, leaseViaBank), [rent, year, leaseViaBank])
+  // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΜΕΤΡΑΕΙ ΜΟΝΟ ΑΠΟ ΤΗ ΧΡΗΣΗ 2026. Ο δημόσιος υπολογιστής
+  // το φράζει σωστά με το έτος· εδώ περνούσε ωμό για κάθε χρονιά, οπότε μία
+  // είσπραξη σε μετρητά μέσα στο 2025 αφαιρούσε την τεκμαρτή έκπτωση 5% που ο
+  // νόμος έδινε: σε ενοίκια 20.000,00€ ο φόρος έβγαινε 4.600,00€ αντί για
+  // 4.250,00€· το νούμερο έφευγε στον φάκελο του λογιστή ως δικός μας
+  // υπολογισμός. Η σύγκριση ζει πλέον στο lib/billing/consolidate.ts.
+  const bankMatters = bankReceiptMatters(year)
+  const rentsBank = bankMatters ? (rentsBankOverride ?? collection.viaBank) : true
+  // ΑΝΕΒΗΚΕ ΠΑΝΩ ΑΠΟ ΤΗ ΒΡΑΧΥΧΡΟΝΙΑ ΣΥΝΟΨΗ, ΓΙΑΤΙ ΤΗ ΧΡΕΙΑΖΕΤΑΙ ΚΙ ΕΚΕΙΝΗ.
+  // Το `useMemo` της σύνοψης τρέχει τη στιγμή της απόδοσης, στη σειρά που είναι
+  // γραμμένο: με το `rentsBank` δηλωμένο από κάτω, η αναφορά θα έσκαγε σε
+  // ReferenceError. Οι εξαρτήσεις του (`rent`, `year`, `leaseViaBank`,
+  // `rentsBankOverride`) δηλώνονται όλες πιο πάνω, οπότε η μετακίνηση είναι
+  // ασφαλής και δεν αλλάζει καμία τιμή.
   // ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΡΩΤΑΕΙ ΑΝ ΕΙΣΑΙ ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ. Εδώ περνούσε
   // καρφωμένο «ναι», για κάθε λογαριασμό: το νομικό πρόσωπο με ένα ακίνητο δεν
-  // χρεωνόταν καθόλου το δημοτικό τέλος, δηλαδή 150,00 € σε ακαθάριστα
-  // 30.000,00 €. Η ίδια κρίση γίνεται σωστά δίπλα, στις Αποδόσεις.
+  // χρεωνόταν καθόλου το δημοτικό τέλος, δηλαδή 150,00€ σε ακαθάριστα
+  // 30.000,00€. Η ίδια κρίση γίνεται σωστά δίπλα, στις Αποδόσεις.
   const individualPerson = !(mode==='professional' && elp==='business' && elpForm==='company')
-  const shortSummary = useMemo(()=>shortTermYearSummary(stays, year, { sqm: prop?.sqm, isHouse: isHouseType(prop?.prop_type), propertyCount:propCount, individual:individualPerson }),[stays,year,prop,propCount,individualPerson])
+  const shortSummary = useMemo(()=>shortTermYearSummary(stays, year, { sqm: prop?.sqm, isHouse: isHouseType(prop?.prop_type), propertyCount:propCount, individual:individualPerson, rentsPaidViaBank:rentsBank }),[stays,year,prop,propCount,individualPerson,rentsBank])
   const expensesYear = useMemo(()=>expenses.filter(e=>(e.date||'').slice(0,4)===String(year)&&(e.amount||0)>0),[expenses,year])
   // ── Η ΠΡΟΜΗΘΕΙΑ ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ ΕΙΝΑΙ ΔΑΠΑΝΗ, ΚΑΙ ΜΠΑΙΝΕΙ ΣΤΑ ΒΙΒΛΙΑ ──────
   // Καταγραφόταν ανά κράτηση, φαινόταν σε τέσσερις οθόνες ως «δαπάνη που
@@ -582,28 +635,27 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // βαρύ από τον υπολογισμό μας.
   //
   // ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΕΚΛΕΙΣΕ ΕΔΩ. Ο κανόνας εφαρμοζόταν «όλα ή τίποτα» για ΟΛΗ τη
-  // χρήση: ΜΙΑ απόδειξη 24 € μηδένιζε τις υπολογισμένες προμήθειες και των
+  // χρήση: ΜΙΑ απόδειξη 24€ μηδένιζε τις υπολογισμένες προμήθειες και των
   // υπόλοιπων έντεκα κρατήσεων. Μετρημένο σε χαρτοφυλάκιο δώδεκα κρατήσεων
-  // Airbnb: εκπεστέες δαπάνες 24,00 € αντί για 288,00 €, δηλαδή 264,00 € χαμένη
-  // έκπτωση και 39,60 € επιπλέον φόρος με τον χαμηλότερο συντελεστή. Και ήταν
+  // Airbnb: εκπεστέες δαπάνες 24,00€ αντί για 288,00€, δηλαδή 264,00€ χαμένη
+  // έκπτωση και 39,60€ επιπλέον φόρος με τον χαμηλότερο συντελεστή. Και ήταν
   // αόρατο: ο χρήστης έκανε το σωστό, πέρασε το τιμολόγιο και τιμωρήθηκε.
   //
   // Το τιμολόγιο πλατφόρμας καλύπτει ΠΕΡΙΟΔΟ, τυπικά μήνα, όχι μία κράτηση —
   // και μια αντιστοίχιση ανά κράτηση δεν είναι δυνατή με τα δεδομένα που έχουμε.
   // Ο κανόνας εφαρμόζεται λοιπόν ανά ΜΗΝΑ: όποιος μήνας έχει δική του απόδειξη
   // δεν παράγει τίποτα, οι υπόλοιποι μένουν ακέραιοι.
-  const ownFeeMonths = useMemo(()=>{
-    const m=new Set<string>()
-    for(const e of expensesYear) if(resolveCategory(e.category)==='platform_fee'&&e.date) m.add(String(e.date).slice(0,7))
-    return m
-  },[expensesYear])
-  const platformFeeRows = useMemo(()=>platformFeeExpenses(stays,year).filter(r=>!ownFeeMonths.has(r.date.slice(0,7))),[ownFeeMonths,stays,year])
+  // Ο κανόνας ήταν γραμμένος εδώ κι ΞΑΝΑ, αλλιώς, στο ημερολόγιο: εκεί ρωτούσε
+  // ναι/όχι για όλη τη χρονιά κι μία καταχωρημένη προμήθεια έκοβε τις άλλες
+  // πενήντα εννέα. Ζει πλέον στο lib/tax/shortTermTax.ts, μία φορά.
+  const ownFeeMonths = useMemo(()=>monthsWithOwnPlatformFee(expensesYear),[expensesYear])
+  const platformFeeRows = useMemo(()=>derivedPlatformFees(stays,year,ownFeeMonths),[ownFeeMonths,stays,year])
   const platformFeesYear = useMemo(()=>platformFeeRows.reduce((s,r)=>s+r.amount,0),[platformFeeRows])
   // Εξαιρούμε τον ΕΝΦΙΑ ως δαπάνη, τον μετράμε ξεχωριστά (αποφυγή διπλομέτρησης).
   const expensesTotal = useMemo(()=>expensesYear.filter(e=>e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear),[expensesYear,platformFeesYear,ownPct,mine])
   const deductibleTotal = useMemo(()=>expensesYear.filter(e=>isGroupDeductible(e.expense_group)&&e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear),[expensesYear,platformFeesYear,ownPct,mine])
   // Δόσεις δανείων ΜΟΝΟ όσο το δάνειο είναι ενεργό στη χρήση (όχι φαντάσματα).
-  const loanAnnual = useMemo(()=>loans.reduce((s,l)=>{ if(!loanActiveInYear(l))return s; const m=annuityMonthly(Number(l.amount)||0,Number(l.rate)||0,Number(l.years)||0); return s+m*12 },0),[loans,year,loanActiveInYear])
+  const loanAnnual = useMemo(()=>loans.reduce((s,l)=>{ if(!loanActiveInYear(l))return s; const m=annuityMonthly(Number(l.amount)||0,Number(l.rate)||0,Number(l.years)||0); return s+m*12 },0),[loans,loanActiveInYear])
   const loanInterestYear = useMemo(()=>loans.reduce((s,l)=>{ const amount=Number(l.amount)||0, rate=Number(l.rate)||0, yrs=Number(l.years)||0; const startY=l.start_date?Number(String(l.start_date).slice(0,4)):year; const idx=year-startY+1; return s+interestForYear(amount,rate,yrs,idx) },0),[loans,year])
 
   const businessMode = mode==='professional' && elp==='business'
@@ -651,7 +703,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // κατηγορία, που το ίδιο του το αρχείο (lib/inventory/depreciation.ts)
   // δηλώνει ρητά ότι ΔΕΝ είναι φορολογική απόσβεση και ότι δεν πρέπει να μπει
   // σε δήλωση. Το νούμερο όμως περνούσε αυτούσιο στην κατάσταση αποτελεσμάτων
-  // και μείωνε τη φορολογητέα βάση: ένα πλυντήριο 650 € «αποσβενόταν» σε εννιά
+  // και μείωνε τη φορολογητέα βάση: ένα πλυντήριο 650€ «αποσβενόταν» σε εννιά
   // χρόνια (11,1%) αντί για τα δέκα του νόμου και ένα έπιπλο σε δώδεκα (8,3%).
   //
   // Ο πίνακας του άρθρου 24 §4 δίνει τον σωστό συντελεστή για όλα: «λοιπά πάγια
@@ -665,17 +717,22 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   const inventoryDepr = useMemo(()=>
     Math.round(assets.filter(a=>a.elp===EQUIPMENT_ACCOUNT).reduce((s,a)=>s+chargeForYear(a,year),0)),[assets,year])
   const grossIncome = regime==='individual_shortterm' ? mine(shortSummary.grossRevenue) : rentAccruedYear
+  // ══ ΤΟ ΜΕΡΙΔΙΟ ΕΠΙΑΝΕ ΤΑ ΕΣΟΔΑ ΚΙ ΑΦΗΝΕ ΤΑ ΤΕΛΗ ΟΛΟΚΛΗΡΑ ═══════════════════
+  // Τα ακαθάριστα από πάνω περνούν από τη `mine()`, δηλαδή κόβονται στο ποσοστό
+  // ιδιοκτησίας — κι το ίδιο κάνει κι ο ΕΝΦΙΑ. Το ΤΑΚΚ κι το τέλος
+  // παρεπιδημούντων περνούσαν ΟΛΟΚΛΗΡΑ. Ο συνιδιοκτήτης στο ένα τρίτο έβλεπε
+  // έσοδα του ενός τρίτου κι τέλη ολόκληρου του ακινήτου: το «καθαρό» κι το
+  // «πόσα να βάλεις στην άκρη» έβγαιναν λάθος προς τα κάτω.
+  //
+  // Το δημοτικό τέλος το δείχνει μόνο του: είναι 0,5% ΕΠΙ ΤΩΝ ΑΚΑΘΑΡΙΣΤΩΝ.
+  // Υπολογισμένο στο 100% κι τοποθετημένο δίπλα σε έσοδα 33% δεν είναι πια
+  // μισό τοις εκατό τίποτα.
+  //
+  // Ο κανόνας είναι ο ίδιος του `lib/expenses/sharing.ts`: ποσό που ανήκει
+  // ΟΛΟΚΛΗΡΟ στο ακίνητο —ενοίκιο, ΕΝΦΙΑ, τέλη— κόβεται στο μερίδιο.
+  const shortLevy = regime==='individual_shortterm' ? mine(shortSummary.levyShortfall) : 0
+  const shortMunicipal = regime==='individual_shortterm' ? mine(shortSummary.municipalTax) : 0
   const uncollectedRent = regime==='individual_shortterm' ? 0 : Math.max(0, rentAccruedYear - rentCollectedYear)
-  // Τι λένε τα δεδομένα και τι ισχύει τελικά (η παράκαμψη του χρήστη νικά).
-  const collection = useMemo(() => rentCollectionMode(rent, year, leaseViaBank), [rent, year, leaseViaBank])
-  // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΜΕΤΡΑΕΙ ΜΟΝΟ ΑΠΟ ΤΗ ΧΡΗΣΗ 2026. Ο δημόσιος υπολογιστής
-  // το φράζει σωστά με το έτος· εδώ περνούσε ωμό για κάθε χρονιά, οπότε μία
-  // είσπραξη σε μετρητά μέσα στο 2025 αφαιρούσε την τεκμαρτή έκπτωση 5% που ο
-  // νόμος έδινε: σε ενοίκια 20.000,00 € ο φόρος έβγαινε 4.600,00 € αντί για
-  // 4.250,00 €· το νούμερο έφευγε στον φάκελο του λογιστή ως δικός μας
-  // υπολογισμός. Η σύγκριση ζει πλέον στο lib/billing/consolidate.ts.
-  const bankMatters = bankReceiptMatters(year)
-  const rentsBank = bankMatters ? (rentsBankOverride ?? collection.viaBank) : true
 
   // Ενοποίηση χαρτοφυλακίου (φυσικό πρόσωπο): ο φόρος είναι προοδευτικός στο ΣΥΝΟΛΟ
   // των ενοικίων (Ε1), όχι ανά ακίνητο. Υπολογίζεται ΠΑΝΤΑ, ώστε ο φόρος του τρέχοντος
@@ -684,19 +741,40 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     const items = (allProps.length?allProps:[{id:propertyId,name:prop?.name,rental_mode:prop?.rental_mode,enfia:prop?.enfia,sqm:prop?.sqm,prop_type:prop?.prop_type}]).map(p=>{
       const rmode:TaxRegime = readStatus(p as StatusRow) === 'rent_short' ? 'individual_shortterm' : 'individual_longterm'
       const pRentAccrued = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).reduce((s,r)=>s+(r.amount||0),0)
+      // ══ Ο ΦΟΡΟΣ ΑΓΝΟΟΥΣΕ ΤΗΝ ΑΠΑΛΛΑΓΗ ΠΟΥ Η ΙΔΙΑ ΚΑΡΤΑ ΕΔΕΙΧΝΕ ══════════════
+      // Το `incomeStatement` κατεβάζει το ΦΟΡΟΛΟΓΗΤΕΟ κατά τα διεκδικημένα
+      // ανείσπρακτα, αλλά ο ΦΟΡΟΣ δεν βγαίνει από εκεί: για φυσικό πρόσωπο
+      // υπερισχύει το `overrideIncomeTax`, δηλαδή το μερίδιο του προοδευτικού
+      // φόρου του χαρτοφυλακίου — κι η ενοποίηση δεν είχε ακούσει ποτέ για την
+      // απαλλαγή. Η κάρτα έγραφε «φόρος 3.550€ σε φορολογητέο 7.600€», δηλαδή
+      // 46,7% εκεί που ο ανώτατος συντελεστής της κλίμακας είναι 45%.
+      // Το αδύνατο ποσοστό ήταν το μόνο ορατό ίχνος.
+      const pUncollected = allRent.filter(r=>r.property_id===p.id&&r.period_year===year&&!r.paid).reduce((s,r)=>s+(r.amount||0),0)
+      // Μόνο για ΤΟ ακίνητο του τσεκ: η απαλλαγή είναι ανά μίσθωση.
+      const pRelief = claimedUncollected && p.id===propertyId ? pUncollected : 0
+      // ══ Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΕΙΝΑΙ ΤΟΥ ΑΚΙΝΗΤΟΥ, ΟΧΙ ΤΗΣ ΑΝΟΙΧΤΗΣ ΚΑΡΤΕΛΑΣ ══
+      // Εδώ περνούσε το `rentsBank` του ΤΡΕΧΟΝΤΟΣ ακινήτου σε ΟΛΑ. Ακίνητο που
+      // εισπράττεται σε μετρητά έπαιρνε την τεκμαρτή έκπτωση 5% επειδή ήταν
+      // ανοιχτή η καρτέλα ενός άλλου — κι ο συνολικός φόρος άλλαζε ανάλογα με
+      // το ποια καρτέλα κοιτούσε ο χρήστης. Ο κανόνας ζει στο lib/tax.
+      const pViaBank = !bankMatters || p.id === propertyId ? rentsBank
+        : collectionViaBankOf(allRent.filter(r=>r.property_id===p.id), year, rentsBank)
       const pStays = allStays.filter(s=>s.property_id===p.id)
-      const pShort = shortTermYearSummary(pStays, year, { sqm:p.sqm??null, isHouse: isHouseType(p.prop_type), propertyCount:propCount, individual:individualPerson })
+      const pShort = shortTermYearSummary(pStays, year, { sqm:p.sqm??null, isHouse: isHouseType(p.prop_type), propertyCount:propCount, individual:individualPerson, rentsPaidViaBank:pViaBank })
       // Κάθε ακίνητο με ΤΟ ΔΙΚΟ ΤΟΥ ποσοστό: ένα χαρτοφυλάκιο μπορεί να έχει
       // δύο κληρονομιές στο ένα τρίτο και ένα διαμέρισμα ολόκληρο.
       const pPct = pctOf(p.id)
-      const gross = ownerShareOfAmount(rmode==='individual_shortterm' ? pShort.grossRevenue : pRentAccrued, pPct)
-      const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct), rentsPaidViaBank: rentsBank,
-        climateLevy: rmode==='individual_shortterm'?pShort.levyShortfall:0, municipalTax: rmode==='individual_shortterm'?pShort.municipalTax:0 }
+      const gross = ownerShareOfAmount(rmode==='individual_shortterm' ? pShort.grossRevenue : Math.max(0, pRentAccrued - pRelief), pPct)
+      const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct), rentsPaidViaBank: pViaBank,
+        // Ο ίδιος κανόνας του μεριδίου με τα ακαθάριστα κι τον ΕΝΦΙΑ από πάνω:
+        // τέλος υπολογισμένο στο 100% δίπλα σε έσοδα 33% δεν ισοσκελίζει.
+        climateLevy: rmode==='individual_shortterm'?ownerShareOfAmount(pShort.levyShortfall, pPct):0,
+        municipalTax: rmode==='individual_shortterm'?ownerShareOfAmount(pShort.municipalTax, pPct):0 }
       return { id:p.id, name:p.name||'Ακίνητο', input }
     }).filter(x=>x.input.grossIncome>0)
     if(items.length===0) return null
     return { con: consolidateIndividual(items.map(i=>({id:i.id,input:i.input})), rentalBracketsForYear(year)), names:Object.fromEntries(items.map(i=>[i.id,i.name])), count:items.length }
-  },[allProps,allRent,allStays,year,propCount,prop,propertyId,rentsBank,pctOf,individualPerson])
+  },[allProps,allRent,allStays,year,propCount,prop,propertyId,rentsBank,bankMatters,pctOf,individualPerson,claimedUncollected])
   const myTaxShare = useMemo(()=>consolidation?.con.perProperty.find(p=>p.id===propertyId)?.taxShare,[consolidation,propertyId])
   const portfolio = (mode==='professional' && elp==='personal') ? consolidation : null
 
@@ -718,9 +796,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           ekfaContributions: elpForm==='sole'&&ekfa!=='' ? Number(ekfa) : 0,
           // ΤΟ ΤΕΚΜΑΡΤΟ ΕΛΑΧΙΣΤΟ ΕΙΝΑΙ ΠΟΣΟ ΤΟΥ ΕΤΟΥΣ: ακολουθεί τον κατώτατο
           // μισθό. Περνιόταν καρφωμένο στο ποσό του 2025 ό,τι έτος κι αν είχε
-          // διαλέξει ο χρήστης — 700 € φανταστικό εισόδημα στη χρήση 2024.
+          // διαλέξει ο χρήστης — 700€ φανταστικό εισόδημα στη χρήση 2024.
           presumptiveMinIncome: elpForm==='sole'&&grossIncome>0 ? Math.round(minNetIncome.amount*(firstYears?0.5:1)) : undefined, enfia:0,
-          climateLevy: regime==='individual_shortterm'?shortSummary.levyShortfall:0, municipalTax: regime==='individual_shortterm'?shortSummary.municipalTax:0,
+          climateLevy: shortLevy, municipalTax: shortMunicipal,
           otherCashExpenses: Math.max(0,expensesTotal-deductibleTotal), loanPrincipal: Math.max(0,loanAnnual-loanInterestYear), uncollectedIncome:uncollectedRent, brackets: rentalBracketsForYear(year) }
       : { regime, grossIncome, enfia, overrideIncomeTax: myTaxShare, rentsPaidViaBank: rentsBank,
         // ΤΟ ΤΕΛΟΣ ΑΝΘΕΚΤΙΚΟΤΗΤΑΣ ΕΦΕΥΓΕ ΔΥΟ ΦΟΡΕΣ ΑΠΟ ΤΟ ΤΑΜΕΙΟ.
@@ -728,16 +806,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         // που έχει ΗΔΗ αφαιρέσει το εισπραγμένο τέλος (gross_guest_paid −
         // collectedLevy). Περνώντας και το ΣΥΝΟΛΙΚΟ `levy` ως έξοδο, το
         // incomeStatement το έβγαζε δεύτερη φορά. Σε γεμάτη σεζόν 200 νυχτών
-        // υψηλής περιόδου η τρύπα φτάνει 3.000 € — και το ίδιο νούμερο πήγαινε
+        // υψηλής περιόδου η τρύπα φτάνει 3.000€ — και το ίδιο νούμερο πήγαινε
         // στο «πόσα να βάλεις στην άκρη για φόρο» και στο Excel του λογιστή.
         // Το `levyShortfall` είναι ό,τι ΟΦΕΙΛΕΤΑΙ και δεν εισπράχθηκε: μηδέν
         // όταν ο επισκέπτης το πλήρωσε κανονικά. Ο ίδιος κανόνας που εφαρμόζει
         // ήδη μέσα του το lib/tax/shortTermTax.ts.
-          climateLevy: regime==='individual_shortterm' ? shortSummary.levyShortfall : 0,
-          municipalTax: regime==='individual_shortterm' ? shortSummary.municipalTax : 0,
+          climateLevy: shortLevy, municipalTax: shortMunicipal,
           otherCashExpenses: expensesTotal, loanPrincipal: loanAnnual, uncollectedIncome:uncollectedRent,
           legallyClaimedUncollected: claimedUncollected, brackets: rentalBracketsForYear(year) }
-  ),[businessMode,year,elpForm,age,firstYears,distribution,ekfa,buildingDepr,claimedUncollected,rentsBank,regime,grossIncome,enfia,myTaxShare,shortSummary,expensesTotal,deductibleTotal,inventoryDepr,loanInterestYear,loanAnnual,uncollectedRent])
+  ),[businessMode,year,elpForm,age,firstYears,distribution,ekfa,buildingDepr,claimedUncollected,rentsBank,regime,grossIncome,enfia,myTaxShare,expensesTotal,deductibleTotal,inventoryDepr,loanInterestYear,loanAnnual,uncollectedRent,shortLevy,shortMunicipal,minNetIncome.amount])
 
   // Συμβουλευτική, προτάσεις με αξία από τα πραγματικά δεδομένα (καθαρές, όχι θόρυβος).
   const advisory = useMemo(()=>buildAdvisory({
@@ -745,7 +822,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     grossIncome, taxableIncome: statement.taxableIncome,
     rentalMode: prop?.rental_mode, propertyCount: propCount,
     hasLoan: loans.some(l=>loanActiveInYear(l)), loanInterestYear,
-  }),[businessMode,regime,elpForm,age,grossIncome,statement,prop,propCount,loans,year,loanInterestYear,loanActiveInYear])
+  }),[businessMode,regime,elpForm,age,grossIncome,statement,prop,propCount,loans,loanInterestYear,loanActiveInYear])
 
   // «Τι άλλαξε»: επίκαιροι κανόνες 2026 σχετικοί με το προφίλ (καθεστώς + δάνειο).
   const relevantChanges = useMemo(()=>{
@@ -755,7 +832,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     else aud.add('long_term')
     if(loans.some(l=>loanActiveInYear(l))) aud.add('borrower')
     return REGULATORY_UPDATES_2026.filter(u=>u.audiences.some(a=>aud.has(a)))
-  },[businessMode,regime,loans,year,loanActiveInYear])
+  },[businessMode,regime,loans,loanActiveInYear])
 
   // Κόστος μεταβίβασης: προεπιλογή τιμήματος η αξία του ακινήτου (αν υπάρχει).
   const xferEffectivePrice = xferPrice!=='' ? Number(xferPrice) : (Number(prop?.value)||0)
@@ -914,19 +991,36 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   }
   const [closing,setClosing] = useState<{ snapshot:BookSnapshot; locked_at:string }|null>(null)
   const [lockErr,setLockErr] = useState<string|null>(null)
+  // ═══ Η ΣΙΩΠΗΛΗ ΑΝΑΓΝΩΣΗ ΕΚΑΝΕ ΤΗΝ ΚΛΕΙΔΩΜΕΝΗ ΧΡΗΣΗ ΝΑ ΦΑΙΝΕΤΑΙ ΑΝΟΙΧΤΗ ═══
+  // ΤΟ ΣΦΑΛΜΑ, ΩΣ ΑΛΥΣΙΔΑ. Η ανάγνωση αγνοούσε το `error`: μια αποτυχία —δίκτυο,
+  // policy, χρονικό όριο— γύριζε `undefined`, που εδώ διαβαζόταν ΑΚΡΙΒΩΣ όπως το
+  // «δεν υπάρχει κλείσιμο». Η οθόνη έγραφε ΑΝΟΙΧΤΟ και έδειχνε «Κλείδωμα έτους».
+  //
+  // ΚΑΙ ΤΟ ΚΛΕΙΔΩΜΑ ΚΑΝΕΙ delete-then-insert. Δηλαδή ο λογιστής που πατούσε το
+  // κουμπί ΕΣΒΗΝΕ το υπάρχον στιγμιότυπο και την αρχική ημερομηνία κλειδώματος,
+  // και τα αντικαθιστούσε με τους σημερινούς αριθμούς. Ο λόγος ύπαρξης του
+  // κλειδώματος —«αυτοί ήταν οι αριθμοί την ημέρα της υποβολής»— χανόταν, από
+  // μια αποτυχία δικτύου που κανείς δεν είδε.
+  //
+  // ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΟΧΙ ΔΥΟ: κλειδωμένο, ανοιχτό, ΔΕΝ ΞΕΡΟΥΜΕ. Στην τρίτη
+  // δεν εμφανίζεται κανένα κουμπί που γράφει: ό,τι κι αν πατούσε ο χρήστης εκεί,
+  // θα το πατούσε χωρίς να ξέρει τι υπάρχει από κάτω.
+  const [closingErr,setClosingErr] = useState<string|null>(null)
   // Ίδιο κενό, ίδια λύση: χωρίς ακύρωση, το κλείδωμα χρήσης και το όνομα του
   // μισθωτή του προηγούμενου ακινήτου τυπώνονταν στη βεβαίωση του νέου.
   useEffect(()=>{ let alive = true; (async()=>{
-    const { data } = await supabase.from('book_closings').select('snapshot,locked_at').eq('property_id',propertyId).eq('user_id',userId).eq('year',year).maybeSingle()
-    if(alive) setClosing((data as { snapshot:BookSnapshot; locked_at:string }|null)||null)
-  })(); return ()=>{ alive = false } },[propertyId,userId,year,refreshKey])
+    const { data, error } = await supabase.from('book_closings').select('snapshot,locked_at').eq('property_id',propertyId).eq('user_id',userId).eq('year',year).maybeSingle()
+    if(!alive) return
+    if(error){ setClosingErr(failed('Η κατάσταση της χρήσης δεν διαβάστηκε', error)); setClosing(null); console.warn('book_closings', error) }
+    else { setClosingErr(null); setClosing((data as { snapshot:BookSnapshot; locked_at:string }|null)||null) }
+  })(); return ()=>{ alive = false } },[propertyId,userId,year,refreshKey,supabase])
   useEffect(()=>{ let alive = true; (async()=>{
     // Ο ΤΡΕΧΩΝ ΜΙΣΘΩΤΗΣ, ΟΧΙ Ο ΤΕΛΕΥΤΑΙΟΣ ΠΟΥ ΓΡΑΦΤΗΚΕ. Το όνομα που βγαίνει από
     // εδώ τυπώνεται στη βεβαίωση ενοικίου: με «πιο πρόσφατα δημιουργημένος», η
     // βεβαίωση έβγαινε στο όνομα άλλου ανθρώπου από αυτόν που έδειχνε η Επισκόπηση.
     const data = await tenantStore.current<{ full_name?:string; afm?:string }>(supabase, propertyId, 'full_name,afm', userId)
     if(alive) setTenant(data||null)
-  })(); return ()=>{ alive = false } },[propertyId,userId,refreshKey])
+  })(); return ()=>{ alive = false } },[propertyId,userId,refreshKey,supabase])
   // Ετήσια βεβαίωση ενοικίου: μόνο εισπραγμένα μισθώματα του έτους, ανά μήνα.
   function printCertificate(){
     const paid = rent.filter(p=>p.paid&&p.period_year===year).sort((a,b)=>(a.period_month||0)-(b.period_month||0))
@@ -1074,7 +1168,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   if(loading) return (<><SkeletonKPIs n={1} /><Skeleton h={280} r={14} /></>)
 
   const regimeLabel = businessMode ? 'Επιχείρηση (ΕΛΠ)' : (regime==='individual_shortterm' ? 'Βραχυχρόνια μίσθωση' : 'Μακροχρόνια μίσθωση')
-  // Έχει το έτος πραγματική κίνηση; Αν όχι, αντί για τοίχο από «0 €» δείχνουμε μια
+  // Έχει το έτος πραγματική κίνηση; Αν όχι, αντί για τοίχο από «0€» δείχνουμε μια
   // ήρεμη, καθοδηγητική αφετηρία (τι θα ξεκλειδώσει μόλις μπουν δεδομένα).
   const hasActivity = grossIncome>0 || expensesTotal>0 || rentAccruedYear>0 || book.length>0
 
@@ -1095,43 +1189,52 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // Ο φάκελος είναι το κύριο κουμπί και μένει εκεί· εδώ κάθονται τα τρία που
   // δεν είναι ο φάκελος: το σκέτο Excel (για όποιον θέλει μόνο τα νούμερα),
   // η ζωντανή πύλη και το ημερολόγιο άρθρων όπου υπάρχει.
-  const pillBtn:React.CSSProperties = { display:'inline-flex', alignItems:'center', gap:8, height:T.h.md, padding:'0 14px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'transparent', color:'var(--text-secondary)', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily: T.font.sans, whiteSpace:'nowrap' }
+  // ΤΟ `title` ΖΕΙ ΣΤΟ ΠΕΡΙΤΥΛΙΓΜΑ ΚΑΙ ΟΧΙ ΣΤΟ ΚΟΥΜΠΙ. Το `Btn` δέχεται `title`,
+  // όμως η ζωντανή πύλη απενεργοποιείται όσο δημιουργείται ο σύνδεσμος και το
+  // απενεργοποιημένο στοιχείο δεν δέχεται γεγονότα ποντικιού σε κάθε περιηγητή:
+  // η εξήγηση θα χανόταν ακριβώς την ώρα της αναμονής. Στο περιτύλιγμα φαίνεται
+  // πάντα· ο περιηγητής δείχνει το `title` του πλησιέστερου γονέα, οπότε ο
+  // χρήστης βλέπει ό,τι έβλεπε — και οι τρεις της σειράς γράφονται ίδια.
   const accountantActions = (
     <>
       <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-        <button onClick={exportBundle} title="Μόνο τα νούμερα: αναλυτικές κινήσεις και κατάσταση αποτελεσμάτων σε ένα αρχείο Excel. Περιέχεται ήδη μέσα στον φάκελο." style={pillBtn}
-          onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='var(--accent)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border-default)';e.currentTarget.style.color='var(--text-secondary)'}}>
-          <Download size={13}/>Μόνο το Excel
-        </button>
-        <button onClick={shareWithAccountant} disabled={acctBusy} title={canAccountantPortal ? "Ζωντανός σύνδεσμος για τον λογιστή σου, χωρίς σύνδεση και χωρίς email. Καλύπτει ΟΛΑ τα ακίνητά σου, όχι μόνο αυτό: διεύθυνση, ΑΤΑΚ, μίσθωμα, έσοδα και δαπάνες της χρονιάς." : "Η ζωντανή πύλη λογιστή περιλαμβάνεται από το πακέτο «Ένα ακίνητο» και πάνω, όπως και η εξαγωγή Ε2."}
-          style={{ ...pillBtn, borderColor:acctLink?'var(--accent)':'var(--border-default)', color:acctLink?'var(--accent)':'var(--text-secondary)', cursor:acctBusy?'wait':'pointer', transition:'color 0.15s, border-color 0.15s' }}
-          onMouseEnter={e=>{ if(!acctLink){ e.currentTarget.style.borderColor='var(--accent)'; e.currentTarget.style.color='var(--accent)' } }} onMouseLeave={e=>{ if(!acctLink){ e.currentTarget.style.borderColor='var(--border-default)'; e.currentTarget.style.color='var(--text-secondary)' } }}>
+        <span style={{ display:'inline-flex' }} title="Μόνο τα νούμερα: αναλυτικές κινήσεις και κατάσταση αποτελεσμάτων σε ένα αρχείο Excel. Περιέχεται ήδη μέσα στον φάκελο.">
+          <Btn variant="secondary" onClick={exportBundle}><Download size={13}/>Μόνο το Excel</Btn>
+        </span>
+        {/* Το accent περίγραμμα του «έτοιμη» ήταν ΚΑΤΑΣΤΑΣΗ και όχι ρόλος: τη λένε
+            πλέον μόνο το εικονίδιο και το λεκτικό, όπως και η αναμονή. */}
+        <span style={{ display:'inline-flex' }} title={canAccountantPortal ? "Ζωντανός σύνδεσμος για τον λογιστή σου, χωρίς σύνδεση και χωρίς email. Καλύπτει ΟΛΑ τα ακίνητά σου, όχι μόνο αυτό: διεύθυνση, ΑΤΑΚ, μίσθωμα, έσοδα και δαπάνες της χρονιάς." : "Η ζωντανή πύλη λογιστή περιλαμβάνεται από το πακέτο «Ένα ακίνητο» και πάνω, όπως και η εξαγωγή Ε2."}>
+          <Btn variant="secondary" onClick={shareWithAccountant} disabled={acctBusy}>
           {canAccountantPortal
             ? <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>
             : <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
           {acctBusy?'Δημιουργία…':acctLink?'Πύλη λογιστή έτοιμη':'Ζωντανή πύλη λογιστή'}
-        </button>
+          </Btn>
+        </span>
         {/* ΤΟ ΚΛΕΙΔΩΜΕΝΟ ΦΑΙΝΕΤΑΙ ΕΚΕΙ ΠΟΥ ΠΑΤΙΕΤΑΙ. Ίδιος κανόνας με τη διπλανή
             πύλη λογιστή: το λουκέτο μπαίνει στη θέση του εικονιδίου, το κουμπί
             πάει στα πακέτα. Μόνο σε όποιον κρατά διπλογραφικά βιβλία, δηλαδή
             σε όποιον το ημερολόγιο άρθρων του χρησιμεύει. */}
         {doubleEntry && (
-        <button onClick={()=>{ if(!canJournal){ onNavigate?.('settings'); return } setJournalOpen(true) }}
-          title={canJournal?"Πλήρες ημερολόγιο άρθρων και εξαγωγή CSV (SoftOne/Epsilon/QuickBooks/Xero)":`Το ημερολόγιο άρθρων και το ισοζύγιο διπλογραφικής περιλαμβάνονται από το πακέτο «${journalPlanName}» και πάνω.`} style={pillBtn}
-          onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='var(--accent)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border-default)';e.currentTarget.style.color='var(--text-secondary)'}}>
+        <span style={{ display:'inline-flex' }} title={canJournal?"Πλήρες ημερολόγιο άρθρων και εξαγωγή CSV (SoftOne/Epsilon/QuickBooks/Xero)":`Το ημερολόγιο άρθρων και το ισοζύγιο διπλογραφικής περιλαμβάνονται από το πακέτο «${journalPlanName}» και πάνω.`}>
+          <Btn variant="secondary" onClick={()=>{ if(!canJournal){ onNavigate?.('settings'); return } setJournalOpen(true) }}>
           {canJournal
             ? <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg>
             : <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
           Ημερολόγιο άρθρων
-        </button>
+          </Btn>
+        </span>
         )}
       </div>
       {acctLink && (
         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10, padding:'8px 8px 8px 12px', borderRadius:T.radius.inner, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', flexWrap:'wrap' }}>
-          <span style={{ display:'inline-flex', width:24, height:24, borderRadius:8, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', alignItems:'center', justifyContent:'center', color:'var(--text-tertiary)', flexShrink:0 }}>
+          <span style={{ display:'inline-flex', width:24, height:24, borderRadius: T.radius.chip, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', alignItems:'center', justifyContent:'center', color:'var(--text-tertiary)', flexShrink:0 }}>
             <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
           </span>
           <input aria-label="Σύνδεσμος λογιστή" readOnly value={acctLink} onFocus={e=>e.currentTarget.select()} style={{ flex:1, minWidth:150, border:'none', background:'transparent', color:'var(--text-secondary)', fontSize:12, fontFamily: T.font.sans, outline:'none', textOverflow:'ellipsis' }} />
+          {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: κάθεται σε σειρά με το «Άνοιγμα πύλης» των T.h.sm
+              και το minHeight T.h.md του Btn θα ψήλωνε μόνο αυτό, σπάζοντας τη
+              στοίχιση της γραμμής. */}
           <button onClick={()=>{ try{ navigator.clipboard?.writeText(acctLink); setAcctCopied(true); setTimeout(()=>setAcctCopied(false),2000) }catch{ /* ignore */ } }} style={{ height:T.h.sm, padding:'0 12px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:acctCopied?'var(--positive)':'var(--text-secondary)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>{acctCopied?'Αντιγράφηκε':'Αντιγραφή'}</button>
           <a href={acctLink} target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap: 4, height:T.h.sm, padding:'0 13px', borderRadius:T.radius.pill, background:'var(--accent)', color:'var(--accent-text)', fontSize:12, fontWeight:600, textDecoration:'none', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>Άνοιγμα πύλης<ArrowUpRight size={13}/></a>
           <div style={{ width:'100%', display:'flex', alignItems:'center', gap:10, marginTop:2, paddingLeft:2 }}>
@@ -1142,7 +1245,13 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 ΕΝΟΣ ακινήτου, οπότε η φυσική ανάγνωση ήταν «μοιράζομαι αυτό
                 εδώ». Η μόνη ένδειξη ήταν σε tooltip που δεν ανοίγει σε κινητό. */}
             <span style={{ fontSize: 'var(--fs-xs)', color:acctRevoked?'var(--positive)':'var(--text-tertiary)', fontFamily: T.font.sans }}>{acctRevoked?'Ο παλιός σύνδεσμος ακυρώθηκε και ο λογιστής βγήκε.':`Πρόσβαση μόνο για ανάγνωση, σε ΟΛΑ τα ακίνητά σου, όχι μόνο σε αυτό.${acctUntil?` Ισχύει ${acctUntil}.`:''}`}</span>
-            <button onClick={revokeAccountantLink} disabled={acctBusy} title="Ακυρώνει τον τρέχοντα σύνδεσμο και δημιουργεί καινούριο· ο παλιός παύει αμέσως να λειτουργεί και όποιος λογιστής τον είχε ήδη ανοίξει χάνει την πρόσβαση" style={{ marginLeft:'auto', background:'none', border:'none', padding:0, color:'var(--text-tertiary)', fontSize: 'var(--fs-xs)', fontWeight:700, cursor:acctBusy?'wait':'pointer', fontFamily: T.font.sans, whiteSpace:'nowrap' }} onMouseEnter={e=>{ if(!acctBusy) e.currentTarget.style.color='var(--negative)' }} onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-tertiary)' }}>Ανάκληση</button>
+            {/* LinkBtn και όχι Btn ghost: η ενέργεια κάθεται στο τέλος μιας
+                πρότασης χωρίς κουτί, οπότε το γέμισμα ενός κουμπιού θα
+                μετακινούσε τη γραμμή. Ο τόνος `danger` κρατά το κόκκινο που
+                έδινε η χειροκίνητη αιώρηση: η ανάκληση σβήνει τον σύνδεσμο. */}
+            <span style={{ marginLeft:'auto' }}>
+              <LinkBtn tone="danger" onClick={revokeAccountantLink} disabled={acctBusy} title="Ακυρώνει τον τρέχοντα σύνδεσμο και δημιουργεί καινούριο· ο παλιός παύει αμέσως να λειτουργεί και όποιος λογιστής τον είχε ήδη ανοίξει χάνει την πρόσβαση">Ανάκληση</LinkBtn>
+            </span>
           </div>
         </div>
       )}
@@ -1170,9 +1279,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           από αυτή την οθόνη βγαίνουν το Ε2, η βεβαίωση ενοικίου και ο φάκελος του
           λογιστή. Δοκίμασε ξανά· τα δεδομένα σου δεν έχουν χαθεί.
         </p>
-        <button onClick={()=>setRefreshKey(k=>k+1)} style={{ marginTop:12, height:T.h.md, padding:'0 16px', borderRadius:T.radius.btn, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-primary)', fontSize: 'var(--fs-base)', fontWeight:600, cursor:'pointer', fontFamily:T.font.sans }}>
-          Δοκίμασε ξανά
-        </button>
+        <div style={{ marginTop:12 }}>
+          <Btn variant="secondary" onClick={()=>setRefreshKey(k=>k+1)}>Δοκίμασε ξανά</Btn>
+        </div>
       </div>
     </div>
   )
@@ -1213,18 +1322,16 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               ιδιοκτήτης έχει επιχείρηση για κάτι άλλο. */}
           {mode==='professional'&&(
             <div style={{ display:'flex', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:2, gap:2 }}>
+              {/* `seg` και όχι `chip`: η ράγα από πάνω έχει ήδη δικό της περίγραμμα. */}
               {([['personal','Ενοίκια ιδιώτη'],['business','Μέσω επιχείρησης']] as [typeof elp,string][]).map(([e,label])=>(
-                <button key={e} onClick={()=>setElp(e)}
-                  title={e==='personal'?'Άρθρο 40: δική του κλίμακα, με τεκμαρτή έκπτωση 5%':'Άρθρο 15 ή εταιρικός συντελεστής, όταν το ακίνητο ανήκει στην επιχείρηση'}
-                  style={{ height:T.h.sm, padding:'0 12px', border:'none', borderRadius:8, cursor:'pointer', fontFamily:T.font.sans, fontSize:12,
-                    fontWeight: elp===e?600:400, background: elp===e?'var(--bg-surface)':'transparent',
-                    color: elp===e?'var(--text-primary)':'var(--text-secondary)' }}>
+                <ChipToggle key={e} on={elp===e} shape="seg" onClick={()=>setElp(e)}
+                  title={e==='personal'?'Άρθρο 40: δική του κλίμακα, με τεκμαρτή έκπτωση 5%':'Άρθρο 15 ή εταιρικός συντελεστής, όταν το ακίνητο ανήκει στην επιχείρηση'}>
                   {label}
-                </button>
+                </ChipToggle>
               ))}
             </div>
           )}
-          <ActionMenu label="Εργαλεία και αναφορές" title="Αναφορές και εργαλεία διαχείρισης" icon={<Printer size={14}/>} items={[
+          <ActionMenu label="Εργαλεία και αναφορές" icon={<Printer size={14}/>} items={[
             { key:'print', label:'Λογιστική αναφορά', description:'Σύνοψη εσόδων, φόρου και καθαρού σε PDF, έτοιμη για τον λογιστή σου', icon:<Printer size={16}/>, onClick:printReport },
             { key:'official', label:'Επίσημη αναφορά', description:'Υπογεγραμμένο PDF με αριθμό εγγράφου και QR επαλήθευσης', icon:<ShieldCheck size={16}/>, onClick:officialReport, busy:genOfficial },
             { key:'adjust', label:'Αναπροσαρμογή ενοικίου', description:'Νόμιμη ειδοποίηση προς τον μισθωτή, με ηλεκτρονική υπογραφή', icon:<svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>, onClick:()=>setAdjustOpen(true) },
@@ -1239,9 +1346,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             ] : []),
           ]}/>
           <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <button onClick={()=>setYear(y=>y-1)} aria-label="Προηγούμενο έτος" style={{ width:34, height:34, borderRadius:10, border:'1px solid var(--border-subtle)', background:'var(--bg-surface)', color:'var(--text-secondary)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><ChevronLeft size={17}/></button>
+            <IconBtn label="Προηγούμενο έτος" onClick={()=>setYear(y=>y-1)}><ChevronLeft size={17}/></IconBtn>
             <span style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, minWidth:60, textAlign:'center', fontVariantNumeric:'tabular-nums' }}>{year}</span>
-            <button onClick={()=>setYear(y=>y+1)} aria-label="Επόμενο έτος" style={{ width:34, height:34, borderRadius:10, border:'1px solid var(--border-subtle)', background:'var(--bg-surface)', color:'var(--text-secondary)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><ChevronRight size={17}/></button>
+            <IconBtn label="Επόμενο έτος" onClick={()=>setYear(y=>y+1)}><ChevronRight size={17}/></IconBtn>
           </div>
         </div>
       </div>
@@ -1255,7 +1362,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       {!hasActivity && (
         <div style={{ ...card, padding:'26px 24px' }}>
           <div style={{ display:'flex', alignItems:'flex-start', gap:16, flexWrap:'wrap' }}>
-            <span style={{ width:44, height:44, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)' }}>
+            <span style={{ width:44, height:44, borderRadius: T.radius.popup, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)' }}>
               <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
             </span>
             <div style={{ flex:1, minWidth:240 }}>
@@ -1291,13 +1398,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                     δεν υπάρχει έσοδο, κύρια ενέργεια γίνεται το έξοδο — που
                     είναι και η μόνη καρτέλα ορατή σε κάθε κατάσταση. */}
                 {income && (
-                  <button onClick={()=>onNavigate?.(income.tab)} style={{ height:T.h.md, padding:'0 17px', borderRadius:10, border:'none', background:'var(--accent)', color:'var(--accent-text)', fontSize: 'var(--fs-base)', fontWeight:600, cursor:'pointer', fontFamily: T.font.sans }}>{income.label}</button>
+                  <Btn variant="primary" onClick={()=>onNavigate?.(income.tab)}>{income.label}</Btn>
                 )}
-                <button onClick={()=>onNavigate?.('finances')} style={income
-                  ? { height:T.h.md, padding:'0 16px', borderRadius:10, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans }
-                  : { height:T.h.md, padding:'0 17px', borderRadius:10, border:'none', background:'var(--accent)', color:'var(--accent-text)', fontSize: 'var(--fs-base)', fontWeight:600, cursor:'pointer', fontFamily: T.font.sans }}
-                  onMouseEnter={e=>{ if(income){ e.currentTarget.style.borderColor='var(--accent)'; e.currentTarget.style.color='var(--accent)' } }}
-                  onMouseLeave={e=>{ if(income){ e.currentTarget.style.borderColor='var(--border-default)'; e.currentTarget.style.color='var(--text-secondary)' } }}>Προσθήκη εξόδου</button>
+                {/* Το έξοδο γίνεται κύρια ενέργεια μόνο όταν δεν υπάρχει έσοδο δίπλα του. */}
+                <Btn variant={income?'secondary':'primary'} onClick={()=>onNavigate?.('finances')}>Προσθήκη εξόδου</Btn>
               </div>
             </div>
           </div>
@@ -1340,7 +1444,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         <div className="po-fig-card" style={card}>
           <p style={cardTitle}>Κατάσταση αποτελεσμάτων</p>
           <div style={{ display:'flex', flexDirection:'column' }}>
-            {statement.lines.map((l,i)=>{
+            {statement.lines.map((l)=>{
               const strong = l.kind==='subtotal'||l.kind==='result'
               return (
                 <div key={l.key} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderTop:l.kind==='result'?'1px solid var(--border-subtle)':'none' }}>
@@ -1375,11 +1479,12 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                   {/* ΑΠΟ ΠΟΥ ΤΟ ΞΕΡΕΙ. Χωρίς αυτή τη γραμμή, ο χρήστης βλέπει ένα
                       τσεκαρισμένο κουτάκι και δεν έχει λόγο να το ελέγξει — που
                       είναι ακριβώς πώς περνά απαρατήρητος ένας μικρότερος φόρος. */}
-                  <p style={{ margin:'4px 0 0', paddingLeft:26, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5 }}>
+                  {/* Οι δύο γραμμές κρέμονται κάτω από την ετικέτα: κουτάκι 17 συν το κενό της σειράς. */}
+                  <p style={{ margin:'4px 0 0', paddingLeft: 17 + T.sp.sm, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5 }}>
                     {collectionModeReason(collection)}
                     {rentsBankOverride !== null && ' Το άλλαξες εσύ· μετράει η δική σου απάντηση.'}
                   </p>
-                  {!rentsBank && <p style={{ margin:'4px 0 0', paddingLeft:26, fontSize:12, color:'var(--negative)', fontFamily: T.font.sans }}>Χωρίς τραπεζική είσπραξη ο φόρος υπολογίζεται στο 100% των ενοικίων.</p>}
+                  {!rentsBank && <p style={{ margin:'4px 0 0', paddingLeft: 17 + T.sp.sm, fontSize:12, color:'var(--negative)', fontFamily: T.font.sans }}>Χωρίς τραπεζική είσπραξη ο φόρος υπολογίζεται στο 100% των ενοικίων.</p>}
                 </div>
               )}
               {uncollectedRent>0 && (
@@ -1399,7 +1504,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             ΞΕΧΩΡΙΣΤΗ ΚΑΡΤΑ για μία πρόταση, έγινε το υποσέλιδό της. */}
         <div className="po-fig-card" style={{ ...card, display:'flex', flexDirection:'column' }}>
           <p style={cardTitle}>Πώς βγαίνει ο φόρος</p>
-          <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.6 }}>
+          {/* ΠΕΡΑ ΠΕΡΑ, ΟΧΙ ΡΙΓΜΕΝΗ ΔΕΞΙΑ ΑΚΡΗ. Με όλες τις προτάσεις παρούσες η
+              εξήγηση βγαίνει 283 χαρακτήρες σε κουτί 510 — δύο στήλες του
+              πλέγματος μείον το γέμισμα της κάρτας — δηλαδή τέσσερις γραμμές
+              που τελείωναν η καθεμιά αλλού. Η στοίχιση ΜΟΝΗ ΤΗΣ όμως τεντώνει
+              τα κενά: μετρημένο σε 195 κενά, διάμεσο 5,5 έναντι φυσικού 4,2.
+              Πάνε μαζί — `po-just` στο κουτί που κρατά το κείμενο, `hy()` γύρω
+              από το κείμενο. */}
+          <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.6 }}>
+            {hy(<>
             {businessMode
               ? (elpForm==='company' ? <>Σταθερός συντελεστής <strong style={{ color:'var(--text-primary)' }}>22%</strong> στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, αποσβέσεις και τόκους.</> : <>Κλίμακα άρθρου 15 στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, εισφορές ΕΦΚΑ, αποσβέσεις και τόκους.</>)
               : (regime==='individual_longterm'
@@ -1414,6 +1527,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             {provision.propertyTaxes>0?<> Από το ετήσιο σύνολο, {eur(provision.propertyTaxes)} είναι φόροι και τέλη ακινήτου.</>:''}
             {year===athensYear()?<> Για να προλάβεις τη χρονιά, <strong style={{ color:'var(--text-primary)' }}>{eur(provision.perRemainingMonth)} τον μήνα</strong> ως τον Δεκέμβριο.</>:''}
             {provision.advanceTax>0?<> Συν προκαταβολή {eur(provision.advanceTax)}, που πιστώνεται τον επόμενο χρόνο: σύνολο πρώτου έτους {eur(provision.firstYearTotal)}.</>:''}
+            </>)}
           </p>
           <div style={{ flex:1 }}/>
           <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'14px 0 0', paddingTop:12, borderTop:'1px solid var(--border-subtle)', fontFamily: T.font.sans, lineHeight:1.55 }}>
@@ -1488,7 +1602,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           )}
           <div style={{ display:'flex', flexDirection:'column', gap:6, justifyContent:'center', paddingLeft:14, borderLeft:'1px solid var(--border-subtle)', minWidth:220 }}>
             <Check checked={firstYears} onChange={updateFirstYears} label={<span style={{ fontWeight:500, color:'var(--text-primary)' }}>Νέα επιχείρηση (πρώτη τριετία)</span>} align="start" />
-            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5, paddingLeft:26 }}>Τα πρώτα 3 έτη δραστηριότητας: 1ο κλιμάκιο 4,5% (αντί 9%) και προκαταβολή φόρου μειωμένη κατά 50%.</span>
+            {/* Κρέμασμα κάτω από την ετικέτα: κουτάκι 17 συν το κενό της σειράς. */}
+            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5, paddingLeft: 17 + T.sp.sm }}>Τα πρώτα 3 έτη δραστηριότητας: 1ο κλιμάκιο 4,5% (αντί 9%) και προκαταβολή φόρου μειωμένη κατά 50%.</span>
           </div>
         </div>
       )}
@@ -1539,8 +1654,16 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           )}
           {rs.collectedTotal>0&&(
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginTop:12 }}>
-              <button onClick={printCertificate} title="Ετήσια βεβαίωση καταβληθέντων ενοικίων (PDF) για τον μισθωτή" style={{ display:'inline-flex', alignItems:'center', gap:6, height:T.h.sm, padding:'0 12px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans }} onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='var(--accent)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border-default)';e.currentTarget.style.color='var(--text-secondary)'}}><Printer size={13}/>Βεβαίωση ενοικίου</button>
-              <button onClick={officialRentCertificate} disabled={genOfficialCert} title="Επίσημο true-PDF βεβαίωσης ενοικίου με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς" style={{ display:'inline-flex', alignItems:'center', gap:6, height:T.h.sm, padding:'0 12px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:genOfficialCert?'wait':'pointer', opacity:genOfficialCert?0.6:1, fontFamily: T.font.sans }} onMouseEnter={e=>{if(!genOfficialCert){e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='var(--accent)'}}} onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border-default)';e.currentTarget.style.color='var(--text-secondary)'}}><ShieldCheck size={14}/>{genOfficialCert?'Δημιουργία…':'Επίσημο PDF'}</button>
+              {/* Το `title` κάθε βεβαίωσης λέει ΤΙ ακριβώς βγαίνει και για ποιον·
+                  ζει στο περιτύλιγμα γιατί το «Επίσημο PDF» απενεργοποιείται όσο
+                  ετοιμάζεται το αρχείο και το απενεργοποιημένο κουμπί δεν δείχνει
+                  παντού το δικό του tooltip. */}
+              <span style={{ display:'inline-flex' }} title="Ετήσια βεβαίωση καταβληθέντων ενοικίων (PDF) για τον μισθωτή">
+                <Btn variant="secondary" onClick={printCertificate}><Printer size={13}/>Βεβαίωση ενοικίου</Btn>
+              </span>
+              <span style={{ display:'inline-flex' }} title="Επίσημο true-PDF βεβαίωσης ενοικίου με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς">
+                <Btn variant="secondary" onClick={officialRentCertificate} disabled={genOfficialCert}><ShieldCheck size={14}/>{genOfficialCert?'Δημιουργία…':'Επίσημο PDF'}</Btn>
+              </span>
             </div>
           )}
           </Fold>
@@ -1592,7 +1715,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           δεύτερα. Ζουν εδώ, ένα κλικ μακριά, αντί να γεμίζουν την πρώτη ματιά
           του ανθρώπου που θέλει μόνο να ξέρει πού βρίσκεται. */}
       <div style={card}>
-        <button onClick={()=>setAdvancedOpen(o=>!o)} aria-expanded={advancedOpen} className="acc-toggle" style={{ display:'flex', alignItems:'center', gap: 8, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' }}>
+        <button onClick={()=>setAdvancedOpen(o=>!o)} aria-expanded={advancedOpen} className="acc-toggle acc-row">
           <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:advancedOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
           <div style={{ flex:1, minWidth:0 }}>
             <p style={{ ...cardTitle, margin:0 }}>Προχωρημένα εργαλεία</p>
@@ -1605,24 +1728,30 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         {/* Κλείσιμο χρήσης, premium κατάσταση με σαφή ένδειξη ανοιχτό/κλειστό */}
         {(()=>{ const isCurrent = year===athensYear()
           const isFuture = year>athensYear()
-          const st = drift?'drift':closing?'locked':'open'
-          const meta = { open:{ c:isCurrent?'var(--accent)':'var(--text-tertiary)', label:'ΑΝΟΙΧΤΟ' }, locked:{ c:'var(--positive)', label:'ΚΛΕΙΣΜΕΝΟ' }, drift:{ c:'var(--warning)', label:'ΑΠΟΚΛΙΣΗ' } }[st]
+          const st = closingErr?'unknown':drift?'drift':closing?'locked':'open'
+          const meta = { open:{ c:isCurrent?'var(--accent)':'var(--text-tertiary)', label:'ΑΝΟΙΧΤΟ' }, locked:{ c:'var(--positive)', label:'ΚΛΕΙΣΜΕΝΟ' }, drift:{ c:'var(--warning)', label:'ΑΠΟΚΛΙΣΗ' }, unknown:{ c:'var(--text-tertiary)', label:'ΑΓΝΩΣΤΗ ΚΑΤΑΣΤΑΣΗ' } }[st]
           return (
           <div style={{ ...card, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', borderColor: st==='drift'?'var(--warning)':'var(--border-subtle)' }}>
-            <span style={{ display:'inline-flex', alignItems:'center', gap:6, height:26, padding:'0 10px', borderRadius:8, background: st==='drift' ? `color-mix(in srgb, var(--warning) 12%, transparent)` : 'var(--bg-elevated)', color: st==='drift' ? 'var(--warning)' : 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.5px', fontFamily: T.font.sans }}>
-              {st==='open'?(isCurrent?<span className="live-dot" style={{ width:7, height:7, borderRadius:'50%', background:'var(--accent)', flexShrink:0 }}/>:<Unlock size={12}/>):<Lock size={12}/>}{meta.label}
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6, height:26, padding:'0 10px', borderRadius: T.radius.chip, background: st==='drift' ? `color-mix(in srgb, var(--warning) 12%, transparent)` : 'var(--bg-elevated)', color: st==='drift' ? 'var(--warning)' : 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.5px', fontFamily: T.font.sans }}>
+              {st==='unknown'?<Unlock size={12}/>:st==='open'?(isCurrent?<span className="live-dot" style={{ width:7, height:7, borderRadius:'50%', background:'var(--accent)', flexShrink:0 }}/>:<Unlock size={12}/>):<Lock size={12}/>}{meta.label}
             </span>
             <span style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily: T.font.sans }}>
-              {st==='open'?(isCurrent?<>Χρήση {year} σε εξέλιξη · μήνας {provMonth} από 12.</>:isFuture?<>Η χρήση {year} δεν έχει ξεκινήσει ακόμη.</>:<>Χρήση {year} ολοκληρωμένη, έτοιμη για κλείδωμα.</>):st==='drift'?<>Η χρήση {year} κλειδώθηκε, αλλά τα δεδομένα άλλαξαν έκτοτε.</>:<>Χρήση {year}, κλειδωμένη στις {new Date(closing!.locked_at).toLocaleDateString('el-GR')}.</>}
+              {st==='unknown'?<>Δεν μπορέσαμε να διαβάσουμε αν η χρήση {year} είναι κλειδωμένη. Δεν εμφανίζεται κουμπί κλειδώματος: αν είναι ήδη κλειδωμένη, ένα νέο κλείδωμα θα έσβηνε το αρχικό στιγμιότυπο. Ανανέωσε τη σελίδα.</>:st==='open'?(isCurrent?<>Χρήση {year} σε εξέλιξη · μήνας {provMonth} από 12.</>:isFuture?<>Η χρήση {year} δεν έχει ξεκινήσει ακόμη.</>:<>Χρήση {year} ολοκληρωμένη, έτοιμη για κλείδωμα.</>):st==='drift'?<>Η χρήση {year} κλειδώθηκε, αλλά τα δεδομένα άλλαξαν έκτοτε.</>:<>Χρήση {year}, κλειδωμένη στις {new Date(closing!.locked_at).toLocaleDateString('el-GR')}.</>}
               <InfoHint>Το κλείδωμα κρατά αμετάβλητο στιγμιότυπο των αριθμών του έτους (χρήσιμο μετά την υποβολή στην ΑΑΔΕ). Αν αργότερα αλλάξεις ενοίκια ή έξοδα, εμφανίζεται προειδοποίηση απόκλισης, χωρίς να χαθεί το αρχικό κλείδωμα.</InfoHint>
               {lockErr && <span style={{ display:'block', marginTop:4, color:'var(--negative)', fontSize:12 }}>Το κλείδωμα δεν αποθηκεύτηκε: {lockErr}. Έλεγξε ότι έχει εφαρμοστεί το migration book_closings στη βάση.</span>}
+              {closingErr && <span style={{ display:'block', marginTop:4, color:'var(--negative)', fontSize:12 }}>{closingErr}</span>}
             </span>
             <div style={{ flex:1 }}/>
-            {st==='open'
-              ? (isFuture ? null : <button onClick={lockYear} style={{ display:'inline-flex', alignItems:'center', gap:6, height:T.h.sm, padding:'0 14px', borderRadius: T.radius.card, border:'1px solid var(--border-default)', background:'var(--bg-elevated)', color:'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans, transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s' }} onMouseEnter={e=>{e.currentTarget.style.color='var(--accent)';e.currentTarget.style.borderColor='var(--accent)'}} onMouseLeave={e=>{e.currentTarget.style.color='var(--text-secondary)';e.currentTarget.style.borderColor='var(--border-default)'}}><Lock size={13}/>Κλείδωμα έτους</button>)
+            {st==='unknown' ? null : st==='open'
+              ? (isFuture ? null : <Btn variant="secondary" onClick={lockYear}><Lock size={13}/>Κλείδωμα έτους</Btn>)
               : <>
+                  {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το περίγραμμα και το κείμενο είναι --warning
+                      και ο τόνος προειδοποίησης δεν είναι ρόλος του Btn· ως secondary
+                      θα έχανε τη μόνη ένδειξη ότι τα δεδομένα άλλαξαν μετά το κλείδωμα. */}
                   {st==='drift'&&<button onClick={lockYear} style={{ height:T.h.sm, padding:'0 13px', borderRadius: T.radius.card, border:'1px solid var(--warning)', background:'transparent', color:'var(--warning)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans }}>Ενημέρωση</button>}
-                  <button onClick={unlockYear} style={{ display:'inline-flex', alignItems:'center', gap:6, height:T.h.sm, padding:'0 13px', borderRadius: T.radius.card, border:'none', background:'transparent', color:'var(--text-tertiary)', fontSize: 'var(--fs-base)', cursor:'pointer', fontFamily: T.font.sans }} onMouseEnter={e=>{e.currentTarget.style.color='var(--text-secondary)'}} onMouseLeave={e=>{e.currentTarget.style.color='var(--text-tertiary)'}}><Unlock size={13}/>Ξεκλείδωμα</button>
+                  {/* `ghost`: ήταν ήδη διάφανο και χωρίς περίγραμμα, δίπλα στο
+                      «Ενημέρωση» που κρατά τον τόνο της προειδοποίησης. */}
+                  <Btn variant="ghost" onClick={unlockYear}><Unlock size={13}/>Ξεκλείδωμα</Btn>
                 </>}
           </div>
         )})()}
@@ -1651,7 +1780,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <div {...fixedCols(taxRows.length, 10, 'stretch')}>
               {taxRows.map((r,i)=>{ const active=statement.taxableIncome>r.from&&statement.taxableIncome<=r.to; const hot=hoverBracket===i; return (
                 <div key={r.range} onMouseEnter={()=>setHoverBracket(i)} onMouseLeave={()=>setHoverBracket(null)}
-                  style={{ padding:'10px 12px', borderRadius:12, minWidth:0, border:`1px solid ${hot?'var(--accent)':active?'var(--border-default)':'var(--border-subtle)'}`, background:active?'var(--bg-elevated)':'var(--bg-surface)', transition:'border-color 0.15s, background 0.15s', cursor:'default' }}>
+                  style={{ padding:'10px 12px', borderRadius: T.radius.popup, minWidth:0, border:`1px solid ${hot?'var(--accent)':active?'var(--border-default)':'var(--border-subtle)'}`, background:active?'var(--bg-elevated)':'var(--bg-surface)', transition:'border-color 0.15s, background 0.15s', cursor:'default' }}>
                   <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:0, fontFamily: T.font.sans }}>{r.range}</p>
                   <p style={{ fontSize:16, fontWeight:700, color:hot?'var(--accent)':'var(--text-primary)', margin:'2px 0 0', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans, transition:'color 0.16s ease' }}>{r.rate}</p>
                 </div>
@@ -1662,9 +1791,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           <div style={{ ...card, display:'flex', alignItems:'center', justifyContent:'space-between', gap:20, flexWrap:'wrap' }}>
             <div style={{ minWidth:0, flex:1 }}>
               <p style={{ ...cardTitle, margin:0 }}>Νομικό πρόσωπο</p>
-              <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'7px 0 0', fontFamily: T.font.sans, lineHeight:1.6, maxWidth:560 }}>Σταθερός φόρος <strong style={{ color:'var(--text-primary)' }}>22%</strong> επί των καθαρών κερδών, ανεξαρτήτως ύψους εισοδήματος (ΑΕ, ΕΠΕ, ΙΚΕ, ΟΕ, ΕΕ). Στη διανομή μερίσματος προστίθεται φόρος 5% και ισχύει προκαταβολή φόρου για το επόμενο έτος.</p>
+              {/* ΙΔΙΟ ΣΧΗΜΑ ΜΕ ΤΗΝ ΕΞΗΓΗΣΗ ΤΟΥ ΦΟΡΟΥ, ΙΔΙΑ ΔΟΥΛΕΙΑ. 190 χαρακτήρες
+                  σε κουτί 560 —το `maxWidth` της ίδιας γραμμής— βγάζουν τρεις
+                  γραμμές στον υπολογιστή· στα 430 το κουτί πέφτει κοντά στα 380
+                  κι οι γραμμές γίνονται τέσσερις. Στοίχιση πέρα πέρα με μαλακά
+                  ενωτικά από κάτω: χωριστά, η μία τεντώνει τα κενά κι ο άλλος
+                  δεν έχει τι να κλείσει. */}
+              <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'7px 0 0', fontFamily: T.font.sans, lineHeight:1.6, maxWidth:560 }}>{hy(<>Σταθερός φόρος <strong style={{ color:'var(--text-primary)' }}>22%</strong> επί των καθαρών κερδών, ανεξαρτήτως ύψους εισοδήματος (ΑΕ, ΕΠΕ, ΙΚΕ, ΟΕ, ΕΕ). Στη διανομή μερίσματος προστίθεται φόρος 5% και ισχύει προκαταβολή φόρου για το επόμενο έτος.</>)}</p>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:104, height:76, borderRadius:12, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', flexShrink:0 }}>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:104, height:76, borderRadius: T.radius.popup, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', flexShrink:0 }}>
               <span style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>22%</span>
               <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', letterSpacing:'0.5px', textTransform:'uppercase', fontFamily: T.font.sans, marginTop: 4 }}>Συντελεστής</span>
             </div>
@@ -1672,8 +1807,23 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         )}
 
         {/* Επαγγελματίας: ενοποίηση χαρτοφυλακίου + εκπιπτόμενα */}
+        {/* ΔΥΟ ΣΤΗΛΕΣ ΜΟΝΟ ΟΤΑΝ Η ΚΑΘΕΜΙΑ ΠΑΙΡΝΕΙ ΟΣΟ ΔΙΝΕΙ ΤΟ ΤΗΛΕΦΩΝΟ.
+            ΜΕΤΡΗΜΕΝΟ ΣΤΗ ΣΚΗΝΗ accounting-pro. Το πλέγμα είναι φωλιασμένο στην
+            κάρτα των προχωρημένων: στα 430 η .app-content κρατά 12 δεξιά
+            αριστερά (αφήνει 406) και η κάρτα άλλα 16, οπότε το πλέγμα πιάνει
+            374 και βγάζει μία στήλη των 374. Με ελάχιστο 320 έσπαγε σε δύο
+            στήλες ήδη στα 768, δηλαδή 336 η καθεμιά: 38 ΛΙΓΟΤΕΡΑ ΑΠΟ ΤΟ
+            ΤΗΛΕΦΩΝΟ. Εκεί το «75.600,00€» ζητούσε 96 σε κουτί 91 (κομμένο) ·
+            τα ονόματα των ακινήτων 73 σε 62 (με αποσιωπητικά). Στα 834 έβγαζε
+            369, πάλι κάτω από το τηλέφωνο. Με ελάχιστο 380 οι δύο στήλες
+            ξεκινούν στα 856 του παραθύρου με 380 η καθεμιά, δηλαδή ποτέ
+            στενότερες από το τηλέφωνο. Χαμηλότερο ελάχιστο δεν κάνει: στα 800
+            το εσωτερικό κελί βγαίνει ακριβώς 96 για τιμή που ζητά 96.
+            ΚΟΣΤΟΣ, ΜΕΤΡΗΜΕΝΟ: στα 768 η ενότητα ψηλώνει από 582 σε 698 · στα
+            834 από 564 σε 698. Στα 430 και από τα 1024 κι επάνω δεν αλλάζει
+            τίποτα. */}
         {mode==='professional'&&(
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap:16 }}>
             {elp==='personal'&&(
             <Fold open={consolOpen} onToggle={()=>setConsolOpen(o=>!o)}
               title={<span style={{ display:'inline-flex', alignItems:'center', gap:8 }}><Layers size={15} style={{ color:'var(--text-secondary)' }}/>Ενοποίηση χαρτοφυλακίου</span>}>
@@ -1712,7 +1862,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               {/* ΤΟ ΖΕΥΓΟΣ ΠΟΥ ΠΡΕΠΕΙ ΝΑ ΔΙΑΒΑΖΕΤΑΙ ΜΑΖΙ. Δύο ποσά που αθροίζουν
                   στο σύνολο των δαπανών, γραμμένα με το χέρι στα 16 και με
                   ετικέτα άλλου ρυθμού από το βιβλίο. Ενα μέγεθος, από το
-                  μακρύτερο: αλλιώς το «1.152,00 €» δίπλα στο «0,00 €» φαίνεται
+                  μακρύτερο: αλλιώς το «1.152,00€» δίπλα στο «0,00€» φαίνεται
                   σημαντικότερο επειδή είναι απλώς μακρύτερο. */}
               {(() => { const row = [
                 ['Εκπιπτόμενα', eur(deductibleTotal)] as const,
@@ -1731,8 +1881,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         {/* Συμβουλευτική, καθαρές, στοχευμένες προτάσεις με αξία (ανοιγοκλείνει ομοιόμορφα) */}
         {advisory.length>0 && (
         <div ref={advisoryRef} style={card}>
-          <button onClick={()=>{ setAdvisoryOpen(o=>!o); setOpenAdvisory(null) }} aria-expanded={advisoryOpen} className="acc-toggle" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' }}>
-            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius:8, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Lightbulb size={15}/></span>
+          <button onClick={()=>{ setAdvisoryOpen(o=>!o); setOpenAdvisory(null) }} aria-expanded={advisoryOpen} className="acc-toggle acc-row">
+            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius: T.radius.chip, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Lightbulb size={15}/></span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ ...cardTitle, margin:0 }}>Συμβουλευτική</p>
               <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{advisory.length} ιδέες φορολογίας, χρηματοδότησης και αξιοποίησης, από τα δικά σου δεδομένα.</p>
@@ -1744,18 +1894,27 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             {advisory.map(a=>{
               const open = openAdvisory===a.id
               return (
-                <div key={a.id} style={{ borderRadius:12, background:'var(--bg-surface)', border:`1px solid ${open?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
-                  <button onClick={()=>setOpenAdvisory(open?null:a.id)} aria-expanded={open} className="acc-toggle" style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'none', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }}
-                    onMouseEnter={e=>{e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{e.currentTarget.style.background='none'}}>
+                <div key={a.id} style={{ borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${open?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
+                  {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: κεφαλίδα σε ΟΛΟ το πλάτος της κάρτας. Το Btn
+                      είναι inline-flex κεντραρισμένο, χωρίς πλήρες πλάτος. */}
+                  <button onClick={()=>setOpenAdvisory(open?null:a.id)} aria-expanded={open} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
                     <div style={{ flex:1, minWidth:0 }}>
-                      <span style={{ display:'inline-flex', alignItems:'center', height:20, padding:'0 9px', borderRadius:6, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.5px', textTransform:'uppercase', color:'var(--text-tertiary)' }}>{ADVISORY_TONE[a.tone]}</span>
+                      <span style={{ display:'inline-flex', alignItems:'center', height:20, padding:'0 9px', borderRadius: T.radius.xs, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.5px', textTransform:'uppercase', color:'var(--text-tertiary)' }}>{ADVISORY_TONE[a.tone]}</span>
                       <p style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)', margin:'7px 0 0', lineHeight:1.35 }}>{a.title}</p>
                     </div>
                     <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:open?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
                   </button>
                   {open&&(
                     <div style={{ padding:'0 16px 15px' }}>
-                      <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.6 }}>{a.body}</p>
+                      {/* ΤΟ ΣΩΜΑ ΤΗΣ ΙΔΕΑΣ ΕΙΝΑΙ ΤΟ ΜΟΝΟ ΠΡΑΓΜΑΤΙΚΟ ΚΕΙΜΕΝΟ ΤΗΣ ΚΑΡΤΑΣ.
+                          Κάθεται σε κελί του `.card-row`, που είναι τρεις στήλες με κενό 12
+                          (globals.css:1975) κι πέφτει σε δύο κάτω από τα 900 — δηλαδή στήλη
+                          ~450 στο επιτραπέζιο, μείον 16+16 γέμισμα της κάρτας: ~418. Οι
+                          προτάσεις είναι 250 ώς 450 χαρακτήρες, δηλαδή έξι ώς δέκα γραμμές.
+                          Ριγμένες, κάθε μία τελείωνε αλλού κι η κάρτα δεν έκλεινε πουθενά.
+                          Ο συλλαβισμός πάει μαζί: χωρίς αυτόν, δέκα γραμμές κλείνουν
+                          τεντώνοντας τα κενά κι βγαίνουν ποτάμια λευκού. */}
+                      <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.6 }}>{hy(a.body)}</p>
                       {(a.refer||a.linkHref)&&(
                         <div style={{ display:'flex', alignItems:'center', gap:14, marginTop: 12, flexWrap:'wrap' }}>
                           {a.refer&&<span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans }}>{referLabel(a.refer)}</span>}
@@ -1778,8 +1937,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         {/* «Τι άλλαξε» — επίκαιροι κανόνες 2026 σχετικοί με το προφίλ (διακριτικό) */}
         {relevantChanges.length>0 && (
         <div ref={changesRef} style={card}>
-          <button onClick={()=>{ setChangesOpen(o=>!o); setOpenChange(null) }} aria-expanded={changesOpen} className="acc-toggle" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' }}>
-            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius:8, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Landmark size={15}/></span>
+          <button onClick={()=>{ setChangesOpen(o=>!o); setOpenChange(null) }} aria-expanded={changesOpen} className="acc-toggle acc-row">
+            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius: T.radius.chip, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Landmark size={15}/></span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ ...cardTitle, margin:0 }}>Τι άλλαξε το 2026</p>
               <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{relevantChanges.length} επίκαιροι κανόνες για το προφίλ σου.</p>
@@ -1791,15 +1950,23 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               {relevantChanges.map((u:RegulatoryUpdate)=>{
                 const uo = openChange===u.id
                 return (
-                  <div key={u.id} style={{ borderRadius:12, background:'var(--bg-surface)', border:`1px solid ${uo?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
-                    <button onClick={()=>setOpenChange(uo?null:u.id)} aria-expanded={uo} className="acc-toggle" style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'13px 15px', background:'none', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }}
-                      onMouseEnter={e=>{e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{e.currentTarget.style.background='none'}}>
+                  <div key={u.id} style={{ borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${uo?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
+                    {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: η αιώρηση γεμίσματος έρχεται από την κλάση
+                        `po-hov-fill` · κανένα πρωτογενές δεν δέχεται className. */}
+                    <button onClick={()=>setOpenChange(uo?null:u.id)} aria-expanded={uo} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'13px 15px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
                       <p style={{ flex:1, minWidth:0, fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', margin:0, lineHeight:1.35, fontFamily: T.font.sans }}>{u.title}</p>
                       <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:uo?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
                     </button>
                     {uo && (
                       <div style={{ padding:'0 15px 14px' }}>
-                        <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, lineHeight:1.6, fontFamily: T.font.sans }}>{u.summary}</p>
+                        {/* ΙΔΙΟ ΣΧΗΜΑ, ΙΔΙΑ ΑΠΑΝΤΗΣΗ. Η περίληψη του κανόνα κάθεται σε
+                            `auto-fit, minmax(min(100%, 300px), 1fr)` με κενό 12, δηλαδή στήλη
+                            300 ώς ~450 ανάλογα με το πλάτος, μείον 15+15 γέμισμα. Οι
+                            περιλήψεις είναι νομικό κείμενο με άρθρα κι ποσά — η «Εκπτωση
+                            φόρου ανακαίνισης» πιάνει οκτώ γραμμές. Οι δύο κάρτες είναι
+                            δίπλα δίπλα στην ίδια οθόνη: αν στοιχιστεί μόνο η μία, η
+                            διαφορά φαίνεται με μια ματιά. */}
+                        <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, lineHeight:1.6, fontFamily: T.font.sans }}>{hy(u.summary)}</p>
                         <div style={{ display:'flex', alignItems:'center', gap:12, marginTop: 12, flexWrap:'wrap' }}>
                           <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans, letterSpacing:'0.3px' }}>Ισχύς: {u.effective} · {u.legalBasis}</span>
                           {u.sourceHref && <OutLink href={u.sourceHref} label={u.sourceLabel||'Πηγή'}/>}
@@ -1826,6 +1993,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         {/* Κόστος αγοράς & πώλησης, δομημένη εκτίμηση μεταβίβασης */}
         <div style={card}>
           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:xferOpen?16:0 }}>
+            {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: μοιράζεται τη σειρά με τον επιλογέα Αγορά/Πώληση
+                (flex:1 · minWidth:0). Το Btn δεν δέχεται style θέσης, όπως το IconBtn. */}
             <button onClick={()=>setXferOpen(o=>!o)} aria-expanded={xferOpen} className="acc-toggle" style={{ display:'flex', alignItems:'center', gap: 8, background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left', flex:1, minWidth:0 }}>
               <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:xferOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
               <div>
@@ -1835,8 +2004,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             </button>
             {xferOpen&&(
             <div style={{ display:'flex', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:2, gap:2 }}>
+              {/* `seg` και όχι `chip`: το πλαίσιο γύρω τους έχει ήδη περίγραμμα. */}
               {([['buy','Αγορά'],['sell','Πώληση']] as ['buy'|'sell',string][]).map(([s,label])=>(
-                <button key={s} onClick={()=>setXferSide(s)} style={{ height:T.h.sm, padding:'0 15px', border:'none', borderRadius:8, cursor:'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:xferSide===s?600:500, background:xferSide===s?'var(--accent)':'transparent', color:xferSide===s?'var(--accent-text)':'var(--text-secondary)', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{label}</button>
+                <ChipToggle key={s} on={xferSide===s} shape="seg" onClick={()=>setXferSide(s)}>{label}</ChipToggle>
               ))}
             </div>
             )}
@@ -1851,7 +2021,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               <span style={{ color:'var(--text-tertiary)' }}>€</span>
             </label>
             {xferSide==='buy'&&(
-              <Check checked={xferFirstHome} onChange={setXferFirstHome} label="Πρώτη κατοικία" hint="Απαλλαγή φόρου μεταβίβασης έως το όριο αξίας (200.000 € άγαμος / 250.000 € έγγαμος)." />
+              <Check checked={xferFirstHome} onChange={setXferFirstHome} label="Πρώτη κατοικία" hint="Απαλλαγή φόρου μεταβίβασης έως το όριο αξίας (200.000€ άγαμος / 250.000€ έγγαμος)." />
             )}
             <Check checked={xferAgent} onChange={setXferAgent} label="Μεσίτης" hint="Μεσιτική αμοιβή ~2% + ΦΠΑ." />
           </div>
@@ -1899,11 +2069,11 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <span style={{ width:104, flexShrink:0 }}/>
             <div style={{ flex:1, display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
               <span style={{ flex:1, textAlign:'right', display:'inline-flex', alignItems:'center', justifyContent:'flex-end', gap:6, fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>
-                <span style={{ width:8, height:8, borderRadius:2, background:'var(--series-out)' }}/>Έξοδα
+                <span style={{ width:8, height:8, borderRadius: T.radius.hair, background:'var(--series-out)' }}/>Έξοδα
               </span>
               <span style={{ width:1, flexShrink:0 }}/>
               <span style={{ flex:1, display:'inline-flex', alignItems:'center', gap:6, fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>
-                <span style={{ width:8, height:8, borderRadius:2, background:'var(--series-in)' }}/>Έσοδα
+                <span style={{ width:8, height:8, borderRadius: T.radius.hair, background:'var(--series-in)' }}/>Έσοδα
               </span>
             </div>
             <span style={{ width:110, flexShrink:0, textAlign:'right', fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>Καθαρή ροή</span>
@@ -1953,31 +2123,76 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           {trial.length===0?(
             <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-tertiary)', fontFamily: T.font.sans, padding:'2px 0' }}>Δεν υπάρχουν εισπράξεις ή πληρωμές για το {year} ώστε να σχηματιστεί ισοζύγιο.</p>
           ):(
-            <div style={{ borderRadius:12, border:'1px solid var(--border-subtle)', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
-              <div style={{ minWidth:TRIAL_MIN }}>
-              <div style={{ display:'grid', gridTemplateColumns:TRIAL_COLS, gap:8, padding:'9px 14px', background:'var(--bg-elevated)', borderBottom:'1px solid var(--border-subtle)' }}>
-                {[['Κωδικός ΕΛΠ','left'],['Λογαριασμός','left'],['Χρέωση','right'],['Πίστωση','right'],['Υπόλοιπο','right']].map(([h,a])=>(
-                  <span key={h} style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-tertiary)', fontFamily: T.font.sans, textAlign:a as 'left'|'right' }}>{h}</span>
-                ))}
-              </div>
-              {trial.map((r,i)=>(
-                <div key={r.code} style={{ display:'grid', gridTemplateColumns:TRIAL_COLS, gap:8, padding:'8px 14px', borderBottom:i<trial.length-1?'1px solid var(--border-subtle)':'none', alignItems:'center' }}>
-                  <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums' }}>{r.code}</span>
-                  <span className="po-elide" style={{ fontSize: 'var(--fs-base)', color:'var(--text-primary)', fontFamily: T.font.sans }} title={r.account}>{r.account}</span>
-                  <span style={{ fontSize: 'var(--fs-base)', color:r.debit?'var(--text-secondary)':'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right' }}>{r.debit?eur(r.debit):fe(0)}</span>
-                  <span style={{ fontSize: 'var(--fs-base)', color:r.credit?'var(--text-secondary)':'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right' }}>{r.credit?eur(r.credit):fe(0)}</span>
-                  <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right' }}>{eur(r.balance)}</span>
-                </div>
-              ))}
-              <div style={{ display:'grid', gridTemplateColumns:TRIAL_COLS, gap:8, padding:'10px 14px', background:'var(--bg-elevated)', borderTop:'1px solid var(--border-default)', alignItems:'center' }}>
-                <span/>
-                <span style={{ fontSize: 'var(--fs-xs)', fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, textTransform:'uppercase', letterSpacing:'0.05em' }}>Σύνολα</span>
-                <span style={{ fontSize: 'var(--fs-base)', fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right' }}>{eur(jTotals.debit)}</span>
-                <span style={{ fontSize: 'var(--fs-base)', fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right' }}>{eur(jTotals.credit)}</span>
-                <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'flex-end', gap: 4, fontSize: 'var(--fs-xs)', fontWeight:600, color:jTotals.balanced?'var(--text-tertiary)':'var(--negative)', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>
-                  {jTotals.balanced?<><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--positive)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><path d="M20 6 9 17l-5-5"/></svg>Ισοσκελισμένο</>:<>Διαφορά {eur(jTotals.debit-jTotals.credit)}</>}
-                </span>
-              </div>
+            /* ΤΟ ΙΣΟΖΥΓΙΟ ΗΤΑΝ ΠΙΝΑΚΑΣ ΓΡΑΜΜΕΝΟΣ ΜΕ divs. Πέντε στήλες ανά σειρά,
+               κεφαλίδα από `span` κι ένα πλέγμα που κρατούσε τα πλάτη: για τον
+               αναγνώστη οθόνης, εξήντα ασύνδετα κείμενα χωρίς κανένα να λέει σε
+               ποια στήλη ανήκει ή σε ποιον λογαριασμό. Ιδιες στήλες, ίδια σειρά,
+               ίδια λεκτικά — αλλάζει ΜΟΝΟ η δομή: thead/tbody/tfoot, ο κωδικός
+               ΕΛΠ κλειδί της γραμμής (th scope="row"), τα ποσά `.num`. Το
+               χειροποίητο overflowX+minWidth έγινε `.po-scroll-x` + `--tbl-min`
+               κι το κουτί `.po-table-box` (radius 14 αντί 12, όπως οι άλλοι
+               εννιά πίνακες). Το `--tbl-fs` δένεται στο `--fs-base` επειδή οι
+               σειρές έγραφαν `var(--fs-base)`: σκέτη η κλάση θα τις κάρφωνε στα
+               13 κι η αφή χάνει το εικονοστοιχείο που της δίνει το
+               `pointer: coarse`. */
+            <div className="po-table-box">
+              <div className="po-scroll-x" style={{ WebkitOverflowScrolling:'touch' }}>
+              <table className="po-table tbl-fixed" style={{ '--tbl-min': `${TRIAL_MIN}px`, '--tbl-fs': 'var(--fs-base)' }}>
+                <caption>Ισοζύγιο διπλογραφικής</caption>
+                <colgroup>
+                  <col style={{ width: trialCol(TRIAL_W.code) }}/>
+                  {/* Ο λογαριασμός παίρνει ό,τι περισσεύει, όπως το `1fr` του πλέγματος. */}
+                  <col/>
+                  <col style={{ width: trialCol(TRIAL_W.debit) }}/>
+                  <col style={{ width: trialCol(TRIAL_W.credit) }}/>
+                  <col style={{ width: trialCol(TRIAL_W.balance) }}/>
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Κωδικός ΕΛΠ</th>
+                    <th scope="col">Λογαριασμός</th>
+                    <th scope="col" className="num">Χρέωση</th>
+                    <th scope="col" className="num">Πίστωση</th>
+                    <th scope="col" className="num">Υπόλοιπο</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trial.map(r=>(
+                    <tr key={r.code}>
+                      <th scope="row">{r.code}</th>
+                      <td className="po-elide" style={{ color:'var(--text-primary)' }} title={r.account}>{r.account}</td>
+                      <td className="num" style={{ color:r.debit?'var(--text-secondary)':'var(--text-tertiary)' }}>{r.debit?eur(r.debit):fe(0)}</td>
+                      <td className="num" style={{ color:r.credit?'var(--text-secondary)':'var(--text-tertiary)' }}>{r.credit?eur(r.credit):fe(0)}</td>
+                      <td className="num" style={{ fontWeight:600, color:'var(--text-primary)' }}>{eur(r.balance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  {/* Η σειρά των συνόλων κρατά το φόντο που είχε· τη σκουρότερη
+                      γραμμή από πάνω τη δίνει πλέον η `is-total`. Το «Σύνολα»
+                      κάθεται στη στήλη του λογαριασμού, όπως πριν, οπότε το
+                      πρώτο κελί μένει κενό αντί για colSpan που θα το μετακινούσε.
+                      ΤΑ ΔΥΟ ΕΝΣΩΜΑΤΩΜΕΝΑ ΣΤΟ «Σύνολα» ΕΙΝΑΙ ΑΝΑΓΚΗ, ΟΧΙ ΓΟΥΣΤΟ:
+                      η `.is-total` ζωγραφίζει τη γραμμή μόνο σε `td`, οπότε χωρίς
+                      το `borderTop` η σκούρα γραμμή θα έσπαγε στη μέση της σειράς
+                      — κι ένα `th` εκτός `thead`/`tbody` το κεντράρει ο περιηγητής
+                      από μόνος του, ενώ στο πλέγμα η ετικέτα ήταν αριστερά. */}
+                  <tr className="is-total" style={{ background:'var(--bg-elevated)' }}>
+                    <td/>
+                    <th scope="row" style={{ textAlign:'left', borderTop:'1px solid var(--border-default)', fontSize: 'var(--fs-xs)', fontWeight:700, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Σύνολα</th>
+                    <td className="num" style={{ fontWeight:700 }}>{eur(jTotals.debit)}</td>
+                    <td className="num" style={{ fontWeight:700 }}>{eur(jTotals.credit)}</td>
+                    <td className="num" style={{ fontSize: 'var(--fs-xs)', fontWeight:600, color:jTotals.balanced?'var(--text-tertiary)':'var(--negative)' }}>
+                      {/* Το εικονίδιο με το λεκτικό του μένουν σε μία γραμμή: το
+                          flex μπαίνει σε span μέσα στο κελί, γιατί `display:flex`
+                          πάνω στο `<td>` σβήνει το κελί από τη διάταξη πίνακα. */}
+                      <span style={{ display:'inline-flex', alignItems:'center', gap: 4, whiteSpace:'nowrap' }}>
+                        {jTotals.balanced?<><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--positive)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><path d="M20 6 9 17l-5-5"/></svg>Ισοσκελισμένο</>:<>Διαφορά {eur(jTotals.debit-jTotals.credit)}</>}
+                      </span>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
               </div>
             </div>
             )}

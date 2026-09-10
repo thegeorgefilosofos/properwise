@@ -18,7 +18,7 @@ import * as tenantStore from '@/lib/data/tenants';
 // ΟΙ ΔΟΣΕΙΣ ΓΕΝΝΙΟΥΝΤΑΙ ΜΕ ΤΗ ΜΙΣΘΩΣΗ, ΟΧΙ ΟΤΑΝ ΤΙΣ ΚΟΙΤΑΞΕΙ ΚΑΝΕΙΣ.
 import { syncInstalments } from './rentInstalments';
 import type { Tenant } from './TabTenantTypes';
-import { T, TT, Btn, Spinner, EmptyState, Modal, fp, fixedCols } from '@/components/Theme';
+import { T, TT, Btn, ChipToggle, Spinner, EmptyState, Modal, fp, fixedCols } from '@/components/Theme';
 import { Building2 } from 'lucide-react';
 import { InfoHint } from './InfoHint';
 import { savedData } from '@/components/dbWrite';
@@ -208,15 +208,13 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
 
   // Ύψη από την κοινή κλίμακα, όχι literals. Το 40 του πεδίου ήταν η τιμή του
   // T.h.lg στο ποντίκι — αλλά ΜΟΝΟ εκεί: με δάχτυλο η κλίμακα ανεβαίνει στα 44
-  // (globals.css, `@media (pointer: coarse)`) και το πεδίο έμενε στα 40. Το 34
-  // του segmented control δεν ήταν καμία από τις τρεις τιμές (sm 32 / md 36 /
-  // lg 40): το ΙΔΙΟ χειριστήριο ζει αυτούσιο και στο RentAdjustmentModal, όπου
-  // ήδη διαβάζει T.h.md — δύο αντίγραφα, δύο ύψη, 34 εδώ και 36 εκεί.
+  // (globals.css, `@media (pointer: coarse)`) και το πεδίο έμενε στα 40. Ο
+  // τμηματικός επιλογέας «Χρήση» δεν έχει πια δικό του αντικείμενο στυλ: το
+  // ύψος και η όψη του βγαίνουν από το ChipToggle.
   const field: React.CSSProperties = { height: T.h.lg, padding: '0 13px', borderRadius: T.radius.inner, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box', width: '100%', transition: 'border-color 0.14s' };
   const lbl = { ...TT.label, marginBottom: 6 } as React.CSSProperties;
   const onF = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--accent)'; };
   const onB = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)'; };
-  const seg = (u: LeaseUse): React.CSSProperties => ({ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 600, height: T.h.md, borderRadius: T.radius.inner, cursor: 'pointer', textAlign: 'center', border: 'none', background: use === u ? 'var(--accent)' : 'transparent', color: use === u ? 'var(--accent-text)' : 'var(--text-secondary)', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' });
   // ΤΟ ΦΙΛΤΡΟ ΔΕΝ ΕΙΝΑΙ ΚΑΛΛΩΠΙΣΜΟΣ. Το πεδίο δεχόταν «-500» και «12ε» και το
   // αποτέλεσμα έφτανε σε υπογεγραμμένο μισθωτήριο με QR επαλήθευσης: αρνητικό
   // μίσθωμα σε συμφωνητικό που υπογράφουν δύο μέρη. Όπου υπάρχει φυσικό
@@ -328,9 +326,13 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
                 <div><div style={lbl}>Ακίνητο</div><Select ariaLabel="Ακίνητο" value={propId} onChange={setPropId} options={props.map(p => ({ value: p.id, label: p.name }))} placeholder="Επιλογή ακινήτου" /></div>
                 <div>
                   <div style={lbl}>Χρήση</div>
-                  <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-                    <button onClick={() => setUse('residence')} style={seg('residence')}>Κατοικία</button>
-                    <button onClick={() => setUse('professional')} style={seg('professional')}>Επαγγελματική</button>
+                  {/* `seg` και όχι `chip`: η ράγα έχει ήδη δικό της περίγραμμα, οπότε
+                      το ενεργό ανασηκώνεται με επιφάνεια και σκιά αντί να αποκτήσει
+                      δεύτερη γραμμή. Η ράγα κατεβαίνει σε `bg-base` για να ξεχωρίζει
+                      το ανασηκωμένο πλακίδιο, όπως σε κάθε άλλη ράγα της εφαρμογής. */}
+                  <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
+                    <ChipToggle shape="seg" grow on={use === 'residence'} onClick={() => setUse('residence')}>Κατοικία</ChipToggle>
+                    <ChipToggle shape="seg" grow on={use === 'professional'} onClick={() => setUse('professional')}>Επαγγελματική</ChipToggle>
                   </div>
                 </div>
               </div>
@@ -361,7 +363,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
               </div>
               {res.belowLegalMinimum && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '11px 13px', borderRadius: T.radius.inner, background: 'var(--warning-soft)', border: '1px solid var(--warning-border)' }}>
-                  <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
+                  <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55, fontFamily: T.font.sans }}>Στην κατοικία ισχύει η <strong style={{ color: 'var(--text-primary)' }}>ελάχιστη τριετής διάρκεια</strong> κατά νόμο, ακόμη και με μικρότερη συμφωνία.</div>
                 </div>
               )}
@@ -383,7 +385,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
               </div>
 
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '11px 13px', borderRadius: T.radius.inner, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-                <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                 {/* ΤΟ «ΜΕΤΑ ΤΗΝ ΥΠΟΓΡΑΦΗ» ΗΤΑΝ ΔΕΚΑΕΝΝΙΑ ΧΑΡΑΚΤΗΡΕΣ ΠΟΥ ΔΕΝ ΕΛΕΓΑΝ
                     ΤΙΠΟΤΑ: το κείμενο ζει ΜΕΣΑ στο παράθυρο υπογραφής, οπότε το
                     «μετά» είναι δεδομένο. Τα κουβαλούσε όμως αρκετά ώστε η

@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useId } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
-import { T, Btn, EmptyState, ABSENT, formGrid, fieldRow } from '@/components/Theme'
+import { T, Btn, ChipToggle, EmptyState, ABSENT, formGrid, fieldRow, RuntimeImg } from '@/components/Theme'
 import { CustomSelect, TextInput, DatePicker } from '../UIComponents'
 import { ClipboardCheck } from 'lucide-react'
 import { notifyError } from '@/components/Toast'
@@ -134,7 +134,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
       <div style={{display:'flex',flexDirection:'column',gap:16}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <p style={{fontSize:18,fontWeight:400,fontFamily:T.font.sans,color:'var(--text-primary)'}}>Σύγκριση πρωτοκόλλων</p>
-          <button onClick={()=>setMode('list')} style={{padding:'0 16px',height:T.h.md,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'none',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily:T.font.sans,cursor:'pointer'}}>Πίσω</button>
+          <Btn variant="secondary" onClick={()=>setMode('list')}>Πίσω</Btn>
         </div>
         <div style={{...formGrid(200, 270),gap:12}}>
           {[{v:cmpA,sv:setCmpA},{v:cmpB,sv:setCmpB}].map(({v,sv},i)=>(
@@ -145,22 +145,56 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
           ))}
         </div>
         {hA&&hB&&(
-          <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',gap:0,padding:'8px 14px',borderBottom:'2px solid var(--border-subtle)'}}>
-              {['Αντικείμενο',`${hA.handover_type==='check_in'?'Είσοδος':'Έξοδος'} · ${hA.tenant_name}`,`${hB.handover_type==='check_in'?'Είσοδος':'Έξοδος'} · ${hB.tenant_name}`].map(h=><p key={h} style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:500,fontFamily:T.font.sans}}>{h}</p>)}
+          /* ═══ ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs ══════════════════════════════════
+             ΤΙ ΗΤΑΝ. Η κεφαλίδα και κάθε σειρά ήταν ξεχωριστό `display:grid` με
+             το ΙΔΙΟ `repeat(auto-fit, minmax(min(100%,150px),1fr))` γραμμένο δύο
+             φορές. Το `auto-fit` μετρά ΚΑΘΕ πλέγμα χωριστά: στα 390 του
+             τηλεφώνου, με 332 ωφέλιμα μετά τα γεμίσματα, χωρούσαν δύο στήλες των
+             150 — η σειρά έσπαγε 2+1 και η κεφαλίδα από πάνω το ίδιο, οπότε το
+             όνομα του δεύτερου πρωτοκόλλου κάθισε πάνω από την κατάσταση του
+             πρώτου. ΤΩΡΑ οι στήλες δηλώνονται μία φορά για όλες τις γραμμές —
+             δεν μπορούν να ξεσυμφωνήσουν — και με `th scope` κάθε κατάσταση
+             ανακοινώνεται με το αντικείμενό της μαζί με το πρωτόκολλό της: τα 36
+             κελιά ενός μέτριου εξοπλισμού διαβάζονταν ως ασύνδετα κείμενα. */
+          <div className="po-table-box">
+            {/* ΤΟ ΕΛΑΧΙΣΤΟ ΠΛΑΤΟΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΣΗΜΑ. Το «Εκτός Λειτουργίας»
+                έχει `white-space: nowrap`: 105 το λεκτικό στα 11, 16 το γέμισμά
+                του, 2 το περίγραμμα — 123, δηλαδή 151 η στήλη με τα 28 του
+                κελιού. Οι τρεις στήλες μένουν ίσες όπως πριν, άρα το ελάχιστο
+                είναι 3 × 180 = 540: τα 180 αφήνουν αέρα ώστε ένα όνομα δύο
+                λέξεων να στέκει δίπλα στο βελάκι της υποβάθμισης. */}
+            <div className="po-scroll-x">
+              <table className="po-table tbl-fixed" style={{'--tbl-min':'540px','--tbl-fs':'var(--fs-sm)'}}>
+                {/* Ο τίτλος της οθόνης μένει πάνω από τα δύο πεδία επιλογής —
+                    τα τιτλοφορεί ΚΑΙ πριν διαλεγεί δεύτερο πρωτόκολλο, όταν
+                    πίνακας δεν υπάρχει. Η λεζάντα είναι το όνομα ΤΟΥ ΠΙΝΑΚΑ:
+                    χωρίς αυτήν ο αναγνώστης οθόνης τον ανακοινώνει ως «πίνακας
+                    τριών στηλών» χωρίς να πει τίνος. */}
+                <caption>Σύγκριση πρωτοκόλλων</caption>
+                {/* Τα τρία ίσα `1fr` του πλέγματος ζουν πια εδώ. Το `tbl-fixed`
+                    είναι απαραίτητο: χωρίς αυτό το `<colgroup>` είναι πρόταση
+                    και τα πλάτη τα αποφασίζει το μακρύτερο λεκτικό. */}
+                <colgroup><col style={{width:'34%'}}/><col style={{width:'33%'}}/><col style={{width:'33%'}}/></colgroup>
+                <thead><tr>{['Αντικείμενο',`${hA.handover_type==='check_in'?'Είσοδος':'Έξοδος'} · ${hA.tenant_name}`,`${hB.handover_type==='check_in'?'Είσοδος':'Έξοδος'} · ${hB.tenant_name}`].map((h,i)=><th key={i} scope="col" style={{color:'var(--text-secondary)'}}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {allNames.map(name=>{
+                    const sA=hA.items_snapshot?.find(s=>s.name===name); const sB=hB.items_snapshot?.find(s=>s.name===name)
+                    const cA=sA?.condition_at_handover||null; const cB=sB?.condition_at_handover||null
+                    const degraded=cA!==cB&&cA!=null&&cB!=null&&condOrder.indexOf(cB)>condOrder.indexOf(cA)
+                    return (
+                      /* Η υποβαθμισμένη γραμμή κρατά το χρώμα της. Το περίγραμμα
+                         και η στρογγυλή γωνία κάθε σειράς έφυγαν: το πλαίσιο το
+                         δίνει τώρα το κουτί του πίνακα μία φορά για όλες. */
+                      <tr key={name} style={degraded?{background:'var(--negative-dim)'}:undefined}>
+                        <th scope="row" style={{fontWeight:500,color:'var(--text-primary)'}}>{name}{degraded&&<span title="Υποβαθμισμένη κατάσταση" style={{display:'inline-flex',color:'var(--negative)',marginLeft:6,verticalAlign:'middle'}}><svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg></span>}</th>
+                        <td>{cA!=null?<Badge label={cA} color={CONDITION_COLOR[cA]||'var(--text-tertiary)'}/>:<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)'}}>Δεν υπήρχε</span>}</td>
+                        <td>{cB!=null?<Badge label={cB} color={CONDITION_COLOR[cB]||'var(--text-tertiary)'}/>:<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)'}}>Δεν υπήρχε</span>}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-            {allNames.map(name=>{
-              const sA=hA.items_snapshot?.find(s=>s.name===name); const sB=hB.items_snapshot?.find(s=>s.name===name)
-              const cA=sA?.condition_at_handover||null; const cB=sB?.condition_at_handover||null
-              const degraded=cA!==cB&&cA!=null&&cB!=null&&condOrder.indexOf(cB)>condOrder.indexOf(cA)
-              return (
-                <div key={name} style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',gap:0,padding:'10px 14px',background:degraded?'var(--negative-dim)':'var(--bg-elevated)',borderRadius:8,marginBottom:4,border:`1px solid ${degraded?'var(--negative-border)':'var(--border-subtle)'}`}}>
-                  <p style={{fontSize:12,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{name}{degraded&&<span title="Υποβαθμισμένη κατάσταση" style={{display:'inline-flex',color:'var(--negative)',marginLeft:6,verticalAlign:'middle'}}><svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg></span>}</p>
-                  <div>{cA!=null?<Badge label={cA} color={CONDITION_COLOR[cA]||'var(--text-tertiary)'}/>:<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>Δεν υπήρχε</span>}</div>
-                  <div>{cB!=null?<Badge label={cB} color={CONDITION_COLOR[cB]||'var(--text-tertiary)'}/>:<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>Δεν υπήρχε</span>}</div>
-                </div>
-              )
-            })}
           </div>
         )}
       </div>
@@ -171,7 +205,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
       <style>{`@keyframes invSpin{to{transform:rotate(360deg)}}`}</style>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <p style={{fontSize:18,fontWeight:400,fontFamily:T.font.sans,color:'var(--text-primary)'}}>Νέο πρωτόκολλο παράδοσης</p>
-        <button onClick={()=>setMode('list')} style={{padding:'0 16px',height:T.h.md,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'none',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily:T.font.sans,cursor:'pointer'}}>Πίσω</button>
+        <Btn variant="secondary" onClick={()=>setMode('list')}>Πίσω</Btn>
       </div>
       {fromTenant&&(
         <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'var(--accent-soft)',border:'1px solid var(--accent-border)',borderRadius:T.radius.inner}}>
@@ -181,9 +215,11 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
       )}
       <div style={{...formGrid(200, 270),gap:10}}>
         {(['check_in','check_out'] as const).map(t=>(
-          <button key={t} onClick={()=>setType(t)} style={{padding:'14px',borderRadius:T.radius.card,cursor:'pointer',fontWeight:500,fontFamily:T.font.sans,fontSize: 'var(--fs-base)',border:`1px solid ${type===t?'var(--accent)':'var(--border-subtle)'}`,background:type===t?'var(--accent)':'var(--bg-elevated)',color:type===t?'var(--accent-text)':'var(--text-secondary)',transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s'}}>
+          // shape «chip» και όχι «seg»: τα δύο πλακίδια κάθονται σε πλέγμα φόρμας
+          // χωρίς δική του ράγα, οπότε το καθένα κρατά το δικό του περίγραμμα.
+          <ChipToggle key={t} on={type===t} onClick={()=>setType(t)}>
             {t==='check_in'?'Είσοδος ενοικιαστή':'Έξοδος ενοικιαστή'}
-          </button>
+          </ChipToggle>
         ))}
       </div>
       <div {...fieldRow(180, 12)}>
@@ -201,11 +237,11 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
               {(()=>{const cp=itemConds[item.id]?.photo;const busy=uploadingId===item.id;return (
                 <label title={cp?'Φωτογραφία κατάστασης (πάτησε για αλλαγή)':'Τράβα φωτογραφία της τρέχουσας κατάστασης'} style={{position:'relative',width:44,height:44,borderRadius:10,overflow:'hidden',flexShrink:0,cursor:'pointer',display:'block',border:cp?'2px solid var(--accent)':'1px solid var(--border-subtle)'}}>
                   {cp
-                    ?<img src={cp} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+                    ?<RuntimeImg src={cp} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
                     :item.photo_url
-                      ?<img src={item.photo_url} style={{width:'100%',height:'100%',objectFit:'cover',opacity:0.5}} alt=""/>
+                      ?<RuntimeImg src={item.photo_url} style={{width:'100%',height:'100%',objectFit:'cover',opacity:0.5}} alt=""/>
                       :<div style={{width:'100%',height:'100%',background:'var(--accent-soft)',color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center'}}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>}
-                  <span style={{position:'absolute',right:2,bottom:2,width:16,height:16,borderRadius:6,background:cp?'var(--accent)':'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <span style={{position:'absolute',right:2,bottom:2,width:16,height:16,borderRadius: T.radius.xs,background:cp?'var(--accent)':'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center'}}>
                     {busy?<span style={{width:9,height:9,border:`1.5px solid ${cp?'var(--accent-text)':'#fff'}`,borderTopColor:'transparent',borderRadius:'50%',animation:'invSpin 0.7s linear infinite'}}/>:<svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={cp?'var(--accent-text)':'#fff'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg>}
                   </span>
                   <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadCondPhoto(item.id,f)}}/>
@@ -222,10 +258,10 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
         </div>
       </div>
       <div style={{display:'flex',justifyContent:'flex-end',gap:10}}>
-        <button onClick={()=>setMode('list')} style={{padding:'0 20px',height:T.h.lg,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'none',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily:T.font.sans,cursor:'pointer'}}>Ακύρωση</button>
-        <button onClick={handleSave} disabled={saving} style={{padding:'0 24px',height:T.h.lg,borderRadius:T.radius.pill,background:saving?'var(--bg-elevated)':'var(--accent)',border:'none',color:saving?'var(--text-tertiary)':'var(--accent-text)',fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,cursor:saving?'wait':'pointer'}}>
+        <Btn variant="secondary" onClick={()=>setMode('list')}>Ακύρωση</Btn>
+        <Btn variant="primary" onClick={handleSave} disabled={saving}>
           {saving?'Αποθήκευση…':'Αποθήκευση Πρωτοκόλλου'}
-        </button>
+        </Btn>
       </div>
     </div>
   )
@@ -237,8 +273,8 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
           <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily:T.font.sans,marginTop:2,maxWidth:560,lineHeight:1.5}}>Καταγράφει την κατάσταση κάθε αντικειμένου κατά την είσοδο & έξοδο του ενοικιαστή, απόδειξη για την επιστροφή της εγγύησης σε περίπτωση φθορών.</p>
         </div>
         <div style={{display:'flex',gap:8,flexShrink:0}}>
-          {handovers.length>=2&&<button onClick={()=>setMode('compare')} style={{padding:'0 14px',height:T.h.md,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',color:'var(--text-secondary)',fontSize:12,fontFamily:T.font.sans,fontWeight:500,cursor:'pointer'}}>Σύγκριση εισόδου/εξόδου</button>}
-          {handovers.length>0&&<button onClick={()=>setMode('new')} style={{padding:'0 18px',height:T.h.md,borderRadius:T.radius.pill,background:'var(--accent)',border:'none',color:'var(--accent-text)',fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,cursor:'pointer'}}>Νέο πρωτόκολλο</button>}
+          {handovers.length>=2&&<Btn variant="secondary" onClick={()=>setMode('compare')}>Σύγκριση εισόδου/εξόδου</Btn>}
+          {handovers.length>0&&<Btn variant="primary" onClick={()=>setMode('new')}>Νέο πρωτόκολλο</Btn>}
         </div>
       </div>
       {handovers.length===0
@@ -263,11 +299,11 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
                   </div>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
                     {bad>0&&<Badge label={`${bad} προβλήματα`} color="var(--negative)"/>}
-                    <button onClick={()=>printHandover(h)} style={{padding:'0 12px',height:T.h.sm,borderRadius:T.radius.pill,border:'1px solid var(--border-subtle)',background:'none',color:'var(--accent)',fontSize:12,fontFamily:T.font.sans,cursor:'pointer',fontWeight:500}}>Εκτύπωση</button>
+                    <Btn variant="secondary" onClick={()=>printHandover(h)}>Εκτύπωση</Btn>
                   </div>
                 </div>
                 {bad>0&&(
-                  <div style={{padding:'8px 12px',background:'var(--negative-dim)',borderRadius:8,border:'1px solid var(--negative-border)'}}>
+                  <div style={{padding:'8px 12px',background:'var(--negative-dim)',borderRadius: T.radius.chip,border:'1px solid var(--negative-border)'}}>
                     {snap.filter(s=>s.condition_at_handover==='Κακή'||s.condition_at_handover==='Εκτός Λειτουργίας').map((s,i)=>(
                       <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily:T.font.sans,padding:'2px 0'}}>
                         <span>{s.name}</span><span style={{color:'var(--negative)'}}>{s.condition_at_handover}{s.condition_notes?`, ${s.condition_notes}`:''}</span>

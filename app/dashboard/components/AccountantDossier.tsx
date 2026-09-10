@@ -22,7 +22,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { T, TT, Badge, SelectBox, Bar } from '@/components/Theme'
+import { T, TT, Badge, SelectBox, Bar, Btn, ChipToggle } from '@/components/Theme'
 import { ChevronRight, Download } from 'lucide-react'
 import {
   requirementsFor, readiness, groupByWho, traps, defaultBookkeeping,
@@ -160,7 +160,7 @@ export function useAccountantDossier(userId: string, year: number, seed?: Partia
 
 // ═══ Εικόνα ════════════════════════════════════════════════════════════════
 
-const card: React.CSSProperties = { position: 'relative', background: 'var(--surface-raised)', border: 'none', borderRadius: T.radius.card, padding: 18, boxShadow: 'var(--elev-1)' }
+const card: React.CSSProperties = { position: 'relative', background: 'var(--surface-raised)', border: 'none', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--elev-1)' }
 const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 }
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFamily: T.font.sans }
 
@@ -316,9 +316,12 @@ export default function AccountantDossier({
               {ready.message}
             </p>
           </div>
-          <button onClick={download} disabled={preparing} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.md, padding: '0 17px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 'var(--fs-base)', fontWeight: 600, cursor: preparing ? 'default' : 'pointer', opacity: preparing ? 0.6 : 1, fontFamily: T.font.sans, flexShrink: 0 }}>
-            <Download size={14} />{preparing ? 'Ετοιμάζεται' : downloaded ? 'Κατέβηκε' : 'Κατέβασε τον φάκελο'}
-          </button>
+          {/* Το flexShrink μετακόμισε σε περιτύλιγμα: το Btn δεν δέχεται style και χωρίς αυτό το λεκτικό στριμώχνεται δίπλα στο μήνυμα */}
+          <div style={{ flexShrink: 0 }}>
+            <Btn variant="primary" onClick={download} disabled={preparing}>
+              <Download size={14} />{preparing ? 'Ετοιμάζεται' : downloaded ? 'Κατέβηκε' : 'Κατέβασε τον φάκελο'}
+            </Btn>
+          </div>
         </div>
 
         {/* Πρόοδος: μία λεπτή γραμμή, χωρίς ποσοστά σε μεγάλα γράμματα. */}
@@ -446,8 +449,7 @@ export default function AccountantDossier({
 
       {/* ── Οι παραδοχές: κλειστές, γιατί σπάνια αλλάζουν ─────────────────── */}
       <div style={card}>
-        <button onClick={() => setAssumptionsOpen(o => !o)} aria-expanded={assumptionsOpen} className="acc-toggle"
-          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
+        <button onClick={() => setAssumptionsOpen(o => !o)} aria-expanded={assumptionsOpen} className="acc-toggle acc-row">
           <ChevronRight size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0, transform: assumptionsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s' }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={eyebrow}>Από τι βγαίνει αυτή η λίστα</p>
@@ -464,12 +466,7 @@ export default function AccountantDossier({
               <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Νομική μορφή</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {(Object.keys(LEGAL_FORM_LABEL) as LegalForm[]).map(f => (
-                  <button key={f} onClick={() => setProfile({ form: f })}
-                    style={{ height: T.h.sm, padding: '0 13px', borderRadius: 8, cursor: 'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-                      fontWeight: profile.form === f ? 600 : 500,
-                      border: `1px solid ${profile.form === f ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                      background: profile.form === f ? 'var(--accent)' : 'var(--bg-surface)',
-                      color: profile.form === f ? 'var(--accent-text)' : 'var(--text-secondary)' }}>{LEGAL_FORM_LABEL[f]}</button>
+                  <ChipToggle key={f} on={profile.form === f} onClick={() => setProfile({ form: f })}>{LEGAL_FORM_LABEL[f]}</ChipToggle>
                 ))}
               </div>
             </div>
@@ -480,12 +477,7 @@ export default function AccountantDossier({
                 <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Βιβλία</p>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {(['single_entry', 'double_entry'] as BookKeeping[]).map(b => (
-                    <button key={b} onClick={() => setProfile({ books: b })}
-                      style={{ height: T.h.sm, padding: '0 13px', borderRadius: 8, cursor: 'pointer', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-                        fontWeight: profile.books === b ? 600 : 500,
-                        border: `1px solid ${profile.books === b ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                        background: profile.books === b ? 'var(--accent)' : 'var(--bg-surface)',
-                        color: profile.books === b ? 'var(--accent-text)' : 'var(--text-secondary)' }}>{BOOKS_LABEL[b]}</button>
+                    <ChipToggle key={b} on={profile.books === b} onClick={() => setProfile({ books: b })}>{BOOKS_LABEL[b]}</ChipToggle>
                   ))}
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '8px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
@@ -562,21 +554,12 @@ function AccountantAsks() {
 
   if (asks.length === 0) return null
 
-  const btn: React.CSSProperties = {
-    // ΡΗΤΟ ΥΨΟΣ 28 ΕΙΝΑΙ ΧΕΙΡΟΤΕΡΟ ΑΠΟ ΥΨΟΣ ΑΠΟ PADDING: δεν μεγαλώνει ποτέ,
-    // ούτε με μεγαλύτερη γραμματοσειρά ούτε σε δείκτη αφής. Η κλίμακα το κάνει.
-    display: 'inline-flex', alignItems: 'center', minHeight: T.h.sm,
-    padding: '0 11px', borderRadius: 8, border: '1px solid var(--border-subtle)',
-    background: 'transparent', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600,
-    fontFamily: T.font.sans, cursor: 'pointer', flexShrink: 0,
-  }
-
   return (
     <div style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
       <p style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
         {asks.length === 1 ? 'Ο λογιστής σου ζήτησε' : `Ο λογιστής σου ζήτησε ${asks.length} πράγματα`}
       </p>
-      <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'grid', gap: 1 }}>
+      <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'grid', gap: 0 }}>
         {asks.map(a => (
           <li key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 0', borderTop: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
@@ -584,8 +567,9 @@ function AccountantAsks() {
               {a.note ? <span style={{ color: 'var(--text-tertiary)' }}>{` · ${a.note}`}</span> : null}
             </span>
             <span style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => void answer(a.id, 'done')} style={btn}>Το έστειλα</button>
-              <button onClick={() => void answer(a.id, 'dismissed')} style={{ ...btn, color: 'var(--text-tertiary)' }}>Δεν ισχύει</button>
+              <Btn variant="secondary" onClick={() => void answer(a.id, 'done')}>Το έστειλα</Btn>
+              {/* ghost για το «Δεν ισχύει»: ήταν επίτηδες πιο ήσυχο από το «Το έστειλα» δίπλα του */}
+              <Btn variant="ghost" onClick={() => void answer(a.id, 'dismissed')}>Δεν ισχύει</Btn>
             </span>
           </li>
         ))}

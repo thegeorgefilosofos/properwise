@@ -1,7 +1,7 @@
 import { HEATING_TYPES, heatingLabel, isCentralHeating, normalizeHeating, usesGas } from './heating';
 
 let pass = 0, fail = 0;
-const ok = (name: string, cond: boolean) => { cond ? pass++ : (fail++, console.error('✗', name)); };
+const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗', name) } };
 
 // ── Ο ΚΑΤΑΛΟΓΟΣ ──────────────────────────────────────────────────────────
 ok('κάθε τιμή είναι μοναδική', new Set(HEATING_TYPES.map(h => h.value)).size === HEATING_TYPES.length);

@@ -125,7 +125,22 @@ export default function AccountantPortal() {
   // Η ΕΚΠΤΩΣΗ ΤΟΥ ΑΡΘΡΟΥ 39 §4 ΚΦΕ ΕΦΑΡΜΟΖΕΤΑΙ ΚΑΙ ΔΗΛΩΝΕΤΑΙ. Η προϋπόθεσή της
   // είναι τραπεζική είσπραξη (ν.5246/2025), που από αυτόν τον σύνδεσμο δεν
   // φαίνεται: γι' αυτό ο αριθμός λέγεται ενδεικτικός και όχι φόρος.
-  const estTax = rentalIncomeTax(totals.income * (1 - presumptiveDeductionRate(true)), rentalBracketsForYear(year));
+  // ══ Ο ΦΟΡΟΣ ΕΙΝΑΙ ΠΡΟΣΩΠΙΚΟΣ, ΑΡΑ ΠΑΝΩ ΣΤΟ ΜΕΡΙΔΙΟ ═══════════════════════
+  // Εδώ έγραφε `totals.income`, δηλαδή το εισόδημα ΟΛΟΚΛΗΡΟΥ του ακινήτου. Το
+  // αρχείο .xlsx που κατεβαίνει από ΤΗΝ ΙΔΙΑ σελίδα κόβει τα ποσά στο ποσοστό
+  // συνιδιοκτησίας, σε δικές του στήλες «Αναλογία», με σημείωση που το εξηγεί:
+  // ο συνιδιοκτήτης στο 50% διάβαζε 12.000€ στην οθόνη κι 6.000€ στο αρχείο.
+  // Κι επειδή η κλίμακα είναι προοδευτική, ο φόρος δεν έβγαινε απλώς αναλογικά
+  // μεγαλύτερος αλλά με ΜΕΓΑΛΥΤΕΡΟ ΣΥΝΤΕΛΕΣΤΗ. Μετρημένο στην κλίμακα 2026:
+  //
+  //   έσοδα 12.000€, μερίδιο 50%   → 1.710,00€ αντί για   855,00€
+  //   έσοδα 24.000€, μερίδιο 33,33% → 4.500,00€ αντί για 1.139,89€
+  //   έσοδα 30.000€, μερίδιο 25%   → 6.375,00€ αντί για 1.068,75€
+  //
+  // Τρία αδέλφια σε κληρονομημένο διαμέρισμα έβλεπαν 3.360€ φόρου παραπάνω.
+  //
+  // Η οθόνη μάλιστα τύπωνε ήδη «συνιδιοκτησία 50%» δίπλα στο νούμερο του 100%.
+  const estTax = rentalIncomeTax(totals.incomeShare * (1 - presumptiveDeductionRate(true)), rentalBracketsForYear(year));
 
   const owner = data?.owner || 'Ιδιοκτήτης';
   const issued = dateEl(new Date());
@@ -227,7 +242,14 @@ export default function AccountantPortal() {
               {totals.hasEntries ? (
                 <div style={{ marginTop: 10 }}>
                   {row('Έσοδα από ενοίκια και βραχυχρόνια', feAuto(totals.income))}
+                  {/* ΟΤΑΝ ΥΠΑΡΧΕΙ ΣΥΝΙΔΙΟΚΤΗΣΙΑ ΛΕΓΟΝΤΑΙ ΚΑΙ ΤΑ ΔΥΟ, ΟΠΩΣ ΣΤΟ
+                      ΑΡΧΕΙΟ. Η γραμμή του Ε2 θέλει το ποσό ΤΟΥ ΑΚΙΝΗΤΟΥ· η
+                      δήλωση εισοδήματος θέλει το μερίδιο. Ο λογιστής χρειάζεται
+                      κι τα δύο — είναι δουλειά της οθόνης να μην τον βάλει να
+                      πολλαπλασιάσει μόνος του. */}
+                  {totals.hasShare && row('Αναλογία εσόδων του ιδιοκτήτη', feAuto(totals.incomeShare))}
                   {row('Καταγεγραμμένες δαπάνες', feAuto(totals.expenses))}
+                  {totals.hasShare && row('Αναλογία δαπανών του ιδιοκτήτη', feAuto(totals.expensesShare))}
                   {/* Ο ΕΝΔΕΙΚΤΙΚΟΣ ΦΟΡΟΣ ΔΕΝ ΕΙΝΑΙ ΜΕΤΡΗΜΕΝΟ ΜΕΓΕΘΟΣ, ΑΡΑ ΔΕΝ
                       ΚΑΘΕΤΑΙ ΣΤΗΝ ΙΔΙΑ ΤΑΞΗ ΜΕ ΤΑ ΔΥΟ ΑΠΟ ΠΑΝΩ. */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, paddingTop: 12 }}>
@@ -235,12 +257,12 @@ export default function AccountantPortal() {
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.mono, whiteSpace: 'nowrap' }}>{feAuto(estTax)}</span>
                   </div>
                   <p style={{ ...meta, margin: '10px 0 0' }}>
-                    Εισπράξεις της χρήσης, όχι συμβατικό μίσθωμα επί δώδεκα. {bracketsLabelForYear(year)}, με τεκμαρτή έκπτωση {Math.round(presumptiveDeductionRate(true) * 100)}%. {PRESUMPTIVE_RULE_2026}
+                    Εισπράξεις της χρήσης, όχι συμβατικό μίσθωμα επί δώδεκα. {bracketsLabelForYear(year)}, με τεκμαρτή έκπτωση {Math.round(presumptiveDeductionRate(true) * 100)}%. {totals.hasShare ? 'Υπολογίζεται στην αναλογία του ιδιοκτήτη, όχι στο σύνολο του ακινήτου. ' : ''}{PRESUMPTIVE_RULE_2026}
                   </p>
                 </div>
               ) : (
                 /* ΚΑΜΙΑ ΚΑΤΑΧΩΡΗΣΗ ΣΗΜΑΙΝΕΙ ΚΑΜΙΑ ΚΑΤΑΧΩΡΗΣΗ. Τρία μηδενικά και
-                   ένας «φόρος 0,00 €» είναι υπολογισμός πάνω στο τίποτα, με το
+                   ένας «φόρος 0,00€» είναι υπολογισμός πάνω στο τίποτα, με το
                    κύρος του αριθμού. */
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '10px 0 0', lineHeight: 1.7 }}>
                   Καμία καταχώρηση εσόδου ή δαπάνης για τη χρήση {year}, άρα κανένας υπολογισμός.
@@ -275,7 +297,7 @@ export default function AccountantPortal() {
 
                   {quiet ? (
                     /* ΤΟ ΜΗΔΕΝ ΛΕΓΕΤΑΙ, ΔΕΝ ΤΥΠΩΝΕΤΑΙ. Μια σειρά «Δαπάνες έτους
-                       0,00 €» μοιάζει με αποτέλεσμα υπολογισμού· εδώ δεν έγινε
+                       0,00€» μοιάζει με αποτέλεσμα υπολογισμού· εδώ δεν έγινε
                        κανένας υπολογισμός, γιατί δεν υπήρξε καμία καταχώρηση. */
                     <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '12px 0 0', lineHeight: 1.7 }}>
                       Καμία κίνηση στη χρήση {year}.
@@ -338,7 +360,7 @@ export default function AccountantPortal() {
                 τη στιγμή που κρατά τον έναν σύνδεσμο και σκέφτεται τους άλλους
                 εβδομήντα εννιά. Και μαθαίνει ΚΑΙ ότι θέλει λογαριασμό, γιατί
                 αλλιώς το κλικ τον βγάζει σε τοίχο σύνδεσης χωρίς εξήγηση. */}
-            <div className="po-noprint" style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)', marginTop: 26, lineHeight: 1.8 }}>
+            <div className="po-noprint" style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)', marginTop: T.sp.xxl, lineHeight: 1.8 }}>
               Έχεις κι άλλους πελάτες με PROPERWISE;{' '}
               <Link href="/accountant/workspace" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Δες τους όλους μαζί</Link>, με ό,τι λείπει από τον καθένα.
               <div style={{ ...meta, marginTop: 4 }}>Χρειάζεται δικός σου λογαριασμός, μία φορά.</div>

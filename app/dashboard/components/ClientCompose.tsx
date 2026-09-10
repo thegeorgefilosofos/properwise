@@ -69,6 +69,8 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState('');
   const [results, setResults] = useState<Result[] | null>(null);
+  /** Η ανά-παραλήπτη ανάλυση δεν διαβάστηκε. Η αποστολή δεν επηρεάζεται· η ΕΙΚΟΝΑ της ναι. */
+  const [detailUnread, setDetailUnread] = useState(false);
   const [summary, setSummary] = useState<{ sent: number; failed: number } | null>(null);
 
   // Αρχικοποίηση: όλοι οι non-blacklist επιλεγμένοι, μία φορά κατά το άνοιγμα.
@@ -91,7 +93,7 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
 
   if (!open) return null;
 
-  const reset = () => { setResults(null); setSummary(null); setErr(''); };
+  const reset = () => { setResults(null); setSummary(null); setErr(''); setDetailUnread(false); };
 
   const generateAI = async () => {
     if (!aiBrief.trim()) return;
@@ -145,8 +147,16 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
       setSummary({ sent: Number(data?.sent) || 0, failed: Number(data?.failed) || 0 });
       // Ζωντανό αποτέλεσμα ανά παραλήπτη από τον πίνακα email_recipients.
       if (campaignId) {
-        const { data: rows } = await supabase.from('email_recipients')
+        // ΤΟ ΑΔΕΙΟ ΚΟΥΤΙ ΕΙΝΑΙ ΑΚΡΙΒΩΣ Η ΖΗΜΙΑ ΠΟΥ ΠΕΡΙΓΡΑΦΕΙ ΤΟ ΣΧΟΛΙΟ ΠΙΟ
+        // ΚΑΤΩ. Η αποστολή έχει ήδη γίνει κι το άθροισμα («3 απέτυχαν») έρχεται
+        // από την απάντηση της συνάρτησης, όχι από εδώ. Αυτή η ανάγνωση λέει
+        // ΠΟΙΟΙ — κι όταν αποτύγχανε, το `rows || []` ζωγράφιζε ένα άδειο
+        // πλαίσιο κάτω από μια κεφαλίδα που μιλά για αποτυχίες. Ο ιδιοκτήτης
+        // που έστειλε σε σαράντα πελάτες μάθαινε ότι τρεις δεν παραδόθηκαν κι
+        // δεν είχε κανέναν τρόπο να δει ποιοι.
+        const { data: rows, error: rowsErr } = await supabase.from('email_recipients')
           .select('email,name,status,error').eq('campaign_id', campaignId).order('email');
+        setDetailUnread(!!rowsErr);
         setResults((rows || []) as Result[]);
       } else {
         setResults(recips.map(r => ({ email: r.email, name: r.name, status: 'sent' })));
@@ -162,13 +172,6 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
     border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
     color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box',
   };
-  const chip = (on: boolean): React.CSSProperties => ({
-    display: 'inline-flex', alignItems: 'center', minHeight: T.h.sm,
-    fontSize: 'var(--fs-xs)', fontWeight: 700, padding: '6px 12px', borderRadius: T.radius.pill, cursor: 'pointer',
-    border: `1px solid ${on ? 'var(--accent-border)' : 'var(--border-default)'}`,
-    background: on ? 'var(--accent-soft)' : 'transparent', color: on ? 'var(--accent)' : 'var(--text-secondary)',
-    fontFamily: T.font.sans, whiteSpace: 'nowrap',
-  });
 
   // ── ΤΟ ΠΑΡΑΘΥΡΟ ΕΓΙΝΕ <Modal> ────────────────────────────────────────────
   // Τέταρτο αντίγραφο του ίδιου χειρόγραφου κελύφους (scrim, radius 18,
@@ -225,7 +228,12 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                   <div style={{ ...TT.bodySm }}>{summary?.sent || 0} επιτυχή{summary?.failed ? ` · ${summary.failed} απέτυχαν` : ''}</div>
                 </div>
               </div>
-              <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, overflow: 'hidden' }}>
+                {detailUnread && (
+                  <div style={{ padding: '11px 14px', fontSize: 'var(--fs-xs)', color: 'var(--warning)', lineHeight: 1.55 }}>
+                    Η αναλυτική λίστα ανά παραλήπτη δεν διαβάστηκε. Τα μηνύματα στάλθηκαν κανονικά· αυτό που λείπει είναι μόνο η εικόνα του ποιος τα έλαβε. Ανοιξε ξανά το ιστορικό σε λίγο.
+                  </div>
+                )}
                 {(results || []).map((r, i) => (
                   <div key={r.email + i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderTop: i ? '1px solid var(--border-subtle)' : 'none' }}>
                     <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -252,20 +260,22 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                 ) : (
                   <>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                      <button style={chip(false)} onClick={() => setMany(emailable.filter(c => !c.do_not_rent).map(c => c.id))}>Όλοι</button>
+                      {/* Δευτερεύοντα και όχι πλακίδια: δεν κρατούν κατάσταση, είναι
+                          ενέργειες μαζικής επιλογής που τις καλείς και τελειώνουν. */}
+                      <Btn variant="secondary" onClick={() => setMany(emailable.filter(c => !c.do_not_rent).map(c => c.id))}>Όλοι</Btn>
 
-                      <button style={chip(false)} onClick={() => setMany([])}>Καθαρισμός</button>
+                      <Btn variant="secondary" onClick={() => setMany([])}>Καθαρισμός</Btn>
                     </div>
                     <input value={q} onChange={e => setQ(e.target.value)} placeholder="Όνομα ή email" aria-label="Αναζήτηση πελατών" style={{ ...field, marginBottom: 8 }} />
-                    <div style={{ maxHeight: 208, overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 12 }}>
+                    <div style={{ maxHeight: 208, overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup }}>
                       {visible.map((c, i) => {
                         const on = selected.has(c.id);
                         return (
                           <button key={c.id} onClick={() => toggle(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', borderTop: i ? '1px solid var(--border-subtle)' : 'none', background: on ? 'var(--accent-soft)' : 'transparent', cursor: 'pointer', fontFamily: T.font.sans }}>
-                            <span style={{ width: 18, height: 18, borderRadius: 6, flexShrink: 0, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ width: 18, height: 18, borderRadius: T.radius.xs, flexShrink: 0, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               {on && <svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
                             </span>
-                            <span style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', fontWeight: 700, fontSize: 'var(--fs-xs)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{initials(c.full_name)}</span>
+                            <span style={{ width: 26, height: 26, borderRadius: T.radius.chip, flexShrink: 0, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', fontWeight: 700, fontSize: 'var(--fs-xs)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{initials(c.full_name)}</span>
                             <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                               <span style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.full_name}</span>
                               <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</span>
@@ -290,7 +300,7 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                 </div>
 
                 {aiOpen && (
-                  <div style={{ border: '1px solid var(--accent-border)', background: 'var(--accent-soft)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
+                  <div style={{ border: '1px solid var(--accent-border)', background: 'var(--accent-soft)', borderRadius: T.radius.popup, padding: 14, marginBottom: 12 }}>
                     <div style={{ ...TT.bodySm, marginBottom: 8 }}>Πες μου με λίγα λόγια τι θέλεις να πεις· θα το γράψω επαγγελματικά.</div>
                     <textarea aria-label="Τι θέλεις να λέει το μήνυμα" value={aiBrief} onChange={e => setAiBrief(e.target.value)} rows={2}
                       placeholder="Ευχαριστήριο μετά τη διαμονή + κάλεσμα για κράτηση με 10% έκπτωση την επόμενη φορά"
@@ -305,7 +315,7 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                   placeholder="Γράψε το μήνυμά σου εδώ…" style={{ ...field, resize: 'vertical', lineHeight: 1.6 }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Προσωποποίηση:</span>
-                  <code style={{ fontSize: 'var(--fs-xs)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '2px 6px', fontFamily: T.font.mono, color: 'var(--text-secondary)' }}>{'{{name}}'}</code>
+                  <code style={{ fontSize: 'var(--fs-xs)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.xs, padding: '2px 6px', fontFamily: T.font.mono, color: 'var(--text-secondary)' }}>{'{{name}}'}</code>
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>γίνεται το όνομα κάθε παραλήπτη</span>
                 </div>
               </div>

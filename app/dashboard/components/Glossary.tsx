@@ -21,7 +21,10 @@ export default function Glossary({ items }: { items: { term: string; def: string
               background: on ? 'color-mix(in srgb, var(--text-primary) 5%, transparent)' : 'transparent', transition: 'background 0.15s',
             }}>
             <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: font, marginBottom: 4, color: on ? 'var(--accent)' : 'var(--text-primary)', transition: 'color 0.15s' }}>{it.term}</p>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, fontFamily: font }}>{it.def}</p>
+            {/* Ο ορισμός παίρνει το μέτρο ανάγνωσης της `.po-prose`. Χωρίς αυτό,
+                στα 1.440 η κάρτα δίνει χίλια εικονοστοιχεία και ο ορισμός του
+                δείκτη δόσης έβγαινε 137 χαρακτήρες σε μία γραμμή. */}
+            <p className="po-prose" style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: font }}>{it.def}</p>
           </div>
         )
       })}

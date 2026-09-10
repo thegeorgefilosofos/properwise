@@ -107,8 +107,8 @@ export const TT = {
    *
    * Τέσσερα σημεία έγραφαν ποσά και ποσοστά με το `mono`, δηλαδή σε ΑΛΛΗ
    * γραμματοσειρά από κάθε άλλο ποσό της ίδιας οθόνης: το σύνολο μήνα στις
-   * Δαπάνες, δύο γραμμές του ΕΝΦΙΑ και μία του Σχεδίου. Το «1.152,00 €» δίπλα
-   * στο «60,00 €» φαινόταν άλλο είδος πράγματος, σε απόσταση μιας ματιάς.
+   * Δαπάνες, δύο γραμμές του ΕΝΦΙΑ και μία του Σχεδίου. Το «1.152,00€» δίπλα
+   * στο «60,00€» φαινόταν άλλο είδος πράγματος, σε απόσταση μιας ματιάς.
    *
    * Η στοίχιση δεν χάνεται: το `tabular-nums` δίνει ίσο πλάτος στα ψηφία, που
    * είναι ο πραγματικός λόγος που ήθελε κανείς μονοδιάστημη σε στήλη ποσών.
@@ -143,7 +143,7 @@ export const histInputStyle = (isCurrent: boolean, isHovered = false) => ({
 // χρειάζεται και ο πυρήνας (insights, δάνεια, αποδόσεις παράγουν κείμενο για
 // τον χρήστη), αλλά το `lib/` δεν επιτρέπεται να εισάγει από το `components/`.
 // Οι οθόνες συνεχίζουν να γράφουν `import { fe } from '@/components/Theme'`.
-export { fe, feAuto, feRate, feCompact, fp, fn, feOr, fpOr, DASH, isBlankMetric, ABSENT, ABSENT_DATE, ABSENT_SHORT, grUpper } from '@/lib/core/format';
+export { fe, feAuto, feRate, feCompact, feWhole, fp, fn, feOr, fpOr, DASH, isBlankMetric, ABSENT, ABSENT_DATE, ABSENT_SHORT, grUpper } from '@/lib/core/format';
 
 // ── ΜΙΑ ΗΜΕΡΟΛΟΓΙΑΚΗ ΗΜΕΡΑ ΔΕΝ ΕΙΝΑΙ ΣΤΙΓΜΗ ──────────────────────────────
 //
