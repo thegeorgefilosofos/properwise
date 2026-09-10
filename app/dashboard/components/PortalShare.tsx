@@ -80,6 +80,8 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   // Και το ίδιο για τον ίδιο τον σύνδεσμο: άδεια γραμμή σημαίνει και «δεν έχει
   // ενεργοποιηθεί πύλη» και «δεν ξέρουμε αν έχει».
   const [linkErr, setLinkErr] = useState('');
+  /** Πότε λήγει ο σύνδεσμος. `null` σε παλιές γραμμές χωρίς λήξη. */
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     // «ΔΕΝ ΕΧΕΙΣ ΠΥΛΗ» ΕΝΩ ΕΧΕΙ. Το `error` πεταγόταν κι η άδεια γραμμή έβγαζε
@@ -93,6 +95,24 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
     setPayLink(row?.payment_link || '');
     setPinSet(!!row?.pin_hash);
     setLinkTenant(row?.tenant_id || null);
+    // ══ Η ΛΗΞΗ ΚΥΛΑΕΙ ΟΣΟ Η ΜΙΣΘΩΣΗ ΕΙΝΑΙ ΖΩΝΤΑΝΗ ═══════════════════════════
+    // Ο σύνδεσμος γεννιέται με 365 ημέρες ζωής κι καμία διαδρομή δεν τον
+    // ανανέωνε. Η ελληνική μίσθωση κατοικίας είναι τριετής κατ' ελάχιστο: στον
+    // δωδέκατο μήνα ο μισθωτής πατούσε ό,τι είχε στο κινητό του κι έβλεπε κενή
+    // σελίδα, χωρίς τίποτα να το πει στον ιδιοκτήτη. Το άνοιγμα ΑΥΤΗΣ της
+    // οθόνης είναι η απόδειξη ότι η μίσθωση τον απασχολεί ακόμη, οπότε γεμίζει
+    // ξανά το παράθυρο. Λογαριασμός που δεν τον άγγιξε κανείς για έναν χρόνο
+    // αφήνει τον σύνδεσμο να πεθάνει — που ήταν εξαρχής ο λόγος της λήξης.
+    let until = row?.expires_at ?? null;
+    if (row?.token && portalStore.needsRenewal(until, new Date())) {
+      const now = new Date();
+      const { error: renewErr } = await portalStore.renew(supabase, propertyId, userId, now);
+      // Σιωπηλή αποτυχία εδώ ΔΕΝ κρύβεται: η ημερομηνία από κάτω μένει η παλιά
+      // κι ο ιδιοκτήτης βλέπει ότι πλησιάζει, αντί να του υποσχεθούμε ανανέωση
+      // που δεν έγινε.
+      if (!renewErr) until = new Date(now.getTime() + portalStore.LIFETIME_DAYS * 86_400_000).toISOString();
+    }
+    setExpiresAt(until);
     // «Ο τρέχων μισθωτής» έρχεται από το στρώμα, που τον ορίζει μία φορά για
     // όλη την εφαρμογή: όποιος δεν έχει φύγει, με τη νεότερη μίσθωση πρώτη. Εδώ
     // έλεγε «ο πιο πρόσφατα δημιουργημένος», που είναι άλλος άνθρωπος όταν ο
@@ -208,6 +228,21 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   // ιδιοκτήτης που δούλευε σε διεύθυνση προεπισκόπησης θα έστελνε στον μισθωτή
   // του διεύθυνση που αύριο δεν απαντά.
   const url = portalStore.portalUrl(token);
+  // Η ΔΙΑΤΥΠΩΣΗ ΑΚΟΛΟΥΘΕΙ ΤΟ ΥΠΟΛΟΙΠΟ, ΟΧΙ ΤΟ ΑΝΤΙΣΤΡΟΦΟ. Μια ημερομηνία μόνη
+  // της («λήγει 12/09/2027») δεν λέει αν είναι κοντά· ένας αριθμός ημερών μόνος
+  // του δεν λέει πότε. Λέγονται κι τα δύο, με το υπόλοιπο πρώτο.
+  const expiryNote = useMemo(() => {
+    if (!token) return '';
+    const d = portalStore.daysLeft(expiresAt, new Date());
+    if (d === null) return '';
+    const on = fd(expiresAt as string);
+    // ΤΟ ΛΗΓΜΕΝΟ ΦΤΑΝΕΙ ΕΔΩ ΜΟΝΟ ΑΝ Η ΑΝΑΝΕΩΣΗ ΑΠΕΤΥΧΕ. Η φόρτωση αυτής της
+    // οθόνης ανανεώνει ήδη κάθε σύνδεσμο κάτω από το κατώφλι, ληγμένο ή όχι —
+    // οπότε αρνητικό υπόλοιπο σημαίνει ότι η γραφή δεν πέρασε, όχι ότι δεν
+    // δοκιμάστηκε. Λέγεται αυτό ακριβώς, αντί για οδηγία που δεν βοηθά.
+    if (d < 0) return `Ο σύνδεσμος έληξε στις ${on} κι η ανανέωση δεν αποθηκεύτηκε. Ξαναδοκίμασε σε λίγο.`;
+    return `Ισχύει άλλες ${d} ${d === 1 ? 'ημέρα' : 'ημέρες'}, ώς τις ${on}. Ανανεώνεται μόνος του όσο ανοίγεις αυτή την οθόνη.`;
+  }, [token, expiresAt]);
   const copy = () => { if (url) { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } };
   const setStatus = async (id: string, status: string) => {
     if (await saved('Η κατάσταση του αιτήματος δεν άλλαξε',
@@ -316,6 +351,15 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                 <Btn variant="secondary" onClick={copy}>{copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
                 <Btn variant="secondary" href={url} newTab>Άνοιγμα</Btn>
               </div>
+              {/* Ο,ΤΙ ΛΗΓΕΙ ΣΙΩΠΗΛΑ ΕΙΝΑΙ ΠΑΓΙΔΑ, ΑΚΟΜΗ ΚΙ ΟΤΑΝ ΑΝΑΝΕΩΝΕΤΑΙ
+                  ΜΟΝΟ ΤΟΥ. Ο ιδιοκτήτης έχει δικαίωμα να ξέρει τι έχει δώσει
+                  στον μισθωτή του κι για πόσο· η γραμμή μπαίνει κάτω από τον
+                  σύνδεσμο, όπου κοιτάει τη στιγμή που τον στέλνει. */}
+              {expiryNote && (
+                <p style={{ margin: '-8px 0 14px', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
+                  {expiryNote}
+                </p>
+              )}
 
               {/* Ρυθμίσεις πύλης: κωδικός προστασίας + σύνδεσμος πληρωμής */}
               <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
