@@ -135,8 +135,29 @@ for (const d of DEVICES) {
   const ctx = await browser.newContext({ ...d, locale: 'el-GR' })
   await ctx.addInitScript(SCROLLED)
   const p = await ctx.newPage()
+  // ══ ΤΟ ΣΠΑΣΜΕΝΟ ΠΑΚΕΤΟ ΕΛΕΓΕ «ΔΕΝ ΒΡΕΘΗΚΕ ΤΟ ΚΟΥΜΠΙ» ═══════════════════
+  // Οταν ο πάγκος σκάει στην εκκίνηση —μια εισαγωγή που τραβά `process.env`
+  // σε περιηγητή που δεν έχει `process`— δεν αποδίδεται ΤΙΠΟΤΑ. Ο σαρωτής
+  // περίμενε οκτώ δευτερόλεπτα το `.pa-fab` κι πέθανε με «Timeout exceeded»,
+  // δηλαδή κατηγορούσε τη σελίδα ενώ έφταιγε το χτίσιμο. Χάθηκε ένας γύρος CI
+  // για να βρεθεί ένα μήνυμα που ο περιηγητής το είχε ήδη πει.
+  //
+  // Το σφάλμα σελίδας πιάνεται τώρα κι ανακοινώνεται ΑΥΤΟΥΣΙΟ, πριν από κάθε
+  // αναμονή επιλογέα. Η αναμονή μένει για την περίπτωση που όντως αργεί η
+  // απόδοση — αλλά δεν είναι πια το μόνο που μιλάει.
+  const crashes = []
+  p.on('pageerror', e => crashes.push(String(e && e.message ? e.message : e)))
   const cdp = await ctx.newCDPSession(p)
   await p.goto(URL_BENCH, { waitUntil: 'load' })
+  if (crashes.length) {
+    console.error(`\n✗ Ο πάγκος έσκασε κατά τη φόρτωση — δεν αποδόθηκε τίποτα:\n`)
+    for (const c of [...new Set(crashes)]) console.error('    ' + c)
+    console.error(`
+  Δεν φταίει η σελίδα, φταίει το πακέτο. Συνήθης αιτία: μια εισαγωγή τράβηξε
+  module που διαβάζει \`process.env\` κι ο πάγκος δεν το δηλώνει. Ο χάρτης
+  μεταβλητών είναι κοινός, στο scripts/lib/bench-env.mjs.`)
+    process.exit(1)
+  }
   await p.waitForSelector('.pa-fab', { timeout: 8000 })
 
   // ── 1. ΤΟ `touch-action` ΤΟΥ ΚΟΥΜΠΙΟΥ ΔΕΝ ΑΦΗΝΕΙ ΤΗ ΣΕΛΙΔΑ ΝΑ ΤΟ ΠΑΡΕΙ ──
