@@ -18,6 +18,7 @@
 //  ΧΡΗΣΗ:  npm run e2e:money
 // ═══════════════════════════════════════════════════════════════════════════
 import { chromePath } from './lib/chrome.mjs';
+import { plain, bodyText } from './lib/plain-text.mjs';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
@@ -121,8 +122,8 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 {
   const s = await open('rent-three');
   await s.page.getByRole('button', { name: 'Όλες' }).click();
-  const label = (await s.primary().innerText()).replace(/[\n\r\t]+/g, ' ').trim();
-  eq('3. το κουμπί λέει πλήθος και άθροισμα', label, 'Καταχώρηση 3 δόσεων · 1.350,00\u00A0€');
+  const label = plain(await s.primary().innerText()).replace(/[\n\r\t]+/g, ' ').trim();
+  eq('3. το κουμπί λέει πλήθος και άθροισμα', label, 'Καταχώρηση 3 δόσεων · 1.350,00€');
   await s.primary().click();
   await settle(s.page);
   const w = await s.writes('rent_payments');
@@ -158,7 +159,7 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // άλλο από αυτό που είδε ο ιδιοκτήτης.
 {
   const s = await open('rent-cash');
-  const body = await s.page.evaluate(() => document.body.innerText);
+  const body = await bodyText(s.page);
   ok('5. με μετρητά, η οθόνη προειδοποιεί για την έκπτωση 5%',
     body.includes('τεκμαρτή έκπτωση 5%') && body.includes('5246'));
   await s.primary().click();
@@ -272,8 +273,13 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
   // μετρά τίποτα σταθερά. Περιμένουμε το ίχνος να εμφανιστεί στην οθόνη, που
   // είναι απόδειξη ότι το state ενημερώθηκε.
   await field.fill('92,10')
+  // ΤΟ ΣΥΜΒΟΛΟ ΓΡΑΦΕΤΑΙ ΚΟΛΛΗΤΑ, ΚΑΙ ΕΔΩ ΜΕΤΡΙΕΤΑΙ ΣΕ ΠΕΡΙΗΓΗΤΗ. Η αναμονή
+  // ζητούσε «87,45 €» αφού πρώτα ισοπέδωνε το αδιάσπαστο κενό σε απλό —
+  // δηλαδή δεχόταν και τις δύο γραφές. Τώρα ζητά ακριβώς αυτό που βλέπει ο
+  // χρήστης· αν κάποιος ξαναβάλει κενό, ο σαρωτής κοκκινίζει στη ζωγραφισμένη
+  // οθόνη, όχι μόνο στον πηγαίο.
   await s.page.waitForFunction(
-    () => document.body.innerText.replace(/\u00a0/g, ' ').includes('Από το μήνυμα διαβάστηκε 87,45 €'),
+    () => document.body.innerText.replace(/\u00AD/g, '').includes('Από το μήνυμα διαβάστηκε 87,45€'),
     null, { timeout: 5000 })
   ok('10β. και λέγεται τι διαβάστηκε, ώστε να μη χαθεί το ίχνος', true)
   eq('10β. το πεδίο κρατά τη νέα τιμή', await field.inputValue(), '92,10')
@@ -339,7 +345,10 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
       .find(r => r.querySelector('td')?.textContent?.trim() === l)
     if (!tr) return null
     return [...tr.querySelectorAll('td')].slice(1).map(td => ({
-      text: td.textContent.replace(/\u00a0/g, ' ').trim(),
+      // ΤΟ ΚΕΙΜΕΝΟ ΔΕΝ ΙΣΟΠΕΔΩΝΕΤΑΙ ΠΡΙΝ ΣΥΓΚΡΙΘΕΙ. Το `replace(/\u00a0/g, ' ')`
+      // έκανε ίδιες δύο γραφές που ΔΕΝ είναι ίδιες, άρα ο έλεγχος δεν θα
+      // έβλεπε ποτέ ένα αδιάσπαστο κενό να ξαναμπαίνει πριν το σύμβολο.
+      text: td.textContent.trim(),
       bold: getComputedStyle(td).fontWeight === '700',
     }))
   }, label)
@@ -348,7 +357,7 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 
   const spent = await rowOf('Δαπάνες έτους')
   eq('12. ίδιο σύνολο δαπανών στα τρία ακίνητα', spent?.map(c => c.text).join(' | '),
-    '900,00 € | 900,00 € | 900,00 €')
+    '900,00€ | 900,00€ | 900,00€')
 
   const net = await rowOf('Καθαρό ανά μήνα (εκτίμηση)')
   const tax = await rowOf('Μερίδιο φόρου (έτος)')

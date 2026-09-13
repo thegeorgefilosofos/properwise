@@ -132,7 +132,7 @@ function rowsTable(rows: PdfRow[]): Node {
     table: { widths: ['*', 'auto'], body },
     layout: {
       defaultBorder: false,
-      hLineWidth: (i: number, node: Node) => {
+      hLineWidth: (_i: number, _node: Node) => {
         // έντονη μαύρη γραμμή πάνω από «result»
         return 0.7;
       },
@@ -268,7 +268,17 @@ function signNode(signers: { role: string; name?: string; image?: string; place?
 
 /** Καθαρός builder → pdfmake docDefinition. Ελέγξιμος και σε Node. */
 export function buildDocDefinition(model: PdfReportModel): Node {
-  const accent = reportAccent(model.branding);
+  // ── ΤΟ ΧΡΩΜΑ ΤΗΣ ΕΠΩΝΥΜΙΑΣ ΥΠΟΛΟΓΙΖΟΤΑΝ ΚΑΙ ΔΕΝ ΜΠΑΙΝΕ ΠΟΥΘΕΝΑ ─────────
+  // Το `report_branding` είναι ΧΡΕΩΜΕΝΗ δυνατότητα: ο λογιστής δηλώνει
+  // επωνυμία, λογότυπο, τηλέφωνο, email ΚΑΙ χρώμα. Τα τέσσερα πρώτα τυπώνονταν·
+  // το πέμπτο περνούσε από το `reportAccent`, καθόταν σε μεταβλητή και δεν το
+  // διάβαζε καμία γραμμή. Ο συνδρομητής έβλεπε στις Ρυθμίσεις τον επιλογέα
+  // χρώματος να δουλεύει και στο χαρτί το ίδιο μαύρο με όλους.
+  //
+  // Μπαίνει ΜΟΝΟ όταν η λευκή επωνυμία είναι ενεργή. Σε έγγραφο χωρίς επωνυμία
+  // το `reportAccent` γυρίζει το προεπιλεγμένο μπλε· μια γαλάζια γραμμή σε
+  // βεβαίωση ενοικίου δεν είναι επωνυμία κανενός — είναι διακόσμηση.
+  const accent = model.branding?.enabled ? reportAccent(model.branding) : HEAVY_RULE;
   const name = brandDisplayName(model.branding);
   const contact = [model.branding?.phone?.trim(), model.branding?.email?.trim()].filter(Boolean).join(' · ');
   const asOfLabel = model.meta.asOfLabel ?? 'Ημερομηνία έκδοσης';
@@ -289,7 +299,7 @@ export function buildDocDefinition(model: PdfReportModel): Node {
       { width: 34, stack: [mark] },
       {
         width: '*', margin: [11, 0, 0, 0], stack: [
-          { text: name, bold: true, fontSize: 13, color: INK },
+          { text: name, bold: true, fontSize: 13, color: accent },
           { text: model.docType, color: INK_MUTED, fontSize: 10, margin: [0, 1, 0, 0] },
           ...(contact ? [{ text: contact, color: INK_MUTED, fontSize: 9, margin: [0, 1, 0, 0] }] : []),
         ],
@@ -318,7 +328,7 @@ export function buildDocDefinition(model: PdfReportModel): Node {
 
   const header: Node[] = [
     { columns: [brandBlock, metaBlock, qrBlock], columnGap: 16 },
-    { canvas: [{ type: 'line', x1: 0, y1: 6, x2: 515, y2: 6, lineWidth: 2, lineColor: HEAVY_RULE }], margin: [0, 8, 0, 0] },
+    { canvas: [{ type: 'line', x1: 0, y1: 6, x2: 515, y2: 6, lineWidth: 2, lineColor: accent }], margin: [0, 8, 0, 0] },
     { text: model.title, fontSize: 20, bold: true, color: INK, margin: [0, 16, 0, 2] },
     ...(model.subtitle ? [{ text: model.subtitle, color: INK_MUTED, fontSize: 11, margin: [0, 0, 0, 2] }] : []),
   ];

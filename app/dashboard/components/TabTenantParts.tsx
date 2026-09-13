@@ -9,7 +9,7 @@
 // σήμαινε άνοιγμα ενός αρχείου τριών χιλιάδων γραμμών.
 // ═══════════════════════════════════════════════════════════════════════════
 import React from 'react';
-import { T, EmptyState, fn } from '@/components/Theme';
+import { T, EmptyState, fn, ChipToggle } from '@/components/Theme';
 import { BarChart3 } from 'lucide-react';
 import { daysLeft, s as sty } from './TabTenantHelpers';
 import { MONTHS_SHORT } from '@/lib/core/months';
@@ -75,22 +75,9 @@ export function SectionTitle({ children, info }: { children: React.ReactNode; in
  * κάθε αλλαγή μεγέθους γραμμάτων μετακινεί σιωπηλά το ύψος.
  */
 export function Chip({ on, onClick, children }: { on:boolean; onClick:()=>void; children:React.ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={on}
-      style={{
-        // ΤΟ ΓΕΜΙΣΜΑ ΚΡΙΝΕΙ ΑΝ Η ΣΕΙΡΑ ΣΠΑΕΙ. Μετρημένο στη σειρά της επίπλωσης:
-        // τρία κουμπάκια ζητούσαν 333 και το κελί έδινε 325, οπότε το «Turn Key
-        // (όλα μέσα)» έπεφτε σε δεύτερη γραμμή και σήκωνε ολόκληρη τη σειρά κατά
-        // τριάντα εικονοστοιχεία. Δύο λιγότερα δεξιά και αριστερά τα χωρούν.
-        height:T.h.sm, padding:'0 14px', fontSize:12, fontFamily:T.font.sans, cursor:'pointer',
-        borderRadius:T.radius.btn, boxSizing:'border-box',
-        border:`1px solid ${on?'var(--accent)':'var(--border-default)'}`,
-        background:on?'var(--accent-dim)':'transparent',
-        color:on?'var(--accent)':'var(--text-secondary)',
-        fontWeight:on?600:400,
-        transition:'background .15s, border-color .15s, color .15s',
-      }}>{children}</button>
-  );
+  // shape="chip" (το προεπιλεγμένο): τα κουμπάκια στέκονται μόνα τους μέσα στη
+  // <ChipRow>, χωρίς ράγα με δικό της περίγραμμα γύρω τους.
+  return <ChipToggle on={on} onClick={onClick}>{children}</ChipToggle>;
 }
 
 export function ChipRow({ label, groupLabel, info, flush, children }: { label?:string; groupLabel?:string; info?:string; flush?:boolean; children:React.ReactNode }) {

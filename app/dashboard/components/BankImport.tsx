@@ -5,7 +5,7 @@ import * as expenseStore from '@/lib/data/expenses'
 import * as rentStore from '@/lib/data/rent'
 import { Check, ArrowRight, Landmark, SearchX } from 'lucide-react'
 import { readBankCsv, matchTransactions, legacyKeyOf, type BankTxn, type ExpectedRent, type RentMatch, type ExpenseSuggestion } from '@/lib/accounting/bankImport'
-import { feAuto, T, ABSENT_DATE, EmptyState, Modal, Spinner } from '@/components/Theme'
+import { feAuto, T, ABSENT_DATE, Btn, EmptyState, Modal, Spinner } from '@/components/Theme'
 import { athensToday } from '@/lib/core/time';
 import { MONTHS_NOM } from '@/lib/core/months';
 import type { RentPaymentsRow, BankTransactionsRow } from '@/lib/supabase/tables';
@@ -112,7 +112,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
   const row:React.CSSProperties = { display:'flex', alignItems:'center', gap:12, padding:'10px 12px', borderRadius:T.radius.inner, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)' }
 
   function Box({ checked, onClick }:{ checked:boolean; onClick:()=>void }){
-    return <button type="button" role="checkbox" aria-checked={checked} onClick={onClick} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius:6, border:`1.5px solid ${checked?'var(--accent)':'var(--border-default)'}`, background:checked?'var(--accent)':'var(--bg-elevated)', cursor:'pointer', flexShrink:0, padding:0 }}>{checked&&<Check size={12} style={{ color:'var(--accent-text)' }}/>}</button>
+    return <button type="button" role="checkbox" aria-checked={checked} onClick={onClick} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius: T.radius.xs, border:`1.5px solid ${checked?'var(--accent)':'var(--border-default)'}`, background:checked?'var(--accent)':'var(--bg-elevated)', cursor:'pointer', flexShrink:0, padding:0 }}>{checked&&<Check size={12} style={{ color:'var(--accent-text)' }}/>}</button>
   }
 
   // Η ίδια συνθήκη ήταν γραμμένη ΤΡΕΙΣ φορές στο κουμπί «Καταχώρηση» (disabled,
@@ -147,10 +147,10 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
       footerInfo={step==='input' ? filePicker : undefined}
       footer={
         step==='input' ? (
-          <button disabled={!text.trim()} onClick={()=>analyze(text)} style={{ display:'inline-flex', alignItems:'center', gap: 8, padding:'9px 18px', borderRadius:T.radius.btn, border:'none', background:text.trim()?'var(--accent)':'var(--bg-surface)', color:text.trim()?'var(--accent-text)':'var(--text-tertiary)', fontSize:12, fontWeight:700, cursor:text.trim()?'pointer':'default', fontFamily: T.font.sans }}>Ανάλυση<ArrowRight size={15}/></button>
+          <Btn variant="primary" disabled={!text.trim()} onClick={()=>analyze(text)}>Ανάλυση<ArrowRight size={15}/></Btn>
         ) : step==='review' ? (<>
-          <button onClick={()=>setStep('input')} style={{ padding:'9px 18px', borderRadius:T.radius.btn, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-secondary)', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily: T.font.sans }}>Πίσω</button>
-          <button disabled={!canSave} onClick={save} style={{ display:'inline-flex', alignItems:'center', gap: 8, padding:'9px 18px', borderRadius:T.radius.btn, border:'none', background:canSave?'var(--accent)':'var(--bg-surface)', color:canSave?'var(--accent-text)':'var(--text-tertiary)', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily: T.font.sans }}>Καταχώρηση</button>
+          <Btn variant="secondary" onClick={()=>setStep('input')}>Πίσω</Btn>
+          <Btn variant="primary" disabled={!canSave} onClick={save}>Καταχώρηση</Btn>
         </>) : undefined
       }>
       {step==='input'&&(<div>

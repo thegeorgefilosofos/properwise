@@ -39,7 +39,7 @@ export type IdDocType = 'Αστυνομική Ταυτότητα' | 'Διαβα�
  * αντλία θερμότητας, φωτοβολταϊκά, απεντόμωση) με τριάδα πεδίων το καθένα, εννέα
  * πεδία μετρητών (kWh, πάροχοι, τιμολόγια, όρια), έξι στάθμευσης, έναν
  * διαμορφωτή streaming με έξι υπηρεσίες και έναν καθαρισμού με προεπιλογή
- * 15 €/ώρα. Σύνολο ~40 πεδία για να απαντηθεί μία ερώτηση: ποιος πληρώνει τι.
+ * 15€/ώρα. Σύνολο ~40 πεδία για να απαντηθεί μία ερώτηση: ποιος πληρώνει τι.
  *
  * ΓΙΑΤΙ ΕΛΕΥΘΕΡΕΣ ΓΡΑΜΜΕΣ: ο κατάλογος συσκευών ήταν ο κατάλογος ενός
  * serviced-apartment operator. Ο ιδιοκτήτης που έχει καυστήρα και τίποτε άλλο
@@ -156,10 +156,17 @@ export const s = {
   // καμία κάθετη ευθεία να διαβαστεί.
   kpi:      { background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:'16px', padding:'14px 16px' } as React.CSSProperties,
   kpiV:     { fontSize:'22px', fontWeight:700, letterSpacing:'-0.5px', lineHeight:1, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' } as React.CSSProperties,
-  kpiL:     { fontSize:'9px', letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'var(--text-secondary)', marginTop:'5px' } as React.CSSProperties,
-  th:       { fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase' as const, color:'var(--text-secondary)', padding:'8px 12px', borderBottom:'1px solid var(--border-subtle)', textAlign:'left' as const, fontWeight:400 } as React.CSSProperties,
-  td:       { padding:'10px 12px', borderBottom:'1px solid var(--border-subtle)', color:'var(--text-primary)', fontSize:'12px', verticalAlign:'middle' as const } as React.CSSProperties,
-  tdM:      { padding:'10px 12px', borderBottom:'1px solid var(--border-subtle)', color:'var(--text-secondary)', fontSize:'12px', verticalAlign:'middle' as const } as React.CSSProperties,
+  kpiL:     { fontSize:'9px', letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'var(--text-secondary)', marginTop:T.sp.xs } as React.CSSProperties,
+  // ══ ΤΑ `th`, `td` ΚΑΙ `tdM` ΕΦΥΓΑΝ, ΚΑΙ ΓΡΑΦΕΤΑΙ ΓΙΑΤΙ ══════════════════════
+  // Ηταν ΔΕΥΤΕΡΟ σύστημα πίνακα, παράλληλο με την `.po-table` του globals.css
+  // και ασύμφωνο μαζί της σε κάθε νούμερο: κεφαλίδα 9 εικονοστοιχείων αντί για
+  // 11, απόσταση γραμμάτων 0,12em αντί για 0,06em, γέμισμα 8×12 και 10×12 αντί
+  // για 9×14 και 10×14, βάρος 400 αντί για 700 — και καμία επιφάνεια, κανένα
+  // περίγραμμα, οπότε οι γραμμές αιωρούνταν πάνω στην κάρτα.
+  //
+  // Το χρησιμοποιούσαν δύο οθόνες, ο Ενοικιαστής και η Φροντίδα. Και οι δύο
+  // γράφουν πλέον `.po-table`, δηλαδή τον ίδιο πίνακα με τα δημόσια εργαλεία,
+  // με τις τρεις σελίδες εμπιστοσύνης και με το Δάνειο. Μία κλίμακα.
   // ── ΤΟ ΔΑΧΤΥΛΟ ─────────────────────────────────────────────────────────
   // Τα τέσσερα κουμπιά της καρτέλας ενοικιαστή είναι το πυκνότερο σημείο της
   // εφαρμογής: εξήντα δύο σημεία κλήσης σε τρία αρχεία. Το ύψος τους έβγαινε
@@ -184,7 +191,6 @@ export const s = {
 /** Παλιά μορφή της στήλης `streaming` (πριν γίνει ελεύθερες γραμμές). */
 /** Παλιά μορφή της στήλης `cleaning`. */
 
-const num = (v: unknown): number => { const n = typeof v === 'number' ? v : parseFloat(String(v ?? '')); return Number.isFinite(n) && n > 0 ? n : 0; };
 
 
 
@@ -218,8 +224,13 @@ export function ServicesEditor({ value, onChange }: { value: ServiceLine[] | nul
             background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:'10px',
           }}>
             <TextInput label="Περιγραφή" value={l.name} onChange={v => upd(i, { name: v })} placeholder="Συντήρηση καυστήρα" />
-            <NumberInput label="Κόστος τον μήνα" value={l.cost ? String(l.cost) : ''} onChange={v => upd(i, { cost: parseFloat(v) || 0 })} suffix="€" step={0.01} />
+            <NumberInput label="Κόστος τον μήνα" value={l.cost ? String(l.cost) : ''} onChange={v => upd(i, { cost: parseFloat(v) || 0 })} suffix="€" />
             <UIServiceBySelect label="Ποιος πληρώνει" value={l.payer} onChange={v => upd(i, { payer: v })} />
+            {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `s.btnDng` είναι γεωμετρικά δευτερεύον κουμπί
+                αλλά το μελάνι του είναι ο κίνδυνος: το `Btn` έχει τρεις ρόλους
+                και κανένας τους δεν είναι ο κόκκινος, οπότε η μετατροπή θα έσβηνε
+                τη μόνη ένδειξη ότι η γραμμή χάνεται. Το ύψος T.h.lg είναι εδώ για
+                να ζυγίσει με τα πεδία του πλέγματος δίπλα του. */}
             <button type="button" onClick={() => del(i)} title="Αφαίρεση γραμμής"
               style={{ ...s.btnDng, height:T.h.lg, whiteSpace:'nowrap' as const }}>Αφαίρεση</button>
           </div>
@@ -234,7 +245,7 @@ export function ServicesEditor({ value, onChange }: { value: ServiceLine[] | nul
           ].map(({ label, val }) => (
             <div key={label}>
               <div style={{ fontSize:'15px', fontWeight:700, color:'var(--text-primary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{val}</div>
-              <div style={{ fontSize:'9px', color:'var(--text-secondary)', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'3px' }}>{label}</div>
+              <div style={{ fontSize:'9px', color:'var(--text-secondary)', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:T.sp.xs }}>{label}</div>
             </div>
           ))}
         </div>

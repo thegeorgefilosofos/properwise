@@ -26,13 +26,18 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { findSources } from './lib/find-tests.mjs'
+import { tightened } from './lib/ratchet.mjs'
 
 const BASELINE = JSON.parse(readFileSync('scripts/percent-baseline.json', 'utf8'))
 
 // Ενα interpolation με `%` αμέσως μετά, μέσα σε template literal.
 const PCT = /\$\{([^{}]{1,120})\}%/g
 // Οι εγκεκριμένοι μορφοποιητές ποσοστού της εφαρμογής και των edge functions.
-const OK_FN = /\b(?:fp|fpOr|feRate|fmtPct|fmtPct1|pct|percent)\s*\(/
+// ΤΟ `fn` ΕΛΕΙΠΕ, ΚΑΙ ΕΙΝΑΙ ΜΟΡΦΟΠΟΙΗΤΗΣ. Γράφει με `toLocaleString(LOCALE, …)`,
+// δηλαδή ΠΟΤΕ δεν βγάζει τελεία ως υποδιαστολή — που είναι ακριβώς το σφάλμα για
+// το οποίο γράφτηκε ο φύλακας. Δύο σημεία που έγραφαν ήδη σωστά μετριόνταν ως
+// χρέος: φύλακας που κατηγορεί σωστό κώδικα μαθαίνει τον αναγνώστη να τον αγνοεί.
+const OK_FN = /\b(?:fp|fpOr|feRate|fmtPct|fmtPct1|pct|percent|fn)\s*\(/
 // Το `%` ως μονάδα μήκους ή ως στάθμη ανάμειξης χρώματος: CSS, όχι κείμενο.
 const CSS_LINE = /\b(?:color-mix|width|height|left|right|top|bottom|inset|translate|flexBasis|gridTemplate|background|stroke|offset|clip|mask|transform|padding|margin)\b/i
 // Το `%` ως μπαλαντέρ του SQL LIKE/ILIKE.
@@ -68,8 +73,4 @@ if (findings.length > BASELINE.max) {
   console.error('\n  Στα ελληνικά το ποσοστό είναι «87,50%». Πέρασέ το από fp().')
   process.exit(1)
 }
-if (findings.length < BASELINE.max) {
-  console.log(`✓ ${findings.length} ποσοστά χωρίς μορφοποιητή (όριο ${BASELINE.max}) — κατέβασε το όριο στο scripts/percent-baseline.json`)
-} else {
-  console.log(`✓ ${findings.length} ποσοστά χωρίς μορφοποιητή, στο όριο — κανένα νέο`)
-}
+if (!tightened({ total: findings.length, max: BASELINE.max, what: 'ποσοστά χωρίς μορφοποιητή', file: 'scripts/percent-baseline.json', key: 'max' })) process.exit(1)

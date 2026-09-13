@@ -20,7 +20,7 @@ import type {
   AccountantStatementLine, AccountantMovement,
 } from './accountantTypes';
 import { XLSX, setCell, autoWidths, wrapColumns, bannerRow, downloadWorkbook, printTitles, sheetFinish, workbookBytes, sectionSheet, moveSheetFirst } from './xlsxStyle';
-import { FMT, S, ROW, MARGINS, money, moneySigned, type Cell } from './sheetFormat';
+import { FMT, S, ROW, MARGINS, money, moneySigned, percent, type Cell } from './sheetFormat';
 import { supplyLabel, reverseChargeVat, reverseCharge, VAT_STANDARD, type Supply } from '@/lib/tax/placeOfSupply';
 import {
   myDataHint, myDataCell, pendingGroups, EXPENSE_CLASS_LABEL, INVOICE_TYPE_LABEL,
@@ -557,7 +557,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
 
   // ══ ΦΥΛΛΟ: ΜΗΤΡΩΟ ΠΑΓΙΩΝ ΚΑΙ ΑΠΟΣΒΕΣΕΙΣ ══════════════════════════════════
   // ΓΙΑΤΙ ΥΠΑΡΧΕΙ. Το βιβλίο της εφαρμογής είναι ταμειακό: μια ανακαίνιση
-  // 12.000 € φαίνεται ως πληρωμή ενός μήνα. Κατά τα ΕΛΠ είναι πάγιο, μπαίνει
+  // 12.000€ φαίνεται ως πληρωμή ενός μήνα. Κατά τα ΕΛΠ είναι πάγιο, μπαίνει
   // στον 16 και αποσβένεται σε βάθος ετών. Ο λογιστής το ήξερε και κρατούσε
   // δικό του πρόχειρο μητρώο, σε δικό του αρχείο, με δικά του νούμερα.
   //
@@ -572,8 +572,13 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
     const NC = 12, HR = 4;
     const sorted = sortAssets(assets);
     const totals = totalsByAccount(sorted, year);
-    const pct = (r: number | null): string =>
-      r == null ? '' : `${(r * 100).toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
+    // ΤΕΤΑΡΤΟ ΑΝΤΙΓΡΑΦΟ ΤΟΥ ΜΟΡΦΟΠΟΙΗΤΗ ΠΟΣΟΣΤΟΥ, ΚΑΙ ΤΟ ΜΟΝΟ ΜΕ ΚΕΝΟ. Εγραφε
+    // τον δικό του `toLocaleString` και κολλούσε « %» στο τέλος, τη στιγμή που
+    // το `sheetFormat.ts` εξάγει ήδη `percent()` για ακριβώς αυτό. Το μόνο που
+    // πρόσθετε ήταν το κενό πριν το σύμβολο, δηλαδή τη διαφορά από την οθόνη.
+    // Μένει μόνο ό,τι είναι δικό του: το πολλαπλασιασμένο επί εκατό και το
+    // κενό κελί όταν ο συντελεστής δεν έχει δηλωθεί.
+    const pct = (r: number | null): string => (r == null ? '' : percent(r * 100));
 
     /** Μία γραμμή του μητρώου, με ό,τι ξέρουμε και κενό σε ό,τι δεν ξέρουμε. */
     const assetRow = (a: FixedAsset): (string | number)[] => {
@@ -606,7 +611,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
       const base = t.cost - t.land;
       registry.push([
         '', `Σύνολο ${t.code} ${t.name}`, '', '', money(t.cost), t.land ? money(t.land) : '', money(base), '',
-        // Κενό και όχι «0,00 €» όταν κανένα πάγιο της ομάδας δεν αποσβένεται:
+        // Κενό και όχι «0,00€» όταν κανένα πάγιο της ομάδας δεν αποσβένεται:
         // το μηδέν διαβάζεται ως «δεν αποσβένεται», ενώ η αλήθεια είναι ότι
         // λείπει ο συντελεστής.
         t.charge ? money(t.charge) : '', base - t.closing ? money(base - t.closing) : '', money(t.closing), '',

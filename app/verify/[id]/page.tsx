@@ -10,6 +10,7 @@ import { TriangleAlert, CircleCheckBig } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { ABSENT, T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 import { useCallback, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -65,7 +66,7 @@ export default function VerifyDocument() {
   return (
     <div style={wrap}>
       <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 18, borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.lg, borderBottom: '1px solid var(--border-subtle)' }}>
           <BrandMark size={34} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 700 }}>PROPERWISE</div>
@@ -103,7 +104,7 @@ export default function VerifyDocument() {
             σημαίνει πλαστό, σημαίνει ότι δεν βρέθηκε — μπορεί να σαρώθηκε λάθος
             ο κωδικός. Η διάκριση την κάνουν οι λέξεις, όχι ο συναγερμός. */}
         {state === 'notfound' && (
-          <div style={{ paddingTop: 22 }}>
+          <div style={{ paddingTop: T.sp.xl }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: 10, padding: '11px 14px' }}>
               <TriangleAlert size={18} strokeWidth={2.5} style={{ color: 'var(--warning)', flexShrink: 0 }} aria-hidden="true" />
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--warning)' }}>Δεν βρέθηκε έγγραφο με αυτόν τον κωδικό</span>
@@ -121,7 +122,7 @@ export default function VerifyDocument() {
             εξέτασε. Και υπάρχει κουμπί: η μόνη σωστή ενέργεια είναι να
             ξαναρωτήσεις, όχι να φύγεις με απάντηση που δεν πήρες. */}
         {state === 'error' && (
-          <div style={{ paddingTop: 22 }}>
+          <div style={{ paddingTop: T.sp.xl }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 10, padding: '11px 14px' }}>
               <TriangleAlert size={18} strokeWidth={2.5} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} aria-hidden="true" />
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Ο έλεγχος δεν ολοκληρώθηκε</span>
@@ -137,7 +138,7 @@ export default function VerifyDocument() {
         )}
 
         {state === 'ok' && doc && (
-          <div style={{ paddingTop: 22 }}>
+          <div style={{ paddingTop: T.sp.xl }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '11px 14px' }}>
               {/* Ίδιο μέγεθος, ίδιο πάχος γραμμής, ίδια θέση με το πλακίδιο από
                   πάνω. Ένα «✓» ως χαρακτήρας κειμένου δίπλα σε ένα εικονίδιο
@@ -146,7 +147,7 @@ export default function VerifyDocument() {
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--positive)' }}>Γνήσιο έγγραφο, εκδόθηκε από το PROPERWISE</span>
             </div>
 
-            <div style={{ display: 'grid', gap: 16, marginTop: 22 }}>
+            <div style={{ display: 'grid', gap: 16, marginTop: T.sp.xl }}>
               <div><div style={label}>Τύπος εγγράφου</div><div style={value}>{doc.doc_type}</div></div>
               {doc.subject && <div><div style={label}>Αντικείμενο</div><div style={value}>{doc.subject}</div></div>}
               {doc.period && <div><div style={label}>Περίοδος</div><div style={value}>{doc.period}</div></div>}
@@ -155,9 +156,15 @@ export default function VerifyDocument() {
               <div><div style={label}>Αριθμός εγγράφου</div><div style={{ ...value, fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em' }}>{doc.id}</div></div>
             </div>
 
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: 24, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-              Η σελίδα επιβεβαιώνει ότι το έγγραφο με τον παραπάνω κωδικό δημιουργήθηκε από την πλατφόρμα PROPERWISE.
-              Δεν εμφανίζονται ποσά ή ευαίσθητα στοιχεία. Το περιεχόμενο του εγγράφου παραμένει ευθύνη του εκδότη.
+            {/* ΤΑ ΨΙΛΑ ΓΡΑΜΜΑΤΑ ΤΗΣ ΕΠΑΛΗΘΕΥΣΗΣ ΚΛΕΙΝΟΥΝ ΚΑΙ ΔΕΞΙΑ. Η κάρτα κόβει στα
+                460 κι το γέμισμα των 30 αφήνει 400 στο κείμενο: 204 χαρακτήρες στα 11,
+                δηλαδή τέσσερις γραμμές. Σε δημόσια σελίδα που βεβαιώνει γνησιότητα
+                εγγράφου, η ριγμένη άκρη είναι το μόνο σημείο που δεν μοιάζει με χαρτί.
+                Η στοίχιση πάει μαζί με τον συλλαβισμό — αλλιώς τεντώνει τα κενά. Το
+                «PROPERWISE» είναι λατινικό: μένει ακέραιο. */}
+            <p className="po-just" style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: 24, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+              {hy(<>Η σελίδα επιβεβαιώνει ότι το έγγραφο με τον παραπάνω κωδικό δημιουργήθηκε από την πλατφόρμα PROPERWISE.
+              Δεν εμφανίζονται ποσά ή ευαίσθητα στοιχεία. Το περιεχόμενο του εγγράφου παραμένει ευθύνη του εκδότη.</>)}
             </p>
           </div>
         )}

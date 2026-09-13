@@ -4,7 +4,7 @@ import {
 } from './types';
 
 let pass = 0, fail = 0;
-const ok = (name: string, cond: boolean) => { cond ? pass++ : (fail++, console.error('✗', name)); };
+const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗', name) } };
 
 // ── Ο ΚΑΤΑΛΟΓΟΣ ΕΙΝΑΙ ΠΛΗΡΗΣ ────────────────────────────────────────────
 ok('κάθε κλειδί είναι μοναδικό', new Set(PROPERTY_TYPES).size === PROPERTY_TYPES.length);

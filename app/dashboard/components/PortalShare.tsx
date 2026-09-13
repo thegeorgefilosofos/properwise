@@ -5,14 +5,14 @@
 // τον σύνδεσμο και εμφανίζει τα εισερχόμενα αιτήματα βλάβης (cross-tab).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, type CSSProperties } from 'react';
 import { Inbox } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
 import * as calendar from '@/lib/data/calendar'
 import * as tenantStore from '@/lib/data/tenants';
 import * as portalStore from '@/lib/data/portal';
-import { T, fd, fe, EmptyState, Skeleton, pressable } from '@/components/Theme';
+import { T, fd, fe, EmptyState, Skeleton, pressable, Btn, InfoBanner } from '@/components/Theme';
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import { athensToday } from '@/lib/core/time';
 import { saved, savedData } from '@/components/dbWrite';
@@ -34,6 +34,16 @@ interface Req { id: string; title: string; description: string | null; contact: 
 // στον σημερινό ενοικιαστή και όταν αλλάξει ενοικιαστής ο ιδιοκτήτης το βλέπει
 // και εκδίδει νέο. Το ίδιο σχήμα με τη βάση (uuid χωρίς παύλες).
 const newToken = () => crypto.randomUUID().replace(/-/g, '');
+
+// Το σήμα των εκκρεμών αιτημάτων: κουτί 20×20 που γίνεται χάπι όταν μπει διψήφιος
+// αριθμός. Η γωνία είναι το κουπόνι `pill` της κλίμακας — σε ύψος 20 το πρόγραμμα
+// περιήγησης το περιορίζει σε τέλειο κύκλο, δηλαδή ίδια εικόνα με το χειροκίνητο 10
+// που υπήρχε, χωρίς όμως νούμερο γραμμένο στο χέρι.
+const pendingBadge: CSSProperties = {
+  minWidth: 20, height: 20, borderRadius: T.radius.pill,
+  fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.sans,
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px',
+};
 
 export default function PortalShare({ propertyId, userId }: { propertyId: string; userId: string }) {
   const supabase = createClient();
@@ -61,23 +71,65 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   // σπασμένη εικόνα σε κάθε αίτημα με φωτογραφίες. Ιδια υπογραφή με το
   // MaintenanceView, από το ίδιο σημείο.
   const [signedPhotos, setSignedPhotos] = useState<Record<string, string[]>>({});
+  // Ιδιος λόγος με την καρτέλα φροντίδας: κενός χάρτης σημαίνει και «καμία
+  // φωτογραφία» και «δεν φόρτωσαν». Το δεύτερο λέγεται.
+  const [photoErr, setPhotoErr] = useState('');
+  // Το ίδιο κενό με τις φωτογραφίες, ένα επίπεδο πιο πάνω: η άδεια λίστα
+  // αιτημάτων σημαίνει και «κανένα αίτημα» και «δεν διαβάστηκαν».
+  const [reqsErr, setReqsErr] = useState('');
+  // Και το ίδιο για τον ίδιο τον σύνδεσμο: άδεια γραμμή σημαίνει και «δεν έχει
+  // ενεργοποιηθεί πύλη» και «δεν ξέρουμε αν έχει».
+  const [linkErr, setLinkErr] = useState('');
+  /** Πότε λήγει ο σύνδεσμος. `null` σε παλιές γραμμές χωρίς λήξη. */
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { row } = await portalStore.link(supabase, propertyId, userId);
+    // «ΔΕΝ ΕΧΕΙΣ ΠΥΛΗ» ΕΝΩ ΕΧΕΙ. Το `error` πεταγόταν κι η άδεια γραμμή έβγαζε
+    // την κάρτα ενεργοποίησης: ο ιδιοκτήτης διάβαζε ότι ο ενοικιαστής δεν έχει
+    // πρόσβαση, ενώ ο σύνδεσμος ζούσε κι άνοιγε σε όποιον τον είχε — και το
+    // κουμπί «Ενεργοποίηση πύλης» ήταν το μόνο που του προσφερόταν. Σε αποτυχία
+    // δεν λέγεται πια τίποτα για την πύλη ούτε προσφέρεται ενεργοποίηση.
+    const { row, error: linkError } = await portalStore.link(supabase, propertyId, userId);
+    setLinkErr(linkError ? failed('Η πύλη ενοικιαστή δεν διαβάστηκε', linkError) : '');
     setToken(row?.token || null);
     setPayLink(row?.payment_link || '');
     setPinSet(!!row?.pin_hash);
     setLinkTenant(row?.tenant_id || null);
+    // ══ Η ΛΗΞΗ ΚΥΛΑΕΙ ΟΣΟ Η ΜΙΣΘΩΣΗ ΕΙΝΑΙ ΖΩΝΤΑΝΗ ═══════════════════════════
+    // Ο σύνδεσμος γεννιέται με 365 ημέρες ζωής κι καμία διαδρομή δεν τον
+    // ανανέωνε. Η ελληνική μίσθωση κατοικίας είναι τριετής κατ' ελάχιστο: στον
+    // δωδέκατο μήνα ο μισθωτής πατούσε ό,τι είχε στο κινητό του κι έβλεπε κενή
+    // σελίδα, χωρίς τίποτα να το πει στον ιδιοκτήτη. Το άνοιγμα ΑΥΤΗΣ της
+    // οθόνης είναι η απόδειξη ότι η μίσθωση τον απασχολεί ακόμη, οπότε γεμίζει
+    // ξανά το παράθυρο. Λογαριασμός που δεν τον άγγιξε κανείς για έναν χρόνο
+    // αφήνει τον σύνδεσμο να πεθάνει — που ήταν εξαρχής ο λόγος της λήξης.
+    let until = row?.expires_at ?? null;
+    if (row?.token && portalStore.needsRenewal(until, new Date())) {
+      const now = new Date();
+      const { error: renewErr } = await portalStore.renew(supabase, propertyId, userId, now);
+      // Σιωπηλή αποτυχία εδώ ΔΕΝ κρύβεται: η ημερομηνία από κάτω μένει η παλιά
+      // κι ο ιδιοκτήτης βλέπει ότι πλησιάζει, αντί να του υποσχεθούμε ανανέωση
+      // που δεν έγινε.
+      if (!renewErr) until = new Date(now.getTime() + portalStore.LIFETIME_DAYS * 86_400_000).toISOString();
+    }
+    setExpiresAt(until);
     // «Ο τρέχων μισθωτής» έρχεται από το στρώμα, που τον ορίζει μία φορά για
     // όλη την εφαρμογή: όποιος δεν έχει φύγει, με τη νεότερη μίσθωση πρώτη. Εδώ
     // έλεγε «ο πιο πρόσφατα δημιουργημένος», που είναι άλλος άνθρωπος όταν ο
     // ιδιοκτήτης διορθώσει παλιά καταχώρηση.
     const t = await tenantStore.current<{ id: string; full_name: string }>(supabase, propertyId, tenantStore.NAME_COLUMNS, userId);
     setTenant(t || null);
-    const { data: r } = await supabase.from('maintenance_requests').select('*').eq('property_id', propertyId).eq('user_id', userId).order('created_at', { ascending: false });
-    setReqs((r as Req[]) || []);
+    // ΤΟΝ ΜΕΤΡΗΤΗ ΤΟΝ ΔΙΑΒΑΖΕΙ Ο ΙΔΙΟΚΤΗΤΗΣ ΩΣ ΒΕΒΑΙΩΣΗ. Το `error` πεταγόταν:
+    // σε αποτυχία ανάγνωσης έσβηνε ο αριθμός δίπλα στον τίτλο, η κάρτα έγραφε
+    // «Αιτήματα (0 εκκρεμή)» κι από κάτω «Κανένα αίτημα ακόμη» — ό,τι ακριβώς
+    // δείχνει κι όταν πράγματι δεν έχει στείλει τίποτα ο ενοικιαστής. Μια
+    // βλάβη που τρέχει έμενε έτσι αδιάβαστη. Τώρα λέγεται η τρίτη κατάσταση:
+    // δεν ξέρουμε, χωρίς αριθμό και χωρίς βεβαίωση.
+    const { data: r, error: reqsError } = await supabase.from('maintenance_requests').select('*').eq('property_id', propertyId).eq('user_id', userId).order('created_at', { ascending: false });
+    setReqsErr(reqsError ? failed('Τα αιτήματα βλάβης δεν διαβάστηκαν', reqsError) : '');
+    setReqs(reqsError ? [] : ((r as Req[]) || []));
     setLoading(false);
-  }, [propertyId, userId]);
+  }, [propertyId, userId, supabase]);
 
   const saveLink = async () => {
     setBusy(true);
@@ -123,7 +175,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   const photoSig = useMemo(() => photosKey(reqs), [reqs]);
   useEffect(() => {
     let alive = true;
-    signMaintenancePhotos(supabase, reqs).then(map => { if (alive) setSignedPhotos(map); });
+    signMaintenancePhotos(supabase, reqs).then(r => { if (alive) { setSignedPhotos(r.map); setPhotoErr(r.error); } });
     return () => { alive = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoSig]);
@@ -176,6 +228,21 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   // ιδιοκτήτης που δούλευε σε διεύθυνση προεπισκόπησης θα έστελνε στον μισθωτή
   // του διεύθυνση που αύριο δεν απαντά.
   const url = portalStore.portalUrl(token);
+  // Η ΔΙΑΤΥΠΩΣΗ ΑΚΟΛΟΥΘΕΙ ΤΟ ΥΠΟΛΟΙΠΟ, ΟΧΙ ΤΟ ΑΝΤΙΣΤΡΟΦΟ. Μια ημερομηνία μόνη
+  // της («λήγει 12/09/2027») δεν λέει αν είναι κοντά· ένας αριθμός ημερών μόνος
+  // του δεν λέει πότε. Λέγονται κι τα δύο, με το υπόλοιπο πρώτο.
+  const expiryNote = useMemo(() => {
+    if (!token) return '';
+    const d = portalStore.daysLeft(expiresAt, new Date());
+    if (d === null) return '';
+    const on = fd(expiresAt as string);
+    // ΤΟ ΛΗΓΜΕΝΟ ΦΤΑΝΕΙ ΕΔΩ ΜΟΝΟ ΑΝ Η ΑΝΑΝΕΩΣΗ ΑΠΕΤΥΧΕ. Η φόρτωση αυτής της
+    // οθόνης ανανεώνει ήδη κάθε σύνδεσμο κάτω από το κατώφλι, ληγμένο ή όχι —
+    // οπότε αρνητικό υπόλοιπο σημαίνει ότι η γραφή δεν πέρασε, όχι ότι δεν
+    // δοκιμάστηκε. Λέγεται αυτό ακριβώς, αντί για οδηγία που δεν βοηθά.
+    if (d < 0) return `Ο σύνδεσμος έληξε στις ${on} κι η ανανέωση δεν αποθηκεύτηκε. Ξαναδοκίμασε σε λίγο.`;
+    return `Ισχύει άλλες ${d} ${d === 1 ? 'ημέρα' : 'ημέρες'}, ώς τις ${on}. Ανανεώνεται μόνος του όσο ανοίγεις αυτή την οθόνη.`;
+  }, [token, expiresAt]);
   const copy = () => { if (url) { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } };
   const setStatus = async (id: string, status: string) => {
     if (await saved('Η κατάσταση του αιτήματος δεν άλλαξε',
@@ -224,11 +291,21 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Πύλη ενοικιαστή</div>
-            <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1 }}>Κοινοποίηση συνδέσμου και αιτήματα βλάβης</div>
+            <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Κοινοποίηση συνδέσμου και αιτήματα βλάβης</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {pending.length > 0 && <span style={{ minWidth: 20, height: 20, borderRadius: 10, background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 'var(--fs-xs)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', fontFamily: T.font.sans }}>{pending.length}</span>}
+          {/* ΤΟ ΣΗΜΑ ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ. Οι δύο εκδοχές —αριθμός εκκρεμών, ή «!»
+              όταν δεν ξέρουμε— διαφέρουν σε ΔΥΟ πράγματα, το χρώμα κι το
+              περιεχόμενο· οι υπόλοιπες δώδεκα ιδιότητες είναι ίδιες. Γραμμένες
+              δύο φορές, η δεύτερη έφερε μαζί της κι δεύτερη ωμή γωνία. */}
+          {(reqsErr || pending.length > 0) && (
+            <span
+              title={reqsErr ? 'Τα αιτήματα δεν διαβάστηκαν' : undefined}
+              style={{ ...pendingBadge, background: reqsErr ? 'var(--warning)' : 'var(--accent)', color: reqsErr ? 'var(--on-tone)' : 'var(--accent-text)' }}>
+              {reqsErr ? '!' : pending.length}
+            </span>
+          )}
           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="m6 9 6 6 6-6"/></svg>
         </div>
       </div>
@@ -240,10 +317,12 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
               <Skeleton h={T.h.md} r={10} />
               {[0, 1].map(i => <Skeleton key={i} h={56} r={10} />)}
             </div>
+          ) : linkErr ? (
+            <InfoBanner tone="negative">{linkErr} Ανανέωσε τη σελίδα· ώσπου να διαβαστεί, δεν ξέρουμε αν η πύλη είναι ήδη ενεργή· η ενεργοποίηση μένει κλειστή ώστε να μη χαθεί ο σύνδεσμος που ίσως έχει ήδη ο ενοικιαστής.</InfoBanner>
           ) : !token ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, flex: 1, minWidth: 200 }}>Ενεργοποίησε έναν ασφαλή σύνδεσμο που μπορεί να μοιραστεί ο ενοικιαστής σου, βλέπει ενοίκιο/σύμβαση και στέλνει αιτήματα.</div>
-              <button onClick={enable} disabled={busy} style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{busy ? 'Ενεργοποίηση…' : 'Ενεργοποίηση πύλης'}</button>
+              <Btn variant="primary" onClick={enable} disabled={busy}>{busy ? 'Ενεργοποίηση…' : 'Ενεργοποίηση πύλης'}</Btn>
             </div>
           ) : (
             <>
@@ -255,6 +334,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                   <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--warning-on-container)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
                     Ο σύνδεσμος ανήκει στον προηγούμενο ενοικιαστή. Έκδωσε νέον για <strong>{tenant?.full_name || 'τον σημερινό ενοικιαστή'}</strong>, ο παλιός παύει αμέσως να ισχύει.
                   </div>
+                  {/* Μένει χειροποίητο: το γέμισμα είναι var(--warning) και το Btn έχει μόνο accent, οπότε η προειδοποιητική σήμανση θα χανόταν. */}
                   <button onClick={reissue} disabled={busy} style={{ height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: 'none', background: 'var(--warning)', color: 'var(--on-tone)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: busy ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{busy ? 'Έκδοση…' : 'Έκδοση νέου συνδέσμου'}</button>
                 </div>
               )}
@@ -263,14 +343,23 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                   <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
                     Ο σύνδεσμος δεν είναι δεμένος σε ενοικιαστή, οπότε θα ακολουθεί όποιον μένει κάθε φορά. Δέσ&apos; τον στον <strong>{tenant?.full_name || 'σημερινό ενοικιαστή'}</strong>, ο ίδιος σύνδεσμος συνεχίζει να δουλεύει.
                   </div>
-                  <button onClick={bind} disabled={busy} style={{ height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: busy ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{busy ? 'Δέσιμο…' : 'Δέσιμο στον ενοικιαστή'}</button>
+                  <Btn variant="secondary" onClick={bind} disabled={busy}>{busy ? 'Δέσιμο…' : 'Δέσιμο στον ενοικιαστή'}</Btn>
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
-                <input aria-label="Σύνδεσμος πύλης" readOnly value={url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 200, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '9px 12px', fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.mono, outline: 'none' }} />
-                <button onClick={copy} style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</button>
-                <a href={url} target="_blank" rel="noopener noreferrer" style={{ height: T.h.md, display: 'inline-flex', alignItems: 'center', padding: '0 16px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Άνοιγμα</a>
+                <input aria-label="Σύνδεσμος πύλης" readOnly value={url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 200, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '9px 12px', fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.mono, outline: 'none' }} />
+                <Btn variant="secondary" onClick={copy}>{copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
+                <Btn variant="secondary" href={url} newTab>Άνοιγμα</Btn>
               </div>
+              {/* Ο,ΤΙ ΛΗΓΕΙ ΣΙΩΠΗΛΑ ΕΙΝΑΙ ΠΑΓΙΔΑ, ΑΚΟΜΗ ΚΙ ΟΤΑΝ ΑΝΑΝΕΩΝΕΤΑΙ
+                  ΜΟΝΟ ΤΟΥ. Ο ιδιοκτήτης έχει δικαίωμα να ξέρει τι έχει δώσει
+                  στον μισθωτή του κι για πόσο· η γραμμή μπαίνει κάτω από τον
+                  σύνδεσμο, όπου κοιτάει τη στιγμή που τον στέλνει. */}
+              {expiryNote && (
+                <p style={{ margin: '-8px 0 14px', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
+                  {expiryNote}
+                </p>
+              )}
 
               {/* Ρυθμίσεις πύλης: κωδικός προστασίας + σύνδεσμος πληρωμής */}
               <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
@@ -287,25 +376,31 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                       <div style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 6 }}>Σύνδεσμος πληρωμής (προαιρετικό)</div>
                       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 8, lineHeight: 1.5 }}>Επικόλλησε τον σύνδεσμο του παρόχου σου (Stripe, Viva, PayPal, Revolut). Ο ενοικιαστής βλέπει κουμπί «Πληρωμή τώρα» και πληρώνει εκεί, όχι εδώ.</div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <input aria-label="Σύνδεσμος πληρωμής" value={payLink} onChange={e => setPayLink(e.target.value)} placeholder="https://..." style={{ flex: 1, minWidth: 180, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '9px 12px', fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.mono, outline: 'none' }} />
-                        <button onClick={saveLink} disabled={busy} style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Αποθήκευση</button>
+                        <input aria-label="Σύνδεσμος πληρωμής" value={payLink} onChange={e => setPayLink(e.target.value)} placeholder="https://..." style={{ flex: 1, minWidth: 180, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '9px 12px', fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.mono, outline: 'none' }} />
+                        <Btn variant="secondary" onClick={saveLink} disabled={busy}>Αποθήκευση</Btn>
                       </div>
                     </div>
                     <div>
                       <div style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 6 }}>Κωδικός προστασίας</div>
                       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 8, lineHeight: 1.5 }}>Χωρίς αυτόν δεν ανοίγει η πύλη. Δώσ&apos; τον μόνο στον ενοικιαστή σου.</div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <input aria-label="Κωδικός PIN" value={pinInput} onChange={e => setPinInput(e.target.value)} inputMode="numeric" placeholder={pinSet ? 'Νέος κωδικός' : 'π.χ. 4 ψηφία'} style={{ flex: 1, minWidth: 140, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '9px 12px', fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.num, outline: 'none' }} />
-                        <button onClick={savePin} disabled={busy || !pinInput.trim()} style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: pinInput.trim() ? 'pointer' : 'not-allowed', opacity: pinInput.trim() ? 1 : 0.6 }}>{pinSet ? 'Αλλαγή' : 'Ορισμός'}</button>
-                        {pinSet && <button onClick={clearPin} disabled={busy} style={{ height: T.h.md, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Κατάργηση</button>}
+                        <input aria-label="Κωδικός PIN" value={pinInput} onChange={e => setPinInput(e.target.value)} inputMode="numeric" placeholder={pinSet ? 'Νέος κωδικός' : 'π.χ. 4 ψηφία'} style={{ flex: 1, minWidth: 140, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '9px 12px', fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.num, outline: 'none' }} />
+                        <Btn variant="primary" onClick={savePin} disabled={busy || !pinInput.trim()}>{pinSet ? 'Αλλαγή' : 'Ορισμός'}</Btn>
+                        {pinSet && <Btn variant="secondary" onClick={clearPin} disabled={busy}>Κατάργηση</Btn>}
                       </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Αιτήματα ({pending.length} εκκρεμή)</div>
-              {reqs.length === 0 ? (
+              <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Αιτήματα{reqsErr ? '' : ` (${pending.length} εκκρεμή)`}</div>
+              {/* ΜΙΑ ΦΟΡΑ ΠΑΝΩ ΑΠΟ ΤΗ ΛΙΣΤΑ, ΟΧΙ ΜΙΑ ΑΝΑ ΑΙΤΗΜΑ: η υπογραφή γίνεται
+                  με ΜΙΑ κλήση για όλες τις φωτογραφίες όλων των αιτημάτων, οπότε η
+                  αποτυχία είναι επίσης μία. */}
+              {photoErr && <InfoBanner tone="negative">{photoErr} Τα αιτήματα φαίνονται κανονικά· λείπουν μόνο οι εικόνες τους.</InfoBanner>}
+              {reqsErr ? (
+                <InfoBanner tone="negative">{reqsErr} Ανανέωσε τη σελίδα· ώσπου να διαβαστούν, δεν ξέρουμε αν σε περιμένει αίτημα βλάβης.</InfoBanner>
+              ) : reqs.length === 0 ? (
                 <EmptyState icon={<Inbox size={20} />} title="Κανένα αίτημα ακόμη" hint="Όταν ο ενοικιαστής στείλει αίτημα βλάβης από την πύλη, θα εμφανιστεί εδώ." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -323,7 +418,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                           {(signedPhotos[r.id]?.length ?? 0) > 0 && (
                             <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                               {signedPhotos[r.id].slice(0, 4).map((url, pi) => (
-                                <a key={pi} href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: 44, height: 44, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                                <a key={pi} href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: 44, height: 44, borderRadius: T.radius.xs, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={url} alt="Φωτογραφία βλάβης" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                                 </a>
@@ -333,17 +428,17 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                           <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>{fd(r.created_at)}{r.contact ? ` · ${r.contact}` : ''}</div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                          {r.status === 'new' && <button onClick={() => setStatus(r.id, 'in_progress')} style={{ height: T.h.sm, padding: '0 10px', borderRadius: T.radius.pill, border: '1px solid var(--accent-border)', background: 'var(--bg-surface)', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Ξεκίνησε</button>}
-                          {r.status === 'in_progress' && <button onClick={() => setStatus(r.id, 'done')} style={{ height: T.h.sm, padding: '0 10px', borderRadius: T.radius.pill, border: '1px solid var(--accent-border)', background: 'var(--bg-surface)', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Ολοκλήρωση</button>}
-                          {!done && <button onClick={() => toCalendar(r)} disabled={synced.has(r.id)} style={{ height: T.h.sm, padding: '0 10px', borderRadius: T.radius.pill, border: '1px solid var(--accent-border)', background: 'transparent', color: synced.has(r.id) ? 'var(--text-tertiary)' : 'var(--accent)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: synced.has(r.id) ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: synced.has(r.id) ? 0.6 : 1 }}>{synced.has(r.id) ? 'Στο Ημερολόγιο' : 'Ημερολόγιο'}</button>}
-                          {done && costFor !== r.id && <button onClick={() => { setCostFor(r.id); setCost(''); }} style={{ height: T.h.sm, padding: '0 10px', borderRadius: T.radius.pill, border: '1px solid var(--accent-border)', background: 'transparent', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>ως Δαπάνη</button>}
+                          {r.status === 'new' && <Btn variant="secondary" onClick={() => setStatus(r.id, 'in_progress')}>Ξεκίνησε</Btn>}
+                          {r.status === 'in_progress' && <Btn variant="secondary" onClick={() => setStatus(r.id, 'done')}>Ολοκλήρωση</Btn>}
+                          {!done && <Btn variant="secondary" onClick={() => toCalendar(r)} disabled={synced.has(r.id)}>{synced.has(r.id) ? 'Στο Ημερολόγιο' : 'Ημερολόγιο'}</Btn>}
+                          {done && costFor !== r.id && <Btn variant="secondary" onClick={() => { setCostFor(r.id); setCost(''); }}>ως Δαπάνη</Btn>}
                           {done && costFor === r.id && (
                             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                              <input aria-label="Ποσό δαπάνης σε ευρώ" autoFocus value={cost} onChange={e => setCost(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') toExpense(r); if (e.key === 'Escape') setCostFor(null); }} placeholder="€" inputMode="decimal" style={{ width: 56, height: T.h.sm, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '0 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-primary)', fontFamily: T.font.mono, outline: 'none', textAlign: 'right' }} />
-                              <button onClick={() => toExpense(r)} style={{ height: T.h.sm, padding: '0 8px', borderRadius: T.radius.badge, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer' }}>OK</button>
+                              <input aria-label="Ποσό δαπάνης σε ευρώ" autoFocus value={cost} onChange={e => setCost(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') toExpense(r); if (e.key === 'Escape') setCostFor(null); }} placeholder="€" inputMode="decimal" style={{ width: 56, height: T.h.sm, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '0 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-primary)', fontFamily: T.font.mono, outline: 'none', textAlign: 'right' }} />
+                              <Btn variant="primary" onClick={() => toExpense(r)}>OK</Btn>
                             </div>
                           )}
-                          {done && <button onClick={() => setStatus(r.id, 'new')} style={{ height: T.h.sm, padding: '0 10px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Επαναφορά</button>}
+                          {done && <Btn variant="secondary" onClick={() => setStatus(r.id, 'new')}>Επαναφορά</Btn>}
                         </div>
                       </div>
                     );

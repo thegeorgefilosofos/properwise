@@ -65,12 +65,12 @@ const onScreen = () => page.evaluate(async () => {
 
 // ── ΤΟ ΜΗΝΥΜΑ ΓΙΝΕΤΑΙ ΕΙΔΟΠΟΙΗΣΗ ──────────────────────────────────────────
 {
-  await deliver(JSON.stringify({ title: 'ΔΕΗ', body: 'Λήγει σήμερα, 87,45 €', url: '/dashboard' }))
+  await deliver(JSON.stringify({ title: 'ΔΕΗ', body: 'Λήγει σήμερα, 87,45€', url: '/dashboard' }))
   const [n, ...rest] = await onScreen()
   ok('η ειδοποίηση εμφανίστηκε', !!n)
   ok('και είναι μία, όχι δύο', rest.length === 0)
   ok('ο τίτλος λέει ΤΙ', n?.title === 'ΔΕΗ')
-  ok('το σώμα λέει ΠΟΤΕ και ΠΟΣΟ, με ελληνικό κόμμα', n?.body === 'Λήγει σήμερα, 87,45 €')
+  ok('το σώμα λέει ΠΟΤΕ και ΠΟΣΟ, με ελληνικό κόμμα', n?.body === 'Λήγει σήμερα, 87,45€')
   ok('το πάτημα ξέρει πού πάει', n?.data?.url === '/dashboard')
 }
 

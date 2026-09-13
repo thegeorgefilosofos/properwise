@@ -261,7 +261,7 @@ export default function AccountantWorkspace() {
       {/* ΟΣΑ ΔΕΝ ΠΑΤΙΟΥΝΤΑΙ, ΔΕΝ ΤΥΠΩΝΟΝΤΑΙ. Ο λογιστής τυπώνει τη λίστα για να
           την πάρει μαζί του: η προσθήκη πελάτη, η αναζήτηση και τα κουμπιά είναι
           χειριστήρια, όχι πληροφορία. */}
-      <Card style={{ marginTop: 22 }} className="po-noprint">
+      <Card style={{ marginTop: T.sp.xl }} className="po-noprint">
         <p style={label}>Νέος πελάτης</p>
         {/* ΤΟ ΠΕΔΙΟ ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ ΤΑ ΚΟΙΝΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ. Ηταν ζωγραφισμένα
             εδώ, με δικό τους ύψος, δικό τους περίγραμμα και δική τους
@@ -361,7 +361,7 @@ export default function AccountantWorkspace() {
                       {lastMove(c.lastActivity)}
                     </p>
                     {/* ΤΟ ΜΗΔΕΝ ΔΕΝ ΓΡΑΦΕΤΑΙ ΩΣ ΠΟΣΟ. Πελάτης χωρίς καμία
-                        καταχώρηση δεν έχει έσοδα «0,00 €»: δεν έχει μέτρηση. Και
+                        καταχώρηση δεν έχει έσοδα «0,00€»: δεν έχει μέτρηση. Και
                         όποιος δεν απάντησε λείπει, δεν μηδενίζεται. */}
                     {showMoney && money && (
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '6px 0 0', fontFamily: T.font.mono }}>
@@ -396,7 +396,7 @@ export default function AccountantWorkspace() {
                 </div>
 
                 {gaps.length > 0 && (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'grid', gap: 1 }}>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'grid', gap: 0 }}>
                     {gaps.map(g => {
                       const k = `${c.ownerId}:${g.key}`;
                       const sent = asked[k] || c.requests.some(r => r.item === g.item);
@@ -409,22 +409,18 @@ export default function AccountantWorkspace() {
                               color: g.blocking ? 'var(--text-primary)' : 'var(--text-secondary)',
                               fontWeight: g.blocking ? 600 : 400,
                             }}>{g.item}</span>
-                            <button
-                              type="button"
-                              onClick={() => (writing ? void ask(c.ownerId, g.key, g.item) : setOpenNote(k))}
-                              disabled={sent}
-                              className="po-noprint"
-                              // ΣΑΡΑΝΤΑ ΤΕΣΣΕΡΑ, ΟΧΙ ΤΡΙΑΝΤΑ. Ηταν 30 εικονοστοιχεία ψηλό,
-                              // δηλαδή κάτω από το δάπεδο αφής, σε κουμπί που ο λογιστής
-                              // πατά μία φορά ανά εκκρεμότητα ανά πελάτη.
-                              style={{
-                                flexShrink: 0, minHeight: 44, padding: '0 14px', borderRadius: T.radius.btn,
-                                border: '1px solid var(--border-subtle)', background: 'transparent',
-                                color: sent ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                                fontSize: 12, fontWeight: 600, fontFamily: T.font.sans,
-                                cursor: sent ? 'default' : 'pointer',
-                              }}
-                            >{sent ? 'Ζητήθηκε' : writing ? 'Στείλ᾽ το' : 'Ζήτησέ το'}</button>
+                            {/* ΤΟ ΥΨΟΣ ΔΕΝ ΓΡΑΦΕΤΑΙ ΠΙΑ ΕΔΩ. Τα 44 ήταν καρφωμένα για να μην
+                                πέσει το κουμπί κάτω από το δάπεδο αφής· η κλίμακα του `Btn`
+                                τα δίνει μόνη της σε δάχτυλο (T.h.md) και κρατά τα 36 στο
+                                ποντίκι. Το `po-noprint` ζει στο δοχείο — ίδιο μοτίβο με την
+                                «Αφαίρεση» πιο πάνω: το `Btn` δεν δέχεται className. */}
+                            <span className="po-noprint" style={{ flexShrink: 0 }}>
+                              <Btn
+                                variant="secondary"
+                                onClick={() => (writing ? void ask(c.ownerId, g.key, g.item) : setOpenNote(k))}
+                                disabled={sent}
+                              >{sent ? 'Ζητήθηκε' : writing ? 'Στείλ᾽ το' : 'Ζήτησέ το'}</Btn>
+                            </span>
                           </div>
                           {/* Η ΣΗΜΕΙΩΣΗ ΕΙΝΑΙ ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΜΗΝΥΜΑ. Το εργαλείο
                               έλεγε στον ιδιοκτήτη «λείπει δαπάνη» και τον λογιστή
@@ -455,7 +451,7 @@ export default function AccountantWorkspace() {
                 {c.requests.length > 0 && (
                   <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
                     <p style={label}>Σε εκκρεμότητα</p>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0', display: 'grid', gap: 1 }}>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0', display: 'grid', gap: 0 }}>
                       {c.requests.map(r => (
                         <li key={r.id} style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '6px 0',

@@ -91,6 +91,13 @@ export interface RentVsBuyResult {
   buyNetAtHorizon: number
   rentAtHorizon: number
   advantageAtHorizon: number   // θετικό = η αγορά συμφέρει στον ορίζοντα
+  // ── ΟΙ ΤΟΚΟΙ ΥΠΟΛΟΓΙΖΟΝΤΑΝ ΚΑΙ ΠΕΤΙΟΝΤΑΝ ────────────────────────────────
+  // Ο βρόχος χώριζε ήδη κάθε δόση σε τόκο και κεφάλαιο και άθροιζε τους τόκους
+  // στο `cumInterest` — που δεν το διάβαζε κανείς και δεν το επέστρεφε τίποτα.
+  // Είναι το ποσό που ο αγοραστής πληρώνει και ΔΕΝ γίνεται περιουσία του: το
+  // μόνο μέγεθος της σύγκρισης που αντιστοιχεί ένα προς ένα στο ενοίκιο.
+  // Χωρίς αυτό η οθόνη έδειχνε «καθαρό κόστος» χωρίς να λέει από τι φτιάχνεται.
+  interestAtHorizon: number
 }
 
 /**
@@ -164,6 +171,7 @@ export function rentVsBuy(opts: {
 
   return {
     buyNetCostByYear, rentCostByYear, breakEvenYear,
+    interestAtHorizon: r0(cumInterest),
     buyNetAtHorizon: buyNetCostByYear[horizon],
     rentAtHorizon: rentCostByYear[horizon],
     advantageAtHorizon: r0(rentCostByYear[horizon] - buyNetCostByYear[horizon]),

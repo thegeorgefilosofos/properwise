@@ -1,7 +1,6 @@
 'use client'
-import { T } from '@/components/Theme'
+import { T, Btn } from '@/components/Theme'
 import { useState, useEffect, useSyncExternalStore } from 'react'
-import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/supabase/lazy';
 import Link from 'next/link'
 import AuthAside from '../AuthAside'
@@ -24,7 +23,6 @@ const HASH_NEVER_CHANGES = () => () => {}
 const readRecovery = () => window.location.hash.includes('type=recovery')
 
 export default function ResetPasswordPage() {
-  const router = useRouter()
   // Ο ΣΥΝΔΕΣΜΟΣ ΤΟΥ EMAIL ΛΕΕΙ ΗΔΗ ΣΕ ΠΟΙΑ ΟΘΟΝΗ ΕΙΜΑΣΤΕ. Ηταν
   // `setMode('update')` μέσα σε effect: ο χρήστης που πάτησε τον σύνδεσμο
   // επαναφοράς έβλεπε για ένα καρέ τη φόρμα «στείλε μου σύνδεσμο», δηλαδή τη
@@ -95,12 +93,9 @@ export default function ResetPasswordPage() {
     fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: 8,
     textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans,
   }
-  const btn: React.CSSProperties = {
-    width: '100%', padding: '12px', background: 'var(--accent)', border: 'none', borderRadius: T.radius.pill,
-    color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-    opacity: loading ? 0.6 : 1, letterSpacing: '-0.01em', marginTop: 4, fontFamily: 'inherit',
-  }
   const eye = (
+    /* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το IconBtn δεν προωθεί `aria-pressed` και το μάτι
+       είναι διακόπτης — ο στόχος αφής είναι ήδη 44×44. */
     <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Απόκρυψη κωδικού' : 'Εμφάνιση κωδικού'} aria-pressed={show}
       style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {show
@@ -153,9 +148,10 @@ export default function ResetPasswordPage() {
                     onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                 </div>
                 {errBox}
-                <button type="submit" disabled={loading} style={btn}>{loading ? 'Αποστολή…' : 'Στείλε σύνδεσμο'}</button>
+                {/* `field` γιατί η υποβολή κρατά όλο το πλάτος της φόρμας, όπως πριν. */}
+                <Btn variant="primary" type="submit" field disabled={loading}>{loading ? 'Αποστολή…' : 'Στείλε σύνδεσμο'}</Btn>
               </form>
-              <p style={{ fontSize: 13, marginTop: 22 }}>
+              <p style={{ fontSize: 13, marginTop: T.sp.xxl }}>
                 <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Επιστροφή στη σύνδεση</Link>
               </p>
             </>
@@ -197,7 +193,7 @@ export default function ResetPasswordPage() {
                     onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                 </div>
                 {errBox}
-                <button type="submit" disabled={loading || !pwOk} style={{ ...btn, cursor: (loading || !pwOk) ? 'not-allowed' : 'pointer', opacity: (loading || !pwOk) ? 0.6 : 1 }}>{loading ? 'Αποθήκευση…' : 'Αποθήκευση κωδικού'}</button>
+                <Btn variant="primary" type="submit" field disabled={loading || !pwOk}>{loading ? 'Αποθήκευση…' : 'Αποθήκευση κωδικού'}</Btn>
               </form>
             </>
           )}
@@ -207,7 +203,9 @@ export default function ResetPasswordPage() {
               {successIcon}
               <h1 style={h2s}>Ο κωδικός άλλαξε</h1>
               <p style={subs}>Μπορείς τώρα να συνδεθείς με τον νέο σου κωδικό.</p>
-              <button onClick={() => router.push('/dashboard')} style={btn}>Μετάβαση στον πίνακα</button>
+              {/* Προορισμός και όχι ενέργεια: με `href` γίνεται σύνδεσμος που ανοίγει
+                  και σε νέα καρτέλα, με την ίδια ακριβώς όψη. */}
+              <Btn variant="primary" href="/dashboard" field>Μετάβαση στον πίνακα</Btn>
             </div>
           )}
         </div>

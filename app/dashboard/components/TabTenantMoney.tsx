@@ -26,24 +26,7 @@ import {
   CustomSelect as SelectField,
   DatePicker,
 } from './UIComponents';
-import {
-  T,
-  InfoBanner,
-  Badge,
-  Btn,
-  EmptyState,
-  Modal,
-  fe,
-  fdLong,
-  fn,
-  fp,
-  Spinner,
-  ExportButton,
-  ABSENT,
-  ABSENT_DATE,
-  TT,
-  pressable,
-} from '@/components/Theme';
+import { T, InfoBanner, Badge, Btn, EmptyState, Modal, fe, fdLong, fn, fp, Spinner, ExportButton, ABSENT, ABSENT_DATE, TT, pressable, RuntimeImg } from '@/components/Theme';
 import {
   Banknote,
 } from 'lucide-react';
@@ -64,6 +47,7 @@ import {
 import { MONTHS_NOM, MONTHS_SHORT, monthNom, monthGen } from '@/lib/core/months';
 import { INK, INK_MUTED, RULE } from '@/lib/print/ink';
 import { AadeLinks } from '@/components/AadeLink';
+import { hy } from '@/components/Hyphen';
 import { failed } from '@/lib/core/dbError';
 // Το Αρχείο έχει ένα σπίτι: lib/data/documents.
 import * as documents from '@/lib/data/documents';
@@ -216,11 +200,21 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
         />
       )}
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:16 }}>
+      {/* ΜΕΤΡΗΘΗΚΕ ΜΕΣΑ ΣΤΟ ΝΤΟΣΙΕ (SideSheet xl), όχι στο .app-content: ωφέλιμο
+          πλάτος 381 στα 430, 719 στα 768, 785 στα 834, 931 από τα 1024 επάνω.
+          Με κατώφλι 200 οι δύο στήλες άνοιγαν ήδη στα 416 ωφέλιμα, οπότε στα 768
+          κάθε πάνελ έπαιρνε 351,5 · ΛΙΓΟΤΕΡΟ από τα 381 του τηλεφώνου των 430.
+          Μαζί του στένευε το πεδίο έτους σε 301,5 από 331 του τηλεφώνου · η
+          λωρίδα «Ιστορικό ΔΤΚ» έπεφτε σε 2 πλακίδια ανά σειρά από 3, δηλαδή 6
+          σειρές για 11 έτη αντί για 4. Με 380 το σπάσιμο πάει στα 776 ωφέλιμα:
+          στα 768 μία στήλη 719 με 6 πλακίδια ανά σειρά, στα 834 μένουν οι δύο
+          στήλες των 384,5 · στα 1024 οι δύο των 457,5. Το τηλέφωνο δεν αλλάζει
+          καθόλου: στα 320, 390, 430 μετρήθηκε ταυτόσημο με πριν. */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap:16 }}>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
           <SectionTitle>Υπολογιστής αναπροσαρμογής</SectionTitle>
 
-          <div style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'16px 18px', marginBottom:18 }}>
+          <div style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'16px 18px', marginBottom:T.sp.lg }}>
             <div style={{ fontSize: 'var(--fs-xs)', letterSpacing:'0.12em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:6 }}>Τρέχον μηνιαίο μίσθωμα</div>
             <div style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{fmtE(rent)}</div>
             {tenant.lease_end&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:4 }}>Λήξη: {fmtDate(tenant.lease_end)}</div>}
@@ -234,8 +228,14 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
 
           {/* Έτος χωρίς δείκτη: το λέμε, δεν το μπαλώνουμε */}
           {official===null&&(
-            <div style={{ background:'var(--warning-dim)', border:'1px solid color-mix(in srgb, var(--warning) 26%, transparent)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.inner, padding:'11px 14px', marginBottom:16, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-              Για το {yr} δεν έχουμε επιβεβαιωμένη μέση ετήσια μεταβολή ΔΤΚ. Ο τελευταίος δείκτης που έχουμε είναι του {CPI_LATEST_YEAR}. Δώσε το ποσοστό που προβλέπει η σύμβασή σου. Θα γραφτεί στο έγγραφο ως ποσοστό που όρισες εσύ, όχι ως στοιχείο της ΕΛΣΤΑΤ.
+            /* ΠΕΝΤΕ ΓΡΑΜΜΕΣ ΜΕ ΡΙΓΜΕΝΗ ΔΕΞΙΑ ΑΚΡΗ. Το κουτί κρατά 305 ωφέλιμα
+               στα 430 της οθόνης — πάνελ 381 μείον 48 γέμισμα μείον 30 πλαίσιο —
+               και 377 στα 1024. Τα 232 γράμματα στα 12 δίνουν πέντε γραμμές που
+               τελείωναν σε τυχαίο σημείο, δίπλα σε κουτί με ίσιο περίγραμμα.
+               Τώρα κλείνουν και δεξιά· τα μαλακά ενωτικά του hy() κρατούν τα
+               κενά στο φυσικό τους μέγεθος αντί να τα τεντώσει η στοίχιση. */
+            <div className="po-just" style={{ background:'var(--warning-dim)', border:'1px solid color-mix(in srgb, var(--warning) 26%, transparent)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.inner, padding:'11px 14px', marginBottom:16, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
+              {hy(<>Για το {yr} δεν έχουμε επιβεβαιωμένη μέση ετήσια μεταβολή ΔΤΚ. Ο τελευταίος δείκτης που έχουμε είναι του {CPI_LATEST_YEAR}. Δώσε το ποσοστό που προβλέπει η σύμβασή σου. Θα γραφτεί στο έγγραφο ως ποσοστό που όρισες εσύ, όχι ως στοιχείο της ΕΛΣΤΑΤ.</>)}
             </div>
           )}
 
@@ -288,7 +288,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
                 </div>
               </div>
 
-              <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:18, marginBottom:14 }}>
+              <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg, marginBottom:14 }}>
                 {[{label:hasCustom?'Ποσοστό σύμβασης':`ΔΤΚ ${yr}`,value:`${pct>=0?'+':''}${fp(pct)}`},
                   {label:'Μεταβολή ανά Μήνα',value:`${diff>=0?'+':''}${fmtE(diff)}`},
                   {label:'Μεταβολή ανά Έτος',value:`${diff>=0?'+':''}${fmtE(diff*12)}`}
@@ -300,24 +300,30 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
                 </div>
               </div>
 
-              <button onClick={genLetter} style={{ width:'100%', height:T.h.lg, borderRadius:T.radius.btn, border:'none', background:'var(--accent)', color:'var(--accent-text)', cursor:'pointer', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:700, letterSpacing:'0.04em', marginBottom:12 }}>
-                Εκτύπωση Ειδοποίησης Αναπροσαρμογής
-              </button>
+              {/* Το περιτύλιγμα κρατά ΜΟΝΟ την απόσταση από τα επόμενα: το Btn δεν δέχεται style. */}
+              <div style={{ marginBottom:12 }}>
+                <Btn variant="primary" field onClick={genLetter}>Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>
+              </div>
             </>
           )}
           {/* Χωρίς ποσοστό δεν βγαίνει έγγραφο: το κουμπί απενεργοποιείται και λέει γιατί */}
           {rent>0&&!hasPct&&(
-            <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:18, marginBottom:14 }}>
-              <button disabled title="Δώσε πρώτα το ποσοστό αναπροσαρμογής" style={{ width:'100%', height:T.h.lg, borderRadius:T.radius.btn, border:'1px solid var(--border-default)', background:'transparent', color:'var(--text-tertiary)', cursor:'not-allowed', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:600 }}>
-                Εκτύπωση Ειδοποίησης Αναπροσαρμογής
-              </button>
-              <div style={{ marginTop:10, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-                Η ειδοποίηση φεύγει σε άλλον άνθρωπο και μένει στα χαρτιά του. Δεν την εκτυπώνουμε με νούμερο που δεν έχει προέλευση. Συμπλήρωσε το ποσοστό της σύμβασης ή επίλεξε έτος με επιβεβαιωμένο δείκτη.
+            <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg, marginBottom:14 }}>
+              {/* Δευτερεύον, όχι κύριο: η ανενεργή όψη είναι διάφανη με περίγραμμα — το ίδιο που δίνει το secondary. */}
+              <Btn variant="secondary" field disabled title="Δώσε πρώτα το ποσοστό αναπροσαρμογής">Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>
+              {/* ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΠΟΥ ΕΞΗΓΟΥΝ ΓΙΑΤΙ ΤΟ ΚΟΥΜΠΙ ΑΠΟ ΠΑΝΩ ΔΕΝ ΠΑΤΙΕΤΑΙ.
+                  Το κουτί μετρήθηκε 347 ωφέλιμα στα 430 της οθόνης και 423 στα 1024
+                  (στήλη 457,5 μείον 32 γέμισμα μείον 2 περίγραμμα): 190 γράμματα
+                  στα 12 πιάνουν τρεις με τέσσερις γραμμές. Στοίχιση πέρα πέρα με
+                  τα ενωτικά του hy(), ώστε το κείμενο να κάθεται στο ίδιο ορθογώνιο
+                  με το πλαίσιο που το κρατά. */}
+              <div className="po-just" style={{ marginTop:10, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
+                {hy(<>Η ειδοποίηση φεύγει σε άλλον άνθρωπο και μένει στα χαρτιά του. Δεν την εκτυπώνουμε με νούμερο που δεν έχει προέλευση. Συμπλήρωσε το ποσοστό της σύμβασης ή επίλεξε έτος με επιβεβαιωμένο δείκτη.</>)}
               </div>
             </div>
           )}
 
-          <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:18 }}>
+          <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg }}>
             <SectionTitle>Υποχρεώσεις και Σύνδεσμοι</SectionTitle>
             {/* ΤΕΣΣΕΡΑ ΛΑΘΗ ΣΕ ΤΡΕΙΣ ΓΡΑΜΜΕΣ, ΚΑΙ ΤΑ ΤΕΣΣΕΡΑ ΟΡΑΤΑ ΣΤΗΝ ΟΘΟΝΗ:
              *
@@ -382,7 +388,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
   // Ο πίνακας λέγεται `user_properties`. Το `properties` δεν υπήρξε ΠΟΤΕ, οπότε
   // το `prop` έμενε πάντα null και το ακίνητο ΔΕΝ αναγραφόταν στη βεβαίωση
   // ενοικίου ούτε στα μηνύματα υπενθύμισης — χωρίς κανένα σφάλμα στην οθόνη.
-  useEffect(()=>{ properties.one<{name:string;address:string|null}>(supabase, propertyId, 'name,address').then(setProp); },[propertyId]);
+  useEffect(()=>{ properties.one<{name:string;address:string|null}>(supabase, propertyId, 'name,address').then(setProp); },[propertyId,supabase]);
 
   // ── Η ΠΥΛΗ ΤΟΥ ΜΙΣΘΩΤΗ, ΓΙΑ ΝΑ ΤΑΞΙΔΕΨΕΙ ΜΕ ΤΟ ΜΗΝΥΜΑ ────────────────────
   // Η πύλη υπήρχε και ΚΑΝΕΝΑ μήνυμα δεν την έστελνε: ο σύνδεσμος αντιγραφόταν
@@ -419,7 +425,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     // η Πύλη ενοικιαστή, η οφειλή και το Ε2.
     if(error) { notifyError(failed('Οι δόσεις δεν δημιουργήθηκαν', error)); return false; }
     return true;
-  },[tenant,propertyId,userId]);
+  },[tenant,propertyId,userId,supabase]);
 
   // Lazy: όταν ανοίγει η προβολή και λείπουν δόσεις, δημιούργησέ τες μία φορά.
   const didLazy=React.useRef(false);
@@ -542,8 +548,8 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
   };
 
   // ΤΑ ΜΗΝΥΜΑΤΑ ΠΡΟΣ ΤΟΝ ΕΝΟΙΚΙΑΣΤΗ ΓΡΑΦΟΥΝ ΤΟ ΠΟΣΟ ΟΠΩΣ Η ΟΘΟΝΗ. Έγραφαν
-  // «μίσθωμα 450 €» με τοπικό μορφοποιητή χωρίς δεκαδικά, ενώ ο ίδιος αριθμός
-  // στην καρτέλα από πάνω έγραφε «450,00 €». Είναι το κείμενο που φεύγει σε
+  // «μίσθωμα 450€» με τοπικό μορφοποιητή χωρίς δεκαδικά, ενώ ο ίδιος αριθμός
+  // στην καρτέλα από πάνω έγραφε «450,00€». Είναι το κείμενο που φεύγει σε
   // WhatsApp και SMS — εκεί η ασυνέπεια δεν φαίνεται ως στιλ, φαίνεται ως λάθος
   // ποσό.
   // ΤΑ ΤΡΙΑ ΜΗΝΥΜΑΤΑ ΖΟΥΝ ΣΤΟ lib/tenant/rentMessage.ts, ΔΟΚΙΜΑΣΜΕΝΑ. Ηταν
@@ -724,11 +730,13 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                   options={Array.from({length:28},(_,i)=>i+1).map(d=>({ value:String(d), label:String(d) }))}/>
               </div>
             </div>
-            <button style={s.btnSm} onClick={()=>fileRef.current?.click()}>Σάρωσε απόδειξη</button>
+            {/* Χωρίς size lg: το ExportButton της ίδιας σειράς είναι κανονικό ύψος κουμπιού
+                και τα τρία δικά μας ζυγίζουν μαζί του. */}
+            <Btn variant="secondary" onClick={()=>fileRef.current?.click()}>Σάρωσε απόδειξη</Btn>
             <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display:'none' }} onChange={e=>{const f=e.target.files?.[0];if(f)runScan(f);e.target.value='';}}/>
-            <button style={s.btnSm} onClick={generateNow} disabled={busy}>{busy?'…':'Δημιουργία δόσεων'}</button>
+            <Btn variant="secondary" onClick={generateNow} disabled={busy}>{busy?'…':'Δημιουργία δόσεων'}</Btn>
             <ExportButton disabled={payments.length===0} onClick={exportPaymentsXlsx}/>
-            <button style={s.btnSm} onClick={()=>setAddOpen(v=>!v)}>{addOpen?'Κλείσιμο':'+ Καταχώρηση'}</button>
+            <Btn variant="secondary" onClick={()=>setAddOpen(v=>!v)}>{addOpen?'Κλείσιμο':'+ Καταχώρηση'}</Btn>
           </div>
         </div>
 
@@ -749,7 +757,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                     <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans }}>{monthLabel(p)} · <span style={{ fontFamily:T.font.mono }}>{fmt(p.amount)}</span></div>
                     {p.tenant_note&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2, whiteSpace:'pre-wrap' as const }}>{p.tenant_note}</div>}
                   </div>
-                  <button style={s.btnSm} onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>Επιβεβαίωση είσπραξης</button>
+                  <Btn variant="secondary" onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>Επιβεβαίωση είσπραξης</Btn>
                 </div>
               ))}
             </div>
@@ -761,7 +769,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
             <span style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.5 }}>
               {fn(staleUnpaid.length)} εκκρεμείς δόσεις δεν αντιστοιχούν στο τρέχον ποσό ({fmt(targetAmt)}{svcCharge>0?`: ενοίκιο ${fmt(baseRent)} + υπηρεσίες ${fmt(svcCharge)}`:''}).
             </span>
-            <button style={s.btnSm} onClick={syncUnpaidToTarget} disabled={busy}>{busy?'…':'Ενημέρωση εκκρεμών'}</button>
+            <Btn variant="secondary" onClick={syncUnpaidToTarget} disabled={busy}>{busy?'…':'Ενημέρωση εκκρεμών'}</Btn>
           </div>
         )}
 
@@ -779,8 +787,8 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
               <TextInput label="Σημείωση" value={payF.notes} onChange={v=>setPayF(f=>({...f,notes:v}))} placeholder="προαιρετικό"/>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <button style={s.btnGhost} onClick={()=>setAddOpen(false)}>Ακύρωση</button>
-              <button style={s.btnGold} onClick={savePay} disabled={busy}>{busy?'Αποθήκευση…':'Καταχώρηση'}</button>
+              <Btn variant="secondary" onClick={()=>setAddOpen(false)}>Ακύρωση</Btn>
+              <Btn variant="primary" onClick={savePay} disabled={busy}>{busy?'Αποθήκευση…':'Καταχώρηση'}</Btn>
             </div>
           </div>
         )}
@@ -793,21 +801,33 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
             action={tenant.lease_start&&tenant.monthly_rent?<Btn variant="primary" onClick={generateNow} disabled={busy}>Δημιουργία δόσεων</Btn>:undefined}
           />
         ):(
-          <div className="table-wrap" style={{ marginTop:14 }}>
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead><tr>{['Περίοδος','Ποσό','Κατάσταση','Τρόπος','Ημερομηνία Πληρωμής','Λήξη','Ενέργειες'].map((h,i)=><th key={i} style={s.th}>{h}</th>)}</tr></thead>
+          /* Ο ΠΙΝΑΚΑΣ ΤΟΥ ΠΡΟΪΟΝΤΟΣ, ΟΧΙ ΤΟ ΔΕΥΤΕΡΟ ΣΥΣΤΗΜΑ. Τα `s.th`/`s.td`/
+             `s.tdM` του TabTenantHelpers έγραφαν κεφαλίδα 9 εικονοστοιχείων και
+             γέμισμα 8×12 — άλλη κλίμακα από τους υπόλοιπους πίνακες, χωρίς
+             κουτί και χωρίς επιφάνεια. Η `.po-table` τα δίνει όλα μία φορά· η
+             `.pin-1` κρατά την περίοδο ορατή όσο ο χρήστης σέρνει προς τις
+             ενέργειες, που είναι εφτά στήλες παρακάτω. */
+          <div className="po-table-box" style={{ marginTop:14 }}>
+           <div className="po-scroll-x">
+            <table className="po-table pin-1" style={{ '--tbl-min': '820px', '--row-bg': 'var(--bg-surface)' }}>
+              <thead><tr>{['Περίοδος','Ποσό','Κατάσταση','Τρόπος','Ημερομηνία Πληρωμής','Λήξη','Ενέργειες'].map((h,i)=><th key={i} scope="col" style={{ textAlign: i===1 ? ('right' as const) : undefined }}>{h}</th>)}</tr></thead>
             <tbody>
               {sorted.map(p=>(
                 <tr key={p.id}>
-                  <td style={s.td}><strong style={{ fontFamily:T.font.sans }}>{MONTHS_SHORT[p.period_month-1]}</strong> <span style={{ color:'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{p.period_year}</span></td>
-                  <td style={{ ...s.td, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(p.amount)}
+                  <td><strong style={{ fontFamily:T.font.sans }}>{MONTHS_SHORT[p.period_month-1]}</strong> <span style={{ color:'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{p.period_year}</span></td>
+                  <td className="num" style={{ fontWeight:600, color:'var(--text-primary)' }}>{fmt(p.amount)}
                     {p.services_charge&&p.services_charge>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', fontWeight:400, color:'var(--text-tertiary)', fontFamily:T.font.sans }}>ενοίκιο {fmt(p.base_rent)} + υπηρεσίες {fmt(p.services_charge)}</span>:null}
                   </td>
-                  <td style={s.td}><StatusPill p={p}/>{p.tenant_declared&&!p.paid?<span style={{ display:'block', marginTop:4, fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans, fontWeight:600 }}>Δηλώθηκε από μισθωτή</span>:null}</td>
-                  <td style={s.tdM}>{p.method||ABSENT}</td>
-                  <td style={s.tdM}>{fmtD(p.paid_date)}</td>
-                  <td style={s.tdM}>{fmtD(p.due_date)}{p.days_late&&p.days_late>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', color:p.days_late>14?'var(--negative)':'var(--warning)' }}>+{days(p.days_late)}</span>:null}</td>
-                  <td style={s.td}>
+                  <td><StatusPill p={p}/>{p.tenant_declared&&!p.paid?<span style={{ display:'block', marginTop:4, fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans, fontWeight:600 }}>Δηλώθηκε από μισθωτή</span>:null}</td>
+                  <td>{p.method||ABSENT}</td>
+                  <td>{fmtD(p.paid_date)}</td>
+                  <td>{fmtD(p.due_date)}{p.days_late&&p.days_late>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', color:p.days_late>14?'var(--negative)':'var(--warning)' }}>+{days(p.days_late)}</span>:null}</td>
+                  <td>
+                    {/* ΕΔΩ ΤΑ ΚΟΥΜΠΙΑ ΜΕΝΟΥΝ ΧΕΙΡΟΠΟΙΗΤΑ. Το κελί ενεργειών είναι πυκνό —
+                        γέμισμα 6×10 με λεκτικό fs-xs — και μοιράζεται τη σειρά με τρεις
+                        συνδέσμους και με τη «Διαγραφή» που κρατούν την ίδια πυκνότητα. Το Btn
+                        στα 36 ύψος με γέμισμα 9×18 θα φάρδαινε τη στήλη ενεργειών
+                        και θα άφηνε τη σειρά μισή στοιχισμένη. */}
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
                       {!p.paid
                         ?<button style={s.btnSm} onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>Πληρωμένο</button>
@@ -827,8 +847,9 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+           </div>
           </div>
         )}
       </div>
@@ -842,8 +863,8 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           title="Σήμανση ως πληρωμένο"
           subtitle={`${monthLabel(mark.p)} · ${fmt(mark.p.amount)}`}
           footer={<>
-            <button style={s.btnGhost} onClick={()=>setMark(null)}>Ακύρωση</button>
-            <button style={s.btnGold} onClick={async()=>{const mm=mark;setMark(null);await doMarkPaid(mm.p,mm.method,mm.receipt,todayISO());}}>Καταχώρηση</button>
+            <Btn variant="secondary" onClick={()=>setMark(null)}>Ακύρωση</Btn>
+            <Btn variant="primary" onClick={async()=>{const mm=mark;setMark(null);await doMarkPaid(mm.p,mm.method,mm.receipt,todayISO());}}>Καταχώρηση</Btn>
           </>}>
           <SelectField label="Τρόπος πληρωμής" value={mark.method} onChange={v=>setMark(m=>m?{...m,method:v as PayMethod}:m)} options={PAY_METHODS.map(m=>({value:m,label:m}))}/>
           <TextInput label="Σύνδεσμος απόδειξης (προαιρετικό)" value={mark.receipt} onChange={v=>setMark(m=>m?{...m,receipt:v}:m)} placeholder="https://..."/>
@@ -859,20 +880,21 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           ariaLabel="Αίτημα πληρωμής"
           subtitle={<>{monthLabel(req)} · {fmt(req.amount)}{req.services_charge&&req.services_charge>0?<span style={{ color:'var(--text-tertiary)' }}> (ενοίκιο {fmt(req.base_rent)} + υπηρεσίες {fmt(req.services_charge)})</span>:null}</>}
           footer={<>
-            <button style={{ ...s.btnGhost, fontSize: 'var(--fs-xs)' }} onClick={()=>{const rp=req;setReq(null);setMark({p:rp,method:'Τραπεζική κατάθεση',receipt:''});}}>Σήμανση εξόφλησης</button>
-            <button style={s.btnGold} onClick={()=>setReq(null)}>Κλείσιμο</button>
+            <Btn variant="secondary" onClick={()=>{const rp=req;setReq(null);setMark({p:rp,method:'Τραπεζική κατάθεση',receipt:''});}}>Σήμανση εξόφλησης</Btn>
+            <Btn variant="primary" onClick={()=>setReq(null)}>Κλείσιμο</Btn>
           </>}>
           {tenant.rent_iban?(
             <>
               <div style={{ display:'flex', flexDirection:'column' as const, alignItems:'center' }}>
-                <img src={qrSrc(epcPayload(tenant.rent_iban,landlordName,req.amount,reqRef(req)))} alt="QR πληρωμής" width={200} height={200} style={{ borderRadius:12, border:'1px solid var(--border-subtle)', background:'var(--qr-paper)', padding:8 }}/>
+                <RuntimeImg src={qrSrc(epcPayload(tenant.rent_iban,landlordName,req.amount,reqRef(req)))} alt="QR πληρωμής" width={200} height={200} style={{ borderRadius: T.radius.popup, border:'1px solid var(--border-subtle)', background:'var(--qr-paper)', padding:8 }}/>
                 <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:8, textAlign:'center' as const }}>Σάρωση από την τραπεζική εφαρμογή (SEPA/IRIS) για προσυμπλήρωση της μεταφοράς.</div>
               </div>
               <div>
                 <div style={{ ...labelStyle, marginBottom:6 }}>IBAN πληρωμής</div>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <div style={{ flex:1, fontFamily:T.font.mono, fontSize: 'var(--fs-base)', color:'var(--text-primary)', background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius:T.radius.inner, padding:'10px 12px', wordBreak:'break-all' as const }}>{tenant.rent_iban}</div>
-                  <button style={s.btnSm} onClick={()=>{ try{ navigator.clipboard.writeText(tenant.rent_iban||''); setCopied(true); }catch{} }}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</button>
+                  {/* size lg γιατί κάθεται δίπλα στο κουτί του IBAN, που έχει ύψος πεδίου. */}
+                  <Btn variant="secondary" size="lg" onClick={()=>{ try{ navigator.clipboard.writeText(tenant.rent_iban||''); setCopied(true); }catch{} }}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</Btn>
                 </div>
               </div>
             </>
@@ -883,12 +905,14 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           <div>
             <div style={{ ...labelStyle, marginBottom:8 }}>Κοινοποίηση αιτήματος</div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
-              {tenant.phone&&<a href={whatsappLink(msgDigits(tenant.phone),paymentRequestText(req))} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGhost, textDecoration:'none' }}>WhatsApp</a>}
-              {tenant.phone&&<a href={viberLink(paymentRequestText(req))} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGhost, textDecoration:'none' }}>Viber</a>}
-              {tenant.email&&<a href={`mailto:${tenant.email}?subject=${encodeURIComponent(requestSubject(periodGen(req)))}&body=${encodeURIComponent(paymentRequestText(req))}`} style={{ ...s.btnGhost, textDecoration:'none' }}>Ηλεκτρονικό ταχυδρομείο</a>}
+              {/* Οι τρεις προορισμοί μένουν σύνδεσμοι — το `href` του Btn δίνει την ίδια όψη —
+                  ώστε η σειρά κοινοποίησης να μη γίνει τρία πλακίδια των 32 δίπλα σε ένα κουμπί των 36. */}
+              {tenant.phone&&<Btn variant="secondary" href={whatsappLink(msgDigits(tenant.phone),paymentRequestText(req))} newTab>WhatsApp</Btn>}
+              {tenant.phone&&<Btn variant="secondary" href={viberLink(paymentRequestText(req))} newTab>Viber</Btn>}
+              {tenant.email&&<Btn variant="secondary" href={`mailto:${tenant.email}?subject=${encodeURIComponent(requestSubject(periodGen(req)))}&body=${encodeURIComponent(paymentRequestText(req))}`}>Ηλεκτρονικό ταχυδρομείο</Btn>}
               {/* Το catch ήταν κενό: αν η αντιγραφή αποτύγχανε (άρνηση δικαιώματος, μη ασφαλές
                   context), ο χρήστης νόμιζε ότι το κείμενο ήταν στο πρόχειρο και το επικολλούσε στο κενό. */}
-              <button style={s.btnGhost} onClick={()=>{ try{ navigator.clipboard.writeText(paymentRequestText(req)); notifyOk('Το κείμενο αντιγράφηκε'); }catch{ notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); } }}>Αντιγραφή κειμένου</button>
+              <Btn variant="secondary" onClick={()=>{ try{ navigator.clipboard.writeText(paymentRequestText(req)); notifyOk('Το κείμενο αντιγράφηκε'); }catch{ notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); } }}>Αντιγραφή κειμένου</Btn>
             </div>
           </div>
         </Modal>
@@ -904,10 +928,10 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
         <Modal open onClose={()=>{ if(scan.stage!=='scanning') setScan(null); }} size="sm"
           title="Σάρωση απόδειξης"
           footer={
-            scan.stage==='error' ? <button style={s.btnGhost} onClick={()=>setScan(null)}>Κλείσιμο</button>
+            scan.stage==='error' ? <Btn variant="secondary" onClick={()=>setScan(null)}>Κλείσιμο</Btn>
             : scan.stage==='match'&&scan.doc ? <>
-                <button style={s.btnGhost} onClick={()=>setScan(null)}>Ακύρωση</button>
-                <button style={s.btnGold} onClick={confirmScan} disabled={open.length===0||!scan.periodId}>Σήμανση ως πληρωμένο</button>
+                <Btn variant="secondary" onClick={()=>setScan(null)}>Ακύρωση</Btn>
+                <Btn variant="primary" onClick={confirmScan} disabled={open.length===0||!scan.periodId}>Σήμανση ως πληρωμένο</Btn>
               </>
             : undefined
           }>
@@ -968,11 +992,14 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
         <DataRow label="Ημερομηνία καταβολής" value={fmtD(tenant.deposit_paid_on)}/>
         <DataRow label="Κατάσταση" value={tenant.deposit_returned?<StatusBadge label="Επεστράφη" color="var(--positive)" bg="var(--positive-dim)"/>:<StatusBadge label="Σε κατοχή" color="var(--accent)" bg="var(--accent-dim)"/>}/>
         {tenant.deposit_returned&&tenant.deposit_return_date&&<DataRow label="Ημερομηνία επιστροφής" value={fmtD(tenant.deposit_return_date)}/>}
+        {/* Το πλάτος το δίνει το `field`· στο περιτύλιγμα μένει μόνο η απόσταση από τη σειρά από πάνω. */}
         {!tenant.deposit_returned&&deposit>0&&(
-          <button style={{ ...s.btnSm, marginTop:14, width:'100%', textAlign:'center' as const }}
-            onClick={async()=>{await saved('Η επιστροφή εγγύησης δεν καταχωρήθηκε', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
-            Σήμανση ως Επεστράφη
-          </button>
+          <div style={{ marginTop:14 }}>
+            <Btn variant="secondary" field
+              onClick={async()=>{await saved('Η επιστροφή εγγύησης δεν καταχωρήθηκε', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
+              Σήμανση ως Επεστράφη
+            </Btn>
+          </div>
         )}
         <div style={{ marginTop:14, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
           Η εγγύηση δεν είναι έσοδό σου: δεν μπαίνει στα ακαθάριστα και δεν φορολογείται. Την κρατάς και την επιστρέφεις.
@@ -1042,15 +1069,33 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
   return (
     <div>
       {/* Δύο βάσεις πρότασης: νόμος (ΔΤΚ) και αγορά/περιοχή */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap:16, marginBottom:16 }}>
+      {/* ΤΟ ΚΑΤΩΦΛΙ ΕΙΝΑΙ 380, ΟΧΙ 260. ΜΕΤΡΗΘΗΚΕ στον πάγκο, μέσα στο πλαϊνό
+          φύλλο του ντοσιέ (size xl: min(980, οθόνη) με γέμισμα 24 ανά πλευρά),
+          οπότε το πλέγμα παίρνει οθόνη μείον 49, με ταβάνι 931.
+          ΜΕ ΚΑΤΩΦΛΙ 260 έσπαγε σε δύο στήλες ήδη από πλέγμα 536 (οθόνη 585) με
+          στήλες των 260: 121 εικονοστοιχεία ΛΙΓΟΤΕΡΑ ανά κάρτα από το τηλέφωνο
+          των 430, που δίνει μία στήλη 381. Η ζώνη όπου η μεγαλύτερη οθόνη
+          έδινε στενότερη κάρτα ήταν 585 έως 826· στα 768 έβγαζε δύο στήλες των
+          351,5 σε δύο πάνελ με σειρές ετικέτα-τιμή. ΜΕ 380 το σπάσιμο πέφτει
+          σε πλέγμα 776 (οθόνη 825). Μετρημένα: 320/390/430 αμετάβλητα με μία
+          στήλη · 768 μία στήλη 719 · 834 δύο των 384,5 αμετάβλητο · 1024 έως
+          1440 δύο των 457,5 αμετάβλητο. Κόστος: το ύψος του πλέγματος στα 768
+          πάει από 250,5 σε 377 · το ύψος κύλισης του φύλλου από 4634 σε 4761. */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap:16, marginBottom:16 }}>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
           <SectionTitle>Με βάση τον νόμο (ΔΤΚ)</SectionTitle>
           <DataRow label="Τρέχον μίσθωμα" value={<span style={{ fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(rent)}</span>}/>
           {legalNew!==null&&cpiPct!==null
             ?<DataRow label={`Με ΔΤΚ ${CPI_LATEST_YEAR} (${cpiPct>=0?'+':''}${fp(cpiPct)})`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(legalNew)}</span>}/>
             :<DataRow label="Με ΔΤΚ" value="δεν υπάρχει επιβεβαιωμένος δείκτης"/>}
-          <div style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-            Ετήσια αναπροσαρμογή βάσει ΔΤΚ, <strong>εφόσον προβλέπεται στη σύμβαση</strong>. Δεν είναι πλαφόν: για το 2026 δεν ισχύει γενικό κρατικό όριο στα ενοίκια κατοικίας. {cpiConfirmedLabel()}.
+          {/* ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΟΡΙΣΜΟΥ ΣΕ ΣΤΗΛΗ 409. Το πάνελ δίνει 333 ωφέλιμα στα 430
+              της οθόνης και 409 στα 1024 (στήλη 457,5 μείον 48 γέμισμα): τα ~200
+              γράμματα στα 11 πιάνουν τρεις με τέσσερις γραμμές. Στοίχιση πέρα
+              πέρα με τα ενωτικά του hy(), που διασχίζει και το στοιχείο έμφασης χωρίς
+              να το πειράξει. Το ίδιο λεκτικό της πηγής πάει και στο έγγραφο PDF από
+              άλλο σημείο κλήσης — εκεί δεν μπαίνει ενωτικό. */}
+          <div className="po-just" style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
+            {hy(<>Ετήσια αναπροσαρμογή βάσει ΔΤΚ, <strong>εφόσον προβλέπεται στη σύμβαση</strong>. Δεν είναι πλαφόν: για το 2026 δεν ισχύει γενικό κρατικό όριο στα ενοίκια κατοικίας. {cpiConfirmedLabel()}.</>)}
           </div>
         </div>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
@@ -1066,13 +1111,21 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
               </div>
             </>
           ):(
-            <InfoBanner tone="info">
-              {rentComps.length===0
-                ?'Δεν υπάρχουν καταχωρημένα συγκρίσιμα ενοίκια για την περιοχή. Πρόσθεσε αγγελίες στην καρτέλα «Ενοίκιο/Αγορά».'
-                :!sqm||sqm<=0
-                  ?`Υπάρχουν ${fn(rentComps.length)} συγκρίσιμα, αλλά το ακίνητο δεν έχει καταχωρημένα τ.μ.. Χωρίς τα δικά σου τ.μ. ο μέσος όρος της περιοχής δεν λέει τίποτα για το δικό σου ακίνητο, οπότε δεν προτείνουμε ποσό.`
-                  : `Τα ${fn(rentComps.length)} συγκρίσιμα δεν έχουν τ.μ., οπότε δεν βγαίνει τιμή ανά τ.μ. Χωρίς αυτήν, ο ωμός μέσος όρος θα σύγκρινε ανόμοια ακίνητα.`}
-              {' '}Έως τότε, χρησιμοποίησε την πρόταση με βάση τον νόμο (ΔΤΚ).
+            /* ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΜΕΣΑ ΣΕ 361. Το κείμενο του InfoBanner παίρνει τη στήλη
+               μείον 32 γέμισμα, 6 κουκκίδα και 10 κενό: 285 στα 430 της οθόνης,
+               361 στα 1024. Τα ~230 γράμματα στα 11 δίνουν τρεις με τέσσερις
+               γραμμές με ριγμένη δεξιά άκρη, μέσα σε πλαίσιο με ίσιες πλευρές.
+               Η κλάση πάει στο κείμενο μέσω του className που δέχεται πλέον το
+               InfoBanner, όχι σε δικό μας περιτύλιγμα που θα έσπαγε τον τόνο. */
+            <InfoBanner tone="info" className="po-just">
+              {hy(<>
+                {rentComps.length===0
+                  ?'Δεν υπάρχουν καταχωρημένα συγκρίσιμα ενοίκια για την περιοχή. Πρόσθεσε αγγελίες στην καρτέλα «Ενοίκιο/Αγορά».'
+                  :!sqm||sqm<=0
+                    ?`Υπάρχουν ${fn(rentComps.length)} συγκρίσιμα, αλλά το ακίνητο δεν έχει καταχωρημένα τ.μ.. Χωρίς τα δικά σου τ.μ. ο μέσος όρος της περιοχής δεν λέει τίποτα για το δικό σου ακίνητο, οπότε δεν προτείνουμε ποσό.`
+                    : `Τα ${fn(rentComps.length)} συγκρίσιμα δεν έχουν τ.μ., οπότε δεν βγαίνει τιμή ανά τ.μ. Χωρίς αυτήν, ο ωμός μέσος όρος θα σύγκρινε ανόμοια ακίνητα.`}
+                {' '}Έως τότε, χρησιμοποίησε την πρόταση με βάση τον νόμο (ΔΤΚ).
+              </>)}
             </InfoBanner>
           )}
         </div>
@@ -1087,10 +1140,12 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
           <>
             <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'14px 16px', fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.7, marginBottom:14 }}>{proposalText}</div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
-              {tenant.phone&&<a href={whatsappLink(phoneDigits,proposalText)} target="_blank" rel="noopener noreferrer" style={{ ...s.btnSm, textDecoration:'none' }}>WhatsApp</a>}
-              {tenant.phone&&<a href={viberLink(proposalText)} target="_blank" rel="noopener noreferrer" style={{ ...s.btnSm, textDecoration:'none' }}>Viber</a>}
-              <button style={s.btnSm} onClick={()=>navigator.clipboard?.writeText(proposalText)}>Αντιγραφή</button>
-              {tenant.email&&<a href={`mailto:${tenant.email}?subject=${encodeURIComponent('Πρόταση ανανέωσης μίσθωσης')}&body=${encodeURIComponent(proposalText)}`} style={{ ...s.btnSm, textDecoration:'none' }}>Ηλεκτρονικό ταχυδρομείο</a>}
+              {/* Ιδια σειρά, ίδια όψη: οι τρεις προορισμοί κρατούν το `href` του Btn
+                  ώστε να μη μείνουν χαμηλότεροι από το κουμπί της αντιγραφής. */}
+              {tenant.phone&&<Btn variant="secondary" href={whatsappLink(phoneDigits,proposalText)} newTab>WhatsApp</Btn>}
+              {tenant.phone&&<Btn variant="secondary" href={viberLink(proposalText)} newTab>Viber</Btn>}
+              <Btn variant="secondary" onClick={()=>navigator.clipboard?.writeText(proposalText)}>Αντιγραφή</Btn>
+              {tenant.email&&<Btn variant="secondary" href={`mailto:${tenant.email}?subject=${encodeURIComponent('Πρόταση ανανέωσης μίσθωσης')}&body=${encodeURIComponent(proposalText)}`}>Ηλεκτρονικό ταχυδρομείο</Btn>}
             </div>
           </>
         )}

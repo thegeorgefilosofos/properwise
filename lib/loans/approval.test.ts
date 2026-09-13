@@ -2,7 +2,7 @@
 import { assessApproval, verdictLabel, type ApprovalInput } from './approval'
 
 let passed = 0, failed = 0
-function ok(name: string, cond: boolean) { cond ? passed++ : (failed++, console.error('FAIL:', name)) }
+function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.error('FAIL:', name) } }
 
 const base: ApprovalInput = {
   incomeMonthly: 2500, existingMonthlyDebt: 0, amount: 150000, years: 25, ratePct: 3.5,

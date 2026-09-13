@@ -34,10 +34,10 @@ ok(receivingUrl(ID) === `${API_ROOT}/emails/receiving/${ID}`, 'η διαδρομ
 ok(receivingUrl('a/../b').includes('a%2F..%2Fb'), 'ΤΟ ΑΝΑΓΝΩΡΙΣΤΙΚΟ ΚΩΔΙΚΟΠΟΙΕΙΤΑΙ: δεν φτιάχνει άλλη διαδρομή');
 
 // ── Η καλή περίπτωση ───────────────────────────────────────────────────────
-const good = stub({ json: { id: ID, text: 'Πληρωτέο ποσό 87,45 €', html: '<p>Πληρωτέο</p>' } });
+const good = stub({ json: { id: ID, text: 'Πληρωτέο ποσό 87,45€', html: '<p>Πληρωτέο</p>' } });
 const r = await fetchBody(ID, KEY, good.fetcher);
 ok(r.ok === true, 'το σώμα ήρθε');
-ok(r.ok && r.body.text === 'Πληρωτέο ποσό 87,45 €', 'το απλό κείμενο');
+ok(r.ok && r.body.text === 'Πληρωτέο ποσό 87,45€', 'το απλό κείμενο');
 ok(r.ok && r.body.html === '<p>Πληρωτέο</p>', 'το HTML');
 ok(good.seen.auth === `Bearer ${KEY}`, 'το κλειδί ταξιδεύει ως Bearer');
 ok(good.seen.url === receivingUrl(ID), 'ρωτήθηκε η σωστή διεύθυνση');

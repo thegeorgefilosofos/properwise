@@ -13,7 +13,7 @@ import { inferRole } from '@/lib/contacts/roles'
 import { alphaBucket, buildAlphaIndex, compareNames, initialsOf, type AlphaEntry } from '@/lib/contacts/alpha'
 import { Phone, Mail, X, Search, Globe, MapPin, FileText, QrCode, Printer, History, Receipt, CalendarPlus, Users, Building2, Wrench, Trees, UserCheck, Zap, Wifi, Landmark, Shield, Pencil, Trash2, Copy, MessageSquare, UserPlus, Camera, SearchX } from 'lucide-react'
 import { DatePicker, CustomSelect, Toggle, InfoDot } from './UIComponents'
-import { T, PageTitle, fieldRow, SecHdr, Btn, EmptyState, fn, fe, Skeleton, SkeletonKPIs, SelectBox, ABSENT, ABSENT_SHORT, Modal, SideSheet, localDay, pressable, pageShell } from '@/components/Theme'
+import { T, PageTitle, fieldRow, SecHdr, Btn, IconBtn, ChipToggle, LinkBtn, EmptyState, fn, fe, Skeleton, SkeletonKPIs, SelectBox, ABSENT, ABSENT_SHORT, Modal, SideSheet, localDay, pressable, pageShell, RuntimeImg } from '@/components/Theme'
 import { showTool, SHOW_FROM } from '@/lib/ui/thresholds'
 import { ActionMenu } from '@/components/ActionMenu'
 import { notify, notifyOk, notifyError } from '@/components/Toast'
@@ -22,6 +22,7 @@ import { confirmDialog } from '@/components/confirmBus'
 import { useReportBranding, type ReportBranding } from '@/lib/reportBranding'
 import { reportHead, reportHeader, reportSection, reportKpi, reportDisclaimer, openReport, rEsc } from './reportPdf'
 import { uploadUserScoped } from '@/lib/storage/scopedUpload';
+import { uploadPath } from '@/lib/core/uploadPath';
 import { CONTACT_BUCKET, removeFiles, linkFor, type ContactFile } from '@/lib/storage/contactFiles';
 import { formFields, CONTACT_FIELDS, type FieldContext, type FieldDecision } from '@/lib/property/fields';
 import { athensToday, isoDate, daysUntilOrNull } from '@/lib/core/time';
@@ -43,7 +44,7 @@ const DossierRow = ({ icon: Ic, children, onCopy }: { icon: React.ComponentType<
   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
     <Ic size={14} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
     <span style={{ flex: 1, fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', minWidth: 0, wordBreak: 'break-word' }}>{children}</span>
-    {onCopy && <button type="button" onClick={onCopy} title="Αντιγραφή" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', padding: 4, flexShrink: 0 }}><Copy size={13} /></button>}
+    {onCopy && <IconBtn label="Αντιγραφή" title="Αντιγραφή" onClick={onCopy}><Copy size={13} /></IconBtn>}
   </div>
 )
 const DossierSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -127,7 +128,7 @@ type ViewMode = 'cards' | 'compact'
 
 // ─── Design System ────────────────────────────────────────────────────────────
 const iStyle: React.CSSProperties = {
-  width: '100%', height: T.h.lg, padding: '10px 16px', borderRadius: 6,
+  width: '100%', height: T.h.lg, padding: '10px 16px', borderRadius: T.radius.xs,
   border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
   color: 'var(--text-primary)', fontSize: 14, letterSpacing: 0, outline: 'none',
   fontFamily: T.font.sans, boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
@@ -171,7 +172,7 @@ const GROUPS = [
   {
     id: 'telecom', label: 'Τηλεφωνία και Internet', color: 'var(--accent)', Icon: Wifi,
     roles: [
-      { value: 'tel_ote', label: 'Cosmote (OTE)' },
+      { value: 'tel_ote', label: 'Telekom (πρώην Cosmote)' },
       { value: 'tel_vodafone', label: 'Vodafone' },
       { value: 'tel_nova', label: 'Nova' },
       { value: 'tel_inalan', label: 'Inalan' },
@@ -397,6 +398,10 @@ function QuickAct({ as, href, target, rel, onClick, title, label, children }: {
   // και το κουμπί γινόταν 30 επί 44, δηλαδή δύο ΔΙΑΦΟΡΕΤΙΚΟΙ στόχοι για δύο
   // κουμπιά που φαίνονται ίδια. Το `po-box` τα εξισώνει και στα δύο, χωρίς να
   // πειραχτεί ο κύκλος: αόρατη ζώνη −13 γύρω γύρω.
+  // ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ, ΓΙΑ ΔΥΟ ΛΟΓΟΥΣ. Το ίδιο σχήμα βγαίνει άλλοτε <a> άλλοτε
+  // <button> με ΤΑΥΤΟΣΗΜΗ όψη — το IconBtn ξέρει μόνο <button>, οπότε η μία από
+  // τις δύο μορφές θα άλλαζε. Και ο κύκλος εδώ είναι τονικός (bg-elevated +
+  // περίγραμμα + elev-1) ενώ η `.po-ico` είναι διάφανη χωρίς περίγραμμα.
   if (as === 'a') return <a className="po-box" href={href} target={target} rel={rel} title={title} aria-label={title} style={base} onMouseEnter={enter} onMouseLeave={leave}>{content}</a>
   return <button type="button" className="po-box" onClick={onClick} title={title} aria-label={title} style={base} onMouseEnter={enter} onMouseLeave={leave}>{content}</button>
 }
@@ -411,6 +416,9 @@ function TagEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[])
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
           {tags.map(t => (
             <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 11px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', fontSize: 12, color: 'var(--accent)', fontWeight: 500 }}>
+              {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ ΓΙΑ ΤΗ ΓΕΩΜΕΤΡΙΑ ΤΟΥ ΠΛΑΚΙΔΙΟΥ. Το πλακίδιο είναι ~24
+                  ψηλό (12px, γέμισμα 4×11): ένα κουτί T.h.sm των 32 μέσα του θα το
+                  φούσκωνε στα 40 σε κάθε ετικέτα. */}
               {t}<button type="button" onClick={() => onChange(tags.filter(x => x !== t))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', padding: 0 }}><X size={12} /></button>
             </span>
           ))}
@@ -418,7 +426,10 @@ function TagEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[])
       )}
       <div style={{ display: 'flex', gap: 8 }}>
         <input value={input} aria-label="Νέα ετικέτα" onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add(input))} placeholder="Νέα ετικέτα…" style={{ ...iStyle, flex: 1 }} />
-        <button type="button" onClick={() => add(input)} style={{ padding: '10px 16px', borderRadius: T.radius.inner, border: '1px solid var(--accent-border)', background: 'var(--accent-soft)', color: 'var(--accent)', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>+</button>
+        {/* `size="md"` γιατί κάθεται δίπλα σε πεδίο· το «+» δεν έχει λεκτικό, οπότε το όνομα το δίνει το `label`. */}
+        <IconBtn label="Προσθήκη ετικέτας" title="Προσθήκη ετικέτας" tone="accent" size="md" onClick={() => add(input)}>
+          <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1 }}>+</span>
+        </IconBtn>
       </div>
     </div>
   )
@@ -438,7 +449,15 @@ function FileUploader({ files, onChange, contactId }: { files: ContactFile[]; on
     // ΙΔΙΩΤΙΚΟΣ ΚΑΔΟΣ, ΚΑΙ ΑΠΟΘΗΚΕΥΕΤΑΙ ΤΟ ΜΟΝΟΠΑΤΙ ΑΝΤΙ ΓΙΑ ΤΗ ΔΙΕΥΘΥΝΣΗ. Ο
     // «avatars» είναι δηλωμένος δημόσιος: το μισθωτήριο και το τιμολόγιο με το
     // ΑΦΜ κατέβαιναν από οποιονδήποτε ήξερε τη διεύθυνση.
-    const { path, error } = await uploadUserScoped(supabase, CONTACT_BUCKET, `contact-files/${contactId || 'new'}/${Date.now()}.${file.name.split('.').pop()}`, file, { upsert: true, contentType: file.type || undefined })
+    // ΤΟ ΜΟΝΟΠΑΤΙ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗΝ ΙΔΙΑ ΣΥΝΑΡΤΗΣΗ ΜΕ ΤΑ ΑΛΛΑ ΔΥΟ ΣΗΜΕΙΑ. Ηταν
+    // γραμμένο εδώ με το χέρι, παίρνοντας την ΚΑΤΑΛΗΞΗ ωμή από το όνομα που
+    // διάλεξε ο χρήστης (`file.name.split('.').pop()`) — δηλαδή κείμενο του
+    // χρήστη μέσα σε μονοπάτι αποθήκευσης, στο μόνο από τα τρία σημεία που δεν
+    // περνούσε από το `uploadPath()`. Το `uploadPath` μεταγράφει τα ελληνικά,
+    // κόβει τα «..», κρατά μοναδικό επίθεμα και δίνει ΟΛΟΚΛΗΡΟ το όνομα αντί
+    // για μια χρονοσφραγίδα: ο λογιστής που κατεβάζει τον φάκελο βλέπει
+    // «μισθωτήριο.pdf» και όχι «1757386421.pdf».
+    const { path, error } = await uploadUserScoped(supabase, CONTACT_BUCKET, uploadPath(file.name, `contact-files/${contactId || 'new'}`), file, { upsert: true, contentType: file.type || undefined })
     if (error) notifyError('Το αρχείο δεν ανέβηκε')
     else onChange([...files, { name: file.name, url: '', path, size: file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${(file.size / 1024).toFixed(0)} KB`, uploaded: new Date().toISOString() }])
     setUploading(false); if (fileRef.current) fileRef.current.value = ''
@@ -476,10 +495,12 @@ function FileUploader({ files, onChange, contactId }: { files: ContactFile[]; on
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.mono }}>{f.size} · {new Date(f.uploaded).toLocaleDateString('el-GR')}</div>
             </div>
             <Btn variant="ghost" onClick={() => open(f)}>Άνοιγμα</Btn>
-            <button type="button" onClick={() => drop(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center' }}><X size={15} /></button>
+            <IconBtn label={`Αφαίρεση αρχείου: ${f.name}`} title="Αφαίρεση" onClick={() => drop(i)}><X size={15} /></IconBtn>
           </div>
         ))}
       </div>
+      {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το διακεκομμένο περίγραμμα είναι η «ζώνη προσθήκης» —
+          δεν υπάρχει σε καμία παραλλαγή του Btn ούτε περνά className. */}
       <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: T.radius.inner, border: '1px dashed var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 'var(--fs-base)', width: '100%' }}>
         {uploading ? 'Ανέβασμα…' : '+ Προσθήκη Αρχείου (PDF, DOC, JPG, Excel)'}
@@ -503,7 +524,7 @@ function QRCodeModal({ contact, onClose }: { contact: Contact; onClose: () => vo
             σκούρο θέμα το πλαίσιο γίνεται σκούρο και η κάμερα δεν βρίσκει τα
             τρία τετράγωνα εντοπισμού — ο κώδικας παύει να σαρώνεται. */}
         <div style={{ padding: T.sp.md, background: 'var(--qr-paper)', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)', display: 'inline-block' }}>
-          <img src={qrUrl} alt="QR" style={{ width: 190, height: 190, borderRadius: 6, display: 'block' }} />
+          <RuntimeImg src={qrUrl} alt="QR" style={{ width: 190, height: 190, borderRadius: T.radius.xs, display: 'block' }} />
         </div>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginTop: T.sp.lg }}>{contact.full_name}</div>
         {contact.phone && <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.mono, marginTop: 4 }}>{contact.phone}</div>}
@@ -912,12 +933,15 @@ function exportContactsPDF(contacts: Contact[], branding?: ReportBranding | null
 // ─── Bulk Action Button ───────────────────────────────────────────────────────
 // Ουδέτερο κουμπί (Google-clean) που αποκαλύπτει accent —ή κόκκινο για διαγραφή—
 // μόνο στο hover. Γίνεται ανενεργό/ξεθωριασμένο όταν δεν υπάρχει επιλογή.
+// ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: η «Διαγραφή» ανάβει ΚΟΚΚΙΝΗ στην αιώρηση. Οι τρεις ρόλοι
+// του Btn δεν έχουν καταστροφικό τόνο, οπότε η μετάβαση θα έσβηνε το μόνο σημάδι
+// που ξεχωρίζει τη διαγραφή από τις άλλες δύο μαζικές ενέργειες.
 function BulkBtn({ icon: Icon, label, onClick, disabled, danger }: { icon: ElementType; label: string; onClick: () => void; disabled?: boolean; danger?: boolean }) {
   const [hov, setHov] = useState(false)
   const active = hov && !disabled
   return (
     <button type="button" disabled={disabled} onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 13px', borderRadius: 8, fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: T.font.sans, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 13px', borderRadius: T.radius.chip, fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: T.font.sans, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
         border: '1px solid ' + (active ? (danger ? 'var(--negative-border)' : 'var(--accent-border)') : 'var(--border-subtle)'),
         background: active ? (danger ? 'var(--negative-soft)' : 'var(--accent-soft)') : 'var(--bg-elevated)',
         color: active ? (danger ? 'var(--negative)' : 'var(--accent)') : 'var(--text-secondary)',
@@ -1000,7 +1024,7 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
             {extra.whatsapp && contact.phone && <QuickAct as="a" href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" title="WhatsApp" label="WA" />}
             {extra.viber && contact.phone && <QuickAct as="a" href={'viber://chat?number=' + contact.phone.replace(/\D/g, '')} title="Viber" label="VB" />}
             {contact.email && <QuickAct as="a" href={'mailto:' + contact.email} title="Ηλεκτρονικό ταχυδρομείο"><Mail size={13} /></QuickAct>}
-            <QuickAct as="button" onClick={() => setShowActions(s => !s)} title="Περισσότερες ενέργειες"><span style={{ fontSize: 16, fontWeight: 700, lineHeight: 0, marginTop: -5 }}>···</span></QuickAct>
+            <QuickAct as="button" onClick={() => setShowActions(s => !s)} title="Περισσότερες ενέργειες"><span style={{ fontSize: 16, fontWeight: 700, lineHeight: 0, marginTop: -4 }}>···</span></QuickAct>
           </div>
           {showActions && (
             <div role="menu" style={{ position: 'absolute', top: 38, right: 0, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '6px', minWidth: 210, boxShadow: 'var(--elev-3)' }}>
@@ -1012,18 +1036,17 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
                 { Icon: QrCode, label: 'QR Code', onClick: onShowQR, color: 'var(--accent)' },
                 { Icon: Printer, label: 'Εκτύπωση Κάρτας', onClick: () => printContactCard(contact, branding), color: 'var(--text-secondary)' },
               ].map((a, i) => (
-                <button key={i} type="button" role="menuitem" onClick={() => { a.onClick(); setShowActions(false) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--text-primary)', textAlign: 'left' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-surface)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                /* ΜΕΝΟΥΝ ΧΕΙΡΟΠΟΙΗΤΕΣ ΚΑΙ ΟΙ ΔΥΟ ΓΡΑΜΜΕΣ. Το Btn δεν προωθεί ούτε
+                   `role="menuitem"` —που το ζητά το role="menu" από πάνω— ούτε
+                   className, δηλαδή θα έχανε την `.po-hov-fill` με τον δικό της
+                   τόνο ανά γραμμή. Και η γραμμή μενού είναι πλήρους πλάτους με
+                   αριστερή στοίχιση ενώ το Btn κεντράρει. */
+                <button className="po-hov-fill" key={i} type="button" role="menuitem" onClick={() => { a.onClick(); setShowActions(false) }} style={{ '--hov-fill': 'var(--bg-surface)', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--text-primary)', textAlign: 'left' }} >
                   <a.Icon size={14} color={a.color} style={{ flexShrink: 0 }} />{a.label}
                 </button>
               ))}
               <div style={{ height: 1, background: 'var(--border-subtle)', margin: '5px 8px' }} />
-              <button type="button" role="menuitem" onClick={() => { onDelete(); setShowActions(false) }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--negative)', textAlign: 'left' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--negative) 8%, transparent)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+              <button className="po-hov-fill" type="button" role="menuitem" onClick={() => { onDelete(); setShowActions(false) }} style={{ '--hov-fill': 'color-mix(in srgb, var(--negative) 8%, transparent)', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--negative)', textAlign: 'left' }} >
                 <Trash2 size={14} color="var(--negative)" style={{ flexShrink: 0 }} />Διαγραφή
               </button>
             </div>
@@ -1032,12 +1055,12 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
       )}
       <div style={{ paddingLeft: 10, pointerEvents: bulkMode ? 'none' : undefined }}>
         <div {...pressable(() => onOpen && !bulkMode && onOpen())} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingRight: (hov || showActions) ? 100 : 0, transition: 'padding-right 0.15s', cursor: onOpen && !bulkMode ? 'pointer' : 'default' }}>
-          {extra.avatar_url ? <img src={extra.avatar_url} alt="" style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-border)', flexShrink: 0 }} />
+          {extra.avatar_url ? <RuntimeImg src={extra.avatar_url} alt="" style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-border)', flexShrink: 0 }} />
             : <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'var(--accent-soft)', border: '2px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{initials || <GroupIcon size={20} />}</div>}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: T.font.sans, marginBottom: 1 }}>{contact.full_name}</div>
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><GroupIcon size={11} style={{ flexShrink: 0 }} />{meta.label || contact.role}</div>
-            {extra.specialty && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{extra.specialty}</div>}
+            {extra.specialty && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{extra.specialty}</div>}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -1058,8 +1081,8 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Phone size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
               <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.mono }}>{contact.phone}</span>
-              {extra.whatsapp && <a href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 700, background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: 6 }}>WA</a>}
-              {extra.viber && <a href={'viber://chat?number=' + contact.phone.replace(/\D/g, '')} style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 700, background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: 6 }}>VB</a>}
+              {extra.whatsapp && <a href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 700, background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: T.radius.xs }}>WA</a>}
+              {extra.viber && <a href={'viber://chat?number=' + contact.phone.replace(/\D/g, '')} style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 700, background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: T.radius.xs }}>VB</a>}
             </div>
           )}
           {extra.phone2 && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.mono }}>{extra.phone2}</span><span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>2ο</span></div>}
@@ -1214,9 +1237,9 @@ function ContactDossier({ contact, propertyId, onClose, onEdit, onDelete, onQuic
   return (
     <SideSheet open onClose={onClose} ariaLabel="Καρτέλα επαφής" size="sm"
       header={<>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.lg }}>
           {extra.avatar_url
-            ? <img src={extra.avatar_url} alt="" style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--accent-border)', flexShrink: 0 }} />
+            ? <RuntimeImg src={extra.avatar_url} alt="" style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--accent-border)', flexShrink: 0 }} />
             : <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--accent-soft)', border: '3px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{initials || <GroupIcon size={26} />}</div>}
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', lineHeight: 1.15 }}>{contact.full_name}</div>
@@ -1243,7 +1266,7 @@ function ContactDossier({ contact, propertyId, onClose, onEdit, onDelete, onQuic
           <div>
             <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Πληρωμές</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>{fe(exp.total)}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>{exp.count} {exp.count === 1 ? 'καταχώρηση' : 'καταχωρήσεις'}{exp.docs > 0 ? ` · ${exp.docs} ${exp.docs === 1 ? 'παραστατικό' : 'παραστατικά'} με το ΑΦΜ του` : ''}</div>
+            <div className="po-subline" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{exp.count} {exp.count === 1 ? 'καταχώρηση' : 'καταχωρήσεις'}{exp.docs > 0 ? ` · ${exp.docs} ${exp.docs === 1 ? 'παραστατικό' : 'παραστατικά'} με το ΑΦΜ του` : ''}</div>
           </div>
           <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>Πλήρες ιστορικό ›</span>
         </button>
@@ -1325,11 +1348,11 @@ function ContactDossier({ contact, propertyId, onClose, onEdit, onDelete, onQuic
           { Icon: FileText, label: 'vCard', onClick: onVcard },
           { Icon: Printer, label: 'Εκτύπωση', onClick: () => printContactCard(contact, branding) },
         ].map((a, i) => (
-          <button key={i} type="button" onClick={a.onClick} className="dsr-act" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 62, padding: '10px 4px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight: 600, cursor: 'pointer', fontFamily: T.font.sans, transition: 'background .15s, border-color .15s, color .15s' }}>
+          <button key={i} type="button" onClick={a.onClick} className="dsr-act" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 62, padding: '10px 4px', borderRadius: T.radius.popup, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight: 600, cursor: 'pointer', fontFamily: T.font.sans, transition: 'background .15s, border-color .15s, color .15s' }}>
             <a.Icon size={17} /><span style={{ whiteSpace: 'nowrap' }}>{a.label}</span>
           </button>
         ))}
-        <button type="button" onClick={onDelete} className="dsr-del" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 62, padding: '10px 4px', borderRadius: 12, fontSize: 'var(--fs-xs)', fontWeight: 600, cursor: 'pointer', fontFamily: T.font.sans, transition: 'background .15s, border-color .15s, color .15s' }}>
+        <button type="button" onClick={onDelete} className="dsr-del" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 62, padding: '10px 4px', borderRadius: T.radius.popup, fontSize: 'var(--fs-xs)', fontWeight: 600, cursor: 'pointer', fontFamily: T.font.sans, transition: 'background .15s, border-color .15s, color .15s' }}>
           <Trash2 size={17} /><span style={{ whiteSpace: 'nowrap' }}>Διαγραφή</span>
         </button>
       </div>
@@ -1380,9 +1403,12 @@ function CompactRow({ contact, onOpen, onEdit, onDelete, selected, onSelect, bul
       <div style={{ width: 120, minWidth: 90, flexShrink: 1, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.mono, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{extra.afm ? 'ΑΦΜ ' + extra.afm : ''}</div>
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', width: CONTACT_ACTIONS_W, opacity: bulkMode ? 0 : (hov || coarse) ? 1 : 0, pointerEvents: bulkMode || !(hov || coarse) ? 'none' : undefined, transition: 'opacity 0.15s', flexShrink: 0 }}>
         {contact.phone && <a href={'tel:' + contact.phone} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: 4, color: 'var(--text-secondary)' }}><Phone size={14} /></a>}
-        {extra.whatsapp && contact.phone && <a href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '4px 6px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', borderRadius: 6 }}>WA</a>}
-        {extra.viber && contact.phone && <a href={'viber://chat?number=' + contact.phone.replace(/\D/g, '')} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '4px 6px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', borderRadius: 6 }}>VB</a>}
+        {extra.whatsapp && contact.phone && <a href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '4px 6px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', borderRadius: T.radius.xs }}>WA</a>}
+        {extra.viber && contact.phone && <a href={'viber://chat?number=' + contact.phone.replace(/\D/g, '')} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '4px 6px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', borderRadius: T.radius.xs }}>VB</a>}
         {contact.email && <a href={'mailto:' + contact.email} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: 4, color: 'var(--text-secondary)' }}><Mail size={14} /></a>}
+        {/* ΜΕΝΟΥΝ ΧΕΙΡΟΠΟΙΗΤΑ ΓΙΑ ΤΗ ΓΕΩΜΕΤΡΙΑ ΤΗΣ ΓΡΑΜΜΗΣ. Είναι ~26 ψηλά μέσα σε
+            ζώνη σταθερού πλάτους CONTACT_ACTIONS_W: τα 36 —44 στο δάχτυλο— του Btn
+            θα ψήλωναν κάθε γραμμή της λίστας ενώ το γέμισμα 9×18 θα ξεχείλιζε τη ζώνη. */}
         <button type="button" onClick={onEdit} style={{ fontSize: 12, padding: '4px 10px', borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Επεξεργασία</button>
         <button type="button" onClick={onDelete} style={{ fontSize: 12, padding: '4px 10px', borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Διαγραφή</button>
       </div>
@@ -1395,7 +1421,7 @@ function GroupDivider({ group, count }: { group: typeof GROUPS[0]; count: number
   const GroupIcon = group.Icon
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-      <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <div style={{ width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <GroupIcon size={15} color="var(--accent)" />
       </div>
       <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent)', fontFamily: T.font.sans }}>{group.label}</span>
@@ -1423,7 +1449,7 @@ function AlphaRail({ entries, active, onPick }: {
 }) {
   if (entries.length < 2) return null   // Ένα γράμμα δεν είναι ευρετήριο.
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', marginBottom: 18 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', marginBottom: T.sp.lg }}>
       {entries.map((e, i) => {
         const on = active === e.letter
         // Η αλλαγή αλφαβήτου σημαδεύεται μία φορά, στο σημείο που συμβαίνει.
@@ -1431,19 +1457,11 @@ function AlphaRail({ entries, active, onPick }: {
         return (
           <span key={e.letter} style={{ display: 'contents' }}>
             {boundary && <span aria-hidden style={{ width: 1, height: 14, background: 'var(--border-default)', margin: '0 7px', flexShrink: 0 }} />}
-            <button type="button" onClick={() => onPick(on ? null : e.letter)} aria-pressed={on}
-              title={`${e.count} ${e.count === 1 ? 'επαφή' : 'επαφές'}`}
-              style={{
-                minWidth: 26, height: 26, padding: '0 4px', border: 'none', cursor: 'pointer',
-                borderRadius: T.radius.chip, background: on ? 'var(--accent)' : 'transparent',
-                color: on ? 'var(--accent-text)' : 'var(--text-secondary)',
-                fontFamily: T.font.sans, fontSize: 12, fontWeight: on ? 700 : 500,
-                fontVariantNumeric: 'tabular-nums', transition: 'background .14s, color .14s',
-              }}
-              onMouseEnter={ev => { if (!on) ev.currentTarget.style.background = 'var(--bg-hover)' }}
-              onMouseLeave={ev => { if (!on) ev.currentTarget.style.background = 'transparent' }}>
+            {/* `chip` επειδή η ράγα δεν έχει δικό της περίγραμμα: κάθε γράμμα στέκεται μόνο του. */}
+            <ChipToggle on={on} onClick={() => onPick(on ? null : e.letter)}
+              title={`${e.count} ${e.count === 1 ? 'επαφή' : 'επαφές'}`}>
               {e.letter}
-            </button>
+            </ChipToggle>
           </span>
         )
       })}
@@ -1837,16 +1855,12 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           {needsAttention.map(a => {
             const on = attention === a.id
             return (
-              <button key={a.id} type="button" onClick={() => setAttention(on ? null : a.id)} aria-pressed={on}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.sm, padding: '0 14px',
-                  borderRadius: T.radius.pill, cursor: 'pointer', fontFamily: T.font.sans, fontSize: 12,
-                  fontWeight: on ? 700 : 500,
-                  border: '1px solid ' + (on ? 'var(--accent)' : 'var(--border-subtle)'),
-                  background: on ? 'var(--accent)' : 'var(--bg-elevated)',
-                  color: on ? 'var(--on-tone)' : 'var(--text-secondary)', transition: 'background .14s, border-color .14s' }}>
+              <ChipToggle key={a.id} on={on} onClick={() => setAttention(on ? null : a.id)}>
                 {a.label}
-                <span style={{ fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', opacity: on ? 0.85 : 0.6 }}>{fn(a.count)}</span>
-              </button>
+                {/* Ιδιο με τα φίλτρα του Αρχείου: η διαφάνεια έριχνε τον μετρητή στο
+                    3,46:1. Το βάρος το δίνει το χρώμα, όχι το ξεθώριασμα. */}
+                <span style={{ fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fn(a.count)}</span>
+              </ChipToggle>
             )
           })}
         </div>
@@ -1859,7 +1873,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         const hasEmail = contacts.some(c => selected.has(c.id) && c.email)
         const none = selected.size === 0
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '11px 16px', marginBottom: 18, flexWrap: 'wrap', boxShadow: 'var(--elev-1)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '11px 16px', marginBottom: T.sp.lg, flexWrap: 'wrap', boxShadow: 'var(--elev-1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <SelectBox checked={allOn} indeterminate={someOn} onChange={masterToggle} label="Επιλογή όλων" />
               <span style={{ fontSize: 14, fontWeight: 600, color: none ? 'var(--text-secondary)' : 'var(--text-primary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
@@ -1872,13 +1886,16 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
               <BulkBtn icon={FileText} label="Εξαγωγή vCard" onClick={bulkVcard} disabled={none} />
               <BulkBtn icon={Trash2} label="Διαγραφή" onClick={bulkDelete} disabled={none} danger />
             </div>
-            <button type="button" onClick={() => { setBulkMode(false); setSelected(new Set()) }} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: 'none', background: 'transparent', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: T.font.sans }}><X size={14} />Τέλος</button>
+            {/* Το `marginLeft: auto` ζει στον γονέα: το Btn δεν παίρνει θέση, μόνο ρόλο. */}
+            <div style={{ marginLeft: 'auto' }}>
+              <Btn variant="ghost" onClick={() => { setBulkMode(false); setSelected(new Set()) }}><X size={14} />Τέλος</Btn>
+            </div>
           </div>
         )
       })()}
 
       {preferred.length > 0 && (
-        <div style={{ marginBottom: 22, padding: '16px 20px', background: 'var(--bg-surface)', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)' }}>
+        <div style={{ marginBottom: T.sp.xl, padding: '16px 20px', background: 'var(--bg-surface)', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)' }}>
           <SecHdr label="Γρήγορη πρόσβαση" />
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {preferred.map(c => {
@@ -1889,7 +1906,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
                 <div key={c.id} {...pressable(() => openEdit(c))} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderRadius: T.radius.pill, background: 'var(--bg-elevated)', border: '1px solid ' + (overdue ? 'var(--negative-border)' : 'var(--accent-border)'), cursor: 'pointer', position: 'relative', maxWidth: '100%', minWidth: 0 }}>
                   {overdue && <span style={{ position: 'absolute', top: -4, right: -4, width: 12, height: 12, borderRadius: '50%', background: 'var(--negative)', border: '2px solid var(--bg-elevated)' }} />}
                   <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--accent)', overflow: 'hidden', flexShrink: 0 }}>
-                    {c._extra?.avatar_url ? <img src={c._extra.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} /> : initialsOf(c.full_name) || <GroupIcon size={14} />}
+                    {c._extra?.avatar_url ? <RuntimeImg src={c._extra.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} /> : initialsOf(c.full_name) || <GroupIcon size={14} />}
                   </div>
                   <div title={c.full_name} style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.full_name}</div>
@@ -1897,8 +1914,8 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
                   </div>
                   <div style={{ display: 'flex', gap: 4, marginLeft: 4, flexShrink: 0 }}>
                     {c.phone && <a href={'tel:' + c.phone} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', padding: 4 }}><Phone size={13} /></a>}
-                    {c._extra?.whatsapp && c.phone && <a href={'https://wa.me/' + c.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', padding: '2px 5px', borderRadius: 6 }}>WA</a>}
-                    {c._extra?.viber && c.phone && <a href={'viber://chat?number=' + c.phone.replace(/\D/g, '')} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', padding: '2px 5px', borderRadius: 6 }}>VB</a>}
+                    {c._extra?.whatsapp && c.phone && <a href={'https://wa.me/' + c.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', padding: '2px 5px', borderRadius: T.radius.xs }}>WA</a>}
+                    {c._extra?.viber && c.phone && <a href={'viber://chat?number=' + c.phone.replace(/\D/g, '')} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', padding: '2px 5px', borderRadius: T.radius.xs }}>VB</a>}
                   </div>
                 </div>
               )
@@ -1921,6 +1938,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         {showTool('search', contacts.length) && (
         <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
           <Search size={14} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+          {/* Το γέμισμα κρατά το κείμενο έξω από το εικονίδιο: ξεκινά στα 13 με πλάτος 14. */}
           <input value={search} aria-label="Αναζήτηση επαφής" onChange={e => setSearch(e.target.value)} placeholder="Όνομα, τηλέφωνο, email, ΑΦΜ ή IBAN" style={{ ...iStyle, paddingLeft: 38 }} onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-dim)' }} onBlur={e => { e.target.style.borderColor = 'var(--border-default)'; e.target.style.boxShadow = 'none' }} />
         </div>
         )}
@@ -1935,14 +1953,15 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         {showTool('sort', contacts.length) && (
         <div style={{ display: 'flex', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, overflow: 'hidden', background: 'var(--bg-elevated)', padding: 4, gap: 2 }}>
           {([['recent', 'Πρόσφατες'], ['alpha', 'Αλφαβητικά']] as const).map(([m, label]) => (
-            <button key={m} type="button" onClick={() => setSortMode(m)} style={{ padding: '5px 15px', border: 'none', borderRadius: T.radius.pill, background: sortMode === m ? 'var(--bg-surface)' : 'transparent', color: sortMode === m ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontWeight: sortMode === m ? 700 : 500, fontFamily: T.font.sans, boxShadow: sortMode === m ? 'var(--elev-1)' : 'none', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{label}</button>
+            /* `seg` επειδή η πίλλα γύρω έχει ήδη περίγραμμα: δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */
+            <ChipToggle key={m} on={sortMode === m} onClick={() => setSortMode(m)} shape="seg">{label}</ChipToggle>
           ))}
         </div>
         )}
         {showTool('view', contacts.length) && (
         <div style={{ display: 'flex', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, overflow: 'hidden', background: 'var(--bg-elevated)', padding: 4, gap: 2 }}>
           {(['cards', 'compact'] as ViewMode[]).map(v => (
-            <button key={v} type="button" onClick={() => setViewMode(v)} style={{ padding: '5px 15px', border: 'none', borderRadius: T.radius.pill, background: viewMode === v ? 'var(--bg-surface)' : 'transparent', color: viewMode === v ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontWeight: viewMode === v ? 700 : 500, fontFamily: T.font.sans, boxShadow: viewMode === v ? 'var(--elev-1)' : 'none', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>{v === 'cards' ? 'Κάρτες' : 'Λίστα'}</button>
+            <ChipToggle key={v} on={viewMode === v} onClick={() => setViewMode(v)} shape="seg">{v === 'cards' ? 'Κάρτες' : 'Λίστα'}</ChipToggle>
           ))}
         </div>
         )}
@@ -1967,9 +1986,9 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
             { id: 'portfolio' as const, label: 'Όλο το χαρτοφυλάκιο', Icon: Globe },
             { id: 'property' as const, label: 'Ανά ακίνητο', Icon: Building2 },
           ]).map(o => { const active = filterScope === o.id; const Ico = o.Icon; return (
-            <button key={o.id} type="button" onClick={() => setFilterScope(o.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 13px', borderRadius: T.radius.pill, border: '1px solid ' + (active ? 'var(--border-default)' : 'var(--border-subtle)'), background: active ? 'var(--bg-elevated)' : 'transparent', cursor: 'pointer', fontSize: 12, color: active ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: active ? 600 : 400, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+            <ChipToggle key={o.id} on={active} onClick={() => setFilterScope(o.id)}>
               <Ico size={12} />{o.label}
-            </button>
+            </ChipToggle>
           )})}
         </div>
       )}
@@ -1977,13 +1996,13 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       {/* Ένα chip φίλτρου που επιλέγει τα πάντα δεν φιλτράρει τίποτα: με μία
           μόνο ομάδα, η σειρά είναι ετικέτα μεταμφιεσμένη σε χειριστήριο. */}
       {groupsPresent.length >= SHOW_FROM.filter && (
-      <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: T.sp.xl, flexWrap: 'wrap' }}>
         {groupsPresent.map(g => {
             const count = contacts.filter(c => ROLE_META[c.role]?.groupId === g.id).length; const active = filterGroup === g.id; const GroupIcon = g.Icon
             return (
-              <button key={g.id} type="button" onClick={() => setFilterGroup(active ? 'all' : g.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 13px', borderRadius: T.radius.pill, border: '1px solid ' + (active ? 'var(--border-default)' : 'var(--border-subtle)'), background: active ? 'var(--bg-elevated)' : 'transparent', cursor: 'pointer', fontSize: 12, color: active ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: active ? 600 : 400, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+              <ChipToggle key={g.id} on={active} onClick={() => setFilterGroup(active ? 'all' : g.id)}>
                 <GroupIcon size={12} />{g.label}<span style={{ background: active ? 'var(--border-raised)' : 'var(--bg-elevated)', color: active ? 'var(--text-primary)' : 'var(--text-secondary)', borderRadius: T.radius.pill, padding: '1px 7px', fontSize: 'var(--fs-xs)', fontWeight: 700 }}>{count}</span>
-              </button>
+              </ChipToggle>
             )
           })}
       </div>
@@ -2000,11 +2019,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
             : `${fn(processed.length)} από ${fn(contacts.length)}`}
         </span>
         {!bulkMode && showTool('bulk', processed.length) && (
-          <button type="button" onClick={() => { setBulkMode(true); setSelected(new Set()) }}
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12,
-              fontFamily: T.font.sans, color: 'var(--accent)' }}>
-            Επιλογή πολλαπλών
-          </button>
+          <LinkBtn onClick={() => { setBulkMode(true); setSelected(new Set()) }}>Επιλογή πολλαπλών</LinkBtn>
         )}
       </div>
       </>)}
@@ -2068,7 +2083,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           ))}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 42 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
           {GROUPS.filter(g => groupedFiltered[g.id]?.length).map(g => (
             <div key={g.id}>
               <GroupDivider group={g} count={groupedFiltered[g.id].length} />
@@ -2157,6 +2172,8 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
             </div>
 
             {/* ── Πτυσσόμενες λεπτομέρειες ── */}
+            {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: ίδιος λόγος με τη ζώνη προσθήκης αρχείου — το
+                διακεκομμένο περίγραμμα της αποκάλυψης δεν υπάρχει στο Btn. */}
             <button type="button" onClick={() => setShowMore(m => !m)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', border: '1px dashed var(--border-default)', borderRadius: T.radius.inner, background: 'transparent', color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontWeight: 600, cursor: 'pointer', fontFamily: T.font.sans }}>
               {showMore ? 'Λιγότερες λεπτομέρειες' : 'Περισσότερες λεπτομέρειες'}
               <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showMore ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="m6 9 6 6 6-6" /></svg>
@@ -2175,7 +2192,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
                     </CField>
                   </div>
                   <CField d={cf('contact.messaging')}>
-                    <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-surface)', borderRadius: T.radius.inner, border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', gap: T.sp.xl, flexWrap: 'wrap', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-surface)', borderRadius: T.radius.inner, border: '1px solid var(--border-subtle)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Toggle on={!!form.extra.whatsapp} onChange={v => setExtra('whatsapp', v)} ariaLabel="WhatsApp" /><span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>WhatsApp</span></div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Toggle on={!!form.extra.viber} onChange={v => setExtra('viber', v)} ariaLabel="Viber" /><span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>Viber</span></div>
                     </div>
@@ -2216,9 +2233,9 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {([{ v: 'property' as const, label: 'Συγκεκριμένο ακίνητο', Icon: Building2 }, { v: 'portfolio' as const, label: 'Όλο το χαρτοφυλάκιο', Icon: Globe }]).map(o => {
                         const active = (form.extra.scope || 'property') === o.v; const Ico = o.Icon; return (
-                          <button key={o.v} type="button" onClick={() => setExtra('scope', o.v)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 15px', borderRadius: T.radius.pill, border: '1px solid ' + (active ? 'var(--accent-border)' : 'var(--border-subtle)'), background: active ? 'var(--accent-soft)' : 'transparent', color: active ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 'var(--fs-base)', cursor: 'pointer', fontWeight: active ? 600 : 400, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+                          <ChipToggle key={o.v} on={active} onClick={() => setExtra('scope', o.v)}>
                             <Ico size={14} />{o.label}
-                          </button>
+                          </ChipToggle>
                         )
                       })}
                     </div>

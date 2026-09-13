@@ -27,6 +27,7 @@
 // το ρολόι του μηχανήματος.
 // ═══════════════════════════════════════════════════════════════════════════
 import { existsSync, readFileSync } from 'node:fs'
+import { projectFiles } from './lib/git-files.mjs'
 import { execFileSync } from 'node:child_process'
 
 const SRC = 'lib/legal/validity.ts'
@@ -73,6 +74,56 @@ for (const r of out.rows) {
   if (!/^https:\/\//.test(r.source)) findings.push({ kind: 'ΧΩΡΙΣ ΠΗΓΗ', r, why: 'η πηγή δεν είναι σύνδεσμος https' })
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ΚΑΙ ΤΟ ΑΝΤΙΣΤΡΟΦΟ ΕΡΩΤΗΜΑ: ΠΟΙΟΣ ΚΑΝΟΝΑΣ ΔΕΝ ΕΙΝΑΙ ΣΤΟ ΜΗΤΡΩΟ ΚΑΘΟΛΟΥ;
+// ─────────────────────────────────────────────────────────────────────────
+// ΟΛΟΙ ΟΙ ΠΑΡΑΠΑΝΩ ΕΛΕΓΧΟΙ ΡΩΤΟΥΝ «ΕΙΝΑΙ ΦΡΕΣΚΕΣ ΟΙ ΕΓΓΡΑΦΕΣ;». Καμία δεν
+// ρωτά «λείπει εγγραφή;» — και αυτό είναι το πιο ύπουλο, γιατί ένα μητρώο με
+// είκοσι φρέσκες εγγραφές διαβάζεται ως πλήρες.
+//
+// ΤΙ ΒΡΕΘΗΚΕ ΜΕ ΤΟ ΧΕΡΙ, ΠΡΙΝ ΓΡΑΦΤΕΙ ΑΥΤΟΣ Ο ΚΑΝΟΝΑΣ. Η αναστολή ΦΠΑ στα
+// νεόδμητα (9.270 € έναντι 72.000 € σε ακίνητο 300.000 €), ο φόρος υπεραξίας,
+// η τεκμαρτή έκπτωση 5% —το ποσοστό που μπαίνει σε ΚΑΘΕ δήλωση ενοικίων— και
+// τα εισοδηματικά όρια των στεγαστικών προγραμμάτων. Τέσσερις κανόνες που
+// κανένα μητρώο δεν επρόκειτο ποτέ να ζητήσει να ξανακοιταχτούν.
+//
+// Ο ΚΑΝΟΝΑΣ: κάθε αρχείο του lib/ που επικαλείται νόμο, ΦΕΚ, ΚΥΑ ή ΠΟΛ πρέπει
+// να φυλάσσεται από ένα από τα δύο μητρώα — το μητρώο ισχύος για τιμές που
+// λήγουν, το μητρώο λογιστικών πηγών για πρότυπα και εγκυκλίους. Οτι δεν
+// φυλάσσεται από κανένα, δηλώνεται εδώ ΜΕ ΤΟΝ ΛΟΓΟ.
+const LAW = /ν\.\d{4}\/\d{4}|ΦΕΚ |ΚΥΑ |ΠΟΛ\.\d/
+const SOURCES = 'data/accounting-sources.json'
+
+/** Αρχεία που ΕΞΗΓΟΥΝ νόμο χωρίς να κρατούν τιμή του. Με τον λόγο, πάντα. */
+const EXPLAINS_ONLY = {
+  'lib/tax/rentCollectionMode.ts': 'διαβάζει τον τρόπο είσπραξης· το ποσοστό και η προϋπόθεση ζουν στο lib/accounting/statement.ts, που είναι στο μητρώο ως presumptive-deduction',
+  'lib/rent/collect.ts': 'καταγράφει εισπράξεις· την τεκμαρτή έκπτωση την εξηγεί, δεν την ορίζει',
+  'lib/billing/consolidate.ts': 'ενοποιεί εισοδήματα· δανείζεται το ποσοστό από το statement.ts και το γράφει σε κείμενο',
+}
+
+const unguarded = []
+{
+  const guardedByValidity = new Set(out.rows.map(r => r.where))
+  const acct = existsSync(SOURCES) ? readFileSync(SOURCES, 'utf8') : ''
+  for (const f of projectFiles("'lib/**/*.ts'")) {
+    if (f.includes('.test.') || f === 'lib/legal/validity.ts') continue
+    if (!LAW.test(readFileSync(f, 'utf8'))) continue
+    if (guardedByValidity.has(f) || acct.includes(f) || f in EXPLAINS_ONLY) continue
+    unguarded.push(f)
+  }
+}
+
+if (unguarded.length) {
+  console.error(`✗ ${unguarded.length} αρχεία επικαλούνται νόμο και δεν τα φυλάει κανένα μητρώο:\n`)
+  for (const f of unguarded) console.error(`  ${f}`)
+  console.error(`\n  Ενας κανόνας χωρίς μητρώο δεν θα ζητηθεί ΠΟΤΕ να ξανακοιταχτεί: θα`)
+  console.error('  μείνει σωστός ώσπου να αλλάξει ο νόμος και μετά λάθος για πάντα.\n')
+  console.error(`  ΔΙΟΡΘΩΣΗ: εγγραφή στο ${SRC} (τιμή που λήγει ή θέλει ετήσιο έλεγχο) ή`)
+  console.error(`  στο ${SOURCES} (πρότυπο/εγκύκλιος). Αν το αρχείο απλώς ΕΞΗΓΕΙ τον νόμο`)
+  console.error('  χωρίς να κρατά τιμή του, δήλωσέ το στο EXPLAINS_ONLY εδώ, με τον λόγο.')
+  process.exit(1)
+}
+
 if (findings.length) {
   console.error(`✗ ${findings.length} ρυθμιζόμενα μεγέθη θέλουν ανθρώπινο μάτι (σήμερα ${today}):\n`)
   for (const f of findings) {
@@ -86,4 +137,4 @@ if (findings.length) {
   console.error('  αρκεί το checkedAt: αυτό είναι η υπογραφή ότι κάποιος κοίταξε.')
   process.exit(1)
 }
-console.log(`✓ και τα ${out.rows.length} ρυθμιζόμενα μεγέθη είναι εν ισχύι και ελεγμένα (σήμερα ${today})`)
+console.log(`✓ και τα ${out.rows.length} ρυθμιζόμενα μεγέθη είναι εν ισχύι και ελεγμένα (σήμερα ${today}), κανένας κανόνας εκτός μητρώου`)

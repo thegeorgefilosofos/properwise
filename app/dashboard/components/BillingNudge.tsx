@@ -16,7 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
-import { T, Btn } from '@/components/Theme';
+import { T, Btn, IconBtn } from '@/components/Theme';
 import { missingInvoiceFields, type InvoiceProfile } from '@/lib/billing/invoiceProfile';
 
 const monthKey = () => { const n = new Date(); return `po_billing_nudge_${n.getFullYear()}-${n.getMonth() + 1}`; };
@@ -77,9 +77,9 @@ export default function BillingNudge({ userId, onNavigate }: { userId: string; o
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
         <Btn variant="secondary" onClick={() => onNavigate?.('settings')}>Συμπλήρωσε τα στοιχεία</Btn>
-        <button onClick={dismiss} aria-label="Απόκρυψη" style={{ appearance: 'none', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'inline-flex', padding: 6, borderRadius: 8 }}>
+        <IconBtn label="Απόκρυψη" onClick={dismiss}>
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-        </button>
+        </IconBtn>
       </div>
     </div>
   );

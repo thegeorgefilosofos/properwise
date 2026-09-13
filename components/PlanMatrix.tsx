@@ -38,6 +38,18 @@ const limitLabel = (id: ComparedPlan): string => {
   return n === 1 ? '1' : `Έως ${n}`;
 };
 
+// ── Ο ΠΙΝΑΚΑΣ ΔΕΝ ΞΑΝΑΛΕΕΙ ΤΟΥΣ ΚΑΝΟΝΕΣ· ΤΟΥΣ ΔΙΑΒΑΖΕΙ ────────────────────
+// Οι γραμμές ήταν γραμμένες με το χέρι ως booleans ανά πλάνο και είχαν ήδη
+// αποκλίνει από αυτό που ΕΠΙΒΑΛΛΕΙ ο κώδικας:
+//
+//   · «Εξαγωγή Ε2» έλεγε ότι θέλει «Ιδιοκτήτης». Το `FEATURE_MIN_PLAN` το
+//     ξεκλειδώνει από το «Ένα ακίνητο», που κοστίζει πολλαπλάσια λιγότερο.
+//   · Το ίδιο και η «Διαχείριση ενοικιαστών & εισπράξεις».
+//
+// Δηλαδή ο πίνακας τιμών έλεγε στον χρήστη να αγοράσει ακριβότερο πλάνο από όσο
+// χρειαζόταν. Δεν είναι θέμα αισθητικής· είναι λάθος τιμολόγηση στην οθόνη που
+// ζητά την κάρτα του. Τώρα κάθε κλειδωμένη γραμμή παράγεται από το ίδιο μητρώο
+// που κρίνει και την πρόσβαση — δεν μπορούν να διαφωνήσουν.
 const gated = (f: Feature): FeatureRow => ({
   label: FEATURE_LABEL[f],
   values: Object.fromEntries(COMPARED.map(p => [p, planAtLeast(p, FEATURE_MIN_PLAN[f])])) as Record<ComparedPlan, CellValue>,
@@ -66,8 +78,6 @@ export const MATRIX: FeatureRow[] = [
   gated('investment_analysis'),
 ];
 
-const GRID = `minmax(184px, 1.7fr) repeat(${COMPARED.length}, minmax(84px, 1fr))`;
-
 function Tick() {
   return (
     <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth={2.4}
@@ -86,41 +96,81 @@ function Tick() {
  */
 export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
   return (
-    /* ═══ ΔΥΟ ΠΡΑΓΜΑΤΑ ΠΟΥ ΘΕΛΕΙ ΚΑΘΕ ΟΡΙΖΟΝΤΙΟΣ ΠΙΝΑΚΑΣ ══════════════════════
-       1. `po-scroll-x`: χωρίς αυτό, η σάρωση που φτάνει στο τέρμα του πίνακα
-          συνεχίζει ως χειρονομία «πίσω» του iOS Safari. Ο επισκέπτης που
-          σέρνει τη σύγκριση πακέτων για να δει το τελευταίο βγαίνει από τη
-          σελίδα. Η κλάση υπάρχει και τη φορούν ήδη οι τέσσερις πίνακες των
-          δωρεάν εργαλείων· αυτός εδώ γράφτηκε αργότερα και την ξέχασε.
-       2. ΚΟΛΛΗΜΕΝΗ ΠΡΩΤΗ ΣΤΗΛΗ: μόλις ο πίνακας κυλήσει δεξιά, τα «ναι» και τα
-          «όχι» μένουν χωρίς όνομα γραμμής. Ο επισκέπτης βλέπει τέσσερα σημάδια
-          και δεν ξέρει τι συγκρίνει. */
-    <div className="po-scroll-x plan-matrix" style={{ overflowX: 'auto' }}>
-      <div style={{ minWidth: 560 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: GRID, alignItems: 'end', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 10 }}>
-          <div />
-          {COMPARED.map(id => (
-            <div key={id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '0 8px' }}>
-              <span style={{ fontSize: 12, fontWeight: id === highlight ? 700 : 600, color: id === highlight ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: T.font.sans, textAlign: 'center' }}>{PLANS[id].name}</span>
-            </div>
-          ))}
-        </div>
-        {MATRIX.map(row => (
-          <div key={row.label} style={{ display: 'grid', gridTemplateColumns: GRID, alignItems: 'center', borderBottom: '1px solid var(--border-subtle)' }}>
-            <div className="plan-matrix-row-label" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.4, padding: '13px 12px 13px 2px' }}>{row.label}</div>
-            {COMPARED.map(id => {
-              const v = row.values[id];
-              return (
-                <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '13px 8px' }}>
-                  {typeof v === 'string'
-                    ? <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
-                    : v === true ? <Tick />
-                    : <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans }}>Όχι</span>}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+    /* ═══ ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs ══════════════════════════════════════
+       ΤΙ ΗΤΑΝ. Δεκαεπτά γραμμές επί πέντε στήλες, χτισμένες με `display: grid`
+       και `<div>`: εξήντα οκτώ κελιά που ΜΟΙΑΖΑΝ πίνακας χωρίς να είναι. Τα
+       τέσσερα πινακάκια των δωρεάν εργαλείων πέρασαν στο `.po-table` και το
+       διάβασαν σωστά· αυτό εδώ γράφτηκε αλλού και έμεινε πίσω.
+
+       ΤΙ ΚΕΡΔΙΖΕΙ ΚΑΙ ΔΕΝ ΦΑΙΝΕΤΑΙ. Ενα πλέγμα από divs ΔΕΝ έχει γραμμές και
+       στήλες για τον αναγνώστη οθόνης: ακούγεται σαν εξήντα οκτώ ασύνδετα
+       κείμενα, χωρίς «Λογιστικό ημερολόγιο, Ιδιοκτήτης: όχι». Με `<th
+       scope="row">` και `<th scope="col">` κάθε κελί ανακοινώνεται με τους δύο
+       τίτλους του — δηλαδή ο πίνακας τιμών γίνεται διαβάσιμος από κάποιον που
+       δεν τον βλέπει, στην οθόνη που ζητά την κάρτα του.
+
+       ΚΑΙ ΤΙ ΦΑΙΝΕΤΑΙ: το `.po-table` φέρνει τις ίδιες τρίχες διαχωρισμού, την
+       ίδια κεφαλίδα σε κεφαλαία και τα ίδια γεμίσματα με κάθε άλλο πίνακα του
+       προϊόντος. Πριν, οι αποστάσεις ήταν γραμμένες στο χέρι («13px 12px 13px
+       2px») και δεν συμφωνούσαν με καμία άλλη.
+
+       ΤΟ `caption` ΕΙΝΑΙ Η ΤΑΙΝΙΑ ΤΙΤΛΟΥ ΤΟΥ ΚΟΥΤΙΟΥ, όχι διακόσμηση: δίνει
+       στον πίνακα όνομα και για το μάτι και για τη βοηθητική τεχνολογία.
+
+       Η `po-scroll-x` μένει: χωρίς αυτήν η σάρωση που φτάνει στο τέρμα του
+       πίνακα συνεχίζει ως χειρονομία «πίσω» του iOS Safari και ο επισκέπτης
+       που σέρνει τη σύγκριση βγαίνει από τη σελίδα. */
+    <div className="po-table-box">
+      <div className="po-scroll-x plan-matrix">
+        {/* ΤΟ ΕΛΑΧΙΣΤΟ ΠΛΑΤΟΣ ΒΓΑΙΝΕΙ ΑΠΟ ΜΕΤΡΗΣΗ, ΟΧΙ ΑΠΟ ΕΚΤΙΜΗΣΗ. Ηταν 560 και
+            στα 390 η κεφαλίδα έσπαγε ΜΕΣΑ ΣΤΗ ΛΕΞΗ: «ΙΔΙΟΚΤΗΤ / ΗΣ». Μετρημένο
+            στον περιηγητή, το μακρύτερο λεκτικό —«Επαγγελματίας+»— θέλει 135
+            εικονοστοιχεία κειμένου· με το γέμισμα της στήλης, 155. Τέσσερις
+            στήλες θέλουν 620 και η στήλη των ονομάτων 224 για να χωρά σε δύο
+            γραμμές η «Σάρωση εγγράφων και φωνητική καταχώρηση». Σύνολο 844.
+
+            ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΠΡΟΒΛΗΜΑ ΠΟΥ ΔΕΝ ΧΩΡΑΕΙ ΣΕ ΤΗΛΕΦΩΝΟ. Πέντε στήλες με
+            ελληνικά ονόματα πακέτων ΔΕΝ χωρούν σε 390 και καμία ρύθμιση δεν τις
+            χωράει· ό,τι «χωράει» είναι σπασμένες λέξεις. Ο πίνακας κυλά — η
+            πρώτη στήλη μένει καρφωμένη ώστε ο επισκέπτης να ξέρει πάντα ποια
+            γραμμή διαβάζει. */}
+        <table className="po-table tbl-fixed" style={{ ['--tbl-min' as string]: '860px' }}>
+          <caption>Τι περιλαμβάνει κάθε πακέτο</caption>
+          <colgroup>
+            <col style={{ width: '26%' }} />
+            {COMPARED.map(id => <col key={id} style={{ width: `${74 / COMPARED.length}%` }} />)}
+          </colgroup>
+          <thead>
+            <tr>
+              {/* Το κενό κελί της γωνίας: υπάρχει για τη δομή, δεν λέει τίποτα. */}
+              <th scope="col"><span className="sr-only">Δυνατότητα</span></th>
+              {COMPARED.map(id => (
+                <th key={id} scope="col" style={{ textAlign: 'center', color: id === highlight ? 'var(--accent)' : undefined }}>
+                  {PLANS[id].name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {MATRIX.map(row => (
+              <tr key={row.label}>
+                <th scope="row" style={{ color: 'var(--text-secondary)' }}>{row.label}</th>
+                {COMPARED.map(id => {
+                  const v = row.values[id];
+                  return (
+                    <td key={id} style={{ textAlign: 'center' }}>
+                      {typeof v === 'string'
+                        ? <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+                        : v === true
+                          ? <><Tick /><span className="sr-only">Ναι</span></>
+                          : <span style={{ color: 'var(--text-tertiary)' }}>Όχι</span>}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

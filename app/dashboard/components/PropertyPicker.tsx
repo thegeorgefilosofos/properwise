@@ -45,7 +45,7 @@ export default function PropertyPicker({ items, selected, onChange, loading, pla
     : `${selected.size} από ${items.length} ακίνητα`;
 
   const box = (on: boolean, mixed = false): React.CSSProperties => ({
-    width: 17, height: 17, borderRadius: 6, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 17, height: 17, borderRadius: T.radius.xs, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     border: `1.5px solid ${on || mixed ? 'var(--accent)' : 'var(--border-default)'}`,
     background: on || mixed ? 'var(--accent)' : 'var(--bg-surface)', transition: 'border-color 0.14s, background 0.14s',
   });
@@ -61,11 +61,11 @@ export default function PropertyPicker({ items, selected, onChange, loading, pla
       </button>
 
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 60, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 12, boxShadow: 'var(--elev-3)', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 60, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.popup, boxShadow: 'var(--elev-3)', overflow: 'hidden' }}>
           {items.length > 6 && (
             <div style={{ padding: 8, borderBottom: '1px solid var(--border-subtle)' }}>
               <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Όνομα ή διεύθυνση" aria-label="Αναζήτηση ακινήτου"
-                style={{ width: '100%', height: T.h.sm, padding: '0 11px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', outline: 'none' }} />
+                style={{ width: '100%', height: T.h.sm, padding: '0 11px', borderRadius: T.radius.chip, border: '1px solid var(--border-default)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', outline: 'none' }} />
             </div>
           )}
           <div style={{ maxHeight: 260, overflowY: 'auto', padding: 4 }}>

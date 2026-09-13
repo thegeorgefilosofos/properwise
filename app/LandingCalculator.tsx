@@ -6,6 +6,7 @@ import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2026, taxRateLabel } from '@/lib/b
 import { fe, fp } from '@/lib/core/format'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
 import LiveResult from '@/components/LiveResult'
+import { hy } from '@/components/Hyphen'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ζωντανό εργαλείο απόδοσης μέσα στο landing. Τρέχει την ΙΔΙΑ ακριβή φορολογική
@@ -16,9 +17,9 @@ import LiveResult from '@/components/LiveResult'
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══ ΔΥΟ ΤΟΠΙΚΟΙ ΜΟΡΦΟΠΟΙΗΤΕΣ, ΜΕ ΑΛΛΟΥΣ ΚΑΝΟΝΕΣ ΑΠΟ ΟΛΗ ΤΗΝ ΕΦΑΡΜΟΓΗ ══════
-// Έγραφαν «650 €» και «3,0%»: μηδέν δεκαδικά στα ποσά, ένα στα ποσοστά — ενώ ο
+// Έγραφαν «650€» και «3,0%»: μηδέν δεκαδικά στα ποσά, ένα στα ποσοστά — ενώ ο
 // κανόνας του έργου είναι ΔΥΟ, παντού, ώστε οι υποδιαστολές να στοιχίζονται
-// κάθετα. Ο επισκέπτης έβλεπε «457 €» εδώ και «457,00 €» δύο κλικ μετά, στην
+// κάθετα. Ο επισκέπτης έβλεπε «457€» εδώ και «457,00€» δύο κλικ μετά, στην
 // ίδια αριθμομηχανή που υπόσχεται «οι ίδιοι υπολογισμοί με την εφαρμογή».
 //
 // Και ο φύλακας τοπικών μορφοποιητών ΔΕΝ το έπιασε: έψαχνε `toLocaleString`,
@@ -120,7 +121,7 @@ export default function LandingCalculator() {
       `}</style>
 
       {/* Αριστερά: τα δικά σου δεδομένα */}
-      <div className="calc-panel" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      <div className="calc-panel" style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xxl }}>
         <Control label="Μηνιαίο ενοίκιο" hint="Το μεικτό μηνιαίο μίσθωμα" value={rent} set={setRent} min={100} max={5000} step={10} format={fe} />
         <Control label="Αξία ακινήτου" hint="Τρέχουσα εμπορική αξία, για τον υπολογισμό απόδοσης" value={value} set={setValue} min={2000} max={1000000} step={1000} format={fe} />
         <Control label="Ετήσιες δαπάνες" hint="ΕΝΦΙΑ, ασφάλεια, συντήρηση, κοινόχρηστα ιδιοκτήτη" value={costs} set={setCosts} min={0} max={10000} step={100} format={fe} />
@@ -146,20 +147,25 @@ export default function LandingCalculator() {
       </div>
 
       {/* Δεξιά: το αποτέλεσμα, ζωντανά */}
-      <div className="calc-panel" style={{ display: 'flex', flexDirection: 'column', gap: 22, background: 'var(--bg-elevated)' }}>
+      <div className="calc-panel" style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xxl, background: 'var(--bg-elevated)' }}>
         <Stat label="Καθαρή απόδοση, μετά τον φόρο" value={pct(netYield)} big />
         <LiveResult say={`Καθαρή απόδοση μετά τον φόρο ${pct(netYield)}. Καθαρά τον μήνα ${fe(monthlyNet)}.`} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, paddingTop: 4, borderTop: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: T.sp.lg, paddingTop: 4, borderTop: '1px solid var(--border-subtle)' }}>
           <Stat label="Καθαρά τον μήνα" value={fe(monthlyNet)} />
           <Stat label="Ακαθάριστη απόδοση" value={pct(grossYield)} />
           <Stat label="Ετήσιος φόρος ενοικίων" value={fe(tax)} />
           <Stat label="Μέσος συντελεστής" value={pct(effRate)} />
         </div>
         <div style={{ flex: 1 }} />
-        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
-          Ενδεικτικός υπολογισμός με την κλίμακα ενοικίων 2026 και τεκμαρτή έκπτωση {fp(PRESUMPTIVE_DEDUCTION_RATE * 100)} για δαπάνες, που από 1/1/2026 προϋποθέτει είσπραξη μέσω τραπέζης. Δεν υποκαθιστά τον λογιστή σου.
+        {/* Η ΕΠΙΦΥΛΑΞΗ ΔΙΑΒΑΖΕΤΑΙ ΣΑΝ ΟΡΟΣ, ΑΡΑ ΚΛΕΙΝΕΙ ΚΑΙ ΔΕΞΙΑ. Το πλέγμα των 1140
+            δίνει στήλη 508 και το γέμισμα των 32 αφήνει 444: 174 χαρακτήρες στα 12
+            βγάζουν τρεις γραμμές με ριγμένη άκρη, ακριβώς κάτω από τον αριθμό που
+            πρέπει να πείσει. Ο συλλαβισμός συνοδεύει τη στοίχιση — μόνη της τεντώνει
+            τα κενά. Το ποσοστό κι οι ημερομηνίες είναι ψηφία: μένουν ακέραια. */}
+        <p className="po-just" style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
+          {hy(<>Ενδεικτικός υπολογισμός με την κλίμακα ενοικίων 2026 και τεκμαρτή έκπτωση {fp(PRESUMPTIVE_DEDUCTION_RATE * 100)} για δαπάνες, που από 1/1/2026 προϋποθέτει είσπραξη μέσω τραπέζης. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
-        <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px', borderRadius: T.radius.pill }}>
+        <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
           Δες τα δικά σου δεδομένα, αυτόματα
         </Link>
       </div>

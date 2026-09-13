@@ -6,6 +6,7 @@ import { build } from 'esbuild';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BENCH_DEFINE, BENCH_INJECT } from '../lib/bench-env.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
@@ -20,7 +21,8 @@ await build({
   target: 'es2022',
   outfile: join(out, 'keyboard.js'),
   logLevel: 'error',
-  define: { 'process.env.NODE_ENV': '"production"' },
+  define: BENCH_DEFINE,
+  inject: BENCH_INJECT,
   loader: { '.css': 'text' },
   alias: {
     '@/lib/supabase/client': join(here, '../e2e-money/fakeClient.ts'),

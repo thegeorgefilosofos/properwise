@@ -37,7 +37,7 @@ const walk = d => {
     else if (/\.tsx?$/.test(p) && !/\.test\.tsx?$/.test(p)) files.push(p)
   }
 }
-for (const root of ['app', 'lib', 'components']) { try { walk(root) } catch {} }
+for (const root of ['app', 'lib', 'components', 'supabase/functions']) { try { walk(root) } catch {} }
 
 // Οι ίδιοι οι τύποι ορίζονται εδώ — δεν ελέγχουν τον εαυτό τους.
 const SELF = ['components/tokens.ts']
@@ -122,7 +122,7 @@ if (problems.length) {
   console.error('  διαβάζεται ως χιλιάδες.\n')
   for (const p of problems) console.error(`  ${p.file}:${p.line}  ${p.what}\n     ${p.text.slice(0, 110)}`)
   console.error('\n  Γράψε: fp(x)         αντί για `${x.toFixed(1)}%`')
-  console.error('  ή:     fe(x, 0)      αντί για `${x.toFixed(2)} €`')
+  console.error('  ή:     fe(x, 0)      αντί για `${x.toFixed(2)}€`')
   console.error('  ή:     fn(x, 1)      για αριθμό χωρίς μονάδα')
   process.exit(1)
 }

@@ -25,7 +25,7 @@ import * as properties from '@/lib/data/properties';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
 import { TextInput, CustomSelect, FIELD_LABEL_ROW } from './UIComponents';
-import { T, Btn, InfoBanner, Spinner, Card, SecHdr, fixedCols, fe, fd } from '@/components/Theme';
+import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, fixedCols, fe, fd } from '@/components/Theme';
 import { PLANS, PLAN_ORDER, normalizePlan, annualPerMonth, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 // Η ΦΑΣΗ ΤΗΣ ΣΥΝΔΡΟΜΗΣ ΔΕΝ ΚΡΙΝΕΤΑΙ ΕΔΩ. Οι καταστάσεις τις ονομάζει ο
 // έμπορος και τις γράφει ο webhook· η οθόνη τις διαβάζει από την ίδια πηγή.
@@ -273,8 +273,8 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
   // ΦΘΗΝΟΤΕΡΟ πακέτο που επιτρέπει το προφίλ του.
   //
   // ΟΧΙ ΤΟ ΑΚΡΙΒΟΤΕΡΟ. Η πρώτη γραφή έδειχνε το ανώτατο επιτρεπτό: ένας ιδιώτης
-  // χωρίς συνδρομή έβλεπε «Ιδιοκτήτης+ · 9,90 €» ενώ η είσοδος είναι
-  // «Ιδιοκτήτης · 3,90 €». Μια προεπιλογή που τυχαίνει να είναι η κερδοφόρα δεν
+  // χωρίς συνδρομή έβλεπε «Ιδιοκτήτης+ · 9,90€» ενώ η είσοδος είναι
+  // «Ιδιοκτήτης · 3,90€». Μια προεπιλογή που τυχαίνει να είναι η κερδοφόρα δεν
   // είναι προεπιλογή, είναι πώληση με το ζόρι.
   const entry = ALLOWED_PLANS[type].find(p => PLANS[p].priceMonthly > 0) ?? ALLOWED_PLANS[type][0];
   // Η επιθυμία της εγγραφής μπαίνει ΜΟΝΟ αν το προφίλ την αγοράζει. Ενας
@@ -366,11 +366,6 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
   // ── Ο ΚΩΔΙΚΟΣ ΠΡΟΣΚΛΗΣΗΣ ─────────────────────────────────────────────
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState('');
-  const linkish: React.CSSProperties = {
-    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-    fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: 'var(--text-secondary)',
-    textDecoration: 'underline', textUnderlineOffset: 3,
-  };
 
   /**
    * Η εξαργύρωση.
@@ -526,7 +521,7 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           συνδρομή γίνεται από την πύλη, που την τροποποιεί· το ταμείο θα
           έφτιαχνε δεύτερη συνδρομή δίπλα στην πρώτη. */}
       {(live === true && !running) || hasCustomer ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 18 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: T.sp.lg }}>
           {live === true && !running && (
             <Btn variant="primary" onClick={go} disabled={busy}>{busy ? 'Ανοίγει…' : 'Πληρωμή με κάρτα'}</Btn>
           )}
@@ -570,7 +565,7 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           υπόσχεση που δεν τηρείται με το πάτημα· η πρόταση λέει το ίδιο πράγμα
           με τους Ορους και την Πολιτική απορρήτου, από την ίδια πηγή. */}
       {live === false && (
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: T.sp.lg }}>
           <InfoBanner tone="info">{note} Συμπλήρωσε από τώρα τα στοιχεία τιμολόγησης, ώστε η ενεργοποίηση να μη σου ζητήσει τίποτα άλλο.</InfoBanner>
         </div>
       )}
@@ -591,9 +586,11 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           τιμή λέει σε κάθε επισκέπτη ότι κάπου υπάρχει έκπτωση που δεν του
           δόθηκε και τον στέλνει να τη ψάξει αντί να πληρώσει. Οποιος έχει
           κωδικό ξέρει ότι τον έχει. */}
-      <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+      <div style={{ marginTop: T.sp.lg, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
         {!codeOpen ? (
-          <button type="button" onClick={() => setCodeOpen(true)} style={linkish}>Έχω κωδικό πρόσκλησης</button>
+          /* `quiet` γιατί ο σύνδεσμος ήταν ήδη σβησμένος: το accent θα τον έκανε
+             πιο δυνατό από την τιμή δίπλα του. */
+          <LinkBtn tone="quiet" onClick={() => setCodeOpen(true)}>Έχω κωδικό πρόσκλησης</LinkBtn>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             {/* ΤΟ `placeholder` ΔΕΝ ΟΝΟΜΑΖΕΙ: σβήνεται με τον πρώτο χαρακτήρα και

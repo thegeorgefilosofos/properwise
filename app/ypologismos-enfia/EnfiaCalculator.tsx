@@ -23,7 +23,7 @@ import { OBJECTIVE_VALUES } from '@/lib/tax/aade';
 // ακίνητο θα δει διαφορετικό ποσό στο εκκαθαριστικό.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
-import { T, feAuto, fieldRow, fixedCols } from '@/components/tokens';
+import { T, feAuto, fixedCols } from '@/components/tokens';
 import { fn, fp, feRate } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS } from '@/lib/billing/enfia';
@@ -68,12 +68,35 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
     // Αντικειμενική αξία κατά προσέγγιση. Δεν είναι ο επίσημος τύπος (που έχει και
     // συντελεστές οικοπέδου/προσόψεων) — είναι η βάση που χρειάζεται ο υπολογισμός
     // για τη μείωση και την προσαύξηση και το λέμε στην οθόνη.
-    const value = m * price * (own / 100);
+    // ══ ΤΟ ΠΟΣΟΣΤΟ ΙΔΙΟΚΤΗΣΙΑΣ ΕΦΑΡΜΟΖΟΤΑΝ ΔΥΟ ΦΟΡΕΣ ═══════════════════════════
+    // Οι δύο τιμές που ζητά η μηχανή ΔΕΝ είναι η ίδια αξία:
+    //
+    //   `totalValue`     η συνολική περιουσία ΤΟΥ ΦΟΡΟΛΟΓΟΥΜΕΝΟΥ, άρα ΜΕΡΙΔΙΟ
+    //   `propertyValue`  η αντικειμενική αξία ΤΟΥ ΑΚΙΝΗΤΟΥ, άρα ΟΛΟΚΛΗΡΗ
+    //
+    // Εδώ περνούσαν κι οι δύο ίσες με το μερίδιο. Η `enfiaExtraPropertyTax` της
+    // Ενότητας Γ κόβει η ίδια στο ποσοστό —το γράφει στην υπογραφή της— οπότε το
+    // 50% εφαρμοζόταν δεύτερη φορά — κι μαζί έπεφτε κι το κατώφλι των 400.000€
+    // κάτω από το οποίο ο πρόσθετος φόρος δεν υπάρχει καθόλου.
+    //
+    // ΜΕΤΡΗΜΕΝΟ: 300 τ.μ. σε ζώνη 3.000€/τ.μ. με 50% ιδιοκτησία έβγαζε 731,75€
+    // αντί για 1.681,75€. Λάθος 950,00€, ΠΑΝΤΑ προς τα κάτω. Σε δημόσια σελίδα
+    // χωρίς εγγραφή αυτό δεν είναι σφάλμα αριθμού, είναι υπόσχεση: κάποιος
+    // βάζει στην άκρη 732€ κι το εκκαθαριστικό του ζητά 1.682€.
+    //
+    // Η ΙΔΙΑ ΕΦΑΡΜΟΓΗ ΤΟ ΕΚΑΝΕ ΗΔΗ ΣΩΣΤΑ ΔΙΠΛΑ: `lib/billing/enfia.ts` γράφει
+    // `totalValue: value * pct / 100, propertyValue: value`. Ο δημόσιος
+    // υπολογιστής ήταν ο μόνος που διαφωνούσε με τη μηχανή του προϊόντος.
+    //
+    // Με ιδιοκτησία 100% τα δύο μονοπάτια είναι ταυτόσημα: καμία αλλαγή για τη
+    // συντριπτική πλειοψηφία όσων ανοίγουν τη σελίδα.
+    const value = m * price;
+    const share = value * (own / 100);
     const res = estimateENFIA({
       sqm: m, zone, floor, age, ownership: own,
-      totalValue: value, propertyValue: value,
+      totalValue: share, propertyValue: value,
     });
-    return res ? { ...res, value, zone } : null;
+    return res ? { ...res, value, share, own, zone } : null;
   }, [sqm, zonePrice, floor, age, ownership]);
 
   const field: React.CSSProperties = {
@@ -104,14 +127,30 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
-      {/* ΠΕΝΤΕ ΠΕΔΙΑ, ΚΑΜΙΑ ΜΙΣΗ ΣΕΙΡΑ. Ηταν ρητές δύο στήλες, που έδιναν 2+2+1:
-          το ποσοστό ιδιοκτησίας έμενε μόνο του στην τρίτη σειρά με κενό δίπλα
-          του όσο ένα ολόκληρο πεδίο. Το σχόλιο που το δικαιολογούσε έλεγε ότι
-          «ανήκει τελευταίο» — και ανήκει, αλλά αυτό ορίζει τη ΣΕΙΡΑ, όχι την
-          τρύπα. Το πέντε δεν έχει διαιρέτη· η σειρά πεδίων με flex-grow το
-          λύνει χωρίς να χρειάζεται: το τελευταίο πεδίο απλώνεται και γεμίζει
-          τη σειρά του, σε κάθε πλάτος. */}
-      <div {...fieldRow(200, 14, { alignItems: 'start' }, 'po-tool-controls')}>
+      {/* ΠΕΝΤΕ ΠΕΔΙΑ, ΜΙΑ ΣΕΙΡΑ — ΚΑΙ ΤΟ ΓΙΑΤΙ ΔΕΝ ΗΤΑΝ ΕΤΣΙ, ΜΕΤΡΗΜΕΝΟ.
+          Πρώτα ήταν ρητές δύο στήλες (2+2+1: το ποσοστό μόνο του με τρύπα δίπλα
+          του). Μετά έγινε σειρά πεδίων με flex-grow, ώστε το τελευταίο να
+          απλώνεται αντί να αφήνει τρύπα. Και όντως δεν άφηνε — αλλά έμενε ΜΟΝΟ
+          ΤΟΥ σε δεύτερη σειρά, πέρα πέρα, κάτω από τέσσερα κανονικά πεδία.
+
+          ΤΟ ΝΟΥΜΕΡΟ: στα 1440 το δοχείο μετρά 1044 και η βάση του flex είναι
+          200 ανά πεδίο· πέντε πεδία με τέσσερα κενά των 14 ζητούν 1056. Δώδεκα
+          εικονοστοιχεία λιγότερα από όσα χρειάζονται, δηλαδή η δεύτερη σειρά
+          γεννιόταν από δώδεκα εικονοστοιχεία.
+
+          ΤΟ ΠΛΕΓΜΑ ΔΕΝ ΡΩΤΑΕΙ ΑΝ ΧΩΡΑΝΕ, ΤΙΣ ΜΟΙΡΑΖΕΙ. Πέντε στήλες `1fr`
+          δίνουν πέντε ίσα πεδία σε ΚΑΘΕ πλάτος, χωρίς κατώφλι να περαστεί: στα
+          1044 βγαίνουν 199 το καθένα. Πιο κάτω τα σπασίματα του `fixed-cols`
+          κάνουν τη δουλειά τους — 3+2 στην ταμπλέτα, μία στήλη στο τηλέφωνο.
+
+          Η ΣΤΟΙΧΙΣΗ ΕΙΝΑΙ ΣΤΟ ΚΑΤΩ ΑΚΡΟ, ΚΑΙ ΕΧΕΙ ΛΟΓΟ. Στη στενή ζώνη
+          821–845 το πεδίο πέφτει στα 137 και η ετικέτα «Ποσοστό ιδιοκτησίας»
+          τυλίγεται σε δεύτερη γραμμή. Με στοίχιση στην ΑΡΧΗ, αυτό κατέβαζε το
+          κουτί του κατά μία γραμμή και τα πέντε κουτιά κάθονταν σε δύο
+          στάθμες· με στοίχιση στο ΚΑΤΩ άκρο η ετικέτα μεγαλώνει προς τα πάνω
+          και τα κουτιά μένουν σε μία. Καμία στήλη εδώ δεν κουβαλά σημείωση από
+          κάτω, οπότε το κάτω άκρο είναι όντως το κουτί. */}
+      <div {...fixedCols(5, 14, 'end', 'po-tool-controls')}>
         <div>
           <label htmlFor={ids.sqm} style={label}>Τετραγωνικά</label>
           <input id={ids.sqm} inputMode="decimal" value={sqm} onChange={e => set('tm', e.target.value)} style={numField}/>
@@ -143,8 +182,9 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
         <div>
           <label htmlFor={ids.own} style={label}>Ποσοστό ιδιοκτησίας</label>
           <div style={{ position: 'relative' }}>
+            {/* Το δεξί περιθώριο του πεδίου (14) συν 20 για το «%» που κάθεται πάνω του. */}
             <input id={ids.own} inputMode="numeric" value={ownership} onChange={e => set('pososto', e.target.value)}
-              style={{ ...numField, paddingRight: 34 }} aria-describedby={`${ids.own}-unit`}/>
+              style={{ ...numField, paddingRight: 14 + T.sp.xl }} aria-describedby={`${ids.own}-unit`}/>
             <span id={`${ids.own}-unit`} aria-hidden style={unitStyle}>%</span>
           </div>
         </div>
@@ -208,7 +248,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
                 πρόσθετο φόρο και χωρίς προσαύξηση ισούται με τον κύριο φόρο,
                 δηλαδή τύπωνε το ΙΔΙΟ νούμερο δύο σειρές πιο κάτω.
 
-                Η ΔΟΣΗ ΕΔΕΙΧΝΕ 16,00 € ΔΙΠΛΑ ΣΕ 180,28 € ΕΤΗΣΙΩΣ. Το `installment`
+                Η ΔΟΣΗ ΕΔΕΙΧΝΕ 16,00€ ΔΙΠΛΑ ΣΕ 180,28€ ΕΤΗΣΙΩΣ. Το `installment`
                 του lib είναι `ceil(ετήσιο/12)`, δηλαδή στρογγυλεμένο προς τα πάνω
                 σε ακέραια ευρώ και υπάρχει για την πρόβλεψη ταμείου μέσα στην
                 εφαρμογή. Εδώ όμως στεκόταν δίπλα στο ετήσιο και δώδεκα φορές το
@@ -216,13 +256,21 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
                 μεταξύ τους. Σε σελίδα που ρωτά «πόσο θα πληρώσεις», η διαίρεση
                 γίνεται ακριβής. */}
             <dl {...fixedCols(2, 24, 'start')} style={{ ...fixedCols(2, 24, 'start').style, rowGap: 12, margin: 0 }}>
-              <Row k="Αντικειμενική αξία (εκτίμηση)" v={feAuto(r.value)}/>
+              {/* Η ΑΞΙΑ ΠΟΥ ΓΡΑΦΕΤΑΙ ΕΙΝΑΙ ΤΟΥ ΑΚΙΝΗΤΟΥ, ΟΧΙ ΤΟΥ ΜΕΡΙΔΙΟΥ. Η
+                  σειρά «Πρόσθετος φόρος (αξία πάνω από 400.000€)» πιο κάτω
+                  κρίνεται πάνω σε ΑΥΤΗΝ: με το μερίδιο γραμμένο εδώ, ο
+                  συνιδιοκτήτης διάβαζε 450.000€ κι από κάτω έναν πρόσθετο φόρο
+                  για αξία «πάνω από 400.000€» που δεν έβγαινε από πουθενά.
+                  Το μερίδιο μπαίνει δική του σειρά, όταν υπάρχει: είναι αυτό
+                  που κρίνει τη μείωση κι την προσαύξηση. */}
+              <Row k="Αντικειμενική αξία ακινήτου (εκτίμηση)" v={feAuto(r.value)}/>
+              {r.own < 100 && <Row k={`Το μερίδιό σου (${fp(r.own)})`} v={feAuto(r.share)}/>}
               <Row k="Βασικός φόρος ζώνης" v={`${feRate(ENFIA_ZONE_TAX[r.zone] ?? 0)}/τ.μ.`}/>
               <Row k="Συντελεστής ορόφου" v={fn(enfiaFloorCoef(floor), 2)}/>
               <Row k="Συντελεστής παλαιότητας" v={fn(enfiaAgeCoef(age), 2)}/>
               <Row k="Κύριος φόρος κτίσματος" v={feAuto(r.basic)}/>
-              {r.extra > 0 && <Row k="Πρόσθετος φόρος (αξία πάνω από 400.000 €)" v={feAuto(r.extra)}/>}
-              {r.supplementary > 0 && <Row k="Προσαύξηση (περιουσία πάνω από 500.000 €)" v={feAuto(r.supplementary)}/>}
+              {r.extra > 0 && <Row k="Πρόσθετος φόρος (αξία πάνω από 400.000€)" v={feAuto(r.extra)}/>}
+              {r.supplementary > 0 && <Row k="Προσαύξηση (περιουσία πάνω από 500.000€)" v={feAuto(r.supplementary)}/>}
               {r.reductionPct > 0 && <Row k={`Μείωση ${fp(r.reductionPct)}`} v={`− ${feAuto(r.reductionAmount)}`}/>}
             </dl>
           </>
@@ -235,7 +283,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ──────────────────────────────────────────── */}
       <div className="po-tool-note" style={{
-        marginTop: 22, padding: '14px 16px', borderRadius: T.radius.inner,
+        marginTop: T.sp.xl, padding: '14px 16px', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
@@ -278,40 +326,38 @@ function Instalments({ annual, year }: { annual: number; year: number }) {
   if (!rows.length) return null;
 
   return (
-    <div style={{ marginTop: 26 }}>
-      <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 300 }}>
+    <div style={{ marginTop: T.sp.xxl }}>
+      <div className="po-table-box">
+       <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
+        <table className="po-table" style={{ '--tbl-min': '300px' }}>
           {/* Ίδια τυπογραφία λεζάντας με τον πίνακα κλιμακίων του αδελφού
               υπολογιστή: οι δύο σελίδες διαβάζονται ως ένα εργαλείο. */}
-          <caption style={{ captionSide: 'top', textAlign: 'left', fontSize: 11, fontWeight: 700,
-            letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-            paddingBottom: 10 }}>
-            Οι {ENFIA_INSTALMENTS} δόσεις του {year}
-          </caption>
+          <caption>Οι {ENFIA_INSTALMENTS} δόσεις του {year}</caption>
           <thead>
             <tr>
-              <th scope="col" style={th}>Δόση</th>
-              <th scope="col" style={th}>Καταληκτική ημερομηνία</th>
-              <th scope="col" style={{ ...th, textAlign: 'right' }}>Ποσό</th>
+              <th scope="col">Δόση</th>
+              <th scope="col">Καταληκτική ημερομηνία</th>
+              <th scope="col" className="num">Ποσό</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(row => (
               <tr key={row.no}>
-                <td style={{ ...td, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', width: '1%', whiteSpace: 'nowrap' }}>{row.no}</td>
-                <td style={{ ...td, whiteSpace: 'nowrap' }}>{row.label}</td>
-                <td style={{ ...td, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums',
-                  color: 'var(--text-primary)', fontWeight: 600 }}>{feAuto(row.amount)}</td>
+                <td style={{ fontVariantNumeric: 'tabular-nums', width: '1%', whiteSpace: 'nowrap' }}>{row.no}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{row.label}</td>
+                <td className="num" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{feAuto(row.amount)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+       </div>
       </div>
-      {/* ΤΕΣΣΕΡΙΣ ΠΡΟΤΑΣΕΙΣ ΠΕΡΑ ΠΕΡΑ, ΣΕ ΥΨΟΣ ΓΡΑΜΜΗΣ 1,6. Μετρημένο από τον σαρωτή
-          στα 1.024, στα 1.280 και στα 1.440: 134 χαρακτήρες ανά γραμμή. Το κείμενο
-          δεν στενεύει, όπως πουθενά στην εφαρμογή· παίρνει τον αέρα του, 1,7, όσο
-          και κάθε άλλη παράγραφος πλήρους πλάτους. */}
-      <p style={{ margin: '10px 0 0', fontSize: 12, lineHeight: 1.7, color: 'var(--text-tertiary)' }}>
+      {/* ΤΕΣΣΕΡΙΣ ΠΡΟΤΑΣΕΙΣ ΠΕΡΑ ΠΕΡΑ, ΜΕ ΤΟΝ ΑΕΡΑ ΤΟΥΣ. Μετρημένο στα 1.024, στα
+          1.280 και στα 1.440: 134 χαρακτήρες ανά γραμμή. Το κείμενο δεν στενεύει,
+          όπως πουθενά στην εφαρμογή — δοκιμάστηκε ταβάνι πλάτους και άφηνε τη
+          μισή κάρτα λευκή. Παίρνει το 1,7 της `.po-prose`, που το γράφει μία
+          φορά για κάθε τέτοια παράγραφο του προϊόντος. */}
+      <p className="po-prose" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
         Οι ημερομηνίες είναι οι τυπικές των τελευταίων ετών, δηλαδή η τελευταία εργάσιμη
         κάθε μήνα· ανακοινώνονται κάθε χρόνο με απόφαση. Ο ΕΝΦΙΑ πληρώνεται εφάπαξ ή σε
         δόσεις. Η τελευταία δόση φέρει τη διαφορά της στρογγυλοποίησης, ώστε οι δώδεκα να
@@ -320,15 +366,6 @@ function Instalments({ annual, year }: { annual: number; year: number }) {
     </div>
   );
 }
-
-const th: React.CSSProperties = {
-  textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 700,
-  letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-  borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap',
-};
-const td: React.CSSProperties = {
-  padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)',
-};
 
 function Figure({ label, value, big }: { label: string; value: string; big?: boolean }) {
   return (

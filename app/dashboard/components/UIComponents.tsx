@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect, useId, ReactNode, Fragment, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { T, localDay } from '@/components/Theme';
+import { T, localDay, Btn, IconBtn, ChipToggle } from '@/components/Theme';
 import { acceptNumeric, forDisplay } from '@/lib/core/numInput';
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
 import { MONTHS_SHORT } from '@/lib/core/months';
 import { fn } from '@/lib/core/format';
+import { hy } from '@/components/Hyphen';
 
 // ── ΕΝΙΑΙΟ σύστημα πεδίων (ένα μέγεθος/σχήμα/focus παντού) ───────────────────
 // Γωνία 10, 1px border + accent focus-ring (χωρίς μετατόπιση layout — δεν
@@ -73,21 +74,12 @@ export function ToggleField({ label, labelInfo, on, onChange }: { label: string;
   );
 }
 
-export const addBtn = (disabled = false): React.CSSProperties => ({
-  height: FIELD_HEIGHT,
-  width: '100%',
-  borderRadius: FIELD_RADIUS,
-  border: disabled ? '1px solid var(--border-default)' : 'none',
-  background: disabled ? 'transparent' : 'var(--accent)',
-  color: disabled ? 'var(--text-tertiary)' : 'var(--accent-text)',
-  fontSize: 'var(--fs-base)',
-  fontWeight: 700,
-  fontFamily: T.font.sans,
-  letterSpacing: 0,
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  boxSizing: 'border-box',
-  transition: 'background 0.15s, color 0.15s, border-color 0.15s',
-});
+// ΤΟ `addBtn` ΕΦΥΓΕ. Ηταν το «κύριο κουμπί σε κελί φόρμας» γραμμένο δεύτερη
+// φορά: ύψος πεδίου, πλήρες πλάτος, φόντο `--accent`, 700 — δηλαδή ό,τι δίνει
+// το `<Btn variant="primary" field>`, με τη διαφορά ότι εδώ η αιώρηση δεν
+// υπήρχε καθόλου. Ολες οι χρήσεις του πέρασαν στο πρωτογενές· ένα εξαγόμενο
+// αντικείμενο στυλ που δεν το καλεί κανείς διαβάζεται ως κανόνας της
+// εφαρμογής χωρίς να είναι.
 
 const mdInputBase: React.CSSProperties = {
   width: '100%',
@@ -196,15 +188,18 @@ export function InfoDot({ text }: { text: string }) {
       {/* Ορατή κουκκίδα 15px, αλλά περιοχή αφής ~32px (αρνητικά margins ώστε να μη μεγαλώνει η σειρά). */}
       <button ref={ref} type="button" aria-label="Επεξήγηση"
         onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); open ? hide() : show(); }}
-        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', marginLeft: 0, marginTop: -9, marginBottom: -9, padding: 0, width: T.h.sm, height: T.h.sm, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'help', flexShrink: 0 }}>
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (open) { hide() } else { show() } }}
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', marginLeft: 0, marginTop: -8, marginBottom: -8, padding: 0, width: T.h.sm, height: T.h.sm, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'help', flexShrink: 0 }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 15, height: 15, borderRadius: '50%', border: '1px solid var(--border-default)' }}>
           <svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 8h.01M11 12h1v4h1" /></svg>
         </span>
       </button>
       {open && typeof document !== 'undefined' && createPortal(
-        <div role="tooltip" style={{ position: 'fixed', top: pos.top, left: pos.left, transform: pos.up ? 'translateY(-100%)' : 'none', width: 260, maxWidth: 'calc(100vw - 16px)', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '10px 12px', boxShadow: 'var(--elev-3)', zIndex: 3000, pointerEvents: 'none' }}>
-          <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>{text}</p>
+        /* Ιδιο μέτρο και ίδια στοίχιση με το ⓘ του InfoHint: δύο επεξηγήσεις
+           δίπλα δίπλα δεν επιτρέπεται να διαβάζονται αλλιώς επειδή τις γράφουν
+           δύο αρχεία. Πλάτος 280, πλήρης στοίχιση, συλλαβισμός στην απόδοση. */
+        <div role="tooltip" style={{ position: 'fixed', top: pos.top, left: pos.left, transform: pos.up ? 'translateY(-100%)' : 'none', width: 280, maxWidth: 'calc(100vw - 16px)', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px', boxShadow: 'var(--elev-3)', zIndex: 3000, pointerEvents: 'none' }}>
+          <p className="po-just" style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.6 }}>{hy(text)}</p>
         </div>,
         document.body,
       )}
@@ -289,7 +284,12 @@ interface NumberInputProps {
   prefix?: string;
   min?: number;
   max?: number;
-  step?: number;
+  // ΤΟ `step` ΕΦΥΓΕ. Το πεδίο είναι `type="text"` με `inputMode="decimal"` —
+  // επιλογή συνειδητή, γιατί ο Έλληνας γράφει «12,5» και ο αριθμητικός τύπος
+  // απορρίπτει το κόμμα. Σε πεδίο κειμένου το `step` δεν κάνει ΤΙΠΟΤΑ: ήταν
+  // δηλωμένο σε 75 κλήσεις («step={0,5}», «step={10}») που όλες πίστευαν ότι
+  // ορίζουν βήμα. Ιδιότητα που δεν ισχύει είναι χειρότερη από ιδιότητα που
+  // λείπει: η δεύτερη ρωτιέται, η πρώτη θεωρείται δεδομένη.
   disabled?: boolean;
   className?: string;
 }
@@ -313,7 +313,7 @@ interface NumberInputProps {
  */
 export function NumberInput({
   label, ariaLabel, id, labelInfo, value, onChange, placeholder = '', suffix, prefix,
-  min = 0, max, step = 1, disabled, className,
+  min = 0, max, disabled, className,
 }: NumberInputProps) {
   const [focused, setFocused] = useState(false);
   // ═══ ΤΟ ΠΡΟΧΕΙΡΟ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΣΟ ΓΡΑΦΕΙ Ο ΧΡΗΣΤΗΣ ══════════════════════
@@ -384,7 +384,7 @@ export function NumberInput({
   // ΤΑ ΠΟΣΑ ΣΕ ΕΥΡΩ ΓΡΑΦΟΝΤΑΙ ΩΣ ΠΟΣΑ, ΚΑΙ ΟΤΑΝ ΕΙΝΑΙ ΠΕΔΙΟ.
   //
   // Το πεδίο έδειχνε ό,τι του έδινε ο κώδικας: «3.9» εκεί που ολόκληρη η
-  // εφαρμογή γράφει «3,90 €» και «1112» εκεί που γράφει «1.112,00 €». Δεν
+  // εφαρμογή γράφει «3,90€» και «1112» εκεί που γράφει «1.112,00€». Δεν
   // ήταν αθώο: το ίδιο ποσό εμφανιζόταν με δύο μορφές στην ίδια οθόνη και η
   // τελεία διαβάζεται από Έλληνα ως διαχωριστικό χιλιάδων.
   //
@@ -559,7 +559,7 @@ export function NumberInput({
             // Το ίδιο ποσό φαινόταν δύο διαφορετικά πράγματα σε απόσταση δέκα
             // εικονοστοιχείων: «84,50» μέσα στο πεδίο σε Roboto Mono, με σταθερό
             // βήμα και τελεία-κουκκίδα· το «€» ακριβώς δίπλα του σε Inter. Στην
-            // ίδια κάρτα, το σύνολο «1.152,00 €» έβγαινε πάλι σε Inter. Ο κανόνας
+            // ίδια κάρτα, το σύνολο «1.152,00€» έβγαινε πάλι σε Inter. Ο κανόνας
             // «μία γραμματοσειρά για τους αριθμούς» είχε ήδη γραφτεί για τον
             // πίνακα του Χαρτοφυλακίου· τα πεδία είχαν μείνει έξω.
             //
@@ -850,7 +850,7 @@ export function CustomSelect({
               onClick={() => { onChange(opt.value); setOpen(false); triggerRef.current?.focus(); }}
               style={{
                 padding: '9px 12px',
-                borderRadius: 8,
+                borderRadius: T.radius.chip,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
@@ -869,7 +869,7 @@ export function CustomSelect({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ whiteSpace: 'nowrap' }}>{opt.label}</div>
                 {opt.description && (
-                  <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 1, letterSpacing: '0.4px', textWrap: 'pretty', overflowWrap: 'anywhere' }}>{opt.description}</div>
+                  <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', letterSpacing: '0.4px', textWrap: 'pretty', overflowWrap: 'anywhere' }}>{opt.description}</div>
                 )}
               </div>
               {opt.value === value && (
@@ -1073,19 +1073,15 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
           boxShadow: 'var(--shadow-lg)',
         }} className="dp-pop">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <button onClick={prevMonth} aria-label="Προηγούμενος μήνας" style={{ width: T.h.sm, height: T.h.sm, borderRadius: T.radius.card, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <IconBtn label="Προηγούμενος μήνας" onClick={prevMonth}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
-            </button>
+            </IconBtn>
             <span style={{ fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '0.1px' }}>
               {MONTHS_SHORT[month]} {year}
             </span>
-            <button onClick={nextMonth} aria-label="Επόμενος μήνας" style={{ width: T.h.sm, height: T.h.sm, borderRadius: T.radius.card, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <IconBtn label="Επόμενος μήνας" onClick={nextMonth}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
-            </button>
+            </IconBtn>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 0, marginBottom: 4 }}>
             {DAYS_GR.map(d => (
@@ -1140,16 +1136,11 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
             })}
           </div>
           <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
-            <button onClick={() => { onChange(''); setOpen(false); }}
-              style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.modal, border: 'none', background: 'transparent', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-dim)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              Εκκαθάριση
-            </button>
-            <button onClick={() => { onChange(today); setOpen(false); }}
-              style={{ height: T.h.md, padding: '0 16px', borderRadius: T.radius.modal, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
-              Σήμερα
-            </button>
+            {/* ghost και όχι secondary: η εκκαθάριση ήταν χωρίς φόντο και χωρίς
+                περίγραμμα δίπλα στο γεμάτο «Σήμερα». Το accent μελάνι της γίνεται
+                text-secondary, που είναι ακριβώς η ιεραρχία της δευτερεύουσας εξόδου. */}
+            <Btn variant="ghost" onClick={() => { onChange(''); setOpen(false); }}>Εκκαθάριση</Btn>
+            <Btn variant="primary" onClick={() => { onChange(today); setOpen(false); }}>Σήμερα</Btn>
           </div>
         </div>,
         document.body
@@ -1191,7 +1182,7 @@ interface ToggleProps {
 // ═══ Η ΜΠΑΡΑ ΜΑΖΙΚΩΝ ΕΝΕΡΓΕΙΩΝ ════════════════════════════════════════════
 //
 // ΗΤΑΝ ΓΡΑΜΜΕΝΗ ΔΥΟ ΦΟΡΕΣ ΣΤΟ ΧΕΡΙ, στις Εκκρεμότητες και στο Χαρτοφυλάκιο και
-// είχε ΗΔΗ αποκλίνει σε πέντε σημεία: το σήμα του πλήθους με `borderRadius: 6`
+// είχε ΗΔΗ αποκλίνει σε πέντε σημεία: το σήμα του πλήθους με `borderRadius: T.radius.xs`
 // εδώ και `T.radius.pill` εκεί, βάρος 800 έναντι 700, γραμματοσειρά `mono`
 // έναντι `num`, εσωτερική απόσταση κουμπιού 4 έναντι 6 και το κλείσιμο άλλοτε
 // εικονίδιο και άλλοτε ο χαρακτήρας «✕».
@@ -1237,12 +1228,13 @@ export function BulkActionBar({ count, countLabel, actions, onClear, minWidth = 
           </button>
         ))}
       </div>
-      <button type="button" aria-label="Ακύρωση επιλογής" onClick={onClear}
-        style={{ padding: '12px 16px', border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 18, lineHeight: 1, flexShrink: 0, transition: 'background 0.15s' }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-surface)'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-        <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
+      {/* Το διαχωριστικό ήταν γραμμένο πάνω στο κουμπί. Μετακόμισε στο περιτύλιγμα,
+          ώστε το κουμπί να μείνει το τετράγωνο του IconBtn — δηλαδή στόχος αφής. */}
+      <div style={{ borderLeft: '1px solid var(--border-subtle)', padding: '0 10px', display: 'flex', alignItems: 'center', alignSelf: 'stretch', flexShrink: 0 }}>
+        <IconBtn label="Ακύρωση επιλογής" onClick={onClear}>
+          <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </IconBtn>
+      </div>
     </div>
   );
 }
@@ -1595,39 +1587,16 @@ export function SegmentControl({ options, value, onChange, ariaLabel }: { option
       display: 'flex',
       background: 'var(--bg-surface)',
       border: '1px solid var(--border-subtle)',
-      borderRadius: 8,
+      borderRadius: T.radius.chip,
       padding: 4,
       gap: 2,
     }}>
+      {/* `seg` γιατί η ράγα από πάνω έχει ήδη περίγραμμα: δεύτερο περίγραμμα ανά
+          πλακίδιο θα έδινε διπλή γραμμή. Το ενεργό ξεχωρίζει με επιφάνεια και σκιά. */}
       {options.map(o => (
-        <button
-          key={o.value}
-          type="button"
-          aria-pressed={o.value === value}
-          onClick={() => onChange(o.value)}
-          style={{
-            flex: 1,
-            height: T.h.sm,
-            paddingLeft: 16,
-            paddingRight: 16,
-            fontFamily: T.font.sans,
-            fontSize: 'var(--fs-base)',
-            fontWeight: value === o.value ? 500 : 400,
-            letterSpacing: '0.1px',
-            cursor: 'pointer',
-            borderRadius: 6,
-            border: 'none',
-            background: value === o.value ? 'var(--bg-elevated)' : 'transparent',
-            color: value === o.value ? 'var(--accent)' : 'var(--text-secondary)',
-            transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-            whiteSpace: 'nowrap',
-            boxShadow: value === o.value ? 'var(--shadow-sm)' : 'none',
-          }}
-          onMouseEnter={e => { if (value !== o.value) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-          onMouseLeave={e => { if (value !== o.value) e.currentTarget.style.background = 'transparent'; }}
-        >
+        <ChipToggle key={o.value} shape="seg" grow on={o.value === value} onClick={() => onChange(o.value)}>
           {o.label}
-        </button>
+        </ChipToggle>
       ))}
     </div>
   );

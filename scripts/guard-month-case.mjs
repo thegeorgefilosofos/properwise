@@ -28,7 +28,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const ROOTS = ['app', 'lib', 'components'];
+const ROOTS = ['app', 'lib', 'components', 'supabase/functions'];
 const SELF = 'lib/core/months.ts';
 
 /**

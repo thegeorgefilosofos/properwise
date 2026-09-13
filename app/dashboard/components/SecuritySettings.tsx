@@ -12,7 +12,7 @@
 import { useState, useEffect, CSSProperties } from 'react';
 import { leaveDevice } from '@/lib/localPrivacy';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, Btn, settingsField, Spinner, ABSENT, ABSENT_DATE, fixedCols } from '@/components/Theme';
+import { T, TT, Btn, settingsField, Spinner, ABSENT, ABSENT_DATE, fixedCols, InfoBanner } from '@/components/Theme';
 import { SetList, SetRow, SetFact } from './SettingsKit';
 import { logActivity } from '@/lib/activity';
 import { checkPassword, PASSWORD_MSG } from '@/lib/auth/password';
@@ -57,14 +57,19 @@ export default function SecuritySettings() {
   const [code, setCode] = useState('');
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaErr, setMfaErr] = useState<string | null>(null);
+  const [identityErr, setIdentityErr] = useState('');
   const [mfaUnavailable, setMfaUnavailable] = useState(false);
   const [confirmDisable, setConfirmDisable] = useState(false);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const { data } = await supabase.auth.getUser();
+      // «ΔΕΝ ΞΕΡΩ ΠΟΤΕ ΣΥΝΔΕΘΗΚΕΣ» ΔΕΝ ΓΡΑΦΕΤΑΙ «—». Σε οθόνη ασφαλείας η
+      // παύλα διαβάζεται ως «καμία σύνδεση», που είναι το πιο καθησυχαστικό
+      // ψέμα που μπορεί να πει αυτό το πεδίο.
+      const { data, error: err } = await supabase.auth.getUser();
       if (!alive) return;
+      if (err) { setIdentityErr(failed('Τα στοιχεία του λογαριασμού δεν διαβάστηκαν', err)); return; }
       setEmail(data.user?.email ?? '');
       setLastSignIn(data.user?.last_sign_in_at ?? null);
     })();
@@ -103,7 +108,12 @@ export default function SecuritySettings() {
     setMfaUnavailable(false);
     try {
       // Καθάρισε τυχόν εκκρεμείς factors, ώστε το enroll να μη βρει «factor already exists».
-      const { data: list } = await supabase.auth.mfa.listFactors();
+      // ΑΝ Η ΑΝΑΓΝΩΣΗ ΑΠΟΤΥΧΕΙ, ΤΟ ΚΑΘΑΡΙΣΜΑ ΔΕΝ ΕΓΙΝΕ. Χωρίς το `error`, ο
+      // κατάλογος ερχόταν κενός, ο βρόχος δεν έτρεχε ποτέ και το enroll από κάτω
+      // έσκαγε με «factor already exists» — μήνυμα που ο χρήστης διάβαζε ως δικό
+      // του λάθος και ξαναπατούσε το ίδιο κουμπί για πάντα.
+      const { data: list, error: listErr } = await supabase.auth.mfa.listFactors();
+      if (listErr) { setMfaErr(failed('Η επαλήθευση δύο βημάτων δεν ενεργοποιήθηκε', listErr)); return; }
       const totp = (list?.totp ?? []) as MfaFactor[];
       for (const f of totp) {
         if (f.status === 'unverified') {
@@ -178,11 +188,34 @@ export default function SecuritySettings() {
     }
     setMfaBusy(true);
     setMfaErr(null);
+    // ═══ Η ΟΘΟΝΗ ΕΛΕΓΕ «ΑΝΕΝΕΡΓΗ» ΧΩΡΙΣ ΝΑ ΤΟ ΕΧΕΙ ΚΑΝΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ ═══════
+    // ΤΟ ΣΦΑΛΜΑ, ΩΣ ΑΛΥΣΙΔΑ. Η απαρίθμηση των factors αγνοούσε το `error`: μια
+    // αποτυχία γύριζε `undefined`, το `?? []` το έκανε ΚΕΝΟ ΠΙΝΑΚΑ, ο βρόχος δεν
+    // έτρεχε ποτέ — και το `setMfaState('off')` εκτελούνταν ΕΤΣΙ ΚΙ ΑΛΛΙΩΣ. Το
+    // ίδιο και όταν η απεγγραφή ενός factor αποτύγχανε: το `catch` το κατάπινε.
+    //
+    // ΤΙ ΣΗΜΑΙΝΕΙ ΓΙΑ ΤΟΝ ΧΡΗΣΤΗ. Πιστεύει ότι έκλεισε τη δεύτερη επαλήθευση,
+    // σβήνει την εφαρμογή αυθεντικοποίησης από το κινητό — και στην επόμενη
+    // σύνδεση ο διακομιστής ζητά κωδικό που δεν μπορεί πια να παραγάγει.
+    // Κλείδωμα έξω από τον ίδιο του τον λογαριασμό, από μήνυμα που έλεγε ψέματα.
+    //
+    // ΤΟ «ΑΝΕΝΕΡΓΗ» ΛΕΓΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΤΟ ΕΠΙΒΕΒΑΙΩΣΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ: κάθε
+    // απεγγραφή ελέγχεται και, αν έστω μία δεν πέρασε, η κατάσταση ΔΕΝ αλλάζει.
     try {
-      const { data: list } = await supabase.auth.mfa.listFactors();
+      const { data: list, error: listErr } = await supabase.auth.mfa.listFactors();
+      if (listErr) {
+        setMfaErr(failed('Η επαλήθευση δύο βημάτων ΔΕΝ απενεργοποιήθηκε', listErr));
+        return;
+      }
       const totp = (list?.totp ?? []) as MfaFactor[];
+      const stuck: string[] = [];
       for (const f of totp) {
-        try { await supabase.auth.mfa.unenroll({ factorId: f.id }); } catch { /* αγνόησε */ }
+        const { error } = await supabase.auth.mfa.unenroll({ factorId: f.id });
+        if (error) { stuck.push(f.id); console.warn('mfa.unenroll', error); }
+      }
+      if (stuck.length) {
+        setMfaErr('Η επαλήθευση δύο βημάτων ΔΕΝ απενεργοποιήθηκε: ο διακομιστής κράτησε τη συσκευή σου. Μη σβήσεις την εφαρμογή αυθεντικοποίησης και δοκίμασε ξανά.');
+        return;
       }
       setMfaState('off');
       setConfirmDisable(false);
@@ -238,6 +271,7 @@ export default function SecuritySettings() {
 
   return (
     <SetList>
+      {identityErr && <InfoBanner tone="negative">{identityErr} Ανανέωσε τη σελίδα: ώσπου να διαβαστούν, τα στοιχεία σύνδεσης παρακάτω δεν είναι έγκυρα.</InfoBanner>}
 
       {/* 1. Κωδικός πρόσβασης */}
       <SetRow title="Κωδικός πρόσβασης"
@@ -275,7 +309,7 @@ export default function SecuritySettings() {
           αποσύνδεσης: η σειρά έλεγε ότι μετράει λιγότερο. Οι δύο ενέργειες που
           απλώς περιγράφουν ή κλείνουν τη συνεδρία πήγαν από κάτω. */}
       <SetRow title="Επαλήθευση δύο βημάτων"
-        desc="Ένα δεύτερο επίπεδο ασφάλειας, με εφαρμογή επαλήθευσης. Δουλεύει με οποιαδήποτε (Google Authenticator, Authy, Microsoft Authenticator, 1Password).">
+        desc="Δεύτερο επίπεδο ασφάλειας, με οποιαδήποτε εφαρμογή επαλήθευσης (Google Authenticator, Authy, Microsoft Authenticator, 1Password).">
 
         {mfaState === 'loading' && (
           <Spinner size={18} label="Έλεγχος κατάστασης…" />
@@ -291,10 +325,10 @@ export default function SecuritySettings() {
         {mfaState === 'off' && !mfaUnavailable && (
           <div>
             <div style={{ ...TT.bodySm, marginBottom: 10 }}>
-              Ακόμη κι αν κάποιος μάθει τον κωδικό σου, δεν θα μπορεί να συνδεθεί χωρίς τον προσωρινό κωδικό από την εφαρμογή σου.
+              Ακόμη κι αν διαρρεύσει ο κωδικός σου, κανείς δεν συνδέεται χωρίς τον προσωρινό κωδικό από τη δική σου εφαρμογή.
             </div>
             <div style={{ ...TT.bodySm, color: 'var(--text-tertiary)', marginBottom: 12 }}>
-              Αφορά μόνο τον δικό σου λογαριασμό. Σε ομάδα, κάθε μέλος έχει δικό του λογαριασμό και δική του επαλήθευση, οπότε η ενεργοποίηση εδώ δεν επηρεάζει την πρόσβαση των υπολοίπων.
+              Αφορά μόνο τον λογαριασμό σου· κάθε μέλος ομάδας έχει δικό του λογαριασμό και δική του επαλήθευση, οπότε η ενεργοποίηση εδώ δεν επηρεάζει την πρόσβαση των υπολοίπων.
             </div>
             <Btn variant="primary" onClick={startEnroll} disabled={mfaBusy}>
               {mfaBusy ? 'Ενεργοποίηση…' : 'Ενεργοποίηση'}
@@ -305,7 +339,7 @@ export default function SecuritySettings() {
 
         {/* ENROLLING: QR + secret + 6ψήφιος κωδικός */}
         {mfaState === 'enrolling' && enrollFactor && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
             <div>
               <div style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600, marginBottom: 10 }}>
                 1. Σάρωσε τον κωδικό QR με την εφαρμογή επαλήθευσης

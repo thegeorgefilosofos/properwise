@@ -96,7 +96,7 @@ export function ItemRow({ item, allItems, onToggle, onEdit, onDelete, onAddToCal
       {selecting ? (
         // Τετράγωνο checkbox επιλογής (μαζικές ενέργειες)
         <button type="button" aria-label={selected ? 'Αποεπιλογή εργασίας' : 'Επιλογή εργασίας'} onClick={e => { e.stopPropagation(); onSelect?.() }}
-          style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, border: '2px solid ' + (selected ? 'var(--accent)' : 'var(--border-default)'), background: selected ? 'var(--accent)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+          style={{ width: 20, height: 20, borderRadius: T.radius.xs, flexShrink: 0, border: '2px solid ' + (selected ? 'var(--accent)' : 'var(--border-default)'), background: selected ? 'var(--accent)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
           {selected && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" fill="none" stroke="var(--accent-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
         </button>
       ) : (
@@ -160,6 +160,12 @@ export function ItemRow({ item, allItems, onToggle, onEdit, onDelete, onAddToCal
       </div>
 
       {/* Μία διακριτική ενέργεια «···» — όλες οι λειτουργίες μαζεμένες, καθαρή σειρά. */}
+      {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `menuBtnRef` δείχνει στο ΙΔΙΟ το κουμπί: από εκεί
+          βγαίνει το getBoundingClientRect που τοποθετεί το μενού από πάνω ή από
+          κάτω. Το `IconBtn` δεν προωθεί ref, οπότε θα χρειαζόταν περιτύλιγμα που
+          μετράει άλλο ορθογώνιο. Δεν παίρνει ούτε className για την αποκάλυψη στο
+          hover (opacity) ούτε την κατάσταση «ανοιχτό μενού» (γέμισμα + περίγραμμα),
+          που θα ξανάγραφαν ενσωματωμένο στυλ πάνω στην `.po-ico`. */}
       {!selecting && (
         <button ref={menuBtnRef} type="button" className="po-box" onClick={openMenu} title="Ενέργειες" aria-label="Ενέργειες"
           style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px solid ' + (showMenu ? 'var(--border-default)' : 'transparent'), background: showMenu ? 'var(--bg-elevated)' : 'transparent', color: 'var(--text-secondary)', opacity: hov || coarse || showMenu ? 1 : 0, transition: 'opacity 0.15s, background 0.15s' }}
@@ -201,7 +207,7 @@ export function ItemRow({ item, allItems, onToggle, onEdit, onDelete, onAddToCal
               <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={a.danger ? 'var(--negative)' : 'var(--text-tertiary)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>{a.icon.split(' M').map((seg, j) => <path key={j} d={(j === 0 ? '' : 'M') + seg} />)}</svg>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--fs-base)', color: a.danger ? 'var(--negative)' : 'var(--text-primary)', fontWeight: 500, fontFamily: T.font.sans }}>{a.label}</div>
-                {a.sub ? <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 1 }}>{a.sub}</div> : null}
+                {a.sub ? <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{a.sub}</div> : null}
               </div>
             </button>
           ))}

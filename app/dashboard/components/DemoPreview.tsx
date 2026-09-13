@@ -96,18 +96,49 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
 
       {/* ── ΤΟ ΙΣΟΖΥΓΙΟ ──────────────────────────────────────────────────── */}
       <div>
-        <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', marginBottom: 10 }}>ΟΙ ΔΑΠΑΝΕΣ ΚΑΙ Ο ΛΟΓΑΡΙΑΣΜΟΣ ΤΟΥΣ</div>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {ledger.map((r, i) => (
-            <div key={r.category} style={{
-              display: 'flex', alignItems: 'baseline', gap: T.sp.md, padding: '8px 0',
-              borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)',
-            }}>
-              <span style={{ ...TT.bodySm, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{r.label}</span>
-              <span style={{ ...TT.caption, fontFamily: T.font.mono, whiteSpace: 'nowrap' }}>{r.account}</span>
-              <span style={{ ...numStyle, fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', minWidth: 84, textAlign: 'right' }}>{fe(r.amount)}</span>
-            </div>
-          ))}
+        {/* ═══ ΠΙΝΑΚΑΣ, ΟΧΙ ΣΤΟΙΒΑ ΑΠΟ divs ═══════════════════════════════════
+            ΤΙ ΗΤΑΝ. Εντεκα σειρές επί τρεις στήλες με `display: flex`: τριάντα
+            τρία κελιά που ΜΟΙΑΖΑΝ πίνακας. Ο αναγνώστης οθόνης άκουγε τριάντα
+            τρία ασύνδετα κείμενα — ποτέ «Βαφή, λογαριασμός 62.98, 640,00€».
+            Η ενότητα όμως διαβάζεται ΣΤΑΥΡΩΤΑ: ποια δαπάνη, σε ποιον
+            λογαριασμό, πόσο.
+
+            ΚΑΙ Η ΜΕΣΑΙΑ ΣΤΗΛΗ ΔΕΝ ΕΛΕΓΕ ΤΙ ΕΙΝΑΙ. Γυμνοί κωδικοί ΕΛΠ, χωρίς
+            ούτε ένα λεκτικό πουθενά: η κεφαλίδα στηλών —που δεν υπήρχε— τους
+            ονομάζει τώρα μία φορά για όλες τις σειρές. Η ετικέτα της ενότητας
+            έγινε `caption`, δηλαδή ταινία τίτλου ΤΟΥ ΠΙΝΑΚΑ αντί για ελεύθερο
+            κείμενο από πάνω του. */}
+        <div className="po-table-box">
+          {/* ΤΟ ΕΛΑΧΙΣΤΟ ΠΛΑΤΟΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΙΣ ΔΥΟ ΣΤΗΛΕΣ ΠΟΥ ΔΕΝ ΤΥΛΙΓΟΝΤΑΙ.
+              Το ποσό κρατούσε ήδη 84 γραμμένα στο χέρι· με τα 14+14 του κελιού
+              της `.po-table` θέλει 112. Ο κωδικός ΕΛΠ σε mono θέλει 76. Μένουν
+              152 για το όνομα της δαπάνης, δηλαδή 340 συνολικά. Κάτω από αυτό
+              ο πίνακας κυλά — αλλιώς το `overflow-wrap: anywhere` του κελιού θα
+              έσπαγε το «1.234,56€» στη μέση. */}
+          <div className="po-scroll-x">
+            <table className="po-table" style={{ ['--tbl-min' as string]: '340px' }}>
+              <caption>ΟΙ ΔΑΠΑΝΕΣ ΚΑΙ Ο ΛΟΓΑΡΙΑΣΜΟΣ ΤΟΥΣ</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Δαπάνη</th>
+                  <th scope="col">Λογαριασμός ΕΛΠ</th>
+                  <th scope="col" className="num">Ποσό</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger.map(r => (
+                  <tr key={r.category}>
+                    <th scope="row" style={{ ...TT.bodySm, color: 'var(--text-primary)' }}>{r.label}</th>
+                    <td style={{ ...TT.caption, fontFamily: T.font.mono, whiteSpace: 'nowrap' }}>{r.account}</td>
+                    {/* Καμία δήλωση γραμματοσειράς αριθμών: η `.num` δίνει ήδη
+                        δεξιά στοίχιση και `tabular-nums`, το `T.font.num` είναι
+                        το ίδιο Inter με το κείμενο. */}
+                    <td className="num" style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{fe(r.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
         <div style={{ ...TT.caption, marginTop: 10 }}>
           Οι λογαριασμοί είναι του σχεδίου των ΕΛΠ, ν.4308/2014. Ο φάκελος του λογιστή βγαίνει με αυτούς.

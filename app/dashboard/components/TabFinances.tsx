@@ -24,7 +24,7 @@
 
 import { navLabel } from '@/lib/nav/labels';
 import { useState } from 'react';
-import { T, Btn } from '@/components/Theme';
+import { T, Btn, ChipToggle } from '@/components/Theme';
 import ExpenseLedger from './ExpenseLedger';
 import InboundInbox from './InboundInbox';
 import { BankLinkRow } from './BankLink';
@@ -117,41 +117,23 @@ export default function TabFinances({
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
         borderRadius: T.radius.pill, maxWidth: '100%', overflowX: 'auto',
       }}>
-        {tabs.map(t => {
-          const on = active === t.k;
-          return (
-            <button key={t.k}
-              onClick={() => { if (t.k === 'contracts') { setContracts(true); } else { setContracts(false); setView(t.k as View); } }}
-              aria-pressed={on}
-              style={{
-                appearance: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-                // ═══ ΜΙΑ ΓΡΑΜΜΗ ΠΟΥ ΚΥΛΑΕΙ ΔΕΝ ΣΥΡΡΙΚΝΩΝΕΤΑΙ ═══════════════
-                // Το δοχείο έχει «overflow-x: auto», δηλαδή η πρόθεση ήταν
-                // «αν δεν χωρούν, κύλησε». Σε flex όμως τα παιδιά συρρικνώνονται
-                // ΠΡΩΤΑ (flex-shrink: 1 από προεπιλογή) και μόνο αν δεν
-                // συρρικνώνονται άλλο εμφανίζεται κύλιση. Με «nowrap» το κείμενο
-                // δεν μαζεύεται, οπότε τα τρία κουμπιά έμπαιναν το ένα πάνω στο
-                // άλλο: μετρημένο στα 320, το «Προϋπολογισμός» έπεφτε 7
-                // εικονοστοιχεία πάνω στο «Συμβόλαια».
-                flexShrink: 0,
-                // ══ Η ΟΜΑΔΑ ΤΩΝ ΚΑΡΤΕΛΩΝ ΕΒΓΑΙΝΕ 44 ΔΙΠΛΑ ΣΕ ΚΟΥΜΠΙ 36 ════
-                // Το κουτί της ομάδας δεν έχει δικό του ύψος: το παίρνει από τα
-                // κουμπιά της συν 3 γέμισμα και 1 περίγραμμα πάνω κάτω. Με
-                // κουμπιά 36 έβγαινε 44, δηλαδή οκτώ εικονοστοιχεία ψηλότερη από
-                // τη «Νέα δαπάνη» ακριβώς δίπλα της. Με 32 βγαίνει 40, όσο και
-                // κάθε άλλο χειριστήριο που κάθεται σε σειρά.
-                height: T.h.sm, padding: '0 18px', borderRadius: T.radius.pill,
-                fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: on ? 700 : 500,
-                background: on ? 'var(--bg-surface)' : 'transparent',
-                border: on ? '1px solid var(--border-default)' : '1px solid transparent',
-                color: on ? 'var(--text-primary)' : 'var(--text-secondary)',
-                boxShadow: on ? 'var(--elev-1)' : 'none',
-                transition: 'background .15s, color .15s',
-              }}>
+        {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της περίγραμμα.
+            Το ύψος μένει T.h.sm, οπότε η ομάδα βγαίνει 40 δίπλα στη «Νέα δαπάνη». */}
+        {tabs.map(t => (
+          // ═══ ΜΙΑ ΓΡΑΜΜΗ ΠΟΥ ΚΥΛΑΕΙ ΔΕΝ ΣΥΡΡΙΚΝΩΝΕΤΑΙ ═══════════════════════
+          // Το δοχείο έχει «overflow-x: auto», δηλαδή η πρόθεση ήταν «αν δεν
+          // χωρούν, κύλησε». Σε flex όμως τα παιδιά συρρικνώνονται ΠΡΩΤΑ
+          // (flex-shrink: 1 από προεπιλογή) και μόνο αν δεν συρρικνώνονται άλλο
+          // εμφανίζεται κύλιση: μετρημένο στα 320, το «Προϋπολογισμός» έπεφτε 7
+          // εικονοστοιχεία πάνω στο «Συμβόλαια». Το περιτύλιγμα κρατά το μέτρο,
+          // γιατί η συρρίκνωση είναι διάταξη της ράγας κι όχι όψη του πλακιδίου.
+          <span key={t.k} style={{ flexShrink: 0, display: 'inline-flex' }}>
+            <ChipToggle on={active === t.k} shape="seg"
+              onClick={() => { if (t.k === 'contracts') { setContracts(true); } else { setContracts(false); setView(t.k as View); } }}>
               {t.label}
-            </button>
-          );
-        })}
+            </ChipToggle>
+          </span>
+        ))}
       </div>
         {/* Η σάρωση αφορά ΜΟΝΟ τις δαπάνες. Στον Προϋπολογισμό και στα
             Συμβόλαια δεν υπάρχει τίποτα να σαρωθεί, οπότε δεν προσφέρεται. */}

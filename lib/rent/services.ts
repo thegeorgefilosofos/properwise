@@ -43,7 +43,7 @@ const num = (v: unknown): number => { const n = typeof v === 'number' ? v : pars
  * `streaming` (πίνακας υπηρεσιών) και `cleaning` (μία ρύθμιση καθαρισμού). Καμία
  * μετάπτωση σε βάση χωρίς αντίγραφα: η παλιά μορφή διαβάζεται και αποδίδει
  * γραμμές, η νέα γράφεται από πάνω. Ένας ιδιοκτήτης που είχε συμπληρώσει
- * Netflix 13,99 € χρεωμένο στον μισθωτή βλέπει «Netflix · 13,99 € · Ενοικιαστής».
+ * Netflix 13,99€ χρεωμένο στον μισθωτή βλέπει «Netflix · 13,99€ · Ενοικιαστής».
  */
 export function serviceLinesFrom(rawServices: unknown, rawCleaning: unknown): ServiceLine[] {
   const out: ServiceLine[] = [];

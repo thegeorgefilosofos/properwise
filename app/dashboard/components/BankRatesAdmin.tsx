@@ -1,5 +1,5 @@
 'use client'
-import { T, TT, formGrid, ABSENT } from '@/components/Theme'
+import { T, TT, formGrid, ABSENT, Btn } from '@/components/Theme'
 import { notify, notifyOk, notifyError } from '@/components/Toast'
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -60,14 +60,24 @@ export default function BankRatesAdmin({ onSaved }:{
   type Held = { ran_at:string; bank_id:string; field:string; old_value:number|null; new_value:number; reason:string }
   const [health,setHealth] = useState<Health|null>(null)
   const [held,setHeld] = useState<Held[]>([])
+  // ΤΙ ΕΛΕΓΕ Η ΟΘΟΝΗ ΣΕ ΑΠΟΤΥΧΙΑ: όταν η ανάγνωση έσκαγε, το `data` ερχόταν κενό
+  // κι η οθόνη έγραφε «Καμία ζωντανή εγγραφή επιτοκίων ακόμη», ενώ οι μεταβολές
+  // που περιμένουν δεύτερη επιβεβαίωση εξαφανίζονταν αθόρυβα.
+  // ΓΙΑΤΙ ΕΧΕΙ ΣΗΜΑΣΙΑ: ο διαχειριστής είναι ο μόνος που μπορεί να διορθώσει
+  // λάθος επιτόκιο. Πίστευε πως ο πίνακας ήταν άδειος ή πως δεν εκκρεμούσε
+  // τίποτα κι έφευγε. ΤΩΡΑ: κρατάμε τρίτη κατάσταση «δεν ξέρουμε» κι το λέμε.
+  const [ratesErr,setRatesErr] = useState(false)
+  const [feedErr,setFeedErr] = useState(false)
 
   async function load() {
-    const { data } = await supabase.from('bank_rates').select('*').order('fixed_min',{ascending:true})
+    const { data, error } = await supabase.from('bank_rates').select('*').order('fixed_min',{ascending:true})
     if (data) setRows(data as AdminBank[])
-    const [{ data: h }, { data: hd }] = await Promise.all([supabase.rpc('bank_feed_health'), supabase.rpc('bank_feed_held')])
+    setRatesErr(!!error)
+    const [{ data: h, error: hErr }, { data: hd, error: hdErr }] = await Promise.all([supabase.rpc('bank_feed_health'), supabase.rpc('bank_feed_held')])
     const row = Array.isArray(h) ? h[0] : h
     if (row) setHealth(row as Health)
     if (Array.isArray(hd)) setHeld(hd as Held[])
+    setFeedErr(!!hErr || !!hdErr)
   }
   // Φορτώνει μία φορά, όταν ανοίξει το πάνελ. Το `rows.length` δεν είναι
   // εξάρτηση: αν ήταν, η φόρτωση θα ξανάτρεχε μόλις γέμιζε ο πίνακας.
@@ -121,7 +131,7 @@ export default function BankRatesAdmin({ onSaved }:{
   return (
     <div style={{border:'1px solid var(--border-subtle)',borderRadius: T.radius.card,background:'var(--bg-surface)',overflow:'hidden'}}>
       {/* Κεφαλίδα — συμπτυσσόμενη */}
-      <button onClick={()=>setOpen(o=>!o)} style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'11px 14px',background:'transparent',border:'none',cursor:'pointer',textAlign:'left' as const}}>
+      <button onClick={()=>setOpen(o=>!o)} className="acc-toggle acc-row" style={{ '--acc-pad': '12px 16px' }}>
         <span style={{flex:1,fontSize: 'var(--fs-base)',fontWeight:600,color:'var(--text-primary)',fontFamily: T.font.sans}}>Διαχείριση επιτοκίων</span>
         <InfoDot text="Ορατό μόνο σε διαχειριστές. Διόρθωσε χειροκίνητα ένα επιτόκιο ή τρέξε αυτόματη επικαιροποίηση με έρευνα ιστού. Η ημερομηνία επιβεβαίωσης ενημερώνεται αυτόματα."/>
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:open?'rotate(180deg)':'none',transition:'transform 0.2s',flexShrink:0}}><polyline points="6 9 12 15 18 9"/></svg>
@@ -131,10 +141,10 @@ export default function BankRatesAdmin({ onSaved }:{
         <div style={{padding:'2px 14px 14px',display:'flex',flexDirection:'column',gap:12}}>
           {/* Αυτόματη επικαιροποίηση */}
           <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-            <button onClick={refreshAI} disabled={refreshing} style={{display:'inline-flex',alignItems:'center',gap: 8,height:T.h.sm,padding:'0 14px',borderRadius: T.radius.pill,cursor:refreshing?'wait':'pointer',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',color:'var(--text-secondary)',fontSize:12,fontWeight:500,fontFamily: T.font.sans}}>
+            <Btn variant="secondary" onClick={refreshAI} disabled={refreshing}>
               <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
               {refreshing?'Επικαιροποίηση…':'Αυτόματη επικαιροποίηση με AI'}
-            </button>
+            </Btn>
             <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>Έρευνα ιστού · γράφει μόνο έγκυρες τιμές</span>
           </div>
 
@@ -143,6 +153,11 @@ export default function BankRatesAdmin({ onSaved }:{
               {health.ok
                 ? `Καθημερινός έλεγχος: τελευταίο πέρασμα ${health.last_check ? new Date(health.last_check).toLocaleString('el-GR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : ABSENT}, πέτυχε.`
                 : `Καθημερινός έλεγχος: ${health.reason}.`}
+            </p>
+          )}
+          {feedErr && (
+            <p style={{fontSize:12,color:'var(--negative)',fontFamily: T.font.sans,lineHeight:1.5}}>
+              Η κατάσταση του καθημερινού ελέγχου δεν διαβάστηκε. Δεν φαίνεται αν υπάρχουν μεταβολές που περιμένουν επιβεβαίωση: δοκιμάστε ξανά σε λίγο.
             </p>
           )}
           {held.length>0 && (
@@ -163,7 +178,7 @@ export default function BankRatesAdmin({ onSaved }:{
               const on = selId===b.bank_id
               return (
                 <div key={b.bank_id} style={{border:`1px solid ${on?'var(--border-accent)':'var(--border-subtle)'}`,borderRadius:10,background:'var(--bg-elevated)',overflow:'hidden'}}>
-                  <button onClick={()=>pick(b)} style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'9px 12px',background:'transparent',border:'none',cursor:'pointer',textAlign:'left' as const}}>
+                  <button onClick={()=>pick(b)} className="acc-toggle acc-row" style={{ '--acc-pad': '8px 12px' }}>
                     <span style={{flex:1,fontSize: 'var(--fs-base)',fontWeight:600,color:'var(--text-primary)',fontFamily: T.font.sans}}>{b.bank_name}</span>
                     <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums'}}>από {String(b.fixed_min).replace('.',',')}%</span>
                     <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{b.verified_at}</span>
@@ -179,9 +194,9 @@ export default function BankRatesAdmin({ onSaved }:{
                       </div>
                       <p style={{...labelStyle}}>Παράμετροι</p>
                       <div style={{...formGrid(150, 210),gap:10}}>
-                        <NumberInput label="Ελάχιστο σταθερό" value={String(edit.fixed_min ?? '')} onChange={v=>set('fixed_min', Number(v))} suffix="%" step={0.05}/>
-                        <NumberInput label="Περιθώριο ελάχιστο" value={String(edit.variable_spread_min ?? '')} onChange={v=>set('variable_spread_min', Number(v))} suffix="%" step={0.05}/>
-                        <NumberInput label="Περιθώριο μέγιστο" value={String(edit.variable_spread_max ?? '')} onChange={v=>set('variable_spread_max', Number(v))} suffix="%" step={0.05}/>
+                        <NumberInput label="Ελάχιστο σταθερό" value={String(edit.fixed_min ?? '')} onChange={v=>set('fixed_min', Number(v))} suffix="%"/>
+                        <NumberInput label="Περιθώριο ελάχιστο" value={String(edit.variable_spread_min ?? '')} onChange={v=>set('variable_spread_min', Number(v))} suffix="%"/>
+                        <NumberInput label="Περιθώριο μέγιστο" value={String(edit.variable_spread_max ?? '')} onChange={v=>set('variable_spread_max', Number(v))} suffix="%"/>
                         <NumberInput label="Μέγιστο δάνειο προς αξία" value={String(edit.max_ltv ?? '')} onChange={v=>set('max_ltv', Number(v))} suffix="%"/>
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
@@ -189,10 +204,8 @@ export default function BankRatesAdmin({ onSaved }:{
                         <div style={{flex:1,minWidth:180}}><TextInput label="Επίσημη πηγή (σύνδεσμος)" value={edit.source_url ?? ''} onChange={v=>set('source_url', v)} placeholder="https://…"/></div>
                       </div>
                       <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                        <button onClick={save} disabled={saving} style={{display:'inline-flex',alignItems:'center',gap: 8,height:T.h.md,padding:'0 18px',borderRadius: T.radius.pill,cursor:saving?'wait':'pointer',background:'var(--accent)',border:'1px solid var(--accent)',color:'var(--accent-text)',fontSize: 'var(--fs-base)',fontWeight:700,fontFamily: T.font.sans}}>
-                          {saving?'Αποθήκευση…':'Αποθήκευση'}
-                        </button>
-                        <button onClick={()=>{setSelId(null);setEdit(null)}} style={{height:T.h.md,padding:'0 16px',borderRadius: T.radius.pill,cursor:'pointer',background:'transparent',border:'1px solid var(--border-default)',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontWeight:500,fontFamily: T.font.sans}}>Ακύρωση</button>
+                        <Btn variant="primary" onClick={save} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση'}</Btn>
+                        <Btn variant="secondary" onClick={()=>{setSelId(null);setEdit(null)}}>Ακύρωση</Btn>
                         <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginLeft:'auto',fontFamily: T.font.sans}}>Η επιβεβαίωση ορίζεται στο σήμερα</span>
                       </div>
                     </div>
@@ -200,7 +213,12 @@ export default function BankRatesAdmin({ onSaved }:{
                 </div>
               )
             })}
-            {rows.length===0 && <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,padding:'4px 2px'}}>Καμία ζωντανή εγγραφή επιτοκίων ακόμη</p>}
+            {ratesErr && (
+              <p style={{fontSize:12,color:'var(--negative)',fontFamily: T.font.sans,padding:'4px 2px',lineHeight:1.5}}>
+                Ο κατάλογος επιτοκίων δεν διαβάστηκε: δεν ξέρουμε τι ισχύει αυτή τη στιγμή. Κλείστε κι ανοίξτε ξανά τη διαχείριση.
+              </p>
+            )}
+            {!ratesErr && rows.length===0 && <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,padding:'4px 2px'}}>Καμία ζωντανή εγγραφή επιτοκίων ακόμη</p>}
           </div>
         </div>
       )}

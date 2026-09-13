@@ -188,7 +188,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
 
   const card: React.CSSProperties = {
     background: 'var(--surface-raised)', border: '1px solid var(--border-raised)',
-    borderRadius: T.radius.card, padding: 18,
+    borderRadius: T.radius.card, padding: T.sp.lg,
     boxShadow: 'var(--highlight-inset), var(--elev-1)', marginBottom: 16,
   };
   const inp: React.CSSProperties = {

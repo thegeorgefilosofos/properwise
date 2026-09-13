@@ -52,13 +52,13 @@ import { useMemo, useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
-import { T, TT, fe, fp, SecHdr, Spinner, fixedCols } from '@/components/Theme';
+import { T, TT, fe, fp, SecHdr, Spinner, fixedCols, Btn } from '@/components/Theme';
 import { NumberInput, CustomSelect } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
 import { AadePill } from '@/components/AadeLink';
 import {
   estimateENFIA, enfiaInUse, enfiaLastYearAnnual,
-  ENFIA_REDUCTIONS, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF,
+  ENFIA_REDUCTIONS, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF, enfiaReductionInForce,
 } from '@/lib/billing/enfia';
 
 // Το «Δεν γνωρίζω» ΔΕΝ είναι απουσία επιλογής: είναι η ουδέτερη επιλογή, με
@@ -68,15 +68,15 @@ const UNKNOWN = '';
 
 const ZONE_OPTIONS = [
   { value: UNKNOWN,      label: 'Δεν γνωρίζω ακόμη'                 },
-  { value: '0_750',      label: 'Έως 750 € ανά τετραγωνικό'         },
-  { value: '751_1500',   label: '751 έως 1.500 € ανά τετραγωνικό'   },
-  { value: '1501_2500',  label: '1.501 έως 2.500 € ανά τετραγωνικό' },
-  { value: '2501_3000',  label: '2.501 έως 3.000 € ανά τετραγωνικό' },
-  { value: '3001_3500',  label: '3.001 έως 3.500 € ανά τετραγωνικό' },
-  { value: '3501_4000',  label: '3.501 έως 4.000 € ανά τετραγωνικό' },
-  { value: '4001_4500',  label: '4.001 έως 4.500 € ανά τετραγωνικό' },
-  { value: '4501_5000',  label: '4.501 έως 5.000 € ανά τετραγωνικό' },
-  { value: 'over_5000',  label: 'Πάνω από 5.000 € ανά τετραγωνικό'  },
+  { value: '0_750',      label: 'Έως 750€ ανά τετραγωνικό'         },
+  { value: '751_1500',   label: '751 έως 1.500€ ανά τετραγωνικό'   },
+  { value: '1501_2500',  label: '1.501 έως 2.500€ ανά τετραγωνικό' },
+  { value: '2501_3000',  label: '2.501 έως 3.000€ ανά τετραγωνικό' },
+  { value: '3001_3500',  label: '3.001 έως 3.500€ ανά τετραγωνικό' },
+  { value: '3501_4000',  label: '3.501 έως 4.000€ ανά τετραγωνικό' },
+  { value: '4001_4500',  label: '4.001 έως 4.500€ ανά τετραγωνικό' },
+  { value: '4501_5000',  label: '4.501 έως 5.000€ ανά τετραγωνικό' },
+  { value: 'over_5000',  label: 'Πάνω από 5.000€ ανά τετραγωνικό'  },
 ];
 
 const FLOOR_LABEL: Record<keyof typeof ENFIA_FLOOR_COEF | string, string> = {
@@ -222,7 +222,19 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
         setInsured(!!(d?.insCustomEarthquake || d?.insCustomFlood));
       });
     return () => { live = false; };
-  }, [propertyId, supabase]);
+    // ── ΤΟ `userId` ΕΛΕΙΠΕ ΚΑΙ ΤΟ ΕΡΩΤΗΜΑ ΤΟ ΧΡΗΣΙΜΟΠΟΙΕΙ ──────────────────
+    // Ο έλεγχος ταυτότητας απαντά ΜΕΤΑ την πρώτη απόδοση. Οταν το `userId`
+    // έφτανε αργότερα, ο πίνακας εξαρτήσεων δεν το άκουγε και η ανάγνωση δεν
+    // ξανάτρεχε: το `insured` έμενε `false`, δηλαδή η μείωση ΕΝΦΙΑ για σεισμό
+    // και πλημμύρα δεν εφαρμοζόταν σε ασφαλισμένο ακίνητο. Καμία ένδειξη —
+    // απλώς μεγαλύτερος φόρος στην οθόνη, με τον χρήστη να έχει δηλώσει σωστά.
+  }, [propertyId, supabase, userId]);
+
+  // ΤΟ ΕΤΟΣ ΤΗΣ ΕΚΤΙΜΗΣΗΣ, ΔΙΑΒΑΣΜΕΝΟ ΜΙΑ ΦΟΡΑ. Ο ΕΝΦΙΑ βεβαιώνεται ανά έτος
+  // και κάποια μέτρα ψηφίζονται για ΕΝΑ έτος: χωρίς αυτό, ένα μέτρο του 2026
+  // θα συνέχιζε να κόβει τον φόρο στη μισή τον Ιανουάριο του 2027. Η μηχανή
+  // είναι καθαρή και δεν διαβάζει ρολόι — το ρολόι είναι δουλειά της οθόνης.
+  const enfiaYear = useMemo(() => new Date().getFullYear(), []);
 
   const lastYear = useMemo(() => enfiaLastYearAnnual({
     annual: s.enfiaLastAnnual, instalment: s.enfiaLastInstalment, instalments: s.enfiaLastCount,
@@ -239,7 +251,8 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
     totalValue: parseFloat(s.enfiaTotalVal) || 0,
     propertyValue: parseFloat(s.enfiaPropVal) || 0,
     reductions: s.enfiaReductions || [],
-  }), [s.enfiaSqm, s.enfiaZone, s.enfiaFloor, s.enfiaAge, s.enfiaOwnership, s.enfiaTotalVal, s.enfiaPropVal, s.enfiaReductions]);
+    year: enfiaYear,
+  }), [s.enfiaSqm, s.enfiaZone, s.enfiaFloor, s.enfiaAge, s.enfiaOwnership, s.enfiaTotalVal, s.enfiaPropVal, s.enfiaReductions, enfiaYear]);
 
   const inUse = enfiaInUse(s.enfiaAnnual, s.enfiaMonthly, est?.annual, lastYear);
 
@@ -355,9 +368,9 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
         {activeRoute === 'lastYear' && (<>
           <div {...fixedCols(3, 14)}>
             <NumberInput label="Περσινός ΕΝΦΙΑ, σύνολο έτους" value={s.enfiaLastAnnual}
-              onChange={v => upd({ enfiaLastAnnual: v })} suffix="€" step={10}/>
+              onChange={v => upd({ enfiaLastAnnual: v })} suffix="€"/>
             <NumberInput label="Ποσό μίας δόσης" value={s.enfiaLastInstalment}
-              onChange={v => upd({ enfiaLastInstalment: v })} suffix="€" step={5}/>
+              onChange={v => upd({ enfiaLastInstalment: v })} suffix="€"/>
             <CustomSelect label="Σε πόσες δόσεις" value={s.enfiaLastCount}
               onChange={v => upd({ enfiaLastCount: v })} options={INSTALMENT_OPTIONS}/>
           </div>
@@ -395,7 +408,7 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
             <NumberInput label="Φετινός ΕΝΦΙΑ, σύνολο έτους"
               value={s.enfiaAnnual || (declaredAnnual > 0 ? declaredAnnual.toFixed(2) : '')}
               onChange={v => upd({ enfiaAnnual: v, enfiaMonthly: '' })}
-              suffix="€" step={10}/>
+              suffix="€"/>
           </div>
         </>)}
 
@@ -422,35 +435,44 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
           <div {...fixedCols(3, 14)} style={{ ...fixedCols(3, 14).style, marginTop: 14 }}>
             <CustomSelect label="Παλαιότητα" value={s.enfiaAge} onChange={v => upd({ enfiaAge: v })} options={AGE_OPTIONS}/>
             <NumberInput label="Συνολική αξία όλων των ακινήτων" value={s.enfiaTotalVal} onChange={v => upd({ enfiaTotalVal: v })} suffix="€"
-              labelInfo="Από αυτήν εξαρτάται η αυτόματη μείωση και η προσαύξηση πάνω από τις 500.000 €."/>
+              labelInfo="Από αυτήν εξαρτάται η αυτόματη μείωση και η προσαύξηση πάνω από τις 500.000€."/>
             <NumberInput label="Αντικειμενική αξία αυτού του ακινήτου" value={s.enfiaPropVal} onChange={v => upd({ enfiaPropVal: v })} suffix="€"
-              labelInfo="Πρόσθετος φόρος επιβάλλεται όταν η αξία του ενός ακινήτου ξεπερνά τις 400.000 €."/>
+              labelInfo="Πρόσθετος φόρος επιβάλλεται όταν η αξία του ενός ακινήτου ξεπερνά τις 400.000€."/>
           </div>
 
           {insured && !(s.enfiaReductions || []).includes('insurance') && (
-            <div style={{ marginTop: 18, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ marginTop: T.sp.lg, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
               <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', flex: 1, minWidth: 240 }}>
                 Το ασφαλιστήριό σου καλύπτει φυσικές καταστροφές, άρα δικαιούσαι μείωση ΕΝΦΙΑ. Δεν εφαρμόζεται μόνη της.
               </span>
-              <button type="button" onClick={() => toggleReduction('insurance')}
-                style={{ height: T.h.sm, padding: '0 16px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 700, fontFamily: T.font.sans, cursor: 'pointer' }}>
-                Εφαρμογή
-              </button>
+              <Btn variant="primary" onClick={() => toggleReduction('insurance')}>Εφαρμογή</Btn>
             </div>
           )}
 
           <div style={{ ...TT.label, color: 'var(--text-secondary)', margin: '20px 0 8px' }}>Μειώσεις</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {ENFIA_REDUCTIONS.map(r => {
-              const active = (s.enfiaReductions || []).includes(r.key);
+              // ΤΟ ΜΕΤΡΟ ΠΟΥ ΕΛΗΞΕ ΦΑΙΝΕΤΑΙ, ΔΕΝ ΕΞΑΦΑΝΙΖΕΤΑΙ. Ο λογιστής που το
+              // έψαχνε πρέπει να μάθει ΓΙΑΤΙ δεν είναι πια εκεί· ένας κατάλογος
+              // που σιωπηλά κονταίνει διαβάζεται ως σφάλμα της εφαρμογής.
+              // Η ΑΞΙΑ ΠΟΥ ΚΡΙΝΕΙ ΕΙΝΑΙ Η ΙΔΙΑ ΠΟΥ ΚΡΙΝΕΙ ΣΤΗ ΜΗΧΑΝΗ: του ακινήτου
+              // όταν δηλώθηκε, αλλιώς της συνολικής περιουσίας. Δύο διαφορετικές
+              // απαντήσεις στην ίδια ερώτηση θα ήταν χειρότερες από καμία.
+              const homeVal = (parseFloat(s.enfiaPropVal) || 0) || (parseFloat(s.enfiaTotalVal) || 0);
+              const inForce = enfiaReductionInForce(r.key, enfiaYear, homeVal);
+              const lapsed = r.untilYear != null && enfiaYear > r.untilYear;
+              const active = inForce && (s.enfiaReductions || []).includes(r.key);
               return (
-                <button key={r.key} type="button" onClick={() => toggleReduction(r.key)} aria-pressed={active}
+                <button key={r.key} type="button" disabled={!inForce}
+                  onClick={() => inForce && toggleReduction(r.key)} aria-pressed={active}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', width: '100%',
-                    textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+                    textAlign: 'left', fontFamily: 'inherit',
                     background: active ? 'var(--accent-soft)' : 'var(--bg-elevated)',
                     border: `1px solid ${active ? 'var(--accent)' : 'var(--border-subtle)'}`,
                     borderRadius: T.radius.inner,
+                    opacity: inForce ? 1 : 0.55,
+                    cursor: inForce ? 'pointer' : 'default',
                     transition: 'background-color .15s, border-color .15s',
                   }}>
                   <span aria-hidden style={{ width: 16, height: 16, borderRadius: T.radius.xs, flexShrink: 0, border: `2px solid ${active ? 'var(--accent)' : 'var(--border-default)'}`, background: active ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -459,6 +481,13 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: active ? 600 : 400, display: 'block' }}>{r.label}</span>
                     <span style={{ ...TT.caption, display: 'block', marginTop: 2 }}>{r.note}</span>
+                    {!inForce && (
+                      <span style={{ ...TT.caption, display: 'block', marginTop: 2, color: 'var(--text-tertiary)' }}>
+                        {lapsed
+                          ? `Δεν ισχύει για τον ΕΝΦΙΑ ${enfiaYear}: το μέτρο εφαρμόστηκε ώς και το ${r.untilYear}.`
+                          : `Δεν δίνεται σε αυτή την αξία: το όριο του μέτρου είναι ${fe(r.maxHomeValue!)}.`}
+                      </span>
+                    )}
                   </span>
                   <span style={{ ...TT.figure, fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>{fp(r.pct)}</span>
                 </button>
@@ -467,11 +496,11 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
           </div>
 
           {est ? (
-            <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+            <div style={{ marginTop: T.sp.lg, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
               {[
                 { label: 'Κύριος φόρος κτισμάτων', val: est.basic },
-                ...(est.extra > 0 ? [{ label: 'Πρόσθετος φόρος, αξία πάνω από 400.000 €', val: est.extra }] : []),
-                ...(est.supplementary > 0 ? [{ label: 'Προσαύξηση, συνολική αξία πάνω από 500.000 €', val: est.supplementary }] : []),
+                ...(est.extra > 0 ? [{ label: 'Πρόσθετος φόρος, αξία πάνω από 400.000€', val: est.extra }] : []),
+                ...(est.supplementary > 0 ? [{ label: 'Προσαύξηση, συνολική αξία πάνω από 500.000€', val: est.supplementary }] : []),
                 // Το ποσοστό ΕΔΩ είναι το συνδυασμένο, όχι το ονομαστικό της κάθε
               // μείωσης που γράφεται πιο πάνω δίπλα στην επιλογή. Διάλεγες 50%
               // και διάβαζες 65% χωρίς λέξη που να το εξηγεί.
@@ -492,7 +521,7 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
               </div>
             </div>
           ) : (
-            <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+            <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: T.sp.lg, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
               Χρειάζονται εμβαδόν και τιμή ζώνης. Το εμβαδόν το βρίσκεις στο Ε9 σου, την τιμή ζώνης στον χάρτη αντικειμενικών αξιών.
             </div>
           )}

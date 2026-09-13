@@ -79,12 +79,21 @@ Deno.serve(async (req) => {
     // ── 2. The property_id must belong to the authenticated user ──────────────
     const { property_id } = await req.json().catch(() => ({}))
     if (!property_id) return json({ error: 'Missing property_id' }, 400)
-    const { data: owned } = await service
+    // «ΔΕΝ ΕΙΝΑΙ ΔΙΚΟ ΣΟΥ» ΚΑΙ «ΔΕΝ ΜΠΟΡΩ ΝΑ ΔΩ ΑΝ ΕΙΝΑΙ» ΔΕΝ ΕΙΝΑΙ ΤΟ ΙΔΙΟ.
+    // Χωρίς το `error`, μια αποτυχία ανάγνωσης έδινε `owned = null` και ο
+    // ιδιοκτήτης έπαιρνε 403 για το ΔΙΚΟ του ακίνητο. Η άρνηση μένει άρνηση —
+    // καμία πρόταση δεν παράγεται χωρίς επιβεβαιωμένη κυριότητα — αλλά ο
+    // κωδικός λέει πια ποιο από τα δύο συνέβη.
+    const { data: owned, error: ownedErr } = await service
       .from('user_properties')
       .select('id, name, prop_type, sqm, value, target_rent, address, heating, pea_class')
       .eq('id', property_id)
       .eq('user_id', userId)
       .maybeSingle()
+    if (ownedErr) {
+      console.error('[smart-suggestions] η κυριότητα δεν διαβάστηκε:', ownedErr)
+      return json({ error: 'ownership_unverifiable', detail: ownedErr.message }, 503)
+    }
     if (!owned) return json({ error: 'forbidden' }, 403)
 
     // ── 3. Το ΙΔΙΟ ταβάνι κόστους AI με την κύρια διαδρομή ────────────────────

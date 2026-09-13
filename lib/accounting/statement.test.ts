@@ -39,6 +39,11 @@ const near = (a: number, b: number, eps = 0.02) => Math.abs(a - b) <= eps
   const gross = 30000
   const taxable = gross * 0.95 // 28500
   const st = incomeStatement({ regime: 'individual_longterm', grossIncome: gross })
+  // Η ΒΑΣΗ ΕΛΕΓΧΕΤΑΙ, ΔΕΝ ΥΠΟΝΟΕΙΤΑΙ. Το 28.500 ήταν γραμμένο ως σχόλιο και
+  // υπολογισμένο σε μεταβλητή που κανείς δεν διάβαζε: αν η τεκμαρτή έκπτωση
+  // άλλαζε, ο φόρος θα άλλαζε και το τεστ θα κοκκίνιζε λέγοντας «6375», χωρίς
+  // να πει ΠΟΥ έσπασε. Τώρα σπάει στη βάση, εκεί που είναι η αιτία.
+  ok('longterm taxable base = gross − τεκμαρτή έκπτωση', near(st.taxableIncome, taxable))
   // 12000*.15 + 12000*.25 + 4500*.35 = 1800+3000+1575 = 6375
   ok('longterm progressive 28500 → 6375', near(st.incomeTax, 6375))
   ok('longterm marginal reflected (eff between 15% and 35%)', st.effectiveRate > 0.15 && st.effectiveRate < 0.35)
@@ -265,8 +270,8 @@ const near = (a: number, b: number, eps = 0.02) => Math.abs(a - b) <= eps
 // Ο κανόνας που κλειδώνει εδώ: αυτό που περνά στο climateLevy είναι το
 // ΑΚΑΛΥΠΤΟ τέλος (levyShortfall), όχι το οφειλόμενο.
 {
-  // 20 νύχτες Αυγούστου, διαμέρισμα ≤80 τ.μ. → ΤΑΚΚ 20 × 8 = 160 €.
-  // Ο επισκέπτης πλήρωσε 2.160 €, από τα οποία 160 € είναι τέλος.
+  // 20 νύχτες Αυγούστου, διαμέρισμα ≤80 τ.μ. → ΤΑΚΚ 20 × 8 = 160€.
+  // Ο επισκέπτης πλήρωσε 2.160€, από τα οποία 160€ είναι τέλος.
   const stays = [{ check_in: '2026-08-01', check_out: '2026-08-21', nights: 20, total: 2000,
                    amount_basis: 'gross', gross_guest_paid: 2160, climate_levy: 160, platform_fee: 0 }]
   const sum = shortTermYearSummary(stays, 2026)
@@ -282,7 +287,7 @@ const near = (a: number, b: number, eps = 0.02) => Math.abs(a - b) <= eps
   // ΛΑΘΟΣ: περνάμε το οφειλόμενο (160). Το ταμείο πέφτει κατά ολόκληρο το ΤΑΚΚ.
   const wrong = incomeStatement({ regime: 'individual_shortterm', grossIncome: sum.grossRevenue,
                                   climateLevy: sum.levy, municipalTax: sum.municipalTax })
-  ok('η παλιά συμπεριφορά έχανε ακριβώς 160 €', near(right.netCash - wrong.netCash, 160))
+  ok('η παλιά συμπεριφορά έχανε ακριβώς 160€', near(right.netCash - wrong.netCash, 160))
   ok('και δεν συμφωνούσε με τη φορολογική σύνοψη', !near(wrong.netCash, sum.net))
 }
 
@@ -314,6 +319,54 @@ const near = (a: number, b: number, eps = 0.02) => Math.abs(a - b) <= eps
   const single = incomeStatement({ regime: 'individual_longterm', grossIncome: 24000 });
   ok('ίδιος ορισμός με το ανά ακίνητο',
      Math.abs((con.grossIncome - con.incomeTax) - (single.grossIncome - single.incomeTax)) < 0.01);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Η ΣΥΝΘΕΣΗ ΠΟΥ ΕΣΠΑΣΕ: ΕΝΟΠΟΙΗΣΗ ΧΑΡΤΟΦΥΛΑΚΙΟΥ + ΑΠΑΛΛΑΓΗ ΑΝΕΙΣΠΡΑΚΤΩΝ
+// ─────────────────────────────────────────────────────────────────────────
+// ΚΑΜΙΑ ΑΠΟ ΤΙΣ ΔΥΟ ΣΥΝΑΡΤΗΣΕΙΣ ΔΕΝ ΕΙΧΕ ΣΦΑΛΜΑ. Το σφάλμα ήταν ΑΝΑΜΕΣΑ ΤΟΥΣ.
+// Για φυσικό πρόσωπο ο φόρος είναι προοδευτικός στο ΣΥΝΟΛΟ του Ε1, οπότε η
+// καρτέλα Λογιστική δεν εμπιστεύεται τον φόρο του ενός ακινήτου: τον
+// αντικαθιστά με το μερίδιό του από τον συγκεντρωτικό, μέσω `overrideIncomeTax`.
+// Η ενοποίηση όμως χτιζόταν από τα ΔΕΔΟΥΛΕΥΜΕΝΑ ενοίκια, χωρίς να ξέρει ότι ο
+// χρήστης δήλωσε τα ανείσπρακτα ως νομικά διεκδικημένα. Αποτέλεσμα: το
+// ΦΟΡΟΛΟΓΗΤΕΟ της κάρτας έπεφτε, ο ΦΟΡΟΣ όχι.
+//
+// Το ορατό ίχνος ήταν ένα αδύνατο ποσοστό. Σε δεδουλευμένα 20.000€ με 12.000€
+// διεκδικημένα ανείσπρακτα, η κάρτα έγραφε φόρο 3.550€ πάνω σε φορολογητέο
+// 7.600€: 46,7%, εκεί που ο ανώτατος συντελεστής της κλίμακας είναι 45%.
+// Ο σωστός φόρος είναι 1.140€. Διαφορά 2.410€, μία χρονιά, ένα ακίνητο.
+// Ο έλεγχος από κάτω είναι ακριβώς αυτός ο κανόνας, γραμμένος μία φορά.
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const BR = RENTAL_TAX_BRACKETS_2026
+  const ACCRUED = 20000, UNCOLLECTED = 12000
+  const card = (override: number) => incomeStatement({
+    regime: 'individual_longterm', grossIncome: ACCRUED,
+    uncollectedIncome: UNCOLLECTED, legallyClaimedUncollected: true,
+    overrideIncomeTax: override, brackets: BR,
+  })
+  const shareOf = (portfolioGross: number) =>
+    consolidateIndividual([{ id: 'p1', input: { regime: 'individual_longterm', grossIncome: portfolioGross } }], BR)
+      .perProperty[0].taxShare
+
+  // ΟΠΩΣ ΗΤΑΝ: η ενοποίηση έβλεπε ολόκληρα τα δεδουλευμένα.
+  const wrong = card(shareOf(ACCRUED))
+  // ΟΠΩΣ ΕΙΝΑΙ: βλέπει τα δεδουλευμένα ΜΕΙΟΝ τα διεκδικημένα, ίδια βάση με την κάρτα.
+  const right = card(shareOf(ACCRUED - UNCOLLECTED))
+
+  const top = BR[BR.length - 1].rate
+  ok('πριν: φόρος 3.550€ πάνω σε φορολογητέο 7.600€',
+     near(wrong.incomeTax, 3550) && near(wrong.taxableIncome, 7600))
+  ok('πριν: ποσοστό αδύνατο για την κλίμακα',
+     wrong.incomeTax > wrong.taxableIncome * top)
+  ok('η διαφορά είναι 2.410€ φόρου που δεν οφειλόταν', near(wrong.incomeTax - right.incomeTax, 2410))
+  ok('τώρα: ο φόρος είναι ακριβώς η κλίμακα πάνω στο φορολογητέο που δείχνει η κάρτα',
+     near(right.incomeTax, rentalIncomeTax(right.taxableIncome, BR)))
+  ok('τώρα: κάτω από τον ανώτατο συντελεστή', right.incomeTax <= right.taxableIncome * top)
+  ok('η απαλλαγή γλιτώνει πράγματι φόρο', right.incomeTax < wrong.incomeTax)
+  // Το φορολογητέο δεν άλλαξε: η διόρθωση αφορά ΜΟΝΟ τον φόρο.
+  ok('το φορολογητέο μένει (20.000 − 12.000) × 0,95', near(right.taxableIncome, (ACCRUED - UNCOLLECTED) * 0.95))
 }
 
 console.log(`statement.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)

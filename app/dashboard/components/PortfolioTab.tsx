@@ -74,7 +74,7 @@ interface Row {
   occupancy: number | null; overbooked: boolean; nights: number; pending: number;
   /** Ο ΠΑΡΟΝΟΜΑΣΤΗΣ της πληρότητας, ώστε το ποσοστό να μπορεί να εξηγηθεί. */
   availableDays: number;
-  /** Πόσα ΕΥΡΩ οφείλονται — το πλήθος μόνο του δεν λέει αν χρωστάς 60 € ή 1.800 €. */
+  /** Πόσα ΕΥΡΩ οφείλονται — το πλήθος μόνο του δεν λέει αν χρωστάς 60€ ή 1.800€. */
   owed: number;
   value: number; annualRevenue: number; annualExpenses: number;
 }
@@ -320,7 +320,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       const occupancy = mode === 'short' ? occ.pct : null;
       // Πάνω απο 100 σημαίνει επικαλυπτόμενες κρατήσεις, όχι γεμάτο σπίτι.
       const overbooked = mode === 'short' && occ.overbooked;
-      // ΤΟ ΠΛΗΘΟΣ ΔΕΝ ΦΤΑΝΕΙ: «3 εκκρεμή» δεν λέει αν χρωστάς 60 € ή 1.800 €.
+      // ΤΟ ΠΛΗΘΟΣ ΔΕΝ ΦΤΑΝΕΙ: «3 εκκρεμή» δεν λέει αν χρωστάς 60€ ή 1.800€.
       const owedEntries = ledgerUnpaid(ofYear);
       const unpaid = owedEntries.length;
       const owed = ledgerTotal(owedEntries);
@@ -532,7 +532,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
     finally { setGenOfficial(false); }
   };
 
-  const fieldStyle: CSSProperties = { width: '100%', padding: '10px 16px', borderRadius: 6, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 14, outline: 'none' };
+  const fieldStyle: CSSProperties = { width: '100%', padding: '10px 16px', borderRadius: T.radius.xs, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 14, outline: 'none' };
 
   const exportCsv = () => {
     const head = ['Ακίνητο', 'Τύπος', 'Κατάσταση', 'Έσοδα έτους', 'Βάση εσόδων', 'Δαπάνες έτους', 'Καθαρό', 'Πληρότητα %', 'Διαθέσιμες ημέρες', 'Νύχτες', 'Εκκρεμότητες', 'Οφειλές (€)'];
@@ -608,7 +608,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
         // αντικείμενο. Το πλακίδιο δεν εμφανίζεται καθόλου.
         ...(avgOcc != null ? [{ label: 'Μέση πληρότητα', value: fp(avgOcc),
           sub: `${shortRows.length} ${shortRows.length === 1 ? 'βραχυχρόνια' : 'βραχυχρόνια'}` }] : []),
-        // ΔΥΟ ΓΕΓΟΝΟΤΑ ΔΕΝ ΧΩΡΑΝΕ ΣΕ ΕΝΑΝ ΑΡΙΘΜΟ. Το «14 · 756,00 €» είναι πλήθος
+        // ΔΥΟ ΓΕΓΟΝΟΤΑ ΔΕΝ ΧΩΡΑΝΕ ΣΕ ΕΝΑΝ ΑΡΙΘΜΟ. Το «14 · 756,00€» είναι πλήθος
         // ΚΑΙ ποσό κολλημένα με μια τελεία: δεκατρείς χαρακτήρες εκεί που τα
         // διπλανά πλακίδια έχουν έντεκα. Επειδή το μέγεθος του αριθμού βγαίνει
         // από το μακρύτερο της σειράς, αυτό το ένα πλακίδιο κατέβαζε ΚΑΙ ΤΑ
@@ -727,7 +727,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                     {r.pending > 0
                       ? (
                         // ΤΟ ΠΛΗΘΟΣ ΚΑΙ ΤΟ ΠΟΣΟ ΜΑΖΙ. Το σκέτο «3» δεν λέει αν το
-                        // ακίνητο χρωστά 60 € ή 1.800 € — και αυτή είναι όλη η
+                        // ακίνητο χρωστά 60€ ή 1.800€ — και αυτή είναι όλη η
                         // διαφορά στο τι θα κάνει ο ιδιοκτήτης σήμερα το πρωί.
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}
                               title={r.owed > 0 ? `${r.pending} εκκρεμή, από τα οποία ${fe(r.owed)} σε απλήρωτους λογαριασμούς` : `${r.pending} εκκρεμή`}>
@@ -899,7 +899,7 @@ function Th({ label, k, sort, asc, onSort, align = 'right', pin }: { label: stri
 function Num({ v, muted, bold, tone, mark, title }: { v: string; muted?: boolean; bold?: boolean; tone?: string; mark?: string; title?: string }) {
   // ΜΙΑ ΓΡΑΜΜΑΤΟΣΕΙΡΑ ΓΙΑ ΤΟΥΣ ΑΡΙΘΜΟΥΣ. Ο πίνακας έγραφε τα ποσά σε monospace
   // ενώ τα πλακίδια από πάνω τα έγραφαν στην αριθμητική του θέματος: το ίδιο
-  // «0,00 €» φαινόταν δύο διαφορετικά πράγματα σε απόσταση εκατό εικονοστοιχείων.
+  // «0,00€» φαινόταν δύο διαφορετικά πράγματα σε απόσταση εκατό εικονοστοιχείων.
   return (
     <td title={title} style={{ padding: '13px 14px', textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: bold ? 700 : 400, color: tone || (muted ? 'var(--text-secondary)' : 'var(--text-primary)') }}>
       {v}

@@ -37,7 +37,7 @@ const SYSTEM_PROMPT = `Είσαι αναλυτής στεγαστικών δαν
 Οι αριθμοί χωρίς σύμβολα ή τελείες χιλιάδων. Το κόμμα δεκαδικό μετατρέπεται σε τελεία.`
 
 // Ό,τι επιστρέφει το μοντέλο. Οι αριθμοί δηλώνονται και ως κείμενο επειδή έτσι
-// έρχονται συχνά («3,40», «200.000 €») και περνούν από το scanNum.
+// έρχονται συχνά («3,40», «200.000€») και περνούν από το scanNum.
 type EsisExtract = {
   amount?: number | string; years?: number | string
   nominal_rate?: number | string; aprc?: number | string
@@ -137,8 +137,8 @@ export default function EsisScanPanel({
       <div {...fixedCols(4, 10)} style={{...fixedCols(4, 10).style,opacity:scanning?0.5:1,pointerEvents:scanning?'none':'auto',transition:'opacity 0.2s'}} aria-busy={scanning}>
         <NumberInput label="Ποσό δανείου" value={amount} onChange={setAmount} suffix="€"/>
         <NumberInput label="Διάρκεια" value={years} onChange={setYears} suffix="έτη"/>
-        <NumberInput label="Ονομαστικό επιτόκιο" value={nominal} onChange={setNominal} suffix="%" step={0.1}/>
-        <NumberInput label="ΣΕΠΠΕ (APRC)" value={aprc} onChange={setAprc} suffix="%" step={0.1} placeholder="αυτόματο"/>
+        <NumberInput label="Ονομαστικό επιτόκιο" value={nominal} onChange={setNominal} suffix="%"/>
+        <NumberInput label="ΣΕΠΠΕ (APRC)" value={aprc} onChange={setAprc} suffix="%" placeholder="αυτόματο"/>
         <NumberInput label="Έξοδα (σύνολο)" value={fees} onChange={setFees} suffix="€"/>
         <NumberInput label="Ασφάλιστρα ανά μήνα" value={insurance} onChange={setInsurance} suffix="€"/>
         <CustomSelect label="Τύπος επιτοκίου" value={rateType} onChange={setRateType} options={RATE_OPTIONS}/>

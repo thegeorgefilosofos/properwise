@@ -16,7 +16,7 @@ import * as settings from '@/lib/data/settings';
 import * as billing from '@/lib/data/billing';
 import NotificationSettings from './NotificationSettings';
 import { CustomSelect, Toggle } from './UIComponents';
-import { T, TT, Card, SecHdr, Btn, PageTitle, fdLong, fn, settingsField, ABSENT, pageShell, Bar } from '@/components/Theme';
+import { T, TT, Card, SecHdr, Btn, LinkBtn, PageTitle, fdLong, fn, settingsField, ABSENT, pageShell, Bar } from '@/components/Theme';
 import { SetList, SetRow, SaveNote, useAutosave } from './SettingsKit';
 import { AppPreferences, DEFAULT_PREFERENCES } from './useAppPreferences';
 import { downloadTableXlsx } from './exportCsv';
@@ -214,10 +214,10 @@ function MarketDataSharing({ userId }: { userId: string }) {
     <SetRow title="Συνεισφορά στα δεδομένα κοινότητας"
       control={loaded ? <Toggle on={on} onChange={toggle} /> : null}
       desc={<>
-        Αν το ενεργοποιήσεις, τα ακίνητά σου συμμετέχουν <strong>ανώνυμα και συγκεντρωτικά</strong> στα δεδομένα
-        αγοράς ανά περιοχή (διάμεση απόδοση και τιμή), που βοηθούν κάθε ιδιοκτήτη να συγκρίνει ρεαλιστικά.
-        Δεν κοινοποιείται ποτέ μεμονωμένο ακίνητο, διεύθυνση ή στοιχείο σου· εμφανίζονται μόνο περιοχές με
-        τουλάχιστον πέντε ακίνητα. Είναι κλειστό εξ ορισμού και το ανοίγεις ή το κλείνεις όποτε θέλεις.
+        Τα ακίνητά σου συμμετέχουν <strong>ανώνυμα και συγκεντρωτικά</strong> στα δεδομένα αγοράς ανά περιοχή
+        (διάμεση απόδοση και τιμή), ώστε κάθε ιδιοκτήτης να συγκρίνει ρεαλιστικά. Δεν κοινοποιείται ποτέ
+        μεμονωμένο ακίνητο, διεύθυνση ή στοιχείο σου· εμφανίζονται μόνο περιοχές με τουλάχιστον πέντε
+        ακίνητα. Κλειστό εξ ορισμού.
       </>} />
   );
 }
@@ -292,22 +292,18 @@ function DeleteAccount() {
           <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 12 }}>
             {leftover}
           </div>
-          <button onClick={signOut}
-            style={{ appearance: 'none', cursor: 'pointer', minHeight: 44, padding: '9px 18px', borderRadius: T.radius.btn, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700 }}>
+          <Btn variant="secondary" onClick={signOut}>
             Αποσύνδεση
-          </button>
+          </Btn>
         </div>
       ) : !open ? (
-        // Ουδέτερο ως προεπιλογή· γίνεται κόκκινο μόνο στο hover/focus, ώστε να μη
-        // «σπρώχνει» τον χρήστη προς την έξοδο, αλλά να είναι σαφές όταν το πλησιάζει.
-        <button onClick={() => setOpen(true)}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--negative-border)'; e.currentTarget.style.color = 'var(--negative)'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-          onFocus={e => { e.currentTarget.style.borderColor = 'var(--negative-border)'; e.currentTarget.style.color = 'var(--negative)'; }}
-          onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-          style={{ appearance: 'none', cursor: 'pointer', padding: '9px 18px', borderRadius: T.radius.btn, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, transition: 'color 0.15s, border-color 0.15s' }}>
+        // Ουδέτερο ως προεπιλογή, ώστε να μη «σπρώχνει» τον χρήστη προς την
+        // έξοδο. Δεν είναι η οριστική πράξη — απλώς ανοίγει την επιβεβαίωση —
+        // οπότε μένει δευτερεύον. Οι τέσσερις χειριστές που έβαφαν κόκκινο σε
+        // hover/focus έφυγαν: η `.po-btn` ξέρει και `:focus-visible` και αφή.
+        <Btn variant="secondary" onClick={() => setOpen(true)}>
           Διαγραφή του λογαριασμού μου
-        </button>
+        </Btn>
       ) : (
         <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: 16 }}>
           <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 10 }}>
@@ -326,10 +322,9 @@ function DeleteAccount() {
               style={{ appearance: 'none', cursor: ready && !busy ? 'pointer' : 'not-allowed', padding: '9px 18px', borderRadius: T.radius.btn, border: '1px solid var(--border-default)', background: 'transparent', color: ready && !busy ? 'var(--text-primary)' : 'var(--text-tertiary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, transition: 'background 0.15s, color 0.15s, border-color 0.15s' }}>
               {busy ? 'Διαγραφή…' : 'Οριστική διαγραφή'}
             </button>
-            <button onClick={() => { setOpen(false); setConfirmText(''); setError(null); }} disabled={busy}
-              style={{ appearance: 'none', cursor: 'pointer', padding: '9px 18px', borderRadius: T.radius.btn, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 500 }}>
+            <Btn variant="secondary" onClick={() => { setOpen(false); setConfirmText(''); setError(null); }} disabled={busy}>
               Ακύρωση
-            </button>
+            </Btn>
           </div>
         </div>
       )}
@@ -375,12 +370,11 @@ function IdentityRow({ label, value, empty, type = 'text', placeholder, locked =
             <div style={{ ...TT.bodySm }}>{label}</div>
             <div style={{ ...TT.body, fontWeight: 600, color: value ? 'var(--text-primary)' : 'var(--text-tertiary)', marginTop: 2, overflowWrap: 'anywhere' }}>{value || empty}</div>
           </div>
-          <button onClick={() => { setDraft(value); setMsg(null); setEdit(true); }} disabled={locked}
-            onMouseEnter={e => { if (!locked) e.currentTarget.style.color = 'var(--accent)'; }}
-            onMouseLeave={e => { if (!locked) e.currentTarget.style.color = 'var(--text-secondary)'; }}
-            style={{ appearance: 'none', border: 'none', background: 'transparent', cursor: locked ? 'default' : 'pointer', color: locked ? 'var(--text-tertiary)' : 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, padding: 0, flexShrink: 0, transition: 'color 0.15s' }}>
+          {/* Τόνος `quiet`: στην ηρεμία ήταν γκρι και όχι τονισμένο — μια σειρά
+              ρύθμισης δεν θέλει μπλε στην άκρη της. */}
+          <LinkBtn tone="quiet" onClick={() => { setDraft(value); setMsg(null); setEdit(true); }} disabled={locked}>
             Αλλαγή
-          </button>
+          </LinkBtn>
         </div>
       ) : (
         <div>
@@ -479,6 +473,8 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
 
   // Ρυθμίσεις ακινήτου (μόνο για την εξαγωγή τους σε φύλλο)
   const [s, setS] = useState<S>({});
+  /** Η ανάγνωση των ρυθμίσεων απέτυχε: το `s` είναι άδειο επειδή ΔΕΝ ΞΕΡΟΥΜΕ, όχι επειδή δεν υπάρχει. */
+  const [sUnread, setSUnread] = useState(false);
 
   // Προτιμήσεις εφαρμογής: κρατούνται ΟΛΕΣ, γράφεται πίσω το πλήρες αντικείμενο.
   const [prefs, setPrefs] = useState<AppPreferences>(DEFAULT_PREFERENCES);
@@ -509,7 +505,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
       setAccountEmail(data.user?.email || '');
       setAccountCreatedAt(data.user?.created_at ?? null);
     });
-  }, []);
+  }, [supabase.auth]);
 
   useEffect(() => {
     billing.profile<{ plan: string | null; comp_plan: string | null; comp_until: string | null; trial_used_at: string | null; hold_plan: string | null; hold_until: string | null; bonus_properties: number | null; bonus_properties_until: string | null }>(
@@ -523,8 +519,21 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  // ── ΤΟ ΑΔΕΙΟ ΚΑΙ ΤΟ ΑΔΙΑΒΑΣΤΟ ΔΕΝ ΕΙΝΑΙ ΤΟ ΙΔΙΟ ─────────────────────────
+  // Η ανάγνωση έγραφε `const { data }` κι πετούσε το σφάλμα. Το `s` έμενε `{}`
+  // — ακριβώς ό,τι σημαίνει «αυτό το ακίνητο δεν έχει ρυθμίσεις ακόμη». Το
+  // `s` όμως το διαβάζει ΜΟΝΟ η εξαγωγή, που σε άδειο λέει στον χρήστη «δεν
+  // υπάρχει καμία καταχωρημένη ρύθμιση σε αυτό το ακίνητο»: μια ΒΕΒΑΙΩΣΗ για
+  // κάτι που δεν ελέγχθηκε ποτέ. Ο ιδιοκτήτης που έχει συμπληρώσει ΑΦΜ,
+  // παρόχους κι διαχειριστή διαβάζει ότι δεν έχει τίποτα· το πιστεύει.
+  //
+  // Το σχόλιο τριάντα γραμμές πιο κάτω περιγράφει ΤΟ ΙΔΙΟ σφάλμα σε
+  // προηγούμενη μορφή του: «δεν μπορεί να ξεχωρίσει αν δεν έχει δεδομένα ή αν
+  // η εξαγωγή χάλασε». Διορθώθηκε τότε η εξαγωγή· η ανάγνωση από πάνω της
+  // έμεινε να λέει το ίδιο ψέμα.
   async function loadSettings() {
-    const { data } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle();
+    const { data, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle();
+    setSUnread(!!error);
     if (data) setS(data);
   }
   async function loadPrefs() {
@@ -617,7 +626,6 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   const planMeta = PLANS[effPlan];
   const isProPlan = effPlan === 'agency';
   const proEligible = planAtLeast(effPlan, 'agency');
-  const tier: 'owner' | 'agency' | 'partner' = partner ? 'partner' : profileType === 'professional' ? 'agency' : 'owner';
 
   // ── Η ΕΞΑΓΩΓΗ ΡΥΘΜΙΣΕΩΝ ΗΤΑΝ ΧΩΜΑΤΕΡΗ ΤΗΣ ΒΑΣΗΣ ────────────────────────
   // Εγραφε `Object.entries` της γραμμής, δηλαδή έστελνε στον χρήστη ελληνικού
@@ -635,7 +643,9 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
       .map(([key, label]) => [label, String((s as Record<string, unknown>)[key] ?? '').trim()])
       .filter(([, value]) => value !== '');
     if (rows.length === 0) {
-      setSheetNote('Δεν υπάρχει καμία καταχωρημένη ρύθμιση σε αυτό το ακίνητο.');
+      setSheetNote(sUnread
+        ? 'Δεν διαβάστηκαν οι ρυθμίσεις του ακινήτου, οπότε δεν ξέρουμε τι υπάρχει. Ανανέωσε τη σελίδα κι δοκίμασε ξανά.'
+        : 'Δεν υπάρχει καμία καταχωρημένη ρύθμιση σε αυτό το ακίνητο.');
       return;
     }
     setSheetNote('');
@@ -883,7 +893,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               διδάσκει ότι οι ρυθμίσεις δεν μετράνε.
               Τα ποσά γράφονται πάντα με δύο δεκαδικά, γιατί αλλιώς η υποδιαστολή
               κάθεται σε άλλη θέση σε κάθε γραμμή και η στήλη σπάει. */}
-          <SetRow title="Ορίζοντας προθεσμιών" desc="Πόσο μπροστά κοιτά η λίστα «Τι χρειάζεται τώρα» στην αρχική οθόνη. Ό,τι είναι πιο μακριά ζει στο Ημερολόγιο και στις Εκκρεμότητες. Οι εκπρόθεσμες εμφανίζονται πάντα, όποια τιμή κι αν επιλέξεις."
+          <SetRow title="Ορίζοντας προθεσμιών" desc="Πόσο μπροστά κοιτά η λίστα «Τι χρειάζεται τώρα». Ο,τι είναι πιο μακριά ζει στο Ημερολόγιο· οι εκπρόθεσμες εμφανίζονται πάντα."
             control={<div style={{ width: 264 }}>
               <CustomSelect ariaLabel="Ορίζοντας προθεσμιών" value={String(prefs.agendaHorizonDays)}
                 onChange={v => updatePrefs({ agendaHorizonDays: Number(v) as AppPreferences['agendaHorizonDays'] })}
@@ -934,7 +944,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               ΜΕΣΑ, το ημερολόγιο βγάζει τις προθεσμίες ΕΞΩ, εκεί που ο
               ιδιοκτήτης κοιτάζει ήδη κάθε μέρα. */}
           <CalendarFeedRow userId={userId} />
-          <SetRow title="Εξαγωγή όλων των δεδομένων" desc="Κάθε εγγραφή που σε αφορά, σε ένα αρχείο JSON, για μεταφορά σε άλλη υπηρεσία ή για δικό σου αντίγραφο. Είναι μορφή για μηχανές: το δικαίωμα φορητότητας τη ζητά έτσι. Για να διαβάσεις δεδομένα, κάθε καρτέλα έχει τη δική της εξαγωγή σε Excel."
+          <SetRow title="Εξαγωγή όλων των δεδομένων" desc="Κάθε εγγραφή που σε αφορά, σε ένα αρχείο JSON: η μορφή που ζητά το δικαίωμα φορητότητας, για μεταφορά σε άλλη υπηρεσία. Για ανάγνωση, κάθε καρτέλα έχει δική της εξαγωγή Excel."
             control={<Btn variant="secondary" onClick={exportAll} disabled={exporting}>{exporting ? 'Εξαγωγή…' : 'Εξαγωγή όλων'}</Btn>}>
             {exportErr && <div style={{ ...TT.bodySm, color: 'var(--negative)' }}>{exportErr}</div>}
             {exportOk && <div style={{ ...TT.bodySm }}>{exportOk}</div>}

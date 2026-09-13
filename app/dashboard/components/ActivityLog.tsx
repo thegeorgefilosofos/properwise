@@ -8,7 +8,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, Skeleton, EmptyState } from '@/components/Theme';
+import { T, Skeleton, EmptyState, InfoBanner } from '@/components/Theme';
+import { failed } from '@/lib/core/dbError';
 import { History } from 'lucide-react';
 import { activityLabel, type ActivityRow } from '@/lib/activity';
 
@@ -27,20 +28,31 @@ function relTime(iso: string): string {
 export default function ActivityLog() {
   const supabase = createClient();
   const [rows, setRows] = useState<ActivityRow[] | null>(null);
+  // ═══ ΕΔΩ Η ΣΙΩΠΗ ΔΕΝ ΕΙΝΑΙ ΑΠΛΩΣ ΑΝΑΚΡΙΒΕΙΑ ═══════════════════════════════
+  // Το μητρώο δραστηριότητας το ανοίγει κάποιος ΑΚΡΙΒΩΣ όταν υποψιάζεται ότι
+  // κάτι έγινε στον λογαριασμό του. Μια αποτυχία ανάγνωσης έδινε κενό πίνακα
+  // και η οθόνη απαντούσε «Καμία δραστηριότητα ακόμη» — δηλαδή τον καθησύχαζε
+  // για κάτι που ΔΕΝ ΕΛΕΓΞΕ. Κενό μητρώο και άγνωστο μητρώο δεν λέγονται με
+  // την ίδια πρόταση.
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const { data } = await supabase.rpc('my_activity', { p_limit: 30 });
-        if (alive) setRows((data as ActivityRow[] | null) ?? []);
-      } catch {
-        if (alive) setRows([]);
+        const { data, error: err } = await supabase.rpc('my_activity', { p_limit: 30 });
+        if (!alive) return;
+        if (err) { setError(failed('Η δραστηριότητα δεν διαβάστηκε', err)); return; }
+        setRows((data as ActivityRow[] | null) ?? []);
+      } catch (err) {
+        if (alive) setError(failed('Η δραστηριότητα δεν διαβάστηκε', err));
       }
     })();
     return () => { alive = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (error) return <InfoBanner tone="negative">{error} Δοκίμασε ξανά σε λίγο· ώσπου να διαβαστεί, δεν ξέρουμε αν το μητρώο είναι κενό.</InfoBanner>;
 
   if (rows === null) {
     // Το σχήμα είναι γνωστό (γραμμές timeline), οπότε δείχνουμε το σχήμα και όχι

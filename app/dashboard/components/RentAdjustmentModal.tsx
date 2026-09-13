@@ -11,7 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import * as properties from '@/lib/data/properties';
 import * as tenantStore from '@/lib/data/tenants';
 import { saved } from '@/components/dbWrite';
-import { T, TT, Btn, Spinner, EmptyState, Modal, fixedCols } from '@/components/Theme';
+import { T, TT, Btn, ChipToggle, Spinner, EmptyState, Modal, fixedCols } from '@/components/Theme';
 import { Building2 } from 'lucide-react';
 import { InfoHint } from './InfoHint';
 
@@ -126,8 +126,8 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
   // ΤΟ ΠΟΣΟ ΤΗΣ ΤΕΛΕΥΤΑΙΑΣ ΔΟΣΗΣ ΔΕΝ ΕΙΝΑΙ ΤΟ ΜΗΝΙΑΙΟ ΜΙΣΘΩΜΑ. Το πεδίο γέμιζε
   // από `rentStore.latestAmount`, δηλαδή από τη στήλη `amount` της νεότερης
   // γραμμής `rent_payments`. Εκείνη γράφεται ως (μίσθωμα + υπηρεσίες) επί τους
-  // μήνες της δόσης (TabTenantMoney.tsx:398). Με τριμηνιαία εξόφληση 500,00 €
-  // τον μήνα, η οθόνη έγραφε «Τρέχον 1.500,00 €» και το υπογεγραμμένο PDF
+  // μήνες της δόσης (TabTenantMoney.tsx:398). Με τριμηνιαία εξόφληση 500,00€
+  // τον μήνα, η οθόνη έγραφε «Τρέχον 1.500,00€» και το υπογεγραμμένο PDF
   // ειδοποιούσε τον μισθωτή για τριπλάσιο μίσθωμα· με χρέωση υπηρεσιών, το
   // ίδιο έγγραφο ανέβαζε τις υπηρεσίες μαζί με το μίσθωμα.
   //
@@ -149,13 +149,13 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
   const prop = props.find(p => p.id === propId);
 
   // ═══ Η ΔΕΥΤΕΡΗ ΕΠΙΣΤΟΛΗ ΠΑΤΑΕΙ ΠΑΝΩ ΣΤΗΝ ΠΡΩΤΗ, ΚΑΙ ΤΗΝ ΑΝΕΒΑΖΕΙ ΞΑΝΑ ══════
-  // ΤΟ ΣΕΝΑΡΙΟ, ΒΗΜΑ ΒΗΜΑ. Ο ιδιοκτήτης εκδίδει ειδοποίηση 600,00 € προς
-  // 626,40 € με ισχύ σήμερα. Το παράθυρο γράφει το νέο μίσθωμα στην καρτέλα του
+  // ΤΟ ΣΕΝΑΡΙΟ, ΒΗΜΑ ΒΗΜΑ. Ο ιδιοκτήτης εκδίδει ειδοποίηση 600,00€ προς
+  // 626,40€ με ισχύ σήμερα. Το παράθυρο γράφει το νέο μίσθωμα στην καρτέλα του
   // μισθωτή, όπως πρέπει. Την επόμενη μέρα ξανανοίγει το ίδιο παράθυρο, για να
   // δει τι είχε κάνει ή επειδή δεν είναι σίγουρος ότι κατέβηκε το PDF. Το
-  // «Τρέχον μίσθωμα» προσυμπληρώνεται ΤΩΡΑ με 626,40 €, γιατί αυτό λέει η
+  // «Τρέχον μίσθωμα» προσυμπληρώνεται ΤΩΡΑ με 626,40€, γιατί αυτό λέει η
   // καρτέλα. Πατά «Υπογεγραμμένο PDF» και παίρνει δεύτερη επίσημη ειδοποίηση,
-  // 626,40 € προς 653,96 €, με τον ΙΔΙΟ δείκτη του ΙΔΙΟΥ μήνα.
+  // 626,40€ προς 653,96€, με τον ΙΔΙΟ δείκτη του ΙΔΙΟΥ μήνα.
   //
   // ΤΙ ΜΕΝΕΙ ΜΕΤΑ. Δύο αριθμημένα έγγραφα στο μητρώο για την ίδια αναπροσαρμογή,
   // ο μισθωτής με το πρώτο στο χέρι, η καρτέλα με το ποσό του δεύτερου· και μια
@@ -256,8 +256,8 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
       setPending({ model, fname });
       // ΤΟ ΕΓΓΡΑΦΟ ΕΒΓΑΙΝΕ ΚΑΙ ΤΟ ΜΙΣΘΩΜΑ ΕΜΕΝΕ ΤΟ ΠΑΛΙΟ. Οι μόνες εγγραφές του
       // παραθύρου ήταν το `issued_documents` και το αρχείο του PDF· καμία στην
-      // καρτέλα του μισθωτή. Με ειδοποίηση 600,00 € προς 626,40 €, η δόση
-      // Σεπτεμβρίου γεννιόταν στα 600,00 € και το ίδιο ποσό περνούσε σε αίτημα
+      // καρτέλα του μισθωτή. Με ειδοποίηση 600,00€ προς 626,40€, η δόση
+      // Σεπτεμβρίου γεννιόταν στα 600,00€ και το ίδιο ποσό περνούσε σε αίτημα
       // πληρωμής, πύλη μισθωτή και Ε2.
       //
       // ΕΔΩ ΚΑΙ ΟΧΙ ΣΤΟ archive(). Η αρχειοθέτηση είναι προαιρετική («Ίσως
@@ -314,9 +314,6 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
   const lbl = { ...TT.label, marginBottom: 6 } as React.CSSProperties;
   const onFieldFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--accent)'; };
   const onFieldBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)'; };
-  // Ύψος από την κοινή κλίμακα: το ίδιο segmented control ζει αυτούσιο και στο
-  // LeaseModal με το ίδιο literal 34, οπότε κάθε τοπική αλλαγή τα ξεσυγχρόνιζε.
-  const seg = (m: AdjMethod): React.CSSProperties => ({ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 600, height: T.h.md, borderRadius: T.radius.inner, cursor: 'pointer', textAlign: 'center', border: 'none', background: method === m ? 'var(--accent)' : 'transparent', color: method === m ? 'var(--accent-text)' : 'var(--text-secondary)', fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' });
   // ΤΟ ΔΙΑΚΡΙΤΙΚΟ ΠΟΥ ΛΕΕΙ ΑΠΟ ΠΟΥ ΗΡΘΕ Ο ΑΡΙΘΜΟΣ, ΓΙΑ ΠΟΙΑ ΠΕΡΙΟΔΟ ΚΑΙ ΠΟΤΕ
   // ΕΝΗΜΕΡΩΘΗΚΕ. Ένα πεδίο που γεμίζει μόνο του χωρίς να πει από πού, σε έγγραφο
   // που θα υπογραφεί, είναι χειρότερο από άδειο πεδίο: ο χρήστης δεν ξέρει τι
@@ -332,9 +329,6 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
         </>,
     manual: 'Όρισε απευθείας το νέο μίσθωμα, όπως το συμφωνήσατε.',
   };
-  // Ίδιο σχήμα με τον επιλογέα μεθόδου, ώστε οι δύο σειρές να διαβάζονται ως
-  // ερώτηση και υποερώτηση και όχι ως δύο άσχετα χειριστήρια.
-  const share = (on: boolean): React.CSSProperties => ({ ...seg('cpi'), background: cpiShare75 === on ? 'var(--accent)' : 'transparent', color: cpiShare75 === on ? 'var(--accent-text)' : 'var(--text-secondary)' });
 
   // ΤΟ ΠΟΣΟΣΤΟ ΤΟΥ ΔΤΚ ΔΕΝ ΠΛΗΚΤΡΟΛΟΓΕΙΤΑΙ. Είναι κρατικό στοιχείο: αν το άφηνε
   // κανείς επεξεργάσιμο, το έγγραφο θα μπορούσε να γράφει «βάσει της μεταβολής
@@ -357,6 +351,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
   // στο πεδίο. Τρεις κλήσεις, τρία διαφορετικά νοήματα.
   const money = (value: string, on: (v: string) => void, suffix: string, name: string, max?: number) => (
     <div style={{ position: 'relative' }}>
+      {/* Το paddingRight δεν είναι αέρας: βγαίνει από το «€» ή το «%» που κάθεται στο right: 13 του πεδίου — 13 του περιθωρίου συν το πλάτος του συμβόλου. */}
       <input value={value} aria-label={name} onChange={e => { const v = acceptNumeric(e.target.value, max); if (v !== null) on(v); }}
         onFocus={onFieldFocus} onBlur={onFieldBlur} inputMode="decimal" placeholder=""
         style={{ ...field, paddingRight: 30, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} />
@@ -451,9 +446,10 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
               <div>
                 <div style={lbl}>Μέθοδος αναπροσαρμογής</div>
                 <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-                  <button onClick={() => setMethod('percent')} style={seg('percent')}>Ποσοστό</button>
-                  <button onClick={() => setMethod('cpi')} style={seg('cpi')}>ΔΤΚ (ΕΛΣΤΑΤ)</button>
-                  <button onClick={() => setMethod('manual')} style={seg('manual')}>Χειροκίνητο</button>
+                  {/* `seg` γιατί η ράγα γύρω τους έχει ήδη περίγραμμα, `grow` για τα τρία ίσα μερίδια. */}
+                  <ChipToggle shape="seg" grow on={method === 'percent'} onClick={() => setMethod('percent')}>Ποσοστό</ChipToggle>
+                  <ChipToggle shape="seg" grow on={method === 'cpi'} onClick={() => setMethod('cpi')}>ΔΤΚ (ΕΛΣΤΑΤ)</ChipToggle>
+                  <ChipToggle shape="seg" grow on={method === 'manual'} onClick={() => setMethod('manual')}>Χειροκίνητο</ChipToggle>
                 </div>
                 <div style={{ ...TT.bodySm, marginTop: 8, lineHeight: 1.5 }}>{METHOD_HINT[method]}</div>
                 {/* ΠΟΙΑ ΒΑΣΗ, ΤΟ ΛΕΕΙ ΤΟ ΜΙΣΘΩΤΗΡΙΟ. Ο νόμος δίνει δύο και δίνουν
@@ -463,8 +459,8 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
                 {method === 'cpi' && (
                   <>
                     <div style={{ display: 'flex', gap: 4, padding: 4, marginTop: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-                      <button onClick={() => setCpiShare75(false)} style={share(false)}>Ολόκληρη η μεταβολή</button>
-                      <button onClick={() => setCpiShare75(true)} style={share(true)}>75% της μεταβολής</button>
+                      <ChipToggle shape="seg" grow on={cpiShare75 === false} onClick={() => setCpiShare75(false)}>Ολόκληρη η μεταβολή</ChipToggle>
+                      <ChipToggle shape="seg" grow on={cpiShare75 === true} onClick={() => setCpiShare75(true)}>75% της μεταβολής</ChipToggle>
                     </div>
                     <div style={{ ...TT.bodySm, marginTop: 8, lineHeight: 1.5 }}>
                       Το 75% ισχύει τυπικά στις επαγγελματικές μισθώσεις. Ο όρος του μισθωτηρίου αποφασίζει.
@@ -563,7 +559,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
               </div>
 
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '11px 13px', borderRadius: T.radius.inner, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-                <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55, fontFamily: T.font.sans }}>
                   Ιδιωτική ειδοποίηση με ισχύ έγγραφης απόδειξης. Η <strong style={{ color: 'var(--text-primary)' }}>αλλαγή μισθώματος</strong> δηλώνεται επίσημα στη «Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης» στο <a href={MYAADE} target="_blank" rel="noreferrer" title={aadeTitle('lease')} style={{ color: 'var(--accent)', textDecoration: 'none' }}>myAADE</a>.
                 </div>

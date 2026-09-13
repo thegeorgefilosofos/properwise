@@ -96,7 +96,7 @@ import { taxProfileOf } from '@/lib/tax/greekTaxCalendar';
 import PortalShare from './components/PortalShare';
 import OccupancyPanel from './components/OccupancyPanel';
 import BillingNudge from './components/BillingNudge';
-import { athensToday, daysUntilOrNull, isoYear, isoMonth } from '@/lib/core/time';
+import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
 // Το Αρχείο έχει ένα σπίτι: lib/data/documents.
 import * as documents from '@/lib/data/documents';
 import { saved, savedData } from '@/components/dbWrite';
@@ -360,20 +360,27 @@ const ic = (d: string) => <svg aria-hidden="true" viewBox="0 0 24 24" fill="none
 //
 // Παράγοντάς τη, τα ονόματα και τα εικονίδια δεν ξαναγράφονται: έρχονται από
 // NAV_LABEL/NAV_ICON. Πριν, το ίδιο εικονίδιο υπήρχε δύο φορές στο αρχείο.
-const BOTTOM_NAV = [
-  ...CORE_TABS
-    .filter(id => id !== 'settings')   // ο λογαριασμός ζει στο υποσέλιδο της πλαϊνής μπάρας
-    .slice(0, 4)
-    .map(id => ({ id, label: NAV_LABEL[id], icon: ic(NAV_ICON[id]) })),
-  { id:'more', label:'Μενού', icon: ic('M4 6h16|M4 12h16|M4 18h16') },
-];
+// ═══ ΔΥΟ ΠΟΡΤΕΣ ΓΙΑ ΤΟ ΙΔΙΟ ΔΩΜΑΤΙΟ ═══════════════════════════════════════
+// Η εφαρμογή είχε χάμπουργκερ πάνω αριστερά ΚΑΙ «Μενού» κάτω δεξιά, που
+// άνοιγαν και τα δύο την ΙΔΙΑ πλαϊνή μπάρα (`setSidebarOpen`). Δύο σημεία για
+// μία ενέργεια δεν είναι διευκόλυνση: είναι δύο πράγματα να μάθει ο χρήστης
+// αντί για ένα — με μία θέση λιγότερη για πραγματικό προορισμό.
+//
+// ΜΕΝΕΙ ΤΟ ΠΑΝΩ ΑΡΙΣΤΕΡΑ, γιατί εκεί το ψάχνει το χέρι σε κάθε εφαρμογή και
+// γιατί είναι ορατό ΚΑΙ σε υπολογιστή, όπου η κάτω μπάρα δεν υπάρχει καν. Η
+// κάτω μπάρα κρατά τέσσερις προορισμούς — μεγαλύτερος στόχος ο καθένας, με
+// τον χώρο μοιρασμένο στα τέσσερα αντί για στα πέντε.
+const BOTTOM_NAV = CORE_TABS
+  .filter(id => id !== 'settings')   // ο λογαριασμός ζει στο υποσέλιδο της πλαϊνής μπάρας
+  .slice(0, 4)
+  .map(id => ({ id, label: NAV_LABEL[id], icon: ic(NAV_ICON[id]) }));
 
 // ═══ ΔΥΟ ΤΥΠΟΙ ΠΟΣΟΥ ΣΤΗΝ ΙΔΙΑ ΕΦΑΡΜΟΓΗ, ΚΑΙ Ο ΕΝΑΣ ΕΒΓΑΖΕ ΠΑΥΛΑ ══════════
-// Ο τοπικός `fmtEur` έγραφε ακέραια ευρώ («1.234 €») ενώ ο κοινός `fe` γράφει
-// πάντα δύο δεκαδικά («1.234,50 €»): στην ΙΔΙΑ οθόνη, το πλακίδιο «Δαπάνες»
+// Ο τοπικός `fmtEur` έγραφε ακέραια ευρώ («1.234€») ενώ ο κοινός `fe` γράφει
+// πάντα δύο δεκαδικά («1.234,50€»): στην ΙΔΙΑ οθόνη, το πλακίδιο «Δαπάνες»
 // στοιχιζόταν αλλού από το «Καθαρό αποτέλεσμα». Και για `null` επέστρεφε «—»,
 // δηλαδή σύμβολο σε θέση ποσού, σε δεκαοκτώ σημεία της Επισκόπησης.
-// Ο κοινός τύπος τα λύνει και τα δύο: `feOr` γράφει «0,00 €» για το άγνωστο.
+// Ο κοινός τύπος τα λύνει και τα δύο: `feOr` γράφει «0,00€» για το άγνωστο.
 const fmtEur = feOr;
 
 // MD3 form styles
@@ -384,13 +391,26 @@ const fmtEur = feOr;
 function useInventoryAlerts(propertyId: string | null, userId: string | null) {
   const [alertCount, setAlertCount] = useState(0);
   const [itemCount, setItemCount] = useState(0);
+  // Η ΤΡΙΤΗ ΚΑΤΑΣΤΑΣΗ ΤΟΥ ΜΕΤΡΗΤΗ: «δεν ξέρουμε». Χωρίς αυτήν είχε δύο · η
+  // αποτυχία φορούσε τα ρούχα του μηδενός.
+  const [alertsUnknown, setAlertsUnknown] = useState(false);
   const supabase = createClient();
   useEffect(() => {
     if (!propertyId || !userId) return;
     const check = async () => {
-      const items = await inventory.ofProperty<{ warranty_expiry: string | null; condition: string | null; purchase_date: string | null }>(supabase, propertyId, 'warranty_expiry,condition,purchase_date', userId);
-      const { data: schedules } = await supabase.from('inventory_maintenance').select('next_due').eq('property_id', propertyId);
-      if (!items) return;
+      // ΤΟ ΣΗΜΑ ΤΟΥ ΜΕΝΟΥ ΕΛΕΓΕ «ΚΑΜΙΑ ΕΚΚΡΕΜΟΤΗΤΑ» ΧΩΡΙΣ ΝΑ ΕΧΕΙ ΔΙΑΒΑΣΕΙ.
+      // Και οι δύο αναγνώσεις πετούσαν το `error`: σε αποτυχία η λίστα γύριζε
+      // άδεια, ο μετρητής έμενε μηδέν, η κουκκίδα δεν αποδιδόταν και ο
+      // φωνητικός αναγνώστης άκουγε σκέτο «Μενού». Ο ιδιοκτήτης με ληγμένη
+      // συντήρηση καυστήρα ή εγγύηση που τρέχει έβλεπε καθαρή μπάρα και δεν
+      // άνοιγε την Απογραφή. Τώρα η αποτυχία δηλώνεται: κανένας αριθμός δεν
+      // λέγεται όταν δεν μετρήθηκε.
+      const { rows: items, error: itemsErr } = await inventory.ofPropertyWithError<{ warranty_expiry: string | null; condition: string | null; purchase_date: string | null }>(supabase, propertyId, 'warranty_expiry,condition,purchase_date', userId);
+      const { data: schedules, error: schedErr } = await supabase.from('inventory_maintenance').select('next_due').eq('property_id', propertyId);
+      setAlertsUnknown(!!itemsErr || !!schedErr);
+      // Χωρίς τα αντικείμενα δεν μετριέται τίποτα: ούτε το πλήθος τους, ούτε οι
+      // ειδοποιήσεις τους. Ο μετρητής μένει όπως ήταν, σημαδεμένος ως άγνωστος.
+      if (itemsErr) return;
       setItemCount(items.length);
       let count = 0; const now = Date.now();
       items.forEach(item => {
@@ -402,8 +422,8 @@ function useInventoryAlerts(propertyId: string | null, userId: string | null) {
       setAlertCount(count);
     };
     check();
-  }, [propertyId]);
-  return { alertCount, itemCount };
+  }, [propertyId, supabase, userId]);
+  return { alertCount, itemCount, alertsUnknown };
 }
 
 function useChecklistAlerts(propertyId: string | null) {
@@ -422,7 +442,7 @@ function useChecklistAlerts(propertyId: string | null) {
       setAlertCount(count);
     };
     check();
-  }, [propertyId]);
+  }, [propertyId, supabase]);
   return alertCount;
 }
 
@@ -448,10 +468,15 @@ function useChecklistAlerts(propertyId: string | null) {
 // Μία λέξη το λύνει: εξάγεται, ο πάγκος τη στήνει με τα δικά του δεδομένα και
 // από εδώ και πέρα περνά κι αυτή από τους δώδεκα ελέγχους διάταξης και από τον
 // έλεγχο προσβασιμότητας, όπως κάθε άλλη οθόνη.
-export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }: { prop: Property;
+export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, profileType = 'individual', legalForm = 'individual' }: { prop: Property;
   /** ΟΛΑ τα ακίνητα του χρήστη — χρειάζονται για τον φόρο: η κλίμακα των ενοικίων
    *  είναι προοδευτική στο σύνολο του φορολογούμενου, όχι ανά ακίνητο. */
   properties: Property[];
+  /** ΠΕΡΝΑΝΕ ΜΟΝΟ ΓΙΑ ΤΟ ΠΑΝΕΛ ΠΛΗΡΟΤΗΤΑΣ, ΠΟΥ ΥΠΟΛΟΓΙΖΕΙ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ.
+   *  Εκείνο περνούσε καρφωμένο «φυσικό πρόσωπο», οπότε η εταιρεία έβλεπε μηδέν
+   *  τέλος στην Επισκόπηση και το σωστό ποσό στη Λογιστική. */
+  profileType?: 'individual' | 'professional';
+  legalForm?: LegalForm;
   // ΤΟ ΟΝΟΜΑ ΙΔΙΟΚΤΗΤΗ ΕΦΥΓΕ ΑΠΟ ΕΔΩ. Περνούσε ως prop μαζί με χειριστή
   // αποθήκευσης και ΚΑΝΕΝΑ από τα δύο δεν χρησιμοποιήθηκε ποτέ μέσα στο σώμα:
   // η οθόνη δεν το έδειχνε και δεν το άλλαζε. Το όνομα ζει στο
@@ -717,8 +742,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }
   // ΤΟ ΠΛΑΚΙΔΙΟ ΕΛΕΓΕ ΔΥΟ ΝΟΥΜΕΡΑ ΑΠΟ ΔΥΟ ΠΗΓΕΣ.
   // Η τιμή έβγαινε ΜΟΝΟ από τον πίνακα `expenses`, ενώ ο υπότιτλος «X ως
   // σήμερα» από το ενιαίο ημερολόγιο (λογαριασμοί + δαπάνες). Αρκούσε ένας
-  // απλήρωτος λογαριασμός για να γράφει το πλακίδιο «Δαπάνες 1.200,00 € ·
-  // 1.800,00 € ως σήμερα»: το σύνολο του έτους μικρότερο από το μέχρι σήμερα.
+  // απλήρωτος λογαριασμός για να γράφει το πλακίδιο «Δαπάνες 1.200,00€ ·
+  // 1.800,00€ ως σήμερα»: το σύνολο του έτους μικρότερο από το μέχρι σήμερα.
   // Δηλαδή στη συνηθισμένη περίπτωση. Τώρα και τα δύο πατούν στο ημερολόγιο.
   const projectedExpYear = allExpenses.reduce((s,e) => s + e.amount * occMonths(e, year).length, 0) + unbilledOfYear;
   const recurringCount = allExpenses.filter(e => e.is_recurring && occMonths(e, year).length > 0).length;
@@ -747,13 +772,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }
   // ο πίνακας ήταν τρίτη, αόρατη μηχανή που πλήρωνε ερωτήματα χωρίς αποδέκτη.
   // Μένουν μόνο τα μεγέθη που εμφανίζονται πραγματικά στα πλακίδια.
   // Ιδια πολιτική με τις άλλες οθόνες, γραμμένη μία φορά (lib/core/time).
-  const daysUntil = daysUntilOrNull;
   const openChk = chk.length;
 
   // ── ΦΟΡΟΣ: ΕΝΑΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ, ΟΧΙ ΤΡΕΙΣ ────────────────────────────────
   // Πριν: rentalIncomeTax(annualRent) ανά ακίνητο. Ο ιδιοκτήτης τριών
-  // διαμερισμάτων με 8.000 € έκαστο έβλεπε 3 × 1.140 € = 3.420 € αντί για τον
-  // πραγματικό φόρο των 24.000 € (4.500 €) — υποεκτίμηση 1.080 €, με τίτλο
+  // διαμερισμάτων με 8.000€ έκαστο έβλεπε 3 × 1.140€ = 3.420€ αντί για τον
+  // πραγματικό φόρο των 24.000€ (4.500€) — υποεκτίμηση 1.080€, με τίτλο
   // «Εκτιμώμενος Φόρος». Τώρα ο φόρος υπολογίζεται μία φορά στο σύνολο του
   // χαρτοφυλακίου και εμφανίζεται το μερίδιο αυτού του ακινήτου, με την εξήγηση
   // από κάτω. Το ενοίκιο του τρέχοντος ακινήτου έρχεται από το resolveRent, ώστε
@@ -787,8 +811,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }
   // ΑΠΟ ΤΟ ΙΔΙΟ ΗΜΕΡΟΛΟΓΙΟ ΜΕ ΤΟ ΠΛΑΚΙΔΙΟ ΤΩΝ ΔΑΠΑΝΩΝ, τετρακόσια εικονοστοιχεία
   // πιο κάτω. Εδώ περνούσαν οι ωμοί πίνακες `bills` και `expenses` και
   // προστίθεντο: η σάρωση παραστατικού γράφει ΚΑΙ λογαριασμό ΚΑΙ δαπάνη με
-  // `bill_id` και οι δύο απλήρωτες, οπότε ένας λογαριασμός ΔΕΗ 84,50 € έβγαινε
-  // 169,00 € — στο πρώτο νούμερο που βλέπει ο ιδιοκτήτης όταν ανοίγει το ακίνητο,
+  // `bill_id` και οι δύο απλήρωτες, οπότε ένας λογαριασμός ΔΕΗ 84,50€ έβγαινε
+  // 169,00€ — στο πρώτο νούμερο που βλέπει ο ιδιοκτήτης όταν ανοίγει το ακίνητο,
   // ενώ η ίδια οθόνη πιο κάτω έδειχνε το σωστό.
   //
   // ΧΩΡΙΣ ΦΙΛΤΡΟ ΕΤΟΥΣ, επίτηδες: ο απλήρωτος λογαριασμός του περασμένου
@@ -928,7 +952,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }
       // δηλαδή για το είδος με την πιο συγκεκριμένη ημερομηνία που υπάρχει.
       //
       // Το επείγον δεν χάνεται: πέρασε εκεί που είναι το ποσό. Το
-      // `cashSideNote` γράφει πλέον «2 εκκρεμότητες · 120,00 € ληξιπρόθεσμα,
+      // `cashSideNote` γράφει πλέον «2 εκκρεμότητες · 120,00€ ληξιπρόθεσμα,
       // η παλαιότερη 18 ημέρες πίσω», χρησιμοποιώντας το `overdue` που
       // υπολογιζόταν και δεν το τύπωνε καμία οθόνη.
       //
@@ -986,7 +1010,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }
               Μένει η ώρα Ελλάδας, που δεν τη λέει κανείς άλλος και που δίνει
               νόημα στο «ως σήμερα» κάθε ποσού από κάτω. */}
         </div>
-        <button onClick={()=>printPropertyStatement({
+        <Btn onClick={()=>printPropertyStatement({
           propName: prop.name, address: prop.address||undefined, postalCode: prop.postal_code||undefined,
           propType: propertyTypeLabel(prop.prop_type)||'Ακίνητο',
           status: statusLabelOf(prop), year, propValue: propValue||undefined,
@@ -999,13 +1023,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }
           shortTerm: isShortTerm(prop),
           monthlyRent: rent, annualRent, grossYield, netYield,
           expensesYTD: totalExpYTD, categories: catEntries, branding,
-        })}
-          style={{display:'inline-flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 16px',borderRadius: T.radius.pill,border:'1px solid var(--border-default)',background:'transparent',color:'var(--text-secondary)',fontFamily: T.font.sans,fontSize:12,fontWeight:700,cursor:'pointer'}}
-          onMouseEnter={e=>{e.currentTarget.style.background='var(--bg-hover)';e.currentTarget.style.color='var(--text-primary)';}}
-          onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-secondary)';}}>
+        })}>
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
           Αναφορά σε PDF
-        </button>
+        </Btn>
       </div>
 
 
@@ -1191,7 +1212,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }
             sub: [`${fmtEur(totalExpYTD)} ως σήμερα`, recurringCount>0 ? `${recurringCount} πάγιες` : null].filter(Boolean).join(' · '),
             title:`Οι δαπάνες που έχεις καταχωρήσει για το ${year}, μετρημένες όσες φορές πραγματικά συμβαίνουν.` },
           // Χωρίς εμπορική ΚΑΙ χωρίς αντικειμενική αξία, το πλακίδιο έγραφε
-          // «0,00 €»: όχι μέτρηση, αλλά απουσία μέτρησης ντυμένη σαν μέτρηση.
+          // «0,00€»: όχι μέτρηση, αλλά απουσία μέτρησης ντυμένη σαν μέτρηση.
           ...(propValue>0 ? [{ label:'Αξία ακινήτου', value: fmtEur(propValue),
             title: prop.value ? 'Εμπορική αξία, όπως την έχεις καταχωρήσει.' : 'Αντικειμενική αξία από το έντυπο Ε9, επειδή δεν έχει καταχωρηθεί εμπορική.' }] : []),
         ];
@@ -1207,9 +1228,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }
           sub: debtLtv>0 ? `δάνειο προς αξία ${fp(debtLtv)}` : undefined,
           title:'Εκτιμώμενη τοκοχρεολυτική δόση. ΔΕΝ αφαιρείται από το καθαρό αποτέλεσμα παραπάνω· το κεφάλαιο δεν είναι δαπάνη.' });
         // ── ΕΙΣΠΡΑΞΕΙΣ, ΟΧΙ ΕΣΟΔΑ. ΔΥΟ ΣΩΣΤΑ ΝΟΥΜΕΡΑ ΓΙΑ ΤΗΝ ΙΔΙΑ ΔΙΑΜΟΝΗ ──────
-        // Ο επισκέπτης πληρώνει 1.000,00 €, η πλατφόρμα κρατά 150,00 € προμήθεια
-        // και εισπράττει 50,00 € τέλος ανθεκτικότητας. Στον λογαριασμό μπαίνουν
-        // 800,00 €· δηλωτέο ακαθάριστο είναι 950,00 €. Και τα δύο είναι σωστά,
+        // Ο επισκέπτης πληρώνει 1.000,00€, η πλατφόρμα κρατά 150,00€ προμήθεια
+        // και εισπράττει 50,00€ τέλος ανθεκτικότητας. Στον λογαριασμό μπαίνουν
+        // 800,00€· δηλωτέο ακαθάριστο είναι 950,00€. Και τα δύο είναι σωστά,
         // απαντούν σε ΑΛΛΗ ερώτηση — και έλεγαν και τα δύο «έσοδα», σε δύο
         // καρτέλες της ίδιας εφαρμογής, χωρίς να το εξηγεί κανείς.
         //
@@ -1270,7 +1291,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible }
           Και η κεφαλίδα ενότητας έφυγε μαζί: με ένα στοιχείο κάθε φορά, ένας
           τίτλος «Διαχείριση και εργαλεία» ονομάτιζε ομάδα που δεν υπάρχει. */}
       {readStatus(prop) === 'rent_long' && <PortalShare propertyId={prop.id} userId={userId} />}
-      <OccupancyPanel propertyId={prop.id} userId={userId} />
+      <OccupancyPanel propertyId={prop.id} userId={userId} profileType={profileType} legalForm={legalForm} />
 
     </div>
   );
@@ -1443,8 +1464,14 @@ export default function Dashboard() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const { alertCount: inventoryAlerts, itemCount: inventoryItems } = useInventoryAlerts(selected?.id||null, user?.id||null);
+  const { alertCount: inventoryAlerts, itemCount: inventoryItems, alertsUnknown: inventoryAlertsUnknown } = useInventoryAlerts(selected?.id||null, user?.id||null);
   const checklistAlerts = useChecklistAlerts(selected?.id||null);
+  /** Οσες εκκρεμότητες ΞΕΡΟΥΜΕ: από την Απογραφή κι από τη Λίστα εργασιών. */
+  const pendingCount = inventoryAlerts + checklistAlerts;
+  /** Αν μια από τις αναγνώσεις δεν έγινε, το άθροισμα δεν είναι βεβαιότητα.
+   *  Το δηλώνει προς το παρόν μόνο η Απογραφή: η `checklist.open` πετά το δικό
+   *  της σφάλμα κι η διόρθωση ανήκει στο lib/data/checklist.ts. */
+  const pendingUnknown = inventoryAlertsUnknown;
 
   // Δικαιώματα συνδρομής: το «ενεργό» πλάνο ορίζει τι βλέπεις (βασικό πλάνο,
   // ανυψωμένο από ενεργούς δωρεάν μήνες ή ιδιότητα Συνεργάτη).
@@ -1562,7 +1589,7 @@ export default function Dashboard() {
     setProperties(props);
     if (props.length > 0 && !selected) setSelected(props[0]);
     else if (selected) setSelected(props.find(p => p.id === selected.id) || props[0] || null);
-  }, [selected]);
+  }, [selected, supabase]);
 
   useEffect(() => {
     const init = async () => {
@@ -1646,6 +1673,16 @@ export default function Dashboard() {
       setLoading(false);
     };
     init();
+    // ── ΤΡΕΧΕΙ ΜΙΑ ΦΟΡΑ, ΚΑΙ ΠΡΕΠΕΙ ΝΑ ΤΡΕΧΕΙ ΜΙΑ ΦΟΡΑ ──────────────────────
+    // Ο κανόνας ζητά `fetchProperties` στις εξαρτήσεις. Το `fetchProperties`
+    // είναι `useCallback` με το `selected` μέσα του, δηλαδή αλλάζει ταυτότητα
+    // κάθε φορά που ο χρήστης διαλέγει άλλο ακίνητο. Βάζοντάς το εδώ, ολόκληρη
+    // η `init()` —έλεγχος ταυτότητας, προφίλ, πλάνο, συστάσεις, προσκλήσεις,
+    // δώδεκα ερωτήματα— θα ξανάτρεχε σε ΚΑΘΕ αλλαγή ακινήτου.
+    //
+    // Η σιωπή δεν είναι άγνοια: γράφεται εδώ ώστε ο επόμενος να μη «διορθώσει»
+    // μια εξάρτηση που είναι λάθος.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Προσθήκη ακινήτου με έλεγχο ορίου πλάνου: αν έφτασες το όριο, δείξε αναβάθμιση.
@@ -2085,7 +2122,23 @@ export default function Dashboard() {
 
       <main className="app-main">
         <header className="app-topbar">
-          <button className="nav-toggle" onClick={()=>setSidebarOpen(v=>!v)} aria-label="Μενού">
+          {/* ΤΟ ΣΗΜΑ ΑΚΟΛΟΥΘΕΙ ΤΗΝ ΠΟΡΤΑ. Οι εκκρεμότητες Απογραφής και Λίστας
+              ζουν σε καρτέλες που ανοίγουν ΜΟΝΟ από την πλαϊνή μπάρα· όσο
+              υπήρχαν δύο πόρτες, το σήμα ήταν στην κάτω. Τώρα είναι εδώ. */}
+          {/* ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΟΧΙ ΔΥΟ. Οταν η ανάγνωση της Απογραφής αποτύχει, το
+              κουμπί έλεγε «Μενού» σκέτο: ίδια οθόνη με το «όλα καθαρά», ενώ
+              μπορεί να τρέχει ληγμένη συντήρηση. Η κουκκίδα μένει ώστε να μη
+              χαθεί η προειδοποίηση, ο αριθμός όμως δεν λέγεται και το μήνυμα
+              λέει τι δεν έγινε και τι να κάνει ο χρήστης. */}
+          <button className="nav-toggle" onClick={()=>setSidebarOpen(v=>!v)}
+            aria-label={pendingUnknown
+              ? 'Μενού, οι εκκρεμότητες δεν ελέγχθηκαν: ανανέωσε τη σελίδα'
+              : pendingCount > 0
+                ? `Μενού, ${pendingCount} ${pendingCount === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`
+                : 'Μενού'}
+            title={pendingUnknown ? 'Οι εκκρεμότητες δεν ελέγχθηκαν. Ανανέωσε τη σελίδα.' : undefined}
+            style={{ position: 'relative' }}>
+            {(pendingCount > 0 || pendingUnknown) && <span className="bottom-nav-badge"/>}
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
           </button>
           {selected ? (
@@ -2118,8 +2171,12 @@ export default function Dashboard() {
                     onAdd={()=>tryAddProperty()}
                     canAdd={canAddProperty(ent, properties.length)} />
                   {/* Ένα κουμπί: κατάσταση ακινήτου + εργαλεία (επεξεργασία, διαγραφή) στο ίδιο μενού. */}
+                  {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Δεν είναι πλακίδιο επιλογής αλλά άνοιγμα μενού:
+                      θέλει `aria-haspopup` και `aria-expanded` που το ChipToggle δεν
+                      δέχεται — και την κλάση `topbar-status`, που κάνει το ψαλίδισμα
+                      της ετικέτας σε στενή οθόνη. */}
                   <div style={{position:'relative',minWidth:0}}>
-                    <button onClick={()=>setStatusDropdown(v=>!v)} className="topbar-status" title="Κατάσταση ακινήτου και εργαλεία (επεξεργασία, διαγραφή)" aria-haspopup="menu" aria-expanded={statusDropdown} style={{display:'flex',alignItems:'center',gap: 8,minHeight:T.h.sm,padding:'0 10px 0 12px',borderRadius:8,border:'1px solid var(--border-default)',background:statusDropdown?'var(--bg-hover)':'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:12,fontWeight:500,color:'var(--text-primary)',transition:'background 0.15s'}} onMouseEnter={e=>{if(!statusDropdown)e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{if(!statusDropdown)e.currentTarget.style.background='transparent'}}>
+                    <button onClick={()=>setStatusDropdown(v=>!v)} className="topbar-status" title="Κατάσταση ακινήτου και εργαλεία (επεξεργασία, διαγραφή)" aria-haspopup="menu" aria-expanded={statusDropdown} style={{display:'flex',alignItems:'center',gap: 8,minHeight:T.h.sm,padding:'0 10px 0 12px',borderRadius: T.radius.chip,border:'1px solid var(--border-default)',background:statusDropdown?'var(--bg-hover)':'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:12,fontWeight:500,color:'var(--text-primary)',transition:'background 0.15s'}} onMouseEnter={e=>{if(!statusDropdown)e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{if(!statusDropdown)e.currentTarget.style.background='transparent'}}>
                       <div style={{width:6,height:6,borderRadius:'50%',background:statusColor,flexShrink:0}}/>
                       {/* ΤΟ ΨΑΛΙΔΙ ΘΕΛΕΙ ΣΤΟΙΧΕΙΟ ΓΙΑ ΝΑ ΠΙΑΣΕΙ. Η ετικέτα ήταν
                           γυμνό κείμενο ανάμεσα σε δύο στοιχεία, οπότε το
@@ -2140,7 +2197,7 @@ export default function Dashboard() {
                         {STATUSES.map(({ key: k, label: v, hint }) => {
                           const active = readStatus(selected)===k;
                           return (
-                            <button key={k} role="menuitem" onClick={()=>updateStatus(k)} style={{display:'flex',alignItems:'flex-start',gap:12,width:'100%',padding:'10px 16px',border:'none',background:'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,fontWeight:active?600:400,color:'var(--text-primary)',textAlign:'left'}} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                            <button className="po-hov-fill" key={k} role="menuitem" onClick={()=>updateStatus(k)} style={{display:'flex',alignItems:'flex-start',gap:12,width:'100%',padding:'10px 16px',border:'none',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,fontWeight:active?600:400,color:'var(--text-primary)',textAlign:'left'}} >
                               <div style={{width:8,height:8,borderRadius:'50%',background:STATUS_COLORS[k],flexShrink:0,marginTop:4}}/>
                               {/* Η εξήγηση δεν είναι διακόσμηση: «Βραχυχρόνια»
                                   και «Μακροχρόνια» καθορίζουν ΠΟΙΑ εργαλεία
@@ -2148,7 +2205,7 @@ export default function Dashboard() {
                                   συνειδητή και όχι μαντεψιά. */}
                               <span style={{flex:1,minWidth:0}}>
                                 <span style={{display:'block'}}>{v}</span>
-                                <span style={{display:'block',fontSize:12,color:'var(--text-tertiary)',fontWeight:400,marginTop:1,lineHeight:1.4}}>{hint}</span>
+                                <span className="po-subline" style={{display:'block',fontSize:12,color:'var(--text-tertiary)',fontWeight:400,lineHeight:1.4}}>{hint}</span>
                               </span>
                               {active && <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
                             </button>
@@ -2156,11 +2213,11 @@ export default function Dashboard() {
                         })}
                         <div style={{height:1,background:'var(--border-subtle)',margin:'6px 12px'}}/>
                         <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase',color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>Εργαλεία ακινήτου</div>
-                        <button role="menuitem" onClick={()=>{setStatusDropdown(false);setEditProperty(selected);}} style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',background:'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--text-primary)',textAlign:'left'}} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                        <button className="po-hov-fill" role="menuitem" onClick={()=>{setStatusDropdown(false);setEditProperty(selected);}} style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--text-primary)',textAlign:'left'}} >
                           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                           Επεξεργασία στοιχείων
                         </button>
-                        <button role="menuitem" onClick={deleteProperty} style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',background:'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--negative)',textAlign:'left'}} onMouseEnter={e=>e.currentTarget.style.background='var(--negative-dim)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                        <button className="po-hov-fill" role="menuitem" onClick={deleteProperty} style={{ '--hov-fill': 'var(--negative-dim)',display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--negative)',textAlign:'left'}} >
                           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/></svg>
                           Διαγραφή ακινήτου
                         </button>
@@ -2196,9 +2253,13 @@ export default function Dashboard() {
                   είναι ιδιώτης. Δεν πατιόταν, δεν άλλαζε, δεν προειδοποιούσε.
                   Και το σκεύωμα του μεταλλίου —γυαλάδες, στεφάνες, σκιές— ήταν
                   ξένο σώμα σε μια επίπεδη, ήσυχη διεπαφή. */}
-              <button onClick={()=>setCmdkOpen(true)} className="topbar-search" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',marginRight:4,flexShrink:0}} onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `IconBtn` δεν δέχεται className και εδώ η
+                  `topbar-search` είναι που το κάνει 44 κεντραρισμένο στο κινητό·
+                  σε υπολογιστή δείχνει και το πλακίδιο του ⌘K, άρα δεν είναι
+                  ούτε καθαρό εικονοκούμπι. */}
+              <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',marginRight:4,flexShrink:0}} >
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                <span className="desktop-only" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.mono,color:'var(--text-tertiary)',border:'1px solid var(--border-subtle)',borderRadius:6,padding:'1px 5px'}}>{kbdHint}</span>
+                <span className="desktop-only" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.mono,color:'var(--text-tertiary)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.xs,padding:'1px 5px'}}>{kbdHint}</span>
               </button>
             </>
           ) : (
@@ -2213,7 +2274,7 @@ export default function Dashboard() {
               <p style={{fontFamily: T.font.sans,fontSize:14,color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 20px',maxWidth:400}}>
                 Τα δεδομένα σου είναι ασφαλή· απλώς δεν φορτώθηκαν τώρα. Συνήθως φταίει η σύνδεση.
               </p>
-              <button onClick={()=>{ if(user) fetchProperties(user.id); }} style={{padding:'0 20px',height:T.h.md,borderRadius:T.radius.pill,background:'var(--accent)',border:'none',color:'var(--accent-text)',fontSize:14,fontWeight:600,fontFamily:T.font.sans,cursor:'pointer'}}>Δοκίμασε ξανά</button>
+              <Btn variant="primary" onClick={()=>{ if(user) fetchProperties(user.id); }}>Δοκίμασε ξανά</Btn>
             </div>
           </div>
         ) : !selected ? (
@@ -2230,7 +2291,7 @@ export default function Dashboard() {
                   {t:'Λογαριασμοί και Ενέργεια',d:'Σύγκριση 11 παρόχων ρεύματος/αερίου'},
                   {t:'Ενοικιαστής και Συμβόλαιο',d:'Πληρωμές, λήξεις, εγγύηση, ιστορικό'},
                 ].map((f,i)=>(
-                  <div key={i} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:12,padding:'14px 16px'}}>
+                  <div key={i} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,padding:'14px 16px'}}>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:700,color:'var(--text-primary)',marginBottom:4}}>{f.t}</div>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.5}}>{f.d}</div>
                   </div>
@@ -2263,6 +2324,10 @@ export default function Dashboard() {
                   «υπάρχει επίπεδο από πάνω;». Δεν υπάρχει σε δύο: στην ίδια την
                   Επισκόπηση και στο Χαρτοφυλάκιο που στέκει πάνω από αυτήν. */}
               {navSafe !== 'overview' && navSafe !== 'portfolio' && (
+                // ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το γέμισμα «4px 4px 4px 0» ακουμπά το βελάκι
+                // στο αριστερό όριο του κειμένου της σελίδας· το `Btn` γράφει
+                // «9px 18px» και θα το έσπρωχνε δεκαοκτώ μέσα, δηλαδή το «Πίσω»
+                // θα έπαυε να στοιχίζεται με τον τίτλο από κάτω του.
                 <button onClick={()=>setNav(backTab)} title={`Πίσω: ${backLabel}`} aria-label={`Πίσω: ${backLabel}`}
                   style={{display:'inline-flex',alignItems:'center',gap:6,marginBottom:14,padding:'4px 4px 4px 0',border:'none',background:'transparent',color:'var(--text-tertiary)',fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:600,cursor:'pointer'}}
                   onMouseEnter={e=>e.currentTarget.style.color='var(--text-primary)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-tertiary)'}>
@@ -2297,7 +2362,7 @@ export default function Dashboard() {
                   πίνακας. Ό,τι επιστρέψει από την προηγούμενη φόρτωση γράφει σε
                   component που δεν υπάρχει πια και η React το αγνοεί. Το ίδιο
                   ισχύει για κάθε καρτέλα που φορτώνει δικά της δεδομένα. */}
-              {navSafe==='overview'  && <OverviewTab key={selected.id} prop={selected} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : setNav(t)} tabVisible={navVisible}/>}
+              {navSafe==='overview'  && <OverviewTab key={selected.id} prop={selected} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : setNav(t)} tabVisible={navVisible} profileType={effProfileType} legalForm={taxForm}/>}
               {nav==='finances'  && <TabFinances key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} profileType={effProfileType} legalForm={taxForm} onScan={()=>setQuickAddOpen(true)}openAddNonce={manualExpense} />}
               {nav==='calendar'  && <TabCalendar key={selected.id} propertyId={selected.id} userId={user.id} openTasks={checklistAlerts} onOpenTasks={()=>setNav('checklist')}/>}
               {/* ═══ Η ΒΡΑΧΥΧΡΟΝΙΑ ΣΤΕΚΕΤΑΙ ΜΟΝΗ ΤΗΣ ═══════════════════════════
@@ -2308,7 +2373,7 @@ export default function Dashboard() {
                   επαγγελματικό εργαλείο· η βραχυχρόνια μίσθωση δεν είναι. */}
               {navSafe==='pricing'   && (<>
                 <AmaStrip userId={user.id} propertyId={selected.id}/>
-                <TabPricing key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} propertyRent={(selected.target_rent??undefined)} propertySqm={selected.sqm??undefined}/>
+                <TabPricing key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} propertyRent={(selected.target_rent??undefined)} propertySqm={selected.sqm??undefined} profileType={effProfileType} legalForm={taxForm}/>
               </>)}
               {/* Η ΚΕΦΑΛΙΔΑ ΤΗΣ ΑΞΙΟΠΟΙΗΣΗΣ ΕΦΥΓΕ ΑΠΟ ΕΔΩ. Γραφόταν δύο φορές:
                   εδώ ως «ΑΞΙΟΠΟΙΗΣΗ ΑΚΙΝΗΤΟΥ / Κενό· πώς θα μισθωθεί…» και
@@ -2390,7 +2455,7 @@ export default function Dashboard() {
                   στέλνει ο βοηθός— και οδηγεί εκεί που όντως είναι οι επαφές. */}
               {(nav==='documents' || nav==='contacts') && (
                 <>
-                  <TabDocuments key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType}/>
+                  <TabDocuments key={selected.id} propertyId={selected.id} userId={user.id}/>
                   {/* Η επικεφαλίδα ζει ΜΕΣΑ στο component, μαζί με τις ενέργειές
                       της. Εδώ γραφόταν δεύτερη φορά και από κάτω το ίδιο το
                       component τύπωνε τίτλο σελίδας με υπότιτλο που έλεγε την
@@ -2413,7 +2478,7 @@ export default function Dashboard() {
                   <div style={{marginTop:T.sp.section}}>
                     <SecHdr label={navLabel('inventory')} sub="Αξία, εγγυήσεις, συντήρηση και παράδοση"/>
                     <button onClick={()=>setNav('inventory')}
-                      style={{display:'flex',alignItems:'center',gap:12,width:'100%',textAlign:'left',padding:'14px 16px',borderRadius:12,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',cursor:'pointer',fontFamily:'inherit'}}>
+                      style={{display:'flex',alignItems:'center',gap:12,width:'100%',textAlign:'left',padding:'14px 16px',borderRadius: T.radius.popup,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',cursor:'pointer',fontFamily:'inherit'}}>
                       <div style={{minWidth:0,flex:1}}>
                         <p style={{fontSize:14,fontWeight:500,color:'var(--text-primary)',marginBottom:2}}>Άνοιγμα απογραφής</p>
                         <p style={{fontSize:12,color:'var(--text-tertiary)',lineHeight:1.5}}>Ό,τι υπάρχει μέσα στο ακίνητο, με την αξία του, την εγγύησή του και το πρωτόκολλο παράδοσης.</p>
@@ -2436,21 +2501,17 @@ export default function Dashboard() {
       {selected && (
         <nav className="bottom-nav" aria-label="Κύρια πλοήγηση">
           {BOTTOM_NAV.map(item => {
-            const isActive = item.id !== 'more' && nav === item.id;
-            const onTap = item.id === 'more' ? () => setSidebarOpen(true) : () => setNav(item.id);
-            const alerts = inventoryAlerts + checklistAlerts;
-            const badge = item.id === 'more' && alerts > 0;
+            const isActive = nav === item.id;
+            const onTap = () => setNav(item.id);
             return (
               // Η ΕΝΕΡΓΗ ΚΑΡΤΕΛΑ ΛΕΓΟΤΑΝ ΜΟΝΟ ΜΕ ΧΡΩΜΑ και η κόκκινη τελεία
               // ήταν σκέτη τελεία: δύο πληροφορίες που ο αναγνώστης οθόνης δεν
               // μπορούσε να μεταφέρει με κανέναν τρόπο. Το `aria-current` λέει
               // πού βρίσκεσαι και το σήμα αποκτά τον αριθμό του.
               <button key={item.id} className={`bottom-nav-item ${isActive?'active':''}`} onClick={onTap}
-                aria-current={isActive ? 'page' : undefined} style={{position:'relative'}}>
-                {badge && <span className="bottom-nav-badge"/>}
+                aria-current={isActive ? 'page' : undefined}>
                 {item.icon}
                 <span>{item.label}</span>
-                {badge && <span className="sr-only">{alerts === 1 ? '1 εκκρεμότητα' : `${alerts} εκκρεμότητες`}</span>}
               </button>
             );
           })}

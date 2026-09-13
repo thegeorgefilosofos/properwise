@@ -41,9 +41,15 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
     let alive = true;
     (async () => {
       try {
-        const { data } = await supabase.rpc('my_feedback_status');
+        // ΕΔΩ Η ΥΠΟΒΑΘΜΙΣΗ ΕΙΝΑΙ ΟΝΤΩΣ ΑΚΙΝΔΥΝΗ ΚΑΙ ΓΙ' ΑΥΤΟ ΜΕΝΕΙ. Χωρίς την
+        // κατάσταση η φόρμα εμφανίζεται κανονικά: το χειρότερο που συμβαίνει
+        // είναι να ξαναρωτηθεί κάποιος που έχει ήδη απαντήσει. Καμία τιμή,
+        // κανένα ποσό, καμία απόφαση δεν κρέμεται από αυτό. Αυτό που ΔΕΝ ήταν
+        // εντάξει ήταν να μη μαθαίνει κανείς ότι η κλήση αποτυγχάνει.
+        const { data, error: err } = await supabase.rpc('my_feedback_status');
+        if (err) console.error('[Feedback] η κατάσταση δεν διαβάστηκε:', err);
         if (alive && data) setStatus(data as Status);
-      } catch { /* σιωπηλά: το UI δουλεύει και χωρίς την κατάσταση */ }
+      } catch (err) { console.error('[Feedback] η κατάσταση δεν διαβάστηκε:', err); }
       if (alive) setLoading(false);
     })();
     return () => { alive = false; };
@@ -78,7 +84,7 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
         position: 'relative' as const, overflow: 'hidden' as const,
         background: 'var(--surface-hero)', border: '1px solid var(--border-raised)',
         borderRadius: T.radius.card, boxShadow: 'var(--highlight-inset), var(--elev-1)',
-        padding: 18,
+        padding: T.sp.lg,
       };
 
   // ── Ολοκληρωμένο (ευχαριστία) ──────────────────────────────────────────────
@@ -177,7 +183,10 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
             φορολογικοί κανόνες που κουβαλούν πραγματική πληροφορία και μένουν.
             Αυτή εδώ δεν κουβαλούσε καμία. */}
 
-        {/* Πεδίο */}
+        {/* ΤΡΕΙΣ ΣΕΙΡΕΣ, ΟΧΙ ΤΕΣΣΕΡΙΣ. Το κουτί άνοιγε 96 εικονοστοιχεία κενά πριν
+            γραφτεί λέξη: ένα άδειο ορθογώνιο που ζητά έκθεση, όχι σχόλιο. Με
+            τρεις σειρές η πρόσκληση διαβάζεται ως «δυο κουβέντες» — και το
+            `resize: vertical` μένει, για όποιον θέλει να γράψει περισσότερα. */}
         <textarea
           aria-label="Το μήνυμά σου"
           value={body}
@@ -185,10 +194,10 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder="Γράψε ελεύθερα, με δικά σου λόγια. Τι θα σε βοηθούσε περισσότερο;"
-          rows={4}
+          rows={3}
           maxLength={4000}
           style={{
-            width: '100%', boxSizing: 'border-box', marginTop: 14, resize: 'vertical', minHeight: 96,
+            width: '100%', boxSizing: 'border-box', marginTop: 14, resize: 'vertical', minHeight: 76,
             padding: '12px 14px', borderRadius: T.radius.inner,
             border: `1px solid ${focused ? 'var(--accent)' : 'var(--border-default)'}`,
             boxShadow: focused ? '0 0 0 3px var(--accent-dim)' : 'none',
@@ -211,7 +220,7 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
 
         {/* Κίνητρο κλήρωσης */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
-          <span aria-hidden style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 1 }}>
+          <span aria-hidden className="po-lead-ico" style={{ color: 'var(--text-tertiary)' }}>
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12v10H4V12" /><path d="M2 7h20v5H2z" /><path d="M12 22V7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></svg>
           </span>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>

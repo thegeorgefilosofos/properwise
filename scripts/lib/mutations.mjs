@@ -22,6 +22,10 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Η κλάση αιώρησης ακυρωμένη από ενσωματωμένο στυλ: το ΑΚΡΙΒΩΣ σφάλμα που
+  // μετρήθηκε στον περιηγητή — φοράει `po-hov-accent` και ξαναγράφει `color`.
+  'hover-class-blocked': { add: 'components/__mut__.tsx', content: "export default function MutationProbe() {\n  return (\n    <button className=\"po-hov-accent\" style={{ color: 'var(--text-secondary)', padding: 8 }}>Ενέργειες</button>\n  )\n}\n" },
+
   // ══ ΤΑ ΔΕΚΑΠΕΝΤΕ ΠΟΥ ΕΛΕΙΠΑΝ (02/09/2026) ═══════════════════════════════
   // Ο πάγκος τα κατήγγειλλε ως «ΧΩΡΙΣ ΜΕΤΑΛΛΑΞΗ»: δεκαπέντε φύλακες που δεν
   // κοκκίνισαν ποτέ, δηλαδή διαβάζονταν ως «ελέγχθηκε» χωρίς να ελέγχουν. Ενα
@@ -94,9 +98,15 @@ export const MUTATIONS = {
   'decimal-comma': { add: 'components/__mut__.tsx', content: tsx('    <div>Πληρωτέο 1234.50 €</div>') },
   // Δύο κανόνες, δύο αποδείξεις: το ευρώ κολλητά, και το ευρώ με απλό κενό που
   // πέφτει μόνο του στην επόμενη γραμμή σε στενή στήλη.
+  // Ο ΦΥΛΑΚΑΣ ΓΥΡΙΣΕ ΑΝΑΠΟΔΑ, ΚΑΙ ΜΑΖΙ ΤΟΥ ΟΙ ΜΕΤΑΛΛΑΞΕΙΣ. Η πρώτη από τις δύο
+  // παλιές έγραφε «1.234,50€» κολλητά και περίμενε κόκκινο· αυτό είναι πλέον η
+  // ΣΩΣΤΗ γραφή, οπότε ο φύλακας έμενε πράσινος και ο πάγκος τον κατήγγειλε —
+  // σωστά. Οι τρεις παρακάτω είναι οι τρεις τρόποι να μπει το κενό: ωμό,
+  // αδιάσπαστο και ως οντότητα HTML. Ο τελευταίος ήταν πραγματικός.
   'euro-space': { every: [
-    { add: 'components/__mut__.tsx', content: tsx('    <div>Σύνολο 1.234,50€ τον μήνα</div>') },
     { add: 'components/__mut__.tsx', content: tsx('    <div>Σύνολο 1.234,50 € τον μήνα</div>') },
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Σύνολο 1.234,50\u00A0€ τον μήνα</div>') },
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Σύνολο 1.234,50&nbsp;€ τον μήνα</div>') },
   ] },
 
   // ── Κώδικας που μοιάζει σωστός και δεν είναι ──────────────────────────
@@ -110,7 +120,12 @@ export const MUTATIONS = {
   // μετάλλαξη (ένα αρχείο με ένα ωμό ποσοστό) τον άφηνε πράσινο. Το σφάλμα που
   // ΠΡΕΠΕΙ να πιάσει είναι «ανέβηκε ο αριθμός»: το όριο πέφτει στο μηδέν και ο
   // φύλακας οφείλει να καταγγείλει τα 78 που ήδη μετρά.
-  'percent-formatter': { file: 'scripts/percent-baseline.json', from: '"max": 78', to: '"max": 0' },
+  // Η ΜΕΤΑΛΛΑΞΗ ΔΕΝ ΔΕΝΕΤΑΙ ΜΕ ΤΗΝ ΤΙΜΗ ΤΗΣ ΒΑΣΗΣ. Ηταν αντικατάσταση του
+  // «"max": 78» και έσπασε την ώρα που η καστάνια σφίχτηκε στα 74: ο πάγκος
+  // κατήγγειλε «η μετάλλαξη δεν εφαρμόστηκε», δηλαδή ο φύλακας έμεινε χωρίς
+  // απόδειξη ακριβώς επειδή κάποιος τον βελτίωσε. Ενα νέο ποσοστό χωρίς
+  // μορφοποιητή κοκκινίζει όποιο κι αν είναι το όριο.
+  'percent-formatter': { add: 'components/__mut__.tsx', content: tsx('    <div>{`Πληρότητα ${occ.pct}%`}</div>') },
   'number-font': { add: 'components/__mut__.tsx', content: tsx("    <p style={{ fontFamily: T.font.mono }}>Μια ολόκληρη πρόταση γραμμένη σε γραμματοσειρά στηλών</p>") },
 
   // ── Φόρμες και οθόνες ──────────────────────────────────────────────────
@@ -223,6 +238,28 @@ export const MUTATIONS = {
   'password-leak': { add: 'components/__mut__.tsx', content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
   'api-auth': { add: 'app/api/__mut__/route.ts', content: "export async function GET() {\n  return new Response('ok')\n}\n" },
 
+  // ── ΟΙ ΔΥΟ ΚΑΙΝΟΥΡΙΟΙ ΤΗΣ ΑΣΦΑΛΕΙΑΣ ───────────────────────────────────
+  // ΓΙΑΤΙ «every» ΚΑΙ ΟΧΙ ΠΙΝΑΚΑΣ. Ο πίνακας είναι εφεδρική αλυσίδα: αρκεί μία
+  // μετάλλαξη να πιαστεί. Και οι δύο φύλακες εδώ έχουν ΠΟΛΛΟΥΣ ανεξάρτητους
+  // κανόνες, οπότε ο καθένας θέλει τη δική του απόδειξη — αλλιώς ο φύλακας
+  // περνά τον πάγκο αποδεικνύοντας μόνο τον πρώτο.
+  //
+  // Οι τρεις μεταλλάξεις του «security-claims» είναι μία ανά ΑΛΥΣΙΔΑ
+  // υπόσχεσης: το δεύτερο βήμα, το κρυπτογραφημένο αντίγραφο, το ιστορικό.
+  'security-claims': { every: [
+    { remove: 'lib/auth/mfa.ts' },
+    { file: '.github/workflows/db-backup.yml', from: '--cipher-algo AES256', to: '--cipher-algo AES128' },
+    { file: 'app/dashboard/components/SecuritySettings.tsx', from: "'mfa_enabled', 'security'", to: "'mfa_on', 'security'" },
+  ] },
+  // Ο «write-origin» δοκιμάζεται ΚΑΙ ΣΤΙΣ ΔΥΟ κατευθύνσεις: διαδρομή που
+  // γράφει με συνεδρία και δεν ρωτά προέλευση (με POST χωρίς παράμετρο,
+  // ακριβώς το σφάλμα που βρέθηκε) και το ΑΝΤΙΣΤΡΟΦΟ, webhook που ελέγχει
+  // προέλευση και θα απέρριπτε κάθε γνήσια πληρωμή.
+  'write-origin': { every: [
+    { add: 'app/api/__mut__/route.ts', content: "export async function POST() {\n  const db = { auth: { getUser: async () => ({ data: { user: null } }) } }\n  await db.auth.getUser()\n  return new Response('ok')\n}\n" },
+    { add: 'app/api/__mut__/route.ts', content: "import { sameOrigin } from '@/lib/api/origin'\nimport { verifySignature } from '@/lib/inbound/signature'\nexport async function POST(request: Request) {\n  if (!verifySignature('', request.headers, 'k')) return new Response('no', { status: 401 })\n  if (!sameOrigin(request.headers)) return new Response('no', { status: 403 })\n  return new Response('ok')\n}\n" },
+  ] },
+
   // ── Πηγές αλήθειας και μονά σημεία ────────────────────────────────────
   'data-layer': { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('bills').select('*')\n" },
   'service-only-tables': { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('cron_secrets').select('*')\n" },
@@ -247,7 +284,19 @@ export const MUTATIONS = {
   'billing-claims': { every: [
     { add: 'lib/core/__mut__.tsx', content: tsx('    <div>Η συνδρομή σου: δεν γίνεται καμία πληρωμή τώρα.</div>') },
     { add: 'lib/core/__mut2__.tsx', content: tsx('    <div>{price === 0 ? \'για πάντα\' : \'τον μήνα\'}</div>') },
+    // ΤΟ ΟΝΟΜΑ ΤΟΥ ΕΜΠΟΡΟΥ, ΓΡΑΜΜΕΝΟ ΜΕ ΤΟ ΧΕΡΙ ΣΕ ΚΩΔΙΚΑ. Ακριβώς όπως ήταν
+    // στα λόγια της χρέωσης: μια πρόταση που θα ονόμαζε τον προηγούμενο
+    // έμπορο την ημέρα που η μεταβλητή γύριζε στον επόμενο.
+    { add: 'lib/core/__mut3__.tsx', content: tsx('    <div>Η χρέωση γίνεται μέσω της Lemon Squeezy.</div>') },
+    // ΚΑΙ ΤΟ ΙΔΙΟ ΣΕ ΔΗΜΟΣΙΕΥΜΕΝΟ ΝΟΜΙΚΟ ΕΓΓΡΑΦΟ, ΜΕ ΟΝΟΜΑ ΠΟΥ ΔΕΝ ΕΙΣΠΡΑΤΤΕΙ.
+    // Δεύτερος κανόνας, δεύτερη απόδειξη: τα έγγραφα ΟΦΕΙΛΟΥΝ να ονομάζουν,
+    // οπότε ο έλεγχος εκεί δεν είναι «μην το γράφεις» αλλά «γράψε τον σωστό».
+    { add: 'docs/legal/__mut__.md', content: '# Δοκιμή\n\nΧρέωση μέσω Creem ως merchant of record.\n' },
   ] },
+  // Η ΣΥΝΑΙΝΕΣΗ ΠΟΥ ΓΙΝΕΤΑΙ «ΝΑΙ» ΑΠΟ ΑΠΟΤΥΧΙΑ. Ακριβώς η γραμμή που έστελνε
+  // το δελτίο σε όσους είχαν απεγγραφεί, σε νέα συνάρτηση άκρης.
+  'consent-reads': { add: 'supabase/functions/__mut__/index.ts', content: "import { createClient } from 'jsr:@supabase/supabase-js@2'\nconst supabase = createClient('x', 'y')\nexport async function probe() {\n  const { data: prefs } = await supabase.from('email_marketing_prefs').select('user_id,product_news')\n  return prefs\n}\n" },
+
   'presumptive-rate': { add: 'lib/core/__mut__.ts', content: 'export const taxable = (gross: number) => gross * 0.95\n' },
   'stay-gross': { add: 'lib/core/__mut__.ts', content: 'export const income = (stay: { total: number }) => { const amount = stay.total; return amount }\n' },
   'local-formatters': { add: 'lib/core/__mut__.ts', content: "export const eur = (n: number) => `${n.toLocaleString('el-GR', { minimumFractionDigits: 2 })} €`\n" },
@@ -284,6 +333,12 @@ export const MUTATIONS = {
     { file: 'lib/legal/validity.ts',
       from: "    where: 'lib/billing/enfia.ts',",
       to:   "    where: 'lib/billing/enfia-METAKOMISE.ts'," },
+    // ΚΑΙ Ο ΤΡΙΤΟΣ ΚΑΝΟΝΑΣ: ΚΑΝΟΝΑΣ ΧΩΡΙΣ ΜΗΤΡΩΟ. Οι δύο παραπάνω ρωτούν «είναι
+    // φρέσκες οι εγγραφές;». Καμία δεν ρωτούσε «λείπει εγγραφή;» — και έλειπαν
+    // τέσσερις, ανάμεσά τους η τεκμαρτή έκπτωση 5% που μπαίνει σε κάθε δήλωση
+    // ενοικίων. Νέο αρχείο που επικαλείται νόμο χωρίς να το φυλάει κανείς.
+    { add: 'lib/core/__mut_law__.ts',
+      content: '// Νέος κανόνας: μείωση 12% (ν.5300/2027), χωρίς εγγραφή σε μητρώο.\nexport const PROBE_RATE = 0.12\n' },
   ] },
 
   'modal-width': { every: [
