@@ -41,6 +41,7 @@
     "posts": "tsx scripts/marketing/posts.ts",
     "reel": "tsx scripts/marketing/reel.ts",
     "perf:budget": "node scripts/perf-budget.mjs",
+    "perf:server": "node scripts/server-weight.mjs",
     "perf:bench": "node scripts/perf-bench/build.mjs && node scripts/perf-bench.mjs",
     "perf:mobile": "node scripts/perf-mobile.mjs",
     "public-routes": "node scripts/guard-public-routes.mjs",
