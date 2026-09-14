@@ -72,7 +72,7 @@ const FEATURES = [
   // πράγμα που δεν έχει κανένας ανταγωνιστής στη ζώνη τιμής μας. Μπαίνει
   // πρώτος, γιατί είναι ο λόγος που κάποιος διαλέγει εμάς και όχι ένα φύλλο
   // Excel — τα υπόλοιπα, με αρκετό κόπο, γίνονται και αλλού.
-  { t: 'Βοηθός στα ελληνικά', d: 'Συγκρίνει και προτείνει με τα δικά σου ενοίκια και δαπάνες, όχι με γενικές συμβουλές.', i: 'M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12M8.5 12h.01M12 12h.01M15.5 12h.01' },
+  { t: 'Βοηθός στα ελληνικά', d: 'Συγκρίνει και προτείνει με βάση τα δικά σου ενοίκια και δαπάνες, όχι γενικές συμβουλές.', i: 'M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12M8.5 12h.01M12 12h.01M15.5 12h.01' },
   { t: 'Πάροχοι και ασφάλιση', d: 'Τιμολόγια ρεύματος και προγράμματα κατοικίας, από επίσημα στοιχεία των εταιρειών.', i: 'M3 12h4l3 8 4-16 3 8h4' },
   { t: 'Δάνειο χωρίς εκπλήξεις', d: 'Δόσεις, επιτόκια και έξοδα μεταβίβασης, με έλεγχο αν δικαιούσαι το «Σπίτι μου ΙΙ».', i: 'M3 21h18M5 21V7l8-4v18M19 21V11l-6-4' },
   { t: 'Αποδόσεις και σενάρια μίσθωσης', d: 'Καθαρή απόδοση μετά τον φόρο και η βραχυχρόνια δίπλα στη μακροχρόνια.', i: 'M12 2v20M17 7H9.5a2.5 2.5 0 0 0 0 5h5a2.5 2.5 0 0 1 0 5H7' },
@@ -847,11 +847,11 @@ export default async function Landing() {
           font-variant-numeric: tabular-nums;
         }
         .lp-stat-u {
-          margin-top: 10px; font-size: 11px; font-weight: 700;
+          margin-top: 8px; font-size: 11px; font-weight: 700;
           letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent);
         }
         .lp-stat-l {
-          margin: 12px 0 0; font-size: 14px; line-height: 1.55;
+          margin: 12px 0 0; font-size: 14px; line-height: 1.55; text-wrap: pretty;
           color: var(--text-secondary);
         }
 
@@ -1009,7 +1009,12 @@ export default async function Landing() {
              καθεμία, όπου ο ελληνικός τίτλος σπάει σε τρεις γραμμές. */
           .lp-feat { grid-template-columns: repeat(2, 1fr) !important; }
           .lp-stats { grid-template-columns: repeat(2, 1fr) !important; }
-          .lp-works { grid-template-columns: repeat(3, 1fr); }
+          /* ΟΧΙ ΤΡΕΙΣ ΣΤΗΛΕΣ ΓΙΑ ΟΚΤΩ ΚΕΛΙΑ. Το πλέγμα δεν έχει περιγράμματα
+             κελιών: το φόντο του ΕΙΝΑΙ οι γραμμές και τα κελιά το σκεπάζουν.
+             Με 3+3+2 η τελευταία σειρά μένει μισή, δηλαδή ένα ολόκληρο κελί
+             σκέτη γραμμή μέσα σε κουτί με περίγραμμα και στρογγυλεμένη γωνία.
+             Το οκτώ διαιρείται με το δύο και με το τέσσερα, ποτέ με το τρία. */
+          .lp-works { grid-template-columns: repeat(2, 1fr); }
           /* Τέσσερις κάρτες πακέτου στα 1024 αφήνουν 240px η καθεμία, όπου ο
              τίτλος «Διαχειριστής, μεσίτης ή λογιστής» σπάει σε τέσσερις σειρές.
              Δύο και δύο: το ζευγάρι των ιδιωτών πάνω, των επαγγελματιών κάτω. */
@@ -1088,7 +1093,7 @@ export default async function Landing() {
           }
           .lp-feat > .lp-card > div:first-child {
             width: 40px !important; height: 40px !important; margin-bottom: 0 !important;
-            grid-row: 1 / span 2; border-radius: 11px !important;
+            grid-row: 1 / span 2; border-radius: 12px !important;
           }
           .lp-feat > .lp-card > h3 { margin: 2px 0 4px !important; font-size: 16px !important; }
           /* Τρεις γραμμές και όχι επτά. Οι περιγραφές γράφτηκαν για κάρτα πλάτους
@@ -1102,10 +1107,6 @@ export default async function Landing() {
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
             overflow: hidden;
           }
-        }
-
-        @media (max-width: 860px) {
-          .lp-works { grid-template-columns: repeat(2, 1fr); }
         }
 
         /* Οι .lp-hide-xs και .lp-only-xs ΕΦΥΓΑΝ ΣΤΟ globals.css. Ζούσαν εδώ,
@@ -1222,7 +1223,7 @@ export default async function Landing() {
               χρησιμοποιείται nowrap: θα έβγαζε το κείμενο εκτός οθόνης στα
               στενά πλάτη. */}
           <p className="lp-rise-2" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '100%', margin: '0 auto 28px', textWrap: 'balance' }}>
-            Ενοίκια, λογαριασμοί, δάνεια και φόροι σε ένα σημείο. Ρωτάς στα ελληνικά
+            Ενοίκια, λογαριασμοί, δάνεια, φόροι σε ένα σημείο. Ρωτάς στα ελληνικά
             και ο βοηθός απαντά με{' '}
             <em style={{ fontStyle: 'normal', color: 'var(--text-primary)', fontWeight: 600 }}>τα δικά σου</em> δεδομένα και αριθμούς.
           </p>
@@ -1234,7 +1235,7 @@ export default async function Landing() {
               <Link href="/login" style={{ background: 'transparent', color: 'var(--text-primary)', textDecoration: 'none', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: T.radius.pill, border: '1px solid var(--border-strong)', transition: 'border-color .15s, background .15s' }}>Έχω λογαριασμό</Link>
             </>)}
           </div>
-          <div className="lp-rise-4" style={{ marginTop: T.sp.xl, fontSize: 13, color: 'var(--text-tertiary)' }}>{TRIAL_DAYS} ημέρες δωρεάν δοκιμή · Διαλέγεις πακέτο από την αρχή · Ακυρώνεις όποτε θέλεις</div>
+          <div className="lp-rise-4 lp-even" style={{ marginTop: T.sp.xl, fontSize: 13, color: 'var(--text-tertiary)' }}>{TRIAL_DAYS} ημέρες δωρεάν δοκιμή · Διαλέγεις πακέτο από την αρχή · Ακυρώνεις όποτε θέλεις</div>
 
           <LandingShowcase />
         </div>
@@ -1294,7 +1295,7 @@ export default async function Landing() {
           {FEATURES.map((f, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
               <div style={{ width: 38, height: 38, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg }}>{ic(f.i)}</div>
-              <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 7px', letterSpacing: '-0.02em' }}>{f.t}</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{f.t}</h3>
               <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: 0 }}>{f.d}</p>
             </div>
           ))}
