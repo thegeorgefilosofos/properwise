@@ -63,15 +63,38 @@ export const AUDIT = ({ vw, touch }) => {
     return false;
   };
 
+  /**
+   * ΚΑΘΑΡΗ ΜΠΟΓΙΑ: ΤΡΙΑ ΜΑΖΙ, ΠΟΤΕ ΔΥΟ.
+   *
+   * Χωρίς δικό της κείμενο, κρυμμένη από τον αναγνώστη οθόνης και αδιαφανής
+   * στον δείκτη. Ενα τέτοιο στοιχείο δεν έχει τι να κόψει και τι να πάει
+   * χαμένο έξω από την οθόνη: δεν κουβαλά πληροφορία και δεν πατιέται.
+   *
+   * ΤΟ ΣΥΓΚΕΚΡΙΜΕΝΟ ΠΟΥ ΤΟ ΓΕΝΝΗΣΕ. Οι δύο αύρες του hero είναι θολές κηλίδες
+   * που ΠΡΕΠΕΙ να ξεπερνούν την ενότητα και να κόβονται από αυτήν — έτσι
+   * φτιάχνεται λάμψη: `inset: -14% -18% auto` με `overflow: hidden` από πάνω.
+   * Ο έλεγχος τις κατήγγειλλε 16 φορές, δύο σε καθένα από οκτώ πλάτη
+   * («ξεφεύγει» και «κόβεται»), ενώ είναι ακριβώς ό,τι σχεδιάστηκε.
+   *
+   * ΓΙΑΤΙ ΔΕΝ ΕΙΝΑΙ ΧΑΛΑΡΩΜΑ ΤΟΥ ΕΛΕΓΧΟΥ. Οι τρεις συνθήκες ζητούνται ΜΑΖΙ.
+   * Κείμενο που κόβεται έχει κείμενο. Κουμπί που ξεφεύγει πιάνει δείκτη.
+   * Εικονίδιο με νόημα δεν είναι `aria-hidden`. Ο,τι περνά και τα τρία είναι
+   * στρώμα χρώματος — και για το χρώμα το «κόβεται» είναι ο σκοπός του.
+   */
+  const mpogia = (el, cs) => cs.pointerEvents === 'none'
+    && (el.getAttribute('aria-hidden') === 'true' || !!el.closest('[aria-hidden="true"]'))
+    && !(el.textContent || '').trim();
+
   for (const el of document.querySelectorAll('body *')) {
     if (!shown(el)) continue;
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
     if (scrolledOut(el, r)) continue;
+    const diakosmitiko = mpogia(el, cs);
 
     // ── 1. Ξεφεύγει οριζόντια ──
-    if (cs.position !== 'fixed' && !el.classList.contains('skip-link')
+    if (cs.position !== 'fixed' && !el.classList.contains('skip-link') && !diakosmitiko
       && (r.right > vw + 1 || r.left < -1) && !inScrollerX(el)) {
       const k = 'b' + label(el);
       if (!seen.has(k)) { seen.add(k); out.bleed.push(`${label(el)} [${Math.round(r.left)}…${Math.round(r.right)}]`); }
@@ -124,6 +147,7 @@ export const AUDIT = ({ vw, touch }) => {
     // όσο ακριβώς το παράθυρο του περιηγητή. Δεν κόβεται ούτε ένα
     // εικονοστοιχείο. Ηταν 28 από τα 90 ευρήματα, σε επτά πλάτη.
     let escaped = cs.position === 'fixed';
+    if (diakosmitiko) continue;
     for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
       const pc = getComputedStyle(p);
       if (escaped) {
