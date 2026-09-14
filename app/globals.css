@@ -3234,10 +3234,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    `hyphens: manual`, που είναι και η προεπιλογή: ο περιηγητής σπάει ΜΟΝΟ εκεί
    που του δείξαμε.
 
-   ΤΟ ΤΕΛΕΥΤΑΙΟ ΤΗΣ ΓΡΑΜΜΗΣ ΔΕΝ ΣΤΟΙΧΙΖΕΤΑΙ. Η τελευταία γραμμή κάθε
-   παραγράφου μένει ριγμένη από μόνη της, όπως ορίζει η τυπογραφία· το
-   `text-wrap: pretty` φροντίζει να μη μείνει μία λέξη μόνη της πάνω της. */
-.po-just { text-align: justify; text-wrap: pretty; }
+   ΚΑΙ ΤΟ `text-wrap: pretty` ΗΤΑΝ ΑΥΤΟ ΠΟΥ ΑΚΥΡΩΝΕ ΤΟΝ ΣΥΛΛΑΒΙΣΜΟ.
+   ─────────────────────────────────────────────────────────────────────────
+   ΣΤΕΚΟΤΑΝ ΕΔΩ ΓΙΑ ΝΑ ΜΗ ΜΕΝΕΙ ΜΙΑ ΛΕΞΗ ΜΟΝΗ ΣΤΗΝ ΤΕΛΕΥΤΑΙΑ ΓΡΑΜΜΗ. Κόστιζε
+   ασύγκριτα περισσότερα: ο αλγόριθμος του `pretty` στο Chromium ΔΕΝ κοιτά
+   μαλακά ενωτικά. Οση δουλειά κι αν έκανε ο συλλαβιστής από πάνω, το CSS την
+   πετούσε.
+
+   ΜΕΤΡΗΜΕΝΟ ΣΕ ΠΡΑΓΜΑΤΙΚΟ CHROMIUM, ΙΔΙΟ ΚΕΙΜΕΝΟ ΣΕ ΚΟΥΤΙ 272, ΤΕΣΣΕΡΙΣ ΦΟΡΕΣ:
+
+       text-wrap        ενωτικά   γραμμές   μέγιστο κενό
+       pretty           με          4          26,6 px
+       pretty           χωρίς       4          26,6 px      ← ίδιο, δηλαδή αγνοεί
+       wrap             χωρίς       4          12,4 px
+       wrap             με          5           4,8 px      ← το φυσικό κενό
+
+   Το φυσικό κενό της Inter εκεί είναι 4,2. Με `pretty` το χειρότερο κενό ήταν
+   ΕΞΙ ΦΟΡΕΣ το κανονικό — τα ποτάμια λευκού που ακριβώς υποσχόταν να μην
+   υπάρχουν, φωτογραφημένα από τον ιδιοκτήτη.
+
+   Η ΑΝΤΑΛΛΑΓΗ ΕΙΝΑΙ ΡΗΤΗ: χάνεται η αποφυγή ορφανής λέξης στην τελευταία
+   γραμμή, κερδίζεται η ίδια η στοίχιση. Μια ορφανή λέξη κάτω από τέσσερις
+   σφιχτές γραμμές διαβάζεται· τέσσερις γραμμές με κενά 26 δεν διαβάζονται.
+   Οπου το κείμενο ΔΕΝ στοιχίζεται πλήρως, το `pretty` μένει όπου ήταν: εκεί
+   δεν έχει τίποτα να ακυρώσει. */
+.po-just { text-align: justify; }
 .po-table tbody th, .po-table tbody td { border-bottom: 1px solid var(--border-subtle); }
 /* Η τελευταία γραμμή δεν έχει τι να χωρίσει από κάτω της. */
 .po-table tbody tr:last-child > * { border-bottom: none; }
@@ -4237,7 +4258,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   display: grid; grid-template-columns: minmax(0, 1fr) 250px;
   gap: 40px; align-items: last baseline; max-width: 1044px;
 }
-.lg-lede > p:first-child { text-align: justify; text-wrap: pretty; }
+.lg-lede > p:first-child { text-align: justify; }
 .lg-lede > p:last-child:not(:first-child) { text-align: right; }
 @media (max-width: 760px) {
   .lg-lede { grid-template-columns: minmax(0, 1fr); gap: 10px; }
@@ -4301,13 +4322,19 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    σημεία τομής· εδώ αρκεί το `hyphens: manual`, που είναι και η προεπιλογή:
    ο περιηγητής σπάει ΜΟΝΟ εκεί που του δείξαμε, σε κάθε μηχανή και στο χαρτί.
 
-   Το `pretty` μένει, για να μην ξεμένει μία λέξη μόνη της στην τελευταία
-   σειρά της παραγράφου. */
-.lg-p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; text-align: justify; text-wrap: pretty; }
+   ΚΑΙ ΤΟ `pretty` ΕΦΥΓΕ, ΓΙΑΤΙ ΕΣΒΗΝΕ ΑΥΤΟΝ ΑΚΡΙΒΩΣ ΤΟΝ ΣΥΛΛΑΒΙΣΜΟ. Στεκόταν
+   εδώ για να μην ξεμένει μία λέξη μόνη της στην τελευταία σειρά. Ο αλγόριθμος
+   του `pretty` στο Chromium όμως ΔΕΝ κοιτά μαλακά ενωτικά: η δουλειά του
+   `hyphenate` πεταγόταν και η γραμμή έκλεινε τεντώνοντας τα κενά.
+
+   Μετρημένο στους «Ορους» στα 750, ΠΡΙΝ: κενά 15,4 · 13,3 · 11,2 σε τρία
+   μπλοκ, εκεί που το φυσικό κενό της Inter είναι 4,2. Ο φύλακας
+   `guard-justify-hyphen` απαγορεύει πλέον τον συνδυασμό. */
+.lg-p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; text-align: justify; }
 .lg-p strong, .lg-ul strong { color: var(--text-primary); font-weight: 600; }
 .lg-p:last-child, .lg-ul:last-child { margin-bottom: 0; }
 .lg-ul { margin: 2px 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
-.lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-align: justify; text-wrap: pretty; }
+.lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-align: justify; }
 .lg-note {
   font-size: 14px; color: var(--text-tertiary); line-height: 1.65; text-align: justify;
   margin: 12px 0 0; padding: 13px 16px;
@@ -4327,7 +4354,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-part-first { margin-top: 0; padding-top: 0; border-top: 0; }
 /* Ίδια στοίχιση για τα κείμενα που δεν είναι παράγραφοι, π.χ. οι εγγυήσεις
    του «Ποιοι είμαστε»: αλλιώς η μισή σελίδα κλείνει ίσια και η άλλη μισή όχι. */
-.lg-just { text-align: justify; text-wrap: pretty; }
+.lg-just { text-align: justify; }
 
 @media (max-width: 900px) {
   .lg-grid { grid-template-columns: minmax(0, 1fr); }

@@ -228,6 +228,15 @@ export const MUTATIONS = {
     { add: 'components/__mut__.tsx', content: "export default function MutationProbe() {\n  return (\n    <div>\n      <style>{`\n        .mut-a { opacity: .05; }\n                }\n        .mut-b { position: absolute; pointer-events: none; }\n      `}</style>\n    </div>\n  )\n}\n" },
     { add: 'components/__mut__.tsx', content: "export default function MutationProbe() {\n  return (\n    <div>\n      <style>{`\n        .mut-a { opacity: .05;\n        .mut-b { position: absolute; }\n      `}</style>\n    </div>\n  )\n}\n" },
   ] },
+  // Η πλήρης στοίχιση με το `text-wrap: pretty` δίπλα της: ο αλγόριθμος του
+  // pretty στο Chromium αγνοεί τα μαλακά ενωτικά, οπότε η γραμμή κλείνει
+  // τεντώνοντας τα κενά. Μετρημένο: 26,6 εικονοστοιχεία εκεί που το φυσικό
+  // κενό είναι 4,2. Η δεύτερη μορφή είναι το `hyphens: none`, που το σβήνει
+  // ρητά — ίδιο αποτέλεσμα, άλλη διατύπωση.
+  'justify-hyphen': { every: [
+    { add: 'components/__mut__.tsx', content: tsx("    <p style={{ textAlign: 'justify', textWrap: 'pretty' }}>Ενα κείμενο που στοιχίζεται πέρα ως πέρα χωρίς να σπάει λέξη.</p>") },
+    { add: 'components/__mut__.tsx', content: tsx("    <p style={{ textAlign: 'justify', hyphens: 'none' }}>Ενα κείμενο που στοιχίζεται πέρα ως πέρα χωρίς να σπάει λέξη.</p>") },
+  ] },
   'comma-kai': { every: [
     { add: 'components/__mut__.tsx', content: tsx('    <div>Το ακίνητο μπαίνει σε τάξη, και ο λογαριασμός βγαίνει μόνος του</div>') },
     { add: 'lib/core/__mut__.ts', content: "export const note = 'Ο φόρος αποδίδεται με αντίστροφη χρέωση, '\n  + 'και η λήψη δηλώνεται στον πίνακα.'\n" },
