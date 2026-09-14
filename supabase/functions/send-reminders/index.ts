@@ -1,4 +1,4 @@
-import { emailHeader, eyebrow } from '../_shared/emailTemplates.ts';
+import { emailShell, eyebrow, button, callout, dataTable } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
@@ -65,15 +65,15 @@ function buildEmail(events: CalendarEventsRow[], reminderType: string) {
     const dateStr = e.event_date ? new Date(e.event_date).toLocaleDateString('el-GR') : ''
     return `
       <tr>
-        <td style="padding:12px 0;border-bottom:1px solid #e8eaed;">
+        <td class="rule-b" style="padding:12px 0;border-bottom:1px solid #e8e8ed;">
           <span style="display:inline-block;width:4px;height:36px;background:${color};border-radius:2px;vertical-align:middle;margin-right:10px;"></span>
           <span style="vertical-align:middle;">
-            <span style="display:block;font-size:14px;color:#202124;font-weight:500;">${esc(e.title)}</span>
-            <span style="display:block;font-size:11px;color:#80868b;font-family:monospace;">${esc(label)} · ${dateStr}</span>
+            <span class="ink" style="display:block;font-size:14px;color:#1d1d1f;font-weight:500;">${esc(e.title)}</span>
+            <span class="fa" style="display:block;font-size:11px;color:#8a9099;font-family:monospace;">${esc(label)} · ${dateStr}</span>
           </span>
         </td>
-        <td style="padding:12px 0;border-bottom:1px solid #e8eaed;text-align:right;vertical-align:middle;">
-          ${e.amount ? `<span style="font-family:monospace;font-size:14px;color:#202124;font-weight:600;">${eur(e.amount)}</span>` : '<span style="color:#bdc1c6;font-size:12px;">Χωρίς ποσό</span>'}
+        <td class="rule-b" style="padding:12px 0;border-bottom:1px solid #e8e8ed;text-align:right;vertical-align:middle;">
+          ${e.amount ? `<span class="ink" style="font-family:monospace;font-size:14px;color:#1d1d1f;font-weight:600;">${eur(e.amount)}</span>` : '<span class="fa" style="color:#8a9099;font-size:12px;">Χωρίς ποσό</span>'}
         </td>
       </tr>`
   }).join('')
@@ -82,23 +82,17 @@ function buildEmail(events: CalendarEventsRow[], reminderType: string) {
     ? `PROPERWISE · ${events.length} ${reminderType === 'overdue' ? 'εκπρόθεσμα γεγονότα' : 'γεγονότα ΣΗΜΕΡΑ'}`
     : `PROPERWISE · ${events.length} γεγονότα σε ${typeLabel[reminderType]}`
 
-  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f3f4;font-family:-apple-system,'Inter',sans-serif;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    ${emailHeader()}
-    <div style="background:#ffffff;border:1px solid #e8eaed;border-radius:14px;padding:24px;">
-      <div style="background:${isUrgent ? 'rgba(217,48,37,0.08)' : 'rgba(26,115,232,0.08)'};border:1px solid ${isUrgent ? 'rgba(217,48,37,0.25)' : 'rgba(26,115,232,0.22)'};border-radius:10px;padding:16px 20px;margin-bottom:20px;">
-        ${eyebrow(isUrgent ? 'Απαιτείται δράση' : 'Υπενθύμιση', isUrgent ? '#d93025' : undefined)}
-        <p style="margin:0;font-size:15px;color:#202124;font-weight:500;">${events.length} γεγονότα ${reminderType === 'overdue' ? 'είναι εκπρόθεσμα' : reminderType === 'today' ? 'πρέπει να διεκπεραιωθούν σήμερα' : `λήγουν σε ${typeLabel[reminderType]}`}</p>
-        ${totalAmount > 0 ? `<p style="margin:6px 0 0;font-size:13px;color:#1a73e8;font-family:monospace;font-weight:600;">Σύνολο: ${eur(totalAmount)}</p>` : ''}
-      </div>
-      <table style="width:100%;border-collapse:collapse;">${eventRows}</table>
-      <div style="text-align:center;margin-top:24px;">
-        <a href="${APP_URL}/dashboard" style="display:inline-block;background:#1a73e8;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:100px;font-weight:700;font-size:14px;">Άνοιγμα PROPERWISE</a>
-      </div>
-    </div>
-    <p style="text-align:center;font-size:11px;color:#80868b;margin-top:20px;">PROPERWISE · Αυτόματη ειδοποίηση ημερολογίου</p>
-  </div>
-</body></html>`
+  const html = emailShell({
+    preheader: `${events.length} γεγονότα ${reminderType === 'overdue' ? 'εκπρόθεσμα' : reminderType === 'today' ? 'σήμερα' : `σε ${typeLabel[reminderType]}`}.`,
+    footerNote: 'Αυτόματη ειδοποίηση ημερολογίου · properwise.gr',
+    bodyHtml: callout(
+      eyebrow(isUrgent ? 'Απαιτείται δράση' : 'Υπενθύμιση', isUrgent ? '#d93025' : undefined)
+      + `<p class="ink" style="margin:0;font-size:15px;color:#1d1d1f;font-weight:600;mso-line-height-rule:exactly;line-height:22px;">${events.length} γεγονότα ${reminderType === 'overdue' ? 'είναι εκπρόθεσμα' : reminderType === 'today' ? 'πρέπει να διεκπεραιωθούν σήμερα' : `λήγουν σε ${typeLabel[reminderType]}`}</p>`
+      + (totalAmount > 0 ? `<p class="ac" style="margin:6px 0 0;font-size:13px;color:#1a73e8;font-weight:700;mso-line-height-rule:exactly;line-height:19px;">Σύνολο: ${eur(totalAmount)}</p>` : ''),
+      isUrgent ? 'alert' : 'accent')
+      + dataTable(eventRows)
+      + button('Άνοιγμα PROPERWISE', `${APP_URL}/dashboard`),
+  })
 
   return { subject, html }
 }
@@ -123,16 +117,16 @@ function buildDunningEmail(rows: RentPaymentsRow[], tenantMap: Record<string, Te
     const secondary = [tenant && prop ? prop : null, period && `Περίοδος ${period}`, dueStr && `Λήξη ${dueStr}`].filter(Boolean).join(' · ')
     return `
       <tr>
-        <td style="padding:12px 0;border-bottom:1px solid #e8eaed;">
+        <td class="rule-b" style="padding:12px 0;border-bottom:1px solid #e8e8ed;">
           <span style="display:inline-block;width:4px;height:36px;background:#d93025;border-radius:2px;vertical-align:middle;margin-right:10px;"></span>
           <span style="vertical-align:middle;">
-            <span style="display:block;font-size:14px;color:#202124;font-weight:500;">${esc(primary)}</span>
-            <span style="display:block;font-size:11px;color:#80868b;font-family:monospace;">${esc(secondary)}</span>
+            <span class="ink" style="display:block;font-size:14px;color:#1d1d1f;font-weight:500;">${esc(primary)}</span>
+            <span class="fa" style="display:block;font-size:11px;color:#8a9099;font-family:monospace;">${esc(secondary)}</span>
           </span>
         </td>
-        <td style="padding:12px 0;border-bottom:1px solid #e8eaed;text-align:right;vertical-align:middle;">
-          <span style="font-family:monospace;font-size:14px;color:#202124;font-weight:600;">${eur(r.amount || 0)}</span>
-          <span style="display:block;font-size:11px;color:#d93025;font-family:monospace;font-weight:700;">${daysOverdue} ${daysOverdue === 1 ? 'μέρα' : 'μέρες'} καθυστέρηση</span>
+        <td class="rule-b" style="padding:12px 0;border-bottom:1px solid #e8e8ed;text-align:right;vertical-align:middle;">
+          <span class="ink" style="font-family:monospace;font-size:14px;color:#1d1d1f;font-weight:600;">${eur(r.amount || 0)}</span>
+          <span class="neg" style="display:block;font-size:11px;color:#d93025;font-family:monospace;font-weight:700;">${daysOverdue} ${daysOverdue === 1 ? 'μέρα' : 'μέρες'} καθυστέρηση</span>
         </td>
       </tr>`
   }).join('')
@@ -140,24 +134,18 @@ function buildDunningEmail(rows: RentPaymentsRow[], tenantMap: Record<string, Te
   const n = rows.length
   const subject = `PROPERWISE · ${noticeLabel}: ληξιπρόθεσμο ενοίκιο (${n} ${n === 1 ? 'δόση' : 'δόσεις'})`
 
-  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f3f4;font-family:-apple-system,'Inter',sans-serif;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    ${emailHeader()}
-    <div style="background:#ffffff;border:1px solid #e8eaed;border-radius:14px;padding:24px;">
-      <div style="background:rgba(217,48,37,0.08);border:1px solid rgba(217,48,37,0.25);border-radius:10px;padding:16px 20px;margin-bottom:20px;">
-        ${eyebrow('Ληξιπρόθεσμο ενοίκιο', '#d93025')}
-        <p style="margin:0;font-size:15px;color:#202124;font-weight:500;">${n} ${n === 1 ? 'δόση ενοικίου είναι ληξιπρόθεσμη' : 'δόσεις ενοικίου είναι ληξιπρόθεσμες'}</p>
-        <p style="margin:6px 0 0;font-size:12px;color:#80868b;font-family:monospace;font-weight:600;">${noticeLabel} (ειδοποίηση Νο ${noticeNumber})</p>
-        ${total > 0 ? `<p style="margin:6px 0 0;font-size:13px;color:#d93025;font-family:monospace;font-weight:600;">Σύνολο ληξιπρόθεσμων: ${eur(total)}</p>` : ''}
-      </div>
-      <table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>
-      <div style="text-align:center;margin-top:24px;">
-        <a href="${APP_URL}/dashboard" style="display:inline-block;background:#1a73e8;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:100px;font-weight:700;font-size:14px;">Άνοιγμα PROPERWISE</a>
-      </div>
-    </div>
-    <p style="text-align:center;font-size:11px;color:#80868b;margin-top:20px;">PROPERWISE · Αυτόματη ειδοποίηση ληξιπρόθεσμου ενοικίου</p>
-  </div>
-</body></html>`
+  const html = emailShell({
+    preheader: `${n} ${n === 1 ? 'δόση ενοικίου είναι ληξιπρόθεσμη' : 'δόσεις ενοικίου είναι ληξιπρόθεσμες'}.`,
+    footerNote: 'Αυτόματη ειδοποίηση ληξιπρόθεσμου ενοικίου · properwise.gr',
+    bodyHtml: callout(
+      eyebrow('Ληξιπρόθεσμο ενοίκιο', '#d93025')
+      + `<p class="ink" style="margin:0;font-size:15px;color:#1d1d1f;font-weight:600;mso-line-height-rule:exactly;line-height:22px;">${n} ${n === 1 ? 'δόση ενοικίου είναι ληξιπρόθεσμη' : 'δόσεις ενοικίου είναι ληξιπρόθεσμες'}</p>`
+      + `<p class="fa" style="margin:6px 0 0;font-size:12px;color:#8a9099;font-weight:600;mso-line-height-rule:exactly;line-height:18px;">${noticeLabel} (ειδοποίηση Νο ${noticeNumber})</p>`
+      + (total > 0 ? `<p class="neg" style="margin:6px 0 0;font-size:13px;color:#d93025;font-weight:700;mso-line-height-rule:exactly;line-height:19px;">Σύνολο ληξιπρόθεσμων: ${eur(total)}</p>` : ''),
+      'alert')
+      + dataTable(rowsHtml)
+      + button('Άνοιγμα PROPERWISE', `${APP_URL}/dashboard`),
+  })
 
   return { subject, html }
 }

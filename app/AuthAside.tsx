@@ -49,20 +49,32 @@ export default function AuthAside({
       <div style={{ position: 'relative', marginBottom: 40 }}>
         {/* Διακοσμητική marketing επικεφαλίδα (όχι page heading): το h1 της σελίδας
             είναι η φόρμα δεξιά, ώστε να υπάρχει έγκυρο h1 και όταν το aside κρύβεται σε κινητό. */}
-        <div style={{ fontSize: 'clamp(27px, 3vw, 34px)', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.12, margin: '0 0 18px', color: '#fff' }}>
+        <div style={{ fontSize: 'clamp(27px, 3vw, 38px)', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.12, margin: '0 0 18px', color: '#fff' }}>
           {headline}<br /><span style={{ color: '#8ab4f8' }}>{accent}</span>
         </div>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,.62)', lineHeight: 1.7, margin: 0, maxWidth: 380 }}>{sub}</p>
+        {/* ═══ ΤΟ ΚΕΙΜΕΝΟ ΣΤΑΜΑΤΟΥΣΕ ΣΤΗ ΜΕΣΗ ΤΟΥ ΠΑΝΕΛ ══════════════════════
+            ΦΩΤΟΓΡΑΦΗΜΕΝΟ ΣΕ ΣΥΝΔΕΣΗ ΚΑΙ ΕΠΑΝΑΦΟΡΑ. Το πάνελ είναι 45% της
+            οθόνης: σε 1920 αυτό είναι 864 εικονοστοιχεία και 768 καθαρά μέσα
+            στα γεμίσματα. Η υπο-επικεφαλίδα είχε «maxWidth: 380», δηλαδή
+            τύλιγε στη ΜΙΣΗ διαδρομή και άφηνε 388 λευκά δεξιά της, με τα τρία
+            σημεία από κάτω να φτάνουν ώς την άκρη. Δύο διαφορετικά πλάτη
+            κειμένου στην ίδια στήλη διαβάζονται ως λάθος, όχι ως ιεραρχία.
+
+            ΤΟ ΟΡΙΟ ΗΤΑΝ ΚΛΗΡΟΝΟΜΙΑ ΑΠΟ ΜΙΚΡΟΤΕΡΟ ΠΑΝΕΛ. Φεύγει· το μέτρο το
+            δίνει το ίδιο το πάνελ, όπως σε κάθε άλλη γραμμή εδώ μέσα. Και
+            επειδή η γραμμή γίνεται μακρύτερη, το μέγεθος ανεβαίνει 14 → 15:
+            μακρύ μέτρο με μικρά γράμματα είναι το μόνο που όντως κουράζει. */}
+        <p style={{ fontSize: 15, color: 'rgba(255,255,255,.66)', lineHeight: 1.65, margin: 0 }}>{sub}</p>
       </div>
 
       {/* three supporting bullets */}
-      <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>
         {PILLARS.map((p, i) => (
           <div key={i} style={{ display: 'grid', gridTemplateColumns: '22px 1fr', gap: 14, alignItems: 'start' }}>
             <span className="po-lead-ico" style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(138,180,248,.12)', border: '1px solid rgba(138,180,248,.32)', color: '#8ab4f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check /></span>
             <div>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 4px', letterSpacing: '-0.01em' }}>{p.label}</p>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', margin: 0, lineHeight: 1.6 }}>{p.text}</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: '0 0 5px', letterSpacing: '-0.01em' }}>{p.label}</p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,.58)', margin: 0, lineHeight: 1.65 }}>{p.text}</p>
             </div>
           </div>
         ))}
@@ -74,8 +86,8 @@ export default function AuthAside({
             δίπλα της σε δεύτερο τόνο. Με μόνο τη μία, η γραμμή έμοιαζε
             μισοτελειωμένη — υπήρχε ο χώρος και το περίγραμμα από πάνω, αλλά
             τίποτα να τα δικαιολογεί. */}
-        <p style={{ fontSize: 13, color: '#8ab4f8', fontWeight: 700, margin: 0 }}>Το ακίνητό σου πάντα σε τάξη</p>
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', margin: 0 }}>Έτοιμο σε ένα λεπτό</p>
+        <p style={{ fontSize: 14, color: '#8ab4f8', fontWeight: 700, margin: 0 }}>Το ακίνητό σου πάντα σε τάξη</p>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,.45)', margin: 0 }}>Έτοιμο σε ένα λεπτό</p>
       </div>
     </div>
   )

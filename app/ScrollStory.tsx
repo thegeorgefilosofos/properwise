@@ -104,8 +104,25 @@ export default function ScrollStory() {
       <PanelFX />
       <style>{`
         .story-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(28px, 4vw, 64px); align-items: start; }
+        /* ═══ ΤΟ ΠΑΝΕΛ ΤΟΥ ΠΙΝΑΚΑ ΚΟΒΟΤΑΝ ΜΕΣΑ ΣΤΟ ΠΛΑΙΣΙΟ ══════════════════
+           ΜΕΤΡΗΜΕΝΟ ΣΕ CHROMIUM, ΣΕ ΤΕΣΣΕΡΑ ΠΛΑΤΗ ΕΠΙ ΤΡΙΑ ΥΨΗ. Το πλαίσιο
+           έδινε 348,8 εικονοστοιχεία καθαρά σε οθόνη 1440×790 και το πάνελ
+           «Πίνακας» ζητούσε 395: το κουτί της πρότασης έβγαινε 23 ΚΑΤΩ από την
+           κάτω ακμή και το «overflow: hidden» το έκοβε. Στα 1280×800 ίδια
+           ιστορία (−20,5) και στα 1512×860 οριακά (−4,9). Δηλαδή σε κάθε
+           φορητό, στην πρώτη εικόνα του προϊόντος.
+
+           ΔΥΟ ΑΛΛΑΓΕΣ, ΟΧΙ ΜΙΑ. Το πλαίσιο ανεβαίνει (430 δάπεδο αντί 400, 59vh
+           αντί 52vh, 530 ταβάνι αντί 500) ΚΑΙ το πάνελ αδυνατίζει κατά 46 σε
+           γεμίσματα και ύψος μπαρών. Μόνο του το ψηλότερο πλαίσιο δεν έφτανε:
+           το ταβάνι θα έπρεπε να πάει στα 515 για να χωρέσει το παλιό πάνελ με
+           μηδέν αέρα, δηλαδή θα ξανακολλούσε στις ακμές.
+
+           ΤΟ ΔΑΠΕΔΟ ΕΙΝΑΙ ΜΕΤΡΗΜΕΝΟ, ΟΧΙ ΔΙΑΛΕΓΜΕΝΟ: στα 430 το καρφωμένο
+           πλαίσιο μαζί με τα τρία κουμπιά πιάνει 492, που σε παράθυρο 560
+           ύψους μένει ακόμη ολόκληρο μέσα στην οθόνη — όσο και πριν. */
         .story-stick { position: sticky; top: clamp(72px, 12vh, 120px); }
-        .story-frame { position: relative; height: clamp(400px, 52vh, 500px); border-radius: 18px; background: var(--bg-surface); border: 1px solid var(--border-default); overflow: hidden; box-shadow: 0 24px 70px -32px rgba(0,0,0,.35), 0 0 120px -50px color-mix(in srgb, var(--accent) 55%, transparent); container-type: inline-size; }
+        .story-frame { position: relative; height: clamp(430px, 59vh, 530px); border-radius: 18px; background: var(--bg-surface); border: 1px solid var(--border-default); overflow: hidden; box-shadow: 0 24px 70px -32px rgba(0,0,0,.35), 0 0 120px -50px color-mix(in srgb, var(--accent) 55%, transparent); container-type: inline-size; }
         /* Σε στενό πλαίσιο (όχι στενή οθόνη), το πλευρικό μενού του πίνακα δεν χωρά. */
         @container (max-width: 470px) { .lp-rail { display: none; } }
         .story-panel { position: absolute; inset: 0; padding: clamp(18px, 2.4vw, 30px); display: flex; align-items: center; justify-content: center; opacity: 0; transform: translateY(14px) scale(.985); transition: opacity .5s cubic-bezier(.2,0,0,1), transform .5s cubic-bezier(.2,0,0,1); pointer-events: none; }
