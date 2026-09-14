@@ -128,8 +128,10 @@ export const divider = (margin = '22px 0'): string =>
 // Τονισμένο κουτί (υπενθύμιση, προειδοποίηση, σύνοψη). Εννέα αντίγραφα του
 // ίδιου σχήματος ζούσαν μέσα στις functions, με τρία διαφορετικά ραδιόσχημα.
 export const callout = (html: string, tone: 'accent' | 'alert' = 'accent'): string => {
-  const c = tone === 'alert' ? '#d93025' : ACCENT;
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="${tone === 'alert' ? 'box-alert' : 'box'}" style="border-collapse:separate;background:${tone === 'alert' ? 'rgba(217,48,37,.06)' : 'rgba(26,115,232,.06)'};border:1px solid ${tone === 'alert' ? 'rgba(217,48,37,.24)' : 'rgba(26,115,232,.22)'};border-radius:10px;margin:0 0 18px;"><tr><td style="padding:15px 17px;">${html}</td></tr></table>`;
+  const alert = tone === 'alert';
+  const fill = alert ? 'rgba(217,48,37,.06)' : 'rgba(26,115,232,.06)';
+  const edge = alert ? 'rgba(217,48,37,.24)' : 'rgba(26,115,232,.22)';
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="${alert ? 'box-alert' : 'box'}" style="border-collapse:separate;background:${fill};border:1px solid ${edge};border-radius:10px;margin:0 0 18px;"><tr><td style="padding:15px 17px;">${html}</td></tr></table>`;
 };
 
 // Σειρά πίνακα: τίτλος + δεύτερη γραμμή αριστερά, ποσό δεξιά. Το ίδιο σχήμα
