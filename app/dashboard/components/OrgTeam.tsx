@@ -538,7 +538,18 @@ export default function OrgTeam({ userId }: { userId: string }) {
                               fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans,
                               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                             }}>{m.email || ABSENT}</span>
-                            {isYou && <Chip tone="neutral">Εσύ</Chip>}
+                            {/* ΤΟ ΠΛΑΚΑΚΙ ΔΕΝ ΣΥΡΡΙΚΝΩΝΕΤΑΙ, Η ΔΙΕΥΘΥΝΣΗ ΑΠΟΣΙΩΠΑΤΑΙ.
+                                Ο χρήστης το φωτογράφισε σε ταμπλέτα: το «Εσύ» έβγαινε
+                                «Εσ» και από κάτω «ύ». Και τα δύο παιδιά της γραμμής
+                                σμίκρυναν μαζί, οπότε το πλακάκι έπεφτε κάτω από το
+                                πλάτος της λέξης του και το `overflow-wrap: anywhere`
+                                του Chip —σωστό για ετικέτες πολλών λέξεων— έσπαγε μία
+                                λέξη τριών γραμμάτων στη μέση.
+
+                                Η διεύθυνση έχει ΗΔΗ αποσιώπηση· το πλακάκι δεν έχει
+                                τίποτα να δώσει. Με `flexShrink: 0` η συρρίκνωση πέφτει
+                                ολόκληρη εκεί που υπάρχει λύση. */}
+                            {isYou && <span style={{ flexShrink: 0 }}><Chip tone="neutral">Εσύ</Chip></span>}
                           </div>
                         </th>
 
