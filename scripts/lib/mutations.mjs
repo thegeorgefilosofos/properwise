@@ -221,8 +221,15 @@ export const MUTATIONS = {
   'health-marker': { file: 'supabase/functions/_shared/probe.mjs',
     from: "export const ERROR_MARKER = 'Κάτι πήγε στραβά';",
     to: "export const ERROR_MARKER = 'Παρουσιάστηκε σφάλμα';" },
+  // Το ορφανό `}` της αρχικής, ξαναφερμένο αυτούσιο: έμεινε από κίνηση που
+  // αφαιρέθηκε και έτρωγε ολόκληρο τον ΕΠΟΜΕΝΟ κανόνα. Η δεύτερη μορφή είναι η
+  // αντίστροφη — κανόνας που δεν κλείνει ποτέ ώς το τέλος του <style>.
+  'style-braces': { every: [
+    { add: 'components/__mut__.tsx', content: "export default function MutationProbe() {\n  return (\n    <div>\n      <style>{`\n        .mut-a { opacity: .05; }\n                }\n        .mut-b { position: absolute; pointer-events: none; }\n      `}</style>\n    </div>\n  )\n}\n" },
+    { add: 'components/__mut__.tsx', content: "export default function MutationProbe() {\n  return (\n    <div>\n      <style>{`\n        .mut-a { opacity: .05;\n        .mut-b { position: absolute; }\n      `}</style>\n    </div>\n  )\n}\n" },
+  ] },
   'comma-kai': { every: [
-    { add: 'components/__mut__.tsx', content: tsx('    <div>Το ακίνητο μπαίνει σε τάξη και ο λογαριασμός βγαίνει μόνος του</div>') },
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Το ακίνητο μπαίνει σε τάξη, και ο λογαριασμός βγαίνει μόνος του</div>') },
     { add: 'lib/core/__mut__.ts', content: "export const note = 'Ο φόρος αποδίδεται με αντίστροφη χρέωση, '\n  + 'και η λήψη δηλώνεται στον πίνακα.'\n" },
   ] },
   'type-floor': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ fontSize: 9 }}>Πολύ μικρό για τηλέφωνο</div>") },

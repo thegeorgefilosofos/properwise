@@ -542,9 +542,6 @@ export default async function Landing() {
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
           opacity: .05; mix-blend-mode: overlay;
         }
-        /* Ο κόκκος «ζει»: μετατοπίζεται σε οκτώ θέσεις. Ακίνητος κόκκος φαίνεται
-           σαν λερωμένη οθόνη· κόκκος που αναπνέει φαίνεται σαν φιλμ. */
-                }
         /* 2. Οι αύρες. Τρεις, σε τρεις αποχρώσεις της ΙΔΙΑΣ οικογένειας (γαλάζιο,
               μία απόχρωση, το accent): το βάθος βγαίνει από μέγεθος, θολούρα και
               διαφάνεια — όχι από δεύτερο και τρίτο χρώμα εκτός παλέτας. */
