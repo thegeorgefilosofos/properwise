@@ -197,8 +197,26 @@ function Tip({ lead, rows }: { lead?: string; rows?: readonly (readonly [string,
  * χωρίς κενό. Το πλάτος ζει στο φύλλο στυλ μαζί με το ερώτημα μέσων που το
  * καταργεί σε κινητό.
  */
+/*
+ * ΤΟ `textWrap: undefined` ΔΕΝ ΕΙΝΑΙ ΚΑΘΑΡΙΟΤΗΤΑ — ΕΙΝΑΙ Η ΜΟΝΗ ΓΡΑΦΗ ΠΟΥ ΔΟΥΛΕΥΕΙ.
+ *
+ * Το `TT.label` κουβαλά `textWrap: 'balance'`. Και το `text-wrap` ΕΙΝΑΙ
+ * συντομογραφία: γράφει `text-wrap-mode` ΚΑΙ `text-wrap-style`. Το
+ * `white-space: nowrap` της κλάσης γράφει το ΙΔΙΟ `text-wrap-mode`. Ενσωματωμένο
+ * στυλ νικά πάντα κλάση, άρα το `balance` γύριζε το mode πίσω σε `wrap` και το
+ * `nowrap` της `.plan-tag` ΔΕΝ ΙΣΧΥΣΕ ΠΟΤΕ, σε κανένα πλάτος.
+ *
+ * ΜΕΤΡΗΜΕΝΟ, ΣΕ ΚΑΘΕ ΣΚΗΝΗ ΚΑΙ ΣΕ ΤΡΙΑ ΠΛΑΤΗ: 30 ετικέτες με
+ * `white-space: normal` ενώ το φύλλο στυλ ζητούσε `nowrap` — στα 320, στα 640
+ * και στα 1.280. Ενας κανόνας γραμμένος, σχολιασμένος και νεκρός.
+ *
+ * Το `undefined` σβήνει την ιδιότητα από το ενσωματωμένο στυλ (ο React δεν
+ * εκπέμπει undefined), οπότε αποφασίζει η κλάση — που είναι και το σημείο όπου
+ * το ερώτημα μέσων αλλάζει γνώμη κάτω από τα 560. Ιδιο ιδίωμα με το
+ * `lineHeight: undefined` στο τέλος αυτού του αρχείου.
+ */
 const Tag = ({ children }: { children: ReactNode }) => (
-  <span className="plan-tag" style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.3 }}>
+  <span className="plan-tag" style={{ ...TT.label, textWrap: undefined, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.3 }}>
     {children}
   </span>
 );
