@@ -63,15 +63,28 @@ export const AUDIT = ({ vw, touch }) => {
     return false;
   };
 
+  /**
+   * ΚΑΘΑΡΗ ΜΠΟΓΙΑ: ΤΟ ΚΡΙΤΗΡΙΟ ΖΕΙ ΣΤΟ scripts/lib/paint.mjs.
+   *
+   * Γράφεται στη σελίδα με `addInitScript` πριν από κάθε script της, ώστε ο
+   * ΙΔΙΟΣ ορισμός να ισχύει και εδώ και στο `e2e-mobile`. Αν λείπει, ο έλεγχος
+   * ΣΚΑΕΙ αντί να συγχωρεί σιωπηλά: ένας σαρωτής που χάνει το κριτήριό του και
+   * συνεχίζει είναι χειρότερος από σαρωτή που σταματά.
+   */
+  if (typeof window.__mpogia !== 'function') {
+    throw new Error('Λείπει το window.__mpogia. Δες scripts/lib/paint.mjs και το addInitScript του σαρωτή.')
+  }
+
   for (const el of document.querySelectorAll('body *')) {
     if (!shown(el)) continue;
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
     if (scrolledOut(el, r)) continue;
+    const diakosmitiko = window.__mpogia(el, cs);
 
     // ── 1. Ξεφεύγει οριζόντια ──
-    if (cs.position !== 'fixed' && !el.classList.contains('skip-link')
+    if (cs.position !== 'fixed' && !el.classList.contains('skip-link') && !diakosmitiko
       && (r.right > vw + 1 || r.left < -1) && !inScrollerX(el)) {
       const k = 'b' + label(el);
       if (!seen.has(k)) { seen.add(k); out.bleed.push(`${label(el)} [${Math.round(r.left)}…${Math.round(r.right)}]`); }
@@ -124,6 +137,7 @@ export const AUDIT = ({ vw, touch }) => {
     // όσο ακριβώς το παράθυρο του περιηγητή. Δεν κόβεται ούτε ένα
     // εικονοστοιχείο. Ηταν 28 από τα 90 ευρήματα, σε επτά πλάτη.
     let escaped = cs.position === 'fixed';
+    if (diakosmitiko) continue;
     for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
       const pc = getComputedStyle(p);
       if (escaped) {

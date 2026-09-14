@@ -963,7 +963,8 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           propertyId={propertyId} userId={userId}
           profile={profile}
           applied={appliedLoan}
-          market={{euribor_3m:market.euribor_3m,euribor_1m:market.euribor_1m,ecb_rate:market.ecb_rate,updated_at:market.updated_at}}
+          market={{euribor_3m:market.euribor_3m,euribor_1m:market.euribor_1m,ecb_rate:market.ecb_rate,updated_at:market.updated_at,
+            euribor_asOf:market.provenance.euribor_3m?.asOf,euribor_basis:market.provenance.euribor_3m?.basis}}
           initial={{
             loanAmount:String(initAmount), propValue:String(initValue),
             sqm: propertySqm && propertySqm>0 ? String(Math.round(propertySqm)) : undefined,

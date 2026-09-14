@@ -27,7 +27,32 @@
 import { readFileSync } from 'node:fs';
 
 const data = JSON.parse(readFileSync(new URL('../data/accounting-sources.json', import.meta.url), 'utf8'));
-const watched = Object.entries(data).filter(([k, s]) => !k.startsWith('_') && s.watch);
+// ── ΤΟ `watch` ΔΕΝ ΕΙΝΑΙ ΠΑΝΤΑ ΔΙΕΥΘΥΝΣΗ, ΚΑΙ ΔΕΝ ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ──────────
+// ΤΟ ΣΦΑΛΜΑ, ΜΕΤΡΗΜΕΝΟ. Από τις είκοσι πηγές με πεδίο `watch`, δεκαεπτά το
+// έχουν κενό (φιλτράρονται σωστά, το κενό είναι ψευδές) και ΤΡΕΙΣ όχι. Από τις
+// τρεις, ΜΟΝΟ ΜΙΑ είναι διεύθυνση. Οι άλλες δύο είναι ανθρώπινη παραπομπή:
+//
+//     digital_transaction_fee → «ΦΕΚ Α΄ 21/14.02.2025»
+//     etmear                  → «ΡΑΑΕΥ, αποφάσεις ρυθμιζόμενων χρεώσεων»
+//
+// Ο ελεγκτής τις έδινε στο `fetch` και έπαιρνε σφάλμα, οπότε κάθε Δευτέρα
+// τύπωνε «Η σελίδα δεν διαβάστηκε» για δύο πηγές που ΔΕΝ ΕΧΟΥΝ σελίδα. Δύο
+// μόνιμα ψεύτικα ευρήματα από τα τρία: το δύο τρίτα της αναφοράς ήταν θόρυβος,
+// κάθε βδομάδα, για πάντα.
+//
+// Το τίμημα δεν είναι η γραμμή. Είναι ότι όποιος διαβάζει «δεν διαβάστηκε» δύο
+// φορές και δει ότι δεν σημαίνει τίποτα, θα το προσπεράσει και την τρίτη — τότε
+// που θα είναι αληθινό.
+//
+// ΓΙΑΤΙ ΔΕΝ ΔΙΟΡΘΩΝΕΤΑΙ ΣΤΑ ΔΕΔΟΜΕΝΑ. Η παραπομπή είναι ΣΩΣΤΗ: το ΦΕΚ δεν έχει
+// σελίδα έκδοσης να παρακολουθήσεις και ο άνθρωπος που θα κοιτάξει χρειάζεται
+// ακριβώς αυτή τη γραμμή. Λάθος ήταν η υπόθεση του ελεγκτή ότι κάθε `watch`
+// είναι διεύθυνση.
+const isUrl = (v) => typeof v === 'string' && /^https?:\/\//.test(v.trim());
+
+const withWatch = Object.entries(data).filter(([k, s]) => !k.startsWith('_') && s.watch);
+const watched = withWatch.filter(([, s]) => isUrl(s.watch));
+const anthropines = withWatch.filter(([, s]) => !isUrl(s.watch));
 
 if (!watched.length) {
   console.log('Καμία πηγή δεν έχει σελίδα παρακολούθησης.');
@@ -95,4 +120,8 @@ if (findings.length) {
   process.exit(1);
 }
 
-console.log(`\n✓ ${watched.length} παρακολουθούμενες πηγές, καμία νεότερη έκδοση${failed ? ` (${failed} δεν διαβάστηκαν)` : ''}`);
+const anthropinesLine = anthropines.length
+  ? `\n  ${anthropines.length} πηγές παρακολουθούνται από άνθρωπο, χωρίς σελίδα έκδοσης: `
+    + anthropines.map(([, s]) => s.title).join(', ')
+  : '';
+console.log(`\n✓ ${watched.length} παρακολουθούμενες πηγές, καμία νεότερη έκδοση${failed ? ` (${failed} δεν διαβάστηκαν)` : ''}${anthropinesLine}`);

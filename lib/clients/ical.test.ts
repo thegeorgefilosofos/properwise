@@ -208,5 +208,26 @@ ok('κενό δεν είναι μπλοκάρισμα', !isBlocked(''))
   ok('κι τα σχόλια πάλι δεν πειράζονται', moved.notes === prev.notes)
 }
 
+// ═══ ΤΟ ΙΔΙΟ ΗΜΕΡΟΛΟΓΙΟ, ΔΥΟ ΕΠΙΦΑΝΕΙΕΣ, ΑΛΛΟ ΠΛΗΘΟΣ ════════════════════════
+// Ο συγχρονισμός από διεύθυνση (supabase/functions/ical-sync) φιλτράρει
+//     drafts.filter(d => !d.cancelled && (include_blocked || !d.blocked))
+// Η επικόλληση φιλτράριζε ΜΟΝΟ το `blocked`, γιατί το `cancelled` δεν έφτανε
+// ποτέ στο προσχέδιο. Ιδιο αρχείο ICS, άλλο πλήθος διαμονών — και ο ιδιοκτήτης
+// δεν είχε τρόπο να καταλάβει ποιο από τα δύο ισχύει.
+{
+  const ev = parseICal(ICS(
+    'BEGIN:VEVENT\r\nDTSTART:20260901\r\nDTEND:20260904\r\nUID:c1\r\nSUMMARY:Reserved\r\nSTATUS:CONFIRMED\r\nEND:VEVENT\r\n' +
+    'BEGIN:VEVENT\r\nDTSTART:20260910\r\nDTEND:20260913\r\nUID:c2\r\nSUMMARY:Reserved\r\nSTATUS:CANCELLED\r\nEND:VEVENT'))
+  const d = icalToStayDrafts(ev, { propertyId: 'p1', channel: 'airbnb' })
+  eq('δύο γεγονότα, δύο προσχέδια', d.length, 2)
+  ok('η ακύρωση φτάνει στο προσχέδιο', d[0].cancelled === false && d[1].cancelled === true)
+
+  // Το φίλτρο του συγχρονισμού, αυτούσιο. Η επικόλληση τρέχει πλέον το ίδιο.
+  const oposSynchronismos = d.filter(x => !x.cancelled && (false || !x.blocked))
+  eq('μία μόνο διαμονή εισάγεται, όχι δύο', oposSynchronismos.length, 1)
+  eq('τρεις νύχτες, όχι έξι', oposSynchronismos.reduce((s, x) => s + x.nights, 0), 3)
+  eq('και είναι η επιβεβαιωμένη', oposSynchronismos[0].uid, 'c1')
+}
+
 console.log(fail === 0 ? `✓ ical: ${pass} έλεγχοι πέρασαν` : `✗ ical: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

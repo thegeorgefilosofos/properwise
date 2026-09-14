@@ -71,7 +71,7 @@ import { createRequire } from 'node:module'
 import { chromePath } from './lib/chrome.mjs'
 import { SCENES } from './lib/scenes.mjs'
 import { benchUrl } from './lib/paths.mjs'
-import { TAP, tinyTargets } from './lib/tap-targets.mjs'
+import { TAP, TAP_INLINE, tinyTargets } from './lib/tap-targets.mjs'
 
 const require = createRequire(import.meta.url)
 let pkg
@@ -125,7 +125,7 @@ for (const scene of RUN) {
     const tp = await touchCtx.newPage()
     await tp.goto(benchUrl(scene), { waitUntil: 'load' })
     await tp.waitForTimeout(1200)
-    found.tinyTap.push(...await tp.evaluate(tinyTargets, TAP))
+    found.tinyTap.push(...await tp.evaluate(tinyTargets, { MIN: TAP, INLINE: TAP_INLINE }))
     await touchCtx.close()
   }
 

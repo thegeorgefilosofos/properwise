@@ -71,6 +71,32 @@ interface Props {
 type PriceStay = PricingStay & StayAmountLike;
 
 const WEEKDAYS = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ'];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΠΟΣΟ ΦΑΡΔΙΑ ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ Η ΚΑΡΤΑ ΤΟΥ ΜΗΝΑ ΓΙΑ ΝΑ ΜΗΝ ΚΟΠΕΙ Η ΚΥΡΙΑΚΗ
+// ─────────────────────────────────────────────────────────────────────────
+// ΤΟ ΣΦΑΛΜΑ, ΦΩΤΟΓΡΑΦΗΜΕΝΟ ΣΕ XIAOMI PAD 6 ΚΑΘΕΤΑ (800 CSS). Δύο κάρτες μηνών
+// δίπλα-δίπλα και η ΤΕΛΕΥΤΑΙΑ ΣΤΗΛΗ ΚΑΘΕ ΚΑΡΤΑΣ κομμένη στη μέση: η Κυριακή
+// φαινόταν μισή, με το ποσό της κομμένο.
+//
+// ΓΙΑΤΙ, ΚΑΙ ΔΕΝ ΕΙΝΑΙ Η ΓΡΑΜΜΑΤΟΣΕΙΡΑ. Κάθε κελί είναι `<button>` μέσα στο
+// `.app-content`, άρα παίρνει το δάπεδο αφής των 44 εικονοστοιχείων. Είναι
+// ΣΚΛΗΡΟ όριο: καμία μονάδα `fr` δεν το σπάει, γιατί το `min-width` του
+// στοιχείου δεν είναι διαπραγματεύσιμο από το πλέγμα. Επτά κελιά των 44 συν
+// έξι κενά των 4 κάνουν 332· με το γέμισμα των 16 εκατέρωθεν, η κάρτα
+// χρειάζεται 364 για να τα χωρέσει.
+//
+// Ο παλιός αριθμός ήταν 280. Κάτω από τα 364 η κάρτα δεχόταν να στενέψει, το
+// πλέγμα έβγαινε έξω από το κουτί της και το `overflow` το έκοβε.
+//
+// ΤΟ ΟΡΙΟ ΕΙΝΑΙ ΤΩΡΑ Ο ΤΥΠΟΣ, ΟΧΙ ΝΟΥΜΕΡΟ ΑΠΟ ΤΟ ΧΕΡΙ: όποιος αλλάξει γέμισμα,
+// κενό ή δάπεδο αφής, αλλάζει και το όριο μαζί. Οταν δεν χωρούν δύο κάρτες,
+// πέφτει η μία κάτω από την άλλη και τα κελιά γίνονται διπλάσια — καλύτερο
+// ημερολόγιο, όχι χειρότερο.
+const CAL_CELL_MIN = 44   // το δάπεδο αφής του κελιού, από το globals.css
+const CAL_GAP = 4         // το κενό ανάμεσα στα κελιά
+const CAL_PAD = 16        // το γέμισμα της κάρτας, ανά πλευρά
+const CAL_MONTH_MIN = 7 * CAL_CELL_MIN + 6 * CAL_GAP + 2 * CAL_PAD
 const todayIso = () => athensToday();
 const addDaysIso = (d: string, n: number) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
 
@@ -794,9 +820,28 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 const rovingDate = [focusDate, sel?.date].find(k => k?.startsWith(monthKey)) ?? days[0]?.date ?? '';
                 const daysInMonth = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
                 return (
-                  <div key={key} className="cal-month" style={{ flex: '1 1 300px', minWidth: 280, background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 16, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
+                  <div key={key} className="cal-month" style={{ flex: `1 1 ${CAL_MONTH_MIN}px`, minWidth: CAL_MONTH_MIN, background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 16, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>{MONTHS_NOM[mm - 1]} {yy}</div>
-                    <div role="grid" aria-label={`${MONTHS_NOM[mm - 1]} ${yy}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                    {/* ═══ ΕΦΤΑ ΙΣΕΣ ΣΤΗΛΕΣ, ΚΑΙ ΤΟ `1fr` ΔΕΝ ΤΟ ΕΓΓΥΑΤΑΙ ══════════
+                        Το `1fr` σημαίνει `minmax(auto, 1fr)` και το `auto` ως
+                        ΕΛΑΧΙΣΤΟ είναι το min-content του κελιού. Το κελί κρατά
+                        ποσό τεσσάρων χαρακτήρων («155€»), που δεν σπάει πουθενά:
+                        μόλις το ποσό ζητήσει παραπάνω από το μερίδιό του, οι
+                        εφτά στήλες φουσκώνουν και το πλέγμα βγαίνει ΕΞΩ από την
+                        κάρτα του. Με `overflow: hidden` στο κελί, η τελευταία
+                        στήλη —η Κυριακή— κόβεται στη μέση.
+
+                        ΜΕΤΡΗΜΕΝΟ ΣΤΟΝ ΠΑΓΚΟ ΣΤΑ 800: πλέγμα 332 μέσα σε κάρτα
+                        334. Δύο εικονοστοιχεία περιθώριο, με τα κελιά ΗΔΗ
+                        καρφωμένα στο ελάχιστό τους (44 το καθένα). Αρκεί η
+                        κλίμακα κειμένου του περιηγητή να ανέβει ένα σκαλί —
+                        ρύθμιση που υπάρχει σε κάθε Android και δεν την ελέγχουμε
+                        — για να γίνει το περιθώριο αρνητικό. Ο χρήστης το
+                        φωτογράφισε σε Xiaomi Pad 6.
+
+                        Το ίδιο σφάλμα είναι ήδη γραμμένο και διορθωμένο στο
+                        `TabCalendar.tsx`, με το ίδιο σχόλιο. Εδώ είχε μείνει. */}
+                    <div role="grid" aria-label={`${MONTHS_NOM[mm - 1]} ${yy}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }}>
                       {WEEKDAYS.map(w => <div key={w} role="columnheader" style={{ textAlign: 'center', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', paddingBottom: 4 }}>{w}</div>)}
                       {Array.from({ length: lead }).map((_, i) => <div key={'b' + i} role="gridcell" />)}
                       {Array.from({ length: daysInMonth }).map((_, i) => {

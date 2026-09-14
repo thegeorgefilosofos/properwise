@@ -43,7 +43,8 @@ const PAGES = ['/', '/login', '/signup', '/ypologismos-forou-enoikion', '/ypolog
 
 // Ο κανόνας των 44 ζει στο scripts/lib/tap-targets.mjs: τον μοιράζεται με τη
 // σάρωση των οθονών του ταμπλό, ώστε να μην αποκλίνουν δύο γραφές του ίδιου.
-import { TAP, tinyTargets } from './lib/tap-targets.mjs'
+import { TAP, TAP_INLINE, tinyTargets } from './lib/tap-targets.mjs'
+import { installPaint } from './lib/paint.mjs'
 
 let pass = 0, fail = 0
 const ok = (n, c) => { if (c) pass++; else { fail++; console.log('  ✗ ' + n) } }
@@ -63,6 +64,7 @@ for (const d of DEVICES) {
   await ctx.addInitScript(() => { try { localStorage.setItem('pos-cookie-consent', JSON.stringify({ v: '2026-08', ts: 'x' })) } catch { /* κενό */ } })
   for (const path of PAGES) {
     const p = await ctx.newPage()
+  await p.addInitScript(installPaint)
     await p.goto(B + path, { waitUntil: 'networkidle' })
 
     // ── 1. ΚΑΜΙΑ ΟΡΙΖΟΝΤΙΑ ΥΠΕΡΧΕΙΛΙΣΗ, ΟΥΤΕ ΣΤΗ ΣΕΛΙΔΑ ΟΥΤΕ ΜΕΣΑ ΣΕ ΔΟΧΕΙΟ
@@ -111,6 +113,13 @@ for (const d of DEVICES) {
         if (r.width === 0 || r.height === 0) continue
         if (r.right <= innerWidth + 1 && r.left >= -1) continue
         if (inScrollerX(el)) continue
+        // ΚΑΘΑΡΗ ΜΠΟΓΙΑ: το κριτήριο ζει στο scripts/lib/paint.mjs και γράφεται
+        // εδώ με `addInitScript`, ώστε ο ΙΔΙΟΣ ορισμός να ισχύει και στον
+        // `e2e-rendered`. Αν λείπει, ο έλεγχος ΣΚΑΕΙ αντί να συγχωρεί σιωπηλά.
+        if (typeof window.__mpogia !== 'function') {
+          throw new Error('Λείπει το window.__mpogia. Δες scripts/lib/paint.mjs.')
+        }
+        if (window.__mpogia(el, cs)) continue
         const sel = (typeof el.className === 'string' && el.className.split(/\s+/)[0]) || el.tagName
         if (seen.has(sel)) continue
         seen.add(sel)
@@ -150,7 +159,7 @@ for (const d of DEVICES) {
     // πλάτος επειδή τόσο είναι η λέξη και κανένα δάχτυλο δεν αστοχεί σε λέξη
     // ύψους 44. Το πλάτος απαιτείται εκεί που ο στόχος δεν έχει λέξη να
     // σημαδέψεις: κουμπιά με ένα ή δύο σύμβολα, δηλαδή τα εικονίδια.
-    const tiny = await p.evaluate(tinyTargets, TAP)
+    const tiny = await p.evaluate(tinyTargets, { MIN: TAP, INLINE: TAP_INLINE })
     ok(`${d.name} ${path}: κάθε στόχος αφής ${TAP}px${tiny.length ? ' — ' + tiny.slice(0, 6).join(', ') + (tiny.length > 6 ? ` (+${tiny.length - 6})` : '') : ''}`, tiny.length === 0)
 
     await p.close()
@@ -162,6 +171,7 @@ for (const d of DEVICES) {
 {
   const ctx = await browser.newContext({ ...DEVICES[1], locale: 'el-GR' })
   const p = await ctx.newPage()
+  await p.addInitScript(installPaint)
   const cdp = await ctx.newCDPSession(p)
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
   await p.addInitScript(() => { try { localStorage.setItem('pos-cookie-consent', JSON.stringify({ v: '2026-08', ts: 'x' })) } catch { /* κενό */ } })
@@ -223,6 +233,7 @@ for (const d of DEVICES) {
   const bench = 'file://' + process.cwd() + '/.perf-bench/mobile.html?c=portfolio&n=6'
   const ctx = await browser.newContext({ ...DEVICES[1], locale: 'el-GR' })
   const p = await ctx.newPage()
+  await p.addInitScript(installPaint)
   await p.goto(bench, { waitUntil: 'networkidle' })
   await p.waitForTimeout(400)
   const r = await p.evaluate(() => {

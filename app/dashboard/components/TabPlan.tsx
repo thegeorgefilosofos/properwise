@@ -74,6 +74,7 @@ import { readCosts, EMPTY_PLAN, type PlanState } from '@/lib/data/plan';
 import { saved } from '@/components/dbWrite';
 import { notify, notifyOk } from '@/components/Toast';
 import { feSigned } from '@/lib/core/format';
+import { hyphenate } from '@/lib/core/hyphenate';
 import type { PropertyStatus } from '@/lib/property/status';
 import {
   planFor, groupSteps, vacancyCost, renovationLoan, saleEstimate,
@@ -138,14 +139,48 @@ const AXIS_CELL: CSSProperties = { color: 'var(--text-primary)', fontWeight: 600
  * άκυρο HTML — ροή μπλοκ μέσα σε ενσωματωμένο στοιχείο. Το `display: block`
  * δίνει το ίδιο οπτικό αποτέλεσμα χωρίς να παραβεί τη γραμματική.
  */
+/*
+ * ═══ ΤΟ `hy()` ΔΕΝ ΒΛΕΠΕΙ ΠΟΤΕ ΜΕΣΑ ΣΕ COMPONENT, ΚΑΙ ΓΙ' ΑΥΤΟ ΣΥΛΛΑΒΙΖΕΙ ΕΔΩ
+ *
+ * ΤΟ ΣΦΑΛΜΑ, ΦΩΤΟΓΡΑΦΗΜΕΝΟ ΑΠΟ ΤΟΝ ΙΔΙΟΚΤΗΤΗ. Η επεξήγηση πίσω από κάθε ⓘ
+ * έβγαινε με ποτάμια λευκού μέσα στην παράγραφο: «Υψηλότερο   ποσό   ανά
+ * διανυκτέρευση». Το κουτί είναι `po-just`, δηλαδή πλήρης στοίχιση — και η
+ * πλήρης στοίχιση ΧΩΡΙΣ συλλαβισμό δεν σπάει λέξη για να κλείσει τη γραμμή,
+ * τεντώνει τα κενά.
+ *
+ * ΜΕΤΡΗΜΕΝΟ ΣΤΟΝ ΠΑΓΚΟ, ΣΤΑ 750, ΜΕ ΤΗΝ ΕΠΕΞΗΓΗΣΗ ΑΝΟΙΧΤΗ:
+ *
+ *     μαλακά ενωτικά στο κείμενο          0
+ *     πλάτος κενού, διάμεσο             7,2 px
+ *     πλάτος κενού, p90                11,9 px
+ *     πλάτος κενού, μέγιστο            25,9 px
+ *
+ * Το φυσικό κενό της Inter σε αυτό το μέγεθος είναι περίπου 4,2. Δηλαδή το
+ * χειρότερο κενό ήταν ΕΞΙ ΦΟΡΕΣ το κανονικό.
+ *
+ * ΓΙΑΤΙ ΤΟ `hy()` ΔΕΝ ΤΟ ΕΠΙΑΣΕ, ΕΝΩ ΤΟ ΚΑΛΕΙ ΤΟ InfoHint. Το `hy()` διασχίζει
+ * `children`. Το σώμα της επεξήγησης δεν είναι children: είναι το στοιχείο
+ * `<Tip lead={…} rows={[…]} />`, όπου το κείμενο ζει σε PROPS. Το `hy()` βλέπει
+ * στοιχείο χωρίς `children`, το επιστρέφει αυτούσιο και προχωρά. Και δεν θα
+ * μπορούσε να κάνει αλλιώς: τρέχει ΠΡΙΝ την απόδοση, οπότε δεν υπάρχει ακόμη
+ * κείμενο να συλλαβίσει.
+ *
+ * Ο ΣΥΛΛΑΒΙΣΜΟΣ ΑΝΗΚΕΙ ΕΚΕΙ ΠΟΥ ΓΕΝΝΙΕΤΑΙ ΤΟ ΚΕΙΜΕΝΟ. Οποιο component αποδίδει
+ * δικό του λεκτικό μέσα σε στοιχισμένο κουτί, το συλλαβίζει το ίδιο. Δεν
+ * αλλάζει τίποτα άλλο: το `hyphenate` βάζει ΜΟΝΟ αόρατα U+00AD και ο
+ * περιηγητής σπάει μόνο εκεί που δεν χωράει.
+ *
+ * Οι ετικέτες (`k`) ΔΕΝ συλλαβίζονται: είναι κεφαλαία δύο ώς τριών λέξεων σε
+ * δική τους γραμμή, δεν στοιχίζονται πλήρως και δεν έχουν κενά να κλείσουν.
+ */
 function Tip({ lead, rows }: { lead?: string; rows?: readonly (readonly [string, string | undefined])[] }) {
   return (
     <>
-      {lead && <span style={{ display: 'block' }}>{lead}</span>}
+      {lead && <span style={{ display: 'block' }}>{hyphenate(lead)}</span>}
       {(rows ?? []).filter(([, v]) => v).map(([k, v]) => (
         <span key={k} style={{ display: 'block', marginTop: 8 }}>
           <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 2 }}>{k}</span>
-          {v}
+          {hyphenate(v as string)}
         </span>
       ))}
     </>

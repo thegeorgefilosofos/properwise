@@ -1003,6 +1003,36 @@ body {
   gap: 12px; min-height: 44px; cursor: pointer;
 }
 
+/* ═══ Η ΚΛΕΙΣΤΗ ΓΡΑΜΜΗ ΤΗΣ ΟΥΡΑΣ ΤΩΝ ΕΙΣΕΡΧΟΜΕΝΩΝ ══════════════════════════
+   Τρίτη αδελφή της `.po-disclosure` και της `.acc-month`: `<button>` που
+   ανοίγει ένα εκκρεμές μήνυμα. Τρία μέρη — ποιος έστειλε, τι λέει το θέμα,
+   τι ποσό διαβάστηκε — και μόνο το μεσαίο συρρικνώνεται.
+
+   ΓΙΑΤΙ ΕΔΩ ΚΑΙ ΟΧΙ ΕΝΣΩΜΑΤΑ, ΓΡΑΜΜΕΝΟ ΗΔΗ ΑΠΟ ΤΗ ΔΙΠΛΑΝΗ: ενσωματωμένο
+   style νικά κάθε κανόνα κλάσης, οπότε όσο το γράφουμε εκεί κανένα `:hover`
+   και κανένα `:focus-visible` δεν μπορεί να ισχύσει. Γραμμένο εδώ, η γραμμή
+   τα αποκτά και τα δύο δωρεάν — και ο φύλακας `hand-buttons` δεν μετρά ένα
+   ακόμη κουμπί ζωγραφισμένο στο χέρι. */
+.inbound-row {
+  display: flex; align-items: baseline; gap: 10px;
+  width: 100%; min-width: 0; text-align: left;
+  padding: 11px 14px; cursor: pointer;
+  border-radius: 14px;   /* T.radius.card */
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  transition: border-color .15s, background .15s;
+}
+.inbound-row:hover { border-color: var(--border-default); }
+.inbound-row:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+/* Ποιος έστειλε και τι ποσό: δεν σπάνε ποτέ. Το θέμα παίρνει ό,τι περισσεύει
+   και αποσιωπάται, ώστε να μη σπρώξει το ποσό έξω από τη γραμμή. */
+.inbound-row > .inbound-who,
+.inbound-row > .inbound-sum { white-space: nowrap; }
+.inbound-row > .inbound-what {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* Η ΚΕΦΑΛΙΔΑ ΜΗΝΑ ΤΟΥ ΑΡΧΕΙΟΥ ══════════════════════════════════════════════
    Αδελφή της .po-disclosure, με δύο διαφορές που δικαιολογούν χωριστή κλάση:
    είναι <button> και όχι μπλοκ με role· τα παιδιά της στοιχίζονται
@@ -2143,8 +2173,32 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 
      Η επιλογή γίνεται πλέον με τον ΡΟΛΟ, που είναι και η αλήθεια για τον
      χρήστη: αν το ανακοινώνεις ως κουμπί, οφείλει να πατιέται σαν κουμπί. */
-  .app-content button:not(.po-box),
-  .app-content [role="button"]:not(.po-box),
+  /* ══ ΚΑΙ ΤΟ ⓘ ΜΕΣΑ ΣΕ ΠΡΟΤΑΣΗ, ΠΟΥ ΕΙΧΕ ΗΔΗ ΤΗ ΛΥΣΗ ΤΟΥ ΚΑΙ ΤΗΝ ΕΧΑΝΕ ═══
+     Το `.po-tap-inline` υπάρχει ΑΚΡΙΒΩΣ για να μη μεγαλώνει τη γραμμή: παίρνει
+     τα 44 του από ψευδοστοιχείο, όπως το `.po-box`. Το `.po-box` εξαιρείται
+     εδώ· το `.po-tap-inline` δεν εξαιρέθηκε ποτέ, οπότε το δάπεδο το φούσκωνε
+     στα 44 ΜΕΣΑ στη ροή και ακύρωνε το ίδιο του το ιδίωμα. Δύο κανόνες του
+     ίδιου μπλοκ έλεγαν αντίθετα πράγματα.
+
+     ΤΙ ΚΟΣΤΙΖΕ, ΜΕΤΡΗΜΕΝΟ ΣΤΟΝ ΠΑΓΚΟ ΣΤΑ 800 ΜΕ ΔΑΧΤΥΛΟ (Xiaomi Pad 6 κάθετα),
+     στον πίνακα των επιλογών αξιοποίησης:
+
+         ύψος σειράς            65px  αντί για 40
+         πρώτη γραμμή του τίτλου  +23  από την κορυφή του κελιού
+         πρώτη γραμμή των άλλων   +12  από την κορυφή του κελιού
+
+     Δηλαδή ο τίτλος της σειράς καθόταν ΕΝΤΕΚΑ εικονοστοιχεία χαμηλότερα από το
+     «Λίγος» και το «Μέτριο» δίπλα του. Το μάτι διαβάζει τη σειρά οριζόντια και
+     έβρισκε τρία διαφορετικά ύψη. Ο χρήστης το φωτογράφισε.
+
+     Και δεν ήταν μόνο ο πίνακας: το ίδιο συνέβαινε σε ΚΑΘΕ ετικέτα με ⓘ μέσα
+     στην εφαρμογή, σε κάθε συσκευή αφής — στα πλακίδια της Απόδοσης, στους
+     μοχλούς, στις Ρυθμίσεις. Σε ποντίκι δεν φαινόταν ΠΟΤΕ.
+
+     Ο στόχος αφής δεν χάνεται: τα 44 × 44 τα δίνει το ψευδοστοιχείο και ο
+     σαρωτής τα μετρά από εκεί, όπως ακριβώς και στο `.po-box`. */
+  .app-content button:not(.po-box):not(.po-tap-inline),
+  .app-content [role="button"]:not(.po-box):not(.po-tap-inline),
   .app-content select,
   .app-content input:not(.po-field-inner):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) { min-height: 44px; }
 
@@ -2161,7 +2215,22 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
      ΤΑ ΚΟΥΜΠΙΑ ΜΕ ΛΕΚΤΙΚΟ ΔΕΝ ΤΟ ΝΙΩΘΟΥΝ: είναι ήδη φαρδύτερα από 44, οπότε
      το δάπεδο δεν τα αγγίζει. Τα σχήματα (.po-box) εξαιρούνται όπως και στο
      ύψος — έχουν τη δική τους αόρατη ζώνη μέσω ψευδοστοιχείου. */
-  .app-content button:not(.po-box) { min-width: 44px; }
+  /* ΤΟ ΠΛΑΤΟΣ ΜΕΝΕΙ ΣΤΑ 44 ΚΑΙ ΓΙΑ ΤΟ ⓘ, ΟΣΟ ΚΙ ΑΝ ΤΟ ΥΨΟΣ ΕΦΥΓΕ ΑΠΟ ΠΑΝΩ.
+     Το δάπεδο του ΥΨΟΥΣ έσπαγε τη γραμμή, γιατί ένα inline-block 44 ψηλό
+     μεγαλώνει το κουτί της. Το δάπεδο του ΠΛΑΤΟΥΣ δεν αγγίζει το ύψος της
+     γραμμής — μόνο βάζει κενό δίπλα στην ετικέτα.
+
+     ΚΑΙ ΕΙΝΑΙ Ο ΜΟΝΟΣ ΛΟΓΟΣ ΠΟΥ Ο ΣΑΡΩΤΗΣ ΤΟΥ ΠΙΝΑΚΑ ΒΓΑΙΝΕΙ ΠΡΑΣΙΝΟΣ: το
+     ψευδοστοιχείο του `.po-tap-inline` δίνει επίτηδες 24 οριζόντια, όχι 44,
+     ώστε να μην αρπάζει το πάτημα του διπλανού συνδέσμου (WCAG 2.5.8, AA).
+     Ο `e2e-a11y-dashboard` απαιτεί 44 × 44 και μετρημένο στο CI βρήκε εννέα
+     «24×44» μόλις έφυγε αυτή η γραμμή.
+
+     Δύο κανόνες του έργου λένε διαφορετικά νούμερα για τον ΙΔΙΟ στόχο. Η
+     αντίφαση δεν λύνεται με βιασύνη μέσα σε διόρθωση διάταξης. Μένει το 44,
+     που είναι το αυστηρότερο. Γράφεται εδώ ώστε να μη βρεθεί ξανά από την
+     αρχή ο επόμενος. */
+  .app-content button:not(.po-box):not(.po-tap-inline) { min-width: 44px; }
 
   /* ═══ ΤΑ ΤΕΤΡΑΓΩΝΑ ΣΗΜΑΔΙΑ ΚΡΑΤΟΥΝ ΤΟ ΣΧΗΜΑ ΤΟΥΣ ═════════════════════════
      Εξι χειριστήρια είναι ΣΧΗΜΑ και όχι κουμπί με λεκτικό: το πλαίσιο επιλογής
@@ -3195,10 +3264,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    `hyphens: manual`, που είναι και η προεπιλογή: ο περιηγητής σπάει ΜΟΝΟ εκεί
    που του δείξαμε.
 
-   ΤΟ ΤΕΛΕΥΤΑΙΟ ΤΗΣ ΓΡΑΜΜΗΣ ΔΕΝ ΣΤΟΙΧΙΖΕΤΑΙ. Η τελευταία γραμμή κάθε
-   παραγράφου μένει ριγμένη από μόνη της, όπως ορίζει η τυπογραφία· το
-   `text-wrap: pretty` φροντίζει να μη μείνει μία λέξη μόνη της πάνω της. */
-.po-just { text-align: justify; text-wrap: pretty; }
+   ΚΑΙ ΤΟ `text-wrap: pretty` ΗΤΑΝ ΑΥΤΟ ΠΟΥ ΑΚΥΡΩΝΕ ΤΟΝ ΣΥΛΛΑΒΙΣΜΟ.
+   ─────────────────────────────────────────────────────────────────────────
+   ΣΤΕΚΟΤΑΝ ΕΔΩ ΓΙΑ ΝΑ ΜΗ ΜΕΝΕΙ ΜΙΑ ΛΕΞΗ ΜΟΝΗ ΣΤΗΝ ΤΕΛΕΥΤΑΙΑ ΓΡΑΜΜΗ. Κόστιζε
+   ασύγκριτα περισσότερα: ο αλγόριθμος του `pretty` στο Chromium ΔΕΝ κοιτά
+   μαλακά ενωτικά. Οση δουλειά κι αν έκανε ο συλλαβιστής από πάνω, το CSS την
+   πετούσε.
+
+   ΜΕΤΡΗΜΕΝΟ ΣΕ ΠΡΑΓΜΑΤΙΚΟ CHROMIUM, ΙΔΙΟ ΚΕΙΜΕΝΟ ΣΕ ΚΟΥΤΙ 272, ΤΕΣΣΕΡΙΣ ΦΟΡΕΣ:
+
+       text-wrap        ενωτικά   γραμμές   μέγιστο κενό
+       pretty           με          4          26,6 px
+       pretty           χωρίς       4          26,6 px      ← ίδιο, δηλαδή αγνοεί
+       wrap             χωρίς       4          12,4 px
+       wrap             με          5           4,8 px      ← το φυσικό κενό
+
+   Το φυσικό κενό της Inter εκεί είναι 4,2. Με `pretty` το χειρότερο κενό ήταν
+   ΕΞΙ ΦΟΡΕΣ το κανονικό — τα ποτάμια λευκού που ακριβώς υποσχόταν να μην
+   υπάρχουν, φωτογραφημένα από τον ιδιοκτήτη.
+
+   Η ΑΝΤΑΛΛΑΓΗ ΕΙΝΑΙ ΡΗΤΗ: χάνεται η αποφυγή ορφανής λέξης στην τελευταία
+   γραμμή, κερδίζεται η ίδια η στοίχιση. Μια ορφανή λέξη κάτω από τέσσερις
+   σφιχτές γραμμές διαβάζεται· τέσσερις γραμμές με κενά 26 δεν διαβάζονται.
+   Οπου το κείμενο ΔΕΝ στοιχίζεται πλήρως, το `pretty` μένει όπου ήταν: εκεί
+   δεν έχει τίποτα να ακυρώσει. */
+.po-just { text-align: justify; }
 .po-table tbody th, .po-table tbody td { border-bottom: 1px solid var(--border-subtle); }
 /* Η τελευταία γραμμή δεν έχει τι να χωρίσει από κάτω της. */
 .po-table tbody tr:last-child > * { border-bottom: none; }
@@ -4198,7 +4288,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   display: grid; grid-template-columns: minmax(0, 1fr) 250px;
   gap: 40px; align-items: last baseline; max-width: 1044px;
 }
-.lg-lede > p:first-child { text-align: justify; text-wrap: pretty; }
+.lg-lede > p:first-child { text-align: justify; }
 .lg-lede > p:last-child:not(:first-child) { text-align: right; }
 @media (max-width: 760px) {
   .lg-lede { grid-template-columns: minmax(0, 1fr); gap: 10px; }
@@ -4262,13 +4352,19 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    σημεία τομής· εδώ αρκεί το `hyphens: manual`, που είναι και η προεπιλογή:
    ο περιηγητής σπάει ΜΟΝΟ εκεί που του δείξαμε, σε κάθε μηχανή και στο χαρτί.
 
-   Το `pretty` μένει, για να μην ξεμένει μία λέξη μόνη της στην τελευταία
-   σειρά της παραγράφου. */
-.lg-p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; text-align: justify; text-wrap: pretty; }
+   ΚΑΙ ΤΟ `pretty` ΕΦΥΓΕ, ΓΙΑΤΙ ΕΣΒΗΝΕ ΑΥΤΟΝ ΑΚΡΙΒΩΣ ΤΟΝ ΣΥΛΛΑΒΙΣΜΟ. Στεκόταν
+   εδώ για να μην ξεμένει μία λέξη μόνη της στην τελευταία σειρά. Ο αλγόριθμος
+   του `pretty` στο Chromium όμως ΔΕΝ κοιτά μαλακά ενωτικά: η δουλειά του
+   `hyphenate` πεταγόταν και η γραμμή έκλεινε τεντώνοντας τα κενά.
+
+   Μετρημένο στους «Ορους» στα 750, ΠΡΙΝ: κενά 15,4 · 13,3 · 11,2 σε τρία
+   μπλοκ, εκεί που το φυσικό κενό της Inter είναι 4,2. Ο φύλακας
+   `guard-justify-hyphen` απαγορεύει πλέον τον συνδυασμό. */
+.lg-p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; text-align: justify; }
 .lg-p strong, .lg-ul strong { color: var(--text-primary); font-weight: 600; }
 .lg-p:last-child, .lg-ul:last-child { margin-bottom: 0; }
 .lg-ul { margin: 2px 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
-.lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-align: justify; text-wrap: pretty; }
+.lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-align: justify; }
 .lg-note {
   font-size: 14px; color: var(--text-tertiary); line-height: 1.65; text-align: justify;
   margin: 12px 0 0; padding: 13px 16px;
@@ -4288,7 +4384,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-part-first { margin-top: 0; padding-top: 0; border-top: 0; }
 /* Ίδια στοίχιση για τα κείμενα που δεν είναι παράγραφοι, π.χ. οι εγγυήσεις
    του «Ποιοι είμαστε»: αλλιώς η μισή σελίδα κλείνει ίσια και η άλλη μισή όχι. */
-.lg-just { text-align: justify; text-wrap: pretty; }
+.lg-just { text-align: justify; }
 
 @media (max-width: 900px) {
   .lg-grid { grid-template-columns: minmax(0, 1fr); }
@@ -4694,6 +4790,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 @media (forced-colors: active) {
   .po-box:focus-visible,
   .acc-toggle:focus-visible,
+  .inbound-row:focus-visible,
   .po-sec-toggle:focus-visible {
     outline: 2px solid Highlight;
     outline-offset: 2px;

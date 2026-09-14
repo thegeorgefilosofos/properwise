@@ -1,5 +1,5 @@
 // Η διασταύρωση των επιτοκίων, με τους αριθμούς της παραγωγής (bank_rates, 02/09/2026).
-import { fromRate, diffBank, decide, changeKey, HOLD_ABOVE, type CurrentBank } from './rateFeed';
+import { fromRate, diffBank, decide, changeKey, HOLD_ABOVE, isOfficialSource, BANK_HOSTS, type CurrentBank } from './rateFeed';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -42,6 +42,26 @@ ok('το κατώφλι του LTV είναι 10 και των επιτοκίω�
 
 // ── Το κλειδί είναι σταθερό στο εκατοστό ───────────────────────────────────
 ok('changeKey στρογγυλεύει στο εκατοστό', changeKey({ bank_id: 'a', field: 'fixed_5yr', next: 3.4 }) === 'a:fixed_5yr:3.40');
+
+// ── Η ΠΗΓΗ ΠΟΥ ΔΕΝ ΕΙΝΑΙ ΠΗΓΗ ─────────────────────────────────────────────
+// Το κείμενο συστήματος του ενημερωτή έστελνε το μοντέλο σε δύο συγκριτικούς
+// ιστότοπους και η τιμή τους έπαιρνε `verified_at` σαν να την είχε δει κανείς
+// στην τράπεζα. Αυτοί οι έλεγχοι είναι το φράγμα.
+ok('συγκριτικός ιστότοπος ΔΕΝ είναι επίσημη πηγή',
+  !isOfficialSource('ethniki', 'https://www.vresdaneio.gr/stegastika')
+  && !isOfficialSource('alpha', 'https://e-stegastiko.gr/alpha'));
+ok('η σελίδα της ίδιας της τράπεζας είναι',
+  isOfficialSource('ethniki', 'https://www.nbg.gr/el/idiwtes/daneia/stegastika-daneia')
+  && isOfficialSource('eurobank', 'https://www.eurobank.gr/-/media/eurobank/rates/x.pdf'));
+ok('υποτομέας περνά, τομέας που απλώς ΠΕΡΙΕΧΕΙ το όνομα όχι',
+  isOfficialSource('alpha', 'https://retail.alpha.gr/x')
+  && !isOfficialSource('alpha', 'https://alpha.gr.example.com/x'));
+ok('χωρίς διεύθυνση, χωρίς http ή με άγνωστη τράπεζα: όχι',
+  !isOfficialSource('alpha', null)
+  && !isOfficialSource('alpha', 'http://www.alpha.gr/x')
+  && !isOfficialSource('agnosti', 'https://www.alpha.gr/x'));
+ok('κάθε τράπεζα του χάρτη έχει τουλάχιστον έναν τομέα',
+  Object.values(BANK_HOSTS).every(h => h.length > 0));
 
 console.log(fail ? `✗ rateFeed: ${fail} απέτυχαν, ${pass} πέρασαν` : `✓ rateFeed: ${pass} έλεγχοι πέρασαν`);
 if (fail) process.exit(1);

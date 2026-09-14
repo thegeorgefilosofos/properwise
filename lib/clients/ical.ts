@@ -89,6 +89,24 @@ export interface StayDraft {
   nights: number;
   channel: 'airbnb' | 'booking' | 'other';
   blocked: boolean;   // απλό μπλοκάρισμα ημερομηνιών (όχι κράτηση)
+  /**
+   * ΤΟ `STATUS:CANCELLED` ΤΟΥ RFC 5545, ΜΕΤΑΦΕΡΜΕΝΟ ΩΣ ΕΔΩ.
+   *
+   * ΤΟ ΣΦΑΛΜΑ, ΠΙΑΣΜΕΝΟ ΑΠΟ ΤΟ ΙΔΙΟ ΑΡΧΕΙΟ ΔΥΟ ΦΟΡΕΣ. Ο αναλυτής διάβαζε ήδη
+   * το `STATUS` και έβγαζε `cancelled` στο γεγονός — και το `icalToStayDrafts`
+   * το ΠΕΤΟΥΣΕ. Ο συγχρονισμός από διεύθυνση φιλτράρει `!d.cancelled`· η
+   * επικόλληση δεν είχε τι να φιλτράρει, γιατί το πεδίο δεν έφτανε ποτέ σε
+   * αυτήν.
+   *
+   * Αποτέλεσμα: ΤΟ ΙΔΙΟ ημερολόγιο έδινε άλλο πλήθος διαμονών ανάλογα με το αν
+   * ο ιδιοκτήτης το επικόλλησε ή το συγχρόνισε. Ενα VEVENT CONFIRMED κι ένα
+   * CANCELLED έδιναν 2 εισαγωγές από επικόλληση και 1 από συγχρονισμό.
+   *
+   * Και οι δύο αριθμοί «σωστοί» για τον κώδικα που τους έβγαλε· λάθος η σχέση
+   * τους. Κανένας από τους 128 φύλακες δεν το πιάνει: ο `guard-ical-mirror`
+   * συγκρίνει τη δομή των δύο αντιγράφων, όχι τη ΣΗΜΑΣΙΑ δύο επιφανειών.
+   */
+  cancelled: boolean;
   uid: string;
 }
 
@@ -117,6 +135,7 @@ export function icalToStayDrafts(
       nights,
       channel: opts.channel,
       blocked: isBlocked(e.summary),
+      cancelled: e.cancelled === true,
       uid: e.uid,
     });
   }

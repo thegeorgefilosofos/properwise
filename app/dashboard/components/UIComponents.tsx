@@ -1083,12 +1083,12 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
             </IconBtn>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 0, marginBottom: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0, marginBottom: 4 }}>
             {DAYS_GR.map(d => (
               <div key={d} style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text-secondary)', textAlign: 'center', padding: '4px 0', letterSpacing: '0.5px' }}>{d}</div>
             ))}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0 }}>
             {Array(firstDay).fill(null).map((_,i) => <div key={`b${i}`}/>)}
             {Array(daysInMonth).fill(null).map((_,i) => {
               const day = i + 1;
