@@ -8,7 +8,30 @@ import { fe, fp } from '@/components/tokens';
 export type LoanType = 'purchase'|'first_home'|'renovation'|'energy'|'investment'|'auction'|'construction'|'commercial'|'land'|'refinance'
 export type RateType = 'fixed'|'variable'|'mixed'
 export type BorrowerType = 'individual'|'professional'|'company'|'young'|'family'|'senior'|'military'|'abroad'
-export interface MarketRates { euribor_3m:number; euribor_1m:number; ecb_rate:number; updated_at:string }
+/**
+ * ΤΟ ΠΟΤΕ ΚΑΙ ΤΟ ΤΙ ΜΕΤΡΑ ΤΑΞΙΔΕΥΟΥΝ ΜΑΖΙ ΜΕ ΤΗΝ ΤΙΜΗ.
+ *
+ * ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΒΡΕΘΗΚΕ. Ο υπολογιστής δανείου έγραφε κάτω από το Euribor
+ * «Αυτόματη ενημέρωση από την ΕΚΤ κάθε πρωί». Η ΕΚΤ ΔΕΝ δημοσιεύει ημερήσιο
+ * Euribor — το `lib/market/ecb.ts` το τεκμηριώνει με μέτρηση: ο κατάλογος του
+ * Data Portal, ρωτημένος με μπαλαντέρ στη συχνότητα, απαντά «A | M | Q» και οι
+ * τέσσερις ημερήσιες υποψήφιες γύρισαν 404 στην πρώτη αληθινή εκτέλεση.
+ *
+ * ΓΙΑΤΙ ΕΓΙΝΕ, ΚΑΙ ΕΙΝΑΙ Η ΡΙΖΑ: το `TabLoan` περνούσε στον υπολογιστή τέσσερα
+ * σκέτα νούμερα και πετούσε την προέλευση. Ο υπολογιστής ΔΕΝ ΜΠΟΡΟΥΣΕ να πει
+ * την αλήθεια — δεν την είχε. Οποιος γράψει λεζάντα χωρίς τα δεδομένα, θα
+ * γράψει υπόσχεση.
+ *
+ * Τα δύο πεδία είναι προαιρετικά επειδή το `MARKET_FALLBACK` δεν έχει
+ * προέλευση: εκεί η οθόνη λέει ρητά ότι δείχνει εφεδρική τιμή.
+ */
+export interface MarketRates {
+  euribor_3m:number; euribor_1m:number; ecb_rate:number; updated_at:string
+  /** Πότε παρατηρήθηκε το Euribor, σε ISO. Κενό όταν παίζει η εφεδρική τιμή. */
+  euribor_asOf?:string
+  /** Τι μετρά η τιμή: «μέσος όρος μήνα» και τα λοιπά. Ιδιο λεξιλόγιο με το ecb.ts. */
+  euribor_basis?:string
+}
 export interface SavedLoan { id:string; property_id:string; user_id:string; bank:string; loan_type:LoanType; amount:number; property_value:number; rate:number; rate_type:RateType; years:number; start_date:string; status:string; notes:string }
 export interface LoanScenario { id:string; label:string; amount:number; rate:number; years:number; rateType:RateType }
 export interface AmortRow { month:number; payment:number; principal:number; interest:number; balance:number; totalInterestPaid:number }

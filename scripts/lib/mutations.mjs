@@ -14,7 +14,7 @@
 // χρήσιμο όπου η παράβαση μπορεί να ζήσει σε δύο διαφορετικά σημεία.
 //
 // ΓΙΑΤΙ ΝΕΟ ΑΡΧΕΙΟ ΟΠΟΥ ΓΙΝΕΤΑΙ. Μια αλλαγή σε υπαρκτό αρχείο κινδυνεύει να
-// μείνει πίσω αν ο πάγκος διακοπεί βίαια. Ένα νέο αρχείο απλώς σβήνεται, και
+// μείνει πίσω αν ο πάγκος διακοπεί βίαια. Ένα νέο αρχείο απλώς σβήνεται και
 // αν μείνει, το `git status` του πάγκου το φωνάζει αμέσως.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -96,7 +96,7 @@ export const MUTATIONS = {
     { add: 'components/__mut__.tsx', content: tsx("    <div title={true ? 'Επεξεργασία Αντικειμένου' : 'Νέο Αντικείμενο'} />") },
   ] },
   'decimal-comma': { add: 'components/__mut__.tsx', content: tsx('    <div>Πληρωτέο 1234.50 €</div>') },
-  // Δύο κανόνες, δύο αποδείξεις: το ευρώ κολλητά, και το ευρώ με απλό κενό που
+  // Δύο κανόνες, δύο αποδείξεις: το ευρώ κολλητά και το ευρώ με απλό κενό που
   // πέφτει μόνο του στην επόμενη γραμμή σε στενή στήλη.
   // Ο ΦΥΛΑΚΑΣ ΓΥΡΙΣΕ ΑΝΑΠΟΔΑ, ΚΑΙ ΜΑΖΙ ΤΟΥ ΟΙ ΜΕΤΑΛΛΑΞΕΙΣ. Η πρώτη από τις δύο
   // παλιές έγραφε «1.234,50€» κολλητά και περίμενε κόκκινο· αυτό είναι πλέον η
@@ -134,7 +134,7 @@ export const MUTATIONS = {
   // `<select>` και το κυριολεκτικό `type="date"` είναι δύο regex· ο μεταβλητός
   // `type={type}` απαιτεί ανάγνωση ΟΛΟΚΛΗΡΗΣ της ετικέτας (το DocumentScan.tsx
   // το γράφει τρεις γραμμές κάτω από το `<input`), αποτίμηση των σκελών μιας
-  // τριαδικής, και ανάγνωση του δηλωμένου τύπου της ιδιότητας. Εκεί ξέφυγαν
+  // τριαδικής και ανάγνωση του δηλωμένου τύπου της ιδιότητας. Εκεί ξέφυγαν
   // δεκατέσσερα ντόπια ημερολόγια με τον φύλακα πράσινο, άρα εκεί δοκιμάζεται.
   'native-fields': {
     add: 'components/__mut__.tsx',
@@ -158,7 +158,7 @@ export const MUTATIONS = {
   'rls-parent-scope': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  property_id uuid not null references public.properties(id) on delete cascade\n);\nalter table public.mut_probe enable row level security;\ncreate policy mut_probe_own on public.mut_probe using (true);\n' },
   'idempotent-migrations': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'alter table public.properties add constraint mut_probe_chk check (id is not null);\n' },
   'storage-delete': { add: 'supabase/migrations/29990101000000_mut.sql', content: "create or replace function public.mut_probe() returns void language plpgsql as $$\nbegin\n  delete from storage.objects where owner is null;\nend $$;\n" },
-  // Ο ΕΥΚΟΛΟΣ ΚΛΑΔΟΣ ΘΑ ΗΤΑΝ ΝΕΟΣ ΦΑΚΕΛΟΣ ΧΩΡΙΣ ΔΗΛΩΣΗ. Ο δύσκολος, και ο
+  // Ο ΕΥΚΟΛΟΣ ΚΛΑΔΟΣ ΘΑ ΗΤΑΝ ΝΕΟΣ ΦΑΚΕΛΟΣ ΧΩΡΙΣ ΔΗΛΩΣΗ. Ο δύσκολος και ο
   // πραγματικός, είναι χρονόμετρο που καλεί συνάρτηση κλειδωμένη με JWT: εκεί
   // όλα φαίνονται σωστά και τίποτα δεν τρέχει ποτέ.
   'cron-reachable': { add: 'supabase/migrations/29990101000000_mut.sql', content: "do $$ begin\n  perform cron.schedule('mut-probe', '0 4 * * *', $cron$\n    select net.http_post(url := 'https://x/functions/v1/smart-suggestions');\n  $cron$);\nend $$;\n" },
@@ -181,7 +181,7 @@ export const MUTATIONS = {
   // Το παλιό όνομα επιστρέφει όπως έφυγε: με μία επικόλληση σε ένα σημείο.
   'brand-name': { add: 'components/__mut__.tsx', content: tsx('    <div>Καλώς όρισες στο propertyos</div>') },
   // Ο φύλακας έχει ΤΡΕΙΣ κανόνες, οπότε θέλει τρεις αποδείξεις: το χειρόγραφο
-  // πλακίδιο μέσα στην εφαρμογή, το ίδιο μέσα σε επιστολή, και η διαδρομή SVG
+  // πλακίδιο μέσα στην εφαρμογή, το ίδιο μέσα σε επιστολή και η διαδρομή SVG
   // αντιγραμμένη σε σενάριο κατασκευής. Με απλό πίνακα, οι δύο τελευταίοι
   // κανόνες δεν δοκιμάζονταν ποτέ.
   // Ακριβώς η μορφή που εξαφάνισε τη μπάρα διεύθυνσης και τη γραμμή του οφέλους.
@@ -196,7 +196,7 @@ export const MUTATIONS = {
   // Το ελάττωμα που φυλάει: πακέτο χρέωσης στη θέση του τύπου προφίλ. Δεν
   // προστίθεται αρχείο — αλλοιώνεται το ΥΠΑΡΧΟΝ PLAN_LABEL, γιατί αυτό είναι
   // το σημείο που μπορεί πραγματικά να χαλάσει.
-  // Δύο διαδρομές: η καρφωτή διαδρομή σε σενάριο, και η έκδοση του CI που
+  // Δύο διαδρομές: η καρφωτή διαδρομή σε σενάριο και η έκδοση του CI που
   // ξεκολλά από το playwright-core.
   'chromium-path': { every: [
     { add: 'scripts/__mut__.mjs', content: "import { chromium } from 'playwright-core';\nawait chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });\n" },
@@ -211,8 +211,18 @@ export const MUTATIONS = {
   // που έγινε κάποτε στ' αλήθεια — η έκπτωση που χάνεται, γραμμένη ως φόρος. Ο
   // πραγματικός φόρος ήταν 72 €.
   'post-numbers': { add: 'docs/marketing/keimena/__mut__.md', content: 'Με ενοίκιο 9.600 € χάνεις 480 € τον χρόνο.\n' },
+  // Η λεζάντα που έλεγε ψέματα, ξαναφερμένη αυτούσια: ήταν στο
+  // TabLoanCalculator.tsx κάτω από την τιμή του Euribor, ενώ η ΕΚΤ δημοσιεύει
+  // μηνιαίο μέσο όρο και όχι ημερήσια τιμή.
+  'rate-caption': { add: 'components/__mut__.tsx', content: tsx('    <p>Euribor: αυτόματη ενημέρωση από την ΕΚΤ κάθε πρωί</p>') },
+  // Τα δύο σημάδια ξεκολλούν: αλλάζει το κείμενο της σελίδας σφάλματος και ο
+  // ανιχνευτής μένει να ψάχνει το παλιό. Ο έλεγχος υγείας γίνεται τυφλός και
+  // συνεχίζει να λέει «όλα καλά» πάνω από σπασμένη παραγωγή.
+  'health-marker': { file: 'supabase/functions/_shared/probe.mjs',
+    from: "export const ERROR_MARKER = 'Κάτι πήγε στραβά';",
+    to: "export const ERROR_MARKER = 'Παρουσιάστηκε σφάλμα';" },
   'comma-kai': { every: [
-    { add: 'components/__mut__.tsx', content: tsx('    <div>Το ακίνητο μπαίνει σε τάξη, και ο λογαριασμός βγαίνει μόνος του</div>') },
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Το ακίνητο μπαίνει σε τάξη και ο λογαριασμός βγαίνει μόνος του</div>') },
     { add: 'lib/core/__mut__.ts', content: "export const note = 'Ο φόρος αποδίδεται με αντίστροφη χρέωση, '\n  + 'και η λήψη δηλώνεται στον πίνακα.'\n" },
   ] },
   'type-floor': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ fontSize: 9 }}>Πολύ μικρό για τηλέφωνο</div>") },
@@ -358,7 +368,7 @@ export const MUTATIONS = {
   'form-grid': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>\n      <NumberInput label=\"Ποσό\" />\n    </div>") },
   'ical-mirror': { file: 'lib/clients/ical.ts', from: 'function unfold(', to: 'function unfoldLines(' },
   // ΔΥΟ μήνες πίσω, όχι ένας: ο ένας μήνας είναι ρητά προειδοποίηση («το
-  // δελτίο δεν βγήκε ακόμη»), και μόνο ο δεύτερος είναι σφάλμα.
+  // δελτίο δεν βγήκε ακόμη») και μόνο ο δεύτερος είναι σφάλμα.
   'cpi-freshness': { file: 'lib/market/cpi.ts', from: "  '2026-05': 5.4, '2026-06': 5.2, '2026-07': 4.4, '2026-08': 3.4,", to: "  '2026-05': 5.4, '2026-06': 5.2," },
   'dangling-refs': { add: 'components/__mut__.tsx', content: tsx('    <p>Πάτησε το «Κουμπί που δεν υπάρχει πουθενά» για να συνεχίσεις.</p>') },
 
@@ -383,7 +393,7 @@ export const MUTATIONS = {
   // ακριβώς το ελάττωμα που ο φύλακας υπάρχει για να πιάσει.
   'forced-colors-focus': { file: 'app/globals.css', from: '::selection {', to: '.mut-probe:focus-visible { outline: none; box-shadow: 0 0 0 2px red; }\n::selection {' },
   'contrast': { file: 'app/globals.css', from: '--text-secondary:', to: '--text-secondary: #8f8f8f; --text-secondary-unused:' },
-  // Δηλώνεται ΜΟΝΟ στο φωτεινό, και κάποιος τη ζητά: στο σκοτεινό είναι κενή.
+  // Δηλώνεται ΜΟΝΟ στο φωτεινό και κάποιος τη ζητά: στο σκοτεινό είναι κενή.
   'theme-tokens': { steps: [
     { file: 'app/globals.css', from: ':root[data-mode="light"] {', to: ':root[data-mode="light"] {\n  --mut-probe-only-light: #fff;' },
     { add: 'components/__mut__.tsx', content: tsx("    <div style={{ color: 'var(--mut-probe-only-light)' }}>Α</div>") },
