@@ -64,26 +64,16 @@ export const AUDIT = ({ vw, touch }) => {
   };
 
   /**
-   * ΚΑΘΑΡΗ ΜΠΟΓΙΑ: ΤΡΙΑ ΜΑΖΙ, ΠΟΤΕ ΔΥΟ.
+   * ΚΑΘΑΡΗ ΜΠΟΓΙΑ: ΤΟ ΚΡΙΤΗΡΙΟ ΖΕΙ ΣΤΟ scripts/lib/paint.mjs.
    *
-   * Χωρίς δικό της κείμενο, κρυμμένη από τον αναγνώστη οθόνης και αδιαφανής
-   * στον δείκτη. Ενα τέτοιο στοιχείο δεν έχει τι να κόψει και τι να πάει
-   * χαμένο έξω από την οθόνη: δεν κουβαλά πληροφορία και δεν πατιέται.
-   *
-   * ΤΟ ΣΥΓΚΕΚΡΙΜΕΝΟ ΠΟΥ ΤΟ ΓΕΝΝΗΣΕ. Οι δύο αύρες του hero είναι θολές κηλίδες
-   * που ΠΡΕΠΕΙ να ξεπερνούν την ενότητα και να κόβονται από αυτήν — έτσι
-   * φτιάχνεται λάμψη: `inset: -14% -18% auto` με `overflow: hidden` από πάνω.
-   * Ο έλεγχος τις κατήγγειλλε 16 φορές, δύο σε καθένα από οκτώ πλάτη
-   * («ξεφεύγει» και «κόβεται»), ενώ είναι ακριβώς ό,τι σχεδιάστηκε.
-   *
-   * ΓΙΑΤΙ ΔΕΝ ΕΙΝΑΙ ΧΑΛΑΡΩΜΑ ΤΟΥ ΕΛΕΓΧΟΥ. Οι τρεις συνθήκες ζητούνται ΜΑΖΙ.
-   * Κείμενο που κόβεται έχει κείμενο. Κουμπί που ξεφεύγει πιάνει δείκτη.
-   * Εικονίδιο με νόημα δεν είναι `aria-hidden`. Ο,τι περνά και τα τρία είναι
-   * στρώμα χρώματος — και για το χρώμα το «κόβεται» είναι ο σκοπός του.
+   * Γράφεται στη σελίδα με `addInitScript` πριν από κάθε script της, ώστε ο
+   * ΙΔΙΟΣ ορισμός να ισχύει και εδώ και στο `e2e-mobile`. Αν λείπει, ο έλεγχος
+   * ΣΚΑΕΙ αντί να συγχωρεί σιωπηλά: ένας σαρωτής που χάνει το κριτήριό του και
+   * συνεχίζει είναι χειρότερος από σαρωτή που σταματά.
    */
-  const mpogia = (el, cs) => cs.pointerEvents === 'none'
-    && (el.getAttribute('aria-hidden') === 'true' || !!el.closest('[aria-hidden="true"]'))
-    && !(el.textContent || '').trim();
+  if (typeof window.__mpogia !== 'function') {
+    throw new Error('Λείπει το window.__mpogia. Δες scripts/lib/paint.mjs και το addInitScript του σαρωτή.')
+  }
 
   for (const el of document.querySelectorAll('body *')) {
     if (!shown(el)) continue;
@@ -91,7 +81,7 @@ export const AUDIT = ({ vw, touch }) => {
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
     if (scrolledOut(el, r)) continue;
-    const diakosmitiko = mpogia(el, cs);
+    const diakosmitiko = window.__mpogia(el, cs);
 
     // ── 1. Ξεφεύγει οριζόντια ──
     if (cs.position !== 'fixed' && !el.classList.contains('skip-link') && !diakosmitiko

@@ -33,6 +33,7 @@ import { AUDIT, LAYOUT_BUG } from './rendered/layout.mjs';
 import { MEASURE, CONTRAST_BUG } from './rendered/contrast.mjs';
 import { NO_CARET, FOCUSABLE, measureFocus } from './rendered/focus.mjs';
 import { abortIfStyleless } from './lib/served-css.mjs';
+import { installPaint } from './lib/paint.mjs';
 
 import { readFileSync } from 'node:fs';
 const PROVE = process.argv.includes('--prove');
@@ -86,6 +87,7 @@ for (const [sname, w, h] of SIZES) {
     // Το .lp-reveal οδηγείται από την κύλιση· με σβηστή κίνηση η διάταξη είναι
     // ακίνητη και μετρήσιμη. Είναι πραγματική διαδρομή χρήστη, όχι παράκαμψη.
     const p = await browser.newPage({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 700, reducedMotion: 'reduce' });
+    await p.addInitScript(installPaint);
     try {
       await p.goto(BASE + path, { waitUntil: 'networkidle', timeout: 30000 });
       await dismissConsent(p);
@@ -106,6 +108,7 @@ for (const [sname, w, h] of SIZES.filter(s => s[1] <= 1280)) {
   const touch = w < 1024;
   for (const c of BENCH) {
     const p = await browser.newPage({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 700, reducedMotion: 'reduce' });
+    await p.addInitScript(installPaint);
     try {
       await p.goto(benchUrl(c, 30), { waitUntil: 'load', timeout: 30000 });
       await p.waitForTimeout(1500);
