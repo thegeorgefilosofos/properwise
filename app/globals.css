@@ -1003,6 +1003,36 @@ body {
   gap: 12px; min-height: 44px; cursor: pointer;
 }
 
+/* ═══ Η ΚΛΕΙΣΤΗ ΓΡΑΜΜΗ ΤΗΣ ΟΥΡΑΣ ΤΩΝ ΕΙΣΕΡΧΟΜΕΝΩΝ ══════════════════════════
+   Τρίτη αδελφή της `.po-disclosure` και της `.acc-month`: `<button>` που
+   ανοίγει ένα εκκρεμές μήνυμα. Τρία μέρη — ποιος έστειλε, τι λέει το θέμα,
+   τι ποσό διαβάστηκε — και μόνο το μεσαίο συρρικνώνεται.
+
+   ΓΙΑΤΙ ΕΔΩ ΚΑΙ ΟΧΙ ΕΝΣΩΜΑΤΑ, ΓΡΑΜΜΕΝΟ ΗΔΗ ΑΠΟ ΤΗ ΔΙΠΛΑΝΗ: ενσωματωμένο
+   style νικά κάθε κανόνα κλάσης, οπότε όσο το γράφουμε εκεί κανένα `:hover`
+   και κανένα `:focus-visible` δεν μπορεί να ισχύσει. Γραμμένο εδώ, η γραμμή
+   τα αποκτά και τα δύο δωρεάν — και ο φύλακας `hand-buttons` δεν μετρά ένα
+   ακόμη κουμπί ζωγραφισμένο στο χέρι. */
+.inbound-row {
+  display: flex; align-items: baseline; gap: 10px;
+  width: 100%; min-width: 0; text-align: left;
+  padding: 11px 14px; cursor: pointer;
+  border-radius: 14px;   /* T.radius.card */
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  transition: border-color .15s, background .15s;
+}
+.inbound-row:hover { border-color: var(--border-default); }
+.inbound-row:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+/* Ποιος έστειλε και τι ποσό: δεν σπάνε ποτέ. Το θέμα παίρνει ό,τι περισσεύει
+   και αποσιωπάται, ώστε να μη σπρώξει το ποσό έξω από τη γραμμή. */
+.inbound-row > .inbound-who,
+.inbound-row > .inbound-sum { white-space: nowrap; }
+.inbound-row > .inbound-what {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* Η ΚΕΦΑΛΙΔΑ ΜΗΝΑ ΤΟΥ ΑΡΧΕΙΟΥ ══════════════════════════════════════════════
    Αδελφή της .po-disclosure, με δύο διαφορές που δικαιολογούν χωριστή κλάση:
    είναι <button> και όχι μπλοκ με role· τα παιδιά της στοιχίζονται
@@ -4760,6 +4790,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 @media (forced-colors: active) {
   .po-box:focus-visible,
   .acc-toggle:focus-visible,
+  .inbound-row:focus-visible,
   .po-sec-toggle:focus-visible {
     outline: 2px solid Highlight;
     outline-offset: 2px;

@@ -48,6 +48,29 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [hints, setHints] = useState<Hint[]>([]);
+  // ═══ ΜΙΑ ΑΝΟΙΧΤΗ ΤΗ ΦΟΡΑ. ΤΟ ΓΙΑΤΙ ΕΙΝΑΙ ΜΕΤΡΗΜΕΝΟ ══════════════════════
+  // Η ουρά αποδιδόταν με `rows.map` και ΚΑΘΕ εισερχόμενο έβγαινε ως πλήρης
+  // φόρμα: κατηγορία, ποσό, ημερομηνία, δύο κουμπιά. Χωρίς όριο.
+  //
+  // ΤΙ ΚΟΣΤΙΖΕ, ΣΤΑ 375 ΜΕ ΕΞΙ ΕΚΚΡΕΜΗ ΜΗΝΥΜΑΤΑ:
+  //
+  //     το πρώτο ποσό του ΧΡΗΣΤΗ εμφανιζόταν στα   3.897 px
+  //     χειριστήρια που περνούσε πριν από αυτό         35
+  //
+  // Είναι σχεδόν πέντε οθόνες τηλεφώνου. Καμία άλλη καρτέλα δεν πλησιάζει: η
+  // δεύτερη χειρότερη είναι στα 1.798 και η διάμεσος κάτω από 500. Σε καρτέλα
+  // που λέγεται «Δαπάνες», ο ιδιοκτήτης ταξινομούσε το ταχυδρομείο του πριν
+  // δει έστω ένα ευρώ από τα δικά του.
+  //
+  // ΚΑΙ ΔΕΝ ΕΙΧΕ ΤΑΒΑΝΙ. Είκοσι εκκρεμείς λογαριασμοί σημαίνουν εκατό
+  // χειριστήρια στη σειρά. Το κόστος μεγαλώνει με ό,τι ΔΕΝ έχει προλάβει ο
+  // χρήστης, δηλαδή χτυπά χειρότερα όποιον έχει μείνει πίσω.
+  //
+  // ΤΙΠΟΤΑ ΔΕΝ ΚΡΥΒΕΤΑΙ ΚΑΙ ΤΙΠΟΤΑ ΔΕΝ ΦΕΥΓΕΙ. Ολα τα μηνύματα μένουν στη
+  // λίστα και με τη σειρά τους· τα κλειστά γίνονται μία γραμμή που ανοίγει με
+  // ένα πάτημα. Το προσχέδιο κάθε γραμμής ζει ήδη στο `drafts` με κλειδί το
+  // id, οπότε ό,τι έχει πληκτρολογηθεί δεν χάνεται όταν κλείσει.
+  const [anoixto, setAnoixto] = useState<string | null>(null);
 
   // Η ΑΝΑΓΝΩΣΗ ΕΙΝΑΙ ΣΥΝΔΡΟΜΗ ΣΕ ΕΞΩΤΕΡΙΚΟ ΣΥΣΤΗΜΑ, ΟΧΙ ΥΠΟΛΟΓΙΣΜΟΣ: η
   // κατάσταση γράφεται μέσα στην απάντηση και ο διακόπτης `live` σταματά τη
@@ -121,6 +144,9 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
     setRows(list => list.filter(x => x.id !== id));
   };
 
+  // Αν το ανοιχτό καταχωρήθηκε ή απορρίφθηκε, ανοίγει το επόμενο της ουράς.
+  const anoixtoId = rows.some(x => x.id === anoixto) ? anoixto : rows[0]?.id;
+
   return (
     <Card style={{ marginBottom: T.sp.lg }}>
       <SecHdr label="Ηρθαν με email"
@@ -144,6 +170,34 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
           const readAmount = r.amount === null ? null : Number(r.amount);
           const amountChanged = readAmount != null && Number.isFinite(amount)
             && Math.abs(amount - readAmount) > 0.005;
+
+          // ── ΚΛΕΙΣΤΟ: ΜΙΑ ΓΡΑΜΜΗ ΠΟΥ ΛΕΕΙ ΤΑ ΤΡΙΑ ΠΟΥ ΧΡΕΙΑΖΟΝΤΑΙ ──────────
+          // Ποιος το έστειλε, τι λέει το θέμα, τι ποσό διαβάστηκε. Ο ιδιοκτήτης
+          // βλέπει ΟΛΗ την ουρά με μια ματιά και ανοίγει όποιο θέλει, με τη
+          // σειρά που θέλει. Ενα `<button>` και όχι `div`, ώστε να ανακοινώνεται
+          // ως κουμπί και να πατιέται με πληκτρολόγιο.
+          if (r.id !== anoixtoId) return (
+            <button key={r.id} type="button" className="inbound-row" onClick={() => setAnoixto(r.id)}
+              aria-expanded={false}
+              aria-label={`Άνοιγμα: ${r.vendor || r.from_address || 'άγνωστος αποστολέας'}${known ? `, ${fe(readAmount!)}` : ''}`}>
+              <span className="inbound-who" style={{ ...TT.body, fontWeight: 600, color: 'var(--text-primary)' }}>
+                {r.vendor || r.from_address || 'Άγνωστος αποστολέας'}
+              </span>
+              {/* Το θέμα παίρνει ό,τι περισσεύει και αποσιωπάται· δεν σπρώχνει
+                  ποτέ το ποσό έξω από τη γραμμή. Το πώς ζει στην `.inbound-row`
+                  του globals.css, μαζί με την αιώρηση και την εστίαση. */}
+              <span className="inbound-what" style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
+                {r.subject || 'Χωρίς θέμα'}
+              </span>
+              {/* Το ποσό που ΔΕΝ διαβάστηκε το λέει με λέξεις, όχι με παύλα: η
+                  παύλα διαβάζεται ως μηδέν. */}
+              <span className="inbound-sum" style={{ ...TT.bodySm, fontWeight: 600,
+                color: known ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                {known ? fe(readAmount!) : 'χωρίς ποσό'}
+              </span>
+            </button>
+          );
+
           return (
             /* ΤΟ `minWidth: 0` ΔΕΝ ΕΙΝΑΙ ΔΙΑΚΟΣΜΗΤΙΚΟ. Η γραμμή είναι στοιχείο
                πλέγματος και τα στοιχεία πλέγματος ξεκινούν με `min-width: auto`,
