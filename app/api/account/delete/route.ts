@@ -22,12 +22,26 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import { merchant } from '@/lib/billing/merchant';
 import * as billing from '@/lib/data/billing';
 import { sweepOwnFiles } from '@/lib/storage/accountSweep';
 import { SAY } from '@/lib/core/dbError';
 
-export async function POST() {
+export async function POST(request: Request) {
+  // ── ΠΡΩΤΑ: ΑΠΟ ΠΟΥ ΗΡΘΕ ΤΟ ΑΙΤΗΜΑ ──────────────────────
+  // Η ΥΠΟΓΡΑΦΗ ΗΤΑΝ `POST()`, ΧΩΡΙΣ ΠΑΡΑΜΕΤΡΟ. Ο έλεγχος προέλευσης δεν
+  // ήταν ξεχασμένος: ήταν δομικά αδύνατος. Και η διαδρομή δεν ζητά ούτε σώμα
+  // ούτε επικεφαλίδα, οπότε μια ξένη σελίδα με φόρμα προς αυτή τη διεύθυνση
+  // ήταν ολόκληρη η επίθεση — το cookie συνεδρίας ταξιδεύει μόνο του και ο
+  // λογαριασμός σβήνει μαζί με κάθε γραμμή του.
+  //
+  // ΠΡΙΝ ΑΠΟ ΤΗ ΣΥΝΕΔΡΙΑ, ΕΠΙΤΗΔΕΣ: το «ποιος είσαι» δεν έχει νόημα όσο δεν
+  // ξέρουμε αν το αίτημα το θέλησε ο ίδιος.
+  if (!sameOrigin(request.headers)) {
+    return NextResponse.json({ error: ORIGIN_DENIED }, { status: 403 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });

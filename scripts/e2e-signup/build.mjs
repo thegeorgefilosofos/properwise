@@ -5,6 +5,7 @@ import { build } from 'esbuild';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BENCH_DEFINE, BENCH_INJECT } from '../lib/bench-env.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
@@ -19,7 +20,8 @@ await build({
   target: 'es2022',
   outfile: join(out, 'harness.js'),
   logLevel: 'error',
-  define: { 'process.env.NODE_ENV': '"production"' },
+  define: BENCH_DEFINE,
+  inject: BENCH_INJECT,
   alias: {
     '@/lib/supabase/lazy': join(here, 'fakeAuth.ts'),
     'next/link': join(here, 'fakeLink.tsx'),

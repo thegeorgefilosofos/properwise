@@ -32,7 +32,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, fe } from '@/components/Theme';
+import { T, TT, fe, Btn, ChipToggle } from '@/components/Theme';
 import { isoDate } from '@/lib/core/time';
 import { saved } from '@/components/dbWrite';
 import * as billing from '@/lib/data/billing';
@@ -162,22 +162,6 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
   const c = cards[step];
   const last = step === cards.length - 1;
 
-  // Premium κουμπιά (καθαρά, με hover) — χωρίς το γενικό Btn: εδώ τα κουμπιά
-  // πιάνουν όλο το πλάτος της κάρτας και έχουν δική τους ιεραρχία βάρους.
-  const primaryBtn: React.CSSProperties = {
-    height: T.h.lg, borderRadius: T.radius.inner, border: 'none', cursor: 'pointer',
-    background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, fontFamily: T.font.sans,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, letterSpacing: '-0.01em',
-    padding: '0 22px',
-    boxShadow: '0 8px 20px -8px color-mix(in srgb, var(--accent) 65%, transparent)',
-    transition: `filter 0.15s ${T.ease.standard}, transform 0.15s ${T.ease.standard}`,
-  };
-  const linkBtn: React.CSSProperties = {
-    background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: T.font.sans,
-    // Πρώτη οθόνη κάθε νέου λογαριασμού και τα δύο κουμπιά της ήταν 32ψηλά.
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: T.h.md,
-    padding: '8px 12px', textAlign: 'center',
-  };
   // Μία ετικέτα ενότητας και δύο σχήματα επιλογής για ΟΛΕΣ τις ερωτήσεις αυτής
   // της οθόνης: κάρτα για τη βασική επιλογή, pill για τη λεπτομέρεια. Χωρίς αυτά
   // η ίδια επιλογή γραφόταν τρεις φορές με τρεις μικροδιαφορές.
@@ -190,19 +174,6 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
     transition: `background-color 0.15s ${T.ease.standard}, border-color 0.15s ${T.ease.standard}, box-shadow 0.15s ${T.ease.standard}`,
     fontFamily: T.font.sans,
   });
-  const pill = (on: boolean): React.CSSProperties => ({
-    flex: 1, minWidth: 88, cursor: 'pointer', borderRadius: T.radius.pill, padding: '7px 12px',
-    border: `1px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`,
-    background: on ? 'var(--accent-soft)' : 'var(--surface-raised)',
-    color: on ? 'var(--accent)' : 'var(--text-secondary)',
-    fontSize: 12, fontWeight: 600, fontFamily: T.font.sans,
-    transition: `background-color 0.15s ${T.ease.standard}, border-color 0.15s ${T.ease.standard}, color 0.15s ${T.ease.standard}`,
-  });
-
-  const press = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.transform = 'scale(0.985)'; };
-  const release = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.transform = 'none'; };
-  const brighten = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.filter = 'brightness(1.06)'; };
-  const unbrighten = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.filter = 'none'; };
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Καλωσόρισμα"
@@ -228,7 +199,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
 
         {/* ── ΟΙ ΕΡΩΤΗΣΕΙΣ, ΜΟΝΟ ΣΤΗΝ ΤΕΛΕΥΤΑΙΑ ΚΑΡΤΑ ────────────────────── */}
         {last && (
-          <div style={{ marginTop: 22, paddingTop: 20, borderTop: '1px solid var(--border-subtle)' }}>
+          <div style={{ marginTop: T.sp.xl, paddingTop: 20, borderTop: '1px solid var(--border-subtle)' }}>
             <div style={capLabel}>ΤΙ ΣΕ ΠΕΡΙΓΡΑΦΕΙ</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {([['individual', 'Ιδιώτης', 'δικά μου ακίνητα'], ['professional', 'Επαγγελματίας', 'διαχείριση πολλών']] as const).map(([v, t, sub]) => {
@@ -242,7 +213,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
               })}
             </div>
 
-            <div style={{ ...capLabel, marginTop: 18 }}>ΦΟΡΟΛΟΓΙΚΑ, ΤΙ ΕΙΣΑΙ</div>
+            <div style={{ ...capLabel, marginTop: T.sp.lg }}>ΦΟΡΟΛΟΓΙΚΑ, ΤΙ ΕΙΣΑΙ</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {([[false, 'Φυσικό πρόσωπο', 'μόνο δήλωση'], [true, 'Έχω επιχείρηση', 'ή ελεύθ. επαγγελματίας']] as const).map(([v, t, sub]) => (
                 <button key={String(v)} onClick={() => chooseBiz(v)} style={choice(hasBiz === v)}>
@@ -256,15 +227,16 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
               <>
                 <div style={{ ...capLabel, marginTop: 14 }}>ΜΟΡΦΗ</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {/* `chip` γιατί η σειρά δεν έχει δική της ράγα, `grow` για ίσα μερίδια όπως το flex:1 του pill. */}
                   {([['sole_trader', 'Ατομική'], ['partnership', 'ΟΕ / ΕΕ'], ['company', 'ΑΕ / ΕΠΕ / ΙΚΕ']] as const).map(([v, t]) => (
-                    <button key={v} onClick={() => chooseForm(v)} style={pill(legalForm === v)}>{t}</button>
+                    <ChipToggle key={v} grow on={legalForm === v} onClick={() => chooseForm(v)}>{t}</ChipToggle>
                   ))}
                 </div>
 
                 <div style={{ ...capLabel, marginTop: 14 }}>ΒΙΒΛΙΑ</div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {([['single_entry', 'Απλογραφικά'], ['double_entry', 'Διπλογραφικά']] as const).map(([v, t]) => (
-                    <button key={v} onClick={() => saveLegal(legalForm, v)} style={pill(books === v)}>{t}</button>
+                    <ChipToggle key={v} grow on={books === v} onClick={() => saveLegal(legalForm, v)}>{t}</ChipToggle>
                   ))}
                 </div>
                 <div style={{ ...TT.caption, marginTop: 8 }}>
@@ -276,22 +248,28 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
         )}
 
         {/* ── ΔΕΙΚΤΕΣ ΚΑΙ ΕΝΕΡΓΕΙΕΣ, ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.md, marginTop: 22, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.md, marginTop: T.sp.xl, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 8, flex: 1 }}>
             {cards.map((_, i) => (
-              <span key={i} style={{ width: i === step ? 22 : 7, height: 7, borderRadius: 6, background: i === step ? 'var(--accent)' : 'var(--border-default)', transition: `width 0.28s ${T.ease.standard}, background-color 0.28s ${T.ease.standard}` }} />
+              <span key={i} style={{ width: i === step ? 22 : 7, height: 7, borderRadius: T.radius.xs, background: i === step ? 'var(--accent)' : 'var(--border-default)', transition: `width 0.28s ${T.ease.standard}, background-color 0.28s ${T.ease.standard}` }} />
             ))}
           </div>
-          {!last && <button onClick={later} style={{ ...linkBtn, color: 'var(--text-tertiary)' }}>Αργότερα</button>}
+          {!last && <Btn variant="ghost" onClick={later}>Αργότερα</Btn>}
+          {/* `size="lg"` κρατά το ύψος T.h.lg που είχε το τοπικό primaryBtn. Η λάμψη
+              και το χειροκίνητο brightness/scale έφυγαν: η αιώρηση και το πάτημα ζουν
+              πλέον στο .po-btn, που ξέρει και εστίαση πληκτρολογίου και οθόνη αφής. */}
           {!last
-            ? <button onClick={() => setStep(step + 1)} style={primaryBtn} onMouseEnter={brighten} onMouseLeave={e => { unbrighten(e); release(e); }} onMouseDown={press} onMouseUp={release}>Επόμενο</button>
-            : <button onClick={addProperty} style={primaryBtn} onMouseEnter={brighten} onMouseLeave={e => { unbrighten(e); release(e); }} onMouseDown={press} onMouseUp={release}>Ας ξεκινήσουμε</button>}
+            ? <Btn variant="primary" size="lg" onClick={() => setStep(step + 1)}>Επόμενο</Btn>
+            : <Btn variant="primary" size="lg" onClick={addProperty}>Ας ξεκινήσουμε</Btn>}
         </div>
 
         {last && (
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: T.sp.md, marginTop: 6 }}>
-            <button onClick={scanCreate} style={{ ...linkBtn, color: 'var(--accent)' }}>Σάρωση εγγράφου</button>
-            <button onClick={later} style={{ ...linkBtn, color: 'var(--text-tertiary)' }}>Αργότερα</button>
+            {/* ghost και όχι LinkBtn: είναι αυτοτελή κουμπιά σε γραμμή υποσέλιδου,
+                όχι λέξεις μέσα σε πρόταση. Το accent μελάνι της σάρωσης γίνεται
+                text-secondary — τον ρόλο τον δίνει πλέον η θέση, όχι το χρώμα. */}
+            <Btn variant="ghost" onClick={scanCreate}>Σάρωση εγγράφου</Btn>
+            <Btn variant="ghost" onClick={later}>Αργότερα</Btn>
           </div>
         )}
       </div>

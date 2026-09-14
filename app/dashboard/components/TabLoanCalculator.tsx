@@ -1,12 +1,12 @@
 'use client'
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { CustomSelect, NumberInput, TextInput, DatePicker, InfoDot , ToggleField, fieldLabelStyle} from './UIComponents'
 import { LensBar, axisGutter, cardStyle, panelStyle } from './LoanShared'
 import { downloadTableXlsx } from './exportCsv'
 import { fp, fe } from '@/lib/core/format'
 import DocChecklist from './DocChecklist'
 import { reportHead, reportHeader, reportSection, reportRow, reportKpi, reportDisclaimer, openReport, rEur, rPct, rEsc } from './reportPdf'
-import { T, Badge, ABSENT, TT, fixedCols, KPIGrid, Tile, widestOf, Stat } from '@/components/Theme'
+import { T, Badge, ABSENT, TT, fixedCols, KPIGrid, Tile, widestOf, Stat, Btn, IconBtn, ChipToggle, LinkBtn } from '@/components/Theme'
 import { affordability, rentVsBuy } from '@/lib/loans/affordability'
 import { AADE_HOME } from '@/lib/tax/aade'
 import { createClient } from '@/lib/supabase/client'
@@ -33,13 +33,6 @@ import { useChartWidth } from '@/app/hooks/useChartWidth'
 
 // ── MD3 tokens ────────────────────────────────────────────────────────────────
 const labelStyle: React.CSSProperties = { ...TT.label, display:'block', marginBottom:6 }
-const pillBtn = (active:boolean, accentColor='var(--accent)'): React.CSSProperties => ({
-  padding:'0 14px',height:T.h.md,borderRadius: T.radius.modal,border:`1px solid ${active?accentColor:'var(--border-subtle)'}`,
-  background:active?`color-mix(in srgb, ${accentColor} 10%, transparent)`:'none',color:active?accentColor:'var(--text-secondary)',
-  cursor:'pointer',fontSize:12,fontFamily: T.font.sans,fontWeight:active?500:400,
-  transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',display:'flex',alignItems:'center',gap:6,whiteSpace:'nowrap' as const,
-})
-
 const SectionLabel = ({label,right}:{label:string;right?:React.ReactNode}) => (
   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
     <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:700,fontFamily: T.font.sans}}>{label}</p>
@@ -52,11 +45,11 @@ function Section({title,sub,children,defaultOpen=false,badge}:{title:string;sub?
   const [open,setOpen] = useState(defaultOpen)
   return (
     <div style={panelStyle}>
-      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',background:'none',border:'none',cursor:'pointer',textAlign:'left' as const}}>
+      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} className="acc-toggle acc-row acc-apart" style={{ '--acc-pad': '16px 16px' }}>
         <div>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
             <p style={{fontSize:14,color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:600}}>{title}</p>
-            {badge&&<span style={{fontSize: 'var(--fs-xs)',padding:'2px 7px',borderRadius:8,background:'var(--bg-surface)',color:'var(--text-secondary)',border:'1px solid var(--border-subtle)',fontFamily: T.font.sans,fontWeight:500}}>{badge}</span>}
+            {badge&&<span style={{fontSize: 'var(--fs-xs)',padding:'2px 7px',borderRadius: T.radius.chip,background:'var(--bg-surface)',color:'var(--text-secondary)',border:'1px solid var(--border-subtle)',fontFamily: T.font.sans,fontWeight:500}}>{badge}</span>}
           </div>
           {sub&&<p style={{fontSize:12,color:'var(--text-secondary)',marginTop: 4,lineHeight:1.4,fontFamily: T.font.sans}}>{sub}</p>}
         </div>
@@ -377,7 +370,16 @@ function StressBars({stress,limit,INC,fmt,fmtPct,fmtPct1}:{stress:{label:string;
             <g key={i}>
               {active&&<rect x={cx(i)-step/2} y={padT} width={step} height={plotH} fill="var(--accent)" fillOpacity="0.06"/>}
               <path d={`M ${x} ${y+r} Q ${x} ${y} ${x+r} ${y} L ${x+bw-r} ${y} Q ${x+bw} ${y} ${x+bw} ${y+r} L ${x+bw} ${base} L ${x} ${base} Z`} fill={over?'url(#stressOver)':'url(#stressBar)'} filter={active?'url(#stressLift)':undefined}/>
-              <text x={cx(i)} y={H-9} textAnchor="middle" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:active||i===0?'var(--accent)':'var(--text-secondary)',fontWeight:active||i===0?600:400}}>{s.label}</text>
+              {/* ΤΑ ΑΚΡΑΙΑ ΛΕΚΤΙΚΑ ΑΓΚΙΣΤΡΩΝΟΝΤΑΙ ΠΡΟΣ ΤΑ ΜΕΣΑ. Κεντραρισμένα κάτω
+                  από τη στήλη τους, στα 320 το «Τρέχον» έβγαινε 2 εικονοστοιχεία
+                  αριστερά από το ίδιο το γράφημα και κοβόταν: το κέντρο της
+                  πρώτης στήλης απέχει από την άκρη λιγότερο από το μισό της
+                  λέξης. Το πρώτο λεκτικό ξεκινά από την αριστερή άκρη του
+                  σχεδίου και το τελευταίο τελειώνει στη δεξιά· τα ενδιάμεσα
+                  μένουν κεντραρισμένα, όπως πρέπει. */}
+              <text x={i===0?padL:i===stress.length-1?W-padR:cx(i)} y={H-9}
+                textAnchor={i===0?'start':i===stress.length-1?'end':'middle'}
+                style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:active||i===0?'var(--accent)':'var(--text-secondary)',fontWeight:active||i===0?600:400}}>{s.label}</text>
             </g>
           )
         })}
@@ -400,10 +402,20 @@ function StressBars({stress,limit,INC,fmt,fmtPct,fmtPct1}:{stress:{label:string;
               <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Αύξηση</span>
               <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{hi===0?fmt(0):diff>=0?`+${fmt(diff)}`:`-${fmt(-diff)}`}</span>
             </div>
+            {/* ══ ΤΟ «ΠΑΝΩ ΑΠΟ ΤΟ ΟΡΙΟ» ΥΠΟΛΟΓΙΖΟΤΑΝ ΚΑΙ ΔΕΝ ΦΑΙΝΟΤΑΝ ═════════
+                Το `over` (δόση > όριο αντοχής) υπολογιζόταν σε κάθε άγγιγμα και
+                δεν το διάβαζε καμία γραμμή. Το γράφημα ζωγραφίζει διακεκομμένη
+                «Όριο δόσης» — άρα το όριο ΕΧΕΙ νόημα — αλλά το πλαίσιο έδειχνε το
+                σενάριο που το ξεπερνά με το ίδιο ακριβώς χρώμα με ένα που δεν
+                το ξεπερνά. Ο χρήστης έσερνε το δάχτυλο πάνω σε τέσσερα σενάρια
+                επιτοκίου για να δει ΑΚΡΙΒΩΣ αυτό: πού σπάει. */}
             <div style={{display:'flex',alignItems:'center',gap:14,paddingTop: 4,marginTop:2,borderTop:'1px solid var(--border-subtle)'}}>
               <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Δόση προς εισόδημα</span>
-              <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmtPct1(dti)}</span>
+              <span style={{fontSize: 'var(--fs-base)',color:over?'var(--negative)':'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmtPct1(dti)}</span>
             </div>
+            {over&&(
+              <p style={{fontSize: 'var(--fs-xs)',color:'var(--negative)',fontFamily: T.font.sans,marginTop:6,fontWeight:600,textAlign:'center' as const}}>Πάνω από το όριο δόσης</p>
+            )}
           </div>
         )
       })()}
@@ -442,8 +454,8 @@ function calcNotaryFees(propValue:number):{notary:number;landReg:number;agent:nu
   //
   // ΚΑΙ Η ΠΕΜΠΤΗ ΗΤΑΝ ΛΑΘΟΣ. Σε επαγγελματικό ακίνητο έγραφε «Τέλη χαρτοσήμου
   // μίσθωσης (3,6%)» μέσα στα έξοδα ΑΓΟΡΑΣ: τέλος που αφορά μίσθωση, όχι
-  // απόκτηση, με νούμερο που δεν έμπαινε ποτέ στο σύνολο. Σε κατάστημα 200.000 €
-  // εμφάνιζε 7.200 € κόστος που κανείς δεν πληρώνει στη μεταβίβαση.
+  // απόκτηση, με νούμερο που δεν έμπαινε ποτέ στο σύνολο. Σε κατάστημα 200.000€
+  // εμφάνιζε 7.200€ κόστος που κανείς δεν πληρώνει στη μεταβίβαση.
   //
   // Μένει αυτό που ΜΟΝΟ εδώ φαίνεται: πώς σπάει η αμοιβή του συμβολαιογράφου.
   const breakdown=[
@@ -458,8 +470,8 @@ const BORROWER_OPTIONS  = Object.entries(BORROWER_PROFILES).map(([k,v])=>({value
 const BANK_OPTIONS      = [...BANKS.map(b=>({value:b.id,label:b.name,description:`${b.note} · ${b.fees}`})),{value:'custom',label:'Άλλη τράπεζα',description:'Καταχώρησε το όνομά της'}]
 const RATE_TYPE_OPTIONS = [{value:'fixed',label:'Σταθερό',description:'Σταθερό για την επιλεγμένη περίοδο'},{value:'variable',label:'Κυμαινόμενο',description:'Euribor συν περιθώριο τράπεζας'},{value:'mixed',label:'Μεικτό',description:'Σταθερό αρχικά, μετά κυμαινόμενο'}]
 const FIXED_PERIOD_OPTIONS = ['3','5','10','15','20'].map(v=>({value:v,label:`${v} χρόνια`,description:v==='5'?'Πιο συνηθισμένο':v==='10'?'Καλή ισορροπία':''}))
-const MARITAL_OPTIONS   = [{value:'single',label:'Άγαμος / Άγαμη',description:'Όριο ΦΜΑ: 200.000 €'},{value:'married',label:'Έγγαμος / Έγγαμη',description:'Όριο ΦΜΑ: 250.000 €'}]
-const CHILDREN_OPTIONS  = [0,1,2,3,4,5].map(n=>({value:String(n),label:n===0?'Χωρίς τέκνα':`${n} εξαρτώμεν${n===1?'ο':'α'} τέκν${n===1?'ο':'α'}`,description:n===0?'':n===1?'+25.000 €':n===2?'+50.000 €':`+${50+(n-2)*30}.000 €`}))
+const MARITAL_OPTIONS   = [{value:'single',label:'Άγαμος / Άγαμη',description:'Όριο ΦΜΑ: 200.000€'},{value:'married',label:'Έγγαμος / Έγγαμη',description:'Όριο ΦΜΑ: 250.000€'}]
+const CHILDREN_OPTIONS  = [0,1,2,3,4,5].map(n=>({value:String(n),label:n===0?'Χωρίς τέκνα':`${n} εξαρτώμεν${n===1?'ο':'α'} τέκν${n===1?'ο':'α'}`,description:n===0?'':n===1?'+25.000€':n===2?'+50.000€':`+${50+(n-2)*30}.000€`}))
 const PROP_TYPE_OPTIONS = PROPERTY_TYPES.map(p=>({value:p.value,label:p.label,description:p.desc}))
 
 const PRESETS = [
@@ -702,7 +714,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   // τροφοδοτεί το «Κόστος αγοράς και πώλησης» στη Λογιστική, εφαρμόζει ΦΠΑ μόνο
   // όταν του πουν ρητά ότι η αναστολή ΔΕΝ ισχύει — και κανείς δεν του το λέει,
   // άρα εκεί το νεόδμητο πληρώνει ΦΜΑ. Εδώ χρεωνόταν 24% χωρίς όρο. Σε ακίνητο
-  // 300.000 € οι δύο οθόνες διέφεραν κατά 72.000 €, δηλαδή το «συνολικό μετρητά»
+  // 300.000€ οι δύο οθόνες διέφεραν κατά 72.000€, δηλαδή το «συνολικό μετρητά»
   // του δανείου ήταν άλλος πλανήτης από τη Λογιστική για το ίδιο ακίνητο.
   //
   // ΚΑΙ Ο ΣΥΝΤΕΛΕΣΤΗΣ ΗΤΑΝ 3% ΑΝΤΙ ΓΙΑ 3,09%. Πάνω στον κύριο φόρο 3% μπαίνει
@@ -733,7 +745,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   },[actualRent,PV,areaYield.pct])
   const rentAssumptionText = rentRef.source==='actual'
     ? `Πραγματικό μηνιαίο ενοίκιο του ακινήτου, από τα στοιχεία που έχεις καταχωρήσει: ${fmtEur(rentRef.monthly)}.`
-    : `Δεν έχεις καταχωρήσει ενοίκιο, οπότε χρησιμοποιείται η τεκμηριωμένη μεικτή απόδοση της περιοχής (${areaYield.label}, ${fmtPct1(areaYield.pct)} ετησίως, δεδομένα ${MARKET_DATA_ASOF}): ${fmtEur(rentRef.monthly)} τον μήνα. Συμπλήρωσε το ενοίκιο στο ακίνητο και ο υπολογισμός γίνεται δικός σου.`
+    : `Χωρίς καταχωρημένο ενοίκιο, χρησιμοποιείται η τεκμηριωμένη μεικτή απόδοση της περιοχής (${areaYield.label}, ${fmtPct1(areaYield.pct)} ετησίως, δεδομένα ${MARKET_DATA_ASOF}): ${fmtEur(rentRef.monthly)} τον μήνα. Συμπλήρωσε το ενοίκιο στο ακίνητο για δικό σου υπολογισμό.`
   const renInc   = loanType==='investment'?rentRef.monthly*12:0
   // Ο φόρος από τη ΜΟΝΑΔΙΚΗ πηγή, με τη τεκμαρτή έκπτωση υπό τον όρο του 2026.
   const renTax   = calcRentalTax(taxableRental(renInc, rentsBank))
@@ -743,7 +755,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   const spitiM   = calcMonthly(LA*0.5,0,Y) + calcMonthly(LA*0.5,effRate,Y)
   const spitiR   = effRate/2
   const spitiSv  = (monthly-spitiM)*Y*12
-  // «Σπίτι μου ΙΙ»: μόνο πρώτη κατοικία, αξία έως 250.000 €, υφιστάμενο (όχι νεόδμητο)
+  // «Σπίτι μου ΙΙ»: μόνο πρώτη κατοικία, αξία έως 250.000€, υφιστάμενο (όχι νεόδμητο)
   // και όχι επαγγελματικό. Χωρίς αυτά τα κριτήρια η εκτίμηση εξοικονόμησης είναι
   // παραπλανητική — γι' αυτό την εμφανίζουμε μόνο όταν το ακίνητο πληροί τα βασικά.
   const spitiEligible = loanType==='first_home' && PV<=250000 && !isNewBuilding && !isCommercial
@@ -782,8 +794,8 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   const varShownRate = rateType==='variable' ? effRate : variableRate
   const varShownMonthly = rateType==='variable' ? monthly : varMonthly
   // Σωρευτικοί τόκοι με πραγματική τοκοχρεολυτική απόσβεση (όχι γραμμική αναλογία κεφαλαίου).
-  const cumInterest = (ratePct:number,uptoYear:number)=>{const m=calcMonthly(LA,ratePct,Y);const rr=ratePct/100/12;let bal=LA,sum=0;for(let k=1;k<=uptoYear*12&&bal>0;k++){const i=rr===0?0:bal*rr;sum+=i;bal-=(m-i)}return Math.round(sum)}
-  const fvChartData = useMemo(()=>{const pts=[3,5,7,10,15,20,25,30].filter(y=>y<=Y);return pts.map(yr=>({year:`${yr} έτη`,Σταθερό:cumInterest(fixedRefRate,yr),Κυμαινόμενο:cumInterest(varShownRate,yr)}))},[fixedRefRate,varShownRate,LA,Y])
+  const cumInterest = useCallback((ratePct:number,uptoYear:number)=>{const m=calcMonthly(LA,ratePct,Y);const rr=ratePct/100/12;let bal=LA,sum=0;for(let k=1;k<=uptoYear*12&&bal>0;k++){const i=rr===0?0:bal*rr;sum+=i;bal-=(m-i)}return Math.round(sum)},[LA,Y])
+  const fvChartData = useMemo(()=>{const pts=[3,5,7,10,15,20,25,30].filter(y=>y<=Y);return pts.map(yr=>({year:`${yr} έτη`,Σταθερό:cumInterest(fixedRefRate,yr),Κυμαινόμενο:cumInterest(varShownRate,yr)}))},[fixedRefRate,varShownRate,Y,cumInterest])
   const scenChart = useMemo(()=>scenarios.map(s=>({name:s.label,Τόκοι:Math.round(calcMonthly(s.amount,s.rate,s.years)*s.years*12-s.amount)})),[scenarios])
 
   const extraSav = useMemo(()=>{
@@ -846,7 +858,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
     if(!amort.length){notify('Δεν υπάρχουν δόσεις προς εξαγωγή',{tone:'warning'});return}
     // ΤΑ ΠΟΣΑ ΩΣ ΑΡΙΘΜΟΙ. Περνούσαν από τη `csvEur()`, που παράγει κείμενο:
     // ολόκληρος ο πίνακας χρεολυσίων έφτανε ως συμβολοσειρές και η γραμμή
-    // ΣΥΝΟΛΟ έβγαζε «0,00 €» κάτω από τριακόσιες εξήντα δόσεις.
+    // ΣΥΝΟΛΟ έβγαζε «0,00€» κάτω από τριακόσιες εξήντα δόσεις.
     //
     // Το υπόλοιπο και οι σωρευτικοί τόκοι ΔΕΝ αθροίζονται — είναι μεγέθη
     // αποθέματος, όχι ροής. Γι' αυτό η επικεφαλίδα τους δεν ξεκινά με λέξη
@@ -961,10 +973,10 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           {PRESETS.map(p=>{
             const on = activePreset===p.id
             return (
-              <button key={p.id} onClick={()=>applyPreset(p)} title={p.desc} style={{display:'inline-flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 14px',borderRadius: T.radius.modal,cursor:'pointer',background:on?'var(--accent-dim)':'var(--bg-surface)',border:`1px solid ${on?'var(--border-accent)':'var(--border-subtle)'}`,color:on?'var(--accent)':'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s'}}>
+              <ChipToggle key={p.id} on={on} onClick={()=>applyPreset(p)} title={p.desc}>
                 {on&&<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>}
                 {p.label}
-              </button>
+              </ChipToggle>
             )
           })}
         </div>
@@ -999,7 +1011,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                 που ήρθε μετά — ενώ είναι κόστος της ίδιας αγοράς με τον φόρο
                 μεταβίβασης και τα συμβολαιογραφικά. Κελί του πλέγματος. */}
             <ToggleField label="Αμοιβή μεσίτη" on={hasAgent} onChange={setHasAgent}/>
-            {hasAgent&&<NumberInput label="Ποσοστό μεσίτη" value={agentPct} onChange={setAgentPct} suffix="%" step={0.5}/>}
+            {hasAgent&&<NumberInput label="Ποσοστό μεσίτη" value={agentPct} onChange={setAgentPct} suffix="%"/>}
             {hasAgent&&(
               <div>
                 <label style={fieldLabelStyle}>Αμοιβή μεσίτη</label>
@@ -1029,7 +1041,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           <div {...fixedCols(4, 12, 'start')}>
             {/* ═══ Η ΣΗΜΕΙΩΣΗ ΕΦΥΓΕ: ΗΤΑΝ ΤΟ ΤΕΤΑΡΤΟ ΠΛΑΚΙΔΙΟ, ΓΡΑΜΜΕΝΟ ΔΥΟ ΦΟΡΕΣ
                 Κάτω από αυτό το πεδίο καθόταν «Δάνειο προς αξία 80,00% · ίδια
-                κεφάλαια 30.000,00 €», σε στήλη που δεν το χωρούσε, οπότε
+                κεφάλαια 30.000,00€», σε στήλη που δεν το χωρούσε, οπότε
                 τσάκιζε σε δύο σειρές και ψήλωνε μόνο του τη σειρά των τεσσάρων
                 πεδίων. Και ήταν ΑΚΡΙΒΩΣ τα ίδια δύο νούμερα με το τέταρτο
                 πλακίδιο λίγο πιο κάτω στην ίδια οθόνη, με τις ίδιες λέξεις.
@@ -1052,7 +1064,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                 «Τύπος επιτοκίου» και η τιμή του είναι σε έτη. */}
             {(rateType==='fixed'||rateType==='mixed')&&<CustomSelect label="Σταθερή περίοδος" value={fixedPeriod} onChange={setFixedPeriod} options={FIXED_PERIOD_OPTIONS}/>}
             <div title={rateType==='variable'?'Περιθώριο τράπεζας πάνω από το Euribor':undefined}>
-              <NumberInput label={rateType==='variable'?'Περιθώριο τράπεζας (%)':'Ετήσιο επιτόκιο (%)'} value={rate} onChange={v=>{setRate(v);setActivePreset(null)}} suffix="%" step={0.05}/>
+              <NumberInput label={rateType==='variable'?'Περιθώριο τράπεζας (%)':'Ετήσιο επιτόκιο (%)'} value={rate} onChange={v=>{setRate(v);setActivePreset(null)}} suffix="%"/>
               {rateType==='variable'&&(
                 <div style={{marginTop: 8,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
                   <p style={{fontSize:12,fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}><span title="Διατραπεζικό επιτόκιο ευρώ: βάση κυμαινόμενων δανείων">Euribor</span> {fmtPct(market.euribor_3m)} + {fmtPct(R)} = <strong>{fmtPct(effRate)}</strong></p>
@@ -1080,7 +1092,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
 
           ΤΙ ΚΟΣΤΙΣΕ. ΜΕΤΡΗΜΕΝΟ ΣΕ Galaxy A, 360×800: δύο στήλες των 163, κάρτα
           με 18 περιθώριο δεξιά-αριστερά, δηλαδή 127 για το νούμερο· η
-          «Συνολική αποπληρωμή» έγραφε «225.280,61 €», που στα 28 θέλει 200. Ο
+          «Συνολική αποπληρωμή» έγραφε «225.280,61€», που στα 28 θέλει 200. Ο
           κύριος αριθμός του υπολογιστή δανείου ήταν κομμένος στη μέση· μαζί
           του ολόκληρη η γραμμή ξεχείλιζε την κάρτα κατά 37.
 
@@ -1096,27 +1108,35 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         { label:'Δάνειο προς αξία', value:`${fp(ltv)}`, sub:`ίδια κεφάλαια ${fmtEur(PV-LA)}`, title:'Ποσοστό δανείου ως προς την αξία του ακινήτου', tone: ltv>90 ? 'warning' : undefined },
       ]}/>
 
-      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-        {[
-          {label:saving?'Αποθήκευση…':'Αποθήκευση δανείου',fn:handleSave,disabled:saving,color:'var(--accent)',bg:'var(--accent-dim)',border:'var(--border-accent)'},
-          {label:'Δόσεις στο Ημερολόγιο',fn:async()=>{await onSaveToCalendar(monthly,Y,startDate,bankName);notifyOk('Οι δόσεις προστέθηκαν στο ημερολόγιο')},disabled:false,color:'var(--text-secondary)',bg:'var(--bg-elevated)',border:'var(--border-subtle)'},
-          {label:'Δόση στις Δαπάνες',fn:async()=>{await onSaveToExpenses(monthly,bankName);notifyOk('Η δόση προστέθηκε στις δαπάνες')},disabled:false,color:'var(--text-secondary)',bg:'var(--bg-elevated)',border:'var(--border-subtle)'},
-          {label:'+ Προσθήκη σεναρίου',fn:addScen,disabled:false,color:'var(--text-secondary)',bg:'var(--bg-elevated)',border:'var(--border-subtle)'},
-          {label:'Επαναφορά',fn:resetAll,disabled:false,color:'var(--text-tertiary)',bg:'transparent',border:'var(--border-subtle)'},
-        ].map(a=>(
-          <button key={a.label} onClick={a.fn} disabled={a.disabled} style={{display:'flex',alignItems:'center',gap: 8,padding:'0 18px',height:T.h.md,background:a.bg,border:`1px solid ${a.border}`,borderRadius: T.radius.modal,cursor:a.disabled?'wait':'pointer',color:a.color,fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',whiteSpace:'nowrap' as const}}>
+      {/* ΠΕΝΤΕ ΕΝΕΡΓΕΙΕΣ ΠΟΥ ΤΥΛΙΓΟΝΤΑΝ 3+2 ΚΑΙ 4+1. Μετρημένο σε 768 και 834: το
+          `flex-wrap` έδινε σε κάθε κουμπί το πλάτος του κειμένου του και η
+          τελευταία σειρά κρεμόταν αριστερά με τρύπα δεξιά. Τώρα κάθε γραμμή
+          απλώνει τα δικά της κουμπιά ώστε να τη γεμίσει. */}
+      <div className="po-ctlrow">
+        {/* Το χρώμα του πίνακα έγινε ρόλος: η αποθήκευση είναι η κύρια ενέργεια
+            της κάρτας, οι άλλες τέσσερις έχουν περίγραμμα άρα δευτερεύουσες. */}
+        {([
+          {label:saving?'Αποθήκευση…':'Αποθήκευση δανείου',fn:handleSave,disabled:saving,variant:'primary'},
+          {label:'Δόσεις στο Ημερολόγιο',fn:async()=>{await onSaveToCalendar(monthly,Y,startDate,bankName);notifyOk('Οι δόσεις προστέθηκαν στο ημερολόγιο')},disabled:false,variant:'secondary'},
+          {label:'Δόση στις Δαπάνες',fn:async()=>{await onSaveToExpenses(monthly,bankName);notifyOk('Η δόση προστέθηκε στις δαπάνες')},disabled:false,variant:'secondary'},
+          {label:'+ Προσθήκη σεναρίου',fn:addScen,disabled:false,variant:'secondary'},
+          {label:'Επαναφορά',fn:resetAll,disabled:false,variant:'secondary'},
+        ] as const).map(a=>(
+          <Btn key={a.label} variant={a.variant} onClick={a.fn} disabled={a.disabled}>
             {a.label}
-          </button>
+          </Btn>
         ))}
       </div>
 
       {scenarios.length>0&&(
         <div style={cardStyle}>
           <SectionLabel label="Σύγκριση σεναρίων"/>
-          <div style={{overflowX:'auto',marginBottom:16}}>
-            <div className="table-wrap">
-            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-              <thead><tr style={{borderBottom:'1px solid var(--border-subtle)'}}>{['Σενάριο','Ποσό','Επιτόκιο','Χρόνια','Δόση τον μήνα','Συνολικοί τόκοι','Διαφορά',''].map(h=><th key={h} style={{padding:'7px 10px',textAlign:'left',fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:500,fontFamily: T.font.sans}}>{h}</th>)}</tr></thead>
+          {/* Οκτώ στήλες, ίδιος κανόνας με τον πίνακα αντοχής: το όνομα του
+              σεναρίου μένει ορατό όσο ο χρήστης σέρνει προς τη «Διαφορά». */}
+          <div className="po-table-box" style={{marginBottom:16}}>
+            <div className="po-scroll-x">
+            <table className="po-table pin-1" style={{'--tbl-min':'760px','--row-bg':'var(--surface-raised)'}}>
+              <thead><tr>{['Σενάριο','Ποσό','Επιτόκιο','Χρόνια','Δόση τον μήνα','Συνολικοί τόκοι','Διαφορά',''].map((h,i)=><th key={h} scope="col" style={{textAlign:i>=1&&i<=6?'right' as const:undefined}}>{h}</th>)}</tr></thead>
               <tbody>
                 {scenarios.map(s=>{
                   const m=calcMonthly(s.amount,s.rate,s.years),ti=m*s.years*12-s.amount,saved=totalInt-ti
@@ -1124,24 +1144,24 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                   const isEd=editingId===s.id
                   const cell=(v:string,f:'label'|'amount'|'rate'|'years',w:number)=><input value={v} aria-label={SCEN_NAME[f]} onChange={e=>{ if(f==='label') updScen(s.id,'label',e.target.value); else updScen(s.id,f,Number(e.target.value)); }} style={{background:'var(--bg-surface)',border:'1px solid var(--accent)',borderRadius:10,padding:'5px 8px',color:'var(--text-primary)',fontSize:12,letterSpacing:0,outline:'none',width:w,fontFamily:f==='label'?"'Inter',sans-serif":"'Roboto Mono',monospace",fontVariantNumeric:'tabular-nums'}} type={f==='label'?'text':'number'} step={f==='rate'?0.05:1}/>
                   return(
-                    <tr key={s.id} style={{borderBottom:'1px solid var(--border-subtle)',background:isBest?'var(--bg-surface)':'transparent'}}>
-                      <td style={{padding:'9px 10px'}}>{isEd?cell(s.label,'label',120):<div style={{display:'flex',alignItems:'center',gap: 8}}><span style={{color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>{s.label}</span>{isBest&&<Badge tone="accent">Βέλτιστο</Badge>}</div>}</td>
-                      <td style={{padding:'9px 10px'}}>{isEd?cell(String(s.amount),'amount',90):<span style={{fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{fmtEur(s.amount)}</span>}</td>
-                      <td style={{padding:'9px 10px'}}>{isEd?cell(String(s.rate),'rate',65):<span style={{fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}>{fmtPct(s.rate)}</span>}</td>
-                      <td style={{padding:'9px 10px'}}>{isEd?cell(String(s.years),'years',55):<span style={{color:'var(--text-secondary)',fontFamily: T.font.sans}}>{s.years} έτη</span>}</td>
-                      <td style={{padding:'9px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{fmtEur(m)}</td>
-                      <td style={{padding:'9px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}>{fmtEur(ti)}</td>
-                      <td style={{padding:'9px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:saved>0?'var(--accent)':'var(--text-tertiary)',fontWeight:600}}>{saved>0?`-${fmtEur(saved)}`:`+${fmtEur(-saved)}`}</td>
-                      <td style={{padding:'9px 10px'}}>
+                    <tr key={s.id} style={{'--row-bg':isBest?'var(--bg-surface)':'var(--surface-raised)',background:isBest?'var(--bg-surface)':'transparent'}}>
+                      <td>{isEd?cell(s.label,'label',120):<div style={{display:'flex',alignItems:'center',gap: 8}}><span style={{color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>{s.label}</span>{isBest&&<Badge tone="accent">Βέλτιστο</Badge>}</div>}</td>
+                      <td className="num">{isEd?cell(String(s.amount),'amount',90):<span style={{color:'var(--text-primary)',fontWeight:600}}>{fmtEur(s.amount)}</span>}</td>
+                      <td className="num">{isEd?cell(String(s.rate),'rate',65):<span>{fmtPct(s.rate)}</span>}</td>
+                      <td className="num">{isEd?cell(String(s.years),'years',55):<span>{s.years} έτη</span>}</td>
+                      <td className="num" style={{color:'var(--text-primary)',fontWeight:600}}>{fmtEur(m)}</td>
+                      <td className="num">{fmtEur(ti)}</td>
+                      <td className="num" style={{color:saved>0?'var(--accent)':'var(--text-tertiary)',fontWeight:600}}>{saved>0?`-${fmtEur(saved)}`:`+${fmtEur(-saved)}`}</td>
+                      <td>
                         <div style={{display:'flex',gap: 4,alignItems:'center'}}>
                           {isEd
-                            ?<button onClick={()=>setEditingId(null)} aria-label="Αποθήκευση σεναρίου" title="Αποθήκευση" style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',display:'flex',padding:8,margin:-4}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></button>
+                            ?<IconBtn onClick={()=>setEditingId(null)} label="Αποθήκευση σεναρίου" title="Αποθήκευση" tone="accent" style={{margin:-4}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></IconBtn>
                             :<>
-                              <button onClick={()=>setEditingId(s.id)} aria-label="Επεξεργασία σεναρίου" title="Επεξεργασία" style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-secondary)',display:'flex',padding:8,margin:-4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                              <button onClick={()=>applyScen(s)} style={{background:'var(--accent-dim)',border:'1px solid var(--border-accent)',borderRadius:8,cursor:'pointer',color:'var(--accent)',display:'flex',alignItems:'center',gap: 4,padding:'3px 7px',fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fontWeight:500}}>Εφαρμογή</button>
+                              <IconBtn onClick={()=>setEditingId(s.id)} label="Επεξεργασία σεναρίου" title="Επεξεργασία" style={{margin:-4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></IconBtn>
+                              <button onClick={()=>applyScen(s)} style={{background:'var(--accent-dim)',border:'1px solid var(--border-accent)',borderRadius: T.radius.chip,cursor:'pointer',color:'var(--accent)',display:'flex',alignItems:'center',gap: 4,padding:'3px 7px',fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fontWeight:500}}>Εφαρμογή</button>
                             </>
                           }
-                          <button onClick={()=>delScen(s.id)} aria-label="Διαγραφή σεναρίου" title="Διαγραφή" style={{background:'none',border:'none',cursor:'pointer',color:'var(--border-default)',display:'flex',padding:8,margin:-4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>
+                          <IconBtn onClick={()=>delScen(s.id)} label="Διαγραφή σεναρίου" title="Διαγραφή" style={{margin:-4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></IconBtn>
                         </div>
                       </td>
                     </tr>
@@ -1163,8 +1183,8 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                 return (
                   <div key={i} style={{display:'flex',alignItems:'center',gap:12}}>
                     <span style={{width:96,flexShrink:0,fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,whiteSpace:'nowrap' as const,overflow:'hidden',textOverflow:'ellipsis'}}>{s.name}</span>
-                    <div style={{flex:1,height:26,borderRadius:8,background:'var(--bg-surface)',overflow:'hidden',position:'relative'}}>
-                      <div style={{width:`${w}%`,height:'100%',borderRadius:8,transition:'width 0.4s ease',
+                    <div style={{flex:1,height:26,borderRadius: T.radius.chip,background:'var(--bg-surface)',overflow:'hidden',position:'relative'}}>
+                      <div style={{width:`${w}%`,height:'100%',borderRadius: T.radius.chip,transition:'width 0.4s ease',
                         background:best?'linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 82%, transparent))':'color-mix(in srgb, var(--text-tertiary) 34%, transparent)'}}/>
                     </div>
                     <span style={{width:88,flexShrink:0,textAlign:'right' as const,fontSize: 'var(--fs-base)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',color:best?'var(--accent)':'var(--text-primary)',fontWeight:600}}>{fmtEur(s.Τόκοι)}</span>
@@ -1188,7 +1208,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
 
       {lens==='amort' && (
       <Section title="Γράφημα αποπληρωμής" sub="Κεφάλαιο έναντι τόκων στη διάρκεια" defaultOpen>
-        <div style={{display:'flex',gap:18,alignItems:'center',flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:T.sp.lg,alignItems:'center',flexWrap:'wrap'}}>
           <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
             <AmortDonut principal={LA} interest={totalInt}/>
             <div style={{display:'flex',gap:14}}>
@@ -1196,7 +1216,12 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
               <span style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily: T.font.sans}}><span style={{width:9,height:9,borderRadius:3,background:'var(--text-tertiary)',opacity:0.5}}/>Τόκοι {fmtEur(totalInt)}</span>
             </div>
           </div>
-          <div style={{flex:1,minWidth:260}}>
+          {/* ΤΟ ΔΑΠΕΔΟ ΔΕΝ ΕΠΙΤΡΕΠΕΤΑΙ ΝΑ ΞΕΠΕΡΝΑ ΤΗ ΘΗΚΗ ΤΟΥ. Στα 320 η κάρτα
+              δίνει λιγότερα από 260 εικονοστοιχεία, οπότε το `min-width: 260`
+              έσπρωχνε το γράφημα και τη λεζάντα του 15 έξω από το πλαίσιο.
+              Με `min(100%, 260px)` το δάπεδο ισχύει όσο υπάρχει χώρος και
+              υποχωρεί όταν δεν υπάρχει — το ίδιο ιδίωμα με τις άλλες σειρές. */}
+          <div style={{flex:1,minWidth:'min(100%, 260px)'}}>
             <AmortArea data={amortChart.map(d=>({year:d.year,cap:d.Κεφάλαιο,int:d.Τόκοι}))} fmt={fmtEur}/>
             <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:6,lineHeight:1.5,fontFamily: T.font.sans}}>
               Κάθε στήλη είναι η ετήσια δόση. Στην αρχή πληρώνεις κυρίως τόκους· σταδιακά υπερισχύει το κεφάλαιο. Η διακεκομμένη γραμμή δείχνει το έτος όπου το κεφάλαιο ξεπερνά τους τόκους.
@@ -1217,7 +1242,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
               <p style={{fontSize: 'var(--fs-base)',color:item.c,fontWeight:500,fontFamily: T.font.sans,marginBottom:12}}>{item.label}</p>
               {/* ═══ ΤΡΙΑ ΝΟΥΜΕΡΑ ΠΟΥ ΤΥΛΙΓΟΝΤΑΙ, ΟΧΙ ΤΡΙΑ ΠΟΥ ΞΕΦΕΥΓΟΥΝ ═══════════
                   Ηταν `flex` με κενό 16. Στα 320 η κάρτα δίνει 236 και τα
-                  «75.280,61 €» θέλουν 92 το καθένα: μετρημένο, ο τίτλος
+                  «75.280,61€» θέλουν 92 το καθένα: μετρημένο, ο τίτλος
                   «Συνολικοί τόκοι» και τα δύο ποσά έβγαιναν 6 εικονοστοιχεία
                   έξω από την κάρτα.
 
@@ -1256,7 +1281,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.6,marginBottom:14,fontFamily: T.font.sans}}>
           {rateType==='variable'
             ? <>Το κυμαινόμενο είναι το δικό σου: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν περιθώριο {fmtPct(R)}. Το σταθερό αναφοράς είναι το χαμηλότερο καταχωρημένο σταθερό επιτόκιο {BANKS.length} τραπεζών ({fmtPct(fixedRefRate)}, επιβεβαιωμένα {BANKS_VERIFIED}).</>
-            : <>Το σταθερό είναι το δικό σου ({fmtPct(effRate)}). Το κυμαινόμενο αναφοράς είναι Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν <strong style={{color:'var(--text-secondary)'}}>διάμεσο περιθώριο {fmtPct(refVarSpread.pct)}</strong>: ο διάμεσος των ελάχιστων περιθωρίων {refVarSpread.count} τραπεζών, από τα ίδια καταχωρημένα επιτόκια που δείχνει η σύγκριση τραπεζών (επιβεβαιωμένα {BANKS_VERIFIED}), όχι στρογγυλή υπόθεση. Το περιθώριο που θα πάρεις εξαρτάται από το προφίλ σου και μπορεί να είναι υψηλότερο.</>}
+            : <>Το σταθερό είναι το δικό σου ({fmtPct(effRate)}). Κυμαινόμενο αναφοράς: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν <strong style={{color:'var(--text-secondary)'}}>διάμεσο περιθώριο {fmtPct(refVarSpread.pct)}</strong>: ο διάμεσος των ελάχιστων περιθωρίων {refVarSpread.count} τραπεζών, από τα ίδια καταχωρημένα επιτόκια της σύγκρισης τραπεζών (επιβεβαιωμένα {BANKS_VERIFIED}), όχι στρογγυλή υπόθεση. Το δικό σου περιθώριο εξαρτάται από το προφίλ σου· μπορεί να είναι υψηλότερο.</>}
         </p>
         <p style={{...labelStyle,marginBottom:10}}>Σωρευτικοί τόκοι στη διάρκεια</p>
         <DualLine data={fvChartData} keyA="Σταθερό" keyB="Κυμαινόμενο" fmt={fmtEur}/>
@@ -1296,7 +1321,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
             {[
               {ok:loanType==='first_home',t:'Σκοπός: αγορά πρώτης κατοικίας'},
-              {ok:PV<=250000,t:'Αξία ακινήτου έως 250.000 €'},
+              {ok:PV<=250000,t:'Αξία ακινήτου έως 250.000€'},
               {ok:!isNewBuilding,t:'Υφιστάμενο ακίνητο (όχι νεόδμητο)'},
               {ok:!isCommercial,t:'Κατοικία (όχι επαγγελματικό ακίνητο)'},
             ].map(c=>(
@@ -1329,8 +1354,8 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
             τέσσερις ακροατές, ετικέτα 700 με 0,06em αντί για την 600 με 0,08em
             του βιβλίου· και νούμερο ΣΤΑΘΕΡΟ στα 28. Ο χρήστης το φωτογράφισε σε
             tablet: «ΜΕΓΙΣΤΗ ΔΟΣΗ ΤΟΝ ΜΗΝΑ» σε δύο γραμμές, «ΜΕΓΙΣΤΟ ΔΑΝΕΙΟ» σε
-            μία, τρία νούμερα σε τρία ύψη — και το «800,00 €» ίδιο μέγεθος με το
-            «159.801,00 €», που το δεύτερο χρειαζόταν διπλάσιο χώρο.
+            μία, τρία νούμερα σε τρία ύψη — και το «800,00€» ίδιο μέγεθος με το
+            «159.801,00€», που το δεύτερο χρειαζόταν διπλάσιο χώρο.
 
             Τρία πλακίδια σε δύο στήλες αφήνουν το τρίτο μόνο του: μετρημένο στα
             375 και στα 430, «2+1» με τρύπα δίπλα. Οι μεταβλητές του `.kpi-row`
@@ -1354,7 +1379,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                 <span style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',fontFamily: T.font.sans}}>Η δόση ως ποσοστό του εισοδήματος</span>
                 <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600}}>{fmtPct1(usedPct)} <span style={{color:'var(--text-tertiary)'}}>από {Math.round(limitPct)}%</span></span>
               </div>
-              <div style={{position:'relative',height:T.h.md,borderRadius:12,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',overflow:'hidden'}}>
+              <div style={{position:'relative',height:T.h.md,borderRadius: T.radius.popup,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',overflow:'hidden'}}>
                 <div style={{position:'absolute',left:0,top:0,bottom:0,width:`${usedW}%`,borderRadius:'12px 0 0 12px',transition:'width 0.4s ease',
                   background:over?'linear-gradient(90deg, color-mix(in srgb, var(--text-secondary) 55%, transparent), var(--text-secondary))':'linear-gradient(90deg, color-mix(in srgb, var(--accent) 78%, transparent), var(--accent))'}}/>
                 <div style={{position:'absolute',left:`${limitX}%`,top:0,bottom:0,width:0,borderLeft:'2px dashed var(--text-secondary)'}}/>
@@ -1396,11 +1421,18 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         <div style={{marginBottom:6,maxWidth:280}}><NumberInput label="Μηνιαίο ενοίκιο αντίστοιχου ακινήτου" value={rentShown} onChange={v=>{setMonthlyRent(v);setRentTouched(true)}} suffix="€"/></div>
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginBottom:12,lineHeight:1.55,fontFamily: T.font.sans}}>
           {rentTouched ? 'Δική σου υπόθεση.' : rentAssumptionText}
-          {rentTouched && <> <button type="button" onClick={()=>{setMonthlyRent('');setRentTouched(false)}} style={{border:'none',background:'none',padding:0,color:'var(--accent)',fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fontWeight:600,cursor:'pointer',textDecoration:'underline'}}>Επαναφορά στο τεκμηριωμένο ({fmtEur(rentRef.monthly)})</button></>}
+          {rentTouched && <> <LinkBtn onClick={()=>{setMonthlyRent('');setRentTouched(false)}}>Επαναφορά στο τεκμηριωμένο ({fmtEur(rentRef.monthly)})</LinkBtn></>}
         </p>
-        {/* Ενα μέγεθος για όλη τη σειρά: το μακρύτερο ποσό δίνει τον ρυθμό. */}
+        {/* Ενα μέγεθος για όλη τη σειρά: το μακρύτερο ποσό δίνει τον ρυθμό.
+
+            ΚΑΙ ΤΡΙΑ ΠΛΑΚΙΔΙΑ, ΟΧΙ «ΟΣΑ ΧΩΡΑΝΕ». Το `auto-fit` έδινε δύο στήλες
+            σε κάθε πλάτος από 412 ώς 440 και το τρίτο πλακίδιο έμενε μόνο του
+            με τρύπα δεξιά του — δεκαέξι φορές στη σάρωση διάταξης. Το
+            `fixedCols(3)` ξέρει ότι τα πλακίδια είναι τρία: τρεις στήλες όσο
+            χωρούν, ΜΙΑ όταν δεν χωρούν, ποτέ δύο. Ο διαιρέτης δεν αφήνει
+            ορφανό. */}
         {(()=>{ const w=widestOf(fmtEur(rvb.buyNetAtHorizon), fmtEur(rvb.rentAtHorizon), fmtEur(Math.abs(rvb.advantageAtHorizon))); return (
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',gap:8,marginBottom:14}}>
+        <div {...fixedCols(3, 8, 'stretch')} style={{...fixedCols(3, 8, 'stretch').style, marginBottom:14}}>
           <Tile label="Καθαρό κόστος αγοράς" value={fmtEur(rvb.buyNetAtHorizon)} chars={w} sub={`σε ${horizon} έτη, μετά την περιουσία`}/>
           <Tile label="Κόστος ενοικίασης" value={fmtEur(rvb.rentAtHorizon)} chars={w} sub={`σε ${horizon} έτη`}/>
           <Tile label={buys?'Πλεονέκτημα αγοράς':'Πλεονέκτημα ενοικίασης'} value={fmtEur(Math.abs(rvb.advantageAtHorizon))} chars={w} sub={rvb.breakEvenYear?`ισοσκελισμός στο έτος ${rvb.breakEvenYear}`:'χωρίς ισοσκελισμό στον ορίζοντα'}/>
@@ -1410,7 +1442,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           <span style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily: T.font.sans}}><span style={{width:14,height:2.4,background:'var(--accent)',display:'inline-block'}}/>Αγορά (καθαρό)</span>
           <span style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily: T.font.sans}}><span style={{width:14,height:2,borderTop:'2px dashed var(--text-tertiary)',display:'inline-block'}}/>Ενοικίαση</span>
         </div>
-        <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:10,lineHeight:1.6,fontFamily: T.font.sans}}>Το «καθαρό κόστος αγοράς» αφαιρεί την περιουσία που χτίζεις (αξία μείον υπόλοιπο δανείου) και υποθέτει ήπια ανατίμηση και αύξηση ενοικίου ~2% τον χρόνο. Ενδεικτικό.</p>
+        <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:10,lineHeight:1.6,fontFamily: T.font.sans}}>«Καθαρό κόστος αγοράς» = κόστος μείον περιουσία (αξία μείον υπόλοιπο δανείου). Από αυτό, <strong style={{color:'var(--text-secondary)',fontFamily:T.font.num}}>{fmtEur(rvb.interestAtHorizon)}</strong> είναι τόκοι: το μέρος που πληρώνεις χωρίς να γίνεται περιουσία σου, δηλαδή το αντίστοιχο του ενοικίου. Υποθέτει ήπια ανατίμηση ~2% · αύξηση ενοικίου ~2% τον χρόνο. Ενδεικτικό.</p>
       </Section>
         )
       })()}
@@ -1445,7 +1477,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
               <Tile label="ΦΜΑ που αναλογεί" value={b} chars={w}/>
               <Tile label="Αξία ακινήτου" value={c} chars={w}/>
             </div>) })()}
-            {loanType==='first_home'&&PV<=fmaEx&&!isCommercial&&<div style={{padding:'10px 14px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:8}}><p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>Δικαιούστε πλήρη απαλλαγή ΦΜΑ, εξοικονόμηση {fmtEur(PV*TRANSFER_TAX_RATE)}</p></div>}
+            {loanType==='first_home'&&PV<=fmaEx&&!isCommercial&&<div style={{padding:'10px 14px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.chip}}><p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>Δικαιούστε πλήρη απαλλαγή ΦΜΑ, εξοικονόμηση {fmtEur(PV*TRANSFER_TAX_RATE)}</p></div>}
           </div>
           {loanType==='investment'&&(
             <div style={{padding:'12px 14px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
@@ -1474,7 +1506,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                   <input type="checkbox" checked={rentsBank} onChange={e=>setRentsBank(e.target.checked)} style={{width:15,height:15,accentColor:'var(--accent)',cursor:'pointer'}}/>
                   Τα ενοίκια θα εισπράττονται μέσω τραπέζης
                 </label>
-                <p style={{margin:'4px 0 0 23px',fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,lineHeight:1.55}}>{PRESUMPTIVE_RULE_2026}</p>
+                <p className="po-prose" style={{margin:'4px 0 0 23px',fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{PRESUMPTIVE_RULE_2026}</p>
                 <p style={{margin:'10px 0 0',fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.6}}>
                   Φορολογητέο {fmtEur(taxableRental(renInc, rentsBank))} · <strong style={{color:'var(--text-primary)'}}>εκτιμώμενος φόρος {fmtEur(renTax)} τον χρόνο</strong>. Ο φόρος ενοικίων είναι προοδευτικός στο σύνολο των ακινήτων σου: αν έχεις κι άλλα, δες το πραγματικό ποσό στη Λογιστική.
                 </p>
@@ -1488,22 +1520,28 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         <div style={{marginBottom:16}}>
           <StressBars stress={stress} limit={INC>0?INC*BORROWER_PROFILES[borrower].income_ratio:0} INC={INC} fmt={fmtEur} fmtPct={fmtPct} fmtPct1={fmtPct1}/>
         </div>
-        <div className="table-wrap">
-        <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-          <thead><tr style={{borderBottom:'1px solid var(--border-subtle)'}}>{['Σενάριο','Επιτόκιο','Δόση τον μήνα','Αύξηση','Δόση προς εισόδημα'].map(h=><th key={h} style={{padding:'7px 10px',textAlign:'left',fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:500,fontFamily: T.font.sans}}>{h}</th>)}</tr></thead>
+        {/* Η ΠΡΩΤΗ ΣΤΗΛΗ ΚΑΡΦΩΝΕΤΑΙ. Πέντε στήλες με «Δόση προς εισόδημα» στο τέλος
+            δεν χωρούν σε τηλέφωνο: ο πίνακας κυλά και το «Τρέχον», το «+1%», το
+            «+3%» —δηλαδή ΠΟΙΟ σενάριο διαβάζεις— φεύγουν αριστερά. Μένουν
+            τέσσερις στήλες ποσών χωρίς να λένε ποιανού είναι. */}
+        <div className="po-table-box">
+         <div className="po-scroll-x">
+          <table className="po-table pin-1" style={{'--tbl-min':'500px','--row-bg':'var(--surface-raised)'}}>
+            <thead><tr>{['Σενάριο','Επιτόκιο','Δόση τον μήνα','Αύξηση','Δόση προς εισόδημα'].map((h,i)=><th key={h} scope="col" style={{textAlign:i?'right' as const:undefined}}>{h}</th>)}</tr></thead>
           <tbody>
             {stress.map((s,i)=>{
               const diff=s.monthly-stress[0].monthly,dti=(s.monthly/INC)*100
-              return <tr key={i} style={{borderBottom:'1px solid var(--border-subtle)',background:i===0?'var(--bg-elevated)':'transparent'}}>
-                <td style={{padding:'8px 10px',color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:i===0?600:400}}>{s.label}</td>
-                <td style={{padding:'8px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}>{fmtPct(s.rate)}</td>
-                <td style={{padding:'8px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{fmtEur(s.monthly)}</td>
-                <td style={{padding:'8px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:i===0?'var(--text-tertiary)':'var(--text-secondary)'}}>{i===0?fmtEur(0):diff>=0?`+${fmtEur(diff)}`:`-${fmtEur(-diff)}`}</td>
-                <td style={{padding:'8px 10px',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:"var(--text-primary)",fontWeight:dti>40?700:500}}>{fmtPct1(dti)}</td>
+              return <tr key={i} style={{'--row-bg':i===0?'var(--bg-elevated)':'var(--surface-raised)',background:i===0?'var(--bg-elevated)':'transparent'}}>
+                <td style={{color:'var(--text-primary)',fontWeight:i===0?600:400}}>{s.label}</td>
+                <td className="num">{fmtPct(s.rate)}</td>
+                <td className="num" style={{color:'var(--text-primary)',fontWeight:600}}>{fmtEur(s.monthly)}</td>
+                <td className="num" style={{color:i===0?'var(--text-tertiary)':'var(--text-secondary)'}}>{i===0?fmtEur(0):diff>=0?`+${fmtEur(diff)}`:`-${fmtEur(-diff)}`}</td>
+                <td className="num" style={{color:"var(--text-primary)",fontWeight:dti>40?700:500}}>{fmtPct1(dti)}</td>
               </tr>
             })}
           </tbody>
         </table>
+         </div>
         </div>
         {rateType==='fixed'&&<div style={{marginTop:10,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Σταθερό {fixedPeriod} χρόνια, προστατευμένος από ανατιμήσεις Euribor</p></div>}
       </Section>
@@ -1516,12 +1554,20 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
             του. Πέντε πεδία της ίδιας ερώτησης —τι δάνειο έχεις τώρα και τι
             σου προσφέρουν— διαβάζονται ως πέντε, όχι ως τέσσερα συν ένα.
             Το `fixedCols` γράφει το πλήθος αντί να το αφήνει στο πλάτος, με
-            τρεις στήλες σε ταμπλέτα (το πέντε δεν έχει διαιρέτη που χωρά). */}
-        <div {...fixedCols(5, 10, 'end', '', 3)} style={{...fixedCols(5, 10, 'end', '', 3).style, marginBottom:14}}>
+            τρεις στήλες σε ταμπλέτα (το πέντε δεν έχει διαιρέτη που χωρά).
+
+            ΚΑΙ Η ΤΑΜΠΛΕΤΑ ΞΕΚΙΝΑ ΝΩΡΙΤΕΡΑ ΓΙΑ ΠΕΔΙΑ ΠΟΣΩΝ. Το κοινό σπάσιμο των
+            `.fixed-cols` είναι στα 820, οπότε στα 834 έμεναν πέντε στήλες: 752
+            πλάτος διά πέντε δίνει κουτί 142 και μέσα του 78 για την τιμή. Το
+            «100.000,00» θέλει 92 — μετρημένο, όχι εκτιμημένο — άρα ο χρήστης
+            έβλεπε το υπόλοιπο του δανείου του κομμένο. Η `.fc-roomy` υπάρχει
+            ακριβώς γι' αυτό: κατεβάζει στις τρεις στήλες ήδη από τα 1.000, εκεί
+            που τα πεδία κρατούν ποσά και όχι διακόπτες. */}
+        <div {...fixedCols(5, 10, 'end', 'fc-roomy', 3)} style={{...fixedCols(5, 10, 'end', 'fc-roomy', 3).style, marginBottom:14}}>
           <NumberInput label="Υπόλοιπο" value={remBal} onChange={setRemBal} suffix="€"/>
           <NumberInput label="Χρόνια που μένουν" value={remYears} onChange={setRemYears} suffix="έτη"/>
-          <NumberInput label="Τρέχον επιτόκιο" value={curRate} onChange={setCurRate} suffix="%" step={0.05}/>
-          <NumberInput label="Νέο επιτόκιο" value={newRate} onChange={setNewRate} suffix="%" step={0.05}/>
+          <NumberInput label="Τρέχον επιτόκιο" value={curRate} onChange={setCurRate} suffix="%"/>
+          <NumberInput label="Νέο επιτόκιο" value={newRate} onChange={setNewRate} suffix="%"/>
           <NumberInput label="Κόστος μεταφοράς" value={xferCost} onChange={setXferCost} suffix="€"/>
         </div>
         {(()=>{ const brk=brkEven?`${brkEven} μήνες`:'Δεν αποσβένεται', w=widestOf(fmtEur(currM), fmtEur(newM), fmtEur(Math.max(0,refSav)), brk); return (
@@ -1539,26 +1585,33 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
       {lens==='table' && (<>
       <Section title="Πίνακας αποπληρωμής" sub={`${Y*12} δόσεις αναλυτικά`} defaultOpen>
         <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
-          <button onClick={exportAmortPdf} style={{display:'inline-flex',alignItems:'center',gap: 8,height:T.h.md,padding:'0 14px',borderRadius: T.radius.modal,border:'1px solid var(--border-accent)',background:'var(--accent-dim)',color:'var(--accent)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,cursor:'pointer'}}>
+          <Btn variant="primary" onClick={exportAmortPdf}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
             Εκτύπωση / PDF
-          </button>
-          <button onClick={officialAmort} disabled={genOfficial} title="Επίσημο true-PDF με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς" style={{display:'inline-flex',alignItems:'center',gap: 8,height:T.h.md,padding:'0 14px',borderRadius: T.radius.modal,border:'1px solid var(--border-accent)',background:'var(--accent-dim)',color:'var(--accent)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,cursor:genOfficial?'wait':'pointer',opacity:genOfficial?0.6:1}}>
+          </Btn>
+          <Btn variant="primary" onClick={officialAmort} disabled={genOfficial} title="Επίσημο true-PDF με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς">
             <ShieldCheck size={15}/>
             {genOfficial?'Δημιουργία…':'Επίσημο PDF'}
-          </button>
-          <button onClick={exportAmortCsv} style={{display:'inline-flex',alignItems:'center',gap: 8,height:T.h.md,padding:'0 14px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',background:'var(--bg-surface)',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontWeight:500,cursor:'pointer'}}>
+          </Btn>
+          <Btn variant="secondary" onClick={exportAmortCsv}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Λήψη για Excel
-          </button>
+          </Btn>
         </div>
         {/* Κύλιση με κολλημένη κεφαλίδα· ομοιόμορφοι λευκοί αριθμοί, γαλάζιο μόνο στη γραμμή που εξετάζεις */}
-        <div style={{maxHeight:268,overflow:'auto',border:'1px solid var(--border-subtle)',borderRadius:12}}>
-          <table style={{width:'100%',minWidth:480,borderCollapse:'separate',borderSpacing:0,fontSize:12}}>
+        {/* Ο ΤΕΛΕΥΤΑΙΟΣ ΧΕΙΡΟΠΟΙΗΤΟΣ ΠΙΝΑΚΑΣ ΤΟΥ ΤΑΜΠΛΟ. Εγραφε τη δική του
+            κεφαλίδα, το δικό του κελί —έξι φορές το ίδιο `padding: 9px 14px`—
+            και το δικό του κουτί με περίγραμμα. Παίρνει την `.po-table` με τη
+            μεταλλαγή `tbl-sticky`, που κρατά την κεφαλίδα καρφωμένη όσο κυλούν
+            οι τριακόσιες εξήντα δόσεις. Η γραμμή που αρχίζει νέο έτος κρατά το
+            πιο σκούρο περίγραμμά της: είναι η μόνη πληροφορία που δεν βγαίνει
+            από την κλάση. */}
+        <div className="po-table-box" style={{maxHeight:268,overflow:'auto'}}>
+          <table className="po-table tbl-sticky" style={{'--tbl-min':'480px'}}>
             <thead>
               <tr>
                 {['Μήνας','Δόση','Κεφάλαιο','Τόκος','Υπόλοιπο','Συνολικοί τόκοι'].map(h=>(
-                  <th key={h} style={{position:'sticky',top:0,zIndex:1,background:'var(--bg-elevated)',padding:'10px 14px',textAlign:'right',fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600,fontFamily: T.font.sans,borderBottom:'1px solid var(--border-default)',whiteSpace:'nowrap' as const}}>{h}</th>
+                  <th key={h} scope="col" style={{textAlign:'right',borderBottom:'1px solid var(--border-default)',whiteSpace:'nowrap' as const}}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1566,18 +1619,18 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
               {amort.map((row,i)=>{
                 const on=hoverRow===i
                 const yearStart=i>0&&row.month%12===1
-                const cell:React.CSSProperties={padding:'9px 14px',textAlign:'right',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:on?'var(--accent)':'var(--text-primary)',borderBottom:'1px solid var(--border-subtle)',borderTop:yearStart?'1px solid var(--border-default)':undefined,transition:'color 0.12s'}
+                const cell:React.CSSProperties={color:on?'var(--accent)':'var(--text-primary)',borderTop:yearStart?'1px solid var(--border-default)':undefined,transition:'color 0.12s'}
                 return (
                   <tr key={row.month}
                     onMouseEnter={()=>setHoverRow(i)} onMouseLeave={()=>setHoverRow(null)}
                     onTouchStart={()=>setHoverRow(i)} onTouchEnd={()=>setHoverRow(null)}
                     style={{background:on?'var(--bg-hover)':'transparent',transition:'background 0.12s'}}>
-                    <td style={{...cell,fontWeight:on?600:400}}>{row.month}</td>
-                    <td style={{...cell,fontWeight:on?700:600}}>{fmtEur(row.payment)}</td>
-                    <td style={cell}>{fmtEur(row.principal)}</td>
-                    <td style={cell}>{fmtEur(row.interest)}</td>
-                    <td style={cell}>{fmtEur(row.balance)}</td>
-                    <td style={cell}>{fmtEur(row.totalInterestPaid)}</td>
+                    <td className="num" style={{...cell,fontWeight:on?600:400}}>{row.month}</td>
+                    <td className="num" style={{...cell,fontWeight:on?700:600}}>{fmtEur(row.payment)}</td>
+                    <td className="num" style={cell}>{fmtEur(row.principal)}</td>
+                    <td className="num" style={cell}>{fmtEur(row.interest)}</td>
+                    <td className="num" style={cell}>{fmtEur(row.balance)}</td>
+                    <td className="num" style={cell}>{fmtEur(row.totalInterestPaid)}</td>
                   </tr>
                 )
               })}
@@ -1588,38 +1641,71 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
       </Section>
 
       <Section title="Απαραίτητα έγγραφα" sub={`${LOAN_TYPES[loanType].label} · ${propTypeLabel}`}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',gap:12,alignItems:'start'}}>
-          <DocChecklist
-            compact
-            docs={isNewBuilding
-              ? [...LOAN_TYPES[loanType].docs, { name:'Άδεια οικοδομής και βεβαίωση ΦΠΑ', where:'Πολεοδομία' }]
-              : LOAN_TYPES[loanType].docs}
-            storageKey={`${propertyId}:calc:${loanType}${isNewBuilding?':new':''}`}
-            title="Γενικά δικαιολογητικά"/>
-          {(()=>{
-            const borrowerDocs:string[] = borrower==='professional'?['Φορολογικές δηλώσεις δύο ετών','Βεβαίωση δραστηριότητας ΔΟΥ']
-              : borrower==='company'?['Καταστατικό','Ισολογισμοί τριών ετών','Απόφαση διοικητικού συμβουλίου']
-              : borrower==='military'?['Βεβαίωση υπηρεσίας','Μισθολογική κατάσταση']
-              : borrower==='abroad'?['Αποδεικτικό κατοικίας εξωτερικού','Εισοδήματα ξένης χώρας','Επίσημες μεταφράσεις']
-              : ['Μισθοδοτικές τριών μηνών','Εκκαθαριστικό σημείωμα']
-            return (
-              <div>
-                <p style={{fontSize: 'var(--fs-xs)',fontWeight:700,color:'var(--text-secondary)',fontFamily: T.font.sans,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:10}}>Ανά τύπο δανειολήπτη</p>
-                <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                  {borrowerDocs.map((d,i)=>(
-                    <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 11px',borderRadius:10,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)'}}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{flexShrink:0}} aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                      <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>{d}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{marginTop:8,padding:'9px 11px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
-                  <p style={{fontSize:12,color:'var(--text-tertiary)',lineHeight:1.5,fontFamily: T.font.sans}}>{BORROWER_PROFILES[borrower].tax_benefits}</p>
-                </div>
+        {/* ΔΥΟ ΣΤΗΛΕΣ ΠΟΥ ΔΕΝ ΜΠΟΡΟΥΣΑΝ ΝΑ ΖΥΓΙΣΟΥΝ, ΜΕΤΡΗΜΕΝΟ ΣΕ ΤΑΜΠΛΕΤΑ.
+            Το πλέγμα ήταν `auto-fit` με ελάχιστο 240 εικονοστοιχεία. Στα 768 η
+            ενότητα δίνει 712 εικονοστοιχεία περιεχομένου, δηλαδή ακριβώς ΔΥΟ
+            ίσες στήλες των 350. Αριστερά η λίστα των γενικών δικαιολογητικών:
+            κεφαλίδα, μπάρα προόδου και έξι σειρές που οι πέντε σηκώνουν δεύτερη
+            γραμμή «Από:», περίπου 350 εικονοστοιχεία ύψος. Δεξιά δύο ώς τρία
+            μονόγραμμα πλακίδια του τύπου δανειολήπτη συν μια σημείωση φόρου
+            μέσα σε κουτί, 145 ώς 185. Δηλαδή 165 ώς 205 εικονοστοιχεία κενά
+            στο κάτω μισό της δεξιάς στήλης, σε κάθε τύπο δανείου.
+
+            ΤΟ ΠΛΑΤΟΣ ΔΕΝ ΤΟ ΔΙΟΡΘΩΝΕΙ. Το ύψος μιας στήλης το ορίζει το ΠΛΗΘΟΣ
+            των σειρών της, όχι τα εικονοστοιχεία της: όποια αναλογία κι αν
+            πάρουν οι δύο στήλες, η μία μένει τεσσάρων ώς εφτά σειρών και η
+            άλλη δύο ώς τριών. Ούτε ροή τύπου masonry, που θα έκοβε τη λίστα
+            από την κεφαλίδα και την μπάρα προόδου της· και η σειρά του
+            πληκτρολογίου θα άλλαζε στήλη στη μέση της λίστας. Ούτε μοίρασμα
+            των στοιχείων ανά πλήθος: αριστερά είναι λίστα που τικάρεται και
+            θυμάται, δεξιά είναι αναφορά που δεν τικάρεται. Ενα στοιχείο που
+            αλλάζει πλευρά αλλάζει και τον παρονομαστή της προόδου.
+
+            ΟΙ ΔΥΟ ΟΜΑΔΕΣ ΔΕΝ ΕΙΝΑΙ ΕΠΙΛΟΓΕΣ, ΕΙΝΑΙ ΣΤΑΔΙΑ: τα γενικά · κι
+            επιπλέον όσα ζητά ο τύπος του δανειολήπτη. Μπαίνουν λοιπόν η μία
+            κάτω από την άλλη σε ΟΛΟ το πλάτος, χωρισμένες με λεπτή γραμμή. Τα
+            δύο ώς τρία πλακίδια απλώνονται σε ευέλικτη ροή που μεγαλώνει: όσα
+            χωρούν στη σειρά τη γεμίζουν και το τελευταίο πιάνει το υπόλοιπο
+            πλάτος, οπότε δεν μένει τρύπα σε κανένα πλάτος οθόνης. Στα 712
+            χωρούν και τα τρία σε μία σειρά και η ενότητα κλείνει γύρω στα 445
+            χωρίς κανένα κενό.
+
+            ΚΑΙ Η ΣΗΜΕΙΩΣΗ ΦΟΡΟΥ ΒΓΗΚΕ ΑΠΟ ΤΟ ΚΟΥΤΙ ΤΗΣ, όπως είχαν βγει και οι
+            ασφάλειες παρακάτω: μία αράδα δεν χρειάζεται φόντο, περίγραμμα και
+            γέμισμα. Πάει στη δεξιά άκρη της κεφαλίδας της ομάδας, εκεί ακριβώς
+            που η λίστα από πάνω γράφει «3/6 έτοιμα». Δύο κεφαλίδες με την ίδια
+            τυπογραφία, ετικέτα αριστερά και μετα-πληροφορία δεξιά· το κείμενο
+            δεν άλλαξε λέξη. */}
+        <DocChecklist
+          compact
+          docs={isNewBuilding
+            ? [...LOAN_TYPES[loanType].docs, { name:'Άδεια οικοδομής και βεβαίωση ΦΠΑ', where:'Πολεοδομία' }]
+            : LOAN_TYPES[loanType].docs}
+          storageKey={`${propertyId}:calc:${loanType}${isNewBuilding?':new':''}`}
+          title="Γενικά δικαιολογητικά"/>
+        {(()=>{
+          const borrowerDocs:string[] = borrower==='professional'?['Φορολογικές δηλώσεις δύο ετών','Βεβαίωση δραστηριότητας ΔΟΥ']
+            : borrower==='company'?['Καταστατικό','Ισολογισμοί τριών ετών','Απόφαση διοικητικού συμβουλίου']
+            : borrower==='military'?['Βεβαίωση υπηρεσίας','Μισθολογική κατάσταση']
+            : borrower==='abroad'?['Αποδεικτικό κατοικίας εξωτερικού','Εισοδήματα ξένης χώρας','Επίσημες μεταφράσεις']
+            : ['Μισθοδοτικές τριών μηνών','Εκκαθαριστικό σημείωμα']
+          return (
+            <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid var(--border-subtle)'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',marginBottom:10}}>
+                <p style={{fontSize: 'var(--fs-xs)',fontWeight:700,color:'var(--text-secondary)',fontFamily: T.font.sans,textTransform:'uppercase',letterSpacing:'0.06em'}}>Ανά τύπο δανειολήπτη</p>
+                <span style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,lineHeight:1.5}}>{BORROWER_PROFILES[borrower].tax_benefits}</span>
               </div>
-            )
-          })()}
-        </div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                {borrowerDocs.map((d,i)=>(
+                  <div key={i} style={{flex:'1 1 220px',minWidth:0,display:'flex',alignItems:'center',gap:10,padding:'8px 11px',borderRadius:10,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)'}}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{flexShrink:0}} aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>{d}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </Section>
 
       <div style={cardStyle}>
@@ -1627,7 +1713,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         {/* ΟΚΤΩ ΚΟΣΤΗ, ΤΕΣΣΕΡΑ ΚΑΙ ΤΕΣΣΕΡΑ, ΚΑΙ ΟΛΑ ΜΕ ΤΗΝ ΙΔΙΑ ΓΕΩΜΕΤΡΙΑ.
             Ήταν σειρές «ετικέτα αριστερά, ποσό δεξιά» με `space-between`: όταν η
             ετικέτα τύλιγε σε δεύτερη γραμμή, το ποσό κολλούσε πάνω της χωρίς
-            κενό («Συμβολαιογραφικά2.128,00 €») και κάθε πλακίδιο έβγαινε άλλο
+            κενό («Συμβολαιογραφικά2.128,00€») και κάθε πλακίδιο έβγαινε άλλο
             ύψος. Τα ποσά δεν ήταν ούτε σε κοινή κατακόρυφο: το μάτι τα διάβαζε
             ένα-ένα αντί να τα συγκρίνει.
 
@@ -1637,7 +1723,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
             Οκτώ πανομοιότυπα πλακίδια σε δύο σειρές των τεσσάρων: τα έξι πρώτα
             είναι ΜΕΡΗ (φόρος, συμβολαιογραφικά, κτηματολόγιο, δικηγόρος, μεσίτης,
             λοιπά) και τα δύο τελευταία είναι το ΑΘΡΟΙΣΜΑ τους. Το «Σύνολο εξόδων
-            αγοράς» καθόταν δίπλα στο «Λοιπά 120,00 €» με την ίδια κορνίζα, το ίδιο
+            αγοράς» καθόταν δίπλα στο «Λοιπά 120,00€» με την ίδια κορνίζα, το ίδιο
             φόντο και δύο εικονοστοιχεία διαφορά στο μέγεθος του αριθμού. Ενα
             άθροισμα που μοιάζει με προσθετέο δεν είναι ιεραρχία, είναι λίστα.
 
@@ -1693,7 +1779,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           ))}
         </div>
         {/* Οι ασφάλειες δεν είναι έξοδο αγοράς: τρέχουν κάθε χρόνο όσο ζει το
-            δάνειο. Η παύλα του εύρους («100–300 €») διαβαζόταν σαν αφαίρεση.
+            δάνειο. Η παύλα του εύρους («100–300€») διαβαζόταν σαν αφαίρεση.
 
             ΚΑΙ ΤΟ ΚΟΥΤΙ ΤΟΥΣ ΕΦΥΓΕ. Μία πρόταση δεν χρειάζεται ανασηκωμένο φόντο,
             περίγραμμα και δεκατέσσερα εικονοστοιχεία περιθώριο: μέσα σε κάρτα που

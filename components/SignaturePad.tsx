@@ -11,7 +11,7 @@
 // ευανάγνωστη στο λευκό PDF, ανεξάρτητα από το θέμα της οθόνης.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { T, TT } from '@/components/Theme';
+import { T, TT, Btn, ChipToggle } from '@/components/Theme';
 
 type Pt = { x: number; y: number };
 
@@ -102,15 +102,6 @@ export default function SignaturePad({ onChange, height = 116 }: { onChange: (da
     onChange(text.trim() ? off.toDataURL('image/png') : '');
   };
 
-  // Ύψος από την κοινή κλίμακα αντί για literal 30: τα segmented controls του app
-  // είχαν 30/34/36 ανάλογα με το αρχείο, οπότε η ίδια «γλώσσα» κουμπιού έδειχνε
-  // διαφορετική σε κάθε οθόνη. T.h.sm είναι το πλησιέστερο σκαλί.
-  const seg = (m: 'draw' | 'type'): React.CSSProperties => ({
-    fontSize: 12, fontWeight: 600, height: T.h.sm, padding: '0 14px', borderRadius: T.radius.inner, cursor: 'pointer', border: 'none',
-    background: mode === m ? 'var(--accent)' : 'transparent', color: mode === m ? 'var(--accent-text)' : 'var(--text-secondary)',
-    fontFamily: T.font.sans, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-  });
-
   const surface: React.CSSProperties = {
     width: '100%', height, border: '1px solid var(--border-default)', borderRadius: T.radius.inner,
     background: 'var(--bg-elevated)', color: 'var(--text-primary)', boxSizing: 'border-box',
@@ -123,10 +114,12 @@ export default function SignaturePad({ onChange, height = 116 }: { onChange: (da
           ο χρήστης μόνο αφού το πατήσει. */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
         <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-          <button type="button" style={seg('draw')} onClick={() => setMode('draw')}>Σχέδιο</button>
-          <button type="button" style={seg('type')} onClick={() => setMode('type')}>Πληκτρολόγηση</button>
+          {/* shape="seg" επειδή η ράγα από πάνω έχει ήδη δικό της περίγραμμα: δεύτερο
+              περίγραμμα ανά πλακίδιο θα έδινε διπλή γραμμή. */}
+          <ChipToggle on={mode === 'draw'} onClick={() => setMode('draw')} shape="seg">Σχέδιο</ChipToggle>
+          <ChipToggle on={mode === 'type'} onClick={() => setMode('type')} shape="seg">Πληκτρολόγηση</ChipToggle>
         </div>
-        {signed && <button type="button" onClick={clear} style={{ ...TT.caption, background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontWeight: 700, flexShrink: 0 }}>Καθαρισμός</button>}
+        {signed && <Btn variant="ghost" onClick={clear}>Καθαρισμός</Btn>}
       </div>
 
       {mode === 'draw' ? (

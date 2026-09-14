@@ -139,7 +139,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
     position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 100,
     width: 320, maxWidth: 'calc(100vw - 32px)',
     background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-    borderRadius: 12, boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
+    borderRadius: T.radius.popup, boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
   };
 
   return (
@@ -178,7 +178,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
                 aria-label="Αναζήτηση ακινήτου"
                 aria-controls={listId} aria-activedescendant={activeOptionId}
                 style={{
-                  width: '100%', height: 36, padding: '0 10px', borderRadius: 8,
+                  width: '100%', height: T.h.md, padding: '0 10px', borderRadius: T.radius.chip,
                   border: '1px solid var(--border-default)', background: 'var(--bg-base)',
                   color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 'var(--fs-base)',
                 }} />
@@ -201,7 +201,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
                   onClick={() => choose(it.id)} onMouseEnter={() => setCursor(k)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10, minHeight: 44,
-                    padding: '6px 10px', borderRadius: 8, cursor: 'pointer',
+                    padding: '6px 10px', borderRadius: T.radius.chip, cursor: 'pointer',
                     background: isCursor ? 'var(--bg-hover)' : 'transparent',
                   }}>
                   <span style={{ flex: 1, minWidth: 0 }}>
@@ -209,8 +209,8 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
                       display: 'block', fontFamily: T.font.sans, fontSize: 14,
                       fontWeight: isActive ? 600 : 400, color: 'var(--text-primary)',
                     }}>{it.name}</span>
-                    <span className="po-elide" style={{
-                      display: 'block', fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1,
+                    <span className="po-elide po-subline" style={{
+                      display: 'block', fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-tertiary)',
                     }}>{[it.status, it.address].filter(Boolean).join(' · ')}</span>
                   </span>
                   {isActive && (
@@ -225,15 +225,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
           </div>
 
           {canAdd && (
-            <button type="button" onClick={() => { closePanel(false); onAdd(); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
-                padding: '0 14px', border: 'none', borderTop: '1px solid var(--border-subtle)',
-                background: 'transparent', cursor: 'pointer', textAlign: 'left',
-                fontFamily: T.font.sans, fontSize: 14, color: 'var(--accent)',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            <button className="po-hov-fill" type="button" onClick={() => { closePanel(false); onAdd(); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '0 14px', border: 'none', borderTop: '1px solid var(--border-subtle)', cursor: 'pointer', textAlign: 'left', fontFamily: T.font.sans, fontSize: 14, color: 'var(--accent)' }} >
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                 <path d="M12 5v14M5 12h14" />
               </svg>

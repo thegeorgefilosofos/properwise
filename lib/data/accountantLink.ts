@@ -89,6 +89,29 @@ export async function current(db: SupabaseClient, userId: string): Promise<Accou
  * update και χωρίς αυτή τη γραμμή ένας παλιός σύνδεσμος ξαναμοιραζόταν ληγμένος.
  */
 export async function issue(db: SupabaseClient, userId: string): Promise<AccountantLink | null> {
+  // ── Η ΑΝΑΚΛΗΣΗ ΔΕΝ ΞΕΓΙΝΕΤΑΙ ─────────────────────────────────────────────
+  // ΤΙ ΕΚΑΝΕ ΠΡΙΝ, ΒΗΜΑ ΒΗΜΑ. Η `revoke` έγραφε ΜΟΝΟ `active = false` κι άφηνε
+  // το token ανέπαφο. Αυτό εδώ έγραφε `active = true` χωρίς να αγγίξει το
+  // token. Αρα: ο ιδιοκτήτης διώχνει τον λογιστή, διαβάζει «Καμία ενεργή
+  // πρόσβαση» — δύο εβδομάδες μετά πατά «Ζωντανή πύλη λογιστή» για τον ΝΕΟ
+  // του λογιστή — κι ο ΠΑΛΙΟΣ ξαναβλέπει τα πάντα από το bookmark του: όνομα,
+  // ΑΤΑΚ, διευθύνσεις, ενοίκια ανά έτος, κάθε δαπάνη, κάθε διαμονή. Η μόνη
+  // πράξη που ο ιδιοκτήτης θεωρεί ασφαλή ακυρωνόταν από την επόμενη ρουτίνα
+  // πράξη του, χωρίς κανένα μήνυμα σε κανέναν.
+  //
+  // ΓΙΑΤΙ ΔΕΝ ΑΡΚΕΙ ΝΑ ΔΙΟΡΘΩΘΕΙ ΜΟΝΟ Η `revoke`. Η ανάκληση είναι πράξη
+  // ασφαλείας: πρέπει να κρατά ακόμη κι όταν κάτι άλλο πάει στραβά. Κλείνουν
+  // κι οι δύο πλευρές — η `revoke` σκοτώνει το token επιτόπου· εδώ
+  // ελέγχεται ρητά ότι δεν ανασταίνεται ανενεργή γραμμή.
+  const existing = await readRow<Row>(
+    db.from(TABLE).select('token,active,expires_at').eq('user_id', userId).maybeSingle(),
+  );
+  if (existing && existing.active === false) {
+    const fresh = await rotate(db, userId);
+    // ΑΠΟΤΥΧΙΑ ΚΛΕΙΣΤΑ. Χωρίς κρυπτογραφικό κλειδί δεν ξαναδίνουμε το παλιό:
+    // καλύτερα να μη βγει σύνδεσμος παρά να βγει ο σύνδεσμος του διωγμένου.
+    return fresh === 'insecure' ? null : fresh;
+  }
   return shape(await readRow<Row>(
     db.from(TABLE)
       .upsert({ user_id: userId, active: true, expires_at: expiry() }, { onConflict: 'user_id' })
@@ -120,7 +143,17 @@ export async function rotate(db: SupabaseClient, userId: string): Promise<Accoun
  * ενεργό σύνδεσμο, όχι απλώς ενεργή αξίωση.
  */
 export async function revoke(db: SupabaseClient, userId: string): Promise<boolean> {
-  const { error } = await db.from(TABLE).update({ active: false }).eq('user_id', userId);
+  // ΤΟ ΚΛΕΙΔΙ ΠΕΘΑΙΝΕΙ ΜΑΖΙ ΜΕ ΤΗΝ ΠΡΟΣΒΑΣΗ, ΟΧΙ ΜΟΝΟ Η ΣΗΜΑΙΑ. Οσο το token
+  // επιβίωνε της ανάκλησης, αρκούσε ένα `active = true` από οπουδήποτε για να
+  // ξαναδώσει πρόσβαση στον ίδιο άνθρωπο. Με νέο token η ανάκληση είναι
+  // αμετάκλητη για το παλιό bookmark, ό,τι κι αν γίνει μετά.
+  //
+  // Χωρίς κρυπτογραφικό κλειδί η ανάκληση ΓΙΝΕΤΑΙ ΟΠΩΣ ΠΡΙΝ: το `active=false`
+  // κόβει την πρόσβαση τώρα· είναι πάντα καλύτερο από το να μη γίνει
+  // τίποτα. Η δεύτερη πλευρά την καλύπτει, στην `issue`.
+  const fresh = globalThis.crypto?.randomUUID?.();
+  const patch = fresh ? { active: false, token: fresh } : { active: false };
+  const { error } = await db.from(TABLE).update(patch).eq('user_id', userId);
   return !error;
 }
 

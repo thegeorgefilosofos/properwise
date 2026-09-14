@@ -88,12 +88,11 @@ export default function Unsubscribe() {
 
   const wrap: React.CSSProperties = { minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'Inter, system-ui, Arial, sans-serif', color: 'var(--text-primary)' };
   const card: React.CSSProperties = { width: '100%', maxWidth: 440, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '30px 28px', boxShadow: 'var(--elev-1)' };
-  const btn = (danger?: boolean): React.CSSProperties => ({ width: '100%', height: 42, borderRadius: 10, border: '1px solid ' + (danger ? 'var(--border-default)' : 'var(--accent)'), background: danger ? 'var(--bg-surface)' : 'var(--accent)', color: danger ? 'var(--text-primary)' : 'var(--accent-text)', fontSize: 14, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: busy ? 0.6 : 1 });
 
   return (
     <div style={wrap}>
       <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 18, borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.xl, borderBottom: '1px solid var(--border-subtle)' }}>
           <BrandMark size={34} />
           {/* Ο τίτλος της σελίδας είναι η δεύτερη γραμμή· το «PROPERWISE» είναι
               σήμα. Χωρίς `h1` η σελίδα ανακοινωνόταν ανώνυμη. */}
@@ -101,12 +100,12 @@ export default function Unsubscribe() {
         </div>
 
         {state === 'loading' && <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Φόρτωση…</div>}
-        {state === 'notfound' && <p style={{ paddingTop: 22, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει. Μπορείς να διαχειριστείς τις προτιμήσεις σου από τις Ρυθμίσεις μέσα στην εφαρμογή.</p>}
+        {state === 'notfound' && <p style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει. Μπορείς να διαχειριστείς τις προτιμήσεις σου από τις Ρυθμίσεις μέσα στην εφαρμογή.</p>}
         {/* Ο σύνδεσμος δεν κρίθηκε: δεν πήραμε απάντηση. Το λέμε με αυτά τα
             λόγια και δίνουμε το κουμπί, γιατί η μόνη σωστή ενέργεια είναι να
             ξαναρωτήσεις — όχι να φύγεις νομίζοντας ότι έχασες το δικαίωμά σου. */}
         {state === 'error' && (
-          <div style={{ paddingTop: 22 }}>
+          <div style={{ paddingTop: T.sp.xl }}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
               Δεν καταφέραμε να διαβάσουμε τις προτιμήσεις σου. Ο σύνδεσμος δεν ελέγχθηκε, οπότε μπορεί κάλλιστα να είναι έγκυρος.
             </p>
@@ -122,9 +121,10 @@ export default function Unsubscribe() {
               ? <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '11px 14px', marginBottom: 16 }}><span style={{ color: 'var(--positive)', fontWeight: 700 }}>✓</span><span style={{ fontSize: 13, fontWeight: 600, color: 'var(--positive)' }}>{done}</span></div>
               : <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>Διάλεξε από τι θέλεις να απεγγραφείς. Τα λειτουργικά emails (υπενθυμίσεις, καταστάσεις) δεν επηρεάζονται.</p>}
             <div style={{ display: 'grid', gap: 10 }}>
-              {product && <button style={btn(true)} disabled={busy} onClick={() => unsubscribe('product')}>Απεγγραφή από προϊοντικά νέα</button>}
-              {market && <button style={btn(true)} disabled={busy} onClick={() => unsubscribe('market')}>Απεγγραφή από δεδομένα αγοράς</button>}
-              {(product || market) && <button style={btn(false)} disabled={busy} onClick={() => unsubscribe('all')}>Απεγγραφή από όλα</button>}
+              {/* `field` γιατί η στοίβα είναι πλήρους πλάτους, όπως ήταν και το τοπικό btn(). */}
+              {product && <Btn field variant="secondary" disabled={busy} onClick={() => unsubscribe('product')}>Απεγγραφή από προϊοντικά νέα</Btn>}
+              {market && <Btn field variant="secondary" disabled={busy} onClick={() => unsubscribe('market')}>Απεγγραφή από δεδομένα αγοράς</Btn>}
+              {(product || market) && <Btn field variant="primary" disabled={busy} onClick={() => unsubscribe('all')}>Απεγγραφή από όλα</Btn>}
               {!product && !market && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Έχεις απεγγραφεί από όλα τα ενημερωτικά emails.</p>}
             </div>
           </div>

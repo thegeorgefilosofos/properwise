@@ -6,8 +6,8 @@
 // στον επίσημο πίνακα της ΡΑΑΕΥ και βρέθηκαν τρία διαφορετικά σφάλματα:
 //
 //   1. ΤΙΜΕΣ 30 ΕΩΣ 40% ΧΑΜΗΛΟΤΕΡΕΣ. «Αέριο Οικιακό Πλήρες» 0,0420 έναντι
-//      0,06879 €/kWh, «Κουζίνα» 0,0450 έναντι 0,06879. Σε 1.200 kWh τον μήνα η
-//      οθόνη υποσχόταν λογαριασμό μικρότερο κατά 32 € από τον πραγματικό.
+//      0,06879€/kWh, «Κουζίνα» 0,0450 έναντι 0,06879. Σε 1.200 kWh τον μήνα η
+//      οθόνη υποσχόταν λογαριασμό μικρότερο κατά 32€ από τον πραγματικό.
 //   2. ΟΝΟΜΑΤΑ ΠΡΟΪΟΝΤΩΝ ΠΟΥ ΔΕΝ ΥΠΑΡΧΟΥΝ. «ΗΡΩΝ Gas Σταθερό», «myHome Φυσικό
 //      αέριο», «Gas Home Flex»: κανένα δεν βρίσκεται στον κατάλογο της Αρχής.
 //      Ο ιδιοκτήτης θα ζητούσε από τον πάροχο τιμολόγιο με ανύπαρκτο όνομα.
@@ -37,9 +37,9 @@
 // λέγεται μία φορά, στην κεφαλίδα της οθόνης.
 //
 // ΓΙΑΤΙ ΕΦΥΓΕ Ο ΤΥΠΟΣ TTF. Τρία τιμολόγια nrg υπολογίζονταν από
-// `πολλαπλασιαστής × TTF + περιθώριο`, με προεπιλεγμένο TTF 33 €/MWh. Η ΡΑΑΕΥ
+// `πολλαπλασιαστής × TTF + περιθώριο`, με προεπιλεγμένο TTF 33€/MWh. Η ΡΑΑΕΥ
 // δημοσιεύει την πραγματική τιμή του μήνα για τα ίδια ακριβώς τιμολόγια: το
-// 0,06707 €/kWh του `nrg on time GAS` αντιστοιχεί σε TTF περίπου 49,5 €/MWh.
+// 0,06707€/kWh του `nrg on time GAS` αντιστοιχεί σε TTF περίπου 49,5€/MWh.
 // Με την προεπιλογή των 33 η οθόνη έβγαζε 0,0489, δηλαδή 27% χαμηλότερα·
 // κατέτασσε το τιμολόγιο ψηλότερα από όσο του αναλογεί. Ενας υπολογισμός που
 // διαφωνεί με τη δημοσιευμένη τιμή του ίδιου προϊόντος δεν είναι διαφάνεια.
@@ -100,13 +100,13 @@ export const GAS_PROVIDERS: GasProvider[] = [
     tariffs: [
       { id: 'nrg_ontime', name: 'nrg on time GAS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential',
         kwh: 0.06707, fixed: 1.8, raaey100: 8.51,
-        desc: 'Πάγιο 1,80 € με ebill και πάγια εντολή. Έκπτωση συνέπειας και συνδυασμού με ρεύμα nrg.' },
+        desc: 'Πάγιο 1,80€ με ebill και πάγια εντολή. Έκπτωση συνέπειας και συνδυασμού με ρεύμα nrg.' },
       { id: 'nrg_adapt', name: 'nrg adapt GAS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential',
         kwh: 0.06837, fixed: 1.8, raaey100: 8.64,
         desc: 'Οριζόντια έκπτωση και έκπτωση συνδυασμού με ρεύμα nrg.' },
       { id: 'nrg_prime', name: 'nrg prime GAS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential',
         kwh: 0.06767, fixed: 2.5, raaey100: 9.27,
-        desc: 'Πάγιο 2,50 € με ebill και πάγια εντολή.' },
+        desc: 'Πάγιο 2,50€ με ebill και πάγια εντολή.' },
       { id: 'nrg_ontime_biz', name: 'nrg on time GAS 4BUSINESS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business',
         kwh: 0.06527, fixed: 0, raaey100: 6.53,
         desc: 'Μηδενικό πάγιο με ebill και πάγια εντολή.' },
@@ -115,7 +115,7 @@ export const GAS_PROVIDERS: GasProvider[] = [
         desc: 'Μηδενικό πάγιο με ebill και πάγια εντολή.' },
       { id: 'nrg_prime_biz', name: 'nrg prime GAS 4BUSINESS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business',
         kwh: 0.06767, fixed: 4.0, raaey100: 10.77,
-        desc: 'Πάγιο 4,00 € με ebill και πάγια εντολή.' },
+        desc: 'Πάγιο 4,00€ με ebill και πάγια εντολή.' },
     ],
   },
   {
@@ -129,7 +129,7 @@ export const GAS_PROVIDERS: GasProvider[] = [
         desc: 'Κεντρική θέρμανση πολυκατοικίας. Χωρίς πάγιο.' },
       { id: 'zen_home_now', name: 'Gas Home Now', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential',
         kwh: 0.06872, fixed: 4.0, contract_months: 12, raaey100: 10.87,
-        desc: 'Πάγιο 4,00 € με Dual Energy.' },
+        desc: 'Πάγιο 4,00€ με Dual Energy.' },
       { id: 'zen_home_pulse', name: 'Gas Home Pulse', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential',
         kwh: 0.07315, fixed: 4.5, contract_months: 12, raaey100: 11.82,
         desc: 'Αυτόνομη θέρμανση.' },
@@ -218,10 +218,10 @@ export const GAS_PROVIDERS: GasProvider[] = [
         desc: 'Κεντρική θέρμανση. Δώρο τα τρία πρώτα πάγια.' },
       { id: 'prot_auton_double', name: 'Οικιακό Αυτόνομο Double Value', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential',
         kwh: 0.05634, fixed: 5.0, contract_months: 24, raaey100: 10.63,
-        desc: 'Έκπτωση Value 0,007 €/kWh. Δώρο τα τρία πρώτα πάγια.' },
+        desc: 'Έκπτωση Value 0,007€/kWh. Δώρο τα τρία πρώτα πάγια.' },
       { id: 'prot_auton_single', name: 'Οικιακό Αυτόνομο Single Value', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential',
         kwh: 0.05834, fixed: 5.0, contract_months: 24, raaey100: 10.83,
-        desc: 'Έκπτωση Value 0,005 €/kWh. Δώρο τα τρία πρώτα πάγια.' },
+        desc: 'Έκπτωση Value 0,005€/kWh. Δώρο τα τρία πρώτα πάγια.' },
       { id: 'prot_gas_sure', name: 'Οικιακό Αυτόνομο Value Gas Sure', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential',
         kwh: 0.0399, fixed: 9.9, contract_months: 12, raaey100: 13.89,
         desc: 'Έκπτωση Power και Gas. Δωρεάν πάγιο Ιούνιο, Ιούλιο και Αύγουστο.' },
@@ -230,7 +230,7 @@ export const GAS_PROVIDERS: GasProvider[] = [
         desc: 'Δώρο τα τρία πρώτα πάγια.' },
       { id: 'prot_biz_double', name: 'Εμπορικό Double Reward', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'business',
         kwh: 0.05634, fixed: 5.0, contract_months: 24, raaey100: 10.63,
-        desc: 'Έκπτωση συνέπειας 0,007 €/kWh.' },
+        desc: 'Έκπτωση συνέπειας 0,007€/kWh.' },
     ],
   },
   {
@@ -275,19 +275,19 @@ export const GAS_PROVIDERS: GasProvider[] = [
     tariffs: [
       { id: 'efa_go_central', name: 'GO GAS EXTRA CENTRAL', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential',
         kwh: 0.0609, fixed: 0, contract_months: 24, raaey100: 6.09,
-        desc: 'Οικιακές κοινόχρηστες συνδέσεις. Εγγύηση 0 € με πάγια εντολή.' },
+        desc: 'Οικιακές κοινόχρηστες συνδέσεις. Εγγύηση 0€ με πάγια εντολή.' },
       { id: 'efa_plus_central', name: 'PLUS GAS EXTRA CENTRAL', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential',
         kwh: 0.07289, fixed: 0, contract_months: 24, raaey100: 7.29,
         desc: 'Οικιακές κοινόχρηστες. Περιλαμβάνει αναπροσαρμογή TTF. Έκπτωση συνέπειας 40%.' },
       { id: 'efa_go_home', name: 'GO GAS EXTRA HOME', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential',
         kwh: 0.0599, fixed: 4.96, contract_months: 24, raaey100: 10.95,
-        desc: 'Οικιακές αυτόνομες συνδέσεις. Εγγύηση 0 € με πάγια εντολή.' },
+        desc: 'Οικιακές αυτόνομες συνδέσεις. Εγγύηση 0€ με πάγια εντολή.' },
       { id: 'efa_plus_home', name: 'PLUS GAS EXTRA HOME', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential',
         kwh: 0.06809, fixed: 5.0, contract_months: 24, raaey100: 11.81,
         desc: 'Οικιακές αυτόνομες. Περιλαμβάνει αναπροσαρμογή TTF. Έκπτωση συνέπειας 40%.' },
       { id: 'efa_my_gas', name: 'MY GAS HOME', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential',
         kwh: 0.0539, fixed: 8.33, contract_months: 12, raaey100: 13.72,
-        desc: 'Το πάγιο είναι ο μηνιαίος επιμερισμός ετήσιας συνδρομής 100 €.' },
+        desc: 'Το πάγιο είναι ο μηνιαίος επιμερισμός ετήσιας συνδρομής 100€.' },
       { id: 'efa_go_biz', name: 'GO GAS EXTRA BUSINESS', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'business',
         kwh: 0.0599, fixed: 0, contract_months: 24, raaey100: 5.99,
         desc: 'Επαγγελματικές παροχές. Χωρίς πάγιο.' },
@@ -301,10 +301,10 @@ export const GAS_PROVIDERS: GasProvider[] = [
     tariffs: [
       { id: 'vol_stay_home', name: 'Volton Stay & Win v2 | Αυτόνομες', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential',
         kwh: 0.08699, fixed: 6.9, contract_months: 24, raaey100: 15.6,
-        desc: 'Έκπτωση συνέπειας στο περιθώριο εμπορίας. Τμηματική πίστωση 100 € τον πρώτο χρόνο.' },
+        desc: 'Έκπτωση συνέπειας στο περιθώριο εμπορίας. Τμηματική πίστωση 100€ τον πρώτο χρόνο.' },
       { id: 'vol_stay_koin', name: 'Volton Stay & Win v2 | Κοινόχρηστες', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential',
         kwh: 0.08699, fixed: 8.9, contract_months: 24, raaey100: 17.6,
-        desc: 'Κεντρική θέρμανση. Τμηματική πίστωση 150 € τον πρώτο χρόνο.' },
+        desc: 'Κεντρική θέρμανση. Τμηματική πίστωση 150€ τον πρώτο χρόνο.' },
       { id: 'vol_stay_biz', name: 'Volton Stay & Win v2 | Επαγγελματικές', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'business',
         kwh: 0.08699, fixed: 6.9, contract_months: 24, raaey100: 15.6,
         desc: 'Έκπτωση συνέπειας 40% στο περιθώριο εμπορίας.' },

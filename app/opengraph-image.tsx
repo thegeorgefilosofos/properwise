@@ -35,7 +35,7 @@ export default function Image() {
           fontFamily: 'sans-serif',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           {/* ΤΟ ΣΧΗΜΑ ΕΡΧΕΤΑΙ ΑΠΟ ΤΟ BrandMark, ΤΟ ΧΡΩΜΑ ΟΧΙ. Το Satori δεν
               γνωρίζει `currentColor` ούτε μεταβλητές θέματος και η εικόνα έχει
               ΕΝΑ φόντο που το ξέρουμε: σκούρο. Αρα λευκό, ρητά. */}

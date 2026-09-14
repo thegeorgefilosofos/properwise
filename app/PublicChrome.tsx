@@ -67,7 +67,7 @@ export function PublicHeader() {
         <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'var(--text-primary)' }}>
           <BrandLogo size={24} />
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.lg }}>
           {/* Ο ΤΙΜΟΚΑΤΑΛΟΓΟΣ ΔΕΝ ΕΙΧΕ ΔΡΟΜΟ. Η ενότητα υπάρχει, έχει άγκυρα
               `#pricing` και καμία σελίδα δεν έδειχνε προς τα εκεί: ο
               επισκέπτης που έφτανε από τον υπολογιστή ΕΝΦΙΑ ή από τους Όρους
@@ -142,7 +142,7 @@ export function PublicFooter() {
               στοιχεία δεν ψάχνει· φεύγει. */}
           <FootCol label="Εμπιστοσύνη" links={[['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], [`mailto:${IDENTITY.supportEmail}`, 'Επικοινωνία']]} />
         </div>
-        <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 18, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
+        <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: T.sp.lg, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
           <span>© {new Date().getFullYear()} PROPERWISE</span>
           <span>Βάση δεδομένων στην ΕΕ · Σχεδιασμένο για GDPR</span>
         </div>
@@ -189,8 +189,12 @@ export const TRIAL_LINE = `${TRIAL_DAYS} ημέρες δωρεάν δοκιμή,
  * συμβουλή, δηλαδή αυτή που θα διαβαστεί αν κάποιος παραπονεθεί ότι το ποσό
  * δεν βγήκε. Πρέπει να λέει το ίδιο και στους τρεις, πάντα.
  */
-export function EstimateNote() {
-  return <>Είναι <strong>εκτίμηση</strong> για να ξέρεις την τάξη μεγέθους, όχι φορολογική συμβουλή.</>;
+export function EstimateNote({ investment = false }: { investment?: boolean }) {
+  // Ο ΥΠΟΛΟΓΙΣΤΗΣ ΑΠΟΔΟΣΗΣ ΤΟ ΕΓΡΑΦΕ ΜΟΝΟΣ ΤΟΥ, ΓΙΑ ΜΙΑ ΛΕΞΗ. Τρεις σελίδες
+  // καλούσαν αυτό το εξάρτημα και η τέταρτη ξανάγραφε την ίδια πρόταση με το
+  // «επενδυτική» παραπάνω — γιατί εκεί ο αριθμός είναι απόδοση κεφαλαίου, όχι
+  // φόρος. Η λέξη γίνεται σημαία· η πρόταση μένει μία.
+  return <>Είναι <strong>εκτίμηση</strong> για να ξέρεις την τάξη μεγέθους, όχι {investment ? 'επενδυτική ή ' : ''}φορολογική συμβουλή.</>;
 }
 
 /**
@@ -265,7 +269,7 @@ export function ToolCta({ title, body }: { title: string; body: ReactNode }) {
         </p>
       </div>
       <Link href="/signup" className="lp-cta lp-primary" style={{
-        display: 'inline-flex', alignItems: 'center', height: 44, padding: '0 24px',
+        display: 'inline-flex', alignItems: 'center', height: T.h.lg, padding: '0 24px',
         borderRadius: T.radius.pill, fontSize: 14, fontWeight: 700,
         textDecoration: 'none', whiteSpace: 'nowrap',
       }}>

@@ -33,7 +33,7 @@ import type { DbError } from '@/lib/supabase/writeResult';
 import { classifyExpense } from '@/lib/expenses/classify';
 // ΤΟ `rows` ΠΑΙΡΝΕΙ ΨΕΥΔΩΝΥΜΟ: το αρχείο έχει ήδη δικό του `row()` (χτίζει τη
 // γραμμή προς τη βάση) και παραμέτρους με το όνομα `rows` στις εγγραφές.
-import { read, rows as readRows, type ReadResult, type ReadOneResult } from './read';
+import { read, rows as readRows, type ReadResult } from './read';
 
 const TABLE = 'expenses';
 

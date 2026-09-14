@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 // Οι επαφές έχουν ένα σπίτι: lib/data/contacts.
 import * as contacts from '@/lib/data/contacts';
 import { BankLinkTile } from './BankLink';
-import { T, fe, formGrid } from '@/components/Theme';
+import { T, fe, formGrid, RuntimeImg, Btn, IconBtn, ChipToggle } from '@/components/Theme';
 import { CustomSelect, DatePicker } from './UIComponents';
 import {
   validateDoc, docSummaryLine,
@@ -24,6 +24,7 @@ import {
   RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT, type ReconcileQuestion,
 } from './scanDoc';
 import { inferRole } from '@/lib/contacts/roles';
+import { hy } from '@/components/Hyphen';
 
 // Το prompt ζει στο scanDoc.ts (μαζί με όλη τη μηχανή σάρωσης). Επανεξάγεται εδώ
 // επειδή οθόνες που δεν ανήκουν σε αυτή τη ροή (Ενοικιαστής, Αρχείο) το εισάγουν
@@ -175,7 +176,7 @@ const Field = ({ label, value, onChange, type = 'text', invalid = false, bad = f
           aria-label={label}
           value={String(value ?? '')}
           onChange={e => onChange(e.target.value)}
-          style={{ width: '100%', background: 'var(--bg-base)', border: `1px solid ${tone || 'var(--border-default)'}`, borderRadius: 6, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, fontFamily: type === 'number' ? T.font.mono : T.font.sans, outline: 'none', boxSizing: 'border-box' as const, transition: 'border-color 0.15s' }}
+          style={{ width: '100%', background: 'var(--bg-base)', border: `1px solid ${tone || 'var(--border-default)'}`, borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, fontFamily: type === 'number' ? T.font.mono : T.font.sans, outline: 'none', boxSizing: 'border-box' as const, transition: 'border-color 0.15s' }}
           onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
           onBlur={e => (e.target.style.borderColor = tone || 'var(--border-default)')}
         />
@@ -346,13 +347,13 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
           <svg aria-hidden="true" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="var(--positive)" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
         </div>
         <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, letterSpacing: '-0.01em' }}>Καταχωρήθηκε</div>
-        <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: 18 }}>{docSummaryLine(edited)}</div>
+        <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: T.sp.xl }}>{docSummaryLine(edited)}</div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
           {savedInfo.map(s => (
             <span key={s} style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--positive)', background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: T.radius.pill, padding: '4px 12px', fontFamily: T.font.sans }}>{s}</span>
           ))}
         </div>
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 26 }}>Ενημερώθηκαν αυτόματα οι σχετικές καρτέλες.</div>
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: T.sp.xxl }}>Ενημερώθηκαν αυτόματα οι σχετικές καρτέλες.</div>
 
         {/* Πρόταση αποθήκευσης εκδότη στις Επαφές (μόνο για λογαριασμό/απόδειξη με όνομα
             προμηθευτή και εφόσον ξέρουμε ποιος χρήστης — αλλιώς σιωπηλά παραλείπεται). */}
@@ -400,20 +401,18 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', marginBottom: 10 }}>Δεν αποθηκεύτηκε. Δοκίμασε ξανά.</div>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-start' }}>
-                <button onClick={saveContact} disabled={saving}
-                  style={{ background: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: T.radius.btn, padding: '10px 20px', fontSize: 'var(--fs-base)', fontWeight: 700, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: T.font.sans }}>
+                <Btn variant="primary" onClick={saveContact} disabled={saving}>
                   {saving ? 'Αποθήκευση…' : 'Αποθήκευση στις Επαφές'}
-                </button>
-                <button onClick={() => setContactState('dismissed')} disabled={saving}
-                  style={{ background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.btn, padding: '10px 16px', fontSize: 'var(--fs-base)', fontWeight: 600, cursor: 'pointer', fontFamily: T.font.sans }}>
+                </Btn>
+                <Btn variant="secondary" onClick={() => setContactState('dismissed')} disabled={saving}>
                   Όχι τώρα
-                </button>
+                </Btn>
               </div>
             </div>
           );
         })()}
 
-        <button onClick={reset} style={{ background: 'var(--accent)', color: 'var(--accent-text)', border: 'none', borderRadius: T.radius.pill, padding: '11px 30px', fontSize: 'var(--fs-base)', fontWeight: 700, cursor: 'pointer', fontFamily: T.font.sans }}>Σάρωσε νέο έγγραφο</button>
+        <Btn variant="primary" onClick={reset}>Σάρωσε νέο έγγραφο</Btn>
       </div>
     );
   }
@@ -505,7 +504,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', wordBreak: 'break-all' }}>{file.name}</div>
                 </div>
               ) : (
-                <img src={image} alt="Έγγραφο" style={{ width: '100%', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)', maxHeight: 480, objectFit: 'contain', background: 'var(--bg-base)' }} />
+                <RuntimeImg src={image} alt="Έγγραφο" style={{ width: '100%', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)', maxHeight: 480, objectFit: 'contain', background: 'var(--bg-base)' }} />
               )}
               {scanning && (
                 <div style={{ marginTop: 12, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -513,7 +512,10 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}><strong style={{ color: 'var(--accent)' }}>Claude AI</strong> αναγνωρίζει το έγγραφο…</div>
                 </div>
               )}
-              <button onClick={reset} style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: T.radius.btn, padding: '6px 14px', cursor: 'pointer', fontFamily: T.font.sans }}>Νέα σάρωση</button>
+              {/* Το περιθώριο ζει στο περιτύλιγμα: το Btn κρατά μόνο τη γεωμετρία του κουμπιού. */}
+              <div style={{ marginTop: 10 }}>
+                <Btn variant="secondary" onClick={reset}>Νέα σάρωση</Btn>
+              </div>
 
               {error && (() => {
                 const title = error === 'unreadable' ? 'Δεν διάβασα καθαρά το έγγραφο'
@@ -524,11 +526,11 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   ? ['Τράβα τη φωτογραφία με καλό φως, ίσια, να χωράει όλο το έγγραφο', 'Αν έχεις PDF από τον πάροχο/φορέα, ανέβασέ το, διαβάζεται καλύτερα']
                   : error === 'key_missing' ? ['Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά', 'Για αυτόματη ανάγνωση χρειάζεται το κλειδί AI στις ρυθμίσεις']
                   : error === 'save' ? ['Δοκίμασε ξανά, τα στοιχεία σου διατηρούνται']
-                  : ['Δοκίμασε ξανά σε λίγο', 'Μπορείς να συμπληρώσεις τα πεδία χειροκίνητα'];
+                  : ['Δοκίμασε ξανά σε λίγο', 'Συμπλήρωσε τα πεδία χειροκίνητα'];
                 return (
                   <div style={{ marginTop: 12, background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '12px 16px' }}>
                     <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--warning)', marginBottom: 8 }}>{title}</div>
-                    <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <ul style={{ margin: 0, paddingLeft: T.sp.lg, display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {tips.map((t, i) => <li key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t}</li>)}
                     </ul>
                   </div>
@@ -548,10 +550,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                 {DOC_TYPES.map(dt => {
                   const active = edited.doc_type === dt.id;
                   return (
-                    <button key={dt.id} onClick={() => setEdited(p => p ? { ...p, doc_type: dt.id } : p)} title={dt.hint}
-                      style={{ fontSize: 12, fontWeight: active ? 700 : 500, padding: '6px 12px', borderRadius: T.radius.pill, cursor: 'pointer', fontFamily: T.font.sans, border: `1px solid ${active ? 'var(--accent)' : 'var(--border-default)'}`, background: active ? 'var(--accent)' : 'transparent', color: active ? 'var(--accent-text)' : 'var(--text-secondary)', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+                    <ChipToggle key={dt.id} on={active} onClick={() => setEdited(p => p ? { ...p, doc_type: dt.id } : p)} title={dt.hint}>
                       {dt.label}
-                    </button>
+                    </ChipToggle>
                   );
                 })}
               </div>
@@ -563,20 +564,31 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             </div>
 
             {/* Τι δεν διάβασα και τι δεν βγάζει νόημα — ξεχωριστά και τα δύο ειλικρινά. */}
+            {/* ΤΑ ΔΥΟ ΠΛΑΙΣΙΑ ΣΤΟΙΧΙΖΟΝΤΑΙ ΜΑΖΙ, ΓΙΑΤΙ ΕΜΦΑΝΙΖΟΝΤΑΙ ΜΑΖΙ. Στο
+                παράθυρο `lg` (760) η δεξιά στήλη του πλέγματος βγαίνει 345 και
+                μετά το γέμισμα των 14 στο κείμενο μένουν 318. Το πρώτο μήνυμα
+                πιάνει τρεις γραμμές εκεί μέσα, το δεύτερο στη συνηθισμένη του
+                μορφή («Δεν διάβασα…») επίσης τρεις. Στοιβάζονται το ένα πάνω
+                στο άλλο: αν στοιχιζόταν μόνο το ένα, ο χρήστης θα έβλεπε δύο
+                γειτονικά πλαίσια με διαφορετική δεξιά άκρη — γι' αυτό παίρνουν
+                και τα δύο `po-just` + `hy()`, ακόμη κι όταν η σύντομη παραλλαγή
+                «Χρειάζονται τα βασικά» μένει στις δύο γραμμές. */}
             {v.invalid.length > 0 && (
               <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: T.radius.inner, padding: '10px 14px', marginBottom: 10 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                <div className="po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                  {hy(<>
                   Διάβασα <strong>{v.invalid.map(label).join(', ')}</strong> αλλά δεν είναι έγκυρο{v.invalid.length > 1 ? 'α' : ''}
                   {v.invalid.includes('provider_afm') || v.invalid.includes('afm') ? ' (το ΑΦΜ δεν περνά τον έλεγχο της ΑΑΔΕ)' : ''}. Διόρθωσέ το ή άφησέ το κενό: δεν το αποθηκεύω για σωστό.
+                  </>)}
                 </div>
               </div>
             )}
             {(v.blocking.length > 0 || v.recommended.length > 0) && (
               <div style={{ background: v.blocking.length ? 'var(--warning-soft)' : 'var(--bg-elevated)', border: `1px solid ${v.blocking.length ? 'var(--warning-border)' : 'var(--border-subtle)'}`, borderRadius: T.radius.inner, padding: '10px 14px', marginBottom: 14 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                  {v.blocking.length
+                <div className="po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                  {hy(v.blocking.length
                     ? <>Χρειάζονται τα βασικά: <strong>{v.blocking.map(label).join(', ')}</strong>. Συμπλήρωσέ τα για να αποθηκεύσω σωστά.</>
-                    : <>Δεν διάβασα: <strong>{v.recommended.map(label).join(', ')}</strong>. Μπορείς να αποθηκεύσεις έτσι, αλλά με αυτά ο έλεγχος «πληρώθηκε» γίνεται σίγουρος.</>}
+                    : <>Δεν διάβασα: <strong>{v.recommended.map(label).join(', ')}</strong>. Μπορείς να αποθηκεύσεις έτσι, αλλά με αυτά ο έλεγχος «πληρώθηκε» γίνεται σίγουρος.</>)}
                 </div>
               </div>
             )}
@@ -613,23 +625,24 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                 {(edited.custom || []).map((c, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <input aria-label="Ονομα πεδίου" value={c.label} placeholder="Πεδίο" onChange={e => setEdited(p => { if (!p) return p; const cs = [...(p.custom || [])]; cs[i] = { ...cs[i], label: e.target.value }; return { ...p, custom: cs }; })}
-                      style={{ flex: '0 0 38%', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
+                      style={{ flex: '0 0 38%', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
                     <input aria-label="Τιμή πεδίου" value={c.value} placeholder="Τιμή" onChange={e => setEdited(p => { if (!p) return p; const cs = [...(p.custom || [])]; cs[i] = { ...cs[i], value: e.target.value }; return { ...p, custom: cs }; })}
-                      style={{ flex: 1, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
-                    <button onClick={() => setEdited(p => p ? { ...p, custom: (p.custom || []).filter((_, j) => j !== i) } : p)} title="Αφαίρεση"
-                      style={{ width: 30, height: 30, flexShrink: 0, borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}>×</button>
+                      style={{ flex: 1, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
+                    <IconBtn label="Αφαίρεση" title="Αφαίρεση" onClick={() => setEdited(p => p ? { ...p, custom: (p.custom || []).filter((_, j) => j !== i) } : p)}>×</IconBtn>
                   </div>
                 ))}
               </div>
             )}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
               <input aria-label="Ονομα νέου πεδίου" value={newField.label} placeholder="Νέο πεδίο (π.χ. Αριθμός πρωτοκόλλου)" onChange={e => setNewField(f => ({ ...f, label: e.target.value }))}
-                style={{ flex: '0 0 38%', background: 'var(--bg-base)', border: '1px dashed var(--border-default)', borderRadius: 6, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
+                style={{ flex: '0 0 38%', background: 'var(--bg-base)', border: '1px dashed var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
               <input aria-label="Τιμή νέου πεδίου" value={newField.value} placeholder="Τιμή" onChange={e => setNewField(f => ({ ...f, value: e.target.value }))}
                 onKeyDown={e => { if (e.key === 'Enter' && newField.label.trim()) { setEdited(p => p ? { ...p, custom: [...(p.custom || []), { ...newField }] } : p); setNewField({ label: '', value: '' }); } }}
-                style={{ flex: 1, background: 'var(--bg-base)', border: '1px dashed var(--border-default)', borderRadius: 6, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
-              <button onClick={() => { if (newField.label.trim()) { setEdited(p => p ? { ...p, custom: [...(p.custom || []), { ...newField }] } : p); setNewField({ label: '', value: '' }); } }}
-                title="Προσθήκη πεδίου" style={{ width: 30, height: 30, flexShrink: 0, borderRadius: 6, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>+</button>
+                style={{ flex: 1, background: 'var(--bg-base)', border: '1px dashed var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
+              <IconBtn label="Προσθήκη πεδίου" title="Προσθήκη πεδίου" tone="accent"
+                onClick={() => { if (newField.label.trim()) { setEdited(p => p ? { ...p, custom: [...(p.custom || []), { ...newField }] } : p); setNewField({ label: '', value: '' }); } }}>
+                <span style={{ fontSize: 18, lineHeight: 1 }}>+</span>
+              </IconBtn>
             </div>
 
             {/* Ερώτηση συμφωνίας. Εμφανίζεται ΠΡΙΝ γραφτεί οτιδήποτε: η μηχανή βρήκε
@@ -649,18 +662,13 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                 <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 6 }}>Μήπως το έχεις ήδη καταχωρήσει;</div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>{duplicate}</div>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <button type="button" onClick={() => save(undefined, true)} disabled={saving}
-                    style={{ background: 'var(--accent)', border: 'none', borderRadius: T.radius.inner,
-                      height: T.h.lg, padding: '0 18px', color: '#fff', fontSize: 'var(--fs-base)', fontWeight: 600,
-                      fontFamily: T.font.sans, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}>
+                  {/* size="lg" γιατί και τα δύο ήταν καρφωμένα στο T.h.lg. */}
+                  <Btn variant="primary" size="lg" onClick={() => save(undefined, true)} disabled={saving}>
                     Καταχώρησέ το ούτως ή άλλως
-                  </button>
-                  <button type="button" onClick={() => { setDuplicate(''); setStep('upload'); }}
-                    style={{ background: 'transparent', border: '1px solid var(--border-subtle)',
-                      borderRadius: T.radius.inner, height: T.h.lg, padding: '0 16px',
-                      color: 'var(--text-secondary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, cursor: 'pointer' }}>
+                  </Btn>
+                  <Btn variant="secondary" size="lg" onClick={() => { setDuplicate(''); setStep('upload'); }}>
                     Άκυρο
-                  </button>
+                  </Btn>
                 </div>
               </div>
             )}
@@ -698,10 +706,10 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   {edited.amount ? fe(edited.amount) : edited.monthly_rent ? `${fe(edited.monthly_rent)}/μήνα` : edited.premium ? fe(edited.premium) : fe(0)}
                 </div>
               </div>
-              <button onClick={() => save()} disabled={saving || !canSave || !!ask}
-                style={{ background: canSave && !ask ? 'var(--accent)' : 'var(--bg-elevated)', color: canSave && !ask ? 'var(--accent-text)' : 'var(--text-tertiary)', border: canSave && !ask ? 'none' : '1px solid var(--border-default)', borderRadius: T.radius.btn, padding: '12px 24px', fontSize: 'var(--fs-base)', fontWeight: 700, cursor: canSave && !ask ? 'pointer' : 'not-allowed', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
+              {/* Η σβηστή όψη έρχεται από το disabled του .po-btn, δεν γράφεται πια με χρώματα. */}
+              <Btn variant="primary" onClick={() => save()} disabled={saving || !canSave || !!ask}>
                 {saving ? 'Αποθήκευση…' : ask ? 'Διάλεξε παραπάνω' : !canSave ? 'Συμπλήρωσε τα βασικά' : 'Καταχώρηση'}
-              </button>
+              </Btn>
             </div>
           </div>
         )}

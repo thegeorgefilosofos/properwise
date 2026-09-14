@@ -86,13 +86,19 @@ Deno.serve(async (req) => {
   try { const body = await req.json(); if (body?.limit) limit = Math.min(500, Math.max(1, Number(body.limit))); } catch { /* no body */ }
 
   try {
-    const { data: rows } = await supabase
+    // «Κανείς δεν περιμένει» και «δεν μπόρεσα να δω ποιος περιμένει» δίνουν την
+    // ίδια απάντηση χωρίς το `error` — και η εργασία κλείνει με επιτυχία.
+    const { data: rows, error: rowsErr } = await supabase
       .from('mobile_waitlist')
       .select('user_id, email')
       .is('notified_at', null)
       .not('email', 'is', null)
       .limit(limit)
 
+    if (rowsErr) {
+      console.error('[notify-mobile-launch] λίστα αναμονής:', rowsErr)
+      return new Response(JSON.stringify({ error: 'waitlist_unreadable', detail: rowsErr.message }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+    }
     if (!rows?.length) {
       return new Response(JSON.stringify({ message: 'Κανένας εκκρεμής παραλήπτης', sent: 0 }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }

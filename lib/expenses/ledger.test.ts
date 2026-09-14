@@ -14,8 +14,8 @@ const bill = (o: Partial<LedgerBill> & { id: string }): LedgerBill => o;
 const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
 
 // ── Η ΚΑΡΔΙΑ: ΚΑΘΕ ΕΥΡΩ ΜΙΑ ΦΟΡΑ ────────────────────────────────────────────
-// Πληρωμένος λογαριασμός 80 € που γέννησε δαπάνη 80 €. Αν μετρηθεί δύο φορές,
-// ο χρήστης βλέπει 160 € και σταματά να εμπιστεύεται το προϊόν.
+// Πληρωμένος λογαριασμός 80€ που γέννησε δαπάνη 80€. Αν μετρηθεί δύο φορές,
+// ο χρήστης βλέπει 160€ και σταματά να εμπιστεύεται το προϊόν.
 {
   const r = mergeLedger(
     [bill({ id: 'b1', name: 'ΔΕΗ Ιουνίου', amount: 80, due_date: '2026-07-10', paid: true, paid_at: '2026-07-08' })],
@@ -189,7 +189,7 @@ const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
   const r = mergeLedger(bills, expenses);
 
   eq('δώδεκα γραμμές, όχι εικοσιτέσσερις', r.entries.length, 12);
-  eq('1.200 €, όχι 2.400 €', ledgerTotal(r.entries), 1200);
+  eq('1.200€, όχι 2.400€', ledgerTotal(r.entries), 1200);
   eq('κανένα διπλό', r.duplicates.length, 0);
 
   // Το ΩΜΟ άθροισμα των δύο πινάκων — αυτό που έκανε η οθόνη — δίνει διπλάσιο.
@@ -201,7 +201,7 @@ const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
   // Τα πάγια είναι ΥΠΟΣΥΝΟΛΟ του έτους: δεν αφαιρούνται ξεχωριστά.
   const recurring = ledgerTotal(r.entries.filter(e => e.recurring));
   ok('τα πάγια δεν ξεπερνούν το σύνολο', recurring <= ledgerTotal(r.entries));
-  eq('πάγια ανά μήνα = 100 €', recurring / 12, 100);
+  eq('πάγια ανά μήνα = 100€', recurring / 12, 100);
 }
 
 
@@ -214,30 +214,30 @@ const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
     date: `2026-${String(m).padStart(2, '0')}-10`, expense_group: 'fixed',
   });
 
-  // Μηνιαίος, δώδεκα περίοδοι: 1.200 € συνολικά, 100 € ο μήνας.
+  // Μηνιαίος, δώδεκα περίοδοι: 1.200€ συνολικά, 100€ ο μήνας.
   {
     const r = mergeLedger([], Array.from({ length: 12 }, (_, i) => mk(i + 1, 100, `m${i}`)));
     const a = recurringMonthly(r.entries);
-    eq('μηνιαίος: 100 €/μήνα', a.perMonth, 100);
+    eq('μηνιαίος: 100€/μήνα', a.perMonth, 100);
     eq('μηνιαίος: εύρος 12 μήνες', a.months, 12);
-    eq('μηνιαίος: σύνολο 1.200 €', a.total, 1200);
+    eq('μηνιαίος: σύνολο 1.200€', a.total, 1200);
   }
 
-  // ΔΙΜΗΝΟΣ (ΕΥΔΑΠ): τρεις καταχωρήσεις των 80 € σε εύρος πέντε μηνών.
-  // Με διαίρεση «μήνες που έχουν γραμμή» θα έβγαινε 80 €/μήνα — διπλάσιο.
+  // ΔΙΜΗΝΟΣ (ΕΥΔΑΠ): τρεις καταχωρήσεις των 80€ σε εύρος πέντε μηνών.
+  // Με διαίρεση «μήνες που έχουν γραμμή» θα έβγαινε 80€/μήνα — διπλάσιο.
   {
     const r = mergeLedger([], [mk(1, 80, 'd1'), mk(3, 80, 'd2'), mk(5, 80, 'd3')]);
     const a = recurringMonthly(r.entries);
     eq('δίμηνος: εύρος 5 μήνες, όχι 3', a.months, 5);
-    eq('δίμηνος: 48 €/μήνα, όχι 80', a.perMonth, 48);
+    eq('δίμηνος: 48€/μήνα, όχι 80', a.perMonth, 48);
   }
 
-  // ΜΕΡΙΚΟ ΕΤΟΣ: ξεκίνησε Οκτώβριο. Με σταθερό 12 θα έβλεπε 75 € αντί 300 €.
+  // ΜΕΡΙΚΟ ΕΤΟΣ: ξεκίνησε Οκτώβριο. Με σταθερό 12 θα έβλεπε 75€ αντί 300€.
   {
     const r = mergeLedger([], [mk(10, 300, 'p1'), mk(11, 300, 'p2'), mk(12, 300, 'p3')]);
     const a = recurringMonthly(r.entries);
     eq('μερικό έτος: εύρος 3 μήνες', a.months, 3);
-    eq('μερικό έτος: 300 €/μήνα, όχι 225', a.perMonth, 300);
+    eq('μερικό έτος: 300€/μήνα, όχι 225', a.perMonth, 300);
   }
 
   // ΕΝΑΣ ΜΗΝΑΣ: δεν υπάρχει μέσος όρος, υπάρχει ένας μήνας. Δεν μαντεύουμε.
@@ -254,7 +254,7 @@ const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
     const r = mergeLedger([], [mk(1, 100, 'r1'), mk(2, 100, 'r2'), oneOff]);
     const a = recurringMonthly(r.entries);
     eq('η έκτακτη επισκευή δεν μπαίνει στα πάγια', a.total, 200);
-    eq('πάγια ανά μήνα 100 €', a.perMonth, 100);
+    eq('πάγια ανά μήνα 100€', a.perMonth, 100);
   }
 
   eq('χωρίς πάγια: τίποτα', recurringMonthly([]).perMonth, null);
@@ -270,7 +270,7 @@ const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
     const a = monthlyAverage(r.entries);
     eq('ο μέσος μήνας μετρά ΚΑΙ τα έκτακτα', a.total, 900);
     eq('τρεις μήνες, όχι δώδεκα', a.months, 3);
-    eq('300 €/μήνα, όχι 75', a.perMonth, 300);
+    eq('300€/μήνα, όχι 75', a.perMonth, 300);
     eq('τα πάγια μόνα τους μένουν 100', recurringMonthly(r.entries).perMonth, 100);
   }
   {
@@ -284,7 +284,7 @@ const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
 // ═══ ΤΟ ΑΘΡΟΙΣΜΑ ΜΟΝΟ ΑΠΟ ΤΙΣ ΔΑΠΑΝΕΣ ΚΡΥΒΕΙ ΟΤΙ ΧΡΩΣΤΑΣ ═══════════════════
 // Ο βοηθός υπολόγιζε τα σύνολά του ΜΟΝΟ από τον πίνακα `expenses`. Ο απλήρωτος
 // λογαριασμός όμως δεν έχει δαπάνη πίσω του — γεννιέται στην πληρωμή. Έλεγε
-// λοιπόν «εκκρεμείς 0 €» σε ιδιοκτήτη με απλήρωτους λογαριασμούς και έδινε αισιόδοξη
+// λοιπόν «εκκρεμείς 0€» σε ιδιοκτήτη με απλήρωτους λογαριασμούς και έδινε αισιόδοξη
 // καθαρή απόδοση. Οι Δαπάνες και η Σύγκριση τα μετρούσαν: ίδιο ακίνητο, δύο
 // απαντήσεις από το ίδιο app.
 {
@@ -310,12 +310,12 @@ const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
 
   // Ο παλιός τρόπος: μόνο ο πίνακας δαπανών.
   const onlyExpenses = paidExpenses.reduce((s, e) => s + (e.amount ?? 0), 0);
-  eq('μόνο δαπάνες: 600 €', onlyExpenses, 600);
+  eq('μόνο δαπάνες: 600€', onlyExpenses, 600);
 
   // Ο πυρήνας: ό,τι πληρώθηκε ΚΑΙ ό,τι οφείλεται.
-  eq('πυρήνας: σύνολο 1.400 €', ledgerTotal(entries), 1400);
-  eq('πυρήνας: πληρωμένες 600 €', ledgerTotal(entries.filter(e => e.paid)), 600);
-  eq('πυρήνας: ΕΚΚΡΕΜΕΙΣ 800 €, όχι 0 €', ledgerTotal(ledgerUnpaid(entries)), 800);
+  eq('πυρήνας: σύνολο 1.400€', ledgerTotal(entries), 1400);
+  eq('πυρήνας: πληρωμένες 600€', ledgerTotal(entries.filter(e => e.paid)), 600);
+  eq('πυρήνας: ΕΚΚΡΕΜΕΙΣ 800€, όχι 0€', ledgerTotal(ledgerUnpaid(entries)), 800);
   eq('τρεις απλήρωτες γραμμές', ledgerUnpaid(entries).length, 3);
 
   // Ο απλήρωτος μετράει στην ημερομηνία που ΛΗΓΕΙ — εκεί οφείλεται.
@@ -333,7 +333,7 @@ const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
 // διαβαζόταν ως «πληρωμένο». Η στήλη είναι `boolean | null` και υπήρχε
 // διαδρομή που έγραφε δαπάνη ΧΩΡΙΣ `paid`: η σάρωση παραστατικού.
 //
-// Ο χρήστης σάρωνε απλήρωτο λογαριασμό ΔΕΗ 84,50 € και τον έβλεπε
+// Ο χρήστης σάρωνε απλήρωτο λογαριασμό ΔΕΗ 84,50€ και τον έβλεπε
 // ΕΞΟΦΛΗΜΕΝΟ. Έχανε την προθεσμία του (η προθεσμία κρύβεται όταν κάτι έχει
 // πληρωθεί), έφευγε από τις οφειλές και μετριόταν στα πληρωμένα του μήνα.
 //

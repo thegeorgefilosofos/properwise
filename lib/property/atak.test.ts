@@ -1,7 +1,7 @@
 import { ATAK_DIGITS, atakDigits, isAtak } from './atak';
 
 let pass = 0, fail = 0;
-const ok = (name: string, cond: boolean) => { cond ? pass++ : (fail++, console.error('✗', name)); };
+const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗', name) } };
 
 ok('κρατά μόνο ψηφία', atakDigits('12345-678 901') === '12345678901');
 ok('κόβει στο όριο', atakDigits('123456789012345').length === ATAK_DIGITS);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, Btn, InfoBanner, Spinner, Card, SecHdr, fixedCols } from '@/components/Theme';
+import { T, TT, Btn, InfoBanner, Spinner, Card, SecHdr, fixedCols, RuntimeImg } from '@/components/Theme';
 import { TextInput, Toggle } from './UIComponents';
 import { PLANS, type PlanId } from '@/lib/billing/plans';
 import { planAtLeast, FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
@@ -25,6 +25,12 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  // ΑΝ Η ΑΝΑΓΝΩΣΗ ΑΠΕΤΥΧΕ, Η ΦΟΡΜΑ ΔΕΝ ΕΧΕΙ ΔΙΚΑΙΩΜΑ ΝΑ ΓΡΑΨΕΙ. Τα πεδία μένουν
+  // στις αρχικές τους τιμές — κενή επωνυμία, χωρίς λογότυπο — που ΔΕΝ είναι οι
+  // αποθηκευμένες· είναι απλώς άδεια. Ενα «Αποθήκευση» πάνω σε αυτά σβήνει το
+  // λογότυπο και τα στοιχεία της επιχείρησης με upsert, χωρίς να το ζητήσει
+  // κανείς. Οσο δεν ξέρουμε τι υπάρχει, δεν το αντικαθιστούμε.
+  const [loadError, setLoadError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -35,7 +41,12 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
       // ο δοκιμαστής, ο προσκεκλημένος και ο συνεργάτης έβλεπαν κλειδωμένη μια
       // δυνατότητα που είχαν, ενώ κάθε άλλη οθόνη τους την έδινε. Το ενεργό
       // πακέτο υπολογίζεται ΜΙΑ φορά, στη σελίδα και κατεβαίνει ως ιδιότητα.
-      const { data: rb } = await supabase.from('report_branding').select('*').eq('user_id', userId).maybeSingle();
+      const { data: rb, error: rbErr } = await supabase.from('report_branding').select('*').eq('user_id', userId).maybeSingle();
+      if (rbErr) {
+        setLoadError(failed('Η επωνυμία δεν διαβάστηκε', rbErr));
+        setLoading(false);
+        return;
+      }
       if (rb) {
         setEnabled(rb.enabled !== false);
         setCompanyName((rb.company_name as string) || '');
@@ -46,7 +57,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
       }
       setLoading(false);
     })();
-  }, [userId]);
+  }, [userId, supabase]);
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError('');
@@ -90,7 +101,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
   if (loading) return <Spinner label="Φόρτωση…" />;
 
   // ΤΟ «ΔΙΑΦΟΡΕΤΙΚΟ ΑΠΟ agency» ΕΚΛΕΙΝΕ ΕΞΩ ΤΟΝ ΑΚΡΙΒΟΤΕΡΟ ΣΥΝΔΡΟΜΗΤΗ.
-  // Ο κάτοχος του «Επαγγελματίας+» πληρώνει 79,90 € τον μήνα για ένα πακέτο που
+  // Ο κάτοχος του «Επαγγελματίας+» πληρώνει 79,90€ τον μήνα για ένα πακέτο που
   // ΠΕΡΙΛΑΜΒΑΝΕΙ ό,τι έχει ο «Επαγγελματίας» — και έβλεπε κλειδωμένη οθόνη που
   // του πρότεινε να αναβαθμίσει σε ΦΘΗΝΟΤΕΡΟ πακέτο. Η ισότητα είναι λάθος
   // εργαλείο για κλίμακα: η ερώτηση είναι «φτάνει το επίπεδό του;» και την
@@ -161,7 +172,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
           <div style={{ minWidth: 220 }}>
             <div style={rowLabel}>Λογότυπο</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              {logoUrl && <img src={logoUrl} alt="Λογότυπο επιχείρησης" style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: 4 }} />}
+              {logoUrl && <RuntimeImg src={logoUrl} alt="Λογότυπο επιχείρησης" style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: 4 }} />}
               <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onFile} style={{ display: 'none' }} />
               <Btn variant="secondary" size="lg" onClick={() => fileRef.current?.click()}>{logoUrl ? 'Αλλαγή' : 'Μεταφόρτωση'}</Btn>
               {logoUrl && <Btn variant="ghost" onClick={() => setLogoUrl('')}>Αφαίρεση</Btn>}
@@ -182,7 +193,12 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
                    στο ποντίκι και 44 στο δάχτυλο, από τον καθολικό κανόνα. */
                 style={{ width: T.h.lg, height: T.h.lg, border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, background: 'transparent', cursor: 'pointer', padding: 4, flexShrink: 0, boxSizing: 'border-box' }} />
               <div style={{ width: 132 }}>
-                <TextInput label="" value={accent} onChange={v => setAccent(v)} placeholder="#1a73e8" />
+                {/* ΤΟ ΠΕΔΙΟ ΕΙΧΕ ΚΕΝΗ ΕΤΙΚΕΤΑ ΚΑΙ ΚΑΝΕΝΑ ΟΝΟΜΑ. Δίπλα του ο επιλογέας
+                    χρώματος έχει `aria-label` και αυτό δεν είχε τίποτα: ο αναγνώστης
+                    οθόνης ανακοίνωνε «πεδίο κειμένου» χωρίς να λέει ποιου πράγματος.
+                    Η ετικέτα μένει κενή επίτηδες (το λέει ο τίτλος από πάνω), οπότε
+                    το όνομα δίνεται με `ariaLabel` — που το `TextInput` δέχεται ήδη. */}
+                <TextInput label="" ariaLabel="Κωδικός χρώματος επωνυμίας" value={accent} onChange={v => setAccent(v)} placeholder="#1a73e8" />
               </div>
             </div>
           </div>
@@ -195,12 +211,12 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
           <div style={{ height: 4, background: sanitizeAccent(accent) }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px', borderBottom: `2px solid ${sanitizeAccent(accent)}` }}>
             {logoUrl
-              ? <img src={logoUrl} alt="Λογότυπο επιχείρησης" style={{ height: 34, width: 'auto', maxWidth: 150, objectFit: 'contain' }} />
+              ? <RuntimeImg src={logoUrl} alt="Λογότυπο επιχείρησης" style={{ height: 34, width: 'auto', maxWidth: 150, objectFit: 'contain' }} />
               /* Η ΠΡΟΕΠΙΣΚΟΠΗΣΗ ΔΕΙΧΝΕΙ ΟΤΙ ΘΑ ΤΥΠΩΘΕΙ. Εδώ έμπαινε το αρχικό
                  γράμμα της επωνυμίας σε έγχρωμο τετράγωνο, ενώ το PDF τύπωνε
                  σταθερά «P»: η προεπισκόπηση έλεγε άλλα από το αρχείο. Και τα
                  δύο δείχνουν πλέον το ΙΔΙΟ σήμα, από την ίδια πηγή. */
-              : <img src={BRAND_MARK_DATA_URL} alt="Σήμα PROPERWISE" style={{ height: 34, width: 34, objectFit: 'contain' }} />}
+              : <RuntimeImg src={BRAND_MARK_DATA_URL} alt="Σήμα PROPERWISE" style={{ height: 34, width: 34, objectFit: 'contain' }} />}
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: INK, fontFamily: T.font.sans }}>{previewName}</div>
               <div style={{ fontSize: 'var(--fs-xs)', color: INK_MUTED, fontFamily: T.font.sans }}>Αναφορά ακινήτου</div>
@@ -215,9 +231,10 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
             της επόμενης και το κουμπί κολλητά πάνω της. Καμία άλλη ενότητα των
             Ρυθμίσεων δεν κάνει κάτι τέτοιο — οι ενέργειες κάθε ενότητας ζουν
             ΜΕΣΑ στην κάρτα της και η κάρτα κρατά τον ρυθμό των αποστάσεων. */}
+        {loadError && <div style={{ marginTop: 16 }}><InfoBanner tone="negative">{loadError} Ανανέωσε τη σελίδα· ώσπου να διαβαστεί, η αποθήκευση μένει κλειστή ώστε να μη γραφτούν κενά πάνω στα στοιχεία σου.</InfoBanner></div>}
         {error && <div style={{ marginTop: 16 }}><InfoBanner tone="warning">{error}</InfoBanner></div>}
         <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-          <Btn variant="primary" onClick={save} disabled={saving}>{saving ? 'Αποθήκευση…' : saved ? 'Αποθηκεύτηκε' : 'Αποθήκευση επωνυμίας'}</Btn>
+          <Btn variant="primary" onClick={save} disabled={saving || !!loadError}>{saving ? 'Αποθήκευση…' : saved ? 'Αποθηκεύτηκε' : 'Αποθήκευση επωνυμίας'}</Btn>
         </div>
       </Card>
     </div>

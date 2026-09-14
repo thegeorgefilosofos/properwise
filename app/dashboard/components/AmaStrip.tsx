@@ -23,11 +23,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
-import { T, Btn, fd } from '@/components/Theme';
+import { T, Btn, LinkBtn, InfoBanner, fd } from '@/components/Theme';
 import { saved } from '@/components/dbWrite';
 import { TextInput } from './UIComponents';
 import { amaState, amaSummary, cleanAma, isValidAmaFormat, amaLengthLooksUnusual, AMA_COPY, type AmaRow } from '@/lib/property/ama';
 import { randomSuffix } from '@/lib/core/uploadPath';
+import { failed } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
 
 interface AmaProperty extends AmaRow { id: string; name: string }
@@ -39,14 +40,27 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  // ═══ Η ΤΡΙΤΗ ΚΑΤΑΣΤΑΣΗ: «ΔΕΝ ΞΕΡΟΥΜΕ» ═══════════════════════════════════
+  // Το `error` της ανάγνωσης πεταγόταν. Με αποτυχία το `data` ερχόταν `null`,
+  // ο κατάλογος έμενε άδειος, το `shortTermCount` έβγαινε 0 · η γραμμή
+  // ΕΞΑΦΑΝΙΖΟΤΑΝ ΟΛΟΚΛΗΡΗ: ο χρήστης έβλεπε οθόνη χωρίς καμία προειδοποίηση,
+  // δηλαδή ακριβώς ό,τι βλέπει όποιος είναι εντάξει. Εδώ αυτό δεν είναι
+  // ανακρίβεια: είναι ο έλεγχος για τον οποίο στάλθηκαν 12.145 καταχωρήσεις
+  // για απενεργοποίηση. Τώρα η αποτυχία λέγεται ρητά, χωρίς να ισχυριστεί
+  // ούτε ότι λείπει ΑΜΑ ούτε ότι όλα είναι εντάξει.
+  const [readErr, setReadErr] = useState('');
 
   const load = useCallback(async () => {
     let q = properties.query(supabase, userId, 'id,name,status_detail,rental_mode,ama,ama_listed_confirmed_at');
     if (propertyId) q = q.eq('id', propertyId);
-    const { data } = await q.order('created_at');
+    const { data, error } = await q.order('created_at');
+    // Σε αποτυχία ΔΕΝ σβήνουμε ό,τι έχει ήδη διαβαστεί: μια στιγμιαία αστοχία
+    // μετά από αποθήκευση δεν πρέπει να εξαφανίζει τη γραμμή του ΑΜΑ.
+    if (error) { setReadErr(failed('Τα ακίνητά σου δεν διαβάστηκαν', error)); setLoaded(true); return; }
+    setReadErr('');
     setProps((data || []) as AmaProperty[]);
     setLoaded(true);
-  }, [userId, propertyId]);
+  }, [userId, propertyId, supabase]);
 
   useLoad(load);
 
@@ -65,7 +79,7 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_properties', filter: `user_id=eq.${userId}` }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [userId, propertyId, load]);
+  }, [userId, propertyId, load, supabase]);
 
   const sum = useMemo(() => amaSummary(props), [props]);
 
@@ -90,8 +104,18 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
     load();
   };
 
+  if (!loaded) return null;
+
+  // Όταν η ανάγνωση απέτυχε, το μήνυμα μπαίνει ΠΑΝΩ από τη γραμμή · μένει κι
+  // όταν δεν έχουμε καμία γραμμή, γιατί τότε είναι το μόνο αληθινό που ξέρουμε.
+  const notice = readErr ? (
+    <InfoBanner tone="negative">
+      {readErr} Ώσπου να διαβαστούν, ο έλεγχος του ΑΜΑ δεν έγινε: δεν ξέρουμε αν λείπει από κάποιο ακίνητο ούτε αν αναγράφεται στην αγγελία.
+    </InfoBanner>
+  ) : null;
+
   // Κανένα ακίνητο βραχυχρόνιας ⇒ καμία γραμμή. Δεν ενοχλούμε όποιον δεν αφορά.
-  if (!loaded || sum.shortTermCount === 0) return null;
+  if (sum.shortTermCount === 0) return notice;
 
   const rows = [...sum.missing, ...sum.unconfirmed, ...sum.ok];
   const worst = sum.worst as Exclude<typeof sum.worst, 'not_required'>;
@@ -104,6 +128,8 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
   };
 
   return (
+    <>
+    {notice}
     <div style={{
       // (γ) «εντάξει» = σβηστό: ουδέτερη επιφάνεια, κανένα χρώμα συναγερμού.
       background: allOk ? 'var(--bg-elevated)' : `var(--${tone}-soft)`,
@@ -151,10 +177,7 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
                   ) : (
                     <>
                       <span style={{ fontSize: 12, fontFamily: T.font.mono, color: 'var(--text-secondary)' }}>ΑΜΑ {p.ama}</span>
-                      <button onClick={() => { setEditing(p.id); setDraft(cleanAma(p.ama || '')); }}
-                        style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontFamily: T.font.sans, padding: 0 }}>
-                        Αλλαγή
-                      </button>
+                      <LinkBtn onClick={() => { setEditing(p.id); setDraft(cleanAma(p.ama || '')); }}>Αλλαγή</LinkBtn>
                       {/* Η επιβεβαίωση είναι ρητή πράξη με ημερομηνία, όχι σιωπηλή
                           παραδοχή: όποιος αλλάξει αγγελία πρέπει να την ξανακάνει. */}
                       <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -181,5 +204,6 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
         </div>
       </div>
     </div>
+    </>
   );
 }

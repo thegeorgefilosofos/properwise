@@ -22,9 +22,10 @@ import * as calendar from '@/lib/data/calendar'
 import { Check, Plus, X, RotateCcw, CircleCheckBig } from 'lucide-react';
 import { isoDate } from '@/lib/core/time';
 import { AssistantMark } from './AssistantMark';
-import { T, TT, fe, EmptyState } from '@/components/Theme';
+import { T, TT, fe, EmptyState, Btn, IconBtn, LinkBtn } from '@/components/Theme';
 import { saved } from '@/components/dbWrite';
 import { ASSISTANT_ACC, suggestionsTitle, suggestionsSub, suggestionsTeaser } from '@/lib/assistant/identity';
+import { hy } from '@/components/Hyphen';
 
 interface Suggestion {
   title: string;
@@ -78,8 +79,8 @@ const intervalOf = (s: Suggestion): string | null => {
 // το μοντέλο ΠΡΕΠΕΙ να συμπληρώσει κάτι, ακόμη κι όταν καμία δαπάνη, κανένας
 // λογαριασμός και κανένα γεγονός του ακινήτου δεν το στηρίζει.
 //
-// Δύο διαφορετικά πράγματα φτάνουν εδώ. Ποσό εκτός τύπου («450 €», Infinity),
-// που το `fe()` το τυπώνει «0,00 €» — ποσό που δεν είπε κανείς, με δύο δεκαδικά
+// Δύο διαφορετικά πράγματα φτάνουν εδώ. Ποσό εκτός τύπου («450€», Infinity),
+// που το `fe()` το τυπώνει «0,00€» — ποσό που δεν είπε κανείς, με δύο δεκαδικά
 // και βεβαιότητα. Και ποσό εντός τύπου, που απλώς δεν προκύπτει από πουθενά.
 // Το πρώτο κόβεται εδώ. Το δεύτερο μένει ορατό ως εκτίμηση, με «~» μπροστά.
 const estimate = (v: unknown): number | null =>
@@ -147,8 +148,8 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
       // ΤΙ ΕΦΥΓΕ ΑΠΟ ΕΔΩ, ΚΑΙ ΓΙΑΤΙ ΗΤΑΝ ΤΟ ΣΟΒΑΡΟΤΕΡΟ ΣΦΑΛΜΑ ΤΟΥ ΠΡΟΪΟΝΤΟΣ
       //
       // Υπήρχε «fallback αν δεν υπάρχει API key»: πέντε επινοημένες προτάσεις με
-      // καρφωμένα ποσά — «Πληρωμή ΕΝΦΙΑ, 200 €, ετήσια υποχρέωση, συνήθως
-      // Σεπτέμβριος», «Service κλιματιστικού 60 €», «Έλεγχος θέρμανσης 80 €».
+      // καρφωμένα ποσά — «Πληρωμή ΕΝΦΙΑ, 200€, ετήσια υποχρέωση, συνήθως
+      // Σεπτέμβριος», «Service κλιματιστικού 60€», «Έλεγχος θέρμανσης 80€».
       //
       // Τρία πράγματα το έκαναν χειρότερο από κάθε άλλο επινοημένο νούμερο:
       //   1. Εμφανιζόταν ΚΑΤΩ ΑΠΟ ΤΟ ΣΗΜΑ ΤΗΣ ΝΟΑ, δηλαδή με τη μεγαλύτερη
@@ -162,7 +163,7 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
       //
       // Η θέση του προϊόντος είναι «είμαστε η ανεξάρτητη απόδειξη που ελέγχει το
       // προσυμπληρωμένο του κράτους». Αυτή δεν επιβιώνει σε εργαλείο που
-      // προσυμπληρώνει με 200 € της φαντασίας του.
+      // προσυμπληρώνει με 200€ της φαντασίας του.
       //
       // Χωρίς απάντηση από τη μηχανή, δεν δείχνουμε προτάσεις. Λέμε γιατί.
       // ═══════════════════════════════════════════════════════════════════════
@@ -202,7 +203,7 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
     // Γραφόταν στο `calendar_events.amount` — την ΙΔΙΑ στήλη με τα ποσά που
     // πληκτρολογεί ο χρήστης. Από εκεί το διάβαζαν πέντε σημεία του ημερολογίου
     // (κεφαλίδα μήνα «εκκρεμή», κελί ημέρας, κάρτα γεγονότος, ICS, CSV), όλα με
-    // δύο δεκαδικά και χωρίς «~»: το «~450,00 €» της πρότασης γινόταν 450,00 €
+    // δύο δεκαδικά και χωρίς «~»: το «~450,00€» της πρότασης γινόταν 450,00€
     // μέσα στο άθροισμα του μήνα. Η λέξη «πρόταση» δεν εμφανιζόταν σε καμία από
     // αυτές τις οθόνες και σε έξι μήνες το ξένο ποσό δεν ξεχωρίζει από δικό του.
     //
@@ -255,16 +256,13 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
             υπότιτλος έμενε χωρίς υποκείμενο: «Διαβάζει τα δεδομένα σου» — ποιος;
             Εδώ μπαίνει η εκδοχή που κουβαλά το όνομα μαζί της. */}
         <span style={{ ...TT.caption }}>{suggestionsTeaser()}</span>
-        <button onClick={() => { setCollapsed(false); generateSuggestions(); }} style={{
-          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-          color: 'var(--accent)', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans,
-        }}>{collapsed && visibleSuggestions.length > 0 ? `Δες τις προτάσεις (${visibleSuggestions.length})` : 'Δες τι έρχεται'}</button>
+        <LinkBtn onClick={() => { setCollapsed(false); generateSuggestions(); }}>{collapsed && visibleSuggestions.length > 0 ? `Δες τις προτάσεις (${visibleSuggestions.length})` : 'Δες τι έρχεται'}</LinkBtn>
       </div>
     );
   }
 
   return (
-    <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 18, boxShadow: 'var(--highlight-inset), var(--elev-1)', marginBottom: 16 }}>
+    <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--highlight-inset), var(--elev-1)', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           {/* Το σήμα είναι το αρχικό του ονόματος: ίδιο με το πλωτό κουμπί, ώστε
@@ -276,40 +274,30 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <button onClick={generateSuggestions} disabled={loadingSugg} style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          height: T.h.md, padding: '0 16px',
-          background: 'transparent',
-          border: `1px solid ${loadingSugg ? 'var(--border-subtle)' : 'var(--border-default)'}`,
-          borderRadius: T.radius.pill,
-          cursor: loadingSugg ? 'default' : 'pointer',
-          color: loadingSugg ? 'var(--text-tertiary)' : 'var(--text-primary)',
-          fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, whiteSpace: 'nowrap',
-          transition: 'background 0.15s, border-color 0.15s',
-        }}
-          onMouseEnter={e => { if (!loadingSugg) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 45%, transparent)'; } }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = loadingSugg ? 'var(--border-subtle)' : 'var(--border-default)'; }}>
+        <Btn variant="secondary" onClick={generateSuggestions} disabled={loadingSugg}>
           {loadingSugg ? 'Διαβάζει το ακίνητο…' : 'Δες τι έρχεται'}
-        </button>
+        </Btn>
         {/* Η κάρτα κλείνει. Οι προτάσεις δεν χάνονται: η γραμμή που μένει τις
             ξαναφέρνει με το πλήθος τους, ώστε το κλείσιμο να μη μοιάζει διαγραφή. */}
-        <button onClick={() => setCollapsed(true)} aria-label="Σύμπτυξη προτάσεων" title="Σύμπτυξη"
-          style={{ width: T.h.md, height: T.h.md, borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}>
+        <IconBtn label="Σύμπτυξη προτάσεων" title="Σύμπτυξη" size="md" round onClick={() => setCollapsed(true)}>
           <X size={14} aria-hidden />
-        </button>
+        </IconBtn>
         </div>
       </div>
 
       {/* Μία στήλη, χωρισμένη με γραμμές αντί για κάρτες: πέντε πλαίσια μέσα σε
           πλαίσιο διαβάζονται σαν θόρυβος, πέντε γραμμές σαν λίστα. */}
+      {/* ΤΟ ΜΗΝΥΜΑ ΑΠΟΤΥΧΙΑΣ ΗΤΑΝ ΚΟΛΛΗΜΕΝΟ ΣΤΗΝ ΚΕΦΑΛΙΔΑ. Καθόταν τέσσερα
+          εικονοστοιχεία κάτω από μια σειρά που έχει ήδη εικονίδιο, τίτλο,
+          υπότιτλο και δύο κουμπιά: διαβαζόταν ως τέταρτη σειρά της κεφαλίδας,
+          όχι ως απάντηση σε αυτό που μόλις πάτησε ο χρήστης. Παίρνει δική του
+          γραμμή χωρισμού και αέρα — και πλήρη στοίχιση με συλλαβισμό, ώστε οι
+          δύο γραμμές του να κλείνουν και δεξιά αντί να ξεμένουν ριγμένες. */}
       {failed && (
-        <p style={{ ...TT.bodySm, marginTop: 4 }}>
-          {serverMessage ? serverMessage : <>
-          Δεν κατάφερα να διαβάσω το ακίνητο αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο· δεν θα
-          σου δείξω προτάσεις με νούμερα που δεν προέρχονται από τα δικά σου στοιχεία.
-          </>}
+        <p className="po-just" style={{ ...TT.bodySm, marginTop: 4, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+          {serverMessage ? hy(serverMessage) : hy(
+            'Δεν κατάφερα να διαβάσω το ακίνητο αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο· δεν θα σου δείξω προτάσεις με νούμερα που δεν προέρχονται από τα δικά σου στοιχεία.',
+          )}
         </p>
       )}
 
@@ -345,26 +333,13 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                  <button onClick={() => addSuggestion(s, idx)} disabled={isAdded} style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                    height: T.h.sm, padding: '0 13px',
-                    background: 'transparent', border: `1px solid ${isAdded ? 'var(--border-subtle)' : 'var(--border-default)'}`,
-                    borderRadius: T.radius.pill, cursor: isAdded ? 'default' : 'pointer',
-                    color: isAdded ? 'var(--text-tertiary)' : 'var(--text-secondary)',
-                    fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, whiteSpace: 'nowrap',
-                    transition: 'background 0.15s, color 0.15s, border-color 0.15s',
-                  }}
-                    onMouseEnter={e => { if (!isAdded) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = isAdded ? 'var(--text-tertiary)' : 'var(--text-secondary)'; }}>
+                  <Btn variant="secondary" onClick={() => addSuggestion(s, idx)} disabled={isAdded}>
                     {isAdded ? <Check size={12} aria-hidden /> : <Plus size={12} aria-hidden />}
                     {isAdded ? 'Προστέθηκε' : 'Στο ημερολόγιο'}
-                  </button>
-                  <button onClick={() => dismiss(idx)} aria-label={`Απόρριψη: ${s.title}`} title="Απόρριψη"
-                    style={{ width: T.h.sm, height: T.h.sm, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-tertiary)' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                  </Btn>
+                  <IconBtn label={`Απόρριψη: ${s.title}`} title="Απόρριψη" round onClick={() => dismiss(idx)}>
                     <X size={13} aria-hidden />
-                  </button>
+                  </IconBtn>
                 </div>
               </div>
             );

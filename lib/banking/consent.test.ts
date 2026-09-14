@@ -2,7 +2,7 @@ import { RENEWAL_NOTICE_DAYS, billableConnections, consentState, daysUntilExpiry
 import type { BankConnection, ConnectionStatus } from './types';
 
 let pass = 0, fail = 0;
-const ok = (name: string, cond: boolean) => { cond ? pass++ : (fail++, console.error('✗', name)); };
+const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗', name) } };
 
 const NOW = new Date('2026-08-19T10:00:00Z');
 const inDays = (d: number) => new Date(NOW.getTime() + d * 86_400_000).toISOString();

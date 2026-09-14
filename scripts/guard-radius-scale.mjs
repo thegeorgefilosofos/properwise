@@ -18,6 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs';
 import { projectFiles } from './lib/git-files.mjs';
+import { tightened } from './lib/ratchet.mjs'
 
 const BASELINE = JSON.parse(readFileSync('scripts/radius-baseline.json', 'utf8'));
 
@@ -43,6 +44,4 @@ if (total > BASELINE.max) {
   process.exit(1);
 }
 
-const better = BASELINE.max - total;
-console.log(`✓ ακτίνες: ${total} ωμές ≤ όριο ${BASELINE.max}`);
-if (better > 0) console.log(`   ↓ Βελτίωση κατά ${better}. Κατέβασε το "max" στο scripts/radius-baseline.json στο ${total}.`);
+if (!tightened({ total, max: BASELINE.max, what: 'ωμές ακτίνες', file: 'scripts/radius-baseline.json', key: 'max' })) process.exit(1);

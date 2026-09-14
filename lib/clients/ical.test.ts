@@ -5,7 +5,7 @@
 // βάση: λάθος ημερομηνίες, διπλοεγγραφή, ή κράτηση που δεν υπάρχει. Και το
 // αποτέλεσμα καταλήγει στο Ε2 και στη Δήλωση Βραχυχρόνιας Διαμονής της ΑΑΔΕ.
 // Εκατόν δεκατέσσερις γραμμές ανάλυσης κειμένου, ΧΩΡΙΣ έναν έλεγχο.
-import { parseICal, guessChannel, isBlocked, icalToStayDrafts, stayKey } from './ical'
+import { parseICal, guessChannel, isBlocked, icalToStayDrafts, stayKey, syncStayRow } from './ical'
 
 let pass = 0, fail = 0
 function ok(name: string, cond: boolean) { if (cond) pass++; else { fail++; console.error('✗ ' + name) } }
@@ -167,6 +167,45 @@ ok('κενό δεν είναι μπλοκάρισμα', !isBlocked(''))
 
   const lower = parseICal(ICS('BEGIN:VEVENT\r\nDTSTART:20260801\r\nDTEND:20260803\r\nUID:d\r\nSTATUS:cancelled\r\nEND:VEVENT'))
   ok('πεζά ή κεφαλαία, το ίδιο', lower[0].cancelled === true)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Ο ΣΥΓΧΡΟΝΙΣΜΟΣ ΔΕΝ ΚΑΤΕΧΕΙ ΤΑ ΣΧΟΛΙΑ ΚΙ ΤΟΝ ΠΕΛΑΤΗ
+// ─────────────────────────────────────────────────────────────────────────
+// ΤΟ ΣΦΑΛΜΑ. Η γραφή έβαζε σε ΚΑΘΕ γύρο —κάθε τρεις ώρες— `notes: 'Εισαγωγή
+// iCal'` κι τον συγκεντρωτικό πελάτη του καναλιού, για κάθε γεγονός της ροής
+// κι όχι μόνο για τα καινούρια. Ο ιδιοκτήτης έγραφε «ζήτησε πρώιμη άφιξη,
+// κλειδιά στον θυρωρό» κι έδενε την κράτηση με τον ΑΛΗΘΙΝΟ πελάτη· τρεις ώρες
+// μετά κι τα δύο είχαν γυρίσει πίσω, χωρίς καμία ειδοποίηση.
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const feed = { user_id: 'u1', property_id: 'p1', channel: 'airbnb' }
+  const draft = { start: '2026-07-04', end: '2026-07-09', nights: 5 }
+  const UID = 'airbnb:abc-123'
+
+  // ΚΑΙΝΟΥΡΙΑ ΚΡΑΤΗΣΗ: παίρνει τον συγκεντρωτικό πελάτη κι τη σημείωση εισαγωγής.
+  const first = syncStayRow(draft, feed, UID, 'channel-client', null)
+  ok('νέα γραμμή δένεται με τον συγκεντρωτικό πελάτη', first.client_id === 'channel-client')
+  ok('νέα γραμμή παίρνει τη σημείωση εισαγωγής', first.notes === 'Εισαγωγή iCal')
+  ok('κι όλα όσα ξέρει η ροή', first.check_in === '2026-07-04' && first.check_out === '2026-07-09'
+    && first.nights === 5 && first.channel === 'airbnb' && first.source_uid === UID)
+  ok('η ακύρωση αναιρείται σε κάθε γύρο', first.cancelled_at === null)
+
+  // ΥΠΑΡΧΟΥΣΑ ΚΡΑΤΗΣΗ: ο άνθρωπος έχει μιλήσει, ο συγχρονισμός σωπαίνει.
+  const prev = { client_id: 'ο-αληθινός-πελάτης', notes: 'Ζήτησε πρώιμη άφιξη, κλειδιά στον θυρωρό' }
+  const again = syncStayRow(draft, feed, UID, 'channel-client', prev)
+  ok('ΤΑ ΣΧΟΛΙΑ ΤΟΥ ΙΔΙΟΚΤΗΤΗ ΕΠΙΒΙΩΝΟΥΝ', again.notes === prev.notes)
+  ok('ΚΑΙ Ο ΠΕΛΑΤΗΣ ΠΟΥ ΕΔΕΣΕ ΜΟΝΟΣ ΤΟΥ', again.client_id === 'ο-αληθινός-πελάτης')
+
+  // ΑΔΕΙΟ ΣΧΟΛΙΟ ΕΙΝΑΙ ΚΙ ΑΥΤΟ ΑΠΟΦΑΣΗ. Οποιος έσβησε τη σημείωση δεν θέλει να
+  // του ξαναγραφτεί «Εισαγωγή iCal» στον επόμενο γύρο.
+  const cleared = syncStayRow(draft, feed, UID, 'channel-client', { client_id: 'c9', notes: null })
+  ok('σβησμένο σχόλιο μένει σβησμένο', cleared.notes === null)
+
+  // Κι οι ημερομηνίες ΑΛΛΑΖΟΥΝ όταν τις αλλάξει το κανάλι: αυτές τις κατέχει η ροή.
+  const moved = syncStayRow({ start: '2026-07-06', end: '2026-07-12', nights: 6 }, feed, UID, 'channel-client', prev)
+  ok('οι ημερομηνίες ακολουθούν τη ροή', moved.check_in === '2026-07-06' && moved.nights === 6)
+  ok('κι τα σχόλια πάλι δεν πειράζονται', moved.notes === prev.notes)
 }
 
 console.log(fail === 0 ? `✓ ical: ${pass} έλεγχοι πέρασαν` : `✗ ical: ${fail} απέτυχαν από ${pass + fail}`)

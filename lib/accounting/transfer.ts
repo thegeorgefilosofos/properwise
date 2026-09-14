@@ -12,8 +12,9 @@
 //   (σε ΑΝΑΣΤΟΛΗ) και καθαρό τίμημα μετά τα κόστη.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { fe } from '../core/format';
+import { fe, grDate } from '../core/format';
 import { centsOr0 } from '@/lib/core/money'
+import { regulated } from '@/lib/legal/validity'
 
 
 const pos = (n: number): number => Math.max(0, centsOr0(n))
@@ -28,11 +29,15 @@ export const TRANSFER_TAX_RATE = 0.0309       // ΦΜΑ 3% + 3% υπέρ δήμ�
 // μόνο εδώ, ώστε καμία οθόνη να μη λέει δική της.
 //
 // ΔΕΝ ΓΥΡΙΖΕΙ ΜΟΝΟ ΤΟΥ ΣΤΟ 24% ΟΤΑΝ ΠΕΡΑΣΕΙ Η ΗΜΕΡΟΜΗΝΙΑ. Μια αυτόματη επαναφορά
-// θα ξαναζωντάνευε το σφάλμα των 72.000 € σε ακίνητο 300.000 € την 1η Ιανουαρίου,
+// θα ξαναζωντάνευε το σφάλμα των 72.000€ σε ακίνητο 300.000€ την 1η Ιανουαρίου,
 // για μια παράταση που δίνεται κάθε χρόνο. Η αναστολή είναι η παραδοχή· η οθόνη
 // γράφει την ημερομηνία και ο χρήστης βλέπει τι υποθέτουμε.
 export const NEW_BUILD_VAT_RATE = 0.24        // ΦΠΑ νεόδμητων (σε αναστολή)
-export const NEW_BUILD_VAT_SUSPENDED_UNTIL = '31/12/2026'
+// Η ΗΜΕΡΟΜΗΝΙΑ ΔΕΝ ΓΡΑΦΕΤΑΙ ΕΔΩ. Ηταν γραμμένη με το χέρι («31/12/2026») δίπλα
+// σε ένα μητρώο ισχύος που φυλάει ακριβώς αυτού του είδους τις ημερομηνίες και
+// κοκκινίζει όταν περάσουν — αλλά δεν ήξερε γι' αυτήν. Δύο αντίγραφα, το ένα
+// φυλασσόμενο και το άλλο όχι: την επομένη της παράτασης θα άλλαζε το ένα.
+export const NEW_BUILD_VAT_SUSPENDED_UNTIL = grDate(regulated('new-build-vat-suspension').validTo)
 export const CADASTRE_RATE = 0.005            // αναλογικό τέλος Κτηματολογίου 5‰ (ΚΥΑ ΦΕΚ Β'64/13-1-2026)· +1‰ σε περιοχές με ενεργό κτηματολογικό βιβλίο
 export const CADASTRE_FIXED = 20              // πάγιο τέλος εγγραφής (ενδεικτικό)
 export const AGENT_RATE_DEFAULT = 0.02        // μεσιτική αμοιβή (ανά πλευρά)
@@ -40,8 +45,8 @@ export const CAPITAL_GAINS_RATE = 0.15        // φόρος υπεραξίας (
 // Απαλλαγή πρώτης κατοικίας (όρια αντικειμενικής αξίας, αγορά κατοικίας, ν.1078/1980).
 export const FIRST_HOME_EXEMPTION_SINGLE = 200000
 export const FIRST_HOME_EXEMPTION_MARRIED = 250000
-export const FIRST_HOME_EXEMPTION_CHILD_FIRST_TWO = 25000  // +25.000 € για καθένα από τα 2 πρώτα τέκνα
-export const FIRST_HOME_EXEMPTION_CHILD_THIRD_PLUS = 30000 // +30.000 € για το 3ο και κάθε επόμενο
+export const FIRST_HOME_EXEMPTION_CHILD_FIRST_TWO = 25000  // +25.000€ για καθένα από τα 2 πρώτα τέκνα
+export const FIRST_HOME_EXEMPTION_CHILD_THIRD_PLUS = 30000 // +30.000€ για το 3ο και κάθε επόμενο
 // Πάγια κόστη πιστοποιητικών/τεχνικών (ενδεικτικά).
 export const PEA_COST = 150                    // Πιστοποιητικό Ενεργειακής Απόδοσης
 export const BUILDING_ID_COST = 400            // ταυτότητα κτιρίου / βεβαιώσεις μηχανικού
@@ -99,7 +104,7 @@ export interface TransferResult {
 function firstHomeExemption(input: TransferInput): number {
   const base = input.married ? FIRST_HOME_EXEMPTION_MARRIED : FIRST_HOME_EXEMPTION_SINGLE
   const kids = Math.max(0, Math.floor(input.children ?? 0))
-  // +25.000 € για καθένα από τα δύο πρώτα τέκνα, +30.000 € για το τρίτο και κάθε επόμενο.
+  // +25.000€ για καθένα από τα δύο πρώτα τέκνα, +30.000€ για το τρίτο και κάθε επόμενο.
   const firstTwo = Math.min(kids, 2) * FIRST_HOME_EXEMPTION_CHILD_FIRST_TWO
   const rest = Math.max(0, kids - 2) * FIRST_HOME_EXEMPTION_CHILD_THIRD_PLUS
   return base + firstTwo + rest

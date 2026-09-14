@@ -1,8 +1,8 @@
 // Αυστηροί έλεγχοι για τον ΕΝΟΠΟΙΗΜΕΝΟ φόρο ενοικίων (lib/billing/consolidate.ts).
 // Τρέξε: npx tsx lib/billing/consolidate.test.ts
 //
-// Ο κεντρικός έλεγχος: για τρία ακίνητα με 8.000 € έκαστο, ο συνολικός φόρος
-// ΔΕΝ ισούται με 3× τον φόρο των 8.000 €. Αυτό ακριβώς έδειχνε το app πριν.
+// Ο κεντρικός έλεγχος: για τρία ακίνητα με 8.000€ έκαστο, ο συνολικός φόρος
+// ΔΕΝ ισούται με 3× τον φόρο των 8.000€. Αυτό ακριβώς έδειχνε το app πριν.
 import {
   consolidateRentTax, taxShareOf, consolidationSummary,
   presumptiveDeductionRate, presumptiveDeductionRateForYear, bankReceiptMatters,
@@ -21,28 +21,28 @@ const near = (a: number, b: number, tol = 0.01) => Math.abs(a - b) <= tol;
 const src = (id: string, annualRent: number, over: Record<string, unknown> = {}) =>
   ({ id, annualRent, ...over });
 
-// ═══ ΤΟ ΚΕΝΤΡΙΚΟ ΕΥΡΗΜΑ: ΤΡΙΑ ΑΚΙΝΗΤΑ × 8.000 € ══════════════════════════════
-// Φορολογητέο ανά ακίνητο: 8.000 − 5% = 7.600 €. Σύνολο 22.800 €.
-// Ένας φόρος: 12.000×15% + 10.800×25% = 1.800 + 2.700 = 4.500 €.
-// Ανά ακίνητο: 7.600×15% = 1.140 € × 3 = 3.420 €. Διαφορά 1.080 €.
+// ═══ ΤΟ ΚΕΝΤΡΙΚΟ ΕΥΡΗΜΑ: ΤΡΙΑ ΑΚΙΝΗΤΑ × 8.000€ ══════════════════════════════
+// Φορολογητέο ανά ακίνητο: 8.000 − 5% = 7.600€. Σύνολο 22.800€.
+// Ένας φόρος: 12.000×15% + 10.800×25% = 1.800 + 2.700 = 4.500€.
+// Ανά ακίνητο: 7.600×15% = 1.140€ × 3 = 3.420€. Διαφορά 1.080€.
 {
   const r = consolidateRentTax([src('a', 8000), src('b', 8000), src('c', 8000)]);
   const wrong = 3 * rentalIncomeTax(8000 * 0.95);
 
   ok('τρία ακίνητα μπήκαν στην κλίμακα', r.count === 3);
-  ok('σύνολο ενοικίων 24.000 €', near(r.totalAnnualRent, 24000));
-  ok('συνολικό φορολογητέο 22.800 €', near(r.totalTaxable, 22800));
-  ok('ΕΝΑΣ φόρος 4.500 €', near(r.totalTax, 4500));
+  ok('σύνολο ενοικίων 24.000€', near(r.totalAnnualRent, 24000));
+  ok('συνολικό φορολογητέο 22.800€', near(r.totalTaxable, 22800));
+  ok('ΕΝΑΣ φόρος 4.500€', near(r.totalTax, 4500));
 
   // Η απόδειξη που ζητήθηκε ρητά.
   ok('ο συνολικός φόρος ΔΕΝ ισούται με 3× τον φόρο των 8.000',
     !near(r.totalTax, wrong, 1) && r.totalTax > wrong);
-  ok('η ανά-ακίνητο μέθοδος έδειχνε 3.420 €', near(r.sumOfStandaloneTax, 3420));
-  ok('υποεκτίμηση 1.080 €', near(r.understatement, 1080));
+  ok('η ανά-ακίνητο μέθοδος έδειχνε 3.420€', near(r.sumOfStandaloneTax, 3420));
+  ok('υποεκτίμηση 1.080€', near(r.understatement, 1080));
   ok('η υποεκτίμηση είναι ~24% του σωστού φόρου', r.understatement / r.totalTax > 0.2);
 
   // Ίσα εισοδήματα → ίσα μερίδια και το άθροισμα των μεριδίων = ο ένας φόρος.
-  ok('ίσα μερίδια 1.500 € έκαστο', r.perProperty.every(p => near(p.taxShare, 1500)));
+  ok('ίσα μερίδια 1.500€ έκαστο', r.perProperty.every(p => near(p.taxShare, 1500)));
   ok('άθροισμα μεριδίων = συνολικός φόρος',
     near(r.perProperty.reduce((s, p) => s + p.taxShare, 0), r.totalTax));
   ok('taxShareOf βρίσκει το μερίδιο', near(taxShareOf(r, 'b'), 1500));
@@ -104,9 +104,9 @@ const src = (id: string, annualRent: number, over: Record<string, unknown> = {})
   eq('2026 με μετρητά τη χάνει', presumptiveDeductionRateForYear(2026, false), 0);
   eq('2026 με τράπεζα την κρατά', presumptiveDeductionRateForYear(2026, true), 0.05);
 
-  // ΚΑΙ ΤΟ ΝΟΥΜΕΡΟ ΠΟΥ ΕΦΤΑΝΕ ΣΤΟΝ ΛΟΓΙΣΤΗ. Ενοίκια 20.000,00 € στη χρήση
-  // 2025, εισπραγμένα με μετρητά: φορολογητέο 19.000,00 € και όχι 20.000,00 €.
-  eq('χρήση 2025, 20.000 € με μετρητά → φορολογητέο 19.000 €',
+  // ΚΑΙ ΤΟ ΝΟΥΜΕΡΟ ΠΟΥ ΕΦΤΑΝΕ ΣΤΟΝ ΛΟΓΙΣΤΗ. Ενοίκια 20.000,00€ στη χρήση
+  // 2025, εισπραγμένα με μετρητά: φορολογητέο 19.000,00€ και όχι 20.000,00€.
+  eq('χρήση 2025, 20.000€ με μετρητά → φορολογητέο 19.000€',
     Math.round(20000 * (1 - presumptiveDeductionRateForYear(2025, false))), 19000);
 
   const bank = consolidateRentTax([src('a', 10000), src('b', 10000)]);
@@ -118,7 +118,7 @@ const src = (id: string, annualRent: number, over: Record<string, unknown> = {})
 
   // Μεικτή περίπτωση: ένα με τράπεζα, ένα με μετρητά — μία κλίμακα, δύο βάσεις.
   const mix = consolidateRentTax([src('a', 10000), src('b', 10000, { rentsPaidViaBank: false })]);
-  ok('μεικτή: φορολογητέο 19.500 €', near(mix.totalTaxable, 19500));
+  ok('μεικτή: φορολογητέο 19.500€', near(mix.totalTaxable, 19500));
   ok('μεικτή: το μετρητοίς πληρώνει μεγαλύτερο μερίδιο', taxShareOf(mix, 'b') > taxShareOf(mix, 'a'));
   ok('μεικτή: άθροισμα μεριδίων = σύνολο',
     near(mix.perProperty.reduce((s, p) => s + p.taxShare, 0), mix.totalTax, 0.02));

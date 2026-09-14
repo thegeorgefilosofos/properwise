@@ -4,7 +4,7 @@ import { revenueByChannel, revenueByMonth, yearOccupancy, nightsByMonth, nightsI
 import { parseICal, guessChannel, isBlocked, nightsBetween, icalToStayDrafts, stayKey } from './ical';
 
 let passed = 0, failed = 0; const fails: string[] = [];
-const ok = (n: string, c: boolean) => { c ? passed++ : (failed++, fails.length < 60 && fails.push(n)); };
+const ok = (n: string, c: boolean) => { if (c) { passed++ } else { failed++; if (fails.length < 60) fails.push(n) } };
 
 // ── messages ──────────────────────────────────────────────────────────────
 const ctx = { clientName: 'Γιώργος Παπαδόπουλος', propertyName: 'Το Σπίτι μου', address: 'Αρύββου 45', checkIn: '2026-07-15' };

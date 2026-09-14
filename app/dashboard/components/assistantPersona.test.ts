@@ -179,7 +179,7 @@ for (const t of ['Καλημέρα!', 'Πλήρωσες τη ΔΕΗ;', 'Η απ�
   ok('expense thousands+decimal', act(r.action, 'expense')?.amount === 1200.5);
 }
 {
-  const r = parseAction('[[expense: Λογαριασμός ρεύματος | 120 €]]');
+  const r = parseAction('[[expense: Λογαριασμός ρεύματος | 120€]]');
   ok('expense euro sign', act(r.action, 'expense')?.amount === 120 && act(r.action, 'expense')?.description === 'Λογαριασμός ρεύματος');
 }
 {
@@ -265,9 +265,9 @@ for (let i = 0; i < 400; i++) {
 // ── buildSystemPrompt: περιεχόμενο & ΜΙΑ ταυτότητα ───────────────────────────
 // Το όνομα δεν είναι πια ρύθμιση: ΚΑΘΕ χρήστης παίρνει το ίδιο πρόσωπο, τη Νόα.
 for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ compare: true })]) {
-  const p = buildSystemPrompt(prefs, 'Ενοίκιο: 600 €');
+  const p = buildSystemPrompt(prefs, 'Ενοίκιο: 600€');
   ok('prompt: λέει το όνομα', p.includes(ASSISTANT_NAME));
-  ok('prompt: το πλαίσιο του χρήστη', p.includes('Ενοίκιο: 600 €'));
+  ok('prompt: το πλαίσιο του χρήστη', p.includes('Ενοίκιο: 600€'));
   ok('prompt: όλες οι καρτέλες', NAV_MAP.every(n => p.includes(n.label)));
   ok('prompt: ζει στην Ελλάδα', /Παναθηναϊκός|Ολυμπιακός/.test(p));
   ok('prompt: παραπέμπει σε επαγγελματία', /δικηγόρος|λογιστ/.test(p));
@@ -356,7 +356,7 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
 }
 // compare context εμφανίζεται μόνο όταν δοθεί
 ok('no compare by default', !buildSystemPrompt(id(), 'x').includes('ΟΛΑ ΤΑ ΑΚΙΝΗΤΑ'));
-ok('compare when provided', buildSystemPrompt(id(), 'x', '1. Σπίτι Α: αξία 200.000 €').includes('ΟΛΑ ΤΑ ΑΚΙΝΗΤΑ'));
+ok('compare when provided', buildSystemPrompt(id(), 'x', '1. Σπίτι Α: αξία 200.000€').includes('ΟΛΑ ΤΑ ΑΚΙΝΗΤΑ'));
 
 // ── parseAction: [[remember: ...]] ───────────────────────────────────────────
 {
@@ -562,12 +562,12 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   ok('gating: office plan named', p.includes(`«${PLANS.office.name}»`));
   ok('gating: κανένα «Δωρεάν» πακέτο', !/«Δωρεάν»/.test(p) && /ΔΕΝ ΥΠΑΡΧΕΙ ΔΩΡΕΑΝ ΠΑΚΕΤΟ/.test(p));
   // Οι τιμές/όρια διαβάζονται από τα PLANS: το τεστ πιάνει απόκλιση prompt↔τιμολόγησης.
-  ok('gating: solo price from PLANS', p.includes(`${PLANS.solo.priceMonthly.toFixed(2).replace('.', ',')}\u00A0€/μήνα`));
-  ok('gating: owner price from PLANS', p.includes(`${PLANS.owner.priceMonthly.toFixed(2).replace('.', ',')}\u00A0€/μήνα`));
+  ok('gating: solo price from PLANS', p.includes(`${PLANS.solo.priceMonthly.toFixed(2).replace('.', ',')}€/μήνα`));
+  ok('gating: owner price from PLANS', p.includes(`${PLANS.owner.priceMonthly.toFixed(2).replace('.', ',')}€/μήνα`));
   ok('gating: owner limit from PLANS', p.includes(`έως ${PLANS.owner.maxProperties} ακίνητα`));
-  ok('gating: agency price from PLANS', p.includes(`${PLANS.agency.priceMonthly.toFixed(2).replace('.', ',')}\u00A0€/μήνα`));
+  ok('gating: agency price from PLANS', p.includes(`${PLANS.agency.priceMonthly.toFixed(2).replace('.', ',')}€/μήνα`));
   ok('gating: agency limit from PLANS', p.includes(`έως ${PLANS.agency.maxProperties} ακίνητα`));
-  ok('gating: office price from PLANS', p.includes(`${PLANS.office.priceMonthly.toFixed(2).replace('.', ',')}\u00A0€/μήνα`));
+  ok('gating: office price from PLANS', p.includes(`${PLANS.office.priceMonthly.toFixed(2).replace('.', ',')}€/μήνα`));
   ok('gating: αναφέρει τη δωρεάν δοκιμή', p.includes(`${TRIAL_DAYS} ΗΜΕΡΕΣ ΔΩΡΕΑΝ ΔΟΚΙΜΗ`));
 
   // Το φθηνότερο πακέτο περιγράφεται ως ΠΛΗΡΕΣ, όχι ως ακρωτηριασμένο.

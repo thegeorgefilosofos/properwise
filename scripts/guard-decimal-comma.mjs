@@ -38,7 +38,7 @@ for (const f of findSources()) {
 if (findings.length) {
   console.error(`✗ ${findings.length} ποσά με τελεία αντί για κόμμα:\n`)
   for (const x of findings) console.error('  ' + x)
-  console.error('\n  Στα ελληνικά: «7,50 €». Και το ευρώ χωρίζεται με κενό από τον αριθμό.')
+  console.error('\n  Στα ελληνικά: «7,50€». Το σύμβολο γράφεται κολλητά στο ψηφίο.')
   process.exit(1)
 }
 console.log('✓ κάθε ποσό σε κείμενο έχει ελληνική υποδιαστολή')

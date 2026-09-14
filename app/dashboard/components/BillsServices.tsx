@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenseStore from '@/lib/data/expenses';
-import { NumberInput, CustomSelect, TextInput, Toggle, DatePicker, addBtn, FIELD_HEIGHT, FIELD_RADIUS, fieldLabelStyle } from './UIComponents';
+import { NumberInput, CustomSelect, TextInput, Toggle, DatePicker, FIELD_HEIGHT, FIELD_RADIUS, fieldLabelStyle } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
-import { T, fe, fieldRow, fixedCols, fp, Spinner, histInputStyle, Bar } from '@/components/Theme';
+import { T, fe, fieldRow, fixedCols, fp, Spinner, histInputStyle, Bar, Btn, IconBtn } from '@/components/Theme';
 import { estimateENFIA, enfiaInUse, enfiaLastYearAnnual } from '@/lib/billing/enfia';
 import { MONTHS_SHORT } from '@/lib/core/months';
 import { averageMonthly, feeOriginNote, feeShare, monthlyFees, TYPICAL_SHARE, type FeeSourceRow } from '@/lib/expenses/municipalFees';
@@ -114,17 +114,24 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
 
   // ΤΟ ΔΗΛΩΜΕΝΟ ΠΟΣΟ ΝΙΚΑ ΤΗΝ ΕΚΤΙΜΗΣΗ. Η απόφαση ζει στο lib/billing/enfia.ts,
   // γιατί τη χρειάζεται και ο Προϋπολογισμός — και εκεί διάβαζε ΜΟΝΟ το δηλωμένο,
-  // δείχνοντας 0 € για ακίνητο που εδώ έδειχνε δεκάδες ευρώ τον μήνα.
+  // δείχνοντας 0€ για ακίνητο που εδώ έδειχνε δεκάδες ευρώ τον μήνα.
   const enfia = enfiaInUse(s.enfiaAnnual, s.enfiaMonthly, enfiaResult?.final,
     enfiaLastYearAnnual({ annual: s.enfiaLastAnnual, instalment: s.enfiaLastInstalment, instalments: s.enfiaLastCount }));
   const enfiaM = enfia.monthly;
   // ══ ΤΑ ΔΗΜΟΤΙΚΑ ΤΕΛΗ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΟΥΣ ΛΟΓΑΡΙΑΣΜΟΥΣ ΠΟΥ ΥΠΑΡΧΟΥΝ ══════
   // Ο κανόνας και οι έλεγχοι ζουν στο lib/expenses/municipalFees.ts. Εδώ μένει
   // μόνο η ανάγνωση: οι δαπάνες ρεύματος του έτους, μία φορά.
-  const share = feeShare(parseFloat(s.lastBillTotal), parseFloat(s.lastBillDimotika));
+  // Το `share` ΕΙΝΑΙ αντικείμενο, οπότε αλλάζει ταυτότητα σε κάθε απόδοση. Οι
+  // εξαρτήσεις ανέφεραν τα δύο πεδία του για να μη χαλάσει το memo — σωστή
+  // πρόθεση, λάθος σημείο: αν αύριο το `feeShare` αποκτήσει τρίτο πεδίο, καμία
+  // γραμμή δεν θα το θυμηθεί. Απομνημονεύεται η ΠΗΓΗ και εξαρτάται ολόκληρη.
+  const share = useMemo(
+    () => feeShare(parseFloat(s.lastBillTotal), parseFloat(s.lastBillDimotika)),
+    [s.lastBillTotal, s.lastBillDimotika],
+  );
   const dimotikaMonths = useMemo(
     () => monthlyFees(elecRows, feeYear, share, s.dimotikaHistory || []),
-    [elecRows, feeYear, share.pct, share.implausible, s.dimotikaHistory],
+    [elecRows, feeYear, share, s.dimotikaHistory],
   );
   const dimotikaAvg = averageMonthly(dimotikaMonths) ?? 0;
   const originNote = feeOriginNote(dimotikaMonths);
@@ -157,7 +164,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontFamily: T.font.sans }}>{label}</div>
-        {sub && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 1 }}>{sub}</div>}
+        {sub && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{sub}</div>}
       </div>
       {link?.url && (
         <a href={link.url} target="_blank" rel="noopener noreferrer"
@@ -196,7 +203,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
           κατεβαίνει σε ήσυχη υποσημείωση κάτω από το μηνιαίο, όπου ανήκει.
 
           ΚΑΙ ΤΑ ΜΗΔΕΝΙΚΑ ΕΦΥΓΑΝ. Πριν συμπληρωθεί τίποτα, η οθόνη άνοιγε με
-          τέσσερα «0,00 €» στη σειρά. Το μηδέν σημαίνει «δεν πληρώνω», ενώ η
+          τέσσερα «0,00€» στη σειρά. Το μηδέν σημαίνει «δεν πληρώνω», ενώ η
           αλήθεια είναι «δεν έχει καταχωρηθεί ακόμη» — ο ίδιος κανόνας που ισχύει
           στις κάρτες συμβολαίων και στα δημοτικά τέλη από κάτω. ══ */}
       {(() => {
@@ -257,7 +264,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
           λογαριασμός είναι ισχυρότερος από κάθε εκτίμηση και ένας μήνας που δεν
           έχει καταχωρημένο ρεύμα συμπληρώνεται όπως πριν.
 
-          ΚΑΙ Ο ΜΗΝΑΣ ΧΩΡΙΣ ΛΟΓΑΡΙΑΣΜΟ ΔΕΝ ΓΡΑΦΕΤΑΙ ΜΗΔΕΝ. Το «0,00 €» σημαίνει
+          ΚΑΙ Ο ΜΗΝΑΣ ΧΩΡΙΣ ΛΟΓΑΡΙΑΣΜΟ ΔΕΝ ΓΡΑΦΕΤΑΙ ΜΗΔΕΝ. Το «0,00€» σημαίνει
           «δεν πλήρωσα δημοτικά τέλη», ενώ η αλήθεια είναι «δεν έχει καταχωρηθεί
           λογαριασμός». Ο μέσος όρος μετρά μόνο τους γνωστούς. ══ */}
       <div style={card}>
@@ -267,8 +274,8 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             Πάρε έναν λογαριασμό ρεύματος και γράψε δύο ποσά. Από εκεί και πέρα κάθε μήνας υπολογίζεται μόνος του.
           </div>
           <div {...fieldRow(190, 12)}>
-            <NumberInput label="Σύνολο λογαριασμού"       value={s.lastBillTotal}    onChange={v => upd({ lastBillTotal: v })}    suffix="€" step={1}/>
-            <NumberInput label="Δημοτικά τέλη στον λογαριασμό" value={s.lastBillDimotika} onChange={v => upd({ lastBillDimotika: v })} suffix="€" step={0.5}/>
+            <NumberInput label="Σύνολο λογαριασμού"       value={s.lastBillTotal}    onChange={v => upd({ lastBillTotal: v })}    suffix="€"/>
+            <NumberInput label="Δημοτικά τέλη στον λογαριασμό" value={s.lastBillDimotika} onChange={v => upd({ lastBillDimotika: v })} suffix="€"/>
             {/* ΤΟ ΑΠΟΤΕΛΕΣΜΑ ΕΧΕΙ ΤΟ ΣΧΗΜΑ ΤΩΝ ΔΥΟ ΠΕΔΙΩΝ ΠΟΥ ΤΟ ΓΕΝΝΟΥΝ.
                 Ηταν άλλο κουτί: ετικέτα μέσα και όχι από πάνω, άλλο ύψος, άλλη
                 ακτίνα, άλλο περίγραμμα — τρία στοιχεία στην ίδια σειρά και μόνο
@@ -375,10 +382,10 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
               <TextInput    label="Εταιρεία ή όνομα"        value={s.cleaningContact}      onChange={v => upd({ cleaningContact: v })}      placeholder="Μαρία Α."/>
               <TextInput    label="Τηλέφωνο"                 value={s.cleaningPhone}        onChange={v => upd({ cleaningPhone: v })}        placeholder="69xxxxxxxx"/>
               <CustomSelect label="Συχνότητα"               value={s.cleaningFreq}         onChange={v => upd({ cleaningFreq: v })}         options={FREQ}/>
-              <NumberInput  label="Κόστος / Επίσκεψη" value={s.cleaningCostPerVisit} onChange={v => upd({ cleaningCostPerVisit: v })} suffix="€" step={5}/>
+              <NumberInput  label="Κόστος / Επίσκεψη" value={s.cleaningCostPerVisit} onChange={v => upd({ cleaningCostPerVisit: v })} suffix="€"/>
             </div>
             <div style={g2}>
-              <NumberInput label="Ώρες ανά Επίσκεψη" value={s.cleaningHours} onChange={v => upd({ cleaningHours: v })} suffix="ώρες" step={0.5}/>
+              <NumberInput label="Ώρες ανά Επίσκεψη" value={s.cleaningHours} onChange={v => upd({ cleaningHours: v })} suffix="ώρες"/>
               <TextInput   label="Σημειώσεις"         value={s.cleaningNotes} onChange={v => upd({ cleaningNotes: v })} placeholder="κάθε Τετάρτη"/>
             </div>
             {cleaningM > 0 && (
@@ -401,7 +408,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             <TextInput    label="Κηπουρός ή εταιρεία"      value={s.gardenContact} onChange={v => upd({ gardenContact: v })} placeholder="Νίκος Κ."/>
             <TextInput    label="Τηλέφωνο"                   value={s.gardenPhone}   onChange={v => upd({ gardenPhone: v })}   placeholder="69xxxxxxxx"/>
             <CustomSelect label="Συχνότητα"                 value={s.gardenFreq}    onChange={v => upd({ gardenFreq: v })}    options={FREQ}/>
-            <NumberInput  label="Κόστος / Επίσκεψη"   value={s.gardenCost}    onChange={v => upd({ gardenCost: v })}   suffix="€" step={10}/>
+            <NumberInput  label="Κόστος / Επίσκεψη"   value={s.gardenCost}    onChange={v => upd({ gardenCost: v })}   suffix="€"/>
           </div>
         )}
       </div>
@@ -414,8 +421,8 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             <div style={g4}>
               <TextInput   label="Τεχνικός ή εταιρεία "     value={s.poolContact}    onChange={v => upd({ poolContact: v })}    placeholder="Pool Service"/>
               <TextInput   label="Τηλέφωνο"                 value={s.poolPhone}      onChange={v => upd({ poolPhone: v })}      placeholder="69xxxxxxxx"/>
-              <NumberInput label="Εβδομαδιαίο κόστος"  value={s.poolWeeklyCost} onChange={v => upd({ poolWeeklyCost: v })} suffix="€" step={5}/>
-              <NumberInput label="Χημικά / Μήνα"        value={s.poolChemicals}  onChange={v => upd({ poolChemicals: v })} suffix="€" step={5}/>
+              <NumberInput label="Εβδομαδιαίο κόστος"  value={s.poolWeeklyCost} onChange={v => upd({ poolWeeklyCost: v })} suffix="€"/>
+              <NumberInput label="Χημικά / Μήνα"        value={s.poolChemicals}  onChange={v => upd({ poolChemicals: v })} suffix="€"/>
             </div>
             <div style={g2}>
               <DatePicker label="Άνοιγμα σεζόν"  value={s.poolSeasonOpen}  onChange={v => upd({ poolSeasonOpen: v })}/>
@@ -433,8 +440,8 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             <div style={g4}>
               <TextInput   label="Τεχνικός ή εταιρεία"           value={s.acContact}     onChange={v => upd({ acContact: v })}     placeholder="Παναγιώτης Τ."/>
               <TextInput   label="Τηλέφωνο"                        value={s.acPhone}       onChange={v => upd({ acPhone: v })}       placeholder="69xxxxxxxx"/>
-              <NumberInput label="Αριθμός κλιματιστικών"           value={s.acUnits}       onChange={v => upd({ acUnits: v })}       suffix="τεμάχια" step={1}/>
-              <NumberInput label="Κόστος συντήρησης / Μονάδα"  value={s.acServiceCost} onChange={v => upd({ acServiceCost: v })} suffix="€" step={10}/>
+              <NumberInput label="Αριθμός κλιματιστικών"           value={s.acUnits}       onChange={v => upd({ acUnits: v })}       suffix="τεμάχια"/>
+              <NumberInput label="Κόστος συντήρησης / Μονάδα"  value={s.acServiceCost} onChange={v => upd({ acServiceCost: v })} suffix="€"/>
             </div>
             <div style={g2}>
               <DatePicker label="Τελευταία συντήρηση" value={s.acLastService} onChange={v => upd({ acLastService: v })}/>
@@ -458,7 +465,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             <div style={g4}>
               <TextInput   label="Τεχνικός ή εταιρεία "   value={s.elevatorCompany}        onChange={v => upd({ elevatorCompany: v })}        placeholder="Otis, Schindler..."/>
               <TextInput   label="Τηλέφωνο"               value={s.elevatorPhone}          onChange={v => upd({ elevatorPhone: v })}          placeholder="210xxxxxxx"/>
-              <NumberInput label="Μηνιαία συντήρηση"  value={s.elevatorMonthly}        onChange={v => upd({ elevatorMonthly: v })}        suffix="€" step={5}/>
+              <NumberInput label="Μηνιαία συντήρηση"  value={s.elevatorMonthly}        onChange={v => upd({ elevatorMonthly: v })}        suffix="€"/>
               <DatePicker  label="Τελευταία συντήρηση"  value={s.elevatorLastInspection} onChange={v => upd({ elevatorLastInspection: v })}/>
             </div>
             <TextInput label="Σημειώσεις" value={s.elevatorNotes} onChange={v => upd({ elevatorNotes: v })} placeholder="Ετήσιος έλεγχος ΕΛΟΤ…"/>
@@ -473,7 +480,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
           <div style={g4}>
             <TextInput    label="Τεχνικός ή εταιρεία"                 value={s.pestContact} onChange={v => upd({ pestContact: v })} placeholder="Anticimex, Rentokil..."/>
             <TextInput    label="Τηλέφωνο"                 value={s.pestPhone}   onChange={v => upd({ pestPhone: v })}   placeholder="69xxxxxxxx"/>
-            <NumberInput  label="Κόστος / Απεντόμωση"  value={s.pestCost}   onChange={v => upd({ pestCost: v })}   suffix="€" step={10}/>
+            <NumberInput  label="Κόστος / Απεντόμωση"  value={s.pestCost}   onChange={v => upd({ pestCost: v })}   suffix="€"/>
             <CustomSelect label="Συχνότητα"               value={s.pestFreq}    onChange={v => upd({ pestFreq: v })}   options={FREQ}/>
           </div>
         )}
@@ -500,12 +507,13 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             <TextInput    label="Υπηρεσία"           value={newName}    onChange={setNewName}    placeholder="βαφή"/>
             <TextInput    label="Τεχνικός ή εταιρεία" value={newContact} onChange={setNewContact} placeholder="Ονοματεπώνυμο"/>
             <TextInput    label="Τηλέφωνο"           value={newPhone}   onChange={setNewPhone}   placeholder="69xxxxxxxx"/>
-            <NumberInput  label="Κόστος"             value={newCost}    onChange={setNewCost}    suffix="€" step={10}/>
+            <NumberInput  label="Κόστος"             value={newCost}    onChange={setNewCost}    suffix="€"/>
             <CustomSelect label="Συχνότητα"          value={newFreq}    onChange={setNewFreq}    options={FREQ}/>
-            <button type="button" disabled={!newName.trim() || !newCost} onClick={addOther}
-              style={addBtn(!newName.trim() || !newCost)}>
+            {/* `field` και όχι size="lg": κάθεται σε κελί του πλέγματος δίπλα στα
+                πεδία, οπότε θέλει και το ύψος και το πλήρες πλάτος τους. */}
+            <Btn variant="primary" field disabled={!newName.trim() || !newCost} onClick={addOther}>
               Προσθήκη
-            </button>
+            </Btn>
           </div>
         </div>
         {(s.otherServices || []).map((o, i) => (
@@ -518,8 +526,10 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(toMonthly(o.cost, o.freq))} / μήνα</span>
-              <button onClick={() => delOther(i)}
-                style={{ width: T.h.sm, height: T.h.sm, borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}>✕</button>
+              {/* Το κουμπί δεν είχε καθόλου όνομα: ο αναγνώστης οθόνης άκουγε μόνο «✕». */}
+              <IconBtn onClick={() => delOther(i)} label={`Διαγραφή υπηρεσίας ${o.name}`} round>
+                <span style={{ fontSize: 12 }}>✕</span>
+              </IconBtn>
             </div>
           </div>
         ))}

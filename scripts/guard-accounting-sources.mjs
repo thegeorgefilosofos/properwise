@@ -80,7 +80,7 @@ for (const [cite, f] of seen) {
 // ── 3. Φρεσκάδα ────────────────────────────────────────────────────────────
 const today = Date.now();
 const ageOf = iso => Math.floor((today - new Date(`${iso}T00:00:00Z`).getTime()) / 86400000);
-for (const [key, s] of entries) {
+for (const [, s] of entries) {
   const age = ageOf(s.checkedAt);
   if (Number.isFinite(age) && age > (s.maxAgeDays ?? 365)) {
     stale.push(`  · ${s.title}\n    Ελέγχθηκε πριν από ${age} ημέρες (όριο ${s.maxAgeDays}).${s.watch ? `\n    ${s.watch}` : ''}`);

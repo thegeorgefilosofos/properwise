@@ -35,7 +35,7 @@ import * as calendar from '@/lib/data/calendar'
 import { speechRecognizer, speechSupported, type SpeechEvent, type SpeechErrorEvent, type SpeechRecognizer } from '@/lib/core/speech';
 import type { BillsRow, ChecklistItemsRow, ClientStaysRow, ClientsRow, ContactsRow, ExpensesRow, RentPaymentsRow, UserPropertiesRow } from '@/lib/supabase/tables';
 import { AssistantMark } from './AssistantMark';
-import { T, TT, Modal, fe, feAuto, feOr, fp } from '@/components/Theme';
+import { T, TT, Modal, Btn, IconBtn, ChipToggle, LinkBtn, fe, feAuto, feOr, fp } from '@/components/Theme';
 import Feedback from './Feedback';
 import { resolveRent, resolveValue, computeYields } from '@/lib/billing/propertyFacts';
 import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger';
@@ -50,10 +50,10 @@ import {
   NAV_MAP, buildSystemBlocks, parseAction, cleanForSpeech, loadPrefs, savePrefs,
   PREFS_KEY, readPrefs, memKey,
   loadHistory, saveHistory, clearHistory,
-  loadMemories, addMemory, removeMemory, clearMemories, actionReachable,
+  addMemory, removeMemory, clearMemories, actionReachable,
 } from './assistantPersona';
 import {
-  ASSISTANT_NAME, ASSISTANT_INITIAL, tagline, askCta, askPlaceholder, openAria,
+  ASSISTANT_NAME, tagline, askCta, askPlaceholder, openAria,
   speakingLabel, settingsTitle, noKeyNotice,
 } from '@/lib/assistant/identity';
 import { classifyExpense } from '@/lib/expenses/classify';
@@ -109,6 +109,7 @@ type ContactLite = { name: string; role: string; phone: string; email: string };
 
 import { suggestedOpeners, greeting as buildGreeting, type OpenerContext } from '@/lib/assistant/openers';
 import { modelFor } from '@/lib/assistant/model';
+import { hy } from '@/components/Hyphen';
 import { scanFile, commitScannedDoc, RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT, type ReconcileQuestion } from './scanDoc';
 import { DOC_TYPE_LABELS, type ScannedDoc } from '@/lib/billing/documents';
 import { remainingLine, type QuotaSnapshot } from '@/lib/billing/aiLimits';
@@ -116,8 +117,9 @@ import { athensToday, athensNowLabel, daysUntil, isoMonth } from '@/lib/core/tim
 import { MONTHS_SHORT, MONTHS_GEN } from '@/lib/core/months';
 import { useRemembered } from '@/components/useRememberedFlag';
 import { useLoad } from '@/app/hooks/useLoad';
+import * as checkinLink from '@/lib/data/checkinLink';
 
-// Ο άγνωστος αριθμός γράφεται 0,00 €, όχι παύλα: η παύλα δεν στοιχίζεται με
+// Ο άγνωστος αριθμός γράφεται 0,00€, όχι παύλα: η παύλα δεν στοιχίζεται με
 // τίποτα και σε στήλη ποσών διαβάζεται ως σφάλμα (lib/core/format.ts).
 const eur = (n?: number | null) => n == null ? feOr(null) : feAuto(n);
 // Η ερώτηση συμφωνίας σε μία πρόταση. Οι ίδιοι λόγοι που δείχνει και η οθόνη
@@ -137,6 +139,40 @@ const CH_HUMAN: Record<'whatsapp' | 'viber' | 'email' | 'call', string> = { what
 
 // Σταθερή αναφορά για «καμία μνήμη».
 const NO_MEMORIES: Memory[] = [];
+
+// ── ΤΟ ΠΛΩΤΟ ΚΟΥΜΠΙ: ΥΨΟΣ ΚΑΙ ΓΩΝΙΑ, ΕΞΩ ΑΠΟ ΤΟ COMPONENT ──────────────────
+// Δεν διαβάζουν ούτε μία τιμή του component, οπότε γραμμένα μέσα του ήταν
+// ΚΑΙΝΟΥΡΓΙΕΣ συναρτήσεις σε κάθε απόδοση: τρία useEffect τις κρατούσαν στις
+// εξαρτήσεις τους και ο κανόνας των hooks το φώναζε. Εδώ γράφονται μία φορά.
+
+// Εφεδρικό ύψος, όταν το κουμπί δεν έχει αποδοθεί ακόμη. Η ΠΗΓΗ είναι το
+// `--fab-h` στο globals.css, γιατί την ίδια τιμή χρειάζεται και το κάτω
+// περιθώριο του .app-content που κρατά το περιεχόμενο μακριά από εδώ.
+const FAB_H = 52;
+
+/** Η θέση ανάπαυσης του κουμπιού, όπως τη λέει το CSS αυτής της οθόνης. */
+const fabHome = () => {
+  const probe = document.createElement('div');
+  probe.className = 'pa-fab-home';
+  document.body.appendChild(probe);
+  const r = probe.getBoundingClientRect();
+  probe.remove();
+  return { side: window.innerWidth - r.right, bottom: window.innerHeight - r.bottom };
+};
+
+// Η ΓΩΝΙΑ ΜΕΤΡΙΕΤΑΙ, ΔΕΝ ΜΑΝΤΕΥΕΤΑΙ. Πρώτη γραφή: `parseFloat` πάνω στο
+// `--float-bottom`. Στο κινητό η τιμή είναι `calc(82px + env(...) + …)` και το
+// `parseFloat` επιστρέφει NaN, οπότε έπεφτε στα 24 — το κουμπί κούμπωνε 58
+// εικονοστοιχεία ΧΑΜΗΛΟΤΕΡΑ από το σπίτι του, πάνω στην κάτω πλοήγηση. Δηλαδή
+// το κούμπωμα προκαλούσε ακριβώς το σφάλμα που ήρθε να λύσει. Μόνο ο πάγκος
+// αφής με αληθινά αγγίγματα το είδε.
+const snapCorner = (x: number, w: number) => {
+  if (typeof window === 'undefined') return null;
+  const { side, bottom } = fabHome();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const right = x + w / 2 > vw / 2;
+  return { x: right ? vw - w - side : side, y: vh - FAB_H - bottom };
+};
 
 export default function PropertyAssistant({ propertyId, userId, propContext, allProperties = [], onNavigate, onScan, canNavigate, planBrief }: Props) {
   const supabase = createClient();
@@ -383,8 +419,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   const allPropsContext = prefs.compare && allProperties.length > 1
     ? allProperties.map((p, i) => {
         const gy = computeYields(resolveRent({ targetRent: p.targetRent }).value, resolveValue(p.value).value, 0).grossYield;
-        const y = gy > 0 ? gy.toFixed(1) : null;
-        return `${i + 1}. ${p.name}${p.propType ? ` (${p.propType})` : ''}: αξία ${eur(p.value)}, ενοίκιο-στόχος ${eur(p.targetRent)}/μήνα${y ? `, μεικτή απόδοση ~${y}%` : ''}${p.sqm ? `, ${p.sqm} τ.μ.` : ''}${p.status ? `, ${p.status}` : ''}`;
+        // ΤΟ `toFixed` ΒΓΑΖΕΙ ΤΕΛΕΙΑ, ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟ. Εγραφε
+        // «6.7%» μέσα στα συμφραζόμενα που διαβάζει το μοντέλο — δίπλα σε ποσά
+        // «1.234,56€» της ίδιας γραμμής, όπου η τελεία χωρίζει ΧΙΛΙΑΔΕΣ.
+        const y = gy > 0 ? fp(gy) : null;
+        return `${i + 1}. ${p.name}${p.propType ? ` (${p.propType})` : ''}: αξία ${eur(p.value)}, ενοίκιο-στόχος ${eur(p.targetRent)}/μήνα${y ? `, μεικτή απόδοση ~${y}` : ''}${p.sqm ? `, ${p.sqm} τ.μ.` : ''}${p.status ? `, ${p.status}` : ''}`;
       }).join('\n')
     : undefined;
 
@@ -392,7 +431,6 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   const loadContext = useCallback(async () => {
     const now = new Date();
     const year = now.getFullYear();
-    const month = `${year}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     // Το «σήμερα» της εφαρμογής είναι ώρα Ελλάδας, όχι UTC: αλλιώς για δύο ως
     // τρεις ώρες κάθε νύχτα η Νόα νόμιζε ότι είναι χθες.
     const todayStr = athensToday(now);
@@ -453,7 +491,19 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     // βοηθός δεν είχε καμία εικόνα συνέπειας πληρωμών και ότι τα δεδουλευμένα
     // έσοδα της χρονιάς έπρεπε να μαντευτούν από το ενοίκιο επί δώδεκα.
     const rentAll = await rentStore.chronological<RentPaymentsRow>(supabase, propertyId, `id,due_date,${rentStore.PERIOD_COLUMNS}`, userId);
-    setOpenRent(rentAll.filter(r => !r.paid).map(r => ({ id: r.id, label: `Ενοίκιο ${MONTHS_GEN[(r.period_month || 1) - 1]} ${r.period_year}`, amount: r.amount || 0, due: r.due_date })));
+    // ── ΤΟ ΓΡΑΦΕ ΚΑΙ ΤΟ ΔΙΑΒΑΖΕ ΣΤΗΝ ΙΔΙΑ ΕΚΤΕΛΕΣΗ ─────────────────────────
+    // Η κατάσταση της React ΔΕΝ αλλάζει μέσα στην ίδια συνάρτηση: το
+    // `setOpenRent` προγραμματίζει, δεν αναθέτει. Εκατό γραμμές πιο κάτω το
+    // `openRent.reduce(...)` και η γραμμή «Ανεξόφλητες δόσεις ενοικίου»
+    // διάβαζαν την ΠΡΟΗΓΟΥΜΕΝΗ τιμή, δηλαδή κενή λίστα στο πρώτο άνοιγμα του
+    // πάνελ. Ο ιδιοκτήτης με τρεις ανείσπρακτες δόσεις άνοιγε τη Νόα και οι
+    // προτάσεις εκκίνησης δεν ανέφεραν ούτε μία — και τα συμφραζόμενα που
+    // έφταναν στο μοντέλο έλεγαν ότι δεν υπάρχουν καθυστερήσεις.
+    //
+    // Ο πίνακας υπολογίζεται ΜΙΑ φορά σε τοπική μεταβλητή· η κατάσταση παίρνει
+    // την ίδια τιμή· όλοι οι αναγνώστες αυτής της εκτέλεσης διαβάζουν αυτήν.
+    const openRentNow = rentAll.filter(r => !r.paid).map(r => ({ id: r.id, label: `Ενοίκιο ${MONTHS_GEN[(r.period_month || 1) - 1]} ${r.period_year}`, amount: r.amount || 0, due: r.due_date }));
+    setOpenRent(openRentNow);
     const t = ten?.[0];
     const rent = resolveRent({ tenantRent: t?.monthly_rent, targetRent: propContext.targetRent }).value;
     const value = resolveValue(propContext.value).value;
@@ -469,8 +519,14 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       const startY = l.start_date ? Number(String(l.start_date).slice(0, 4)) : year;
       return s + interestForYear(l.amount || 0, l.rate || 0, l.years || 0, year - startY + 1);
     }, 0);
+    // ── Ο ΤΟΚΟΣ ΥΠΟΛΟΓΙΖΟΤΑΝ ΚΑΙ ΔΕΝ ΕΛΕΓΕΤΑΙ ΠΟΤΕ ───────────────────────────
+    // Η γραμμή έλεγε μόνο τη ΔΟΣΗ. Στη δήλωση όμως δεν εκπίπτει η δόση —
+    // εκπίπτει ο τόκος: το κεφάλαιο είναι εξόφληση χρέους, όχι δαπάνη. Ρωτώντας
+    // «τι εκπίπτει από το δάνειο;» η Νόα είχε μπροστά της τον σωστό αριθμό
+    // (`loanInterestYear`, υπολογισμένο τέσσερις γραμμές πιο πάνω) και απαντούσε
+    // με τη δόση, γιατί ο τόκος δεν έμπαινε ποτέ στο κείμενο που της δινόταν.
     const loanLine = loanRows.length
-      ? `Δάνεια (${loanRows.length}): εκτιμώμενη συνολική μηνιαία δόση ${eur(Math.round(monthlyDebt))}. ${loanRows.map(l => `${l.bank || 'τράπεζα'} ${eur(l.amount || 0)} με ${fp(Number(l.rate || 0))} ${rateTypeGr(l.rate_type ?? undefined)} σε ${l.years || 0} έτη`).join('; ')}`
+      ? `Δάνεια (${loanRows.length}): εκτιμώμενη συνολική μηνιαία δόση ${eur(Math.round(monthlyDebt))}. Από τις δόσεις του ${year}, τόκοι περίπου ${eur(Math.round(loanInterestYear))}: ΜΟΝΟ αυτό το μέρος εκπίπτει, το κεφάλαιο όχι. ${loanRows.map(l => `${l.bank || 'τράπεζα'} ${eur(l.amount || 0)} με ${fp(Number(l.rate || 0))} ${rateTypeGr(l.rate_type ?? undefined)} σε ${l.years || 0} έτη`).join('; ')}`
       : 'Δεν έχει καταχωρηθεί δάνειο για αυτό το ακίνητο.';
 
     // Έσοδα φιλοξενίας (διαμονές επισκεπτών από το Πελατολόγιο συνδεδεμένες σε αυτό το ακίνητο).
@@ -514,8 +570,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       // και δεν εκπίπτει τον τόκο πουθενά.
       //
       // Το αποτέλεσμα ήταν δύο διαφορετικά ταμειακά υπόλοιπα για το ίδιο ακίνητο
-      // και το ίδιο έτος: η Νόα έλεγε 6.591,88 € περισσότερα από τη Λογιστική σε
-      // δάνειο 190.000 € με 3,5%. Όποιος έβλεπε και τα δύο, δεν πίστευε κανένα.
+      // και το ίδιο έτος: η Νόα έλεγε 6.591,88€ περισσότερα από τη Λογιστική σε
+      // δάνειο 190.000€ με 3,5%. Όποιος έβλεπε και τα δύο, δεν πίστευε κανένα.
       loanPrincipal: Math.max(0, Math.round(monthlyDebt * 12)),
       uncollectedIncome: isShortAcct || rentFromTarget ? 0 : Math.max(0, accruedRent - collectedRent),
     });
@@ -541,7 +597,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       propertyValue: value || undefined,
       expensesYtd: total || undefined,
       openTasks: openTasks.length,
-      overdueRent: openRent.reduce((sum, r) => sum + (r.amount || 0), 0) || undefined,
+      overdueRent: openRentNow.reduce((sum, r) => sum + (r.amount || 0), 0) || undefined,
       hasLoan: loanRows.length > 0,
       isShortTerm: propStays.length > 0,
       propertyCount: allProperties.length || undefined,
@@ -549,7 +605,14 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
 
     // ── Δυναμική τιμολόγηση: βάση + ενδεικτικός πίνακας ανά μήνα ──
     // Προτίμησε τη ΒΑΣΗ που έχει ορίσει ο χρήστης στην καρτέλα Τιμολόγηση (αν υπάρχει).
-    const { data: pset } = await supabase.from('pricing_settings').select('base,weekend_premium').eq('user_id', userId).eq('property_id', propertyId).maybeSingle();
+    // ── ΤΟ «ΔΕΝ ΔΙΑΒΑΣΤΗΚΕ» ΔΕΝ ΕΙΝΑΙ «ΔΕΝ ΕΧΕΙ ΟΡΙΣΕΙ ΒΑΣΗ» ─────────────────
+    // Το σφάλμα πεταγόταν: σε αποτυχία το `pset` έρχεται null, ακριβώς όπως
+    // στον χρήστη που δεν όρισε ποτέ βάση. Η Νόα έλεγε «Δεν έχει οριστεί
+    // βασική τιμή» σε ιδιοκτήτη που την είχε ορίσει ή, με ιστορικό διαμονών,
+    // έχτιζε πίνακα δώδεκα μηνών με ποσά ανά νύχτα πάνω σε δική της εκτίμηση:
+    // τιμές που ο ιδιοκτήτης θα ανέβαζε στα κανάλια. Τώρα το «δεν ξέρουμε»
+    // λέγεται: ούτε πίνακας ούτε βεβαίωση.
+    const { data: pset, error: psetErr } = await supabase.from('pricing_settings').select('base,weekend_premium').eq('user_id', userId).eq('property_id', propertyId).maybeSingle();
     const wkndPrem = pset?.weekend_premium != null ? Number(pset.weekend_premium) : 0.18;
     // ΚΑΜΙΑ ΒΑΣΗ ΑΠΟ ΤΟ ΠΟΥΘΕΝΑ. Εδώ υπήρχε τρίτο εναλλακτικό:
     // `(ενοίκιο-στόχος / 30) × 2,2`. Είναι ακριβώς ο τύπος που το
@@ -563,7 +626,9 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     // Το `else` παρακάτω λέει ήδη τη σωστή αλήθεια: χωρίς ιστορικό, ο χρήστης
     // ορίζει βάση στην Τιμολόγηση.
     const priceBase = (pset?.base != null ? Number(pset.base) : 0) || suggestBase(propStays);
-    if (priceBase > 0) {
+    if (psetErr) {
+      setPricingStr(`Οι ρυθμίσεις τιμολόγησης αυτού του ακινήτου δεν διαβάστηκαν. Μη λες τιμή ανά νύχτα, μη δίνεις πίνακα μηνών· μην πεις ούτε ότι υπάρχει βάση ούτε ότι δεν έχει οριστεί. Πες ότι τα στοιχεία τιμολόγησης δεν φορτώθηκαν τώρα κι ότι ο χρήστης τα βλέπει στην καρτέλα ${navLabel('pricing')}.`);
+    } else if (priceBase > 0) {
       const adrVal = realizedAdr(propStays);
       const table = indicativeMonthly(priceBase, wkndPrem).map(r => `${MONTHS_SHORT[r.month]} ${r.weekday}/${r.weekend}`).join(', ');
       setPricingStr([
@@ -582,7 +647,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     const bData = (await settings.section(supabase, propertyId, 'budgets', userId)) || {};
     // ΧΩΡΙΣ ΟΡΙΣΜΕΝΟ ΣΤΟΧΟ, ΚΑΝΕΝΑΣ ΑΡΙΘΜΟΣ.
     // Ήταν `|| 390`. Ο χρήστης που δεν είχε ορίσει ποτέ προϋπολογισμό, έπαιρνε
-    // από τη Νόα προτάσεις πάνω σε «μηνιαίο στόχο 390 €» — νούμερο που δεν
+    // από τη Νόα προτάσεις πάνω σε «μηνιαίο στόχο 390€» — νούμερο που δεν
     // είπε ποτέ, διατυπωμένο σαν δικό του.
     const rawTarget = parseFloat(String(bData.total ?? ''));
     const monthlyTarget: number | null = Number.isFinite(rawTarget) && rawTarget > 0 ? rawTarget : null;
@@ -601,7 +666,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       `Δαπάνες ${year}: σύνολο ${eur(total)} (πληρωμένες ${eur(paid)}, εκκρεμείς ${eur(owed)}). Κάθε ευρώ μετρημένο μία φορά· οι απλήρωτοι λογαριασμοί μετρούν στην ημερομηνία που λήγουν· ίδιος υπολογισμός με τις Δαπάνες και τη Σύγκριση.`,
       topCats.length ? `Μεγαλύτερες κατηγορίες: ${topCats.map(([c, a]) => `${c} ${eur(a)}`).join(', ')}` : '',
       unpaid.length ? `Απλήρωτοι λογαριασμοί (${unpaid.length}): ${unpaid.slice(0, 12).map(b => `${b.name || 'λογαριασμός'} ${eur(b.amount)}${b.due_date ? ` λήξη ${b.due_date}` : ''}`).join('; ')}` : 'Δεν υπάρχουν απλήρωτοι λογαριασμοί.',
-      openRent.length ? `Ανεξόφλητες δόσεις ενοικίου (${openRent.length}): ${openRent.slice(0, 12).map(r => `${r.label} ${eur(r.amount)}`).join('; ')}` : '',
+      openRentNow.length ? `Ανεξόφλητες δόσεις ενοικίου (${openRentNow.length}): ${openRentNow.slice(0, 12).map(r => `${r.label} ${eur(r.amount)}`).join('; ')}` : '',
       t ? `Ενοικιαστής: ${t.full_name || 'καταχωρημένος'}${t.deposit_amount ? `, εγγύηση ${eur(t.deposit_amount)}` : ''}` : 'Δεν έχει καταχωρηθεί ενοικιαστής.',
       leaseEnd ? `Λήξη μίσθωσης: ${leaseEnd}${daysLease != null ? ` (σε ${daysLease} ημέρες)` : ''}` : '',
       insurance?.insurance_company || insurance?.insurance_expiry ? `Ασφάλεια: ${insurance?.insurance_company || 'εταιρεία άγνωστη'}${insurance?.insurance_expiry ? `, λήξη ${insurance.insurance_expiry}` : ''}` : 'Ασφάλεια: δεν έχει καταχωρηθεί.',
@@ -708,7 +773,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       });
       setTechStr(`Σύνολο επαφών: ${techRoster.length}\n${tLines.join('\n')}`);
     } else setTechStr('');
-  }, [propertyId, userId, propContext, supabase]);
+  }, [propertyId, userId, propContext, supabase, allProperties.length]);
 
   // Τα συμφραζόμενα φορτώνονται ΜΙΑ φορά, όταν ανοίξει το πάνελ. Μέσα από το
   // κοινό `useLoad`, γιατί είναι ασύγχρονη φόρτωση όπως κάθε άλλη.
@@ -937,9 +1002,12 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     const c = findClient(who);
     if (!c) { setMsgs(m => [...m, { role: 'assistant', text: `Δεν βρήκα ξεκάθαρα τον πελάτη «${who}». Πες μου ακριβές όνομα ή τηλέφωνο, ή άνοιξε τους ${navLabel('clients')}.`, action: { type: 'go', tab: 'clients' } }]); return; }
     try {
-      const data = await must(supabase.from('checkin_links').upsert({ user_id: userId, client_id: c.id, property_id: propertyId, active: true }, { onConflict: 'user_id,client_id' }).select('token').maybeSingle());
+      // Το ίδιο ζευγάρι σφαλμάτων ήταν κι εδώ, αντιγραμμένο από την καρτέλα
+      // Πελατών: διεύθυνση από τον περιηγητή κι κουπόνι που δεν ανανεωνόταν. Ο
+      // κανόνας ζει πλέον σε ένα σημείο, στο `lib/data/checkinLink.ts`.
+      const data = await must(checkinLink.issue(supabase, userId, c.id, propertyId, new Date()));
       if (data?.token) {
-        const url = `${window.location.origin}/checkin/${data.token}`;
+        const url = checkinLink.checkinUrl(data.token);
         try { await navigator.clipboard.writeText(url); } catch { /* το εμφανίζουμε ούτως ή άλλως */ }
         setMsgs(m => [...m, { role: 'assistant', text: `Έτοιμο. Αντέγραψα τον σύνδεσμο check-in για τον/την «${c.name}». Στείλ’ τον στον επισκέπτη σε WhatsApp ή Viber:\n${url}`, action: { type: 'go', tab: 'clients' } }]);
       } else throw new Error('no token');
@@ -988,7 +1056,6 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     const priority = a.priority || 'normal';
     const due = a.due_date || null;
     const est = a.est_cost || 0;
-    const today = athensToday();
     try {
       const ins = await must(checklist.addReturning(supabase, {
         property_id: propertyId, user_id: userId, description: d,
@@ -997,11 +1064,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         estimated_cost: est, actual_cost: 0, sort_order: 0,
       }));
       const newId = (ins as { id?: string } | null)?.id;
-      // Κύκλωμα: ημερολόγιο (email υπενθύμιση) + εκκρεμής δαπάνη.
-      // Η κατηγορία της δαπάνης βγαίνει από την ταξινομία (μία πηγή), όχι από
-      // σταθερό κείμενο: ένα χειρόγραφο «Συντήρηση & Επισκευές» ήταν πέμπτη
-      // εκδοχή ονόματος κατηγορίας και η ομάδα του δίπλα του ήταν ανεξάρτητη.
-      const taskCat = classifyExpense(d);
+      // Κύκλωμα: μόνο ημερολόγιο (email υπενθύμιση). Δαπάνη ΔΕΝ γράφεται — γιατί, πιο κάτω.
       let calId: string | null = null;
       if (newId && due) { const data = await must(calendar.add(supabase, { propertyId, userId }, 'checklist', { title: d, event_date: due, category: 'maintenance', amount: est, priority: priority === 'normal' ? 'medium' : priority as calendar.EventPriority })); calId = data?.id || null; }
       // ΜΙΑ ΕΚΤΙΜΗΣΗ ΔΕΝ ΓΙΝΕΤΑΙ ΔΑΠΑΝΗ. Εδώ γραφόταν γραμμή στον πίνακα
@@ -1347,10 +1410,6 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // Το κουμπί δεν είναι πια κύκλος σταθερών 60px: είναι πλήκτρο με το όνομα και
   // στενεύει σε σήμα στο κινητό. Άρα ΜΕΤΡΑΜΕ το μέγεθός του αντί να το μαντεύουμε
   // — αλλιώς η μισή πρόσκληση θα κατέληγε έξω από την οθόνη μετά από σύρσιμο.
-  // Εφεδρικό ύψος, όταν το κουμπί δεν έχει αποδοθεί ακόμη. Η ΠΗΓΗ είναι το
-  // `--fab-h` στο globals.css, γιατί την ίδια τιμή χρειάζεται και το κάτω
-  // περιθώριο του .app-content που κρατά το περιεχόμενο μακριά από εδώ.
-  const FAB_H = 52;
   const fabRef = useRef<HTMLButtonElement | null>(null);
 
   // ═══ ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΚΑΘΟΤΑΝ ΠΑΝΩ ΣΤΟ «ΑΠΟΘΗΚΕΥΣΗ» ════════════════════════
@@ -1375,6 +1434,22 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     const r = fabRef.current?.getBoundingClientRect();
     return { w: r?.width || FAB_H, h: r?.height || FAB_H };
   };
+  // ═══ ΤΟ ΠΛΩΤΟ ΚΟΥΜΠΙ ΕΜΕΝΕ ΟΠΟΥ ΤΟ ΑΦΗΝΕ ΤΟ ΔΑΧΤΥΛΟ ═══════════════════════
+  // ΤΙ ΦΩΤΟΓΡΑΦΗΘΗΚΕ, ΣΕ ΤΑΜΠΛΕΤΑ: το «Ν» ψηλά δεξιά, στην ΙΔΙΑ θέση σε δέκα
+  // διαφορετικές οθόνες, καθισμένο πάνω σε «Τράπεζα Πειραιώς 2,40%», πάνω στο
+  // κουμπί «Δόση στις Δαπάνες», πάνω στη λεζάντα του γραφήματος απόσβεσης.
+  //
+  // ΓΙΑΤΙ. Η θέση θυμάται ένα σύρσιμο και δεν επιστρέφει πουθενά. Ομως χώρο
+  // κρατά ΜΟΝΟ η κάτω άκρη: το `.app-content` έχει `padding-bottom` που
+  // καθαρίζει το κουμπί. Κάθε άλλη θέση κάθεται πάνω σε στήλη περιεχομένου —
+  // δεν είναι θέμα του πού το άφησε ο χρήστης, είναι ότι δεν υπάρχει άλλη
+  // ασφαλής θέση να το αφήσει.
+  //
+  // Η ΔΙΟΡΘΩΣΗ ΕΙΝΑΙ ΤΟ ΚΟΥΜΠΩΜΑ, ΟΧΙ Η ΑΦΑΙΡΕΣΗ ΤΟΥ ΣΥΡΣΙΜΑΤΟΣ. Το σύρσιμο
+  // υπάρχει για έναν πραγματικό λόγο: «το κουμπί μου κρύβει κάτι εδώ κάτω, θέλω
+  // να το πάω αλλού». Κρατιέται ΟΛΟ, αλλά ο προορισμός είναι πάντα μία από τις
+  // δύο ΚΑΤΩ γωνίες — οι μόνες δύο θέσεις που η διάταξη έχει κρατήσει άδειες.
+  // Ιδιο ιδίωμα με κάθε καλοφτιαγμένο πλωτό κουμπί.
   // ═══ ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΔΕΝ ΣΕΡΝΟΤΑΝ ΜΕ ΤΟ ΔΑΧΤΥΛΟ ══════════════════════════
   // Με ποντίκι το σύρσιμο δούλευε. Με δάχτυλο όχι· ο λόγος δεν ήταν ο
   // κώδικας εδώ: ο περιηγητής κρίνει μόνος του, στην πρώτη κίνηση, αν η
@@ -1414,7 +1489,10 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         && p.x >= m && p.y >= m
         && p.x <= window.innerWidth - w - m
         && p.y <= window.innerHeight - h - m;
-      if (inView) setFabPos(p);
+      // Η αποθηκευμένη τιμή ΚΟΥΜΠΩΝΕΙ, δεν εφαρμόζεται όπως είναι: όποιος έχει
+      // ήδη αφήσει το κουμπί πάνω σε περιεχόμενο το βρίσκει διορθωμένο στην
+      // επόμενη φόρτωση, χωρίς να χρειαστεί να κάνει τίποτα.
+      if (inView) setFabPos(snapCorner(p.x, w) ?? p);
       else localStorage.removeItem('pa_fab_pos');
     } catch { /* ignore */ }
     });
@@ -1424,6 +1502,19 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     if (!fabPos || dragging) return;
     try { localStorage.setItem('pa_fab_pos', JSON.stringify(fabPos)); } catch { /* ignore */ }
   }, [fabPos, dragging]);
+  // Η ΠΕΡΙΣΤΡΟΦΗ ΤΟΥ ΤΑΜΠΛΕΤ ΑΛΛΑΖΕΙ ΚΑΙ ΤΙΣ ΔΥΟ ΔΙΑΣΤΑΣΕΙΣ. Μια γωνία της
+  // κατακόρυφης οθόνης δεν είναι γωνία της οριζόντιας: χωρίς αυτό, το κουμπί
+  // βρίσκεται στη μέση της σελίδας μόλις γυρίσει η συσκευή.
+  useEffect(() => {
+    if (!fabPos) return;
+    const onResize = () => setFabPos(prev => (prev ? snapCorner(prev.x, fabBox().w) ?? prev : prev));
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, [fabPos]);
   useEffect(() => {
     const move = (e: PointerEvent) => {
       const d = fabDrag.current; if (!d || e.pointerId !== d.id) return;
@@ -1450,7 +1541,12 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       // τον κατεβάζει η ΕΠΟΜΕΝΗ χειρονομία, στο `pointerdown` της. Ετσι κανένα
       // αυθαίρετο χρονικό όριο δεν κρίνει πότε «τελείωσε» το σύρσιμο: ένα
       // άγγιγμα αμέσως μετά ανοίγει κανονικά τον βοηθό.
-      if (d?.moved) justDragged.current = true;
+      if (d?.moved) {
+        justDragged.current = true;
+        // Το κουμπί πέφτει στην πλησιέστερη ΚΑΤΩ γωνία: εκεί — μόνο εκεί —
+        // η διάταξη έχει κρατήσει χώρο γι' αυτό.
+        setFabPos(prev => (prev ? snapCorner(prev.x, fabBox().w) ?? prev : prev));
+      }
       setDragging(false);
     };
     window.addEventListener('pointermove', move, { passive: false });
@@ -1524,25 +1620,27 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
             <div aria-hidden style={{ width: 34, height: 34, borderRadius: T.radius.inner, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}><AssistantMark size={17} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ ...TT.h2, fontSize: 14 }}>{ASSISTANT_NAME}</div>
-              <div style={{ ...TT.caption, marginTop: 1 }}>{tagline(prefs.formal)}</div>
+              <div className="po-subline" style={{ ...TT.caption }}>{tagline(prefs.formal)}</div>
             </div>
             {(supportsSTT || supportsTTS) && (
-              <button onClick={() => { const next = !handsFree; setHandsFree(next); if (next && supportsSTT) { setOpen(true); startListening(); } else { stopListening(); stopSpeaking(); } }}
-                title={handsFree ? 'Κλείσε τη λειτουργία φωνής' : 'Λειτουργία φωνής (μίλα ελεύθερα)'} aria-label="Λειτουργία φωνής"
-                style={{ width: 30, height: 30, borderRadius: 10, border: 'none', background: handsFree ? 'var(--accent)' : 'transparent', color: handsFree ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              // Η αναμμένη κατάσταση περνά από γεμάτο πλακίδιο σε μελάνι accent: η `.po-ico` δεν έχει «πατημένο» και το κέρδος εδώ είναι ο στόχος αφής (ήταν 30)
+              <IconBtn onClick={() => { const next = !handsFree; setHandsFree(next); if (next && supportsSTT) { setOpen(true); startListening(); } else { stopListening(); stopSpeaking(); } }}
+                title={handsFree ? 'Κλείσε τη λειτουργία φωνής' : 'Λειτουργία φωνής (μίλα ελεύθερα)'} label="Λειτουργία φωνής"
+                tone={handsFree ? 'accent' : undefined}>
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 18 0" /><path d="M21 12v3a2 2 0 0 1-2 2h-1v-5h3z" /><path d="M3 12v3a2 2 0 0 0 2 2h1v-5H3z" /></svg>
-              </button>
+              </IconBtn>
             )}
-            <button onClick={() => setEditing(e => !e)} title={settingsTitle()} aria-label={settingsTitle()}
-              style={{ width: 30, height: 30, borderRadius: 10, border: 'none', background: editing ? 'var(--accent-dim)' : 'transparent', color: editing ? 'var(--accent)' : 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <IconBtn onClick={() => setEditing(e => !e)} title={settingsTitle()} label={settingsTitle()}
+              tone={editing ? 'accent' : undefined}>
               <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-            </button>
+            </IconBtn>
           </div>
           {(listening || speaking) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'var(--accent-dim)', borderBottom: '1px solid var(--border-subtle)' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: listening ? 'var(--negative)' : 'var(--accent)', animation: 'pa-pulse 1.1s infinite' }} />
               <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>{listening ? 'Ακούω…' : speakingLabel()}</span>
-              {speaking && <button onClick={stopSpeaking} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700 }}>Σταμάτα</button>}
+              {/* Το περιτύλιγμα κρατά την τυπογραφία των 12/700: το LinkBtn κληρονομεί γραμματοσειρά από τον γονέα του */}
+              {speaking && <span style={{ fontFamily: T.font.sans, fontSize: 12, fontWeight: 700 }}><LinkBtn onClick={stopSpeaking}>Σταμάτα</LinkBtn></span>}
             </div>
           )}
 
@@ -1571,8 +1669,13 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     σαν κείμενο και όχι σαν μήνυμα. Από κάτω, οι ερωτήσεις-εκκίνησης σε
                     στήλη: τέσσερις γραμμές που πατιούνται, χωρίς να μοιάζουν με μενού. */}
                 {msgs.length === 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <p style={{ ...TT.body, fontSize: 14, lineHeight: 1.6, margin: 0, maxWidth: '36ch' }}>{greeting}</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
+                    {/* ΤΟ ΣΤΕΝΟΤΕΡΟ ΚΕΙΜΕΝΟ ΤΗΣ ΕΦΑΡΜΟΓΗΣ. Ο χαιρετισμός της κενής
+                        κατάστασης είναι 159 χαρακτήρες σε μέτρο 36ch — μετρημένο,
+                        τέσσερις γραμμές μέσα σε πάνελ 390 και πέντε στα 288 του
+                        κινητού, με ριγμένη δεξιά άκρη. Η στοίχιση ΧΩΡΙΣ συλλαβισμό
+                        τεντώνει τα κενά, γι' αυτό η po-just πάει πάντα μαζί με hy(). */}
+                    <p className="po-just" style={{ ...TT.body, fontSize: 14, lineHeight: 1.6, margin: 0, maxWidth: '36ch' }}>{hy(greeting)}</p>
                     <div>
                       <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 6 }}>Ρώτα κάτι δικό σου</div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1607,15 +1710,19 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                       const c = findContact(ract.name);
                       const link = c ? buildReachLink(c, ract.channel, ract.text) : null;
                       if (!link?.url) return null;
-                      const style = { display: 'inline-flex', alignItems: 'center', gap: 6, height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid var(--accent)', background: 'var(--accent-dim)', color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' } as const;
-                      const inner = (<>{reachLabel(ract.channel, ract.name)}<svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>);
-                      return (ract.channel === 'call' || ract.channel === 'email')
-                        ? <a href={link.url} style={style}>{inner}</a>
-                        : <button onClick={() => window.open(link.url!, '_blank')} style={style}>{inner}</button>;
+                      // Ενα στοιχείο αντί για δύο: το `href` του Btn δίνει το <a> που ήθελε το tel:/mailto:
+                      // και το `newTab` κάνει ό,τι έκανε το window.open για WhatsApp/Viber.
+                      const sameTab = ract.channel === 'call' || ract.channel === 'email';
+                      return (
+                        <Btn variant="secondary" href={link.url} newTab={!sameTab}>
+                          {reachLabel(ract.channel, ract.name)}
+                          <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                        </Btn>
+                      );
                     })() : (() => {
                       const used = consumedActions.has(i);
                       return (
-                      <button disabled={used} onClick={() => { if (used) return; setConsumedActions(s => new Set(s).add(i)); runAction(m.action); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: `1px solid ${used ? 'var(--border-subtle)' : 'var(--accent)'}`, background: used ? 'var(--bg-elevated)' : 'var(--accent-dim)', color: used ? 'var(--text-tertiary)' : 'var(--accent)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 700, cursor: used ? 'default' : 'pointer' }}>
+                      <Btn variant="secondary" disabled={used} onClick={() => { if (used) return; setConsumedActions(s => new Set(s).add(i)); runAction(m.action); }}>
                         {m.action.type === 'scan' ? 'Σάρωσε έγγραφο'
                           : m.action.type === 'book' ? `Κλείσε ραντεβού: ${new Date(m.action.date).toLocaleDateString('el-GR')}`
                           : m.action.type === 'client' ? `Καταχώρησε: ${m.action.name}`
@@ -1629,7 +1736,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                           : m.action.type === 'feedback' ? 'Γράψε την αξιολόγησή σου'
                           : `Πήγαινε: ${navLabel(m.action.tab)}`}
                         <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                      </button>
+                      </Btn>
                       ); })()
                     )}
                   </div>
@@ -1656,13 +1763,19 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                   </div>
                 )}
                 {busy && <div style={{ display: 'flex', gap: 4, padding: '4px 2px' }}>{[0, 1, 2].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)', animation: `pa-bounce 1s ${i * 0.15}s infinite ease-in-out` }} />)}</div>}
+                {/* Το κουτί του σφάλματος μετρά 332 εικονοστοιχεία: πάνελ 390,
+                    μείον 32 το γέμισμα του σώματος, μείον 26 το δικό του. Το μήνυμα
+                    του κλειδιού είναι 126 χαρακτήρες στα 12 — τρεις γραμμές με
+                    ριγμένη δεξιά άκρη. Πάει πέρα πέρα με συλλαβισμό· τα μηνύματα
+                    μιας γραμμής από κάτω δεν επηρεάζονται, αφού η τελευταία γραμμή
+                    δεν τεντώνεται ποτέ. */}
                 {err && (
-                  <div style={{ background: err === 'key' ? 'var(--bg-elevated)' : 'var(--warning-soft)', border: `1px solid ${err === 'key' ? 'var(--border-subtle)' : 'var(--warning-border)'}`, borderRadius: T.radius.inner, padding: '10px 13px', fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    {err === 'key'
+                  <div className="po-just" style={{ background: err === 'key' ? 'var(--bg-elevated)' : 'var(--warning-soft)', border: `1px solid ${err === 'key' ? 'var(--border-subtle)' : 'var(--warning-border)'}`, borderRadius: T.radius.inner, padding: '10px 13px', fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    {hy(err === 'key'
                       ? noKeyNotice(prefs.formal)
                       : err === 'limit'
                         ? (limitMsg || 'Έφτασες το όριο ερωτήσεων. Ανανεώνεται σύντομα.')
-                        : 'Δεν μπόρεσα να απαντήσω τώρα, δοκίμασε ξανά σε λίγο.'}
+                        : 'Δεν μπόρεσα να απαντήσω τώρα, δοκίμασε ξανά σε λίγο.')}
                   </div>
                 )}
               </div>
@@ -1739,7 +1852,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            κάθε άλλη επιφάνεια που «πλέει» πάνω από το περιεχόμενο. */
         @keyframes pa-bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-5px);opacity:1}}
         @keyframes pa-pulse{0%,100%{opacity:1}50%{opacity:.35}}
-        .pa-fab-wrap{position:fixed;right:24px;bottom:var(--fab-gap);z-index:1200;display:flex;align-items:center}
+        .pa-fab-wrap{position:fixed;right:var(--fab-side);bottom:var(--fab-bottom);z-index:1200;display:flex;align-items:center}
         /* ΗΣΥΧΟ ΩΣ ΤΗ ΣΤΙΓΜΗ ΠΟΥ ΤΟ ΘΕΛΕΙΣ. Ήταν κορεσμένο γαλάζιο πλήκτρο με
            λευκό δίσκο, δηλαδή το πιο δυνατό στοιχείο κάθε οθόνης — πιο δυνατό
            από τα ποσά, τις προθεσμίες και το κύριο κουμπί της σελίδας. Ένας
@@ -1754,7 +1867,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            (μετρημένο σε αληθινά αγγίγματα: scripts/e2e-touch.mjs).
            Το user-select και το -webkit-touch-callout κόβουν την επιλογή
            κειμένου και το μενού της παρατεταμένης πίεσης πάνω στην πρόσκληση. */
-        .pa-fab{position:fixed;right:24px;bottom:var(--fab-gap);height:var(--fab-h);padding:0 20px 0 8px;border-radius:100px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text-primary);cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:var(--highlight-inset),var(--elev-1);z-index:1201;transition:background .18s ${T.ease.standard},border-color .18s ${T.ease.standard},color .18s ${T.ease.standard},box-shadow .2s ${T.ease.standard},transform .14s cubic-bezier(.2,0,0,1)}
+        .pa-fab{position:fixed;right:var(--fab-side);bottom:var(--fab-bottom);height:var(--fab-h);padding:0 20px 0 8px;border-radius:100px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text-primary);cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:var(--highlight-inset),var(--elev-1);z-index:1201;transition:background .18s ${T.ease.standard},border-color .18s ${T.ease.standard},color .18s ${T.ease.standard},box-shadow .2s ${T.ease.standard},transform .14s cubic-bezier(.2,0,0,1)}
         .pa-fab-wrap .pa-fab{position:relative;right:auto;bottom:auto}
         .pa-fab:hover,.pa-fab:focus-visible{background:var(--accent);border-color:var(--accent);color:var(--accent-text);box-shadow:var(--highlight-inset),var(--elev-3);transform:translateY(-1px)}
         .pa-fab:hover .pa-mark,.pa-fab:focus-visible .pa-mark{background:var(--accent-text);color:var(--accent)}
@@ -1773,6 +1886,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         .pa-fab-cta{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
         .pa-fab-close{padding:0;width:var(--fab-h);justify-content:center;background:var(--bg-surface);color:var(--text-secondary);border-color:var(--border-default)}
         .pa-fab-live{position:absolute;top:8px;left:34px;width:9px;height:9px;border-radius:50%;animation:pa-pulse 1.4s infinite}
+        /* Ο ΑΝΙΧΝΕΥΤΗΣ ΤΗΣ ΘΕΣΗΣ ΑΝΑΠΑΥΣΗΣ. Δεν φαίνεται, δεν πιάνει άγγιγμα και
+           δεν ζει πάνω από ένα καρέ: μπαίνει, μετριέται, φεύγει. Υπάρχει γιατί
+           το calc() και το env() ΔΕΝ διαβάζονται από το getComputedStyle ως
+           αριθμός — μόνο η γεωμετρία ενός αληθινού στοιχείου τα λύνει. */
+        .pa-fab-home{position:fixed;right:var(--fab-side);bottom:var(--fab-bottom);width:0;height:0;visibility:hidden;pointer-events:none}
         /* ΔΕΝ ΕΙΝΑΙ ΠΑΡΑΘΥΡΟ ΚΑΙ ΔΕΝ ΓΙΝΕΤΑΙ Modal. Δεν έχει scrim, δεν
            μπλοκάρει την εφαρμογή και δεν κεντράρεται: αγκυρώνεται στο πλωτό
            κουμπί (και το ακολουθεί όταν ο χρήστης το σύρει αλλού — panelFixed),
@@ -1790,9 +1908,10 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         @media (max-width:768px){
           /* Το ίδιο όριο ασφαλείας με την .app-content: η πλοήγηση από κάτω
              είναι ψηλότερη κατά τη μπάρα αφής του iPhone, οπότε το κουμπί
-             καθόταν 34 εικονοστοιχεία χαμηλότερα απ' όσο νόμιζε — πάνω της. */
-          .pa-fab-wrap{bottom:calc(82px + env(safe-area-inset-bottom, 0px));right:16px}
-          .pa-fab{bottom:calc(82px + env(safe-area-inset-bottom, 0px));right:16px}
+             καθόταν 34 εικονοστοιχεία χαμηλότερα απ' όσο νόμιζε — πάνω της.
+             Οι δύο τιμές ζουν πλέον στα --fab-bottom και --fab-side του
+             globals.css: τις ήθελε ΚΑΙ η JavaScript του κουμπώματος και δύο
+             αντίγραφα θα απέκλιναν — απέκλιναν ήδη μία φορά. */
           .pa-panel{right:8px;left:8px;bottom:78px;width:auto;max-width:none;height:min(560px,calc(100dvh - 100px))}
         }
         /* Η πρόσκληση μαζεύεται στο σήμα: μόλις κυλήσει η σελίδα και εξαρχής
@@ -1826,7 +1945,7 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
   const [formal, setFormal] = useState(draft.formal);
   const row = { display: 'flex', alignItems: 'center', gap: 12 } as const;
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
       <div>
         <div style={{ ...TT.h2, fontSize: 'var(--fs-base)' }}>{settingsTitle()}</div>
         <div style={{ ...TT.bodySm, marginTop: 4 }}>Πώς θέλεις να δουλεύει μαζί σου. Αλλάζει όποτε θες.</div>
@@ -1839,10 +1958,9 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
           {ADDRESS_OPTIONS.map(a => {
             const active = formal === a.value;
             return (
-              <button key={String(a.value)} onClick={() => setFormal(a.value)}
-                style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, fontFamily: T.font.sans, fontSize: 12, fontWeight: active ? 700 : 500, padding: '8px 14px', borderRadius: T.radius.pill, cursor: 'pointer', border: `1px solid ${active ? 'var(--accent)' : 'var(--border-default)'}`, background: active ? 'var(--accent)' : 'transparent', color: active ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
+              <ChipToggle key={String(a.value)} on={active} onClick={() => setFormal(a.value)}>
                 {a.label}<span style={{ fontSize: 'var(--fs-xs)', fontWeight: 500, opacity: 0.8 }}>{a.hint}</span>
-              </button>
+              </ChipToggle>
             );
           })}
         </div>
@@ -1858,13 +1976,16 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
           <Toggle on={memory} onChange={setMemory} ariaLabel="Μνήμη" />
         </div>
         {memory && hasMemory && (
-          <button onClick={onClearMemory} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--negative)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 600 }}>Σβήσε τη μνήμη αυτού του ακινήτου</button>
+          // Το περιτύλιγμα κρατά τη θέση με το alignSelf και την τυπογραφία που κληρονομεί το LinkBtn
+          <span style={{ alignSelf: 'flex-start', fontFamily: T.font.sans, fontSize: 12, fontWeight: 600 }}>
+            <LinkBtn tone="danger" onClick={onClearMemory}>Σβήσε τη μνήμη αυτού του ακινήτου</LinkBtn>
+          </span>
         )}
         {memory && facts.length > 0 && (
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '11px 12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
               <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)' }}>Τι θυμάται για σένα</div>
-              <button onClick={onForgetAllFacts} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 600 }}>Ξέχασέ τα όλα</button>
+              <span style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 600 }}><LinkBtn tone="quiet" onClick={onForgetAllFacts}>Ξέχασέ τα όλα</LinkBtn></span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {facts.map(f => (
@@ -1888,8 +2009,11 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-        <button onClick={onCancel} style={{ flex: '0 0 auto', height: T.h.lg, padding: '0 18px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, cursor: 'pointer' }}>Ακύρωση</button>
-        <button onClick={() => onSave({ memory, compare, formal })} style={{ flex: 1, height: T.h.lg, borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 700, cursor: 'pointer' }}>Αποθήκευση</button>
+        <Btn variant="secondary" size="lg" onClick={onCancel}>Ακύρωση</Btn>
+        {/* Το flex: 1 μετακόμισε στο περιτύλιγμα και το `field` δίνει στο κουμπί όλο το πλάτος με ύψος πεδίου */}
+        <div style={{ flex: 1 }}>
+          <Btn variant="primary" field onClick={() => onSave({ memory, compare, formal })}>Αποθήκευση</Btn>
+        </div>
       </div>
     </div>
   );

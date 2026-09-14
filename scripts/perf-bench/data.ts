@@ -19,7 +19,6 @@
 export const YEAR = 2026;
 
 const TYPES = ['apartment', 'maisonette', 'studio', 'shop', 'office'];
-const STATUSES = ['rented', 'vacant', 'renovation', 'own_use'];
 
 export interface Bench {
   properties: Array<{ id: string; name: string; prop_type: string; address: string; target_rent: number; value: number }>;

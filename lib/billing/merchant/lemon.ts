@@ -19,7 +19,7 @@ import {
 } from '../lemonPlanChange';
 import { verifySignature, SIGNATURE_HEADER, SECRET_ENV } from '../lemonSignature';
 import { readSubscriptionEvent, carriesSubscription, parseVariantMap, planOfVariant } from '../lemon';
-import { PAYMENTS_PROVIDER } from '@/lib/legal/merchant';
+import { MERCHANT_NAMES } from '@/lib/legal/merchant';
 import type {
   BillingEnv, MerchantPort, CheckoutOrder, ChangeOrder, CheckoutResult, PortalResult, ChangeResult, ReadEvent,
 } from './port';
@@ -31,7 +31,7 @@ const VARIANTS_ENV = 'LEMON_VARIANTS';
 
 export const lemonPort: MerchantPort = {
   id: 'lemon',
-  name: PAYMENTS_PROVIDER,
+  name: MERCHANT_NAMES.lemon,
 
   isLive: (env) => checkoutIsLive(env),
 

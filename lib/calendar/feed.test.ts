@@ -39,7 +39,7 @@ eq(icsStamp(NOW), '20260821T093000Z', 'η στιγμή έκδοσης σε UTC')
 
 // ── Το ημερολόγιο ──────────────────────────────────────────────────────────
 const items: FeedItem[] = [
-  { uid: 'bill-1@properwise', date: '2026-09-05', title: 'ΔΕΗ, λογαριασμός', note: 'Ποσό 87,45 €' },
+  { uid: 'bill-1@properwise', date: '2026-09-05', title: 'ΔΕΗ, λογαριασμός', note: 'Ποσό 87,45€' },
   { uid: 'rent-1@properwise', date: '2026-09-01', title: 'Ενοίκιο Σεπτεμβρίου' },
 ];
 const ics = buildCalendarFeed(items, { name: 'PROPERWISE · Προθεσμίες', now: NOW });

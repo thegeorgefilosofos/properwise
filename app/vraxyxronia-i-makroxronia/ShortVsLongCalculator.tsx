@@ -21,6 +21,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
 import { T, feAuto, fp, fixedCols } from '@/components/tokens';
+import { ChipToggle } from '@/components/Theme';
 import { fn, feSigned } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { compareShortVsLong, netByOccupancy, NIGHTS_PER_YEAR, HIGH_SEASON_NIGHTS, type SeasonSpread } from '@/lib/tools/shortVsLong';
@@ -91,18 +92,6 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
     display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
     textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8,
   };
-  // Ίδιο σχήμα με τους επιλογείς της εφαρμογής: ενεργό γεμάτο, ανενεργό διάφανο.
-  // Τα δύο κουμπιά της σεζόν είναι αυτοτελή χειριστήρια, όχι λέξεις σε πρόταση:
-  // παίρνουν το κοινό ιδίωμα των 44 εικονοστοιχείων σε συσκευή αφής. Στα 40 που
-  // είχαν, δύο κουμπιά κολλητά σε τηλέφωνο αστοχούν το ένα στο άλλο.
-  const segStyle = (on: boolean): React.CSSProperties => ({
-    height: T.h.sm, padding: '0 14px', borderRadius: T.radius.inner, border: 'none',
-    background: on ? 'var(--accent)' : 'transparent',
-    color: on ? 'var(--accent-text)' : 'var(--text-secondary)',
-    fontSize: 13, fontWeight: 600, fontFamily: T.font.sans, cursor: 'pointer',
-    whiteSpace: 'nowrap', transition: 'background-color 0.15s, color 0.15s',
-  });
-
   const unit: React.CSSProperties = {
     position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)',
     color: 'var(--text-tertiary)', fontSize: 14, pointerEvents: 'none',
@@ -128,8 +117,23 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
              Οκτώ πεδία είναι περισσότερα από τους άλλους δύο υπολογιστές και
              είναι τα ΛΙΓΟΤΕΡΑ που δίνουν τίμια απάντηση: χωρίς προμήθεια και
              λειτουργικά, η σύγκριση γέρνει ψευδώς προς τη βραχυχρόνια, που
-             είναι ακριβώς το λάθος για το οποίο υπάρχει η σελίδα. */}
-      <div {...fixedCols(2, 14, 'start', 'po-tool-controls')}>
+             είναι ακριβώς το λάθος για το οποίο υπάρχει η σελίδα.
+
+             ΟΚΤΩ ΠΕΔΙΑ ΣΕ ΔΥΟ ΣΤΗΛΕΣ ΕΙΝΑΙ ΤΕΣΣΕΡΙΣ ΣΕΙΡΕΣ, ΚΑΙ ΦΑΙΝΟΝΤΑΝ.
+             Στα 1440 το δοχείο μετρά 1044: με δύο στήλες κάθε πεδίο έπαιρνε 515
+             εικονοστοιχεία —διπλάσια από όσα χρειάζεται ένα κουτί αριθμού— και
+             η φόρμα κατέβαινε τέσσερις σειρές, σπρώχνοντας το αποτέλεσμα εκτός
+             οθόνης. Τέσσερις στήλες δίνουν 4+4 σε δύο ζυγισμένες σειρές, με 250
+             ανά πεδίο. Το `fc-roomy` κρατά δύο στήλες στη ζώνη 821–1000, όπου
+             οι τέσσερις θα στένευαν τις μακριές ετικέτες
+             («Καθαριότητα ανά διανυκτέρευση»).
+
+             ΚΑΙ Η ΣΤΟΙΧΙΣΗ ΠΑΕΙ ΣΤΟ ΚΑΤΩ ΑΚΡΟ. Στη ζώνη 1001–1060 το πεδίο
+             πέφτει στα 216 και η «Καθαριότητα ανά διανυκτέρευση» τυλίγεται:
+             με στοίχιση στην αρχή κατέβαινε ΜΟΝΟ το δικό της κουτί κατά μία
+             γραμμή, δηλαδή η σειρά έσπαγε σε τρεις στάθμες. Κανένα πεδίο εδώ
+             δεν έχει σημείωση από κάτω. */}
+      <div {...fixedCols(4, 14, 'end', 'po-tool-controls fc-roomy')}>
         {num(ids.rent, 'enoikio', 'Μηνιαίο ενοίκιο', '€')}
         {num(ids.price, 'timi', 'Τιμή ανά διανυκτέρευση', '€')}
         {num(ids.occ, 'plirotita', 'Πληρότητα', '%')}
@@ -151,7 +155,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
           πολλαπλασιασμένη επί τριακόσιες εξήντα πέντε. Το εργαλείο ζητά ρητά τον
           μέσο όρο, γιατί αλλιώς παράγει το ίδιο ακριβώς λάθος που υπάρχει για
           να διορθώσει. */}
-      <p className="po-tool-controls" style={{ margin: '10px 0 0', fontSize: 12, lineHeight: 1.7, color: 'var(--text-tertiary)' }}>
+      <p className="po-tool-controls po-prose" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
         Η τιμή είναι η δική σου ανά διανυκτέρευση· ο επισκέπτης πληρώνει επιπλέον το τέλος
         ανθεκτικότητας, που εσύ το αποδίδεις. Στη βραχυχρόνια η τιμή αλλάζει με την εποχή και τη
         ζήτηση: βάλε τον μέσο όρο που πιάνεις, όχι την τιμή της αιχμής. Τα πάγια είναι ρεύμα, νερό
@@ -187,7 +191,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         </div>
         {/* ── Η ΕΝΕΡΓΗ ΕΠΙΛΟΓΗ ΔΕΝ ΛΕΓΕΤΑΙ ΜΟΝΟ ΜΕ ΧΡΩΜΑ ─────────────────────
                Τα δύο κουμπιά δήλωναν ποιο είναι πατημένο αποκλειστικά με το
-               φόντο που δίνει το segStyle. Μετρημένο σε πραγματικό Chromium,
+               φόντο του τοπικού στυλ. Μετρημένο σε πραγματικό Chromium,
                aria-pressed, aria-selected και aria-current ήταν και τα τρία
                κενά: ο αναγνώστης οθόνης άκουγε δύο ίδια κουμπιά και καμία
                κατάσταση, δηλαδή η παραδοχή που αλλάζει το τέλος ανθεκτικότητας
@@ -203,8 +207,10 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             Πάνω από εκεί τα δύο χωράνε δίπλα και τίποτα δεν αλλάζει. */}
         <div className="po-seg" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 4, background: 'var(--bg-surface)',
           border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-          <button type="button" onClick={() => set('sezon', 'even')} aria-pressed={input.season === 'even'} className="po-tap" style={segStyle(input.season === 'even')}>Όλο τον χρόνο</button>
-          <button type="button" onClick={() => set('sezon', 'high')} aria-pressed={input.season === 'high'} className="po-tap" style={segStyle(input.season === 'high')}>Κυρίως το καλοκαίρι</button>
+          {/* `seg` γιατί η ράγα από πάνω έχει ήδη δικό της περίγραμμα. Το aria-pressed
+              το βάζει πλέον μόνο του το πρωτογενές, με την ίδια συνθήκη που δίνει το χρώμα. */}
+          <ChipToggle shape="seg" on={input.season === 'even'} onClick={() => set('sezon', 'even')}>Όλο τον χρόνο</ChipToggle>
+          <ChipToggle shape="seg" on={input.season === 'high'} onClick={() => set('sezon', 'high')}>Κυρίως το καλοκαίρι</ChipToggle>
         </div>
       </div>
 
@@ -278,12 +284,11 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
              πίνακας διαβάζεται ως αφαίρεση που κλείνει: εισπράξεις μείον τα
              τέσσερα δίνουν ακριβώς τα καθαρά. Ένας πίνακας που δεν κλείνει
              μπροστά στον αναγνώστη είναι χειρότερος από κανέναν πίνακα. */}
-      <div style={{ marginTop: 26 }}>
-        <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="pin-1" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 380, tableLayout: 'fixed' }}>
-            <caption style={{ captionSide: 'top', textAlign: 'left', fontSize: 11, fontWeight: 700,
-              letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-              paddingBottom: 10 }}>
+      <div style={{ marginTop: T.sp.xxl }}>
+        <div className="po-table-box">
+         <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
+          <table className="po-table" style={{ '--tbl-min': '380px', tableLayout: 'fixed' }}>
+            <caption>
               Πού πάνε τα χρήματα, τον χρόνο
             </caption>
             {/* ΟΙ ΔΥΟ ΠΛΕΥΡΕΣ ΤΗΣ ΣΥΓΚΡΙΣΗΣ ΕΠΑΙΡΝΑΝ ΔΙΑΦΟΡΕΤΙΚΟ ΠΛΑΤΟΣ.
@@ -300,9 +305,10 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col" style={th}> </th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Μακροχρόνια</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Βραχυχρόνια</th>
+                {/* Η γωνία δεν λέει τίποτα στο μάτι· στον αναγνώστη οθόνης λέει τι είναι η στήλη. */}
+                <th scope="col"><span className="sr-only">Κατηγορία</span></th>
+                <th scope="col" className="num">Μακροχρόνια</th>
+                <th scope="col" className="num">Βραχυχρόνια</th>
               </tr>
             </thead>
             <tbody>
@@ -314,6 +320,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
               <Line k="Καθαρά" a={r.long.net} b={r.short.net} strong />
             </tbody>
           </table>
+         </div>
         </div>
       </div>
 
@@ -325,14 +332,11 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
           μονάδες — και δεν ζητούν τίποτα παραπάνω από τον χρήστη.
           Η γραμμή που περνά το κατώφλι σημειώνεται με την ίδια απαλή επιφάνεια
           που χρησιμοποιεί ο υπολογιστής φόρου για το ενεργό κλιμάκιο. */}
-      <div style={{ marginTop: 26 }}>
-        <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="pin-1" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 500, tableLayout: 'fixed' }}>
-            <caption style={{ captionSide: 'top', textAlign: 'left', fontSize: 11, fontWeight: 700,
-              letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-              paddingBottom: 10 }}>
-              Αν πέσεις έξω στην πληρότητα
-            </caption>
+      <div style={{ marginTop: T.sp.xxl }}>
+        <div className="po-table-box">
+         <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
+          <table className="po-table" style={{ '--tbl-min': '500px', tableLayout: 'fixed' }}>
+            <caption>Αν πέσεις έξω στην πληρότητα</caption>
             {/* ΚΑΙ ΟΙ ΤΕΣΣΕΡΙΣ ΣΤΗΛΕΣ ΕΙΝΑΙ ΑΡΙΘΜΟΙ, ΑΡΑ ΙΣΕΣ ΚΑΙ ΔΕΞΙΑ.
                 Μετρημένο στα 1280: 175,4 · 246 · 311,9 · 310,7. Τέσσερα
                 διαφορετικά πλάτη για το ίδιο είδος περιεχομένου, με την
@@ -348,28 +352,27 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Πληρότητα</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Διανυκτερεύσεις</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Καθαρά βραχυχρόνιας</th>
-                <th scope="col" style={{ ...th, textAlign: 'right' }}>Έναντι μακροχρόνιας</th>
+                <th scope="col" className="num">Πληρότητα</th>
+                <th scope="col" className="num">Διανυκτερεύσεις</th>
+                <th scope="col" className="num">Καθαρά βραχυχρόνιας</th>
+                <th scope="col" className="num">Έναντι μακροχρόνιας</th>
               </tr>
             </thead>
             <tbody>
               {curve.map(row => {
                 const ahead = row.net >= r.long.net;
                 return (
-                  <tr key={row.pct} style={{ background: ahead ? 'var(--accent-soft)' : 'transparent' }}>
-                    <td style={{ ...numTd,
-                      fontWeight: ahead ? 650 : 400, color: ahead ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fp(row.pct)}</td>
-                    <td style={numTd}>{fn(row.nights)}</td>
-                    <td style={{ ...numTd, fontWeight: ahead ? 650 : 400,
-                      color: ahead ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{feAuto(row.net)}</td>
-                    <td style={numTd}>{feSigned(row.net - r.long.net)}</td>
+                  <tr key={row.pct} className={ahead ? 'is-on' : undefined}>
+                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{fp(row.pct)}</td>
+                    <td className="num">{fn(row.nights)}</td>
+                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{feAuto(row.net)}</td>
+                    <td className="num">{feSigned(row.net - r.long.net)}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+         </div>
         </div>
       </div>
 
@@ -377,19 +380,18 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ──────────────────────────────────────────── */}
       <div className="po-tool-note" style={{
-        marginTop: 22, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
+        marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-primary)' }}>Τι δεν περιλαμβάνει.</strong>{' '}
-          Θεωρεί <strong>φυσικό πρόσωπο με έως δύο ακίνητα</strong>, που δεν παρέχει υπηρεσίες
-          πέρα από τα κλινοσκεπάσματα: γι’ αυτό ισχύει η τεκμαρτή έκπτωση 5% και το τέλος
-          παρεπιδημούντων είναι μηδέν. Με <strong>τρία ακίνητα και πάνω</strong> η δραστηριότητα
-          γίνεται επιχειρηματική, οπότε αλλάζει η κλίμακα, χάνεται η έκπτωση 5% και προστίθενται
-          τέλος παρεπιδημούντων 0,5%, ΦΠΑ 13% και βιβλία κατά τα ΕΛΠ. Οι συντελεστές του τέλους ανθεκτικότητας είναι οι{' '}
-          <strong>ενδεικτικοί του 2025</strong>: τα ακριβή ποσά και οι μήνες ορίζονται από την ΑΑΔΕ.
-          Δεν περιλαμβάνει ΕΝΦΙΑ, ασφάλιση, έπιπλα και εξοπλισμό, κενά διαστήματα λόγω ανακαίνισης,
-          ούτε τον χρόνο που θα δώσεις εσύ στη διαχείριση. <EstimateNote />
+          Υποθέτει <strong>φυσικό πρόσωπο με έως δύο ακίνητα</strong>, χωρίς υπηρεσίες πέρα από
+          τα κλινοσκεπάσματα: τεκμαρτή έκπτωση 5%, τέλος παρεπιδημούντων μηδέν. Από{' '}
+          <strong>τρία και πάνω</strong> η δραστηριότητα γίνεται επιχειρηματική: άλλη κλίμακα,
+          καμία έκπτωση, συν παρεπιδημούντων 0,5%, ΦΠΑ 13% και βιβλία ΕΛΠ. Οι συντελεστές του
+          τέλους ανθεκτικότητας είναι <strong>ενδεικτικοί του 2025</strong>: τα ακριβή ποσά και
+          τους μήνες τα ορίζει η ΑΑΔΕ. Απ’ έξω: ΕΝΦΙΑ, ασφάλιση, έπιπλα και εξοπλισμός, κενά
+          ανακαίνισης, ο χρόνος σου. <EstimateNote />
         </p>
       </div>
 
@@ -431,7 +433,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
 
       <ToolCta
         title="Η απόφαση παίρνεται μία φορά, η διαχείριση κάθε μέρα."
-        body="Το PROPERWISE καταγράφει κρατήσεις, ενοίκια και δαπάνες στο ίδιο σημείο, υπολογίζει το τέλος ανθεκτικότητας ανά διανυκτέρευση και προετοιμάζει τη δήλωση με τα πραγματικά σου δεδομένα."
+        body="Το PROPERWISE έχει κρατήσεις, ενοίκια και δαπάνες σε ένα σημείο, βγάζει το τέλος ανθεκτικότητας ανά διανυκτέρευση και ετοιμάζει τη δήλωση με τα δικά σου δεδομένα."
       />
     </div>
   );
@@ -442,26 +444,23 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
 // εικονοστοιχεία μέσα σε κελί 88 στα 390: ξεχυνόταν πάνω στη διπλανή στήλη.
 // Μετρημένο: επτά κελιά ξεχείλιζαν στα 360. Δύο γραμμές επικεφαλίδας κοστίζουν
 // λιγότερο από 250 εικονοστοιχεία οριζόντιας κύλισης.
-const th: React.CSSProperties = {
-  textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 700,
-  letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)',
-  borderBottom: '1px solid var(--border-default)', lineHeight: 1.3,
-};
-const td: React.CSSProperties = {
-  padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)',
-};
-const numTd: React.CSSProperties = {
-  ...td, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums',
-};
-
 function Line({ k, a, b, strong }: { k: string; a: number; b: number; strong?: boolean }) {
   const weight = strong ? 700 : 400;
   const ink = strong ? 'var(--text-primary)' : 'var(--text-secondary)';
+  // ── Η ΕΤΙΚΕΤΑ ΤΗΣ ΓΡΑΜΜΗΣ ΕΙΝΑΙ ΚΕΦΑΛΙΔΑ, ΟΧΙ ΚΕΛΙ ─────────────────────────
+  // Γραφόταν `<td>`. Δύο συνέπειες· κι οι δύο μετρημένες:
+  //   · Ο αναγνώστης οθόνης διάβαζε σκέτο ποσό χωρίς να πει ΠΟΙΟΥ πράγματος.
+  //     Ενα `<th scope="row">` το λέει μία φορά κι για κάθε κελί της σειράς.
+  //   · Ο πίνακας κυλά οριζόντια σε στενή οθόνη — μετρημένο 102 εικονοστοιχεία
+  //     στα 320. Ο κανόνας που καρφώνει την πρώτη στήλη πιάνει `th[scope="row"]`,
+  //     οπότε το `td` γλιστρούσε έξω κι τα δύο ποσά έμεναν χωρίς όνομα. Ο σαρωτής
+  //     διάταξης το ονόμασε «ΧΑΝΕΤΑΙ Η ΤΑΥΤΟΤΗΤΑ ΤΗΣ ΓΡΑΜΜΗΣ» σε εννέα πλάτη.
+  // Η σωστή σημασιολογία κι η σωστή συμπεριφορά ήταν το ΙΔΙΟ πράγμα.
   return (
-    <tr>
-      <td style={{ ...td, fontWeight: strong ? 650 : 400, color: ink }}>{k}</td>
-      <td style={{ ...numTd, fontWeight: weight, color: ink }}>{feAuto(a)}</td>
-      <td style={{ ...numTd, fontWeight: weight, color: ink }}>{feAuto(b)}</td>
+    <tr className={strong ? 'is-total' : undefined}>
+      <th scope="row" style={{ fontWeight: strong ? 600 : 400, color: ink }}>{k}</th>
+      <td className="num" style={{ fontWeight: weight, color: ink }}>{feAuto(a)}</td>
+      <td className="num" style={{ fontWeight: weight, color: ink }}>{feAuto(b)}</td>
     </tr>
   );
 }

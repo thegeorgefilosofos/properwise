@@ -33,7 +33,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenseStore from '@/lib/data/expenses'
 import * as billStore from '@/lib/data/bills'
-import { T, fe, fixedCols, Skeleton } from '@/components/Theme';
+import { T, fe, fixedCols, Skeleton, Btn } from '@/components/Theme';
 import { mergeLedger, type LedgerEntry } from '@/lib/expenses/ledger';
 import { cadenceLabel } from '@/lib/expenses/expected';
 import { contractOverview, totalMonthly, CONTRACT_EMPTY_HINT, CONTRACT_LABEL, type ContractCard, type ContractKind } from '@/lib/contracts/overview';
@@ -64,7 +64,7 @@ interface StripData {
    * Ήταν `sum(λογαριασμοί με recurring)` με ετικέτα «/ μήνα». Κάθε γραμμή του
    * `bills` όμως είναι ΜΙΑ ΠΕΡΙΟΔΟΣ — ο χρήστης διαλέγει «Ιούλιος 2026» — και το
    * `recurring` είναι χαρακτηρισμός («Πάγιο» απέναντι σε «Εφάπαξ»), όχι
-   * πρόγραμμα. Δώδεκα λογαριασμοί ΔΕΗ των 100 € έδειχναν «1.200 € / μήνα».
+   * πρόγραμμα. Δώδεκα λογαριασμοί ΔΕΗ των 100€ έδειχναν «1.200€ / μήνα».
    */
   recurringPerMonth: number | null;
   /** Οι κάρτες συμβολαίων, υπολογισμένες από το ίδιο ιστορικό. */
@@ -92,7 +92,7 @@ interface StripData {
  * περίγραμμα και το ίδιο ύψος: αλλιώς το πλέγμα «χοροπηδά» ανάλογα με το τι
  * έχει καταχωρήσει ο χρήστης και η οθόνη μοιάζει διαφορετική σε κάθε ακίνητο.
  *
- * ΤΟ ΑΓΝΩΣΤΟ ΔΕΝ ΓΡΑΦΕΤΑΙ ΜΗΔΕΝ. Ένα «0,00 €» στο αέριο σημαίνει «δεν πληρώνω
+ * ΤΟ ΑΓΝΩΣΤΟ ΔΕΝ ΓΡΑΦΕΤΑΙ ΜΗΔΕΝ. Ένα «0,00€» στο αέριο σημαίνει «δεν πληρώνω
  * αέριο», ενώ η αλήθεια είναι «δεν ξέρω ακόμη». Η κενή κάρτα λέει τι λείπει και
  * πώς μπαίνει — με τον δρόμο που δεν απαιτεί πληκτρολόγηση.
  */
@@ -100,8 +100,8 @@ function ContractTile({ card, active, onOpen }: { card: ContractCard; active: bo
   const [hover, setHover] = useState(false);
   const raised = hover || active;
   // Ο ΚΥΚΛΟΣ ΛΕΓΕΤΑΙ ΟΤΑΝ ΔΕΝ ΕΙΝΑΙ Ο ΑΥΤΟΝΟΗΤΟΣ. Το ποσό της κάρτας είναι ΑΝΑ
-  // ΜΗΝΑ: ένα ασφάλιστρο 240 € τον χρόνο γράφεται 20,00 €. Χωρίς τον κύκλο
-  // δίπλα, ο ιδιοκτήτης θα έψαχνε χρέωση 20 € που δεν υπάρχει πουθενά. Το
+  // ΜΗΝΑ: ένα ασφάλιστρο 240€ τον χρόνο γράφεται 20,00€. Χωρίς τον κύκλο
+  // δίπλα, ο ιδιοκτήτης θα έψαχνε χρέωση 20€ που δεν υπάρχει πουθενά. Το
   // «κάθε μήνα» παραλείπεται εδώ γιατί το ίδιο το ποσό το γράφει πια δίπλα του.
   // Η διατύπωση έρχεται από το lib/expenses/expected.ts, μία φορά.
   const period = card.everyMonths === 1 ? '' : cadenceLabel(card.everyMonths);
@@ -126,7 +126,7 @@ function ContractTile({ card, active, onOpen }: { card: ContractCard; active: bo
       {/* ══ Ο ΤΙΤΛΟΣ ΚΑΙ ΤΟ ΠΟΣΟ ΕΠΑΨΑΝ ΝΑ ΜΟΙΡΑΖΟΝΤΑΙ ΓΡΑΜΜΗ ═══════════════
           Ηταν `justify-content: space-between` σε μία σειρά: τίτλος αριστερά,
           ποσό δεξιά. Οσο ο τίτλος ήταν κοντός δούλευε· «ΣΤΑΘΕΡΟ ΚΑΙ INTERNET»
-          όμως δεν χωρά δίπλα σε «4,98 €» και τυλιγόταν γύρω του, με το «INTERNET»
+          όμως δεν χωρά δίπλα σε «4,98€» και τυλιγόταν γύρω του, με το «INTERNET»
           να πέφτει κάτω από το «ΣΤΑΘΕΡΟ ΚΑΙ» και το ποσό να κρέμεται στα δεξιά.
           Δίπλα του, οι κάρτες χωρίς ποσό είχαν τον τίτλο μόνο του σε ολόκληρη
           γραμμή: οκτώ κάρτες, δύο διαφορετικές γεωμετρίες.
@@ -134,7 +134,7 @@ function ContractTile({ card, active, onOpen }: { card: ContractCard; active: bo
           Τώρα κάθε κάρτα έχει την ίδια στοίβα, με ή χωρίς ποσό:
 
               ΕΤΙΚΕΤΑ            ← πάντα μόνη της, σε όλο το πλάτος
-              45,68 € τον μήνα   ← το μοναδικό μεγάλο νούμερο
+              45,68€ τον μήνα   ← το μοναδικό μεγάλο νούμερο
               κάθε δίμηνο · 4    ← στο κάτω μέρος, ίδια θέση παντού
 
           Ο τίτλος δεν παλεύει ποτέ με τον αριθμό και οι δύο μορφές κάρτας
@@ -150,11 +150,11 @@ function ContractTile({ card, active, onOpen }: { card: ContractCard; active: bo
           /* ═══ ΤΟ «ΤΟΝ ΜΗΝΑ» ΔΕΝ ΕΙΝΑΙ ΠΕΡΙΤΤΟ, ΚΑΙ ΤΟ ΕΔΕΙΞΕ Η ΙΔΙΑ Η ΚΑΡΤΑ ═══
              Το ποσό είναι ΑΝΑ ΜΗΝΑ και από κάτω του γράφεται «κάθε δίμηνο · 4
              περίοδοι». Δύο γραμμές, η μία με νούμερο και η άλλη με περίοδο: ο
-             αναγνώστης διαβάζει «34,50 € κάθε δίμηνο», δηλαδή το μισό από την
+             αναγνώστης διαβάζει «34,50€ κάθε δίμηνο», δηλαδή το μισό από την
              αλήθεια.
 
              ΤΟ ΝΟΥΜΕΡΟ ΤΗΣ ΚΕΦΑΛΙΔΑΣ ΕΙΝΑΙ ΤΟ ΑΘΡΟΙΣΜΑ ΤΟΥΣ. Χωρίς τη μονάδα, το
-             «75,00 € τον μήνα» φαινόταν να μην προκύπτει από πουθενά: 34,50 και
+             «75,00€ τον μήνα» φαινόταν να μην προκύπτει από πουθενά: 34,50 και
              40,50 «κάθε δίμηνο» δίνουν 37,50 τον μήνα, όχι 75. Με τη μονάδα, η
              πρόσθεση γίνεται με το μάτι. */
           <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
@@ -212,7 +212,7 @@ export default function TabBills({
       // απαντήσεις στην ίδια ερώτηση, στην ίδια οθόνη.
       setStrip({ recurringPerMonth: totalMonthly(cards) || null, cards });
     } catch (_) {} finally { setStripLoading(false); }
-  }, [propertyId]);
+  }, [propertyId, supabase, userId]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -223,7 +223,7 @@ export default function TabBills({
       .subscribe();
     channelRef.current = ch;
     return () => { mounted = false; supabase.removeChannel(ch); channelRef.current = null; };
-  }, [propertyId, loadStrip]);
+  }, [propertyId, loadStrip, supabase]);
 
   // Η ΠΡΩΤΗ ΦΟΡΤΩΣΗ ΔΕΝ ΕΙΝΑΙ ΔΟΥΛΕΙΑ ΤΗΣ ΣΥΝΔΡΟΜΗΣ. Ηταν γραμμένη μέσα στο ίδιο
   // effect που ανοίγει το κανάλι realtime, δηλαδή δύο άσχετες δουλειές με ένα
@@ -325,12 +325,11 @@ export default function TabBills({
               και γι᾽ αυτό το «Νερό» άνοιγε «Πάροχοι». */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, minWidth: 0 }}>{CONTRACT_LABEL[tool]}</span>
-            <button type="button" onClick={() => setTool(null)}
-              style={{ height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: T.font.sans, flexShrink: 0 }}>
+            <Btn variant="secondary" onClick={() => setTool(null)}>
               Κλείσιμο
-            </button>
+            </Btn>
           </div>
-          <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 18, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
+          <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
             {tool === 'electricity'   && <BillsElectricity propertyId={propertyId} userId={userId} onNavigateTab={t => openTool(t as ContractKind)}/>}
             {/* Ο ίδιος λογαριασμός ζεσταίνει το σπίτι: το αέριο και ο τρόπος
                 θέρμανσης απαντούν στην ίδια ερώτηση και μπαίνουν μαζί. */}

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import {
   MAX_PER_MINUTE, PLAN_RANK_ORDER,
   dailyLimitsByRank, monthlyLimitsByRank, FREE_POOL_PER_MONTH, TRIAL_LIMITS, TESTER_LIMITS,
   dailyExhaustedMessage, monthlyExhaustedMessage, poolExhaustedMessage,
 } from '@/lib/billing/aiLimits';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
+import {
+  UPSTREAM_TIMEOUT_MS, upstreamFailure,
+  TIMEOUT_FAILURE, NETWORK_FAILURE, UNREADABLE_FAILURE,
+} from '@/lib/assistant/upstream';
+import { refundAiUsage } from '@/lib/billing/aiRefund';
 
 // Rate limiting: simple in-memory store (για production χρησιμοποίησε Redis)
 // ΣΗΜ.: σε serverless/πολλαπλά instances αυτό είναι ανά-instance. Είναι φράγμα
@@ -45,6 +51,19 @@ const MAX_REQUESTS_PER_DAY = Math.max(...dailyLimitsByRank());
 // και ΔΕΝ προωθούμε αυθαίρετα πεδία, μόνο μια λίστα επιτρεπτών.
 const MAX_BODY_BYTES = 12 * 1024 * 1024; // ~12MB: αρκετό για φωτογραφία/PDF λογαριασμού
 const MAX_MESSAGES   = 40;
+
+// ── ΠΟΣΟ ΖΕΙ ΑΥΤΗ Η ΣΥΝΑΡΤΗΣΗ ────────────────────────────────────────────────
+// Η διαδρομή ΔΕΝ δήλωνε όριο, οπότε ίσχυε η προεπιλογή της πλατφόρμας — ένα
+// νούμερο που δεν φαίνεται πουθενά στον κώδικα και αλλάζει με το πακέτο
+// φιλοξενίας. Δηλωμένο εδώ, το περιθώριο γίνεται μετρήσιμο: το UPSTREAM_TIMEOUT_MS
+// κόβει τον πάροχο στα σαράντα πέντε δευτερόλεπτα και μένουν δεκαπέντε για την
+// επιστροφή της χρέωσης και για την απάντηση σφάλματος. Το τεστ
+// lib/assistant/upstream.test.ts κρατά τη σχέση των δύο νούμερων.
+//
+// ΠΡΟΣΟΧΗ ΣΤΟ ΠΑΚΕΤΟ ΦΙΛΟΞΕΝΙΑΣ: τα εξήντα δευτερόλεπτα πρέπει να τα επιτρέπει
+// το πλάνο του Vercel. Αν δεν τα επιτρέπει, ΚΑΤΕΒΑΙΝΟΥΝ ΚΑΙ ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ μαζί
+// (εδώ και στο UPSTREAM_TIMEOUT_MS), ώστε το περιθώριο να μείνει.
+export const maxDuration = 60;
 // Καθαρίζουμε παλιές εγγραφές ρυθμού ώστε το Map να μη μεγαλώνει ασταμάτητα.
 function sweepRateLimit(now: number) {
   if (rateLimit.size < 5000) return;
@@ -52,6 +71,15 @@ function sweepRateLimit(now: number) {
 }
 
 export async function POST(req: NextRequest) {
+  // ── ΑΠΟ ΠΟΥ ΗΡΘΕ ────────────────────────────────────────────
+  // ΑΥΤΗ Η ΔΙΑΔΡΟΜΗ ΞΟΔΕΥΕΙ ΧΡΗΜΑΤΑ ΣΕ ΚΑΘΕ ΚΛΗΣΗ. Το φράγμα κόστους μετρά
+  // ανά χρήστη (`bump_ai_usage`), οπότε χωρίς έλεγχο προέλευσης μια ξένη
+  // σελίδα άδειαζε το μηνιαίο υπόλοιπο κάθε συνδεδεμένου επισκέπτη της με το
+  // cookie του — και ο λογαριασμός του παρόχου AI τον πληρώνει ο ιδιοκτήτης.
+  if (!sameOrigin(req.headers)) {
+    return NextResponse.json({ error: ORIGIN_DENIED }, { status: 403 });
+  }
+
   // ── Auth check ──────────────────────────────────────────────
   // Έλεγχος πραγματικής συνεδρίας Supabase (μέσω cookies), δουλεύει και σε dev
   // και σε production, χωρίς να χρειάζεται ο client να στέλνει header.
@@ -168,12 +196,37 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // ── Η ΜΟΝΑΔΑ ΕΧΕΙ ΗΔΗ ΧΡΕΩΘΕΙ ────────────────────────────────
+  // Η bump_ai_usage χρέωσε παραπάνω. Από εδώ και κάτω, κάθε έξοδος που ΔΕΝ
+  // είναι απάντηση του μοντέλου οφείλει να τη γυρίσει πίσω: αλλιώς ο
+  // συνδρομητής πληρώνει ερώτηση που δεν πήρε, ενώ η οθόνη τον καλεί να
+  // ξαναδοκιμάσει — δηλαδή να χάσει άλλη μία.
+  //
+  // ΜΙΑ ΦΟΡΑ ΚΑΙ ΜΟΝΟ ΜΙΑ. Η refund_ai_usage είναι αφαίρεση, όχι idempotent
+  // εγγραφή: δύο κλήσεις για την ίδια αποτυχία θα χάριζαν δεύτερη ερώτηση. Η
+  // εγγύηση ζει εδώ, σε μία σημαία και σε ΕΝΑ σημείο κλήσης.
+  //
+  // ΔΕΝ ΠΕΤΑΕΙ. Καλείται πάντα μέσα σε χειρισμό σφάλματος· μια εξαίρεση εδώ θα
+  // σκέπαζε την αρχική αιτία και ο χρήστης θα διάβαζε λάθος εξήγηση.
+  let refunded = false;
+  const giveBack = async (pool: boolean) => {
+    if (refunded) return;
+    refunded = true;
+    if (!(await refundAiUsage(user.id, pool))) return;
+    // ΚΑΙ ΟΙ ΚΕΦΑΛΙΔΕΣ ΛΕΝΕ ΤΟ ΥΠΟΛΟΙΠΟ ΜΕΤΑ ΤΗΝ ΕΠΙΣΤΡΟΦΗ. Ο πελάτης διαβάζει
+    // τις x-ai-* ΚΑΙ στις αποτυχημένες απαντήσεις (PropertyAssistant.readQuota):
+    // αν έμεναν όπως τις έγραψε η χρέωση, η μπάρα θα έδειχνε μία ερώτηση
+    // λιγότερη από όσες πράγματι έχει ο χρήστης.
+    if (quota) quota = { ...quota, month: Math.max(quota.month - 1, 0), day: Math.max(quota.day - 1, 0) };
+  };
+
   // ── Anthropic API call ───────────────────────────────────────
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
+    await giveBack(true);
     return NextResponse.json(
       { error: 'ANTHROPIC_API_KEY δεν έχει οριστεί στο .env.local' },
-      { status: 500 }
+      { status: 500, headers: quotaHeaders(quota) }
     );
   }
 
@@ -182,9 +235,10 @@ export async function POST(req: NextRequest) {
     // Content-Length μπορεί να λείπει/να είναι πλαστό, μετράμε τα πραγματικά bytes).
     const raw = await req.text();
     if (raw.length > MAX_BODY_BYTES) {
+      await giveBack(true);
       return NextResponse.json(
         { error: 'Το αρχείο είναι πολύ μεγάλο. Δοκίμασε μικρότερη φωτογραφία ή PDF.' },
-        { status: 413 }
+        { status: 413, headers: quotaHeaders(quota) }
       );
     }
     const body = JSON.parse(raw);
@@ -196,7 +250,11 @@ export async function POST(req: NextRequest) {
     // Δεν προωθούμε ΟΛΟ το body του client (θα ήταν γενικός proxy Claude με χρέωση
     // δική μας). Δεχόμαστε μόνο μια λίστα επιτρεπτών πεδίων και ελέγχουμε τα μηνύματα.
     if (!Array.isArray(body?.messages) || body.messages.length === 0) {
-      return NextResponse.json({ error: 'Λείπουν μηνύματα.' }, { status: 400 });
+      await giveBack(true);
+      return NextResponse.json(
+        { error: 'Λείπουν μηνύματα.' },
+        { status: 400, headers: quotaHeaders(quota) }
+      );
     }
     // ΚΟΒΟΥΜΕ, ΔΕΝ ΑΠΟΡΡΙΠΤΟΥΜΕ. Πριν, στο 40ό μήνυμα (≈20ή ερώτηση) ο χρήστης
     // έπαιρνε 413 «Πολύ μεγάλη συνομιλία» και η συνεδρία ΣΠΑΓΕ: κάθε επόμενη
@@ -254,30 +312,80 @@ export async function POST(req: NextRequest) {
     // την πρώτη φορά που κάποιος θα το πρόσθετε, με σφάλμα που δεν παραπέμπει
     // πουθενά. Αν χρειαστεί ποτέ έλεγχος δημιουργικότητας, γίνεται στο prompt.
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method:  'POST',
-      headers: {
-        'Content-Type':      'application/json',
-        'x-api-key':         apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(safeBody),
-    });
+    // ── ΧΡΟΝΙΚΟ ΟΡΙΟ ───────────────────────────────────────────────────────
+    // Χωρίς αυτό, ένα κολλημένο αίτημα κρατούσε τη συνάρτηση ώς το ταβάνι της
+    // πλατφόρμας: πληρωμένος χρόνος εκτέλεσης για απάντηση που δεν έρχεται
+    // ποτέ και — χειρότερα — μονάδα χρεωμένη που δεν επιστρέφεται ποτέ, γιατί
+    // ο κώδικας της επιστροφής δεν προλαβαίνει καν να τρέξει.
+    let response: Response;
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method:  'POST',
+        headers: {
+          'Content-Type':      'application/json',
+          'x-api-key':         apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body:   JSON.stringify(safeBody),
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      });
+    } catch (err) {
+      // ΤΟ ΧΡΟΝΙΚΟ ΟΡΙΟ ΞΕΧΩΡΙΖΕΙ ΑΠΟ ΤΗΝ ΠΤΩΣΗ ΔΙΚΤΥΟΥ. Το AbortSignal.timeout
+      // πετάει DOMException με name 'TimeoutError' (μετρημένο σε Node 22)· ό,τι
+      // άλλο σημαίνει ότι το αίτημα δεν έφυγε ή δεν έφτασε. Η διαφορά κρίνει
+      // ΜΟΝΟ τη δεξαμενή: στο χρονικό όριο ο πάροχος πιθανότατα παρήγαγε ήδη
+      // tokens που θα χρεωθούν.
+      const timedOut = (err as { name?: string } | null)?.name === 'TimeoutError';
+      const f = timedOut ? TIMEOUT_FAILURE : NETWORK_FAILURE;
+      console.error('Anthropic fetch:', timedOut ? 'timeout' : err);
+      await giveBack(f.pool);
+      return NextResponse.json({ error: f.message }, { status: f.status, headers: quotaHeaders(quota) });
+    }
 
-    const data = await response.json();
+    // ── ΤΟ ΣΩΜΑ ΔΙΑΒΑΖΕΤΑΙ ΩΣ ΚΕΙΜΕΝΟ ΠΡΩΤΑ ───────────────────────────────
+    // Το .json() έτρεχε ΠΡΙΝ τον έλεγχο response.ok. Μια πύλη ή ένας
+    // εξισορροπητής που απαντά με HTML («502 Bad Gateway») έκανε το .json() να
+    // πετάξει, η εξαίρεση έπεφτε στο γενικό catch και ο χρήστης διάβαζε
+    // «Εσωτερικό σφάλμα»: δηλαδή «φταίμε εμείς» για βλάβη που δεν είναι δική
+    // μας και που λύνεται με μια δεύτερη προσπάθεια.
+    const text = await response.text().catch(() => '');
+    let data: unknown = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = null; }
 
     if (!response.ok) {
-      console.error('Anthropic API error:', data);
+      // Η ΩΜΗ ΑΙΤΙΑ ΠΑΕΙ ΣΤΑ ΑΡΧΕΙΑ ΚΑΤΑΓΡΑΦΗΣ, ΟΧΙ ΣΤΗΝ ΟΘΟΝΗ. Το μήνυμα του
+      // παρόχου είναι αγγλικά με ορολογία API και ΤΕΣΣΕΡΙΣ οθόνες το έδειχναν
+      // αυτούσιο: TabTenantMoney:670, TabClients:548, LoanDocScan:213 και
+      // ClientCompose:118.
+      const upstream = (data as { error?: { message?: string } } | null)?.error?.message;
+      console.error('Anthropic API error:', response.status, upstream ?? text.slice(0, 300));
+      const f = upstreamFailure(response.status);
+      await giveBack(f.pool);
+      return NextResponse.json({ error: f.message }, { status: f.status, headers: quotaHeaders(quota) });
+    }
+
+    // Απάντηση 200 με σώμα που δεν είναι JSON: ο πάροχος χρέωσε, ο χρήστης δεν
+    // πήρε τίποτα. Το πακέτο γυρίζει, η δεξαμενή όχι.
+    if (data === null) {
+      console.error('Anthropic API: μη αναγνώσιμο σώμα', response.status, text.slice(0, 300));
+      await giveBack(UNREADABLE_FAILURE.pool);
       return NextResponse.json(
-        { error: data.error?.message ?? 'Σφάλμα Anthropic API' },
-        { status: response.status }
+        { error: UNREADABLE_FAILURE.message },
+        { status: UNREADABLE_FAILURE.status, headers: quotaHeaders(quota) }
       );
     }
 
     return NextResponse.json(data, { headers: quotaHeaders(quota) });
   } catch (err) {
+    // ΕΔΩ ΦΤΑΝΕΙ ΜΟΝΟ ΔΙΚΟ ΜΑΣ ΣΦΑΛΜΑ: χαλασμένο JSON στο σώμα του αιτήματος ή
+    // απρόβλεπτη εξαίρεση. Ο πάροχος δεν παρήγαγε τίποτα, οπότε γυρίζει και η
+    // μονάδα της δεξαμενής.
     console.error('Route error:', err);
-    return NextResponse.json({ error: 'Εσωτερικό σφάλμα' }, { status: 500 });
+    await giveBack(true);
+    return NextResponse.json(
+      { error: `${ASSISTANT_NAME}: το αίτημα δεν ολοκληρώθηκε. Δοκίμασε ξανά σε λίγο.` },
+      { status: 500, headers: quotaHeaders(quota) }
+    );
   }
 }
 

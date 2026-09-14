@@ -15,7 +15,7 @@
 //   • Απλός έλεγχος SSRF: μπλοκάρει localhost/ιδιωτικά δίκτυα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
-import { authorizeCron } from '../_shared/auth.ts'
+import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { reportEdgeError } from '../_shared/report.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -263,8 +263,13 @@ interface Feed {
 
 async function ensureChannelClient(userId: string, channel: string): Promise<string> {
   const name = channel === 'airbnb' ? 'Κρατήσεις Airbnb' : channel === 'booking' ? 'Κρατήσεις Booking' : 'Κρατήσεις καναλιού'
-  const { data: existing } = await admin.from('clients').select('id')
+  // ΑΠΟΤΥΧΙΑ ΕΔΩ ΔΕΝ ΕΙΝΑΙ «ΔΕΝ ΥΠΑΡΧΕΙ». Χωρίς το `error`, μια αποτυχία γύριζε
+  // `undefined` και ο κώδικας δημιουργούσε ΔΕΥΤΕΡΟ συγκεντρωτικό πελάτη με το
+  // ίδιο όνομα. Το πέταγμα το πιάνει το `catch` της `syncFeed`, που το γράφει
+  // στο `last_status` της ροής — ο χρήστης βλέπει γιατί δεν συγχρονίστηκε.
+  const { data: existing, error: existErr } = await admin.from('clients').select('id')
     .eq('user_id', userId).eq('full_name', name).eq('type', 'client').limit(1).maybeSingle()
+  if (existErr) throw new Error(`ο συγκεντρωτικός πελάτης δεν διαβάστηκε: ${existErr.message}`)
   if (existing) return (existing as { id: string }).id
   const { data, error } = await admin.from('clients').insert({
     user_id: userId, type: 'client', full_name: name, stage: 'closed',
@@ -272,6 +277,31 @@ async function ensureChannelClient(userId: string, channel: string): Promise<str
   }).select('id').single()
   if (error || !data) throw new Error(error?.message || 'client insert failed')
   return (data as { id: string }).id
+}
+
+/**
+ * Η γραμμή διαμονής που γράφει ο συγχρονισμός. ΑΝΤΙΓΡΑΦΟ του
+ * `lib/clients/ical.ts` — ο `guard-ical-mirror` κρατά τα δύο ίδια. Το γιατί
+ * κατέχει η ροή άλλες στήλες κι ο άνθρωπος άλλες είναι γραμμένο εκεί.
+ */
+interface SyncDraft { start: string; end: string; nights: number }
+interface SyncStay { client_id: string; notes: string | null }
+
+function syncStayRow(
+  d: SyncDraft, feed: Feed, uid: string, channelClientId: string, prev: SyncStay | null,
+): Record<string, unknown> {
+  return {
+    user_id: feed.user_id,
+    client_id: prev ? prev.client_id : channelClientId,
+    property_id: feed.property_id,
+    check_in: d.start,
+    check_out: d.end,
+    nights: d.nights,
+    channel: feed.channel,
+    source_uid: uid,
+    cancelled_at: null,
+    notes: prev ? prev.notes : 'Εισαγωγή iCal',
+  }
 }
 
 async function syncFeed(feed: Feed): Promise<Record<string, unknown>> {
@@ -300,25 +330,37 @@ async function syncFeed(feed: Feed): Promise<Record<string, unknown>> {
     // Ο ΠΑΛΙΟΣ ΕΛΕΓΧΟΣ ΜΕΝΕΙ, ΚΑΙ ΜΟΝΟ ΓΙΑ ΤΙΣ ΠΑΛΙΕΣ ΓΡΑΜΜΕΣ. Όσες μπήκαν
     // πριν υπάρξει η στήλη δεν έχουν UID, οπότε η σύγκρουση δεν θα τις έβρισκε
     // και θα ξαναγράφονταν ολόκληρες.
-    const { data: existing } = await admin.from('client_stays')
-      .select('property_id,check_in,check_out')
-      .eq('user_id', feed.user_id).eq('property_id', feed.property_id).is('source_uid', null)
-    const keys = new Set((existing || []).map((s: { property_id: string; check_in: string; check_out: string }) => `${s.property_id}|${s.check_in}|${s.check_out}`))
+    // ΚΑΙ ΑΥΤΗ Η ΑΝΑΓΝΩΣΗ ΕΙΝΑΙ ΦΡΑΓΜΟΣ, ΟΧΙ ΠΛΗΡΟΦΟΡΙΑ. Οι κλειδαριές που
+    // βγαίνουν από εδώ κρατούν τις παλιές γραμμές (χωρίς UID) από το να
+    // ξαναμπούν. Αγνοώντας το `error`, μια αποτυχία άδειαζε το σύνολο και ΚΑΘΕ
+    // παλιά κράτηση ξαναγραφόταν: διπλές διαμονές στο ημερολόγιο του ιδιοκτήτη.
+    //
+    // ΚΑΙ Η ΙΔΙΑ ΑΝΑΓΝΩΣΗ ΦΕΡΝΕΙ ΟΣΑ ΕΓΡΑΨΕ Ο ΑΝΘΡΩΠΟΣ. Το φίλτρο `source_uid is
+    // null` έφευγε κι οι στήλες `client_id` κι `notes` μπήκαν στην επιλογή: μία
+    // διαδρομή στον διακομιστή αντί για δύο — κι από αυτήν βγαίνουν κι τα δύο
+    // σύνολα που χρειάζεται η γραφή — οι παλιές κλειδαριές χωρίς UID κι ό,τι
+    // κατέχει ο χρήστης πάνω στις γραμμές που έχουν UID.
+    const { data: existing, error: existingErr } = await admin.from('client_stays')
+      .select('property_id,check_in,check_out,source_uid,client_id,notes')
+      .eq('user_id', feed.user_id).eq('property_id', feed.property_id)
+    if (existingErr) throw new Error(`οι υπάρχουσες διαμονές δεν διαβάστηκαν: ${existingErr.message}`)
+    type Known = { property_id: string; check_in: string; check_out: string; source_uid: string | null; client_id: string; notes: string | null }
+    const rowsNow = (existing || []) as Known[]
+    const keys = new Set(rowsNow.filter(s => s.source_uid === null)
+      .map(s => `${s.property_id}|${s.check_in}|${s.check_out}`))
+    const mine = new Map(rowsNow.filter(s => s.source_uid !== null)
+      .map(s => [s.source_uid as string, { client_id: s.client_id, notes: s.notes }]))
     const fresh = toImport.filter(d => !keys.has(`${feed.property_id}|${d.start}|${d.end}`))
 
     let inserted = 0
     if (fresh.length) {
       const clientId = await ensureChannelClient(feed.user_id, feed.channel)
-      const rows = fresh.map(d => ({
-        user_id: feed.user_id, client_id: clientId, property_id: feed.property_id,
-        check_in: d.start, check_out: d.end, nights: d.nights, channel: feed.channel,
-        source_uid: uidOf(d.uid),
-        // Η ΑΚΥΡΩΣΗ ΑΝΑΙΡΕΙΤΑΙ. Κράτηση που ξαναφαίνεται στη ροή —ο επισκέπτης
-        // την επανέφερε, ή ο προηγούμενος γύρος έπεσε σε στιγμιαίο κενό— καθαρίζει
-        // τη σήμανσή της εδώ. Με διαγραφή αντί για σήμανση, αυτό θα ήταν αδύνατο.
-        cancelled_at: null,
-        notes: 'Εισαγωγή iCal',
-      }))
+      // Η ΑΚΥΡΩΣΗ ΑΝΑΙΡΕΙΤΑΙ, ΚΙ ΤΑ ΣΧΟΛΙΑ ΜΕΝΟΥΝ. Κράτηση που ξαναφαίνεται στη
+      // ροή —ο επισκέπτης την επανέφερε, ή ο προηγούμενος γύρος έπεσε σε
+      // στιγμιαίο κενό— καθαρίζει τη σήμανσή της. Ο,τι έγραψε ο ιδιοκτήτης
+      // πάνω στη γραμμή επιβιώνει: το κρίνει η `syncStayRow`, δοκιμασμένη στο
+      // `lib/clients/ical.ts` κι κρατημένη ίδια από τον `guard-ical-mirror`.
+      const rows = fresh.map(d => syncStayRow(d, feed, uidOf(d.uid), clientId, mine.get(uidOf(d.uid)) ?? null))
       for (let i = 0; i < rows.length; i += 100) {
         // Η ίδια κράτηση με νέες ημερομηνίες ΕΝΗΜΕΡΩΝΕΙ τη γραμμή της αντί να
         // γεννά δεύτερη. Το upsert κλείνει και τον αγώνα δρόμου: δύο
@@ -354,12 +396,16 @@ async function syncFeed(feed: Feed): Promise<Record<string, unknown>> {
     if (looksLikeCalendar) {
       const live = new Set(events.filter(e => !e.cancelled).map(e => uidOf(e.uid)))
       const today = new Date().toISOString().slice(0, 10)
-      const { data: mine } = await admin.from('client_stays')
+      const { data: mine, error: mineErr } = await admin.from('client_stays')
         .select('id,source_uid')
         .eq('user_id', feed.user_id).eq('property_id', feed.property_id)
         .like('source_uid', `${feed.channel}:%`)
         .gte('check_in', today)
         .is('cancelled_at', null)
+      // Αποτυχία εδώ έδινε κενή λίστα, δηλαδή «καμία ακύρωση» — και η ροή
+      // ανέφερε «ok: 0 ακυρώθηκαν» ενώ δεν είχε κοιτάξει καθόλου. Κρατήσεις
+      // που ο επισκέπτης ακύρωσε έμεναν ζωντανές στο ημερολόγιο.
+      if (mineErr) throw new Error(`οι δικές μας διαμονές δεν διαβάστηκαν: ${mineErr.message}`)
       const gone = (mine || [])
         .filter((r: { source_uid: string | null }) => r.source_uid && !live.has(r.source_uid))
         .map((r: { id: string }) => r.id)
@@ -391,8 +437,16 @@ Deno.serve(async (req) => {
 
     // ── Cron/service: συγχρονισμός ΟΛΩΝ των ενεργών συνδέσμων ──
     if (action === 'sync-all' || cronHeader) {
-      if (!(await authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase: admin, dbSecretName: ['ical_cron', 'email_cron'] }))) return json({ error: 'unauthorized' }, 401)
-      const { data: feeds } = await admin.from('ical_feeds').select('*').eq('active', true)
+      const auth = await authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase: admin, dbSecretName: ['ical_cron', 'email_cron'] })
+      if (!auth.ok) return json(...cronDenial(auth))
+      // ΑΠΟΤΥΧΙΑ ΕΔΩ ΣΗΜΑΙΝΕ «ΚΑΜΙΑ ΕΝΕΡΓΗ ΡΟΗ» ΚΑΙ ΑΠΑΝΤΟΥΣΕ ok. Ο συγχρονισμός
+      // όλων των ημερολογίων δεν γινόταν, καμία κράτηση δεν έμπαινε, καμία
+      // ακύρωση δεν περνούσε — και το προγραμματισμένο τρέξιμο ήταν πράσινο.
+      const { data: feeds, error: feedsErr } = await admin.from('ical_feeds').select('*').eq('active', true)
+      if (feedsErr) {
+        console.error('[ical-sync] οι ροές δεν διαβάστηκαν:', feedsErr)
+        return json({ error: 'ical_feeds unreadable', detail: feedsErr.message }, 500)
+      }
       const results = []
       for (const f of (feeds || []) as Feed[]) results.push(await syncFeed(f))
       return json({ ok: true, feeds: results.length, results })
@@ -412,9 +466,16 @@ Deno.serve(async (req) => {
       // διακομιστής μας τη ζητά. Ο προορισμός ελέγχεται, το μέγεθος και ο χρόνος
       // επίσης — έμενε το πλήθος: εξήντα δοκιμές την ώρα φτάνουν και περισσεύουν
       // για να συνδέσει κανείς ένα ημερολόγιο και δεν φτάνουν για σαρωτή.
-      const { data: quota } = await authClient.rpc('bump_send_quota', {
+      const { data: quota, error: quotaErr } = await authClient.rpc('bump_send_quota', {
         p_kind: 'ical_preview', p_units: 1, p_max: 60, p_window: '1 hour',
       })
+      // «Πολλές δοκιμές» και «ο μετρητής έσπασε» είναι δύο διαφορετικά
+      // πράγματα· ο χρήστης που συνδέει ημερολόγιο πρέπει να ξέρει ποιο
+      // από τα δύο τον σταμάτησε: στο πρώτο περιμένει· στο δεύτερο όχι.
+      if (quotaErr) {
+        console.error('[ical-sync] μέτρηση ορίου προεπισκόπησης:', quotaErr)
+        return json({ error: 'Ο έλεγχος ορίου απέτυχε. Δοκίμασε ξανά σε λίγο.' }, 500)
+      }
       if (!quota?.allowed) {
         return json({ error: 'Πολλές δοκιμές σύνδεσης. Δοκίμασε ξανά σε λίγο.', resetsAt: quota?.resets_at ?? null }, 429)
       }
@@ -436,7 +497,13 @@ Deno.serve(async (req) => {
     if (action === 'sync') {
       let q = admin.from('ical_feeds').select('*').eq('user_id', userId).eq('active', true)
       if (body.propertyId) q = q.eq('property_id', String(body.propertyId))
-      const { data: feeds } = await q
+      // Ιδιο με τη διαδρομή του cron: κενό από αποτυχία θα έλεγε στον χρήστη
+      // «συγχρονίστηκαν 0 ημερολόγια» ενώ έχει ενεργά.
+      const { data: feeds, error: feedsErr } = await q
+      if (feedsErr) {
+        console.error('[ical-sync] οι ροές του χρήστη δεν διαβάστηκαν:', feedsErr)
+        return json({ error: 'Οι σύνδεσμοι ημερολογίου δεν διαβάστηκαν. Δοκίμασε ξανά.' }, 500)
+      }
       const results = []
       for (const f of (feeds || []) as Feed[]) results.push(await syncFeed(f))
       const inserted = results.reduce((s, r) => s + (Number(r.inserted) || 0), 0)

@@ -66,7 +66,29 @@ function inWorker(buffer: ArrayBuffer): Promise<string> {
       if (ev.data.error || typeof ev.data.csv !== 'string') reject(new SheetError(ev.data.error || 'Το αρχείο δεν διαβάστηκε.'));
       else resolve(ev.data.csv);
     };
-    worker.onerror = () => { clearTimeout(timer); worker.terminate(); reject(new Error('worker')); };
+    // ═══ Η ΑΠΟΜΟΝΩΣΗ ΚΡΑΤΟΥΣΕ ΑΠΟ ΣΥΜΠΤΩΣΗ, ΟΧΙ ΑΠΟ ΑΠΟΦΑΣΗ ══════════════════
+    // Το σκέτο `Error` εδώ δεν είναι SheetError, οπότε η readSheetAsCsv το
+    // προσπερνούσε και ξαναδιάβαζε στο ΚΥΡΙΟ νήμα. Το `onerror` όμως το ρίχνει
+    // οτιδήποτε σκάει ανεξέλεγκτα ΜΕΣΑ στον εργάτη, δηλαδή το ελέγχει το ίδιο
+    // το ξένο αρχείο.
+    //
+    // ΤΙ ΜΕΤΡΗΘΗΚΕ (07/09/2026, με εκτέλεση σε αντίγραφο εκτός αποθετηρίου,
+    // με ψεύτικο εργάτη που πεθαίνει αμέσως):
+    //
+    //   με μεταφορά buffer, όπως κάνει ο περιηγητής   TypeError «Cannot perform
+    //                                     Construct on a detached ArrayBuffer»
+    //   χωρίς μεταφορά buffer                          ΔΙΑΒΑΣΕ, CSV 9 χαρακτήρων
+    //
+    // Η δεύτερη ανάγνωση δηλαδή ΔΕΝ πετύχαινε — αλλά μόνο επειδή το postMessage
+    // από κάτω περνά το buffer στη λίστα μεταφοράς, που το αποσυνδέει. Την
+    // απομόνωση την κρατούσε μια λίστα μεταφοράς. Αν έφευγε αύριο το `[buffer]`
+    // από τη γραμμή του postMessage, η SheetJS 0.18.5 που κουβαλά μέσα του το
+    // xlsx-js-style θα διάβαζε ξένα byte στο κύριο νήμα — το μέτρησα, διαβάζει.
+    // Ο,τι έφτανε στον χρήστη ήταν TypeError αντί για ελληνική άρνηση.
+    //
+    // Ο constructor από πάνω εξακολουθεί να ρίχνει σκέτο Error, άρα ο
+    // περιηγητής που δεν φτιάχνει εργάτες κρατά τη δηλωμένη εφεδρεία του.
+    worker.onerror = () => { clearTimeout(timer); worker.terminate(); reject(new SheetError('Το αρχείο δεν διαβάστηκε.')); };
     worker.postMessage({ buffer }, [buffer]);
   });
 }

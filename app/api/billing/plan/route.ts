@@ -32,6 +32,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import { createServiceClient } from '@/lib/supabase/service';
 import { PLANS, PLAN_ORDER, normalizePlan, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 import { cycleFromParam, activeHold } from '@/lib/billing/entitlements';
@@ -43,6 +44,13 @@ import * as billing from '@/lib/data/billing';
 const CHANGEABLE = new Set(['on_trial', 'active', 'past_due']);
 
 export async function POST(request: Request) {
+  // Η ΑΛΛΑΓΗ ΠΑΚΕΤΟΥ ΧΡΕΩΝΕΙ ΚΑΡΤΑ. Χωρίς έλεγχο προέλευσης, μια ξένη σελίδα
+  // αναβάθμιζε τον συνδεδεμένο επισκέπτη της με το cookie του και ο έμπορος
+  // εισέπραττε αναλογικά την ίδια στιγμή.
+  if (!sameOrigin(request.headers)) {
+    return NextResponse.json({ error: ORIGIN_DENIED }, { status: 403 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });

@@ -9,6 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { createClient } from '@/lib/supabase/client';
 import { saved } from '@/components/dbWrite';
+import { siteUrl } from '@/lib/core/site';
 
 type SB = ReturnType<typeof createClient>;
 
@@ -46,8 +47,24 @@ export async function issueDocument(supabase: SB, input: IssueInput): Promise<Is
   const now = new Date();
   const id = genId(now);
   const issuedAt = now.toISOString();
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const verifyUrl = `${origin}/verify/${id}`;
+  // ══ Ο ΚΩΔΙΚΟΣ QR ΕΔΕΙΧΝΕ ΕΚΕΙ ΑΠ' ΟΠΟΥ ΕΤΥΧΕ ΝΑ ΠΑΤΗΘΕΙ ΤΟ ΚΟΥΜΠΙ ═════════
+  // Εδώ έγραφε `window.location.origin`. Δηλαδή η διεύθυνση επαλήθευσης —που
+  // τυπώνεται σε χαρτί, μπαίνει σε κωδικό QR κι φεύγει σε λογιστή ή σε
+  // συνιδιοκτήτη— γεννιόταν από τη διεύθυνση της ΣΤΙΓΜΗΣ:
+  //
+  //   · `http://localhost:3000/verify/PO-…` όταν εκδοθεί από ανάπτυξη
+  //   · `https://properwise-9x2k…vercel.app/verify/…` από προεπισκόπηση
+  //
+  // Οι προεπισκοπήσεις σβήνονται. Το χαρτί όχι. Ο παραλήπτης σκανάρει έναν
+  // κωδικό που δεν ανοίγει πουθενά κι το έγγραφο που υπόσχεται «γνήσιο κι
+  // επαληθεύσιμο» γίνεται ακριβώς το αντίθετο απόδειξης.
+  //
+  // Κι μια δεύτερη, ήσυχη περίπτωση: όταν το προϊόν αποκτήσει το domain του,
+  // κάθε παλιός σύνδεσμος του Vercel συνεχίζει να δουλεύει — αλλά κάθε ΝΕΟ
+  // έγγραφο θα γεννιόταν με τη διεύθυνση από την οποία μπήκε ο χρήστης, όχι με
+  // την κανονική. Η `siteUrl` είναι η μία δηλωμένη πηγή, ίδια με αυτήν που
+  // χρησιμοποιούν ήδη η πύλη μισθωτή, η πύλη λογιστή κι το ημερολόγιο.
+  const verifyUrl = siteUrl(`/verify/${id}`);
   const summary = input.summary || {};
   const cs = checksum(JSON.stringify(summary) + '|' + (input.subject || '') + '|' + issuedAt);
   const registered = await saved('Το έγγραφο δεν καταχωρήθηκε στο μητρώο, οπότε εκδίδεται χωρίς επαλήθευση',

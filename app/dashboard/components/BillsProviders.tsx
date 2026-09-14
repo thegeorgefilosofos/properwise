@@ -9,7 +9,7 @@ import { T, fe, feRate, fieldRow, fixedCols, fp, Spinner, pressable } from '@/co
 import { waterMonthly, waterMonthlyText } from '@/lib/energy/tariff';
 
 const INTERNET_PROVIDERS = [
-  { value: 'cosmote',   label: 'Cosmote',   url: 'https://www.cosmote.gr',    color: '#009fe3' },
+  { value: 'cosmote',   label: 'Telekom',   url: 'https://www.telekom.gr',    color: '#e20074' },
   { value: 'nova',      label: 'Nova',       url: 'https://www.nova.gr',       color: '#e4002b' },
   { value: 'vodafone',  label: 'Vodafone',   url: 'https://www.vodafone.gr',   color: '#e60000' },
   { value: 'inalan',    label: 'Inalan',     url: 'https://www.inalan.gr',     color: '#0073ff' },
@@ -23,7 +23,7 @@ const INTERNET_PROVIDERS = [
 // ΤΑ ΠΑΚΕΤΑ ΣΥΝΔΡΟΜΗΤΙΚΗΣ ΤΗΛΕΟΡΑΣΗΣ
 // ─────────────────────────────────────────────────────────────────────────
 // ΗΤΑΝ ΑΔΕΙΟΣ, ΚΑΙ ΣΩΣΤΑ: οι τιμές των πακέτων αλλάζουν και το μόνο που τα
-// κάνει χρήσιμα είναι να είναι ΣΩΣΤΑ. Ένα επινοημένο «Cosmote TV Full, 30 €»
+// κάνει χρήσιμα είναι να είναι ΣΩΣΤΑ. Ένα επινοημένο «MagentaTV Full, 30€»
 // δεν είναι προσέγγιση — είναι λάθος νούμερο σε οθόνη που ο ιδιοκτήτης θα
 // συγκρίνει με τον λογαριασμό του. Γέμισε από τις επίσημες σελίδες.
 //
@@ -41,7 +41,7 @@ const INTERNET_PROVIDERS = [
 // επιβεβαιώνεται, μπαίνει το πακέτο χωρίς ποσό και το γράφει ο χρήστης.
 // ═══════════════════════════════════════════════════════════════════════════
 const TV_PROVIDERS = [
-  { value: 'cosmote',     label: 'Cosmote TV',  url: 'https://www.cosmote.gr/static/residential/el/cosmote-tv-packs' },
+  { value: 'cosmote',     label: 'MagentaTV',   url: 'https://www.telekom.gr/static/residential/el/tv' },
   { value: 'nova',        label: 'Nova / EON',  url: 'https://nova.gr/eon-tv/programmata/eon' },
   { value: 'vodafone',    label: 'Vodafone TV', url: 'https://www.vodafone.gr/tv' },
   { value: 'skyshowtime', label: 'SkyShowtime', url: 'https://www.skyshowtime.com/gr' },
@@ -88,10 +88,10 @@ const TV_PACKS: Record<string, TvPack[]> = Object.fromEntries(Object.entries({
     { id: 'eonp_nobox',  name: 'EON+, χωρίς Smart Box', price: 26, sports: true },
     { id: 'eonp',        name: 'EON+', price: 28, sports: true },
   ],
-  // ΤΟ VODAFONE TV START ΕΙΝΑΙ 3,90 €, ΟΠΩΣ ΤΟ ΓΡΑΦΕΙ Η ΣΕΛΙΔΑ ΤΟΥ.
+  // ΤΟ VODAFONE TV START ΕΙΝΑΙ 3,90€, ΟΠΩΣ ΤΟ ΓΡΑΦΕΙ Η ΣΕΛΙΔΑ ΤΟΥ.
   //
-  // Είχε γίνει 9,90 € από δημοσιεύματα για την αναπροσαρμογή της 17ης Μαρτίου
-  // 2026 (6,30 € → 9,90 €). Η ζωντανή σελίδα δείχνει «Μόνο 3,90 €/μήνα» και η
+  // Είχε γίνει 9,90€ από δημοσιεύματα για την αναπροσαρμογή της 17ης Μαρτίου
+  // 2026 (6,30€ → 9,90€). Η ζωντανή σελίδα δείχνει «Μόνο 3,90€/μήνα» και η
   // σελίδα του παρόχου υπερισχύει κάθε δημοσιεύματος: μια ανακοίνωση αύξησης
   // δεν είναι η τιμή που θα δει ο ιδιοκτήτης στο καλάθι του.
   //
@@ -123,22 +123,38 @@ const INTERNET_PLANS: Record<string, {
 }[]> = {
   cosmote: [
     // ── Double Play (Σταθερή + Internet) ─────────────────────────────────
-    { id:'c_dp_24',    name: 'Double Play Unlimited 24',    speed: '24 Mbps',   price: 19.90, hasPhone: true,  note: 'ADSL. Απεριόριστα λεπτά σταθερά και κινητά.', networkType: 'ADSL', contract: '24 μήνες' },
-    { id:'c_dp_50',    name: 'Double Play Advanced 50',     speed: '50 Mbps',   price: 22.90, hasPhone: true,  note: 'VDSL. Απεριόριστα λεπτά σταθερά και κινητά.', networkType: 'VDSL', contract: '24 μήνες' },
-    { id:'c_f100',     name: 'Fiber 100 Unlimited',         speed: '100 Mbps',  price: 23.71, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f300',     name: 'Fiber 300 Unlimited',         speed: '300 Mbps',  price: 27.90, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f500',     name: 'Fiber 500 Unlimited',         speed: '500 Mbps',  price: 31.90, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f1g',      name: 'Fiber 1 Gbps Unlimited',      speed: '1 Gbps',    price: 35.90, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f3g',      name: 'Fiber 3 Gbps Unlimited',      speed: '3 Gbps',    price: 70.39, hasPhone: true,  note: 'Υπερ-γρήγορο οπτική ίνα FTTH.', networkType: 'Fiber', contract: '24 μήνες' },
+    // ═══ ΤΟ ΠΑΛΙΟ ADSL ΤΩΝ 24 Mbps ΔΕΝ ΠΩΛΕΙΤΑΙ ΠΙΑ ══════════════════════════
+    // Ο κατάλογος του eshop (07/09/2026) φιλτράρει ταχύτητες 50, 100, 300 και
+    // 500 — καμία εγγραφή στα 24. Η γραμμή ΜΕΝΕΙ γιατί το `internetPlanId`
+    // αποθηκεύεται: όποιος είναι ήδη σε αυτό το συμβόλαιο πρέπει να μπορεί να
+    // το κρατήσει επιλεγμένο. Το λέει όμως η ίδια, ώστε κανείς να μη νομίσει
+    // ότι μπορεί να το πάρει σήμερα.
+    { id:'c_dp_24',    name: 'Double Play Unlimited 24 (παλαιό)', speed: '24 Mbps', price: 19.90, hasPhone: true,  note: 'ADSL. Δεν προσφέρεται πλέον σε νέες συνδέσεις· μένει για όσους το έχουν ήδη.', networkType: 'ADSL', contract: '24 μήνες' },
+    { id:'c_dp_50',    name: 'Telekom Double Play Advanced Unlimited', speed: '50 Mbps', price: 22.90, hasPhone: true,  note: '100% οπτική ίνα ώς την πρίζα, με εγγύηση καλής εγκατάστασης.', networkType: 'Fiber', contract: '24 μήνες' },
+    // ═══ ΔΥΟ ΠΑΚΕΤΑ ΜΕ ΤΟ ΙΔΙΟ ΟΝΟΜΑ ΚΑΙ ΔΙΑΦΟΡΕΤΙΚΗ ΤΙΜΗ ══════════════════
+    // Ο κατάλογος δείχνει ΔΥΟ «Fiber 100 Unlimited»: ένα στα 24,90€ με «έως
+    // 100 Mbps» και μόνο δωρεάν router. Το δεύτερο είναι στα 23,71€, διαγραμμένο από
+    // 24,90€ — με 100% οπτική ίνα ώς την πρίζα και εγγύηση εγκατάστασης. Το
+    // φθηνότερο είναι το ΚΑΛΥΤΕΡΟ· αυτό δεν διαβάζεται από την τιμή: όποιος
+    // δει μόνο «24,90» θα νομίσει ότι πληρώνει λιγότερο για το ίδιο πράγμα.
+    { id:'c_f100',     name: 'Telekom Fiber 100 Unlimited', speed: '100 Mbps',  price: 23.71, hasPhone: true,  note: '100% οπτική ίνα ώς την πρίζα, με εγγύηση καλής εγκατάστασης. Τιμή προσφοράς από 24,90€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f100_vdsl', name: 'Telekom Fiber 100 Unlimited (έως 100)', speed: '100 Mbps', price: 24.90, hasPhone: true, note: 'Έως 100 Mbps, χωρίς εγγύηση εγκατάστασης. Δωρεάν ασύρματο router.', networkType: 'VDSL', contract: '24 μήνες' },
+    { id:'c_f300',     name: 'Telekom Fiber 300 Unlimited', speed: '300 Mbps',  price: 27.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 150 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f500',     name: 'Telekom Fiber 500 Unlimited', speed: '500 Mbps',  price: 31.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 250 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f1g',      name: 'Telekom Fiber 1Gbps Unlimited', speed: '1 Gbps',  price: 35.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 500 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f3g',      name: 'Telekom Fiber 3Gbps Unlimited', speed: '3 Gbps',  price: 70.39, hasPhone: true,  note: 'Οπτική ίνα FTTH, 1.500 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
     // ── 5G WiFi (Internet backup μέσω 5G) ────────────────────────────────
+    // ΔΕΝ ΞΑΝΑΕΠΙΒΕΒΑΙΩΘΗΚΑΝ ΜΕΤΑ ΤΗ ΜΕΤΟΝΟΜΑΣΙΑ. Ο κατάλογος που ελέγχθηκε
+    // στις 07/09/2026 ήταν των Double Play οπτικής ίνας· τα ασύρματα ζουν σε
+    // άλλη σελίδα. Τα ποσά μένουν ως έχουν, χωρίς να δηλώνονται ελεγμένα.
     { id:'c_5g50',     name: '5G WiFi Double Play 50',      speed: '50 Mbps',   price: 30.90, hasPhone: true,  note: 'Ασύρματο 5G, Internet backup. Χωρίς καλωδίωση.', networkType: '5G', backup: true },
     { id:'c_5g300',    name: '5G WiFi Double Play 300',     speed: '300 Mbps',  price: 35.90, hasPhone: true,  note: 'Ασύρματο 5G, Internet backup. Χωρίς καλωδίωση.', networkType: '5G', backup: true },
-    { id:'c_5g_free',  name: '5G WiFi 300 Χωρίς Σύμβαση',  speed: '300 Mbps',  price: 35.90, hasPhone: true,  note: 'Ασύρματο 5G χωρίς δέσμευση. Εξοπλισμός 349 €.', networkType: '5G', backup: true },
+    { id:'c_5g_free',  name: '5G WiFi 300 Χωρίς Σύμβαση',  speed: '300 Mbps',  price: 35.90, hasPhone: true,  note: 'Ασύρματο 5G χωρίς δέσμευση. Εξοπλισμός 349€.', networkType: '5G', backup: true },
     // ── Triple Play (Σταθερή + Internet + Τηλεόραση) ─────────────────────
-    { id:'c_f100_tv',  name: 'Fiber 100 + Cosmote TV Full', speed: '100 Mbps',  price: 48.77, hasPhone: true, hasTV: true, note: 'FTTH + Cosmote TV πλήρες πακέτο. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f300_tv',  name: 'Fiber 300 + Cosmote TV Full', speed: '300 Mbps',  price: 51.85, hasPhone: true, hasTV: true, note: 'FTTH + Cosmote TV πλήρες πακέτο. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f500_tv',  name: 'Fiber 500 + TV + Netflix',    speed: '500 Mbps',  price: 62.06, hasPhone: true, hasTV: true, note: 'FTTH + Cosmote TV + Netflix. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f1g_tv',   name: 'Fiber 1 Gbps + TV + Netflix', speed: '1 Gbps',    price: 65.30, hasPhone: true, hasTV: true, note: 'FTTH + Cosmote TV + Netflix. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f100_tv',  name: 'Fiber 100 + MagentaTV Full', speed: '100 Mbps',  price: 48.77, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV πλήρες πακέτο. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f300_tv',  name: 'Fiber 300 + MagentaTV Full', speed: '300 Mbps',  price: 51.85, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV πλήρες πακέτο. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f500_tv',  name: 'Fiber 500 + TV + Netflix',    speed: '500 Mbps',  price: 62.06, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV + Netflix. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f1g_tv',   name: 'Fiber 1 Gbps + TV + Netflix', speed: '1 Gbps',    price: 65.30, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV + Netflix. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   nova: [
     // ── Double Play (Σταθερή + Internet) ─────────────────────────────────
@@ -165,17 +181,17 @@ const INTERNET_PLANS: Record<string, {
     // σκέτο Vodafone TV Start. Γράφονται με την τιμή εκκίνησης που δηλώνει η
     // ίδια η σελίδα («Από») και με το τέλος ενεργοποίησης στη σημείωση: είναι
     // εφάπαξ, δεν μπαίνει στο μηνιαίο.
-    { id:'v_f100_tv',  name: 'Fiber 100 με Vodafone TV',     speed: '100 Mbps', price: 33.90, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 93 Mbps, απεριόριστα σταθερά και 360 λεπτά κινητά. HBO Max και Viaplay. Τέλος ενεργοποίησης 6,00 € εφάπαξ.', networkType: 'Fiber' },
-    { id:'v_ff300p_tv', name: 'Full Fiber 300 Plus με Vodafone TV Plus', speed: '300 Mbps', price: 37.00, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 100%, router Wi-Fi 6, απεριόριστα σταθερά και κινητά. HBO Max, Disney+ και Viaplay. Τέλος ενεργοποίησης 6,00 € εφάπαξ.', networkType: 'Fiber' },
+    { id:'v_f100_tv',  name: 'Fiber 100 με Vodafone TV',     speed: '100 Mbps', price: 33.90, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 93 Mbps, απεριόριστα σταθερά και 360 λεπτά κινητά. HBO Max και Viaplay. Τέλος ενεργοποίησης 6,00€ εφάπαξ.', networkType: 'Fiber' },
+    { id:'v_ff300p_tv', name: 'Full Fiber 300 Plus με Vodafone TV Plus', speed: '300 Mbps', price: 37.00, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 100%, router Wi-Fi 6, απεριόριστα σταθερά και κινητά. HBO Max, Disney+ και Viaplay. Τέλος ενεργοποίησης 6,00€ εφάπαξ.', networkType: 'Fiber' },
     { id:'v_ff300_tv', name: 'Full Fiber 300 + Vodafone TV', speed: '300 Mbps', price: 44.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV (45 κανάλια, HBO).', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff500_tv', name: 'Full Fiber 500 + Vodafone TV', speed: '500 Mbps', price: 51.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV + αποκωδικοποιητής +2,50 €.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff1g_tv',  name: 'Full Fiber 1 Gbps + TV',       speed: '1 Gbps',   price: 58.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV + αποκωδικοποιητής +2,50 €.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff500_tv', name: 'Full Fiber 500 + Vodafone TV', speed: '500 Mbps', price: 51.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV + αποκωδικοποιητής +2,50€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff1g_tv',  name: 'Full Fiber 1 Gbps + TV',       speed: '1 Gbps',   price: 58.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV + αποκωδικοποιητής +2,50€.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   dei: [
     { id:'dei_f500',   name: 'ΔΕΗ Fiber 500',              speed: '500 Mbps',  price: 17.90, hasPhone: false, note: 'Φθηνότερο fiber στην αγορά. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'dei_f1g',    name: 'ΔΕΗ Fiber 1 Gbps',           speed: '1 Gbps',    price: 24.90, hasPhone: false, note: 'Οπτική ίνα. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'dei_f25g',   name: 'ΔΕΗ Fiber 2.5 Gbps',         speed: '2.5 Gbps',  price: 52.90, hasPhone: false, note: 'Ultra broadband. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'dei_f500_v', name: 'ΔΕΗ Fiber 500 + Φωνή',       speed: '500 Mbps',  price: 21.90, hasPhone: true,  note: 'Fiber + τηλεφωνία (+4 €). Απεριόριστα λεπτά σταθερά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'dei_f500_v', name: 'ΔΕΗ Fiber 500 + Φωνή',       speed: '500 Mbps',  price: 21.90, hasPhone: true,  note: 'Fiber + τηλεφωνία (+4€). Απεριόριστα λεπτά σταθερά.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   inalan: [
     // ── Οικιακά (με σύμβαση 24 μηνών) ────────────────────────────────────
@@ -213,7 +229,7 @@ const SECURITY_COMPANIES = [
 
 const BENCHMARKS = {
   internet: { avg: 22.50, label: 'Μέσος Όρος Ελλάδας'              },
-  water:    { avg: 12.00, label: 'Μέσος Όρος Αττικής, ~24 € / 2 μήνες' },
+  water:    { avg: 12.00, label: 'Μέσος Όρος Αττικής, ~24€ / 2 μήνες' },
   heating:  { avg: 70.00, label: 'Μέσος Όρος χειμώνα'               },
   security: { avg: 18.00, label: 'Μέσος Όρος αγοράς'                },
 };
@@ -340,7 +356,11 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
           <div style={{ height: '100%', width: `${pct}%`, background: 'var(--series-in)', borderRadius: 3 }}/>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-          <span>0 €</span><span style={{ color: 'var(--text-secondary)' }}>μέσος όρος {avg} €</span><span>{fe((avg * 2))}</span>
+          {/* ΤΡΙΑ ΠΟΣΑ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ, ΜΕ ΤΡΕΙΣ ΓΡΑΦΕΣ. Τα δύο άκρα περνούσαν από
+              μορφοποιητή («0€», «45,00€») και ο μέσος όρος γραφόταν ωμός: το
+              22,50 έβγαινε με αγγλική υποδιαστολή, ένα δεκαδικό και κενό πριν
+              το σύμβολο, ανάμεσα σε δύο σωστά. */}
+          <span>{fe(0)}</span><span style={{ color: 'var(--text-secondary)' }}>μέσος όρος {fe(avg)}</span><span>{fe((avg * 2))}</span>
         </div>
       </div>
     );
@@ -390,7 +410,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
             ) : (
               <TextInput label="Ονομασία προγράμματος" value={s.internetPlan} onChange={v => upd({ internetPlan: v })} placeholder="Fiber 500"/>
             )}
-            <NumberInput label="Μηνιαίο κόστος"  value={s.internetPrice} onChange={v => upd({ internetPrice: v })} suffix="€" step={1}/>
+            <NumberInput label="Μηνιαίο κόστος"  value={s.internetPrice} onChange={v => upd({ internetPrice: v })} suffix="€"/>
           </div>
 
           {selectedPlan && (
@@ -413,7 +433,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
               από το νούμερο με το οποίο συγκρίνεται. */}
           <div {...g3}>
             <TextInput   label="Ταχύτητα συμβολαίου" value={s.internetSpeed} onChange={v => upd({ internetSpeed: v })} placeholder="500 Mbps"/>
-            <NumberInput label="Πραγματική ταχύτητα λήψης" value={s.internetSpeedReal || ''}  onChange={v => upd({ internetSpeedReal: v })} suffix="Mbps" step={10}/>
+            <NumberInput label="Πραγματική ταχύτητα λήψης" value={s.internetSpeedReal || ''}  onChange={v => upd({ internetSpeedReal: v })} suffix="Mbps"/>
             <DatePicker  label="Λήξη συμβολαίου"                      value={s.internetContractEnd || ''} onChange={v => upd({ internetContractEnd: v })}/>
           </div>
           <div style={{ marginBottom: 14 }}>
@@ -473,14 +493,19 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
           {(INTERNET_PLANS[s.internetProvider] || []).length > 0 && (
             <div>
               <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 10, fontFamily: T.font.sans }}>Διαθέσιμα Προγράμματα {provData?.label}</div>
-              <div style={{ overflowX: 'auto' }}>
-                {/* Η πρώτη στήλη μένει όσο ο πίνακας κυλά: ο λόγος είναι γραμμένος
-                    στην `.pin-1` του globals.css. Χωρίς αυτό, μόλις ο χρήστης
-                    σύρει για να δει τιμή, το όνομα του προγράμματος φεύγει. */}
-                <table className="pin-1" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--fs-xs)', minWidth: 500 }}>
+              {/* Η πρώτη στήλη μένει όσο ο πίνακας κυλά: ο λόγος είναι γραμμένος
+                  στην `.pin-1` του globals.css. Χωρίς αυτό, μόλις ο χρήστης
+                  σύρει για να δει τιμή, το όνομα του προγράμματος φεύγει.
+
+                  ΚΑΙ ΤΟ ΚΕΛΙ ΤΟ ΓΡΑΦΕΙ Η `.po-table`, ΟΧΙ Η ΚΑΘΕ ΓΡΑΜΜΗ. Εξι
+                  στήλες με έξι αντίγραφα του ίδιου `padding: 7px 10px`: το ίδιο
+                  στυλ, γραμμένο έξι φορές, που αποκλίνει με την πρώτη αλλαγή. */}
+              <div className="po-table-box">
+               <div className="po-scroll-x">
+                <table className="po-table pin-1" style={{ '--tbl-fs': 'var(--fs-xs)', '--tbl-min': '560px', '--row-bg': 'var(--bg-surface)' }}>
                   <thead>
                     <tr>{['Πρόγραμμα','Ταχύτητα','Σταθερό Τηλέφωνο','Δέσμευση','Μηνιαίο','Ετήσιο'].map((h, i) => (
-                      <th key={i} style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--text-secondary)', padding: '6px 10px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', fontWeight: 600, fontFamily: T.font.sans, background: 'var(--bg-elevated)', whiteSpace: 'nowrap' as const }}>{h}</th>
+                      <th key={i} scope="col" style={{ background: 'var(--bg-elevated)', whiteSpace: 'nowrap' as const, textAlign: i === 2 ? ('center' as const) : i >= 4 ? ('right' as const) : undefined }}>{h}</th>
                     ))}</tr>
                   </thead>
                   <tbody>
@@ -489,20 +514,22 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                       return (
                         <tr key={plan.id}
                           onClick={() => upd({ internetPlanId: plan.id, internetPlan: plan.name, internetSpeed: plan.speed, internetPrice: String(plan.price), internetPhone: plan.hasPhone })}
-                          style={{ cursor: 'pointer', background: isCur ? 'var(--accent-soft)' : 'transparent', transition: 'background 0.15s',
-                            // Το καρφωμένο κελί διαβάζει από εδώ το φόντο της γραμμής του.
-                            ['--row-bg' as string]: isCur ? 'var(--accent-soft)' : 'var(--bg-surface)' } as React.CSSProperties}>
-                          <td style={{ padding: '7px 10px', fontWeight: isCur ? 700 : 400, color: isCur ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.sans }}>{plan.name}{isCur ? ' ✓' : ''}</td>
-                          <td style={{ padding: '7px 10px', color: 'var(--text-secondary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)' }}>{plan.speed}</td>
-                          <td style={{ padding: '7px 10px', color: plan.hasPhone ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: 700, textAlign: 'center' as const }}>{plan.hasPhone ? 'Ναι' : 'Όχι'}</td>
-                          <td style={{ padding: '7px 10px', color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)', fontFamily: T.font.sans }}>{plan.contract || 'Χωρίς δέσμευση'}</td>
-                          <td style={{ padding: '7px 10px', fontWeight: 600, color: isCur ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' as const }}>{fe(plan.price)}</td>
-                          <td style={{ padding: '7px 10px', color: 'var(--text-tertiary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', whiteSpace: 'nowrap' as const }}>{fe(plan.price * 12)}</td>
+                          className={isCur ? 'is-on' : undefined}
+                          // Το καρφωμένο κελί διαβάζει από εδώ το φόντο της γραμμής του.
+                          style={{ cursor: 'pointer', transition: 'background 0.15s',
+                            '--row-bg': isCur ? 'var(--accent-soft)' : 'var(--bg-surface)' }}>
+                          <td style={{ fontWeight: isCur ? 700 : 400, color: isCur ? 'var(--accent)' : 'var(--text-primary)' }}>{plan.name}{isCur ? ' ✓' : ''}</td>
+                          <td className="num" style={{ textAlign: 'left' as const }}>{plan.speed}</td>
+                          <td style={{ color: plan.hasPhone ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: 700, textAlign: 'center' as const }}>{plan.hasPhone ? 'Ναι' : 'Όχι'}</td>
+                          <td style={{ color: 'var(--text-tertiary)' }}>{plan.contract || 'Χωρίς δέσμευση'}</td>
+                          <td className="num" style={{ fontWeight: 600, color: isCur ? 'var(--accent)' : 'var(--text-primary)', whiteSpace: 'nowrap' as const }}>{fe(plan.price)}</td>
+                          <td className="num" style={{ color: 'var(--text-tertiary)', whiteSpace: 'nowrap' as const }}>{fe(plan.price * 12)}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
+               </div>
               </div>
             </div>
           )}
@@ -539,7 +566,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                 ) : (
                   <TextInput label="Πακέτο" value={s.tvPlan} onChange={v => upd({ tvPlan: v })} placeholder="Ονομασία πακέτου"/>
                 )}
-                <NumberInput label="Μηνιαίο κόστος" value={s.tvPrice} onChange={v => upd({ tvPrice: v })} suffix="€" step={1}/>
+                <NumberInput label="Μηνιαίο κόστος" value={s.tvPrice} onChange={v => upd({ tvPrice: v })} suffix="€"/>
                 {/* Ο ΔΙΑΚΟΠΤΗΣ «ΑΘΛΗΤΙΚΑ» ΕΦΥΓΕ, ΓΙΑΤΙ ΔΕΝ ΕΚΑΝΕ ΤΙΠΟΤΑ. Το
                     `tvHasSports` γραφόταν σε τρία σημεία και ΔΕΝ διαβαζόταν σε
                     κανένα: ούτε σε υπολογισμό κόστους, ούτε σε σύγκριση
@@ -582,14 +609,14 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
             />
             <NumberInput  label="Λογαριασμός νερού" value={s.waterBiMonthly}
               onChange={v => upd({ waterBiMonthly: v, waterMonthly: waterMonthlyText(v, s.waterPeriodMonths) })}
-              suffix="€" step={5}/>
+              suffix="€"/>
             {/* ΤΟ ΠΕΔΙΟ «ΜΗΝΙΑΙΑ ΑΝΑΓΩΓΗ» ΗΤΑΝ ΝΕΚΡΟ ΚΟΥΤΙ. Ήταν ο λογαριασμός
                 διά τους μήνες, δηλαδή τιμή που την ξέρει ήδη η οθόνη — και μόλις
                 υπήρχε λογαριασμός, ΚΑΙ ΟΙ ΔΥΟ αναγνώστες (η σύνοψη εδώ και ο
                 προϋπολογισμός) αγνοούσαν ό,τι πληκτρολογούσε ο χρήστης μέσα του.
                 Έγραφε άλλο νούμερο και δεν άλλαζε τίποτα πουθενά. Ο μηνιαίος
                 φαίνεται από κάτω, υπολογισμένος. */}
-            <NumberInput  label="Άτομα στο ακίνητο"      value={s.waterPersons}  onChange={v => upd({ waterPersons: v })}  suffix="άτομα"  step={1}/>
+            <NumberInput  label="Άτομα στο ακίνητο"      value={s.waterPersons}  onChange={v => upd({ waterPersons: v })}  suffix="άτομα"/>
           </div>
           {waterM > 0 && (
             <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '10px 14px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, border: '1px solid var(--border-subtle)' }}>
@@ -617,16 +644,16 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
             {/* Το μηνιαίο κόστος δεν έχει νόημα όπου το κόστος βγαίνει από
                 λίτρα ή κιλά, ούτε όπου δεν υπάρχει θέρμανση. */}
             {!['autonomous_oil', 'pellet', 'none', ''].includes(heatingType) && (
-              <NumberInput label="Μέσο μηνιαίο κόστος" value={s.heatingMonthly} onChange={v => upd({ heatingMonthly: v })} suffix="€" step={5}/>
+              <NumberInput label="Μέσο μηνιαίο κόστος" value={s.heatingMonthly} onChange={v => upd({ heatingMonthly: v })} suffix="€"/>
             )}
             {heatingType === 'autonomous_oil' && (
-              <><NumberInput label="Λίτρα τον χρόνο"     value={s.heatingLitersPerYear}    onChange={v => upd({ heatingLitersPerYear: v })}    suffix="L"   step={50}/><NumberInput label="Τιμή ανά λίτρο" value={s.heatingOilPricePerLiter} onChange={v => upd({ heatingOilPricePerLiter: v })} suffix="€" step={0.01}/></>
+              <><NumberInput label="Λίτρα τον χρόνο"     value={s.heatingLitersPerYear}    onChange={v => upd({ heatingLitersPerYear: v })}    suffix="L"/><NumberInput label="Τιμή ανά λίτρο" value={s.heatingOilPricePerLiter} onChange={v => upd({ heatingOilPricePerLiter: v })} suffix="€"/></>
             )}
             {heatingType === 'pellet' && (
-              <><NumberInput label="Kg / έτος"     value={s.heatingKgPellet}    onChange={v => upd({ heatingKgPellet: v })}    suffix="kg" step={50}/><NumberInput label="Τιμή ανά κιλό" value={s.heatingPelletPrice} onChange={v => upd({ heatingPelletPrice: v })} suffix="€" step={0.01}/></>
+              <><NumberInput label="Kg / έτος"     value={s.heatingKgPellet}    onChange={v => upd({ heatingKgPellet: v })}    suffix="kg"/><NumberInput label="Τιμή ανά κιλό" value={s.heatingPelletPrice} onChange={v => upd({ heatingPelletPrice: v })} suffix="€"/></>
             )}
             {isCentralHeating(heatingType) && (
-              <NumberInput label="Μερίδιο ιδιοκτησίας" value={s.heatingCentralShare} onChange={v => upd({ heatingCentralShare: v })} suffix="%" step={1}/>
+              <NumberInput label="Μερίδιο ιδιοκτησίας" value={s.heatingCentralShare} onChange={v => upd({ heatingCentralShare: v })} suffix="%"/>
             )}
           </div>
           {heatingM > 0 && (
@@ -656,7 +683,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
           <div {...g3}>
             <CustomSelect label="Εταιρεία"            value={s.securityCompany}  onChange={v => upd({ securityCompany: v })}  options={SECURITY_COMPANIES.map(c => ({ value: c.value, label: c.label }))}/>
             <TextInput    label="Πρόγραμμα ή πακέτο" value={s.securityPlan}    onChange={v => upd({ securityPlan: v })}    placeholder="Basic"/>
-            <NumberInput  label="Μηνιαίο κόστος" value={s.securityMonthly} onChange={v => upd({ securityMonthly: v })} suffix="€" step={2}/>
+            <NumberInput  label="Μηνιαίο κόστος" value={s.securityMonthly} onChange={v => upd({ securityMonthly: v })} suffix="€"/>
           </div>
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' as const, marginBottom: 12 }}>
             <Toggle on={s.securityHasRemote} onChange={v => upd({ securityHasRemote: v })} label="Τηλεχειρισμός από εφαρμογή"/>

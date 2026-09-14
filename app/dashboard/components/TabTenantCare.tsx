@@ -22,23 +22,7 @@ import {
   CustomSelect as SelectField,
   DatePicker,
 } from './UIComponents';
-import {
-  T,
-  KPIGrid,
-  InfoBanner,
-  Badge,
-  EmptyState,
-  fe,
-  fn,
-  fp,
-  Spinner,
-  type KPIItem,
-  ABSENT,
-  ABSENT_DATE,
-  TT,
-  localDay,
-  formGrid,
-} from '@/components/Theme';
+import { T, KPIGrid, InfoBanner, Badge, EmptyState, fe, fn, fp, Spinner, type KPIItem, ABSENT, ABSENT_DATE, TT, localDay, formGrid, RuntimeImg, Btn, LinkBtn } from '@/components/Theme';
 import {
   MessageSquare,
   Hammer,
@@ -48,6 +32,7 @@ import {
   notifyOk,
 } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
+import { failed } from '@/lib/core/dbError';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import { roleLabel } from '@/lib/contacts/roles';
 import { rentalIncomeTax, rentalRowsForYear, rentalBracketsForYear } from '@/lib/billing/greekTax';
@@ -64,6 +49,7 @@ import {
   athensToday,
 } from '@/lib/core/time';
 import { AadeLinks } from '@/components/AadeLink';
+import { hy } from '@/components/Hyphen';
 // Τα σχήματα, οι κανόνες και οι κοινοί βοηθοί της καρτέλας.
 import {
   todayISO,
@@ -198,6 +184,13 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
   const supabase=createClient();
   const [logs,setLogs]=useState<CommLog[]>([]);
   const [loadedFor,setLoadedFor]=useState<string|null>(null);
+  // ΤΟ ΑΔΕΙΟ ΗΜΕΡΟΛΟΓΙΟ ΔΕΝ ΕΙΝΑΙ ΑΠΟΔΕΙΞΗ ΣΙΩΠΗΣ. Οταν η ανάγνωση αποτύγχανε
+  // το `data` ερχόταν null · η οθόνη απαντούσε «Καμία επικοινωνία ακόμη». Ο
+  // ιδιοκτήτης που ψάχνει αν ειδοποίησε τον ενοικιαστή για τη λήξη διάβαζε ότι
+  // δεν του μίλησε ποτέ · ξαναχτυπούσε το τηλέφωνο ή ξανακατέγραφε την ίδια
+  // κλήση. Τώρα το σφάλμα κρατιέται χωριστά: το άγνωστο ιστορικό λέγεται με το
+  // όνομά του κι όσο μένει άγνωστο δεν προσφέρεται καταχώρηση που το διπλογράφει.
+  const [logsErr,setLogsErr]=useState('');
   const loading=loadedFor!==tenant.id;
   const [showAdd,setShowAdd]=useState(false);
   const [form,setForm]=useState({type:'call' as CommLog['type'],summary:'',date:athensToday(),outcome:''});
@@ -223,8 +216,9 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
   // σύγχρονη γραφή, δεύτερη απόδοση και μια στιγμή όπου το ημερολόγιο του ΕΝΟΣ
   // ενοικιαστή φαινόταν κάτω από το όνομα του άλλου.
   const loadLogs=useCallback(async()=>{
-    const{data}=await supabase.from('tenant_comm_log').select('*').eq('tenant_id',tenant.id).order('date',{ascending:false});
-    setLogs(data||[]);setLoadedFor(tenant.id);
+    const{data,error}=await supabase.from('tenant_comm_log').select('*').eq('tenant_id',tenant.id).order('date',{ascending:false});
+    if(error){ setLogs([]);setLogsErr(failed('Το ιστορικό επικοινωνίας δεν διαβάστηκε',error));setLoadedFor(tenant.id);return; }
+    setLogsErr('');setLogs(data||[]);setLoadedFor(tenant.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[tenant.id]);
 
@@ -249,7 +243,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
     else if(d<=60&&d>=31) reminders.push({label:`Λήξη σε ${d} ημέρες, ενημέρωσε τον ενοικιαστή`,urgent:false});
     else if(d<=90&&d>=61) reminders.push({label:`Λήξη σε ${d} ημέρες, ξεκίνα συζήτηση ανανέωσης`,urgent:false});
   }
-  const inputStyle:React.CSSProperties={width:'100%',height:42,background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',boxSizing:'border-box'};
+  const inputStyle:React.CSSProperties={width:'100%',height: T.h.lg,background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',boxSizing:'border-box'};
 
   return (
     <div>
@@ -287,7 +281,13 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
           <SectionTitle>Ιστορικό επικοινωνίας</SectionTitle>
-          <button style={s.btnSm} onClick={()=>setShowAdd(v=>!v)}>{showAdd?'Κλείσιμο':'+ Νέα Καταχώρηση'}</button>
+          {/* Το `s.btnSm` ήταν περίγραμμα accent σε bg-elevated: γεωμετρικά
+              δευτερεύον κουμπί, οπότε δευτερεύον μένει. Ο τόνος accent του
+              λεκτικού ήταν η μόνη του διαφορά από το `s.btnGhost` και δεν έχει
+              ρόλο στο `Btn` — η κύρια ενέργεια δηλώνεται με primary. */}
+          {/* Χωρίς διαβασμένο ιστορικό η νέα καταχώρηση γράφεται στα τυφλά:
+              πάνω από ένα ημερολόγιο που κανείς δεν ξέρει τι έχει ήδη μέσα. */}
+          {!logsErr&&<Btn variant="secondary" onClick={()=>setShowAdd(v=>!v)}>{showAdd?'Κλείσιμο':'+ Νέα Καταχώρηση'}</Btn>}
         </div>
 
         {showAdd&&(
@@ -313,14 +313,15 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
                 style={{ width:'100%', background:'var(--bg-surface)', border:'1px solid var(--border-default)', borderRadius:T.radius.inner, padding:'10px 14px', color:'var(--text-primary)', fontSize:14, letterSpacing:0, fontFamily:T.font.sans, outline:'none', boxSizing:'border-box' as const, resize:'vertical' as const, lineHeight:1.6 }}/>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <button style={s.btnGhost} onClick={()=>setShowAdd(false)}>Ακύρωση</button>
-              <button style={s.btnGold} onClick={saveLog} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση'}</button>
+              <Btn variant="secondary" onClick={()=>setShowAdd(false)}>Ακύρωση</Btn>
+              <Btn variant="primary" onClick={saveLog} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση'}</Btn>
             </div>
           </div>
         )}
 
         {loading&&<Spinner label="Φόρτωση…" />}
-        {!loading&&logs.length===0&&<EmptyState icon={<MessageSquare size={20}/>} title="Καμία επικοινωνία ακόμη" hint="Κατέγραψε κλήσεις, μηνύματα και επισκέψεις για να έχεις πλήρες ιστορικό με τον ενοικιαστή." />}
+        {!loading&&logsErr&&<InfoBanner tone="negative">{logsErr} Ωσπου να διαβαστεί δεν ξέρουμε αν το ιστορικό είναι κενό: μην καταγράψεις ξανά επικοινωνία που ίσως υπάρχει ήδη.</InfoBanner>}
+        {!loading&&!logsErr&&logs.length===0&&<EmptyState icon={<MessageSquare size={20}/>} title="Καμία επικοινωνία ακόμη" hint="Κατέγραψε κλήσεις, μηνύματα και επισκέψεις για να έχεις πλήρες ιστορικό με τον ενοικιαστή." />}
         {!loading&&logs.map(log=>(
           <div key={log.id} style={{ display:'flex', gap:14, alignItems:'flex-start', padding:'14px 0', borderBottom:'1px solid var(--border-subtle)' }}>
             <div style={{ width:38, height:38, borderRadius: T.radius.modal, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:16 }}>
@@ -333,6 +334,9 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
               </div>
               <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{log.summary}</div>
             </div>
+            {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `s.btnDng` είναι γεωμετρικά δευτερεύον κουμπί, αλλά
+                ο κόκκινος τόνος του δεν έχει ρόλο στο `Btn`: με `secondary` η διαγραφή
+                θα έχανε το χρώμα που την ξεχωρίζει από τις υπόλοιπες ενέργειες. */}
             <button style={s.btnDng} onClick={async()=>{if(!(await confirmDialog('Διαγραφή καταγραφής επικοινωνίας;',{tone:'negative'})))return;if(await saved('Η καταγραφή δεν διαγράφηκε',supabase.from('tenant_comm_log').delete().eq('id',log.id)))loadLogs();}}>Διαγραφή</button>
           </div>
         ))}
@@ -409,47 +413,88 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
           : '. Επειδή το ενοίκιο ΔΕΝ δηλώνεται ως ηλεκτρονική είσπραξη, η τεκμαρτή έκπτωση 5% δεν εφαρμόζεται και ο φόρος υπολογίζεται στο 100% των ακαθάριστων.'}
       </InfoBanner>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap:16, marginTop:16 }}>
+      {/* ΤΟ ΔΥΟ-ΑΝΑ-ΣΕΙΡΑ ΞΕΚΙΝΑΕΙ ΜΟΝΟ ΟΤΑΝ Η ΣΤΗΛΗ ΠΑΙΡΝΕΙ ΟΣΟ ΤΟ ΤΗΛΕΦΩΝΟ.
+          Μετρήθηκε στη σκηνή «tenant», καρτέλα «Νομικά και Φόρος». Με κατώφλι 280
+          οι δύο κάρτες έσπαγαν σε στήλες από τα 576 πλάτους πλέγματος: στα 430 το
+          πλέγμα έδινε 381 σε μία στήλη· στα 768 έδινε 352 ανά στήλη · στα 834 έδινε
+          385. Η ταμπλέτα δηλαδή έδειχνε τον φορολογικό πίνακα ΠΙΟ ΣΤΕΝΟ από το
+          τηλέφωνο, με την κάρτα υποχρεώσεων να ψηλώνει από 1469 σε 1591 και με τον
+          πίνακα κλιμακίων — 371 ύψος πραγματικού περιεχομένου — τεντωμένο σε κελί
+          1600: 1229 εικονοστοιχεία άδειο κουτί δίπλα στο κείμενο.
+          Με 406 το σπάσιμο πάει στα 828 πλάτους πλέγματος. Στα 768 βγαίνει μία
+          στήλη 719 με συνολικό ύψος 1339 αντί 1600 · στα 834 μία στήλη 785 με ύψος
+          1301 αντί 1478. Από τα 878 και πάνω τίποτα δεν αλλάζει: στα 1024 μένουν
+          δύο στήλες των 458 με ύψος 1264, όπως σήμερα. */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 406px), 1fr))', gap:16, marginTop:16 }}>
         {/* Φόρος εισοδήματος από ενοίκια */}
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
           <SectionTitle>Φόρος εισοδήματος από ενοίκια ({taxYear})</SectionTitle>
-          <div className="table-wrap">
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead><tr>{['Κλιμάκιο Εισοδήματος','Συντελεστής'].map((h,i)=><th key={i} style={{ ...s.th, textAlign:i?'right' as const:'left' as const }}>{h}</th>)}</tr></thead>
-            <tbody>
-              {rentalRowsForYear(taxYear).map((r,i)=>{
-                const active=taxable>r.from&&(r.to===Infinity||taxable<=r.to);
-                return (
-                  <tr key={i} style={{ background:active?'var(--accent-soft)':'transparent' }}>
-                    <td style={{ ...s.td, display:'flex', alignItems:'center', gap:8 }}>{r.range}{active&&<Badge tone="accent">εδώ</Badge>}</td>
-                    <td style={{ ...s.td, textAlign:'right' as const, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:active?700:400 }}>{r.rate}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {/* ═══ ΔΕΥΤΕΡΟ ΣΥΣΤΗΜΑ ΠΙΝΑΚΑ, ΚΑΙ ΤΕΛΟΣ ═══════════════════════════════
+              Τα `s.th` και `s.td` του TabTenantHelpers ήταν ΑΛΛΟΣ πίνακας από
+              τον πίνακα του προϊόντος: κεφαλίδα 9 εικονοστοιχείων αντί 11,
+              γέμισμα 8×12 αντί 9×14, καμία επιφάνεια και κανένα περίγραμμα — οι
+              γραμμές αιωρούνταν πάνω στην κάρτα. Δύο κλίμακες που περιγράφουν το
+              ίδιο πράγμα διαφέρουν στην οθόνη και αποκλίνουν στον κώδικα.
+
+              Η γραμμή του ενεργού κλιμακίου το λέει με την κλάση `is-on`, την
+              ίδια που χρησιμοποιούν τα τέσσερα δημόσια εργαλεία. */}
+          <div className="po-table-box">
+           <div className="po-scroll-x">
+            <table className="po-table" style={{ '--tbl-min': '320px' }}>
+              <thead><tr>{['Κλιμάκιο Εισοδήματος','Συντελεστής'].map((h,i)=><th key={i} scope="col" style={{ textAlign:i?'right' as const:'left' as const }}>{h}</th>)}</tr></thead>
+              <tbody>
+                {rentalRowsForYear(taxYear).map((r,i)=>{
+                  const active=taxable>r.from&&(r.to===Infinity||taxable<=r.to);
+                  return (
+                    <tr key={i} className={active?'is-on':undefined}>
+                      <td><span style={{ display:'inline-flex', alignItems:'center', gap:8 }}>{r.range}{active&&<Badge tone="accent">εδώ</Badge>}</span></td>
+                      <td className="num" style={{ fontWeight:active?700:400 }}>{r.rate}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+           </div>
           </div>
-          <div style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>Ο φόρος υπολογίζεται προοδευτικά ανά κλιμάκιο επί του φορολογητέου ({fe(taxable)} = ακαθάριστα {fe(annualRent)}{viaBank?` μείον τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))}`:''}), σύνολο {fe(tax)} για αυτό το ακίνητο. Επιβεβαίωσε την τελική δήλωση με λογιστή ή την ΑΑΔΕ.</div>
+          {/* 222 χαρακτήρες σε κουτί 410 — τρεισήμισι γραμμές στα 11, με τη
+              δεξιά άκρη ριγμένη κάτω από έναν πίνακα που κλείνει ίσια. Παίρνει
+              πλήρη στοίχιση ΜΑΖΙ με συλλαβισμό: σκέτη η στοίχιση θα τέντωνε τα
+              κενά, αφού τα τρία ποσά της πρότασης δεν σπάνε πουθενά. */}
+          <div className="po-just" style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{hy(<>Ο φόρος υπολογίζεται προοδευτικά ανά κλιμάκιο επί του φορολογητέου ({fe(taxable)} = ακαθάριστα {fe(annualRent)}{viaBank?` μείον τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))}`:''}), σύνολο {fe(tax)} για αυτό το ακίνητο. Επιβεβαίωσε την τελική δήλωση με λογιστή ή την ΑΑΔΕ.</>)}</div>
         </div>
 
         {/* Νομικές υποχρεώσεις */}
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
           <SectionTitle>Υποχρεώσεις και πλαίσιο</SectionTitle>
           <InfoBlock title="ΑΑΔΕ, Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης" tone="var(--warning)">
-            Κάθε νέα μίσθωση, καθώς και κάθε τροποποίηση ή λύση, δηλώνεται ηλεκτρονικά στην ΑΑΔΕ έως το τέλος του επόμενου μήνα από την έναρξη ή τη μεταβολή.{tenant.lease_start?` Για έναρξη ${fmtD(tenant.lease_start)}, προθεσμία δήλωσης έως ${lastDayNextMonth(tenant.lease_start)}.`:''} Χωρίς τη δήλωση δεν αναγνωρίζεται φορολογικά η μίσθωση. Μετά την υποβολή, ο μισθωτής (και τυχόν συνιδιοκτήτες) ειδοποιείται μέσω myAADE/email και έχει 30 ημέρες να την αποδεχθεί ή να την απορρίψει — αλλιώς θεωρείται σιωπηρά αποδεκτή (ισχύς από 2/6/2025)· ενημέρωσέ τον εγκαίρως. Επιβεβαίωσε την ακριβή προθεσμία στην ΑΑΔΕ (σύνδεσμος πιο κάτω).
+            {/* Η μακρύτερη επιφύλαξη του αρχείου: 546 χαρακτήρες σε κουτί 398,
+                δηλαδή εννιά γραμμές με ριγμένη δεξιά άκρη. Το `po-just` μπαίνει
+                σε δικό μας φορέα κειμένου μέσα στο InfoBlock — το InfoBlock το
+                μοιράζονται κι άλλες καρτέλες. Ο συλλαβισμός πάει μαζί του:
+                χωρίς αυτόν εννιά γραμμές κλείνουν τεντώνοντας τα κενά. */}
+            <div className="po-just">{hy(<>Κάθε νέα μίσθωση, καθώς και κάθε τροποποίηση ή λύση, δηλώνεται ηλεκτρονικά στην ΑΑΔΕ έως το τέλος του επόμενου μήνα από την έναρξη ή τη μεταβολή.{tenant.lease_start?` Για έναρξη ${fmtD(tenant.lease_start)}, προθεσμία δήλωσης έως ${lastDayNextMonth(tenant.lease_start)}.`:''} Χωρίς τη δήλωση δεν αναγνωρίζεται φορολογικά η μίσθωση. Μετά την υποβολή, ο μισθωτής (και τυχόν συνιδιοκτήτες) ειδοποιείται μέσω myAADE/email και έχει 30 ημέρες να την αποδεχθεί ή να την απορρίψει — αλλιώς θεωρείται σιωπηρά αποδεκτή (ισχύς από 2/6/2025)· ενημέρωσέ τον εγκαίρως. Επιβεβαίωσε την ακριβή προθεσμία στην ΑΑΔΕ (σύνδεσμος πιο κάτω).</>)}</div>
           </InfoBlock>
           <InfoBlock title="Είσπραξη μέσω τραπέζης" tone={viaBank?'var(--positive)':'var(--negative)'}>
-            {viaBank
+            {/* Ο αρνητικός κλάδος είναι 264 χαρακτήρες σε κουτί 398, τέσσερις
+                γραμμές. Ο θετικός πιάνει δύο — η στοίχιση αγγίζει μόνο την
+                πρώτη του, οπότε ο ίδιος φορέας καλύπτει τους δύο κλάδους. */}
+            <div className="po-just">{hy(viaBank
               ? `Το ενοίκιο εισπράττεται μέσω τραπέζης, οπότε ισχύει η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} και φορολογείται το ${fe(taxable)} αντί του ${fe(annualRent)}.`
-              : `Προσοχή: το ενοίκιο δηλώνεται ως μη τραπεζική είσπραξη. Από 1/1/2026 η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} προϋποθέτει είσπραξη μέσω τραπέζης· χωρίς αυτήν φορολογείται το 100% των ακαθάριστων, δηλαδή ${fe(annualRent)} αντί ${fe(annualRent*(1-PRESUMPTIVE_DEDUCTION_RATE))}. Συμπλήρωσε IBAN είσπραξης στα στοιχεία της μίσθωσης.`}
+              : `Προσοχή: το ενοίκιο δηλώνεται ως μη τραπεζική είσπραξη. Από 1/1/2026 η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} προϋποθέτει είσπραξη μέσω τραπέζης· χωρίς αυτήν φορολογείται το 100% των ακαθάριστων, δηλαδή ${fe(annualRent)} αντί ${fe(annualRent*(1-PRESUMPTIVE_DEDUCTION_RATE))}. Συμπλήρωσε IBAN είσπραξης στα στοιχεία της μίσθωσης.`)}</div>
           </InfoBlock>
           <InfoBlock title="Αναπροσαρμογή ΔΤΚ">
-            Η αναπροσαρμογή μισθώματος γίνεται μία φορά τον χρόνο, βάσει Δείκτη Τιμών Καταναλωτή (ΕΛΣΤΑΤ), εφόσον προβλέπεται στη σύμβαση. Χρησιμοποίησε την καρτέλα «Αναπροσαρμογή Ενοικίου».{!isCommercial&&' Αν η κατοικία μισθώθηκε για διάρκεια μικρότερη της τριετίας χωρίς όρο αναπροσαρμογής, ο νόμος (άρθρο 2 ν.1703/1987) προβλέπει ετήσια αναπροσαρμογή ίση με το 75% της μεταβολής του ΔΤΚ έως τη συμπλήρωση της τριετίας· με χαμηλό ή αρνητικό ΔΤΚ το ενοίκιο ουσιαστικά μένει σταθερό. Επιβεβαίωσε την εφαρμογή στη σύμβασή σου.'}
+            {/* Με τον προαιρετικό κλάδο του ν.1703/1987 το κείμενο φτάνει τους
+                497 χαρακτήρες σε κουτί 398, δηλαδή οκτώ γραμμές. Χωρίς αυτόν
+                μένουν τρεις. Και στις δύο περιπτώσεις πάει πέρα πέρα. */}
+            <div className="po-just">{hy(<>Η αναπροσαρμογή μισθώματος γίνεται μία φορά τον χρόνο, βάσει Δείκτη Τιμών Καταναλωτή (ΕΛΣΤΑΤ), εφόσον προβλέπεται στη σύμβαση. Χρησιμοποίησε την καρτέλα «Αναπροσαρμογή Ενοικίου».{!isCommercial&&' Αν η κατοικία μισθώθηκε για διάρκεια μικρότερη της τριετίας χωρίς όρο αναπροσαρμογής, ο νόμος (άρθρο 2 ν.1703/1987) προβλέπει ετήσια αναπροσαρμογή ίση με το 75% της μεταβολής του ΔΤΚ έως τη συμπλήρωση της τριετίας· με χαμηλό ή αρνητικό ΔΤΚ το ενοίκιο ουσιαστικά μένει σταθερό. Επιβεβαίωσε την εφαρμογή στη σύμβασή σου.'}</>)}</div>
           </InfoBlock>
           <InfoBlock title="Νόμιμη αύξηση ενοικίου">
-            {isCommercial
+            {/* Οι δύο κλάδοι είναι 261 κι 375 χαρακτήρες σε κουτί 398: τέσσερις
+                γραμμές ο ένας, έξι ο άλλος. Οποιος κι αν παιχτεί, το κουτί
+                γεμίζει πέρα πέρα. */}
+            <div className="po-just">{hy(isCommercial
               ?'Στις υφιστάμενες επαγγελματικές μισθώσεις (ΠΔ 34/1995), η αναπροσαρμογή για το 2026 δεν επιτρέπεται να ξεπερνά το 3% επί του μισθώματος του 2025, ακόμη κι αν οι αγοραίες τιμές ανέβηκαν περισσότερο. Το όριο δεν ισχύει σε νέα μίσθωση που υπογράφεις μέσα στο 2026.'
-              :'Σε ενεργή μίσθωση κατοικίας δεν μπορείς να αυξήσεις μονομερώς το ενοίκιο κατά τη διάρκεια της σύμβασης — μόνο αν υπάρχει ρητός όρος αναπροσαρμογής (π.χ. ΔΤΚ ή σταθερό ποσοστό). Νέο, υψηλότερο μίσθωμα μπαίνει μόνο με νέα συμφωνία που αποδέχεται και ο μισθωτής. Για το 2026 δεν ισχύει γενικό κρατικό πλαφόν στα ενοίκια κατοικίας (το όριο 3% αφορά μόνο τις εμπορικές μισθώσεις).'}
+              :'Σε ενεργή μίσθωση κατοικίας δεν μπορείς να αυξήσεις μονομερώς το ενοίκιο κατά τη διάρκεια της σύμβασης — μόνο αν υπάρχει ρητός όρος αναπροσαρμογής (π.χ. ΔΤΚ ή σταθερό ποσοστό). Νέο, υψηλότερο μίσθωμα μπαίνει μόνο με νέα συμφωνία που αποδέχεται και ο μισθωτής. Για το 2026 δεν ισχύει γενικό κρατικό πλαφόν στα ενοίκια κατοικίας (το όριο 3% αφορά μόνο τις εμπορικές μισθώσεις).')}</div>
           </InfoBlock>
           <InfoBlock title="Ελάχιστη διάρκεια και εγγύηση">
             {isCommercial
@@ -482,9 +527,13 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
               διανομή κληρονομίας με συμβολαιογράφο, όχι τη μίσθωση: δεν την
               επικαλούμαστε. */}
           <InfoBlock title="Ψηφιακό Τέλος Συναλλαγής" tone={isCommercial?'var(--warning)':'var(--positive)'}>
-            {isCommercial
+            {/* Ο επαγγελματικός κλάδος είναι 434 χαρακτήρες σε κουτί 398, επτά
+                γραμμές με τρία ποσά κι ένα ποσοστό που δεν σπάνε. Ο κλάδος της
+                κατοικίας είναι μία γραμμή: την τελευταία γραμμή η στοίχιση δεν
+                την πειράζει, άρα ο κοινός φορέας δεν τον βλάπτει. */}
+            <div className="po-just">{hy(isCommercial
               ?`Επαγγελματική μίσθωση: 3,60% επί του μισθώματος, το τέλος που αντικατέστησε το χαρτόσημο με τον ίδιο συντελεστή (άρθρο 6 ν.5177/2025). Για ετήσιο ενοίκιο ${fe(annualRent)} ανέρχεται σε ${fe(stampDuty)} τον χρόνο, δηλαδή ${fe(stampDuty/12)} τον μήνα. Τη δήλωση και την απόδοση στο κράτος τις κάνεις εσύ ως εκμισθωτής· ποιον βαρύνει όμως το κόστος το ορίζει το μισθωτήριο και συνήθως χρεώνεται στον μισθωτή. Δεν οφείλεται αν η μίσθωση έχει νομίμως υπαχθεί σε ΦΠΑ.`
-              :'Μίσθωση κατοικίας: δεν οφείλεται Ψηφιακό Τέλος Συναλλαγής.'}
+              :'Μίσθωση κατοικίας: δεν οφείλεται Ψηφιακό Τέλος Συναλλαγής.')}</div>
           </InfoBlock>
           <div style={{ marginTop:16 }}>
             <AadeLinks actions={['lease','income']}/>
@@ -556,7 +605,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, gap:12, flexWrap:'wrap' as const }}>
           <SectionTitle>Φθορές και επισκευές</SectionTitle>
-          <button style={s.btnSm} onClick={()=>addOpen?setAddOpen(false):openNew()}>{addOpen?'Κλείσιμο':'+ Νέα καταγραφή'}</button>
+          <Btn variant="secondary" onClick={()=>addOpen?setAddOpen(false):openNew()}>{addOpen?'Κλείσιμο':'+ Νέα καταγραφή'}</Btn>
         </div>
 
         {addOpen&&(
@@ -575,8 +624,8 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
               <TextInput label="Σημείωση" value={f.notes} onChange={v=>setF(x=>({...x,notes:v}))} placeholder="προαιρετικό"/>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <button style={s.btnGhost} onClick={()=>{setAddOpen(false);setEditId(null);}}>Ακύρωση</button>
-              <button style={s.btnGold} onClick={save} disabled={busy}>{busy?'Αποθήκευση…':editId?'Αποθήκευση':'Καταχώρηση'}</button>
+              <Btn variant="secondary" onClick={()=>{setAddOpen(false);setEditId(null);}}>Ακύρωση</Btn>
+              <Btn variant="primary" onClick={save} disabled={busy}>{busy?'Αποθήκευση…':editId?'Αποθήκευση':'Καταχώρηση'}</Btn>
             </div>
           </div>
         )}
@@ -584,7 +633,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
         {damages.length===0?(
           <EmptyState icon={<Hammer size={20}/>} title="Καμία φθορά ή επισκευή ακόμη" hint="Κατέγραψε φθορές με φωτογραφίες και κόστος, για τεκμηρίωση στην απόδοση της εγγύησης." />
         ):groups.map(g=>(
-          <div key={g.label} style={{ marginBottom:18 }}>
+          <div key={g.label} style={{ marginBottom:T.sp.lg }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
               <span style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans }}>{g.label}</span>
               <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{fmt(g.items.reduce((a,d)=>a+(d.cost||0),0))}</span>
@@ -604,9 +653,12 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
                     </div>
                     <div style={{ textAlign:'right' as const, flexShrink:0 }}>
                       <div style={{ fontSize:14, fontWeight:700, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', color:'var(--text-primary)' }}>{fmt(d.cost)}</div>
-                      <div style={{ display:'flex', gap:6, marginTop:6, justifyContent:'flex-end' }}>
-                        <button onClick={()=>openEdit(d)} style={{ background:'none', border:'none', color:'var(--accent)', cursor:'pointer', fontSize:12, fontFamily:T.font.sans, padding:0 }}>Επεξεργασία</button>
-                        <button onClick={()=>del(d)} style={{ background:'none', border:'none', color:'var(--text-tertiary)', cursor:'pointer', fontSize:12, fontFamily:T.font.sans, padding:0 }}>Διαγραφή</button>
+                      {/* Δύο κείμενα χωρίς κουτί κάτω από το ποσό: `LinkBtn` και όχι
+                          `Btn`. Το μέγεθος γράφεται στο δοχείο γιατί ο σύνδεσμος
+                          κληρονομεί τη γραμματοσειρά της πρότασης που τον περιέχει. */}
+                      <div style={{ display:'flex', gap:6, marginTop:6, justifyContent:'flex-end', fontSize:12 }}>
+                        <LinkBtn onClick={()=>openEdit(d)}>Επεξεργασία</LinkBtn>
+                        <LinkBtn tone="quiet" onClick={()=>del(d)}>Διαγραφή</LinkBtn>
                       </div>
                     </div>
                   </div>
@@ -642,10 +694,14 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
   // Signed URLs ανά αίτημα (id → λίστα προσωρινών URL). Το ιδιωτικό bucket
   // απαιτεί υπογραφή· η ανάγνωση περνά από την owns_portal_token SELECT policy.
   const [signed,setSigned]=useState<Record<string,string[]>>({});
+  // ΚΕΝΟΣ ΧΑΡΤΗΣ ΔΕΝ ΣΗΜΑΙΝΕΙ «ΚΑΜΙΑ ΦΩΤΟΓΡΑΦΙΑ». Οι εικόνες μιας βλάβης είναι
+  // τα στοιχεία πάνω στα οποία αποφασίζεται αν θα πάει τεχνίτης: αν δεν
+  // φορτώσουν, ο ιδιοκτήτης πρέπει να το ΞΕΡΕΙ, όχι να κρίνει με λιγότερα.
+  const [photoErr,setPhotoErr]=useState('');
   const photoSig=useMemo(()=>photosKey(requests),[requests]);
   useEffect(()=>{
     let alive=true;
-    signMaintenancePhotos(supabase,requests).then(map=>{ if(alive) setSigned(map); });
+    signMaintenancePhotos(supabase,requests).then(r=>{ if(alive){ setSigned(r.map); setPhotoErr(r.error); } });
     return ()=>{ alive=false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[photoSig]);
@@ -719,6 +775,9 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
         <div style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6, margin:'6px 0 18px' }}>
           Αιτήματα που στέλνει ο ενοικιαστής μέσω της πύλης. Διαχειρίσου την κατάστασή τους και, αν πρόκειται για φθορά, κατέγραψέ τα στο ιστορικό φθορών.
         </div>
+        {/* ΜΙΑ ΦΟΡΑ ΠΑΝΩ ΑΠΟ ΤΗ ΛΙΣΤΑ: η υπογραφή γίνεται με ΜΙΑ κλήση για όλες τις
+            φωτογραφίες όλων των αιτημάτων, οπότε η αποτυχία είναι επίσης μία. */}
+        {photoErr&&<InfoBanner tone="negative">{photoErr} Τα αιτήματα φαίνονται κανονικά· λείπουν μόνο οι εικόνες τους, που είναι και το βασικό στοιχείο για να κριθεί αν χρειάζεται τεχνίτης.</InfoBanner>}
         {list.length===0?(
           <EmptyState icon={<Wrench size={20}/>} title="Κανένα αίτημα βλάβης ακόμη" hint="Όταν ο ενοικιαστής στείλει αίτημα από την πύλη, θα εμφανιστεί εδώ για διαχείριση." />
         ):(
@@ -738,8 +797,8 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                   {(signed[m.id]?.length??0)>0&&(
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const, marginBottom:12 }}>
                       {signed[m.id].map((url,pi)=>(
-                        <a key={pi} href={url} target="_blank" rel="noopener noreferrer" style={{ display:'block', width:64, height:64, borderRadius:8, overflow:'hidden', border:'1px solid var(--border-subtle)' }}>
-                          <img src={url} alt="Φωτογραφία βλάβης" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+                        <a key={pi} href={url} target="_blank" rel="noopener noreferrer" style={{ display:'block', width:64, height:64, borderRadius: T.radius.chip, overflow:'hidden', border:'1px solid var(--border-subtle)' }}>
+                          <RuntimeImg src={url} alt="Φωτογραφία βλάβης" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
                         </a>
                       ))}
                     </div>
@@ -760,17 +819,18 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                           <div style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-tertiary)', fontFamily:T.font.sans, marginBottom:6 }}>Από τις επαφές σου</div>
                           <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
                             {savedContacts.slice(0,8).map(c=>(
-                              <button key={c.id} onClick={()=>setAf({ name:c.full_name||'', contact:c.phone||c.email||'' })}
-                                style={{ ...s.btnGhost, padding:'6px 11px', fontSize: 'var(--fs-xs)' }}>
+                              // Μοιάζει με πλακίδιο αλλά δεν κρατά κατάσταση: συμπληρώνει τη
+                              // φόρμα και τελειώνει, άρα κουμπί ενέργειας και όχι ChipToggle.
+                              <Btn key={c.id} variant="secondary" onClick={()=>setAf({ name:c.full_name||'', contact:c.phone||c.email||'' })}>
                                 {c.full_name}{c.role?` · ${roleLabel(c.role)}`:''}
-                              </button>
+                              </Btn>
                             ))}
                           </div>
                         </div>
                       )}
                       <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
-                        <button style={s.btnGhost} onClick={()=>setAssignFor(null)}>Ακύρωση</button>
-                        <button style={s.btnGold} disabled={busy} onClick={()=>saveAssign(m)}>Αποθήκευση</button>
+                        <Btn variant="secondary" onClick={()=>setAssignFor(null)}>Ακύρωση</Btn>
+                        <Btn variant="primary" disabled={busy} onClick={()=>saveAssign(m)}>Αποθήκευση</Btn>
                       </div>
                     </div>
                   )}
@@ -784,19 +844,27 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                           <TextInput label="Κόστος" suffix="€" value={doneCost} onChange={setDoneCost} placeholder="Προαιρετικό"/>
                         </div>
                         <div style={{ flex:1 }}/>
-                        <button style={s.btnGhost} onClick={()=>setDoneFor(null)}>Ακύρωση</button>
-                        <button style={s.btnGold} disabled={busy} onClick={()=>completeWithCost(m)}>Ολοκλήρωση</button>
+                        <Btn variant="secondary" onClick={()=>setDoneFor(null)}>Ακύρωση</Btn>
+                        <Btn variant="primary" disabled={busy} onClick={()=>completeWithCost(m)}>Ολοκλήρωση</Btn>
                       </div>
                     </div>
                   )}
                   <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
-                    {m.status!=='new'&&<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} disabled={busy} onClick={()=>setStatus(m,'new')}>Νέο</button>}
-                    {m.status!=='in_progress'&&<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} disabled={busy} onClick={()=>setStatus(m,'in_progress')}>Σε εξέλιξη</button>}
-                    {m.status!=='done'&&<button style={s.btnSm} disabled={busy} onClick={()=>{ setDoneFor(m.id); setDoneCost(''); }}>Ολοκληρώθηκε</button>}
-                    <button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} disabled={busy} onClick={()=>openAssign(m)}>{(m.assignee_name||m.assignee_contact)?'Ανάθεση':'Ανάθεση σε συνεργείο'}</button>
-                    {m.assignee_contact&&normalizePhone(m.assignee_contact).length>=10&&<a href={whatsappLink(msgDigits(m.assignee_contact),contractorText(m))} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>WhatsApp συνεργείου</a>}
-                    {m.assignee_contact&&m.assignee_contact.includes('@')&&<a href={`mailto:${m.assignee_contact}?subject=${encodeURIComponent('Εργασία: '+m.title)}&body=${encodeURIComponent(contractorText(m))}`} style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>Μήνυμα στο συνεργείο</a>}
-                    <button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} disabled={busy} onClick={()=>toDamage(m)}>Καταγραφή ως φθορά</button>
+                    {/* ΟΛΗ Η ΣΕΙΡΑ ΕΙΝΑΙ ΕΝΕΡΓΕΙΕΣ, ΟΧΙ ΠΛΑΚΙΔΙΑ ΜΕ ΚΑΤΑΣΤΑΣΗ: η τρέχουσα
+                        κατάσταση ΚΡΥΒΕΤΑΙ αντί να δείχνεται πατημένη, οπότε δεν υπάρχει
+                        «επιλεγμένο» να ανακοινωθεί — άρα `Btn` και όχι `ChipToggle`.
+                        Τα δύο μηνύματα προς το συνεργείο είναι ΠΡΟΟΡΙΣΜΟΙ: μένουν
+                        σύνδεσμοι, με το `href` του ίδιου κουμπιού, ώστε η σειρά να μη
+                        σπάει σε δύο μεγέθη. */}
+                    {m.status!=='new'&&<Btn variant="secondary" disabled={busy} onClick={()=>setStatus(m,'new')}>Νέο</Btn>}
+                    {m.status!=='in_progress'&&<Btn variant="secondary" disabled={busy} onClick={()=>setStatus(m,'in_progress')}>Σε εξέλιξη</Btn>}
+                    {m.status!=='done'&&<Btn variant="secondary" disabled={busy} onClick={()=>{ setDoneFor(m.id); setDoneCost(''); }}>Ολοκληρώθηκε</Btn>}
+                    <Btn variant="secondary" disabled={busy} onClick={()=>openAssign(m)}>{(m.assignee_name||m.assignee_contact)?'Ανάθεση':'Ανάθεση σε συνεργείο'}</Btn>
+                    {m.assignee_contact&&normalizePhone(m.assignee_contact).length>=10&&<Btn variant="secondary" href={whatsappLink(msgDigits(m.assignee_contact),contractorText(m))} newTab>WhatsApp συνεργείου</Btn>}
+                    {m.assignee_contact&&m.assignee_contact.includes('@')&&<Btn variant="secondary" href={`mailto:${m.assignee_contact}?subject=${encodeURIComponent('Εργασία: '+m.title)}&body=${encodeURIComponent(contractorText(m))}`}>Μήνυμα στο συνεργείο</Btn>}
+                    <Btn variant="secondary" disabled={busy} onClick={()=>toDamage(m)}>Καταγραφή ως φθορά</Btn>
+                    {/* Ιδιος λόγος με τη διαγραφή του ιστορικού επικοινωνίας: το κόκκινο
+                        του `s.btnDng` δεν υπάρχει σε κανέναν από τους τρεις ρόλους του `Btn`. */}
                     <button style={s.btnDng} disabled={busy} onClick={()=>del(m)}>Διαγραφή</button>
                   </div>
                 </div>
@@ -809,7 +877,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
             ενοικιαστή, που αλλιώς δεν θα φαίνονταν πουθενά. Μαζεμένο by default. */}
         {others.length>0&&(
           <div style={{ borderTop:'1px solid var(--border-subtle)', marginTop:20, paddingTop:14 }}>
-            <button onClick={()=>setHistOpen(o=>!o)} style={{ display:'flex', alignItems:'center', gap: 8, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' as const, fontFamily:T.font.sans }}>
+            <button onClick={()=>setHistOpen(o=>!o)} className="acc-toggle acc-row">
               <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ color:'var(--text-tertiary)', transform:histOpen?'rotate(90deg)':'none', transition:'transform 0.2s', flexShrink:0 }}><path d="M9 6l6 6-6 6"/></svg>
               <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-secondary)' }}>Ιστορικό ακινήτου</span>
               <span style={{ marginLeft:'auto', fontSize:12, color:'var(--text-tertiary)', fontWeight:600 }}>{others.length} {others.length===1?'αίτημα':'αιτήματα'}</span>

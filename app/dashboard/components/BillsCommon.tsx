@@ -5,8 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
-import { NumberInput, TextInput, DatePicker, CustomSelect, addBtn } from './UIComponents';
-import { T, TT, fe, formGrid, fieldRow, fixedCols, InfoBanner, Card, EmptyState, fp, histInputStyle, localDay, ABSENT_SHORT, Bar } from '@/components/Theme';
+import { NumberInput, TextInput, DatePicker, CustomSelect } from './UIComponents';
+import { T, fe, formGrid, fieldRow, fixedCols, InfoBanner, Card, EmptyState, fp, histInputStyle, localDay, ABSENT_SHORT, Bar, Btn, IconBtn } from '@/components/Theme';
 import { notifyOk } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { HandCoins, BarChart3 } from 'lucide-react';
@@ -29,7 +29,7 @@ const MGMT_TYPES = [
 // σύνδεσμο που δεν υπάρχει πια.
 const MGMT_INFO: Record<string, string> = {
   traditional: 'Παραδοσιακός διαχειριστής, εθελοντής ή αμειβόμενος ένοικος ή ιδιοκτήτης.',
-  office:      'Επαγγελματική εταιρεία διαχείρισης, συνήθως 20 έως 50 € τον μήνα.',
+  office:      'Επαγγελματική εταιρεία διαχείρισης, συνήθως 20 έως 50€ τον μήνα.',
   billys:      'Ψηφιακή πλατφόρμα κοινοχρήστων: online έκδοση, ειδοποιήσεις, πληρωμές.',
   none:        'Αυτοδιαχείριση, χωρίς κόστος, απαιτεί χρόνο από τον ιδιοκτήτη.',
 };
@@ -56,6 +56,18 @@ const COMMON_CATEGORIES: { key: string; label: string; payer: 'tenant' | 'owner'
 // για να πέφτει πάνω από τα ψηφία και όχι πάνω από το περίγραμμα.
 const FIELD_COL = 150
 const FIELD_PAD = 12
+// Το οριζόντιο γέμισμα κελιού της `.po-table` (globals.css) και το πλάτος της
+// στήλης του μεριδίου. Οι δύο σταθερές στήλες του πίνακα δηλώνονται ως
+// «περιεχόμενο συν τα δύο γεμίσματα», ώστε να κρατήσουν ΑΚΡΙΒΩΣ το πλάτος που
+// είχαν ως στήλες πλέγματος με κενό 14.
+const CELL_PAD  = 14
+const SHARE_COL = 110
+// Η `.po-table` στοιχίζει κάθε κελί στην ΚΟΡΥΦΗ — σωστό για κείμενο πολλών
+// γραμμών, λάθος όπου δίπλα στην ετικέτα κάθεται πεδίο. Μετρημένο: η ετικέτα
+// ξεκινά 10 κάτω από την κορυφή του κελιού και τα ψηφία του πεδίου 19, δηλαδή
+// σκαλοπάτι εννέα εικονοστοιχείων μέσα στην ίδια γραμμή. Το πλέγμα κεντράριζε
+// κατακόρυφα· ο πίνακας το ξαναδηλώνει ανά κελί.
+const CELL_MID = { verticalAlign: 'middle' as const }
 
 interface Props { propertyId: string; userId?: string; }
 
@@ -90,8 +102,8 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
   // το `upd()` στέλνει ΟΛΟ το state — δηλαδή τα έγραφε στο νέο ακίνητο.
   //
   // ΤΟ ΑΚΡΙΒΟΤΕΡΟ ΕΠΑΚΟΛΟΥΘΟ ΔΕΝ ΗΤΑΝ ΤΑ ΡΥΘΜΙΣΤΙΚΑ. Μια κληρονομημένη έκτακτη
-  // δαπάνη («Αντικατάσταση ασανσέρ 1.800 €») εμφανιζόταν με ενεργό το κουμπί
-  // μεταφοράς και η `transferToExpenses` γράφει με το ΤΡΕΧΟΝ propertyId: 1.800 €
+  // δαπάνη («Αντικατάσταση ασανσέρ 1.800€») εμφανιζόταν με ενεργό το κουμπί
+  // μεταφοράς και η `transferToExpenses` γράφει με το ΤΡΕΧΟΝ propertyId: 1.800€
   // καταχωρημένα σε λάθος ακίνητο, άρα λάθος Ε2 και λάθος απόδοση και για τα δύο.
   //
   // Τώρα κάθε πεδίο γράφεται ΠΑΝΤΑ, με την προεπιλογή του όταν λείπει. Καμία
@@ -124,17 +136,47 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
 
   useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
 
+  const FAILED = 'Οι ρυθμίσεις κοινοχρήστων δεν αποθηκεύτηκαν';
+  const put = useCallback((patch: Record<string, unknown>, what = FAILED) =>
+    saved(what, settings.put(supabase, propertyId, userId, 'common', patch)),
+  [propertyId, userId, supabase]);
+
+  // Η αναμονή των 800 χιλιοστών υπάρχει για ΠΛΗΚΤΡΟΛΟΓΗΣΗ: κάθε χαρακτήρας σε
+  // πεδίο ποσού δεν αξίζει ένα αίτημα.
   const save = useCallback((patch: Record<string, unknown>) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      await saved('Οι ρυθμίσεις κοινοχρήστων δεν αποθηκεύτηκαν',
-        settings.put(supabase, propertyId, userId, 'common', patch));
-    }, 800);
-  }, [propertyId, userId]);
+    saveTimer.current = setTimeout(() => { void put(patch); }, 800);
+  }, [put]);
 
-  const upd = useCallback((patch: Record<string, unknown>) => {
-    save({ mgmtType, mgmtCost, mgmtDueDay, fundBalance, fundMyPct, fundMonthly, fundLastDate, extras, history, millesimi, catData, ...patch });
-  }, [mgmtType, mgmtCost, mgmtDueDay, fundBalance, fundMyPct, fundMonthly, fundLastDate, extras, history, millesimi, catData, save]);
+  // ══ ΚΑΙ Η ΑΝΑΜΟΝΗ ΑΚΥΡΩΝΟΤΑΝ ΑΠΟ ΤΗΝ ΕΞΟΔΟ, ΜΕ ΤΙΜΗΜΑ 1.800€ ══════════════
+  // ΤΟ ΣΦΑΛΜΑ, ΒΗΜΑ ΒΗΜΑ. Το «Μεταφορά στις Δαπάνες» καταχωρεί την έκτακτη
+  // δαπάνη ΑΜΕΣΩΣ κι μετά σημειώνει `transferredToExpenses: true` — μέσα από
+  // την ίδια αναμονή των 800 χιλιοστών. Το effect καθαρισμού από πάνω κάνει
+  // `clearTimeout` στην αποπροσάρτηση. Οποιος πατούσε το κουμπί κι άλλαζε
+  // αμέσως καρτέλα έχανε ΜΟΝΟ τη σημείωση: η δαπάνη των 1.800€ είχε ήδη γραφτεί.
+  //
+  // Την επόμενη φορά η έκτακτη εμφανιζόταν αμετάφερτη, με ενεργό κουμπί. Δεύτερο
+  // πάτημα, δεύτερη δαπάνη 1.800€ — σε ακίνητο όπου το Ε2 κι η απόδοση βγαίνουν
+  // από αυτόν ακριβώς τον πίνακα. Κανένα μήνυμα σφάλματος πουθενά: η γραφή δεν
+  // απέτυχε, δεν ΕΓΙΝΕ.
+  //
+  // Ο ΔΙΑΧΩΡΙΣΜΟΣ ΕΙΝΑΙ Ο ΚΑΝΟΝΑΣ, ΟΧΙ Η ΕΞΑΙΡΕΣΗ. Πληκτρολόγηση περιμένει·
+  // διακριτή πράξη —πρόσθεσε, σβήσε, μετέφερε— γράφεται τώρα κι απαντά αν
+  // πέτυχε. Η αναμονή που τρέχει ακυρώνεται πρώτη, αλλιώς θα ξαναέγραφε από
+  // πάνω παλιότερο στιγμιότυπο.
+  const saveNow = useCallback((patch: Record<string, unknown>, what?: string) => {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    return put(patch, what);
+  }, [put]);
+
+  /** Ολο το state με το μπάλωμα από πάνω: ό,τι ταξιδεύει στη βάση. */
+  const snapshot = useCallback((patch: Record<string, unknown>) =>
+    ({ mgmtType, mgmtCost, mgmtDueDay, fundBalance, fundMyPct, fundMonthly, fundLastDate, extras, history, millesimi, catData, ...patch }),
+  [mgmtType, mgmtCost, mgmtDueDay, fundBalance, fundMyPct, fundMonthly, fundLastDate, extras, history, millesimi, catData]);
+
+  const upd = useCallback((patch: Record<string, unknown>) => { save(snapshot(patch)); }, [save, snapshot]);
+  /** Για διακριτές πράξεις: γράφει ΤΩΡΑ κι λέει αν πέτυχε. */
+  const updNow = useCallback((patch: Record<string, unknown>, what?: string) => saveNow(snapshot(patch), what), [saveNow, snapshot]);
 
   const sMgmt    = (v: string) => { setMgmtType(v);    upd({ mgmtType: v    }); };
   const sMgmtC   = (v: string) => { setMgmtCost(v);    upd({ mgmtCost: v    }); };
@@ -158,11 +200,11 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
   const addExtra = () => {
     if (!extraReason || !extraAmount) return;
     const n = [...extras, { reason: extraReason, amount: extraAmount, date: extraDate, transferredToExpenses: false }];
-    setExtras(n); upd({ extras: n });
+    setExtras(n); void updNow({ extras: n });
     setExtraReason(''); setExtraAmount(''); setExtraDate('');
   };
   const delExtra = (i: number) => {
-    const n = extras.filter((_, j) => j !== i); setExtras(n); upd({ extras: n });
+    const n = extras.filter((_, j) => j !== i); setExtras(n); void updNow({ extras: n });
   };
   const transferToExpenses = async (i: number) => {
     const e = extras[i];
@@ -182,8 +224,17 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
     )]));
     setTransferring(null);
     if (!ok) return;
+    // Η ΣΗΜΕΙΩΣΗ ΕΙΝΑΙ Ο ΦΥΛΑΚΑΣ ΤΗΣ ΔΙΠΛΗΣ ΕΓΓΡΑΦΗΣ, ΑΡΑ ΠΕΡΙΜΕΝΕΤΑΙ. Η δαπάνη
+    // έχει ήδη μπει· αν το σημάδι δεν γραφτεί, το κουμπί ξαναζωντανεύει στην
+    // επόμενη φόρτωση κι η ίδια δαπάνη μπαίνει δεύτερη φορά.
+    //
+    // ΤΟ ΜΗΝΥΜΑ ΕΙΝΑΙ ΔΙΚΟ ΤΟΥ, ΓΙΑΤΙ ΤΟ ΓΕΝΙΚΟ ΘΑ ΕΛΕΓΕ ΛΑΘΟΣ ΠΡΑΓΜΑ. «Οι
+    // ρυθμίσεις κοινοχρήστων δεν αποθηκεύτηκαν» αφήνει τον χρήστη να νομίζει ότι
+    // χάθηκε κι η δαπάνη — κι να ξαναπατήσει, που είναι ακριβώς το σφάλμα.
     const n = extras.map((ex, j) => j === i ? { ...ex, transferredToExpenses: true } : ex);
-    setExtras(n); upd({ extras: n });
+    setExtras(n);
+    if (!await updNow({ extras: n },
+      'Η δαπάνη ΚΑΤΑΧΩΡΗΘΗΚΕ, αλλά δεν σημειώθηκε ως μεταφερμένη. Μην την ξαναμεταφέρεις')) return;
     // Ο τόνος (θετικό/αρνητικό) δηλώνεται πια ρητά. Πριν, η επιτυχία ξεχώριζε από
     // την αποτυχία με `transferMsg.startsWith('Σφάλμα')` — αν άλλαζε η διατύπωση
     // του μηνύματος, η αποτυχία εμφανιζόταν ουδέτερη και διαβαζόταν ως επιτυχία.
@@ -231,9 +282,9 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
       `}</style>
 
       {/* ═══ ΤΡΙΑ ΜΗΔΕΝΙΚΑ ΠΡΙΝ Ο ΧΡΗΣΤΗΣ ΓΡΑΨΕΙ ΤΙΠΟΤΑ ═══════════════════════
-          Η σειρά άνοιγε την οθόνη με «Δωρεάν · 0,00 € · 0,00 €», δηλαδή τρεις
+          Η σειρά άνοιγε την οθόνη με «Δωρεάν · 0,00€ · 0,00€», δηλαδή τρεις
           μεγάλες κάρτες που δεν μετρούσαν τίποτα: τα νούμερα παράγονται από τα
-          πεδία ΠΙΟ ΚΑΤΩ, που είναι ακόμη άδεια. Ένα «0,00 €» σε θέση μετρικής
+          πεδία ΠΙΟ ΚΑΤΩ, που είναι ακόμη άδεια. Ένα «0,00€» σε θέση μετρικής
           δεν διαβάζεται «δεν ξέρω ακόμη»· διαβάζεται «μηδέν» και είναι το ίδιο
           σφάλμα με τα μηδενικά του πίνακα κατηγοριών.
 
@@ -264,7 +315,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         {secHdr('Ανάλυση Κοινοχρήστων ανά Κατηγορία')}
 
         <div style={{ ...formGrid(), marginBottom: 16 }}>
-          <NumberInput label="Τα χιλιοστά μου (‰)" value={millesimi} onChange={sMill} suffix="‰" step={1} max={1000}/>
+          <NumberInput label="Τα χιλιοστά μου (‰)" value={millesimi} onChange={sMill} suffix="‰" max={1000}/>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
             <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 6, fontFamily: T.font.sans }}>Το μερίδιό μου</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fp((millRatio * 100))}</div>
@@ -290,41 +341,73 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         {(['tenant', 'owner'] as const).map(payer => {
           const rows = catRows.filter(r => r.payer === payer);
           if (!rows.length) return null;
+          /* ═══ ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs ══════════════════════════════════
+             ΤΙ ΗΤΑΝ. Εννέα γραμμές επί τρεις στήλες σε `display: grid`, με το
+             ΙΔΙΟ `gridTemplateColumns` γραμμένο δύο φορές — μία στη σειρά της
+             κεφαλίδας και μία στη σειρά δεδομένων: δύο σημεία που έπρεπε να
+             συμφωνούν στο χέρι για να μη στραβώσουν οι στήλες.
+
+             ΤΙ ΚΕΡΔΙΖΕΙ ΚΑΙ ΔΕΝ ΦΑΙΝΕΤΑΙ. Είκοσι επτά κελιά χωρίς γραμμές και
+             στήλες: ο αναγνώστης οθόνης τα διάβαζε ως ασύνδετα κείμενα, ποτέ ως
+             «Καθαρισμός, Μερίδιό μου». Με `th scope` κάθε κελί ανακοινώνεται με
+             τους δύο τίτλους του και η `.po-table` δίνει τα γεμίσματα, τις τρίχες
+             διαχωρισμού και το κουτί που πριν ήταν γραμμένα στο χέρι. */
           return (
-        <div key={payer} style={{ marginTop: payer === 'owner' ? 20 : 0 }}>
-        {/* ═══ Η ΕΠΙΚΕΦΑΛΙΔΑ ΣΤΟΙΧΙΖΟΤΑΝ ΣΤΟ ΠΕΡΙΓΡΑΜΜΑ, Η ΤΙΜΗ ΣΤΟ ΜΕΛΑΝΙ ══
-            Το «Σύνολο κτιρίου» ήταν δεξιά στοιχισμένο στο ΑΚΡΟ της στήλης, ενώ
-            τα ψηφία που τιτλοφορεί κάθονται δώδεκα εικονοστοιχεία πιο μέσα —
-            όσο το padding του πεδίου. Δηλαδή η ετικέτα δεν κάθεται ποτέ πάνω
-            από τον αριθμό της· κάθεται πάνω από το πλαίσιο. Με άδεια πεδία, που
-            είναι και η πρώτη εικόνα που βλέπει ο χρήστης, η απόκλιση διαβάζεται
-            ως στραβή στοίχιση.
-
-            Η στοίχιση βγαίνει τώρα από ΤΟ ΙΔΙΟ νούμερο με το πεδίο (FIELD_PAD),
-            οπότε δεν μπορεί να ξαναποκλίνει. Η διπλανή στήλη δεν έχει πλαίσιο,
-            άρα το μελάνι της είναι ήδη στο άκρο και μένει όπως είναι. */}
-        <div style={{ display: 'grid', gridTemplateColumns: `minmax(0, 1fr) ${FIELD_COL}px 110px`, gap: 14, padding: '0 4px 8px', borderBottom: '1px solid var(--border-subtle)', marginBottom: 4, alignItems: 'baseline' }}>
-          <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>{payer === 'tenant' ? 'Βαρύνουν τον ενοικιαστή' : 'Βαρύνουν εσένα'}</div>
-          <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', textAlign: 'right', paddingRight: FIELD_PAD }}>Σύνολο κτιρίου</div>
-          <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', textAlign: 'right' }}>Μερίδιό μου</div>
-        </div>
-
-        {rows.map(r => (
-          <div key={r.key} style={{ display: 'grid', gridTemplateColumns: `minmax(0, 1fr) ${FIELD_COL}px 110px`, gap: 14, alignItems: 'center', padding: '8px 4px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.sans, fontWeight: 500 }}>{r.label}</div>
-            {/* ΤΟ ΣΚΟΥΡΟ «ΧΑΠΙ» ΕΓΙΝΕ ΠΕΔΙΟ. Ήταν `background: bg-base` με ακτίνα
-                σήματος: μέσα σε σκούρο θέμα διαβαζόταν ως τρύπα, όχι ως κουτί
-                που δέχεται γράψιμο και δεν έμοιαζε με κανένα άλλο πεδίο της
-                εφαρμογής. Ίδια επιφάνεια, ίδιο περίγραμμα, ίδια ακτίνα, ίδιο
-                δαχτυλίδι εστίασης με τα υπόλοιπα. */}
-            <input
-              aria-label={`${r.label}, μηνιαίο σύνολο κτιρίου σε ευρώ`}
-              type="number" min={0} inputMode="decimal" value={catData[r.key] ?? ''} onChange={e => sCat(r.key, e.target.value)}
-              className="po-field"
-              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: `8px ${FIELD_PAD}px`, fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}/>
-            <div style={{ fontSize: 12, fontWeight: 600, color: r.myShare > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{r.myShare > 0 ? fe(r.myShare) : ''}</div>
+        <div key={payer} className="po-table-box" style={{ marginTop: payer === 'owner' ? 20 : 0 }}>
+          {/* ΤΟ ΕΛΑΧΙΣΤΟ ΠΛΑΤΟΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΙΣ ΣΤΗΛΕΣ, ΟΧΙ ΑΠΟ ΕΚΤΙΜΗΣΗ: 178 το
+              πεδίο μαζί με τα γεμίσματα του κελιού, 138 το μερίδιο, 174 όσο θέλει
+              η επικεφαλίδα «Βαρύνουν τον ενοικιαστή» σε δύο γραμμές. Κάτω από τα
+              490 ο πίνακας κυλά αντί να στριμωχτεί — στα 375 το πλέγμα άφηνε 12
+              εικονοστοιχεία στην ετικέτα της κατηγορίας. */}
+          <div className="po-scroll-x">
+            <table className="po-table tbl-fixed" style={{ '--tbl-fs': 'var(--fs-sm)', '--tbl-min': '490px' }}>
+              {/* Τα πλάτη του `gridTemplateColumns` ζουν πια εδώ. Το `tbl-fixed`
+                  είναι απαραίτητο: χωρίς αυτό το `<colgroup>` είναι πρόταση και
+                  το πλάτος το αποφασίζει το μακρύτερο λεκτικό της στήλης. */}
+              <colgroup>
+                <col />
+                <col style={{ width: FIELD_COL + CELL_PAD * 2 }} />
+                <col style={{ width: SHARE_COL + CELL_PAD * 2 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col" style={{ color: 'var(--text-secondary)' }}>{payer === 'tenant' ? 'Βαρύνουν τον ενοικιαστή' : 'Βαρύνουν εσένα'}</th>
+                  {/* ═══ Η ΕΠΙΚΕΦΑΛΙΔΑ ΣΤΟΙΧΙΖΟΤΑΝ ΣΤΟ ΠΕΡΙΓΡΑΜΜΑ, Η ΤΙΜΗ ΣΤΟ ΜΕΛΑΝΙ
+                      Τα ψηφία του πεδίου κάθονται 26 μέσα από την άκρη της στήλης:
+                      14 το γέμισμα του κελιού και 12 του ίδιου του πεδίου. Με σκέτο
+                      δεξιό στοίχισμα η ετικέτα πέφτει στα 14, δηλαδή πάνω από το
+                      πλαίσιο κι όχι πάνω από τον αριθμό που τιτλοφορεί. Με άδεια
+                      πεδία —η πρώτη εικόνα του χρήστη— διαβάζεται ως στραβή στοίχιση. */}
+                  <th scope="col" className="num" style={{ paddingRight: CELL_PAD + FIELD_PAD }}>Σύνολο κτιρίου</th>
+                  <th scope="col" className="num">Μερίδιό μου</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.key}>
+                    <th scope="row" style={{ ...CELL_MID, color: 'var(--text-primary)', fontWeight: 500 }}>{r.label}</th>
+                    {/* ΤΟ ΣΚΟΥΡΟ «ΧΑΠΙ» ΕΓΙΝΕ ΠΕΔΙΟ. Ήταν `background: bg-base` με ακτίνα
+                        σήματος: μέσα σε σκούρο θέμα διαβαζόταν ως τρύπα, όχι ως κουτί
+                        που δέχεται γράψιμο και δεν έμοιαζε με κανένα άλλο πεδίο της
+                        εφαρμογής. Ίδια επιφάνεια, ίδιο περίγραμμα, ίδια ακτίνα, ίδιο
+                        δαχτυλίδι εστίασης με τα υπόλοιπα. */}
+                    <td style={CELL_MID}>
+                      {/* ΤΟ `aria-label` ΜΕΝΕΙ. Το `th scope="row"` ονοματίζει το ΚΕΛΙ,
+                          όχι το πεδίο μέσα του: σε λειτουργία φόρμας ο αναγνώστης οθόνης
+                          ακούει σκέτο «πεδίο αριθμού». Και το «σε ευρώ» δεν γράφεται
+                          πουθενά αλλού — αυτό το πεδίο δεν κουβαλά κατάληξη «€». */}
+                      <input
+                        aria-label={`${r.label}, μηνιαίο σύνολο κτιρίου σε ευρώ`}
+                        type="number" min={0} inputMode="decimal" value={catData[r.key] ?? ''} onChange={e => sCat(r.key, e.target.value)}
+                        className="po-field"
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: `8px ${FIELD_PAD}px`, fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}/>
+                    </td>
+                    <td className="num" style={{ ...CELL_MID, fontWeight: 600, color: r.myShare > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontFamily: T.font.mono }}>{r.myShare > 0 ? fe(r.myShare) : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
         </div>
           );
         })}
@@ -358,8 +441,8 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         {/* FIX: 3 cols so DatePicker has enough room, was 4 cols causing overflow */}
         <div {...fieldRow(180, 14, { marginBottom: 14 })}>
           <CustomSelect label="Τύπος διαχείρισης" labelInfo={mgmtInfo} value={mgmtType} onChange={sMgmt} options={MGMT_TYPES}/>
-          <NumberInput  label="Μηνιαίο κόστος" value={mgmtCost}   onChange={sMgmtC} suffix="€" step={5}/>
-          <NumberInput  label="Ημέρα χρέωσης"       value={mgmtDueDay} onChange={sMgmtD} suffix="η" step={1}/>
+          <NumberInput  label="Μηνιαίο κόστος" value={mgmtCost}   onChange={sMgmtC} suffix="€"/>
+          <NumberInput  label="Ημέρα χρέωσης"       value={mgmtDueDay} onChange={sMgmtD} suffix="η"/>
         </div>
 
         {/* ═══ ΤΡΙΑ ΤΜΗΜΑΤΑ ΕΦΥΓΑΝ ΑΠΟ ΕΔΩ ═══════════════════════════════════
@@ -369,7 +452,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
             Δεν είναι δουλειά μιας εφαρμογής διαχείρισης ακινήτων να διαφημίζει
             έξι ανταγωνιστές μέσα στην οθόνη των κοινοχρήστων, ούτε να συντηρεί
             τιμοκαταλόγους τρίτων που σαπίζουν σιωπηλά. Και οι «τιμές» τους δεν
-            ήταν καν τιμές: «Οικονομικό», «~86 €/έτος», «Δωρεάν – 29 €/μήνα»,
+            ήταν καν τιμές: «Οικονομικό», «~86€/έτος», «Δωρεάν – 29€/μήνα»,
             τυπωμένες σε γραμματοσειρά πίνακα σαν να ήταν ποσά.
 
             ΤΕΣΣΕΡΙΣ ΚΑΡΤΕΣ «ΣΥΓΚΡΙΣΗ ΕΠΙΛΟΓΩΝ» που ρωτούσαν ΑΚΡΙΒΩΣ ό,τι ο
@@ -392,9 +475,9 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
             μισή κάρτα άδεια δεξιά — όχι επιλογή, αλλά ό,τι απέμενε από ένα
             πλέγμα με σταθερό μέγιστο στήλης. Μία σειρά, ίσα μοιρασμένη. */}
         <div {...fieldRow(180, 14, { marginBottom: 14 })}>
-          <NumberInput label="Υπόλοιπο ταμείου"    value={fundBalance}  onChange={sFundBal} suffix="€" step={100}/>
-          <NumberInput label="Μερίδιό μου"         value={fundMyPct}    onChange={sFundPct} suffix="%" step={1} max={100}/>
-          <NumberInput label="Μηνιαία εισφορά"     value={fundMonthly}  onChange={sFundM}   suffix="€" step={5}/>
+          <NumberInput label="Υπόλοιπο ταμείου"    value={fundBalance}  onChange={sFundBal} suffix="€"/>
+          <NumberInput label="Μερίδιό μου"         value={fundMyPct}    onChange={sFundPct} suffix="%" max={100}/>
+          <NumberInput label="Μηνιαία εισφορά"     value={fundMonthly}  onChange={sFundM}   suffix="€"/>
           <DatePicker  label="Τελευταία ενημέρωση" value={fundLastDate} onChange={sFundD}/>
         </div>
 
@@ -434,12 +517,11 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
               3+1. Ο κανόνας των διαιρετών δίνει 4 ή 2+2, ποτέ ορφανό. */}
           <div {...fixedCols(4, 14)}>
             <TextInput   label="Αιτία"      value={extraReason} onChange={setExtraReason} placeholder="ταράτσα"/>
-            <NumberInput label="Ποσό"       value={extraAmount} onChange={setExtraAmount} suffix="€" step={50}/>
+            <NumberInput label="Ποσό"       value={extraAmount} onChange={setExtraAmount} suffix="€"/>
             <DatePicker  label="Ημερομηνία" value={extraDate}   onChange={setExtraDate}/>
-            <button type="button" disabled={!extraReason.trim() || !extraAmount} onClick={addExtra}
-              style={addBtn(!extraReason.trim() || !extraAmount)}>
+            <Btn variant="primary" field disabled={!extraReason.trim() || !extraAmount} onClick={addExtra}>
               Προσθήκη
-            </button>
+            </Btn>
           </div>
         </div>
 
@@ -465,15 +547,13 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{fe(parseFloat(e.amount))}</span>
               {!e.transferredToExpenses && (
-                <button onClick={() => transferToExpenses(i)} disabled={transferring === i}
-                  style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.badge, padding: '5px 12px', cursor: transferring === i ? 'not-allowed' : 'pointer', fontFamily: T.font.sans, whiteSpace: 'nowrap' as const, fontWeight: 600, opacity: transferring === i ? 0.6 : 1, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+                <Btn variant="secondary" onClick={() => transferToExpenses(i)} disabled={transferring === i}>
                   {transferring === i ? 'Μεταφορά…' : 'Μεταφορά στις Δαπάνες'}
-                </button>
+                </Btn>
               )}
-              <button onClick={() => delExtra(i)}
-                style={{ width: 26, height: 26, borderRadius: T.radius.badge, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                ✕
-              </button>
+              {/* Το «✕» δεν είχε λεκτικό, μόνο σχήμα: το `label` είναι ό,τι ακούει
+                  ο αναγνώστης οθόνης και λέει ΠΟΙΑ εισφορά φεύγει. */}
+              <IconBtn label={`Διαγραφή έκτακτης εισφοράς: ${e.reason}`} onClick={() => delExtra(i)}><span style={{ fontSize: 12 }}>✕</span></IconBtn>
             </div>
           </div>
         ))}

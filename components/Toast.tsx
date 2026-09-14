@@ -9,7 +9,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { T, Z, type Tone } from './tokens';
 import { subscribeToasts, type ToastItem } from './toastBus';
-import { CloseButton } from './Theme';
+import { CloseButton, LinkBtn } from './Theme';
 
 // Ξανα-εξάγονται εδώ ώστε ένα component να χρειάζεται μία μόνο εισαγωγή.
 export { notify, notifyOk, notifyError, TOAST_MS } from './toastBus';
@@ -105,15 +105,13 @@ export function ToastHost() {
           <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: DOT[t.tone ?? 'neutral'], flexShrink: 0 }} />
           <span>{t.text}</span>
           {t.action && (
-            <button
-              type="button"
-              onClick={() => { t.action!.onClick(); dismiss(t.id); }}
-              style={{
-                marginLeft: 4, background: 'none', border: 'none', padding: '2px 4px',
-                color: 'var(--accent)', fontFamily: T.font.sans, fontSize: 'var(--fs-base)',
-                fontWeight: 600, cursor: 'pointer', flexShrink: 0,
-              }}
-            >{t.action.label}</button>
+            // LinkBtn αντί για Btn ghost: η ενέργεια κάθεται μέσα στην πρόταση του
+            // μηνύματος. Το ghost θα της φόρτωνε κουτί 36/44 που ψηλώνει ολόκληρο
+            // το toast, θα έβαφε επίσης το accent σε text-secondary. Το span κρατά
+            // το περιθώριο μαζί με το flexShrink που είχε το κουμπί.
+            <span style={{ marginLeft: 4, flexShrink: 0 }}>
+              <LinkBtn onClick={() => { t.action!.onClick(); dismiss(t.id); }}>{t.action.label}</LinkBtn>
+            </span>
           )}
           {(!t.duration || t.duration <= 0) && (
             <CloseButton onClose={() => dismiss(t.id)} style={{ marginLeft: 4, marginTop: -6, marginBottom: -6 }} />

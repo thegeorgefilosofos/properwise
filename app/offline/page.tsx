@@ -25,7 +25,7 @@ export default function OfflinePage() {
           Η συσκευή σου δεν βλέπει το δίκτυο αυτή τη στιγμή. Τα δεδομένα σου είναι ασφαλή·
           μόλις επανέλθει η σύνδεση, όλα εμφανίζονται κανονικά.
         </p>
-        <a href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 44, padding: '0 22px', borderRadius: T.radius.pill, background: 'var(--accent)', color: 'var(--accent-text)', textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>
+        <a href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: T.h.lg, padding: '0 22px', borderRadius: T.radius.pill, background: 'var(--accent)', color: 'var(--accent-text)', textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>
           Δοκίμασε ξανά
         </a>
       </div>

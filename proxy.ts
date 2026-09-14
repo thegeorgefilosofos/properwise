@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { sessionNeedsSecondStep } from "@/lib/auth/mfa";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -78,6 +79,13 @@ export async function proxy(request: NextRequest) {
     .some((c) => c.name.startsWith("sb-"));
 
   let user = null;
+  // ── ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ΠΟΥ ΧΡΩΣΤΑΕΙ Η ΣΥΝΕΔΡΙΑ ─────────────────────────────
+  // ΓΙΑΤΙ ΔΕΝ ΑΡΚΕΙ Η ΟΘΟΝΗ ΣΥΝΔΕΣΗΣ. Εκεί ο έλεγχος ζει σε κώδικα που τρέχει
+  // στον περιηγητή: όποιος κρατά τον κλεμμένο κωδικό μπορεί να καλέσει το
+  // `signInWithPassword` με curl, να πάρει γνήσιο διακριτικό «aal1» και να το
+  // στήσει ως cookie χωρίς να δει ποτέ τη σελίδα. Η πόρτα που δεν
+  // προσπερνιέται είναι εδώ.
+  let needsSecondStep = false;
   if (hasAuthCookie) {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -100,6 +108,17 @@ export async function proxy(request: NextRequest) {
       }
     );
     user = (await supabase.auth.getUser()).data.user;
+    if (user) {
+      // ΔΥΟ ΠΗΓΕΣ ΠΟΥ ΔΕΝ ΓΡΑΦΕΙ Ο ΕΠΙΣΚΕΠΤΗΣ. Οι παράγοντες έρχονται από το
+      // `getUser()`, δηλαδή από τον διακομιστή ταυτότητας· το επίπεδο από το
+      // ΥΠΟΓΕΓΡΑΜΜΕΝΟ διακριτικό, που το `getUser()` μόλις δέχτηκε. Το
+      // `getSession()` εδώ δεν είναι κλήση δικτύου: διαβάζει το cookie.
+      const { data: sessionData } = await supabase.auth.getSession();
+      needsSecondStep = sessionNeedsSecondStep(
+        sessionData.session?.access_token,
+        user.factors,
+      );
+    }
   }
 
   const { pathname } = request.nextUrl;
@@ -177,6 +196,24 @@ export async function proxy(request: NextRequest) {
     || pathname.startsWith("/api/");
 
   if (!user && !isPublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // ── Η ΜΙΣΗ ΣΥΝΕΔΡΙΑ ΔΕΝ ΑΝΟΙΓΕΙ ΣΕΛΙΔΑ ────────────────────────────────
+  // Χρήστης με επαληθευμένη συσκευή και διακριτικό «aal1» γυρίζει στη σύνδεση,
+  // όπου η ίδια οθόνη ζητά τον εξαψήφιο κωδικό. Το /login είναι στο PUBLIC,
+  // οπότε δεν γεννιέται βρόχος.
+  //
+  // ΤΙ ΔΕΝ ΚΑΛΥΠΤΕΙ, ΓΡΑΜΜΕΝΟ ΓΙΑ ΝΑ ΜΗ ΔΙΑΒΑΣΤΕΙ ΩΣ ΠΛΗΡΗΣ ΑΜΥΝΑ:
+  //   · το /api/** μένει έξω (είναι μέσα στο isPublic), οπότε ένα διακριτικό
+  //     «aal1» εξακολουθεί να μπορεί να καλέσει τις διαδρομές που γράφουν.
+  //     Θέλει δικό του requireAal2 σε καθεμιά·
+  //   · οι πολιτικές RLS δεν κοιτούν το «aal», οπότε το ίδιο διακριτικό μιλά
+  //     κατευθείαν στο PostgREST του παρόχου, παρακάμπτοντας και αυτή τη
+  //     γραμμή. Η οριστική άμυνα είναι στη βάση.
+  if (needsSecondStep && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

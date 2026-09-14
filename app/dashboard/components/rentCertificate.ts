@@ -5,7 +5,7 @@
 // Χτισμένη πάνω στο ΚΟΙΝΟ ΑΣΠΡΟΜΑΥΡΟ σύστημα αναφορών (./reportPdf): ίδια
 // τυπογραφία (Inter, tabular numerals), κενά και disclaimer με τις άλλες
 // αναφορές. ΜΟΝΑΔΙΚΟ σημείο χρώματος: το σήμα/λογότυπο του brand (το χειρίζεται
-// το reportHeader). Χρήματα «1.234,56 €». XSS-ασφαλές (rEsc σε κάθε δυναμικό
+// το reportHeader). Χρήματα «1.234,56€». XSS-ασφαλές (rEsc σε κάθε δυναμικό
 // κείμενο), χωρίς εξαρτήσεις.
 // ═══════════════════════════════════════════════════════════════════════════
 import { reportHead, reportHeader, reportSection, reportRow, reportDisclaimer, openReport, rEur, rEsc } from './reportPdf'

@@ -20,7 +20,7 @@ import { createClient } from '@/lib/supabase/client';
 import * as billStore from '@/lib/data/bills';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
-import { T, feAuto } from '@/components/Theme';
+import { T, feAuto, Btn, IconBtn } from '@/components/Theme';
 import { electricitySwitchFinding, type SwitchFinding } from './BillsElectricity';
 import { insuranceSwitchFinding } from './BillsInsurance';
 
@@ -62,7 +62,7 @@ export default function ExpenseSwitchAlert({ propertyId, userId, onOpen }: {
       } catch { /* σιωπηλά: μια ειδοποίηση που δεν ήρθε δεν χαλάει καμία οθόνη */ }
     })();
     return () => { alive = false; };
-  }, [propertyId, userId]);
+  }, [propertyId, userId, supabase]);
 
   const visible = rows.filter(r => !dismissed.has(r.section));
   if (visible.length === 0) return null;
@@ -94,16 +94,13 @@ export default function ExpenseSwitchAlert({ propertyId, userId, onOpen }: {
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             {onOpen && (
-              <button type="button" onClick={() => onOpen(r.section)}
-                style={{ height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700, fontFamily: T.font.sans, cursor: 'pointer' }}>
-                Δες τη σύγκριση
-              </button>
+              <Btn variant="secondary" onClick={() => onOpen(r.section)}>Δες τη σύγκριση</Btn>
             )}
-            <button type="button" aria-label="Απόκρυψη" title="Απόκρυψη"
-              onClick={() => setDismissed(d => new Set(d).add(r.section))}
-              style={{ height: T.h.sm, width: T.h.sm, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: T.radius.pill, border: '1px solid transparent', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+            {/* Στρογγυλό επειδή ήταν ήδη πίλλα: η απόκρυψη κάθεται στην άκρη μιας ειδοποίησης, όχι σε γραμμή εργαλείων. */}
+            <IconBtn label="Απόκρυψη" title="Απόκρυψη" round
+              onClick={() => setDismissed(d => new Set(d).add(r.section))}>
               <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+            </IconBtn>
           </div>
         </div>
       ))}

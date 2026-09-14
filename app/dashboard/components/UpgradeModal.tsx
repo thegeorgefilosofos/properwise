@@ -9,7 +9,8 @@
 import { IDENTITY } from '@/lib/legal/identity';
 import { PLANS, PLAN_ORDER, normalizePlan, planForCount, annualPerMonth, type PlanId } from '@/lib/billing/plans';
 import { isPlanAllowedForProfile, paidPlanForProfile, type ProfileType } from '@/lib/billing/entitlements';
-import { T, feAuto, CloseButton } from '@/components/Theme';
+import { T, feAuto, Btn, CloseButton } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 
 export default function UpgradeModal({ currentCount, planId, profileType = 'individual', onClose, onManage }: {
   currentCount: number;
@@ -41,7 +42,7 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
   // ΚΑΝΟΝΑΣ: δεν προτείνουμε ΠΟΤΕ πλάνο που δεν λύνει το πρόβλημα. Ούτε αυτό που
   // ήδη έχει (θα έγραφε «Προτεινόμενο» και «Το τρέχον πλάνο σου» στο ίδιο κουτί),
   // ούτε ένα που δεν χωράει ούτε ένα ακίνητο παραπάνω — που ήταν το χειρότερο:
-  // πλήρωνες 9,90 € για ακριβώς τη χωρητικότητα που είχες ήδη εξαντλήσει.
+  // πλήρωνες 9,90€ για ακριβώς τη χωρητικότητα που είχες ήδη εξαντλήσει.
   const recommended: PlanId | null =
     atCeiling || allowed === current || PLANS[allowed].maxProperties <= currentCount ? null : allowed;
 
@@ -52,14 +53,20 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
         className="md-scrim" style={{ fontFamily: T.font.sans }}>
         <div style={{ background: 'var(--bg-surface)', borderRadius: T.radius.modal, width: '100%', maxWidth: 520, boxShadow: 'var(--shadow-xl)', padding: 'clamp(24px, 3vw, 34px)' }}>
           <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: '0 0 8px' }}>Διαχειρίζεσαι μεγάλο χαρτοφυλάκιο</h2>
-          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 0 20px', lineHeight: 1.6 }}>
-            Το πακέτο Επαγγελματίας καλύπτει έως {PLANS.agency.maxProperties} ακίνητα και τα έχεις ήδη συμπληρώσει.
-            Για περισσότερα, στήνουμε πακέτο στα μέτρα σου. Γράψε μας στο <strong style={{ color: 'var(--text-primary)' }}>{IDENTITY.supportEmail}</strong> και απαντάμε την ίδια ημέρα.
+          {/* Η ΕΠΕΞΗΓΗΣΗ ΤΟΥ ΤΑΒΑΝΙΟΥ ΕΠΙΑΝΕ ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΜΕ ΡΙΓΜΕΝΗ ΑΚΡΗ.
+              Το κουτί είναι 452 εικονοστοιχεία (520 πλάτος μείον 2×34 γέμισμα),
+              δηλαδή μέτρο ~64 χαρακτήρων στα 14 — μέσα στο εύρος 60-80 όπου η
+              πλήρης στοίχιση κλείνει τα κενά αντί να τα τεντώσει. Η στοίχιση μπαίνει
+              στο στοιχείο που κρατά το κείμενο, τα σημεία τομής στο ίδιο το
+              κείμενο· η διεύθυνση αλληλογραφίας είναι λατινική, ο συλλαβισμός δεν την αγγίζει. */}
+          <p className="po-just" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 0 20px', lineHeight: 1.6 }}>
+            {hy(<>Το πακέτο Επαγγελματίας καλύπτει έως {PLANS.agency.maxProperties} ακίνητα και τα έχεις ήδη συμπληρώσει.
+            Για περισσότερα, στήνουμε πακέτο στα μέτρα σου. Γράψε μας στο <strong style={{ color: 'var(--text-primary)' }}>{IDENTITY.supportEmail}</strong> και απαντάμε την ίδια ημέρα.</>)}
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <button onClick={onClose} style={{ height: 44, padding: '0 20px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Κλείσιμο</button>
-            <a href={`mailto:${IDENTITY.supportEmail}?subject=Χαρτοφυλάκιο%20άνω%20των%20ακινήτων%20του%20πακέτου`}
-              style={{ height: 44, padding: '0 24px', borderRadius: T.radius.pill, background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Επικοινώνησε μαζί μας</a>
+            <Btn size="lg" onClick={onClose}>Κλείσιμο</Btn>
+            {/* Ο προορισμός είναι mailto, άρα μένει σύνδεσμος — το `href` του Btn του δίνει την ίδια όψη με το ζευγάρι του χωρίς να γίνει κουμπί. */}
+            <Btn variant="primary" size="lg" href={`mailto:${IDENTITY.supportEmail}?subject=Χαρτοφυλάκιο%20άνω%20των%20ακινήτων%20του%20πακέτου`}>Επικοινώνησε μαζί μας</Btn>
           </div>
         </div>
       </div>
@@ -97,7 +104,7 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
                   <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{feAuto(p.priceMonthly)}</span>
                   {p.priceMonthly > 0 && <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>/μήνα</span>}
                 </div>
-                {/* ΤΟ «ΓΙΑ ΠΑΝΤΑ» ΚΑΤΩ ΑΠΟ ΤΟ 0,00 € ΗΤΑΝ ΥΠΟΣΧΕΣΗ ΠΟΥ ΔΕΝ ΤΗΡΕΙΤΑΙ.
+                {/* ΤΟ «ΓΙΑ ΠΑΝΤΑ» ΚΑΤΩ ΑΠΟ ΤΟ 0,00€ ΗΤΑΝ ΥΠΟΣΧΕΣΗ ΠΟΥ ΔΕΝ ΤΗΡΕΙΤΑΙ.
                     Το «Χωρίς συνδρομή» δεν είναι δωρεάν πακέτο: είναι η κατάσταση
                     ΩΣΠΟΥ να διαλέξεις πακέτο, με ένα ακίνητο και χωρίς τα φορολογικά
                     εργαλεία. Δωρεάν είναι μόνο η δοκιμή και οι μήνες από συστάσεις.
@@ -113,7 +120,7 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
                   <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {p.features.slice(0, 3).map((f, i) => (
                       <li key={i} style={{ display: 'flex', gap: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                        <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M20 6 9 17l-5-5" /></svg>
+                        <svg aria-hidden="true" className="po-lead-ico" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                         <span>{f}</span>
                       </li>
                     ))}
@@ -126,8 +133,8 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
         </div>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button onClick={onClose} style={{ height: 44, padding: '0 20px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Όχι τώρα</button>
-          <button onClick={onManage} style={{ height: 44, padding: '0 24px', borderRadius: T.radius.pill, border: 'none', background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Δες τα πακέτα και αναβάθμισε</button>
+          <Btn size="lg" onClick={onClose}>Όχι τώρα</Btn>
+          <Btn variant="primary" size="lg" onClick={onManage}>Δες τα πακέτα και αναβάθμισε</Btn>
         </div>
       </div>
     </div>

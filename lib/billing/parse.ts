@@ -33,8 +33,8 @@ export interface ParsedTransaction {
 export const MATCHERS: { keywords: string[]; category: Category; label: string; confidence: Confidence }[] = [
   { keywords: ['ΔΕΗ','DEH','ΔΗΜΟΣΙΑ ΕΠΙΧΕΙΡΗΣΗ ΗΛΕΚΤΡΙΣΜΟΥ','ΗΡΩΝ ΗΛΕΚΤΡΙΣΜΟΣ','HERON ENERGY','PROTERGIA','VOLTERRA','NRG BILLING','ZENITH ENERGY','ELIN ENERGY','WATT+VOLT','SKY ENERGY','ELPEDISON','ENERWAVE','FYSIKO AERIO ELLADOS','NRG','ΦΥΣΙΚΟ ΑΕΡΙΟ ΕΛΛΑΔΟΣ'], category: 'electricity', label: 'Ρεύμα', confidence: 'high' },
   { keywords: ['ΕΥΔΑΠ','EYDAP','ΕΥΑΘ','EYATH','ΔΕΥΑ','ΕΤΑΙΡΕΙΑ ΥΔΡΕΥΣΗΣ','ΥΔΡΕΥΣΗ'], category: 'water', label: 'Νερό', confidence: 'high' },
-  { keywords: ['COSMOTE','OTE AE','NOVA BROADBAND','NOVA SA','FORTHNET','VODAFONE ΕΛΛΑΔΟΣ','WIND HELLAS','HOL SA','CYTA HELLAS','INALAN','WIND MOBILE'], category: 'internet', label: 'Internet & Τηλεφωνία', confidence: 'high' },
-  { keywords: ['NETFLIX','DISNEY PLUS','SPOTIFY AB','AMAZON PRIME','AMAZON DIGITAL','MAX HBO','YOUTUBE PREMIUM','GOOGLE YOUTUBE','ANT1 PLUS','COSMOTE TV','APPLE TV+','APPLE.COM/BILL'], category: 'streaming', label: 'Streaming & Συνδρομές', confidence: 'high' },
+  { keywords: ['TELEKOM','COSMOTE','OTE AE','NOVA BROADBAND','NOVA SA','FORTHNET','VODAFONE ΕΛΛΑΔΟΣ','WIND HELLAS','HOL SA','CYTA HELLAS','INALAN','WIND MOBILE'], category: 'internet', label: 'Internet & Τηλεφωνία', confidence: 'high' },
+  { keywords: ['NETFLIX','DISNEY PLUS','SPOTIFY AB','AMAZON PRIME','AMAZON DIGITAL','MAX HBO','YOUTUBE PREMIUM','GOOGLE YOUTUBE','ANT1 PLUS','MAGENTATV','COSMOTE TV','APPLE TV+','APPLE.COM/BILL'], category: 'streaming', label: 'Streaming & Συνδρομές', confidence: 'high' },
   { keywords: ['ICLOUD','APPLE ICLOUD','GOOGLE ONE','GOOGLE STORAGE','MICROSOFT 365','MICROSOFT ONLINE','DROPBOX','ADOBE SYSTEMS','CANVA'], category: 'streaming', label: 'Cloud & Λογισμικό', confidence: 'high' },
   { keywords: ['ΑΑΔΕ','AADE','ENFIA','ΕΝΦΙΑ','ΕΦΟΡΙΑ ΑΘΗΝΩΝ','ΔΗΜΟΣΙΑ ΕΣΟΔΑ','ΕΦΚΑ','ΙΚΑ','ΤΕΒΕ'], category: 'taxes', label: 'ΕΝΦΙΑ & Φόροι', confidence: 'high' },
   { keywords: ['ΔΗΜΟΣ ΑΘΗΝΑΙΩΝ','ΔΗΜΟΤΙΚΑ ΤΕΛΗ','ΔΗΜΟΤΙΚΗ','ΔΗΜΟΣ ΘΕΣΣΑΛΟΝΙΚΗΣ','ΔΗΜΟΤΙΚΗ ΑΡΧΗ','ΔΗΜΟΣ'], category: 'municipal', label: 'Δημοτικά Τέλη', confidence: 'medium' },
@@ -182,7 +182,7 @@ export function withinDays(a?: string | null, b?: string | null, days = 25): boo
 
 export interface PendingBill { id: string; category: string; amount: number; due_date?: string | null; created_at?: string | null; }
 
-// Ανοχή συμφωνίας ποσού: έως 1% ΚΑΙ το πολύ έως 0,20 € για μικρά ποσά.
+// Ανοχή συμφωνίας ποσού: έως 1% ΚΑΙ το πολύ έως 0,20€ για μικρά ποσά.
 // (Σφιχτή, ώστε να αποφεύγονται λανθασμένα ματσαρίσματα.)
 export function amountTolerance(amount: number): number {
   return Math.max(0.20, amount * 0.01);

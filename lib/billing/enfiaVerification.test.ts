@@ -27,7 +27,7 @@ function surchargePct(totalVal: number): number {
   const b = ENFIA_SURCHARGE_BRACKETS.find(x => totalVal <= x.limit)
   return b ? b.pct : 0
 }
-function enfiaOracle(sqm: number, zone: string, floor: string, age: string, ownership: number, totalVal: number, propVal: number, reductions: string[]) {
+function enfiaOracle(sqm: number, zone: string, floor: string, age: string, ownership: number, totalVal: number, propVal: number, reductions: string[], year?: number) {
   const own = Math.max(0, Math.min(100, ownership)) / 100
   const basic = sqm * ENFIA_ZONE_TAX[zone] * ENFIA_FLOOR_COEF[floor] * ENFIA_AGE_COEF[age] * own
   const extra = totalVal > ENFIA_EXTRA_WEALTH_THRESHOLD ? enfiaExtraPropertyTax(propVal, ownership) : 0
@@ -35,7 +35,27 @@ function enfiaOracle(sqm: number, zone: string, floor: string, age: string, owne
   const suppl = kyrios * surchargePct(totalVal) / 100
   const subtotal = kyrios + suppl
   const wealthPct = wealthReductionPct(totalVal)
-  const manualPct = Math.max(0, ...reductions.map(r => ENFIA_REDUCTIONS.find(rd => rd.key === r)?.pct || 0))
+  // ΤΟ ΚΑΤΩΦΛΙ ΤΗΣ ΑΣΦΑΛΙΣΜΕΝΗΣ ΚΑΤΟΙΚΙΑΣ ΞΑΝΑΓΡΑΦΕΤΑΙ ΕΔΩ ΕΠΙΤΗΔΕΣ.
+  // Το μαντείο δεν επιτρέπεται να καλέσει την `enfiaReductionPct` της μηχανής:
+  // τότε θα συμφωνούσαν και οι δύο σε ένα λάθος. Ο νόμος γράφεται δεύτερη φορά,
+  // με τα δικά του νούμερα — 20% ώς τις 500.000 της ΚΑΤΟΙΚΙΑΣ, 10% πάνω από
+  // εκεί — ώστε λάθος `pctOver` στον πίνακα να κοκκινίζει 40.000 περιπτώσεις.
+  // ΚΑΙ Η ΔΙΑΡΚΕΙΑ ΤΟΥ ΜΕΤΡΟΥ ΞΑΝΑΓΡΑΦΕΤΑΙ, ΓΙΑ ΤΟΝ ΙΔΙΟ ΛΟΓΟ. Ενα μέτρο που
+  // ψηφίστηκε για μία χρονιά δεν ισχύει την επόμενη· και όταν δεν ξέρουμε για
+  // ποια χρονιά ρωτάμε, δεν το δίνουμε — μια έκπτωση που δεν δικαιούσαι είναι
+  // χειρότερο λάθος από μια που έχασες. Ο κανόνας γράφεται εδώ με τα δικά του
+  // λόγια, όχι με κλήση στη μηχανή, αλλιώς θα συμφωνούσαν και οι δύο σε λάθος.
+  const homeVal = propVal || totalVal
+  const manualPct = Math.max(0, ...reductions.map(r => {
+    const rd = ENFIA_REDUCTIONS.find(x => x.key === r)
+    if (!rd) return 0
+    if (rd.untilYear != null && (year == null || year > rd.untilYear)) return 0
+    // ΤΟ ΑΝΩΤΑΤΟ ΟΡΙΟ ΑΞΙΑΣ, ΓΡΑΜΜΕΝΟ ΚΙ ΑΥΤΟ ΜΕ ΤΑ ΔΙΚΑ ΤΟΥ ΝΟΥΜΕΡΑ: πάνω από
+    // 400.000€ κατοικίας, η μείωση του μικρού οικισμού δεν δίνεται καθόλου —
+    // άλλος κανόνας από το `pctOver`, που απλώς μικραίνει το ποσοστό.
+    if (r === 'small_settlement_2026' && homeVal > 400000) return 0
+    return r === 'insurance' && homeVal > 500000 ? 10 : rd.pct
+  }))
   const combined = 1 - (1 - wealthPct / 100) * (1 - manualPct / 100)
   const annual = Math.max(0, subtotal * (1 - combined))
   return { basic: round2(basic), extra: round2(extra), suppl: round2(suppl), annual: round2(annual) }
@@ -50,10 +70,10 @@ const REDS = ENFIA_REDUCTIONS.map(r => r.key)
 {
   // Βασικός: 100 τ.μ. × ΣΒΦ(1501-2500=3,70) × όροφος(2ος=1,01) × παλαιότητα(10-20=1,15).
   const r = estimateENFIA({ sqm: 100, zone: '1501_2500', floor: 'second', age: '10_20', ownership: 100 })!
-  ok('GOLDEN βασικός = 100×3,70×1,01×1,15 = 429,76 €', near(r.basic, 100 * 3.70 * 1.01 * 1.15, 0.02))
-  // Ενότητα Γ: ακίνητο 600.000 € (συνολ. >300k) → 100k×0,20% + 100k×0,30% = 500 €.
-  ok('GOLDEN Ενότητα Γ 600k → 500 €', near(enfiaExtraPropertyTax(600000), 500))
-  ok('GOLDEN Ενότητα Γ 1.000.000 → 2.700 €', near(enfiaExtraPropertyTax(1000000), 2700))
+  ok('GOLDEN βασικός = 100×3,70×1,01×1,15 = 429,76€', near(r.basic, 100 * 3.70 * 1.01 * 1.15, 0.02))
+  // Ενότητα Γ: ακίνητο 600.000€ (συνολ. >300k) → 100k×0,20% + 100k×0,30% = 500€.
+  ok('GOLDEN Ενότητα Γ 600k → 500€', near(enfiaExtraPropertyTax(600000), 500))
+  ok('GOLDEN Ενότητα Γ 1.000.000 → 2.700€', near(enfiaExtraPropertyTax(1000000), 2700))
   // Προσαύξηση >500k: 700.000 → κλιμάκιο 10% επί του κύριου φόρου.
   const s = estimateENFIA({ sqm: 120, zone: '1501_2500', totalValue: 700000 })!
   ok('GOLDEN προσαύξηση 700k = 10% κύριου', near(s.supplementary, (s.basic + s.extra) * 0.10))
@@ -78,10 +98,14 @@ const REDS = ENFIA_REDUCTIONS.map(r => r.key)
     const reductions: string[] = []
     if (rnd() < 0.3) reductions.push(REDS[Math.floor(rnd() * REDS.length)])
     if (rnd() < 0.15) reductions.push(REDS[Math.floor(rnd() * REDS.length)])
+    // ΤΟ ΕΤΟΣ ΜΠΑΙΝΕΙ ΣΤΟΝ ΚΛΗΡΟ ΜΑΖΙ ΜΕ ΤΑ ΥΠΟΛΟΙΠΑ, ΚΑΙ ΜΕΡΙΚΕΣ ΦΟΡΕΣ ΛΕΙΠΕΙ.
+    // Ετσι οι ίδιες χιλιάδες περιπτώσεις κρίνουν και τα τρία: μέσα στη χρονιά
+    // του μέτρου, μετά από αυτήν, ή χωρίς χρονιά καθόλου.
+    const yr = rnd() < 0.2 ? undefined : 2024 + Math.floor(rnd() * 5)
 
-    const eng = estimateENFIA({ sqm, zone, floor, age, ownership, totalValue: totalVal, propertyValue: propVal, reductions })
+    const eng = estimateENFIA({ sqm, zone, floor, age, ownership, totalValue: totalVal, propertyValue: propVal, reductions, year: yr })
     if (sqm <= 0) { ok(`enfia null @${i}`, eng === null); continue }
-    const orc = enfiaOracle(sqm, zone, floor, age, ownership, totalVal, propVal, reductions)
+    const orc = enfiaOracle(sqm, zone, floor, age, ownership, totalVal, propVal, reductions, yr)
     ok(`enfia βασικός @${i}`, near(eng!.basic, orc.basic))
     ok(`enfia extra @${i}`, near(eng!.extra, orc.extra))
     ok(`enfia προσαύξηση @${i}`, near(eng!.supplementary, orc.suppl))
@@ -140,8 +164,8 @@ const REDS = ENFIA_REDUCTIONS.map(r => r.key)
   const sqm = 100, zone = ENFIA_ZONE_TAX['1501_2500'] ?? 3.70
   const swra = sqm * zone * 1.00 * enfiaAgeCoef('y15_19')
   const palio = sqm * zone * 1.00 * 1.15
-  ok('κτίσμα 17 ετών: 407 € και όχι 425,50 €', Math.round(swra * 100) / 100 === 407)
-  ok('η υπερχρέωση ήταν 18,50 €', Math.round((palio - swra) * 100) / 100 === 18.50)
+  ok('κτίσμα 17 ετών: 407€ και όχι 425,50€', Math.round(swra * 100) / 100 === 407)
+  ok('η υπερχρέωση ήταν 18,50€', Math.round((palio - swra) * 100) / 100 === 18.50)
 }
 
 // ═══ ΤΟ ΚΛΕΙΔΙ ΠΑΛΑΙΟΤΗΤΑΣ ΔΙΑΒΑΖΕΤΑΙ ΚΑΙ ΕΞΩ ΑΠΟ ΤΟΝ ΕΝΦΙΑ ══════════════════

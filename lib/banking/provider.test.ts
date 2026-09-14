@@ -6,7 +6,7 @@ import {
 import { AIS_PROVIDERS } from './types';
 
 let pass = 0, fail = 0;
-const ok = (name: string, cond: boolean) => { cond ? pass++ : (fail++, console.error('✗', name)); };
+const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗', name) } };
 
 const full = { [PROVIDER_ENV]: 'enablebanking', AIS_CLIENT_ID: 'id', AIS_CLIENT_SECRET: 'secret' };
 
