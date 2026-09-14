@@ -43,7 +43,7 @@ const PAGES = ['/', '/login', '/signup', '/ypologismos-forou-enoikion', '/ypolog
 
 // Ο κανόνας των 44 ζει στο scripts/lib/tap-targets.mjs: τον μοιράζεται με τη
 // σάρωση των οθονών του ταμπλό, ώστε να μην αποκλίνουν δύο γραφές του ίδιου.
-import { TAP, tinyTargets } from './lib/tap-targets.mjs'
+import { TAP, TAP_INLINE, tinyTargets } from './lib/tap-targets.mjs'
 
 let pass = 0, fail = 0
 const ok = (n, c) => { if (c) pass++; else { fail++; console.log('  ✗ ' + n) } }
@@ -150,7 +150,7 @@ for (const d of DEVICES) {
     // πλάτος επειδή τόσο είναι η λέξη και κανένα δάχτυλο δεν αστοχεί σε λέξη
     // ύψους 44. Το πλάτος απαιτείται εκεί που ο στόχος δεν έχει λέξη να
     // σημαδέψεις: κουμπιά με ένα ή δύο σύμβολα, δηλαδή τα εικονίδια.
-    const tiny = await p.evaluate(tinyTargets, TAP)
+    const tiny = await p.evaluate(tinyTargets, { MIN: TAP, INLINE: TAP_INLINE })
     ok(`${d.name} ${path}: κάθε στόχος αφής ${TAP}px${tiny.length ? ' — ' + tiny.slice(0, 6).join(', ') + (tiny.length > 6 ? ` (+${tiny.length - 6})` : '') : ''}`, tiny.length === 0)
 
     await p.close()
