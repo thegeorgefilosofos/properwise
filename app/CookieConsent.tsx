@@ -65,22 +65,26 @@ export default function CookieConsent() {
   // με το πλάτος (66 στα 1440, 89 στα 390, 127 στα 360, γιατί το κείμενο
   // τυλίγει αλλιώς). Μετριέται και δημοσιεύεται ως `--cookie-h`· όποια
   // διάταξη κεντράρει περιεχόμενο σε ολόκληρη οθόνη κρατά τον χώρο του.
+  // ΟΧΙ ΤΟ ΥΨΟΣ ΤΟΥ, Η ΖΩΝΗ ΠΟΥ ΠΙΑΝΕΙ. Το πλαίσιο αιωρείται πάνω από τον πάτο
+  // κατά `--float-bottom`: με σκέτο ύψος, το κουτί της φόρμας τελείωνε ΜΕΣΑ στη
+  // λωρίδα του κατά ακριβώς αυτή την απόσταση και ο σύνδεσμος «Πολιτική
+  // απορρήτου» έμενε σκεπασμένος. Η απόσταση από τον πάτο του κάδρου ώς την
+  // κορυφή του τα περιέχει και τα δύο, σε έναν αριθμό.
+  //
+  // ΚΑΙ ΜΟΝΟ `ResizeObserver`, ΧΩΡΙΣ ΑΚΡΟΑΤΗ `resize`. Το πλαίσιο είναι
+  // αγκυρωμένο αριστερά και δεξιά: όταν αλλάζει το παράθυρο αλλάζει και το
+  // ίδιο, οπότε ο παρατηρητής το πιάνει ήδη. Ο δεύτερος ακροατής ήταν
+  // αντίγραφο — και έπιανε ΛΙΓΟΤΕΡΑ, γιατί δεν βλέπει την αναδίπλωση όταν
+  // φορτώνει η γραμματοσειρά και το κείμενο ξαναμοιράζεται σε σειρές.
   useEffect(() => {
-    const root = document.documentElement;
-    const el = box.current;
-    if (!show || !el) { root.style.setProperty('--cookie-h', '0px'); return; }
-    // ΟΧΙ ΤΟ ΥΨΟΣ ΤΟΥ, Η ΖΩΝΗ ΠΟΥ ΠΙΑΝΕΙ. Το πλαίσιο αιωρείται πάνω από τον
-    // πάτο κατά `--float-bottom`: με σκέτο ύψος, το κουτί της φόρμας τελείωνε
-    // ΜΕΣΑ στη λωρίδα του κατά ακριβώς αυτή την απόσταση και ο σύνδεσμος
-    // «Πολιτική απορρήτου» έμενε σκεπασμένος. Η απόσταση από τον πάτο του
-    // κάδρου ώς την κορυφή του τα περιέχει και τα δύο, σε έναν αριθμό.
-    const publish = () => root.style.setProperty('--cookie-h',
-      `${Math.max(0, Math.ceil(window.innerHeight - el.getBoundingClientRect().top))}px`);
+    const root = document.documentElement, el = box.current;
+    const clear = () => root.style.setProperty('--cookie-h', '0px');
+    if (!show || !el) { clear(); return; }
+    const publish = () => root.style.setProperty('--cookie-h', `${Math.ceil(innerHeight - el.getBoundingClientRect().top)}px`);
     publish();
     const ro = new ResizeObserver(publish);
     ro.observe(el);
-    window.addEventListener('resize', publish);
-    return () => { ro.disconnect(); window.removeEventListener('resize', publish); root.style.setProperty('--cookie-h', '0px'); };
+    return () => { ro.disconnect(); clear(); };
   }, [show]);
 
   if (!show) return null;
