@@ -45,6 +45,7 @@ const PAGES = ['/', '/login', '/signup', '/ypologismos-forou-enoikion', '/ypolog
 // σάρωση των οθονών του ταμπλό, ώστε να μην αποκλίνουν δύο γραφές του ίδιου.
 import { TAP, TAP_INLINE, tinyTargets } from './lib/tap-targets.mjs'
 import { installPaint } from './lib/paint.mjs'
+import { MODE, applyMode } from './lib/bench-mode.mjs'
 
 let pass = 0, fail = 0
 const ok = (n, c) => { if (c) pass++; else { fail++; console.log('  ✗ ' + n) } }
@@ -62,6 +63,11 @@ await abortIfStyleless(browser, B)
 for (const d of DEVICES) {
   const ctx = await browser.newContext({ ...d, locale: 'el-GR' })
   await ctx.addInitScript(() => { try { localStorage.setItem('pos-cookie-consent', JSON.stringify({ v: '2026-08', ts: 'x' })) } catch { /* κενό */ } })
+  // ΜΟΝΟ ΕΔΩ, ΟΧΙ ΣΤΗ ΜΕΤΡΗΣΗ ΚΑΡΕ ΠΙΟ ΚΑΤΩ. Εδώ κρίνεται διάταξη, που
+  // πρέπει να ελεγχθεί και στα δύο θέματα. Η μέτρηση καρέ κρατά το σκούρο
+  // ό,τι κι αν λέει το BENCH_MODE: αλλιώς η ίδια καστάνια θα συγκρινόταν
+  // άλλοτε με σκούρο κι άλλοτε με φωτεινό και η διαφορά δεν θα διαβαζόταν.
+  await applyMode(ctx)
   for (const path of PAGES) {
     const p = await ctx.newPage()
   await p.addInitScript(installPaint)
@@ -264,5 +270,5 @@ for (const d of DEVICES) {
 }
 
 await browser.close()
-console.log(`\nΚινητό και ταμπλέτα — ${pass} πέρασαν, ${fail} απέτυχαν`)
+console.log(`\nΚινητό και ταμπλέτα (${MODE === 'light' ? 'φωτεινό' : 'σκούρο'}) — ${pass} πέρασαν, ${fail} απέτυχαν`)
 process.exit(fail ? 1 : 0)

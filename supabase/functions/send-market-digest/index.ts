@@ -8,7 +8,7 @@
 // key (Authorization: Bearer, από το vault) και η authorized() το δέχεται.
 // Προαιρετικά: RESEND_FROM (branded αποστολέας μετά την επαλήθευση domain).
 // ─────────────────────────────────────────────────────────────────────────
-import { emailHeader, eyebrow } from '../_shared/emailTemplates.ts';
+import { emailShell, eyebrow, h, note, dataTable } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
@@ -50,30 +50,25 @@ function rowHtml(label: string, cur: number | null, prev: number | null): string
   // email που στέλνεται τα υπόλοιπα εμφανίζονταν με «—». Ενα σημάδι που σημαίνει
   // άλλοτε «δεν άλλαξε» και άλλοτε «δεν έχουμε προηγούμενη τιμή» δεν λέει τίποτα
   // από τα δύο· και ο αναγνώστης οθόνης το διαβάζει ως «παύλα».
-  const arrow = d == null ? '<span style="color:#80868b;">Χωρίς σύγκριση</span>'
-    : Math.abs(d) < 0.001 ? '<span style="color:#80868b;">Αμετάβλητο</span>'
-    : d > 0 ? `<span style="color:#d93025;">▲ ${pct(Math.abs(d))}</span>` : `<span style="color:#188038;">▼ ${pct(Math.abs(d))}</span>`
+  const arrow = d == null ? '<span class="fa" style="color:#8a9099;">Χωρίς σύγκριση</span>'
+    : Math.abs(d) < 0.001 ? '<span class="fa" style="color:#8a9099;">Αμετάβλητο</span>'
+    : d > 0 ? `<span class="neg" style="color:#d93025;">▲ ${pct(Math.abs(d))}</span>` : `<span class="pos" style="color:#188038;">▼ ${pct(Math.abs(d))}</span>`
   return `<tr>
-    <td style="padding:11px 0;border-bottom:1px solid #f1f3f4;font-size:13px;color:#3c4043;">${label}</td>
-    <td style="padding:11px 0;border-bottom:1px solid #f1f3f4;text-align:right;font-size:13px;font-weight:600;color:#111;">${pct(cur)}</td>
-    <td style="padding:11px 0;border-bottom:1px solid #f1f3f4;text-align:right;font-size:12px;">${arrow}</td>
+    <td class="rule-b tx" style="padding:11px 0;border-bottom:1px solid #e8e8ed;font-size:13px;color:#4a4f55;">${label}</td>
+    <td class="ink rule-b" style="padding:11px 0;border-bottom:1px solid #e8e8ed;text-align:right;font-size:13px;font-weight:600;color:#1d1d1f;">${pct(cur)}</td>
+    <td class="rule-b" style="padding:11px 0;border-bottom:1px solid #e8e8ed;text-align:right;font-size:12px;">${arrow}</td>
   </tr>`
 }
 
 function layout(inner: string, unsubUrl: string): string {
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f3f4;font-family:-apple-system,'Inter',Arial,sans-serif;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    ${emailHeader()}
-    <div style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:26px 24px;">
-      ${eyebrow('Δεδομένα αγοράς')}
-      <h1 style="margin:0 0 14px;font-size:20px;color:#111;font-weight:700;">Εβδομαδιαία ενημέρωση επιτοκίων</h1>
-      <table style="width:100%;border-collapse:collapse;">${inner}</table>
-      <p style="margin:16px 0 0;font-size:12px;color:#5f6368;line-height:1.6;">Χρήσιμο για την αξιολόγηση δανείων και αποδόσεων στο PROPERWISE.</p>
-    </div>
-    <p style="text-align:center;font-size:11px;color:#80868b;margin:18px 0 4px;line-height:1.6;">
-      <a href="${unsubUrl}" style="color:#80868b;text-decoration:underline;">Απεγγραφή από τα δεδομένα αγοράς</a> · PROPERWISE
-    </p>
-  </div></body></html>`
+  return emailShell({
+    unsubUrl,
+    preheader: 'Τα επιτόκια της εβδομάδας.',
+    bodyHtml: eyebrow('Δεδομένα αγοράς')
+      + h('Εβδομαδιαία ενημέρωση επιτοκίων')
+      + dataTable(inner)
+      + note('Χρήσιμο για την αξιολόγηση δανείων και αποδόσεων στο PROPERWISE.'),
+  })
 }
 
 async function listUsers(): Promise<{ id: string; email: string }[]> {

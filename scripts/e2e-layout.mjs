@@ -38,6 +38,7 @@ import { launchEngine, engineLabel } from './lib/engine.mjs'
 import { SCENES } from './lib/scenes.mjs'
 import { abortIfStyleless } from './lib/served-css.mjs'
 import { benchUrl } from './lib/paths.mjs'
+import { MODE, applyMode } from './lib/bench-mode.mjs'
 import { cpus } from 'node:os'
 
 const PROBE = () => {
@@ -865,6 +866,10 @@ async function scanDevice(dev, out) {
   const w = dev.w
   const ctx = await browser.newContext({ viewport:{width:w,height:dev.h}, deviceScaleFactor:2, isMobile:w<1100, hasTouch:TOUCH(w), locale:'el-GR' })
   await ctx.addInitScript(() => { try { localStorage.setItem('pos-cookie-consent', JSON.stringify({v:'2026-08',ts:'x'})) } catch {} })
+  // Ο πάγκος παίρνει το θέμα του από το data-mode του HTML· οι δημόσιες
+  // σελίδες το διαβάζουν από το localStorage. Χωρίς τη γραμμή αυτή το
+  // «φωτεινό» πέρασμα σάρωνε τις δημόσιες σελίδες στο σκούρο.
+  await applyMode(ctx)
   for (const s of (ONLY ? SCENES.filter(x => ONLY.includes(x)) : SCENES)) {
     const p = await ctx.newPage()
     await p.goto(benchUrl(s, 6), { waitUntil:'networkidle' })
@@ -984,7 +989,7 @@ async function scanDevice(dev, out) {
 // συσκευή, παίρνει την επόμενη αδιάθετη. Ετσι μια αργή συσκευή δεν κρατά
 // άπραγη μια θέση, όπως θα γινόταν με μοίρασμα σε ίσα κομμάτια από την αρχή.
 const LANES = Math.max(1, Math.min(Number(process.env.E2E_LANES || cpus().length), 4, RUN_DEVICES.length))
-console.log(`  ${RUN_DEVICES.length} συσκευές σε ${LANES} παράλληλες θέσεις · μηχανή ${engineLabel()}`)
+console.log(`  ${RUN_DEVICES.length} συσκευές σε ${LANES} παράλληλες θέσεις · μηχανή ${engineLabel()} · θέμα ${MODE === 'light' ? 'φωτεινό' : 'σκούρο'}`)
 let next = 0
 await Promise.all(Array.from({ length: LANES }, async () => {
   for (;;) {

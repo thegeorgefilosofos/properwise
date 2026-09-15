@@ -47,6 +47,10 @@ export const MUTATIONS = {
     { add: 'components/__mut__.tsx', content: tsx('    <div className="kpi-plain"><div className="kpi-label">ΕΣΟΔΑ</div></div>') },
   ] },
 
+  // Ακριβώς η μορφή που βρέθηκε εννέα φορές: ολόκληρο έγγραφο HTML γραμμένο
+  // μέσα σε συνάρτηση άκρης, με το κοινό κέλυφος να κάθεται αχρησιμοποίητο.
+  'email-shell': { add: 'supabase/functions/_shared/__mut__.ts', content: "export const page = () => `<!DOCTYPE html><html><body style=\"background:#f1f3f4\">x</body></html>`\n" },
+
   // Τα κεφαλαία των email κρατούσαν τόνο: `text-transform: uppercase` πάνω σε
   // ελληνικό κείμενο, χωρίς να περάσει από τον μετατροπέα.
   'email-uppercase': { add: 'supabase/functions/_shared/__mut__.ts', content: "export const eyebrowHtml = (t: string) => `<p style=\"text-transform:uppercase\">Ληξιπρόθεσμο ενοίκιο ${t}</p>`\n" },

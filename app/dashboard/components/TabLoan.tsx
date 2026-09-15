@@ -790,7 +790,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   η μπάρα υπολείπεται πάντα του χρόνου που πέρασε. */}
               <div style={{marginBottom:14}}>
                 <Bar pct={prog.percentRepaid} label="Ποσοστό αποπληρωμής" track="var(--bg-elevated)" style={{borderRadius: T.radius.pill,border:'1px solid var(--border-subtle)'}}/>
-                <div style={{display:'flex',justifyContent:'space-between',gap:12,marginTop:6}}>
+                <div className="po-stack-sm" style={{display:'flex',justifyContent:'space-between',gap:12,marginTop:6}}>
                   <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>
                     Εξοφλήθηκε {fp(prog.percentRepaid)} του κεφαλαίου σε {prog.paidMonths} από {prog.totalMonths} δόσεις
                   </span>

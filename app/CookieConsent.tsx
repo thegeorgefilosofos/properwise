@@ -5,7 +5,7 @@
 // νόμος δεν απαιτεί συγκατάθεση, απαιτεί όμως σαφή ενημέρωση. Η αναγνώριση του
 // χρήστη καταγράφεται με έκδοση πολιτικής και χρονοσήμανση, ώστε να υπάρχει
 // αποδεικτικό και να ζητείται εκ νέου όταν η πολιτική αλλάξει ουσιωδώς.
-import { useSyncExternalStore } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { T, Btn } from '@/components/Theme';
 
@@ -47,6 +47,46 @@ function subscribe(l: () => void) {
 
 export default function CookieConsent() {
   const show = useSyncExternalStore(subscribe, needsNotice, () => false);
+  const box = useRef<HTMLDivElement>(null);
+
+  // ═══ ΤΟ ΠΛΑΙΣΙΟ ΣΚΕΠΑΖΕ ΤΟ ΚΟΥΜΠΙ ΤΗΣ ΣΥΝΔΕΣΗΣ, ΜΟΝΙΜΑ ══════════════════
+  // ΜΕΤΡΗΜΕΝΟ ΣΕ CHROMIUM, 390×844 — το πιο κοινό τηλέφωνο. Το «Σύνδεση»
+  // καθόταν στο 593 με ύψος 44 και το πλαίσιο άνοιγε στο 610: επικάλυψη 28
+  // εικονοστοιχείων — και το `elementFromPoint` στο ΚΕΝΤΡΟ του κουμπιού
+  // επέστρεφε το πλαίσιο, όχι το κουμπί. Δηλαδή ο αντίχειρας έπεφτε πάνω στην
+  // ενημέρωση για cookies.
+  //
+  // ΚΑΙ ΔΕΝ ΥΠΗΡΧΕ ΔΙΕΞΟΔΟΣ. Η σελίδα σύνδεσης χωρά ολόκληρη στην οθόνη, άρα
+  // δεν κυλάει: δεν μπορούσες να κατεβάσεις το κουμπί από κάτω του. Οποιος δεν
+  // πατούσε πρώτα «Το κατάλαβα» δεν μπορούσε να συνδεθεί. Στα 360 και στα 820
+  // δεν φαινόταν, γιατί εκεί η φόρμα πέφτει αλλού — γι' αυτό επέζησε.
+  //
+  // Η ΛΥΣΗ ΔΕΝ ΕΙΝΑΙ ΝΟΥΜΕΡΟ ΓΡΑΜΜΕΝΟ ΣΤΟ ΧΕΡΙ. Το ύψος του πλαισίου αλλάζει
+  // με το πλάτος (66 στα 1440, 89 στα 390, 127 στα 360, γιατί το κείμενο
+  // τυλίγει αλλιώς). Μετριέται και δημοσιεύεται ως `--cookie-h`· όποια
+  // διάταξη κεντράρει περιεχόμενο σε ολόκληρη οθόνη κρατά τον χώρο του.
+  // ΟΧΙ ΤΟ ΥΨΟΣ ΤΟΥ, Η ΖΩΝΗ ΠΟΥ ΠΙΑΝΕΙ. Το πλαίσιο αιωρείται πάνω από τον πάτο
+  // κατά `--float-bottom`: με σκέτο ύψος, το κουτί της φόρμας τελείωνε ΜΕΣΑ στη
+  // λωρίδα του κατά ακριβώς αυτή την απόσταση και ο σύνδεσμος «Πολιτική
+  // απορρήτου» έμενε σκεπασμένος. Η απόσταση από τον πάτο του κάδρου ώς την
+  // κορυφή του τα περιέχει και τα δύο, σε έναν αριθμό.
+  //
+  // ΚΑΙ ΜΟΝΟ `ResizeObserver`, ΧΩΡΙΣ ΑΚΡΟΑΤΗ `resize`. Το πλαίσιο είναι
+  // αγκυρωμένο αριστερά και δεξιά: όταν αλλάζει το παράθυρο αλλάζει και το
+  // ίδιο, οπότε ο παρατηρητής το πιάνει ήδη. Ο δεύτερος ακροατής ήταν
+  // αντίγραφο — και έπιανε ΛΙΓΟΤΕΡΑ, γιατί δεν βλέπει την αναδίπλωση όταν
+  // φορτώνει η γραμματοσειρά και το κείμενο ξαναμοιράζεται σε σειρές.
+  useEffect(() => {
+    const root = document.documentElement, el = box.current;
+    const clear = () => root.style.setProperty('--cookie-h', '0px');
+    if (!show || !el) { clear(); return; }
+    const publish = () => root.style.setProperty('--cookie-h', `${Math.ceil(innerHeight - el.getBoundingClientRect().top)}px`);
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => { ro.disconnect(); clear(); };
+  }, [show]);
+
   if (!show) return null;
   const acknowledge = () => {
     try { localStorage.setItem(KEY, JSON.stringify({ v: POLICY_VERSION, ts: new Date().toISOString() })); } catch { /* ignore */ }
@@ -83,7 +123,7 @@ export default function CookieConsent() {
     // Το `--float-z` (950) μπαίνει για τον ίδιο λόγο: το 2000 το έβαζε πάνω
     // ΚΑΙ από τα μηνύματα επιβεβαίωσης, δηλαδή μια ενημέρωση χωρίς επείγον
     // σκέπαζε ό,τι ο χρήστης μόλις ζήτησε.
-    <div role="region" aria-label="Ενημέρωση για cookies" className="po-noprint po-cookie" style={{ position: 'fixed', left: 12, right: 12, bottom: 'var(--float-bottom)', zIndex: 'var(--float-z)', maxWidth: 720, margin: '0 auto',
+    <div ref={box} role="region" aria-label="Ενημέρωση για cookies" className="po-noprint po-cookie" style={{ position: 'fixed', left: 12, right: 12, bottom: 'var(--float-bottom)', zIndex: 'var(--float-z)', maxWidth: 720, margin: '0 auto',
       background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.card, boxShadow: 'var(--elev-3)',
       padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontFamily: T.font.sans }}>
       {/* ΓΙΑΤΙ ΤΟΣΟ ΣΥΝΤΟΜΟ: το κείμενο ήταν τέσσερις σειρές σε desktop και έξι σε

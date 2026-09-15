@@ -17,7 +17,7 @@
 //   (Επανάλαβε μέχρι το "sent" να γίνει 0 — στέλνει σε παρτίδες.)
 // ─────────────────────────────────────────────────────────────────────────
 
-import { emailHeader, eyebrow } from '../_shared/emailTemplates.ts';
+import { emailShell, eyebrow, h, p, buttonPair, linkLine } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { APP_URL as SITE } from '../_shared/site.ts'
 import { timingSafeEqual } from '../_shared/auth.ts'
@@ -42,26 +42,15 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 function launchEmail(): { subject: string; html: string } {
   const subject = 'Το PROPERWISE Mobile κυκλοφόρησε'
-  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f3f4;font-family:-apple-system,'Inter',sans-serif;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    ${emailHeader()}
-    <div style="background:#ffffff;border:1px solid #e8eaed;border-radius:14px;padding:28px 24px;">
-      ${eyebrow('Μόλις κυκλοφόρησε')}
-      <h1 style="margin:0 0 12px;font-size:22px;color:#202124;font-weight:800;letter-spacing:-0.5px;">Το PROPERWISE Mobile είναι εδώ</h1>
-      <p style="margin:0 0 20px;font-size:14px;color:#5f6368;line-height:1.6;">
-        Ζήτησες να μάθεις πρώτος. Η εφαρμογή για κινητό είναι πλέον διαθέσιμη: όλη η διαχείριση των ακινήτων σου στο κινητό, με λίγα κλικ ή τη φωνή σου. Απλά και γρήγορα, όπου κι αν βρίσκεσαι.
-      </p>
-      <div style="text-align:center;margin:24px 0 8px;">
-        <a href="${IOS_URL}" style="display:inline-block;background:#202124;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:100px;font-weight:700;font-size:14px;margin:4px;">App Store</a>
-        <a href="${ANDROID_URL}" style="display:inline-block;background:#202124;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:100px;font-weight:700;font-size:14px;margin:4px;">Google Play</a>
-      </div>
-      <div style="text-align:center;margin-top:16px;">
-        <a href="${APP_URL}" style="font-size:13px;color:#1a73e8;text-decoration:none;font-weight:600;">ή συνέχισε από τον υπολογιστή</a>
-      </div>
-    </div>
-    <p style="text-align:center;font-size:11px;color:#80868b;margin-top:20px;">PROPERWISE · Λαμβάνεις αυτό το email επειδή ζήτησες ειδοποίηση για την εφαρμογή.</p>
-  </div>
-  </body></html>`
+  const html = emailShell({
+    preheader: 'Η εφαρμογή για κινητό είναι διαθέσιμη.',
+    footerNote: 'Λαμβάνεις αυτό το email επειδή ζήτησες ειδοποίηση για την εφαρμογή. · properwise.gr',
+    bodyHtml: eyebrow('Μόλις κυκλοφόρησε')
+      + h('Το PROPERWISE Mobile είναι εδώ')
+      + p('Ζήτησες να μάθεις πρώτος. Η εφαρμογή για κινητό είναι πλέον διαθέσιμη: όλη η διαχείριση των ακινήτων σου στο κινητό, με λίγα πατήματα ή με τη φωνή σου.')
+      + buttonPair({ label: 'App Store', url: IOS_URL }, { label: 'Google Play', url: ANDROID_URL })
+      + linkLine('ή συνέχισε από τον υπολογιστή', APP_URL),
+  })
   return { subject, html }
 }
 

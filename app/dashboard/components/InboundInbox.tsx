@@ -180,18 +180,22 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
             <button key={r.id} type="button" className="inbound-row" onClick={() => setAnoixto(r.id)}
               aria-expanded={false}
               aria-label={`Άνοιγμα: ${r.vendor || r.from_address || 'άγνωστος αποστολέας'}${known ? `, ${fe(readAmount!)}` : ''}`}>
-              <span className="inbound-who" style={{ ...TT.body, fontWeight: 600, color: 'var(--text-primary)' }}>
+              {/* Το `textWrap: undefined` κρατά ζωντανό το `white-space: nowrap`
+                  της κλάσης: το `text-wrap` του `TT.*` είναι συντομογραφία και
+                  ξαναγράφει το `text-wrap-mode`, οπότε ενσωματωμένο νικούσε την
+                  κλάση και η γραμμή τύλιγε σε τέσσερις σειρές στα 320. */}
+              <span className="inbound-who po-elide" style={{ ...TT.body, textWrap: undefined, fontWeight: 600, color: 'var(--text-primary)' }}>
                 {r.vendor || r.from_address || 'Άγνωστος αποστολέας'}
               </span>
               {/* Το θέμα παίρνει ό,τι περισσεύει και αποσιωπάται· δεν σπρώχνει
                   ποτέ το ποσό έξω από τη γραμμή. Το πώς ζει στην `.inbound-row`
                   του globals.css, μαζί με την αιώρηση και την εστίαση. */}
-              <span className="inbound-what" style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
+              <span className="inbound-what po-elide" style={{ ...TT.bodySm, textWrap: undefined, color: 'var(--text-secondary)' }}>
                 {r.subject || 'Χωρίς θέμα'}
               </span>
               {/* Το ποσό που ΔΕΝ διαβάστηκε το λέει με λέξεις, όχι με παύλα: η
                   παύλα διαβάζεται ως μηδέν. */}
-              <span className="inbound-sum" style={{ ...TT.bodySm, fontWeight: 600,
+              <span className="inbound-sum" style={{ ...TT.bodySm, textWrap: undefined, fontWeight: 600,
                 color: known ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
                 {known ? fe(readAmount!) : 'χωρίς ποσό'}
               </span>
