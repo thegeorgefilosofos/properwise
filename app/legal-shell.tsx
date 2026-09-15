@@ -129,9 +129,16 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
               {blocks.map((b, i) => (
                 <li key={i}>
                   {b.part && <span className="lg-toc-part">{b.part}</span>}
+                  {/* ΤΟ ΕΥΡΕΤΗΡΙΟ ΗΤΑΝ ΤΟ ΜΟΝΟ ΚΕΙΜΕΝΟ ΤΗΣ ΣΕΛΙΔΑΣ ΜΕ ΡΙΓΜΕΝΗ
+                      ΑΚΡΗ. Η εισαγωγή, οι παράγραφοι, οι λίστες και οι
+                      σημειώσεις κλείνουν όλες δεξιά με αληθινό συλλαβισμό —
+                      και δίπλα τους μια στήλη είκοσι οκτώ γραμμών που
+                      τελείωναν όπου έτυχε. Ο `hy` βάζει τα μαλακά ενωτικά,
+                      όπως ακριβώς κάνει ήδη για το σώμα του κειμένου· η
+                      στοίχιση μπαίνει στο φύλλο στυλ. */}
                   <a href={`#${b.id || `s${i + 1}`}`} className="lg-toc-link">
                     <span className="lg-toc-num">{i + 1}</span>
-                    <span>{b.h}</span>
+                    <span className="lg-toc-text">{hy(b.h)}</span>
                   </a>
                 </li>
               ))}
