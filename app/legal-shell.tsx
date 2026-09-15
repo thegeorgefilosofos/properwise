@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { type ReactNode } from 'react';
 import { hy } from '@/components/Hyphen';
+import { hyphenate, NARROW_MIN_WORD } from '@/lib/core/hyphenate';
 import { T } from '@/components/tokens';
 import { PublicHeader, PublicFooter, WRAP, WRAP_PAD } from './PublicChrome';
 import { BackLink } from './BackLink';
@@ -133,12 +134,19 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
                       ΑΚΡΗ. Η εισαγωγή, οι παράγραφοι, οι λίστες και οι
                       σημειώσεις κλείνουν όλες δεξιά με αληθινό συλλαβισμό —
                       και δίπλα τους μια στήλη είκοσι οκτώ γραμμών που
-                      τελείωναν όπου έτυχε. Ο `hy` βάζει τα μαλακά ενωτικά,
-                      όπως ακριβώς κάνει ήδη για το σώμα του κειμένου· η
-                      στοίχιση μπαίνει στο φύλλο στυλ. */}
+                      τελείωναν όπου έτυχε. Τα μαλακά ενωτικά μπαίνουν όπως
+                      ακριβώς και στο σώμα· η στοίχιση μπαίνει στο φύλλο στυλ.
+
+                      ΜΕ ΧΑΜΗΛΟΤΕΡΟ ΚΑΤΩΦΛΙ ΛΕΞΗΣ, ΚΑΙ Ο ΛΟΓΟΣ ΕΙΝΑΙ ΤΟ ΜΕΤΡΟ.
+                      Η στήλη έχει τρία με τέσσερα κενά ανά γραμμή· όταν η
+                      επόμενη λέξη είναι κοντή, δηλαδή ασυλλάβιστη με το κατώφλι
+                      του σώματος, ο περιηγητής δεν έχει πού να σπάσει και
+                      τεντώνει τα λίγα κενά που έχει. Το ζητούμενο είναι το
+                      αντίστροφο: να σπάει η λέξη με ενωτικό και να συνεχίζει
+                      από κάτω, με τα κενά στο φυσικό τους πλάτος. */}
                   <a href={`#${b.id || `s${i + 1}`}`} className="lg-toc-link">
                     <span className="lg-toc-num">{i + 1}</span>
-                    <span className="lg-toc-text">{hy(b.h)}</span>
+                    <span className="lg-toc-text">{hyphenate(b.h, NARROW_MIN_WORD)}</span>
                   </a>
                 </li>
               ))}
