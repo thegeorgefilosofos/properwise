@@ -50,10 +50,10 @@
  */
 export const MAIL_DOMAIN = 'properwise.gr';
 
-export const POLICY_VERSION = '2026-08';
+export const POLICY_VERSION = '2026-09';
 
 /** Ο ίδιος μήνας, όπως τον διαβάζει άνθρωπος στο υποσέλιδο των νομικών σελίδων. */
-export const POLICY_UPDATED = 'Αύγουστος 2026';
+export const POLICY_UPDATED = 'Σεπτέμβριος 2026';
 
 export interface LegalIdentity {
   /** Επωνυμία ή ονοματεπώνυμο του φορέα λειτουργίας. */
