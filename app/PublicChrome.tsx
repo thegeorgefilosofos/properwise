@@ -29,7 +29,6 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { T } from '@/components/tokens';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
-import { IDENTITY } from '@/lib/legal/identity';
 
 /**
  * ΕΝΑ ΜΕΤΡΟ ΓΙΑ ΟΛΕΣ ΤΙΣ ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΑΡΧΙΚΗΣ.
@@ -94,8 +93,13 @@ export function PublicHeader() {
 /** Μία στήλη συνδέσμων. Ίδια γεωμετρία σε κάθε δημόσια σελίδα. */
 function FootCol({ label, links }: { label: string; links: [string, string][] }) {
   return (
-    <div className="lp-footcol" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>{label}</span>
+    // ΤΟ ΚΕΝΟ ΗΤΑΝ 12 ΠΑΝΤΟΥ, ΑΡΑ Η ΚΕΦΑΛΙΔΑ ΔΕΝ ΑΝΗΚΕ ΠΟΥΘΕΝΑ. Με ίδια
+    // απόσταση από τον πρώτο σύνδεσμο όση έχουν οι σύνδεσμοι μεταξύ τους,
+    // διαβαζόταν ως πέμπτη καταχώρηση της λίστας — απλώς πιο μικρή. Δέκα
+    // ανάμεσα στους συνδέσμους και δεκαοκτώ κάτω από την κεφαλίδα: η ομάδα
+    // δένει και οι τρεις ομάδες ξεχωρίζουν μεταξύ τους χωρίς γραμμή.
+    <div className="lp-footcol" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8 }}>{label}</span>
       {/* ΤΟ `nowrap` ΕΣΠΡΩΧΝΕ ΤΗ ΣΕΛΙΔΑ ΔΕΞΙΑ. Στα 390 εικονοστοιχεία η στήλη
           πιάνει 163 και το «Βραχυχρόνια ή μακροχρόνια» θέλει 193: ο σύνδεσμος
           δεν έσπαγε, οπότε ολόκληρη η σελίδα αποκτούσε οριζόντια κύλιση δέκα
@@ -140,7 +144,16 @@ export function PublicFooter() {
               δεν την τύπωνε καμία σελίδα εκτός από το «Ποιοι είμαστε». Ο
               επισκέπτης που έχει ερώτηση πριν δώσει τα φορολογικά του
               στοιχεία δεν ψάχνει· φεύγει. */}
-          <FootCol label="Εμπιστοσύνη" links={[['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], [`mailto:${IDENTITY.supportEmail}`, 'Επικοινωνία']]} />
+          {/* ΤΟ «ΕΠΙΚΟΙΝΩΝΙΑ» ΗΤΑΝ ΩΜΟ `mailto:` ΜΕΣΑ ΣΕ ΣΤΗΛΗ ΣΕΛΙΔΩΝ. Δύο
+              προβλήματα — και τα δύο πραγματικά: σε συσκευή χωρίς ρυθμισμένο
+              πρόγραμμα αλληλογραφίας το πάτημα δεν κάνει ΤΙΠΟΤΑ· και όποιος
+              το πατήσει βρίσκεται μπροστά σε άδειο μήνυμα χωρίς να ξέρει πού
+              γράφει, πότε θα πάρει απάντηση ή αν η διεύθυνση είναι η σωστή
+              για το θέμα του. Η ενότητα «Πώς μας βρίσκεις» απαντά και στα
+              τρία: τρεις διευθύνσεις κατά θέμα, με χρόνους απόκρισης· και
+              καθεμιά πατιέται. Η στήλη γίνεται έτσι ομοιογενής — τέσσερις
+              σελίδες, όχι τρεις σελίδες και μία ενέργεια. */}
+          <FootCol label="Εμπιστοσύνη" links={[['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], ['/trust#epikoinonia', 'Επικοινωνία']]} />
         </div>
         <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: T.sp.lg, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
           <span>© {new Date().getFullYear()} PROPERWISE</span>

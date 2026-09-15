@@ -76,7 +76,7 @@ export interface LegalBlock {
  * Ήταν «1. Ορισμοί» μέσα στο ίδιο κείμενο, οπότε ένας τίτλος δύο γραμμών
  * τύλιγε κάτω από τον αριθμό και η δεύτερη σειρά ξεκινούσε από άλλο σημείο.
  */
-export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing }: {
+export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self }: {
   eyebrow: string;
   title: string;
   intro: ReactNode;
@@ -85,6 +85,20 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing }: {
   blocks: LegalBlock[];
   /** Τελευταία σημείωση, κάτω από την τελευταία ενότητα. */
   closing?: ReactNode;
+  /**
+   * Η ΔΙΑΔΡΟΜΗ ΤΗΣ ΙΔΙΑΣ ΤΗΣ ΣΕΛΙΔΑΣ, ΓΙΑ ΝΑ ΒΓΕΙ ΑΠΟ ΤΗ ΣΕΙΡΑ ΣΤΟ ΤΕΛΟΣ.
+   *
+   * Και οι τρεις σελίδες τύπωναν και τους τρεις συνδέσμους, δηλαδή ΚΑΘΕ μία
+   * έδειχνε και στον εαυτό της: στο «Ποιοι είμαστε» το πρώτο πράγμα κάτω από
+   * το κείμενο ήταν ένα «Ποιοι είμαστε» που ξαναφόρτωνε την ίδια σελίδα.
+   * Νεκρό χειριστήριο — και χειρότερα: η σειρά διαβαζόταν ως μπάρα πλοήγησης
+   * αντί για «οι άλλες δύο». Με τη διαδρομή δηλωμένη, μένουν οι δύο που
+   * πραγματικά πάνε κάπου.
+   *
+   * ΕΙΝΑΙ ΥΠΟΧΡΕΩΤΙΚΗ ΕΠΙΤΗΔΕΣ: με προαιρετική, η επόμενη σελίδα εμπιστοσύνης
+   * θα ξαναγεννούσε το ίδιο σφάλμα σιωπηλά. Ετσι το ζητά ο μεταγλωττιστής.
+   */
+  self: string;
 }) {
   return (
     <div style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
@@ -142,8 +156,12 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing }: {
 
             {hy(closing)}
 
-            <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-              {TRUST_PAGES.map(([href, label]) => (
+            {/* Η ΣΕΙΡΑ ΕΧΕΙ ΟΝΟΜΑ, ΓΙΑΤΙ ΤΗΝ ΚΡΙΝΕΙ ΕΛΕΓΧΟΣ. Χωρίς κλάση, ο
+                έλεγχος «καμία σελίδα δεν δείχνει στον εαυτό της» έψαχνε τη
+                διαδρομή σε ΟΛΟΚΛΗΡΟ το HTML — και την έβρισκε στο υποσέλιδο,
+                που δείχνει και στις τρεις. Περνούσε ή έπεφτε για λάθος λόγο. */}
+            <div className="lg-siblings" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+              {TRUST_PAGES.filter(([href]) => href !== self).map(([href, label]) => (
                 <Link key={href} href={href} className="lp-link po-tap" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>{label}</Link>
               ))}
             </div>
@@ -162,11 +180,14 @@ export interface LegalSection {
 }
 
 /** Απόρρητο και Όροι: μόνο κείμενο, άρα δηλώνονται ως δεδομένα, όχι ως JSX. */
-export function LegalShell({ title, updated, intro, sections, disclaimer }: {
+export function LegalShell({ title, updated, intro, sections, disclaimer, self }: {
   title: string; updated: string; intro: string; sections: LegalSection[]; disclaimer?: string;
+  /** Η διαδρομή της σελίδας· βλ. `LegalLayout.self`. */
+  self: string;
 }) {
   return (
     <LegalLayout
+      self={self}
       eyebrow="Νομικά"
       title={title}
       intro={intro}

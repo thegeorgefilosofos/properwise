@@ -11,6 +11,7 @@ export default function PrivacyPage() {
   const words = billingWords();
   return (
     <LegalShell
+      self="/privacy"
       title="Πολιτική απορρήτου"
       updated={POLICY_UPDATED}
       intro="Ποια δεδομένα συλλέγουμε, για ποιον σκοπό, σε ποια νομική βάση, με ποιους τα μοιραζόμαστε και ποια δικαιώματα έχεις. Γραμμένη με βάση τον Γενικό Κανονισμό Προστασίας Δεδομένων (GDPR, Καν. ΕΕ 2016/679) και τον ελληνικό νόμο 4624/2019."
