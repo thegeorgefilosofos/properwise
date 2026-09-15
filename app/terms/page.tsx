@@ -27,6 +27,7 @@ export default function TermsPage() {
   const words = billingWords();
   return (
     <LegalShell
+      self="/terms"
       title="Όροι χρήσης"
       updated={POLICY_UPDATED}
       intro="Με τη δημιουργία λογαριασμού συνάπτεις σύμβαση μαζί μας και αποδέχεσαι τους παρόντες Όρους. Είναι γραμμένοι όσο πιο απλά γίνεται, με σεβασμό στα δικαιώματά σου ως καταναλωτή και σου προτείνουμε να τους διαβάσεις πριν ξεκινήσεις."

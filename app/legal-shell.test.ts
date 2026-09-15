@@ -21,6 +21,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { hy } from '../components/Hyphen';
+import { LegalLayout } from './legal-shell';
 import { SHY } from '@/lib/core/hyphenate';
 
 let passed = 0, failed = 0;
@@ -54,6 +55,31 @@ ok('στην ενότητα, ο πίνακας δεν συλλαβίζεται',
 // ── Η δομή δεν αλλάζει ──────────────────────────────────────────────────────
 const bare = html(table);
 ok('ο πίνακας επιστρέφει απαράλλαχτος', html(hy(table)) === bare);
+
+// ═══ ΚΑΜΙΑ ΣΕΛΙΔΑ ΔΕΝ ΔΕΙΧΝΕΙ ΣΤΟΝ ΕΑΥΤΟ ΤΗΣ ═══════════════════════════════
+// Και οι τρεις τύπωναν και τους τρεις συνδέσμους: στο «Ποιοι είμαστε» το πρώτο
+// πράγμα κάτω από το κείμενο ήταν ένα «Ποιοι είμαστε» που ξαναφόρτωνε την ίδια
+// σελίδα. Ο έλεγχος κρατά και τα δύο σκέλη — ότι ο εαυτός φεύγει ΚΑΙ ότι οι
+// άλλοι δύο μένουν — γιατί ένα φίλτρο που κόβει τα πάντα περνά το μισό.
+const row = (self: string) => {
+  const out = html(createElement(LegalLayout, {
+    self, eyebrow: 'Νομικά', title: 'Τ', intro: 'Ι',
+    blocks: [{ h: 'Μία', body: createElement('p', null, 'κείμενο') }],
+  }));
+  // ΜΟΝΟ Η ΣΕΙΡΑ, ΟΧΙ ΟΛΗ Η ΣΕΛΙΔΑ: το υποσέλιδο δείχνει και στις τρεις.
+  const i = out.indexOf('class="lg-siblings"');
+  const seg = out.slice(i, out.indexOf('</div>', i));
+  return ['/trust', '/privacy', '/terms'].filter(h => seg.includes(`href="${h}"`));
+};
+for (const [self, other1, other2] of [
+  ['/trust', '/privacy', '/terms'],
+  ['/privacy', '/trust', '/terms'],
+  ['/terms', '/trust', '/privacy'],
+]) {
+  const hrefs = row(self);
+  ok(`${self}: δεν δείχνει στον εαυτό της`, !hrefs.includes(self));
+  ok(`${self}: δείχνει στις άλλες δύο`, hrefs.includes(other1) && hrefs.includes(other2));
+}
 
 console.log(`legal-shell: ✓ ${passed} · ✗ ${failed}`);
 if (failed) { for (const f of fails) console.log('  ✗ ' + f); process.exit(1); }
