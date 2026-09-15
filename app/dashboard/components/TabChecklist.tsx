@@ -813,7 +813,22 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
               <ChipToggle key={c.id} on={filterCat === c.id} onClick={() => setFilterCat(filterCat === c.id ? 'all' : c.id)}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
                 {c.label}
-                <span style={{ fontSize: 'var(--fs-xs)', opacity: 0.8, fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{catDone}/{count}</span>
+          {/* ═══ Η ΘΑΜΠΑΔΑ ΤΟΥ ΚΕΙΜΕΝΟΥ ΔΕΝ ΕΙΝΑΙ `opacity` ════════════════════
+              ΜΕΤΡΗΜΕΝΟ ΣΤΟ ΦΩΤΕΙΝΟ ΘΕΜΑ, ΠΟΥ ΔΕΝ ΕΙΧΕ ΣΑΡΩΘΕΙ ΠΟΤΕ: ο πάγκος
+              έγραφε `data-mode="dark"` καρφωτά, οπότε και οι οκτώ σαρωτές του
+              ταμπλό έβλεπαν πάντα το ίδιο ένα από τα έξι θέματα.
+
+              ΤΟ `opacity` ΑΝΑΜΕΙΓΝΥΕΙ ΜΕ Ο,ΤΙ ΕΙΝΑΙ ΑΠΟ ΠΙΣΩ, δηλαδή δίνει
+              άλλο αποτέλεσμα σε κάθε παλέτα. Στο σκοτεινό το 0,8 σβήνει προς
+              το μαύρο και η αντίθεση κρατιέται· στο φωτεινό σβήνει προς το
+              λευκό και πέφτει κάτω από το όριο. Και δεν φαίνεται πουθενά στον
+              κώδικα: το χρώμα εξακολουθεί να λέει `--text-secondary`.
+
+              Η ΘΑΜΠΑΔΑ ΕΙΝΑΙ ΧΡΩΜΑ, ΚΑΙ ΤΟ ΧΡΩΜΑ ΕΙΝΑΙ TOKEN. Το
+              `--text-secondary` είναι ήδη το «δεύτερο επίπεδο» και βγάζει
+              5,44:1 στο φωτεινό. Ιδια πρόθεση, μετρήσιμο αποτέλεσμα, ίδιο
+              αποτέλεσμα σε κάθε θέμα. */}
+                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{catDone}/{count}</span>
               </ChipToggle>
             )
           })}

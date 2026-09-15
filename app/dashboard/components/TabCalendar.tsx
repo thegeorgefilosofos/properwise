@@ -588,7 +588,12 @@ export function DaySheet({ date, events, onClose, onPick, onNew }: {
                 ίδιο σημείο· χωρίς ώρα μένει κενή αντί να μετακινήσει τη γραμμή. */}
             {anyTime && <span style={{ width: '5ch', flexShrink: 0, fontSize: 'var(--fs-xs)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-tertiary)' }}>{ev.event_time || ''}</span>}
             <span style={{ flexShrink: 0, display: 'flex', color: CATEGORIES[ev.category].color }}>{CATEGORIES[ev.category].icon}</span>
-            <span className="po-elide" style={{ flex: 1, minWidth: '6ch', fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)', textDecoration: ev.status === 'paid' ? 'line-through' : 'none', opacity: ev.status === 'paid' ? 0.55 : 1 }}>{ev.title}</span>
+            {/* ΤΟ ΠΛΗΡΩΜΕΝΟ ΔΕΝ ΓΙΝΕΤΑΙ ΑΔΙΑΒΑΣΤΟ. Με `opacity: 0.55` ο τίτλος
+              έβγαινε 3,69:1 στο φωτεινό θέμα, κάτω από το 4,5. Δηλαδή ο
+              ιδιοκτήτης δεν μπορούσε να διαβάσει ΤΙ πλήρωσε — και η διαγραφή
+              από πάνω το λέει ήδη ότι έγινε. Το `--text-tertiary` κρατά την
+              υποχώρηση ως ΧΡΩΜΑ, με μετρήσιμη αντίθεση σε κάθε θέμα. */}
+          <span className="po-elide" style={{ flex: 1, minWidth: '6ch', fontSize: 'var(--fs-base)', fontWeight: 500, color: ev.status === 'paid' ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: ev.status === 'paid' ? 'line-through' : 'none' }}>{ev.title}</span>
             {ev.amount ? <span style={{ flexShrink: 0, fontSize: 'var(--fs-base)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{fe(ev.amount)}</span> : null}
           </button>
         ))}
@@ -884,8 +889,17 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
                           υπάρχει. Ενα μέγεθος, το ελάχιστο επιτρεπτό. */}
                       {dayAmt>0&&(
                         <div className="cal-day-amt po-elide" style={{ marginTop:2 }}>
-                          <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--accent)', opacity:0.8 }}>
-                            {fn(dayAmt)}<span style={{ marginLeft:1.5, opacity:0.82 }}>€</span>
+                          {/* ΔΥΟ ΘΑΜΠΑΔΕΣ ΠΟΥ ΠΟΛΛΑΠΛΑΣΙΑΖΟΝΤΑΝ. Το ποσό έγραφε
+                              `opacity: 0.8` και το ευρώ από μέσα του άλλο 0,82:
+                              το σύμβολο έβγαινε στο 0,656 του χρώματός του.
+                              Μετρημένο στο φωτεινό θέμα, 3,92:1 ο αριθμός και
+                              4,07:1 το ευρώ, με όριο 4,5. Είναι ΠΟΣΟ — το μόνο
+                              νούμερο του κελιού — και δεν διαβαζόταν. Το
+                              `--accent` σκέτο δίνει 6,4:1 στο φωτεινό, χωρίς
+                              καμία θαμπάδα να το μεταφράζει διαφορετικά σε κάθε
+                              θέμα. */}
+                          <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--accent)' }}>
+                            {fn(dayAmt)}<span style={{ marginLeft:1.5 }}>€</span>
                           </span>
                         </div>
                       )}

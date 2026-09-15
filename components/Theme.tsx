@@ -16,7 +16,7 @@
 // --negative, --bg-*, --text-*, --border-*).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { ReactNode, CSSProperties, type MouseEvent, useState, useEffect, useRef, useSyncExternalStore } from 'react';
+import { ReactNode, CSSProperties, type MouseEvent, type Ref, useState, useEffect, useRef, useSyncExternalStore } from 'react';
 
 // Τα tokens ζουν σε module ΧΩΡΙΣ React (components/tokens.ts) ώστε να μπορεί να
 // τα εισάγει και Server Component. Εδώ ξανα-εξάγονται αυτούσια, ώστε τα ~600
@@ -1223,8 +1223,36 @@ export function pressable<E extends { key: string; preventDefault: () => void }>
 }
 
 // ═══ Btn, κουμπιά σε 3 ρόλους ═════════════════════════════════════════════
-export function Btn({ children, onClick, variant = 'secondary', disabled, type, href, newTab, field, size, title }: {
+export function Btn({ children, onClick, variant = 'secondary', disabled, type, href, newTab, field, size, title, className, ref, expanded, haspopup, controls }: {
   children: ReactNode; onClick?: () => void; variant?: 'primary' | 'secondary' | 'ghost'; disabled?: boolean; type?: 'button' | 'submit';
+  /**
+   * ΤΡΕΙΣ ΙΚΑΝΟΤΗΤΕΣ ΠΟΥ ΕΛΕΙΠΑΝ, ΚΑΙ ΚΡΑΤΟΥΣΑΝ 26 ΚΟΥΜΠΙΑ ΧΕΙΡΟΠΟΙΗΤΑ
+   * ─────────────────────────────────────────────────────────────────────
+   * Η σημείωση της καστάνιας `hand-buttons` τις ονόμασε μία προς μία, αφού
+   * δοκιμάστηκε μετανάστευση σε 93 κουμπιά και ΜΕΤΑΝΑΣΤΕΥΣΑΝ ΜΗΔΕΝ: δεκατέσσερα
+   * μπλοκάρονταν από `className`, εφτά από `ref`, πέντε από `aria-expanded`.
+   * Και οι τρεις είναι ΔΙΑΒΙΒΑΣΗ, όχι όψη: το κουμπί βγαίνει εικονοστοιχείο
+   * προς εικονοστοιχείο ίδιο με πριν — γι' αυτό είναι η φθηνότερη κίνηση και
+   * γι' αυτό γίνεται πρώτη.
+   *
+   * ΤΟ `className` ΠΡΟΣΤΙΘΕΤΑΙ, ΔΕΝ ΑΝΤΙΚΑΘΙΣΤΑ. Η `po-btn` κουβαλά ολόκληρη
+   * την όψη· αν ένα σημείο μπορούσε να τη σβήσει, θα ξαναγεννιόταν ακριβώς το
+   * πρόβλημα που λύθηκε. Οι κλάσεις που έρχονται από έξω (`po-hov-fill`,
+   * `acc-toggle`, `po-box`) είναι ΣΥΜΒΟΛΑΙΑ ΣΥΜΠΕΡΙΦΟΡΑΣ — αιώρηση, σχήμα
+   * σειράς — και κάθονται ΔΙΠΛΑ στην όψη, όχι πάνω της.
+   */
+  className?: string;
+  /** Για popover που μετριέται με `getBoundingClientRect` ώστε να σταθεί το portal. */
+  ref?: Ref<HTMLButtonElement>;
+  /**
+   * ΔΕΝ ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΜΕ ΤΟ `aria-pressed` ΤΟΥ ChipToggle. Το «πατημένο» λέει
+   * κατάσταση επιλογής· το «ανοιγμένο» λέει ότι κάτι ΑΛΛΟ φάνηκε εξαιτίας του.
+   * Ο αναγνώστης οθόνης τα ανακοινώνει διαφορετικά και ο χρήστης περιμένει
+   * διαφορετικά. Γι' αυτό το ChipToggle ΔΕΝ αντικαθιστά αυτά τα κουμπιά.
+   */
+  expanded?: boolean;
+  haspopup?: boolean | 'menu' | 'listbox' | 'dialog';
+  controls?: string;
   /** Συμπλήρωμα του λεκτικού, όχι αντικατάστασή του: «Εξαγωγή Excel» με τίτλο
    *  «Εξαγωγή σε Excel (.xlsx)». Οταν δεν προσθέτει πληροφορία, μένει κενό. */
   title?: string;
@@ -1320,11 +1348,12 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
   // απλώς δεν περνούσε το `onClick`: το κουμπί έμενε εστιάσιμο, ανακοινωνόταν
   // ως ενεργό από τους αναγνώστες οθόνης και το `:disabled` του CSS δεν
   // ταίριαζε ποτέ. Τώρα δηλώνεται στο ίδιο το στοιχείο.
+  const cls = className ? `po-btn ${className}` : 'po-btn';
   if (href) {
     return (
       <a
         href={href}
-        className="po-btn"
+        className={cls}
         data-variant={variant}
         title={title}
         target={newTab ? '_blank' : undefined}
@@ -1335,11 +1364,15 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
   }
   return (
     <button
+      ref={ref}
       type={type ?? 'button'}
-      className="po-btn"
+      className={cls}
       data-variant={variant}
       title={title}
       disabled={disabled}
+      aria-expanded={expanded}
+      aria-haspopup={haspopup}
+      aria-controls={controls}
       onClick={disabled ? undefined : onClick}
       style={base}
     >{children}</button>
@@ -1360,7 +1393,7 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
 //
 // Η ΟΨΗ ΖΕΙ ΣΤΟ `.po-ico` του globals.css, όπως και του `Btn`: εκεί το CSS ξέρει
 // τι είναι αιώρηση, τι είναι εστίαση με πληκτρολόγιο και τι είναι οθόνη αφής.
-export function IconBtn({ children, onClick, label, tone, size = 'sm', round, disabled, type, title, style }: {
+export function IconBtn({ children, onClick, label, tone, size = 'sm', round, disabled, type, title, style, className, ref, expanded, haspopup, controls }: {
   children: ReactNode;
   onClick?: () => void;
   /** Το όνομα για τον αναγνώστη οθόνης. ΥΠΟΧΡΕΩΤΙΚΟ: χωρίς λεκτικό, είναι το μόνο που ακούγεται. */
@@ -1379,16 +1412,28 @@ export function IconBtn({ children, onClick, label, tone, size = 'sm', round, di
    * κεφαλίδα. Χρώμα, φόντο και περίγραμμα μένουν στην `.po-ico`.
    */
   style?: CSSProperties;
+  /** Προστίθεται στην `po-ico`, δεν την αντικαθιστά: συμβόλαιο συμπεριφοράς δίπλα στην όψη. */
+  className?: string;
+  /** Για popover που μετριέται ώστε να σταθεί το portal. */
+  ref?: Ref<HTMLButtonElement>;
+  /** «Ανοιγμένο», που δεν είναι το ίδιο με «πατημένο»: άλλη πληροφορία, άλλη ανακοίνωση. */
+  expanded?: boolean;
+  haspopup?: boolean | 'menu' | 'listbox' | 'dialog';
+  controls?: string;
 }) {
   const box = size === 'md' ? T.h.md : T.h.sm;
   return (
     <button
+      ref={ref}
       type={type ?? 'button'}
-      className="po-ico"
+      className={className ? `po-ico ${className}` : 'po-ico'}
       data-tone={tone}
       aria-label={label}
       title={title}
       disabled={disabled}
+      aria-expanded={expanded}
+      aria-haspopup={haspopup}
+      aria-controls={controls}
       onClick={disabled ? undefined : onClick}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -1413,7 +1458,7 @@ export function IconBtn({ children, onClick, label, tone, size = 'sm', round, di
 // ΤΟ `seg` ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΠΡΑΓΜΑ ΜΕΣΑ ΣΕ ΡΑΓΑ. Οταν τα πλακίδια κάθονται σε
 // κουτί που έχει ήδη περίγραμμα — ένα δεύτερο περίγραμμα ανά πλακίδιο δίνει
 // διπλή γραμμή· εκεί το ενεργό ξεχωρίζει με επιφάνεια και σκιά.
-export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, title, grow, size = 'sm' }: {
+export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, title, grow, size = 'sm', className }: {
   children: ReactNode;
   on: boolean;
   onClick?: () => void;
@@ -1437,11 +1482,13 @@ export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, ti
    * 1280. Δηλαδή έλειπε το ΙΔΙΟ πράγμα που έλειπε από το `Btn` πριν από αυτό.
    */
   size?: 'sm' | 'lg';
+  /** Προστίθεται στην `po-chip`, δεν την αντικαθιστά. */
+  className?: string;
 }) {
   return (
     <button
       type="button"
-      className="po-chip"
+      className={className ? `po-chip ${className}` : 'po-chip'}
       data-shape={shape}
       aria-pressed={on}
       title={title}
@@ -1468,18 +1515,22 @@ export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, ti
 // ΚΑΙ ΓΙΑΤΙ ΥΠΟΓΡΑΜΜΙΣΜΕΝΟ. Εικοσι έξι σημεία το έγραφαν με σκέτο χρώμα accent
 // μέσα σε πρόταση: για όποιον δεν διακρίνει το μπλε από το γκρι, δεν υπήρχε
 // καμία ένδειξη ότι πατιέται.
-export function LinkBtn({ children, onClick, tone, disabled, type, title }: {
+export function LinkBtn({ children, onClick, tone, disabled, type, title, className, ref }: {
   children: ReactNode;
   onClick?: () => void;
   tone?: 'quiet' | 'danger';
   disabled?: boolean;
   type?: 'button' | 'submit';
   title?: string;
+  /** Προστίθεται στην `po-link`, δεν την αντικαθιστά. */
+  className?: string;
+  ref?: Ref<HTMLButtonElement>;
 }) {
   return (
     <button
+      ref={ref}
       type={type ?? 'button'}
-      className="po-link"
+      className={className ? `po-link ${className}` : 'po-link'}
       data-tone={tone}
       title={title}
       disabled={disabled}
