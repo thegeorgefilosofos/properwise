@@ -18,7 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { Metadata } from 'next';
-import { IDENTITY } from '@/lib/legal/identity';
+import { IDENTITY, POLICY_UPDATED } from '@/lib/legal/identity';
 import { DISCLOSURE } from '@/lib/legal/disclosure';
 import { subprocessors } from '@/lib/legal/subprocessors';
 import { billingWords } from '@/lib/legal/billingWords';
@@ -411,7 +411,7 @@ export default function TrustPage() {
       self="/trust"
       eyebrow="Εμπιστοσύνη"
       title="Ποιοι είμαστε"
-      meta="Τελευταία ενημέρωση: Αύγουστος 2026"
+      meta={`Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
       intro="Σου ζητάμε το ΑΦΜ σου, τα μισθωτήριά σου και τα έσοδά σου. Δεν υπάρχει λόγος να μας τα εμπιστευτείς αν δεν ξέρεις ποιοι είμαστε, πού πάνε και τι δεν κάνουμε μ’ αυτά. Εδώ τα λέμε όσο πιο ανοιχτά μπορούμε, χωρίς μικρά γράμματα, μαζί με τις εξαιρέσεις που δεν μας βολεύουν."
       blocks={blocks}
     />

@@ -4408,12 +4408,20 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-back svg { transition: transform .15s; }
 
 
-.lg-lede {
-  display: grid; grid-template-columns: minmax(0, 1fr) 250px;
-  gap: 40px; align-items: last baseline; max-width: 1044px;
-}
+/* ═══ Η ΕΙΣΑΓΩΓΗ ΚΡΑΤΟΥΣΕ 250 ΓΙΑ ΤΗΝ ΗΜΕΡΟΜΗΝΙΑ ══════════════════════════
+   ΗΤΑΝ ΔΥΟ ΣΤΗΛΕΣ ΓΙΑ ΝΑ ΜΗ ΜΕΙΝΕΙ ΛΕΥΚΟ ΔΕΞΙΑ. Οσο το κείμενο είχε ταβάνι
+   712 αυτό έστεκε: η ημερομηνία γέμιζε το κενό δίπλα του και η σειρά έκλεινε
+   πέρα ως πέρα. Τώρα που το σώμα φτάνει στα 1044, η ΙΔΙΑ λύση παράγει το
+   αντίθετο — η εισαγωγή σταματά στα 754 ενώ κάθε παράγραφος από κάτω της
+   φτάνει στα 1044. Η πρώτη πρόταση που διαβάζει ο επισκέπτης είναι η μόνη
+   κοντύτερη της σελίδας.
+
+   Η ημερομηνία κατεβαίνει στη δική της γραμμή, στοιχισμένη στην ΙΔΙΑ δεξιά
+   άκρη: ένας άξονας, καμία εξαίρεση· η εισαγωγή διαβάζεται με το μέτρο
+   που έχει και το υπόλοιπο κείμενο. */
+.lg-lede { max-width: 1044px; }
 .lg-lede > p:first-child { text-align: justify; }
-.lg-lede > p:last-child:not(:first-child) { text-align: right; }
+.lg-lede > p:last-child:not(:first-child) { text-align: right; margin-top: 12px; }
 @media (max-width: 760px) {
   .lg-lede { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   /* Η ημερομηνία κατεβαίνει κάτω από την εισαγωγή, οπότε παύει να είναι δεξιά
