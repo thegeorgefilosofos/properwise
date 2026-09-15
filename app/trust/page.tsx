@@ -23,6 +23,7 @@ import { DISCLOSURE } from '@/lib/legal/disclosure';
 import { subprocessors } from '@/lib/legal/subprocessors';
 import { billingWords } from '@/lib/legal/billingWords';
 import { LegalLayout, type LegalBlock } from '../legal-shell';
+import { hyphenate } from '@/lib/core/hyphenate';
 import { siteUrl } from '@/lib/core/site';
 
 export const metadata: Metadata = {
@@ -308,8 +309,24 @@ export default function TrustPage() {
                   <tr key={s.name}>
                     <th scope="row" style={{ fontWeight: 600,
                       color: s.planned ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{s.name}</th>
-                    <td>{s.what}</td>
-                    <td style={{ color: 'var(--text-tertiary)' }}>{s.where}</td>
+                    {/* Η ΣΤΗΛΗ ΤΗΣ ΠΕΡΙΓΡΑΦΗΣ ΕΙΝΑΙ ΠΡΟΖΑ, ΟΧΙ ΕΤΙΚΕΤΑ. Ο γραμμένος
+                        κανόνας «ο συλλαβισμός σταματά στον πίνακα» βγήκε από
+                        μέτρηση στη ΣΤΕΝΗ στήλη του τόπου — 170 εικονοστοιχεία,
+                        όπου δεν υπάρχουν κενά να κλείσουν και το μόνο που μένει
+                        είναι τα σπασίματα. Εδώ η στήλη μετρήθηκε 398 στα 1440,
+                        δυόμισι φορές φαρδύτερη· το κείμενο είναι κανονικές
+                        προτάσεις: μέτρο παραγράφου, άρα μεταχείριση παραγράφου. Ο κανόνας δεν αναιρείται,
+                        ξεχωρίζει: ετικέτα ριγμένη, πρόζα στοιχισμένη. */}
+                    <td className="lg-cell-prose">{hyphenate(s.what)}</td>
+                    {/* ΤΟ «ΕΥΡΩΠΑΪΚΗ ΕΝΩΣΗ» ΔΕΝ ΣΠΑΕΙ ΣΤΑ ΔΥΟ. Η στήλη του τόπου
+                        είναι στενή και η φράση δύο λέξεων έπεφτε «Ευρωπαϊκή /
+                        Ενωση» — ένας θεσμός κομμένος στη μέση διαβάζεται ως δύο
+                        πράγματα. Με άθραυστο κενό ή χωρά ολόκληρη ή κατεβαίνει
+                        ολόκληρη. Ο ΤΟΠΟΣ ΔΕΝ ΣΥΛΛΑΒΙΖΕΤΑΙ ΟΥΤΕ ΣΤΟΙΧΙΖΕΤΑΙ: το
+                        κελί δεν έχει κενά να κλείσει, οπότε ο συλλαβισμός θα
+                        έδινε μόνο σπασίματα — «Ευρωπαϊ-κή» ήταν το μετρημένο
+                        σφάλμα που έβγαλε τον συλλαβιστή από τους πίνακες. */}
+                    <td style={{ color: 'var(--text-tertiary)' }}>{s.where.replace(/Ευρωπαϊκή Ένωση/g, 'Ευρωπαϊκή\u00A0Ένωση')}</td>
                   </tr>
                 ))}
               </tbody>

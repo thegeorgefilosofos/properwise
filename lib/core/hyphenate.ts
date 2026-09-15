@@ -241,3 +241,4 @@ export function hyphenateWord(word: string): string {
 export function hyphenate(text: string): string {
   return text.replace(/[Ͱ-Ͽἀ-῿]+/g, hyphenateWord);
 }
+

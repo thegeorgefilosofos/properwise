@@ -105,6 +105,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
       <PublicHeader />
 
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(48px,6vw,80px)` }}>
+        <div className="lg-head">
         <BackLink />
         <div className="lp-eyebrow">{eyebrow}</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
@@ -118,25 +119,15 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
           <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{hy(intro)}</p>
           {meta && <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0, whiteSpace: 'nowrap' }}>{meta}</p>}
         </div>
+        </div>
 
-        {/* ΔΥΟ ΣΤΗΛΕΣ: ΤΟ ΕΥΡΕΤΗΡΙΟ ΜΕΝΕΙ, ΤΟ ΚΕΙΜΕΝΟ ΚΥΛΑΕΙ. Σε στενή οθόνη
-            πέφτουν η μία κάτω από την άλλη και το ευρετήριο ξεκαρφώνεται: ένα
-            καρφωμένο στοιχείο σε κινητό τρώει μισή οθόνη. */}
+        {/* ΜΙΑ ΚΕΝΤΡΑΡΙΣΜΕΝΗ ΣΤΗΛΗ. Το πλαϊνό ευρετήριο αφαιρέθηκε: σε στήλη
+            260 εικονοστοιχείων κάθε γραμμή είχε τρία με τέσσερα κενά για να
+            μοιράσει το υπόλοιπο της στοίχισης, οπότε είτε τέντωνε ορατά είτε
+            έσπαγε λέξεις που δεν έπρεπε. Το πρόβλημα ήταν το ΜΕΤΡΟ, όχι η
+            ρύθμιση. Η δομή δεν χάθηκε: τα ΜΕΡΗ μένουν μέσα στο κείμενο και
+            χωρίζουν τις ενότητες σε ομάδες, με γραμμή από πάνω τους. */}
         <div className="lg-grid">
-          <nav aria-label="Περιεχόμενα" className="lg-toc">
-            <div className="lg-toc-head">Περιεχόμενα</div>
-            <ol className="lg-toc-list">
-              {blocks.map((b, i) => (
-                <li key={i}>
-                  {b.part && <span className="lg-toc-part">{b.part}</span>}
-                  <a href={`#${b.id || `s${i + 1}`}`} className="lg-toc-link">
-                    <span className="lg-toc-num">{i + 1}</span>
-                    <span>{b.h}</span>
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </nav>
 
           {/* Η ΣΤΗΛΗ ΕΙΝΑΙ ΤΟ ΜΕΤΡΟ. Καμία παράγραφος από μέσα δεν βάζει δικό
               της πλάτος: 712 εικονοστοιχεία στα 15 βγάζουν γραμμές ογδόντα

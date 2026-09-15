@@ -2136,8 +2136,6 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   .lp-footcol { gap: 0 !important; }
   .lp-footcol a { min-height: 44px; display: flex; align-items: center; }
 
-  .lg-toc-link { min-height: 44px; display: flex; align-items: center; }
-
   /* ═══ ΤΟ ΚΟΙΝΟ ΙΔΙΩΜΑ ΓΙΑ ΚΑΘΕ ΑΥΤΟΤΕΛΗ ΣΤΟΧΟ ΑΦΗΣ ═══════════════════════
      ΓΙΑΤΙ ΚΛΑΣΗ ΚΑΙ ΟΧΙ ΚΑΝΟΝΑΣ ΣΤΟ `.lp-link`. Το `.lp-link` δηλώνει ΣΥΜΠΕΡΙΦΟΡΑ
      χρώματος και το φοράνε δύο εντελώς διαφορετικά πράγματα: αυτοτελή
@@ -4428,37 +4426,43 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    του κενού αφήνουν 712 εικονοστοιχεία: γραμμές ογδόντα εννέα χαρακτήρων στα
    15, δηλαδή ακριβώς όσο αντέχει το μάτι. Έτσι καμία παράγραφος δεν χρειάζεται
    δικό της πλάτος και καμία δεν σταματά πριν από την επόμενη. */
+/* ═══ ΜΙΑ ΚΕΝΤΡΑΡΙΣΜΕΝΗ ΣΤΗΛΗ, ΧΩΡΙΣ ΕΥΡΕΤΗΡΙΟ ΣΤΟ ΠΛΑΙ ══════════════════════
+   ΓΙΑΤΙ ΕΦΥΓΕ ΤΟ ΕΥΡΕΤΗΡΙΟ. Δεν έφυγε επειδή ήταν άχρηστο· έφυγε επειδή η
+   στήλη των 260 το καταδίκαζε. Σε μέτρο 55 χαρακτήρων κάθε γραμμή έχει τρία με
+   τέσσερα κενά για να μοιράσει το υπόλοιπο της στοίχισης, οπότε είτε τεντώνει
+   ορατά είτε σπάει λέξεις που δεν θα έπρεπε — και οι μονόγραμμες καταχωρήσεις
+   τελειώνουν όπου τελειώνει η λέξη τους, δίπλα σε γραμμές που κλείνουν στο
+   χιλιοστό. Τρεις διαδοχικές ρυθμίσεις (στοίχιση, γραμμή ανά σειρά, χαμηλότερο
+   κατώφλι συλλαβισμού) βελτίωσαν τους αριθμούς και δεν έλυσαν το αίσθημα: το
+   πρόβλημα ήταν το ΜΕΤΡΟ, όχι η ρύθμιση.
+
+   ΤΙ ΧΑΝΕΤΑΙ, ΡΗΤΑ. Χάνονται τα άλματα σε ενότητα — στους Ορους χρήσης είκοσι
+   οκτώ σύνδεσμοι. Δεν χάνεται η δομή: τα ΜΕΡΗ (Α, Β, Γ…) μένουν μέσα στο
+   κείμενο και χωρίζουν τις είκοσι οκτώ σε έξι ομάδες, με γραμμή από πάνω τους.
+   Το ίδιο κάνουν οι νομικές σελίδες της Stripe, της Linear και της Vercel: μία
+   στήλη, κανένα πλαϊνό ευρετήριο.
+
+   ΤΟ ΜΕΤΡΟ ΜΕΝΕΙ ΑΚΡΙΒΩΣ ΙΔΙΟ. Η στήλη ήταν 712 εικονοστοιχεία και μένει 712:
+   ογδόντα εννέα χαρακτήρες στα 15, δηλαδή ο λόγος για τον οποίο γράφτηκε έτσι.
+   Αλλάζει μόνο ότι κεντράρεται αντί να κάθεται δεξιά από κενή στήλη. */
 .lg-grid {
-  display: grid; grid-template-columns: 260px minmax(0, 1fr);
-  gap: clamp(28px, 5vw, 72px); align-items: start;
+  display: block;
   margin-top: clamp(32px, 4.5vw, 52px);
 }
+/* ═══ ΤΟ ΚΕΙΜΕΝΟ ΦΤΑΝΕΙ ΣΤΗΝ ΑΚΡΗ, ΟΠΩΣ ΚΑΘΕ ΑΛΛΟ ΣΤΟΙΧΕΙΟ ΤΗΣ ΣΕΛΙΔΑΣ ═══
+   ΜΕ ΤΟ ΤΑΒΑΝΙ ΤΩΝ 712 Η ΣΕΛΙΔΑ ΕΙΧΕ ΔΥΟ ΔΕΞΙΕΣ ΑΚΡΕΣ. Η ημερομηνία, το
+   υποσέλιδο και η γραμμή των αδελφών σελίδων κλείνουν στα 1044 του μέτρου·
+   το κείμενο σταματούσε στα 712 και άφηνε 332 λευκά δίπλα του. Δύο άξονες στην
+   ίδια οθόνη διαβάζονται ως σφάλμα, όχι ως πρόθεση.
+
+   ΤΟ ΤΙΜΗΜΑ, ΓΡΑΜΜΕΝΟ: στα 1044 με 15 η γραμμή πιάνει περίπου 130 χαρακτήρες
+   αντί για 89. Είναι μακρύτερη από το τυπογραφικό ιδανικό — και στέκει εδώ
+   επειδή το κείμενο είναι ΠΛΗΡΩΣ ΣΤΟΙΧΙΣΜΕΝΟ με αληθινό συλλαβισμό: η δεξιά
+   άκρη είναι ευθεία, οπότε το μάτι ξέρει ακριβώς πού να γυρίσει, που είναι και
+   ο λόγος για τον οποίο υπάρχει το όριο των 89. Ο συλλαβισμός κρατά τα κενά
+   στο φυσικό τους πλάτος (διάμεσος 4,7 · p90 6,4 μετρημένα). */
 .lg-body { min-width: 0; }
-.lg-toc { position: sticky; top: 24px; }
-.lg-toc-head {
-  font-size: 11px; font-weight: 700; color: var(--text-tertiary);
-  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px;
-}
-.lg-toc-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 1px; }
-.lg-toc-link {
-  display: flex; gap: 10px; align-items: baseline;
-  padding: 6px 0; font-size: 14px; line-height: 1.45;
-  color: var(--text-secondary); text-decoration: none;
-  transition: color .15s;
-}
-
-/* Τα μέρη μέσα στο ευρετήριο: ίδια ετικέτα με τις ενότητες της αρχικής. */
-.lg-toc-part {
-  display: block; margin: 18px 0 7px;
-  font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--text-tertiary);
-}
-.lg-toc-list > li:first-child .lg-toc-part { margin-top: 0; }
-.lg-toc-num {
-  font-size: 11px; font-weight: 700; color: var(--text-tertiary);
-  font-variant-numeric: tabular-nums; flex-shrink: 0; min-width: 14px;
-}
-
+.lg-head { min-width: 0; }
 /* Τρεχούμενο κείμενο νομικής σελίδας. Στα 15, όσο και η αρχική: ό,τι δεσμεύει
    τον χρήστη δεν επιτρέπεται να είναι το πιο δυσανάγνωστο κείμενο του
    προϊόντος και ήταν, στα 14. */
@@ -4513,7 +4517,6 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-just { text-align: justify; }
 
 @media (max-width: 900px) {
-  .lg-grid { grid-template-columns: minmax(0, 1fr); }
   /* ΣΕ ΚΙΝΗΤΟ ΤΟ ΕΥΡΕΤΗΡΙΟ ΚΥΛΑΕΙ ΜΕΣΑ ΤΟΥ. Είκοσι τέσσερις ενότητες η μία
      κάτω από την άλλη σημαίνουν τρεις οθόνες ευρετηρίου πριν από την πρώτη
      λέξη του κειμένου: ο αναγνώστης νομίζει ότι η σελίδα είναι το ευρετήριο.
@@ -4529,30 +4532,9 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
      ακμή. Εδώ γίνεται με μάσκα, γιατί το στοιχείο ΚΥΛΑΕΙ και το σβήσιμο πρέπει
      να μένει καρφωμένο στην ακμή, όχι να ταξιδεύει με το περιεχόμενο.
 
-     ΚΑΙ ΤΟ ΓΕΜΙΣΜΑ ΑΠΟ ΚΑΤΩ ΔΕΝ ΕΙΝΑΙ ΔΙΑΚΟΣΜΗΣΗ: χωρίς αυτό, όταν φτάσεις
-     στο τέλος της λίστας η μάσκα θα έσβηνε την ΤΕΛΕΥΤΑΙΑ σειρά — δηλαδή θα
-     έκρυβε πληροφορία αντί να δείξει ότι υπάρχει κι άλλη. Με 26 από κάτω, στο
-     τέλος η μάσκα πέφτει πάνω σε κενό. */
-  .lg-toc {
-    position: static; padding: 16px 18px; border-radius: 12px;
-    background: var(--bg-elevated); border: 1px solid var(--border-subtle);
-  }
-  /* Η ΜΑΣΚΑ ΠΑΕΙ ΣΤΗ ΛΙΣΤΑ ΚΑΙ ΟΧΙ ΣΤΗΝ ΚΑΡΤΑ. Με το σβήσιμο πάνω στην κάρτα
-     έσβηνε ΚΑΙ το περίγραμμά της: μια στρογγυλή γωνία που ξεθωριάζει μόνο από
-     τη μία πλευρά διαβάζεται ως σφάλμα απόδοσης, όχι ως πρόθεση. Εδώ η κάρτα
-     μένει ακέραιη, η επικεφαλίδα «Περιεχόμενα» μένει καρφωμένη από πάνω και
-     σβήνει μόνο ό,τι όντως συνεχίζεται. */
-  .lg-toc-list {
-    max-height: 42vh; overflow-y: auto; overscroll-behavior: contain;
-    padding-bottom: 26px;
-    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
-  }
-  .lg-toc-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
-  .lg-body { max-width: 720px; }
+     Η στήλη του κειμένου κρατά το μέτρο της και σε στενή οθόνη. */
 }
 @media (max-width: 560px) {
-  .lg-toc-list { grid-template-columns: minmax(0, 1fr); }
   /* ΣΤΟ ΤΗΛΕΦΩΝΟ Η ΣΤΟΙΧΙΣΗ ΦΕΥΓΕΙ. Η στήλη πέφτει κάτω από τα 330
      εικονοστοιχεία, δηλαδή γύρω στους σαράντα χαρακτήρες: εκεί ακόμη και με
      συλλαβισμό μία μακριά λέξη αφήνει τρύπα σε ολόκληρη γραμμή. */
@@ -4685,7 +4667,6 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   .auth-cta:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
   .lg-back:hover { color: var(--accent); }
   .lg-back:hover svg { transform: translateX(-2px); }
-  .lg-toc-link:hover { color: var(--accent); }
   .lp-ghost:hover {
     border-color: color-mix(in srgb, var(--accent) 40%, transparent);
     background: color-mix(in srgb, var(--accent) 5%, transparent);
@@ -4697,7 +4678,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    το γαλάζιο rgba(51,181,229,.4) που βάζει ο περιηγητής και δεν υπάρχει σε
    κανένα θέμα της εφαρμογής. */
 @media (hover: none) {
-  a.lp-link:active, .lg-back:active, .lg-toc-link:active,
+  a.lp-link:active, .lg-back:active,
   details.lp-faq > summary:active { color: var(--accent); }
   .lp-cta:active, .lp-ghost:active, .auth-cta:active:not(:disabled) { filter: brightness(.94); }
 }
