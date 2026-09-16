@@ -28,6 +28,7 @@
 import { launchEngine, engineLabel } from './lib/engine.mjs'
 import { PUBLIC, SIZES, BASE } from './rendered/targets.mjs'
 import { abortIfStyleless } from './lib/served-css.mjs'
+import { applyMode, MODE } from './lib/bench-mode.mjs'
 
 const browser = await launchEngine()
 
@@ -41,13 +42,18 @@ try {
 }
 await abortIfStyleless(browser, BASE)
 
-console.log(`  ${PUBLIC.length} δημόσιες σελίδες × ${SIZES.length} μεγέθη · μηχανή ${engineLabel()}`)
+console.log(`  ${PUBLIC.length} δημόσιες σελίδες × ${SIZES.length} μεγέθη · θέμα ${MODE === 'light' ? 'φωτεινό' : 'σκούρο'} · μηχανή ${engineLabel()}`)
 
 const findings = []
 let controls = 0
 
 for (const [label, w, h] of SIZES) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: w < 1024, isMobile: w < 1024 })
+  // Ο σαρωτής χτυπά τον ΖΩΝΤΑΝΟ διακομιστή, όχι τον πάγκο: το θέμα δεν έρχεται
+  // από το build, το διαβάζει η σελίδα από το `pos_mode` πριν το πρώτο paint.
+  // Χωρίς αυτό, το `BENCH_MODE=light` σάρωνε τα πλωτά στο ΣΚΟΥΡΟ και έλεγε
+  // «φωτεινό». Το ίδιο λάθος που βρέθηκε στους σαρωτές διάταξης στις 15/09.
+  await applyMode(ctx)
   const page = await ctx.newPage()
   for (const path of PUBLIC) {
     await page.goto(BASE + path, { waitUntil: 'networkidle', timeout: 30000 })

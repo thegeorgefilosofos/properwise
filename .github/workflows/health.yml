@@ -93,6 +93,7 @@ jobs:
       - name: Ποια διεύθυνση ελέγχεται
         id: target
         env:
+          PLAIN_URL: ${{ vars.HEALTH_BASE_URL }}
           SECRET_URL: ${{ secrets.HEALTH_BASE_URL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -110,12 +111,32 @@ jobs:
           # βρεθεί με κανέναν από τους δύο τρόπους, η δουλειά ΑΠΟΤΥΓΧΑΝΕΙ αντί
           # να τρέξει στα τυφλά. Το σκεπτικό είναι γραμμένο πιο κάτω, εκεί που
           # γράφεται το `configured`.
+          #
+          # ═══ ΜΕΤΑΒΛΗΤΗ ΠΡΩΤΑ, ΜΥΣΤΙΚΟ ΜΕΤΑ ══════════════════════════════════
+          # Η διεύθυνση της παραγωγής ΔΕΝ είναι μυστικό — τη διαβάζει ο κάθε
+          # επισκέπτης από τη γραμμή διευθύνσεων. Μπήκε όμως πρώτα ως secret,
+          # και το GitHub λογοκρίνει ΚΑΘΕ έξοδο που περιέχει τιμή secret:
+          #
+          #     ##[warning]Skip output 'report' since it may contain secret.
+          #
+          # Δηλαδή ο πίνακας με τις επτά διαδρομές δεν έφτανε ούτε στη σύνοψη
+          # της δουλειάς ούτε στο σώμα του issue — έμενε μόνο στο log. Οσο ήταν
+          # πράσινο δεν πείραζε· σε πραγματική βλάβη θα χανόταν ακριβώς ο
+          # πίνακας που λέει ΠΟΙΑ διαδρομή έπεσε.
+          #
+          # Οπότε: `vars` πρώτα. Το `secrets` μένει ως εφεδρεία ώστε να μη
+          # σπάσει τίποτα όσο υπάρχουν και τα δύο — αλλά όποιος το αφήσει εκεί
+          # πληρώνει τη λογοκρισία· η προειδοποίηση πιο κάτω το λέει.
           url=""
-          if [ -n "${SECRET_URL:-}" ]; then
+          if [ -n "${PLAIN_URL:-}" ]; then
+            echo "Πηγή διεύθυνσης: variable HEALTH_BASE_URL."
+            url="$PLAIN_URL"
+          elif [ -n "${SECRET_URL:-}" ]; then
             echo "Πηγή διεύθυνσης: secret HEALTH_BASE_URL."
+            echo "::warning::Η διεύθυνση διαβάστηκε από SECRET. Το GitHub θα λογοκρίνει τον πίνακα των διαδρομών σε κάθε έξοδο. Μετακίνησέ τη στα Variables (ίδιο όνομα) και σβήσε το secret."
             url="$SECRET_URL"
           else
-            echo "Το secret HEALTH_BASE_URL δεν έχει οριστεί — ρωτάω το GitHub ποια είναι η τρέχουσα παραγωγή."
+            echo "Η διεύθυνση HEALTH_BASE_URL δεν έχει οριστεί πουθενά — ρωτάω το GitHub ποια είναι η τρέχουσα παραγωγή."
             dep=$(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=Production&per_page=1" --jq '.[0].id' 2>/dev/null || true)
             if [ -z "$dep" ] || [ "$dep" = "null" ]; then
               dep=$(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=production&per_page=1" --jq '.[0].id' 2>/dev/null || true)
@@ -143,7 +164,7 @@ jobs:
           # `configured`. Κόκκινο σήμα χωρίς λάθος κατηγορία.
           if [ -z "$url" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::error::Δεν βρέθηκε διεύθυνση παραγωγής: ούτε secret HEALTH_BASE_URL ούτε environment_url σε deployment. Όρισε το secret HEALTH_BASE_URL (βλ. docs/dev/health.md)."
+            echo "::error::Δεν βρέθηκε διεύθυνση παραγωγής: ούτε variable ούτε secret HEALTH_BASE_URL ούτε environment_url σε deployment. Όρισε τη VARIABLE HEALTH_BASE_URL (βλ. docs/dev/health.md)."
             exit 1
           fi
           echo "configured=true" >> "$GITHUB_OUTPUT"

@@ -28,6 +28,7 @@ let pkg
 try { pkg = require('playwright-core') }
 catch { console.error('Λείπει το playwright-core. Τρέξε: npm i -D playwright-core'); process.exit(2) }
 const { chromium } = pkg
+import { applyMode, MODE } from './lib/bench-mode.mjs'
 
 const BASE = process.env.E2E_BASE || 'http://localhost:3100'
 const EXE = process.env.CHROME || chromePath()
@@ -39,6 +40,18 @@ const ok = (name, cond, extra = '') => {
 }
 
 const browser = await chromium.launch({ executablePath: EXE, args: ['--no-sandbox'] })
+
+// ── ΚΑΘΕ ΣΕΛΙΔΑ ΜΕ ΤΟ ΘΕΜΑ ΤΗΣ, ΑΠΟ ΜΙΑ ΠΟΡΤΑ ────────────────────────────
+// Η αρχική σερβίρεται από τον ΖΩΝΤΑΝΟ διακομιστή, όχι από τον πάγκο: το θέμα
+// δεν έρχεται από το build, το διαβάζει το script πριν το πρώτο paint από το
+// `pos_mode`. Με τρία σημεία που άνοιγαν σελίδα, αυτό που θα ξεχνούσε το
+// κλειδί θα μετρούσε άλλο θέμα από τα άλλα δύο — σιωπηλά. Μία πόρτα, λοιπόν:
+// όποιος προσθέσει τέταρτο πέρασμα το παίρνει μαζί χωρίς να το σκεφτεί.
+const newPage = async (opts) => {
+  const page = await browser.newPage(opts)
+  await applyMode(page)
+  return page
+}
 
 // ── Το μάτι του ελέγχου: ποιο κουτί κόβει ΟΡΑΤΟ ΚΕΙΜΕΝΟ ────────────────────
 // ΓΙΑΤΙ ΜΕΤΡΑΕΙ ΚΕΙΜΕΝΟ ΚΑΙ ΟΧΙ «scrollHeight». Η πρώτη γραφή σύγκρινε
@@ -93,7 +106,7 @@ const CLIP_PROBE = `(() => {
 
 for (const [w, h, label] of [[1440, 900, 'υπολογιστής 1440'], [820, 1180, 'ταμπλέτα 820'], [390, 844, 'κινητό 390']]) {
   console.log(`\n── ${label}`)
-  const p = await browser.newPage({ viewport: { width: w, height: h } })
+  const p = await newPage({ viewport: { width: w, height: h } })
   await p.goto(BASE + '/', { waitUntil: 'networkidle' })
   await p.emulateMedia({ reducedMotion: 'reduce' })
   // Το πλαίσιο των cookies σκεπάζει τμήμα της σελίδας και δεν είναι υπό έλεγχο εδώ.
@@ -241,7 +254,7 @@ for (const [w, h, label] of [[1440, 900, 'υπολογιστής 1440'], [820, 1
 // και η ετικέτα αποδιδόταν με ΕΝΑ ΓΡΑΜΜΑ ΑΝΑ ΣΕΙΡΑ. Ενας έλεγχος που ρωτά
 // μόνο «κόπηκε;» δεν βλέπει το «διαβάζεται;».
 for (const w of [390, 430, 768, 820, 1024, 1280, 1366, 1440, 1512, 1920]) {
-  const p = await browser.newPage()
+  const p = await newPage()
   await p.setViewportSize({ width: w, height: 900 })
   await p.goto(BASE + '/', { waitUntil: 'networkidle' })
   const r = await p.evaluate(() => {
@@ -301,7 +314,7 @@ for (const w of [390, 430, 768, 820, 1024, 1280, 1366, 1440, 1512, 1920]) {
 // συνέκρινε και τις τέσσερις μαζί θα κοκκίνιζε σε σωστή διάταξη.
 const PLAN_WIDTHS = [390, 430, 768, 820, 834, 860, 900, 960, 1020, 1024, 1112, 1180, 1280, 1440]
 for (const w of PLAN_WIDTHS) {
-  const p = await browser.newPage()
+  const p = await newPage()
   await p.setViewportSize({ width: w, height: 1000 })
   await p.goto(BASE + '/', { waitUntil: 'networkidle' })
   const r = await p.evaluate(() => {
@@ -343,5 +356,5 @@ for (const w of PLAN_WIDTHS) {
 }
 
 await browser.close()
-console.log(`\nΑρχική σελίδα — ${pass} πέρασαν, ${fail} απέτυχαν`)
+console.log(`\nΑρχική σελίδα, θέμα ${MODE === 'light' ? 'φωτεινό' : 'σκούρο'} — ${pass} πέρασαν, ${fail} απέτυχαν`)
 process.exit(fail ? 1 : 0)
