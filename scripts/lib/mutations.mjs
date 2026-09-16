@@ -303,6 +303,16 @@ export const MUTATIONS = {
   // κριμένη ανάγνωση αποκτά `error`, μια νέα παίρνει τη θέση της, ΤΟ ΑΘΡΟΙΣΜΑ
   // ΜΕΝΕΙ ΕΞΙ. Με σκέτο `hits.length > max` αυτό περνούσε πράσινο — δηλαδή οι
   // έξι γραμμένες δικαιολογίες δεν φύλαγαν τίποτα, ήταν κείμενο δίπλα σε αριθμό.
+  // ΔΥΟ ΚΑΝΟΝΕΣ, ΔΥΟ ΑΠΟΔΕΙΞΕΙΣ. Ο πρώτος σβήνει τον περιορισμό — ο τρόπος που
+  // χάθηκε ήδη μία φορά ο παλιός κανόνας της ίδιας κλάσης. Ο δεύτερος βάζει την
+  // κλάση στην ενότητα του scrollytelling, δηλαδή το «τακτοποιώ τις ενότητες να
+  // έχουν όλες την ίδια κλάση» που σπάει το sticky χωρίς κανένα ορατό σφάλμα.
+  'landing-containment': { every: [
+    { file: 'app/globals.css', from: '  content-visibility: auto;\n', to: '' },
+    { file: 'app/page.tsx',
+      from: '      <section style={{ ...wrap, position: \'relative\', zIndex: 1, paddingBottom: GAP_ACT }}>\n        <SectionHead over="Πώς λειτουργεί"',
+      to: '      <section className="lp-reveal" style={{ ...wrap, position: \'relative\', zIndex: 1, paddingBottom: GAP_ACT }}>\n        <SectionHead over="Πώς λειτουργεί"' },
+  ] },
   'silent-reads': { every: [
     { add: 'lib/core/__mut__.ts', content: "export async function load(sb: { from: (t: string) => { select: (c: string) => Promise<{ data: unknown[] | null }> } }) {\n  const { data } = await sb.from('bills').select('*')\n  return data\n}\n" },
     { steps: [
