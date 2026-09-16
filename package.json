@@ -42,6 +42,7 @@
     "e2e:served:light": "BENCH_MODE=light node scripts/e2e-float-cover.mjs && BENCH_MODE=light node scripts/e2e-landing.mjs",
     "e2e:rendered": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-rendered.mjs",
     "e2e:float": "node scripts/e2e-float-cover.mjs",
+    "e2e:hscroll": "node scripts/e2e-hscroll.mjs",
     "e2e:mobile": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-mobile.mjs",
     "posts": "tsx scripts/marketing/posts.ts",
     "reel": "tsx scripts/marketing/reel.ts",
