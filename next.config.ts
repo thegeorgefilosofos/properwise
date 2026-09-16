@@ -14,6 +14,18 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // ── ΤΟ ΠΑΡΑΘΥΡΟ ΔΕΝ ΔΙΝΕΙ ΛΑΒΗ ΣΕ ΞΕΝΟ ORIGIN ─────────────────────────────
+  // Cross-Origin-Opener-Policy απομονώνει το browsing context: ένα ξένο
+  // αναδυόμενο παράθυρο δεν αποκτά αναφορά `window.opener` στη σελίδα μας, που
+  // κλείνει μια οικογένεια διαρροών μεταξύ origin (XS-Leaks, tabnabbing).
+  //
+  // ΓΙΑΤΙ `same-origin-allow-popups` ΚΑΙ ΟΧΙ `same-origin`. Η σύνδεση με Google
+  // (Supabase signInWithOAuth) είναι ροή ΑΝΑΚΑΤΕΥΘΥΝΣΗΣ, όχι popup — το
+  // `same-origin` δεν θα την έσπαγε. Αλλά το `allow-popups` είναι το ασφαλές
+  // ενδιάμεσο: κρατά την απομόνωση για ό,τι ΜΑΣ ανοίγει ξένο, χωρίς να κόψει
+  // κανένα παράθυρο που ανοίγουμε ΕΜΕΙΣ. Η τιμή που συνιστά η ίδια η Google για
+  // ιστότοπους με OAuth.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
   { key: "X-DNS-Prefetch-Control", value: "on" },
   // Κάμερα (σάρωση) & μικρόφωνο (φωνή) επιτρέπονται μόνο στο ίδιο origin· τα άλλα κλειστά.
   { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(), browsing-topics=()" },
