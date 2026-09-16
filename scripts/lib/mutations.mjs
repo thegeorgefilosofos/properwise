@@ -297,7 +297,21 @@ export const MUTATIONS = {
   // ── Πηγές αλήθειας και μονά σημεία ────────────────────────────────────
   'data-layer': { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('bills').select('*')\n" },
   'service-only-tables': { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('cron_secrets').select('*')\n" },
-  'silent-reads': { add: 'lib/core/__mut__.ts', content: "export async function load(sb: { from: (t: string) => { select: (c: string) => Promise<{ data: unknown[] | null }> } }) {\n  const { data } = await sb.from('bills').select('*')\n  return data\n}\n" },
+  // ΔΥΟ ΑΠΟΔΕΙΞΕΙΣ, ΓΙΑΤΙ Ο ΦΥΛΑΚΑΣ ΕΧΕΙ ΔΥΟ ΚΑΝΟΝΕΣ. Η πρώτη ήταν πάντα εδώ:
+  // μία ΕΒΔΟΜΗ σιωπηλή ανάγνωση, που την έπιανε και ο παλιός μετρητής. Η δεύτερη
+  // είναι η ΑΝΤΑΛΛΑΓΗ, και μόνο αυτή αποδεικνύει τον ονομαστικό κατάλογο: μια
+  // κριμένη ανάγνωση αποκτά `error`, μια νέα παίρνει τη θέση της, ΤΟ ΑΘΡΟΙΣΜΑ
+  // ΜΕΝΕΙ ΕΞΙ. Με σκέτο `hits.length > max` αυτό περνούσε πράσινο — δηλαδή οι
+  // έξι γραμμένες δικαιολογίες δεν φύλαγαν τίποτα, ήταν κείμενο δίπλα σε αριθμό.
+  'silent-reads': { every: [
+    { add: 'lib/core/__mut__.ts', content: "export async function load(sb: { from: (t: string) => { select: (c: string) => Promise<{ data: unknown[] | null }> } }) {\n  const { data } = await sb.from('bills').select('*')\n  return data\n}\n" },
+    { steps: [
+      { file: 'app/dashboard/components/TabRentROI.tsx',
+        from: "const { data: cs } = await supabase.rpc('community_market_stats');",
+        to: "const { data: cs, error: _mut } = await supabase.rpc('community_market_stats');" },
+      { add: 'lib/core/__mut2__.ts', content: "export async function swap(sb: { from: (t: string) => { select: (c: string) => Promise<{ data: unknown[] | null }> } }) {\n  const { data } = await sb.from('leases').select('rent')\n  return data\n}\n" },
+    ] },
+  ] },
   'download': { add: 'components/__mut__.ts', content: "export const save = (blob: Blob) => {\n  const a = document.createElement('a')\n  a.href = URL.createObjectURL(blob)\n  a.download = 'arxeio.csv'\n  a.click()\n}\n" },
   'official-links': { add: 'components/__mut__.tsx', content: tsx('    <a href="https://www.aade.gr/polites">Ημερολόγιο</a>') },
   'site-url': { add: 'components/__mut__.ts', content: "export const url = 'https://properwise.gr/imerologio'\n" },
