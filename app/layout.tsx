@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "./ThemeProvider";
 import CookieConsent from "./CookieConsent";
 import PwaProvider from "./PwaProvider";
+import VercelAnalytics from "./VercelAnalytics";
 import { ToastHost } from "@/components/Toast";
 import ErrorListener from "@/components/ErrorListener";
 import { ConfirmHost } from "@/components/ConfirmDialog";
@@ -192,6 +193,8 @@ export default async function RootLayout({
           <ToastHost />
           <ConfirmHost />
           <PwaProvider />
+          {/* Ανώνυμη μέτρηση επισκεψιμότητας χωρίς cookies (βλ. VercelAnalytics.tsx). */}
+          <VercelAnalytics />
         </ThemeProvider>
       </body>
     </html>

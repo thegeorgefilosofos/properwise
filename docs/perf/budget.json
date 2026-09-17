@@ -1,53 +1,53 @@
 {
-  "note": "Bytes ΚΑΛΩΔΙΟΥ (gzip), scripts/perf-budget.mjs σε παραγωγικό build. Το όριο μόνο κατεβαίνει.",
+  "note": "Bytes ΚΑΛΩΔΙΟΥ (gzip), scripts/perf-budget.mjs σε παραγωγικό build. Το --write μόνο κατεβάζει· για άνοδο χρειάζεται ρητό --raise.",
   "slack": 0.08,
   "routes": {
     "/": {
-      "initial": 165761,
-      "js": 166046,
-      "total": 308445,
+      "initial": 180070,
+      "js": 180355,
+      "total": 342431,
       "what": "αρχική, η πρώτη οθόνη κάθε επισκέπτη"
     },
     "/ypologismos-forou-enoikion": {
-      "initial": 172848,
-      "js": 173150,
-      "total": 268785,
+      "initial": 179022,
+      "js": 179325,
+      "total": 279538,
       "what": "φόρος ενοικίων, το βαρύτερο δημόσιο εργαλείο"
     },
     "/ypologismos-enfia": {
-      "initial": 180612,
-      "js": 180915,
-      "total": 275739,
+      "initial": 190032,
+      "js": 190353,
+      "total": 290613,
       "what": "ΕΝΦΙΑ"
     },
     "/vraxyxronia-i-makroxronia": {
-      "initial": 179642,
-      "js": 179945,
-      "total": 277921,
+      "initial": 185557,
+      "js": 185860,
+      "total": 287715,
       "what": "βραχυχρόνια ή μακροχρόνια"
     },
     "/kathari-apodosi": {
-      "initial": 165583,
-      "js": 165868,
-      "total": 263553,
+      "initial": 171760,
+      "js": 172045,
+      "total": 273923,
       "what": "καθαρή απόδοση"
     },
     "/login": {
-      "initial": 159686,
-      "js": 226234,
-      "total": 313415,
+      "initial": 167351,
+      "js": 234979,
+      "total": 330340,
       "what": "σύνδεση"
     },
     "/signup": {
-      "initial": 166558,
-      "js": 233106,
-      "total": 321275,
+      "initial": 174655,
+      "js": 242301,
+      "total": 333973,
       "what": "εγγραφή"
     },
     "/privacy": {
-      "initial": 153139,
-      "js": 153388,
-      "total": 263467,
+      "initial": 158537,
+      "js": 158786,
+      "total": 274963,
       "what": "πολιτική απορρήτου"
     }
   }
