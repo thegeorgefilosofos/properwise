@@ -1035,7 +1035,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               σε στενή γλιστρούν με το δάχτυλο, με στάση σε κάθε κάρτα, χωρίς
               ποτέ να σπάσουν σε δεύτερη σειρά. Το `data-list` μένει: το πλήθος
               το ορίζουν όσες τράπεζες δίνουν στεγαστικό, όχι ο σχεδιασμός. */}
-          <div data-list className="po-scroll-x" style={{display:'grid',gridAutoFlow:'column',gridAutoColumns:'minmax(158px, 1fr)',gap:10,scrollSnapType:'x proximity',minWidth:0,margin:'0 -1px',padding:'2px 1px'}}>
+          <div data-list className="po-scroll-x" style={{display:'grid',gridAutoFlow:'column',gridAutoColumns:'minmax(220px, 1fr)',gap:10,scrollSnapType:'x proximity',minWidth:0,margin:'0 -1px',padding:'2px 1px'}}>
             {BANKS.filter(b=>!filterSpiti||b.spiti_mou).map(bank=>{
               const key = bank.id||bank.name
               const on = selBank===key
