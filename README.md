@@ -1,29 +1,48 @@
-# PROPERWISE
+<div align="center">
 
-**The operating system for Greek property owners and managers.**
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/brand/properwise-logotypo-lefko.png">
+  <img src="public/brand/properwise-logotypo-skouro.png" alt="PROPERWISE" width="340">
+</picture>
+
+### The operating system for Greek property owners and managers
+
 _Το ακίνητό σου, υπό έλεγχο._
 
-PROPERWISE is a SaaS platform that turns the scattered, paperwork-heavy reality of
-owning and managing property in Greece — bills, tenants, taxes, loans, short-stay
-pricing, compliance — into a single, calm, real-time console. It is built for three
-audiences from one codebase: individual owners, professional property managers, and
-the accountants who serve them.
+[![Live](https://img.shields.io/badge/live-properwise.gr-2f6df6?style=flat-square)](https://properwise.gr)
+&nbsp;![Next.js 16](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=next.js)
+&nbsp;![React 19](https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react)
+&nbsp;![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript)
+&nbsp;![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e?style=flat-square&logo=supabase)
+
+<br/>
+
+<img src="docs/screenshots/landing-hero.png" alt="PROPERWISE — φωτογραφίζεις τον λογαριασμό, το PROPERWISE κάνει τα υπόλοιπα" width="860">
+
+</div>
+
+PROPERWISE turns the scattered, paperwork-heavy reality of owning and managing
+property in Greece — bills, tenants, taxes, loans, short-stay pricing, compliance —
+into a single, calm, real-time console. It is built for three audiences from one
+codebase: **individual owners**, **professional managers**, and **the accountants who
+serve them**.
 
 > This repository is **private**. It contains proprietary product code and
 > infrastructure for a production service handling customer data. A curated public
-> showcase of the product lives separately.
+> showcase of the product lives at **[properwise.gr](https://properwise.gr)**.
 
 ---
 
 ## Table of contents
 
 - [What it does](#what-it-does)
+- [Built to a bar](#built-to-a-bar)
 - [Tech stack](#tech-stack)
 - [Architecture](#architecture)
 - [Repository layout](#repository-layout)
 - [Database & security](#database--security)
 - [Local development](#local-development)
-- [Testing](#testing)
+- [Quality gates](#quality-gates)
 - [CI/CD & deployment](#cicd--deployment)
 - [Documentation](#documentation)
 
@@ -45,6 +64,32 @@ the accountants who serve them.
 
 An in-app AI assistant is trained on the domain and can explain, inform, register,
 and advise across all of the above.
+
+## Built to a bar
+
+The product is held to a level normally reserved for much larger teams, and the bar is
+**enforced in code** rather than left to discipline:
+
+- **Executable guardrails.** 130+ project-specific guard scripts (`scripts/guard-*.mjs`)
+  make whole classes of mistake _impossible to merge_ — RLS coverage, secret-in-bundle
+  scans, Greek typography and number formatting, decimal-comma money, accessibility
+  invariants, design-token drift, dead code, CI-cost limits. Each guard is itself
+  proven by a mutation test, so a guard that no longer catches its bug fails loudly.
+- **Tested domain core.** 250+ suites cover the parts where correctness is money —
+  Greek tax, ΕΝΦΙΑ, Ε2, amortization, pricing, ledgers, billing, the messaging cadence.
+  The `lib/` layer is framework-free on purpose, so business rules are verifiable in
+  isolation.
+- **Measured, not assumed.** A real-browser **performance budget** ratchets the wire
+  weight of every public page (it can only go down without an explicit, documented
+  raise); device- and engine-level scanners check layout, overflow, tap targets and
+  alignment across phones and tablets.
+- **Security by construction.** Row-Level Security on every table, a strict
+  Content-Security-Policy with per-request nonce + `strict-dynamic` (no `unsafe-inline`
+  scripts), signed webhooks with constant-time verification, and no standing write
+  credential anywhere.
+- **Privacy as a feature.** No advertising cookies, no analytics cookies, no personal
+  tracking — only anonymous, cookieless, aggregate traffic measurement, disclosed in
+  the privacy policy.
 
 ## Tech stack
 
@@ -105,7 +150,8 @@ supabase/
   migrations/        Schema as code — one migration owns each change
   functions/         Edge functions (Deno) + _shared domain modules
 docs/                Engineering & product docs (DB, infra, marketing)
-.github/workflows/   CI/CD — Supabase deploy + daily DB backup
+scripts/             Executable guardrails, scanners & generators
+.github/workflows/   CI/CD — quality gate, Supabase deploy, daily DB backup
 ```
 
 The `lib/` layer is deliberately framework-free and unit-tested, so business rules
@@ -138,17 +184,21 @@ npm run dev                  # http://localhost:3000
 > touching framework-level code, read the bundled guides in
 > `node_modules/next/dist/docs/` — see [`AGENTS.md`](AGENTS.md).
 
-## Testing
+## Quality gates
 
-The domain layer is covered by a fast `tsx` suite (billing, Greek tax, ΕΝΦΙΑ, Ε2,
-accounting ledgers, calendar, clients, i18n) plus verifiers for the messaging policy,
-copy, and gender-safe rendering.
+Run the same checks CI does, locally:
 
 ```bash
-npm run test        # full domain + messaging suite
+npm run test        # full domain + messaging suite (250+ suites)
+npm run guards      # 130+ executable guardrails
 npm run lint        # ESLint
 npx tsc --noEmit    # strict typecheck
 ```
+
+The domain suite covers billing, Greek tax, ΕΝΦΙΑ, Ε2, accounting ledgers, calendar,
+clients and i18n, plus verifiers for the messaging policy, copy, and gender-safe
+rendering. Guards, scanners and the performance budget extend the same discipline to
+security, layout and wire weight.
 
 ## CI/CD & deployment
 
@@ -156,8 +206,9 @@ GitHub Actions workflows, all driven by short-lived secrets (no standing
 credentials):
 
 - **`ci.yml`** — quality gate on every PR to `main` and `claude/**` push: secret
-  scan, lint-debt ratchet (error count may only go down), typecheck, the full
-  domain test-suite, and a production build. Blocking; no deploy.
+  scan, lint-debt ratchet (error count may only go down), typecheck, the full domain
+  test-suite, the guardrails, browser layout/overflow scanners across devices, and a
+  real-browser performance budget. Blocking; no deploy.
 - **`supabase-deploy.yml`** — on push, reconciles migration history, runs
   `supabase db push`, and deploys the edge functions (staging on `claude/**`,
   production on `main`). Self-healing and idempotent, with a failure-alert job.
@@ -179,4 +230,8 @@ credentials):
 
 ---
 
+<div align="center">
+
 © PROPERWISE. All rights reserved. Proprietary and confidential.
+
+</div>
