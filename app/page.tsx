@@ -439,7 +439,7 @@ export default async function Landing() {
   } catch { /* ο επισκέπτης βλέπει απλώς «Σύνδεση» */ }
 
   return (
-    <div className="lp-root" style={{ color: TEXT, minHeight: '100vh', fontFamily: T.font.sans, overflowX: 'clip', position: 'relative' }}>
+    <div className="lp-root min-h-dvh" style={{ color: TEXT, fontFamily: T.font.sans, overflowX: 'clip', position: 'relative' }}>
 
       <style>{`
         /* Η ΒΙΤΡΙΝΑ ΕΙΝΑΙ ΞΕΧΩΡΙΣΤΟ ΘΕΜΑ, ΚΑΙ ΠΛΕΟΝ ΤΟ ΛΕΕΙ.
