@@ -5,8 +5,10 @@
 // από τον πάροχο, εδώ του ΔΙΝΟΥΜΕ ένα μήνυμα να στείλει. Το κλειδί έρχεται ως
 // όρισμα από μεταβλητή περιβάλλοντος και δεν γράφεται ποτέ σε αρχείο καταγραφής.
 //
-// Ο αποστολέας και το reply_to είναι η διεύθυνση υποστήριξης: η απάντηση του
-// πελάτη σε αυτό το μήνυμα πρέπει να φτάνει σε άνθρωπο, όχι σε κενό.
+// Ο αποστολέας και το reply_to είναι Η ΙΔΙΑ ΔΙΕΥΘΥΝΣΗ ΠΟΥ ΕΓΡΑΨΕ Ο ΠΕΛΑΤΗΣ:
+// όποιος γράφει στο privacy@ παίρνει απάντηση από privacy@ και η δική του
+// απάντηση γυρίζει στο ίδιο γραμματοκιβώτιο — όχι στο support@. Η απάντηση του
+// πελάτη πρέπει να φτάνει σε άνθρωπο, στο σωστό νήμα, όχι σε κενό.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { replyAckEmail } from '@/lib/email/ack';
@@ -15,14 +17,22 @@ import { IDENTITY } from '@/lib/legal/identity';
 /** Η διεύθυνση αποστολής μηνυμάτων του παρόχου. Γραμμένη μία φορά. */
 export const SEND_URL = 'https://api.resend.com/emails';
 
-/** Η διεύθυνση υποστήριξης, ως αποστολέας και ως reply_to. */
-const REPLY_TO = IDENTITY.supportEmail;
-const FROM = `PROPERWISE Support <${REPLY_TO}>`;
+/** Ποια δημόσια διεύθυνση δέχτηκε το μήνυμα — ορίζει αποστολέα και reply_to. */
+export type AckKind = 'support' | 'privacy' | 'security';
+
+/** Η διεύθυνση και το εμφανιζόμενο όνομα του αποστολέα, ανά είδος. */
+const ACK_FROM: Record<AckKind, { address: string; label: string }> = {
+  support:  { address: IDENTITY.supportEmail,  label: 'PROPERWISE Support' },
+  privacy:  { address: IDENTITY.privacyEmail,  label: 'PROPERWISE Privacy' },
+  security: { address: IDENTITY.securityEmail, label: 'PROPERWISE Security' },
+};
 
 export interface AckInput {
   to: string;
   name: string;
   apiKey: string | undefined;
+  /** Η δημόσια διεύθυνση που γράφτηκε· λείπει σημαίνει υποστήριξη (εφεδρεία). */
+  kind?: AckKind;
 }
 
 export type AckResult = { ok: true } | { ok: false; reason: string };
@@ -41,6 +51,10 @@ export async function sendReplyAck(
   const to = (input.to || '').trim();
   if (!to) return { ok: false, reason: 'χωρίς παραλήπτη' };
 
+  const box = ACK_FROM[input.kind ?? 'support'];
+  const replyTo = box.address;
+  const from = `${box.label} <${replyTo}>`;
+
   const { subject, html } = replyAckEmail(input.name);
 
   let res: Response;
@@ -48,7 +62,7 @@ export async function sendReplyAck(
     res = await fetcher(SEND_URL, {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, reply_to: REPLY_TO, to, subject, html }),
+      body: JSON.stringify({ from, reply_to: replyTo, to, subject, html }),
     });
   } catch {
     // Η ΑΙΤΙΑ ΔΕΝ ΤΑΞΙΔΕΥΕΙ. Το μήνυμα ενός σφάλματος δικτύου κουβαλά συχνά

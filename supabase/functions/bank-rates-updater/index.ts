@@ -42,7 +42,8 @@ const BANK_IDS: Record<string, string> = {
   'πειραιως': 'piraeus', 'piraeus': 'piraeus', 'peiraios': 'piraeus',
   'optima': 'optima',
   'credia': 'credia', 'crediabank': 'credia', 'παγκρητια': 'credia',
-  'attica': 'attica', 'αττικης': 'attica',
+  // Η Attica εξαγοράστηκε από την Credia — δεν την ψάχνουμε πια (ένα web search
+  // λιγότερο) και τυχόν πρόταση για «attica» πέφτει έξω στο resolveBankId.
 }
 
 function resolveBankId(name: string): string | null {
@@ -74,7 +75,7 @@ const SYSTEM = `Είσαι αναλυτής στεγαστικών δανείω�
 Η ΔΙΕΥΘΥΝΣΗ ΠΟΥ ΘΑ ΕΠΙΣΤΡΕΨΕΙΣ ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΣΕ ΕΝΑΝ ΑΠΟ ΑΥΤΟΥΣ ΤΟΥΣ ΤΟΜΕΙΣ: ${EPISIMOI_TOMEIS}.
 Συγκριτικοί ιστότοποι δανείων ΔΕΝ γίνονται δεκτοί ως πηγή, ούτε καν όταν η τιμή τους φαίνεται σωστή: ζουν από προμήθεια παραπομπής και γερνούν χωρίς ημερομηνία. Αν δεν βρίσκεις την τιμή στη σελίδα ή στο PDF της ίδιας της τράπεζας, ΠΑΡΕΛΕΙΨΕ την τράπεζα.
 Για κάθε τράπεζα βρες: το χαμηλότερο («από») σταθερό επιτόκιο ανά διάρκεια 3/5/10/15/20 ετών, το περιθώριο (spread) πάνω από Euribor για κυμαινόμενο, το ανώτατο δάνειο προς αξία (LTV %), αν συμμετέχει στο πρόγραμμα «Σπίτι μου ΙΙ» και τη σελίδα (URL) από την οποία πήρες τις τιμές.
-Τράπεζες: Εθνική, Alpha Bank, Eurobank, Τράπεζα Πειραιώς, Optima Bank, CrediaBank, Attica Bank.
+Τράπεζες: Εθνική, Alpha Bank, Eurobank, Τράπεζα Πειραιώς, Optima Bank, CrediaBank.
 Επίστρεψε ΑΠΟΚΛΕΙΣΤΙΚΑ έγκυρο JSON, χωρίς κείμενο εκτός JSON:
 {"banks":[{"bank":"Εθνική","fixed_3yr":2.9,"fixed_5yr":3.3,"fixed_10yr":3.8,"fixed_15yr":4.1,"fixed_20yr":4.2,"variable_spread_min":1.6,"variable_spread_max":2.8,"max_ltv":90,"spiti_mou":true,"source_url":"https://..."}]}
 Παρέλειψε όποιο πεδίο δεν βρίσκεις με ασφάλεια. Ποτέ μην μαντεύεις αριθμό. Αριθμοί με τελεία δεκαδικό, χωρίς σύμβολα.`
@@ -90,7 +91,7 @@ async function callAnthropic(): Promise<RateRow[]> {
       headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({
         model: MODEL, max_tokens: 4000, system: SYSTEM,
-        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 8 }],
+        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6 }],
         messages,
       }),
     })
@@ -140,25 +141,42 @@ Deno.serve(async (req) => {
   const auth = await authorized(req, supabase)
   if (!auth.ok) return json(...cronDenial(auth))
 
-  // ΤΟ ΙΧΝΟΣ ΓΡΑΦΕΤΑΙ ΣΕ ΚΑΘΕ ΕΞΟΔΟ. Ενα πέρασμα που απέτυχε και δεν το είπε
-  // είναι ίδιο με πέρασμα που δεν έγινε — και αυτή ακριβώς η σιωπή κράτησε την
-  // οθόνη στο «56 ημέρες».
-  // ΚΑΙ ΟΤΑΝ ΑΠΟΤΥΧΕΙ Η ΙΔΙΑ Η ΚΑΤΑΓΡΑΦΗ, ΤΟ ΛΕΕΙ ΔΥΝΑΤΑ. Το πρώτο πέρασμα που
-  // έτρεξε ποτέ στην παραγωγή (03/09/2026 06:24) δεν άφησε γραμμή: οι πίνακες
-  // είχαν γεννηθεί δευτερόλεπτα πριν και το PostgREST κρατούσε ακόμη το παλιό
-  // σχήμα, οπότε το `insert` γύρισε σφάλμα. Το σφάλμα πήγαινε ΜΟΝΟ στην
-  // κονσόλα, δηλαδή ένα σύστημα φτιαγμένο για να μην υπάρχει σιωπή απέτυχε
-  // σιωπηλά — και μάλιστα στην πρώτη του εγγραφή.
-  let logFailure: string | null = null
+  // ── ΤΟ ΒΑΡΥ ΤΡΕΧΕΙ ΣΤΟ ΠΑΡΑΣΚΗΝΙΟ, Η ΑΠΑΝΤΗΣΗ ΦΕΥΓΕΙ ΑΜΕΣΩΣ ────────────────
+  // Το web_search σε έξι τράπεζες μαζί με τη διασταύρωση ξεπερνά το όριο 150s
+  // της σύγχρονης απάντησης — μετρημένο: 504 IDLE_TIMEOUT. Ο καλών είναι ο
+  // pg_cron, που ΔΕΝ διαβάζει σώμα· του απαντάμε «δεκτό» στη στιγμή και η
+  // δουλειά συνεχίζει με `waitUntil`. Το αποτέλεσμα δεν χάνεται: γράφεται στο
+  // `bank_rate_checks`, εκεί ακριβώς που το διαβάζει η οθόνη. Χωρίς το
+  // waitUntil η εργασία θα κοβόταν με την απάντηση· με αυτό ζει ώς το τέλος της.
+  const work = runUpdate().catch((e) =>
+    console.error('bank-rates-updater bg:', (e as Error).message))
+  const rt = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime
+  if (rt?.waitUntil) rt.waitUntil(work)
+  return json({ ok: true, status: 'accepted' }, 202)
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Η ΚΑΘΑΥΤΟ ΔΟΥΛΕΙΑ, ΞΕΧΩΡΙΣΤΗ ΩΣΤΕ Η ΑΠΑΝΤΗΣΗ ΝΑ ΦΕΥΓΕΙ ΠΡΙΝ ΤΟ ΟΡΙΟ 150s
+// ─────────────────────────────────────────────────────────────────────────
+// ΤΟ ΙΧΝΟΣ ΓΡΑΦΕΤΑΙ ΣΕ ΚΑΘΕ ΕΞΟΔΟ. Ενα πέρασμα που απέτυχε και δεν το είπε
+// είναι ίδιο με πέρασμα που δεν έγινε — και αυτή ακριβώς η σιωπή κράτησε την
+// οθόνη στο «56 ημέρες».
+// ΚΑΙ ΟΤΑΝ ΑΠΟΤΥΧΕΙ Η ΙΔΙΑ Η ΚΑΤΑΓΡΑΦΗ, ΤΟ ΛΕΕΙ ΔΥΝΑΤΑ. Το πρώτο πέρασμα που
+// έτρεξε ποτέ στην παραγωγή (03/09/2026 06:24) δεν άφησε γραμμή: οι πίνακες
+// είχαν γεννηθεί δευτερόλεπτα πριν και το PostgREST κρατούσε ακόμη το παλιό
+// σχήμα, οπότε το `insert` γύρισε σφάλμα. Το σφάλμα πήγαινε ΜΟΝΟ στην
+// κονσόλα, δηλαδή ένα σύστημα φτιαγμένο για να μην υπάρχει σιωπή απέτυχε
+// σιωπηλά — και μάλιστα στην πρώτη του εγγραφή.
+async function runUpdate(): Promise<void> {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
   const log = async (ok: boolean, reason: string, extra: Record<string, unknown> = {}) => {
     const { error } = await supabase.from('bank_rate_checks').insert({
       ok, reason, banks_found: Number(extra.found ?? 0), banks_applied: Number(extra.applied ?? 0),
       banks_held: Number(extra.held ?? 0), details: extra,
     })
-    if (error) {
-      logFailure = error.message
-      console.error('bank_rate_checks insert:', error.message)
-    }
+    // Οταν αποτύχει η ΙΔΙΑ η καταγραφή, το λέει δυνατά στην κονσόλα: δεν υπάρχει
+    // πια σώμα απάντησης να το κουβαλήσει, η δουλειά τρέχει στο παρασκήνιο.
+    if (error) console.error('bank_rate_checks insert:', error.message)
   }
 
   try {
@@ -169,7 +187,7 @@ Deno.serve(async (req) => {
     // Αμυντικό: λίγες τράπεζες σημαίνει κακή αναζήτηση, όχι κακή αγορά.
     if (found.length < MIN_BANKS) {
       await log(false, `insufficient_valid_rows: ${found.length} από ${MIN_BANKS}`, { found: found.length })
-      return json({ ok: false, reason: 'insufficient_valid_rows', found: found.length, logFailure })
+      return
     }
 
     // ── Ο,τι ισχύει σήμερα, για σύγκριση ─────────────────────────────────
@@ -245,12 +263,11 @@ Deno.serve(async (req) => {
     const summary = { found: found.length, applied, held: heldNow, unchanged, banks: perBank, verified_at: today }
     await log(true, 'εντάξει', summary)
     console.log('bank-rates-updater:', JSON.stringify(summary))
-    return json({ ok: true, ...summary, logFailure })
   } catch (e) {
     const msg = (e as Error).message
     console.error('bank-rates-updater error:', msg)
     await log(false, msg.slice(0, 300))
-    // Κράτα τα υπάρχοντα δεδομένα σε οποιαδήποτε αποτυχία.
-    return json({ ok: false, error: msg, logFailure })
+    // Κράτα τα υπάρχοντα δεδομένα σε οποιαδήποτε αποτυχία — η οθόνη διαβάζει το
+    // ίχνος από το bank_rate_checks, όχι το σώμα της απάντησης.
   }
-})
+}

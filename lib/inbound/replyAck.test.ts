@@ -99,6 +99,22 @@ async function main() {
     ok(out.logs.includes('ήδη απαντήθηκε πρόσφατα'), 'ο λόγος γράφεται');
   }
 
+  // ── 3β. Το είδος του παραλήπτη ταξιδεύει ώς τον αποστολέα ──────────────────
+  // Οποιος γράφει στο security@ παίρνει απάντηση ΑΠΟ security@: το `kind` που
+  // υπολόγισε η διαδρομή φτάνει άθικτο στο send· προεπιλογή, όταν λείπει, η
+  // υποστήριξη.
+  {
+    const { db } = fakeDb({ ack: true, name: 'George' });
+    const sec = fakeSend({ ok: true });
+    await handleReplyAck(db, HUMAN, KEY, { kind: 'security', send: sec.send });
+    ok(sec.sent[0]?.kind === 'security', 'το είδος «security» φτάνει στον αποστολέα');
+
+    const { db: db2 } = fakeDb({ ack: true, name: 'George' });
+    const def = fakeSend({ ok: true });
+    await handleReplyAck(db2, HUMAN, KEY, { send: def.send });
+    ok(def.sent[0]?.kind === 'support', 'χωρίς είδος, εφεδρεία η υποστήριξη');
+  }
+
   // ── 4. Το όνομα δεν διαβάστηκε → στέλνεται ΧΩΡΙΣ όνομα, δεν μπλοκάρει ──────
   {
     const { db } = fakeDb({ ack: true, nameError: 'δίκτυο' });
@@ -141,8 +157,8 @@ async function main() {
     'η διαδρομή εισάγει το MAIL_DOMAIN');
   ok(/supportRecipientKind\(\s*event\.recipients,\s*\[INBOUND_DOMAIN, MAIL_DOMAIN\]\.filter\(Boolean\)\s*\)/.test(ROUTE),
     'το είδος υπολογίζεται και στους δύο τομείς');
-  ok(/handleReplyAck\(db, event\.from, process\.env\[KEY_ENV\]\)/.test(ROUTE),
-    'η αυτόματη επιβεβαίωση καλείται με τον πελάτη υπηρεσίας και το κλειδί');
+  ok(/handleReplyAck\(db, event\.from, process\.env\[KEY_ENV\], \{ kind \}\)/.test(ROUTE),
+    'η αυτόματη επιβεβαίωση καλείται με τον πελάτη υπηρεσίας, το κλειδί και το είδος του παραλήπτη');
 
   // Ο πελάτης υπηρεσίας επικυρώνεται ΠΡΙΝ τη διακλάδωση, δηλαδή και για τους δύο δρόμους.
   const iService = ROUTE.indexOf('const missing = serviceClientError(process.env)');
