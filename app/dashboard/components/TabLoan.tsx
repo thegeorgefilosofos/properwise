@@ -1043,14 +1043,19 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               const bankRate = publishedRate(bank)
             const myM = bankRate !== null && LA > 0 ? calcMonthly(LA, bankRate, Y) : null
               return (
-                <button key={key} onClick={()=>setSelBank(on?null:key)} aria-pressed={on} onMouseEnter={()=>setHoverBank(key)} onMouseLeave={()=>setHoverBank(null)} onTouchStart={()=>setHoverBank(key)} onTouchEnd={()=>setHoverBank(null)} style={{scrollSnapAlign:'start' as const,textAlign:'left' as const,cursor:'pointer',background:'var(--bg-elevated)',
+                <button key={key} onClick={()=>setSelBank(on?null:key)} aria-pressed={on} onMouseEnter={()=>setHoverBank(key)} onMouseLeave={()=>setHoverBank(null)} onTouchStart={()=>setHoverBank(key)} onTouchEnd={()=>setHoverBank(null)} style={{scrollSnapAlign:'start' as const,display:'flex',flexDirection:'column',textAlign:'left' as const,cursor:'pointer',background:'var(--bg-elevated)',
                   border:`1px solid ${on?'var(--border-accent)':hoverBank===key?'var(--border-default)':'var(--border-subtle)'}`,borderRadius: T.radius.card,padding:'14px 15px',transition:'border-color 0.15s, box-shadow 0.15s',
                   boxShadow:on?'0 2px 4px color-mix(in srgb, var(--accent) 14%, transparent), 0 10px 24px -14px color-mix(in srgb, var(--accent) 40%, transparent)':hoverBank===key?'0 2px 4px color-mix(in srgb, var(--text-primary) 9%, transparent)':'0 1px 2px color-mix(in srgb, var(--text-primary) 6%, transparent)'}}>
+                  {/* ΤΟ ΟΝΟΜΑ ΚΡΑΤΑ ΔΥΟ ΓΡΑΜΜΕΣ ΠΑΝΤΑ. «Τράπεζα Πειραιώς» και «Εθνική
+                      Τράπεζα» τυλίγουν σε δύο σειρές· τα μονόλεκτα σε μία. Χωρίς
+                      σταθερό ύψος, το «από X%» ξεκινούσε πιο κάτω στις διπλές και η
+                      σειρά έδειχνε ασυμμετρη. Με δύο γραμμές δεσμευμένες, όλα τα
+                      επιτόκια πέφτουν στην ίδια γραμμή βάσης. */}
                   <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,marginBottom:12}}>
-                    <span style={{fontSize:14,fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)',minWidth:0,lineHeight:1.3}}>{bank.name}</span>
+                    <span style={{fontSize:14,fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)',minWidth:0,lineHeight:1.3,minHeight:'2.6em',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{bank.name}</span>
                     {bank.spiti_mou&&<span style={{flexShrink:0,fontSize: 'var(--fs-xs)',padding:'3px 9px',borderRadius: T.radius.chip,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',color:'var(--text-secondary)',fontWeight:500,fontFamily: T.font.sans}}>Σπίτι μου ΙΙ</span>}
                   </div>
-                  <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:12,flexWrap:'wrap',rowGap:8}}>
+                  <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:12,flexWrap:'wrap',rowGap:8,marginTop:'auto'}}>
                     <div style={{minWidth:0}}>
                       <p style={{fontSize:20,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700,lineHeight:1,letterSpacing:'-0.02em',whiteSpace:'nowrap'}}>{cellRate(fixed5)===NO_RATE?NO_RATE:<>από <span style={{color:(on||hoverBank===key)?'var(--accent)':'var(--text-primary)',transition:'color 0.15s'}}>{cellRate(fixed5)}</span></>}</p>
                       <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,fontFamily: T.font.sans}}>Σταθερό 5 ετών</p>
