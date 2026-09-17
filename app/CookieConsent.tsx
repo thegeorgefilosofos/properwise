@@ -143,7 +143,7 @@ export default function CookieConsent() {
             πλαίσιο. */}
         <Link href="/privacy" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Απόρρητο</Link>
       </div>
-      <Btn variant="primary" onClick={acknowledge}>Το κατάλαβα</Btn>
+      <Btn variant="primary" onClick={acknowledge} className="po-cookie-cta">Το κατάλαβα</Btn>
     </div>
   );
 }
