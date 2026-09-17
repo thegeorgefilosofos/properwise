@@ -62,7 +62,11 @@
 
 - **Live:** μηχανή (`send-lifecycle-email`), 101 κείμενα, cron backbone
   (`email_marketing_cron`, `monthly_statements_cron`), `cron_secrets` auth.
-- **Pending domain:** `RESEND_FROM` (branded αποστολέας), verify Resend, inbound
-  webhook για το `reply_ack` και οι per-event DB triggers που λείπουν.
+  **Το `reply_ack` υλοποιήθηκε** στη διαδρομή `/api/inbound` (επώνυμη
+  επιβεβαίωση παραλαβής προς support@/privacy@/security@, με φρένα βρόχου και
+  6ωρο cooldown ανά αποστολέα) — μένει μόνο η προώθηση του Papaki και η
+  επιβεβαίωση domain στο Resend.
+- **Pending domain:** `RESEND_FROM` (branded αποστολέας), verify Resend και οι
+  per-event DB triggers που λείπουν.
 - **Επόμενο:** σύνδεση κάθε εναύσματος (πίνακας §2) με DB trigger/edge function,
   ώστε να «ανάβει» μόνο του με το συμβάν του χρήστη.

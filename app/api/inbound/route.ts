@@ -32,6 +32,9 @@ import { verifySignature, SECRET_ENV } from '@/lib/inbound/signature';
 import { readReceivedEvent } from '@/lib/inbound/event';
 import { tokenFromRecipients, INBOUND_DOMAIN, DOMAIN_ENV } from '@/lib/inbound/address';
 import { fetchBody, KEY_ENV } from '@/lib/inbound/fetchBody';
+import { supportRecipientKind } from '@/lib/inbound/support';
+import { handleReplyAck } from '@/lib/inbound/replyAck';
+import { MAIL_DOMAIN } from '@/lib/legal/identity';
 import { parseInbound } from '@/lib/inbound/parse';
 import * as inbound from '@/lib/data/inbound';
 import * as hintStore from '@/lib/data/categoryHints';
@@ -71,20 +74,44 @@ export async function POST(request: Request) {
   }
 
   const token = tokenFromRecipients(event.recipients, INBOUND_DOMAIN);
-  if (!token) {
-    // Μήνυμα σε διεύθυνση που δεν είναι κουπόνι (π.χ. σε ανθρώπινη διεύθυνση
-    // του ίδιου τομέα), ή σε δύο κουπόνια μαζί. Δεν είναι σφάλμα του παρόχου
-    // και δεν διορθώνεται με επανάληψη.
+
+  // ── Η ΔΙΑΚΛΑΔΩΣΗ ΤΗΣ ΑΥΤΟΜΑΤΗΣ ΕΠΙΒΕΒΑΙΩΣΗΣ (reply_ack) ──────────────────
+  // Οταν το μήνυμα ΔΕΝ είναι κουπόνι, μπορεί να είναι μήνυμα προς μία από τις
+  // δημόσιες διευθύνσεις μας (support@ / privacy@ / security@) σε οποιονδήποτε
+  // από τους δύο τομείς: τον εισερχόμενο και τον κύριο. Τότε στέλνουμε ΜΙΑ
+  // επώνυμη επιβεβαίωση.
+  //
+  // ΤΑ ΦΡΕΝΑ ΤΟΥ ΒΡΟΧΟΥ ΖΟΥΝ ΣΤΟ handleReplyAck: αυτόματος αποστολέας ή δική
+  // μας διεύθυνση κόβονται πρώτα· η περίοδος ησυχίας ανά αποστολέα (έξι ώρες)
+  // εγγυάται μία απάντηση. Η αναζήτηση του ονόματος ΔΕΝ μπλοκάρει ποτέ την
+  // απάντηση: αν αποτύχει, φεύγει με προσφώνηση χωρίς όνομα.
+  const kind = token
+    ? null
+    : supportRecipientKind(event.recipients, [INBOUND_DOMAIN, MAIL_DOMAIN].filter(Boolean));
+
+  if (!token && !kind) {
+    // Μήνυμα σε διεύθυνση που δεν είναι ούτε κουπόνι ούτε δημόσια διεύθυνσή μας
+    // (π.χ. σε ανθρώπινη διεύθυνση του ίδιου τομέα), ή σε δύο κουπόνια μαζί. Δεν
+    // είναι σφάλμα του παρόχου και δεν διορθώνεται με επανάληψη.
     log('κανένας δικός μας παραλήπτης');
     return NextResponse.json({ ok: true, stored: false });
   }
 
+  // ΚΑΙ ΟΙ ΔΥΟ ΔΡΟΜΟΙ ΘΕΛΟΥΝ ΠΕΛΑΤΗ ΥΠΗΡΕΣΙΑΣ, ΕΠΙΚΥΡΩΜΕΝΟ. Ο έλεγχος ρύθμισης
+  // γίνεται μία φορά, πριν από τη διακλάδωση.
   const missing = serviceClientError(process.env);
   if (missing) {
     log(SERVICE_CLIENT_LOG, missing);
     return NextResponse.json({ error: 'not_configured' }, { status: 500 });
   }
   const db = createServiceClient();
+
+  if (!token) {
+    // Δημόσια διεύθυνσή μας (το `kind` είναι εδώ βέβαιο): αυτόματη επιβεβαίωση.
+    const outcome = await handleReplyAck(db, event.from, process.env[KEY_ENV]);
+    for (const line of outcome.logs) log(line);
+    return NextResponse.json(outcome.body, { status: outcome.status });
+  }
 
   const { row: box, error: boxError } = await inbound.mailboxOfToken(db, token);
   if (boxError) {
