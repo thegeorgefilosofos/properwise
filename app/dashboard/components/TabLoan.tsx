@@ -1028,15 +1028,14 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
 
           {/* Επιλέξιμες συμπαγείς κάρτες — διάλεξε τράπεζα για λεπτομέρειες */}
           <p style={{...labelStyle,marginBottom:2}}>Διάλεξε τράπεζα για ανάλυση</p>
-          {/* ΤΟ ΠΛΗΘΟΣ ΤΩΝ ΤΡΑΠΕΖΩΝ ΔΕΝ ΤΟ ΟΡΙΖΕΙ Ο ΣΧΕΔΙΑΣΜΟΣ. Ο σαρωτής
-              κατήγγειλε «3+3+1» στα 768 και «6+1» στα 1.440: επτά τράπεζες σε
-              τρεις ή έξι στήλες αφήνουν πάντα μία στην τελευταία σειρά. Καμία
-              διάταξη δεν το αποφεύγει, γιατί το επτά δεν είναι επιλογή μας —
-              είναι όσες τράπεζες δίνουν στεγαστικό· και ο αριθμός αλλάζει και
-              με το φίλτρο «Σπίτι μου ΙΙ» που πατά ο χρήστης. Ακριβώς γι' αυτό
-              υπάρχει το `data-list`: δηλώνει ότι το πλήθος είναι δεδομένο, όχι
-              απόφαση. */}
-          <div data-list style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',gap:10}}>
+          {/* ΜΙΑ ΣΕΙΡΑ, ΟΧΙ ΔΥΟ. Το `auto-fit` έκοβε τις τράπεζες σε 4+2 — μία
+              ορφανή δεύτερη σειρά που άλλαζε με το πλάτος και με το φίλτρο
+              «Σπίτι μου ΙΙ». Τώρα οι κάρτες μπαίνουν σε ΜΙΑ οριζόντια σειρά: σε
+              φαρδιά οθόνη μοιράζονται όλο το πλάτος (1fr) και δεν κυλά τίποτα·
+              σε στενή γλιστρούν με το δάχτυλο, με στάση σε κάθε κάρτα, χωρίς
+              ποτέ να σπάσουν σε δεύτερη σειρά. Το `data-list` μένει: το πλήθος
+              το ορίζουν όσες τράπεζες δίνουν στεγαστικό, όχι ο σχεδιασμός. */}
+          <div data-list className="po-scroll-x no-sbar" style={{display:'grid',gridAutoFlow:'column',gridAutoColumns:'minmax(250px, 1fr)',gap:10,scrollSnapType:'x proximity',minWidth:0,margin:'0 -1px',padding:'2px 1px'}}>
             {BANKS.filter(b=>!filterSpiti||b.spiti_mou).map(bank=>{
               const key = bank.id||bank.name
               const on = selBank===key
@@ -1044,21 +1043,25 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               const bankRate = publishedRate(bank)
             const myM = bankRate !== null && LA > 0 ? calcMonthly(LA, bankRate, Y) : null
               return (
-                <button key={key} onClick={()=>setSelBank(on?null:key)} aria-pressed={on} onMouseEnter={()=>setHoverBank(key)} onMouseLeave={()=>setHoverBank(null)} onTouchStart={()=>setHoverBank(key)} onTouchEnd={()=>setHoverBank(null)} style={{textAlign:'left' as const,cursor:'pointer',background:'var(--bg-elevated)',
+                <button key={key} onClick={()=>setSelBank(on?null:key)} aria-pressed={on} onMouseEnter={()=>setHoverBank(key)} onMouseLeave={()=>setHoverBank(null)} onTouchStart={()=>setHoverBank(key)} onTouchEnd={()=>setHoverBank(null)} style={{scrollSnapAlign:'start' as const,display:'flex',flexDirection:'column',textAlign:'left' as const,cursor:'pointer',background:'var(--bg-elevated)',
                   border:`1px solid ${on?'var(--border-accent)':hoverBank===key?'var(--border-default)':'var(--border-subtle)'}`,borderRadius: T.radius.card,padding:'14px 15px',transition:'border-color 0.15s, box-shadow 0.15s',
                   boxShadow:on?'0 2px 4px color-mix(in srgb, var(--accent) 14%, transparent), 0 10px 24px -14px color-mix(in srgb, var(--accent) 40%, transparent)':hoverBank===key?'0 2px 4px color-mix(in srgb, var(--text-primary) 9%, transparent)':'0 1px 2px color-mix(in srgb, var(--text-primary) 6%, transparent)'}}>
-                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,marginBottom:12}}>
-                    <span style={{fontSize:14,fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)',minWidth:0,lineHeight:1.3}}>{bank.name}</span>
-                    {bank.spiti_mou&&<span style={{flexShrink:0,fontSize: 'var(--fs-xs)',padding:'3px 9px',borderRadius: T.radius.chip,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',color:'var(--text-secondary)',fontWeight:500,fontFamily: T.font.sans}}>Σπίτι μου ΙΙ</span>}
-                  </div>
-                  <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:12}}>
-                    <div style={{minWidth:0}}>
-                      <p style={{fontSize:20,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700,lineHeight:1,letterSpacing:'-0.02em',whiteSpace:'nowrap'}}>{cellRate(fixed5)===NO_RATE?NO_RATE:<>από <span style={{color:(on||hoverBank===key)?'var(--accent)':'var(--text-primary)',transition:'color 0.15s'}}>{cellRate(fixed5)}</span></>}</p>
-                      <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,fontFamily: T.font.sans}}>Σταθερό 5 ετών</p>
+                  {/* ΤΡΕΙΣ ΓΡΑΜΜΕΣ, Η ΚΑΘΕ ΜΙΑ ΤΗΣ: όνομα, επιτόκιο+ετικέτα, δόση+ετικέτα.
+                      Το «Σπίτι μου ΙΙ» έφυγε από την κάρτα — μένει στο φίλτρο από πάνω
+                      και στο πάνελ λεπτομερειών — ώστε το όνομα να χωρά σε ΜΙΑ γραμμή,
+                      όσο μακρύ κι αν είναι («Τράπεζα Πειραιώς», «Εθνική Τράπεζα»). Οι
+                      δύο μετρήσεις κάθονται κάθε μία σε δική της γραμμή, με την ετικέτα
+                      δίπλα στην τιμή· το «…» είναι έσχατη εφεδρεία, δεν σκανδαλίζεται
+                      στα ≥250 εικονοστοιχεία της κάρτας. */}
+                  <span style={{fontSize:14,fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)',lineHeight:1.3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',display:'block'}}>{bank.name}</span>
+                  <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:'auto',paddingTop:12}}>
+                    <div style={{display:'flex',alignItems:'baseline',gap:8,minWidth:0}}>
+                      <span style={{fontSize:16,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700,lineHeight:1,letterSpacing:'-0.02em',whiteSpace:'nowrap',flexShrink:0}}>{cellRate(fixed5)===NO_RATE?NO_RATE:<>από <span style={{color:(on||hoverBank===key)?'var(--accent)':'var(--text-primary)',transition:'color 0.15s'}}>{cellRate(fixed5)}</span></>}</span>
+                      <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}}>Σταθερό 5 ετών</span>
                     </div>
-                    <div style={{textAlign:'right' as const,flexShrink:0}}>
-                      <p style={{fontSize:14,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600,lineHeight:1}}>{myM!==null?fmtEur(myM):fe(0)}</p>
-                      <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,fontFamily: T.font.sans}}>{myM!==null?'δόση':'χωρίς δημοσιευμένο επιτόκιο'}{myM!==null&&bank.max_ltv?` · έως ${bank.max_ltv}%`:''}</p>
+                    <div style={{display:'flex',alignItems:'baseline',gap:8,minWidth:0}}>
+                      <span style={{fontSize:14,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600,lineHeight:1,whiteSpace:'nowrap',flexShrink:0}}>{myM!==null?fmtEur(myM):fe(0)}</span>
+                      <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}}>{myM!==null?'δόση':'χωρίς δημοσιευμένο επιτόκιο'}{myM!==null&&bank.max_ltv?` · έως ${bank.max_ltv}%`:''}</span>
                     </div>
                   </div>
                 </button>
@@ -1114,8 +1117,14 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   ].map(s=>(
                     <div key={s.label} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'11px 13px'}}>
                       <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase' as const,letterSpacing:'0.05em',fontWeight:600,fontFamily: T.font.sans,marginBottom:6}}>{s.label}</p>
-                      <p style={{fontSize:16,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700,lineHeight:1}}>{s.value}</p>
-                      {s.sub&&<p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,fontFamily: T.font.sans}}>{s.sub}</p>}
+                      {/* ΤΙΜΗ ΚΑΙ ΒΑΣΗ ΤΗΣ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ, ΚΑΙ ΤΑ ΤΕΣΣΕΡΑ ΙΔΙΑ.
+                          Το `flex-wrap` τα κρατά δίπλα όσο χωρούν και ρίχνει τη βάση
+                          κάτω από την τιμή όταν το πλακίδιο στενέψει — καθαρά, χωρίς
+                          κόψιμο, ομοιόμορφα σε όλα τα πλακίδια. */}
+                      <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap',rowGap:2}}>
+                        <span style={{fontSize:16,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700,lineHeight:1.25}}>{s.value}</span>
+                        {s.sub&&<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,lineHeight:1.3}}>{s.sub}</span>}
+                      </div>
                     </div>
                   ))}
                 </div>

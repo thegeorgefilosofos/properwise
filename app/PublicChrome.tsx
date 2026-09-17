@@ -192,7 +192,7 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Η φράση της δοκιμής, μία φορά για όλα τα εργαλεία. */
-export const TRIAL_LINE = `${TRIAL_DAYS} ημέρες δωρεάν δοκιμή, χωρίς δέσμευση.`;
+export const TRIAL_LINE = `${TRIAL_DAYS} ημέρες δωρεάν δοκιμή.`;
 
 /**
  * Η ΕΠΙΦΥΛΑΞΗ ΠΟΥ ΚΛΕΙΝΕΙ ΚΑΘΕ ΥΠΟΛΟΓΙΣΜΟ.

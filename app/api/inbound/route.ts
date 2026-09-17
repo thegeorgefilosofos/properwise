@@ -107,8 +107,9 @@ export async function POST(request: Request) {
   const db = createServiceClient();
 
   if (!token) {
-    // Δημόσια διεύθυνσή μας (το `kind` είναι εδώ βέβαιο): αυτόματη επιβεβαίωση.
-    const outcome = await handleReplyAck(db, event.from, process.env[KEY_ENV]);
+    // Δημόσια διεύθυνσή μας (το `kind` είναι εδώ βέβαιο): αυτόματη επιβεβαίωση,
+    // που φεύγει ΑΠΟ την ίδια διεύθυνση που γράφτηκε (support/privacy/security).
+    const outcome = await handleReplyAck(db, event.from, process.env[KEY_ENV], { kind });
     for (const line of outcome.logs) log(line);
     return NextResponse.json(outcome.body, { status: outcome.status });
   }

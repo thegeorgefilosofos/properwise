@@ -25,7 +25,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { senderAddress, isAutomatedSender } from '@/lib/inbound/support';
 import { nameForEmail, trySupportAck } from '@/lib/data/supportAck';
-import { sendReplyAck, type AckInput, type AckResult } from '@/lib/inbound/sendAck';
+import { sendReplyAck, type AckInput, type AckResult, type AckKind } from '@/lib/inbound/sendAck';
 
 /** Ο,τι επιστρέφει η απόφαση: κωδικός, σώμα και οι γραμμές καταγραφής της. */
 export interface AckOutcome {
@@ -34,8 +34,15 @@ export interface AckOutcome {
   logs: string[];
 }
 
-/** Ο αποστολέας της επιβεβαίωσης, ως όρισμα ώστε ο έλεγχος να μη χτυπά δίκτυο. */
+/** Οσα δίνει η διαδρομή: το είδος του παραλήπτη και ο αποστολέας (για τον έλεγχο). */
 export interface AckDeps {
+  /**
+   * Ποια δημόσια διεύθυνση γράφτηκε· ορίζει από πού φεύγει η απάντηση. Δέχεται
+   * και `null` γιατί έτσι το τυπώνει το `supportRecipientKind` της διαδρομής·
+   * κενό ή `null` πέφτει στην υποστήριξη ως εφεδρεία.
+   */
+  kind?: AckKind | null;
+  /** Ο αποστολέας ως όρισμα, ώστε ο έλεγχος να μη χτυπά δίκτυο. */
   send?: (input: AckInput) => Promise<AckResult>;
 }
 
@@ -45,11 +52,13 @@ export interface AckDeps {
  * @param db     Ο πελάτης υπηρεσίας (παρακάμπτει την RLS).
  * @param from   Ο αποστολέας, όπως τον έγραψε το ταχυδρομείο («Ονομα <a@b>»).
  * @param apiKey Το κλειδί του παρόχου, από το περιβάλλον.
+ * @param deps   Το είδος του παραλήπτη (support/privacy/security) και ο αποστολέας.
  */
 export async function handleReplyAck(
   db: SupabaseClient, from: string, apiKey: string | undefined, deps: AckDeps = {},
 ): Promise<AckOutcome> {
   const send = deps.send ?? ((input: AckInput) => sendReplyAck(input));
+  const kind: AckKind = deps.kind ?? 'support';
 
   // ΠΡΩΤΟ ΦΡΕΝΟ: αυτόματος αποστολέας ή δική μας διεύθυνση. Ούτε καταγραφή.
   if (isAutomatedSender(from)) {
@@ -75,7 +84,7 @@ export async function handleReplyAck(
   if (nm.error) logs.push(`το όνομα δεν διαβάστηκε, συνεχίζω χωρίς: ${nm.error.message}`);
   const name = nm.error ? '' : nm.name;
 
-  const res = await send({ to: sender, name, apiKey });
+  const res = await send({ to: sender, name, apiKey, kind });
   if (!res.ok) {
     // 502: ο πάροχος δεν δέχτηκε το μήνυμα· να ξαναδοκιμάσει.
     logs.push(`η επιβεβαίωση δεν στάλθηκε: ${res.reason}`);
