@@ -488,7 +488,11 @@ export default function OrgTeam({ userId }: { userId: string }) {
              γέμισμα των κελιών (14 εκατέρωθεν): 882 περιεχόμενο + 112 στα τέσσερα
              εσωτερικά όρια + 28 στις δύο άκρες = 1.022, στη θέση των 960. */
           <div className="po-table-box" style={{ marginTop: 12 }}>
-            <div className="po-scroll-x">
+            {/* ΧΩΡΙΣ ΟΡΑΤΗ ΜΠΑΡΑ ΚΥΛΙΣΗΣ. Ο πίνακας κρατά `--tbl-min: 1022px`
+                γιατί οι στήλες το χρειάζονται· κάτω από αυτό κυλά. Η μπάρα όμως
+                δεν πρόσθετε τίποτα σε έναν πίνακα με λίγες γραμμές — το γλίστρημα
+                με το δάχτυλο αρκεί. `no-sbar`: κυλά κανονικά, δείχνει καθαρός. */}
+            <div className="po-scroll-x no-sbar">
               <table className="po-table tbl-fixed" style={{ ['--tbl-min' as string]: '1022px' } as CSSProperties}>
                 <caption>Μέλη του οργανισμού</caption>
                 {/* Τα πλάτη του παλιού gridTemplateColumns, με το γέμισμα του κελιού

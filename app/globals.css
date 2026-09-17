@@ -2414,6 +2414,15 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .po-seg > button { flex: 1 1 100%; }
 }
 
+/* ═══ ΕΝΑ ΠΕΡΙΘΩΡΙΟ ΓΙΑ ΚΕΦΑΛΙΔΑ ΚΑΙ ΠΕΡΙΕΧΟΜΕΝΟ ═══════════════════════════════
+   Κάτω από τα 360 η κεφαλίδα στενεύει στα 14 (πιο κάτω) για να χωρέσουν σήμα
+   και κουμπί· το περιεχόμενο όμως κρατούσε `clamp(20px,5vw,48px)` = 20 στα 360,
+   οπότε το λογότυπο καθόταν 6 εικονοστοιχεία πιο μέσα από τη στήλη κάτω του.
+   Ενα μέγεθος, το `--pub-gutter`, οδηγεί και τα δύο: το WRAP/WRAP_PAD του
+   PublicChrome το διαβάζει, ώστε αρχή και τέλος να συμπίπτουν σε κάθε πλάτος. */
+:root { --pub-gutter: clamp(20px, 5vw, 48px); }
+@media (max-width: 360px) { :root { --pub-gutter: 14px; } }
+
 @media (max-width: 360px) {
   .po-brand-logo { gap: 7px !important; }
   .po-brand-logo > span { font-size: 15px !important; }
@@ -3392,6 +3401,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    και το σύμβολό του μένουν ΠΑΝΤΑ μαζί, σε μία γραμμή· αν δεν χωρά, κυλά ο
    πίνακας (ζει μέσα σε δοχείο οριζόντιας κύλισης), δεν σπάει το νούμερο. */
 .po-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ═══ Η ΤΙΜΗ ΕΝΟΣ ΖΕΥΓΟΥΣ ΕΤΙΚΕΤΑΣ–ΤΙΜΗΣ ΕΙΝΑΙ ΚΕΙΜΕΝΟ, ΟΧΙ ΑΡΙΘΜΟΣ ══════════
+   Οι διευθύνσεις email, η επωνυμία και η έδρα στο «Ποιοι είμαστε» έπαιρναν το
+   `.num` — που είναι για ποσά: tabular-nums, στοίχιση δεξιά και nowrap. Μέσα στο
+   `.po-table-box` που κρύβει την υπερχείλιση, το nowrap έκοβε το δεξί άκρο σε
+   τηλέφωνο (η «Αναφορά ευπάθειας ασφαλείας» και η διεύθυνση δεν χωρούσαν).
+   Η τιμή κειμένου τυλίγει, σπάει μεγάλο κομμάτι χωρίς κενά (μια διεύθυνση) και
+   στοιχίζεται δεξιά μόνο όσο υπάρχει πλάτος· σε στενή οθόνη πέφτει αριστερά,
+   κάτω από την ετικέτα της, όπως και το υπόλοιπο κείμενο των νομικών σελίδων. */
+.po-table .po-kv-val { text-align: right; overflow-wrap: anywhere; }
+@media (max-width: 560px) { .po-table .po-kv-val { text-align: left; } }
+
 /* Η γραμμή που ισχύει τώρα. Δηλώνει ΚΑΙ το `--row-bg`, ώστε ένα καρφωμένο
    πρώτο κελί να μη ζωγραφίσει άλλο χρώμα πάνω της. */
 .po-table tr.is-on { --row-bg: var(--accent-soft); background: var(--accent-soft); }

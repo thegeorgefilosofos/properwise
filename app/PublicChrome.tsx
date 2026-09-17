@@ -41,11 +41,14 @@ import { TRIAL_DAYS } from '@/lib/billing/plans';
 export const WRAP = {
   maxWidth: 1140,
   margin: '0 auto',
-  padding: '0 clamp(20px, 5vw, 48px)',
+  // Το `--pub-gutter` (globals.css) ισούται με clamp(20px,5vw,48px) παντού, ΕΚΤΟΣ
+  // κάτω από τα 360 όπου πέφτει στα 14 — όσο και η κεφαλίδα, ώστε το περιεχόμενο
+  // να μη ξεκινά πιο μέσα από το λογότυπο από πάνω του.
+  padding: '0 var(--pub-gutter)',
 } as const;
 
 /** Το οριζόντιο περιθώριο του WRAP, για όποιον χτίζει δικό του padding. */
-export const WRAP_PAD = 'clamp(20px, 5vw, 48px)';
+export const WRAP_PAD = 'var(--pub-gutter)';
 
 /**
  * Το μέτρο του τρεχούμενου κειμένου, όπου δεν το ορίζει ήδη η στήλη.
