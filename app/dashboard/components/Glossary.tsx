@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { T } from '@/components/Theme'
+import { hy } from '@/components/Hyphen'
 
 // Γλωσσάρι με διακριτικό highlight: περνώντας τον κέρσορα ή το δάχτυλο πάνω από
 // έναν όρο, ο τίτλος γίνεται γαλάζιος (accent). Καθαρό, ζωντανό, minimal.
@@ -24,7 +25,7 @@ export default function Glossary({ items }: { items: { term: string; def: string
             {/* Ο ορισμός παίρνει το μέτρο ανάγνωσης της `.po-prose`. Χωρίς αυτό,
                 στα 1.440 η κάρτα δίνει χίλια εικονοστοιχεία και ο ορισμός του
                 δείκτη δόσης έβγαινε 137 χαρακτήρες σε μία γραμμή. */}
-            <p className="po-prose" style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: font }}>{it.def}</p>
+            <p className="po-prose po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: font }}>{hy(it.def)}</p>
           </div>
         )
       })}
