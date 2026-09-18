@@ -4122,6 +4122,23 @@ html { scroll-padding-bottom: var(--cookie-h, 0px); }
   position: absolute; top: 2px; right: 50%; margin-right: -18px;
   min-width: 8px; height: 8px; border-radius: 50%; background: var(--negative);
 }
+/* ═══ ΠΑΓΩΜΕΝΟ ΓΥΑΛΙ ΚΑΤΩ ΜΠΑΡΑ ═══════════════════════════════════════════════
+   Το πρότυπο κάτω μπάρας σε iOS και Android: ημιδιάφανη, με το περιεχόμενο να
+   περνά θολωμένο από πίσω καθώς κυλάς. Δίνει βάθος —η μπάρα κάθεται ΠΑΝΩ στο
+   περιεχόμενο, δεν το κόβει— και είναι η διαφορά «εφαρμογής» από «ιστοσελίδας».
+
+   Μόνο πίσω από `@supports`: όπου δεν υποστηρίζεται το backdrop-filter, η μπάρα
+   μένει ΣΥΜΠΑΓΗΣ (var(--bg-surface) πιο πάνω) — γιατί ημιδιάφανη ΧΩΡΙΣ θόλωμα
+   θα άφηνε το κείμενο από πίσω να διαβάζεται μέσα από τη μπάρα. Πατά στο ίδιο
+   --bg-surface, οπότε σωστό και στα δύο θέματα· 80% κρατά την αντίθεση των
+   ετικετών ακέραιη. */
+@supports ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
+  .bottom-nav {
+    background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    backdrop-filter: blur(16px) saturate(1.3);
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    COMMAND PALETTE (⌘K) — καθολική γρήγορη πλοήγηση/αναζήτηση
