@@ -20,7 +20,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { emailShell, h, p, button, note } from '../supabase/functions/_shared/emailTemplates.ts'
+import { emailShell, h, p, button, note, heroStat } from '../supabase/functions/_shared/emailTemplates.ts'
 
 const OUT = 'supabase/auth-templates'
 
@@ -51,6 +51,37 @@ const TEMPLATES: Record<string, { subject: string; preheader: string; body: stri
       + p('Ζήτησες να αλλάξει η διεύθυνση του λογαριασμού σου σε <b>{{ .NewEmail }}</b>.')
       + button('Επιβεβαίωσε τη νέα διεύθυνση', '{{ .ConfirmationURL }}')
       + note('Οσο δεν επιβεβαιώνεται, ο λογαριασμός συνεχίζει με την παλιά σου διεύθυνση.'),
+  },
+  // Supabase → «Invite user»: κάποιος προσκαλεί έναν χρήστη να φτιάξει λογαριασμό.
+  'invite.html': {
+    subject: 'Πρόσκληση στο PROPERWISE',
+    preheader: 'Δημιούργησε τον λογαριασμό σου με ένα πάτημα.',
+    body:
+      h('Σε προσκάλεσαν στο PROPERWISE')
+      + p('Κάποιος σε προσκάλεσε να δημιουργήσεις λογαριασμό στο PROPERWISE. Με ένα πάτημα ξεκινάς.')
+      + button('Δημιούργησε τον λογαριασμό μου', '{{ .ConfirmationURL }}')
+      + note('Αν δεν περίμενες αυτή την πρόσκληση, αγνόησέ το: δεν δημιουργείται λογαριασμός χωρίς εσένα.'),
+  },
+  // Supabase → «Magic link or OTP»: σύνδεσμος σύνδεσης μιας χρήσης, χωρίς κωδικό.
+  'magic-link.html': {
+    subject: 'Ο σύνδεσμος σύνδεσής σου',
+    preheader: 'Μπες με ένα πάτημα, χωρίς κωδικό.',
+    body:
+      h('Σύνδεση στο PROPERWISE')
+      + p('Ζήτησες σύνδεσμο σύνδεσης. Ισχύει για λίγη ώρα και χρησιμοποιείται μία φορά.')
+      + button('Σύνδεση', '{{ .ConfirmationURL }}')
+      + note('Αν δεν το ζήτησες εσύ, αγνόησέ το: κανείς δεν μπαίνει χωρίς αυτόν τον σύνδεσμο.'),
+  },
+  // Supabase → «Reauthentication»: κωδικός μιας χρήσης πριν από ευαίσθητη ενέργεια.
+  // Δείχνει `{{ .Token }}` (τον 6ψήφιο κωδικό), όχι σύνδεσμο.
+  'reauthentication.html': {
+    subject: 'Ο κωδικός επιβεβαίωσής σου',
+    preheader: 'Ο κωδικός για να ολοκληρώσεις την ενέργειά σου.',
+    body:
+      h('Επιβεβαίωση ταυτότητας')
+      + p('Για να ολοκληρώσεις μια ευαίσθητη ενέργεια, βάλε τον παρακάτω κωδικό:')
+      + heroStat('{{ .Token }}', 'κωδικός επιβεβαίωσης')
+      + note('Αν δεν το ζήτησες εσύ, αγνόησέ το και ο λογαριασμός σου μένει ασφαλής. Ο κωδικός λήγει σε λίγα λεπτά.'),
   },
 }
 
