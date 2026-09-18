@@ -244,6 +244,14 @@ export const config = {
     // Εξαιρούνται εδώ και όχι στο PUBLIC επίτηδες: δεν χρειάζονται ούτε
     // συνεδρία ούτε κεφαλίδες ασφαλείας — είναι στατικά αρχεία για μηχανές —
     // και έτσι δεν ξοδεύουν εκτέλεση middleware σε κάθε ανίχνευση.
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|opengraph-image|icon\\.svg|icons/|fonts/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    //
+    // ── ΤΟ /health ΑΝΗΚΕΙ ΕΔΩ, ΟΧΙ ΣΤΟ /api/ ────────────────────────────────
+    // Το liveness endpoint (app/health/route.ts) απαντά σε monitor μηχανές
+    // (UptimeRobot) κάθε λίγα λεπτά με σκέτο 200. Είναι δημόσιο και ανώνυμο εξ
+    // ορισμού· αν ζούσε κάτω από το `/api/` θα ήταν η μοναδική διαδρομή χωρίς
+    // αυτο-έλεγχο σε έναν κατάλογο που ο guard-api-auth κρατά ερμητικά κλειστό.
+    // Ζει λοιπόν δίπλα στα robots/sitemap, εκτός διαμεσολαβητή: δεν θέλει ούτε
+    // συνεδρία ούτε CSP σε κάθε ping.
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|opengraph-image|icon\\.svg|icons/|fonts/|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
