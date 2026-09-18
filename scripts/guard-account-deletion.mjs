@@ -20,11 +20,12 @@
 //
 // ΤΟ SQL ΕΞΑΙΡΕΙΤΑΙ: εκεί ΟΡΙΖΕΤΑΙ η συνάρτηση, δεν καλείται από πελάτη.
 // ═══════════════════════════════════════════════════════════════════════════
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { projectFiles } from './lib/git-files.mjs';
 
 const RPC = 'delete_my_account';
 const ROUTE = 'app/api/account/delete/route.ts';
+const MIGDIR = 'supabase/migrations';
 // Η ΑΚΥΡΩΣΗ ΜΕΤΑ ΤΗ ΘΥΡΑ ΤΟΥ ΕΜΠΟΡΟΥ. Λεγόταν «cancelSubscription» όσο η
 // διαδρομή μιλούσε κατευθείαν στον πάροχο. Τώρα λέγεται «mor.cancel(» και ο
 // φύλακας δέχεται και τα δύο: το παλιό μένει δεκτό γιατί εξακολουθεί να
@@ -35,6 +36,9 @@ const problems = [];
 
 for (const file of projectFiles("'app/**/*.ts' 'app/**/*.tsx' 'lib/**/*.ts' 'lib/**/*.tsx'")) {
   if (file === ROUTE) continue;
+  // Τα τεστ ΔΙΑΒΑΖΟΥΝ την πηγή, δεν καλούν το RPC: το deleteRoute.test.ts
+  // αναφέρει το όνομα σε συμβολοσειρές ελέγχου, όχι σε μονοπάτι εκτέλεσης.
+  if (/\.test\.tsx?$/.test(file)) continue;
   const src = readFileSync(file, 'utf8');
   let inBlock = false;
   src.split('\n').forEach((line, i) => {
@@ -64,6 +68,54 @@ if (route && !route.match(CANCEL)) {
 }
 if (route && !route.includes(RPC)) {
   problems.push(`${ROUTE}: δεν διαγράφει τον λογαριασμό (${RPC}). Ο έλεγχος θα ήταν κενός.`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΚΑΙ Η ΔΙΑΓΡΑΦΗ ΘΕΛΕΙ ΔΕΥΤΕΡΟ ΠΑΡΑΓΟΝΤΑ, ΣΕ ΔΥΟ ΕΠΙΠΕΔΑ
+// ─────────────────────────────────────────────────────────────────────────
+// Ο διαμεσολαβητής εξαιρεί ΟΛΟ το /api/**, οπότε μια συνεδρία «aal1» με
+// δηλωμένη συσκευή φτάνει στη διαγραφή χωρίς τον δεύτερο παράγοντα. Δύο πόρτες
+// την κλείνουν και καμία δεν επιτρέπεται να λείψει σιωπηλά:
+//
+//   · η ΒΑΣΗ — η τελευταία `delete_my_account` σηκώνει 42501 όταν το «aal»
+//     δεν είναι «aal2» ενώ υπάρχει επαληθευμένος παράγοντας. Ισχύει όποιος
+//     κι αν καλέσει τη συνάρτηση, ακόμη κι αν παρακαμφθεί το route·
+//   · το ROUTE — κόβει με 403 ΠΡΙΝ την κλήση, ώστε να μην ακυρωθεί συνδρομή
+//     ούτε να σβηστεί αρχείο για μια συνεδρία που θα απορριπτόταν έτσι κι
+//     αλλιώς.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Η βάση: ποια μετανάστευση ορίζει ΤΕΛΕΥΤΑΙΑ την `delete_my_account`; Εκείνη
+// είναι που ισχύει, οπότε εκεί ζητιέται η πύλη.
+const defining = readdirSync(MIGDIR)
+  .filter(f => f.endsWith('.sql'))
+  .filter(f => readFileSync(`${MIGDIR}/${f}`, 'utf8')
+    .includes(`create or replace function public.${RPC}`))
+  .sort();
+const lastMig = defining[defining.length - 1];
+if (!lastMig) {
+  problems.push(`${MIGDIR}: καμία μετανάστευση δεν ορίζει την ${RPC}. Δεν υπάρχει πύλη 2FA στη βάση.`);
+} else {
+  const mig = readFileSync(`${MIGDIR}/${lastMig}`, 'utf8');
+  const hasAal     = /is distinct from 'aal2'/.test(mig);
+  const hasFactors = /auth\.mfa_factors/.test(mig) && /status\s*=\s*'verified'/.test(mig);
+  const hasCode    = /42501/.test(mig);
+  if (!(hasAal && hasFactors && hasCode)) {
+    problems.push(`${MIGDIR}/${lastMig}: η τελευταία ${RPC} δεν έχει την πύλη 2FA (aal2 + auth.mfa_factors status='verified' που σηκώνει 42501). Μια συνεδρία aal1 θα έσβηνε λογαριασμό κατευθείαν από τη βάση.`);
+  }
+}
+
+// Το route: κόβει με 403 μέσω sessionNeedsSecondStep ΠΡΙΝ φτάσει στην κλήση.
+// Το `RPC` σκέτο εμφανίζεται ΚΑΙ στο σχόλιο κεφαλής, οπότε η θέση μετριέται
+// από την ΚΛΗΣΗ `rpc('…')`, όχι από την πρώτη αναφορά του ονόματος.
+if (route) {
+  const iGate = route.indexOf('sessionNeedsSecondStep(');
+  const iRpc  = route.indexOf(`rpc('${RPC}')`);
+  const gates403First = iGate >= 0 && iRpc >= 0 && iGate < iRpc
+    && /403/.test(route.slice(iGate, iRpc));
+  if (!gates403First) {
+    problems.push(`${ROUTE}: δεν κόβει με 403 μέσω sessionNeedsSecondStep ΠΡΙΝ την ${RPC}. Μια συνεδρία aal1 με δηλωμένη συσκευή θα διέγραφε λογαριασμό.`);
+  }
 }
 
 if (problems.length) {

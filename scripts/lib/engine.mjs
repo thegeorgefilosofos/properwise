@@ -41,8 +41,16 @@ export async function launchEngine() {
     if (!pw.webkit) throw new Error('Το playwright-core δεν έχει webkit.');
     return pw.webkit.launch();
   }
+  // Ο Firefox (Gecko) είναι η ΤΡΙΤΗ μηχανή του κόσμου, στον υπολογιστή. Στο iOS
+  // ζωγραφίζει με WebKit (τον καλύπτει η webkit), αλλά στον υπολογιστή έχει
+  // δικά του: αλλιώς σπάει τη γραμματοσειρά, αλλιώς το `text-wrap`, αλλιώς τα
+  // πλέγματα. Δεν παίρνει διαδρομή ούτε ορίσματα Chrome, όπως και το WebKit.
+  if (name === 'firefox') {
+    if (!pw.firefox) throw new Error('Το playwright-core δεν έχει firefox.');
+    return pw.firefox.launch();
+  }
   if (name !== 'chromium') {
-    throw new Error(`Άγνωστη μηχανή «${name}». Δεκτά: chromium, webkit.`);
+    throw new Error(`Άγνωστη μηχανή «${name}». Δεκτά: chromium, webkit, firefox.`);
   }
   return pw.chromium.launch({
     executablePath: process.env.CHROMIUM_PATH || chromePath(),
@@ -51,4 +59,9 @@ export async function launchEngine() {
 }
 
 /** Πώς λέγεται η μηχανή στα ελληνικά, για τις επικεφαλίδες των αναφορών. */
-export const engineLabel = () => (engineName() === 'webkit' ? 'WebKit · Safari' : 'Chromium');
+export const engineLabel = () => {
+  const n = engineName();
+  if (n === 'webkit') return 'WebKit · Safari';
+  if (n === 'firefox') return 'Gecko · Firefox';
+  return 'Chromium';
+};

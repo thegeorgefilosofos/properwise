@@ -180,23 +180,24 @@ export const greeting = (name?: string): string => {
  * καινούριο όνομα και χρειάστηκε να βρεθούν ένα ένα.
  */
 export const emailHeader = (): string =>
-  `<div class="ink" style="font-size:14px;font-weight:700;letter-spacing:0.16em;color:${INK};mso-line-height-rule:exactly;line-height:20px;">PROPERWISE</div>`
+  `<a href="${APP_URL}" style="text-decoration:none;display:inline-block;line-height:1;">`
+  + `<img class="logo-light" src="${APP_URL}/brand/properwise-logotypo-skouro.png" alt="PROPERWISE" height="26" style="display:block;border:0;outline:none;text-decoration:none;height:26px;width:auto;">`
+  + `<img class="logo-dark" src="${APP_URL}/brand/properwise-logotypo-lefko.png" alt="PROPERWISE" height="26" style="display:none;border:0;outline:none;text-decoration:none;height:26px;width:auto;">`
+  + `</a>`
   + divider('20px 0 0');
 
-// ── ΤΟ ΣΗΜΑ ΣΤΟ EMAIL ΕΙΝΑΙ Η ΛΕΞΗ, ΚΑΙ ΟΧΙ ΑΠΟ ΤΕΜΠΕΛΙΑ ────────────────────
-// Το κέλυφος ζωγράφιζε το παλιό πλακίδιο με το «P» σε κάθε ένα από τα 118
-// μηνύματα. Στη μετονομασία σε PROPERWISE έμεινε, δηλαδή κάθε email έφευγε με
-// το προηγούμενο σήμα δίπλα στο καινούριο όνομα.
+// ── ΤΟ ΣΗΜΑ ΣΤΟ EMAIL: ΤΟ ΛΟΓΟΤΥΠΟ ΩΣ ΕΙΚΟΝΑ ─────────────────────────────────
+// Επί μήνες εδώ ζούσε ΜΟΝΟ η λέξη «PROPERWISE» — όχι από τεμπελιά. Το
+// ενσωματωμένο SVG το αφαιρεί το Gmail· μια εικόνα πάλι θέλει διεύθυνση που
+// απαντά, τομέας όμως δεν είχε αγοραστεί ακόμη. Τώρα υπάρχει (properwise.gr),
+// οπότε το λογότυπο επιστρέφει ΩΣ ΕΙΚΟΝΑ, φιλοξενούμενη στο ίδιο site
+// (public/brand), όπως ήδη κάνει το email επιβεβαίωσης παραλαβής.
 //
-// Το νέο σήμα είναι έντεκα μονοπάτια SVG. Το Gmail ΑΦΑΙΡΕΙ τα ενσωματωμένα SVG
-// από το σώμα του μηνύματος: το σήμα θα εξαφανιζόταν στο ένα από τα δύο
-// μεγαλύτερα προγράμματα αλληλογραφίας και μόνο εκεί, δηλαδή θα το βλέπαμε
-// τελευταίοι. Και εικόνα δεν γίνεται να σταλεί: το `<img>` θέλει διεύθυνση που
-// απαντά και τομέας δεν έχει αγοραστεί ακόμη.
-//
-// Μένει η λέξη, με το βάρος και το αραίωμά της. Φτάνει παντού και είναι το
-// ίδιο brand. Οταν υπάρξει τομέας, μπαίνει `<img>` με το icon-192.png και το
-// σήμα επιστρέφει και εδώ.
+// ΔΥΟ ΕΚΔΟΧΕΣ, ΓΙΑ ΦΩΤΕΙΝΟ ΚΑΙ ΓΙΑ ΣΚΟΤΕΙΝΟ. Το κέλυφος γυρίζει σε σκούρο φόντο
+// στο dark mode («.bg»), οπότε ένα σκούρο σήμα θα χανόταν. Η «logo-light» (σκούρο
+// λογότυπο) δείχνει στο φωτεινό· η «logo-dark» (λευκό) στο σκοτεινό — με τον ΙΔΙΟ
+// μηχανισμό (prefers-color-scheme + [data-ogsc]) που αλλάζει ήδη τα χρώματα. Το
+// alt=«PROPERWISE» μένει ως εφεδρεία όταν ο παραλήπτης μπλοκάρει τις εικόνες.
 // ── Το ΜΟΝΑΔΙΚΟ branded κέλυφος ──────────────────────────────────────────────
 export function emailShell(opts: {
   bodyHtml: string; preheader?: string; unsubUrl?: string; footerNote?: string; hero?: string; width?: number;
@@ -226,7 +227,11 @@ export function emailShell(opts: {
 body{margin:0;padding:0;width:100% !important;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}
 table{border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;}
 a{text-decoration:none;}
+img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}
+.logo-dark{display:none;}
 @media (prefers-color-scheme:dark){
+ .logo-light{display:none !important;}
+ .logo-dark{display:block !important;}
  .bg{background:#16181c !important;}
  .ink{color:#f2f3f5 !important;}
  .tx{color:#c2c7cd !important;}
@@ -243,6 +248,8 @@ a{text-decoration:none;}
  .box{background:rgba(107,166,245,.10) !important;border-color:rgba(107,166,245,.26) !important;}
  .box-alert{background:rgba(242,139,130,.10) !important;border-color:rgba(242,139,130,.28) !important;}
 }
+[data-ogsc] .logo-light{display:none !important;}
+[data-ogsc] .logo-dark{display:block !important;}
 [data-ogsc] .ink{color:#f2f3f5 !important;}
 [data-ogsc] .tx{color:#c2c7cd !important;}
 [data-ogsc] .mu{color:#9aa1a9 !important;}

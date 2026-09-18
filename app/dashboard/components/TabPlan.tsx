@@ -65,6 +65,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { T, TT, Btn, ChipToggle, Card, SecHdr, PageTitle, fixedCols, settingsField, feAuto, pageShell, Bar } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 import { InfoHint, HintedText } from './InfoHint';
 import { SegmentControl } from './UIComponents';
 import { createClient } from '@/lib/supabase/client';
@@ -1091,8 +1092,8 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
           ώστε να ισχύσει η κλάση. Χωρίς αυτό το 1,45 του `TT.caption` έρχεται
           μέσα από το spread και το ενσωματωμένο κερδίζει ΠΑΝΤΑ την κλάση: ο
           σαρωτής το έπιασε σε τέσσερις σκηνές στα 768 και στα 810. */}
-      <p className="po-prose" style={{ ...TT.caption, lineHeight: undefined, color: 'var(--text-tertiary)', margin: 0, padding: '0 2px' }}>
-        {PLAN_DISCLAIMER}
+      <p className="po-prose po-just" style={{ ...TT.caption, lineHeight: undefined, color: 'var(--text-tertiary)', margin: 0, padding: '0 2px' }}>
+        {hy(<>{PLAN_DISCLAIMER}</>)}
       </p>
     </div>
   );

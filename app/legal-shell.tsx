@@ -101,7 +101,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
   self: string;
 }) {
   return (
-    <div style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
+    <div className="min-h-dvh" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: T.font.sans }}>
       <PublicHeader />
 
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(48px,6vw,80px)` }}>
@@ -112,12 +112,12 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
           {title}
         </h1>
 
-        {/* Η ΗΜΕΡΟΜΗΝΙΑ ΔΕΞΙΑ, ΟΧΙ ΑΠΟ ΚΑΤΩ. Η εισαγωγή έχει το μέτρο της, άρα
-            από μόνη της άφηνε τριακόσια εικονοστοιχεία λευκά στα δεξιά της. Η
-            ημερομηνία τα γεμίζει και η σειρά κλείνει πέρα ως πέρα. */}
+        {/* Η ΕΙΣΑΓΩΓΗ ΣΤΟ ΜΕΤΡΟ ΤΗΣ, ΜΟΝΗ. Η «Τελευταία ενημέρωση» ήταν εδώ
+            δεξιά της, να γεμίζει το λευκό· κατέβηκε στη σειρά των αδελφών
+            σελίδων, στο κενό δεξιά της (πιο κάτω, `lg-siblings`), ώστε η πρώτη
+            πρόταση που διαβάζει ο επισκέπτης να μην κουβαλά ημερομηνία. */}
         <div className="lg-lede">
           <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{hy(intro)}</p>
-          {meta && <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0, whiteSpace: 'nowrap' }}>{meta}</p>}
         </div>
         </div>
 
@@ -151,10 +151,15 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
                 έλεγχος «καμία σελίδα δεν δείχνει στον εαυτό της» έψαχνε τη
                 διαδρομή σε ΟΛΟΚΛΗΡΟ το HTML — και την έβρισκε στο υποσέλιδο,
                 που δείχνει και στις τρεις. Περνούσε ή έπεφτε για λάθος λόγο. */}
-            <div className="lg-siblings" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <div className="lg-siblings" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'baseline' }}>
               {TRUST_PAGES.filter(([href]) => href !== self).map(([href, label]) => (
                 <Link key={href} href={href} className="lp-link po-tap" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>{label}</Link>
               ))}
+              {/* Η ΗΜΕΡΟΜΗΝΙΑ ΣΤΟ ΚΕΝΟ ΔΕΞΙΑ ΤΗΣ ΣΕΙΡΑΣ. Οι δύο αδελφοί σύνδεσμοι
+                  αφήνουν λευκό το δεξί μισό· το `margin-left:auto` σπρώχνει εκεί την
+                  «Τελευταία ενημέρωση», ώστε να μη μένει κενό και να μη φορτώνει την
+                  εισαγωγή. Σε στενή οθόνη τυλίγεται στη δική της γραμμή, δεξιά. */}
+              {meta && <span className="lg-updated" style={{ marginLeft: 'auto', color: 'var(--text-tertiary)', fontSize: 13, whiteSpace: 'nowrap' }}>{meta}</span>}
             </div>
           </div>
         </div>

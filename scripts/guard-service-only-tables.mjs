@@ -43,6 +43,10 @@ const SERVICE_ONLY = [
   'product_events',
   'referrals',
   'send_quota',
+  // Ποιον απαντήσαμε αυτόματα και πότε (reply_ack). Γράφεται ΜΟΝΟ μέσω της RPC
+  // try_support_ack· είναι λίστα όσων επικοινώνησαν με την υποστήριξη και
+  // κανένας πελάτης δεν πρέπει να τη διαβάζει.
+  'support_ack_log',
 ]
 
 /**

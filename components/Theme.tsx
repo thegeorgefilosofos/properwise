@@ -24,6 +24,7 @@ import { ReactNode, CSSProperties, type MouseEvent, type Ref, useState, useEffec
 export { T, TT, formGrid, fieldRow, fixedCols, tileGrid, tileRow, fe, feAuto, feRate, feCompact, feWhole, fp, feOr, fpOr, DASH, fn, fd, fdLong, localDay, histInputStyle, ABSENT, ABSENT_DATE, ABSENT_SHORT, grUpper } from './tokens';
 export type { Tone } from './tokens';
 import { T, TT, isBlankMetric, type Tone } from './tokens';
+import { hy } from './Hyphen';
 
 // ═══ RuntimeImg, η εικόνα που ΔΕΝ υπάρχει τη στιγμή του build ════════════
 //
@@ -539,7 +540,7 @@ export function PageTitle({ over, title, sub, lede, right, titleHint }: { over?:
 
             ΤΟ ΝΟΥΜΕΡΟ ΔΕΝ ΓΡΑΦΕΤΑΙ ΕΔΩ. Ηταν καρφωμένο σε αυτό το αρχείο και σε
             δεκαεπτά ακόμη· ζει πλέον στην `.po-prose`, μία φορά. */}
-        {lede && <p className="po-prose" style={{ ...TT.body, lineHeight: undefined, color: 'var(--text-secondary)', margin: '10px 0 0' }}>{lede}</p>}
+        {lede && <p className="po-prose po-just" style={{ ...TT.body, lineHeight: undefined, color: 'var(--text-secondary)', margin: '10px 0 0' }}>{hy(lede)}</p>}
       </div>
       {/* ΙΣΑ ΥΨΗ, ΚΑΙ ΟΤΑΝ Η ΜΙΑ ΕΤΙΚΕΤΑ ΤΥΛΙΓΕΙ. Σε Galaxy A το «Καταστάσεις
           ιδιοκτήτη» έσπαγε στα δύο και γινόταν 62 εικονοστοιχεία ψηλό, δίπλα
