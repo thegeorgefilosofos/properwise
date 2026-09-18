@@ -34,6 +34,7 @@ import OrgTeam from './OrgTeam';
 import { exportAllData } from '@/lib/dataExport';
 import * as accountantLink from '@/lib/data/accountantLink';
 import { PLANS, PLAN_ORDER, normalizePlan, type PlanId } from '@/lib/billing/plans';
+import { hasVerifiedFactor } from '@/lib/auth/mfa';
 
 /** Τα πακέτα που αγοράζονται. Το «χωρίς συνδρομή» είναι κατάσταση, όχι πακέτο. */
 const PAID_PLAN_ORDER = PLAN_ORDER.filter(id => PLANS[id].priceMonthly > 0) as PlanId[];
@@ -240,6 +241,18 @@ function DeleteAccount() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [leftover, setLeftover] = useState<string | null>(null);
+  // Εχει ο χρήστης δεύτερο παράγοντα; Ο ίδιος έλεγχος με τις Ρυθμίσεις
+  // ασφαλείας (listFactors) και τον κοινό κανόνα hasVerifiedFactor. Οταν ναι,
+  // η διαγραφή θα ζητήσει το δεύτερο βήμα —route ΚΑΙ βάση— οπότε το προειδοποιεί
+  // εδώ. Οταν όχι, δεν μπαίνει τίποτα στην οθόνη.
+  const [has2fa, setHas2fa] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    supabase.auth.mfa.listFactors()
+      .then(({ data }) => { if (alive) setHas2fa(hasVerifiedFactor(data?.all)); })
+      .catch(() => { /* αγνόησε: η απουσία ένδειξης δεν κλειδώνει τίποτα */ });
+    return () => { alive = false; };
+  }, [supabase]);
   const ready = confirmText.trim().toUpperCase() === 'ΔΙΑΓΡΑΦΗ';
 
   const signOut = async () => {
@@ -285,6 +298,13 @@ function DeleteAccount() {
   return (
     <SetRow title="Διαγραφή λογαριασμού"
       desc="Διαγράφει οριστικά τον λογαριασμό και όλα τα δεδομένα σου: ακίνητα, ενοικιαστές, πελάτες, δαπάνες, λογαριασμούς, έγγραφα και αρχεία. Η ενέργεια δεν αναιρείται. Αν θέλεις αντίγραφο, προηγείται η εξαγωγή δεδομένων παραπάνω.">
+      {has2fa && !leftover && (
+        // Μόνο για όποιον έχει δεύτερο παράγοντα: η διαγραφή θα τον ζητήσει,
+        // οπότε ας μην τον ξαφνιάσει τη στιγμή της οριστικής πράξης.
+        <div style={{ background: 'var(--info-soft)', border: '1px solid var(--info-border)', borderRadius: T.radius.inner, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+          Η διαγραφή θα ζητήσει επιβεβαίωση με τον δεύτερο παράγοντα (2FA).
+        </div>
+      )}
       {leftover ? (
         // Ο λογαριασμός έφυγε, κάτι όμως έμεινε πίσω. Η αποσύνδεση περιμένει
         // τον χρήστη, ώστε το μήνυμα να μην περάσει με μια ανακατεύθυνση.

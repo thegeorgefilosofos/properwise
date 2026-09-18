@@ -336,7 +336,14 @@ export const MUTATIONS = {
   'stale-flags': { add: 'lib/core/__mut__.ts', content: "export const CALL = { deadline: '2020-01-12', is_active: true }\n" },
 
   // ── Ισχυρισμοί, τύποι και κείμενα με πηγή ──────────────────────────────
-  'account-deletion': { add: 'app/api/__mut__/route.ts', content: "import { createClient } from '@/lib/supabase/server'\nexport async function POST() {\n  const sb = await createClient()\n  await sb.rpc('delete_my_account')\n  return new Response('ok')\n}\n" },
+  // Τρεις κανόνες, τρεις αποδείξεις: η κλήση έξω από τη μία διαδρομή, η πύλη
+  // 2FA της βάσης αντεστραμμένη (aal1 περνά) και το route που σταματά να κόβει
+  // με 403 πριν την κλήση.
+  'account-deletion': { every: [
+    { add: 'app/api/__mut__/route.ts', content: "import { createClient } from '@/lib/supabase/server'\nexport async function POST() {\n  const sb = await createClient()\n  await sb.rpc('delete_my_account')\n  return new Response('ok')\n}\n" },
+    { file: 'supabase/migrations/20260917120000_2fa_fylaei_ti_diagrafi.sql', from: "is distinct from 'aal2'", to: "is not distinct from 'aal2'" },
+    { file: 'app/api/account/delete/route.ts', from: 'sessionNeedsSecondStep(accessToken, user.factors)', to: 'false' },
+  ] },
   // Δύο ψέματα, ένας φύλακας: η κατάσταση χρέωσης γραμμένη δεύτερη φορά, ΚΑΙ
   // το πακέτο που υπόσχεται δωρεάν χρήση για πάντα.
   'billing-claims': { every: [

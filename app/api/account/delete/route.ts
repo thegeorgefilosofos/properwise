@@ -27,6 +27,7 @@ import { merchant } from '@/lib/billing/merchant';
 import * as billing from '@/lib/data/billing';
 import { sweepOwnFiles } from '@/lib/storage/accountSweep';
 import { SAY } from '@/lib/core/dbError';
+import { sessionNeedsSecondStep, MFA_SAY } from '@/lib/auth/mfa';
 
 export async function POST(request: Request) {
   // ── ΠΡΩΤΑ: ΑΠΟ ΠΟΥ ΗΡΘΕ ΤΟ ΑΙΤΗΜΑ ──────────────────────
@@ -45,6 +46,21 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
+
+  // ── ΚΑΙ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ, ΠΡΙΝ ΟΤΙΔΗΠΟΤΕ ΑΜΕΤΑΚΛΗΤΟ ──────────────────────
+  // Ο διαμεσολαβητής εξαιρεί ΟΛΟ το /api/**, οπότε μια συνεδρία «aal1» με
+  // δηλωμένη συσκευή φτάνει ώς εδώ χωρίς να περάσει τον δεύτερο παράγοντα. Η
+  // πιο καταστρεπτική διαδρομή φυλάει τον εαυτό της: ίδιος έλεγχος με το
+  // proxy.ts, εδώ όμως ως 403 σε JSON και ΠΡΙΝ ακυρωθεί συνδρομή ή σβηστεί
+  // αρχείο. Οι δύο πηγές δεν τις γράφει ο επισκέπτης: οι παράγοντες έρχονται
+  // από το `getUser()`, το «aal» από το υπογεγραμμένο διακριτικό.
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  // Αν η συνεδρία δεν διαβάστηκε, το διακριτικό λείπει: ο έλεγχος κλείνει την
+  // πόρτα (κενό διακριτικό + επαληθευμένος παράγοντας = «χρωστά το βήμα»).
+  const accessToken = sessionError ? undefined : sessionData.session?.access_token;
+  if (sessionNeedsSecondStep(accessToken, user.factors)) {
+    return NextResponse.json({ error: MFA_SAY.ask }, { status: 403 });
+  }
 
   // ── ΠΡΩΤΑ Η ΣΥΝΔΡΟΜΗ, ΟΣΟ ΥΠΑΡΧΕΙ ΑΚΟΜΗ ΤΟ ΠΡΟΦΙΛ ────────────────────
   const { state, error: readError } = await billing.planContext(supabase, user.id);
@@ -92,6 +108,14 @@ export async function POST(request: Request) {
   // διαδρομή που, με λάθος αναγνωριστικό, θα έσβηνε οποιονδήποτε.
   const { data, error } = await supabase.rpc('delete_my_account');
   if (error) {
+    // ── ΑΜΥΝΑ ΣΕ ΒΑΘΟΣ ────────────────────────────────────────────────
+    // Η ίδια πύλη ζει ΚΑΙ στη βάση: αν φτάσαμε εδώ με «aal1» και επαληθευμένο
+    // παράγοντα (π.χ. ο έλεγχος από πάνω παρακάμφθηκε), η `delete_my_account`
+    // σηκώνει 42501. Το λέμε ως 403 με το ίδιο μήνυμα, όχι ως γενικό 502: ο
+    // λογαριασμός δεν έσβησε επειδή λείπει το δεύτερο βήμα, όχι επειδή κάτι χάλασε.
+    if (error.code === '42501') {
+      return NextResponse.json({ error: MFA_SAY.ask }, { status: 403 });
+    }
     console.info('[delete] η διαγραφή δεν ολοκληρώθηκε:', error.message);
     return NextResponse.json({ error: SAY.accountNotDeleted }, { status: 502 });
   }
