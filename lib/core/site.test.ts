@@ -8,10 +8,10 @@ import { normalizeSite, siteUrl, SITE, SITE_HOST } from './site'
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
 
-const VERCEL = 'https://property-tan-gamma.vercel.app'
+const FALLBACK = 'https://properwise.gr'
 
-ok('κενό περιβάλλον δίνει τη διεύθυνση που ΑΠΑΝΤΑ', normalizeSite('') === VERCEL)
-ok('undefined το ίδιο', normalizeSite(undefined) === VERCEL)
+ok('κενό περιβάλλον δίνει τη διεύθυνση που ΑΠΑΝΤΑ', normalizeSite('') === FALLBACK)
+ok('undefined το ίδιο', normalizeSite(undefined) === FALLBACK)
 ok('έγκυρη τιμή περνά', normalizeSite('https://properwise.gr') === 'https://properwise.gr')
 ok('κάθετος στο τέλος κόβεται', normalizeSite('https://properwise.gr/') === 'https://properwise.gr')
 ok('πολλές κάθετοι κόβονται', normalizeSite('https://properwise.gr///') === 'https://properwise.gr')
@@ -19,10 +19,10 @@ ok('κενά γύρω αγνοούνται', normalizeSite('  https://properwise
 
 // ΧΩΡΙΣ ΠΡΩΤΟΚΟΛΛΟ ΔΕΝ ΕΙΝΑΙ ΔΙΕΥΘΥΝΣΗ. Θα έδινε «properwise.gr/terms» σε
 // canonical, που οι μηχανές διαβάζουν ως σχετική διαδρομή.
-ok('χωρίς πρωτόκολλο απορρίπτεται', normalizeSite('properwise.gr') === VERCEL)
-ok('http απορρίπτεται: το canonical είναι πάντα https', normalizeSite('http://properwise.gr') === VERCEL)
-ok('διαδρομή μέσα στη ρίζα απορρίπτεται', normalizeSite('https://properwise.gr/app') === VERCEL)
-ok('σκουπίδια απορρίπτονται', normalizeSite('όχι διεύθυνση') === VERCEL)
+ok('χωρίς πρωτόκολλο απορρίπτεται', normalizeSite('properwise.gr') === FALLBACK)
+ok('http απορρίπτεται: το canonical είναι πάντα https', normalizeSite('http://properwise.gr') === FALLBACK)
+ok('διαδρομή μέσα στη ρίζα απορρίπτεται', normalizeSite('https://properwise.gr/app') === FALLBACK)
+ok('σκουπίδια απορρίπτονται', normalizeSite('όχι διεύθυνση') === FALLBACK)
 
 // ── Η ΕΝΩΣΗ ΔΕΝ ΔΙΠΛΑΣΙΑΖΕΙ ΚΑΘΕΤΟ ───────────────────────────────────────
 ok('η διεύθυνση σελίδας ενώνεται καθαρά', siteUrl('/terms') === `${SITE}/terms`)
