@@ -94,7 +94,7 @@ function DataTable({ caption, rows }: { caption: string; rows: { label: string; 
                   σειρά του πίνακα και θα ξεστοίχιζε την ετικέτα από την τιμή
                   της. Το `po-tap-inline` παίρνει τα 44 από ψευδοστοιχείο: ο
                   στόχος μεγαλώνει, η σειρά μένει όπου ήταν. */}
-              <td className="num" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+              <td className="po-kv-val" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                 {MAIL.test(r.value)
                   ? <a href={`mailto:${r.value}`} className="lp-link po-tap-inline" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{r.value}</a>
                   : r.value}
