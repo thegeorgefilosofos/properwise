@@ -405,7 +405,14 @@ const FEATURED_PLAN = 'owner';
 const GAP = 'clamp(30px, 4.2vw, 56px)';
 const GAP_ACT = 'clamp(48px, 6.5vw, 88px)';
 
-const wrap: React.CSSProperties = { maxWidth: 1140, margin: '0 auto', padding: '0 clamp(20px, 5vw, 48px)' };
+// ΕΝΑΣ ΑΞΟΝΑΣ ΓΙΑ ΟΛΗ ΤΗ ΔΗΜΟΣΙΑ ΒΙΤΡΙΝΑ: το gutter δεν γράφεται πια εδώ ως
+// literal — έρχεται από το `--pub-gutter` (globals.css), το ΙΔΙΟ που οδηγεί το
+// WRAP του PublicChrome, τα νομικά και το /paketa. Ετσι η αρχική και οι
+// υπόλοιπες σελίδες (όλες maxWidth 1140) ξεκινούν και τελειώνουν στον ΙΔΙΟ
+// κατακόρυφο άξονα σε ΚΑΘΕ πλάτος — και στα ≤360, όπου το gutter πέφτει σε 14.
+// Πριν, η αρχική κρατούσε 20 στα ≤360 κι όλες οι άλλες 14: το μάτι το έπιανε
+// ως μισός πόντος μετατόπιση περνώντας από τη μία σελίδα στην άλλη.
+const wrap: React.CSSProperties = { maxWidth: 1140, margin: '0 auto', padding: '0 var(--pub-gutter)' };
 // ═══ ΤΑ ΕΙΚΟΝΙΔΙΑ ΤΗΣ ΑΡΧΙΚΗΣ ΔΕΝ ΕΧΟΥΝ ΦΩΝΗ, ΓΙΑΤΙ ΔΕΝ ΕΧΟΥΝ ΝΟΗΜΑ ════════
 // ΤΙ ΜΕΤΡΗΘΗΚΕ, ΜΕ ΠΡΑΓΜΑΤΙΚΟ CHROMIUM ΚΑΙ Accessibility.getFullAXTree: η
 // αρχική παρήγαγε 39 ΑΝΩΝΥΜΟΥΣ κόμβους role=image. Δηλαδή ο αναγνώστης οθόνης
@@ -1031,12 +1038,14 @@ export default async function Landing() {
             gap: 12px;
             overflow-x: auto; overflow-y: hidden;
             scroll-snap-type: x mandatory;
-            scroll-padding-inline: 20px;
+            scroll-padding-inline: var(--pub-gutter);
             /* Αρνητικά περιθώρια ώστε το καρουζέλ να «βγαίνει» ως την άκρη της
                οθόνης: μια κάρτα που κόβεται στο χείλος λέει «υπάρχουν κι άλλες»
-               χωρίς να χρειάζεται βελάκι ή κουκκίδες. */
-            margin-inline: calc(-1 * clamp(20px, 5vw, 48px));
-            padding-inline: clamp(20px, 5vw, 48px);
+               χωρίς να χρειάζεται βελάκι ή κουκκίδες. Το gutter είναι το ΙΔΙΟ
+               «--pub-gutter» με το περιτύλιγμα: η πρώτη κάρτα ξαναπέφτει ακριβώς
+               στον άξονα του περιεχομένου, το καρουζέλ φτάνει ακριβώς ως το χείλος. */
+            margin-inline: calc(-1 * var(--pub-gutter));
+            padding-inline: var(--pub-gutter);
             padding-bottom: 6px;
             scrollbar-width: none;
           }
