@@ -748,7 +748,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
             βρίσκεται πάνω της. Τέσσερα ονόματα, μία σειρά, το δικό σου
             σημαδεμένο. Χωρίς τιμές και χωρίς πίεση — η σύγκριση ανοίγει με το
             «Διαχείριση συνδρομής» για όποιον τη θέλει. */}
-        <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+        <div className="plan-ladder" style={{ marginTop: 16, gap: 6 }}>
           {PAID_PLAN_ORDER.map(id => {
             const on = id === effPlan;
             return (
