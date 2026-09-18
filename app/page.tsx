@@ -15,6 +15,7 @@ import Spotlight from './Spotlight';
 import FaqMore from './FaqMore';
 import { PublicFooter, JsonLd } from './PublicChrome';
 import { T } from '@/components/tokens';
+import { hy } from '@/components/Hyphen';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Landing. Χτισμένη γύρω από τα δύο μοναδικά μας: (1) μία φωτογραφία → αυτόματη
@@ -127,7 +128,7 @@ function FaqList({ list }: { list: { q: string; a: string }[] }) {
           παράγραφο δώδεκα γραμμών. Με απαντήσεις δύο γραμμών ο κίνδυνος δεν
           υπάρχει — και το στενό μέτρο έκανε τις ίδιες απαντήσεις πέντε και
           έξι σειρές, που είναι ο πραγματικός λόγος που δεν διαβάζονταν. */}
-          <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.65, margin: '0 0 20px' }}>{f.a}</p>
+          <p className="po-just" style={{ fontSize: 15, color: MUTED, lineHeight: 1.65, margin: '0 0 20px' }}>{hy(f.a)}</p>
         </details>
       ))}
     </>
@@ -868,9 +869,13 @@ export default async function Landing() {
            παράγραφος και δύο γραμμές δεν κουράζουν το μάτι όσο μακριές κι αν
            είναι. Παίρνει και μεγαλύτερο σώμα από τις λεζάντες, ώστε η ιεραρχία
            να είναι ορατή χωρίς δεύτερο χρώμα. */
+        /* Η πλήρης στοίχιση μπαίνει με την κλάση «po-just» (globals.css), ΟΧΙ εδώ:
+           το φύλλο της σελίδας έχει κεφαλίδες με «text-wrap: balance» κι ο φύλακας
+           guard-justify-hyphen βλέπει όλο το μπλοκ ως ένα σύνολο δηλώσεων. Η
+           στοίχιση ζει σε δικό της κανόνα, μακριά από τη balance. */
         .lp-sec-lede {
           margin: 0; font-size: clamp(15px, 1.5vw, 17px); line-height: 1.6;
-          color: var(--text-secondary); text-wrap: pretty;
+          color: var(--text-secondary);
         }
         /* Δύο στήλες ΚΑΙ δύο σειρές, με ροή κατά στήλη: αριστερά η σύνδεση και
            η απομόνωση, δεξιά η εκπαίδευση και η βάση. Οι δύο σειρές του
@@ -982,7 +987,7 @@ export default async function Landing() {
            έκλεινε στη μέση. */
         .lp-why p {
           margin: 0; font-size: 16px; line-height: 1.75;
-          color: var(--text-secondary); text-wrap: pretty;
+          color: var(--text-secondary);
         }
         /* Το υποσέλιδο (.lp-foot) ζει στο globals.css: το μοιράζεται και το PublicChrome. */
         .lp-plans { grid-template-rows: auto auto auto auto auto 1fr auto; }
@@ -1305,7 +1310,7 @@ export default async function Landing() {
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
               <div style={{ width: 38, height: 38, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg }}>{ic(f.i)}</div>
               <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{f.t}</h3>
-              <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: 0 }}>{f.d}</p>
+              <p className="po-just" style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: 0 }}>{hy(f.d)}</p>
             </div>
           ))}
         </div>
@@ -1375,8 +1380,8 @@ export default async function Landing() {
               ΤΟ ΜΕΓΕΘΟΣ ΤΟΥ ΡΟΛΟΥ ΤΟΥ. Η άνω τελεία μετά το «σου» ένωνε δύο
               ολοκληρωμένες προτάσεις με σημείο που δηλώνει επεξήγηση: η δεύτερη
               δεν επεξηγεί την πρώτη, τη συνεχίζει. Δύο περίοδοι, καθαρά. */}
-          <p className="lp-sec-lede">
-            Λογαριασμοί, συμβόλαια και στοιχεία του ακινήτου ή των{'\u00A0'}πελατών σου είναι από τα πιο ευαίσθητα δεδομένα που υπάρχουν. Γι’ αυτό τα φυλάμε ανάλογα.
+          <p className="lp-sec-lede po-just">
+            {hy(<>Λογαριασμοί, συμβόλαια και στοιχεία του ακινήτου ή των{'\u00A0'}πελατών σου είναι από τα πιο ευαίσθητα δεδομένα που υπάρχουν. Γι’ αυτό τα φυλάμε ανάλογα.</>)}
           </p>
           {/* Δύο και δύο. Οι τίτλοι δεν αναδιπλώνονται ποτέ σε μισή στήλη και
               οι τέσσερις λεζάντες πιάνουν από δύο γραμμές, οπότε τα δύο ζευγάρια
@@ -1398,8 +1403,8 @@ export default async function Landing() {
               ΤΗΣ ΕΝΟΤΗΤΑΣ: ξεκινά στον ίδιο άξονα με τον τίτλο και τελειώνει
               στην ίδια άκρη με το πλέγμα, χωρισμένη με μια λεπτή γραμμή ώστε να
               μη διαβαστεί ως πέμπτη εγγύηση. */}
-          <p className="lp-sec-fine">
-            Σχεδιασμένο σύμφωνα με τον GDPR. Οι συμβάσεις με τους παρόχους εκτός ΕΕ κλείνουν πριν την κυκλοφορία· ποιοι είναι, το λέει η Πολιτική Απορρήτου.
+          <p className="lp-sec-fine po-just">
+            {hy(<>Σχεδιασμένο σύμφωνα με τον GDPR. Οι συμβάσεις με τους παρόχους εκτός ΕΕ κλείνουν πριν την κυκλοφορία· ποιοι είναι, το λέει η Πολιτική Απορρήτου.</>)}
           </p>
         </div>
       </section>
@@ -1450,23 +1455,15 @@ export default async function Landing() {
             ζυγιστεί, οπότε δεν υπάρχει τίποτα να ξεστοιχιστεί — και η δεξιά άκρη
             μένει ελεύθερη, ώστε να μην ανοίγουν ποτάμια λευκού πουθενά. */}
         <div className="lp-why">
-          <p>
-            Αν έχεις ακίνητα στην Ελλάδα, το ξέρεις. Το φορολογικό πλαίσιο αλλάζει κάθε χρόνο, οι
-            υποχρεώσεις πληθαίνουν, οι προθεσμίες δεν περιμένουν.
-          </p>
-          <p>
-            Ε2, ΕΝΦΙΑ, Δήλωση βραχυχρόνιας μίσθωσης, τεκμαρτή έκπτωση, κοινόχρηστα, αναπροσαρμογή
-            μακροχρόνιου μισθώματος: καθένα με τη δική του προθεσμία και η ευθύνη πάντα πάνω σου.
-          </p>
-          <p>
-            Γι’ αυτό σχεδιάσαμε το PROPERWISE. Τα πάντα για το ακίνητο σε ένα σημείο, φορολογικά,
-            νομικά, οικονομικά, πλήρως ενημερωμένα.
-          </p>
-          <p>
-            Ο υπολογισμός γίνεται με τα δικά σου δεδομένα. Η προθεσμία εμφανίζεται στο ημερολόγιο της
+          <p className="po-just">{hy(<>Αν έχεις ακίνητα στην Ελλάδα, το ξέρεις. Το φορολογικό πλαίσιο αλλάζει κάθε χρόνο, οι
+            υποχρεώσεις πληθαίνουν, οι προθεσμίες δεν περιμένουν.</>)}</p>
+          <p className="po-just">{hy(<>Ε2, ΕΝΦΙΑ, Δήλωση βραχυχρόνιας μίσθωσης, τεκμαρτή έκπτωση, κοινόχρηστα, αναπροσαρμογή
+            μακροχρόνιου μισθώματος: καθένα με τη δική του προθεσμία και η ευθύνη πάντα πάνω σου.</>)}</p>
+          <p className="po-just">{hy(<>Γι’ αυτό σχεδιάσαμε το PROPERWISE. Τα πάντα για το ακίνητο σε ένα σημείο, φορολογικά,
+            νομικά, οικονομικά, πλήρως ενημερωμένα.</>)}</p>
+          <p className="po-just">{hy(<>Ο υπολογισμός γίνεται με τα δικά σου δεδομένα. Η προθεσμία εμφανίζεται στο ημερολόγιο της
             συσκευής σου. Το παραστατικό καταχωρείται με μια μόνο φωτογραφία. Ο φάκελος του λογιστή
-            αποστέλλεται με ένα κλικ.
-          </p>
+            αποστέλλεται με ένα κλικ.</>)}</p>
         </div>
         <p style={{ fontSize: 'clamp(17px, 1.9vw, 21px)', lineHeight: 1.45, color: 'var(--text-primary)', letterSpacing: '-0.015em',
           margin: 'clamp(26px, 3.2vw, 40px) 0 0', textWrap: 'balance' }}>
