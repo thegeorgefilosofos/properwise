@@ -6,6 +6,7 @@ import { fmtEur, fmtPct, type SavedLoan } from './TabLoanData'
 import { MAX_SCAN_MB } from './scanDoc'
 import { athensToday } from '@/lib/core/time';
 import { SAY } from '@/lib/core/dbError';
+import { hy } from '@/components/Hyphen';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΚΟΙΝΗ ΜΗΧΑΝΗ ΣΑΡΩΣΗΣ ΤΗΣ ΣΥΜΒΟΥΛΕΥΤΙΚΗΣ ΔΑΝΕΙΟΥ
@@ -155,7 +156,7 @@ export function ScanUploadRow({ title, description, action, icon, scanning, onFi
             στη λάθος μεριά της στρογγυλοποίησης. */}
         {/* Το `lineHeight: undefined` σβήνει το 1,50 που φέρνει το `TT.bodySm`
             μέσα από το spread· αλλιώς το ενσωματωμένο στυλ νικά την κλάση. */}
-        <p className="po-prose" style={{ ...TT.bodySm, lineHeight: undefined, color: 'var(--text-tertiary)' }}>{description}</p>
+        <p className="po-prose po-just" style={{ ...TT.bodySm, lineHeight: undefined, color: 'var(--text-tertiary)' }}>{hy(<>{description}</>)}</p>
       </div>
       {/* size="lg" γιατί το ύψος ήταν καρφωμένο στο T.h.lg δίπλα στην περιγραφή. */}
       <Btn variant="primary" size="lg" onClick={() => inputRef.current?.click()} disabled={scanning}>
