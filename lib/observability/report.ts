@@ -188,17 +188,25 @@ function safeString(v: unknown): string {
 
 /** Ένα σφάλμα από άλλη προέλευση: ο περιηγητής κρύβει και το μήνυμα και τη στοίβα. */
 const CROSS_ORIGIN = /^script error\.?$/i
+// ΑΝΑΜΕΝΟΜΕΝΕΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΟΧΙ BUG. Λάθος κωδικός στο login («Invalid login
+// credentials») και στιγμιαία αποτυχία δικτύου που ο client SDK ξαναδοκιμάζει
+// μόνος («AuthRetryableFetchError») είναι καθημερινότητα, όχι σφάλματα του
+// κώδικα. Αν ταξιδέψουν στο Sentry, πνίγουν τα αληθινά bugs και σταματάς να
+// εμπιστεύεσαι το feed. Κόβονται εδώ — συντηρητικά, ΜΟΝΟ αυτές οι υπογραφές,
+// όχι κάθε «Failed to fetch».
+const BENIGN = /invalid login credentials|AuthRetryableFetchError/i
 
 export function worthReporting(err: unknown): boolean {
   if (err instanceof Error) {
     const msg = (err.message || '').trim()
     // Χωρίς μήνυμα ΚΑΙ χωρίς στοίβα δεν υπάρχει τίποτα να διερευνηθεί.
     if (!msg && !err.stack) return false
+    if (BENIGN.test(err.name) || BENIGN.test(msg)) return false
     return !CROSS_ORIGIN.test(msg)
   }
   if (typeof err === 'string') {
     const msg = err.trim()
-    return msg.length > 0 && !CROSS_ORIGIN.test(msg)
+    return msg.length > 0 && !CROSS_ORIGIN.test(msg) && !BENIGN.test(msg)
   }
   // Ένα `null` ή `undefined` που ταξίδεψε ως λόγος απόρριψης δεν είναι σφάλμα.
   return err !== null && err !== undefined

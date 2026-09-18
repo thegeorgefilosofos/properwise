@@ -170,6 +170,15 @@ const event = (body: string) => JSON.parse(body.split('\n')[2]) as Record<string
      !worthReporting(Object.assign(new Error(''), { stack: '' })))
   ok('κενό κείμενο δεν ταξιδεύει', !worthReporting('   '))
   ok('κενή απόρριψη promise δεν ταξιδεύει', !worthReporting(null) && !worthReporting(undefined))
+
+  // Αναμενόμενες auth καταστάσεις: θόρυβος, όχι bug. Δεν ταξιδεύουν στο Sentry.
+  ok('λάθος κωδικός login δεν ταξιδεύει',
+     !worthReporting(Object.assign(new Error('Invalid login credentials'), { name: 'AuthApiError' })))
+  ok('retryable fetch του auth δεν ταξιδεύει',
+     !worthReporting(Object.assign(new Error('Failed to fetch'), { name: 'AuthRetryableFetchError' })))
+  ok('…ούτε ως σκέτο κείμενο', !worthReporting('Invalid login credentials'))
+  // Αλλά ένα ΑΛΗΘΙΝΟ σφάλμα ταξιδεύει κανονικά — το φίλτρο είναι στενό.
+  ok('αληθινό σφάλμα ταξιδεύει', worthReporting(new Error('Cannot read properties of undefined')))
 }
 
 console.log(`observability/report.test.ts: ${passed} passed, ${failed} failed`)
