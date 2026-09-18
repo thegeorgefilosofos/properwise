@@ -25,6 +25,7 @@ import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, WRAP, WRAP_PAD } from '../PublicChrome';
+import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { RentTaxCalculator } from './RentTaxCalculator';
 
@@ -183,8 +184,8 @@ export default function Page() {
                   <span className="lp-plus" style={{ color: 'var(--accent)', fontSize: 20, fontWeight: 450,
                     lineHeight: 1, transition: 'transform .2s', flexShrink: 0 }}>+</span>
                 </summary>
-                <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-                  {f.a}
+                <p className="po-just" style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
+                  {hy(f.a)}
                 </p>
               </details>
             ))}
