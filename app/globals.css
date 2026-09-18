@@ -604,6 +604,17 @@ body {
      ανεβάζει το ίδιο πέπλο από 0,14 σε 0,24 αδιαφάνεια. */
   .po-ico[data-tone="media"]:hover:not(:disabled) { background: rgba(255,255,255,0.24); color: var(--on-media); }
 }
+/* ── ΑΠΟΚΡΙΣΗ ΣΤΟ ΑΓΓΙΓΜΑ, ΚΑΙ ΣΕ ΔΑΧΤΥΛΟ ──────────────────────────────────
+   Η αιώρηση ζει πίσω από `@media (hover: hover)`, οπότε σε αφή ΔΕΝ ισχύει —
+   σωστά, για να μη «κολλά» μετά το tap. Ομως έτσι τα εικονίδια-ενέργειες
+   (κλείσιμο, μολύβι, κάδος, βελάκια ημερολογίου) έμεναν ΧΩΡΙΣ καμία απόκριση
+   στο άγγιγμα: το tap-highlight είναι σβηστό κι ο `:active` δεν υπήρχε. Ενα
+   πάτημα που δεν απαντά μοιάζει αγνοημένο. Ο `:active` δουλεύει και στα δύο και
+   δίνει την ΙΔΙΑ απαλή επιφάνεια που δίνει η αιώρηση στο ποντίκι. */
+.po-ico:active:not(:disabled) { background: var(--bg-hover); color: var(--text-secondary); }
+.po-ico[data-tone="danger"]:active:not(:disabled) { background: var(--negative-dim); color: var(--negative); }
+.po-ico[data-tone="accent"]:active:not(:disabled) { background: var(--accent-dim); color: var(--accent); }
+.po-ico[data-tone="media"]:active:not(:disabled) { background: rgba(255,255,255,0.24); color: var(--on-media); }
 .po-ico[data-tone="danger"] { color: var(--negative); }
 .po-ico[data-tone="accent"] { color: var(--accent); }
 /* ΤΟ ΚΛΕΙΣΙΜΟ ΠΑΝΩ ΣΕ ΦΩΤΟΓΡΑΦΙΑ. Το τριτεύον γκρι χάνεται σε μια σκούρα
@@ -641,6 +652,10 @@ body {
   box-shadow: var(--shadow-sm); color: var(--accent);
 }
 .po-chip:disabled { opacity: .5; cursor: not-allowed; }
+/* Ιδια απόκριση αφής όπως στο .po-ico: το ΜΗ επιλεγμένο πλακίδιο απαντά στο
+   άγγιγμα με το ίδιο περίγραμμα που δίνει η αιώρηση στο ποντίκι. Το ήδη
+   επιλεγμένο δεν το πειράζουμε — έχει τη δική του, μόνιμη κατάσταση. */
+.po-chip:not([aria-pressed="true"]):active:not(:disabled) { border-color: var(--border-default); color: var(--text-primary); }
 
 /* ── .po-link · ΚΟΥΜΠΙ ΠΟΥ ΔΙΑΒΑΖΕΤΑΙ ΩΣ ΣΥΝΔΕΣΜΟΣ ──────────────────────────
    Εικοσι έξι σημεία, όλα μέσα σε πρόταση: «Επαναφορά στο τεκμηριωμένο»,
@@ -4055,10 +4070,38 @@ html { scroll-padding-bottom: var(--cookie-h, 0px); }
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 6px 2px; border: none; background: none; cursor: pointer;
   color: var(--text-tertiary); font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500;
-  min-height: 48px; border-radius: 12px; transition: color 0.15s;
+  min-height: 48px; border-radius: 12px;
+  /* `isolation` φτιάχνει στοίβα ΜΕΣΑ στο κουμπί, ώστε ο δείκτης (::before, z:-1)
+     να κάθεται πίσω από το εικονίδιο και την ετικέτα, χωρίς να δραπετεύει πίσω
+     από ολόκληρη τη μπάρα. Χωρίς αυτό ο δείκτης θα χανόταν κάτω από το φόντο. */
+  position: relative; isolation: isolate;
+  /* Καμία γκρίζα λάμψη του Android στο πάτημα — την απόκριση τη δίνει το :active
+     πιο κάτω, καθαρά. */
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.18s cubic-bezier(0.2,0,0,1);
+}
+/* Ο ΔΕΙΚΤΗΣ ΤΗΣ ΕΝΕΡΓΗΣ ΚΑΡΤΕΛΑΣ — Η ΠΙΝΕΛΙΑ ΠΟΥ ΛΕΕΙ «ΕΙΣΑΙ ΕΔΩ».
+   Ως τώρα η ενεργή καρτέλα ξεχώριζε ΜΟΝΟ με χρώμα. Σε στενή οθόνη, τέσσερα
+   εικονίδια στη σειρά και μια αλλαγή απόχρωσης χάνεται με μια ματιά — ειδικά
+   για δαλτωνικό μάτι, όπου γαλάζιο και γκρι σχεδόν ταυτίζονται. Ενα απαλό φόντο
+   πίσω από το εικονίδιο (το πρότυπο της κάτω μπάρας σε Material 3 και iOS)
+   δείχνει τη θέση αμέσως και ανεξάρτητα από χρώμα. Πατά στο ΥΠΑΡΧΟΝ --bg-active,
+   οπότε ζει σωστά και στα δύο θέματα· μπαινοβγαίνει με μικρή κλιμάκωση αντί για
+   απότομο άναμμα. */
+.bottom-nav-item::before {
+  content: ""; position: absolute; z-index: -1;
+  top: 3px; left: 50%; width: 56px; height: 30px; border-radius: 100px;
+  background: var(--bg-active);
+  transform: translateX(-50%) scale(0.7); opacity: 0;
+  transition: opacity 0.18s cubic-bezier(0.2,0,0,1), transform 0.2s cubic-bezier(0.2,0,0,1);
 }
 .bottom-nav-item.active { color: var(--accent); }
-.bottom-nav-item svg { width: 22px; height: 22px; }
+.bottom-nav-item.active::before { opacity: 1; transform: translateX(-50%) scale(1); }
+/* Το πάτημα απαντά ΑΜΕΣΩΣ: το εικονίδιο βυθίζεται λίγο, όπως σε εφαρμογή του
+   store. Χωρίς αυτό, το tap σε αφή δεν δίνει καμία απόκριση πριν αλλάξει η
+   καρτέλα — και μια πλοήγηση που δεν «πατιέται» μοιάζει κολλημένη. */
+.bottom-nav-item svg { width: 22px; height: 22px; transition: transform 0.12s cubic-bezier(0.2,0,0,1); }
+.bottom-nav-item:active svg { transform: scale(0.86); }
 .bottom-nav-badge {
   position: absolute; top: 2px; right: 50%; margin-right: -18px;
   min-width: 8px; height: 8px; border-radius: 50%; background: var(--negative);
