@@ -76,7 +76,7 @@ export interface LegalBlock {
  * Ήταν «1. Ορισμοί» μέσα στο ίδιο κείμενο, οπότε ένας τίτλος δύο γραμμών
  * τύλιγε κάτω από τον αριθμό και η δεύτερη σειρά ξεκινούσε από άλλο σημείο.
  */
-export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing }: {
+export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self }: {
   eyebrow: string;
   title: string;
   intro: ReactNode;
@@ -85,44 +85,49 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing }: {
   blocks: LegalBlock[];
   /** Τελευταία σημείωση, κάτω από την τελευταία ενότητα. */
   closing?: ReactNode;
+  /**
+   * Η ΔΙΑΔΡΟΜΗ ΤΗΣ ΙΔΙΑΣ ΤΗΣ ΣΕΛΙΔΑΣ, ΓΙΑ ΝΑ ΒΓΕΙ ΑΠΟ ΤΗ ΣΕΙΡΑ ΣΤΟ ΤΕΛΟΣ.
+   *
+   * Και οι τρεις σελίδες τύπωναν και τους τρεις συνδέσμους, δηλαδή ΚΑΘΕ μία
+   * έδειχνε και στον εαυτό της: στο «Ποιοι είμαστε» το πρώτο πράγμα κάτω από
+   * το κείμενο ήταν ένα «Ποιοι είμαστε» που ξαναφόρτωνε την ίδια σελίδα.
+   * Νεκρό χειριστήριο — και χειρότερα: η σειρά διαβαζόταν ως μπάρα πλοήγησης
+   * αντί για «οι άλλες δύο». Με τη διαδρομή δηλωμένη, μένουν οι δύο που
+   * πραγματικά πάνε κάπου.
+   *
+   * ΕΙΝΑΙ ΥΠΟΧΡΕΩΤΙΚΗ ΕΠΙΤΗΔΕΣ: με προαιρετική, η επόμενη σελίδα εμπιστοσύνης
+   * θα ξαναγεννούσε το ίδιο σφάλμα σιωπηλά. Ετσι το ζητά ο μεταγλωττιστής.
+   */
+  self: string;
 }) {
   return (
-    <div style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
+    <div className="min-h-dvh" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: T.font.sans }}>
       <PublicHeader />
 
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(48px,6vw,80px)` }}>
+        <div className="lg-head">
         <BackLink />
         <div className="lp-eyebrow">{eyebrow}</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           {title}
         </h1>
 
-        {/* Η ΗΜΕΡΟΜΗΝΙΑ ΔΕΞΙΑ, ΟΧΙ ΑΠΟ ΚΑΤΩ. Η εισαγωγή έχει το μέτρο της, άρα
-            από μόνη της άφηνε τριακόσια εικονοστοιχεία λευκά στα δεξιά της. Η
-            ημερομηνία τα γεμίζει και η σειρά κλείνει πέρα ως πέρα. */}
+        {/* Η ΕΙΣΑΓΩΓΗ ΣΤΟ ΜΕΤΡΟ ΤΗΣ, ΜΟΝΗ. Η «Τελευταία ενημέρωση» ήταν εδώ
+            δεξιά της, να γεμίζει το λευκό· κατέβηκε στη σειρά των αδελφών
+            σελίδων, στο κενό δεξιά της (πιο κάτω, `lg-siblings`), ώστε η πρώτη
+            πρόταση που διαβάζει ο επισκέπτης να μην κουβαλά ημερομηνία. */}
         <div className="lg-lede">
           <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{hy(intro)}</p>
-          {meta && <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0, whiteSpace: 'nowrap' }}>{meta}</p>}
+        </div>
         </div>
 
-        {/* ΔΥΟ ΣΤΗΛΕΣ: ΤΟ ΕΥΡΕΤΗΡΙΟ ΜΕΝΕΙ, ΤΟ ΚΕΙΜΕΝΟ ΚΥΛΑΕΙ. Σε στενή οθόνη
-            πέφτουν η μία κάτω από την άλλη και το ευρετήριο ξεκαρφώνεται: ένα
-            καρφωμένο στοιχείο σε κινητό τρώει μισή οθόνη. */}
+        {/* ΜΙΑ ΚΕΝΤΡΑΡΙΣΜΕΝΗ ΣΤΗΛΗ. Το πλαϊνό ευρετήριο αφαιρέθηκε: σε στήλη
+            260 εικονοστοιχείων κάθε γραμμή είχε τρία με τέσσερα κενά για να
+            μοιράσει το υπόλοιπο της στοίχισης, οπότε είτε τέντωνε ορατά είτε
+            έσπαγε λέξεις που δεν έπρεπε. Το πρόβλημα ήταν το ΜΕΤΡΟ, όχι η
+            ρύθμιση. Η δομή δεν χάθηκε: τα ΜΕΡΗ μένουν μέσα στο κείμενο και
+            χωρίζουν τις ενότητες σε ομάδες, με γραμμή από πάνω τους. */}
         <div className="lg-grid">
-          <nav aria-label="Περιεχόμενα" className="lg-toc">
-            <div className="lg-toc-head">Περιεχόμενα</div>
-            <ol className="lg-toc-list">
-              {blocks.map((b, i) => (
-                <li key={i}>
-                  {b.part && <span className="lg-toc-part">{b.part}</span>}
-                  <a href={`#${b.id || `s${i + 1}`}`} className="lg-toc-link">
-                    <span className="lg-toc-num">{i + 1}</span>
-                    <span>{b.h}</span>
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </nav>
 
           {/* Η ΣΤΗΛΗ ΕΙΝΑΙ ΤΟ ΜΕΤΡΟ. Καμία παράγραφος από μέσα δεν βάζει δικό
               της πλάτος: 712 εικονοστοιχεία στα 15 βγάζουν γραμμές ογδόντα
@@ -142,10 +147,19 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing }: {
 
             {hy(closing)}
 
-            <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-              {TRUST_PAGES.map(([href, label]) => (
+            {/* Η ΣΕΙΡΑ ΕΧΕΙ ΟΝΟΜΑ, ΓΙΑΤΙ ΤΗΝ ΚΡΙΝΕΙ ΕΛΕΓΧΟΣ. Χωρίς κλάση, ο
+                έλεγχος «καμία σελίδα δεν δείχνει στον εαυτό της» έψαχνε τη
+                διαδρομή σε ΟΛΟΚΛΗΡΟ το HTML — και την έβρισκε στο υποσέλιδο,
+                που δείχνει και στις τρεις. Περνούσε ή έπεφτε για λάθος λόγο. */}
+            <div className="lg-siblings" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'baseline' }}>
+              {TRUST_PAGES.filter(([href]) => href !== self).map(([href, label]) => (
                 <Link key={href} href={href} className="lp-link po-tap" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>{label}</Link>
               ))}
+              {/* Η ΗΜΕΡΟΜΗΝΙΑ ΣΤΟ ΚΕΝΟ ΔΕΞΙΑ ΤΗΣ ΣΕΙΡΑΣ. Οι δύο αδελφοί σύνδεσμοι
+                  αφήνουν λευκό το δεξί μισό· το `margin-left:auto` σπρώχνει εκεί την
+                  «Τελευταία ενημέρωση», ώστε να μη μένει κενό και να μη φορτώνει την
+                  εισαγωγή. Σε στενή οθόνη τυλίγεται στη δική της γραμμή, δεξιά. */}
+              {meta && <span className="lg-updated" style={{ marginLeft: 'auto', color: 'var(--text-tertiary)', fontSize: 13, whiteSpace: 'nowrap' }}>{meta}</span>}
             </div>
           </div>
         </div>
@@ -162,11 +176,14 @@ export interface LegalSection {
 }
 
 /** Απόρρητο και Όροι: μόνο κείμενο, άρα δηλώνονται ως δεδομένα, όχι ως JSX. */
-export function LegalShell({ title, updated, intro, sections, disclaimer }: {
+export function LegalShell({ title, updated, intro, sections, disclaimer, self }: {
   title: string; updated: string; intro: string; sections: LegalSection[]; disclaimer?: string;
+  /** Η διαδρομή της σελίδας· βλ. `LegalLayout.self`. */
+  self: string;
 }) {
   return (
     <LegalLayout
+      self={self}
       eyebrow="Νομικά"
       title={title}
       intro={intro}

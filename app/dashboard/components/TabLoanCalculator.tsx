@@ -15,6 +15,7 @@ import { useReportBranding } from '@/lib/reportBranding'
 import { generateReportPdf, pEur, pPct, type PdfReportModel, type PdfSection } from '@/lib/pdf/pdfReport'
 import { issueDocument } from '@/lib/documents/issue'
 import { ShieldCheck } from 'lucide-react'
+import { hy } from '@/components/Hyphen'
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import {
   BANKS, LOAN_TYPES, BORROWER_PROFILES, rateRange,
@@ -22,6 +23,7 @@ import {
   fmtEur, fmtPct, fmtPct1, BANKS_VERIFIED,
   LoanType, RateType, BorrowerType, LoanScenario, MarketRates, SavedLoan
 } from './TabLoanData'
+import { greekWhen } from '@/lib/market/ecb'
 import { rentalRowsForYear } from '@/lib/billing/greekTax'
 import { athensParts } from '@/lib/core/time'
 import { PRESUMPTIVE_RULE_2026 } from '@/lib/billing/consolidate'
@@ -1068,7 +1070,17 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
               {rateType==='variable'&&(
                 <div style={{marginTop: 8,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
                   <p style={{fontSize:12,fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}><span title="Διατραπεζικό επιτόκιο ευρώ: βάση κυμαινόμενων δανείων">Euribor</span> {fmtPct(market.euribor_3m)} + {fmtPct(R)} = <strong>{fmtPct(effRate)}</strong></p>
-                  <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>Αυτόματη ενημέρωση από την ΕΚΤ κάθε πρωί</p>
+                  {/* Η ΛΕΖΑΝΤΑ ΔΙΑΒΑΖΕΤΑΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ. Εδώ έλεγε «Αυτόματη ενημέρωση
+                      από την ΕΚΤ κάθε πρωί» — υπόσχεση που η ΕΚΤ δεν δίνει: το Euribor
+                      το δημοσιεύει μηνιαία, όχι ημερήσια (lib/market/ecb.ts). Τώρα λέει
+                      ό,τι λέει η προέλευση της ίδιας της τιμής, με την ίδια συνάρτηση
+                      που τη γράφει και η σύγκριση επιτοκίων. Χωρίς προέλευση παίζει η
+                      εφεδρική τιμή και το λέει. */}
+                  <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>
+                    {market.euribor_asOf && market.euribor_basis
+                      ? `${market.euribor_basis}, ${greekWhen(market.euribor_asOf, market.euribor_basis)}`
+                      : 'εφεδρική τιμή, χωρίς ημερομηνία παρατήρησης'}
+                  </p>
                 </div>
               )}
             </div>
@@ -1506,7 +1518,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                   <input type="checkbox" checked={rentsBank} onChange={e=>setRentsBank(e.target.checked)} style={{width:15,height:15,accentColor:'var(--accent)',cursor:'pointer'}}/>
                   Τα ενοίκια θα εισπράττονται μέσω τραπέζης
                 </label>
-                <p className="po-prose" style={{margin:'4px 0 0 23px',fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{PRESUMPTIVE_RULE_2026}</p>
+                <p className="po-prose po-just" style={{margin:'4px 0 0 23px',fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{hy(<>{PRESUMPTIVE_RULE_2026}</>)}</p>
                 <p style={{margin:'10px 0 0',fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.6}}>
                   Φορολογητέο {fmtEur(taxableRental(renInc, rentsBank))} · <strong style={{color:'var(--text-primary)'}}>εκτιμώμενος φόρος {fmtEur(renTax)} τον χρόνο</strong>. Ο φόρος ενοικίων είναι προοδευτικός στο σύνολο των ακινήτων σου: αν έχεις κι άλλα, δες το πραγματικό ποσό στη Λογιστική.
                 </p>

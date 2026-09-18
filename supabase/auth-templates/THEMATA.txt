@@ -4,3 +4,6 @@
 confirm-signup.html    Επιβεβαίωσε τη διεύθυνσή σου
 reset-password.html    Επαναφορά κωδικού
 change-email.html      Επιβεβαίωσε τη νέα σου διεύθυνση
+invite.html            Πρόσκληση στο PROPERWISE
+magic-link.html        Ο σύνδεσμος σύνδεσής σου
+reauthentication.html  Ο κωδικός επιβεβαίωσής σου

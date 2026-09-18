@@ -12,7 +12,7 @@
 // Deploy: supabase functions deploy send-monthly-statements  (verify_jwt=false)
 // Χρειάζεται RESEND_API_KEY (υπάρχει) + προαιρετικά RESEND_FROM (branded αποστολέας).
 // ─────────────────────────────────────────────────────────────────────────
-import { emailHeader, eyebrow, grUp } from '../_shared/emailTemplates.ts';
+import { emailShell, eyebrow, grUp, h, p, button, dataTable } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
@@ -45,38 +45,30 @@ function statementHtml(ownerRows: { primary: string; secondary: string; expected
     const status = r.expected === 0 ? 'Χωρίς μίσθωμα' : r.paid >= r.expected ? 'Πλήρης' : r.paid > 0 ? 'Μερική' : 'Εκκρεμεί'
     const color = r.expected === 0 ? '#80868b' : r.paid >= r.expected ? '#188038' : r.paid > 0 ? '#b8860b' : '#d93025'
     return `<tr>
-      <td style="padding:11px 0;border-bottom:1px solid #f1f3f4;">
-        <span style="display:block;font-size:13px;color:#202124;font-weight:500;">${r.primary}</span>
-        <span style="display:block;font-size:11px;color:#80868b;">${r.secondary}</span>
+      <td class="rule-b" style="padding:11px 0;border-bottom:1px solid #e8e8ed;">
+        <span class="ink" style="display:block;font-size:13px;color:#1d1d1f;font-weight:500;">${r.primary}</span>
+        <span class="fa" style="display:block;font-size:11px;color:#8a9099;">${r.secondary}</span>
       </td>
-      <td style="padding:11px 0;border-bottom:1px solid #f1f3f4;text-align:right;font-size:13px;color:#3c4043;">${eur(r.paid)} / ${eur(r.expected)}</td>
-      <td style="padding:11px 0;border-bottom:1px solid #f1f3f4;text-align:right;font-size:12px;font-weight:700;color:${color};">${status}</td>
+      <td class="rule-b tx" style="padding:11px 0;border-bottom:1px solid #e8e8ed;text-align:right;font-size:13px;color:#4a4f55;">${eur(r.paid)} / ${eur(r.expected)}</td>
+      <td class="rule-b" style="padding:11px 0;border-bottom:1px solid #e8e8ed;text-align:right;font-size:12px;font-weight:700;color:${color};">${status}</td>
     </tr>`
   }).join('')
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f3f4;font-family:-apple-system,'Inter',Arial,sans-serif;">
-  <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
-    ${emailHeader()}
-    <div style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:26px 24px;">
-      ${eyebrow('Μηνιαία κατάσταση')}
-      <h1 style="margin:0 0 4px;font-size:20px;color:#111;font-weight:700;">Εισπράξεις ${periodLabel}</h1>
-      <p style="margin:0 0 16px;font-size:12px;color:#5f6368;">Εισπράχθηκαν <b>${eur(collected)}</b> από ${eur(expected)}${outstanding > 0 ? ` · ανείσπρακτα <b style="color:#d93025;">${eur(outstanding)}</b>` : ''}.</p>
-      <table style="width:100%;border-collapse:collapse;">
-        ${/* ΤΟ ΔΑΠΕΔΟ ΤΩΝ 11px ΙΣΧΥΕΙ ΚΑΙ ΕΔΩ, ΚΑΙ ΤΑ ΚΕΦΑΛΑΙΑ ΔΕΝ ΚΡΑΤΟΥΝ ΤΟΝΟ.
-             Ηταν 10 εικονοστοιχεία, το μικρότερο κείμενο ολόκληρου του προϊόντος,
-             σε email που ανοίγει σχεδόν πάντα σε τηλέφωνο. Και το `uppercase` πάνω
-             σε ωμό ελληνικό έγραφε «ΑΚΊΝΗΤΟ» και «ΚΑΤΆΣΤΑΣΗ». */''}
-        <tr>${['Ακίνητο / Ενοικιαστής', 'Εισπρ. / Αναμ.', 'Κατάσταση'].map((t, i) =>
-          `<td style="padding:0 0 6px;${i ? 'text-align:right;' : ''}font-size:11px;color:#80868b;letter-spacing:.04em;border-bottom:1px solid #d0d5dd;">${grUp(t)}</td>`).join('')}</tr>
-        ${rows}
-        <tr><td style="padding:12px 0 0;font-size:13px;font-weight:700;color:#111;">Σύνολο</td><td style="padding:12px 0 0;text-align:right;font-size:13px;font-weight:700;color:#111;">${eur(collected)} / ${eur(expected)}</td><td></td></tr>
-      </table>
-      <div style="text-align:center;margin-top:22px;">
-        <a href="${APP_URL}/dashboard" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:11px 24px;border-radius:100px;font-weight:700;font-size:13px;">Άνοιγμα στο PROPERWISE</a>
-      </div>
-    </div>
-    <p style="text-align:center;font-size:11px;color:#5f6368;margin:16px 0 0;line-height:1.6;">Ενημερωτική κατάσταση με βάση τα δεδομένα σου. Δεν αποτελεί επίσημο λογιστικό ή φορολογικό έγγραφο.</p>
-    <p style="text-align:center;font-size:11px;color:#80868b;margin:8px 0 4px;line-height:1.6;">Αυτόματη μηνιαία κατάσταση · PROPERWISE</p>
-  </div></body></html>`
+  // ΤΟ ΔΑΠΕΔΟ ΤΩΝ 11px ΙΣΧΥΕΙ ΚΑΙ ΕΔΩ, ΚΑΙ ΤΑ ΚΕΦΑΛΑΙΑ ΔΕΝ ΚΡΑΤΟΥΝ ΤΟΝΟ. Ηταν
+  // 10 εικονοστοιχεία, το μικρότερο κείμενο ολόκληρου του προϊόντος, σε email
+  // που ανοίγει σχεδόν πάντα σε τηλέφωνο. Και το «uppercase» πάνω σε ωμό
+  // ελληνικό έγραφε «ΑΚΊΝΗΤΟ» και «ΚΑΤΆΣΤΑΣΗ».
+  const head = `<tr>${['Ακίνητο / Ενοικιαστής', 'Εισπρ. / Αναμ.', 'Κατάσταση'].map((t, i) =>
+    `<td class="fa rule-b" style="padding:0 0 7px;${i ? 'text-align:right;' : ''}font-size:11px;color:#8a9099;letter-spacing:.06em;font-weight:700;border-bottom:1px solid #e8e8ed;">${grUp(t)}</td>`).join('')}</tr>`
+  const total = `<tr><td class="ink" style="padding:13px 0 0;font-size:14px;font-weight:700;color:#1d1d1f;">Σύνολο</td><td class="ink" style="padding:13px 0 0;text-align:right;font-size:14px;font-weight:700;color:#1d1d1f;">${eur(collected)} / ${eur(expected)}</td><td></td></tr>`
+  return emailShell({
+    preheader: `Εισπράχθηκαν ${eur(collected)} από ${eur(expected)} τον ${periodLabel}.`,
+    footerNote: 'Ενημερωτική κατάσταση με βάση τα δεδομένα σου. Δεν αποτελεί επίσημο λογιστικό ή φορολογικό έγγραφο. · properwise.gr',
+    bodyHtml: eyebrow('Μηνιαία κατάσταση')
+      + h(`Εισπράξεις ${periodLabel}`)
+      + p(`Εισπράχθηκαν <b class="ink" style="color:#1d1d1f;">${eur(collected)}</b> από ${eur(expected)}${outstanding > 0 ? ` · ανείσπρακτα <b class="neg" style="color:#d93025;">${eur(outstanding)}</b>` : ''}.`)
+      + dataTable(head + rows + total)
+      + button('Άνοιγμα στο PROPERWISE', `${APP_URL}/dashboard`),
+  })
 }
 
 Deno.serve(async (req) => {

@@ -77,6 +77,9 @@ jobs:
       # Το issue διακοπής ανοίγει ΜΟΝΟ αν υπήρξε διεύθυνση να ελεγχθεί, δηλαδή
       # μόνο αν έγινε πραγματική μέτρηση. Βλ. τη συνθήκη του notify-failure.
       configured: ${{ steps.target.outputs.configured }}
+      # Το είδος της αποτυχίας, ώστε ο τίτλος του issue να λέει την αλήθεια:
+      # «broken» είναι βλάβη, «wall» είναι σελίδα μπροστά από το site.
+      kind: ${{ steps.probe.outputs.kind }}
     steps:
       - uses: actions/checkout@v7
 
@@ -90,6 +93,7 @@ jobs:
       - name: Ποια διεύθυνση ελέγχεται
         id: target
         env:
+          PLAIN_URL: ${{ vars.HEALTH_BASE_URL }}
           SECRET_URL: ${{ secrets.HEALTH_BASE_URL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -107,12 +111,32 @@ jobs:
           # βρεθεί με κανέναν από τους δύο τρόπους, η δουλειά ΑΠΟΤΥΓΧΑΝΕΙ αντί
           # να τρέξει στα τυφλά. Το σκεπτικό είναι γραμμένο πιο κάτω, εκεί που
           # γράφεται το `configured`.
+          #
+          # ═══ ΜΕΤΑΒΛΗΤΗ ΠΡΩΤΑ, ΜΥΣΤΙΚΟ ΜΕΤΑ ══════════════════════════════════
+          # Η διεύθυνση της παραγωγής ΔΕΝ είναι μυστικό — τη διαβάζει ο κάθε
+          # επισκέπτης από τη γραμμή διευθύνσεων. Μπήκε όμως πρώτα ως secret,
+          # και το GitHub λογοκρίνει ΚΑΘΕ έξοδο που περιέχει τιμή secret:
+          #
+          #     ##[warning]Skip output 'report' since it may contain secret.
+          #
+          # Δηλαδή ο πίνακας με τις επτά διαδρομές δεν έφτανε ούτε στη σύνοψη
+          # της δουλειάς ούτε στο σώμα του issue — έμενε μόνο στο log. Οσο ήταν
+          # πράσινο δεν πείραζε· σε πραγματική βλάβη θα χανόταν ακριβώς ο
+          # πίνακας που λέει ΠΟΙΑ διαδρομή έπεσε.
+          #
+          # Οπότε: `vars` πρώτα. Το `secrets` μένει ως εφεδρεία ώστε να μη
+          # σπάσει τίποτα όσο υπάρχουν και τα δύο — αλλά όποιος το αφήσει εκεί
+          # πληρώνει τη λογοκρισία· η προειδοποίηση πιο κάτω το λέει.
           url=""
-          if [ -n "${SECRET_URL:-}" ]; then
+          if [ -n "${PLAIN_URL:-}" ]; then
+            echo "Πηγή διεύθυνσης: variable HEALTH_BASE_URL."
+            url="$PLAIN_URL"
+          elif [ -n "${SECRET_URL:-}" ]; then
             echo "Πηγή διεύθυνσης: secret HEALTH_BASE_URL."
+            echo "::warning::Η διεύθυνση διαβάστηκε από SECRET. Το GitHub θα λογοκρίνει τον πίνακα των διαδρομών σε κάθε έξοδο. Μετακίνησέ τη στα Variables (ίδιο όνομα) και σβήσε το secret."
             url="$SECRET_URL"
           else
-            echo "Το secret HEALTH_BASE_URL δεν έχει οριστεί — ρωτάω το GitHub ποια είναι η τρέχουσα παραγωγή."
+            echo "Η διεύθυνση HEALTH_BASE_URL δεν έχει οριστεί πουθενά — ρωτάω το GitHub ποια είναι η τρέχουσα παραγωγή."
             dep=$(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=Production&per_page=1" --jq '.[0].id' 2>/dev/null || true)
             if [ -z "$dep" ] || [ "$dep" = "null" ]; then
               dep=$(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=production&per_page=1" --jq '.[0].id' 2>/dev/null || true)
@@ -140,7 +164,7 @@ jobs:
           # `configured`. Κόκκινο σήμα χωρίς λάθος κατηγορία.
           if [ -z "$url" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::error::Δεν βρέθηκε διεύθυνση παραγωγής: ούτε secret HEALTH_BASE_URL ούτε environment_url σε deployment. Όρισε το secret HEALTH_BASE_URL (βλ. docs/dev/health.md)."
+            echo "::error::Δεν βρέθηκε διεύθυνση παραγωγής: ούτε variable ούτε secret HEALTH_BASE_URL ούτε environment_url σε deployment. Όρισε τη VARIABLE HEALTH_BASE_URL (βλ. docs/dev/health.md)."
             exit 1
           fi
           echo "configured=true" >> "$GITHUB_OUTPUT"
@@ -203,7 +227,11 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            const title = 'Η παραγωγή δεν απαντά σωστά';
+            // Η ΕΤΙΚΕΤΑ ΕΙΝΑΙ Η ΤΑΥΤΟΤΗΤΑ ΓΙΑ ΤΟ ΚΛΕΙΣΙΜΟ, ΟΧΙ Ο ΤΙΤΛΟΣ. Οι τίτλοι
+            // είναι πλέον δύο — βλάβη και λάθος διεύθυνση — και ένα φίλτρο σε
+            // έναν από τους δύο θα άφηνε τον άλλον ανοιχτό για πάντα, να
+            // κατηγορεί την παραγωγή ενώ ο έλεγχος είναι ξανά πράσινος. Την
+            // ετικέτα `health-failure` τη βάζει μόνο αυτή η ροή.
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const open = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
@@ -212,7 +240,7 @@ jobs:
               labels: 'health-failure',
               per_page: 100,
             });
-            for (const issue of open.filter(i => i.title === title)) {
+            for (const issue of open) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -250,16 +278,27 @@ jobs:
           # Η αναφορά περνάει από env και ΟΧΙ με άμεση παρεμβολή ${{ }} μέσα στο
           # script: το κείμενο είναι πολύγραμμο και θα έσπαγε τη σύνταξη της JS.
           REPORT: ${{ needs.check.outputs.report }}
+          KIND: ${{ needs.check.outputs.kind }}
         with:
           script: |
-            const title = 'Η παραγωγή δεν απαντά σωστά';
+            // ΔΥΟ ΤΙΤΛΟΙ, ΓΙΑΤΙ ΕΙΝΑΙ ΔΥΟ ΔΙΑΦΟΡΕΤΙΚΑ ΠΡΟΒΛΗΜΑΤΑ. Το ένα λέει
+            // «τρέξε, το site έπεσε»· το άλλο «η μέτρηση κοιτάει αλλού, το site
+            // μπορεί να είναι μια χαρά». Με κοινό τίτλο, το δεύτερο στέλνει τον
+            // αναγνώστη να ψάξει βλάβη που δεν υπάρχει — και την επόμενη φορά
+            // δεν ανοίγει καν το issue.
+            const wall = process.env.KIND === 'wall';
+            const title = wall
+              ? 'Ο έλεγχος υγείας κοιτάει λάθος διεύθυνση'
+              : 'Η παραγωγή δεν απαντά σωστά';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const report = (process.env.REPORT || '').trim();
             const body = [
-              'Ο αυτόματος έλεγχος υγείας βρήκε ότι **δημόσιες σελίδες δεν απαντούν σωστά**.',
+              wall
+                ? 'Ολες οι δημόσιες διαδρομές απάντησαν **200 χωρίς το σήμα της μάρκας**. Αυτή η υπογραφή δεν ανήκει σε βλάβη — ανήκει σε σελίδα ΜΠΡΟΣΤΑ από το site: login του Vercel, parked domain, φάντασμα CDN. Πιθανότατα η παραγωγή είναι μια χαρά και ο έλεγχος κοιτάει διεύθυνση deployment, που το Vercel προστατεύει με SSO. Λύση: όρισε το secret `HEALTH_BASE_URL` στο δημόσιο domain.'
+                : 'Ο αυτόματος έλεγχος υγείας βρήκε ότι **δημόσιες σελίδες δεν απαντούν σωστά**.',
               '',
-              'Προσοχή: αυτό δεν σημαίνει απαραίτητα ότι το CI είναι κόκκινο. Η διακοπή του',
-              'Ιουλίου 2026 συνέβη με απολύτως πράσινο CI — το σφάλμα ήταν στην απόδοση (SSR).',
+              wall ? '' : 'Προσοχή: αυτό δεν σημαίνει απαραίτητα ότι το CI είναι κόκκινο. Η διακοπή του',
+              wall ? '' : 'Ιουλίου 2026 συνέβη με απολύτως πράσινο CI — το σφάλμα ήταν στην απόδοση (SSR).',
               '',
               report ? '```\n' + report + '\n```' : '_Η αναφορά δεν είναι διαθέσιμη — δες το log του run._',
               '',

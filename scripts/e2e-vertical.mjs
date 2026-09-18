@@ -61,9 +61,22 @@ for (const [w, h] of WIDTHS) {
 await browser.close()
 
 const base = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, 'utf8')) : null
+// ── Η ΕΝΤΟΛΗ ΠΟΥ ΑΠΑΙΤΟΥΣΕ ΓΡΑΜΜΕΝΟ ΛΟΓΟ ΤΟΝ ΕΣΒΗΝΕ ──────────────────────────
+// Η «σημείωση» της βάσης κρατά ΟΛΟ το ιστορικό των αποφάσεων: κάθε φορά που μια
+// καρτέλα μάκρυνε επίτηδες: γιατί, με τι μέτρηση. Ο κανόνας το λέει ρητά —
+// «κάθε άνοδος θέλει γραμμένο λόγο εδώ».
+//
+// Και το `UPDATE_BASELINE` έγραφε ΜΟΝΟ τις μετρήσεις, οπότε η πρώτη εκτέλεση
+// μετά από κάθε συνειδητή απόφαση έσβηνε το ιστορικό ΟΛΩΝ των προηγούμενων.
+// Πιάστηκε στα πρακτά: δέκα καταγραμμένες αποφάσεις τεσσάρων ημερών χάθηκαν σε
+// μία εντολή και επέστρεψαν μόνο επειδή τις είδε το `git diff`.
+//
+// Η σημείωση μεταφέρεται πλέον αυτούσια. Ο λόγος της νέας ανόδου γράφεται από
+// τον άνθρωπο, στο ίδιο πεδίο, ΜΕΤΑ την εκτέλεση.
 if (!base || process.env.UPDATE_BASELINE) {
-  writeFileSync(BASELINE, JSON.stringify(measured, null, 2) + '\n')
-  console.log(`✓ η βάση γράφτηκε: ${Object.keys(measured).length} μετρήσεις`)
+  const simeiosi = base && base['σημείωση'] ? { 'σημείωση': base['σημείωση'] } : {}
+  writeFileSync(BASELINE, JSON.stringify({ ...measured, ...simeiosi }, null, 2) + '\n')
+  console.log(`✓ η βάση γράφτηκε: ${Object.keys(measured).length} μετρήσεις${simeiosi['σημείωση'] ? ', η σημείωση κρατήθηκε' : ''}`)
   process.exit(0)
 }
 

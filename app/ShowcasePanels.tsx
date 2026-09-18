@@ -128,8 +128,8 @@ export const PanelFX = () => (
       /* Σε μία στήλη το subgrid δεν χρειάζεται: κάθε δείκτης είναι μία σειρά με
          την ετικέτα αριστερά και τον αριθμό δεξιά. Η δήλωση επαναφέρεται ρητά,
          αλλιώς το «grid-row: span 2» θα άφηνε κενές σειρές ανάμεσά τους. */
-      .lp-kpis { grid-template-columns: 1fr !important; grid-template-rows: none !important; gap: 8px !important; }
-      .lp-kpis > * { display: flex !important; grid-row: auto !important; align-items: baseline; justify-content: space-between; gap: 12px; text-align: left !important; padding: 11px 14px !important; }
+      .lp-kpis { grid-template-columns: 1fr !important; grid-template-rows: none !important; gap: 6px !important; }
+      .lp-kpis > * { display: flex !important; grid-row: auto !important; align-items: baseline; justify-content: space-between; gap: 12px; text-align: left !important; padding: 10px 12px !important; }
       .lp-kpis > * > div:first-child { padding-bottom: 0 !important; }
     }
     .lp-rail { display: flex; }
@@ -163,7 +163,7 @@ export function PanelDashboard() {
           </div>
         ))}
       </div>
-      <div style={{ flex: 1, minWidth: 0, containerType: 'inline-size', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ flex: 1, minWidth: 0, containerType: 'inline-size', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* ═══ ΤΟ ΠΟΣΟ ΕΒΓΑΙΝΕ ΕΞΩ ΑΠΟ ΤΟ ΠΛΑΚΙΔΙΟ ═════════════════════════════
             ΤΙ ΣΥΝΕΒΑΙΝΕ. Το «1.250,00€» είναι δέκα χαρακτήρες· τα άλλα δύο
             πλακίδια έχουν πέντε και τρεις. Με μέγεθος δεμένο στο ΠΛΑΤΟΣ ΟΘΟΝΗΣ
@@ -228,8 +228,8 @@ export function PanelDashboard() {
             </div>
           ))}
         </div>
-        <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, padding: '16px 16px 14px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, padding: '14px 14px 12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontSize: 12, fontWeight: 700 }}>Έσοδα ανά μήνα</div>
             {/* ΗΤΑΝ ΠΡΑΣΙΝΟ ΜΕ ΤΡΙΓΩΝΟ. Ο κανόνας του προϊόντος είναι ένας: καμία
                 σημασιολογική χρήση πράσινου, καμία επιβράβευση με χρώμα. Η
@@ -237,7 +237,17 @@ export function PanelDashboard() {
                 μετράει. */}
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>+12% φέτος</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(4px, 1.2vw, 9px)', height: 92 }}>
+          {/* ═══ ΤΟ ΠΑΝΕΛ ΞΕΧΕΙΛΙΖΕ ΑΠΟ ΤΟ ΠΛΑΙΣΙΟ, ΚΑΙ ΤΟ ΓΡΑΦΗΜΑ ΗΤΑΝ ΤΟ ΒΑΡΥ
+              Ολο το πάνελ ζητούσε 395 εικονοστοιχεία εκεί που το πλαίσιο δίνει
+              348,8 (Chromium, 1440×790): η πρόταση κοβόταν από κάτω. Τα 46 που
+              λείπουν βγαίνουν από γεμίσματα ΚΑΙ από αυτό το ύψος.
+
+              ΓΙΑΤΙ ΟΙ ΜΠΑΡΕΣ ΚΑΙ ΟΧΙ ΚΑΤΙ ΑΛΛΟ. Είναι το μόνο νούμερο εδώ μέσα
+              που δεν κουβαλά κείμενο: δώδεκα μπάρες σε 68 αντί για 92 δείχνουν
+              ακριβώς την ίδια καμπύλη με την ίδια κλίση — η ψηλότερη πέφτει από
+              83 σε 61 και η χαμηλότερη από 39 σε 29, δηλαδή η αναλογία μένει.
+              Κόβοντας αντ' αυτού γραμματοσειρές ή γραμμές θα έφευγε πληροφορία. */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(4px, 1.2vw, 9px)', height: 68 }}>
             {months.map((m, i) => (
               <div key={i} className="lp-grow lp-vbar" style={{ animationDelay: `${i * 0.04}s`, flex: 1, height: `${m}%`, borderRadius: '4px 4px 0 0', background: i === months.length - 1 ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 34%, transparent)' }} />
             ))}
@@ -251,7 +261,7 @@ export function PanelDashboard() {
             νούμερο εκεί μέσα με νόημα για αυτόν και ήταν το πρώτο που κόβαμε.
             Το κουτί είναι μία σειρά με εικονίδιο και κείμενο: αναδιπλώνεται
             μόνο του, δεν χρειάζεται απόκρυψη. */}
-        <div className="lp-live" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 22%, transparent)', borderRadius: T.radius.popup, padding: '12px 14px' }}>
+        <div className="lp-live" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 22%, transparent)', borderRadius: T.radius.popup, padding: '11px 13px' }}>
           <div style={{ width: 26, height: 26, borderRadius: T.radius.chip, background: 'var(--accent)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7z" /></svg>
           </div>

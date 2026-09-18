@@ -33,6 +33,7 @@ import { AUDIT, LAYOUT_BUG } from './rendered/layout.mjs';
 import { MEASURE, CONTRAST_BUG } from './rendered/contrast.mjs';
 import { NO_CARET, FOCUSABLE, measureFocus } from './rendered/focus.mjs';
 import { abortIfStyleless } from './lib/served-css.mjs';
+import { installPaint } from './lib/paint.mjs';
 
 import { readFileSync } from 'node:fs';
 const PROVE = process.argv.includes('--prove');
@@ -79,6 +80,16 @@ const browser = await chromium.launch({ executablePath: chromePath(), args: ['--
 await abortIfStyleless(browser, BASE);
 
 // ═══ 1. ΔΙΑΤΑΞΗ, ΣΕ ΚΑΘΕ ΠΑΡΑΘΥΡΟ ══════════════════════════════════════════
+// ΕΝΑ ΘΕΜΑ ΦΤΑΝΕΙ ΕΔΩ, ΚΑΙ ΕΙΝΑΙ ΜΕΤΡΗΜΕΝΟ ΟΤΙ ΦΤΑΝΕΙ. Η αντίθεση παρακάτω
+// τρέχει δύο φορές, μία ανά θέμα, γιατί το χρώμα αλλάζει με το θέμα. Η
+// ΔΙΑΤΑΞΗ όχι: μετρήθηκε (15/09/2026) ολόκληρος ο AUDIT σε 12 δημόσιες
+// σελίδες × 3 πλάτη (390, 820, 1440) × 2 θέματα — 0 ευρήματα και στα δύο,
+// 0 διαφορές ανάμεσά τους. Δεύτερο πέρασμα εδώ θα διπλασίαζε τον χρόνο
+// αυτής της δουλειάς για μετρημένα μηδέν νέα ευρήματα.
+//
+// ΤΟ ΙΔΙΟ ΠΕΙΡΑΜΑ ΧΩΡΙΣ ΤΟΝ `installPaint` ΕΒΓΑΛΕ 72 ΕΥΡΗΜΑΤΑ. Ολα ψεύτικα:
+// στοιχεία πιασμένα στη μέση της κίνησης αποκάλυψης. Οποιος μετρά διάταξη
+// χωρίς να παγώσει πρώτα την κίνηση, μετρά τον χρόνο του, όχι τη σελίδα.
 console.log('\n╔═══ ΔΙΑΤΑΞΗ ═══════════════════════════════════════════════');
 for (const [sname, w, h] of SIZES) {
   const touch = w < 1024;
@@ -86,6 +97,7 @@ for (const [sname, w, h] of SIZES) {
     // Το .lp-reveal οδηγείται από την κύλιση· με σβηστή κίνηση η διάταξη είναι
     // ακίνητη και μετρήσιμη. Είναι πραγματική διαδρομή χρήστη, όχι παράκαμψη.
     const p = await browser.newPage({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 700, reducedMotion: 'reduce' });
+    await p.addInitScript(installPaint);
     try {
       await p.goto(BASE + path, { waitUntil: 'networkidle', timeout: 30000 });
       await dismissConsent(p);
@@ -106,6 +118,7 @@ for (const [sname, w, h] of SIZES.filter(s => s[1] <= 1280)) {
   const touch = w < 1024;
   for (const c of BENCH) {
     const p = await browser.newPage({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 700, reducedMotion: 'reduce' });
+    await p.addInitScript(installPaint);
     try {
       await p.goto(benchUrl(c, 30), { waitUntil: 'load', timeout: 30000 });
       await p.waitForTimeout(1500);

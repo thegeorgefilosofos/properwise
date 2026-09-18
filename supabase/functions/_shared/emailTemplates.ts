@@ -16,14 +16,28 @@
 import { APP_URL } from './site.ts';
 export type Plan = 'free' | 'individual' | 'professional';
 
+// ═══ ΜΙΑ ΠΑΛΕΤΑ, ΔΥΟ ΘΕΜΑΤΑ ═══════════════════════════════════════════════
+// Τα ονόματα είναι τα ίδια με τις κλάσεις που τυπώνει το κέλυφος: ό,τι γράφει
+// `color:${INK}` παίρνει `class="ink"` — και η σκοτεινή εκδοχή του ορίζεται ΜΙΑ
+// φορά στο <style>. Χωρίς αυτή τη σύμβαση, σκοτεινό θέμα σημαίνει να κυνηγάς
+// 118 πρότυπα ένα ένα.
 const ACCENT = '#1a73e8';
-const INK = '#111111';
-const MUTE = '#5f6368';
-const FAINT = '#80868b';
+const INK = '#1d1d1f';
+const TEXT = '#4a4f55';
+const MUTE = '#6b7176';
+const FAINT = '#8a9099';
+const RULE = '#e8e8ed';
 const DEFAULT_APP = APP_URL;
 
-// Η φωνή του προϊόντος: το tagline της landing, υπογραφή σε ΚΑΘΕ email (ομοιομορφία + brand awareness).
-export const BRAND_TAGLINE = 'Το ακίνητό σου, υπό έλεγχο.';
+// Το πλάτος του μηνύματος. 560 για τα μηνύματα προϊόντος, που κουβαλούν
+// πίνακες (καταστάσεις, υπενθυμίσεις, ημερολόγιο)· 480 για μονής πράξης.
+const WIDTH = 560;
+
+// ΤΟ ΣΥΝΘΗΜΑ ΕΦΥΓΕ ΑΠΟ ΤΟ ΥΠΟΣΕΛΙΔΟ. Τυπωνόταν σε καθένα από τα 118 μηνύματα,
+// σε μπλε και έντονο, κάτω από κάθε ειδοποίηση λήξης ασφαλιστηρίου. Καμία από
+// τις εταιρείες που στέλνουν τα καλύτερα email δεν επαναλαμβάνει σύνθημα σε
+// συναλλακτικό μήνυμα: το υποσέλιδο λέει ΠΟΙΟΣ στέλνει και ΠΩΣ σταματάς να
+// λαμβάνεις. Το σύνθημα ζει στην αρχική, όπου έχει λόγο.
 
 const esc = (v: unknown): string =>
   String(v ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] || c));
@@ -53,9 +67,9 @@ export const PLAN_LABEL: Record<Plan, string> = {
 
 // ── Δομικά κομμάτια σώματος (τυποποιημένα) ───────────────────────────────────
 export const p = (html: string): string =>
-  `<p style="margin:0 0 14px;font-size:14px;color:#3c4043;line-height:1.7;">${html}</p>`;
+  `<p class="tx" style="margin:0 0 14px;font-size:15px;color:${TEXT};mso-line-height-rule:exactly;line-height:25px;">${html}</p>`;
 export const h = (html: string): string =>
-  `<h1 style="margin:0 0 12px;font-size:21px;color:${INK};font-weight:700;letter-spacing:-0.2px;">${html}</h1>`;
+  `<h1 class="ink h1" style="margin:0 0 12px;font-size:22px;color:${INK};font-weight:600;letter-spacing:-0.2px;mso-line-height-rule:exactly;line-height:29px;">${html}</h1>`;
 // ΤΟ ΔΑΠΕΔΟ ΤΩΝ 11px ΙΣΧΥΕΙ ΚΑΙ ΕΔΩ. Η εφαρμογή δεν τυπώνει κείμενο κάτω από 11
 // εικονοστοιχεία και το επιβάλλει ο guard-type-floor. Το email είναι κι αυτό
 // οθόνη και μάλιστα διαβάζεται σχεδόν πάντα σε κινητό: το 10,5 ήταν το
@@ -67,21 +81,84 @@ export const h = (html: string): string =>
 // αποτέλεσμα: τρία διαφορετικά μεγέθη (10,5 · 11 · 11 με monospace) και ωμό
 // ελληνικό λεκτικό κάτω από `text-transform:uppercase`, δηλαδή «ΛΗΞΙΠΡΌΘΕΣΜΟ
 // ΕΝΟΊΚΙΟ» με τόνο, κάθε πρωί στις 06:00.
-export const eyebrow = (text: string, color: string = ACCENT): string =>
-  `<p style="margin:0 0 6px;font-size:11px;color:${color};text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">${esc(grUp(text))}</p>`;
+export const eyebrow = (text: string, color?: string): string =>
+  `<p class="${color ? '' : 'ac'}" style="margin:0 0 7px;font-size:11px;color:${color || ACCENT};text-transform:uppercase;letter-spacing:0.09em;font-weight:700;mso-line-height-rule:exactly;line-height:16px;">${esc(grUp(text))}</p>`;
+// Η ΚΟΥΚΙΔΑ ΚΑΘΕΤΑΙ ΣΤΗ ΜΕΣΗ ΤΗΣ ΠΡΩΤΗΣ ΣΕΙΡΑΣ, ΚΑΙ ΤΟ ΝΟΥΜΕΡΟ ΒΓΑΙΝΕΙ ΑΠΟ
+// ΤΟ ΔΙΑΣΤΙΧΟ. Με ίδιο γέμισμα σε κουκκίδα και κείμενο, η κουκκίδα έπεφτε
+// οκτώ εικονοστοιχεία ψηλότερα από τη γραμμή που σημαδεύει — φαινόταν να
+// ανήκει στο κενό πάνω από αυτήν. Το κέντρο της πρώτης σειράς είναι
+// 3 (γέμισμα) + 12 (μισό διάστιχο) = 15· μείον το μισό της κουκκίδας, 12.
 export const bullets = (items: string[]): string =>
-  `<table style="width:100%;border-collapse:collapse;margin:0 0 8px;">${items.map(it => `<tr><td style="vertical-align:top;padding:5px 10px 5px 0;width:18px;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${ACCENT};"></span></td><td style="font-size:14px;color:#3c4043;line-height:1.6;padding:3px 0;">${it}</td></tr>`).join('')}</table>`;
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 8px;">${items.map(it => `<tr><td style="vertical-align:top;padding:12px 12px 6px 0;width:6px;font-size:0;line-height:0;"><span class="dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${ACCENT};"></span></td><td class="tx" style="font-size:15px;color:${TEXT};mso-line-height-rule:exactly;line-height:24px;padding:3px 0;">${it}</td></tr>`).join('')}</table>`;
+
+// ═══ ΤΟ ΚΟΥΜΠΙ ΣΤΟ OUTLOOK ΗΤΑΝ ΟΡΘΟΓΩΝΙΟ ═════════════════════════════════
+// Η μηχανή του Word αγνοεί `border-radius` και `padding` σε <a>: το κουμπί
+// έβγαινε γωνιακό και με λάθος ύψος σε κάθε Outlook 2007–2021, δηλαδή στο
+// μεγαλύτερο κομμάτι των επαγγελματικών παραληπτών. Το VML `roundrect`
+// ζωγραφίζει το ίδιο σχήμα με τα δικά του εργαλεία και το βλέπει ΜΟΝΟ το
+// Outlook· όλοι οι υπόλοιποι βλέπουν το <a> από κάτω.
 export const button = (label: string, url: string): string =>
-  `<div style="text-align:center;margin:24px 0 8px;"><a href="${esc(url)}" style="display:inline-block;background:${ACCENT};color:#fff;text-decoration:none;padding:12px 26px;border-radius:100px;font-weight:700;font-size:14px;">${esc(label)}</a></div>`;
+  `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 6px;"><tr><td>`
+  + `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${esc(url)}" style="height:46px;v-text-anchor:middle;width:220px;" arcsize="18%" stroke="f" fillcolor="${ACCENT}"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${esc(label)}</center></v:roundrect><![endif]-->`
+  + `<!--[if !mso]><!--><a class="btn" href="${esc(url)}" style="display:inline-block;background:${ACCENT};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:600;font-size:15px;mso-line-height-rule:exactly;line-height:20px;">${esc(label)}</a><!--<![endif]-->`
+  + `</td></tr></table>`;
+// Δύο ισότιμες πράξεις δίπλα δίπλα (π.χ. App Store · Google Play). Ξεχωριστή
+// από το `button` γιατί το VML δεν στοιχίζει δύο roundrect σε μία σειρά χωρίς
+// δικά τους κελιά — και επειδή εδώ καμία από τις δύο δεν είναι η κύρια.
+export const buttonPair = (a: { label: string; url: string }, b: { label: string; url: string }): string => {
+  const cell = (x: { label: string; url: string }, pad: string) =>
+    `<td style="padding:${pad};">`
+    + `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${esc(x.url)}" style="height:46px;v-text-anchor:middle;width:150px;" arcsize="18%" stroke="f" fillcolor="${INK}"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${esc(x.label)}</center></v:roundrect><![endif]-->`
+    + `<!--[if !mso]><!--><a class="btn2" href="${esc(x.url)}" style="display:inline-block;background:${INK};color:#ffffff;text-decoration:none;padding:13px 22px;border-radius:8px;font-weight:600;font-size:15px;mso-line-height-rule:exactly;line-height:20px;">${esc(x.label)}</a><!--<![endif]-->`
+    + `</td>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 6px;"><tr>${cell(a, '0 10px 0 0')}${cell(b, '0')}</tr></table>`;
+};
+
+// Δευτερεύουσα διαδρομή: κείμενο-σύνδεσμος κάτω από την κύρια πράξη.
+export const linkLine = (label: string, url: string): string =>
+  `<p style="margin:14px 0 0;"><a class="lnk" href="${esc(url)}" style="font-size:14px;color:${ACCENT};text-decoration:none;font-weight:600;">${esc(label)}</a></p>`;
+
 export const note = (html: string): string =>
-  `<p style="margin:16px 0 0;font-size:12px;color:${MUTE};line-height:1.6;">${html}</p>`;
+  `<p class="mu" style="margin:16px 0 0;font-size:13px;color:${MUTE};mso-line-height-rule:exactly;line-height:21px;">${html}</p>`;
+
+// Λεπτή γραμμή. Την έγραφε καθεμία από τις εννέα functions με δικό της χρώμα.
+export const divider = (margin = '22px 0'): string =>
+  `<div class="rule" style="height:1px;background:${RULE};line-height:1px;font-size:0;margin:${margin};">&nbsp;</div>`;
+
+// Τονισμένο κουτί (υπενθύμιση, προειδοποίηση, σύνοψη). Εννέα αντίγραφα του
+// ίδιου σχήματος ζούσαν μέσα στις functions, με τρία διαφορετικά ραδιόσχημα.
+export const callout = (html: string, tone: 'accent' | 'alert' = 'accent'): string => {
+  const alert = tone === 'alert';
+  const fill = alert ? 'rgba(217,48,37,.06)' : 'rgba(26,115,232,.06)';
+  const edge = alert ? 'rgba(217,48,37,.24)' : 'rgba(26,115,232,.22)';
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="${alert ? 'box-alert' : 'box'}" style="border-collapse:separate;background:${fill};border:1px solid ${edge};border-radius:10px;margin:0 0 18px;"><tr><td style="padding:15px 17px;">${html}</td></tr></table>`;
+};
+
+// Σειρά πίνακα: τίτλος + δεύτερη γραμμή αριστερά, ποσό δεξιά. Το ίδιο σχήμα
+// χρησιμοποιούν υπενθυμίσεις, καταστάσεις, ημερολόγιο και ειδοποιήσεις.
+// ΤΟ ΠΟΣΟ ΣΤΟΙΧΙΖΕΤΑΙ ΜΕ ΤΟΝ ΤΙΤΛΟ, ΟΧΙ ΜΕ ΤΟ ΚΕΝΤΡΟ ΤΗΣ ΣΕΙΡΑΣ. Με
+// `vertical-align:middle` το ποσό έπεφτε ανάμεσα στις δύο αριστερές γραμμές,
+// δηλαδή σε καμία από τις δύο: η στήλη των αριθμών διαβαζόταν μισή σειρά πιο
+// χαμηλά από τη στήλη των ονομάτων. Πάνω, με το ΙΔΙΟ διάστιχο, οι δύο βάσεις
+// πέφτουν η μία στην άλλη και η σειρά διαβάζεται σαν γραμμή λογαριασμού.
+export const dataRow = (title: string, meta: string, right: string): string =>
+  `<tr>`
+  + `<td class="rule-b" style="padding:11px 0;border-bottom:1px solid ${RULE};vertical-align:top;">`
+  + `<span class="ink" style="display:block;font-size:14px;color:${INK};font-weight:600;mso-line-height-rule:exactly;line-height:20px;">${esc(title)}</span>`
+  + (meta ? `<span class="fa" style="display:block;font-size:12px;color:${FAINT};mso-line-height-rule:exactly;line-height:18px;">${esc(meta)}</span>` : '')
+  + `</td>`
+  + `<td class="rule-b" style="padding:11px 0;border-bottom:1px solid ${RULE};text-align:right;vertical-align:top;">`
+  + `<span class="ink" style="font-size:14px;color:${INK};font-weight:600;mso-line-height-rule:exactly;line-height:20px;">${right}</span>`
+  + `</td></tr>`;
+export const dataTable = (rows: string): string =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 6px;">${rows}</table>`;
 // Οπτικό «ήρωας»: ένα μεγάλο νούμερο (ποσό, ποσοστό, πληρότητα). Email-safe (table +
 // inline styles, χωρίς εικόνες/SVG), δουλεύει παντού, με premium fintech αίσθηση.
 export const heroStat = (value: string, label: string): string =>
-  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:2px 0 20px;">`
-  + `<tr><td style="text-align:center;padding:2px 0 0;">`
-  + `<div style="font-size:40px;line-height:1;font-weight:800;color:${ACCENT};letter-spacing:-1px;">${esc(value)}</div>`
-  + `<div style="font-size:11.5px;color:${MUTE};text-transform:uppercase;letter-spacing:.09em;margin-top:8px;font-weight:600;">${esc(grUp(label))}</div>`
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:2px 0 22px;">`
+  + `<tr><td style="padding:2px 0 0;">`
+  + `<div class="ink" style="font-size:40px;mso-line-height-rule:exactly;line-height:44px;font-weight:700;color:${INK};letter-spacing:-1.2px;">${esc(value)}</div>`
+  + `<div class="fa" style="font-size:11px;color:${FAINT};text-transform:uppercase;letter-spacing:.1em;margin-top:7px;font-weight:700;mso-line-height-rule:exactly;line-height:16px;">${esc(grUp(label))}</div>`
   + `</td></tr></table>`;
 // Μόνο το μικρό όνομα (πιο ζεστό): «Μαρία Παπαδοπούλου» → «Μαρία».
 export const firstNameOf = (name?: string): string => (name || '').trim().split(/\s+/)[0] || '';
@@ -103,42 +180,106 @@ export const greeting = (name?: string): string => {
  * καινούριο όνομα και χρειάστηκε να βρεθούν ένα ένα.
  */
 export const emailHeader = (): string =>
-  `<div style="margin-bottom:22px;">`
-  + `<span style="font-size:18px;font-weight:800;letter-spacing:0.07em;color:${INK};">PROPERWISE</span>`
-  + `</div>`;
+  `<a href="${APP_URL}" style="text-decoration:none;display:inline-block;line-height:1;">`
+  + `<img class="logo-light" src="${APP_URL}/brand/properwise-logotypo-skouro.png" alt="PROPERWISE" height="26" style="display:block;border:0;outline:none;text-decoration:none;height:26px;width:auto;">`
+  + `<img class="logo-dark" src="${APP_URL}/brand/properwise-logotypo-lefko.png" alt="PROPERWISE" height="26" style="display:none;border:0;outline:none;text-decoration:none;height:26px;width:auto;">`
+  + `</a>`
+  + divider('20px 0 0');
 
-// ── ΤΟ ΣΗΜΑ ΣΤΟ EMAIL ΕΙΝΑΙ Η ΛΕΞΗ, ΚΑΙ ΟΧΙ ΑΠΟ ΤΕΜΠΕΛΙΑ ────────────────────
-// Το κέλυφος ζωγράφιζε το παλιό πλακίδιο με το «P» σε κάθε ένα από τα 118
-// μηνύματα. Στη μετονομασία σε PROPERWISE έμεινε, δηλαδή κάθε email έφευγε με
-// το προηγούμενο σήμα δίπλα στο καινούριο όνομα.
+// ── ΤΟ ΣΗΜΑ ΣΤΟ EMAIL: ΤΟ ΛΟΓΟΤΥΠΟ ΩΣ ΕΙΚΟΝΑ ─────────────────────────────────
+// Επί μήνες εδώ ζούσε ΜΟΝΟ η λέξη «PROPERWISE» — όχι από τεμπελιά. Το
+// ενσωματωμένο SVG το αφαιρεί το Gmail· μια εικόνα πάλι θέλει διεύθυνση που
+// απαντά, τομέας όμως δεν είχε αγοραστεί ακόμη. Τώρα υπάρχει (properwise.gr),
+// οπότε το λογότυπο επιστρέφει ΩΣ ΕΙΚΟΝΑ, φιλοξενούμενη στο ίδιο site
+// (public/brand), όπως ήδη κάνει το email επιβεβαίωσης παραλαβής.
 //
-// Το νέο σήμα είναι έντεκα μονοπάτια SVG. Το Gmail ΑΦΑΙΡΕΙ τα ενσωματωμένα SVG
-// από το σώμα του μηνύματος: το σήμα θα εξαφανιζόταν στο ένα από τα δύο
-// μεγαλύτερα προγράμματα αλληλογραφίας και μόνο εκεί, δηλαδή θα το βλέπαμε
-// τελευταίοι. Και εικόνα δεν γίνεται να σταλεί: το `<img>` θέλει διεύθυνση που
-// απαντά και τομέας δεν έχει αγοραστεί ακόμη.
-//
-// Μένει η λέξη, με το βάρος και το αραίωμά της. Φτάνει παντού και είναι το
-// ίδιο brand. Οταν υπάρξει τομέας, μπαίνει `<img>` με το icon-192.png και το
-// σήμα επιστρέφει και εδώ.
+// ΔΥΟ ΕΚΔΟΧΕΣ, ΓΙΑ ΦΩΤΕΙΝΟ ΚΑΙ ΓΙΑ ΣΚΟΤΕΙΝΟ. Το κέλυφος γυρίζει σε σκούρο φόντο
+// στο dark mode («.bg»), οπότε ένα σκούρο σήμα θα χανόταν. Η «logo-light» (σκούρο
+// λογότυπο) δείχνει στο φωτεινό· η «logo-dark» (λευκό) στο σκοτεινό — με τον ΙΔΙΟ
+// μηχανισμό (prefers-color-scheme + [data-ogsc]) που αλλάζει ήδη τα χρώματα. Το
+// alt=«PROPERWISE» μένει ως εφεδρεία όταν ο παραλήπτης μπλοκάρει τις εικόνες.
 // ── Το ΜΟΝΑΔΙΚΟ branded κέλυφος ──────────────────────────────────────────────
 export function emailShell(opts: {
-  bodyHtml: string; preheader?: string; unsubUrl?: string; footerNote?: string; hero?: string;
+  bodyHtml: string; preheader?: string; unsubUrl?: string; footerNote?: string; hero?: string; width?: number;
 }): string {
+  const w = opts.width || WIDTH;
+  // ΤΟ ΠΡΟΘΕΜΑ ΕΙΝΑΙ Η ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΣΤΗ ΛΙΣΤΑ, ΚΑΙ ΗΤΑΝ ΑΓΕΜΙΣΤΗ. Χωρίς
+  // γέμισμα, ο πελάτης αλληλογραφίας τραβά ό,τι βρει μετά — δηλαδή τη λέξη
+  // PROPERWISE και το κείμενο του υποσέλιδου — και τα κολλά στην προεπισκόπηση.
   const pre = opts.preheader
-    ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(opts.preheader)}</div>`
+    ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(opts.preheader)}${'&#847;&zwnj;&nbsp;'.repeat(10)}</div>`
     : '';
   const foot = opts.unsubUrl
-    ? `Λαμβάνεις αυτό το email ως χρήστης του PROPERWISE.<br><a href="${esc(opts.unsubUrl)}" style="color:${FAINT};text-decoration:underline;">Απεγγραφή από τα ενημερωτικά</a> · PROPERWISE`
-    : (opts.footerNote || 'PROPERWISE · Έξυπνη διαχείριση ακινήτων');
-  return `<!DOCTYPE html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-  <body style="margin:0;padding:0;background:#f1f3f4;font-family:-apple-system,'Inter',Arial,sans-serif;">${pre}
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    ${emailHeader()}
-    <div style="background:#fff;border:1px solid #e8eaed;border-top:3px solid ${ACCENT};border-radius:14px;padding:26px 26px 28px;">${opts.hero || ''}${opts.bodyHtml}</div>
-    <p style="text-align:center;font-size:12px;color:${ACCENT};font-weight:600;letter-spacing:.2px;margin:18px 0 5px;">${BRAND_TAGLINE}</p>
-    <p style="text-align:center;font-size:11px;color:${FAINT};margin:0 0 4px;line-height:1.6;">${foot}</p>
-  </div></body></html>`;
+    ? `Λαμβάνεις αυτό το email ως χρήστης του PROPERWISE. <a class="lnk" href="${esc(opts.unsubUrl)}" style="color:${MUTE};text-decoration:underline;">Απεγγραφή</a>`
+    : (opts.footerNote || 'properwise.gr');
+  return `<!DOCTYPE html>
+<html lang="el" dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
+<!--[if mso]><style type="text/css">body,table,td,a,p,div,span{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
+<style type="text/css">
+:root{color-scheme:light dark;supported-color-schemes:light dark;}
+body{margin:0;padding:0;width:100% !important;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}
+table{border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;}
+a{text-decoration:none;}
+img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}
+.logo-dark{display:none;}
+@media (prefers-color-scheme:dark){
+ .logo-light{display:none !important;}
+ .logo-dark{display:block !important;}
+ .bg{background:#16181c !important;}
+ .ink{color:#f2f3f5 !important;}
+ .tx{color:#c2c7cd !important;}
+ .mu{color:#9aa1a9 !important;}
+ .fa{color:#767c84 !important;}
+ .ac,.lnk{color:#6ba6f5 !important;}
+ .rule{background:#2b2f35 !important;}
+ .rule-b{border-bottom-color:#2b2f35 !important;}
+ .rule-t{border-top-color:#2b2f35 !important;}
+ .btn{background:#2f80ed !important;color:#ffffff !important;}
+ .btn2{background:#f2f3f5 !important;color:#16181c !important;}
+ .neg{color:#f28b82 !important;}
+ .pos{color:#81c995 !important;}
+ .box{background:rgba(107,166,245,.10) !important;border-color:rgba(107,166,245,.26) !important;}
+ .box-alert{background:rgba(242,139,130,.10) !important;border-color:rgba(242,139,130,.28) !important;}
+}
+[data-ogsc] .logo-light{display:none !important;}
+[data-ogsc] .logo-dark{display:block !important;}
+[data-ogsc] .ink{color:#f2f3f5 !important;}
+[data-ogsc] .tx{color:#c2c7cd !important;}
+[data-ogsc] .mu{color:#9aa1a9 !important;}
+[data-ogsc] .fa{color:#767c84 !important;}
+[data-ogsc] .ac,[data-ogsc] .lnk{color:#6ba6f5 !important;}
+[data-ogsc] .neg{color:#f28b82 !important;}
+[data-ogsc] .pos{color:#81c995 !important;}
+[data-ogsb] .bg{background:#16181c !important;}
+[data-ogsb] .rule{background:#2b2f35 !important;}
+[data-ogsb] .btn{background:#2f80ed !important;}
+[data-ogsb] .btn2{background:#f2f3f5 !important;}
+[data-ogsc] .btn2{color:#16181c !important;}
+@media only screen and (max-width:480px){
+ .pad{padding-left:20px !important;padding-right:20px !important;}
+ .h1{font-size:20px !important;line-height:27px !important;}
+}
+</style>
+</head>
+<body class="bg" style="margin:0;padding:0;background:#ffffff;">${pre}
+<table role="presentation" class="bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
+<tr><td align="center" class="pad" style="padding:44px 24px 52px;">
+<!--[if mso]><table role="presentation" width="${w}" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${w}px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<tr><td>${emailHeader()}</td></tr>
+<tr><td style="padding:30px 0 0;">${opts.hero || ''}${opts.bodyHtml}</td></tr>
+<tr><td style="padding:28px 0 0;">${divider('0 0 14px')}<p class="fa" style="margin:0;font-size:12px;color:${FAINT};mso-line-height-rule:exactly;line-height:19px;">${foot}</p></td></tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr></table>
+</body></html>`;
 }
 
 export interface Ctx { name?: string; appUrl?: string; unsubUrl?: string }

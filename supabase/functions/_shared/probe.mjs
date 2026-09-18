@@ -30,14 +30,32 @@ export const ERROR_MARKER = 'Κάτι πήγε στραβά';
 // σελίδα-φάντασμα του CDN) θα περνούσε για υγιής. Το ζητάμε στην αρχική, που
 // είναι και η σελίδα με το μεγαλύτερο ρίσκο: η μόνη δημόσια που αγγίζει
 // Supabase στο SSR.
+// ═══ ΕΞΙ ΑΠΟ ΤΙΣ ΕΠΤΑ ΔΕΝ ΕΛΕΓΧΑΝ ΤΙΠΟΤΑ ════════════════════════════════════
+// ΤΙ ΗΤΑΝ ΓΡΑΜΜΕΝΟ, ΚΑΙ ΤΙ ΣΗΜΑΙΝΕ ΣΤΗΝ ΠΡΑΞΗ. Μόνο η αρχική είχε `must`· οι
+// άλλες έξι είχαν `null`, δηλαδή περνούσαν με ΣΚΕΤΟ 200. Το ίδιο το σχόλιο από
+// πάνω λέει ότι «μια σελίδα μπορεί να γυρίσει 200 και να είναι σελίδα
+// σφάλματος» — και μετά έξι διαδρομές δέχονταν ακριβώς αυτό.
+//
+// ΤΟ ΣΦΑΛΜΑ ΔΕΝ ΕΙΝΑΙ ΘΕΩΡΗΤΙΚΟ· ΣΥΝΕΒΗ ΚΑΙ ΚΡΑΤΗΣΕ ΜΙΑ ΜΕΡΑ. Το Vercel έχει
+// προστασία SSO σε ΚΑΘΕ διεύθυνση εκτός των custom domains· ο έλεγχος
+// παίρνει τη διεύθυνση από το `environment_url` του deployment — δηλαδή μια
+// `*.vercel.app`. Ολες οι διαδρομές γύριζαν 200 με τη σελίδα σύνδεσης του
+// Vercel. Οι έξι ανέφεραν ✅ και μόνο η αρχική κοκκίνισε, με μήνυμα «η παραγωγή
+// δεν απαντά σωστά» — που ήταν ψέμα: η παραγωγή ήταν μια χαρά, ο έλεγχος
+// κοιτούσε πόρτα.
+//
+// ΤΟ ΣΗΜΑΔΙ ΕΙΝΑΙ ΕΝΑ ΚΑΙ ΤΟ ΙΔΙΟ ΓΙΑ ΟΛΕΣ. Ο τίτλος κάθε δημόσιας σελίδας
+// τελειώνει σε «· PROPERWISE» από το template του layout· η αρχική το έχει
+// στο σώμα της. Ενα σημάδι, επτά διαδρομές, καμία ξεχωριστή συντήρηση — και
+// καμία σελίδα-τοίχος δεν το περιέχει.
 export const ROUTES = [
   { path: '/', must: 'PROPERWISE' },
-  { path: '/login', must: null },
-  { path: '/signup', must: null },
-  { path: '/trust', must: null },
-  { path: '/privacy', must: null },
-  { path: '/terms', must: null },
-  { path: '/offline', must: null },
+  { path: '/login', must: 'PROPERWISE' },
+  { path: '/signup', must: 'PROPERWISE' },
+  { path: '/trust', must: 'PROPERWISE' },
+  { path: '/privacy', must: 'PROPERWISE' },
+  { path: '/terms', must: 'PROPERWISE' },
+  { path: '/offline', must: 'PROPERWISE' },
 ];
 
 // Τρεις προσπάθειες με 5 δευτερόλεπτα αναμονή: μια στιγμιαία αστοχία δικτύου,
@@ -84,7 +102,12 @@ export async function probe(base, route) {
   if (res.status !== 200) return { ok: false, status: res.status, ms, why: `κωδικός ${res.status}` };
   if (body.includes(ERROR_MARKER)) return { ok: false, status: 200, ms, why: `200 αλλά σελίδα σφάλματος («${ERROR_MARKER}»)` };
   if (body.length < MIN_CHARS) return { ok: false, status: 200, ms, why: `200 αλλά σχεδόν άδειο σώμα (${body.length} χαρακτήρες)` };
-  if (route.must && !body.includes(route.must)) return { ok: false, status: 200, ms, why: `200 αλλά λείπει το αναμενόμενο «${route.must}»` };
+  // Το `miss` είναι το ΜΗΧΑΝΑΓΝΩΣΤΟ σκέλος της ίδιας ετυμηγορίας: το `why`
+  // γράφεται για άνθρωπο, η διάγνωση παρακάτω δεν επιτρέπεται να το διαβάζει
+  // ψάχνοντας λέξεις μέσα σε πρόταση.
+  if (route.must && !body.includes(route.must)) {
+    return { ok: false, status: 200, ms, miss: true, why: `200 αλλά λείπει το αναμενόμενο «${route.must}»` };
+  }
 
   return { ok: true, status: 200, ms, why: '' };
 }
@@ -134,6 +157,20 @@ export function diagnose(results) {
   }
   if (failed.length === results.length && failed.every(({ res }) => res.status === '—')) {
     return { kind: 'no-network', failed };
+  }
+  // ═══ Ο ΤΟΙΧΟΣ ΔΕΝ ΕΙΝΑΙ ΒΛΑΒΗ ═══════════════════════════════════════════
+  // ΟΛΕΣ απαντούν 200 και σε ΚΑΜΙΑ δεν υπάρχει το σημάδι της μάρκας. Καμία
+  // πραγματική βλάβη δεν έχει αυτή την υπογραφή: μια σπασμένη έκδοση δίνει 500
+  // ή τη σελίδα σφάλματος, μια πεσμένη βάση αφήνει τις στατικές όρθιες. Αυτό
+  // που έχει ακριβώς αυτή την υπογραφή είναι μια σελίδα ΜΠΡΟΣΤΑ από το site:
+  // login του Vercel, parked domain, σελίδα-φάντασμα του CDN.
+  //
+  // ΓΙΑΤΙ ΕΧΕΙ ΔΙΚΟ ΤΟΥ ΕΙΔΟΣ ΚΑΙ ΔΕΝ ΜΠΑΙΝΕΙ ΣΤΟ «broken». Το μήνυμα «η
+  // παραγωγή δεν απαντά σωστά» για site που δουλεύει είναι λάθος κατηγορία —
+  // ένα ειδοποιητικό που κατηγορεί λάθος το μαθαίνει ο άνθρωπος να το αγνοεί.
+  // Εδώ η απάντηση είναι «κοιτάς αλλού», με το πού να το λέει το μήνυμα.
+  if (failed.length === results.length && failed.every(({ res }) => res.status === 200 && res.miss)) {
+    return { kind: 'wall', failed };
   }
   return { kind: 'broken', failed };
 }

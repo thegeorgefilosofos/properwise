@@ -20,6 +20,7 @@ import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
 import { PlanMatrix } from '@/components/PlanMatrix';
+import { hy } from '@/components/Hyphen';
 
 const TITLE = 'Τι περιλαμβάνει κάθε πακέτο · PROPERWISE';
 const DESC =
@@ -73,9 +74,12 @@ export default function Page() {
             πίνακας από κάτω: η υπόσχεση έσπαγε σε δεύτερη σειρά με τέσσερις
             λέξεις μέσα της, ενώ δεξιά της έμενε άδειο μισό. Το μέτρο των 65
             χαρακτήρων φυλάει τις ΠΑΡΑΓΡΑΦΟΥΣ· εδώ είναι μία γραμμή. */}
-        <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>
-          Κάθε πακέτο ξεκινά με {TRIAL_DAYS} ημέρες δωρεάν δοκιμή.
-          {' '}Η χρέωση ξεκινά τον επόμενο μήνα και σταματά όποτε θέλεις, χωρίς κρυφές χρεώσεις.
+        {/* Πλήρης στοίχιση με συλλαβισμό (hy): σε τηλέφωνο η υπόσχεση τυλίγεται
+            σε 3–4 γραμμές, οπότε οι δύο άκρες κλείνουν στον ίδιο άξονα με τον
+            τίτλο και τον πίνακα — ίδια λογική με τις νομικές σελίδες. Σε φαρδιά
+            οθόνη μένει μία γραμμή και η στοίχιση δεν έχει τι να τεντώσει. */}
+        <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>
+          {hy(<>Κάθε πακέτο ξεκινά με {TRIAL_DAYS} ημέρες δωρεάν δοκιμή.{' '}Η χρέωση ξεκινά τον επόμενο μήνα και σταματά όποτε θέλεις, χωρίς κρυφές χρεώσεις.</>)}
         </p>
         <div style={{ marginTop: 'clamp(22px,3vw,34px)' }}><PlanMatrix /></div>
       </main>

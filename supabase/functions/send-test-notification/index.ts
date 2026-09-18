@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { NO_RESEND_KEY } from '../_shared/resendKey.ts'
-import { emailHeader, eyebrow } from '../_shared/emailTemplates.ts';
+import { emailShell, eyebrow, h, p, button, note } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { APP_URL } from '../_shared/site.ts'
 
@@ -31,19 +31,13 @@ const json = (body: unknown, status = 200) =>
 
 function testEmailHtml(): { subject: string; html: string } {
   const subject = 'Δοκιμαστική ειδοποίηση από το PROPERWISE'
-  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f3f4;font-family:-apple-system,'Inter',sans-serif;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    ${emailHeader()}
-    <div style="background:#ffffff;border:1px solid #e8eaed;border-radius:14px;padding:28px 24px;">
-      ${eyebrow('Δοκιμή')}
-      <h1 style="margin:0 0 12px;font-size:22px;color:#202124;font-weight:800;letter-spacing:-0.5px;">Οι ειδοποιήσεις σου δουλεύουν</h1>
-      <p style="margin:0;font-size:14px;color:#5f6368;line-height:1.6;">
-        Αυτό είναι ένα δοκιμαστικό email. Αν το βλέπεις, η διεύθυνσή σου είναι σωστή και θα λαμβάνεις κανονικά τις υπενθυμίσεις για ενοίκια, λογαριασμούς και γεγονότα του ημερολογίου σου.
-      </p>
-    </div>
-    <p style="text-align:center;font-size:11px;color:#80868b;margin-top:20px;">PROPERWISE · Δοκιμαστικό μήνυμα που ζήτησες από τις ρυθμίσεις.</p>
-  </div>
-  </body></html>`
+  const html = emailShell({
+    preheader: 'Η διεύθυνσή σου δουλεύει.',
+    footerNote: 'Δοκιμαστικό μήνυμα που ζήτησες από τις ρυθμίσεις. · properwise.gr',
+    bodyHtml: eyebrow('Δοκιμή')
+      + h('Οι ειδοποιήσεις σου δουλεύουν')
+      + p('Αυτό είναι ένα δοκιμαστικό email. Αν το βλέπεις, η διεύθυνσή σου είναι σωστή και θα λαμβάνεις κανονικά τις υπενθυμίσεις για ενοίκια, λογαριασμούς και γεγονότα του ημερολογίου σου.'),
+  })
   return { subject, html }
 }
 
@@ -57,23 +51,16 @@ function testEmailHtml(): { subject: string; html: string } {
  */
 function confirmEmailHtml(link: string, owner: string): { subject: string; html: string } {
   const subject = 'Επιβεβαίωση διεύθυνσης για υπενθυμίσεις PROPERWISE'
-  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f3f4;font-family:-apple-system,'Inter',sans-serif;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    ${emailHeader()}
-    <div style="background:#ffffff;border:1px solid #e8eaed;border-radius:14px;padding:28px 24px;">
-      <h1 style="margin:0 0 12px;font-size:22px;color:#202124;font-weight:800;letter-spacing:-0.5px;">Να στέλνουμε τις υπενθυμίσεις εδώ;</h1>
-      <p style="margin:0 0 16px;font-size:14px;color:#5f6368;line-height:1.6;">
-        Ο κάτοχος του λογαριασμού ${owner} όρισε αυτή τη διεύθυνση για τις υπενθυμίσεις του PROPERWISE: λογαριασμοί, ενοίκια και γεγονότα ημερολογίου.
-      </p>
-      <p style="margin:0 0 22px;font-size:14px;color:#5f6368;line-height:1.6;">
-        Αν το περιμένεις, επιβεβαίωσέ το. <strong style="color:#202124;">Αν όχι, αγνόησε αυτό το μήνυμα</strong>: χωρίς επιβεβαίωση δεν στέλνεται τίποτα άλλο σε αυτή τη διεύθυνση.
-      </p>
-      <a href="${link}" style="display:inline-block;background:#1a73e8;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:100px;font-weight:700;font-size:14px;">Επιβεβαίωση διεύθυνσης</a>
-      <p style="margin:18px 0 0;font-size:12px;color:#80868b;line-height:1.6;">Ο σύνδεσμος λήγει σε 48 ώρες.</p>
-    </div>
-    <p style="text-align:center;font-size:11px;color:#80868b;margin-top:20px;">PROPERWISE · Το μήνυμα στάλθηκε επειδή ζητήθηκε επιβεβαίωση αυτής της διεύθυνσης.</p>
-  </div>
-  </body></html>`
+  const html = emailShell({
+    preheader: 'Επιβεβαίωσε αυτή τη διεύθυνση για τις υπενθυμίσεις.',
+    footerNote: 'Το μήνυμα στάλθηκε επειδή ζητήθηκε επιβεβαίωση αυτής της διεύθυνσης. · properwise.gr',
+    bodyHtml: eyebrow('Επιβεβαίωση')
+      + h('Να στέλνουμε τις υπενθυμίσεις εδώ;')
+      + p(`Ο κάτοχος του λογαριασμού ${owner} όρισε αυτή τη διεύθυνση για τις υπενθυμίσεις του PROPERWISE: λογαριασμοί, ενοίκια και γεγονότα ημερολογίου.`)
+      + p('Αν το περιμένεις, επιβεβαίωσέ το. <strong class="ink" style="color:#1d1d1f;">Αν όχι, αγνόησε αυτό το μήνυμα</strong>: χωρίς επιβεβαίωση δεν στέλνεται τίποτα άλλο σε αυτή τη διεύθυνση.')
+      + button('Επιβεβαίωση διεύθυνσης', link)
+      + note('Ο σύνδεσμος λήγει σε 48 ώρες.'),
+  })
   return { subject, html }
 }
 

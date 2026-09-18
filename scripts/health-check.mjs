@@ -21,6 +21,7 @@
 // Τρέχει με σκέτο node (global fetch) — καμία εξάρτηση, ώστε να μπορεί να
 // τρέξει σε runner χωρίς `npm ci` και να μη σπάσει ποτέ από αναβάθμιση πακέτου.
 // ═══════════════════════════════════════════════════════════════════════════
+import { appendFileSync } from 'node:fs';
 import { ROUTES, ATTEMPTS, runHealth, diagnose } from '../supabase/functions/_shared/probe.mjs';
 
 // Η βάση URL έρχεται από το HEALTH_BASE_URL· το πρώτο όρισμα γραμμής εντολών
@@ -58,6 +59,16 @@ for (const { route, res } of results) {
 console.log('');
 
 const { kind, failed } = diagnose(results);
+
+// ═══ Η ΔΙΑΓΝΩΣΗ ΒΓΑΙΝΕΙ ΚΑΙ ΠΡΟΣ ΤΑ ΕΞΩ, ΟΧΙ ΜΟΝΟ ΣΤΟ LOG ═══════════════════
+// Το issue διακοπής είχε ΕΝΑΝ τίτλο για κάθε είδος αποτυχίας: «Η παραγωγή δεν
+// απαντά σωστά». Οταν η αιτία είναι ότι ο έλεγχος κοιτάει πόρτα με κλειδαριά,
+// αυτός ο τίτλος είναι λάθος κατηγορία — και ένα ειδοποιητικό που κατηγορεί
+// λάθος το μαθαίνει ο άνθρωπος να το αγνοεί. Το είδος περνά ως έξοδος του
+// βήματος, ώστε ο τίτλος να λέει την αλήθεια.
+if (process.env.GITHUB_OUTPUT) {
+  try { appendFileSync(process.env.GITHUB_OUTPUT, `kind=${kind}\n`); } catch { /* δεν είναι κρίσιμο */ }
+}
 if (kind === 'ok') {
   console.log(`✅ Και οι ${results.length} δημόσιες διαδρομές απαντούν σωστά.`);
   process.exit(0);
@@ -77,6 +88,14 @@ if (kind === 'wrong-address') {
   console.log('   μια σπασμένη έκδοση δίνει 500 ή σελίδα σφάλματος, όχι «δεν υπάρχει».');
   console.log(`   Πιθανότερη αιτία: η διεύθυνση ${BASE} δεν είναι η παραγωγή.`);
   console.log('   Έλεγξε το secret HEALTH_BASE_URL (βλ. docs/dev/health.md).');
+} else if (kind === 'wall') {
+  console.log('⚠  ΟΛΕΣ οι διαδρομές γύρισαν 200 και σε ΚΑΜΙΑ δεν βρέθηκε το σήμα της μάρκας.');
+  console.log('   Αυτό ΔΕΝ μοιάζει με βλάβη: μια σπασμένη έκδοση δίνει 500 ή σελίδα σφάλματος,');
+  console.log('   μια πεσμένη βάση αφήνει τις στατικές σελίδες όρθιες. Αυτή η υπογραφή ανήκει');
+  console.log('   σε σελίδα ΜΠΡΟΣΤΑ από το site: login του Vercel, parked domain, φάντασμα CDN.');
+  console.log(`   Πιθανότερη αιτία: το ${BASE} είναι διεύθυνση deployment («*.vercel.app») και`);
+  console.log('   το Vercel προστατεύει με SSO ό,τι δεν είναι custom domain.');
+  console.log('   Λύση: όρισε το secret HEALTH_BASE_URL στο δημόσιο domain (βλ. docs/dev/health.md).');
 } else if (kind === 'no-network') {
   console.log('⚠  Καμία διαδρομή δεν απάντησε καθόλου (σφάλμα δικτύου/DNS).');
   console.log(`   Είτε το ${BASE} δεν αναλύεται, είτε υπάρχει ολική διακοπή.`);

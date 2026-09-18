@@ -50,11 +50,26 @@ await build({
 
 const css = readFileSync(join(root, 'app/globals.css'), 'utf8');
 writeFileSync(join(out, 'globals.css'), css);
-writeFileSync(join(out, 'mobile.html'), `<!doctype html><html lang="el" data-mode="dark" data-theme="midnight"><head>
+// ═══ Ο ΠΑΓΚΟΣ ΕΒΛΕΠΕ ΕΝΑ ΑΠΟ ΤΑ ΕΞΙ ═══════════════════════════════════════
+// Η εφαρμογή έχει ΔΥΟ καταστάσεις (light, dark) επί ΤΡΙΑ θέματα (midnight,
+// obsidian, violet). Ο πάγκος έγραφε `data-mode="dark" data-theme="midnight"`
+// καρφωτά, οπότε ΚΑΙ ΟΙ ΟΚΤΩ σαρωτές του ταμπλό — διάταξη, αντίθεση,
+// στοίχιση, στόχοι αφής — έβλεπαν πάντα τον ίδιο έναν συνδυασμό. Το φωτεινό
+// θέμα, δηλαδή 39 σκηνές επί 22 συσκευές, δεν σαρώθηκε ποτέ.
+//
+// ΓΙΑΤΙ ΜΕΤΡΑΕΙ ΠΕΡΙΣΣΟΤΕΡΟ ΑΠ' ΟΣΟ ΦΑΙΝΕΤΑΙ. Η αντίθεση δεν κληρονομείται
+// από θέμα σε θέμα: το `--text-tertiary` πάνω σε `--bg-elevated` είναι άλλος
+// λόγος σε κάθε παλέτα. Ενας έλεγχος WCAG που τρέχει σε ΕΝΑ θέμα δεν λέει
+// τίποτα για τα άλλα πέντε — απλώς ακούγεται σαν να λέει.
+//
+// Η προεπιλογή μένει ό,τι ήταν, ώστε καμία υπάρχουσα μέτρηση να μη μετακινηθεί.
+const MODE = process.env.BENCH_MODE || 'dark';
+const THEME = process.env.BENCH_THEME || 'midnight';
+writeFileSync(join(out, 'mobile.html'), `<!doctype html><html lang="el" data-mode="${MODE}" data-theme="${THEME}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Πάγκος κινητού</title>
 <link rel="stylesheet" href="./globals.css">
 <style>html,body{margin:0;padding:0}</style>
 </head><body><script src="./mobile.js"></script></body></html>`);
 
-console.log('✓ ο πάγκος κινητού χτίστηκε στο .perf-bench/mobile.html');
+console.log(`✓ ο πάγκος κινητού χτίστηκε στο .perf-bench/mobile.html · ${MODE}/${THEME}`);

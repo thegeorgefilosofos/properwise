@@ -866,8 +866,12 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   const importIcal = async () => {
     if (!icalEvents || !icalPropertyId) return;
     setIcalBusy(true); setIcalMsg(null);
+    // ΙΔΙΟ ΦΙΛΤΡΟ ΜΕ ΤΟΝ ΣΥΓΧΡΟΝΙΣΜΟ, ΓΡΑΜΜΕΝΟ ΜΕ ΤΗΝ ΙΔΙΑ ΣΕΙΡΑ. Το
+    // supabase/functions/ical-sync φιλτράρει `!d.cancelled && (include_blocked
+    // || !d.blocked)`. Εδώ έλειπε το πρώτο σκέλος: το ίδιο ημερολόγιο έδινε
+    // δύο εισαγωγές από επικόλληση και μία από συγχρονισμό.
     const drafts = icalToStayDrafts(icalEvents, { propertyId: icalPropertyId, channel: icalChannel })
-      .filter(d => icalIncludeBlocked || !d.blocked);
+      .filter(d => !d.cancelled && (icalIncludeBlocked || !d.blocked));
     if (drafts.length === 0) { setIcalMsg({ text: 'Δεν υπάρχουν κρατήσεις προς εισαγωγή (μόνο μπλοκαρίσματα ημερομηνιών).', error: true }); setIcalBusy(false); return; }
     const clientId = await ensureChannelClient(icalChannel);
     if (!clientId) { setIcalMsg({ text: 'Σφάλμα δημιουργίας επισκέπτη καναλιού.', error: true }); setIcalBusy(false); return; }
@@ -1998,7 +2002,13 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               `icalOpen` το `icalToStayDrafts` ξανάτρεχε σε κάθε απόδοση της
               καρτέλας — το παράθυρο δεν αποπροσαρτάται πια, μόνο κρύβεται. */}
           {icalOpen && icalEvents && (() => {
-            const drafts = icalToStayDrafts(icalEvents, { propertyId: icalPropertyId || 'x', channel: icalChannel });
+            // Η ΠΡΟΕΠΙΣΚΟΠΗΣΗ ΔΕΙΧΝΕΙ ΟΣΑ ΘΑ ΜΠΟΥΝ, ΟΧΙ ΟΣΑ ΔΙΑΒΑΣΤΗΚΑΝ. Οι
+            // ακυρωμένες μετριούνται χωριστά και φαίνονται: ο ιδιοκτήτης που
+            // βλέπει «τρεις κρατήσεις» στο Airbnb και «δύο» εδώ πρέπει να
+            // καταλάβει γιατί, αλλιώς νομίζει ότι χάθηκε μία.
+            const oles = icalToStayDrafts(icalEvents, { propertyId: icalPropertyId || 'x', channel: icalChannel });
+            const akyromenes = oles.filter(d => d.cancelled);
+            const drafts = oles.filter(d => !d.cancelled);
             const bookings = drafts.filter(d => !d.blocked);
             const blocks = drafts.filter(d => d.blocked);
             const toImport = icalIncludeBlocked ? drafts : bookings;
@@ -2009,6 +2019,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                   {statTile('Κρατήσεις', String(bookings.length))}
                   {statTile('Μπλοκαρίσματα', String(blocks.length))}
                   {statTile('Νύχτες προς εισαγωγή', String(nights))}
+                  {akyromenes.length > 0 && statTile('Ακυρωμένες', String(akyromenes.length))}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
                   {toImport.slice(0, 40).map((d, i) => (

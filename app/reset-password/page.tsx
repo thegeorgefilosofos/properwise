@@ -152,7 +152,7 @@ export default function ResetPasswordPage() {
                 <Btn variant="primary" type="submit" field disabled={loading}>{loading ? 'Αποστολή…' : 'Στείλε σύνδεσμο'}</Btn>
               </form>
               <p style={{ fontSize: 13, marginTop: T.sp.xxl }}>
-                <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Επιστροφή στη σύνδεση</Link>
+                <Link href="/login" className="lp-link po-tap" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Επιστροφή στη σύνδεση</Link>
               </p>
             </>
           )}
@@ -162,7 +162,7 @@ export default function ResetPasswordPage() {
               {mailIcon}
               <h1 style={h2s}>Έλεγξε το email σου</h1>
               <p style={subs}>Αν υπάρχει λογαριασμός με αυτό το email, θα λάβεις σύνδεσμο επαναφοράς. Δες και τον φάκελο ανεπιθύμητων.</p>
-              <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>Επιστροφή στη σύνδεση</Link>
+              <Link href="/login" className="lp-link po-tap" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>Επιστροφή στη σύνδεση</Link>
             </div>
           )}
 

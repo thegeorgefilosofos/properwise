@@ -65,6 +65,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { T, TT, Btn, ChipToggle, Card, SecHdr, PageTitle, fixedCols, settingsField, feAuto, pageShell, Bar } from '@/components/Theme';
+import { hy } from '@/components/Hyphen';
 import { InfoHint, HintedText } from './InfoHint';
 import { SegmentControl } from './UIComponents';
 import { createClient } from '@/lib/supabase/client';
@@ -74,6 +75,7 @@ import { readCosts, EMPTY_PLAN, type PlanState } from '@/lib/data/plan';
 import { saved } from '@/components/dbWrite';
 import { notify, notifyOk } from '@/components/Toast';
 import { feSigned } from '@/lib/core/format';
+import { hyphenate } from '@/lib/core/hyphenate';
 import type { PropertyStatus } from '@/lib/property/status';
 import {
   planFor, groupSteps, vacancyCost, renovationLoan, saleEstimate,
@@ -138,14 +140,48 @@ const AXIS_CELL: CSSProperties = { color: 'var(--text-primary)', fontWeight: 600
  * άκυρο HTML — ροή μπλοκ μέσα σε ενσωματωμένο στοιχείο. Το `display: block`
  * δίνει το ίδιο οπτικό αποτέλεσμα χωρίς να παραβεί τη γραμματική.
  */
+/*
+ * ═══ ΤΟ `hy()` ΔΕΝ ΒΛΕΠΕΙ ΠΟΤΕ ΜΕΣΑ ΣΕ COMPONENT, ΚΑΙ ΓΙ' ΑΥΤΟ ΣΥΛΛΑΒΙΖΕΙ ΕΔΩ
+ *
+ * ΤΟ ΣΦΑΛΜΑ, ΦΩΤΟΓΡΑΦΗΜΕΝΟ ΑΠΟ ΤΟΝ ΙΔΙΟΚΤΗΤΗ. Η επεξήγηση πίσω από κάθε ⓘ
+ * έβγαινε με ποτάμια λευκού μέσα στην παράγραφο: «Υψηλότερο   ποσό   ανά
+ * διανυκτέρευση». Το κουτί είναι `po-just`, δηλαδή πλήρης στοίχιση — και η
+ * πλήρης στοίχιση ΧΩΡΙΣ συλλαβισμό δεν σπάει λέξη για να κλείσει τη γραμμή,
+ * τεντώνει τα κενά.
+ *
+ * ΜΕΤΡΗΜΕΝΟ ΣΤΟΝ ΠΑΓΚΟ, ΣΤΑ 750, ΜΕ ΤΗΝ ΕΠΕΞΗΓΗΣΗ ΑΝΟΙΧΤΗ:
+ *
+ *     μαλακά ενωτικά στο κείμενο          0
+ *     πλάτος κενού, διάμεσο             7,2 px
+ *     πλάτος κενού, p90                11,9 px
+ *     πλάτος κενού, μέγιστο            25,9 px
+ *
+ * Το φυσικό κενό της Inter σε αυτό το μέγεθος είναι περίπου 4,2. Δηλαδή το
+ * χειρότερο κενό ήταν ΕΞΙ ΦΟΡΕΣ το κανονικό.
+ *
+ * ΓΙΑΤΙ ΤΟ `hy()` ΔΕΝ ΤΟ ΕΠΙΑΣΕ, ΕΝΩ ΤΟ ΚΑΛΕΙ ΤΟ InfoHint. Το `hy()` διασχίζει
+ * `children`. Το σώμα της επεξήγησης δεν είναι children: είναι το στοιχείο
+ * `<Tip lead={…} rows={[…]} />`, όπου το κείμενο ζει σε PROPS. Το `hy()` βλέπει
+ * στοιχείο χωρίς `children`, το επιστρέφει αυτούσιο και προχωρά. Και δεν θα
+ * μπορούσε να κάνει αλλιώς: τρέχει ΠΡΙΝ την απόδοση, οπότε δεν υπάρχει ακόμη
+ * κείμενο να συλλαβίσει.
+ *
+ * Ο ΣΥΛΛΑΒΙΣΜΟΣ ΑΝΗΚΕΙ ΕΚΕΙ ΠΟΥ ΓΕΝΝΙΕΤΑΙ ΤΟ ΚΕΙΜΕΝΟ. Οποιο component αποδίδει
+ * δικό του λεκτικό μέσα σε στοιχισμένο κουτί, το συλλαβίζει το ίδιο. Δεν
+ * αλλάζει τίποτα άλλο: το `hyphenate` βάζει ΜΟΝΟ αόρατα U+00AD και ο
+ * περιηγητής σπάει μόνο εκεί που δεν χωράει.
+ *
+ * Οι ετικέτες (`k`) ΔΕΝ συλλαβίζονται: είναι κεφαλαία δύο ώς τριών λέξεων σε
+ * δική τους γραμμή, δεν στοιχίζονται πλήρως και δεν έχουν κενά να κλείσουν.
+ */
 function Tip({ lead, rows }: { lead?: string; rows?: readonly (readonly [string, string | undefined])[] }) {
   return (
     <>
-      {lead && <span style={{ display: 'block' }}>{lead}</span>}
+      {lead && <span style={{ display: 'block' }}>{hyphenate(lead)}</span>}
       {(rows ?? []).filter(([, v]) => v).map(([k, v]) => (
         <span key={k} style={{ display: 'block', marginTop: 8 }}>
           <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', display: 'block', marginBottom: 2 }}>{k}</span>
-          {v}
+          {hyphenate(v as string)}
         </span>
       ))}
     </>
@@ -162,8 +198,26 @@ function Tip({ lead, rows }: { lead?: string; rows?: readonly (readonly [string,
  * χωρίς κενό. Το πλάτος ζει στο φύλλο στυλ μαζί με το ερώτημα μέσων που το
  * καταργεί σε κινητό.
  */
+/*
+ * ΤΟ `textWrap: undefined` ΔΕΝ ΕΙΝΑΙ ΚΑΘΑΡΙΟΤΗΤΑ — ΕΙΝΑΙ Η ΜΟΝΗ ΓΡΑΦΗ ΠΟΥ ΔΟΥΛΕΥΕΙ.
+ *
+ * Το `TT.label` κουβαλά `textWrap: 'balance'`. Και το `text-wrap` ΕΙΝΑΙ
+ * συντομογραφία: γράφει `text-wrap-mode` ΚΑΙ `text-wrap-style`. Το
+ * `white-space: nowrap` της κλάσης γράφει το ΙΔΙΟ `text-wrap-mode`. Ενσωματωμένο
+ * στυλ νικά πάντα κλάση, άρα το `balance` γύριζε το mode πίσω σε `wrap` και το
+ * `nowrap` της `.plan-tag` ΔΕΝ ΙΣΧΥΣΕ ΠΟΤΕ, σε κανένα πλάτος.
+ *
+ * ΜΕΤΡΗΜΕΝΟ, ΣΕ ΚΑΘΕ ΣΚΗΝΗ ΚΑΙ ΣΕ ΤΡΙΑ ΠΛΑΤΗ: 30 ετικέτες με
+ * `white-space: normal` ενώ το φύλλο στυλ ζητούσε `nowrap` — στα 320, στα 640
+ * και στα 1.280. Ενας κανόνας γραμμένος, σχολιασμένος και νεκρός.
+ *
+ * Το `undefined` σβήνει την ιδιότητα από το ενσωματωμένο στυλ (ο React δεν
+ * εκπέμπει undefined), οπότε αποφασίζει η κλάση — που είναι και το σημείο όπου
+ * το ερώτημα μέσων αλλάζει γνώμη κάτω από τα 560. Ιδιο ιδίωμα με το
+ * `lineHeight: undefined` στο τέλος αυτού του αρχείου.
+ */
 const Tag = ({ children }: { children: ReactNode }) => (
-  <span className="plan-tag" style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.3 }}>
+  <span className="plan-tag" style={{ ...TT.label, textWrap: undefined, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.3 }}>
     {children}
   </span>
 );
@@ -608,18 +662,52 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
           </button>
           <div style={{ ...rail, flex: 1, opacity: last ? 0 : 1 }} />
         </div>
+        {/* ΜΙΑ ΣΤΗΛΗ, ΟΧΙ ΔΕΥΤΕΡΗ ΣΕΙΡΑ ΠΛΕΓΜΑΤΟΣ. Το κουμπί της πράξης μπήκε
+            πρώτα ως ξεχωριστό κελί με `gridColumn: 2`: αυτό ανοίγει ΔΕΥΤΕΡΗ
+            σειρά, η στήλη της ράγας μένει άδεια εκεί και η συνεχής γραμμή
+            σπάει ακριβώς στο βήμα που κοιτάζει ο χρήστης — φωτογραφημένο στα
+            375. Το κελί είναι ένα· ό,τι ανήκει στο βήμα ζει μέσα του. */}
+        <div>
         <div className="plan-row plan-row-step">
           <span style={{ minWidth: 0 }}>
-            {/* ΤΟ ΕΝΤΟΝΟ ΒΑΡΟΣ ΕΦΥΓΕ ΑΠΟ ΕΔΩ, ΓΙΑΤΙ ΤΟ ΣΗΜΑ ΑΝΕΒΗΚΕ. Οσο η λίστα
-                ήταν το μόνο μέρος που έλεγε ποιο είναι το επόμενο βήμα, το
-                βάρος ήταν το σήμα του. Τώρα το λέει η κάρτα από πάνω, με τον
-                τίτλο, το ποιος και το τι κοστίζει: τρία σήματα για ένα γεγονός
-                (κάρτα, κρίκος, βάρος) είναι ακριβώς η επανάληψη που το αρχείο
-                αυτό κυνηγά. Ο κρίκος κρατά τη ΘΕΣΗ στη σειρά, η κάρτα την ΠΡΑΞΗ. */}
-            <RowTitle state={on ? 'done' : 'plain'} text={s.title}
+            {/* ΤΟ ΒΑΡΟΣ ΓΥΡΙΣΕ ΕΔΩ, ΓΙΑΤΙ ΕΔΩ ΕΙΝΑΙ ΤΟ ΒΗΜΑ. Είχε φύγει όσο μια
+                κάρτα από πάνω ξανάγραφε τον ίδιο τίτλο· η κάρτα έφυγε και το
+                τυπογραφικό βάρος ξαναγίνεται το μόνο σήμα του επόμενου. */}
+            <RowTitle state={on ? 'done' : isNext ? 'next' : 'plain'} text={s.title}
               hint={{ label: `Τι σημαίνει: ${s.title}`, body: <Tip lead={s.detail} rows={[['Πότε', s.when], ['Αν παραλειφθεί', s.cost]]} /> }} />
           </span>
           <Tag>{ACTOR_LABEL[s.who]}</Tag>
+        </div>
+        {/* ══ Η ΠΡΑΞΗ ΚΑΘΕΤΑΙ ΠΑΝΩ ΣΤΟ ΒΗΜΑ ΠΟΥ ΤΗ ΖΗΤΑΕΙ ════════════════════
+            ΗΤΑΝ ΚΑΡΤΑ ΠΑΝΩ ΑΠΟ ΤΗ ΣΕΙΡΑ, ΚΑΙ ΕΓΡΑΦΕ ΤΑ ΙΔΙΑ ΛΟΓΙΑ ΔΕΥΤΕΡΗ ΦΟΡΑ.
+            Μετρημένο στην πώληση στα 375: ο τίτλος «Βεβαιώσου ότι ο τίτλος είναι
+            καθαρός και στο όνομά σου» τυπωνόταν στα 260 ΚΑΙ στα 562 — η ίδια
+            πρόταση δύο φορές στην ίδια οθόνη, σε μια καρτέλα που έχει γραμμένο
+            στην κορυφή της «ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΠΡΑΓΜΑ». Και το κουμπί της
+            «Ολοκληρώθηκε» έκανε ΑΚΡΙΒΩΣ ό,τι ο κρίκος τρακόσια εικονοστοιχεία
+            πιο κάτω: `toggle(plan.next.id)` και στα δύο.
+
+            Ολη η κάρτα υπήρχε ήδη εδώ: ο τίτλος στη γραμμή, ο ρόλος στην ετικέτα
+            δεξιά, το «πότε» και το «αν παραλειφθεί» μέσα στο ⓘ της. Εμεινε το
+            ΕΝΑ πράγμα που δεν υπήρχε — το πέρασμα στις Εργασίες.
+
+            ΚΑΙ ΔΕΝ ΕΠΙΝΟΕΙΤΑΙ ΠΡΟΘΕΣΜΙΑ. Το βήμα λέει «πριν βγει η αγγελία», όχι
+            μια ημερομηνία: ημερομηνία βγαλμένη από το πουθενά θα γινόταν
+            ειδοποίηση για προθεσμία που δεν υπάρχει. Η εργασία μπαίνει χωρίς
+            προθεσμία και ο χρήστης της βάζει τη δική του. Ο διπλός έλεγχος
+            γίνεται με `template_id`, όπως και στον Ενοικιαστή: δεύτερο πάτημα
+            δεν φτιάχνει δεύτερη εργασία.
+
+            ΤΟ ΚΟΥΜΠΙ ΦΕΥΓΕΙ ΜΟΛΙΣ ΤΣΕΚΑΡΙΣΤΕΙ ΤΟ ΒΗΜΑ, γιατί τότε το βήμα δεν
+            είναι πια το επόμενο — και ένα «πρόσθεσε στις Εργασίες» κάτω από
+            διαγραμμένη γραμμή ζητά κάτι που μόλις τελείωσε. */}
+        {isNext && !on && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '2px 0 10px' }}>
+            {pushedIds.includes(s.id)
+              ? <Btn onClick={() => removeFromTasks(s)} disabled={pushing}>Βγάλ᾽ το από τις Εργασίες</Btn>
+              : <Btn onClick={() => pushToTasks(s)} disabled={pushing}>Πρόσθεσε στις Εργασίες</Btn>}
+          </div>
+        )}
         </div>
       </div>
     );
@@ -635,58 +723,6 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
           «Κενό» δύο φορές μέσα σε εξήντα εικονοστοιχεία. Μία κεφαλίδα, από το
           κοινό PageTitle που χρησιμοποιούν οι άλλες έντεκα καρτέλες. */}
       <PageTitle over={`Αξιοποίηση · ${plan.label}`} title={plan.headline} lede={plan.lede} />
-
-      {/* ═══ Η ΣΕΛΙΔΑ ΑΠΑΝΤΑΕΙ ΠΡΙΝ ΤΗ ΡΩΤΗΣΕΙΣ ═══════════════════════════════
-          ΤΙ ΕΛΕΙΠΕ. Η καρτέλα ήξερε ήδη ποιο είναι το επόμενο βήμα — το
-          `plan.next` υπολογίζεται από την πρώτη γραμμή — αλλά δεν το έλεγε
-          πουθενά. Το έδειχνε ΜΟΝΟ με τυπογραφικό βάρος, μέσα σε λίστα δώδεκα
-          βημάτων, εκατόν πενήντα εικονοστοιχεία πιο κάτω, μετά από δύο άλλα
-          πάνελ. Ο χρήστης έμπαινε με μία ερώτηση, «τι κάνω τώρα»· και έπρεπε να
-          τη λύσει μόνος του διαβάζοντας βάρη γραμματοσειράς.
-
-          ΤΟ ΣΥΜΠΕΡΑΣΜΑ ΠΑΝΩ, ΤΑ ΣΤΟΙΧΕΙΑ ΚΑΤΩ. Ιδια ιεραρχία με κάθε σοβαρή
-          εφαρμογή χρημάτων: το ποσό που πρέπει να πληρώσεις πρώτο, η ανάλυση
-          από κάτω. Εδώ το «ποσό» είναι μία πράξη, ποιος την κάνει και τι
-          κοστίζει αν παραλειφθεί — τρία στοιχεία που ΥΠΑΡΧΟΥΝ ήδη στο βήμα.
-
-          ΚΑΜΙΑ ΝΕΑ ΓΝΩΣΗ, ΚΑΜΙΑ ΕΠΑΝΑΛΗΨΗ. Το βήμα δεν ξαναγράφεται από κάτω
-          με άλλα λόγια: είναι το ίδιο κείμενο, μία φορά ψηλά. Στη λίστα μένει,
-          γιατί εκεί είναι η σειρά του. */}
-      {plan.next && (
-        <Card pad="lg" style={{ marginBottom: T.sp.lg }}>
-          <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 8 }}>Το επόμενο βήμα</div>
-          <div style={{ ...TT.h2, marginBottom: 6 }}>{plan.next.title}</div>
-          {/* Ποιος το κάνει και πότε, σε μία γραμμή: το «πότε» μπαίνει μόνο όταν
-              η στιγμή κοστίζει, οπότε συχνά λείπει και δεν αφήνει κενό. */}
-          <div style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
-            {[ACTOR_LABEL[plan.next.who], plan.next.when].filter(Boolean).join(' · ')}
-          </div>
-          {plan.next.cost && (
-            <div style={{ ...TT.caption, color: 'var(--text-tertiary)', marginTop: 8, lineHeight: 1.6 }}>
-              {plan.next.cost}
-            </div>
-          )}
-          {/* ══ ΑΠΟ ΤΟ ΣΧΕΔΙΟ ΣΤΗ ΛΙΣΤΑ ΤΟΥ, ΜΕ ΕΝΑ ΠΑΤΗΜΑ ═══════════════════
-              Το σχέδιο ζούσε ολόκληρο στον περιηγητή: ό,τι τσέκαρε ο χρήστης
-              έμενε στο `localStorage` αυτής της συσκευής και δεν έφτανε ποτέ
-              στις Εργασίες, στο Ημερολόγιο ή στις υπενθυμίσεις. Δηλαδή η
-              εφαρμογή ήξερε τι πρέπει να γίνει και δεν το θύμιζε ποτέ.
-
-              ΚΑΙ ΔΕΝ ΕΠΙΝΟΕΙΤΑΙ ΠΡΟΘΕΣΜΙΑ. Το βήμα λέει «πριν βγει η αγγελία»,
-              όχι μια ημερομηνία: μια ημερομηνία βγαλμένη από το πουθενά θα
-              γινόταν ειδοποίηση για προθεσμία που δεν υπάρχει. Η εργασία μπαίνει
-              χωρίς προθεσμία και ο χρήστης της βάζει τη δική του.
-
-              Ο διπλός έλεγχος γίνεται με `template_id`, όπως και στον Ενοικιαστή:
-              δεύτερο πάτημα δεν φτιάχνει δεύτερη εργασία. */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: T.sp.md }}>
-            <Btn variant="primary" onClick={() => toggle(plan.next!.id)}>Ολοκληρώθηκε</Btn>
-            {pushedIds.includes(plan.next.id)
-              ? <Btn onClick={() => removeFromTasks(plan.next!)} disabled={pushing}>Βγάλ᾽ το από τις Εργασίες</Btn>
-              : <Btn onClick={() => pushToTasks(plan.next!)} disabled={pushing}>Πρόσθεσε στις Εργασίες</Btn>}
-          </div>
-        </Card>
-      )}
 
       {/* ── ΤΙ ΕΙΔΟΥΣ ΕΚΚΡΕΜΟΤΗΤΑ: αλλάζει ΟΛΗ τη σειρά, άρα ρωτιέται πρώτο ──
           Ο υπότιτλος ήταν η εξήγηση του ΕΠΙΛΕΓΜΕΝΟΥ είδους, τυπωμένη κάτω από
@@ -1056,8 +1092,8 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
           ώστε να ισχύσει η κλάση. Χωρίς αυτό το 1,45 του `TT.caption` έρχεται
           μέσα από το spread και το ενσωματωμένο κερδίζει ΠΑΝΤΑ την κλάση: ο
           σαρωτής το έπιασε σε τέσσερις σκηνές στα 768 και στα 810. */}
-      <p className="po-prose" style={{ ...TT.caption, lineHeight: undefined, color: 'var(--text-tertiary)', margin: 0, padding: '0 2px' }}>
-        {PLAN_DISCLAIMER}
+      <p className="po-prose po-just" style={{ ...TT.caption, lineHeight: undefined, color: 'var(--text-tertiary)', margin: 0, padding: '0 2px' }}>
+        {hy(<>{PLAN_DISCLAIMER}</>)}
       </p>
     </div>
   );

@@ -1185,8 +1185,8 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       {/* Μία γραμμή, μία φορά. Τα σύνολα άλλαξαν και ο χρήστης δικαιούται να ξέρει
           γιατί — χωρίς πανό, χωρίς παράθυρο, χωρίς να ζητά κλικ για να συνεχίσει. */}
       {!ledgerNoteSeen && (monthItems.length > 0 || Object.keys(monthTotals).length > 0) && (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12, fontFamily: T.font.sans, fontSize: 12, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
-          <span style={{ flex: 1, minWidth: 0 }}>
+        <div className="po-stack-sm" style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12, fontFamily: T.font.sans, fontSize: 12, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
+          <span>
             Τα σύνολα μετρούν πλέον λογαριασμούς και δαπάνες μαζί, με το ποσό που όντως πληρώθηκε και στον μήνα που πληρώθηκε. Αν κάποιο νούμερο δείχνει αλλαγμένο, τώρα είναι το σωστό.
           </span>
           {/* Ήσυχο και όχι δευτερεύον: η σημείωση δεν ζητά απόφαση, οπότε η
@@ -1561,8 +1561,8 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {targetSuggestions.map(s => (
-              <div key={s.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{s.text}</span>
+              <div key={s.key} className="po-stack-sm" style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <span style={{ fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{s.text}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                   {/* Δευτερεύον: ίδιο σχήμα με το «Δείξε μου», απόχρωση τονισμού με
                       περίγραμμα. Το ύψος 28 ανεβαίνει στο κοινό ύψος κουμπιού. */}

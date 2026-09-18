@@ -10,7 +10,7 @@
 // authorized() το δέχεται. Προαιρετικά: RESEND_FROM (branded αποστολέας μετά την
 // επαλήθευση domain) & APP_URL (μία πηγή: _shared/site.ts).
 // ─────────────────────────────────────────────────────────────────────────
-import { emailHeader, eyebrow } from '../_shared/emailTemplates.ts';
+import { emailShell, eyebrow, linkLine } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { APP_URL } from '../_shared/site.ts'
@@ -36,25 +36,17 @@ async function authorized(req: Request): Promise<CronAuth> {
 interface Update { id: string; title: string; body_html: string; cta_label?: string; cta_url?: string }
 
 function layout(inner: string, unsubUrl: string): string {
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f3f4;font-family:-apple-system,'Inter',Arial,sans-serif;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    ${emailHeader()}
-    <div style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:26px 24px;">
-      ${eyebrow('Νέες δυνατότητες')}
-      ${inner}
-    </div>
-    <p style="text-align:center;font-size:11px;color:#80868b;margin:18px 0 4px;line-height:1.6;">
-      Λαμβάνεις αυτό το email ως χρήστης του PROPERWISE.<br>
-      <a href="${unsubUrl}" style="color:#80868b;text-decoration:underline;">Απεγγραφή από τα ενημερωτικά</a> · PROPERWISE
-    </p>
-  </div></body></html>`
+  return emailShell({
+    unsubUrl,
+    bodyHtml: eyebrow('Νέες δυνατότητες') + inner,
+  })
 }
 
 function updateBlock(u: Update): string {
-  const cta = u.cta_url ? `<p style="margin:12px 0 0;"><a href="${esc(u.cta_url)}" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:9px 16px;border-radius:8px;">${esc(u.cta_label || 'Δες περισσότερα')}</a></p>` : ''
-  return `<div style="padding:16px 0;border-top:1px solid #f1f3f4;">
-    <h2 style="margin:0 0 6px;font-size:17px;color:#111;font-weight:700;letter-spacing:-0.2px;">${esc(u.title)}</h2>
-    <div style="font-size:14px;color:#3c4043;line-height:1.65;">${u.body_html || ''}</div>${cta}
+  const cta = u.cta_url ? linkLine(u.cta_label || 'Δες περισσότερα', u.cta_url) : ''
+  return `<div class="rule-t" style="padding:20px 0 4px;border-top:1px solid #e8e8ed;">
+    <h2 class="ink" style="margin:0 0 7px;font-size:17px;color:#1d1d1f;font-weight:600;letter-spacing:-0.2px;mso-line-height-rule:exactly;line-height:24px;">${esc(u.title)}</h2>
+    <div class="tx" style="font-size:15px;color:#4a4f55;mso-line-height-rule:exactly;line-height:25px;">${u.body_html || ''}</div>${cta}
   </div>`
 }
 

@@ -21,6 +21,15 @@ create table if not exists auth.users (
 create or replace function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
 create or replace function auth.role() returns text language sql stable as $$ select 'authenticated'::text $$;
 create or replace function auth.jwt() returns jsonb language sql stable as $$ select '{}'::jsonb $$;
+-- Ο κατάλογος των δεύτερων παραγόντων, όσο χρειάζεται για να ρωτηθεί «έχει ο
+-- χρήστης επαληθευμένη συσκευή;». Η `delete_my_account` τον διαβάζει για την
+-- πύλη 2FA, οπότε το ομοίωμα ΠΡΕΠΕΙ να τον έχει ή η κλήση σκάει στο db-replay.
+create table if not exists auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid, friendly_name text, factor_type text,
+  status text, created_at timestamptz default now(),
+  updated_at timestamptz default now(), secret text
+);
 create table if not exists storage.buckets (id text primary key, name text, public boolean default false);
 create table if not exists storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text, owner uuid, created_at timestamptz default now(), metadata jsonb);
 do $$ begin

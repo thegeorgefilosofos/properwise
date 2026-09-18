@@ -29,7 +29,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { T } from '@/components/tokens';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
-import { IDENTITY } from '@/lib/legal/identity';
+import { hy } from '@/components/Hyphen';
 
 /**
  * ΕΝΑ ΜΕΤΡΟ ΓΙΑ ΟΛΕΣ ΤΙΣ ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΑΡΧΙΚΗΣ.
@@ -42,11 +42,14 @@ import { IDENTITY } from '@/lib/legal/identity';
 export const WRAP = {
   maxWidth: 1140,
   margin: '0 auto',
-  padding: '0 clamp(20px, 5vw, 48px)',
+  // Το `--pub-gutter` (globals.css) ισούται με clamp(20px,5vw,48px) παντού, ΕΚΤΟΣ
+  // κάτω από τα 360 όπου πέφτει στα 14 — όσο και η κεφαλίδα, ώστε το περιεχόμενο
+  // να μη ξεκινά πιο μέσα από το λογότυπο από πάνω του.
+  padding: '0 var(--pub-gutter)',
 } as const;
 
 /** Το οριζόντιο περιθώριο του WRAP, για όποιον χτίζει δικό του padding. */
-export const WRAP_PAD = 'clamp(20px, 5vw, 48px)';
+export const WRAP_PAD = 'var(--pub-gutter)';
 
 /**
  * Το μέτρο του τρεχούμενου κειμένου, όπου δεν το ορίζει ήδη η στήλη.
@@ -94,8 +97,13 @@ export function PublicHeader() {
 /** Μία στήλη συνδέσμων. Ίδια γεωμετρία σε κάθε δημόσια σελίδα. */
 function FootCol({ label, links }: { label: string; links: [string, string][] }) {
   return (
-    <div className="lp-footcol" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>{label}</span>
+    // ΤΟ ΚΕΝΟ ΗΤΑΝ 12 ΠΑΝΤΟΥ, ΑΡΑ Η ΚΕΦΑΛΙΔΑ ΔΕΝ ΑΝΗΚΕ ΠΟΥΘΕΝΑ. Με ίδια
+    // απόσταση από τον πρώτο σύνδεσμο όση έχουν οι σύνδεσμοι μεταξύ τους,
+    // διαβαζόταν ως πέμπτη καταχώρηση της λίστας — απλώς πιο μικρή. Δέκα
+    // ανάμεσα στους συνδέσμους και δεκαοκτώ κάτω από την κεφαλίδα: η ομάδα
+    // δένει και οι τρεις ομάδες ξεχωρίζουν μεταξύ τους χωρίς γραμμή.
+    <div className="lp-footcol" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8 }}>{label}</span>
       {/* ΤΟ `nowrap` ΕΣΠΡΩΧΝΕ ΤΗ ΣΕΛΙΔΑ ΔΕΞΙΑ. Στα 390 εικονοστοιχεία η στήλη
           πιάνει 163 και το «Βραχυχρόνια ή μακροχρόνια» θέλει 193: ο σύνδεσμος
           δεν έσπαγε, οπότε ολόκληρη η σελίδα αποκτούσε οριζόντια κύλιση δέκα
@@ -140,7 +148,16 @@ export function PublicFooter() {
               δεν την τύπωνε καμία σελίδα εκτός από το «Ποιοι είμαστε». Ο
               επισκέπτης που έχει ερώτηση πριν δώσει τα φορολογικά του
               στοιχεία δεν ψάχνει· φεύγει. */}
-          <FootCol label="Εμπιστοσύνη" links={[['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], [`mailto:${IDENTITY.supportEmail}`, 'Επικοινωνία']]} />
+          {/* ΤΟ «ΕΠΙΚΟΙΝΩΝΙΑ» ΗΤΑΝ ΩΜΟ `mailto:` ΜΕΣΑ ΣΕ ΣΤΗΛΗ ΣΕΛΙΔΩΝ. Δύο
+              προβλήματα — και τα δύο πραγματικά: σε συσκευή χωρίς ρυθμισμένο
+              πρόγραμμα αλληλογραφίας το πάτημα δεν κάνει ΤΙΠΟΤΑ· και όποιος
+              το πατήσει βρίσκεται μπροστά σε άδειο μήνυμα χωρίς να ξέρει πού
+              γράφει, πότε θα πάρει απάντηση ή αν η διεύθυνση είναι η σωστή
+              για το θέμα του. Η ενότητα «Πώς μας βρίσκεις» απαντά και στα
+              τρία: τρεις διευθύνσεις κατά θέμα, με χρόνους απόκρισης· και
+              καθεμιά πατιέται. Η στήλη γίνεται έτσι ομοιογενής — τέσσερις
+              σελίδες, όχι τρεις σελίδες και μία ενέργεια. */}
+          <FootCol label="Εμπιστοσύνη" links={[['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], ['/trust#epikoinonia', 'Επικοινωνία']]} />
         </div>
         <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: T.sp.lg, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
           <span>© {new Date().getFullYear()} PROPERWISE</span>
@@ -157,7 +174,7 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
     <div style={{ marginBottom: 'clamp(18px,2.4vw,26px)' }}>
       <div className="lp-eyebrow">{over}</div>
       <h2 style={{ fontSize: 'clamp(21px,3vw,28px)', fontWeight: 680, letterSpacing: '-0.03em', lineHeight: 1.15, margin: 0, textWrap: 'balance' }}>{title}</h2>
-      {sub && <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '10px 0 0', maxWidth: READING }}>{sub}</p>}
+      {sub && <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '10px 0 0', maxWidth: READING }}>{hy(sub)}</p>}
     </div>
   );
 }
@@ -179,7 +196,7 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Η φράση της δοκιμής, μία φορά για όλα τα εργαλεία. */
-export const TRIAL_LINE = `${TRIAL_DAYS} ημέρες δωρεάν δοκιμή, χωρίς δέσμευση.`;
+export const TRIAL_LINE = `${TRIAL_DAYS} ημέρες δωρεάν δοκιμή.`;
 
 /**
  * Η ΕΠΙΦΥΛΑΞΗ ΠΟΥ ΚΛΕΙΝΕΙ ΚΑΘΕ ΥΠΟΛΟΓΙΣΜΟ.
@@ -238,13 +255,19 @@ export function JsonLd({ data }: { data: unknown }) {
  * 390, έσπαγε στη μέση και άφηνε το «το PROPERWISE.» ορφανό.
  */
 export function ToolLede({ children }: { children: ReactNode }) {
+  // ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΜΕ ΣΥΛΛΑΒΙΣΜΟ. Το κείμενο περνά από τον `hy` (μαλακά
+  // ενωτικά, ελληνικοί κανόνες) και στοιχίζεται πλήρως (`po-just`): και οι δύο
+  // άκρες κλείνουν στον ίδιο άξονα, όπως στις νομικές σελίδες. Το `text-wrap:
+  // pretty` ΕΦΥΓΕ — ο αλγόριθμός του στο Chromium αγνοεί τα μαλακά ενωτικά, άρα
+  // ακύρωνε τον συλλαβισμό και τεντωνε τα κενά (γι' αυτό υπάρχει ο φύλακας
+  // guard-justify-hyphen). Η ίδια αγωγή για τους τέσσερις υπολογιστές.
   return (
-    <p className="po-tool-lede" style={{ fontSize: 'clamp(15px,2vw,17px)', lineHeight: 1.6,
-      color: 'var(--text-secondary)', margin: '0 0 clamp(26px,3.5vw,36px)', textWrap: 'pretty' }}>
-      <span style={{ display: 'block' }}>{children} Χωρίς εγγραφή και χωρίς email:</span>
-      ο υπολογισμός γίνεται στη συσκευή σου και μένει εκεί.
+    <p className="po-tool-lede po-just" style={{ fontSize: 'clamp(15px,2vw,17px)', lineHeight: 1.6,
+      color: 'var(--text-secondary)', margin: '0 0 clamp(26px,3.5vw,36px)' }}>
+      <span style={{ display: 'block' }}>{hy(children)} {hy('Χωρίς εγγραφή και χωρίς email:')}</span>
+      {hy('ο υπολογισμός γίνεται στη συσκευή σου και μένει εκεί.')}
       <span style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
-        *Οι ίδιοι υπολογισμοί που τρέχει το {PRODUCT_NAME}.
+        {hy('*Οι ίδιοι υπολογισμοί που τρέχει το ')}{PRODUCT_NAME}{hy('.')}
       </span>
     </p>
   );
