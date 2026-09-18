@@ -29,6 +29,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { T } from '@/components/tokens';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
+import { hy } from '@/components/Hyphen';
 
 /**
  * ΕΝΑ ΜΕΤΡΟ ΓΙΑ ΟΛΕΣ ΤΙΣ ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΑΡΧΙΚΗΣ.
@@ -254,13 +255,19 @@ export function JsonLd({ data }: { data: unknown }) {
  * 390, έσπαγε στη μέση και άφηνε το «το PROPERWISE.» ορφανό.
  */
 export function ToolLede({ children }: { children: ReactNode }) {
+  // ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΜΕ ΣΥΛΛΑΒΙΣΜΟ. Το κείμενο περνά από τον `hy` (μαλακά
+  // ενωτικά, ελληνικοί κανόνες) και στοιχίζεται πλήρως (`po-just`): και οι δύο
+  // άκρες κλείνουν στον ίδιο άξονα, όπως στις νομικές σελίδες. Το `text-wrap:
+  // pretty` ΕΦΥΓΕ — ο αλγόριθμός του στο Chromium αγνοεί τα μαλακά ενωτικά, άρα
+  // ακύρωνε τον συλλαβισμό και τεντωνε τα κενά (γι' αυτό υπάρχει ο φύλακας
+  // guard-justify-hyphen). Η ίδια αγωγή για τους τέσσερις υπολογιστές.
   return (
-    <p className="po-tool-lede" style={{ fontSize: 'clamp(15px,2vw,17px)', lineHeight: 1.6,
-      color: 'var(--text-secondary)', margin: '0 0 clamp(26px,3.5vw,36px)', textWrap: 'pretty' }}>
-      <span style={{ display: 'block' }}>{children} Χωρίς εγγραφή και χωρίς email:</span>
-      ο υπολογισμός γίνεται στη συσκευή σου και μένει εκεί.
+    <p className="po-tool-lede po-just" style={{ fontSize: 'clamp(15px,2vw,17px)', lineHeight: 1.6,
+      color: 'var(--text-secondary)', margin: '0 0 clamp(26px,3.5vw,36px)' }}>
+      <span style={{ display: 'block' }}>{hy(children)} {hy('Χωρίς εγγραφή και χωρίς email:')}</span>
+      {hy('ο υπολογισμός γίνεται στη συσκευή σου και μένει εκεί.')}
       <span style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
-        *Οι ίδιοι υπολογισμοί που τρέχει το {PRODUCT_NAME}.
+        {hy('*Οι ίδιοι υπολογισμοί που τρέχει το ')}{PRODUCT_NAME}{hy('.')}
       </span>
     </p>
   );
