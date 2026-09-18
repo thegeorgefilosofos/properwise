@@ -1715,6 +1715,21 @@ export default async function Landing() {
             logo: `${SITE}/icons/icon-192.png`,
             areaServed: 'GR',
           },
+          // ΤΟ WebSite ΔΕΝΕΙ ΤΟ ΟΝΟΜΑ ΤΗΣ ΜΑΡΚΑΣ ΜΕ ΤΟΝ ΤΟΜΕΑ. Χωρίς αυτό η
+          // Google είχε την Organization και την εφαρμογή, αλλά κανένα κόμβο που
+          // να λέει «αυτός ο ιστότοπος ΕΙΝΑΙ το PROPERWISE στο properwise.gr» —
+          // το σήμα που χτίζει την αναγνώριση της μάρκας στην αναζήτηση. Χωρίς
+          // `SearchAction`: το sitelinks searchbox θέλει πραγματική αναζήτηση
+          // στη σελίδα που απαντά σε `?q=`, που η βιτρίνα δεν έχει· ψεύτικη
+          // δήλωση αγνοείται ή κοστίζει.
+          {
+            '@type': 'WebSite',
+            '@id': `${SITE}/#website`,
+            url: SITE,
+            name: IDENTITY.tradeName,
+            inLanguage: 'el',
+            publisher: { '@id': `${SITE}/#organization` },
+          },
           {
             '@type': 'SoftwareApplication',
             name: IDENTITY.tradeName,
