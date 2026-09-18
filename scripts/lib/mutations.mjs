@@ -22,6 +22,11 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Οι Οροι έλεγαν ότι η εφαρμογή κινητού «υπάρχει» στα stores σε ενεστώτα,
+  // ενώ δεν έχει κυκλοφορήσει. Η μετάλλαξη προσθέτει ακριβώς τέτοιον ισχυρισμό,
+  // χωρίς καμία λέξη που να τον δηλώνει μελλοντικό.
+  'native-app-claims': { add: 'app/__mut_native__.tsx', content: tsx('    <p>Κατέβασε την εφαρμογή μας από το App Store και το Google Play.</p>') },
+
   // Η κλάση αιώρησης ακυρωμένη από ενσωματωμένο στυλ: το ΑΚΡΙΒΩΣ σφάλμα που
   // μετρήθηκε στον περιηγητή — φοράει `po-hov-accent` και ξαναγράφει `color`.
   'hover-class-blocked': { add: 'components/__mut__.tsx', content: "export default function MutationProbe() {\n  return (\n    <button className=\"po-hov-accent\" style={{ color: 'var(--text-secondary)', padding: 8 }}>Ενέργειες</button>\n  )\n}\n" },
