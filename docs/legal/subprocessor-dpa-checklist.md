@@ -30,8 +30,8 @@
 - [ ] Αποδοχή Microsoft/GitHub DPA· κατέβασμα ισχύοντος PDF από το trust center.
 - [ ] **Backup artifacts κρυπτογραφημένα** (`BACKUP_PASSPHRASE` set).
 
-## 5. Lemon Squeezy — χρέωση συνδρομών (merchant of record)
-- [ ] Settings → Legal → DPA· η κάρτα μένει στο PCI scope της Lemon Squeezy, που πουλά ως merchant of record και αποδίδει τον ΦΠΑ κάθε χώρας.
+## 5. Creem — χρέωση συνδρομών (merchant of record)
+- [ ] Settings → Legal → DPA· η κάρτα μένει στο PCI scope της Creem, που πουλά ως merchant of record και αποδίδει τον ΦΠΑ κάθε χώρας.
 
 ## Μελλοντικοί (πριν το go-live)
 - [ ] **Google/Apple/Mozilla (υπηρεσίες push των περιηγητών)**: ενεργοποιούνται μόλις
@@ -57,6 +57,6 @@ Controller→Processor)** — accept/sign, save the PDF, update the register.
 3. **Anthropic** — Console → DPA (SCCs); **confirm no-training in writing**; no special-
    category data in prompts.
 4. **GitHub** — accept Microsoft/GitHub DPA; confirm **encrypted** backups.
-5. **Lemon Squeezy** — Settings → Legal → DPA; card stays in Lemon Squeezy PCI scope; they are the merchant of record.
+5. **Creem** — Settings → Legal → DPA; card stays in Creem PCI scope; they are the merchant of record.
 Then flip every ☐→✅ with dates; publish a subprocessor summary; set up customer change-
 notification; log SCC versions. Store signed PDFs in `docs/legal/executed-dpas/`.

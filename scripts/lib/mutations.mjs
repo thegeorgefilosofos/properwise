@@ -60,6 +60,10 @@ export const MUTATIONS = {
   // ελληνικό κείμενο, χωρίς να περάσει από τον μετατροπέα.
   'email-uppercase': { add: 'supabase/functions/_shared/__mut__.ts', content: "export const eyebrowHtml = (t: string) => `<p style=\"text-transform:uppercase\">Ληξιπρόθεσμο ενοίκιο ${t}</p>`\n" },
 
+  // Email που δηλώνει την εφαρμογή κινητού ως υπαρκτή, χωρίς μελλοντική λέξη —
+  // ακριβώς το ψέμα του παλιού email κυκλοφορίας («είναι εδώ / Κατέβασε την εφαρμογή»).
+  'email-app-claims': { add: 'supabase/functions/_shared/__mut__.ts', content: "export const promo = () => `<p>Η εφαρμογή για κινητά είναι εδώ. Κατέβασε την εφαρμογή τώρα.</p>`\n" },
+
   // Το `style` που σβήνει τις μεταβλητές του πλέγματος.
   'grid-style': { add: 'components/__mut__.tsx', content: "import { fixedCols } from '@/components/Theme'\nexport default function MutationProbe() {\n  return <div {...fixedCols(3)} style={{ gap: 12 }}>x</div>\n}\n" },
 
@@ -361,7 +365,7 @@ export const MUTATIONS = {
     // ΚΑΙ ΤΟ ΙΔΙΟ ΣΕ ΔΗΜΟΣΙΕΥΜΕΝΟ ΝΟΜΙΚΟ ΕΓΓΡΑΦΟ, ΜΕ ΟΝΟΜΑ ΠΟΥ ΔΕΝ ΕΙΣΠΡΑΤΤΕΙ.
     // Δεύτερος κανόνας, δεύτερη απόδειξη: τα έγγραφα ΟΦΕΙΛΟΥΝ να ονομάζουν,
     // οπότε ο έλεγχος εκεί δεν είναι «μην το γράφεις» αλλά «γράψε τον σωστό».
-    { add: 'docs/legal/__mut__.md', content: '# Δοκιμή\n\nΧρέωση μέσω Creem ως merchant of record.\n' },
+    { add: 'docs/legal/__mut__.md', content: '# Δοκιμή\n\nΧρέωση μέσω Lemon Squeezy ως merchant of record.\n' },
   ] },
   // Η ΣΥΝΑΙΝΕΣΗ ΠΟΥ ΓΙΝΕΤΑΙ «ΝΑΙ» ΑΠΟ ΑΠΟΤΥΧΙΑ. Ακριβώς η γραμμή που έστελνε
   // το δελτίο σε όσους είχαν απεγγραφεί, σε νέα συνάρτηση άκρης.
