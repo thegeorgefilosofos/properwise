@@ -60,6 +60,10 @@ export const MUTATIONS = {
   // ελληνικό κείμενο, χωρίς να περάσει από τον μετατροπέα.
   'email-uppercase': { add: 'supabase/functions/_shared/__mut__.ts', content: "export const eyebrowHtml = (t: string) => `<p style=\"text-transform:uppercase\">Ληξιπρόθεσμο ενοίκιο ${t}</p>`\n" },
 
+  // Email που δηλώνει την εφαρμογή κινητού ως υπαρκτή, χωρίς μελλοντική λέξη —
+  // ακριβώς το ψέμα του παλιού email κυκλοφορίας («είναι εδώ / Κατέβασε την εφαρμογή»).
+  'email-app-claims': { add: 'supabase/functions/_shared/__mut__.ts', content: "export const promo = () => `<p>Η εφαρμογή για κινητά είναι εδώ. Κατέβασε την εφαρμογή τώρα.</p>`\n" },
+
   // Το `style` που σβήνει τις μεταβλητές του πλέγματος.
   'grid-style': { add: 'components/__mut__.tsx', content: "import { fixedCols } from '@/components/Theme'\nexport default function MutationProbe() {\n  return <div {...fixedCols(3)} style={{ gap: 12 }}>x</div>\n}\n" },
 
