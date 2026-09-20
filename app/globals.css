@@ -4972,6 +4972,47 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .plan-matrix .po-table thead th + th,
 .plan-matrix .po-table tbody td { padding-left: 10px; padding-right: 10px; }
 
+/* ═══ ΣΥΓΚΡΙΣΗ ΠΑΚΕΤΩΝ: ΚΑΡΤΕΣ ΣΕ ΤΗΛΕΦΩΝΟ, ΠΙΝΑΚΑΣ ΑΠΟ TABLET ══════════════════
+   Κάτω από 768 ο πίνακας (min 860) έκρυβε τρεις από τις τέσσερις στήλες πίσω από
+   οριζόντια κύλιση — φαινόταν σχεδόν μόνο ο «Ιδιοκτήτης». Εκεί κάθε πακέτο γίνεται
+   μια κάρτα με ΟΛΕΣ τις δυνατότητές του κάθετα· από 768 και πάνω μένει ο πίνακας,
+   που συγκρίνει καλύτερα δίπλα δίπλα. Οι δύο όψεις διαβάζουν τα ΙΔΙΑ δεδομένα και
+   η καθεμιά είναι `display:none` στο άλλο πλάτος, άρα και εκτός δέντρου
+   προσβασιμότητας — κανένα διπλό ανακοίνωμα. */
+.plan-cmp-cards { display: none; }
+@media (max-width: 767px) {
+  .plan-cmp-table { display: none; }
+  .plan-cmp-cards { display: grid; gap: 14px; }
+}
+.plan-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 16px 16px 8px;
+}
+.plan-card-name {
+  margin: 0 0 4px; font-size: 18px; font-weight: 680; letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.plan-card-list { margin: 0; }
+.plan-card-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+  padding: 9px 0; border-top: 1px solid var(--border-subtle);
+}
+.plan-card-row:first-child { border-top: none; }
+.plan-card-row dt {
+  flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere;
+  color: var(--text-secondary); font-size: 14px; line-height: 1.45;
+}
+.plan-card-row dd {
+  flex: 0 0 auto; margin: 0; min-width: 48px;
+  display: inline-flex; align-items: center; justify-content: flex-end;
+  font-weight: 600; color: var(--text-primary);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.plan-card-num { font-variant-numeric: tabular-nums; }
+.plan-card-no { color: var(--text-tertiary); font-weight: 500; }
+
 .po-scroll-x, .lp-plans, .lp-aud, .lp-duo {
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
