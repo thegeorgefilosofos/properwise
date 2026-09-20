@@ -252,6 +252,11 @@ export const config = {
     // αυτο-έλεγχο σε έναν κατάλογο που ο guard-api-auth κρατά ερμητικά κλειστό.
     // Ζει λοιπόν δίπλα στα robots/sitemap, εκτός διαμεσολαβητή: δεν θέλει ούτε
     // συνεδρία ούτε CSP σε κάθε ping.
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|opengraph-image|icon\\.svg|icons/|fonts/|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    //
+    // ── ΤΟ ΑΡΧΕΙΟ ΕΠΑΛΗΘΕΥΣΗΣ ΤΟΥ SEARCH CONSOLE ΑΝΗΚΕΙ ΚΙ ΑΥΤΟ ΕΔΩ ──────────
+    // Το Google ζητά ανώνυμα το `google<token>.html` (public/) για να αποδείξει
+    // την ιδιοκτησία. Αν έπεφτε στο middleware θα έπαιρνε 307 προς /login και η
+    // επαλήθευση δεν θα ολοκληρωνόταν ποτέ — ακριβώς όπως τα robots/sitemap.
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|opengraph-image|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

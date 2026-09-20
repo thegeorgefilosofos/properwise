@@ -127,7 +127,7 @@ export default function Page() {
         <div className="lp-eyebrow">Δωρεάν εργαλείο</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
-          Πόσο ΕΝΦΙΑ θα πληρώσεις φέτος
+          Υπολόγισε τον ΕΝΦΙΑ του ακινήτου σου
         </h1>
         {/* Ίδια δομή με τον υπολογιστή φόρου ενοικίων και για τον ίδιο λόγο:
             η υπόσχεση κλείνει με την άνω τελεία της, η εγγύηση απορρήτου πιάνει
