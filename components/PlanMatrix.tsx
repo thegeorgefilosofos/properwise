@@ -96,7 +96,44 @@ function Tick() {
  */
 export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
   return (
-    /* ═══ ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs ══════════════════════════════════════
+    <>
+    {/* ═══ ΣΕ ΤΗΛΕΦΩΝΟ: ΚΑΡΤΕΣ ΑΝΑ ΠΑΚΕΤΟ, ΟΧΙ ΠΙΝΑΚΑΣ ΠΟΥ ΚΥΛΑ ════════════════
+        ΤΙ ΑΛΛΑΞΕ ΚΑΙ ΓΙΑΤΙ. Πέντε στήλες ελληνικών ονομάτων ΔΕΝ χωρούν σε 390:
+        ο πίνακας κυλούσε οριζόντια και φαινόταν σχεδόν μόνο η πρώτη στήλη
+        («Ιδιοκτήτης»). Σε σελίδα τιμών, μια στήλη που δεν φαίνεται είναι πακέτο
+        που δεν πουλιέται. Κάτω από 768 κάθε πακέτο γίνεται μια κάρτα με ΟΛΕΣ τις
+        δυνατότητές του, στοιβαγμένες κάθετα — τίποτα δεν κρύβεται, τίποτα δεν
+        κυλά. Από tablet και πάνω μένει ο πίνακας, που συγκρίνει καλύτερα δίπλα
+        δίπλα. Ίδια δεδομένα (MATRIX/COMPARED) και στις δύο όψεις: δεν μπορούν
+        να αποκλίνουν. Καθεμιά είναι ορατή στον αναγνώστη οθόνης μόνο στο πλάτος
+        της (η άλλη είναι `display:none`, άρα εκτός δέντρου προσβασιμότητας). */}
+    <div className="plan-cmp-cards">
+      {COMPARED.map(id => (
+        <section key={id} className="plan-card" aria-label={PLANS[id].name}>
+          <h3 className="plan-card-name" style={{ color: id === highlight ? 'var(--accent)' : undefined }}>{PLANS[id].name}</h3>
+          <dl className="plan-card-list">
+            {MATRIX.map(row => {
+              const v = row.values[id];
+              return (
+                <div key={row.label} className="plan-card-row">
+                  <dt>{row.label}</dt>
+                  <dd>
+                    {typeof v === 'string'
+                      ? <span className="plan-card-num">{v}</span>
+                      : v === true
+                        ? <><Tick /><span className="sr-only">Ναι</span></>
+                        : <span className="plan-card-no">Όχι</span>}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </section>
+      ))}
+    </div>
+
+    <div className="plan-cmp-table">
+    {/* ═══ ΠΙΝΑΚΑΣ, ΟΧΙ ΠΛΕΓΜΑ ΑΠΟ divs ══════════════════════════════════════
        ΤΙ ΗΤΑΝ. Δεκαεπτά γραμμές επί πέντε στήλες, χτισμένες με `display: grid`
        και `<div>`: εξήντα οκτώ κελιά που ΜΟΙΑΖΑΝ πίνακας χωρίς να είναι. Τα
        τέσσερα πινακάκια των δωρεάν εργαλείων πέρασαν στο `.po-table` και το
@@ -119,7 +156,7 @@ export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
 
        Η `po-scroll-x` μένει: χωρίς αυτήν η σάρωση που φτάνει στο τέρμα του
        πίνακα συνεχίζει ως χειρονομία «πίσω» του iOS Safari και ο επισκέπτης
-       που σέρνει τη σύγκριση βγαίνει από τη σελίδα. */
+       που σέρνει τη σύγκριση βγαίνει από τη σελίδα. */}
     <div className="po-table-box">
       <div className="po-scroll-x plan-matrix">
         {/* ΤΟ ΕΛΑΧΙΣΤΟ ΠΛΑΤΟΣ ΒΓΑΙΝΕΙ ΑΠΟ ΜΕΤΡΗΣΗ, ΟΧΙ ΑΠΟ ΕΚΤΙΜΗΣΗ. Ηταν 560 και
@@ -178,5 +215,7 @@ export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
         </table>
       </div>
     </div>
+    </div>
+    </>
   );
 }
