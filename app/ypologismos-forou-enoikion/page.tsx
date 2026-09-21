@@ -24,7 +24,7 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { RentTaxCalculator } from './RentTaxCalculator';
@@ -166,6 +166,8 @@ export default function Page() {
         <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
           <RentTaxCalculator today={athensToday()}/>
         </Suspense>
+
+        <ToolSources kind="rent" />
 
         {/* ── Συχνές ερωτήσεις ──────────────────────────────────────────────
                ΗΤΑΝ ΠΕΝΤΕ ΚΟΥΤΙΑ ΜΕ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΒΕΛΑΚΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ. Η

@@ -18,7 +18,7 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensParts, athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { EnfiaCalculator } from './EnfiaCalculator';
@@ -147,6 +147,8 @@ export default function Page() {
         <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
           <EnfiaCalculator year={year} today={athensToday()}/>
         </Suspense>
+
+        <ToolSources kind="enfia" />
 
         {/* ── Συχνές ερωτήσεις ──────────────────────────────────────────────
                ΗΤΑΝ ΠΕΝΤΕ ΚΟΥΤΙΑ ΜΕ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΒΕΛΑΚΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ, ενώ ο
