@@ -17,7 +17,7 @@
 //      πρόσωπο 22%, νέοι) και ενοποίηση χαρτοφυλακίου (φόρος στο άθροισμα, Ε1).
 //
 // Πηγές κλιμάκων 2026 (διασταυρωμένες, πολλαπλές):
-//   • Ενοίκια (άρθρο 40): 15% (0–12k) / 25% (12–24k) / 35% (24–35k) / 45% (>35k).
+//   • Ενοίκια (άρθρο 40): 15% (0–12k) / 25% (12–24k) / 35% (24–36k) / 45% (>36k).
 //     nerally.gr, taxrevenue.gr, ΠΟΜΙΔΑ, capital.gr — παράδειγμα 20.000 → 3.800€.
 //   • Εισόδημα/επιχ. (άρθρο 15, ν.5246/2025): 9/20/26/34/39/44 στα 10/20/30/40/60k.
 //     taxheaven.gr, forin.gr, Grant Thornton, ΝΟΜΙΚΗ ΒΙΒΛΙΟΘΗΚΗ.
@@ -60,12 +60,12 @@ function buildOracle(steps: OracleStep[]) {
   }
 }
 
-// Ενοίκια: 1800@12k, 4800@24k, 8650@35k, μετά 45%.
+// Ενοίκια: 1800@12k, 4800@24k, 9000@36k, μετά 45%.
 const oracleRental = buildOracle([
   { from: 0, upto: 12000, cumAtUpto: 1800, rate: 0.15 },
   { from: 12000, upto: 24000, cumAtUpto: 4800, rate: 0.25 },
-  { from: 24000, upto: 35000, cumAtUpto: 8650, rate: 0.35 },
-  { from: 35000, upto: Infinity, cumAtUpto: 8650, rate: 0.45 },
+  { from: 24000, upto: 36000, cumAtUpto: 9000, rate: 0.35 },
+  { from: 36000, upto: Infinity, cumAtUpto: 9000, rate: 0.45 },
 ])
 // Εισόδημα/επιχ.: 900@10k, 2900@20k, 5500@30k, 8900@40k, 16700@60k, μετά 44%.
 const oracleBusiness = buildOracle([
@@ -120,7 +120,8 @@ const SCALES: { name: string; brackets: TaxBracket[]; oracle: (x: number) => num
   ok('GOLDEN ενοίκιο 12.000 → 1.800€', near(rentalIncomeTax(12000), 1800))
   ok('GOLDEN ενοίκιο 24.000 → 4.800€', near(rentalIncomeTax(24000), 4800))
   ok('GOLDEN ενοίκιο 35.000 → 8.650€', near(rentalIncomeTax(35000), 8650))
-  ok('GOLDEN ενοίκιο 50.000 → 15.400€', near(rentalIncomeTax(50000), 8650 + 15000 * 0.45))
+  ok('GOLDEN ενοίκιο 36.000 → 9.000€', near(rentalIncomeTax(36000), 9000))
+  ok('GOLDEN ενοίκιο 50.000 → 15.300€', near(rentalIncomeTax(50000), 9000 + 14000 * 0.45))
   // Εισόδημα/επιχ. στα όρια:
   ok('GOLDEN εισόδημα 10.000 → 900€', near(rentalIncomeTax(10000, BUSINESS_INCOME_BRACKETS_2026), 900))
   ok('GOLDEN εισόδημα 20.000 → 2.900€', near(rentalIncomeTax(20000, BUSINESS_INCOME_BRACKETS_2026), 2900))
