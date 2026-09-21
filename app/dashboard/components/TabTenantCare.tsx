@@ -364,8 +364,8 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
 export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; propertyCount:number }) {
   const annualRent=Math.max(0,(tenant.monthly_rent||0)*12);
   // ΤΕΚΜΑΡΤΗ ΕΚΠΤΩΣΗ 5%: ίδιος συντελεστής και ίδιος ΟΡΟΣ με το
-  // lib/accounting/statement.ts. Από 1/1/2026 η έκπτωση προϋποθέτει είσπραξη μέσω
-  // τραπέζης· με μετρητά ο φόρος υπολογίζεται στο 100% των ακαθάριστων. Ο φόρος
+  // lib/accounting/statement.ts. Από 1.7.2027 (ν.5222/2025) η έκπτωση θα προϋποθέτει
+  // είσπραξη μέσω τραπέζης· με μετρητά ο φόρος στο 100% των ακαθάριστων. Ο φόρος
   // υπολογιζόταν πριν πάντα στο 100%, οπότε το app έδειχνε μεγαλύτερο φόρο από
   // τα Λογιστικά για το ίδιο ενοίκιο.
   const viaBank=tenant.e_payment!==false;
@@ -480,7 +480,7 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
                 πρώτη του, οπότε ο ίδιος φορέας καλύπτει τους δύο κλάδους. */}
             <div className="po-just">{hy(viaBank
               ? `Το ενοίκιο εισπράττεται μέσω τραπέζης, οπότε ισχύει η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} και φορολογείται το ${fe(taxable)} αντί του ${fe(annualRent)}.`
-              : `Προσοχή: το ενοίκιο δηλώνεται ως μη τραπεζική είσπραξη. Από 1/1/2026 η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} προϋποθέτει είσπραξη μέσω τραπέζης· χωρίς αυτήν φορολογείται το 100% των ακαθάριστων, δηλαδή ${fe(annualRent)} αντί ${fe(annualRent*(1-PRESUMPTIVE_DEDUCTION_RATE))}. Συμπλήρωσε IBAN είσπραξης στα στοιχεία της μίσθωσης.`)}</div>
+              : `Το ενοίκιο δηλώνεται ως μη τραπεζική είσπραξη. Από 1.7.2027 (ν.5222/2025) η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} θα προϋποθέτει είσπραξη μέσω τραπέζης· χωρίς αυτήν θα φορολογείται το 100% των ακαθάριστων, δηλαδή ${fe(annualRent)} αντί ${fe(annualRent*(1-PRESUMPTIVE_DEDUCTION_RATE))}. Για τις χρήσεις 2025-2026 η έκπτωση ισχύει κανονικά· συμπλήρωσε IBAN είσπραξης εγκαίρως στα στοιχεία της μίσθωσης.`)}</div>
           </InfoBlock>
           <InfoBlock title="Αναπροσαρμογή ΔΤΚ">
             {/* Με τον προαιρετικό κλάδο του ν.1703/1987 το κείμενο φτάνει τους

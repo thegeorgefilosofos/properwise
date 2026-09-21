@@ -63,8 +63,9 @@ export interface StatementInput {
   brackets?: TaxBracket[]
   /** Ποσοστό τεκμαρτής έκπτωσης (default 5% για φυσικά πρόσωπα, 0 για επιχείρηση). */
   presumptiveRate?: number
-  /** Εισπράχθηκαν τα ενοίκια με τραπεζικό/ηλεκτρονικό μέσο; Από 1/1/2026 (ν.5246/2025)
-   *  αν ΟΧΙ (μετρητά), χάνεται η τεκμαρτή έκπτωση 5% → φορολογείται το 100%. Default true. */
+  /** Εισπράχθηκαν τα ενοίκια με τραπεζικό/ηλεκτρονικό μέσο; Από 1.7.2027 (ν.5222/2025)
+   *  αν ΟΧΙ (μετρητά), χάνεται η τεκμαρτή έκπτωση 5% → φορολογείται το 100%. Το φράγμα
+   *  ανά χρήση το κάνει ο καλών (bankReceiptMatters). Default true. */
   rentsPaidViaBank?: boolean
 
   // ── Ταμειακές εκροές που ΔΕΝ επηρεάζουν τη φορολογική βάση φυσικού προσώπου ──
@@ -131,7 +132,9 @@ export function incomeStatement(input: StatementInput): IncomeStatement {
   // Τεκμαρτή έκπτωση 5% για φυσικό πρόσωπο (άρθρο 39 §4 ΚΦΕ): ισχύει στη μακροχρόνια
   // ΚΑΙ στη βραχυχρόνια χωρίς υπηρεσίες (εισόδημα ακίνητης περιουσίας) — ίδια βάση με
   // το lib/tax/shortTermTax. Δεν ισχύει για επιχείρηση (ΕΛΠ).
-  // Από 1/1/2026 προϋποθέτει είσπραξη μέσω τραπέζης· με μετρητά χάνεται (φόρος στο 100%).
+  // Η προϋπόθεση τραπεζικής είσπραξης (ν.5222/2025, κύρωση από 1.7.2027) φράζεται
+  // κατά χρήση στους καλούντες (bankReceiptMatters)· εδώ ο συντελεστής ακολουθεί
+  // το `rentsPaidViaBank` που ήδη έχει περάσει από εκείνο το φράγμα.
   const rentsPaidViaBank = input.rentsPaidViaBank !== false
   const baseRate = input.presumptiveRate ?? (business ? 0 : PRESUMPTIVE_DEDUCTION_RATE)
   const presumptiveRate = rentsPaidViaBank ? baseRate : 0

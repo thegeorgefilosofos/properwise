@@ -21,13 +21,14 @@
 // φόρο χωρίς αυτό — όχι ο φόρος του ποσού του σαν να ήταν μόνο του στον κόσμο.
 // Ένα ακίνητο 8.400€ δίπλα σε άλλα 20.000€ κοστίζει 2.293€ φόρο, όχι 1.197€.
 //
-// ΤΙΠΟΤΑ ΔΕΝ ΕΠΙΝΟΕΙΤΑΙ. Η κλίμακα, η τεκμαρτή έκπτωση και η προϋπόθεση της
-// τραπεζικής είσπραξης έρχονται από το lib/billing/greekTax.ts και το
-// lib/billing/consolidate.ts — τα ίδια που τρέχει ο πίνακας ελέγχου. Η αξία, το
-// ενοίκιο, ο ΕΝΦΙΑ και οι δαπάνες τα δίνει ο χρήστης.
+// ΤΙΠΟΤΑ ΔΕΝ ΕΠΙΝΟΕΙΤΑΙ. Η κλίμακα (ν.5246/2025), η τεκμαρτή έκπτωση 5% και η
+// προϋπόθεση της τραπεζικής είσπραξης (ν.5222/2025, κύρωση από 1.7.2027)
+// έρχονται από το lib/billing/greekTax.ts και το lib/billing/consolidate.ts —
+// τα ίδια που τρέχει ο πίνακας ελέγχου. Η αξία, το ενοίκιο, ο ΕΝΦΙΑ και οι
+// δαπάνες τα δίνει ο χρήστης.
 // ═══════════════════════════════════════════════════════════════════════════
 import { rentalIncomeTax, marginalRate, rentalBracketsForYear } from '@/lib/billing/greekTax'
-import { presumptiveDeductionRate } from '@/lib/billing/consolidate'
+import { presumptiveDeductionRateForYear } from '@/lib/billing/consolidate'
 
 export interface YieldInput {
   /** Αξία του ακινήτου σήμερα, ή το τίμημα που θα δώσεις. */
@@ -44,7 +45,7 @@ export interface YieldInput {
   otherRentalIncome: number
   /** Έτος απόκτησης του εισοδήματος — ορίζει την κλίμακα. */
   year: number
-  /** Είσπραξη μέσω τραπέζης: προϋπόθεση της τεκμαρτής έκπτωσης από 1/1/2026. */
+  /** Είσπραξη μέσω τραπέζης: προϋπόθεση της τεκμαρτής έκπτωσης από 1.7.2027 (ν.5222/2025). */
   viaBank: boolean
 }
 
@@ -101,7 +102,9 @@ export function propertyYield(input: YieldInput): YieldResult {
   // Η ΕΚΠΤΩΣΗ ΕΙΝΑΙ ΓΡΑΜΜΙΚΗ, ΑΡΑ ΜΕΡΙΖΕΤΑΙ ΧΩΡΙΣ ΣΦΑΛΜΑ. Το 5% επί του
   // συνόλου ισούται με 5% επί κάθε μέρους· έτσι το φορολογητέο αυτού του
   // ακινήτου και το φορολογητέο των υπολοίπων αθροίζουν στο σωστό σύνολο.
-  const rate = presumptiveDeductionRate(input.viaBank)
+  // Ο τρόπος είσπραξης μετράει ΜΟΝΟ όταν ισχύει η κύρωση (χρήσεις από το 2027,
+  // ν.5222/2025)· ως τότε η έκπτωση δίνεται ολόκληρη — δες `bankReceiptMatters`.
+  const rate = presumptiveDeductionRateForYear(input.year, input.viaBank)
   const taxable = gross * (1 - rate)
   const otherTaxable = other * (1 - rate)
 

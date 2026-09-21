@@ -96,7 +96,14 @@ function DataTable({ caption, rows }: { caption: string; rows: { label: string; 
                   στόχος μεγαλώνει, η σειρά μένει όπου ήταν. */}
               <td className="po-kv-val" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                 {MAIL.test(r.value)
-                  ? <a href={`mailto:${r.value}`} className="lp-link po-tap-inline" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{r.value}</a>
+                  // ΤΟ EMAIL ΔΕΝ ΣΠΑΕΙ ΣΤΗ ΜΕΣΗ ΤΟΥ ΤΟΜΕΑ. Το κελί κληρονομεί
+                  // `overflow-wrap: anywhere` από το .po-table, οπότε το
+                  // «support@properwise.gr» έβγαινε «support@proper / wise.gr».
+                  // Ενα <wbr> μετά το @ δίνει το φυσικό σημείο τομής και το
+                  // `break-word` σπάει αλλού μόνο αν δεν χωρά ούτε έτσι.
+                  ? <a href={`mailto:${r.value}`} className="lp-link po-tap-inline" style={{ color: 'var(--accent)', textDecoration: 'none', overflowWrap: 'break-word', wordBreak: 'normal' }}>
+                      {r.value.slice(0, r.value.indexOf('@') + 1)}<wbr />{r.value.slice(r.value.indexOf('@') + 1)}
+                    </a>
                   : r.value}
               </td>
             </tr>
