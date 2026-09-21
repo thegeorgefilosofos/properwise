@@ -1,9 +1,9 @@
 {
   "note": "Bytes ΙΧΝΟΥΣ ανά ανάπτυξη, από τα .nft.json παραγωγικού build. Το όριο μόνο κατεβαίνει.",
   "slack": 0.08,
-  "total": 173601043,
-  "heaviest": 6689040,
+  "total": 191733886,
+  "heaviest": 6697424,
   "heaviestRoute": "/accountant/workspace/page.js",
-  "functions": 44,
-  "unique": 9657849
+  "functions": 48,
+  "unique": 9837485
 }
