@@ -1710,6 +1710,10 @@ export default async function Landing() {
             '@type': 'Organization',
             '@id': `${SITE}/#organization`,
             name: IDENTITY.tradeName,
+            // Νόμιμες παραλλαγές γραφής της μάρκας (πεζά/κεφαλαία/κενό) ώστε η
+            // Google να τις συνδέει με την ίδια οντότητα. ΟΧΙ ορθογραφικά λάθη:
+            // αυτά διαβάζονται ως spam και η Google ήδη ανέχεται τις παραλλαγές.
+            alternateName: ['Properwise', 'ProperWise', 'Proper Wise'],
             url: SITE,
             email: IDENTITY.supportEmail,
             logo: `${SITE}/icons/icon-192.png`,

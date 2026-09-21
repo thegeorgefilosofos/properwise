@@ -31,7 +31,9 @@ const PATH = '/paketa';
 const URL = siteUrl(PATH);
 
 export const metadata: Metadata = {
-  title: TITLE,
+  // Απόλυτος τίτλος: το TITLE έχει ήδη το «· PROPERWISE», οπότε χωρίς `absolute`
+  // το πρότυπο της ρίζας (`%s · PROPERWISE`) θα το πρόσθετε δεύτερη φορά.
+  title: { absolute: TITLE },
   description: DESC,
   alternates: { canonical: URL },
   openGraph: { title: TITLE, description: DESC, url: URL, type: 'website' },
