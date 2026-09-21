@@ -16,6 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Οδηγός-πυλώνας: εξηγεί τη φορολογία ενοικίων 2026 και δένει με τον
     // υπολογιστή. Χτίζει topical authority (βλ. docs/marketing/seo-strategy).
     { url: `${base}/odigos/forologia-enoikion-2026`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${base}/odigos/airbnb-takk-2026`, changeFrequency: 'monthly', priority: 0.8 },
     // Τι περιλαμβάνει κάθε πακέτο: η ερώτηση που κάνει ο επισκέπτης ΠΡΙΝ
     // εγγραφεί, οπότε η απάντηση δεν ζει πίσω από τη σύνδεση.
     { url: `${base}/paketa`, changeFrequency: 'monthly', priority: 0.8 },
