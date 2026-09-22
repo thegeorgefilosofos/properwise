@@ -9,7 +9,7 @@
 // (η aade.gov.gr δεν είναι προσβάσιμη εδώ)· αναπαράγουν την ΙΔΙΑ μεθοδολογία.
 //
 // Πηγές κλίμακας ενοικίων 2026 (διασταυρωμένες): 15% (0–12k) / 25% (12–24k) /
-// 35% (24–35k) / 45% (>35k) — nerally.gr, taxrevenue.gr, capital.gr, ΠΟΜΙΔΑ,
+// 35% (24–36k) / 45% (>36k) — nerally.gr, taxrevenue.gr, capital.gr, ΠΟΜΙΔΑ,
 // taxheaven.gr, ΝΟΜΙΚΗ ΒΙΒΛΙΟΘΗΚΗ.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -34,7 +34,7 @@ const R = (n: number) => Math.round(n * 100) / 100
     { id: 'C', gross: 18000, taxable: 17100, tax: 12000 * 0.15 + 5100 * 0.25 },                  // 3.075,00
     { id: 'D', gross: 24000, taxable: 22800, tax: 12000 * 0.15 + 10800 * 0.25 },                 // 4.500,00
     { id: 'E', gross: 30000, taxable: 28500, tax: 12000 * 0.15 + 12000 * 0.25 + 4500 * 0.35 },   // 6.375,00
-    { id: 'F', gross: 48000, taxable: 45600, tax: 12000 * 0.15 + 12000 * 0.25 + 11000 * 0.35 + 10600 * 0.45 }, // 13.420,00
+    { id: 'F', gross: 48000, taxable: 45600, tax: 12000 * 0.15 + 12000 * 0.25 + 12000 * 0.35 + 9600 * 0.45 }, // 13.320,00
   ]
   for (const c of cases) {
     const st = incomeStatement({ regime: 'individual_longterm', grossIncome: c.gross, rentsPaidViaBank: true })

@@ -47,11 +47,11 @@ for (const g of [0, 1000, 6000, 11999, 12000]) {
   ok(`στα ${g} € οι δύο κλίμακες συμφωνούν`,
      near(rentalIncomeTax(g, RENTAL_TAX_BRACKETS_2025), rentalIncomeTax(g, RENTAL_TAX_BRACKETS_2026)))
 }
-// Πάνω από 35.000 η διαφορά παγώνει: και οι δύο έχουν 45% στην κορυφή και το
-// άνοιγμα προέρχεται μόνο από τη ζώνη 12–24k (35% vs 25% σε 12.000€ = 1.200€).
-for (const g of [35000, 50000, 120000]) {
-  ok(`στα ${g} € η διαφορά μένει 1.200€`,
-     near(rentalIncomeTax(g, RENTAL_TAX_BRACKETS_2025) - rentalIncomeTax(g, RENTAL_TAX_BRACKETS_2026), 1200))
+// Πάνω από 36.000 η διαφορά παγώνει στα 1.300€: 1.200€ από τη ζώνη 12–24k
+// (25% αντί 35% σε 12.000€) συν 100€ από τη ζώνη 35–36k (35% αντί 45% σε 1.000€).
+for (const g of [36000, 50000, 120000]) {
+  ok(`στα ${g} € η διαφορά μένει 1.300€`,
+     near(rentalIncomeTax(g, RENTAL_TAX_BRACKETS_2025) - rentalIncomeTax(g, RENTAL_TAX_BRACKETS_2026), 1300))
 }
 
 // ── Η παλιά κλίμακα είναι ΠΑΝΤΑ βαρύτερη ή ίση, ποτέ ελαφρύτερη ───────────

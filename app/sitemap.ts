@@ -13,6 +13,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/ypologismos-enfia`, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/vraxyxronia-i-makroxronia`, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/kathari-apodosi`, changeFrequency: 'monthly', priority: 0.9 },
+    // Κόμβος οδηγών: η μία σελίδα που μαζεύει όλους τους οδηγούς, συνδεδεμένη
+    // από το υποσέλιδο κάθε δημόσιας σελίδας.
+    { url: `${base}/odigos`, changeFrequency: 'monthly', priority: 0.7 },
+    // Οδηγός-πυλώνας: εξηγεί τη φορολογία ενοικίων 2026 και δένει με τον
+    // υπολογιστή. Χτίζει topical authority (βλ. docs/marketing/seo-strategy).
+    { url: `${base}/odigos/forologia-enoikion-2026`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${base}/odigos/airbnb-takk-2026`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${base}/odigos/pos-ypologizetai-o-enfia`, changeFrequency: 'monthly', priority: 0.8 },
     // Τι περιλαμβάνει κάθε πακέτο: η ερώτηση που κάνει ο επισκέπτης ΠΡΙΝ
     // εγγραφεί, οπότε η απάντηση δεν ζει πίσω από τη σύνδεση.
     { url: `${base}/paketa`, changeFrequency: 'monthly', priority: 0.8 },

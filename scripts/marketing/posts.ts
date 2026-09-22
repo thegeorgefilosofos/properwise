@@ -126,7 +126,7 @@ function countdownPost(o: TaxObligation, days: number): Post {
 const RENT_CASES = [9_600, 14_400, 30_000, 48_000];
 
 function cashRentPost(annualRent: number): Post {
-  // Με τράπεζα φορολογείσαι στο 95%, με μετρητά στο 100% (ν.5246/2025). Ο ΙΔΙΟΣ
+  // Με τράπεζα φορολογείσαι στο 95%, με μετρητά στο 100% (ν.5222/2025, από 1.7.2027). Ο ΙΔΙΟΣ
   // ΚΑΝΟΝΑΣ ΠΟΥ ΤΟ ΚΡΙΝΕΙ ΜΕΣΑ ΣΤΗΝ ΕΦΑΡΜΟΓΗ ΤΟ ΚΡΙΝΕΙ ΚΑΙ ΕΔΩ: το «0,95»
   // γραμμένο με το χέρι θα ζούσε στο μάρκετινγκ και μετά την επόμενη αλλαγή
   // του νόμου, λέγοντας κάτι που η εφαρμογή δεν λέει πια.
@@ -158,7 +158,7 @@ function cashRentPost(annualRent: number): Post {
         <div class="p"><span class="k">Φόρος με κατάθεση</span><span class="v">${fe(bank)}</span></div>
         <div class="p"><span class="k">Φόρος με μετρητά</span><span class="v">${fe(cash)}</span></div>
       </div>
-      <div class="cite">ν.5246/2025 · από 1/1/2026 · οριακός συντελεστής ${rate}%</div>
+      <div class="cite">ν.5222/2025 · από 1.7.2027 · οριακός συντελεστής ${rate}%</div>
     </div>`;
   return {
     file: `lathos-metrita-${annualRent}.png`,

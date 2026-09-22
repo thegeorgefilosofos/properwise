@@ -22,7 +22,7 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { ShortVsLongCalculator } from './ShortVsLongCalculator';
@@ -160,6 +160,8 @@ export default function Page() {
           <ShortVsLongCalculator today={athensToday()}/>
         </Suspense>
 
+        <ToolSources kind="short" />
+
         <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
           <SectionHead over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν πριν αποφασίσουν" />
           <div style={{ borderBottom: '1px solid var(--border-subtle)' }}>
@@ -177,6 +179,20 @@ export default function Page() {
               </details>
             ))}
           </div>
+        </section>
+
+        {/* Ο ΟΔΗΓΟΣ ΕΙΝΑΙ Η ΕΠΟΜΕΝΗ ΑΝΑΓΝΩΣΗ, ΟΧΙ ΥΠΟΣΗΜΕΙΩΣΗ. Η σύγκριση δίνει
+            το ποιο συμφέρει· όποιος διάλεξε βραχυχρόνια έχει έναν αναλυτικό
+            οδηγό για το τέλος και τον φόρο της, με πηγές και παραδείγματα. Ο
+            σύνδεσμος στέκει εδώ ώστε να τον βρίσκει τη στιγμή της ερώτησης. */}
+        <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
+          <SectionHead over="Ο αναλυτικός οδηγός" title="Το τέλος και ο φόρος της βραχυχρόνιας" />
+          <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0, textWrap: 'pretty' }}>
+            Η σύγκριση δείχνει ποιο συμφέρει· ο οδηγός{' '}
+            <Link href="/odigos/airbnb-takk-2026" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+              Airbnb και ΤΑΚΚ 2026
+            </Link>{' '}εξηγεί το τέλος ανά διανυκτέρευση, τον φόρο της βραχυχρόνιας μίσθωσης και το τέλος παρεπιδημούντων, με παραδείγματα σε ευρώ.
+          </p>
         </section>
 
         {/* ΤΑ ΤΡΙΑ ΕΡΓΑΛΕΙΑ ΕΙΝΑΙ ΜΙΑ ΑΛΥΣΙΔΑ, ΟΧΙ ΤΡΕΙΣ ΣΕΛΙΔΕΣ. Όποιος

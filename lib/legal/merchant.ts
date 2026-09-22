@@ -49,8 +49,12 @@ export const MERCHANT_NAMES: Readonly<Record<MerchantId, string>> = {
 /** Το όνομα της μεταβλητής που διαλέγει έμπορο. */
 export const PROVIDER_ENV = 'MERCHANT_PROVIDER';
 
-/** Ο προεπιλεγμένος: ό,τι τρέχει σήμερα στην παραγωγή. */
-export const DEFAULT_MERCHANT: MerchantId = 'lemon';
+/** Ο προεπιλεγμένος έμπορος όταν λείπει η μεταβλητή. Είναι ο Creem: ο Lemon
+ *  Squeezy έμεινε χωρίς έγκριση και δεν εισπράττει, οπότε ο Creem είναι πλέον ο
+ *  πάροχος του προϊόντος. Το `MERCHANT_PROVIDER=lemon` τον επαναφέρει ρητά αν
+ *  ποτέ χρειαστεί. Ο Creem γίνεται ζωντανός μόλις οριστούν τα CREEM_* κλειδιά
+ *  (βλ. .env.example)· ώσπου τότε, η χρέωση δηλώνεται κλειστή παντού. */
+export const DEFAULT_MERCHANT: MerchantId = 'creem';
 
 /** Τα ονόματα που δέχεται η μεταβλητή, για μηνύματα σφάλματος. */
 export const KNOWN_MERCHANTS = Object.keys(MERCHANT_NAMES) as MerchantId[];

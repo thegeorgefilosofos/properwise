@@ -33,7 +33,7 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { rentalIncomeTax, rentalBracketsForYear, bracketsLabelForYear } from '@/lib/billing/greekTax';
-import { presumptiveDeductionRate, PRESUMPTIVE_RULE_2026 } from '@/lib/billing/consolidate';
+import { presumptiveDeductionRate, PRESUMPTIVE_RULE } from '@/lib/billing/consolidate';
 import { T, feAuto, Card, Btn } from '@/components/Theme';
 // Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ ΕΙΝΑΙ ΔΙΚΗ ΤΗΣ ΔΙΑΔΡΟΜΗ, ΚΑΙ ΚΟΥΒΑΛΟΥΣΕ ΚΙ ΕΚΕΙΝΗ ΤΑ
 // 2,5 MB: ο λογιστής ανοίγει έναν σύνδεσμο, κοιτάζει και συνήθως δεν κατεβάζει
@@ -122,9 +122,9 @@ export default function AccountantPortal() {
   const totals = useMemo(() => statementTotals(lines), [lines]);
   const gaps = useMemo(() => statementGaps(lines), [lines]);
 
-  // Η ΕΚΠΤΩΣΗ ΤΟΥ ΑΡΘΡΟΥ 39 §4 ΚΦΕ ΕΦΑΡΜΟΖΕΤΑΙ ΚΑΙ ΔΗΛΩΝΕΤΑΙ. Η προϋπόθεσή της
-  // είναι τραπεζική είσπραξη (ν.5246/2025), που από αυτόν τον σύνδεσμο δεν
-  // φαίνεται: γι' αυτό ο αριθμός λέγεται ενδεικτικός και όχι φόρος.
+  // Η ΕΚΠΤΩΣΗ ΤΟΥ ΑΡΘΡΟΥ 39 §3 ΚΦΕ ΕΦΑΡΜΟΖΕΤΑΙ ΚΑΙ ΔΗΛΩΝΕΤΑΙ. Η προϋπόθεση της
+  // τραπεζικής είσπραξης (ν.5222/2025, κύρωση από 1.7.2027) δεν φαίνεται από
+  // αυτόν τον σύνδεσμο: γι' αυτό ο αριθμός λέγεται ενδεικτικός και όχι φόρος.
   // ══ Ο ΦΟΡΟΣ ΕΙΝΑΙ ΠΡΟΣΩΠΙΚΟΣ, ΑΡΑ ΠΑΝΩ ΣΤΟ ΜΕΡΙΔΙΟ ═══════════════════════
   // Εδώ έγραφε `totals.income`, δηλαδή το εισόδημα ΟΛΟΚΛΗΡΟΥ του ακινήτου. Το
   // αρχείο .xlsx που κατεβαίνει από ΤΗΝ ΙΔΙΑ σελίδα κόβει τα ποσά στο ποσοστό
@@ -257,7 +257,7 @@ export default function AccountantPortal() {
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.mono, whiteSpace: 'nowrap' }}>{feAuto(estTax)}</span>
                   </div>
                   <p style={{ ...meta, margin: '10px 0 0' }}>
-                    Εισπράξεις της χρήσης, όχι συμβατικό μίσθωμα επί δώδεκα. {bracketsLabelForYear(year)}, με τεκμαρτή έκπτωση {Math.round(presumptiveDeductionRate(true) * 100)}%. {totals.hasShare ? 'Υπολογίζεται στην αναλογία του ιδιοκτήτη, όχι στο σύνολο του ακινήτου. ' : ''}{PRESUMPTIVE_RULE_2026}
+                    Εισπράξεις της χρήσης, όχι συμβατικό μίσθωμα επί δώδεκα. {bracketsLabelForYear(year)}, με τεκμαρτή έκπτωση {Math.round(presumptiveDeductionRate(true) * 100)}%. {totals.hasShare ? 'Υπολογίζεται στην αναλογία του ιδιοκτήτη, όχι στο σύνολο του ακινήτου. ' : ''}{PRESUMPTIVE_RULE}
                   </p>
                 </div>
               ) : (

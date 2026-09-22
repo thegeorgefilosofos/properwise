@@ -604,6 +604,17 @@ body {
      ανεβάζει το ίδιο πέπλο από 0,14 σε 0,24 αδιαφάνεια. */
   .po-ico[data-tone="media"]:hover:not(:disabled) { background: rgba(255,255,255,0.24); color: var(--on-media); }
 }
+/* ── ΑΠΟΚΡΙΣΗ ΣΤΟ ΑΓΓΙΓΜΑ, ΚΑΙ ΣΕ ΔΑΧΤΥΛΟ ──────────────────────────────────
+   Η αιώρηση ζει πίσω από `@media (hover: hover)`, οπότε σε αφή ΔΕΝ ισχύει —
+   σωστά, για να μη «κολλά» μετά το tap. Ομως έτσι τα εικονίδια-ενέργειες
+   (κλείσιμο, μολύβι, κάδος, βελάκια ημερολογίου) έμεναν ΧΩΡΙΣ καμία απόκριση
+   στο άγγιγμα: το tap-highlight είναι σβηστό κι ο `:active` δεν υπήρχε. Ενα
+   πάτημα που δεν απαντά μοιάζει αγνοημένο. Ο `:active` δουλεύει και στα δύο και
+   δίνει την ΙΔΙΑ απαλή επιφάνεια που δίνει η αιώρηση στο ποντίκι. */
+.po-ico:active:not(:disabled) { background: var(--bg-hover); color: var(--text-secondary); }
+.po-ico[data-tone="danger"]:active:not(:disabled) { background: var(--negative-dim); color: var(--negative); }
+.po-ico[data-tone="accent"]:active:not(:disabled) { background: var(--accent-dim); color: var(--accent); }
+.po-ico[data-tone="media"]:active:not(:disabled) { background: rgba(255,255,255,0.24); color: var(--on-media); }
 .po-ico[data-tone="danger"] { color: var(--negative); }
 .po-ico[data-tone="accent"] { color: var(--accent); }
 /* ΤΟ ΚΛΕΙΣΙΜΟ ΠΑΝΩ ΣΕ ΦΩΤΟΓΡΑΦΙΑ. Το τριτεύον γκρι χάνεται σε μια σκούρα
@@ -641,6 +652,10 @@ body {
   box-shadow: var(--shadow-sm); color: var(--accent);
 }
 .po-chip:disabled { opacity: .5; cursor: not-allowed; }
+/* Ιδια απόκριση αφής όπως στο .po-ico: το ΜΗ επιλεγμένο πλακίδιο απαντά στο
+   άγγιγμα με το ίδιο περίγραμμα που δίνει η αιώρηση στο ποντίκι. Το ήδη
+   επιλεγμένο δεν το πειράζουμε — έχει τη δική του, μόνιμη κατάσταση. */
+.po-chip:not([aria-pressed="true"]):active:not(:disabled) { border-color: var(--border-default); color: var(--text-primary); }
 
 /* ── .po-link · ΚΟΥΜΠΙ ΠΟΥ ΔΙΑΒΑΖΕΤΑΙ ΩΣ ΣΥΝΔΕΣΜΟΣ ──────────────────────────
    Εικοσι έξι σημεία, όλα μέσα σε πρόταση: «Επαναφορά στο τεκμηριωμένο»,
@@ -2750,6 +2765,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .plan-row-bare { grid-template-columns: minmax(0, 1fr) 15px; }
 .plan-tag { text-align: right; }
 
+/* ═══ Η ΣΚΑΛΑ ΤΩΝ ΤΕΣΣΑΡΩΝ ΠΑΚΕΤΩΝ: 2×2 ΣΕ ΤΗΛΕΦΩΝΟ ══════════════════════════
+   ΤΙ ΜΕΤΡΗΘΗΚΕ, στα 390: τέσσερα πλακίδια σε μία σειρά αφήνουν ~65px καθαρού
+   πλάτους ανά κελί, ενώ το «Επαγγελματίας» θέλει ~87px και το «Ιδιοκτήτης+»
+   ~67px — και στην Inter και στη γραμματοσειρά υποχώρησης. Το ενεργό (έντονο)
+   ξεχειλίζει και κρύβεται πίσω από το φόντο του διπλανού: διαβάζεται
+   «Επαγγελματ», σαν μισοκομμένο. Κανένας οριζόντιος σαρωτής δεν το πιάνει,
+   γιατί το κείμενο δεν κόβεται από `overflow:hidden` — το σκεπάζει ο γείτονας.
+
+   Κάτω από 560px (το κυρίαρχο σημείο «τηλεφώνου» της εφαρμογής) η σκάλα γίνεται
+   2×2: ~150px ανά κελί, όπου κάθε όνομα χωρά ολόκληρο σε μία γραμμή. Πάνω από
+   560 μένει η μία σειρά των τεσσάρων, όπου τα ονόματα χωρούν άνετα. Η καρτέλα
+   «Ρυθμίσεις» δεν μετριέται από την καστάνια κάθετου χώρου, οπότε η επιπλέον
+   σειρά δεν χαλά κανένα όριο· κερδίζει μόνο αναγνωσιμότητα. */
+.plan-ladder { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 560px) { .plan-ladder { grid-template-columns: repeat(2, 1fr); } }
+
 /* ═══ Ο ΡΟΛΟΣ ΜΕΝΕΙ ΔΕΞΙΑ, ΔΕΝ ΠΕΦΤΕΙ ΑΠΟ ΚΑΤΩ ══════════════════════════════
    ΗΤΑΝ ΣΤΟΙΒΑ ΚΑΤΩ ΑΠΟ ΤΑ 720: ο τίτλος του βήματος σε μία σειρά και από κάτω
    του, αριστερά και με κεφαλαία, «ΕΣΥ» ή «ΜΗΧΑΝΙΚΟΣ». Ο χρήστης το
@@ -4055,13 +4086,58 @@ html { scroll-padding-bottom: var(--cookie-h, 0px); }
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 6px 2px; border: none; background: none; cursor: pointer;
   color: var(--text-tertiary); font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500;
-  min-height: 48px; border-radius: 12px; transition: color 0.15s;
+  min-height: 48px; border-radius: 12px;
+  /* `isolation` φτιάχνει στοίβα ΜΕΣΑ στο κουμπί, ώστε ο δείκτης (::before, z:-1)
+     να κάθεται πίσω από το εικονίδιο και την ετικέτα, χωρίς να δραπετεύει πίσω
+     από ολόκληρη τη μπάρα. Χωρίς αυτό ο δείκτης θα χανόταν κάτω από το φόντο. */
+  position: relative; isolation: isolate;
+  /* Καμία γκρίζα λάμψη του Android στο πάτημα — την απόκριση τη δίνει το :active
+     πιο κάτω, καθαρά. */
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.18s cubic-bezier(0.2,0,0,1);
+}
+/* Ο ΔΕΙΚΤΗΣ ΤΗΣ ΕΝΕΡΓΗΣ ΚΑΡΤΕΛΑΣ — Η ΠΙΝΕΛΙΑ ΠΟΥ ΛΕΕΙ «ΕΙΣΑΙ ΕΔΩ».
+   Ως τώρα η ενεργή καρτέλα ξεχώριζε ΜΟΝΟ με χρώμα. Σε στενή οθόνη, τέσσερα
+   εικονίδια στη σειρά και μια αλλαγή απόχρωσης χάνεται με μια ματιά — ειδικά
+   για δαλτωνικό μάτι, όπου γαλάζιο και γκρι σχεδόν ταυτίζονται. Ενα απαλό φόντο
+   πίσω από το εικονίδιο (το πρότυπο της κάτω μπάρας σε Material 3 και iOS)
+   δείχνει τη θέση αμέσως και ανεξάρτητα από χρώμα. Πατά στο ΥΠΑΡΧΟΝ --bg-active,
+   οπότε ζει σωστά και στα δύο θέματα· μπαινοβγαίνει με μικρή κλιμάκωση αντί για
+   απότομο άναμμα. */
+.bottom-nav-item::before {
+  content: ""; position: absolute; z-index: -1;
+  top: 3px; left: 50%; width: 56px; height: 30px; border-radius: 100px;
+  background: var(--bg-active);
+  transform: translateX(-50%) scale(0.7); opacity: 0;
+  transition: opacity 0.18s cubic-bezier(0.2,0,0,1), transform 0.2s cubic-bezier(0.2,0,0,1);
 }
 .bottom-nav-item.active { color: var(--accent); }
-.bottom-nav-item svg { width: 22px; height: 22px; }
+.bottom-nav-item.active::before { opacity: 1; transform: translateX(-50%) scale(1); }
+/* Το πάτημα απαντά ΑΜΕΣΩΣ: το εικονίδιο βυθίζεται λίγο, όπως σε εφαρμογή του
+   store. Χωρίς αυτό, το tap σε αφή δεν δίνει καμία απόκριση πριν αλλάξει η
+   καρτέλα — και μια πλοήγηση που δεν «πατιέται» μοιάζει κολλημένη. */
+.bottom-nav-item svg { width: 22px; height: 22px; transition: transform 0.12s cubic-bezier(0.2,0,0,1); }
+.bottom-nav-item:active svg { transform: scale(0.86); }
 .bottom-nav-badge {
   position: absolute; top: 2px; right: 50%; margin-right: -18px;
   min-width: 8px; height: 8px; border-radius: 50%; background: var(--negative);
+}
+/* ═══ ΠΑΓΩΜΕΝΟ ΓΥΑΛΙ ΚΑΤΩ ΜΠΑΡΑ ═══════════════════════════════════════════════
+   Το πρότυπο κάτω μπάρας σε iOS και Android: ημιδιάφανη, με το περιεχόμενο να
+   περνά θολωμένο από πίσω καθώς κυλάς. Δίνει βάθος —η μπάρα κάθεται ΠΑΝΩ στο
+   περιεχόμενο, δεν το κόβει— και είναι η διαφορά «εφαρμογής» από «ιστοσελίδας».
+
+   Μόνο πίσω από `@supports`: όπου δεν υποστηρίζεται το backdrop-filter, η μπάρα
+   μένει ΣΥΜΠΑΓΗΣ (var(--bg-surface) πιο πάνω) — γιατί ημιδιάφανη ΧΩΡΙΣ θόλωμα
+   θα άφηνε το κείμενο από πίσω να διαβάζεται μέσα από τη μπάρα. Πατά στο ίδιο
+   --bg-surface, οπότε σωστό και στα δύο θέματα· 80% κρατά την αντίθεση των
+   ετικετών ακέραιη. */
+@supports ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
+  .bottom-nav {
+    background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    backdrop-filter: blur(16px) saturate(1.3);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -4418,6 +4494,13 @@ html.a11y-large-text { zoom: 1.08; }
   .lp-foot { grid-template-columns: 1fr; }
 }
 
+/* ΚΑΡΤΑ ΟΔΗΓΟΥ ΣΤΟΝ ΚΟΜΒΟ /odigos. Χρώμα μόνο από tokens· η αιώρηση είναι
+   περίγραμμα, σκιά και δύο εικονοστοιχεία ανύψωσης — τίποτα που να μετακινεί
+   γείτονα. Σέβεται το prefers-reduced-motion. */
+.og-card { transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.og-card:hover { border-color: var(--border-strong); box-shadow: var(--elev-2); transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) { .og-card { transition: none; } .og-card:hover { transform: none; } }
+
 /* ═══ ΤΟ ΚΟΝΤΟ ΚΕΙΜΕΝΟ ΤΗΣ ΣΤΕΝΗΣ ΟΘΟΝΗΣ, ΣΕ ΚΑΘΕ ΣΕΛΙΔΑ ══════════════════
    Ζούσαν μέσα στο <style> του app/page.tsx, άρα υπήρχαν ΜΟΝΟ στην αρχική. Η
    κεφαλίδα κάθε άλλης δημόσιας σελίδας έγραφε ολόκληρο το «Ξεκίνα τη δοκιμή»
@@ -4624,6 +4707,25 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 /* Ίδια στοίχιση για τα κείμενα που δεν είναι παράγραφοι, π.χ. οι εγγυήσεις
    του «Ποιοι είμαστε»: αλλιώς η μισή σελίδα κλείνει ίσια και η άλλη μισή όχι. */
 .lg-just { text-align: justify; }
+
+/* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΓΙΝΕΤΑΙ ΠΟΤΑΜΙΑ ΛΕΥΚΟΥ ΚΑΙ ΣΠΑΣΜΕΝΕΣ ΛΕΞΕΙΣ.
+   Σε ~340px στήλη το `justify` μαζί με τον μαλακό συλλαβισμό του `hy()` αφήνει
+   τεντωμένα κενά και μεσολεκτικά κοψίματα (φορο-, χρεώ-σεις) — ακριβώς αυτό που
+   απέφυγαν τα εργαλεία όταν γύρισαν σε αριστερή στοίχιση (δες ToolLede). Ο ίδιος
+   κανόνας εδώ για ΚΑΘΕ δικαιολογημένο κείμενο στο κινητό: αριστερή στοίχιση, ενώ
+   ο συλλαβισμός μένει (ζημιά κάνει μόνο δίπλα στο justify, όχι μόνος του).
+   Πάνω από τα 640px η στήλη είναι αρκετά φαρδιά ώστε το justify να διαβάζεται. */
+@media (max-width: 640px) {
+  .po-just,
+  .lg-p,
+  .lg-ul li,
+  .lg-note,
+  .lg-just,
+  .po-table td.lg-cell-prose,
+  .lg-lede > p:first-child {
+    text-align: start;
+  }
+}
 
 @media (max-width: 900px) {
   /* ΣΕ ΚΙΝΗΤΟ ΤΟ ΕΥΡΕΤΗΡΙΟ ΚΥΛΑΕΙ ΜΕΣΑ ΤΟΥ. Είκοσι τέσσερις ενότητες η μία
@@ -4895,6 +4997,47 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    είναι κεντραρισμένο και δεν ακουμπά σε γείτονα. */
 .plan-matrix .po-table thead th + th,
 .plan-matrix .po-table tbody td { padding-left: 10px; padding-right: 10px; }
+
+/* ═══ ΣΥΓΚΡΙΣΗ ΠΑΚΕΤΩΝ: ΚΑΡΤΕΣ ΣΕ ΤΗΛΕΦΩΝΟ, ΠΙΝΑΚΑΣ ΑΠΟ TABLET ══════════════════
+   Κάτω από 768 ο πίνακας (min 860) έκρυβε τρεις από τις τέσσερις στήλες πίσω από
+   οριζόντια κύλιση — φαινόταν σχεδόν μόνο ο «Ιδιοκτήτης». Εκεί κάθε πακέτο γίνεται
+   μια κάρτα με ΟΛΕΣ τις δυνατότητές του κάθετα· από 768 και πάνω μένει ο πίνακας,
+   που συγκρίνει καλύτερα δίπλα δίπλα. Οι δύο όψεις διαβάζουν τα ΙΔΙΑ δεδομένα και
+   η καθεμιά είναι `display:none` στο άλλο πλάτος, άρα και εκτός δέντρου
+   προσβασιμότητας — κανένα διπλό ανακοίνωμα. */
+.plan-cmp-cards { display: none; }
+@media (max-width: 767px) {
+  .plan-cmp-table { display: none; }
+  .plan-cmp-cards { display: grid; gap: 14px; }
+}
+.plan-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 16px 16px 8px;
+}
+.plan-card-name {
+  margin: 0 0 4px; font-size: 18px; font-weight: 680; letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.plan-card-list { margin: 0; }
+.plan-card-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+  padding: 9px 0; border-top: 1px solid var(--border-subtle);
+}
+.plan-card-row:first-child { border-top: none; }
+.plan-card-row dt {
+  flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere;
+  color: var(--text-secondary); font-size: 14px; line-height: 1.45;
+}
+.plan-card-row dd {
+  flex: 0 0 auto; margin: 0; min-width: 48px;
+  display: inline-flex; align-items: center; justify-content: flex-end;
+  font-weight: 600; color: var(--text-primary);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.plan-card-num { font-variant-numeric: tabular-nums; }
+.plan-card-no { color: var(--text-tertiary); font-weight: 500; }
 
 .po-scroll-x, .lp-plans, .lp-aud, .lp-duo {
   overscroll-behavior-x: contain;
@@ -5281,3 +5424,31 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   align-items: stretch;
 }
 .po-panelrow > * { flex: 1 1 min(100%, var(--panel-min)); min-width: 0; }
+
+/* ── Νομική βάση / πηγές στα εργαλεία (σήμα E-E-A-T) ─────────────────────── */
+.po-tool-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: clamp(22px, 3.5vw, 32px) 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-tertiary);
+}
+.po-src-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.po-src-txt { flex: 1 1 auto; min-width: 220px; }

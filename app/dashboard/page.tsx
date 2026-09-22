@@ -77,7 +77,7 @@ import { type LoanView } from '@/lib/loans/shape';
 import { stayTotal } from '@/lib/clients/clients';
 import { clearHistory as clearAssistantHistory, planBriefing } from './components/assistantPersona';
 import { leaveDevice } from '@/lib/localPrivacy';
-import { consolidateRentTax, taxShareOf, consolidationSummary, CONSOLIDATION_NOTE } from '@/lib/billing/consolidate';
+import { consolidateRentTax, taxShareOf, consolidationSummary, CONSOLIDATION_NOTE, bankReceiptMatters } from '@/lib/billing/consolidate';
 import UpgradeModal from './components/UpgradeModal';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
@@ -523,10 +523,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Ενοίκια ΟΛΩΝ των ακινήτων (μισθωτήρια + ρυθμίσεις ενοικίου), για τον
   // προοδευτικό φόρο σε επίπεδο φορολογούμενου.
   // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΟ ΕΝΟΙΚΙΟ.
-  // Από 1/1/2026 (ν.5246/2025) η τεκμαρτή έκπτωση 5% προϋποθέτει είσπραξη μέσω
-  // τραπέζης· με μετρητά ο φόρος υπολογίζεται στο 100% του ενοικίου. Ο χρήστης
-  // το δηλώνει ήδη στην καρτέλα Ενοικιαστή (`tenants.e_payment`), αλλά η
-  // Επισκόπηση δεν το ρωτούσε καν — έδινε πάντα την έκπτωση.
+  // Από 1.7.2027 (ν.5222/2025, άρθρο 210) η τεκμαρτή έκπτωση 5% θα προϋποθέτει
+  // είσπραξη μέσω τραπέζης· με μετρητά ο φόρος στο 100% του ενοικίου. Ο χρήστης
+  // το δηλώνει ήδη στην καρτέλα Ενοικιαστή (`tenants.e_payment`)· η κύρωση
+  // περνά στον φόρο μόνο για χρήσεις από το 2027 (bankReceiptMatters(year)).
   const [portfolioRents, setPortfolioRents] = useState<{ property_id:string; monthly:number; viaBank:boolean }[]>([]);
   // Ο ΔΕΙΚΤΗΣ ΦΟΡΤΩΣΗΣ ΔΕΝ ΕΙΝΑΙ ΞΕΧΩΡΙΣΤΗ ΚΑΤΑΣΤΑΣΗ, ΕΙΝΑΙ ΕΡΩΤΗΣΗ. Ηταν
   // `setLoading(true)` στην πρώτη γραμμή της φόρτωσης: σύγχρονη γραφή μέσα σε
@@ -797,6 +797,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       const viaBank = p.id === prop.id ? (tenantFull?.e_payment !== false) : (row?.viaBank ?? true);
       return { id: p.id, annualRent: monthly * 12, shortTerm: isShortTerm(p), rentsPaidViaBank: viaBank };
     }),
+    undefined, year,
   );
   const estTax = Math.round(taxShareOf(portfolioTax, prop.id));
   const taxNote = consolidationSummary(portfolioTax, fmtEur);
@@ -1194,14 +1195,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           { label: portfolioTax.count>1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου', value:fmtEur(estTax),
             title:portfolioTax.count>1
               ? `${CONSOLIDATION_NOTE} Συνολικός φόρος χαρτοφυλακίου ${fmtEur(Math.round(portfolioTax.totalTax))} σε ενοίκια ${fmtEur(Math.round(portfolioTax.totalAnnualRent))}.`
-              // ΤΟ ΚΕΙΜΕΝΟ ΔΕΝ ΕΠΙΤΡΕΠΕΤΑΙ ΝΑ ΥΠΟΣΧΕΤΑΙ ΕΚΠΤΩΣΗ ΠΟΥ ΔΕΝ ΙΣΧΥΕΙ.
-              // Έλεγε «με την τεκμαρτή έκπτωση 5%» χωρίς όρο, ενώ από 1/1/2026 η
-              // έκπτωση χάνεται όταν το ενοίκιο εισπράττεται με μετρητά. Με το
-              // νούμερο διορθωμένο και το κείμενο να ψεύδεται, ο χρήστης θα
-              // νόμιζε ότι ο φόρος του ανέβηκε χωρίς λόγο.
-              : rentViaBank
+              // ΤΟ ΚΕΙΜΕΝΟ ΣΥΜΦΩΝΕΙ ΜΕ ΤΟ ΝΟΥΜΕΡΟ. Η κύρωση της τραπεζικής
+              // είσπραξης (ν.5222/2025) ξεκινά την 1.7.2027· ως τότε η έκπτωση
+              // δίνεται ανεξάρτητα από τον τρόπο, οπότε ο φόρος κρατά το 95% και
+              // το κείμενο δεν μιλά για απώλεια που δεν συμβαίνει ακόμη.
+              : (!bankReceiptMatters(year) || rentViaBank)
                 ? `Προοδευτική κλίμακα ενοικίων ${year} με την τεκμαρτή έκπτωση 5%. Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου.`
-                : `Προοδευτική κλίμακα ενοικίων ${year} ΧΩΡΙΣ την τεκμαρτή έκπτωση 5%: το ενοίκιο εισπράττεται με μετρητά και από 1/1/2026 η έκπτωση προϋποθέτει τραπεζική είσπραξη. Ο φόρος υπολογίζεται στο 100% του ενοικίου.` },
+                : `Προοδευτική κλίμακα ενοικίων ${year} ΧΩΡΙΣ την τεκμαρτή έκπτωση 5%: το ενοίκιο εισπράττεται με μετρητά και από 1.7.2027 η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.` },
           // ΧΩΡΙΣ ΧΡΩΜΑΤΙΚΗ ΕΤΥΜΗΓΟΡΙΑ. Το πρόσημο το λέει ήδη το ίδιο το ποσό·
           // το πράσινο/κόκκινο απλώς το ξαναέλεγε και σε μια χρονιά με ΕΝΦΙΑ
           // έβαφε κόκκινο ένα ακίνητο που δουλεύει κανονικά.
