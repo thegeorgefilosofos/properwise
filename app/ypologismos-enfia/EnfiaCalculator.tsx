@@ -46,8 +46,8 @@ const FLOORS: { key: keyof typeof ENFIA_FLOOR_COEF | string; label: string }[] =
   { key: 'first',      label: '1ος όροφος' },
   { key: 'second',     label: '2ος όροφος' },
   { key: 'third',      label: '3ος όροφος' },
-  { key: 'fourth',     label: '4ος όροφος' },
-  { key: 'fifth_plus', label: '5ος και πάνω' },
+  { key: 'fourth',     label: '4ος και 5ος' },
+  { key: 'fifth_plus', label: '6ος και πάνω' },
 ];
 // Τα κλιμάκια παλαιότητας ΔΕΝ ξαναγράφονται εδώ: έρχονται από το enfia.ts, μαζί
 // με τις ετικέτες τους. Πριν, οι δύο οθόνες είχαν διαφορετικά λεκτικά για το

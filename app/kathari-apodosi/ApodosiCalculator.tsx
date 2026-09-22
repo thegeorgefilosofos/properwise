@@ -285,7 +285,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           <Row k="ΕΝΦΙΑ" v={feAuto(r.enfia)}/>
           <Row k="Δαπάνες" v={feAuto(r.expenses)}/>
           <Row k="Σου μένουν τον χρόνο" v={feAuto(r.net)}/>
-          <Row k="Καθαρά ανά μήνα" v={feAuto(r.netMonthly)}/>
+          <Row k="Καθαρά ανά μισθωμένο μήνα" v={feAuto(r.netMonthly)}/>
           {/* ΟΤΑΝ ΤΟ ΑΚΙΝΗΤΟ ΔΕΝ ΕΠΙΣΤΡΕΦΕΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ ΑΡΙΘΜΟΣ. Η διαίρεση
               με αρνητικά καθαρά δίνει αρνητικά χρόνια, που τυπώνονται μια χαρά
               και διαβάζονται ως απάντηση. */}

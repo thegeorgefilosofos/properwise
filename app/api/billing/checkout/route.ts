@@ -48,7 +48,11 @@ export async function GET(request: NextRequest) {
   const plan = (request.nextUrl.searchParams.get('plan') || '').trim();
   const cycle = (request.nextUrl.searchParams.get('cycle') || '').trim();
   const probe = request.nextUrl.searchParams.get('probe') === '1';
-  if (!(plan in PLANS) || (cycle !== 'monthly' && cycle !== 'annual')) {
+  // Το «free» ΕΙΝΑΙ στο PLANS (είναι πραγματικό επίπεδο), αλλά δεν έχει τιμή:
+  // δεν στήνεται ταμείο για δωρεάν πακέτο. Χωρίς αυτόν τον ρητό αποκλεισμό, το
+  // `plan in PLANS` θα το άφηνε να περάσει και ο πάροχος θα ζητούσε προϊόν που
+  // δεν υπάρχει.
+  if (!(plan in PLANS) || plan === 'free' || (cycle !== 'monthly' && cycle !== 'annual')) {
     return NextResponse.json({ error: 'Αγνωστο πακέτο ή κύκλος.' }, { status: 400 });
   }
 

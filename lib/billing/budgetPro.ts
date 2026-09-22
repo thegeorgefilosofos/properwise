@@ -36,7 +36,7 @@ export interface StrWaterfall {
   management: number; taxReserve: number; net: number; netPerNight: number; marginPct: number
 }
 /**
- * Το μέρος του ακαθάριστου που φορολογείται: τεκμαρτή έκπτωση 5% (άρθρο 39 §4).
+ * Το μέρος του ακαθάριστου που φορολογείται: τεκμαρτή έκπτωση 5% (άρθρο 39 §3).
  *
  * ΗΤΑΝ ΚΥΡΙΟΛΕΚΤΙΚΟ `0.95`, με σχόλιο που παραδεχόταν την εξάρτηση: «ίδια
  * παραδοχή με το lib/tax/shortTermTax.ts, ώστε οι δύο οθόνες να μη διαφωνούν».
