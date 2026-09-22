@@ -22,6 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { hardNavigate } from '@/lib/core/navigate';
 import { T, Card, Btn, Skeleton } from '@/components/Theme';
 import { TextInput } from '@/app/dashboard/components/UIComponents';
 import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
@@ -219,7 +220,7 @@ export default function AccountantWorkspace() {
             title="Όλοι οι πελάτες σου σε μία λίστα"
             meta="Με λογαριασμό βλέπεις μαζί κάθε ιδιοκτήτη που σε εξουσιοδότησε και τι λείπει από τον καθένα, χωρίς να κρατάς έναν σύνδεσμο ανά πελάτη."
           />
-          <Btn variant="primary" onClick={() => { window.location.href = '/login?next=/accountant/workspace'; }}>Σύνδεση</Btn>
+          <Btn variant="primary" onClick={() => { hardNavigate('/login?next=/accountant/workspace'); }}>Σύνδεση</Btn>
         </main>
       </div>
     );

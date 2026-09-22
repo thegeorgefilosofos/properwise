@@ -4,7 +4,7 @@
 // στεγαστικά, ΜΕ ΗΜΕΡΟΜΗΝΙΑ ΚΑΙ ΠΗΓΗ ΑΝΑ ΤΙΜΗ· και τα γράφει στον market_rates.
 // Deploy: supabase functions deploy market-data-updater --project-ref aromvduuxtcrzmwwvnej
 
-import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 // Η ΤΡΟΦΟΔΟΣΙΑ ΖΕΙ ΜΙΑ ΦΟΡΑ, ΣΤΟ lib/market/ecb.ts. Το αρχείο δεν έχει καμία
 // σχετική εισαγωγή ακριβώς για να φορτώνεται και από το Deno εδώ και από την

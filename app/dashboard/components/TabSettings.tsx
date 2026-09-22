@@ -8,6 +8,7 @@
 import { useState, useEffect, useRef, useId, useCallback } from 'react';
 import { leaveDevice } from '@/lib/localPrivacy';
 import { createClient } from '@/lib/supabase/client';
+import { hardNavigate } from '@/lib/core/navigate';
 import { shouldStop, leftoverText, type DeleteReport } from './deletionReport';
 import * as properties from '@/lib/data/properties';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
@@ -260,7 +261,7 @@ function DeleteAccount() {
     // Ο διακομιστής έσβησε τα πάντα· ο περιηγητής δεν μένει η τελευταία θέση
     // όπου επιβιώνουν προσωπικά δεδομένα τρίτων.
     leaveDevice();
-    window.location.assign('/login');
+    hardNavigate('/login');
   };
 
   /**
