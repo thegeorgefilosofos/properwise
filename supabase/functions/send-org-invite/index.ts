@@ -15,7 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { emailShell, eyebrow, h, p, button } from '../_shared/emailTemplates.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL } from '../_shared/site.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
