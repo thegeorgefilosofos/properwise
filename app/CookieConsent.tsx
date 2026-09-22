@@ -133,7 +133,7 @@ export default function CookieConsent() {
           λεπτομέρειες ανήκουν στην Πολιτική απορρήτου, όπου τις ψάχνει όποιος
           τις θέλει. Καμία πληροφορία δεν χάθηκε: η δήλωση «μόνο απαραίτητα, καμία
           παρακολούθηση» είναι ακριβώς το ουσιώδες περιεχόμενο της προηγούμενης. */}
-      <div style={{ flex: 1, minWidth: 200, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty' }}>
+      <div style={{ flex: 1, minWidth: 200, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty', textAlign: 'center' }}>
         Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Καμία παρακολούθηση, καμία διαφήμιση.{' '}
         {/* ΥΠΟΓΡΑΜΜΙΣΜΕΝΟΣ, ΓΙΑΤΙ ΤΟ ΧΡΩΜΑ ΜΟΝΟ ΤΟΥ ΔΕΝ ΕΙΝΑΙ ΣΥΝΔΕΣΜΟΣ. Με
             `textDecoration: none` το «Απόρρητο» ξεχώριζε ΜΟΝΟ από το χρώμα:
