@@ -88,7 +88,7 @@ export default function Page() {
           Οδηγοί φορολογίας ακινήτων
         </h1>
         <p style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--text-secondary)', margin: '0 0 clamp(28px,4vw,40px)', maxWidth: 640, textWrap: 'pretty' }}>
-          {hy('Κάθε οδηγός εξηγεί έναν φόρο βήμα βήμα και δένει με το αντίστοιχο δωρεάν εργαλείο, με πηγές και παραδείγματα σε ευρώ. Χωρίς εγγραφή.')}
+          {hy('Τεκμηριωμένοι οδηγοί για τη φορολογία των ακινήτων: κάθε κανόνας με τη νομική του βάση και κάθε ποσό με παράδειγμα σε ευρώ, δίπλα στο εργαλείο που τον υπολογίζει.')}
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
