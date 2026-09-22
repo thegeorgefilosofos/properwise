@@ -141,7 +141,7 @@ export async function proxy(request: NextRequest) {
     "/kathari-apodosi",
     // ΟΔΗΓΟΣ-ΠΥΛΩΝΑΣ. Δωρεάν περιεχόμενο που εξηγεί τη φορολογία ενοικίων 2026
     // και δένει με τον υπολογιστή· απαντά ΠΡΙΝ την εγγραφή, όπως τα εργαλεία.
-    "/odigos/forologia-enoikion-2026", "/odigos/airbnb-takk-2026",
+    "/odigos", "/odigos/forologia-enoikion-2026", "/odigos/airbnb-takk-2026",
     "/odigos/pos-ypologizetai-o-enfia",
     // ΚΑΙ ΤΑ ΠΑΚΕΤΑ. Η σελίδα φτιάχτηκε για να απαντά «τι περιλαμβάνει κάθε
     // πακέτο» ΠΡΙΝ την εγγραφή, μπήκε στον χάρτη του ιστότοπου με δικό της

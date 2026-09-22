@@ -4494,6 +4494,13 @@ html.a11y-large-text { zoom: 1.08; }
   .lp-foot { grid-template-columns: 1fr; }
 }
 
+/* ΚΑΡΤΑ ΟΔΗΓΟΥ ΣΤΟΝ ΚΟΜΒΟ /odigos. Χρώμα μόνο από tokens· η αιώρηση είναι
+   περίγραμμα, σκιά και δύο εικονοστοιχεία ανύψωσης — τίποτα που να μετακινεί
+   γείτονα. Σέβεται το prefers-reduced-motion. */
+.og-card { transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.og-card:hover { border-color: var(--border-strong); box-shadow: var(--elev-2); transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) { .og-card { transition: none; } .og-card:hover { transform: none; } }
+
 /* ═══ ΤΟ ΚΟΝΤΟ ΚΕΙΜΕΝΟ ΤΗΣ ΣΤΕΝΗΣ ΟΘΟΝΗΣ, ΣΕ ΚΑΘΕ ΣΕΛΙΔΑ ══════════════════
    Ζούσαν μέσα στο <style> του app/page.tsx, άρα υπήρχαν ΜΟΝΟ στην αρχική. Η
    κεφαλίδα κάθε άλλης δημόσιας σελίδας έγραφε ολόκληρο το «Ξεκίνα τη δοκιμή»
