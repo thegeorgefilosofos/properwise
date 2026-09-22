@@ -13,7 +13,7 @@
 // Χρειάζεται RESEND_API_KEY (υπάρχει) + προαιρετικά RESEND_FROM (branded αποστολέας).
 // ─────────────────────────────────────────────────────────────────────────
 import { emailShell, eyebrow, grUp, h, p, button, dataTable } from '../_shared/emailTemplates.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { eur } from '../_shared/format.ts'

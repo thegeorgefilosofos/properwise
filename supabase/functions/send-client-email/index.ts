@@ -14,7 +14,7 @@
 //   supabase functions deploy send-client-email
 // ─────────────────────────────────────────────────────────────────────────
 import { NO_RESEND_KEY } from '../_shared/resendKey.ts'
-import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!

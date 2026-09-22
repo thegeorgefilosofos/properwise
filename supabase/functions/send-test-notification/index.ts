@@ -13,7 +13,7 @@
 
 import { NO_RESEND_KEY } from '../_shared/resendKey.ts'
 import { emailShell, eyebrow, h, p, button, note } from '../_shared/emailTemplates.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL } from '../_shared/site.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!

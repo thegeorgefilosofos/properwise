@@ -26,7 +26,7 @@
 //
 // Deploy: supabase functions deploy health-check
 // ═══════════════════════════════════════════════════════════════════════════
-import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { runHealth, diagnose } from '../_shared/probe.mjs'
 

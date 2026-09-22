@@ -23,7 +23,7 @@
 //
 // Deploy: supabase functions deploy purge-orphan-files
 // ═══════════════════════════════════════════════════════════════════════════
-import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!

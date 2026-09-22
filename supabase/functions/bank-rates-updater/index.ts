@@ -22,7 +22,7 @@
 // Τρέχει καθημερινά μέσω pg_cron (migration 20260902120000).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { authorizeCron, cronDenial, type CronAuth, type MinimalSupabaseClient } from '../_shared/auth.ts'
 import {
   diffBank, decide, changeKey, MIN_BANKS, isOfficialSource, BANK_HOSTS,

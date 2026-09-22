@@ -60,6 +60,10 @@ export const MUTATIONS = {
   // ελληνικό κείμενο, χωρίς να περάσει από τον μετατροπέα.
   'email-uppercase': { add: 'supabase/functions/_shared/__mut__.ts', content: "export const eyebrowHtml = (t: string) => `<p style=\"text-transform:uppercase\">Ληξιπρόθεσμο ενοίκιο ${t}</p>`\n" },
 
+  // Edge function που καρφώνει ΛΑΘΟΣ έκδοση supabase-js (αποκλίνει από το lock)
+  // — ακριβώς το σφάλμα που κοκκίνιζε αργότερα και ακατανόητα στον Deno.
+  'edge-supabase-version': { add: 'supabase/functions/__mut__/index.ts', content: "import { createClient } from 'npm:@supabase/supabase-js@2.0.0'\nexport default () => createClient('', '')\n" },
+
   // Email που δηλώνει την εφαρμογή κινητού ως υπαρκτή, χωρίς μελλοντική λέξη —
   // ακριβώς το ψέμα του παλιού email κυκλοφορίας («είναι εδώ / Κατέβασε την εφαρμογή»).
   'email-app-claims': { add: 'supabase/functions/_shared/__mut__.ts', content: "export const promo = () => `<p>Η εφαρμογή για κινητά είναι εδώ. Κατέβασε την εφαρμογή τώρα.</p>`\n" },

@@ -6,6 +6,7 @@ import { heatingLabel } from '@/lib/property/heating';
 import { propertyTypeLabel } from '@/lib/property/types';
 import { useEffect, useState, useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { hardNavigate } from '@/lib/core/navigate';
 import * as propertyStore from '@/lib/data/properties';
 import * as calendarStore from '@/lib/data/calendar';
 import * as loanStore from '@/lib/data/loans';
@@ -1594,7 +1595,7 @@ export default function Dashboard() {
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { window.location.assign('/login'); return; }
+      if (!user) { hardNavigate('/login'); return; }
       setUser(user);
       // Καταγραφή παραπομπής (referral) στην πρώτη σύνδεση, idempotent. Η RPC
       // αναλύει τον κωδικό στον κάτοχο, μπλοκάρει την αυτο-παραπομπή και γράφει
@@ -1818,9 +1819,8 @@ export default function Dashboard() {
     leaveDevice();
     // ΠΛΗΡΗΣ ΦΟΡΤΩΣΗ, ΟΧΙ ΠΛΟΗΓΗΣΗ ΤΟΥ ROUTER: μετά την αποσύνδεση θέλουμε να
     // πεθάνει ΟΛΗ η μνήμη της εφαρμογής, όχι να μείνει ζωντανή με άδειο χρήστη.
-    // Ως `assign` και όχι ως ανάθεση στο `href`: ίδια ακριβώς συμπεριφορά, αλλά
-    // ο μεταγλωττιστής του React δεν το διαβάζει ως μεταβολή εξωτερικής τιμής.
-    window.location.assign('/login');
+    // Η σκληρή πλοήγηση (πλήρες reload) ζει στο lib/core/navigate.
+    hardNavigate('/login');
   };
 
   // Ο χειροποίητος κύκλος είχε ΔΙΚΟ ΤΟΥ inline <style> με @keyframes spin — ακριβές

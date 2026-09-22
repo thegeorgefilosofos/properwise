@@ -12,6 +12,7 @@
 import { useState, useEffect, CSSProperties } from 'react';
 import { leaveDevice } from '@/lib/localPrivacy';
 import { createClient } from '@/lib/supabase/client';
+import { hardNavigate } from '@/lib/core/navigate';
 import { T, TT, Btn, settingsField, Spinner, ABSENT, ABSENT_DATE, fixedCols, InfoBanner } from '@/components/Theme';
 import { SetList, SetRow, SetFact } from './SettingsKit';
 import { logActivity } from '@/lib/activity';
@@ -262,7 +263,7 @@ export default function SecuritySettings() {
     // Η καθολική αποσύνδεση κλείνει ΚΑΘΕ συνεδρία· η συσκευή που την πάτησε
     // δεν επιτρέπεται να είναι η μόνη που κρατά ονόματα και ΑΦΜ.
     leaveDevice();
-    window.location.assign('/login');
+    hardNavigate('/login');
   }
 
   const lastSignInText = lastSignIn

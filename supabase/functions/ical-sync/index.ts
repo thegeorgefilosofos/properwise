@@ -14,7 +14,7 @@
 //   • sync-all: απαιτεί header x-cron-secret == ICAL_CRON_SECRET.
 //   • Απλός έλεγχος SSRF: μπλοκάρει localhost/ιδιωτικά δίκτυα.
 // ═══════════════════════════════════════════════════════════════════════════
-import { createClient } from 'npm:@supabase/supabase-js@2.110.8'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { reportEdgeError } from '../_shared/report.ts'
 
