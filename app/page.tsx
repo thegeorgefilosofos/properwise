@@ -42,9 +42,11 @@ const OG_DESC = 'Σάρωσε λογαριασμό, μισθωτήριο ή ασ
 
 export const metadata = {
   // Το `metadataBase` έφυγε από εδώ: ζει στη ρίζα και ισχύει για κάθε σελίδα.
-  // Ο τίτλος ΔΕΝ είναι απόλυτος: αφήνουμε το πρότυπο της ρίζας (`%s · PROPERWISE`)
-  // να προσθέσει το σήμα ως κατάληξη — ώστε η αρχική να δηλώνει τη μάρκα στη Google.
-  title: TAB_TITLE,
+  // Ο τίτλος γράφεται ΑΠΟΛΥΤΟΣ με το σήμα ρητά στο τέλος. Το πρότυπο της ρίζας
+  // (`%s · PROPERWISE`) εφαρμόζεται σε άλλες σελίδες (π.χ. «Σύνδεση · PROPERWISE»),
+  // αλλά στην αρχική ΔΕΝ έβγαινε ζωντανά — ο τίτλος έμενε χωρίς μάρκα. Το κάνουμε
+  // ρητό εδώ ώστε η αρχική να δηλώνει το σήμα ΑΚΡΙΒΩΣ μία φορά στη Google.
+  title: { absolute: `${TAB_TITLE} · ${PRODUCT_NAME}` },
   description: OG_DESC,
   alternates: { canonical: SITE },
   openGraph: { title: OG_TITLE, description: OG_DESC, url: SITE, type: 'website', locale: 'el_GR', siteName: 'PROPERWISE' },

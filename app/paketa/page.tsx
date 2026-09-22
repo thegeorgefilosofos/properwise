@@ -17,6 +17,7 @@
 import type { Metadata } from 'next';
 import { siteUrl } from '@/lib/core/site';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
+import { billingWords } from '@/lib/legal/billingWords';
 import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
 import { PlanMatrix } from '@/components/PlanMatrix';
@@ -67,9 +68,11 @@ export default function Page() {
             PROPERWISE». Εδώ δεν τρέχει κανένας υπολογισμός: είναι κατάλογος
             δυνατοτήτων. Η υπόσχεση θα ήταν άσχετη, άρα θόρυβος.
 
-            ΔΥΟ ΠΡΟΤΑΣΕΙΣ, ΚΑΙ ΟΙ ΔΥΟ ΑΛΗΘΕΙΣ. Το «χωρίς κάρτα» δεν γράφεται
-            πουθενά: η κάρτα ζητείται στην εγγραφή και η πρώτη χρέωση γίνεται την
-            31η ημέρα, στη λήξη της δοκιμής. Αυτό ακριβώς λέει η δεύτερη πρόταση.
+            Η ΔΕΥΤΕΡΗ ΠΡΟΤΑΣΗ ΕΡΧΕΤΑΙ ΑΠΟ ΜΙΑ ΠΗΓΗ. Το `billingWords().firstCharge`
+            είναι η ίδια πηγή που τρέφει την αρχική: γυρίζει «δεν ζητείται κάρτα»
+            όσο το ταμείο είναι κλειστό και «η κάρτα δηλώνεται στην αρχή, πρώτη
+            χρέωση την 31η» μόλις ανοίξει — ώστε /paketa και αρχική να μη λένε
+            ποτέ διαφορετικά πράγματα για το ίδιο πράγμα.
 
             ΚΑΙ ΠΙΑΝΟΥΝ ΜΙΑ ΓΡΑΜΜΗ, ΠΕΡΑ ΠΕΡΑ. Το `maxWidth: 720` έκοβε τη
             στήλη στα δύο τρίτα του πλάτους που έχει ο τίτλος από πάνω και ο
@@ -81,7 +84,7 @@ export default function Page() {
             τίτλο και τον πίνακα — ίδια λογική με τις νομικές σελίδες. Σε φαρδιά
             οθόνη μένει μία γραμμή και η στοίχιση δεν έχει τι να τεντώσει. */}
         <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>
-          {hy(<>Κάθε πακέτο ξεκινά με {TRIAL_DAYS} ημέρες δωρεάν δοκιμή.{' '}Η κάρτα δηλώνεται από την αρχή και η πρώτη χρέωση γίνεται την {TRIAL_DAYS + 1}η ημέρα· σταματά όποτε θέλεις, χωρίς κρυφές χρεώσεις.</>)}
+          {hy(<>Κάθε πακέτο ξεκινά με {TRIAL_DAYS} ημέρες δωρεάν δοκιμή.{' '}{billingWords().firstCharge}{' '}Σταματάς όποτε θέλεις, χωρίς κρυφές χρεώσεις.</>)}
         </p>
         <div style={{ marginTop: 'clamp(22px,3vw,34px)' }}><PlanMatrix /></div>
       </main>
