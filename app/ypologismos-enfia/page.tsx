@@ -18,7 +18,7 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensParts, athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { EnfiaCalculator } from './EnfiaCalculator';
@@ -127,7 +127,7 @@ export default function Page() {
         <div className="lp-eyebrow">Δωρεάν εργαλείο</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
-          Πόσο ΕΝΦΙΑ θα πληρώσεις φέτος
+          Υπολόγισε τον ΕΝΦΙΑ του ακινήτου σου
         </h1>
         {/* Ίδια δομή με τον υπολογιστή φόρου ενοικίων και για τον ίδιο λόγο:
             η υπόσχεση κλείνει με την άνω τελεία της, η εγγύηση απορρήτου πιάνει
@@ -147,6 +147,8 @@ export default function Page() {
         <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
           <EnfiaCalculator year={year} today={athensToday()}/>
         </Suspense>
+
+        <ToolSources kind="enfia" />
 
         {/* ── Συχνές ερωτήσεις ──────────────────────────────────────────────
                ΗΤΑΝ ΠΕΝΤΕ ΚΟΥΤΙΑ ΜΕ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΒΕΛΑΚΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ, ενώ ο
@@ -170,6 +172,21 @@ export default function Page() {
               </details>
             ))}
           </div>
+        </section>
+
+        {/* Ο ΟΔΗΓΟΣ ΕΙΝΑΙ Η ΕΠΟΜΕΝΗ ΑΝΑΓΝΩΣΗ, ΟΧΙ ΥΠΟΣΗΜΕΙΩΣΗ. Ο υπολογιστής
+            δίνει το ποσό· όποιος θέλει να δει από πού βγαίνει κάθε συντελεστής
+            έχει έναν αναλυτικό οδηγό, με πηγές και παράδειγμα σε ευρώ. Ο
+            σύνδεσμος στέκει εδώ ώστε ο επισκέπτης να τον βρίσκει τη στιγμή της
+            ερώτησης, όχι μόνο μέσα από μηχανή αναζήτησης. */}
+        <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
+          <SectionHead over="Ο αναλυτικός οδηγός" title="Από πού βγαίνει κάθε συντελεστής" />
+          <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0, textWrap: 'pretty' }}>
+            Ο υπολογιστής δίνει το ποσό· ο οδηγός{' '}
+            <Link href="/odigos/pos-ypologizetai-o-enfia" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+              πώς υπολογίζεται ο ΕΝΦΙΑ
+            </Link>{' '}εξηγεί τον τύπο, τους συντελεστές (ζώνη, παλαιότητα, όροφος) και τις αυτόματες μειώσεις, με παράδειγμα σε ευρώ.
+          </p>
         </section>
 
         {/* Ο ΔΕΥΤΕΡΟΣ ΥΠΟΛΟΓΙΣΤΗΣ ΕΙΝΑΙ ΤΟ ΕΠΟΜΕΝΟ ΒΗΜΑ, ΟΧΙ ΥΠΟΣΗΜΕΙΩΣΗ. Ο

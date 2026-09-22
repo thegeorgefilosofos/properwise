@@ -69,10 +69,12 @@ ok('φόρος = κλίμακα(95% × 1500), τεκμαρτή έκπτωση 5%
 ok('καθαρά = μεικτά − φόρος − ακάλυπτο ΤΑΚΚ', near(sum.net, 1234.25) && near(sum.net, 1500 - sum.incomeTax - 52));
 ok('effectiveRate = φόρος/μεικτά', near(sum.effectiveRate, sum.incomeTax / 1500));
 // Gate 5%: με μετρητά (όχι τραπεζική είσπραξη) φορολογείται το 100% των μεικτών
-ok('μετρητά → φόρος επί 100% μεικτών', near(shortTermYearSummary(stays, 2026, { rentsPaidViaBank: false }).incomeTax, rentalIncomeTax(1500)));
-// ΚΑΙ ΤΟ ΕΤΟΣ ΦΡΑΖΕΙ ΤΟΝ ΚΑΝΟΝΑ ΤΗΣ ΤΡΑΠΕΖΗΣ. Η προϋπόθεση ισχύει από τη χρήση
-// 2026· σε παλιότερη, τα μετρητά ΔΕΝ αφαιρούν την έκπτωση που ο νόμος έδινε.
-// Το τεστ έπεφτε πριν, γιατί η συνάρτηση καλούσε την άφρακτη εκδοχή.
+// ΜΟΝΟ από τη χρήση 2027, όταν ισχύει η κύρωση του ν.5222/2025 (Α.1187/2026).
+// Χρειάζεται διαμονή του 2027, γιατί η σύνοψη φιλτράρει ανά έτος.
+const stays2027 = [{ check_in: '2027-07-01', check_out: '2027-07-05', nights: 4, total: 1500, channel: 'airbnb' }];
+ok('2027 μετρητά → φόρος επί 100% μεικτών', near(shortTermYearSummary(stays2027, 2027, { rentsPaidViaBank: false }).incomeTax, rentalIncomeTax(1500)));
+// ΚΑΙ ΤΟ ΕΤΟΣ ΦΡΑΖΕΙ ΤΟΝ ΚΑΝΟΝΑ ΤΗΣ ΤΡΑΠΕΖΗΣ. Η κύρωση ξεκινά την 1.7.2027·
+// στις χρήσεις 2025-2026 τα μετρητά ΔΕΝ αφαιρούν την έκπτωση που ο νόμος δίνει.
 {
   // Ο ίδιος πίνακας κρατά μια διαμονή του 2025· η σύνοψη φιλτράρει μόνη της.
   const bank2025 = shortTermYearSummary(stays, 2025, { rentsPaidViaBank: true });
@@ -80,7 +82,10 @@ ok('μετρητά → φόρος επί 100% μεικτών', near(shortTermYea
   ok('χρήση 2025: μετρητά κρατούν την έκπτωση 5%', near(cash2025.incomeTax, bank2025.incomeTax));
   const cash2026 = shortTermYearSummary(stays, 2026, { rentsPaidViaBank: false });
   const bank2026 = shortTermYearSummary(stays, 2026, { rentsPaidViaBank: true });
-  ok('χρήση 2026: τα μετρητά κοστίζουν την έκπτωση', cash2026.incomeTax > bank2026.incomeTax);
+  ok('χρήση 2026: μετρητά κρατούν ακόμη την έκπτωση 5%', near(cash2026.incomeTax, bank2026.incomeTax));
+  const cash2027 = shortTermYearSummary(stays2027, 2027, { rentsPaidViaBank: false });
+  const bank2027 = shortTermYearSummary(stays2027, 2027, { rentsPaidViaBank: true });
+  ok('χρήση 2027: τα μετρητά κοστίζουν την έκπτωση', cash2027.incomeTax > bank2027.incomeTax);
 }
 ok('κενό set → μηδενικά', shortTermYearSummary([], 2026).grossRevenue === 0 && shortTermYearSummary([], 2026).effectiveRate === 0);
 

@@ -1474,7 +1474,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap: 8, flexWrap:'wrap' }}>
                     <Check checked={rentsBank} onChange={v=>setRentsBankOverride(v===collection.viaBank?null:v)} label={<span style={{ fontSize:12, color:'var(--text-secondary)' }}>Τα ενοίκια εισπράττονται <strong style={{ color:'var(--text-primary)' }}>μέσω τραπέζης</strong>.</span>}/>
-                    <InfoHint>Από 1/1/2026 (ν.5246/2025) τα μισθώματα κατοικίας πρέπει να εισπράττονται με τραπεζικό ή ηλεκτρονικό μέσο (κατάθεση, IRIS, έμβασμα). Με μετρητά χάνεται η τεκμαρτή έκπτωση 5% και φορολογείσαι στο 100% του ενοικίου.</InfoHint>
+                    <InfoHint>Από 1.7.2027 (ν.5222/2025, άρθρο 210· έναρξη με την απόφαση ΑΑΔΕ Α.1187/2026) τα μισθώματα κατοικίας θα πρέπει να εισπράττονται με τραπεζικό ή ηλεκτρονικό μέσο (κατάθεση, IRIS, έμβασμα). Με μετρητά θα χάνεται η τεκμαρτή έκπτωση 5% και θα φορολογείσαι στο 100% του ενοικίου. Για τις χρήσεις 2025-2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης.</InfoHint>
                   </div>
                   {/* ΑΠΟ ΠΟΥ ΤΟ ΞΕΡΕΙ. Χωρίς αυτή τη γραμμή, ο χρήστης βλέπει ένα
                       τσεκαρισμένο κουτάκι και δεν έχει λόγο να το ελέγξει — που

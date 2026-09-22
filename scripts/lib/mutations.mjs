@@ -22,6 +22,11 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Οι Οροι έλεγαν ότι η εφαρμογή κινητού «υπάρχει» στα stores σε ενεστώτα,
+  // ενώ δεν έχει κυκλοφορήσει. Η μετάλλαξη προσθέτει ακριβώς τέτοιον ισχυρισμό,
+  // χωρίς καμία λέξη που να τον δηλώνει μελλοντικό.
+  'native-app-claims': { add: 'app/__mut_native__.tsx', content: tsx('    <p>Κατέβασε την εφαρμογή μας από το App Store και το Google Play.</p>') },
+
   // Η κλάση αιώρησης ακυρωμένη από ενσωματωμένο στυλ: το ΑΚΡΙΒΩΣ σφάλμα που
   // μετρήθηκε στον περιηγητή — φοράει `po-hov-accent` και ξαναγράφει `color`.
   'hover-class-blocked': { add: 'components/__mut__.tsx', content: "export default function MutationProbe() {\n  return (\n    <button className=\"po-hov-accent\" style={{ color: 'var(--text-secondary)', padding: 8 }}>Ενέργειες</button>\n  )\n}\n" },
@@ -54,6 +59,10 @@ export const MUTATIONS = {
   // Τα κεφαλαία των email κρατούσαν τόνο: `text-transform: uppercase` πάνω σε
   // ελληνικό κείμενο, χωρίς να περάσει από τον μετατροπέα.
   'email-uppercase': { add: 'supabase/functions/_shared/__mut__.ts', content: "export const eyebrowHtml = (t: string) => `<p style=\"text-transform:uppercase\">Ληξιπρόθεσμο ενοίκιο ${t}</p>`\n" },
+
+  // Email που δηλώνει την εφαρμογή κινητού ως υπαρκτή, χωρίς μελλοντική λέξη —
+  // ακριβώς το ψέμα του παλιού email κυκλοφορίας («είναι εδώ / Κατέβασε την εφαρμογή»).
+  'email-app-claims': { add: 'supabase/functions/_shared/__mut__.ts', content: "export const promo = () => `<p>Η εφαρμογή για κινητά είναι εδώ. Κατέβασε την εφαρμογή τώρα.</p>`\n" },
 
   // Το `style` που σβήνει τις μεταβλητές του πλέγματος.
   'grid-style': { add: 'components/__mut__.tsx', content: "import { fixedCols } from '@/components/Theme'\nexport default function MutationProbe() {\n  return <div {...fixedCols(3)} style={{ gap: 12 }}>x</div>\n}\n" },
@@ -356,7 +365,7 @@ export const MUTATIONS = {
     // ΚΑΙ ΤΟ ΙΔΙΟ ΣΕ ΔΗΜΟΣΙΕΥΜΕΝΟ ΝΟΜΙΚΟ ΕΓΓΡΑΦΟ, ΜΕ ΟΝΟΜΑ ΠΟΥ ΔΕΝ ΕΙΣΠΡΑΤΤΕΙ.
     // Δεύτερος κανόνας, δεύτερη απόδειξη: τα έγγραφα ΟΦΕΙΛΟΥΝ να ονομάζουν,
     // οπότε ο έλεγχος εκεί δεν είναι «μην το γράφεις» αλλά «γράψε τον σωστό».
-    { add: 'docs/legal/__mut__.md', content: '# Δοκιμή\n\nΧρέωση μέσω Creem ως merchant of record.\n' },
+    { add: 'docs/legal/__mut__.md', content: '# Δοκιμή\n\nΧρέωση μέσω Lemon Squeezy ως merchant of record.\n' },
   ] },
   // Η ΣΥΝΑΙΝΕΣΗ ΠΟΥ ΓΙΝΕΤΑΙ «ΝΑΙ» ΑΠΟ ΑΠΟΤΥΧΙΑ. Ακριβώς η γραμμή που έστελνε
   // το δελτίο σε όσους είχαν απεγγραφεί, σε νέα συνάρτηση άκρης.

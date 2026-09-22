@@ -84,7 +84,7 @@ npm run katalogos
 | `upsell_to_professional` | Το χαρτοφυλάκιό σου μεγαλώνει | `supabase/functions/_shared/emailPolicy.ts` |
 | `limit_reached` | Έφτασες στο όριο του δωρεάν πλάνου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `value_left` | Αφήνεις αξία αναξιοποίητη | `supabase/functions/_shared/emailPolicy.ts` |
-| `annual_discount` | Πλήρωσε ετησίως και εξοικονόμησε ${pct}% | `supabase/functions/_shared/emailPolicy.ts` |
+| `annual_discount` | promo ? `Πλήρωσε ετησίως και εξοικονόμησε ${c.discountPct}%` : 'Πλήρωσε ετησίως και κέρδισε έως δύο μήνες', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts` |
 | `trial_ending` | Η δοκιμή σου τελειώνει σύντομα | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260819130000_o_kyklos_zois_diavazei_to_sosto_pedio.sql` (+2) |
 | `winback_downgrade` | Είμαστε εδώ, όποτε θες | `supabase/functions/_shared/emailPolicy.ts` |
 | `reactivation_offer` | Γύρνα με ${pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts` |
@@ -124,9 +124,9 @@ npm run katalogos
 | `plan_changed` | Το πλάνο σου ενημερώθηκε | `supabase/functions/_shared/emailPolicy.ts` |
 | `payment_failed` | Η πληρωμή της συνδρομής δεν ολοκληρώθηκε | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `security_login` | Νέα σύνδεση στον λογαριασμό σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
-| `accountant_request_answered` | ${c.clientName \|\| 'Ο πελάτης σου'}: ήρθε αυτό που ζήτησες | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260825150000_i_pyli_logisti_kleinei_ton_kyklo.sql` |
+| `accountant_request_answered` | ${esc(c.clientName \|\| 'Ο πελάτης σου')}: ήρθε αυτό που ζήτησες | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260825150000_i_pyli_logisti_kleinei_ton_kyklo.sql` |
 | `reply_ack` | Λάβαμε το μήνυμά σου | `supabase/functions/_shared/emailPolicy.ts` |
-| `mobile_launch` | Το PROPERWISE είναι πλέον στο κινητό σου | `supabase/functions/send-lifecycle-email/index.ts` |
+| `mobile_launch` | Έρχεται το PROPERWISE στο κινητό σου | `supabase/functions/send-lifecycle-email/index.ts` |
 | `legislation_update` | Νομοθεσία ακινήτων: ${head} | **με το χέρι** · Νομοθετική αλλαγή. Το τι άλλαξε το γράφει άνθρωπος, δεν το μαντεύει σαρωτής. |
 
 ## WINBACK
@@ -232,7 +232,7 @@ npm run katalogos
 |---|---|---|
 | `tenant_welcome` | Καλωσόρισες στο νέο σου σπίτι | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `scripts/db/rls-probe.sql` |
 | `tenant_rent_receipt` | c.period ? `Απόδειξη ενοικίου ${esc(c.period)}` : 'Η απόδειξη του ενοικίου σου', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts` |
-| `coowner_statement` | Η κατάστασή σου ως συνιδιοκτήτη | **με το χέρι** · Απαιτεί διεύθυνση συνιδιοκτήτη, που δεν κρατάμε. |
+| `coowner_statement` | Η κατάσταση της συνιδιοκτησίας σου | **με το χέρι** · Απαιτεί διεύθυνση συνιδιοκτήτη, που δεν κρατάμε. |
 
 ## VALUE
 

@@ -17,7 +17,12 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.er
 /** Ο έμπορος αυτού του περιβάλλοντος, ονομαστικά. */
 const mor = (env: Record<string, string | undefined>) => MERCHANT_NAMES[merchantId(env)]
 
+// Ο ΠΡΩΤΟΣ ΕΜΠΟΡΟΣ, ΖΩΝΤΑΝΟΣ — ΚΑΙ ΔΗΛΩΜΕΝΟΣ ΡΗΤΑ. Από τότε που ο
+// προεπιλεγμένος έγινε ο Creem, ο Lemon δεν είναι πια «ό,τι ισχύει χωρίς
+// μεταβλητή»: χρειάζεται το `MERCHANT_PROVIDER=lemon` για να επιλεγεί. Χωρίς
+// αυτό, τα lemon-κλειδιά θα έμεναν αδιάβαστα και το ταμείο κλειστό.
 const LIVE = {
+  [PROVIDER_ENV]: 'lemon',
   LEMON_SQUEEZY_API_KEY: 'κλειδί',
   LEMON_STORE_ID: '12345',
   LEMON_VARIANTS: '811223:solo:monthly',
@@ -162,7 +167,7 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
 // μητρώο υπεργολάβων θα ονόμαζαν τον προηγούμενο: θα δήλωναν στο υποκείμενο
 // ως εκτελούντα την επεξεργασία εταιρεία που δεν αγγίζει τα δεδομένα του.
 {
-  ok('χωρίς μεταβλητή ισχύει ο σημερινός έμπορος', merchantId(DARK) === 'lemon')
+  ok('χωρίς μεταβλητή ισχύει ο προεπιλεγμένος (creem)', merchantId(DARK) === 'creem')
   ok('η μεταβλητή διαλέγει τον δεύτερο', merchantId(LIVE_2) === 'creem')
   ok('κεφαλαία και κενά δεν χαλούν το όνομα',
     merchantId({ [PROVIDER_ENV]: '  CREEM ' }) === 'creem')

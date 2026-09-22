@@ -139,6 +139,10 @@ export async function proxy(request: NextRequest) {
     // για να απαντά ΠΡΙΝ μας ξέρει κανείς και δεν απαντούσε σε κανέναν.
     "/ypologismos-forou-enoikion", "/ypologismos-enfia", "/vraxyxronia-i-makroxronia",
     "/kathari-apodosi",
+    // ΟΔΗΓΟΣ-ΠΥΛΩΝΑΣ. Δωρεάν περιεχόμενο που εξηγεί τη φορολογία ενοικίων 2026
+    // και δένει με τον υπολογιστή· απαντά ΠΡΙΝ την εγγραφή, όπως τα εργαλεία.
+    "/odigos", "/odigos/forologia-enoikion-2026", "/odigos/airbnb-takk-2026",
+    "/odigos/pos-ypologizetai-o-enfia",
     // ΚΑΙ ΤΑ ΠΑΚΕΤΑ. Η σελίδα φτιάχτηκε για να απαντά «τι περιλαμβάνει κάθε
     // πακέτο» ΠΡΙΝ την εγγραφή, μπήκε στον χάρτη του ιστότοπου με δικό της
     // σχόλιο ότι δεν ζει πίσω από τη σύνδεση — και ζούσε: γύριζε 307 προς το
@@ -244,6 +248,19 @@ export const config = {
     // Εξαιρούνται εδώ και όχι στο PUBLIC επίτηδες: δεν χρειάζονται ούτε
     // συνεδρία ούτε κεφαλίδες ασφαλείας — είναι στατικά αρχεία για μηχανές —
     // και έτσι δεν ξοδεύουν εκτέλεση middleware σε κάθε ανίχνευση.
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|opengraph-image|icon\\.svg|icons/|fonts/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    //
+    // ── ΤΟ /health ΑΝΗΚΕΙ ΕΔΩ, ΟΧΙ ΣΤΟ /api/ ────────────────────────────────
+    // Το liveness endpoint (app/health/route.ts) απαντά σε monitor μηχανές
+    // (UptimeRobot) κάθε λίγα λεπτά με σκέτο 200. Είναι δημόσιο και ανώνυμο εξ
+    // ορισμού· αν ζούσε κάτω από το `/api/` θα ήταν η μοναδική διαδρομή χωρίς
+    // αυτο-έλεγχο σε έναν κατάλογο που ο guard-api-auth κρατά ερμητικά κλειστό.
+    // Ζει λοιπόν δίπλα στα robots/sitemap, εκτός διαμεσολαβητή: δεν θέλει ούτε
+    // συνεδρία ούτε CSP σε κάθε ping.
+    //
+    // ── ΤΟ ΑΡΧΕΙΟ ΕΠΑΛΗΘΕΥΣΗΣ ΤΟΥ SEARCH CONSOLE ΑΝΗΚΕΙ ΚΙ ΑΥΤΟ ΕΔΩ ──────────
+    // Το Google ζητά ανώνυμα το `google<token>.html` (public/) για να αποδείξει
+    // την ιδιοκτησία. Αν έπεφτε στο middleware θα έπαιρνε 307 προς /login και η
+    // επαλήθευση δεν θα ολοκληρωνόταν ποτέ — ακριβώς όπως τα robots/sitemap.
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|opengraph-image|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
