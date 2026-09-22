@@ -1612,10 +1612,13 @@ export default function Dashboard() {
       supabase.rpc('sync_comp_from_referrals').then(() => {});
       // Αυτόματη αποδοχή προσκλήσεων οργανισμού για το email του χρήστη (idempotent).
       supabase.rpc('accept_org_invites_for_me').then(() => {});
-      await fetchProperties(user.id);
       // Καλωσόρισμα πρώτης χρήσης: μόνο για νέο χρήστη (χωρίς ακίνητα) που δεν
       // έχει ξαναδεί το onboarding (πρόοδος στη βάση, όχι μόνο τοπικά).
+      // Το `finally` εγγυάται ότι ο δείκτης φόρτωσης κλείνει ΠΑΝΤΑ: αν κάποιο
+      // await (ανάγνωση ακινήτων ή τα ερωτήματα υποδοχής) πετάξει, χωρίς αυτό
+      // η οθόνη θα έμενε για πάντα στο spinner.
       try {
+        await fetchProperties(user.id);
         const cnt = (t: string) => supabase.from(t).select('id', { count: 'exact', head: true }).eq('user_id', user.id);
         // ΕΝΑ COUNT ΛΙΓΟΤΕΡΟ ΣΕ ΚΑΘΕ ΦΟΡΤΩΣΗ: ΕΦΥΓΕ ΤΟ cnt('contacts').
         // Γέμιζε το σήμα `hasContacts`, που έθρεφε τον κανόνα αποκάλυψης
