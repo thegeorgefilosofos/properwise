@@ -1947,10 +1947,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           </button>
           {changesOpen && (
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap:12, marginTop:16, alignItems:'start' }}>
-              {relevantChanges.map((u:RegulatoryUpdate)=>{
+              {relevantChanges.map((u:RegulatoryUpdate, i:number)=>{
                 const uo = openChange===u.id
+                // ΚΑΝΕΝΑ ΟΡΦΑΝΟ ΠΛΑΚΙΔΙΟ. Το πλέγμα είναι `auto-fit`, οπότε μονός
+                // αριθμός καρτών αφήνει την τελευταία μόνη της στη σειρά σε φαρδιά
+                // οθόνη (4+4+1). Οταν το πλήθος είναι μονό, η τελευταία απλώνεται σε
+                // όλο το πλάτος: γεμάτη σειρά, ποτέ ορφανό. Ισχύει για κάθε πλήθος.
+                const lastAlone = i === relevantChanges.length - 1 && relevantChanges.length % 2 === 1
                 return (
-                  <div key={u.id} style={{ borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${uo?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
+                  <div key={u.id} style={{ borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${uo?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s', ...(lastAlone ? { gridColumn:'1 / -1' } : {}) }}>
                     {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: η αιώρηση γεμίσματος έρχεται από την κλάση
                         `po-hov-fill` · κανένα πρωτογενές δεν δέχεται className. */}
                     <button onClick={()=>setOpenChange(uo?null:u.id)} aria-expanded={uo} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'13px 15px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
@@ -1966,7 +1971,11 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                             φόρου ανακαίνισης» πιάνει οκτώ γραμμές. Οι δύο κάρτες είναι
                             δίπλα δίπλα στην ίδια οθόνη: αν στοιχιστεί μόνο η μία, η
                             διαφορά φαίνεται με μια ματιά. */}
-                        <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, lineHeight:1.6, fontFamily: T.font.sans }}>{hy(u.summary)}</p>
+                        {/* ΜΕΤΡΟ ΑΝΑΓΝΩΣΗΣ: όταν η κάρτα απλώνεται σε όλο το πλάτος
+                            (μονός αριθμός καρτών), η περίληψη χωρίς όριο θα έφτανε
+                            120 χαρακτήρες ανά γραμμή. Το `maxWidth` κρατά τη γραμμή
+                            σε αναγνώσιμο μέτρο· στις στενές κάρτες δεν αλλάζει τίποτα. */}
+                        <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, lineHeight:1.6, fontFamily: T.font.sans, maxWidth: '62ch' }}>{hy(u.summary)}</p>
                         <div style={{ display:'flex', alignItems:'center', gap:12, marginTop: 12, flexWrap:'wrap' }}>
                           <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans, letterSpacing:'0.3px' }}>Ισχύς: {u.effective} · {u.legalBasis}</span>
                           {u.sourceHref && <OutLink href={u.sourceHref} label={u.sourceLabel||'Πηγή'}/>}
