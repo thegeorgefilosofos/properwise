@@ -99,6 +99,8 @@ const EXPLAINS_ONLY = {
   'lib/tax/rentCollectionMode.ts': 'διαβάζει τον τρόπο είσπραξης· το ποσοστό και η προϋπόθεση ζουν στο lib/accounting/statement.ts, που είναι στο μητρώο ως presumptive-deduction',
   'lib/rent/collect.ts': 'καταγράφει εισπράξεις· την τεκμαρτή έκπτωση την εξηγεί, δεν την ορίζει',
   'lib/billing/consolidate.ts': 'ενοποιεί εισοδήματα· δανείζεται το ποσοστό από το statement.ts και το γράφει σε κείμενο',
+  'lib/tools/apodosi.ts': 'υπολογίζει καθαρή απόδοση· δανείζεται κλίμακα (greekTax) και τεκμαρτή έκπτωση/προϋπόθεση τραπέζης (consolidate), τον νόμο τον εξηγεί μόνο σε σχόλιο',
+  'lib/property/fields.ts': 'περιγράφει πεδία φόρμας· η προϋπόθεση τραπεζικής είσπραξης και το 5% ζουν στο statement.ts/consolidate, εδώ μόνο εξηγούνται στο «why»',
 }
 
 const unguarded = []

@@ -4494,6 +4494,13 @@ html.a11y-large-text { zoom: 1.08; }
   .lp-foot { grid-template-columns: 1fr; }
 }
 
+/* ΚΑΡΤΑ ΟΔΗΓΟΥ ΣΤΟΝ ΚΟΜΒΟ /odigos. Χρώμα μόνο από tokens· η αιώρηση είναι
+   περίγραμμα, σκιά και δύο εικονοστοιχεία ανύψωσης — τίποτα που να μετακινεί
+   γείτονα. Σέβεται το prefers-reduced-motion. */
+.og-card { transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.og-card:hover { border-color: var(--border-strong); box-shadow: var(--elev-2); transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) { .og-card { transition: none; } .og-card:hover { transform: none; } }
+
 /* ═══ ΤΟ ΚΟΝΤΟ ΚΕΙΜΕΝΟ ΤΗΣ ΣΤΕΝΗΣ ΟΘΟΝΗΣ, ΣΕ ΚΑΘΕ ΣΕΛΙΔΑ ══════════════════
    Ζούσαν μέσα στο <style> του app/page.tsx, άρα υπήρχαν ΜΟΝΟ στην αρχική. Η
    κεφαλίδα κάθε άλλης δημόσιας σελίδας έγραφε ολόκληρο το «Ξεκίνα τη δοκιμή»
@@ -4700,6 +4707,25 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 /* Ίδια στοίχιση για τα κείμενα που δεν είναι παράγραφοι, π.χ. οι εγγυήσεις
    του «Ποιοι είμαστε»: αλλιώς η μισή σελίδα κλείνει ίσια και η άλλη μισή όχι. */
 .lg-just { text-align: justify; }
+
+/* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΓΙΝΕΤΑΙ ΠΟΤΑΜΙΑ ΛΕΥΚΟΥ ΚΑΙ ΣΠΑΣΜΕΝΕΣ ΛΕΞΕΙΣ.
+   Σε ~340px στήλη το `justify` μαζί με τον μαλακό συλλαβισμό του `hy()` αφήνει
+   τεντωμένα κενά και μεσολεκτικά κοψίματα (φορο-, χρεώ-σεις) — ακριβώς αυτό που
+   απέφυγαν τα εργαλεία όταν γύρισαν σε αριστερή στοίχιση (δες ToolLede). Ο ίδιος
+   κανόνας εδώ για ΚΑΘΕ δικαιολογημένο κείμενο στο κινητό: αριστερή στοίχιση, ενώ
+   ο συλλαβισμός μένει (ζημιά κάνει μόνο δίπλα στο justify, όχι μόνος του).
+   Πάνω από τα 640px η στήλη είναι αρκετά φαρδιά ώστε το justify να διαβάζεται. */
+@media (max-width: 640px) {
+  .po-just,
+  .lg-p,
+  .lg-ul li,
+  .lg-note,
+  .lg-just,
+  .po-table td.lg-cell-prose,
+  .lg-lede > p:first-child {
+    text-align: start;
+  }
+}
 
 @media (max-width: 900px) {
   /* ΣΕ ΚΙΝΗΤΟ ΤΟ ΕΥΡΕΤΗΡΙΟ ΚΥΛΑΕΙ ΜΕΣΑ ΤΟΥ. Είκοσι τέσσερις ενότητες η μία
@@ -5398,3 +5424,31 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   align-items: stretch;
 }
 .po-panelrow > * { flex: 1 1 min(100%, var(--panel-min)); min-width: 0; }
+
+/* ── Νομική βάση / πηγές στα εργαλεία (σήμα E-E-A-T) ─────────────────────── */
+.po-tool-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: clamp(22px, 3.5vw, 32px) 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-tertiary);
+}
+.po-src-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.po-src-txt { flex: 1 1 auto; min-width: 220px; }

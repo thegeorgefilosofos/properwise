@@ -26,7 +26,7 @@ import {
 import { greekWhen } from '@/lib/market/ecb'
 import { rentalRowsForYear } from '@/lib/billing/greekTax'
 import { athensParts } from '@/lib/core/time'
-import { PRESUMPTIVE_RULE_2026 } from '@/lib/billing/consolidate'
+import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate'
 import { regionByKey, GREECE_AVG_GROSS_YIELD, MARKET_DATA_ASOF } from '@/lib/market/greekMarket'
 import { athensToday } from '@/lib/core/time';
 import { TRANSFER_TAX_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL } from '@/lib/accounting/transfer'
@@ -604,7 +604,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   const [actualRent, setActualRent] = useState(0)         // πραγματικό μηνιαίο ενοίκιο, από τη βάση
   const [monthlyRent, setMonthlyRent] = useState('')      // κενό = ακολουθεί το ενοίκιο-αναφορά
   const [rentTouched, setRentTouched] = useState(false)
-  // Είσπραξη μέσω τραπέζης: προϋπόθεση της τεκμαρτής έκπτωσης 5% από 1/1/2026.
+  // Είσπραξη μέσω τραπέζης: προϋπόθεση της τεκμαρτής έκπτωσης 5% από 1.7.2027 (ν.5222/2025).
   const [rentsBank, setRentsBank] = useState(true)
   const [marital,     setMarital]     = useState<'single'|'married'>('single')
   const [children,    setChildren]    = useState('0')
@@ -1518,7 +1518,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                   <input type="checkbox" checked={rentsBank} onChange={e=>setRentsBank(e.target.checked)} style={{width:15,height:15,accentColor:'var(--accent)',cursor:'pointer'}}/>
                   Τα ενοίκια θα εισπράττονται μέσω τραπέζης
                 </label>
-                <p className="po-prose po-just" style={{margin:'4px 0 0 23px',fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{hy(<>{PRESUMPTIVE_RULE_2026}</>)}</p>
+                <p className="po-prose po-just" style={{margin:'4px 0 0 23px',fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{hy(<>{PRESUMPTIVE_RULE}</>)}</p>
                 <p style={{margin:'10px 0 0',fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.6}}>
                   Φορολογητέο {fmtEur(taxableRental(renInc, rentsBank))} · <strong style={{color:'var(--text-primary)'}}>εκτιμώμενος φόρος {fmtEur(renTax)} τον χρόνο</strong>. Ο φόρος ενοικίων είναι προοδευτικός στο σύνολο των ακινήτων σου: αν έχεις κι άλλα, δες το πραγματικό ποσό στη Λογιστική.
                 </p>

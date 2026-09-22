@@ -139,6 +139,10 @@ export async function proxy(request: NextRequest) {
     // για να απαντά ΠΡΙΝ μας ξέρει κανείς και δεν απαντούσε σε κανέναν.
     "/ypologismos-forou-enoikion", "/ypologismos-enfia", "/vraxyxronia-i-makroxronia",
     "/kathari-apodosi",
+    // ΟΔΗΓΟΣ-ΠΥΛΩΝΑΣ. Δωρεάν περιεχόμενο που εξηγεί τη φορολογία ενοικίων 2026
+    // και δένει με τον υπολογιστή· απαντά ΠΡΙΝ την εγγραφή, όπως τα εργαλεία.
+    "/odigos", "/odigos/forologia-enoikion-2026", "/odigos/airbnb-takk-2026",
+    "/odigos/pos-ypologizetai-o-enfia",
     // ΚΑΙ ΤΑ ΠΑΚΕΤΑ. Η σελίδα φτιάχτηκε για να απαντά «τι περιλαμβάνει κάθε
     // πακέτο» ΠΡΙΝ την εγγραφή, μπήκε στον χάρτη του ιστότοπου με δικό της
     // σχόλιο ότι δεν ζει πίσω από τη σύνδεση — και ζούσε: γύριζε 307 προς το

@@ -163,7 +163,7 @@ export default function LandingCalculator() {
             πρέπει να πείσει. Ο συλλαβισμός συνοδεύει τη στοίχιση — μόνη της τεντώνει
             τα κενά. Το ποσοστό κι οι ημερομηνίες είναι ψηφία: μένουν ακέραια. */}
         <p className="po-just" style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
-          {hy(<>Ενδεικτικός υπολογισμός με την κλίμακα ενοικίων 2026 και τεκμαρτή έκπτωση {fp(PRESUMPTIVE_DEDUCTION_RATE * 100)} για δαπάνες, που από 1/1/2026 προϋποθέτει είσπραξη μέσω τραπέζης. Δεν υποκαθιστά τον λογιστή σου.</>)}
+          {hy(<>Ενδεικτικός υπολογισμός με την κλίμακα ενοικίων 2026 (ν.5246/2025) και τεκμαρτή έκπτωση {fp(PRESUMPTIVE_DEDUCTION_RATE * 100)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
           Δες τα δικά σου δεδομένα, αυτόματα
