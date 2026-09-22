@@ -82,7 +82,7 @@ npm run katalogos
 | `free_month_upgrade` | Άλλος ένας μήνας. Μήπως ήρθε η ώρα; | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `upsell_to_individual` | Δώσε στα ακίνητά σου το πλήρες PROPERWISE | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
 | `upsell_to_professional` | Το χαρτοφυλάκιό σου μεγαλώνει | `supabase/functions/_shared/emailPolicy.ts` |
-| `limit_reached` | Έφτασες στο όριο του δωρεάν πλάνου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
+| `limit_reached` | Έφτασες στο όριο των ακινήτων σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `value_left` | Αφήνεις αξία αναξιοποίητη | `supabase/functions/_shared/emailPolicy.ts` |
 | `annual_discount` | promo ? `Πλήρωσε ετησίως και εξοικονόμησε ${c.discountPct}%` : 'Πλήρωσε ετησίως και κέρδισε έως δύο μήνες', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts` |
 | `trial_ending` | Η δοκιμή σου τελειώνει σύντομα | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260819130000_o_kyklos_zois_diavazei_to_sosto_pedio.sql` (+2) |
@@ -121,7 +121,7 @@ npm run katalogos
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
 | `subscription_receipt` | c.invoiceNumber ? `Απόδειξη συνδρομής ${esc(c.invoiceNumber)}` : 'Η απόδειξη της συνδρομής σου', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
-| `plan_changed` | Το πλάνο σου ενημερώθηκε | `supabase/functions/_shared/emailPolicy.ts` |
+| `plan_changed` | Το πακέτο σου ενημερώθηκε | `supabase/functions/_shared/emailPolicy.ts` |
 | `payment_failed` | Η πληρωμή της συνδρομής δεν ολοκληρώθηκε | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `security_login` | Νέα σύνδεση στον λογαριασμό σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `accountant_request_answered` | ${esc(c.clientName \|\| 'Ο πελάτης σου')}: ήρθε αυτό που ζήτησες | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260825150000_i_pyli_logisti_kleinei_ton_kyklo.sql` |
@@ -199,7 +199,7 @@ npm run katalogos
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
 | `roi_proof` | Πόσο σου απέδωσε το PROPERWISE | `supabase/functions/_shared/emailPolicy.ts` |
-| `plan_comparison` | Ποιο πλάνο συμφέρει για τη δική σου χρήση | `supabase/functions/_shared/emailPolicy.ts` |
+| `plan_comparison` | Ποιο πακέτο συμφέρει για τη δική σου χρήση | `supabase/functions/_shared/emailPolicy.ts` |
 | `social_proof` | Γιατί οι επαγγελματίες επιλέγουν το PROPERWISE | `supabase/functions/_shared/emailPolicy.ts` |
 | `rent_benchmark_alert` | Το ενοίκιό σου σε σχέση με την αγορά | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+2) |
 

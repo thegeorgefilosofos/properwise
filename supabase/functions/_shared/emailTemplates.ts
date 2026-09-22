@@ -8,8 +8,8 @@
 // Καθαρό & χωρίς εξαρτήσεις (ισχύει σε Deno edge functions και σε plain TS), ώστε
 // να το χρησιμοποιούν όλες οι functions αποστολής και να μη διαφέρει ποτέ η εικόνα.
 //
-// Segmentation ανά πλάνο (free / individual / professional) + εποχικές καμπάνιες.
-// Η εξατομίκευση γίνεται με παραμέτρους (όνομα, πλάνο, ποσά…). Για μαζικά batch
+// Segmentation ανά πακέτο (free / individual / professional) + εποχικές καμπάνιες.
+// Η εξατομίκευση γίνεται με παραμέτρους (όνομα, πακέτο, ποσά…). Για μαζικά batch
 // (send-client-email) υποστηρίζονται και tokens {{name}} που γεμίζει η function.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -372,7 +372,7 @@ const app = (c: Ctx) => c.appUrl || DEFAULT_APP;
 
 // ── LIFECYCLE ────────────────────────────────────────────────────────────────
 
-/** Καλωσόρισμα μετά την εγγραφή · segmented ανά πλάνο. */
+/** Καλωσόρισμα μετά την εγγραφή · segmented ανά πακέτο. */
 export function welcomeEmail(c: Ctx & { plan?: Plan }): Out {
   const plan = c.plan || 'free';
   const next: Record<Plan, string[]> = {
@@ -382,7 +382,7 @@ export function welcomeEmail(c: Ctx & { plan?: Plan }): Out {
   };
   const body = eyebrow('Καλωσόρισες') + h('Ξεκίνα με το PROPERWISE')
     + greeting(c.name)
-    + p(`Χαιρόμαστε που είσαι μαζί μας. Είσαι στο πλάνο <b>${PLAN_LABEL[plan]}</b> · να τα πρώτα βήματα για να πάρεις αξία από την πρώτη μέρα:`)
+    + p(`Χαιρόμαστε που είσαι μαζί μας. Είσαι στο πακέτο <b>${PLAN_LABEL[plan]}</b> · να τα πρώτα βήματα για να πάρεις αξία από την πρώτη μέρα:`)
     + bullets(next[plan])
     + button('Άνοιξε τον πίνακα', `${app(c)}/dashboard`)
     + note('Είμαστε εδώ για ό,τι χρειαστείς. Απάντησε απευθείας σε αυτό το email.');
@@ -402,14 +402,14 @@ export function planUpgradedEmail(c: Ctx & { plan: Plan }): Out {
     + bullets(perks[c.plan])
     + button('Δες τι νέο έχεις', `${app(c)}/dashboard`)
     + note('Η απόδειξη της συνδρομής σου είναι διαθέσιμη στις Ρυθμίσεις, στη Συνδρομή.');
-  return { subject: `Καλωσόρισες στο πλάνο ${PLAN_LABEL[c.plan]}`, html: emailShell({ bodyHtml: body, preheader: 'Ευχαριστούμε · να τι ξεκλείδωσες.' }) };
+  return { subject: `Καλωσόρισες στο πακέτο ${PLAN_LABEL[c.plan]}`, html: emailShell({ bodyHtml: body, preheader: 'Ευχαριστούμε · να τι ξεκλείδωσες.' }) };
 }
 
 /** Υποβάθμιση/λήξη συνδρομής · ευγενικό, χωρίς πίεση, με πόρτα επιστροφής. */
 export function planDowngradedEmail(c: Ctx & { plan: Plan }): Out {
-  const body = eyebrow('Αλλαγή πλάνου') + h(`Το πλάνο σου είναι τώρα ${PLAN_LABEL[c.plan]}`)
+  const body = eyebrow('Αλλαγή πακέτου') + h(`Το πακέτο σου είναι τώρα ${PLAN_LABEL[c.plan]}`)
     + greeting(c.name)
-    + p('Καταγράψαμε την αλλαγή στο πλάνο σου. Τα δεδομένα σου παραμένουν ασφαλή και δικά σου · τίποτα δεν χάνεται.')
+    + p('Καταγράψαμε την αλλαγή στο πακέτο σου. Τα δεδομένα σου παραμένουν ασφαλή και δικά σου · τίποτα δεν χάνεται.')
     + p('Αν κάτι δεν πήγε όπως περίμενες ή θέλεις να επιστρέψεις σε περισσότερες δυνατότητες, είμαστε ένα κλικ μακριά.')
     + button('Διαχείριση συνδρομής', `${app(c)}/dashboard`)
     + note('Θα χαρούμε πολύ να ακούσουμε τη γνώμη σου · απάντησε και πες μας τι θα σε βοηθούσε.');
@@ -464,15 +464,15 @@ export function upsellEmail(c: Ctx & { toPlan?: Plan; discountPct?: number; seas
   const disc = c.discountPct && c.discountPct > 0 ? c.discountPct : 0;
   const seasonLine = c.seasonLabel ? ` <b>${esc(c.seasonLabel)}</b>` : '';
   const body = eyebrow(disc ? `Προσφορά${seasonLine ? ' ·' : ''}${seasonLine}` : 'Αναβάθμιση')
-    + h(disc ? `${disc}% έκπτωση στο πλάνο ${PLAN_LABEL[to]}` : `Ξεκλείδωσε το πλάνο ${PLAN_LABEL[to]}`)
+    + h(disc ? `${disc}% έκπτωση στο πακέτο ${PLAN_LABEL[to]}` : `Ξεκλείδωσε το πακέτο ${PLAN_LABEL[to]}`)
     + greeting(c.name)
-    + p(`Κάνεις ήδη ωραία δουλειά με το δωρεάν πλάνο. Με το <b>${PLAN_LABEL[to]}</b> κερδίζεις χρόνο και σιγουριά:`)
+    + p(`Κάνεις ήδη ωραία δουλειά στη δωρεάν δοκιμή. Με το <b>${PLAN_LABEL[to]}</b> κερδίζεις χρόνο και σιγουριά:`)
     + bullets(to === 'professional'
         ? ['Απεριόριστα ακίνητα και branded αναφορές.', 'Μαζική επικοινωνία πελατών.', 'Προτεραιότητα στην υποστήριξη.']
         : ['Απεριόριστες καταστάσεις και βεβαιώσεις.', 'Αυτόματες υπενθυμίσεις πληρωμών.', 'Επίσημες αναφορές PDF με QR επαλήθευσης.'])
     + button(disc ? `Κλείσε το ${disc}%` : 'Αναβάθμισε τώρα', `${app(c)}/dashboard`)
     + note(disc ? 'Η προσφορά ισχύει για περιορισμένο διάστημα.' : 'Ακύρωση όποτε θες · χωρίς δεσμεύσεις.');
-  const subj = disc ? `${disc}% έκπτωση${c.seasonLabel ? ` · ${c.seasonLabel}` : ''} στο PROPERWISE` : `Αναβάθμισε στο πλάνο ${PLAN_LABEL[to]}`;
+  const subj = disc ? `${disc}% έκπτωση${c.seasonLabel ? ` · ${c.seasonLabel}` : ''} στο PROPERWISE` : `Αναβάθμισε στο πακέτο ${PLAN_LABEL[to]}`;
   return { subject: subj, html: emailShell({ bodyHtml: body, preheader: disc ? `Ξεκλείδωσε το ${PLAN_LABEL[to]} με έκπτωση.` : 'Περισσότερος χρόνος, λιγότερος κόπος.' }) };
 }
 
