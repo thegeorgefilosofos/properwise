@@ -17,8 +17,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { PLAN_RANK_ORDER } from '@/lib/billing/aiLimits';
 import {
   requiredPlanForFeature, planAtLeast, FEATURE_LABEL,
-  type Feature, type PlanId,
+  type Feature,
 } from '@/lib/billing/entitlements';
+import type { PlanId } from '@/lib/billing/plans';
 
 /** Η πύλη άνοιξε: ο χρήστης είναι συνδεδεμένος και το πακέτο του φτάνει. */
 export type FeatureGrant = { ok: true; plan: PlanId; userId: string };
