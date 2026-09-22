@@ -4495,6 +4495,12 @@ html.a11y-large-text { zoom: 1.08; }
 .og-card:hover { border-color: var(--border-strong); box-shadow: var(--elev-2); transform: translateY(-2px); }
 @media (prefers-reduced-motion: reduce) { .og-card { transition: none; } .og-card:hover { transform: none; } }
 
+/* ΤΕΣΣΕΡΙΣ ΟΔΗΓΟΙ ΣΕ ΠΛΕΓΜΑ 2×2, ΟΧΙ 3+1. Τέσσερις κάρτες σε τρεις στήλες
+   αφήνουν μία ορφανή στη δεύτερη σειρά· δύο επί δύο διαβάζονται ως σύνολο.
+   Κάτω από 720 γίνονται μία στήλη, χωρίς ελάχιστο πλάτος που να ξεχειλίζει. */
+.og-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 720px) { .og-grid { grid-template-columns: 1fr; } }
+
 /* ═══ ΤΟ ΚΟΝΤΟ ΚΕΙΜΕΝΟ ΤΗΣ ΣΤΕΝΗΣ ΟΘΟΝΗΣ, ΣΕ ΚΑΘΕ ΣΕΛΙΔΑ ══════════════════
    Ζούσαν μέσα στο <style> του app/page.tsx, άρα υπήρχαν ΜΟΝΟ στην αρχική. Η
    κεφαλίδα κάθε άλλης δημόσιας σελίδας έγραφε ολόκληρο το «Ξεκίνα τη δοκιμή»

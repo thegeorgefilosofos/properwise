@@ -55,6 +55,13 @@ const GUIDES: { href: string; kicker: string; title: string; desc: string }[] = 
     desc: 'Ο τύπος από την τιμή ζώνης επί τα τετραγωνικά, οι συντελεστές παλαιότητας '
         + 'και ορόφου, η αυτόματη μείωση ανά αξία και οι απαλλαγές.',
   },
+  {
+    href: '/odigos/kathari-apodosi-akinitou',
+    kicker: 'Απόδοση',
+    title: 'Καθαρή απόδοση ακινήτου',
+    desc: 'Από τη μεικτή απόδοση αφαιρούνται ο φόρος στο δικό σου κλιμάκιο, ο ΕΝΦΙΑ '
+        + 'και οι δαπάνες. Τι μένει καθαρό, με παράδειγμα σε ευρώ.',
+  },
 ];
 
 const jsonLd = {
@@ -91,7 +98,7 @@ export default function Page() {
           {hy('Τεκμηριωμένοι οδηγοί για τη φορολογία των ακινήτων: κάθε κανόνας με τη νομική του βάση και κάθε ποσό με παράδειγμα σε ευρώ, δίπλα στο εργαλείο που τον υπολογίζει.')}
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+        <div className="og-grid">
           {GUIDES.map(g => (
             <Link key={g.href} href={g.href} className="og-card lp-link"
               style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '22px 22px 20px', borderRadius: T.radius.modal,
