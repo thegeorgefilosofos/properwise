@@ -1,10 +1,12 @@
-'use client';
+// ΧΩΡΙΣ 'use client': καθαρή λογική φόρτωσης + χτισίματος βιβλίου, ώστε να τρέχει
+// ΚΑΙ στον server (route /api/e2/export, πύλη πακέτου) ΚΑΙ στον browser (λήψη).
+// Το `downloadWorkbook` αγγίζει `document` μόνο μέσα σε συνάρτηση, με έλεγχο.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as propertyStore from '@/lib/data/properties';
 import * as stayStore from '@/lib/data/stays';
 import * as rentStore from '@/lib/data/rent';
 import * as tenantStore from '@/lib/data/tenants';
-import { XLSX, setCell, downloadWorkbook, sheetFinish } from './xlsxStyle';
+import { XLSX, setCell, sheetFinish } from './xlsxStyle';
 import { FMT, S, ROW, type Cell } from './sheetFormat';
 import { E2_OFFICIAL_HEADERS, E2_NUM_COLS, buildE2OfficialCells, buildE2Row, buildE1Summary, type E2Stay, E1_HEADERS, E2_INSTRUCTIONS, type E2Property, type E2Tenant, type E2Payment, type E2Row } from '@/lib/billing/e2';
 
@@ -155,18 +157,17 @@ export async function loadE2Rows(
   return { properties, rows, ownerAfm, tenantByProp, paymentsByProp, afmByProp, staysByProp };
 }
 
-export async function runE2Export(supabase: SupabaseClient, userId: string, year: number): Promise<number> {
-  // ΜΙΑ ΦΟΡΤΩΣΗ, ΟΧΙ ΔΥΟ.
-  // Εδώ ήταν αντιγραμμένο ολόκληρο το σώμα του `loadE2Rows`: τα ίδια πέντε
-  // ερωτήματα, οι ίδιοι τέσσερις χάρτες, ξαναγραμμένα. Το `loadE2Rows` είχε
-  // αποσπαστεί ΑΚΡΙΒΩΣ για να μη συμβαίνει αυτό — και το λέει στο σχόλιό του —
-  // αλλά η εξαγωγή δεν μεταφέρθηκε ποτέ πάνω του. Δηλαδή ο έλεγχος του
-  // προσυμπληρωμένου και το αρχείο που κατεβάζει ο χρήστης έβγαιναν από δύο
-  // ξεχωριστές διαδρομές που μπορούσαν να διαφωνήσουν — σε φορολογικό έντυπο.
+/**
+ * Χτίζει το βιβλίο Ε2 από ΗΔΗ φορτωμένα δεδομένα. Καθαρή συνάρτηση — τρέχει και
+ * σε server (η πύλη `/api/e2/export`) και σε browser (λήψη). Επιστρέφει null όταν
+ * δεν υπάρχει ακίνητο· ο καλών αποφασίζει τι δείχνει.
+ */
+export function buildE2Workbook(
+  loaded: Awaited<ReturnType<typeof loadE2Rows>>, year: number,
+): XLSX.WorkBook | null {
   const { properties, rows: e2rows, ownerAfm: ownerAfmCommon,
-          tenantByProp, paymentsByProp, afmByProp, staysByProp } =
-    await loadE2Rows(supabase, userId, year);
-  if (!properties.length) return 0;
+          tenantByProp, paymentsByProp, afmByProp, staysByProp } = loaded;
+  if (!properties.length) return null;
 
   const officialRows = properties.map((p, i) => buildE2OfficialCells(p, tenantByProp.get(p.id) || null, paymentsByProp.get(p.id) || [], afmByProp.get(p.id) || '', year, i + 1, staysByProp.get(p.id) || []));
 
@@ -273,6 +274,5 @@ export async function runE2Export(supabase: SupabaseClient, userId: string, year
     XLSX.utils.book_append_sheet(wb, e1ws, 'Σύνοψη Ε1');
   }
 
-  downloadWorkbook(wb, `Έντυπο Ε2 ${year}`);
-  return properties.length;
+  return wb;
 }

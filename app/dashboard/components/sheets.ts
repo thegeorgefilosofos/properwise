@@ -69,7 +69,3 @@ export const exportPricingWorkbook = async (
 export const loadE2Rows = async (
   ...a: Args<typeof import('./e2Export')['loadE2Rows']>
 ) => (await import('./e2Export')).loadE2Rows(...a);
-
-export const runE2Export = async (
-  ...a: Args<typeof import('./e2Export')['runE2Export']>
-) => (await import('./e2Export')).runE2Export(...a);

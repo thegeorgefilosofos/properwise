@@ -27,7 +27,8 @@ async function main() {
   const { downloadJournalWorkbook } = await import('@/app/dashboard/components/journalXlsx');
   const { downloadPortfolioComparison } = await import('@/app/dashboard/components/portfolioXlsx');
   const { exportPricingWorkbook } = await import('@/app/dashboard/components/pricingExport');
-  const { runE2Export } = await import('@/app/dashboard/components/e2Export');
+  const { loadE2Rows, buildE2Workbook } = await import('@/app/dashboard/components/e2Export');
+  const { downloadWorkbook } = await import('@/app/dashboard/components/xlsxStyle');
   const { exportAccountantBundle } = await import('@/app/dashboard/components/accountantExport');
 
   // ── 1. Ο απλός πίνακας: ό,τι κατεβάζει κάθε καρτέλα ─────────────────────
@@ -120,7 +121,9 @@ async function main() {
       return chain;
     },
   } as never;
-  await runE2Export(client, 'user-1', YEAR);
+  const e2loaded = await loadE2Rows(client, 'user-1', YEAR);
+  const e2wb = buildE2Workbook(e2loaded, YEAR);
+  if (e2wb) downloadWorkbook(e2wb, `Έντυπο Ε2 ${YEAR}`);
 
   // ── 6. Ο φάκελος του λογιστή: ΟΛΑ τα φύλλα, το βαρύτερο βιβλίο ──────────
   //

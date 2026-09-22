@@ -28,7 +28,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, TT, EmptyState, Btn, fe } from '@/components/Theme';
-import { loadE2Rows, runE2Export } from './sheets';
+import { loadE2Rows } from './sheets';
+import { downloadFile } from '@/lib/core/download';
 import { notify, notifyError } from '@/components/Toast';
 import { reconcileE2, type DeclaredRow, type OurEvidence, type Line } from '@/lib/billing/e2Reconcile';
 import { hasFeature } from '@/lib/billing/entitlements';
@@ -86,9 +87,25 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
     if (!canExport) return;
     setExporting(true);
     try {
-      const n = await runE2Export(supabase, userId, year);
-      if (n > 0) notify(`Το Ε2 ${year} κατέβηκε · ${n} ${n === 1 ? 'ακίνητο' : 'ακίνητα'}`);
-      else notifyError('Δεν υπάρχει ακίνητο για εξαγωγή.');
+      // Το αρχείο ΠΑΡΑΓΕΤΑΙ ΣΤΟΝ SERVER, πίσω από την πύλη πακέτου· ο browser
+      // απλώς το κατεβάζει. Ετσι το προσυμπληρωμένο Ε2 δεν χτίζεται ποτέ σε
+      // δωρεάν λογαριασμό, όσο κι αν πειραχτεί η οθόνη.
+      const res = await fetch('/api/e2/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year }),
+      });
+      const isJson = (res.headers.get('content-type') || '').includes('application/json');
+      if (!res.ok) {
+        const msg = isJson ? (await res.json().catch(() => null))?.error : null;
+        notifyError(msg || 'Η εξαγωγή δεν ολοκληρώθηκε. Δοκίμασε ξανά.');
+        return;
+      }
+      // JSON με 200 σημαίνει «κανένα ακίνητο» — δεν υπάρχει αρχείο να κατέβει.
+      if (isJson) { notifyError('Δεν υπάρχει ακίνητο για εξαγωγή.'); return; }
+      const n = Number(res.headers.get('X-Property-Count')) || 0;
+      downloadFile(await res.blob(), `Έντυπο Ε2 ${year}.xlsx`);
+      notify(`Το Ε2 ${year} κατέβηκε · ${n} ${n === 1 ? 'ακίνητο' : 'ακίνητα'}`);
     } catch {
       notifyError('Η εξαγωγή δεν ολοκληρώθηκε. Δοκίμασε ξανά.');
     } finally {
