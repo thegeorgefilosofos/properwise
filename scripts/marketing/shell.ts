@@ -26,18 +26,27 @@
 // «τρέχει τοπικά»: ό,τι τρέχει σήμερα στον υπολογιστή σου, αύριο σε διακομιστή.
 // ═══════════════════════════════════════════════════════════════════════════
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { brandMarkSvg } from '../../components/BrandMark';
 
 /** Κατακόρυφη ανάρτηση 4:5. Το μέγεθος που δίνει το μεγαλύτερο ύψος στο feed. */
 export const W = 1080;
 export const H = 1350;
 
-const FONT_DIR = 'file://' + join(process.cwd(), 'public/fonts');
+// ΟΙ ΓΡΑΜΜΑΤΟΣΕΙΡΕΣ ΜΠΑΙΝΟΥΝ ΜΕΣΑ ΣΤΗ ΣΕΛΙΔΑ, ΟΧΙ ΩΣ ΣΥΝΔΕΣΜΟΣ. Η σελίδα
+// φορτώνεται με `setContent`, δηλαδή από about:blank. Ο Chromium δεν αφήνει
+// τέτοια σελίδα να διαβάσει `file://`. Με διαδρομή αρχείου, κάθε ανάρτηση έβγαινε
+// σιωπηλά στη γραμματοσειρά του συστήματος αντί για Inter: καμία αποτυχία,
+// καμία προειδοποίηση, απλώς άλλο γράμμα. Ως data URI δεν ζητείται τίποτα.
+const FONT_DIR = join(process.cwd(), 'public/fonts');
+const font = (file: string) =>
+  `url("data:font/woff2;base64,${readFileSync(join(FONT_DIR, file)).toString('base64')}") format("woff2")`;
 
 const FACES = `
-  @font-face{font-family:Inter;src:url("${FONT_DIR}/inter-greek.woff2") format("woff2");font-weight:100 900;font-display:block}
-  @font-face{font-family:Inter;src:url("${FONT_DIR}/inter-latin.woff2") format("woff2");font-weight:100 900;font-display:block}
-  @font-face{font-family:"Roboto Mono";src:url("${FONT_DIR}/robotomono-greek.woff2") format("woff2");font-weight:100 700;font-display:block}
-  @font-face{font-family:"Roboto Mono";src:url("${FONT_DIR}/robotomono-latin.woff2") format("woff2");font-weight:100 700;font-display:block}`;
+  @font-face{font-family:Inter;src:${font('inter-greek.woff2')};font-weight:100 900;font-display:block}
+  @font-face{font-family:Inter;src:${font('inter-latin.woff2')};font-weight:100 900;font-display:block}
+  @font-face{font-family:"Roboto Mono";src:${font('robotomono-greek.woff2')};font-weight:100 700;font-display:block}
+  @font-face{font-family:"Roboto Mono";src:${font('robotomono-latin.woff2')};font-weight:100 700;font-display:block}`;
 
 /**
  * ΤΟ ΘΕΜΑ ΤΗΣ ΑΝΑΡΤΗΣΗΣ ΕΙΝΑΙ ΤΟ ΘΕΜΑ ΠΟΥ ΘΑ ΔΕΙ ΟΠΟΙΟΣ ΠΑΤΗΣΕΙ ΤΟΝ ΣΥΝΔΕΣΜΟ.
@@ -89,9 +98,14 @@ const BASE = `
   /* ── ΤΟ ΥΠΟΣΕΛΙΔΟ: ποιος το λέει και με ποια πηγή ──────────────────────── */
   .foot{flex:none;display:flex;align-items:baseline;justify-content:space-between;
         gap:32px;border-top:2px solid var(--rule);padding-top:26px}
-  .mark{font-family:"Roboto Mono",monospace;font-size:22px;font-weight:500;
-        letter-spacing:0.2em;color:var(--ink)}
-  .mark b{color:var(--accent);font-weight:500}
+  /* Το υπογραφικό είναι το λογότυπο της εφαρμογής, σήμα και λέξη, με την ίδια
+     σχέση που ορίζει το BrandLogo: λέξη στο 0,72 του σήματος, βάρος 700. Εδώ
+     έγραφε το όνομα πριν από τη μετονομασία, με ένα <b> στη μέση της λέξης.
+     Ο guard-brand-name δεν το έβλεπε γιατί η ετικέτα την έσπαγε στα δύο. */
+  .mark{display:inline-flex;align-items:center;gap:14px;color:var(--ink);
+        font-family:Inter,system-ui,sans-serif;font-size:26px;font-weight:700;
+        letter-spacing:0.02em;line-height:1;white-space:nowrap}
+  .mark svg{flex:none}
   .src{font-family:"Roboto Mono",monospace;font-size:22px;font-weight:500;
        letter-spacing:0.1em;color:var(--muted);text-align:right}
 
@@ -123,7 +137,7 @@ export function page(label: string, stage: string, source: string, extraCss = ''
   <div class="top"><i></i><div class="label">${label}</div></div>
   <div class="stage">${stage}</div>
   <div class="foot">
-    <div class="mark">PROPERTY<b>OS</b></div>
+    <div class="mark">${brandMarkSvg(36, 'currentColor')}PROPERWISE</div>
     <div class="src">${source}</div>
   </div>
 </body></html>`;

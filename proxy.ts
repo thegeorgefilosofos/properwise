@@ -21,8 +21,6 @@ function buildCsp(nonce: string): string {
     // Η άμυνα εκεί είναι ο κώδικας, όχι η κεφαλίδα: lib/print/fonts.ts.
     "font-src 'self' data:",
     "img-src 'self' data: blob: https:",
-    // Nominatim (OpenStreetMap): πρόταση διευθύνσεων χωρίς κλειδί στη φόρμα επαφής.
-    //
     // pwnedpasswords: έλεγχος διαρρευσάντων κωδικών με k-anonymity. Φεύγουν
     // ΜΟΝΟ πέντε δεκαεξαδικά ψηφία του SHA-1 — ποτέ ο κωδικός, ποτέ ο πλήρης
     // κατακερματισμός. ΧΩΡΙΣ αυτή τη γραμμή η κλήση μπλοκάρεται μόνο στην
@@ -36,10 +34,10 @@ function buildCsp(nonce: string): string {
     // και ο ίδιος ο reporter καταπίνει το σφάλμα («ο reporter δεν επιτρέπεται να
     // σπάσει τον καλούντα»). Θα φαινόταν ρυθμισμένος και δεν θα έφτανε ποτέ ούτε
     // ένα σφάλμα. Ίδια οικογένεια σιωπηλής αποτυχίας με το pwnedpasswords.
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org https://api.pwnedpasswords.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io",
-    // Επιτρέπει τον ενσωματωμένο χάρτη Google (keyless embed) στο ντοσιέ επαφής
-    // και την προεπισκόπηση PDF (Supabase storage) στο Αρχείο.
-    "frame-src 'self' https://www.google.com https://maps.google.com https://*.supabase.co",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.pwnedpasswords.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io",
+    // Η προεπισκόπηση PDF (Supabase storage) στο Αρχείο. Ο χάρτης Google του
+    // ντοσιέ επαφής δεν είναι πια iframe: ανοίγει με ρητό κλικ σε νέα καρτέλα.
+    "frame-src 'self' https://*.supabase.co",
     "frame-ancestors 'none'",
     "object-src 'none'",
     // PWA: ο service worker και το manifest είναι δικά μας και μόνο δικά μας.

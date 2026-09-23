@@ -60,6 +60,7 @@ import {
   estimateENFIA, enfiaInUse, enfiaLastYearAnnual,
   ENFIA_REDUCTIONS, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF, enfiaReductionInForce,
 } from '@/lib/billing/enfia';
+import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
 
 // Το «Δεν γνωρίζω» ΔΕΝ είναι απουσία επιλογής: είναι η ουδέτερη επιλογή, με
 // συντελεστή 1,00. Ο χρήστης πρέπει να μπορεί να τη διαλέξει ρητά και να
@@ -79,13 +80,11 @@ const ZONE_OPTIONS = [
   { value: 'over_5000',  label: 'Πάνω από 5.000€ ανά τετραγωνικό'  },
 ];
 
-const FLOOR_LABEL: Record<keyof typeof ENFIA_FLOOR_COEF | string, string> = {
-  basement: 'Υπόγειο', ground: 'Ισόγειο', first: '1ος', second: '2ος',
-  third: '3ος', fourth: '4ος', fifth_plus: '5ος και άνω',
-};
+// Οι ετικέτες ζουν στο lib/billing/enfiaFloors.ts, κοινές με τη δημόσια σελίδα.
+// Εδώ έγραφε «4ος» και «5ος και άνω»: ο 5ος όροφος έπαιρνε 1,03 αντί για 1,02.
 const FLOOR_OPTIONS = [
   { value: UNKNOWN, label: 'Δεν γνωρίζω' },
-  ...Object.keys(ENFIA_FLOOR_COEF).map(k => ({ value: k, label: FLOOR_LABEL[k] ?? k })),
+  ...(Object.keys(ENFIA_FLOOR_COEF) as (keyof typeof ENFIA_FLOOR_COEF)[]).map(k => ({ value: k, label: ENFIA_FLOOR_LABEL[k] })),
 ];
 const AGE_OPTIONS = [
   { value: UNKNOWN, label: 'Δεν γνωρίζω' },
