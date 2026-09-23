@@ -20,22 +20,14 @@
 // διάβαζε το `status_detail` ωμό, αγνοώντας το `rental_mode` και ένα ακίνητο
 // «rented» + «short_term» έπαιρνε κωδικό «1 · Εκμίσθωση» αντί «60 · Βραχυχρόνια»
 // με τις διαμονές του να μη μετριούνται καθόλου.
-import { runE2Export } from './e2Export'
+import { loadE2Rows, buildE2Workbook } from './e2Export'
 import { XLSX } from './xlsxStyle'
-import { captureDownloads } from '@/lib/core/downloadCapture.testkit'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
 
 const YEAR = 2025
 const PID = '11111111-1111-1111-1111-111111111111'
-
-// Το πλαστό έγγραφο ζει στο lib/core/downloadCapture.testkit.ts, ένα αντίγραφο για
-// όλες τις σουίτες εξαγωγής.
-const caught = captureDownloads()
-
-/** Το τελευταίο αρχείο που κατέβηκε, ανοιγμένο ως βιβλίο. */
-const lastWorkbook = () => XLSX.read(caught[caught.length - 1].bytes, { type: 'array' })
 
 /** Πλαστός πελάτης: κάθε φίλτρο επιστρέφει τον εαυτό του, το await δίνει τα δεδομένα. */
 function clientWith(data: Record<string, unknown[]>) {
@@ -66,14 +58,12 @@ const LONG_TERM = {
 }
 
 async function main() {
-  const n = await runE2Export(clientWith(LONG_TERM), 'user-1', YEAR)
-  ok('επιστρέφει το πλήθος των ακινήτων', n === 1)
-  ok('ΤΟ ΑΡΧΕΙΟ ΚΑΤΕΒΗΚΕ', caught.length === 1 && caught[0].bytes.length > 0)
-  // Το όνομα ήταν «E2_2025_<επωνυμία>.xlsx»: λατινικά και το όνομα του
-  // προμηθευτή, σε αρχείο που ο χρήστης ψάχνει στις λήψεις του ως «Ε2».
-  ok('το όνομα είναι ελληνικό και λέει τι είναι', caught[0].name === `Έντυπο Ε2 ${YEAR}.xlsx`)
-
-  const wb = lastWorkbook()
+  // Ελέγχουμε τον καθαρό builder που τρέχει ΚΑΙ στον server (πύλη /api/e2/export)
+  // ΚΑΙ στον browser. Το ίδιο το κατέβασμα φυλάσσεται στο lib/core/download.ts.
+  const loaded = await loadE2Rows(clientWith(LONG_TERM), 'user-1', YEAR)
+  const wb = buildE2Workbook(loaded, YEAR)
+  ok('χτίζει βιβλίο για 1 ακίνητο', !!wb && loaded.properties.length === 1)
+  if (!wb) { console.error('✗ e2Export: κανένα βιβλίο'); process.exit(1) }
   ok('έχει το κύριο φύλλο του έτους', wb.SheetNames.includes(`Ε2 ${YEAR}`))
   ok('έχει οδηγίες συμπλήρωσης', wb.SheetNames.some(s => s.includes('Οδηγίες')))
   ok('έχει σύνοψη Ε1', wb.SheetNames.some(s => s.includes('Ε1')))
@@ -99,8 +89,8 @@ async function main() {
   // Πριν, το `rental_mode` αγνοούνταν: κωδικός 1 αντί 60 σε στήλη του εντύπου.
   const short = JSON.parse(JSON.stringify(LONG_TERM))
   short.user_properties[0].rental_mode = 'short_term'
-  await runE2Export(clientWith(short), 'user-1', YEAR)
-  const aoa2 = XLSX.utils.sheet_to_json(lastWorkbook().Sheets[`Ε2 ${YEAR}`], { header: 1, defval: '' }) as unknown[][]
+  const wb2 = buildE2Workbook(await loadE2Rows(clientWith(short), 'user-1', YEAR), YEAR)!
+  const aoa2 = XLSX.utils.sheet_to_json(wb2.Sheets[`Ε2 ${YEAR}`], { header: 1, defval: '' }) as unknown[][]
   const flat2 = aoa2.flat().map(String)
   ok('βραχυχρόνια → κωδικός «60 · Βραχυχρόνια μίσθωση»', flat2.some(c => c.startsWith('60 ·')))
   ok('ΔΕΝ γράφεται πια «1 · Εκμίσθωση» σε βραχυχρόνιο', !flat2.some(c => c.startsWith('1 · Εκμίσθωση')))

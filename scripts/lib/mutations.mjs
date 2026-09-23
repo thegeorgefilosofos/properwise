@@ -503,4 +503,7 @@ export const MUTATIONS = {
   'way-out': { add: 'app/login/__mut__.tsx', content: "export default function P() {\n  return <h1>Μια οθόνη χωρίς δρόμο πίσω</h1>\n}\n" },
   // Ακριβώς ό,τι έριχνε το CI: το πλαστό αντικείμενο στη θέση του κατασκευαστή.
   'global-clobber': { add: 'lib/core/__mut__.ts', content: "export const stub = () => { (globalThis as unknown as Record<string, unknown>).URL = { createObjectURL: () => 'blob:x' } }\n" },
+  // Η πληρωμένη διαδρομή που ξεχνά την πύλη πακέτου: ο έλεγχος του server
+  // αντικαθίσταται από «πάντα ανοιχτό». Ο φύλακας πρέπει να το πιάσει.
+  'server-entitlements': { file: 'app/api/investment/route.ts', from: "await requireFeature('investment_analysis')", to: "await Promise.resolve({ ok: true, plan: 'agency', userId: 'x' })" },
 }
