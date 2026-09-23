@@ -306,7 +306,8 @@ export interface Personal extends Ctx {
   days?: number;             // μέρες από την εγγραφή
   assistantName?: string;    // όνομα βοηθού, αν έχει οριστεί
   // Upsell / εποχικά / lifecycle
-  discountPct?: number;      // ποσοστό έκπτωσης
+  discountPct?: number;      // ποσοστό έκπτωσης· γράφεται ΜΟΝΟ μαζί με `discountCode`
+  discountCode?: string;     // ο κωδικός που εφαρμόζει την έκπτωση στο ταμείο
   trialDaysLeft?: number;    // μέρες που απομένουν στη δοκιμή
   daysLeft?: number;         // μέρες που απομένουν σε προθεσμία (π.χ. πριν τη διαγραφή λογαριασμού)
   invoiceAmount?: number;    // ποσό παραστατικού, σε EUR
@@ -452,16 +453,19 @@ export function mobileLaunchEmail(c: Ctx): Out {
 export function referralInviteEmail(c: Ctx): Out {
   const body = eyebrow('Referral') + h('Κέρδισε προτείνοντας το PROPERWISE')
     + greeting(c.name)
-    + p('Ξέρεις κάποιον με ακίνητα; Πρότεινέ του το PROPERWISE και <b>κερδίζετε και οι δύο</b>.')
+    + p('Ξέρεις κάποιον με ακίνητα; Πρότεινέ του το PROPERWISE και <b>κερδίζεις με κάθε ενεργή σύσταση</b>.')
     + bullets(['Μοναδικός σύνδεσμος πρόσκλησης, δικός σου.', 'Ανταμοιβή για κάθε ενεργό φίλο που φέρνεις.', 'Παρακολούθηση προσκλήσεων και ανταμοιβών live.'])
     + button('Δες το πρόγραμμα', `${app(c)}/dashboard`);
-  return { subject: 'Πρότεινε το PROPERWISE και κέρδισε', html: emailShell({ bodyHtml: body, preheader: 'Κερδίζετε και οι δύο.' }) };
+  return { subject: 'Πρότεινε το PROPERWISE και κέρδισε', html: emailShell({ bodyHtml: body, preheader: 'Με κάθε ενεργή σύσταση κερδίζεις.' }) };
 }
 
 /** Upsell δωρεάν → paid, με προαιρετική έκπτωση/εποχή. */
-export function upsellEmail(c: Ctx & { toPlan?: Plan; discountPct?: number; seasonLabel?: string }): Out {
+export function upsellEmail(c: Ctx & { toPlan?: Plan; discountPct?: number; discountCode?: string; seasonLabel?: string }): Out {
   const to = c.toPlan || 'individual';
-  const disc = c.discountPct && c.discountPct > 0 ? c.discountPct : 0;
+  // ΕΚΠΤΩΣΗ ΧΩΡΙΣ ΚΩΔΙΚΟ ΔΕΝ ΥΠΑΡΧΕΙ. Το ταμείο εφαρμόζει έκπτωση μόνο με
+  // κωδικό· ένα ποσοστό χωρίς αυτόν ήταν υπόσχεση που κανένα κουμπί δεν τηρούσε.
+  const code = (c.discountCode || '').trim();
+  const disc = code && c.discountPct && c.discountPct > 0 ? c.discountPct : 0;
   const seasonLine = c.seasonLabel ? ` <b>${esc(c.seasonLabel)}</b>` : '';
   const body = eyebrow(disc ? `Προσφορά${seasonLine ? ' ·' : ''}${seasonLine}` : 'Αναβάθμιση')
     + h(disc ? `${disc}% έκπτωση στο πακέτο ${PLAN_LABEL[to]}` : `Ξεκλείδωσε το πακέτο ${PLAN_LABEL[to]}`)
@@ -470,8 +474,9 @@ export function upsellEmail(c: Ctx & { toPlan?: Plan; discountPct?: number; seas
     + bullets(to === 'professional'
         ? ['Απεριόριστα ακίνητα και branded αναφορές.', 'Μαζική επικοινωνία πελατών.', 'Προτεραιότητα στην υποστήριξη.']
         : ['Απεριόριστες καταστάσεις και βεβαιώσεις.', 'Αυτόματες υπενθυμίσεις πληρωμών.', 'Επίσημες αναφορές PDF με QR επαλήθευσης.'])
+    + (disc ? p(`Γράψε τον κωδικό <b>${esc(code)}</b> στο ταμείο και η έκπτωση εφαρμόζεται στη χρέωση.`) : '')
     + button(disc ? `Κλείσε το ${disc}%` : 'Αναβάθμισε τώρα', `${app(c)}/dashboard`)
-    + note(disc ? 'Η προσφορά ισχύει για περιορισμένο διάστημα.' : 'Ακύρωση όποτε θες · χωρίς δεσμεύσεις.');
+    + note('Ακύρωση όποτε θες · χωρίς δεσμεύσεις.');
   const subj = disc ? `${disc}% έκπτωση${c.seasonLabel ? ` · ${c.seasonLabel}` : ''} στο PROPERWISE` : `Αναβάθμισε στο πακέτο ${PLAN_LABEL[to]}`;
   return { subject: subj, html: emailShell({ bodyHtml: body, preheader: disc ? `Ξεκλείδωσε το ${PLAN_LABEL[to]} με έκπτωση.` : 'Περισσότερος χρόνος, λιγότερος κόπος.' }) };
 }
@@ -497,7 +502,7 @@ export const SEASONS: Record<Season, { label: string; hook: string }> = {
 };
 
 /** Εποχική καμπάνια (τυποποιημένη) · χτίζει πάνω στο upsell με εποχικό πλαίσιο. */
-export function seasonalCampaignEmail(c: Ctx & { season: Season; toPlan?: Plan; discountPct?: number }): Out {
+export function seasonalCampaignEmail(c: Ctx & { season: Season; toPlan?: Plan; discountPct?: number; discountCode?: string }): Out {
   const s = SEASONS[c.season];
-  return upsellEmail({ ...c, seasonLabel: s.label, discountPct: c.discountPct ?? 20, toPlan: c.toPlan });
+  return upsellEmail({ ...c, seasonLabel: s.label, toPlan: c.toPlan });
 }

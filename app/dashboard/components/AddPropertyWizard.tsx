@@ -302,6 +302,8 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
   const [step, setStep] = useState(0); // 0..3
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // Αλλαγή βήματος = νέα προσπάθεια· το παλιό σφάλμα δεν αφορά πια την οθόνη.
+  const goStep = (next: (s: number) => number) => { setError(''); setStep(next); };
   // Id του ακινήτου που δημιουργήθηκε σε προηγούμενη, μισοτελειωμένη προσπάθεια
   // αποθήκευσης (βλ. save()) — κρατά το «δοκίμασε ξανά» πάνω στο ίδιο ακίνητο.
   const [createdId, setCreatedId] = useState<string | null>(null);
@@ -568,7 +570,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
         {/* Ήσυχο: είναι η έξοδος του βήματος και δεν διεκδικεί το μάτι από τη
             «Συνέχεια». Το `size="lg"` κρατά το ύψος T.h.lg που είχε ήδη όλη η
             σειρά, ώστε τα τέσσερα κουμπιά του υποσέλιδου να μένουν ίσα. */}
-        <Btn variant="ghost" size="lg" onClick={() => (step === 0 ? requestClose() : setStep(s => s - 1))}>
+        <Btn variant="ghost" size="lg" onClick={() => (step === 0 ? requestClose() : goStep(s => s - 1))}>
           {step === 0 ? 'Ακύρωση' : 'Πίσω'}
         </Btn>
 
@@ -592,7 +594,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
         )}
 
         {step < STEPS.length - 1 ? (
-          <Btn variant="primary" size="lg" onClick={() => canNext && setStep(s => s + 1)} disabled={!canNext}>Συνέχεια</Btn>
+          <Btn variant="primary" size="lg" onClick={() => canNext && goStep(s => s + 1)} disabled={!canNext}>Συνέχεια</Btn>
         ) : (
           <Btn variant="primary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit ? 'Αποθήκευση αλλαγών' : 'Προσθήκη ακινήτου'}</Btn>
         )}
@@ -962,11 +964,16 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
               </div>
             ))}
           </div>
-
-          {error && (
-            <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 14px', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', color: 'var(--negative)' }}>{error}</div>
-          )}
         </div>
+      )}
+
+      {/* ΤΟ ΣΦΑΛΜΑ ΖΟΥΣΕ ΜΟΝΟ ΣΤΟ ΤΕΛΕΥΤΑΙΟ ΒΗΜΑ. Η «Αποθήκευση τώρα» υπάρχει από
+          το δεύτερο βήμα και καλεί την ίδια `save()`: αν η βάση την αρνιόταν
+          (όριο πακέτου, δίκτυο), το κουμπί γύριζε πίσω και δεν εμφανιζόταν
+          τίποτα. Ο χρήστης νόμιζε ότι αποθηκεύτηκε. Τώρα φαίνεται σε κάθε βήμα
+          και ανακοινώνεται. */}
+      {error && (
+        <div role="alert" style={{ marginTop: 16, background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 14px', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', color: 'var(--negative)' }}>{error}</div>
       )}
     </Modal>
   );

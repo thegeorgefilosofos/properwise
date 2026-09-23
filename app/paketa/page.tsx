@@ -16,7 +16,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { Metadata } from 'next';
 import { siteUrl } from '@/lib/core/site';
-import { TRIAL_DAYS } from '@/lib/billing/plans';
+import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
+import { TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { billingWords } from '@/lib/legal/billingWords';
 import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
@@ -84,7 +85,7 @@ export default function Page() {
             τίτλο και τον πίνακα — ίδια λογική με τις νομικές σελίδες. Σε φαρδιά
             οθόνη μένει μία γραμμή και η στοίχιση δεν έχει τι να τεντώσει. */}
         <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>
-          {hy(<>Κάθε πακέτο ξεκινά με {TRIAL_DAYS} ημέρες δωρεάν δοκιμή.{' '}{billingWords().firstCharge}{' '}Σταματάς όποτε θέλεις, χωρίς κρυφές χρεώσεις.</>)}
+          {hy(<>Κάθε νέος λογαριασμός ξεκινά με {TRIAL_DAYS} ημέρες δοκιμής με τις δυνατότητες του «{PLANS[TRIAL_PLAN].name}»· το πακέτο που διαλέγεις ισχύει από την ενεργοποίηση της συνδρομής.{' '}{billingWords().firstCharge}{' '}Σταματάς όποτε θέλεις, χωρίς κρυφές χρεώσεις.</>)}
         </p>
         <div style={{ marginTop: 'clamp(22px,3vw,34px)' }}><PlanMatrix /></div>
       </main>

@@ -1,7 +1,7 @@
 // Τεστ για lib/loans/recommend.ts — τρέξε με: npx tsx lib/loans/recommend.test.ts
 import {
   annuityMonthly, totalInterest, interestForYear, spitiMouIncomeLimit, spitiMouEligibility,
-  spitiMouPayment, rankLoans, type UserLoanNeeds, type BankInput,
+  spitiMouPayment, rankLoans, fixedRateForTerm, type UserLoanNeeds, type BankInput,
 } from './recommend'
 
 let passed = 0, failed = 0
@@ -118,6 +118,21 @@ ok('green class lowers Cheap nominal rate', greenRanked.find(r => r.bankId === '
   ok('και η δόση κρατά τα λεπτά της', Math.abs(one.monthlyPayment - Math.round(one.monthlyPayment)) > 0.001)
   ok('το συνολικό κόστος βγαίνει από την ίδια δόση',
     Math.abs(one.totalCost - (amount + (direct * years * 12 - amount))) < 0.01)
+}
+
+// ══ ΤΟ ΣΤΑΘΕΡΟ ΤΗΣ ΔΙΑΡΚΕΙΑΣ ══════════════════════════════════════════════
+// Πειραιώς στον στατικό πίνακα: τριετές 2.40-3.60, εικοσαετές 4.50-4.70. Σε
+// δάνειο 25 ετών ο προτείνων έβαζε το 2,40% της τριετίας σε όλη τη διάρκεια.
+{
+  const bank = { id: 'p', name: 'P', fixed_min: 2.4, variable_spread_min: 1.4, max_ltv: 90, max_years: 35,
+    max_amount: 500_000, min_amount: 20_000, fixed_3yr: '2.40-3.60', fixed_5yr: '2.40-3.60',
+    fixed_10yr: '3.80-4.50', fixed_15yr: '3.80-4.50', fixed_20yr: '4.50-4.70' }
+  ok('25 έτη: το εικοσαετές σταθερό, όχι το τριετές', fixedRateForTerm(bank, 25) === 4.5)
+  ok('10 έτη: το δεκαετές', fixedRateForTerm(bank, 10) === 3.8)
+  ok('3 έτη: το τριετές', fixedRateForTerm(bank, 3) === 2.4)
+  ok('χωρίς εύρη μένει το fixed_min', fixedRateForTerm({ ...bank, fixed_20yr: undefined, fixed_15yr: undefined }, 25) === 2.4)
+  const r = rankLoans({ ...baseNeeds, amount: 120_000, years: 25, purpose: 'purchase' }, [bank], 2.324, OPEN_DAY)[0]
+  ok('η κατάταξη χρεώνει το εικοσαετές', Math.abs(r.nominalRatePct - 4.5) < 1e-9)
 }
 
 console.log(`\nrecommend.test: ${passed} passed, ${failed} failed`)

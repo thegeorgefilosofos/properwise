@@ -1,6 +1,7 @@
 import { BrandLogo } from '@/components/BrandMark';
 import Link from 'next/link';
 import { PLANS, PLAN_ORDER, TRIAL_DAYS, ACCOUNT_GRACE_DAYS } from '@/lib/billing/plans';
+import { TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { aiLimitsFor } from '@/lib/billing/aiLimits';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
@@ -373,8 +374,8 @@ const REFERRAL = [
   {
     tag: 'Ιδιώτες', t: 'Πρόγραμμα Πρόσκλησης',
     i: 'M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7S9 2 6.5 4.5 12 7 12 7zM12 7s3-5 5.5-2.5S12 7 12 7z',
-    d: 'Με κάθε φίλο που ξεκινά, κερδίζετε και οι δύο.',
-    items: ['Ο φίλος σου παίρνει έναν μήνα δώρο στο πακέτο του', 'Εσύ κερδίζεις μία επιπλέον θέση ακινήτου για έναν μήνα'],
+    d: 'Με κάθε φίλο που ξεκινά, κερδίζεις μία θέση ακινήτου για έναν μήνα.',
+    items: [`Ο φίλος σου ξεκινά με τη δοκιμή των ${TRIAL_DAYS} ημερών, όπως κάθε νέος λογαριασμός`, 'Εσύ κερδίζεις μία επιπλέον θέση ακινήτου για έναν μήνα'],
   },
   {
     tag: 'Επαγγελματίες', t: 'Πρόγραμμα Συνεργατών',
@@ -1252,7 +1253,7 @@ export default async function Landing() {
               <Link href="/login" style={{ background: 'transparent', color: 'var(--text-primary)', textDecoration: 'none', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: T.radius.pill, border: '1px solid var(--border-strong)', transition: 'border-color .15s, background .15s' }}>Έχω λογαριασμό</Link>
             </>)}
           </div>
-          <div className="lp-rise-4 lp-even" style={{ marginTop: T.sp.xl, fontSize: 13, color: 'var(--text-tertiary)' }}>{TRIAL_DAYS} ημέρες δωρεάν δοκιμή · Διαλέγεις πακέτο από την αρχή · Ακυρώνεις όποτε θέλεις</div>
+          <div className="lp-rise-4 lp-even" style={{ marginTop: T.sp.xl, fontSize: 13, color: 'var(--text-tertiary)' }}>{TRIAL_DAYS} ημέρες δοκιμή · Χωρίς δέσμευση · Σταματάς όποτε θέλεις</div>
 
           <LandingShowcase />
         </div>
@@ -1582,13 +1583,13 @@ export default async function Landing() {
             της οθόνης, με το μάτι να γυρίζει πάνω. Η επιφύλαξη διαβάζεται μία
             φορά και από πάνω προς τα κάτω, όπως κάθε άλλο κείμενο εδώ. */}
         <p className="fineprint" style={{ fontSize: 13, color: FAINT, margin: '22px 0 0' }}>
-          Κάθε πακέτο ξεκινά με {TRIAL_DAYS} ημέρες δωρεάν δοκιμή. Το πακέτο το διαλέγεις εσύ, ανάλογα με τα ακίνητα και τα εργαλεία που χρειάζεσαι. {billingWords().firstCharge} Χωρίς δέσμευση, κρυφές χρεώσεις ή ποινή αποχώρησης: αναβαθμίζεις, αλλάζεις ή σταματάς όποτε θέλεις. Δωρεάν είναι μόνο η δοκιμή και οι μήνες από συστάσεις· οι τιμές αφορούν καταναλωτές στην Ελλάδα, με ΦΠΑ. {billingWords().moneyBack}
+          Κάθε νέος λογαριασμός ξεκινά με {TRIAL_DAYS} ημέρες δοκιμής με τις δυνατότητες του «{PLANS[TRIAL_PLAN].name}». Το πακέτο που διαλέγεις ισχύει από την ενεργοποίηση της συνδρομής. {billingWords().firstCharge} Χωρίς δέσμευση, κρυφές χρεώσεις ή ποινή αποχώρησης: αναβαθμίζεις, αλλάζεις ή σταματάς όποτε θέλεις. Δωρεάν είναι μόνο η δοκιμή και οι μήνες από συστάσεις· οι τιμές αφορούν καταναλωτές στην Ελλάδα, με ΦΠΑ. {billingWords().moneyBack}
         </p>
       </section>
 
       {/* ── Σύσταση: δύο διακριτά προγράμματα, ιδιώτη και επαγγελματία ── */}
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead over="Σύσταση" title="Κάθε σύσταση ανταμείβει και τους δύο" sub="Ο φίλος σου παίρνει δώρο, εσύ ανταμείβεσαι. Ένας στόχος, καθαρός και για τους δύο." />
+        <SectionHead over="Σύσταση" title="Σύστησέ το σε όσους έχουν ακίνητο" sub="Η ανταμοιβή πιστώνεται όταν ο φίλος σου προσθέσει ακίνητο και σαρώσει ένα έγγραφο. Ένας στόχος, καθαρός και για τους δύο." />
         <div className="lp-duo" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
           {REFERRAL.map((r, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(22px, 2.6vw, 30px)' }}>
@@ -1628,7 +1629,7 @@ export default async function Landing() {
           Ο φίλος σου ξεκινά με {TRIAL_DAYS} ημέρες δωρεάν δοκιμή, όπως κάθε νέος λογαριασμός.
           Η ανταμοιβή κλειδώνει όταν προσθέσει ακίνητο και σαρώσει ένα έγγραφο.
           Ο Συνεργάτης κερδίζει έναν μήνα {PLANS[partnerWelcomeTier('owner')].name} ή{' '}
-          {PLANS[partnerWelcomeTier('agency')].name} — ανάλογα με το πακέτο του — κρατά δωρεάν κάθε
+          {PLANS[partnerWelcomeTier('agency')].name}, ανάλογα με το πακέτο του, κρατά δωρεάν κάθε
           επόμενο μήνα που πιάνει τον στόχο, με προτεραιότητα σε νέες κυκλοφορίες.
           Οι ανταμοιβές είναι δωρεάν μήνες και θέσεις ακινήτων· μετρητά δεν αποδίδονται.
         </p>

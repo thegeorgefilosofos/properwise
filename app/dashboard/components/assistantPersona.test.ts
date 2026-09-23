@@ -575,7 +575,13 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   ok('gating: agency price from PLANS', p.includes(`${PLANS.agency.priceMonthly.toFixed(2).replace('.', ',')}€/μήνα`));
   ok('gating: agency limit from PLANS', p.includes(`έως ${PLANS.agency.maxProperties} ακίνητα`));
   ok('gating: office price from PLANS', p.includes(`${PLANS.office.priceMonthly.toFixed(2).replace('.', ',')}€/μήνα`));
-  ok('gating: αναφέρει τη δωρεάν δοκιμή', p.includes(`${TRIAL_DAYS} ΗΜΕΡΕΣ ΔΩΡΕΑΝ ΔΟΚΙΜΗ`));
+  ok('gating: αναφέρει τη δοκιμή', p.includes(`${TRIAL_DAYS} ΗΜΕΡΕΣ ΔΟΚΙΜΗ`));
+  // Η δοκιμή τρέχει πάντα στο TRIAL_PLAN, όποιο πακέτο κι αν διαλέξει κανείς.
+  ok('gating: η δοκιμή λέει ποιο πακέτο ξεκλειδώνει', p.includes(`με τις δυνατότητες του «${PLANS.owner.name}»`));
+  // Η κατάσταση της χρέωσης αλλάζει· η Νόα δεν την απαγγέλλει από μνήμης.
+  ok('gating: καμία υπόσχεση για κάρτα ή ημέρα χρέωσης', !p.includes('δηλώνεις κάρτα στο ταμείο') && !p.includes(`την ${TRIAL_DAYS + 1}η ημέρα`));
+  ok('referral: ο νέος χρήστης δεν παίρνει δώρο', !p.includes('εκείνος παίρνει 2 μήνες') && !p.includes('προμήθεια ως Συνεργάτης'));
+  ok('tax: 48.000 → 13.320', p.includes('48.000 → 13.320'));
 
   // Το φθηνότερο πακέτο περιγράφεται ως ΠΛΗΡΕΣ, όχι ως ακρωτηριασμένο.
   ok('gating: solo πλήρης για ένα σπίτι', /ΕΙΝΑΙ ΠΛΗΡΗΣ ΓΙΑ ΕΝΑ ΣΠΙΤΙ/.test(p));

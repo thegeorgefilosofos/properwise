@@ -46,6 +46,28 @@ export interface BankInput {
   min_amount: number
   green_discount?: number         // έκπτωση (%) για ενεργειακά αποδοτικό ακίνητο
   spiti_mou?: boolean             // συμμετέχει στο «Σπίτι μου ΙΙ»
+  // Τα εύρη σταθερού ανά διάρκεια σταθερότητας, όπως τα δίνει ο συγκριτικός
+  // πίνακας («2.40-3.60»). Προαιρετικά: χωρίς αυτά μένει το `fixed_min`.
+  fixed_3yr?: string
+  fixed_5yr?: string
+  fixed_10yr?: string
+  fixed_15yr?: string
+  fixed_20yr?: string
+}
+
+// ── ΤΟ ΣΤΑΘΕΡΟ ΤΗΣ ΔΙΑΡΚΕΙΑΣ, ΟΧΙ ΤΟ ΣΤΑΘΕΡΟ ΤΗΣ ΒΙΤΡΙΝΑΣ ─────────────────
+// Το `fixed_min` είναι το χαμηλότερο σταθερό της τράπεζας, δηλαδή σχεδόν πάντα
+// το τριετές ή πενταετές. Ο προτείνων το εφάρμοζε σε δάνειο είκοσι πέντε ετών
+// και έβγαζε «θα γλίτωνες 25.000€» απέναντι σε ένα δάνειο που κανείς δεν
+// προσφέρει. Τώρα διαλέγεται το εύρος που αντιστοιχεί στη διάρκεια (ή το
+// μακρύτερο διαθέσιμο, είκοσι έτη) και κρατιέται το κάτω άκρο του.
+export function fixedRateForTerm(bank: BankInput, years: number): number {
+  const bands: [number, string | undefined][] = [
+    [3, bank.fixed_3yr], [5, bank.fixed_5yr], [10, bank.fixed_10yr], [15, bank.fixed_15yr], [Infinity, bank.fixed_20yr],
+  ]
+  const band = bands.find(([max]) => years <= max)?.[1]
+  const low = band ? parseFloat(String(band).replace(',', '.')) : NaN
+  return isFinite(low) && low > 0 ? low : bank.fixed_min
 }
 
 export interface SpitiMouResult {
@@ -248,7 +270,7 @@ export function rankLoans(needs: UserLoanNeeds, banks: BankInput[], euribor3m: n
     if (needs.years > bank.max_years) blockers.push(`Διάρκεια > ${bank.max_years} έτη`)
 
     const greenDisc = green ? (bank.green_discount ?? 0) : 0
-    const fixed = Math.max(0, bank.fixed_min - greenDisc)
+    const fixed = Math.max(0, fixedRateForTerm(bank, needs.years) - greenDisc)
     const variable = Math.max(0, euribor3m + bank.variable_spread_min - greenDisc)
     const nominal = pref === 'variable' ? variable : pref === 'mixed' ? (fixed + variable) / 2 : fixed
     const rateType: RateType = pref

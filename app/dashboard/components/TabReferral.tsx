@@ -483,7 +483,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
           title={isPro ? 'Προσκάλεσε τους πελάτες σου. Πάρε τον ίδιο φάκελο από όλους.' : 'Ξέρεις κι άλλον ιδιοκτήτη;'}
           lede={isPro
             ? 'Κάθε ιδιοκτήτης που προσκαλείς φτάνει σε εσένα με τον ίδιο φάκελο, στην ίδια δομή, με ονόματα αρχείων που δεν αλλάζουν από χρόνο σε χρόνο. Εσύ σταματάς να κυνηγάς έγγραφα τον Ιούνιο και κερδίζεις δωρεάν μήνες Επαγγελματία.'
-            : 'Δείξε του πώς να βάλει το ακίνητό του σε τάξη. Με κάθε ιδιοκτήτη που ξεκινά, κερδίζετε και οι δύο.'} />
+            : 'Δείξε του πώς να βάλει το ακίνητό του σε τάξη. Με κάθε ιδιοκτήτη που ξεκινά, κερδίζεις μία θέση ακινήτου για έναν μήνα.'} />
         {(standing > 0 || social >= 8) && (
           <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
             {standing > 0 && (
@@ -706,7 +706,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
       ) : (
         /* ═══ ΙΔΙΩΤΗΣ — αξία ανά φίλο + μηνιαίο μπόνους όγκου ═══ */
         <>
-          <SectionLabel>Τι κερδίζετε σε κάθε πρόσκληση</SectionLabel>
+          <SectionLabel>Τι κερδίζεις σε κάθε πρόσκληση</SectionLabel>
           <div {...cardGrid(2)}>
             <div className="ref-lift" style={{ ...card, padding: PAD }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -729,7 +729,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                 <span style={{ ...TT.label }}>Ο φίλος σου ξεκινά με</span>
               </div>
               <div style={{ ...TT.displaySm, marginBottom: 6 }}>{TRIAL_DAYS} ημέρες δοκιμή</div>
-              <div style={{ ...TT.bodySm, lineHeight: 1.55 }}>στο πακέτο που θα διαλέξει, «{PLANS.solo.name}» ή «{PLANS.agency.name}». Η χρέωση ξεκινά μετά τη δοκιμή.</div>
+              <div style={{ ...TT.bodySm, lineHeight: 1.55 }}>στο πακέτο που θα διαλέξει, «{PLANS.solo.name}» ή «{PLANS.agency.name}».</div>
             </div>
           </div>
 
@@ -795,7 +795,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                         κανόνας είναι γραμμένος στη βάση (mark_referral_activated: ακίνητο +
                         σαρωμένο έγγραφο). Δύο λέξεις παραπάνω κλείνουν το χωνί. */}
                     <div style={{ ...TT.bodySm, marginTop: 2 }}>{pending
-                      ? `Λείπει ${ACTIVATION_MIN_PROPERTIES === 1 ? '1 ακίνητο' : `${ACTIVATION_MIN_PROPERTIES} ακίνητα`} και ${ACTIVATION_MIN_DOCUMENTS === 1 ? '1 σαρωμένο έγγραφο' : `${ACTIVATION_MIN_DOCUMENTS} σαρωμένα έγγραφα`}. Θύμισέ του· κερδίζετε κι οι δύο.`
+                      ? `Λείπει ${ACTIVATION_MIN_PROPERTIES === 1 ? '1 ακίνητο' : `${ACTIVATION_MIN_PROPERTIES} ακίνητα`} και ${ACTIVATION_MIN_DOCUMENTS === 1 ? '1 σαρωμένο έγγραφο' : `${ACTIVATION_MIN_DOCUMENTS} σαρωμένα έγγραφα`}. Θύμισέ του· με την ενεργοποίηση κερδίζεις τη θέση.`
                       : `Ξεκίνησε ${when}`}</div>
                   </div>
                 </div>

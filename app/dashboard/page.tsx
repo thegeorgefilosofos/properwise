@@ -74,6 +74,7 @@ import { printPropertyStatement } from './components/statement';
 import { useReportBranding } from '@/lib/reportBranding';
 import { computeInsights } from '@/lib/insights/engine';
 import { annuityMonthly } from '@/lib/loans/recommend';
+import { remainingBalance } from '@/lib/market/returns';
 import { type LoanView } from '@/lib/loans/shape';
 import { stayTotal } from '@/lib/clients/clients';
 import { clearHistory as clearAssistantHistory, planBriefing } from './components/assistantPersona';
@@ -707,7 +708,17 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const { annualRent, grossYield, netYield } = computeYields(rent, propValue, totalExpYTD);
   // Δάνεια: εκτιμώμενη μηνιαία δόση και δείκτης δανείου προς αξία (η Επισκόπηση «ξέρει» πλέον τα δάνεια).
   const monthlyDebt = loans.reduce((s,l)=>s+annuityMonthly(l.amount||0,l.rate||0,l.years||0),0);
-  const totalDebt = loans.reduce((s,l)=>s+(l.amount||0),0);
+  // ΤΟ ΥΠΟΛΟΙΠΟ, ΟΧΙ ΤΟ ΑΡΧΙΚΟ ΚΕΦΑΛΑΙΟ. Ο δείκτης διαιρούσε το ποσό που
+  // δόθηκε πριν από χρόνια με τη σημερινή αξία, σαν να μην είχε πληρωθεί καμία
+  // δόση. Με ημερομηνία έναρξης μετρά το ανεξόφλητο υπόλοιπο· χωρίς αυτήν, η
+  // ετικέτα λέει ρητά ότι πρόκειται για το αρχικό ποσό.
+  const debtKnownAge = loans.every(l => !!l.start_date && !isNaN(Date.parse(l.start_date)) && (l.years||0) > 0);
+  const totalDebt = loans.reduce((s,l)=>{
+    const started = l.start_date ? Date.parse(l.start_date) : NaN;
+    if (isNaN(started) || !(l.years||0)) return s + (l.amount||0);
+    const elapsed = Math.max(0, (Date.parse(todayAthens) - started) / (365.25 * 864e5));
+    return s + remainingBalance(l.amount||0, l.rate||0, l.years||0, elapsed);
+  },0);
   const debtLtv = propValue>0 && totalDebt>0 ? (totalDebt/propValue)*100 : 0;
   // Έσοδα φιλοξενίας από το Πελατολόγιο (διαμονές συνδεδεμένες σε αυτό το ακίνητο): η
   // Επισκόπηση «ξέρει» πλέον τα πραγματικά έσοδα βραχυχρόνιας, όχι μόνο τον στόχο ενοικίου.
@@ -1226,7 +1237,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         const extra: KPIItem[] = [];
         if (loans.length > 0) extra.push({
           label:'Δόση δανείου / μήνα', value:fmtEur(Math.round(monthlyDebt)),
-          sub: debtLtv>0 ? `δάνειο προς αξία ${fp(debtLtv)}` : undefined,
+          sub: debtLtv>0 ? `${debtKnownAge ? 'υπόλοιπο' : 'αρχικό δάνειο'} προς αξία ${fp(debtLtv)}` : undefined,
           title:'Εκτιμώμενη τοκοχρεολυτική δόση. ΔΕΝ αφαιρείται από το καθαρό αποτέλεσμα παραπάνω· το κεφάλαιο δεν είναι δαπάνη.' });
         // ── ΕΙΣΠΡΑΞΕΙΣ, ΟΧΙ ΕΣΟΔΑ. ΔΥΟ ΣΩΣΤΑ ΝΟΥΜΕΡΑ ΓΙΑ ΤΗΝ ΙΔΙΑ ΔΙΑΜΟΝΗ ──────
         // Ο επισκέπτης πληρώνει 1.000,00€, η πλατφόρμα κρατά 150,00€ προμήθεια

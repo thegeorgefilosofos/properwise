@@ -87,7 +87,7 @@ npm run katalogos
 | `annual_discount` | promo ? `Πλήρωσε ετησίως και εξοικονόμησε ${c.discountPct}%` : 'Πλήρωσε ετησίως και κέρδισε έως δύο μήνες', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts` |
 | `trial_ending` | Η δοκιμή σου τελειώνει σύντομα | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260819130000_o_kyklos_zois_diavazei_to_sosto_pedio.sql` (+2) |
 | `winback_downgrade` | Είμαστε εδώ, όποτε θες | `supabase/functions/_shared/emailPolicy.ts` |
-| `reactivation_offer` | Γύρνα με ${pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts` |
+| `reactivation_offer` | Γύρνα με ${o.pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts` |
 | `trial_started` | Η δοκιμή σου ξεκίνησε. Ας την αξιοποιήσουμε | `lib/analytics/events.ts`, `lib/billing/morWebhook.ts` (+2) |
 
 ## SEASONAL
@@ -96,8 +96,8 @@ npm run katalogos
 
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
-| `black_friday` | Black Friday: ${pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
-| `cyber_monday` | Cyber Monday: ${pct}%, μόνο σήμερα | `supabase/functions/_shared/emailTemplates.ts` |
+| `black_friday` | Black Friday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
+| `cyber_monday` | Cyber Monday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts` |
 | `christmas` | Κλείσε τη χρονιά με τα ακίνητά σου σε τάξη | `supabase/functions/_shared/emailTemplates.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
 | `new_year` | Νέα χρονιά, καθαρά βιβλία | `supabase/functions/_shared/emailTemplates.ts` |
 | `tax_season` | Μπες στη φορολογική σεζόν χωρίς άγχος | `supabase/migrations/20260723091000_lifecycle_enqueue.sql`, `supabase/migrations/20260723092000_email_activation_fixes.sql` (+2) |
@@ -109,7 +109,7 @@ npm run katalogos
 
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
-| `referral_invite` | Πρότεινε το PROPERWISE, κερδίστε και οι δύο | `supabase/functions/send-lifecycle-email/index.ts` |
+| `referral_invite` | Σύστησε το PROPERWISE σε έναν ιδιοκτήτη | `supabase/functions/send-lifecycle-email/index.ts` |
 | `referral_reminder` | Ο σύνδεσμος πρόσκλησής σου περιμένει | `supabase/functions/_shared/verify-policy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
 | `referral_reward` | Η ανταμοιβή σου είναι έτοιμη | `supabase/functions/_shared/emailPolicy.ts` |
 | `referral_friend_activated` | Η σύστασή σου μόλις ενεργοποιήθηκε | `supabase/functions/_shared/emailPolicy.ts` |
@@ -137,7 +137,7 @@ npm run katalogos
 |---|---|---|
 | `inactive_30` | Πάει καιρός. Όλα σε περιμένουν | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `scripts/db/rls-probe.sql` |
 | `inactive_60` | Να κρατήσουμε τα δεδομένα σου ασφαλή; | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql` |
-| `winback_offer` | Μια αφορμή για να γυρίσεις: ${pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts` |
+| `winback_offer` | Μια αφορμή για να γυρίσεις: ${o.pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts` |
 | `churn_survey` | Ένα λεπτό, για να γίνουμε καλύτεροι | `supabase/functions/_shared/emailPolicy.ts` |
 | `data_retention_notice` | Κράτησε τον λογαριασμό σου ενεργό | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 

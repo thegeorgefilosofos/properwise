@@ -57,6 +57,7 @@ import { downloadTableXlsx } from './exportCsv';
 import * as checkinLink from '@/lib/data/checkinLink';
 import { notifyError } from '@/components/Toast';
 import { saved, savedData } from '@/components/dbWrite';
+import { failed } from '@/lib/core/dbError';
 
 import ClientCompose from './ClientCompose';
 import {
@@ -514,7 +515,22 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   };
 
   const del = async (c: Client) => {
-    if (!(await confirmDialog('Να διαγραφεί η καταχώρηση;', { tone: 'negative' }))) return;
+    // ΤΟ ΜΗΝΥΜΑ ΛΕΕΙ ΤΙ ΧΑΝΕΤΑΙ. Η διαγραφή παίρνει μαζί της τις διαμονές
+    // (δηλαδή έσοδα που μετρούν στα σύνολα) και τα έγγραφα. Το «Να διαγραφεί
+    // η καταχώρηση;» δεν το έλεγε.
+    if (!(await confirmDialog(`Οριστική διαγραφή «${c.full_name}»; Διαγράφονται μαζί οι διαμονές του με τα έσοδά τους και τα έγγραφά του, όπως ταυτότητα ή διαβατήριο.`, { tone: 'negative', confirmLabel: 'Οριστική διαγραφή' }))) return;
+    // ΠΡΩΤΑ ΤΑ ΑΡΧΕΙΑ. Οι εγγραφές των εγγράφων σβήνονται με τον πελάτη, τα
+    // αρχεία όμως ζουν στον χώρο αποθήκευσης και έμεναν εκεί για πάντα: ένα
+    // διαβατήριο χωρίς κάτοχο στην οθόνη, που κανείς δεν μπορούσε να βρει.
+    const folder = `${userId}/clients/${c.id}`;
+    const { data: files, error: lsErr } = await supabase.storage.from('property-files').list(folder, { limit: 1000 });
+    // Αν δεν ξέρουμε ποια αρχεία υπάρχουν, δεν διαγράφουμε τον πελάτη: θα
+    // έμεναν ακριβώς τα αρχεία που αυτή η σειρά υπάρχει για να σβήσει.
+    if (lsErr) { notifyError(failed('Τα έγγραφα του επισκέπτη δεν βρέθηκαν, η διαγραφή σταμάτησε', lsErr)); return; }
+    if (files && files.length > 0) {
+      const { error: rmErr } = await supabase.storage.from('property-files').remove(files.map(x => `${folder}/${x.name}`));
+      if (rmErr) { notifyError(failed('Τα έγγραφα του επισκέπτη δεν διαγράφηκαν', rmErr)); return; }
+    }
     if (!await saved('Η καταχώρηση δεν διαγράφηκε', supabase.from('clients').delete().eq('id', c.id))) return;
     if (openId === c.id) setOpenId(null);
     load();
