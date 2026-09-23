@@ -27,6 +27,7 @@ import { T, feAuto, fixedCols } from '@/components/tokens';
 import { fn, fp, feRate } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS } from '@/lib/billing/enfia';
+import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
 import { enfiaInstalments, ENFIA_INSTALMENTS } from '@/lib/tools/enfiaSchedule';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { ToolCta, EstimateNote } from '@/app/PublicChrome';
@@ -40,15 +41,9 @@ const PATH = '/ypologismos-enfia';
 
 // Οι ετικέτες αντλούνται από τα ΚΛΕΙΔΙΑ του lib, ώστε αν προστεθεί συντελεστής
 // να μη μείνει η οθόνη πίσω σιωπηλά.
-const FLOORS: { key: keyof typeof ENFIA_FLOOR_COEF | string; label: string }[] = [
-  { key: 'basement',   label: 'Υπόγειο' },
-  { key: 'ground',     label: 'Ισόγειο' },
-  { key: 'first',      label: '1ος όροφος' },
-  { key: 'second',     label: '2ος όροφος' },
-  { key: 'third',      label: '3ος όροφος' },
-  { key: 'fourth',     label: '4ος και 5ος' },
-  { key: 'fifth_plus', label: '6ος και πάνω' },
-];
+// Οι ετικέτες ζουν στο lib/billing/enfiaFloors.ts, κοινές με τον πίνακα ελέγχου.
+const FLOORS: { key: keyof typeof ENFIA_FLOOR_COEF; label: string }[] =
+  (Object.keys(ENFIA_FLOOR_COEF) as (keyof typeof ENFIA_FLOOR_COEF)[]).map(key => ({ key, label: ENFIA_FLOOR_LABEL[key] }));
 // Τα κλιμάκια παλαιότητας ΔΕΝ ξαναγράφονται εδώ: έρχονται από το enfia.ts, μαζί
 // με τις ετικέτες τους. Πριν, οι δύο οθόνες είχαν διαφορετικά λεκτικά για το
 // ίδιο κλειδί — και καμία δεν είχε το κλιμάκιο 15-19 ετών.

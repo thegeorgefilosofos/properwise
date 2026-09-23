@@ -11,6 +11,7 @@ import { fdLong, ABSENT, ABSENT_DATE, ABSENT_SHORT } from '@/components/Theme'
 import { reportHead, reportHeader, reportSection, reportRow, reportKpi, reportDisclaimer, openReport, rEur, rSigned, rPct, rEsc, rDate } from '../reportPdf'
 import { reportAccent, brandRootVars, brandLogoImg, brandName, escHtml as esc, type ReportBranding } from '@/lib/reportBranding'
 import { printFontFaces } from '@/lib/print/fonts'
+import { brandMarkSvg } from '@/components/BrandMark'
 import { INK, INK_FAINT, INK_MUTED, PAPER, PAPER_ALT, RULE } from '@/lib/print/ink'
 import { costVariance } from '@/lib/checklist/obligationTasks'
 import { WHO_LABEL } from '@/lib/accounting/dossier'
@@ -413,7 +414,7 @@ body{font-family:'Inter',sans-serif;background:${PAPER};color:${INK};font-size:1
 <div style="height:3px;background:${accent};border-radius:3px;margin-bottom:20px"></div>
 <div class="hdr">
   <div>
-    ${branding ? `${brandLogoImg(branding, 30)}<div class="logo">${brandName(branding)}</div>` : `<div class="logo">Property <span>OS</span></div>`}
+    ${brandLogoImg(branding, 30) || brandMarkSvg(30, INK)}<div class="logo">${brandName(branding)}</div>
     <div class="logo-sub">Επαγγελματικό εργαλείο διαχείρισης ακινήτων</div>
   </div>
   <div class="hdr-right">
