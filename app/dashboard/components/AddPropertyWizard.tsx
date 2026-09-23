@@ -278,11 +278,7 @@ function StepBody({ rows, place, after }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {core.length > 0 && <div style={grid2}>{core.map(cell)}</div>}
       {after}
-      {/* ΒΗΜΑ ΜΟΝΟ ΜΕ ΠΡΟΑΙΡΕΤΙΚΑ ΔΕΝ ΚΡΥΒΕΤΑΙ ΠΙΣΩ ΑΠΟ ΚΟΥΜΠΙ. Οι «Ρυθμίσεις»
-          ήταν ολόκληρη οθόνη με μία κλειστή γραμμή: ο χρήστης πατούσε
-          «Συνέχεια» σε κενό. */}
-      {more.length > 0 && core.length === 0 && <div style={grid2}>{more.map(cell)}</div>}
-      {more.length > 0 && core.length > 0 && (
+      {more.length > 0 && (
         <>
           <button
             type="button"
