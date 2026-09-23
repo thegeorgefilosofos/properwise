@@ -473,7 +473,18 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     notify('Ο ενοικιαστής μεταφέρθηκε στο ιστορικό'); fetch_();
   };
   const delTenant=async(t:Tenant)=>{
-    if(!(await confirmDialog(`Οριστική διαγραφή «${t.full_name}»; Θα διαγραφούν και οι πληρωμές/φθορές του.`,{tone:'negative',confirmLabel:'Οριστική διαγραφή'}))) return;
+    if(!(await confirmDialog(`Οριστική διαγραφή «${t.full_name}»; Διαγράφονται μαζί οι πληρωμές του, που μετρούν στα έσοδα, οι φθορές και το μισθωτήριο που ανέβηκε.`,{tone:'negative',confirmLabel:'Οριστική διαγραφή'}))) return;
+    // ΤΟ ΜΙΣΘΩΤΗΡΙΟ ΕΜΕΝΕ ΣΤΟΝ ΧΩΡΟ ΑΠΟΘΗΚΕΥΣΗΣ. Η γραμμή του ενοικιαστή έφευγε,
+    // το PDF με όνομα, ΑΦΜ και διεύθυνση έμενε χωρίς κάτοχο στην οθόνη.
+    {
+      const folder=`${userId}/${t.id}`;
+      const{data:files,error:lsErr}=await supabase.storage.from('lease-documents').list(folder,{limit:1000});
+      if(lsErr){notifyError(failed('Το μισθωτήριο δεν βρέθηκε, η διαγραφή σταμάτησε',lsErr));return;}
+      if(files&&files.length>0){
+        const{error:rmErr}=await supabase.storage.from('lease-documents').remove(files.map(x=>`${folder}/${x.name}`));
+        if(rmErr){notifyError(failed('Το μισθωτήριο του ενοικιαστή δεν διαγράφηκε',rmErr));return;}
+      }
+    }
     // Η ΣΕΙΡΑ ΕΧΕΙ ΣΗΜΑΣΙΑ: πρώτα τα εξαρτημένα, τελευταίος ο ενοικιαστής. Αν
     // κάποιο βήμα αποτύχει, σταματάμε — αλλιώς μένουν ορφανές πληρωμές που δεν
     // φαίνονται πουθενά και εξακολουθούν να μετράνε σε αθροίσματα.

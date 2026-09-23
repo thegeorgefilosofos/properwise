@@ -35,12 +35,25 @@ const NOTE = {
   autolog: 'Η καταχώρηση έγινε αυτόματα. Δεν χρειάζεται να κάνεις κάτι.',
   aade: 'Ενημερωτικά, με επίσημες πηγές. Οριστικοποίησε με τον λογιστή σου ή στο myAADE.',
   cancel: 'Ακύρωση όποτε θες, χωρίς δεσμεύσεις.',
-  limited: 'Η προσφορά ισχύει για περιορισμένο διάστημα.',
   legal: 'Ενημερωτικά. Για την τελική εφαρμογή, επιβεβαίωσε με τον λογιστή ή τον νομικό σου σύμβουλο.',
 }
 
 type Out = { subject: string; html: string }
-export type CopyFn = (c: Personal) => Out
+// `null` = «δεν στέλνεται»: μια προσφορά χωρίς έκπτωση που να εφαρμόζεται.
+export type CopyFn = (c: Personal) => Out | null
+
+// ── ΕΚΠΤΩΣΗ ΧΩΡΙΣ ΚΩΔΙΚΟ ΔΕΝ ΥΠΑΡΧΕΙ ──────────────────────────────────────
+// Οι εποχικές επιστολές μπαίνουν στην ουρά για κάθε χρήστη με παραμέτρους
+// {name, plan}, χωρίς ποσοστό. Η επιστολή έπεφτε τότε σε καρφωμένο 40% ή 30%,
+// με κουμπί «Κλείσε το 40%» προς το ταμπλό, όπου καμία έκπτωση δεν υπήρχε.
+// Τώρα η έκπτωση γράφεται μόνο όταν δοθούν ΚΑΙ ποσοστό ΚΑΙ κωδικός· αλλιώς η
+// επιστολή που ζει μόνο για την έκπτωση δεν στέλνεται και όποια έχει κάτι
+// άλλο να πει το λέει χωρίς νούμερο.
+const offer = (c: Personal): { pct: number; code: string } | null => {
+  const code = String(c.discountCode ?? '').trim()
+  return has(c.discountPct) && code ? { pct: c.discountPct, code: esc(code) } : null
+}
+const codeLine = (o: { code: string }) => p(`Γράψε τον κωδικό <b>${o.code}</b> στο ταμείο και η έκπτωση εφαρμόζεται στη χρέωση.`)
 
 // ── Φάση 1: Onboarding & Activation ──────────────────────────────────────────
 export const ONBOARDING: Record<string, CopyFn> = {
@@ -573,9 +586,10 @@ export const UPSELL: Record<string, CopyFn> = {
   // solo. Δεν δηλώνεται σταθερό ποσοστό (π.χ. 20%) που θα υπερέβαλλε· μόνο όταν
   // δοθεί ρητή έκπτωση προσφοράς (discountPct) γράφεται το ποσοστό.
   annual_discount: (c) => {
-    const promo = has(c.discountPct);
-    const lead = promo
-      ? `Αν το PROPERWISE έγινε μέρος της καθημερινότητάς σου, για περιορισμένο διάστημα η ετήσια χρέωση σου χαρίζει <b>${c.discountPct}%</b> έκπτωση σε σχέση με τη μηνιαία. Ίδιες δυνατότητες, μικρότερο κόστος.`
+    const o = offer(c);
+    const promo = !!o;
+    const lead = o
+      ? `Αν το PROPERWISE έγινε μέρος της καθημερινότητάς σου, η ετήσια χρέωση σου χαρίζει <b>${o.pct}%</b> έκπτωση σε σχέση με τη μηνιαία, με τον κωδικό <b>${o.code}</b> στο ταμείο. Ίδιες δυνατότητες, μικρότερο κόστος.`
       : 'Αν το PROPERWISE έγινε μέρος της καθημερινότητάς σου, η ετήσια χρέωση κοστίζει λιγότερο από δώδεκα μηνιαίες: έως δύο μήνες δωρεάν τον χρόνο. Ίδιες δυνατότητες, μικρότερο κόστος.';
     return { subject: promo ? `Πλήρωσε ετησίως και εξοικονόμησε ${c.discountPct}%` : 'Πλήρωσε ετησίως και κέρδισε έως δύο μήνες', html: emailShell({
       preheader: 'Ίδιο πακέτο, μικρότερο κόστος.',
@@ -621,16 +635,18 @@ export const UPSELL: Record<string, CopyFn> = {
 
   // 32. Προσφορά επανενεργοποίησης
   reactivation_offer: (c) => {
-    const pct = has(c.discountPct) ? c.discountPct : 30;
-    return { subject: `Γύρνα με ${pct}% έκπτωση`, html: emailShell({
+    const o = offer(c)
+    if (!o) return null
+    return { subject: `Γύρνα με ${o.pct}% έκπτωση`, html: emailShell({
       preheader: 'Μια αφορμή για να ξαναρχίσεις.',
       unsubUrl: c.unsubUrl,
-      hero: heroStat(`${pct}%`, 'έκπτωση'),
+      hero: heroStat(`${o.pct}%`, 'έκπτωση'),
       bodyHtml: eyebrow('Πρόσκληση επιστροφής') + h('Μια έκπτωση για την επιστροφή σου') + greeting(c.name)
-        + p(`Μας έλειψες. Αν θέλεις να ξαναδώσεις στο PROPERWISE μια θέση στη ρουτίνα σου, κρατάμε για σένα <b>${pct}%</b> έκπτωση στην αναβάθμιση.`)
+        + p(`Μας έλειψες. Αν θέλεις να ξαναδώσεις στο PROPERWISE μια θέση στη ρουτίνα σου, κρατάμε για σένα <b>${o.pct}%</b> έκπτωση στην αναβάθμιση.`)
+        + codeLine(o)
         + p('Ο λογαριασμός σου είναι ακριβώς όπως τον άφησες, έτοιμος να συνεχίσεις.')
-        + button(`Κλείσε το ${pct}%`, dash(c))
-        + note(NOTE.limited),
+        + button(`Κλείσε το ${o.pct}%`, dash(c))
+        + note(NOTE.cancel),
     }) };
   },
 
@@ -658,89 +674,97 @@ export const SEASONAL: Record<string, CopyFn> = {
 
   // 33. Black Friday
   black_friday: (c) => {
-    const pct = has(c.discountPct) ? c.discountPct : 40;
-    return { subject: `Black Friday: ${pct}% στο PROPERWISE`, html: emailShell({
-      preheader: 'Η μεγαλύτερη έκπτωση της χρονιάς.',
+    const o = offer(c)
+    if (!o) return null
+    return { subject: `Black Friday: ${o.pct}% στο PROPERWISE`, html: emailShell({
+      preheader: 'Η προσφορά της Black Friday.',
       unsubUrl: c.unsubUrl,
-      hero: heroStat(`${pct}%`, 'έκπτωση'),
+      hero: heroStat(`${o.pct}%`, 'έκπτωση'),
       bodyHtml: eyebrow('Black Friday') + h('Μία φορά τον χρόνο') + greeting(c.name)
-        + p(`Η μεγαλύτερη προσφορά μας είναι εδώ. Για περιορισμένο διάστημα, ξεκλείδωσε το πλήρες PROPERWISE με <b>${pct}%</b> έκπτωση και μπες στη νέα χρονιά με τα ακίνητά σου σε τάξη.`)
-        + button(`Κλείσε το ${pct}%`, dash(c))
-        + note(NOTE.limited),
+        + p(`Για τη Black Friday, ξεκλείδωσε το πλήρες PROPERWISE με <b>${o.pct}%</b> έκπτωση και μπες στη νέα χρονιά με τα ακίνητά σου σε τάξη.`)
+        + codeLine(o)
+        + button(`Κλείσε το ${o.pct}%`, dash(c))
+        + note(NOTE.cancel),
     }) };
   },
 
   // 34. Cyber Monday
   cyber_monday: (c) => {
-    const pct = has(c.discountPct) ? c.discountPct : 40;
-    return { subject: `Cyber Monday: ${pct}%, μόνο σήμερα`, html: emailShell({
-      preheader: 'Μία μέρα, μία ευκαιρία.',
+    const o = offer(c)
+    if (!o) return null
+    return { subject: `Cyber Monday: ${o.pct}% στο PROPERWISE`, html: emailShell({
+      preheader: 'Η προσφορά της Cyber Monday.',
       unsubUrl: c.unsubUrl,
-      hero: heroStat(`${pct}%`, 'έκπτωση'),
+      hero: heroStat(`${o.pct}%`, 'έκπτωση'),
       bodyHtml: eyebrow('Cyber Monday') + h('Μία μέρα, μία ευκαιρία') + greeting(c.name)
-        + p(`Αν περίμενες την κατάλληλη στιγμή, αυτή είναι. Μόνο σήμερα, το πλήρες PROPERWISE με <b>${pct}%</b> έκπτωση.`)
-        + button(`Κλείσε το ${pct}%`, dash(c))
-        + note(NOTE.limited),
+        + p(`Αν περίμενες την κατάλληλη στιγμή, αυτή είναι: το πλήρες PROPERWISE με <b>${o.pct}%</b> έκπτωση.`)
+        + codeLine(o)
+        + button(`Κλείσε το ${o.pct}%`, dash(c))
+        + note(NOTE.cancel),
     }) };
   },
 
   // 35. Χριστούγεννα
   christmas: (c) => {
-    const pct = has(c.discountPct) ? c.discountPct : 30;
+    const o = offer(c)
     return { subject: 'Κλείσε τη χρονιά με τα ακίνητά σου σε τάξη', html: emailShell({
-      preheader: 'Ένα δώρο για τη νέα σου χρονιά.',
+      preheader: o ? 'Ένα δώρο για τη νέα σου χρονιά.' : 'Καλές γιορτές από το PROPERWISE.',
       unsubUrl: c.unsubUrl,
-      hero: heroStat(`${pct}%`, 'δώρο γιορτών'),
+      ...(o ? { hero: heroStat(`${o.pct}%`, 'δώρο γιορτών') } : {}),
       bodyHtml: eyebrow('Χριστούγεννα') + h('Καλές γιορτές από το PROPERWISE') + greeting(c.name)
         + p('Ευχαριστούμε που μας εμπιστεύτηκες τα ακίνητά σου φέτος. Σου ευχόμαστε γιορτές με ηρεμία και μια νέα χρονιά με καθαρά βιβλία.')
-        + p(`Ως δώρο, ξεκλείδωσε το πλήρες PROPERWISE με <b>${pct}%</b> έκπτωση και ξεκίνα τη χρονιά χωρίς εκκρεμότητες.`)
-        + button(`Κλείσε το ${pct}%`, dash(c))
-        + note(NOTE.limited),
+        + (o ? p(`Ως δώρο, ξεκλείδωσε το πλήρες PROPERWISE με <b>${o.pct}%</b> έκπτωση και ξεκίνα τη χρονιά χωρίς εκκρεμότητες.`) + codeLine(o) : '')
+        + button(o ? `Κλείσε το ${o.pct}%` : 'Άνοιξε το PROPERWISE', dash(c))
+        + note(o ? NOTE.cancel : NOTE.dataOwn),
     }) };
   },
 
   // 36. Πρωτοχρονιά
   new_year: (c) => {
-    const pct = has(c.discountPct) ? c.discountPct : 30;
+    const o = offer(c)
+    if (!o) return null
     return { subject: 'Νέα χρονιά, καθαρά βιβλία', html: emailShell({
       preheader: 'Ξεκίνα τη χρονιά με καθαρά βιβλία.',
       unsubUrl: c.unsubUrl,
-      hero: heroStat(`${pct}%`, 'έκπτωση'),
+      hero: heroStat(`${o.pct}%`, 'έκπτωση'),
       bodyHtml: eyebrow('Πρωτοχρονιά') + h('Μια καθαρή αρχή για τα ακίνητά σου') + greeting(c.name)
         + p('Η καλύτερη στιγμή για να βάλεις τα ακίνητά σου σε τάξη είναι η αρχή της χρονιάς. Έσοδα, έξοδα και φόροι, όλα από την πρώτη μέρα στη θέση τους.')
-        + p(`Για να ξεκινήσεις δυναμικά, κρατάμε για σένα <b>${pct}%</b> έκπτωση στην αναβάθμιση.`)
-        + button(`Ξεκίνα με ${pct}%`, dash(c))
-        + note(NOTE.limited),
+        + p(`Για να ξεκινήσεις δυναμικά, κρατάμε για σένα <b>${o.pct}%</b> έκπτωση στην αναβάθμιση.`)
+        + codeLine(o)
+        + button(`Ξεκίνα με ${o.pct}%`, dash(c))
+        + note(NOTE.cancel),
     }) };
   },
 
   // 37. Φορολογική σεζόν
   tax_season: (c) => {
-    const pct = has(c.discountPct) ? c.discountPct : 25;
+    const o = offer(c)
     return { subject: 'Μπες στη φορολογική σεζόν χωρίς άγχος', html: emailShell({
       preheader: 'Τα ενοίκιά σου, έτοιμα για το Ε2.',
       unsubUrl: c.unsubUrl,
-      hero: heroStat(`${pct}%`, 'έκπτωση'),
+      ...(o ? { hero: heroStat(`${o.pct}%`, 'έκπτωση') } : {}),
       bodyHtml: eyebrow('Φορολογική σεζόν') + h('Η δήλωση χωρίς τρέξιμο') + greeting(c.name)
         + p('Η περίοδος των δηλώσεων πλησιάζει. Με το PROPERWISE, τα ενοίκια ανά ακίνητο συγκεντρώνονται μόνα τους και το Ε2 ετοιμάζεται χωρίς άγχος τελευταίας στιγμής.')
-        + p(`Για τη σεζόν, ξεκλείδωσε τα φορολογικά εργαλεία με <b>${pct}%</b> έκπτωση.`)
-        + button(`Ετοιμάσου με ${pct}%`, dash(c))
+        + (o ? p(`Για τη σεζόν, ξεκλείδωσε τα φορολογικά εργαλεία με <b>${o.pct}%</b> έκπτωση.`) + codeLine(o) : '')
+        + button(o ? `Ετοιμάσου με ${o.pct}%` : 'Δες το Ε2 σου', dash(c))
         + note(NOTE.aade),
     }) };
   },
 
   // 38. Σεζόν βραχυχρόνιων μισθώσεων
   summer_str: (c) => {
-    const pct = has(c.discountPct) ? c.discountPct : 20;
+    const o = offer(c)
+    if (!o) return null
     return { subject: 'Η σεζόν των βραχυχρόνιων ξεκινά', html: emailShell({
       preheader: 'Κρατήσεις, έσοδα και ημερολόγιο σε ένα σημείο.',
       unsubUrl: c.unsubUrl,
-      hero: heroStat(`${pct}%`, 'έκπτωση'),
+      hero: heroStat(`${o.pct}%`, 'έκπτωση'),
       bodyHtml: eyebrow('Καλοκαιρινή σεζόν') + h('Η σεζόν ξεκινά. Πάμε μαζί') + greeting(c.name)
         + p('Το καλοκαίρι φέρνει κρατήσεις, εναλλαγές επισκεπτών και έξοδα που τρέχουν. Το PROPERWISE συγχρονίζει Airbnb και Booking, καταγράφει τα έσοδα και κρατά καθαρό το ημερολόγιό σου.')
-        + p(`Μπες στη σεζόν οργανωμένα, με <b>${pct}%</b> έκπτωση στην αναβάθμιση.`)
-        + button(`Ξεκίνα με ${pct}%`, dash(c))
-        + note(NOTE.limited),
+        + p(`Μπες στη σεζόν οργανωμένα, με <b>${o.pct}%</b> έκπτωση στην αναβάθμιση.`)
+        + codeLine(o)
+        + button(`Ξεκίνα με ${o.pct}%`, dash(c))
+        + note(NOTE.cancel),
     }) };
   },
 }
@@ -752,11 +776,11 @@ export const REFERRAL: Record<string, CopyFn> = {
   referral_invite: (c) => {
     const code = c.referralCode ? p(`Ο προσωπικός σου κωδικός: <b>${esc(c.referralCode)}</b>. Μοιράσου τον με όποιον διαχειρίζεται ακίνητα.`) : '';
     const reward = c.rewardLabel ? esc(c.rewardLabel) : 'μια ανταμοιβή';
-    return { subject: 'Πρότεινε το PROPERWISE, κερδίστε και οι δύο', html: emailShell({
-      preheader: 'Ένας σύνδεσμος, διπλό όφελος.',
+    return { subject: 'Σύστησε το PROPERWISE σε έναν ιδιοκτήτη', html: emailShell({
+      preheader: 'Με κάθε ενεργή σύσταση κερδίζεις κι εσύ.',
       unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Συστάσεις') + h('Μοιράσου κάτι που σε βοηθά') + greeting(c.name)
-        + p(`Ξέρεις κάποιον με ακίνητα που ακόμη παλεύει με σημειώσεις και αποδείξεις; Πρότεινέ του το PROPERWISE και κερδίζετε και οι δύο ${reward}.`)
+        + p(`Ξέρεις κάποιον με ακίνητα που ακόμη παλεύει με σημειώσεις και αποδείξεις; Πρότεινέ του το PROPERWISE. Όταν ξεκινήσει, κερδίζεις ${reward}· εκείνος ξεκινά με τη δοκιμή, όπως κάθε νέος λογαριασμός.`)
         + code
         + button('Δες το πρόγραμμα συστάσεων', dash(c))
         + note('Η ανταμοιβή κατοχυρώνεται μόλις ο νέος ιδιοκτήτης προσθέσει ακίνητο και σαρώσει το πρώτο του έγγραφο. Πιστώνεται στη συνδρομή σου.'),
@@ -767,7 +791,7 @@ export const REFERRAL: Record<string, CopyFn> = {
   referral_reminder: (c) => {
     const code = c.referralCode ? p(`Ο κωδικός σου είναι πάντα εδώ: <b>${esc(c.referralCode)}</b>.`) : '';
     return { subject: 'Ο σύνδεσμος πρόσκλησής σου περιμένει', html: emailShell({
-      preheader: 'Μια σύσταση, ένα διπλό όφελος.',
+      preheader: 'Με κάθε ενεργή σύσταση κερδίζεις κι εσύ.',
       unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Συστάσεις') + h('Κάποιος θα σε ευγνωμονεί') + greeting(c.name)
         + p('Οι καλύτερες συστάσεις έρχονται από ανθρώπους που εμπιστευόμαστε. Αν το PROPERWISE σου έκανε τη ζωή πιο εύκολη, ίσως κάνει το ίδιο και σε κάποιον δικό σου.')
@@ -995,16 +1019,18 @@ export const WINBACK: Record<string, CopyFn> = {
 
   // 51. Προσφορά επιστροφής
   winback_offer: (c) => {
-    const pct = has(c.discountPct) ? c.discountPct : 30;
-    return { subject: `Μια αφορμή για να γυρίσεις: ${pct}% έκπτωση`, html: emailShell({
+    const o = offer(c)
+    if (!o) return null
+    return { subject: `Μια αφορμή για να γυρίσεις: ${o.pct}% έκπτωση`, html: emailShell({
       preheader: 'Ξεκίνα ξανά με το πλήρες PROPERWISE.',
       unsubUrl: c.unsubUrl,
-      hero: heroStat(`${pct}%`, 'έκπτωση'),
+      hero: heroStat(`${o.pct}%`, 'έκπτωση'),
       bodyHtml: eyebrow('Καλωσόρισες πίσω') + h('Ένα δώρο για την επιστροφή σου') + greeting(c.name)
-        + p(`Ξέρουμε ότι η καθημερινότητα τρέχει. Αν θέλεις να ξαναβάλεις τα ακίνητά σου σε τάξη, κρατάμε για σένα <b>${pct}%</b> έκπτωση στην αναβάθμιση.`)
+        + p(`Ξέρουμε ότι η καθημερινότητα τρέχει. Αν θέλεις να ξαναβάλεις τα ακίνητά σου σε τάξη, κρατάμε για σένα <b>${o.pct}%</b> έκπτωση στην αναβάθμιση.`)
+        + codeLine(o)
         + p('Ο λογαριασμός σου είναι έτοιμος, με όλα όσα άφησες στη θέση τους.')
-        + button(`Κλείσε το ${pct}%`, dash(c))
-        + note(NOTE.limited),
+        + button(`Κλείσε το ${o.pct}%`, dash(c))
+        + note(NOTE.cancel),
     }) };
   },
 

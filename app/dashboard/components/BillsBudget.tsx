@@ -1291,7 +1291,12 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 εισόδημα, γιατί απαντά «ακρίβυνε ή έπεσε;».
                 ══════════════════════════════════════════════════════════════ */}
             {!hasIncome && (() => {
-              const prev  = monthTotals[_prevYm] || 0;
+              // ΟΜΟΙΑ ΜΕ ΟΜΟΙΑ. Το «Έναντι» αφαιρούσε από λογαριασμούς ΣΥΝ δόση
+              // δανείου το σύνολο του προηγούμενου μήνα ΧΩΡΙΣ δόση: η δόση έμοιαζε
+              // με αύξηση κόστους κάθε μήνα. Τώρα συγκρίνονται μόνο τα πάγια με
+              // τα πάγια του προηγούμενου μήνα και η διαφορά γράφεται με πρόσημο.
+              const prev  = FIXED_CATS.reduce((s, k) => s + (catMonth[_prevYm]?.[k] || 0), 0);
+              const diff  = committedBills - prev;
               // ΤΟ «ΕΝΑΝΤΙ» ΘΕΛΕΙ ΓΕΝΙΚΗ, ΚΑΙ Ο ΜΗΝΑΣ ΤΗΝ ΕΧΕΙ. Έγραφε «751,00€
               // τον Ιούλιος»: ονομαστική μετά από πρόθεση, από τα πιο ορατά λάθη
               // σε ελληνικό κείμενο. Η αιτιατική και η γενική υπάρχουν ήδη στο
@@ -1306,13 +1311,13 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
               // ρυθμός είναι το νούμερο με το οποίο συγκρίνεις ένα ενοίκιο ή μια
               // ασφάλεια και το κόστος ανά τετραγωνικό είναι το μόνο που κάνει
               // δύο ακίνητα συγκρίσιμα. Κανένα από τα δύο δεν γράφεται αλλού.
-              const tiles = [
+              const tiles: { l: string; v: number; sub: string; info?: string; txt?: string }[] = [
                 ...(parts.length > 1 ? parts : []),
                 ...(monthlyCost > 0 ? [{ l: 'Τον χρόνο', v: monthlyCost * 12, sub: 'με τον ρυθμό του μήνα' }] : []),
                 ...(monthlyCost > 0 && (propSqm || 0) > 0
                   ? [{ l: 'Ανά τετραγωνικό', v: monthlyCost / (propSqm as number), sub: `σε ${propSqm} τ.μ. τον μήνα` }] : []),
-                ...(prev > 0 ? [{ l: `Έναντι ${monthGen(Number(_prevYm.slice(5, 7)) - 1)}`,
-                  v: monthlyCost - prev, sub: `από ${feAuto(prev)}` }] : []),
+                ...(prev > 0 ? [{ l: `Λογαριασμοί έναντι ${monthGen(Number(_prevYm.slice(5, 7)) - 1)}`,
+                  v: diff, txt: `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${feAuto(Math.abs(diff))}`, sub: `από ${feAuto(prev)}` }] : []),
               ];
               if (tiles.length === 0) return null;
               // ΤΟ `style` ΣΒΗΝΕΙ ΟΛΟΚΛΗΡΟ ΤΟ `style` ΤΟΥ SPREAD, ΚΑΙ ΤΟ ΕΣΒΗΝΕ.
@@ -1343,7 +1348,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
               // κείμενό τους.
               return (
                 <div style={{ marginTop: 16 }}>
-                  <KPIGrid nested items={tiles.map(t => ({ label: t.l, value: feAuto(t.v), sub: t.sub, title: t.info }))} />
+                  <KPIGrid nested items={tiles.map(t => ({ label: t.l, value: t.txt ?? feAuto(t.v), sub: t.sub, title: t.info }))} />
                 </div>
               );
             })()}

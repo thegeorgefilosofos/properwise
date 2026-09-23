@@ -53,7 +53,7 @@ import {
   addMemory, removeMemory, clearMemories, actionReachable,
 } from './assistantPersona';
 import {
-  ASSISTANT_NAME, tagline, askCta, askPlaceholder, openAria,
+  ASSISTANT_NAME, tagline, askCta, askPlaceholder, openAria, aiDisclosure,
   speakingLabel, settingsTitle, noKeyNotice,
 } from '@/lib/assistant/identity';
 import { classifyExpense } from '@/lib/expenses/classify';
@@ -1807,8 +1807,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                   που θέλει να ξέρει, κοιτάζει· ο χρήστης που δεν θέλει, δεν το
                   προσέχει. Εμφανίζεται μόνο αφού απαντήσει η βάση: πριν από την
                   πρώτη ερώτηση το υπόλοιπο θα ήταν μαντεψιά. */}
+              <div style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8, textWrap: 'balance' }}>
+                {aiDisclosure(prefs.formal)}
+              </div>
               {remainingLine(quota) && (
-                <div style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8 }}>
+                <div style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 4 }}>
                   {remainingLine(quota)}
                 </div>
               )}

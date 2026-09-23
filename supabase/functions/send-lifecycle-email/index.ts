@@ -98,9 +98,9 @@ function render(event: string, ctx: Ctx, params: Record<string, unknown>): { sub
     case 'feedback':         return feedbackRequestEmail(ctx)
     case 'mobile_launch':    return mobileLaunchEmail(ctx)
     case 'referral_invite':  return referralInviteEmail(ctx)
-    case 'upsell':           return upsellEmail({ ...ctx, toPlan: params.toPlan as Plan, discountPct: Number(params.discountPct) || 0, seasonLabel: params.seasonLabel == null ? undefined : String(params.seasonLabel) })
+    case 'upsell':           return upsellEmail({ ...ctx, toPlan: params.toPlan as Plan, discountPct: Number(params.discountPct) || 0, discountCode: params.discountCode == null ? undefined : String(params.discountCode), seasonLabel: params.seasonLabel == null ? undefined : String(params.seasonLabel) })
     case 'legislation':      return legislationUpdateEmail({ ...ctx, headline: String(params.headline || ''), summaryHtml: String(params.summaryHtml || '') })
-    case 'seasonal':         return seasonalCampaignEmail({ ...ctx, season: params.season as Season, toPlan: params.toPlan as Plan, discountPct: Number(params.discountPct) || undefined })
+    case 'seasonal':         return seasonalCampaignEmail({ ...ctx, season: params.season as Season, toPlan: params.toPlan as Plan, discountPct: Number(params.discountPct) || undefined, discountCode: params.discountCode == null ? undefined : String(params.discountCode) })
     default:                 return null
   }
 }
@@ -151,7 +151,11 @@ Deno.serve(async (req) => {
   // Προτεραιότητα στο επιμελημένο catalog (copyId), μετά τα ενοποιημένα (DIGESTS),
   // αλλιώς τα lifecycle templates (event).
   const byCopyId = { ...CATALOG, ...DIGESTS }
-  const tpl = (copyId && byCopyId[copyId]) ? byCopyId[copyId](personal) : render(event, personal, params)
+  const fromCatalog = !!(copyId && byCopyId[copyId])
+  const tpl = fromCatalog ? byCopyId[copyId](personal) : render(event, personal, params)
+  // Ο ΚΑΤΑΛΟΓΟΣ ΜΠΟΡΕΙ ΝΑ ΑΡΝΗΘΕΙ. Μια προσφορά χωρίς ποσοστό και κωδικό δεν
+  // έχει τίποτα να προσφέρει και δεν στέλνεται· δεν είναι σφάλμα.
+  if (!tpl && fromCatalog) return json({ skipped: 'no_offer', event, copyId }, 200)
   if (!tpl) return json({ error: 'unknown_email', event, copyId }, 400)
 
   try {

@@ -70,6 +70,8 @@ export default function Billing({ userId, wantPlan = null }: {
   const [saved, setSaved] = useState(false);
   const [saveErr, setSaveErr] = useState(false);
   const [prefilled, setPrefilled] = useState(false);
+  // Ζωντανή χρέωση; Το λέει ο ίδιος έλεγχος που δείχνει το κουμπί του ταμείου.
+  const [billingLive, setBillingLive] = useState<boolean | null>(null);
   const set = (k: keyof BillingData, v: string) => setD(p => ({ ...p, [k]: v }));
   // Η κάρτα ξαναδιαβάζει το προφίλ όταν κάτι το άλλαξε στον διακομιστή — η
   // αλλαγή πακέτου δοκιμαστή γράφεται με ρόλο υπηρεσίας, οπότε η οθόνη δεν
@@ -162,9 +164,15 @@ export default function Billing({ userId, wantPlan = null }: {
           ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΠΡΟΑΠΑΙΤΟΥΜΕΝΟ. Το ταμείο δεν ζει σε αυτή τη σελίδα: ο
           διακομιστής βγάζει σύνδεσμο μιας χρήσης προς τον έμπορο, που ζητά ο
           ίδιος ό,τι του λείπει. Η σειρά δεν ήταν ροή — ήταν συνήθεια. */}
-      <Subscription d={d} wantPlan={wantPlan} wishPlan={wishPlan} wishCycle={wishCycle} onChanged={reload} />
+      <Subscription d={d} wantPlan={wantPlan} wishPlan={wishPlan} wishCycle={wishCycle} onChanged={reload} onLive={setBillingLive} />
 
-      <Card>
+      {/* ΧΩΡΙΣ ΤΑΜΕΙΟ, ΧΩΡΙΣ ΦΟΡΜΑ. Η οθόνη ζητούσε ΑΦΜ, ΔΟΥ, διεύθυνση και
+          τηλέφωνο «για να μη σου ζητηθεί τίποτα στην ενεργοποίηση», ενώ το
+          ταμείο δεν τα διαβάζει και το παραστατικό το εκδίδει ο έμπορος.
+          Δεδομένα που μαζεύονται χωρίς χρήση παραβιάζουν την ελαχιστοποίηση
+          του άρθρου 5§1 στοιχείο γ΄ GDPR. Η φόρμα εμφανίζεται μόνο με ζωντανή
+          χρέωση. */}
+      {billingLive === true && <Card>
         <SecHdr label="Στοιχεία τιμολόγησης" />
         {prefilled && (
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, marginTop: -6, marginBottom: 14 }}>
@@ -238,7 +246,7 @@ export default function Billing({ userId, wantPlan = null }: {
             Για σωστό τιμολόγιο, συμπλήρωσε ακόμη: {missing.map(f => f.label).join(', ')}.
           </div>
         )}
-      </Card>
+      </Card>}
     </div>
   );
 }
@@ -252,13 +260,14 @@ export default function Billing({ userId, wantPlan = null }: {
 //
 // Το ταμείο εμφανίζεται μόνο όταν ο πάροχος είναι ρυθμισμένος — αυτό το ξέρει
 // ο διακομιστής, όχι η οθόνη, γιατί το κλειδί ζει σε μεταβλητή περιβάλλοντος.
-function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthly', onChanged }: {
+function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthly', onChanged, onLive }: {
   d: BillingData;
   wantPlan?: PlanId | null;
   /** Ο,τι διάλεξε στην εγγραφή, όσο δεν έχει συνδρομή. */
   wishPlan?: PlanId | null;
   wishCycle?: BillingCycle;
   onChanged: () => void;
+  onLive?: (live: boolean) => void;
 }) {
   /**
    * Υπάρχει πύλη διαχείρισης;
@@ -328,10 +337,12 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
       try {
         const res = await fetch(`/api/billing/checkout?plan=${target}&cycle=${cycle}&probe=1`);
         const body = await res.json() as { available?: boolean; note?: string };
-        if (alive) { setLive(!!body.available); setNote(body.note || ''); }
-      } catch { if (alive) setLive(false); }
+        if (alive) { setLive(!!body.available); setNote(body.note || ''); onLive?.(!!body.available); }
+      } catch { if (alive) { setLive(false); onLive?.(false); } }
     })();
     return () => { alive = false; };
+  // Το `onLive` είναι σταθερός setter του γονέα· δεν ξαναρωτά το ταμείο.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, cycle]);
 
   // ΤΟ ΣΦΑΛΜΑ ΛΕΓΕΤΑΙ. Ενα κουμπί που δεν κάνει τίποτα όταν πατηθεί είναι
@@ -578,7 +589,7 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           με τους Ορους και την Πολιτική απορρήτου, από την ίδια πηγή. */}
       {live === false && (
         <div style={{ marginTop: T.sp.lg }}>
-          <InfoBanner tone="info">{note} Συμπλήρωσε από τώρα τα στοιχεία τιμολόγησης, ώστε η ενεργοποίηση να μη σου ζητήσει τίποτα άλλο.</InfoBanner>
+          <InfoBanner tone="info">{note}</InfoBanner>
         </div>
       )}
 
