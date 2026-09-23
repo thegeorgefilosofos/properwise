@@ -237,6 +237,13 @@ const PROBE = () => {
   // παράδειγμά του ΤΥΛΙΓΕΤΑΙ: επαληθεύτηκε με στιγμιότυπο, τρεις γραμμές μέσα
   // στο κουτί, ολόκληρο και αναγνώσιμο, ενώ το ίδιο κείμενο σε `input` ίδιου
   // πλάτους κόπηκε στο «δικά σοι». Ο κανόνας ισχύει μόνο εκεί που δεν τυλίγει.
+  // Ορίζεται ΠΡΙΝ από τον πρώτο βρόχο που τη χρειάζεται: με `const` πιο κάτω,
+  // το πρώτο κομμένο παράδειγμα έριχνε ReferenceError και όλο το σκανάρισμα.
+  const who = (el) => {
+    const lab = (el.getAttribute('aria-label') || el.getAttribute('placeholder') || '').trim().slice(0, 28)
+    const cls = typeof el.className === 'string' && el.className ? '.' + el.className.split(/\s+/)[0] : ''
+    return `${el.tagName.toLowerCase()}${cls}${lab ? ` [${lab}]` : ''}`
+  }
   const cv = document.createElement('canvas').getContext('2d')
   for (const el of document.querySelectorAll('input[placeholder]')) {
     const ph = el.getAttribute('placeholder')
@@ -266,11 +273,6 @@ const PROBE = () => {
   // ούτε με ανάγνωση. Μια μέτρηση πάνω στην οποία δεν μπορείς να δράσεις είναι
   // μισή μέτρηση· εδώ προστίθεται η ετικέτα προσβασιμότητας και η κλάση, που
   // μαζί δείχνουν πάντα σε μία γραμμή κώδικα.
-  const who = (el) => {
-    const lab = (el.getAttribute('aria-label') || el.getAttribute('placeholder') || '').trim().slice(0, 28)
-    const cls = typeof el.className === 'string' && el.className ? '.' + el.className.split(/\s+/)[0] : ''
-    return `${el.tagName.toLowerCase()}${cls}${lab ? ` [${lab}]` : ''}`
-  }
   for (const el of document.querySelectorAll('input, textarea')) {
     if (/^(checkbox|radio|file|range|color|hidden|submit|button|image)$/.test(el.type || '')) continue
     const v = el.value
