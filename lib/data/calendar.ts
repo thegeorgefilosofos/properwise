@@ -45,7 +45,7 @@ import { TAX_SOURCE_PREFIX } from '@/lib/tax/greekTaxCalendar';
 // Ο ΚΟΙΝΟΣ ΠΥΡΗΝΑΣ ΑΝΑΓΝΩΣΗΣ. Τα ψευδώνυμα δεν είναι καλαισθησία: το αρχείο
 // εξάγει ήδη δικό του `row()` — τον κατασκευαστή της γραμμής — και ονομάζει
 // `rows` τις παραμέτρους του γραψίματος.
-import { read, rows as readRows, row as readRow } from './read';
+import { read, rows as readRows, row as readRow, type ReadResult } from './read';
 
 const TABLE = 'calendar_events';
 
@@ -230,7 +230,14 @@ export async function all(db: Db, propertyId: string): Promise<CalendarEventsRow
 export async function ofUserInRange<T = CalendarEventsRow>(
   db: Db, userId: string, from: string, to: string, columns = '*',
 ): Promise<T[]> {
-  return readRows<T>(db.from(TABLE).select(columns)
+  return (await ofUserInRangeWithError<T>(db, userId, from, to, columns)).rows;
+}
+
+/** Τα ίδια γεγονότα, με το σφάλμα ορατό (για τη συνδρομή ημερολογίου). */
+export async function ofUserInRangeWithError<T = CalendarEventsRow>(
+  db: Db, userId: string, from: string, to: string, columns = '*',
+): Promise<ReadResult<T>> {
+  return read<T>(db.from(TABLE).select(columns)
     .eq('user_id', userId).gte('event_date', from).lte('event_date', to)
     .order('event_date'));
 }

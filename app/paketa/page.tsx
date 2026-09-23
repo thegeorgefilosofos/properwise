@@ -10,9 +10,11 @@
 // ερώτηση που κάνει και ο επισκέπτης που δεν έχει ακόμη λογαριασμό: η απάντηση
 // δεν έπρεπε να χρειάζεται εγγραφή, ούτε να λείπει από τις μηχανές αναζήτησης.
 //
-// ΚΑΜΙΑ ΤΙΜΗ ΓΡΑΜΜΕΝΗ ΕΔΩ. Οι τιμές ζουν στο `lib/billing/plans` και τις
-// δείχνει η αρχική σελίδα· εδώ απαντάται μόνο το «τι περιλαμβάνει». Δύο σελίδες
-// με τιμές θα ήταν δύο σελίδες που μπορούν να διαφωνήσουν.
+// ΚΑΜΙΑ ΤΙΜΗ ΓΡΑΜΜΕΝΗ ΕΔΩ. Οι τιμές ζουν στο `lib/billing/plans` και ο πίνακας
+// τις ΔΙΑΒΑΖΕΙ από εκεί, όπως και οι κάρτες της αρχικής: δύο σελίδες με τιμές
+// που διαβάζουν την ίδια πηγή δεν μπορούν να διαφωνήσουν. Χωρίς τιμή και
+// χωρίς κουμπί, η σελίδα απαντούσε «τι παίρνω» και έστελνε τον επισκέπτη
+// αλλού για το «πόσο» και για το «πώς ξεκινώ».
 // ═══════════════════════════════════════════════════════════════════════════
 import type { Metadata } from 'next';
 import { siteUrl } from '@/lib/core/site';
@@ -21,25 +23,23 @@ import { TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { billingWords } from '@/lib/legal/billingWords';
 import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
+import { publicMetadata } from '../publicMetadata';
 import { PlanMatrix } from '@/components/PlanMatrix';
+import { ASSISTANT_TO } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
 
 const TITLE = 'Τι περιλαμβάνει κάθε πακέτο · PROPERWISE';
+// Το «Χωρίς εγγραφή» ταίριαζε σε υπολογιστή, όχι σε σελίδα τιμών.
 const DESC =
-  'Δες γραμμή προς γραμμή τι δίνει κάθε πακέτο του PROPERWISE: ακίνητα, '
-  + 'σάρωση εγγράφων, εξαγωγή Ε2, λογιστικό ημερολόγιο, χαρτοφυλάκιο και '
-  + 'επενδυτική ανάλυση. Χωρίς εγγραφή.';
+  'Τιμές και δυνατότητες κάθε πακέτου του PROPERWISE, γραμμή προς γραμμή: '
+  + `ακίνητα, ερωτήσεις ${ASSISTANT_TO}, σάρωση εγγράφων, εξαγωγή Ε2, λογιστικό `
+  + 'ημερολόγιο, χαρτοφυλάκιο. Τιμές με ΦΠΑ.';
 const PATH = '/paketa';
 const URL = siteUrl(PATH);
 
-export const metadata: Metadata = {
-  // Απόλυτος τίτλος: το TITLE έχει ήδη το «· PROPERWISE», οπότε χωρίς `absolute`
-  // το πρότυπο της ρίζας (`%s · PROPERWISE`) θα το πρόσθετε δεύτερη φορά.
-  title: { absolute: TITLE },
-  description: DESC,
-  alternates: { canonical: URL },
-  openGraph: { title: TITLE, description: DESC, url: URL, type: 'website' },
-};
+// Απόλυτος τίτλος (publicMetadata): το TITLE έχει ήδη το «· PROPERWISE», οπότε
+// το πρότυπο της ρίζας (`%s · PROPERWISE`) θα το πρόσθετε δεύτερη φορά.
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL });
 
 export default function Page() {
   return (
@@ -85,7 +85,7 @@ export default function Page() {
             τίτλο και τον πίνακα — ίδια λογική με τις νομικές σελίδες. Σε φαρδιά
             οθόνη μένει μία γραμμή και η στοίχιση δεν έχει τι να τεντώσει. */}
         <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>
-          {hy(<>Κάθε νέος λογαριασμός ξεκινά με {TRIAL_DAYS} ημέρες δοκιμής με τις δυνατότητες του «{PLANS[TRIAL_PLAN].name}»· το πακέτο που διαλέγεις ισχύει από την ενεργοποίηση της συνδρομής.{' '}{billingWords().firstCharge}{' '}Σταματάς όποτε θέλεις, χωρίς κρυφές χρεώσεις.</>)}
+          {hy(<>Κάθε νέος λογαριασμός ξεκινά με {TRIAL_DAYS} ημέρες δοκιμής με τις δυνατότητες του «{PLANS[TRIAL_PLAN].name}»· το πακέτο που διαλέγεις ισχύει από την ενεργοποίηση της συνδρομής.{' '}{billingWords().firstCharge}{' '}Σταματάς όποτε θέλεις, χωρίς κρυφές χρεώσεις. Οι τιμές αφορούν καταναλωτές στην Ελλάδα και περιλαμβάνουν ΦΠΑ.</>)}
         </p>
         <div style={{ marginTop: 'clamp(22px,3vw,34px)' }}><PlanMatrix /></div>
       </main>

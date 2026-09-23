@@ -103,6 +103,12 @@ export interface Comparison {
   pct: number | null;
   /** Οι κατηγορίες που εξηγούν τη διαφορά, από τη μεγαλύτερη. */
   drivers: Driver[];
+  /**
+   * Ό,τι από τη διαφορά ΔΕΝ εξηγούν οι `drivers`: οι κατηγορίες κάτω από τον
+   * θόρυβο και όσες δεν χώρεσαν. Χωρίς αυτό οι γραμμές δεν έβγαζαν τον τίτλο
+   * (−48,00€ πάνω, +228 −204 −117 από κάτω) και ο αναγνώστης έψαχνε λάθος.
+   */
+  rest: number;
   /** Ό,τι πρέπει να ξέρει ο αναγνώστης για να μην παρερμηνεύσει. */
   caveats: string[];
   /**
@@ -241,7 +247,7 @@ export function compareMonth(
       : `Δεν υπάρχουν δαπάνες τον ${monthPhrase(baseKey, yearRef)} για να γίνει σύγκριση.`;
     return {
       basis, currentKey, baseKey, current: cur.total, base: 0, diff: cur.total, pct: null,
-      drivers: [], caveats,
+      drivers: [], rest: 0, caveats,
       meaningful: false, flat: false,
       sentence: none,
     };
@@ -251,12 +257,28 @@ export function compareMonth(
   // «Νέο» σημαίνει ποτέ πριν, όχι «όχι τον προηγούμενο μήνα». Το σύνολο
   // χτίζεται από ΟΛΟ το ιστορικό που δόθηκε, μία φορά, όχι ανά κατηγορία.
   const everBefore = new Set<string>();
+  // Οι μήνες όπου εμφανίστηκε κάθε κατηγορία πριν από τον τρέχοντα, για να
+  // φανεί ποιες έρχονται ανά δίμηνο ή αραιότερα.
+  const seenMonths = new Map<string, Set<number>>();
   for (const sp of spends) {
     if (sp.date.slice(0, 7) >= currentKey) continue;
     const a = Math.abs(Number(sp.amount));
     if (!Number.isFinite(a) || a === 0) continue;
-    everBefore.add(resolveCategory(sp.category) ?? 'other');
+    const slug = resolveCategory(sp.category) ?? 'other';
+    everBefore.add(slug);
+    const mi = Number(sp.date.slice(0, 4)) * 12 + Number(sp.date.slice(5, 7));
+    (seenMonths.get(slug) ?? seenMonths.set(slug, new Set()).get(slug)!).add(mi);
   }
+
+  // ΤΟ ΔΙΜΗΝΟ ΔΕΝ ΣΤΑΜΑΤΑΕΙ ΕΠΕΙΔΗ ΛΕΙΠΕΙ ΕΝΑΝ ΜΗΝΑ. Κατηγορία που δεν
+  // εμφανίστηκε ποτέ σε δύο διαδοχικούς μήνες (νερό κάθε δίμηνο, ασφάλεια ανά
+  // εξάμηνο) δεν σημειώνεται «σταμάτησε» τον μήνα που απλώς δεν έχει χρέωση.
+  const sparse = (slug: string): boolean => {
+    const ms = [...(seenMonths.get(slug) ?? [])].sort((a, b) => a - b);
+    if (ms.length < 2) return false;
+    for (let i = 1; i < ms.length; i++) if (ms[i] - ms[i - 1] < 2) return false;
+    return true;
+  };
 
   const slugs = new Set([...cur.byCat.keys(), ...bas.byCat.keys()]);
   const drivers: Driver[] = [...slugs]
@@ -267,7 +289,7 @@ export function compareMonth(
         slug, label: categoryLabel(slug) || 'Άλλο',
         diff: c - b, current: c, base: b,
         isNew: c > 0 && !everBefore.has(slug),
-        vanished: c === 0 && b > 0,
+        vanished: c === 0 && b > 0 && !sparse(slug),
       };
     })
     .filter(d => Math.abs(d.diff) >= NOISE)
@@ -307,9 +329,11 @@ export function compareMonth(
   const pct = bas.total > 0 ? (diff / bas.total) * 100 : null;
   const yearRef = Number(currentKey.slice(0, 4));
 
+  const shown = drivers.slice(0, MAX_DRIVERS);
   return {
     basis, currentKey, baseKey, current: cur.total, base: bas.total, diff, pct,
-    drivers: drivers.slice(0, MAX_DRIVERS),
+    drivers: shown,
+    rest: diff - shown.reduce((sum, d) => sum + d.diff, 0),
     caveats,
     meaningful: true,
     flat: Math.abs(diff) < NOISE,

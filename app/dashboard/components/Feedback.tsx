@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, Btn, Spinner } from '@/components/Theme';
+import { PLANS } from '@/lib/billing/plans';
 
 const MIN_WORDS = 12;
 
@@ -224,7 +225,11 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12v10H4V12" /><path d="M2 7h20v5H2z" /><path d="M12 22V7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></svg>
           </span>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
-            Κάθε ουσιαστικό σχόλιο μπαίνει στην κλήρωση για μία <strong style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>δωρεάν ετήσια συνδρομή «Επαγγελματίας»</strong>.
+            {/* ΟΙ ΟΡΟΙ ΔΕΝ ΕΧΟΥΝ ΚΡΙΤΗΡΙΟ ΠΟΙΟΤΗΤΑΣ. Εγραφε «κάθε ουσιαστικό σχόλιο»:
+                κανόνας που δεν υπάρχει στο /terms#klirosi, όπου μετρά μία
+                συμμετοχή ανά λογαριασμό και ανά μήνα. */}
+            Με ένα σχόλιο τον μήνα μπαίνεις στην κλήρωση για <strong style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>έναν χρόνο συνδρομής «{PLANS.agency.name}»</strong>.
+            {' '}<a href="/terms#klirosi" target="_blank" rel="noreferrer" style={{ color: 'var(--text-tertiary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>Όροι κλήρωσης</a>
           </span>
         </div>
 

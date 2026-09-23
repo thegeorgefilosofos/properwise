@@ -23,19 +23,25 @@ export interface StayInput {
   guest_name?: string | null       // από clients.full_name (ή null)
 }
 
-const CHANNELS: Record<string, string> = { airbnb: 'Airbnb', booking: 'Booking.com', vrbo: 'Vrbo', other: 'Κράτηση' }
+const GENERIC = 'Κράτηση'
+const CHANNELS: Record<string, string> = { airbnb: 'Airbnb', booking: 'Booking.com', vrbo: 'Vrbo', other: GENERIC }
 
 export function channelLabel(channel?: string | null): string {
-  return CHANNELS[(channel || '').toLowerCase()] || 'Κράτηση'
+  return CHANNELS[(channel || '').toLowerCase()] || GENERIC
 }
 
 // Καθαρίζει το «Κρατήσεις Airbnb»/«Booking» aggregate όνομα (από αυτόματο import)
 // ώστε να μη δείχνει τεχνικό placeholder αντί για πραγματικό επισκέπτη.
+//
+// ΧΩΡΙΣ ΓΝΩΣΤΟ ΚΑΝΑΛΙ Η ΛΕΞΗ ΜΠΑΙΝΕΙ ΜΙΑ ΦΟΡΑ. Το κανάλι «other» (και το κενό)
+// λέγεται ήδη «Κράτηση», οπότε το `${ch} κράτηση` έβγαζε «Κράτηση κράτηση»
+// στις μπάρες του ημερολογίου.
 export function guestLabel(stay: StayInput): string {
   const n = (stay.guest_name || '').trim()
   const ch = channelLabel(stay.channel)
-  if (!n) return `${ch} κράτηση`
-  if (/^κρατήσεις/i.test(n) || n.toLowerCase() === ch.toLowerCase()) return `${ch} κράτηση`
+  const fallback = ch === GENERIC ? GENERIC : `${ch} κράτηση`
+  if (!n) return fallback
+  if (/^κρατήσεις/i.test(n) || n.toLowerCase() === ch.toLowerCase()) return fallback
   return n
 }
 

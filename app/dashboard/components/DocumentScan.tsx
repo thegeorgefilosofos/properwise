@@ -432,7 +432,10 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
           πρώτο άγγιγμα. */}
       {step === 'upload' && (
         <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: 20 }}>
-          Φωτογράφισε ή ανέβασε <strong>οτιδήποτε</strong>, λογαριασμό, απόδειξη, μισθωτήριο, τίτλο, ασφάλεια, <span title="Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων">ΕΝΦΙΑ</span>, κρατικό έγγραφο. Το αναγνωρίζουμε και το καταχωρούμε στο σωστό σημείο.
+          {/* ΥΠΟΣΧΟΤΑΝ «ΟΤΙΔΗΠΟΤΕ» ΚΑΙ ΚΑΤΑΧΩΡΙΣΗ ΧΩΡΙΣ ΤΟΝ ΧΡΗΣΤΗ. Η ροή όμως
+              περνά πάντα από το βήμα ελέγχου, όπου ο χρήστης επιβεβαιώνει ή
+              διορθώνει: η πρόταση λέει αυτό που γίνεται. */}
+          Φωτογράφισε ή ανέβασε λογαριασμό, απόδειξη, μισθωτήριο, τίτλο, ασφάλεια ή <span title="Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων">ΕΝΦΙΑ</span>. Προτείνουμε πού μπαίνει και το επιβεβαιώνεις εσύ.
         </div>
       )}
 
@@ -445,6 +448,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                διαβαζόταν ως υποσημείωση των τριών, ενώ είναι ισότιμη απάντηση
                στην ίδια ερώτηση. Το πλήθος το ξέρει το ίδιο το component, οπότε
                το λέει ρητά στο πλέγμα αντί να το αφήνει στο πλάτος. */
+            <>
             <div className="scan-tiles" data-tiles={onManual ? 4 : 3}>
               {/* ΓΡΑΜΜΕΝΟ ΡΗΤΑ, ΟΧΙ ΜΕ ΤΟΝ ΒΟΗΘΟ `pressable`, ΚΑΙ ΕΧΕΙ ΛΟΓΟ.
                   Το JSX spread κρύβει τις ιδιότητες από τη στατική ανάλυση: με
@@ -469,7 +473,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
                 <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
                 <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Ανέβασε αρχείο</div>
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>JPG · PNG · PDF</div>
+                {/* Το πεδίο δέχεται και λογιστικά φύλλα (.xlsx, .xls, .ods, .csv). */}
+                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>JPG · PNG · PDF · Excel</div>
               </div>
               <input ref={fileRef} type="file" accept="image/*,.pdf,.csv,.txt,.xlsx,.xls,.ods" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && loadFile(e.target.files[0])} />
 
@@ -480,10 +485,11 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   ύψος με τα άλλα: τέσσερα πλακίδια, μία απόφαση. */}
               {onManual && (
                 <div role="button" tabIndex={0} onClick={onManual} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onManual()}}}
-                  className="pick-tile" style={{ border: '1px solid var(--border-default)', borderRadius: T.radius.card, minHeight: 172, cursor: 'pointer', background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, textAlign: 'center', padding: 16, transition: 'border-color .15s, background .15s' }}
+                  className="pick-tile" style={{ border: '1px solid var(--border-default)', borderRadius: T.radius.card, minHeight: 172, cursor: 'pointer', background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 16, transition: 'border-color .15s, background .15s' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)'; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
-                  <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  {/* Ιδια κάθετη διάταξη με τα διπλανά: 12 κάτω από το εικονίδιο, 4 κάτω από τον τίτλο. Το `gap: 10` πρόσθετε κενό πάνω στο 4 και το πλακίδιο κατέβαινε. */}
+                  <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                   <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Χειροκίνητα</div>
                   <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Χωρίς παραστατικό</div>
                 </div>
@@ -496,6 +502,15 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   αυτό που είναι: το επόμενο βήμα, όχι το τωρινό. */}
               <BankLinkTile minHeight={172} />
             </div>
+            {/* ΤΟ AI ΛΕΓΟΤΑΝ ΜΟΝΟ ΑΦΟΥ ΕΙΧΕ ΦΥΓΕΙ ΤΟ ΕΓΓΡΑΦΟ. Το «Claude AI
+                αναγνωρίζει» εμφανιζόταν στη μέση της σάρωσης· πριν από το
+                ανέβασμα ο χρήστης δεν μάθαινε ότι ένα μισθωτήριο με ονόματα και
+                ΑΦΜ διαβάζεται από πάροχο AI. Η δέσμευση για την εκπαίδευση είναι
+                η ίδια που γράφει η Πολιτική απορρήτου. */}
+            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.55, margin: '12px 0 0' }}>
+              Η ανάγνωση γίνεται με AI, σύμφωνα με την <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>πολιτική απορρήτου</a>· ο πάροχος AI δεσμεύεται με σύμβαση να μην εκπαιδεύει μοντέλα με τα έγγραφά σου.
+            </p>
+            </>
           ) : (
             <div>
               {file?.type === 'application/pdf' ? (
@@ -524,7 +539,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   : 'Η υπηρεσία ανάγνωσης δεν είναι διαθέσιμη τώρα';
                 const tips = error === 'unreadable'
                   ? ['Τράβα τη φωτογραφία με καλό φως, ίσια, να χωράει όλο το έγγραφο', 'Αν έχεις PDF από τον πάροχο/φορέα, ανέβασέ το, διαβάζεται καλύτερα']
-                  : error === 'key_missing' ? ['Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά', 'Για αυτόματη ανάγνωση χρειάζεται το κλειδί AI στις ρυθμίσεις']
+                  // Ρύθμιση «κλειδί AI» δεν υπάρχει στον λογαριασμό: την ανάγνωση την ενεργοποιούμε εμείς.
+                  : error === 'key_missing' ? ['Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά', 'Η αυτόματη ανάγνωση ενεργοποιείται από εμάς· δεν χρειάζεται καμία ρύθμιση από εσένα']
                   : error === 'save' ? ['Δοκίμασε ξανά, τα στοιχεία σου διατηρούνται']
                   : ['Δοκίμασε ξανά σε λίγο', 'Συμπλήρωσε τα πεδία χειροκίνητα'];
                 return (

@@ -37,6 +37,9 @@ export default function CheckoutLanding() {
   const [stage, setStage] = useState<Stage>('opening');
   const [note, setNote] = useState('');
   const [what, setWhat] = useState('');
+  // Η σύνδεση ξέρει να γυρίσει εδώ με το πακέτο (lib/billing/entitlements.ts,
+  // `checkoutLanding`), αρκεί να της το πει η διεύθυνση.
+  const [signIn, setSignIn] = useState('/login');
 
   // Ο κύκλος του επιλογέα. Ξεκινά μηνιαίος: είναι η μικρότερη δέσμευση και
   // όποιος θέλει ετήσια το λέει μόνος του.
@@ -80,7 +83,11 @@ export default function CheckoutLanding() {
       // Σφάλμα ανάγνωσης δεν είναι «συνδεδεμένος». Αν δεν μπορούμε να
       // αποδείξουμε τη συνεδρία, το ταμείο θα απαντούσε 401 και η οθόνη θα
       // κατηγορούσε τη χρέωση για κάτι που δεν έφταιξε.
-      if (error || !data.user) { setStage('anonymous'); return; }
+      if (error || !data.user) {
+        if (plan) setSignIn(`/login?plan=${plan}&cycle=${cycleFromParam(q.get('cycle'))}`);
+        setStage('anonymous');
+        return;
+      }
 
       // ── ΧΩΡΙΣ ΠΑΚΕΤΟ ΔΕΝ ΠΑΕΙ ΣΤΟΝ ΠΙΝΑΚΑ, ΡΩΤΑΕΙ ─────────────────────
       // ΕΔΩ ΗΤΑΝ Η ΔΙΑΡΡΟΗ ΤΟΥ ΧΩΝΙΟΥ, ΚΑΙ ΗΤΑΝ ΣΤΗ ΣΥΝΗΘΕΣΤΕΡΗ ΔΙΑΔΡΟΜΗ.
@@ -104,15 +111,18 @@ export default function CheckoutLanding() {
   return (
     <div style={wrap}>
       <div style={card}>
+        {/* Ο ΚΥΡΙΟΣ ΤΙΤΛΟΣ ΗΤΑΝ ΛΕΖΑΝΤΑ 11 ΕΙΚΟΝΟΣΤΟΙΧΕΙΩΝ κάτω από το όνομα του
+            προϊόντος: στο μάτι τίτλος ήταν το λογότυπο και ο αναγνώστης οθόνης
+            άκουγε ως κεφαλίδα της σελίδας κάτι που έμοιαζε υπότιτλος. Το σήμα
+            μένει απλό στοιχείο και ο τίτλος παίρνει το μέγεθος των άλλων
+            οθονών εισόδου. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.xl, borderBottom: '1px solid var(--border-subtle)' }}>
           <BrandMark size={34} />
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>PROPERWISE</div>
-            <h1 style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, margin: 0 }}>
-              {stage === 'choose' ? 'Διάλεξε πακέτο' : 'Ολοκλήρωση συνδρομής'}
-            </h1>
-          </div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>PROPERWISE</div>
         </div>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: `${T.sp.xl}px 0 0` }}>
+          {stage === 'choose' ? 'Διάλεξε πακέτο' : 'Ολοκλήρωση συνδρομής'}
+        </h1>
 
         {/* Η ΕΠΙΛΟΓΗ ΦΑΙΝΕΤΑΙ ΣΕ ΚΑΘΕ ΚΑΤΑΛΗΞΗ. Ο χρήστης την έκανε τρεις
             οθόνες πριν και ανάμεσα μεσολάβησε ένα email: το να τη δει
@@ -196,9 +206,10 @@ export default function CheckoutLanding() {
         {stage === 'anonymous' && (
           <>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '14px 0 0' }}>
-              Ο σύνδεσμος άνοιξε χωρίς ενεργή συνεδρία. Συνδέσου με το email σου και συνέχισε τη συνδρομή από τις Ρυθμίσεις.
+              Ο σύνδεσμος άνοιξε χωρίς ενεργή συνεδρία. Συνδέσου με το email σου
+              {signIn === '/login' ? ' και συνέχισε τη συνδρομή από τις Ρυθμίσεις.' : ' και η πληρωμή ανοίγει ξανά με το ίδιο πακέτο.'}
             </p>
-            <Link href="/login" style={action}>Σύνδεση</Link>
+            <Link href={signIn} style={action}>Σύνδεση</Link>
           </>
         )}
       </div>

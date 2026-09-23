@@ -135,16 +135,9 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
           padding: T.sp.lg, marginBottom: 16, animationDelay: '60ms',
         }}
       >
-        {/* Διακριτικό «ζωντανό» phone glyph στο βάθος (metaverse depth) */}
-        <span
-          aria-hidden
-          style={{ position: 'absolute', top: -22, right: -14, color: 'var(--accent)', opacity: 0.1, pointerEvents: 'none' }}
-        >
-          <svg aria-hidden="true" width={150} height={150} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ maxWidth: '100%' }}>
-            <rect x="6" y="2" width="12" height="20" rx="3" />
-            <line x1="10" y1="18.5" x2="14" y2="18.5" />
-          </svg>
-        </span>
+        {/* Εδώ ζούσε ένα περίγραμμα κινητού στο 10%, κομμένο στην πάνω δεξιά
+            γωνία της κάρτας. Δεν έλεγε τίποτα και διαβαζόταν ως σφάλμα
+            εμφάνισης, ένα αδέσποτο πλαίσιο πάνω από τον τίτλο. */}
 
         <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
           {/* App-icon tile με το «P» mark */}
@@ -259,17 +252,17 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
               }}>{it.name}</span>
 
-              {/* ΠΕΡΑ ΠΕΡΑ, ΟΧΙ ΡΙΓΜΕΝΑ. Τρεις κάρτες δίπλα δίπλα με ριγμένη δεξιά
-                  άκρη δίνουν τρία διαφορετικά περιγράμματα κειμένου μέσα σε τρία
-                  ίδια κουτιά: το μάτι βλέπει ανισότητα εκεί που δεν υπάρχει. Η
-                  πλήρης στοίχιση με συλλαβισμό τα κάνει τρεις ίσες στήλες. */}
-              <div className="po-just" style={{
+              {/* ΑΡΙΣΤΕΡΗ ΣΤΟΙΧΙΣΗ, ΟΧΙ ΠΛΗΡΗΣ. Η πλήρης στοίχιση σε κάρτες των
+                  ~250 εικονοστοιχείων άφηνε κενά τριπλάσια του κανονικού
+                  («Ανώνυμα,   συγκεντρωτικά   στοιχεία»), ακόμη και με
+                  συλλαβισμό: σε τόσο στενή στήλη οι λέξεις ανά γραμμή είναι λίγες. */}
+              <div style={{
                 fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 6,
                 ...(isOpen ? {} : { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
               }}>{hy(it.line)}</div>
 
               {isOpen && (
-                <div className="po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border-subtle)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border-subtle)' }}>
                   {hy(it.detail)}
                 </div>
               )}

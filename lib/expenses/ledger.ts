@@ -24,6 +24,8 @@
 // πληρωθεί, παύει να ξεχωρίζει.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { resolveCategory, BY_SLUG } from './taxonomy';
+
 /**
  * Ο ΤΙΤΛΟΣ ΟΤΑΝ ΔΕΝ ΥΠΑΡΧΕΙ ΤΙΤΛΟΣ.
  *
@@ -34,6 +36,22 @@
  * λέει τίποτα. Με σταθερά, ο καλών ρωτά και μαθαίνει.
  */
 export const NO_TITLE = 'Χωρίς περιγραφή';
+
+/**
+ * ΤΟ ΟΝΟΜΑ ΠΟΥ ΒΛΕΠΕΙ Ο ΧΡΗΣΤΗΣ. Το `NO_TITLE` μένει ως σήμα για τον κώδικα,
+ * αλλά στην οθόνη δεν λέει τίποτα: έβγαινε «Χωρίς περιγραφή: 57,00€ αντί για
+ * 81,00€». Χωρίς περιγραφή, η χρέωση παίρνει τον προμηθευτή, μετά την
+ * κατηγορία και στο τέλος «Μια χρέωση».
+ */
+export function entryName(e: Pick<LedgerEntry, 'title' | 'vendor' | 'category'>): string {
+  const t = (e.title || '').trim();
+  if (t && t !== NO_TITLE) return t;
+  const v = (e.vendor || '').trim();
+  if (v) return v;
+  const slug = resolveCategory(e.category);
+  if (slug && slug !== 'other') return BY_SLUG[slug].label;
+  return 'Μια χρέωση';
+}
 
 /** Γραμμή λογαριασμού όπως έρχεται από τη βάση. Μόνο ό,τι χρειάζεται η συγχώνευση. */
 export interface LedgerBill {

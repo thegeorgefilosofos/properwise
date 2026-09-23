@@ -270,7 +270,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     const depositHeld=currentTenants.filter(t=>!t.deposit_returned).reduce((a,t)=>a+(t.deposit_amount||0),0);
     return [
       { label:'Τρέχον Μηνιαίο Ενοίκιο', value:fe(currentRent), tone:'neutral' },
-      { label:'Ληξιπρόθεσμη Οφειλή', value:fe(arrears), tone:arrears>0?'negative':'neutral', sub:arrearsCount>0?`${fn(arrearsCount)} δόσεις`:'καμία οφειλή' },
+      { label:'Ληξιπρόθεσμη Οφειλή', value:fe(arrears), tone:arrears>0?'negative':'neutral', sub:arrearsCount>0?`${fn(arrearsCount)} ${arrearsCount===1?'δόση':'δόσεις'}`:'καμία οφειλή' },
       { label:'Εγγύηση σε Κατοχή', value:fe(depositHeld), tone:'neutral' },
       { label:'Προηγούμενοι Ενοικιαστές', value:fn(pastTenants.length), tone:'neutral' },
     ];

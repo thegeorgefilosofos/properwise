@@ -7,6 +7,10 @@ import { fe, fp } from '@/components/tokens';
 
 export type LoanType = 'purchase'|'first_home'|'renovation'|'energy'|'investment'|'auction'|'construction'|'commercial'|'land'|'refinance'
 export type RateType = 'fixed'|'variable'|'mixed'
+/** Το όνομα κάθε τύπου επιτοκίου. Ο έλεγχος «variable ή όχι» έγραφε το μεικτό «σταθερό». */
+const RATE_TYPE_LABEL: Record<RateType, string> = { fixed:'Σταθερό', variable:'Κυμαινόμενο', mixed:'Μεικτό' }
+export const rateTypeLabel = (t: string | null | undefined): string =>
+  RATE_TYPE_LABEL[t as RateType] ?? RATE_TYPE_LABEL.fixed
 export type BorrowerType = 'individual'|'professional'|'company'|'young'|'family'|'senior'|'military'|'abroad'
 /**
  * ΤΟ ΠΟΤΕ ΚΑΙ ΤΟ ΤΙ ΜΕΤΡΑ ΤΑΞΙΔΕΥΟΥΝ ΜΑΖΙ ΜΕ ΤΗΝ ΤΙΜΗ.

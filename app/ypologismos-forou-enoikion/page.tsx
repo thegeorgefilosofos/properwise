@@ -24,30 +24,21 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
+import { publicMetadata } from '../publicMetadata';
 import { RentTaxCalculator } from './RentTaxCalculator';
 
-const TITLE = 'Υπολογισμός φόρου ενοικίων 2026 · δωρεάν, χωρίς εγγραφή';
+const TITLE = 'Υπολογισμός φόρου ενοικίων 2026 με τα δικά σου δεδομένα';
 const DESC =
   'Υπολόγισε πόσο φόρο θα πληρώσεις για τα ενοίκιά σου με την κλίμακα του 2026 '
   + '(15% / 25% / 35% / 45%) και την τεκμαρτή έκπτωση 5%. Δωρεάν, χωρίς εγγραφή, '
   + 'ο υπολογισμός γίνεται στη συσκευή σου.';
 const URL = siteUrl('/ypologismos-forou-enoikion');
 
-export const metadata: Metadata = {
-  // Απόλυτος: ο τίτλος είναι γραμμένος για τη σελίδα αποτελεσμάτων και δεν
-  // αντέχει τρίτο τμήμα από το πρότυπο της ρίζας.
-  title: { absolute: TITLE },
-  description: DESC,
-  alternates: { canonical: URL },
-  openGraph: {
-    title: TITLE, description: DESC, url: URL,
-    siteName: 'PROPERWISE', locale: 'el_GR', type: 'website',
-  },
-  twitter: { card: 'summary_large_image', title: TITLE, description: DESC },
-};
+// Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL });
 
 // Οι ερωτήσεις που κάνει πραγματικά ο ιδιοκτήτης, με απαντήσεις που στέκουν.
 // Το ίδιο περιεχόμενο τροφοδοτεί και το δομημένο σχήμα παρακάτω — μία πηγή, ώστε
@@ -69,8 +60,7 @@ const FAQ: { q: string; a: string }[] = [
     a: 'Ο ν.5222/2025 (άρθρο 210) ζητά τα μισθώματα να εξοφλούνται με ηλεκτρονικό ή τραπεζικό '
      + 'μέσο, αλλιώς χάνεται η τεκμαρτή έκπτωση 5% και ο φόρος υπολογίζεται στο 100% αντί για το 95%. '
      + 'Η κύρωση αυτή ξεκινά την 1.7.2027 (απόφαση ΑΑΔΕ Α.1187/2026): για τα εισοδήματα του 2025 και '
-     + 'του 2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης. (Προσοχή: ο ν.5246/2025 αφορά '
-     + 'μόνο την κλίμακα, όχι την τραπεζική είσπραξη.)',
+     + 'του 2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης.',
   },
   {
     q: 'Περιλαμβάνεται ο ΕΝΦΙΑ;',
@@ -85,11 +75,7 @@ const FAQ: { q: string; a: string }[] = [
      + 'θεωρηθεί επιχειρηματική δραστηριότητα ανάλογα με το πλήθος των ακινήτων και τις '
      + 'παρεχόμενες υπηρεσίες.',
   },
-  {
-    q: 'Τα δεδομένα μου αποθηκεύονται;',
-    a: 'Όχι. Ο υπολογισμός γίνεται εξ ολοκλήρου στον browser σου. Κανένα ποσό δεν στέλνεται '
-     + 'σε διακομιστή και δεν χρειάζεται ούτε email ούτε εγγραφή.',
-  },
+  TOOL_PRIVACY_FAQ,
 ];
 
 export default function Page() {
@@ -132,7 +118,7 @@ export default function Page() {
           Ένα μέτρο και κάθε γραμμή της σελίδας ξεκινά από τον ίδιο άξονα. */}
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
         <BackLink />
-        <div className="lp-eyebrow">Δωρεάν εργαλείο</div>
+        <div className="lp-eyebrow">Υπολογιστής</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           Πόσο φόρο θα πληρώσεις για τα ενοίκιά σου
@@ -152,8 +138,8 @@ export default function Page() {
             άνετα μέσα στη σειρά, σε κινητό αναδιπλώνεται καθαρά. */}
         {/* ΤΟ ΕΤΟΣ ΔΕΝ ΓΡΑΦΕΤΑΙ ΕΔΩ. Ο υπολογιστής ρωτά πλέον ποιας χρονιάς είναι
             το εισόδημα και εφαρμόζει την αντίστοιχη κλίμακα· ένας υπότιτλος που
-            λέει «κλίμακα του 2026» θα διέψευδε τον ίδιο του τον επιλογέα, που
-            ξεκινά στο 2025. Η χρονιά λέγεται μία φορά, δίπλα στην επιλογή. */}
+            λέει «κλίμακα του 2026» θα διέψευδε τον ίδιο του τον επιλογέα όταν
+            δείχνει το 2025. Η χρονιά λέγεται μία φορά, δίπλα στην επιλογή. */}
         <ToolLede>Με την κλίμακα της χρονιάς που θα διαλέξεις και την τεκμαρτή έκπτωση 5%.</ToolLede>
 
         {/* Ο ΥΠΟΛΟΓΙΣΤΗΣ ΔΙΑΒΑΖΕΙ ΤΗ ΔΙΕΥΘΥΝΣΗ, ΑΡΑ ΘΕΛΕΙ ΟΡΙΟ ΑΝΑΜΟΝΗΣ. Το

@@ -18,10 +18,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { ImageResponse } from 'next/og';
 import { BRAND_PATHS, BRAND_VIEWBOX, BRAND_MARK_ON_DARK } from '@/components/BrandMark';
-import { PRODUCT_NAME, PRODUCT_TAGLINE } from '@/lib/core/site';
+import { PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE } from '@/lib/core/site';
 
-export const alt = 'PROPERWISE';
-export const size = { width: 1200, height: 630 };
+export const alt = SHARE_IMAGE.alt;
+export const size = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
 export const contentType = 'image/png';
 
 export default function Image() {

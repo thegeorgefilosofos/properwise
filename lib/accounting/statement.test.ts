@@ -125,7 +125,8 @@ const near = (a: number, b: number, eps = 0.02) => Math.abs(a - b) <= eps
   ok('provision monthly = annual/12', near(p.monthly, p.annualTaxTotal / 12))
   const p7 = taxProvision(st, 7)
   ok('provision per remaining month higher mid-year', p7.perRemainingMonth > p.perRemainingMonth)
-  ok('provision remaining months from July = 6', near(p7.perRemainingMonth, p7.annualTaxTotal / 6))
+  ok('provision remaining months from July = 6', near(p7.perRemainingMonth, st.incomeTax / 6))
+  ok('provision per remaining month leaves ENFIA out', near(p.perRemainingMonth, st.incomeTax / 12))
 }
 
 // ── Ενοποίηση: φόρος στο ΑΘΡΟΙΣΜΑ, όχι ανά ακίνητο ──────────────────────────

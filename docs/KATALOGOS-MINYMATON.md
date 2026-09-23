@@ -46,7 +46,7 @@ npm run katalogos
 | `first_property_success` | c.propertyName ? `Το «${c.propertyName}» είναι έτοιμο` : 'Το ακίνητό σου είναι έτοιμο' | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
 | `connect_bank` | Άσε τη λογιστική να γίνεται μόνη της | **με το χέρι** · Η σύνδεση τράπεζας δεν έχει ανοίξει: λείπει προσαρμογέας παρόχου. Θα υποσχόταν κουμπί που δεν υπάρχει. |
 | `connect_calendar` | Συγχρόνισε Airbnb και Booking | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `scripts/db/rls-probe.sql` |
-| `tip_assistant` | Ο βοηθός σου ξέρει τα ακίνητά σου | `supabase/functions/_shared/emailPolicy.ts` |
+| `tip_assistant` | Νόα ξέρει τα ακίνητά σου | `supabase/functions/_shared/emailPolicy.ts` |
 | `voice_entry` | Πες το και καταχωρείται | `supabase/functions/_shared/emailPolicy.ts` |
 | `tip_reports` | Επίσημη αναφορά με ένα κλικ | `supabase/functions/_shared/emailPolicy.ts` |
 | `feedback_week1` | Πώς σου φαίνεται μέχρι τώρα; | `supabase/functions/_shared/emailPolicy.ts` |
@@ -181,8 +181,8 @@ npm run katalogos
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
 | `feature_launch` | c.featureName ? `Νέο: ${esc(c.featureName)}` : 'Κάτι νέο σε περιμένει', html: emailShell({ | **με το χέρι** · Ανακοίνωση χαρακτηριστικού. Ποιο και πότε, το ξέρει μόνο όποιος το κυκλοφόρησε. |
-| `assistant_upgraded` | Ο βοηθός σου έγινε πιο έξυπνος | **με το χέρι** · Ανακοίνωση αναβάθμισης του βοηθού. |
-| `assistant_showcase` | Ο βοηθός σου κάνει τη δουλειά | `supabase/functions/_shared/emailPolicy.ts` |
+| `assistant_upgraded` | Νόα απαντά πιο ακριβώς | **με το χέρι** · Ανακοίνωση αναβάθμισης του βοηθού. |
+| `assistant_showcase` | Νόα κάνει τη δουλειά | `supabase/functions/_shared/emailPolicy.ts` |
 | `changelog_monthly` | Τι φτιάξαμε αυτόν τον μήνα | **με το χέρι** · Μηνιαία σύνοψη αλλαγών, γραμμένη με το χέρι. |
 | `roadmap_preview` | Τι ετοιμάζουμε στη συνέχεια | `supabase/functions/_shared/emailPolicy.ts` |
 | `anniversary` | (has(c.anniversaryYears) && c.anniversaryYears > 1) ? `Κλείνουμε ${c.anniversaryYears} χρόνια μαζί` : 'Κλείνουμε έναν χρόνο μαζί', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+4) |

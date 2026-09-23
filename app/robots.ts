@@ -12,8 +12,10 @@ export default function robots(): MetadataRoute.Robots {
       // ΕΛΕΙΠΑΝ ΔΥΟ. Ο σύνδεσμος του λογιστή εκθέτει ΟΛΟ το χαρτοφυλάκιο —
       // όνομα, ΑΤΑΚ, διεύθυνση, ενοίκια, δαπάνες, διαμονές — και δεν ήταν στη
       // λίστα. Ούτε η κατάργηση συνδρομής, που φέρει διεύθυνση ηλεκτρονικού
-      // ταχυδρομείου στη διεύθυνση της σελίδας.
-      disallow: ['/dashboard', '/portal/', '/checkin/', '/accountant/', '/unsubscribe/', '/verify/', '/epivevaiosi-email/', '/reset-password'],
+      // ταχυδρομείου στη διεύθυνση της σελίδας. Ούτε η ροή ημερολογίου, που
+      // σερβίρει τις προθεσμίες ενός ιδιοκτήτη σε διεύθυνση με κλειδί, ούτε το
+      // ταμείο, που είναι `noindex` αλλά οι μηχανές το επισκέπτονταν κανονικά.
+      disallow: ['/dashboard', '/portal/', '/checkin/', '/accountant/', '/unsubscribe/', '/verify/', '/epivevaiosi-email/', '/reset-password', '/imerologio/', '/tameio'],
     },
     sitemap: siteUrl('/sitemap.xml'),
   }

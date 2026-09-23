@@ -32,7 +32,7 @@ const GREEK_LATIN: Record<string, string> = {
   ς: 's', τ: 't', υ: 'y', φ: 'f', χ: 'ch', ψ: 'ps', ω: 'o',
 };
 
-const transliterate = (s: string): string =>
+export const transliterate = (s: string): string =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '')            // τόνοι και διαλυτικά έξω
     .replace(/[Α-Ωα-ω]/g, ch => {
       const lower = ch.toLowerCase();

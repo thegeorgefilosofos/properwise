@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { PanelFX, PanelScan, PanelAssistant, PanelDashboard } from './ShowcasePanels'
+import { ASSISTANT_NAME } from '@/lib/assistant/identity'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ScrollStory, το scrollytelling της landing: το προϊόν μένει καρφωμένο
@@ -45,7 +46,10 @@ const ACTS = [
     key: 'assistant',
     over: '02 · Βοηθός',
     nav: 'ρωτάς στα ελληνικά και απαντά από τα δικά σου δεδομένα',
-    h: 'Μιλάει και σκέφτεται ελληνικά.',
+    // ΕΔΩ ΣΥΣΤΗΝΕΤΑΙ ΤΟ ΟΝΟΜΑ. Η σύγκριση πακέτων και η συνομιλία δίπλα
+    // λένε «Νόα» και η αρχική δεν το έλεγε πουθενά. Χωρίς άρθρο στην
+    // ονομαστική, όπως ορίζει το lib/assistant/identity.ts.
+    h: `${ASSISTANT_NAME} μιλάει και σκέφτεται ελληνικά.`,
     p: 'Ρωτάς όπως θα ρωτούσες έναν σύμβουλο και η απάντηση βγαίνει από τα δικά σου δεδομένα, όχι από εγχειρίδια.',
     b: ['Καταλαβαίνει ΕΝΦΙΑ, κοινόχρηστα και τιμολόγια ρεύματος', 'Σε πάει κατευθείαν στη σωστή οθόνη για να πράξεις', 'Σε παραπέμπει σε επαγγελματία όταν χρειάζεται'],
     Panel: PanelAssistant,
@@ -150,6 +154,7 @@ export default function ScrollStory() {
            αλλάξει η επόμενη — κάτω από ~50vh η εναλλαγή γίνεται νευρική. */
         .story-step { min-height: 58vh; display: flex; flex-direction: column; justify-content: center; opacity: .35; transition: opacity .45s cubic-bezier(.2,0,0,1); }
         .story-step.on { opacity: 1; }
+        .story-h { font-size: clamp(18px, 2vw, 23px); }
         /* ═══ ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΟ ΚΑΡΦΩΜΕΝΟ ΠΑΝΕΛ ΔΕΝ ΣΒΗΝΕΙ, ΓΥΡΙΖΕΙ ΠΑΝΩ ══════
            ΤΙ ΜΕΤΡΗΘΗΚΕ (04/09/2026, 390×844). Η ενότητα έπιανε 2,9 οθόνες: 1,23
            το κείμενο των τριών βημάτων και 1,43 ΤΡΙΑ πάνελ προϊόντος, ένα κάτω
@@ -168,6 +173,7 @@ export default function ScrollStory() {
            Γράφεται και στο page.tsx, δίπλα στην ίδια την ενότητα. */
         @media (max-width: 900px) {
           .story-grid { grid-template-columns: 1fr; gap: 20px; }
+          .story-h { font-size: 20px; }
           .story-stick { top: 64px; z-index: 1; padding-bottom: 8px; background: var(--bg-base); }
           /* ΤΟ ΥΨΟΣ ΤΟ ΔΙΝΕΙ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ, ΟΧΙ ΕΝΑΣ ΑΡΙΘΜΟΣ. Πρώτη προσπάθεια
              ήταν σταθερό «clamp(240px, 38vh, 330px)» και ο σαρωτής βρήκε αμέσως
@@ -291,8 +297,14 @@ export default function ScrollStory() {
                 φαινόταν να μην έγινε καθόλου. Με ρητό ανώτατο 23 και μέτρο 460,
                 ο μακρύτερος τίτλος χωράει σε μία σειρά ΚΑΙ ΣΤΙΣ ΔΥΟ περιπτώσεις.
                 Το μέγεθος έπεσε από τα 30 στα 23: η ακεραιότητα της αντίθεσης
-                αξίζει περισσότερο από επτά εικονοστοιχεία. */}
-            <h3 style={{ fontSize: 'clamp(15px, 2vw, 23px)', fontWeight: 680, letterSpacing: '-0.03em', lineHeight: 1.15, color: 'var(--text-primary)', margin: '0 0 14px', maxWidth: 460 }}>{a.h}</h3>
+                αξίζει περισσότερο από επτά εικονοστοιχεία.
+
+                ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ ΔΕΝ ΠΕΦΤΕΙ ΣΤΟ ΜΕΓΕΘΟΣ ΤΟΥ ΚΕΙΜΕΝΟΥ. Το δάπεδο των
+                15 έκανε τον τίτλο ίσο με την παράγραφο από κάτω του. Ο περιορισμός
+                της μίας σειράς αφορά τη στήλη των 460 του υπολογιστή· κάτω από τα
+                900 η στήλη πιάνει όλο το πλάτος, οπότε ο τίτλος παίρνει σταθερά 20
+                (κανόνας .story-h, μαζί με το υπόλοιπο φύλλο). */}
+            <h3 className="story-h" style={{ fontWeight: 680, letterSpacing: '-0.03em', lineHeight: 1.15, color: 'var(--text-primary)', margin: '0 0 14px', maxWidth: 460 }}>{a.h}</h3>
             <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 20px', maxWidth: 460 }}>{a.p}</p>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {a.b.map((t, j) => (

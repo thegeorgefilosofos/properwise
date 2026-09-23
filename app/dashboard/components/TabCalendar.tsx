@@ -54,7 +54,7 @@ import {
   ChevronDown, Edit2, Trash2, RotateCcw,
   Euro, Wrench, RefreshCw, Landmark,
   Printer, CheckSquare, CalendarDays, ArrowRight,
-  TrendingUp, Clock, Info, MoreHorizontal, Share2, CalendarPlus, Repeat,
+  TrendingUp, Clock, Info, MoreHorizontal, Share2, CalendarPlus, Repeat, Search,
 } from 'lucide-react'
 import { DatePicker, CustomSelect, NumberInput } from './UIComponents'
 import { allCalendarLinks, buildICS } from '@/lib/calendar/externalLinks'
@@ -2271,10 +2271,13 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
 
         <div style={{ flex:1, minWidth:100, position:'relative' }}>
           {/* Το «Τίτλος γεγονότος» ζητούσε 143 εικονοστοιχεία και το πεδίο δίνει
-              116 στα 320: κοβόταν στο «Τίτλος γεγον…». Ο φακός δίπλα λέει ήδη
-              ότι είναι αναζήτηση· το παράδειγμα λέει ΤΙ γράφεις. */}
-          <input className="po-field" aria-label="Αναζήτηση γεγονότος με τον τίτλο του" placeholder="Τίτλος" value={searchQ} onChange={e=>setSearchQ(e.target.value)}
-            style={{ width:'100%', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.modal, padding:'0 16px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none' }}
+              116 στα 320: κοβόταν στο «Τίτλος γεγον…». Το σκέτο «Τίτλος» όμως,
+              χωρίς φακό και δίπλα στο «+ Νέο», διαβαζόταν ως πεδίο γρήγορης
+              προσθήκης. Ο φακός και η λέξη «Αναζήτηση» λένε τι είναι το πεδίο,
+              όπως στην αναζήτηση του Φακέλου· το πλήρες νόημα το έχει η ετικέτα. */}
+          <Search size={15} aria-hidden="true" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'var(--text-tertiary)', pointerEvents:'none' }}/>
+          <input className="po-field" aria-label="Αναζήτηση γεγονότος με τον τίτλο του" placeholder="Αναζήτηση" value={searchQ} onChange={e=>setSearchQ(e.target.value)}
+            style={{ width:'100%', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.modal, padding:'0 16px 0 34px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none' }}
             onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-subtle)'}/>
         </div>
 

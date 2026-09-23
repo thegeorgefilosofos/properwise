@@ -41,6 +41,7 @@ import { notifyError } from '@/components/Toast';
 import { INK_FAINT, INK_MUTED } from '@/lib/print/ink';
 import { failed, MSG } from '@/lib/core/dbError';
 import { InfoHint } from './InfoHint';
+import { fpSigned } from '@/lib/core/format';
 
 // Αντιστοίχιση περιοχής → πλησιέστερη αναφορά βραχυχρόνιας (τα δεδομένα ST είναι ανά
 // ευρύτερη ζώνη, όχι ανά προάστιο). Δίνει ρεαλιστικά defaults (πληρότητα/τιμή) ανά περιοχή.
@@ -506,7 +507,9 @@ function LeverCard({ lever }: { lever: YieldLever }) {
  * τέσσερις φορές χωρίς να προσθέτει τίποτα την τέταρτη.
  */
 const g4 = fixedCols(4, 12);
-const g4box = fixedCols(4, 12, 'stretch');
+// `fc-xs-2`: τέσσερα ποσοστά στο τηλέφωνο χωράνε δύο ανά σειρά, όπως οι δείκτες
+// της Βραχυχρόνιας· μία στήλη τα άπλωνε σε ολόκληρη οθόνη.
+const g4box = fixedCols(4, 12, 'stretch', 'fc-xs-2');
 
 // ── Διακόπτης παραδοχής (ναι/όχι), με το κείμενο του κανόνα από κάτω ─────────
 // ═══ ΔΕΥΤΕΡΟΣ ΔΙΑΚΟΠΤΗΣ ΓΙΑ ΤΗΝ ΙΔΙΑ ΔΟΥΛΕΙΑ ═══════════════════════════════
@@ -1371,16 +1374,16 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
             sub={consolidated ? `μερίδιο φόρου ${fe(annualTax)} τον χρόνο` : `φόρος ${fe(annualTax)} τον χρόνο`}
             tone="accent" info={<TermInfo text={consolidated ? `${G.after_tax_yield} ${CONSOLIDATION_NOTE}` : G.after_tax_yield} />} />
           {canInvest
-            ? <Tile label="Απόδοση ιδίων κεφαλαίων" value={fp(lev.cashOnCash)} sub={lev.cashOnCash >= 0 ? 'θετική μόχλευση' : (lev.positiveCarry ? 'θετική μόχλευση, αρνητική ροή' : 'αρνητική μόχλευση')} info={<TermInfo text={G.cash_on_cash} />} />
+            ? <Tile label="Απόδοση ιδίων κεφαλαίων" value={fpSigned(lev.cashOnCash)} sub={lev.cashOnCash >= 0 ? 'θετική μόχλευση' : (lev.positiveCarry ? 'θετική μόχλευση, αρνητική ροή' : 'αρνητική μόχλευση')} info={<TermInfo text={G.cash_on_cash} />} />
             : term === 'short'
               ? <Tile label="Τυπική βραχυχρόνια" value={fp(stRef.grossYield)} sub={reg?.region || 'Ελλάδα'} info={<TermInfo text={G.region_short_ref} />} />
-              : <Tile label="Μέσος όρος περιοχής" value={fp(reg?.grossYield || GREECE_AVG_GROSS_YIELD)} sub={reg?.region || 'Ελλάδα'} info={<TermInfo text={G.region_ref} />} />}
+              : <Tile label="Μέσος όρος περιοχής" value={fp(reg?.grossYield || GREECE_AVG_GROSS_YIELD)} sub={reg?.label || 'Ελλάδα'} info={<TermInfo text={G.region_ref} />} />}
         </div>
 
         {/* Βαθμός απόδοσης A–F */}
         <GradeCard grade={grade} note={term === 'short'
           ? `Σε σχέση με την τυπική βραχυχρόνια απόδοση της περιοχής, μετά τα λειτουργικά έξοδα και τον φόρο.`
-          : `Σε σχέση με τον μέσο όρο της περιοχής (${reg?.region || 'Ελλάδα'}, μεικτή ${fp(reg?.grossYield || GREECE_AVG_GROSS_YIELD)}), με βάση την καθαρή απόδοση και την ταμειακή ροή.`} />
+          : `Σε σχέση με τον μέσο όρο της περιοχής (${reg?.label || 'Ελλάδα'}, μεικτή ${fp(reg?.grossYield || GREECE_AVG_GROSS_YIELD)}), με βάση την καθαρή απόδοση και την ταμειακή ροή.`} />
 
         {/* 1) Η περιοχή σου */}
         <Section icon={<Landmark size={15} />} title="Η περιοχή σου" sub={`Σύγκριση με τα δεδομένα της αγοράς (${MARKET_DATA_ASOF})`} defaultOpen>
@@ -2019,7 +2022,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           </div>
         </Section>
         {/* Μοχλοί μεγιστοποίησης — επαγγελματίας (πλήρες) / ιδιώτης (μόνο βασικά) */}
-        <Section icon={<Wallet size={15} />} title="Μοχλοί μεγιστοποίησης απόδοσης" sub={pro ? 'Συγκεκριμένες κινήσεις με μετρήσιμη επίδραση και κίνδυνο' : 'Απλές κινήσεις που αυξάνουν την καθαρή απόδοση'}>
+        <Section icon={<Wallet size={15} />} title="Τι ανεβάζει την απόδοση" sub={pro ? 'Συγκεκριμένες κινήσεις με μετρήσιμη επίδραση και κίνδυνο' : 'Απλές κινήσεις με μετρήσιμο αποτέλεσμα'}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {YIELD_LEVERS.filter(l => pro || l.audience === 'all').map(l => (
               <LeverCard key={l.key} lever={l} />

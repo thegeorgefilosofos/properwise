@@ -26,7 +26,7 @@ import { billingWords } from '@/lib/legal/billingWords';
 export function generateMetadata(): Metadata {
   return {
     title: 'Εγγραφή',
-    description: `Δημιούργησε λογαριασμό και δοκίμασε δωρεάν για ${TRIAL_DAYS} ημέρες. ${billingWords().firstCharge}`,
+    description: `Δημιούργησε λογαριασμό και ξεκίνα τη δοκιμή των ${TRIAL_DAYS} ημερών. ${billingWords().firstCharge}`,
     alternates: { canonical: siteUrl('/signup') },
   };
 }

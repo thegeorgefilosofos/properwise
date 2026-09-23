@@ -17,7 +17,7 @@ import * as checklist from '@/lib/data/checklist';
 import * as expenses from '@/lib/data/expenses'
 import * as tenantStore from '@/lib/data/tenants'
 import { CustomSelect, BulkActionBar } from './UIComponents';
-import { T, PageTitle, KPIGrid, Badge, Btn, ExportButton, EmptyState, InfoBanner, SecHdr, SelectBox, SkeletonKPIs, Skeleton, fe, fp, fixedCols, ABSENT_SHORT, Modal, TT, Stat } from '@/components/Theme';
+import { T, PageTitle, KPIGrid, Badge, Btn, ExportButton, EmptyState, InfoBanner, SecHdr, SelectBox, SkeletonKPIs, Skeleton, fe, fp, fixedCols, ABSENT_SHORT, Modal, TT, Stat, RecordCard, StatStrip } from '@/components/Theme';
 import { resolveRent } from '@/lib/billing/propertyFacts';
 import { statusLabel, type StatusRow } from '@/lib/property/status';
 import { propertyTypeLabel } from '@/lib/property/types';
@@ -599,8 +599,9 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
           ακινήτων, τέσσερα σημασιολογικά χρώματα σε μία ματιά — και κανένα δεν
           ξεχωρίζει, γιατί όλα φωνάζουν. Η ιεραρχία βγαίνει από μέγεθος, βάρος
           και θέση· το πρόσημο το λέει ήδη το ίδιο το ποσό. */}
-      <KPIGrid columns={5} items={[
-        { label: 'Ακίνητα', value: String(properties.length) },
+      {/* ΤΟ ΠΛΗΘΟΣ ΤΩΝ ΑΚΙΝΗΤΩΝ ΤΟ ΛΕΕΙ Ο ΥΠΟΤΙΤΛΟΣ. Ως πέμπτο πλακίδιο
+          επαναλάμβανε την κεφαλίδα και στα 820 άφηνε σειρά 3+2. */}
+      <KPIGrid items={[
         { label: `Έσοδα ${year}`, value: eur(totalRevenue),
           sub: estimatedRows.length ? `${estimatedRows.length} ${estimatedRows.length === 1 ? 'ακίνητο' : 'ακίνητα'} με εκτίμηση` : undefined },
         { label: `Καθαρό ${year}`, value: eur(totalRevenue - totalExpenses), sub: `δαπάνες ${eur(totalExpenses)}` },
@@ -659,26 +660,12 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       );
       })())}
 
-      {/* ═══ ΠΙΝΑΚΑΣ ΑΝΑ ΑΚΙΝΗΤΟ: ΤΟ ΟΝΟΜΑ ΜΕΝΕΙ, ΟΙ ΑΡΙΘΜΟΙ ΚΥΛΟΥΝ ══════════
-          ΤΙ ΔΕΝ ΠΗΓΑΙΝΕ. Ο πίνακας έχει ελάχιστο πλάτος 720 και κυλά οριζόντια.
-          Στα 375 εικονοστοιχεία φαίνονται τέσσερις από τις εννέα στήλες: μόλις
-          ο ιδιοκτήτης σύρει δεξιά για να δει «Καθαρό» ή «Πληρότητα», το όνομα
-          του ακινήτου βγαίνει από την οθόνη. Μένει με μια στήλη αριθμών χωρίς
-          να ξέρει ποιανού είναι — και ο πίνακας υπάρχει ακριβώς για να συγκρίνει
-          ακίνητα μεταξύ τους.
-
-          ΓΙΑΤΙ ΟΧΙ ΚΑΡΤΕΣ ΣΤΟ ΚΙΝΗΤΟ, ΟΠΩΣ ΑΛΛΟΥ. Στις Δαπάνες η κάρτα ανά
-          γραμμή δουλεύει, γιατί εκεί διαβάζεις ΜΙΑ εγγραφή τη φορά. Εδώ η
-          δουλειά είναι σύγκριση: πέντε κάρτες η μία κάτω από την άλλη δεν
-          απαντούν «ποιο αποδίδει καλύτερα», που είναι όλος ο λόγος της οθόνης.
-
-          Η ΑΠΑΝΤΗΣΗ ΕΙΝΑΙ ΚΑΡΦΩΜΕΝΗ ΣΤΗΛΗ. Το πλαίσιο επιλογής και το όνομα
-          μένουν ακίνητα στα αριστερά και οι αριθμοί κυλούν από κάτω τους. Το
-          φόντο των καρφωμένων κελιών ΚΛΗΡΟΝΟΜΕΙΤΑΙ από τη γραμμή, ώστε η
-          επιλεγμένη γραμμή να μένει επιλεγμένη και κάτω από το καρφωμένο μέρος·
-          γι' αυτό η γραμμή δηλώνει πάντα φόντο, ακόμη κι όταν δεν είναι
-          επιλεγμένη — αλλιώς το κείμενο που κυλά θα φαινόταν από κάτω. */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* ═══ ΠΙΝΑΚΑΣ ΑΝΑ ΑΚΙΝΗΤΟ, ΟΠΟΥ ΧΩΡΑ ═══════════════════════════════════
+          Ο πίνακας έχει ελάχιστο πλάτος 720 και υπάρχει για να συγκρίνει
+          ακίνητα μεταξύ τους. Κάτω από τα 900 κρύβεται και τη θέση του παίρνουν
+          οι κάρτες από κάτω (globals.css, `.pf-cards`): η καρφωμένη στήλη
+          κρατούσε το όνομα, αλλά στα 390 δεν άφηνε χώρο για κανένα ποσό. */}
+      <div className="card pf-table-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table className="pf-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
             <thead>
@@ -745,6 +732,27 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
             </tbody>
           </table>
         </div>
+      </div>
+      {/* ═══ ΚΑΤΩ ΑΠΟ ΤΑ 900, ΚΑΡΤΑ ΑΝΑ ΑΚΙΝΗΤΟ ═══════════════════════════════
+          Η καρφωμένη στήλη δεν έφτανε: στα 390 φαίνονταν μόνο το όνομα και η
+          κατάσταση, με το «6.480,0…» κομμένο στην άκρη. Στα 820 κόβονταν
+          επικεφαλίδες και το ποσό των εκκρεμών. Η σύγκριση δεν χάνεται: κάθε
+          κάρτα έχει τα ίδια τρία ποσά στην ίδια θέση, οπότε διαβάζονται κάθετα.
+          Η ταξινόμηση που διάλεξες στον πίνακα ισχύει και εδώ. */}
+      <div className="pf-cards">
+        {sorted.map(r => (
+          <RecordCard key={r.id} onOpen={() => onSelectProperty(r.id)} openLabel={`Άνοιγμα ${r.name}`}
+            lead={<SelectBox checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} label={`Επιλογή ${r.name}`} />}
+            title={r.name}
+            sub={<span style={{ ...TT.caption }}>{r.typeLabel}</span>}
+            badges={<Badge tone="neutral">{r.statusLabel}</Badge>}>
+            <StatStrip items={[
+              { label: r.revenueEstimated ? 'Έσοδα, εκτίμηση' : 'Έσοδα', value: eur(r.revenue), title: revenueTitle(r) },
+              { label: 'Δαπάνες', value: eur(r.expenses) },
+              { label: 'Καθαρό', value: eur(r.net), strong: true },
+            ]} />
+          </RecordCard>
+        ))}
       </div>
       <div style={{ marginTop: 10, fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
         {/* Ήταν τέσσερις προτάσεις σε τρεις σειρές, κάτω από πίνακα δύο γραμμών.

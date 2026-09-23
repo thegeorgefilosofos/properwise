@@ -1052,10 +1052,15 @@ body {
    σωστά. Γραμμένα εδώ με δικό τους `overflow: hidden`, τα ίδια 26 ευρήματα
    «κομμένο» βγήκαν σε 26 οθόνες από 412 ώς 440.
 
-   Το θέμα παίρνει ό,τι περισσεύει· ο αποστολέας κρατά το φυσικό του πλάτος και
-   υποχωρεί μόνο όταν δεν χωρά. */
-.inbound-row > .inbound-who { flex: 0 1 auto; }
-.inbound-row > .inbound-what { flex: 1 1 auto; }
+   Το θέμα παίρνει ό,τι περισσεύει· ο αποστολέας κρατά το φυσικό του πλάτος ως
+   το 40% της γραμμής.
+
+   ΜΟΝΟ ΤΟ ΘΕΜΑ ΣΥΡΡΙΚΝΩΝΕΤΑΙ. Με `0 1 auto` και οι δύο στήλες υποχωρούσαν
+   ανάλογα με το μήκος τους, οπότε δίπλα σε μακρύ θέμα ο προμηθευτής έπεφτε σε
+   «Δ.» στα 390. Τώρα ο αποστολέας δεν συρρικνώνεται και το ταβάνι του είναι το
+   `max-width`· το θέμα ξεκινά από μηδέν και παίρνει τα υπόλοιπα. */
+.inbound-row > .inbound-who { flex: 0 0 auto; max-width: 40%; }
+.inbound-row > .inbound-what { flex: 1 1 0; min-width: 0; }
 .inbound-row > .inbound-sum { white-space: nowrap; flex: 0 0 auto; }
 
 /* Η ΚΕΦΑΛΙΔΑ ΜΗΝΑ ΤΟΥ ΑΡΧΕΙΟΥ ══════════════════════════════════════════════
@@ -1937,8 +1942,11 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    .kpi-label μένουν: είναι το ΙΔΙΟ πλακίδιο, από τη μία πηγή. */
 
 /* Section label — ΤΑΥΤΙΖΕΤΑΙ με το SecHdr του Theme.tsx ώστε οι επικεφαλίδες
-   ενοτήτων να δείχνουν ΙΔΙΕΣ σε όλα τα tabs (τελεία + uppercase + λεπτή γραμμή). */
+   ενοτήτων να δείχνουν ΙΔΙΕΣ σε όλα τα tabs (τελεία + uppercase + λεπτή γραμμή).
+   Φοριέται και σε <h3> (ετικέτα κάρτας): το `margin-top` μηδενίζεται εδώ, ώστε
+   ο τίτλος να μην παίρνει το κενό του περιηγητή. */
 .section-label {
+  margin-top: 0;
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -2798,6 +2806,27 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .plan-tag { text-align: right; white-space: nowrap; }
 }
 
+/* ═══ Ο ΚΡΙΚΟΣ ΣΤΗΝ ΠΡΩΤΗ ΓΡΑΜΜΗ ΤΟΥ ΤΙΤΛΟΥ ═══════════════════════════════════
+   Η ράγα βάζει το κέντρο του κρίκου στα 24 (14 ράγα και μισός κρίκος των 20).
+   Με `align-items: start` ο τίτλος ξεκινούσε από το 0, οπότε το κέντρο της
+   πρώτης του γραμμής (14 επί 1,35) έπεφτε γύρω στο 9,5 και ο κρίκος στεκόταν
+   δίπλα στη ΔΕΥΤΕΡΗ γραμμή. Τα 14 από πάνω τον ξαναφέρνουν στην πρώτη και τα
+   12 από κάτω χωρίζουν ένα βήμα δύο γραμμών από το επόμενο. */
+@media (max-width: 720px) {
+  .plan-row-step { padding: 14px 0 12px; }
+}
+
+/* ═══ ΣΥΓΚΡΙΣΗ ΕΠΙΛΟΓΩΝ: ΠΙΝΑΚΑΣ ΣΤΗΝ ΟΘΟΝΗ, ΛΙΣΤΑ ΣΤΟ ΤΗΛΕΦΩΝΟ ═════════════
+   Ο πίνακας θέλει 700 και στα 390 έδειχνε μόνο τη στήλη «Κόπος». Κάτω από τα
+   560 τον αντικαθιστά η λίστα του TabPlan, με τους τρεις άξονες σε μία γραμμή
+   κάτω από κάθε επιλογή. Το `.po-scroll-x` ορίζεται πιο κάτω στο αρχείο, γι'
+   αυτό ο κανόνας κρύψης κρατά και τις δύο κλάσεις. */
+.plan-opt-list { display: none; list-style: none; margin: 0; padding: 0; }
+@media (max-width: 560px) {
+  .po-scroll-x.plan-opt-table { display: none; }
+  .plan-opt-list { display: block; }
+}
+
 /* ═══ ΔΥΟ ΠΡΑΓΜΑΤΑ ΣΤΑ ΔΥΟ ΑΚΡΑ ΜΙΑΣ ΓΡΑΜΜΗΣ: ΣΕ ΤΗΛΕΦΩΝΟ ΣΤΟΙΒΑΖΟΝΤΑΙ ══════
    ΤΟ ΣΧΗΜΑ ΠΟΥ ΣΠΑΕΙ. Μια πρόταση με `flex: 1` δίπλα σε κουμπί ή σε δεύτερο
    κείμενο που ΔΕΝ συρρικνώνεται. Σε φαρδιά οθόνη διαβάζεται σωστά. Σε στενή, ο
@@ -3445,8 +3474,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (max-width: 560px) { .po-table .po-kv-val { text-align: left; } }
 
 /* Η γραμμή που ισχύει τώρα. Δηλώνει ΚΑΙ το `--row-bg`, ώστε ένα καρφωμένο
-   πρώτο κελί να μη ζωγραφίσει άλλο χρώμα πάνω της. */
-.po-table tr.is-on { --row-bg: var(--accent-soft); background: var(--accent-soft); }
+   πρώτο κελί να μη ζωγραφίσει άλλο χρώμα πάνω της.
+
+   ΤΟ ΧΡΩΜΑ ΜΠΑΙΝΕΙ ΣΤΑ ΚΕΛΙΑ, ΟΧΙ ΣΤΗ ΓΡΑΜΜΗ. Το `--accent-soft` είναι
+   ημιδιαφανές: βαμμένο και στο <tr> και στο καρφωμένο κελί, το πρώτο κελί
+   έπαιρνε δύο στρώσεις και έβγαινε ορατά πιο μπλε από την υπόλοιπη γραμμή
+   (μετρημένο στον πίνακα κλιμακίων του φόρου ενοικίων). Μία στρώση, ανά κελί. */
+.po-table tr.is-on { --row-bg: var(--accent-soft); }
+.po-table tr.is-on > * { background: var(--row-bg); }
 .po-table tr.is-on td { color: var(--text-primary); }
 /* Η ΓΡΑΜΜΗ ΤΟΥ ΣΥΝΟΛΟΥ ΔΕΝ ΕΙΝΑΙ ΑΛΛΗ ΜΙΑ ΓΡΑΜΜΗ. Το «Καθαρά» έκλεινε την
    αφαίρεση με σκέτο έντονο βάρος, δηλαδή με την ίδια ένταση που έχει και μια
@@ -4320,6 +4355,19 @@ html.a11y-large-text { zoom: 1.08; }
    πάνω· δεν χρειάζεται ειδική περίπτωση εδώ. */
 .po-cookie { animation: po-toast-in 0.22s cubic-bezier(0.2, 0, 0, 1) both; }
 
+/* ── ΣΤΗΝ ΑΡΧΙΚΗ ΤΟ ΜΗΝΥΜΑ ΜΙΛΑ ΤΗΝ ΠΑΛΕΤΑ ΤΗΣ ΒΙΤΡΙΝΑΣ ──────────────────
+   Το πλαίσιο ζει στο layout, έξω από το `.lp-root`, οπότε διάβαζε τα tokens
+   του θέματος της εφαρμογής: σε φωτεινό θέμα έβγαινε λευκή κάρτα πάνω στη
+   σκούρα αρχική. Εδώ κάνει την ίδια αντιστοίχιση με το `.lp-root`. */
+body:has(.lp-root) .po-cookie {
+  --bg-elevated: var(--mkt-bg-elevated);
+  --text-primary: var(--mkt-text-primary);
+  --text-secondary: var(--mkt-text-secondary);
+  --border-default: var(--mkt-border-default);
+  --accent: var(--mkt-accent);
+  --accent-text: var(--mkt-accent-text);
+}
+
 /* ── ΤΟ «ΤΟ ΚΑΤΑΛΑΒΑ» ΣΤΟΙΧΙΖΕΤΑΙ ΠΕΡΑ ΩΣ ΠΕΡΑ ΣΤΟ ΤΗΛΕΦΩΝΟ ────────────────
    Σε πλάτος τηλεφώνου το κείμενο γεμίζει τη σειρά και το κουμπί τυλίγει από
    κάτω. Χωρίς πλάτος καθόταν μικρό, στοιχισμένο αριστερά, μ' ένα νεκρό κενό
@@ -4708,6 +4756,57 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    του «Ποιοι είμαστε»: αλλιώς η μισή σελίδα κλείνει ίσια και η άλλη μισή όχι. */
 .lg-just { text-align: justify; }
 
+/* ═══ ΠΕΡΙΕΧΟΜΕΝΑ, ΜΕΣΑ ΣΤΗ ΣΤΗΛΗ ═══════════════════════════════════════════
+   Το πλαϊνό ευρετήριο έφυγε για το μέτρο (βλ. `.lg-grid`)· μαζί του έφυγαν και
+   τα άλματα, σε σελίδες 16.000 εικονοστοιχείων στο κινητό. Ο κατάλογος γυρίζει
+   στην κορυφή της στήλης, στο ΠΛΑΤΟΣ της: σε δύο στήλες στον υπολογιστή,
+   πτυσσόμενος στο κινητό, ώστε να μη σπρώχνει το κείμενο τρεις οθόνες κάτω. */
+.lg-toc { margin: 0 0 clamp(30px, 4vw, 46px); }
+.lg-toc-list { list-style: none; margin: 0; padding: 0; }
+.lg-toc-list li { break-inside: avoid; }
+.lg-toc-list a {
+  display: flex; gap: 10px; align-items: baseline; padding: 4px 0;
+  font-size: 14px; line-height: 1.5; color: var(--text-secondary); text-decoration: none;
+}
+.lg-toc-n { flex-shrink: 0; min-width: 18px; font-size: 13px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.lg-toc-d, .lg-toc-m {
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 12px;
+}
+.lg-toc-d { padding: 16px 20px; }
+.lg-toc-d .lg-toc-list { columns: 2; column-gap: 40px; }
+.lg-toc-h, .lg-toc-m > summary {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.lg-toc-h { margin-bottom: 10px; }
+.lg-toc-m { display: none; padding: 0 16px; }
+/* 44 ύψος για τον αντίχειρα, από το γέμισμα: η περίληψη μένει list-item, για
+   να κρατήσει το τρίγωνο που λέει ότι ανοίγει. */
+.lg-toc-m > summary { padding: 14px 0; cursor: pointer; }
+.lg-toc-m .lg-toc-list { padding-bottom: 12px; }
+
+/* ═══ ΜΗΤΡΩΟ ΠΑΡΟΧΩΝ: ΚΑΤΑΣΤΑΣΗ ΣΕ ΛΕΞΕΙΣ ΚΑΙ ΚΑΡΤΕΣ ΣΤΟ ΚΙΝΗΤΟ ═══════════ */
+.lg-badge {
+  display: table; margin-top: 4px; padding: 1px 8px;
+  font-size: 11px; font-weight: 600; line-height: 1.6; color: var(--text-secondary);
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 999px;
+}
+.lg-sp-entity { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; color: var(--text-tertiary); }
+.lg-sp-cards { display: none; list-style: none; margin: 16px 0 0; padding: 0; flex-direction: column; gap: 12px; }
+.lg-sp-card {
+  padding: 14px 16px; font-size: 14px;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 14px;
+}
+.lg-sp-card dl { margin: 10px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; }
+.lg-sp-card dt { font-size: 13px; color: var(--text-tertiary); }
+.lg-sp-card dd { margin: 0; color: var(--text-secondary); line-height: 1.55; }
+
+@media (max-width: 640px) {
+  .lg-toc-d, .lg-sp-table { display: none; }
+  .lg-toc-m { display: block; }
+  .lg-sp-cards { display: flex; }
+}
+
 /* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΓΙΝΕΤΑΙ ΠΟΤΑΜΙΑ ΛΕΥΚΟΥ ΚΑΙ ΣΠΑΣΜΕΝΕΣ ΛΕΞΕΙΣ.
    Σε ~340px στήλη το `justify` μαζί με τον μαλακό συλλαβισμό του `hy()` αφήνει
    τεντωμένα κενά και μεσολεκτικά κοψίματα (φορο-, χρεώ-σεις) — ακριβώς αυτό που
@@ -4903,48 +5002,17 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 
    Το `contain` σταματά τη σάρωση στο τέρμα του στοιχείου. Δεν αλλάζει τίποτα
    άλλο: η κύλιση μέσα στον πίνακα δουλεύει ακριβώς όπως πριν. */
-/* ═══ Ο ΠΙΝΑΚΑΣ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΚΡΑΤΑ ΤΟ ΟΝΟΜΑ ΟΡΑΤΟ ═══════════════════════════
-   Ο πίνακας έχει ελάχιστο πλάτος 720 και εννέα στήλες. Στα 375 εικονοστοιχεία
-   φαίνονται τέσσερις: μόλις ο ιδιοκτήτης σύρει δεξιά για «Καθαρό» ή
-   «Πληρότητα», το όνομα του ακινήτου βγαίνει από την οθόνη και του μένει μια
-   στήλη αριθμών χωρίς κάτοχο.
-
-   Οι δύο πρώτες στήλες καρφώνονται. Το φόντο ΚΛΗΡΟΝΟΜΕΙΤΑΙ από τη γραμμή, ώστε
-   η επιλεγμένη να μένει επιλεγμένη και κάτω από το καρφωμένο μέρος· η γραμμή
-   δηλώνει πάντα φόντο, αλλιώς το κείμενο που κυλά θα φαινόταν από κάτω.
-
-   Ισχύει ΜΟΝΟ όσο ο πίνακας δεν χωρά. Πάνω από τα 760 δεν κυλά τίποτα και μια
-   καρφωμένη στήλη χωρίς κύλιση είναι σκιά χωρίς λόγο. */
-@media (max-width: 760px) {
-  .pf-table th.pf-pin-1, .pf-table td.pf-pin-1,
-  .pf-table th.pf-pin-2, .pf-table td.pf-pin-2 {
-    /* ΤΟ «background: inherit» ΔΕΝ ΑΡΚΕΙ, ΚΑΙ ΤΟ ΕΔΕΙΞΕ Ο ΠΕΡΙΗΓΗΤΗΣ. Το κελί
-       κληρονομεί το φόντο του γονέα του, που είναι το <tr>· εκεί όμως το φόντο
-       δηλώνεται με ενσώματο στυλ και η κληρονομιά έβγαινε διάφανη, οπότε οι
-       αριθμοί που κυλούσαν φαίνονταν ΜΕΣΑ από το πλαίσιο επιλογής. Μια
-       προσαρμοσμένη μεταβλητή κληρονομείται πάντα και χωρίς εκπλήξεις. */
-    position: sticky; z-index: 2; background: var(--pf-row-bg, var(--bg-surface));
-  }
-  /* ΤΟ ΠΛΑΤΟΣ ΤΗΣ ΠΡΩΤΗΣ ΣΤΗΛΗΣ ΔΗΛΩΝΕΤΑΙ, ΔΕΝ ΥΠΟΤΙΘΕΤΑΙ. Το «width: 42» του
-     κελιού είναι ΠΡΟΤΑΣΗ προς τον αλγόριθμο πίνακα, όχι εντολή: μετρήθηκε 34.
-     Η δεύτερη στήλη καρφωνόταν στα 42, οπότε έμεναν οκτώ εικονοστοιχεία κενού
-     ανάμεσά τους και μέσα από εκεί περνούσαν οι αριθμοί που κυλούσαν. Με ρητό
-     ελάχιστο, οι δύο τιμές ταυτίζονται εξ ορισμού.
-
-     ΚΑΙ ΤΑ 42 ΗΤΑΝ ΤΕΣΣΕΡΑ ΛΙΓΟΤΕΡΑ ΑΠ' ΟΣΑ ΖΗΤΑΕΙ ΤΟ ΚΕΛΙ. Μετρημένο σε
-     Galaxy A, 360×800: το κουτάκι επιλογής των 16 με τα περιθώρια του κελιού
-     θέλει 46, οπότε το καρφωμένο κελί ξεχείλιζε κατά τέσσερα σε κάθε γραμμή
-     του πίνακα. Και τα δύο νούμερα ανεβαίνουν μαζί, γιατί το δεύτερο είναι η
-     θέση όπου τελειώνει το πρώτο. */
-  .pf-table th.pf-pin-1, .pf-table td.pf-pin-1 { left: 0; min-width: 46px; }
-  .pf-table th.pf-pin-2, .pf-table td.pf-pin-2 { left: 46px; }
-  /* Το όνομα σε ΜΙΑ γραμμή: στην καρφωμένη στήλη έσπαγε σε «Ακίνητο / 1» και
-     ένα όνομα κομμένο στα δύο δεν εξυπηρετεί τον λόγο που το κρατάμε ορατό. */
-  .pf-table td.pf-pin-2 { min-width: 138px; }
-  .pf-table td.pf-pin-2 > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 118px; }
-  /* Η άκρη του καρφωμένου μέρους δηλώνεται με γραμμή, ώστε να φαίνεται ότι το
-     υπόλοιπο κυλά από κάτω και δεν είναι απλώς κομμένο. */
-  .pf-table th.pf-pin-2, .pf-table td.pf-pin-2 { box-shadow: 1px 0 0 var(--border-subtle); }
+/* ═══ Ο ΠΙΝΑΚΑΣ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΓΙΝΕΤΑΙ ΚΑΡΤΕΣ ΚΑΤΩ ΑΠΟ ΤΑ 900 ══════════════════
+   Ο πίνακας έχει ελάχιστο πλάτος 720 και εννέα στήλες. Με καρφωμένο το όνομα,
+   στα 390 φαίνονταν μόνο όνομα και κατάσταση και το πρώτο ποσό κομμένο στην
+   άκρη· στα 820 κόβονταν οι επικεφαλίδες και το ποσό των εκκρεμών. Κάτω από
+   τα 900 κάθε ακίνητο γίνεται κάρτα (PortfolioTab, `.pf-cards`) με όνομα και
+   κατάσταση πάνω και Έσοδα, Δαπάνες, Καθαρό από κάτω. Ο πίνακας μένει εκεί
+   όπου χωρά ολόκληρος. */
+.pf-cards { display: none; }
+@media (max-width: 899px) {
+  .pf-table-card { display: none; }
+  .pf-cards { display: grid; gap: 12px; }
 }
 
 /* Η ΟΝΟΜΑΣΙΑ ΤΗΣ ΓΡΑΜΜΗΣ ΜΕΝΕΙ ΟΣΟ ΚΥΛΑ Ο ΠΙΝΑΚΑΣ ΤΩΝ ΠΑΚΕΤΩΝ.
@@ -4975,13 +5043,22 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 
    ΤΟ ΦΟΝΤΟ ΔΙΑΒΑΖΕΙ ΤΟ `--row-bg` ΠΡΙΝ ΠΕΣΕΙ ΣΤΗΝ ΕΠΙΦΑΝΕΙΑ. Καρφωμένο κελί με
    σταθερό χρώμα θα ζωγράφιζε πάνω στην επισημασμένη γραμμή (`tr.is-on`) κι η
-   επισήμανση θα έκοβε στη μέση, ακριβώς στη στήλη που διαβάζεται πρώτη. */
+   επισήμανση θα έκοβε στη μέση, ακριβώς στη στήλη που διαβάζεται πρώτη.
+
+   ΚΑΙ ΕΙΝΑΙ ΑΔΙΑΦΑΝΕΣ. Το `--row-bg` της επισήμανσης είναι ημιδιαφανές, οπότε
+   στρώνεται πάνω στην επιφάνεια: ό,τι κυλά από κάτω δεν φαίνεται μέσα από το
+   κελί και ο τόνος βγαίνει ίδιος με τα διπλανά κελιά της γραμμής.
+
+   Η ΓΡΑΜΜΗ ΑΠΟ ΚΑΤΩ ΕΙΝΑΙ Η ΙΔΙΑ ΤΟΥ ΠΙΝΑΚΑ. Ηταν σκιά `inset`, που κάθεται
+   μέσα στο κελί, περίπου ένα εικονοστοιχείο ψηλότερα από τη γραμμή των
+   διπλανών κελιών: κάτω από την πρώτη στήλη κάθε διαχωριστικό έσπαγε σε
+   σκαλοπάτι. Με το φόντο κομμένο στο γέμισμα, το κελί δεν σκεπάζει πια το
+   περίγραμμα και η γραμμή διαβάζεται συνεχής ακόμη κι όταν ο πίνακας κυλά. */
 .po-scroll-x .po-table tbody th[scope="row"] {
   position: sticky; left: 0; z-index: 1;
-  background: var(--row-bg, var(--bg-surface));
-  box-shadow: inset 0 -1px 0 var(--border-subtle);
+  background: linear-gradient(var(--row-bg, transparent), var(--row-bg, transparent)) var(--bg-surface);
+  background-clip: padding-box;
 }
-.po-scroll-x .po-table tbody tr:last-child > th[scope="row"] { box-shadow: none; }
 /* Ο πίνακας κυλά μέσα στο κουτί του· το κουτί κρατά τη στρογγυλή γωνία. */
 .plan-matrix { overflow-x: auto; }
 /* Η ΚΕΦΑΛΙΔΑ ΣΤΗΛΗΣ ΔΕΝ ΣΠΑΕΙ ΠΟΤΕ ΜΕΣΑ ΣΤΗ ΛΕΞΗ. Ο γενικός κανόνας του

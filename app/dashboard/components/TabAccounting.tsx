@@ -64,7 +64,9 @@ import EnfiaPanel from './EnfiaPanel';
 import AccountantDossier, { useAccountantDossier } from './AccountantDossier'
 import { fetchDossierPapers } from './dossierPapers'
 import { defaultBookkeeping, type LegalForm } from '@/lib/accounting/dossier'
-import { readStatus, type PropertyStatus, type StatusRow } from '@/lib/property/status'
+import { readStatus, statusLabel, type PropertyStatus, type StatusRow } from '@/lib/property/status'
+// Το λογιστικό πρόσημο: τυπογραφικό μείον, όχι ενωτικό και ποτέ «−0,00€».
+import { feSigned } from '@/lib/core/format'
 import { incomeEntry } from '@/lib/property/visibility'
 import { printAccountingReport, downloadOfficialAccountingReport, type ReconLite } from './accountingReport'
 import { printRentCertificate, downloadOfficialRentCertificate } from './rentCertificate'
@@ -1167,7 +1169,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // φτάσουν τα δεδομένα.
   if(loading) return (<><SkeletonKPIs n={1} /><Skeleton h={280} r={14} /></>)
 
-  const regimeLabel = businessMode ? 'Επιχείρηση (ΕΛΠ)' : (regime==='individual_shortterm' ? 'Βραχυχρόνια μίσθωση' : 'Μακροχρόνια μίσθωση')
+  // Η ΕΤΙΚΕΤΑ ΛΕΕΙ ΤΗΝ ΚΑΤΑΣΤΑΣΗ, ΟΧΙ ΤΟ ΚΑΘΕΣΤΩΣ. Το `regime` είναι
+  // μακροχρόνιο για κάθε ακίνητο που δεν είναι βραχυχρόνιο, οπότε ένα κενό
+  // ακίνητο έβγαινε «Μακροχρόνια μίσθωση» και στο PDF του λογιστή.
+  const regimeLabel = businessMode ? 'Επιχείρηση (ΕΛΠ)' : statusLabel(prop as StatusRow)
   // Έχει το έτος πραγματική κίνηση; Αν όχι, αντί για τοίχο από «0€» δείχνουμε μια
   // ήρεμη, καθοδηγητική αφετηρία (τι θα ξεκλειδώσει μόλις μπουν δεδομένα).
   const hasActivity = grossIncome>0 || expensesTotal>0 || rentAccruedYear>0 || book.length>0
@@ -1433,11 +1438,14 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
 
           Ο ΜΗΝΑΣ ΓΙΝΕΤΑΙ ΑΝΑΓΝΩΣΗ ΤΟΥ ΕΤΟΥΣ, ΟΧΙ ΑΝΤΑΓΩΝΙΣΤΗΣ ΤΟΥ. Δεν είναι
           δεύτερο μέγεθος, είναι ο ίδιος αριθμός διά δώδεκα. Πάει στη γραμμή
-          υποστήριξης, όπου ανήκει κάθε παράγωγη ανάγνωση.
+          υποστήριξης, όπου ανήκει κάθε παράγωγη ανάγνωση. Για το ΤΡΕΧΟΝ έτος
+          όμως φεύγει: εκεί το μηνιαίο ποσό το λέει το «Πώς βγαίνει ο φόρος»
+          (ως τον Δεκέμβριο) και δύο διαφορετικά «τον μήνα» στην ίδια οθόνη
+          δεν λένε στον χρήστη πόσα να βάλει στην άκρη.
           ═══════════════════════════════════════════════════════════════════ */}
       <Kpi label="Πρόβλεψη φόρου" value={eur(provision.annualTaxTotal)}
         hot={taxHot} onHover={setTaxHot}
-        note={`Σύνολο για τη χρονιά. Το ένα δωδέκατο είναι ${eur(provision.monthly)} τον μήνα.`} />
+        note={year===athensYear() ? 'Σύνολο για τη χρονιά, ενδεικτικά.' : `Σύνολο για τη χρονιά. Το ένα δωδέκατο είναι ${eur(provision.monthly)} τον μήνα.`} />
 
       {/* Κατάσταση Αποτελεσμάτων + Πρόβλεψη φόρου */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap:16 }}>
@@ -1453,7 +1461,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                       δεν ανήκε σε καμία κλίμακα· προσπαθούσε να πει «σχεδόν 14».
                       Την έμφαση τη λέει ήδη το βάρος, 600 έναντι 400. */}
                   <span style={{ flex:1, fontSize:strong?14:13, fontFamily: T.font.sans, fontWeight:strong?600:400, color:l.kind==='result'?'var(--text-primary)':'var(--text-secondary)' }}>{l.label}</span>
-                  <span className="po-fig" data-tone={l.kind==='result'?(l.amount>=0?'accent':'negative'):undefined} style={{ fontSize:strong?14:13, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:strong?700:500 }}>{l.negative?'−':''}{eur(l.amount)}</span>
+                  <span className="po-fig" data-tone={l.kind==='result'?(l.amount>=0?'accent':'negative'):undefined} style={{ fontSize:strong?14:13, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:strong?700:500 }}>{feSigned(l.negative ? -l.amount : l.amount)}</span>
                 </div>
               )
             })}
@@ -1517,7 +1525,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               ? (elpForm==='company' ? <>Σταθερός συντελεστής <strong style={{ color:'var(--text-primary)' }}>22%</strong> στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, αποσβέσεις και τόκους.</> : <>Κλίμακα άρθρου 15 στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, εισφορές ΕΦΚΑ, αποσβέσεις και τόκους.</>)
               : (regime==='individual_longterm'
                   ? <>Τεκμαρτή έκπτωση 5% και προοδευτική {bracketsLabelForYear(year)}{!businessMode&&myTaxShare!=null&&(consolidation?.count??0)>1?<>, στο σύνολο των ενοικίων σου όπως στο Ε1: ο φόρος εδώ είναι <strong style={{ color:'var(--text-primary)' }}>το μερίδιο αυτού του ακινήτου</strong></>:''}.</>
-                  : <>Φόρος στα μεικτά με την {bracketsLabelForYear(year)}, συν ΤΑΚΚ και τέλος παρεπιδημούντων όπου ισχύει.</>)}
+                  : <>Τεκμαρτή έκπτωση 5% και προοδευτική {bracketsLabelForYear(year)} στα μεικτά, συν ΤΑΚΚ και τέλος παρεπιδημούντων όπου ισχύει. Οι πραγματικές δαπάνες δεν εκπίπτουν.</>)}
             {/* Ο «μέσος συντελεστής» του statement.ts είναι φόρος ΠΡΟΣ ΜΕΙΚΤΑ
                 (effRate = incomeTax / gross), όχι προς το φορολογητέο. Γραμμένα
                 στην ίδια πρόταση, τα δύο μεγέθη διαβάζονταν ως πολλαπλασιασμός
@@ -1525,17 +1533,20 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 που κάνει τον έλεγχο συμπεραίνει ότι ο φόρος είναι λάθος. */}
             {statement.incomeTax>0?<> Ο φόρος εισοδήματος βγαίνει {eur(statement.incomeTax)} σε φορολογητέο {eur(statement.taxableIncome)}, δηλαδή {pct(statement.effectiveRate)} των μεικτών εσόδων.</>:''}
             {provision.propertyTaxes>0?<> Από το ετήσιο σύνολο, {eur(provision.propertyTaxes)} είναι φόροι και τέλη ακινήτου.</>:''}
-            {year===athensYear()?<> Για να προλάβεις τη χρονιά, <strong style={{ color:'var(--text-primary)' }}>{eur(provision.perRemainingMonth)} τον μήνα</strong> ως τον Δεκέμβριο.</>:''}
+            {/* ΕΝΑ ΜΗΝΙΑΙΟ ΠΟΣΟ ΓΙΑ ΤΟ ΤΡΕΧΟΝ ΕΤΟΣ. Ο δείκτης από πάνω δεν γράφει
+                πια το ένα δωδέκατο: δίπλα σε αυτό ο χρήστης δεν ήξερε ποιο να
+                βάλει στην άκρη. Ο ΕΝΦΙΑ μένει έξω (βλ. taxProvision). */}
+            {year===athensYear()&&provision.perRemainingMonth>0?<> Για τον φόρο εισοδήματος, <strong style={{ color:'var(--text-primary)' }}>{eur(provision.perRemainingMonth)} τον μήνα</strong> ως τον Δεκέμβριο.{enfia>0?' Ο ΕΝΦΙΑ πληρώνεται χωριστά, εφάπαξ ή σε δόσεις ως τον Φεβρουάριο.':''}</>:''}
             {provision.advanceTax>0?<> Συν προκαταβολή {eur(provision.advanceTax)}, που πιστώνεται τον επόμενο χρόνο: σύνολο πρώτου έτους {eur(provision.firstYearTotal)}.</>:''}
             </>)}
           </p>
           <div style={{ flex:1 }}/>
           <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'14px 0 0', paddingTop:12, borderTop:'1px solid var(--border-subtle)', fontFamily: T.font.sans, lineHeight:1.55 }}>
-            Εκτιμήσεις. Επιβεβαίωση με τον λογιστή σου ή στο <a href={AADE_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color:'var(--accent)', textDecoration:'none' }}>myAADE</a>.
+            Ενδεικτικά ποσά. Το τελικό ποσό το επιβεβαιώνει ο λογιστής σου ή το εκκαθαριστικό στο <a href={AADE_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color:'var(--accent)', textDecoration:'none' }}>myAADE</a>.
             <InfoHint>
               {businessMode
                 ? (elpForm==='company' ? 'Νομικό πρόσωπο: 22% επί των καθαρών κερδών (μετά από εκπιπτόμενα έξοδα, αποσβέσεις κτιρίου και εξοπλισμού, καθώς και τόκους), συν προκαταβολή φόρου 80% και 5% φόρος στη διανομή μερίσματος.' : `Ατομική επιχείρηση: κλίμακα άρθρου 15 (9-44%) επί των καθαρών κερδών, μετά από εκπιπτόμενα έξοδα, ΕΦΚΑ, αποσβέσεις και τόκους, με τεκμαρτό ελάχιστο καθαρό εισόδημα ${eur(minNetIncome.amount)}${minNetIncome.sourceYear!==year?` (ποσό ${minNetIncome.sourceYear}: για το ${year} δεν έχει ανακοινωθεί κατώτατος μισθός)`:''} και προκαταβολή φόρου 55%.`)
-                : (regime==='individual_longterm' ? 'Μακροχρόνια μίσθωση φυσικού προσώπου: το εισόδημα φορολογείται κατά το άρθρο 40, με τεκμαρτή έκπτωση 5% για επισκευές και συντήρηση. Οι λοιπές δαπάνες, ο ΕΝΦΙΑ και οι τόκοι δανείου δεν εκπίπτουν.' : 'Βραχυχρόνια μίσθωση φυσικού προσώπου: εισόδημα ακινήτων στα μεικτά, χωρίς έκπτωση δαπανών, συν τέλος ανθεκτικότητας ανά διανυκτέρευση και τέλος παρεπιδημούντων όπου ισχύει.')}
+                : (regime==='individual_longterm' ? 'Μακροχρόνια μίσθωση φυσικού προσώπου: το εισόδημα φορολογείται κατά το άρθρο 40, με τεκμαρτή έκπτωση 5% για επισκευές και συντήρηση. Οι λοιπές δαπάνες, ο ΕΝΦΙΑ και οι τόκοι δανείου δεν εκπίπτουν.' : 'Βραχυχρόνια μίσθωση φυσικού προσώπου: εισόδημα ακινήτων, με τεκμαρτή έκπτωση 5% στα μεικτά (άρθρο 39 ΚΦΕ). Οι πραγματικές δαπάνες δεν εκπίπτουν. Επιπλέον το τέλος ανθεκτικότητας ανά διανυκτέρευση και το τέλος παρεπιδημούντων όπου ισχύει.')}
               {/* Η πρόταση απαριθμούσε ΔΥΟ στοιχεία («αξία και τ.μ.»)
                   ενώ η εκτίμηση διαβάζει πλέον ΤΕΣΣΕΡΑ. Ο ιδιοκτήτης που
                   συμπλήρωσε έτος κατασκευής ή όροφο έβλεπε το νούμερο να
@@ -1687,11 +1698,21 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
 
                     Και η ετικέτα αποκτά δάπεδο οκτώ χαρακτήρων, ώστε να μη γίνει ξανά
                     στέλεχος αν προστεθεί κάποτε πέμπτη στήλη. */}
+              {/* Κεφαλίδα μόνο στο βιβλίο: εκεί η μεσαία στήλη είναι το ΥΠΟΛΟΙΠΟ μετά
+                  την κίνηση και χωρίς όνομα διαβαζόταν ως δεύτερο ποσό. */}
+              {mode==='professional'&&(
+                <div aria-hidden style={{ display:'flex', alignItems:'center', gap:10, padding:'4px 0 6px', borderBottom:'1px solid var(--border-subtle)', fontSize:'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>
+                  <span style={{ width:46, flexShrink:0 }}>Ημ/νία</span>
+                  <span style={{ flex:1, minWidth:'8ch' }}>Περιγραφή</span>
+                  <span style={{ width:80, textAlign:'right' }}>Υπόλοιπο</span>
+                  <span style={{ width:92, textAlign:'right' }}>Ποσό</span>
+                </div>
+              )}
               {(mode==='professional'?book.slice(-14).reverse():recentLedger).map((e,i,arr)=>(
                 <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom:i<arr.length-1?'1px solid var(--border-subtle)':'none' }}>
                   <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', width:46, flexShrink:0 }}>{e.date.slice(8,10)}/{e.date.slice(5,7)}</span>
                   <span className="po-elide" style={{ flex:1, minWidth:'8ch', fontSize: 'var(--fs-base)', color:'var(--text-primary)', fontFamily: T.font.sans }}>{e.description}</span>
-                  {mode==='professional'&&<span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', width:80, textAlign:'right' }}>{eur(e.balance)}</span>}
+                  {mode==='professional'&&<span title="Υπόλοιπο μετά την κίνηση" style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', width:80, textAlign:'right' }}><span className="sr-only">Υπόλοιπο μετά την κίνηση </span>{feSigned(e.balance)}</span>}
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans, width:92, textAlign:'right' }}>{e.type==='income'?'+':'−'}{eur(e.amount)}</span>
                 </div>
               ))}

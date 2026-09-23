@@ -493,7 +493,10 @@ export function SecHdr({ label, sub, info, right }: { label: string; sub?: strin
           στον τίτλο κρατά δεκατέσσερα εικονοστοιχεία και λέει τα ίδια. Τα δύο
           δεν αποκλείονται: όποια κεφαλίδα χρειάζεται ΚΑΙ τα δύο, τα έχει. */}
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-        <div style={{ ...TT.label, fontSize: 'var(--fs-xs)' }}>{label}{info}</div>
+        {/* ΤΙΤΛΟΣ ΔΕΥΤΕΡΟΥ ΕΠΙΠΕΔΟΥ, ΜΕ ΤΗΝ ΙΔΙΑ ΕΜΦΑΝΙΣΗ. Ως <div>, η πλοήγηση
+            ανά επικεφαλίδα του αναγνώστη οθόνης δεν έβρισκε τίποτα κάτω από το
+            h1 της καρτέλας. */}
+        <h2 style={{ ...TT.label, fontSize: 'var(--fs-xs)', margin: 0 }}>{label}{info}</h2>
         {sub && <div style={{ ...TT.caption, fontSize: 'var(--fs-xs)', marginTop: 2 }}>{sub}</div>}
       </div>
       {right}
@@ -1224,7 +1227,7 @@ export function pressable<E extends { key: string; preventDefault: () => void }>
 }
 
 // ═══ Btn, κουμπιά σε 3 ρόλους ═════════════════════════════════════════════
-export function Btn({ children, onClick, variant = 'secondary', disabled, type, href, newTab, field, size, title, className, ref, expanded, haspopup, controls }: {
+export function Btn({ children, onClick, variant = 'secondary', disabled, type, href, newTab, field, size, title, className, ref, expanded, haspopup, controls, describedBy, dimmed }: {
   children: ReactNode; onClick?: () => void; variant?: 'primary' | 'secondary' | 'ghost'; disabled?: boolean; type?: 'button' | 'submit';
   /**
    * ΤΡΕΙΣ ΙΚΑΝΟΤΗΤΕΣ ΠΟΥ ΕΛΕΙΠΑΝ, ΚΑΙ ΚΡΑΤΟΥΣΑΝ 26 ΚΟΥΜΠΙΑ ΧΕΙΡΟΠΟΙΗΤΑ
@@ -1296,6 +1299,16 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
    * κελί πλέγματος. Σε γραμμή εργαλείων το κουμπί θέλει το ύψος χωρίς το πλάτος.
    */
   size?: 'md' | 'lg';
+  /**
+   * ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΔΕΙΧΝΕΙ ΣΒΗΣΜΕΝΟ ΑΛΛΑ ΜΕΝΕΙ ΠΑΤΗΣΙΜΟ, ΚΑΙ ΛΕΕΙ ΓΙΑΤΙ.
+   *
+   * Η υποβολή της εγγραφής δεν γίνεται `disabled`: θα έβγαινε από τη σειρά Tab
+   * και ο χρήστης πληκτρολογίου δεν θα τη συναντούσε ποτέ. Μένει κανονική, με
+   * σβηστή όψη (`dimmed`) και τον λόγο σε λέξεις (`describedBy`). Ηταν ο λόγος
+   * που το κουμπί της ζωγραφιζόταν στο χέρι, με άλλο σχήμα από τα αδέλφια του.
+   */
+  describedBy?: string;
+  dimmed?: boolean;
 }) {
   const base: CSSProperties = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -1306,7 +1319,7 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
     ...(field ? { display: 'flex', width: '100%' } : null),
     padding: '9px 18px', borderRadius: T.radius.btn,
     fontSize: 12, fontWeight: 700, fontFamily: T.font.sans,
-    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
+    cursor: (disabled || dimmed) ? 'not-allowed' : 'pointer', opacity: (disabled || dimmed) ? 0.5 : 1,
     transition: 'background-color 0.15s cubic-bezier(0.2,0,0,1), border-color 0.15s cubic-bezier(0.2,0,0,1), color 0.15s cubic-bezier(0.2,0,0,1), box-shadow 0.15s cubic-bezier(0.2,0,0,1), transform 0.15s cubic-bezier(0.2,0,0,1), opacity 0.15s cubic-bezier(0.2,0,0,1)',
     // ΠΑΧΟΣ ΚΑΙ ΕΙΔΟΣ ΕΙΝΑΙ ΓΕΩΜΕΤΡΙΑ: κρατούν το ύψος ίδιο και στις τρεις
     // παραλλαγές, ώστε το περίγραμμα του δευτερεύοντος να μη μετακινεί τα
@@ -1374,6 +1387,7 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
       aria-expanded={expanded}
       aria-haspopup={haspopup}
       aria-controls={controls}
+      aria-describedby={describedBy}
       onClick={disabled ? undefined : onClick}
       style={base}
     >{children}</button>

@@ -88,9 +88,11 @@ export function ScanErrorNote({ error, text, hint }: { error: DocScanError; text
  * ξεχωρίζει και τι λέει το κουμπί. Το κρυφό πεδίο αρχείου ζει εδώ, ώστε καμία
  * οθόνη να μη χειρίζεται δικό της ref.
  */
-export function ScanUploadRow({ title, description, action, icon, scanning, onFile }: {
+export function ScanUploadRow({ title, description, note, action, icon, scanning, onFile }: {
   title?: string
   description: string
+  /** Λεζάντα κάτω από την περιγραφή (π.χ. πού πηγαίνει το έγγραφο). */
+  note?: ReactNode
   action: string
   icon: ReactNode
   scanning: boolean
@@ -157,6 +159,7 @@ export function ScanUploadRow({ title, description, action, icon, scanning, onFi
         {/* Το `lineHeight: undefined` σβήνει το 1,50 που φέρνει το `TT.bodySm`
             μέσα από το spread· αλλιώς το ενσωματωμένο στυλ νικά την κλάση. */}
         <p className="po-prose po-just" style={{ ...TT.bodySm, lineHeight: undefined, color: 'var(--text-tertiary)' }}>{hy(<>{description}</>)}</p>
+        {note && <p style={{ ...TT.caption, color: 'var(--text-tertiary)', marginTop: 6 }}>{note}</p>}
       </div>
       {/* size="lg" γιατί το ύψος ήταν καρφωμένο στο T.h.lg δίπλα στην περιγραφή. */}
       <Btn variant="primary" size="lg" onClick={() => inputRef.current?.click()} disabled={scanning}>
@@ -376,7 +379,10 @@ export default function LoanDocScan({ banks, euribor, defaultPropertyValue, onAp
     <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '16px 20px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <ScanUploadRow
         title="Εύρεση δανείου από τα στοιχεία του δανειολήπτη"
-        description="Ανέβασε έγγραφο ή φωτογραφία με τις ανάγκες ενός υποψήφιου δανειολήπτη (ποσό, εισόδημα, ακίνητο, οικογενειακή κατάσταση) ή ένα υπάρχον δάνειο. Το εργαλείο εξάγει τα στοιχεία και κατατάσσει τις τράπεζες."
+        description="Ανέβασε έγγραφο ή φωτογραφία με τις ανάγκες ενός υποψήφιου δανειολήπτη (ποσό, εισόδημα, ακίνητο, οικογενειακή κατάσταση) ή ένα υπάρχον δάνειο. Διαβάζουμε τα στοιχεία και κατατάσσουμε τις τράπεζες με βάση το συνολικό κόστος."
+        // ΕΙΣΟΔΗΜΑ, ΗΛΙΚΙΑ ΚΑΙ ΠΑΙΔΙΑ ΤΡΙΤΟΥ ΠΡΟΣΩΠΟΥ φεύγουν στον πάροχο τεχνητής
+        // νοημοσύνης· το λέμε πριν το ανέβασμα, όπως το γράφει το /privacy.
+        note={<>Το έγγραφο το διαβάζει ο πάροχος τεχνητής νοημοσύνης που αναφέρει η <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>πολιτική απορρήτου</a>. Ο πάροχος δεσμεύεται με σύμβαση να μην εκπαιδεύει μοντέλα με αυτό. Ανέβασε στοιχεία άλλου προσώπου μόνο με τη συγκατάθεσή του.</>}
         action="Ανέβασε στοιχεία δανειολήπτη"
         scanning={scanning}
         onFile={scanFile}

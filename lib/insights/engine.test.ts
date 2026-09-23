@@ -109,7 +109,15 @@ ok(greeting(new Date('2026-07-06T17:00:00Z').getTime()) === 'Καλησπέρα'
   // Χωρίς ενοίκιο δεν υπάρχει σύγκριση· ένα «μείον» από κενά πεδία θα ήταν ψεύτικο.
   ok(!has(base({ loanPayment: 900, rent: 0 }), 'loan-cash-negative'), 'χωρίς ενοίκιο, καμία ετυμηγορία');
   const neg = get(base({ loanPayment: 900 }), 'loan-cash-negative')!;
-  ok(!/Infinity|NaN/.test(neg.detail) && neg.action?.tab === 'loan', 'η γραμμή οδηγεί στο Δάνειο, χωρίς σκουπίδια'); }
+  ok(!/Infinity|NaN/.test(neg.detail) && neg.action?.tab === 'loan', 'η γραμμή οδηγεί στο Δάνειο, χωρίς σκουπίδια');
+  // Το έλλειμμα λέγεται «λείπουν» με θετικό ποσό, όχι «μένουν -512,30€».
+  ok(/λείπουν \d/.test(neg.detail) && !/μένουν -/.test(neg.detail) && neg.metric?.startsWith('−') === true,
+     'αρνητικό ταμείο: «λείπουν» και τυπογραφικό μείον');
+  // Χωρίς ενοικιαστή, το ποσό είναι στόχος και όχι ενοίκιο.
+  const vac = get(base({ loanPayment: 900, tenant: null }), 'loan-cash-negative')!;
+  ok(vac.detail.startsWith('Με στόχο ενοικίου'), 'χωρίς ενοικιαστή: «στόχο ενοικίου»'); }
+// Ο κανόνας του ρεύματος διαβάζει την κατηγορία που γράφει η εφαρμογή.
+ok(has(base({ bills: [{ category: 'electricity', type: '', amount: 2000, paid: true, due_date: inDays(5) }], expensesYTD: 3000 }), 'energy-review'), 'ρεύμα από την κατηγορία');
 
 // ── Η κατηγορία που ξέφυγε ────────────────────────────────────────────────
 // NOW είναι 6 Ιουλίου 2026, άρα ο τελευταίος ΚΛΕΙΣΜΕΝΟΣ μήνας είναι ο Ιούνιος.

@@ -100,10 +100,12 @@ function CollapsibleSection({ title, hint, defaultOpen = false, delay, children 
   return (
     <Card className="acc-section" style={{ animationDelay: delay }}>
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls={panelId} className="po-sec-toggle"
-        style={{ appearance: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: open ? '1px solid var(--border-subtle)' : 'none', background: 'transparent', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 2, gap: 10, padding: 0, textAlign: 'left', marginBottom: open ? 16 : 0, paddingBottom: open ? 10 : 0 }}>
-        {/* ΤΟ ΒΕΛΑΚΙ ΜΕΝΕΙ ΔΙΠΛΑ ΣΤΟΝ ΤΙΤΛΟ ΟΤΑΝ Η ΣΕΙΡΑ ΤΥΛΙΓΕΤΑΙ. Χωρίς το
-            `999`, ο τίτλος και το βελάκι μοιράζονταν τον χώρο ισότιμα και το
-            βελάκι έφευγε μόνο του σε τρίτη γραμμή. */}
+        style={{ appearance: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: open ? '1px solid var(--border-subtle)' : 'none', background: 'transparent', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: 0, textAlign: 'left', marginBottom: open ? 16 : 0, paddingBottom: open ? 10 : 0 }}>
+        {/* ΤΟ ΒΕΛΑΚΙ ΔΕΝ ΤΥΛΙΓΕΤΑΙ ΠΟΤΕ. Ηταν τρίτο αδέλφι μέσα στην ίδια
+            σειρά με `flex-wrap`, οπότε στα 390 έπεφτε μόνο του κάτω από το
+            «Εμφάνιση και γλώσσα». Τίτλος και υπόδειξη ζουν τώρα σε δικό τους
+            μπλοκ που τυλίγει όσο χρειάζεται· το βελάκι στέκεται δεξιά του. */}
+        <span style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 2, columnGap: 10 }}>
         <span style={{ ...TT.label, flex: '999 1 auto', minWidth: 0 }}>{title}</span>
         {/* ═══ Η ΥΠΟΣΗΜΕΙΩΣΗ ΠΑΕΙ ΣΕ ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΑΝΤΙ ΝΑ ΚΟΠΕΙ ══════════════
             Με τη γραμματοσειρά στα 12 σε δάχτυλο, το «Κωδικός και επαλήθευση δύο
@@ -116,6 +118,7 @@ function CollapsibleSection({ title, hint, defaultOpen = false, delay, children 
             που είναι έτσι κι αλλιώς το φυσικό σχήμα. Οπου χωράει, τίποτα δεν
             αλλάζει: το `flex-wrap` δεν τυλίγει ό,τι χωράει. */}
         {hint && !open && <span style={{ ...TT.caption, minWidth: 0, flex: '1 1 auto', overflowWrap: 'anywhere' }}>{hint}</span>}
+        </span>
         <svg aria-hidden="true" focusable="false" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'transform 0.2s cubic-bezier(0.2,0,0,1)', transform: open ? 'rotate(180deg)' : 'none' }}>
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -694,9 +697,12 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
     try { document.documentElement.classList.toggle(cls, v); } catch { /* ignore */ }
   };
 
+  // Ο ΤΡΟΠΟΣ ΧΡΗΣΗΣ ΔΕΝ ΛΕΓΕΤΑΙ ΟΠΩΣ ΤΟ ΠΑΚΕΤΟ. Η κάρτα «Επαγγελματίας»
+  // στεκόταν κάτω από το «Πακέτο Επαγγελματίας» της ίδιας ενότητας και ο
+  // χρήστης δεν ήξερε ποιο από τα δύο διαλέγει. Οι κάρτες λένε για ποιον είναι.
   const PROFILE_OPTS: { v: ProfileType; title: string; sub: string }[] = [
-    { v: 'individual', title: 'Ιδιώτης', sub: 'Ένα ή λίγα δικά μου ακίνητα. Απλό, καθαρό, χωρίς περιττά.' },
-    { v: 'professional', title: 'Επαγγελματίας', sub: 'Πολλά ακίνητα. Χαρτοφυλάκιο, σύγκριση, εργαλεία διαχείρισης.' },
+    { v: 'individual', title: 'Για τα δικά μου ακίνητα', sub: 'Λίγα ακίνητα, με όσα χρειάζονται η δήλωση και ο λογιστής.' },
+    { v: 'professional', title: 'Για πελάτες ή χαρτοφυλάκιο', sub: 'Πολλά ακίνητα, με χαρτοφυλάκιο, σύγκριση και ομάδα.' },
   ];
 
   return (
@@ -752,11 +758,15 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         <div className="plan-ladder" style={{ marginTop: 16, gap: 6 }}>
           {PAID_PLAN_ORDER.map(id => {
             const on = id === effPlan;
+            // ΜΟΝΟ ΤΟ ΔΙΚΟ ΣΟΥ ΚΕΛΙ ΕΧΕΙ ΠΛΑΙΣΙΟ. Τέσσερα κουτιά με περίγραμμα
+            // δίπλα στο «Διαχείριση συνδρομής» διαβάζονταν ως κουμπιά που δεν
+            // πατιούνται. Η σκάλα είναι ένδειξη θέσης· τα υπόλοιπα είναι ετικέτες.
+            // Το διάφανο περίγραμμα κρατά ίδιο το ύψος και των τεσσάρων.
             return (
               <div key={id} style={{
                 textAlign: 'center', padding: '9px 6px', borderRadius: T.radius.inner,
-                border: `1px solid ${on ? 'var(--accent-border)' : 'var(--border-subtle)'}`,
-                background: on ? 'var(--accent-dim)' : 'var(--bg-surface)',
+                border: `1px solid ${on ? 'var(--accent-border)' : 'transparent'}`,
+                background: on ? 'var(--accent-dim)' : 'transparent',
               }}>
                 <div style={{ fontSize: 12, fontWeight: on ? 700 : 500, color: on ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.3 }}>{PLANS[id].name}</div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
@@ -821,7 +831,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               Έχεις δωρεάν πρόσβαση <strong style={{ color: 'var(--text-primary)' }}>{PLANS[comp.plan].name}</strong>
               {isOpenEnded(comp.until)
                 ? ', χωρίς ημερομηνία λήξης'
-                : <> έως και {fdLong(comp.until)}</>}. Την κέρδισες από το Πρόγραμμα Πρόσκλησης, χωρίς καμία χρέωση.
+                : <> έως και {fdLong(comp.until)}</>}. Την κέρδισες από το Πρόγραμμα πρόσκλησης, χωρίς καμία χρέωση.
             </div>
           </div>
         )}
@@ -830,7 +840,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         <div style={divider}>
           <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 4 }}>Τρόπος χρήσης</div>
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 14, lineHeight: 1.5 }}>
-            Αλλάζει όποτε θες.{partner ? ' Είσαι ενεργός Συνεργάτης PROPERWISE.' : ''}
+            Αλλάζει όποτε θες.{partner ? ' Είσαι ενεργός συνεργάτης PROPERWISE.' : ''}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 12 }}>
             {PROFILE_OPTS.map(o => {

@@ -25,28 +25,21 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensParts, athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
+import { publicMetadata } from '../publicMetadata';
 import { ApodosiCalculator } from './ApodosiCalculator';
 
-const TITLE = 'Καθαρή απόδοση ακινήτου · δωρεάν υπολογιστής, χωρίς εγγραφή';
+const TITLE = 'Καθαρή απόδοση ακινήτου με τα δικά σου δεδομένα';
 const DESC =
   'Πόσο αποδίδει πραγματικά το ακίνητό σου μετά τον φόρο εισοδήματος, τον ΕΝΦΙΑ '
   + 'και τις δαπάνες. Μεικτή και καθαρή απόδοση δίπλα δίπλα, με τον φόρο στο δικό '
   + 'σου κλιμάκιο. Δωρεάν, χωρίς εγγραφή, ο υπολογισμός γίνεται στη συσκευή σου.';
 const URL = siteUrl('/kathari-apodosi');
 
-export const metadata: Metadata = {
-  title: { absolute: TITLE },
-  description: DESC,
-  alternates: { canonical: URL },
-  openGraph: {
-    title: TITLE, description: DESC, url: URL,
-    siteName: 'PROPERWISE', locale: 'el_GR', type: 'website',
-  },
-  twitter: { card: 'summary_large_image', title: TITLE, description: DESC },
-};
+// Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL });
 
 // Οι ερωτήσεις που κάνει πραγματικά ο ιδιοκτήτης, με απαντήσεις που στέκουν. Το
 // ίδιο περιεχόμενο τροφοδοτεί και το δομημένο σχήμα παρακάτω — μία πηγή, ώστε να
@@ -92,13 +85,9 @@ const FAQ: { q: string; a: string }[] = [
     a: 'Όχι. Η βραχυχρόνια έχει τέλος ανθεκτικότητας ανά διανυκτέρευση, προμήθεια '
      + 'πλατφόρμας που δεν εκπίπτει για το φυσικό πρόσωπο, λειτουργικά ανά νύχτα και '
      + 'δικά της όρια πριν θεωρηθεί επιχειρηματική δραστηριότητα. Τη συγκρίνει '
-     + 'χωριστά το εργαλείο «Βραχυχρόνια ή μακροχρόνια».',
+     + 'χωριστά ο υπολογιστής «Βραχυχρόνια ή μακροχρόνια».',
   },
-  {
-    q: 'Τα δεδομένα μου αποθηκεύονται;',
-    a: 'Όχι. Ο υπολογισμός γίνεται εξ ολοκλήρου στον browser σου. Κανένα ποσό δεν '
-     + 'στέλνεται σε διακομιστή και δεν χρειάζεται ούτε email ούτε εγγραφή.',
-  },
+  TOOL_PRIVACY_FAQ,
 ];
 
 export default function Page() {
@@ -137,7 +126,7 @@ export default function Page() {
 
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
         <BackLink />
-        <div className="lp-eyebrow">Δωρεάν εργαλείο</div>
+        <div className="lp-eyebrow">Υπολογιστής</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           Πόσο αποδίδει πραγματικά το ακίνητό σου

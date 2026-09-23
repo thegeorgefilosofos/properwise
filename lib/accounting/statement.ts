@@ -250,7 +250,7 @@ export function incomeStatement(input: StatementInput): IncomeStatement {
 export interface TaxProvision {
   annualTaxTotal: number   // φόρος εισοδήματος + φόρος μερισμάτων + φόροι/τέλη ακινήτου
   monthly: number          // ισόποσα στους 12 μήνες
-  perRemainingMonth: number// στο υπόλοιπο του έτους (ώστε να προλάβεις)
+  perRemainingMonth: number// φόρος εισοδήματος + μερισμάτων στο υπόλοιπο του έτους (χωρίς ΕΝΦΙΑ/τέλη)
   incomeTax: number
   propertyTaxes: number
   advanceTax: number       // προκαταβολή έναντι επόμενου έτους (χωριστά· πιστώνεται)
@@ -261,10 +261,15 @@ export interface TaxProvision {
 export function taxProvision(st: IncomeStatement, monthIndex1: number = 1): TaxProvision {
   const annual = cents(st.incomeTax + st.dividendTax + st.propertyTaxes)
   const remaining = Math.max(1, 12 - Math.min(12, Math.max(1, monthIndex1)) + 1)
+  // ΟΙ ΦΟΡΟΙ ΑΚΙΝΗΤΟΥ ΜΕΝΟΥΝ ΕΞΩ ΑΠΟ ΤΟ «ΝΑ ΠΡΟΛΑΒΕΙΣ». Ο ΕΝΦΙΑ πληρώνεται ήδη
+  // σε δόσεις από Μάρτιο ως Φεβρουάριο (greekTaxCalendar) και η Κατάσταση τον
+  // αφαιρεί ως ταμειακή δαπάνη· μαζί εδώ, τον Σεπτέμβριο ζητούσαμε να
+  // μαζευτεί σε τέσσερις μήνες ένα ποσό που έχει ήδη σχεδόν πληρωθεί.
+  const toSetAside = cents(st.incomeTax + st.dividendTax)
   return {
     annualTaxTotal: annual,
     monthly: cents(annual / 12),
-    perRemainingMonth: cents(annual / remaining),
+    perRemainingMonth: cents(toSetAside / remaining),
     incomeTax: st.incomeTax,
     propertyTaxes: st.propertyTaxes,
     advanceTax: st.advanceTax,

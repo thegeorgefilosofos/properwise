@@ -15,34 +15,31 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
-import { SITE, siteUrl } from '@/lib/core/site';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, WRAP, WRAP_PAD } from '../../PublicChrome';
+import { siteUrl } from '@/lib/core/site';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead } from '../../PublicChrome';
 import { hy } from '@/components/Hyphen';
-import { BackLink } from '../../BackLink';
+import { publicMetadata } from '../../publicMetadata';
+import { guideAt } from '../guides';
+import { GuideMain, GuideUpdated, GuideH2 as H2, GuideSources, GuideFaq, RelatedGuides, guideJsonLd, type GuideFaqItem } from '../GuideParts';
 
 const TITLE = 'Airbnb και ΤΑΚΚ 2026: φόροι και τέλη βραχυχρόνιας μίσθωσης';
+// Κάτω από 160 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
+// Η επιφύλαξη «ενδεικτικός» μένει στο σώμα της σελίδας.
 const DESC =
-  'Τι πληρώνεις για βραχυχρόνια μίσθωση (Airbnb/Booking) το 2026: Τέλος Ανθεκτικότητας '
-  + 'στην Κλιματική Κρίση (ΤΑΚΚ) ανά διανυκτέρευση, τέλος παρεπιδημούντων 0,5% και φόρος '
-  + 'εισοδήματος. Με παραδείγματα σε ευρώ και πηγές. Ενδεικτικός οδηγός, όχι εκκαθαριστικό.';
-const URL = siteUrl('/odigos/airbnb-takk-2026');
-const UPDATED = '2026-09-21';
+  'Τι πληρώνεις για βραχυχρόνια μίσθωση (Airbnb, Booking) το 2026: ΤΑΚΚ ανά διανυκτέρευση, '
+  + 'τέλος παρεπιδημούντων 0,5% και φόρος εισοδήματος, με παραδείγματα.';
+const GUIDE = guideAt('/odigos/airbnb-takk-2026');
+const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = {
-  title: { absolute: TITLE },
-  description: DESC,
-  alternates: { canonical: URL },
-  openGraph: { title: TITLE, description: DESC, url: URL, siteName: 'PROPERWISE', locale: 'el_GR', type: 'article' },
-  twitter: { card: 'summary_large_image', title: TITLE, description: DESC },
-};
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article' });
 
 // Οι ερωτήσεις τροφοδοτούν ΚΑΙ την ορατή λίστα ΚΑΙ το δομημένο σχήμα — μία πηγή.
-const FAQ: { q: string; a: string }[] = [
+const FAQ: GuideFaqItem[] = [
   {
     q: 'Ποιος πληρώνει το Τέλος Ανθεκτικότητας (ΤΑΚΚ);',
-    a: 'Το επιβαρύνεται ο επισκέπτης ανά διανυκτέρευση, αλλά ο οικοδεσπότης είναι υπεύθυνος '
-     + 'να το εισπράξει και να το αποδώσει μηνιαίως στην ΑΑΔΕ. Δεν είναι έξοδο του ιδιοκτήτη '
-     + 'αν το χρεώσει στον επισκέπτη· γίνεται έξοδο μόνο αν δεν το εισπράξει.',
+    a: 'Βαραίνει τον επισκέπτη, ανά διανυκτέρευση. Ο οικοδεσπότης όμως είναι υπεύθυνος να το '
+     + 'εισπράξει και να το αποδώσει μηνιαίως στην ΑΑΔΕ. Αν το χρεώσεις στον επισκέπτη, δεν '
+     + 'είναι δικό σου έξοδο· γίνεται έξοδο μόνο αν δεν το εισπράξεις.',
   },
   {
     q: 'Πόσο είναι το ΤΑΚΚ ανά διανυκτέρευση;',
@@ -66,7 +63,8 @@ const FAQ: { q: string; a: string }[] = [
   {
     q: 'Χρειάζομαι Αριθμό Μητρώου Ακινήτου (ΑΜΑ);',
     a: 'Ναι. Κάθε ακίνητο βραχυχρόνιας μίσθωσης εγγράφεται στο Μητρώο Ακινήτων Βραχυχρόνιας '
-     + 'Διαμονής της ΑΑΔΕ και ο ΑΜΑ αναγράφεται υποχρεωτικά σε κάθε αγγελία (Airbnb, Booking).',
+     + 'Διαμονής της ΑΑΔΕ και ο ΑΜΑ αναγράφεται υποχρεωτικά σε κάθε αγγελία (Airbnb, Booking). '
+     + 'Στο 1ο, 2ο και 3ο δημοτικό διαμέρισμα της Αθήνας δεν εκδίδονται νέοι ΑΜΑ έως τις 31.12.2026.',
   },
   {
     q: 'Πώς φορολογείται το εισόδημα από τη βραχυχρόνια;',
@@ -78,8 +76,8 @@ const FAQ: { q: string; a: string }[] = [
 
 // ΤΑΚΚ ανά διανυκτέρευση — ίδια αριθμητική με CLIMATE_LEVY_FROM_2025 (greekTax.ts).
 const LEVY: { type: string; high: string; low: string }[] = [
-  { type: 'Διαμερίσματα και κατοικίες', high: '8€', low: '2€' },
-  { type: 'Μονοκατοικίες άνω των 80 τ.μ.', high: '15€', low: '4€' },
+  { type: 'Διαμέρισμα ή κατοικία', high: '8€', low: '2€' },
+  { type: 'Μονοκατοικία άνω των 80 τ.μ.', high: '15€', low: '4€' },
 ];
 
 // Οι πηγές/νομική βάση, ορατές όπως στα εργαλεία (E-E-A-T).
@@ -87,54 +85,27 @@ const SOURCES: string[] = [
   'Τέλος Ανθεκτικότητας στην Κλιματική Κρίση (ΤΑΚΚ): ν.5073/2023 όπως ισχύει με τον ν.5162/2024 (ποσά και όρια περιόδου από 1/1/2025) · οδηγός/απόδοση ΑΑΔΕ.',
   'Τέλος παρεπιδημούντων (δημοτικό): 0,5% επί των μεικτών, με εξαίρεση φυσικών προσώπων έως 2 ακίνητα (ν.5073/2023) · ΑΑΔΕ / δήμοι.',
   'Φόρος εισοδήματος: κλίμακα ενοικίων 2026 (ν.5246/2025) · τεκμαρτή έκπτωση 5% (άρθρο 39 ΚΦΕ) · η προϋπόθεση τραπεζικής είσπραξης (ν.5222/2025) ξεκινά την 1.7.2027 (Α.1187/2026).',
+  'Μητρώο Ακινήτων Βραχυχρόνιας Διαμονής: πάγωμα νέων ΑΜΑ στο 1ο, 2ο και 3ο δημοτικό διαμέρισμα Αθηναίων (ν.5162/2024), με παράταση έως 31.12.2026 με υπουργική απόφαση · προδιαγραφές ασφάλειας ακινήτων βραχυχρόνιας μίσθωσης (ν.5162/2024).',
 ];
 
-function H2({ over, title }: { over: string; title: string }) {
-  return <div style={{ marginTop: 'clamp(40px,5vw,60px)', marginBottom: 16 }}><SectionHead over={over} title={title} /></div>;
-}
-
 export default function Page() {
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'Article',
-        headline: TITLE,
-        description: DESC,
-        inLanguage: 'el',
-        datePublished: UPDATED,
-        dateModified: UPDATED,
-        mainEntityOfPage: URL,
-        author: { '@type': 'Organization', name: 'PROPERWISE', url: SITE },
-        publisher: { '@type': 'Organization', name: 'PROPERWISE', url: SITE },
-        about: 'Φορολογία βραχυχρόνιας μίσθωσης και Τέλος Ανθεκτικότητας στην Κλιματική Κρίση',
-      },
-      {
-        '@type': 'FAQPage',
-        mainEntity: FAQ.map(f => ({
-          '@type': 'Question',
-          name: f.q,
-          acceptedAnswer: { '@type': 'Answer', text: f.a },
-        })),
-      },
-    ],
-  };
+  const jsonLd = guideJsonLd({
+    guide: GUIDE, headline: TITLE, description: DESC, faq: FAQ,
+    about: 'Φορολογία βραχυχρόνιας μίσθωσης και Τέλος Ανθεκτικότητας στην Κλιματική Κρίση',
+  });
 
   return (
     <div className="po-tool-page" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       <JsonLd data={jsonLd} />
       <PublicHeader />
 
-      <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
-        <BackLink />
+      <GuideMain>
         <div className="lp-eyebrow">Οδηγός</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           Airbnb και ΤΑΚΚ 2026: φόροι και τέλη βραχυχρόνιας μίσθωσης
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 18px' }}>
-          Ενημέρωση με βάση τη νομοθεσία όπως ισχύει τον Σεπτέμβριο 2026.
-        </p>
+        <GuideUpdated guide={GUIDE} />
 
         {/* Εισαγωγή */}
         <p className="lg-p">
@@ -151,13 +122,17 @@ export default function Page() {
         </p>
         <div className="po-table-box" style={{ marginTop: 14 }}>
           <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-            <table className="po-table" style={{ '--tbl-min': '360px' } as React.CSSProperties}>
-              <caption>Ποσά ανά διανυκτέρευση</caption>
+            {/* ΧΩΡΑΕΙ ΣΤΑ 390 ΧΩΡΙΣ ΚΥΛΙΣΗ. Με «Υψηλή (Απρ–Οκτ)» σε κεφαλίδα που δεν
+                σπάει και ελάχιστο 360 μέσα σε κουτί 358, η στήλη της χαμηλής
+                περιόδου έβγαινε εκτός και οι ετικέτες γραμμών κόβονταν στη μέση
+                της λέξης. Η περίοδος πάει στη λεζάντα, οι στήλες κρατούν τους μήνες. */}
+            <table className="po-table" style={{ '--tbl-min': '300px' } as React.CSSProperties}>
+              <caption>Ποσά ανά διανυκτέρευση, υψηλή και χαμηλή περίοδος</caption>
               <thead>
                 <tr>
                   <th scope="col">Τύπος ακινήτου</th>
-                  <th scope="col" className="num">Υψηλή (Απρ–Οκτ)</th>
-                  <th scope="col" className="num">Χαμηλή (Νοε–Μαρ)</th>
+                  <th scope="col" className="num">Απρ–Οκτ</th>
+                  <th scope="col" className="num">Νοε–Μαρ</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,7 +149,7 @@ export default function Page() {
         </div>
         <ul className="lg-ul" style={{ marginTop: 16 }}>
           <li>{hy('Το πληρώνει ο επισκέπτης, αλλά ο οικοδεσπότης το εισπράττει και το αποδίδει μηνιαίως στην ΑΑΔΕ.')}</li>
-          <li>{hy('Το υψηλό κλιμάκιο (15€ / 4€) αφορά ΜΟΝΟ μονοκατοικίες άνω των 80 τ.μ. Ένα διαμέρισμα, ακόμη και 100 τ.μ., μένει στο βασικό (8€ / 2€).')}</li>
+          <li>{hy('Το υψηλό κλιμάκιο (15€ / 4€) αφορά μόνο μονοκατοικίες άνω των 80 τ.μ. Ένα διαμέρισμα, ακόμη και 100 τ.μ., μένει στο βασικό (8€ / 2€).')}</li>
           <li>{hy('Υψηλή περίοδος: Απρίλιος έως Οκτώβριος. Χαμηλή: Νοέμβριος έως Μάρτιος.')}</li>
         </ul>
 
@@ -212,15 +187,14 @@ export default function Page() {
         <p className="lg-p">
           {hy('Κάθε ακίνητο βραχυχρόνιας μίσθωσης εγγράφεται στο Μητρώο Ακινήτων Βραχυχρόνιας Διαμονής της ΑΑΔΕ και λαμβάνει Αριθμό Μητρώου Ακινήτου (ΑΜΑ), που αναγράφεται υποχρεωτικά σε κάθε αγγελία σε Airbnb, Booking και κάθε πλατφόρμα.')}
         </p>
+        {/* ΤΟ ΠΑΓΩΜΑ ΠΡΙΝ ΑΠΟ ΤΗΝ ΥΠΟΣΧΕΣΗ. Ο αναγνώστης στο κέντρο της Αθήνας
+            διάβαζε «λαμβάνει ΑΜΑ», ενώ εκεί νέοι αριθμοί δεν εκδίδονται. */}
+        <div className="lg-note" style={{ marginTop: 16 }}>
+          {hy('Στο 1ο, 2ο και 3ο δημοτικό διαμέρισμα της Αθήνας δεν εκδίδονται νέοι ΑΜΑ έως τις 31.12.2026. Κάθε ακίνητο βραχυχρόνιας μίσθωσης πρέπει επίσης να πληροί προδιαγραφές ασφάλειας, όπως πυροσβεστήρας, ανιχνευτής καπνού και φαρμακείο πρώτων βοηθειών, με πρόστιμο αν λείπουν. Αν το ακίνητό σου μπορεί να εγγραφεί και τι ακριβώς χρειάζεται, το ελέγχεις με τον λογιστή σου πριν αναρτήσεις.')}
+        </div>
 
         {/* 6. Πηγές / νομική βάση */}
-        <H2 over="6. Τεκμηρίωση" title="Νομική βάση και πηγές" />
-        <div className="po-tool-sources" aria-label="Νομική βάση και πηγές" style={{ display: 'block' }}>
-          <span className="po-src-badge">Νομική βάση</span>
-          <ul className="lg-ul" style={{ marginTop: 12 }}>
-            {SOURCES.map((s, i) => <li key={i}>{hy(s)}</li>)}
-          </ul>
-        </div>
+        <GuideSources over="6. Τεκμηρίωση" sources={SOURCES} />
 
         {/* CTA προς τα εργαλεία */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
@@ -242,29 +216,15 @@ export default function Page() {
         </section>
 
         {/* Συχνές ερωτήσεις */}
-        <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
-          <SectionHead over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν πριν αναρτήσουν" />
-          <div style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            {FAQ.map(f => (
-              <details key={f.q} className="lp-faq">
-                <summary style={{ cursor: 'pointer', listStyle: 'none', padding: '17px 0', fontSize: 15,
-                  fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                  {f.q}
-                  <span className="lp-plus" style={{ color: 'var(--accent)', fontSize: 20, fontWeight: 450, lineHeight: 1, transition: 'transform .2s', flexShrink: 0 }}>+</span>
-                </summary>
-                <p className="po-just" style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-                  {hy(f.a)}
-                </p>
-              </details>
-            ))}
-          </div>
-        </section>
+        <GuideFaq title="Ό,τι ρωτούν πριν αναρτήσουν" faq={FAQ} />
+
+        <RelatedGuides current={GUIDE} />
 
         {/* Αποποίηση */}
         <div className="lg-note" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           {hy('Ο παρών οδηγός, όπως και κάθε συνδεδεμένος υπολογισμός, είναι ενδεικτικός. Τα ακριβή ποσά του ΤΑΚΚ, οι μήνες της περιόδου και οι εξαιρέσεις ορίζονται από την ΑΑΔΕ και τους δήμους. Δεν αποτελεί επίσημο εκκαθαριστικό ούτε υποκαθιστά λογιστή ή φοροτεχνικό.')}
         </div>
-      </main>
+      </GuideMain>
 
       <PublicFooter />
     </div>

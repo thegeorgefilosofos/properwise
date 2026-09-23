@@ -64,6 +64,22 @@ if (planType.length) {
     problems.push(`ο τύπος Plan του ${TPL} έχει «${planType.join(', ')}» και όφειλε «free, ${profileTypes.join(', ')}»`);
 }
 
+// 5. Τα ονόματα των πακέτων (PACKAGE_NAME): αντίγραφο του plans.ts, γιατί το
+// Deno δεν φτάνει στο lib/. Ένα πακέτο που μετονομάζεται στην εφαρμογή και
+// μένει με το παλιό όνομα στα email είναι πακέτο που δεν υπάρχει.
+const pkgBody = /export const PACKAGE_NAME\s*=\s*\{([\s\S]*?)\}/.exec(tpl)?.[1];
+if (pkgBody == null) problems.push(`δεν βρέθηκε το PACKAGE_NAME στο ${TPL}`);
+else {
+  const names = Object.fromEntries([...plans.matchAll(/^\s*id: '([a-z]+)', name: '([^']+)'/gm)].map(m => [m[1], m[2]]));
+  const mirror = [...pkgBody.matchAll(/(\w+)\s*:\s*'([^']+)'/g)].map(m => [m[1], m[2]]);
+  for (const [id, name] of mirror) {
+    if (!(id in names)) problems.push(`το PACKAGE_NAME έχει «${id}», που δεν είναι πακέτο του ${PLANS}`);
+    else if (names[id] !== name) problems.push(`το PACKAGE_NAME λέει «${id}: ${name}» και το ${PLANS} «${names[id]}»`);
+  }
+  for (const id of Object.keys(names))
+    if (id !== 'free' && !mirror.some(([k]) => k === id)) problems.push(`το πακέτο «${id}» λείπει από το PACKAGE_NAME`);
+}
+
 if (problems.length) {
   console.error(`✗ το κοινό των email δεν συμφωνεί με τους τύπους προφίλ:\n`);
   for (const p of problems) console.error(`  · ${p}`);

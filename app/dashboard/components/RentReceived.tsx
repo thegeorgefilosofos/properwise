@@ -57,6 +57,7 @@ import { notifyOk, notifyError } from '@/components/Toast';
 import type { CashLine } from '@/lib/home/cash';
 import { pickedLines, recordLabel, receiptNote } from '@/lib/home/rentReceipt';
 import { hy } from '@/components/Hyphen';
+import { navLabel } from '@/lib/nav/labels';
 
 /** Οι γραμμές που μπορούν να εισπραχθούν από εδώ: όσες ξέρουν τη δόση τους. */
 export function receivableLines(lines: readonly CashLine[]): CashLine[] {
@@ -185,7 +186,7 @@ export default function RentReceived({
   return (
     <Modal open onClose={() => { if (!busy) onClose(); }} size="sm"
       title={openLines.length === 1 ? 'Είσπραξη ενοικίου' : 'Είσπραξη ενοικίων'}
-      footerInfo="Για μερική πληρωμή ή διαφορετικό ποσό, από τον Ενοικιαστή."
+      footerInfo={`Μερική πληρωμή ή άλλο ποσό καταχωρείς στην καρτέλα ${navLabel('tenant')}.`}
       footer={<>
         <Btn variant="ghost" onClick={busy ? undefined : onClose}>Ακύρωση</Btn>
         <Btn variant="primary" onClick={record} disabled={busy || !selected.length}>

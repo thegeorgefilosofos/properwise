@@ -62,6 +62,10 @@ export default function VerifyDocument() {
   const card: React.CSSProperties = { width: '100%', maxWidth: 460, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '30px 30px 26px', boxShadow: 'var(--elev-1)' };
   const label: React.CSSProperties = { fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 700 };
   const value: React.CSSProperties = { fontSize: 14, color: 'var(--text-primary)', fontWeight: 600, marginTop: 4 };
+  // Ο ΚΩΔΙΚΟΣ ΜΕΤΑΚΟΜΙΖΕΙ ΟΛΟΚΛΗΡΟΣ ΣΤΗΝ ΕΠΟΜΕΝΗ ΓΡΑΜΜΗ. Στα 390 έσπαγε στο
+  // ενωτικό του («PW-» και από κάτω το υπόλοιπο), δηλαδή διαβαζόταν ως δύο
+  // κωδικοί. Ως inline-block τυλίγεται μέσα του μόνο αν δεν χωρά σε μία γραμμή.
+  const codeInline: React.CSSProperties = { color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em', display: 'inline-block', maxWidth: '100%', overflowWrap: 'anywhere' };
 
   return (
     <div style={wrap}>
@@ -110,7 +114,7 @@ export default function VerifyDocument() {
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--warning)' }}>Δεν βρέθηκε έγγραφο με αυτόν τον κωδικό</span>
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 16 }}>
-              Ο κωδικός <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em' }}>{id || ABSENT}</strong> δεν αντιστοιχεί σε έγγραφο που εκδόθηκε από το PROPERWISE.
+              Ο κωδικός <strong style={codeInline}>{id || ABSENT}</strong> δεν αντιστοιχεί σε έγγραφο που εκδόθηκε από το PROPERWISE.
               Ελέγξτε ότι σαρώσατε σωστά το QR ή ζητήστε νέο αντίγραφο από τον εκδότη.
             </p>
           </div>
@@ -128,7 +132,7 @@ export default function VerifyDocument() {
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Ο έλεγχος δεν ολοκληρώθηκε</span>
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 16 }}>
-              Δεν λάβαμε απάντηση για τον κωδικό <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em' }}>{id || ABSENT}</strong>.
+              Δεν λάβαμε απάντηση για τον κωδικό <strong style={codeInline}>{id || ABSENT}</strong>.
               Αυτό δεν λέει τίποτα για το έγγραφο: δεν προλάβαμε να το ελέγξουμε.
             </p>
             <div style={{ marginTop: 16 }}>
@@ -163,7 +167,7 @@ export default function VerifyDocument() {
                 Η στοίχιση πάει μαζί με τον συλλαβισμό — αλλιώς τεντώνει τα κενά. Το
                 «PROPERWISE» είναι λατινικό: μένει ακέραιο. */}
             <p className="po-just" style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: 24, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-              {hy(<>Η σελίδα επιβεβαιώνει ότι το έγγραφο με τον παραπάνω κωδικό δημιουργήθηκε από την πλατφόρμα PROPERWISE.
+              {hy(<>Η σελίδα επιβεβαιώνει ότι το έγγραφο με τον παραπάνω κωδικό δημιουργήθηκε στο PROPERWISE.
               Δεν εμφανίζονται ποσά ή ευαίσθητα στοιχεία. Το περιεχόμενο του εγγράφου παραμένει ευθύνη του εκδότη.</>)}
             </p>
           </div>

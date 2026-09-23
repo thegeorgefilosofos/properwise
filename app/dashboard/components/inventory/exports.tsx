@@ -16,7 +16,7 @@ import { ENERGY_MODE_LABEL } from '@/lib/property/energy'
 import { NOT_TAX_DEPRECIATION_NOTE } from '@/lib/inventory/depreciation'
 import { ABSENT, ABSENT_DATE } from '@/components/Theme'
 import { INK, INK_FAINT, INK_MUTED, PAPER_ALT, RULE } from '@/lib/print/ink'
-import { INVENTORY_CATEGORIES, type InventoryItem, type InventoryRepair } from './model'
+import { INVENTORY_CATEGORIES, inventoryLabel, type InventoryItem, type InventoryRepair } from './model'
 import {
   calcCurrentValue, calcDepreciationPct, calcAgeDisplay, calcMonthlyKwh, calcMonthlyCost,
   hasEnergy, fmtDate,
@@ -72,7 +72,7 @@ export function inventoryExports({items,repairs,kwhPrice}:{items:InventoryItem[]
   }
   const exportPDF=()=>{
     const byCat=[...INVENTORY_CATEGORIES].map(cat=>{const ci=items.filter(i=>i.category===cat);return{cat,count:ci.length,val:ci.reduce((s,i)=>s+calcCurrentValue(i),0)}}).filter(x=>x.count>0)
-    const catRows=byCat.sort((a,b)=>b.val-a.val).map(({cat,count,val})=>reportRow(`${cat} (${count})`,rEur(val))).join('')
+    const catRows=byCat.sort((a,b)=>b.val-a.val).map(({cat,count,val})=>reportRow(`${inventoryLabel(cat)} (${count})`,rEur(val))).join('')
     const detailRows=items.map(i=>`<tr><td><strong>${rEsc(i.name)}</strong>${i.brand?`<br><small class="muted">${rEsc(i.brand)} ${rEsc(i.model||'')}</small>`:''}</td><td>${rEsc(i.energy_class||ABSENT)}</td><td>${rEsc(i.condition)}</td><td class="n">${rEsc(rEur(i.purchase_value||0))}</td><td class="n">${rEsc(rEur(calcCurrentValue(i)))}</td><td class="n">${rEsc(rPct(Math.max(0,100-calcDepreciationPct(i))))}</td><td class="n">${rEsc(rEur(i.replacement_cost||0))}</td><td class="n">${rEsc(hasEnergy(i)?calcMonthlyKwh(i)+' kWh':ABSENT)}</td><td>${rEsc(i.warranty_expiry?fmtDate(i.warranty_expiry):ABSENT_DATE)}</td></tr>`).join('')
     const html = reportHead('Κατάσταση εξοπλισμού')
       + `<body><div class="page">`

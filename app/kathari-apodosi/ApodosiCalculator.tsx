@@ -22,13 +22,13 @@
 import { useMemo, useId, useState } from 'react';
 import Link from 'next/link';
 import { T, feAuto, fixedCols } from '@/components/tokens';
-import { fn, fp } from '@/lib/core/format';
+import { fn, fp, feSigned, fpSigned } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { propertyYield } from '@/lib/tools/apodosi';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
-import { ToolCta, EstimateNote } from '@/app/PublicChrome';
+import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
 
 import LiveResult from '@/components/LiveResult';
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
@@ -98,7 +98,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
     axia: useId(), enoikio: useId(), mines: useId(),
     enfia: useId(), dapanes: useId(), alla: useId(), name: useId(),
   };
-  // ΤΟ ΟΝΟΜΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΔΕΝ ΜΠΑΙΝΕΙ ΣΤΗ ΔΙΕΥΘΥΝΣΗ. Ενα «Πατησίων 42, 3ος» σε
+  // ΤΟ ΟΝΟΜΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΔΕΝ ΜΠΑΙΝΕΙ ΣΤΗ ΔΙΕΥΘΥΝΣΗ. Μια διεύθυνση σε
   // κοινοποιημένο σύνδεσμο ταξιδεύει σε ιστορικά περιήγησης και σε αρχεία
   // καταγραφής· η υπόσχεση «μένει στη συσκευή σου» θα έσπαγε για το μόνο πεδίο
   // που είναι πράγματι προσωπικό δεδομένο.
@@ -137,6 +137,9 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           <MoneyField id={ids.mines} name="Μήνες που νοικιάζεται" value={v.mines}
             onChange={x => set('mines', x)} mode="numeric" suffix=""/>
         </div>
+        <ToolClampNote notes={[
+          Math.round(amount(v.mines)) > 12 && 'Μέγιστο 12 μήνες· υπολογίστηκαν 12.',
+        ]}/>
       </div>
 
       {/* ── ΤΙ ΤΟ ΒΑΡΑΙΝΕΙ ────────────────────────────────────────────────
@@ -236,9 +239,9 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
             σύγκριση να είναι σύγκριση και όχι υπόδειξη. */}
         {hasValue ? (
           <div {...fixedCols(2, 24, 'start')}>
-            <Figure label="Καθαρή απόδοση" value={fp((r.netYield ?? 0) * 100)}/>
+            <Figure label="Καθαρή απόδοση" value={fpSigned((r.netYield ?? 0) * 100)}/>
             <Figure label="Μεικτή απόδοση" value={fp((r.grossYield ?? 0) * 100)}/>
-            <LiveResult say={`Καθαρή απόδοση ${fp((r.netYield ?? 0) * 100)}. Μεικτή ${fp((r.grossYield ?? 0) * 100)}.`} />
+            <LiveResult say={`Καθαρή απόδοση ${fpSigned((r.netYield ?? 0) * 100)}. Μεικτή ${fp((r.grossYield ?? 0) * 100)}.`} />
           </div>
         ) : (
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
@@ -284,13 +287,16 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           <Row k="Φόρος εισοδήματος" v={feAuto(r.tax)}/>
           <Row k="ΕΝΦΙΑ" v={feAuto(r.enfia)}/>
           <Row k="Δαπάνες" v={feAuto(r.expenses)}/>
-          <Row k="Σου μένουν τον χρόνο" v={feAuto(r.net)}/>
-          <Row k="Καθαρά ανά μισθωμένο μήνα" v={feAuto(r.netMonthly)}/>
+          {/* Τα δύο καθαρά μπορεί να βγουν αρνητικά: τυπογραφικό μείον, σφιχτό. */}
+          <Row k="Σου μένουν τον χρόνο" v={feSigned(r.net)}/>
+          <Row k="Καθαρά ανά μισθωμένο μήνα" v={feSigned(r.netMonthly)}/>
           {/* ΟΤΑΝ ΤΟ ΑΚΙΝΗΤΟ ΔΕΝ ΕΠΙΣΤΡΕΦΕΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ ΑΡΙΘΜΟΣ. Η διαίρεση
               με αρνητικά καθαρά δίνει αρνητικά χρόνια, που τυπώνονται μια χαρά
-              και διαβάζονται ως απάντηση. */}
+              και διαβάζονται ως απάντηση. Χωρίς αξία όμως δεν υπάρχει τι να
+              επιστρέψει: το `null` σημαίνει και τα δύο και η σειρά τα ξεχωρίζει. */}
           <Row k="Χρόνια να επιστρέψει η αξία"
-            v={r.paybackYears === null ? 'Δεν επιστρέφει' : fn(r.paybackYears, 1)}/>
+            v={!hasValue ? 'Χρειάζεται αξία'
+              : r.paybackYears === null ? 'Δεν επιστρέφει' : fn(r.paybackYears, 1)}/>
           <Row k="Συντελεστής στο επόμενο ευρώ" v={fp(r.marginal * 100)}/>
         </dl>
 
@@ -314,7 +320,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
       <div className="po-noprint" style={{ marginTop: 16 }}>
         <label htmlFor={ids.name} style={{ ...LBL, marginBottom: 6 }}>Όνομα για την εκτύπωση</label>
         <input id={ids.name} value={name} onChange={e => setName(e.target.value)}
-          placeholder="Πατησίων 42, 3ος"
+          placeholder="π.χ. Διαμέρισμα κέντρου, 3ος"
           style={{ ...FIELD, fontFamily: T.font.sans, maxWidth: 340 }}/>
       </div>
 
@@ -324,13 +330,16 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
-          <strong style={{ color: 'var(--text-primary)' }}>Τι δεν περιλαμβάνει.</strong>{' '}
-          Κλίμακα ενοικίων {year}
+          {/* ΤΟ ΚΟΥΤΙ ΛΕΓΟΤΑΝ «Τι δεν περιλαμβάνει» ΚΑΙ ΞΕΚΙΝΟΥΣΕ ΜΕ ΟΣΑ ΠΕΡΙΛΑΜΒΑΝΕΙ.
+              Ο αναγνώστης καταλάβαινε ότι η κλίμακα και το 5% ΔΕΝ εφαρμόζονται.
+              Δύο προτάσεις, με τη σειρά που τις ρωτά. */}
+          <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
+          Ο φόρος βγαίνει με την κλίμακα ενοικίων {year}
           {year >= FIRST_YEAR_NEW_BRACKETS ? ' (15 / 25 / 35 / 45%)' : ' (15 / 35 / 45%)'} και
-          τεκμαρτή έκπτωση 5%, που από 1.7.2027 θα θέλει είσπραξη μέσω τραπέζης
-          (ν.5222/2025)· εδώ θεωρείται δεδομένη. Απ’ έξω μένουν: μεταβολή της
-          αξίας, δάνειο και τόκοι, έξοδα αγοράς ή πώλησης, ανακαίνιση,
-          ανείσπρακτα, βραχυχρόνια, νομικό πρόσωπο και τα άλλα σου
+          την τεκμαρτή έκπτωση 5%, που από 1.7.2027 θα θέλει είσπραξη μέσω τραπέζης
+          (ν.5222/2025)· εδώ θεωρείται δεδομένη. Δεν περιλαμβάνει: μεταβολή της
+          αξίας, δάνειο και τόκους, έξοδα αγοράς ή πώλησης, ανακαίνιση,
+          ανείσπρακτα, βραχυχρόνια, νομικό πρόσωπο ούτε τα άλλα σου
           εισοδήματα. <EstimateNote investment />
         </p>
       </div>

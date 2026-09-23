@@ -13,15 +13,20 @@
 // παραλήπτης συνήθως δεν έχει λογαριασμό. Το διακριτικό είναι uuid, λήγει σε 48
 // ώρες και καίγεται με την πρώτη επιτυχία: ο ίδιος σύνδεσμος δεν ξαναδουλεύει
 // αν διαρρεύσει από τα εισερχόμενα.
+//
+// Η ΣΥΝΑΙΝΕΣΗ ΘΕΛΕΙ ΠΑΤΗΜΑ, ΟΧΙ ΑΝΟΙΓΜΑ. Η επιβεβαίωση γινόταν μόλις φόρτωνε η
+// σελίδα. Οι σαρωτές ασφαλείας των εισερχομένων ανοίγουν κάθε σύνδεσμο σε
+// αόρατο περιηγητή και θα «συναινούσαν» για τον παραλήπτη, καίγοντας το
+// διακριτικό πριν τον δει άνθρωπος. Τώρα η σελίδα ρωτά και η κλήση φεύγει μόνο
+// με το κουμπί.
 // ═══════════════════════════════════════════════════════════════════════════
 import BrandMark from '@/components/BrandMark';
 import { T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { useLoad } from '@/app/hooks/useLoad';
 
 export default function ConfirmReminderEmail() {
   const token = String(useParams()?.token || '');
@@ -36,23 +41,14 @@ export default function ConfirmReminderEmail() {
   //
   // Οι αδελφές σελίδες /checkin και /portal έχουν ήδη ξεχωριστή κατάσταση
   // «offline»· εδώ έλειπε.
-  const [state, setState] = useState<'loading' | 'ok' | 'invalid' | 'offline'>('loading');
+  const [state, setState] = useState<'ask' | 'loading' | 'ok' | 'invalid' | 'offline'>('ask');
 
-  // ΤΟ «ΦΟΡΤΩΝΕΙ» ΔΕΝ ΓΡΑΦΕΤΑΙ ΜΕΣΑ ΣΤΗ ΦΟΡΤΩΣΗ. Η αρχική κατάσταση είναι ήδη
-  // «loading», οπότε η σύγχρονη γραφή στην πρώτη γραμμή δεν πρόσθετε τίποτα
-  // στην προσάρτηση — πρόσθετε μόνο μια γραφή κατάστασης πριν από το πρώτο
-  // await, που είναι ακριβώς ό,τι απαγορεύει ο κανόνας (guard-use-load,
-  // set-state-in-effect). Στη ΔΕΥΤΕΡΗ προσπάθεια τη χρειάζεται και εκεί
-  // ανήκει: στον χειριστή του κουμπιού, όπου είναι απάντηση σε πάτημα.
-  const confirm = useCallback(async () => {
+  /** Η επιβεβαίωση, πάντα από πάτημα: πρώτη φορά και κάθε δεύτερη προσπάθεια. */
+  const confirm = async () => {
+    setState('loading');
     const { data, error } = await supabase.rpc('confirm_reminder_email', { p_token: token });
     setState(error ? 'offline' : data === true ? 'ok' : 'invalid');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-  // Το ιδίωμα του έργου για φόρτωση στην προσάρτηση: μία φορά, με τον σωστό χρόνο.
-  useLoad(confirm);
-  /** Δεύτερη προσπάθεια από κουμπί: εκεί το «φορτώνει» είναι απάντηση σε πάτημα. */
-  const retry = () => { setState('loading'); void confirm(); };
+  };
 
   const wrap: React.CSSProperties = { minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'Inter, system-ui, Arial, sans-serif', color: 'var(--text-primary)' };
   const card: React.CSSProperties = { width: '100%', maxWidth: 440, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '30px 28px', boxShadow: 'var(--elev-1)' };
@@ -74,6 +70,18 @@ export default function ConfirmReminderEmail() {
           </div>
         </div>
 
+        {state === 'ask' && (
+          <div style={{ paddingTop: T.sp.xl }}>
+            <p style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>
+              Θέλεις να λαμβάνεις τις υπενθυμίσεις του PROPERWISE σε αυτή τη διεύθυνση;
+            </p>
+            <div style={{ marginTop: 16 }}><Btn variant="primary" onClick={confirm}>Ναι, επιβεβαιώνω</Btn></div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '16px 0 0' }}>
+              Αν δεν το ζήτησες, κλείσε τη σελίδα. Δεν θα λάβεις τίποτα.
+            </p>
+          </div>
+        )}
+
         {state === 'loading' && (
           <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Γίνεται επιβεβαίωση…</div>
         )}
@@ -90,7 +98,7 @@ export default function ConfirmReminderEmail() {
                 πέρα πέρα με δικά μας μαλακά ενωτικά: χωρίς αυτά η ίδια στοίχιση
                 θα τέντωνε τα κενά αντί να σπάσει λέξη. */}
             <p className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              {hy(<>Από εδώ και πέρα οι υπενθυμίσεις για λογαριασμούς, ενοίκια και γεγονότα του ημερολογίου θα φτάνουν σε αυτή τη διεύθυνση. Μπορείς να την αλλάξεις ή να τη σβήσεις οποτεδήποτε, από τις Ρυθμίσεις της εφαρμογής.</>)}
+              {hy(<>Από εδώ και πέρα οι υπενθυμίσεις για λογαριασμούς, ενοίκια και γεγονότα του ημερολογίου θα φτάνουν σε αυτή τη διεύθυνση. Αν θέλεις να σταματήσουν, η διεύθυνση αλλάζει ή σβήνεται από τον λογαριασμό που την όρισε.</>)}
             </p>
           </div>
         )}
@@ -101,7 +109,7 @@ export default function ConfirmReminderEmail() {
             νόημα η μία να κλείνει δεξιά κι η άλλη όχι. */}
         {state === 'invalid' && (
           <p className="po-just" style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            {hy(<>Ο σύνδεσμος δεν είναι έγκυρος, έχει λήξει ή χρησιμοποιήθηκε ήδη. Ζήτησε νέα επιβεβαίωση από τις Ρυθμίσεις της εφαρμογής, στις Ειδοποιήσεις.</>)}
+            {hy(<>Ο σύνδεσμος δεν είναι έγκυρος, έχει λήξει ή χρησιμοποιήθηκε ήδη. Νέα επιβεβαίωση στέλνεται από τον λογαριασμό που όρισε αυτή τη διεύθυνση, στις Ειδοποιήσεις.</>)}
           </p>
         )}
 
@@ -112,7 +120,7 @@ export default function ConfirmReminderEmail() {
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
               Δεν λάβαμε απάντηση, οπότε ο σύνδεσμος δεν ελέγχθηκε. Μπορεί να είναι μια χαρά έγκυρος.
             </p>
-            <div style={{ marginTop: 16 }}><Btn onClick={retry}>Δοκιμή ξανά</Btn></div>
+            <div style={{ marginTop: 16 }}><Btn onClick={confirm}>Δοκιμή ξανά</Btn></div>
           </div>
         )}
       </div>

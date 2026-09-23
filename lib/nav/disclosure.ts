@@ -85,7 +85,7 @@ const SIGNAL_RULES: Record<string, (s: DisclosureSignals) => boolean> = {
   inventory:  s => !!s.hasInventory,
   documents:  s => !!s.hasDocuments,
   checklist:  s => (s.openTasks ?? 0) > 0,
-  // Πρόγραμμα Πρόσκλησης: δεν ζητάμε σύσταση από κάποιον που μόλις μπήκε και
+  // Πρόγραμμα πρόσκλησης: δεν ζητάμε σύσταση από κάποιον που μόλις μπήκε και
   // δεν έχει δει ακόμη αξία. Μετά την πρώτη εβδομάδα.
   referral:   s => (s.daysSinceSignup ?? 0) >= 7,
   // ΟΙ «ΕΠΑΦΕΣ» ΕΦΥΓΑΝ ΑΠΟ ΕΔΩ: ΚΑΝΟΝΑΣ ΠΟΥ ΔΕΝ ΤΟΝ ΡΩΤΟΥΣΕ ΚΑΝΕΙΣ, ΚΑΙ ΕΝΑ

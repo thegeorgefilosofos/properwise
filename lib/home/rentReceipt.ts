@@ -35,11 +35,13 @@ export const pickedLines = <T extends ReceiptLine>(lines: readonly T[], ids: Rea
 /**
  * Τι γράφει το κουμπί της καταχώρησης.
  *
- * ΜΙΑ ΔΟΣΗ ΔΕΝ ΧΡΕΙΑΖΕΤΑΙ ΑΡΙΘΜΗΤΙΚΑ: το ποσό της γράφεται ήδη στη γραμμή από
- * πάνω και μια δεύτερη αναγραφή στο κουμπί θα ήταν το ίδιο πράγμα δύο φορές.
+ * ΚΑΙ Η ΜΙΑ ΔΟΣΗ ΛΕΕΙ ΤΟ ΠΟΣΟ ΤΗΣ. Η λογική «φαίνεται ήδη στη γραμμή» ίσχυε με
+ * μία γραμμή στη λίστα· με έξι γραμμές και μία επιλεγμένη, το σκέτο
+ * «Καταχώρηση» δεν έλεγε ποια από τις έξι θα γραφτεί.
  */
 export function recordLabel(lines: readonly ReceiptLine[]): string {
-  if (lines.length <= 1) return 'Καταχώρηση';
+  if (lines.length === 0) return 'Καταχώρηση';
+  if (lines.length === 1) return `Καταχώρηση · ${fe(receiptTotal(lines))}`;
   return `Καταχώρηση ${lines.length} δόσεων · ${fe(receiptTotal(lines))}`;
 }
 

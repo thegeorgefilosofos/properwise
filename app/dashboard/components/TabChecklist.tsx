@@ -10,7 +10,7 @@ import { BulkActionBar } from './UIComponents'
 import * as loanStore from '@/lib/data/loans'
 import * as contactStore from '@/lib/data/contacts'
 import * as billing from '@/lib/data/billing'
-import { T, fn, fe, PageTitle, InfoBanner, Btn, IconBtn, ChipToggle, EmptyState, Skeleton, SkeletonKPIs, isOverlayOpen, pageShell } from '@/components/Theme'
+import { T, fn, fe, PageTitle, InfoBanner, Btn, IconBtn, ChipToggle, EmptyState, Skeleton, SkeletonKPIs, isOverlayOpen, pageShell, Bar } from '@/components/Theme'
 import { confirmDialog } from '@/components/confirmBus'
 import { notify, notifyOk } from '@/components/Toast'
 import { saved, savedData, optimistic } from '@/components/dbWrite'
@@ -712,11 +712,11 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
           πλακίδιο «Ολοκλήρωση». Μια μπάρα ΕΙΝΑΙ ποσοστό· δεν χρειάζεται να το
           ανακοινώσει. Το κόστος μένει: είναι άλλη πληροφορία, όχι επανάληψη. */}
       {stats.total > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ height: 4, borderRadius: T.radius.pill, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: stats.pct + '%', background: 'var(--accent)', borderRadius: T.radius.pill,
-                          transition: `width .4s ${T.ease.standard}` }} />
-          </div>
+        <div style={{ marginTop: 14, marginBottom: 20 }}>
+          {/* Χωρίς ορατή ετικέτα, αλλά με όνομα για τον αναγνώστη οθόνης: το κοινό
+              `Bar` δίνει `role="meter"` με το ποσοστό. */}
+          <Bar pct={stats.pct} height={4} track="var(--bg-elevated)"
+            label={`Ολοκληρωμένες εκκρεμότητες: ${fn(stats.done)} από ${fn(stats.total)}`} />
           {(stats.totalEstimated > 0 || stats.totalActual > 0) && (
             <div style={{ marginTop: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans,
                           fontVariantNumeric: 'tabular-nums' }}>

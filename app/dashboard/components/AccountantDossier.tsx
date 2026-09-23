@@ -359,7 +359,8 @@ export default function AccountantDossier({
 
         {appIds.length > 0 && (
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '12px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-            {appIds.length === 1 ? 'Ένα ακόμη μπαίνει' : `${appIds.length} ακόμη μπαίνουν`} αυτόματα από τα δεδομένα σου.
+            {/* Όχι «ακόμη»: αυτά ΜΕΤΡΟΥΝ ήδη στο «x / y» από πάνω, δεν εκκρεμούν. */}
+            {appIds.length === 1 ? `Το ένα από τα ${ready.total} το βγάζουμε` : `Τα ${appIds.length} από τα ${ready.total} τα βγάζουμε`} ήδη από τα δεδομένα σου.
           </p>
         )}
 

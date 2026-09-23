@@ -27,7 +27,7 @@ import * as calendar from '@/lib/data/calendar'
 // δεν εκτελεί τίποτα, οι υπολογισμοί δεν ξέρουν από οθόνη, τα μικρά στοιχεία
 // δεν ξέρουν από βάση και κάθε παράθυρο στέκεται μόνο του. Εδώ μένει η σελίδα:
 // τι φορτώνεται, τι αποθηκεύεται και ποια καρτέλα φαίνεται.
-import { INVENTORY_CATEGORIES, type InventoryItem, type InventoryRepair, type InventoryHandover, type MaintenanceSchedule, type HandoverIntent, type InventoryPropertyOption, type TabInventoryProps, ROOM_PRESETS, STARTER_PACK } from './inventory/model'
+import { INVENTORY_CATEGORIES, type InventoryItem, type InventoryRepair, type InventoryHandover, type MaintenanceSchedule, type HandoverIntent, type InventoryPropertyOption, type TabInventoryProps, ROOM_PRESETS, STARTER_PACK, inventoryLabel } from './inventory/model'
 import { calcCurrentValue, calcDepreciationPct, calcYearsLeft, calcAgeDisplay, calcMonthlyKwh, calcMonthlyCost, hasEnergy, fmtDate, daysUntil, warrantyStatus, needsAction } from './inventory/calc'
 import { DOCS_BUCKET } from './inventory/storage'
 import { InfoHint } from './InfoHint'
@@ -133,9 +133,11 @@ function AttentionCard({items,onEdit,onWarrantyReminder}:{items:InventoryItem[];
             <div style={{minWidth:0,flex:1}}>
               <p className="po-elide" style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{item.name}</p>
               <p className="po-elide-lines" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>
-                {label}{item.room?` · ${item.room}`:''}
+                {label}{item.room?` · ${inventoryLabel(item.room)}`:''}
                 {kind==='warr'&&item.warranty_expiry?` · ${fmtDate(item.warranty_expiry)}`:''}
-                {kind==='repl'&&item.replacement_cost?` · ${fe(item.replacement_cost)}`:''}
+                {/* Η κάρτα του αντικειμένου δείχνει τη ΣΗΜΕΡΙΝΗ αξία· εδώ είναι το
+                    κόστος αντικατάστασης. Χωρίς λέξη, δύο ποσά για το ίδιο πράγμα. */}
+                {kind==='repl'&&item.replacement_cost?` · αντικατάσταση ${fe(item.replacement_cost)}`:''}
               </p>
             </div>
             {/* ΜΙΑ ΕΝΕΡΓΕΙΑ ΑΝΑ ΓΡΑΜΜΗ, ΕΚΕΙΝΗ ΠΟΥ ΛΥΝΕΙ ΤΟ ΣΥΓΚΕΚΡΙΜΕΝΟ.
@@ -180,12 +182,12 @@ function AnalysisCards({items,repairs,kwhPrice,kwhControl}:{items:InventoryItem[
                   κείμενο χανόταν το «(4)». Τώρα κόβεται μόνο η κατηγορία· ο αριθμός
                   των αντικειμένων μένει πάντα ορατός. */}
               <span style={{display:'flex',alignItems:'baseline',gap: 4,minWidth:0,fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>
-                <span className="po-elide">{cat}</span>
+                <span className="po-elide">{inventoryLabel(cat)}</span>
                 <span style={{color:'var(--text-tertiary)',fontSize: 'var(--fs-xs)',flexShrink:0}}>({count})</span>
               </span>
               <span style={{fontSize:12,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600,flexShrink:0}}>{fe(val)}</span>
             </div>
-            <Bar pct={(val/maxVal)*100} height={4} label={`Μερίδιο αξίας, ${cat}`}/>
+            <Bar pct={(val/maxVal)*100} height={4} label={`Μερίδιο αξίας, ${inventoryLabel(cat)}`}/>
           </div>
         ))}
       </div>
@@ -362,8 +364,8 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
             χωρούσαν στα 150 και στα 140. Η ταξινόμηση έγραφε το πρόθεμα
             «Ταξινόμηση:» μέσα σε κάθε επιλογή· το πρόθεμα είναι ετικέτα και το
             CustomSelect έχει ήδη ετικέτα. */}
-        <div style={{width:210}}><CustomSelect ariaLabel="Κατηγορία" value={filterCat} onChange={setFilterCat} options={['Όλες',...[...INVENTORY_CATEGORIES].filter(c=>items.some(i=>i.category===c))].map(c=>({value:c,label:c==='Όλες'?'Όλες οι κατηγορίες':c}))}/></div>
-        {allRooms.length>0&&<div style={{width:190}}><CustomSelect ariaLabel="Δωμάτιο" value={filterRoom} onChange={setFilterRoom} options={[{value:'Όλα',label:'Όλα τα δωμάτια'},...allRooms.map(r=>({value:r,label:r}))]}/></div>}
+        <div style={{width:210}}><CustomSelect ariaLabel="Κατηγορία" value={filterCat} onChange={setFilterCat} options={['Όλες',...[...INVENTORY_CATEGORIES].filter(c=>items.some(i=>i.category===c))].map(c=>({value:c,label:c==='Όλες'?'Όλες οι κατηγορίες':inventoryLabel(c)}))}/></div>
+        {allRooms.length>0&&<div style={{width:190}}><CustomSelect ariaLabel="Δωμάτιο" value={filterRoom} onChange={setFilterRoom} options={[{value:'Όλα',label:'Όλα τα δωμάτια'},...allRooms.map(r=>({value:r,label:inventoryLabel(r)}))]}/></div>}
         <div style={{display:'flex',alignItems:'center',gap:6}}>
           <div style={{width:212}}><CustomSelect ariaLabel="Ταξινόμηση" value={sortKey} onChange={v=>setSortKey(v as SortKey)} options={(Object.keys(SORT_LABELS) as SortKey[]).map(k=>({value:k,label:SORT_LABELS[k]}))}/></div>
           <IconBtn label="Κατεύθυνση ταξινόμησης" title={sortDir==='asc'?'Αύξουσα':'Φθίνουσα'} size="md" round onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}><svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{sortDir==='asc'?<path d="M12 19V5M5 12l7-7 7 7"/>:<path d="M12 5v14M19 12l-7 7-7-7"/>}</svg></IconBtn>
@@ -402,7 +404,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
           <SelectBox checked={filtered.length>0&&visIds.length===filtered.length} indeterminate={visIds.length>0&&visIds.length<filtered.length} onChange={()=>{const all=visIds.length===filtered.length;setSelected(all?new Set():new Set(filtered.map(i=>i.id)))}} label="Επιλογή όλων"/>
           <span style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{visIds.length} επιλεγμένα</span>
           <div style={{flex:1}}/>
-          <BulkPicker label="Δωμάτιο" icon={<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M4 21V7l8-4v18M20 21V11l-8-4"/></svg>} options={ROOM_PRESETS} onPick={r=>{if(visIds.length){onBulkRoom(visIds,r);exitSelect()}}}/>
+          <BulkPicker label="Δωμάτιο" icon={<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M4 21V7l8-4v18M20 21V11l-8-4"/></svg>} options={ROOM_PRESETS} labelOf={inventoryLabel} onPick={r=>{if(visIds.length){onBulkRoom(visIds,r);exitSelect()}}}/>
           {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Είναι καταστροφική ενέργεια με περίγραμμα negative-border
               και φόντο negative-dim· το Btn ξέρει τρεις ρόλους χωρίς τόνο κινδύνου, οπότε
               η μετατροπή θα έσβηνε το κόκκινο από τη μαζική διαγραφή. */}
@@ -471,7 +473,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}}>
                     <div style={{minWidth:0}}>
                       <p className="po-elide" style={{fontSize:14,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:2,lineHeight:1.3}}>{item.name}</p>
-                      <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{item.category}{item.room?` · ${item.room}`:''}</p>
+                      <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{inventoryLabel(item.category)}{item.room?` · ${inventoryLabel(item.room)}`:''}</p>
                     </div>
                     {/* ΤΟ «0,00€» ΕΦΥΓΕ ΑΠΟ ΤΗ ΘΕΣΗ ΤΗΣ ΑΠΑΝΤΗΣΗΣ. Ενα αντικείμενο
                         χωρίς δηλωμένη τιμή αγοράς δεν αξίζει μηδέν: δεν ξέρουμε πόσο
@@ -574,7 +576,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                           <p className="po-elide" style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{item.name}</p>
                           {item.energy_class&&<EnergyBadge cls={item.energy_class}/>}
                         </div>
-                        <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,margin:'2px 0 4px'}}>{item.category}{item.room?` · ${item.room}`:''}{age?` · ${age}`:''}</p>
+                        <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,margin:'2px 0 4px'}}>{inventoryLabel(item.category)}{item.room?` · ${inventoryLabel(item.room)}`:''}{age?` · ${age}`:''}</p>
                         <DepBar pct={calcDepreciationPct(item)} left={calcYearsLeft(item)} hasData={hasDate} hasValue={hasValue} compact/>
                         {replacementSuggestion(item).suggested&&<div style={{marginTop:4}}><ReplacementHint item={item} compact/></div>}
                       </th>

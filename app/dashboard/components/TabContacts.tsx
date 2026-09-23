@@ -137,7 +137,7 @@ const iStyle: React.CSSProperties = {
 // ─── ROLE GROUPS, Πλήρης Ελληνική Λίστα ─────────────────────────────────────
 const GROUPS = [
   {
-    id: 'authorities', label: 'Δημόσιες Αρχές', color: 'var(--accent)', Icon: Building2,
+    id: 'authorities', label: 'Δημόσιες αρχές', color: 'var(--accent)', Icon: Building2,
     roles: [
       { value: 'doy', label: 'ΔΟΥ' },
       { value: 'ktimatologio', label: 'Κτηματολόγιο' },
@@ -150,7 +150,7 @@ const GROUPS = [
     ],
   },
   {
-    id: 'electricity', label: 'Πάροχοι Ρεύματος', color: 'var(--accent)', Icon: Zap,
+    id: 'electricity', label: 'Πάροχοι ρεύματος', color: 'var(--accent)', Icon: Zap,
     roles: [
       { value: 'elec_dei', label: 'ΔΕΗ' },
       { value: 'elec_protergia', label: 'Protergia (Metlen)' },
@@ -166,21 +166,21 @@ const GROUPS = [
       { value: 'elec_watt_volt', label: 'Watt+Volt' },
       { value: 'elec_eydap', label: 'ΕΥΔΑΠ (νερό)' },
       { value: 'elec_deddie', label: 'ΔΕΔΔΗΕ (δίκτυο)' },
-      { value: 'elec_other', label: 'Άλλος Πάροχος Ρεύματος' },
+      { value: 'elec_other', label: 'Άλλος πάροχος ρεύματος' },
     ],
   },
   {
-    id: 'telecom', label: 'Τηλεφωνία και Internet', color: 'var(--accent)', Icon: Wifi,
+    id: 'telecom', label: 'Τηλεφωνία και internet', color: 'var(--accent)', Icon: Wifi,
     roles: [
       { value: 'tel_ote', label: 'Telekom (πρώην Cosmote)' },
       { value: 'tel_vodafone', label: 'Vodafone' },
       { value: 'tel_nova', label: 'Nova' },
       { value: 'tel_inalan', label: 'Inalan' },
-      { value: 'tel_other', label: 'Άλλος Πάροχος Internet / Τηλεφωνίας' },
+      { value: 'tel_other', label: 'Άλλος πάροχος internet / τηλεφωνίας' },
     ],
   },
   {
-    id: 'banks', label: 'Τράπεζες και Χρηματοδότηση', color: 'var(--accent)', Icon: Landmark,
+    id: 'banks', label: 'Τράπεζες και χρηματοδότηση', color: 'var(--accent)', Icon: Landmark,
     roles: [
       { value: 'bank_alpha', label: 'Alpha Bank' },
       { value: 'bank_eurobank', label: 'Eurobank' },
@@ -192,11 +192,11 @@ const GROUPS = [
       { value: 'bank_aegean', label: 'Aegean Baltic Bank' },
       { value: 'bank_revolut', label: 'Revolut' },
       { value: 'bank_ing', label: 'ING' },
-      { value: 'bank_other', label: 'Άλλη Τράπεζα / Χρηματοδότης' },
+      { value: 'bank_other', label: 'Άλλη τράπεζα / χρηματοδότης' },
     ],
   },
   {
-    id: 'insurance', label: 'Ασφαλιστικές Εταιρείες', color: 'var(--accent)', Icon: Shield,
+    id: 'insurance', label: 'Ασφαλιστικές εταιρείες', color: 'var(--accent)', Icon: Shield,
     roles: [
       { value: 'ins_ethiniki', label: 'Εθνική Ασφαλιστική' },
       { value: 'ins_interamerican', label: 'Interamerican' },
@@ -208,22 +208,22 @@ const GROUPS = [
       { value: 'ins_nn', label: 'NN Hellas' },
       { value: 'ins_ydrogios', label: 'Υδρόγειος Ασφαλιστική' },
       { value: 'ins_interlife', label: 'Interlife' },
-      { value: 'ins_agent', label: 'Ασφαλιστικός Σύμβουλος / Πράκτορας' },
-      { value: 'ins_other', label: 'Άλλη Ασφαλιστική Εταιρεία' },
+      { value: 'ins_agent', label: 'Ασφαλιστικός σύμβουλος / πράκτορας' },
+      { value: 'ins_other', label: 'Άλλη ασφαλιστική εταιρεία' },
     ],
   },
   {
-    id: 'real_estate', label: 'Μεσιτεία και Αξιολόγηση', color: 'var(--accent)', Icon: Building2,
+    id: 'real_estate', label: 'Μεσιτεία και αξιολόγηση', color: 'var(--accent)', Icon: Building2,
     roles: [
-      { value: 'agent', label: 'Μεσίτης Ακινήτων' },
-      { value: 'appraiser', label: 'Εκτιμητής Ακινήτων' },
-      { value: 'prop_mgmt', label: 'Εταιρεία Διαχείρισης' },
-      { value: 'manager', label: 'Διαχειριστής Πολυκατοικίας' },
+      { value: 'agent', label: 'Μεσίτης ακινήτων' },
+      { value: 'appraiser', label: 'Εκτιμητής ακινήτων' },
+      { value: 'prop_mgmt', label: 'Εταιρεία διαχείρισης' },
+      { value: 'manager', label: 'Διαχειριστής πολυκατοικίας' },
       { value: 'concierge', label: 'Θυρωρός / Concierge' },
     ],
   },
   {
-    id: 'technical', label: 'Τεχνικοί και Μάστορες', color: 'var(--accent)', Icon: Wrench,
+    id: 'technical', label: 'Τεχνικοί και μάστορες', color: 'var(--accent)', Icon: Wrench,
     roles: [
       { value: 'plumber', label: 'Υδραυλικός' },
       { value: 'electrician', label: 'Ηλεκτρολόγος' },
@@ -240,26 +240,31 @@ const GROUPS = [
       { value: 'roofing', label: 'Στέγη / Επιστεγάσεις' },
       { value: 'alarm', label: 'Συναγερμός / CCTV' },
       { value: 'network', label: 'Δίκτυα / Τηλεφωνία' },
-      { value: 'general_tech', label: 'Γενικός Τεχνίτης' },
+      { value: 'general_tech', label: 'Γενικός τεχνίτης' },
     ],
   },
   {
-    id: 'outdoor', label: 'Εξωτερικοί Χώροι και Υπηρεσίες', color: 'var(--accent)', Icon: Trees,
+    id: 'outdoor', label: 'Εξωτερικοί χώροι και υπηρεσίες', color: 'var(--accent)', Icon: Trees,
     roles: [
       { value: 'gardener', label: 'Κηπουρός' },
-      { value: 'pool', label: 'Συντηρητής Πισίνας' },
+      { value: 'pool', label: 'Συντηρητής πισίνας' },
       { value: 'pest', label: 'Απεντόμωση / Μυοκτονία' },
       { value: 'cleaning', label: 'Καθαρισμός' },
-      { value: 'cleaning_ext', label: 'Καθαρισμός Εξωτερικών Χώρων' },
+      { value: 'cleaning_ext', label: 'Καθαρισμός εξωτερικών χώρων' },
       { value: 'security', label: 'Ασφάλεια / Φύλαξη' },
     ],
   },
   {
-    id: 'tenants', label: 'Ενοικιαστές και Γείτονες', color: 'var(--accent)', Icon: UserCheck,
+    id: 'tenants', label: 'Ενοικιαστές και γείτονες', color: 'var(--accent)', Icon: UserCheck,
     roles: [
       { value: 'tenant', label: 'Ενοικιαστής' },
-      { value: 'prev_tenant', label: 'Πρώην Ενοικιαστής' },
+      { value: 'prev_tenant', label: 'Πρώην ενοικιαστής' },
       { value: 'neighbor', label: 'Γείτονας' },
+    ],
+  },
+  {
+    id: 'others', label: 'Άλλοι', color: 'var(--accent)', Icon: Users,
+    roles: [
       { value: 'other', label: 'Άλλο' },
     ],
   },
@@ -267,6 +272,21 @@ const GROUPS = [
 
 const ALL_ROLES = GROUPS.flatMap(g => g.roles.map(r => ({ ...r, groupId: g.id, groupColor: g.color, groupLabel: g.label, GroupIcon: g.Icon })))
 const ROLE_META: Record<string, typeof ALL_ROLES[0]> = Object.fromEntries(ALL_ROLES.map(r => [r.value, r]))
+/**
+ * Ο ρόλος μιας επαφής, με ΕΝΑΝ κανόνα για ετικέτες, φίλτρο, μετρητές και ενότητες.
+ *
+ * ΟΙ ΑΓΝΩΣΤΟΙ ΡΟΛΟΙ ΜΕΤΡΙΟΝΤΑΝ ΑΛΛΟΥ ΑΠΟ ΟΠΟΥ ΕΜΦΑΝΙΖΟΝΤΑΝ. Οι ενότητες τους
+ * έριχναν στους «Ενοικιαστές», ενώ η ετικέτα της ομάδας και το φίλτρο τους
+ * άφηναν απέξω: «Ενοικιαστές και γείτονες 1» πάνω από τρεις κάρτες. Και η
+ * ετικέτα τους ήταν το ίδιο το κλειδί («cleaner»). Τώρα πάνε όλοι στους
+ * «Άλλους». Το ελεύθερο κείμενο που γράφει ο χρήστης στο «Άλλο» μένει ως έχει·
+ * κλειδί με λατινικά πεζά δεν είναι κείμενο χρήστη, οπότε λέγεται «Άλλο».
+ */
+const roleMeta = (role: string): typeof ALL_ROLES[0] => {
+  const known = ROLE_META[role]
+  if (known) return known
+  return { ...ROLE_META.other, label: role && !/^[a-z0-9_]+$/.test(role) ? role : ROLE_META.other.label }
+}
 const ROLE_SELECT_OPTIONS = GROUPS.flatMap(g => [
   { value: `__group_${g.id}`, label: `── ${g.label} ──`, disabled: true },
   ...g.roles.map(r => ({ value: r.value, label: r.label, disabled: false })),
@@ -649,7 +669,7 @@ const CONTACT_CARD_CSS = `
 `
 
 function printContactCard(contact: Contact, branding?: ReportBranding | null) {
-  const meta = ROLE_META[contact.role] || { label: contact.role, groupLabel: '' }
+  const meta = roleMeta(contact.role)
   const extra = contact._extra || {}
   const row = (label: string, value: string, mono = false) =>
     `<div class="crow"><span class="clabel">${rEsc(label)}</span><span${mono ? ' style="font-family:\'Roboto Mono\',monospace"' : ''}>${value}</span></div>`
@@ -739,7 +759,7 @@ async function exportContactsExcel(contacts: Contact[]) {
   // ── Sheet 1: Σύνοψη ──────────────────────────────────────────────────────
   const byGroup: Record<string, number> = {}
   contacts.forEach(c => {
-    const g = ROLE_META[c.role]?.groupId || 'tenants'
+    const g = roleMeta(c.role).groupId
     byGroup[g] = (byGroup[g] || 0) + 1
   })
   const preferred = contacts.filter(c => c._extra?.preferred).length
@@ -788,15 +808,15 @@ async function exportContactsExcel(contacts: Contact[]) {
   const detailRows: (string | number)[][] = [headers]
 
   GROUPS.forEach(g => {
-    const grpContacts = contacts.filter(c => ROLE_META[c.role]?.groupId === g.id)
+    const grpContacts = contacts.filter(c => roleMeta(c.role).groupId === g.id)
     if (grpContacts.length === 0) return
     detailRows.push([g.label, `${grpContacts.length} επαφές`, ...Array(headers.length - 2).fill('')])
     grpContacts.sort((a, b) => a.full_name.localeCompare(b.full_name, 'el')).forEach(c => {
       const ex = c._extra || {}
       detailRows.push([
         c.full_name,
-        ROLE_META[c.role]?.groupLabel || '',
-        ROLE_META[c.role]?.label || c.role,
+        roleMeta(c.role).groupLabel,
+        roleMeta(c.role).label,
         c.phone || '',
         ex.whatsapp ? 'ΝΑΙ' : 'ΟΧΙ',
         ex.viber ? 'ΝΑΙ' : 'ΟΧΙ',
@@ -837,7 +857,7 @@ async function exportContactsExcel(contacts: Contact[]) {
       const ex = c._extra || {}
       dirRows.push([
         c.full_name,
-        ROLE_META[c.role]?.label || c.role,
+        roleMeta(c.role).label,
         c.phone || ABSENT,
         c.email || ABSENT,
         ex.afm || ABSENT,
@@ -857,7 +877,7 @@ function exportContactsPDF(contacts: Contact[], branding?: ReportBranding | null
   const preferred = contacts.filter(c => c._extra?.preferred)
   const byGroup: Record<string, Contact[]> = {}
   contacts.forEach(c => {
-    const g = ROLE_META[c.role]?.groupId || 'tenants'
+    const g = roleMeta(c.role).groupId
     if (!byGroup[g]) byGroup[g] = []
     byGroup[g].push(c)
   })
@@ -879,7 +899,7 @@ function exportContactsPDF(contacts: Contact[], branding?: ReportBranding | null
     ? reportSection('Προτιμώμενες επαφές')
       + `<table><thead><tr><th>Ονοματεπώνυμο</th><th>Τηλέφωνο</th><th>Ηλεκτρονικό ταχυδρομείο</th></tr></thead><tbody>`
       + preferred.map(c => {
-          const role = ROLE_META[c.role]?.label || c.role
+          const role = roleMeta(c.role).label
           return `<tr>`
             + `<td><div style="font-weight:600;color:${INK}">${rEsc(c.full_name)}</div>`
             +   `<div class="muted" style="font-size: 11px">${rEsc(role)}</div></td>`
@@ -893,7 +913,7 @@ function exportContactsPDF(contacts: Contact[], branding?: ReportBranding | null
   const groupSections = GROUPS.filter(g => byGroup[g.id]?.length).map(g => {
     const rows = byGroup[g.id].map(c => {
       const ex = c._extra || {}
-      const role = ROLE_META[c.role]?.label || c.role
+      const role = roleMeta(c.role).label
       const iban = ex.iban ? `···${rEsc(ex.iban.slice(-4))}${mark(ex.iris, 'IRIS')}` : ABSENT_SHORT
       return `<tr>`
         + `<td><div style="font-weight:600;color:${INK}">${rEsc(c.full_name)}</div>`
@@ -958,7 +978,7 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
   selected?: boolean; onSelect?: () => void; bulkMode?: boolean; branding?: ReportBranding | null
   scopeLabel?: string | null; scopePortfolio?: boolean
 }) {
-  const meta = ROLE_META[contact.role] || { label: contact.role, groupColor: 'var(--text-tertiary)', GroupIcon: Users, groupLabel: '' }
+  const meta = roleMeta(contact.role)
   const extra = contact._extra || {}
   const initials = initialsOf(contact.full_name)
   const [hov, setHov] = useState(false); const [showActions, setShowActions] = useState(false)
@@ -1202,7 +1222,7 @@ function ContactDossier({ contact, propertyId, onClose, onEdit, onDelete, onQuic
   onQuickExpense: () => void; onQuickCalendar: () => void; onShowHistory: () => void; onShowQR: () => void; onVcard: () => void
   branding?: ReportBranding | null; refreshKey?: number
 }) {
-  const meta = ROLE_META[contact.role] || { label: contact.role, groupColor: 'var(--text-tertiary)', GroupIcon: Users, groupLabel: '' }
+  const meta = roleMeta(contact.role)
   const extra = contact._extra || {}
   const initials = initialsOf(contact.full_name)
   const GroupIcon = meta.GroupIcon || Users
@@ -1369,7 +1389,7 @@ const CONTACT_ACTIONS_W = 300
 const CONTACT_ROW_MIN = 8 + 120 + 100 + 160 + 120 + 90 + CONTACT_ACTIONS_W + 12 * 6 + 32
 
 function CompactRow({ contact, onOpen, onEdit, onDelete, selected, onSelect, bulkMode, scopePortfolio }: { contact: Contact; onOpen?: () => void; onEdit: () => void; onDelete: () => void; selected?: boolean; onSelect?: () => void; bulkMode?: boolean; scopePortfolio?: boolean }) {
-  const meta = ROLE_META[contact.role] || { label: contact.role, groupColor: 'var(--text-tertiary)' }
+  const meta = roleMeta(contact.role)
   const extra = contact._extra || {}; const [hov, setHov] = useState(false)
   // Η γραμμή της λίστας ήταν χειρότερη από την κάρτα: `opacity: 0` χωρίς
   // `pointerEvents: none`, άρα «Επεξεργασία» και «Διαγραφή» ήταν ΑΟΡΑΤΕΣ αλλά
@@ -1659,7 +1679,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   // `deleteId`, που υπήρχε αποκλειστικά για να εμφανίσει το χειρόγραφο παράθυρο.
   // Η ερώτηση είναι πλέον εδώ, σε μία γραμμή και η κατάσταση δεν χρειάζεται.
   const askDelete = async (c: Contact) => {
-    if (!await confirmDialog({ title: 'Διαγραφή Επαφής;', message: 'Αυτή η ενέργεια δεν αναιρείται.', confirmLabel: 'Διαγραφή', tone: 'negative' })) return
+    if (!await confirmDialog({ title: 'Διαγραφή επαφής;', message: 'Αυτή η ενέργεια δεν αναιρείται.', confirmLabel: 'Διαγραφή', tone: 'negative' })) return
     await handleDelete(c.id)
   }
   const toggleSelect = (id: string) => setSelected(p => { return toggleIn(p, id) })
@@ -1702,7 +1722,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   // από την ίδια της την επιλογή. Αν η ράγα μετρούσε το τελικό αποτέλεσμα, μόλις
   // πάταγες «Π» θα έμενε ΜΟΝΟ το «Π» και δεν θα υπήρχε δρόμος για το «Α».
   const scoped = useMemo(() => contacts.filter(c => {
-    const matchGroup = filterGroup === 'all' || ROLE_META[c.role]?.groupId === filterGroup
+    const matchGroup = filterGroup === 'all' || roleMeta(c.role).groupId === filterGroup
     const matchTag = !filterTag || (c._extra?.tags || []).includes(filterTag)
     const matchScope = !isPro || filterScope === 'all'
       || (filterScope === 'portfolio' ? scopeIsPortfolio(c) : !scopeIsPortfolio(c))
@@ -1720,7 +1740,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   // επαφών υπάρχουν όντως και πόσα είδη εμβέλειας. Ένα φίλτρο με μία επιλογή
   // δεν είναι φίλτρο — είναι ετικέτα με περίγραμμα κουμπιού.
   const groupsPresent = useMemo(
-    () => GROUPS.filter(g => contacts.some(c => ROLE_META[c.role]?.groupId === g.id)),
+    () => GROUPS.filter(g => contacts.some(c => roleMeta(c.role).groupId === g.id)),
     [contacts])
   const scopeKinds = useMemo(
     () => new Set(contacts.map(c => (c._extra?.scope === 'portfolio' ? 'portfolio' : 'property'))).size,
@@ -1740,7 +1760,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   }, [scoped, sortMode, letter])
 
   const groupedFiltered: Record<string, Contact[]> = {}
-  processed.forEach(c => { const gid = ROLE_META[c.role]?.groupId || 'tenants'; if (!groupedFiltered[gid]) groupedFiltered[gid] = []; groupedFiltered[gid].push(c) })
+  processed.forEach(c => { const gid = roleMeta(c.role).groupId; if (!groupedFiltered[gid]) groupedFiltered[gid] = []; groupedFiltered[gid].push(c) })
   const preferred = contacts.filter(c => c._extra?.preferred)
   const overdueContacts = contacts.filter(c => c._extra?.next_appointment && isOverdue(c._extra.next_appointment))
   const allTags = [...new Set(contacts.flatMap(c => c._extra?.tags || []))]
@@ -1899,7 +1919,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           <SecHdr label="Γρήγορη πρόσβαση" />
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {preferred.map(c => {
-              const meta = ROLE_META[c.role] || { groupColor: 'var(--text-tertiary)', label: c.role, GroupIcon: Users }
+              const meta = roleMeta(c.role)
               const overdue = c._extra?.next_appointment && isOverdue(c._extra.next_appointment)
               const GroupIcon = meta.GroupIcon || Users
               return (
@@ -1998,7 +2018,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       {groupsPresent.length >= SHOW_FROM.filter && (
       <div style={{ display: 'flex', gap: 8, marginBottom: T.sp.xl, flexWrap: 'wrap' }}>
         {groupsPresent.map(g => {
-            const count = contacts.filter(c => ROLE_META[c.role]?.groupId === g.id).length; const active = filterGroup === g.id; const GroupIcon = g.Icon
+            const count = contacts.filter(c => roleMeta(c.role).groupId === g.id).length; const active = filterGroup === g.id; const GroupIcon = g.Icon
             return (
               <ChipToggle key={g.id} on={active} onClick={() => setFilterGroup(active ? 'all' : g.id)}>
                 <GroupIcon size={12} />{g.label}<span style={{ background: active ? 'var(--border-raised)' : 'var(--bg-elevated)', color: active ? 'var(--text-primary)' : 'var(--text-secondary)', borderRadius: T.radius.pill, padding: '1px 7px', fontSize: 'var(--fs-xs)', fontWeight: 700 }}>{count}</span>
@@ -2117,13 +2137,13 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         // Το εικονίδιο της κατηγορίας μπαίνει στην υποδοχή `icon` του Modal, που
         // ήδη δίνει το τετράγωνο accent-soft — το χειρόγραφο 36×36 πλαίσιο ήταν
         // αντίγραφό του με άλλη ακτίνα.
-        const roleMeta = ROLE_META[form.role]
-        const RoleIcon = roleMeta?.GroupIcon || Users
+        const formRole = ROLE_META[form.role]
+        const RoleIcon = formRole?.GroupIcon || Users
         return (
         <Modal open onClose={requestCloseModal}
           title={editContact ? 'Επεξεργασία επαφής' : 'Νέα επαφή'}
           subtitle={editContact ? editContact.full_name : undefined}
-          icon={roleMeta ? <RoleIcon size={17} /> : undefined}
+          icon={formRole ? <RoleIcon size={17} /> : undefined}
           size="md"
           footer={<>
             <Btn onClick={requestCloseModal} disabled={saving}>Ακύρωση</Btn>

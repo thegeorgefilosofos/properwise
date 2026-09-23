@@ -171,13 +171,27 @@ export async function ofProperties<T = Partial<RentPaymentsRow>>(
   return readRows<T>(q);
 }
 
+/** Τα φίλτρα της ανάγνωσης του χαρτοφυλακίου. */
+// Το `dueFrom`/`dueTo` το ζητά η συνδρομή ημερολογίου, που κοιτάζει παράθυρο
+// και όχι χρονιά: μια δόση του Δεκεμβρίου λήγει μέσα στο επόμενο έτος.
+type UserRentFilter = { year?: number; unpaid?: boolean; dueFrom?: string; dueTo?: string };
+
 /** Οι δόσεις όλου του χαρτοφυλακίου ενός χρήστη. */
 export async function ofUser<T = Partial<RentPaymentsRow>>(
-  db: Db, userId: string, columns: string,
-  // Το `dueFrom`/`dueTo` το ζητά η συνδρομή ημερολογίου, που κοιτάζει παράθυρο
-  // και όχι χρονιά: μια δόση του Δεκεμβρίου λήγει μέσα στο επόμενο έτος.
-  opts: { year?: number; unpaid?: boolean; dueFrom?: string; dueTo?: string } = {},
+  db: Db, userId: string, columns: string, opts: UserRentFilter = {},
 ): Promise<T[]> {
+  // ΕΝΑ ΜΟΝΟΠΑΤΙ: η απλή εκδοχή είναι η ίδια ανάγνωση, χωρίς το σφάλμα της.
+  return (await ofUserWithError<T>(db, userId, columns, opts)).rows;
+}
+
+/**
+ * Οι ίδιες δόσεις ΟΛΟΥ του χαρτοφυλακίου, με το σφάλμα ορατό. Από αυτές
+ * βγαίνει η ενοποίηση του Ε1: μια αποτυχία εδώ δεν δίνει «ένα ακίνητο», δίνει
+ * λάθος μερίδιο φόρου στα υπόλοιπα.
+ */
+export async function ofUserWithError<T = Partial<RentPaymentsRow>>(
+  db: Db, userId: string, columns: string, opts: UserRentFilter = {},
+): Promise<ReadResult<T>> {
   let q = db.from(TABLE).select(columns).eq('user_id', userId);
   if (opts.year !== undefined) q = q.eq('period_year', opts.year);
   // ΤΟ «ΑΠΛΗΡΩΤΟ» ΔΕΝ ΕΙΝΑΙ `paid = false`. Η στήλη μπήκε ΧΩΡΙΣ προεπιλογή
@@ -187,19 +201,6 @@ export async function ofUser<T = Partial<RentPaymentsRow>>(
   if (opts.unpaid) q = q.not('paid', 'is', true);
   if (opts.dueFrom) q = q.gte('due_date', opts.dueFrom);
   if (opts.dueTo) q = q.lte('due_date', opts.dueTo);
-  return readRows<T>(q);
-}
-
-/**
- * Οι ίδιες δόσεις ΟΛΟΥ του χαρτοφυλακίου, με το σφάλμα ορατό. Από αυτές
- * βγαίνει η ενοποίηση του Ε1: μια αποτυχία εδώ δεν δίνει «ένα ακίνητο», δίνει
- * λάθος μερίδιο φόρου στα υπόλοιπα.
- */
-export async function ofUserWithError<T = Partial<RentPaymentsRow>>(
-  db: Db, userId: string, columns: string, opts: { year?: number } = {},
-): Promise<ReadResult<T>> {
-  let q = db.from(TABLE).select(columns).eq('user_id', userId);
-  if (opts.year !== undefined) q = q.eq('period_year', opts.year);
   return read<T>(q);
 }
 

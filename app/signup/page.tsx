@@ -12,9 +12,9 @@ import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } 
 import PasswordStrength from '@/components/PasswordStrength'
 import { hy } from '@/components/Hyphen'
 import { SAY, failed } from '@/lib/core/dbError';
-import { PLANS, TRIAL_DAYS, type PlanId, type BillingCycle } from '@/lib/billing/plans';
+import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 // Καθαρή λογική, χωρίς React/Supabase: ασφαλής σε 'use client'.
-import { planFromParam, cycleFromParam } from '@/lib/billing/entitlements';
+import { planFromParam, cycleFromParam, checkoutLanding } from '@/lib/billing/entitlements';
 import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
 import { isReferralCode } from '@/lib/referral/referral';
@@ -31,17 +31,6 @@ import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
 // Ο έλεγχος ισχύος κωδικού είναι κοινός (lib/auth/password) με επαναφορά/ρυθμίσεις.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * ΠΟΥ ΠΡΟΣΓΕΙΩΝΕΤΑΙ Ο ΝΕΟΣ ΛΟΓΑΡΙΑΣΜΟΣ ΜΟΛΙΣ ΑΝΟΙΞΕΙ.
- *
- * Οποιος διάλεξε πακέτο πάει στο ταμείο, με το πακέτο και τον κύκλο του. Ολη
- * η εγγραφή ξεκίνησε από ένα πάτημα σε κάρτα τιμοκαταλόγου: το να καταλήγει
- * στον πίνακα, όπου η συνδρομή είναι κουμπί τρία κλικ μακριά μέσα στις
- * Ρυθμίσεις, ακυρώνει τον λόγο που ήρθε.
- *
- * Οποιος ΔΕΝ διάλεξε —μπήκε κατευθείαν στην εγγραφή— πάει στον πίνακα: δεν
- * υπάρχει τίποτα να αγοράσει και η δοκιμή του τρέχει έτσι κι αλλιώς.
- */
 // ═══════════════════════════════════════════════════════════════════════════
 // ΜΙΑ ΠΕΡΙΟΧΗ ΑΦΗΣ ΓΙΑ ΤΑ ΔΥΟ ΠΛΑΙΣΙΑ ΑΠΟΔΟΧΗΣ
 // ─────────────────────────────────────────────────────────────────────────
@@ -58,9 +47,6 @@ const TAP: React.CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   width: 44, height: 44, flexShrink: 0, cursor: 'pointer',
 };
-
-const landing = (plan: PlanId | null, cycle: BillingCycle) =>
-  plan ? `/tameio?plan=${plan}&cycle=${cycle}` : '/dashboard'
 
 // Ο σύνδεσμος δεν αλλάζει χωρίς πλοήγηση: η συνδρομή δεν έχει τι να ακούσει.
 const SEARCH_NEVER_CHANGES = () => () => {}
@@ -163,7 +149,7 @@ export default function SignupPage() {
         const c = cycleFromParam(q.get('cycle'))
         if (p && !meta.chosen_plan) { patch.chosen_plan = p; patch.chosen_cycle = c }
         if (Object.keys(patch).length) { try { await supabase.auth.updateUser({ data: patch }) } catch {} }
-        window.location.replace(landing(p, c))
+        window.location.replace(checkoutLanding(p, c))
         return
       }
       setSessionEmail(u.email ?? null)
@@ -307,7 +293,7 @@ export default function SignupPage() {
         // διαμεσολαβητής έστελνε τον νέο χρήστη στη φόρμα εισόδου, κρατώντας το
         // διακριτικό στη διεύθυνση: ο λογαριασμός άνοιγε, αλλά ο άνθρωπος
         // κατέληγε να κοιτά «Σύνδεση» αντί για την εφαρμογή του.
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(landing(chosenPlan, chosenCycle))}`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(checkoutLanding(chosenPlan, chosenCycle))}`,
         data: {
           full_name: fullName.trim(),
           consent_terms_accepted_at: new Date().toISOString(),
@@ -334,7 +320,7 @@ export default function SignupPage() {
     fontSize: 14, fontFamily: 'inherit', transition: 'border-color .15s',
   }
   const label: React.CSSProperties = {
-    fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block',
+    fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, display: 'block',
     marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans,
   }
   const focus = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--accent)' }
@@ -362,9 +348,9 @@ export default function SignupPage() {
 
       {/* LEFT, κοινό marketing panel (AuthAside) */}
       <AuthAside
-        headline="Ξεκίνα τώρα,"
-        accent="σε λίγα δευτερόλεπτα."
-        sub="Δημιούργησε λογαριασμό, φωτογράφισε ένα έγγραφο και δες το ακίνητό σου να οργανώνεται μόνο του."
+        headline="Ένας λογαριασμός,"
+        accent="ένα ακίνητο για αρχή."
+        sub="Δημιούργησε λογαριασμό, πρόσθεσε το ακίνητό σου και φωτογράφισε τον πρώτο λογαριασμό ρεύματος ή νερού."
       />
 
       {/* RIGHT, form */}
@@ -394,7 +380,7 @@ export default function SignupPage() {
                 <label htmlFor="su-consent-oauth" style={{ ...TAP, margin: '-12px -14px -14px -14px' }}>
                   <input id="su-consent-oauth" type="checkbox" checked={consent}
                     onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                    aria-label="Αποδοχή των Όρων Χρήσης και της Πολιτικής απορρήτου"
+                    aria-label="Αποδοχή των Όρων χρήσης και της Πολιτικής απορρήτου"
                     style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} />
                 </label>
                 <label htmlFor="su-consent-oauth" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer' }}>
@@ -504,7 +490,7 @@ export default function SignupPage() {
                       χωρίς. Ο κωδικός είναι PO με επτά λατινικά ή ψηφία: ο συλλαβισμός
                       δεν αγγίζει λατινικά, οπότε μένει ακέραιος. */}
                   <span className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                    {hy(<>Ηρθες με πρόσκληση. Ο κωδικός <strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong> καταγράφεται στον λογαριασμό σου με την εγγραφή και μετράει σε εκείνον που σε κάλεσε. Η δοκιμή των {TRIAL_DAYS} ημερών είναι η ίδια για κάθε νέο λογαριασμό, με πρόσκληση ή χωρίς.</>)}
+                    {hy(<>Ήρθες με πρόσκληση. Ο κωδικός <strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong> καταγράφεται στον λογαριασμό σου με την εγγραφή και μετράει σε εκείνον που σε κάλεσε. Η δοκιμή των {TRIAL_DAYS} ημερών είναι η ίδια για κάθε νέο λογαριασμό, με πρόσκληση ή χωρίς.</>)}
                   </span>
                 </div>
               )}
@@ -553,7 +539,7 @@ export default function SignupPage() {
                   σειρές, ένας άξονας αριστερά και ένας δεξιά:
 
                       Επαγγελματίας+            799,00€
-                      Ετήσια χρέωση        30 ημέρες δωρεάν
+                      Ετήσια χρέωση          Δοκιμή 30 ημερών
 
                   Αριστερά ΤΙ ΕΙΝΑΙ, δεξιά ΤΙ ΠΛΗΡΩΝΕΙΣ. Η πάνω σειρά κρατά την
                   ταυτότητα, η κάτω τους όρους. Δύο μεγέθη συνολικά, δύο βάρη,
@@ -580,7 +566,7 @@ export default function SignupPage() {
                     {chosenCycle === 'annual' ? 'Ετήσια χρέωση' : 'Μηνιαία χρέωση'}
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {TRIAL_DAYS} ημέρες δωρεάν
+                    Δοκιμή {TRIAL_DAYS} ημερών
                   </span>
                 </div>
               )}
@@ -598,7 +584,7 @@ export default function SignupPage() {
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <label htmlFor="su-name" style={label}>Ονοματεπώνυμο <span style={{ color: 'var(--text-tertiary)', fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>(προαιρετικό)</span></label>
-                  <input id="su-name" name="name" autoComplete="name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Γιώργος Παπαδόπουλος" style={field} onFocus={focus} onBlur={blur} />
+                  <input id="su-name" name="name" autoComplete="name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Όνομα και επώνυμο" style={field} onFocus={focus} onBlur={blur} />
                 </div>
                 <div>
                   <label htmlFor="su-email" style={label}>Ηλεκτρονικό ταχυδρομείο</label>
@@ -673,7 +659,7 @@ export default function SignupPage() {
                         οθόνης εξακολουθεί να λέει «υποχρεωτικό». */}
                     <input id="su-consent" type="checkbox" checked={consent}
                       onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                      aria-required="true" aria-label="Αποδοχή των Όρων Χρήσης και της Πολιτικής απορρήτου"
+                      aria-required="true" aria-label="Αποδοχή των Όρων χρήσης και της Πολιτικής απορρήτου"
                       style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} />
                   </label>
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
@@ -710,12 +696,12 @@ export default function SignupPage() {
                     κουμπί σβησμένο και μαντεύει· ο χρήστης αναγνώστη οθόνης δεν
                     έχει ούτε αυτό. */}
                 <p id="su-cta-why" className="sr-only">{why}</p>
-                {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το Btn δεν περνά `aria-describedby`, που εδώ
-                    λέει με λέξεις γιατί το κουμπί δείχνει σβησμένο ενώ παραμένει
-                    πατήσιμο — ούτε την ημιδιαφάνεια χωρίς `disabled`. */}
-                <button type="submit" aria-describedby={why ? 'su-cta-why' : undefined} className="auth-cta" style={{ width: '100%', padding: '12px', background: 'var(--accent)', border: 'none', borderRadius: T.radius.pill, color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, cursor: blocked ? 'not-allowed' : 'pointer', opacity: blocked ? 0.6 : 1, letterSpacing: '-0.01em', marginTop: 4, fontFamily: 'inherit' }}>
+                {/* Το κοινό κύριο κουμπί, όπως στη Σύνδεση και στην Επαναφορά: ήταν
+                    χειροποίητο «χάπι» επειδή το Btn δεν περνούσε ούτε το
+                    `aria-describedby` ούτε τη σβηστή όψη χωρίς `disabled`. */}
+                <Btn variant="primary" type="submit" field dimmed={blocked} describedBy={why ? 'su-cta-why' : undefined}>
                   {loading ? 'Δημιουργία…' : 'Ξεκίνα τη δοκιμή'}
-                </button>
+                </Btn>
               </form>
             </>
           )}

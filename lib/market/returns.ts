@@ -31,12 +31,13 @@ export function yields(monthlyRent: number, propertyValue: number, annualOpex: n
   const gross = value > 0 ? (annualRent / value) * 100 : 0
   const net = value > 0 ? ((annualRent - opex) / value) * 100 : 0
   const afterTax = value > 0 ? ((annualRent - opex - tax) / value) * 100 : 0
+  // ΔΥΟ ΔΕΚΑΔΙΚΑ, ΟΣΑ ΤΥΠΩΝΕΙ Η ΟΘΟΝΗ (fp). Με ένα, το 1,972% έβγαινε «2,00%».
   return {
     annualRent: round2(annualRent),
-    grossYield: round1(gross),
-    netYield: round1(net),
-    netYieldAfterTax: round1(afterTax),
-    capRate: round1(net),
+    grossYield: round2(gross),
+    netYield: round2(net),
+    netYieldAfterTax: round2(afterTax),
+    capRate: round2(net),
   }
 }
 

@@ -34,12 +34,12 @@ export const NAV_LABELS: Record<string, string> = {
   pricing:    'Βραχυχρόνια',
   clients:    'Επισκέπτες',
   inventory:  'Έπιπλα και εξοπλισμός',
-  documents:  'Φάκελος Ακινήτου',
+  documents:  'Φάκελος ακινήτου',
   contacts:   'Επαφές',
   checklist:  'Εκκρεμότητες',
   roi:        'Απόδοση',
   plan:       'Αξιοποίηση',
-  referral:   'Πρόγραμμα Πρόσκλησης',
+  referral:   'Πρόγραμμα πρόσκλησης',
   settings:   'Λογαριασμός',
 };
 

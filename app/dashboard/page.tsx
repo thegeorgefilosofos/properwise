@@ -58,6 +58,7 @@ import type { OpenerContext } from '@/lib/assistant/openers';
 import { NAV_LABELS, navLabel } from '@/lib/nav/labels';
 import { readLaunchShortcut } from '@/lib/nav/history';
 import { mergeLedger, ledgerTotal } from '@/lib/expenses/ledger';
+import { resolveCategory, BY_SLUG } from '@/lib/expenses/taxonomy';
 import StartPanel from './components/StartPanel';
 import DemoPreview from './components/DemoPreview';
 import { useAppPreferences } from './components/useAppPreferences';
@@ -129,7 +130,7 @@ interface Expense  { id:string; amount:number; date:string; category:string; des
 // από τον τίτλο «Μέσοι λογαριασμοί». Ο ιδιοκτήτης έβλεπε τον Ιανουάριο του
 // ρεύματος, με τη θέρμανση μέσα και έχτιζε πάνω του ετήσιο προϋπολογισμό.
 interface Bill     { id:string; type:string; amount:number; paid:boolean;
-                     due_date?:string|null; name?:string|null; }
+                     due_date?:string|null; name?:string|null; category?:string|null; }
 interface Task     { id:string; title:string; due_date:string|null; priority:string; completed:boolean; }
 interface Tenant   { monthly_rent:number|null; lease_end:string|null; }
 /** Το ενοίκιο και ο τρόπος είσπραξης, ανά ακίνητο του χαρτοφυλακίου. */
@@ -766,8 +767,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // πηγή και το πλήθος γράφεται δίπλα ώστε να φαίνεται σε τι στηρίζεται.
   const billAverages = useMemo(() => {
     const byType = new Map<string, { sum: number; count: number }>();
+    // ΑΝΑ ΚΑΤΗΓΟΡΙΑ, ΟΠΩΣ ΤΗΝ ΑΠΟΘΗΚΕΥΕΙ Η ΦΟΡΜΑ. Η ομαδοποίηση γινόταν με το
+    // `type`, που η εφαρμογή δεν συμπληρώνει: ρεύμα και νερό έβγαιναν μαζί σε
+    // έναν «Λογαριασμό». Το `type` μένει μόνο για παλιές γραμμές.
     for (const b of bills) {
-      const key = b.type || b.name || 'Λογαριασμός';
+      const slug = resolveCategory(b.category) ?? resolveCategory(b.type);
+      const key = slug && slug !== 'other' ? BY_SLUG[slug].label : 'Λοιποί λογαριασμοί';
       const cur = byType.get(key) || { sum: 0, count: 0 };
       byType.set(key, { sum: cur.sum + (b.amount || 0), count: cur.count + 1 });
     }
@@ -874,7 +879,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     property: prop, tenant, rent, propValue, grossYield, netYield,
     expensesYTD: totalExpYTD,
     expenses,
-    bills: bills.map(b => ({ type:b.type, amount:b.amount, paid:b.paid, due_date:b.due_date })),
+    bills: bills.map(b => ({ category:b.category, type:b.type, amount:b.amount, paid:b.paid, due_date:b.due_date })),
     tasks: tasks.map(t => ({ due_date: t.due_date })),
     checklist: chk,
     inventory: inv,
@@ -897,7 +902,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     // Τα πεδία ζουν στην «Επεξεργασία στοιχείων ακινήτου», που ως τώρα άνοιγε
     // μόνο από ένα μενού της πάνω μπάρας.
     { key:'details', weight:10, label:'Συμπλήρωσε αξία και ενοίκιο', hint:'Εμπορική ή αντικειμενική αξία και μηνιαίο ενοίκιο, για σωστές αποδόσεις', done: propertyDetailsComplete(prop, !!tenant), nav:'edit' },
-    { key:'tenant',  weight:8, label:'Πρόσθεσε ενοικιαστή και ενοίκιο', hint:'Ξεκλείδωσε αποδόσεις και υπενθυμίσεις λήξης', done: !!tenant, nav:'tenant' },
+    { key:'tenant',  weight:8, label:'Πρόσθεσε ενοικιαστή και ενοίκιο', hint:'Για αποδόσεις και υπενθύμιση πριν λήξει η μίσθωση', done: !!tenant, nav:'tenant' },
     { key:'expense', weight:6, label:'Κατέγραψε την πρώτη δαπάνη', hint:'Παρακολούθησε κόστη και έκπτωση φόρου', done: expenses.length>0, nav:'finances' },
     { key:'bills',   weight:5, label:'Ρύθμισε ρεύμα και αέριο', hint:'Σύγκρινε παρόχους και βρες φθηνότερο τιμολόγιο', done: bills.length>0, nav:'finances' },
     { key:'pricing', weight:3, label:'Δες την προτεινόμενη τιμή σου', hint:'Δυναμική τιμή ανά νύχτα και φορολογική εικόνα βραχυχρόνιας μίσθωσης', done: hostStays.length>0, nav:'pricing' },
@@ -965,7 +970,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // δηλαδή για το είδος με την πιο συγκεκριμένη ημερομηνία που υπάρχει.
       //
       // Το επείγον δεν χάνεται: πέρασε εκεί που είναι το ποσό. Το
-      // `cashSideNote` γράφει πλέον «2 εκκρεμότητες · 120,00€ ληξιπρόθεσμα,
+      // `cashSideNote` γράφει πλέον «2 απλήρωτα · 120,00€ ληξιπρόθεσμα,
       // η παλαιότερη 18 ημέρες πίσω», χρησιμοποιώντας το `overdue` που
       // υπολογιζόταν και δεν το τύπωνε καμία οθόνη.
       //
@@ -1106,7 +1111,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             Τα ίδια ζεύγη σε ΔΥΟ στήλες πέφτουν στις επτά σειρές και ζυγίζουν με
             το διπλανό — η ίδια πληροφορία, χωρίς το κενό. */}
         <div className="card">
-          <div className="section-label"><span className="section-dot"/> Στοιχεία ακινήτου</div>
+          <h3 className="section-label"><span className="section-dot"/> Στοιχεία ακινήτου</h3>
           {/* ═══ ΤΟ ΤΕΛΕΥΤΑΙΟ ΣΤΟΙΧΕΙΟ ΕΜΕΝΕ ΜΟΝΟ ΤΟΥ, ΜΕ ΤΡΥΠΑ ΔΙΠΛΑ ΤΟΥ ══════
               ΤΟ ΠΡΩΤΟ ΕΥΡΗΜΑ ΤΗΣ ΠΡΩΤΗΣ ΣΑΡΩΣΗΣ ΑΥΤΗΣ ΤΗΣ ΟΘΟΝΗΣ. Μετρημένο σε
               768 και 820: έντεκα στοιχεία σε δύο στήλες δίνουν 2+2+2+2+2+1 και
@@ -1144,7 +1149,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           </div>
         </div>
         <div className="card">
-          <div className="section-label"><span className="section-dot"/> Μέσοι λογαριασμοί</div>
+          <h3 className="section-label"><span className="section-dot"/> Μέσοι λογαριασμοί</h3>
           {billAverages.length===0
             ? <EmptyState icon={<FileText size={20}/>} title="Κανένας λογαριασμός ακόμη" hint="Πρόσθεσε ρεύμα, νερό και πάγια για να δεις μέσους όρους."/>
             : <div style={{display:'flex',flexDirection:'column',gap:8}}>
@@ -1190,7 +1195,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         const items: KPIItem[] = income ? [
           { label:'Έσοδα από ενοίκια', value:fmtEur(annualRent), sub:`${fmtEur(rent)} τον μήνα`,
             title:`Μηνιαίο ενοίκιο ${fmtEur(rent)} × 12.` },
-          { label:'Δαπάνες', value:fmtEur(Math.round(projectedExpYear)),
+          { label:'Δαπάνες', value:fmtEur(projectedExpYear),
             sub: [`${fmtEur(totalExpYTD)} ως σήμερα`, recurringCount>0 ? `${recurringCount} πάγιες` : null].filter(Boolean).join(' · '),
             title:`Οι δαπάνες που έχεις καταχωρήσει για το ${year}, μετρημένες όσες φορές πραγματικά συμβαίνουν: οι εφάπαξ (π.χ. ΕΝΦΙΑ, συμβόλαιο) μία φορά, οι πάγιες όσες φορές επαναλαμβάνονται. Δεν πολλαπλασιάζεται το σύνολο του έτους ×12.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
           // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ, ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
@@ -1217,10 +1222,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           // ΧΩΡΙΣ ΧΡΩΜΑΤΙΚΗ ΕΤΥΜΗΓΟΡΙΑ. Το πρόσημο το λέει ήδη το ίδιο το ποσό·
           // το πράσινο/κόκκινο απλώς το ξαναέλεγε και σε μια χρονιά με ΕΝΦΙΑ
           // έβαφε κόκκινο ένα ακίνητο που δουλεύει κανονικά.
-          { label:'Καθαρό αποτέλεσμα', value:fmtEur(Math.round(net)),
+          { label:'Καθαρό αποτέλεσμα', value:fmtEur(net),
             title:'Ακαθάριστα έσοδα μείον δαπάνες μείον το μερίδιο φόρου. Δεν περιλαμβάνει δόσεις δανείου.' },
         ] : [
-          { label:'Δαπάνες', value:fmtEur(Math.round(projectedExpYear)),
+          { label:'Δαπάνες', value:fmtEur(projectedExpYear),
             sub: [`${fmtEur(totalExpYTD)} ως σήμερα`, recurringCount>0 ? `${recurringCount} πάγιες` : null].filter(Boolean).join(' · '),
             title:`Οι δαπάνες που έχεις καταχωρήσει για το ${year}, μετρημένες όσες φορές πραγματικά συμβαίνουν.` },
           // Χωρίς εμπορική ΚΑΙ χωρίς αντικειμενική αξία, το πλακίδιο έγραφε
@@ -1236,7 +1241,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         // σειρά και ισοπέδωνε την ιεραρχία.
         const extra: KPIItem[] = [];
         if (loans.length > 0) extra.push({
-          label:'Δόση δανείου / μήνα', value:fmtEur(Math.round(monthlyDebt)),
+          // ΧΩΡΙΣ ΣΤΡΟΓΓΥΛΕΥΣΗ ΣΤΟ ΕΥΡΩ. Η ατζέντα της ίδιας οθόνης γράφει τη δόση
+          // με τα λεπτά της· εδώ έβγαινε «922,00€» δίπλα σε «922,30€».
+          label:'Δόση δανείου / μήνα', value:fmtEur(monthlyDebt),
           sub: debtLtv>0 ? `${debtKnownAge ? 'υπόλοιπο' : 'αρχικό δάνειο'} προς αξία ${fp(debtLtv)}` : undefined,
           title:'Εκτιμώμενη τοκοχρεολυτική δόση. ΔΕΝ αφαιρείται από το καθαρό αποτέλεσμα παραπάνω· το κεφάλαιο δεν είναι δαπάνη.' });
         // ── ΕΙΣΠΡΑΞΕΙΣ, ΟΧΙ ΕΣΟΔΑ. ΔΥΟ ΣΩΣΤΑ ΝΟΥΜΕΡΑ ΓΙΑ ΤΗΝ ΙΔΙΑ ΔΙΑΜΟΝΗ ──────
@@ -1251,7 +1258,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         // έσοδα» και εννοεί το δηλωτέο· εδώ είναι το ταμείο, άρα εισπράξεις. Μία
         // λέξη, καμία επιπλέον γραμμή και η αμφισημία φεύγει.
         if (hostStays.length > 0) extra.push({
-          label:`Εισπράξεις φιλοξενίας ${year}`, value:fmtEur(Math.round(hostingYTD)),
+          label:`Εισπράξεις φιλοξενίας ${year}`, value:fmtEur(hostingYTD),
           sub: [hostingNights>0?`${hostingNights} διανυκτερεύσεις`:null, nextArrival?`επόμενη άφιξη ${fd(nextArrival)}`:null].filter(Boolean).join(' · ') || undefined,
           title:`Ό,τι μπήκε στον λογαριασμό σου από διαμονές, από την καρτέλα «${navLabel('clients')}». Το ΔΗΛΩΤΕΟ ποσό είναι μεγαλύτερο, γιατί περιλαμβάνει την προμήθεια της πλατφόρμας: το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».` });
         // ΟΙ «ΕΚΚΡΕΜΕΙΣ ΔΑΠΑΝΕΣ» ΕΦΥΓΑΝ ΑΠΟ ΕΔΩ. Είναι ακριβώς το «Χρωστάω» του
@@ -1732,8 +1739,8 @@ export default function Dashboard() {
     const ok = await confirmDialog(
       `Οριστική διαγραφή του ακινήτου «${name}»;\n\n`+
       `Θα διαγραφούν όλα τα συνδεδεμένα στοιχεία του (έσοδα, δαπάνες, λογαριασμοί, `+
-      `ενοικιαστής, δάνεια, απογραφή, έγγραφα, διαμονές), μαζί με όσα θυμάται `+
-      `η Νόα γι’ αυτό. Η ενέργεια δεν αναιρείται.`+
+      `ενοικιαστής, δάνεια, απογραφή, έγγραφα, διαμονές), μαζί με το ιστορικό `+
+      `της συνομιλίας με τη Νόα γι’ αυτό. Η ενέργεια δεν αναιρείται.`+
       (mine ? `` : `\n\nΤο ακίνητο δεν είναι δικό σου: ανήκει στον ιδιοκτήτη που σε πρόσθεσε στην ομάδα. Η διαγραφή γράφεται στο ημερολόγιό του με το όνομά σου.`),
       { tone: 'negative', confirmLabel: 'Οριστική διαγραφή' }
     );
@@ -2075,7 +2082,7 @@ export default function Dashboard() {
                   style={d.visible ? undefined : { opacity: 0.45 }}
                   title={d.visible ? (locked ? 'Διαθέσιμο σε ανώτερο πακέτο' : undefined) : d.reason}>
                   <span className="sidebar-item-icon" aria-hidden>{ic(NAV_ICON[id]||'')}</span>
-                  <span className="sidebar-item-label">{id==='referral' && effProfileType==='professional' ? 'Πρόγραμμα Συνεργατών' : NAV_LABEL[id]}</span>
+                  <span className="sidebar-item-label">{id==='referral' && effProfileType==='professional' ? 'Πρόγραμμα συνεργατών' : NAV_LABEL[id]}</span>
                   {d.visible && locked && <LockBadge/>}
                 </button>
               );})}
@@ -2284,9 +2291,9 @@ export default function Dashboard() {
         {!selected && loadError ? (
           <div className="app-content" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{maxWidth:460,width:'100%',textAlign:'center'}}>
-              <h1 style={{fontFamily: T.font.sans,fontSize:22,fontWeight:700,color:'var(--text-primary)',margin:'0 0 10px'}}>Δεν μπόρεσα να διαβάσω τα ακίνητά σου</h1>
+              <h1 style={{fontFamily: T.font.sans,fontSize:22,fontWeight:700,color:'var(--text-primary)',margin:'0 0 10px'}}>Τα ακίνητά σου δεν φορτώθηκαν</h1>
               <p style={{fontFamily: T.font.sans,fontSize:14,color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 20px',maxWidth:400}}>
-                Τα δεδομένα σου είναι ασφαλή· απλώς δεν φορτώθηκαν τώρα. Συνήθως φταίει η σύνδεση.
+                Τα δεδομένα σου είναι ασφαλή. Συνήθως φταίει η σύνδεση.
               </p>
               <Btn variant="primary" onClick={()=>{ if(user) fetchProperties(user.id); }}>Δοκίμασε ξανά</Btn>
             </div>
@@ -2307,7 +2314,7 @@ export default function Dashboard() {
               <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'balance'}}>Φτάνει ένα όνομα για το ακίνητο, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θες.</p>
               <ol style={{listStyle:'none',padding:0,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,170px),1fr))',gap:12,margin:'0 0 30px',textAlign:'left'}}>
                 {[
-                  {t:'Τα βασικά',d:'Διεύθυνση, τετραγωνικά, όροφος, έτος κατασκευής.'},
+                  {t:'Τα βασικά',d:'Όνομα, διεύθυνση και τετραγωνικά.'},
                   {t:'Ένας λογαριασμός',d:'Τον φωτογραφίζεις και μπαίνει μόνος του στο ακίνητο.'},
                   {t:'Ο ΕΝΦΙΑ σου',d:'Ενδεικτικά, μαζί με ό,τι λείπει για τον λογιστή.'},
                 ].map((f,i)=>(
@@ -2437,7 +2444,7 @@ export default function Dashboard() {
                     <div style={{marginTop:T.sp.section}}>
                       <SecHdr label="Σε σχέση με τα υπόλοιπα ακίνητά σου"/>
                       {isTabAllowed(ent,'comparison')
-                        ? <TabComparison properties={properties} userId={user.id}/>
+                        ? <TabComparison properties={properties} userId={user.id} onNavigate={(t)=>setNav(t)}/>
                         : <FeatureLock title="Σύγκρινε τα ακίνητά σου δίπλα-δίπλα" benefit={`Απόδοση, δαπάνες και πάροχοι όλων των ακινήτων σου σε έναν πίνακα, για να δεις καθαρά πού κερδίζεις και πού χρειάζεται να λάβεις αποφάσεις. Ξεκλειδώνει με το πακέτο ${PLANS.owner.name}.`} requiredPlan="owner" currentPlanName={PLANS[effPlan].name} onManage={()=>setNav('settings')} />}
                     </div>
                   )}

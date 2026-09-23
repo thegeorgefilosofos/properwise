@@ -206,10 +206,15 @@ export function cashPosition(input: {
  * όπου αλλού θα έμπαινε χρώμα. Λέει ΠΟΣΑ και ΑΠΟ ΠΟΤΕ, όχι «προσοχή».
  */
 export function cashSideNote(s: CashSide, kind: 'in' | 'out'): string {
-  if (s.count === 0) return kind === 'in' ? 'Τίποτα σε καθυστέρηση' : 'Τίποτα σε εκκρεμότητα';
+  if (s.count === 0) return kind === 'in' ? 'Τίποτα σε καθυστέρηση' : 'Τίποτα απλήρωτο';
   const first = s.lines[0];
   const d = first?.daysLeft;
-  const items = `${s.count} ${s.count === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`;
+  // ΔΟΣΕΙΣ ΚΑΙ ΑΠΛΗΡΩΤΑ, ΟΧΙ «ΕΚΚΡΕΜΟΤΗΤΕΣ». Η λέξη ανήκει στη λίστα ελέγχου:
+  // στην ίδια οθόνη η Νόα έλεγε «3 εκκρεμότητες» και το ταμείο «4», για άλλα
+  // πράγματα.
+  const items = kind === 'in'
+    ? `${s.count} ${s.count === 1 ? 'δόση' : 'δόσεις'}`
+    : `${s.count} ${s.count === 1 ? 'απλήρωτο' : 'απλήρωτα'}`;
   if (d != null && d < 0) {
     const late = Math.abs(d);
     // ΤΟ ΛΗΞΙΠΡΟΘΕΣΜΟ ΠΟΣΟ ΛΕΓΕΤΑΙ ΕΔΩ, ΟΧΙ ΑΛΛΟΥ.

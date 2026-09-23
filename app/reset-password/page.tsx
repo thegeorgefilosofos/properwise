@@ -16,22 +16,34 @@ import { BackLink } from '../BackLink'
 // Ίδιο «δωμάτιο» με Σύνδεση/Εγγραφή (κοινό AuthAside).
 // ═══════════════════════════════════════════════════════════════════════════
 
-type Mode = 'request' | 'sent' | 'update' | 'done'
+type Mode = 'checking' | 'request' | 'sent' | 'update' | 'done'
 
-// Το κάταγμα δεν αλλάζει χωρίς πλοήγηση: η συνδρομή δεν έχει τι να ακούσει.
-const HASH_NEVER_CHANGES = () => () => {}
-const readRecovery = () => window.location.hash.includes('type=recovery')
+// ── Ο ΣΥΝΔΕΣΜΟΣ ΓΥΡΙΖΕΙ ΩΣ `?code=`, ΟΧΙ ΩΣ `#type=recovery` ──────────────
+// Ο πελάτης είναι PKCE (@supabase/ssr), οπότε ο έλεγχος του κατάγματος δεν
+// ταίριαζε ποτέ. Και ο κωδικός ανταλλάσσεται ΜΟΝΟ στη συσκευή που ζήτησε την
+// επαναφορά: σε άλλη συσκευή, ή με σύνδεσμο που έληξε (`error_code`), δεν
+// ερχόταν κανένα γεγονός και η οθόνη έδειχνε σιωπηλά ξανά τη φόρμα αίτησης.
+type Link = 'none' | 'checking' | 'failed'
+// Η διεύθυνση δεν αλλάζει χωρίς πλοήγηση: η συνδρομή δεν έχει τι να ακούσει.
+const URL_NEVER_CHANGES = () => () => {}
+const readLink = (): Link => {
+  const q = new URLSearchParams(window.location.search)
+  const h = new URLSearchParams(window.location.hash.slice(1))
+  if (q.has('error_code') || h.has('error_code') || q.has('error') || h.has('error')) return 'failed'
+  return q.has('code') || h.has('access_token') ? 'checking' : 'none'
+}
 
 export default function ResetPasswordPage() {
   // Ο ΣΥΝΔΕΣΜΟΣ ΤΟΥ EMAIL ΛΕΕΙ ΗΔΗ ΣΕ ΠΟΙΑ ΟΘΟΝΗ ΕΙΜΑΣΤΕ. Ηταν
   // `setMode('update')` μέσα σε effect: ο χρήστης που πάτησε τον σύνδεσμο
   // επαναφοράς έβλεπε για ένα καρέ τη φόρμα «στείλε μου σύνδεσμο», δηλαδή τη
-  // φόρμα που μόλις είχε συμπληρώσει. Το κάταγμα (#) της διεύθυνσης είναι
-  // εξωτερική πηγή και διαβάζεται κατά την απόδοση, με ξεχωριστή απάντηση για
-  // τον διακομιστή.
-  const fromRecoveryLink = useSyncExternalStore(HASH_NEVER_CHANGES, readRecovery, () => false)
+  // φόρμα που μόλις είχε συμπληρώσει. Η διεύθυνση είναι εξωτερική πηγή και
+  // διαβάζεται κατά την απόδοση, με ξεχωριστή απάντηση για τον διακομιστή.
+  const link = useSyncExternalStore(URL_NEVER_CHANGES, readLink, () => 'none' as Link)
   const [modeOverride, setMode] = useState<Mode | null>(null)
-  const mode: Mode = modeOverride ?? (fromRecoveryLink ? 'update' : 'request')
+  const mode: Mode = modeOverride ?? (link === 'checking' ? 'checking' : 'request')
+  const [exchangeFailed, setExchangeFailed] = useState(false)
+  const linkFailed = link === 'failed' || exchangeFailed
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -40,6 +52,8 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    // Διαβάζεται ΠΡΙΝ φορτωθεί ο πελάτης: η επιτυχής ανταλλαγή σβήνει το `code`.
+    const arrived = readLink()
     // Ο ΚΑΘΑΡΙΣΜΟΣ ΠΡΕΠΕΙ ΝΑ ΕΠΙΒΙΩΣΕΙ ΤΗΣ ΑΝΑΒΟΛΗΣ. Με τον πελάτη να φορτώνεται
     // ασύγχρονα, η οθόνη μπορεί να αποπροσαρτηθεί ΠΡΙΝ γραφτεί η συνδρομή. Χωρίς
     // τη σημαία, θα γραφόταν συνδρομή σε οθόνη που δεν υπάρχει και δεν θα την
@@ -54,6 +68,13 @@ export default function ResetPasswordPage() {
         if (event === 'PASSWORD_RECOVERY') setMode('update')
       })
       sub = data.subscription
+      if (arrived !== 'checking') return
+      // Η ανταλλαγή τρέχει στην αρχικοποίηση του πελάτη. Αν ο κωδικός έμεινε
+      // στη διεύθυνση, δεν ανταλλάχθηκε: λείπει ο επαληθευτής αυτής της συσκευής.
+      const { error } = await supabase.auth.initialize()
+      if (gone) return
+      if (error || new URLSearchParams(window.location.search).has('code')) { setExchangeFailed(true); setMode('request') }
+      else setMode('update')
     })()
     return () => { gone = true; sub?.unsubscribe() }
   }, [])
@@ -126,20 +147,35 @@ export default function ResetPasswordPage() {
   return (
     <div className="auth-split" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
 
+      <a href="#main" className="skip-link">Μετάβαση στη φόρμα</a>
+
       {/* LEFT, κοινό marketing panel (AuthAside) */}
       <AuthAside
-        headline="Επαναφορά πρόσβασης."
-        accent="Σε ένα λεπτό."
-        sub="Ξέχασες τον κωδικό σου; Δεν πειράζει. Σε ένα λεπτό ορίζεις καινούριο και τα δεδομένα σου παραμένουν ακριβώς εκεί που τα άφησες."
+        headline="Νέος κωδικός,"
+        accent="ίδια δεδομένα."
+        sub="Ξέχασες τον κωδικό σου; Ορίζεις καινούριο και τα δεδομένα σου μένουν όπως τα άφησες."
       />
 
-      {/* RIGHT, form */}
-      <div className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
+      {/* RIGHT, form: <main>, όπως στη Σύνδεση και στην Εγγραφή. */}
+      <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
+
+          {mode === 'checking' && (
+            <>
+              <BackLink home />
+              <h1 style={h2s}>Επαναφορά κωδικού</h1>
+              <p role="status" style={subs}>Έλεγχος συνδέσμου…</p>
+            </>
+          )}
 
           {mode === 'request' && (
             <>
               <h1 style={h2s}>Επαναφορά κωδικού</h1>
+              {linkFailed && (
+                <div role="alert" style={{ background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '12px 14px', fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)', marginBottom: 16 }}>
+                  Ο σύνδεσμος έληξε ή άνοιξε σε άλλη συσκευή. Ζήτησε νέο εδώ και άνοιξέ τον στην ίδια συσκευή.
+                </div>
+              )}
               <p style={subs}>Δώσε το email σου και θα σου στείλουμε έναν σύνδεσμο για να ορίσεις νέο κωδικό.</p>
               <form onSubmit={sendReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
@@ -181,7 +217,7 @@ export default function ResetPasswordPage() {
                 <div>
                   <label htmlFor="rp-password" style={label}>Νέος κωδικός</label>
                   <div style={{ position: 'relative' }}>
-                    <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_LABEL} aria-describedby="rp-pw-req" style={{ ...field, paddingRight: 48 }}
+                    <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_LABEL} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
                       onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                     {eye}
                   </div>
@@ -202,14 +238,14 @@ export default function ResetPasswordPage() {
             <div style={{ textAlign: 'center' }} role="status">
               {successIcon}
               <h1 style={h2s}>Ο κωδικός άλλαξε</h1>
-              <p style={subs}>Μπορείς τώρα να συνδεθείς με τον νέο σου κωδικό.</p>
+              <p style={subs}>Ο νέος κωδικός ισχύει από τώρα και σε όλες τις συσκευές σου.</p>
               {/* Προορισμός και όχι ενέργεια: με `href` γίνεται σύνδεσμος που ανοίγει
                   και σε νέα καρτέλα, με την ίδια ακριβώς όψη. */}
               <Btn variant="primary" href="/dashboard" field>Μετάβαση στον πίνακα</Btn>
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   )
 }

@@ -21,7 +21,7 @@ import {
   BANKS, LOAN_TYPES, BORROWER_PROFILES, rateRange,
   calcMonthly, calcAmortization, calcFmaExemption, calcRentalTax, taxableRental,
   fmtEur, fmtPct, fmtPct1, BANKS_VERIFIED,
-  LoanType, RateType, BorrowerType, LoanScenario, MarketRates, SavedLoan
+  LoanType, RateType, BorrowerType, LoanScenario, MarketRates, SavedLoan, rateTypeLabel
 } from './TabLoanData'
 import { greekWhen } from '@/lib/market/ecb'
 import { rentalRowsForYear } from '@/lib/billing/greekTax'
@@ -894,7 +894,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
     ].join('')
     const detailRows=[
       reportRow('Τράπεζα', bankName.trim()||ABSENT),
-      reportRow('Επιτόκιο', `${rPct(effRate)} · ${rateType==='variable'?'κυμαινόμενο':'σταθερό'}`),
+      reportRow('Επιτόκιο', `${rPct(effRate)} · ${rateTypeLabel(rateType).toLowerCase()}`),
       reportRow('Διάρκεια', `${Y} έτη (${Y*12} δόσεις)`),
     ].join('')
     const bodyRows=amort.map(r=>{
@@ -938,7 +938,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         ] },
         { type:'rows', title:'Στοιχεία δανείου', rows:[
           { label:'Τράπεζα', value:bankLabel },
-          { label:'Επιτόκιο', value:`${pPct(effRate)} · ${rateType==='variable'?'κυμαινόμενο':'σταθερό'}` },
+          { label:'Επιτόκιο', value:`${pPct(effRate)} · ${rateTypeLabel(rateType).toLowerCase()}` },
           { label:'Διάρκεια', value:termLabel },
         ] },
         { type:'table', title:'Πίνακας τοκοχρεολυσίου',
@@ -1112,13 +1112,21 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           από το μήκος του αριθμού, ο τόνος αποκαλύπτεται στο άγγιγμα όπως
           παντού και η κατάσταση `hoverKpi` δεν χρειάζεται καν. */}
       <KPIGrid items={[
-        { label:'Μηνιαία δόση', value:fmtEur(monthly), sub:`${rateType==='variable'?'κυμαινόμενο':'σταθερό'} ${fmtPct(effRate)} · ${Y} έτη` },
+        { label:'Μηνιαία δόση', value:fmtEur(monthly), sub:`${rateTypeLabel(rateType).toLowerCase()} ${fmtPct(effRate)} · ${Y} έτη` },
         { label:'Σύνολο τόκων', value:fmtEur(totalInt), sub:`${fp(((totalInt/Math.max(LA,1))*100))} επί κεφαλαίου` },
         { label:'Συνολική αποπληρωμή', value:fmtEur(total), sub:`κεφάλαιο ${fmtEur(LA)}` },
         // Ο τόνος μπαίνει ΜΟΝΟ όταν λέει κάτι: πάνω από 90% δάνειο προς αξία
         // είναι το όριο πέρα από το οποίο οι τράπεζες σταματούν να δανείζουν.
         { label:'Δάνειο προς αξία', value:`${fp(ltv)}`, sub:`ίδια κεφάλαια ${fmtEur(PV-LA)}`, title:'Ποσοστό δανείου ως προς την αξία του ακινήτου', tone: ltv>90 ? 'warning' : undefined },
       ]}/>
+      {/* Η ΣΤΑΘΕΡΗ ΠΕΡΙΟΔΟΣ ΔΕΝ ΜΠΑΙΝΕΙ ΣΤΟΝ ΥΠΟΛΟΓΙΣΜΟ: δόση και σύνολα τρέχουν με
+          το ίδιο επιτόκιο ως το τέλος. Όσο η περίοδος είναι μικρότερη από τη
+          διάρκεια, το λέμε δίπλα στα νούμερα αντί να το υπονοούμε. */}
+      {(rateType==='fixed'||rateType==='mixed')&&Number(fixedPeriod)<Y&&(
+        <p style={{ ...TT.caption, color:'var(--text-tertiary)', marginTop:8 }}>
+          Τα σύνολα υποθέτουν {fmtPct(effRate)} σε όλη τη διάρκεια· μετά τα {fixedPeriod} χρόνια το επιτόκιο αλλάζει, οπότε είναι ενδεικτικά.
+        </p>
+      )}
 
       {/* ΠΕΝΤΕ ΕΝΕΡΓΕΙΕΣ ΠΟΥ ΤΥΛΙΓΟΝΤΑΝ 3+2 ΚΑΙ 4+1. Μετρημένο σε 768 και 834: το
           `flex-wrap` έδινε σε κάθε κουμπί το πλάτος του κειμένου του και η
@@ -1555,7 +1563,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         </table>
          </div>
         </div>
-        {rateType==='fixed'&&<div style={{marginTop:10,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Σταθερό {fixedPeriod} χρόνια, προστατευμένος από ανατιμήσεις Euribor</p></div>}
+        {rateType==='fixed'&&<div style={{marginTop:10,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Σταθερό για {fixedPeriod} χρόνια: ως τότε η δόση δεν αλλάζει με το Euribor{Number(fixedPeriod)<Y?'· μετά το επιτόκιο αλλάζει':''}.</p></div>}
       </Section>
 
       <Section title="Ανάλυση αναχρηματοδότησης" sub="Σημείο απόσβεσης, πότε αξίζει η μεταφορά">

@@ -30,8 +30,9 @@ import { parseAmount } from '@/lib/core/greek';
 import { bankReceiptMatters, presumptiveDeductionRateForYear } from '@/lib/billing/consolidate';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { Toggle } from '@/app/dashboard/components/UIComponents';
-import { ToolCta, EstimateNote } from '@/app/PublicChrome';
+import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
+import { toolQuery } from '@/lib/tools/permalink';
 
 import LiveResult from '@/components/LiveResult';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -62,8 +63,45 @@ import LiveResult from '@/components/LiveResult';
 // 3.850€. Υποεκτίμηση 400€, στην ΠΡΩΤΗ επαφή του επισκέπτη με το προϊόν και
 // προς την πλευρά που τον εφησυχάζει. Ο πυρήνας ήξερε ήδη τη διάκριση
 // (`rentalBracketsForYear`)· η δημόσια σελίδα δεν τον ρωτούσε ποτέ.
-const SPEC = { enoikio: '600', mines: '12', trapeza: '1', etos: '2025' } as const;
+//
+// Η ΠΡΟΕΠΙΛΟΓΗ ΤΟΥ ΕΤΟΥΣ ΣΤΗ ΔΙΕΥΘΥΝΣΗ ΕΙΝΑΙ ΚΕΝΗ, ΕΠΙΤΗΔΕΣ. Ετσι ο σύνδεσμος
+// που κοινοποιείται γράφει ΠΑΝΤΑ τη χρονιά του και δεν αλλάζει νόημα όταν
+// αλλάξει η χρονιά που ανοίγει η σελίδα (βλ. `openingYear`).
+const SPEC = { enoikio: '600', mines: '12', trapeza: '1', etos: '' } as const;
 const PATH = '/ypologismos-forou-enoikion';
+
+// ═══ Η ΧΡΟΝΙΑ ΠΟΥ ΑΝΟΙΓΕΙ Ο ΥΠΟΛΟΓΙΣΤΗΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΣΗΜΕΡΙΝΗ ΗΜΕΡΟΜΗΝΙΑ ═══
+// Ηταν καρφωμένη στο 2025, με ετικέτα «δηλώνεται τώρα». Τον Σεπτέμβριο του 2026
+// εκείνη η δήλωση είχε κλείσει και η σελίδα άνοιγε στην κλίμακα που δεν αφορά
+// πια κανέναν, κάτω από τίτλο και πηγές που έλεγαν 2026.
+//
+// Τα εισοδήματα μιας χρονιάς δηλώνονται την επόμενη και η προθεσμία κλείνει τον
+// Ιούλιο (lib/tax/greekTaxCalendar.ts). Από τον Αύγουστο η ερώτηση που μετρά
+// είναι τα εισοδήματα της τρέχουσας χρονιάς.
+const YEARS = ['2025', '2026'] as const;
+const FILING_CLOSED_FROM_MONTH = 8;
+// Οι σύνδεσμοι που μοιράστηκαν πριν γραφτεί πάντα το έτος δεν το έγραφαν όταν
+// ήταν 2025, γιατί τότε ήταν η προεπιλογή. Με άλλα πεδία και χωρίς έτος, ένας
+// σύνδεσμος εννοεί 2025.
+const LEGACY_YEAR = '2025';
+
+const todayParts = (today: string) => ({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) });
+
+/** Η χρονιά εισοδήματος που ανοίγει η σελίδα σήμερα, μέσα στις διαθέσιμες. */
+function openingYear(today: string): string {
+  const { y, m } = todayParts(today);
+  const want = m >= FILING_CLOSED_FROM_MONTH ? y : y - 1;
+  const first = Number(YEARS[0]), last = Number(YEARS[YEARS.length - 1]);
+  return String(Math.min(last, Math.max(first, want)));
+}
+
+/** Πότε δηλώνεται το εισόδημα μιας χρονιάς, ειπωμένο από σήμερα. */
+function filingNote(year: number, today: string): string {
+  const { y, m } = todayParts(today);
+  const filed = year + 1;
+  if (y > filed || (y === filed && m >= FILING_CLOSED_FROM_MONTH)) return `δηλώθηκε το ${filed}`;
+  return y === filed ? 'δηλώνεται φέτος' : `δηλώνεται το ${filed}`;
+}
 
 // Η ανάγνωση ποσού έρχεται από το lib/core/greek.ts, που ξέρει και τις δύο
 // ελληνικές γραφές («1.234,56» και «1,234.56») και τα αρνητικά με παρενθέσεις.
@@ -71,9 +109,11 @@ const PATH = '/ypologismos-forou-enoikion';
 // σωστά: ακριβώς αυτή η διπλή υλοποίηση έκανε κάποτε το «1.234» να διαβάζεται
 // άλλοτε ως 1,234 και άλλοτε ως 1234, ανάλογα με την οθόνη.
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
+const MAX_MONTHS = 12;
 
 export function RentTaxCalculator({ today }: { today: string }) {
-  const [v, set] = useToolState(SPEC, PATH);
+  const [v, set] = useToolState(SPEC, PATH, x => x.etos ? x
+    : { ...x, etos: toolQuery(SPEC, x) ? LEGACY_YEAR : openingYear(today) });
   const monthly = v.enoikio, months = v.mines, viaBank = v.trapeza !== '0';
   const year = v.etos === '2026' ? 2026 : 2025;
   const brackets = rentalBracketsForYear(year);
@@ -89,7 +129,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
 
   const r = useMemo(() => {
     const m = amount(monthly);
-    const n = Math.min(12, Math.max(0, Math.round(amount(months))));
+    const n = Math.min(MAX_MONTHS, Math.max(0, Math.round(amount(months))));
     const gross = m * n;
     // Τεκμαρτή έκπτωση: ο νόμος τη δίνει χωρίς αποδείξεις, οπότε είναι το
     // ρεαλιστικό ελάχιστο για κάθε ιδιοκτήτη — και ο φόρος υπολογίζεται πάνω σε
@@ -156,6 +196,9 @@ export function RentTaxCalculator({ today }: { today: string }) {
             onChange={e => set('mines', e.target.value)} style={field}/>
         </div>
       </div>
+      <ToolClampNote notes={[
+        Math.round(amount(months)) > MAX_MONTHS && `Μέγιστο ${MAX_MONTHS} μήνες· υπολογίστηκαν ${MAX_MONTHS}.`,
+      ]}/>
 
       {/* ── Ο ΟΡΟΣ ΠΟΥ ΑΛΛΑΖΕΙ ΤΟ ΝΟΥΜΕΡΟ, ΣΕ ΔΙΚΗ ΤΟΥ ΣΕΙΡΑ ────────────────
              Δεν μπαίνει τρίτο κελί στο πλέγμα των δύο πεδίων: τα άλλα δύο είναι
@@ -164,9 +207,8 @@ export function RentTaxCalculator({ today }: { today: string }) {
              γιατί ρωτάμε, χωρίς να στριμωχτεί κάτω από ετικέτα δύο λέξεων. */}
       {/* ── ΠΟΙΑΣ ΧΡΟΝΙΑΣ ΕΙΣΟΔΗΜΑ ─────────────────────────────────────────
           Δύο κουμπιά, όχι μενού: οι επιλογές είναι δύο και θα μείνουν δύο ώσπου
-          να αλλάξει ο νόμος. Η προεπιλογή είναι το 2025, γιατί αυτή είναι η
-          δήλωση που υποβάλλει κάποιος σήμερα — και επειδή η προηγούμενη εκδοχή
-          εφάρμοζε σιωπηλά το 2026 σε ανθρώπους που ρωτούσαν για το 2025. */}
+          να αλλάξει ο νόμος. Η προεπιλογή και οι ετικέτες βγαίνουν από τη
+          σημερινή ημερομηνία (`openingYear`, `filingNote`). */}
       <div className="po-tool-controls" style={{ marginTop: 16 }}>
         <div style={{ ...TT.label, marginBottom: 8 }}>Εισόδημα ποιας χρονιάς</div>
         {/* `seg` και όχι `chip`: η ράγα έχει ήδη δικό της περίγραμμα. Η ράγα
@@ -175,8 +217,8 @@ export function RentTaxCalculator({ today }: { today: string }) {
             δύο ξεχωριστά παιδιά θα κάθονταν το ένα δίπλα στο άλλο. */}
         <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-base)',
           border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-          {([['2025', '2025', 'δηλώνεται τώρα'], ['2026', '2026', 'δηλώνεται το 2027']] as const).map(([val, lab, sub]) => {
-            const on = v.etos === val;
+          {YEARS.map(val => {
+            const on = v.etos === val, lab = val, sub = filingNote(Number(val), today);
             return (
               <ChipToggle key={val} shape="seg" grow on={on} onClick={() => set('etos', val)}>
                 <span style={{ display: 'block', textAlign: 'center', fontSize: 13, lineHeight: 1.25 }}>
@@ -385,9 +427,8 @@ export function RentTaxCalculator({ today }: { today: string }) {
           <strong style={{ color: 'var(--text-primary)' }}>Τι δεν περιλαμβάνει.</strong>{' '}
           Ο υπολογισμός αφορά <strong>μόνο</strong> το εισόδημα από ενοίκια, με την τεκμαρτή
           έκπτωση 5% που δίνει ο νόμος χωρίς δικαιολογητικά. Δεν περιλαμβάνει άλλα
-          εισοδήματά σου, ΕΝΦΙΑ, τέλος επιτηδεύματος, εισφορά αλληλεγγύης, ούτε
-          ειδικές περιπτώσεις (βραχυχρόνια μίσθωση, συνιδιοκτησία, νομικό πρόσωπο,
-          κενά διαστήματα, ανείσπρακτα). <EstimateNote />
+          εισοδήματά σου, τον ΕΝΦΙΑ, ούτε ειδικές περιπτώσεις (βραχυχρόνια μίσθωση,
+          συνιδιοκτησία, νομικό πρόσωπο, κενά διαστήματα, ανείσπρακτα). <EstimateNote />
         </p>
       </div>
 

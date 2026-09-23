@@ -22,7 +22,7 @@ import { downloadXlsx } from './sheets';
 import TabLoanCalculator, { type LoanCalcState } from './TabLoanCalculator'
 import { useMarketRates, useBankRates, useLoanPrograms, useIsAdmin, useMarketFeedHealth } from '../../hooks/useMarketData'
 import { greekWhen, seriesPage, ECB_SERIES } from '@/lib/market/ecb'
-import { BANKS_NORM, PROGRAMS_NORM, mergeBanks, mergePrograms, BANKS_VERIFIED, RATES_DISCLAIMER, type ComparisonBank, type ComparisonProgram, LOAN_TYPES, rateRange, GLOSSARY, EURIBOR_HISTORY, SERVICERS_GUIDE, calcMonthly, fmtEur, fmtPct, LoanType, RateType, SavedLoan, MARKET_FALLBACK } from './TabLoanData'
+import { BANKS_NORM, PROGRAMS_NORM, mergeBanks, mergePrograms, BANKS_VERIFIED, RATES_DISCLAIMER, type ComparisonBank, type ComparisonProgram, LOAN_TYPES, rateRange, GLOSSARY, EURIBOR_HISTORY, SERVICERS_GUIDE, calcMonthly, fmtEur, fmtPct, LoanType, RateType, SavedLoan, MARKET_FALLBACK, rateTypeLabel } from './TabLoanData'
 import { rankLoans, spitiMouEligibility, type UserLoanNeeds } from '@/lib/loans/recommend'
 import { hy } from '@/components/Hyphen'
 import { euriborInsight } from '@/lib/loans/affordability'
@@ -588,7 +588,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
         const ltv=loan.property_value>0?(loan.amount/loan.property_value)*100:0
         return [
           loan.bank, LOAN_TYPES[loan.loan_type as LoanType]?.label||loan.loan_type,
-          loan.amount, loan.rate, loan.rate_type==='variable'?'Κυμαινόμενο':'Σταθερό',
+          loan.amount, loan.rate, rateTypeLabel(loan.rate_type),
           loan.years, m, ti, ltv,
           loan.start_date ? new Date(loan.start_date) : '', loan.status==='active'?'Ενεργό':'Ανενεργό',
           (loan.notes||'').replace(/\n/g,' '),
@@ -825,7 +825,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 είναι ΕΝΑΣ, το υπόλοιπο· τα υπόλοιπα είναι στοιχεία και ζουν στη
                 γραμμή στοιχείων. Ιδια πληροφορία, μισό ύψος, μία ιεραρχία. */}
             <div style={{display:'flex',gap:T.sp.xl,flexWrap:'wrap',paddingTop:12,borderTop:'1px solid var(--border-subtle)'}}>
-              <div><p style={{...labelStyle,marginBottom:2}}>Επιτόκιο</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{fp(loan.rate)} · {loan.rate_type==='variable'?'κυμαινόμενο':'σταθερό'}</p></div>
+              <div><p style={{...labelStyle,marginBottom:2}}>Επιτόκιο</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{fp(loan.rate)} · {rateTypeLabel(loan.rate_type).toLowerCase()}</p></div>
               {ltv>0&&<div><p style={{...labelStyle,marginBottom:2}}>Δάνειο προς αξία</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{fp(ltv)}</p></div>}
               {loan.start_date&&<div><p style={{...labelStyle,marginBottom:2}}>Έναρξη</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{fdLong(loan.start_date)}</p></div>}
               {prog&&<div><p style={{...labelStyle,marginBottom:2}}>Τόκοι που πλήρωσες</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums'}}>{fe(prog.interestPaid)}</p></div>}
@@ -1420,14 +1420,16 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                       <div style={{position:'absolute',left:'60%',top:0,bottom:0,width:0,borderLeft:'1px dashed var(--text-tertiary)',opacity:0.5}}/>
                       <div style={{position:'absolute',left:'80%',top:0,bottom:0,width:0,borderLeft:'1px dashed var(--text-tertiary)',opacity:0.5}}/>
                     </div>
-                    <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 8,fontFamily: T.font.sans}}>Όρια: αποδεκτό 60 · υγιές 80. Βάσει {fmtEur(cs.loanAmount)} · {cs.years} έτη · {fmtPct(cs.effectiveRate)} {cs.rateType==='variable'?'κυμαινόμενο':'σταθερό'}.</p>
+                    <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 8,fontFamily: T.font.sans}}>Όρια: αποδεκτό 60 · υγιές 80. Βάσει {fmtEur(cs.loanAmount)} · {cs.years} έτη · {fmtPct(cs.effectiveRate)} {rateTypeLabel(cs.rateType).toLowerCase()}.</p>
                   </div>
                 </div>
 
                 <div style={{marginTop:16}}>
                   <FindingRow
                     right={cost('LTV')}
-                    title={`Δάνειο προς αξία ${fp(ltv)}: ${ltv>85?'υψηλό, απαιτεί προσοχή':ltv>70?'μέτριο, αποδεκτό':'καλό, εντός ορίων'}`}
+                    // Η ΛΕΞΗ ΑΚΟΛΟΥΘΕΙ ΤΟ ΟΡΙΟ ΤΗΣ ΒΑΘΜΟΛΟΓΙΑΣ (85). Το «μέτριο» πάνω από
+                    // 70 καθόταν δίπλα σε «100 / 100 · Υγιές δάνειο», χωρίς πόντο να λείπει.
+                    title={`Δάνειο προς αξία ${fp(ltv)}: ${ltv>85?'υψηλό, απαιτεί προσοχή':ltv>70?'αποδεκτό':'καλό, εντός ορίων'}`}
                     body={ltv>85
                       ? `Χρηματοδοτείς το ${fp(ltv)} της αξίας. Οι τράπεζες είναι επιφυλακτικές πάνω από 80%.${ltvFix}`
                       : `Ίδια κεφάλαια ${fmtEur(cs.propertyValue-cs.loanAmount)}, δηλαδή ${fp(100-ltv)} της αξίας. ${ltv>70?'Εντός αποδεκτών ορίων.':'Ενισχύει τη διαπραγματευτική σου θέση.'}`}
@@ -1435,7 +1437,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
 
                   <FindingRow
                     right={cost('Επιτόκιο') ?? cost('Κυμαινόμενο')}
-                    title={<>Επιτόκιο {fmtPct(cs.effectiveRate)}, {cs.rateType==='variable'?'κυμαινόμενο':'σταθερό'}
+                    title={<>Επιτόκιο {fmtPct(cs.effectiveRate)}, {rateTypeLabel(cs.rateType).toLowerCase()}
                       {cs.rateType==='variable'&&<span title="Διατραπεζικό επιτόκιο ευρώ, βάση κυμαινόμενων δανείων" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginLeft:8,fontWeight:400}}>εκτεθειμένο σε Euribor</span>}</>}
                     body={cs.rateType==='variable'
                       ? `Τρέχον Euribor τριμήνου ${fmtPct(market.euribor_3m)}. Αν ανέβει δύο μονάδες, η δόση γίνεται ${fmtEur(stressMonthly2)}, δηλαδή ${fmtEur(stressMonthly2-cs.monthly)} παραπάνω τον μήνα.${varFix}${rateFix}`

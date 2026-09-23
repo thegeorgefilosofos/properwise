@@ -52,7 +52,7 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
 {
   const live = billingWords(LIVE), dark = billingWords(DARK)
   ok('η σημαία ακολουθεί το ταμείο', live.live === true && dark.live === false)
-  const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge'] as const
+  const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge', 'contractSteps'] as const
   // Αν μια φράση είναι ίδια και στις δύο καταστάσεις, τότε η μία από τις δύο
   // λέει ψέματα — και δεν θα το έπιανε κανείς, γιατί «υπάρχει διατύπωση».
   for (const k of keys) ok(`η «${k}» διαφέρει ανά κατάσταση`, live[k] !== dark[k])
@@ -64,6 +64,10 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
   // Καμία φράση δεν μένει κενή: μια κενή πρόταση σε νομικό κείμενο είναι
   // παράλειψη ενημέρωσης, όχι συντομία.
   for (const k of keys) ok(`καμία κενή φράση: ${k}`, live[k].length > 20 && dark[k].length > 20)
+
+  // Ο ΣΤΟΧΟΣ ΤΩΝ ΣΥΝΕΡΓΑΤΩΝ ΜΕΤΡΑ ΣΥΝΔΡΟΜΗΤΕΣ: χωρίς ταμείο το λέμε, με ταμείο σιωπούμε.
+  ok('χωρίς χρέωση, ο στόχος των συνεργατών λέει από πότε ισχύει', !!dark.partnerTarget && dark.partnerTarget.includes('συνδρομητές'))
+  ok('με χρέωση, καμία επιφύλαξη', live.partnerTarget === null)
 }
 
 // ── ΤΟ ΜΟΝΤΕΛΟ ΤΩΝ ΧΡΗΜΑΤΩΝ, ΓΡΑΜΜΕΝΟ ΚΑΙ ΚΑΡΦΩΜΕΝΟ ─────────────────────

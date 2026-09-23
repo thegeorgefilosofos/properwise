@@ -52,7 +52,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
-import { T, TT, fe, fp, SecHdr, Spinner, fixedCols, Btn } from '@/components/Theme';
+import { T, TT, fe, fp, SecHdr, Spinner, fixedCols, Btn, ABSENT } from '@/components/Theme';
 import { NumberInput, CustomSelect } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
 import { AadePill } from '@/components/AadeLink';
@@ -190,7 +190,8 @@ function RouteTile({ route, value, inUse, active, onSelect }: {
         {inUse && <span className="sr-only">σε χρήση</span>}
       </span>
       <span style={{ ...TT.figure, fontSize: 15, display: 'block', marginTop: 4, color: value > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-        {value > 0 ? fe(value) : 'Κενό'}
+        {/* Όχι «Κενό»: στην ίδια οθόνη η λέξη σημαίνει ακίνητο χωρίς ενοικιαστή. */}
+        {value > 0 ? fe(value) : ABSENT}
       </span>
     </button>
   );

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { SITE } from '@/lib/core/site'
+import { GUIDES } from './odigos/guides'
 
 // Χάρτης της δημόσιας σελίδας για τις μηχανές αναζήτησης. Μόνο δημόσιες
 // διαδρομές: το dashboard, τα portals και οι σελίδες με token μένουν εκτός.
@@ -16,12 +17,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Κόμβος οδηγών: η μία σελίδα που μαζεύει όλους τους οδηγούς, συνδεδεμένη
     // από το υποσέλιδο κάθε δημόσιας σελίδας.
     { url: `${base}/odigos`, changeFrequency: 'monthly', priority: 0.7 },
-    // Οδηγός-πυλώνας: εξηγεί τη φορολογία ενοικίων 2026 και δένει με τον
-    // υπολογιστή. Χτίζει topical authority (βλ. docs/marketing/seo-strategy).
-    { url: `${base}/odigos/forologia-enoikion-2026`, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${base}/odigos/airbnb-takk-2026`, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${base}/odigos/pos-ypologizetai-o-enfia`, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${base}/odigos/kathari-apodosi-akinitou`, changeFrequency: 'monthly', priority: 0.8 },
+    // Οδηγοί-πυλώνες: εξηγούν τον κανόνα και δένουν με τον υπολογιστή. Χτίζουν
+    // topical authority (βλ. docs/marketing/seo-strategy). Η ΗΜΕΡΟΜΗΝΙΑ ΕΙΝΑΙ
+    // ΤΟ ΜΟΝΟ ΣΗΜΑ ΠΟΥ ΔΙΑΒΑΖΕΙ Η GOOGLE: το `changeFrequency` και το
+    // `priority` τα αγνοεί, το `lastModified` όχι. Έρχεται από τον ίδιο
+    // κατάλογο που τυπώνει την ημερομηνία στον οδηγό.
+    ...GUIDES.map(g => ({ url: base + g.href, lastModified: g.updated, changeFrequency: 'monthly' as const, priority: 0.8 })),
     // Τι περιλαμβάνει κάθε πακέτο: η ερώτηση που κάνει ο επισκέπτης ΠΡΙΝ
     // εγγραφεί, οπότε η απάντηση δεν ζει πίσω από τη σύνδεση.
     { url: `${base}/paketa`, changeFrequency: 'monthly', priority: 0.8 },

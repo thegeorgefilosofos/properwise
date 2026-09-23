@@ -5,7 +5,7 @@
 // δύο, τα ελλιπή στοιχεία δύο. Αυτό το αρχείο κρατά τη συγχώνευση ειλικρινή: αν
 // κάποιος προσθέσει πηγή χωρίς να δηλώσει θέμα, τα διπλότυπα επιστρέφουν σιωπηλά.
 import {
-  buildAgenda, obligationSubject, insightSubject, overdueCount, dueLabel, dueParts, shortNote,
+  buildAgenda, obligationSubject, insightSubject, overdueCount, dueLabel, dueParts, itemDue, shortNote,
   type InsightLike, type ObligationLike, type SetupLike,
 } from './agenda'
 
@@ -163,6 +163,21 @@ ok('και ο μετρητής δεν σκάει', overdueCount([]) === 0)
   ok('σήμερα: λέξη αντί για μηδέν', dueParts(0).word === 'σήμερα' && dueParts(0).value === null);
   ok('αύριο: λέξη αντί για ένα', dueParts(1).word === 'αύριο' && dueParts(1).value === null);
   ok('χωρίς προθεσμία: τίποτα', dueParts(null).value === null && dueParts(null).word === null);
+}
+
+// ── Το επείγον χωρίς ημερομηνία ────────────────────────────────────────────
+// Ο ληξιπρόθεσμος λογαριασμός έρχεται ως insight χωρίς ημερομηνία. Έγραφε
+// «χωρίς προθεσμία» και δεν μετρούσε στα εκπρόθεσμα της κεφαλίδας.
+{
+  const a = buildAgenda({ today: TODAY, insights: [
+    { id: 'bills-overdue', kind: 'urgent', title: 'Ληξιπρόθεσμος λογαριασμός', detail: 'Πλήρωσέ τον.' },
+    { id: 'yield-low', kind: 'opportunity', title: 'Απόδοση', detail: 'Δες τις Αποδόσεις.' },
+  ]})
+  const urgent = a.find(i => i.title.startsWith('Ληξιπρόθεσμος'))!
+  const other = a.find(i => i.title === 'Απόδοση')!
+  ok('επείγον: «τώρα» και σημαδεύεται', itemDue(urgent).word === 'τώρα' && itemDue(urgent).overdue)
+  ok('χωρίς ημερομηνία και όχι επείγον: κενό', itemDue(other).word === null && !itemDue(other).overdue)
+  ok('το επείγον μετρά στα εκπρόθεσμα', overdueCount(a) === 1)
 }
 
 // ── Η σημείωση της αρχικής: μία πρόταση, χωρίς διευθύνσεις ────────────────

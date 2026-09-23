@@ -8,7 +8,7 @@ import * as tenantStore from '@/lib/data/tenants';
 import * as loanStore from '@/lib/data/loans';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
-import { T, fe, fn, fp, ABSENT, ABSENT_SHORT, Skeleton, ExportButton, EmptyState, InfoBanner, PageTitle, ChipToggle } from '@/components/Theme';
+import { T, fe, fn, fp, ABSENT, ABSENT_SHORT, Skeleton, ExportButton, EmptyState, InfoBanner, PageTitle, ChipToggle, Btn } from '@/components/Theme';
 import { Building2 } from 'lucide-react';
 import { comparableGroups } from '@/lib/property/visibility';
 import { propertyTypePlural } from '@/lib/property/types';
@@ -35,7 +35,7 @@ interface Property {
   // περιοχή αλλάζουν το συμπέρασμα όσο και το ίδιο το ακίνητο.
   year_built?: number | null; postal_code?: string | null; rental_mode?: string | null;
 }
-interface Props { properties: Property[]; userId: string; }
+interface Props { properties: Property[]; userId: string; onNavigate?: (tab: string) => void; }
 
 interface Agg {
   /** Δαπάνες του έτους, κάθε ευρώ ΜΙΑ φορά (από τον κοινό πυρήνα). */
@@ -116,7 +116,7 @@ const greekList = (parts: readonly string[]): string =>
   parts.length <= 1 ? (parts[0] || '')
   : `${parts.slice(0, -1).join(', ')} και ${parts[parts.length - 1]}`;
 
-export default function TabComparison({ properties, userId }: Props) {
+export default function TabComparison({ properties, userId, onNavigate }: Props) {
   const supabase = createClient();
   // Ο ΔΕΙΚΤΗΣ ΦΟΡΤΩΣΗΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΠΟΙΩΝ ΑΚΙΝΗΤΩΝ ΕΙΝΑΙ ΤΑ ΣΥΓΚΕΝΤΡΩΤΙΚΑ.
   // Ηταν `setLoading(true)` στην πρώτη γραμμή της φόρτωσης, δηλαδή σύγχρονη
@@ -419,6 +419,10 @@ export default function TabComparison({ properties, userId }: Props) {
   // σειρά πίνακα για να ανακοινώσει ότι δεν ξέρουμε τίποτα. Η απουσία λέγεται
   // με απουσία — η γραμμή δεν αποδίδεται καθόλου.
   const metrics = allMetrics.filter(m => rowsData.some(r => m.get(r) != null));
+  // ΤΟ ΜΗΔΕΝ ΣΕ ΟΛΑ ΔΕΝ ΕΙΝΑΙ ΣΥΓΚΡΙΣΗ. Χωρίς κανένα ενοίκιο και καμία δαπάνη
+  // φέτος, ο πίνακας έβγαζε τέσσερις γραμμές «0,00€» σε κάθε στήλη (το μηδέν
+  // περνά το φίλτρο από πάνω) και η λεζάντα μιλούσε για «δίκαιη σύγκριση».
+  const nothingYet = rowsData.every(r => !((r.rent ?? 0) > 0) && !(r.expensesYTD > 0) && !(r.recurringMonthly > 0));
   // ═══ Η ΛΕΖΑΝΤΑ ΛΕΕΙ ΟΣΑ ΔΕΙΧΝΕΙ Ο ΠΙΝΑΚΑΣ, ΟΧΙ ΟΣΑ ΘΑ ΜΠΟΡΟΥΣΕ ══════════
   // Και οι δύο προτάσεις της λεζάντας ήταν καρφωμένες: «το υψηλότερο ενοίκιο,
   // απόδοση και καθαρό» και «οι τρεις τελευταίες γραμμές». Ο πίνακας όμως κόβει
@@ -449,7 +453,7 @@ export default function TabComparison({ properties, userId }: Props) {
     // δηλαδή δύο ασυμβίβαστοι αριθμοί στο ίδιο αρχείο, το οποίο φτάνει στον
     // λογιστή. Τώρα η στήλη είναι το ΜΕΡΙΔΙΟ κάθε ακινήτου από τον ΕΝΑ φόρο του
     // φορολογούμενου, άρα προσθέτεται σωστά.
-    const cols = ['Ακίνητο', 'Κατάσταση', 'Αξία (€)', 'Εμβαδόν (τ.μ.)', 'Τιμή/τ.μ. (€)', 'Μηνιαίο Ενοίκιο (€)', 'Ετήσιο Ενοίκιο (€)', 'Μεικτή Απόδοση (%)', 'Πάγια ανά μήνα (€)', 'Δαπάνες Έτους (€)', 'Δόση Δανείου/μήνα (€)', 'Καθαρό/μήνα εκτ. (€)', 'Καθαρό/έτος εκτ. (€)', 'Μερίδιο Φόρου Ενοικίου (€)'];
+    const cols = ['Ακίνητο', 'Κατάσταση', 'Αξία (€)', 'Εμβαδόν (τ.μ.)', 'Τιμή/τ.μ. (€)', 'Μηνιαίο ενοίκιο (€)', 'Ετήσιο ενοίκιο (€)', 'Μεικτή απόδοση (%)', 'Πάγια ανά μήνα (€)', 'Δαπάνες έτους (€)', 'Δόση δανείου ανά μήνα (€)', 'Καθαρό/μήνα εκτ. (€)', 'Καθαρό/έτος εκτ. (€)', 'Μερίδιο φόρου ενοικίων (€)'];
     // Στο CSV το κενό μένει ΚΕΝΟ, όχι μηδέν: ένα υπολογιστικό φύλλο που δείχνει 0
     // εκεί που δεν ξέρουμε, παράγει λάθος μέσους όρους στα χέρια του λογιστή.
     //
@@ -528,6 +532,11 @@ export default function TabComparison({ properties, userId }: Props) {
         // των προτέρων, οπότε ο χώρος δεσμεύεται από την αρχή και η σελίδα δεν
         // «πηδά» όταν φτάνουν τα δεδομένα.
         <Skeleton h={300} r={14} />
+      ) : nothingYet ? (
+        <EmptyState icon={<Building2 size={20} />}
+          title="Κανένα ενοίκιο ή δαπάνη ακόμη για φέτος"
+          hint="Η σύγκριση γεμίζει μόλις καταχωρήσεις το πρώτο μίσθωμα ή την πρώτη δαπάνη."
+          action={onNavigate ? <Btn variant="secondary" onClick={() => onNavigate('finances')}>Προσθήκη δαπάνης</Btn> : undefined} />
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="table-wrap" style={{ overflowX: 'auto' }}>
@@ -631,7 +640,7 @@ export default function TabComparison({ properties, userId }: Props) {
       {/* ΜΙΑ ΓΡΑΜΜΗ, ΟΧΙ ΠΑΡΑΓΡΑΦΟΣ. Εδώ ζούσαν τρεις σειρές ψιλών γραμμάτων που
           επαναλάμβαναν όσα λέει ήδη το tooltip κάθε μετρικής και ο τίτλος της
           οθόνης. Μένει μόνο ό,τι δεν λέγεται αλλού: πώς διαβάζεται ο πίνακας. */}
-      {!loading && (
+      {!loading && !nothingYet && (
         <div className="fineprint" style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
           {/* ΚΑΘΕ ΠΡΟΤΑΣΗ ΕΜΦΑΝΙΖΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΕΧΕΙ ΑΝΤΙΚΕΙΜΕΝΟ. Με άδεια λίστα, το
               «η καλύτερη τιμή σε» έμενε να κρέμεται πριν από μια τελεία. */}

@@ -22,30 +22,21 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
+import { publicMetadata } from '../publicMetadata';
 import { ShortVsLongCalculator } from './ShortVsLongCalculator';
 
-const TITLE = 'Βραχυχρόνια ή μακροχρόνια μίσθωση; · δωρεάν υπολογισμός 2026';
+const TITLE = 'Βραχυχρόνια ή μακροχρόνια μίσθωση 2026: τι σου αφήνει η καθεμία';
 const DESC =
   'Σύγκρινε τι σου αφήνει πραγματικά η βραχυχρόνια και τι η μακροχρόνια μίσθωση, '
   + 'με το τέλος ανθεκτικότητας, την προμήθεια της πλατφόρμας, τα λειτουργικά και τον '
   + 'φόρο του 2026. Δες από ποια πληρότητα και πάνω συμφέρει. Χωρίς εγγραφή.';
 const URL = siteUrl('/vraxyxronia-i-makroxronia');
 
-export const metadata: Metadata = {
-  // Απόλυτος: ο τίτλος είναι γραμμένος για τη σελίδα αποτελεσμάτων και δεν
-  // αντέχει τρίτο τμήμα από το πρότυπο της ρίζας.
-  title: { absolute: TITLE },
-  description: DESC,
-  alternates: { canonical: URL },
-  openGraph: {
-    title: TITLE, description: DESC, url: URL,
-    siteName: 'PROPERWISE', locale: 'el_GR', type: 'website',
-  },
-  twitter: { card: 'summary_large_image', title: TITLE, description: DESC },
-};
+// Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL });
 
 // Οι ερωτήσεις που κάνει πραγματικά ο ιδιοκτήτης πριν αποφασίσει. Ίδια πηγή για
 // τη σελίδα και για το δομημένο σχήμα, ώστε να μη διαφωνήσουν ποτέ.
@@ -104,11 +95,7 @@ const FAQ: { q: string; a: string }[] = [
      + 'ακίνητα και πάνω η δραστηριότητα θεωρείται επιχειρηματική. Έλεγξε τη ζώνη και το καθεστώς '
      + 'σου πριν αποφασίσεις.',
   },
-  {
-    q: 'Τα δεδομένα μου αποθηκεύονται;',
-    a: 'Όχι. Ο υπολογισμός γίνεται εξ ολοκλήρου στον browser σου. Κανένα ποσό δεν στέλνεται σε '
-     + 'διακομιστή και δεν χρειάζεται ούτε email ούτε εγγραφή.',
-  },
+  TOOL_PRIVACY_FAQ,
 ];
 
 export default function Page() {
@@ -143,7 +130,7 @@ export default function Page() {
 
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
         <BackLink />
-        <div className="lp-eyebrow">Δωρεάν εργαλείο</div>
+        <div className="lp-eyebrow">Υπολογιστής</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           Βραχυχρόνια ή μακροχρόνια;

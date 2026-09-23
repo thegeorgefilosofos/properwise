@@ -16,8 +16,11 @@
 // ξεχωρίζει το «λάθος μορφή» από το «δεν βρέθηκε» λέει σε άγνωστο πόσο κοντά
 // είναι.
 //
-// Η ΑΠΑΝΤΗΣΗ ΕΙΝΑΙ ΠΑΝΤΑ ΕΓΚΥΡΟ ΗΜΕΡΟΛΟΓΙΟ, ΑΚΟΜΗ ΚΑΙ ΑΔΕΙΟ. Ενας πελάτης
-// ημερολογίου που παίρνει σφάλμα λίγες φορές, σβήνει τη συνδρομή μόνος του.
+// Η ΑΠΑΝΤΗΣΗ ΕΙΝΑΙ ΕΓΚΥΡΟ ΗΜΕΡΟΛΟΓΙΟ, ΑΚΟΜΗ ΚΑΙ ΑΔΕΙΟ, ΟΤΑΝ ΕΙΝΑΙ ΟΝΤΩΣ ΑΔΕΙΟ.
+// Ενα άδειο ημερολόγιο από ΒΛΑΒΗ της βάσης είναι χειρότερο από σφάλμα: το
+// Google και η Apple θεωρούν τη ροή αυθεντική και σβήνουν κάθε προθεσμία, για
+// μία ώρα αποθήκευσης. Αν αποτύχει οποιαδήποτε ανάγνωση, απαντά 503 χωρίς
+// αποθήκευση και ο πελάτης κρατά το προηγούμενο αντίγραφο.
 //
 // ΤΟ ΠΑΡΑΘΥΡΟ ΕΙΝΑΙ ΕΝΑΣ ΜΗΝΑΣ ΠΙΣΩ ΚΑΙ ΕΝΑΣ ΧΡΟΝΟΣ ΜΠΡΟΣΤΑ. Ο ένας μήνας
 // πίσω κρατά ό,τι μόλις έληξε και δεν πληρώθηκε· πιο παλιά είναι ιστορία και
@@ -48,6 +51,10 @@ const notFound = () => new Response('Δεν βρέθηκε ημερολόγιο 
   status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
 });
 
+const unavailable = () => new Response('Το ημερολόγιο δεν είναι διαθέσιμο.', {
+  status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
+});
+
 export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   // Η διεύθυνση τελειώνει σε `.ics` ώστε οι πελάτες ημερολογίου να την
   // αναγνωρίζουν ως αρχείο. Το κουπόνι είναι ό,τι μένει.
@@ -60,18 +67,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   const missing = serviceClientError(process.env);
   if (missing) {
     log(SERVICE_CLIENT_LOG, missing);
-    return new Response('Το ημερολόγιο δεν είναι διαθέσιμο.', {
-      status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
-    });
+    return unavailable();
   }
   const db = createServiceClient();
 
   const { row: owner, error } = await feedStore.ownerOfToken(db, raw);
   if (error) {
     log('η αναζήτηση της συνδρομής απέτυχε:', error.message);
-    return new Response('Το ημερολόγιο δεν είναι διαθέσιμο.', {
-      status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
-    });
+    return unavailable();
   }
   // ΤΟ ΛΗΓΜΕΝΟ ΚΟΥΠΟΝΙ ΕΙΝΑΙ ΑΓΝΩΣΤΟ ΚΟΥΠΟΝΙ, ΚΑΙ ΑΠΑΝΤΑ ΤΟ ΙΔΙΟ. Μια
   // ξεχωριστή απάντηση «έληξε» θα έλεγε σε όποιον το βρήκε ότι κάποτε ίσχυε.
@@ -82,20 +85,26 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   const userId = owner.user_id;
 
   const [props, events, tasks, unpaidBills, dues] = await Promise.all([
-    properties.list<DeadlineProperty>(db, userId, { columns: 'id,name' }),
-    calendar.ofUserInRange<DeadlineEvent>(db, userId, from, to, 'id,property_id,title,event_date,amount,notes,status'),
-    checklist.openOfUser<DeadlineTask>(db, userId, 'id,property_id,description,due_date,note'),
+    properties.listWithError<DeadlineProperty>(db, userId, { columns: 'id,name' }),
+    calendar.ofUserInRangeWithError<DeadlineEvent>(db, userId, from, to, 'id,property_id,title,event_date,amount,notes,status'),
+    checklist.openOfUserWithError<DeadlineTask>(db, userId, 'id,property_id,description,due_date,note'),
     // ΤΟ ΑΠΛΗΡΩΤΟ ΚΑΙ ΜΕΣΑ ΣΤΟ ΠΑΡΑΘΥΡΟ ΤΟ ΚΡΙΝΕΙ Η ΒΑΣΗ. Ο χάρτης παρακάτω
     // ξαναελέγχει τα ίδια — και σωστά, γιατί είναι καθαρή συνάρτηση και δεν
     // ξέρει ποιος τη φώναξε — αλλά το ταξίδι των γραμμών γίνεται μία φορά.
-    bills.ofUser<DeadlineBill>(db, userId, 'id,property_id,name,type,amount,due_date,paid',
+    bills.ofUserWithError<DeadlineBill>(db, userId, 'id,property_id,name,type,amount,due_date,paid',
       { unpaid: true, dueFrom: from, dueTo: to }),
-    rent.ofUser<DeadlineRent>(db, userId, 'id,property_id,amount,due_date,paid,period_year,period_month',
+    rent.ofUserWithError<DeadlineRent>(db, userId, 'id,property_id,amount,due_date,paid,period_year,period_month',
       { unpaid: true, dueFrom: from, dueTo: to }),
   ]);
+  const failedRead = [props, events, tasks, unpaidBills, dues].find(r => r.error)?.error;
+  if (failedRead) {
+    log('η ανάγνωση των προθεσμιών απέτυχε:', failedRead.message);
+    return unavailable();
+  }
 
   const items = deadlineItems({
-    properties: props, events, tasks, bills: unpaidBills, rent: dues, from, to,
+    properties: props.rows, events: events.rows, tasks: tasks.rows,
+    bills: unpaidBills.rows, rent: dues.rows, from, to,
   });
 
   const ics = buildCalendarFeed(items, { name: CALENDAR_NAME, now: new Date() });
@@ -109,6 +118,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
       // Μία ώρα: αρκετά ώστε να μη ρωτούν συνέχεια, αρκετά λίγο ώστε μια
       // προθεσμία που μόλις μπήκε να φανεί την ίδια μέρα.
       'Cache-Control': 'private, max-age=3600',
+      // Το robots.txt κρατά έξω τις μηχανές που το τιμούν· η κεφαλίδα λέει και
+      // σε όποια βρει τη διεύθυνση αλλού ότι οι προθεσμίες δεν ευρετηριάζονται.
+      'X-Robots-Tag': 'noindex, nofollow',
     },
   });
 }

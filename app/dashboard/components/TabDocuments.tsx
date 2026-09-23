@@ -275,7 +275,6 @@ export default function TabDocuments({
   // ΑΜΕΣΩΣ, οπότε δεν υπάρχει καρέ με τα νούμερα του προηγούμενου.
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const loading = loadedFor !== propertyId
-  const [colWarn, setColWarn] = useState(false); // αν λείπει το attachment_url στα expenses
   // ΟΤΑΝ ΔΕΝ ΕΤΟΙΜΑΣΤΗΚΑΝ ΟΙ ΣΥΝΔΕΣΜΟΙ ΤΩΝ ΑΝΕΒΑΣΜΕΝΩΝ ΑΡΧΕΙΩΝ. Χωρίς αυτή τη
   // σημαία η αποτυχία ήταν αόρατη: η καρτέλα του σαρωμένου μισθωτηρίου έμενε στη
   // θέση της χωρίς «Άνοιγμα», ίδια στην όψη με έναν λογαριασμό που ΔΕΝ έχει
@@ -366,8 +365,6 @@ export default function TabDocuments({
 
     // 2) expenses με επισυναπτόμενο αρχείο (πραγματικές αποδείξεις/τιμολόγια)
     const exp = expRes as ExpensesRow[];
-    const hasAttachCol = exp.length === 0 || exp.some(e => 'attachment_url' in e);
-    setColWarn(exp.length > 0 && !hasAttachCol);
     exp.forEach(e => {
       const url = e.attachment_url;
       if (!url) return; // προτίμηση σε πραγματικά συνημμένα
@@ -696,7 +693,7 @@ export default function TabDocuments({
           ακριβώς αυτό: τα χαρτιά, οι άνθρωποι και τα πράγματά του. */}
       {!embedded && (
         <PageTitle title={navLabel('documents')}
-          sub="Τα χαρτιά, οι άνθρωποι και τα πράγματα του ακινήτου, σε ένα σημείο"
+          sub="Τα χαρτιά, οι επαφές και ο εξοπλισμός του ακινήτου"
           right={headerActions}/>
       )}
 
@@ -715,7 +712,7 @@ export default function TabDocuments({
       {paperTotals.years.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
           <SecHdr label={`Από τα παραστατικά · ${fe(paperTotals.sum)}`}
-            sub={`${fn(paperTotals.withAmount)} ${paperTotals.withAmount === 1 ? 'χαρτί' : 'χαρτιά'} με ποσό${paperTotals.missing ? ` · ${fn(paperTotals.missing)} χωρίς` : ''}. Ανεξάρτητο από Λογαριασμούς και Δαπάνες.`}/>
+            sub={`${fn(paperTotals.withAmount)} ${paperTotals.withAmount === 1 ? 'χαρτί' : 'χαρτιά'} με ποσό${paperTotals.missing ? ` · ${fn(paperTotals.missing)} χωρίς` : ''}. Μετρά μόνο όσα ανέβασες εδώ, όχι τους λογαριασμούς και τις δαπάνες.`}/>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 160px), 1fr))', gap: 10 }}>
             {paperTotals.years.map(([y, e]) => (
               <div key={y} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '10px 12px' }}>
@@ -729,8 +726,6 @@ export default function TabDocuments({
           </div>
         </div>
       )}
-
-      {colWarn && <InfoBanner tone="warning">Ορισμένα Έξοδα δεν διαθέτουν στήλη συνημμένου αρχείου· εμφανίζονται μόνο όσα έχουν επισυναπτόμενη απόδειξη/τιμολόγιο.</InfoBanner>}
 
       {/* Η ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΠΟΥ ΕΛΕΙΠΕ. Στην αποτυχία υπογραφής των συνδέσμων η
           οθόνη δεν έλεγε τίποτα: τα ανεβασμένα χαρτιά έδειχναν σκέτα, χωρίς
@@ -828,9 +823,13 @@ export default function TabDocuments({
               {fn(docCount)} έγγραφα · {fn(photoCount)} φωτογραφίες
             </span>
           )}
+          {/* ΔΥΟ ΣΥΝΟΛΑ ΧΩΡΙΣ ΟΝΟΜΑ, ΛΙΓΕΣ ΓΡΑΜΜΕΣ ΜΑΚΡΙΑ. Το από πάνω μετρά μόνο
+              τα ανεβασμένα παραστατικά· αυτό εδώ μετρά ό,τι δείχνει η λίστα,
+              μαζί με τις αποδείξεις των δαπανών και των λογαριασμών. Γυμνό,
+              διαβαζόταν ως το ίδιο νούμερο που απλώς «δεν ταιριάζει». */}
           {visibleSum > 0 && (
-            <span style={{ fontSize: 12, fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>
-              {money(visibleSum)}
+            <span style={{ fontSize: 12, fontFamily: T.font.sans, color: 'var(--text-tertiary)' }}>
+              σε ποσά αρχείων <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{money(visibleSum)}</span>
             </span>
           )}
           {filtering && (

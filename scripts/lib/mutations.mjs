@@ -221,8 +221,8 @@ export const MUTATIONS = {
   ] },
   'email-audience': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
-    from: "free: 'Δωρεάν', individual: 'Ιδιώτης', professional: 'Επαγγελματίας',",
-    to: "free: 'Δωρεάν', solo: 'Ιδιοκτήτης', professional: 'Επαγγελματίας',",
+    from: "free: 'Χωρίς συνδρομή', individual: 'Ιδιώτης', professional: 'Επαγγελματίας',",
+    to: "free: 'Χωρίς συνδρομή', solo: 'Ιδιοκτήτης', professional: 'Επαγγελματίας',",
   },
   // Λεζάντα με ποσό που δεν βγήκε από τη μηχανή. Το «480» είναι ακριβώς το λάθος
   // που έγινε κάποτε στ' αλήθεια — η έκπτωση που χάνεται, γραμμένη ως φόρος. Ο

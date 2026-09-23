@@ -24,13 +24,14 @@ import { OBJECTIVE_VALUES } from '@/lib/tax/aade';
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
 import { T, feAuto, fixedCols } from '@/components/tokens';
-import { fn, fp, feRate } from '@/lib/core/format';
+import { fn, fp, feRate, feSigned } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
 import { enfiaInstalments, ENFIA_INSTALMENTS } from '@/lib/tools/enfiaSchedule';
+import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
-import { ToolCta, EstimateNote } from '@/app/PublicChrome';
+import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
 
 import LiveResult from '@/components/LiveResult';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
@@ -54,12 +55,16 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
   const sqm = v.tm, zonePrice = v.zoni, floor = v.orofos, age = v.palaiotita, ownership = v.pososto;
   const ids = { sqm: useId(), zone: useId(), floor: useId(), age: useId(), own: useId() };
 
+  // Ο ΚΑΝΟΝΑΣ ΤΟΥ ΠΟΣΟΣΤΟΥ ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ: τον διαβάζουν ο υπολογισμός, το
+  // χαρτί και η σημείωση που λέει ότι η τιμή του πεδίου δεν πέρασε ως έχει.
+  const own = Math.min(100, Math.max(1, amount(ownership) || 100));
+  const smallRelief = smallSettlementRelief(year);
+
   const r = useMemo(() => {
     const m = amount(sqm);
     const price = amount(zonePrice);
     const zone = zoneKeyFromPricePerSqm(price);
     if (!m || !zone) return null;
-    const own = Math.min(100, Math.max(1, amount(ownership) || 100));
     // Αντικειμενική αξία κατά προσέγγιση. Δεν είναι ο επίσημος τύπος (που έχει και
     // συντελεστές οικοπέδου/προσόψεων) — είναι η βάση που χρειάζεται ο υπολογισμός
     // για τη μείωση και την προσαύξηση και το λέμε στην οθόνη.
@@ -92,7 +97,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
       totalValue: share, propertyValue: value,
     });
     return res ? { ...res, value, share, own, zone } : null;
-  }, [sqm, zonePrice, floor, age, ownership]);
+  }, [sqm, zonePrice, floor, age, own]);
 
   const field: React.CSSProperties = {
     width: '100%', height: T.h.lg, padding: '0 12px', borderRadius: T.radius.btn,
@@ -185,6 +190,10 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
         </div>
       </div>
 
+      <ToolClampNote notes={[
+        own !== amount(ownership) && `Το ποσοστό ιδιοκτησίας μετρά από 1% έως 100%· υπολογίστηκε με ${fp(own)}.`,
+      ]}/>
+
       <p className="po-tool-controls" style={{ margin: '10px 0 0', fontSize: 12, lineHeight: 1.7, color: 'var(--text-tertiary)' }}>
         Την τιμή ζώνης τη βρίσκεις στο συμβόλαιο, στο Ε9 ή στον{' '}
         <a href={OBJECTIVE_VALUES} target="_blank" rel="noopener noreferrer"
@@ -197,7 +206,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
         { k: 'Τιμή ζώνης', v: `${feAuto(amount(zonePrice))}/τ.μ.` },
         { k: 'Όροφος', v: FLOORS.find(f => f.key === floor)?.label ?? floor },
         { k: 'Παλαιότητα', v: AGES.find(a => a.key === age)?.label ?? age },
-        { k: 'Ποσοστό ιδιοκτησίας', v: fp(Math.min(100, Math.max(1, amount(ownership) || 100))) },
+        { k: 'Ποσοστό ιδιοκτησίας', v: fp(own) },
       ]}/>}
 
       {/* ── Το αποτέλεσμα ──────────────────────────────────────────────── */}
@@ -266,7 +275,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
               <Row k="Κύριος φόρος κτίσματος" v={feAuto(r.basic)}/>
               {r.extra > 0 && <Row k="Πρόσθετος φόρος (αξία πάνω από 400.000€)" v={feAuto(r.extra)}/>}
               {r.supplementary > 0 && <Row k="Προσαύξηση (περιουσία πάνω από 500.000€)" v={feAuto(r.supplementary)}/>}
-              {r.reductionPct > 0 && <Row k={`Μείωση ${fp(r.reductionPct)}`} v={`− ${feAuto(r.reductionAmount)}`}/>}
+              {r.reductionPct > 0 && <Row k={`Μείωση ${fp(r.reductionPct)}`} v={feSigned(-r.reductionAmount)}/>}
             </dl>
           </>
         )}
@@ -287,7 +296,8 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
           ακίνητη περιουσία <strong>ίση με αυτό</strong>. Αν έχεις κι άλλα ακίνητα, οικόπεδα
           ή αποθήκες, η μείωση και η προσαύξηση αλλάζουν, οπότε το ποσό στο εκκαθαριστικό
           θα διαφέρει. Δεν περιλαμβάνει απαλλαγές με εισοδηματικά κριτήρια (χαμηλό
-          εισόδημα, τρίτεκνοι, αναπηρία, ασφαλισμένη κατοικία), ούτε τους ειδικούς
+          εισόδημα, τρίτεκνοι, αναπηρία, ασφαλισμένη κατοικία),{' '}
+          {smallRelief && <>τη {smallRelief},{' '}</>}ούτε τους ειδικούς
           συντελεστές οικοπέδου και πρόσοψης. <EstimateNote />
         </p>
       </div>
@@ -296,7 +306,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
 
       <ToolCta
         title="Έχεις περισσότερα από ένα ακίνητα;"
-        body="Το PROPERWISE υπολογίζει τον ΕΝΦΙΑ για όλο το χαρτοφυλάκιο μαζί, με τη σωστή μείωση και σου θυμίζει κάθε δόση πριν λήξει."
+        body="Το PROPERWISE εκτιμά τον ΕΝΦΙΑ για όλα σου τα ακίνητα μαζί, με τη μείωση που αντιστοιχεί στη συνολική περιουσία και σου θυμίζει κάθε δόση πριν λήξει."
       />
     </div>
   );

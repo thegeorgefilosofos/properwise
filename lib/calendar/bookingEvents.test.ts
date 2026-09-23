@@ -19,6 +19,8 @@ ok('πραγματικό όνομα', guestLabel({ id: '1', check_in: '2026-08-0
 ok('κενό → κανάλι κράτηση', guestLabel({ id: '1', check_in: '2026-08-01', channel: 'booking' }) === 'Booking.com κράτηση')
 ok('aggregate «Κρατήσεις Airbnb» → κανάλι', guestLabel({ id: '1', check_in: '2026-08-01', guest_name: 'Κρατήσεις Airbnb', channel: 'airbnb' }) === 'Airbnb κράτηση')
 ok('όνομα ίδιο με κανάλι → κανάλι', guestLabel({ id: '1', check_in: '2026-08-01', guest_name: 'Airbnb', channel: 'airbnb' }) === 'Airbnb κράτηση')
+ok('χωρίς κανάλι → μία φορά «Κράτηση»', guestLabel({ id: '1', check_in: '2026-08-01', channel: null }) === 'Κράτηση')
+ok('other → μία φορά «Κράτηση»', guestLabel({ id: '1', check_in: '2026-08-01', channel: 'other', guest_name: 'Κρατήσεις' }) === 'Κράτηση')
 
 // ── nightsBetween ────────────────────────────────────────────────────────────
 ok('3 νύχτες', nightsBetween('2026-08-01', '2026-08-04') === 3)
