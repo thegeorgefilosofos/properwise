@@ -518,7 +518,11 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div className="ref-linkbox" style={{ flex: 1, minWidth: 240, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '0 14px', height: T.h.lg, boxSizing: 'border-box', boxShadow: 'var(--well-inset)' }}>
             <Ic d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1|M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" s={15} c="var(--text-tertiary)" />
-            <span style={{ ...TT.body, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{link}</span>
+            {/* Ο ΣΥΝΔΕΣΜΟΣ ΣΠΑΕΙ, ΔΕΝ ΚΟΒΕΤΑΙ. Με την κανονική διεύθυνση του ιστότοπου
+                δεν χωρά σε μία γραμμή τηλεφώνου και τα αποσιωπητικά έκρυβαν
+                ακριβώς τον κωδικό. Το «https://» φεύγει από την προβολή, όχι
+                από ό,τι αντιγράφεται. */}
+            <span style={{ ...TT.body, color: 'var(--text-secondary)', minWidth: 0, overflowWrap: 'anywhere' }}>{link.replace(/^https?:\/\//, '')}</span>
           </div>
           {/* ΤΟ 44 ΗΤΑΝ ΓΡΑΜΜΕΝΟ ΩΜΟ ΚΑΙ ΔΕΝ ΤΑΙΡΙΑΖΕ ΜΕ ΤΙΠΟΤΑ. Το `size="lg"` του
               κουμπιού δίνει `T.h.lg`, που είναι 40 στο ποντίκι — όχι 44. Ο σαρωτής

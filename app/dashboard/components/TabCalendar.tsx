@@ -2274,10 +2274,12 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
               116 στα 320: κοβόταν στο «Τίτλος γεγον…». Το σκέτο «Τίτλος» όμως,
               χωρίς φακό και δίπλα στο «+ Νέο», διαβαζόταν ως πεδίο γρήγορης
               προσθήκης. Ο φακός και η λέξη «Αναζήτηση» λένε τι είναι το πεδίο,
-              όπως στην αναζήτηση του Φακέλου· το πλήρες νόημα το έχει η ετικέτα. */}
+              όπως στην αναζήτηση του Φακέλου· το πλήρες νόημα το έχει η ετικέτα.
+              Η λέξη είναι «Εύρεση» και όχι «Αναζήτηση»: στα 360 το πεδίο δίνει 82
+              και η «Αναζήτηση» θέλει 89. */}
           <Search size={15} aria-hidden="true" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'var(--text-tertiary)', pointerEvents:'none' }}/>
-          <input className="po-field" aria-label="Αναζήτηση γεγονότος με τον τίτλο του" placeholder="Αναζήτηση" value={searchQ} onChange={e=>setSearchQ(e.target.value)}
-            style={{ width:'100%', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.modal, padding:'0 16px 0 34px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none' }}
+          <input className="po-field" aria-label="Αναζήτηση γεγονότος με τον τίτλο του" placeholder="Εύρεση" value={searchQ} onChange={e=>setSearchQ(e.target.value)}
+            style={{ width:'100%', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.modal, padding:'0 10px 0 34px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none' }}
             onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-subtle)'}/>
         </div>
 

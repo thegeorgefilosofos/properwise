@@ -116,7 +116,7 @@ function Drivers({ c }: { c: Comparison }) {
   // ΟΙ ΓΡΑΜΜΕΣ ΑΘΡΟΙΖΟΥΝ ΣΤΟΝ ΤΙΤΛΟ. Ό,τι δεν εξηγούν οι κατηγορίες που
   // δείχνονται μπαίνει σε μία τελευταία γραμμή, με το ίδιο σχήμα.
   const rows = Math.abs(c.rest) >= 0.005
-    ? [...c.drivers, { slug: '__rest', label: 'Λοιπές κατηγορίες', diff: c.rest, current: 0, base: 0, isNew: false, vanished: false }]
+    ? [...c.drivers, { slug: '__rest', label: 'Λοιπά', diff: c.rest, current: 0, base: 0, isNew: false, vanished: false }]
     : c.drivers;
   const max = Math.max(...rows.map(d => Math.abs(d.diff)), 1);
   const anyFlag = c.drivers.some(d => d.isNew || d.vanished);
