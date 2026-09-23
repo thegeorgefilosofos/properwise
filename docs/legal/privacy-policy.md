@@ -57,8 +57,8 @@
 
 **2.6 Δεδομένα βοηθού AI:** Το context που αποστέλλετε στον βοηθό (δεδομένα ακινήτου,
 ερωτήσεις). **Δεν αποστέλλονται ειδικές κατηγορίες.** Τηλέφωνα και ΑΦΜ τρίτων δεν
-αποστέλλονται. Δέσμευση για μη εκπαίδευση μοντέλων από τον πάροχο θα προστεθεί μόνο
-όταν υπογραφεί γραπτά.
+αποστέλλονται. Ο πάροχος AI δεσμεύεται στους Εμπορικούς Όρους του (ενότητα B) να μην
+εκπαιδεύει μοντέλα με αυτά.
 
 **2.7 Δεδομένα χρέωσης:** Στοιχεία επικοινωνίας χρέωσης και αναγνωριστικά συνδρομής.
 **Τα στοιχεία κάρτας τηρούνται αποκλειστικά από τη Creem**, που ενεργεί ως
@@ -100,7 +100,7 @@ merchant of record· δεν περνούν ποτέ από τους δικούς
 |---|---|---|---|
 | **Supabase Inc.** | Βάση/auth/αποθήκευση/edge functions | **ΕΕ — Frankfurt** | Εντός ΕΕ |
 | **Resend, Inc.** | Email | ΗΠΑ | **SCCs** |
-| **Anthropic, PBC** | Βοηθός AI | ΗΠΑ | **SCCs** |
+| **Anthropic Ireland, Ltd** (για πελάτες ΕΟΧ) | Βοηθός AI (χωρίς εκπαίδευση μοντέλων) | ΗΠΑ | **SCCs** |
 | **GitHub, Inc.** | Κώδικας/CI/κρυπτογραφημένα backups | ΗΠΑ | **SCCs** |
 | **Creem** | Χρέωση συνδρομών (merchant of record) | ΗΠΑ/ΕΕ | **SCCs** |
 | Πάροχοι μηνυμάτων *(σχεδιαζόμενο)* | Ειδοποιήσεις | Διάφορες | **SCCs** πριν την ενεργοποίηση |
@@ -189,7 +189,7 @@ phone, ΑΦΜ. (2) Property/financial/tax: ΑΤΑΚ, objective value, ΕΝΦΙΑ
 bank imports, Ε2 figures, documents. (3) Tenant/guest (customer-entered): name, ΑΦΜ,
 phone, email, ID, lease terms, stay history — **customer is controller**. (4) Email/
 notifications. (5) Lifecycle/marketing. (6) AI context — no special-category data, no
-third-party phone/ΑΦΜ. (7) Billing — card data held solely by Creem (merchant of record).
+third-party phone/ΑΦΜ, not used for training. (7) Billing — card data held solely by Creem (merchant of record).
 
 **3. Legal bases (Art. 6).** Service **6(1)(b)**; security **6(1)(f)**; records
 **6(1)(b)**; tax **6(1)(c)**; transactional email **6(1)(b)**; marketing **6(1)(a)**/

@@ -1,6 +1,6 @@
 'use client';
 
-import { BrandLogo } from '@/components/BrandMark'
+import BrandMark, { BrandLogo } from '@/components/BrandMark'
 import { useNavHistory } from './components/useNavHistory';
 import { heatingLabel } from '@/lib/property/heating';
 import { propertyTypeLabel } from '@/lib/property/types';
@@ -2282,28 +2282,35 @@ export default function Dashboard() {
           </div>
         ) : !selected ? (
           <div className="app-content" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <div style={{maxWidth:560,width:'100%',textAlign:'center'}}>
-              <div style={{width:64,height:64,borderRadius: T.radius.modal,background:'var(--accent-dim)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}>
-                <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5 12 3l9 6.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+            <div style={{maxWidth:640,width:'100%',textAlign:'center'}}>
+              {/* Η ΠΡΩΤΗ ΟΘΟΝΗ ΛΕΕΙ ΤΙ ΓΙΝΕΤΑΙ ΜΕΤΑ, ΜΕ ΤΗ ΣΕΙΡΑ ΠΟΥ ΓΙΝΕΤΑΙ. Ηταν ένα
+                  γενικό σπιτάκι, «ξεκλείδωσε… όλα σε ένα σημείο» και τρεις κάρτες
+                  δυνατοτήτων με αριθμό παρόχων χωρίς πηγή. Τώρα είναι το σήμα και τα
+                  τρία βήματα του πρώτου λεπτού: τα βασικά του ακινήτου (μόνο το όνομα
+                  είναι υποχρεωτικό, όπως στον οδηγό), ένας λογαριασμός με φωτογραφία,
+                  ο ΕΝΦΙΑ και το φύλλο «Τι λείπει». Η αρίθμηση είναι αληθινή σειρά. */}
+              <div style={{width:72,height:72,borderRadius: T.radius.modal,background:'var(--accent-dim)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 22px',color:'var(--accent)'}}>
+                <BrandMark size={40} />
               </div>
-              <h1 style={{fontFamily: T.font.sans,fontSize:28,fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',margin:'0 0 8px'}}>Καλωσήρθες στο PROPERWISE</h1>
-              <p style={{fontFamily: T.font.sans,fontSize:14,color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 24px',maxWidth:420}}>Πρόσθεσε το πρώτο σου ακίνητο και ξεκλείδωσε αποδόσεις, δαπάνες, λογαριασμούς, φορολογία και διαχείριση ενοικιαστή, όλα σε ένα σημείο.</p>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,150px),1fr))',gap:12,marginBottom:28,textAlign:'left'}}>
+              <h1 style={{fontFamily: T.font.sans,fontSize:28,fontWeight:700,letterSpacing:'-0.025em',color:'var(--text-primary)',margin:'0 0 10px',textWrap:'balance'}}>Ξεκίνα από ένα ακίνητο.</h1>
+              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:440,textWrap:'balance'}}>Μόνο το όνομα είναι υποχρεωτικό. Τα υπόλοιπα τα συμπληρώνεις όποτε θες.</p>
+              <ol style={{listStyle:'none',padding:0,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,170px),1fr))',gap:12,margin:'0 0 30px',textAlign:'left'}}>
                 {[
-                  {t:'Αποδόσεις και Φόρος 2026',d:'Μεικτή/καθαρή απόδοση, φόρος βάσει κλίμακας'},
-                  {t:'Λογαριασμοί και Ενέργεια',d:'Σύγκριση 11 παρόχων ρεύματος/αερίου'},
-                  {t:'Ενοικιαστής και Συμβόλαιο',d:'Πληρωμές, λήξεις, εγγύηση, ιστορικό'},
+                  {t:'Τα βασικά',d:'Διεύθυνση, τετραγωνικά, όροφος, έτος κατασκευής.'},
+                  {t:'Ένας λογαριασμός',d:'Τον φωτογραφίζεις και μπαίνει μόνος του στο ακίνητο.'},
+                  {t:'Ο ΕΝΦΙΑ σου',d:'Ενδεικτικά, μαζί με ό,τι λείπει για τον λογιστή.'},
                 ].map((f,i)=>(
-                  <div key={i} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,padding:'14px 16px'}}>
+                  <li key={i} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,padding:'16px 16px 18px'}}>
+                    <div style={{fontFamily: T.font.mono,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--accent)',marginBottom:10}}>{i+1}</div>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:700,color:'var(--text-primary)',marginBottom:4}}>{f.t}</div>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.5}}>{f.d}</div>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ol>
               {/* Η ΜΟΝΑΔΙΚΗ ΧΡΗΣΗ ΤΟΥ ΠΑΛΙΟΥ `.btn`. Είχε δικό της ύψος, ακτίνα και
                   μέγεθος γραμματοσειράς, δηλαδή έμοιαζε με κουμπί άλλης
                   εφαρμογής δίπλα σε κάθε άλλο κουμπί της ίδιας οθόνης. */}
-              <Btn variant="primary" onClick={() => tryAddProperty()}>Προσθήκη πρώτου ακινήτου</Btn>
+              <Btn variant="primary" onClick={() => tryAddProperty()}>Πρόσθεσε το ακίνητό σου</Btn>
             </div>
           </div>
         ) : (
