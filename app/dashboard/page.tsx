@@ -716,7 +716,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const totalDebt = loans.reduce((s,l)=>{
     const started = l.start_date ? Date.parse(l.start_date) : NaN;
     if (isNaN(started) || !(l.years||0)) return s + (l.amount||0);
-    const elapsed = Math.max(0, (Date.now() - started) / (365.25 * 864e5));
+    const elapsed = Math.max(0, (Date.parse(todayAthens) - started) / (365.25 * 864e5));
     return s + remainingBalance(l.amount||0, l.rate||0, l.years||0, elapsed);
   },0);
   const debtLtv = propValue>0 && totalDebt>0 ? (totalDebt/propValue)*100 : 0;

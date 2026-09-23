@@ -303,7 +303,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   // Αλλαγή βήματος = νέα προσπάθεια· το παλιό σφάλμα δεν αφορά πια την οθόνη.
-  useEffect(() => { setError(''); }, [step]);
+  const goStep = (next: (s: number) => number) => { setError(''); setStep(next); };
   // Id του ακινήτου που δημιουργήθηκε σε προηγούμενη, μισοτελειωμένη προσπάθεια
   // αποθήκευσης (βλ. save()) — κρατά το «δοκίμασε ξανά» πάνω στο ίδιο ακίνητο.
   const [createdId, setCreatedId] = useState<string | null>(null);
@@ -570,7 +570,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
         {/* Ήσυχο: είναι η έξοδος του βήματος και δεν διεκδικεί το μάτι από τη
             «Συνέχεια». Το `size="lg"` κρατά το ύψος T.h.lg που είχε ήδη όλη η
             σειρά, ώστε τα τέσσερα κουμπιά του υποσέλιδου να μένουν ίσα. */}
-        <Btn variant="ghost" size="lg" onClick={() => (step === 0 ? requestClose() : setStep(s => s - 1))}>
+        <Btn variant="ghost" size="lg" onClick={() => (step === 0 ? requestClose() : goStep(s => s - 1))}>
           {step === 0 ? 'Ακύρωση' : 'Πίσω'}
         </Btn>
 
@@ -594,7 +594,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
         )}
 
         {step < STEPS.length - 1 ? (
-          <Btn variant="primary" size="lg" onClick={() => canNext && setStep(s => s + 1)} disabled={!canNext}>Συνέχεια</Btn>
+          <Btn variant="primary" size="lg" onClick={() => canNext && goStep(s => s + 1)} disabled={!canNext}>Συνέχεια</Btn>
         ) : (
           <Btn variant="primary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit ? 'Αποθήκευση αλλαγών' : 'Προσθήκη ακινήτου'}</Btn>
         )}
