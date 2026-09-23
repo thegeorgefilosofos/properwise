@@ -2289,11 +2289,11 @@ export default function Dashboard() {
                   τρία βήματα του πρώτου λεπτού: τα βασικά του ακινήτου (μόνο το όνομα
                   είναι υποχρεωτικό, όπως στον οδηγό), ένας λογαριασμός με φωτογραφία,
                   ο ΕΝΦΙΑ και το φύλλο «Τι λείπει». Η αρίθμηση είναι αληθινή σειρά. */}
-              <div style={{width:72,height:72,borderRadius: T.radius.modal,background:'var(--accent-dim)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 22px',color:'var(--accent)'}}>
-                <BrandMark size={40} />
+              <div style={{width:80,height:80,borderRadius: T.radius.modal,background:'var(--accent-dim)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 22px',color:'var(--accent)'}}>
+                <BrandMark size={52} />
               </div>
               <h1 style={{fontFamily: T.font.sans,fontSize:28,fontWeight:700,letterSpacing:'-0.025em',color:'var(--text-primary)',margin:'0 0 10px',textWrap:'balance'}}>Ξεκίνα από ένα ακίνητο.</h1>
-              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:440,textWrap:'balance'}}>Μόνο το όνομα είναι υποχρεωτικό. Τα υπόλοιπα τα συμπληρώνεις όποτε θες.</p>
+              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'balance'}}>Φτάνει ένα όνομα για το ακίνητο, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θες.</p>
               <ol style={{listStyle:'none',padding:0,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,170px),1fr))',gap:12,margin:'0 0 30px',textAlign:'left'}}>
                 {[
                   {t:'Τα βασικά',d:'Διεύθυνση, τετραγωνικά, όροφος, έτος κατασκευής.'},

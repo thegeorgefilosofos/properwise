@@ -49,7 +49,7 @@ ok('seasonal overrides type', e2IncomeCategory('apartment', 'seasonal') === 'Β�
 ok('unknown type → Ακίνητο', e2IncomeCategory('spaceship', null) === 'Ακίνητο');
 
 // ── buildE2Row ───────────────────────────────────────────────────────────────
-const P = (o: Partial<E2Property> = {}): E2Property => ({ id: 'p1', atak: '01234567890', address: 'Οδός 1', postal_code: '16232', ownership: 100, prop_type: 'apartment', status_detail: 'rented', target_rent: 800, ...o });
+const P = (o: Partial<E2Property> = {}): E2Property => ({ id: 'p1', atak: '01234567890', address: 'Οδός 1', postal_code: '10000', ownership: 100, prop_type: 'apartment', status_detail: 'rented', target_rent: 800, ...o });
 const T = (o: Partial<E2Tenant> = {}): E2Tenant => ({ property_id: 'p1', afm: null, monthly_rent: 800, lease_start: null, lease_end: null, lease_type: null, ...o });
 
 {
@@ -140,11 +140,11 @@ const STAYS: E2Stay[] = [
 
 // ── e2RowToCells (μορφοποίηση) ───────────────────────────────────────────────
 {
-  const r = buildE2Row(P({ ownership: 33.33, address: 'Οδός 1', postal_code: '16232' }), T(), [], '999999999', 2025);
+  const r = buildE2Row(P({ ownership: 33.33, address: 'Οδός 1', postal_code: '10000' }), T(), [], '999999999', 2025);
   const cells = e2RowToCells(r, 1);
   ok('cell index = 1', cells[0] === 1);
   ok('ownership 33,33', cells[4] === '33,33');
-  ok('address joined', cells[2] === 'Οδός 1, 16232');
+  ok('address joined', cells[2] === 'Οδός 1, 10000');
   ok('gross is string integer', cells[8] === String(Math.round(r.grossIncome)));
 }
 

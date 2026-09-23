@@ -787,9 +787,9 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
           place={place}
           rows={[
             row('prop.name', 'full',
-              <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Αράββου 45" onFocus={onFocus} onBlur={onBlur} autoFocus />),
+              <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Διαμέρισμα στο κέντρο" onFocus={onFocus} onBlur={onBlur} autoFocus />),
             row('prop.address', 'full',
-              <input style={inputStyle} value={address} onChange={e => setAddress(e.target.value)} placeholder="Αράββου 45, Βύρωνας" onFocus={onFocus} onBlur={onBlur} />),
+              <input style={inputStyle} value={address} onChange={e => setAddress(e.target.value)} placeholder="Οδός Παραδείγματος 12, Αθήνα" onFocus={onFocus} onBlur={onBlur} />),
             /* Η οδηγία ΔΕΝ ζει σε placeholder: το placeholder σβήνει με το πρώτο
                ψηφίο, δηλαδή τη στιγμή ακριβώς που ο χρήστης το χρειάζεται. */
             row('prop.atak', 'full', <>
@@ -803,7 +803,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
             row('prop.bedrooms', 'auto',
               <input style={monoInputStyle} type="number" min={0} value={bedrooms} onChange={e => setBedrooms(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
             row('prop.postal_code', 'auto',
-              <input style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} inputMode="numeric" placeholder="16232" onFocus={onFocus} onBlur={onBlur} />, 'Ταχ. Κώδικας'),
+              <input style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} inputMode="numeric" placeholder="10000" onFocus={onFocus} onBlur={onBlur} />, 'Ταχ. Κώδικας'),
             row('prop.floor', 'auto',
               <CustomSelect ariaLabel="Όροφος" value={floor} onChange={setFloor} placeholder="Επίλεξε" options={FLOOR_OPTS.map(f => ({ value: f, label: f }))} />),
             row('prop.year_built', 'auto',
