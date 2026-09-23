@@ -352,7 +352,14 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
 {
   const marker = 'τεχνικοί, μάστορες, πάροχοι, συνεργάτες';
   ok('no contactsPro by default', !buildSystemPrompt(id(), 'x').includes(marker));
-  ok('contactsPro when provided', buildSystemPrompt(id(), 'x', undefined, { contactsPro: '• Νίκος · Υδραυλικός · τηλ 6900000000' }).includes(marker));
+  ok('contactsPro when provided', buildSystemPrompt(id(), 'x', undefined, { contactsPro: '• Νίκος · Υδραυλικός · έχει τηλέφωνο' }).includes(marker));
+}
+// Τηλέφωνα και ΑΦΜ μένουν στη συσκευή: το prompt το λέει και η γραμμή ταιριάσματος μπαίνει μόνο όταν υπάρχει.
+{
+  const marker = 'ΑΡΙΘΜΟΣ ΤΗΣ ΕΡΩΤΗΣΗΣ (';
+  ok('no numberMatch by default', !buildSystemPrompt(id(), 'x').includes(marker));
+  ok('numberMatch when provided', buildSystemPrompt(id(), 'x', undefined, { numberMatch: 'Ο αριθμός της ερώτησης αντιστοιχεί σε: πελάτης «Γιάννης».' }).includes('πελάτης «Γιάννης»'));
+  ok('the prompt says numbers are not given', /Τηλέφωνα και ΑΦΜ ΔΕΝ σου δίνονται/.test(buildSystemPrompt(id(), 'x')));
 }
 // compare context εμφανίζεται μόνο όταν δοθεί
 ok('no compare by default', !buildSystemPrompt(id(), 'x').includes('ΟΛΑ ΤΑ ΑΚΙΝΗΤΑ'));

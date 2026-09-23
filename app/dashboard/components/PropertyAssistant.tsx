@@ -109,6 +109,7 @@ type ContactLite = { name: string; role: string; phone: string; email: string };
 
 import { suggestedOpeners, greeting as buildGreeting, type OpenerContext } from '@/lib/assistant/openers';
 import { modelFor } from '@/lib/assistant/model';
+import { contactFlags, matchesNumber, numberMatchLine } from '@/lib/assistant/roster';
 import { hy } from '@/components/Hyphen';
 import { scanFile, commitScannedDoc, RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT, type ReconcileQuestion } from './scanDoc';
 import { DOC_TYPE_LABELS, type ScannedDoc } from '@/lib/billing/documents';
@@ -724,7 +725,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     mLines.push(MUNICIPAL_ACCOM_SUMMARY);
     setMarketStr(mLines.join('\n'));
 
-    // ── Πελατολόγιο: ρόστερ με ιστορικό, ώστε να βρίσκει από όνομα/τηλέφωνο/ΑΦΜ ──
+    // ── Πελατολόγιο: ρόστερ με ιστορικό. Το όνομα πάει στο μοντέλο, τηλέφωνο και ΑΦΜ μένουν εδώ ──
     const clientRoster = (clientRows || []) as ClientsRow[];
     setClientsLite(clientRoster.map(c => ({ id: c.id, name: c.full_name || '', phone: String(c.phone || ''), afm: String(c.afm || '') })));
     if (clientRoster.length) {
@@ -744,8 +745,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         const bits: string[] = [c.full_name, CLIENT_TYPE_LABELS[c.type as ClientType] || c.type];
 
         if (cs.stayCount >= 2) bits.push('επαναλαμβανόμενος (2+ διαμονές)');
-        if (c.phone) bits.push(`τηλ ${c.phone}`);
-        if (c.afm) bits.push(`ΑΦΜ ${c.afm}`);
+        // Ενδείξεις, όχι αριθμοί: τα τηλέφωνα και τα ΑΦΜ μένουν στη συσκευή (`lib/assistant/roster.ts`).
+        bits.push(...contactFlags({ phone: String(c.phone || ''), afm: String(c.afm || '') }));
 
         if (cs.stayCount) bits.push(`${cs.stayCount} διαμονές, ${cs.nights} νύχτες, συνολικά έσοδα ${eur(cs.revenue)}`);
         if (cs.stayCount) bits.push(`έσοδα: τελευταίος μήνας ${eur(revSince(arr, 30))}, εξάμηνο ${eur(revSince(arr, 182))}, έτος ${eur(revSince(arr, 365))}`);
@@ -767,8 +768,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     setContactsLite(techRoster.map(c => ({ name: c.full_name || '', role: c.role || 'other', phone: String(c.phone || ''), email: String(c.email || '') })));
     if (techRoster.length) {
       const tLines = techRoster.slice(0, 60).map(c => {
-        const bits = [c.full_name, roleLabel(c.role || 'other')];
-        if (c.phone) bits.push(`τηλ ${c.phone}`);
+        const bits = [c.full_name, roleLabel(c.role || 'other'), ...contactFlags({ phone: String(c.phone || ''), email: String(c.email || '') })];
         return `• ${bits.filter(Boolean).join(' · ')}`;
       });
       setTechStr(`Σύνολο επαφών: ${techRoster.length}\n${tLines.join('\n')}`);
@@ -804,10 +804,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     if (!q) return null;
     const digits = q.replace(/\D/g, '');
     const list = clientsLite;
-    if (digits.length >= 6) {
-      const byNum = list.find(c => c.afm.replace(/\D/g, '') === digits || c.phone.replace(/\D/g, '').endsWith(digits));
-      if (byNum) return byNum;
-    }
+    const byNum = list.find(c => matchesNumber(digits, c));
+    if (byNum) return byNum;
     const exact = list.find(c => c.name.toLowerCase() === q);
     if (exact) return exact;
     const partial = list.filter(c => c.name.toLowerCase().includes(q));
@@ -1246,6 +1244,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         market: marketStr || undefined,
         clients: clientsStr || undefined,
         contactsPro: techStr || undefined,
+        // Ο αριθμός της ερώτησης λύνεται εδώ: φεύγει μόνο το όνομα που ταιριάζει.
+        numberMatch: numberMatchLine(q, clientsLite, contactsLite) || undefined,
         pricing: pricingStr || undefined,
         memories: prefs.memory ? memories.map(m => m.text) : undefined,
         // ΤΟ ΠΑΚΕΤΟ ΜΑΖΙ ΜΕ ΤΑ ΟΡΙΑ ΤΟΥ. Σκέτο το όνομα δεν έφτανε: στη δοκιμή
