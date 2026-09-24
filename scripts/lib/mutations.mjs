@@ -342,6 +342,10 @@ export const MUTATIONS = {
   'download': { add: 'components/__mut__.ts', content: "export const save = (blob: Blob) => {\n  const a = document.createElement('a')\n  a.href = URL.createObjectURL(blob)\n  a.download = 'arxeio.csv'\n  a.click()\n}\n" },
   'official-links': { add: 'components/__mut__.tsx', content: tsx('    <a href="https://www.aade.gr/polites">Ημερολόγιο</a>') },
   'site-url': { add: 'components/__mut__.ts', content: "export const url = 'https://properwise.gr/imerologio'\n" },
+  // Το όνομα του πακέτου στην ονομαστική μετά από «του»: «Όλα του «Ιδιοκτήτης» και:».
+  'plan-genitive': { file: 'app/page.tsx', from: 'Όλα του «${prev.nameGen}» και:', to: 'Όλα του «${prev.name}» και:' },
+  // Σχόλιο CSS που ταξιδεύει στον επισκέπτη: η παρεμβολή βγαίνει και μένει σκέτο «/* … */».
+  'style-comments': { file: 'app/ScrollStory.tsx', from: "${/* Σε στενό πλαίσιο (όχι στενή οθόνη), το πλευρικό μενού του πίνακα δεν χωρά. */''}", to: '/* Σε στενό πλαίσιο (όχι στενή οθόνη), το πλευρικό μενού του πίνακα δεν χωρά. */' },
   'security-txt': { file: 'public/.well-known/security.txt', from: 'Expires:', to: 'X-Expires:' },
   // Η κλασική απόκλιση: αλλάζει η προθεσμία στην πηγή, μένει η παλιά στα
   // δημόσια κείμενα. Και οι δύο κατευθύνσεις δοκιμάζονται.
