@@ -43,7 +43,7 @@ const SCAN = ['app', 'components']
  * 1200 πλάτους, ένα «σωστό» 24άρι είναι κόκκος. Ο κανόνας δεν ισχύει επειδή
  * δεν υπάρχει άνθρωπος που διαβάζει αυτό το αρχείο δίπλα σε ένα άλλο.
  */
-const NOT_A_SCREEN = /(^|\/)(opengraph|twitter)-image\.tsx$/
+const NOT_A_SCREEN = /(^|\/)(opengraph|twitter)-image\.tsx$|^app\/og\//
 
 /**
  * Η κλίμακα, όπως την ορίζει το `TT` και το `T.sp`.

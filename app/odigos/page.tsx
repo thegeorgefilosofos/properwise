@@ -16,6 +16,7 @@ import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
+import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { GUIDES } from './guides';
 
@@ -25,7 +26,7 @@ const DESC =
   + 'και καθαρή απόδοση. Με παραδείγματα σε ευρώ και πηγές.';
 const URL = siteUrl('/odigos');
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, ownImage: true });
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('odigos') });
 
 const jsonLd = {
   '@context': 'https://schema.org',

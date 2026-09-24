@@ -22,6 +22,7 @@ import { siteUrl } from '@/lib/core/site';
 import { fe, fp } from '@/lib/core/format';
 import { RENTAL_TAX_BRACKETS_2026, bracketRows, rentalIncomeTax } from '@/lib/billing/greekTax';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
+import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import {
@@ -41,7 +42,7 @@ const DESC =
 const GUIDE = guideAt('/odigos/forologia-enoikion-2026');
 const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', ownImage: true });
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-forologia-enoikion-2026') });
 
 // Οι ερωτήσεις τροφοδοτούν ΚΑΙ την ορατή λίστα ΚΑΙ το δομημένο σχήμα — μία πηγή.
 const FAQ: GuideFaqItem[] = [

@@ -658,7 +658,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           { k:'Συνολικό υπόλοιπο', v:fmtEur(totalBalance) },
           { k:'Συνολική δόση τον μήνα', v:fmtEur(totalMonthly) },
           { k:'Σταθμισμένο επιτόκιο', v:fmtPct(blended) },
-          { k:'Τόκοι που απομένουν', v:fmtEur(totalInterest) },
+          { k:'Τόκοι που μένουν', v:fmtEur(totalInterest) },
         ]
         // Ενα μέγεθος για όλη τη σειρά: το μακρύτερο ποσό δίνει τον ρυθμό.
         const tilesWidest = widestOf(...tiles.map(t=>t.v))
@@ -865,9 +865,12 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             {(()=>{
               const meta:[string,React.ReactNode,boolean?][] = [
                 ['Επιτόκιο', `${fp(loan.rate)} · ${rateTypeLabel(loan.rate_type).toLowerCase()}`],
-                ...(ltv>0 ? [[prog ? 'Δάνειο προς αξία σήμερα' : 'Δάνειο προς αξία στην έναρξη', fp(ltv)] as [string,React.ReactNode]] : []),
+                // Η ΣΤΙΓΜΗ ΠΑΕΙ ΣΤΗΝ ΤΙΜΗ, ΟΠΩΣ ΤΟ ΕΙΔΟΣ ΣΤΟ ΕΠΙΤΟΚΙΟ. Ως ετικέτα, το
+                // «Δάνειο προς αξία σήμερα» έπιανε δύο γραμμές στα 390 δίπλα σε
+                // μονόγραμμο «Επιτόκιο» και οι δύο τιμές δεν στοιχίζονταν.
+                ...(ltv>0 ? [['Δάνειο προς αξία', `${fp(ltv)} · ${prog ? 'σήμερα' : 'στην έναρξη'}`] as [string,React.ReactNode]] : []),
                 ...(loan.start_date ? [['Έναρξη', fdLong(loan.start_date)] as [string,React.ReactNode]] : []),
-                ...(prog ? [['Τόκοι που απομένουν', fe(prog.interestRemaining), true] as [string,React.ReactNode,boolean]] : []),
+                ...(prog ? [['Τόκοι που μένουν', fe(prog.interestRemaining), true] as [string,React.ReactNode,boolean]] : []),
               ]
               const grid = fixedCols(meta.length, T.sp.lg, 'start', 'fc-xs-2')
               return (

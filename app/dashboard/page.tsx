@@ -1171,12 +1171,14 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             : <div style={{display:'flex',flexDirection:'column',gap:8}}>
                 {billAverages.slice(0,5).map(b => (
                   <div key={b.type} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:12}}>
-                    <div style={{minWidth:0,fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',letterSpacing:'0.25px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      {b.type}
+                    <div style={{minWidth:0,display:'flex',alignItems:'baseline',gap:4,fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',letterSpacing:'0.25px'}}>
+                      <span style={{minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.type}</span>
                       {/* ΤΟ ΠΛΗΘΟΣ ΛΕΓΕΤΑΙ. Ένας «μέσος όρος» από έναν λογαριασμό δεν
                           είναι μέσος όρος και ο χρήστης πρέπει να ξέρει σε πόσα
-                          στηρίζεται το νούμερο πριν χτίσει πάνω του προϋπολογισμό. */}
-                      <span style={{color:'var(--text-tertiary)',fontSize: 'var(--fs-xs)'}} title={`Από ${b.count} ${b.count===1?'λογαριασμό':'λογαριασμούς'}`}> ({b.count})</span>
+                          στηρίζεται το νούμερο πριν χτίσει πάνω του προϋπολογισμό.
+                          Δικό του κουτί που δεν κονταίνει: στα 320 κοβόταν μαζί
+                          με το όνομα και έμενε μισό έξω από τη γραμμή. */}
+                      <span style={{flexShrink:0,color:'var(--text-tertiary)',fontSize: 'var(--fs-xs)'}} title={`Από ${b.count} ${b.count===1?'λογαριασμό':'λογαριασμούς'}`}>({b.count})</span>
                     </div>
                     <div style={{fontFamily: T.font.num,fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',flexShrink:0}}>{fmtEur(b.monthly)} <span style={{fontFamily:T.font.sans,color:'var(--text-tertiary)',fontSize:'var(--fs-xs)'}}>τον μήνα</span></div>
                   </div>

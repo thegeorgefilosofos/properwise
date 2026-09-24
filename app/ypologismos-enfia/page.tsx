@@ -21,6 +21,7 @@ import { athensParts, athensToday } from '@/lib/core/time';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
+import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { EnfiaCalculator } from './EnfiaCalculator';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
@@ -51,7 +52,7 @@ const URL = siteUrl(PATH);
 
 // Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
 export function generateMetadata(): Metadata {
-  return publicMetadata({ title: titleFor(athensParts().year), description: DESC, url: URL });
+  return publicMetadata({ title: titleFor(athensParts().year), description: DESC, url: URL, image: shareImage('ypologismos-enfia') });
 }
 
 // ΟΙ ΕΡΩΤΗΣΕΙΣ ΘΕΛΟΥΝ ΤΗ ΧΡΟΝΙΑ. Η μείωση του μικρού οικισμού ισχύει μόνο για

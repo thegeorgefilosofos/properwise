@@ -276,7 +276,8 @@ export const config = {
     // κοιτά την ΑΡΧΗ της διαδρομής. Ένα `app/<σελίδα>/opengraph-image.tsx`
     // σερβίρεται στο `/<σελίδα>/opengraph-image` και έπαιρνε 307 προς /login,
     // δηλαδή κάθε προεπισκόπηση συνδέσμου θα έμενε χωρίς εικόνα. Το
-    // `(?:.*/)?` πιάνει την εικόνα σε όποιο βάθος κι αν ζει.
+    // `(?:.*/)?` πιάνει την εικόνα σε όποιο βάθος κι αν ζει. Οι κάρτες των
+    // οδηγών και των υπολογιστών βγαίνουν από το /og/<slug> (app/og/share.ts).
     //
     // ── ΚΑΙ ΤΟ /.well-known/ (RFC 8615) ─────────────────────────────────────
     // Το security.txt (RFC 9116) ζούσε στο public/ και ΔΕΝ διαβαζόταν ποτέ: κάθε
@@ -284,6 +285,6 @@ export const config = {
     // αναφέρει ευπάθεια έβρισκε φόρμα εισόδου και ο σύνδεσμος «πολιτική
     // γνωστοποίησης ευπαθειών» της σελίδας εμπιστοσύνης ήταν νεκρός. Ο φύλακας
     // guard-security-txt ελέγχει πλέον ότι η διαδρομή μένει έξω από εδώ.
-    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|(?:.*/)?opengraph-image|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|(?:.*/)?opengraph-image|og/|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

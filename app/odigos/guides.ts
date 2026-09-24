@@ -73,11 +73,15 @@ export function guideAt(href: string): Guide {
  */
 export const GUIDES_UPDATED: string = GUIDES.map(g => g.updated).sort().at(-1)!;
 
+/** Το όνομα της κάρτας κοινοποίησης του οδηγού στο /og/<slug> (app/og/share.ts). */
+export function guideSlug(g: Guide): string {
+  return `odigos-${g.href.split('/').pop()}`;
+}
+
 /**
- * Η εικόνα κοινοποίησης του οδηγού, από το opengraph-image.tsx του φακέλου του.
- * Τη διαβάζει το δομημένο σχήμα, ώστε το άρθρο να δείχνει την ίδια κάρτα με
- * την κοινοποίηση.
+ * Η εικόνα κοινοποίησης του οδηγού. Τη διαβάζει το δομημένο σχήμα, ώστε το
+ * άρθρο να δείχνει την ίδια κάρτα με την κοινοποίηση.
  */
 export function guideShareImageUrl(g: Guide): string {
-  return `${g.href}/opengraph-image`;
+  return `/og/${guideSlug(g)}`;
 }

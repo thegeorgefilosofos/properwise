@@ -27,6 +27,7 @@ import { athensToday } from '@/lib/core/time';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
+import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { RentTaxCalculator } from './RentTaxCalculator';
 
@@ -38,7 +39,7 @@ const DESC =
 const URL = siteUrl('/ypologismos-forou-enoikion');
 
 // Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL });
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('ypologismos-forou-enoikion') });
 
 // Οι ερωτήσεις που κάνει πραγματικά ο ιδιοκτήτης, με απαντήσεις που στέκουν.
 // Το ίδιο περιεχόμενο τροφοδοτεί και το δομημένο σχήμα παρακάτω — μία πηγή, ώστε

@@ -19,6 +19,7 @@ import { siteUrl } from '@/lib/core/site';
 import { feWhole } from '@/lib/core/format';
 import { CLIMATE_LEVY_FROM_2025 } from '@/lib/billing/greekTax';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
+import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import {
@@ -36,7 +37,7 @@ const DESC =
 const GUIDE = guideAt('/odigos/airbnb-takk-2026');
 const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', ownImage: true });
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-airbnb-takk-2026') });
 
 // Τα ποσά του ΤΑΚΚ από τη μηχανή (climateLevyRates): μονοκατοικία άνω των 80 τ.μ.
 // στο μεγάλο κλιμάκιο, κάθε άλλο ακίνητο στο μικρό.

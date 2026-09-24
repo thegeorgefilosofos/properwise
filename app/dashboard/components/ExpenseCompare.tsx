@@ -133,7 +133,9 @@ function Drivers({ c }: { c: Comparison }) {
         const up = d.diff > 0;
         return (
           <Fragment key={d.slug}>
-            <span title={d.label} style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {/* Τυλίγει αντί να κόβεται: στα 320 η στήλη έχει 84 εικονοστοιχεία και
+                το «Επισκευές και συντήρηση» έχανε τη μισή λέξη. */}
+            <span style={{ fontSize: 12, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans, minWidth: 0 }}>
               {d.label}
             </span>
             <span style={{ position: 'relative', display: 'block', height: 8 }}>

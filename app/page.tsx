@@ -1205,7 +1205,9 @@ export default async function Landing() {
 
       {/* ── Nav ── */}
       <header className="lp-head" style={{ position: 'sticky', top: 0, zIndex: 50, background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)', borderBottom: `1px solid ${LINE}` }}>
-        <nav style={{ ...wrap, height: 64, display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* ΚΕΝΟ 12, ΟΧΙ 16. Στα 320 το «Δοκιμή», με το δικό του περιθώριο από το
+            «Είσοδος», έβγαινε τρία εικονοστοιχεία έξω από την οθόνη. */}
+        <nav style={{ ...wrap, height: 64, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
             <BrandLogo size={26} />
           </div>

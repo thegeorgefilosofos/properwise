@@ -26,6 +26,7 @@ import {
   ENFIA_EXTRA_TAX_FREE, ENFIA_EXTRA_WEALTH_THRESHOLD, ENFIA_EXTRA_BRACKETS, enfiaExtraPropertyTax,
 } from '@/lib/billing/enfia';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
+import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import {
@@ -46,7 +47,7 @@ const DESC =
   + 'αυτόματη μείωση και απαλλαγές. Με παράδειγμα σε ευρώ.';
 const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', ownImage: true });
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-pos-ypologizetai-o-enfia') });
 
 const pct = (n: number) => `${fn(n)}%`;
 const reduction = (key: string) => ENFIA_REDUCTIONS.find(r => r.key === key)!;

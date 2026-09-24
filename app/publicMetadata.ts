@@ -22,25 +22,23 @@ import { PRODUCT_NAME, SHARE_IMAGE } from '@/lib/core/site';
  * σελίδας. Ο τίτλος είναι απόλυτος: είναι γραμμένος για τη σελίδα αποτελεσμάτων
  * και δεν αντέχει τρίτο τμήμα από το πρότυπο της ρίζας.
  */
-export function publicMetadata({ title, description, url, type = 'website', ownImage = false }: {
+export function publicMetadata({ title, description, url, type = 'website', image }: {
   title: string; description: string; url: string; type?: 'website' | 'article';
   /**
-   * Η σελίδα έχει δικό της opengraph-image.tsx στο τμήμα της. Τότε η εικόνα
-   * της ρίζας ΔΕΝ γράφεται: το αρχείο έχει έτσι κι αλλιώς προτεραιότητα για το
-   * `og:image`, αλλά η κάρτα X θα κρατούσε τη γενική εικόνα. Χωρίς δική της,
-   * η κάρτα X διαβάζει το `og:image` της σελίδας.
+   * Η δική της κάρτα κοινοποίησης (shareImage από το app/og/share.ts). Χωρίς
+   * αυτήν, η γενική κάρτα της ρίζας, στην κοινοποίηση και στην κάρτα X.
    */
-  ownImage?: boolean;
+  image?: { url: string; width: number; height: number; alt: string };
 }): Metadata {
-  const images = ownImage ? {} : { images: [SHARE_IMAGE] };
+  const images = [image ?? SHARE_IMAGE];
   return {
     title: { absolute: title },
     description,
     alternates: { canonical: url },
     openGraph: {
       title, description, url, type,
-      siteName: PRODUCT_NAME, locale: 'el_GR', ...images,
+      siteName: PRODUCT_NAME, locale: 'el_GR', images,
     },
-    twitter: { card: 'summary_large_image', title, description, ...images },
+    twitter: { card: 'summary_large_image', title, description, images },
   };
 }

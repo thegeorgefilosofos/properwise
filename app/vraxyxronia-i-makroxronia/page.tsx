@@ -25,6 +25,7 @@ import { athensToday } from '@/lib/core/time';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
+import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { ShortVsLongCalculator } from './ShortVsLongCalculator';
 
@@ -37,7 +38,7 @@ const DESC =
 const URL = siteUrl('/vraxyxronia-i-makroxronia');
 
 // Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL });
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('vraxyxronia-i-makroxronia') });
 
 // Οι ερωτήσεις που κάνει πραγματικά ο ιδιοκτήτης πριν αποφασίσει. Ίδια πηγή για
 // τη σελίδα και για το δομημένο σχήμα, ώστε να μη διαφωνήσουν ποτέ.

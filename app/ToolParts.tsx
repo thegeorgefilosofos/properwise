@@ -71,7 +71,19 @@ export function ToolNumField({ id, label, value, onChange, unit, unitPad = 34, m
       <label htmlFor={id} style={TOOL_LABEL}>{label}</label>
       <div style={{ position: 'relative' }}>
         <input id={id} inputMode={mode} value={focused ? value : grouped(value)}
-          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+          onFocus={e => {
+            // Η ΕΠΙΛΟΓΗ ΕΠΙΖΕΙ ΤΗΣ ΑΛΛΑΓΗΣ ΜΟΡΦΗΣ. Με την εστίαση το «1.400» γίνεται
+            // «1400» για επεξεργασία και ο περιηγητής ρίχνει την επιλογή. Όποιος
+            // έφτανε με Tab (που επιλέγει όλο το πεδίο) και έγραφε «0» έπαιρνε
+            // «14000», δηλαδή ΕΝΦΙΑ 6.960,92€ αντί για μηδέν.
+            // Η αλλαγή γίνεται εδώ, συγχρονισμένα: όταν φτάσει η απόδοση της React,
+            // το πεδίο έχει ήδη την ίδια τιμή και η επιλογή δεν αγγίζεται.
+            const el = e.currentTarget;
+            const all = el.value !== '' && el.selectionStart === 0 && el.selectionEnd === el.value.length;
+            if (el.value !== value) { el.value = value; if (all) el.select(); }
+            setFocused(true);
+          }}
+          onBlur={() => setFocused(false)}
           onChange={e => onChange(e.target.value)}
           style={{ ...TOOL_FIELD, paddingRight: unit ? unitPad : 14 }}
           aria-describedby={unit ? `${id}-unit` : undefined}/>

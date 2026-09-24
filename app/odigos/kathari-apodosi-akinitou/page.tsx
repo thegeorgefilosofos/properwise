@@ -20,6 +20,7 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl, PRODUCT_NAME } from '@/lib/core/site';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
+import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import {
@@ -37,7 +38,7 @@ const DESC =
 const GUIDE = guideAt('/odigos/kathari-apodosi-akinitou');
 const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', ownImage: true });
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-kathari-apodosi-akinitou') });
 
 // Οι ερωτήσεις τροφοδοτούν ΚΑΙ την ορατή λίστα ΚΑΙ το δομημένο σχήμα — μία πηγή.
 const FAQ: GuideFaqItem[] = [

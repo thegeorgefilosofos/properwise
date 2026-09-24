@@ -158,7 +158,7 @@ export default function LandingCalculator() {
           transition: border-color .15s, background .15s;
         }
         .calc-amount:hover { border-color: var(--border-subtle); }
-        .calc-amount:focus { border-color: var(--accent); background: var(--bg-base); outline: none; }
+        .calc-amount:focus { border-color: var(--accent); background: var(--bg-base); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
       `}</style>
 
       {/* Αριστερά: τα δικά σου δεδομένα */}
