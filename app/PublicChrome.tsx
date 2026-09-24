@@ -90,7 +90,7 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
         <Link href="/login" className="lp-link lp-nav-link" style={link}>
           <span className="lp-hide-xs">Σύνδεση</span><span className="lp-only-xs">Είσοδος</span>
         </Link>
-        <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 16px', borderRadius: T.radius.pill, whiteSpace: 'nowrap', marginLeft: T.sp.sm }}>
+        <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 16px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
           <span className="lp-hide-xs">Ξεκίνα τη δοκιμή</span><span className="lp-only-xs">Δοκιμή</span>
         </Link>
       </>) : signedIn}

@@ -3832,8 +3832,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
      της κατηγορίας έβγαινε ίδιο με τα ορθογώνια αναμονής: στα 390 οι ημέρες
      2, 8, 17 και 26 έμοιαζαν να φορτώνουν ακόμη. Λωρίδα και απαλό γέμισμα του
      accent λένε «εδώ υπάρχει γεγονός». Το χρώμα της κατηγορίας γράφεται ως
-     `backgroundColor`, οπότε η εικόνα από πάνω του δεν ακυρώνεται. */
-  .cal-chip { background-image: linear-gradient(90deg, var(--accent) 0 3px, var(--accent-soft) 3px); }
+     `backgroundColor`, οπότε το ζωγραφίζουμε με εσωτερική σκιά από πάνω του.
+     ΟΧΙ `background-image`: ο μετρητής αντίθεσης συνθέτει τις διαβαθμίσεις
+     ως φόντο του κειμένου και έβγαζε 1,05:1 για κείμενο που δεν ζωγραφίζεται. */
+  .cal-chip { box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 999px var(--accent-soft); }
 }
 
 /* Η μικρογραφία της κάρτας αρχείου. Χωρίς εικόνα, στο τηλέφωνο γίνεται λωρίδα
