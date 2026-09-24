@@ -4944,6 +4944,26 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   .lg-sp-cards { display: block; }
 }
 
+/* ═══ ΟΔΗΓΟΙ: ΜΕΤΡΟ, ΜΕΓΕΘΟΣ, ΣΤΟΙΧΙΣΗ ════════════════════════════════════
+   ΟΙ ΟΔΗΓΟΙ ΔΑΝΕΙΖΟΝΤΑΝ ΤΙΣ ΠΑΡΑΓΡΑΦΟΥΣ ΤΩΝ ΝΟΜΙΚΩΝ ΣΕΛΙΔΩΝ: 15px, δεύτερος
+   τόνος, πλήρης στοίχιση. Σε κείμενο που διαβάζεται από την αρχή ως το τέλος
+   αυτό έδινε ~95 χαρακτήρες ανά γραμμή στα 820, ποτάμια κενού στα 1440 και
+   πέντε κομμένες λέξεις στην πρώτη οθόνη του κινητού. Εδώ: αριστερή στοίχιση
+   χωρίς συλλαβισμό, σώμα κοντά στο πρώτο χρώμα, μέτρο ~66 χαρακτήρων. Οι
+   πίνακες και οι σημειώσεις κρατούν το πλάτος της στήλης. Τα `.gd-*` ζουν
+   μόνο μέσα στο GuideMain (app/odigos/GuideParts.tsx). */
+.gd .lg-p, .gd .lg-ul li {
+  font-size: 16px; line-height: 1.65; text-align: start; hyphens: none; text-wrap: pretty;
+  color: color-mix(in srgb, var(--text-primary) 90%, transparent);
+}
+.gd .lg-p, .gd .lg-ul { max-width: 66ch; }
+.gd .lg-note { text-align: start; hyphens: none; }
+.gd .po-tool-sources .lg-ul li { font-size: 14px; color: var(--text-secondary); }
+@media (min-width: 768px) { .gd .lg-p, .gd .lg-ul li { font-size: 17px; } }
+.gd .lg-toc { max-width: 66ch; }
+.gd-table { max-width: 480px; }
+.gd-table .po-table tbody tr:nth-child(even) > * { background: color-mix(in srgb, var(--bg-elevated) 50%, transparent); }
+
 /* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΓΙΝΕΤΑΙ ΠΟΤΑΜΙΑ ΛΕΥΚΟΥ ΚΑΙ ΣΠΑΣΜΕΝΕΣ ΛΕΞΕΙΣ.
    Σε ~340px στήλη το `justify` μαζί με τον μαλακό συλλαβισμό του `hy()` αφήνει
    τεντωμένα κενά και μεσολεκτικά κοψίματα (φορο-, χρεώ-σεις) — ακριβώς αυτό που

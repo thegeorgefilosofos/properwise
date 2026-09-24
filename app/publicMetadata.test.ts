@@ -59,7 +59,19 @@ for (const g of GUIDES) {
   ok(`${g.href}: η ενημέρωση δεν προηγείται της δημοσίευσης`, g.updated >= g.published);
   const row = map.find(r => r.url === SITE + g.href);
   ok(`${g.href}: ο χάρτης δίνει την ημερομηνία του οδηγού`, row?.lastModified === g.updated);
+  // Η δική του κάρτα κοινοποίησης: αλλιώς ο σύνδεσμος φτάνει με τη γενική εικόνα.
+  ok(`${g.href}: έχει δική του εικόνα κοινοποίησης`, existsSync(join('app', g.href, 'opengraph-image.tsx')));
 }
+const hub = map.find(r => r.url === `${SITE}/odigos`);
+ok('ο κόμβος των οδηγών έχει ημερομηνία στον χάρτη, την πιο πρόσφατη των οδηγών',
+  hub?.lastModified === GUIDES.map(g => g.updated).sort().at(-1));
+
+// Με δική της εικόνα η σελίδα δεν γράφει τη γενική, ούτε στην κάρτα X.
+const own = publicMetadata({ title: 'Τ', description: 'Π', url: `${SITE}/dokimi`, ownImage: true });
+ok('με δική της εικόνα δεν μπαίνει η γενική στο openGraph',
+  !(own.openGraph as { images?: unknown }).images);
+ok('με δική της εικόνα δεν μπαίνει η γενική στην κάρτα X',
+  !(own.twitter as { images?: unknown }).images);
 
 console.log(`publicMetadata: ✓ ${passed} · ✗ ${failed}`);
 if (failed) { for (const f of fails) console.log('  ✗ ' + f); process.exit(1); }

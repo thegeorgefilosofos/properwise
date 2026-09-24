@@ -127,7 +127,7 @@ function FootCol({ label, links }: { label: string; links: [string, string][] })
           εικονοστοιχείων, μετρημένη σε Chromium και στους τρεις υπολογιστές.
           Ο σύνδεσμος σπάει σε δύο γραμμές· η σελίδα δεν κουνιέται. */}
       {links.map(([href, text]) => (
-        <Link key={href} href={href} className="lp-link" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, lineHeight: 1.3, textWrap: 'pretty' }}>{text}</Link>
+        <Link key={href} href={href} className="lp-link" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, lineHeight: 1.3, textWrap: 'balance' }}>{text}</Link>
       ))}
     </div>
   );
