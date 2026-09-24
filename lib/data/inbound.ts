@@ -127,6 +127,19 @@ export async function dismiss(db: Db, id: string): Promise<{ error: DbError | nu
   return { error: error as DbError | null };
 }
 
+/**
+ * Η απόρριψη αναιρείται: το μήνυμα ξαναγυρίζει στην ουρά.
+ *
+ * Το «Δεν είναι δαπάνη» ήταν οριστικό με ένα πάτημα, χωρίς επιβεβαίωση και
+ * χωρίς αναίρεση: ένα λάθος δάχτυλο έστελνε έναν πραγματικό λογαριασμό εκεί
+ * όπου δεν τον ξαναβρίσκει κανείς. Αλλάζει ΜΟΝΟ την κατάσταση, την ίδια στήλη
+ * που αλλάζει η απόρριψη· τα δεδομένα της ανάγνωσης τα φυλάει η βάση.
+ */
+export async function restore(db: Db, id: string): Promise<{ error: DbError | null }> {
+  const { error } = await db.from(TABLE).update({ status: 'pending' }).eq('id', id).eq('status', 'dismissed');
+  return { error: error as DbError | null };
+}
+
 /** Ο,τι χρειάζεται η καταχώρηση και ΔΕΝ το ξέρει το μήνυμα. */
 export interface FileInput {
   propertyId: string;

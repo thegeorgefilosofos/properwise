@@ -12,9 +12,12 @@
 // κουμπί κλειστό μέχρι να γραφτεί. Ενα προσυμπληρωμένο μηδέν ή ένα «περίπου»
 // θα ήταν λάθος αριθμός σε φορολογικά βιβλία, γραμμένος με βεβαιότητα.
 //
-// ΛΕΕΙ ΣΕ ΠΟΙΟ ΑΚΙΝΗΤΟ ΠΑΕΙ. Το μήνυμα ήρθε στον ΛΟΓΑΡΙΑΣΜΟ, όχι σε ακίνητο:
-// το ταχυδρομείο δεν ξέρει τίποτα για ακίνητα. Οποιος έχει τρία ακίνητα πρέπει
-// να διαβάσει πού θα γραφτεί η δαπάνη πριν πατήσει, όχι να το ανακαλύψει μετά.
+// ΛΕΕΙ ΣΕ ΠΟΙΟ ΑΚΙΝΗΤΟ ΠΑΕΙ, ΚΑΙ ΑΦΗΝΕΙ ΝΑ ΑΛΛΑΞΕΙ. Το μήνυμα ήρθε στον
+// ΛΟΓΑΡΙΑΣΜΟ, όχι σε ακίνητο: η ουρά φέρνει τα εκκρεμή ΟΛΩΝ των ακινήτων. Η
+// καταχώρηση γραφόταν πάντα στο ακίνητο που ήταν ανοιχτό, χωρίς επιλογή: ο
+// λογαριασμός ρεύματος του δεύτερου ακινήτου, ανοιγμένος από το πρώτο, έπεφτε
+// στο λάθος ακίνητο και στη λάθος φορολογική εικόνα. Με περισσότερα από ένα
+// ακίνητα, κάθε γραμμή λέει πού πάει και η φόρμα έχει επιλογή «Ακίνητο».
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect } from 'react';
@@ -27,7 +30,7 @@ import { CATEGORIES, BY_SLUG, resolveCategory } from '@/lib/expenses/taxonomy';
 import { groupForCategory } from '@/lib/expenses/groups';
 import { hintAction, hintFor, type Hint } from '@/lib/expenses/hints';
 import * as hintStore from '@/lib/data/categoryHints';
-import { notifyError } from '@/components/Toast';
+import { notify, notifyError } from '@/components/Toast';
 import { athensToday } from '@/lib/core/time';
 
 interface Props {
@@ -35,14 +38,25 @@ interface Props {
   userId: string;
   /** Το όνομα του ακινήτου όπου θα γραφτεί η δαπάνη. */
   propertyName?: string;
+  /** Όλα τα ακίνητα του χρήστη, για την επιλογή «Ακίνητο». */
+  properties?: { id: string; name: string }[];
   /** Ειδοποιεί το καθολικό ότι μπήκε γραμμή, ώστε να ξαναδιαβάσει. */
   onFiled?: () => void;
 }
 
 /** Η γραμμή όπως τη διορθώνει ο άνθρωπος πριν την καταχωρήσει. */
-interface Draft { amount: string; date: string; slug: string }
+interface Draft { amount: string; date: string; slug: string; propertyId: string }
 
-export default function InboundInbox({ propertyId, userId, propertyName, onFiled }: Props) {
+/** Πόση ώρα μένει ανοιχτή η αναίρεση, ίδια με τον Προϋπολογισμό. */
+const UNDO_MS = 6000;
+
+/** «10/09» για φέτος, «10/09/25» για παλιότερα: ίδιο ιδίωμα με το καθολικό. */
+const dayMonth = (iso: string): string => {
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  return y === athensToday().slice(0, 4) ? `${d}/${m}` : `${d}/${m}/${y.slice(2)}`;
+};
+
+export default function InboundInbox({ propertyId, userId, propertyName, properties = [], onFiled }: Props) {
   const supabase = createClient();
   const [rows, setRows] = useState<inbound.MessageRow[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -75,15 +89,19 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
   // Η ΑΝΑΓΝΩΣΗ ΕΙΝΑΙ ΣΥΝΔΡΟΜΗ ΣΕ ΕΞΩΤΕΡΙΚΟ ΣΥΣΤΗΜΑ, ΟΧΙ ΥΠΟΛΟΓΙΣΜΟΣ: η
   // κατάσταση γράφεται μέσα στην απάντηση και ο διακόπτης `live` σταματά τη
   // γραφή αν η οθόνη έφυγε πριν απαντήσει η βάση.
+  // Η ΑΝΑΙΡΕΣΗ ΞΑΝΑΔΙΑΒΑΖΕΙ ΤΗΝ ΟΥΡΑ ΑΠΟ ΤΗ ΒΑΣΗ. Το προσχέδιο όποιας γραμμής
+  // υπάρχει ήδη μένει όπως το άφησε ο άνθρωπος· μόνο οι νέες παίρνουν αρχικό.
+  const [reloadNonce, setReloadNonce] = useState(0);
   useEffect(() => {
     let live = true;
     inbound.pending(supabase, userId).then(({ rows: found }) => {
       if (!live) return;
       setRows(found);
-      setDrafts(Object.fromEntries(found.map(r => [r.id, {
+      setDrafts(prev => Object.fromEntries(found.map(r => [r.id, prev[r.id] ?? {
         amount: r.amount === null ? '' : String(r.amount),
         date: r.due_date || r.issue_date || athensToday(),
         slug: resolveCategory(r.category) || '',
+        propertyId,
       }])));
     });
     // ΟΙ ΚΑΝΟΝΕΣ ΤΟΥ ΙΔΙΟΚΤΗΤΗ ΔΙΑΒΑΖΟΝΤΑΙ ΓΙΑ ΔΥΟ ΛΟΓΟΥΣ: για να ξέρει η οθόνη
@@ -95,7 +113,7 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
     });
     return () => { live = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, reloadNonce]);
 
   if (!rows.length) return null;
 
@@ -112,7 +130,7 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
     const label = cat ? cat.label : (r.category || 'Άλλο');
     setBusy(r.id);
     const res = await inbound.fileAsExpense(supabase, r.id, {
-      propertyId, userId,
+      propertyId: draft.propertyId || propertyId, userId,
       description: expenseTitle(r.vendor, r.subject || '', label),
       amount,
       date: draft.date,
@@ -142,18 +160,40 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
     setBusy(null);
     if (error) { notifyError('Το εισερχόμενο δεν απορρίφθηκε'); return; }
     setRows(list => list.filter(x => x.id !== id));
+    notify('Αφαιρέθηκε από τα εισερχόμενα', {
+      duration: UNDO_MS,
+      action: {
+        label: 'Αναίρεση',
+        onClick: () => {
+          inbound.restore(supabase, id).then(({ error: e }) => {
+            if (e) notifyError('Το εισερχόμενο δεν επανήλθε');
+            else setReloadNonce(n => n + 1);
+          });
+        },
+      },
+    });
   };
+
+  // Πολλά ακίνητα: κάθε γραμμή λέει πού πάει. Ένα: το λέει η κεφαλίδα.
+  const many = properties.length > 1;
+  const nameOf = (id: string): string =>
+    properties.find(p => p.id === id)?.name || (id === propertyId ? propertyName || '' : '');
 
   // Αν το ανοιχτό καταχωρήθηκε ή απορρίφθηκε, ανοίγει το επόμενο της ουράς.
   const anoixtoId = rows.some(x => x.id === anoixto) ? anoixto : rows[0]?.id;
 
   return (
     <Card style={{ marginBottom: T.sp.lg }}>
-      <SecHdr label="Ηρθαν με email"
-        sub={propertyName ? `Η καταχώρηση γράφεται στο ακίνητο «${propertyName}»` : 'Η καταχώρηση γράφεται στο ακίνητο που βλέπεις'} />
+      {/* Στο τηλέφωνο το θέμα κρύβεται στην κλειστή γραμμή: αποστολέας,
+          ημερομηνία και ποσό ξεχωρίζουν πέντε ίδια θέματα, το θέμα όχι. */}
+      <style>{`@media (max-width: 480px) { .inbound-row > .inbound-what { display: none; } .inbound-row > .inbound-prop { flex: 1 1 0; } }`}</style>
+      <SecHdr label="Ήρθαν με email"
+        sub={many
+          ? 'Κάθε γραμμή λέει σε ποιο ακίνητο γράφεται· το αλλάζεις στη φόρμα.'
+          : propertyName ? `Η καταχώρηση γράφεται στο ακίνητο «${propertyName}»` : 'Η καταχώρηση γράφεται στο ακίνητο που βλέπεις'} />
       <div style={{ display: 'grid', gap: 10 }}>
         {rows.map(r => {
-          const draft = drafts[r.id] || { amount: '', date: '', slug: '' };
+          const draft = drafts[r.id] || { amount: '', date: '', slug: '', propertyId };
           const amount = parseFloat((draft.amount || '').replace(',', '.'));
           const ready = Number.isFinite(amount) && amount > 0 && !!draft.date;
           const known = r.amount !== null;
@@ -193,10 +233,22 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
               <span className="inbound-what po-elide" style={{ ...TT.bodySm, textWrap: undefined, color: 'var(--text-secondary)' }}>
                 {r.subject || 'Χωρίς θέμα'}
               </span>
+              {many && (
+                <span className="inbound-prop po-elide" style={{ ...TT.bodySm, textWrap: undefined, color: 'var(--text-tertiary)', flex: '0 1 auto', minWidth: 0, maxWidth: '30%' }}>
+                  {nameOf(draft.propertyId)}
+                </span>
+              )}
+              {/* ΠΕΝΤΕ ΙΔΙΑ ΘΕΜΑΤΑ ΞΕΧΩΡΙΖΟΥΝ ΑΠΟ ΤΗΝ ΗΜΕΡΟΜΗΝΙΑ. Πέντε «ΔΕΗ
+                  Λογαριασμός ρεύματος…» διέφεραν μόνο στο ποσό. */}
+              {stamp && (
+                <span style={{ ...TT.bodySm, textWrap: undefined, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', flex: '0 0 auto', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
+                  {dayMonth(stamp)}
+                </span>
+              )}
               {/* Το ποσό που ΔΕΝ διαβάστηκε το λέει με λέξεις, όχι με παύλα: η
                   παύλα διαβάζεται ως μηδέν. */}
               <span className="inbound-sum" style={{ ...TT.bodySm, textWrap: undefined, fontWeight: 600,
-                color: known ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                color: known ? 'var(--text-primary)' : 'var(--text-tertiary)', marginLeft: stamp ? undefined : 'auto' }}>
                 {known ? fe(readAmount!) : 'χωρίς ποσό'}
               </span>
             </button>
@@ -234,16 +286,22 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
                   Γραμμένη και στις δύο θέσεις, το ίδιο νούμερο λεγόταν δύο
                   φορές· η ετικέτα λέει ΤΙ διάβασε το μήνυμα («λήξης» ή
                   «έκδοσης») και το πεδίο ΤΙ θα γραφτεί. */}
+              {/* Το συνημμένο ΔΕΝ αποθηκεύεται (μόνο το πλήθος του), οπότε δεν
+                  ανοίγει από εδώ· η φράση λέει πού βρίσκεται. */}
               {(!stamp || r.attachments > 0) && (
                 <div style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>
                   {[
                     stamp ? '' : 'Χωρίς ημερομηνία στο μήνυμα',
-                    r.attachments > 0 ? (r.attachments === 1 ? 'Ένα συνημμένο' : `${r.attachments} συνημμένα`) : '',
+                    r.attachments > 0 ? (r.attachments === 1 ? 'Ένα συνημμένο, στο αρχικό email' : `${r.attachments} συνημμένα, στο αρχικό email`) : '',
                   ].filter(Boolean).join(' · ')}
                 </div>
               )}
 
               <div {...fieldRow(180)}>
+                {many && (
+                  <CustomSelect label="Ακίνητο" value={draft.propertyId} onChange={v => patch(r.id, { propertyId: v })}
+                    options={properties.map(p => ({ value: p.id, label: p.name }))} />
+                )}
                 <div style={{ minWidth: 0 }}>
                   <span style={{ ...TT.bodySm, display: 'block', marginBottom: 6, color: 'var(--text-secondary)' }}>Κατηγορία</span>
                   <CustomSelect ariaLabel="Κατηγορία δαπάνης" value={draft.slug} onChange={v => patch(r.id, { slug: v })}
@@ -280,7 +338,7 @@ export default function InboundInbox({ propertyId, userId, propertyName, onFiled
 
               {!known && (
                 <div style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>
-                  Το ποσό δεν διαβάστηκε από το μήνυμα. Συμπληρώνεται από τον λογαριασμό.
+                  Το ποσό δεν διαβάστηκε από το μήνυμα. Συμπλήρωσέ το από τον λογαριασμό στο αρχικό email.
                 </div>
               )}
 

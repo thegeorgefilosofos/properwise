@@ -53,7 +53,7 @@ export default function AgendaPanel({ items, total, onNavigate }: {
   const dated = items.some(i => i.daysLeft != null);
 
   return (
-    <div className="agenda" style={{ marginBottom: 20 }}>
+    <div className={`agenda${dated ? '' : ' agenda--undated'}`} style={{ marginBottom: 20 }}>
       {/* Η κεφαλίδα ζει ΜΕΣΑ στην κάρτα: δύο ξεχωριστά στοιχεία (SecHdr από
           πάνω, κάρτα από κάτω) έσπαγαν τη συνοχή και πρόσθεταν 26px κενό. */}
       <div className="agenda-head">
@@ -184,6 +184,13 @@ export default function AgendaPanel({ items, total, onNavigate }: {
           position: relative;
         }
         .agenda-row:first-child { border-top: none; }
+        /* ΧΩΡΙΣ ΚΑΜΙΑ ΠΡΟΘΕΣΜΙΑ, Η ΣΤΗΛΗ ΤΟΥ ΧΡΟΝΟΥ ΔΕΝ ΚΡΑΤΙΕΤΑΙ. Ήταν πάντα
+           72px, οπότε μια λίστα χωρίς ημερομηνίες άρχιζε κάθε γραμμή ενενήντα
+           εικονοστοιχεία δεξιά από τον τίτλο, με άδεια στήλη αριστερά. Σε λίστα
+           με ημερομηνίες η στήλη μένει και για τη γραμμή που δεν έχει: εκεί
+           κρατά τον άξονα των υπολοίπων. */
+        .agenda--undated .agenda-row { grid-template-columns: minmax(0, 1fr) auto; }
+        .agenda--undated .agenda-when { display: none; }
         /* Το εκπρόθεσμο δηλώνεται με ΓΡΑΜΜΗ, όχι με κόκκινο φόντο. Μαζί της
            μια πολύ ήπια απόχρωση του ίδιου γαλάζιου: η γραμμή μόνη της
            φαινόταν μόνο αν την έψαχνες, ενώ ο λόγος να υπάρχει είναι να τη

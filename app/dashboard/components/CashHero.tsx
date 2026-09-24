@@ -24,7 +24,7 @@ import type { ReactNode } from 'react';
 import { T, fe, Btn } from '@/components/Theme';
 import { cashSideNote, type CashPosition, type CashSide } from '@/lib/home/cash';
 
-function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
+function Side({ label, side, kind, onOpen, actionLabel, action, compact, stacked }: {
   label: string; side: CashSide; kind: 'in' | 'out';
   onOpen: () => void; actionLabel: string;
   /**
@@ -42,10 +42,12 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
    * δική του επιφάνεια, η ενέργεια παίρνει τη δική της από κάτω.
    */
   action?: ReactNode;
+  /** Σε δική του σειρά, σε όλο το πλάτος, ακόμη και σε φαρδιά οθόνη. */
+  stacked?: boolean;
 }) {
   const note = cashSideNote(side, kind);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 220px', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: stacked ? '1 1 100%' : '1 1 220px', minWidth: 0 }}>
     <button
       type="button"
       onClick={onOpen}
@@ -133,19 +135,27 @@ export default function CashHero({ cash, showIncome, onNavigate, onRecordRent }:
     );
   }
 
+  // Ο ΙΔΙΟΣ ΚΑΝΟΝΑΣ, ΑΝΑ ΠΛΕΥΡΑ. Η ήσυχη μορφή ίσχυε μόνο όταν ΚΑΙ οι δύο
+  // πλευρές ήταν μηδέν· με κίνηση μόνο στο «Χρωστάω», το «Μου χρωστάνε» έγραφε
+  // «0,00€» στα σαράντα εικονοστοιχεία. Η πλευρά χωρίς κίνηση γίνεται μία σειρά
+  // και τότε οι δύο στοιβάζονται σε κάθε πλάτος: δίπλα δίπλα, η ήσυχη σειρά θα
+  // άφηνε μισή κάρτα άδεια απέναντι από το ποσό.
+  const oneQuiet = showIncome && (cash.owedToMe.count === 0) !== (cash.owedByMe.count === 0);
   return (
     <div className="card cash-hero" style={{ padding: 0, marginBottom: 20 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch' }}>
         {showIncome && (
           <>
-            <Side label="Μου χρωστάνε" side={cash.owedToMe} kind="in"
+            <Side label="Μου χρωστάνε" side={cash.owedToMe} kind="in" compact={cash.owedToMe.count === 0} stacked={oneQuiet}
                   actionLabel="Άνοιγμα στον Ενοικιαστή" onOpen={() => onNavigate('tenant')}
                   action={onRecordRent && <Btn onClick={onRecordRent}>Μπήκε το ενοίκιο</Btn>} />
             {/* Ο διαχωριστής είναι η δήλωση ότι τα δύο ΔΕΝ αθροίζονται. */}
-            <div aria-hidden style={{ width: 1, background: 'var(--border-subtle)', alignSelf: 'stretch', margin: '14px 0' }} />
+            <div aria-hidden style={oneQuiet
+              ? { flex: '1 1 100%', height: 1, background: 'var(--border-subtle)', margin: '0 18px' }
+              : { width: 1, background: 'var(--border-subtle)', alignSelf: 'stretch', margin: '14px 0' }} />
           </>
         )}
-        <Side label="Χρωστάω" side={cash.owedByMe} kind="out"
+        <Side label="Χρωστάω" side={cash.owedByMe} kind="out" compact={cash.owedByMe.count === 0} stacked={oneQuiet}
               actionLabel="Άνοιγμα στις Δαπάνες" onOpen={() => onNavigate('finances')} />
       </div>
     </div>

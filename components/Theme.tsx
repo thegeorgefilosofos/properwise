@@ -463,12 +463,17 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
 
         {(footer || footerInfo) && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, padding: '14px 24px', borderTop: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
-            <span style={{ ...TT.bodySm }}>{footerInfo}</span>
+            {footerInfo && <span style={{ ...TT.bodySm, flex: '1 1 240px' }}>{footerInfo}</span>}
             {/* ΤΑ ΚΟΥΜΠΙΑ ΤΟΥ ΥΠΟΣΕΛΙΔΟΥ ΜΟΙΡΑΖΟΝΤΑΙ ΤΗ ΓΡΑΜΜΗ ΣΕ ΤΗΛΕΦΩΝΟ. Το
                 «Ακύρωση» και το «Καταχώρηση» είχαν το πλάτος του λεκτικού τους
                 και κάθονταν δεξιά: δύο κουμπιά άνισα, με το αριστερό να αρχίζει
-                στη μέση του πουθενά. Ο κανόνας ζει στην `.act-row`. */}
-            <div className="act-row" style={{ display: 'flex', gap: T.sp.sm }}>{footer}</div>
+                στη μέση του πουθενά. Ο κανόνας ζει στην `.act-row`.
+
+                ΚΑΙ ΜΕΝΟΥΝ ΔΕΞΙΑ ΟΤΑΝ ΤΥΛΙΓΟΥΝ. Με μακρύ `footerInfo` η σειρά των
+                κουμπιών έπεφτε μόνη της στη δεύτερη γραμμή και το
+                `space-between` την άφηνε αριστερά, με τη μισή γραμμή άδεια. Το
+                `margin-left: auto` την κρατά στη δεξιά άκρη σε κάθε περίπτωση. */}
+            <div className="act-row" style={{ display: 'flex', gap: T.sp.sm, marginLeft: 'auto' }}>{footer}</div>
           </div>
         )}
       </div>

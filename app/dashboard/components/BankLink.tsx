@@ -127,16 +127,17 @@ export function BankLinkTile({ minHeight = 172 }: { minHeight?: number }) {
  */
 export function BankLinkRow() {
   const [open, setOpen] = useState(false);
-  const state = bankLinkState();
+  // ΜΟΝΟ ΟΤΑΝ ΥΠΑΡΧΕΙ. Η γραμμή «Ετοιμάζεται.» καθόταν δεύτερη στις Δαπάνες,
+  // πάνω από τον τίτλο: υπόσχεση για κάτι που δεν γίνεται, στην πιο ακριβή
+  // θέση της οθόνης. Ως τότε η εξήγηση ζει στο πλακίδιο της σάρωσης.
+  if (bankLinkState() !== 'open') return null;
 
   return (<>
     <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.md, flexWrap: 'wrap', marginBottom: T.sp.lg, padding: '11px 14px', borderRadius: T.radius.inner, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
       <span style={{ color: 'var(--text-tertiary)', display: 'inline-flex', flexShrink: 0 }}><BankGlyph size={18} /></span>
       <span style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 700 }}>{BANK_LINK_TITLE}</span>
       <span style={{ ...TT.caption, flex: 1, minWidth: 140 }}>
-        {state === 'open'
-          ? 'Κάθε χρέωση και είσπραξη έτοιμη για καταχώρηση, με ένα πάτημα.'
-          : 'Κάθε χρέωση και είσπραξη έτοιμη για καταχώρηση. Ετοιμάζεται.'}
+        Κάθε χρέωση και είσπραξη έτοιμη για καταχώρηση, με ένα πάτημα.
       </span>
       <Btn variant="secondary" onClick={() => setOpen(true)}>Τι είναι</Btn>
     </div>

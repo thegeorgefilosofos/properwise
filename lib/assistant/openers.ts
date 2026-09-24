@@ -144,6 +144,14 @@ export function suggestedOpeners(ctx: OpenerContext | null = {}): string[] {
 /**
  * Ο χαιρετισμός: λέει τι ΞΕΡΕΙ η Νόα, όχι τι είναι.
  * «Ρώτησέ με οτιδήποτε» δεν λέει τίποτα· «βλέπω τα νούμερα του Χ» λέει τα πάντα.
+ *
+ * ΣΥΣΤΗΝΕΤΑΙ ΟΣΟ ΔΕΝ ΥΠΑΡΧΕΙ ΤΙΠΟΤΑ ΝΑ ΠΕΙ, ΜΕΤΑ ΜΙΛΑ ΣΥΝΤΟΜΑ. Η γραμμή
+ * έγραφε κάθε μέρα «Γεια σου! Είμαι Νόα. Βλέπω … Ρώτα με για τα δικά σου
+ * δεδομένα και νούμερα.», τρεις προτάσεις σύστασης σε οθόνη εργασίας. Όποιος
+ * έχει ήδη καταχωρήσει ενοίκιο ή δαπάνες έχει δει την εφαρμογή· του αρκεί μία
+ * γραμμή που λέει τι μπορεί να ρωτήσει. Η πλήρης σύσταση μένει για το άδειο
+ * ακίνητο, εκεί όπου εξηγεί τι χρειάζεται. Κριτήριο τα δεδομένα και όχι σημαία
+ * στη συσκευή: ίδια απάντηση σε διακομιστή και περιηγητή, σε κάθε συσκευή.
  */
 export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerContext | null = {}, formal = false): string {
   // Ο πληθυντικός ευγενείας πρέπει να είναι ΟΛΟΚΛΗΡΟΣ. Μεικτό «Γεια σου …
@@ -159,7 +167,7 @@ export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerCont
 
   // Δεν έχουν φορτώσει ακόμη τα δεδομένα: δεν λέμε ούτε «βλέπω», ούτε «δεν έχεις».
   if (ctx === null) {
-    return `${hi}! Είμαι ${assistantName}. Κοιτάζω τα στοιχεία ${your}… ${you} για ${yours}.`;
+    return `${hi}. Είμαι ${assistantName}. Κοιτάζω τα στοιχεία ${your}… ${you} για ${yours}.`;
   }
 
   const name = (ctx.propertyName || '').trim();
@@ -178,9 +186,10 @@ export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerCont
   if (knows.length === 0) {
     const enter = formal ? 'καταχωρήσετε' : 'καταχωρήσεις';
     const can = formal ? 'σας απαντώ' : 'σου απαντώ';
-    return `${hi}! Είμαι ${assistantName}. Μόλις ${enter} τα πρώτα στοιχεία ${scope}, θα μπορώ να ${can} με ${yours}. ${you} τι χρειάζομαι.`;
+    return `${hi}. Είμαι ${assistantName}. Μόλις ${enter} τα πρώτα στοιχεία ${scope}, θα μπορώ να ${can} με ${yours}. ${you} τι χρειάζομαι.`;
   }
 
   const list = knows.length === 1 ? knows[0] : `${knows.slice(0, -1).join(', ')} και ${knows[knows.length - 1]}`;
-  return `${hi}! Είμαι ${assistantName}. Βλέπω ${list} ${scope}. ${you} για ${yours}.`;
+  const ask = formal ? 'ρωτήστε' : 'ρώτα';
+  return `${assistantName}: ${ask} για ${list} ${scope}.`;
 }

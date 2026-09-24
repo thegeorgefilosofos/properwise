@@ -13,7 +13,8 @@ import * as tenantStore from '@/lib/data/tenants';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
 import { TextInput, Toggle, ToggleTrack } from './UIComponents';
-import { T, fe, feAuto, fp, fn, grUpper, KPIGrid, Skeleton, SkeletonKPIs, pressable, Btn, IconBtn, Chip, ChipToggle, LinkBtn } from '@/components/Theme';
+import { T, fe, feAuto, fp, fn, grUpper, ABSENT_SHORT, KPIGrid, Skeleton, SkeletonKPIs, pressable, Btn, IconBtn, ChipToggle, LinkBtn } from '@/components/Theme';
+import { feSigned, fpSigned } from '@/lib/core/format';
 import { waterMonthly } from '@/lib/energy/tariff';
 import { monthAcc, monthGen, monthYearLabel } from '@/lib/core/months';
 import { randomSuffix } from '@/lib/core/uploadPath';
@@ -21,7 +22,7 @@ import { notify } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { forecastMonthEnd, categoryStatus, annualSummary, periodTrend, detectRecurring, RecurringCharge } from '@/lib/billing/budget';
 import { presumptiveDeductionRate } from '@/lib/billing/consolidate';
-import { rolloverNext, strWaterfall, investmentReturns } from '@/lib/billing/budgetPro';
+import { rolloverNext, strWaterfall, investmentReturns, type InvestmentReturns } from '@/lib/billing/budgetPro';
 import { incomeStatement } from '@/lib/accounting/statement';
 import { interestForYear } from '@/lib/loans/recommend';
 import { isActiveLoan, loansInstalmentTotal } from '@/lib/loans/shape';
@@ -245,7 +246,10 @@ const CATS = [
   { key: 'subscriptions',label: 'Συνδρομές',           default: 25  },
   { key: 'services',     label: 'Υπηρεσίες, ΕΝΦΙΑ',  default: 50  },
   { key: 'common',       label: 'Κοινόχρηστα',         default: 40  },
-  { key: 'maintenance',  label: 'Συντήρηση',           default: 20  },
+  // ΙΔΙΟ ΟΝΟΜΑ ΜΕ ΤΙΣ ΔΑΠΑΝΕΣ. Ο κουβάς λεγόταν «Συντήρηση» εδώ και η ίδια
+  // κατηγορία «Επισκευή» στο καθολικό και στην Επισκόπηση: τα ίδια 228€ με δύο
+  // ονόματα σε δύο οθόνες. Το όνομα ζει στο lib/expenses/taxonomy.ts.
+  { key: 'maintenance',  label: 'Επισκευές και συντήρηση', default: 20 },
   { key: 'other',        label: 'Λοιπές δαπάνες',      default: 50  },
 ] as const;
 
@@ -279,7 +283,7 @@ interface Props { propertyId: string; userId?: string; profileType?: 'individual
 // Οι ενότητες που ξεκινούν μαζεμένες, γραμμένες ΜΙΑ φορά. Το `COLLAPSED_SERVER`
 // είναι η απάντηση του διακομιστή και πρέπει να είναι ΣΤΑΘΕΡΗ αναφορά: νέο
 // `Set` σε κάθε απόδοση θα έβαζε τη React σε ατέρμονο βρόχο.
-const COLLAPSED_BY_DEFAULT = ['annual', 'week', 'recurring', 'income', 'exclusions', 'import', 'cats'];
+const COLLAPSED_BY_DEFAULT = ['annual', 'week', 'recurring', 'income', 'exclusions', 'import', 'cats', 'business'];
 const COLLAPSED_SERVER = new Set<string>(COLLAPSED_BY_DEFAULT);
 
 export default function BillsBudget({ propertyId, userId = '', profileType = 'individual' }: Props) {
@@ -318,7 +322,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const [catBreakdown, setCatBreakdown] = useState<Record<string, { label: string; amount: number; date: string; paid: boolean; kind: 'bill' | 'expense' }[]>>({});
   const [openCats,     setOpenCats]     = useState<Set<string>>(new Set());
   // Απόδοση επένδυσης (μόνο επαγγελματίας) και πλήθος βραχυχρόνιων ακινήτων (μόνο ιδιώτης, όριο 3+).
-  const [invReturns,   setInvReturns]   = useState<{ noi: number; preTaxCashFlow: number; capRatePct: number; cashOnCashPct: number } | null>(null);
+  const [invReturns,   setInvReturns]   = useState<(InvestmentReturns & { onPurchase: boolean }) | null>(null);
   const [strPropCount, setStrPropCount] = useState(0);
   // ── Ο ΣΥΝΤΕΛΕΣΤΗΣ ΤΗΣ ΚΡΑΤΗΣΗΣ ΦΟΡΟΥ ΒΓΑΙΝΕΙ ΑΠΟ ΤΑ ΚΛΙΜΑΚΙΑ, ΟΧΙ ΑΠΟ ΤΟ 15 ──
   // Το «15%» ήταν το ΠΡΩΤΟ κλιμάκιο γραμμένο ως προεπιλογή για κάθε εισόδημα.
@@ -472,8 +476,11 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       // Η δόση βγαίνει από το lib/loans/shape.ts, όπως το ποσό και το επιτόκιο.
       // Ηταν γραμμένη εδώ και η Σύγκριση δεν την είχε καθόλου· τώρα υπάρχει μία
       // γραφή που δεν μπορεί να αποκλίνει από οθόνη σε οθόνη.
+      // ΧΩΡΙΣ ΣΤΡΟΓΓΥΛΟΠΟΙΗΣΗ: το `Math.round` εδώ έγραφε «922,00€» ενώ η
+      // Επισκόπηση, από την ίδια συνάρτηση, «922,30€». Η στρογγυλοποίηση ανήκει
+      // στην εμφάνιση, που ήδη γράφει δύο δεκαδικά.
       const loanM = loansInstalmentTotal(activeLoans);
-      setLoanMonthly(Math.round(loanM));
+      setLoanMonthly(loanM);
 
       // Κλειδιά προσαρμοσμένων κατηγοριών (c_*): αν μια δαπάνη έχει αποθηκευτεί σε custom
       // κατηγορία, την προσμετράμε εκεί (αλλιώς θα «έπεφτε» στις Λοιπές δαπάνες).
@@ -683,11 +690,20 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       const propValue = Number(propRes?.value) || 0;
 
       // ── Απόδοση επένδυσης (μόνο επαγγελματίας) — NOI/cap rate/cash-on-cash από τον πυρήνα ──
-      if (isPro && annualGross > 0 && (propValue > 0 || (Number(propRes?.purchase_price) || 0) > 0)) {
-        const purchase = Number(propRes?.purchase_price) || propValue;
-        const loanBalance = activeLoans.reduce((s: number, l) => s + l.amount, 0);
-        const equity = Math.max(0, purchase - loanBalance);
-        setInvReturns(investmentReturns({ annualIncome: annualGross, annualOpEx: annualOpex, annualLoanPayment: Math.round(loanM * 12), purchasePrice: purchase, equityInvested: equity }));
+      // ── ΤΑ ΙΔΙΑ ΚΕΦΑΛΑΙΑ ΘΕΛΟΥΝ ΤΙΜΗ ΑΓΟΡΑΣ, ΟΧΙ ΑΞΙΑ ──────────────────────
+      // Ίδια κεφάλαια = τιμή αγοράς μείον το ΑΡΧΙΚΟ ποσό των δανείων (όχι το
+      // σημερινό υπόλοιπο): αυτό έβαλε ο ιδιοκτήτης από την τσέπη του στην
+      // αγορά. Χωρίς τιμή αγοράς η απόδοση υπολογίζεται στην αξία και τα ίδια
+      // κεφάλαια μένουν άγνωστα· το πλακίδιο τότε λέει τι λείπει.
+      const purchasePrice = Number(propRes?.purchase_price) || 0;
+      if (isPro && annualGross > 0 && (propValue > 0 || purchasePrice > 0)) {
+        const basis = purchasePrice || propValue;
+        const loanPrincipalOriginal = activeLoans.reduce((s: number, l) => s + l.amount, 0);
+        const equity = purchasePrice > 0 ? Math.max(0, purchasePrice - loanPrincipalOriginal) : 0;
+        setInvReturns({
+          ...investmentReturns({ annualIncome: annualGross, annualOpEx: annualOpex, annualLoanPayment: loanM * 12, purchasePrice: basis, equityInvested: equity }),
+          onPurchase: purchasePrice > 0,
+        });
       } else {
         setInvReturns(null);
       }
@@ -968,7 +984,6 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const committedBills = fixedToDate;
   const monthlyCost    = committedBills + loanMonthly;
   const hasIncome      = income > 0;
-  const isShortfall    = hasIncome && monthlyCost > income;
 
   // ── Έξυπνες παρατηρήσεις: 2–3 προτάσεις που «μιλούν» πάνω από τα γραφήματα ──
   // Καθαρά από τα δεδομένα, με προτεραιότητα: υπέρβαση → τάση → πρόβλεψη → μεγαλύτερη
@@ -999,11 +1014,12 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       out.push(`Με τον τρέχοντα ρυθμό, η κατηγορία «${projectedOver[0].label}» θα ξεπεράσει τον στόχο πριν το τέλος του μήνα.`);
     }
     if (monthTrend.avgPrior > 0 && Math.abs(monthTrend.deltaPct) >= 8) {
-      out.push(`Με τον ρυθμό ως τώρα, ο μήνας θα κλείσει ${fp(Math.abs(monthTrend.deltaPct))} ${monthTrend.direction === 'up' ? 'πάνω από' : 'κάτω από'} τον μέσο όρο του τριμήνου.`);
+      // Ακέραιο ποσοστό: είναι πρόβλεψη με ρυθμό, όχι μέτρηση στο εκατοστό.
+      out.push(`Με τον ρυθμό ως τώρα, ο μήνας θα κλείσει ${Math.round(Math.abs(monthTrend.deltaPct))}% ${monthTrend.direction === 'up' ? 'πάνω από' : 'κάτω από'} τον μέσο όρο του τριμήνου.`);
     }
     const biggest = activeCats.map(c => ({ label: c.label, v: actuals[c.key] || 0 })).filter(x => x.v > 0).sort((a, b) => b.v - a.v)[0];
     if (biggest && out.length < 3) out.push(`Η μεγαλύτερη δαπάνη του μήνα είναι στην κατηγορία «${biggest.label}», με ${feAuto(biggest.v)}.`);
-    if (hasIncome && income - monthlyCost >= 0 && out.length < 3) out.push(`Μετά τα πάγια, σου μένουν ${feAuto(income - monthlyCost)} διαθέσιμα αυτόν τον μήνα.`);
+    // Το «τι μένει μετά τα πάγια» έφυγε κι αυτό: είναι ο αριθμός της πρώτης κάρτας.
     return out.slice(0, 3);
   })();
 
@@ -1014,9 +1030,13 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const dismissedSug: string[] = (() => { try { const a = JSON.parse(budgets.__dismissed || '[]'); return Array.isArray(a) ? a.map(String) : []; } catch { return []; } })();
   const dismissSuggestion = (key: string) => persistCats({ __dismissed: JSON.stringify([...dismissedSug, key].slice(-60)) });
   const applyTarget = (k: string, val: number, msg: string) => { const prev = budgets[k]; updateBudget(k, String(val)); notify(msg, { duration: UNDO_MS, action: { label: 'Αναίρεση', onClick: () => updateBudget(k, prev ?? '') } }); };
-  const targetSuggestions: { key: string; text: string; apply: () => void }[] = (() => {
+  // ── Η ΠΡΟΤΑΣΗ ΛΕΕΙ ΤΟ ΓΕΓΟΝΟΣ, ΤΟ ΚΟΥΜΠΙ ΛΕΕΙ ΤΗΝ ΕΝΕΡΓΕΙΑ ─────────────────
+  // Έγραφε «Να ανεβάσω τον στόχο;» (πρώτο πρόσωπο χωρίς ταυτότητα) και
+  // «ξεπερνά συστηματικά» με βάση δύο μήνες. Τώρα η πρόταση λέει τον μέσο όρο
+  // και πόσους μήνες καλύπτει και το κουμπί γράφει το νέο ποσό.
+  const targetSuggestions: { key: string; text: string; cta: string; apply: () => void }[] = (() => {
     if (!isCurMonth) return [];
-    const out: { key: string; text: string; apply: () => void }[] = [];
+    const out: { key: string; text: string; cta: string; apply: () => void }[] = [];
     const round5 = (n: number) => Math.max(5, Math.round(n / 5) * 5);
     activeCats.forEach(c => {
       const target = catBudget(c.key);
@@ -1031,17 +1051,17 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       if (avg > target * 1.2) {
         const sv = round5(avg);
         const key = `raise:${c.key}:${sv}`;
-        if (sv !== target && !dismissedSug.includes(key)) out.push({ key, text: `Η κατηγορία «${c.label}» ξεπερνά συστηματικά τον στόχο (μέσος όρος ${feAuto(avg)} ${span}). Να ανεβάσω τον στόχο στα ${feAuto(sv)};`, apply: () => applyTarget(c.key, sv, `Ο στόχος της κατηγορίας «${c.label}» ενημερώθηκε`) });
+        if (sv !== target && !dismissedSug.includes(key)) out.push({ key, text: `Η κατηγορία «${c.label}» είχε μέσο όρο ${feAuto(avg)} ${span}, πάνω από τον στόχο των ${feAuto(target)}.`, cta: `Ορισμός στόχου ${feAuto(sv)}`, apply: () => applyTarget(c.key, sv, `Ο στόχος της κατηγορίας «${c.label}» ενημερώθηκε`) });
       } else if (avg < target * 0.6) {
         const sv = round5(avg);
         const key = `lower:${c.key}:${sv}`;
-        if (sv !== target && !dismissedSug.includes(key)) out.push({ key, text: `Η κατηγορία «${c.label}» μένει σταθερά κάτω από τον στόχο (μέσος όρος ${feAuto(avg)} ${span}). Να μειώσω τον στόχο στα ${feAuto(sv)} για πιο ρεαλιστικό προϋπολογισμό;`, apply: () => applyTarget(c.key, sv, `Ο στόχος της κατηγορίας «${c.label}» ενημερώθηκε`) });
+        if (sv !== target && !dismissedSug.includes(key)) out.push({ key, text: `Η κατηγορία «${c.label}» είχε μέσο όρο ${feAuto(avg)} ${span}, κάτω από τον στόχο των ${feAuto(target)}.`, cta: `Ορισμός στόχου ${feAuto(sv)}`, apply: () => applyTarget(c.key, sv, `Ο στόχος της κατηγορίας «${c.label}» ενημερώθηκε`) });
       }
     });
     const sumCats = activeCats.reduce((s, c) => s + catBudget(c.key), 0);
     if (sumCats > 0 && Math.abs(sumCats - masterBudget) > Math.max(20, masterBudget * 0.1)) {
       const key = `total:${Math.round(sumCats)}`;
-      if (!dismissedSug.includes(key)) out.push({ key, text: `Ο συνολικός μηνιαίος στόχος (${feAuto(masterBudget)}) διαφέρει από το άθροισμα των κατηγοριών (${feAuto(sumCats)}). Να τους ευθυγραμμίσω;`, apply: () => applyTarget('total', Math.round(sumCats), 'Ο συνολικός στόχος ευθυγραμμίστηκε') });
+      if (!dismissedSug.includes(key)) out.push({ key, text: `Ο συνολικός μηνιαίος στόχος (${feAuto(masterBudget)}) διαφέρει από το άθροισμα των κατηγοριών (${feAuto(sumCats)}).`, cta: `Ορισμός στόχου ${feAuto(Math.round(sumCats))}`, apply: () => applyTarget('total', Math.round(sumCats), 'Ο συνολικός στόχος ευθυγραμμίστηκε') });
     }
     return out.slice(0, 3);
   })();
@@ -1077,6 +1097,16 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const waterfall      = isSTR && income > 0
     ? strWaterfall({ gross: income, platformFeePct: strPlatformPct, nights: strNights, climateFeePerNight: climateFeeNight, cleaningFee: 0, managementPct: strMgmtPct, incomeTaxPct: strTaxPct })
     : null;
+
+  // ── ΤΟ ΔΙΑΘΕΣΙΜΟ ΞΕΚΙΝΑ ΑΠΟ ΤΟ ΚΑΘΑΡΟ ΤΟΥ WATERFALL, ΟΧΙ ΑΠΟ ΤΙΣ ΕΙΣΠΡΑΞΕΙΣ ──
+  // Στη βραχυχρόνια το `income` είναι το μεικτό των διαμονών. Το «Ασφαλές
+  // διαθέσιμο» αφαιρούσε μόνο λογαριασμούς και δόση και έγραφε +272,92€, ενώ η
+  // κάρτα από κάτω αφαιρούσε ΚΑΙ προμήθεια πλατφόρμας ΚΑΙ κράτηση φόρου: το
+  // σωστό ήταν περίπου −97€. Οι κρατήσεις του εσόδου (προμήθεια, τέλος,
+  // διαχείριση, φόρος) είναι το `income − waterfall.net` και μπαίνουν πρώτες.
+  const incomeDeductions = waterfall ? income - waterfall.net : 0;
+  const safeRaw          = income - incomeDeductions - monthlyCost;
+  const isShortfall      = hasIncome && safeRaw < 0;
   useEffect(() => {
     if (!propertyId || !userId || loading) return;
     let cancelled = false;
@@ -1173,7 +1203,9 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em' }}>Προϋπολογισμός</div>
+            {/* Η ΜΟΝΗ ΕΠΙΚΕΦΑΛΙΔΑ ΠΡΩΤΟΥ ΕΠΙΠΕΔΟΥ ΤΗΣ ΟΨΗΣ. Ήταν <div> κάτω από
+                ένα κρυφό h1 «Δαπάνες»: η σελίδα ανακοινωνόταν με άλλο όνομα. */}
+            <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', margin: 0 }}>Προϋπολογισμός</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
             {/* Το κουτί είναι ο στόχος αφής, το βελάκι μένει 15: ό,τι κάνει η
@@ -1188,9 +1220,9 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             {/* Δευτερεύον: έχει λεκτικό και περίγραμμα σε διάφανο φόντο. Το μελάνι
                 γίνεται ουδέτερο, γιατί το χρώμα του ρόλου ζει πλέον στην `.po-btn`. */}
             {!isCurMonth && <Btn variant="secondary" onClick={() => setMonthOffset(0)}>Τρέχων</Btn>}
-            {/* Ένδειξη προφίλ και όχι συνέχεια της πρότασης: χωρίς την τελεία
-                μπροστά, που την κολλούσε στο βελάκι του επιλογέα. */}
-            <Chip>{isPro ? 'Επιχείρηση' : 'Ιδιώτης'}</Chip>
+            {/* ΤΟ ΠΡΟΦΙΛ ΕΙΝΑΙ ΠΛΗΡΟΦΟΡΙΑ, ΟΧΙ ΦΙΛΤΡΟ. Ως τσιπ δίπλα στον μήνα
+                έμοιαζε με κάτι που πατιέται· γράφεται πλέον ως κείμενο. */}
+            <span style={{ marginLeft: 6, color: 'var(--text-tertiary)' }}>{isPro ? 'προφίλ επιχείρησης' : 'προφίλ ιδιώτη'}</span>
             {saving && <span style={{ marginLeft: 10, color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)' }}>· Αποθήκευση…</span>}
           </div>
         </div>
@@ -1242,7 +1274,6 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
 
       {/* «Ασφαλές διαθέσιμο» — έσοδα − δεσμευμένα − εισφορές (Monzo Left to Spend) */}
       {isCurMonth && (hasIncome || monthlyCost > 0) && (() => {
-        const safeRaw = income - monthlyCost;
         const val = hasIncome ? safeRaw : monthlyCost;
         const seg = (v: number) => income > 0 ? Math.max(0, Math.min(100, (v / income) * 100)) : 0;
         // ── ΤΑ ΣΚΕΛΗ ΠΟΥ ΥΠΑΡΧΟΥΝ ΠΡΑΓΜΑΤΙΚΑ ────────────────────────────────
@@ -1267,26 +1298,41 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
           // από τα πέντε ξεκινούσε σαράντα εικονοστοιχεία ψηλότερα από τα άλλα
           // τέσσερα. Η λίστα απαντά «τι μετράει ως λογαριασμός», δηλαδή ορισμό:
           // πάει στο κυκλάκι, όπως κάθε ορισμός σε αυτή την εφαρμογή.
-          { l: 'Λογαριασμοί',  v: committedBills - subsCost, sub: 'πάγια του μήνα',
+          // Η ΦΡΑΣΗ ΘΕΛΕΙ ΑΙΤΙΑΤΙΚΗ. Χτιζόταν από τις ετικέτες με πεζά και
+          // έβγαινε «μετά από λογαριασμοί και δόση δανείου». Κάθε σκέλος
+          // κρατά πλέον τη δική του μορφή για τη φράση (`acc`).
+          { l: 'Κρατήσεις εσόδου', acc: 'κρατήσεις εσόδου', v: incomeDeductions, sub: 'προμήθεια, τέλος και φόρος',
+            info: 'Προμήθεια πλατφόρμας, τέλος ανθεκτικότητας, διαχείριση και εκτίμηση φόρου. Η ανάλυση είναι στην κάρτα «Από μεικτό σε καθαρό».' },
+          { l: 'Λογαριασμοί',  acc: 'λογαριασμούς',  v: committedBills - subsCost, sub: 'πάγια του μήνα',
             info: 'Ρεύμα, νερό, θέρμανση, τηλέφωνο, ασφάλεια και κοινόχρηστα.' },
-          { l: 'Δόση δανείου', v: loanMonthly,               sub: 'τοκοχρεολύσιο του μήνα' },
-          { l: 'Συνδρομές',    v: subsCost,                  sub: 'ό,τι χρεώνεται μόνο του' },
+          { l: 'Δόση δανείου', acc: 'δόση δανείου', v: loanMonthly,               sub: 'τοκοχρεολύσιο του μήνα' },
+          { l: 'Συνδρομές',    acc: 'συνδρομές',    v: subsCost,                  sub: 'ό,τι χρεώνεται μόνο του' },
         ].filter(p => p.v !== 0);
         const listOf = (xs: string[]) => xs.length < 2 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} και ${xs[xs.length - 1]}`;
-        const composition = listOf(parts.map(p => p.l.toLowerCase()));
+        const composition = listOf(parts.map(p => p.acc));
+        // Χωρίς έσοδα η σύνθεση στέκεται μόνη της, χωρίς πρόθεση: ονομαστική.
+        const compositionNom = listOf(parts.map(p => p.l.toLowerCase()));
         return (
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div className="po-fig-card" tabIndex={0}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans }}>{hasIncome ? (isPro ? 'Διαθέσιμη ταμειακή ροή' : 'Ασφαλές διαθέσιμο') : 'Μηνιαίο κόστος ακινήτου'}</span>
-                  <InfoDot text={hasIncome ? (isPro ? 'Έσοδα μείον τους δεσμευμένους λογαριασμούς, τη δόση του δανείου και τις εισφορές των αποθεματικών. Δηλαδή η ελεύθερη ταμειακή ροή της δραστηριότητας κάθε μήνα.' : 'Έσοδα μείον τους δεσμευμένους λογαριασμούς, τη δόση του δανείου και τις μηνιαίες εισφορές των αποθεματικών. Το ποσό που μπορείς με ασφάλεια να αποσύρεις ή να διαθέσεις κάθε μήνα.') : 'Το άθροισμα των πάγιων λογαριασμών του μήνα και της δόσης του δανείου. Δηλαδή τι σου κοστίζει το ακίνητο κάθε μήνα.'} />
+                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans }}>{hasIncome ? (isPro ? 'Διαθέσιμη ταμειακή ροή' : 'Διαθέσιμο μετά τις υποχρεώσεις') : 'Μηνιαίο κόστος ακινήτου'}</span>
+                  {/* ΧΩΡΙΣ «ΑΣΦΑΛΕΙΑ» ΚΑΙ ΧΩΡΙΣ ΑΠΟΘΕΜΑΤΙΚΑ. Η εξήγηση υποσχόταν
+                      αφαίρεση εισφορών σε αποθεματικά που δεν υπάρχουν πια και
+                      «ποσό που μπορείς με ασφάλεια να αποσύρεις» για έναν αριθμό
+                      που δεν ήξερε τον φόρο. Λέει πλέον ακριβώς τι αφαιρείται. */}
+                  <InfoDot text={hasIncome
+                    ? (waterfall
+                      ? 'Έσοδα μετά την προμήθεια και την εκτίμηση φόρου, μείον λογαριασμούς και δόση δανείου. Ενδεικτικό.'
+                      : 'Ενοίκιο του μήνα μείον λογαριασμούς και δόση δανείου, προ φόρου. Ενδεικτικό.')
+                    : 'Το άθροισμα των πάγιων λογαριασμών του μήνα και της δόσης του δανείου. Δηλαδή τι σου κοστίζει το ακίνητο κάθε μήνα.'} />
                 </div>
-                <div className="po-fig" data-tone={hasIncome ? (safeRaw < 0 ? 'negative' : 'accent') : undefined} style={{ fontSize: 28, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1, letterSpacing: '-0.02em', transition: 'color 0.15s' }}>{feAuto(val)}</div>
+                <div className="po-fig" data-tone={hasIncome ? (safeRaw < 0 ? 'negative' : 'accent') : undefined} style={{ fontSize: 28, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1, letterSpacing: '-0.02em', transition: 'color 0.15s' }}>{feSigned(val)}</div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 6, fontFamily: T.font.sans }}>
                   {hasIncome
                     ? (composition ? `μετά από ${composition}` : 'χωρίς δεσμευμένα έξοδα')
-                    : (parts.length > 1 ? composition : (parts[0]?.sub ?? ''))}
+                    : (parts.length > 1 ? compositionNom : (parts[0]?.sub ?? ''))}
                 </div>
               </div>
             </div>
@@ -1369,6 +1415,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             {hasIncome && (
               <>
                 <div style={{ display: 'flex', height: 8, borderRadius: T.radius.xs, overflow: 'hidden', marginTop: 16, marginBottom: 10, background: 'var(--bg-overlay)' }}>
+                  {incomeDeductions > 0 && <div title="Κρατήσεις εσόδου" style={{ width: `${seg(incomeDeductions)}%`, background: 'color-mix(in srgb, var(--text-primary) 44%, transparent)' }}/>}
                   <div title="Λογαριασμοί" style={{ width: `${seg(committedBills)}%`, background: 'color-mix(in srgb, var(--text-primary) 32%, transparent)' }}/>
                   <div title="Δόση δανείου" style={{ width: `${seg(loanMonthly)}%`, background: 'color-mix(in srgb, var(--text-primary) 20%, transparent)' }}/>
                   <div title="Διαθέσιμο" style={{ flex: 1, background: safeRaw < 0 ? 'var(--negative)' : 'var(--accent)' }}/>
@@ -1376,15 +1423,16 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
                   {[
                     { l: 'Έσοδα', v: income },
-                    { l: 'Λογαριασμοί', v: committedBills },
-                    { l: 'Δόση δανείου', v: loanMonthly },
+                    { l: 'Κρατήσεις εσόδου', v: -incomeDeductions },
+                    { l: 'Λογαριασμοί', v: -committedBills },
+                    { l: 'Δόση δανείου', v: -loanMonthly },
                     { l: 'Διαθέσιμο', v: safeRaw },
                   ].filter(x => x.v !== 0).map(x => (
-                    <span key={x.l} style={{ fontVariantNumeric: 'tabular-nums' }}>{x.l} <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num }}>{feAuto(x.v)}</strong></span>
+                    <span key={x.l} style={{ fontVariantNumeric: 'tabular-nums' }}>{x.l} <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num }}>{feSigned(x.v)}</strong></span>
                   ))}
                 </div>
                 {isShortfall && (
-                  <div style={{ marginTop: 12, fontSize: 12, color: 'var(--negative)', fontFamily: T.font.sans }}>Τα δεσμευμένα έξοδα ξεπερνούν τα έσοδα κατά {feAuto(monthlyCost - income)}. Μείωσε τις εισφορές των αποθεματικών ή αναθεώρησε τους στόχους.</div>
+                  <div style={{ marginTop: 12, fontSize: 12, color: 'var(--negative)', fontFamily: T.font.sans }}>Οι υποχρεώσεις του μήνα ξεπερνούν τα έσοδα κατά {feAuto(-safeRaw)}.</div>
                 )}
               </>
             )}
@@ -1395,7 +1443,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       {/* Έσοδα / rent-roll — αναμενόμενα ή πραγματικά έσοδα ακινήτου (προσαρμόζεται στον τύπο μίσθωσης) */}
       {isCurMonth && income > 0 && (() => {
         const isSTRmode = rentalMode === 'short_term';
-        const netFlow = income - monthlyCost;
+        const netFlow = safeRaw;
         return (
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
             {/* Ο ΤΙΤΛΟΣ ΛΕΕΙ ΤΟ ΙΔΙΟ ΜΕ ΤΑ ΠΛΑΚΙΔΙΑ ΑΠΟ ΚΑΤΩ. Έλεγε «Έσοδα» και στους
@@ -1421,7 +1469,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 { label: 'Μηνιαίο ενοίκιο', value: feAuto(income) },
                 { label: 'Ετησίως', value: feAuto(income * 12) },
                 { label: 'Αναμενόμενα φέτος', value: feAuto(incomeYtd), title: 'Μηνιαίο ενοίκιο × μήνες που πέρασαν φέτος (αναμενόμενα, όχι καταγεγραμμένες εισπράξεις).' },
-                { label: 'Καθαρή ροή', value: `${netFlow < 0 ? '−' : ''}${feAuto(Math.abs(netFlow))}`, title: 'Αναμενόμενο ενοίκιο μείον μηνιαία κόστη (λογαριασμοί, δόση, αποθεματικά). Πρόβλεψη, όχι εισπράξεις.' },
+                { label: 'Καθαρή ροή', value: feSigned(netFlow), title: 'Αναμενόμενο ενοίκιο μείον λογαριασμούς και δόση δανείου, προ φόρου. Πρόβλεψη, όχι εισπράξεις.' },
               ]}/>
             )}
           </div>
@@ -1433,7 +1481,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         const rows = [
           { l: 'Μεικτό έσοδο', v: waterfall.gross, sub: false },
           { l: 'Προμήθεια πλατφόρμας', v: -waterfall.platformFee, sub: true },
-          { l: 'Τέλος ανθεκτικότητας', v: -waterfall.climateFee, sub: true },
+          ...(waterfall.climateFee != null ? [{ l: 'Τέλος ανθεκτικότητας', v: -waterfall.climateFee, sub: true }] : []),
           ...(waterfall.management > 0 ? [{ l: 'Διαχείριση', v: -waterfall.management, sub: true }] : []),
           { l: 'Κράτηση φόρου (εκτίμηση)', v: -waterfall.taxReserve, sub: true },
         ];
@@ -1449,17 +1497,28 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
               {rows.map((r, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: r.sub ? 'var(--text-secondary)' : 'var(--text-primary)', fontWeight: r.sub ? 400 : 600 }}>
                   <span>{r.l}</span>
-                  <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: r.v < 0 ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{r.v < 0 ? '−' : ''}{feAuto(Math.abs(r.v))}</span>
+                  <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: r.v < 0 ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{feSigned(r.v)}</span>
                 </div>
               ))}
+              {/* ΤΟ ΤΕΛΟΣ ΟΦΕΙΛΕΤΑΙ ΑΝΑ ΔΙΑΝΥΚΤΕΡΕΥΣΗ. Κρατήσεις με ποσό και
+                  χωρίς νύχτες έδιναν «0,00€», σαν να μην οφείλεται τίποτα. Χωρίς
+                  νύχτες το ποσό είναι άγνωστο και το καθαρό το λέει. */}
+              {waterfall.climateFee == null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: 'var(--text-secondary)' }}>
+                  <span>Τέλος ανθεκτικότητας</span>
+                  <span style={{ color: 'var(--text-tertiary)', textAlign: 'right' }}>άγνωστο, λείπουν διανυκτερεύσεις</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
-                <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans }}>Καθαρό</span>
-                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feAuto(waterfall.net)}</span>
+                <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{waterfall.climateFee == null ? 'Καθαρό (χωρίς το τέλος)' : 'Καθαρό'}</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feSigned(waterfall.net)}</span>
               </div>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 12, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-              <span>Καθαρό / διανυκτέρευση <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{feAuto(waterfall.netPerNight)}</strong></span>
-              <span>Περιθώριο <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{waterfall.marginPct}%</strong></span>
+              {waterfall.netPerNight != null
+                ? <span>Καθαρό / διανυκτέρευση <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{feSigned(waterfall.netPerNight)}</strong></span>
+                : <span>Καθαρό / διανυκτέρευση: συμπλήρωσε τις διανυκτερεύσεις στις κρατήσεις</span>}
+              <span>Περιθώριο <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fpSigned(waterfall.marginPct)}</strong></span>
             </div>
             {/* Παραδοχές — επιτόπου επεξεργασία (κλικ στο ποσοστό) */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
@@ -1529,10 +1588,16 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
           isCurMonth && viewActualTotal - viewRecordedTotal > 0.005
             ? { label: 'Με εκτιμήσεις παρόχων', value: feAuto(viewActualTotal), sub: `καταχωρημένα ${feAuto(viewRecordedTotal)}`, title: 'Καταχωρημένα του μήνα συν εκτιμήσεις παρόχων για πάγιες κατηγορίες που δεν έχουν χρεωθεί ακόμη.' }
             : { label: isCurMonth ? 'Καταχωρημένα' : 'Σύνολο μήνα', value: feAuto(viewActualTotal), title: isCurMonth ? 'Λογαριασμοί και δαπάνες του μήνα, πληρωμένα και απλήρωτα.' : 'Καταγεγραμμένες δαπάνες αυτού του μήνα από το ιστορικό.' },
-          isCurMonth
-            ? { label: 'Πρόβλεψη μήνα', value: feAuto(forecastTotal) }
-            : { label: 'Έναντι στόχου', value: `${viewActualTotal <= masterBudget ? '−' : '+'}${feAuto(Math.abs(masterBudget - viewActualTotal))}` },
-          { label: 'Διαθέσιμο', value: feAuto(Math.max(0, masterBudget - viewActualTotal)) },
+          // Η ΠΡΟΒΛΕΨΗ ΜΠΑΙΝΕΙ ΜΟΝΟ ΟΤΑΝ ΛΕΕΙ ΚΑΤΙ ΑΛΛΟ. Όταν ο μήνας έχει μόνο
+          // πάγια, η πρόβλεψη είναι το ίδιο ποσό με το διπλανό πλακίδιο: δύο
+          // «70,08€» δίπλα δίπλα, με δύο ονόματα.
+          ...(isCurMonth
+            ? (Math.abs(forecastTotal - viewActualTotal) > 0.005 ? [{ label: 'Πρόβλεψη μήνα', value: feAuto(forecastTotal) }] : [])
+            : [{ label: 'Έναντι στόχου', value: `${viewActualTotal <= masterBudget ? '−' : '+'}${feAuto(Math.abs(masterBudget - viewActualTotal))}` }]),
+          // «ΜΕΝΕΙ ΑΠΟ ΤΟΝ ΣΤΟΧΟ», ΟΧΙ «ΔΙΑΘΕΣΙΜΟ». Η πρώτη κάρτα λέει ήδη
+          // «Διαθέσιμο» για έσοδα μείον υποχρεώσεις· εδώ είναι στόχος μείον
+          // δαπάνες. Ίδια λέξη, δύο ποσά, πεντακόσια εικονοστοιχεία απόσταση.
+          { label: 'Μένει από τον στόχο', value: feAuto(Math.max(0, masterBudget - viewActualTotal)) },
         ]}/>
         {(() => {
           const pct    = masterBudget > 0 ? Math.min((viewActualTotal / masterBudget) * 100, 100) : 0;
@@ -1544,8 +1609,10 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 <div style={{ height: '100%', width: `${pct}%`, background: col, borderRadius: 3, transition: 'width 0.6s ease' }}/>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-                <span style={{ color: 'var(--text-tertiary)', fontWeight: 700 }}>{fp(pct)} χρησιμοποιήθηκε</span>
-                {/* Το «Απομένει» φαίνεται ήδη στο πλακίδιο «Διαθέσιμο» — εδώ μόνο η υπέρβαση. */}
+                {/* Η ΡΑΒΔΟΣ ΜΕΤΡΑ ΚΑΙ ΤΙΣ ΕΚΤΙΜΗΣΕΙΣ, ΚΑΙ ΤΟ ΛΕΕΙ. Έγραφε «χρησιμοποιήθηκε»
+                    για ποσό που περιείχε λογαριασμούς που δεν έχουν έρθει ακόμη. */}
+                <span style={{ color: 'var(--text-tertiary)', fontWeight: 700 }}>{fp(pct)} του στόχου{isCurMonth && viewActualTotal - viewRecordedTotal > 0.005 ? ', με τις εκτιμήσεις' : ''}</span>
+                {/* Το «Μένει» φαίνεται ήδη στο πλακίδιο δίπλα, εδώ μόνο η υπέρβαση. */}
                 <span className="po-fig" data-tone={isOver ? 'negative' : undefined}>{isOver ? `Υπέρβαση ${feAuto(viewActualTotal - masterBudget)}` : ''}</span>
               </div>
               {isCurMonth && rolloverOn && hasPrevMonth && carryIn !== 0 && (
@@ -1564,13 +1631,15 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans }}>Απόδοση επένδυσης</span>
-            <InfoDot text="NOI = καθαρά λειτουργικά έσοδα (χωρίς δόση δανείου). Ταμειακή ροή = NOI μείον δόση. Cap rate = NOI / τιμή αγοράς. Cash-on-cash = ταμειακή ροή / ίδια κεφάλαια. Ετησιοποιημένες εκτιμήσεις." />
+            <InfoDot text={`Καθαρό λειτουργικό έσοδο: έσοδα μείον λειτουργικές δαπάνες, χωρίς τη δόση. Ταμειακή ροή: αυτό μείον τη δόση. Απόδοση επί ${invReturns.onPurchase ? 'τιμής αγοράς' : 'αξίας'}: καθαρό λειτουργικό έσοδο / ${invReturns.onPurchase ? 'τιμή αγοράς' : 'αξία'}. Απόδοση ιδίων κεφαλαίων: ταμειακή ροή / ίδια κεφάλαια, όπου ίδια κεφάλαια = τιμή αγοράς μείον αρχικό δάνειο. Ενδεικτικά, σε ετήσια βάση.`} />
           </div>
           <KPIGrid nested items={[
-            { label: 'NOI / έτος', value: feAuto(invReturns.noi) },
-            { label: 'Ταμειακή ροή', value: feAuto(invReturns.preTaxCashFlow) },
-            { label: 'Cap rate', value: fp(invReturns.capRatePct) },
-            { label: 'Cash-on-cash', value: fp(invReturns.cashOnCashPct) },
+            { label: 'Καθαρό λειτουργικό έσοδο / έτος', value: feSigned(invReturns.noi) },
+            { label: 'Ταμειακή ροή', value: feSigned(invReturns.preTaxCashFlow) },
+            { label: invReturns.onPurchase ? 'Απόδοση επί τιμής αγοράς' : 'Απόδοση επί αξίας', value: fpSigned(invReturns.capRatePct) },
+            invReturns.cashOnCashPct != null
+              ? { label: 'Απόδοση ιδίων κεφαλαίων', value: fpSigned(invReturns.cashOnCashPct) }
+              : { label: 'Απόδοση ιδίων κεφαλαίων', value: ABSENT_SHORT, sub: 'χρειάζεται τιμή αγοράς και προκαταβολή' },
           ]}/>
         </div>
       )}
@@ -1591,7 +1660,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                   {/* Δευτερεύον: ίδιο σχήμα με το «Δείξε μου», απόχρωση τονισμού με
                       περίγραμμα. Το ύψος 28 ανεβαίνει στο κοινό ύψος κουμπιού. */}
                   <Btn variant="secondary" onClick={s.apply}>
-                    Εφαρμογή
+                    {s.cta}
                   </Btn>
                   <IconBtn onClick={() => dismissSuggestion(s.key)} label="Απόρριψη" title="Απόρριψη">
                     <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -1707,12 +1776,17 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       )}
 
       {/* Επιχειρηματικές υποχρεώσεις — ΜΟΝΟ επαγγελματίας (δεν αφορούν ιδιώτες) */}
+      {/* ΙΔΙΟ ΣΧΗΜΑ, ΙΔΙΑ ΣΥΜΠΕΡΙΦΟΡΑ. Καθόταν ανάμεσα σε αναδιπλούμενες κάρτες
+          ως στατική κάρτα με παράγραφο και χωρίς βελάκι· τώρα αναδιπλώνεται
+          όπως οι γειτονικές της. */}
       {isPro && (
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans }}>Επιχειρηματικές υποχρεώσεις</span>
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
+          {secHdr('Επιχειρηματικές υποχρεώσεις', 'business')}
+          {!collapsed.has('business') && (
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
             Εκτός από τον φόρο εισοδήματος, ως επιχείρηση βαρύνεσαι με τις μηνιαίες εισφορές <strong style={{ color: 'var(--text-secondary)' }}>ΕΦΚΑ</strong>, την <strong style={{ color: 'var(--text-secondary)' }}>προκαταβολή φόρου</strong> για την επόμενη χρήση και, εφόσον παρέχεις υπηρεσίες, τον <strong style={{ color: 'var(--text-secondary)' }}>ΦΠΑ</strong>. Τα ακριβή ποσά υπολογίζονται στη Λογιστική.
           </span>
+          )}
         </div>
       )}
 

@@ -28,6 +28,8 @@
 // είναι επείγον.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { navLabel } from '../nav/labels';
+
 export type AgendaOrigin = 'obligation' | 'insight' | 'setup';
 
 export interface AgendaItem {
@@ -73,6 +75,14 @@ export interface ObligationLike {
   priority: string;
   who?: string;
 }
+
+// ── ΤΟ ΚΟΥΜΠΙ ΛΕΕΙ ΠΟΥ ΠΑΕΙ ─────────────────────────────────────────────
+// Τα βήματα ρύθμισης έγραφαν όλα «Άνοιγμα», ένα ρήμα ανάμεσα σε ονόματα
+// καρτελών («Δάνειο», «Δαπάνες», «Εκκρεμότητες») που δεν έλεγε πού οδηγεί. Το
+// όνομα έρχεται από το ίδιο μενού με τα ευρήματα· το «edit» δεν είναι καρτέλα
+// αλλά η φόρμα του ακινήτου, γι' αυτό έχει δική του λέξη.
+const setupActionLabel = (nav: string): string =>
+  nav === 'edit' ? 'Στοιχεία ακινήτου' : navLabel(nav);
 
 /** Βήμα ρύθμισης ακινήτου (OnboardingChecklist). */
 export interface SetupLike {
@@ -268,7 +278,7 @@ export function buildAgenda(input: {
       title: s.label, note: s.hint,
       due: s.due ? s.due.slice(0, 10) : null,
       daysLeft: toDaysLeft(s.due, today),
-      action: { label: 'Άνοιγμα', tab: s.nav }, origin: 'setup',
+      action: { label: setupActionLabel(s.nav), tab: s.nav }, origin: 'setup',
       weight: s.weight ?? 5,
     });
   }

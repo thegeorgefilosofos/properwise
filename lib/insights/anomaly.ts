@@ -31,6 +31,8 @@
 //      μήλα με μήλα.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { athensParts } from '../core/time';
+
 export interface SpendRow {
   category?: string;
   amount: number;
@@ -78,11 +80,13 @@ export function median(xs: readonly number[]): number {
  * Ο τρέχων μήνας αποκλείεται επίτηδες: στις 5 του μηνός έχει τις δαπάνες πέντε
  * ημερών και κάθε σύγκριση με ολόκληρους μήνες θα έβγαζε «ξοδεύεις λιγότερα».
  */
+// ΣΕ ΩΡΑ ΕΛΛΑΔΑΣ, ΟΧΙ UTC. Από τα μεσάνυχτα ως τις τρεις τα ξημερώματα της
+// 1ης του μήνα, το UTC ήταν ακόμη στον προηγούμενο μήνα και το «τον περασμένο
+// μήνα» έδειχνε τον προπροηγούμενο. Ίδιος βοηθός με το engine.ts.
 export function lastClosedMonth(now: number): string {
-  const d = new Date(now);
-  const y = d.getUTCFullYear(), m = d.getUTCMonth(); // 0-11
-  const py = m === 0 ? y - 1 : y;
-  const pm = m === 0 ? 12 : m;
+  const { year: y, month } = athensParts(new Date(now)); // 1-12
+  const py = month === 1 ? y - 1 : y;
+  const pm = month === 1 ? 12 : month - 1;
   return `${py}-${String(pm).padStart(2, '0')}`;
 }
 
