@@ -380,18 +380,18 @@ export default function SignupPage() {
                 <label htmlFor="su-consent-oauth" style={{ ...TAP, margin: '-12px -14px -14px -14px' }}>
                   <input id="su-consent-oauth" type="checkbox" checked={consent}
                     onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                    aria-label="Αποδοχή των Όρων χρήσης και της Πολιτικής απορρήτου"
+                    aria-label="Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου"
                     style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} />
                 </label>
                 <label htmlFor="su-consent-oauth" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer' }}>
                   Αποδέχομαι τους{' '}
-                  <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Όρους χρήσης</Link>{' '}και την{' '}
+                  <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Όρους χρήσης</Link>. Διάβασα την{' '}
                   <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Πολιτική απορρήτου</Link>.
                 </label>
               </div>
               {consentTouched && !consent && (
                 <p role="alert" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '0 0 12px', lineHeight: 1.5 }}>
-                  Χρειάζεται να αποδεχθείς τους Όρους και την Πολιτική απορρήτου για να συνεχίσεις.
+                  Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.
                 </p>
               )}
               {/* `field` γιατί και τα δύο έπιαναν όλο το πλάτος της κάρτας. */}
@@ -659,18 +659,24 @@ export default function SignupPage() {
                         οθόνης εξακολουθεί να λέει «υποχρεωτικό». */}
                     <input id="su-consent" type="checkbox" checked={consent}
                       onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                      aria-required="true" aria-label="Αποδοχή των Όρων χρήσης και της Πολιτικής απορρήτου"
+                      aria-required="true" aria-label="Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου"
                       style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} />
                   </label>
+                  {/* ΑΠΟΔΟΧΗ ΓΙΑ ΤΟΥΣ ΟΡΟΥΣ, ΕΝΗΜΕΡΩΣΗ ΓΙΑ ΤΗΝ ΠΟΛΙΤΙΚΗ. Εγραφε
+                      «Αποδέχομαι… την Πολιτική απορρήτου», ενώ η Πολιτική δεν
+                      ζητά αποδοχή: είναι ενημέρωση του άρθρου 13 GDPR και τη
+                      συγκατάθεση τη χρησιμοποιεί μόνο για τα δεδομένα κοινότητας.
+                      Ενα κουτί που «αποδέχεται» την ενημέρωση διαβάζεται ως
+                      συγκατάθεση σε όλα όσα περιγράφει. */}
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                     Αποδέχομαι τους{' '}
-                    <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Όρους χρήσης</Link>{' '}και την{' '}
+                    <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Όρους χρήσης</Link>. Διάβασα την{' '}
                     <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Πολιτική απορρήτου</Link>.
                   </span>
                 </div>
                 {consentTouched && !consent && (
                   <p role="alert" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: 0, lineHeight: 1.5 }}>
-                    Χρειάζεται να αποδεχθείς τους Όρους και την Πολιτική απορρήτου για να συνεχίσεις.
+                    Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.
                   </p>
                 )}
 

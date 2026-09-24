@@ -56,11 +56,17 @@ export const POLICY_VERSION = '2026-09';
 export const POLICY_UPDATED = 'Σεπτέμβριος 2026';
 
 export interface LegalIdentity {
-  /** Επωνυμία ή ονοματεπώνυμο του φορέα λειτουργίας. */
+  /**
+   * ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ Ή ΕΤΑΙΡΕΙΑ. Κρίνει ποια πεδία υπάρχουν καν: ο ΓΕΜΗ αφορά
+   * εταιρείες και η «επωνυμία» επίσης. Οι σελίδες έγραφαν ως εκκρεμή «αριθμό
+   * ΓΕΜΗ» για φυσικό πρόσωπο, δηλαδή υπόσχονταν στοιχείο που δεν θα υπάρξει.
+   */
+  kind: 'natural' | 'company';
+  /** Ονοματεπώνυμο (φυσικό πρόσωπο) ή επωνυμία (εταιρεία) του φορέα λειτουργίας. */
   legalName: string | null;
   /** Εμπορική ονομασία (πάντα γνωστή). */
   tradeName: string;
-  /** Έδρα: οδός, αριθμός, ΤΚ, πόλη. */
+  /** Διεύθυνση ή έδρα: οδός, αριθμός, ΤΚ, πόλη. Διεύθυνση επικοινωνίας, όχι κατοικίας. */
   address: string | null;
   afm: string | null;
   doy: string | null;
@@ -79,6 +85,7 @@ export interface LegalIdentity {
 }
 
 export const IDENTITY: LegalIdentity = {
+  kind: 'natural',
   legalName: null,
   tradeName: 'PROPERWISE',
   address: null,
@@ -94,4 +101,26 @@ export const IDENTITY: LegalIdentity = {
 /** Έχουν συμπληρωθεί τα βασικά νομικά στοιχεία; */
 export function identityIsPublished(id: LegalIdentity = IDENTITY): boolean {
   return !!(id.legalName && id.address && id.afm);
+}
+
+/**
+ * ΤΙ ΛΕΜΕ ΟΣΟ ΤΑ ΣΤΟΙΧΕΙΑ ΔΕΝ ΕΧΟΥΝ ΔΗΜΟΣΙΕΥΘΕΙ, ΜΙΑ ΦΟΡΑ ΓΙΑ ΤΙΣ ΤΡΕΙΣ ΣΕΛΙΔΕΣ.
+ *
+ * Εγραφαν «δημοσιεύονται πριν εκδοθεί το πρώτο παραστατικό», σαν η υποχρέωση
+ * να κρέμεται από την τιμολόγηση. Δεν κρέμεται: το άρθρο 13§1 στοιχείο α΄ GDPR
+ * ζητά την ταυτότητα του υπευθύνου τη στιγμή της συλλογής και το π.δ. 131/2003
+ * άρθρο 4 όνομα και γεωγραφική διεύθυνση για κάθε υπηρεσία της κοινωνίας της
+ * πληροφορίας. Λέμε λοιπόν ό,τι ισχύει, χωρίς ημερομηνία που δεν ελέγχουμε.
+ */
+export function identityPendingSentence(id: LegalIdentity = IDENTITY): string {
+  return id.kind === 'natural'
+    ? `Φορέας λειτουργίας του ${id.tradeName} είναι φυσικό πρόσωπο. Το ονοματεπώνυμο, η διεύθυνση και το ΑΦΜ του δεν έχουν δημοσιευθεί ακόμη.`
+    : `Φορέας λειτουργίας του ${id.tradeName} είναι εταιρεία. Η επωνυμία, η έδρα και το ΑΦΜ της δεν έχουν δημοσιευθεί ακόμη.`;
+}
+
+/** Οι ετικέτες που αλλάζουν με το είδος του φορέα, για τις τρεις σελίδες. */
+export function identityLabels(id: LegalIdentity = IDENTITY): { name: string; address: string } {
+  return id.kind === 'natural'
+    ? { name: 'Ονοματεπώνυμο', address: 'Διεύθυνση' }
+    : { name: 'Επωνυμία', address: 'Έδρα' };
 }

@@ -52,7 +52,7 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
 {
   const live = billingWords(LIVE), dark = billingWords(DARK)
   ok('η σημαία ακολουθεί το ταμείο', live.live === true && dark.live === false)
-  const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge', 'contractSteps', 'lapsedRetentionShort'] as const
+  const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge', 'contractSteps', 'lapsedRetentionShort', 'planChange', 'subscriptionPlace', 'renewal', 'merchantRow'] as const
   // Αν μια φράση είναι ίδια και στις δύο καταστάσεις, τότε η μία από τις δύο
   // λέει ψέματα — και δεν θα το έπιανε κανείς, γιατί «υπάρχει διατύπωση».
   for (const k of keys) ok(`η «${k}» διαφέρει ανά κατάσταση`, live[k] !== dark[k])
@@ -131,6 +131,15 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
   // Η ΑΝΕΝΕΡΓΗ ΚΑΤΑΣΤΑΣΗ ΜΕΝΕΙ ΑΝΕΝΕΡΓΗ, χωρίς να υπόσχεται χρεώσεις.
   ok('χωρίς ταμείο, καμία υπόσχεση για χρέωση',
     dark.afterTrial.includes('δεν έχει ενεργοποιηθεί'))
+  // ΑΝΑΝΕΩΣΗ, ΑΛΛΑΓΗ ΠΑΚΕΤΟΥ ΚΑΙ ΚΑΡΤΑ ΜΙΛΟΥΝ ΣΤΟΝ ΧΡΟΝΟ ΤΟΥΣ. Οι Οροι τα έγραφαν
+  // στον ενεστώτα δίπλα σε παράγραφο που έλεγε ότι σήμερα δεν χρεώνεται τίποτα.
+  for (const k of ['subscriptionPlace', 'renewal'] as const)
+    ok(`χωρίς ταμείο, το «${k}» μιλά για όταν ενεργοποιηθεί η χρέωση`, dark[k].startsWith('Όταν ενεργοποιηθεί'))
+  ok('χωρίς ταμείο, η αλλαγή πακέτου δεν κοστίζει σήμερα', dark.planChange.includes('σήμερα η αλλαγή δεν κοστίζει'))
+  // ΚΑΙ Η ΥΠΑΝΑΧΩΡΗΣΗ ΔΕΝ ΠΕΡΙΓΡΑΦΕΙ ΠΕΡΙΠΤΩΣΗ ΠΟΥ ΔΕΝ ΥΠΑΡΧΕΙ: σε συνδρομή
+  // «πλήρης εκτέλεση εντός 14 ημερών» δεν συμβαίνει ποτέ.
+  ok('η υπαναχώρηση δεν μιλά για πλήρη εκτέλεση', !live.withdrawal.includes('πλήρη εκτέλεση') && !dark.withdrawal.includes('πλήρη εκτέλεση'))
+  ok('χωρίς ταμείο, η υπαναχώρηση δεν κοστίζει τίποτα', dark.withdrawal.includes('δεν οφείλεις τίποτα'))
 
   // ── Ο ΛΟΓΑΡΙΑΣΜΟΣ ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ ΔΕΝ ΜΕΝΕΙ ΓΙΑ ΠΑΝΤΑ ─────────────────
   // Η πολιτική σβήνει δεδομένα, άρα η ενημέρωση δεν είναι διακοσμητική: το
@@ -169,7 +178,12 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
     activeSubprocessors(LIVE).some(s => s.name === mor(LIVE))
     && plannedSubprocessors(DARK).some(s => s.name === mor(DARK)))
   ok('η αιτιολόγηση του παρόχου δανείζεται τη μία διατύπωση',
-    merchantOf(DARK).purpose.includes(billingWords(DARK).cardData))
+    merchantOf(DARK).purpose.includes(billingWords(DARK).merchantRow)
+    && merchantOf(LIVE).purpose.includes(billingWords(LIVE).merchantRow))
+  // Η ΓΡΑΜΜΗ ΤΟΥ ΕΜΠΟΡΟΥ ΔΕΝ ΜΙΛΑ ΓΙΑ «ΤΟΝ ΠΑΡΟΧΟ ΠΛΗΡΩΜΩΝ»: ο πάροχος είναι
+  // ο ίδιος και η τρίτη πρόσωπη αναφορά διαβαζόταν σαν να υπάρχει κι άλλος.
+  ok('η γραμμή του εμπόρου δεν αναφέρεται στον εαυτό της ως τρίτο',
+    !merchantOf(DARK).purpose.includes('ο πάροχος πληρωμών'))
   // Οι υπόλοιποι πάροχοι δεν παρασύρονται από τη μεταβλητή της χρέωσης.
   const others = (env: Record<string, string | undefined>) =>
     subprocessors(env).filter(s => s.name !== mor(env)).map(s => `${s.name}:${s.active}`).join()

@@ -195,11 +195,13 @@ export function PublicFooter() {
           <span>© {new Date().getFullYear()} PROPERWISE</span>
           {/* ΤΟ «ΣΧΕΔΙΑΣΜΕΝΟ ΓΙΑ GDPR» ΔΕΝ ΕΛΕΓΕ ΤΙΠΟΤΑ ΕΛΕΓΞΙΜΟ. Ο τόπος της βάσης
               είναι αυτός του μητρώου εκτελούντων (lib/legal/subprocessors) και
-              το απόρρητο είναι σελίδα που διαβάζεται. */}
-          {/* Κάθε στοιχείο κρατιέται ολόκληρο: στα 390 έσπαγε «Απόρρητο κατά / GDPR». */}
+              το απόρρητο είναι σελίδα που διαβάζεται. Ούτε το «Απόρρητο κατά
+              GDPR» έλεγε κάτι ελέγξιμο: ήταν ισχυρισμός συμμόρφωσης σε κάθε
+              σελίδα, ενώ εκκρεμούν συμβάσεις επεξεργασίας που η ίδια η Πολιτική
+              ομολογεί. Ο σύνδεσμος λέει το όνομα της σελίδας, τίποτα παραπάνω. */}
           <span>
             <span style={{ whiteSpace: 'nowrap' }}>Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)</span> ·{' '}
-            <Link href="/privacy" className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>Απόρρητο κατά GDPR</Link>
+            <Link href="/privacy" className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>
           </span>
         </div>
       </div>

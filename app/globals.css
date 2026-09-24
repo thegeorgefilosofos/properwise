@@ -3311,13 +3311,29 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    όσο υπάρχει χώρος· σπάει μόνο όταν η εναλλακτική είναι να βγει εκτός. */
 .po-table th, .po-table td { hyphens: none; vertical-align: top; overflow-wrap: anywhere; }
 
-/* ═══ Η ΣΤΗΛΗ ΤΗΣ ΠΕΡΙΓΡΑΦΗΣ ΕΙΝΑΙ ΠΡΟΖΑ, ΑΛΛΑ ΣΕ ΚΕΛΙ ═════════════════════
-   Δοκιμάστηκε πλήρης στοίχιση με συλλαβισμό, όπως το νομικό κείμενο (`.lg-p`).
-   Σε κελί των 400 εικονοστοιχείων όμως οι γραμμές είναι λίγες και κοντές: η
-   «μέτρηση επισκεψιμότητας χωρίς cookies» της Vercel και η γραμμή της Sentry
-   άνοιγαν ποτάμια κενού στα 1440. Αριστερή στοίχιση, χωρίς ενωτικά· το
-   `overflow-wrap: normal` κρατά τις λέξεις ολόκληρες, όπως πριν. */
-.po-table td.lg-cell-prose { text-align: left; hyphens: manual; overflow-wrap: normal; }
+/* ═══ Η ΣΤΗΛΗ ΤΗΣ ΠΕΡΙΓΡΑΦΗΣ ΕΙΝΑΙ ΠΡΟΖΑ, ΚΑΙ ΣΤΟΙΧΙΖΕΤΑΙ ΩΣ ΠΡΟΖΑ ═══════════
+   Ο γενικός κανόνας από πάνω κρατά `hyphens: none` για τα στενά κελιά ετικέτας
+   και τόπου, όπου ένα σπάσιμο δίνει μόνο θόρυβο. Η στήλη «Τι κάνει» όμως είναι
+   κανονικές προτάσεις σε μέτρο παραγράφου· έμενε ριγμένη δεξιά, με τα μαλακά
+   ενωτικά του `hyphenate` σβησμένα από το `none` και τη λέξη να σπάει στη μέση
+   (`anywhere`). Παίρνει τον συλλαβισμό ενεργό: τα ενωτικά γίνονται «-» όταν
+   σπάει η γραμμή (η πλήρης στοίχιση που είχε μαζί του έφυγε, βλ. από κάτω). Ειδικότερος
+   επιλογέας από τον γενικό, άρα κερδίζει· `overflow-wrap: normal` γιατί εδώ
+   σπάμε σε κενά και σε ενωτικά, ποτέ στη μέση της λέξης. */
+.po-table td.lg-cell-prose { text-align: start; hyphens: manual; overflow-wrap: normal; }
+/* ΣΤΑ 400 Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΑΝΟΙΓΕ ΠΟΤΑΜΙΑ ΚΕΝΟΥ. Μετρημένο στα 1440: «μέτρηση
+   επισκεψιμότητας χωρίς cookies (Vercel Web…» με κενά τριπλάσια του φυσικού,
+   γιατί μια στήλη σαράντα πέντε χαρακτήρων δεν έχει αρκετά κενά να μοιράσει
+   το υπόλοιπο. Η στήλη γυρίζει σε ριγμένη δεξιά άκρη· ο συλλαβισμός μένει και
+   απλώς κοντεύει τις γραμμές.
+
+   Ο ΤΟΠΟΣ ΔΕΝ ΣΠΑΕΙ ΜΕΣΑ ΣΤΗ ΛΕΞΗ. Το γενικό `overflow-wrap: anywhere` έκοβε το
+   «Ευρωπαϊκή Ένωση» (δεμένο με άθραυστο κενό) σε «Ευρωπαϊκή Ένω / ση» στα 820.
+   Το `normal` αφήνει τη φράση να κατέβει ολόκληρη. */
+.po-table td.lg-place { overflow-wrap: normal; }
+/* Ο ΑΝΕΝΕΡΓΟΣ ΠΑΡΟΧΟΣ ΣΒΗΝΕΙ ΟΛΟΚΛΗΡΟΣ, ΟΧΙ ΜΟΝΟ ΤΟ ΟΝΟΜΑ ΤΟΥ. Το σήμα «Όχι
+   ενεργός σήμερα» το λέει με λέξεις· το χρώμα το επιβεβαιώνει σε όλη τη γραμμή. */
+.po-table tr.lg-sp-planned th, .po-table tr.lg-sp-planned td { color: var(--text-tertiary); }
 /* ═══ ΟΤΑΝ Ο ΠΙΝΑΚΑΣ ΔΗΛΩΝΕΙ ΠΛΑΤΗ, ΤΑ ΠΛΑΤΗ ΝΑ ΙΣΧΥΟΥΝ ══════════════════════
    Ο πίνακας των εκτελούντων γράφει `<colgroup>` με 20 / 56 / 24 τοις εκατό·
    ο περιηγητής τα αγνοούσε. Με αυτόματη διάταξη το `<colgroup>` είναι
@@ -4697,7 +4713,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    κοντή από κάθε άλλη. Η ημερομηνία μετακόμισε στη σειρά των αδελφών σελίδων,
    στο κενό δεξιά της (βλ. `lg-siblings`)· εδώ μένει μόνο το μέτρο της
    εισαγωγής, ίδιο με το υπόλοιπο κείμενο. */
-.lg-lede { max-width: 1044px; }
+.lg-lede { max-width: var(--lg-measure); }
 .lg-lede > p:first-child { text-align: justify; }
 
 /* Η ΣΤΗΛΗ ΤΟΥ ΚΕΙΜΕΝΟΥ ΕΙΝΑΙ ΤΟ ΜΕΤΡΟ. 1044 μείον 260 του ευρετηρίου μείον 72
@@ -4733,13 +4749,17 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    το κείμενο σταματούσε στα 712 και άφηνε 332 λευκά δίπλα του. Δύο άξονες στην
    ίδια οθόνη διαβάζονται ως σφάλμα, όχι ως πρόθεση.
 
-   ΤΟ ΤΙΜΗΜΑ, ΓΡΑΜΜΕΝΟ: στα 1044 με 15 η γραμμή πιάνει περίπου 130 χαρακτήρες
-   αντί για 89. Είναι μακρύτερη από το τυπογραφικό ιδανικό — και στέκει εδώ
-   επειδή το κείμενο είναι ΠΛΗΡΩΣ ΣΤΟΙΧΙΣΜΕΝΟ με αληθινό συλλαβισμό: η δεξιά
-   άκρη είναι ευθεία, οπότε το μάτι ξέρει ακριβώς πού να γυρίσει, που είναι και
-   ο λόγος για τον οποίο υπάρχει το όριο των 89. Ο συλλαβισμός κρατά τα κενά
-   στο φυσικό τους πλάτος (διάμεσος 4,7 · p90 6,4 μετρημένα). */
+   ΤΟ ΤΙΜΗΜΑ ΔΕΝ ΣΤΑΘΗΚΕ. Στα 1044 με 15 η γραμμή έπιανε 130 ώς 145
+   χαρακτήρες: η ευθεία δεξιά άκρη δεν βοηθά το μάτι να βρει την επόμενη
+   γραμμή όταν η επιστροφή είναι ένα ολόκληρο πλάτος οθόνης μακριά.
+
+   ΤΟ ΜΕΤΡΟ ΜΠΑΙΝΕΙ ΣΤΗΝ ΠΡΟΖΑ, ΟΧΙ ΣΤΟ ΚΕΛΥΦΟΣ. Παράγραφοι, λίστες, σημειώσεις
+   και εισαγωγή σταματούν στα 680 (περίπου 85 χαρακτήρες στα 15). Ο πίνακας
+   των παρόχων, το ευρετήριο, οι τίτλοι και η σειρά των αδελφών σελίδων κρατούν
+   όλο το πλάτος: είναι δομή, όχι κείμενο που διαβάζεται γραμμή γραμμή. */
 .lg-body { min-width: 0; }
+:root { --lg-measure: 680px; }
+.lg-p, .lg-ul, .lg-note, .lg-stack, .lg-version, .lg-form-box { max-width: var(--lg-measure); }
 .lg-head { min-width: 0; }
 /* Τρεχούμενο κείμενο νομικής σελίδας. Στα 15, όσο και η αρχική: ό,τι δεσμεύει
    τον χρήστη δεν επιτρέπεται να είναι το πιο δυσανάγνωστο κείμενο του
@@ -4780,6 +4800,16 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   border-radius: 12px;
 }
 .lg-closing { margin-top: clamp(32px, 4vw, 48px); }
+/* Η έκδοση κάτω από την εισαγωγή: μικρή, ήσυχη, αλλά στην πρώτη οθόνη. */
+.lg-version { margin: 12px 0 0; font-size: 13px; color: var(--text-tertiary); }
+/* ΤΟ ΥΠΟΔΕΙΓΜΑ ΥΠΑΝΑΧΩΡΗΣΗΣ: έντυπο με τις γραμμές του, όχι λίστα όρων. */
+.lg-form-box { margin: 14px 0 0; }
+.lg-form {
+  margin: 0; padding: 14px 16px; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: inherit; font-size: 14px; line-height: 1.65; color: var(--text-secondary);
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 12px;
+}
+.lg-form-actions { margin-top: 10px; display: flex; }
 
 /* Ο ΤΙΤΛΟΣ ΤΟΥ ΜΕΡΟΥΣ μέσα στο κείμενο. Λεπτή γραμμή από πάνω αντί για κουτί:
    χωρίζει χωρίς να προσθέτει άλλο ένα πλαίσιο σε σελίδα που είναι ήδη κείμενο. */
@@ -4819,37 +4849,53 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-toc-h { margin-bottom: 10px; }
 .lg-toc-m { display: none; padding: 0 16px; }
 /* 44 ύψος για τον αντίχειρα, από το γέμισμα.
-   ΤΟ ΤΡΙΓΩΝΟ ΠΟΥ ΥΠΟΣΧΟΤΑΝ ΤΟ ΣΧΟΛΙΟ ΔΕΝ ΥΠΗΡΧΕ. Ο καθολικός κανόνας
-   `summary::marker { content: "" }` το σβήνει παντού, οπότε το «Περιεχόμενα»
-   ήταν ένα γκρι κουτί χωρίς κανένα σημάδι ότι ανοίγει. Το σημάδι μπαίνει
-   ρητά, δεξιά, στο χρώμα της μάρκας: «+» κλειστό, «−» ανοιχτό, όπως οι
-   συχνές ερωτήσεις της αρχικής. */
-.lg-toc-m > summary {
-  padding: 14px 0; cursor: pointer;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+   ΤΟ ΤΡΙΓΩΝΟ ΔΕΝ ΕΜΕΝΕ ΠΟΤΕ. Το σχόλιο εδώ έλεγε ότι η περίληψη κρατά τον δείκτη
+   του περιηγητή, ενώ ο γενικός κανόνας `summary::marker { content: "" }` τον
+   σβήνει παντού. Ετσι το «Περιεχόμενα» ήταν επίπεδο κουτί χωρίς κανένα σημάδι
+   ότι ανοίγει. Παίρνει δικό του γωνιακό βέλος, δεξιά, που γυρίζει όταν ανοίξει. */
+.lg-toc-m > summary, .lg-sp-more > summary {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 14px 0; cursor: pointer; list-style: none;
 }
-.lg-toc-m > summary::after {
-  content: '+'; font-size: 16px; font-weight: 500; letter-spacing: 0; line-height: 1;
-  color: var(--accent);
+.lg-toc-m > summary::after, .lg-sp-more > summary::after {
+  content: ''; flex-shrink: 0; width: 8px; height: 8px; margin: -4px 4px 0 0;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(45deg); transition: transform .15s;
 }
-.lg-toc-m[open] > summary::after { content: '\2212'; }
+.lg-toc-m[open] > summary::after, .lg-sp-more[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
 .lg-toc-m .lg-toc-list { padding-bottom: 12px; }
 
-/* ═══ ΜΗΤΡΩΟ ΠΑΡΟΧΩΝ: ΚΑΡΤΕΣ ΣΤΟ ΚΙΝΗΤΟ ═══════════════════════════════════ */
+/* ═══ ΜΗΤΡΩΟ ΠΑΡΟΧΩΝ: ΚΑΤΑΣΤΑΣΗ ΣΕ ΛΕΞΕΙΣ ΚΑΙ ΚΑΡΤΕΣ ΣΤΟ ΚΙΝΗΤΟ ═══════════ */
+.lg-badge {
+  display: table; margin-top: 6px; padding: 2px 8px; white-space: nowrap;
+  font-size: 12px; font-weight: 600; line-height: 16px; color: var(--text-secondary);
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 999px;
+}
 .lg-sp-entity { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; color: var(--text-tertiary); }
-.lg-sp-cards { display: none; list-style: none; margin: 16px 0 0; padding: 0; flex-direction: column; gap: 12px; }
+.lg-sp-cards { display: none; margin: 16px 0 0; }
+.lg-sp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.lg-sp-more {
+  margin-top: 12px; padding: 0 16px;
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 12px;
+}
+.lg-sp-more > summary { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+.lg-sp-more > .lg-sp-list { padding-bottom: 16px; }
 .lg-sp-card {
   padding: 14px 16px; font-size: 14px;
   background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 14px;
 }
-.lg-sp-card dl { margin: 10px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; }
-.lg-sp-card dt { font-size: 13px; color: var(--text-tertiary); }
+/* ΕΤΙΚΕΤΑ ΠΑΝΩ ΑΠΟ ΤΗΝ ΤΙΜΗ. Σε δύο στήλες η ετικέτα έτρωγε το ένα τρίτο της
+   κάρτας και η περιγραφή έμενε με 230 εικονοστοιχεία: δεκατρείς γραμμές και
+   οκτώ ενωτικά για μία παράγραφο. */
+.lg-sp-card dl { margin: 10px 0 0; display: grid; grid-template-columns: 1fr; gap: 2px; }
+.lg-sp-card dt { margin-top: 8px; font-size: 13px; color: var(--text-tertiary); }
+.lg-sp-card dt:first-child { margin-top: 0; }
 .lg-sp-card dd { margin: 0; color: var(--text-secondary); line-height: 1.55; }
 
 @media (max-width: 640px) {
   .lg-toc-d, .lg-sp-table { display: none; }
   .lg-toc-m { display: block; }
-  .lg-sp-cards { display: flex; }
+  .lg-sp-cards { display: block; }
 }
 
 /* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΓΙΝΕΤΑΙ ΠΟΤΑΜΙΑ ΛΕΥΚΟΥ ΚΑΙ ΣΠΑΣΜΕΝΕΣ ΛΕΞΕΙΣ.
@@ -4868,6 +4914,19 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   .po-table td.lg-cell-prose,
   .lg-lede > p:first-child {
     text-align: start;
+  }
+  /* ΚΑΙ Ο ΣΥΛΛΑΒΙΣΜΟΣ ΣΒΗΝΕΙ ΜΑΖΙ ΜΕ ΤΗ ΣΤΟΙΧΙΣΗ. Χωρίς ευθεία δεξιά άκρη δεν
+     έχει κενά να κλείσει· έβγαζε μόνο σκάλες: δέκα γραμμές με ενωτικό στις
+     είκοσι τρεις της παραγράφου για το AI και παραγράφους που τελείωναν σε
+     «αποσυνδέ-/ται». Το `none` είναι το μόνο που κάνει τον περιηγητή να
+     αγνοήσει τα μαλακά ενωτικά (U+00AD) του `hy()`. */
+  .lg-p,
+  .lg-ul li,
+  .lg-note,
+  .lg-just,
+  .lg-sp-card dd,
+  .lg-lede > p:first-child {
+    hyphens: none;
   }
 }
 

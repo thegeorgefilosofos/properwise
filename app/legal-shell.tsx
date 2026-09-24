@@ -5,6 +5,7 @@ import { T } from '@/components/tokens';
 import { PublicHeader, PublicFooter, WRAP, WRAP_PAD } from './PublicChrome';
 import { BackLink } from './BackLink';
 import { transliterate } from '@/lib/core/uploadPath';
+import { LegalForm } from './LegalForm';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΚΕΛΥΦΟΣ ΤΩΝ ΤΡΙΩΝ ΣΕΛΙΔΩΝ ΕΜΠΙΣΤΟΣΥΝΗΣ
@@ -73,15 +74,86 @@ export function MailLink({ to }: { to: string }) {
   );
 }
 
-/** Κείμενο με κάθε email του σε σύνδεσμο, για τα νομικά κείμενα που γράφονται ως δεδομένα. */
-function withMail(text: string): ReactNode {
+/** Οι τρεις σελίδες με το όνομα που τις λέει το κείμενο, μέσα σε εισαγωγικά. */
+const PAGE_BY_NAME: Record<string, string> = Object.fromEntries(TRUST_PAGES.map(([href, label]) => [label, href]));
+
+/**
+ * ΚΑΘΕ ΠΑΡΑΠΟΜΠΗ ΠΑΤΙΕΤΑΙ. Τα κείμενα έγραφαν «βλ. ενότητα «Δεδομένα τρίτων
+ * που καταχωρείς»» και «στη σελίδα «Ποιοι είμαστε»» ως σκέτο κείμενο: ο
+ * αναγνώστης έπρεπε να κυλήσει και να ψάξει τον τίτλο μόνος του. Πιάνονται
+ * τρία είδη: email, ενότητα της ίδιας σελίδας (με τον τίτλο της ακριβώς) και
+ * μία από τις τρεις σελίδες, όταν το όνομά της είναι σε εισαγωγικά.
+ *
+ * Ενότητα που δεν υπάρχει μένει κείμενο: ένας σύνδεσμος στο κενό είναι
+ * χειρότερος από κανέναν. Το `legal-shell.test.ts` αποδίδει τις δύο σελίδες
+ * και κοκκινίζει αν κάποια παραπομπή σε ενότητα έμεινε χωρίς σύνδεσμο.
+ */
+const REF_IN_TEXT = new RegExp(
+  `(${MAIL_IN_TEXT.source})|(ενότητα «)([^«»]+)(»)|«(${Object.keys(PAGE_BY_NAME).join('|')})»`,
+  'giu',
+);
+
+/** Τα στοιχεία που χρειάζεται η `withRefs` για να ξέρει πού δείχνει κάθε παραπομπή. */
+interface RefContext {
+  /** Η διαδρομή της σελίδας: σύνδεσμος στον εαυτό της δεν μπαίνει. */
+  self: string;
+  /** Τίτλος ενότητας → άγκιστρο. */
+  anchors: ReadonlyMap<string, string>;
+}
+
+const REF_STYLE = { color: 'var(--accent)', textDecoration: 'none' } as const;
+
+/** Κείμενο με κάθε email και κάθε παραπομπή του σε σύνδεσμο. */
+function withRefs(text: string, ctx: RefContext): ReactNode {
   const parts: ReactNode[] = [];
   let last = 0;
-  for (const m of text.matchAll(MAIL_IN_TEXT)) {
-    parts.push(text.slice(last, m.index), <MailLink key={m.index} to={m[0]} />);
-    last = m.index + m[0].length;
+  for (const m of text.matchAll(REF_IN_TEXT)) {
+    const [whole, mail, secOpen, secTitle, secClose, page] = m;
+    const at = m.index;
+    const anchor = secTitle ? ctx.anchors.get(secTitle) : undefined;
+    const href = page ? PAGE_BY_NAME[page] : undefined;
+    let node: ReactNode = null;
+    if (mail) node = <MailLink key={at} to={mail} />;
+    else if (anchor) node = <span key={at}>{secOpen}<a href={`#${anchor}`} className="lp-link po-tap-inline" style={REF_STYLE}>{secTitle}</a>{secClose}</span>;
+    else if (href && href !== ctx.self) node = <span key={at}>«<Link href={href} className="lp-link po-tap-inline" style={REF_STYLE}>{page}</Link>»</span>;
+    if (!node) continue;
+    parts.push(text.slice(last, at), node);
+    last = at + whole.length;
   }
   return last === 0 ? text : [...parts, text.slice(last)];
+}
+
+/**
+ * Το άγκιστρο κάθε ενότητας, με τον ίδιο κανόνα που τα γράφει το `LegalLayout`:
+ * το ρητό `id`, αλλιώς ο τίτλος· αν δύο τίτλοι δώσουν το ίδιο, ο δεύτερος παίρνει
+ * αριθμό. Μία συνάρτηση για τα δύο, ώστε η παραπομπή να μη δείχνει αλλού.
+ */
+function sectionAnchors(blocks: readonly { h: string; id?: string }[]): string[] {
+  const seen = new Set<string>();
+  return blocks.map((b, i) => {
+    const base = b.id || anchorOf(b.h) || `s${i + 1}`;
+    let id = base;
+    for (let n = 2; seen.has(id); n++) id = `${base}-${n}`;
+    seen.add(id);
+    return id;
+  });
+}
+
+/**
+ * Η ΑΡΧΗ ΤΗΣ ΓΡΑΜΜΗΣ ΩΣ ΕΤΙΚΕΤΑ. Οι λίστες των νομικών κειμένων γράφονται
+ * «Στοιχεία λογαριασμού: διεύθυνση email…», «Φορητότητα: κατεβάζεις…». Το μάτι
+ * που ψάχνει «πόσο κρατάτε τα αρχεία» διαβάζει μόνο τις ετικέτες· χωρίς βάρος
+ * έπρεπε να διαβάσει κάθε γραμμή ολόκληρη. Ετικέτα είναι ό,τι προηγείται της
+ * πρώτης άνω και κάτω τελείας, μόνο αν είναι σύντομο και δεν κλείνει πρόταση.
+ * Ισχύει μόνο σε λίστα που το δηλώνει (`labelled`): σε άλλες, η πρώτη άνω και
+ * κάτω τελεία είναι μέση πρότασης και η έντονη γραφή θα έκοβε τη φράση στα δύο.
+ */
+const LEAD = /^([^:.;·]{2,72}):\s/u;
+
+function withLead(text: string, ctx: RefContext): ReactNode {
+  const m = LEAD.exec(text);
+  if (!m) return withRefs(text, ctx);
+  return <><strong>{m[1]}</strong>: {withRefs(text.slice(m[0].length), ctx)}</>;
 }
 
 /** Μία ενότητα με ελεύθερο περιεχόμενο, όπως τη θέλει το «Ποιοι είμαστε». */
@@ -116,12 +188,14 @@ export interface LegalBlock {
  * Ήταν «1. Ορισμοί» μέσα στο ίδιο κείμενο, οπότε ένας τίτλος δύο γραμμών
  * τύλιγε κάτω από τον αριθμό και η δεύτερη σειρά ξεκινούσε από άλλο σημείο.
  */
-export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self }: {
+export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, closing, self }: {
   eyebrow: string;
   title: string;
   intro: ReactNode;
   /** Δεξιά της εισαγωγής, στην ίδια γραμμή βάσης: ημερομηνία ή πεδίο ισχύος. */
   meta?: string;
+  /** Η έκδοση του κειμένου, κάτω από την εισαγωγή: αυτή γράφεται στην απόδειξη συγκατάθεσης. */
+  version?: string;
   blocks: LegalBlock[];
   /** Τελευταία σημείωση, κάτω από την τελευταία ενότητα. */
   closing?: ReactNode;
@@ -141,14 +215,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
   self: string;
 }) {
   // Ενα άγκιστρο ανά ενότητα· αν δύο τίτλοι δώσουν το ίδιο, ο δεύτερος παίρνει αριθμό.
-  const seen = new Set<string>();
-  const ids = blocks.map((b, i) => {
-    const base = b.id || anchorOf(b.h) || `s${i + 1}`;
-    let id = base;
-    for (let n = 2; seen.has(id); n++) id = `${base}-${n}`;
-    seen.add(id);
-    return id;
-  });
+  const ids = sectionAnchors(blocks);
   // ΤΑ ΑΛΜΑΤΑ ΣΕ ΕΝΟΤΗΤΑ ΞΑΝΑΜΠΑΙΝΟΥΝ, ΜΕΣΑ ΣΤΗ ΣΤΗΛΗ ΚΑΙ ΟΧΙ ΣΤΟ ΠΛΑΙ. Χωρίς
   // αυτά, είκοσι οκτώ ενότητες σε δεκαπέντε χιλιάδες εικονοστοιχεία κινητού
   // διαβάζονταν μόνο με κύλιση. Ο ίδιος κατάλογος δύο φορές: ανοιχτός στον
@@ -159,7 +226,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
       {blocks.map((b, i) => (
         <li key={ids[i]}>
           <a href={`#${ids[i]}`} className="lp-link po-tap-inline">
-            <span className="lg-toc-n">{i + 1}</span>{b.h}
+            <span className="lg-toc-n">{i + 1}<span className="sr-only">. </span></span>{b.h}
           </a>
         </li>
       ))}
@@ -186,6 +253,10 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
         <div className="lg-lede">
           <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{hy(intro)}</p>
         </div>
+        {/* Η ΕΚΔΟΣΗ ΚΑΙ ΣΤΗΝ ΚΟΡΥΦΗ. Ζούσε μόνο κάτω από την τελευταία ενότητα,
+            δεκαεπτά χιλιάδες εικονοστοιχεία κάτω στο κινητό: όποιος ήθελε να
+            δει αν διαβάζει το κείμενο που αποδέχτηκε δεν την έβρισκε ποτέ. */}
+        {version && <p className="lg-version">{version}</p>}
         </div>
 
         {/* ΜΙΑ ΚΕΝΤΡΑΡΙΣΜΕΝΗ ΣΤΗΛΗ. Το πλαϊνό ευρετήριο αφαιρέθηκε: σε στήλη
@@ -202,16 +273,22 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
               και η προηγούμενη. */}
           <div className="lg-body">
             <nav aria-label="Περιεχόμενα" className="lg-toc">
-              <details className="lg-toc-m"><summary>Περιεχόμενα</summary>{toc}</details>
+              <details className="lg-toc-m"><summary>Περιεχόμενα ({blocks.length})</summary>{toc}</details>
               <div className="lg-toc-d"><div className="lg-toc-h">Περιεχόμενα</div>{toc}</div>
             </nav>
             {blocks.map((b, i) => (
               <section key={i} id={ids[i]} style={{ scrollMarginTop: 24, marginTop: i === 0 ? 0 : 'clamp(30px,4vw,46px)' }}>
-                {b.part && <div className={i === 0 ? 'lg-part lg-part-first' : 'lg-part'}>{b.part}</div>}
-                <h2 style={{ display: 'flex', gap: 12, alignItems: 'baseline', fontSize: 'clamp(18px,2.2vw,21px)', fontWeight: 680, letterSpacing: '-0.02em', lineHeight: 1.3, margin: '0 0 12px' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 18 }}>{i + 1}</span>
+                {/* ΤΑ ΜΕΡΗ ΕΙΝΑΙ ΕΠΙΚΕΦΑΛΙΔΕΣ, ΟΧΙ ΔΙΑΚΟΣΜΗΣΗ. Ηταν `<div>`: ο
+                    αναγνώστης οθόνης που πλοηγείται με επικεφαλίδες πηδούσε τις
+                    πέντε με έξι ομάδες πάνω στις οποίες στηρίζεται η δομή. Μέρος
+                    h2, ενότητα h3· η όψη μένει ίδια. Και ο αριθμός παίρνει τελεία
+                    για τον αναγνώστη, αλλιώς το όνομα της ενότητας ακουγόταν
+                    «1Υπεύθυνος επεξεργασίας». */}
+                {b.part && <h2 className={i === 0 ? 'lg-part lg-part-first' : 'lg-part'}>{b.part}</h2>}
+                <h3 style={{ display: 'flex', gap: 12, alignItems: 'baseline', fontSize: 'clamp(18px,2.2vw,21px)', fontWeight: 680, letterSpacing: '-0.02em', lineHeight: 1.3, margin: '0 0 12px' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 18 }}>{i + 1}<span className="sr-only">. </span></span>
                   <span style={{ textWrap: 'balance' }}>{b.h}</span>
-                </h2>
+                </h3>
                 {hy(b.body)}
               </section>
             ))}
@@ -244,14 +321,25 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
 /** Κάθε ενότητα καθαρού κειμένου: παράγραφοι, προαιρετική λίστα, σημείωση. */
 export interface LegalSection {
   h: string; p?: string[]; list?: string[]; note?: string; id?: string; part?: string;
+  /** Κάθε στοιχείο της λίστας είναι «Ετικέτα: κείμενο» και η ετικέτα γράφεται έντονα. */
+  labelled?: boolean;
+  /** Παράγραφοι ΜΕΤΑ τη λίστα: η λίστα δεν είναι πάντα το τέλος της ενότητας. */
+  after?: string[];
+  /** Έντυπο προς αντιγραφή (π.χ. το υπόδειγμα υπαναχώρησης), μετά τα υπόλοιπα. */
+  form?: { label: string; lines: readonly string[] };
 }
 
 /** Απόρρητο και Όροι: μόνο κείμενο, άρα δηλώνονται ως δεδομένα, όχι ως JSX. */
-export function LegalShell({ title, updated, intro, sections, disclaimer, self }: {
+export function LegalShell({ title, updated, version, intro, sections, disclaimer, self }: {
   title: string; updated: string; intro: string; sections: LegalSection[]; disclaimer?: string;
+  /** Η έκδοση που γράφεται στην απόδειξη συγκατάθεσης (`POLICY_VERSION`). */
+  version?: string;
   /** Η διαδρομή της σελίδας· βλ. `LegalLayout.self`. */
   self: string;
 }) {
+  const ids = sectionAnchors(sections);
+  const ctx: RefContext = { self, anchors: new Map(sections.map((s, i) => [s.h, ids[i]])) };
+  const refs = (t: string) => withRefs(t, ctx);
   return (
     <LegalLayout
       self={self}
@@ -259,19 +347,22 @@ export function LegalShell({ title, updated, intro, sections, disclaimer, self }
       title={title}
       intro={intro}
       meta={`Τελευταία ενημέρωση: ${updated}`}
+      version={version ? `Έκδοση ${version} · Τελευταία ενημέρωση: ${updated}` : undefined}
       blocks={sections.map(s => ({
         id: s.id,
         h: s.h,
         part: s.part,
         body: (
           <>
-            {(s.p || []).map((para, j) => <p key={j} className="lg-p">{withMail(para)}</p>)}
-            {s.list && <ul className="lg-ul">{s.list.map((li, j) => <li key={j}>{withMail(li)}</li>)}</ul>}
-            {s.note && <p className="lg-note">{withMail(s.note)}</p>}
+            {(s.p || []).map((para, j) => <p key={j} className="lg-p">{refs(para)}</p>)}
+            {s.list && <ul className="lg-ul">{s.list.map((li, j) => <li key={j}>{s.labelled ? withLead(li, ctx) : refs(li)}</li>)}</ul>}
+            {(s.after || []).map((para, j) => <p key={`a${j}`} className="lg-p">{refs(para)}</p>)}
+            {s.note && <p className="lg-note">{refs(s.note)}</p>}
+            {s.form && <LegalForm label={s.form.label} lines={s.form.lines} />}
           </>
         ),
       }))}
-      closing={disclaimer ? <p className="lg-note lg-closing">{withMail(disclaimer)}</p> : undefined}
+      closing={disclaimer ? <p className="lg-note lg-closing">{refs(disclaimer)}</p> : undefined}
     />
   );
 }

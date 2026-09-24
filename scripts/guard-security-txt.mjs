@@ -62,6 +62,25 @@ else if (at.getTime() - Date.now() < 45 * DAY)
 for (const m of txt.matchAll(/[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-z]{2,})/g))
   if (m[1] !== domain) problems.push(`διεύθυνση σε ξένο τομέα: «${m[0]}»`)
 
+// ── ΤΟ ΑΡΧΕΙΟ ΠΡΕΠΕΙ ΚΑΙ ΝΑ ΦΤΑΝΕΙ ΣΤΟΝ ΑΝΩΝΥΜΟ ΕΠΙΣΚΕΠΤΗ ───────────────────
+// ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΣΥΝΕΒΗ. Το αρχείο ήταν σωστό, ενημερωμένο και σε ισχύ·
+// κανείς δεν το διάβασε ποτέ: ο διαμεσολαβητής (proxy.ts) έστελνε κάθε ανώνυμο
+// αίτημα για το /.well-known/security.txt με 307 στη φόρμα εισόδου. Ο έλεγχος
+// εδώ δεν σηκώνει διακομιστή· διαβάζει τον `matcher` όπως τον διαβάζει το Next
+// και ρωτά αν η διαδρομή περνά από τον διαμεσολαβητή. Αν περνά, θα ζητηθεί
+// σύνδεση, γιατί δεν είναι στον κατάλογο PUBLIC.
+const PROXY = 'proxy.ts'
+const proxySrc = readFileSync(PROXY, 'utf8')
+const matcher = /matcher:\s*\[[\s\S]*?"(\/\(\(\?![^"]+)"/.exec(proxySrc)?.[1]
+if (!matcher) problems.push(`δεν βρέθηκε ο \`matcher\` στο ${PROXY}`)
+else {
+  const re = new RegExp(`^${matcher.replace(/\\\\/g, '\\')}$`)
+  if (!re.test('/dashboard'))
+    problems.push(`ο \`matcher\` του ${PROXY} δεν διαβάστηκε σωστά (δεν πιάνει ούτε το /dashboard)`)
+  else if (re.test('/.well-known/security.txt'))
+    problems.push(`το /.well-known/security.txt περνά από τον διαμεσολαβητή του ${PROXY} και ζητά σύνδεση· πρόσθεσε το «\\\\.well-known/» στην εξαίρεση του \`matcher\``)
+}
+
 if (problems.length) {
   console.error(`✗ το ${FILE} δεν συμφωνεί με την ταυτότητα:\n`)
   for (const p of problems) console.error('  ' + p)

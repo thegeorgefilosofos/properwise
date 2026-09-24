@@ -23,6 +23,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { hy } from '../components/Hyphen';
 import { LegalLayout, LegalShell, anchorOf } from './legal-shell';
 import { SHY } from '@/lib/core/hyphenate';
+import PrivacyPage from './privacy/page';
+import TermsPage from './terms/page';
 
 let passed = 0, failed = 0;
 const fails: string[] = [];
@@ -123,6 +125,69 @@ ok('χωρίς εισαγωγικά και παρενθέσεις', anchorOf('Π
   ok('η διεύθυνση γίνεται σύνδεσμος νέου μηνύματος', out.includes('href="mailto:privacy@properwise.gr"'));
   ok('χωρίς την τελεία της πρότασης', !out.includes('mailto:privacy@properwise.gr.'));
   ok('και το κείμενο γύρω της μένει', out.includes('Γράψε μας στο ') && out.includes('. Απαντάμε.'));
+}
+
+// ═══ ΚΑΘΕ ΠΑΡΑΠΟΜΠΗ ΠΑΤΙΕΤΑΙ, ΚΑΙ ΚΑΜΙΑ ΔΕΝ ΔΕΙΧΝΕΙ ΣΤΟ ΚΕΝΟ ══════════════════
+{
+  const out = html(createElement(LegalShell, {
+    self: '/privacy', title: 'Τ', updated: 'Σ', intro: 'Ι',
+    sections: [
+      { h: 'Δεδομένα τρίτων που καταχωρείς', p: ['κείμενο'] },
+      { h: 'Άλλη', p: ['Βλ. ενότητα «Δεδομένα τρίτων που καταχωρείς». Και ενότητα «Ανύπαρκτη».', 'Στη σελίδα «Ποιοι είμαστε» και στην «Πολιτική απορρήτου».'] },
+    ],
+  })).split(SHY).join('');
+  ok('η ενότητα γίνεται σύνδεσμος στο άγκιστρό της', out.includes('ενότητα «<a href="#dedomena-triton-pou-katachoreis"'));
+  ok('ενότητα που δεν υπάρχει μένει κείμενο', out.includes('ενότητα «Ανύπαρκτη»'));
+  ok('η άλλη σελίδα γίνεται σύνδεσμος', /«<a [^>]*href="\/trust"/.test(out));
+  ok('η ίδια σελίδα όχι', !/«<a [^>]*href="\/privacy"/.test(out));
+}
+
+// ═══ Η ΕΤΙΚΕΤΑ ΤΗΣ ΓΡΑΜΜΗΣ, ΜΟΝΟ ΟΠΟΥ ΔΗΛΩΘΗΚΕ ══════════════════════════════
+{
+  const list = (labelled: boolean) => html(createElement(LegalShell, {
+    self: '/privacy', title: 'Τ', updated: 'Σ', intro: 'Ι',
+    sections: [{ h: 'Λίστα', labelled, list: ['Πρόσβαση: μαθαίνεις τι τηρούμε.', 'Μια μεγάλη πρόταση που συνεχίζει πολύ ώσπου να βρει άνω τελεία και να συνεχίσει ακόμη λίγο: εδώ.'] }],
+  })).split(SHY).join('');
+  ok('η ετικέτα γράφεται έντονα', list(true).includes('<strong>Πρόσβαση</strong>: μαθαίνεις'));
+  ok('η μακριά φράση δεν κόβεται στα δύο', !list(true).includes('<strong>Μια μεγάλη'));
+  ok('χωρίς δήλωση, καμία έντονη ετικέτα', !list(false).includes('<strong>'));
+}
+
+// ═══ ΤΟ ΕΝΤΥΠΟ ΑΝΤΙΓΡΑΦΕΤΑΙ ΚΑΘΑΡΟ ════════════════════════════════════════════
+{
+  const out = html(createElement(LegalShell, {
+    self: '/terms', title: 'Τ', updated: 'Σ', intro: 'Ι',
+    sections: [{ h: 'Υπαναχώρηση', p: ['κείμενο'], form: { label: 'Έντυπο', lines: ['Προς: PROPERWISE', 'Με το παρόν σας γνωστοποιώ ότι υπαναχωρώ'] } }],
+  }));
+  const pre = out.slice(out.indexOf('<pre'), out.indexOf('</pre>'));
+  ok('το έντυπο είναι μπλοκ με γραμμές', pre.includes('Προς: PROPERWISE\nΜε το παρόν'));
+  ok('χωρίς μαλακά ενωτικά μέσα του', !pre.includes(SHY));
+}
+
+// ═══ ΜΕΡΗ ΚΑΙ ΕΝΟΤΗΤΕΣ ΣΤΗΝ ΙΕΡΑΡΧΙΑ ΤΩΝ ΕΠΙΚΕΦΑΛΙΔΩΝ ═══════════════════════════
+{
+  const out = html(createElement(LegalLayout, {
+    self: '/terms', eyebrow: 'Νομικά', title: 'Τ', intro: 'Ι', version: 'Έκδοση 2026-09',
+    blocks: [{ part: 'Α. Μέρος', h: 'Ενότητα', body: createElement('p', null, 'κείμενο') }],
+  })).split(SHY).join('');
+  ok('το μέρος είναι h2', /<h2 class="lg-part[^"]*">Α. Μέρος<\/h2>/.test(out));
+  ok('η ενότητα είναι h3', out.includes('<h3'));
+  ok('ο αριθμός έχει τελεία για τον αναγνώστη', out.includes('1<span class="sr-only">. </span>'));
+  ok('η έκδοση φαίνεται στην κορυφή', out.indexOf('Έκδοση 2026-09') > 0 && out.indexOf('Έκδοση 2026-09') < out.indexOf('lg-grid'));
+}
+
+// ═══ ΟΙ ΔΥΟ ΣΕΛΙΔΕΣ, ΟΠΩΣ ΤΙΣ ΒΛΕΠΕΙ Ο ΕΠΙΣΚΕΠΤΗΣ ════════════════════════════
+// Κάθε «ενότητα «Χ»» στην Πολιτική και στους Ορους δείχνει σε τίτλο που υπάρχει.
+// Αλλάζει ένας τίτλος και μένει πίσω η παραπομπή: εδώ κοκκινίζει.
+{
+  const pages = [PrivacyPage, TermsPage];
+  for (const [name, mod] of [['privacy', pages[0]], ['terms', pages[1]]] as const) {
+    const out = html(createElement(mod)).split(SHY).join('');
+    const refs = out.split('ενότητα «').length - 1;
+    const linked = out.split('ενότητα «<a href="#').length - 1;
+    ok(`${name}: κάθε παραπομπή σε ενότητα είναι σύνδεσμος (${linked}/${refs})`, refs > 0 && refs === linked);
+    ok(`${name}: η έκδοση φαίνεται στην κορυφή`, out.includes('class="lg-version"'));
+  }
 }
 
 console.log(`legal-shell: ✓ ${passed} · ✗ ${failed}`);

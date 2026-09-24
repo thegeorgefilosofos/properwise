@@ -273,6 +273,13 @@ export const config = {
     // σερβίρεται στο `/<σελίδα>/opengraph-image` και έπαιρνε 307 προς /login,
     // δηλαδή κάθε προεπισκόπηση συνδέσμου θα έμενε χωρίς εικόνα. Το
     // `(?:.*/)?` πιάνει την εικόνα σε όποιο βάθος κι αν ζει.
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|(?:.*/)?opengraph-image|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    //
+    // ── ΚΑΙ ΤΟ /.well-known/ (RFC 8615) ─────────────────────────────────────
+    // Το security.txt (RFC 9116) ζούσε στο public/ και ΔΕΝ διαβαζόταν ποτέ: κάθε
+    // ανώνυμο αίτημα έπαιρνε 307 προς το /login. Ο ερευνητής που ψάχνει πού να
+    // αναφέρει ευπάθεια έβρισκε φόρμα εισόδου και ο σύνδεσμος «πολιτική
+    // γνωστοποίησης ευπαθειών» της σελίδας εμπιστοσύνης ήταν νεκρός. Ο φύλακας
+    // guard-security-txt ελέγχει πλέον ότι η διαδρομή μένει έξω από εδώ.
+    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|(?:.*/)?opengraph-image|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
