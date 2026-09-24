@@ -1631,10 +1631,13 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans }}>Απόδοση επένδυσης</span>
-            <InfoDot text={`Καθαρό λειτουργικό έσοδο: έσοδα μείον λειτουργικές δαπάνες, χωρίς τη δόση. Ταμειακή ροή: αυτό μείον τη δόση. Απόδοση επί ${invReturns.onPurchase ? 'τιμής αγοράς' : 'αξίας'}: καθαρό λειτουργικό έσοδο / ${invReturns.onPurchase ? 'τιμή αγοράς' : 'αξία'}. Απόδοση ιδίων κεφαλαίων: ταμειακή ροή / ίδια κεφάλαια, όπου ίδια κεφάλαια = τιμή αγοράς μείον αρχικό δάνειο. Ενδεικτικά, σε ετήσια βάση.`} />
+            <InfoDot text={`Καθαρό προ δόσης (καθαρό λειτουργικό έσοδο): έσοδα μείον λειτουργικές δαπάνες, χωρίς τη δόση. Ταμειακή ροή: αυτό μείον τη δόση. Απόδοση επί ${invReturns.onPurchase ? 'τιμής αγοράς' : 'αξίας'}: καθαρό προ δόσης / ${invReturns.onPurchase ? 'τιμή αγοράς' : 'αξία'}. Απόδοση ιδίων κεφαλαίων: ταμειακή ροή / ίδια κεφάλαια, όπου ίδια κεφάλαια = τιμή αγοράς μείον αρχικό δάνειο. Ενδεικτικά, σε ετήσια βάση.`} />
           </div>
           <KPIGrid nested items={[
-            { label: 'Καθαρό λειτουργικό έσοδο / έτος', value: feSigned(invReturns.noi) },
+            // ΜΙΑ ΓΡΑΜΜΗ ΣΤΑ 390, ΟΠΩΣ Η ΓΕΙΤΟΝΙΚΗ. Το «Καθαρό λειτουργικό έσοδο / έτος»
+            // έπιανε δύο και το ποσό του έπεφτε χαμηλότερα από της «Ταμειακής ροής».
+            // Ο όρος μένει ολόκληρος στην επεξήγηση, το «ετήσια» επίσης.
+            { label: 'Καθαρό προ δόσης', value: feSigned(invReturns.noi) },
             { label: 'Ταμειακή ροή', value: feSigned(invReturns.preTaxCashFlow) },
             { label: invReturns.onPurchase ? 'Απόδοση επί τιμής αγοράς' : 'Απόδοση επί αξίας', value: fpSigned(invReturns.capRatePct) },
             invReturns.cashOnCashPct != null
