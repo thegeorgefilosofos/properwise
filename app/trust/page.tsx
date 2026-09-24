@@ -20,7 +20,7 @@
 import type { Metadata } from 'next';
 import { IDENTITY, identityLabels, POLICY_UPDATED, POLICY_VERSION } from '@/lib/legal/identity';
 import { DISCLOSURE } from '@/lib/legal/disclosure';
-import { activeSubprocessors, TRANSFER_SAFEGUARDS, ROLE_LABEL, ANTHROPIC_CONTRACT } from '@/lib/legal/subprocessors';
+import { subprocessors, TRANSFER_SAFEGUARDS, ROLE_LABEL, ANTHROPIC_CONTRACT } from '@/lib/legal/subprocessors';
 import { ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/identity';
 import Link from 'next/link';
 import { billingWords } from '@/lib/legal/billingWords';
@@ -65,13 +65,13 @@ const IDENTITY_FIELDS: { label: string; value: string | null }[] = [
 // διαβάζει και η Πολιτική απορρήτου: δύο νομικά κείμενα που απαριθμούν τους
 // ίδιους παρόχους δεν επιτρέπεται να διαφωνούν και διαφωνούσαν.
 //
-// ΣΤΟΝ ΠΙΝΑΚΑ ΜΟΝΟ ΟΣΟΙ ΕΠΕΞΕΡΓΑΖΟΝΤΑΙ ΔΕΔΟΜΕΝΑ ΣΗΜΕΡΑ. Οι τέσσερις γραμμές
-// «Όχι ενεργός σήμερα» ήταν ο μισός πίνακας, για παρόχους που δεν αγγίζουν
-// τίποτα· η μία ονόμαζε πάροχο πληρωμών ενώ η χρέωση δεν έχει ανοίξει. Οι
-// σχεδιασμένοι λέγονται σε μία γραμμή κάτω από τον πίνακα, με τη δουλειά τους
-// (`short`) και όχι με το όνομά τους· τα ονόματα είναι στην Πολιτική απορρήτου.
-const subprocessorRows = () => activeSubprocessors().map(s => ({
-  name: s.name, entity: s.entity, what: s.purpose, where: s.where, role: ROLE_LABEL[s.role],
+// ΟΙ ΣΧΕΔΙΑΣΜΕΝΟΙ ΜΕΝΟΥΝ ΣΤΟ ΜΗΤΡΩΟ, ΑΛΛΑ ΔΕΝ ΣΚΕΠΑΖΟΥΝ ΤΟΥΣ ΕΝΕΡΓΟΥΣ. Οι
+// τέσσερις γραμμές «Όχι ενεργός σήμερα» ήταν ο μισός πίνακας, για παρόχους που
+// δεν αγγίζουν τίποτα. Στον πίνακα σβήνουν ολόκληροι με σήμα σε λέξεις· στο
+// κινητό μαζεύονται σε πτυσσόμενη ομάδα κάτω από τους ενεργούς.
+const NOT_ACTIVE = 'Όχι ενεργός σήμερα';
+const subprocessorRows = () => subprocessors().map(s => ({
+  name: s.name, entity: s.entity, what: s.purpose, where: s.where, role: ROLE_LABEL[s.role], planned: !s.active,
 }));
 
 /** Η ίδια ονομασία του τόπου, με άθραυστο κενό· βλ. το κελί του πίνακα. */
