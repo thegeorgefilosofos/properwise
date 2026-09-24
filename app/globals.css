@@ -1125,8 +1125,11 @@ body {
    ══════════════════════════════════════════════════════════════════════════ */
 .scan-tiles { display: grid; gap: 12px; grid-template-columns: 1fr; }
 @media (min-width: 560px) { .scan-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* ΤΡΙΑ ΔΕΝ ΜΠΑΙΝΟΥΝ ΣΕ ΔΥΟ ΣΤΗΛΕΣ. Στα 768 ως 834 έβγαιναν 2+1, με το τρίτο
+   μόνο του στη δεύτερη σειρά. Από τα 700 χωρούν στη σειρά· πιο κάτω, στοίβα. */
+@media (min-width: 560px) and (max-width: 699px) { .scan-tiles[data-tiles="3"] { grid-template-columns: 1fr; } }
+@media (min-width: 700px) { .scan-tiles[data-tiles="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 880px) {
-  .scan-tiles[data-tiles="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .scan-tiles[data-tiles="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .record-card-act { opacity: 0; transition: opacity .15s ease; }
@@ -5722,3 +5725,6 @@ tr.po-row-more { display: none; }
   white-space: nowrap;
 }
 .po-src-txt { flex: 1 1 auto; min-width: 220px; }
+/* ΜΕΤΡΟ ΚΑΙ ΣΤΙΣ ΠΗΓΕΣ. Στα 1440 η γραμμή του φόρου ενοικίων έφτανε τους 106
+   χαρακτήρες με διάστιχο 1,55: το μάτι χάνει τη σειρά του στην επιστροφή. */
+.po-tool-sources .po-src-txt { max-width: 72ch; line-height: 1.65; }

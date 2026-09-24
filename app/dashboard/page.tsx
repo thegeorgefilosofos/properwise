@@ -1172,7 +1172,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                 {billAverages.slice(0,5).map(b => (
                   <div key={b.type} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:12}}>
                     <div style={{minWidth:0,display:'flex',alignItems:'baseline',gap:4,fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',letterSpacing:'0.25px'}}>
-                      <span style={{minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.type}</span>
+                      <span style={{minWidth:0}}>{b.type}</span>
                       {/* ΤΟ ΠΛΗΘΟΣ ΛΕΓΕΤΑΙ. Ένας «μέσος όρος» από έναν λογαριασμό δεν
                           είναι μέσος όρος και ο χρήστης πρέπει να ξέρει σε πόσα
                           στηρίζεται το νούμερο πριν χτίσει πάνω του προϋπολογισμό.

@@ -65,26 +65,21 @@ export function ToolNumField({ id, label, value, onChange, unit, unitPad = 34, m
   id: string; label: string; value: string; onChange: (v: string) => void;
   unit?: string; unitPad?: number; mode?: 'decimal' | 'numeric';
 }) {
-  const [focused, setFocused] = useState(false);
+  // ΟΣΟ ΓΡΑΦΕΙΣ, ΤΟ ΠΕΔΙΟ ΚΡΑΤΑ ΟΤΙ ΒΛΕΠΕΙΣ. Ηταν «1.400» εκτός εστίασης και
+  // «1400» μέσα, δηλαδή με την εστίαση άλλαζε το κείμενο και ο περιηγητής έριχνε
+  // την επιλογή. Οποιος έφτανε με Tab (που επιλέγει όλο το πεδίο) κι έγραφε
+  // «3200» έπαιρνε «14003200»: ΕΝΦΙΑ χιλιάδων ευρώ. Τώρα η εστίαση δεν αλλάζει
+  // ούτε χαρακτήρα και ο γονέας διαβάζει το κείμενο με το parseAmount, που
+  // καταλαβαίνει τα ελληνικά χιλιάδες («1.400» = 1400).
+  const [draft, setDraft] = useState<string | null>(null);
   return (
     <div>
       <label htmlFor={id} style={TOOL_LABEL}>{label}</label>
       <div style={{ position: 'relative' }}>
-        <input id={id} inputMode={mode} value={focused ? value : grouped(value)}
-          onFocus={e => {
-            // Η ΕΠΙΛΟΓΗ ΕΠΙΖΕΙ ΤΗΣ ΑΛΛΑΓΗΣ ΜΟΡΦΗΣ. Με την εστίαση το «1.400» γίνεται
-            // «1400» για επεξεργασία και ο περιηγητής ρίχνει την επιλογή. Όποιος
-            // έφτανε με Tab (που επιλέγει όλο το πεδίο) και έγραφε «0» έπαιρνε
-            // «14000», δηλαδή ΕΝΦΙΑ 6.960,92€ αντί για μηδέν.
-            // Η αλλαγή γίνεται εδώ, συγχρονισμένα: όταν φτάσει η απόδοση της React,
-            // το πεδίο έχει ήδη την ίδια τιμή και η επιλογή δεν αγγίζεται.
-            const el = e.currentTarget;
-            const all = el.value !== '' && el.selectionStart === 0 && el.selectionEnd === el.value.length;
-            if (el.value !== value) { el.value = value; if (all) el.select(); }
-            setFocused(true);
-          }}
-          onBlur={() => setFocused(false)}
-          onChange={e => onChange(e.target.value)}
+        <input id={id} inputMode={mode} value={draft ?? grouped(value)}
+          onFocus={() => setDraft(grouped(value))}
+          onChange={e => { setDraft(e.target.value); onChange(e.target.value); }}
+          onBlur={() => setDraft(null)}
           style={{ ...TOOL_FIELD, paddingRight: unit ? unitPad : 14 }}
           aria-describedby={unit ? `${id}-unit` : undefined}/>
         {unit && <span id={`${id}-unit`} aria-hidden style={UNIT}>{unit}</span>}
