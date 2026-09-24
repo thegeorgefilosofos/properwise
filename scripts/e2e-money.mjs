@@ -121,7 +121,8 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // άθροισμα ΠΡΙΝ πατηθεί.
 {
   const s = await open('rent-three');
-  await s.page.getByRole('button', { name: 'Όλες' }).click();
+  // Το κουμπί λέει πλέον τι κάνει: «Επιλογή όλων (3)», όχι σκέτο «Όλες».
+  await s.page.getByRole('button', { name: /^Επιλογή όλων/ }).click();
   const label = plain(await s.primary().innerText()).replace(/[\n\r\t]+/g, ' ').trim();
   eq('3. το κουμπί λέει πλήθος και άθροισμα', label, 'Καταχώρηση 3 δόσεων · 1.350,00€');
   await s.primary().click();
@@ -140,7 +141,8 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // «καταχωρήθηκε» θα ήταν ψέμα και ένα «απέτυχε» επίσης.
 {
   const s = await open('rent-three', { fail: 'rent_payments:2' });
-  await s.page.getByRole('button', { name: 'Όλες' }).click();
+  // Το κουμπί λέει πλέον τι κάνει: «Επιλογή όλων (3)», όχι σκέτο «Όλες».
+  await s.page.getByRole('button', { name: /^Επιλογή όλων/ }).click();
   await s.primary().click();
   await settle(s.page);
   const t = await s.toasts();
@@ -175,7 +177,8 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // Υπολογίζονται από τη λήξη ΤΗΣ ΔΟΣΗΣ και την ημέρα είσπραξης, όχι από σήμερα.
 {
   const s = await open('rent-three');
-  await s.page.getByRole('button', { name: 'Όλες' }).click();
+  // Το κουμπί λέει πλέον τι κάνει: «Επιλογή όλων (3)», όχι σκέτο «Όλες».
+  await s.page.getByRole('button', { name: /^Επιλογή όλων/ }).click();
   await s.primary().click();
   await settle(s.page);
   const w = await s.writes('rent_payments');
