@@ -395,6 +395,12 @@ export default function SignupPage() {
   // Το κείμενο αποδοχής και οι δύο σύνδεσμοί του, ίδια και στα δύο πλαίσια.
   // Οι σύνδεσμοι δεν σπάνε ΜΕΣΑ τους: στα 390 έμενε «Πολιτική» στη μία γραμμή
   // και «απορρήτου.» στην άλλη, όπως είχε ήδη διορθωθεί στη Σύνδεση.
+  // Οι σύνδεσμοι συναίνεσης έχουν po-tap-inline: στόχο 44 σε ψευδοστοιχείο,
+  // 13px κάτω από τη γραμμή των 18. Χωρίς χώρο κάτω από τη σειρά, ο στόχος
+  // σκέπαζε τα πρώτα 13px του επόμενου στοιχείου και έκλεβε πατήματα από το
+  // κουμπί (ο σαρωτής διάταξης: «ξεχειλίζει πάνω στον επόμενο 13px»). Το κενό
+  // είναι πραγματικό, όχι αρνητικό margin, ώστε ο στόχος να μην πατά σε τίποτα.
+  const CONSENT_TAP_ROOM = 14
   const consentText: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer', textWrap: 'balance' }
   const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }
   const errorBox: React.CSSProperties = { background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }
@@ -452,7 +458,7 @@ export default function SignupPage() {
                   16 × 16, ενώ το αδελφό του παρακάτω έχει ετικέτα 44 × 44 γύρω
                   του με αρνητικό περιθώριο. Δύο δρόμοι για την ΙΔΙΑ αποδοχή
                   όρων, ο ένας με στόχο αφής μισό του κανόνα. */}
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', paddingBottom: CONSENT_TAP_ROOM }}>
                 <label htmlFor="su-consent-oauth" style={{ ...TAP, margin: '-12px -14px -14px -14px' }}>
                   <input id="su-consent-oauth" type="checkbox" checked={consent}
                     onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
@@ -724,7 +730,7 @@ export default function SignupPage() {
                     Η πόρτα της Google την εξακολουθεί να ΑΠΑΙΤΕΙ — το
                     `signInWithGoogle` δεν προχωρά χωρίς αυτήν και φέρνει το
                     βλέμμα εδώ κάτω. */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingBottom: CONSENT_TAP_ROOM }}>
                   {/* ΤΟ ΤΕΤΡΑΓΩΝΟ ΗΤΑΝ 16 × 16, ΚΑΙ ΕΙΝΑΙ ΥΠΟΧΡΕΩΤΙΚΟ ΓΙΑ ΝΑ ΓΙΝΕΙ
                       ΕΓΓΡΑΦΗ: χωρίς αυτό το κουμπί μένει κλειστό. Δεκαέξι
                       εικονοστοιχεία είναι ο μισός στόχος από όσο ζητά ένα δάχτυλο
