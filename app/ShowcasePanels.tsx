@@ -13,20 +13,23 @@ import { ASSISTANT_NAME, ASSISTANT_INITIAL } from '@/lib/assistant/identity';
 
 // Κινήσεις των πάνελ: γραμμή σάρωσης, εμφάνιση chips/μηνυμάτων, κυματισμός
 // φωνής, ανάπτυξη ράβδων και οι ζωντανές αντιδράσεις στο πέρασμα του κέρσορα.
+// Τα σχόλια του φύλλου είναι σχόλια JavaScript («${… ''}»): ο μεταγλωττιστής
+// τα πετά, οπότε δεν φτάνουν στο πακέτο του πελάτη ούτε στο HTML. Το PanelFX
+// αποδίδεται δύο φορές στην αρχική, άρα κάθε σχόλιο CSS εδώ πληρωνόταν διπλά.
 export const PanelFX = () => (
   <style>{`
-    /* ═══ Η ΓΡΑΜΜΗ ΣΑΡΩΣΗΣ ΚΙΝΕΙΤΑΙ ΜΕ transform, ΟΧΙ ΜΕ top ═══════════════════
+    ${/* ═══ Η ΓΡΑΜΜΗ ΣΑΡΩΣΗΣ ΚΙΝΕΙΤΑΙ ΜΕ transform, ΟΧΙ ΜΕ top ═══════════════════
        ΤΟ «top» ΕΙΝΑΙ ΙΔΙΟΤΗΤΑ ΔΙΑΤΑΞΗΣ. Κινούμενο κάθε 2,6 δευτερόλεπτα, επ'
        άπειρον, ανάγκαζε τον περιηγητή σε αδιάκοπη ροή layout shifts: μετρήθηκαν
        πάνω από 45 διαδοχικές μετατοπίσεις από το 1,6ο ώς το 7,8ο δευτερόλεπτο
        και το CLS δεν σταματούσε ποτέ να μεγαλώνει. Το ίδιο οπτικό αποτέλεσμα με
        «transform: translateY()» μένει στον compositor: μηδέν διάταξη, μηδέν
-       βάψιμο, μηδέν μετατόπιση. */
-    /* Η ΔΙΑΔΡΟΜΗ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟΝ ΓΟΝΕΑ. Το «translateY» σε ποσοστό μετριέται
+       βάψιμο, μηδέν μετατόπιση. */''}
+    ${/* Η ΔΙΑΔΡΟΜΗ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟΝ ΓΟΝΕΑ. Το «translateY» σε ποσοστό μετριέται
        πάνω στο ΙΔΙΟ το στοιχείο, που εδώ έχει ύψος 2 pixel: θα έκανε ένα βήμα
        δύο εικονοστοιχείων. Το container query δίνει το ύψος του πάνελ, οπότε η
-       γραμμή διανύει το 86% του, όσο και πριν με το «top». */
-    /* ═══ Η ΣΑΡΩΣΗ ΚΙΝΕΙΤΑΙ ΜΕ ΤΟ ΥΨΟΣ ΤΗΣ ΚΑΡΤΑΣ, ΧΩΡΙΣ ΝΑ ΤΟ ΑΚΥΡΩΝΕΙ ══════
+       γραμμή διανύει το 86% του, όσο και πριν με το «top». */''}
+    ${/* ═══ Η ΣΑΡΩΣΗ ΚΙΝΕΙΤΑΙ ΜΕ ΤΟ ΥΨΟΣ ΤΗΣ ΚΑΡΤΑΣ, ΧΩΡΙΣ ΝΑ ΤΟ ΑΚΥΡΩΝΕΙ ══════
        ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΔΙΟΡΘΩΝΕΤΑΙ: για να μετρηθεί η κίνηση σε «cqh» έπρεπε η
        κάρτα να γίνει δοχείο μεγέθους. Το «container-type: size» όμως περιορίζει
        ΚΑΙ ΤΟΥΣ ΔΥΟ άξονες: το ύψος παύει να βγαίνει από το περιεχόμενο. Η κάρτα
@@ -43,12 +46,12 @@ export const PanelFX = () => (
        χωρίς καμία δήλωση δοχείου και χωρίς να πειραχθεί η ροή.
 
        Παραμένει μόνο μετασχηματισμός, δηλαδή δουλειά της κάρτας γραφικών και
-       όχι νέα διάταξη σε κάθε καρέ. */
+       όχι νέα διάταξη σε κάθε καρέ. */''}
     @keyframes lpScan { 0% { transform: translateY(0); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translateY(100%); opacity: 0; } }
     .lp-scan-sweep { position: absolute; inset: 0; pointer-events: none; will-change: transform; animation: lpScan 2.6s cubic-bezier(.4, 0, .2, 1) infinite; }
-    /* Η κίνηση σταματά στην αφή: μια γραμμή που σαρώνει επ' άπειρον κοστίζει
-       επανασύνθεση σε κάθε καρέ και σε τηλέφωνο δεν την κοιτάζει κανείς. */
-    /* ═══ Η ΓΡΑΜΜΗ ΣΑΡΩΣΗΣ ΚΙΝΕΙΤΑΙ ΚΑΙ ΣΤΗΝ ΑΦΗ ══════════════════════════
+    ${/* Η κίνηση σταματά στην αφή: μια γραμμή που σαρώνει επ' άπειρον κοστίζει
+       επανασύνθεση σε κάθε καρέ και σε τηλέφωνο δεν την κοιτάζει κανείς. */''}
+    ${/* ═══ Η ΓΡΑΜΜΗ ΣΑΡΩΣΗΣ ΚΙΝΕΙΤΑΙ ΚΑΙ ΣΤΗΝ ΑΦΗ ══════════════════════════
        Εδώ έγραφε «.lp-scan-sweep { animation: none; opacity: .5 }» μαζί με τις
        ράβδους, με σκεπτικό το κόστος ανά καρέ. Το αποτέλεσμα όμως δεν ήταν
        ακινησία, ήταν ΣΦΑΛΜΑ: η γραμμή πάγωνε στην κορυφή της κάρτας, μισοσβηστή
@@ -61,7 +64,7 @@ export const PanelFX = () => (
        Οι οκτώ ράβδοι είναι το ακριβό κομμάτι και μένουν παγωμένες.
 
        Η προτίμηση μειωμένης κίνησης παρακάτω τη σταματά ούτως ή άλλως: όποιος
-       δεν θέλει κίνηση δεν την παίρνει, από ρύθμιση και όχι από συσκευή. */
+       δεν θέλει κίνηση δεν την παίρνει, από ρύθμιση και όχι από συσκευή. */''}
     @media (hover: none) {
       .lp-bar { animation: none; transform: scaleY(.8); }
     }
@@ -75,7 +78,7 @@ export const PanelFX = () => (
     .lp-live:hover { filter: brightness(1.13); transform: translateY(-1.5px); box-shadow: 0 4px 14px -6px rgba(16,24,40,.22); }
     .lp-vbar { transition: filter .18s ease; }
     .lp-vbar:hover { filter: brightness(1.4) saturate(1.15); }
-    /* ═══ ΔΥΟ ΚΑΝΟΝΕΣ ΠΟΥ ΕΚΡΥΒΑΝ ΤΗΝ ΠΛΑΪΝΗ ΣΤΗΛΗ, ΚΑΙ ΚΑΝΕΝΑΣ ΔΕΝ ΙΣΧΥΕ ══
+    ${/* ═══ ΔΥΟ ΚΑΝΟΝΕΣ ΠΟΥ ΕΚΡΥΒΑΝ ΤΗΝ ΠΛΑΪΝΗ ΣΤΗΛΗ, ΚΑΙ ΚΑΝΕΝΑΣ ΔΕΝ ΙΣΧΥΕ ══
        Η στήλη έγραφε «display: flex» ΠΑΝΩ ΣΤΟ ΣΤΟΙΧΕΙΟ. Ενα ενσωματωμένο στυλ
        κερδίζει κάθε κανόνα φύλλου, οπότε και το «max-width: 760px» εδώ και το
        «@container (max-width: 470px)» του ScrollStory ήταν γραμμένα, διαβάζονταν
@@ -89,8 +92,8 @@ export const PanelFX = () => (
 
        Το «display» φεύγει από το στοιχείο και μπαίνει στην κλάση, οπότε οι δύο
        κανόνες αποκρύψεως αποκτούν ισχύ. Στο κινητό η μακέτα δείχνει το
-       περιεχόμενο σε ολόκληρο το πλάτος· η ψεύτικη πλοήγηση ήταν σκηνικό. */
-    /* ═══ ΤΡΕΙΣ ΔΕΙΚΤΕΣ ΔΙΠΛΑ ΔΙΠΛΑ ΔΕΝ ΧΩΡΑΝ ΣΕ ΤΗΛΕΦΩΝΟ ══════════════════
+       περιεχόμενο σε ολόκληρο το πλάτος· η ψεύτικη πλοήγηση ήταν σκηνικό. */''}
+    ${/* ═══ ΤΡΕΙΣ ΔΕΙΚΤΕΣ ΔΙΠΛΑ ΔΙΠΛΑ ΔΕΝ ΧΩΡΑΝ ΣΕ ΤΗΛΕΦΩΝΟ ══════════════════
        ΜΕΤΡΗΜΕΝΟ ΣΤΑ 390: το πλακίδιο πιάνει 97 εικονοστοιχεία και του μένουν 67
        ωφέλιμα. Οι ετικέτες θέλουν 61, 84 και 75 στα ένδεκα κεφαλαία. Δηλαδή οι
        δύο από τις τρεις δεν χωρούν ΜΕ ΚΑΝΕΝΑ γέμισμα: ακόμη και μηδενικό αφήνει
@@ -103,12 +106,12 @@ export const PanelFX = () => (
        αριθμοί στοιχίζονται σε μία κατακόρυφη ευθεία στη δεξιά άκρη.
 
        Το ερώτημα είναι το ΠΛΑΙΣΙΟ και όχι η οθόνη: στα 768 το ίδιο πλαίσιο έχει
-       534 εικονοστοιχεία και τα τρία πλακίδια στέκουν άνετα. */
+       534 εικονοστοιχεία και τα τρία πλακίδια στέκουν άνετα. */''}
     @container (max-width: 470px) {
-      /* Ο κανόνας των δεικτών έφυγε από εδώ: κρίνει τη σειρά τους, όχι το
-         πλαίσιο. Εδώ μένει μόνο ό,τι αφορά ΟΛΟ το πλάτος του πλαισίου. */
+      ${/* Ο κανόνας των δεικτών έφυγε από εδώ: κρίνει τη σειρά τους, όχι το
+         πλαίσιο. Εδώ μένει μόνο ό,τι αφορά ΟΛΟ το πλάτος του πλαισίου. */''}
     }
-    /* ═══ ΤΟ ΕΡΩΤΗΜΑ ΕΙΝΑΙ Η ΣΕΙΡΑ ΤΩΝ ΔΕΙΚΤΩΝ, ΚΑΙ ΟΧΙ ΤΟ ΠΛΑΙΣΙΟ ══════════
+    ${/* ═══ ΤΟ ΕΡΩΤΗΜΑ ΕΙΝΑΙ Η ΣΕΙΡΑ ΤΩΝ ΔΕΙΚΤΩΝ, ΚΑΙ ΟΧΙ ΤΟ ΠΛΑΙΣΙΟ ══════════
        ΤΟ ΣΦΑΛΜΑ, ΜΕΤΡΗΜΕΝΟ ΣΕ ΠΡΑΓΜΑΤΙΚΟ CHROMIUM. Ο παλιός κανόνας ρωτούσε
        «είναι το ΠΛΑΙΣΙΟ κάτω από 470;». Σε κάθε laptop το πλαίσιο μένει ~505,
        δηλαδή περνούσε τον έλεγχο, αλλά η σειρά των δεικτών από μέσα του είχε
@@ -123,11 +126,11 @@ export const PanelFX = () => (
        ΚΑΙ ΤΟ ΣΠΑΣΙΜΟ ΤΗΣ ΛΕΞΗΣ ΔΕΝ ΕΙΝΑΙ ΛΥΣΗ. Η πρώτη μου διόρθωση έβαλε
        «overflow-wrap: anywhere» ώστε να μην κόβεται τίποτα. Κανένα κείμενο δεν
        κοβόταν πια και η μέτρηση έβγαινε πράσινη — με ΕΝΑ ΓΡΑΜΜΑ ΑΝΑ ΣΕΙΡΑ.
-       Ενας έλεγχος που μετρά μόνο «κόπηκε;» δεν βλέπει το «διαβάζεται;». */
+       Ενας έλεγχος που μετρά μόνο «κόπηκε;» δεν βλέπει το «διαβάζεται;». */''}
     @container (max-width: 332px) {
-      /* Σε μία στήλη το subgrid δεν χρειάζεται: κάθε δείκτης είναι μία σειρά με
+      ${/* Σε μία στήλη το subgrid δεν χρειάζεται: κάθε δείκτης είναι μία σειρά με
          την ετικέτα αριστερά και τον αριθμό δεξιά. Η δήλωση επαναφέρεται ρητά,
-         αλλιώς το «grid-row: span 2» θα άφηνε κενές σειρές ανάμεσά τους. */
+         αλλιώς το «grid-row: span 2» θα άφηνε κενές σειρές ανάμεσά τους. */''}
       .lp-kpis { grid-template-columns: 1fr !important; grid-template-rows: none !important; gap: 6px !important; }
       .lp-kpis > * { display: flex !important; grid-row: auto !important; align-items: baseline; justify-content: space-between; gap: 12px; text-align: left !important; padding: 10px 12px !important; }
       .lp-kpis > * > div:first-child { padding-bottom: 0 !important; }
@@ -257,7 +260,7 @@ export function PanelDashboard() {
             δηλαδή κάτω από 520 εικονοστοιχεία εξαφανιζόταν. Μέναν οι μπάρες
             χωρίς την πρόταση που τις εξηγεί και η σκηνή «Πίνακας» έδειχνε
             γράφημα αντί για όφελος. Ο επισκέπτης από κινητό είναι ο πιο πιθανός
-            μας χρήστης· η γραμμή που λέει «γλιτώνεις 184,00€» είναι το ΜΟΝΟ
+            μας χρήστης· η γραμμή με τα 184,00€ είναι το ΜΟΝΟ
             νούμερο εκεί μέσα με νόημα για αυτόν και ήταν το πρώτο που κόβαμε.
             Το κουτί είναι μία σειρά με εικονίδιο και κείμενο: αναδιπλώνεται
             μόνο του, δεν χρειάζεται απόκρυψη. */}
@@ -266,7 +269,9 @@ export function PanelDashboard() {
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7z" /></svg>
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-            <strong style={{ color: 'var(--text-primary)' }}>Πρόταση:</strong> αλλάζοντας πάροχο ρεύματος, γλιτώνεις 184,00€ τον χρόνο.
+            {/* Ενδεικτικά, όχι υπόσχεση: η σύγκριση βγαίνει από δημοσιευμένα
+                τιμολόγια και από την κατανάλωση, όχι από εγγύηση εξοικονόμησης. */}
+            <strong style={{ color: 'var(--text-primary)' }}>Πρόταση:</strong> με άλλο πρόγραμμα ρεύματος θα πλήρωνες περίπου 184,00€ λιγότερα τον χρόνο, ενδεικτικά.
           </div>
         </div>
       </div>
@@ -275,8 +280,29 @@ export function PanelDashboard() {
 }
 
 // ── Πάνελ: Σάρωση ────────────────────────────────────────────────────────────
-export function PanelScan() {
-  const filed = ['Λογαριασμοί', 'Δαπάνες', 'Ημερολόγιο', navLabel('documents')];
+// ΔΥΟ ΕΓΓΡΑΦΑ, ΟΧΙ ΕΝΑ ΔΥΟ ΦΟΡΕΣ. Το hero και η πρώτη πράξη του «Πώς
+// λειτουργεί» έδειχναν τον ΙΔΙΟ λογαριασμό ρεύματος των 88,50€, με λιγότερο
+// από μία οθόνη ανάμεσα: το πρώτο κύλισμα επαναλάμβανε αντί να δείχνει κάτι
+// καινούργιο. Η σάρωση μένει ίδια· αλλάζει το χαρτί. Όλα τα ποσά είναι
+// επίδειξη, όχι στοιχεία πελάτη.
+const SCAN_DOCS = {
+  bill: {
+    title: 'Ρεύμα', kind: 'Μηνιαίος λογαριασμός',
+    rows: [['Περίοδος', 'Ιούν 2026'], ['Κατανάλωση', '312\u00A0kWh'], ['Ημερομηνία λήξης', '10/08/2026']],
+    totalLabel: 'Πληρωτέο', total: '88,50€',
+    filed: ['Λογαριασμοί', navLabel('finances'), navLabel('calendar'), navLabel('documents')],
+  },
+  lease: {
+    title: 'Μισθωτήριο', kind: 'Κατοικία, μακροχρόνια',
+    rows: [['Έναρξη', '01/09/2026'], ['Λήξη', '31/08/2029'], ['Εγγύηση', '1.300,00€']],
+    totalLabel: 'Μίσθωμα', total: '650,00€',
+    filed: [navLabel('tenant'), navLabel('calendar'), navLabel('documents')],
+  },
+} as const;
+
+export function PanelScan({ doc = 'bill' }: { doc?: keyof typeof SCAN_DOCS }) {
+  const d = SCAN_DOCS[doc];
+  const filed = d.filed;
   return (
     <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'left' }}>
       <div className="lp-live" style={{ position: 'relative', overflow: 'hidden', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, padding: '18px 18px 16px' }}>
@@ -284,15 +310,15 @@ export function PanelScan() {
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, var(--accent), transparent)', boxShadow: '0 0 12px color-mix(in srgb, var(--accent) 60%, transparent)' }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>Ρεύμα</div>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Μηνιαίος λογαριασμός</div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>{d.title}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{d.kind}</div>
         </div>
-        {[['Περίοδος', 'Ιούν 2026'], ['Κατανάλωση', '312 kWh'], ['Ημερομηνία λήξης', '10/08/2026']].map(([l, v], i) => (
+        {d.rows.map(([l, v], i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 12, color: 'var(--text-secondary)' }}><span>{l}</span><span style={{ color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums' }}>{v}</span></div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
-          <span style={{ fontSize: 12, fontWeight: 700 }}>Πληρωτέο</span>
-          <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>88,50€</span>
+          <span style={{ fontSize: 12, fontWeight: 700 }}>{d.totalLabel}</span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{d.total}</span>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 10px', fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -331,7 +357,7 @@ export function PanelAssistant() {
         <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15 }}>{ASSISTANT_INITIAL}</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 700 }}>{ASSISTANT_NAME}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Ο βοηθός σου για τα ακίνητα</div>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Για τα ακίνητά σου</div>
         </div>
         {/* Η κουκκίδα «ενεργός» ήταν πράσινη. Στην εφαρμογή το «εδώ είσαι, εδώ
             πατάς» το λέει το χρώμα της μάρκας και το πράσινο δεν σημαίνει
@@ -359,7 +385,7 @@ export function PanelAssistant() {
             <span key={i} className="lp-bar" style={{ animationDelay: `${i * 0.09}s`, width: 3, height: 18, borderRadius: 3, background: 'color-mix(in srgb, var(--accent) 55%, transparent)' }} />
           ))}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginLeft: 'auto' }}>Μίλα του ελληνικά…</div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginLeft: 'auto' }}>Μίλα στα ελληνικά…</div>
       </div>
     </div>
   );

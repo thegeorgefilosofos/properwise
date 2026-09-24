@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import Link from 'next/link'
 import { T } from '@/components/tokens'
 import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax'
 import { fe, fp, fn } from '@/lib/core/format'
+import { parseAmount } from '@/lib/core/greek'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
 import LiveResult from '@/components/LiveResult'
 import { hy } from '@/components/Hyphen'
@@ -59,17 +60,39 @@ const BANDS = RENTAL_TAX_BRACKETS_2026.map(b => ({
   rate: statutory(b.rate),
 }))
 
+// ═══ Ο ΟΛΙΣΘΗΤΗΣ ΛΕΕΙ ΠΟΣΟ, ΚΑΙ ΤΟ ΠΟΣΟ ΓΡΑΦΕΤΑΙ ΚΑΙ ΜΕ ΤΟ ΧΕΡΙ ═══════════
+// Ο αναγνώστης οθόνης άκουγε «650» και όχι «650,00€»: ο ολισθητής είχε μόνο
+// όνομα χωρίς `aria-valuetext` και η ετικέτα δεν ήταν δεμένη μαζί του. Και
+// ακριβής τιμή δεν έμπαινε: 1.000 βήμα σε εύρος ενός εκατομμυρίου. Το ποσό
+// δίπλα στην ετικέτα είναι πλέον πεδίο: δείχνει τη μορφοποιημένη τιμή, δέχεται
+// ό,τι γράψεις («180.000» ή «180000») και στο φύγιμο κρατά την τιμή μέσα στα
+// όρια του ολισθητή.
 function Control({ label, hint, value, set, min, max, step, format }: {
   label: string; hint: string; value: number; set: (n: number) => void; min: number; max: number; step: number; format: (n: number) => string
 }) {
+  const id = useId()
+  const [draft, setDraft] = useState<string | null>(null)
+  const clamp = (n: number) => Math.min(max, Math.max(min, n))
+  const commit = () => {
+    if (draft !== null) {
+      const n = parseAmount(draft)
+      if (n !== null && Number.isFinite(n)) set(clamp(Math.round(n)))
+    }
+    setDraft(null)
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-        <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>{label}</label>
-        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{format(value)}</span>
+        <label htmlFor={id} style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>{label}</label>
+        <input inputMode="decimal" aria-label={`${label}, ποσό`} value={draft ?? format(value)}
+          onFocus={e => { setDraft(String(value)); requestAnimationFrame(() => e.target.select()) }}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          className="calc-amount" />
       </div>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={e => set(Number(e.target.value))}
-        aria-label={label} style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }} />
+      <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => set(Number(e.target.value))}
+        aria-valuetext={format(value)} style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }} />
       <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{hint}</span>
     </div>
   )
@@ -114,7 +137,7 @@ export default function LandingCalculator() {
       <style>{`
         @media (max-width: 820px) { .calc-grid { grid-template-columns: 1fr !important; } }
         .calc-panel { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 18px; padding: clamp(22px, 3vw, 32px); }
-        /* ΤΟ ΚΟΨΙΜΟ ΑΝΗΚΕΙ ΣΤΙΣ ΖΩΝΕΣ, ΟΧΙ ΣΤΟΝ ΔΕΙΚΤΗ.
+        ${/* ΤΟ ΚΟΨΙΜΟ ΑΝΗΚΕΙ ΣΤΙΣ ΖΩΝΕΣ, ΟΧΙ ΣΤΟΝ ΔΕΙΚΤΗ.
            Ο δείκτης ζούσε ΜΕΣΑ στο .calc-band, που έχει «overflow: hidden» για
            να στρογγυλεύει τις χρωματιστές ζώνες στα άκρα του. Ετσι κοβόταν και
            αυτός: ύψος 16 μέσα σε κουτί 8, δηλαδή έχανε τέσσερα εικονοστοιχεία
@@ -122,11 +145,20 @@ export default function LandingCalculator() {
            δείκτη αντί για κουκκίδα. Μετρημένο σε Chromium στα 390.
 
            Η διαδρομή κρατά τη θέση, η ταινία κρατά το κόψιμο, ο δείκτης
-           κάθεται πάνω από τα δύο. */
+           κάθεται πάνω από τα δύο. */''}
         .calc-track { position: relative; }
         .calc-band { position: relative; height: 8px; border-radius: 100px; overflow: hidden; display: flex; }
         .calc-marker { position: absolute; top: -4px; width: 2px; height: 16px; background: var(--text-primary); border-radius: 2px; transition: left .25s cubic-bezier(.2,0,0,1); }
         input[type=range]::-webkit-slider-thumb { cursor: pointer; }
+        .calc-amount {
+          width: 11ch; padding: 2px 6px; margin: -2px -6px -2px 0; text-align: right;
+          font: inherit; font-size: 16px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+          color: var(--text-primary); background: transparent;
+          border: 1px solid transparent; border-radius: 8px;
+          transition: border-color .15s, background .15s;
+        }
+        .calc-amount:hover { border-color: var(--border-subtle); }
+        .calc-amount:focus { border-color: var(--accent); background: var(--bg-base); outline: none; }
       `}</style>
 
       {/* Αριστερά: τα δικά σου δεδομένα */}
@@ -162,8 +194,13 @@ export default function LandingCalculator() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: T.sp.lg, paddingTop: 4, borderTop: '1px solid var(--border-subtle)' }}>
           <Stat label="Καθαρά τον μήνα" value={fe(monthlyNet)} />
           <Stat label="Ακαθάριστη απόδοση" value={pct(grossYield)} />
-          <Stat label="Ετήσιος φόρος ενοικίων" value={fe(tax)} />
-          <Stat label="Μέσος συντελεστής" value={pct(effRate)} />
+          {/* ΛΕΞΕΙΣ ΠΟΥ ΔΕΝ ΜΠΕΡΔΕΥΟΝΤΑΙ ΜΕ ΤΗΝ ΚΛΙΜΑΚΑ. Ο «Μέσος συντελεστής»
+              καθόταν κάτω από τη ζώνη του 15% και έγραφε 14,25%: διαβαζόταν ως
+              λάθος συντελεστής, ενώ είναι ο φόρος διά το μεικτό ενοίκιο. Και το
+              «Ετήσιος φόρος ενοικίων» έσπαγε στα 390, χαμηλώνοντας την τιμή του
+              σε σχέση με τη διπλανή. */}
+          <Stat label="Φόρος τον χρόνο" value={fe(tax)} />
+          <Stat label="Φόρος στο ενοίκιο" value={pct(effRate)} />
         </div>
         <div style={{ flex: 1 }} />
         {/* Η ΕΠΙΦΥΛΑΞΗ ΔΙΑΒΑΖΕΤΑΙ ΣΑΝ ΟΡΟΣ, ΑΡΑ ΚΛΕΙΝΕΙ ΚΑΙ ΔΕΞΙΑ. Το πλέγμα των 1140
@@ -175,7 +212,7 @@ export default function LandingCalculator() {
           {hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων 2026 (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
-          Δες τα δικά σου δεδομένα, αυτόματα
+          Ξεκίνα τη δοκιμή με το ακίνητό σου
         </Link>
       </div>
     </div>

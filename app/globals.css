@@ -3306,17 +3306,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    όσο υπάρχει χώρος· σπάει μόνο όταν η εναλλακτική είναι να βγει εκτός. */
 .po-table th, .po-table td { hyphens: none; vertical-align: top; overflow-wrap: anywhere; }
 
-/* ═══ Η ΣΤΗΛΗ ΤΗΣ ΠΕΡΙΓΡΑΦΗΣ ΕΙΝΑΙ ΠΡΟΖΑ, ΚΑΙ ΣΤΟΙΧΙΖΕΤΑΙ ΩΣ ΠΡΟΖΑ ═══════════
-   Ο γενικός κανόνας από πάνω κρατά `hyphens: none` για τα στενά κελιά ετικέτας
-   και τόπου, όπου ένα σπάσιμο δίνει μόνο θόρυβο. Η στήλη «Τι κάνει» όμως είναι
-   κανονικές προτάσεις σε μέτρο παραγράφου· έμενε ριγμένη δεξιά, με τα μαλακά
-   ενωτικά του `hyphenate` σβησμένα από το `none` και τη λέξη να σπάει στη μέση
-   (`anywhere`). Παίρνει τώρα πλήρη στοίχιση ΜΕ τον συλλαβισμό ενεργό: τα
-   ενωτικά γίνονται «-» όταν σπάει η γραμμή και η δεξιά άκρη κλείνει ίσια, χωρίς
-   ποτάμια κενού — όπως το υπόλοιπο νομικό κείμενο (`.lg-p`). Ειδικότερος
-   επιλογέας από τον γενικό, άρα κερδίζει· `overflow-wrap: normal` γιατί εδώ
-   σπάμε σε κενά και σε ενωτικά, ποτέ στη μέση της λέξης. */
-.po-table td.lg-cell-prose { text-align: justify; hyphens: manual; overflow-wrap: normal; }
+/* ═══ Η ΣΤΗΛΗ ΤΗΣ ΠΕΡΙΓΡΑΦΗΣ ΕΙΝΑΙ ΠΡΟΖΑ, ΑΛΛΑ ΣΕ ΚΕΛΙ ═════════════════════
+   Δοκιμάστηκε πλήρης στοίχιση με συλλαβισμό, όπως το νομικό κείμενο (`.lg-p`).
+   Σε κελί των 400 εικονοστοιχείων όμως οι γραμμές είναι λίγες και κοντές: η
+   «μέτρηση επισκεψιμότητας χωρίς cookies» της Vercel και η γραμμή της Sentry
+   άνοιγαν ποτάμια κενού στα 1440. Αριστερή στοίχιση, χωρίς ενωτικά· το
+   `overflow-wrap: normal` κρατά τις λέξεις ολόκληρες, όπως πριν. */
+.po-table td.lg-cell-prose { text-align: left; hyphens: manual; overflow-wrap: normal; }
 /* ═══ ΟΤΑΝ Ο ΠΙΝΑΚΑΣ ΔΗΛΩΝΕΙ ΠΛΑΤΗ, ΤΑ ΠΛΑΤΗ ΝΑ ΙΣΧΥΟΥΝ ══════════════════════
    Ο πίνακας των εκτελούντων γράφει `<colgroup>` με 20 / 56 / 24 τοις εκατό·
    ο περιηγητής τα αγνοούσε. Με αυτόματη διάταξη το `<colgroup>` είναι
@@ -4368,16 +4364,11 @@ body:has(.lp-root) .po-cookie {
   --accent-text: var(--mkt-accent-text);
 }
 
-/* ── ΤΟ «ΤΟ ΚΑΤΑΛΑΒΑ» ΣΤΟΙΧΙΖΕΤΑΙ ΠΕΡΑ ΩΣ ΠΕΡΑ ΣΤΟ ΤΗΛΕΦΩΝΟ ────────────────
-   Σε πλάτος τηλεφώνου το κείμενο γεμίζει τη σειρά και το κουμπί τυλίγει από
-   κάτω. Χωρίς πλάτος καθόταν μικρό, στοιχισμένο αριστερά, μ' ένα νεκρό κενό
-   δεξιά του — το μόνο κύριο κουμπί που δεν στοιχιζόταν πέρα ώς πέρα όπως όλα
-   τα άλλα κύρια κουμπιά της εφαρμογής στο κινητό. Σε μία σειρά (ταμπλέτα και
-   πάνω) το `flex: 1` του κειμένου το σπρώχνει ήδη στη δεξιά άκρη, οπότε ο
-   κανόνας αφορά ΜΟΝΟ την τυλιγμένη περίπτωση. */
-@media (max-width: 460px) {
-  .po-cookie .po-cookie-cta { width: 100%; }
-}
+/* ── ΤΟ «ΤΟ ΚΑΤΑΛΑΒΑ» ΜΕΝΕΙ ΔΙΠΛΑ ΣΤΟ ΚΕΙΜΕΝΟ ─────────────────────────────
+   Ηταν κύριο κουμπί σε όλο το πλάτος του τηλεφώνου, κάτω από το κείμενο: ένα
+   δεύτερο γεμάτο μπλε στην ίδια οθόνη με το «Ξεκίνα τη δοκιμή». Είναι πλέον
+   δευτερεύον και δεν τυλίγει· το κουτί μένει δύο σειρές κειμένου ψηλό. */
+.po-cookie .po-cookie-cta { flex-shrink: 0; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — Η ΚΟΙΝΗ ΓΛΩΣΣΑ ΤΟΥΣ
@@ -4548,6 +4539,37 @@ body:has(.lp-root) .po-cookie {
    Κάτω από 720 γίνονται μία στήλη, χωρίς ελάχιστο πλάτος που να ξεχειλίζει. */
 .og-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 720px) { .og-grid { grid-template-columns: 1fr; } }
+
+/* ═══ ΜΙΑ ΠΑΛΕΤΑ ΑΠΟ ΤΗΝ ΑΡΧΙΚΗ ΣΤΑ ΠΑΚΕΤΑ ΚΑΙ ΣΤΑ ΝΟΜΙΚΑ ═══════════════════
+   Η αρχική μιλά πάντα την παλέτα της βιτρίνας (`--mkt-*`, ναυτικό μπλε), ενώ
+   το /paketa, το /trust και τα νομικά μιλούσαν του προϊόντος: γκρι στο
+   σκούρο, λευκό στο φωτεινό. Ο επισκέπτης που πατούσε «Τιμές» περνούσε από
+   μπλε σε λευκό και πίσω· και το ίδιο υποσέλιδο άλλαζε χρώμα από σελίδα σε
+   σελίδα. Η `.pub-root` κάνει την ΙΔΙΑ αντιστοίχιση με το `.lp-root` της
+   αρχικής· ο scripts/guard-landing-theme ελέγχει ότι οι δύο λίστες είναι
+   ίδιες. Μόνο στην οθόνη: στο χαρτί τα νομικά τυπώνονται με τα χρώματα της
+   εκτύπωσης, όχι ανοιχτό κείμενο σε λευκό φύλλο. */
+@media screen {
+  .pub-root {
+    --bg-base: var(--mkt-bg-base);
+    --bg-surface: var(--mkt-bg-surface);
+    --bg-elevated: var(--mkt-bg-elevated);
+    --surface-raised: var(--mkt-bg-surface);
+    --text-primary: var(--mkt-text-primary);
+    --text-secondary: var(--mkt-text-secondary);
+    --text-tertiary: var(--mkt-text-tertiary);
+    --border-subtle: var(--mkt-border-subtle);
+    --border-default: var(--mkt-border-default);
+    --border-strong: var(--mkt-border-strong);
+    --accent: var(--mkt-accent);
+    --accent-text: var(--mkt-accent-text);
+    --positive: var(--mkt-positive);
+    --negative: var(--mkt-negative);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    color-scheme: dark;
+  }
+}
 
 /* ═══ ΤΟ ΚΟΝΤΟ ΚΕΙΜΕΝΟ ΤΗΣ ΣΤΕΝΗΣ ΟΘΟΝΗΣ, ΣΕ ΚΑΘΕ ΣΕΛΙΔΑ ══════════════════
    Ζούσαν μέσα στο <style> του app/page.tsx, άρα υπήρχαν ΜΟΝΟ στην αρχική. Η
@@ -4780,17 +4802,24 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 }
 .lg-toc-h { margin-bottom: 10px; }
 .lg-toc-m { display: none; padding: 0 16px; }
-/* 44 ύψος για τον αντίχειρα, από το γέμισμα: η περίληψη μένει list-item, για
-   να κρατήσει το τρίγωνο που λέει ότι ανοίγει. */
-.lg-toc-m > summary { padding: 14px 0; cursor: pointer; }
+/* 44 ύψος για τον αντίχειρα, από το γέμισμα.
+   ΤΟ ΤΡΙΓΩΝΟ ΠΟΥ ΥΠΟΣΧΟΤΑΝ ΤΟ ΣΧΟΛΙΟ ΔΕΝ ΥΠΗΡΧΕ. Ο καθολικός κανόνας
+   `summary::marker { content: "" }` το σβήνει παντού, οπότε το «Περιεχόμενα»
+   ήταν ένα γκρι κουτί χωρίς κανένα σημάδι ότι ανοίγει. Το σημάδι μπαίνει
+   ρητά, δεξιά, στο χρώμα της μάρκας: «+» κλειστό, «−» ανοιχτό, όπως οι
+   συχνές ερωτήσεις της αρχικής. */
+.lg-toc-m > summary {
+  padding: 14px 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.lg-toc-m > summary::after {
+  content: '+'; font-size: 16px; font-weight: 500; letter-spacing: 0; line-height: 1;
+  color: var(--accent);
+}
+.lg-toc-m[open] > summary::after { content: '\2212'; }
 .lg-toc-m .lg-toc-list { padding-bottom: 12px; }
 
-/* ═══ ΜΗΤΡΩΟ ΠΑΡΟΧΩΝ: ΚΑΤΑΣΤΑΣΗ ΣΕ ΛΕΞΕΙΣ ΚΑΙ ΚΑΡΤΕΣ ΣΤΟ ΚΙΝΗΤΟ ═══════════ */
-.lg-badge {
-  display: table; margin-top: 4px; padding: 1px 8px;
-  font-size: 11px; font-weight: 600; line-height: 1.6; color: var(--text-secondary);
-  background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 999px;
-}
+/* ═══ ΜΗΤΡΩΟ ΠΑΡΟΧΩΝ: ΚΑΡΤΕΣ ΣΤΟ ΚΙΝΗΤΟ ═══════════════════════════════════ */
 .lg-sp-entity { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; color: var(--text-tertiary); }
 .lg-sp-cards { display: none; list-style: none; margin: 16px 0 0; padding: 0; flex-direction: column; gap: 12px; }
 .lg-sp-card {
@@ -5082,10 +5111,29 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    που συγκρίνει καλύτερα δίπλα δίπλα. Οι δύο όψεις διαβάζουν τα ΙΔΙΑ δεδομένα και
    η καθεμιά είναι `display:none` στο άλλο πλάτος, άρα και εκτός δέντρου
    προσβασιμότητας — κανένα διπλό ανακοίνωμα. */
+/* ΤΟ ΟΡΙΟ ΕΙΝΑΙ ΤΑ 960, ΟΧΙ ΤΑ 768. Ο πίνακας θέλει 860 και το περιθώριο της
+   σελίδας τρώει ως 96: στα 820 της ταμπλέτας η στήλη του «Επαγγελματίας+» και
+   το κουμπί της έμεναν έξω από την οθόνη, χωρίς κανένα σημάδι ότι υπάρχουν.
+   Από τα 600 οι κάρτες πάνε δύο δύο, με τα κοινά σε όλο το πλάτος. */
 .plan-cmp-cards { display: none; }
-@media (max-width: 767px) {
+@media (max-width: 959px) {
   .plan-cmp-table { display: none; }
-  .plan-cmp-cards { display: grid; gap: 14px; }
+  .plan-cmp-cards { display: grid; gap: 14px; align-items: start; }
+}
+@media (min-width: 600px) and (max-width: 959px) {
+  .plan-cmp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-card-common { grid-column: 1 / -1; }
+}
+/* Η ετικέτα του προτεινόμενου πακέτου, ίδια με την κορδέλα της αρχικής. */
+.plan-rec {
+  display: inline-block; margin: 6px 0 2px; padding: 2px 9px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px; white-space: nowrap;
+}
+.plan-card-lacks {
+  margin: 4px 0 0; padding-top: 10px; border-top: 1px solid var(--border-subtle);
+  font-size: 13px; line-height: 1.5; color: var(--text-tertiary);
 }
 .plan-card {
   background: var(--surface-raised);

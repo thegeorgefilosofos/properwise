@@ -127,7 +127,7 @@ export default function CookieConsent() {
     // σκέπαζε ό,τι ο χρήστης μόλις ζήτησε.
     <div ref={box} role="region" aria-label="Ενημέρωση για cookies" className="po-noprint po-cookie" style={{ position: 'fixed', left: 12, right: 12, bottom: 'var(--float-bottom)', zIndex: 'var(--float-z)', maxWidth: 720, margin: '0 auto',
       background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.card, boxShadow: 'var(--elev-3)',
-      padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontFamily: T.font.sans }}>
+      padding: '10px 12px 10px 16px', display: 'flex', alignItems: 'center', gap: 14, fontFamily: T.font.sans }}>
       {/* ΓΙΑΤΙ ΤΟΣΟ ΣΥΝΤΟΜΟ: το κείμενο ήταν τέσσερις σειρές σε desktop και έξι σε
           κινητό, οπότε το πλαίσιο σκέπαζε το προϊόν ακριβώς στην πρώτη οθόνη —
           δηλαδή το πρώτο πράγμα που έβλεπε ένας υποψήφιος πελάτης ήταν νομικό
@@ -142,8 +142,13 @@ export default function CookieConsent() {
           ο σύνδεσμος διαβαζόταν ως χειριστήριο μόνο του, 63×16, κάτω από τα 44
           του κανόνα αφής. Μέσα σε <p> είναι λέξη της πρότασης, όπως ορίζει το
           WCAG 2.5.8. */}
-      <p style={{ flex: 1, minWidth: 200, margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty', textAlign: 'center' }}>
-        Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Ανώνυμη μέτρηση επισκέψεων χωρίς cookies, καμία διαφήμιση.{' '}
+      {/* ΕΝΗΜΕΡΩΣΗ, ΟΧΙ ΔΕΥΤΕΡΟ ΚΥΡΙΟ ΚΟΥΜΠΙ. Με γεμάτο «Το κατάλαβα» σε όλο το
+          πλάτος, η πρώτη οθόνη του τηλεφώνου είχε δύο κύρια κουμπιά ίδιου
+          χρώματος, το ένα πάνω από το προϊόν. Ό,τι δηλώνεται εδώ δεν ζητά
+          συγκατάθεση· ζητά να ειπωθεί. Κείμενο αριστερά, δευτερεύον κουμπί
+          δεξιά, μία σειρά στον υπολογιστή και δύο στο τηλέφωνο. */}
+      <p style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty' }}>
+        Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Ανώνυμη μέτρηση χωρίς cookies.{' '}
         {/* ΥΠΟΓΡΑΜΜΙΣΜΕΝΟΣ, ΓΙΑΤΙ ΤΟ ΧΡΩΜΑ ΜΟΝΟ ΤΟΥ ΔΕΝ ΕΙΝΑΙ ΣΥΝΔΕΣΜΟΣ. Με
             `textDecoration: none` το «Απόρρητο» ξεχώριζε ΜΟΝΟ από το χρώμα:
             όποιος δεν ξεχωρίζει το γαλάζιο από το γκρι —δαλτωνισμός, φως ήλιου
@@ -152,7 +157,7 @@ export default function CookieConsent() {
             πλαίσιο. */}
         <Link href="/privacy" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Απόρρητο</Link>
       </p>
-      <Btn variant="primary" onClick={acknowledge} className="po-cookie-cta">Το κατάλαβα</Btn>
+      <Btn variant="secondary" onClick={acknowledge} className="po-cookie-cta">Το κατάλαβα</Btn>
     </div>
   );
 }

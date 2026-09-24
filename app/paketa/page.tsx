@@ -18,15 +18,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { Metadata } from 'next';
 import { siteUrl } from '@/lib/core/site';
-import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
-import { TRIAL_PLAN } from '@/lib/billing/entitlements';
+import { RECOMMENDED_PLAN } from '@/lib/billing/plans';
+import { TRIAL_OFFER } from '@/lib/billing/trialOffer';
 import { billingWords } from '@/lib/legal/billingWords';
 import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
 import { publicMetadata } from '../publicMetadata';
 import { PlanMatrix } from '@/components/PlanMatrix';
 import { ASSISTANT_TO } from '@/lib/assistant/identity';
-import { hy } from '@/components/Hyphen';
 
 const TITLE = 'Τι περιλαμβάνει κάθε πακέτο · PROPERWISE';
 // Το «Χωρίς εγγραφή» ταίριαζε σε υπολογιστή, όχι σε σελίδα τιμών.
@@ -43,7 +42,9 @@ export const metadata: Metadata = publicMetadata({ title: TITLE, description: DE
 
 export default function Page() {
   return (
-    <>
+    // `pub-root`: η παλέτα της αρχικής και εδώ (globals.css). Ο επισκέπτης
+    // φτάνει από το «Τιμές» της αρχικής και δεν πρέπει να αλλάζει χρώμα.
+    <div className="pub-root min-h-dvh">
       <JsonLd data={{
         '@context': 'https://schema.org',
         '@type': 'WebPage',
@@ -51,7 +52,7 @@ export default function Page() {
         description: DESC,
         url: URL,
       }} />
-      <PublicHeader />
+      <PublicHeader current="paketa" />
       {/* Ιδια δομή κεφαλίδας με τα δωρεάν εργαλεία: μάτι, τίτλος πρώτου
           επιπέδου, μία γραμμή υπόσχεσης. Δύο δημόσιες σελίδες με την ίδια
           δουλειά δεν επιτρέπεται να έχουν δύο διατάξεις. */}
@@ -75,21 +76,23 @@ export default function Page() {
             χρέωση την 31η» μόλις ανοίξει — ώστε /paketa και αρχική να μη λένε
             ποτέ διαφορετικά πράγματα για το ίδιο πράγμα.
 
-            ΚΑΙ ΠΙΑΝΟΥΝ ΜΙΑ ΓΡΑΜΜΗ, ΠΕΡΑ ΠΕΡΑ. Το `maxWidth: 720` έκοβε τη
-            στήλη στα δύο τρίτα του πλάτους που έχει ο τίτλος από πάνω και ο
-            πίνακας από κάτω: η υπόσχεση έσπαγε σε δεύτερη σειρά με τέσσερις
-            λέξεις μέσα της, ενώ δεξιά της έμενε άδειο μισό. Το μέτρο των 65
-            χαρακτήρων φυλάει τις ΠΑΡΑΓΡΑΦΟΥΣ· εδώ είναι μία γραμμή. */}
-        {/* Πλήρης στοίχιση με συλλαβισμό (hy): σε τηλέφωνο η υπόσχεση τυλίγεται
-            σε 3–4 γραμμές, οπότε οι δύο άκρες κλείνουν στον ίδιο άξονα με τον
-            τίτλο και τον πίνακα — ίδια λογική με τις νομικές σελίδες. Σε φαρδιά
-            οθόνη μένει μία γραμμή και η στοίχιση δεν έχει τι να τεντώσει. */}
-        <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>
-          {hy(<>Κάθε νέος λογαριασμός ξεκινά με {TRIAL_DAYS} ημέρες δοκιμής με τις δυνατότητες του «{PLANS[TRIAL_PLAN].name}»· το πακέτο που διαλέγεις ισχύει από την ενεργοποίηση της συνδρομής.{' '}{billingWords().firstCharge}{' '}Σταματάς όποτε θέλεις, χωρίς κρυφές χρεώσεις. Οι τιμές αφορούν καταναλωτές στην Ελλάδα και περιλαμβάνουν ΦΠΑ.</>)}
+            ΤΟ ΜΕΤΡΟ ΞΑΝΑΜΠΗΚΕ. Το κείμενο δεν χωράει σε μία γραμμή σε καμία
+            οθόνη, άρα είναι παράγραφος και παίρνει το μέτρο των 720. */}
+        {/* ΑΡΙΣΤΕΡΗ ΣΤΟΙΧΙΣΗ ΣΕ ΜΕΤΡΟ ΠΑΡΑΓΡΑΦΟΥ, ΧΩΡΙΣ ΣΥΛΛΑΒΙΣΜΟ. Το σχόλιο
+            που ήταν εδώ υποσχόταν «σε φαρδιά οθόνη μένει μία γραμμή»· στα 1440
+            ήταν τρεις, με «ενεργοποί-ηση» και «θέ-λεις» κομμένα· στα 390
+            τρία σπασίματα λέξης σε εννέα γραμμές. Τρεις σύντομες προτάσεις: η
+            δοκιμή με το όριό της (TRIAL_OFFER, η ίδια πηγή με την αρχική), η
+            κατάσταση της χρέωσης (billingWords) και ο ΦΠΑ. */}
+        <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px', maxWidth: 720, textWrap: 'pretty' }}>
+          {TRIAL_OFFER} {billingWords().firstCharge} Οι τιμές περιλαμβάνουν ΦΠΑ και σταματάς όποτε θέλεις.
         </p>
-        <div style={{ marginTop: 'clamp(22px,3vw,34px)' }}><PlanMatrix /></div>
+        {/* Η ΙΔΙΑ ΠΡΟΤΑΣΗ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Χωρίς προτεινόμενη στήλη ο πίνακας έδειχνε
+            τέσσερα ίδια κύρια κουμπιά, ενώ η αρχική προτείνει ρητά ένα πακέτο.
+            Οι κάρτες του κινητού κάθονται κάτω από τον <h1>, άρα είναι <h2>. */}
+        <div style={{ marginTop: 'clamp(22px,3vw,34px)' }}><PlanMatrix recommended={RECOMMENDED_PLAN} headingLevel={2} /></div>
       </main>
       <PublicFooter />
-    </>
+    </div>
   );
 }

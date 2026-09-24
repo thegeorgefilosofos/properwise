@@ -166,7 +166,9 @@ export function LegalLayout({ eyebrow, title, intro, meta, blocks, closing, self
     </ol>
   );
   return (
-    <div className="min-h-dvh" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: T.font.sans }}>
+    // `pub-root`: η παλέτα της αρχικής και εδώ (globals.css), ώστε το «Ποιοι
+    // είμαστε», οι Όροι και το Απόρρητο να μην αλλάζουν χρώμα από την αρχική.
+    <div className="pub-root min-h-dvh" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: T.font.sans }}>
       <PublicHeader />
 
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(48px,6vw,80px)` }}>

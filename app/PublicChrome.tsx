@@ -18,9 +18,8 @@
 // συνήθως όχι στην αρχική. Αν η σελίδα προσγείωσης δεν μοιάζει με το προϊόν
 // που του προτείνει, το πρώτο πράγμα που μαθαίνει είναι ότι δεν προσέχουμε.
 //
-// ΤΙ ΔΕΝ ΚΑΝΕΙ. Δεν αφορά την αρχική σελίδα: εκείνη έχει δική της πλοήγηση με
-// σύνδεση, κατάσταση χρήστη και συμπεριφορά στο κύλισμα. Ένα κέλυφος που θα
-// κάλυπτε και τις πέντε θα ήταν παραμετροποιημένο σε βαθμό που δεν διαβάζεται.
+// ΤΙ ΔΕΝ ΚΑΝΕΙ. Η κεφαλίδα της αρχικής μένει δική της (κολλητή, ημιδιαφανής,
+// με θόλωμα). Οι ΣΥΝΔΕΣΜΟΙ της όμως είναι οι ίδιοι παντού, μέσω του `PublicNav`.
 // ═══════════════════════════════════════════════════════════════════════════
 import { PRODUCT_NAME } from '@/lib/core/site';
 import { jsonLdScript } from '@/lib/core/jsonLd';
@@ -63,32 +62,50 @@ export const WRAP_PAD = 'var(--pub-gutter)';
  */
 export const READING = 720;
 
-export function PublicHeader() {
+/**
+ * ΟΙ ΣΥΝΔΕΣΜΟΙ ΤΗΣ ΚΕΦΑΛΙΔΑΣ, ΙΔΙΟΙ ΣΕ ΚΑΘΕ ΔΗΜΟΣΙΑ ΣΕΛΙΔΑ.
+ *
+ * Η αρχική είχε «Σύνδεση» χωρίς «Τιμές» και οι υπόλοιπες «Τιμές» χωρίς
+ * «Σύνδεση»: ο συνδρομητής που προσγειωνόταν στο /paketa ή στο /trust δεν είχε
+ * τρόπο να μπει στον λογαριασμό του από την κεφαλίδα. Τώρα και οι τρεις
+ * σύνδεσμοι ζουν εδώ και τους διαβάζουν και οι δύο κεφαλίδες.
+ *
+ * ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΟ ΖΕΥΓΑΡΙ «ΤΙΜΕΣ · ΣΥΝΔΕΣΗ» ΓΙΝΕΤΑΙ «ΕΙΣΟΔΟΣ». Μετρημένο σε
+ * Chromium με την Inter: σήμα, τρεις σύνδεσμοι και κουμπί τελειώνουν στα 424
+ * εικονοστοιχεία με το κανονικό γέμισμα και στα 382 με γέμισμα τεσσάρων, ενώ
+ * η οθόνη των 390 αφήνει 370. Δεν χωρούν με κανένα γέμισμα. Ο επιστρέφων
+ * χρήστης δεν έχει άλλο δρόμο από την είσοδο· οι τιμές είναι στο υποσέλιδο
+ * κάθε σελίδας («Πακέτα και τιμές») και ένα κύλισμα πιο κάτω στην αρχική.
+ *
+ * Ο ΣΥΝΔΕΔΕΜΕΝΟΣ ΧΡΗΣΤΗΣ ΠΕΡΝΙΕΤΑΙ ΩΣ ΣΤΟΙΧΕΙΟ, ΟΧΙ ΩΣ ΣΗΜΑΙΑ. Ό,τι συνδέει
+ * αυτό το αρχείο το ελέγχει ο guard-public-routes ως δημόσια διαδρομή· ο
+ * σύνδεσμος προς τον πίνακα ζει στη σελίδα που ξέρει ότι υπάρχει συνεδρία.
+ */
+export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current?: 'paketa' }) {
+  const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
+      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-xs" style={link}>Τιμές</Link>
+      {!signedIn ? (<>
+        <Link href="/login" className="lp-link lp-nav-link" style={link}>
+          <span className="lp-hide-xs">Σύνδεση</span><span className="lp-only-xs">Είσοδος</span>
+        </Link>
+        <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 16px', borderRadius: T.radius.pill, whiteSpace: 'nowrap', marginLeft: T.sp.sm }}>
+          <span className="lp-hide-xs">Ξεκίνα τη δοκιμή</span><span className="lp-only-xs">Δοκιμή</span>
+        </Link>
+      </>) : signedIn}
+    </div>
+  );
+}
+
+export function PublicHeader({ current }: { current?: 'paketa' } = {}) {
   return (
     <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
       <div style={{ ...WRAP, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'var(--text-primary)' }}>
           <BrandLogo size={24} />
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.lg }}>
-          {/* Ο ΤΙΜΟΚΑΤΑΛΟΓΟΣ ΔΕΝ ΕΙΧΕ ΔΡΟΜΟ. Η ενότητα υπάρχει, έχει άγκυρα
-              `#pricing` και καμία σελίδα δεν έδειχνε προς τα εκεί: ο
-              επισκέπτης που έφτανε από τον υπολογιστή ΕΝΦΙΑ ή από τους Όρους
-              έπρεπε να μαντέψει ότι πρέπει να γυρίσει στην αρχική και να
-              κυλήσει. Η πιο συχνή ερώτηση πριν την εγγραφή είναι η τιμή. */}
-          <Link href="/#pricing" className="lp-link lp-nav-link" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-            Τιμές
-          </Link>
-          {/* ΟΛΟΚΛΗΡΟ ΤΟ ΛΕΚΤΙΚΟ ΕΒΓΑΖΕ ΤΗ ΣΕΛΙΔΑ ΕΞΩ ΑΠΟ ΤΗΝ ΟΘΟΝΗ. Μετρημένο
-              σε Chromium στα 390: η ομάδα δεξιά πιάνει 185 ώς 392, δηλαδή δύο
-              εικονοστοιχεία έξω και μαζί της αποκτούσε οριζόντια κύλιση κάθε
-              νομική σελίδα και κάθε δωρεάν εργαλείο. Η αρχική το είχε ήδη
-              λύσει με κοντό λεκτικό· εδώ έλειπαν οι κλάσεις, που ζούσαν μέσα
-              στο <style> της. Τώρα είναι καθολικές. */}
-          <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 16px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
-            <span className="lp-hide-xs">Ξεκίνα τη δοκιμή</span><span className="lp-only-xs">Δοκιμή</span>
-          </Link>
-        </div>
+        <PublicNav current={current} />
       </div>
     </header>
   );
@@ -130,8 +147,10 @@ export function PublicFooter() {
                 της στήλης: έσπαγε σε τρεις γραμμές και το πού έσπαγε άλλαζε
                 με κάθε μέγεθος οθόνης — άλλοτε στη μέση της πρώτης πρότασης,
                 άλλοτε μετά. Δύο μπλοκ σπάνε ΜΟΝΟ εκεί που τελειώνει νόημα. */}
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0, maxWidth: 340 }}>
-              <span style={{ display: 'block' }}>Έξοδα, φόροι και προθεσμίες για ακίνητα στην Ελλάδα.</span>
+            {/* 400 ΚΑΙ ΟΧΙ 340: στα 340 η πρώτη πρόταση άφηνε το «Ελλάδα.» μόνο
+                του σε δεύτερη σειρά, σε κάθε δημόσια σελίδα. */}
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0, maxWidth: 400, textWrap: 'pretty' }}>
+              <span style={{ display: 'block' }}>Έξοδα, φόροι και προθεσμίες ακινήτων στην Ελλάδα.</span>
               <span style={{ display: 'block' }}>Για ιδιοκτήτες και επαγγελματίες.</span>
             </p>
           </div>
@@ -177,9 +196,10 @@ export function PublicFooter() {
           {/* ΤΟ «ΣΧΕΔΙΑΣΜΕΝΟ ΓΙΑ GDPR» ΔΕΝ ΕΛΕΓΕ ΤΙΠΟΤΑ ΕΛΕΓΞΙΜΟ. Ο τόπος της βάσης
               είναι αυτός του μητρώου εκτελούντων (lib/legal/subprocessors) και
               το απόρρητο είναι σελίδα που διαβάζεται. */}
+          {/* Κάθε στοιχείο κρατιέται ολόκληρο: στα 390 έσπαγε «Απόρρητο κατά / GDPR». */}
           <span>
-            Βάση δεδομένων στην ΕΕ (Φρανκφούρτη) ·{' '}
-            <Link href="/privacy" className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2 }}>Απόρρητο κατά GDPR</Link>
+            <span style={{ whiteSpace: 'nowrap' }}>Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)</span> ·{' '}
+            <Link href="/privacy" className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>Απόρρητο κατά GDPR</Link>
           </span>
         </div>
       </div>

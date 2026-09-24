@@ -52,7 +52,7 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
 {
   const live = billingWords(LIVE), dark = billingWords(DARK)
   ok('η σημαία ακολουθεί το ταμείο', live.live === true && dark.live === false)
-  const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge', 'contractSteps'] as const
+  const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge', 'contractSteps', 'lapsedRetentionShort'] as const
   // Αν μια φράση είναι ίδια και στις δύο καταστάσεις, τότε η μία από τις δύο
   // λέει ψέματα — και δεν θα το έπιανε κανείς, γιατί «υπάρχει διατύπωση».
   for (const k of keys) ok(`η «${k}» διαφέρει ανά κατάσταση`, live[k] !== dark[k])
@@ -68,6 +68,18 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
   // Ο ΣΤΟΧΟΣ ΤΩΝ ΣΥΝΕΡΓΑΤΩΝ ΜΕΤΡΑ ΣΥΝΔΡΟΜΗΤΕΣ: χωρίς ταμείο το λέμε, με ταμείο σιωπούμε.
   ok('χωρίς χρέωση, ο στόχος των συνεργατών λέει από πότε ισχύει', !!dark.partnerTarget && dark.partnerTarget.includes('συνδρομητές'))
   ok('με χρέωση, καμία επιφύλαξη', live.partnerTarget === null)
+
+  // Η ΕΙΔΟΠΟΙΗΣΗ ΤΟΥ ΤΙΜΟΚΑΤΑΛΟΓΟΥ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΣΟ ΔΕΝ ΑΓΟΡΑΖΕΤΑΙ ΤΙΠΟΤΑ.
+  ok('χωρίς χρέωση, ο τιμοκατάλογος λέει ότι δεν αγοράζεται ακόμη', !!dark.pricingNotice && dark.pricingNotice.body.includes('χωρίς χρέωση'))
+  ok('με χρέωση, καμία ειδοποίηση', live.pricingNotice === null)
+
+  // ΤΑ ΔΕΔΟΜΕΝΑ ΜΕΤΑ ΤΗ ΣΥΝΔΡΟΜΗ: ΤΟ ΔΙΑΣΤΗΜΑ ΤΗΣ ΣΥΝΤΟΜΗΣ ΑΠΑΝΤΗΣΗΣ ΕΙΝΑΙ
+  // ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΠΟΛΙΤΙΚΗΣ. Χωρίς ταμείο ο καθαρισμός δεν τρέχει, άρα καμία
+  // απειλή διαγραφής σε ημέρες· με ταμείο, ο αριθμός της βάσης.
+  ok('χωρίς χρέωση, η σύντομη διατήρηση δεν μετρά ημέρες',
+    !dark.lapsedRetentionShort.includes(`${ACCOUNT_GRACE_DAYS} ημέρες`))
+  ok('με χρέωση, λέει το διάστημα',
+    live.lapsedRetentionShort.includes(`${ACCOUNT_GRACE_DAYS} ημέρες`))
 }
 
 // ── ΤΟ ΜΟΝΤΕΛΟ ΤΩΝ ΧΡΗΜΑΤΩΝ, ΓΡΑΜΜΕΝΟ ΚΑΙ ΚΑΡΦΩΜΕΝΟ ─────────────────────

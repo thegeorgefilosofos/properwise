@@ -73,6 +73,21 @@ for (const d of declared) {
   if (!used.has(d)) findings.push(`${GLOBALS} — το \`${d}\` δηλώνεται και δεν το χρησιμοποιεί κανείς`)
 }
 
+// ── 4. Η `.pub-root` (globals.css) λέει ΑΚΡΙΒΩΣ την ίδια αντιστοίχιση ────
+// Το /paketa και τα νομικά παίρνουν την παλέτα της αρχικής από τη `.pub-root`.
+// Δύο λίστες αντιστοίχισης είναι δύο ευκαιρίες να αποκλίνουν: μια σελίδα με
+// «--accent» της βιτρίνας και «--bg-elevated» του προϊόντος. Ελέγχεται ότι
+// κάθε ζευγάρι της μίας υπάρχει και στην άλλη.
+const pairs = (body) => new Set([...body.matchAll(/^\s*(--[a-z0-9-]+)\s*:\s*(var\(--mkt-[a-z0-9-]+\))\s*;/gm)].map(m => `${m[1]}: ${m[2]}`))
+const pub = globals.match(/\.pub-root\s*\{([\s\S]*?)\n\s*\}/)
+if (!pub) {
+  findings.push(`Δεν βρέθηκε το μπλοκ \`.pub-root\` στο ${GLOBALS}. Αν μετονομάστηκε, ενημέρωσε τον φύλακα.`)
+} else if (block) {
+  const a = pairs(block[1]), b = pairs(pub[1])
+  for (const p of a) if (!b.has(p)) findings.push(`${GLOBALS} — η \`.pub-root\` δεν έχει το \`${p}\` της αρχικής`)
+  for (const p of b) if (!a.has(p)) findings.push(`${PAGE} — το \`.lp-root\` δεν έχει το \`${p}\` της \`.pub-root\``)
+}
+
 if (findings.length) {
   console.error('✗ Το θέμα της βιτρίνας δεν είναι δηλωμένο σωστά:\n')
   for (const f of findings) console.error('  ' + f)

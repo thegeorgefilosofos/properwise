@@ -74,16 +74,13 @@ const ALLOWLIST = {
   'app/dashboard/components/BudgetVaults.tsx': 'ξένο αρχείο (άλλος agent)',
   'app/dashboard/components/TabAccounting.tsx': 'ξένο αρχείο (άλλος agent)',
 
+  // Η αρχική, τα πάνελ της και η σελίδα εμπιστοσύνης βγήκαν από εδώ: λένε πλέον
+  // «Νόα» παντού και ο φύλακας τις κρατά έτσι.
   // Δημόσιες σελίδες & νομικά κείμενα: αλλάζουν με έγκριση marketing/νομικών,
   // όχι με refactor. Το «AI» εκεί είναι νομικά ουσιώδες (ποιος επεξεργάζεται
   // τα δεδομένα), δεν είναι ονομασία προϊόντος.
-  'app/page.tsx': 'δημόσια αρχική — κείμενο marketing, εκτός εμβέλειας αυτής της αλλαγής',
   'app/AuthAside.tsx': 'οθόνη σύνδεσης — κείμενο marketing',
-  'app/ScrollStory.tsx': 'δημόσια αρχική (αφήγηση) — κείμενο marketing',
-  'app/ShowcasePanels.tsx': 'δημόσια αρχική (πάνελ προϊόντος) — κείμενο marketing',
-  'app/LandingShowcase.tsx': 'δημόσια αρχική — κείμενο marketing',
   'app/privacy/page.tsx': 'πολιτική απορρήτου — νομικό κείμενο, αλλάζει με έγκριση',
-  'app/trust/page.tsx': 'σελίδα εμπιστοσύνης — νομικό κείμενο, αλλάζει με έγκριση',
   'app/terms/page.tsx': 'όροι χρήσης — νομικό κείμενο, αλλάζει με έγκριση',
   'app/about/page.tsx': 'ποιοι είμαστε — κείμενο marketing',
 

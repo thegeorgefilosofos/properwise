@@ -20,10 +20,11 @@
 import type { Metadata } from 'next';
 import { IDENTITY, POLICY_UPDATED } from '@/lib/legal/identity';
 import { DISCLOSURE } from '@/lib/legal/disclosure';
-import { subprocessors, TRANSFER_SAFEGUARDS, ROLE_LABEL, ANTHROPIC_CONTRACT } from '@/lib/legal/subprocessors';
+import { activeSubprocessors, plannedSubprocessors, TRANSFER_SAFEGUARDS, ROLE_LABEL, ANTHROPIC_CONTRACT } from '@/lib/legal/subprocessors';
+import { ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/identity';
+import Link from 'next/link';
 import { billingWords } from '@/lib/legal/billingWords';
 import { LegalLayout, MailLink, type LegalBlock } from '../legal-shell';
-import { hyphenate } from '@/lib/core/hyphenate';
 import { siteUrl } from '@/lib/core/site';
 
 export const metadata: Metadata = {
@@ -55,16 +56,16 @@ const IDENTITY_FIELDS: { label: string; value: string | null }[] = [
 // Ο κατάλογος ΔΕΝ γράφεται εδώ. Ζει στο lib/legal/subprocessors.ts και τον
 // διαβάζει και η Πολιτική απορρήτου: δύο νομικά κείμενα που απαριθμούν τους
 // ίδιους παρόχους δεν επιτρέπεται να διαφωνούν και διαφωνούσαν.
-const subprocessorRows = () => subprocessors().map(s => ({
-  name: s.name, entity: s.entity, what: s.purpose, where: s.where, role: ROLE_LABEL[s.role], planned: !s.active,
+//
+// ΣΤΟΝ ΠΙΝΑΚΑ ΜΟΝΟ ΟΣΟΙ ΕΠΕΞΕΡΓΑΖΟΝΤΑΙ ΔΕΔΟΜΕΝΑ ΣΗΜΕΡΑ. Οι τέσσερις γραμμές
+// «Όχι ενεργός σήμερα» ήταν ο μισός πίνακας, για παρόχους που δεν αγγίζουν
+// τίποτα· η μία ονόμαζε πάροχο πληρωμών ενώ η χρέωση δεν έχει ανοίξει. Οι
+// σχεδιασμένοι λέγονται σε μία γραμμή κάτω από τον πίνακα, με τη δουλειά τους
+// (`short`) και όχι με το όνομά τους· τα ονόματα είναι στην Πολιτική απορρήτου.
+const subprocessorRows = () => activeSubprocessors().map(s => ({
+  name: s.name, entity: s.entity, what: s.purpose, where: s.where, role: ROLE_LABEL[s.role],
 }));
-
-/**
- * Η ΚΑΤΑΣΤΑΣΗ ΓΡΑΦΕΤΑΙ, ΔΕΝ ΧΡΩΜΑΤΙΖΕΤΑΙ. Ο ανενεργός πάροχος ξεχώριζε μόνο με
- * γκρι γράμματα: ο αναγνώστης οθόνης δεν έβλεπε διαφορά και το μάτι μάντευε
- * (WCAG 1.4.1). Η ίδια φράση στον πίνακα και στις κάρτες του κινητού.
- */
-const NOT_ACTIVE = 'Όχι ενεργός σήμερα';
+const plannedWork = () => plannedSubprocessors().map(s => s.short);
 
 /** Η ίδια ονομασία του τόπου, με άθραυστο κενό· βλ. το κελί του πίνακα. */
 const placeOf = (where: string) => where.replace(/Ευρωπαϊκή Ένωση/g, 'Ευρωπαϊκή\u00A0Ένωση');
@@ -226,7 +227,7 @@ export default function TrustPage() {
               ίδιο τον πάροχο.
             </li>
             <li>
-              <strong>Τα ερωτήματά σου προς τον βοηθό</strong>, μαζί με μια περίληψη των δεδομένων του ακινήτου, του
+              <strong>Τα ερωτήματά σου {ASSISTANT_TO}</strong>, μαζί με μια περίληψη των δεδομένων του ακινήτου, του
               ενοικιαστή, του πελατολογίου και των επαφών σου (ονόματα και ιστορικό, χωρίς τηλέφωνα και ΑΦΜ), καθώς
               και όποιο έγγραφο ή φωτογραφία ανεβάζεις για ανάγνωση (Anthropic: σύμβαση με την {ANTHROPIC_CONTRACT},
               επεξεργασία στις ΗΠΑ).
@@ -333,8 +334,7 @@ export default function TrustPage() {
                 {subprocessorRows().map(s => (
                   <tr key={s.name}>
                     <th scope="row">
-                      <span style={{ fontWeight: 600, color: s.planned ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{s.name}</span>
-                      {s.planned && <span className="lg-badge">{NOT_ACTIVE}</span>}
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</span>
                       {s.entity && <span className="lg-sp-entity">{s.entity}</span>}
                     </th>
                     {/* Η ΣΤΗΛΗ ΤΗΣ ΠΕΡΙΓΡΑΦΗΣ ΕΙΝΑΙ ΠΡΟΖΑ, ΟΧΙ ΕΤΙΚΕΤΑ. Ο γραμμένος
@@ -345,7 +345,7 @@ export default function TrustPage() {
                         δυόμισι φορές φαρδύτερη· το κείμενο είναι κανονικές
                         προτάσεις: μέτρο παραγράφου, άρα μεταχείριση παραγράφου. Ο κανόνας δεν αναιρείται,
                         ξεχωρίζει: ετικέτα ριγμένη, πρόζα στοιχισμένη. */}
-                    <td className="lg-cell-prose">{hyphenate(s.what)}</td>
+                    <td className="lg-cell-prose">{s.what}</td>
                     {/* ΤΟ «ΕΥΡΩΠΑΪΚΗ ΕΝΩΣΗ» ΔΕΝ ΣΠΑΕΙ ΣΤΑ ΔΥΟ. Η στήλη του τόπου
                         είναι στενή και η φράση δύο λέξεων έπεφτε «Ευρωπαϊκή /
                         Ενωση» — ένας θεσμός κομμένος στη μέση διαβάζεται ως δύο
@@ -376,11 +376,17 @@ export default function TrustPage() {
                   <dt>Τι κάνει</dt><dd>{s.what}</dd>
                   <dt>Πού</dt><dd>{placeOf(s.where)}</dd>
                   <dt>Ρόλος</dt><dd>{s.role}</dd>
-                  <dt>Κατάσταση</dt><dd>{s.planned ? NOT_ACTIVE : 'Ενεργός'}</dd>
                 </dl>
               </li>
             ))}
           </ul>
+          {plannedWork().length > 0 && (
+            <p className="lg-p" style={{ marginTop: 16 }}>
+              Σχεδιασμένοι αλλά ανενεργοί σήμερα, χωρίς καμία επεξεργασία δεδομένων: {plannedWork().join(', ')}.
+              Πριν ενεργοποιηθεί οποιοσδήποτε, θα σου το γνωστοποιήσουμε με email. Τα ονόματά τους είναι
+              στην <Link href="/privacy" className="po-tap-inline" style={{ color: 'var(--accent)' }}>Πολιτική απορρήτου</Link>.
+            </p>
+          )}
         </>
       ),
     },
@@ -392,8 +398,8 @@ export default function TrustPage() {
           <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν πουλάμε τα δεδομένα σου.</strong> Ούτε τα νοικιάζουμε, ούτε τα δίνουμε σε διαφημιστικά δίκτυα. {words.howWeArePaid}</Never>
           <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν αποθηκεύουμε στοιχεία κάρτας.</strong> {words.cardData}</Never>
           <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν ανοίγουμε τα αρχεία σου.</strong> Δεν υπάρχει εσωτερικό εργαλείο περιήγησης στα δεδομένα πελατών. Πρόσβαση γίνεται μόνο κατόπιν δικού σου αιτήματος υποστήριξης ή όπου το επιβάλλει ο νόμος.</Never>
-          <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν στέλνουμε στον βοηθό ολόκληρη τη βάση σου.</strong> Στέλνουμε όμως αρκετά και προτιμούμε να το ξέρεις: περίληψη των ακινήτων σου, του ενοικιαστή, του πελατολογίου και των επαφών σου (ονόματα και ιστορικό· τα τηλέφωνα και τα ΑΦΜ μένουν στη συσκευή σου), καθώς και όποιο έγγραφο ή φωτογραφία ανεβάζεις για ανάγνωση. Αυτά είναι και δεδομένα τρίτων· αν δεν το θέλεις, μη χρησιμοποιείς τον βοηθό και τη σάρωση εγγράφων.</Never>
-          <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν σε κλειδώνουμε μέσα.</strong> Κατεβάζεις με ένα κουμπί όλες τις καταχωρήσεις σου σε ένα αρχείο JSON, τα ανεβασμένα αρχεία τα κατεβάζεις χωριστά από τον Φάκελο Ακινήτου και διαγράφεις τον λογαριασμό σου χωρίς να χρειαστεί να μας γράψεις.</Never>
+          <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν στέλνουμε {ASSISTANT_TO} ολόκληρη τη βάση σου.</strong> Στέλνουμε όμως αρκετά και προτιμούμε να το ξέρεις: περίληψη των ακινήτων σου, του ενοικιαστή, του πελατολογίου και των επαφών σου (ονόματα και ιστορικό· τα τηλέφωνα και τα ΑΦΜ μένουν στη συσκευή σου), καθώς και όποιο έγγραφο ή φωτογραφία ανεβάζεις για ανάγνωση. Αυτά είναι και δεδομένα τρίτων· αν δεν το θέλεις, μη χρησιμοποιείς {ASSISTANT_ACC} και τη σάρωση εγγράφων.</Never>
+          <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν σε κλειδώνουμε μέσα.</strong> Κατεβάζεις με ένα κουμπί όλες τις καταχωρήσεις σου σε ένα αρχείο JSON, τα ανεβασμένα αρχεία τα κατεβάζεις χωριστά από τον φάκελο του ακινήτου και διαγράφεις τον λογαριασμό σου χωρίς να χρειαστεί να μας γράψεις.</Never>
         </div>
       ),
     },
@@ -406,7 +412,7 @@ export default function TrustPage() {
             στον <strong>Λογαριασμό · Δεδομένα και απόρρητο</strong>.
           </p>
           <ul className="lg-ul">
-            <li><strong>Πρόσβαση και φορητότητα:</strong> κατεβάζεις όλες τις καταχωρήσεις σου σε ένα αρχείο JSON που διαβάζεται από οποιοδήποτε εργαλείο. Τα έγγραφα που έχεις ανεβάσει τα κατεβάζεις από τον Φάκελο Ακινήτου.</li>
+            <li><strong>Πρόσβαση και φορητότητα:</strong> κατεβάζεις όλες τις καταχωρήσεις σου σε ένα αρχείο JSON που διαβάζεται από οποιοδήποτε εργαλείο. Τα έγγραφα που έχεις ανεβάσει τα κατεβάζεις από τον φάκελο του ακινήτου.</li>
             <li><strong>Διόρθωση:</strong> κάθε πεδίο το διορθώνεις μόνος σου, χωρίς αίτημα. Μόνη εξαίρεση το ονοματεπώνυμο, που αλλάζει μία φορά τον μήνα για λόγους ασφάλειας.</li>
             <li><strong>Διαγραφή:</strong> οριστική διαγραφή λογαριασμού και δεδομένων, από την ίδια την εφαρμογή.</li>
             <li><strong>Ανάκληση συγκατάθεσης:</strong> η συνεισφορά στα ανώνυμα δεδομένα κοινότητας είναι κλειστή εξ ορισμού· την ανοίγεις μόνο εσύ, με έναν διακόπτη και την κλείνεις όποτε θέλεις.</li>
