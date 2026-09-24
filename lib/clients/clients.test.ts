@@ -82,6 +82,16 @@ ok('stayTotal empty = 0', stayTotal({}) === 0);
   ok('stats adr', st.adr === 118.75);
   const empty = clientStats([]);
   ok('stats empty revenue', empty.revenue === 0 && empty.avgRating === null && empty.lastVisit === null && empty.adr === 0);
+  // Η μελλοντική κράτηση δεν είναι «τελευταία επίσκεψη»· είναι η επόμενη άφιξη.
+  const ahead = clientStats([
+    { check_in: '2026-03-01', check_out: '2026-03-04' },
+    { check_in: '2026-11-25', check_out: '2026-11-29' },
+    { check_in: '2026-12-07', check_out: '2026-12-10' },
+  ], '2026-09-24');
+  ok('stats lastVisit όχι στο μέλλον', ahead.lastVisit === '2026-03-04');
+  ok('stats nextArrival η κοντινότερη', ahead.nextArrival === '2026-11-25');
+  const onlyAhead = clientStats([{ check_in: '2026-11-25', check_out: '2026-11-29' }], '2026-09-24');
+  ok('stats μόνο μελλοντική: καμία επίσκεψη', onlyAhead.lastVisit === null && onlyAhead.nextArrival === '2026-11-25');
 }
 
 // ── normalizePhone / clientMatches ──────────────────────────────────────────

@@ -117,7 +117,7 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
             </div>
             {pooled && (
               <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55, marginTop: 8 }}>
-                Μπήκες και στην κλήρωση για μία δωρεάν ετήσια συνδρομή «Επαγγελματίας».
+                Μπήκες και στην κλήρωση για έναν χρόνο συνδρομής «{PLANS.agency.name}», χωρίς χρέωση.
               </div>
             )}
           </div>

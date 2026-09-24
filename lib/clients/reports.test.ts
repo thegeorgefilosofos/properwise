@@ -167,13 +167,21 @@ eq('ανάποδες ημερομηνίες → μηδέν',
   const t = totals([
     { ...stay({ total: 700 }), declared_at: '2026-06-10' },
     { ...stay({ total: 300 }), declared_at: null },
-  ])
+  ], '2026-09-24')
   eq('δύο διαμονές', t.count, 2)
   eq('άθροισμα εσόδων', t.revenue, 1000)
   eq('μία αδήλωτη', t.undeclared, 1)
   ok('το αδιευκρίνιστο μετριέται ΞΕΧΩΡΙΣΤΑ, δεν κρύβεται', t.unresolved >= 0 && t.unresolvedAmount <= t.revenue)
   eq('κενή λίστα → μηδενικά, όχι NaN',
-    totals([]), { revenue: 0, nights: 0, count: 0, unresolved: 0, unresolvedAmount: 0, platformFees: 0, climateLevy: 0, undeclared: 0 })
+    totals([]), { revenue: 0, nights: 0, count: 0, unresolved: 0, unresolvedAmount: 0, platformFees: 0, climateLevy: 0, undeclared: 0, upcoming: 0 })
+  // Η κράτηση του Δεκεμβρίου δεν είναι αδήλωτη τον Σεπτέμβριο· μετριέται
+  // χωριστά, ως επερχόμενη. Η διαμονή που τελειώνει σήμερα είναι εκκρεμής.
+  const f = totals([
+    { ...stay({ check_in: '2026-12-01', check_out: '2026-12-05' }), declared_at: null },
+    { ...stay({ check_in: '2026-09-20', check_out: '2026-09-24' }), declared_at: null },
+  ], '2026-09-24')
+  eq('μελλοντική κράτηση: όχι αδήλωτη', f.undeclared, 1)
+  eq('μελλοντική κράτηση: επερχόμενη', f.upcoming, 1)
 }
 
 // ═══ ΚΑΘΕ ΖΩΝΗ ΩΡΑΣ ════════════════════════════════════════════════════════

@@ -42,7 +42,7 @@ const joinedFullName = (v: unknown): string | null => {
   if (!one || typeof one !== 'object' || !('full_name' in one)) return null
   return typeof one.full_name === 'string' ? one.full_name : null
 }
-import { T, Btn, IconBtn, ChipToggle, LinkBtn, Modal, Spinner, Skeleton, EmptyState, Chip, feAuto, fe, fn, localDay, pressable, CloseButton } from '@/components/Theme'
+import { T, Btn, IconBtn, ChipToggle, LinkBtn, Modal, Spinner, Skeleton, EmptyState, Chip, PageTitle, feAuto, fe, fn, localDay, pressable, CloseButton } from '@/components/Theme'
 import { fixedCols } from '@/components/tokens'
 import { useCoarsePointer } from '@/components/useCoarsePointer'
 import type { XlsxSheet, XlsxCol } from './exportXlsx';
@@ -50,7 +50,7 @@ import { downloadXlsx } from './sheets';
 import {
   AlertTriangle, Plus, X, ChevronLeft, ChevronRight,
   Calendar, List, Check, FileText,
-  Zap, Shield, User, Bell, Filter, Download,
+  Zap, Shield, User, Bell, Filter, Download, Receipt,
   ChevronDown, Edit2, Trash2, RotateCcw,
   Euro, Wrench, RefreshCw, Landmark,
   Printer, CheckSquare, CalendarDays, ArrowRight,
@@ -118,7 +118,8 @@ interface FormState {
 const CATEGORIES: Record<EventCategory, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
   tax:         { label: 'Φορολογικά',   color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <Landmark size={11}/> },
   financial:   { label: 'Οικονομικά',   color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <Euro size={11}/> },
-  bills:       { label: 'Λογαριασμοί', color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <Zap size={11}/> },
+  // Απόδειξη και όχι κεραυνός: ο λογαριασμός νερού ή κοινοχρήστων δεν είναι ρεύμα.
+  bills:       { label: 'Λογαριασμοί', color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <Receipt size={11}/> },
   maintenance: { label: 'Συντήρηση',   color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <Wrench size={11}/> },
   contract:    { label: 'Συμβόλαιο',   color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <FileText size={11}/> },
   tenant:      { label: 'Ενοικιαστής', color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <User size={11}/> },
@@ -370,7 +371,6 @@ function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, onSelect
   const taxInfo = taxKind ? TAX_META[taxKind] : null
   const due     = daysUntil(event.event_date)
   const relLbl = (n:number) => { const a=Math.abs(n); return a===1?'1 ημέρα':`${a} ημέρες` }
-  const [hover,setHover]=useState(false)
   const [menuOpen,setMenuOpen]=useState(false)
   // ═══ ΤΟ ΕΚΠΡΟΘΕΣΜΟ ΔΕΝ ΧΡΕΙΑΖΕΤΑΙ ΚΟΚΚΙΝΟ ══════════════════════════════════
   // Η κάρτα βαφόταν κόκκινη σε περίγραμμα και σε λωρίδα. Με τέσσερα εκπρόθεσμα
@@ -381,7 +381,7 @@ function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, onSelect
   const accentBar = overdue?'var(--accent)':`color-mix(in srgb, ${cat.color} 50%, transparent)`
 
   return (
-    <div onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)} style={{ display:'flex', alignItems:'flex-start', gap: 12, padding:'12px 15px',
+    <div className="cal-ev" style={{ display:'flex', alignItems:'flex-start', gap: 12, padding:'12px 15px',
       background: selected?'var(--accent-dim)':done?'var(--bg-elevated)':'var(--bg-surface)',
       border:`1px solid ${selected?'var(--border-accent)':'var(--border-subtle)'}`,
       borderLeft:`${overdue?4:3}px solid ${accentBar}`,
@@ -455,11 +455,19 @@ function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, onSelect
       <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap: 4, flexShrink:0 }}>
         {/* Το βάρος κάνει τη δουλειά που έκανε το χρώμα: εκπρόθεσμο και σημερινό
             διαβάζονται πιο έντονα, τα υπόλοιπα υποχωρούν. */}
-        <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:(overdue||due===0)?600:400, color:(overdue||due===0)?'var(--text-primary)':'var(--text-secondary)' }}>
+        {/* ΤΟ ΕΚΠΡΟΘΕΣΜΟ ΛΕΓΕΤΑΙ ΜΕ ΤΗ ΛΕΞΗ ΤΟΥ. Εγραφε μόνο «πριν 7 ημέρες»,
+            που διαβάζεται και ως απλή ημερομηνία. Η λέξη πάνω, η απόσταση από
+            κάτω: σε μία σειρά έκοβε τον τίτλο του γεγονότος στα 390. */}
+        {overdue && <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>Εκπρόθεσμο</span>}
+        <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:due===0?600:400, color:due===0?'var(--text-primary)':'var(--text-secondary)' }}>
           {overdue?`πριν ${relLbl(due)}`:due===0?'Σήμερα':due===1?'Αύριο':(sameMonth?fmtShort:fmt)(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
         </span>
         {!bulkMode&&(
-          <div style={{ display:'flex', gap:2, alignItems:'center', opacity:(hover||menuOpen)?1:0, pointerEvents:(hover||menuOpen)?'auto':'none', transition:'opacity 0.13s' }}>
+          /* ΚΡΥΒΕΤΑΙ Η ΟΨΗ, ΟΧΙ Η ΕΝΕΡΓΕΙΑ. Με `opacity: 0` από αιώρηση σε
+             JavaScript το κουμπί έπαιρνε Tab και έμενε αόρατο· στην αφή δεν
+             φαινόταν ποτέ. Ο κανόνας ζει στην `.cal-ev-act` (globals.css):
+             αιώρηση, εστίαση πληκτρολογίου, ανοιχτό μενού, πάντα σε αφή. */
+          <div className="cal-ev-act" data-open={menuOpen||undefined} style={{ display:'flex', gap:2, alignItems:'center' }}>
             <AddToCalendarMenu event={event} onEdit={isAuto?undefined:onEdit} onDelete={onDelete} onOpenChange={setMenuOpen}/>
           </div>
         )}
@@ -580,13 +588,15 @@ export function DaySheet({ date, events, onClose, onPick, onNew }: {
   const anyTime = sorted.some(e => !!e.event_time)
   return (
     <Modal open onClose={onClose} title={title} subtitle={`${events.length} ${events.length === 1 ? 'γεγονός' : 'γεγονότα'}`} size="sm"
-      footer={<Btn variant="primary" onClick={onNew}>Νέο γεγονός</Btn>}>
+      // Η μόνη ενέργεια του φύλλου είναι η κύρια: στο τηλέφωνο πιάνει όλο το
+      // πλάτος (`.act-fill`), αντί να κάθεται μικρή αριστερά.
+      footer={<Btn variant="primary" onClick={onNew} className="act-fill">Νέο γεγονός</Btn>}>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {sorted.map((ev, i) => (
           <button key={ev.id} onClick={() => onPick(ev)} className="po-hov-row cal-day-row" data-last={i === sorted.length - 1}>
             {/* Η ώρα κρατά σταθερή στήλη ώστε οι τίτλοι να ξεκινούν όλοι από το
                 ίδιο σημείο· χωρίς ώρα μένει κενή αντί να μετακινήσει τη γραμμή. */}
-            {anyTime && <span style={{ width: '5ch', flexShrink: 0, fontSize: 'var(--fs-xs)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-tertiary)' }}>{ev.event_time || ''}</span>}
+            {anyTime && <span style={{ width: '5ch', flexShrink: 0, fontSize: 'var(--fs-sm)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{ev.event_time || ''}</span>}
             <span style={{ flexShrink: 0, display: 'flex', color: CATEGORIES[ev.category].color }}>{CATEGORIES[ev.category].icon}</span>
             {/* ΤΟ ΠΛΗΡΩΜΕΝΟ ΔΕΝ ΓΙΝΕΤΑΙ ΑΔΙΑΒΑΣΤΟ. Με `opacity: 0.55` ο τίτλος
               έβγαινε 3,69:1 στο φωτεινό θέμα, κάτω από το 4,5. Δηλαδή ο
@@ -854,7 +864,7 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
                       <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
                         {dayEvents.slice(0,3).map(ev=>(
                           <Tooltip key={ev.id} text={`${ev.title}${ev.event_time?` · ${ev.event_time}`:''}${ev.amount?` · ${fe(ev.amount)}` :''}${ev._virtual?'\n(επαναλαμβανόμενο)':''}${ev.notes?`\n${ev.notes}`:''}`}>
-                            <div {...(coarse ? {} : { onPointerDown: !ev._virtual&&drag?drag.onDown(ev.id,ev.title):undefined, role:'button', tabIndex:0, 'aria-label':`Άνοιγμα: ${ev.title}`, onKeyDown:(e:React.KeyboardEvent)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();onEventClick(ev)}}, onClick:(e:React.MouseEvent)=>{e.stopPropagation();onEventClick(ev)} })} className="po-elide cal-chip" style={{ touchAction:'none', padding:'1px 4px', borderRadius: T.radius.xs, background:CATEGORIES[ev.category].bg, color:CATEGORIES[ev.category].color, cursor:coarse?'inherit':ev._virtual?'pointer':'grab', width:'100%', opacity:ev.status==='paid'?0.4:ev._virtual?0.72:1, textDecoration:ev.status==='paid'?'line-through':'none', fontFamily: T.font.sans, letterSpacing:'0.25px' }}>
+                            <div {...(coarse ? {} : { onPointerDown: !ev._virtual&&drag?drag.onDown(ev.id,ev.title):undefined, role:'button', tabIndex:0, 'aria-label':`Άνοιγμα: ${ev.title}`, onKeyDown:(e:React.KeyboardEvent)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();onEventClick(ev)}}, onClick:(e:React.MouseEvent)=>{e.stopPropagation();onEventClick(ev)} })} className="po-elide cal-chip" style={{ touchAction:'none', padding:'1px 4px', borderRadius: T.radius.xs, backgroundColor:CATEGORIES[ev.category].bg, color:CATEGORIES[ev.category].color, cursor:coarse?'inherit':ev._virtual?'pointer':'grab', width:'100%', opacity:ev.status==='paid'?0.4:ev._virtual?0.72:1, textDecoration:ev.status==='paid'?'line-through':'none', fontFamily: T.font.sans, letterSpacing:'0.25px' }}>
                               {(ev.recurring||ev._virtual)&&<RotateCcw size={9} style={{ marginRight: 4, verticalAlign:'middle', opacity:0.7 }}/>}{ev.event_time?ev.event_time+' ':''}{ev.title}
                             </div>
                           </Tooltip>
@@ -985,7 +995,7 @@ function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, o
                       <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:soon?600:400, color:soon?'var(--text-primary)':'var(--text-tertiary)' }}>{when}</span>
                       {ev.amount!=null&&<span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-secondary)' }}>{fe(ev.amount)}</span>}
                     </div>
-                    {more>0&&<p style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'3px 0 0' }}>{row.kind==='series'&&row.cadence?`${row.cadence}, ` : ''}{more===1?'1 ακόμη':`${more} ακόμη`}</p>}
+                    {more>0&&<p style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'3px 0 0' }}>{[row.kind==='series'?row.cadence:null, more===1?'άλλη 1 φορά':`άλλες ${more} φορές`].filter(Boolean).join(' · ')}</p>}
                   </div>
                 </div>
               )
@@ -1059,7 +1069,7 @@ function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { propertyId:
     bookings:   {label:'Κρατήσεις',            icon:<User size={15}/>,     unit:n=>n===1?'1 κράτηση':`${n} κρατήσεις`,       empty:'Καμία κράτηση ακόμη'},
     tax:        {label:'Φορολογικά (ΑΑΔΕ)',    icon:<FileText size={15}/>, unit:n=>n===1?'1 προθεσμία':`${n} προθεσμίες`,    empty:'Καμία προθεσμία στο επόμενο διάστημα'},
     loans:      {label:'Δόσεις δανείου',        icon:<TrendingUp size={15}/>,unit:n=>n===1?'1 δάνειο':`${n} δάνεια`,          empty:'Δεν έχεις καταχωρήσει δάνειο'},
-    bills:      {label:'Λογαριασμοί',          icon:<Zap size={15}/>,      unit:n=>n===1?'1 λογαριασμός':`${n} λογαριασμοί`, empty:'Δεν έχεις καταχωρήσει λογαριασμό'},
+    bills:      {label:'Λογαριασμοί',          icon:<Receipt size={15}/>,      unit:n=>n===1?'1 λογαριασμός':`${n} λογαριασμοί`, empty:'Δεν έχεις καταχωρήσει λογαριασμό'},
     maintenance:{label:'Συντήρηση',            icon:<Wrench size={15}/>,   unit:n=>n===1?'1 εργασία':`${n} εργασίες`,        empty:'Καμία εργασία συντήρησης'},
   }
 
@@ -2043,7 +2053,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     if(id.includes('__')){ const i=id.indexOf('__'); setDeleteScope({seriesId:id.slice(0,i),occ:id.slice(i+2)}); return }
     const ev=events.find(e=>e.id===id)
     if(ev?.recurring){ setDeleteScope({seriesId:id,occ:ev.event_date}); return }
-    if(!(await confirmDialog('Διαγραφή γεγονότος;',{tone:'negative'})))return
+    if(!(await confirmDialog('Διαγραφή γεγονότος;',{tone:'negative',confirmLabel:'Διαγραφή'})))return
     // Ήταν `.then(()=>{})`: η διαγραφή ξεκινούσε και κανείς δεν περίμενε ούτε
     // κοιτούσε το αποτέλεσμα, ενώ η γραμμή έφευγε ήδη από την οθόνη.
     if(!await saved('Το γεγονός δεν διαγράφηκε', calendar.remove(supabase,id))) return
@@ -2069,7 +2079,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     // επιλογή μπορεί να αλλάξει όσο περιμένουμε απάντηση. Το πλήθος στο μήνυμα και
     // τα γεγονότα που σβήνουν προέρχονται πλέον από την ίδια, μία λίστα.
     const ids=[...selectedIds]
-    if(!ids.length||!(await confirmDialog(`Διαγραφή ${ids.length} γεγονότων;`,{tone:'negative'})))return
+    if(!ids.length||!(await confirmDialog(ids.length===1?'Διαγραφή 1 γεγονότος;':`Διαγραφή ${ids.length} γεγονότων;`,{tone:'negative',confirmLabel:'Διαγραφή'})))return
     await saved('Τα γεγονότα δεν διαγράφηκαν', calendar.remove(supabase,ids))
     await load(); setSelectedIds(new Set()); setBulkMode(false)
   }
@@ -2162,32 +2172,23 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      {/* ── Η ΟΘΟΝΗ ΧΡΕΙΑΖΕΤΑΙ ΟΝΟΜΑ, ΚΑΙ ΑΣ ΜΗΝ ΤΟ ΔΕΙΧΝΕΙ ──────────────────
-          Δώδεκα καρτέλες έχουν ορατό τίτλο μέσω `PageTitle`, δηλαδή `h1`. Αυτή
-          δεν είχε ΚΑΝΕΝΑ: ο αναγνώστης οθόνης ανακοίνωνε τη σελίδα χωρίς όνομα,
-          η πλοήγηση ανά επικεφαλίδα —ο βασικός τρόπος που διαβάζει κανείς μια
-          άγνωστη οθόνη— ξεκινούσε από `h2` ή `h3` και η ιεραρχία δεν είχε
-          κορυφή. Το όνομα έρχεται από το `lib/nav/labels.ts`, την ίδια πηγή με
-          το μενού και τη Νόα: δεν επινοείται δεύτερο εδώ.
-          Κρυφό ΟΠΤΙΚΑ, όχι από τον αναγνώστη — η οθόνη έχει ήδη τη δική της
-          κεφαλίδα και δεν αλλάζει ούτε ένα εικονοστοιχείο. */}
-      <h1 className="sr-only">{navLabel('calendar')}</h1>
+      {/* ── Η ΟΘΟΝΗ ΕΧΕΙ ΟΝΟΜΑ, ΟΠΩΣ ΚΑΘΕ ΑΛΛΗ ΚΑΡΤΕΛΑ ────────────────────────
+          Ηταν `h1` κρυφό οπτικά: ο αναγνώστης οθόνης είχε κορυφή, το μάτι όχι·
+          το Ημερολόγιο ήταν η μόνη καρτέλα χωρίς ορατό τίτλο δίπλα στον
+          Ενοικιαστή, τις Επαφές και τους Επισκέπτες. Το όνομα έρχεται από το
+          `lib/nav/labels.ts`, την ίδια πηγή με το μενού και τη Νόα.
 
-      {/* ═══ ΟΙ ΕΚΚΡΕΜΟΤΗΤΕΣ ΑΝΟΙΓΟΥΝ ΑΠΟ ΕΔΩ ══════════════════════════════════
-          Ήταν δική τους γραμμή στην πλαϊνή μπάρα, στα «Εργαλεία», δίπλα στην
-          απογραφή επίπλων. Είναι όμως προθεσμίες και τις προθεσμίες τις ψάχνει
-          κανείς στο ημερολόγιο. Μία λέξη με τον αριθμό των ανοιχτών: η μπάρα
-          γλιτώνει μια γραμμή και η καρτέλα βρίσκεται εκεί που τη σκέφτεσαι. */}
-      {onOpenTasks && (
-        <div style={{ display:'flex', justifyContent:'flex-end' }}>
-          {/* Σύνδεσμος και όχι κουμπί: δεν έχει κουτί, κάθεται ως λέξη πάνω δεξιά.
-              Το κενό πριν από το πλήθος ήταν `gap` του flex και ζει τώρα στο ίδιο
-              το σήμα, γιατί το LinkBtn είναι κείμενο σε ροή. */}
+          ΟΙ ΕΚΚΡΕΜΟΤΗΤΕΣ ΑΝΟΙΓΟΥΝ ΑΠΟ ΕΔΩ. Ηταν δική τους γραμμή στην πλαϊνή
+          μπάρα, στα «Εργαλεία». Είναι όμως προθεσμίες και τις προθεσμίες τις
+          ψάχνει κανείς στο ημερολόγιο: μία λέξη με τον αριθμό των ανοιχτών,
+          στη θέση της ενέργειας του τίτλου. Σύνδεσμος και όχι κουμπί: κάθεται
+          ως λέξη, χωρίς κουτί. */}
+      <PageTitle title={navLabel('calendar')} sub="Προθεσμίες, πληρωμές και ραντεβού"
+        right={onOpenTasks ? (
           <LinkBtn onClick={onOpenTasks}>
             Εκκρεμότητες{openTasks > 0 && <span style={{ fontFamily: T.font.num, fontVariantNumeric:'tabular-nums', color:'var(--text-tertiary)', fontWeight:500, marginLeft:6 }}>{openTasks}</span>}
           </LinkBtn>
-        </div>
-      )}
+        ) : undefined} />
 
       {/* Εκπρόθεσμα — ΜΙΑ γραμμή, ίδια γλώσσα με το μπάνερ των λήξεων.
           Η γραμμή KPI έφυγε: επαναλάμβανε τα ίδια τρία νούμερα μέσα σε 40px (το

@@ -45,6 +45,7 @@ import { notifyError } from '@/components/Toast';
 import { SAY, failed } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
 import { useRememberedFlag } from '@/components/useRememberedFlag';
+import { useBillingWords } from './useBillingWords';
 
 type ProfileType = 'individual' | 'professional';
 
@@ -642,6 +643,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   // «ανυψώνει» τίποτα και δεν έχει νόημα να την ανακοινώνουμε).
   const trial = trialState(ent);
   const trialShowing = trial.active && normalizePlan(plan) === 'free' && !comp && !partner;
+  const billingWords = useBillingWords();
   const propLimit = propertyLimit(ent);
   const propLimitLabel = propLimit === Infinity ? 'απεριόριστα' : String(propLimit);
   const usagePct = propLimit === Infinity || !propertyCount ? 0 : Math.min(100, Math.round((propertyCount / propLimit) * 100));
@@ -790,7 +792,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
             {(atLimit || nearLimit) && (
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8, lineHeight: 1.5 }}>
                 {atLimit
-                  ? 'Έφτασες το όριο του πακέτου σου. Αναβάθμισε για να κρατάς κι άλλα ακίνητα σε ένα σημείο.'
+                  ? 'Έφτασες το όριο του πακέτου σου. Για περισσότερα ακίνητα χρειάζεται μεγαλύτερο πακέτο.'
                   : 'Ένα ακόμη ακίνητο και φτάνεις το όριο του πακέτου σου.'}
               </div>
             )}
@@ -811,8 +813,12 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-start', gap: 10, background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 14px' }}>
             <span className="acc-live-dot accent" style={{ width: 6, height: 6, background: 'var(--accent)', flexShrink: 0, marginTop: 6 }} />
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
-              Δοκιμάζεις δωρεάν το <strong style={{ color: 'var(--text-primary)' }}>{PLANS[effPlan].name}</strong> για {trial.daysLeft === 1 ? 'ακόμη μία ημέρα' : `ακόμη ${trial.daysLeft} ημέρες`}.
-              {' '}Δεν έχεις δηλώσει μέσο πληρωμής, οπότε δεν πρόκειται να χρεωθείς: όταν λήξει, ο λογαριασμός σου συνεχίζει στο «{PLANS.free.name}», με το πρώτο σου ακίνητο και τα δεδομένα σου ανέπαφα.
+              Δοκιμάζεις το <strong style={{ color: 'var(--text-primary)' }}>{PLANS[effPlan].name}</strong> για {trial.daysLeft === 1 ? 'ακόμη μία ημέρα' : `ακόμη ${trial.daysLeft} ημέρες`}, χωρίς χρέωση.
+              {/* ΤΙ ΓΙΝΕΤΑΙ ΣΤΗ ΛΗΞΗ ΤΟ ΛΕΝΕ ΟΙ ΟΡΟΙ, ΟΧΙ ΑΥΤΗ Η ΟΘΟΝΗ. Εγραφε με
+                  το χέρι «τα δεδομένα σου ανέπαφα», ενώ με ενεργή χρέωση οι Οροι
+                  λένε διαγραφή μετά την περίοδο χάριτος. Η πρόταση έρχεται από το
+                  billingWords, όπως και στους Ορους· χωρίς απάντηση δεν λέγεται. */}
+              {billingWords?.afterTrialShort ? <>{' '}{billingWords.afterTrialShort}</> : null}
             </div>
           </div>
         )}
@@ -828,10 +834,10 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
                   πρόσβαση δεν λήγει ποτέ. Ο χρήστης διάβαζε ένα αστείο εκεί που
                   περίμενε όρο. Ό,τι απέχει πάνω από δέκα χρόνια λέγεται με
                   λέξεις, γιατί αυτό ακριβώς σημαίνει. */}
-              Έχεις δωρεάν πρόσβαση <strong style={{ color: 'var(--text-primary)' }}>{PLANS[comp.plan].name}</strong>
+              Έχεις πρόσβαση <strong style={{ color: 'var(--text-primary)' }}>{PLANS[comp.plan].name}</strong>
               {isOpenEnded(comp.until)
                 ? ', χωρίς ημερομηνία λήξης'
-                : <> έως και {fdLong(comp.until)}</>}. Την κέρδισες από το Πρόγραμμα πρόσκλησης, χωρίς καμία χρέωση.
+                : <> έως και {fdLong(comp.until)}</>}, χωρίς χρέωση. Την κέρδισες από το Πρόγραμμα πρόσκλησης.
             </div>
           </div>
         )}

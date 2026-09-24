@@ -46,7 +46,6 @@ import {
   fp,
   Skeleton,
   SkeletonKPIs,
-  ExportButton,
   IconBtn,
   ChipToggle,
   fixedCols,
@@ -126,6 +125,8 @@ import {
 import { DashboardView, CommView, LegalTaxView, DamagesView, MaintenanceView } from './TabTenantCare';
 import { useLoad } from '@/app/hooks/useLoad';
 import { plural } from '@/lib/core/greek';
+import { ActionMenu } from '@/components/ActionMenu';
+import { navLabel } from '@/lib/nav/labels';
 
 // ─── Design tokens, shared source of truth (components/Theme) ────────────────
 
@@ -269,10 +270,10 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     const arrearsCount=[...overdueByTenant.values()].reduce((a,e)=>a+e.count,0);
     const depositHeld=currentTenants.filter(t=>!t.deposit_returned).reduce((a,t)=>a+(t.deposit_amount||0),0);
     return [
-      { label:'Τρέχον Μηνιαίο Ενοίκιο', value:fe(currentRent), tone:'neutral' },
-      { label:'Ληξιπρόθεσμη Οφειλή', value:fe(arrears), tone:arrears>0?'negative':'neutral', sub:arrearsCount>0?`${fn(arrearsCount)} ${arrearsCount===1?'δόση':'δόσεις'}`:'καμία οφειλή' },
-      { label:'Εγγύηση σε Κατοχή', value:fe(depositHeld), tone:'neutral' },
-      { label:'Προηγούμενοι Ενοικιαστές', value:fn(pastTenants.length), tone:'neutral' },
+      { label:'Τρέχον μηνιαίο ενοίκιο', value:fe(currentRent), tone:'neutral' },
+      { label:'Ληξιπρόθεσμη οφειλή', value:fe(arrears), tone:arrears>0?'negative':'neutral', sub:arrearsCount>0?`${fn(arrearsCount)} ${arrearsCount===1?'δόση':'δόσεις'}`:'καμία οφειλή' },
+      { label:'Εγγύηση σε κατοχή', value:fe(depositHeld), tone:'neutral' },
+      { label:'Προηγούμενοι ενοικιαστές', value:fn(pastTenants.length), tone:'neutral' },
     ];
   },[currentTenants,pastTenants,overdueByTenant]);
 
@@ -588,15 +589,22 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
 
       {error&&<div style={{ background:'var(--negative-dim)', border:'1px solid var(--negative-border)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.inner, padding:'11px 18px', marginBottom:14, color:'var(--negative)', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:500, display:'flex', justifyContent:'space-between', alignItems:'center' }}><span>{error}</span><IconBtn label="Κλείσιμο μηνύματος σφάλματος" tone="danger" onClick={()=>setError(null)}><span style={{ fontSize:18, lineHeight:1 }}>×</span></IconBtn></div>}
 
-      <PageTitle title="Ενοικιαστής" sub="Τρέχουσα και προηγούμενες μισθώσεις, με πλήρη φάκελο ανά ενοικιαστή"
-        right={tenants.length>0?<>
-          <ExportButton onClick={exportRoster}/>
-          {/* Η ίδια ενέργεια λεγόταν «Μισθωτήριο» εδώ και «Σύνταξη μισθωτηρίου» στην
-              κενή κατάσταση. Ο χρήστης μαθαίνει το ένα όνομα και συναντά το άλλο. */}
-          <Btn variant="secondary" onClick={()=>setLeaseOpen(true)}>Σύνταξη μισθωτηρίου</Btn>
-          <Btn variant="secondary" onClick={()=>setDeclOpen(true)}>Δήλωση μίσθωσης</Btn>
+      {/* Ο ΤΙΤΛΟΣ ΕΙΝΑΙ ΤΟ ΟΝΟΜΑ ΤΟΥ ΜΕΝΟΥ. Ηταν «Ενοικιαστής» με το χέρι, πάνω
+          από λίστα με φίλτρα «Όλοι», «Τρέχοντες», «Προηγούμενοι». */}
+      <PageTitle title={navLabel('tenant')} sub="Τρέχουσα και προηγούμενες μισθώσεις, με πλήρη φάκελο ανά ενοικιαστή"
+        right={tenants.length>0?<div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+          {/* ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΚΑΙ ΕΝΑ ΜΕΝΟΥ, ΟΠΩΣ ΣΤΙΣ ΕΠΑΦΕΣ. Τέσσερα ισοβαρή
+              κουμπιά έβγαιναν πλέγμα 2×2 στο κινητό, με το «Σύνταξη μισθωτηρίου»
+              σε δύο σειρές δίπλα σε κουμπί μίας. Η ίδια ενέργεια λεγόταν κάποτε
+              «Μισθωτήριο» εδώ και «Σύνταξη μισθωτηρίου» στην κενή κατάσταση: το
+              όνομα μένει ένα. */}
+          <ActionMenu label="Περισσότερα" items={[
+            { key:'lease', label:'Σύνταξη μισθωτηρίου', description:'Ιδιωτικό συμφωνητικό, με υπογραφή και των δύο μερών.', onClick:()=>setLeaseOpen(true) },
+            { key:'decl', label:'Δήλωση μίσθωσης', description:'Τα πεδία της δήλωσης στην ΑΑΔΕ, ελεγμένα και έτοιμα για αντιγραφή.', onClick:()=>setDeclOpen(true) },
+            { key:'xlsx', label:'Εξαγωγή Excel', description:'Όλοι οι ενοικιαστές σε υπολογιστικό φύλλο.', onClick:exportRoster },
+          ]}/>
           <Btn variant="primary" onClick={openAdd}>Νέος ενοικιαστής</Btn>
-        </>:undefined}/>
+        </div>:undefined}/>
 
       <KPIGrid items={kpis}/>
 

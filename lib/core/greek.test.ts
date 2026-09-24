@@ -4,7 +4,7 @@
 // υλοποιήσεις που αντικατέστησε αυτό το αρχείο. Δεν είναι υποθετικές περιπτώσεις:
 // είναι οι είσοδοι στις οποίες το app έδινε δύο διαφορετικές απαντήσεις.
 import {
-  parseAmount, parseDate, isValidAfm, afmDigits, normalizePhone, nightsBetween, orthodoxEaster,
+  parseAmount, parseDate, isValidAfm, afmDigits, normalizePhone, displayPhone, nightsBetween, orthodoxEaster,
   days, years, months, plural,
 } from './greek';
 
@@ -103,6 +103,12 @@ function ok(name: string, cond: boolean) { if (cond) pass++; else { fail++; cons
   eq('με κενά', normalizePhone('694 123 4567'), want);
   eq('με +30', normalizePhone('+30 694 123 4567'), want);
   eq('με 0030', normalizePhone('00306941234567'), want);
+  // Η προβολή: ομαδοποιεί μόνο ό,τι έχει μία σωστή ομαδοποίηση.
+  eq('προβολή κινητού', displayPhone('+30 6941234567'), '694 123 4567');
+  eq('προβολή σταθερού Αττικής', displayPhone('2105550002'), '210 555 0002');
+  eq('άλλος κωδικός περιοχής: όπως γράφτηκε', displayPhone('2310 123456'), '2310 123456');
+  eq('ξένο τηλέφωνο: όπως γράφτηκε', displayPhone('+44 20 7946 0000'), '+44 20 7946 0000');
+  eq('κενό', displayPhone(null), '');
   eq('με παύλες', normalizePhone('694-123-4567'), want);
   eq('κενό', normalizePhone(''), '');
   // Σταθερό Αθήνας: δεν πρέπει να χάσει ψηφία επειδή ξεκινά από 2.

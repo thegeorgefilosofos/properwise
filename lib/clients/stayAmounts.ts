@@ -27,6 +27,7 @@
 // επιβεβαίωση στην πρώτη επόμενη επεξεργασία. Καμία σιωπηλή παραδοχή.
 // ═══════════════════════════════════════════════════════════════════════════
 import { stayTotal, type StayLike } from './clients';
+import { athensToday } from '../core/time';
 
 /** Τι σημαίνει το `total` μιας γραμμής. Δες το migration 20260730091000. */
 export type AmountBasis = 'unknown' | 'gross' | 'payout';
@@ -105,6 +106,24 @@ export function needsAmountReview(s: StayAmountLike): boolean {
 
 /** Δηλώθηκε η διαμονή στο myAADE; */
 export const isDeclared = (s: { declared_at?: string | null }): boolean => !!(s.declared_at || '').trim();
+
+/**
+ * Εκκρεμεί η δήλωση: η διαμονή έχει τελειώσει και δεν δηλώθηκε.
+ *
+ * ΜΙΑ ΚΡΑΤΗΣΗ ΤΟΥ ΔΕΚΕΜΒΡΙΟΥ ΔΕΝ ΕΙΝΑΙ ΑΔΗΛΩΤΗ ΤΟΝ ΣΕΠΤΕΜΒΡΙΟ. Η Δήλωση
+ * βραχυχρόνιας διαμονής αφορά διαμονή που έγινε, όμως το πλακίδιο «Αδήλωτες
+ * διαμονές» και το σήμα της κάρτας μετρούσαν και κρατήσεις που δεν είχαν καν
+ * ξεκινήσει: εκκρεμότητα που κανείς δεν μπορεί να κλείσει ακόμη. Διαμονή χωρίς
+ * καμία ημερομηνία μετρά ως εκκρεμής, για να συμπληρωθεί.
+ */
+export function awaitsDeclaration(
+  s: { declared_at?: string | null; check_in?: string | null; check_out?: string | null },
+  today: string = athensToday(),
+): boolean {
+  if (isDeclared(s)) return false;
+  const end = (s.check_out || s.check_in || '').slice(0, 10);
+  return !end || end <= today;
+}
 
 export interface StayAmountTotals {
   /** Δηλωτέο ακαθάριστο (χωρίς το τέλος ανθεκτικότητας). */

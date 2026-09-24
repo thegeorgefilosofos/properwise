@@ -9,6 +9,7 @@ import { planAtLeast, FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
 import { sanitizeAccent, sanitizeLogo, DEFAULT_ACCENT } from '@/lib/reportBranding';
 import { INK, INK_MUTED, PAPER } from '@/lib/print/ink';
 import { failed } from '@/lib/core/dbError';
+import { displayPhone } from '@/lib/core/greek';
 import { BRAND_MARK_DATA_URL } from '@/lib/brand/mark';
 
 const MAX_LOGO_BYTES = 500_000;
@@ -118,7 +119,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
   }
 
   const previewName = companyName.trim() || 'Η επωνυμία σου';
-  const contact = [phone.trim(), email.trim()].filter(Boolean).join(' · ');
+  const contact = [displayPhone(phone), email.trim()].filter(Boolean).join(' · ');
 
   // ═══════════════════════════════════════════════════════════════════════
   // ΤΕΣΣΕΡΙΣ ΚΑΡΤΕΣ ΓΙΑ ΜΙΑ ΡΥΘΜΙΣΗ
@@ -159,9 +160,9 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
             μοιράζονται ίσα το πλάτος. Σε στενή οθόνη πέφτουν και τα τρία σε
             μία στήλη, ποτέ σε δύο και ένα. */}
         <div {...fixedCols(3, 14, 'start', '', 1)}>
-          <TextInput label="Επωνυμία ή όνομα γραφείου" value={companyName} onChange={setCompanyName} placeholder="Παπαδόπουλος Ακίνητα" />
+          <TextInput label="Επωνυμία ή όνομα γραφείου" value={companyName} onChange={setCompanyName} placeholder="Γραφείο ακινήτων" />
           <TextInput label="Τηλέφωνο επικοινωνίας" value={phone} onChange={setPhone} placeholder="210 0000000" />
-          <TextInput label="Ηλεκτρονικό ταχυδρομείο επικοινωνίας" value={email} onChange={setEmail} placeholder="info@grafeio.gr" />
+          <TextInput label="Ηλεκτρονικό ταχυδρομείο επικοινωνίας" value={email} onChange={setEmail} placeholder="info@example.gr" />
         </div>
 
         <div style={line} />

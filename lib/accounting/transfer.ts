@@ -12,7 +12,7 @@
 //   (σε ΑΝΑΣΤΟΛΗ) και καθαρό τίμημα μετά τα κόστη.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { fe, grDate } from '../core/format';
+import { fe, fn, grDate } from '../core/format';
 import { centsOr0 } from '@/lib/core/money'
 import { regulated } from '@/lib/legal/validity'
 
@@ -139,9 +139,13 @@ export function transferCosts(input: TransferInput): TransferResult {
   }
 
   // ── Πώληση ──
-  if (input.useAgent) lines.push({ key: 'agent', label: 'Μεσιτική αμοιβή', amount: centsOr0(price * ((input.agentRatePct ?? AGENT_RATE_DEFAULT * 100) / 100) * (1 + VAT)), note: 'Ενδεικτικά 2% + ΦΠΑ.' })
-  lines.push({ key: 'pea', label: 'Πιστοποιητικό ενεργειακής απόδοσης (ΠΕΑ)', amount: PEA_COST, note: 'Υποχρεωτικό στην πώληση.' })
-  lines.push({ key: 'buildingId', label: 'Ταυτότητα κτιρίου / βεβαιώσεις μηχανικού', amount: BUILDING_ID_COST, note: 'Ενδεικτικό, από μηχανικό.' })
+  // Οι σημειώσεις φαίνονται κάτω από κάθε κόστος (Αξιοποίηση, πώληση): λένε τη
+  // βάση του ποσού, με το ποσοστό που πράγματι μπήκε στον υπολογισμό.
+  const agentPct = input.agentRatePct ?? AGENT_RATE_DEFAULT * 100
+  if (input.useAgent) lines.push({ key: 'agent', label: 'Μεσιτική αμοιβή', amount: centsOr0(price * (agentPct / 100) * (1 + VAT)),
+    note: `Ενδεικτικά ${fn(agentPct, Number.isInteger(agentPct) ? 0 : 1)}% της τιμής, συν ΦΠΑ ${fn(VAT * 100)}%.` })
+  lines.push({ key: 'pea', label: 'Πιστοποιητικό ενεργειακής απόδοσης (ΠΕΑ)', amount: PEA_COST, note: 'Υποχρεωτικό στην πώληση. Ενδεικτική τιμή.' })
+  lines.push({ key: 'buildingId', label: 'Ταυτότητα κτιρίου / βεβαιώσεις μηχανικού', amount: BUILDING_ID_COST, note: 'Ενδεικτική αμοιβή μηχανικού.' })
   if (input.useLawyer) lines.push({ key: 'lawyer', label: 'Δικηγόρος', amount: centsOr0(price * ((input.lawyerRatePct ?? 0.5) / 100) * (1 + VAT)), note: 'Προαιρετικός.' })
   // Φόρος υπεραξίας 15%, σε αναστολή (default 0, με σημείωση).
   const gain = Math.max(0, price - pos(input.acquisitionCost ?? 0))

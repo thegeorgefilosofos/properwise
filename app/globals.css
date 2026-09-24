@@ -859,8 +859,18 @@ body {
    υπολογισμένη `box-shadow` της κάρτας ήταν ΙΔΙΑ πριν και μετά την εστίαση, σε
    33 κάρτες του Πελατολογίου. Η κάρτα είναι `tabindex="0"` και `role="button"`,
    δηλαδή στάση του πληκτρολογίου: χωρίς σημάδι, όποιος πλοηγείται με Tab δεν
-   ξέρει σε ποια κάρτα βρίσκεται. Το `outline` δεν το πατά κανένα ενσώματο στυλ. */
-.record-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+   ξέρει σε ποια κάρτα βρίσκεται. Το `outline` δεν το πατά κανένα ενσώματο στυλ.
+   Η στάση του πληκτρολογίου είναι πλέον το ΟΝΟΜΑ (`.record-card-open`), όχι
+   η κάρτα: το δαχτυλίδι μένει στην κάρτα, το κουμπί δεν ζωγραφίζει δεύτερο. */
+.record-card:has(.record-card-open:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Το κουμπί ανοίγματος απλώνεται κάτω από όλη την κάρτα· ό,τι άλλο πατιέται
+   μέσα της (σύνδεσμοι, επιλογή, ενέργειες) κάθεται από πάνω του. */
+.record-card-open {
+  position: absolute; inset: 0; margin: 0; padding: 0; border: 0;
+  border-radius: inherit; background: transparent; cursor: pointer;
+}
+.record-card-open:focus-visible { outline: none; }
+.record-card :is(a, button, [role="checkbox"]):not(.record-card-open) { position: relative; z-index: 1; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    Η ΛΩΡΙΔΑ ΣΤΟΙΧΕΙΩΝ ΤΗΣ ΚΑΡΤΑΣ — ΚΑΙ ΓΙΑΤΙ ΕΠΑΨΕ ΝΑ ΕΙΝΑΙ ΜΙΑ ΣΕΙΡΑ
@@ -1120,6 +1130,11 @@ body {
   .scan-tiles[data-tiles="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .record-card-act { opacity: 0; transition: opacity .15s ease; }
+/* Οι ενέργειες του γεγονότος στο Ημερολόγιο, με τον ίδιο κανόνα: αιώρηση,
+   εστίαση πληκτρολογίου μέσα στη γραμμή, ανοιχτό μενού, πάντα ορατές στην αφή. */
+.cal-ev-act { opacity: 0; transition: opacity .13s ease; }
+.cal-ev:hover .cal-ev-act, .cal-ev:has(:focus-visible) .cal-ev-act, .cal-ev-act[data-open] { opacity: 1; }
+@media (hover: none) { .cal-ev-act { opacity: 1; } }
 /* Η αιώρηση του × ήταν γραμμένη σε JavaScript, δύο φορές (onMouseEnter και
    onMouseLeave σε κάθε κάρτα): δεν πυροδοτείται από πληκτρολόγιο και γράφει στο
    DOM πίσω από την πλάτη της React. Μία ψευδοκλάση και για το πληκτρολόγιο. */
@@ -2901,6 +2916,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .plan-tag { white-space: normal; max-width: 128px; }
 }
 
+/* ═══ ΚΑΤΩ ΑΠΟ 560 Ο ΡΟΛΟΣ ΤΟΥ ΒΗΜΑΤΟΣ ΓΙΝΕΤΑΙ ΥΠΟΤΙΤΛΟΣ, ΣΕ ΠΕΖΑ ═════════════
+   Ακόμη και με όριο 128, το «ΣΥΜΒΟΛΑΙΟΓΡΑΦΟΣ» κρατούσε το ένα τρίτο της
+   γραμμής στα 390 και το «Μάζεψε τα πιστοποιητικά του συμβολαίου» έσπαγε σε
+   τρεις σειρές. Ο ρόλος πάει κάτω από τον τίτλο, ΣΕ ΠΕΖΑ και στο χρώμα της
+   υπόδειξης: η παλιά στοίβα ήταν κεφαλαία λέξη αριστερά, που διαβαζόταν ως
+   επικεφαλίδα του επόμενου βήματος. Ο υπότιτλος είναι δεύτερο αντίγραφο και
+   όχι μετακίνηση, γιατί η ετικέτα της στήλης γράφεται με ενσωματωμένο στυλ
+   κεφαλαίων που καμία κλάση δεν ακυρώνει· ορατό είναι πάντα ένα από τα δύο. */
+.plan-tag-sub { display: none; }
+@media (max-width: 560px) {
+  .plan-row-step { grid-template-columns: minmax(0, 1fr); }
+  .plan-row-step > .plan-tag { display: none; }
+  .plan-tag-sub { display: block; margin-top: 2px; }
+}
+
 /* ═══ ΑΦΑΙΡΕΘΗΚΕ: .plan-table / .plan-axes / .plan-span / .plan-head /
    .plan-head-rule / .plan-name / .plan-axis / .plan-axis-k, μαζί με το ερώτημα
    μέσων των 760 που τα στοίβαζε ════════════════════════════════════════════
@@ -3608,6 +3638,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .act-row > :only-child { grid-column: 1 / -1; justify-self: start; }
   .act-row > :only-child,
   .act-row > :only-child > button, .act-row > :only-child > a { width: auto; }
+  /* Εκτός όταν η μόνη ενέργεια ΕΙΝΑΙ η κύρια του φύλλου και το λέει ρητά
+     (`act-fill`), όπως το «Νέο γεγονός» στο φύλλο της ημέρας. */
+  .act-row > .act-fill:only-child { justify-self: stretch; width: 100%; }
 }
 
 /* Δύο ισότιμες διαδρομές σε πολύ στενό τηλέφωνο: στοίβα αντί για δύο στήλες.
@@ -3789,7 +3822,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
      μετρητή και για τον αναγνώστη οθόνης· απλώς δεν ζωγραφίζεται. */
   .cal-chip { text-indent: -999px; overflow: hidden; }
   .cal-chip svg { display: none; }
+  /* ΚΑΙ Η ΜΠΑΡΑ ΔΕΝ ΜΟΙΑΖΕΙ ΜΕ ΣΚΕΛΕΤΟ ΦΟΡΤΩΣΗΣ. Χωρίς κείμενο, το γκρι γέμισμα
+     της κατηγορίας έβγαινε ίδιο με τα ορθογώνια αναμονής: στα 390 οι ημέρες
+     2, 8, 17 και 26 έμοιαζαν να φορτώνουν ακόμη. Λωρίδα και απαλό γέμισμα του
+     accent λένε «εδώ υπάρχει γεγονός». Το χρώμα της κατηγορίας γράφεται ως
+     `backgroundColor`, οπότε η εικόνα από πάνω του δεν ακυρώνεται. */
+  .cal-chip { background-image: linear-gradient(90deg, var(--accent) 0 3px, var(--accent-soft) 3px); }
 }
+
+/* Η μικρογραφία της κάρτας αρχείου. Χωρίς εικόνα, στο τηλέφωνο γίνεται λωρίδα
+   88 εικονοστοιχείων αντί για άδειο πλαίσιο 4:3 (TabDocuments, FileCard). */
+.file-thumb { aspect-ratio: 4 / 3; }
+@media (max-width: 560px) { .file-thumb[data-empty] { aspect-ratio: auto; height: 88px; } }
 
 /* Γραμμή κόστους υπηρεσίας (Ενοικιαστής): τα δύο πεδία πάνε από κάτω σε κινητό */
 @media (max-width: 560px) {

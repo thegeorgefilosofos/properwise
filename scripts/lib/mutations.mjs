@@ -507,6 +507,10 @@ export const MUTATIONS = {
   'way-out': { add: 'app/login/__mut__.tsx', content: "export default function P() {\n  return <h1>Μια οθόνη χωρίς δρόμο πίσω</h1>\n}\n" },
   // Ακριβώς ό,τι έριχνε το CI: το πλαστό αντικείμενο στη θέση του κατασκευαστή.
   'global-clobber': { add: 'lib/core/__mut__.ts', content: "export const stub = () => { (globalThis as unknown as Record<string, unknown>).URL = { createObjectURL: () => 'blob:x' } }\n" },
+  // Ο απαγορευμένος δρόμος ως «παράδειγμα» σε δοκιμή, όπως βρέθηκε. Γράφεται
+  // κωδικοποιημένος και εδώ: ο κατάλογος μεταλλάξεων είναι κι αυτός αρχείο
+  // του αποθετηρίου.
+  'forbidden-street': { add: 'lib/__mut__.test.ts', content: `const address = '${Buffer.from('zrHPgc+FzrLOss6/z4U=', 'base64').toString('utf8')} 45'\nexport default address\n` },
   // Η πληρωμένη διαδρομή που ξεχνά την πύλη πακέτου: ο έλεγχος του server
   // αντικαθίσταται από «πάντα ανοιχτό». Ο φύλακας πρέπει να το πιάσει.
   'server-entitlements': { file: 'app/api/investment/route.ts', from: "await requireFeature('investment_analysis')", to: "await Promise.resolve({ ok: true, plan: 'agency', userId: 'x' })" },

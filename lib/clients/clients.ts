@@ -97,27 +97,38 @@ export function stayTotal(s: StayLike): number {
 
 export interface ClientStats {
   revenue: number; nights: number; stayCount: number;
-  avgRating: number | null; lastVisit: string | null;
+  avgRating: number | null;
+  /** Η πιο πρόσφατη επίσκεψη που έχει ξεκινήσει, ώς σήμερα. */
+  lastVisit: string | null;
+  /** Η πιο κοντινή άφιξη που δεν έχει έρθει ακόμη. */
+  nextArrival: string | null;
   hasDamage: boolean; damageTotal: number; adr: number;
 }
 
 /** Συγκεντρωτικά ανά πελάτη από τις διαμονές του (έσοδα, νύχτες, βαθμολογία, φθορές). */
-export function clientStats(stays: StayLike[]): ClientStats {
+export function clientStats(stays: StayLike[], today: string = athensToday()): ClientStats {
   let revenue = 0, nights = 0, damageTotal = 0, hasDamage = false;
-  let ratingSum = 0, ratingCount = 0, lastVisit: string | null = null;
+  let ratingSum = 0, ratingCount = 0, lastVisit: string | null = null, nextArrival: string | null = null;
   for (const s of stays) {
     const n = s.nights ?? stayNights(s.check_in, s.check_out);
     nights += n || 0;
     revenue += stayTotal(s);
     if (s.damages) { hasDamage = true; damageTotal += s.damage_cost || 0; }
     if (typeof s.rating === 'number') { ratingSum += s.rating; ratingCount++; }
-    const d = s.check_out || s.check_in || null;
-    if (d && (!lastVisit || d > lastVisit)) lastVisit = d;
+    // Η «ΤΕΛΕΥΤΑΙΑ ΕΠΙΣΚΕΨΗ» ΔΕΝ ΕΙΝΑΙ ΣΤΟ ΜΕΛΛΟΝ. Επαιρνε το μέγιστο check_out
+    // χωρίς όριο, οπότε μια κράτηση του Δεκεμβρίου γραφόταν τον Σεπτέμβριο ως
+    // «τελ. επίσκεψη 07 Δεκ». Ό,τι δεν έχει ξεκινήσει είναι επόμενη άφιξη.
+    const start = (s.check_in || s.check_out || '').slice(0, 10);
+    const end = (s.check_out || s.check_in || '').slice(0, 10);
+    if (start && start <= today) {
+      const d = end <= today ? end : start;
+      if (!lastVisit || d > lastVisit) lastVisit = d;
+    } else if (start && (!nextArrival || start < nextArrival)) nextArrival = start;
   }
   return {
     revenue, nights, stayCount: stays.length,
     avgRating: ratingCount ? Math.round((ratingSum / ratingCount) * 10) / 10 : null,
-    lastVisit, hasDamage, damageTotal,
+    lastVisit, nextArrival, hasDamage, damageTotal,
     // ═══ ΛΕΠΤΑ, ΟΠΩΣ ΚΑΘΕ ΑΛΛΟ ΠΟΣΟ ΤΗΣ ΕΦΑΡΜΟΓΗΣ ═══════════════════════════
     // Στρογγύλευε σε ΑΚΕΡΑΙΑ ευρώ και το πλακίδιο το τύπωνε με δύο δεκαδικά:
     // 950,00€ σε 8 νύχτες έγραφε «118,75€» στο μυαλό του χρήστη και

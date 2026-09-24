@@ -1,12 +1,15 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { SITE } from '@/lib/core/site';
 import { downloadTableXlsx, csvDate } from './exportCsv';
 import { saved } from '@/components/dbWrite';
 import { drawQrToCanvas } from '@/lib/qr';
-import { T, TT, Badge, Btn, PageTitle, ExportButton, EmptyState, Modal, SkeletonKPIs, fn, fixedCols, pageShell, Bar } from '@/components/Theme';
+import { T, TT, Badge, Btn, PageTitle, ExportButton, EmptyState, Modal, SkeletonKPIs, InfoBanner, fn, fixedCols, pageShell, Bar } from '@/components/Theme';
+import { ActionMenu } from '@/components/ActionMenu';
 import { PLANS, TRIAL_DAYS, type PlanId } from '@/lib/billing/plans';
+import { TRIAL_PLAN } from '@/lib/billing/entitlements';
+import { useBillingWords } from './useBillingWords';
 import { UserPlus } from 'lucide-react';
 import { navLabel } from '@/lib/nav/labels';
 import {
@@ -45,6 +48,9 @@ import {
 // Design system του app (T/TT tokens, elevation για βάθος, ένα accent στο hover).
 // ═══════════════════════════════════════════════════════════════════════════
 
+const noSubscribe = () => () => {};
+const hasWebShare = () => typeof (navigator as Navigator & { share?: unknown }).share === 'function';
+
 const Ic = ({ d, s = 18, c = 'currentColor', sw = 1.8 }: { d: string; s?: number; c?: string; sw?: number }) => (
   <svg aria-hidden="true" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
     {d.split('|').map((p, i) => <path key={i} d={p} />)}
@@ -56,6 +62,18 @@ const Ic = ({ d, s = 18, c = 'currentColor', sw = 1.8 }: { d: string; s?: number
 // «1 μήνες» — δηλαδή ένα προϊόν που δεν ξέρει ελληνικά.
 const moAcc = (n: number) => (n === 1 ? 'έναν μήνα' : `${n} μήνες`);
 const moNom = (n: number) => `${n} ${n === 1 ? 'μήνας' : 'μήνες'}`;
+
+// ΤΟ ΠΟΤΕ ΚΕΡΔΙΖΕΤΑΙ Η ΑΝΤΑΜΟΙΒΗ ΛΕΓΕΤΑΙ ΜΕ ΤΙΣ ΙΔΙΕΣ ΛΕΞΕΙΣ ΠΑΝΤΟΥ. Η οθόνη
+// είχε τρεις ορισμούς («ξεκινά», «ενεργοποιεί τον λογαριασμό του», «προσθέσει
+// ένα ακίνητο και σαρώσει ένα έγγραφο») για τον ΕΝΑΝ κανόνα της βάσης
+// (`mark_referral_activated`). Μένει ο τρίτος, που λέει τι πρέπει να γίνει.
+const ACT_PROPS = ACTIVATION_MIN_PROPERTIES === 1 ? 'ένα ακίνητο' : `${ACTIVATION_MIN_PROPERTIES} ακίνητα`;
+const ACT_DOCS = ACTIVATION_MIN_DOCUMENTS === 1 ? 'ένα έγγραφο' : `${ACTIVATION_MIN_DOCUMENTS} έγγραφα`;
+/** «προσθέτει ένα ακίνητο και σαρώνει ένα έγγραφο» */
+const ACTIVATES = `προσθέτει ${ACT_PROPS} και σαρώνει ${ACT_DOCS}`;
+/** Το όνομα πακέτου μέσα σε πρόταση: σε εισαγωγικά, στην ονομαστική. Η γενική
+ *  («μήνας Ιδιοκτήτη») διαβαζόταν σαν «μήνας ενός ιδιοκτήτη». */
+const planQ = (id: PlanId) => `«${PLANS[id].name}»`;
 
 /**
  * Πλέγμα καρτών με ΡΗΤΟ πλήθος στηλών και το κενό της ενότητας από κάτω.
@@ -149,7 +167,7 @@ const REWARD_REASON: Record<string, string> = {
 const rewardReason = (reason: string) => REWARD_REASON[reason] || 'Μπόνους';
 const rewardTitle = (r: Reward) => r.kind === 'slot'
   ? `1 ακίνητο χωρίς χρέωση για ${moAcc(r.months)}`
-  : `${moNom(r.months)} ${r.tier === 'agency' ? PLANS.agency.nameGen : PLANS.solo.nameGen} χωρίς χρέωση`;
+  : `${moNom(r.months)} ${planQ(r.tier === 'agency' ? 'agency' : 'solo')} χωρίς χρέωση`;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΚΑΡΤΑ ΜΗΝΙΑΙΟΥ ΣΤΟΧΟΥ — ΟΡΙΖΕΤΑΙ ΕΞΩ ΑΠΟ ΤΟ COMPONENT
@@ -284,6 +302,15 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
   const code = useMemo(() => referralCode(userId), [userId]);
   const link = useMemo(() => referralLink(SITE, userId), [userId]);
   const isPro = profileType === 'professional';
+  // ΟΙ ΣΤΟΧΟΙ ΤΟΥ ΣΥΝΕΡΓΑΤΗ ΜΕΤΡΟΥΝ ΣΥΝΔΡΟΜΗΤΕΣ. Οσο η χρέωση δεν τρέχει, κανείς
+  // δεν γίνεται συνδρομητής και οι κάρτες «0 / 5», «0 / 3 μήνες» έδειχναν
+  // πρόοδο προς κάτι ανέφικτο. Η επιφύλαξη έρχεται από το billingWords, ίδια με
+  // της αρχικής· `null` όταν δεν χρειάζεται ή όταν δεν ξέρουμε ακόμη.
+  const targetHold = useBillingWords()?.partnerTarget ?? null;
+  // Η «Κοινοποίηση» του συστήματος υπάρχει μόνο όπου την προσφέρει ο
+  // περιηγητής· αλλού ήταν κουμπί που δεν έκανε τίποτα όταν πατιόταν.
+  // Διαβάζεται ως εξωτερική πηγή: στον διακομιστή δεν υπάρχει `navigator`.
+  const canShare = useSyncExternalStore(noSubscribe, hasWebShare, () => false);
   // QR κώδικας συνδέσμου: σχεδιάζεται τοπικά στη συσκευή όταν ανοίξει το modal.
   useEffect(() => {
     if (qrOpen && qrCanvasRef.current) drawQrToCanvas(qrCanvasRef.current, link, { size: 200 });
@@ -359,7 +386,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
   const friendStart = `Ξεκινάς με δοκιμή ${TRIAL_DAYS} ημερών`;
   const invite = isPro
     ? `Για το ακίνητό σου, σου προτείνω το PROPERWISE. Κρατάει τα οικονομικά σου σε τάξη και ετοιμάζει σωστά τα στοιχεία για τη φορολογική σου δήλωση, ώστε να μην τρέχεις εσύ. ${friendStart}: ${link}`
-    : `Οργανώνω το ακίνητό μου με το PROPERWISE και μου έλυσε τα χέρια: σαρώνω λογαριασμούς, βλέπω φόρους και αποδόσεις, όλα σε ένα. Ρίξε του μια ματιά. ${friendStart}: ${link}`;
+    : `Οργανώνω το ακίνητό μου με το PROPERWISE και μου έλυσε τα χέρια: σαρώνω λογαριασμούς, βλέπω φόρους και αποδόσεις. Ρίξε του μια ματιά. ${friendStart}: ${link}`;
 
   const copy = async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ } };
   const copyMsg = async () => { try { await navigator.clipboard.writeText(invite); setMsgCopied(true); setTimeout(() => setMsgCopied(false), 1800); } catch { /* ignore */ } };
@@ -389,8 +416,8 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
     { label: 'WhatsApp', href: `https://wa.me/?text=${encodeURIComponent(invite)}`, d: 'M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4-1L3 20l1-4.5a8.5 8.5 0 0 1-1-4A8.38 8.38 0 0 1 11.5 3 8.5 8.5 0 0 1 21 11.5z' },
     { label: 'Viber', href: `viber://forward?text=${encodeURIComponent(invite)}`, d: 'M12 3a9 9 0 0 0-9 9 8.7 8.7 0 0 0 2 5.6L4 21l3.6-1a9 9 0 1 0 4.4-17z|M9 8c1.5 3 3.5 5 6.5 6' },
     { label: 'Telegram', href: `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(invite)}`, d: 'M21 4 3 11l5 2 2 6 3-4 5 4z' },
-    { label: 'Ηλ. ταχυδρομείο', href: `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(invite)}`, d: 'M2 5h20v14H2z|M2 6l10 7 10-7' },
   ];
+  const emailHref = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(invite)}`;
 
   // ΤΟ «monthly / annual» ΔΕΝ ΕΙΝΑΙ ΠΑΚΕΤΟ, ΕΙΝΑΙ ΚΥΚΛΟΣ ΧΡΕΩΣΗΣ. Η στήλη
   // billing_profiles.plan κρατά ΟΝΟΜΑ ΠΑΚΕΤΟΥ ('free', 'solo', 'owner',
@@ -413,7 +440,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
     ? [
         { n: '1', t: 'Στέλνεις τον σύνδεσμο', d: 'Στους ιδιοκτήτες που έχεις πελάτες.', d2: 'M22 2 11 13|M22 2 15 22l-4-9-9-4z' },
         { n: '2', t: 'Ο νέος ιδιοκτήτης ξεκινά', d: 'Ένα ακίνητο, ένα σαρωμένο έγγραφο.', d2: 'M22 11.08V12a10 10 0 1 1-5.93-9.14|M22 4 12 14.01l-3-3' },
-        { n: '3', t: 'Παίρνεις πίσω τη συνδρομή σου', d: `Μήνες ${PLANS.agency.nameGen} χωρίς χρέωση.`, d2: 'M23 6l-9.5 9.5-5-5L1 18|M17 6h6v6' },
+        { n: '3', t: 'Κερδίζεις μήνες συνδρομής', d: `Μήνες ${planQ('agency')} χωρίς χρέωση.`, d2: 'M23 6l-9.5 9.5-5-5L1 18|M17 6h6v6' },
       ]
     : [
         { n: '1', t: 'Στέλνεις τον σύνδεσμο', d: 'Σε έναν ιδιοκτήτη ακινήτου.', d2: 'M22 2 11 13|M22 2 15 22l-4-9-9-4z' },
@@ -439,6 +466,8 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
       .ref-hover-accent:hover .ref-kpi-hover { color: var(--accent); }
       @keyframes ref-rise { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
       .ref-rise { animation: ref-rise .5s ${T.ease.decel} both; }
+      .ref-share > div > button[aria-haspopup] { width: 100%; height: 100%; justify-content: center; }
+      @media (max-width: 560px) { .ref-share > * { flex-basis: calc(50% - 4px); } }
       @media (prefers-reduced-motion: reduce) { .ref-step:hover, .ref-lift:hover { transform: none; } .ref-rise { animation: none; } }
     `}</style>
   );
@@ -483,14 +512,14 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
           over={isPro ? 'PROPERWISE · Πρόγραμμα συνεργατών' : `PROPERWISE · ${navLabel('referral')}`}
           title={isPro ? 'Προσκάλεσε τους πελάτες σου. Πάρε τον ίδιο φάκελο από όλους.' : 'Ξέρεις κι άλλον ιδιοκτήτη;'}
           lede={isPro
-            ? `Κάθε ιδιοκτήτης που προσκαλείς φτάνει σε εσένα με τον ίδιο φάκελο, στην ίδια δομή, με ονόματα αρχείων που δεν αλλάζουν από χρόνο σε χρόνο. Εσύ σταματάς να κυνηγάς έγγραφα τον Ιούνιο και κερδίζεις μήνες ${PLANS.agency.nameGen} χωρίς χρέωση.`
-            : 'Δείξε του πώς να βάλει το ακίνητό του σε τάξη. Με κάθε ιδιοκτήτη που ξεκινά, κερδίζεις μία θέση ακινήτου για έναν μήνα.'} />
+            ? `Κάθε ιδιοκτήτης που προσκαλείς φτάνει σε εσένα με τον ίδιο φάκελο, στην ίδια δομή, με ονόματα αρχείων που δεν αλλάζουν από χρόνο σε χρόνο. Εσύ σταματάς να κυνηγάς έγγραφα τον Ιούνιο και κερδίζεις μήνες ${planQ('agency')} χωρίς χρέωση.`
+            : `Δείξε του πώς να βάλει το ακίνητό του σε τάξη. Για κάθε φίλο που ${ACTIVATES}, κερδίζεις μία θέση ακινήτου για ${moAcc(REFERRER_SLOT_MONTHS)}.`} />
         {(standing > 0 || social >= 8) && (
           <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
             {standing > 0 && (
               <div className="ref-rise" style={PILL}>
                 <span style={{ color: 'var(--accent)', display: 'inline-flex' }}><Ic d="M23 6l-9.5 9.5-5-5L1 18|M17 6h6v6" s={15} /></span>
-                <span style={{ ...TT.bodySm, color: PILL_TEXT, fontWeight: 600 }}>Είσαι στο κορυφαίο {standing}% όσων προσκαλούν αυτόν τον μήνα</span>
+                <span style={{ ...TT.bodySm, color: PILL_TEXT, fontWeight: 600 }}>Είσαι μέσα στο {standing}% με τις περισσότερες προσκλήσεις αυτόν τον μήνα</span>
               </div>
             )}
             {social >= 8 && (
@@ -542,28 +571,30 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
           </Btn>
         </div>
         <span aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{copied ? 'Ο σύνδεσμος αντιγράφηκε' : msgCopied ? 'Το μήνυμα αντιγράφηκε' : ''}</span>
-        {/* ΕΠΤΑ ΚΑΝΑΛΙΑ ΠΟΥ ΕΒΓΑΙΝΑΝ 5+2 ΚΑΙ 6+1 ΣΕ ΤΑΜΠΛΕΤΑ. Το τύλιγμα άφηνε τα
-            τελευταία ένα δύο κρεμασμένα αριστερά, σαν να είναι δεύτερης
-            κατηγορίας — ενώ είναι επτά ισότιμοι τρόποι να στείλεις τον ίδιο
-            σύνδεσμο. Κάθε γραμμή απλώνεται τώρα ολόκληρη. */}
-        <div className="po-ctlrow" style={{ marginTop: 12 }}>
-          {/* Και τα επτά είναι το ΙΔΙΟ πράγμα: ένας τρόπος να φύγει ο ίδιος σύνδεσμος.
-              Δευτερεύον και όχι πλακίδιο επιλογής — καμία τους δεν κρατά κατάσταση.
-              Τα τέσσερα πρώτα είναι προορισμοί, οπότε παίρνουν `href` και μένουν <a>. */}
+        {/* ΕΞΙ ΘΕΣΕΙΣ, ΟΧΙ ΟΚΤΩ. Οκτώ ισοβαρή κουμπιά έβγαιναν σε άνισο πλέγμα
+            στο κινητό (175/143 και 143/185) και το «Μήνυμα» είχε το εικονίδιο της
+            αντιγραφής. Η «Κοινοποίηση» του συστήματος μπαίνει πρώτη όπου υπάρχει,
+            γιατί ανοίγει όποια εφαρμογή έχει ήδη ο χρήστης. Το ηλεκτρονικό
+            ταχυδρομείο και ο κωδικός QR, οι σπανιότεροι δρόμοι, πάνε στο
+            «Περισσότερα». Στο κινητό η σειρά γίνεται δύο ίσες στήλες. */}
+        <div className="po-ctlrow ref-share" style={{ marginTop: 12 }}>
+          {canShare && (
+            <Btn variant="secondary" onClick={nativeShare}>
+              <Ic d="M4 12v8h16v-8|M12 16V4|M8 8l4-4 4 4" s={15} c="var(--text-tertiary)" />Κοινοποίηση
+            </Btn>
+          )}
           {shares.map(s => (
             <Btn key={s.label} variant="secondary" href={s.href} newTab>
               <Ic d={s.d} s={15} c="var(--text-tertiary)" />{s.label}
             </Btn>
           ))}
           <Btn variant="secondary" onClick={copyMsg}>
-            <Ic d={msgCopied ? 'M20 6 9 17l-5-5' : 'M8 4h10a2 2 0 0 1 2 2v10|M4 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z'} s={15} c="var(--text-tertiary)" />{msgCopied ? 'Αντιγράφηκε' : 'Μήνυμα'}
+            <Ic d={msgCopied ? 'M20 6 9 17l-5-5' : 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'} s={15} c="var(--text-tertiary)" />{msgCopied ? 'Αντιγράφηκε' : 'Μήνυμα'}
           </Btn>
-          <Btn variant="secondary" onClick={() => setQrOpen(true)}>
-            <Ic d="M3 3h7v7H3z|M14 3h7v7h-7z|M3 14h7v7H3z|M14 14h3v3|M20 20h1|M20 14h1|M14 20h1" s={15} c="var(--text-tertiary)" />QR
-          </Btn>
-          <Btn variant="secondary" onClick={nativeShare}>
-            <Ic d="M4 12v8h16v-8|M12 16V4|M8 8l4-4 4 4" s={15} c="var(--text-tertiary)" />Κοινοποίηση
-          </Btn>
+          <ActionMenu label="Περισσότερα" items={[
+            { key: 'email', label: 'Ηλεκτρονικό ταχυδρομείο', description: 'Ανοίγει νέο μήνυμα με το κείμενο της πρόσκλησης.', onClick: () => { window.location.href = emailHref; } },
+            { key: 'qr', label: 'Κωδικός QR', description: 'Για να τον σαρώσει κάποιος δίπλα σου.', onClick: () => setQrOpen(true) },
+          ]} />
         </div>
       </div>
 
@@ -650,6 +681,16 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
               χρήστες»: εγγραφές χωρίς έσοδο, σε προϊόν που δεν έχει πια δωρεάν
               πακέτο. Ο επαγγελματίας κρατούσε τρία νούμερα στο μυαλό του για να
               καταλάβει τι κερδίζει. Τώρα κρατά ένα. */}
+          {targetHold ? (
+            <>
+              <SectionLabel>Στόχοι και ιδιότητα συνεργάτη</SectionLabel>
+              <div style={{ marginBottom: T.sp.xl }}>
+                <InfoBanner tone="info">
+                  {targetHold} Από εκεί και πέρα, {PRO_PAID_TARGET} συνδρομητές μέσα σε έναν μήνα δίνουν +{moNom(PRO_PAID_BONUS_MONTHS)} συνδρομής χωρίς χρέωση και {STREAK_TARGET_MONTHS} τέτοιοι μήνες στη σειρά δίνουν την ιδιότητα συνεργάτη.
+                </InfoBanner>
+              </div>
+            </>
+          ) : (<>
           <SectionLabel>Ο στόχος του μήνα</SectionLabel>
           <div style={{ marginBottom: T.sp.xl }}>
             <Milestone title="Συνδρομητές, σε οποιοδήποτε πακέτο"
@@ -681,7 +722,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                   // που ήδη έχεις, οπότε το όνομά του το δίνει η ίδια η συνάρτηση που
                   // το αποδίδει. Δύο πηγές για το ίδιο νούμερο έχουν ήδη διαφωνήσει
                   // δύο φορές σε αυτό το αρχείο.
-                  `${moNom(PARTNER_WELCOME_MONTHS)} ${PLANS[partnerWelcomeTier(plan)].name} δώρο, μόλις την αποκτήσεις`,
+                  `${moNom(PARTNER_WELCOME_MONTHS)} ${planQ(partnerWelcomeTier(plan))} δώρο, μόλις την αποκτήσεις`,
                   `Κάθε μήνας που πιάνει τον στόχο δίνει ${moAcc(PARTNER_MONTHLY_FREE_MONTHS)} συνδρομής χωρίς χρέωση`,
                   'Προτεραιότητα σε νέες κυκλοφορίες και αναβαθμίσεις',
                 ].map((t, i) => (
@@ -707,6 +748,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
               );
             })()}
           </div>
+          </>)}
         </>
       ) : (
         /* ═══ ΙΔΙΩΤΗΣ — αξία ανά φίλο + μηνιαίο μπόνους όγκου ═══ */
@@ -723,10 +765,10 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                   είναι ο τρόπος χρήσης στις Ρυθμίσεις. Το πακέτο λέγεται
                   «Ιδιοκτήτης» και η ανταμοιβή πρέπει να λέγεται όπως αυτό που
                   θα βρει ο χρήστης στη «Συνδρομή». */}
-              <div style={{ ...TT.displaySm, marginBottom: 6 }}>{youBase.isSlot ? '+1 ακίνητο' : `+${moNom(youBase.months)} ${PLANS.solo.nameGen}`}</div>
+              <div style={{ ...TT.displaySm, marginBottom: 6 }}>{youBase.isSlot ? '+1 ακίνητο' : `+${moNom(youBase.months)} ${planQ('solo')}`}</div>
               <div style={{ ...TT.bodySm, lineHeight: 1.55 }}>{youBase.isSlot
-                ? `για ${moAcc(youBase.months)}, στο πακέτο σου, για κάθε φίλο που ενεργοποιεί τον λογαριασμό του.`
-                : 'στη συνδρομή σου, για κάθε φίλο που ενεργοποιεί τον λογαριασμό του.'}</div>
+                ? `για ${moAcc(youBase.months)}, στο πακέτο σου, για κάθε φίλο που ${ACTIVATES}.`
+                : `στη συνδρομή σου, για κάθε φίλο που ${ACTIVATES}.`}</div>
             </div>
             <div className="ref-lift" style={{ ...card, padding: PAD }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -734,7 +776,12 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                 <span style={{ ...TT.label }}>Ο φίλος σου ξεκινά με</span>
               </div>
               <div style={{ ...TT.displaySm, marginBottom: 6 }}>{TRIAL_DAYS} ημέρες δοκιμή</div>
-              <div style={{ ...TT.bodySm, lineHeight: 1.55 }}>στο πακέτο που θα διαλέξει, «{PLANS.solo.name}» ή «{PLANS.agency.name}».</div>
+              {/* ΜΕ ΤΙΣ ΔΥΝΑΤΟΤΗΤΕΣ ΤΟΥ TRIAL_PLAN, ΟΠΩΣ ΚΑΘΕ ΝΕΟΣ ΛΟΓΑΡΙΑΣΜΟΣ. Εγραφε
+                  «στο πακέτο που θα διαλέξει», δηλαδή ακριβώς την υπόσχεση που το
+                  σχόλιο πιο πάνω λέει ότι έφυγε: η δοκιμή τρέχει πάντα στο ίδιο
+                  πακέτο (lib/billing/entitlements) και ο σύνδεσμος δεν δίνει
+                  επιπλέον παροχή (Οροι, «Συστάσεις»). */}
+              <div style={{ ...TT.bodySm, lineHeight: 1.55 }}>με τις δυνατότητες του {planQ(TRIAL_PLAN)}, όπως κάθε νέος λογαριασμός.</div>
             </div>
           </div>
 
@@ -749,14 +796,16 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                 </span>
                 {(stats?.m_pro ?? 0) >= 1 && <Badge tone="positive">Το πέτυχες</Badge>}
               </div>
-              <div style={{ ...TT.displaySm, marginBottom: 6 }}>+{moNom(INDIV_PRO_BONUS_MONTHS)} {PLANS.solo.nameGen}</div>
-              <div style={{ ...TT.bodySm, lineHeight: 1.55 }}>μόλις κάποιος που προσκάλεσες γίνει Επαγγελματίας. Ολόκληρος μήνας, όχι ένα ακίνητο.</div>
+              <div style={{ ...TT.displaySm, marginBottom: 6 }}>+{moNom(INDIV_PRO_BONUS_MONTHS)} {planQ('solo')}</div>
+              {/* Μετρά συνδρομή, οπότε λέει και πότε μπορεί να μετρήσει: όσο η
+                  χρέωση δεν τρέχει, η ίδια επιφύλαξη με τους στόχους του συνεργάτη. */}
+              <div style={{ ...TT.bodySm, lineHeight: 1.55 }}>μόλις κάποιος που προσκάλεσες γίνει συνδρομητής στο {planQ('agency')}. Ολόκληρος μήνας, όχι ένα ακίνητο.{targetHold ? ` ${targetHold}` : ''}</div>
             </div>
             {/* Μπόνους όγκου: ο στόχος διαβάζεται από τη μηχανή, δεν ξαναγράφεται. */}
             <Milestone title={`${INDIV_VOLUME_TARGET} νέοι τον μήνα`}
               icon="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z|M23 21v-2a4 4 0 0 0-3-3.9|M16 3.1a4 4 0 0 1 0 7.8"
               count={stats?.m_indiv ?? 0} target={INDIV_VOLUME_TARGET} kind="indiv_volume"
-              rewardTitle={`+${moNom(INDIV_VOLUME_BONUS_MONTHS)} ${PLANS.solo.nameGen}`}
+              rewardTitle={`+${moNom(INDIV_VOLUME_BONUS_MONTHS)} ${planQ('solo')}`}
               claimState={claim.indiv_volume || 'idle'} onClaim={doClaim} />
           </div>
         </>
@@ -854,7 +903,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
           λένε το ίδιο πράγμα από δύο πλευρές. Μένουν οι δύο απαντήσεις: πότε
           κλειδώνει και σε τι πληρώνεται. */}
       <p style={{ ...TT.caption, lineHeight: 1.6 }}>
-        Η ανταμοιβή κλειδώνει μόλις ο φίλος σου προσθέσει {ACTIVATION_MIN_PROPERTIES === 1 ? 'ένα ακίνητο' : `${ACTIVATION_MIN_PROPERTIES} ακίνητα`} και σαρώσει {ACTIVATION_MIN_DOCUMENTS === 1 ? 'ένα έγγραφο' : `${ACTIVATION_MIN_DOCUMENTS} έγγραφα`}.
+        Η ανταμοιβή κλειδώνει μόλις ο {isPro ? 'πελάτης' : 'φίλος'} σου προσθέσει {ACT_PROPS} και σαρώσει {ACT_DOCS}.
         {' '}Πάντα σε μήνες συνδρομής ή θέσεις ακινήτων, ποτέ σε μετρητά.
         {/* Οι στόχοι του μήνα και η ιδιότητα συνεργάτη έχουν όρια και ανταμοιβές
             που δεσμεύουν: γράφονται στους Όρους και η οθόνη δείχνει πού. */}

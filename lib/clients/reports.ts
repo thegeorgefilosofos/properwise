@@ -21,8 +21,9 @@
 import { stayNights, STAY_CHANNEL_LABELS, type StayChannel } from './clients';
 import {
   declarableGrossOrTotal, declarableGross, platformFee, collectedLevy,
-  type StayAmountLike,
+  isDeclared, awaitsDeclaration, type StayAmountLike,
 } from './stayAmounts';
+import { athensToday } from '../core/time';
 
 export interface ReportStay extends StayAmountLike {
   property_id?: string | null;
@@ -257,12 +258,14 @@ export interface StayTotals {
   unresolvedAmount: number;
   platformFees: number;
   climateLevy: number;
-  /** Αδήλωτες διαμονές (χωρίς declared_at). */
+  /** Διαμονές που τελείωσαν χωρίς δήλωση (`awaitsDeclaration`). */
   undeclared: number;
+  /** Επερχόμενες κρατήσεις χωρίς δήλωση: δεν είναι ακόμη εκκρεμότητα. */
+  upcoming: number;
 }
 
 /** Συγκεντρωτικά για ένα σετ διαμονών, με τη ρητή αβεβαιότητα ξεχωριστά. */
-export function totals(stays: (ReportStay & { declared_at?: string | null })[]): StayTotals {
+export function totals(stays: (ReportStay & { declared_at?: string | null })[], today: string = athensToday()): StayTotals {
   return stays.reduce<StayTotals>((acc, s) => {
     const shown = declarableGrossOrTotal(s);
     const unknown = declarableGross(s) == null;
@@ -274,7 +277,8 @@ export function totals(stays: (ReportStay & { declared_at?: string | null })[]):
       unresolvedAmount: acc.unresolvedAmount + (unknown ? shown : 0),
       platformFees: acc.platformFees + platformFee(s),
       climateLevy: acc.climateLevy + collectedLevy(s),
-      undeclared: acc.undeclared + ((s.declared_at || '').trim() ? 0 : 1),
+      undeclared: acc.undeclared + (awaitsDeclaration(s, today) ? 1 : 0),
+      upcoming: acc.upcoming + (!isDeclared(s) && !awaitsDeclaration(s, today) ? 1 : 0),
     };
-  }, { revenue: 0, nights: 0, count: 0, unresolved: 0, unresolvedAmount: 0, platformFees: 0, climateLevy: 0, undeclared: 0 });
+  }, { revenue: 0, nights: 0, count: 0, unresolved: 0, unresolvedAmount: 0, platformFees: 0, climateLevy: 0, undeclared: 0, upcoming: 0 });
 }
