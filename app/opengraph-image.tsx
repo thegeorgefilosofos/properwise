@@ -25,6 +25,14 @@ export const size = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
 export const contentType = 'image/png';
 
 /**
+ * Τα δύο χρώματα κειμένου των καρτών κοινοποίησης, γραμμένα μία φορά. Το Satori
+ * δεν διαβάζει μεταβλητές θέματος και η κάρτα έχει ΕΝΑ φόντο, το σκούρο της
+ * μάρκας· τα διαβάζει και η κάρτα των οδηγών (app/og/guideCard.tsx).
+ */
+export const CARD_TEXT = '#e8eaed';
+export const CARD_MUTED = '#9aa0a6';
+
+/**
  * Η κάρτα κοινοποίησης, με ή χωρίς τίτλο σελίδας.
  *
  * ΚΑΘΕ ΥΠΟΛΟΓΙΣΤΗΣ ΕΧΕΙ ΤΟΝ ΔΙΚΟ ΤΟΥ ΤΙΤΛΟ, ΣΤΟ ΙΔΙΟ ΣΧΕΔΙΟ. Ο σύνδεσμος του
@@ -46,7 +54,7 @@ export function shareCard(title?: { over: string; text: string }) {
         style={{
           width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
           justifyContent: 'center', padding: '0 88px',
-          background: BRAND_DARK_BG, color: '#e8eaed',
+          background: BRAND_DARK_BG, color: CARD_TEXT,
           fontFamily: 'sans-serif',
         }}
       >
@@ -64,11 +72,11 @@ export function shareCard(title?: { over: string; text: string }) {
         </div>
         {title ? (
           <div style={{ marginTop: 48, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontSize: 30, color: '#9aa0a6' }}>{title.over}</div>
+            <div style={{ fontSize: 30, color: CARD_MUTED }}>{title.over}</div>
             <div style={{ marginTop: 12, fontSize: 60, lineHeight: 1.15, maxWidth: 1000 }}>{title.text}</div>
           </div>
         ) : (
-          <div style={{ marginTop: 40, fontSize: 34, lineHeight: 1.45, color: '#9aa0a6', maxWidth: 900 }}>
+          <div style={{ marginTop: 40, fontSize: 34, lineHeight: 1.45, color: CARD_MUTED, maxWidth: 900 }}>
             {PRODUCT_TAGLINE}
           </div>
         )}

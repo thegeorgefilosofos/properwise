@@ -1,7 +1,8 @@
 // Η κάρτα κοινοποίησης ενός οδηγού: σήμα και όνομα, θέμα με κεφαλαία, τίτλος.
 // Την αποδίδει το app/og/[slug]/route.tsx.
 import { ImageResponse } from 'next/og';
-import { BRAND_PATHS, BRAND_VIEWBOX, BRAND_MARK_ON_DARK } from '@/components/BrandMark';
+import { BRAND_PATHS, BRAND_VIEWBOX, BRAND_MARK_ON_DARK, BRAND_DARK_BG } from '@/components/BrandMark';
+import { CARD_TEXT, CARD_MUTED } from '../opengraph-image';
 import { PRODUCT_NAME, SHARE_IMAGE } from '@/lib/core/site';
 
 const SIZE = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
@@ -14,7 +15,7 @@ export function guideCard(kicker: string, title: string) {
         style={{
           width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
           justifyContent: 'space-between', padding: '72px 88px',
-          background: '#0f1115', color: '#e8eaed', fontFamily: 'sans-serif',
+          background: BRAND_DARK_BG, color: CARD_TEXT, fontFamily: 'sans-serif',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
@@ -24,7 +25,7 @@ export function guideCard(kicker: string, title: string) {
           <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: '0.01em' }}>{PRODUCT_NAME}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9aa0a6' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: CARD_MUTED }}>
             {kicker}
           </div>
           <div style={{ marginTop: 20, fontSize: 68, fontWeight: 700, lineHeight: 1.12, letterSpacing: '-0.02em', maxWidth: 1000 }}>
