@@ -2420,7 +2420,7 @@ export default function Dashboard() {
                   επαγγελματικό εργαλείο· η βραχυχρόνια μίσθωση δεν είναι. */}
               {navSafe==='pricing'   && (<>
                 <AmaStrip userId={user.id} propertyId={selected.id}/>
-                <TabPricing key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} propertyRent={(selected.target_rent??undefined)} propertySqm={selected.sqm??undefined} profileType={effProfileType} legalForm={taxForm}/>
+                <TabPricing key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} propertyRent={(selected.target_rent??undefined)} propertySqm={selected.sqm??undefined} profileType={effProfileType} legalForm={taxForm} onNavigate={(t)=>setNav(t)}/>
               </>)}
               {/* Η ΚΕΦΑΛΙΔΑ ΤΗΣ ΑΞΙΟΠΟΙΗΣΗΣ ΕΦΥΓΕ ΑΠΟ ΕΔΩ. Γραφόταν δύο φορές:
                   εδώ ως «ΑΞΙΟΠΟΙΗΣΗ ΑΚΙΝΗΤΟΥ / Κενό· πώς θα μισθωθεί…» και

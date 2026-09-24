@@ -11,7 +11,7 @@
 import { execFileSync } from 'node:child_process'
 import {
   revenueByChannel, revenueByMonth, nightsInRange, nightsByMonth,
-  yearOccupancy, occupancyFromMonths, totals, type ReportStay,
+  yearOccupancy, occupancyFromMonths, totals, trailingStays, type ReportStay,
 } from './reports'
 import { nightsByMonthForYear } from '../tax/shortTermTax'
 
@@ -215,6 +215,22 @@ if (!process.env.PO_TZ_CHILD) {
   eq('ο κοινός μετρητής τις κρατά', occupancyFromMonths(nbm, 2026).bookedNights, 16)
   eq('και τις βάζει στον μήνα της άφιξης', nbm[7], 6)
   eq('χωρίς να πειράξει τον Ιούλιο', nbm[6], 10)
+}
+
+// ═══ ΟΙ ΤΕΛΕΥΤΑΙΟΙ ΔΩΔΕΚΑ ΜΗΝΕΣ ═══════════════════════════════════════════
+// Πληρότητα × 365 × τιμή νύχτας πρέπει να ξαναδίνει τα έσοδα του παραθύρου:
+// αυτό κάνει με τα νούμερα η Απόδοση.
+{
+  const t = trailingStays([
+    stay({ check_in: '2026-06-01', check_out: '2026-06-08', total: 700 }),
+    stay({ check_in: '2025-09-20', check_out: '2025-09-30', total: 1000 }),
+    stay({ check_in: '2025-01-01', check_out: '2025-01-05', total: 400 }),
+  ], '2026-09-24')
+  eq('νύχτες μέσα στο παράθυρο (η παλιά μένει έξω, η οριακή κόβεται)', t.nights, 7 + 6)
+  eq('έσοδα στην αναλογία των νυχτών', t.revenue, 700 + 600)
+  // Η πληρότητα κρατά ένα δεκαδικό· το γινόμενο πέφτει μέσα στο 2% των εσόδων.
+  ok('πληρότητα × 365 × τιμή νύχτας ≈ έσοδα', Math.abs(t.occupancyPct / 100 * 365 * t.adr - t.revenue) / t.revenue < 0.02)
+  eq('χωρίς κρατήσεις: μηδέν, όχι NaN', trailingStays([], '2026-09-24'), { nights: 0, revenue: 0, occupancyPct: 0, adr: 0 })
 }
 
 console.log(fail === 0 ? `✓ reports: ${pass} έλεγχοι πέρασαν` : `✗ reports: ${fail} απέτυχαν από ${pass + fail}`)

@@ -37,8 +37,8 @@ import type { FixedAsset } from '@/lib/accounting/fixedAssets'
 import type { VatDeduction } from '@/lib/tax/myData'
 import { failed } from '@/lib/core/dbError';
 import { openRequests, answerRequest, type OpenRequest } from '@/lib/data/accountant';
-import { AadePill } from '@/components/AadeLink';
-import { aadePath } from '@/lib/tax/aade';
+import { aadeTitle } from '@/components/AadeLink';
+import { aadePath, AADE_DESTINATIONS } from '@/lib/tax/aade';
 
 // ── Οι παραδοχές που ορίζουν τη λίστα ──────────────────────────────────────
 export interface DossierProfile {
@@ -58,6 +58,14 @@ export interface DossierState {
   loaded: boolean
   /** Μήνυμα αποτυχίας αποθήκευσης — δεν κρύβεται, αλλά δεν σταματά τη δουλειά. */
   error: string | null
+  /** Τι απέτυχε: η φόρτωση ή η αποθήκευση. Το «Δοκίμασε ξανά» κάνει το ίδιο. */
+  errorKind: 'load' | 'save' | null
+  /**
+   * Ξαναδοκιμάζει ό,τι απέτυχε. ΜΕΤΑ ΑΠΟ ΑΠΟΤΥΧΗΜΕΝΗ ΦΟΡΤΩΣΗ ΞΑΝΑΔΙΑΒΑΖΕΙ, δεν
+   * γράφει: η οθόνη κρατά τότε τις προεπιλογές και μια αποθήκευση θα τις έγραφε
+   * πάνω στις σημειώσεις που ο χρήστης έχει ήδη στη βάση.
+   */
+  retry: () => void
 }
 
 const BOOKS_LABEL: Record<BookKeeping, string> = {
@@ -81,6 +89,9 @@ export function useAccountantDossier(userId: string, year: number, seed?: Partia
   const [have, setHave] = useState<string[]>([])
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorKind, setErrorKind] = useState<'load' | 'save' | null>(null)
+  // Κάθε αύξηση ξαναδιαβάζει τον φάκελο (το «Δοκίμασε ξανά» μετά από φόρτωση).
+  const [attempt, setAttempt] = useState(0)
   // Το seed αλλάζει ταυτότητα σε κάθε render· κρατιέται σε ref ώστε να μην
   // ξαναφορτώνει ο φάκελος σε κάθε πληκτρολόγηση αλλού στην οθόνη.
   const seedRef = useRef(seed)
@@ -116,12 +127,14 @@ export function useAccountantDossier(userId: string, year: number, seed?: Partia
         // δάνειο), χωρίς να γράψουμε τίποτα πριν αγγίξει ο χρήστης κάτι.
         setProfileState({ ...DEFAULTS, ...seedRef.current })
         setHave([])
-        if (err) setError(failed('Τα στοιχεία δεν φορτώθηκαν', err))
+        if (err) console.warn('accountant_dossier: αν ο πίνακας λείπει, δεν έχει εφαρμοστεί το migration του', err)
       }
+      setError(err ? failed('Οι σημειώσεις του φακέλου δεν φορτώθηκαν', err) : null)
+      setErrorKind(err ? 'load' : null)
       setLoaded(true)
     })()
     return () => { alive = false }
-  }, [supabase, userId, year])
+  }, [supabase, userId, year, attempt])
 
   const persist = useCallback(async (next: DossierProfile, nextHave: string[]) => {
     const { error: err } = await supabase.from('accountant_dossier').upsert({
@@ -131,7 +144,15 @@ export function useAccountantDossier(userId: string, year: number, seed?: Partia
       has_renovation: next.hasRenovation, has_loan: next.hasLoan, ownership_changed: next.ownershipChanged,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,year' })
-    setError(err ? failed('Τα στοιχεία δεν φορτώθηκαν', err) : null)
+    // ΤΟ ΡΗΜΑ ΕΙΝΑΙ ΤΟΥ ΣΦΑΛΜΑΤΟΣ. Η αποτυχία ΑΠΟΘΗΚΕΥΣΗΣ έγραφε «Τα στοιχεία
+    // δεν φορτώθηκαν» και η οθόνη το κολλούσε πίσω από «Οι σημειώσεις δεν
+    // αποθηκεύτηκαν:». Η ορολογία του προγραμματιστή (ποιο migration λείπει)
+    // πηγαίνει στην κονσόλα, όχι στον ιδιοκτήτη.
+    if (err) console.warn('accountant_dossier: αν ο πίνακας λείπει, δεν έχει εφαρμοστεί το migration του', err)
+    // Η συνέπεια μπαίνει στην ίδια πρόταση, πριν από το «Δοκίμασε ξανά.» που
+    // προσθέτει η `failed`: αλλιώς η οθόνη έγραφε δύο φορές την προτροπή.
+    setError(err ? failed('Οι σημειώσεις δεν αποθηκεύτηκαν και θα χαθούν αν κλείσεις τη σελίδα', err) : null)
+    setErrorKind(err ? 'save' : null)
   }, [supabase, userId, year])
 
   useEffect(() => {
@@ -155,7 +176,12 @@ export function useAccountantDossier(userId: string, year: number, seed?: Partia
     setHave(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))
   }, [])
 
-  return { profile, setProfile, have, toggle, loaded, error }
+  const retry = useCallback(() => {
+    if (errorKind === 'load') setAttempt(a => a + 1)
+    else void persist(profile, have)
+  }, [errorKind, persist, profile, have])
+
+  return { profile, setProfile, have, toggle, loaded, error, errorKind, retry }
 }
 
 // ═══ Εικόνα ════════════════════════════════════════════════════════════════
@@ -169,7 +195,7 @@ const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFamil
 // για τη μία ομάδα που ετοίμαζε το ίδιο το εργαλείο, όπου το τετραγωνάκι ήταν
 // σφραγίδα και όχι επιλογή. Εκείνη η ομάδα δεν αποδίδεται πλέον ως κάρτα, οπότε
 // οι δύο κλάδοι έγιναν ένας.
-function Row({ r, checked, onToggle }: { r: Requirement; checked: boolean; onToggle: () => void }) {
+function Row({ r, checked, onToggle, attribute }: { r: Requirement; checked: boolean; onToggle: () => void; attribute: boolean }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 0', borderTop: '1px solid var(--border-subtle)' }}>
       <SelectBox checked={checked} onChange={onToggle} label={r.title} />
@@ -179,15 +205,26 @@ function Row({ r, checked, onToggle }: { r: Requirement; checked: boolean; onTog
           {r.blocking && !checked && <Badge>Απαραίτητο</Badge>}
         </div>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>{r.why}</p>
-        {/* ΤΟ «ΠΟΥ» ΕΓΙΝΕ ΔΡΟΜΟΣ, ΟΧΙ ΟΝΟΜΑ ΠΥΛΗΣ. Έγραφε «Πού: myAADE» — σωστό
-            και άχρηστο: η πύλη έχει δεκάδες εφαρμογές και ο ιδιοκτήτης που
-            ψάχνει το εκκαθαριστικό ΕΝΦΙΑ δεν ξέρει ότι κρύβεται κάτω από τις
-            «Εφαρμογές». Η διαδρομή κλικ υπήρχε ήδη γραμμένη στο lib/tax/aade.ts
-            και φαινόταν σε άλλες οθόνες· εδώ έλειπε μόνο η σύνδεση. Τώρα το
-            πλακίδιο ανοίγει την πύλη και δείχνει τα βήματα στο title. */}
-        {r.aade
-          ? <div style={{ margin: '5px 0 0' }}><AadePill action={r.aade} label={`Πού: ${aadePath(r.aade)}`} /></div>
-          : r.source && <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '3px 0 0', fontFamily: T.font.sans }}>Πού: {r.source}</p>}
+        {/* ΑΠΟ ΠΟΙΟ ΑΚΙΝΗΤΟ. Ο φάκελος είναι ένας για όλο το χαρτοφυλάκιο και ζει
+            στη σελίδα ενός ακινήτου· χωρίς το όνομα, η δήλωση μίσθωσης ενός
+            άλλου διαμερίσματος διαβαζόταν ως δική του. */}
+        {attribute && r.forProperties && r.forProperties.length > 0 && (
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>Για: {r.forProperties.join(', ')}</p>
+        )}
+        {/* ΤΟ «ΠΟΥ» ΕΓΙΝΕ ΔΡΟΜΟΣ, ΟΧΙ ΟΝΟΜΑ ΠΥΛΗΣ, ΚΑΙ ΓΡΑΦΕΤΑΙ ΙΔΙΑ ΠΑΝΤΟΥ. Η
+            διαδρομή του myAADE καθόταν μέσα σε πιλούλα που στο κινητό γινόταν
+            τριώροφη, ενώ δίπλα της το «Πού: e-banking» ήταν σκέτο κείμενο: δύο
+            σχήματα για την ίδια πληροφορία. Τώρα η διαδρομή είναι κείμενο και ο
+            σύνδεσμος μια ενέργεια στο τέλος της. */}
+        {(r.aade || r.source) && (
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>
+            Πού: {r.aade ? aadePath(r.aade) : r.source}
+            {r.aade && (
+              <>{' · '}<a className="po-tap-inline" href={AADE_DESTINATIONS[r.aade].url} target="_blank" rel="noopener noreferrer" title={aadeTitle(r.aade)}
+                style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Άνοιξε στο myAADE</a></>
+            )}
+          </p>
+        )}
       </div>
     </div>
   )
@@ -223,7 +260,7 @@ export interface DossierExportSource {
 }
 
 export default function AccountantDossier({
-  state, year, properties, exportSource, actions,
+  state, year, properties, exportSource, actions, compact = false, appReady,
 }: {
   state: DossierState
   year: number
@@ -238,21 +275,29 @@ export default function AccountantDossier({
    * πρώτο και το Excel του ΙΔΙΟΥ φακέλου εννιακόσια εικονοστοιχεία πιο κάτω.
    */
   actions?: React.ReactNode
+  /** Χωρίς καμία κίνηση στη χρονιά: μόνο η κάρτα, ο κατάλογος πίσω από ένα πάτημα. */
+  compact?: boolean
+  /** Υπάρχουν τα δεδομένα από τα οποία βγαίνει αυτή η γραμμή της εφαρμογής; */
+  appReady?: (id: string) => boolean
 }) {
-  const { profile, setProfile, have, toggle, error } = state
+  const { profile, setProfile, have, toggle, error, retry } = state
   const [assumptionsOpen, setAssumptionsOpen] = useState(false)
+  const [listOpen, setListOpen] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
 
   const statuses = useMemo(() => properties.map(p => p.status), [properties])
   const reqs = useMemo(() => requirementsFor({
-    form: profile.form, books: profile.books, statuses,
+    form: profile.form, books: profile.books, statuses, properties,
     hasRenovation: profile.hasRenovation, hasLoan: profile.hasLoan, ownershipChanged: profile.ownershipChanged,
-  }), [profile, statuses])
+  }), [profile, statuses, properties])
 
-  // Ό,τι φτιάχνει το εργαλείο μετριέται ως έτοιμο: ΕΙΝΑΙ έτοιμο, βγαίνει μέσα
-  // στον φάκελο. Εκεί φεύγει το μισό άγχος και είναι αλήθεια, όχι παρηγοριά.
+  // Ό,τι φτιάχνει η εφαρμογή μετριέται ως έτοιμο ΜΟΝΟ όταν υπάρχουν τα δεδομένα
+  // του: τότε βγαίνει όντως μέσα στον φάκελο. Χωρίς αυτά, ένα «έτοιμο» πάνω από
+  // το «Ξεκίνα τη λογιστική σου» ήταν παρηγοριά, όχι αλήθεια.
   const appIds = useMemo(() => reqs.filter(r => r.who === 'app').map(r => r.id), [reqs])
-  const haveAll = useMemo(() => [...new Set([...appIds, ...have])], [appIds, have])
+  const appDone = useMemo(() => appIds.filter(id => appReady?.(id) ?? true), [appIds, appReady])
+  const appWaiting = appIds.length - appDone.length
+  const haveAll = useMemo(() => [...new Set([...appDone, ...have])], [appDone, have])
   const ready = useMemo(() => readiness(reqs, haveAll), [reqs, haveAll])
   const groups = useMemo(() => groupByWho(reqs), [reqs])
   const warnings = useMemo(() => traps(reqs), [reqs])
@@ -311,7 +356,9 @@ export default function AccountantDossier({
       <div style={{ ...card, padding: '20px 22px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 260 }}>
-            <p style={eyebrow}>Τι πάει στον λογιστή · {year}</p>
+            {/* Ο ΦΑΚΕΛΟΣ ΕΙΝΑΙ ΟΛΟΥ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΚΑΙ ΤΟ ΛΕΕΙ. Στη σελίδα
+                ενός ακινήτου, το «Λείπουν 6 πράγματα» διαβαζόταν ως δικό του. */}
+            <p style={eyebrow}>Τι πάει στον λογιστή · {year}{properties.length > 1 ? ` · και τα ${properties.length} ακίνητά σου` : ''}</p>
             <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, letterSpacing: '-0.01em', lineHeight: 1.45, margin: '10px 0 0' }}>
               {ready.message}
             </p>
@@ -359,8 +406,13 @@ export default function AccountantDossier({
 
         {appIds.length > 0 && (
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '12px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-            {/* Όχι «ακόμη»: αυτά ΜΕΤΡΟΥΝ ήδη στο «x / y» από πάνω, δεν εκκρεμούν. */}
-            {appIds.length === 1 ? `Το ένα από τα ${ready.total} το βγάζουμε` : `Τα ${appIds.length} από τα ${ready.total} τα βγάζουμε`} ήδη από τα δεδομένα σου.
+            {/* Τα έτοιμα ΜΕΤΡΟΥΝ ήδη στο «x / y» από πάνω· όσα περιμένουν δεδομένα
+                λένε τι περιμένουν, αντί να μετρηθούν ως έτοιμα. */}
+            {appDone.length > 0 && <>{appDone.length === 1 ? `Το ένα από τα ${ready.total} το βγάζουμε` : `Τα ${appDone.length} από τα ${ready.total} τα βγάζουμε`} ήδη από τα δεδομένα σου.</>}
+            {appDone.length > 0 && appWaiting > 0 && ' '}
+            {appWaiting > 0 && <>{appDone.length > 0
+              ? (appWaiting === 1 ? 'Ένα ακόμη θα βγει' : `Άλλα ${appWaiting} θα βγουν`)
+              : (appWaiting === 1 ? `Το ένα από τα ${ready.total} θα το βγάλουμε` : `Τα ${appWaiting} από τα ${ready.total} θα τα βγάλουμε`)} μόλις καταχωρήσεις έσοδα και έξοδα.</>}
           </p>
         )}
 
@@ -392,11 +444,28 @@ export default function AccountantDossier({
         )}
 
         {error && (
-          <p style={{ fontSize: 12, color: 'var(--negative)', margin: '12px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-            Οι σημειώσεις δεν αποθηκεύτηκαν: {error}. Θα χαθούν αν κλείσεις τη σελίδα. Έλεγξε ότι έχει εφαρμοστεί το migration accountant_dossier.
-          </p>
+          <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '12px 0 0' }}>
+            <p style={{ flex: 1, minWidth: 220, fontSize: 12, color: 'var(--negative)', margin: 0, fontFamily: T.font.sans, lineHeight: 1.5 }}>
+              {error}
+            </p>
+            <Btn variant="secondary" onClick={retry}>Δοκίμασε ξανά</Btn>
+          </div>
+        )}
+
+        {/* ΧΩΡΙΣ ΚΙΝΗΣΗ ΣΤΗ ΧΡΟΝΙΑ, Ο ΚΑΤΑΛΟΓΟΣ ΠΕΡΙΜΕΝΕΙ. Είναι χρήσιμος για να
+            ξέρει κανείς τι θα χρειαστεί, όχι για να τον διαβάσει πριν γράψει
+            την πρώτη του καταχώρηση. */}
+        {compact && (
+          <div style={{ margin: '14px 0 0' }}>
+            <Btn variant="ghost" onClick={() => setListOpen(o => !o)} expanded={listOpen}>
+              <ChevronRight size={14} style={{ transform: listOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s' }} />
+              {listOpen ? 'Κλείσε τον κατάλογο' : 'Δες τι θα χρειαστεί ο λογιστής'}
+            </Btn>
+          </div>
         )}
       </div>
+
+      {(!compact || listOpen) && (<>
 
       {/* ── Οι ομάδες: πρώτα τα δικά σου ──────────────────────────────────── */}
       {groups.filter(g => g.who !== 'app').map(g => {
@@ -416,7 +485,7 @@ export default function AccountantDossier({
             </div>
             <div style={{ marginTop: 10 }}>
               {g.items.map(r => (
-                <Row key={r.id} r={r} checked={haveAll.includes(r.id)} onToggle={() => toggle(r.id)} />
+                <Row key={r.id} r={r} checked={haveAll.includes(r.id)} onToggle={() => toggle(r.id)} attribute={properties.length > 1} />
               ))}
             </div>
           </div>
@@ -426,7 +495,7 @@ export default function AccountantDossier({
       {/* ── Παγίδες: συμβουλή, όχι κατηγορία ──────────────────────────────── */}
       {warnings.length > 0 && (
         <div style={card}>
-          <p style={eyebrow}>Πριν το στείλεις</p>
+          <p style={eyebrow}>Πριν τον στείλεις</p>
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '5px 0 14px', fontFamily: T.font.sans, lineHeight: 1.5 }}>
             {warnings.length === 1 ? 'Ένα σημείο που κοστίζει, όταν πάει στραβά.' : `${warnings.length} σημεία που κοστίζουν, όταν πάνε στραβά.`}
           </p>
@@ -529,6 +598,7 @@ export default function AccountantDossier({
           </div>
         )}
       </div>
+      </>)}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 // npx tsx lib/expenses/ledger.test.ts
-import { mergeLedger, ledgerTotal, ledgerUnpaid, groupByMonth, openMonths, recurringMonthly, monthlyAverage, entryName, NO_TITLE, type LedgerBill, type LedgerExpense } from './ledger';
+import { mergeLedger, ledgerTotal, ledgerYearTotal, billsWithoutExpense, ledgerOfYear, ledgerUnpaid, groupByMonth, openMonths, recurringMonthly, monthlyAverage, entryName, NO_TITLE, type LedgerBill, type LedgerExpense } from './ledger';
 
 let pass = 0, fail = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -388,6 +388,33 @@ const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
 
   // Κενή λίστα δεν σκάει και δεν επινοεί μήνα.
   eq('χωρίς δαπάνες', openMonths([], '2026-08'), []);
+}
+
+// ── ΤΑ ΕΞΟΔΑ ΤΗΣ ΧΡΟΝΙΑΣ, ΙΔΙΑ ΣΕ ΤΙΜΟΛΟΓΗΣΗ, ΑΠΟΔΟΣΗ ΚΑΙ ΛΟΓΙΣΤΙΚΗ ─────────
+// Η Τιμολόγηση έγραφε 1.890€ και η Λογιστική με την Απόδοση 1.152€ για το ίδιο
+// ακίνητο: οι δύο δεν μετρούσαν τους λογαριασμούς που δεν είχαν γίνει δαπάνη.
+// Η Λογιστική κρατά τις δαπάνες με δικές της στήλες και προσθέτει μόνο τους
+// λογαριασμούς χωρίς δαπάνη· το άθροισμα πρέπει να είναι ακριβώς το ίδιο.
+{
+  const bills = [
+    bill({ id: 'b1', name: 'ΔΕΗ Ιουνίου', category: 'electricity', amount: 80, due_date: '2026-07-10', paid: true, paid_at: '2026-07-08' }),
+    bill({ id: 'b2', name: 'ΕΥΔΑΠ', category: 'water', amount: 42.5, due_date: '2026-08-20', paid: false }),
+    bill({ id: 'b3', name: 'ΔΕΗ Δεκεμβρίου 2025', category: 'electricity', amount: 70, due_date: '2025-12-20', paid: true, paid_at: '2025-12-18' }),
+  ];
+  const expenses = [
+    exp({ id: 'e1', bill_id: 'b1', description: 'ΔΕΗ Ιουνίου', amount: 80, date: '2026-07-08', paid: true }),
+    exp({ id: 'e2', description: 'Καθαρισμός', amount: 60, date: '2026-05-02', paid: true }),
+    exp({ id: 'e3', description: 'Υδραυλικός', amount: 120, date: '2025-11-02', paid: true }),
+  ];
+  // Τιμολόγηση και Απόδοση: ο κοινός πυρήνας, απευθείας.
+  const pricing = ledgerYearTotal(bills, expenses, 2026);
+  eq('2026: δαπάνες και λογαριασμός χωρίς δαπάνη, μία φορά ο καθένας', pricing, 80 + 60 + 42.5);
+  // Λογιστική: οι δαπάνες της χρονιάς συν οι λογαριασμοί που δεν έγιναν δαπάνη.
+  const accountingExpenses = expenses.filter(e => (e.date || '').slice(0, 4) === '2026').reduce((s, e) => s + (e.amount || 0), 0);
+  const accountingBills = ledgerTotal(ledgerOfYear(billsWithoutExpense(bills, expenses), 2026));
+  eq('η Λογιστική βγάζει το ίδιο σύνολο με την Τιμολόγηση', accountingExpenses + accountingBills, pricing);
+  eq('ο λογιστής βλέπει μόνο τον λογαριασμό που λείπει', billsWithoutExpense(bills, expenses).map(e => e.billId), ['b2', 'b3']);
+  eq('άλλη χρονιά, άλλο σύνολο', ledgerYearTotal(bills, expenses, 2025), 70 + 120);
 }
 
 console.log(fail === 0 ? `✓ ledger: ${pass} έλεγχοι πέρασαν` : `✗ ledger: ${fail} απέτυχαν από ${pass + fail}`);

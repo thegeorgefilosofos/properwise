@@ -10,9 +10,9 @@ import * as loanStore from '@/lib/data/loans';
 import * as settings from '@/lib/data/settings';
 import { T, fe, fn, fp, ABSENT, ABSENT_SHORT, Skeleton, ExportButton, EmptyState, InfoBanner, PageTitle, ChipToggle, Btn } from '@/components/Theme';
 import { Building2 } from 'lucide-react';
-import { comparableGroups } from '@/lib/property/visibility';
+import { comparableGroups, incomeEntry } from '@/lib/property/visibility';
 import { propertyTypePlural } from '@/lib/property/types';
-import { statusLabel, type StatusRow } from '@/lib/property/status';
+import { statusLabel, readStatus, type StatusRow } from '@/lib/property/status';
 import { downloadTableXlsx } from './exportCsv';
 import { money } from './sheetFormat';
 import { consolidateRentTax, taxShareOf, CONSOLIDATION_NOTE } from '@/lib/billing/consolidate';
@@ -423,6 +423,13 @@ export default function TabComparison({ properties, userId, onNavigate }: Props)
   // φέτος, ο πίνακας έβγαζε τέσσερις γραμμές «0,00€» σε κάθε στήλη (το μηδέν
   // περνά το φίλτρο από πάνω) και η λεζάντα μιλούσε για «δίκαιη σύγκριση».
   const nothingYet = rowsData.every(r => !((r.rent ?? 0) > 0) && !(r.expensesYTD > 0) && !(r.recurringMonthly > 0));
+  // ΤΟ ΕΣΟΔΟ ΠΡΟΤΕΙΝΕΤΑΙ ΜΟΝΟ ΟΤΑΝ Η ΚΑΡΤΕΛΑ ΤΟΥ ΥΠΑΡΧΕΙ ΣΙΓΟΥΡΑ. Το κουμπί
+  // πηγαίνει στο ανοιχτό ακίνητο, που είναι ένα από αυτά: αν όλα γράφουν έσοδο
+  // στην ίδια καρτέλα (ενοίκιο ή διαμονή), εκείνη είναι ορατή. Σε μικτό
+  // χαρτοφυλάκιο θα μπορούσε να στείλει σε κρυφή καρτέλα, οπότε μένει μόνο η
+  // δαπάνη, που υπάρχει σε κάθε κατάσταση.
+  const entries = properties.map(p => incomeEntry(readStatus(p as StatusRow)));
+  const commonIncome = entries.length > 0 && entries.every(e => e && e.tab === entries[0]?.tab) ? entries[0] : null;
   // ═══ Η ΛΕΖΑΝΤΑ ΛΕΕΙ ΟΣΑ ΔΕΙΧΝΕΙ Ο ΠΙΝΑΚΑΣ, ΟΧΙ ΟΣΑ ΘΑ ΜΠΟΡΟΥΣΕ ══════════
   // Και οι δύο προτάσεις της λεζάντας ήταν καρφωμένες: «το υψηλότερο ενοίκιο,
   // απόδοση και καθαρό» και «οι τρεις τελευταίες γραμμές». Ο πίνακας όμως κόβει
@@ -503,7 +510,8 @@ export default function TabComparison({ properties, userId, onNavigate }: Props)
            πάνω από πίνακα με δύο στήλες, μία ανά κατοικία, που ο χρήστης τις
            βλέπει. Ούτε ο αριθμός ούτε η διάταξη είναι πληροφορία: και τα δύο
            διαβάζονται σε λιγότερο χρόνο από όσο χρειάζεται η πρόταση. */
-        right={!loading ? <ExportButton onClick={exportCSV} /> : undefined}
+        // Χωρίς ούτε μία γραμμή, η εξαγωγή θα έβγαζε άδειο αρχείο.
+        right={!loading ? <ExportButton onClick={exportCSV} disabled={nothingYet} /> : undefined}
       />
 
       {/* Περισσότερες από μία ομάδες: ο χρήστης διαλέγει ποια κοιτάζει. Η επιλογή
@@ -525,7 +533,9 @@ export default function TabComparison({ properties, userId, onNavigate }: Props)
           ως κατηγορία, αλλά 45 τ.μ. του 1975 δίπλα σε 140 τ.μ. του 2018 βγάζουν
           «το δεύτερο αποδίδει καλύτερα» — αληθές και εντελώς άχρηστο. Ο χρήστης
           έχει δικαίωμα να δει τη σύγκριση· έχει και δικαίωμα να ξέρει τι κοιτάζει. */}
-      {group.warning && <InfoBanner tone="warning">{group.warning}</InfoBanner>}
+      {/* Και εμφανίζεται μόνο όταν υπάρχει σύγκριση να προειδοποιήσει: πάνω από
+          άδεια οθόνη μιλούσε για «λανθασμένα συμπεράσματα» από το τίποτα. */}
+      {group.warning && !loading && !nothingYet && <InfoBanner tone="warning">{group.warning}</InfoBanner>}
 
       {loading ? (
         // Σκελετός αντί για spinner: το σχήμα του πίνακα σύγκρισης είναι γνωστό εκ
@@ -534,9 +544,16 @@ export default function TabComparison({ properties, userId, onNavigate }: Props)
         <Skeleton h={300} r={14} />
       ) : nothingYet ? (
         <EmptyState icon={<Building2 size={20} />}
-          title="Κανένα ενοίκιο ή δαπάνη ακόμη για φέτος"
-          hint="Η σύγκριση γεμίζει μόλις καταχωρήσεις το πρώτο μίσθωμα ή την πρώτη δαπάνη."
-          action={onNavigate ? <Btn variant="secondary" onClick={() => onNavigate('finances')}>Προσθήκη δαπάνης</Btn> : undefined} />
+          title="Κανένα έσοδο ή δαπάνη ακόμη για φέτος"
+          hint={commonIncome
+            ? `Η σύγκριση γεμίζει μόλις καταχωρήσεις ${commonIncome.noun} ή δαπάνες.`
+            : 'Η σύγκριση γεμίζει μόλις καταχωρήσεις το πρώτο έσοδο ή την πρώτη δαπάνη.'}
+          action={onNavigate ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {commonIncome && <Btn variant="primary" onClick={() => onNavigate(commonIncome.tab)}>{commonIncome.label}</Btn>}
+              <Btn variant={commonIncome ? 'secondary' : 'primary'} onClick={() => onNavigate('finances')}>Προσθήκη δαπάνης</Btn>
+            </div>
+          ) : undefined} />
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="table-wrap" style={{ overflowX: 'auto' }}>

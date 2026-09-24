@@ -95,6 +95,52 @@ export function nightsInRange(s: ReportStay, from: string, to: string): number {
   return Math.round((b - a) / 86400000);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ΟΙ ΤΕΛΕΥΤΑΙΟΙ ΔΩΔΕΚΑ ΜΗΝΕΣ, ΑΠΟ ΤΙΣ ΙΔΙΕΣ ΤΙΣ ΚΡΑΤΗΣΕΙΣ
+// ─────────────────────────────────────────────────────────────────────────
+// Η Απόδοση έγραφε «η απόδοση του ακινήτου σου» με πληρότητα και τιμή νύχτας
+// από τα δεδομένα αναφοράς της περιοχής: 58% και 60€, δηλαδή 12.720€ τον χρόνο,
+// ενώ οι κρατήσεις του ίδιου ακινήτου έλεγαν 71 νύχτες και 6.480€. Εδώ
+// μετριούνται τα πραγματικά: νύχτες μέσα στο παράθυρο και το δηλωτέο
+// ακαθάριστο που τους αναλογεί.
+//
+// ΓΙΑΤΙ ΠΑΡΟΝΟΜΑΣΤΗΣ ΟΙ 365. Το μοντέλο της Απόδοσης κάνει πληρότητα × 365 ×
+// τιμή νύχτας = έσοδα έτους. Με αυτόν τον παρονομαστή το γινόμενο ξαναδίνει
+// ακριβώς τα έσοδα των δώδεκα μηνών· με τις «διαθέσιμες» ημέρες θα τα φούσκωνε.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface TrailingStays {
+  nights: number;
+  /** Δηλωτέο ακαθάριστο των νυχτών που πέφτουν μέσα στο παράθυρο. */
+  revenue: number;
+  /** Νύχτες προς ημέρες του παραθύρου, σε ποσοστό με ένα δεκαδικό. */
+  occupancyPct: number;
+  /** Μέσο ακαθάριστο ανά νύχτα, 0 χωρίς νύχτες. */
+  adr: number;
+}
+
+/** Οι κρατήσεις του διαστήματος [today − days, today). */
+export function trailingStays(stays: ReportStay[], today: string, days = 365): TrailingStays {
+  const end = new Date(`${today.slice(0, 10)}T00:00:00Z`);
+  const start = new Date(end.getTime() - days * 86400000);
+  const from = start.toISOString().slice(0, 10), to = end.toISOString().slice(0, 10);
+  let nights = 0, revenue = 0;
+  for (const s of stays) {
+    const inside = nightsInRange(s, from, to);
+    if (inside <= 0) continue;
+    const all = nightsOf(s) || nightsInRange(s, s.check_in || '', s.check_out || '') || inside;
+    nights += inside;
+    // Η διαμονή που περνά το όριο μετρά μόνο με τις νύχτες της μέσα στο παράθυρο.
+    revenue += declarableGrossOrTotal(s) * (inside / Math.max(inside, all));
+  }
+  return {
+    nights,
+    revenue: Math.round(revenue * 100) / 100,
+    occupancyPct: days > 0 ? Math.round((nights / days) * 1000) / 10 : 0,
+    adr: nights > 0 ? Math.round((revenue / nights) * 100) / 100 : 0,
+  };
+}
+
 const MONTH_DAYS = (year: number, m: number) => new Date(Date.UTC(year, m + 1, 0)).getUTCDate();
 const pad2 = (x: number) => String(x).padStart(2, '0');
 

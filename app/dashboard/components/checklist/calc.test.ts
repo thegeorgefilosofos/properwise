@@ -86,6 +86,8 @@ const row = (o: Partial<ChecklistItemsRow> = {}): ChecklistItemsRow => ({
   ok('τιμή από παλιά έκδοση δεν περνά', asPriority('urgent' as string) === 'normal')
   ok('άγνωστη κατάσταση δεν περνά', asStatus('archived' as string) === 'pending')
   ok('άγνωστη επανάληψη δεν περνά', asRecurring('weekly' as string) === 'none')
+  ok('κατηγορία εκτός καταλόγου πάει στο «Άλλο», δεν χάνεται', parseItem(row({ category: 'cleaning' })).category === 'other')
+  ok('γνωστή κατηγορία μένει ως έχει', parseItem(row({ category: 'legal' })).category === 'legal')
 
   // Και οι τρεις αναζητήσεις έχουν καταφύγιο: άγνωστο κλειδί δεν αφήνει την
   // οθόνη χωρίς ετικέτα.

@@ -39,6 +39,14 @@ import { MONTHS_SHORT } from '@/lib/core/months';
 import { failed } from '@/lib/core/dbError';
 import { grDate } from '@/lib/core/format'
 import { useChartWidth } from '@/app/hooks/useChartWidth'
+import { cents } from '@/lib/core/money';
+
+// Οι τόνοι της κατανομής ανά δάνειο: σκαλιά αρκετά μακριά ώστε δύο γειτονικά
+// κομμάτια να ξεχωρίζουν και στα δύο θέματα. Το τέταρτο και πέρα κρατά το
+// τελευταίο σκαλί· τέσσερα δάνεια στο ίδιο ακίνητο δεν είναι το συνηθισμένο.
+const SHARE_STEPS = [100, 55, 30, 18] as const
+const shareTone = (i: number): string =>
+  `color-mix(in srgb, var(--accent) ${SHARE_STEPS[Math.min(i, SHARE_STEPS.length - 1)]}%, var(--bg-elevated))`
 
 // Μορφοποίηση επιτοκίων ως κείμενο: κόμμα δεκαδικό και σωστή παύλα εύρους (–),
 // π.χ. «2.40-4.70» → «2,40–4,70». Καθαρά ελληνικά, χωρίς πρόχειρες παύλες.
@@ -631,12 +639,20 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           const m = prog ? prog.monthly : calcMonthly(l.amount,l.rate,l.years)
           // Χωρίς ημερομηνία έναρξης το δάνειο δεν έχει αρχίσει να πληρώνεται:
           // υπόλοιπο το αρχικό ποσό, τόκοι όλοι όσοι θα τρέξουν.
-          return { l, m, balance: prog ? prog.balance : l.amount,
-            ti: prog ? prog.interestRemaining : m*l.years*12-l.amount }
+          //
+          // ΣΤΡΟΓΓΥΛΑ ΣΕ ΛΕΠΤΑ ΠΡΙΝ ΑΠΟ ΤΟ ΑΘΡΟΙΣΜΑ. Οι κάρτες από κάτω γράφουν
+          // κάθε ποσό σε λεπτά· το σύνολο που άθροιζε τα άστρογγυλα έβγαινε ένα
+          // λεπτό διαφορετικό από το άθροισμα των καρτών (58.545,22 έναντι 23).
+          return { l, m: cents(m), balance: cents(prog ? prog.balance : l.amount),
+            ti: cents(prog ? prog.interestRemaining : m*l.years*12-l.amount) }
         })
         const totalBalance = rows.reduce((s,r)=>s+r.balance,0)
         const totalMonthly = rows.reduce((s,r)=>s+r.m,0)
         const totalInterest = rows.reduce((s,r)=>s+r.ti,0)
+        // Όλα τα δάνεια της σελίδας είναι του ίδιου ακινήτου: ο δείκτης που μετρά
+        // είναι το ΣΥΝΟΛΟ τους προς την αξία, όχι το καθένα μόνο του.
+        const propValue = Math.max(0, ...rows.map(r=>Number(r.l.property_value)||0))
+        const combinedLtv = propValue>0 ? (totalBalance/propValue)*100 : 0
         const blended = totalBalance>0 ? rows.reduce((s,r)=>s+r.balance*r.l.rate,0)/totalBalance : 0
         const tiles = [
           { k:'Συνολικό υπόλοιπο', v:fmtEur(totalBalance) },
@@ -691,22 +707,36 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 αναλογία. Το υπόμνημα κρατά μόνο αυτό — όνομα και ποσοστό, σε μία
                 γραμμή που τυλίγεται. Το επιτόκιο και η δόση ζουν στην κάρτα
                 τους, όπου έχουν και το μέγεθος που τους αξίζει. */}
+            {/* ══ Η ΜΠΑΡΑ ΛΕΕΙ ΤΙ ΜΟΙΡΑΖΕΙ ═══════════════════════════════════════
+                Καθόταν κάτω από το «Συνολικό υπόλοιπο» και μοίραζε τη ΔΟΣΗ: το
+                71,58% ήταν μερίδιο στη μηνιαία δόση, ενώ στο υπόλοιπο το ίδιο
+                δάνειο είναι 87,08%. Τώρα μοιράζει το υπόλοιπο και το λέει.
+
+                ΚΑΙ ΟΙ ΤΟΝΟΙ ΞΕΧΩΡΙΖΟΥΝ. Ήταν accent στο 100% και στο 86%: δύο
+                σχεδόν ίδια μπλε, αδιάκριτα και στα δύο θέματα. Τα σκαλιά των 45
+                μονάδων (100, 55, 30…) χωρίζουν τα γειτονικά κομμάτια. */}
             {rows.length>1&&(<>
+              <p style={{...labelStyle,marginBottom:6}}>Μερίδιο στο υπόλοιπο</p>
               <Bar height={10} style={{borderRadius: T.radius.pill,border:'1px solid var(--border-subtle)',marginBottom: 8}}
                 parts={rows.map((r,i)=>({
-                  pct: totalMonthly>0?(r.m/totalMonthly)*100:0,
-                  tone: `color-mix(in srgb, var(--accent) ${Math.max(20,100-i*14)}%, var(--bg-elevated))`,
-                  title: `${r.l.bank}: ${fmtEur(r.m)} τον μήνα`,
+                  pct: totalBalance>0?(r.balance/totalBalance)*100:0,
+                  tone: shareTone(i),
+                  title: `${r.l.bank}: ${fmtEur(r.balance)} υπόλοιπο`,
                 }))}/>
               <div style={{display:'flex',flexWrap:'wrap',gap:'4px 16px'}}>
                 {rows.map((r,i)=>(
                   <span key={r.l.id} style={{display:'inline-flex',alignItems:'center',gap: 8,minWidth:0}}>
-                    <span style={{width:8,height:8,borderRadius: T.radius.hair,flexShrink:0,background:`color-mix(in srgb, var(--accent) ${Math.max(20,100-i*14)}%, var(--bg-elevated))`}}/>
+                    <span style={{width:8,height:8,borderRadius: T.radius.hair,flexShrink:0,background:shareTone(i)}}/>
                     <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const}}>{r.l.bank||'Δάνειο'}</span>
-                    <span style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums'}}>{fp(totalMonthly>0?(r.m/totalMonthly)*100:0)}</span>
+                    <span style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums'}}>{fp(totalBalance>0?(r.balance/totalBalance)*100:0)}</span>
                   </span>
                 ))}
               </div>
+              {combinedLtv>0&&(
+                <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,marginTop:10}}>
+                  Συνολικό δάνειο προς αξία σήμερα <strong style={{color:'var(--text-primary)',fontVariantNumeric:'tabular-nums'}}>{fp(combinedLtv)}</strong>
+                </p>
+              )}
             </>)}
           </div>
         )
@@ -732,7 +762,11 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           startDate: loan.start_date || null, today: athensToday(),
         })
         const m = prog ? prog.monthly : calcMonthly(loan.amount,loan.rate,loan.years)
-        const ltv = loan.property_value>0?(loan.amount/loan.property_value)*100:0
+        // ΤΟ ΣΗΜΕΡΙΝΟ ΥΠΟΛΟΙΠΟ, ΟΧΙ ΤΟ ΑΡΧΙΚΟ ΠΟΣΟ. Ο δείκτης έγραφε 63,16%
+        // (120.000 προς 190.000) δίπλα στο «Υπόλοιπο σήμερα 106.876,46€», που
+        // κάνει 56,25%. Χωρίς ημερομηνία έναρξης δεν υπάρχει «σήμερα» και ο
+        // δείκτης λέει ρητά ότι είναι της έναρξης.
+        const ltv = loan.property_value>0?((prog ? prog.balance : loan.amount)/loan.property_value)*100:0
         return(
           <div key={loan.id} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.card,padding:T.sp.lg}}>
 
@@ -792,7 +826,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 <Bar pct={prog.percentRepaid} label="Ποσοστό αποπληρωμής" track="var(--bg-elevated)" style={{borderRadius: T.radius.pill,border:'1px solid var(--border-subtle)'}}/>
                 <div className="po-stack-sm" style={{display:'flex',justifyContent:'space-between',gap:12,marginTop:6}}>
                   <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>
-                    Εξοφλήθηκε {fp(prog.percentRepaid)} του κεφαλαίου σε {prog.paidMonths} από {prog.totalMonths} δόσεις
+                    Εξοφλήθηκε {fp(prog.percentRepaid)} του κεφαλαίου σε {prog.paidMonths} από {prog.totalMonths} δόσεις, με {fe(prog.interestPaid)} τόκους ως τώρα
                   </span>
                   {prog.endDate&&<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,whiteSpace:'nowrap'}}>Λήξη {fdLong(prog.endDate)}</span>}
                 </div>
@@ -824,13 +858,29 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 του υπολοίπου χωρίς να είναι το υπόλοιπο. Ο ήρωας της κάρτας
                 είναι ΕΝΑΣ, το υπόλοιπο· τα υπόλοιπα είναι στοιχεία και ζουν στη
                 γραμμή στοιχείων. Ιδια πληροφορία, μισό ύψος, μία ιεραρχία. */}
-            <div style={{display:'flex',gap:T.sp.xl,flexWrap:'wrap',paddingTop:12,borderTop:'1px solid var(--border-subtle)'}}>
-              <div><p style={{...labelStyle,marginBottom:2}}>Επιτόκιο</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{fp(loan.rate)} · {rateTypeLabel(loan.rate_type).toLowerCase()}</p></div>
-              {ltv>0&&<div><p style={{...labelStyle,marginBottom:2}}>Δάνειο προς αξία</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{fp(ltv)}</p></div>}
-              {loan.start_date&&<div><p style={{...labelStyle,marginBottom:2}}>Έναρξη</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{fdLong(loan.start_date)}</p></div>}
-              {prog&&<div><p style={{...labelStyle,marginBottom:2}}>Τόκοι που πλήρωσες</p><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums'}}>{fe(prog.interestPaid)}</p></div>}
-              {prog&&<div><p style={{...labelStyle,marginBottom:2}}>Τόκοι που απομένουν</p><p style={{fontSize:12,color:'var(--text-primary)',fontWeight:600,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums'}}>{fe(prog.interestRemaining)}</p></div>}
-            </div>
+            {/* ΤΕΣΣΕΡΑ ΣΤΟΙΧΕΙΑ ΣΕ ΣΤΑΘΕΡΟ ΠΛΕΓΜΑ. Ήταν πέντε σε σειρά που τύλιγε
+                όπου έβρισκε: στα 820 έβγαινε 4+1, με τους «Τόκους που
+                απομένουν» μόνους στη δεύτερη σειρά. Οι τόκοι που πληρώθηκαν
+                πήγαν στη λεζάντα της προόδου, όπου ανήκουν. */}
+            {(()=>{
+              const meta:[string,React.ReactNode,boolean?][] = [
+                ['Επιτόκιο', `${fp(loan.rate)} · ${rateTypeLabel(loan.rate_type).toLowerCase()}`],
+                ...(ltv>0 ? [[prog ? 'Δάνειο προς αξία σήμερα' : 'Δάνειο προς αξία στην έναρξη', fp(ltv)] as [string,React.ReactNode]] : []),
+                ...(loan.start_date ? [['Έναρξη', fdLong(loan.start_date)] as [string,React.ReactNode]] : []),
+                ...(prog ? [['Τόκοι που απομένουν', fe(prog.interestRemaining), true] as [string,React.ReactNode,boolean]] : []),
+              ]
+              const grid = fixedCols(meta.length, T.sp.lg, 'start', 'fc-xs-2')
+              return (
+                <div className={grid.className} style={{...grid.style,paddingTop:12,borderTop:'1px solid var(--border-subtle)'}}>
+                  {meta.map(([k,v,strong])=>(
+                    <div key={k} style={{minWidth:0}}>
+                      <p style={{...labelStyle,marginBottom:2}}>{k}</p>
+                      <p style={{fontSize:12,color:strong?'var(--text-primary)':'var(--text-secondary)',fontWeight:strong?600:400,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums'}}>{v}</p>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
           </div>
         )
       })}
@@ -874,7 +924,11 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           {[
             {l:'Euribor τριμήνου',v:market.euribor_3m,k:'euribor_3m' as const},
             {l:'Euribor μηνός',v:market.euribor_1m,k:'euribor_1m' as const},
-            {l:'ΕΚΤ',v:market.ecb_rate,k:'ecb_rate' as const},
+            // ΤΟ ΕΠΙΤΟΚΙΟ ΠΟΥ ΑΝΑΚΟΙΝΩΝΕΙ Η ΕΚΤ ΕΙΝΑΙ ΤΟ ΤΗΣ ΑΠΟΔΟΧΗΣ ΚΑΤΑΘΕΣΕΩΝ.
+            // Εδώ έγραφε σκέτο «ΕΚΤ» πάνω στο επιτόκιο κύριας αναχρηματοδότησης,
+            // που είναι άλλη σειρά. Η λωρίδα δείχνει πλέον αυτό που λέγεται
+            // «επιτόκιο της ΕΚΤ» και το ονομάζει.
+            {l:'ΕΚΤ, καταθέσεις',v:market.ecb_dfl,k:'ecb_dfl' as const},
             ...(market.bog_housing_new?[{l:'ΤτΕ μέσο',v:market.bog_housing_new,k:'bog_housing_new' as const}]:[]),
           ].map(item=>(
             /* ΤΟ ΔΙΑΧΩΡΙΣΤΙΚΟ ΗΤΑΝ ΑΡΙΣΤΕΡΟ ΠΕΡΙΓΡΑΜΜΑ, ΚΑΙ ΣΤΟ ΤΥΛΙΓΜΑ ΕΠΕΦΤΕ ΣΤΗΝ
@@ -906,6 +960,16 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',fontWeight:500,
                     borderBottom:market.stale.includes(item.k)?'1px dotted var(--text-tertiary)':undefined}}>
                   {greekWhen(market.provenance[item.k]!.asOf, market.provenance[item.k]!.basis)}
+                </span>
+              )}
+              {/* ΧΩΡΙΣ ΤΑΥΤΟΤΗΤΑ Η ΤΙΜΗ ΕΙΝΑΙ Η ΕΦΕΔΡΙΚΗ, ΚΑΙ ΤΟ ΛΕΕΙ. Γυμνή, μια
+                  τιμή γραμμένη στον κώδικα έμοιαζε με σημερινή. Γράφεται ο
+                  μήνας της τελευταίας γνωστής παρατήρησης, με διακεκομμένη
+                  υπογράμμιση όπως κάθε παλιά τιμή της λωρίδας. */}
+              {!market.isLoading && !market.provenance[item.k] && (
+                <span title="Εφεδρική τιμή, όχι ζωντανή: η τροφοδοσία δεν έχει δώσει ακόμη νεότερη. Είναι η τελευταία γνωστή παρατήρηση."
+                  style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',fontWeight:500,borderBottom:'1px dotted var(--text-tertiary)'}}>
+                  εκτίμηση {greekWhen(market.updated_at.slice(0,10), 'μέσος όρος μήνα')}
                 </span>
               )}
             </span>
@@ -1277,7 +1341,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
       </LensPanel>)}
 
       {/* ═══ ΣΥΣΤΑΣΗ ΚΑΙ ΑΝΑΛΥΣΗ ═══ */}
-      {openSec==='advisor' && (<LensPanel title="Το δάνειό σου" subtitle={`Βάσει ${fmtEur(LA)} / ${Y} χρόνια · από τον Υπολογιστή`}>
+      {openSec==='advisor' && (<LensPanel title="Το δάνειό σου" subtitle={`Βάσει ${fmtEur(LA)} / ${Y} χρόνια · από τον υπολογιστή`}>
         <LoanDocScan
           banks={BANKS}
           euribor={market.euribor_3m || MARKET_FALLBACK.euribor_3m}
@@ -1402,9 +1466,18 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 : null
               // Η κίνηση μπαίνει στο ΤΕΛΟΣ της ίδιας γραμμής, όχι σε δική της
               // κάρτα: «τι ισχύει» και «τι κάνω» είναι μία σκέψη.
-              const ltvFix = issues.includes('LTV') ? ' Με προκαταβολή που ρίχνει τον δείκτη κάτω από 80% παίρνεις καλύτερο επιτόκιο και ευκολότερη αποδοχή.' : ''
+              const ltvFix = issues.includes('LTV') ? ' Με προκαταβολή που ρίχνει τον δείκτη κάτω από 80% παίρνεις χαμηλότερο επιτόκιο και ευκολότερη αποδοχή.' : ''
+              // ΣΤΑΘΕΡΟ ΓΙΑ ΛΙΓΟΤΕΡΑ ΧΡΟΝΙΑ ΑΠΟ ΤΗ ΔΙΑΡΚΕΙΑ ΔΕΝ ΕΙΝΑΙ ΠΡΟΣΤΑΣΙΑ. Η
+              // ανάλυση έλεγε «Euribor 2,51%, από το οποίο είσαι προστατευμένος»
+              // σε δάνειο 25 ετών με σταθερή περίοδο 5 ετών, ενώ ο ίδιος ο
+              // υπολογιστής από πάνω έγραφε ότι μετά τα 5 χρόνια το επιτόκιο αλλάζει.
+              const fixedYears = cs.fixedPeriod ?? cs.years
+              const fixedAll = cs.rateType==='variable' ? false : fixedYears >= cs.years
+              const fixedNote = fixedAll
+                ? `Σταθερή δόση για όλη τη διάρκεια. Euribor τριμήνου ${fmtPct(market.euribor_3m)}, από το οποίο είσαι προστατευμένος.`
+                : `Σταθερό για ${fixedYears} χρόνια. Μετά ακολουθεί το Euribor (σήμερα ${fmtPct(market.euribor_3m)} τριμήνου), οπότε η δόση μπορεί να αλλάξει.`
               const rateFix = issues.includes('Επιτόκιο') ? ` Ζήτησε γραπτές προσφορές από τρεις τράπεζες: μειώσεις ${fp(0.10)} έως ${fp(0.25)} είναι συνηθισμένες.` : ''
-              const varFix = issues.includes('Κυμαινόμενο') ? ' Το σταθερό κλειδώνει τη δόση για όλη τη διάρκεια.' : ''
+              const varFix = issues.includes('Κυμαινόμενο') ? ' Το σταθερό επιτόκιο κλειδώνει τη δόση για όσα χρόνια ορίζει η σύμβαση.' : ''
               return (
               <MiniSection title="Ανάλυση δανείου" defaultOpen meta={<span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:600,whiteSpace:'nowrap' as const}}>{scoreLabel}</span>}>
                 <div style={{display:'flex',alignItems:'center',gap:T.sp.xl,flexWrap:'wrap'}}>
@@ -1420,7 +1493,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                       <div style={{position:'absolute',left:'60%',top:0,bottom:0,width:0,borderLeft:'1px dashed var(--text-tertiary)',opacity:0.5}}/>
                       <div style={{position:'absolute',left:'80%',top:0,bottom:0,width:0,borderLeft:'1px dashed var(--text-tertiary)',opacity:0.5}}/>
                     </div>
-                    <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 8,fontFamily: T.font.sans}}>Όρια: αποδεκτό 60 · υγιές 80. Βάσει {fmtEur(cs.loanAmount)} · {cs.years} έτη · {fmtPct(cs.effectiveRate)} {rateTypeLabel(cs.rateType).toLowerCase()}.</p>
+                    <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 8,fontFamily: T.font.sans}}>Όρια: αποδεκτό 60 · υγιές 80. Βάσει {fmtEur(cs.loanAmount)} · {cs.years} χρόνια · {fmtPct(cs.effectiveRate)} {rateTypeLabel(cs.rateType).toLowerCase()}.</p>
                   </div>
                 </div>
 
@@ -1429,7 +1502,9 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                     right={cost('LTV')}
                     // Η ΛΕΞΗ ΑΚΟΛΟΥΘΕΙ ΤΟ ΟΡΙΟ ΤΗΣ ΒΑΘΜΟΛΟΓΙΑΣ (85). Το «μέτριο» πάνω από
                     // 70 καθόταν δίπλα σε «100 / 100 · Υγιές δάνειο», χωρίς πόντο να λείπει.
-                    title={`Δάνειο προς αξία ${fp(ltv)}: ${ltv>85?'υψηλό, απαιτεί προσοχή':ltv>70?'αποδεκτό':'καλό, εντός ορίων'}`}
+                    // Και πάνω από 70 η λέξη δεν είναι μομφή: η βαθμολογία δεν
+                    // αφαιρεί τίποτα ως το 85, άρα η γραμμή λέει «εντός ορίων».
+                    title={`Δάνειο προς αξία ${fp(ltv)}: ${ltv>85?'υψηλό, απαιτεί προσοχή':ltv>70?'εντός ορίων':'χαμηλό'}`}
                     body={ltv>85
                       ? `Χρηματοδοτείς το ${fp(ltv)} της αξίας. Οι τράπεζες είναι επιφυλακτικές πάνω από 80%.${ltvFix}`
                       : `Ίδια κεφάλαια ${fmtEur(cs.propertyValue-cs.loanAmount)}, δηλαδή ${fp(100-ltv)} της αξίας. ${ltv>70?'Εντός αποδεκτών ορίων.':'Ενισχύει τη διαπραγματευτική σου θέση.'}`}
@@ -1450,8 +1525,8 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                       // το επιτόκιο και η δόση ζουν εκεί που πατιούνται.
                       ? `Υπάρχει φθηνότερο επιτόκιο για το προφίλ σου: θα γλίτωνες ${fmtEur(savingVsBest)} στη διάρκεια.${rateFix}`
                       : topRec
-                      ? `Καμία τράπεζα του πίνακα δεν δίνει φθηνότερο. Euribor τριμήνου ${fmtPct(market.euribor_3m)}, από το οποίο είσαι προστατευμένος.`
-                      : `Σταθερή δόση για όλη τη διάρκεια. Euribor τριμήνου ${fmtPct(market.euribor_3m)}, από το οποίο είσαι προστατευμένος.`}
+                      ? `Καμία τράπεζα του πίνακα δεν δίνει φθηνότερο. ${fixedNote}`
+                      : fixedNote}
                   />
 
                   <FindingRow last
@@ -1562,14 +1637,14 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   el: open && advType==='energy',
                   reason: shut ?? (advType==='energy'
                     ? `Κατάλληλο. Δάνειο έως ${fmtEur(prog.maxAmount ?? 25000)} χωρίς τόκο για τον δανειολήπτη`
-                    : 'Επίλεξε «Ενεργειακή αναβάθμιση» στον Υπολογιστή'),
+                    : 'Επίλεξε «Ενεργειακή αναβάθμιση» στον υπολογιστή'),
                   badge: open && advType==='energy' ? 'Χωρίς τόκο' : null,
                 }
                 if (prog.id.startsWith('exoikonomo')) return {
                   id: prog.id, l: prog.name, when, url: prog.url,
                   el: open && advType==='energy',
                   reason: shut ?? (advType==='energy' ? 'Επιδότηση ενεργειακής αναβάθμισης, δες τα κριτήρια'
-                    : 'Επίλεξε «Ενεργειακή αναβάθμιση» στον Υπολογιστή'),
+                    : 'Επίλεξε «Ενεργειακή αναβάθμιση» στον υπολογιστή'),
                   badge: null,
                 }
                 if (prog.id==='anakainizo_noikazo') return {
@@ -1577,7 +1652,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   el: open && advType==='renovation',
                   reason: shut ?? (advType==='renovation'
                     ? 'Επιδότηση ανακαίνισης και εγγυημένο ενοίκιο από τον ΟΠΕΚΑ'
-                    : 'Επίλεξε «Ανακαίνιση» στον Υπολογιστή'),
+                    : 'Επίλεξε «Ανακαίνιση» στον υπολογιστή'),
                   badge: null,
                 }
                 if (prog.id==='gefyra_3') return {
@@ -1626,7 +1701,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 στον Υπολογιστή δύο οθόνες πιο πάνω. Ο κανόνας του αρχείου είναι
                 ότι η κλειστή ενότητα λέει ΤΙ ΥΠΑΡΧΕΙ χωρίς να την ανοίξεις: εδώ
                 αυτό είναι το όνομα της τράπεζας και το επιτόκιό της. */}
-            <MiniSection title="Σύσταση καλύτερου δανείου" meta={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap' as const}}>{topRec ? `${topRec.bankName} · ${fmtPct(topRec.effectiveRatePct)}` : `${fmtEur(LA)} / ${Y} έτη`}</span>}>
+            <MiniSection title="Τράπεζες για το σενάριό σου" meta={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap' as const}}>{topRec ? `${topRec.bankName} · ${fmtPct(topRec.effectiveRatePct)}` : `${fmtEur(LA)} / ${Y} χρόνια`}</span>}>
               {topRec && (
                 <div onMouseEnter={()=>setRecHover(true)} onMouseLeave={()=>setRecHover(false)}
                   onTouchStart={()=>setRecHover(true)} onTouchEnd={()=>setRecHover(false)}
@@ -1646,7 +1721,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                         <div style={{marginTop:10}}>
                           <Btn variant="secondary" onClick={()=>applyBank(topRec.nominalRatePct, topRec.rateType, topRec.bankName)}>
                             <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                            Εφαρμογή στον Υπολογιστή
+                            Εφαρμογή στον υπολογιστή
                           </Btn>
                         </div>
                       )}
@@ -1679,7 +1754,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                         onMouseEnter={()=>setOtherHover(r.bankId)} onMouseLeave={()=>setOtherHover(null)}
                         onTouchStart={()=>setOtherHover(r.bankId)} onTouchEnd={()=>setOtherHover(null)}
                         onClick={r.eligible?()=>applyBank(r.nominalRatePct, r.rateType, r.bankName):undefined}
-                        role={r.eligible?'button':undefined} title={r.eligible?'Εφαρμογή επιτοκίου στον Υπολογιστή':undefined}
+                        role={r.eligible?'button':undefined} title={r.eligible?'Εφαρμογή επιτοκίου στον υπολογιστή':undefined}
                         /* Η ΣΕΙΡΑ ΤΥΛΙΓΕΤΑΙ, ΤΟ ΟΝΟΜΑ ΔΕΝ ΚΟΒΕΤΑΙ. Ονομα τράπεζας, σήμα
                            προγράμματος, δόση και επιτόκιο δεν χωρούν σε μία γραμμή σε
                            τηλέφωνο: μετρημένο, «Τράπεζα Πειραιώς» έχανε 16 εικονοστοιχεία
@@ -1770,7 +1845,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   <div>
                     {rows.map((r,i)=>(<FindingRow key={r.t} title={r.t} body={r.b} last={i===rows.length-1}/>))}
                   </div>
-                  <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:12,lineHeight:1.6,fontFamily: T.font.sans}}>Ρύθμισε τον τύπο δανειολήπτη στον Υπολογιστή για να προσαρμοστεί η στρατηγική. Ενημερωτικές πληροφορίες, όχι φορολογική ή νομική συμβουλή.</p>
+                  <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:12,lineHeight:1.6,fontFamily: T.font.sans}}>Ρύθμισε τον τύπο δανειολήπτη στον υπολογιστή για να προσαρμοστεί η στρατηγική. Ενημερωτικές πληροφορίες, όχι φορολογική ή νομική συμβουλή.</p>
                 </MiniSection>
               )
             })()}

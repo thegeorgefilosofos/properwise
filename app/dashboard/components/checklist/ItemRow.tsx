@@ -127,7 +127,7 @@ export function ItemRow({ item, allItems, onToggle, onEdit, onDelete, onAddToCal
         </span>
         {item.due_date && (
           <span style={{ flexShrink: 0, maxWidth: '100%', fontSize: 'var(--fs-xs)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', color: overdue && !done ? 'var(--negative)' : due !== null && due <= 3 && due >= 0 && !done ? 'var(--warning)' : 'var(--text-tertiary)', fontWeight: (overdue || (due !== null && due <= 3)) && !done ? 700 : 400 }}>
-            {fmtDate(item.due_date)}{overdue && !done && due !== null ? ` · πριν ${relDays(due)}` : ''}{!overdue && due !== null && due <= 3 && due >= 0 && !done ? ` · ${due === 0 ? 'σήμερα' : 'σε ' + relDays(due)}` : ''}
+            {fmtDate(item.due_date)}{overdue && !done && due !== null ? ` · έληξε πριν από ${relDays(due)}` : ''}{!overdue && due !== null && due <= 3 && due >= 0 && !done ? ` · ${due === 0 ? 'σήμερα' : 'σε ' + relDays(due)}` : ''}
           </span>
         )}
         {item.assigned_contact_name && (

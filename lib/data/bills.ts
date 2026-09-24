@@ -48,12 +48,29 @@ export async function ofProperty<T = Partial<BillsRow>>(
   db: Db, propertyId: string, columns: string, userId?: string,
   opts: { paid?: boolean; category?: string; since?: string } = {},
 ): Promise<T[]> {
+  return rows<T>(ofPropertyQuery(db, propertyId, columns, userId, opts));
+}
+
+/**
+ * Οι ίδιοι λογαριασμοί, με το σφάλμα ορατό. Η Λογιστική το χρειάζεται: εκεί μια
+ * άδεια λίστα από βλάβη γίνεται «μηδέν έξοδα» σε φάκελο για τον λογιστή.
+ */
+export async function ofPropertyWithError<T = Partial<BillsRow>>(
+  db: Db, propertyId: string, columns: string, userId?: string,
+): Promise<ReadResult<T>> {
+  return read<T>(ofPropertyQuery(db, propertyId, columns, userId, {}));
+}
+
+function ofPropertyQuery(
+  db: Db, propertyId: string, columns: string, userId?: string,
+  opts: { paid?: boolean; category?: string; since?: string } = {},
+) {
   let q = db.from(TABLE).select(columns).eq('property_id', propertyId);
   if (userId) q = q.eq('user_id', userId);
   if (opts.paid !== undefined) q = q.eq('paid', opts.paid);
   if (opts.category) q = q.eq('category', opts.category);
   if (opts.since) q = q.gte('created_at', opts.since);
-  return rows<T>(q);
+  return q;
 }
 
 /** Οι λογαριασμοί πολλών ακινήτων μαζί. */

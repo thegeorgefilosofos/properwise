@@ -32,6 +32,7 @@ import { athensToday } from '@/lib/core/time';
 import { TRANSFER_TAX_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL } from '@/lib/accounting/transfer'
 import { failed, MSG } from '@/lib/core/dbError';
 import { useChartWidth } from '@/app/hooks/useChartWidth'
+import { ActionMenu } from '@/components/ActionMenu'
 
 // ── MD3 tokens ────────────────────────────────────────────────────────────────
 const labelStyle: React.CSSProperties = { ...TT.label, display:'block', marginBottom:6 }
@@ -483,17 +484,36 @@ const PRESETS = [
   {id:'renovation',label:'Ανακαίνιση',desc:'Ενεργειακή αναβάθμιση',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'25000',propValue:'200000',sqm:'85',rate:'2.90',years:'15',rateType:'fixed' as RateType,loanType:'energy' as LoanType,borrower:'individual' as BorrowerType,fixedPeriod:'5',propType:'residence',area:'center_athens'}},
 ]
 
+// ═══ ΥΠΟΛΟΓΙΣΜΕΝΟ ΜΕΓΕΘΟΣ, ΟΧΙ ΠΕΔΙΟ ════════════════════════════════════════
+// Η «Τιμή ανά τ.μ.» και η «Αμοιβή μεσίτη» ζωγραφίζονταν ως κουτιά πεδίου με
+// δεξιά στοίχιση, ανάμεσα σε πραγματικά πεδία με αριστερή: έμοιαζαν με πεδίο
+// που δεν πατιέται. Είναι αποτέλεσμα και φαίνονται ως αποτέλεσμα: ετικέτα και
+// τιμή, στο ύψος των πεδίων ώστε η σειρά να μένει ευθεία.
+function ReadStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span style={fieldLabelStyle}>{label}</span>
+      <div style={{height:T.h.lg,display:'flex',alignItems:'center'}}>
+        <span style={{fontSize:14,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{value}</span>
+      </div>
+    </div>
+  )
+}
+
+// ΤΟ ΟΝΟΜΑ ΕΙΝΑΙ ΟΙ ΓΕΙΤΟΝΙΕΣ, ΟΧΙ ΤΟ ΓΡΑΜΜΑ. «Αθήνα Κέντρο Β» δεν έλεγε τίποτα
+// σε κανέναν· το «Β» ήταν εσωτερική διαβάθμιση τιμών. Η βαθμίδα κατεβαίνει στην
+// περιγραφή, όπου χρησιμεύει για να διαλέξεις ανάμεσα σε δύο γειτονικές ζώνες.
 const AREA_OPTIONS = [
-  {value:'attica_center_prime',label:'Αθήνα Κέντρο Α',description:'Κολωνάκι, Σύνταγμα, Πλάκα'},
-  {value:'attica_center_std',label:'Αθήνα Κέντρο Β',description:'Κυψέλη, Ζωγράφου, Παγκράτι'},
-  {value:'attica_south_prime',label:'Αττική Νότια Α',description:'Γλυφάδα, Βούλα, Βουλιαγμένη'},
-  {value:'attica_south_std',label:'Αττική Νότια Β',description:'Άλιμος, Ελληνικό, Αργυρούπολη'},
-  {value:'attica_north_prime',label:'Αττική Βόρεια Α',description:'Κηφισιά, Εκάλη, Διόνυσος'},
-  {value:'attica_north_std',label:'Αττική Βόρεια Β',description:'Μαρούσι, Χαλάνδρι, Αγία Παρασκευή'},
+  {value:'attica_center_prime',label:'Αθήνα: Κολωνάκι, Σύνταγμα, Πλάκα',description:'Κέντρο, ακριβότερη ζώνη'},
+  {value:'attica_center_std',label:'Αθήνα: Κυψέλη, Ζωγράφου, Παγκράτι',description:'Κέντρο, μεσαία ζώνη'},
+  {value:'attica_south_prime',label:'Νότια: Γλυφάδα, Βούλα, Βουλιαγμένη',description:'Νότια προάστια, ακριβότερη ζώνη'},
+  {value:'attica_south_std',label:'Νότια: Άλιμος, Ελληνικό, Αργυρούπολη',description:'Νότια προάστια, μεσαία ζώνη'},
+  {value:'attica_north_prime',label:'Βόρεια: Κηφισιά, Εκάλη, Διόνυσος',description:'Βόρεια προάστια, ακριβότερη ζώνη'},
+  {value:'attica_north_std',label:'Βόρεια: Μαρούσι, Χαλάνδρι, Αγία Παρασκευή',description:'Βόρεια προάστια, μεσαία ζώνη'},
   {value:'attica_east',label:'Αττική Ανατολική',description:'Παλλήνη, Κορωπί, Σπάτα'},
   {value:'attica_west',label:'Αττική Δυτική',description:'Περιστέρι, Αιγάλεω, Ίλιον'},
-  {value:'attica_piraeus_prime',label:'Πειραιάς Α',description:'Καστέλα, Φρεαττύδα'},
-  {value:'attica_piraeus_std',label:'Πειραιάς Β',description:'Κερατσίνι, Νίκαια'},
+  {value:'attica_piraeus_prime',label:'Πειραιάς: Καστέλα, Φρεαττύδα',description:'Ακριβότερη ζώνη'},
+  {value:'attica_piraeus_std',label:'Πειραιάς: Κερατσίνι, Νίκαια',description:'Μεσαία ζώνη'},
   {value:'thess_center',label:'Θεσσαλονίκη Κέντρο',description:'Κέντρο, ΑΠΘ, Λαδάδικα'},
   {value:'thess_east',label:'Θεσσαλονίκη Ανατολικά',description:'Καλαμαριά, Τριανδρία'},
   {value:'thess_suburbs_n',label:'Θεσσαλονίκη Βόρεια',description:'Πυλαία, Θέρμη'},
@@ -541,6 +561,10 @@ function areaGrossYield(area:string): { pct:number; label:string; note:string } 
 export interface LoanCalcState {
   loanType:LoanType; borrowerType:BorrowerType; loanAmount:number; years:number
   rateType:RateType; effectiveRate:number; monthly:number; totalInterest:number; propertyValue:number
+  /** Τα χρόνια που μένει σταθερό το επιτόκιο (σταθερό ή μικτό). Χωρίς αυτό, η
+   *  ανάλυση έλεγε «προστατευμένος από το Euribor» σε δάνειο 25 ετών σταθερό
+   *  μόνο για τα πρώτα 5. */
+  fixedPeriod?:number
   sqm?:number; propType?:string; area?:string
   incomeMonthly?:number; marital?:'single'|'married'|'single_parent'; children?:number
 }
@@ -815,12 +839,12 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   // πέρασμα απόδοσης σε κάθε πληκτρολόγηση. Το React δεν εγγυάται καν πότε
   // τρέχει ένα useMemo. Ίδιες εξαρτήσεις, σωστό εργαλείο.
   useEffect(()=>{
-    onStateChange?.({loanType,borrowerType:borrower,loanAmount:LA,years:Y,rateType,effectiveRate:effRate,monthly,totalInterest:totalInt,propertyValue:PV,sqm:SQM,propType,area,incomeMonthly:INC,marital,children:Number(children)||0})
+    onStateChange?.({loanType,borrowerType:borrower,loanAmount:LA,years:Y,rateType,effectiveRate:effRate,monthly,totalInterest:totalInt,propertyValue:PV,fixedPeriod:Number(fixedPeriod)||undefined,sqm:SQM,propType,area,incomeMonthly:INC,marital,children:Number(children)||0})
     // Το `onStateChange` λείπει σκόπιμα: οι γονείς το περνούν ως ανώνυμη
     // συνάρτηση, οπότε αλλάζει ταυτότητα σε κάθε render και θα έκανε τον βρόχο
     // ατέρμονο. Ό,τι στέλνουμε εξαρτάται μόνο από τα παρακάτω.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[loanType,borrower,LA,Y,rateType,effRate,monthly,totalInt,PV,SQM,propType,area,INC,marital,children])
+  },[loanType,borrower,LA,Y,rateType,effRate,monthly,totalInt,PV,fixedPeriod,SQM,propType,area,INC,marital,children])
 
   const bankName = bankId==='custom'?customBank:BANKS.find(b=>b.id===bankId)?.name||''
   const areaLabel = AREA_OPTIONS.find(a=>a.value===area)?.label||''
@@ -984,6 +1008,43 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         </div>
       </Section>
 
+      {/* ═══ Η ΔΟΣΗ ΠΡΙΝ ΑΠΟ ΤΑ ΔΕΚΑΤΕΣΣΕΡΑ ΠΕΔΙΑ ════════════════════════════════
+          Στο κινητό η «Μηνιαία δόση» έπεφτε 1.600 εικονοστοιχεία κάτω, μετά από
+          όλα τα πεδία: ο χρήστης που άλλαζε το επιτόκιο δεν έβλεπε τι άλλαξε. Τα
+          τέσσερα νούμερα κάθονται πλέον πάνω από τα πεδία που τα κουνάνε, σε
+          κάθε πλάτος· η απάντηση πρώτα, οι ρυθμίσεις από κάτω. */}
+      {/* ═══ ΤΑ ΤΕΣΣΕΡΑ ΝΟΥΜΕΡΑ ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΣΤΟΙΧΕΙΟ ΜΕ ΤΑ ΥΠΟΛΟΙΠΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ
+          Ηταν χειροποίητα κουτάκια: δικό τους πλέγμα, δικό τους περιθώριο, δικό
+          τους μέγεθος γραμματοσειράς στα 28, δική τους κατάσταση `hoverKpi`.
+          Το ίδιο πράγμα με το KPIGrid, γραμμένο δεύτερη φορά — και επειδή ήταν
+          δεύτερη γραφή, δεν πήρε τίποτα από όσα διορθώθηκαν στην πρώτη.
+
+          ΤΙ ΚΟΣΤΙΣΕ. ΜΕΤΡΗΜΕΝΟ ΣΕ Galaxy A, 360×800: δύο στήλες των 163, κάρτα
+          με 18 περιθώριο δεξιά-αριστερά, δηλαδή 127 για το νούμερο· η
+          «Συνολική αποπληρωμή» έγραφε «225.280,61€», που στα 28 θέλει 200. Ο
+          κύριος αριθμός του υπολογιστή δανείου ήταν κομμένος στη μέση· μαζί
+          του ολόκληρη η γραμμή ξεχείλιζε την κάρτα κατά 37.
+
+          Με το κοινό στοιχείο, το μέγεθος βγαίνει από το πλάτος της κάρτας ΚΑΙ
+          από το μήκος του αριθμού, ο τόνος αποκαλύπτεται στο άγγιγμα όπως
+          παντού και η κατάσταση `hoverKpi` δεν χρειάζεται καν. */}
+      <KPIGrid items={[
+        { label:'Μηνιαία δόση', value:fmtEur(monthly), sub:`${rateTypeLabel(rateType).toLowerCase()} ${fmtPct(effRate)} · ${Y} χρόνια` },
+        { label:'Σύνολο τόκων', value:fmtEur(totalInt), sub:`${fp(((totalInt/Math.max(LA,1))*100))} επί κεφαλαίου` },
+        { label:'Συνολική αποπληρωμή', value:fmtEur(total), sub:`κεφάλαιο ${fmtEur(LA)}` },
+        // Ο τόνος μπαίνει ΜΟΝΟ όταν λέει κάτι: πάνω από 90% δάνειο προς αξία
+        // είναι το όριο πέρα από το οποίο οι τράπεζες σταματούν να δανείζουν.
+        { label:'Δάνειο προς αξία', value:`${fp(ltv)}`, sub:`ίδια κεφάλαια ${fmtEur(PV-LA)}`, title:'Ποσοστό δανείου ως προς την αξία του ακινήτου', tone: ltv>90 ? 'warning' : undefined },
+      ]}/>
+      {/* Η ΣΤΑΘΕΡΗ ΠΕΡΙΟΔΟΣ ΔΕΝ ΜΠΑΙΝΕΙ ΣΤΟΝ ΥΠΟΛΟΓΙΣΜΟ: δόση και σύνολα τρέχουν με
+          το ίδιο επιτόκιο ως το τέλος. Όσο η περίοδος είναι μικρότερη από τη
+          διάρκεια, το λέμε δίπλα στα νούμερα αντί να το υπονοούμε. */}
+      {(rateType==='fixed'||rateType==='mixed')&&Number(fixedPeriod)<Y&&(
+        <p style={{ ...TT.caption, color:'var(--text-tertiary)', marginTop:8 }}>
+          Τα σύνολα υποθέτουν {fmtPct(effRate)} σε όλη τη διάρκεια· μετά τα {fixedPeriod} χρόνια το επιτόκιο αλλάζει, οπότε είναι ενδεικτικά.
+        </p>
+      )}
+
       {/* Ακίνητο και σκοπός — ενιαία κάρτα, ενιαίο πλέγμα πεδίων (χωρίς άνισα ύψη) */}
       <div style={cardStyle}>
         <SectionLabel label="Ακίνητο και σκοπός δανείου"/>
@@ -998,30 +1059,14 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
             <CustomSelect label="Σκοπός δανείου" labelInfo={LOAN_TYPES[loanType].tax_note?<InfoDot text={LOAN_TYPES[loanType].tax_note}/>:undefined} value={loanType} onChange={v=>{setLoanType(v as LoanType);setActivePreset(null)}} options={LOAN_TYPE_OPTIONS}/>
             <CustomSelect label="Τύπος δανειολήπτη" labelInfo={<InfoDot text={[BORROWER_PROFILES[borrower].tax_benefits,BORROWER_PROFILES[borrower].special].filter(Boolean).join(' · ')}/>} value={borrower} onChange={v=>{setBorrower(v as BorrowerType);setActivePreset(null)}} options={borrowerOptions}/>
             {/* Τιμή ανά τ.μ. — μέσα στο πλέγμα, δίπλα στον τύπο δανειολήπτη (πιο μαζεμένη κάρτα) */}
-            {sqmPrice>0&&(
-              <div>
-                <label style={fieldLabelStyle}>Τιμή ανά τ.μ.</label>
-                {/* T.h.lg (40) = FIELD_HEIGHT των CustomSelect/NumberInput δίπλα. Το παλιό 44
-                    έκανε αυτό το ένα κελί 4px ψηλότερο από τα υπόλοιπα του ίδιου πλέγματος. */}
-                <div style={{height:T.h.lg,display:'flex',alignItems:'center',justifyContent:'flex-end',padding:'0 14px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
-                  <span style={{fontSize:14,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{fmtEur(sqmPrice)}</span>
-                </div>
-              </div>
-            )}
+            {sqmPrice>0&&<ReadStat label="Τιμή ανά τ.μ." value={fmtEur(sqmPrice)}/>}
             {/* Η ΑΜΟΙΒΗ ΜΕΣΙΤΗ ΕΙΝΑΙ ΣΤΟΙΧΕΙΟ ΤΗΣ ΑΓΟΡΑΣ, ΟΧΙ ΠΑΡΑΡΤΗΜΑ. Κρεμόταν
                 σε δική της γραμμή κάτω από το πλέγμα, δηλαδή διαβαζόταν ως κάτι
                 που ήρθε μετά — ενώ είναι κόστος της ίδιας αγοράς με τον φόρο
                 μεταβίβασης και τα συμβολαιογραφικά. Κελί του πλέγματος. */}
             <ToggleField label="Αμοιβή μεσίτη" on={hasAgent} onChange={setHasAgent}/>
             {hasAgent&&<NumberInput label="Ποσοστό μεσίτη" value={agentPct} onChange={setAgentPct} suffix="%"/>}
-            {hasAgent&&(
-              <div>
-                <label style={fieldLabelStyle}>Αμοιβή μεσίτη</label>
-                <div style={{height:T.h.lg,display:'flex',alignItems:'center',justifyContent:'flex-end',padding:'0 14px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:T.radius.inner}}>
-                  <span style={{fontSize:14,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{fmtEur(AGNT)}</span>
-                </div>
-              </div>
-            )}
+            {hasAgent&&<ReadStat label="Αμοιβή μεσίτη" value={fmtEur(AGNT)}/>}
           </div>
           {isNewBuilding&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΠΑ: Φόρος Προστιθέμενης Αξίας · ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Νεόδμητο: ο ΦΠΑ 24% ({fmtEur(vatOwed)}) είναι σε αναστολή έως {NEW_BUILD_VAT_SUSPENDED_UNTIL}, οπότε ο υπολογισμός κρατά ΦΜΑ 3,09%</p></div>}
           {isCommercial&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου (3% συν 3% υπέρ δήμων επί του φόρου)" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Επαγγελματικό: ΦΜΑ 3,09% + Ψηφιακό Τέλος Συναλλαγής 3,6% αν εκμισθωθεί</p></div>}
@@ -1052,7 +1097,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                 το πεδίο που το τροφοδοτεί. Η εξήγηση του όρου πήγε στο πλακίδιο
                 που τον γράφει, στο κυκλάκι του. */}
             <NumberInput label="Ποσό δανείου" value={loanAmount} onChange={v=>{setLoanAmount(v);setActivePreset(null)}} suffix="€"/>
-            <NumberInput label="Διάρκεια (χρόνια)" value={years} onChange={v=>{setYears(v);setActivePreset(null)}} suffix="έτη" min={3} max={35}/>
+            <NumberInput label="Διάρκεια" value={years} onChange={v=>{setYears(v);setActivePreset(null)}} suffix="χρόνια" min={3} max={35}/>
             <DatePicker label="Ημερομηνία έναρξης" value={startDate} onChange={setStartDate}/>
             <div>
               <CustomSelect label="Τράπεζα" value={bankId} onChange={setBankId} options={BANK_OPTIONS} placeholder="Επίλεξε τράπεζα"/>
@@ -1066,7 +1111,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                 «Τύπος επιτοκίου» και η τιμή του είναι σε έτη. */}
             {(rateType==='fixed'||rateType==='mixed')&&<CustomSelect label="Σταθερή περίοδος" value={fixedPeriod} onChange={setFixedPeriod} options={FIXED_PERIOD_OPTIONS}/>}
             <div title={rateType==='variable'?'Περιθώριο τράπεζας πάνω από το Euribor':undefined}>
-              <NumberInput label={rateType==='variable'?'Περιθώριο τράπεζας (%)':'Ετήσιο επιτόκιο (%)'} value={rate} onChange={v=>{setRate(v);setActivePreset(null)}} suffix="%"/>
+              <NumberInput label={rateType==='variable'?'Περιθώριο τράπεζας':'Ετήσιο επιτόκιο'} value={rate} onChange={v=>{setRate(v);setActivePreset(null)}} suffix="%"/>
               {rateType==='variable'&&(
                 <div style={{marginTop: 8,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
                   <p style={{fontSize:12,fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}><span title="Διατραπεζικό επιτόκιο ευρώ: βάση κυμαινόμενων δανείων">Euribor</span> {fmtPct(market.euribor_3m)} + {fmtPct(R)} = <strong>{fmtPct(effRate)}</strong></p>
@@ -1096,56 +1141,19 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         </div>
       </div>
 
-      {/* ═══ ΤΑ ΤΕΣΣΕΡΑ ΝΟΥΜΕΡΑ ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΣΤΟΙΧΕΙΟ ΜΕ ΤΑ ΥΠΟΛΟΙΠΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ
-          Ηταν χειροποίητα κουτάκια: δικό τους πλέγμα, δικό τους περιθώριο, δικό
-          τους μέγεθος γραμματοσειράς στα 28, δική τους κατάσταση `hoverKpi`.
-          Το ίδιο πράγμα με το KPIGrid, γραμμένο δεύτερη φορά — και επειδή ήταν
-          δεύτερη γραφή, δεν πήρε τίποτα από όσα διορθώθηκαν στην πρώτη.
-
-          ΤΙ ΚΟΣΤΙΣΕ. ΜΕΤΡΗΜΕΝΟ ΣΕ Galaxy A, 360×800: δύο στήλες των 163, κάρτα
-          με 18 περιθώριο δεξιά-αριστερά, δηλαδή 127 για το νούμερο· η
-          «Συνολική αποπληρωμή» έγραφε «225.280,61€», που στα 28 θέλει 200. Ο
-          κύριος αριθμός του υπολογιστή δανείου ήταν κομμένος στη μέση· μαζί
-          του ολόκληρη η γραμμή ξεχείλιζε την κάρτα κατά 37.
-
-          Με το κοινό στοιχείο, το μέγεθος βγαίνει από το πλάτος της κάρτας ΚΑΙ
-          από το μήκος του αριθμού, ο τόνος αποκαλύπτεται στο άγγιγμα όπως
-          παντού και η κατάσταση `hoverKpi` δεν χρειάζεται καν. */}
-      <KPIGrid items={[
-        { label:'Μηνιαία δόση', value:fmtEur(monthly), sub:`${rateTypeLabel(rateType).toLowerCase()} ${fmtPct(effRate)} · ${Y} έτη` },
-        { label:'Σύνολο τόκων', value:fmtEur(totalInt), sub:`${fp(((totalInt/Math.max(LA,1))*100))} επί κεφαλαίου` },
-        { label:'Συνολική αποπληρωμή', value:fmtEur(total), sub:`κεφάλαιο ${fmtEur(LA)}` },
-        // Ο τόνος μπαίνει ΜΟΝΟ όταν λέει κάτι: πάνω από 90% δάνειο προς αξία
-        // είναι το όριο πέρα από το οποίο οι τράπεζες σταματούν να δανείζουν.
-        { label:'Δάνειο προς αξία', value:`${fp(ltv)}`, sub:`ίδια κεφάλαια ${fmtEur(PV-LA)}`, title:'Ποσοστό δανείου ως προς την αξία του ακινήτου', tone: ltv>90 ? 'warning' : undefined },
-      ]}/>
-      {/* Η ΣΤΑΘΕΡΗ ΠΕΡΙΟΔΟΣ ΔΕΝ ΜΠΑΙΝΕΙ ΣΤΟΝ ΥΠΟΛΟΓΙΣΜΟ: δόση και σύνολα τρέχουν με
-          το ίδιο επιτόκιο ως το τέλος. Όσο η περίοδος είναι μικρότερη από τη
-          διάρκεια, το λέμε δίπλα στα νούμερα αντί να το υπονοούμε. */}
-      {(rateType==='fixed'||rateType==='mixed')&&Number(fixedPeriod)<Y&&(
-        <p style={{ ...TT.caption, color:'var(--text-tertiary)', marginTop:8 }}>
-          Τα σύνολα υποθέτουν {fmtPct(effRate)} σε όλη τη διάρκεια· μετά τα {fixedPeriod} χρόνια το επιτόκιο αλλάζει, οπότε είναι ενδεικτικά.
-        </p>
-      )}
-
-      {/* ΠΕΝΤΕ ΕΝΕΡΓΕΙΕΣ ΠΟΥ ΤΥΛΙΓΟΝΤΑΝ 3+2 ΚΑΙ 4+1. Μετρημένο σε 768 και 834: το
-          `flex-wrap` έδινε σε κάθε κουμπί το πλάτος του κειμένου του και η
-          τελευταία σειρά κρεμόταν αριστερά με τρύπα δεξιά. Τώρα κάθε γραμμή
-          απλώνει τα δικά της κουμπιά ώστε να τη γεμίσει. */}
-      <div className="po-ctlrow">
-        {/* Το χρώμα του πίνακα έγινε ρόλος: η αποθήκευση είναι η κύρια ενέργεια
-            της κάρτας, οι άλλες τέσσερις έχουν περίγραμμα άρα δευτερεύουσες. */}
-        {([
-          {label:saving?'Αποθήκευση…':'Αποθήκευση δανείου',fn:handleSave,disabled:saving,variant:'primary'},
-          {label:'Δόσεις στο Ημερολόγιο',fn:async()=>{await onSaveToCalendar(monthly,Y,startDate,bankName);notifyOk('Οι δόσεις προστέθηκαν στο ημερολόγιο')},disabled:false,variant:'secondary'},
-          {label:'Δόση στις Δαπάνες',fn:async()=>{await onSaveToExpenses(monthly,bankName);notifyOk('Η δόση προστέθηκε στις δαπάνες')},disabled:false,variant:'secondary'},
-          {label:'+ Προσθήκη σεναρίου',fn:addScen,disabled:false,variant:'secondary'},
-          {label:'Επαναφορά',fn:resetAll,disabled:false,variant:'secondary'},
-        ] as const).map(a=>(
-          <Btn key={a.label} variant={a.variant} onClick={a.fn} disabled={a.disabled}>
-            {a.label}
-          </Btn>
-        ))}
+      {/* ═══ ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ, ΟΧΙ ΠΕΝΤΕ ΙΣΟΒΑΡΕΣ ═══════════════════════════
+          Πέντε κουμπιά σε μία σειρά, με άνισα πλάτη, διεκδικούσαν την ίδια
+          προσοχή. Η αποθήκευση είναι αυτό για το οποίο έρχεται κανείς εδώ· η
+          σύγκριση σεναρίων είναι η δεύτερη δουλειά του υπολογιστή. Ημερολόγιο,
+          δαπάνες και επαναφορά είναι σπάνιες κινήσεις και ζουν στο «Περισσότερα». */}
+      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        <Btn variant="primary" onClick={handleSave} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση δανείου'}</Btn>
+        <Btn variant="secondary" onClick={addScen}>+ Προσθήκη σεναρίου</Btn>
+        <ActionMenu label="Περισσότερα" align="left" items={[
+          { key:'calendar', label:'Δόσεις στο ημερολόγιο', description:'Μία υπενθύμιση για κάθε δόση, από την ημερομηνία έναρξης', onClick:async()=>{await onSaveToCalendar(monthly,Y,startDate,bankName);notifyOk('Οι δόσεις προστέθηκαν στο ημερολόγιο')} },
+          { key:'expenses', label:'Δόση στις δαπάνες', description:'Η μηνιαία δόση ως επαναλαμβανόμενη δαπάνη του ακινήτου', onClick:async()=>{await onSaveToExpenses(monthly,bankName);notifyOk('Η δόση προστέθηκε στις δαπάνες')} },
+          { key:'reset', label:'Επαναφορά', description:'Όλα τα πεδία στις αρχικές τιμές', onClick:resetAll },
+        ]}/>
       </div>
 
       {scenarios.length>0&&(
