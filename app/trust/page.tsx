@@ -22,17 +22,16 @@ import { IDENTITY, identityLabels, POLICY_UPDATED, POLICY_VERSION } from '@/lib/
 import { DISCLOSURE } from '@/lib/legal/disclosure';
 import { subprocessors, TRANSFER_SAFEGUARDS, ROLE_LABEL, ANTHROPIC_CONTRACT } from '@/lib/legal/subprocessors';
 import { ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/identity';
-import Link from 'next/link';
 import { billingWords } from '@/lib/legal/billingWords';
 import { LegalLayout, MailLink, type LegalBlock } from '../legal-shell';
 import { siteUrl } from '@/lib/core/site';
+import { publicMetadata } from '../publicMetadata';
 
-export const metadata: Metadata = {
-  title: 'Ποιοι είμαστε',
-  alternates: { canonical: siteUrl('/trust') },
+export const metadata: Metadata = publicMetadata({
+  title: 'Ποιοι είμαστε · PROPERWISE',
   description: 'Ποιοι είμαστε, πού φυλάσσονται τα δεδομένα σου, ποιος μπορεί να τα δει και τι δεν κάνουμε ποτέ μ’ αυτά.',
-  openGraph: { title: 'Ποιοι είμαστε · PROPERWISE' },
-};
+  url: siteUrl('/trust'),
+});
 
 // ── Τα στοιχεία ταυτότητας, σε σειρά ανάγνωσης ─────────────────────────────
 //

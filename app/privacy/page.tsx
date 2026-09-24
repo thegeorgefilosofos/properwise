@@ -1,15 +1,16 @@
+import type { Metadata } from 'next';
 import { LegalShell } from '../legal-shell';
 import { IDENTITY, identityIsPublished, identityLabels, identityPendingSentence, POLICY_UPDATED, POLICY_VERSION } from '@/lib/legal/identity';
 import { activeSubprocessors, plannedSubprocessors, subprocessorLine, TRANSFER_SAFEGUARDS, BACKUP_RETENTION_DAYS } from '@/lib/legal/subprocessors';
 import { siteUrl } from '@/lib/core/site';
+import { publicMetadata } from '../publicMetadata';
 import { billingWords } from '@/lib/legal/billingWords';
 
-export const metadata = {
-  title: 'Πολιτική απορρήτου',
+export const metadata: Metadata = publicMetadata({
+  title: 'Πολιτική απορρήτου · PROPERWISE',
   description: 'Ποια δεδομένα συλλέγει το PROPERWISE, γιατί, πού φυλάσσονται, ποιοι τα επεξεργάζονται και ποια δικαιώματα έχεις.',
-  alternates: { canonical: siteUrl('/privacy') },
-  openGraph: { title: 'Πολιτική απορρήτου · PROPERWISE' },
-};
+  url: siteUrl('/privacy'),
+});
 
 export default function PrivacyPage() {
   const words = billingWords();

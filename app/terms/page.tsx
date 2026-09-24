@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { LegalShell } from '../legal-shell';
 import { IDENTITY, identityIsPublished, identityPendingSentence, POLICY_UPDATED, POLICY_VERSION } from '@/lib/legal/identity';
 // ΟΙ ΤΙΜΕΣ ΤΩΝ ΟΡΩΝ ΗΤΑΝ ΓΡΑΜΜΕΝΕΣ ΜΕ ΤΟ ΧΕΡΙ, ΚΑΙ ΕΙΧΑΝ ΗΔΗ ΑΠΟΚΛΙΝΕΙ. Το
@@ -15,6 +16,7 @@ import { billingWords } from '@/lib/legal/billingWords';
 // εκδοχή και είχε ήδη αποκλίνει σε πάροχο και σε κατάσταση.
 import { activeSubprocessors, plannedSubprocessors, type Subprocessor } from '@/lib/legal/subprocessors';
 import { siteUrl } from '@/lib/core/site';
+import { publicMetadata } from '../publicMetadata';
 // ΟΙ ΣΤΟΧΟΙ ΚΑΙ Η ΙΔΙΟΤΗΤΑ ΣΥΝΕΡΓΑΤΗ ΔΙΑΒΑΖΟΝΤΑΙ ΑΠΟ ΤΗ ΜΗΧΑΝΗ ΤΟΥ ΠΡΟΓΡΑΜΜΑΤΟΣ.
 // Η οθόνη των συστάσεων τους υπόσχεται με αυτούς τους αριθμούς· οι Όροι δεν
 // τους ανέφεραν καθόλου, δηλαδή ό,τι έλεγε η οθόνη δεν το κάλυπτε κανένα κείμενο.
@@ -49,12 +51,11 @@ const REWARD_PLAN = {
   partnerElse: PLANS[partnerWelcomeTier('office')].name,
 };
 
-export const metadata = {
-  title: 'Όροι χρήσης',
+export const metadata: Metadata = publicMetadata({
+  title: 'Όροι χρήσης · PROPERWISE',
   description: 'Οι όροι της συνδρομής στο PROPERWISE: τιμές, δοκιμή 30 ημερών, υπαναχώρηση, ακύρωση και τα δικαιώματά σου.',
-  alternates: { canonical: siteUrl('/terms') },
-  openGraph: { title: 'Όροι χρήσης · PROPERWISE' },
-};
+  url: siteUrl('/terms'),
+});
 
 export default function TermsPage() {
   const words = billingWords();
