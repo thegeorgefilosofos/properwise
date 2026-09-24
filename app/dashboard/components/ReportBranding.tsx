@@ -146,7 +146,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
     <div>
       <Card pad="lg">
         <SecHdr label="Επωνυμία στις αναφορές"
-          sub="Ο,τι ορίζεις εδώ μπαίνει στην κεφαλίδα κάθε PDF που στέλνεις" />
+          sub="Ό,τι ορίζεις εδώ μπαίνει στην κεφαλίδα κάθε PDF που στέλνεις" />
 
         <Toggle on={enabled} onChange={setEnabled} label="Εμφάνιση της επωνυμίας μου στις αναφορές" />
 
@@ -174,7 +174,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               {logoUrl && <RuntimeImg src={logoUrl} alt="Λογότυπο επιχείρησης" style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: 4 }} />}
               <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onFile} style={{ display: 'none' }} />
-              <Btn variant="secondary" size="lg" onClick={() => fileRef.current?.click()}>{logoUrl ? 'Αλλαγή' : 'Μεταφόρτωση'}</Btn>
+              <Btn variant="secondary" size="lg" onClick={() => fileRef.current?.click()}>{logoUrl ? 'Αλλαγή' : 'Ανέβασε λογότυπο'}</Btn>
               {logoUrl && <Btn variant="ghost" onClick={() => setLogoUrl('')}>Αφαίρεση</Btn>}
             </div>
             {/* Ηταν τρεις προτάσεις σε δική της παράγραφο. Οι περιορισμοί του

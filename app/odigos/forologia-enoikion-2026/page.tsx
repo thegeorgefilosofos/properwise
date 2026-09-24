@@ -15,29 +15,26 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
-import { SITE, siteUrl } from '@/lib/core/site';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, WRAP, WRAP_PAD } from '../../PublicChrome';
+import { siteUrl } from '@/lib/core/site';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead } from '../../PublicChrome';
 import { hy } from '@/components/Hyphen';
-import { BackLink } from '../../BackLink';
+import { publicMetadata } from '../../publicMetadata';
+import { guideAt } from '../guides';
+import { GuideMain, GuideUpdated, GuideH2 as H2, GuideSources, GuideFaq, RelatedGuides, guideJsonLd, type GuideFaqItem } from '../GuideParts';
 
 const TITLE = 'Φορολογία ενοικίων 2026: πλήρης οδηγός';
+// Κάτω από 160 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει. Με
+// τους 249 της πρώτης γραφής κοβόταν ακριβώς η ημερομηνία της τραπεζικής είσπραξης.
 const DESC =
-  'Πώς φορολογούνται τα ενοίκια το 2026: η κλίμακα 15 / 25 / 35 / 45% (όριο 36.000€), '
-  + 'η τεκμαρτή έκπτωση 5% και η προϋπόθεση της τραπεζικής είσπραξης (ν.5222/2025, από '
-  + '1.7.2027). Με παραδείγματα σε ευρώ και πηγές. Ενδεικτικός οδηγός, όχι εκκαθαριστικό.';
-const URL = siteUrl('/odigos/forologia-enoikion-2026');
-const UPDATED = '2026-09-21';
+  'Πώς φορολογούνται τα ενοίκια το 2026: κλίμακα 15 / 25 / 35 / 45%, τεκμαρτή έκπτωση 5% '
+  + 'και τραπεζική είσπραξη (ν.5222/2025, από 1.7.2027). Με παραδείγματα.';
+const GUIDE = guideAt('/odigos/forologia-enoikion-2026');
+const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = {
-  title: { absolute: TITLE },
-  description: DESC,
-  alternates: { canonical: URL },
-  openGraph: { title: TITLE, description: DESC, url: URL, siteName: 'PROPERWISE', locale: 'el_GR', type: 'article' },
-  twitter: { card: 'summary_large_image', title: TITLE, description: DESC },
-};
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article' });
 
 // Οι ερωτήσεις τροφοδοτούν ΚΑΙ την ορατή λίστα ΚΑΙ το δομημένο σχήμα — μία πηγή.
-const FAQ: { q: string; a: string }[] = [
+const FAQ: GuideFaqItem[] = [
   {
     q: 'Ισχύει η νέα κλίμακα στη δήλωση του 2026 (εισοδήματα 2025);',
     a: 'Όχι. Σύμφωνα με το άρθρο 47 παρ. 3 του ν.5246/2025, η νέα κλίμακα εφαρμόζεται '
@@ -63,13 +60,14 @@ const FAQ: { q: string; a: string }[] = [
   {
     q: 'Ισχύει το ίδιο για βραχυχρόνια μίσθωση;',
     a: 'Όχι απευθείας. Η βραχυχρόνια έχει δικά της τέλη (Τέλος Ανθεκτικότητας στην Κλιματική '
-     + 'Κρίση, τέλος παρεπιδημούντων) και ξεχωριστή αξιολόγηση. Δες τη σύγκριση βραχυχρόνιας '
-     + 'και μακροχρόνιας.',
+     + 'Κρίση, τέλος παρεπιδημούντων) και ξεχωριστή αξιολόγηση.',
+    link: { href: '/vraxyxronia-i-makroxronia', label: 'Σύγκριση βραχυχρόνιας και μακροχρόνιας' },
   },
   {
     q: 'Ο ΕΝΦΙΑ αφαιρείται από τα ενοίκια;',
     a: 'Όχι. Ο ΕΝΦΙΑ είναι φόρος κατοχής και υπολογίζεται χωριστά· δεν εκπίπτει από το '
-     + 'εισόδημα ενοικίων στην κλασική εικόνα αυτού του οδηγού.',
+     + 'εισόδημα ενοικίων.',
+    link: { href: '/odigos/pos-ypologizetai-o-enfia', label: 'Πώς υπολογίζεται ο ΕΝΦΙΑ' },
   },
 ];
 
@@ -88,62 +86,41 @@ const SOURCES: string[] = [
   'Τραπεζική είσπραξη μισθωμάτων: άρθρο 210 ν.5222/2025 (προσθήκη παρ. 5 στο άρθρο 39 ΚΦΕ) · έναρξη κυρώσεων 1.7.2027 με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026).',
 ];
 
-function H2({ over, title }: { over: string; title: string }) {
-  return <div style={{ marginTop: 'clamp(40px,5vw,60px)', marginBottom: 16 }}><SectionHead over={over} title={title} /></div>;
-}
+// Η χρονική πορεία της τραπεζικής είσπραξης, από τη θέσπιση ως την τρέχουσα έναρξη.
+const TIMELINE: { step: string; what: string; source: string }[] = [
+  { step: 'Θέσπιση', what: 'Προσθήκη παρ. 5 στο άρθρο 39 ΚΦΕ', source: 'ν.5222/2025, άρθρο 210' },
+  { step: '1η μετάθεση', what: 'Ισχύς από 1.4.2026', source: 'ν.5264/2025, άρθρο 129 παρ. 1' },
+  { step: 'Τρέχουσα', what: 'Έναρξη 1.7.2027', source: 'Α.1187/2026 · ΦΕΚ Β΄ 5590/17.09.2026' },
+];
 
 export default function Page() {
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'Article',
-        headline: TITLE,
-        description: DESC,
-        inLanguage: 'el',
-        datePublished: UPDATED,
-        dateModified: UPDATED,
-        mainEntityOfPage: URL,
-        author: { '@type': 'Organization', name: 'PROPERWISE', url: SITE },
-        publisher: { '@type': 'Organization', name: 'PROPERWISE', url: SITE },
-        about: 'Φορολογία εισοδήματος από ακίνητη περιουσία στην Ελλάδα',
-      },
-      {
-        '@type': 'FAQPage',
-        mainEntity: FAQ.map(f => ({
-          '@type': 'Question',
-          name: f.q,
-          acceptedAnswer: { '@type': 'Answer', text: f.a },
-        })),
-      },
-    ],
-  };
+  const jsonLd = guideJsonLd({
+    guide: GUIDE, headline: TITLE, description: DESC, faq: FAQ,
+    about: 'Φορολογία εισοδήματος από ακίνητη περιουσία στην Ελλάδα',
+  });
 
   return (
     <div className="po-tool-page" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       <JsonLd data={jsonLd} />
       <PublicHeader />
 
-      <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
-        <BackLink />
+      <GuideMain>
         <div className="lp-eyebrow">Οδηγός</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           Φορολογία ενοικίων 2026: πλήρης οδηγός
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 18px' }}>
-          Ενημέρωση με βάση τη νομοθεσία όπως ισχύει τον Σεπτέμβριο 2026.
-        </p>
+        <GuideUpdated guide={GUIDE} />
 
         {/* Εισαγωγή */}
         <p className="lg-p">
-          {hy('Αν εκμισθώνεις ακίνητο στην Ελλάδα, το εισόδημα από ενοίκια δεν μπαίνει στην ίδια κλίμακα με τον μισθό ή τη σύνταξη. Φορολογείται αυτοτελώς, με δική του προοδευτική κλίμακα, από το πρώτο ευρώ.')}
+          {hy('Αν εκμισθώνεις ακίνητο στην Ελλάδα, το εισόδημα από ενοίκια δεν μπαίνει στην ίδια κλίμακα με τον μισθό ή τη σύνταξη. Φορολογείται χωριστά, με δική του προοδευτική κλίμακα, από το πρώτο ευρώ.')}
         </p>
         <p className="lg-p">
           {hy('Για τα εισοδήματα που αποκτώνται το φορολογικό έτος 2026 (και δηλώνονται το 2027) ισχύει η αναμορφωμένη κλίμακα του άρθρου 8 του ν.5246/2025: 15%, 25%, 35% και 45%. Το κρίσιμο όριο του τρίτου κλιμακίου δεν είναι πλέον οι 35.000€· το 35% καλύπτει έως και τις 36.000€ φορολογητέου εισοδήματος.')}
         </p>
         <p className="lg-p">
-          {hy('Ο οδηγός δεν υπόσχεται «μαγική εξοικονόμηση». Στόχος του είναι να ξέρεις την τάξη μεγέθους πριν μιλήσεις με τον λογιστή σου.')}
+          {hy('Στόχος του οδηγού είναι να ξέρεις την τάξη μεγέθους πριν μιλήσεις με τον λογιστή σου.')}
         </p>
 
         {/* 1. Η κλίμακα 2026 */}
@@ -176,7 +153,7 @@ export default function Page() {
           <li>{hy('Το κλιμάκιο 35% φτάνει έως και τις 36.000€. Το 45% αρχίζει πάνω από τις 36.000€.')}</li>
         </ul>
         <p className="lg-p">
-          {hy('Σύγκριση με έως το 2025: έως το φορολογικό έτος 2025 ίσχυε (απλοποιημένα) 15 / 35 / 45%, με το μεσαίο κλιμάκιο περίπου 12.001–35.000€. Από το 2026 παρεμβάλλεται το 25% (12.000,01–24.000) και το όριο του 45% μετατοπίζεται πάνω από τις 36.000€.')}
+          {hy('Έως και το φορολογικό έτος 2025 ίσχυε 15% έως 12.000€, 35% από 12.000,01 έως 35.000€ και 45% πάνω από 35.000€. Από το 2026 μπαίνει ενδιάμεσα το 25% (12.000,01 – 24.000€) και το 45% αρχίζει πάνω από τις 36.000€.')}
         </p>
 
         {/* 2. Τεκμαρτή έκπτωση 5% */}
@@ -193,30 +170,35 @@ export default function Page() {
         {/* 3. Τραπεζική είσπραξη */}
         <H2 over="3. Τρόπος πληρωμής" title="Η προϋπόθεση της τραπεζικής είσπραξης" />
         <p className="lg-p">
-          <strong style={{ color: 'var(--text-primary)' }}>Σωστή παραπομπή (όχι ν.5246/2025):</strong>{' '}
-          {hy('άρθρο 210 του ν.5222/2025 (ΦΕΚ Α΄ 134/28.07.2025), που πρόσθεσε παρ. 5 στο άρθρο 39 ΚΦΕ. Αν η εξόφληση μισθώματος δεν γίνει σε τραπεζικό λογαριασμό του εκμισθωτή γνωστοποιημένο στην ΑΑΔΕ, δεν εφαρμόζεται η περ. α΄ της παρ. 3· χάνεται η τεκμαρτή έκπτωση 5%.')}
+          {hy('Νομική βάση: άρθρο 210 του ν.5222/2025 (ΦΕΚ Α΄ 134/28.07.2025), που πρόσθεσε παρ. 5 στο άρθρο 39 ΚΦΕ. Αν η εξόφληση μισθώματος δεν γίνει σε τραπεζικό λογαριασμό του εκμισθωτή γνωστοποιημένο στην ΑΑΔΕ, δεν εφαρμόζεται η περ. α΄ της παρ. 3· χάνεται η τεκμαρτή έκπτωση 5%.')}
         </p>
         <div className="po-table-box" style={{ marginTop: 14 }}>
           <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-            <table className="po-table" style={{ '--tbl-min': '420px' } as React.CSSProperties}>
+            {/* Η ΠΗΓΗ ΜΕΣΑ ΣΤΟ ΚΕΛΙ, ΟΧΙ ΣΕ ΤΡΙΤΗ ΣΤΗΛΗ. Με τρεις στήλες και ελάχιστο
+                420 μέσα σε κουτί 358, στα 390 κοβόταν η πηγή και οι ετικέτες
+                έσπαγαν στη μέση της λέξης («μετάθεσ/η», «Τρέχουσ/α»). */}
+            <table className="po-table" style={{ '--tbl-min': '280px' } as React.CSSProperties}>
               <caption>Χρονική πορεία της διάταξης</caption>
               <thead>
-                <tr><th scope="col">Βήμα</th><th scope="col">Τι λέει</th><th scope="col">Πηγή</th></tr>
+                <tr><th scope="col">Βήμα</th><th scope="col">Τι λέει και πού</th></tr>
               </thead>
               <tbody>
-                <tr><th scope="row">Θέσπιση</th><td>Προσθήκη παρ. 5 στο άρθρο 39 ΚΦΕ</td><td>ν.5222/2025, άρθρο 210</td></tr>
-                <tr><th scope="row">1η μετάθεση</th><td>Ισχύς από 1.4.2026</td><td>ν.5264/2025, άρθρο 129 παρ. 1</td></tr>
-                <tr><th scope="row">Τρέχουσα</th><td>Έναρξη 1.7.2027</td><td>Α.1187/2026 · ΦΕΚ Β΄ 5590/17.09.2026</td></tr>
+                {TIMELINE.map(t => (
+                  <tr key={t.step}>
+                    <th scope="row">{t.step}</th>
+                    <td>{t.what}<span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)' }}>{t.source}</span></td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
         <div className="lg-note" style={{ marginTop: 16 }}>
-          {hy('Για τα εισοδήματα του 2025 και του 2026: η κλίμακα και η τεκμαρτή έκπτωση 5% ισχύουν κανονικά. Η κυρωτική σύνδεση «χωρίς τραπεζική είσπραξη, χωρίς 5%» δεν έχει ακόμη ενεργοποιηθεί· ξεκινά την 1η Ιουλίου 2027. Ο ν.5246/2025 ρυθμίζει την κλίμακα· δεν είναι η διάταξη της υποχρεωτικής πληρωμής μέσω τράπεζας.')}
+          {hy('Για τα εισοδήματα του 2025 και του 2026: η κλίμακα και η τεκμαρτή έκπτωση 5% ισχύουν κανονικά. Η κυρωτική σύνδεση «χωρίς τραπεζική είσπραξη, χωρίς 5%» δεν έχει ακόμη ενεργοποιηθεί· ξεκινά την 1η Ιουλίου 2027.')}
         </div>
 
         {/* 4. Παραδείγματα */}
-        <H2 over="4. Στην πράξη" title="Τρία αριθμημένα παραδείγματα" />
+        <H2 over="4. Στην πράξη" title="Τρία παραδείγματα σε ευρώ" />
         <p className="lg-p" style={{ marginBottom: 8 }}>
           {hy('Υποθέσεις: φυσικό πρόσωπο, μακροχρόνια μίσθωση, τεκμαρτή έκπτωση 5%, κλίμακα 2026.')}
         </p>
@@ -248,13 +230,7 @@ export default function Page() {
         </p>
 
         {/* 5. Πηγές / νομική βάση */}
-        <H2 over="5. Τεκμηρίωση" title="Νομική βάση και πηγές" />
-        <div className="po-tool-sources" aria-label="Νομική βάση και πηγές" style={{ display: 'block' }}>
-          <span className="po-src-badge">Νομική βάση</span>
-          <ul className="lg-ul" style={{ marginTop: 12 }}>
-            {SOURCES.map((s, i) => <li key={i}>{hy(s)}</li>)}
-          </ul>
-        </div>
+        <GuideSources over="5. Τεκμηρίωση" sources={SOURCES} />
 
         {/* CTA · υπολογιστής */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
@@ -276,29 +252,15 @@ export default function Page() {
         </section>
 
         {/* Συχνές ερωτήσεις */}
-        <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
-          <SectionHead over="Συχνές ερωτήσεις" title="Χωρίς υπερβολές" />
-          <div style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            {FAQ.map(f => (
-              <details key={f.q} className="lp-faq">
-                <summary style={{ cursor: 'pointer', listStyle: 'none', padding: '17px 0', fontSize: 15,
-                  fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                  {f.q}
-                  <span className="lp-plus" style={{ color: 'var(--accent)', fontSize: 20, fontWeight: 450, lineHeight: 1, transition: 'transform .2s', flexShrink: 0 }}>+</span>
-                </summary>
-                <p className="po-just" style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-                  {hy(f.a)}
-                </p>
-              </details>
-            ))}
-          </div>
-        </section>
+        <GuideFaq title="Ό,τι ρωτούν για τον φόρο ενοικίων" faq={FAQ} />
+
+        <RelatedGuides current={GUIDE} />
 
         {/* Αποποίηση */}
         <div className="lg-note" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           {hy('Ο παρών οδηγός, όπως και κάθε συνδεδεμένος υπολογισμός, είναι ενδεικτικός. Δεν αποτελεί επίσημο εκκαθαριστικό της ΑΑΔΕ, ούτε φορολογική γνωμοδότηση, ούτε υποκαθιστά λογιστή ή φοροτεχνικό.')}
         </div>
-      </main>
+      </GuideMain>
 
       <PublicFooter />
     </div>

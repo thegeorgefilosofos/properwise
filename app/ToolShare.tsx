@@ -37,10 +37,19 @@ import { Btn } from '@/components/Theme';
  * σελίδα. Δεν υπάρχει συγχρονισμός προς την αντίθετη κατεύθυνση και σωστά: αν
  * η κατάσταση ξαναδιαβαζόταν σε κάθε αλλαγή της διεύθυνσης, το πεδίο θα
  * ξαναγραφόταν κάτω από τα δάχτυλα του χρήστη ενώ πληκτρολογεί.
+ *
+ * Το `fill` συμπληρώνει ό,τι η διεύθυνση δεν είπε και δεν έχει σταθερή
+ * προεπιλογή (π.χ. μια χρονιά που εξαρτάται από τη σημερινή ημερομηνία).
+ * Τρέχει μία φορά, μαζί με την ανάγνωση.
  */
-export function useToolState<S extends ToolSpec>(spec: S, path: string) {
+export function useToolState<S extends ToolSpec>(
+  spec: S, path: string, fill?: (v: ToolValues<S>) => ToolValues<S>,
+) {
   const params = useSearchParams();
-  const [values, setValues] = useState<ToolValues<S>>(() => readTool(spec, params));
+  const [values, setValues] = useState<ToolValues<S>>(() => {
+    const read = readTool(spec, params);
+    return fill ? fill(read) : read;
+  });
 
   // ΤΟ ΓΡΑΨΙΜΟ ΣΤΗ ΔΙΕΥΘΥΝΣΗ ΓΙΝΕΤΑΙ ΜΕΣΑ ΣΤΟ ΓΕΓΟΝΟΣ, ΟΧΙ ΣΕ useEffect ΚΑΙ ΟΧΙ
   // ΜΕΣΑ ΣΤΟΝ ΕΝΗΜΕΡΩΤΗ ΤΟΥ setState. Ο ενημερωτής οφείλει να είναι καθαρός —

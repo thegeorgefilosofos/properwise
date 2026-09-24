@@ -113,7 +113,12 @@ function BasisSwitch({ value, onChange, enabled, labels }: {
 // Δική του στήλη, που υπάρχει μόνο όταν κάποιος οδηγός έχει κάτι να πει: αλλιώς
 // θα άφηνε κενό διάστημα δεξιά από κάθε ποσό.
 function Drivers({ c }: { c: Comparison }) {
-  const max = Math.max(...c.drivers.map(d => Math.abs(d.diff)), 1);
+  // ΟΙ ΓΡΑΜΜΕΣ ΑΘΡΟΙΖΟΥΝ ΣΤΟΝ ΤΙΤΛΟ. Ό,τι δεν εξηγούν οι κατηγορίες που
+  // δείχνονται μπαίνει σε μία τελευταία γραμμή, με το ίδιο σχήμα.
+  const rows = Math.abs(c.rest) >= 0.005
+    ? [...c.drivers, { slug: '__rest', label: 'Λοιπά', diff: c.rest, current: 0, base: 0, isNew: false, vanished: false }]
+    : c.drivers;
+  const max = Math.max(...rows.map(d => Math.abs(d.diff)), 1);
   const anyFlag = c.drivers.some(d => d.isNew || d.vanished);
   const flag: React.CSSProperties = { fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontWeight: 400, whiteSpace: 'nowrap' };
   return (
@@ -121,7 +126,7 @@ function Drivers({ c }: { c: Comparison }) {
       display: 'grid', alignItems: 'center', columnGap: 12, rowGap: 10,
       gridTemplateColumns: `minmax(84px, 128px) minmax(60px, 1fr) auto${anyFlag ? ' auto' : ''}`,
     }}>
-      {c.drivers.map(d => {
+      {rows.map(d => {
         const ratio = Math.min(Math.abs(d.diff) / max, 1);
         const up = d.diff > 0;
         return (

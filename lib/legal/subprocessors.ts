@@ -41,7 +41,32 @@ export interface Subprocessor {
   where: string;
   /** Επεξεργάζεται δεδομένα ΣΗΜΕΡΑ; */
   active: boolean;
+  /**
+   * Ο ΡΟΛΟΣ ΚΑΤΑ GDPR, ΟΧΙ ΚΑΘΕ ΠΑΡΟΧΟΣ ΕΙΝΑΙ ΕΚΤΕΛΩΝ. Η Πολιτική απορρήτου
+   * έγραφε ότι όλοι «ενεργούν για λογαριασμό μας», ενώ το μητρώο
+   * (docs/compliance/subprocessors.md) καταγράφει τη Google ως αυτοτελή
+   * υπεύθυνο και τον έμπορο ως υπεύθυνο για το ταμείο και τα φορολογικά.
+   */
+  role: SubprocessorRole;
+  /** Το νομικό πρόσωπο με το οποίο συμβαλλόμαστε, όπως το γράφει το μητρώο. */
+  entity: string | null;
 }
+
+/**
+ * Ο αντισυμβαλλόμενος της Anthropic για πελάτες του ΕΟΧ, όπως τον γράφει το
+ * μητρώο docs/compliance/subprocessors.md. Μία φορά, γιατί τον λέει και η
+ * σελίδα εμπιστοσύνης μέσα σε πρόταση.
+ */
+export const ANTHROPIC_CONTRACT = 'Anthropic Ireland, Limited';
+
+export type SubprocessorRole = 'processor' | 'controller' | 'mixed';
+
+/** Ο ρόλος σε λέξεις, για τη στήλη «Ρόλος» και τη γραμμή της Πολιτικής. */
+export const ROLE_LABEL: Record<SubprocessorRole, string> = {
+  processor: 'Εκτελών την επεξεργασία',
+  controller: 'Αυτοτελής υπεύθυνος επεξεργασίας',
+  mixed: 'Αυτοτελής υπεύθυνος για την πληρωμή και τα φορολογικά στοιχεία, εκτελών για τα υπόλοιπα',
+};
 
 import { merchant, type BillingEnv } from '@/lib/billing/merchant';
 import { billingWords } from './billingWords';
@@ -59,42 +84,56 @@ const base = (mor: string): readonly Subprocessor[] => [
     purpose: 'Η βάση δεδομένων, η ταυτοποίηση και τα αρχεία που ανεβάζεις. Το σύστημα καταγραφής της υπηρεσίας.',
     where: 'Ευρωπαϊκή Ένωση, Φρανκφούρτη',
     active: true,
+    role: 'processor',
+    entity: 'Supabase Pte. Ltd (Σιγκαπούρη)',
   },
   {
     name: 'Vercel',
-    purpose: 'Φιλοξενία και παράδοση της εφαρμογής στο διαδίκτυο.',
+    purpose: 'Φιλοξενία και παράδοση της εφαρμογής στο διαδίκτυο και μέτρηση επισκεψιμότητας χωρίς cookies (Vercel Web Analytics).',
     where: 'ΗΠΑ, παγκόσμιο δίκτυο',
     active: true,
+    role: 'processor',
+    entity: 'Vercel Inc.',
   },
   {
     name: 'Resend',
     purpose: 'Αποστολή όλων των μηνυμάτων ηλεκτρονικού ταχυδρομείου: λειτουργικά, υπενθυμίσεις υποχρεώσεων, μηνιαίες καταστάσεις που περιέχουν ονόματα ενοικιαστών και ποσά, ενημερωτικά.',
     where: 'ΗΠΑ',
     active: true,
+    role: 'processor',
+    entity: 'Plus Five Five, Inc.',
   },
   {
     name: 'Anthropic',
     purpose: 'Ο βοηθός και η ανάγνωση εγγράφων: η ερώτησή σου, τα στοιχεία του ακινήτου, οι δαπάνες και τα μισθώματα και όποιο έγγραφο ή φωτογραφία ανεβάζεις για αυτόματη καταχώρηση.',
     where: 'ΗΠΑ',
     active: true,
+    role: 'processor',
+    entity: `${ANTHROPIC_CONTRACT} (για πελάτες ΕΟΧ)`,
   },
   {
     name: 'GitHub',
     purpose: 'Ο κώδικας και το κρυπτογραφημένο αντίγραφο ασφαλείας της βάσης.',
     where: 'ΗΠΑ',
     active: true,
+    role: 'processor',
+    entity: 'GitHub, Inc.',
   },
   {
     name: 'Google',
     purpose: 'Σύνδεση με λογαριασμό Google, εφόσον την επιλέξεις. Εκεί γίνεται γνωστή η διεύθυνση IP σου. Ο χάρτης στον φάκελο επαφής ανοίγει στους Χάρτες Google μόνο όταν τον πατήσεις. Οι γραμματοσειρές των εκτυπώσιμων αναφορών φιλοξενούνται από εμάς και δεν φεύγουν στη Google.',
     where: 'ΗΠΑ',
     active: true,
+    role: 'controller',
+    entity: 'Google LLC',
   },
   {
     name: 'Sentry',
     purpose: 'Καταγραφή σφαλμάτων της εφαρμογής. Ενεργοποιείται μόνο αν οριστεί κλειδί και σήμερα δεν έχει οριστεί.',
     where: 'ΗΠΑ ή Ευρωπαϊκή Ένωση',
     active: false,
+    role: 'processor',
+    entity: null,
   },
   {
     // ΟΧΙ ΟΠΟΙΟΣΔΗΠΟΤΕ ΠΑΡΟΧΟΣ ΚΑΡΤΑΣ. Ο δικός μας είναι «merchant of record»,
@@ -104,10 +143,13 @@ const base = (mor: string): readonly Subprocessor[] => [
     // δεν είναι αβλεψία, είναι ανακριβής ενημέρωση του υποκειμένου. Γι' αυτό
     // το όνομα δεν γράφεται εδώ: έρχεται από τη θύρα που εισπράττει.
     name: mor,
-    purpose: 'Χρέωση συνδρομής ως merchant of record: πουλά τη συνδρομή στο δικό του όνομα, εκδίδει το παραστατικό και αποδίδει τον ΦΠΑ.',
+    // «Της», όπως στο billingWords: η εταιρεία, ίδιο γένος σε κάθε κείμενο.
+    purpose: 'Χρέωση συνδρομής ως merchant of record: πουλά τη συνδρομή στο δικό της όνομα, εκδίδει το παραστατικό και αποδίδει τον ΦΠΑ.',
     where: 'ΗΠΑ και Ευρωπαϊκή Ένωση',
     // Συμπληρώνεται από το περιβάλλον, παρακάτω. Η τιμή εδώ δεν διαβάζεται ποτέ.
     active: false,
+    role: 'mixed',
+    entity: null,
   },
   {
     // ΚΑΝΕΝΑ ΚΟΜΜΑ ΜΕΣΑ ΣΕ ΟΝΟΜΑ. Οταν η γραμμή λεγόταν «Viber, WhatsApp,
@@ -118,6 +160,8 @@ const base = (mor: string): readonly Subprocessor[] => [
     purpose: 'Ειδοποιήσεις σε κινητό. Δεν έχουν ενεργοποιηθεί.',
     where: 'Διάφορες',
     active: false,
+    role: 'processor',
+    entity: null,
   },
   {
     // ΤΡΙΑ ΟΝΟΜΑΤΑ ΓΙΑ ΕΝΑΝ ΡΟΛΟ, ΚΑΙ ΤΟΝ ΔΙΑΛΕΓΕΙ Ο ΠΕΡΙΗΓΗΤΗΣ. Το Chrome
@@ -128,6 +172,8 @@ const base = (mor: string): readonly Subprocessor[] => [
     purpose: 'Οι υπηρεσίες ειδοποιήσεων των περιηγητών. Παραδίδουν την ειδοποίηση στη συσκευή σου, μόνο εφόσον την έχεις ζητήσει. Το κείμενο ταξιδεύει κρυπτογραφημένο με κλειδιά που παράγει ο ίδιος ο περιηγητής σου: παραδίδουν κλειστό φάκελο και δεν διαβάζουν το περιεχόμενο.',
     where: 'ΗΠΑ και Ευρωπαϊκή Ένωση',
     active: false,
+    role: 'processor',
+    entity: null,
   },
 ];
 
@@ -148,7 +194,11 @@ export function subprocessors(env: BillingEnv = process.env): readonly Subproces
   // ημέρα που θα ξεκινούσε.
   const pushLive = String(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '').trim() !== '';
   return base(port.name).map(s => {
-    if (s.name === PUSH_SERVICES) return { ...s, active: pushLive };
+    // Η ΓΡΑΜΜΗ ΔΙΑΒΑΖΟΤΑΝ ΣΑΝ ΕΝΕΡΓΗ. Οι δύο άλλοι ανενεργοί το γράφουν στο
+    // κείμενό τους· εδώ η κατάσταση εξαρτάται από το κλειδί, οπότε και η φράση.
+    if (s.name === PUSH_SERVICES) return pushLive
+      ? { ...s, active: true }
+      : { ...s, active: false, purpose: `${s.purpose} Δεν έχουν ενεργοποιηθεί.` };
     if (s.name !== port.name) return s;
     return {
       ...s,
@@ -167,9 +217,20 @@ export const activeSubprocessors = (env?: BillingEnv) => subprocessors(env).filt
 /** Όσοι είναι σχεδιασμένοι αλλά δεν έχουν ενεργοποιηθεί. */
 export const plannedSubprocessors = (env?: BillingEnv) => subprocessors(env).filter(s => !s.active);
 
+/** Ο ρόλος μέσα σε πρόταση: πεζό το πρώτο γράμμα. */
+const roleInline = (r: SubprocessorRole): string =>
+  ROLE_LABEL[r].charAt(0).toLocaleLowerCase('el-GR') + ROLE_LABEL[r].slice(1);
+
 /** Μία γραμμή ανά πάροχο, για την Πολιτική απορρήτου. */
 export const subprocessorLine = (s: Subprocessor): string =>
-  `${s.name} (${s.where}). ${s.purpose}`;
+  `${s.name} (${s.where}), ${roleInline(s.role)}.${s.entity ? ` Νομικό πρόσωπο: ${s.entity.replace(/\.?$/, '.')}` : ''} ${s.purpose}`;
+
+/**
+ * ΠΟΣΟ ΖΕΙ ΤΟ ΑΝΤΙΓΡΑΦΟ ΑΣΦΑΛΕΙΑΣ. Ο αριθμός ορίζεται στο `retention-days`
+ * του .github/workflows/db-backup.yml· εδώ γράφεται για να τον διαβάσει η
+ * Πολιτική απορρήτου και το τεστ του μητρώου κοκκινίζει αν αποκλίνουν.
+ */
+export const BACKUP_RETENTION_DAYS = 30;
 
 // ── ΟΙ ΕΓΓΥΗΣΕΙΣ ΤΩΝ ΔΙΑΒΙΒΑΣΕΩΝ, ΜΙΑ ΦΟΡΑ ─────────────────────────────────
 // Η Πολιτική απορρήτου και η σελίδα εμπιστοσύνης έλεγαν ότι οι Ρήτρες «θα
@@ -179,4 +240,4 @@ export const subprocessorLine = (s: Subprocessor): string =>
 // κατάσταση γράφεται εδώ και οι δύο σελίδες τη δανείζονται· όποιος κλείσει
 // τη σύμβαση της Vercel αλλάζει αυτή την πρόταση και το μητρώο μαζί.
 export const TRANSFER_SAFEGUARDS =
-  'Με τους Supabase, Resend και Anthropic έχουν υπογραφεί, στις 23.09.2026, συμβάσεις επεξεργασίας που περιέχουν τις Τυποποιημένες Συμβατικές Ρήτρες (SCCs) του άρθρου 46 GDPR. Η σύμβαση με τη Vercel, που φιλοξενεί την εφαρμογή, ολοκληρώνεται πριν ενεργοποιηθεί η χρέωση συνδρομών. Στη GitHub φυλάσσεται μόνο κρυπτογραφημένο αντίγραφο ασφαλείας. Η σύνδεση με Google γίνεται με τη Google ως αυτοτελή υπεύθυνο επεξεργασίας.';
+  'Με τους Supabase, Resend και Anthropic έχουν υπογραφεί, στις 23.09.2026, συμβάσεις επεξεργασίας που περιέχουν τις Τυποποιημένες Συμβατικές Ρήτρες (SCCs) του άρθρου 46 GDPR. Η σύμβαση με τη Vercel, που φιλοξενεί την εφαρμογή, ολοκληρώνεται πριν ενεργοποιηθεί η χρέωση συνδρομών. Με τη GitHub, όπου φυλάσσεται το κρυπτογραφημένο αντίγραφο ασφαλείας, δεν έχει υπογραφεί σύμβαση επεξεργασίας και το κλειδί του αντιγράφου φυλάσσεται στον ίδιο πάροχο. Η σύνδεση με Google γίνεται με τη Google ως αυτοτελή υπεύθυνο επεξεργασίας.';

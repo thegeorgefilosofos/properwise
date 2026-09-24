@@ -75,6 +75,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
   // άρα είναι ένα προς ένα και στην ίδια σειρά· κρατάμε τα αναγνωριστικά
   // παράλληλα, απο την ΙΔΙΑ φόρτωση και ταιριάζουν κατά θέση.
   const [propIds, setPropIds] = useState<string[]>([]);
+  const [propNames, setPropNames] = useState<string[]>([]);
   const [atakDraft, setAtakDraft] = useState<Record<string, string>>({});
   const [savingAtak, setSavingAtak] = useState('');
 
@@ -123,6 +124,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
         if (!alive) return;
         setRows(r);
         setPropIds(properties.map(p => p.id));
+        setPropNames(properties.map(p => (p.name || '').trim()));
         // ── ΤΕΣΣΕΡΑ ΜΕΓΕΘΗ ΠΟΥ ΥΠΗΡΧΑΝ ΚΑΙ ΔΕΝ ΠΕΡΝΟΥΣΑΝ ────────────────────
         //
         // Η μηχανή συμφωνίας ξέρει επτά λόγους διαφοράς. Εδώ της δίνονταν
@@ -153,7 +155,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
           const unpaid = due.reduce((s, x) => s + (x.paid ? 0 : (x.amount || 0)), 0);
           return {
             atak: p.atak,
-            name: p.address || p.atak || 'Ακίνητο',
+            name: p.name || p.address || p.atak || 'Ακίνητο',
             shortTerm,
             platformFees: stayYear?.platformFees ?? null,
             climateLevy: stayYear?.collectedLevy ?? null,
@@ -295,9 +297,12 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ ...TT.body, fontWeight: 600 }}>{r.address || r.atak || 'Ακίνητο'}</div>
+                  {/* ΤΙΤΛΟΣ ΤΟ ΟΝΟΜΑ, ΟΧΙ Ο ΤΑΧΥΔΡΟΜΙΚΟΣ ΚΩΔΙΚΑΣ. Χωρίς διεύθυνση το
+                      `r.address` είναι σκέτο «10000»: η διεύθυνση του εντύπου πάει
+                      στη λεζάντα και ο τίτλος λέει ποιο ακίνητο είναι. */}
+                  <div style={{ ...TT.body, fontWeight: 600 }}>{propNames[i] || r.address || 'Ακίνητο'}</div>
                   <div style={{ ...TT.caption, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-                    {r.atak ? `ΑΤΑΚ ${r.atak} · ` : ''}Τα δικά σου: {fe(r.grossIncome)}
+                    {propNames[i] && r.address ? `${r.address} · ` : ''}{r.atak ? `ΑΤΑΚ ${r.atak} · ` : ''}Τα δικά σου: {fe(r.grossIncome)}
                     {r.months ? ` · ${r.months} μήνες` : ''}
                   </div>
                 </div>

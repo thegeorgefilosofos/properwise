@@ -2,8 +2,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { T } from '@/components/tokens'
-import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2026, taxRateLabel } from '@/lib/billing/greekTax'
-import { fe, fp } from '@/lib/core/format'
+import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax'
+import { fe, fp, fn } from '@/lib/core/format'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
 import LiveResult from '@/components/LiveResult'
 import { hy } from '@/components/Hyphen'
@@ -30,6 +30,15 @@ import { hy } from '@/components/Hyphen'
 // Το `fp` δέχεται ποσοστιαία μονάδα, όχι κλάσμα: 0,043 γίνεται fp(4,3).
 const pct = (n: number) => fp(n * 100)
 
+// ΟΙ ΣΥΝΤΕΛΕΣΤΕΣ ΤΟΥ ΝΟΜΟΥ ΓΡΑΦΟΝΤΑΙ ΟΠΩΣ ΤΟΥΣ ΓΡΑΦΕΙ Ο ΝΟΜΟΣ. Κάτω από τη
+// μπάρα έβγαιναν «15,00% 25,00% 35,00% 45,00%»: τα δύο δεκαδικά υπάρχουν για
+// να στοιχίζονται αποτελέσματα, όχι για ετικέτες κλίμακας. Δεκαδικό μένει μόνο
+// αν το έχει ο ίδιος ο συντελεστής.
+const statutory = (rate: number) => {
+  const p = Math.round(rate * 1000) / 10
+  return `${fn(p, Number.isInteger(p) ? 0 : 1)}%`
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΚΛΙΜΑΚΑ ΔΕΝ ΞΑΝΑΓΡΑΦΕΤΑΙ ΕΔΩ.
 // ─────────────────────────────────────────────────────────────────────────
@@ -47,7 +56,7 @@ const pct = (n: number) => fp(n * 100)
 const SCALE_MAX = 45000
 const BANDS = RENTAL_TAX_BRACKETS_2026.map(b => ({
   to: Number.isFinite(b.to) ? b.to : SCALE_MAX,
-  rate: taxRateLabel(b.rate),
+  rate: statutory(b.rate),
 }))
 
 function Control({ label, hint, value, set, min, max, step, format }: {
@@ -163,7 +172,7 @@ export default function LandingCalculator() {
             πρέπει να πείσει. Ο συλλαβισμός συνοδεύει τη στοίχιση — μόνη της τεντώνει
             τα κενά. Το ποσοστό κι οι ημερομηνίες είναι ψηφία: μένουν ακέραια. */}
         <p className="po-just" style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
-          {hy(<>Ενδεικτικός υπολογισμός με την κλίμακα ενοικίων 2026 (ν.5246/2025) και τεκμαρτή έκπτωση {fp(PRESUMPTIVE_DEDUCTION_RATE * 100)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
+          {hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων 2026 (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
           Δες τα δικά σου δεδομένα, αυτόματα

@@ -19,34 +19,31 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
-import { SITE, siteUrl } from '@/lib/core/site';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, WRAP, WRAP_PAD } from '../../PublicChrome';
+import { siteUrl, PRODUCT_NAME } from '@/lib/core/site';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead } from '../../PublicChrome';
 import { hy } from '@/components/Hyphen';
-import { BackLink } from '../../BackLink';
+import { publicMetadata } from '../../publicMetadata';
+import { guideAt } from '../guides';
+import { GuideMain, GuideUpdated, GuideH2 as H2, GuideSources, GuideFaq, RelatedGuides, guideJsonLd, type GuideFaqItem } from '../GuideParts';
 
 const TITLE = 'Καθαρή απόδοση ακινήτου: τι μένει μετά τον φόρο';
+// Κάτω από 160 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
+// Η επιφύλαξη «ενδεικτικός» μένει στο σώμα της σελίδας.
 const DESC =
-  'Πώς υπολογίζεται η καθαρή απόδοση ενός ακινήτου: από τη μεικτή απόδοση (ενοίκιο '
-  + 'προς αξία) αφαιρούνται ο φόρος στο δικό σου κλιμάκιο, ο ΕΝΦΙΑ και οι δαπάνες. '
-  + 'Με παράδειγμα σε ευρώ και πηγές. Ενδεικτικός οδηγός, όχι εκκαθαριστικό.';
-const URL = siteUrl('/odigos/kathari-apodosi-akinitou');
-const UPDATED = '2026-09-23';
+  'Καθαρή απόδοση ακινήτου: από τη μεικτή απόδοση αφαιρούνται ο φόρος στο δικό σου '
+  + 'κλιμάκιο, ο ΕΝΦΙΑ και οι δαπάνες. Με παράδειγμα σε ευρώ και πηγές.';
+const GUIDE = guideAt('/odigos/kathari-apodosi-akinitou');
+const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = {
-  title: { absolute: TITLE },
-  description: DESC,
-  alternates: { canonical: URL },
-  openGraph: { title: TITLE, description: DESC, url: URL, siteName: 'PROPERWISE', locale: 'el_GR', type: 'article' },
-  twitter: { card: 'summary_large_image', title: TITLE, description: DESC },
-};
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article' });
 
 // Οι ερωτήσεις τροφοδοτούν ΚΑΙ την ορατή λίστα ΚΑΙ το δομημένο σχήμα — μία πηγή.
-const FAQ: { q: string; a: string }[] = [
+const FAQ: GuideFaqItem[] = [
   {
     q: 'Τι διαφορά έχει η μεικτή από την καθαρή απόδοση;',
     a: 'Η μεικτή απόδοση είναι το ετήσιο μίσθωμα προς την αξία του ακινήτου, πριν από '
      + 'οποιαδήποτε επιβάρυνση. Η καθαρή είναι ό,τι μένει αφού αφαιρεθούν ο φόρος '
-     + 'εισοδήματος, ο ΕΝΦΙΑ και οι δαπάνες. Η διαφορά τους συνήθως ξεπερνά τη μονάδα.',
+     + 'εισοδήματος, ο ΕΝΦΙΑ και οι δαπάνες. Στο παράδειγμα του οδηγού η διαφορά είναι 1,25 μονάδες.',
   },
   {
     q: 'Γιατί ο φόρος εξαρτάται από τα άλλα μου εισοδήματα;',
@@ -79,55 +76,29 @@ const SOURCES: string[] = [
   'Φόρος εισοδήματος: κλίμακα ενοικίων 2026 (ν.5246/2025) · τεκμαρτή έκπτωση 5% (άρθρο 39 ΚΦΕ) · η προϋπόθεση τραπεζικής είσπραξης (ν.5222/2025) ξεκινά την 1.7.2027 (Α.1187/2026).',
   'Τόκοι καταθέσεων: παρακράτηση φόρου 15% στην πηγή (άρθρο 64 ν.4172/2013)· το 1,70% είναι 2% × (1 − 15%).',
   'ΕΝΦΙΑ: φόρος κατοχής, ανεξάρτητος από το εισόδημα · άρθρο 4 ν.4223/2013, όπως ισχύει με τον ν.4916/2022.',
-  'Ο φόρος του ακινήτου υπολογίζεται οριακά, ως διαφορά πάνω στο συνολικό εισόδημα από ακίνητα, όπως στον πίνακα ελέγχου (lib/billing/consolidate).',
+  // Η διαδρομή του κώδικα τυπωνόταν εδώ, στη δημόσια λίστα πηγών· ο αναγνώστης
+  // θέλει τον νόμο, όχι το αρχείο.
+  `Ο φόρος του ακινήτου υπολογίζεται οριακά, ως η διαφορά που προσθέτει στον φόρο του συνολικού σου εισοδήματος από ακίνητα (άρθρο 40 παρ. 4 ν.4172/2013). Με τον ίδιο τρόπο υπολογίζει και ο πίνακας ελέγχου του ${PRODUCT_NAME}.`,
 ];
 
-function H2({ over, title }: { over: string; title: string }) {
-  return <div style={{ marginTop: 'clamp(40px,5vw,60px)', marginBottom: 16 }}><SectionHead over={over} title={title} /></div>;
-}
-
 export default function Page() {
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'Article',
-        headline: TITLE,
-        description: DESC,
-        inLanguage: 'el',
-        datePublished: UPDATED,
-        dateModified: UPDATED,
-        mainEntityOfPage: URL,
-        author: { '@type': 'Organization', name: 'PROPERWISE', url: SITE },
-        publisher: { '@type': 'Organization', name: 'PROPERWISE', url: SITE },
-        about: 'Καθαρή απόδοση ακινήτου: μεικτή απόδοση, φόρος εισοδήματος, ΕΝΦΙΑ και δαπάνες',
-      },
-      {
-        '@type': 'FAQPage',
-        mainEntity: FAQ.map(f => ({
-          '@type': 'Question',
-          name: f.q,
-          acceptedAnswer: { '@type': 'Answer', text: f.a },
-        })),
-      },
-    ],
-  };
+  const jsonLd = guideJsonLd({
+    guide: GUIDE, headline: TITLE, description: DESC, faq: FAQ,
+    about: 'Καθαρή απόδοση ακινήτου: μεικτή απόδοση, φόρος εισοδήματος, ΕΝΦΙΑ και δαπάνες',
+  });
 
   return (
     <div className="po-tool-page" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       <JsonLd data={jsonLd} />
       <PublicHeader />
 
-      <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
-        <BackLink />
+      <GuideMain>
         <div className="lp-eyebrow">Οδηγός</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           Καθαρή απόδοση ακινήτου: τι μένει μετά τον φόρο
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 18px' }}>
-          Ενημέρωση με βάση την κλίμακα φορολογίας ενοικίων 2026.
-        </p>
+        <GuideUpdated guide={GUIDE} />
 
         {/* Εισαγωγή */}
         <p className="lg-p">
@@ -144,7 +115,7 @@ export default function Page() {
         </p>
 
         {/* 2. Τι τη μικραίνει */}
-        <H2 over="2. Τρία βάρη, κανένα προαιρετικό" title="Φόρος, ΕΝΦΙΑ, δαπάνες" />
+        <H2 over="2. Τι τη μικραίνει" title="Φόρος, ΕΝΦΙΑ, δαπάνες" />
         <ul className="lg-ul">
           <li>{hy('Ο φόρος, στο δικό σου κλιμάκιο. Ένα ακίνητο δεν φορολογείται με 15% επειδή βγάζει 8.400€: φορολογείται με τον συντελεστή που αφήνουν τα άλλα εισοδήματα από ακίνητα που ήδη δηλώνεις.')}</li>
           <li>{hy('Ο ΕΝΦΙΑ. Φόρος κατοχής: τον πληρώνεις κάθε χρόνο, ακόμη και με το ακίνητο κενό.')}</li>
@@ -170,7 +141,7 @@ export default function Page() {
 
         {/* Οριακός φόρος */}
         <div className="lg-note" style={{ marginTop: 16 }}>
-          {hy('Ο φόρος είναι οριακός, όχι αυτοτελής. Το ίδιο διαμέρισμα, αν δηλώνεις ήδη 12.000€ από άλλα ακίνητα, μπαίνει στο κλιμάκιο 25% και φέρνει 1.935€ φόρο αντί για 1.197€. Τα καθαρά πέφτουν στα 5.165€ και η καθαρή απόδοση στο 2,58%. Γι’ αυτό δύο ιδιοκτήτες με πανομοιότυπο ακίνητο κρατούν διαφορετικά.')}
+          {hy('Ο φόρος ενός ακινήτου εξαρτάται από τα υπόλοιπα ενοίκιά σου: μετριέται στο οριακό σου κλιμάκιο. Το ίδιο διαμέρισμα, αν δηλώνεις ήδη 12.000€ από άλλα ακίνητα, μπαίνει στο κλιμάκιο 25% και φέρνει 1.935€ φόρο αντί για 1.197€. Τα καθαρά πέφτουν στα 5.165€ και η καθαρή απόδοση στο 2,58%. Γι’ αυτό δύο ιδιοκτήτες με πανομοιότυπο ακίνητο κρατούν διαφορετικά.')}
         </div>
 
         {/* 4. Απόσβεση */}
@@ -180,13 +151,7 @@ export default function Page() {
         </p>
 
         {/* 5. Πηγές / νομική βάση */}
-        <H2 over="5. Τεκμηρίωση" title="Νομική βάση και πηγές" />
-        <div className="po-tool-sources" aria-label="Νομική βάση και πηγές" style={{ display: 'block' }}>
-          <span className="po-src-badge">Νομική βάση</span>
-          <ul className="lg-ul" style={{ marginTop: 12 }}>
-            {SOURCES.map((s, i) => <li key={i}>{hy(s)}</li>)}
-          </ul>
-        </div>
+        <GuideSources over="5. Τεκμηρίωση" sources={SOURCES} />
 
         {/* CTA προς τα εργαλεία */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
@@ -208,29 +173,15 @@ export default function Page() {
         </section>
 
         {/* Συχνές ερωτήσεις */}
-        <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
-          <SectionHead over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν πριν αγοράσουν" />
-          <div style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            {FAQ.map(f => (
-              <details key={f.q} className="lp-faq">
-                <summary style={{ cursor: 'pointer', listStyle: 'none', padding: '17px 0', fontSize: 15,
-                  fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                  {f.q}
-                  <span className="lp-plus" style={{ color: 'var(--accent)', fontSize: 20, fontWeight: 450, lineHeight: 1, transition: 'transform .2s', flexShrink: 0 }}>+</span>
-                </summary>
-                <p className="po-just" style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-                  {hy(f.a)}
-                </p>
-              </details>
-            ))}
-          </div>
-        </section>
+        <GuideFaq title="Ό,τι ρωτούν πριν αγοράσουν" faq={FAQ} />
+
+        <RelatedGuides current={GUIDE} />
 
         {/* Αποποίηση */}
         <div className="lg-note" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           {hy('Ο παρών οδηγός, όπως και κάθε συνδεδεμένος υπολογισμός, είναι ενδεικτικός. Η καθαρή απόδοση εξαρτάται από τα δικά σου δεδομένα και από το σύνολο του εισοδήματός σου. Δεν αποτελεί επίσημο εκκαθαριστικό ούτε υποκαθιστά λογιστή ή φοροτεχνικό.')}
         </div>
-      </main>
+      </GuideMain>
 
       <PublicFooter />
     </div>

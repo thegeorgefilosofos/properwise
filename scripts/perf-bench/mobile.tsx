@@ -276,8 +276,8 @@ const OVERVIEW_PROPERTY = {
   target_rent: 620, enfia: 214, insurance_amount: 180, insurance_company: 'Παράδειγμα ΑΕ',
   insurance_expiry: '2027-03-31', pea_class: 'D', year_built: 1972, atak: '01234567890123',
   floor: 3, heating: 'Αυτόνομη', parking_spaces: 0, storage_sqm: 5, bedrooms: 1,
-  rental_mode: 'long', client_id: null, co_owners: null, notes: null,
-  status_detail: null, created_at: '2019-04-18T00:00:00Z',
+  rental_mode: 'long_term', client_id: null, co_owners: null, notes: null,
+  status_detail: 'rented', created_at: '2019-04-18T00:00:00Z',
 };
 
 const VIEWS: Record<string, () => React.ReactElement> = {

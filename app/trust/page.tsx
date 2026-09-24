@@ -20,9 +20,9 @@
 import type { Metadata } from 'next';
 import { IDENTITY, POLICY_UPDATED } from '@/lib/legal/identity';
 import { DISCLOSURE } from '@/lib/legal/disclosure';
-import { subprocessors, TRANSFER_SAFEGUARDS } from '@/lib/legal/subprocessors';
+import { subprocessors, TRANSFER_SAFEGUARDS, ROLE_LABEL, ANTHROPIC_CONTRACT } from '@/lib/legal/subprocessors';
 import { billingWords } from '@/lib/legal/billingWords';
-import { LegalLayout, type LegalBlock } from '../legal-shell';
+import { LegalLayout, MailLink, type LegalBlock } from '../legal-shell';
 import { hyphenate } from '@/lib/core/hyphenate';
 import { siteUrl } from '@/lib/core/site';
 
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 // με την εντύπωση ότι η σελίδα ταυτότητας είναι άδεια. Τώρα ο πίνακας δείχνει
 // ΜΟΝΟ όσα υπάρχουν και τα υπόλοιπα απαριθμούνται σε μία σειρά, μία φορά.
 const IDENTITY_FIELDS: { label: string; value: string | null }[] = [
-  { label: 'Επωνυμία', value: IDENTITY.legalName },
+  { label: 'Ονοματεπώνυμο ή επωνυμία', value: IDENTITY.legalName },
   { label: 'Διακριτικός τίτλος', value: IDENTITY.tradeName },
   { label: 'Έδρα', value: IDENTITY.address },
   { label: 'ΑΦΜ', value: IDENTITY.afm },
@@ -56,8 +56,18 @@ const IDENTITY_FIELDS: { label: string; value: string | null }[] = [
 // διαβάζει και η Πολιτική απορρήτου: δύο νομικά κείμενα που απαριθμούν τους
 // ίδιους παρόχους δεν επιτρέπεται να διαφωνούν και διαφωνούσαν.
 const subprocessorRows = () => subprocessors().map(s => ({
-  name: s.name, what: s.purpose, where: s.where, planned: !s.active,
+  name: s.name, entity: s.entity, what: s.purpose, where: s.where, role: ROLE_LABEL[s.role], planned: !s.active,
 }));
+
+/**
+ * Η ΚΑΤΑΣΤΑΣΗ ΓΡΑΦΕΤΑΙ, ΔΕΝ ΧΡΩΜΑΤΙΖΕΤΑΙ. Ο ανενεργός πάροχος ξεχώριζε μόνο με
+ * γκρι γράμματα: ο αναγνώστης οθόνης δεν έβλεπε διαφορά και το μάτι μάντευε
+ * (WCAG 1.4.1). Η ίδια φράση στον πίνακα και στις κάρτες του κινητού.
+ */
+const NOT_ACTIVE = 'Όχι ενεργός σήμερα';
+
+/** Η ίδια ονομασία του τόπου, με άθραυστο κενό· βλ. το κελί του πίνακα. */
+const placeOf = (where: string) => where.replace(/Ευρωπαϊκή Ένωση/g, 'Ευρωπαϊκή\u00A0Ένωση');
 
 /**
  * ΤΑ ΣΤΟΙΧΕΙΑ ΤΗΣ ΕΤΑΙΡΕΙΑΣ ΕΙΝΑΙ ΠΙΝΑΚΑΣ, ΚΑΙ ΓΡΑΦΕΤΑΙ ΩΣ ΠΙΝΑΚΑΣ.
@@ -99,11 +109,9 @@ function DataTable({ caption, rows }: { caption: string; rows: { label: string; 
                   // ΤΟ EMAIL ΔΕΝ ΣΠΑΕΙ ΣΤΗ ΜΕΣΗ ΤΟΥ ΤΟΜΕΑ. Το κελί κληρονομεί
                   // `overflow-wrap: anywhere` από το .po-table, οπότε το
                   // «support@properwise.gr» έβγαινε «support@proper / wise.gr».
-                  // Ενα <wbr> μετά το @ δίνει το φυσικό σημείο τομής και το
-                  // `break-word` σπάει αλλού μόνο αν δεν χωρά ούτε έτσι.
-                  ? <a href={`mailto:${r.value}`} className="lp-link po-tap-inline" style={{ color: 'var(--accent)', textDecoration: 'none', overflowWrap: 'break-word', wordBreak: 'normal' }}>
-                      {r.value.slice(0, r.value.indexOf('@') + 1)}<wbr />{r.value.slice(r.value.indexOf('@') + 1)}
-                    </a>
+                  // Ο `MailLink` βάζει <wbr> μετά το @ και `break-word`, τον ίδιο
+                  // σύνδεσμο που παίρνουν και τα email της Πολιτικής και των Ορων.
+                  ? <MailLink to={r.value} />
                   : r.value}
               </td>
             </tr>
@@ -179,12 +187,15 @@ export default function TrustPage() {
       h: 'Τα στοιχεία μας',
       body: (
         <>
-          <DataTable caption="Στοιχεία εταιρείας" rows={known.map(r => ({ label: r.label, value: r.value as string }))} />
+          {/* Ο ΦΟΡΕΑΣ ΜΠΟΡΕΙ ΝΑ ΕΙΝΑΙ ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ, ΟΧΙ ΜΟΝΟ ΕΤΑΙΡΕΙΑ. Και η
+              σημείωση λέει μόνο τι εκκρεμεί: την κατάσταση της χρέωσης τη λένε
+              ήδη το «Τι δεν κάνουμε ποτέ» (`howWeArePaid`, `cardData`) και η
+              γραμμή του εμπόρου στο μητρώο, από την ίδια πηγή. */}
+          <DataTable caption="Στοιχεία φορέα λειτουργίας" rows={known.map(r => ({ label: r.label, value: r.value as string }))} />
           {pending.length > 0 && (
             <p className="lg-note">
-              {words.chargingToday} Τα όρια
-              των πακέτων ισχύουν ήδη από τη λήξη της δοκιμής και μετά. {pendingSentence(pending)} δημοσιεύονται
-              εδώ πριν εκδοθεί το πρώτο παραστατικό: δεν γράφουμε στοιχεία που δεν έχουν οριστικοποιηθεί.
+              {pendingSentence(pending)} δημοσιεύονται εδώ πριν εκδοθεί το πρώτο παραστατικό: δεν γράφουμε
+              στοιχεία που δεν έχουν οριστικοποιηθεί.
             </p>
           )}
         </>
@@ -211,13 +222,14 @@ export default function TrustPage() {
             <li>
               <strong>Το κρυπτογραφημένο αντίγραφο ασφαλείας</strong> φυλάσσεται σε υποδομή των ΗΠΑ (GitHub). Είναι
               κρυπτογραφημένο με AES-256 και χωρίς το κλειδί δεν διαβάζεται. Να ξέρεις όμως και το εξής: το κλειδί
-              φυλάσσεται ως μυστικό στον ίδιο πάροχο. Δεν είναι δηλαδή διαχωρισμένη φύλαξη κλειδιού και
-              δεδομένων· το λέμε γιατί έχει σημασία, όχι επειδή μας βολεύει.
+              φυλάσσεται ως μυστικό στον ίδιο πάροχο, οπότε η κρυπτογράφηση δεν κρατά το αντίγραφο κλειστό για τον
+              ίδιο τον πάροχο.
             </li>
             <li>
               <strong>Τα ερωτήματά σου προς τον βοηθό</strong>, μαζί με μια περίληψη των δεδομένων του ακινήτου, του
               ενοικιαστή, του πελατολογίου και των επαφών σου (ονόματα και ιστορικό, χωρίς τηλέφωνα και ΑΦΜ), καθώς
-              και όποιο έγγραφο ή φωτογραφία ανεβάζεις για ανάγνωση (Anthropic, ΗΠΑ).
+              και όποιο έγγραφο ή φωτογραφία ανεβάζεις για ανάγνωση (Anthropic: σύμβαση με την {ANTHROPIC_CONTRACT},
+              επεξεργασία στις ΗΠΑ).
             </li>
             <li>
               <strong>Τα email που στέλνει η υπηρεσία</strong> (υπενθυμίσεις, ειδοποιήσεις, μηνιαίες καταστάσεις).
@@ -271,14 +283,16 @@ export default function TrustPage() {
       body: (
         <>
           <p className="lg-p">
-            Καμία υπηρεσία δεν τρέχει μόνη της. Αυτοί είναι όσοι επεξεργάζονται δεδομένα για λογαριασμό μας, τι
-            κάνει ο καθένας και πού βρίσκεται. Δεσμευόμαστε να κρατάμε τον κατάλογο ενημερωμένο και να σου το
-            γνωστοποιούμε με email πριν προστεθεί νέος. {TRANSFER_SAFEGUARDS}
+            Καμία υπηρεσία δεν τρέχει μόνη της. Αυτοί είναι όσοι άλλοι επεξεργάζονται δεδομένα, τι κάνει ο
+            καθένας, πού βρίσκεται και με ποιον ρόλο: οι εκτελούντες την επεξεργασία ενεργούν για λογαριασμό μας,
+            ενώ οι αυτοτελείς υπεύθυνοι αποφασίζουν οι ίδιοι για τα δεδομένα που λαμβάνουν. Δεσμευόμαστε να
+            κρατάμε τον κατάλογο ενημερωμένο και να σου το γνωστοποιούμε με email πριν προστεθεί νέος.
+            {' '}{TRANSFER_SAFEGUARDS}
           </p>
           {/* ΤΡΕΙΣ ΣΤΗΛΕΣ ΧΩΡΙΣ ΚΕΦΑΛΙΔΑ: ο αναγνώστης μάντευε ότι η τρίτη είναι
               τόπος. Ηταν και πλέγμα από `<div>`, δηλαδή για αναγνώστη οθόνης
               τρία ασύνδετα κείμενα ανά γραμμή αντί για γραμμή πίνακα. */}
-          <div className="po-table-box" style={{ marginTop: 16 }}>
+          <div className="po-table-box lg-sp-table" style={{ marginTop: 16 }}>
            <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
             {/* ΤΟ ΕΛΑΧΙΣΤΟ ΗΤΑΝ ΠΟΛΥ ΜΙΚΡΟ ΚΑΙ ΕΣΠΑΓΕ ΟΝΟΜΑΤΑ ΕΤΑΙΡΕΙΩΝ ΣΤΗ ΜΕΣΗ.
                 Με 440 ελάχιστο, η στήλη του παρόχου —20%— έπεφτε στα 88, δηλαδή
@@ -291,8 +305,11 @@ export default function TrustPage() {
                 στήλη 136 και στο όνομα ολόκληρη γραμμή· κάτω από αυτά ο πίνακας
                 κυλά οριζόντια μέσα στη θήκη του, που είναι και ο λόγος που η
                 θήκη υπάρχει. */}
-            <table className="po-table tbl-fixed" style={{ '--tbl-fs': '14px', '--tbl-min': '680px' }}>
-              <caption>Ποιοι επεξεργάζονται δεδομένα για λογαριασμό μας</caption>
+            {/* ΜΕ ΤΗ ΣΤΗΛΗ ΤΟΥ ΡΟΛΟΥ ΤΟ ΕΛΑΧΙΣΤΟ ΑΝΕΒΑΙΝΕΙ ΣΤΑ 760, ώστε ο τόπος να
+                κρατά τα ~136 του. Κάτω από τα 640 ο πίνακας δεν εμφανίζεται
+                καθόλου: ίδιο περιεχόμενο σε κάρτες, πιο κάτω. */}
+            <table className="po-table tbl-fixed" style={{ '--tbl-fs': '14px', '--tbl-min': '760px' }}>
+              <caption>Ποιοι άλλοι επεξεργάζονται δεδομένα</caption>
               {/* ΧΩΡΙΣ ΡΗΤΑ ΠΛΑΤΗ, Ο ΠΕΡΙΗΓΗΤΗΣ ΔΙΝΕΙ ΤΑ ΠΑΝΤΑ ΣΤΗ ΜΕΣΑΙΑ.
                   Μετρημένο στα 1440: η στήλη του τόπου έμενε στα 150 και το
                   «Ευρωπαϊκή Ένωση, Φρανκφούρτη» έσπαγε σε ΤΡΕΙΣ σειρές, ενώ
@@ -300,21 +317,26 @@ export default function TrustPage() {
                   σύντομη φράση με κόμμα: θέλει δύο σειρές το πολύ. */}
               <colgroup>
                 <col style={{ width: '20%' }} />
-                <col style={{ width: '56%' }} />
-                <col style={{ width: '24%' }} />
+                <col style={{ width: '42%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '20%' }} />
               </colgroup>
               <thead>
                 <tr>
                   <th scope="col">Πάροχος</th>
                   <th scope="col">Τι κάνει</th>
                   <th scope="col">Πού βρίσκεται</th>
+                  <th scope="col">Ρόλος</th>
                 </tr>
               </thead>
               <tbody>
                 {subprocessorRows().map(s => (
                   <tr key={s.name}>
-                    <th scope="row" style={{ fontWeight: 600,
-                      color: s.planned ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{s.name}</th>
+                    <th scope="row">
+                      <span style={{ fontWeight: 600, color: s.planned ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{s.name}</span>
+                      {s.planned && <span className="lg-badge">{NOT_ACTIVE}</span>}
+                      {s.entity && <span className="lg-sp-entity">{s.entity}</span>}
+                    </th>
                     {/* Η ΣΤΗΛΗ ΤΗΣ ΠΕΡΙΓΡΑΦΗΣ ΕΙΝΑΙ ΠΡΟΖΑ, ΟΧΙ ΕΤΙΚΕΤΑ. Ο γραμμένος
                         κανόνας «ο συλλαβισμός σταματά στον πίνακα» βγήκε από
                         μέτρηση στη ΣΤΕΝΗ στήλη του τόπου — 170 εικονοστοιχεία,
@@ -332,13 +354,33 @@ export default function TrustPage() {
                         κελί δεν έχει κενά να κλείσει, οπότε ο συλλαβισμός θα
                         έδινε μόνο σπασίματα — «Ευρωπαϊ-κή» ήταν το μετρημένο
                         σφάλμα που έβγαλε τον συλλαβιστή από τους πίνακες. */}
-                    <td style={{ color: 'var(--text-tertiary)' }}>{s.where.replace(/Ευρωπαϊκή Ένωση/g, 'Ευρωπαϊκή\u00A0Ένωση')}</td>
+                    <td style={{ color: 'var(--text-tertiary)' }}>{placeOf(s.where)}</td>
+                    <td style={{ color: 'var(--text-tertiary)' }}>{s.role}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
            </div>
           </div>
+          {/* ΣΤΑ 390 Ο ΠΙΝΑΚΑΣ ΚΥΛΟΥΣΕ ΚΑΙ ΕΚΡΥΒΕ ΤΟΝ ΤΟΠΟ. Η περιγραφή κοβόταν
+              στη μέση της λέξης και η στήλη «Πού βρίσκεται» έμενε έξω από την
+              οθόνη, χωρίς κανένα σημάδι ότι υπάρχει. Στο κινητό κάθε πάροχος
+              γίνεται κάρτα με τα ίδια πεδία· ο πίνακας κρύβεται και από τους
+              αναγνώστες οθόνης, ώστε να μη διαβάζονται δύο φορές. */}
+          <ul className="lg-sp-cards">
+            {subprocessorRows().map(s => (
+              <li key={s.name} className="lg-sp-card">
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</div>
+                {s.entity && <div className="lg-sp-entity">{s.entity}</div>}
+                <dl>
+                  <dt>Τι κάνει</dt><dd>{s.what}</dd>
+                  <dt>Πού</dt><dd>{placeOf(s.where)}</dd>
+                  <dt>Ρόλος</dt><dd>{s.role}</dd>
+                  <dt>Κατάσταση</dt><dd>{s.planned ? NOT_ACTIVE : 'Ενεργός'}</dd>
+                </dl>
+              </li>
+            ))}
+          </ul>
         </>
       ),
     },
@@ -349,7 +391,7 @@ export default function TrustPage() {
         <div style={STACK}>
           <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν πουλάμε τα δεδομένα σου.</strong> Ούτε τα νοικιάζουμε, ούτε τα δίνουμε σε διαφημιστικά δίκτυα. {words.howWeArePaid}</Never>
           <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν αποθηκεύουμε στοιχεία κάρτας.</strong> {words.cardData}</Never>
-          <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν διαβάζουμε τα αρχεία σου για πλάκα.</strong> Δεν υπάρχει εσωτερικό εργαλείο περιήγησης στα δεδομένα πελατών. Πρόσβαση γίνεται μόνο κατόπιν δικού σου αιτήματος υποστήριξης ή όπου το επιβάλλει ο νόμος.</Never>
+          <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν ανοίγουμε τα αρχεία σου.</strong> Δεν υπάρχει εσωτερικό εργαλείο περιήγησης στα δεδομένα πελατών. Πρόσβαση γίνεται μόνο κατόπιν δικού σου αιτήματος υποστήριξης ή όπου το επιβάλλει ο νόμος.</Never>
           <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν στέλνουμε στον βοηθό ολόκληρη τη βάση σου.</strong> Στέλνουμε όμως αρκετά και προτιμούμε να το ξέρεις: περίληψη των ακινήτων σου, του ενοικιαστή, του πελατολογίου και των επαφών σου (ονόματα και ιστορικό· τα τηλέφωνα και τα ΑΦΜ μένουν στη συσκευή σου), καθώς και όποιο έγγραφο ή φωτογραφία ανεβάζεις για ανάγνωση. Αυτά είναι και δεδομένα τρίτων· αν δεν το θέλεις, μη χρησιμοποιείς τον βοηθό και τη σάρωση εγγράφων.</Never>
           <Never><strong style={{ color: 'var(--text-primary)' }}>Δεν σε κλειδώνουμε μέσα.</strong> Κατεβάζεις με ένα κουμπί όλες τις καταχωρήσεις σου σε ένα αρχείο JSON, τα ανεβασμένα αρχεία τα κατεβάζεις χωριστά από τον Φάκελο Ακινήτου και διαγράφεις τον λογαριασμό σου χωρίς να χρειαστεί να μας γράψεις.</Never>
         </div>
@@ -361,13 +403,13 @@ export default function TrustPage() {
         <>
           <p className="lg-p">
             Ο GDPR σου δίνει δικαιώματα. Εμείς τα κάνουμε κουμπιά, όχι γραφειοκρατία: τα βρίσκεις όλα
-            στον <strong>Λογαριασμό · Δεδομένα &amp; Απόρρητο</strong>.
+            στον <strong>Λογαριασμό · Δεδομένα και απόρρητο</strong>.
           </p>
           <ul className="lg-ul">
             <li><strong>Πρόσβαση και φορητότητα:</strong> κατεβάζεις όλες τις καταχωρήσεις σου σε ένα αρχείο JSON που διαβάζεται από οποιοδήποτε εργαλείο. Τα έγγραφα που έχεις ανεβάσει τα κατεβάζεις από τον Φάκελο Ακινήτου.</li>
             <li><strong>Διόρθωση:</strong> κάθε πεδίο το διορθώνεις μόνος σου, χωρίς αίτημα. Μόνη εξαίρεση το ονοματεπώνυμο, που αλλάζει μία φορά τον μήνα για λόγους ασφάλειας.</li>
             <li><strong>Διαγραφή:</strong> οριστική διαγραφή λογαριασμού και δεδομένων, από την ίδια την εφαρμογή.</li>
-            <li><strong>Εναντίωση:</strong> η συνεισφορά στα ανώνυμα δεδομένα κοινότητας είναι κλειστή εξ ορισμού· την ανοίγεις μόνο εσύ, με έναν διακόπτη.</li>
+            <li><strong>Ανάκληση συγκατάθεσης:</strong> η συνεισφορά στα ανώνυμα δεδομένα κοινότητας είναι κλειστή εξ ορισμού· την ανοίγεις μόνο εσύ, με έναν διακόπτη και την κλείνεις όποτε θέλεις.</li>
           </ul>
           <p className="lg-p">
             Έχεις επίσης δικαίωμα καταγγελίας στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα (dpa.gr).
@@ -377,9 +419,9 @@ export default function TrustPage() {
     },
     {
       // ΣΤΑΘΕΡΟ ΑΝΑΓΝΩΡΙΣΤΙΚΟ, ΓΙΑΤΙ ΤΗ ΔΕΙΧΝΕΙ ΤΟ ΥΠΟΣΕΛΙΔΟ. Χωρίς αυτό το
-      // άγκιστρο είναι η ΘΕΣΗ της ενότητας («#s7») και αρκεί μία ενότητα
-      // παραπάνω για να δείχνει το «Επικοινωνία» σε λάθος κείμενο, χωρίς 404
-      // που να το προδώσει. Ο κανόνας είναι γραμμένος στο legal-shell.
+      // άγκιστρο βγαίνει από τον τίτλο και μια διόρθωση του τίτλου θα έστελνε
+      // το «Επικοινωνία» στο κενό, χωρίς 404 που να το προδώσει. Ο κανόνας
+      // είναι γραμμένος στο legal-shell.
       id: 'epikoinonia',
       h: 'Πώς μας βρίσκεις',
       body: (

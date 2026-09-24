@@ -111,7 +111,7 @@ export function printAccountingReport(c: AccountingReportCtx): void {
     ${c.provision.propertyTaxes > 0 ? stRow('Φόροι και τέλη ακινήτου (έτους)', c.provision.propertyTaxes, 'row') : ''}
     ${stRow('Σύνολο προς πρόβλεψη', c.provision.annualTaxTotal, 'subtotal')}
     ${stRow('Ισόποσα ανά μήνα', c.provision.monthly, 'row')}
-    ${stRow('Για να προλάβεις έως το τέλος του έτους (ανά μήνα)', c.provision.perRemainingMonth, 'result')}
+    ${c.provision.perRemainingMonth > 0 ? stRow('Φόρος εισοδήματος ανά μήνα έως τον Δεκέμβριο', c.provision.perRemainingMonth, 'result') : ''}
   </tbody></table>
 
   ${reportSection(`Συμφωνία ενοικίων ${c.year}`)}
@@ -155,7 +155,7 @@ export async function downloadOfficialAccountingReport(c: AccountingReportCtx, o
       ...(p.propertyTaxes > 0 ? [{ label: 'Φόροι και τέλη ακινήτου (έτους)', value: pEur(p.propertyTaxes) }] : []),
       { label: 'Σύνολο προς πρόβλεψη', value: pEur(p.annualTaxTotal), kind: 'sub' as const },
       { label: 'Ισόποσα ανά μήνα', value: pEur(p.monthly) },
-      { label: 'Για να προλάβεις έως το τέλος του έτους (ανά μήνα)', value: pEur(p.perRemainingMonth), kind: 'result' as const },
+      ...(p.perRemainingMonth > 0 ? [{ label: 'Φόρος εισοδήματος ανά μήνα έως τον Δεκέμβριο', value: pEur(p.perRemainingMonth), kind: 'result' as const }] : []),
     ] },
     { type: 'note', title: `Συμφωνία ενοικίων ${c.year}`,
       text: `Εισπράχθηκαν ${rEur(c.collectedTotal)} από ${rEur(c.expectedTotal)}${c.outstanding > 0 ? `. Ανείσπρακτα ${rEur(c.outstanding)}` : ''}.` },

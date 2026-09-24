@@ -56,6 +56,10 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   // κλίμακες, που είναι και το πιο επικίνδυνο σημείο του υπολογιστή.
   const year = async y => { await p.getByRole('button', { name: new RegExp('^' + y) }).click(); await p.waitForTimeout(250) }
 
+  // Η ΠΡΟΕΠΙΛΟΓΗ ΒΓΑΙΝΕΙ ΠΛΕΟΝ ΑΠΟ ΤΗ ΣΗΜΕΡΙΝΗ ΗΜΕΡΟΜΗΝΙΑ (RentTaxCalculator,
+  // `openingYear`): από τον Αύγουστο είναι το τρέχον έτος. Ο έλεγχος δεν
+  // στηρίζεται σε αυτήν· διαλέγει ρητά το 2025 πριν από το πρώτο νούμερο.
+  await year(2025)
   await inputs.nth(0).fill('1200'); await p.waitForTimeout(250)
   // 1.200 × 12 = 14.400 · φορολογητέο 13.680
   //   2025: 12.000×15% + 1.680×35% = 1.800 + 588 = 2.388

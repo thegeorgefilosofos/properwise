@@ -2,6 +2,7 @@
 // Ο κρίσιμος κανόνας που ελέγχεται: ΠΟΤΕ νούμερο που δεν έδωσε ο χρήστης.
 import { suggestedOpeners, greeting, eur, type OpenerContext } from './openers'
 import { ASSISTANT_NAME } from './identity'
+import { navLabel } from '../nav/labels'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
@@ -65,10 +66,12 @@ ok('χωρίς διπλότυπα', new Set(suggestedOpeners(FULL)).size === sug
 }
 {
   const s = suggestedOpeners({ openTasks: 5 })
-  ok('πολλές εκκρεμότητες → ρωτά για την πιο επείγουσα', s.some(x => /5 εκκρεμότητες/.test(x)))
+  ok('πολλές εκκρεμότητες → ρωτά για την πιο επείγουσα', s.some(x => /5 ανοιχτά/.test(x) && /επείγον;$/.test(x)))
+  // Ο αριθμός λέει ΠΟΙΑ λίστα μετρά, με το όνομα που έχει στο μενού.
+  ok('ονομάζει την καρτέλα που μετρά', s.some(x => x.includes(`«${navLabel('checklist')}»`)))
 }
-ok('μία εκκρεμότητα σε ενικό', suggestedOpeners({ openTasks: 1 }).some(s => /εκκρεμότητά μου/.test(s)))
-ok('μηδέν εκκρεμότητες → δεν αναφέρονται', !suggestedOpeners({ openTasks: 0 }).join(' ').includes('εκκρεμότητ'))
+ok('μία εκκρεμότητα σε ενικό', suggestedOpeners({ openTasks: 1 }).some(s => /Τι έχω ανοιχτό/.test(s)))
+ok('μηδέν εκκρεμότητες → δεν αναφέρονται', !suggestedOpeners({ openTasks: 0 }).join(' ').includes(navLabel('checklist')))
 
 // ── Ανά περίπτωση χρήστη ───────────────────────────────────────────────────
 ok('με δάνειο → ερώτηση για το δάνειο', suggestedOpeners({ hasLoan: true }).some(s => /δάνει/.test(s)))
@@ -87,7 +90,7 @@ ok('κενό όνομα δεν αφήνει κενά', !suggestedOpeners({ prope
   const g = greeting(ASSISTANT_NAME, FULL)
   ok('χαιρετισμός με το όνομα', g.includes(ASSISTANT_NAME))
   ok('χαιρετισμός λέει τι βλέπει', /Βλέπω/.test(g))
-  ok('χαιρετισμός τονίζει «τα δικά σου»', /δικά σου δεδομένα και αριθμούς/.test(g))
+  ok('χαιρετισμός τονίζει «τα δικά σου»', /δικά σου δεδομένα και νούμερα\./.test(g))
   ok('χαιρετισμός αναφέρει πλήθος ακινήτων', g.includes('2 ακινήτων'))
 }
 {
@@ -114,7 +117,7 @@ ok('hasWord: αρνητικό όταν λείπει', !hasWord('Γεια σας'
   const f = greeting(ASSISTANT_NAME, FULL, true)
   ok('ευγενικός τύπος: ρήμα', f.includes('Ρωτήστε με'))
   ok('ευγενικός τύπος: χαιρετισμός', f.includes('Γεια σας'))
-  ok('ευγενικός τύπος: κτητικό', f.includes('τα δικά σας δεδομένα και αριθμούς'))
+  ok('ευγενικός τύπος: κτητικό', f.includes('τα δικά σας δεδομένα και νούμερα'))
   ok('ευγενικός τύπος: κανένα «σου»', !hasWord(f, 'σου'))
   const inf = greeting(ASSISTANT_NAME, FULL, false)
   ok('οικείος τύπος: ρήμα', inf.includes('Ρώτα με'))
@@ -147,7 +150,18 @@ ok('hasWord: αρνητικό όταν λείπει', !hasWord('Γεια σας'
   ok('null → κανένα επινοημένο ποσό', o.every(s => !/\d+[.,]?\d*\s*€/.test(s)))
   ok('null → καμία πρόταση «τι λείπει»', !o.join(' ').includes('λείπουν'))
 }
-ok('ένα ακίνητο → ενικός', greeting(ASSISTANT_NAME, { propertyName: 'Κυψέλη', monthlyRent: 400 }).includes('του Κυψέλη'))
+ok('ένα ακίνητο → ενικός', greeting(ASSISTANT_NAME, { propertyName: 'Κυψέλη', monthlyRent: 400 }).includes('του ακινήτου «Κυψέλη»'))
+// ΤΟ ΟΝΟΜΑ ΔΕΝ ΚΛΙΝΕΤΑΙ: μένει όπως το έγραψε ο χρήστης, μετά από ουσιαστικό
+// που κλίνεται. Αλλιώς «του Διαμέρισμα Κυψέλης», «στο Μονοκατοικία Βάρης».
+{
+  const ctx: OpenerContext = { propertyName: 'Μονοκατοικία Βάρης', monthlyRent: 700, propertyValue: 180000, expensesYtd: 900 }
+  const g = greeting(ASSISTANT_NAME, ctx)
+  const s = suggestedOpeners(ctx).join(' | ')
+  ok('χαιρετισμός: «του ακινήτου «…»»', g.includes('του ακινήτου «Μονοκατοικία Βάρης»'))
+  ok('δαπάνες: «στο ακίνητο «…»»', s.includes('στο ακίνητο «Μονοκατοικία Βάρης»'))
+  ok('απόδοση: «το ακίνητο «…»»', s.includes('βγάζει το ακίνητο «Μονοκατοικία Βάρης»'))
+  ok('κανένα άρθρο κολλημένο στο όνομα', !/(?:του|στο|το) Μονοκατοικία/.test(g + s))
+}
 {
   const g = greeting(ASSISTANT_NAME, { monthlyRent: 400, expensesYtd: 200, hasLoan: true })
   ok('απαριθμεί σωστά με «και»', /τα ενοίκια, τις δαπάνες και το δάνειο/.test(g))

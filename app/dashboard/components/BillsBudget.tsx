@@ -13,7 +13,7 @@ import * as tenantStore from '@/lib/data/tenants';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
 import { TextInput, Toggle, ToggleTrack } from './UIComponents';
-import { T, fe, feAuto, fp, fn, grUpper, KPIGrid, Skeleton, SkeletonKPIs, pressable, Btn, IconBtn, ChipToggle, LinkBtn } from '@/components/Theme';
+import { T, fe, feAuto, fp, fn, grUpper, KPIGrid, Skeleton, SkeletonKPIs, pressable, Btn, IconBtn, Chip, ChipToggle, LinkBtn } from '@/components/Theme';
 import { waterMonthly } from '@/lib/energy/tariff';
 import { monthAcc, monthGen, monthYearLabel } from '@/lib/core/months';
 import { randomSuffix } from '@/lib/core/uploadPath';
@@ -880,7 +880,10 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const catForecast  = (key: string) =>
     FIXED_CATS.includes(key) ? (actuals[key] || 0) : forecastMonthEnd(0, actuals[key] || 0, _day, _daysInMonth);
   const fixedToDate    = FIXED_CATS.reduce((s, k) => s + (actuals[k] || 0), 0);
-  const variableToDate = (actuals.maintenance || 0) + (actuals.other || 0);
+  // ΟΛΕΣ ΟΙ ΜΗ ΠΑΓΙΕΣ ΚΑΤΗΓΟΡΙΕΣ ΠΟΥ ΜΕΤΡΑ ΚΑΙ ΤΟ ΠΛΑΚΙΔΙΟ ΤΟΥ ΜΗΝΑ. Με μόνο
+  // συντήρηση και «λοιπά», οι δικές σου κατηγορίες έμπαιναν στο σύνολο αλλά όχι
+  // στην πρόβλεψη, που έβγαινε μικρότερη από όσα έχουν ήδη ξοδευτεί.
+  const variableToDate = activeCats.filter(c => !FIXED_CATS.includes(c.key)).reduce((s, c) => s + (actuals[c.key] || 0), 0);
   const forecastTotal  = forecastMonthEnd(fixedToDate, variableToDate, _day, _daysInMonth);
   // Κατηγορίες που, με τον τρέχοντα ρυθμό, θα ξεπεράσουν τον στόχο (χωρίς να είναι ήδη).
   const projectedOver  = activeCats.filter(c => categoryStatus(catBudget(c.key), actuals[c.key] || 0, catForecast(c.key)) === 'projected_over');
@@ -889,8 +892,10 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const _yStr        = String(_now.getFullYear()) + '-';
   const ytdActual    = Object.entries(monthTotals).filter(([ym]) => ym.startsWith(_yStr)).reduce((s, [, v]) => s + v, 0);
   const annual       = annualSummary(masterBudget, ytdActual, _now.getMonth() + 1);
-  // Τάση μήνα: τρέχον καταγεγραμμένο σύνολο έναντι μέσου όρου 3 προηγούμενων.
-  const monthTrend   = periodTrend(monthTotals[_curYm] || 0, _priorYms.map(ym => monthTotals[ym] || 0));
+  // Τάση μήνα: η ΠΡΟΒΛΕΨΗ του μήνα έναντι μέσου όρου 3 προηγούμενων. Το σύνολο
+  // ως τώρα είναι μισός μήνας απέναντι σε ολόκληρους: την πρώτη του μήνα έβγαζε
+  // «σχεδόν 100% κάτω» κάθε φορά.
+  const monthTrend   = periodTrend(forecastTotal, _priorYms.map(ym => monthTotals[ym] || 0));
   // Τάση ανά κατηγορία: ΚΑΤΑΓΕΓΡΑΜΜΕΝΟ τρέχον (όχι εκτιμήσεις παρόχων) έναντι
   // καταγεγραμμένου ιστορικού — ίδια βάση με τη μηνιαία τάση, ώστε να μη βγαίνει
   // ψεύτικο βελάκι από εκτίμηση σε πάγια κατηγορία που δεν έχει χρεωθεί ακόμη.
@@ -942,6 +947,8 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const viewYm          = ymOf(viewDate);
   const viewActuals     = isCurMonth ? actuals : (catMonth[viewYm] || {});
   const viewActualTotal = activeCats.reduce((s, c) => s + (viewActuals[c.key] || 0), 0);
+  // Μόνο τα καταχωρημένα των ίδιων κατηγοριών, χωρίς τις εκτιμήσεις παρόχων.
+  const viewRecordedTotal = activeCats.reduce((s, c) => s + (catMonth[viewYm]?.[c.key] || 0), 0);
   // ΤΟ ΙΔΙΟ ΟΝΟΜΑ ΜΗΝΑ, ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ. Ο μορφοποιητής του περιηγητή δίνει
   // άλλη πτώση ανάλογα με το τι του ζητάς: «Ιούλιος 2026» με τον χρόνο, σκέτο
   // «Ιουλίου» χωρίς αυτόν. Δύο κλήσεις στο ίδιο αρχείο έβγαζαν διαφορετική
@@ -989,13 +996,13 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
     // περισσεύει μετά τα πάγια.
     const out: string[] = [];
     if (overBudget.length === 0 && projectedOver.length > 0) {
-      out.push(`Με τον τρέχοντα ρυθμό, η «${projectedOver[0].label}» θα ξεπεράσει τον στόχο πριν το τέλος του μήνα.`);
+      out.push(`Με τον τρέχοντα ρυθμό, η κατηγορία «${projectedOver[0].label}» θα ξεπεράσει τον στόχο πριν το τέλος του μήνα.`);
     }
     if (monthTrend.avgPrior > 0 && Math.abs(monthTrend.deltaPct) >= 8) {
-      out.push(`Ο μήνας τρέχει ${fp(Math.abs(monthTrend.deltaPct))} ${monthTrend.direction === 'up' ? 'πάνω από' : 'κάτω από'} τον μέσο όρο του τριμήνου.`);
+      out.push(`Με τον ρυθμό ως τώρα, ο μήνας θα κλείσει ${fp(Math.abs(monthTrend.deltaPct))} ${monthTrend.direction === 'up' ? 'πάνω από' : 'κάτω από'} τον μέσο όρο του τριμήνου.`);
     }
     const biggest = activeCats.map(c => ({ label: c.label, v: actuals[c.key] || 0 })).filter(x => x.v > 0).sort((a, b) => b.v - a.v)[0];
-    if (biggest && out.length < 3) out.push(`Η μεγαλύτερη δαπάνη του μήνα είναι η «${biggest.label}» με ${feAuto(biggest.v)}.`);
+    if (biggest && out.length < 3) out.push(`Η μεγαλύτερη δαπάνη του μήνα είναι στην κατηγορία «${biggest.label}», με ${feAuto(biggest.v)}.`);
     if (hasIncome && income - monthlyCost >= 0 && out.length < 3) out.push(`Μετά τα πάγια, σου μένουν ${feAuto(income - monthlyCost)} διαθέσιμα αυτόν τον μήνα.`);
     return out.slice(0, 3);
   })();
@@ -1015,15 +1022,20 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       const target = catBudget(c.key);
       const hist = _priorYms.map(ym => catMonth[ym]?.[c.key]).filter((v): v is number => typeof v === 'number' && v > 0);
       if (hist.length < 2 || target <= 0) return;
-      const avg = Math.round(hist.reduce((s, v) => s + v, 0) / hist.length);
+      // Ο μέσος όρος γράφεται με τα λεπτά του και λέει πόσους μήνες καλύπτει:
+      // μετρούν μόνο όσοι από τους τρεις είχαν δαπάνη στην κατηγορία.
+      const avg = hist.reduce((s, v) => s + v, 0) / hist.length;
+      const span = hist.length === _priorYms.length
+        ? `τους τελευταίους ${hist.length} μήνες`
+        : `σε ${hist.length} από τους τελευταίους ${_priorYms.length} μήνες`;
       if (avg > target * 1.2) {
         const sv = round5(avg);
         const key = `raise:${c.key}:${sv}`;
-        if (sv !== target && !dismissedSug.includes(key)) out.push({ key, text: `Η «${c.label}» ξεπερνά συστηματικά τον στόχο (μέσος όρος ${feAuto(avg)} τους τελευταίους μήνες). Να ανεβάσω τον στόχο στα ${feAuto(sv)};`, apply: () => applyTarget(c.key, sv, `Ο στόχος της «${c.label}» ενημερώθηκε`) });
+        if (sv !== target && !dismissedSug.includes(key)) out.push({ key, text: `Η κατηγορία «${c.label}» ξεπερνά συστηματικά τον στόχο (μέσος όρος ${feAuto(avg)} ${span}). Να ανεβάσω τον στόχο στα ${feAuto(sv)};`, apply: () => applyTarget(c.key, sv, `Ο στόχος της κατηγορίας «${c.label}» ενημερώθηκε`) });
       } else if (avg < target * 0.6) {
         const sv = round5(avg);
         const key = `lower:${c.key}:${sv}`;
-        if (sv !== target && !dismissedSug.includes(key)) out.push({ key, text: `Η «${c.label}» μένει σταθερά κάτω από τον στόχο (μέσος όρος ${feAuto(avg)}). Να μειώσω τον στόχο στα ${feAuto(sv)} για πιο ρεαλιστικό προϋπολογισμό;`, apply: () => applyTarget(c.key, sv, `Ο στόχος της «${c.label}» ενημερώθηκε`) });
+        if (sv !== target && !dismissedSug.includes(key)) out.push({ key, text: `Η κατηγορία «${c.label}» μένει σταθερά κάτω από τον στόχο (μέσος όρος ${feAuto(avg)} ${span}). Να μειώσω τον στόχο στα ${feAuto(sv)} για πιο ρεαλιστικό προϋπολογισμό;`, apply: () => applyTarget(c.key, sv, `Ο στόχος της κατηγορίας «${c.label}» ενημερώθηκε`) });
       }
     });
     const sumCats = activeCats.reduce((s, c) => s + catBudget(c.key), 0);
@@ -1176,7 +1188,9 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             {/* Δευτερεύον: έχει λεκτικό και περίγραμμα σε διάφανο φόντο. Το μελάνι
                 γίνεται ουδέτερο, γιατί το χρώμα του ρόλου ζει πλέον στην `.po-btn`. */}
             {!isCurMonth && <Btn variant="secondary" onClick={() => setMonthOffset(0)}>Τρέχων</Btn>}
-            <span style={{ marginLeft: 8, color: 'var(--text-tertiary)' }}>· {isPro ? 'Επιχείρηση' : 'Ιδιώτης'}</span>
+            {/* Ένδειξη προφίλ και όχι συνέχεια της πρότασης: χωρίς την τελεία
+                μπροστά, που την κολλούσε στο βελάκι του επιλογέα. */}
+            <Chip>{isPro ? 'Επιχείρηση' : 'Ιδιώτης'}</Chip>
             {saving && <span style={{ marginLeft: 10, color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)' }}>· Αποθήκευση…</span>}
           </div>
         </div>
@@ -1187,7 +1201,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       {!ledgerNoteSeen && (monthItems.length > 0 || Object.keys(monthTotals).length > 0) && (
         <div className="po-stack-sm" style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12, fontFamily: T.font.sans, fontSize: 12, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
           <span>
-            Τα σύνολα μετρούν πλέον λογαριασμούς και δαπάνες μαζί, με το ποσό που όντως πληρώθηκε και στον μήνα που πληρώθηκε. Αν κάποιο νούμερο δείχνει αλλαγμένο, τώρα είναι το σωστό.
+            Τα σύνολα μετρούν λογαριασμούς και δαπάνες μαζί, στον μήνα της ημερομηνίας τους. Όσα δεν έχουν πληρωθεί μετρούν κι αυτά και σημειώνονται «εκκρεμεί».
           </span>
           {/* Ήσυχο και όχι δευτερεύον: η σημείωση δεν ζητά απόφαση, οπότε η
               απόρριψή της δεν παίρνει περίγραμμα. */}
@@ -1509,7 +1523,12 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             γραμμές απόσταση. Το κοινό `KPIGrid` τα κάνει ένα. */}
         <KPIGrid nested items={[
           { label: 'Στόχος τον μήνα', value: feAuto(masterBudget) },
-          { label: isCurMonth ? 'Έως τώρα' : 'Σύνολο μήνα', value: feAuto(viewActualTotal), title: isCurMonth ? 'Καταγεγραμμένα του μήνα συν εκτιμήσεις παρόχων για πάγιες κατηγορίες που δεν έχουν χρεωθεί ακόμη.' : 'Καταγεγραμμένες δαπάνες αυτού του μήνα από το ιστορικό.' },
+          // ΔΥΟ ΚΑΡΤΕΛΕΣ, ΔΥΟ ΠΟΣΑ ΓΙΑ ΤΟΝ ΙΔΙΟ ΜΗΝΑ. Οι Δαπάνες γράφουν μόνο τα
+          // καταχωρημένα, εδώ μετρούν και οι εκτιμήσεις παρόχων. Όταν υπάρχουν,
+          // το πλακίδιο το λέει και δείχνει από κάτω το ποσό των Δαπανών.
+          isCurMonth && viewActualTotal - viewRecordedTotal > 0.005
+            ? { label: 'Με εκτιμήσεις παρόχων', value: feAuto(viewActualTotal), sub: `καταχωρημένα ${feAuto(viewRecordedTotal)}`, title: 'Καταχωρημένα του μήνα συν εκτιμήσεις παρόχων για πάγιες κατηγορίες που δεν έχουν χρεωθεί ακόμη.' }
+            : { label: isCurMonth ? 'Καταχωρημένα' : 'Σύνολο μήνα', value: feAuto(viewActualTotal), title: isCurMonth ? 'Λογαριασμοί και δαπάνες του μήνα, πληρωμένα και απλήρωτα.' : 'Καταγεγραμμένες δαπάνες αυτού του μήνα από το ιστορικό.' },
           isCurMonth
             ? { label: 'Πρόβλεψη μήνα', value: feAuto(forecastTotal) }
             : { label: 'Έναντι στόχου', value: `${viewActualTotal <= masterBudget ? '−' : '+'}${feAuto(Math.abs(masterBudget - viewActualTotal))}` },

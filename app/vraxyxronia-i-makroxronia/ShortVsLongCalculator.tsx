@@ -22,14 +22,14 @@
 import { useMemo, useId } from 'react';
 import { T, feAuto, fp, fixedCols } from '@/components/tokens';
 import { ChipToggle } from '@/components/Theme';
-import { fn, feSigned } from '@/lib/core/format';
+import { fn, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { compareShortVsLong, netByOccupancy, NIGHTS_PER_YEAR, HIGH_SEASON_NIGHTS, type SeasonSpread } from '@/lib/tools/shortVsLong';
-import { climateLevyRates } from '@/lib/billing/greekTax';
+import { climateLevyRates, CLIMATE_LEVY_FROM_2025, FIRST_YEAR_CURRENT_LEVY } from '@/lib/billing/greekTax';
 import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
 import { CustomSelect } from '@/app/dashboard/components/UIComponents';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
-import { ToolCta, EstimateNote } from '@/app/PublicChrome';
+import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
 
 import LiveResult from '@/components/LiveResult';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
@@ -42,6 +42,8 @@ const SPEC = {
 
 /** Ο κανόνας των «κόκκινων ζωνών», από τη μία πηγή κανόνων της εφαρμογής. */
 const AMA_RULE = REGULATORY_UPDATES_2026.find(u => u.id === 'ama-red-zones');
+
+const LEVY = CLIMATE_LEVY_FROM_2025;
 
 /** Τα βήματα πληρότητας του πίνακα ευαισθησίας. */
 const OCCUPANCY_STEPS = [30, 40, 50, 60, 70, 80, 90];
@@ -109,7 +111,10 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
     </div>
   );
 
-  const be = r.breakEvenPct;
+  // ΑΚΕΡΑΙΟ, ΠΡΟΣ ΤΑ ΠΑΝΩ. Το κατώφλι βγαίνει από μια πληρότητα που ο χρήστης
+  // μαντεύει· το «52,45%» υπόσχεται ακρίβεια που η είσοδος δεν έχει. Προς τα
+  // πάνω, ώστε το «από 53% και πάνω» να ισχύει και στο όριο.
+  const be = r.breakEvenPct === null ? null : Math.ceil(r.breakEvenPct);
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
@@ -147,6 +152,10 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         {num(ids.cost, 'kostos', 'Καθαριότητα ανά διανυκτέρευση', '€')}
         {num(ids.fixed, 'pagia', 'Πάγια ανά μήνα', '€')}
       </div>
+      <ToolClampNote notes={[
+        amount(v.plirotita) > 100 && 'Η πληρότητα φτάνει έως 100%· υπολογίστηκε με 100%.',
+        amount(v.promitheia) > 100 && 'Η προμήθεια φτάνει έως 100%· υπολογίστηκε με 100%.',
+      ]}/>
 
       {/* ═══ Η ΤΙΜΗ ΤΗΣ ΑΙΧΜΗΣ ΕΙΝΑΙ Ο ΠΙΟ ΣΥΝΗΘΗΣ ΑΥΤΟΕΞΑΠΑΤΗΣΗ ═════════════════
           Η βραχυχρόνια δουλεύει με δυναμική τιμολόγηση: άλλη τιμή τον Αύγουστο,
@@ -246,9 +255,10 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         </p>
 
         <div {...fixedCols(2, 24, 'start')}>
-          <Figure label="Μακροχρόνια, καθαρά" value={feAuto(r.long.net)} />
-          <Figure label="Βραχυχρόνια, καθαρά" value={feAuto(r.short.net)} />
-          <LiveResult say={`Μακροχρόνια ${feAuto(r.long.net)} καθαρά. Βραχυχρόνια ${feAuto(r.short.net)} καθαρά.`} />
+          {/* Τα καθαρά μπορεί να βγουν αρνητικά: τυπογραφικό μείον, σφιχτό. */}
+          <Figure label="Μακροχρόνια, καθαρά" value={feSigned(r.long.net)} />
+          <Figure label="Βραχυχρόνια, καθαρά" value={feSigned(r.short.net)} />
+          <LiveResult say={`Μακροχρόνια ${feSigned(r.long.net)} καθαρά. Βραχυχρόνια ${feSigned(r.short.net)} καθαρά.`} />
         </div>
 
         <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
@@ -270,7 +280,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
               : be === 0
                 ? 'Η βραχυχρόνια βγαίνει μπροστά από την πρώτη κιόλας κράτηση.'
                 : <>Από <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num,
-                    fontVariantNumeric: 'tabular-nums' }}>{fp(be)}</strong> πληρότητα και πάνω η
+                    fontVariantNumeric: 'tabular-nums' }}>{fn(be)}%</strong> πληρότητα και πάνω η
                     βραχυχρόνια αφήνει περισσότερα, δηλαδή από{' '}
                     <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num,
                       fontVariantNumeric: 'tabular-nums' }}>{fn(Math.ceil(be / 100 * NIGHTS_PER_YEAR))}</strong>{' '}
@@ -312,7 +322,9 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
               </tr>
             </thead>
             <tbody>
-              <Line k="Πληρωμές επισκεπτών" a={r.long.gross} b={r.short.guestTotal} />
+              {/* Στη μακροχρόνια πληρώνει ενοικιαστής, όχι επισκέπτης· και μόνο στη
+                  βραχυχρόνια το ποσό κουβαλά το τέλος που αφαιρείται από κάτω. */}
+              <Line k="Εισπράξεις (με το τέλος για τη βραχυχρόνια)" a={r.long.gross} b={r.short.guestTotal} />
               <Line k="Τέλος ανθεκτικότητας" a={0} b={r.short.levy} />
               <Line k="Φόρος εισοδήματος" a={r.long.tax} b={r.short.tax} />
               <Line k="Προμήθεια πλατφόρμας" a={0} b={r.short.platformFee} />
@@ -365,7 +377,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
                   <tr key={row.pct} className={ahead ? 'is-on' : undefined}>
                     <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{fp(row.pct)}</td>
                     <td className="num">{fn(row.nights)}</td>
-                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{feAuto(row.net)}</td>
+                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{feSigned(row.net)}</td>
                     <td className="num">{feSigned(row.net - r.long.net)}</td>
                   </tr>
                 );
@@ -379,6 +391,9 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
       <ToolActions path={PATH} spec={SPEC} values={v}/>
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ──────────────────────────────────────────── */}
+      {/* ΤΑ ΠΟΣΑ ΤΟΥ ΤΕΛΟΥΣ ΛΕΓΟΝΤΑΝ «ενδεικτικά του 2025» σε σελίδα που υπόσχεται
+          2026. Ερχονται πλέον από τον πίνακα που κάνει και τον υπολογισμό
+          (lib/billing/greekTax.ts), επιβεβαιωμένο εκεί για τη χρήση 2026. */}
       <div className="po-tool-note" style={{
         marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
@@ -388,9 +403,12 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
           Υποθέτει <strong>φυσικό πρόσωπο με έως δύο ακίνητα</strong>, χωρίς υπηρεσίες πέρα από
           τα κλινοσκεπάσματα: τεκμαρτή έκπτωση 5%, τέλος παρεπιδημούντων μηδέν. Από{' '}
           <strong>τρία και πάνω</strong> η δραστηριότητα γίνεται επιχειρηματική: άλλη κλίμακα,
-          καμία έκπτωση, συν παρεπιδημούντων 0,5%, ΦΠΑ 13% και βιβλία ΕΛΠ. Οι συντελεστές του
-          τέλους ανθεκτικότητας είναι <strong>ενδεικτικοί του 2025</strong>: τα ακριβή ποσά και
-          τους μήνες τα ορίζει η ΑΑΔΕ. Απ’ έξω: ΕΝΦΙΑ, ασφάλιση, έπιπλα και εξοπλισμός, κενά
+          καμία έκπτωση, συν παρεπιδημούντων 0,5%, ΦΠΑ 13% και βιβλία ΕΛΠ. Το τέλος
+          ανθεκτικότητας υπολογίζεται με τα ποσά που ισχύουν από το {FIRST_YEAR_CURRENT_LEVY} και για το 2026:{' '}
+          {feWhole(LEVY.small.high)} και {feWhole(LEVY.small.low)} τη διανυκτέρευση για
+          διαμερίσματα, {feWhole(LEVY.large.high)} και {feWhole(LEVY.large.low)} για
+          μονοκατοικίες άνω των 80 τ.μ., με υψηλή περίοδο Απρίλιο ώς Οκτώβριο
+          (ν.5162/2024). Απ’ έξω: ΕΝΦΙΑ, ασφάλιση, έπιπλα και εξοπλισμός, κενά
           ανακαίνισης, ο χρόνος σου. <EstimateNote />
         </p>
       </div>
@@ -433,7 +451,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
 
       <ToolCta
         title="Η απόφαση παίρνεται μία φορά, η διαχείριση κάθε μέρα."
-        body="Το PROPERWISE έχει κρατήσεις, ενοίκια και δαπάνες σε ένα σημείο, βγάζει το τέλος ανθεκτικότητας ανά διανυκτέρευση και ετοιμάζει τη δήλωση με τα δικά σου δεδομένα."
+        body="Το PROPERWISE κρατά κρατήσεις, ενοίκια και δαπάνες ανά ακίνητο, βγάζει το τέλος ανθεκτικότητας ανά διανυκτέρευση και ετοιμάζει τα στοιχεία του Ε2 για τον λογιστή σου."
       />
     </div>
   );
@@ -459,8 +477,8 @@ function Line({ k, a, b, strong }: { k: string; a: number; b: number; strong?: b
   return (
     <tr className={strong ? 'is-total' : undefined}>
       <th scope="row" style={{ fontWeight: strong ? 600 : 400, color: ink }}>{k}</th>
-      <td className="num" style={{ fontWeight: weight, color: ink }}>{feAuto(a)}</td>
-      <td className="num" style={{ fontWeight: weight, color: ink }}>{feAuto(b)}</td>
+      <td className="num" style={{ fontWeight: weight, color: ink }}>{feSigned(a)}</td>
+      <td className="num" style={{ fontWeight: weight, color: ink }}>{feSigned(b)}</td>
     </tr>
   );
 }

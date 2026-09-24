@@ -5,7 +5,7 @@ import {
   requiredPlanForTab, requiredPlanForFeature, propertyLimit, canAddProperty,
   isPlanAllowedForProfile, paidPlanForProfile, isTabPurchasable,
   trialState, isOpenEnded, planFromParam, cycleFromParam, profileForPlan, activeHold,
-  type EntitlementInput,
+  checkoutLanding, type EntitlementInput,
 } from './entitlements';
 
 let p = 0, f = 0;
@@ -313,6 +313,10 @@ ok(cycleFromParam(' annual ') === 'annual', 'τα κενά δεν χάνουν �
 ok(cycleFromParam('weekly') === 'monthly', 'άγνωστος κύκλος πέφτει στον μηνιαίο');
 ok(cycleFromParam(null) === 'monthly', 'χωρίς παράμετρο, μηνιαίος');
 ok(cycleFromParam('') === 'monthly', 'κενή παράμετρος, μηνιαίος');
+
+// ── ΠΟΥ ΠΡΟΣΓΕΙΩΝΕΤΑΙ Η ΕΓΓΡΑΦΗ ΚΑΙ Η ΣΥΝΔΕΣΗ ──────────────────────────────
+ok(checkoutLanding('owner', 'annual') === '/tameio?plan=owner&cycle=annual', 'με πακέτο, στο ταμείο με πακέτο και κύκλο');
+ok(checkoutLanding(null, 'monthly') === '/dashboard', 'χωρίς πακέτο, στον πίνακα');
 
 // ── Ο ΤΥΠΟΣ ΠΡΟΦΙΛ ΠΟΥ ΑΓΟΡΑΖΕΙ ΤΟ ΠΑΚΕΤΟ ────────────────────────────────
 // Το αντίστροφο του ALLOWED_PLANS. Υπάρχει για μία στιγμή: η αγορά γίνεται

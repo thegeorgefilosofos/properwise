@@ -40,7 +40,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { T } from '@/components/Theme';
-import { dueParts, overdueCount, type AgendaItem } from '@/lib/home/agenda';
+import { itemDue, overdueCount, type AgendaItem } from '@/lib/home/agenda';
 
 export default function AgendaPanel({ items, total, onNavigate }: {
   items: AgendaItem[];
@@ -49,18 +49,23 @@ export default function AgendaPanel({ items, total, onNavigate }: {
   onNavigate: (tab: string) => void;
 }) {
   const late = overdueCount(items);
+  // «Σε σειρά προθεσμίας» μόνο όταν υπάρχουν προθεσμίες· αλλιώς το πλήθος.
+  const dated = items.some(i => i.daysLeft != null);
 
   return (
     <div className="agenda" style={{ marginBottom: 20 }}>
       {/* Η κεφαλίδα ζει ΜΕΣΑ στην κάρτα: δύο ξεχωριστά στοιχεία (SecHdr από
           πάνω, κάρτα από κάτω) έσπαγαν τη συνοχή και πρόσθεταν 26px κενό. */}
       <div className="agenda-head">
-        <span className="agenda-title">Τι χρειάζεται τώρα</span>
+        {/* Τίτλος ενότητας για τον αναγνώστη οθόνης· η εμφάνιση μένει ίδια. */}
+        <h2 className="agenda-title">Τι χρειάζεται τώρα</h2>
         {items.length > 0 && (
           <span className="agenda-count">
             {late > 0
               ? `${late} ${late === 1 ? 'εκπρόθεσμο' : 'εκπρόθεσμα'}`
-              : `${items.length} σε σειρά προθεσμίας`}
+              : dated
+                ? `${items.length} κατά προτεραιότητα`
+                : `${items.length} ${items.length === 1 ? 'θέμα' : 'θέματα'}`}
           </span>
         )}
       </div>
@@ -78,7 +83,7 @@ export default function AgendaPanel({ items, total, onNavigate }: {
       ) : (
         <ul className="agenda-list">
           {items.map(it => {
-            const d = dueParts(it.daysLeft);
+            const d = itemDue(it);
             return (
               <li key={it.key} className={`agenda-row${d.overdue ? ' is-late' : ''}`}>
                 {/* Η ΣΤΗΛΗ ΤΟΥ ΧΡΟΝΟΥ. Σταθερό πλάτος ώστε οι αριθμοί όλων των
@@ -90,7 +95,7 @@ export default function AgendaPanel({ items, total, onNavigate }: {
                       <span className="agenda-unit">{d.unit}</span>
                     </>
                   ) : (
-                    <span className="agenda-word">{d.word || 'χωρίς προθεσμία'}</span>
+                    d.word && <span className="agenda-word">{d.word}</span>
                   )}
                 </div>
 
@@ -158,6 +163,7 @@ export default function AgendaPanel({ items, total, onNavigate }: {
           flex-wrap: wrap;
         }
         .agenda-title {
+          margin: 0;
           font-family: ${T.font.sans}; font-size: 11px; font-weight: 700;
           letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-secondary);
         }

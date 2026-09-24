@@ -7,6 +7,7 @@ import {
   dailyExhaustedMessage, monthlyExhaustedMessage, poolExhaustedMessage,
 } from '@/lib/billing/aiLimits';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
+import { billingWords } from '@/lib/legal/billingWords';
 import {
   UPSTREAM_TIMEOUT_MS, upstreamFailure,
   TIMEOUT_FAILURE, NETWORK_FAILURE, UNREADABLE_FAILURE,
@@ -160,7 +161,7 @@ export async function POST(req: NextRequest) {
     // Ένας μετρητής κόστους που ανοίγει όταν χαλάσει δεν είναι μετρητής.
     if (usageError || usage == null) {
       return NextResponse.json(
-        { error: `Η ${ASSISTANT_NAME} δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.` },
+        { error: `${ASSISTANT_NAME} δεν απαντά αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.` },
         { status: 503 },
       );
     }
@@ -181,17 +182,18 @@ export async function POST(req: NextRequest) {
       // «έφτασες το όριο» αφήνει τον χρήστη να μαντεύει πόσο είναι το όριο και
       // πότε επιστρέφει — και αυτό είναι που τον κάνει να νομίζει ότι χάλασε κάτι.
       const plan = PLAN_RANK_ORDER[u.rank ?? 0] ?? 'free';
+      const canBuy = billingWords().live;
       const error =
-        u.reason === 'pool'   ? poolExhaustedMessage()
-        : u.reason === 'month' ? monthlyExhaustedMessage(plan)
-        : u.reason === 'day'   ? dailyExhaustedMessage(plan)
+        u.reason === 'pool'   ? poolExhaustedMessage(canBuy)
+        : u.reason === 'month' ? monthlyExhaustedMessage(plan, canBuy)
+        : u.reason === 'day'   ? dailyExhaustedMessage(plan, canBuy)
         : 'Πολλές ερωτήσεις μαζί. Δοκίμασε ξανά σε ένα λεπτό.';
       return NextResponse.json({ error, reason: u.reason, plan }, { status: 429 });
     }
   } catch {
     // Δικτυακή αποτυχία προς τη βάση: η ίδια απόφαση με το παραπάνω. Κλειστά.
     return NextResponse.json(
-      { error: `Η ${ASSISTANT_NAME} δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.` },
+      { error: `${ASSISTANT_NAME} δεν απαντά αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.` },
       { status: 503 },
     );
   }

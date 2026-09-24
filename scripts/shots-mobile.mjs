@@ -17,6 +17,7 @@ import { chromePath } from './lib/chrome.mjs'
 import { benchUrl } from './lib/paths.mjs'
 import { createRequire } from 'node:module'
 import { mkdirSync } from 'node:fs'
+import { SEED_CONSENT } from './lib/consent.mjs'
 const require = createRequire(import.meta.url)
 const { chromium } = require('playwright-core')
 
@@ -32,7 +33,7 @@ const ctx = await browser.newContext({
   viewport: { width: 360, height: 800 }, deviceScaleFactor: 2,
   isMobile: true, hasTouch: true, locale: 'el-GR',
 })
-await ctx.addInitScript(() => { try { localStorage.setItem('pos-cookie-consent', JSON.stringify({ v: '2026-08', ts: 'x' })) } catch {} })
+await ctx.addInitScript(SEED_CONSENT)
 
 let n = 0
 for (const s of SCENES) {

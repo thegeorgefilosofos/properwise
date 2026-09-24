@@ -441,7 +441,10 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
         sub: tot.count > 0 ? `${tot.count} ${plural(tot.count)} συνολικά` : 'Καμία καταχωρημένη κράτηση',
       },
       {
-        label: 'Δηλωτέα ακαθάριστα',
+        // ΕΚΤΙΜΗΣΗ ΔΕΝ ΛΕΓΕΤΑΙ «ΔΗΛΩΤΕΑ». Με διαμονές χωρίς οριστικό ποσό το
+        // σύνολο περιέχει ποσά που δεν ξέρουμε αν είναι ακαθάριστα ή καθαρά
+        // (το λέει και η προειδοποίηση πιο κάτω), άρα δεν είναι ποσό προς δήλωση.
+        label: tot.unresolved > 0 ? 'Ακαθάριστα, ενδεικτικά' : 'Δηλωτέα ακαθάριστα',
         value: fe(tot.revenue),
         sub: tot.unresolved > 0 ? `${tot.unresolved} ${plural(tot.unresolved)} με απροσδιόριστο ποσό` : 'Χωρίς το τέλος ανθεκτικότητας',
         tone: (tot.unresolved > 0 ? 'warning' : 'neutral') as 'warning' | 'neutral',
@@ -466,7 +469,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
       {
         label: 'Νύχτες',
         value: String(tot.nights),
-        sub: tot.count > 0 ? `Μέση διάρκεια ${(tot.nights / tot.count).toFixed(1).replace('.', ',')}` : 'Χωρίς νύχτες ακόμη',
+        sub: tot.count > 0 ? `Μέση διάρκεια ${(tot.nights / tot.count).toFixed(1).replace('.', ',')} νύχτες` : 'Χωρίς νύχτες ακόμη',
       },
     ];
   }, [clients, stays]);
@@ -1080,7 +1083,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                 title={c.full_name}
                 sub={st.lastVisit ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>τελ. επίσκεψη {fd(st.lastVisit)}</span> : null}
                 badges={<>
-                  {undeclared > 0 && <Badge>{undeclared} αδήλωτη{undeclared === 1 ? '' : 'ς'}</Badge>}
+                  {undeclared > 0 && <Badge>{undeclared} {undeclared === 1 ? 'αδήλωτη' : 'αδήλωτες'}</Badge>}
                   {unresolved > 0 && <Badge tone="warning">Ποσό προς επιβεβαίωση</Badge>}
                   {st.hasDamage && <Badge>Φθορές</Badge>}
                 </>}
@@ -1236,7 +1239,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                 υψηλή περίοδο. Πριν διαιρούσε με 365 και το εποχιακό εξοχικό
                 εμφανιζόταν στο «16%». */}
             <div className="tile-row" style={{ marginBottom: 16 }}>
-              {statTile('Δηλωτέα ακαθάριστα', fe(tot.revenue))}
+              {statTile(tot.unresolved > 0 ? 'Ακαθάριστα, ενδεικτικά' : 'Δηλωτέα ακαθάριστα', fe(tot.revenue))}
               {statTile('Τέλος ανθεκτικότητας', tot.climateLevy > 0 ? fe(tot.climateLevy) : fe(0), { title: 'Εισπράχθηκε από τους επισκέπτες για λογαριασμό του κράτους. Δεν είναι έσοδό σου.' })}
               {statTile('Προμήθειες πλατφορμών', tot.platformFees > 0 ? fe(tot.platformFees) : fe(0), { title: 'Δαπάνη που εκπίπτει. ΔΕΝ μειώνει το δηλωτέο έσοδο.' })}
               {/* ΤΟ ΠΟΣΟΣΤΟ ΠΕΡΝΑ ΑΠΟ ΤΟΝ ΜΟΡΦΟΠΟΙΗΤΗ. Γραφόταν `${occ.pct}%`,

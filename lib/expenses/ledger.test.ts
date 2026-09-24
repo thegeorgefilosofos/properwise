@@ -1,5 +1,5 @@
 // npx tsx lib/expenses/ledger.test.ts
-import { mergeLedger, ledgerTotal, ledgerUnpaid, groupByMonth, openMonths, recurringMonthly, monthlyAverage, type LedgerBill, type LedgerExpense } from './ledger';
+import { mergeLedger, ledgerTotal, ledgerUnpaid, groupByMonth, openMonths, recurringMonthly, monthlyAverage, entryName, NO_TITLE, type LedgerBill, type LedgerExpense } from './ledger';
 
 let pass = 0, fail = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -133,6 +133,15 @@ const exp = (o: Partial<LedgerExpense> & { id: string }): LedgerExpense => o;
   eq('null ποσά → μηδέν, όχι NaN', ledgerTotal(r.entries), 0);
   ok('κενός τίτλος → φιλικό κείμενο', r.entries.every(e => e.title === 'Χωρίς περιγραφή'));
   ok('καμία γραμμή δεν χάθηκε', r.entries.length === 2);
+}
+
+// ── ΤΟ ΟΝΟΜΑ ΣΤΗΝ ΟΘΟΝΗ ΟΤΑΝ ΛΕΙΠΕΙ Η ΠΕΡΙΓΡΑΦΗ ─────────────────────────────
+{
+  const base = { title: NO_TITLE, vendor: null as string | null, category: '' };
+  eq('ο τίτλος του χρήστη μένει', entryName({ ...base, title: 'ΔΕΗ Ιουλίου' }), 'ΔΕΗ Ιουλίου');
+  eq('μετά ο προμηθευτής', entryName({ ...base, vendor: 'ΕΥΔΑΠ' }), 'ΕΥΔΑΠ');
+  eq('μετά η κατηγορία', entryName({ ...base, category: 'water' }), 'Νερό');
+  eq('στο τέλος «Μια χρέωση»', entryName(base), 'Μια χρέωση');
 }
 
 // ── ΣΤΑΘΕΡΗ ΣΕΙΡΑ ΣΤΗΝ ΙΔΙΑ ΜΕΡΑ ───────────────────────────────────────────

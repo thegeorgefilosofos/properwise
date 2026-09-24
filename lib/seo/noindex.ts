@@ -26,4 +26,15 @@ export const NOINDEX: Metadata = {
     nocache: true,
     googleBot: { index: false, follow: false },
   },
+  // ΚΑΙ ΚΑΝΕΝΑ canonical. Η ρίζα δηλώνει `canonical: "/"` και η συγχώνευση
+  // των μεταδεδομένων είναι ρηχή: χωρίς αυτή τη γραμμή κάθε σελίδα εδώ έλεγε
+  // στη μηχανή «είμαι αντίγραφο της αρχικής», δίπλα σε ένα «μη με ευρετηριάσεις».
+  alternates: {},
 };
+
+/**
+ * Σελίδα εκτός ευρετηρίου με δικό της όνομα. Χωρίς τίτλο, η καρτέλα και ο
+ * σελιδοδείκτης έγραφαν σκέτο «PROPERWISE», με την περιγραφή της αρχικής.
+ */
+export const noindexPage = (title: string, description: string): Metadata =>
+  ({ ...NOINDEX, title, description });

@@ -8,10 +8,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { vocative } from '../greekName';
-import { fp, fe } from '../core/format';
+import { fp, fe, feSigned } from '../core/format';
 import { navLabel } from '../nav/labels';
 import { findAnomalies } from './anomaly';
-import { categoryLabel } from '../expenses/taxonomy';
+import { categoryLabel, resolveCategory } from '../expenses/taxonomy';
 import { athensParts, daysUntil as athensDaysUntil } from '../core/time';
 
 export type InsightKind = 'urgent' | 'attention' | 'opportunity' | 'positive';
@@ -66,7 +66,9 @@ export interface InsightInput {
   // επιστρέφει αυτούσιο. Ο τύπος που το απαγόρευε ανάγκαζε κάθε καλούντα σε
   // `as any` — δηλαδή έσβηνε τον έλεγχο ΟΛΟΥ του αντικειμένου για ένα πεδίο.
   expenses: { category?: string; amount: number; date?: string; paid?: boolean | null; expense_group?: string | null; payment_method?: string | null }[];
-  bills: { type?: string; amount?: number | null; paid?: boolean | null; due_date?: string | null }[];
+  // `category` είναι η στήλη που γράφει η εφαρμογή· το `type` μένει για τις
+  // παλιές γραμμές που δεν την έχουν.
+  bills: { category?: string | null; type?: string; amount?: number | null; paid?: boolean | null; due_date?: string | null }[];
   tasks: { due_date?: string | null }[];
   checklist: { due_date?: string | null; status?: string; priority?: string }[];
   inventory: { warranty_expiry?: string | null; condition?: string | null; name?: string | null }[];
@@ -171,7 +173,9 @@ export function computeInsights(input: InsightInput): Insight[] {
   }
 
   // ── 8. Ρεύμα: μεγάλο κόστος → σκέψου αλλαγή παρόχου ───────────────────────
-  const energyBills = bills.filter(b => (b.type || '').toLowerCase().includes('electric') || b.type === 'electricity' || b.type === 'ρεύμα');
+  // ΑΠΟ ΤΗΝ ΚΑΤΗΓΟΡΙΑ, ΟΧΙ ΑΠΟ ΤΟ `type`. Η φόρμα γράφει `category` και το
+  // `type` έμενε κενό, οπότε ο κανόνας δεν έβρισκε ποτέ λογαριασμό ρεύματος.
+  const energyBills = bills.filter(b => (resolveCategory(b.category) ?? resolveCategory(b.type)) === 'electricity');
   const energyTotal = energyBills.reduce((s, b) => s + (b.amount || 0), 0);
   if (energyTotal > 0 && expensesYTD > 0 && energyTotal / Math.max(expensesYTD, energyTotal) > 0.25) {
     out.push({ id: 'energy-review', kind: 'opportunity', title: 'Το ρεύμα «τρώει» μεγάλο μέρος των εξόδων', detail: 'Οι τιμές ρεύματος αλλάζουν συχνά. Μια σύγκριση παρόχων γλιτώνει αρκετά, ειδικά στους άδειους μήνες.', metric: eur(energyTotal), stake: energyTotal, action: { label: navLabel('finances'), tab: 'finances' } });
@@ -245,15 +249,18 @@ export function computeInsights(input: InsightInput): Insight[] {
     const monthsSoFar = athensParts(new Date(now)).month;
     const monthlyExpenses = expensesYTD > 0 ? expensesYTD / monthsSoFar : 0;
     const cash = rent - loanPayment - monthlyExpenses;
+    // ΤΟ ΕΝΟΙΚΙΟ ΤΟΥ ΜΙΣΘΩΤΗΡΙΟΥ Ή Ο ΣΤΟΧΟΣ; Χωρίς ενοικιαστή, το `rent` είναι ο
+    // στόχος ενοικίου και η πρόταση δεν πρέπει να τον παρουσιάζει ως είσπραξη.
+    const leased = (tenant?.monthly_rent ?? 0) > 0;
     if (cash < 0) out.push({
       id: 'loan-cash-negative', kind: 'attention',
       title: 'Η δόση ξεπερνά όσα αφήνει το ακίνητο',
-      detail: `Με ενοίκιο ${eur(rent)} και δόση ${eur(loanPayment)}, μετά τις δαπάνες μένουν ${eur(cash)} τον μήνα. Οι δαπάνες είναι ο φετινός μηνιαίος μέσος όρος.`,
-      metric: `${eur(cash)}/μήνα`, stake: Math.abs(cash), action: { label: navLabel('loan'), tab: 'loan' },
+      detail: `Με ${leased ? 'ενοίκιο' : 'στόχο ενοικίου'} ${eur(rent)} και δόση ${eur(loanPayment)}, μετά τις δαπάνες λείπουν ${eur(-cash)} τον μήνα. Οι δαπάνες είναι ο φετινός μηνιαίος μέσος όρος.`,
+      metric: `${feSigned(cash)}/μήνα`, stake: Math.abs(cash), action: { label: navLabel('loan'), tab: 'loan' },
     });
     else out.push({
       id: 'loan-cash-positive', kind: 'positive',
-      title: 'Το ενοίκιο καλύπτει τη δόση',
+      title: leased ? 'Το ενοίκιο καλύπτει τη δόση' : 'Ο στόχος ενοικίου καλύπτει τη δόση',
       detail: `Μετά τη δόση ${eur(loanPayment)} και τις δαπάνες μένουν ${eur(cash)} τον μήνα, με βάση τον φετινό μέσο όρο.`,
       metric: `${eur(cash)}/μήνα`, stake: Math.abs(cash), action: { label: navLabel('loan'), tab: 'loan' },
     });

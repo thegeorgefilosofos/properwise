@@ -21,7 +21,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { hy } from '../components/Hyphen';
-import { LegalLayout } from './legal-shell';
+import { LegalLayout, LegalShell, anchorOf } from './legal-shell';
 import { SHY } from '@/lib/core/hyphenate';
 
 let passed = 0, failed = 0;
@@ -93,6 +93,37 @@ for (const [self, other1, other2] of [
 // δεν ελέγχουν τίποτα. Ο ίδιος κανόνας που έχει ο πάγκος μεταλλάξεων για τους
 // φύλακες: μηδέν δεν σημαίνει τίποτα αν ο έλεγχος δεν μπορεί να κοκκινίσει.
 ok('ο έλεγχος βλέπει ΤΗ ΣΕΙΡΑ και όχι όλη τη σελίδα', row('/καμία-τέτοια-σελίδα').length === 3);
+
+// ═══ ΤΟ ΑΓΚΙΣΤΡΟ ΕΙΝΑΙ Ο ΤΙΤΛΟΣ, ΟΧΙ Η ΘΕΣΗ ════════════════════════════════
+// Με «#s14» μία ενότητα παραπάνω έστελνε κάθε παλιό σύνδεσμο σε άλλο κείμενο.
+ok('ο τίτλος γίνεται λατινικό άγκιστρο', anchorOf('Χρόνος διατήρησης') === 'chronos-diatirisis');
+ok('χωρίς εισαγωγικά και παρενθέσεις', anchorOf('Πρόγραμμα Πρόσκλησης (συστάσεις)') === 'programma-prosklisis-systaseis');
+{
+  const two = (first: string) => html(createElement(LegalLayout, {
+    self: '/terms', eyebrow: 'Νομικά', title: 'Τ', intro: 'Ι',
+    blocks: [first, 'Χρόνος διατήρησης'].map(h => ({ h, body: createElement('p', null, 'κείμενο') })),
+  }));
+  ok('το άγκιστρο δεν αλλάζει όταν μπει ενότητα από πάνω',
+    two('Ορισμοί').includes('id="chronos-diatirisis"') && two('Νέα ενότητα').includes('id="chronos-diatirisis"'));
+  ok('και τα περιεχόμενα δείχνουν σε αυτό', two('Ορισμοί').includes('href="#chronos-diatirisis"'));
+  const dup = html(createElement(LegalLayout, {
+    self: '/terms', eyebrow: 'Νομικά', title: 'Τ', intro: 'Ι',
+    blocks: ['Ίδιος', 'Ίδιος'].map(h => ({ h, body: createElement('p', null, 'κείμενο') })),
+  }));
+  ok('δύο ίδιοι τίτλοι δεν μοιράζονται άγκιστρο', dup.includes('id="idios"') && dup.includes('id="idios-2"'));
+}
+
+// ═══ ΚΑΘΕ EMAIL ΣΤΑ ΝΟΜΙΚΑ ΚΕΙΜΕΝΑ ΠΑΤΙΕΤΑΙ ═══════════════════════════════════
+{
+  // Χωρίς τα μαλακά ενωτικά του συλλαβιστή, για να συγκρίνεται το κείμενο.
+  const out = html(createElement(LegalShell, {
+    self: '/privacy', title: 'Τ', updated: 'Σ', intro: 'Ι',
+    sections: [{ h: 'Επικοινωνία', p: ['Γράψε μας στο privacy@properwise.gr. Απαντάμε.'] }],
+  })).split(SHY).join('');
+  ok('η διεύθυνση γίνεται σύνδεσμος νέου μηνύματος', out.includes('href="mailto:privacy@properwise.gr"'));
+  ok('χωρίς την τελεία της πρότασης', !out.includes('mailto:privacy@properwise.gr.'));
+  ok('και το κείμενο γύρω της μένει', out.includes('Γράψε μας στο ') && out.includes('. Απαντάμε.'));
+}
 
 console.log(`legal-shell: ✓ ${passed} · ✗ ${failed}`);
 if (failed) { for (const f of fails) console.log('  ✗ ' + f); process.exit(1); }

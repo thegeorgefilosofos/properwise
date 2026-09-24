@@ -44,7 +44,7 @@ Policy: https://properwise.gr/trust
 #    δοκιμές κωδικών σε λογαριασμούς χρηστών.
 #  · Χωρίς κοινωνική μηχανική σε χρήστες ή προσωπικό και χωρίς φυσική
 #    πρόσβαση σε εγκαταστάσεις.
-#  · Δοκίμασε σε δικό σου λογαριασμό. Δημιουργείς όσους θέλεις, δωρεάν.
+#  · Δοκίμασε σε δικό σου λογαριασμό· μπορείς να φτιάξεις όσους χρειάζεσαι.
 
 # ── 3. Τι κάνουμε εμείς ────────────────────────────────────────────────────
 #
@@ -83,7 +83,7 @@ Policy: https://properwise.gr/trust
 #  if a third party comes after you. Report to security@properwise.gr, give
 #  us 90 days before publishing, take only the minimum proof, never touch
 #  third-party data, no DoS, no social engineering, test on your own account.
-#  We acknowledge within 3 business days, trial within 10, update you every
+#  We acknowledge within 3 business days, triage within 10, update you every
 #  14 days, and credit you if you want it. No bug bounty. Third-party
 #  infrastructure is out of scope — report it to the provider.
 # ══════════════════════════════════════════════════════════════════════════

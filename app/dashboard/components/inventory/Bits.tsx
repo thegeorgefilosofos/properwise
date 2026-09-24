@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { qrDataUrl } from '@/lib/qr'
-import { T, TT, Modal, SecHdr, Btn, pressable, fp, Bar, RuntimeImg } from '@/components/Theme'
+import { T, TT, Modal, SecHdr, Btn, pressable, fn, Bar, RuntimeImg } from '@/components/Theme'
 // Το πλαίσιο επιλογής ζει στο Theme, ένα για όλη την εφαρμογή. Ξαναβγαίνει από
 // εδώ ώστε τα σημεία που το εισάγουν από τα Bits να μη χρειαστεί να αλλάξουν.
 export { SelectBox } from '@/components/Theme'
@@ -23,7 +23,7 @@ import { replacementSuggestion } from '@/lib/inventory/depreciation'
 import { openReport, rEsc } from '../reportPdf'
 import { INK, RULE } from '@/lib/print/ink'
 import type { FieldDecision } from '@/lib/property/fields'
-import { CONDITIONS, CONDITION_COLOR, ENERGY_TONE, ROOM_PRESETS, type InventoryItem } from './model'
+import { CONDITIONS, CONDITION_COLOR, ENERGY_TONE, ROOM_PRESETS, inventoryLabel, type InventoryItem } from './model'
 
 // ── Η ΚΑΡΤΑ ΤΗΣ ΑΠΟΓΡΑΦΗΣ ΕΙΝΑΙ Η ΚΑΡΤΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ ─────────────────────
 // ΜΙΑ ΚΑΡΤΕΛΑ ΕΙΧΕ ΔΙΚΟ ΤΗΣ ΟΡΙΣΜΟ ΚΑΡΤΑΣ. Η συνταγή εδώ ήταν bg-surface με
@@ -68,7 +68,7 @@ export const SectionLabel = ({label,right}:{label:string;right?:React.ReactNode}
  * το ορθογώνιο το δίνει το περιτύλιγμα — που είναι `inline-flex` και τυλίγει το
  * κουμπί χωρίς κενό γραμμής, άρα μετρά ακριβώς το ίδιο ορθογώνιο με πριν.
  */
-export function BulkPicker({label,icon,options,onPick}:{label:string;icon:React.ReactNode;options:string[];onPick:(v:string)=>void}) {
+export function BulkPicker({label,icon,options,onPick,labelOf}:{label:string;icon:React.ReactNode;options:string[];onPick:(v:string)=>void;labelOf?:(v:string)=>string}) {
   const [open,setOpen] = useState(false)
   const [rect,setRect] = useState<{top:number;left:number}|null>(null)
   const btnRef = useRef<HTMLDivElement>(null)
@@ -94,7 +94,7 @@ export function BulkPicker({label,icon,options,onPick}:{label:string;icon:React.
             ?<p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily:T.font.sans,padding:'8px 12px'}}>Καμία επιλογή</p>
             :options.map(o=>(
               <div key={o} {...pressable(()=>{onPick(o);setOpen(false)})} style={{padding:'8px 12px',cursor:'pointer',borderRadius: T.radius.chip,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,color:'var(--text-primary)'}}
-                onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>{o}</div>
+                onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>{labelOf?labelOf(o):o}</div>
             ))}
         </div>,
         document.body
@@ -112,7 +112,9 @@ export const EnergyBadge = ({cls}:{cls:string}) => { if(!cls) return null; const
   const bg = tone?`var(--${tone}-soft)`:'var(--bg-elevated)'
   const bd = tone?`var(--${tone}-border)`:'var(--border-subtle)'
   return (
-  <span title={`Ενεργειακή κλάση ${cls}`} style={{display:'inline-flex',alignItems:'center',padding:'2px 8px',borderRadius: T.radius.xs,fontSize: 'var(--fs-xs)',fontWeight:700,color:fg,background:bg,border:`1px solid ${bd}`,letterSpacing:'0.5px',fontFamily:T.font.sans}}>{cls}</span>
+  // Το `title` δεν ανοίγει με δάχτυλο ούτε διαβάζεται σίγουρα από αναγνώστη
+  // οθόνης: η λέξη «Ενεργειακή κλάση» μπαίνει κρυφή μπροστά από το γράμμα.
+  <span title={`Ενεργειακή κλάση ${cls}`} style={{display:'inline-flex',alignItems:'center',padding:'2px 8px',borderRadius: T.radius.xs,fontSize: 'var(--fs-xs)',fontWeight:700,color:fg,background:bg,border:`1px solid ${bd}`,letterSpacing:'0.5px',fontFamily:T.font.sans}}><span className="sr-only">Ενεργειακή κλάση </span>{cls}</span>
 ) }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -147,6 +149,9 @@ export const DepBar = ({pct,left,hasData=true,hasValue=true,compact}:{pct:number
     )
   }
   const remaining = Math.max(0, 100 - pct)
+  // ΑΚΕΡΑΙΟ, ΟΠΩΣ ΣΤΟΝ ΔΕΙΚΤΗ ΤΗΣ ΚΕΦΑΛΙΔΑΣ. Το `fp` γράφει πάντα δύο δεκαδικά
+  // («59,00%») και η σύνοψη από πάνω ακέραιο («57%»): δύο ακρίβειες για μια
+  // εκτίμηση που δεν έχει ούτε την πρώτη.
   // Η υπολειπόμενη αξία δεν είναι βαθμός. Ένα ψυγείο στο 45% δεν είναι
   // «κίτρινο» και στο 70% δεν είναι «πράσινο» — απλώς έχει την ηλικία του.
   // Το μήκος της μπάρας λέει ήδη πόσο μένει· το χρώμα μπαίνει μόνο όταν η
@@ -160,7 +165,7 @@ export const DepBar = ({pct,left,hasData=true,hasValue=true,compact}:{pct:number
     <div>
       <Bar pct={remaining} tone={c} height={3} label="Υπόλοιπη ζωή"/>
       <div style={{display:'flex',justifyContent:'space-between',marginTop: 4}}>
-        <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums'}}>{compact?'μένει ':'Εκτιμώμενη υπολειπόμενη αξία '}{fp(remaining)}</span>
+        <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums'}}>{compact?'μένει ':'Εκτιμώμενη υπολειπόμενη αξία '}{fn(Math.round(remaining))}%</span>
         {left>0
           ?<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums'}}>περίπου {left} χρόνια</span>
           :<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>Τέλος ωφέλιμης ζωής</span>
@@ -321,7 +326,7 @@ export function RoomInput({value,onChange}:{value:string;onChange:(v:string)=>vo
   const [custom,setCustom] = useState(isCustom)
   const [focused,setFocused] = useState(false)
   const options = [
-    ...ROOM_PRESETS.map(r=>({value:r,label:r})),
+    ...ROOM_PRESETS.map(r=>({value:r,label:inventoryLabel(r)})),
     {value:'__custom__',label:'Άλλος χώρος…'},
   ]
   return (

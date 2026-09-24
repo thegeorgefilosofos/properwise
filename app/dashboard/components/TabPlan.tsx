@@ -872,7 +872,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
               356 κειμένου, το γέμισμα των 28 επί τέσσερις στήλες άλλα 112 — και η
               στήλη του ονόματος θέλει 232 για να χωρά σε δύο γραμμές το
               «Παραχώρηση σε δικό σου άνθρωπο». Σύνολο 700. */}
-          <div className="po-scroll-x">
+          <div className="po-scroll-x plan-opt-table">
             <table className="po-table tbl-fixed" style={{ ['--tbl-min' as string]: '700px' }}>
               {/* Ονομα για τον αναγνώστη οθόνης, χωρίς ταινία τίτλου: την ίδια
                   λέξη τη γράφει ήδη η επικεφαλίδα της ενότητας από πάνω. */}
@@ -907,6 +907,22 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
               </tbody>
             </table>
           </div>
+          {/* ΣΤΟ ΤΗΛΕΦΩΝΟ Ο ΠΙΝΑΚΑΣ ΓΙΝΕΤΑΙ ΛΙΣΤΑ. Τα 700 του πίνακα μέσα σε
+              κάρτα ~330 άφηναν ορατό μόνο τον «Κόπο»· το «Ρίσκο» και ο «Χρόνος»
+              έμεναν εκτός οθόνης, χωρίς τίποτα να λέει ότι η γραμμή κυλά. Κάτω
+              από τα 560 κάθε επιλογή είναι ο τίτλος της και μία γραμμή με τους
+              τρεις άξονες. Ποιο από τα δύο φαίνεται το ορίζει το globals.css. */}
+          <ul className="plan-opt-list">
+            {plan.options.map((o: Option, i) => (
+              <li key={o.id} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
+                <RowTitle state="plain" text={o.title}
+                  hint={{ label: `Τι σημαίνει: ${o.title}`, body: <Tip lead={o.payoff} rows={[['Ταιριάζει αν', o.fits], ['Τι πληρώνεις', o.cost]]} /> }} />
+                <div style={{ ...TT.caption, marginTop: 4 }}>
+                  Κόπος: {EFFORT_LABEL[o.effort]} · Ρίσκο: {RISK_LABEL[o.risk]} · Χρόνος: {o.speed}
+                </div>
+              </li>
+            ))}
+          </ul>
         </Panel>
       )}
 
@@ -914,8 +930,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
       {plan.status === 'for_sale' && sale && (
         <Panel label="Τι μένει καθαρό"
           info={<InfoHint label="Πάνω σε τι υπολογίζεται">
-            <Tip lead={`Ενδεικτικά, με βάση την αξία που έχεις καταχωρήσει (${feAuto(sale.price)}).`}
-              rows={[['Επιβεβαίωσε', sale.note]]} />
+            <Tip lead={`Ενδεικτικά, με βάση την αξία που έχεις καταχωρήσει (${feAuto(sale.price)}).`} />
           </InfoHint>}
           right={
             /* ΔΥΟ ΧΩΡΙΣΤΑ ΧΑΠΑΚΙΑ ΓΙΑ ΕΝΑ «Η ΤΟ ΕΝΑ Η ΤΟ ΑΛΛΟ». Η εφαρμογή έχει
@@ -938,9 +953,13 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
             </div>
           ))}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: '14px 0 0', borderTop: '1px solid var(--border-default)', marginTop: 4 }}>
-            <span style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)' }}>Καθαρό έσοδο</span>
+            <span style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)' }}>Ενδεικτικό καθαρό</span>
             <span style={{ ...TT.kpi, fontSize: 20 }}>{feAuto(sale.net)}</span>
           </div>
+          {/* Η ΕΠΙΦΥΛΑΞΗ ΣΤΕΚΕΤΑΙ ΚΑΤΩ ΑΠΟ ΤΟ ΣΥΝΟΛΟ, ΟΧΙ ΠΙΣΩ ΑΠΟ ΤΟ ⓘ. Το
+              `sale.note` είναι γραμμένο για να «εμφανίζεται πάντα»· κρυμμένο σε
+              υπόδειξη, το ποσό διαβαζόταν ως καθαρό χωρίς φόρο υπεραξίας. */}
+          <p style={{ ...TT.caption, margin: '8px 0 0', lineHeight: 1.55 }}>{sale.note} Το τελικό ποσό με τον λογιστή ή τον συμβολαιογράφο.</p>
         </Panel>
       )}
 

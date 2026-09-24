@@ -34,10 +34,14 @@ import * as stayStore from '@/lib/data/stays';
 import * as billStore from '@/lib/data/bills';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
-import { T, PageTitle, KPIGrid, InfoBanner, Btn, ChipToggle, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar } from '@/components/Theme';
+import { T, PageTitle, KPIGrid, InfoBanner, Btn, ChipToggle, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar, ABSENT_SHORT } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { shortTermYearSummary, isHouseType } from '@/lib/tax/shortTermTax';
-import { isIndividualTaxpayer } from '@/lib/accounting/taxProfile';
+import { isIndividualTaxpayer, businessFormOf } from '@/lib/accounting/taxProfile';
+import { incomeStatement } from '@/lib/accounting/statement';
+import { consolidateRentTax, taxShareOf } from '@/lib/billing/consolidate';
+import { rentalBracketsForYear } from '@/lib/billing/greekTax';
+import { isLet, readStatus, type StatusRow } from '@/lib/property/status';
 import type { LegalForm } from '@/lib/accounting/dossier';
 import { shortTermCashflow } from '@/lib/tax/shortTermCashflow';
 import { mergeLedger, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
@@ -48,7 +52,7 @@ import { NumberInput } from './UIComponents';
 import { exportPricingWorkbook } from './sheets';
 import {
   recommendPrices, summarize, suggestBase, suggestGuardrails, bookedDatesFromStays,
-  realizedAdr, findGaps, estimateSeasonalOccupancy, MIN_NIGHTS_FOR_OCCUPANCY, SEASON_LABELS,
+  realizedAdr, findGaps, estimateSeasonalOccupancy, MIN_NIGHTS_FOR_OCCUPANCY, SEASON_PHRASE,
   type DayPrice, type PricingStay, type Gap, type Season,
 } from '@/lib/pricing/dynamicPricing';
 import { guestPriceBreakdown } from '@/lib/tax/shortTermTax';
@@ -184,6 +188,9 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   const compsKey = `pos-pricing-comps-${propertyId}`;
   const [opex, setOpex] = useState(0);
   const [propCount, setPropCount] = useState(1);
+  // Τα ενοίκια των ΑΛΛΩΝ ακινήτων, όπως τα διαβάζει η Απόδοση· `null` όσο η
+  // ανάγνωση δεν πέτυχε (τότε δεν ξέρουμε αν ο φόρος ενοποιείται).
+  const [otherRents, setOtherRents] = useState<{ id: string; annualRent: number; shortTerm: boolean; let: boolean }[] | null>(null);
   const [comps, setComps] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(compsKey) || '[]'); } catch { return []; } });
   const [compsOpen, setCompsOpen] = useState(false);
 
@@ -234,11 +241,23 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // Οι λειτουργικές δαπάνες της χρονιάς και πόσα ακίνητα έχει ο φορολογούμενος
   // (κρίνει την εξαίρεση του τέλους παρεπιδημούντων: ισχύει έως δύο ακίνητα).
   const loadCashflowInputs = useCallback(async () => {
-    const [exp, bil, count] = await Promise.all([
+    const [exp, bil, count, allPr, allRc] = await Promise.all([
       expenses.ledger(supabase, propertyId, { userId }),
       billStore.ofProperty(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
       properties.countShortTerm(supabase, userId),
+      properties.listWithError<{ id: string; target_rent: number | null; rental_mode: string | null; status_detail: string | null }>(supabase, userId, { columns: 'id,target_rent,rental_mode,status_detail' }),
+      supabase.from('rent_config').select('property_id,actual_rent,target_rent').eq('user_id', userId),
     ]);
+    // ΙΔΙΑ ΠΗΓΗ ΜΕ ΤΗΝ ΑΠΟΔΟΣΗ (TabRentROI): μηνιαίο ενοίκιο × 12 ανά ακίνητο.
+    if (allPr.error || allRc.error) setOtherRents(null);
+    else {
+      const rcMap = new Map(((allRc.data || []) as { property_id: string; actual_rent: number | null; target_rent: number | null }[]).map(r => [r.property_id, r]));
+      setOtherRents(allPr.rows.filter(x => x.id !== propertyId).map(x => {
+        const cfg = rcMap.get(x.id);
+        const monthly = Number(cfg?.actual_rent) || Number(cfg?.target_rent) || Number(x.target_rent) || 0;
+        return { id: x.id, annualRent: monthly * 12, shortTerm: readStatus(x as StatusRow) === 'rent_short', let: isLet(x as StatusRow) };
+      }));
+    }
     // ΚΑΘΕ ΕΥΡΩ ΜΙΑ ΦΟΡΑ. Ο πληρωμένος λογαριασμός και η δαπάνη του είναι το ΙΔΙΟ
     // γεγονός: αθροίζοντας και τα δύο, τα λειτουργικά έξοδα θα έβγαιναν διπλά και
     // το «μένει σε εσένα» θα έδειχνε λιγότερα απ' όσα πραγματικά μένουν. Η
@@ -362,9 +381,12 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     { label: 'Υψηλότερη πρόταση', value: base > 0 ? fe(sum.max) : fe(0), sub: 'Ακριβότερη ημέρα' },
     {
       label: 'Πληρότητα από το ιστορικό',
-      value: measuredOcc != null ? measuredOcc + '%' : fp(0),
+      // Χωρίς μέτρηση η τιμή είναι «Εκκρεμεί», όχι «0,00%»: το μηδέν είναι μέτρηση.
+      value: measuredOcc != null ? measuredOcc + '%' : ABSENT_SHORT,
+      // Οι νύχτες ΜΟΝΟ των εποχών του πίνακα· ο υπότιτλος της κάρτας πιο κάτω
+      // μετρά όλη τη χρονιά, γι' αυτό λέμε ποιες είναι.
       sub: measuredOcc != null
-        ? `${occNights} πραγματικές νύχτες`
+        ? `${occNights} νύχτες στις εποχές του πίνακα`
         : `Χρειάζονται τουλάχιστον ${MIN_NIGHTS_FOR_OCCUPANCY} νύχτες ανά εποχή`,
     },
   ], [sum, base, measuredOcc, occNights]);
@@ -380,6 +402,40 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     () => shortTermYearSummary(stays, nowYear, { sqm: propertySqm ?? null, isHouse, propertyCount: propCount, individual: isIndividualTaxpayer(profileType, legalForm) }),
     [stays, nowYear, propertySqm, isHouse, propCount, profileType, legalForm],
   );
+  // ═══ Ο ΦΟΡΟΣ ΕΙΣΟΔΗΜΑΤΟΣ ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ ΜΕ ΤΗΝ ΑΠΟΔΟΣΗ ═══════════════
+  // Το `taxSummary.incomeTax` φορολογεί ΜΟΝΟ αυτό το ακίνητο με την κλίμακα
+  // ενοικίων. Ο ιδιοκτήτης με κι άλλα ενοίκια όμως φορολογείται στο ΣΥΝΟΛΟ τους
+  // (Ε1) και η εταιρεία με 22% στα κέρδη: εδώ έβλεπε 15% ενώ η Απόδοση και η
+  // Λογιστική του έλεγαν 25%. Ίδιοι κανόνες με το TabRentROI. Όταν τα άλλα
+  // ενοίκια δεν είναι γνωστά, ο φόρος μένει ανά ακίνητο και το λέει η ετικέτα.
+  const tax = useMemo(() => {
+    const gross = taxSummary.grossRevenue;
+    if (profileType === 'professional') {
+      const form = businessFormOf(legalForm);
+      const costs = taxSummary.platformFees + opex + taxSummary.municipalTax + taxSummary.levyShortfall;
+      const stB = incomeStatement({ regime: 'business', businessForm: form, grossIncome: gross, itemizedExpenses: costs, companyDistribution: form === 'company' ? 1 : undefined });
+      return {
+        amount: stB.incomeTax + (stB.dividendTax || 0), label: 'Φόρος εισοδήματος',
+        note: form === 'company'
+          ? 'Στα καθαρά κέρδη της εταιρείας, μετά τα έξοδα, συν φόρος μερίσματος στη διανομή, όπως στην Απόδοση.'
+          : 'Κλίμακα επιχειρηματικής δραστηριότητας στα καθαρά κέρδη, μετά τα έξοδα, όπως στην Απόδοση.',
+        onGross: false,
+      };
+    }
+    const standalone = { amount: taxSummary.incomeTax, onGross: true, note: undefined as string | undefined };
+    if (otherRents == null || otherRents.some(o => o.let && o.annualRent <= 0)) {
+      return { ...standalone, label: 'Φόρος εισοδήματος (αν ήταν το μόνο σου ακίνητο)' };
+    }
+    const portfolio = consolidateRentTax([
+      { id: propertyId, annualRent: gross, shortTerm: true },
+      ...otherRents,
+    ], rentalBracketsForYear(nowYear), nowYear);
+    if (portfolio.count < 2) return { ...standalone, label: 'Φόρος εισοδήματος' };
+    return {
+      amount: taxShareOf(portfolio, propertyId), label: 'Φόρος εισοδήματος', onGross: true,
+      note: 'Το μερίδιο αυτού του ακινήτου στον φόρο όλων των ενοικίων σου, όπως στο Ε1 και στην Απόδοση.',
+    };
+  }, [taxSummary, opex, profileType, legalForm, otherRents, propertyId, nowYear]);
   const cashflow = useMemo(
     () => shortTermCashflow({
       grossRevenue: taxSummary.grossRevenue,
@@ -387,9 +443,9 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       operatingExpenses: opex,
       municipalTax: taxSummary.municipalTax,
       levyShortfall: taxSummary.levyShortfall,
-      incomeTax: taxSummary.incomeTax,
+      incomeTax: tax.amount,
     }),
-    [taxSummary, opex],
+    [taxSummary, opex, tax.amount],
   );
 
   const priceRange = useMemo(() => {
@@ -737,7 +793,11 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                   ? <span title="Ποσοστό των ακαθαρίστων που καταλήγει σε εσένα" style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)' }}>{fp(cashflow.keptPct)}</span>
                   : undefined} />
 
-              <MoneySteps scale="lead" steps={cashflow.steps.map(st => ({ ...st, negative: st.kind === 'total' && cashflow.net < 0 }))} />
+              <MoneySteps scale="lead" steps={cashflow.steps.map(st => ({
+                ...st,
+                ...(st.key === 'tax' ? { label: tax.label, note: tax.note ?? 'Υπολογίζεται στο 95% των ακαθάριστων (τεκμαρτή έκπτωση 5%), όχι στο υπόλοιπο μετά τα έξοδα.' } : null),
+                negative: st.kind === 'total' && cashflow.net < 0,
+              }))} />
 
               {/* Η αναλογία με μια ματιά: πόσο από τη μπάρα μένει δικό σου. */}
               {cashflow.keptPct != null && cashflow.net > 0 && (
@@ -748,7 +808,9 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                   απροσδιόριστη βάση ποσού κάνουν τα ακαθάριστα εκτίμηση· διαμονές
                   χωρίς Δήλωση Βραχυχρόνιας είναι εκκρεμότητα, όχι λογιστικό λάθος. */}
               <div style={{ marginTop: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.65 }}>
-                Ο φόρος υπολογίζεται στα ακαθάριστα με την κλίμακα ενοικίων, όχι στο υπόλοιπο μετά τα έξοδα. Δεν περιλαμβάνονται δόσεις δανείου.
+                {tax.onGross
+                  ? 'Ο φόρος υπολογίζεται στο 95% των ακαθάριστων (τεκμαρτή έκπτωση 5%) με την κλίμακα ενοικίων, όχι στο υπόλοιπο μετά τα έξοδα.'
+                  : 'Ο φόρος υπολογίζεται στα καθαρά κέρδη, μετά τα έξοδα.'} Δεν περιλαμβάνονται δόσεις δανείου.
                 {taxSummary.unresolvedCount > 0 && ` ${taxSummary.unresolvedCount === 1 ? 'Μία διαμονή' : `${fn(taxSummary.unresolvedCount)} διαμονές`} χωρίς ανάλυση ποσού σε ακαθάριστο, προμήθεια και τέλος: τα ακαθάριστα είναι εκτίμηση ως τότε.`}
                 {taxSummary.undeclaredCount > 0 && ` ${taxSummary.undeclaredCount === 1 ? 'Μία διαμονή δεν έχει' : `${fn(taxSummary.undeclaredCount)} διαμονές δεν έχουν`} Δήλωση Βραχυχρόνιας Διαμονής.`}
               </div>
@@ -778,7 +840,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                           {g.hard && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, padding: '1px 6px' }}>δύσκολο κενό</span>}
                           {g.soon && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, padding: '1px 6px' }}>άμεσα</span>}
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{g.nights} {g.nights === 1 ? 'νύχτα' : 'νύχτες'} · εποχή {SEASON_LABELS[g.season]} · πρόταση πλήρωσης <strong className="po-fig" data-tone="accent" style={{ fontFamily: T.font.num }}>{fe(g.fillPrice)}</strong>/νύχτα</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{g.nights} {g.nights === 1 ? 'νύχτα' : 'νύχτες'} · {SEASON_PHRASE[g.season]} · πρόταση πλήρωσης <strong className="po-fig" data-tone="accent" style={{ fontFamily: T.font.num }}>{fe(g.fillPrice)}</strong>/νύχτα</div>
                       </div>
                       {/* ΤΑ ΔΥΟ ΚΟΥΜΠΙΑ ΤΥΛΙΓΟΝΤΑΙ ΜΕΤΑΞΥ ΤΟΥΣ. Με `flexShrink: 0`
                           και χωρίς άδεια αναδίπλωσης, το ζευγάρι ήταν ένα
@@ -960,7 +1022,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700 }}>{fd(sel.date)}{sel.holidayName ? ` · ${sel.holidayName}` : ''}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Εποχή {SEASON_LABELS[sel.season]}{sel.isWeekend ? ' · Σαββατοκύριακο' : ''}{sel.booked ? ' · Ήδη κλεισμένη' : ''}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{SEASON_PHRASE[sel.season].charAt(0).toUpperCase() + SEASON_PHRASE[sel.season].slice(1)}{sel.isWeekend ? ' · Σαββατοκύριακο' : ''}{sel.booked ? ' · Ήδη κλεισμένη' : ''}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div className="po-fig" data-tone="accent" style={{ fontSize: 22, fontWeight: 700, fontFamily: T.font.num }}>{fe(sel.price)}</div>

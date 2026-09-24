@@ -73,7 +73,9 @@ export function portfolio(n: number): Bench {
       name: `Ακίνητο ${i + 1}`, prop_type: TYPES[i % TYPES.length],
       value: 90_000 + (i % 23) * 7_500, target_rent: rent,
       sqm: 42 + (i % 9) * 8, postal_code: '11742',
-      rental_mode: short ? 'short' : 'long', status_detail: null,
+      // Οι τιμές του writeStatus (lib/property/status.ts): με «short»/«long» το
+      // readStatus έβγαζε κάθε ακίνητο «Κενό» και οι λήψεις μετρούσαν λάθος οθόνη.
+      rental_mode: short ? 'short_term' : 'long_term', status_detail: short ? 'seasonal' : 'rented',
     });
     rentCfg.push({ property_id: id, actual_rent: rent, target_rent: rent });
 
@@ -209,7 +211,7 @@ export function portfolio(n: number): Bench {
   // Ενα δάνειο στο πρώτο ακίνητο: η Αποδοση δείχνει μόχλευση μόνο όταν υπάρχει.
   loans.push({
     id: 'ln0', property_id: 'p0', user_id: 'u1', bank: 'Τράπεζα Πειραιώς',
-    loan_amount: 120_000, down_payment: 40_000, rate_type: 'floating',
+    loan_amount: 120_000, down_payment: 40_000, rate_type: 'variable',
     fixed_rate: null, euribor: 2.6, spread: 1.8, years: 25,
     start_date: `${YEAR - 4}-03-01`, status: 'active', loan_type: 'purchase',
     property_value: 190_000, notes: null, created_at: `${YEAR - 4}-03-01`,

@@ -39,6 +39,9 @@ export interface AgendaItem {
   due: string | null;
   /** Αρνητικό = ληξιπρόθεσμο. */
   daysLeft: number | null;
+  /** Ήδη εκπρόθεσμο χωρίς δική του ημερομηνία: τα «urgent» των insights
+   *  (ληξιπρόθεσμος λογαριασμός, ληγμένη ασφάλεια). Γράφεται «τώρα». */
+  pastDue?: boolean;
   action: { label: string; tab: string } | null;
   origin: AgendaOrigin;
   /** Κρίνει μόνο όσα ΔΕΝ έχουν κοντινή προθεσμία. */
@@ -154,6 +157,7 @@ function merge(a: AgendaItem, b: AgendaItem): AgendaItem {
     // τη σοβαρότερη εκδοχή του. Δύο «undefined» μένουν undefined.
     stake: win.stake == null ? lose.stake : lose.stake == null ? win.stake : Math.max(win.stake, lose.stake),
     who: win.who ?? lose.who,
+    pastDue: win.pastDue || lose.pastDue || undefined,
   };
 }
 
@@ -250,6 +254,7 @@ export function buildAgenda(input: {
       key: insightSubject(i.id),
       title: i.title, note: shortNote(i.detail),
       due: null, daysLeft: null,
+      pastDue: i.kind === 'urgent' || undefined,
       action: i.action || null, origin: 'insight',
       weight: KIND_WEIGHT[i.kind] ?? 5,
       stake: i.stake,
@@ -318,7 +323,7 @@ export function buildAgenda(input: {
 
 /** Πόσα από τη λίστα είναι ήδη ληξιπρόθεσμα — ο αριθμός δίπλα στην κεφαλίδα. */
 export function overdueCount(items: AgendaItem[]): number {
-  return items.filter(i => i.daysLeft != null && i.daysLeft < 0).length;
+  return items.filter(i => itemDue(i).overdue).length;
 }
 
 /** Η προθεσμία σε λέξεις. Ποτέ «σε -3 ημέρες». */
@@ -358,4 +363,12 @@ export function dueParts(daysLeft: number | null): DueParts {
   if (daysLeft === 0) return { value: null, unit: '', word: 'σήμερα', overdue: false };
   if (daysLeft === 1) return { value: null, unit: '', word: 'αύριο', overdue: false };
   return { value: daysLeft, unit: daysLeft === 1 ? 'ημέρα' : 'ημέρες', word: null, overdue: false };
+}
+
+// ΤΟ ΕΠΕΙΓΟΝ ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ ΓΡΑΦΕΤΑΙ «ΤΩΡΑ», ΤΑ ΥΠΟΛΟΙΠΑ ΜΕΝΟΥΝ ΚΕΝΑ. Κάθε
+// insight έβγαινε «χωρίς προθεσμία», ακόμη κι ο ληξιπρόθεσμος λογαριασμός:
+// η στήλη του χρόνου έλεγε το αντίθετο από τον τίτλο της γραμμής.
+export function itemDue(it: Pick<AgendaItem, 'daysLeft' | 'pastDue'>): DueParts {
+  if (it.daysLeft == null && it.pastDue) return { value: null, unit: '', word: 'τώρα', overdue: true };
+  return dueParts(it.daysLeft);
 }

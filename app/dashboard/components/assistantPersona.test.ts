@@ -30,6 +30,7 @@ import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 import { monthlyQuestionBudget, TRIAL_LIMITS } from '@/lib/billing/aiLimits';
 import { EARLY_ACCESS_DAYS } from '@/lib/billing/entitlements';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
+import { NAV_LABELS } from '@/lib/nav/labels';
 
 // Ο,ΤΙ ΦΤΑΝΕΙ ΣΤΟ ΜΟΝΤΕΛΟ, ΣΕ ΕΝΑ ΚΕΙΜΕΝΟ. Η παραγωγή στέλνει δύο μπλοκ και
 // τα κρατάει χωριστά για το cache. Οι έλεγχοι από κάτω ρωτούν «περιέχεται
@@ -269,7 +270,20 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
   ok('prompt: λέει το όνομα', p.includes(ASSISTANT_NAME));
   ok('prompt: το πλαίσιο του χρήστη', p.includes('Ενοίκιο: 600€'));
   ok('prompt: όλες οι καρτέλες', NAV_MAP.every(n => p.includes(n.label)));
-  ok('prompt: ζει στην Ελλάδα', /Παναθηναϊκός|Ολυμπιακός/.test(p));
+  ok('prompt: ζει στην Ελλάδα', /ποδόσφαιρο και μπάσκετ/.test(p));
+  // Κουβέντα ναι, σχόλια για πρόσωπα όχι: φήμη για υπαρκτό άνθρωπο από το
+  // στόμα της εφαρμογής είναι κίνδυνος δυσφήμισης και προσωπικά δεδομένα.
+  ok('prompt: δεν σχολιάζει πρόσωπα', /Δεν σχολιάζεις ιδιώτες ή δημόσια πρόσωπα/.test(p) && !/showbiz|κουτσομπολιά της/.test(p));
+  ok('prompt: χωρίς υπερθετικά για την εφαρμογή', !/κορυφαία|ΤΑ ΠΑΝΤΑ/.test(p));
+  // ΚΑΘΕ ΚΑΡΤΕΛΑ ΠΟΥ ΟΝΟΜΑΖΕΙ Η ΝΟΑ ΥΠΑΡΧΕΙ ΣΤΟ ΜΕΝΟΥ. Έλεγε «Αποδόσεις»,
+  // «Πελάτης», «Απογραφή» και «Αρχείο»: ο χρήστης έψαχνε όνομα που δεν
+  // είδε ποτέ. Το μόνο επιτρεπτό όνομα είναι του lib/nav/labels.ts.
+  const labels = new Set(Object.values(NAV_LABELS));
+  const named = [...p.matchAll(/(?<!παλιά )(?:καρτέλα|σελίδα)\s+«([^»]+)»/gu)].map(m => m[1]);
+  ok('prompt: ονομάζει καρτέλες', named.length > 5);
+  for (const n of named) ok(`prompt: η καρτέλα «${n}» υπάρχει στο μενού`, labels.has(n));
+  ok('prompt: κανένα παλιό όνομα καρτέλας',
+    !/(?:καρτέλα|καρτέλας|στην|στο)\s+«?(?:Πελάτης|Αποδόσεις|Απογραφή)|Το Αρχείο έχει/u.test(p));
   ok('prompt: παραπέμπει σε επαγγελματία', /δικηγόρος|λογιστ/.test(p));
 }
 // ΤΑΥΤΟΤΗΤΑ: ουδέτερο γένος, χωρίς άρθρο, χωρίς «είμαι AI» — και χωρίς να κρύβεται.
@@ -626,7 +640,7 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   ok('gating: honest if not needed', /Αν κάποιος δεν το χρειάζεται, πες το ειλικρινά/.test(p));
 
   // δωρεάν μήνες / comp μπορούν να καλύψουν την αναβάθμιση
-  ok('gating: free months cover it', /δωρεάν μήνες από το Πρόγραμμα Πρόσκλησης/.test(p) && /μπορούν να το καλύψουν/.test(p));
+  ok('gating: free months cover it', /δωρεάν μήνες από το Πρόγραμμα πρόσκλησης/.test(p) && /μπορούν να το καλύψουν/.test(p));
   ok('gating: partner comp mentioned', /ιδιότητα Συνεργάτη/.test(p));
 
   // routing στην ενότητα «Συνδρομή»

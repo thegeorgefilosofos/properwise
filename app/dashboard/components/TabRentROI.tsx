@@ -41,6 +41,7 @@ import { notifyError } from '@/components/Toast';
 import { INK_FAINT, INK_MUTED } from '@/lib/print/ink';
 import { failed, MSG } from '@/lib/core/dbError';
 import { InfoHint } from './InfoHint';
+import { fpSigned } from '@/lib/core/format';
 
 // Αντιστοίχιση περιοχής → πλησιέστερη αναφορά βραχυχρόνιας (τα δεδομένα ST είναι ανά
 // ευρύτερη ζώνη, όχι ανά προάστιο). Δίνει ρεαλιστικά defaults (πληρότητα/τιμή) ανά περιοχή.
@@ -506,7 +507,9 @@ function LeverCard({ lever }: { lever: YieldLever }) {
  * τέσσερις φορές χωρίς να προσθέτει τίποτα την τέταρτη.
  */
 const g4 = fixedCols(4, 12);
-const g4box = fixedCols(4, 12, 'stretch');
+// `fc-xs-2`: τέσσερα ποσοστά στο τηλέφωνο χωράνε δύο ανά σειρά, όπως οι δείκτες
+// της Βραχυχρόνιας· μία στήλη τα άπλωνε σε ολόκληρη οθόνη.
+const g4box = fixedCols(4, 12, 'stretch', 'fc-xs-2');
 
 // ── Διακόπτης παραδοχής (ναι/όχι), με το κείμενο του κανόνα από κάτω ─────────
 // ═══ ΔΕΥΤΕΡΟΣ ΔΙΑΚΟΠΤΗΣ ΓΙΑ ΤΗΝ ΙΔΙΑ ΔΟΥΛΕΙΑ ═══════════════════════════════
@@ -1317,7 +1320,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               Σε βραχυχρόνια η ετικέτα γινόταν σκέτο «Ενοίκιο μακροχρόνιας» και
               καθόταν δίπλα στα «Ετήσια έξοδα»: δύο πεδία, ένα με μονάδα και ένα
               χωρίς, ενώ το ποσό είναι μηνιαίο και πολλαπλασιάζεται επί δώδεκα. */}
-          <NumberInput label={term === 'short' ? 'Μηνιαίο ενοίκιο μακροχρόνιας' : 'Μηνιαίο ενοίκιο'} value={rent} onChange={setRent} suffix="€" />
+          {/* Στη βραχυχρόνια η μονάδα πάει στο επίθεμα: το «Μηνιαίο ενοίκιο
+              μακροχρόνιας» έπιανε δύο γραμμές δίπλα σε τρεις ετικέτες μίας. */}
+          <NumberInput label={term === 'short' ? 'Ενοίκιο μακροχρόνιας' : 'Μηνιαίο ενοίκιο'} value={rent} onChange={setRent} suffix={term === 'short' ? '€/μήνα' : '€'} />
           <NumberInput label="Ετήσια έξοδα" value={opex} onChange={v => { setOpex(v); setOpexYear(null); }} suffix="€" />
           <CustomSelect label="Περιοχή" value={region} onChange={setRegion} options={REGIONS.map((r, i) => ({ value: r.key, label: r.label, header: r.region !== REGIONS[i - 1]?.region ? r.region : undefined }))} />
         </div>
@@ -1371,16 +1376,16 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
             sub={consolidated ? `μερίδιο φόρου ${fe(annualTax)} τον χρόνο` : `φόρος ${fe(annualTax)} τον χρόνο`}
             tone="accent" info={<TermInfo text={consolidated ? `${G.after_tax_yield} ${CONSOLIDATION_NOTE}` : G.after_tax_yield} />} />
           {canInvest
-            ? <Tile label="Απόδοση ιδίων κεφαλαίων" value={fp(lev.cashOnCash)} sub={lev.cashOnCash >= 0 ? 'θετική μόχλευση' : (lev.positiveCarry ? 'θετική μόχλευση, αρνητική ροή' : 'αρνητική μόχλευση')} info={<TermInfo text={G.cash_on_cash} />} />
+            ? <Tile label="Απόδοση ιδίων κεφαλαίων" value={fpSigned(lev.cashOnCash)} sub={lev.cashOnCash >= 0 ? 'θετική μόχλευση' : (lev.positiveCarry ? 'θετική μόχλευση, αρνητική ροή' : 'αρνητική μόχλευση')} info={<TermInfo text={G.cash_on_cash} />} />
             : term === 'short'
               ? <Tile label="Τυπική βραχυχρόνια" value={fp(stRef.grossYield)} sub={reg?.region || 'Ελλάδα'} info={<TermInfo text={G.region_short_ref} />} />
-              : <Tile label="Μέσος όρος περιοχής" value={fp(reg?.grossYield || GREECE_AVG_GROSS_YIELD)} sub={reg?.region || 'Ελλάδα'} info={<TermInfo text={G.region_ref} />} />}
+              : <Tile label="Μέσος όρος περιοχής" value={fp(reg?.grossYield || GREECE_AVG_GROSS_YIELD)} sub={reg?.label || 'Ελλάδα'} info={<TermInfo text={G.region_ref} />} />}
         </div>
 
         {/* Βαθμός απόδοσης A–F */}
         <GradeCard grade={grade} note={term === 'short'
           ? `Σε σχέση με την τυπική βραχυχρόνια απόδοση της περιοχής, μετά τα λειτουργικά έξοδα και τον φόρο.`
-          : `Σε σχέση με τον μέσο όρο της περιοχής (${reg?.region || 'Ελλάδα'}, μεικτή ${fp(reg?.grossYield || GREECE_AVG_GROSS_YIELD)}), με βάση την καθαρή απόδοση και την ταμειακή ροή.`} />
+          : `Σε σχέση με τον μέσο όρο της περιοχής (${reg?.label || 'Ελλάδα'}, μεικτή ${fp(reg?.grossYield || GREECE_AVG_GROSS_YIELD)}), με βάση την καθαρή απόδοση και την ταμειακή ροή.`} />
 
         {/* 1) Η περιοχή σου */}
         <Section icon={<Landmark size={15} />} title="Η περιοχή σου" sub={`Σύγκριση με τα δεδομένα της αγοράς (${MARKET_DATA_ASOF})`} defaultOpen>
@@ -1854,16 +1859,19 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                 εστίασης του πληκτρολογίου. */}
             <div className="po-table-box po-fig-card" tabIndex={0}>
               <div className="po-scroll-x">
-                <table className="po-table tbl-fixed" style={{ '--tbl-min': '460px' }}>
+                {/* Η ΡΟΗ ΘΕΛΕΙ ΤΗ ΦΑΡΔΙΑ ΣΤΗΛΗ. Ενα αρνητικό ποσό τεσσάρων ψηφίων
+                    («−3.060,33€») δεν χωρούσε στα 100 εικονοστοιχεία του 21,8%
+                    και ξεχείλιζε, χάνοντας τη δεξιά στοίχιση με τις διπλανές. */}
+                <table className="po-table tbl-fixed" style={{ '--tbl-min': '480px' }}>
                   {/* Ο τίτλος γράφεται ήδη από το `Section` ακριβώς από πάνω:
                       ορατή ταινία τίτλου εδώ θα τον έλεγε δεύτερη φορά. Η λεζάντα
                       μένει για όποιον ακούει τον πίνακα αντί να τον βλέπει. */}
                   <caption className="sr-only">Ανάλυση ευαισθησίας</caption>
                   <colgroup>
-                    <col style={{ width: '34.8%' }} />
-                    <col style={{ width: '21.7%' }} />
-                    <col style={{ width: '21.7%' }} />
-                    <col style={{ width: '21.8%' }} />
+                    <col style={{ width: '32%' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '28%' }} />
                   </colgroup>
                   <thead>
                     <tr>
@@ -1931,12 +1939,12 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
             {!empty && (
               <div style={{ marginTop: 0, padding: '12px 14px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: SANS }}>Τέλη και φορολογία βραχυχρόνιας</span>
+                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: SANS }}>Τέλη βραχυχρόνιας, τον χρόνο</span>
                 </div>
                 <div {...fixedCols(2, 16, 'start')}>
                   <div>
                     <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: SANS, display: 'inline-flex', alignItems: 'center' }}>Τέλος ανθεκτικότητας (ΤΑΚΚ)<TermInfo text={G.takk} /></span>
-                    <p className="po-fig" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '3px 0 0', fontFamily: SANS, fontVariantNumeric: 'tabular-nums' }}>{fe(st.climateLevy)} τον χρόνο</p>
+                    <p className="po-fig" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '3px 0 0', fontFamily: SANS, fontVariantNumeric: 'tabular-nums' }}>{fe(st.climateLevy)}</p>
                     {/* ΤΟ ΠΟΣΟ ΕΙΝΑΙ ΤΟ ΙΔΙΟ, Η ΤΣΕΠΗ ΟΧΙ. Χωρίς αυτή τη γραμμή
                         ο ίδιος αριθμός διαβαζόταν ως κόστος του ιδιοκτήτη ακόμη
                         και όταν τον πληρώνει ο επισκέπτης. */}
@@ -1946,7 +1954,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                   </div>
                   <div>
                     <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: SANS, display: 'inline-flex', alignItems: 'center' }}>Τέλος παρεπιδημούντων<TermInfo text={G.transient_tax} /></span>
-                    <p className="po-fig" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '3px 0 0', fontFamily: SANS, fontVariantNumeric: 'tabular-nums' }}>{st.municipalTax > 0 ? `${fe(st.municipalTax)} τον χρόνο` : 'Εξαιρείται'}</p>
+                    <p className="po-fig" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '3px 0 0', fontFamily: SANS, fontVariantNumeric: 'tabular-nums' }}>{st.municipalTax > 0 ? fe(st.municipalTax) : 'Εξαιρείται'}</p>
                   </div>
                 </div>
                 {/* ═══ ΔΥΟ ΑΠΟ ΤΙΣ ΠΕΝΤΕ ΠΡΟΤΑΣΕΙΣ ΗΤΑΝ ΑΝΤΙΓΡΑΦΑ ΤΩΝ ΚΥΚΛΑΚΙΩΝ
@@ -1969,7 +1977,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                     Μένουν οι τρεις προτάσεις που δεν λέγονται πουθενά αλλού: το
                     κατώφλι της επιχειρηματικής δραστηριότητας, ο Αριθμός
                     Μητρώου Ακινήτων και το ποιος επιβεβαιώνει τα τελικά. */}
-                <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.55 }}>
+                <p style={{ margin: '10px 0 0', maxWidth: '72ch', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.55 }}>
                   {individualPerson ? 'Όταν η δραστηριότητα ξεπεράσει τα όρια (πολλά ακίνητα ή παροχή υπηρεσιών ξενοδοχειακού τύπου), θεωρείται επιχειρηματική και υπάγεται σε ΦΠΑ και στην κλίμακα του άρθρου 15· είναι θέμα του λογιστή.' : 'Ως νομικό πρόσωπο, τα έσοδα υπάγονται σε ΦΠΑ και εταιρική φορολογία, ενώ τα τέλη εκπίπτουν ως δαπάνες.'} Κάθε ακίνητο χρειάζεται Αριθμό Μητρώου Ακινήτων σε κάθε αγγελία. Οι τελικές υποχρεώσεις επιβεβαιώνονται με τον λογιστή ή την ΑΑΔΕ.
                 </p>
               </div>
@@ -2019,7 +2027,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           </div>
         </Section>
         {/* Μοχλοί μεγιστοποίησης — επαγγελματίας (πλήρες) / ιδιώτης (μόνο βασικά) */}
-        <Section icon={<Wallet size={15} />} title="Μοχλοί μεγιστοποίησης απόδοσης" sub={pro ? 'Συγκεκριμένες κινήσεις με μετρήσιμη επίδραση και κίνδυνο' : 'Απλές κινήσεις που αυξάνουν την καθαρή απόδοση'}>
+        <Section icon={<Wallet size={15} />} title="Τι ανεβάζει την απόδοση" sub={pro ? 'Συγκεκριμένες κινήσεις με μετρήσιμη επίδραση και κίνδυνο' : 'Απλές κινήσεις με μετρήσιμο αποτέλεσμα'}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {YIELD_LEVERS.filter(l => pro || l.audience === 'all').map(l => (
               <LeverCard key={l.key} lever={l} />

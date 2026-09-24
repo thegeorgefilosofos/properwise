@@ -31,7 +31,7 @@ import type { ChecklistItemsRow } from '@/lib/supabase/tables';
 // ΤΟ `rows` ΠΑΙΡΝΕΙ ΨΕΥΔΩΝΥΜΟ: το αρχείο ονομάζει ήδη `row`/`rows` τις
 // παραμέτρους των εγγραφών (`add`, `addMany`) και μια σκέτη εισαγωγή θα
 // σκιαζόταν μέσα τους.
-import { rows as readRows } from './read';
+import { read, rows as readRows, type ReadResult } from './read';
 
 const TABLE = 'checklist_items';
 
@@ -84,7 +84,14 @@ export async function upcoming<T = Partial<ChecklistItemsRow>>(
 export async function openOfUser<T = Partial<ChecklistItemsRow>>(
   db: Db, userId: string, columns: string,
 ): Promise<T[]> {
-  return readRows<T>(onlyOpen(db.from(TABLE).select(columns).eq('user_id', userId)));
+  return (await openOfUserWithError<T>(db, userId, columns)).rows;
+}
+
+/** Οι ίδιες εκκρεμότητες, με το σφάλμα ορατό (για τη συνδρομή ημερολογίου). */
+export async function openOfUserWithError<T = Partial<ChecklistItemsRow>>(
+  db: Db, userId: string, columns: string,
+): Promise<ReadResult<T>> {
+  return read<T>(onlyOpen(db.from(TABLE).select(columns).eq('user_id', userId)));
 }
 
 /** Κάθε εργασία του ακινήτου, με τη σειρά που τη βλέπει ο χρήστης. */

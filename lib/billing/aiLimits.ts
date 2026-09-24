@@ -39,6 +39,7 @@
 
 import { PLAN_ORDER, PLANS, type PlanId, type BillingCycle } from './plans';
 import { BLENDED_COST_USD } from '../assistant/model';
+import { ASSISTANT_ACC } from '../assistant/identity';
 
 export interface AiLimits {
   /** Αιτήματα ανά λεπτό — φράγμα κατάχρησης, όχι κόστους. Ίδιο για όλους. */
@@ -275,22 +276,27 @@ export const MAX_PER_MINUTE = PER_MINUTE;
 const isTopPlan = (plan: PlanId | string | null | undefined) =>
   String(plan) === 'agency' || String(plan) === 'office';
 
+// ΑΝΑΒΑΘΜΙΣΗ ΠΡΟΤΕΙΝΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΑΓΟΡΑΖΕΤΑΙ. Το `canBuy` είναι το `live` του
+// billingWords() (lib/legal/billingWords.ts), η ίδια συνθήκη που ανοίγει το
+// ταμείο. Όσο η χρέωση δεν τρέχει, «αναβαθμίζεις τώρα» στέλνει τον χρήστη σε
+// κουμπί που δεν υπάρχει· η προεπιλογή είναι λοιπόν η σιωπή.
+
 /** Μήνυμα όταν εξαντληθεί το ημερήσιο. Ποτέ κατηγορητήριο· πάντα με διέξοδο. */
-export function dailyExhaustedMessage(plan: PlanId | string | null | undefined): string {
+export function dailyExhaustedMessage(plan: PlanId | string | null | undefined, canBuy = false): string {
   const l = aiLimitsFor(plan);
   const base = `Έφτασες τις ${l.perDay} ερωτήσεις για σήμερα. Το όριο ανανεώνεται τα μεσάνυχτα.`;
-  return isTopPlan(plan)
-    ? `${base} Αν το χρειάζεσαι συστηματικά ψηλότερα, γράψε μας· το ρυθμίζουμε.`
-    : `${base} Με αναβάθμιση παίρνεις περισσότερες κάθε μέρα και μεγαλύτερο μηνιαίο πακέτο.`;
+  if (isTopPlan(plan)) return `${base} Αν το χρειάζεσαι συστηματικά ψηλότερα, γράψε μας· το ρυθμίζουμε.`;
+  return canBuy ? `${base} Με αναβάθμιση παίρνεις περισσότερες κάθε μέρα και μεγαλύτερο μηνιαίο όριο.` : base;
 }
 
 /** Μήνυμα όταν εξαντληθεί το μηνιαίο. */
-export function monthlyExhaustedMessage(plan: PlanId | string | null | undefined): string {
+export function monthlyExhaustedMessage(plan: PlanId | string | null | undefined, canBuy = false): string {
   const l = aiLimitsFor(plan);
   const base = `Χρησιμοποίησες και τις ${l.perMonth} ερωτήσεις του μήνα.`;
-  return isTopPlan(plan)
-    ? `${base} Γράψε μας και ανοίγουμε επιπλέον για τον μήνα· δεν σε αφήνουμε στη μέση.`
-    : `${base} Ανανεώνονται την 1η του επόμενου μήνα, ή αναβαθμίζεις τώρα και συνεχίζεις αμέσως.`;
+  if (isTopPlan(plan)) return `${base} Γράψε μας και ανοίγουμε επιπλέον για τον μήνα· δεν σε αφήνουμε στη μέση.`;
+  return canBuy
+    ? `${base} Ανανεώνονται την 1η του επόμενου μήνα, ή αναβαθμίζεις τώρα και συνεχίζεις αμέσως.`
+    : `${base} Ανανεώνονται την 1η του επόμενου μήνα.`;
 }
 
 /**
@@ -298,13 +304,14 @@ export function monthlyExhaustedMessage(plan: PlanId | string | null | undefined
  *
  * Αυτό είναι το πιο δύσκολο μήνυμα της εφαρμογής: ο χρήστης δεν έκανε τίποτα
  * λάθος και δεν έφταιξε ο ίδιος. Άρα δεν λέμε ούτε «υπέρβαση» ούτε «όριο»·
- * λέμε την αλήθεια — ο δωρεάν βοηθός πληρώνεται από τις συνδρομές και για
- * αυτόν τον μήνα το ποσό εξαντλήθηκε. Καμία ενοχή, καθαρή διέξοδος.
+ * λέμε την αλήθεια: οι ερωτήσεις χωρίς συνδρομή τελείωσαν για τον μήνα, πότε
+ * ξανανοίγουν και ότι η υπόλοιπη εφαρμογή δουλεύει. Καμία ενοχή, καθαρή
+ * διέξοδος· η συνδρομή αναφέρεται μόνο όταν αγοράζεται (`canBuy`).
  */
-export function poolExhaustedMessage(): string {
-  return 'Ο δωρεάν βοηθός πληρώνεται από τις συνδρομές και για αυτόν τον μήνα εξαντλήθηκε. '
-    + 'Ανοίγει ξανά την 1η του επόμενου μήνα. Αν τον χρειάζεσαι τώρα, οποιοδήποτε πληρωμένο '
-    + 'πλάνο τον ξεκλειδώνει αμέσως και όλα τα υπόλοιπα εργαλεία δουλεύουν κανονικά.';
+export function poolExhaustedMessage(canBuy = false): string {
+  return `Οι ερωτήσεις προς ${ASSISTANT_ACC} χωρίς συνδρομή τελείωσαν για αυτόν τον μήνα. `
+    + 'Ανοίγουν ξανά την 1η του επόμενου μήνα· οι υπόλοιπες ενότητες δουλεύουν κανονικά.'
+    + (canBuy ? ' Με συνδρομή συνεχίζεις αμέσως.' : '');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

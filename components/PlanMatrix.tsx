@@ -24,6 +24,8 @@ import { aiLimitsFor } from '@/lib/billing/aiLimits';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { FEATURE_LABEL, FEATURE_MIN_PLAN, planAtLeast, type Feature } from '@/lib/billing/entitlements';
 import { T, fn } from '@/components/tokens';
+import { fe } from '@/lib/core/format';
+import { Btn } from '@/components/Theme';
 
 export type ComparedPlan = Extract<PlanId, 'solo' | 'owner' | 'agency' | 'office'>;
 export const COMPARED: ComparedPlan[] = ['solo', 'owner', 'agency', 'office'];
@@ -58,13 +60,23 @@ const forAll = (label: string): FeatureRow => ({
   label, values: Object.fromEntries(COMPARED.map(p => [p, true])) as Record<ComparedPlan, CellValue>,
 });
 
+// ΟΙ ΤΙΜΕΣ ΜΠΗΚΑΝ ΣΤΟΝ ΠΙΝΑΚΑ, ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ. Η σελίδα /paketa απαντούσε
+// «τι παίρνω» χωρίς να λέει «πόσο»: ο επισκέπτης γύριζε στην αρχική για την
+// τιμή. Διαβάζονται από τα PLANS, όπως και οι κάρτες της αρχικής, οπότε δύο
+// σελίδες με τιμές δεν μπορούν να διαφωνήσουν.
+const priceRow = (label: string, of: (id: ComparedPlan) => number): FeatureRow => ({
+  label, values: Object.fromEntries(COMPARED.map(p => [p, fe(of(p))])) as Record<ComparedPlan, CellValue>,
+});
+
 export const MATRIX: FeatureRow[] = [
+  priceRow('Τιμή τον μήνα', id => PLANS[id].priceMonthly),
+  priceRow('Τιμή τον χρόνο', id => PLANS[id].priceAnnual),
   { label: 'Ακίνητα', values: Object.fromEntries(COMPARED.map(p => [p, limitLabel(p)])) as Record<ComparedPlan, CellValue> },
   { label: `Ερωτήσεις στη ${ASSISTANT_NAME} τον μήνα`,
     values: Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perMonth)])) as Record<ComparedPlan, CellValue> },
   forAll('Σάρωση εγγράφων και φωνητική καταχώρηση'),
   forAll('Αποδόσεις, δαπάνες, ενέργεια και φόρος 2026'),
-  forAll('Έξυπνες ειδοποιήσεις και υπενθυμίσεις'),
+  forAll('Ειδοποιήσεις και υπενθυμίσεις'),
   gated('e2_export'),
   gated('rent_collection'),
   gated('multi_property'),
@@ -77,6 +89,20 @@ export const MATRIX: FeatureRow[] = [
   gated('report_branding'),
   gated('investment_analysis'),
 ];
+
+// ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΑ ΚΟΙΝΑ ΛΕΓΟΝΤΑΙ ΜΙΑ ΦΟΡΑ. Τέσσερις κάρτες με όλες τις
+// γραμμές η καθεμιά έβγαζαν σελίδα 4.400 εικονοστοιχείων, με τις μισές γραμμές
+// να επαναλαμβάνουν το ίδιο τικ τέσσερις φορές. Οι γραμμές που ισχύουν για όλα
+// τα πακέτα πάνε σε μία κάρτα «Κοινά σε όλα» και κάθε πακέτο δείχνει μόνο όσα
+// το ξεχωρίζουν. Παράγεται από τα ίδια δεδομένα: αν μια γραμμή πάψει να είναι
+// κοινή, μετακομίζει μόνη της.
+const COMMON = MATRIX.filter(row => COMPARED.every(p => row.values[p] === true));
+const DISTINCT = MATRIX.filter(row => !COMMON.includes(row));
+
+/** Η ενέργεια κάθε στήλης: εγγραφή με το πακέτο ήδη επιλεγμένο, όπως στην αρχική. */
+const TrialCta = ({ id }: { id: ComparedPlan }) => (
+  <Btn variant="primary" href={`/signup?plan=${id}&cycle=monthly`}>Ξεκίνα τη δοκιμή</Btn>
+);
 
 function Tick() {
   return (
@@ -108,11 +134,22 @@ export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
         να αποκλίνουν. Καθεμιά είναι ορατή στον αναγνώστη οθόνης μόνο στο πλάτος
         της (η άλλη είναι `display:none`, άρα εκτός δέντρου προσβασιμότητας). */}
     <div className="plan-cmp-cards">
+      <section className="plan-card" aria-label="Κοινά σε όλα τα πακέτα">
+        <h3 className="plan-card-name">Κοινά σε όλα τα πακέτα</h3>
+        <dl className="plan-card-list">
+          {COMMON.map(row => (
+            <div key={row.label} className="plan-card-row">
+              <dt>{row.label}</dt>
+              <dd><Tick /><span className="sr-only">Ναι</span></dd>
+            </div>
+          ))}
+        </dl>
+      </section>
       {COMPARED.map(id => (
         <section key={id} className="plan-card" aria-label={PLANS[id].name}>
           <h3 className="plan-card-name" style={{ color: id === highlight ? 'var(--accent)' : undefined }}>{PLANS[id].name}</h3>
           <dl className="plan-card-list">
-            {MATRIX.map(row => {
+            {DISTINCT.map(row => {
               const v = row.values[id];
               return (
                 <div key={row.label} className="plan-card-row">
@@ -128,6 +165,7 @@ export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
               );
             })}
           </dl>
+          <div style={{ display: 'grid', padding: '8px 0' }}><TrialCta id={id} /></div>
         </section>
       ))}
     </div>
@@ -211,6 +249,12 @@ export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
                 })}
               </tr>
             ))}
+            <tr>
+              <th scope="row"><span className="sr-only">Εγγραφή</span></th>
+              {COMPARED.map(id => (
+                <td key={id} style={{ textAlign: 'center' }}><TrialCta id={id} /></td>
+              ))}
+            </tr>
           </tbody>
         </table>
       </div>

@@ -21,7 +21,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { BillsRow } from '@/lib/supabase/tables';
-import { rows, row } from './read';
+import { read, rows, row, type ReadResult } from './read';
 
 const TABLE = 'bills';
 
@@ -67,12 +67,24 @@ export async function ofProperties<T = Partial<BillsRow>>(
 /** Οι λογαριασμοί όλου του χαρτοφυλακίου. */
 export async function ofUser<T = Partial<BillsRow>>(
   db: Db, userId: string, columns: string,
+  opts: { unpaid?: boolean; dueFrom?: string; dueTo?: string } = {},
+): Promise<T[]> {
+  // ΕΝΑ ΜΟΝΟΠΑΤΙ: η απλή εκδοχή είναι η ίδια ανάγνωση, χωρίς το σφάλμα της.
+  return (await ofUserWithError<T>(db, userId, columns, opts)).rows;
+}
+
+/**
+ * Οι ίδιοι λογαριασμοί, με το σφάλμα ορατό. Η συνδρομή ημερολογίου το χρειάζεται:
+ * μια άδεια λίστα από βλάβη θα έσβηνε κάθε προθεσμία από το τηλέφωνο.
+ */
+export async function ofUserWithError<T = Partial<BillsRow>>(
+  db: Db, userId: string, columns: string,
   // ΤΟ ΦΙΛΤΡΟ ΑΝΗΚΕΙ ΣΤΗ ΒΑΣΗ, ΟΧΙ ΣΤΟΝ ΚΑΛΟΥΝΤΑ. Η συνδρομή ημερολογίου
   // ζητά μόνο όσα λήγουν μέσα σε ένα παράθυρο· χωρίς αυτά τα δύο ορίσματα θα
   // κατέβαζε ΚΑΘΕ λογαριασμό της ζωής του λογαριασμού σε κάθε ανανέωση, για να
   // πετάξει τους περισσότερους.
   opts: { unpaid?: boolean; dueFrom?: string; dueTo?: string } = {},
-): Promise<T[]> {
+): Promise<ReadResult<T>> {
   let q = db.from(TABLE).select(columns).eq('user_id', userId);
   // Ιδιος κανόνας με τις δόσεις ενοικίου: «απλήρωτο» σημαίνει «όχι πληρωμένο»,
   // και ένα NULL είναι όχι πληρωμένο. Εδώ η στήλη ΕΧΕΙ προεπιλογή `false`, αλλά
@@ -80,7 +92,7 @@ export async function ofUser<T = Partial<BillsRow>>(
   if (opts.unpaid) q = q.not('paid', 'is', true);
   if (opts.dueFrom) q = q.gte('due_date', opts.dueFrom);
   if (opts.dueTo) q = q.lte('due_date', opts.dueTo);
-  return rows<T>(q);
+  return read<T>(q);
 }
 
 /** Ένας λογαριασμός, με τις στήλες που ζητά ο καλών. */

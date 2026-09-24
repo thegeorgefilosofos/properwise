@@ -106,7 +106,7 @@ function ContractTile({ card, active, onOpen }: { card: ContractCard; active: bo
   // Η διατύπωση έρχεται από το lib/expenses/expected.ts, μία φορά.
   const period = card.everyMonths === 1 ? '' : cadenceLabel(card.everyMonths);
   const meta = card.known
-    ? [card.provider, period, `${card.occurrences} ${card.occurrences === 1 ? 'περίοδος' : 'περίοδοι'}`].filter(Boolean).join(' · ')
+    ? [card.provider, period, `από ${card.occurrences} ${card.occurrences === 1 ? 'λογαριασμό' : 'λογαριασμούς'}`].filter(Boolean).join(' · ')
     : CONTRACT_EMPTY_HINT[card.kind];
 
   return (
@@ -148,8 +148,8 @@ function ContractTile({ card, active, onOpen }: { card: ContractCard; active: bo
             στο μέγεθος του κειμένου, όχι σε κόκκινο. */}
         {card.monthly !== null && (
           /* ═══ ΤΟ «ΤΟΝ ΜΗΝΑ» ΔΕΝ ΕΙΝΑΙ ΠΕΡΙΤΤΟ, ΚΑΙ ΤΟ ΕΔΕΙΞΕ Η ΙΔΙΑ Η ΚΑΡΤΑ ═══
-             Το ποσό είναι ΑΝΑ ΜΗΝΑ και από κάτω του γράφεται «κάθε δίμηνο · 4
-             περίοδοι». Δύο γραμμές, η μία με νούμερο και η άλλη με περίοδο: ο
+             Το ποσό είναι ΑΝΑ ΜΗΝΑ και από κάτω του γράφεται «κάθε δίμηνο · από 4
+             λογαριασμούς». Δύο γραμμές, η μία με νούμερο και η άλλη με περίοδο: ο
              αναγνώστης διαβάζει «34,50€ κάθε δίμηνο», δηλαδή το μισό από την
              αλήθεια.
 

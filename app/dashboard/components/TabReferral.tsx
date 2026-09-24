@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { SITE } from '@/lib/core/site';
 import { downloadTableXlsx, csvDate } from './exportCsv';
@@ -8,6 +8,7 @@ import { drawQrToCanvas } from '@/lib/qr';
 import { T, TT, Badge, Btn, PageTitle, ExportButton, EmptyState, Modal, SkeletonKPIs, fn, fixedCols, pageShell, Bar } from '@/components/Theme';
 import { PLANS, TRIAL_DAYS, type PlanId } from '@/lib/billing/plans';
 import { UserPlus } from 'lucide-react';
+import { navLabel } from '@/lib/nav/labels';
 import {
   referralCode, referralLink, progress,
   individualReferrerReward,
@@ -20,10 +21,10 @@ import {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TabReferral — δύο ΞΕΧΩΡΙΣΤΑ προγράμματα ανά προφίλ:
-//  • Ιδιώτης  → «Πρόγραμμα Πρόσκλησης»  (κοινωνικό, αξία ανά φίλο). Ο τρόπος
+//  • Ιδιώτης  → «Πρόγραμμα πρόσκλησης»  (κοινωνικό, αξία ανά φίλο). Ο τρόπος
 //    χρήσης λέγεται «Ιδιώτης»· το ΠΑΚΕΤΟ που κερδίζει λέγεται «Ιδιοκτήτης» και
 //    το όνομά του διαβάζεται πάντα από το PLANS, ποτέ γραμμένο στο χέρι εδώ.
-//  • Επαγγελματίας → «Πρόγραμμα Συνεργατών» (milestones συνδρομητών + ιδιότητα
+//  • Επαγγελματίας → «Πρόγραμμα συνεργατών» (milestones συνδρομητών + ιδιότητα
 //    Συνεργάτη). Καθένας βλέπει ΜΟΝΟ ό,τι τον αφορά.
 //
 // ΤΡΕΙΣ ΔΙΟΡΘΩΣΕΙΣ ΠΟΥ ΑΛΛΑΖΟΥΝ ΤΟ ΝΟΗΜΑ ΤΗΣ ΟΘΟΝΗΣ
@@ -147,8 +148,8 @@ const REWARD_REASON: Record<string, string> = {
 };
 const rewardReason = (reason: string) => REWARD_REASON[reason] || 'Μπόνους';
 const rewardTitle = (r: Reward) => r.kind === 'slot'
-  ? `1 δωρεάν ακίνητο για ${moAcc(r.months)}`
-  : `${moNom(r.months)} ${r.tier === 'agency' ? PLANS.agency.nameGen : PLANS.solo.nameGen} δωρεάν`;
+  ? `1 ακίνητο χωρίς χρέωση για ${moAcc(r.months)}`
+  : `${moNom(r.months)} ${r.tier === 'agency' ? PLANS.agency.nameGen : PLANS.solo.nameGen} χωρίς χρέωση`;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΚΑΡΤΑ ΜΗΝΙΑΙΟΥ ΣΤΟΧΟΥ — ΟΡΙΖΕΤΑΙ ΕΞΩ ΑΠΟ ΤΟ COMPONENT
@@ -245,9 +246,6 @@ function Milestone({ title, icon, count, target, unit, kind, rewardTitle, claimS
     );
   }
 
-/** Ο τομέας δεν αλλάζει όσο είναι ανοιχτή η σελίδα: καμία συνδρομή. */
-const ORIGIN_NEVER_CHANGES = () => () => {};
-
 export default function TabReferral({ userId, plan = 'free', profileType }: {
   userId: string; plan?: string; profileType: 'individual' | 'professional';
 }) {
@@ -278,14 +276,13 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
   const [list, setList] = useState<Referee[]>([]);
   const [standing, setStanding] = useState(0);
   const [claim, setClaim] = useState<Record<string, 'idle' | 'saving' | 'done' | 'error'>>({});
-  // Η ΔΙΕΥΘΥΝΣΗ ΤΟΥ ΙΣΤΟΤΟΠΟΥ ΔΕΝ ΕΙΝΑΙ ΚΑΤΑΣΤΑΣΗ. Ήταν κατάσταση με προεπιλογή
-  // και effect που την αντικαθιστούσε μετά την πρώτη απόδοση: ο σύνδεσμος
-  // πρόσκλησης εμφανιζόταν στιγμιαία με λάθος τομέα και ένα γρήγορο πάτημα
-  // «Αντιγραφή» τον έπαιρνε λάθος. Ο διακομιστής δηλώνει τη δική του τιμή.
-  const origin = useSyncExternalStore(ORIGIN_NEVER_CHANGES, () => window.location.origin, () => SITE);
-
+  // Η ΔΙΕΥΘΥΝΣΗ ΤΟΥ ΣΥΝΔΕΣΜΟΥ ΕΙΝΑΙ Η ΕΠΙΣΗΜΗ, ΟΧΙ ΤΟΥ ΠΑΡΑΘΥΡΟΥ. Διαβαζόταν
+  // από το `window.location.origin`, δηλαδή από όπου έτυχε να είναι ανοιχτή η
+  // εφαρμογή (προεπισκόπηση, δεύτερος τομέας, ακόμη και «file:»). Αυτήν
+  // αντέγραφε και μοίραζε ο χρήστης. Το SITE είναι ίδιο σε διακομιστή και
+  // περιηγητή, άρα ούτε στιγμιαίος λάθος τομέας στην πρώτη απόδοση.
   const code = useMemo(() => referralCode(userId), [userId]);
-  const link = useMemo(() => referralLink(origin, userId), [origin, userId]);
+  const link = useMemo(() => referralLink(SITE, userId), [userId]);
   const isPro = profileType === 'professional';
   // QR κώδικας συνδέσμου: σχεδιάζεται τοπικά στη συσκευή όταν ανοίξει το modal.
   useEffect(() => {
@@ -355,10 +352,14 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
   // δοκιμή, όπως κάθε νέος λογαριασμός. Η `refereeWelcome` και οι σταθερές
   // `REFEREE_*` σβήστηκαν από το lib/referral στο ίδιο πέρασμα: όσο έμεναν,
   // διαβάζονταν ως κανόνας που απλώς δεν είχε συνδεθεί ακόμη.
-  const friendGift = `${TRIAL_DAYS} ημέρες δωρεάν δοκιμή`;
+  //
+  // ΚΑΙ Η ΔΟΚΙΜΗ ΔΕΝ ΕΙΝΑΙ ΚΕΡΔΟΣ ΤΗΣ ΣΥΣΤΑΣΗΣ. Το «με τον σύνδεσμό μου
+  // κερδίζεις» την παρουσίαζε ως δώρο του συνδέσμου· τη δοκιμή την έχει όποιος
+  // γραφτεί, με ή χωρίς σύνδεσμο. Λέγεται ως αυτό που είναι: η αρχή.
+  const friendStart = `Ξεκινάς με δοκιμή ${TRIAL_DAYS} ημερών`;
   const invite = isPro
-    ? `Για το ακίνητό σου, σου προτείνω το PROPERWISE. Κρατάει τα οικονομικά σου σε τάξη και ετοιμάζει σωστά τα στοιχεία για τη φορολογική σου δήλωση, ώστε να μην τρέχεις εσύ. Με τον σύνδεσμό μου κερδίζεις ${friendGift}: ${link}`
-    : `Οργανώνω το ακίνητό μου με το PROPERWISE και μου έλυσε τα χέρια: σαρώνω λογαριασμούς, βλέπω φόρους και αποδόσεις, όλα σε ένα. Ρίξε του μια ματιά. Με τον σύνδεσμό μου κερδίζεις ${friendGift}: ${link}`;
+    ? `Για το ακίνητό σου, σου προτείνω το PROPERWISE. Κρατάει τα οικονομικά σου σε τάξη και ετοιμάζει σωστά τα στοιχεία για τη φορολογική σου δήλωση, ώστε να μην τρέχεις εσύ. ${friendStart}: ${link}`
+    : `Οργανώνω το ακίνητό μου με το PROPERWISE και μου έλυσε τα χέρια: σαρώνω λογαριασμούς, βλέπω φόρους και αποδόσεις, όλα σε ένα. Ρίξε του μια ματιά. ${friendStart}: ${link}`;
 
   const copy = async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ } };
   const copyMsg = async () => { try { await navigator.clipboard.writeText(invite); setMsgCopied(true); setTimeout(() => setMsgCopied(false), 1800); } catch { /* ignore */ } };
@@ -412,7 +413,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
     ? [
         { n: '1', t: 'Στέλνεις τον σύνδεσμο', d: 'Στους ιδιοκτήτες που έχεις πελάτες.', d2: 'M22 2 11 13|M22 2 15 22l-4-9-9-4z' },
         { n: '2', t: 'Ο νέος ιδιοκτήτης ξεκινά', d: 'Ένα ακίνητο, ένα σαρωμένο έγγραφο.', d2: 'M22 11.08V12a10 10 0 1 1-5.93-9.14|M22 4 12 14.01l-3-3' },
-        { n: '3', t: 'Παίρνεις πίσω τη συνδρομή σου', d: 'Δωρεάν μήνες Επαγγελματία.', d2: 'M23 6l-9.5 9.5-5-5L1 18|M17 6h6v6' },
+        { n: '3', t: 'Παίρνεις πίσω τη συνδρομή σου', d: `Μήνες ${PLANS.agency.nameGen} χωρίς χρέωση.`, d2: 'M23 6l-9.5 9.5-5-5L1 18|M17 6h6v6' },
       ]
     : [
         { n: '1', t: 'Στέλνεις τον σύνδεσμο', d: 'Σε έναν ιδιοκτήτη ακινήτου.', d2: 'M22 2 11 13|M22 2 15 22l-4-9-9-4z' },
@@ -479,10 +480,10 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
             Και το όνομα γραφόταν «PROPERWISE», σε έντεκα σημεία, ενώ σε άλλα
             εκατόν ένα γράφεται «PROPERWISE». */}
         <PageTitle
-          over={isPro ? 'PROPERWISE · Πρόγραμμα Συνεργατών' : 'PROPERWISE · Πρόγραμμα Πρόσκλησης'}
+          over={isPro ? 'PROPERWISE · Πρόγραμμα συνεργατών' : `PROPERWISE · ${navLabel('referral')}`}
           title={isPro ? 'Προσκάλεσε τους πελάτες σου. Πάρε τον ίδιο φάκελο από όλους.' : 'Ξέρεις κι άλλον ιδιοκτήτη;'}
           lede={isPro
-            ? 'Κάθε ιδιοκτήτης που προσκαλείς φτάνει σε εσένα με τον ίδιο φάκελο, στην ίδια δομή, με ονόματα αρχείων που δεν αλλάζουν από χρόνο σε χρόνο. Εσύ σταματάς να κυνηγάς έγγραφα τον Ιούνιο και κερδίζεις δωρεάν μήνες Επαγγελματία.'
+            ? `Κάθε ιδιοκτήτης που προσκαλείς φτάνει σε εσένα με τον ίδιο φάκελο, στην ίδια δομή, με ονόματα αρχείων που δεν αλλάζουν από χρόνο σε χρόνο. Εσύ σταματάς να κυνηγάς έγγραφα τον Ιούνιο και κερδίζεις μήνες ${PLANS.agency.nameGen} χωρίς χρέωση.`
             : 'Δείξε του πώς να βάλει το ακίνητό του σε τάξη. Με κάθε ιδιοκτήτη που ξεκινά, κερδίζεις μία θέση ακινήτου για έναν μήνα.'} />
         {(standing > 0 || social >= 8) && (
           <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
@@ -517,7 +518,11 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div className="ref-linkbox" style={{ flex: 1, minWidth: 240, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '0 14px', height: T.h.lg, boxSizing: 'border-box', boxShadow: 'var(--well-inset)' }}>
             <Ic d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1|M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" s={15} c="var(--text-tertiary)" />
-            <span style={{ ...TT.body, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{link}</span>
+            {/* Ο ΣΥΝΔΕΣΜΟΣ ΣΠΑΕΙ, ΔΕΝ ΚΟΒΕΤΑΙ. Με την κανονική διεύθυνση του ιστότοπου
+                δεν χωρά σε μία γραμμή τηλεφώνου και τα αποσιωπητικά έκρυβαν
+                ακριβώς τον κωδικό. Το «https://» φεύγει από την προβολή, όχι
+                από ό,τι αντιγράφεται. */}
+            <span style={{ ...TT.body, color: 'var(--text-secondary)', minWidth: 0, overflowWrap: 'anywhere' }}>{link.replace(/^https?:\/\//, '')}</span>
           </div>
           {/* ΤΟ 44 ΗΤΑΝ ΓΡΑΜΜΕΝΟ ΩΜΟ ΚΑΙ ΔΕΝ ΤΑΙΡΙΑΖΕ ΜΕ ΤΙΠΟΤΑ. Το `size="lg"` του
               κουμπιού δίνει `T.h.lg`, που είναι 40 στο ποντίκι — όχι 44. Ο σαρωτής
@@ -650,7 +655,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
             <Milestone title="Συνδρομητές, σε οποιοδήποτε πακέτο"
               icon="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z|M23 21v-2a4 4 0 0 0-3-3.9|M16 3.1a4 4 0 0 1 0 7.8"
               count={stats?.m_paid ?? 0} target={PRO_PAID_TARGET} kind="pro_paid"
-              rewardTitle={`+${moNom(PRO_PAID_BONUS_MONTHS)} συνδρομής δωρεάν`} claimState={claim.pro_paid || 'idle'} onClaim={doClaim} />
+              rewardTitle={`+${moNom(PRO_PAID_BONUS_MONTHS)} συνδρομής χωρίς χρέωση`} claimState={claim.pro_paid || 'idle'} onClaim={doClaim} />
           </div>
 
           {/* ── Συνεργάτης: Η ΙΔΙΑ ΚΑΡΤΑ ΜΕ ΤΟΝ ΣΤΟΧΟ ΤΟΥ ΜΗΝΑ ──────────────────
@@ -665,7 +670,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
             <Milestone title="Μήνες με πιασμένο τον στόχο"
               icon="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z|M8 21h8"
               count={streak} target={STREAK_TARGET_MONTHS} unit="μήνες" deadline={false}
-              rewardTitle={partner ? 'Είσαι Συνεργάτης PROPERWISE' : 'Ιδιότητα Συνεργάτη'}
+              rewardTitle={partner ? 'Είσαι συνεργάτης PROPERWISE' : 'Ιδιότητα συνεργάτη'}
               note={partner
                 ? 'Ενεργή ιδιότητα.'
                 : `Πιάσε τον στόχο των ${PRO_PAID_TARGET} συνδρομητών ${STREAK_TARGET_MONTHS} συνεχόμενους μήνες.`}>
@@ -677,7 +682,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                   // το αποδίδει. Δύο πηγές για το ίδιο νούμερο έχουν ήδη διαφωνήσει
                   // δύο φορές σε αυτό το αρχείο.
                   `${moNom(PARTNER_WELCOME_MONTHS)} ${PLANS[partnerWelcomeTier(plan)].name} δώρο, μόλις την αποκτήσεις`,
-                  `Κάθε μήνας που πιάνει τον στόχο χαρίζει ${moAcc(PARTNER_MONTHLY_FREE_MONTHS)} δωρεάν`,
+                  `Κάθε μήνας που πιάνει τον στόχο δίνει ${moAcc(PARTNER_MONTHLY_FREE_MONTHS)} συνδρομής χωρίς χρέωση`,
                   'Προτεραιότητα σε νέες κυκλοφορίες και αναβαθμίσεις',
                 ].map((t, i) => (
                   <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -696,7 +701,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                 <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 12px', borderRadius: T.radius.inner, background: 'color-mix(in srgb, var(--warning) 9%, transparent)', border: '1px solid color-mix(in srgb, var(--warning) 26%, transparent)' }}>
                   <span className="po-lead-ico" style={{ color: 'var(--warning)' }}><Ic d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z|M12 9v4|M12 17h.01" s={15} /></span>
                   <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    {d === 1 ? 'Ο μήνας κλείνει αύριο.' : `Ο μήνας κλείνει σε ${d} ημέρες.`} {r === 1 ? 'Σου λείπει ένας συνδρομητής' : `Σου λείπουν ${r} συνδρομητές`} {partner ? 'για να εξασφαλίσεις τον δωρεάν μήνα.' : 'για να διατηρήσεις τους συνεχόμενους μήνες σου.'}
+                    {d === 1 ? 'Ο μήνας κλείνει αύριο.' : `Ο μήνας κλείνει σε ${d} ημέρες.`} {r === 1 ? 'Σου λείπει ένας συνδρομητής' : `Σου λείπουν ${r} συνδρομητές`} {partner ? 'για να εξασφαλίσεις τον μήνα χωρίς χρέωση.' : 'για να διατηρήσεις τους συνεχόμενους μήνες σου.'}
                   </span>
                 </div>
               );
@@ -850,7 +855,10 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
           κλειδώνει και σε τι πληρώνεται. */}
       <p style={{ ...TT.caption, lineHeight: 1.6 }}>
         Η ανταμοιβή κλειδώνει μόλις ο φίλος σου προσθέσει {ACTIVATION_MIN_PROPERTIES === 1 ? 'ένα ακίνητο' : `${ACTIVATION_MIN_PROPERTIES} ακίνητα`} και σαρώσει {ACTIVATION_MIN_DOCUMENTS === 1 ? 'ένα έγγραφο' : `${ACTIVATION_MIN_DOCUMENTS} έγγραφα`}.
-        {' '}Πάντα σε δωρεάν μήνες ή ακίνητα στη συνδρομή σου, ποτέ σε μετρητά.
+        {' '}Πάντα σε μήνες συνδρομής ή θέσεις ακινήτων, ποτέ σε μετρητά.
+        {/* Οι στόχοι του μήνα και η ιδιότητα συνεργάτη έχουν όρια και ανταμοιβές
+            που δεσμεύουν: γράφονται στους Όρους και η οθόνη δείχνει πού. */}
+        {' '}<a href="/terms#systaseis" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>Όροι προγράμματος</a>
       </p>
 
       {(list.length > 0 || rewards.length > 0) && (

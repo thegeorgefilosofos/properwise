@@ -53,7 +53,7 @@ import {
   addMemory, removeMemory, clearMemories, actionReachable,
 } from './assistantPersona';
 import {
-  ASSISTANT_NAME, tagline, askCta, askPlaceholder, openAria, aiDisclosure,
+  ASSISTANT_NAME, ASSISTANT_ACC, tagline, askCta, askPlaceholder, openAria, aiDisclosure,
   speakingLabel, settingsTitle, noKeyNotice,
 } from '@/lib/assistant/identity';
 import { classifyExpense } from '@/lib/expenses/classify';
@@ -861,19 +861,21 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     }
     const link = buildReachLink(c, a.channel, a.text);
     if (link.url) {
-      const how = a.channel === 'call' ? `να καλέσεις τον/την «${c.name}»`
-        : a.channel === 'email' ? `να ανοίξει το email προς τον/την «${c.name}»`
-          : `να ανοίξει το ${a.channel === 'viber' ? 'Viber' : 'WhatsApp'} προς τον/την «${c.name}»`;
-      setMsgs(m => [...m, { role: 'assistant', text: `Πάτησε ${how}. Το μήνυμα δεν φεύγει μόνο του, ανοίγει η εφαρμογή για να το στείλεις εσύ.`, action: { type: 'reach', name: c.name, channel: a.channel, text: a.text } }]);
+      // ΚΑΝΕΝΑ «τον/την». Το φύλο της επαφής δεν το ξέρουμε· η διατύπωση
+      // ονομάζει το κανάλι και την επαφή, όχι το άρθρο της.
+      const how = a.channel === 'call' ? 'κλήση'
+        : a.channel === 'email' ? 'email'
+          : a.channel === 'viber' ? 'Viber' : 'WhatsApp';
+      setMsgs(m => [...m, { role: 'assistant', text: `Πάτησε για ${how}: «${c.name}». Το μήνυμα δεν φεύγει μόνο του, ανοίγει η εφαρμογή για να το στείλεις εσύ.`, action: { type: 'reach', name: c.name, channel: a.channel, text: a.text } }]);
       return;
     }
     // Λείπει το απαραίτητο στοιχείο για το κανάλι — πρότεινε διαθέσιμη εναλλακτική.
     if (link.need === 'phone') {
-      if (c.email) setMsgs(m => [...m, { role: 'assistant', text: `Ο/Η «${c.name}» δεν έχει αποθηκευμένο τηλέφωνο για ${CH_HUMAN[a.channel]}. Έχει όμως email, να το ετοιμάσω;`, action: { type: 'reach', name: c.name, channel: 'email', text: a.text } }]);
-      else setMsgs(m => [...m, { role: 'assistant', text: `Ο/Η «${c.name}» δεν έχει αποθηκευμένο τηλέφωνο ούτε email. Πρόσθεσε στοιχεία επικοινωνίας στις Επαφές.`, action: { type: 'go', tab: 'contacts' } }]);
+      if (c.email) setMsgs(m => [...m, { role: 'assistant', text: `Η επαφή «${c.name}» δεν έχει αποθηκευμένο τηλέφωνο για ${CH_HUMAN[a.channel]}. Έχει όμως email, να το ετοιμάσω;`, action: { type: 'reach', name: c.name, channel: 'email', text: a.text } }]);
+      else setMsgs(m => [...m, { role: 'assistant', text: `Η επαφή «${c.name}» δεν έχει αποθηκευμένο τηλέφωνο ούτε email. Πρόσθεσε στοιχεία επικοινωνίας στις Επαφές.`, action: { type: 'go', tab: 'contacts' } }]);
     } else {
-      if (c.phone) setMsgs(m => [...m, { role: 'assistant', text: `Ο/Η «${c.name}» δεν έχει αποθηκευμένο email. Έχει τηλέφωνο, να ανοίξω WhatsApp αντ’ αυτού;`, action: { type: 'reach', name: c.name, channel: 'whatsapp', text: a.text } }]);
-      else setMsgs(m => [...m, { role: 'assistant', text: `Ο/Η «${c.name}» δεν έχει αποθηκευμένο email ούτε τηλέφωνο. Πρόσθεσε στοιχεία επικοινωνίας στις Επαφές.`, action: { type: 'go', tab: 'contacts' } }]);
+      if (c.phone) setMsgs(m => [...m, { role: 'assistant', text: `Η επαφή «${c.name}» δεν έχει αποθηκευμένο email. Έχει τηλέφωνο, να ανοίξω WhatsApp αντ’ αυτού;`, action: { type: 'reach', name: c.name, channel: 'whatsapp', text: a.text } }]);
+      else setMsgs(m => [...m, { role: 'assistant', text: `Η επαφή «${c.name}» δεν έχει αποθηκευμένο email ούτε τηλέφωνο. Πρόσθεσε στοιχεία επικοινωνίας στις Επαφές.`, action: { type: 'go', tab: 'contacts' } }]);
     }
   };
 
@@ -1007,7 +1009,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       if (data?.token) {
         const url = checkinLink.checkinUrl(data.token);
         try { await navigator.clipboard.writeText(url); } catch { /* το εμφανίζουμε ούτως ή άλλως */ }
-        setMsgs(m => [...m, { role: 'assistant', text: `Έτοιμο. Αντέγραψα τον σύνδεσμο check-in για τον/την «${c.name}». Στείλ’ τον στον επισκέπτη σε WhatsApp ή Viber:\n${url}`, action: { type: 'go', tab: 'clients' } }]);
+        setMsgs(m => [...m, { role: 'assistant', text: `Έτοιμο. Αντέγραψα τον σύνδεσμο check-in για «${c.name}». Στείλ’ τον στον επισκέπτη σε WhatsApp ή Viber:\n${url}`, action: { type: 'go', tab: 'clients' } }]);
       } else throw new Error('no token');
     } catch {
       setMsgs(m => [...m, { role: 'assistant', text: `Δεν μπόρεσα να φτιάξω τον σύνδεσμο τώρα. Δοκίμασε από την καρτέλα του πελάτη στους ${navLabel('clients')}.`, action: { type: 'go', tab: 'clients' } }]);
@@ -1023,7 +1025,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         phone: phone || null, email: null, notes: null,
       });
       if (error) throw new Error(error.message ?? 'Σφάλμα βάσης');
-      setMsgs(m => [...m, { role: 'assistant', text: `Την κράτησα. Πρόσθεσα τον/την «${name}»${phone ? ` (${phone})` : ''} στις Επαφές του ακινήτου. Θέλεις να ανοίξω τις Επαφές για να προσθέσεις κι άλλα;`, action: { type: 'go', tab: 'contacts' } }]);
+      setMsgs(m => [...m, { role: 'assistant', text: `Την κράτησα. Πρόσθεσα την επαφή «${name}»${phone ? ` (${phone})` : ''} στις Επαφές του ακινήτου. Θέλεις να ανοίξω τις Επαφές για να προσθέσεις κι άλλα;`, action: { type: 'go', tab: 'contacts' } }]);
     } catch {
       setMsgs(m => [...m, { role: 'assistant', text: 'Δεν μπόρεσα να αποθηκεύσω την επαφή τώρα. Δοκίμασε ξανά ή πρόσθεσέ την από την καρτέλα Επαφές.' }]);
     }
@@ -1095,7 +1097,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       }));
       setClientsStr('');
       loadContext();
-      setMsgs(m => [...m, { role: 'assistant', text: `Τον καταχώρησα. Πρόσθεσα τον/την «${a.name}»${a.phone ? ` (${a.phone})` : ''} στους ${navLabel('clients')} ως ${CLIENT_TYPE_LABELS[ctype]}. Θέλεις να ανοίξω την καρτέλα για να συμπληρώσεις κι άλλα στοιχεία;`, action: { type: 'go', tab: 'clients' } }]);
+      setMsgs(m => [...m, { role: 'assistant', text: `Έγινε η καταχώρηση. Πρόσθεσα «${a.name}»${a.phone ? ` (${a.phone})` : ''} στους ${navLabel('clients')} ως ${CLIENT_TYPE_LABELS[ctype]}. Θέλεις να ανοίξω την καρτέλα για να συμπληρώσεις κι άλλα στοιχεία;`, action: { type: 'go', tab: 'clients' } }]);
     } catch {
       setMsgs(m => [...m, { role: 'assistant', text: `Δεν μπόρεσα να αποθηκεύσω τον πελάτη τώρα. Δοκίμασε ξανά ή πρόσθεσέ τον από την καρτέλα ${navLabel('clients')}.` }]);
     }
@@ -1404,6 +1406,9 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   const greeting = buildGreeting(ASSISTANT_NAME, openerCtx, prefs.formal);
   // Όλα τα σταθερά κείμενα βγαίνουν από την ταυτότητα — κανένα δεν γράφεται εδώ.
   const cta = askCta(prefs.formal);
+  // Η ίδια προσφώνηση με την υπόλοιπη συνομιλία: ενικός, εκτός αν ο χρήστης
+  // διάλεξε πληθυντικό ευγενείας.
+  const dragHint = prefs.formal ? 'Σύρετε για να το μετακινήσετε' : 'Σύρε για να το μετακινήσεις';
   const placeholder = askPlaceholder(prefs.formal);
 
   // ── Μετακίνηση του κουμπιού (σύρσιμο) ώστε να μην εμποδίζει το περιεχόμενο ──
@@ -1596,7 +1601,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       {!open && !overlayOpen && (
         <div className="pa-fab-wrap" style={fabFixed} data-scrolled={scrolled ? '1' : undefined}>
           <button ref={fabRef} className="pa-fab" onPointerDown={startFabDrag} onClick={fabToggle(true)}
-            aria-label={openAria()} title="Σύρετε για μετακίνηση"
+            aria-label={openAria()} title={dragHint}
             style={{ cursor: dragging ? 'grabbing' : 'pointer' }}>
             <span className="pa-mark" aria-hidden><AssistantMark size={18} /></span>
             <span className="pa-fab-cta">{cta}</span>
@@ -1605,7 +1610,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         </div>
       )}
       {open && (
-        <button ref={fabRef} className="pa-fab pa-fab-close" onPointerDown={startFabDrag} onClick={fabToggle(false)} aria-label="Κλείσιμο" title="Σύρετε για μετακίνηση" style={{ ...fabFixed, cursor: dragging ? 'grabbing' : 'pointer' }}>
+        <button ref={fabRef} className="pa-fab pa-fab-close" onPointerDown={startFabDrag} onClick={fabToggle(false)} aria-label="Κλείσιμο" title={dragHint} style={{ ...fabFixed, cursor: dragging ? 'grabbing' : 'pointer' }}>
           <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
         </button>
       )}
@@ -1663,7 +1668,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
           ) : (
             <>
               {/* Σώμα */}
-              <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* ΖΩΝΤΑΝΗ ΠΕΡΙΟΧΗ. Χωρίς αυτήν, όποιος ακούει την οθόνη έστελνε
+                  ερώτηση και δεν άκουγε ποτέ την απάντηση. Το `log` διαβάζει
+                  μόνο ό,τι ΠΡΟΣΤΙΘΕΤΑΙ: κάθε νέο μήνυμα και την ένδειξη ότι
+                  Νόα γράφει, όχι ξανά ολόκληρη τη συνομιλία. */}
+              <div ref={scrollRef} role="log" aria-live="polite" aria-relevant="additions" aria-label={`Συνομιλία με ${ASSISTANT_ACC}`} style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Η ΠΡΩΤΗ ΟΘΟΝΗ. Ο χαιρετισμός ΔΕΝ είναι συννεφάκι συνομιλίας: είναι
                     δήλωση για το τι βλέπει αυτή τη στιγμή στο ακίνητό σου, άρα διαβάζεται
                     σαν κείμενο και όχι σαν μήνυμα. Από κάτω, οι ερωτήσεις-εκκίνησης σε
@@ -1762,7 +1771,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     </button>
                   </div>
                 )}
-                {busy && <div style={{ display: 'flex', gap: 4, padding: '4px 2px' }}>{[0, 1, 2].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)', animation: `pa-bounce 1s ${i * 0.15}s infinite ease-in-out` }} />)}</div>}
+                {busy && <div style={{ display: 'flex', gap: 4, padding: '4px 2px' }}><span className="sr-only">{ASSISTANT_NAME} γράφει…</span>{[0, 1, 2].map(i => <span key={i} aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)', animation: `pa-bounce 1s ${i * 0.15}s infinite ease-in-out` }} />)}</div>}
                 {/* Το κουτί του σφάλματος μετρά 332 εικονοστοιχεία: πάνελ 390,
                     μείον 32 το γέμισμα του σώματος, μείον 26 το δικό του. Το μήνυμα
                     του κλειδιού είναι 126 χαρακτήρες στα 12 — τρεις γραμμές με

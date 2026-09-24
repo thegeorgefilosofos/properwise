@@ -18,7 +18,7 @@ import { notifyError } from '@/components/Toast'
 import { failed, MSG } from '@/lib/core/dbError'
 import { uploadPath } from '@/lib/core/uploadPath'
 import { uploadUserScoped } from '@/lib/storage/scopedUpload'
-import { INVENTORY_CATEGORIES, CONDITIONS, ENERGY_CLASSES, type InventoryItem } from './model'
+import { INVENTORY_CATEGORIES, CONDITIONS, ENERGY_CLASSES, inventoryLabel, type InventoryItem } from './model'
 import { blankIfZero, calcCurrentValue, calcDepreciationPct, calcYearsLeft } from './calc'
 import { DOCS_BUCKET, openInventoryDoc } from './storage'
 import { Field, RoomInput, SectionLabel, labelStyle } from './Bits'
@@ -258,7 +258,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
           <TextInput ariaLabel={fl('inv.name')} value={form.name||''} onChange={v=>set('name',v)} placeholder="Παράδειγμα: Πλυντήριο Ρούχων Bosch WAU28"/>
         </Field>
         <Field d={f('inv.category')}>
-          <CustomSelect ariaLabel="Κατηγορία" value={form.category||'Λοιπά'} onChange={v=>set('category',v)} options={[...INVENTORY_CATEGORIES].map(c=>({value:c,label:c}))}/>
+          <CustomSelect ariaLabel="Κατηγορία" value={form.category||'Λοιπά'} onChange={v=>set('category',v)} options={[...INVENTORY_CATEGORIES].map(c=>({value:c,label:inventoryLabel(c)}))}/>
         </Field>
       </>)}
       <div style={{...formGrid(200, 270),gap:12}}>

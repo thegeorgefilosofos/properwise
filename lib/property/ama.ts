@@ -107,12 +107,20 @@ export function amaSummary<T extends AmaRow>(rows: T[]): AmaSummary<T> {
   return { missing, unconfirmed, ok, shortTermCount: missing.length + unconfirmed.length + ok.length, worst };
 }
 
+/**
+ * Ο αριθμός των απενεργοποιήσεων, ΜΙΑ φορά και με την πηγή του ορατή. Ζούσε
+ * γραμμένος σε δύο οθόνες, με την πηγή μόνο σε σχόλιο: ο χρήστης διάβαζε ένα
+ * στατιστικό χωρίς να μάθει ποτέ από πού βγήκε.
+ */
+export const AMA_DEACTIVATIONS =
+  'Το 2025 στάλθηκαν 12.145 καταχωρήσεις για απενεργοποίηση επειδή ο ΑΜΑ έλειπε ή ήταν άκυρος (στοιχεία ΑΑΔΕ).';
+
 /** Το κείμενο της γραμμής, ίδιο σε «Πελάτες» και «Τιμολόγηση». */
 export const AMA_COPY: Record<Exclude<AmaState, 'not_required'>, { title: string; body: string; tone: 'negative' | 'warning' | 'positive' }> = {
   missing: {
     title: 'Λείπει ο ΑΜΑ',
     tone: 'negative',
-    body: 'Το ακίνητο είναι σε βραχυχρόνια μίσθωση, άρα χρειάζεται Αριθμό Μητρώου Ακινήτου από το Μητρώο Ακινήτων Βραχυχρόνιας Διαμονής (myAADE). Το 2025 στάλθηκαν 12.145 καταχωρήσεις για απενεργοποίηση επειδή ο ΑΜΑ έλειπε ή ήταν άκυρος.',
+    body: `Το ακίνητο είναι σε βραχυχρόνια μίσθωση, άρα χρειάζεται Αριθμό Μητρώου Ακινήτου από το Μητρώο Ακινήτων Βραχυχρόνιας Διαμονής (myAADE). ${AMA_DEACTIVATIONS}`,
   },
   unconfirmed: {
     title: 'Ο ΑΜΑ δηλώθηκε· αναγράφεται στην αγγελία;',

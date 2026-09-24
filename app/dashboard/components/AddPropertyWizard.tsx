@@ -9,7 +9,7 @@ import * as properties from '@/lib/data/properties';
 import * as billing from '@/lib/data/billing';
 import { T, fe, fn, fp, fd, fixedCols, ABSENT, Modal, TT, Btn, ChipToggle } from '@/components/Theme';
 import { CustomSelect, DatePicker } from './UIComponents';
-import { cleanAma, isValidAmaFormat, amaLengthLooksUnusual } from '@/lib/property/ama';
+import { cleanAma, isValidAmaFormat, amaLengthLooksUnusual, AMA_DEACTIVATIONS } from '@/lib/property/ama';
 import { ATAK_SOURCE, atakDigits } from '@/lib/property/atak';
 import { STATUSES, BY_KEY, readStatus, writeStatus, type PropertyStatus } from '@/lib/property/status';
 import { PROPERTY_TYPES, propertyTypeLabel } from '@/lib/property/types';
@@ -65,6 +65,9 @@ interface FormRow { id: string; span: 'auto' | 'full'; node: React.ReactNode; la
 
 /** Η ετικέτα όπως τη γράφει το μητρώο. Αγνωστο id → το ίδιο το id, ώστε να φαίνεται. */
 const labelOf = (id: string) => PROPERTY_FIELDS.find(f => f.id === id)?.label ?? id;
+/** Πρώτο γράμμα μικρό μέσα σε πρόταση, εκτός από αρκτικόλεξο: το «ΑΦΜ» μένει «ΑΦΜ». */
+const inSentence = (label: string) =>
+  /^\p{Lu}{2}/u.test(label) ? label : label.charAt(0).toLocaleLowerCase('el') + label.slice(1);
 
 // ── property_settings (χωριστός πίνακας, keyed by property_id) ───────────────
 // Ίδια πεδία/ετικέτες με την καρτέλα «Ρυθμίσεις» (TabSettings).
@@ -113,6 +116,8 @@ function TypeIcon({ type }: { type: string }) {
 }
 
 const num = (s: string) => { const v = parseFloat(s.replace(',', '.')); return isNaN(v) ? null : v; };
+/** Ποσοστό ιδιοκτησίας όπως το έγραψε ο χρήστης: «100%», όχι «100,00%». */
+const share = (v: number) => `${fn(v, Number.isInteger(v) ? 0 : 2)}%`;
 
 // ── Στυλ inputs (ίδιο look με το υπάρχον modal) ─────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -224,8 +229,8 @@ const grid3: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repe
  * Μια γραμμή της φόρμας: ταυτότητα πεδίου, πλάτος και το ίδιο το χειριστήριο.
  *
  * Η ΕΤΙΚΕΤΑ ΕΡΧΕΤΑΙ ΑΠΟ ΤΟ ΜΗΤΡΩΟ, εκτός αν το πεδίο αλλάζει όνομα ανάλογα με
- * την περίπτωση: το «Εμβαδόν» γίνεται «Εμβαδόν Οικοπέδου» και το «Στόχος
- * Ενοικίου» γίνεται «Τιμή ανά διανυκτέρευση». Σε αυτές τις περιπτώσεις η οθόνη
+ * την περίπτωση: το «Εμβαδόν» γίνεται «Εμβαδόν οικοπέδου» και ο «Στόχος
+ * ενοικίου» γίνεται «Μέσο μηνιαίο έσοδο». Σε αυτές τις περιπτώσεις η οθόνη
  * περνά τη δική της, γιατί το μητρώο κρατά τον ΛΟΓΟ του πεδίου και όχι τη
  * διατύπωση της στιγμής.
  */
@@ -286,7 +291,8 @@ function StepBody({ rows, place, after }: {
             {/* Η ΚΛΕΙΣΤΗ ΚΕΦΑΛΙΔΑ ΛΕΕΙ ΤΙ ΚΡΥΒΕΙ. Το σκέτο «Περισσότερα»
                 υποχρεώνει σε άνοιγμα για να μάθει ο χρήστης αν τον αφορά. */}
             <span style={{ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)' }}>
-              {open ? 'Λιγότερα' : `Περισσότερα: ${more.slice(0, 3).map(r => (r.label ?? labelOf(r.id)).toLowerCase()).join(', ')}${more.length > 3 ? ` και ${more.length - 3} ακόμη` : ''}`}
+              {/* Το όνομα του μητρώου και όχι της φόρμας: χωρίς «(%)» και «(€)». */}
+              {open ? 'Λιγότερα' : `Περισσότερα: ${more.slice(0, 3).map(r => inSentence(labelOf(r.id))).join(', ')}${more.length > 3 ? ` και ${more.length - 3} ακόμη` : ''}`}
             </span>
           </button>
           {open && <div style={grid2}>{more.map(cell)}</div>}
@@ -311,13 +317,19 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
   const [propType, setPropType] = useState(existing?.prop_type || 'apartment');
   // ΜΙΑ κατάσταση, στο λεξιλόγιο της εφαρμογής. Η μετάφραση προς τις δύο
   // στήλες της βάσης γίνεται από το `writeStatus`, που τις γράφει ΜΑΖΙ.
-  const [statusKey, setStatusKey] = useState<PropertyStatus>(existing ? readStatus(existing) : 'vacant');
+  //
+  // ΚΑΜΙΑ ΠΡΟΕΠΙΛΟΓΗ ΣΕ ΝΕΟ ΑΚΙΝΗΤΟ. Ηταν «Κενό» φωτισμένο από την αρχή, οπότε
+  // ένα γρήγορο «Συνέχεια» έγραφε λάθος κατάσταση. Η κατάσταση κρίνει καρτέλες
+  // και φορολογία. Το πρώτο βήμα δεν προχωρά χωρίς επιλογή (`canNext`).
+  const [statusKey, setStatusKey] = useState<PropertyStatus | null>(existing ? readStatus(existing) : null);
+  // Από το δεύτερο βήμα και μετά η επιλογή υπάρχει πάντα· το «vacant» εδώ μόνο
+  // ικανοποιεί τον τύπο και δεν φτάνει ποτέ στη βάση.
+  const status: PropertyStatus = statusKey ?? 'vacant';
   // Η βραχυχρόνια ΔΕΝ είναι πια ξεχωριστός διακόπτης: είναι μία από τις επτά καταστάσεις.
   const airbnb = statusKey === 'rent_short';
   // ΑΜΑ: πεδίο ΤΟΥ ΑΚΙΝΗΤΟΥ, ζητούμενο τη στιγμή που η κατάσταση γίνεται
   // βραχυχρόνια — όχι κρυμμένο σε accordion άλλης καρτέλας πίσω από τρίτο
-  // διακόπτη. Το 2025 στάλθηκαν 12.145 καταχωρήσεις για απενεργοποίηση επειδή
-  // ο ΑΜΑ έλειπε ή ήταν άκυρος.
+  // διακόπτη (βλ. AMA_DEACTIVATIONS).
   const [ama, setAma] = useState(cleanAma(existing?.ama || ''));
 
   const [name, setName] = useState(existing?.name || '');
@@ -418,7 +430,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
   const ownershipN = num(ownership);
   const isShared = ownershipN != null && ownershipN > 0 && ownershipN < 100;
   // Airbnb ⇒ status seasonal
-  const dbStatus = writeStatus(statusKey);
+  const dbStatus = writeStatus(status);
 
   const valueN = num(value);
   // Η αντικειμενική αξία τροφοδοτεί την προεπισκόπηση απόδοσης όταν λείπει η εμπορική
@@ -428,10 +440,13 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
   const annualRent = rentN != null ? rentN * 12 : null;
   const grossYield = (annualRent != null && effValueN != null && effValueN > 0) ? (annualRent / effValueN) * 100 : null;
 
-  const rentLabel = airbnb ? 'Μέσο μηνιαίο έσοδο (€)' : 'Στόχος Ενοικίου (€/μήνα)';
-  const sqmLabel = propType === 'land' ? 'Εμβαδόν Οικοπέδου (τ.μ.)' : 'Εμβαδόν (τ.μ.)';
+  const rentLabel = airbnb ? 'Μέσο μηνιαίο έσοδο (€)' : 'Στόχος ενοικίου (€/μήνα)';
+  const sqmLabel = propType === 'land' ? 'Εμβαδόν οικοπέδου (τ.μ.)' : 'Εμβαδόν (τ.μ.)';
 
-  const canNext = step === 0 ? !!propType : step === 1 ? !!name.trim() : true;
+  const canNext = step === 0 ? !!propType && statusKey !== null : step === 1 ? !!name.trim() : true;
+  // Οι ομάδες επιλογών του πρώτου βήματος ονομάζονται από τον τίτλο τους.
+  const typeGroupId = useId();
+  const statusGroupId = useId();
 
   const save = async () => {
     if (!name.trim()) { setStep(1); return; }
@@ -526,7 +541,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
   // ζει αλλού.
   // ══════════════════════════════════════════════════════════════════════════
   const fieldCtx: FieldContext = {
-    status: statusKey,
+    status,
     business: false,
     doubleEntry: false,
     // ΕΝΑ, ΚΑΙ ΟΧΙ ΑΠΟ ΑΓΝΟΙΑ. Το πλήθος ακινήτων κρίνει ΜΟΝΟ την ενοποίηση
@@ -559,7 +574,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
     // εστίαση και δεν κλείδωνε την κύλιση του φόντου· και το «✕» του ήταν
     // 36×36 με radius 18, δηλαδή τέταρτο σχήμα κλεισίματος στην ίδια εφαρμογή.
     <Modal open onClose={requestClose} size="md"
-      ariaLabel="Προσθήκη ακινήτου"
+      ariaLabel={isEdit ? 'Επεξεργασία ακινήτου' : 'Νέο ακίνητο'}
       // Ο ΥΠΟΤΙΤΛΟΣ ΕΛΕΓΕ «Βήμα 1 από 5 · Τύπος» ΚΑΙ ΑΠΟ ΚΑΤΩ Η ΡΑΓΑ ΤΟ ΙΔΙΟ.
       // Πέντε κύκλοι με αριθμό, πέντε ονόματα βημάτων, τσεκ σε ό,τι τελείωσε
       // και φωτισμένο το τρέχον: η ράγα λέει ΠΕΡΙΣΣΟΤΕΡΑ από τη φράση και τη
@@ -590,13 +605,15 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
             «μισό» ακίνητο — υπάρχει ακίνητο με λιγότερα συμπληρωμένα.
             ══════════════════════════════════════════════════════════════ */}
         {step > 0 && step < STEPS.length - 1 && (
-          <Btn variant="secondary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit ? 'Αποθήκευση' : 'Αποθήκευση τώρα'}</Btn>
+          <Btn variant="secondary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit ? 'Αποθήκευση' : <><span className="lp-hide-xs">Αποθήκευση τώρα</span><span className="lp-only-xs">Αποθήκευση</span></>}</Btn>
         )}
 
         {step < STEPS.length - 1 ? (
           <Btn variant="primary" size="lg" onClick={() => canNext && goStep(s => s + 1)} disabled={!canNext}>Συνέχεια</Btn>
         ) : (
-          <Btn variant="primary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit ? 'Αποθήκευση αλλαγών' : 'Προσθήκη ακινήτου'}</Btn>
+          <Btn variant="primary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit
+            ? <><span className="lp-hide-xs">Αποθήκευση αλλαγών</span><span className="lp-only-xs">Αποθήκευση</span></>
+            : <><span className="lp-hide-xs">Προσθήκη ακινήτου</span><span className="lp-only-xs">Προσθήκη</span></>}</Btn>
         )}
       </>}>
 
@@ -659,13 +676,13 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
       {step === 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
-            <label style={labelStyle}>Τύπος ακινήτου</label>
+            <div id={typeGroupId} style={labelStyle}>Τύπος ακινήτου</div>
             {/* ΟΛΑ ΤΑ ΠΛΑΚΙΔΙΑ ΙΣΑ, ΚΑΙ ΟΤΑΝ ΤΟ ΟΝΟΜΑ ΠΙΑΝΕΙ ΔΥΟ ΣΕΙΡΕΣ.
                 Στα 360 η «Επαγγελματική αποθήκη» και η «Αποθήκη πολυκατοικίας»
                 τυλίγονται, οπότε η γραμμή τους μετρήθηκε 94 ενώ οι υπόλοιπες
                 80: τρία διαφορετικά ύψη στην ίδια οθόνη. Το `1fr` στις γραμμές
                 δίνει σε όλες το ύψος της ψηλότερης. */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gridAutoRows: '1fr', gap: 10 }}>
+            <div role="group" aria-labelledby={typeGroupId} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gridAutoRows: '1fr', gap: 10 }}>
               {PROPERTY_TYPES.map(t => {
                 const sel = propType === t;
                 return (
@@ -686,7 +703,8 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
           </div>
 
           <div>
-            <label style={labelStyle}>Κατάσταση</label>
+            <div id={statusGroupId} style={labelStyle}>Κατάσταση</div>
+            <p id={`${statusGroupId}-hint`} style={{ ...TT.caption, margin: '0 0 8px' }}>Διάλεξε μία. Αλλάζει όποτε θέλεις.</p>
             {/* ΕΠΤΑ ΕΠΙΛΟΓΕΣ, ΙΔΙΕΣ ΑΚΡΙΒΩΣ ΜΕ ΤΗΝ ΚΕΦΑΛΙΔΑ ΤΟΥ ΑΚΙΝΗΤΟΥ.
                 Η κάθε μία φέρει και την επεξήγησή της, όπως στο μενού: η
                 διαφορά μακροχρόνιας και βραχυχρόνιας δεν είναι προφανής από
@@ -719,7 +737,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
                 );
               };
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div role="group" aria-labelledby={statusGroupId} aria-describedby={`${statusGroupId}-hint`} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {tile(STATUSES[0])}
                   <div {...fixedCols(3, 8, 'stretch')}>{STATUSES.slice(1).map(tile)}</div>
                 </div>
@@ -756,7 +774,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
               <div style={{ fontFamily: T.font.sans, fontSize: 12, color: amaLengthLooksUnusual(ama) ? 'var(--warning)' : 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
                 {amaLengthLooksUnusual(ama)
                   ? `Ο αριθμός έχει ${ama.length} ψηφία, που είναι ασυνήθιστο. Έλεγξέ τον στο myAADE πριν συνεχίσεις.`
-                  : 'Ο ΑΜΑ πρέπει να αναγράφεται σε κάθε καταχώρηση σε Airbnb και Booking. Το 2025 στάλθηκαν 12.145 καταχωρήσεις για απενεργοποίηση επειδή έλειπε ή ήταν άκυρος.'}
+                  : `Ο ΑΜΑ πρέπει να αναγράφεται σε κάθε καταχώρηση σε Airbnb και Booking. ${AMA_DEACTIVATIONS}`}
               </div>
             </div>
           )}
@@ -805,7 +823,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
             row('prop.bedrooms', 'auto',
               <input style={monoInputStyle} type="number" min={0} value={bedrooms} onChange={e => setBedrooms(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
             row('prop.postal_code', 'auto',
-              <input style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} inputMode="numeric" placeholder="10000" onFocus={onFocus} onBlur={onBlur} />, 'Ταχ. Κώδικας'),
+              <input style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} inputMode="numeric" placeholder="10000" onFocus={onFocus} onBlur={onBlur} />),
             row('prop.floor', 'auto',
               <CustomSelect ariaLabel="Όροφος" value={floor} onChange={setFloor} placeholder="Επίλεξε" options={FLOOR_OPTS.map(f => ({ value: f, label: f }))} />),
             row('prop.year_built', 'auto',
@@ -875,7 +893,9 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
           για να υπάρξει το ακίνητο: τα στοιχεία του ιδιοκτήτη έρχονται ήδη
           συμπληρωμένα από το προφίλ και οι πάροχοι γράφονται μόνοι τους με την
           πρώτη σάρωση λογαριασμού. Το βήμα μένει επειδή ο οδηγός είναι ο μόνος
-          τους επεξεργαστής, όχι επειδή ζητά κάτι από την πρώτη μέρα. */}
+          τους επεξεργαστής, όχι επειδή ζητά κάτι από την πρώτη μέρα. Και γι'
+          αυτό τα πεδία φαίνονται κατευθείαν: το StepBody δεν κλείνει βήμα που
+          δεν έχει τίποτα άλλο να δείξει. */}
       {step === 3 && (
         <StepBody
           place={place}
@@ -930,37 +950,42 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
               <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{propertyTypeLabel(propType)}{address.trim() ? ` · ${address.trim()}` : ''}</div>
             </div>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, height: 28, padding: '0 12px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', fontFamily: T.font.sans, fontSize: 12, fontWeight: 500, color: STATUS_COLORS[dbStatus.status_detail] }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS_COLORS[dbStatus.status_detail] }} />{BY_KEY[statusKey].label}
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS_COLORS[dbStatus.status_detail] }} />{BY_KEY[status].label}
             </span>
           </div>
 
           <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, overflow: 'hidden' }}>
+            {/* ΤΟ ΚΕΝΟ ΠΕΔΙΟ ΛΕΓΕΤΑΙ «ΔΕΝ ΕΧΕΙ ΟΡΙΣΤΕΙ», ΟΧΙ ΜΗΔΕΝ. Η σύνοψη έγραφε
+                «0,00€» αξία και «0,00%» μεικτή απόδοση για πεδία που η βάση
+                αποθηκεύει κενά: αριθμοί που δεν είπε κανείς. Η τρίτη θέση κάθε
+                γραμμής λέει αν η τιμή είναι αριθμός, οπότε μόνο τότε παίρνει τη
+                γραμματοσειρά των αριθμών. */}
             {([
               ['Τύπος', propertyTypeLabel(propType)],
-              ['Κατάσταση', BY_KEY[statusKey].label],
+              ['Κατάσταση', BY_KEY[status].label],
               airbnb ? ['Βραχυχρόνια μίσθωση', 'Ναι (Airbnb / Booking)'] : null,
               ['Διεύθυνση', address.trim() || ABSENT],
-              postalCode.trim() ? ['Ταχ. Κώδικας', postalCode.trim()] : null,
-              atak.trim() ? ['ΑΤΑΚ', atak.trim()] : null,
-              [propType === 'land' ? 'Εμβαδόν Οικοπέδου' : 'Εμβαδόν', num(sqm) != null ? `${fn(num(sqm)!)} τ.μ.` : `${fn(0)}τ.μ.`],
+              postalCode.trim() ? [labelOf('prop.postal_code'), postalCode.trim(), true] : null,
+              atak.trim() ? ['ΑΤΑΚ', atak.trim(), true] : null,
+              [propType === 'land' ? 'Εμβαδόν οικοπέδου' : 'Εμβαδόν', num(sqm) != null ? `${fn(num(sqm)!)} τ.μ.` : ABSENT, true],
               isLandLike ? null : ['Όροφος', floor.trim() || ABSENT],
-              isLandLike ? null : ['Έτος Κατασκευής', yearBuilt.trim() || ABSENT],
-              isLandLike ? null : (peaClass ? ['Ενεργειακή Κλάση', peaClass] : null),
+              isLandLike ? null : [labelOf('prop.year_built'), yearBuilt.trim() || ABSENT, true],
+              isLandLike ? null : (peaClass ? [labelOf('prop.pea'), peaClass] : null),
               isLandLike ? null : (heating ? ['Θέρμανση', heatingLabel(heating)] : null),
-              isLandLike ? null : (parking.trim() ? ['Θέσεις Στάθμευσης', parking.trim()] : null),
-              isLandLike ? null : (num(storageSqm) != null ? ['Αποθήκη', `${fn(num(storageSqm)!)} τ.μ.`] : null),
-              ['Εμπορική Αξία', valueN != null ? fe(valueN) : fe(0)],
-              num(objValue) != null ? ['Αντικειμενική Αξία', fe(num(objValue)!)] : null,
-              num(enfia) != null ? ['ΕΝΦΙΑ που πληρώνεις', `${fe(num(enfia)!)} / έτος`] : null,
-              ['Τιμή Αγοράς', num(purchasePrice) != null ? fe(num(purchasePrice)!) : fe(0)],
-              purchaseDate ? ['Ημερομηνία Αγοράς', fd(purchaseDate)] : null,
-              [airbnb ? 'Μέσο μηνιαίο έσοδο' : 'Στόχος Ενοικίου', `${fe(rentN ?? 0)} / μήνα`],
-              ['Ποσοστό Ιδιοκτησίας', `${fn(num(ownership) ?? 100, 2)}%`],
-              ['Εκτιμώμενη μεικτή απόδοση', grossYield != null ? `${fp(grossYield)}` : fp(0)],
-            ].filter(Boolean) as [string, string][]).map(([k, v], i) => (
+              isLandLike ? null : (parking.trim() ? [labelOf('prop.parking'), parking.trim(), true] : null),
+              isLandLike ? null : (num(storageSqm) != null ? ['Αποθήκη', `${fn(num(storageSqm)!)} τ.μ.`, true] : null),
+              [labelOf('prop.value'), valueN != null ? fe(valueN) : ABSENT, true],
+              num(objValue) != null ? [labelOf('prop.obj_value'), fe(num(objValue)!), true] : null,
+              num(enfia) != null ? ['ΕΝΦΙΑ που πληρώνεις', `${fe(num(enfia)!)} / έτος`, true] : null,
+              [labelOf('prop.purchase_price'), num(purchasePrice) != null ? fe(num(purchasePrice)!) : ABSENT, true],
+              purchaseDate ? [labelOf('prop.purchase_date'), fd(purchaseDate)] : null,
+              [airbnb ? 'Μέσο μηνιαίο έσοδο' : 'Στόχος ενοικίου', rentN != null ? `${fe(rentN)} / μήνα` : ABSENT, true],
+              [labelOf('prop.ownership'), share(ownershipN ?? 100), true],
+              ['Εκτιμώμενη μεικτή απόδοση', grossYield != null ? fp(grossYield) : ABSENT, true],
+            ].filter(Boolean) as [string, string, boolean?][]).map(([k, v, numeric], i) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
                 <span title={k === 'ΑΤΑΚ' ? 'Αριθμός Ταυτότητας Ακινήτου (από το Ε9)' : k === 'ΕΝΦΙΑ που πληρώνεις' ? 'Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων, ετήσιος. Σε συνιδιοκτησία, το δικό σου μερίδιο.' : undefined} style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', letterSpacing: '0.25px' }}>{k}</span>
-                <span style={{ fontFamily: k === 'Τύπος' || k === 'Κατάσταση' || k === 'Διεύθυνση' || k === 'Βραχυχρόνια μίσθωση' || k === 'Θέρμανση' || k === 'Ενεργειακή Κλάση' || k === 'Ημερομηνία Αγοράς' ? "'Inter', sans-serif" : "'Roboto Mono', monospace", fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{v}</span>
+                <span style={{ fontFamily: numeric && v !== ABSENT ? T.font.mono : T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{v}</span>
               </div>
             ))}
           </div>

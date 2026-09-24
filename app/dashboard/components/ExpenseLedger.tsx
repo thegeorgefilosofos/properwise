@@ -39,7 +39,7 @@ import { notify, notifyError } from '@/components/toastBus';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import { saved } from '@/components/dbWrite';
 import {
-  mergeLedger, ledgerTotal, groupByMonth, openMonths, NO_TITLE,
+  mergeLedger, ledgerTotal, groupByMonth, openMonths, NO_TITLE, entryName,
   type LedgerEntry, type LedgerBill, type LedgerExpense,
 } from '@/lib/expenses/ledger';
 import { parseExclusions, countsIn, setCounts, type ExclusionMap } from '@/lib/expenses/exclusions';
@@ -53,8 +53,8 @@ import * as hintStore from '@/lib/data/categoryHints';
 import { PAID_BY_OPTIONS, SHARED_SCOPES, DEFAULT_SHARE_PERCENT } from '@/lib/expenses/sharing';
 import { CustomSelect, DatePicker, Toggle } from './UIComponents';
 import { InfoHint } from './InfoHint';
-import { athensToday, athensMonth } from '@/lib/core/time';
-import { monthYearLabel } from '@/lib/core/months';
+import { athensToday, athensMonth, daysUntil } from '@/lib/core/time';
+import { monthYearLabel, monthGen } from '@/lib/core/months';
 import { afmDigits, isValidAfm, parseAmount } from '@/lib/core/greek';
 
 interface Props {
@@ -90,15 +90,17 @@ const shortDate = (d: string): string => {
   return sameYear ? `${day}/${m}` : `${day}/${m}/${y.slice(2)}`;
 };
 
-/** «σε 4 μέρες», «σήμερα», «πριν 3 μέρες». Ο χρήστης μετρά σε μέρες, όχι σε ημερομηνίες. */
+/**
+ * «σε 4 ημέρες», «σήμερα», «πριν 3 ημέρες». Ο χρήστης μετρά σε ημέρες, όχι σε
+ * ημερομηνίες. Ελληνική ημέρα και η λέξη «ημέρες», όπως το ταμείο και η
+ * ατζέντα: με την ώρα του περιηγητή, η ίδια προθεσμία έπεφτε μία ημέρα αλλού.
+ */
 const dueText = (due: string): { text: string; late: boolean } => {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const d = new Date(due + 'T00:00:00');
-  const days = Math.round((d.getTime() - today.getTime()) / 86400000);
-  if (days < 0) return { text: days === -1 ? 'πέρασε χθες' : `πέρασε πριν ${-days} μέρες`, late: true };
+  const days = daysUntil(due) ?? 0;
+  if (days < 0) return { text: days === -1 ? 'πέρασε χθες' : `πέρασε πριν ${-days} ημέρες`, late: true };
   if (days === 0) return { text: 'λήγει σήμερα', late: true };
   if (days === 1) return { text: 'λήγει αύριο', late: false };
-  return { text: `λήγει σε ${days} μέρες`, late: false };
+  return { text: `λήγει σε ${days} ημέρες`, late: false };
 };
 
 /**
@@ -334,6 +336,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   const monthTotal = useMemo(
     () => ledgerTotal(entries.filter(e => e.date.startsWith(thisMonth) && countsIn(excl, e))), [entries, thisMonth, excl]);
   const unpaid = useMemo(() => entries.filter(e => !e.paid), [entries]);
+  const monthUnpaid = useMemo(() => unpaid.filter(e => e.date.startsWith(thisMonth)).length, [unpaid, thisMonth]);
   const unpaidTotal = useMemo(() => ledgerTotal(unpaid), [unpaid]);
   // ═══ Η ΧΡΟΝΙΑ ΕΒΓΑΙΝΕ ΑΠΟ ΤΟ ΡΟΛΟΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ, Ο ΜΗΝΑΣ ΑΠΟ ΤΗΝ ΑΘΗΝΑ.
   // Δύο πηγές χρόνου στην ίδια σειρά τριών πλακιδίων. Την παραμονή της
@@ -377,7 +380,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
     if (!e.expenseId) return;
     if (!await confirmDialog({
       title: `Διαγραφή δαπάνης ${fe(e.amount)};`,
-      message: `«${e.title || NO_TITLE}» της ${shortDate(e.date)}.\nΗ γραμμή φεύγει οριστικά από τον Προϋπολογισμό, τη Λογιστική και τον φάκελο του λογιστή. Δεν αναιρείται.`,
+      message: `«${entryName(e)}» της ${shortDate(e.date)}.\nΗ γραμμή φεύγει οριστικά από τον Προϋπολογισμό, τη Λογιστική και τον φάκελο του λογιστή. Δεν αναιρείται.`,
       confirmLabel: 'Διαγραφή',
       tone: 'negative',
     })) return;
@@ -615,10 +618,14 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
             και «φέτος»: τρεις διαφορετικοί τρόποι να πεις χρόνο, με το μεσαίο να
             μην είναι καν χρόνος. Τώρα και τα τρία ονομάζουν το ίδιο πράγμα, τη
             δαπάνη· ξεχωρίζουν στο εύρος της. */}
-        <Stat label="Μηνιαίες δαπάνες" value={loading ? null : fe(monthTotal)} />
+        {/* Ο ΜΗΝΑΣ ΚΑΙ Η ΧΡΟΝΙΑ ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥΣ. «Μηνιαίες» και «Ετήσιες»
+            διαβάζονταν σαν μέσοι όροι, ενώ είναι ο τρέχων μήνας και η χρονιά
+            ως σήμερα. */}
+        <Stat label={`Δαπάνες ${monthGen(Number(thisMonth.slice(5, 7)) - 1)}`} value={loading ? null : fe(monthTotal)}
+          sub={monthUnpaid ? `${monthUnpaid} ${monthUnpaid === 1 ? 'απλήρωτη' : 'απλήρωτες'}` : undefined} />
         <Stat label={'Ανεξόφλητες δαπάνες'} value={loading ? null : fe(unpaidTotal)}
-          sub={unpaid.length ? `${unpaid.length} ${unpaid.length === 1 ? 'γραμμή' : 'γραμμές'}` : undefined} />
-        <Stat label="Ετήσιες δαπάνες" value={loading ? null : fe(yearTotal)} />
+          sub={unpaid.length ? `${unpaid.length} ${unpaid.length === 1 ? 'χρέωση' : 'χρεώσεις'}` : undefined} />
+        <Stat label={`Δαπάνες ${thisMonth.slice(0, 4)}`} value={loading ? null : fe(yearTotal)} />
       </div>
 
       {/* ── ΤΙ ΛΕΙΠΕΙ ────────────────────────────────────────────────────────
@@ -649,7 +656,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
               {missing.slice(0, 4).map(m => (
                 <div key={m.key} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <span style={{ ...TT.caption, lineHeight: 1.6, minWidth: 0 }}>
-                    {m.title}, συνήθως {fe(m.typicalAmount)} {cadenceLabel(m.everyMonths)} · το περιμέναμε {shortDate(m.expectedDate)}
+                    {entryName(m)}, συνήθως {fe(m.typicalAmount)} {cadenceLabel(m.everyMonths)} · το περιμέναμε {shortDate(m.expectedDate)}
                   </span>
                   <Btn variant="ghost" onClick={() => {
                     setSeed({ id: m.key, what: m.title, date: m.expectedDate, slug: resolveCategory(m.category) || '' });
@@ -708,7 +715,12 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           θα έψαχνε σε τίποτα. Όσο η φόρμα είναι ανοιχτή η γραμμή μένει, γιατί
           κρατά την «Ακύρωση». */}
       {(entries.length > 0 || adding) && <div style={{ display: 'flex', gap: T.sp.sm, flexWrap: 'wrap', alignItems: 'center', marginBottom: T.sp.lg }}>
-        <Btn variant="primary" onClick={() => { setSeed(undefined); setAdding(v => !v); }}>{adding ? 'Ακύρωση' : 'Νέα δαπάνη'}</Btn>
+        {/* ΜΙΑ «ΝΕΑ ΔΑΠΑΝΗ» ΣΤΗΝ ΟΘΟΝΗ. Όταν η καρτέλα έχει ήδη τη δική της στην
+            κεφαλίδα (`onScan`, με τη χειροκίνητη καταχώρηση μέσα), εδώ μένει
+            μόνο η «Ακύρωση» της ανοιχτής φόρμας, ως δευτερεύουσα. */}
+        {(adding || !onScan) && (
+          <Btn variant={onScan ? 'secondary' : 'primary'} onClick={() => { setSeed(undefined); setAdding(v => !v); }}>{adding ? 'Ακύρωση' : 'Νέα δαπάνη'}</Btn>
+        )}
         <div style={{ flex: 1 }} />
         {/* Ίδιο ύψος και ίδιο σχήμα με τα κουμπιά δίπλα του. Πριν ήταν ψηλότερο
             και πιο στρογγυλό και η σειρά έμοιαζε στοιχισμένη κατά λάθος. */}
@@ -941,7 +953,8 @@ function Row({ e, busy, counts, onPaid, onEdit, onDelete }: { e: LedgerEntry; bu
   // «Δόση δανείου» με από κάτω «Δόση Δανείου» δεν είναι δεύτερη πληροφορία,
   // είναι η ίδια δύο φορές με άλλα κεφαλαία. Η δεύτερη γραμμή υπάρχει μόνο όταν
   // λέει κάτι που δεν λέει ήδη ο τίτλος.
-  const showCat = cat && bare(cat) !== bare(e.title);
+  const name = entryName(e);
+  const showCat = cat && bare(cat) !== bare(name);
   // ═══ Η ΕΞΑΙΡΕΣΗ ΦΑΙΝΕΤΑΙ ΕΚΕΙ ΠΟΥ ΕΙΝΑΙ Η ΔΑΠΑΝΗ ══════════════════════════
   // Ηταν αόρατη: η γραμμή έδειχνε ολόκληρο το ποσό ενώ τα σύνολα από πάνω δεν
   // το μετρούσαν· ο μόνος τρόπος να δεις τι είχες εξαιρέσει ήταν άλλη
@@ -963,7 +976,7 @@ function Row({ e, busy, counts, onPaid, onEdit, onDelete }: { e: LedgerEntry; bu
             Δεύτερη γραμμή σε δύο οθόνες στις έντεκα κοστίζει λιγότερο από μια
             δαπάνη που δεν διαβάζεται. Πάνω από τα 360 τίποτα δεν αλλάζει. */}
         <span className="exp-title" style={{ ...TT.body, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {e.title}
+          {name}
         </span>
         {(meta || due) && (
           <span style={{ ...TT.caption, display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>

@@ -10,7 +10,17 @@ import AlreadySignedIn from '../AlreadySignedIn'
 import AuthAside from '../AuthAside'
 import GoogleG from '../GoogleG'
 import { BackLink } from '../BackLink'
-import { SAY, failed } from '@/lib/core/dbError';
+import { failed } from '@/lib/core/dbError';
+import { planFromParam, cycleFromParam, checkoutLanding } from '@/lib/billing/entitlements';
+
+// ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΤΑΞΙΔΕΨΕ ΩΣ ΕΔΩ ΔΕΝ ΧΑΝΕΤΑΙ ΣΤΗΝ ΠΟΡΤΑ. Ο διαμεσολαβητής στέλνει
+// το ανώνυμο «/tameio?plan=…&cycle=…» στη σύνδεση κρατώντας τη διεύθυνση· η
+// σύνδεση όμως πήγαινε ΠΑΝΤΑ στον πίνακα. Τώρα γυρίζει στο ταμείο με το ίδιο
+// πακέτο, όπως και η εγγραφή.
+const afterSignIn = () => {
+  const q = new URLSearchParams(window.location.search)
+  return checkoutLanding(planFromParam(q.get('plan')), cycleFromParam(q.get('cycle')))
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Σύνδεση, στα χρώματα του app (design tokens, theme-aware light/dark).
@@ -42,11 +52,12 @@ export default function LoginPage() {
   const [code, setCode] = useState('')
   const [verifying, setVerifying] = useState(false)
 
-  const trans = (m: string) =>
-    /invalid login/i.test(m) ? 'Λάθος email ή κωδικός.'
-    : /email not confirmed/i.test(m) ? 'Επιβεβαίωσε πρώτα το email σου από τον σύνδεσμο που σου στείλαμε.'
-    : /rate limit|too many/i.test(m) ? SAY.tooManyTries
-    : m
+  // ── ΤΟ EMAIL ΠΟΥ ΔΕΝ ΕΠΙΒΕΒΑΙΩΘΗΚΕ ΕΧΕΙ ΔΡΟΜΟ ΑΠΟ ΕΔΩ ────────────────────
+  // Το μήνυμα έλεγε σωστά τι φταίει και δεν έδινε κανένα επόμενο βήμα: ο
+  // σύνδεσμος επιβεβαίωσης ξαναζητιόταν μόνο από την εγγραφή, δηλαδή με όνομα,
+  // κωδικό και συγκατάθεση από την αρχή. Εδώ το email είναι ήδη γραμμένο.
+  const [unconfirmed, setUnconfirmed] = useState(false)
+  const [resent, setResent] = useState(false)
 
   /**
    * Ζητά τον εξαψήφιο κωδικό της δηλωμένης συσκευής.
@@ -84,7 +95,7 @@ export default function LoginPage() {
       // πρόκληση» δεν επιτρέπεται να ξεχωρίζουν από έξω.
       setError(MFA_SAY.wrong); setCode(''); setVerifying(false); return
     }
-    router.push('/dashboard')
+    router.push(afterSignIn())
   }
 
   useEffect(() => {
@@ -113,7 +124,7 @@ export default function LoginPage() {
       // ΜΟΝΟ ΣΕ ΑΣΥΝΔΕΤΟ: αν η συνεδρία υπάρχει, ο σύνδεσμος έκανε τη δουλειά
       // του και δεν υπάρχει τίποτα να διορθωθεί.
       if (!data.user && failedConfirm()) {
-        setError('Ο σύνδεσμος επιβεβαίωσης δεν ισχύει πια. Συνδέσου με τον κωδικό σου, ή ζήτησε νέο σύνδεσμο από την εγγραφή.')
+        setError('Ο σύνδεσμος επιβεβαίωσης δεν ισχύει πια. Γράψε το email σου και τον κωδικό σου για να σου στείλουμε νέο.')
       }
     })
     })()
@@ -134,11 +145,15 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError('')
+    setError(''); setUnconfirmed(false); setResent(false)
     setLoading(true)
     const supabase = await authClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setError(failed('Η σύνδεση δεν έγινε', error)); setLoading(false); return }
+    if (error) {
+      setError(failed('Η σύνδεση δεν έγινε', error))
+      setUnconfirmed(error.code === 'email_not_confirmed')
+      setLoading(false); return
+    }
 
     // ═══ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ, ΠΟΥ ΔΕΝ ΖΗΤΙΟΤΑΝ ΠΟΤΕ ══════════════════════════
     // ΤΙ ΜΕΤΡΗΘΗΚΕ: μηδέν αναφορές «aal2» σε app, lib και supabase. Εδώ η
@@ -154,7 +169,7 @@ export default function LoginPage() {
       await supabase.auth.signOut()
       setError(MFA_SAY.stuck); setLoading(false); return
     }
-    if (!secondStepPending(levels)) { router.push('/dashboard'); return }
+    if (!secondStepPending(levels)) { router.push(afterSignIn()); return }
     await askSecondStep(supabase)
     setLoading(false)
   }
@@ -171,6 +186,17 @@ export default function LoginPage() {
   async function signInWithGoogle() {
     const supabase = await authClient()
     await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/signup?oauth=login` } })
+  }
+
+  /** Νέος σύνδεσμος επιβεβαίωσης, με την ίδια επιστροφή που δίνει η εγγραφή. */
+  async function resendConfirmation() {
+    const supabase = await authClient()
+    const { error } = await supabase.auth.resend({
+      type: 'signup', email: email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
+    })
+    if (error) { setError(failed('Το email δεν ξαναστάλθηκε', error)); return }
+    setError(''); setResent(true)
   }
 
   // ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ ΕΝΑ, ΟΠΟΤΕ ΚΑΙ Η ΣΗΜΑΙΑ ΤΟΥ ΕΙΝΑΙ ΜΙΑ. Δύο ξεχωριστές
@@ -291,8 +317,16 @@ export default function LoginPage() {
 
             {error && (
               <div role="alert" style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }}>
-                {trans(error)}
+                {error}
               </div>
+            )}
+            {!factorId && unconfirmed && !resent && (
+              <Btn variant="secondary" field onClick={resendConfirmation}>Ξαναστείλε το email επιβεβαίωσης</Btn>
+            )}
+            {!factorId && resent && (
+              <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                Σου στείλαμε νέο σύνδεσμο επιβεβαίωσης στο <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{email.trim()}</strong>. Δες και τον φάκελο ανεπιθύμητων.
+              </p>
             )}
 
             <Btn variant="primary" type="submit" field disabled={busy}>
@@ -333,11 +367,12 @@ export default function LoginPage() {
               που υπάρχει σε κάθε πλάτος. Σε τηλέφωνο το «calc» συρρικνώνεται
               μαζί με τη στήλη, οπότε τίποτα δεν βγαίνει από την οθόνη· εκεί
               τυλίγει — και το «balance» μοιράζει τις δύο σειρές αντί να αφήσει
-             πάλι μία λέξη μόνη της. */
+             πάλι μία λέξη μόνη της. Οι δύο σύνδεσμοι δεν σπάνε ΜΕΣΑ τους: στα
+             390 το «Όρους χρήσης» χωριζόταν σε δύο σειρές. */
           <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 24, lineHeight: 1.6, width: 'calc(100% + 20px)', marginInline: -10, textWrap: 'balance' }}>
             Συνεχίζοντας, αποδέχεσαι τους{' '}
-            <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Όρους χρήσης</Link>{' '}και την{' '}
-            <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Πολιτική απορρήτου</Link>.
+            <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Όρους χρήσης</Link>{' '}και την{' '}
+            <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>.
           </p>
           )}
           </>)}

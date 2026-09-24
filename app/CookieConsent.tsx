@@ -8,10 +8,12 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { T, Btn } from '@/components/Theme';
+// Η ΕΚΔΟΣΗ ΕΡΧΕΤΑΙ ΑΠΟ ΤΑ ΝΟΜΙΚΑ ΚΕΙΜΕΝΑ, ΟΧΙ ΑΠΟ ΕΔΩ. Ηταν «2026-08»
+// γραμμένο με το χέρι, ενώ η Πολιτική είχε ήδη αλλάξει στις ενότητες για τα
+// cookies: όποιος είχε δει την παλιά ενημέρωση δεν έβλεπε ποτέ τη νέα.
+import { POLICY_VERSION } from '@/lib/legal/identity';
 
 const KEY = 'pos-cookie-consent';
-// Συγχρονίζεται με την ημερομηνία «Τελευταία ενημέρωση» της Πολιτικής απορρήτου.
-const POLICY_VERSION = '2026-08';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΓΙΑΤΙ `useSyncExternalStore` ΚΑΙ ΟΧΙ `useEffect` ΜΕ `setState`
@@ -132,9 +134,16 @@ export default function CookieConsent() {
           κείμενο πάνω από αυτό που ήρθε να δει. Η ουσία χωράει σε μία γραμμή· οι
           λεπτομέρειες ανήκουν στην Πολιτική απορρήτου, όπου τις ψάχνει όποιος
           τις θέλει. Καμία πληροφορία δεν χάθηκε: η δήλωση «μόνο απαραίτητα, καμία
-          παρακολούθηση» είναι ακριβώς το ουσιώδες περιεχόμενο της προηγούμενης. */}
-      <div style={{ flex: 1, minWidth: 200, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty', textAlign: 'center' }}>
-        Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Καμία παρακολούθηση, καμία διαφήμιση.{' '}
+          παρακολούθηση» είναι ακριβώς το ουσιώδες περιεχόμενο της προηγούμενης.
+          ΚΑΙ Η ΜΕΤΡΗΣΗ ΛΕΓΕΤΑΙ. Το «καμία παρακολούθηση» διαβαζόταν ως «δεν
+          μετράται τίποτα», ενώ το layout φορτώνει ανώνυμη μέτρηση επισκέψεων
+          χωρίς cookies, όπως τη γράφει η Πολιτική απορρήτου. */}
+      {/* ΠΑΡΑΓΡΑΦΟΣ, ΟΧΙ ΚΟΥΤΙ. Είναι μία πρόταση με σύνδεσμο μέσα της· ως <div>
+          ο σύνδεσμος διαβαζόταν ως χειριστήριο μόνο του, 63×16, κάτω από τα 44
+          του κανόνα αφής. Μέσα σε <p> είναι λέξη της πρότασης, όπως ορίζει το
+          WCAG 2.5.8. */}
+      <p style={{ flex: 1, minWidth: 200, margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty', textAlign: 'center' }}>
+        Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Ανώνυμη μέτρηση επισκέψεων χωρίς cookies, καμία διαφήμιση.{' '}
         {/* ΥΠΟΓΡΑΜΜΙΣΜΕΝΟΣ, ΓΙΑΤΙ ΤΟ ΧΡΩΜΑ ΜΟΝΟ ΤΟΥ ΔΕΝ ΕΙΝΑΙ ΣΥΝΔΕΣΜΟΣ. Με
             `textDecoration: none` το «Απόρρητο» ξεχώριζε ΜΟΝΟ από το χρώμα:
             όποιος δεν ξεχωρίζει το γαλάζιο από το γκρι —δαλτωνισμός, φως ήλιου
@@ -142,7 +151,7 @@ export default function CookieConsent() {
             ο μοναδικός δρόμος προς την πολιτική απορρήτου μέσα από αυτό το
             πλαίσιο. */}
         <Link href="/privacy" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Απόρρητο</Link>
-      </div>
+      </p>
       <Btn variant="primary" onClick={acknowledge} className="po-cookie-cta">Το κατάλαβα</Btn>
     </div>
   );

@@ -28,7 +28,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { expectedSeries } from './expected';
-import type { LedgerEntry } from './ledger';
+import { entryName, type LedgerEntry } from './ledger';
 import { fe, fpSigned } from '../core/format';
 
 /**
@@ -121,8 +121,9 @@ export function priceChanges(
 
     const flatRate = FLAT_RATE.test(`${s.category} ${s.title} ${s.vendor ?? ''}`.toLowerCase());
     const up = deltaEur > 0;
+    const name = entryName(s);
     const message = flatRate
-      ? `${s.title}: ${up ? 'ακρίβυνε' : 'έγινε φθηνότερο'} από ${eur(previous)} σε ${eur(current)}, ${up ? '+' : '−'}${eur(Math.abs(deltaEur))} τον μήνα.`
+      ? `${name}: ${up ? 'ακρίβυνε' : 'έγινε φθηνότερο'} από ${eur(previous)} σε ${eur(current)}, ${up ? '+' : '−'}${eur(Math.abs(deltaEur))} τον μήνα.`
       // ΜΕΤΡΟΥΜΕΝΟΣ ΛΟΓΑΡΙΑΣΜΟΣ: λέμε ΜΟΝΟ ότι άλλαξε το ποσό και ρητά ότι
       // μπορεί να φταίει η κατανάλωση. Το «ακρίβυνε το ρεύμα» τον Ιανουάριο
       // είναι λάθος με σιγουριά.
@@ -131,7 +132,7 @@ export function priceChanges(
       // το ποσοστό «−30%» με κανένα: το μοναδικό νούμερο της οθόνης χωρίς
       // υποδιαστολή, δίπλα σε δύο που την είχαν. Το πρόσημο μπαίνει από το `fp`,
       // που γράφει το τυπογραφικό μείον· εδώ μένει μόνο το «+».
-      : `${s.title}: ${eur(current)} αντί για ${eur(previous)} που πλήρωνες συνήθως, ${up ? '+' : ''}${fpSigned(deltaPctExact)}. Μπορεί να είναι η κατανάλωση ή η τιμή.`;
+      : `${name}: ${eur(current)} αντί για ${eur(previous)} που πλήρωνες συνήθως, ${up ? '+' : ''}${fpSigned(deltaPctExact)}. Μπορεί να είναι η κατανάλωση ή η τιμή.`;
 
     out.push({
       key: s.key, title: s.title, category: s.category, vendor: s.vendor,

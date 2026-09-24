@@ -9,6 +9,11 @@ export type CatStatus = 'ok' | 'warn' | 'over' | 'projected_over'
 // ολόκληρο τον μήνα) μετρώνται ως έχουν· μόνο το «μεταβλητό» (δαπάνες που
 // συσσωρεύονται) προβάλλεται γραμμικά για τις υπόλοιπες ημέρες. Ποτέ κάτω από
 // ό,τι έχει ήδη ξοδευτεί.
+//
+// ΣΤΡΟΓΓΥΛΕΥΣΗ ΣΤΑ ΛΕΠΤΑ, ΟΧΙ ΣΤΟ ΕΥΡΩ. Με ακέραιο ευρώ, 70,08€ ξοδεμένα
+// έβγαζαν πρόβλεψη 70,00€: η πρόβλεψη έπεφτε κάτω από τα ήδη ξοδεμένα, δίπλα
+// δίπλα στην ίδια οθόνη.
+const cents = (n: number): number => Math.round(n * 100) / 100
 export function forecastMonthEnd(
   fixedToDate: number,
   variableToDate: number,
@@ -17,9 +22,9 @@ export function forecastMonthEnd(
 ): number {
   const fixed = Math.max(0, fixedToDate)
   const variable = Math.max(0, variableToDate)
-  if (dayOfMonth <= 0 || daysInMonth <= 0) return Math.round(fixed + variable)
+  if (dayOfMonth <= 0 || daysInMonth <= 0) return cents(fixed + variable)
   const varProjected = (variable / dayOfMonth) * daysInMonth
-  return Math.round(fixed + Math.max(variable, varProjected))
+  return cents(fixed + Math.max(variable, varProjected))
 }
 
 // Κατάσταση κατηγορίας: υπέρβαση ήδη / προβλεπόμενη υπέρβαση / κοντά στο όριο / εντάξει.

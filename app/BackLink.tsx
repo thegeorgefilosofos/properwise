@@ -42,18 +42,24 @@ function cameFromApp(): boolean {
 }
 
 /**
+ * `parent`: η σελίδα πάνω από αυτή, όταν δεν είναι η αρχική. Ο αναγνώστης που
+ * προσγειώνεται σε οδηγό από αναζήτηση γυρίζει στους «Οδηγούς», όχι στην
+ * αρχική, που δεν ξέρει ότι υπάρχουν άλλοι τρεις.
+ *
  * `home`: κρατά πάντα την «Αρχική», ό,τι κι αν λέει ο referrer.
  *
  * Το χρειάζονται η Σύνδεση και η Εγγραφή: εκεί ο επισκέπτης έρχεται συχνά από
  * τον Λογαριασμό του επειδή ΕΛΗΞΕ η συνεδρία του, οπότε ένα κουμπί «Επιστροφή
  * στην εφαρμογή» θα τον έστελνε πίσω στη σελίδα που μόλις τον έδιωξε.
  */
-export function BackLink({ home = false }: { home?: boolean } = {}) {
+export function BackLink({ home = false, parent = HOME }: {
+  home?: boolean; parent?: { href: string; label: string };
+} = {}) {
   // Χωρίς useEffect: το `useSyncExternalStore` δίνει στον διακομιστή την
   // ουδέτερη απάντηση και στον περιηγητή την πραγματική, χωρίς δεύτερη απόδοση
   // που να «διορθώνει» την πρώτη.
   const fromApp = useSyncExternalStore(noSubscribe, cameFromApp, () => false);
-  const to = fromApp && !home ? APP : HOME;
+  const to = fromApp && !home ? APP : parent;
 
   return (
     <Link href={to.href} className="lg-back">

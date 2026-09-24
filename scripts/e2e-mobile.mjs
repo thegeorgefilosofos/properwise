@@ -46,6 +46,7 @@ const PAGES = ['/', '/login', '/signup', '/ypologismos-forou-enoikion', '/ypolog
 import { TAP, TAP_INLINE, tinyTargets } from './lib/tap-targets.mjs'
 import { installPaint } from './lib/paint.mjs'
 import { MODE, applyMode } from './lib/bench-mode.mjs'
+import { SEED_CONSENT } from './lib/consent.mjs'
 
 let pass = 0, fail = 0
 const ok = (n, c) => { if (c) pass++; else { fail++; console.log('  ✗ ' + n) } }
@@ -62,7 +63,7 @@ await abortIfStyleless(browser, B)
 
 for (const d of DEVICES) {
   const ctx = await browser.newContext({ ...d, locale: 'el-GR' })
-  await ctx.addInitScript(() => { try { localStorage.setItem('pos-cookie-consent', JSON.stringify({ v: '2026-08', ts: 'x' })) } catch { /* κενό */ } })
+  await ctx.addInitScript(SEED_CONSENT)
   // ΜΟΝΟ ΕΔΩ, ΟΧΙ ΣΤΗ ΜΕΤΡΗΣΗ ΚΑΡΕ ΠΙΟ ΚΑΤΩ. Εδώ κρίνεται διάταξη, που
   // πρέπει να ελεγχθεί και στα δύο θέματα. Η μέτρηση καρέ κρατά το σκούρο
   // ό,τι κι αν λέει το BENCH_MODE: αλλιώς η ίδια καστάνια θα συγκρινόταν
@@ -180,7 +181,7 @@ for (const d of DEVICES) {
   await p.addInitScript(installPaint)
   const cdp = await ctx.newCDPSession(p)
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
-  await p.addInitScript(() => { try { localStorage.setItem('pos-cookie-consent', JSON.stringify({ v: '2026-08', ts: 'x' })) } catch { /* κενό */ } })
+  await p.addInitScript(SEED_CONSENT)
   await p.goto(B + '/', { waitUntil: 'networkidle' })
   await p.waitForTimeout(700)
   // ── ΤΡΕΙΣ ΜΕΤΡΗΣΕΙΣ, ΚΡΑΤΑΜΕ ΤΗ ΜΕΣΑΙΑ ────────────────────────────────
@@ -227,14 +228,17 @@ for (const d of DEVICES) {
 }
 
 // ── 5. Ο ΠΙΝΑΚΑΣ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΚΡΑΤΑ ΤΟ ΟΝΟΜΑ ΟΡΑΤΟ ──────────────────
-// Ο πίνακας ζει πίσω από σύνδεση, οπότε δεν φτάνει από τις δημόσιες σελίδες.
-// Ο πάγκος component τον αποδίδει ΑΛΗΘΙΝΟ, με το πλήρες globals.css, χωρίς
-// διακομιστή και χωρίς λογαριασμό — το ίδιο ιδίωμα που μετρά ήδη την απόδοση.
+// Το χαρτοφυλάκιο ζει πίσω από σύνδεση, οπότε δεν φτάνει από τις δημόσιες
+// σελίδες. Ο πάγκος component το αποδίδει ΑΛΗΘΙΝΟ, με το πλήρες globals.css,
+// χωρίς διακομιστή και χωρίς λογαριασμό.
 //
-// ΤΙ ΚΛΕΙΔΩΝΕΤΑΙ: ότι μετά από κύλιση ως το τέρμα, το όνομα του ακινήτου είναι
-// ακόμη στην οθόνη και ότι κανένα κείμενο δεν περνά από κάτω του. Το δεύτερο
-// ήταν πραγματικό σφάλμα δύο φορές: μια με φόντο που κληρονομούνταν διάφανο,
-// και μια με οκτώ εικονοστοιχεία κενού ανάμεσα στις δύο καρφωμένες στήλες.
+// ΤΙ ΚΛΕΙΔΩΝΕΤΑΙ. Εδώ ζούσε έλεγχος για τις καρφωμένες στήλες του πίνακα στα
+// 375: όνομα ορατό μετά την κύλιση, χωρίς χαραμάδα, με φόντο. Ο πίνακας όμως
+// έχει εννέα στήλες και στα 390 έδειχνε μόνο όνομα και κατάσταση με το πρώτο
+// ποσό κομμένο. Κάτω από τα 900 κάθε ακίνητο είναι πλέον κάρτα
+// (`.pf-cards`) και ο πίνακας εμφανίζεται μόνο όπου χωρά ολόκληρος. Κλειδώνεται
+// λοιπόν αυτό που βλέπει το κινητό: κανένας πίνακας, μία κάρτα ανά ακίνητο,
+// τρία ποσά σε κάθε κάρτα, τίποτα έξω από την οθόνη και τίποτα κομμένο.
 {
   const bench = 'file://' + process.cwd() + '/.perf-bench/mobile.html?c=portfolio&n=6'
   const ctx = await browser.newContext({ ...DEVICES[1], locale: 'el-GR' })
@@ -243,29 +247,25 @@ for (const d of DEVICES) {
   await p.goto(bench, { waitUntil: 'networkidle' })
   await p.waitForTimeout(400)
   const r = await p.evaluate(() => {
-    const t = document.querySelector('.pf-table')
-    if (!t) return { missing: true }
-    const box = t.parentElement
-    box.scrollLeft = box.scrollWidth
-    const cells = [...t.querySelectorAll('tbody tr td.pf-pin-1, tbody tr td.pf-pin-2')]
-    const name = t.querySelector('tbody tr td.pf-pin-2')
-    const nr = name.getBoundingClientRect()
-    const pin1 = t.querySelector('tbody tr td.pf-pin-1')
-    const p1 = pin1.getBoundingClientRect()
-    const gap = Math.round(parseFloat(getComputedStyle(name).left) - p1.width)
-    const clear = cells.every(c => {
-      const bg = getComputedStyle(c).backgroundColor
-      return bg !== 'transparent' && !/rgba\(0, 0, 0, 0\)/.test(bg)
-    })
-    const lines = Math.round(name.querySelector('div').getBoundingClientRect().height
-      / (parseFloat(getComputedStyle(name.querySelector('div')).lineHeight) || 18))
-    return { scrolled: Math.round(box.scrollLeft), left: Math.round(nr.left), gap, clear, lines }
+    const vw = document.documentElement.clientWidth
+    const table = document.querySelector('.pf-table-card')
+    const tableShown = !!table && table.checkVisibility()
+    const box = document.querySelector('.pf-cards')
+    if (!box || !box.checkVisibility()) return { missing: true, tableShown }
+    const cards = [...box.children].filter(c => c.checkVisibility())
+    const stats = cards.map(c => (c.textContent || '').match(/Έσοδα|Δαπάνες|Καθαρό/g)?.length || 0)
+    const outside = cards.filter(c => { const b = c.getBoundingClientRect(); return b.left < 0 || b.right > vw + 0.5 }).length
+    const clipped = cards.flatMap(c => [...c.querySelectorAll('*')])
+      .filter(el => el.children.length === 0 && el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflow !== 'visible')
+      .map(el => (el.textContent || '').trim().slice(0, 24))
+    return { tableShown, n: cards.length, stats, outside, clipped }
   })
-  ok(`χαρτοφυλάκιο 375: ο πίνακας υπάρχει στον πάγκο`, !r.missing)
-  ok(`χαρτοφυλάκιο 375: κύλισε ${r.scrolled}px και το όνομα μένει ορατό (x=${r.left})`, r.scrolled > 100 && r.left >= 0 && r.left < 375)
-  ok(`χαρτοφυλάκιο 375: καμία χαραμάδα ανάμεσα στις καρφωμένες στήλες (${r.gap}px)`, r.gap === 0)
-  ok(`χαρτοφυλάκιο 375: τα καρφωμένα κελιά έχουν φόντο, τίποτα δεν περνά από κάτω`, r.clear === true)
-  ok(`χαρτοφυλάκιο 375: το όνομα σε μία γραμμή`, r.lines === 1)
+  ok(`χαρτοφυλάκιο 375: ο πίνακας κρύβεται`, !r.tableShown)
+  ok(`χαρτοφυλάκιο 375: οι κάρτες υπάρχουν στον πάγκο`, !r.missing)
+  ok(`χαρτοφυλάκιο 375: μία κάρτα ανά ακίνητο (${r.n})`, r.n > 0)
+  ok(`χαρτοφυλάκιο 375: Έσοδα, Δαπάνες, Καθαρό σε κάθε κάρτα`, (r.stats || []).every(k => k === 3))
+  ok(`χαρτοφυλάκιο 375: καμία κάρτα έξω από την οθόνη (${r.outside})`, r.outside === 0)
+  ok(`χαρτοφυλάκιο 375: τίποτα κομμένο${r.clipped?.length ? ' — ' + r.clipped.slice(0, 4).join(', ') : ''}`, (r.clipped || []).length === 0)
   await ctx.close()
 }
 
