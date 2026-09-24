@@ -124,14 +124,18 @@ function Drivers({ c }: { c: Comparison }) {
   return (
     <div style={{
       display: 'grid', alignItems: 'center', columnGap: 12, rowGap: 10,
-      gridTemplateColumns: `minmax(84px, 128px) minmax(60px, 1fr) auto${anyFlag ? ' auto' : ''}`,
+      // Ταβάνι 176 και όχι 128: το «Επισκευές και συντήρηση», το κοινό όνομα
+      // με τον Προϋπολογισμό, κοβόταν σε «Επισκευές και συντ…» ακόμη και στα 1.440.
+      gridTemplateColumns: `minmax(84px, 176px) minmax(60px, 1fr) auto${anyFlag ? ' auto' : ''}`,
     }}>
       {rows.map(d => {
         const ratio = Math.min(Math.abs(d.diff) / max, 1);
         const up = d.diff > 0;
         return (
           <Fragment key={d.slug}>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {/* Τυλίγει αντί να κόβεται: στα 320 η στήλη έχει 84 εικονοστοιχεία και
+                το «Επισκευές και συντήρηση» έχανε τη μισή λέξη. */}
+            <span style={{ fontSize: 12, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans, minWidth: 0 }}>
               {d.label}
             </span>
             <span style={{ position: 'relative', display: 'block', height: 8 }}>
@@ -271,7 +275,11 @@ export default function ExpenseCompare({ spends, today }: Props) {
     <Card pad="lg" style={{ marginBottom: 16 }}>
       {anyBasis && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+          {/* ΜΙΑ ΠΡΟΤΑΣΗ, ΟΧΙ ΔΥΟ ΑΚΡΑ. Με `space-between` η ετικέτα καθόταν
+              αριστερά και τα πλήκτρα που τη συμπληρώνουν χίλια εκατό
+              εικονοστοιχεία δεξιά, σαν άλλη σειρά. Κολλημένα δίπλα της
+              διαβάζονται ως συνέχεια της φράσης. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
             <span style={TT.label}>Τον {monthPhrase(currentKey)} σε σχέση με</span>
             <BasisSwitch value={active} onChange={setBasis} enabled={enabled} labels={basisLabels} />
           </div>

@@ -45,7 +45,10 @@ import {
 import { shortTermYearSummary, derivedPlatformFees, monthsWithOwnPlatformFee, staysMissingPlatformFee, isHouseType } from '@/lib/tax/shortTermTax'
 import { bankReceiptMatters } from '@/lib/billing/consolidate'
 import { resolveEnfia } from '@/lib/billing/propertyFacts'
-import { estimateENFIAFromFacts, enfiaTypeBlock, ENFIA_TYPE_BLOCK_NOTE } from '@/lib/billing/enfia'
+import { enfiaTypeBlock, ENFIA_TYPE_BLOCK_NOTE } from '@/lib/billing/enfia'
+import { enfiaForYear, useEnfiaSettings, type EnfiaState } from './useEnfia'
+import * as billStore from '@/lib/data/bills'
+import { billsWithoutExpense, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger'
 import { INK, INK_MUTED } from '@/lib/print/ink'
 import { annuityMonthly, interestForYear } from '@/lib/loans/recommend'
 import { isGroupDeductible } from '@/lib/expenses/groups'
@@ -59,11 +62,11 @@ import { exportAccountantBundle } from './sheets';
 import { buildRegister, chargeForYear, RENTED_PROPERTY_ACCOUNT, EQUIPMENT_ACCOUNT } from '@/lib/accounting/fixedAssets'
 import { declarableGrossOrTotal } from '@/lib/clients/stayAmounts'
 import { CAPITALISABLE } from '@/lib/tax/elpAccounts'
-import { CATEGORIES } from '@/lib/expenses/taxonomy'
+import { CATEGORIES, isDeductible, resolveCategory } from '@/lib/expenses/taxonomy'
 import EnfiaPanel from './EnfiaPanel';
 import AccountantDossier, { useAccountantDossier } from './AccountantDossier'
 import { fetchDossierPapers } from './dossierPapers'
-import { defaultBookkeeping, type LegalForm } from '@/lib/accounting/dossier'
+import { defaultBookkeeping, UNCOLLECTED_RENT_RULE as UNCOLLECTED_RULE, type LegalForm } from '@/lib/accounting/dossier'
 import { readStatus, statusLabel, type PropertyStatus, type StatusRow } from '@/lib/property/status'
 // Το λογιστικό πρόσημο: τυπογραφικό μείον, όχι ενωτικό και ποτέ «−0,00€».
 import { feSigned } from '@/lib/core/format'
@@ -257,6 +260,8 @@ function Kpi({ label, value, note, hot, onHover }:{
   )
 }
 
+const readElp = (raw: string | null): 'personal' | 'business' | null => (raw === 'personal' || raw === 'business' ? raw : null)
+const writeElp = (v: 'personal' | 'business' | null) => v ?? ''
 const readNum = (raw: string | null): number | '' => { const n = Number(raw); return raw && Number.isFinite(n) && n ? n : '' }
 const writeNum = (v: number | '') => (v ? String(v) : '')
 
@@ -300,10 +305,19 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // κενό στο εκκαθαριστικό.
   //
   // Άρα μένει επιλογή, με προεπιλογή το σωστό για τη συντριπτική πλειονότητα.
-  const [elp,setElp] = useState<'personal'|'business'>('personal')
   // Η ΜΟΡΦΗ όμως ΔΕΝ είναι ερώτηση: δηλώθηκε στην υποδοχή και η αντιστοίχισή
   // της σε φορολογικό καθεστώς ζει σε ένα σημείο, με τεστ (lib/accounting/taxProfile).
   const elpForm = businessFormOf(legalForm)
+  // ── Ο ΛΟΓΑΡΙΑΣΜΟΣ ΕΤΑΙΡΕΙΑΣ ΞΕΚΙΝΑ ΑΠΟ ΤΗΝ ΕΤΑΙΡΕΙΑ ─────────────────────
+  // Η «συντριπτική πλειονότητα» είναι ο ιδιώτης. Όποιος όμως έχει δηλώσει
+  // νομικό πρόσωπο (ΑΕ, ΙΚΕ, ΟΕ) άνοιγε κι αυτός στα «Ενοίκια ιδιώτη»: η
+  // Λογιστική έγραφε φόρο φυσικού προσώπου και η Απόδοση, για το ίδιο ακίνητο,
+  // 22% συν μέρισμα. Για νομικό πρόσωπο η προεπιλογή είναι η επιχείρηση· η
+  // ατομική επιχείρηση μένει στην ερώτηση, γιατί εκεί ισχύει ο λόγος από πάνω.
+  // Η επιλογή του χρήστη θυμάται ανά ακίνητο: το ένα μπορεί να ανήκει στην
+  // εταιρεία και το άλλο στον ίδιο.
+  const [elpChoice,setElp] = useRemembered<'personal'|'business'|null>(`acc_elp_${propertyId}`, readElp, writeElp, null)
+  const elp:'personal'|'business' = elpChoice ?? (elpForm==='company' ? 'business' : 'personal')
   // Ηλικία, μόνο για τη μειωμένη κλίμακα νέων (ν.5246/2025). Τοπική, προαιρετική.
   // ΤΡΕΙΣ ΤΙΜΕΣ ΠΟΥ ΤΙΣ ΘΥΜΑΤΑΙ Ο ΠΕΡΙΗΓΗΤΗΣ, ΟΧΙ Η REACT. Ηταν κενές αρχικές
   // τιμές με effect που τις γέμιζε μετά: η οθόνη του φόρου έδειχνε για ένα καρέ
@@ -435,7 +449,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // κόβονται με `Pick` στις στήλες που ΟΝΤΩΣ ζητά το `select`. Έτσι μια στήλη
   // που δεν ζητήθηκε δεν μπορεί να διαβαστεί κατά λάθος παρακάτω — σφάλμα που
   // με `any[]` έβγαινε ως `undefined` και κατέληγε σε μηδενικό ποσό στην οθόνη.
-  type ExpenseRow  = Pick<ExpensesRow, 'date'|'amount'|'category'|'expense_group'|'description'|'supplier_country'|'supply'|'supplier_afm'|'paid_by'|'share_percent'>
+  // Το `id`, το `bill_id` και το `paid` ζητούνται για ΕΝΑ λόγο: να ξέρει η
+  // συγχώνευση με τους λογαριασμούς ποιος λογαριασμός έχει ήδη γίνει δαπάνη.
+  type ExpenseRow  = Pick<ExpensesRow, 'id'|'bill_id'|'paid'|'date'|'amount'|'category'|'expense_group'|'description'|'supplier_country'|'supply'|'supplier_afm'|'paid_by'|'share_percent'>
   type RentRow     = Pick<RentPaymentsRow, 'period_year'|'period_month'|'amount'|'paid'|'paid_date'|'due_date'|'method'>
   type PortfolioRentRow = RentRow & Pick<RentPaymentsRow, 'property_id'>
   type StayRow     = TaxStay & Pick<ClientStaysRow, 'id'|'channel'|'declared_at'>
@@ -450,6 +466,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   type InventoryRow = Pick<InventoryItemsRow, 'name'|'purchase_value'|'category'|'purchase_date'>
 
   const [expenses,setExpenses] = useState<ExpenseRow[]>([])
+  const [bills,setBills] = useState<LedgerBill[]>([])
   const [rent,setRent] = useState<RentRow[]>([])
   const [stays,setStays] = useState<StayRow[]>([])
   const [loans,setLoans] = useState<LoanView[]>([])
@@ -482,8 +499,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       //                                 η τεκμαρτή έκπτωση 5%
       //
       // Ολα αυτά παρουσιάζονταν ως υπολογισμός, με κουμπί εξαγωγής από κάτω.
-      const [exR, rpR, stR, lnR, prR, apsR, arpR, astR, invR, tnR, ownR] = await Promise.all([
-        expenseStore.ledgerWithError<ExpenseRow>(supabase,propertyId,{ columns:'date,amount,category,expense_group,description,supplier_country,supply,supplier_afm,paid_by,share_percent' }),
+      const [exR, rpR, stR, lnR, prR, apsR, arpR, astR, invR, tnR, ownR, blR] = await Promise.all([
+        expenseStore.ledgerWithError<ExpenseRow>(supabase,propertyId,{ columns:'id,bill_id,paid,date,amount,category,expense_group,description,supplier_country,supply,supplier_afm,paid_by,share_percent' }),
         // Ο ΤΡΟΠΟΣ ΠΛΗΡΩΜΗΣ ΕΙΝΑΙ ΦΟΡΟΛΟΓΙΚΟ ΣΤΟΙΧΕΙΟ, ΟΧΙ ΔΙΑΚΟΣΜΗΤΙΚΟ: από
         // αυτόν κρίνεται η τεκμαρτή έκπτωση 5%. Μία στήλη παραπάνω στο ίδιο ερώτημα.
         rentStore.ofPropertyWithError<RentRow>(supabase,propertyId,`${rentStore.LEDGER_COLUMNS},method`,userId),
@@ -501,10 +518,13 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         // ποιος είναι ο άνθρωπος. Το ΑΦΜ ήταν πεδίο εισόδου που καμία οθόνη
         // δεν συμπλήρωνε ποτέ.
         properties.ownerOf(supabase, propertyId, userId),
+        // ΟΙ ΛΟΓΑΡΙΑΣΜΟΙ ΠΟΥ ΔΕΝ ΕΓΙΝΑΝ ΔΑΠΑΝΗ. Χωρίς αυτούς τα έξοδα της χρονιάς
+        // έβγαιναν εδώ 1.152€ και στην Τιμολόγηση 1.890€ για το ίδιο ακίνητο.
+        billStore.ofPropertyWithError<LedgerBill>(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
       ])
       if(!alive) return
-      setReadFailed([exR,rpR,stR,lnR,prR,apsR,arpR,astR,invR,tnR].some(r=>!!r.error))
-      setExpenses(exR.rows); setRent(rpR.rows); setLeaseViaBank(tnR.row ? (tnR.row.e_payment !== false) : null)
+      setReadFailed([exR,rpR,stR,lnR,prR,apsR,arpR,astR,invR,tnR,blR].some(r=>!!r.error))
+      setExpenses(exR.rows); setBills(blR.rows); setRent(rpR.rows); setLeaseViaBank(tnR.row ? (tnR.row.e_payment !== false) : null)
       setStays(stR.rows); setLoans(lnR.views)
       setProp(prR.row); setAllProps(apsR.rows); setOwner(ownR)
       setAllRent(arpR.rows); setAllStays(astR.rows)
@@ -559,37 +579,33 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     const v = Number(allProps.find(x=>x.id===pid)?.ownership)
     return Number.isFinite(v) && v > 0 ? v : 100
   },[allProps])
-  // ΕΝΦΙΑ: προτεραιότητα στο καταχωρημένο ποσό· αλλιώς αυτόματη εκτίμηση από
-  // αξία, τετραγωνικά, έτος κατασκευής και όροφο.
-  const enfia = useMemo(()=>{
-    // ΤΟ ΚΑΤΑΧΩΡΗΜΕΝΟ ΠΟΣΟ ΕΙΝΑΙ ΗΔΗ ΔΙΚΟ ΤΟΥ. Το πεδίο ζητά «ΕΝΦΙΑ που
-    // πληρώνεις», δηλαδή το νούμερο του εκκαθαριστικού του, που έρχεται από την
-    // ΑΑΔΕ ήδη περασμένο από το ποσοστό. Το να ξαναδιαιρεθεί εδώ θα το έκοβε
-    // δεύτερη φορά: 76,51€ αντί για 229,55€ σε μερίδιο ενός τρίτου.
-    const stored = resolveEnfia({ propertyEnfia: prop?.enfia }).annual
-    if(stored>0) return stored
-    // Η ΕΚΤΙΜΗΣΗ ΠΑΙΡΝΕΙ ΤΟ ΜΕΡΙΔΙΟ ΜΕΣΑ ΤΗΣ, ΟΧΙ ΑΠ' ΕΞΩ. Ο ΕΝΦΙΑ έχει
-    // κατώφλια (πρόσθετος φόρος στις 400.000€, προσαύξηση στις 500.000€,
-    // κλιμακωτή μείωση), οπότε η διαίρεση του ετήσιου ποσού στο τέλος χρεώνει
-    // τον συνιδιοκτήτη με κλάσμα φόρων που δεν οφείλει καθόλου.
-    //
-    // Έτος κατασκευής και όροφος περνούν όπως είναι αποθηκευμένα· η enfia.ts τα
-    // μεταφράζει σε κλιμάκιο και σε κλειδί ορόφου. Όποιο λείπει → ουδέτερο 1,00.
-    return estimateENFIAFromFacts({
-      value: prop?.value, sqm: prop?.sqm,
-      yearBuilt: prop?.year_built, floor: prop?.floor,
-      taxYear: year, propType: prop?.prop_type,
-      ownershipPct: prop?.ownership == null ? null : Number(prop.ownership),
-    })?.annual ?? 0
-  },[prop,year])
-  const enfiaEstimated = useMemo(()=>!(resolveEnfia({ propertyEnfia: prop?.enfia }).annual>0) && enfia>0,[prop,enfia])
-  // Οικόπεδο ή βοηθητικός χώρος χωρίς καταχωρημένο ποσό: ο ΕΝΦΙΑ λείπει από τα
+  // ═══ ΕΝΑΣ ΕΝΦΙΑ ΓΙΑ ΤΗΝ ΚΑΤΑΣΤΑΣΗ ΚΑΙ ΤΟΝ ΠΙΝΑΚΑ ΤΟΥ ═══════════════════════
+  // Η Κατάσταση έβγαζε δική της εκτίμηση από την αξία του ακινήτου και ο πίνακας
+  // «Υπολογισμός ΕΝΦΙΑ» λίγο πιο κάτω κρατούσε το περσινό ποσό που έγραψε ο
+  // ιδιοκτήτης: 108,78€ και 428,00€ στην ίδια οθόνη, με την πρόβλεψη φόρου να
+  // παίρνει το πρώτο. Οι ρυθμίσεις του πίνακα διαβάζονται πλέον ΕΔΩ, μία φορά,
+  // και η απάντηση (φετινό, περσινό, εκτίμηση) πηγαίνει και στους δύο.
+  //
+  // Το καταχωρημένο ποσό της καρτέλας είναι ΗΔΗ του μεριδίου του: έρχεται από
+  // το εκκαθαριστικό. Η εκτίμηση παίρνει το μερίδιο μέσα της, όχι απ' έξω,
+  // γιατί ο ΕΝΦΙΑ έχει κατώφλια (400.000€, 500.000€, κλιμακωτή μείωση).
+  const [enfiaSettings, updateEnfia, enfiaLoading] = useEnfiaSettings(propertyId, userId)
+  const enfiaNow = useMemo(()=>enfiaForYear(enfiaSettings, year, {
+    stored: prop?.enfia, value: prop?.value, sqm: prop?.sqm,
+    yearBuilt: prop?.year_built, floor: prop?.floor, propType: prop?.prop_type,
+    ownershipPct: prop?.ownership == null ? null : Number(prop.ownership),
+  }),[enfiaSettings,year,prop])
+  const enfia = enfiaNow.inUse.annual
+  const enfiaSource = enfiaNow.inUse.source
+  const enfiaEstimated = enfiaSource==='estimate'
+  const enfiaState:EnfiaState = useMemo(()=>({ settings:enfiaSettings, update:updateEnfia, loading:enfiaLoading, now:enfiaNow }),[enfiaSettings,updateEnfia,enfiaLoading,enfiaNow])
+  // Οικόπεδο ή βοηθητικός χώρος χωρίς κανένα ποσό: ο ΕΝΦΙΑ λείπει από τα
   // βιβλία και η οθόνη το λέει, αντί να δείχνει εκτίμηση κατοικίας.
   const enfiaBlock = useMemo(()=>{
-    if(resolveEnfia({ propertyEnfia: prop?.enfia }).annual>0) return null
+    if(enfiaSource!=='none') return null
     const b = enfiaTypeBlock(prop?.prop_type)
     return b ? ENFIA_TYPE_BLOCK_NOTE[b] : null
-  },[prop])
+  },[prop,enfiaSource])
 
   // Ενεργό δάνειο στη χρήση Y; (μεταξύ έτους έναρξης και λήξης).
   // ΣΕ useCallback ΓΙΑ ΤΟΝ ΙΔΙΟ ΛΟΓΟ ΜΕ ΤΟ tariffKwh: κλείνει πάνω στο `year`,
@@ -653,9 +669,19 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   const ownFeeMonths = useMemo(()=>monthsWithOwnPlatformFee(expensesYear),[expensesYear])
   const platformFeeRows = useMemo(()=>derivedPlatformFees(stays,year,ownFeeMonths),[ownFeeMonths,stays,year])
   const platformFeesYear = useMemo(()=>platformFeeRows.reduce((s,r)=>s+r.amount,0),[platformFeeRows])
+  // ── ΟΙ ΛΟΓΑΡΙΑΣΜΟΙ ΠΟΥ ΔΕΝ ΕΓΙΝΑΝ ΔΑΠΑΝΗ ΜΕΤΡΑΝΕ ΚΙ ΑΥΤΟΙ ────────────────
+  // Ο ίδιος κανόνας με την Τιμολόγηση, τις Δαπάνες και τον Προϋπολογισμό
+  // (lib/expenses/ledger.ts): κάθε ευρώ μία φορά. Οι δαπάνες μένουν με τις
+  // δικές τους στήλες (ομάδα, μερίδιο)· από τους λογαριασμούς έρχεται μόνο ό,τι
+  // δεν έχει ήδη γίνει δαπάνη. Ο λογαριασμός ανήκει ολόκληρος στο ακίνητο, άρα
+  // κόβεται στο μερίδιο όπως το ενοίκιο και ο ΕΝΦΙΑ.
+  // Λογαριασμός ΕΝΦΙΑ δεν μπαίνει εδώ: ο ΕΝΦΙΑ έχει δική του γραμμή.
+  const billsYear = useMemo(()=>billsWithoutExpense(bills, expenses as LedgerExpense[]).filter(e=>e.date.slice(0,4)===String(year)&&e.amount>0&&resolveCategory(e.category)!=='enfia'),[bills,expenses,year])
+  const billsTotal = useMemo(()=>mine(billsYear.reduce((s,e)=>s+e.amount,0)),[billsYear,mine])
+  const billsDeductible = useMemo(()=>mine(billsYear.filter(e=>isDeductible(e.category)).reduce((s,e)=>s+e.amount,0)),[billsYear,mine])
   // Εξαιρούμε τον ΕΝΦΙΑ ως δαπάνη, τον μετράμε ξεχωριστά (αποφυγή διπλομέτρησης).
-  const expensesTotal = useMemo(()=>expensesYear.filter(e=>e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear),[expensesYear,platformFeesYear,ownPct,mine])
-  const deductibleTotal = useMemo(()=>expensesYear.filter(e=>isGroupDeductible(e.expense_group)&&e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear),[expensesYear,platformFeesYear,ownPct,mine])
+  const expensesTotal = useMemo(()=>expensesYear.filter(e=>e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear)+billsTotal,[expensesYear,platformFeesYear,ownPct,mine,billsTotal])
+  const deductibleTotal = useMemo(()=>expensesYear.filter(e=>isGroupDeductible(e.expense_group)&&e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear)+billsDeductible,[expensesYear,platformFeesYear,ownPct,mine,billsDeductible])
   // Δόσεις δανείων ΜΟΝΟ όσο το δάνειο είναι ενεργό στη χρήση (όχι φαντάσματα).
   const loanAnnual = useMemo(()=>loans.reduce((s,l)=>{ if(!loanActiveInYear(l))return s; const m=annuityMonthly(Number(l.amount)||0,Number(l.rate)||0,Number(l.years)||0); return s+m*12 },0),[loans,loanActiveInYear])
   const loanInterestYear = useMemo(()=>loans.reduce((s,l)=>{ const amount=Number(l.amount)||0, rate=Number(l.rate)||0, yrs=Number(l.years)||0; const startY=l.start_date?Number(String(l.start_date).slice(0,4)):year; const idx=year-startY+1; return s+interestForYear(amount,rate,yrs,idx) },0),[loans,year])
@@ -767,7 +793,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       // δύο κληρονομιές στο ένα τρίτο και ένα διαμέρισμα ολόκληρο.
       const pPct = pctOf(p.id)
       const gross = ownerShareOfAmount(rmode==='individual_shortterm' ? pShort.grossRevenue : Math.max(0, pRentAccrued - pRelief), pPct)
-      const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct), rentsPaidViaBank: pViaBank,
+      // Για το ανοιχτό ακίνητο, ο ΕΝΦΙΑ της Κατάστασης: αλλιώς η ενοποίηση θα
+      // μετρούσε άλλο ποσό από τη γραμμή που βλέπει ο χρήστης δίπλα της.
+      const pEnfia = p.id===propertyId ? enfia : ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct)
+      const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: pEnfia, rentsPaidViaBank: pViaBank,
         // Ο ίδιος κανόνας του μεριδίου με τα ακαθάριστα κι τον ΕΝΦΙΑ από πάνω:
         // τέλος υπολογισμένο στο 100% δίπλα σε έσοδα 33% δεν ισοσκελίζει.
         climateLevy: rmode==='individual_shortterm'?ownerShareOfAmount(pShort.levyShortfall, pPct):0,
@@ -776,7 +805,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     }).filter(x=>x.input.grossIncome>0)
     if(items.length===0) return null
     return { con: consolidateIndividual(items.map(i=>({id:i.id,input:i.input})), rentalBracketsForYear(year)), names:Object.fromEntries(items.map(i=>[i.id,i.name])), count:items.length }
-  },[allProps,allRent,allStays,year,propCount,prop,propertyId,rentsBank,bankMatters,pctOf,individualPerson,claimedUncollected])
+  },[allProps,allRent,allStays,year,propCount,prop,propertyId,rentsBank,bankMatters,pctOf,individualPerson,claimedUncollected,enfia])
   const myTaxShare = useMemo(()=>consolidation?.con.perProperty.find(p=>p.id===propertyId)?.taxShare,[consolidation,propertyId])
   const portfolio = (mode==='professional' && elp==='personal') ? consolidation : null
 
@@ -802,7 +831,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           presumptiveMinIncome: elpForm==='sole'&&grossIncome>0 ? Math.round(minNetIncome.amount*(firstYears?0.5:1)) : undefined, enfia:0,
           climateLevy: shortLevy, municipalTax: shortMunicipal,
           otherCashExpenses: Math.max(0,expensesTotal-deductibleTotal), loanPrincipal: Math.max(0,loanAnnual-loanInterestYear), uncollectedIncome:uncollectedRent, brackets: rentalBracketsForYear(year) }
-      : { regime, grossIncome, enfia, overrideIncomeTax: myTaxShare, rentsPaidViaBank: rentsBank,
+      : { regime, grossIncome, enfia, enfiaBasis: enfiaSource==='none' ? undefined : enfiaSource, overrideIncomeTax: myTaxShare, rentsPaidViaBank: rentsBank,
         // ΤΟ ΤΕΛΟΣ ΑΝΘΕΚΤΙΚΟΤΗΤΑΣ ΕΦΕΥΓΕ ΔΥΟ ΦΟΡΕΣ ΑΠΟ ΤΟ ΤΑΜΕΙΟ.
         // Το `grossIncome` εδώ είναι το `grossRevenue` της shortTermYearSummary,
         // που έχει ΗΔΗ αφαιρέσει το εισπραγμένο τέλος (gross_guest_paid −
@@ -816,7 +845,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           climateLevy: shortLevy, municipalTax: shortMunicipal,
           otherCashExpenses: expensesTotal, loanPrincipal: loanAnnual, uncollectedIncome:uncollectedRent,
           legallyClaimedUncollected: claimedUncollected, brackets: rentalBracketsForYear(year) }
-  ),[businessMode,year,elpForm,age,firstYears,distribution,ekfa,buildingDepr,claimedUncollected,rentsBank,regime,grossIncome,enfia,myTaxShare,expensesTotal,deductibleTotal,inventoryDepr,loanInterestYear,loanAnnual,uncollectedRent,shortLevy,shortMunicipal,minNetIncome.amount])
+  ),[businessMode,year,elpForm,age,firstYears,distribution,ekfa,buildingDepr,claimedUncollected,rentsBank,regime,grossIncome,enfia,enfiaSource,myTaxShare,expensesTotal,deductibleTotal,inventoryDepr,loanInterestYear,loanAnnual,uncollectedRent,shortLevy,shortMunicipal,minNetIncome.amount])
 
   // Συμβουλευτική, προτάσεις με αξία από τα πραγματικά δεδομένα (καθαρές, όχι θόρυβος).
   const advisory = useMemo(()=>buildAdvisory({
@@ -916,10 +945,12 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     return rows.map(p=>({ name: p.name || 'Ακίνητο', status: readStatus(p) as PropertyStatus }))
   },[allProps,prop])
   // Αφετηρία, μόνο για χρήστη που δεν έχει δηλώσει ακόμη τίποτα: ό,τι ήδη ξέρουμε.
+  // Η μορφή έρχεται από τη δήλωση της υποδοχής, όχι από τη δυαδική περίληψη:
+  // μια ΟΕ δεν είναι ΑΕ και τα βιβλία τους διαφέρουν.
   const dossierSeed = useMemo(()=>{
-    const form:LegalForm = businessMode ? (elpForm==='company' ? 'company' : 'sole_trader') : 'individual'
+    const form:LegalForm = businessMode ? (legalForm==='individual' ? 'sole_trader' : legalForm) : 'individual'
     return { form, books: defaultBookkeeping(form), hasLoan: loans.length>0 }
-  },[businessMode,elpForm,loans])
+  },[businessMode,legalForm,loans])
   const dossier = useAccountantDossier(userId, year, dossierSeed)
   // Τα βιβλία κρίνουν ποιος βλέπει ισοζύγιο/ισολογισμό — ποτέ φυσικό πρόσωπο.
   const doubleEntry = dossier.profile.books==='double_entry'
@@ -943,12 +974,13 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     if(expensesYear.length===0) g.push(`Καμία καταχωρημένη δαπάνη για το ${year}.`)
     if(uncollectedRent>0) g.push(`Ανείσπρακτα μισθώματα ${eur(uncollectedRent)}: χρειάζεται τεκμηρίωση της νομικής διεκδίκησης.`)
     if(regime==='individual_longterm' && !tenant?.afm) g.push('Δεν έχει καταχωρηθεί ΑΦΜ μισθωτή.')
-    if(enfiaEstimated) g.push('Ο ΕΝΦΙΑ είναι αυτόματη εκτίμηση, όχι ποσό από εκκαθαριστικό.')
+    if(enfiaEstimated) g.push('Ο ΕΝΦΙΑ είναι εκτίμηση, όχι ποσό από εκκαθαριστικό.')
+    if(enfiaSource==='lastYear') g.push('Ο ΕΝΦΙΑ είναι το περσινό ποσό, όχι το φετινό εκκαθαριστικό.')
     if(enfiaBlock) g.push(`Δεν έχει καταχωρηθεί ΕΝΦΙΑ. ${enfiaBlock}`)
     const noCat = expensesYear.filter(e=>!e.category).length
     if(noCat>0) g.push(`${noCat} δαπάνες χωρίς κατηγορία.`)
     return g
-  },[rent,stays,expensesYear,year,regime,uncollectedRent,tenant,enfiaEstimated,enfiaBlock,ownFeeMonths])
+  },[rent,stays,expensesYear,year,regime,uncollectedRent,tenant,enfiaEstimated,enfiaSource,enfiaBlock,ownFeeMonths])
 
   // ── ΠΟΙΟΣ ΚΑΝΕΙ myDATA, ΚΑΙ ΜΕ ΠΟΙΟ ΔΙΚΑΙΩΜΑ ΕΚΠΤΩΣΗΣ ────────────────────
   // Ο ιδιοκτήτης που εκμισθώνει ως φυσικό πρόσωπο δεν χαρακτηρίζει έξοδα: δεν
@@ -1167,15 +1199,34 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // Ξέρουμε το σχήμα της οθόνης (σειρά μετρικών + πίνακας λογιστικής), οπότε
   // δείχνουμε το σχήμα αντί για κυκλικό δείκτη: η διάταξη δεν «πηδά» όταν
   // φτάσουν τα δεδομένα.
-  if(loading) return (<><SkeletonKPIs n={1} /><Skeleton h={280} r={14} /></>)
+  // Και ο ΕΝΦΙΑ: χωρίς αυτόν η Κατάσταση θα ζωγράφιζε πρώτα την εκτίμηση και
+  // μετά το περσινό ποσό, δηλαδή λάθος πρόβλεψη για ένα καρέ.
+  if(loading || enfiaLoading) return (<><SkeletonKPIs n={1} /><Skeleton h={280} r={14} /></>)
 
   // Η ΕΤΙΚΕΤΑ ΛΕΕΙ ΤΗΝ ΚΑΤΑΣΤΑΣΗ, ΟΧΙ ΤΟ ΚΑΘΕΣΤΩΣ. Το `regime` είναι
   // μακροχρόνιο για κάθε ακίνητο που δεν είναι βραχυχρόνιο, οπότε ένα κενό
   // ακίνητο έβγαινε «Μακροχρόνια μίσθωση» και στο PDF του λογιστή.
   const regimeLabel = businessMode ? 'Επιχείρηση (ΕΛΠ)' : statusLabel(prop as StatusRow)
+  // Στον υπότιτλο το σκέτο «Κενό» διαβαζόταν ως «Κενό · έσοδα, φόρος…», δηλαδή
+  // σαν να είναι άδεια τα έσοδα. Το ουσιαστικό λέει ότι είναι το ακίνητο.
+  const subjectLabel = !businessMode && readStatus(prop as StatusRow)==='vacant' ? 'Κενό ακίνητο' : regimeLabel
   // Έχει το έτος πραγματική κίνηση; Αν όχι, αντί για τοίχο από «0€» δείχνουμε μια
   // ήρεμη, καθοδηγητική αφετηρία (τι θα ξεκλειδώσει μόλις μπουν δεδομένα).
   const hasActivity = grossIncome>0 || expensesTotal>0 || rentAccruedYear>0 || book.length>0
+  // ── «ΤΟ ΒΓΑΖΟΥΜΕ ΗΔΗ» ΘΕΛΕΙ ΔΕΔΟΜΕΝΑ ΑΠΟ ΤΑ ΟΠΟΙΑ ΝΑ ΒΓΕΙ ────────────────
+  // Ο φάκελος μετρούσε κάθε γραμμή που φτιάχνει η εφαρμογή ως έτοιμη· σε
+  // άδεια χρονιά έγραφε «Τα 4 από τα 14 τα βγάζουμε ήδη από τα δεδομένα σου»
+  // ακριβώς πάνω από το «Ξεκίνα τη λογιστική σου». Κάθε γραμμή μετρά πλέον
+  // μόνο όταν υπάρχει αυτό από το οποίο βγαίνει, στο χαρτοφυλάκιο της χρονιάς.
+  const yearKey = String(year)
+  const rentThisYear = allRent.some(r=>r.period_year===year) || rent.some(r=>r.period_year===year)
+  const staysThisYear = allStays.some(st=>String(st.check_in||'').slice(0,4)===yearKey) || stays.some(st=>String(st.check_in||'').slice(0,4)===yearKey)
+  const costsThisYear = expensesYear.length>0 || billsYear.length>0
+  const appReady = (id:string):boolean =>
+    id==='expenses' ? costsThisYear
+    : id==='e2' || id==='lease_contract' ? rentThisYear
+    : id==='e2_short' ? staysThisYear
+    : rentThisYear || staysThisYear || costsThisYear
 
   // Πού γράφεται το έσοδο αυτού του ακινήτου, από τη ΜΙΑ πηγή που ξέρει και την
   // ορατότητα των καρτελών. Δοκιμή τα σταυρώνει: ό,τι προτείνεται εδώ είναι
@@ -1208,12 +1259,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         </span>
         {/* Το accent περίγραμμα του «έτοιμη» ήταν ΚΑΤΑΣΤΑΣΗ και όχι ρόλος: τη λένε
             πλέον μόνο το εικονίδιο και το λεκτικό, όπως και η αναμονή. */}
-        <span style={{ display:'inline-flex' }} title={canAccountantPortal ? "Ζωντανός σύνδεσμος για τον λογιστή σου, χωρίς σύνδεση και χωρίς email. Καλύπτει ΟΛΑ τα ακίνητά σου, όχι μόνο αυτό: διεύθυνση, ΑΤΑΚ, μίσθωμα, έσοδα και δαπάνες της χρονιάς." : "Η ζωντανή πύλη λογιστή περιλαμβάνεται από το πακέτο «Ένα ακίνητο» και πάνω, όπως και η εξαγωγή Ε2."}>
+        {/* «Ζωντανή πύλη λογιστή» δεν έλεγε τι παίρνει ο λογιστής. Παίρνει έναν
+            σύνδεσμο που ανοίγει χωρίς κωδικούς· αυτό λέει τώρα το κουμπί. Το
+            πακέτο ονομάζεται από το μητρώο, ποτέ γραμμένο με το χέρι. */}
+        <span style={{ display:'inline-flex' }} title={canAccountantPortal ? "Σύνδεσμος για τον λογιστή σου, χωρίς κωδικούς και χωρίς email. Καλύπτει όλα τα ακίνητά σου: διεύθυνση, ΑΤΑΚ, μίσθωμα, έσοδα και δαπάνες της χρονιάς. Μόνο για ανάγνωση." : `Ο σύνδεσμος για τον λογιστή περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.e2_export].name}» και πάνω, όπως και η εξαγωγή Ε2.`}>
           <Btn variant="secondary" onClick={shareWithAccountant} disabled={acctBusy}>
           {canAccountantPortal
             ? <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>
             : <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
-          {acctBusy?'Δημιουργία…':acctLink?'Πύλη λογιστή έτοιμη':'Ζωντανή πύλη λογιστή'}
+          {acctBusy?'Δημιουργία…':acctLink?'Ο σύνδεσμος είναι έτοιμος':'Σύνδεσμος για τον λογιστή'}
           </Btn>
         </span>
         {/* ΤΟ ΚΛΕΙΔΩΜΕΝΟ ΦΑΙΝΕΤΑΙ ΕΚΕΙ ΠΟΥ ΠΑΤΙΕΤΑΙ. Ίδιος κανόνας με τη διπλανή
@@ -1301,7 +1355,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               το δεύτερο επίπεδο. Η εμφάνιση δεν αλλάζει: ίδιο μέγεθος, ίδιο
               βάρος, ίδια απόσταση — αλλάζει μόνο τι ακούει ο αναγνώστης οθόνης. */}
           <h1 style={{ fontFamily: T.font.sans, fontSize:20, fontWeight:700, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>Λογιστική</h1>
-          <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'4px 0 0', fontFamily: T.font.sans }}>{regimeLabel} · έσοδα, φόρος και καθαρό αποτέλεσμα, με βάση τα πραγματικά σου δεδομένα.</p>
+          <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'4px 0 0', fontFamily: T.font.sans }}>{subjectLabel} · έσοδα, φόρος και καθαρό αποτέλεσμα, με βάση τα πραγματικά σου δεδομένα.</p>
           {/* ══════════════════════════════════════════════════════════════
               Ο ΣΥΝΙΔΙΟΚΤΗΤΗΣ ΠΡΕΠΕΙ ΝΑ ΞΕΡΕΙ ΤΙ ΚΟΙΤΑΖΕΙ
 
@@ -1336,10 +1390,16 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               ))}
             </div>
           )}
-          <ActionMenu label="Εργαλεία και αναφορές" icon={<Printer size={14}/>} items={[
+          {/* «Επίσημη» έλεγε ότι το έγγραφο το εκδίδει αρχή. Το PDF φέρει αριθμό
+              εγγράφου και QR για να ελέγξει ο λογιστής ότι δεν άλλαξε· αυτό
+              λέει και το όνομά του. Η αναπροσαρμογή ενοικίου εμφανίζεται μόνο
+              όπου υπάρχει μισθωτής να ειδοποιηθεί. */}
+          <ActionMenu label="Αναφορές και ενέργειες" icon={<Printer size={14}/>} items={[
             { key:'print', label:'Λογιστική αναφορά', description:'Σύνοψη εσόδων, φόρου και καθαρού σε PDF, έτοιμη για τον λογιστή σου', icon:<Printer size={16}/>, onClick:printReport },
-            { key:'official', label:'Επίσημη αναφορά', description:'Υπογεγραμμένο PDF με αριθμό εγγράφου και QR επαλήθευσης', icon:<ShieldCheck size={16}/>, onClick:officialReport, busy:genOfficial },
-            { key:'adjust', label:'Αναπροσαρμογή ενοικίου', description:'Νόμιμη ειδοποίηση προς τον μισθωτή, με ηλεκτρονική υπογραφή', icon:<svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>, onClick:()=>setAdjustOpen(true) },
+            { key:'official', label:'Αναφορά με επαλήθευση', description:'PDF με αριθμό εγγράφου και QR για να ελέγξει ο λογιστής ότι δεν άλλαξε', icon:<ShieldCheck size={16}/>, onClick:officialReport, busy:genOfficial },
+            ...(status==='rent_long' ? [
+              { key:'adjust', label:'Αναπροσαρμογή ενοικίου', description:'Νόμιμη ειδοποίηση προς τον μισθωτή, με ηλεκτρονική υπογραφή', icon:<svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>, onClick:()=>setAdjustOpen(true) },
+            ] : []),
             ...(canPortfolioReport ? [
               { key:'builder', label:'Σύνθεση αναφοράς', description:'Προσαρμοσμένη αναφορά για όλο το χαρτοφυλάκιο', icon:<svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>, onClick:()=>setReportBuilderOpen(true) },
             ] : []),
@@ -1358,12 +1418,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         </div>
       </div>
 
-      {/* Ο ΦΑΚΕΛΟΣ, ΜΠΡΟΣΤΑ ΑΠΟ ΟΛΑ. Είναι η ερώτηση που έχει ο ιδιοκτήτης πριν
-          από κάθε άλλη — «τι πρέπει να πάω στον λογιστή και τι μου λείπει;» —
-          και μαζί του, στην ΙΔΙΑ κάρτα, ό,τι άλλο φεύγει προς τον λογιστή. */}
-      <AccountantDossier state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions} />
-
-      {/* Αφετηρία — όταν δεν υπάρχει καμία κίνηση για το έτος (καθαρή onboarding εικόνα) */}
+      {/* Αφετηρία — όταν δεν υπάρχει καμία κίνηση για το έτος. Πρώτη, πριν από
+          τον φάκελο: είναι η μόνη ενέργεια που έχει νόημα σε άδεια χρονιά. */}
       {!hasActivity && (
         <div style={{ ...card, padding:'26px 24px' }}>
           <div style={{ display:'flex', alignItems:'flex-start', gap:16, flexWrap:'wrap' }}>
@@ -1373,8 +1429,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <div style={{ flex:1, minWidth:240 }}>
               <p style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)', margin:0, fontFamily: T.font.sans, letterSpacing:'0.1px' }}>Ξεκίνα τη λογιστική σου για το {year}</p>
               <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'6px 0 0', lineHeight:1.6, fontFamily: T.font.sans, maxWidth:520 }}>{income
-                ? `Καταχώρησε ${income.noun} και έξοδα και όλα εδώ υπολογίζονται αυτόματα: έσοδα, φόρος, καθαρό ταμείο και έτοιμες αναφορές για τον λογιστή σου.`
-                : 'Καταχώρησε τα έξοδα του ακινήτου και όλα εδώ υπολογίζονται αυτόματα: κόστος, καθαρό ταμείο και έτοιμες αναφορές για τον λογιστή σου.'}</p>
+                ? `Καταχώρησε ${income.noun} και έξοδα. Από αυτά βγαίνουν ο φόρος, το ταμειακό υπόλοιπο και οι αναφορές για τον λογιστή σου.`
+                : 'Καταχώρησε τα έξοδα του ακινήτου. Από αυτά βγαίνουν το ταμειακό υπόλοιπο και οι αναφορές για τον λογιστή σου.'}</p>
               <div style={{ display:'flex', alignItems:'center', gap:16, margin:'14px 0 0', flexWrap:'wrap' }}>
                 {/* ΤΑ ΟΝΟΜΑΤΑ ΕΙΝΑΙ ΤΑ ΟΝΟΜΑΤΑ ΠΟΥ ΘΑ ΔΕΙ. Η κενή οθόνη υποσχόταν «Καθαρό
                     ταμείο», ταμπέλα που δεν υπάρχει σε καμία γεμάτη οθόνη: εκεί η
@@ -1413,6 +1469,17 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         </div>
       )}
 
+      {/* Ο ΦΑΚΕΛΟΣ, ΜΠΡΟΣΤΑ ΑΠΟ ΟΛΑ. Είναι η ερώτηση που έχει ο ιδιοκτήτης πριν
+          από κάθε άλλη — «τι πρέπει να πάω στον λογιστή και τι μου λείπει;» —
+          και μαζί του, στην ΙΔΙΑ κάρτα, ό,τι άλλο φεύγει προς τον λογιστή. */}
+      {/* ΧΩΡΙΣ ΚΙΝΗΣΗ, Ο ΦΑΚΕΛΟΣ ΜΑΖΕΥΕΙ ΣΤΗΝ ΚΑΡΤΑ ΤΟΥ. Η αφετηρία καθόταν κάτω
+          από 1.700 εικονοστοιχεία καταλόγου: ο χρήστης που δεν έχει γράψει
+          ακόμη τίποτα έβλεπε πρώτα τι θα ζητήσει ο λογιστής και μετά πώς να
+          ξεκινήσει. Τώρα ξεκινά από το «ξεκίνα» και ο κατάλογος ανοίγει με ένα
+          πάτημα. */}
+      <AccountantDossier state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions}
+        compact={!hasActivity} appReady={appReady} />
+
       {hasActivity && (<>
       {/* ═══════════════════════════════════════════════════════════════════
           ΕΝΑΣ ΑΡΙΘΜΟΣ ΣΤΗΝ ΚΟΡΥΦΗ· ΕΙΝΑΙ Ο ΜΟΝΟΣ ΠΟΥ ΔΕΝ ΛΕΕΙ Η ΚΑΤΑΣΤΑΣΗ
@@ -1443,9 +1510,21 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           (ως τον Δεκέμβριο) και δύο διαφορετικά «τον μήνα» στην ίδια οθόνη
           δεν λένε στον χρήστη πόσα να βάλει στην άκρη.
           ═══════════════════════════════════════════════════════════════════ */}
-      <Kpi label="Πρόβλεψη φόρου" value={eur(provision.annualTaxTotal)}
+      {/* Η ΕΤΙΚΕΤΑ ΛΕΕΙ ΤΙ ΑΘΡΟΙΖΕΙ. Έγραφε «Πρόβλεψη φόρου» πάνω σε φόρο
+          εισοδήματος ΣΥΝ ΕΝΦΙΑ ΣΥΝ ΤΑΚΚ, ενώ ο φάκελος του λογιστή στην ίδια
+          σελίδα λέει για το ΤΑΚΚ ότι δεν είναι έσοδο του ιδιοκτήτη. Το σύνολο
+          μένει (δεν το γράφει κανείς άλλος), με όνομα που το περιγράφει και με
+          τον φόρο εισοδήματος ξεχωριστά στη γραμμή από κάτω. */}
+      <Kpi label={provision.propertyTaxes>0 ? `Φόροι και τέλη ${year}` : `Φόρος εισοδήματος ${year}`} value={eur(provision.annualTaxTotal)}
         hot={taxHot} onHover={setTaxHot}
-        note={year===athensYear() ? 'Σύνολο για τη χρονιά, ενδεικτικά.' : `Σύνολο για τη χρονιά. Το ένα δωδέκατο είναι ${eur(provision.monthly)} τον μήνα.`} />
+        note={<>
+          {provision.propertyTaxes>0
+            ? (provision.annualTaxTotal-provision.propertyTaxes>0
+              ? `Φόρος εισοδήματος ${eur(provision.annualTaxTotal-provision.propertyTaxes)} και ${eur(provision.propertyTaxes)} φόροι και τέλη ακινήτου. `
+              : 'Χωρίς φόρο εισοδήματος: όλο το ποσό είναι φόροι και τέλη ακινήτου. ')
+            : ''}
+          {year===athensYear() ? 'Ενδεικτικά.' : `Ενδεικτικά. Το ένα δωδέκατο είναι ${eur(provision.monthly)} τον μήνα.`}
+        </>} />
 
       {/* Κατάσταση Αποτελεσμάτων + Πρόβλεψη φόρου */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap:16 }}>
@@ -1461,7 +1540,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                       δεν ανήκε σε καμία κλίμακα· προσπαθούσε να πει «σχεδόν 14».
                       Την έμφαση τη λέει ήδη το βάρος, 600 έναντι 400. */}
                   <span style={{ flex:1, fontSize:strong?14:13, fontFamily: T.font.sans, fontWeight:strong?600:400, color:l.kind==='result'?'var(--text-primary)':'var(--text-secondary)' }}>{l.label}</span>
-                  <span className="po-fig" data-tone={l.kind==='result'?(l.amount>=0?'accent':'negative'):undefined} style={{ fontSize:strong?14:13, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:strong?700:500 }}>{feSigned(l.negative ? -l.amount : l.amount)}</span>
+                  <span className="po-fig" data-tone={l.kind==='result'?(l.amount>=0?'accent':'negative'):undefined} style={{ fontSize:strong?14:13, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:strong?700:500 }}>{/* Μηδενικός φόρος γράφεται «0,00€», όχι «−0,00€»: το μείον λέει «αφαιρείται κάτι». */}{feSigned(l.negative && l.amount ? -l.amount : l.amount)}</span>
                 </div>
               )
             })}
@@ -1497,7 +1576,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               )}
               {uncollectedRent>0 && (
                 <Check align="start" checked={claimedUncollected} onChange={setClaimedUncollected}
-                  hint="Άρθρο 39 §4: τα ανείσπρακτα δεν φορολογούνται εφόσον έχουν διεκδικηθεί νομικά (διαταγή πληρωμής, αγωγή έξωσης) πριν την προθεσμία δήλωσης."
+                  hint={UNCOLLECTED_RULE}
                   label={<span style={{ fontSize:12, color:'var(--text-secondary)' }}>Τα ανείσπρακτα ({eur(uncollectedRent)}) έχουν <strong style={{ color:'var(--text-primary)' }}>διεκδικηθεί νομικά</strong>, να μη φορολογηθούν φέτος.</span>} />
               )}
             </div>
@@ -1525,14 +1604,18 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               ? (elpForm==='company' ? <>Σταθερός συντελεστής <strong style={{ color:'var(--text-primary)' }}>22%</strong> στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, αποσβέσεις και τόκους.</> : <>Κλίμακα άρθρου 15 στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, εισφορές ΕΦΚΑ, αποσβέσεις και τόκους.</>)
               : (regime==='individual_longterm'
                   ? <>Τεκμαρτή έκπτωση 5% και προοδευτική {bracketsLabelForYear(year)}{!businessMode&&myTaxShare!=null&&(consolidation?.count??0)>1?<>, στο σύνολο των ενοικίων σου όπως στο Ε1: ο φόρος εδώ είναι <strong style={{ color:'var(--text-primary)' }}>το μερίδιο αυτού του ακινήτου</strong></>:''}.</>
-                  : <>Τεκμαρτή έκπτωση 5% και προοδευτική {bracketsLabelForYear(year)} στα μεικτά, συν ΤΑΚΚ και τέλος παρεπιδημούντων όπου ισχύει. Οι πραγματικές δαπάνες δεν εκπίπτουν.</>)}
+                  // ΤΟ ΜΕΡΙΔΙΟ ΛΕΓΕΤΑΙ ΚΑΙ ΕΔΩ. Ο φόρος της βραχυχρόνιας είναι κι
+                  // αυτός κομμάτι του ενός φόρου στο σύνολο των ενοικίων: χωρίς
+                  // τη φράση, όποιος έκανε 15% επί του φορολογητέου έβρισκε άλλο
+                  // ποσό και συμπέραινε ότι ο φόρος είναι λάθος. Τα τέλη έφυγαν
+                  // από την πρόταση: δεν είναι μέρος αυτού του φόρου.
+                  : <>Τεκμαρτή έκπτωση 5% και προοδευτική {bracketsLabelForYear(year)} στα μεικτά{myTaxShare!=null&&(consolidation?.count??0)>1?<>, στο σύνολο των ενοικίων σου όπως στο Ε1: ο φόρος εδώ είναι <strong style={{ color:'var(--text-primary)' }}>το μερίδιο αυτού του ακινήτου</strong></>:''}. Οι πραγματικές δαπάνες δεν εκπίπτουν.</>)}
             {/* Ο «μέσος συντελεστής» του statement.ts είναι φόρος ΠΡΟΣ ΜΕΙΚΤΑ
                 (effRate = incomeTax / gross), όχι προς το φορολογητέο. Γραμμένα
                 στην ίδια πρόταση, τα δύο μεγέθη διαβάζονταν ως πολλαπλασιασμός
                 που δεν βγαίνει: 14,25% επί 11.400 δεν κάνει 1.710. Ο ιδιοκτήτης
                 που κάνει τον έλεγχο συμπεραίνει ότι ο φόρος είναι λάθος. */}
             {statement.incomeTax>0?<> Ο φόρος εισοδήματος βγαίνει {eur(statement.incomeTax)} σε φορολογητέο {eur(statement.taxableIncome)}, δηλαδή {pct(statement.effectiveRate)} των μεικτών εσόδων.</>:''}
-            {provision.propertyTaxes>0?<> Από το ετήσιο σύνολο, {eur(provision.propertyTaxes)} είναι φόροι και τέλη ακινήτου.</>:''}
             {/* ΕΝΑ ΜΗΝΙΑΙΟ ΠΟΣΟ ΓΙΑ ΤΟ ΤΡΕΧΟΝ ΕΤΟΣ. Ο δείκτης από πάνω δεν γράφει
                 πια το ένα δωδέκατο: δίπλα σε αυτό ο χρήστης δεν ήξερε ποιο να
                 βάλει στην άκρη. Ο ΕΝΦΙΑ μένει έξω (βλ. taxProvision). */}
@@ -1551,11 +1634,12 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                   ενώ η εκτίμηση διαβάζει πλέον ΤΕΣΣΕΡΑ. Ο ιδιοκτήτης που
                   συμπλήρωσε έτος κατασκευής ή όροφο έβλεπε το νούμερο να
                   αλλάζει χωρίς να λέει τίποτα η οθόνη από πού ήρθε. */}
-              {enfiaEstimated&&provision.propertyTaxes>0?` Ο ΕΝΦΙΑ (${eur(enfia)}) είναι αυτόματη εκτίμηση από τα καταχωρημένα στοιχεία του ακινήτου: αξία, τ.μ., έτος κατασκευής και όροφος. Καταχώρησε το ακριβές στους Λογαριασμούς.`:''}
+              {enfiaEstimated&&provision.propertyTaxes>0?` Ο ΕΝΦΙΑ (${eur(enfia)}) είναι εκτίμηση${enfiaNow.estimateFrom==='facts'?' από τα καταχωρημένα στοιχεία του ακινήτου: αξία, τ.μ., έτος κατασκευής και όροφος':' από τη φόρμα του Υπολογισμού ΕΝΦΙΑ'}. Γράψε το περσινό ή το φετινό ποσό στον Υπολογισμό ΕΝΦΙΑ, πιο κάτω.`:''}
+              {enfiaSource==='lastYear'&&provision.propertyTaxes>0?` Ο ΕΝΦΙΑ (${eur(enfia)}) είναι το περσινό ποσό που έγραψες. Μόλις βγει το φετινό εκκαθαριστικό, γράψε το στον Υπολογισμό ΕΝΦΙΑ.`:''}
               {/* Ο ΕΝΦΙΑ ΠΟΥ ΛΕΙΠΕΙ ΛΕΓΕΤΑΙ. Η πρόβλεψη χωρίς αυτόν είναι
                   μικρότερη από την πραγματική και ο ιδιοκτήτης δεν είχε τρόπο
                   να δει γιατί το ποσό δεν εμφανίστηκε ποτέ. */}
-              {enfiaBlock?` ${enfiaBlock} Το ποσό λείπει από την πρόβλεψη ώσπου να καταχωρηθεί στους Λογαριασμούς.`:''}
+              {enfiaBlock?` ${enfiaBlock} Το ποσό λείπει από την πρόβλεψη ώσπου να το γράψεις στον Υπολογισμό ΕΝΦΙΑ, πιο κάτω.`:''}
             </InfoHint>
           </p>
         </div>
@@ -1604,7 +1688,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               <span style={{ fontSize:12, color:'var(--text-secondary)', fontFamily: T.font.sans, fontWeight:500 }}>Διανομή κερδών</span>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <input aria-label="Διανομή κερδών σε ποσοστό" type="number" inputMode="numeric" min={0} max={100} value={distribution} onChange={e=>setDistribution(e.target.value===''?'':Math.min(100,Math.max(0,Number(e.target.value))))} placeholder=""
-                  onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-default)'}
+                  onFocus={e=>{ e.currentTarget.style.borderColor='var(--accent)'; e.currentTarget.style.boxShadow='0 0 0 3px var(--accent-soft)' }} onBlur={e=>{ e.currentTarget.style.borderColor='var(--border-default)'; e.currentTarget.style.boxShadow='none' }}
                   style={{ width:74, height:T.h.lg, padding:'10px 16px', borderRadius:10, border:'1px solid var(--border-default)', background:'var(--bg-elevated)', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right', outline:'none', transition:'border-color 0.14s' }}/>
                 <span style={{ color:'var(--text-tertiary)', fontSize:14 }}>%</span>
               </div>
@@ -1672,15 +1756,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               <span style={{ display:'inline-flex' }} title="Ετήσια βεβαίωση καταβληθέντων ενοικίων (PDF) για τον μισθωτή">
                 <Btn variant="secondary" onClick={printCertificate}><Printer size={13}/>Βεβαίωση ενοικίου</Btn>
               </span>
-              <span style={{ display:'inline-flex' }} title="Επίσημο true-PDF βεβαίωσης ενοικίου με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς">
-                <Btn variant="secondary" onClick={officialRentCertificate} disabled={genOfficialCert}><ShieldCheck size={14}/>{genOfficialCert?'Δημιουργία…':'Επίσημο PDF'}</Btn>
+              <span style={{ display:'inline-flex' }} title="Η βεβαίωση ενοικίου σε PDF με αριθμό εγγράφου και QR, για να ελέγξει όποιος τη λάβει ότι δεν άλλαξε">
+                <Btn variant="secondary" onClick={officialRentCertificate} disabled={genOfficialCert}><ShieldCheck size={14}/>{genOfficialCert?'Δημιουργία…':'PDF με επαλήθευση'}</Btn>
               </span>
             </div>
           )}
           </Fold>
         )}
 
-        <Fold open={ledgerOpen} onToggle={()=>setLedgerOpen(o=>!o)} title={mode==='professional'?'Βιβλίο Εσόδων-Εξόδων':'Πρόσφατες κινήσεις'}>
+        <Fold open={ledgerOpen} onToggle={()=>setLedgerOpen(o=>!o)} title={mode==='professional'?'Βιβλίο εσόδων-εξόδων':'Πρόσφατες κινήσεις'}>
           {recentLedger.length===0?(
             <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-tertiary)', fontFamily: T.font.sans, padding:'8px 0' }}>Καμία κίνηση για το {year}.</p>
           ):(
@@ -1704,16 +1788,17 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 <div aria-hidden style={{ display:'flex', alignItems:'center', gap:10, padding:'4px 0 6px', borderBottom:'1px solid var(--border-subtle)', fontSize:'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>
                   <span style={{ width:46, flexShrink:0 }}>Ημ/νία</span>
                   <span style={{ flex:1, minWidth:'8ch' }}>Περιγραφή</span>
-                  <span style={{ width:80, textAlign:'right' }}>Υπόλοιπο</span>
+                  {/* Πρώτα το ποσό, μετά το υπόλοιπο που αφήνει: η σειρά κάθε βιβλίου. */}
                   <span style={{ width:92, textAlign:'right' }}>Ποσό</span>
+                  <span style={{ width:80, textAlign:'right' }}>Υπόλοιπο</span>
                 </div>
               )}
               {(mode==='professional'?book.slice(-14).reverse():recentLedger).map((e,i,arr)=>(
                 <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom:i<arr.length-1?'1px solid var(--border-subtle)':'none' }}>
                   <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', width:46, flexShrink:0 }}>{e.date.slice(8,10)}/{e.date.slice(5,7)}</span>
                   <span className="po-elide" style={{ flex:1, minWidth:'8ch', fontSize: 'var(--fs-base)', color:'var(--text-primary)', fontFamily: T.font.sans }}>{e.description}</span>
-                  {mode==='professional'&&<span title="Υπόλοιπο μετά την κίνηση" style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', width:80, textAlign:'right' }}><span className="sr-only">Υπόλοιπο μετά την κίνηση </span>{feSigned(e.balance)}</span>}
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans, width:92, textAlign:'right' }}>{e.type==='income'?'+':'−'}{eur(e.amount)}</span>
+                  {mode==='professional'&&<span title="Υπόλοιπο μετά την κίνηση" style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', width:80, textAlign:'right' }}><span className="sr-only">Υπόλοιπο μετά την κίνηση </span>{feSigned(e.balance)}</span>}
                 </div>
               ))}
             </div>
@@ -1727,7 +1812,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           άλλος τελευταίος, πίσω από κάθε τι άλλο και με ένα ορφανό κενό από
           πάνω του. Μπαίνουν μαζί, μετά την εικόνα της χρήσης: πρώτα «πόσα
           βγάζω και τι φόρο», μετά «τι λέει το κάθε έντυπο». */}
-      <EnfiaPanel propertyId={propertyId} userId={userId} />
+      <EnfiaPanel propertyId={propertyId} userId={userId} year={year} enfia={enfiaState} />
       <E2ReconcileCard userId={userId} year={year} plan={plan} onUpgrade={()=>onNavigate?.('settings')} />
 
       {/* ── ΠΡΟΧΩΡΗΜΕΝΑ ───────────────────────────────────────────────────────

@@ -151,7 +151,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   }
   const eur = async label => {
     const txt = await p.locator('body').innerText().then(plain)
-    const m = txt.match(new RegExp(label + '\\s+([\\d.,]+)\\s*€'))
+    const m = txt.match(new RegExp(label + '\\s+[−-]?([\\d.,]+)\\s*€'))
     return m ? num(m[1]) : null
   }
 
@@ -159,7 +159,10 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   // ακαθάριστο 8.400 · φορολογητέο 7.980 · φόρος 1.197 · καθαρά 7.203
   // μεικτή 4,20% · καθαρή 3,6015%
   ok('η μεικτή απόδοση ξεκινά στο 4,20%', Math.abs((await pct('ΜΕΙΚΤΗ ΑΠΟΔΟΣΗ')) - 4.20) < 0.01)
-  ok('η καθαρή ξεκινά στο 3,60%', Math.abs((await pct('ΚΑΘΑΡΗ ΑΠΟΔΟΣΗ')) - 3.60) < 0.01)
+  // ΧΩΡΙΣ ΕΝΦΙΑ ΚΑΙ ΔΑΠΑΝΕΣ Η ΣΕΛΙΔΑ ΔΕΝ ΤΗΝ ΛΕΕΙ «ΚΑΘΑΡΗ». Αφαιρεί μόνο τον φόρο,
+  // οπότε η ετικέτα γράφει ακριβώς αυτό (ApodosiCalculator, `netLabel`).
+  const NET = 'ΑΠΟΔΟΣΗ ΜΕΤΑ ΤΟΝ ΦΟΡΟ'
+  ok('η απόδοση μετά τον φόρο ξεκινά στο 3,60%', Math.abs((await pct(NET)) - 3.60) < 0.01)
   ok('και ο φόρος είναι 1.197,00 €', Math.abs((await eur('Φόρος εισοδήματος')) - 1197) < 0.02)
 
   // ── ΤΟ ΣΗΜΕΙΟ ΠΟΥ ΚΑΝΕΝΑΣ ΑΛΛΟΣ ΔΕΝ ΚΑΝΕΙ ΣΩΣΤΑ ────────────────────────
@@ -169,14 +172,14 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   await inputs.nth(5).fill('20000'); await p.waitForTimeout(300)
   ok('τα άλλα ενοίκια ανεβάζουν τον φόρο στα 2.293,00 €', Math.abs((await eur('Φόρος εισοδήματος')) - 2293) < 0.02)
   // καθαρά 8.400 − 2.293 = 6.107 · 6.107 / 200.000 = 3,0535%
-  ok('και η καθαρή απόδοση πέφτει από 3,60% σε 3,05%', Math.abs((await pct('ΚΑΘΑΡΗ ΑΠΟΔΟΣΗ')) - 3.05) < 0.01)
+  ok('και η απόδοση μετά τον φόρο πέφτει από 3,60% σε 3,05%', Math.abs((await pct(NET)) - 3.05) < 0.01)
   ok('η μεικτή δεν αλλάζει, γιατί δεν ξέρει τίποτα', Math.abs((await pct('ΜΕΙΚΤΗ ΑΠΟΔΟΣΗ')) - 4.20) < 0.01)
   await inputs.nth(5).fill('0'); await p.waitForTimeout(250)
 
   // ── ΧΩΡΙΣ ΑΞΙΑ ΔΕΝ ΓΡΑΦΕΤΑΙ ΠΟΣΟΣΤΟ ────────────────────────────────────
   await inputs.nth(0).fill('0'); await p.waitForTimeout(300)
   const body0 = await p.locator('body').innerText().then(plain)
-  ok('χωρίς αξία δεν εμφανίζεται απόδοση', !body0.includes('ΚΑΘΑΡΗ ΑΠΟΔΟΣΗ'))
+  ok('χωρίς αξία δεν εμφανίζεται απόδοση', !body0.includes(NET) && !body0.includes('ΚΑΘΑΡΗ ΑΠΟΔΟΣΗ'))
   ok('…και δεν εμφανίζεται Infinity ή NaN', !/Infinity|NaN/.test(body0))
   await inputs.nth(0).fill('200000'); await p.waitForTimeout(250)
 

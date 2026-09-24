@@ -56,7 +56,9 @@ export const CATEGORIES: Category[] = [
   { slug: 'ac_service',  label: 'Κλιματιστικά',   family: 'upkeep', deductible: true, aliases: ['ac_service', 'κλιματιστικο', 'καθαρισμος κλιματιστικου', 'συντηρηση κλιματιστικου'] },
   { slug: 'pool',        label: 'Πισίνα',         family: 'upkeep', deductible: true, aliases: ['pool', 'πισινα', 'καθαρισμος πισινας'] },
   { slug: 'pest',        label: 'Απεντόμωση',     family: 'upkeep', deductible: true, aliases: ['pest', 'απεντομωση', 'μυοκτονια'] },
-  { slug: 'repair',      label: 'Επισκευή',       family: 'upkeep', deductible: true, aliases: ['maintenance', 'repair', 'επισκευη', 'συντηρηση', 'γενικη συντηρηση', 'μερεμετια'] },
+  // Ίδιο όνομα με τον κουβά του Προϋπολογισμού. Λεγόταν «Επισκευή» εδώ και
+  // «Συντήρηση» εκεί, για τα ίδια ποσά. Το παλιό όνομα μένει στα συνώνυμα.
+  { slug: 'repair',      label: 'Επισκευές και συντήρηση', family: 'upkeep', deductible: true, aliases: ['maintenance', 'repair', 'επισκευη', 'επισκευες', 'συντηρηση', 'γενικη συντηρηση', 'μερεμετια'] },
 
   // ── Φόροι και επίσημα ───────────────────────────────────────────────────
   { slug: 'enfia',       label: 'ΕΝΦΙΑ',          family: 'official', deductible: false, aliases: ['enfia', 'ενφια', 'φορολογικο / ενφια', 'φορος ακινητης περιουσιας'] },

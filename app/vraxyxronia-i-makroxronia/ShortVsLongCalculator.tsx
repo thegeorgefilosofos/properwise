@@ -20,16 +20,16 @@
 // διαφορετική δουλειά. Η έμφαση βγαίνει από μέγεθος και θέση.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
-import { T, feAuto, fp, fixedCols } from '@/components/tokens';
+import { T, feAuto, fixedCols } from '@/components/tokens';
 import { ChipToggle } from '@/components/Theme';
-import { fn, feSigned, feWhole } from '@/lib/core/format';
+import { fn, fpRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { compareShortVsLong, netByOccupancy, NIGHTS_PER_YEAR, HIGH_SEASON_NIGHTS, type SeasonSpread } from '@/lib/tools/shortVsLong';
 import { climateLevyRates, CLIMATE_LEVY_FROM_2025, FIRST_YEAR_CURRENT_LEVY } from '@/lib/billing/greekTax';
 import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
-import { CustomSelect } from '@/app/dashboard/components/UIComponents';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
+import { ToolNumField, ToolSelect, ToolFigure } from '@/app/ToolParts';
 
 import LiveResult from '@/components/LiveResult';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
@@ -53,6 +53,20 @@ const TYPES = [
   { value: 'flat', label: 'Διαμέρισμα' },
   { value: 'house', label: 'Μονοκατοικία' },
 ];
+
+/** Ακέραια ευρώ, με τυπογραφικό μείον όταν τα καθαρά βγαίνουν αρνητικά. */
+const wholeSigned = (n: number) => (Math.round(n) < 0 ? `−${feWhole(-n)}` : feWhole(n));
+
+/**
+ * Διαφορά σε ακέραια ευρώ με πρόσημο ΚΑΙ στο κέρδος: «+1.020€», «−330€».
+ * Το `feSigned` σημαδεύει μόνο το αρνητικό, οπότε στη στήλη «Έναντι
+ * μακροχρόνιας» το «−330,50€» καθόταν δίπλα σε σκέτο «1.020,00€» και το
+ * κέρδος δεν διαβαζόταν ως κέρδος.
+ */
+const delta = (n: number) => {
+  const w = Math.round(n);
+  return w > 0 ? `+${feWhole(w)}` : w < 0 ? `−${feWhole(-w)}` : feWhole(0);
+};
 
 export function ShortVsLongCalculator({ today }: { today: string }) {
   const [v, set] = useToolState(SPEC, PATH);
@@ -79,42 +93,16 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
   const curve = useMemo(() => netByOccupancy(input, OCCUPANCY_STEPS), [input]);
   const levyRates = climateLevyRates(amount(v.tm), v.typos === 'house');
 
-  const field: React.CSSProperties = {
-    width: '100%', height: T.h.lg, padding: '0 12px', borderRadius: T.radius.btn,
-    border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
-    color: 'var(--text-primary)', fontSize: 15, fontFamily: T.font.num,
-    // ΚΑΜΙΑ ΑΠΕΝΕΡΓΟΠΟΙΗΣΗ ΤΟΥ ΔΑΧΤΥΛΙΔΙΟΥ ΕΣΤΙΑΣΗΣ. Το `outline: 'none'` εδώ
-    // ήταν inline, άρα νικούσε το :focus-visible του globals.css — και δεν
-    // έμπαινε τίποτα στη θέση του. Μετρημένο σε πραγματικό περιηγητή: με το
-    // πεδίο εστιασμένο, outlineWidth 0px, boxShadow none, εικόνα ΤΑΥΤΟΣΗΜΗ με
-    // την ανεστίαστη. Ο χρήστης πληκτρολογίου δεν έβλεπε πού βρίσκεται.
-    fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box',
-  };
-  const label: React.CSSProperties = {
-    display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
-    textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8,
-  };
-  const unit: React.CSSProperties = {
-    position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)',
-    color: 'var(--text-tertiary)', fontSize: 14, pointerEvents: 'none',
-  };
-
-  /** Πεδίο με μονάδα μέσα του, όπως και στους δύο αδελφούς υπολογιστές. */
+  /** Πεδίο με μονάδα μέσα του, όπως και στους αδελφούς υπολογιστές. */
   const num = (id: string, key: keyof typeof SPEC, text: string, suffix: string, pad = 34) => (
-    <div>
-      <label htmlFor={id} style={label}>{text}</label>
-      <div style={{ position: 'relative' }}>
-        <input id={id} inputMode="decimal" value={v[key]} onChange={e => set(key, e.target.value)}
-          style={{ ...field, paddingRight: pad }} aria-describedby={`${id}-u`}/>
-        <span id={`${id}-u`} aria-hidden style={unit}>{suffix}</span>
-      </div>
-    </div>
+    <ToolNumField id={id} label={text} value={v[key]} onChange={x => set(key, x)} unit={suffix} unitPad={pad}/>
   );
 
   // ΑΚΕΡΑΙΟ, ΠΡΟΣ ΤΑ ΠΑΝΩ. Το κατώφλι βγαίνει από μια πληρότητα που ο χρήστης
   // μαντεύει· το «52,45%» υπόσχεται ακρίβεια που η είσοδος δεν έχει. Προς τα
   // πάνω, ώστε το «από 53% και πάνω» να ισχύει και στο όριο.
   const be = r.breakEvenPct === null ? null : Math.ceil(r.breakEvenPct);
+  const gap = Math.round(r.short.net) - Math.round(r.long.net);
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
@@ -137,17 +125,20 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
              πέφτει στα 216 και η «Καθαριότητα ανά διανυκτέρευση» τυλίγεται:
              με στοίχιση στην αρχή κατέβαινε ΜΟΝΟ το δικό της κουτί κατά μία
              γραμμή, δηλαδή η σειρά έσπαγε σε τρεις στάθμες. Κανένα πεδίο εδώ
-             δεν έχει σημείωση από κάτω. */}
-      <div {...fixedCols(4, 14, 'end', 'po-tool-controls fc-roomy')}>
+             δεν έχει σημείωση από κάτω.
+
+             ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ ΔΥΟ ΣΤΗΛΕΣ. Στα 390 τα οκτώ πεδία έπεφταν σε μία
+             στήλη των 358 εικονοστοιχείων το καθένα (για ένα «60%» ή ένα «12€»)
+             και η απάντηση άρχιζε 1.350 εικονοστοιχεία πιο κάτω. Δύο στήλες
+             κάνουν τις οκτώ σειρές τέσσερις· κάτω από τα 340 τα ποσά δεν χωρούν
+             δίπλα δίπλα και γίνονται πάλι μία. */}
+      <div {...fixedCols(4, 14, 'end', 'po-tool-controls fc-roomy fc-xs-2 fc-xxs-1')}>
         {num(ids.rent, 'enoikio', 'Μηνιαίο ενοίκιο', '€')}
         {num(ids.price, 'timi', 'Τιμή ανά διανυκτέρευση', '€')}
         {num(ids.occ, 'plirotita', 'Πληρότητα', '%')}
         {num(ids.sqm, 'tm', 'Τετραγωνικά', 'τ.μ.', 44)}
-        <div>
-          <span style={label}>Τύπος ακινήτου</span>
-          <CustomSelect ariaLabel="Τύπος ακινήτου" value={v.typos}
-            onChange={x => set('typos', x)} options={TYPES}/>
-        </div>
+        <ToolSelect label="Τύπος ακινήτου" value={v.typos}
+          onChange={x => set('typos', x)} options={TYPES}/>
         {num(ids.fee, 'promitheia', 'Προμήθεια πλατφόρμας', '%')}
         {num(ids.cost, 'kostos', 'Καθαριότητα ανά διανυκτέρευση', '€')}
         {num(ids.fixed, 'pagia', 'Πάγια ανά μήνα', '€')}
@@ -194,8 +185,8 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
           </div>
           <p style={{ margin: '3px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)' }}>
             {input.season === 'high'
-              ? `Οι κρατήσεις πέφτουν πρώτα στους επτά μήνες της υψηλής περιόδου, δηλαδή έως ${HIGH_SEASON_NIGHTS} διανυκτερεύσεις, όπου το τέλος είναι ${feAuto(levyRates.high)} τη διανυκτέρευση. Αλλάζει τι πληρώνει ο επισκέπτης, όχι τι κρατάς εσύ.`
-              : `Οι κρατήσεις μοιράζονται ισομερώς στους δώδεκα μήνες. Το τέλος είναι ${feAuto(levyRates.high)} τη διανυκτέρευση από Απρίλιο ώς Οκτώβριο και ${feAuto(levyRates.low)} τους υπόλοιπους.`}
+              ? `Οι κρατήσεις πέφτουν πρώτα στους επτά μήνες της υψηλής περιόδου, δηλαδή έως ${HIGH_SEASON_NIGHTS} διανυκτερεύσεις, όπου το τέλος είναι ${feWhole(levyRates.high)} τη διανυκτέρευση. Αλλάζει τι πληρώνει ο επισκέπτης, όχι τι κρατάς εσύ.`
+              : `Οι κρατήσεις μοιράζονται ισομερώς στους δώδεκα μήνες. Το τέλος είναι ${feWhole(levyRates.high)} τη διανυκτέρευση από Απρίλιο ώς Οκτώβριο και ${feWhole(levyRates.low)} τους υπόλοιπους.`}
           </p>
         </div>
         {/* ── Η ΕΝΕΡΓΗ ΕΠΙΛΟΓΗ ΔΕΝ ΛΕΓΕΤΑΙ ΜΟΝΟ ΜΕ ΧΡΩΜΑ ─────────────────────
@@ -218,8 +209,11 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
           border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
           {/* `seg` γιατί η ράγα από πάνω έχει ήδη δικό της περίγραμμα. Το aria-pressed
               το βάζει πλέον μόνο του το πρωτογενές, με την ίδια συνθήκη που δίνει το χρώμα. */}
-          <ChipToggle shape="seg" on={input.season === 'even'} onClick={() => set('sezon', 'even')}>Όλο τον χρόνο</ChipToggle>
-          <ChipToggle shape="seg" on={input.season === 'high'} onClick={() => set('sezon', 'high')}>Κυρίως το καλοκαίρι</ChipToggle>
+          {/* `grow`: όταν η ράγα πέσει σε δική της γραμμή (κάτω από τα 600
+              πιάνει όλο το πλάτος, globals.css) τα δύο μοιράζονται ίσα, όπως ο
+              επιλογέας έτους στον φόρο ενοικίων. */}
+          <ChipToggle shape="seg" grow on={input.season === 'even'} onClick={() => set('sezon', 'even')}>Όλο τον χρόνο</ChipToggle>
+          <ChipToggle shape="seg" grow on={input.season === 'high'} onClick={() => set('sezon', 'high')}>Κυρίως το καλοκαίρι</ChipToggle>
         </div>
       </div>
 
@@ -227,9 +221,9 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
       <ToolPaper title="Σύγκριση βραχυχρόνιας και μακροχρόνιας" on={today} inputs={[
         { k: 'Μηνιαίο ενοίκιο', v: feAuto(amount(v.enoikio)) },
         { k: 'Τιμή διανυκτέρευσης', v: feAuto(amount(v.timi)) },
-        { k: 'Πληρότητα', v: fp(amount(v.plirotita)) },
+        { k: 'Πληρότητα', v: fpRate(amount(v.plirotita)) },
         { k: 'Ακίνητο', v: `${TYPES.find(t => t.value === v.typos)?.label ?? v.typos}, ${fn(amount(v.tm), 2)} τ.μ.` },
-        { k: 'Προμήθεια', v: fp(amount(v.promitheia)) },
+        { k: 'Προμήθεια', v: fpRate(amount(v.promitheia)) },
         { k: 'Καθαριότητα', v: `${feAuto(amount(v.kostos))} τη διανυκτέρευση` },
         { k: 'Πάγια', v: `${feAuto(amount(v.pagia))} τον μήνα` },
         { k: 'Πότε γεμίζει', v: input.season === 'high' ? 'κυρίως το καλοκαίρι' : 'όλο τον χρόνο' },
@@ -249,16 +243,21 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
           margin: '0 0 18px', fontSize: 'clamp(16px, 2.2vw, 20px)', lineHeight: 1.4,
           fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)', textWrap: 'balance',
         }}>
-          {Math.abs(r.difference) < 1
+          {/* ΑΚΕΡΑΙΑ ΕΥΡΩ. Όλα εδώ κρέμονται από μια πληρότητα που μαντεύεται· το
+              «8.223,00€» υπόσχεται λεπτά που η είσοδος δεν έχει. Η διαφορά της
+              πρότασης βγαίνει από τα ΣΤΡΟΓΓΥΛΑ ποσά από κάτω, ώστε να είναι η
+              αφαίρεση που θα κάνει ο αναγνώστης. Λεπτά κρατά μόνο ο πίνακας,
+              που πρέπει να κλείνει στο λεπτό. */}
+          {gap === 0
             ? 'Οι δύο επιλογές αφήνουν ουσιαστικά τα ίδια.'
-            : `Η ${r.difference > 0 ? 'βραχυχρόνια' : 'μακροχρόνια'} αφήνει ${feAuto(Math.abs(r.difference))} περισσότερα τον χρόνο.`}
+            : `Η ${gap > 0 ? 'βραχυχρόνια' : 'μακροχρόνια'} αφήνει ${feWhole(Math.abs(gap))} περισσότερα τον χρόνο.`}
         </p>
 
         <div {...fixedCols(2, 24, 'start')}>
           {/* Τα καθαρά μπορεί να βγουν αρνητικά: τυπογραφικό μείον, σφιχτό. */}
-          <Figure label="Μακροχρόνια, καθαρά" value={feSigned(r.long.net)} />
-          <Figure label="Βραχυχρόνια, καθαρά" value={feSigned(r.short.net)} />
-          <LiveResult say={`Μακροχρόνια ${feSigned(r.long.net)} καθαρά. Βραχυχρόνια ${feSigned(r.short.net)} καθαρά.`} />
+          <ToolFigure label="Μακροχρόνια, καθαρά" value={wholeSigned(r.long.net)}/>
+          <ToolFigure label="Βραχυχρόνια, καθαρά" value={wholeSigned(r.short.net)}/>
+          <LiveResult say={`Μακροχρόνια ${wholeSigned(r.long.net)} καθαρά. Βραχυχρόνια ${wholeSigned(r.short.net)} καθαρά.`} />
         </div>
 
         <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
@@ -324,11 +323,14 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             <tbody>
               {/* Στη μακροχρόνια πληρώνει ενοικιαστής, όχι επισκέπτης· και μόνο στη
                   βραχυχρόνια το ποσό κουβαλά το τέλος που αφαιρείται από κάτω. */}
+              {/* ΟΙ ΕΚΡΟΕΣ ΓΡΑΦΟΝΤΑΙ ΜΕ ΜΕΙΟΝ. Χωρίς πρόσημο, το «Φόρος εισοδήματος
+                  2.961,00€» καθόταν κάτω από τις εισπράξεις σαν να ήταν κι αυτό
+                  είσπραξη· με το μείον ο πίνακας διαβάζεται ως η αφαίρεση που είναι. */}
               <Line k="Εισπράξεις (με το τέλος για τη βραχυχρόνια)" a={r.long.gross} b={r.short.guestTotal} />
-              <Line k="Τέλος ανθεκτικότητας" a={0} b={r.short.levy} />
-              <Line k="Φόρος εισοδήματος" a={r.long.tax} b={r.short.tax} />
-              <Line k="Προμήθεια πλατφόρμας" a={0} b={r.short.platformFee} />
-              <Line k="Καθαριότητα και πάγια" a={0} b={r.short.running} />
+              <Line k="Τέλος ανθεκτικότητας" a={0} b={-r.short.levy} />
+              <Line k="Φόρος εισοδήματος" a={-r.long.tax} b={-r.short.tax} />
+              <Line k="Προμήθεια πλατφόρμας" a={0} b={-r.short.platformFee} />
+              <Line k="Καθαριότητα και πάγια" a={0} b={-r.short.running} />
               <Line k="Καθαρά" a={r.long.net} b={r.short.net} strong />
             </tbody>
           </table>
@@ -375,10 +377,11 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
                 const ahead = row.net >= r.long.net;
                 return (
                   <tr key={row.pct} className={ahead ? 'is-on' : undefined}>
-                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{fp(row.pct)}</td>
+                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{fpRate(row.pct)}</td>
                     <td className="num">{fn(row.nights)}</td>
-                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{feSigned(row.net)}</td>
-                    <td className="num">{feSigned(row.net - r.long.net)}</td>
+                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{wholeSigned(row.net)}</td>
+                    {/* Η διαφορά των ΣΤΡΟΓΓΥΛΩΝ, ώστε να βγαίνει από τα ποσά που φαίνονται. */}
+                    <td className="num">{delta(Math.round(row.net) - Math.round(r.long.net))}</td>
                   </tr>
                 );
               })}
@@ -399,11 +402,12 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
-          <strong style={{ color: 'var(--text-primary)' }}>Τι δεν περιλαμβάνει.</strong>{' '}
+          {/* Το κουτί ξεκινά με όσα ΥΠΟΘΕΤΕΙ, οπότε ο τίτλος το λέει (όπως στην καθαρή απόδοση). */}
+          <strong style={{ color: 'var(--text-primary)' }}>Τι υποθέτει και τι όχι.</strong>{' '}
           Υποθέτει <strong>φυσικό πρόσωπο με έως δύο ακίνητα</strong>, χωρίς υπηρεσίες πέρα από
           τα κλινοσκεπάσματα: τεκμαρτή έκπτωση 5%, τέλος παρεπιδημούντων μηδέν. Από{' '}
           <strong>τρία και πάνω</strong> η δραστηριότητα γίνεται επιχειρηματική: άλλη κλίμακα,
-          καμία έκπτωση, συν παρεπιδημούντων 0,5%, ΦΠΑ 13% και βιβλία ΕΛΠ. Το τέλος
+          καμία έκπτωση, συν τέλος παρεπιδημούντων 0,5%, ΦΠΑ 13% και βιβλία ΕΛΠ. Το τέλος
           ανθεκτικότητας υπολογίζεται με τα ποσά που ισχύουν από το {FIRST_YEAR_CURRENT_LEVY} και για το 2026:{' '}
           {feWhole(LEVY.small.high)} και {feWhole(LEVY.small.low)} τη διανυκτέρευση για
           διαμερίσματα, {feWhole(LEVY.large.high)} και {feWhole(LEVY.large.low)} για
@@ -434,7 +438,9 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             Πριν αποφασίσεις
           </div>
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
-            <strong style={{ color: 'var(--text-primary)' }}>{AMA_RULE.title}</strong>{' '}
+            {/* Ο τίτλος του κανόνα δεν έχει τελεία και κολλούσε στην πρόταση που
+                ακολουθεί («…μη μεταβίβαση Νέες εγγραφές…»): δική του γραμμή. */}
+            <strong style={{ display: 'block', marginBottom: 4, color: 'var(--text-primary)' }}>{AMA_RULE.title}</strong>
             {AMA_RULE.summary}
           </p>
           <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
@@ -449,9 +455,11 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
 
       <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
 
+      {/* Χωρίς λειτουργίες βραχυχρόνιας: δεν έχουν ανοίξει ακόμη και η
+          πρόσκληση δεν υπόσχεται ό,τι δεν υπάρχει. */}
       <ToolCta
-        title="Η απόφαση παίρνεται μία φορά, η διαχείριση κάθε μέρα."
-        body="Το PROPERWISE κρατά κρατήσεις, ενοίκια και δαπάνες ανά ακίνητο, βγάζει το τέλος ανθεκτικότητας ανά διανυκτέρευση και ετοιμάζει τα στοιχεία του Ε2 για τον λογιστή σου."
+        title="Όποια κι αν διαλέξεις, τα έξοδα θέλουν τάξη."
+        body="Το PROPERWISE κρατά ενοίκια, λογαριασμούς και δαπάνες ανά ακίνητο και ετοιμάζει τα στοιχεία του Ε2 για τον λογιστή σου."
       />
     </div>
   );
@@ -480,27 +488,5 @@ function Line({ k, a, b, strong }: { k: string; a: number; b: number; strong?: b
       <td className="num" style={{ fontWeight: weight, color: ink }}>{feSigned(a)}</td>
       <td className="num" style={{ fontWeight: weight, color: ink }}>{feSigned(b)}</td>
     </tr>
-  );
-}
-
-/**
- * Τα δύο καθαρά ποσά, ΙΣΟΜΕΓΕΘΗ.
- *
- * Ο υπολογιστής φόρου ενοικίων δίνει έμφαση στο ένα από τα δύο νούμερά του,
- * γιατί εκεί το ένα είναι η απάντηση και το άλλο το κόστος της. Εδώ τα δύο
- * ποσά είναι οι δύο υποψήφιες απαντήσεις: διαφορετικό μέγεθος θα ήταν υπόδειξη
- * πριν καν διαβάσει ο επισκέπτης τα ποσά.
- */
-function Figure({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-        color: 'var(--text-tertiary)', marginBottom: 8 }}>{label}</div>
-      <div style={{
-        fontFamily: T.font.num, fontSize: 'clamp(24px, 4.4vw, 32px)', fontWeight: 680,
-        letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
-        color: 'var(--text-primary)',
-      }}>{value}</div>
-    </div>
   );
 }

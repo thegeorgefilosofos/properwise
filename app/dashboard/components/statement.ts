@@ -42,6 +42,8 @@ export interface StatementCtx {
   coOwners?: string[] | null;
   shortTerm?: boolean;
   monthlyRent: number;
+  /** Το ενοίκιο βγήκε από τον στόχο, όχι από ενοικιαστή: τυπώνεται ως εκτίμηση. */
+  rentIsEstimate?: boolean;
   annualRent: number;
   grossYield: number;
   netYield: number;
@@ -80,7 +82,7 @@ export function printPropertyStatement(c: StatementCtx): void {
   const totalCat = c.categories.reduce((sum, [, v]) => sum + v, 0);
   const cats = [...c.categories].sort((a, b) => b[1] - a[1]);
   const leaseType = c.shortTerm ? 'Βραχυχρόνια (Airbnb / Booking)' : 'Μακροχρόνια';
-  const rentLabel = c.shortTerm ? 'Μηνιαίο έσοδο (εκτίμηση)' : 'Μηνιαίο ενοίκιο';
+  const rentLabel = c.shortTerm ? 'Μηνιαίο έσοδο (εκτίμηση)' : c.rentIsEstimate ? 'Μηνιαίο ενοίκιο (στόχος, εκτίμηση)' : 'Μηνιαίο ενοίκιο';
 
   const addr = [s(c.address), c.postalCode ? `Τ.Κ. ${s(c.postalCode)}` : ''].filter(Boolean).join(' · ');
   const info: [string, string][] = ([
@@ -131,13 +133,13 @@ export function printPropertyStatement(c: StatementCtx): void {
   <div class="kpis">
     ${reportKpi(rentLabel, rEur(c.monthlyRent))}
     ${reportKpi('Μεικτή απόδοση', rPct(c.grossYield))}
-    ${reportKpi('Καθαρή απόδοση', rPct(c.netYield))}
+    ${reportKpi('Καθαρή απόδοση προ φόρου', rPct(c.netYield))}
     ${reportKpi('Αξία ακινήτου', c.propValue ? rEur(c.propValue) : ABSENT)}
   </div>
 
   ${reportSection(`Ετήσιος απολογισμός ${c.year}`)}
   <table><tbody>
-    ${reportRow('Ακαθάριστα έσοδα (ενοίκια)', rEur(c.annualRent))}
+    ${reportRow(c.rentIsEstimate ? 'Ακαθάριστα έσοδα (ενοίκια, εκτίμηση)' : 'Ακαθάριστα έσοδα (ενοίκια)', rEur(c.annualRent))}
     ${reportRow('Συνολικές δαπάνες', `−${rEur(c.expensesYTD)}`)}
     ${reportRow('Καθαρό αποτέλεσμα προ φόρου', rSigned(preTax), 'sub')}
     ${reportRow('Φόρος εισοδήματος', `−${rEur(tax)}`)}

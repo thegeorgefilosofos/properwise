@@ -44,9 +44,11 @@ ok(get(base({ bills: [{ type: 'water', amount: 40, paid: false, due_date: inDays
 { const i = get(base({ property: { ...base().property, status_detail: 'vacant' }, tenant: null }), 'vacant');
   ok(i?.kind === 'opportunity' && !!i?.metric?.includes('700') && !!i?.metric?.includes('μήνα'), 'vacant = opportunity with rent metric'); }
 
-// 9. Πολλά μετρητά → tax-electronic opportunity
+// 9. Πολλά μετρητά → ΚΑΝΕΝΑ φορολογικό εύρημα. Στο ενοίκιο ο ιδιώτης παίρνει
+// την τεκμαρτή έκπτωση 5%, οπότε ο τρόπος πληρωμής των δαπανών του ακινήτου
+// δεν αλλάζει τον φόρο: το «γλίτωσε φόρο» ήταν υπόσχεση χωρίς βάση.
 { const cashExp = Array.from({ length: 4 }, () => ({ category: 'Χ', amount: 300, date: inDays(-5), paid: true, payment_method: 'cash' }));
-  ok(has(base({ expenses: cashExp, expensesYTD: 1200 }), 'tax-electronic'), 'high cash share = tax tip'); }
+  ok(!has(base({ expenses: cashExp, expensesYTD: 1200 }), 'tax-electronic'), 'high cash share = no tax promise'); }
 // 10. Όλα ηλεκτρονικά → όχι tax tip
 ok(!has(base(), 'tax-electronic'), 'electronic payments = no tax tip');
 
@@ -133,7 +135,7 @@ ok(has(base({ bills: [{ category: 'electricity', type: '', amount: 2000, paid: t
   ok(i?.kind === 'attention', 'spend-spike: είναι «προσοχή», όχι «επείγον» — δεν έχει προθεσμία');
   ok(i?.stake === 100, 'spend-spike: το διακύβευμα είναι η ΥΠΕΡΒΑΣΗ, όχι όλο το ποσό');
   ok((i?.title || '').includes('167%'), 'spend-spike: ο τίτλος λέει το ποσοστό');
-  ok((i?.detail || '').includes('3 μηνών'), 'spend-spike: λέει σε πόσους μήνες στηρίχτηκε');
+  ok((i?.detail || '').includes('3 προηγούμενων μηνών με δαπάνη'), 'spend-spike: λέει σε πόσους μήνες στηρίχτηκε');
 
   // Η ΒΑΣΙΚΗ ΠΕΡΙΠΤΩΣΗ ΔΕΝ ΠΑΡΑΓΕΙ ΕΥΡΗΜΑ, ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΤΟ ΖΗΤΟΥΜΕΝΟ:
   // τρεις δαπάνες σε τρεις διαφορετικές κατηγορίες δεν έχουν «συνήθως».

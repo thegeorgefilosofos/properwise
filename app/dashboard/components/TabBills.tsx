@@ -33,7 +33,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenseStore from '@/lib/data/expenses'
 import * as billStore from '@/lib/data/bills'
-import { T, fe, fixedCols, Skeleton, Btn } from '@/components/Theme';
+import { T, fe, fixedCols, Skeleton, Btn, PageTitle } from '@/components/Theme';
+import { navLabel } from '@/lib/nav/labels';
 import { mergeLedger, type LedgerEntry } from '@/lib/expenses/ledger';
 import { cadenceLabel } from '@/lib/expenses/expected';
 import { contractOverview, totalMonthly, CONTRACT_EMPTY_HINT, CONTRACT_LABEL, type ContractCard, type ContractKind } from '@/lib/contracts/overview';
@@ -247,16 +248,14 @@ export default function TabBills({
     <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }`}</style>
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 4, fontFamily: T.font.sans }}>
-            Λογαριασμοί και πάγιες δαπάνες
-          </div>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-            Τι έχεις, τι πληρώνεις. Οι καταχωρήσεις γίνονται στις Δαπάνες.
-          </div>
-        </div>
+      {/* ── Κεφαλίδα ─────────────────────────────────────────────────────
+          Η ΜΟΝΗ ΟΘΟΝΗ ΧΩΡΙΣ ΕΠΙΚΕΦΑΛΙΔΑ. Ο τίτλος ήταν <div> με μικρά κεφαλαία:
+          ο αναγνώστης οθόνης ανακοίνωνε τη σελίδα χωρίς όνομα και οπτικά
+          έμοιαζε με ετικέτα ενότητας δίπλα στα μεγάλα «Δαπάνες» και
+          «Προϋπολογισμός». Τώρα είναι το κοινό `PageTitle`, με το όνομα της
+          καρτέλας που το ανοίγει. */}
+      <PageTitle title="Συμβόλαια" sub={`Τι έχεις και τι πληρώνεις. Οι καταχωρήσεις γίνονται στις ${navLabel('finances')}.`}
+        right={(showSkeleton || (strip.recurringPerMonth !== null && strip.recurringPerMonth > 0)) ? (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {/* Η ΠΡΑΣΙΝΗ ΚΟΥΚΚΙΔΑ «LIVE» ΕΦΥΓΕ. Δεν ήταν πληροφορία του ιδιοκτήτη:
               ήταν η κατάσταση μιας σύνδεσης websocket, με αγγλική λέξη και με
@@ -269,7 +268,7 @@ export default function TabBills({
               <span title="Το άθροισμα των καρτών από κάτω. Κάθε κατηγορία μετριέται από το ιστορικό της με διάμεσο και ο διμηνιαίος λογαριασμός μοιράζεται στους μήνες του. Κατηγορία χωρίς αρκετό ιστορικό δεν μπαίνει στο άθροισμα." style={{ padding: '4px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(strip.recurringPerMonth)} τον μήνα</span>
             )}
         </div>
-      </div>
+        ) : undefined} />
 
       {/* ── «Πληρώνεις παραπάνω» — μόνο όταν υπάρχει πραγματική διαφορά ── */}
       <ExpenseSwitchAlert propertyId={propertyId} userId={userId} onOpen={openTool} />

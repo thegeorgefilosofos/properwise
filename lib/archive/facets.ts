@@ -144,7 +144,9 @@ export interface FacetOption {
  *
  * Ταξινόμηση: πρώτα οι επιλεγμένες (να μη χάνονται όταν η λίστα είναι μακριά),
  * μετά κατά πλήθος φθίνουσα και με ίσο πλήθος αλφαβητικά στα ελληνικά ώστε η
- * σειρά να είναι σταθερή και προβλέψιμη.
+ * σειρά να είναι σταθερή και προβλέψιμη. Η ΧΡΟΝΙΑ ΕΙΝΑΙ Η ΕΞΑΙΡΕΣΗ: είναι
+ * κλίμακα, όχι κατάλογος. Κατά πλήθος έβγαινε «2026, 2019, 2021, 2023» και το
+ * μάτι έψαχνε το 2021 ανάμεσα στα άλλα· πάει από το νεότερο στο παλαιότερο.
  */
 export function facetOptions<T extends FacetableItem>(
   items: readonly T[], key: FacetKey, sel: Selection, query = '',
@@ -165,8 +167,28 @@ export function facetOptions<T extends FacetableItem>(
     .map(([value, count]) => ({ value, count, selected: chosen.includes(value) }))
     .sort((a, b) =>
       (Number(b.selected) - Number(a.selected)) ||
-      (b.count - a.count) ||
-      a.value.localeCompare(b.value, 'el'))
+      (key === 'year' ? b.value.localeCompare(a.value) : (b.count - a.count) ||
+      a.value.localeCompare(b.value, 'el')))
+}
+
+/**
+ * Χωρίζουν οι δύο όψεις τα αρχεία ΑΚΡΙΒΩΣ με τον ίδιο τρόπο;
+ *
+ * Τότε είναι ένα φίλτρο γραμμένο δύο φορές: η «Κατηγορία» και η «Προέλευση»
+ * έδειχναν και οι δύο «Λογαριασμοί 10», με το ίδιο αποτέλεσμα όποιο κι αν
+ * πατούσες. Κάθε τιμή της μίας αντιστοιχεί σε μία μόνο τιμή της άλλης και
+ * αντίστροφα.
+ */
+export function sameGrouping<T extends FacetableItem>(items: readonly T[], a: FacetKey, b: FacetKey): boolean {
+  const ab = new Map<string, string>()
+  const ba = new Map<string, string>()
+  for (const i of items) {
+    const va = FACET_OF[a](i).join('|')
+    const vb = FACET_OF[b](i).join('|')
+    if ((ab.get(va) ?? vb) !== vb || (ba.get(vb) ?? va) !== va) return false
+    ab.set(va, vb); ba.set(vb, va)
+  }
+  return true
 }
 
 /** Πάτημα σε τιμή: μπαίνει αν λείπει, βγαίνει αν υπάρχει. */
@@ -191,6 +213,11 @@ export interface TimeGroup<T> { key: string; label: string; items: T[] }
  * Ομάδες ανά μήνα, νεότερη πρώτη. Τα χαρτιά χωρίς ημερομηνία πάνε σε δική τους
  * ομάδα στο ΤΕΛΟΣ — δεν τα κρύβουμε και δεν τους δίνουμε ψεύτικη ημερομηνία.
  *
+ * ΤΟ ΜΕΛΛΟΝ ΔΕΝ ΜΠΑΙΝΕΙ ΠΑΝΩ ΑΠΟ ΤΟ «ΑΥΤΟΝ ΤΟΝ ΜΗΝΑ». Λογαριασμός με λήξη τον
+ * επόμενο μήνα έβγαινε πρώτη ομάδα, «Οκτώβριος 2026», πάνω από το σήμερα. Ό,τι
+ * έχει ημερομηνία μετά τον τρέχοντα μήνα πάει σε μία ομάδα «Επερχόμενα», μετά
+ * τα χρονολογημένα, με το πιο κοντινό πρώτο.
+ *
  * Το `now` περνιέται ως όρισμα ώστε το «Αυτόν τον μήνα» να είναι ελέγξιμο.
  */
 export function groupByMonth<T extends FacetableItem>(items: readonly T[], now: Date): TimeGroup<T>[] {
@@ -207,7 +234,9 @@ export function groupByMonth<T extends FacetableItem>(items: readonly T[], now: 
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
   const lastMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
 
-  const groups = [...buckets.entries()]
+  const upcoming = [...buckets.entries()].filter(([key]) => key > thisMonth).flatMap(([, arr]) => arr)
+  const groups: TimeGroup<T>[] = [...buckets.entries()]
+    .filter(([key]) => key <= thisMonth)
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([key, arr]) => {
       const [y, m] = key.split('-')
@@ -220,6 +249,13 @@ export function groupByMonth<T extends FacetableItem>(items: readonly T[], now: 
       }
     })
 
+  if (upcoming.length) {
+    groups.push({
+      key: 'upcoming',
+      label: 'Επερχόμενα',
+      items: upcoming.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')),
+    })
+  }
   if (undated.length) {
     groups.push({
       key: 'no-date',

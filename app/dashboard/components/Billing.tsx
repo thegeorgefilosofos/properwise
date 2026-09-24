@@ -35,6 +35,7 @@ import { SegmentControl } from './UIComponents';
 import { notifyError, notifyOk } from '@/components/Toast';
 import { ALL_COUNTRIES, isEuCountry, isReverseCharge, missingInvoiceFields, type InvoiceProfile } from '@/lib/billing/invoiceProfile';
 import { determineVat, vatTreatmentLabel } from '@/lib/billing/invoicing';
+import { isReferralCode } from '@/lib/referral/referral';
 
 interface BillingData {
   doc_type: string; full_name: string; company_name: string; afm: string; doy: string;
@@ -196,7 +197,7 @@ export default function Billing({ userId, wantPlan = null }: {
             options={[{ value: 'receipt', label: 'Απόδειξη (ιδιώτης)' }, { value: 'invoice', label: 'Τιμολόγιο (επιχείρηση)' }]} />
           <CustomSelect label="Χώρα" value={country} onChange={v => set('country', v)}
             options={ALL_COUNTRIES.map(c => ({ value: c.code, label: c.name }))} />
-          <TextInput label="Ονοματεπώνυμο" value={d.full_name} onChange={v => set('full_name', v)} placeholder="Γιώργος Παπαδόπουλος" />
+          <TextInput label="Ονοματεπώνυμο" value={d.full_name} onChange={v => set('full_name', v)} placeholder="Όνομα και επώνυμο" />
           {isInvoice && <TextInput label="Επωνυμία εταιρείας" value={d.company_name} onChange={v => set('company_name', v)} placeholder="Παράδειγμα Ε.Ε." />}
           {isInvoice && <TextInput label="Δραστηριότητα" value={d.profession} onChange={v => set('profession', v)} placeholder="Διαχείριση ακινήτων" />}
           {/* Φορολογικό αναγνωριστικό: ΑΦΜ/ΔΟΥ για Ελλάδα, κοινοτικό VAT (VIES) για ΕΕ, μητρώο για εκτός ΕΕ */}
@@ -250,6 +251,13 @@ export default function Billing({ userId, wantPlan = null }: {
     </div>
   );
 }
+
+/**
+ * Οταν ο διακομιστής δεν απάντησε καθόλου. Δεν λέει τίποτα για το αν η χρέωση
+ * είναι ενεργή: αυτό το ξέρει μόνο ο διακομιστής και λέγεται με τις λέξεις
+ * των Ορων. Λέει μόνο τι ισχύει στην οθόνη και ότι τίποτα δεν άλλαξε.
+ */
+const CHECKOUT_UNREACHABLE = 'Η πληρωμή με κάρτα δεν είναι διαθέσιμη αυτή τη στιγμή. Η συνδρομή σου δεν αλλάζει.';
 
 // ─── Η ΣΥΝΔΡΟΜΗ ─────────────────────────────────────────────────────────────
 //
@@ -336,9 +344,12 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
     (async () => {
       try {
         const res = await fetch(`/api/billing/checkout?plan=${target}&cycle=${cycle}&probe=1`);
-        const body = await res.json() as { available?: boolean; note?: string };
-        if (alive) { setLive(!!body.available); setNote(body.note || ''); onLive?.(!!body.available); }
-      } catch { if (alive) { setLive(false); onLive?.(false); } }
+        const body = await res.json() as { available?: boolean; note?: string; error?: string };
+        // ΧΩΡΙΣ ΦΡΑΣΗ ΔΕΝ ΜΕΝΕΙ ΑΔΕΙΟ ΠΛΑΙΣΙΟ. Οι απαντήσεις 401/403/409
+        // φέρνουν `error` αντί για `note` και το μπάνερ από κάτω έβγαινε κουτί
+        // με μια τελεία. Πρώτα η φράση των Ορων, μετά ο λόγος του διακομιστή.
+        if (alive) { setLive(!!body.available); setNote(body.note || body.error || ''); onLive?.(!!body.available); }
+      } catch { if (alive) { setLive(false); setNote(''); onLive?.(false); } }
     })();
     return () => { alive = false; };
   // Το `onLive` είναι σταθερός setter του γονέα· δεν ξαναρωτά το ταμείο.
@@ -386,7 +397,7 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
   const moves = running && (target !== current || cycle !== paidCycle);
   const goingDown = moves && PLAN_ORDER.indexOf(target) < PLAN_ORDER.indexOf(current);
 
-  // ── Ο ΚΩΔΙΚΟΣ ΠΡΟΣΚΛΗΣΗΣ ─────────────────────────────────────────────
+  // ── Ο ΚΩΔΙΚΟΣ ΔΟΚΙΜΑΣΤΗ ──────────────────────────────────────────────
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState('');
 
@@ -398,6 +409,15 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
    * να δοκιμάσει κανείς δεύτερο.
    */
   const redeem = async () => {
+    // Ο ΚΩΔΙΚΟΣ ΠΡΟΣΚΛΗΣΗΣ ΔΕΝ ΕΙΝΑΙ ΚΩΔΙΚΟΣ ΔΟΚΙΜΑΣΤΗ. Η οθόνη των Προσκλήσεων
+    // δείχνει «Κωδικός POxxxxxxx» και ο φίλος που τον πληκτρολογούσε εδώ
+    // έπαιρνε «δεν αναγνωρίζεται», καίγοντας μία από τις πέντε προσπάθειες
+    // του εικοσιτετραώρου. Η μορφή του είναι γνωστή, οπότε απαντιέται εδώ,
+    // χωρίς κλήση και χωρίς να μετρήσει στο όριο.
+    if (isReferralCode(code.trim().toUpperCase())) {
+      notifyError('Αυτός είναι κωδικός πρόσκλησης. Ισχύει μόνο μέσα από τον σύνδεσμο εγγραφής.');
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch('/api/billing/tester', {
@@ -508,7 +528,11 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           συνδρομής» που ανοίγει την πύλη του εμπόρου — όπου η αλλαγή πακέτου
           δεν υπάρχει καν. Οι επιλογές είναι όσες επιτρέπει ο τύπος προφίλ,
           όπως και στο ταμείο: ένα κουμπί που απαντά 403 δεν είναι επιλογή. */}
-      {running && (
+      {/* ΚΟΥΜΠΙΑ ΜΟΝΟ ΟΤΑΝ ΟΔΗΓΟΥΝ ΣΕ ΑΛΛΑΓΗ. Χωρίς ζωντανό ταμείο το κουμπί
+          εφαρμογής δεν εμφανίζεται, οπότε τα «κουμπιά πακέτου» άλλαζαν μόνο την
+          τιμή από κάτω. Τότε η επιλογή είναι ό,τι πράγματι κάνει: διακόπτης
+          που δείχνει την τιμή κάθε πακέτου. */}
+      {running && (live === true ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 14 }}>
           {ALLOWED_PLANS[type].filter(id => PLANS[id].priceMonthly > 0).map(id => (
             <Btn key={id} variant={target === id ? 'primary' : 'secondary'}
@@ -517,7 +541,12 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
             </Btn>
           ))}
         </div>
-      )}
+      ) : (
+        <div style={{ marginTop: 4, marginBottom: 14, maxWidth: 360 }}>
+          <SegmentControl value={target} onChange={v => setPick(v as PlanId)} ariaLabel="Δες την τιμή του πακέτου"
+            options={ALLOWED_PLANS[type].filter(id => PLANS[id].priceMonthly > 0).map(id => ({ value: id, label: PLANS[id].name }))} />
+        </div>
+      ))}
 
       {/* Ο ΔΙΑΚΟΠΤΗΣ ΠΑΝΩ ΑΠΟ ΤΗΝ ΤΙΜΗ: πρώτα η αιτία, μετά το αποτέλεσμα. Δίπλα
           στον μεγάλο αριθμό διαβαζόταν ως διακόσμηση και δεν φαινόταν ότι είναι
@@ -536,7 +565,10 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
         <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{plan.name}</div>
         <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4 }}>{fe(price)}</div>
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, marginTop: 2 }}>
-          τον μήνα{cycle === 'annual' ? `, με ετήσια χρέωση ${fe(plan.priceAnnual)}` : ''}
+          {/* ΜΕ ΦΠΑ ΜΟΝΟ ΟΠΟΥ ΙΣΧΥΕΙ. Οι τιμές του τιμοκαταλόγου είναι για
+              καταναλωτή στην Ελλάδα, με ΦΠΑ (σελίδα «Πακέτα»)· για άλλη χώρα ο
+              ΦΠΑ κρίνεται αλλιώς και το ποσό το λέει το ταμείο. */}
+          τον μήνα{determineVat(d).treatment === 'domestic' ? ', με ΦΠΑ' : ''}{cycle === 'annual' ? `, με ετήσια χρέωση ${fe(plan.priceAnnual)}` : ''}
         </div>
       </div>
 
@@ -589,7 +621,7 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           με τους Ορους και την Πολιτική απορρήτου, από την ίδια πηγή. */}
       {live === false && (
         <div style={{ marginTop: T.sp.lg }}>
-          <InfoBanner tone="info">{note}</InfoBanner>
+          <InfoBanner tone="info">{note || CHECKOUT_UNREACHABLE}</InfoBanner>
         </div>
       )}
 
@@ -604,7 +636,7 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
         </div>
       )}
 
-      {/* ── Ο ΚΩΔΙΚΟΣ ΠΡΟΣΚΛΗΣΗΣ ─────────────────────────────────────────
+      {/* ── Ο ΚΩΔΙΚΟΣ ΔΟΚΙΜΑΣΤΗ ──────────────────────────────────────────
           ΚΛΕΙΣΤΟΣ ΩΣΠΟΥ ΝΑ ΖΗΤΗΘΕΙ. Ενα ορθάνοιχτο πεδίο «κωδικός» δίπλα στην
           τιμή λέει σε κάθε επισκέπτη ότι κάπου υπάρχει έκπτωση που δεν του
           δόθηκε και τον στέλνει να τη ψάξει αντί να πληρώσει. Οποιος έχει
@@ -613,13 +645,13 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
         {!codeOpen ? (
           /* `quiet` γιατί ο σύνδεσμος ήταν ήδη σβησμένος: το accent θα τον έκανε
              πιο δυνατό από την τιμή δίπλα του. */
-          <LinkBtn tone="quiet" onClick={() => setCodeOpen(true)}>Έχω κωδικό πρόσκλησης</LinkBtn>
+          <LinkBtn tone="quiet" onClick={() => setCodeOpen(true)}>Έχω κωδικό δοκιμαστή</LinkBtn>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             {/* ΤΟ `placeholder` ΔΕΝ ΟΝΟΜΑΖΕΙ: σβήνεται με τον πρώτο χαρακτήρα και
                 το πεδίο ξαναμένει ανώνυμο για τον αναγνώστη οθόνης. */}
             <input value={code} onChange={e => setCode(e.target.value)} placeholder="Κωδικός"
-              aria-label="Κωδικός πρόσκλησης"
+              aria-label="Κωδικός δοκιμαστή"
               autoComplete="off" spellCheck={false} onKeyDown={e => { if (e.key === 'Enter') redeem(); }}
               style={{ height: T.h.md, padding: '0 12px', borderRadius: T.radius.inner, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', minWidth: 180 }} />
             <Btn variant="secondary" onClick={redeem} disabled={busy || !code.trim()}>Εξαργύρωση</Btn>

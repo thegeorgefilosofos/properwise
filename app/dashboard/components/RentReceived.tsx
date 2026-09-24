@@ -186,10 +186,10 @@ export default function RentReceived({
   return (
     <Modal open onClose={() => { if (!busy) onClose(); }} size="sm"
       title={openLines.length === 1 ? 'Είσπραξη ενοικίου' : 'Είσπραξη ενοικίων'}
-      footerInfo={`Μερική πληρωμή ή άλλο ποσό καταχωρείς στην καρτέλα ${navLabel('tenant')}.`}
+      footerInfo={`Μερική πληρωμή ή άλλο ποσό καταχωρείς στην καρτέλα «${navLabel('tenant')}».`}
       footer={<>
         <Btn variant="ghost" onClick={busy ? undefined : onClose}>Ακύρωση</Btn>
-        <Btn variant="primary" onClick={record} disabled={busy || !selected.length}>
+        <Btn variant="primary" className="rr-cta" onClick={record} disabled={busy || !selected.length}>
           {busy ? 'Καταχώρηση…' : recordLabel(selected.map(l => ({ id: l.rent?.id ?? '', amount: l.amount })))}
         </Btn>
       </>}>
@@ -218,8 +218,10 @@ export default function RentReceived({
               διαφορετικούς μήνες δεν υπάρχει κοινό κομμάτι και η θέση μένει
               κενή· τότε ο μήνας ζει μέσα σε κάθε γραμμή, όπου ανήκει. */}
           <span style={{ ...TT.label, minWidth: 0 }}>{commonTail}</span>
-          <Btn variant="ghost" onClick={() => setTouched(allOn ? new Set() : new Set(openLines.map(l => l.rent?.id ?? '')))}>
-            {allOn ? 'Καμία' : 'Όλες'}
+          {/* Ενέργεια επιλογής, όχι φίλτρο: το σκέτο «Όλες» δίπλα στον μήνα
+              διαβαζόταν ως «δείξε όλες». */}
+          <Btn variant="ghost" className="rr-nowrap" onClick={() => setTouched(allOn ? new Set() : new Set(openLines.map(l => l.rent?.id ?? '')))}>
+            {allOn ? 'Αποεπιλογή όλων' : `Επιλογή όλων (${openLines.length})`}
           </Btn>
         </div>
         <div role="group" aria-label="Δόσεις προς είσπραξη" style={{ display: 'flex', flexDirection: 'column', gap: T.sp.sm }}>
@@ -253,7 +255,14 @@ export default function RentReceived({
       {/* ΤΑ ΔΥΟ ΠΕΔΙΑ ΜΟΙΡΑΖΟΝΤΑΙ ΤΟ ΠΛΑΤΟΣ, δεν κόβονται σε σταθερή στήλη. Με
           `formGrid` το πεδίο έμενε στα 210 εικονοστοιχεία και άφηνε τη μισή
           γραμμή κενή σε κινητό — μετρήθηκε σε Pixel 7. */}
-      <div {...fieldRow(160)}>
+      {/* ΣΤΑ 200 ΚΑΙ ΟΧΙ ΣΤΑ 160. Στο παράθυρο των 440 τα δύο πεδία χωρούσαν
+          δίπλα δίπλα και ο τρόπος έγραφε «Τραπεζική κατά…». Με βάση 200 δεν
+          χωρούν και στοιβάζονται, το καθένα σε όλο το πλάτος.
+
+          ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΑ ΚΟΥΜΠΙΑ ΣΕ ΔΙΚΗ ΤΟΥΣ ΣΕΙΡΑ ΤΟ ΚΑΘΕΝΑ. Στο μισό
+          πλάτος το «Καταχώρηση · 400,00€» έσπαγε σε δύο γραμμές. */}
+      <style>{`@media (max-width: 480px) { .act-row:has(.rr-cta) { grid-template-columns: 1fr; } } .rr-cta, .rr-nowrap { white-space: nowrap; }`}</style>
+      <div {...fieldRow(200)}>
         <DatePicker label="Ημερομηνία είσπραξης" value={paidDate} onChange={setPaidDate} />
         <CustomSelect label="Τρόπος είσπραξης" value={method} onChange={v => setMethod(v as PayMethod)}
           options={PAY_METHODS.map(m => ({ value: m, label: m }))} />

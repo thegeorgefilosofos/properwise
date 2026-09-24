@@ -1,7 +1,7 @@
 // Τεστ για τις όψεις του Αρχείου.
 import {
   applyFilters, facetOptions, toggleValue, clearFacet, clearAll,
-  matchesQuery, groupByMonth, sumValues, activeFacetCount, isSelectionEmpty,
+  matchesQuery, groupByMonth, sumValues, activeFacetCount, isSelectionEmpty, sameGrouping,
   type FacetableItem, type Selection,
 } from './facets'
 
@@ -126,6 +126,38 @@ ok('αναζήτηση συνδυάζεται με όψη',
   const g = groupByMonth([mk({ id: 'd', date: '2025-12-05' })], jan)
   ok('ο προηγούμενος μήνας περνά σωστά την αλλαγή χρονιάς', g[0].label === 'Τον προηγούμενο μήνα')
 }
+
+{
+  // Ο μελλοντικός μήνας δεν μπαίνει πάνω από το «Αυτόν τον μήνα»: πάει στα
+  // «Επερχόμενα», μετά τα χρονολογημένα και πριν από τα αχρονολόγητα.
+  const now = new Date('2026-09-24T12:00:00Z')
+  const g = groupByMonth([
+    mk({ id: 'nov', date: '2026-11-02' }), mk({ id: 'oct', date: '2026-10-05' }),
+    mk({ id: 'sep', date: '2026-09-10' }), mk({ id: 'nodate' }),
+  ], now)
+  ok('το σήμερα μένει πρώτο', g[0].label === 'Αυτόν τον μήνα')
+  ok('τα μελλοντικά σε μία ομάδα', g[1].key === 'upcoming' && g[1].items.length === 2)
+  ok('το πιο κοντινό μελλοντικό πρώτο', g[1].items[0].id === 'oct')
+  ok('τα αχρονολόγητα πάλι τελευταία', g[g.length - 1].key === 'no-date')
+}
+
+// ── Η χρονιά ταξινομείται χρονολογικά ─────────────────────────────────────
+{
+  const many = [
+    mk({ id: 'a', date: '2026-01-01' }), mk({ id: 'b', date: '2026-02-01' }), mk({ id: 'c', date: '2026-03-01' }),
+    mk({ id: 'd', date: '2019-01-01' }), mk({ id: 'e', date: '2023-01-01' }), mk({ id: 'f', date: '2021-01-01' }),
+  ]
+  const years = facetOptions(many, 'year', {}).map(o => o.value).join(',')
+  ok('χρονιές από τη νεότερη, όχι κατά πλήθος', years === '2026,2023,2021,2019')
+  ok('η επιλεγμένη χρονιά μένει πρώτη', facetOptions(many, 'year', { year: ['2019'] })[0].value === '2019')
+}
+
+// ── Δύο όψεις που χωρίζουν με τον ίδιο τρόπο ──────────────────────────────
+ok('ίδια ομαδοποίηση: αναγνωρίζεται', sameGrouping([
+  mk({ id: '1', categoryLabel: 'Λογαριασμοί', sourceLabel: 'Λογαριασμοί' }),
+  mk({ id: '2', categoryLabel: 'Συμβόλαια', sourceLabel: 'Φάκελος' }),
+], 'source', 'category'))
+ok('διαφορετική ομαδοποίηση: μένουν και οι δύο', !sameGrouping(ITEMS, 'source', 'category'))
 
 // ── Άθροισμα ───────────────────────────────────────────────────────────────
 ok('άθροισμα αγνοεί τα κενά', sumValues(ITEMS) === 88.5 + 102.4 + 75 + 42 + 340)

@@ -44,6 +44,8 @@ export interface FeedOptions {
   now: Date;
   /** Κάθε πόσες ώρες προτείνουμε ανανέωση. */
   ttlHours?: number;
+  /** Η διεύθυνση της εφαρμογής όπου ανοίγει το γεγονός (URL του προτύπου). */
+  link?: string;
 }
 
 /** Η προεπιλογή ανανέωσης: δύο φορές την ημέρα φτάνει για προθεσμίες. */
@@ -91,7 +93,14 @@ export function buildCalendarFeed(items: readonly FeedItem[], o: FeedOptions): s
       `DTSTART;VALUE=DATE:${start}`,
       `DTEND;VALUE=DATE:${nextDayCompact(it.date)}`,
       `SUMMARY:${escapeIcsText(title)}`,
+      // ΜΙΑ ΠΡΟΘΕΣΜΙΑ ΔΕΝ ΚΛΕΙΝΕΙ ΤΗ ΜΕΡΑ. Χωρίς αυτή τη γραμμή το Outlook και
+      // αρκετοί πελάτες CalDAV δείχνουν το ολοήμερο γεγονός ως «απασχολημένος»,
+      // οπότε η λήξη ενός λογαριασμού έκλεινε ολόκληρη την ημέρα σε όποιον
+      // κλείνει ραντεβού με βάση τη διαθεσιμότητά του.
+      'TRANSP:TRANSPARENT',
     );
+    // Από το γεγονός στην εφαρμογή με ένα πάτημα: εκεί πληρώνεται ή σημειώνεται.
+    if (o.link) lines.push(`URL:${o.link}`);
     const note = clean(it.note);
     if (note) lines.push(`DESCRIPTION:${escapeIcsText(note)}`);
     lines.push('END:VEVENT');

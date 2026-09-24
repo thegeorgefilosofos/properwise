@@ -12,6 +12,7 @@ import { depreciate } from '@/lib/inventory/depreciation'
 import { monthlyKwh, monthlyEnergyCost } from '@/lib/property/energy'
 import { fd, ABSENT_DATE } from '@/components/tokens'
 import { athensToday, daysUntil as athensDaysUntil } from '@/lib/core/time'
+import { plural } from '@/lib/core/greek'
 import { addMonths as addCalendarMonths } from '@/lib/loans/progress'
 import type { InventoryItem } from './model'
 
@@ -30,9 +31,14 @@ export const calcAgeDisplay = (d: string) => {
   const ms = Math.max(0, Date.now() - new Date(d).getTime())
   const y = Math.floor(ms/(1000*60*60*24*365))
   const m = Math.floor((ms%(1000*60*60*24*365))/(1000*60*60*24*30))
-  if (y===0) return `${m} μήνες`
-  if (m===0) return `${y} χρόνια`
-  return `${y} χρόνια ${m} μήνες`
+  // ΕΝΙΚΟΣ ΣΤΟ ΕΝΑ, ΟΝΟΜΑΣΤΙΚΗ ΓΙΑΤΙ ΕΙΝΑΙ ΗΛΙΚΙΑ. Εγραφε «1 χρόνια», «1 μήνες»
+  // και «0 μήνες» για ό,τι αγοράστηκε αυτόν τον μήνα.
+  const yr = `${y} ${plural(y, 'χρόνος', 'χρόνια')}`
+  const mo = `${m} ${plural(m, 'μήνας', 'μήνες')}`
+  if (y===0 && m===0) return 'λιγότερο από μήνα'
+  if (y===0) return mo
+  if (m===0) return yr
+  return `${yr} ${mo}`
 }
 // Χωρίς «κατανάλωση αναμονής»: κανείς δεν ξέρει τα standby watt του ψυγείου του,
 // άρα το πεδίο έμενε κενό και πρόσθετε μόνο άλλη μία σειρά στη φόρμα.

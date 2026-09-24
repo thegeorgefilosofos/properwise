@@ -58,7 +58,7 @@ export function parseVariantMap(raw: string | undefined | null, envName = 'LEMON
   // Η μορφή «αναγνωριστικό:πακέτο:κύκλος» είναι δική ΜΑΣ σύμβαση· μόνο το όνομα
   // της μεταβλητής αλλάζει ανά έμπορο. Αντιγράφοντας τη συνάρτηση θα είχαμε δύο
   // αναλυτές να αποκλίνουν, με τον έναν να δέχεται ό,τι ο άλλος απορρίπτει.
-  if (!text) return { map, error: `Ο χάρτης παραλλαγών είναι κενός. Ορισε τη μεταβλητή ${envName}.` };
+  if (!text) return { map, error: `Ο χάρτης παραλλαγών είναι κενός. Όρισε τη μεταβλητή ${envName}.` };
 
   const bad: string[] = [];
   for (const entry of text.split(',').map(e => e.trim()).filter(Boolean)) {

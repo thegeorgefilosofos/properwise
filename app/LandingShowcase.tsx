@@ -53,22 +53,22 @@ export default function LandingShowcase() {
     <div style={{ position: 'relative', maxWidth: 660, margin: 'clamp(40px, 6vw, 72px) auto 0' }}>
       <PanelFX />
       <style>{`
-        /* Βάση = σκούρο, όπως και το :root στο globals.css. Το φωτεινό είναι η
+        ${/* Βάση = σκούρο, όπως και το :root στο globals.css. Το φωτεινό είναι η
            εξαίρεση που δηλώνεται ρητά. Πριν υπήρχαν τρεις κανόνες για δύο θέματα:
            η σκιά του σκούρου ήταν γραμμένη δύο φορές, μία για το [data-mode] και
-           μία για την προτίμηση λειτουργικού. */
+           μία για την προτίμηση λειτουργικού. */''}
         .ls-mockup { box-shadow: 0 1px 2px rgba(16,24,40,.40), 0 20px 40px -12px rgba(16,24,40,.55), 0 48px 90px -24px rgba(16,24,40,.65); transform-origin: center top; will-change: transform; }
         :root[data-mode="light"] .ls-mockup { box-shadow: 0 1px 1px rgba(16,24,40,.05), 0 12px 24px -8px rgba(16,24,40,.10), 0 40px 64px -24px rgba(16,24,40,.14); }
-        /* Λεπτό 3D «κάθισμα» καθώς μπαίνει στην οθόνη, scroll-driven, χωρίς engine.
-           Progressive enhancement: όπου δεν υποστηρίζεται, το mockup είναι απλώς επίπεδο. */
+        ${/* Λεπτό 3D «κάθισμα» καθώς μπαίνει στην οθόνη, scroll-driven, χωρίς engine.
+           Progressive enhancement: όπου δεν υποστηρίζεται, το mockup είναι απλώς επίπεδο. */''}
         @keyframes lsTilt { from { opacity: .55; transform: perspective(1500px) rotateX(7deg) scale(.985); } to { opacity: 1; transform: perspective(1500px) rotateX(0deg) scale(1); } }
         @supports (animation-timeline: view()) {
           @media (prefers-reduced-motion: no-preference) {
             .ls-mockup { animation: lsTilt linear both; animation-timeline: view(); animation-range: entry 2% cover 40%; }
           }
         }
-        /* Μέσα στο σκοτεινό hero, το mockup φωτίζεται σαν έκθεμα: απαλή γαλάζια
-           λάμψη πίσω του, ώστε το προϊόν να είναι το φωτεινότερο σημείο της σκηνής. */
+        ${/* Μέσα στο σκοτεινό hero, το mockup φωτίζεται σαν έκθεμα: απαλή γαλάζια
+           λάμψη πίσω του, ώστε το προϊόν να είναι το φωτεινότερο σημείο της σκηνής. */''}
         .lp-hero .ls-mockup { box-shadow: 0 1px 2px rgba(2,6,18,.5), 0 24px 48px -12px rgba(2,6,18,.6), 0 0 140px -16px color-mix(in srgb, var(--accent) 45%, transparent) !important; border-color: rgba(255,255,255,.14); }
       `}</style>
       <div ref={tiltRef} onMouseMove={onTilt} onMouseLeave={resetTilt} style={{ transition: 'transform 0.35s cubic-bezier(0.2, 0, 0, 1)', willChange: 'transform' }}>

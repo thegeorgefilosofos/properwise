@@ -9,13 +9,14 @@
 // περιγραφή — ενώ η εγγραφή είναι στον χάρτη με προτεραιότητα 0,8.
 //
 // Το layout είναι component διακομιστή, άρα εδώ τα μεταδεδομένα επιτρέπονται.
-// Δεν προσθέτει κανένα περιτύλιγμα: επιστρέφει τα παιδιά του αυτούσια.
+// Το μόνο περιτύλιγμα είναι ο πάροχος των όρων χρέωσης, χωρίς κανένα στοιχείο.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { siteUrl } from '@/lib/core/site';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { billingWords } from '@/lib/legal/billingWords';
+import { PlanTermsProvider } from './PlanTerms';
 
 // ΤΟ «ΧΩΡΙΣ ΚΑΡΤΑ» ΕΦΥΓΕ ΓΙΑΤΙ ΕΠΑΨΕ ΝΑ ΙΣΧΥΕΙ. Μετά την επιβεβαίωση του email
 // ο νέος λογαριασμός προσγειώνεται στο ταμείο και δίνει κάρτα. Η περιγραφή
@@ -31,6 +32,8 @@ export function generateMetadata(): Metadata {
   };
 }
 
+// ΚΑΙ Η ΦΟΡΜΑ ΜΑΘΑΙΝΕΙ ΑΠΟ ΕΔΩ ΑΝ ΧΡΕΩΝΟΥΜΕ, για τον ίδιο λόγο (βλ. PlanTerms.tsx).
+// Χωρίς αυτό η περιγραφή έλεγε «καμία χρέωση» και η σελίδα «Ετήσια χρέωση».
 export default function SignupLayout({ children }: { children: ReactNode }) {
-  return children;
+  return <PlanTermsProvider value={billingWords().signupPlanTerms}>{children}</PlanTermsProvider>;
 }

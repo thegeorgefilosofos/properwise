@@ -17,21 +17,44 @@
 // είναι ήδη η περιγραφή του ιστότοπου.
 // ═══════════════════════════════════════════════════════════════════════════
 import { ImageResponse } from 'next/og';
-import { BRAND_PATHS, BRAND_VIEWBOX, BRAND_MARK_ON_DARK } from '@/components/BrandMark';
+import { BRAND_PATHS, BRAND_VIEWBOX, BRAND_MARK_ON_DARK, BRAND_DARK_BG } from '@/components/BrandMark';
 import { PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE } from '@/lib/core/site';
 
 export const alt = SHARE_IMAGE.alt;
 export const size = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
 export const contentType = 'image/png';
 
-export default function Image() {
+/**
+ * Τα δύο χρώματα κειμένου των καρτών κοινοποίησης, γραμμένα μία φορά. Το Satori
+ * δεν διαβάζει μεταβλητές θέματος και η κάρτα έχει ΕΝΑ φόντο, το σκούρο της
+ * μάρκας· τα διαβάζει και η κάρτα των οδηγών (app/og/guideCard.tsx).
+ */
+export const CARD_TEXT = '#e8eaed';
+export const CARD_MUTED = '#9aa0a6';
+
+/**
+ * Η κάρτα κοινοποίησης, με ή χωρίς τίτλο σελίδας.
+ *
+ * ΚΑΘΕ ΥΠΟΛΟΓΙΣΤΗΣ ΕΧΕΙ ΤΟΝ ΔΙΚΟ ΤΟΥ ΤΙΤΛΟ, ΣΤΟ ΙΔΙΟ ΣΧΕΔΙΟ. Ο σύνδεσμος του
+ * υπολογιστή ΕΝΦΙΑ σε Viber έδειχνε την ίδια κάρτα με την αρχική: ο παραλήπτης
+ * δεν μάθαινε τι του στέλνουν πριν το ανοίξει. Ο τίτλος της σελίδας μπαίνει
+ * στη θέση της πρότασης του προϊόντος, με το «Υπολογιστής» από πάνω όπως στη
+ * σελίδα. Κανένα ποσό και καμία χρονιά: ό,τι γράφεται σε εικόνα δεν διορθώνεται
+ * όταν αλλάξει.
+ *
+ * ΧΩΡΙΣ «ω». Η ενσωματωμένη γραμματοσειρά του ImageResponse δεν έχει το πεζό
+ * ωμέγα χωρίς τόνο και το αντικαθιστά με κεφαλαίο (το «ώ» το έχει): μετρημένο,
+ * το «Δωρεάν, χωρίς» βγήκε «ΔΩρεάν, χΩρίς». Γι' αυτό οι τίτλοι είναι οι επικεφαλίδες των σελίδων, που
+ * δεν το έχουν· η σταθερή φράση των υπολογιστών μένει έξω από την εικόνα.
+ */
+export function shareCard(title?: { over: string; text: string }) {
   return new ImageResponse(
     (
       <div
         style={{
           width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
           justifyContent: 'center', padding: '0 88px',
-          background: '#0f1115', color: '#e8eaed',
+          background: BRAND_DARK_BG, color: CARD_TEXT,
           fontFamily: 'sans-serif',
         }}
       >
@@ -47,11 +70,22 @@ export default function Image() {
           </svg>
           <div style={{ fontSize: 76, fontWeight: 800, letterSpacing: '0.01em' }}>{PRODUCT_NAME}</div>
         </div>
-        <div style={{ marginTop: 40, fontSize: 34, lineHeight: 1.45, color: '#9aa0a6', maxWidth: 900 }}>
-          {PRODUCT_TAGLINE}
-        </div>
+        {title ? (
+          <div style={{ marginTop: 48, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: 30, color: CARD_MUTED }}>{title.over}</div>
+            <div style={{ marginTop: 12, fontSize: 60, lineHeight: 1.15, maxWidth: 1000 }}>{title.text}</div>
+          </div>
+        ) : (
+          <div style={{ marginTop: 40, fontSize: 34, lineHeight: 1.45, color: CARD_MUTED, maxWidth: 900 }}>
+            {PRODUCT_TAGLINE}
+          </div>
+        )}
       </div>
     ),
     size,
   );
+}
+
+export default function Image() {
+  return shareCard();
 }

@@ -28,6 +28,7 @@ import { athensParts, athensToday } from '@/lib/core/time';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
+import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { ApodosiCalculator } from './ApodosiCalculator';
 
@@ -35,16 +36,16 @@ const TITLE = 'Καθαρή απόδοση ακινήτου με τα δικά �
 const DESC =
   'Πόσο αποδίδει πραγματικά το ακίνητό σου μετά τον φόρο εισοδήματος, τον ΕΝΦΙΑ '
   + 'και τις δαπάνες. Μεικτή και καθαρή απόδοση δίπλα δίπλα, με τον φόρο στο δικό '
-  + 'σου κλιμάκιο. Δωρεάν, χωρίς εγγραφή, ο υπολογισμός γίνεται στη συσκευή σου.';
+  + 'σου κλιμάκιο. Με τα δικά σου δεδομένα. Δωρεάν, χωρίς εγγραφή.';
 const URL = siteUrl('/kathari-apodosi');
 
 // Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL });
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('kathari-apodosi') });
 
 // Οι ερωτήσεις που κάνει πραγματικά ο ιδιοκτήτης, με απαντήσεις που στέκουν. Το
 // ίδιο περιεχόμενο τροφοδοτεί και το δομημένο σχήμα παρακάτω — μία πηγή, ώστε να
 // μη διαφωνήσουν ποτέ η σελίδα και ό,τι διαβάζει η μηχανή αναζήτησης.
-const FAQ: { q: string; a: string }[] = [
+const FAQ: { q: string; a: string; link?: { text: string; href: string } }[] = [
   {
     q: 'Τι διαφορά έχει η καθαρή από τη μεικτή απόδοση;',
     a: 'Η μεικτή είναι το ετήσιο ενοίκιο διά την αξία του ακινήτου: το νούμερο που '
@@ -64,9 +65,8 @@ const FAQ: { q: string; a: string }[] = [
   {
     q: 'Τι δαπάνες να βάλω;',
     a: 'Συντήρηση και επισκευές, ασφάλιση, τα κοινόχρηστα που βαρύνουν τον ιδιοκτήτη '
-     + 'και τυχόν αμοιβή διαχείρισης. Αν δεν έχεις δικό σου νούμερο, ο νόμος τεκμαίρει '
-     + 'δαπάνη 5% του ενοικίου χωρίς παραστατικά και ο υπολογιστής τη συμπληρώνει με '
-     + 'ένα πάτημα.',
+     + 'και τυχόν αμοιβή διαχείρισης. Βάλε τα πραγματικά σου ποσά. Η έκπτωση 5% του νόμου '
+     + 'μειώνει τον φόρο και δεν μετρά τι ξοδεύεις. Ο υπολογιστής την εφαρμόζει ήδη στον φόρο.',
   },
   {
     q: 'Περιλαμβάνεται η άνοδος της αξίας του ακινήτου;',
@@ -77,8 +77,11 @@ const FAQ: { q: string; a: string }[] = [
   {
     q: 'Πώς βρίσκω τον ΕΝΦΙΑ του ακινήτου;',
     a: 'Είναι γραμμένος στο εκκαθαριστικό της ΑΑΔΕ. Αν δεν το έχεις πρόχειρο, ο '
-     + 'υπολογιστής ΕΝΦΙΑ της ίδιας σελίδας τον εκτιμά από τα τετραγωνικά και την '
-     + 'τιμή ζώνης.',
+     + 'υπολογιστής ΕΝΦΙΑ τον εκτιμά από τα τετραγωνικά και την τιμή ζώνης.',
+    // Ο υπολογιστής ΕΝΦΙΑ είναι ΑΛΛΗ σελίδα· η απάντηση έλεγε «της ίδιας σελίδας»
+    // και δεν έδειχνε πού. Στη σελίδα η φράση γίνεται σύνδεσμος· στο δομημένο
+    // σχήμα μένει κείμενο.
+    link: { text: 'υπολογιστής ΕΝΦΙΑ', href: '/ypologismos-enfia' },
   },
   {
     q: 'Ισχύει και για βραχυχρόνια μίσθωση;',
@@ -155,7 +158,13 @@ export default function Page() {
                     lineHeight: 1, transition: 'transform .2s', flexShrink: 0 }}>+</span>
                 </summary>
                 <p className="po-just" style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-                  {hy(f.a)}
+                  {f.link && f.a.includes(f.link.text) ? <>
+                    {hy(f.a.slice(0, f.a.indexOf(f.link.text)))}
+                    <Link href={f.link.href} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+                      {f.link.text}
+                    </Link>
+                    {hy(f.a.slice(f.a.indexOf(f.link.text) + f.link.text.length))}
+                  </> : hy(f.a)}
                 </p>
               </details>
             ))}

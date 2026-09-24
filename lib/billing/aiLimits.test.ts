@@ -180,7 +180,7 @@ const FREE_USERS_TARGET = 10
   const solo = aiLimitsFor('solo')
   const afternoon = remainingLine({ month: 7, monthLimit: solo.perMonth, day: 7, dayLimit: solo.perDay })
   ok('δείχνει την ΗΜΕΡΑ όταν το ημερήσιο είναι πιο κοντά',
-     afternoon === `Απομένουν 1 από ${solo.perDay} ερωτήσεις σήμερα`)
+     afternoon === `Απομένει 1 από ${solo.perDay} ερωτήσεις σήμερα`)
   ok('και ΔΕΝ δείχνει το άσχετο υπόλοιπο του μήνα', !/τον μήνα/.test(afternoon))
 
   ok('δείχνει τον ΜΗΝΑ όταν ο μήνας είναι πιο κοντά',
@@ -190,6 +190,8 @@ const FREE_USERS_TARGET = 10
      /μεσάνυχτα/.test(remainingLine({ month: 3, monthLimit: 23, day: 8, dayLimit: 8 })))
   ok('εξαντλημένος μήνας → 1η του μήνα, ακόμη κι αν η ημέρα έχει περιθώριο',
      /την 1η/.test(remainingLine({ month: 23, monthLimit: 23, day: 1, dayLimit: 8 })))
+  ok('ευγενικός πληθυντικός στην εξάντληση',
+     /^Εξαντλήσατε/.test(remainingLine({ month: 3, monthLimit: 23, day: 8, dayLimit: 8 }, true)))
   ok('χωρίς μετρητές → καμία γραμμή', remainingLine(null) === '' && remainingLine({ month: 0, monthLimit: 0, day: 0, dayLimit: 0 }) === '')
 
   // ΣΕ ΚΑΘΕ ΠΑΚΕΤΟ, ΣΕ ΚΑΘΕ ΣΤΙΓΜΗ: το νούμερο που διαβάζει ο χρήστης δεν
@@ -199,7 +201,7 @@ const FREE_USERS_TARGET = 10
     for (let day = 0; day < l.perDay; day++) {
       for (const month of [0, Math.floor(l.perMonth / 2), l.perMonth - 1]) {
         const line = remainingLine({ month, monthLimit: l.perMonth, day, dayLimit: l.perDay })
-        const shown = Number((line.match(/Απομένουν (\d+)/) || [])[1])
+        const shown = Number((line.match(/Απομέν(?:ουν|ει) (\d+)/) || [])[1])
         const real = Math.min(l.perDay - day, l.perMonth - month)
         if (Number.isFinite(shown)) ok(`${id} d${day} m${month}: η γραμμή δεν υπόσχεται παραπάνω`, shown <= real)
       }

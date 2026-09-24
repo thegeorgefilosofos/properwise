@@ -152,6 +152,24 @@ export function normalizePhone(text: string | null | undefined): string {
   return s;
 }
 
+/**
+ * Ελληνικό τηλέφωνο για ανάγνωση: «210 555 0002», «694 123 4567».
+ *
+ * ΔΕΚΑ ΨΗΦΙΑ ΣΤΗ ΣΕΙΡΑ ΔΕΝ ΔΙΑΒΑΖΟΝΤΑΙ. Οι Επαφές έδειχναν «2105550002» σε
+ * μονοδιάστατη γραμματοσειρά: για να το υπαγορεύσεις ή να το συγκρίνεις με το
+ * χαρτί, το μετράς με το δάχτυλο. Ομαδοποιούνται μόνο οι δύο μορφές που έχουν
+ * ΜΙΑ σωστή ομαδοποίηση, το κινητό (69…) και το σταθερό της Αττικής (21…).
+ * Οι άλλοι κωδικοί περιοχής έχουν τέσσερα ή πέντε ψηφία και μια λάθος τομή
+ * είναι χειρότερη από καμία, οπότε μένουν όπως γράφτηκαν· το ίδιο και ό,τι δεν
+ * είναι ελληνικό τηλέφωνο.
+ */
+export function displayPhone(text: string | null | undefined): string {
+  const raw = String(text ?? '').trim();
+  const n = normalizePhone(raw);
+  if (n.length === 10 && /^(69|21)/.test(n)) return `${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}`;
+  return raw;
+}
+
 /** Νύχτες ανάμεσα σε δύο ημερομηνίες. Η έξοδος δεν μετράει ως νύχτα. */
 export function nightsBetween(checkIn: string | null | undefined, checkOut: string | null | undefined): number {
   const a = parseDate(checkIn), b = parseDate(checkOut);

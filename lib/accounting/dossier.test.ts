@@ -55,7 +55,7 @@ const ids = (rs: readonly Requirement[]): string[] => rs.map(r => r.id);
   const t = traps(r);
   ok('ο ΑΜΑ πρέπει να φαίνεται στην καταχώρηση', t.some(x => x.trap.includes('Airbnb')));
   // Η συχνότερη ζημιά του αρχάριου: δηλώνει καθαρά αντί για ακαθάριστα.
-  ok('ακαθάριστα, όχι καθαρά', t.some(x => x.trap.includes('ΑΚΑΘΑΡΙΣΤΑ')));
+  ok('ακαθάριστα, όχι καθαρά', t.some(x => x.trap.includes('ακαθάριστα')));
   // Το τέλος δεν είναι έσοδό του.
   ok('το τέλος δεν είναι έσοδο', t.some(x => x.trap.includes('Δεν είναι έσοδό σου')));
 }
@@ -302,7 +302,7 @@ eq('καταστάσεις από γραμμές βάσης', statusesOf([{ stat
   eq('χωρίς διπλή εγγραφή', both.filter(x => x.id === 'e2_prefilled').length, 1);
   // Και η παγίδα της βραχυχρόνιας λέει το σωστό πράγμα.
   const short = requirementsFor(ctx({ statuses: ['rent_short'] })).find(x => x.id === 'e2_prefilled');
-  ok('βραχυχρόνια: εξηγεί τα ακαθάριστα της πλατφόρμας', /ΑΚΑΘΑΡΙΣΤΑ/.test(short?.trap || ''));
+  ok('βραχυχρόνια: εξηγεί τα ακαθάριστα της πλατφόρμας', /ακαθάριστα/.test(short?.trap || ''));
 }
 
 // ── Η ΣΥΜΦΩΝΙΑ ΑΡΙΘΜΟΥ ΤΗΣ ΕΠΙΚΕΦΑΛΙΔΑΣ ────────────────────────────────────
@@ -461,6 +461,26 @@ eq('καταστάσεις από γραμμές βάσης', statusesOf([{ stat
   eq('και το δωδέκατο', filed[11].label, '12');
   const huge = Array.from({ length: 101 }, (_, i) => ({ fileName: `${i}.pdf`, supplier: `Α${String(i).padStart(3, '0')}` }));
   eq('τρία ψηφία από τα 100', filePapers(huge, [])[0].label, '001');
+}
+
+// ── ΚΑΘΕ ΓΡΑΜΜΗ ΛΕΕΙ ΑΠΟ ΠΟΙΟ ΑΚΙΝΗΤΟ ΕΡΧΕΤΑΙ ─────────────────────────────
+// Ο φάκελος είναι του χαρτοφυλακίου· η σελίδα είναι ενός ακινήτου. Χωρίς το
+// όνομα, η δήλωση μίσθωσης ενός άλλου διαμερίσματος διαβαζόταν ως δική του.
+{
+  const r = requirementsFor({
+    form: 'individual', books: 'none', statuses: ['rent_short', 'rent_long', 'rent_long'],
+    properties: [
+      { name: 'Διαμέρισμα Α', status: 'rent_short' },
+      { name: 'Διαμέρισμα Β', status: 'rent_long' },
+      { name: 'Διαμέρισμα Γ', status: 'rent_long' },
+    ],
+  });
+  const by = (id: string) => r.find(x => x.id === id);
+  eq('η δήλωση μίσθωσης αφορά μόνο τα μακροχρόνια', by('lease_declaration')?.forProperties, ['Διαμέρισμα Β', 'Διαμέρισμα Γ']);
+  eq('ο ΑΜΑ αφορά μόνο το βραχυχρόνιο', by('ama')?.forProperties, ['Διαμέρισμα Α']);
+  eq('το προσυμπληρωμένο Ε2 αφορά και τα τρία', by('e2_prefilled')?.forProperties, ['Διαμέρισμα Α', 'Διαμέρισμα Β', 'Διαμέρισμα Γ']);
+  eq('τα κοινά δεν ανήκουν σε ένα ακίνητο', by('atak')?.forProperties, undefined);
+  ok('ο κανόνας των ανείσπρακτων λέει την προθεσμία της δήλωσης', /ως την προθεσμία της δήλωσης/.test(by('unpaid_rent')?.trap || ''));
 }
 
 console.log(fail === 0 ? `✓ dossier: ${pass} έλεγχοι πέρασαν` : `✗ dossier: ${fail} απέτυχαν από ${pass + fail}`);

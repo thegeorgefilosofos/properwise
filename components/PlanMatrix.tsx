@@ -19,9 +19,9 @@
 // πίνακας δεν μπορεί να διαφωνήσει με τον κώδικα, γιατί τον διαβάζει.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { PLANS, type PlanId } from '@/lib/billing/plans';
+import { PLANS, TEAM_LINE, DIRECT_CONTACT_LINE, firstPlanWith, type PlanId } from '@/lib/billing/plans';
 import { aiLimitsFor } from '@/lib/billing/aiLimits';
-import { ASSISTANT_NAME } from '@/lib/assistant/identity';
+import { ASSISTANT_TO } from '@/lib/assistant/identity';
 import { FEATURE_LABEL, FEATURE_MIN_PLAN, planAtLeast, type Feature } from '@/lib/billing/entitlements';
 import { T, fn } from '@/components/tokens';
 import { fe } from '@/lib/core/format';
@@ -60,6 +60,20 @@ const forAll = (label: string): FeatureRow => ({
   label, values: Object.fromEntries(COMPARED.map(p => [p, true])) as Record<ComparedPlan, CellValue>,
 });
 
+// ΟΣΑ ΠΟΥΛΑΕΙ Η ΚΑΡΤΑ ΤΗΣ ΑΡΧΙΚΗΣ, Ο ΠΙΝΑΚΑΣ ΤΑ ΛΕΕΙ ΚΙ ΑΥΤΟΣ. Η ομάδα με
+// ρόλους και η άμεση επικοινωνία δεν έχουν κλείδωμα στο `FEATURE_MIN_PLAN`·
+// είναι γραμμές του `PLANS[…].features`. Η γραμμή ισχύει από το πρώτο πακέτο
+// που τη γράφει και πάνω, όπως λέει και το «Όλα του … και:» της κάρτας. Αν
+// λείψει από το plans.ts, το `firstPlanWith` πετά και η σελίδα δεν χτίζεται,
+// αντί να δείξει σιωπηλά «Όχι» σε όλα.
+const fromPlanLine = (label: string, line: string): FeatureRow => {
+  const first = firstPlanWith(line);
+  return {
+    label,
+    values: Object.fromEntries(COMPARED.map(p => [p, planAtLeast(p, first)])) as Record<ComparedPlan, CellValue>,
+  };
+};
+
 // ΟΙ ΤΙΜΕΣ ΜΠΗΚΑΝ ΣΤΟΝ ΠΙΝΑΚΑ, ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ. Η σελίδα /paketa απαντούσε
 // «τι παίρνω» χωρίς να λέει «πόσο»: ο επισκέπτης γύριζε στην αρχική για την
 // τιμή. Διαβάζονται από τα PLANS, όπως και οι κάρτες της αρχικής, οπότε δύο
@@ -72,14 +86,19 @@ export const MATRIX: FeatureRow[] = [
   priceRow('Τιμή τον μήνα', id => PLANS[id].priceMonthly),
   priceRow('Τιμή τον χρόνο', id => PLANS[id].priceAnnual),
   { label: 'Ακίνητα', values: Object.fromEntries(COMPARED.map(p => [p, limitLabel(p)])) as Record<ComparedPlan, CellValue> },
-  { label: `Ερωτήσεις στη ${ASSISTANT_NAME} τον μήνα`,
+  { label: `Ερωτήσεις ${ASSISTANT_TO} τον μήνα`,
     values: Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perMonth)])) as Record<ComparedPlan, CellValue> },
+  // ΤΟ ΗΜΕΡΗΣΙΟ ΟΡΙΟ ΛΕΓΕΤΑΙ ΠΡΙΝ ΤΗΝ ΑΓΟΡΑ. Μέσα σε ένα απόγευμα δεσμεύει
+  // σχεδόν πάντα αυτό και όχι το μηνιαίο (βλ. `remainingLine` στο aiLimits).
+  { label: `Ερωτήσεις ${ASSISTANT_TO} την ημέρα`,
+    values: Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perDay)])) as Record<ComparedPlan, CellValue> },
   forAll('Σάρωση εγγράφων και φωνητική καταχώρηση'),
   forAll('Αποδόσεις, δαπάνες, ενέργεια και φόρος 2026'),
   forAll('Ειδοποιήσεις και υπενθυμίσεις'),
   gated('e2_export'),
   gated('rent_collection'),
-  gated('multi_property'),
+  // Χωρίς `multi_property`: το «Περισσότερα ακίνητα» ξανάλεγε τη γραμμή
+  // «Ακίνητα» τρεις σειρές πιο πάνω, με τικ αντί για αριθμό.
   gated('comparison'),
   gated('accounting_journal'),
   gated('bank_import'),
@@ -88,6 +107,8 @@ export const MATRIX: FeatureRow[] = [
   gated('portfolio'),
   gated('report_branding'),
   gated('investment_analysis'),
+  fromPlanLine('Ομάδα με ρόλους', TEAM_LINE),
+  fromPlanLine(DIRECT_CONTACT_LINE, DIRECT_CONTACT_LINE),
 ];
 
 // ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΑ ΚΟΙΝΑ ΛΕΓΟΝΤΑΙ ΜΙΑ ΦΟΡΑ. Τέσσερις κάρτες με όλες τις
@@ -99,10 +120,29 @@ export const MATRIX: FeatureRow[] = [
 const COMMON = MATRIX.filter(row => COMPARED.every(p => row.values[p] === true));
 const DISTINCT = MATRIX.filter(row => !COMMON.includes(row));
 
-/** Η ενέργεια κάθε στήλης: εγγραφή με το πακέτο ήδη επιλεγμένο, όπως στην αρχική. */
-const TrialCta = ({ id }: { id: ComparedPlan }) => (
-  <Btn variant="primary" href={`/signup?plan=${id}&cycle=monthly`}>Ξεκίνα τη δοκιμή</Btn>
+/** «Εξαγωγή Ε2» μέσα σε πρόταση: πεζό μόνο το πρώτο γράμμα, τα αρκτικόλεξα μένουν. */
+const inSentence = (label: string) => label.charAt(0).toLocaleLowerCase('el-GR') + label.slice(1);
+
+/**
+ * Η ενέργεια κάθε στήλης: εγγραφή με το πακέτο ήδη επιλεγμένο, όπως στην αρχική.
+ *
+ * ΕΝΑ ΓΕΜΑΤΟ ΚΟΥΜΠΙ, ΟΧΙ ΤΕΣΣΕΡΑ. Με τέσσερα ίδια κύρια κουμπιά ο πίνακας δεν
+ * πρότεινε τίποτα, ενώ η αρχική προτείνει ρητά ένα πακέτο. Το προτεινόμενο
+ * κρατά το γεμάτο, τα υπόλοιπα γίνονται δευτερεύοντα.
+ *
+ * Στον πίνακα η στήλη λέει ήδη ποιο πακέτο είναι, οπότε αρκεί το ρήμα: το
+ * ολόκληρο «Ξεκίνα τη δοκιμή» έσπαγε σε δύο σειρές στις στενές στήλες. Ο
+ * αναγνώστης οθόνης ακούει και το πακέτο, ώστε τα τέσσερα να μην ακούγονται ίδια.
+ */
+const TrialCta = ({ id, recommended, short }: { id: ComparedPlan; recommended?: PlanId; short?: boolean }) => (
+  <Btn variant={id === recommended ? 'primary' : 'secondary'} href={`/signup?plan=${id}&cycle=monthly`}>
+    {short ? 'Ξεκίνα' : 'Ξεκίνα τη δοκιμή'}
+    <span className="sr-only">{short ? ' τη δοκιμή' : ''} με το πακέτο «{PLANS[id].name}»</span>
+  </Btn>
 );
+
+/** Η ετικέτα της προτεινόμενης στήλης, ίδια με την κορδέλα της αρχικής. */
+const RecommendedChip = () => <span className="plan-rec">Προτεινόμενο</span>;
 
 function Tick() {
   return (
@@ -117,25 +157,30 @@ function Tick() {
  * Ο πίνακας μόνος του, χωρίς κάρτα και χωρίς επικεφαλίδα: τα βάζει ο καλών.
  *
  * Το `highlight` δίνει έμφαση στη στήλη του τρέχοντος πακέτου, όταν υπάρχει
- * τρέχον πακέτο. Στη δημόσια σελίδα δεν υπάρχει, οπότε καμία στήλη δεν
- * ξεχωρίζει: ο επισκέπτης δεν έχει ακόμη λόγο να προτιμήσει μία.
+ * τρέχον πακέτο. Το `recommended` σημαδεύει το πακέτο που προτείνουμε σε όποιον
+ * δεν έχει διαλέξει, με την ίδια ετικέτα που έχει η αρχική.
+ *
+ * Το `headingLevel` είναι το επίπεδο των τίτλων στις κάρτες του κινητού. Στο
+ * /paketa κάθονται αμέσως κάτω από τον <h1>, οπότε είναι <h2>· ένα <h3> εκεί
+ * πηδούσε επίπεδο και ο αναγνώστης οθόνης έχανε τη δομή της σελίδας.
  */
-export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
+export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highlight?: PlanId; recommended?: PlanId; headingLevel?: 2 | 3 }) {
+  const H = headingLevel === 2 ? 'h2' : 'h3';
   return (
     <>
     {/* ═══ ΣΕ ΤΗΛΕΦΩΝΟ: ΚΑΡΤΕΣ ΑΝΑ ΠΑΚΕΤΟ, ΟΧΙ ΠΙΝΑΚΑΣ ΠΟΥ ΚΥΛΑ ════════════════
         ΤΙ ΑΛΛΑΞΕ ΚΑΙ ΓΙΑΤΙ. Πέντε στήλες ελληνικών ονομάτων ΔΕΝ χωρούν σε 390:
         ο πίνακας κυλούσε οριζόντια και φαινόταν σχεδόν μόνο η πρώτη στήλη
         («Ιδιοκτήτης»). Σε σελίδα τιμών, μια στήλη που δεν φαίνεται είναι πακέτο
-        που δεν πουλιέται. Κάτω από 768 κάθε πακέτο γίνεται μια κάρτα με ΟΛΕΣ τις
-        δυνατότητές του, στοιβαγμένες κάθετα — τίποτα δεν κρύβεται, τίποτα δεν
-        κυλά. Από tablet και πάνω μένει ο πίνακας, που συγκρίνει καλύτερα δίπλα
+        που δεν πουλιέται. Κάτω από 960 κάθε πακέτο γίνεται μια κάρτα με όσα
+        περιλαμβάνει, στοιβαγμένα κάθετα — τίποτα δεν κρύβεται, τίποτα δεν
+        κυλά. Από εκεί και πάνω μένει ο πίνακας, που συγκρίνει καλύτερα δίπλα
         δίπλα. Ίδια δεδομένα (MATRIX/COMPARED) και στις δύο όψεις: δεν μπορούν
         να αποκλίνουν. Καθεμιά είναι ορατή στον αναγνώστη οθόνης μόνο στο πλάτος
         της (η άλλη είναι `display:none`, άρα εκτός δέντρου προσβασιμότητας). */}
     <div className="plan-cmp-cards">
-      <section className="plan-card" aria-label="Κοινά σε όλα τα πακέτα">
-        <h3 className="plan-card-name">Κοινά σε όλα τα πακέτα</h3>
+      <section className="plan-card plan-card-common" aria-label="Κοινά σε όλα τα πακέτα">
+        <H className="plan-card-name">Κοινά σε όλα τα πακέτα</H>
         <dl className="plan-card-list">
           {COMMON.map(row => (
             <div key={row.label} className="plan-card-row">
@@ -145,29 +190,36 @@ export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
           ))}
         </dl>
       </section>
-      {COMPARED.map(id => (
-        <section key={id} className="plan-card" aria-label={PLANS[id].name}>
-          <h3 className="plan-card-name" style={{ color: id === highlight ? 'var(--accent)' : undefined }}>{PLANS[id].name}</h3>
-          <dl className="plan-card-list">
-            {DISTINCT.map(row => {
-              const v = row.values[id];
-              return (
-                <div key={row.label} className="plan-card-row">
-                  <dt>{row.label}</dt>
-                  <dd>
-                    {typeof v === 'string'
-                      ? <span className="plan-card-num">{v}</span>
-                      : v === true
-                        ? <><Tick /><span className="sr-only">Ναι</span></>
-                        : <span className="plan-card-no">Όχι</span>}
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-          <div style={{ display: 'grid', padding: '8px 0' }}><TrialCta id={id} /></div>
-        </section>
-      ))}
+      {/* ΚΑΘΕ ΚΑΡΤΑ ΛΕΕΙ ΤΙ ΕΧΕΙ, ΚΑΙ ΜΙΑ ΓΡΑΜΜΗ ΤΙ ΔΕΝ ΕΧΕΙ. Η κάρτα του
+          φθηνότερου πακέτου ήταν εννέα «Όχι» στη σειρά: σε σελίδα τιμών αυτό
+          παρουσιάζει το πακέτο ως λίστα ελλείψεων και διπλασιάζει την κύλιση.
+          Οι ίδιες γραμμές μαζεύονται στο τέλος σε μία πρόταση. */}
+      {COMPARED.map(id => {
+        const lacks = DISTINCT.filter(row => row.values[id] === false).map(row => inSentence(row.label));
+        return (
+          <section key={id} className="plan-card" aria-label={PLANS[id].name}>
+            <H className="plan-card-name" style={{ color: id === highlight ? 'var(--accent)' : undefined }}>{PLANS[id].name}</H>
+            {id === recommended && <RecommendedChip />}
+            <dl className="plan-card-list">
+              {DISTINCT.filter(row => row.values[id] !== false).map(row => {
+                const v = row.values[id];
+                return (
+                  <div key={row.label} className="plan-card-row">
+                    <dt>{row.label}</dt>
+                    <dd>
+                      {typeof v === 'string'
+                        ? <span className="plan-card-num">{v}</span>
+                        : <><Tick /><span className="sr-only">Ναι</span></>}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+            {lacks.length > 0 && <p className="plan-card-lacks">Δεν περιλαμβάνει: {lacks.join(', ')}.</p>}
+            <div style={{ display: 'grid', padding: '8px 0' }}><TrialCta id={id} recommended={recommended} /></div>
+          </section>
+        );
+      })}
     </div>
 
     <div className="plan-cmp-table">
@@ -227,6 +279,7 @@ export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
               {COMPARED.map(id => (
                 <th key={id} scope="col" style={{ textAlign: 'center', color: id === highlight ? 'var(--accent)' : undefined }}>
                   {PLANS[id].name}
+                  {id === recommended && <><br /><RecommendedChip /></>}
                 </th>
               ))}
             </tr>
@@ -252,7 +305,7 @@ export function PlanMatrix({ highlight }: { highlight?: PlanId }) {
             <tr>
               <th scope="row"><span className="sr-only">Εγγραφή</span></th>
               {COMPARED.map(id => (
-                <td key={id} style={{ textAlign: 'center' }}><TrialCta id={id} /></td>
+                <td key={id} style={{ textAlign: 'center' }}><TrialCta id={id} recommended={recommended} short /></td>
               ))}
             </tr>
           </tbody>

@@ -16,7 +16,7 @@
 // --negative, --bg-*, --text-*, --border-*).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { ReactNode, CSSProperties, type MouseEvent, type Ref, useState, useEffect, useRef, useSyncExternalStore } from 'react';
+import { ReactNode, CSSProperties, type MouseEvent, type Ref, useState, useEffect, useRef, useSyncExternalStore, useId } from 'react';
 
 // Τα tokens ζουν σε module ΧΩΡΙΣ React (components/tokens.ts) ώστε να μπορεί να
 // τα εισάγει και Server Component. Εδώ ξανα-εξάγονται αυτούσια, ώστε τα ~600
@@ -190,7 +190,9 @@ export const OVERLAY_BASE_Z = 1000;
  */
 export const isOverlayOpen = (): boolean => overlayStack.length > 0;
 
-function useOverlayShell(open: boolean, onClose: () => void) {
+// Εξάγεται για τη μία επικάλυψη που ΔΕΝ είναι Modal (WelcomeOnboarding): παίρνει
+// την ίδια εστίαση και παγίδα Tab, με `onClose` που δεν κάνει τίποτα.
+export function useOverlayShell(open: boolean, onClose: () => void) {
   const panelRef = useRef<HTMLDivElement>(null);
   // Πού γυρίζει η εστίαση όταν κλείσει. Χωρίς αυτό, ο χρήστης πληκτρολογίου
   // πέφτει στο <body> και ξαναρχίζει το Tab από την κορυφή της σελίδας.
@@ -437,9 +439,15 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
   size?: ModalSize; children: ReactNode; footer?: ReactNode; footerInfo?: ReactNode;
 }) {
   const { panelRef, z } = useOverlayShell(open, onClose);
+  // Ο ΤΙΤΛΟΣ ΟΝΟΜΑΖΕΙ ΤΟ ΠΑΡΑΘΥΡΟ, ΟΠΟΙΑ ΜΟΡΦΗ ΚΙ ΑΝ ΕΧΕΙ. Το όνομα έβγαινε
+  // από `typeof title === 'string'`, οπότε κάθε τίτλος με JSX (π.χ. με
+  // <InfoHint>) άφηνε το dialog ανώνυμο και ο τίτλος δεν ήταν καν επικεφαλίδα.
+  const titleId = useId();
+  const subId = useId();
   if (!open) return null;
   return (
-    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={ariaLabel ?? (typeof title === 'string' ? title : undefined)}
+    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={ariaLabel}
+      aria-labelledby={ariaLabel ? undefined : titleId} aria-describedby={subtitle ? subId : undefined}
       style={{ position: 'fixed', inset: 0, background: T.scrim, backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: z, padding: T.sp.lg, overscrollBehavior: 'contain' }}>
       <div ref={panelRef} tabIndex={-1} onClick={e => e.stopPropagation()}
         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, width: `min(${MODAL_WIDTH[size]}px, 100%)`, maxHeight: '92dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--elev-3)', outline: 'none', overscrollBehavior: 'contain' }}>
@@ -449,8 +457,8 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
             <div style={{ width: T.h.lg, height: T.h.lg, borderRadius: 10, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</div>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ ...TT.h2 }}>{title}</div>
-            {subtitle && <div className="po-subline" style={{ ...TT.bodySm }}>{subtitle}</div>}
+            <h2 id={titleId} style={{ ...TT.h2, margin: 0 }}>{title}</h2>
+            {subtitle && <div id={subId} className="po-subline" style={{ ...TT.bodySm }}>{subtitle}</div>}
           </div>
           <CloseButton onClose={onClose} style={{ margin: -6 }} />
         </div>
@@ -461,12 +469,17 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
 
         {(footer || footerInfo) && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, padding: '14px 24px', borderTop: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
-            <span style={{ ...TT.bodySm }}>{footerInfo}</span>
+            {footerInfo && <span style={{ ...TT.bodySm, flex: '1 1 240px' }}>{footerInfo}</span>}
             {/* ΤΑ ΚΟΥΜΠΙΑ ΤΟΥ ΥΠΟΣΕΛΙΔΟΥ ΜΟΙΡΑΖΟΝΤΑΙ ΤΗ ΓΡΑΜΜΗ ΣΕ ΤΗΛΕΦΩΝΟ. Το
                 «Ακύρωση» και το «Καταχώρηση» είχαν το πλάτος του λεκτικού τους
                 και κάθονταν δεξιά: δύο κουμπιά άνισα, με το αριστερό να αρχίζει
-                στη μέση του πουθενά. Ο κανόνας ζει στην `.act-row`. */}
-            <div className="act-row" style={{ display: 'flex', gap: T.sp.sm }}>{footer}</div>
+                στη μέση του πουθενά. Ο κανόνας ζει στην `.act-row`.
+
+                ΚΑΙ ΜΕΝΟΥΝ ΔΕΞΙΑ ΟΤΑΝ ΤΥΛΙΓΟΥΝ. Με μακρύ `footerInfo` η σειρά των
+                κουμπιών έπεφτε μόνη της στη δεύτερη γραμμή και το
+                `space-between` την άφηνε αριστερά, με τη μισή γραμμή άδεια. Το
+                `margin-left: auto` την κρατά στη δεξιά άκρη σε κάθε περίπτωση. */}
+            <div className="act-row" style={{ display: 'flex', gap: T.sp.sm, marginLeft: 'auto' }}>{footer}</div>
           </div>
         )}
       </div>
@@ -844,10 +857,21 @@ export function StatStrip({ items }: { items: StatCell[] }) {
 // προς επιβεβαίωση» είναι `nowrap`. Οποτε τα σήματα έπαιρναν όσο ήθελαν και το
 // όνομα έπαιρνε ό,τι περίσσευε: τίποτα.
 //
-// Η ΔΙΟΡΘΩΣΗ ΕΙΝΑΙ ΠΡΟΤΕΡΑΙΟΤΗΤΑ, ΟΧΙ ΠΕΡΙΣΣΕΥΜΑ. Το όνομα παίρνει πραγματική
-// βάση (140) και η κεφαλίδα τυλίγει: όταν δεν χωρούν όλα σε μία γραμμή, ΤΑ
-// ΣΗΜΑΤΑ κατεβαίνουν από κάτω — δεν εξαφανίζεται το όνομα. Το σήμα λέει κάτι
-// για την εγγραφή· χωρίς την εγγραφή δεν λέει τίποτα.
+// ΤΑ ΣΗΜΑΤΑ ΠΗΓΑΝ ΚΑΤΩ ΑΠΟ ΤΟ ΟΝΟΜΑ, ΣΤΗΝ ΙΔΙΑ ΣΤΗΛΗ. Κάθονταν δίπλα του με
+// τύλιγμα και στοίχιση δεξιά: όταν δεν χωρούσαν, έπεφταν σε δική τους σειρά
+// που ξεκινούσε στη μέση της κάρτας (x≈133 έναντι 41 για όλα τα άλλα), ενώ
+// ό,τι άλλο στην κάρτα στοιχίζεται αριστερά. Κάτω από το όνομα, το όνομα έχει
+// όλο το πλάτος και τα σήματα μία σταθερή θέση σε κάθε κάρτα.
+//
+// ── ΕΝΑ ΚΟΥΜΠΙ ΑΝΟΙΓΜΑΤΟΣ, ΟΧΙ ΚΟΥΜΠΙ ΜΕ ΚΟΥΜΠΙΑ ΜΕΣΑ ────────────────────────
+// Η κάρτα ήταν ολόκληρη `role="button"` με `aria-label`: ο αναγνώστης οθόνης
+// άκουγε μόνο «Άνοιγμα καρτέλας: …» και όχι την οφειλή ή τη λήξη. Μέσα στο
+// «κουμπί» ζούσαν άλλα κουμπιά (Διαγραφή) και σύνδεσμοι, που ο ρόλος δεν
+// επιτρέπει. Τώρα το άνοιγμα είναι ΑΔΕΛΦΟ κουμπί, απλωμένο κάτω από όλη την
+// κάρτα (`.record-card-open`, globals.css): το πάτημα οπουδήποτε ανοίγει το
+// ντοσιέ, το περιεχόμενο διαβάζεται ως περιεχόμενο και οι σύνδεσμοι και οι
+// ενέργειες κάθονται από πάνω του. Το δαχτυλίδι εστίασης ζωγραφίζεται σε όλη
+// την κάρτα.
 // ═══════════════════════════════════════════════════════════════════════════
 export function RecordCard({ lead, title, sub, badges, actions, tone, onOpen, openLabel, children }: {
   /** Αρχικό/εικονίδιο αριστερά του ονόματος. */
@@ -856,45 +880,34 @@ export function RecordCard({ lead, title, sub, badges, actions, tone, onOpen, op
   title: string;
   /** Η γραμμή κάτω από το όνομα (ημερομηνίες, ΑΦΜ, περίοδος). */
   sub?: ReactNode;
-  /** Σήματα κατάστασης. Τυλίγουν και κατεβαίνουν κάτω από το όνομα όταν δεν χωρούν. */
+  /** Σήματα κατάστασης, κάτω από το όνομα, στοιχισμένα μαζί του. */
   badges?: ReactNode;
   /** Ενέργειες που αποκαλύπτονται στο hover (και είναι πάντα ορατές στο δάχτυλο). */
   actions?: ReactNode;
   /** Αλλάζει ΜΟΝΟ το περίγραμμα — π.χ. ληξιπρόθεσμη οφειλή. */
   tone?: 'negative' | 'warning';
   onOpen: () => void;
-  /** Τι ακούει ο αναγνώστης οθόνης. Χωρίς αυτό, δεκαοκτώ κάρτες λέγονται «κουμπί». */
+  /** Το όνομα του κουμπιού ανοίγματος. Χωρίς αυτό, «Άνοιγμα: <όνομα>». */
   openLabel?: string;
   children?: ReactNode;
 }) {
   return (
-    <div className="record-card" role="button" tabIndex={0} data-tone={tone}
-      aria-label={openLabel}
-      onClick={onOpen}
-      // ΜΟΝΟ ΟΤΑΝ Η ΕΣΤΙΑΣΗ ΕΙΝΑΙ ΣΤΗΝ ΙΔΙΑ ΤΗΝ ΚΑΡΤΑ. Μέσα της ζουν σύνδεσμοι
-      // τηλεφώνου, email και ακινήτου: χωρίς αυτόν τον έλεγχο, το Enter πάνω σε
-      // σύνδεσμο θα άνοιγε ΚΑΙ τον σύνδεσμο ΚΑΙ το ντοσιέ.
-      onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); onOpen(); } }}
+    <div className="record-card" data-tone={tone}
       style={{ position: 'relative', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <button type="button" className="record-card-open" aria-label={openLabel ?? `Άνοιγμα: ${title}`} onClick={onOpen} />
       {/* ΟΙ ΕΝΕΡΓΕΙΕΣ ΕΙΝΑΙ ΕΚΤΟΣ ΡΟΗΣ. Ζούσαν κάτω από τα σήματα, στην ίδια
           στήλη: αόρατες μέχρι το hover αλλά ΠΑΡΟΥΣΕΣ στη διάταξη, δηλαδή 32
           εικονοστοιχεία κενού κάτω από κάθε σειρά σημάτων που τύλιγε. Το ×
           κάθεται στη γωνία, όπου το περιμένει το χέρι και δεν σπρώχνει τίποτα. */}
-      {actions && <div className="record-card-act" style={{ position: 'absolute', top: 12, right: 12 }}>{actions}</div>}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', paddingRight: actions ? 36 : 0 }}>
+      {actions && <div className="record-card-act" style={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}>{actions}</div>}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingRight: actions ? 36 : 0 }}>
         {lead && <div style={{ flexShrink: 0 }}>{lead}</div>}
-        {/* Βάση 140 και όχι μηδέν: αυτό είναι όλο το σφάλμα του μηδενικού πλάτους.
-            Και ανάπτυξη 999 έναντι 1 των σημάτων: ό,τι περισσεύει το παίρνει το
-            όνομα, ώστε ένα μακρύ όνομα να κοπεί όσο αργότερα γίνεται. */}
-        <div style={{ flex: '999 1 140px', minWidth: 96 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div className="po-elide" title={title}
             style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{title}</div>
           {sub && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>{sub}</div>}
+          {badges && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>{badges}</div>}
         </div>
-        {/* Τα σήματα: δίπλα στο όνομα όταν χωρούν, από κάτω του όταν όχι — το
-            τύλιγμα του flex αποφασίζει, γιατί μόνο αυτό ξέρει πόσα σήματα έχει
-            ΑΥΤΗ η εγγραφή. Στοιχίζονται δεξιά και στις δύο θέσεις. */}
-        {badges && <div style={{ flex: '1 1 auto', display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0 }}>{badges}</div>}
       </div>
       {children}
     </div>

@@ -163,7 +163,8 @@ export const TEMPLATES: Record<string, Template> = {
   // τσεκάρει τη μία και νομίζει ότι τελείωσε. Έρχονται πλέον από τις
   // «Υποχρεώσεις & νομοθεσία» (lib/tax/greekTaxCalendar.ts).
   legal: { label: 'Έγγραφα ακινήτου', items: [
-    { description: 'Ανανέωση ασφαλιστηρίου ακινήτου', category: 'legal', priority: 'critical', recurring: 'yearly' },
+    // Το ασφαλιστήριο είναι σύμβαση που πληρώνεται, όχι υποχρέωση προς την ΑΑΔΕ.
+    { description: 'Ανανέωση ασφαλιστηρίου ακινήτου', category: 'financial', priority: 'critical', recurring: 'yearly' },
     { description: 'Έλεγχος ΠΕΑ (Πιστοποιητικό Ενεργειακής Απόδοσης)', category: 'legal', priority: 'high' },
     { description: 'Έλεγχος βεβαίωσης μηχανικού', category: 'legal', priority: 'high' },
     { description: 'Πληρωμή δημοτικών τελών', category: 'financial', priority: 'normal', recurring: 'yearly' },

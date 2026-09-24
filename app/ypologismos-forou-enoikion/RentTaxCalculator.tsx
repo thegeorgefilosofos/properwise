@@ -21,9 +21,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
 import { T, TT, feAuto, fn, fp, fixedCols } from '@/components/tokens';
+import { fpRate, feWhole, feSigned } from '@/lib/core/format';
 import { ChipToggle } from '@/components/Theme';
 import {
-  rentalIncomeTax, marginalRate, effectiveRentalRate,
+  rentalIncomeTax, marginalRate,
   rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS,
 } from '@/lib/billing/greekTax';
 import { parseAmount } from '@/lib/core/greek';
@@ -31,6 +32,7 @@ import { bankReceiptMatters, presumptiveDeductionRateForYear } from '@/lib/billi
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { Toggle } from '@/app/dashboard/components/UIComponents';
 import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
+import { ToolNumField, ToolFigure, ToolLedger, ToolStats } from '@/app/ToolParts';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { toolQuery } from '@/lib/tools/permalink';
 
@@ -143,7 +145,11 @@ export function RentTaxCalculator({ today }: { today: string }) {
       deduction: gross - taxable,
       net: gross - tax,
       marginal: marginalRate(taxable, brackets),
-      effective: effectiveRentalRate(taxable, brackets),
+      // ΤΟ ΠΟΣΟΣΤΟ ΜΕΤΡΙΕΤΑΙ ΣΤΟ ΕΝΟΙΚΙΟ, ΟΧΙ ΣΤΟ ΦΟΡΟΛΟΓΗΤΕΟ. Ο «πραγματικός
+      // συντελεστής» ήταν φόρος διά φορολογητέο (15,00% στα 7.200€) και καθόταν
+      // δίπλα στο ετήσιο ενοίκιο: ο αναγνώστης τον διάβαζε ως το μερίδιο του
+      // ενοικίου που πάει στον φόρο, που είναι 1.026 / 7.200 = 14,25%.
+      rentShare: gross > 0 ? tax / gross : 0,
       monthlyNet: n > 0 ? (gross - tax) / n : 0,
       // ΤΙ ΚΟΣΤΙΖΟΥΝ ΤΑ ΜΕΤΡΗΤΑ, ΣΕ ΕΥΡΩ. Η διαφορά των δύο φόρων, όχι το 5%
       // του ενοικίου: η έκπτωση μειώνει τη ΒΑΣΗ, οπότε το κόστος εξαρτάται από
@@ -152,22 +158,6 @@ export function RentTaxCalculator({ today }: { today: string }) {
       cashCost: rentalIncomeTax(gross, brackets) - rentalIncomeTax(gross * (1 - PRESUMPTIVE_DEDUCTION_RATE), brackets),
     };
   }, [monthly, months, viaBank, brackets, year]);
-
-  const field: React.CSSProperties = {
-    width: '100%', height: T.h.lg, padding: '0 14px', borderRadius: T.radius.btn,
-    border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
-    color: 'var(--text-primary)', fontSize: 16, fontFamily: T.font.num,
-    // ΚΑΜΙΑ ΑΠΕΝΕΡΓΟΠΟΙΗΣΗ ΤΟΥ ΔΑΧΤΥΛΙΔΙΟΥ ΕΣΤΙΑΣΗΣ. Το `outline: 'none'` εδώ
-    // ήταν inline, άρα νικούσε το :focus-visible του globals.css — και δεν
-    // έμπαινε τίποτα στη θέση του. Μετρημένο σε πραγματικό περιηγητή: με το
-    // πεδίο εστιασμένο, outlineWidth 0px, boxShadow none, εικόνα ΤΑΥΤΟΣΗΜΗ με
-    // την ανεστίαστη. Ο χρήστης πληκτρολογίου δεν έβλεπε πού βρίσκεται.
-    fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box',
-  };
-  const label: React.CSSProperties = {
-    display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
-    textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8,
-  };
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
@@ -178,23 +168,8 @@ export function RentTaxCalculator({ today }: { today: string }) {
       {/* ΔΥΟ ΓΝΩΣΤΑ ΠΕΔΙΑ, ΡΗΤΑ ΔΥΟ ΣΤΗΛΕΣ. Το auto-fit έβγαζε άλλοτε δύο και
           άλλοτε ένα ανάλογα με το zoom του περιηγητή, στην ίδια οθόνη. */}
       <div {...fixedCols(2, 14, 'start', 'po-tool-controls')}>
-        <div>
-          <label htmlFor={monthlyId} style={label}>Μηνιαίο ενοίκιο</label>
-          <div style={{ position: 'relative' }}>
-            {/* Το δεξί κενό δεν είναι αέρας: είναι ο χώρος της μονάδας «€» πάνω στο δεξί άκρο του πεδίου. */}
-            <input id={monthlyId} inputMode="decimal" value={monthly}
-              onChange={e => set('enoikio', e.target.value)}
-              style={{ ...field, paddingRight: 34 }} aria-describedby={`${monthlyId}-unit`}/>
-            <span id={`${monthlyId}-unit`} aria-hidden style={{
-              position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-              color: 'var(--text-tertiary)', fontSize: 15, pointerEvents: 'none' }}>€</span>
-          </div>
-        </div>
-        <div>
-          <label htmlFor={monthsId} style={label}>Μήνες που νοικιάζεται</label>
-          <input id={monthsId} inputMode="numeric" value={months}
-            onChange={e => set('mines', e.target.value)} style={field}/>
-        </div>
+        <ToolNumField id={monthlyId} label="Μηνιαίο ενοίκιο" value={monthly} onChange={x => set('enoikio', x)} unit="€"/>
+        <ToolNumField id={monthsId} label="Μήνες που νοικιάζεται" value={months} onChange={x => set('mines', x)} mode="numeric"/>
       </div>
       <ToolClampNote notes={[
         Math.round(amount(months)) > MAX_MONTHS && `Μέγιστο ${MAX_MONTHS} μήνες· υπολογίστηκαν ${MAX_MONTHS}.`,
@@ -298,35 +273,36 @@ export function RentTaxCalculator({ today }: { today: string }) {
             Κατεβαίνει στην ανάλυση, όπου ανήκει και μένουν δύο ισομεγέθη
             νούμερα με κοινή γραμμή βάσης: αυτό που κρατάει και αυτό που δίνει. */}
         <div {...fixedCols(2, 24, 'start')}>
-          <Figure label="Σου μένουν" value={feAuto(r.net)} big />
-          <Figure label="Φόρος" value={feAuto(r.tax)} big />
+          <ToolFigure label="Σου μένουν" value={feAuto(r.net)}/>
+          <ToolFigure label="Φόρος" value={feAuto(r.tax)}/>
         </div>
         <LiveResult say={`Φόρος ${feAuto(r.tax)}. Σου μένουν ${feAuto(r.net)}.`} />
 
         <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
 
-        {/* ΔΥΟ ΓΡΑΦΕΣ ΓΙΑ ΤΟ ΙΔΙΟ ΕΙΔΟΣ ΝΟΥΜΕΡΟΥ, ΔΙΠΛΑ ΔΙΠΛΑ. Ο πραγματικός
-            συντελεστής τυπωνόταν «15,00%» και ο οριακός «15%», στην ίδια σειρά:
-            ο αναγνώστης ψάχνει τη διαφορά που υπονοούν τα δεκαδικά και δεν
-            υπάρχει. Και τα δύο περνούν πλέον από τον ίδιο μορφοποιητή. */}
-        {/* Η ΤΕΚΜΑΡΤΗ ΕΚΠΤΩΣΗ ΗΤΑΝ ΑΟΡΑΤΗ, ΚΑΙ ΕΙΝΑΙ Ο ΠΥΡΗΝΑΣ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ.
-            Υπήρχε μόνο ως λέξη μέσα σε μια ετικέτα («Φορολογητέο μετά την
-            έκπτωση 5%»): ο χρήστης έβλεπε 7.200 να γίνονται 6.840 και έπρεπε να
-            βγάλει μόνος του τη διαφορά για να καταλάβει τι έγινε. Γραμμένη ως
-            δική της γραμμή, η αλυσίδα διαβάζεται ολόκληρη — ενοίκιο, έκπτωση,
-            φορολογητέο — και το πλέγμα βγαίνει έξι κελιά σε τρεις ισόποσες
-            σειρές, χωρίς ορφανό. */}
-        <dl {...fixedCols(2, 24, 'start')} style={{ ...fixedCols(2, 24, 'start').style, rowGap: 12, margin: 0 }}>
-          <Row k="Ετήσιο ενοίκιο" v={feAuto(r.gross)} />
-          {/* Η ΕΤΙΚΕΤΑ ΕΛΕΓΕ «5%» ΚΑΙ ΜΕ ΤΟΝ ΔΙΑΚΟΠΤΗ ΚΛΕΙΣΤΟ ΘΑ ΕΛΕΓΕ ΨΕΜΑ:
-              «Τεκμαρτή έκπτωση 5%: 0,00€». Ο συντελεστής ζει πλέον στην
-              εξήγηση του διακόπτη, δηλαδή εκεί που αποφασίζεται. */}
-          <Row k="Τεκμαρτή έκπτωση" v={feAuto(r.deduction)} />
-          <Row k="Φορολογητέο" v={feAuto(r.taxable)} />
-          <Row k="Καθαρά ανά μήνα" v={feAuto(r.monthlyNet)} />
-          <Row k="Πραγματικός συντελεστής" v={fp(r.effective * 100)} />
-          <Row k="Συντελεστής στο επόμενο ευρώ" v={fp(r.marginal * 100)} />
-        </dl>
+        {/* ΜΙΑ ΣΤΗΛΗ ΠΟΥ ΑΦΑΙΡΕΙ ΣΩΣΤΑ. Το πλέγμα δύο στηλών διαβαζόταν
+            ζιγκ-ζαγκ («Ετήσιο ενοίκιο | Τεκμαρτή έκπτωση / Φορολογητέο | Καθαρά
+            ανά μήνα») και καμία γραμμή δεν έλεγε «άρα». Η αλυσίδα γράφεται όπως
+            αφαιρείται: ενοίκιο, μείον φόρος, ίσον όσα μένουν. Η έκπτωση και το
+            φορολογητέο δεν είναι βήματα αυτής της αφαίρεσης (ο φόρος βγαίνει
+            ΠΑΝΩ στο φορολογητέο, δεν αφαιρείται από αυτό), οπότε μπαίνουν ως
+            εξήγηση κάτω από τον φόρο και ο αναγνώστης δεν αφαιρεί λάθος πράγματα. */}
+        <ToolLedger rows={[
+          { k: 'Ετήσιο ενοίκιο', v: feAuto(r.gross) },
+          {
+            k: 'Φόρος εισοδήματος', v: feSigned(-r.tax),
+            sub: <>Στο φορολογητέο {feAuto(r.taxable)}: το ενοίκιο μείον τεκμαρτή έκπτωση {feAuto(r.deduction)}.</>,
+          },
+          { k: 'Σου μένουν τον χρόνο', v: feAuto(r.net), kind: 'total' },
+        ]}/>
+        {/* Δύο γραφές για το ίδιο είδος νούμερου στην ίδια σειρά κάνουν τον
+            αναγνώστη να ψάχνει διαφορά που δεν υπάρχει: ο συντελεστής του νόμου
+            γράφεται «15%», το ποσοστό που ΥΠΟΛΟΓΙΣΤΗΚΕ με δύο δεκαδικά. */}
+        <ToolStats items={[
+          { k: 'Καθαρά ανά μήνα', v: feAuto(r.monthlyNet) },
+          { k: 'Φόρος ως ποσοστό του ενοικίου', v: fp(r.rentShare * 100) },
+          { k: 'Συντελεστής στο επόμενο ευρώ', v: fpRate(r.marginal * 100) },
+        ]}/>
       </div>
 
       <ToolActions path={PATH} spec={SPEC} values={v}/>
@@ -380,10 +356,15 @@ export function RentTaxCalculator({ today }: { today: string }) {
                 // Κάθε άκρο τυλίγεται ώστε να μένει ακέραιο· η γραμμή σπάει μόνο
                 // στα κενά γύρω από την παύλα, δηλαδή εκεί που το εννοεί κι ο
                 // αναγνώστης: δύο σειρές, ένα ποσό η καθεμιά.
-                const amount = (v: number) => <span style={{ whiteSpace: 'nowrap' }}>{feAuto(v)}</span>;
+                // ΑΚΕΡΑΙΑ ΕΥΡΩ ΚΑΙ ΧΩΡΙΣ ΤΟ «+1». Το «12.001,00€ – 24.000,00€» άφηνε
+                // τα 12.000,50€ χωρίς κλιμάκιο και διαφωνούσε με τις συχνές ερωτήσεις
+                // της ίδιας σελίδας («25% από 12.000 έως 24.000€»). Τα όρια του
+                // νόμου είναι στρογγυλά· γράφονται όπως τα γράφει ο νόμος.
+                const amount = (v: number, unit = true) =>
+                  <span style={{ whiteSpace: 'nowrap' }}>{unit ? feWhole(v) : fn(v)}</span>;
                 const range = b.to === Infinity
                   ? <>Πάνω από {amount(b.from)}</>
-                  : <>{amount(b.from === 0 ? 0 : b.from + 1)} – {amount(b.to)}</>;
+                  : <>{amount(b.from, false)} – {amount(b.to)}</>;
                 return (
                   <tr key={b.from} className={active ? 'is-on' : undefined}>
                     {/* Το κλιμάκιο ΕΙΝΑΙ η ταυτότητα της γραμμής: ο συντελεστής κι
@@ -391,11 +372,10 @@ export function RentTaxCalculator({ today }: { today: string }) {
                         scope="row"` το λέει μία φορά σε κάθε κελί της σειράς — κι
                         μένει καρφωμένο αριστερά όταν ο πίνακας κυλά. */}
                     <th scope="row" style={{ fontWeight: active ? 600 : 400 }}>{range}</th>
-                    {/* ΤΡΙΤΗ ΓΡΑΦΗ ΓΙΑ ΤΟ ΙΔΙΟ ΕΙΔΟΣ ΝΟΥΜΕΡΟΥ. Η στήλη έγραφε «15%»
-                        ενώ δύο εκατοστά πιο πάνω ο πραγματικός συντελεστής γράφει
-                        «15,00%»: ο αναγνώστης ψάχνει τη διαφορά που υπονοούν τα
-                        δεκαδικά και δεν υπάρχει. Ενας μορφοποιητής ποσοστού. */}
-                    <td className="num">{fp(b.rate * 100)}</td>
+                    {/* Ο συντελεστής του νόμου γράφεται όπως ο «Συντελεστής στο
+                        επόμενο ευρώ» από πάνω: «15%», με τον ίδιο μορφοποιητή. Τα
+                        δύο δεκαδικά κρατιούνται για ό,τι υπολογίστηκε. */}
+                    <td className="num">{fpRate(b.rate * 100)}</td>
                     <td className="num" style={{ fontWeight: active ? 600 : 400, color: active ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
                       {feAuto(slice * b.rate)}
                     </td>
@@ -438,39 +418,6 @@ export function RentTaxCalculator({ today }: { today: string }) {
         title="Θέλεις να μη χρειάζεται να το ξαναϋπολογίσεις;"
         body="Το PROPERWISE διατηρεί οργανωμένα ενοίκια, λογαριασμούς και δαπάνες όλη τη χρονιά και εξάγει με ένα κλικ όσα ζητά ο λογιστής σου."
       />
-    </div>
-  );
-}
-
-/**
- * Ένα μετρημένο νούμερο με την ετικέτα του.
- *
- * ΧΩΡΙΣ ΠΑΡΑΜΕΤΡΟ ΧΡΩΜΑΤΟΣ, ΕΠΙΤΗΔΕΣ. Είχε `tone: 'positive' | 'negative'` και
- * το μόνο που έκανε ήταν να βάφει τον φόρο κόκκινο και το υπόλοιπο πράσινο.
- * Όσο η παράμετρος υπάρχει, ο επόμενος θα τη χρησιμοποιήσει. Η έμφαση δίνεται
- * με μέγεθος και σειρά, που δουλεύουν και σε ασπρόμαυρη εκτύπωση και σε κάθε
- * μορφή αχρωματοψίας.
- */
-function Figure({ label, value, big }: { label: string; value: string; big?: boolean }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-        color: 'var(--text-tertiary)', marginBottom: 8 }}>{label}</div>
-      <div style={{
-        fontFamily: T.font.num, fontSize: big ? 'clamp(24px, 4.4vw, 32px)' : 'clamp(18px, 3vw, 21px)',
-        fontWeight: 680, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
-        color: big ? 'var(--text-primary)' : 'var(--text-secondary)',
-      }}>{value}</div>
-    </div>
-  );
-}
-
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
-      <dt style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{k}</dt>
-      <dd style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)',
-        fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{v}</dd>
     </div>
   );
 }

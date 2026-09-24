@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 // Οι επαφές έχουν ένα σπίτι: lib/data/contacts.
 import * as contacts from '@/lib/data/contacts';
 import { BankLinkTile } from './BankLink';
+import { bankLinkState } from '@/lib/bank/link';
 import { T, fe, formGrid, RuntimeImg, Btn, IconBtn, ChipToggle } from '@/components/Theme';
 import { CustomSelect, DatePicker } from './UIComponents';
 import {
@@ -198,6 +199,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   // μορφή και διαβάζεται καλύτερα: δύο ονομασμένες ενέργειες αντί για δύο
   // ανώνυμα βέλη μέσα στο JSX.
   const openCamera = useCallback(() => cameraRef.current?.click(), []);
+  // Η σύνδεση με την τράπεζα φαίνεται ως επιλογή μόνο όταν δουλεύει (lib/bank/link).
+  const bankOpen = bankLinkState() === 'open';
   const openFilePicker = useCallback(() => fileRef.current?.click(), []);
 
   const [file, setFile] = useState<File | null>(null);
@@ -449,7 +452,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                στην ίδια ερώτηση. Το πλήθος το ξέρει το ίδιο το component, οπότε
                το λέει ρητά στο πλέγμα αντί να το αφήνει στο πλάτος. */
             <>
-            <div className="scan-tiles" data-tiles={onManual ? 4 : 3}>
+            <div className="scan-tiles" data-tiles={2 + (onManual ? 1 : 0) + (bankOpen ? 1 : 0)}>
               {/* ΓΡΑΜΜΕΝΟ ΡΗΤΑ, ΟΧΙ ΜΕ ΤΟΝ ΒΟΗΘΟ `pressable`, ΚΑΙ ΕΧΕΙ ΛΟΓΟ.
                   Το JSX spread κρύβει τις ιδιότητες από τη στατική ανάλυση: με
                   `{...pressable(…)}` ο μεταγλωττιστής του React παύει να βλέπει τι
@@ -462,8 +465,11 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
                 <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Φωτογραφία</div>
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Κάμερα κινητού · tablet</div>
+                {/* Τρία πλακίδια, τρεις προστακτικές: «Φωτογράφισε», «Ανέβασε
+                    αρχείο», «Γράψε το χειροκίνητα». Ηταν ουσιαστικό, προστακτική
+                    και επίρρημα για τρεις απαντήσεις στην ίδια ερώτηση. */}
+                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Φωτογράφισε</div>
+                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Με την κάμερα της συσκευής</div>
               </div>
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && loadFile(e.target.files[0])} />
 
@@ -490,17 +496,17 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
                   {/* Ιδια κάθετη διάταξη με τα διπλανά: 12 κάτω από το εικονίδιο, 4 κάτω από τον τίτλο. Το `gap: 10` πρόσθετε κενό πάνω στο 4 και το πλακίδιο κατέβαινε. */}
                   <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Χειροκίνητα</div>
+                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Γράψε το χειροκίνητα</div>
                   <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Χωρίς παραστατικό</div>
                 </div>
               )}
 
-              {/* ΤΕΛΕΥΤΑΙΑ, ΓΙΑΤΙ ΔΕΝ ΓΙΝΕΤΑΙ ΑΚΟΜΗ. Οι τρεις πρώτες επιλογές
-                  δουλεύουν σήμερα· η τράπεζα ετοιμάζεται. Οσο καθόταν τρίτη,
-                  ανάμεσα σε δύο πράγματα που δουλεύουν, διαβαζόταν ως ισότιμη
-                  και ο χρήστης την πατούσε πρώτος. Στο τέλος της σειράς λέει
-                  αυτό που είναι: το επόμενο βήμα, όχι το τωρινό. */}
-              <BankLinkTile minHeight={172} />
+              {/* ΜΟΝΟ ΟΤΑΝ ΔΟΥΛΕΥΕΙ. Ενα «Σύντομα διαθέσιμο» μέσα στον διάλογο
+                  της σάρωσης ήταν υπόσχεση λειτουργίας εκεί όπου ο χρήστης
+                  διαλέγει τι θα κάνει ΤΩΡΑ. Οσο ετοιμάζεται, η τράπεζα λέγεται
+                  μόνο στη γραμμή των Δαπανών, με την εξήγησή της. Οταν ανοίξει,
+                  έρχεται τελευταία: οι άλλες τρεις είναι οι συνηθισμένες. */}
+              {bankOpen && <BankLinkTile minHeight={172} />}
             </div>
             {/* ΤΟ AI ΛΕΓΟΤΑΝ ΜΟΝΟ ΑΦΟΥ ΕΙΧΕ ΦΥΓΕΙ ΤΟ ΕΓΓΡΑΦΟ. Το «Claude AI
                 αναγνωρίζει» εμφανιζόταν στη μέση της σάρωσης· πριν από το

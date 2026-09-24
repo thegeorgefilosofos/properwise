@@ -10,7 +10,7 @@ import { BulkActionBar } from './UIComponents'
 import * as loanStore from '@/lib/data/loans'
 import * as contactStore from '@/lib/data/contacts'
 import * as billing from '@/lib/data/billing'
-import { T, fn, fe, PageTitle, InfoBanner, Btn, IconBtn, ChipToggle, EmptyState, Skeleton, SkeletonKPIs, isOverlayOpen, pageShell, Bar } from '@/components/Theme'
+import { T, fn, fe, PageTitle, InfoBanner, Btn, IconBtn, ChipToggle, EmptyState, Skeleton, SkeletonKPIs, isOverlayOpen, Bar } from '@/components/Theme'
 import { confirmDialog } from '@/components/confirmBus'
 import { notify, notifyOk } from '@/components/Toast'
 import { saved, savedData, optimistic } from '@/components/dbWrite'
@@ -615,8 +615,12 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   // ειπωθούν τρεις αριθμοί, που τώρα λέγονται μία φορά ο καθένας: το πλήθος
   // στον υπότιτλο, η πρόοδος στη μπάρα, η κατανομή στα chips.
 
+  // ΤΟ ΠΛΑΤΟΣ ΤΩΝ ΥΠΟΛΟΙΠΩΝ ΚΑΡΤΕΛΩΝ ΔΕΔΟΜΕΝΩΝ. Με μέτρο 1.100 οι Εκκρεμότητες
+  // έπιαναν 170 ως 1.270 στα 1.440, ενώ κάθε διπλανή καρτέλα λίστας πιάνει όλο
+  // το κέλυφος: σε κάθε αλλαγή καρτέλας η άκρη του περιεχομένου πηδούσε. Το
+  // μέτρο μένει για φόρμες και ρυθμίσεις· εδώ είναι λίστα.
   return (
-    <div style={pageShell(1100)}>
+    <div style={{ fontFamily: T.font.sans }}>
 
       {/* ΔΕΝ ΕΙΝΑΙ ΠΑΡΑΘΥΡΟ ΚΑΙ ΔΕΝ ΓΙΝΕΤΑΙ <Modal>. Δεν ρωτά τίποτα, δεν έχει
           κουμπιά, δεν έχει «×» και δεν κλείνει ο χρήστης: φεύγει μόνο του σε 4
@@ -711,10 +715,14 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
           για τρίτη φορά το «0%» που έγραφαν ήδη ο υπότιτλος της σελίδας και το
           πλακίδιο «Ολοκλήρωση». Μια μπάρα ΕΙΝΑΙ ποσοστό· δεν χρειάζεται να το
           ανακοινώσει. Το κόστος μένει: είναι άλλη πληροφορία, όχι επανάληψη. */}
+      {/* ΜΙΚΡΗ ΕΤΙΚΕΤΑ, ΟΧΙ ΕΠΙΚΕΦΑΛΙΔΑ. Χωρίς καμία, η λεπτή μπάρα κάτω από
+          το πλαίσιο των υποχρεώσεων διαβαζόταν ως πρόοδος ΕΚΕΙΝΟΥ. Το «1 από 3»
+          λέει τι μετρά χωρίς να ξαναγράψει το ποσοστό. */}
       {stats.total > 0 && (
-        <div style={{ marginTop: 14, marginBottom: 20 }}>
-          {/* Χωρίς ορατή ετικέτα, αλλά με όνομα για τον αναγνώστη οθόνης: το κοινό
-              `Bar` δίνει `role="meter"` με το ποσοστό. */}
+        <div style={{ marginTop: T.sp.lg, marginBottom: 20 }}>
+          <div style={{ marginBottom: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums' }}>
+            {fn(stats.done)} από {fn(stats.total)} ολοκληρωμένες
+          </div>
           <Bar pct={stats.pct} height={4} track="var(--bg-elevated)"
             label={`Ολοκληρωμένες εκκρεμότητες: ${fn(stats.done)} από ${fn(stats.total)}`} />
           {(stats.totalEstimated > 0 || stats.totalActual > 0) && (

@@ -121,7 +121,8 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // άθροισμα ΠΡΙΝ πατηθεί.
 {
   const s = await open('rent-three');
-  await s.page.getByRole('button', { name: 'Όλες' }).click();
+  // Το κουμπί λέει πλέον τι κάνει: «Επιλογή όλων (3)», όχι σκέτο «Όλες».
+  await s.page.getByRole('button', { name: /^Επιλογή όλων/ }).click();
   const label = plain(await s.primary().innerText()).replace(/[\n\r\t]+/g, ' ').trim();
   eq('3. το κουμπί λέει πλήθος και άθροισμα', label, 'Καταχώρηση 3 δόσεων · 1.350,00€');
   await s.primary().click();
@@ -140,7 +141,8 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // «καταχωρήθηκε» θα ήταν ψέμα και ένα «απέτυχε» επίσης.
 {
   const s = await open('rent-three', { fail: 'rent_payments:2' });
-  await s.page.getByRole('button', { name: 'Όλες' }).click();
+  // Το κουμπί λέει πλέον τι κάνει: «Επιλογή όλων (3)», όχι σκέτο «Όλες».
+  await s.page.getByRole('button', { name: /^Επιλογή όλων/ }).click();
   await s.primary().click();
   await settle(s.page);
   const t = await s.toasts();
@@ -175,7 +177,8 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // Υπολογίζονται από τη λήξη ΤΗΣ ΔΟΣΗΣ και την ημέρα είσπραξης, όχι από σήμερα.
 {
   const s = await open('rent-three');
-  await s.page.getByRole('button', { name: 'Όλες' }).click();
+  // Το κουμπί λέει πλέον τι κάνει: «Επιλογή όλων (3)», όχι σκέτο «Όλες».
+  await s.page.getByRole('button', { name: /^Επιλογή όλων/ }).click();
   await s.primary().click();
   await settle(s.page);
   const w = await s.writes('rent_payments');
@@ -201,7 +204,7 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // μηδέν θα ήταν λάθος αριθμός σε φορολογικά βιβλία, γραμμένος με βεβαιότητα.
 {
   const s = await open('inbox-no-amount');
-  await s.page.waitForSelector('text=Ηρθαν με email');
+  await s.page.waitForSelector('text=Ήρθαν με email');
   ok('8. χωρίς ποσό, η καταχώρηση είναι κλειστή', await s.primary().isDisabled());
   await s.page.locator('input[inputmode="decimal"], input[type="number"]').first().fill('87,45');
   await s.page.waitForTimeout(120);
@@ -220,7 +223,7 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // φαινόταν στη φορολογική δήλωση και όχι στην οθόνη.
 {
   const s = await open('inbox-amount');
-  await s.page.waitForSelector('text=Ηρθαν με email');
+  await s.page.waitForSelector('text=Ήρθαν με email');
   await s.page.locator('[role="combobox"]').first().click();
   await s.page.getByRole('option', { name: 'Κοινόχρηστα' }).click();
   await s.primary().click();
@@ -239,7 +242,7 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // τίποτα και δεν επιτρέπεται να γραφτεί κανόνας στο όνομά του.
 {
   const s = await open('inbox-amount');
-  await s.page.waitForSelector('text=Ηρθαν με email');
+  await s.page.waitForSelector('text=Ήρθαν με email');
   await s.primary().click();
   await settle(s.page);
   const e = await s.writes('expenses');
@@ -260,7 +263,7 @@ console.log('\nΔιαδρομές που κοστίζουν χρήματα\n');
 // που έβγαζαν ημερομηνία, χιλιάδες ή αριθμό λογαριασμού στη θέση του ποσού.
 {
   const s = await open('inbox-amount')
-  await s.page.waitForSelector('text=Ηρθαν με email')
+  await s.page.waitForSelector('text=Ήρθαν με email')
   const field = s.page.locator('input[inputmode="decimal"], input[type="number"]').first()
   ok('10β. το πεδίο του ποσού υπάρχει ΚΑΙ όταν το ποσό διαβάστηκε', await field.count() > 0)
   // Το πεδίο δείχνει ελληνικό κόμμα, όπως κάθε ποσό της εφαρμογής.

@@ -52,7 +52,7 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
 {
   const live = billingWords(LIVE), dark = billingWords(DARK)
   ok('η σημαία ακολουθεί το ταμείο', live.live === true && dark.live === false)
-  const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge', 'contractSteps'] as const
+  const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge', 'contractSteps', 'lapsedRetentionShort', 'planChange', 'subscriptionPlace', 'renewal', 'merchantRow'] as const
   // Αν μια φράση είναι ίδια και στις δύο καταστάσεις, τότε η μία από τις δύο
   // λέει ψέματα — και δεν θα το έπιανε κανείς, γιατί «υπάρχει διατύπωση».
   for (const k of keys) ok(`η «${k}» διαφέρει ανά κατάσταση`, live[k] !== dark[k])
@@ -68,6 +68,22 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
   // Ο ΣΤΟΧΟΣ ΤΩΝ ΣΥΝΕΡΓΑΤΩΝ ΜΕΤΡΑ ΣΥΝΔΡΟΜΗΤΕΣ: χωρίς ταμείο το λέμε, με ταμείο σιωπούμε.
   ok('χωρίς χρέωση, ο στόχος των συνεργατών λέει από πότε ισχύει', !!dark.partnerTarget && dark.partnerTarget.includes('συνδρομητές'))
   ok('με χρέωση, καμία επιφύλαξη', live.partnerTarget === null)
+
+  // Η ΕΙΔΟΠΟΙΗΣΗ ΤΟΥ ΤΙΜΟΚΑΤΑΛΟΓΟΥ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΣΟ ΔΕΝ ΑΓΟΡΑΖΕΤΑΙ ΤΙΠΟΤΑ.
+  ok('χωρίς χρέωση, ο τιμοκατάλογος λέει ότι δεν αγοράζεται ακόμη', !!dark.pricingNotice && dark.pricingNotice.body.includes('χωρίς χρέωση'))
+  ok('με χρέωση, καμία ειδοποίηση', live.pricingNotice === null)
+
+  // ΤΑ ΔΕΔΟΜΕΝΑ ΜΕΤΑ ΤΗ ΣΥΝΔΡΟΜΗ: ΤΟ ΔΙΑΣΤΗΜΑ ΤΗΣ ΣΥΝΤΟΜΗΣ ΑΠΑΝΤΗΣΗΣ ΕΙΝΑΙ
+  // ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΠΟΛΙΤΙΚΗΣ. Χωρίς ταμείο ο καθαρισμός δεν τρέχει, άρα καμία
+  // απειλή διαγραφής σε ημέρες· με ταμείο, ο αριθμός της βάσης.
+  ok('χωρίς χρέωση, η σύντομη διατήρηση δεν μετρά ημέρες',
+    !dark.lapsedRetentionShort.includes(`${ACCOUNT_GRACE_DAYS} ημέρες`))
+  ok('με χρέωση, λέει το διάστημα',
+    live.lapsedRetentionShort.includes(`${ACCOUNT_GRACE_DAYS} ημέρες`))
+  // ΤΟ ΠΛΑΙΣΙΟ ΤΟΥ ΠΑΚΕΤΟΥ ΣΤΗΝ ΕΓΓΡΑΦΗ: με ταμείο λέει τον κύκλο (null),
+  // χωρίς ταμείο δεν γράφει «Ετήσια χρέωση» δίπλα σε περιγραφή που λέει «καμία».
+  ok('χωρίς χρέωση, η εγγραφή δεν μιλά για κύκλο χρέωσης', !!dark.signupPlanTerms && dark.signupPlanTerms.includes('Χωρίς χρέωση'))
+  ok('με χρέωση, η εγγραφή δείχνει τον κύκλο', live.signupPlanTerms === null)
 }
 
 // ── ΤΟ ΜΟΝΤΕΛΟ ΤΩΝ ΧΡΗΜΑΤΩΝ, ΓΡΑΜΜΕΝΟ ΚΑΙ ΚΑΡΦΩΜΕΝΟ ─────────────────────
@@ -119,6 +135,15 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
   // Η ΑΝΕΝΕΡΓΗ ΚΑΤΑΣΤΑΣΗ ΜΕΝΕΙ ΑΝΕΝΕΡΓΗ, χωρίς να υπόσχεται χρεώσεις.
   ok('χωρίς ταμείο, καμία υπόσχεση για χρέωση',
     dark.afterTrial.includes('δεν έχει ενεργοποιηθεί'))
+  // ΑΝΑΝΕΩΣΗ, ΑΛΛΑΓΗ ΠΑΚΕΤΟΥ ΚΑΙ ΚΑΡΤΑ ΜΙΛΟΥΝ ΣΤΟΝ ΧΡΟΝΟ ΤΟΥΣ. Οι Οροι τα έγραφαν
+  // στον ενεστώτα δίπλα σε παράγραφο που έλεγε ότι σήμερα δεν χρεώνεται τίποτα.
+  for (const k of ['subscriptionPlace', 'renewal'] as const)
+    ok(`χωρίς ταμείο, το «${k}» μιλά για όταν ενεργοποιηθεί η χρέωση`, dark[k].startsWith('Όταν ενεργοποιηθεί'))
+  ok('χωρίς ταμείο, η αλλαγή πακέτου δεν κοστίζει σήμερα', dark.planChange.includes('σήμερα η αλλαγή δεν κοστίζει'))
+  // ΚΑΙ Η ΥΠΑΝΑΧΩΡΗΣΗ ΔΕΝ ΠΕΡΙΓΡΑΦΕΙ ΠΕΡΙΠΤΩΣΗ ΠΟΥ ΔΕΝ ΥΠΑΡΧΕΙ: σε συνδρομή
+  // «πλήρης εκτέλεση εντός 14 ημερών» δεν συμβαίνει ποτέ.
+  ok('η υπαναχώρηση δεν μιλά για πλήρη εκτέλεση', !live.withdrawal.includes('πλήρη εκτέλεση') && !dark.withdrawal.includes('πλήρη εκτέλεση'))
+  ok('χωρίς ταμείο, η υπαναχώρηση δεν κοστίζει τίποτα', dark.withdrawal.includes('δεν οφείλεις τίποτα'))
 
   // ── Ο ΛΟΓΑΡΙΑΣΜΟΣ ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ ΔΕΝ ΜΕΝΕΙ ΓΙΑ ΠΑΝΤΑ ─────────────────
   // Η πολιτική σβήνει δεδομένα, άρα η ενημέρωση δεν είναι διακοσμητική: το
@@ -157,7 +182,12 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
     activeSubprocessors(LIVE).some(s => s.name === mor(LIVE))
     && plannedSubprocessors(DARK).some(s => s.name === mor(DARK)))
   ok('η αιτιολόγηση του παρόχου δανείζεται τη μία διατύπωση',
-    merchantOf(DARK).purpose.includes(billingWords(DARK).cardData))
+    merchantOf(DARK).purpose.includes(billingWords(DARK).merchantRow)
+    && merchantOf(LIVE).purpose.includes(billingWords(LIVE).merchantRow))
+  // Η ΓΡΑΜΜΗ ΤΟΥ ΕΜΠΟΡΟΥ ΔΕΝ ΜΙΛΑ ΓΙΑ «ΤΟΝ ΠΑΡΟΧΟ ΠΛΗΡΩΜΩΝ»: ο πάροχος είναι
+  // ο ίδιος και η τρίτη πρόσωπη αναφορά διαβαζόταν σαν να υπάρχει κι άλλος.
+  ok('η γραμμή του εμπόρου δεν αναφέρεται στον εαυτό της ως τρίτο',
+    !merchantOf(DARK).purpose.includes('ο πάροχος πληρωμών'))
   // Οι υπόλοιποι πάροχοι δεν παρασύρονται από τη μεταβλητή της χρέωσης.
   const others = (env: Record<string, string | undefined>) =>
     subprocessors(env).filter(s => s.name !== mor(env)).map(s => `${s.name}:${s.active}`).join()

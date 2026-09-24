@@ -859,8 +859,18 @@ body {
    υπολογισμένη `box-shadow` της κάρτας ήταν ΙΔΙΑ πριν και μετά την εστίαση, σε
    33 κάρτες του Πελατολογίου. Η κάρτα είναι `tabindex="0"` και `role="button"`,
    δηλαδή στάση του πληκτρολογίου: χωρίς σημάδι, όποιος πλοηγείται με Tab δεν
-   ξέρει σε ποια κάρτα βρίσκεται. Το `outline` δεν το πατά κανένα ενσώματο στυλ. */
-.record-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+   ξέρει σε ποια κάρτα βρίσκεται. Το `outline` δεν το πατά κανένα ενσώματο στυλ.
+   Η στάση του πληκτρολογίου είναι πλέον το ΟΝΟΜΑ (`.record-card-open`), όχι
+   η κάρτα: το δαχτυλίδι μένει στην κάρτα, το κουμπί δεν ζωγραφίζει δεύτερο. */
+.record-card:has(.record-card-open:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Το κουμπί ανοίγματος απλώνεται κάτω από όλη την κάρτα· ό,τι άλλο πατιέται
+   μέσα της (σύνδεσμοι, επιλογή, ενέργειες) κάθεται από πάνω του. */
+.record-card-open {
+  position: absolute; inset: 0; margin: 0; padding: 0; border: 0;
+  border-radius: inherit; background: transparent; cursor: pointer;
+}
+.record-card-open:focus-visible { outline: none; }
+.record-card :is(a, button, [role="checkbox"]):not(.record-card-open) { position: relative; z-index: 1; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    Η ΛΩΡΙΔΑ ΣΤΟΙΧΕΙΩΝ ΤΗΣ ΚΑΡΤΑΣ — ΚΑΙ ΓΙΑΤΙ ΕΠΑΨΕ ΝΑ ΕΙΝΑΙ ΜΙΑ ΣΕΙΡΑ
@@ -1115,11 +1125,19 @@ body {
    ══════════════════════════════════════════════════════════════════════════ */
 .scan-tiles { display: grid; gap: 12px; grid-template-columns: 1fr; }
 @media (min-width: 560px) { .scan-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* ΤΡΙΑ ΔΕΝ ΜΠΑΙΝΟΥΝ ΣΕ ΔΥΟ ΣΤΗΛΕΣ. Στα 768 ως 834 έβγαιναν 2+1, με το τρίτο
+   μόνο του στη δεύτερη σειρά. Από τα 700 χωρούν στη σειρά· πιο κάτω, στοίβα. */
+@media (min-width: 560px) and (max-width: 699px) { .scan-tiles[data-tiles="3"] { grid-template-columns: 1fr; } }
+@media (min-width: 700px) { .scan-tiles[data-tiles="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 880px) {
-  .scan-tiles[data-tiles="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .scan-tiles[data-tiles="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .record-card-act { opacity: 0; transition: opacity .15s ease; }
+/* Οι ενέργειες του γεγονότος στο Ημερολόγιο, με τον ίδιο κανόνα: αιώρηση,
+   εστίαση πληκτρολογίου μέσα στη γραμμή, ανοιχτό μενού, πάντα ορατές στην αφή. */
+.cal-ev-act { opacity: 0; transition: opacity .13s ease; }
+.cal-ev:hover .cal-ev-act, .cal-ev:has(:focus-visible) .cal-ev-act, .cal-ev-act[data-open] { opacity: 1; }
+@media (hover: none) { .cal-ev-act { opacity: 1; } }
 /* Η αιώρηση του × ήταν γραμμένη σε JavaScript, δύο φορές (onMouseEnter και
    onMouseLeave σε κάθε κάρτα): δεν πυροδοτείται από πληκτρολόγιο και γράφει στο
    DOM πίσω από την πλάτη της React. Μία ψευδοκλάση και για το πληκτρολόγιο. */
@@ -2279,7 +2297,10 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 /* Το δαχτυλίδι εστίασης ζει ΕΔΩ και όχι σε handler κάθε αντιγράφου. Ηταν
    γραμμένο με onFocus/onBlur και useState σε ένα από τα πέντε πλαίσια
    επιλογής, δηλαδή τα άλλα τέσσερα δεν έδειχναν πού βρίσκεται το πληκτρολόγιο. */
-.po-box:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+/* ΚΑΙ ΠΕΡΙΓΡΑΜΜΑ, ΟΧΙ ΜΟΝΟ ΣΚΙΑ. Οι κύκλοι ενεργειών των Επαφών έχουν δική τους
+   σκιά ανύψωσης γραμμένη στο στοιχείο, που νικά κάθε σκιά κλάσης: με Tab το
+   δαχτυλίδι δεν φαινόταν ποτέ. Το περίγραμμα δεν το σκεπάζει κανείς. */
+.po-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: 0 0 0 3px var(--accent-soft); }
 
 /* ── ΤΟ ΚΟΥΜΠΙ ΜΕΣΑ ΣΕ ΠΡΟΤΑΣΗ ────────────────────────────────────────────
    Το ίδιο ιδίωμα με το .po-box, για τον στόχο που ζει μέσα σε τρεχούμενο
@@ -2435,6 +2456,11 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
    οπότε το καθένα παίρνει ολόκληρη τη γραμμή του αντί να ξεχειλίσει. */
 @media (max-width: 380px) {
   .po-seg > button { flex: 1 1 100%; }
+}
+/* Όταν η ράγα πέφτει κάτω από την εξήγησή της, πιάνει όλο το πλάτος: αλλιώς
+   στα 390 καθόταν αριστερά με ογδόντα εικονοστοιχεία κενό δεξιά της. */
+@media (max-width: 600px) {
+  .po-seg { width: 100%; }
 }
 
 /* ═══ ΕΝΑ ΠΕΡΙΘΩΡΙΟ ΓΙΑ ΚΕΦΑΛΙΔΑ ΚΑΙ ΠΕΡΙΕΧΟΜΕΝΟ ═══════════════════════════════
@@ -2896,6 +2922,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .plan-tag { white-space: normal; max-width: 128px; }
 }
 
+/* ═══ ΚΑΤΩ ΑΠΟ 560 Ο ΡΟΛΟΣ ΤΟΥ ΒΗΜΑΤΟΣ ΓΙΝΕΤΑΙ ΥΠΟΤΙΤΛΟΣ, ΣΕ ΠΕΖΑ ═════════════
+   Ακόμη και με όριο 128, το «ΣΥΜΒΟΛΑΙΟΓΡΑΦΟΣ» κρατούσε το ένα τρίτο της
+   γραμμής στα 390 και το «Μάζεψε τα πιστοποιητικά του συμβολαίου» έσπαγε σε
+   τρεις σειρές. Ο ρόλος πάει κάτω από τον τίτλο, ΣΕ ΠΕΖΑ και στο χρώμα της
+   υπόδειξης: η παλιά στοίβα ήταν κεφαλαία λέξη αριστερά, που διαβαζόταν ως
+   επικεφαλίδα του επόμενου βήματος. Ο υπότιτλος είναι δεύτερο αντίγραφο και
+   όχι μετακίνηση, γιατί η ετικέτα της στήλης γράφεται με ενσωματωμένο στυλ
+   κεφαλαίων που καμία κλάση δεν ακυρώνει· ορατό είναι πάντα ένα από τα δύο. */
+.plan-tag-sub { display: none; }
+@media (max-width: 560px) {
+  .plan-row-step { grid-template-columns: minmax(0, 1fr); }
+  .plan-row-step > .plan-tag { display: none; }
+  .plan-tag-sub { display: block; margin-top: 2px; }
+}
+
 /* ═══ ΑΦΑΙΡΕΘΗΚΕ: .plan-table / .plan-axes / .plan-span / .plan-head /
    .plan-head-rule / .plan-name / .plan-axis / .plan-axis-k, μαζί με το ερώτημα
    μέσων των 760 που τα στοίβαζε ════════════════════════════════════════════
@@ -3311,12 +3352,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    και τόπου, όπου ένα σπάσιμο δίνει μόνο θόρυβο. Η στήλη «Τι κάνει» όμως είναι
    κανονικές προτάσεις σε μέτρο παραγράφου· έμενε ριγμένη δεξιά, με τα μαλακά
    ενωτικά του `hyphenate` σβησμένα από το `none` και τη λέξη να σπάει στη μέση
-   (`anywhere`). Παίρνει τώρα πλήρη στοίχιση ΜΕ τον συλλαβισμό ενεργό: τα
-   ενωτικά γίνονται «-» όταν σπάει η γραμμή και η δεξιά άκρη κλείνει ίσια, χωρίς
-   ποτάμια κενού — όπως το υπόλοιπο νομικό κείμενο (`.lg-p`). Ειδικότερος
+   (`anywhere`). Παίρνει τον συλλαβισμό ενεργό: τα ενωτικά γίνονται «-» όταν
+   σπάει η γραμμή (η πλήρης στοίχιση που είχε μαζί του έφυγε, βλ. από κάτω). Ειδικότερος
    επιλογέας από τον γενικό, άρα κερδίζει· `overflow-wrap: normal` γιατί εδώ
    σπάμε σε κενά και σε ενωτικά, ποτέ στη μέση της λέξης. */
-.po-table td.lg-cell-prose { text-align: justify; hyphens: manual; overflow-wrap: normal; }
+.po-table td.lg-cell-prose { text-align: start; hyphens: manual; overflow-wrap: normal; }
+/* ΣΤΑ 400 Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΑΝΟΙΓΕ ΠΟΤΑΜΙΑ ΚΕΝΟΥ. Μετρημένο στα 1440: «μέτρηση
+   επισκεψιμότητας χωρίς cookies (Vercel Web…» με κενά τριπλάσια του φυσικού,
+   γιατί μια στήλη σαράντα πέντε χαρακτήρων δεν έχει αρκετά κενά να μοιράσει
+   το υπόλοιπο. Η στήλη γυρίζει σε ριγμένη δεξιά άκρη· ο συλλαβισμός μένει και
+   απλώς κοντεύει τις γραμμές.
+
+   Ο ΤΟΠΟΣ ΔΕΝ ΣΠΑΕΙ ΜΕΣΑ ΣΤΗ ΛΕΞΗ. Το γενικό `overflow-wrap: anywhere` έκοβε το
+   «Ευρωπαϊκή Ένωση» (δεμένο με άθραυστο κενό) σε «Ευρωπαϊκή Ένω / ση» στα 820.
+   Το `normal` αφήνει τη φράση να κατέβει ολόκληρη. */
+.po-table td.lg-place { overflow-wrap: normal; }
+/* Ο ΑΝΕΝΕΡΓΟΣ ΠΑΡΟΧΟΣ ΣΒΗΝΕΙ ΟΛΟΚΛΗΡΟΣ, ΟΧΙ ΜΟΝΟ ΤΟ ΟΝΟΜΑ ΤΟΥ. Το σήμα «Όχι
+   ενεργός σήμερα» το λέει με λέξεις· το χρώμα το επιβεβαιώνει σε όλη τη γραμμή. */
+.po-table tr.lg-sp-planned th, .po-table tr.lg-sp-planned td { color: var(--text-tertiary); }
 /* ═══ ΟΤΑΝ Ο ΠΙΝΑΚΑΣ ΔΗΛΩΝΕΙ ΠΛΑΤΗ, ΤΑ ΠΛΑΤΗ ΝΑ ΙΣΧΥΟΥΝ ══════════════════════
    Ο πίνακας των εκτελούντων γράφει `<colgroup>` με 20 / 56 / 24 τοις εκατό·
    ο περιηγητής τα αγνοούσε. Με αυτόματη διάταξη το `<colgroup>` είναι
@@ -3591,6 +3644,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .act-row > :only-child { grid-column: 1 / -1; justify-self: start; }
   .act-row > :only-child,
   .act-row > :only-child > button, .act-row > :only-child > a { width: auto; }
+  /* Εκτός όταν η μόνη ενέργεια ΕΙΝΑΙ η κύρια του φύλλου και το λέει ρητά
+     (`act-fill`), όπως το «Νέο γεγονός» στο φύλλο της ημέρας. */
+  .act-row > .act-fill:only-child { justify-self: stretch; width: 100%; }
 }
 
 /* Δύο ισότιμες διαδρομές σε πολύ στενό τηλέφωνο: στοίβα αντί για δύο στήλες.
@@ -3772,7 +3828,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
      μετρητή και για τον αναγνώστη οθόνης· απλώς δεν ζωγραφίζεται. */
   .cal-chip { text-indent: -999px; overflow: hidden; }
   .cal-chip svg { display: none; }
+  /* ΚΑΙ Η ΜΠΑΡΑ ΔΕΝ ΜΟΙΑΖΕΙ ΜΕ ΣΚΕΛΕΤΟ ΦΟΡΤΩΣΗΣ. Χωρίς κείμενο, το γκρι γέμισμα
+     της κατηγορίας έβγαινε ίδιο με τα ορθογώνια αναμονής: στα 390 οι ημέρες
+     2, 8, 17 και 26 έμοιαζαν να φορτώνουν ακόμη. Λωρίδα και απαλό γέμισμα του
+     accent λένε «εδώ υπάρχει γεγονός». Το χρώμα της κατηγορίας γράφεται ως
+     `backgroundColor`, οπότε το ζωγραφίζουμε με εσωτερική σκιά από πάνω του.
+     ΟΧΙ `background-image`: ο μετρητής αντίθεσης συνθέτει τις διαβαθμίσεις
+     ως φόντο του κειμένου και έβγαζε 1,05:1 για κείμενο που δεν ζωγραφίζεται. */
+  .cal-chip { box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 999px var(--accent-soft); }
 }
+
+/* Η μικρογραφία της κάρτας αρχείου. Χωρίς εικόνα, στο τηλέφωνο γίνεται λωρίδα
+   88 εικονοστοιχείων αντί για άδειο πλαίσιο 4:3 (TabDocuments, FileCard). */
+.file-thumb { aspect-ratio: 4 / 3; }
+@media (max-width: 560px) { .file-thumb[data-empty] { aspect-ratio: auto; height: 88px; } }
 
 /* Γραμμή κόστους υπηρεσίας (Ενοικιαστής): τα δύο πεδία πάνε από κάτω σε κινητό */
 @media (max-width: 560px) {
@@ -3785,8 +3854,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* Σελίδες Σύνδεσης/Εγγραφής: το marketing panel κρύβεται σε κινητό,
    η φόρμα παίρνει όλο το πλάτος — καμία οριζόντια κύλιση. */
+.auth-mobile-brand { display: none; }
 @media (max-width: 860px) {
   .auth-aside { display: none !important; }
+  .auth-mobile-brand { display: flex; margin-bottom: 24px; }
   .auth-main  { flex: 1 1 100% !important; width: 100% !important; padding: 32px 20px !important; }
   .auth-main  { padding-bottom: calc(32px + var(--cookie-h, 0px)) !important; }
 }
@@ -3953,6 +4024,17 @@ html { scroll-padding-bottom: var(--cookie-h, 0px); }
 @media (min-width: 601px) and (max-width: 1100px) {
   .fixed-cols.fc-chips { grid-template-columns: repeat(var(--fc-md), minmax(0, 1fr)); }
 }
+/* ═══ ΠΕΝΤΕ ΠΕΔΙΑ ΧΩΡΙΣ ΤΡΥΠΑ (υπολογιστής ΕΝΦΙΑ) ═══════════════════════════
+   Στην ταμπλέτα το 3+2 άφηνε άδειο κελί κάτω από το τρίτο πεδίο. Με έξι
+   λωρίδες (`--fc-md: 6`) τα τρία πάνω παίρνουν δύο και τα δύο κάτω τρεις: δύο
+   γεμάτες σειρές. */
+@media (min-width: 601px) and (max-width: 820px) {
+  .fixed-cols.fc-5-even > :nth-child(-n+3) { grid-column: span 2; }
+  .fixed-cols.fc-5-even > :nth-child(n+4) { grid-column: span 3; }
+}
+/* Στο τηλέφωνο τα δύο ποσά μένουν δίπλα δίπλα και οι δύο επιλογείς με το
+   ποσοστό παίρνουν όλο το πλάτος: στη μισή στήλη το «26 έτη και άνω» κοβόταν. */
+@media (max-width: 600px) { .fixed-cols.fc-5-even > :nth-child(n+3) { grid-column: 1 / -1; } }
 
 /* ═══ ΔΕΞΙΑ ΣΤΟΙΧΙΣΗ ΜΟΝΟ ΟΤΑΝ ΤΟ ΚΟΥΤΙ ΕΙΝΑΙ ΟΝΤΩΣ ΔΕΞΙΑ ══════════════════
    Η κάρτα δανείου έχει δύο πόλους: το υπόλοιπο αριστερά, τη δόση δεξιά. Στην
@@ -4368,16 +4450,11 @@ body:has(.lp-root) .po-cookie {
   --accent-text: var(--mkt-accent-text);
 }
 
-/* ── ΤΟ «ΤΟ ΚΑΤΑΛΑΒΑ» ΣΤΟΙΧΙΖΕΤΑΙ ΠΕΡΑ ΩΣ ΠΕΡΑ ΣΤΟ ΤΗΛΕΦΩΝΟ ────────────────
-   Σε πλάτος τηλεφώνου το κείμενο γεμίζει τη σειρά και το κουμπί τυλίγει από
-   κάτω. Χωρίς πλάτος καθόταν μικρό, στοιχισμένο αριστερά, μ' ένα νεκρό κενό
-   δεξιά του — το μόνο κύριο κουμπί που δεν στοιχιζόταν πέρα ώς πέρα όπως όλα
-   τα άλλα κύρια κουμπιά της εφαρμογής στο κινητό. Σε μία σειρά (ταμπλέτα και
-   πάνω) το `flex: 1` του κειμένου το σπρώχνει ήδη στη δεξιά άκρη, οπότε ο
-   κανόνας αφορά ΜΟΝΟ την τυλιγμένη περίπτωση. */
-@media (max-width: 460px) {
-  .po-cookie .po-cookie-cta { width: 100%; }
-}
+/* ── ΤΟ «ΤΟ ΚΑΤΑΛΑΒΑ» ΜΕΝΕΙ ΔΙΠΛΑ ΣΤΟ ΚΕΙΜΕΝΟ ─────────────────────────────
+   Ηταν κύριο κουμπί σε όλο το πλάτος του τηλεφώνου, κάτω από το κείμενο: ένα
+   δεύτερο γεμάτο μπλε στην ίδια οθόνη με το «Ξεκίνα τη δοκιμή». Είναι πλέον
+   δευτερεύον και δεν τυλίγει· το κουτί μένει δύο σειρές κειμένου ψηλό. */
+.po-cookie .po-cookie-cta { flex-shrink: 0; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — Η ΚΟΙΝΗ ΓΛΩΣΣΑ ΤΟΥΣ
@@ -4549,6 +4626,37 @@ body:has(.lp-root) .po-cookie {
 .og-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 720px) { .og-grid { grid-template-columns: 1fr; } }
 
+/* ═══ ΜΙΑ ΠΑΛΕΤΑ ΑΠΟ ΤΗΝ ΑΡΧΙΚΗ ΣΤΑ ΠΑΚΕΤΑ ΚΑΙ ΣΤΑ ΝΟΜΙΚΑ ═══════════════════
+   Η αρχική μιλά πάντα την παλέτα της βιτρίνας (`--mkt-*`, ναυτικό μπλε), ενώ
+   το /paketa, το /trust και τα νομικά μιλούσαν του προϊόντος: γκρι στο
+   σκούρο, λευκό στο φωτεινό. Ο επισκέπτης που πατούσε «Τιμές» περνούσε από
+   μπλε σε λευκό και πίσω· και το ίδιο υποσέλιδο άλλαζε χρώμα από σελίδα σε
+   σελίδα. Η `.pub-root` κάνει την ΙΔΙΑ αντιστοίχιση με το `.lp-root` της
+   αρχικής· ο scripts/guard-landing-theme ελέγχει ότι οι δύο λίστες είναι
+   ίδιες. Μόνο στην οθόνη: στο χαρτί τα νομικά τυπώνονται με τα χρώματα της
+   εκτύπωσης, όχι ανοιχτό κείμενο σε λευκό φύλλο. */
+@media screen {
+  .pub-root {
+    --bg-base: var(--mkt-bg-base);
+    --bg-surface: var(--mkt-bg-surface);
+    --bg-elevated: var(--mkt-bg-elevated);
+    --surface-raised: var(--mkt-bg-surface);
+    --text-primary: var(--mkt-text-primary);
+    --text-secondary: var(--mkt-text-secondary);
+    --text-tertiary: var(--mkt-text-tertiary);
+    --border-subtle: var(--mkt-border-subtle);
+    --border-default: var(--mkt-border-default);
+    --border-strong: var(--mkt-border-strong);
+    --accent: var(--mkt-accent);
+    --accent-text: var(--mkt-accent-text);
+    --positive: var(--mkt-positive);
+    --negative: var(--mkt-negative);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    color-scheme: dark;
+  }
+}
+
 /* ═══ ΤΟ ΚΟΝΤΟ ΚΕΙΜΕΝΟ ΤΗΣ ΣΤΕΝΗΣ ΟΘΟΝΗΣ, ΣΕ ΚΑΘΕ ΣΕΛΙΔΑ ══════════════════
    Ζούσαν μέσα στο <style> του app/page.tsx, άρα υπήρχαν ΜΟΝΟ στην αρχική. Η
    κεφαλίδα κάθε άλλης δημόσιας σελίδας έγραφε ολόκληρο το «Ξεκίνα τη δοκιμή»
@@ -4659,7 +4767,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    κοντή από κάθε άλλη. Η ημερομηνία μετακόμισε στη σειρά των αδελφών σελίδων,
    στο κενό δεξιά της (βλ. `lg-siblings`)· εδώ μένει μόνο το μέτρο της
    εισαγωγής, ίδιο με το υπόλοιπο κείμενο. */
-.lg-lede { max-width: 1044px; }
+.lg-lede { max-width: var(--lg-measure); }
 .lg-lede > p:first-child { text-align: justify; }
 
 /* Η ΣΤΗΛΗ ΤΟΥ ΚΕΙΜΕΝΟΥ ΕΙΝΑΙ ΤΟ ΜΕΤΡΟ. 1044 μείον 260 του ευρετηρίου μείον 72
@@ -4695,13 +4803,17 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    το κείμενο σταματούσε στα 712 και άφηνε 332 λευκά δίπλα του. Δύο άξονες στην
    ίδια οθόνη διαβάζονται ως σφάλμα, όχι ως πρόθεση.
 
-   ΤΟ ΤΙΜΗΜΑ, ΓΡΑΜΜΕΝΟ: στα 1044 με 15 η γραμμή πιάνει περίπου 130 χαρακτήρες
-   αντί για 89. Είναι μακρύτερη από το τυπογραφικό ιδανικό — και στέκει εδώ
-   επειδή το κείμενο είναι ΠΛΗΡΩΣ ΣΤΟΙΧΙΣΜΕΝΟ με αληθινό συλλαβισμό: η δεξιά
-   άκρη είναι ευθεία, οπότε το μάτι ξέρει ακριβώς πού να γυρίσει, που είναι και
-   ο λόγος για τον οποίο υπάρχει το όριο των 89. Ο συλλαβισμός κρατά τα κενά
-   στο φυσικό τους πλάτος (διάμεσος 4,7 · p90 6,4 μετρημένα). */
+   ΤΟ ΤΙΜΗΜΑ ΔΕΝ ΣΤΑΘΗΚΕ. Στα 1044 με 15 η γραμμή έπιανε 130 ώς 145
+   χαρακτήρες: η ευθεία δεξιά άκρη δεν βοηθά το μάτι να βρει την επόμενη
+   γραμμή όταν η επιστροφή είναι ένα ολόκληρο πλάτος οθόνης μακριά.
+
+   ΤΟ ΜΕΤΡΟ ΜΠΑΙΝΕΙ ΣΤΗΝ ΠΡΟΖΑ, ΟΧΙ ΣΤΟ ΚΕΛΥΦΟΣ. Παράγραφοι, λίστες, σημειώσεις
+   και εισαγωγή σταματούν στα 680 (περίπου 85 χαρακτήρες στα 15). Ο πίνακας
+   των παρόχων, το ευρετήριο, οι τίτλοι και η σειρά των αδελφών σελίδων κρατούν
+   όλο το πλάτος: είναι δομή, όχι κείμενο που διαβάζεται γραμμή γραμμή. */
 .lg-body { min-width: 0; }
+:root { --lg-measure: 680px; }
+.lg-p, .lg-ul, .lg-note, .lg-stack, .lg-version, .lg-form-box { max-width: var(--lg-measure); }
 .lg-head { min-width: 0; }
 /* Τρεχούμενο κείμενο νομικής σελίδας. Στα 15, όσο και η αρχική: ό,τι δεσμεύει
    τον χρήστη δεν επιτρέπεται να είναι το πιο δυσανάγνωστο κείμενο του
@@ -4742,6 +4854,16 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   border-radius: 12px;
 }
 .lg-closing { margin-top: clamp(32px, 4vw, 48px); }
+/* Η έκδοση κάτω από την εισαγωγή: μικρή, ήσυχη, αλλά στην πρώτη οθόνη. */
+.lg-version { margin: 12px 0 0; font-size: 13px; color: var(--text-tertiary); }
+/* ΤΟ ΥΠΟΔΕΙΓΜΑ ΥΠΑΝΑΧΩΡΗΣΗΣ: έντυπο με τις γραμμές του, όχι λίστα όρων. */
+.lg-form-box { margin: 14px 0 0; }
+.lg-form {
+  margin: 0; padding: 14px 16px; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: inherit; font-size: 14px; line-height: 1.65; color: var(--text-secondary);
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 12px;
+}
+.lg-form-actions { margin-top: 10px; display: flex; }
 
 /* Ο ΤΙΤΛΟΣ ΤΟΥ ΜΕΡΟΥΣ μέσα στο κείμενο. Λεπτή γραμμή από πάνω αντί για κουτί:
    χωρίζει χωρίς να προσθέτει άλλο ένα πλαίσιο σε σελίδα που είναι ήδη κείμενο. */
@@ -4780,32 +4902,75 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 }
 .lg-toc-h { margin-bottom: 10px; }
 .lg-toc-m { display: none; padding: 0 16px; }
-/* 44 ύψος για τον αντίχειρα, από το γέμισμα: η περίληψη μένει list-item, για
-   να κρατήσει το τρίγωνο που λέει ότι ανοίγει. */
-.lg-toc-m > summary { padding: 14px 0; cursor: pointer; }
+/* 44 ύψος για τον αντίχειρα, από το γέμισμα.
+   ΤΟ ΤΡΙΓΩΝΟ ΔΕΝ ΕΜΕΝΕ ΠΟΤΕ. Το σχόλιο εδώ έλεγε ότι η περίληψη κρατά τον δείκτη
+   του περιηγητή, ενώ ο γενικός κανόνας `summary::marker { content: "" }` τον
+   σβήνει παντού. Ετσι το «Περιεχόμενα» ήταν επίπεδο κουτί χωρίς κανένα σημάδι
+   ότι ανοίγει. Παίρνει δικό του γωνιακό βέλος, δεξιά, που γυρίζει όταν ανοίξει. */
+.lg-toc-m > summary, .lg-sp-more > summary {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 14px 0; cursor: pointer; list-style: none;
+}
+.lg-toc-m > summary::after, .lg-sp-more > summary::after {
+  content: ''; flex-shrink: 0; width: 8px; height: 8px; margin: -4px 4px 0 0;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(45deg); transition: transform .15s;
+}
+.lg-toc-m[open] > summary::after, .lg-sp-more[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
 .lg-toc-m .lg-toc-list { padding-bottom: 12px; }
 
 /* ═══ ΜΗΤΡΩΟ ΠΑΡΟΧΩΝ: ΚΑΤΑΣΤΑΣΗ ΣΕ ΛΕΞΕΙΣ ΚΑΙ ΚΑΡΤΕΣ ΣΤΟ ΚΙΝΗΤΟ ═══════════ */
 .lg-badge {
-  display: table; margin-top: 4px; padding: 1px 8px;
-  font-size: 11px; font-weight: 600; line-height: 1.6; color: var(--text-secondary);
+  display: table; margin-top: 6px; padding: 2px 8px; white-space: nowrap;
+  font-size: 12px; font-weight: 600; line-height: 16px; color: var(--text-secondary);
   background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 999px;
 }
 .lg-sp-entity { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; color: var(--text-tertiary); }
-.lg-sp-cards { display: none; list-style: none; margin: 16px 0 0; padding: 0; flex-direction: column; gap: 12px; }
+.lg-sp-cards { display: none; margin: 16px 0 0; }
+.lg-sp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.lg-sp-more {
+  margin-top: 12px; padding: 0 16px;
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 12px;
+}
+.lg-sp-more > summary { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+.lg-sp-more > .lg-sp-list { padding-bottom: 16px; }
 .lg-sp-card {
   padding: 14px 16px; font-size: 14px;
   background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 14px;
 }
-.lg-sp-card dl { margin: 10px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; }
-.lg-sp-card dt { font-size: 13px; color: var(--text-tertiary); }
+/* ΕΤΙΚΕΤΑ ΠΑΝΩ ΑΠΟ ΤΗΝ ΤΙΜΗ. Σε δύο στήλες η ετικέτα έτρωγε το ένα τρίτο της
+   κάρτας και η περιγραφή έμενε με 230 εικονοστοιχεία: δεκατρείς γραμμές και
+   οκτώ ενωτικά για μία παράγραφο. */
+.lg-sp-card dl { margin: 10px 0 0; display: grid; grid-template-columns: 1fr; gap: 2px; }
+.lg-sp-card dt { margin-top: 8px; font-size: 13px; color: var(--text-tertiary); }
+.lg-sp-card dt:first-child { margin-top: 0; }
 .lg-sp-card dd { margin: 0; color: var(--text-secondary); line-height: 1.55; }
 
 @media (max-width: 640px) {
   .lg-toc-d, .lg-sp-table { display: none; }
   .lg-toc-m { display: block; }
-  .lg-sp-cards { display: flex; }
+  .lg-sp-cards { display: block; }
 }
+
+/* ═══ ΟΔΗΓΟΙ: ΜΕΤΡΟ, ΜΕΓΕΘΟΣ, ΣΤΟΙΧΙΣΗ ════════════════════════════════════
+   ΟΙ ΟΔΗΓΟΙ ΔΑΝΕΙΖΟΝΤΑΝ ΤΙΣ ΠΑΡΑΓΡΑΦΟΥΣ ΤΩΝ ΝΟΜΙΚΩΝ ΣΕΛΙΔΩΝ: 15px, δεύτερος
+   τόνος, πλήρης στοίχιση. Σε κείμενο που διαβάζεται από την αρχή ως το τέλος
+   αυτό έδινε ~95 χαρακτήρες ανά γραμμή στα 820, ποτάμια κενού στα 1440 και
+   πέντε κομμένες λέξεις στην πρώτη οθόνη του κινητού. Εδώ: αριστερή στοίχιση
+   χωρίς συλλαβισμό, σώμα κοντά στο πρώτο χρώμα, μέτρο ~66 χαρακτήρων. Οι
+   πίνακες και οι σημειώσεις κρατούν το πλάτος της στήλης. Τα `.gd-*` ζουν
+   μόνο μέσα στο GuideMain (app/odigos/GuideParts.tsx). */
+.gd .lg-p, .gd .lg-ul li {
+  font-size: 16px; line-height: 1.65; text-align: start; hyphens: none; text-wrap: pretty;
+  color: color-mix(in srgb, var(--text-primary) 90%, transparent);
+}
+.gd .lg-p, .gd .lg-ul { max-width: 66ch; }
+.gd .lg-note { text-align: start; hyphens: none; }
+.gd .po-tool-sources .lg-ul li { font-size: 14px; color: var(--text-secondary); }
+@media (min-width: 768px) { .gd .lg-p, .gd .lg-ul li { font-size: 17px; } }
+.gd .lg-toc { max-width: 66ch; }
+.gd-table { max-width: 480px; }
+.gd-table .po-table tbody tr:nth-child(even) > * { background: color-mix(in srgb, var(--bg-elevated) 50%, transparent); }
 
 /* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΓΙΝΕΤΑΙ ΠΟΤΑΜΙΑ ΛΕΥΚΟΥ ΚΑΙ ΣΠΑΣΜΕΝΕΣ ΛΕΞΕΙΣ.
    Σε ~340px στήλη το `justify` μαζί με τον μαλακό συλλαβισμό του `hy()` αφήνει
@@ -4823,6 +4988,19 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   .po-table td.lg-cell-prose,
   .lg-lede > p:first-child {
     text-align: start;
+  }
+  /* ΚΑΙ Ο ΣΥΛΛΑΒΙΣΜΟΣ ΣΒΗΝΕΙ ΜΑΖΙ ΜΕ ΤΗ ΣΤΟΙΧΙΣΗ. Χωρίς ευθεία δεξιά άκρη δεν
+     έχει κενά να κλείσει· έβγαζε μόνο σκάλες: δέκα γραμμές με ενωτικό στις
+     είκοσι τρεις της παραγράφου για το AI και παραγράφους που τελείωναν σε
+     «αποσυνδέ-/ται». Το `none` είναι το μόνο που κάνει τον περιηγητή να
+     αγνοήσει τα μαλακά ενωτικά (U+00AD) του `hy()`. */
+  .lg-p,
+  .lg-ul li,
+  .lg-note,
+  .lg-just,
+  .lg-sp-card dd,
+  .lg-lede > p:first-child {
+    hyphens: none;
   }
 }
 
@@ -4871,6 +5049,9 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    με το lib/print/ink.ts για τα PDF: το χαρτί δεν έχει θέμα.
    ══════════════════════════════════════════════════════════════ */
 .po-printonly { display: none; }
+/* Γραμμή πίνακα που η οθόνη κρύβει ώσπου να ζητηθεί και το χαρτί την τυπώνει
+   (οι δόσεις του ΕΝΦΙΑ): γραμμή πίνακα, όχι μπλοκ, αλλιώς σπάει τις στήλες. */
+tr.po-row-more { display: none; }
 
 @media print {
   :root {
@@ -4897,6 +5078,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 
   .po-noprint { display: none !important; }
   .po-printonly { display: block; }
+  tr.po-row-more { display: table-row; }
 
   /* ── ΤΟ ΧΑΡΤΙ ΚΡΑΤΑΕΙ ΤΟ ΑΠΟΤΕΛΕΣΜΑ, ΟΧΙ ΤΗ ΣΕΛΙΔΑ ─────────────────────
      Οσα φεύγουν, φεύγουν επειδή δεν λένε τίποτα σε χαρτί: η πλοήγηση δεν
@@ -5082,10 +5264,29 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    που συγκρίνει καλύτερα δίπλα δίπλα. Οι δύο όψεις διαβάζουν τα ΙΔΙΑ δεδομένα και
    η καθεμιά είναι `display:none` στο άλλο πλάτος, άρα και εκτός δέντρου
    προσβασιμότητας — κανένα διπλό ανακοίνωμα. */
+/* ΤΟ ΟΡΙΟ ΕΙΝΑΙ ΤΑ 960, ΟΧΙ ΤΑ 768. Ο πίνακας θέλει 860 και το περιθώριο της
+   σελίδας τρώει ως 96: στα 820 της ταμπλέτας η στήλη του «Επαγγελματίας+» και
+   το κουμπί της έμεναν έξω από την οθόνη, χωρίς κανένα σημάδι ότι υπάρχουν.
+   Από τα 600 οι κάρτες πάνε δύο δύο, με τα κοινά σε όλο το πλάτος. */
 .plan-cmp-cards { display: none; }
-@media (max-width: 767px) {
+@media (max-width: 959px) {
   .plan-cmp-table { display: none; }
-  .plan-cmp-cards { display: grid; gap: 14px; }
+  .plan-cmp-cards { display: grid; gap: 14px; align-items: start; }
+}
+@media (min-width: 600px) and (max-width: 959px) {
+  .plan-cmp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-card-common { grid-column: 1 / -1; }
+}
+/* Η ετικέτα του προτεινόμενου πακέτου, ίδια με την κορδέλα της αρχικής. */
+.plan-rec {
+  display: inline-block; margin: 6px 0 2px; padding: 2px 9px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px; white-space: nowrap;
+}
+.plan-card-lacks {
+  margin: 4px 0 0; padding-top: 10px; border-top: 1px solid var(--border-subtle);
+  font-size: 13px; line-height: 1.5; color: var(--text-tertiary);
 }
 .plan-card {
   background: var(--surface-raised);
@@ -5529,3 +5730,6 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   white-space: nowrap;
 }
 .po-src-txt { flex: 1 1 auto; min-width: 220px; }
+/* ΜΕΤΡΟ ΚΑΙ ΣΤΙΣ ΠΗΓΕΣ. Στα 1440 η γραμμή του φόρου ενοικίων έφτανε τους 106
+   χαρακτήρες με διάστιχο 1,55: το μάτι χάνει τη σειρά του στην επιστροφή. */
+.po-tool-sources .po-src-txt { max-width: 72ch; line-height: 1.65; }

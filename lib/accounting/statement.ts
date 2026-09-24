@@ -20,6 +20,7 @@ import {
   rentalIncomeTax, art15BracketsForAge, advanceTaxRate, CORPORATE_TAX_RATE_2026,
   DIVIDEND_WITHHOLDING_RATE, type TaxBracket,
 } from '@/lib/billing/greekTax'
+import { fp } from '@/lib/core/format'
 
 const cents = (n: number): number => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100
 const pos = (n: number): number => Math.max(0, cents(n))
@@ -71,6 +72,9 @@ export interface StatementInput {
   // ── Ταμειακές εκροές που ΔΕΝ επηρεάζουν τη φορολογική βάση φυσικού προσώπου ──
   /** ΕΝΦΙΑ (φόρος ακίνητης περιουσίας) — εκροή, όχι έκπτωση για ιδιώτη. */
   enfia?: number
+  /** Από πού ήρθε το ποσό του ΕΝΦΙΑ. Η γραμμή το λέει, γιατί περσινό ποσό και
+   *  εκτίμηση δεν είναι το φετινό εκκαθαριστικό. Χωρίς τιμή: σκέτο «ΕΝΦΙΑ». */
+  enfiaBasis?: EnfiaBasis
   /** ΤΑΚΚ (τέλος ανθεκτικότητας) — βραχυχρόνια. */
   climateLevy?: number
   /** Τέλος παρεπιδημούντων — βραχυχρόνια. */
@@ -87,6 +91,15 @@ export interface StatementInput {
   /** Ρητός φόρος εισοδήματος (π.χ. μερίδιο του προοδευτικού φόρου χαρτοφυλακίου,
    *  Ε1). Αν δοθεί, υπερισχύει του εσωτερικού υπολογισμού. */
   overrideIncomeTax?: number
+}
+
+/** Η πηγή του ποσού ΕΝΦΙΑ, με τη σειρά αξιοπιστίας του `enfiaInUse`. */
+export type EnfiaBasis = 'declared' | 'lastYear' | 'estimate'
+
+const ENFIA_LINE_LABEL: Record<EnfiaBasis, string> = {
+  declared: 'ΕΝΦΙΑ',
+  lastYear: 'ΕΝΦΙΑ (περσινό ποσό)',
+  estimate: 'ΕΝΦΙΑ (εκτίμηση)',
 }
 
 export type LineKind = 'income' | 'deduction' | 'subtotal' | 'tax' | 'result' | 'memo'
@@ -119,6 +132,8 @@ export interface IncomeStatement {
   propertyTaxes: number
   /** Λογιστικό καθαρό αποτέλεσμα μετά φόρου εισοδήματος (πριν φόρους ακινήτου/δάνειο). */
   netProfit: number
+  /** Ό,τι μένει μετά από φόρους, τέλη και δαπάνες, ΠΡΙΝ από τις δόσεις δανείου. */
+  netBeforeLoan: number
   /** Πραγματικό ταμειακό υπόλοιπο μετά από ΟΛΑ (φόροι, τέλη, δάνειο, δαπάνες). */
   netCash: number
   lines: StatementLine[]
@@ -211,6 +226,11 @@ export function incomeStatement(input: StatementInput): IncomeStatement {
   const netCash = cents(
     gross - incomeTax - dividendTax - propertyTaxes - otherCash - loanPrincipal - interest - itemized - ekfa - uncollected,
   )
+  // ΤΟ ΤΑΜΕΙΟ ΠΡΙΝ ΑΠΟ ΤΙΣ ΔΟΣΕΙΣ ΤΟΥ ΔΑΝΕΙΟΥ. Το δάνειο είναι τρόπος
+  // χρηματοδότησης, όχι έξοδο του ακινήτου· ο ιδιοκτήτης θέλει να δει τι
+  // αποδίδει το ίδιο το ακίνητο. Είναι το «Μένει σε εσένα» της Τιμολόγησης
+  // ΜΕΙΟΝ τον ΕΝΦΙΑ, που εκείνη δεν αφαιρεί (και το λέει στη σημείωσή της).
+  const netBeforeLoan = cents(netCash + loanPrincipal)
 
   // Γραμμές εμφάνισης (τυπική δομή κατάστασης αποτελεσμάτων)
   const lines: StatementLine[] = [
@@ -223,26 +243,41 @@ export function incomeStatement(input: StatementInput): IncomeStatement {
     if (buildingDepr > 0) lines.push({ key: 'buildingDepreciation', label: 'Αποσβέσεις κτιρίου (4%)', amount: buildingDepr, kind: 'deduction', negative: true })
     if (interest > 0) lines.push({ key: 'interest', label: 'Τόκοι δανείου', amount: interest, kind: 'deduction', negative: true })
   } else if (presumptive > 0) {
-    lines.push({ key: 'presumptive', label: `Τεκμαρτή έκπτωση ${Math.round(presumptiveRate * 100)} %`, amount: presumptive, kind: 'deduction', negative: true })
+    lines.push({ key: 'presumptive', label: `Τεκμαρτή έκπτωση ${fp(presumptiveRate * 100)}`, amount: presumptive, kind: 'deduction', negative: true })
   }
   lines.push({ key: 'taxable', label: 'Φορολογητέο εισόδημα', amount: taxable, kind: 'subtotal' })
   lines.push({ key: 'incomeTax', label: 'Φόρος εισοδήματος', amount: incomeTax, kind: 'tax', negative: true })
   if (dividendTax > 0) lines.push({ key: 'dividendTax', label: 'Φόρος μερισμάτων (5% στη διανομή)', amount: dividendTax, kind: 'tax', negative: true })
-  lines.push({ key: 'netProfit', label: 'Καθαρό αποτέλεσμα (μετά φόρου)', amount: netProfit, kind: 'result' })
+  // ΤΟ «ΚΑΘΑΡΟ» ΤΟΥ ΦΥΣΙΚΟΥ ΠΡΟΣΩΠΟΥ ΗΤΑΝ ΚΑΘΑΡΟ ΜΟΝΟ ΑΠΟ ΤΟΝ ΦΟΡΟ. Η γραμμή
+  // έλεγε «Καθαρό αποτέλεσμα (μετά φόρου)» και από κάτω της ακολουθούσαν ΕΝΦΙΑ,
+  // ΤΑΚΚ και δαπάνες: ο ιδιοκτήτης διάβαζε ως καθαρό ένα ποσό που δεν του
+  // έμενε. Για την επιχείρηση το αποτέλεσμα είναι όντως μετά τις δαπάνες (τις
+  // έχει ήδη αφαιρέσει η βάση), οπότε εκεί ο όρος μένει.
+  lines.push({ key: 'netProfit', label: business ? 'Καθαρό αποτέλεσμα (μετά φόρου)' : 'Έσοδα μετά τον φόρο εισοδήματος', amount: netProfit, kind: business ? 'result' : 'subtotal' })
   if (propertyTaxes > 0) {
-    if (enfia > 0) lines.push({ key: 'enfia', label: 'ΕΝΦΙΑ', amount: enfia, kind: 'tax', negative: true })
-    if (climateLevy > 0) lines.push({ key: 'climate', label: 'Τέλος ανθεκτικότητας (ΤΑΚΚ)', amount: climateLevy, kind: 'tax', negative: true })
+    if (enfia > 0) lines.push({ key: 'enfia', label: ENFIA_LINE_LABEL[input.enfiaBasis ?? 'declared'], amount: enfia, kind: 'tax', negative: true })
+    // Το όνομα λέει ΓΙΑΤΙ είναι κόστος: το τέλος το πληρώνει ο επισκέπτης και
+    // βαραίνει τον ιδιοκτήτη μόνο όσο δεν εισπράχθηκε από αυτόν. Κατά λέξη η
+    // γραμμή της Τιμολόγησης (lib/tax/shortTermCashflow.ts), ώστε οι δύο οθόνες
+    // να ονομάζουν το ίδιο ποσό με τον ίδιο τρόπο.
+    if (climateLevy > 0) lines.push({ key: 'climate', label: 'Τέλος ανθεκτικότητας που δεν εισπράχθηκε', amount: climateLevy, kind: 'tax', negative: true })
     if (municipalTax > 0) lines.push({ key: 'municipal', label: 'Τέλος παρεπιδημούντων', amount: municipalTax, kind: 'tax', negative: true })
   }
-  if (loanPrincipal > 0) lines.push({ key: 'principal', label: business ? 'Χρεολύσιο δανείου (κεφάλαιο)' : 'Δόσεις δανείου', amount: loanPrincipal, kind: 'deduction', negative: true })
+  if (business && loanPrincipal > 0) lines.push({ key: 'principal', label: 'Χρεολύσιο δανείου (κεφάλαιο)', amount: loanPrincipal, kind: 'deduction', negative: true })
   if (otherCash > 0) lines.push({ key: 'otherCash', label: 'Λοιπές ταμειακές δαπάνες', amount: otherCash, kind: 'deduction', negative: true })
   if (uncollected > 0) lines.push({ key: 'uncollected', label: input.legallyClaimedUncollected ? 'Ανείσπρακτα ενοίκια (διεκδικημένα, αφορολόγητα)' : 'Ανείσπρακτα ενοίκια', amount: uncollected, kind: 'deduction', negative: true })
+  // Χωρίς δάνειο το «πριν από δάνειο» ΕΙΝΑΙ το ταμειακό υπόλοιπο: δεύτερη γραμμή
+  // με το ίδιο ποσό δεν λέει τίποτα.
+  if (!business && loanPrincipal > 0) {
+    lines.push({ key: 'netBeforeLoan', label: 'Καθαρό πριν από το δάνειο', amount: netBeforeLoan, kind: 'result' })
+    lines.push({ key: 'principal', label: 'Δόσεις δανείου', amount: loanPrincipal, kind: 'deduction', negative: true })
+  }
   lines.push({ key: 'netCash', label: 'Ταμειακό υπόλοιπο', amount: netCash, kind: 'result' })
 
   return {
     regime, grossIncome: gross, presumptiveDeduction: presumptive, deductibleExpenses: itemized,
     depreciation, interest, taxableIncome: taxable, incomeTax, advanceTax, dividendTax, effectiveRate: effRate,
-    propertyTaxes, netProfit, netCash, lines,
+    propertyTaxes, netProfit, netBeforeLoan, netCash, lines,
   }
 }
 

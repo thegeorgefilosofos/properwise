@@ -10,8 +10,9 @@ import * as calendar from '@/lib/data/calendar'
 // Οι επαφές έχουν ένα σπίτι: lib/data/contacts.
 import * as contactStore from '@/lib/data/contacts';
 import { inferRole } from '@/lib/contacts/roles'
+import { displayPhone } from '@/lib/core/greek'
 import { alphaBucket, buildAlphaIndex, compareNames, initialsOf, type AlphaEntry } from '@/lib/contacts/alpha'
-import { Phone, Mail, X, Search, Globe, MapPin, FileText, QrCode, Printer, History, Receipt, CalendarPlus, Users, Building2, Wrench, Trees, UserCheck, Zap, Wifi, Landmark, Shield, Pencil, Trash2, Copy, MessageSquare, UserPlus, Camera, SearchX } from 'lucide-react'
+import { Phone, Mail, X, Search, Globe, MapPin, FileText, QrCode, Printer, History, Receipt, CalendarPlus, Users, Building2, Wrench, Trees, UserCheck, Zap, Wifi, Landmark, Briefcase, Shield, Pencil, Trash2, Copy, MessageSquare, UserPlus, Camera, SearchX } from 'lucide-react'
 import { DatePicker, CustomSelect, Toggle, InfoDot } from './UIComponents'
 import { T, PageTitle, fieldRow, SecHdr, Btn, IconBtn, ChipToggle, LinkBtn, EmptyState, fn, fe, Skeleton, SkeletonKPIs, SelectBox, ABSENT, ABSENT_SHORT, Modal, SideSheet, localDay, pressable, pageShell, RuntimeImg } from '@/components/Theme'
 import { showTool, SHOW_FROM } from '@/lib/ui/thresholds'
@@ -136,21 +137,33 @@ const iStyle: React.CSSProperties = {
 
 // ─── ROLE GROUPS, Πλήρης Ελληνική Λίστα ─────────────────────────────────────
 const GROUPS = [
+  // ΟΙ ΣΥΜΒΟΥΛΟΙ ΔΕΝ ΕΙΝΑΙ ΔΗΜΟΣΙΑ ΑΡΧΗ. Λογιστής, δικηγόρος και
+  // συμβολαιογράφος κάθονταν κάτω από τις «Δημόσιες αρχές», δίπλα στη ΔΟΥ: η
+  // λίστα έλεγε ότι ο λογιστής σου είναι υπηρεσία του κράτους. Οι τιμές
+  // (`value`) μένουν ίδιες, οπότε καμία αποθηκευμένη επαφή δεν αλλάζει.
   {
-    id: 'authorities', label: 'Δημόσιες αρχές', color: 'var(--accent)', Icon: Building2,
+    id: 'advisors', label: 'Σύμβουλοι', color: 'var(--accent)', Icon: Briefcase,
+    roles: [
+      { value: 'accountant', label: 'Λογιστής' },
+      { value: 'lawyer', label: 'Δικηγόρος' },
+      { value: 'notary', label: 'Συμβολαιογράφος' },
+    ],
+  },
+  {
+    id: 'authorities', label: 'Δημόσιες υπηρεσίες', color: 'var(--accent)', Icon: Building2,
     roles: [
       { value: 'doy', label: 'ΔΟΥ' },
       { value: 'ktimatologio', label: 'Κτηματολόγιο' },
       { value: 'dimos', label: 'Δήμος / Πολεοδομία' },
       { value: 'efka', label: 'ΕΦΚΑ' },
       { value: 'fire_dept', label: 'Πυροσβεστική' },
-      { value: 'notary', label: 'Συμβολαιογράφος' },
-      { value: 'lawyer', label: 'Δικηγόρος' },
-      { value: 'accountant', label: 'Λογιστής' },
     ],
   },
+  // ΝΕΡΟ ΚΑΙ ΔΙΚΤΥΟ ΔΕΝ ΕΙΝΑΙ «ΠΑΡΟΧΟΙ ΡΕΥΜΑΤΟΣ». Η ΕΥΔΑΠ και ο ΔΕΔΔΗΕ ήταν
+  // μέσα σε ομάδα με αυτό το όνομα. Η ομάδα λέγεται πλέον όπως είναι· τα
+  // `elec_*` μένουν ως τιμές για συμβατότητα με όσα έχουν αποθηκευτεί.
   {
-    id: 'electricity', label: 'Πάροχοι ρεύματος', color: 'var(--accent)', Icon: Zap,
+    id: 'electricity', label: 'Ενέργεια και νερό', color: 'var(--accent)', Icon: Zap,
     roles: [
       { value: 'elec_dei', label: 'ΔΕΗ' },
       { value: 'elec_protergia', label: 'Protergia (Metlen)' },
@@ -982,6 +995,8 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
   const extra = contact._extra || {}
   const initials = initialsOf(contact.full_name)
   const [hov, setHov] = useState(false); const [showActions, setShowActions] = useState(false)
+  // Εστίαση πληκτρολογίου μέσα στην κάρτα: κρατά τις ενέργειες ορατές.
+  const [kbd, setKbd] = useState(false)
   // ΣΕ ΟΘΟΝΗ ΑΦΗΣ ΔΕΝ ΥΠΑΡΧΕΙ hover, ΑΡΑ ΔΕΝ ΥΠΗΡΧΑΝ ΚΑΙ ΟΙ ΕΝΕΡΓΕΙΕΣ. Κλήση,
   // WhatsApp, Viber, email και ολόκληρο το μενού «···» (Επεξεργασία, Νέα δαπάνη,
   // Ραντεβού, Ιστορικό, QR, Εκτύπωση, Διαγραφή) εμφανίζονταν μόνο με ποντίκι.
@@ -1005,6 +1020,8 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
 
   return (
     <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      onFocus={e => { if (e.target instanceof HTMLElement && e.target.matches(':focus-visible')) setKbd(true) }}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setKbd(false) }}
       onClick={bulkMode ? onSelect : undefined}
       /* ═══ Η ΚΑΡΤΑ ΕΠΑΦΗΣ ΑΝΑΠΑΥΕΤΑΙ ΟΠΟΥ ΚΑΙ Η ΚΑΡΤΑ ΠΕΛΑΤΗ ══════════════════
          ΜΕΤΡΗΜΕΝΟ ΣΤΟΝ ΠΑΓΚΟ, 22 ΟΘΟΝΕΣ: πέντε κάρτες επαφής ήταν οι μόνες της
@@ -1019,12 +1036,19 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
 
          ΚΑΙ ΤΟ ΠΕΡΙΓΡΑΜΜΑ ΓΙΝΕΤΑΙ ΕΝΟΣ ΕΙΚΟΝΟΣΤΟΙΧΕΙΟΥ. Το 1,5 ήταν το μόνο
          της εφαρμογής: κάθε άλλη κάρτα, εδώ και παντού, γράφει 1. */
-      style={{ background: selected ? 'color-mix(in srgb, var(--accent) 6%, var(--surface-raised))' : 'var(--surface-raised)', border: '1px solid ' + (selected ? 'var(--accent)' : hov ? 'var(--accent-border)' : overdue ? 'var(--negative-border)' : 'var(--border-raised)'), borderRadius: T.radius.card, padding: bulkMode ? '18px 18px 16px 46px' : '18px 18px 16px', position: 'relative', boxShadow: selected ? '0 0 0 3px var(--accent-soft)' : hov ? 'var(--highlight-inset-strong), var(--elev-2)' : 'var(--highlight-inset), var(--elev-1)', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s', cursor: bulkMode ? 'pointer' : 'default' }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: overdue ? 'var(--negative)' : 'var(--border-subtle)', borderRadius: `${T.radius.card}px 0 0 ${T.radius.card}px`, opacity: bulkMode ? 0 : 1 }} />
+      style={{ background: selected ? 'color-mix(in srgb, var(--accent) 6%, var(--surface-raised))' : 'var(--surface-raised)', border: '1px solid ' + (selected ? 'var(--accent)' : hov ? 'var(--accent-border)' : overdue ? 'var(--negative-border)' : 'var(--border-raised)'), borderLeft: overdue && !bulkMode ? '3px solid var(--negative)' : undefined, borderRadius: T.radius.card, padding: bulkMode ? '18px 18px 16px 46px' : '18px 18px 16px', position: 'relative', boxShadow: selected ? '0 0 0 3px var(--accent-soft)' : hov ? 'var(--highlight-inset-strong), var(--elev-2)' : 'var(--highlight-inset), var(--elev-1)', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s', cursor: bulkMode ? 'pointer' : 'default' }}>
+      {/* Η ΑΡΙΣΤΕΡΗ ΛΩΡΙΔΑ ΕΓΙΝΕ ΠΕΡΙΓΡΑΜΜΑ. Ηταν απόλυτο κουτί τριών
+          εικονοστοιχείων μέσα σε κάρτα με περίγραμμα ενός, με δική του
+          καμπύλη: άφηνε σκούρα εγκοπή στη γωνία σε ΚΑΘΕ κάρτα· και χωρίς
+          ληγμένο ραντεβού δεν σήμαινε τίποτα. Τώρα υπάρχει μόνο όταν σημαίνει. */}
       {bulkMode && <div style={{ position: 'absolute', top: 17, left: 15, zIndex: 2 }}><SelectBox checked={!!selected} onChange={() => onSelect?.()} label={`Επιλογή ${contact.full_name}`} /></div>}
-      {overdue && <div style={{ position: 'absolute', top: 0, right: 0, background: 'var(--negative)', color: 'var(--text-inverse)', fontSize: 'var(--fs-xs)', fontWeight: 700, padding: '3px 10px', borderRadius: '0 16px 0 8px', letterSpacing: '0.07em' }}>ΛΗΞΗ ΡΑΝΤΕΒΟΥ</div>}
-      {(hov || showActions || coarse) && !bulkMode && (
-        <div ref={actionsRef} style={{ position: 'absolute', top: 28, right: 18, zIndex: 20 }}>
+      {overdue && <div style={{ position: 'absolute', top: 0, right: 0, background: 'var(--negative)', color: 'var(--text-inverse)', fontSize: 'var(--fs-xs)', fontWeight: 700, padding: '3px 10px', borderRadius: '0 16px 0 8px', }}>Ληγμένο ραντεβού</div>}
+      {/* ΟΙ ΕΝΕΡΓΕΙΕΣ ΑΠΟΔΙΔΟΝΤΑΙ ΠΑΝΤΑ, ΚΡΥΒΕΤΑΙ ΜΟΝΟ Η ΟΨΗ ΤΟΥΣ. Οσο υπήρχαν
+          μόνο με το ποντίκι από πάνω, το πληκτρολόγιο δεν τις έφτανε ποτέ στην
+          οθόνη γραφείου. Τώρα φαίνονται με αιώρηση, με εστίαση πληκτρολογίου
+          μέσα στην κάρτα και πάντα σε αφή. */}
+      {!bulkMode && (
+        <div ref={actionsRef} style={{ position: 'absolute', top: 28, right: 18, zIndex: 20, opacity: (hov || showActions || coarse || kbd) ? 1 : 0, transition: 'opacity 0.15s' }}>
           {/* ═══ ΟΙ ΕΝΕΡΓΕΙΕΣ ΔΕΝ ΗΤΑΝ ΣΤΟ ΥΨΟΣ ΤΗΣ ΓΡΑΜΜΗΣ ΠΟΥ ΑΦΟΡΟΥΝ ═══════
             Μετρημένο στα 390: η γραμμή του ονόματος πιάνει 601→651, δηλαδή
             κέντρο στο 626. Τα κουμπιά κάθονταν 595→625, κέντρο 610 — δεκαέξι
@@ -1053,8 +1077,8 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
                 { Icon: Receipt, label: 'Νέα δαπάνη', onClick: onQuickExpense, color: 'var(--text-secondary)' },
                 { Icon: CalendarPlus, label: 'Νέο ραντεβού', onClick: onQuickCalendar, color: 'var(--text-secondary)' },
                 { Icon: History, label: 'Ιστορικό συνεργασίας', onClick: onShowHistory, color: 'var(--text-secondary)' },
-                { Icon: QrCode, label: 'QR Code', onClick: onShowQR, color: 'var(--accent)' },
-                { Icon: Printer, label: 'Εκτύπωση Κάρτας', onClick: () => printContactCard(contact, branding), color: 'var(--text-secondary)' },
+                { Icon: QrCode, label: 'Κωδικός QR', onClick: onShowQR, color: 'var(--accent)' },
+                { Icon: Printer, label: 'Εκτύπωση κάρτας', onClick: () => printContactCard(contact, branding), color: 'var(--text-secondary)' },
               ].map((a, i) => (
                 /* ΜΕΝΟΥΝ ΧΕΙΡΟΠΟΙΗΤΕΣ ΚΑΙ ΟΙ ΔΥΟ ΓΡΑΜΜΕΣ. Το Btn δεν προωθεί ούτε
                    `role="menuitem"` —που το ζητά το role="menu" από πάνω— ούτε
@@ -1074,7 +1098,7 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
         </div>
       )}
       <div style={{ paddingLeft: 10, pointerEvents: bulkMode ? 'none' : undefined }}>
-        <div {...pressable(() => onOpen && !bulkMode && onOpen())} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingRight: (hov || showActions) ? 100 : 0, transition: 'padding-right 0.15s', cursor: onOpen && !bulkMode ? 'pointer' : 'default' }}>
+        <div {...pressable(() => onOpen && !bulkMode && onOpen())} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingRight: bulkMode ? 0 : 100, cursor: onOpen && !bulkMode ? 'pointer' : 'default' }}>
           {extra.avatar_url ? <RuntimeImg src={extra.avatar_url} alt="" style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-border)', flexShrink: 0 }} />
             : <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'var(--accent-soft)', border: '2px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{initials || <GroupIcon size={20} />}</div>}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1100,12 +1124,12 @@ function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuic
           {contact.phone && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Phone size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.mono }}>{contact.phone}</span>
+              <a href={'tel:' + contact.phone} className="po-tap" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', textDecoration: 'none' }}>{displayPhone(contact.phone)}</a>
               {extra.whatsapp && <a href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 700, background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: T.radius.xs }}>WA</a>}
               {extra.viber && <a href={'viber://chat?number=' + contact.phone.replace(/\D/g, '')} style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 700, background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: T.radius.xs }}>VB</a>}
             </div>
           )}
-          {extra.phone2 && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.mono }}>{extra.phone2}</span><span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>2ο</span></div>}
+          {extra.phone2 && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><a href={'tel:' + extra.phone2} className="po-tap" style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', textDecoration: 'none' }}>{displayPhone(extra.phone2)}</a><span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>2ο</span></div>}
           {contact.email && <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}><Mail size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.email}</span></div>}
           {extra.website && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Globe size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{extra.website}</span></div>}
           {extra.office_address && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><MapPin size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{extra.office_address}</span></div>}
@@ -1679,7 +1703,11 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   // `deleteId`, που υπήρχε αποκλειστικά για να εμφανίσει το χειρόγραφο παράθυρο.
   // Η ερώτηση είναι πλέον εδώ, σε μία γραμμή και η κατάσταση δεν χρειάζεται.
   const askDelete = async (c: Contact) => {
-    if (!await confirmDialog({ title: 'Διαγραφή επαφής;', message: 'Αυτή η ενέργεια δεν αναιρείται.', confirmLabel: 'Διαγραφή', tone: 'negative' })) return
+    // Η ΕΡΩΤΗΣΗ ΟΝΟΜΑΖΕΙ ΤΗΝ ΕΠΑΦΗ ΚΑΙ ΟΣΑ ΦΕΥΓΟΥΝ ΜΑΖΙ ΤΗΣ, όπως στον
+    // Ενοικιαστή και στους Επισκέπτες. Σημειώσεις και αρχεία ζουν στη γραμμή
+    // της επαφής· οι δαπάνες κρατούν τη δική τους γραμμή με `contact_id` κενό
+    // (on delete set null, 20260824100000).
+    if (!await confirmDialog({ title: `Διαγραφή «${c.full_name}»;`, message: 'Διαγράφονται μαζί οι σημειώσεις και τα αρχεία της επαφής. Οι δαπάνες που συνδέθηκαν μαζί της μένουν, χωρίς επαφή. Η διαγραφή δεν αναιρείται.', confirmLabel: 'Διαγραφή', tone: 'negative' })) return
     await handleDelete(c.id)
   }
   const toggleSelect = (id: string) => setSelected(p => { return toggleIn(p, id) })
@@ -1691,7 +1719,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
     // ΑΛΛΕΣ επαφές από όσες ανέφερε το μήνυμα — και σε άλλο πλήθος από το `n`.
     const ids = [...selected]
     const n = ids.length
-    if (!n || !(await confirmDialog(`Διαγραφή ${n} ${n === 1 ? 'επαφής' : 'επαφών'};`, { tone: 'negative' }))) return
+    if (!n || !(await confirmDialog(`Διαγραφή ${n} ${n === 1 ? 'επαφής' : 'επαφών'};`, { tone: 'negative', confirmLabel: 'Διαγραφή' }))) return
     if (!await saved(`${n === 1 ? 'Η επαφή δεν διαγράφηκε' : 'Οι επαφές δεν διαγράφηκαν'}`,
       contactStore.removeMany(supabase, ids))) return
     // Καθαρισμός των υπενθυμίσεων ημερολογίου (ισοτιμία με τη μεμονωμένη διαγραφή).

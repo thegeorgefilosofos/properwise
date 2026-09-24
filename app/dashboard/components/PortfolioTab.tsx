@@ -558,7 +558,11 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
   );
 
   return (
-    <div>
+    <div className="pf-head">
+      {/* ΣΤΟ ΤΗΛΕΦΩΝΟ ΟΙ ΕΝΕΡΓΕΙΕΣ ΣΕ ΜΙΑ ΣΤΗΛΗ. Το κοινό πλέγμα δύο στηλών της
+          `.act-row` έκοβε το «Είσπραξη ενοικίων · 2» και το «Καταστάσεις
+          ιδιοκτήτη» σε δύο σειρές το καθένα, σε μισό πλάτος. */}
+      <style>{`@media (max-width: 480px) { .pf-head .act-row { grid-template-columns: 1fr; } }`}</style>
       <PageTitle title="Χαρτοφυλάκιο" sub={`${properties.length} ${properties.length === 1 ? 'ακίνητο' : 'ακίνητα'} · έσοδα και εκκρεμότητες ${year}`}
         right={<>
           {/* ΤΟ ΚΟΥΜΠΙ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΤΑΝ ΕΧΕΙ ΤΙ ΝΑ ΓΡΑΨΕΙ. Χωρίς δόση που να
@@ -604,9 +608,12 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       {/* ΤΟ ΠΛΗΘΟΣ ΤΩΝ ΑΚΙΝΗΤΩΝ ΤΟ ΛΕΕΙ Ο ΥΠΟΤΙΤΛΟΣ. Ως πέμπτο πλακίδιο
           επαναλάμβανε την κεφαλίδα και στα 820 άφηνε σειρά 3+2. */}
       <KPIGrid items={[
-        { label: `Έσοδα ${year}`, value: eur(totalRevenue),
+        // «ΩΣ ΣΗΜΕΡΑ», ΓΙΑΤΙ ΛΙΓΟ ΠΙΟ ΚΑΤΩ ΥΠΑΡΧΟΥΝ «ΕΤΗΣΙΑ ΕΣΟΔΑ». Το ένα είναι
+        // ό,τι μπήκε ως σήμερα, το άλλο ο ρυθμός σε ετήσια βάση: δύο ποσά με
+        // την ίδια λέξη και η διαφορά μόνο σε ψιλό υπότιτλο.
+        { label: `Έσοδα ${year} ως σήμερα`, value: eur(totalRevenue),
           sub: estimatedRows.length ? `${estimatedRows.length} ${estimatedRows.length === 1 ? 'ακίνητο' : 'ακίνητα'} με εκτίμηση` : undefined },
-        { label: `Καθαρό ${year}`, value: eur(totalRevenue - totalExpenses), sub: `δαπάνες ${eur(totalExpenses)}` },
+        { label: `Καθαρό ${year} ως σήμερα`, value: eur(totalRevenue - totalExpenses), sub: `δαπάνες ${eur(totalExpenses)}` },
         // Πληρότητα χωρίς καμία βραχυχρόνια δεν είναι μηδέν, είναι ερώτημα χωρίς
         // αντικείμενο. Το πλακίδιο δεν εμφανίζεται καθόλου.
         ...(avgOcc != null ? [{ label: 'Μέση πληρότητα', value: fp(avgOcc),
@@ -649,7 +656,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
               Galaxy A. Είναι νούμερα, όχι πεδία φόρμας. */}
           <div {...fixedCols(4, 16, 'start', 'fc-xs-2')} style={{ ...fixedCols(4, 16, 'start').style, marginTop: 14 }}>
             <Stat label="Αξία χαρτοφυλακίου" value={eur(agg.totalValue)} chars={aggWidest} />
-            <Stat label="Ετήσια έσοδα" value={eur(agg.totalRevenue)} chars={aggWidest} />
+            <Stat label="Ετήσια έσοδα, εκτίμηση ρυθμού" value={eur(agg.totalRevenue)} chars={aggWidest} />
             {/* ΔΥΟ ΔΕΚΑΔΙΚΑ, ΟΠΩΣ ΠΑΝΤΟΥ. Εγραφαν «6,7%» με ένα δεκαδικό, ενώ
                 τρία πλακίδια πιο πάνω η μέση πληρότητα γράφει «19,50%» από τον
                 κοινό μορφοποιητή. Στην ίδια οθόνη, δύο ακρίβειες για το ίδιο
@@ -702,7 +709,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                     {/* Η κατάσταση είναι ΟΝΟΜΑ, όχι κρίση: το «Κενό» δεν είναι
                         χειρότερο από το «Μισθωμένο» σε ένα ακίνητο που μόλις
                         ανακαινίστηκε. Ίδιος ουδέτερος τόνος για όλες. */}
-                    <Badge tone="neutral">{r.statusLabel}</Badge>
+                    <StatusBadge r={r} />
                   </td>
                   <Num v={eur(r.revenue)} mark={r.revenueEstimated ? 'εκτίμηση' : undefined} title={revenueTitle(r)} />
                   <Num v={eur(r.expenses)} muted />
@@ -747,12 +754,26 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
             lead={<SelectBox checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} label={`Επιλογή ${r.name}`} />}
             title={r.name}
             sub={<span style={{ ...TT.caption }}>{r.typeLabel}</span>}
-            badges={<Badge tone="neutral">{r.statusLabel}</Badge>}>
+            badges={<StatusBadge r={r} />}>
             <StatStrip items={[
               { label: r.revenueEstimated ? 'Έσοδα, εκτίμηση' : 'Έσοδα', value: eur(r.revenue), title: revenueTitle(r) },
               { label: 'Δαπάνες', value: eur(r.expenses) },
               { label: 'Καθαρό', value: eur(r.net), strong: true },
             ]} />
+            {/* ΟΙ ΔΥΟ ΣΤΗΛΕΣ ΠΟΥ ΕΛΕΙΠΑΝ ΑΠΟ ΤΗΝ ΚΑΡΤΑ. Ο πίνακας του υπολογιστή
+                έχει «Εκκρεμότητες» και «Πληρότητα»· στο τηλέφωνο η κάρτα έδειχνε
+                μόνο τα τρία ποσά και τίποτα δεν έλεγε ότι πατιέται. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, ...TT.caption }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                {[
+                  r.pending > 0
+                    ? `${r.pending} ${r.pending === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}${r.owed > 0 ? ` · ${eur(r.owed)}` : ''}`
+                    : 'Καμία εκκρεμότητα',
+                  r.occupancy != null ? `Πληρότητα ${fp(r.occupancy)}` : null,
+                ].filter(Boolean).join(' · ')}
+              </span>
+              <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" /></svg>
+            </div>
           </RecordCard>
         ))}
       </div>
@@ -921,6 +942,22 @@ function Num({ v, muted, bold, tone, mark, title }: { v: string; muted?: boolean
 
 // Το MODE_LABEL έφυγε: ήταν τρίτο λεξιλόγιο για την κατάσταση ακινήτου, δίπλα
 // στο lib/property/status.ts (η μία πηγή) και σε έναν ακόμη πίνακα στη Σύγκριση.
+// ── Η ΔΗΛΩΣΗ ΠΟΥ ΔΙΑΦΩΝΕΙ ΜΕ ΤΑ ΔΕΔΟΜΕΝΑ ΛΕΓΕΤΑΙ ─────────────────────────
+// Η στήλη δείχνει τη ΔΗΛΩΜΕΝΗ κατάσταση, σωστά. Όταν όμως η δήλωση λέει «Κενό»
+// και τα δεδομένα δείχνουν ενοικιαστή ή διαμονές φέτος, το ουδέτερο σήμα δίπλα
+// σε έσοδα 6.480€ διαβαζόταν ως ψέμα της οθόνης. Δεν διορθώνεται σιωπηλά (η
+// δήλωση είναι του ιδιοκτήτη)· σημειώνεται με ερωτηματικό και εξήγηση.
+function StatusBadge({ r }: { r: Row }) {
+  if (r.statusLabel === 'Κενό' && r.mode !== 'vacant') {
+    return (
+      <span title="Η δηλωμένη κατάσταση διαφέρει από τα δεδομένα: υπάρχουν έσοδα φέτος. Διορθώνεται στα στοιχεία του ακινήτου.">
+        <Badge tone="warning">Κενό;</Badge>
+      </span>
+    );
+  }
+  return <Badge tone="neutral">{r.statusLabel}</Badge>;
+}
+
 // Το `mode` μένει, αλλά μόνο για ό,τι είναι: πώς υπολογίζονται τα έσοδα.
 
 /** Από πού βγήκε το ποσό των εσόδων — ταξιδεύει μαζί του σε κάθε εξαγωγή. */

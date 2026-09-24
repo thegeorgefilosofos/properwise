@@ -270,7 +270,8 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
   ok('prompt: λέει το όνομα', p.includes(ASSISTANT_NAME));
   ok('prompt: το πλαίσιο του χρήστη', p.includes('Ενοίκιο: 600€'));
   ok('prompt: όλες οι καρτέλες', NAV_MAP.every(n => p.includes(n.label)));
-  ok('prompt: ζει στην Ελλάδα', /ποδόσφαιρο και μπάσκετ/.test(p));
+  // Καθημερινή κουβέντα ναι, επικαιρότητα όχι: χωρίς ζωντανή ενημέρωση θα επινοούσε σκορ.
+  ok('prompt: δεν επινοεί επικαιρότητα', /δεν έχεις ζωντανές ειδήσεις/.test(p) && !/πώς πάει ο ΠΑΟ/.test(p));
   // Κουβέντα ναι, σχόλια για πρόσωπα όχι: φήμη για υπαρκτό άνθρωπο από το
   // στόμα της εφαρμογής είναι κίνδυνος δυσφήμισης και προσωπικά δεδομένα.
   ok('prompt: δεν σχολιάζει πρόσωπα', /Δεν σχολιάζεις ιδιώτες ή δημόσια πρόσωπα/.test(p) && !/showbiz|κουτσομπολιά της/.test(p));
@@ -359,7 +360,7 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
   ok('knows integrations live vs soon', /ΕΝΕΡΓΑ ΤΩΡΑ/.test(p) && /ΕΡΧΟΝΤΑΙ/.test(p));
   ok('honest about channel manager/open banking', /channel manager/i.test(p) && /open banking/i.test(p));
   ok('knows maintenance scheduling', /ΣΥΝΤΗΡΗΣΗ|προγραμματ/i.test(p) && /κλιματιστ/i.test(p));
-  ok('refers to Douleutaras when contact missing', /douleutaras/i.test(p));
+  ok('no named third-party company when contact missing', !/douleutaras/i.test(p) && /μην προτείνεις συγκεκριμένη εταιρεία/.test(p));
   ok('proactive with saved technicians', /ΕΠΑΦΕΣ ΤΟΥ ΧΡΗΣΤΗ|τεχνικ/i.test(p));
 }
 // contactsPro context section appears only when provided (marker unique to the injection)
@@ -573,7 +574,8 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
 {
   const p = buildSystemPrompt(id(), 'Διαμέρισμα');
   // η νέα ενότητα υπάρχει
-  ok('gating: section exists', /ΣΥΝΔΡΟΜΗ & ΞΕΚΛΕΙΔΩΜΑ ΔΥΝΑΤΟΤΗΤΩΝ/.test(p));
+  ok('gating: section exists', /ΣΥΝΔΡΟΜΗ ΚΑΙ ΤΙ ΠΕΡΙΛΑΜΒΑΝΕΙ ΚΑΘΕ ΠΑΚΕΤΟ/.test(p));
+  ok('gating: χωρίς «ξεκλειδώνω» στο λεξιλόγιο που μιμείται', !/ξεκλειδων|ΞΕΚΛΕΙΔΩΝ/.test(p.replace(/Ποτέ «ξεκλειδώνω»/, '')));
   // ΤΑ ΤΕΣΣΕΡΑ ΠΑΚΕΤΑ, ΣΕ ΔΥΟ ΟΙΚΟΓΕΝΕΙΕΣ (mirror plans.ts). Το τεστ διαβάζει τα
   // ΟΝΟΜΑΤΑ από τα PLANS: μια μετονομασία που δεν περάσει στο prompt το σπάει εδώ
   // και όχι σε συνομιλία, όπου ο βοηθός θα ονόμαζε πακέτο που δεν υπάρχει.
@@ -633,8 +635,9 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
 
   // value-first framing keywords
   ok('gating: value keyword «αξία»', /αξία/.test(p));
-  ok('gating: «χωρίς δέσμευση»', /χωρίς δέσμευση/.test(p));
-  ok('gating: «ακυρώνεις όποτε»', /ακυρώνεις όποτε/.test(p));
+  // Η χρέωση μπορεί να μην είναι ανοιχτή: καμία υπόσχεση ακύρωσης ή δέσμευσης από μνήμης.
+  ok('gating: η κατάσταση χρέωσης δεν λέγεται από μνήμης', /ΚΑΤΑΣΤΑΣΗ ΧΡΕΩΣΗΣ, ΠΟΤΕ ΑΠΟ ΜΝΗΜΗΣ/.test(p));
+  ok('gating: καμία υπόσχεση ακύρωσης', !/ακυρώνεις όποτε/.test(p));
   ok('gating: gain not spend', /ΚΕΡΔΙΖΕΙΣ σε αξία, όχι σαν έξοδο/.test(p));
   ok('gating: no pressure / dark patterns', /ποτέ σαν πωλητής|ποτέ dark patterns/i.test(p));
   ok('gating: honest if not needed', /Αν κάποιος δεν το χρειάζεται, πες το ειλικρινά/.test(p));

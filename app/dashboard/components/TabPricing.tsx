@@ -34,6 +34,7 @@ import * as stayStore from '@/lib/data/stays';
 import * as billStore from '@/lib/data/bills';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
+import { AadePill } from '@/components/AadeLink';
 import { T, PageTitle, KPIGrid, InfoBanner, Btn, ChipToggle, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar, ABSENT_SHORT } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { shortTermYearSummary, isHouseType } from '@/lib/tax/shortTermTax';
@@ -44,7 +45,7 @@ import { rentalBracketsForYear } from '@/lib/billing/greekTax';
 import { isLet, readStatus, type StatusRow } from '@/lib/property/status';
 import type { LegalForm } from '@/lib/accounting/dossier';
 import { shortTermCashflow } from '@/lib/tax/shortTermCashflow';
-import { mergeLedger, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
+import { ledgerYearTotal, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { Tag } from 'lucide-react';
@@ -70,6 +71,8 @@ interface Props {
    *  να μη σπάσει η κλήση. Τροφοδοτούσε το `suggestBaseFallback`, που πρότεινε
    *  τιμή/νύχτα από `(ενοίκιο/30) × 2,2` χωρίς τοποθεσία. Δες dynamicPricing.ts. */
   propertyRent?: number;
+  /** Μετάβαση σε άλλη καρτέλα, για το «Δες ποιες» των αδήλωτων διαμονών. */
+  onNavigate?: (tab: string) => void;
 }
 
 type PriceStay = PricingStay & StayAmountLike;
@@ -166,7 +169,7 @@ const MoneySteps = ({ steps, scale = 'lead' }: { steps: MoneyStep[]; scale?: 'le
   );
 };
 
-export default function TabPricing({ propertyId, userId, propertyName, propertySqm, profileType = 'individual', legalForm = 'individual' }: Props) {
+export default function TabPricing({ propertyId, userId, propertyName, propertySqm, profileType = 'individual', legalForm = 'individual', onNavigate }: Props) {
   const supabase = createClient();
   const [stays, setStays] = useState<PriceStay[]>([]);
   const [isHouse, setIsHouse] = useState(false);
@@ -263,8 +266,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     // το «μένει σε εσένα» θα έδειχνε λιγότερα απ' όσα πραγματικά μένουν. Η
     // συγχώνευση γίνεται από τον κοινό πυρήνα, τον ίδιο που χρησιμοποιούν οι
     // Δαπάνες και ο Προϋπολογισμός — αλλιώς δύο οθόνες μετράνε αλλιώς το ίδιο.
-    const { entries } = mergeLedger(bil as LedgerBill[], (exp || []) as LedgerExpense[]);
-    setOpex(entries.filter(e => e.date.slice(0, 4) === String(nowYear)).reduce((sum, e) => sum + e.amount, 0));
+    setOpex(ledgerYearTotal(bil as LedgerBill[], (exp || []) as LedgerExpense[], nowYear));
     setPropCount(Math.max(1, count || 1));
   }, [propertyId, userId, nowYear, supabase]);
 
@@ -375,22 +377,6 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   }, [seasonsShown, occ]);
   const occNights = useMemo(() => seasonsShown.reduce((a, s) => a + occ.nights[s], 0), [seasonsShown, occ]);
 
-  const kpis = useMemo(() => [
-    { label: 'Μέση τιμή ανά νύχτα', value: base > 0 ? fe(sum.avg) : fe(0), sub: 'Διαθέσιμες ημέρες' },
-    { label: 'Κατώτατη πρόταση', value: base > 0 ? fe(sum.min) : fe(0), sub: 'Χαμηλότερη ημέρα' },
-    { label: 'Υψηλότερη πρόταση', value: base > 0 ? fe(sum.max) : fe(0), sub: 'Ακριβότερη ημέρα' },
-    {
-      label: 'Πληρότητα από το ιστορικό',
-      // Χωρίς μέτρηση η τιμή είναι «Εκκρεμεί», όχι «0,00%»: το μηδέν είναι μέτρηση.
-      value: measuredOcc != null ? measuredOcc + '%' : ABSENT_SHORT,
-      // Οι νύχτες ΜΟΝΟ των εποχών του πίνακα· ο υπότιτλος της κάρτας πιο κάτω
-      // μετρά όλη τη χρονιά, γι' αυτό λέμε ποιες είναι.
-      sub: measuredOcc != null
-        ? `${occNights} νύχτες στις εποχές του πίνακα`
-        : `Χρειάζονται τουλάχιστον ${MIN_NIGHTS_FOR_OCCUPANCY} νύχτες ανά εποχή`,
-    },
-  ], [sum, base, measuredOcc, occNights]);
-
   // ═══ Η ΑΠΑΝΤΗΣΗ ΣΤΟ «ΠΟΣΑ ΜΕΝΟΥΝ ΣΕ ΕΜΕΝΑ» ═══════════════════════════════
   // Ήταν σκορπισμένη σε τρεις οθόνες: η δυναμική τιμή εδώ, τα έσοδα και οι
   // διανυκτερεύσεις στην Επισκόπηση, ο φόρος με τα τέλη στη Λογιστική. Ο
@@ -402,6 +388,27 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     () => shortTermYearSummary(stays, nowYear, { sqm: propertySqm ?? null, isHouse, propertyCount: propCount, individual: isIndividualTaxpayer(profileType, legalForm) }),
     [stays, nowYear, propertySqm, isHouse, propCount, profileType, legalForm],
   );
+
+  const kpis = useMemo(() => [
+    { label: 'Μέση τιμή ανά νύχτα', value: base > 0 ? fe(sum.avg) : fe(0), sub: 'Διαθέσιμες ημέρες' },
+    { label: 'Κατώτατη πρόταση', value: base > 0 ? fe(sum.min) : fe(0), sub: 'Χαμηλότερη ημέρα' },
+    { label: 'Υψηλότερη πρόταση', value: base > 0 ? fe(sum.max) : fe(0), sub: 'Ακριβότερη ημέρα' },
+    {
+      label: 'Πληρότητα από το ιστορικό',
+      // Χωρίς μέτρηση η τιμή είναι «Εκκρεμεί», όχι «0,00%»: το μηδέν είναι μέτρηση.
+      value: measuredOcc != null ? measuredOcc + '%' : ABSENT_SHORT,
+      // Οι νύχτες ΜΟΝΟ των εποχών του πίνακα· ο υπότιτλος της κάρτας πιο κάτω
+      // μετρά όλη τη χρονιά, γι' αυτό λέμε ποιες είναι.
+      // ΤΟ ΣΥΝΟΛΟ ΤΗΣ ΧΡΟΝΙΑΣ ΛΕΓΕΤΑΙ ΔΙΠΛΑ. Το «64 νύχτες» καθόταν πάνω από το
+      // «Από 71 διανυκτερεύσεις» της κάρτας από κάτω και έμοιαζε με λάθος.
+      sub: measuredOcc != null
+        ? (taxSummary.totalNights > occNights
+          ? `${fn(occNights)} από τις ${fn(taxSummary.totalNights)} νύχτες του ${nowYear}, στις εποχές του πίνακα`
+          : `${fn(occNights)} νύχτες στις εποχές του πίνακα`)
+        : `Χρειάζονται τουλάχιστον ${MIN_NIGHTS_FOR_OCCUPANCY} νύχτες ανά εποχή`,
+    },
+  ], [sum, base, measuredOcc, occNights, taxSummary.totalNights, nowYear]);
+
   // ═══ Ο ΦΟΡΟΣ ΕΙΣΟΔΗΜΑΤΟΣ ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ ΜΕ ΤΗΝ ΑΠΟΔΟΣΗ ═══════════════
   // Το `taxSummary.incomeTax` φορολογεί ΜΟΝΟ αυτό το ακίνητο με την κλίμακα
   // ενοικίων. Ο ιδιοκτήτης με κι άλλα ενοίκια όμως φορολογείται στο ΣΥΝΟΛΟ τους
@@ -789,9 +796,29 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
             <div className="card" style={{ marginTop: 20 }}>
               <SecHdr label={`Τι μένει σε εσένα, ${nowYear}`}
                 sub={`Από ${fn(taxSummary.totalNights)} διανυκτερεύσεις σε ${taxSummary.stayCount === 1 ? 'μία διαμονή' : `${fn(taxSummary.stayCount)} διαμονές`}`}
+                // Το ποσοστό είχε μόνο tooltip· στο κινητό ήταν ένας γυμνός αριθμός.
                 right={cashflow.keptPct != null
-                  ? <span title="Ποσοστό των ακαθαρίστων που καταλήγει σε εσένα" style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)' }}>{fp(cashflow.keptPct)}</span>
+                  ? <span title="Ποσοστό των ακαθαρίστων που καταλήγει σε εσένα" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                      μένει το <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)' }}>{fp(cashflow.keptPct)}</span>
+                    </span>
                   : undefined} />
+
+              {/* ΑΠΑΡΑΙΤΗΤΟ ΣΤΟΝ ΦΑΚΕΛΟ, ΥΠΟΣΗΜΕΙΩΣΗ ΕΔΩ. Οι διαμονές χωρίς Δήλωση
+                  Βραχυχρόνιας Διαμονής λέγονταν στο τέλος μιας φορολογικής
+                  σημείωσης με ψιλά γράμματα, ενώ ο φάκελος του λογιστή τις
+                  σημειώνει ως απαραίτητες. Είναι εκκρεμότητα με ενέργεια, άρα
+                  στέκεται πάνω από τα ποσά. */}
+              {taxSummary.undeclaredCount > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <InfoBanner tone="warning">
+                    {taxSummary.undeclaredCount === 1 ? 'Μία διαμονή δεν έχει' : `${fn(taxSummary.undeclaredCount)} διαμονές δεν έχουν`} Δήλωση Βραχυχρόνιας Διαμονής. Υποβάλλεται μία ανά διαμονή στο myAADE· στους {navLabel('clients')} φαίνονται σημειωμένες.
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                      {onNavigate && <Btn variant="secondary" onClick={() => onNavigate('clients')}>Δες ποιες</Btn>}
+                      <AadePill action="str-declaration" label="Άνοιξε στο myAADE" />
+                    </span>
+                  </InfoBanner>
+                </div>
+              )}
 
               <MoneySteps scale="lead" steps={cashflow.steps.map(st => ({
                 ...st,
@@ -810,9 +837,8 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
               <div style={{ marginTop: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.65 }}>
                 {tax.onGross
                   ? 'Ο φόρος υπολογίζεται στο 95% των ακαθάριστων (τεκμαρτή έκπτωση 5%) με την κλίμακα ενοικίων, όχι στο υπόλοιπο μετά τα έξοδα.'
-                  : 'Ο φόρος υπολογίζεται στα καθαρά κέρδη, μετά τα έξοδα.'} Δεν περιλαμβάνονται δόσεις δανείου.
-                {taxSummary.unresolvedCount > 0 && ` ${taxSummary.unresolvedCount === 1 ? 'Μία διαμονή' : `${fn(taxSummary.unresolvedCount)} διαμονές`} χωρίς ανάλυση ποσού σε ακαθάριστο, προμήθεια και τέλος: τα ακαθάριστα είναι εκτίμηση ως τότε.`}
-                {taxSummary.undeclaredCount > 0 && ` ${taxSummary.undeclaredCount === 1 ? 'Μία διαμονή δεν έχει' : `${fn(taxSummary.undeclaredCount)} διαμονές δεν έχουν`} Δήλωση Βραχυχρόνιας Διαμονής.`}
+                  : 'Ο φόρος υπολογίζεται στα καθαρά κέρδη, μετά τα έξοδα.'} Δεν περιλαμβάνονται ο ΕΝΦΙΑ και οι δόσεις δανείου: τα αφαιρεί η Κατάσταση αποτελεσμάτων στη {navLabel('accounting')}.
+                {taxSummary.unresolvedCount > 0 && ` ${taxSummary.unresolvedCount === 1 ? 'Μία διαμονή' : `${fn(taxSummary.unresolvedCount)} διαμονές`} χωρίς ανάλυση ποσού σε ακαθάριστο, προμήθεια και τέλος: τα ακαθάριστα είναι εκτίμηση ώσπου να συμπληρώσεις την ανάλυση.`}
               </div>
             </div>
           )}
@@ -826,10 +852,11 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
             </div>
           )}
 
-          {/* Κενές μέρες προς πλήρωση (actionable) */}
+          {/* Κενές νύχτες για κράτηση. «Πλήρωση» δίπλα στο «Δηλωτέο ακαθάριστο»
+              διαβαζόταν ως «πληρωμή». */}
           {gaps.length > 0 && (
             <div style={{ marginTop: 24 }}>
-              <SecHdr label="Κενές μέρες προς πλήρωση" sub="Διαστήματα χωρίς κράτηση, με προτεινόμενη τιμή και άμεσες ενέργειες" />
+              <SecHdr label="Κενές νύχτες για κράτηση" sub="Διαστήματα χωρίς κράτηση, με προτεινόμενη τιμή και άμεσες ενέργειες" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {gaps.slice(0, 8).map((g, i) => (
                   <div key={i} className="po-fig-card" tabIndex={0} style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 16, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
@@ -840,7 +867,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                           {g.hard && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, padding: '1px 6px' }}>δύσκολο κενό</span>}
                           {g.soon && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, padding: '1px 6px' }}>άμεσα</span>}
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{g.nights} {g.nights === 1 ? 'νύχτα' : 'νύχτες'} · {SEASON_PHRASE[g.season]} · πρόταση πλήρωσης <strong className="po-fig" data-tone="accent" style={{ fontFamily: T.font.num }}>{fe(g.fillPrice)}</strong>/νύχτα</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{g.nights} {g.nights === 1 ? 'νύχτα' : 'νύχτες'} · {SEASON_PHRASE[g.season]} · προτεινόμενη τιμή <strong className="po-fig" data-tone="accent" style={{ fontFamily: T.font.num }}>{fe(g.fillPrice)}</strong>/νύχτα</div>
                       </div>
                       {/* ΤΑ ΔΥΟ ΚΟΥΜΠΙΑ ΤΥΛΙΓΟΝΤΑΙ ΜΕΤΑΞΥ ΤΟΥΣ. Με `flexShrink: 0`
                           και χωρίς άδεια αναδίπλωσης, το ζευγάρι ήταν ένα
@@ -866,7 +893,9 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
 
           {/* Ημερολόγιο-heatmap */}
           <div style={{ marginTop: 24 }}>
-            <SecHdr label="Ημερολόγιο τιμών" sub="Όσο πιο σκούρη η ημέρα, τόσο υψηλότερη η προτεινόμενη τιμή. Πάτησε μια ημέρα για ανάλυση."
+            {/* «Σκούρη» ίσχυε μόνο στο φωτεινό θέμα· στο σκοτεινό η ακριβότερη
+                ημέρα είναι η πιο φωτεινή. Η ένταση ισχύει και στα δύο. */}
+            <SecHdr label="Ημερολόγιο τιμών" sub="Όσο πιο έντονο το χρώμα, τόσο υψηλότερη η προτεινόμενη τιμή. Πάτησε μια ημέρα για ανάλυση."
               right={pastCount > 0 ? <Btn variant="secondary" onClick={() => setShowPast(v => !v)}>{showPast ? 'Κρύψε προηγούμενους μήνες' : `Δείξε προηγούμενους μήνες (${pastCount})`}</Btn> : undefined} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
               {visibleMonths.map(([key, days]) => {
@@ -983,7 +1012,10 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                                 Το σύμβολο είναι ΙΔΙΟ μέγεθος με τον αριθμό, όπως
                                 παντού στο προϊόν — κολλητά πάνω του. Δεν
                                 μικραίνει κανένα γράμμα κάτω από το δάπεδο των 11. */}
-                            {!d.booked && (
+                            {/* Η ΠΕΡΑΣΜΕΝΗ ΗΜΕΡΑ ΔΕΝ ΕΧΕΙ ΠΡΟΤΑΣΗ. Έγραφε 140€ τον
+                                Σεπτέμβριο που πέρασε, δίπλα σε «Υψηλότερη πρόταση
+                                120,00€»: τιμή που δεν προτείνεται πια σε κανέναν. */}
+                            {!d.booked && !past && (
                               <span className="cal-day-amt" style={{ position: 'relative', fontSize: 'var(--fs-xs)', fontWeight: top ? 700 : 600, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                                 {feWhole(d.price)}
                               </span>

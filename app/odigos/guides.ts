@@ -29,7 +29,7 @@ export const GUIDES: readonly Guide[] = [
     desc: 'Η κλίμακα 15 / 25 / 35 / 45% (όριο 36.000€), η τεκμαρτή έκπτωση 5% και η '
         + 'προϋπόθεση της τραπεζικής είσπραξης, με παραδείγματα σε ευρώ.',
     published: '2026-09-21',
-    updated: '2026-09-23',
+    updated: '2026-09-24',
   },
   {
     href: '/odigos/airbnb-takk-2026',
@@ -38,7 +38,7 @@ export const GUIDES: readonly Guide[] = [
     desc: 'Τι πληρώνεις για βραχυχρόνια μίσθωση: το ΤΑΚΚ ανά διανυκτέρευση, το τέλος '
         + 'παρεπιδημούντων 0,5% και ο φόρος εισοδήματος.',
     published: '2026-09-21',
-    updated: '2026-09-23',
+    updated: '2026-09-24',
   },
   {
     href: '/odigos/pos-ypologizetai-o-enfia',
@@ -47,7 +47,7 @@ export const GUIDES: readonly Guide[] = [
     desc: 'Ο τύπος από την τιμή ζώνης επί τα τετραγωνικά, οι συντελεστές παλαιότητας '
         + 'και ορόφου, η αυτόματη μείωση ανά αξία και οι απαλλαγές.',
     published: '2026-09-21',
-    updated: '2026-09-23',
+    updated: '2026-09-24',
   },
   {
     href: '/odigos/kathari-apodosi-akinitou',
@@ -56,7 +56,7 @@ export const GUIDES: readonly Guide[] = [
     desc: 'Από τη μεικτή απόδοση αφαιρούνται ο φόρος στο δικό σου κλιμάκιο, ο ΕΝΦΙΑ '
         + 'και οι δαπάνες. Τι μένει καθαρό, με παράδειγμα σε ευρώ.',
     published: '2026-09-21',
-    updated: '2026-09-23',
+    updated: '2026-09-24',
   },
 ];
 
@@ -65,4 +65,23 @@ export function guideAt(href: string): Guide {
   const g = GUIDES.find(x => x.href === href);
   if (!g) throw new Error(`Άγνωστος οδηγός: ${href}`);
   return g;
+}
+
+/**
+ * Η τελευταία ουσιαστική αλλαγή σε οποιονδήποτε οδηγό: η ημερομηνία του κόμβου
+ * /odigos στον χάρτη, που αλλάζει όταν αλλάζει κάτι από όσα δείχνει.
+ */
+export const GUIDES_UPDATED: string = GUIDES.map(g => g.updated).sort().at(-1)!;
+
+/** Το όνομα της κάρτας κοινοποίησης του οδηγού στο /og/<slug> (app/og/share.ts). */
+export function guideSlug(g: Guide): string {
+  return `odigos-${g.href.split('/').pop()}`;
+}
+
+/**
+ * Η εικόνα κοινοποίησης του οδηγού. Τη διαβάζει το δομημένο σχήμα, ώστε το
+ * άρθρο να δείχνει την ίδια κάρτα με την κοινοποίηση.
+ */
+export function guideShareImageUrl(g: Guide): string {
+  return `/og/${guideSlug(g)}`;
 }

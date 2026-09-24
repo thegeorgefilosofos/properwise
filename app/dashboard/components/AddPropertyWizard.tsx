@@ -9,7 +9,7 @@ import * as properties from '@/lib/data/properties';
 import * as billing from '@/lib/data/billing';
 import { T, fe, fn, fp, fd, fixedCols, ABSENT, Modal, TT, Btn, ChipToggle } from '@/components/Theme';
 import { CustomSelect, DatePicker } from './UIComponents';
-import { cleanAma, isValidAmaFormat, amaLengthLooksUnusual, AMA_DEACTIVATIONS } from '@/lib/property/ama';
+import { cleanAma, isValidAmaFormat, amaLengthLooksUnusual } from '@/lib/property/ama';
 import { ATAK_SOURCE, atakDigits } from '@/lib/property/atak';
 import { STATUSES, BY_KEY, readStatus, writeStatus, type PropertyStatus } from '@/lib/property/status';
 import { PROPERTY_TYPES, propertyTypeLabel } from '@/lib/property/types';
@@ -58,7 +58,9 @@ const LAND_LIKE = new Set(['land', 'parking', 'storage', 'warehouse']);
 // στις πληρωμές του. Ενα πεδίο αντί για δύο, καμία σταθερά και το άνοιγμα για
 // επεξεργασία ξαναδείχνει ακριβώς ό,τι γράφτηκε.
 
-const STEPS = ['Τύπος', 'Βασικά', 'Οικονομικά', 'Ρυθμίσεις', 'Σύνοψη'];
+// Το τέταρτο βήμα λεγόταν «Ρυθμίσεις», όπως και η καρτέλα του λογαριασμού,
+// ενώ κρατά ιδιοκτήτη, παρόχους, διαχειριστή και ασφάλεια: επαφές.
+const STEPS = ['Τύπος', 'Βασικά', 'Οικονομικά', 'Επαφές', 'Σύνοψη'];
 
 /** Μια γραμμή φόρμας: ποιο πεδίο είναι, πόσο πλάτος πιάνει και το χειριστήριό του. */
 interface FormRow { id: string; span: 'auto' | 'full'; node: React.ReactNode; label?: string }
@@ -108,10 +110,10 @@ function TypeIcon({ type }: { type: string }) {
       return <svg aria-hidden="true" {...p}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M9 16V8h3.5a2.5 2.5 0 010 5H9" /></svg>;
     case 'storage': // αποθήκη κτιρίου / κιβώτιο
       return <svg aria-hidden="true" {...p}><rect x="4" y="6" width="16" height="14" rx="1" /><path d="M4 10h16" /><path d="M10 6V4h4v2" /><path d="M10 14h4" /></svg>;
-    case 'villa': // βίλα με πισίνα
-      return <svg aria-hidden="true" {...p}><path d="M3 10l6-5 6 5" /><path d="M5 9v6h8V9" /><path d="M16 15c1.5-1 3.5-1 5 0v4c-1.5 1-3.5 1-5 0" /><path d="M8 15v0" /></svg>;
-    default: // other
-      return <svg aria-hidden="true" {...p}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M12 8v.01M12 11v5" /></svg>;
+    case 'villa': // φαρδύ σπίτι με δύο παράθυρα· η πισίνα στα 24 διαβαζόταν ως γάντζος
+      return <svg aria-hidden="true" {...p}><path d="M2 11l10-7 10 7" /><path d="M4 10v10h16V10" /><path d="M9 20v-5h6v5M8 13h.01M16 13h.01" /></svg>;
+    default: // other: «κάτι άλλο», όχι το (i) της πληροφορίας
+      return <svg aria-hidden="true" {...p}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 12h.01M12 12h.01M16 12h.01" /></svg>;
   }
 }
 
@@ -302,7 +304,7 @@ function StepBody({ rows, place, after }: {
   );
 }
 
-export default function AddPropertyWizard({ userId, onClose, onSaved, existing }: { userId: string; onClose: () => void; onSaved: () => void; existing?: ExistingProperty | null }) {
+export default function AddPropertyWizard({ userId, onClose, onSaved, existing }: { userId: string; onClose: () => void; onSaved: (propertyId: string | null) => void; existing?: ExistingProperty | null }) {
   const supabase = createClient();
   const isEdit = !!existing?.id;
   const [step, setStep] = useState(0); // 0..3
@@ -447,6 +449,23 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
   // Οι ομάδες επιλογών του πρώτου βήματος ονομάζονται από τον τίτλο τους.
   const typeGroupId = useId();
   const statusGroupId = useId();
+  const nameId = useId();
+
+  // ═══ Η «ΣΥΝΕΧΕΙΑ» ΛΕΕΙ ΤΙ ΛΕΙΠΕΙ, ΔΕΝ ΣΒΗΝΕΙ ═══════════════════════════════
+  // Ηταν `disabled={!canNext}`. Στα 390 η υπόδειξη «Διάλεξε μία» της
+  // κατάστασης κάθεται πεντακόσια εικονοστοιχεία πάνω από το υποσέλιδο, οπότε
+  // ο χρήστης έβλεπε ένα σβηστό κουμπί χωρίς λόγο. Τώρα το πάτημα λέει τι
+  // λείπει και φέρνει στο βλέμμα το σημείο που το ζητά.
+  const next = () => {
+    if (canNext) { goStep(s => s + 1); return; }
+    if (step === 0) {
+      setError('Διάλεξε κατάσταση για να συνεχίσεις.');
+      document.getElementById(statusGroupId)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    } else if (step === 1) {
+      setError('Γράψε ένα όνομα για το ακίνητο για να συνεχίσεις.');
+      document.getElementById(nameId)?.focus();
+    }
+  };
 
   const save = async () => {
     if (!name.trim()) { setStep(1); return; }
@@ -509,7 +528,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
         .upsert({ ...settings, property_id: propertyId, user_id: userId }, { onConflict: 'property_id' });
       // Το ακίνητο έχει ήδη αποθηκευτεί — λέμε ρητά τι έμεινε πίσω, ώστε το
       // «δοκίμασε ξανά» να μη διαβάζεται ως «ξαναφτιάξ' το από την αρχή».
-      if (sErr) { setSaving(false); setError(failed('Το ακίνητο αποθηκεύτηκε, αλλά οι ρυθμίσεις του δεν καταχωρήθηκαν', sErr)); return; }
+      if (sErr) { setSaving(false); setError(failed('Το ακίνητο αποθηκεύτηκε, αλλά οι επαφές και οι σημειώσεις του δεν καταχωρήθηκαν', sErr)); return; }
     }
 
     // ── ΤΟ ΣΚΑΛΙ ΤΗΣ ΑΞΙΑΣ ─────────────────────────────────────────────────
@@ -525,7 +544,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
     }
 
     setSaving(false);
-    onSaved();
+    onSaved(propertyId);
   };
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -609,7 +628,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
         )}
 
         {step < STEPS.length - 1 ? (
-          <Btn variant="primary" size="lg" onClick={() => canNext && goStep(s => s + 1)} disabled={!canNext}>Συνέχεια</Btn>
+          <Btn variant="primary" size="lg" onClick={next}>Συνέχεια</Btn>
         ) : (
           <Btn variant="primary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit
             ? <><span className="lp-hide-xs">Αποθήκευση αλλαγών</span><span className="lp-only-xs">Αποθήκευση</span></>
@@ -692,7 +711,10 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
                   // στήλης —εικονίδιο πάνω από το όνομα— είναι γεωμετρία του σημείου
                   // χρήσης και μένει εδώ.
                   <ChipToggle key={t} on={sel} onClick={() => setPropType(t)}>
-                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', flex: 1 }}>
+                    {/* Από πάνω, όχι από το κέντρο: με όνομα δύο γραμμών το
+                        εικονίδιο ανέβαινε 5 έως 7 εικονοστοιχεία πάνω από τα
+                        διπλανά της ίδιας σειράς. Όλα ξεκινούν στο ίδιο ύψος. */}
+                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', alignSelf: 'stretch', gap: 8, padding: '16px 0', flex: 1 }}>
                       <TypeIcon type={t} />
                       <span style={{ fontFamily: T.font.sans, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? 'var(--text-primary)' : 'var(--text-secondary)', textAlign: 'center' }}>{propertyTypeLabel(t)}</span>
                     </span>
@@ -728,8 +750,10 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
                   // `aria-pressed`, όχι ενέργεια. Σχήμα `chip` και όχι `seg`, γιατί
                   // τα πλακίδια δεν κάθονται σε ράγα με δικό της περίγραμμα. Οι δύο
                   // γραμμές —τίτλος και επεξήγηση— κρατούν το γέμισμά τους εδώ.
-                  <ChipToggle key={st.key} on={sel} onClick={() => setStatusKey(st.key)}>
-                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '10px 2px', textAlign: 'left', flex: 1 }}>
+                  // Ο τίτλος στην κορυφή του πλακιδίου: με υπόδειξη μίας γραμμής
+                  // έπεφτε 8 εικονοστοιχεία χαμηλότερα από τους διπλανούς.
+                  <ChipToggle key={st.key} on={sel} onClick={() => { setStatusKey(st.key); setError(''); }}>
+                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', alignSelf: 'stretch', gap: 2, padding: '10px 2px', textAlign: 'left', flex: 1 }}>
                       <span style={{ fontSize: 'var(--fs-base)', fontWeight: sel ? 700 : 500, color: 'var(--text-primary)' }}>{st.label}</span>
                       <span style={{ fontSize: 'var(--fs-xs)', lineHeight: 1.4, color: 'var(--text-tertiary)' }}>{st.hint}</span>
                     </span>
@@ -774,7 +798,10 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
               <div style={{ fontFamily: T.font.sans, fontSize: 12, color: amaLengthLooksUnusual(ama) ? 'var(--warning)' : 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
                 {amaLengthLooksUnusual(ama)
                   ? `Ο αριθμός έχει ${ama.length} ψηφία, που είναι ασυνήθιστο. Έλεγξέ τον στο myAADE πριν συνεχίσεις.`
-                  : `Ο ΑΜΑ πρέπει να αναγράφεται σε κάθε καταχώρηση σε Airbnb και Booking. ${AMA_DEACTIVATIONS}`}
+                  // Η υποχρέωση αφορά κάθε αγγελία, σε όποιον ιστότοπο. Ο αριθμός
+                  // των απενεργοποιήσεων δεν μπαίνει εδώ ώσπου να έχει πηγή με
+                  // ημερομηνία και τίτλο της ΑΑΔΕ (βλ. lib/property/ama.ts).
+                  : 'Ο ΑΜΑ πρέπει να αναγράφεται σε κάθε αγγελία του ακινήτου, σε όποια ιστοσελίδα κι αν δημοσιεύεται.'}
               </div>
             </div>
           )}
@@ -807,7 +834,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
           place={place}
           rows={[
             row('prop.name', 'full',
-              <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Διαμέρισμα στο κέντρο" onFocus={onFocus} onBlur={onBlur} autoFocus />),
+              <input id={nameId} style={inputStyle} value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder="Διαμέρισμα στο κέντρο" onFocus={onFocus} onBlur={onBlur} autoFocus />),
             row('prop.address', 'full',
               <input style={inputStyle} value={address} onChange={e => setAddress(e.target.value)} placeholder="Οδός Παραδείγματος 12, Αθήνα" onFocus={onFocus} onBlur={onBlur} />),
             /* Η οδηγία ΔΕΝ ζει σε placeholder: το placeholder σβήνει με το πρώτο
@@ -963,7 +990,9 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
             {([
               ['Τύπος', propertyTypeLabel(propType)],
               ['Κατάσταση', BY_KEY[status].label],
-              airbnb ? ['Βραχυχρόνια μίσθωση', 'Ναι (Airbnb / Booking)'] : null,
+              // Η βραχυχρόνια λέγεται ήδη στην «Κατάσταση»· εδώ ο ΑΜΑ, όπως θα
+              // αποθηκευτεί (άκυρη μορφή δεν γράφεται).
+              airbnb ? ['ΑΜΑ', isValidAmaFormat(ama) ? ama : ABSENT, true] : null,
               ['Διεύθυνση', address.trim() || ABSENT],
               postalCode.trim() ? [labelOf('prop.postal_code'), postalCode.trim(), true] : null,
               atak.trim() ? ['ΑΤΑΚ', atak.trim(), true] : null,

@@ -219,8 +219,11 @@ const VACANT_STEPS: Step[] = [
   {
     id: 'vacant-declare',
     title: 'Δήλωσε το κενό σωστά, με τους ακριβείς μήνες',
-    detail: 'Το κενό ακίνητο δηλώνεται κανονικά στο Ε2 με ένδειξη «κενό» και τους μήνες που δεν απέδωσε. Δεν παραλείπεται επειδή δεν έβγαλε τίποτα.',
-    who: 'app',
+    detail: 'Το κενό ακίνητο δηλώνεται κανονικά στο Ε2 με ένδειξη «κενό» και τους μήνες που δεν απέδωσε. Δεν παραλείπεται επειδή δεν έβγαλε τίποτα. Οι μήνες μπαίνουν στον φάκελο για τον λογιστή, που κάνει τη δήλωση.',
+    // ΤΟ Ε2 ΤΟ ΥΠΟΒΑΛΛΕΙ Ο ΛΟΓΙΣΤΗΣ, ΟΧΙ Η ΕΦΑΡΜΟΓΗ. Η ετικέτα έλεγε «Το
+    // ετοιμάζουμε εμείς» κάτω από τίτλο «Δήλωσε…»: υπόσχεση φορολογικής
+    // υποβολής που κανείς εδώ δεν κάνει. Η εφαρμογή ετοιμάζει τον φάκελο.
+    who: 'accountant',
     cost: 'Λάθος μήνες σημαίνει φόρος για ενοίκια που δεν υπήρξαν ποτέ.',
   },
   {
@@ -847,9 +850,9 @@ const SALE_VERIFY: Verify[] = [
 
 export const RENO_GROUPS = {
   before: 'Πριν ξεκινήσεις',
-  blocking: 'Πρώτα· χωρίς αυτά τίποτα δεν κρατάει',
-  value: 'Μετά· εδώ κρίνεται το ενοίκιο',
-  cosmetic: 'Τελευταία· το φαινόμενο',
+  blocking: 'Πρώτα: ό,τι κρατά το σπίτι',
+  value: 'Μετά: ό,τι κρίνει το ενοίκιο',
+  cosmetic: 'Τελευταία: η εμφάνιση',
 } as const;
 
 const RENO_STEPS: Step[] = [
@@ -1107,7 +1110,8 @@ export function renovationLoan(amount: number, annualRatePct: number, years: num
 
 export interface SaleEstimate {
   price: number;
-  lines: { label: string; amount: number }[];
+  /** Κάθε κόστος με τη βάση του («Ενδεικτικά 2% + ΦΠΑ.»), από το lib/accounting/transfer. */
+  lines: { label: string; amount: number; note?: string }[];
   costs: number;
   net: number;
   /** Γιατί λείπει ο φόρος υπεραξίας από τον υπολογισμό. Εμφανίζεται πάντα. */
@@ -1128,14 +1132,14 @@ export function saleEstimate(price: number, opts?: { useAgent?: boolean }): Sale
   const r = transferCosts({ side: 'sell', price: p, useAgent: opts?.useAgent !== false });
   const lines = r.lines
     .filter(l => l.key !== 'capitalGains')
-    .map(l => ({ label: l.label, amount: l.amount }));
+    .map(l => ({ label: l.label, amount: l.amount, note: l.note }));
   const costs = cents(lines.reduce((s, l) => s + l.amount, 0));
   return {
     price: p,
     lines,
     costs,
     net: cents(p - costs),
-    note: 'Ενδεικτικό. ΔΕΝ περιλαμβάνει φόρο υπεραξίας: ο φόρος υπάρχει στον νόμο και τελεί σε αναστολή που ανανεώνεται· επιβεβαίωσε αν ισχύει για το έτος της μεταβίβασής σου.',
+    note: 'Ενδεικτικό, χωρίς φόρο υπεραξίας. Ο φόρος υπάρχει στον νόμο και είναι σε αναστολή που ανανεώνεται, οπότε επιβεβαίωσε αν ισχύει για το έτος της μεταβίβασής σου.',
   };
 }
 
@@ -1165,7 +1169,7 @@ const LABEL: Record<PlanStatus, string> = {
 };
 
 const HEADLINE: Record<PlanStatus, string> = {
-  vacant: 'Κάθε μήνας κενός έχει κόστος. Μέτρησέ το πρώτα.',
+  vacant: 'Κάθε κενός μήνας έχει κόστος. Μέτρησέ το πρώτα.',
   disputed: 'Στις εκκρεμότητες, η σειρά κοστίζει περισσότερο από τον δικηγόρο.',
   for_sale: 'Μια πώληση κρίνεται στα χαρτιά. Ετοίμασέ τα πριν την αγγελία.',
   renovation: 'Πρώτα ό,τι εμποδίζει τη χρήση. Το χρώμα είναι τελευταίο.',

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
 import * as billStore from '@/lib/data/bills';
-import { T, fd, fe, fn, Modal, Skeleton, EmptyState, InfoBanner, PageTitle, SecHdr, SelectBox, Chip, Btn, IconBtn, ChipToggle, LinkBtn, ExportButton, ABSENT_DATE, pressable, CloseButton, RuntimeImg } from '@/components/Theme';
+import { T, TT, fd, fe, fn, Modal, Skeleton, EmptyState, InfoBanner, PageTitle, SecHdr, SelectBox, Chip, Btn, IconBtn, ChipToggle, LinkBtn, ExportButton, ABSENT_DATE, pressable, CloseButton, RuntimeImg } from '@/components/Theme';
 import { useCoarsePointer } from '@/components/useCoarsePointer';
 import { showTool } from '@/lib/ui/thresholds';
 import { fmtBytes } from '@/lib/core/bytes';
@@ -34,7 +34,8 @@ import {
 } from './scanDoc';
 import { isValidAfm } from '@/lib/billing/parse';
 import { navLabel } from '@/lib/nav/labels';
-import { applyFilters, facetOptions, toggleValue, clearAll, groupByMonth, sumValues, isSelectionEmpty, FACET_KEYS, FACET_LABEL, type Selection, type TimeGroup } from '@/lib/archive/facets';
+import { monthShort } from '@/lib/core/months';
+import { applyFilters, facetOptions, toggleValue, clearAll, groupByMonth, sumValues, isSelectionEmpty, sameGrouping, FACET_KEYS, FACET_LABEL, type Selection, type TimeGroup } from '@/lib/archive/facets';
 import { SAY } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
 import { toggleIn } from '@/lib/core/toggleSet';
@@ -132,6 +133,10 @@ const BILL_PROVIDER_LABEL: Record<string, string> = {
   garden: 'Κήπος', pool: 'Πισίνα', elevator: 'Ανελκυστήρας', ac_service: 'Κλιματισμός',
   pest: 'Απεντόμωση', renovation: 'Ανακαίνιση', other: 'Λοιπά',
 };
+
+/** «Σεπ 2026» από ημερομηνία ISO· κενό όταν δεν υπάρχει. */
+const monthLabel = (iso?: string | null): string =>
+  iso && /^\d{4}-\d{2}/.test(iso) ? `${monthShort(Number(iso.slice(5, 7)) - 1)} ${iso.slice(0, 4)}` : '';
 
 /* ── Ενοποιημένο μοντέλο αρχείου ─────────────────────────────────────────── */
 type Source = 'document' | 'expense' | 'bill' | 'inventory';
@@ -394,7 +399,10 @@ export default function TabDocuments({
       out.push({
         id: `bill:${b.id}`, source: 'bill',
         folder: BILL_CAT_FOLDER[cat] ?? 'bills',
-        title: b.name || 'Λογαριασμός', provider: BILL_PROVIDER_LABEL[cat] || 'Λοιποί λογαριασμοί',
+        // Χωρίς όνομα, ο λογαριασμός παίρνει τον μήνα του: δέκα κάρτες που
+        // έγραφαν όλες σκέτο «Λογαριασμός» δεν ξεχώριζαν η μία από την άλλη.
+        title: b.name || ['Λογαριασμός', monthLabel(b.due_date)].filter(Boolean).join(', '),
+        provider: BILL_PROVIDER_LABEL[cat] || 'Λοιποί λογαριασμοί',
         date: b.due_date || b.created_at || null,
         value: numOrNull(b.amount),
         url: null, isImage: false, sizeBytes: null,
@@ -548,7 +556,7 @@ export default function TabDocuments({
     // Ο έλεγχος της σημαίας ΠΡΕΠΕΙ να μείνει ΠΡΙΝ το await: αν ο διάλογος καλούνταν
     // πρώτος και ελεγχόταν μετά, θα εμφανιζόταν και σε όσους τον έχουν απενεργοποιήσει
     // στις προτιμήσεις — λειτουργικά «σωστό», σιωπηλά λάθος ως προς την επιλογή τους.
-    if (prefs.confirmBeforeDelete && !(await confirmDialog('Να διαγραφεί οριστικά αυτό το αρχείο;', { tone: 'negative' }))) return;
+    if (prefs.confirmBeforeDelete && !(await confirmDialog('Να διαγραφεί οριστικά αυτό το αρχείο;', { tone: 'negative', confirmLabel: 'Διαγραφή' }))) return;
     // Η ΓΡΑΜΜΗ ΠΡΩΤΑ, ΤΟ ΑΡΧΕΙΟ ΜΕΤΑ. Ηταν ανάποδα: το αντικείμενο έφευγε από
     // την αποθήκευση και ΜΟΝΟ ΜΕΤΑ διαγραφόταν η γραμμή. Οταν αποτύγχανε το
     // δεύτερο βήμα, ο χρήστης διάβαζε «Το αρχείο δεν διαγράφηκε», έβλεπε τη
@@ -587,7 +595,7 @@ export default function TabDocuments({
     // Το `selRaw` είναι const αυτού του render, άρα το closure το έχει ήδη «παγώσει»:
     // ό,τι διαγραφεί μετά το await είναι ακριβώς όσα μέτρησε το μήνυμα. Επιπλέον ο
     // διάλογος έχει δικό του scrim, οπότε η επιλογή δεν αλλάζει όσο ρωτάει.
-    if (prefs.confirmBeforeDelete && !(await confirmDialog(`Να διαγραφούν οριστικά ${selRaw.length} ${selRaw.length === 1 ? 'αρχείο' : 'αρχεία'};`, { tone: 'negative' }))) return;
+    if (prefs.confirmBeforeDelete && !(await confirmDialog(`Να διαγραφούν οριστικά ${selRaw.length} ${selRaw.length === 1 ? 'αρχείο' : 'αρχεία'};`, { tone: 'negative', confirmLabel: 'Διαγραφή' }))) return;
     // Η ΙΔΙΑ ΣΕΙΡΑ ΜΕ ΤΗ ΜΟΝΑΔΙΚΗ ΔΙΑΓΡΑΦΗ: γραμμές πρώτα, αρχεία μετά.
     if (!await saved('Τα αρχεία δεν διαγράφηκαν',
       documents.removeMany(supabase, selRaw.map(i => i.raw!.id)))) return;
@@ -634,13 +642,17 @@ export default function TabDocuments({
 
   // Οι διαθέσιμες επιλογές κάθε όψης, με μετρητές. Κρύβουμε όψη που δεν προσφέρει
   // πραγματική επιλογή: με μία μόνη τιμή, το φίλτρο δεν φιλτράρει τίποτα και θα
-  // ήταν κουμπί που δεν κάνει τίποτα.
+  // ήταν κουμπί που δεν κάνει τίποτα. Το ίδιο και η «Προέλευση» όταν χωρίζει
+  // τα αρχεία ακριβώς όπως η «Κατηγορία»: δύο φίλτρα με ένα αποτέλεσμα.
   const facets = useMemo(() => FACET_KEYS
     .map(key => ({ key, options: facetOptions(items, key, sel, query) }))
-    .filter(f => f.options.length > 1 || f.options.some(o => o.selected)),
+    .filter(f => f.options.length > 1 || f.options.some(o => o.selected))
+    .filter(f => f.key !== 'source' || f.options.some(o => o.selected) || !sameGrouping(items, 'source', 'category')),
     [items, sel, query]);
 
   const visibleSum = useMemo(() => sumValues(visible), [visible]);
+  const paperLabel = `Ανεβασμένα παραστατικά · ${fe(paperTotals.sum)}`;
+  const paperSub = `${fn(paperTotals.withAmount)} με ποσό${paperTotals.missing ? `, ${fn(paperTotals.missing)} χωρίς` : ''}. Χωρίς τους λογαριασμούς και τις δαπάνες.`;
   const filtering = !isSelectionEmpty(sel) || !!q;
 
   /* ── UI helpers ────────────────────────────────────────────────────────── */
@@ -711,8 +723,12 @@ export default function TabDocuments({
           αντιπαρατίθεται στο προσυμπληρωμένο της ΑΑΔΕ — γι' αυτό υπάρχει. */}
       {paperTotals.years.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <SecHdr label={`Από τα παραστατικά · ${fe(paperTotals.sum)}`}
-            sub={`${fn(paperTotals.withAmount)} ${paperTotals.withAmount === 1 ? 'χαρτί' : 'χαρτιά'} με ποσό${paperTotals.missing ? ` · ${fn(paperTotals.missing)} χωρίς` : ''}. Μετρά μόνο όσα ανέβασες εδώ, όχι τους λογαριασμούς και τις δαπάνες.`}/>
+          {/* ΜΙΑ ΛΕΞΗ ΓΙΑ ΤΟ ΙΔΙΟ ΠΡΑΓΜΑ. Ελεγε «παραστατικά», «χαρτιά» και
+              «αρχεία» σε δύο γραμμές. Και η ανάλυση ανά έτος εμφανίζεται μόνο
+              όταν υπάρχουν δύο έτη: με ένα, επαναλάμβανε ακριβώς το σύνολο,
+              οπότε η κάρτα μένει μόνο με την επικεφαλίδα, χωρίς διαχωριστικό. */}
+          {paperTotals.years.length > 1 ? (<>
+          <SecHdr label={paperLabel} sub={paperSub}/>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 160px), 1fr))', gap: 10 }}>
             {paperTotals.years.map(([y, e]) => (
               <div key={y} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '10px 12px' }}>
@@ -724,6 +740,12 @@ export default function TabDocuments({
               </div>
             ))}
           </div>
+          </>) : (
+            <div>
+              <h2 style={{ ...TT.label, fontSize: 'var(--fs-xs)', margin: 0 }}>{paperLabel}</h2>
+              <div style={{ ...TT.caption, fontSize: 'var(--fs-xs)', marginTop: 2 }}>{paperSub}</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -753,7 +775,7 @@ export default function TabDocuments({
                   <svg aria-hidden="true" {...S} width={28} height={28}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {dragOver ? 'Αφήστε τα αρχεία εδώ' : 'Μεταφορά αρχείων ή επιλογή από τη συσκευή'}
+                  {dragOver ? 'Άφησέ τα εδώ' : 'Μεταφορά αρχείων ή επιλογή από τη συσκευή'}
                 </div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.5 }}>
                   Φωτογραφία, PDF, Word ή Excel · πολλαπλά αρχεία · έως {MAX_SCAN_MB}MB ανά αρχείο
@@ -829,7 +851,7 @@ export default function TabDocuments({
               διαβαζόταν ως το ίδιο νούμερο που απλώς «δεν ταιριάζει». */}
           {visibleSum > 0 && (
             <span style={{ fontSize: 12, fontFamily: T.font.sans, color: 'var(--text-tertiary)' }}>
-              σε ποσά αρχείων <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{money(visibleSum)}</span>
+              σύνολο ποσών στη λίστα <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{money(visibleSum)}</span>
             </span>
           )}
           {filtering && (
@@ -1123,7 +1145,10 @@ function FileCard({ i, a }: { i: Item; a: FileActions }) {
   return (
     <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{ borderRadius: T.radius.inner, overflow: 'hidden', border: `1.5px solid ${sel ? 'var(--accent)' : 'var(--border-subtle)'}`, background: 'var(--bg-elevated)', boxShadow: sel ? '0 0 0 3px var(--accent-soft)' : 'none', transition: `border-color 0.14s ${T.ease.standard}, box-shadow 0.14s ${T.ease.standard}` }}>
-      <div style={{ position: 'relative', aspectRatio: '4 / 3', background: 'var(--bg-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: preview ? 'pointer' : 'default' }}
+      {/* ΧΩΡΙΣ ΕΙΚΟΝΑ, ΧΩΡΙΣ ΤΕΣΣΕΡΑ ΤΡΙΤΑ. Στο τηλέφωνο η στήλη είναι μία και
+          ένα άδειο πλαίσιο 4:3 με ένα εικονίδιο έπιανε 250 εικονοστοιχεία πριν
+          από το όνομα. Εκεί κρατά χαμηλή λωρίδα (`.file-thumb`, globals.css). */}
+      <div className="file-thumb" data-empty={!(i.isImage && i.url) || undefined} style={{ position: 'relative', background: 'var(--bg-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: preview ? 'pointer' : 'default' }}
         onClick={() => { if (preview) a.onOpenLightbox(i); }}>
         {i.isImage && i.url
           ? <RuntimeImg src={i.url} alt={i.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
@@ -1251,7 +1276,7 @@ const STAGE_TEXT: Record<DraftStatus, string> = {
 const SCAN_ERROR_TEXT: Record<ScanError, string> = {
   big: `Πολύ μεγάλο αρχείο (όριο ${MAX_SCAN_MB}MB).`,
   service: 'Η υπηρεσία ανάγνωσης δεν απάντησε. Δοκίμασε ξανά σε λίγο.',
-  unreadable: 'Δεν διάβασα καθαρά το έγγραφο. Τράβα τη φωτογραφία με καλό φως, ίσια, να χωράει όλο το χαρτί, ή ανέβασε το PDF του παρόχου.',
+  unreadable: 'Το έγγραφο δεν διαβάστηκε καθαρά. Φωτογράφισέ το με καλό φως, ίσια και ολόκληρο, ή ανέβασε το PDF του παρόχου.',
   key_missing: 'Η αυτόματη ανάγνωση δεν είναι ενεργή ακόμη σε αυτόν τον λογαριασμό.',
   // Εφεδρεία: κανονικά το κείμενο έρχεται από τον διακομιστή, που ξέρει ποιο
   // όριο χτύπησε και ποιο πακέτο έχει ο χρήστης (scanDoc.ts).
@@ -1363,7 +1388,7 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                 {v.blocking.length > 0 && <>Χρειάζεται: <strong>{v.blocking.map(f => DOC_FIELD_LABELS[f] || f).join(', ')}</strong>. </>}
                 {v.invalid.length > 0 && <>Δεν είναι έγκυρο: <strong>{v.invalid.map(f => DOC_FIELD_LABELS[f] || f).join(', ')}</strong>. </>}
-                {v.recommended.length > 0 && <>Δεν διάβασα: <strong>{v.recommended.map(f => DOC_FIELD_LABELS[f] || f).join(', ')}</strong>.</>}
+                {v.recommended.length > 0 && <>{v.recommended.length === 1 ? 'Δεν διαβάστηκε' : 'Δεν διαβάστηκαν'}: <strong>{v.recommended.map(f => DOC_FIELD_LABELS[f] || f).join(', ')}</strong>.</>}
               </div>
             )}
             <div style={g2x}>

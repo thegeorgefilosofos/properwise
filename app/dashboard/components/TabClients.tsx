@@ -48,7 +48,7 @@ import * as properties from '@/lib/data/properties';
 import * as stayStore from '@/lib/data/stays';
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory';
-import { T, PageTitle, KPIGrid, Badge, InfoBanner, Btn, IconBtn, ChipToggle, LinkBtn, ExportButton, EmptyState, Skeleton, SkeletonKPIs, SecHdr, Modal, SideSheet, fe, fd, fp, ABSENT_DATE, formGrid, fixedCols, Tile, RecordCard, StatStrip } from '@/components/Theme';
+import { T, PageTitle, KPIGrid, Badge, InfoBanner, Btn, IconBtn, ChipToggle, LinkBtn, EmptyState, Skeleton, SkeletonKPIs, SecHdr, Modal, SideSheet, fe, fd, fp, ABSENT_DATE, formGrid, fixedCols, Tile, RecordCard, StatStrip } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
 import { confirmDialog } from '@/components/confirmBus';
 import { NumberInput, TextInput, CustomSelect, DatePicker, Textarea, Toggle } from './UIComponents';
@@ -60,12 +60,13 @@ import { saved, savedData } from '@/components/dbWrite';
 import { failed } from '@/lib/core/dbError';
 
 import ClientCompose from './ClientCompose';
+import { ActionMenu } from '@/components/ActionMenu';
 import {
   stayNights, stayTotal, clientStats, normalizePhone,
   clientMatches, STAY_CHANNELS, STAY_CHANNEL_LABELS, NOTE_KINDS, NOTE_KIND_LABELS,
 } from '@/lib/clients/clients';
 import {
-  declarableGross, hostPayout, needsAmountReview, isDeclared, amountBasis,
+  declarableGross, hostPayout, needsAmountReview, isDeclared, awaitsDeclaration, amountBasis,
   AMOUNT_BASIS_LABELS, type AmountBasis,
 } from '@/lib/clients/stayAmounts';
 import { MSG_TEMPLATES, buildMessage, whatsappLink, viberLink as viberTextLink } from '@/lib/clients/messages';
@@ -135,6 +136,8 @@ const fmtBytes = (n?: number | null) => {
 };
 
 const todayStr = () => athensToday();
+/** «1 αδήλωτη διαμονή» / «3 αδήλωτες διαμονές»: το σήμα λέει τι μετρά. */
+const undeclaredLabel = (n: number) => `${n} ${n === 1 ? 'αδήλωτη διαμονή' : 'αδήλωτες διαμονές'}`;
 
 // Φύλακας για ό,τι έρχεται απ' έξω (απόκριση HTTP, JSON.parse): αντικείμενο με
 // άγνωστες τιμές. Τίποτα δεν διαβάζεται χωρίς να ελεγχθεί ο τύπος του πρώτα.
@@ -410,10 +413,11 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   // Όλες οι διαμονές του χρήστη, υπολογισμένες μία φορά.
   const allStays = useMemo(() => [...staysByClient.values()].flat(), [staysByClient]);
 
-  // Αδήλωτες διαμονές ανά επισκέπτη — το μόνο σήμα που αξίζει θέση στην κάρτα.
+  // Αδήλωτες διαμονές ανά επισκέπτη, το μόνο σήμα που αξίζει θέση στην κάρτα.
+  // Μόνο όσες τελείωσαν: η κράτηση του Δεκεμβρίου δεν δηλώνεται τον Σεπτέμβριο.
   const undeclaredByClient = useMemo(() => {
     const m = new Map<string, number>();
-    stays.forEach(s => { if (!isDeclared(s)) m.set(s.client_id, (m.get(s.client_id) || 0) + 1); });
+    stays.forEach(s => { if (awaitsDeclaration(s)) m.set(s.client_id, (m.get(s.client_id) || 0) + 1); });
     return m;
   }, [stays]);
 
@@ -452,7 +456,10 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
       {
         label: 'Αδήλωτες διαμονές',
         value: String(tot.undeclared),
-        sub: 'Δήλωση Βραχυχρόνιας Διαμονής',
+        // Μετρά όσες τελείωσαν· οι επερχόμενες λέγονται δίπλα, όχι μέσα στο νούμερο.
+        sub: tot.upcoming > 0
+          ? `Χωρίς δήλωση στην ΑΑΔΕ · +${tot.upcoming} ${tot.upcoming === 1 ? 'επερχόμενη' : 'επερχόμενες'}`
+          : 'Χωρίς δήλωση βραχυχρόνιας διαμονής στην ΑΑΔΕ',
         // ═══ ΟΥΤΕ ΚΟΚΚΙΝΟ ΟΥΤΕ ΚΙΤΡΙΝΟ: ΤΟ ΓΚΡΙ ΤΗΣ ΕΦΑΡΜΟΓΗΣ ═══════════════
         // Πρώτα ήταν κόκκινο, δηλαδή «κάτι έσπασε» με το χρώμα που αλλού
         // σημαίνει ακριβώς αυτό. Μετά κίτρινο, που δεν έσπαγε τίποτα αλλά
@@ -461,7 +468,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
         // ακαθάριστα» δίπλα του, που είναι το νούμερο της χρονιάς.
         //
         // Η ΠΛΗΡΟΦΟΡΙΑ ΕΙΝΑΙ Ο ΑΡΙΘΜΟΣ, ΟΧΙ Ο ΤΟΝΟΣ. «8 αδήλωτες διαμονές» με
-        // υπότιτλο «Δήλωση Βραχυχρόνιας Διαμονής» λέει τα πάντα· ένα οκτώ δεν
+        // υπότιτλο για τη δήλωση στην ΑΑΔΕ λέει τα πάντα· ένα οκτώ δεν
         // γίνεται πιο επείγον επειδή είναι πορτοκαλί. Το χρώμα φυλάγεται για
         // την προθεσμία που ΤΡΕΧΕΙ, όχι για το πλήθος που στέκει.
         tone: 'neutral' as const,
@@ -748,7 +755,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
     setStayFormOpen(false); loadStays();
   };
   const delStay = async (s: Stay) => {
-    if (!(await confirmDialog('Να διαγραφεί η διαμονή;', { tone: 'negative' }))) return;
+    if (!(await confirmDialog('Να διαγραφεί η διαμονή;', { tone: 'negative', confirmLabel: 'Διαγραφή' }))) return;
     if (await saved('Η διαμονή δεν διαγράφηκε', stayStore.remove(supabase, s.id))) loadStays();
   };
   // Ένα κλικ από τη λίστα: δηλώθηκε / δεν δηλώθηκε. Η δήλωση βραχυχρόνιας
@@ -792,7 +799,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
     loadDocs(openId);
   };
   const delDoc = async (d: ClientDoc) => {
-    if (!(await confirmDialog('Να διαγραφεί οριστικά το έγγραφο;', { tone: 'negative' }))) return;
+    if (!(await confirmDialog('Να διαγραφεί οριστικά το έγγραφο;', { tone: 'negative', confirmLabel: 'Διαγραφή' }))) return;
     await supabase.storage.from('property-files').remove([d.file_path]);
     if (await saved('Το έγγραφο δεν διαγράφηκε', supabase.from('client_documents').delete().eq('id', d.id)) && openId) loadDocs(openId);
   };
@@ -865,7 +872,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
     } finally { setIcalBusy(false); }
   };
   const delIcalFeed = async (f: IcalFeed) => {
-    if (!(await confirmDialog('Να αφαιρεθεί ο σύνδεσμος αυτόματου συγχρονισμού; Οι ήδη εισαγμένες κρατήσεις παραμένουν.', { tone: 'negative' }))) return;
+    if (!(await confirmDialog('Να αφαιρεθεί ο σύνδεσμος αυτόματου συγχρονισμού; Οι ήδη εισαγμένες κρατήσεις παραμένουν.', { tone: 'negative', confirmLabel: 'Αφαίρεση' }))) return;
     if (await saved('Ο σύνδεσμος συγχρονισμού δεν αφαιρέθηκε',
       supabase.from('ical_feeds').delete().eq('id', f.id))) loadIcalFeeds();
   };
@@ -999,7 +1006,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
   const dc = openId ? clients.find(c => c.id === openId) || null : null;
   const dcStays = dc ? (staysByClient.get(dc.id) || []).slice().sort((a, b) => (b.check_in || '').localeCompare(a.check_in || '')) : [];
   const dcStats = dc ? clientStats(dcStays) : null;
-  const dcUndeclared = dcStays.filter(s => !isDeclared(s)).length;
+  const dcUndeclared = dcStays.filter(s => awaitsDeclaration(s)).length;
   const dcTotals = totals(dcStays);
   // Η απογραφή του ακινήτου της διαμονής (ή όλη, αν δεν έχει επιλεγεί ακίνητο).
   const invForStay = stayForm.property_id ? inv.filter(i => i.property_id === stayForm.property_id) : inv;
@@ -1017,22 +1024,25 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
           `propertyId`: ο χρήστης έβλεπε την ίδια προειδοποίηση δύο φορές, τη μία
           για όλα τα ακίνητα μαζί. Δύο φορές το ίδιο δεν είναι έμφαση. */}
       <PageTitle title={navLabel('clients')} sub="Κρατήσεις, δηλωτέα ποσά και εκκρεμείς δηλώσεις διαμονής"
-        right={(clients.length > 0 || props.length > 0) ? (
-          // ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ, ΚΑΙ ΟΙ ΥΠΟΛΟΙΠΕΣ ΜΕ ΤΟ ΙΔΙΟ ΒΑΡΟΣ.
-          // Τρεις σύνδεσμοι χωρίς περίγραμμα δίπλα σε ένα κουμπί με περίγραμμα
-          // δίπλα σε ένα γεμάτο: τέσσερα διαφορετικά βάρη για ενέργειες της ίδιας
-          // σειράς. Τώρα δευτερεύουσες όλες, κύρια μία.
-          <>
-            <Btn variant="secondary" onClick={() => { setEmailOpen(true); setEmailDraft(null); setEmailErr(''); }}>Εισαγωγή από email</Btn>
-            {props.length > 0 && <Btn variant="secondary" onClick={openIcal}>Σύνδεση ημερολογίου</Btn>}
-            {clients.length > 0 && <Btn variant="secondary" onClick={() => setComposeOpen(true)}>Μαζικό μήνυμα</Btn>}
-            {allStays.length > 0 && <ExportButton onClick={exportCsv} label="Εξαγωγή διαμονών" />}
+        right={(
+          // ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΚΑΙ ΕΝΑ ΜΕΝΟΥ, ΟΠΩΣ ΣΤΙΣ ΕΠΑΦΕΣ ΚΑΙ ΣΤΗΝ ΑΠΟΓΡΑΦΗ.
+          // Πέντε ισοβαρή κουμπιά τύλιγαν σε δύο σειρές στο κινητό, με το
+          // «Σύνδεση ημερολογίου» και το «Εξαγωγή διαμονών» σπασμένα στη μέση.
+          // Οι εισαγωγές, το μαζικό μήνυμα και η εξαγωγή πάνε στο «Περισσότερα»,
+          // που υπάρχει πάντα: η κενή κατάσταση παραπέμπει σε αυτό.
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <ActionMenu label="Περισσότερα" items={[
+              { key: 'email', label: 'Εισαγωγή από email', description: 'Επικόλλησε το email της κράτησης και διαβάζονται τα στοιχεία της.', onClick: () => { setEmailOpen(true); setEmailDraft(null); setEmailErr(''); } },
+              ...(props.length > 0 ? [{ key: 'ical', label: 'Σύνδεση ημερολογίου', description: 'Οι κρατήσεις έρχονται από τον σύνδεσμο iCal του καναλιού σου.', onClick: openIcal }] : []),
+              ...(clients.length > 0 ? [{ key: 'compose', label: 'Μαζικό μήνυμα', description: 'Ένα κείμενο σε πολλούς επισκέπτες μαζί.', onClick: () => setComposeOpen(true) }] : []),
+              ...(allStays.length > 0 ? [{ key: 'export', label: 'Εξαγωγή διαμονών', description: 'Όλες οι διαμονές σε Excel, με τα ποσά χωριστά.', onClick: exportCsv }] : []),
+            ]} />
             {/* Με μηδέν επισκέπτες, η κύρια ενέργεια λέγεται από την κενή κατάσταση
-                λίγο πιο κάτω — δύο ίδια κουμπιά στην ίδια οθόνη δεν είναι έμφαση.
-                Οι δύο εισαγωγές μένουν: η κενή κατάσταση τις ονομάζει. */}
+                λίγο πιο κάτω: δύο ίδια κουμπιά στην ίδια οθόνη δεν είναι έμφαση.
+                Οι δύο εισαγωγές μένουν στο μενού: η κενή κατάσταση τις ονομάζει. */}
             {clients.length > 0 && <Btn variant="primary" onClick={openNew}>Νέος επισκέπτης</Btn>}
-          </>
-        ) : undefined} />
+          </div>
+        )} />
 
       <KPIGrid items={kpis} />
 
@@ -1063,7 +1073,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
       </div>
 
       {clients.length === 0 ? (
-        <EmptyState icon={<Users size={20} />} title="Κανένας επισκέπτης ακόμη" hint="Σύνδεσε το ημερολόγιο Airbnb ή Booking με τη «Σύνδεση ημερολογίου», ή επικόλλησε ένα email κράτησης με την «Εισαγωγή από email» και οι διαμονές θα έρθουν μόνες τους, με τα ποσά χωριστά." action={<Btn variant="primary" onClick={openNew}>Νέος επισκέπτης</Btn>} />
+        <EmptyState icon={<Users size={20} />} title="Κανένας επισκέπτης ακόμη" hint="Από το «Περισσότερα»: σύνδεσε το ημερολόγιο του καναλιού σου ή επικόλλησε ένα email κράτησης και οι διαμονές έρχονται μόνες τους, με τα ποσά χωριστά." action={<Btn variant="primary" onClick={openNew}>Νέος επισκέπτης</Btn>} />
       ) : filtered.length === 0 ? (
         // Ο έλεγχος από πάνω κοιτούσε τα `clients`, αλλά το πλέγμα αποδίδει τα
         // `filtered`: με αναζήτηση ή φίλτρο που δεν ταιριάζει σε κανέναν, ο χρήστης
@@ -1081,9 +1091,10 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               <RecordCard key={c.id} onOpen={() => setOpenId(c.id)} openLabel={`Άνοιγμα καρτέλας: ${c.full_name}`}
                 lead={avatar(c.full_name, 42)}
                 title={c.full_name}
-                sub={st.lastVisit ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>τελ. επίσκεψη {fd(st.lastVisit)}</span> : null}
+                sub={st.lastVisit ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>τελ. επίσκεψη {fd(st.lastVisit)}</span>
+                  : st.nextArrival ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>επόμενη άφιξη {fd(st.nextArrival)}</span> : null}
                 badges={<>
-                  {undeclared > 0 && <Badge>{undeclared} {undeclared === 1 ? 'αδήλωτη' : 'αδήλωτες'}</Badge>}
+                  {undeclared > 0 && <Badge>{undeclaredLabel(undeclared)}</Badge>}
                   {unresolved > 0 && <Badge tone="warning">Ποσό προς επιβεβαίωση</Badge>}
                   {st.hasDamage && <Badge>Φθορές</Badge>}
                 </>}
@@ -1369,7 +1380,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 20, fontWeight: 700 }}>{dc.full_name}</span>
-                  {dcUndeclared > 0 && <Badge>{dcUndeclared} αδήλωτη{dcUndeclared === 1 ? '' : 'ς'}</Badge>}
+                  {dcUndeclared > 0 && <Badge>{undeclaredLabel(dcUndeclared)}</Badge>}
                 </div>
               </div>
               <Btn variant="secondary" onClick={() => openEdit(dc)}>Επεξεργασία στοιχείων</Btn>
@@ -1494,7 +1505,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                 {/* Η παύλα σε θέση τιμής δεν λέει «καμία»· λέει «κάτι έσπασε».
                     Η πλακέτα εμφανίζεται μόνο όταν υπάρχει ημερομηνία να δείξει. */}
                 {dcStats.lastVisit && statTile('Τελευταία επίσκεψη', fd(dcStats.lastVisit))}
-                {dcUndeclared > 0 && statTile('Αδήλωτες', String(dcUndeclared), { title: 'Διαμονές χωρίς Δήλωση Βραχυχρόνιας Διαμονής' })}
+                {dcUndeclared > 0 && statTile('Αδήλωτες', String(dcUndeclared), { title: 'Διαμονές που τελείωσαν χωρίς δήλωση βραχυχρόνιας διαμονής στην ΑΑΔΕ' })}
                 {dcStats.damageTotal > 0 && statTile('Φθορές', fe(dcStats.damageTotal))}
               </div>
             )}
@@ -1696,7 +1707,7 @@ export default function TabClients({ userId, onSelectProperty }: { userId: strin
                               {/* ΤΟ ΣΗΜΑ ΠΟΥ ΕΛΕΙΠΕ: μία δήλωση ανά κράτηση και
                                   το app είχε όλες τις κρατήσεις χωρίς να
                                   παρακολουθεί καμία. */}
-                              {!declared && <Badge>Αδήλωτη</Badge>}
+                              {!declared && (awaitsDeclaration(s) ? <Badge>Αδήλωτη</Badge> : <Badge>Επερχόμενη</Badge>)}
                               {review && <Badge tone="warning">Ποσό προς επιβεβαίωση</Badge>}
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>

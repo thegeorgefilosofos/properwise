@@ -12,6 +12,7 @@ import { useCallback, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useLoad } from '@/app/hooks/useLoad';
+import { IDENTITY } from '@/lib/legal/identity';
 
 export default function Unsubscribe() {
   const token = String(useParams()?.token || '');
@@ -96,7 +97,9 @@ export default function Unsubscribe() {
           <BrandMark size={34} />
           {/* Ο τίτλος της σελίδας είναι η δεύτερη γραμμή· το «PROPERWISE» είναι
               σήμα. Χωρίς `h1` η σελίδα ανακοινωνόταν ανώνυμη. */}
-          <div><div style={{ fontSize: 15, fontWeight: 700 }}>PROPERWISE</div><h1 style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, margin: 0 }}>Προτιμήσεις ενημερωτικών emails</h1></div>
+          {/* Ο ΤΙΤΛΟΣ ΕΙΝΑΙ Ο ΤΙΤΛΟΣ. Ηταν 11px κάτω από ένα «PROPERWISE» 15/700 και
+              διαβαζόταν σαν υπότιτλος· τώρα το σήμα είναι η μικρή γραμμή από πάνω. */}
+          <div><div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>PROPERWISE</div><h1 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Απεγγραφή από ενημερωτικά email</h1></div>
         </div>
 
         {state === 'loading' && <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Φόρτωση…</div>}
@@ -110,6 +113,11 @@ export default function Unsubscribe() {
               Δεν καταφέραμε να διαβάσουμε τις προτιμήσεις σου. Ο σύνδεσμος δεν ελέγχθηκε, οπότε μπορεί κάλλιστα να είναι έγκυρος.
             </p>
             <div style={{ marginTop: 16 }}><Btn onClick={retry}>Δοκιμή ξανά</Btn></div>
+            {/* Η ΑΠΕΓΓΡΑΦΗ ΔΕΝ ΕΞΑΡΤΑΤΑΙ ΑΠΟ ΤΟ ΔΙΚΤΥΟ ΜΑΣ. Αν ούτε η δεύτερη
+                προσπάθεια πετύχει, υπάρχει δρόμος που δεν περνά από αυτή τη σελίδα. */}
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '16px 0 0' }}>
+              Αν δεν γίνει, γράψε στο <a href={`mailto:${IDENTITY.privacyEmail}`} style={{ color: 'var(--accent)' }}>{IDENTITY.privacyEmail}</a> και σε απεγγράφουμε εμείς.
+            </p>
           </div>
         )}
 

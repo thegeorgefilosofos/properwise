@@ -11,7 +11,7 @@
 import { execFileSync } from 'node:child_process'
 import {
   revenueByChannel, revenueByMonth, nightsInRange, nightsByMonth,
-  yearOccupancy, occupancyFromMonths, totals, type ReportStay,
+  yearOccupancy, occupancyFromMonths, totals, trailingStays, type ReportStay,
 } from './reports'
 import { nightsByMonthForYear } from '../tax/shortTermTax'
 
@@ -167,13 +167,21 @@ eq('ανάποδες ημερομηνίες → μηδέν',
   const t = totals([
     { ...stay({ total: 700 }), declared_at: '2026-06-10' },
     { ...stay({ total: 300 }), declared_at: null },
-  ])
+  ], '2026-09-24')
   eq('δύο διαμονές', t.count, 2)
   eq('άθροισμα εσόδων', t.revenue, 1000)
   eq('μία αδήλωτη', t.undeclared, 1)
   ok('το αδιευκρίνιστο μετριέται ΞΕΧΩΡΙΣΤΑ, δεν κρύβεται', t.unresolved >= 0 && t.unresolvedAmount <= t.revenue)
   eq('κενή λίστα → μηδενικά, όχι NaN',
-    totals([]), { revenue: 0, nights: 0, count: 0, unresolved: 0, unresolvedAmount: 0, platformFees: 0, climateLevy: 0, undeclared: 0 })
+    totals([]), { revenue: 0, nights: 0, count: 0, unresolved: 0, unresolvedAmount: 0, platformFees: 0, climateLevy: 0, undeclared: 0, upcoming: 0 })
+  // Η κράτηση του Δεκεμβρίου δεν είναι αδήλωτη τον Σεπτέμβριο· μετριέται
+  // χωριστά, ως επερχόμενη. Η διαμονή που τελειώνει σήμερα είναι εκκρεμής.
+  const f = totals([
+    { ...stay({ check_in: '2026-12-01', check_out: '2026-12-05' }), declared_at: null },
+    { ...stay({ check_in: '2026-09-20', check_out: '2026-09-24' }), declared_at: null },
+  ], '2026-09-24')
+  eq('μελλοντική κράτηση: όχι αδήλωτη', f.undeclared, 1)
+  eq('μελλοντική κράτηση: επερχόμενη', f.upcoming, 1)
 }
 
 // ═══ ΚΑΘΕ ΖΩΝΗ ΩΡΑΣ ════════════════════════════════════════════════════════
@@ -215,6 +223,22 @@ if (!process.env.PO_TZ_CHILD) {
   eq('ο κοινός μετρητής τις κρατά', occupancyFromMonths(nbm, 2026).bookedNights, 16)
   eq('και τις βάζει στον μήνα της άφιξης', nbm[7], 6)
   eq('χωρίς να πειράξει τον Ιούλιο', nbm[6], 10)
+}
+
+// ═══ ΟΙ ΤΕΛΕΥΤΑΙΟΙ ΔΩΔΕΚΑ ΜΗΝΕΣ ═══════════════════════════════════════════
+// Πληρότητα × 365 × τιμή νύχτας πρέπει να ξαναδίνει τα έσοδα του παραθύρου:
+// αυτό κάνει με τα νούμερα η Απόδοση.
+{
+  const t = trailingStays([
+    stay({ check_in: '2026-06-01', check_out: '2026-06-08', total: 700 }),
+    stay({ check_in: '2025-09-20', check_out: '2025-09-30', total: 1000 }),
+    stay({ check_in: '2025-01-01', check_out: '2025-01-05', total: 400 }),
+  ], '2026-09-24')
+  eq('νύχτες μέσα στο παράθυρο (η παλιά μένει έξω, η οριακή κόβεται)', t.nights, 7 + 6)
+  eq('έσοδα στην αναλογία των νυχτών', t.revenue, 700 + 600)
+  // Η πληρότητα κρατά ένα δεκαδικό· το γινόμενο πέφτει μέσα στο 2% των εσόδων.
+  ok('πληρότητα × 365 × τιμή νύχτας ≈ έσοδα', Math.abs(t.occupancyPct / 100 * 365 * t.adr - t.revenue) / t.revenue < 0.02)
+  eq('χωρίς κρατήσεις: μηδέν, όχι NaN', trailingStays([], '2026-09-24'), { nights: 0, revenue: 0, occupancyPct: 0, adr: 0 })
 }
 
 console.log(fail === 0 ? `✓ reports: ${pass} έλεγχοι πέρασαν` : `✗ reports: ${fail} απέτυχαν από ${pass + fail}`)

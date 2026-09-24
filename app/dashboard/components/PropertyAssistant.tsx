@@ -100,7 +100,7 @@ interface Msg { role: 'user' | 'assistant'; text: string; action?: Action; }
 // πεδία που χρειάζεται η συμφωνία με εκκρεμή λογαριασμό. Τώρα διαβάζει μόνο
 // αυτό που ο άλλος δεν κάνει: τι συσκευή δείχνει η φωτογραφία.
 const IMG_ITEM_SCAN_SYSTEM = `Είσαι σύστημα αναγνώρισης ΑΝΤΙΚΕΙΜΕΝΟΥ από φωτογραφία, για την απογραφή ενός ακινήτου. Επίστρεψε ΑΥΣΤΗΡΑ ΜΟΝΟ JSON:
-{"name":"","brand":"","model":"","category":"<μία από: Έπιπλα, Ηλεκτρικές Συσκευές, Ηλεκτρονικά, Υδραυλικά, Θέρμανση & Ψύξη, Φωτιστικά, Διακόσμηση, Λοιπά>","price":"αριθμός € ή κενό","warranty_expiry":"YYYY-MM-DD ή κενό"}
+{"name":"","brand":"","model":"","category":"<μία από: Έπιπλα, Ηλεκτρικές Συσκευές, Ηλεκτρονικά, Υδραυλικά, Θέρμανση & Ψύξη, Φωτιστικά, Διακόσμηση, Λοιπά>","price":"ακέραιος αριθμός ευρώ χωρίς σύμβολα ή κενό","warranty_expiry":"YYYY-MM-DD ή κενό"}
 Το name περιγραφικό (π.χ. «Πλυντήριο Bosch WAU28»). Άφησε κενά όσα δεν διακρίνονται. Χωρίς κείμενο εκτός JSON.`
 // Ελαφρύ ευρετήριο πελατών, ώστε να βρίσκει από όνομα/τηλέφωνο/ΑΦΜ.
 type ClientLite = { id: string; name: string; phone: string; afm: string };
@@ -114,6 +114,7 @@ import { hy } from '@/components/Hyphen';
 import { scanFile, commitScannedDoc, RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT, type ReconcileQuestion } from './scanDoc';
 import { DOC_TYPE_LABELS, type ScannedDoc } from '@/lib/billing/documents';
 import { remainingLine, type QuotaSnapshot } from '@/lib/billing/aiLimits';
+import { parseAmount } from '@/lib/core/greek';
 import { athensToday, athensNowLabel, daysUntil, isoMonth } from '@/lib/core/time';
 import { MONTHS_SHORT, MONTHS_GEN } from '@/lib/core/months';
 import { useRemembered } from '@/components/useRememberedFlag';
@@ -238,6 +239,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // δεν είναι βλάβη — είναι κατάσταση με νούμερο και με ημερομηνία επιστροφής και
   // πρέπει να λέγεται όπως ακριβώς τη διατύπωσε ο server (lib/billing/aiLimits.ts).
   const [limitMsg, setLimitMsg] = useState('');
+  const [errDetail, setErrDetail] = useState('');
   /**
    * Πόσες ερωτήσεις απομένουν αυτόν τον μήνα.
    *
@@ -578,7 +580,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     });
     const acctProv = taxProvision(acctStmt, now.getMonth() + 1);
     const accountingLine = acctGross > 0
-      ? `Λογιστική ${year} (${isShortAcct ? 'βραχυχρόνια' : 'μακροχρόνια'} μίσθωση): μεικτά έσοδα ${eur(Math.round(acctStmt.grossIncome))}${!isShortAcct && rentFromTarget ? ' (βάσει ενοικίου-στόχου, δεν έχουν καταχωρηθεί δόσεις)' : ''}${!isShortAcct && !rentFromTarget && accruedRent > collectedRent ? `, από τα οποία ανείσπρακτα ${eur(Math.round(accruedRent - collectedRent))}` : ''}, φορολογητέο ${eur(Math.round(acctStmt.taxableIncome))}, εκτιμώμενος φόρος εισοδήματος ${eur(Math.round(acctStmt.incomeTax))} (μέσος συντελεστής ${fp((acctStmt.effectiveRate * 100))}), καθαρό αποτέλεσμα ${eur(Math.round(acctStmt.netProfit))}. Πρόταση πρόβλεψης φόρου: περίπου ${eur(Math.round(acctProv.monthly))} τον μήνα να μπαίνουν στην άκρη. Εκτίμηση με την κλίμακα 2026 (μακροχρόνια: τεκμαρτή έκπτωση 5%· βραχυχρόνια: φόρος στα μεικτά)· τελική επιβεβαίωση με λογιστή ή ΑΑΔΕ.`
+      ? `Λογιστική ${year} (${isShortAcct ? 'βραχυχρόνια' : 'μακροχρόνια'} μίσθωση): μεικτά έσοδα ${eur(Math.round(acctStmt.grossIncome))}${!isShortAcct && rentFromTarget ? ' (βάσει ενοικίου-στόχου, δεν έχουν καταχωρηθεί δόσεις)' : ''}${!isShortAcct && !rentFromTarget && accruedRent > collectedRent ? `, από τα οποία ανείσπρακτα ${eur(Math.round(accruedRent - collectedRent))}` : ''}, φορολογητέο ${eur(Math.round(acctStmt.taxableIncome))}, εκτιμώμενος φόρος εισοδήματος ${eur(Math.round(acctStmt.incomeTax))} (μέσος συντελεστής ${fp((acctStmt.effectiveRate * 100))}), καθαρό αποτέλεσμα ${eur(Math.round(acctStmt.netProfit))}. Πρόταση πρόβλεψης φόρου: περίπου ${eur(Math.round(acctProv.monthly))} τον μήνα να μπαίνουν στην άκρη. Εκτίμηση με την κλίμακα 2026 (τεκμαρτή έκπτωση 5% σε μακροχρόνια και σε βραχυχρόνια χωρίς υπηρεσίες, εφόσον η είσπραξη γίνεται μέσω τράπεζας)· τα ποσά είναι ενδεικτικά, έλεγχος με λογιστή.`
       : '';
 
     // ── Εκκρεμότητες: πραγματικές ανοιχτές εργασίες (καρτέλα Εκκρεμότητες) ώστε Νόα
@@ -635,7 +637,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       setPricingStr([
         `Βάση: ${eur(priceBase)}/νύχτα${adrVal > 0 ? ` (μέση πραγματική ADR ${eur(Math.round(adrVal))} από ${propStays.length} διαμονές)` : ' (εκτίμηση, χωρίς επαρκές ιστορικό)'}.`,
         `Ενδεικτικές τιμές ανά μήνα (καθημερινή/Σαββατοκύριακο): ${table}.`,
-        `Πρόσθετοι κανόνες: αργίες και υψηλή ζήτηση (Δεκαπενταύγουστος, Πάσχα, Εορτές, Πρωτοχρονιά) περίπου +25%. Last minute σε κενές κοντινές ημέρες περίπου -8% έως -15%. Υψηλή πληρότητα γύρω από την ημερομηνία ανεβάζει έως +12%.`,
+        `Εμπειρικοί κανόνες της εφαρμογής (όχι στατιστικό αγοράς· πες το έτσι αν τους αναφέρεις): αργίες και υψηλή ζήτηση (Δεκαπενταύγουστος, Πάσχα, Εορτές, Πρωτοχρονιά) περίπου +25%. Last minute σε κενές κοντινές ημέρες περίπου -8% έως -15%. Υψηλή πληρότητα γύρω από την ημερομηνία ανεβάζει έως +12%.`,
         `Για ημερομηνία που ζητά ο χρήστης: πάρε τον μήνα από τον πίνακα (καθημερινή ή Σαββατοκύριακο) και πρόσθεσε αργία/ζήτηση αν ισχύει. Οι τιμές είναι ενδεικτικές προτάσεις.`,
       ].join('\n'));
     } else {
@@ -866,7 +868,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       const how = a.channel === 'call' ? 'κλήση'
         : a.channel === 'email' ? 'email'
           : a.channel === 'viber' ? 'Viber' : 'WhatsApp';
-      setMsgs(m => [...m, { role: 'assistant', text: `Πάτησε για ${how}: «${c.name}». Το μήνυμα δεν φεύγει μόνο του, ανοίγει η εφαρμογή για να το στείλεις εσύ.`, action: { type: 'reach', name: c.name, channel: a.channel, text: a.text } }]);
+      setMsgs(m => [...m, { role: 'assistant', text: a.channel === 'call' ? `Πάτησε για κλήση: «${c.name}».` : `Πάτησε για ${how}: «${c.name}». Το μήνυμα δεν φεύγει μόνο του, ανοίγει η εφαρμογή για να το στείλεις εσύ.`, action: { type: 'reach', name: c.name, channel: a.channel, text: a.text } }]);
       return;
     }
     // Λείπει το απαραίτητο στοιχείο για το κανάλι — πρότεινε διαθέσιμη εναλλακτική.
@@ -1008,8 +1010,14 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       const data = await must(checkinLink.issue(supabase, userId, c.id, propertyId, new Date()));
       if (data?.token) {
         const url = checkinLink.checkinUrl(data.token);
-        try { await navigator.clipboard.writeText(url); } catch { /* το εμφανίζουμε ούτως ή άλλως */ }
-        setMsgs(m => [...m, { role: 'assistant', text: `Έτοιμο. Αντέγραψα τον σύνδεσμο check-in για «${c.name}». Στείλ’ τον στον επισκέπτη σε WhatsApp ή Viber:\n${url}`, action: { type: 'go', tab: 'clients' } }]);
+        // Λέμε «αντέγραψα» μόνο αν έγινε. Σε iOS χωρίς χειρονομία ή άδεια το
+        // πρόχειρο μένει άδειο και ο σύνδεσμος πρέπει να αντιγραφεί από εδώ.
+        let copied = false;
+        try { await navigator.clipboard.writeText(url); copied = true; } catch { /* ο σύνδεσμος φαίνεται στο μήνυμα */ }
+        const text = copied
+          ? `Έτοιμο. Αντέγραψα τον σύνδεσμο check-in για «${c.name}». Στείλ’ τον στον επισκέπτη σε WhatsApp ή Viber:\n${url}`
+          : `Ο σύνδεσμος check-in για «${c.name}» είναι έτοιμος. Αντέγραψέ τον από εδώ και στείλ’ τον στον επισκέπτη:\n${url}`;
+        setMsgs(m => [...m, { role: 'assistant', text, action: { type: 'go', tab: 'clients' } }]);
       } else throw new Error('no token');
     } catch {
       setMsgs(m => [...m, { role: 'assistant', text: `Δεν μπόρεσα να φτιάξω τον σύνδεσμο τώρα. Δοκίμασε από την καρτέλα του πελάτη στους ${navLabel('clients')}.`, action: { type: 'go', tab: 'clients' } }]);
@@ -1078,7 +1086,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       // `estimated_cost` της εκκρεμότητας, όπου ΕΙΝΑΙ εκτίμηση και το λέει.
       if (newId && calId) await must(checklist.linkEvent(supabase, newId, calId));
       const bits: string[] = [];
-      if (due) bits.push('προθεσμία και υπενθύμιση με email');
+      if (due) bits.push('προθεσμία (υπενθύμιση με email αν είναι ενεργές οι ειδοποιήσεις)');
       if (est > 0) bits.push(`εκτίμηση ${eur(est)}`);
       setMsgs(m => [...m, { role: 'assistant', text: `Το πρόσθεσα στις Εκκρεμότητες: «${d}»${bits.length ? `, ${bits.join(', ')}` : ''}. Θέλεις να το δεις;`, action: { type: 'go', tab: 'checklist' } }]);
     } catch {
@@ -1122,10 +1130,10 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         title, category,
         event_date: date, event_time: time || null, duration_minutes: time ? 60 : null,
         priority: 'high',
-        notes: `Ραντεβού που προγραμμάτισε ${ASSISTANT_NAME}. Θα σταλεί υπενθύμιση πριν λήξει (email, εφόσον είναι ενεργές οι ειδοποιήσεις· με ένα άγγιγμα και σε Viber/WhatsApp).`,
+        notes: `Ραντεβού που προγραμμάτισε ${ASSISTANT_NAME}. Θα σταλεί υπενθύμιση πριν από το ραντεβού (email, εφόσον είναι ενεργές οι ειδοποιήσεις· με ένα άγγιγμα και σε Viber/WhatsApp).`,
       })]));
       const whenStr = `${new Date(date).toLocaleDateString('el-GR')}${time ? ` στις ${time}` : ''}`;
-      setMsgs(m => [...m, { role: 'assistant', text: `Το έκλεισα. Πρόσθεσα το «${title}» για ${whenStr} στο Ημερολόγιο και θα σου θυμίσω πριν λήξει. Θέλεις να ανοίξω το Ημερολόγιο;`, action: { type: 'go', tab: 'calendar' } }]);
+      setMsgs(m => [...m, { role: 'assistant', text: `Το έκλεισα. Πρόσθεσα το «${title}» για ${whenStr} στο Ημερολόγιο. Αν οι ειδοποιήσεις email είναι ενεργές, θα λάβεις υπενθύμιση πριν από το ραντεβού. Θέλεις να ανοίξω το Ημερολόγιο;`, action: { type: 'go', tab: 'calendar' } }]);
     } catch {
       setMsgs(m => [...m, { role: 'assistant', text: 'Δεν μπόρεσα να αποθηκεύσω το ραντεβού τώρα. Δοκίμασε ξανά ή πρόσθεσέ το χειροκίνητα στο Ημερολόγιο.' }]);
     }
@@ -1228,7 +1236,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   const ask = async (question: string, viaVoice = false) => {
     const q = question.trim();
     if (!q || busy) return;
-    setErr(''); setLimitMsg(''); setInput('');
+    setErr(''); setErrDetail(''); setLimitMsg(''); setInput('');
     const history = [...msgs, { role: 'user' as const, text: q }];
     setMsgs(history); setBusy(true);
     // Το σκαλί της εμπιστοσύνης: ο χρήστης έδωσε ερώτηση στο προϊόν. Μετριέται
@@ -1289,8 +1297,15 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 429) { setLimitMsg(String(data?.error || '')); setErr('limit'); }
-        else setErr(String(data?.error || '').includes('ANTHROPIC_API_KEY') ? 'key' : 'service');
-        setMsgs(m => m.slice(0, -1));
+        else if (String(data?.error || '').includes('ANTHROPIC_API_KEY')) setErr('key');
+        else {
+          // 400/413: ο διακομιστής λέει ΤΙ να αλλάξει ο χρήστης· το γενικό
+          // «δοκίμασε ξανά» θα τον έβαζε να ξαναστείλει το ίδιο πράγμα.
+          setErrDetail(res.status === 400 || res.status === 413 ? String(data?.error || '') : '');
+          setErr('service');
+        }
+        // Η ΕΡΩΤΗΣΗ ΓΥΡΝΑ ΣΤΟ ΠΕΔΙΟ. Το συννεφάκι φεύγει, οι λέξεις του χρήστη όχι.
+        setMsgs(m => m.slice(0, -1)); setInput(q);
         return;
       }
       const raw: string = data?.content?.find((c: { type: string }) => c.type === 'text')?.text || 'Δεν έχω απάντηση αυτή τη στιγμή.';
@@ -1312,7 +1327,9 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         nudgedRef.current = true;
         setMsgs(m => [...m, {
           role: 'assistant',
-          text: `Με βοηθάς λίγο; Αξιολόγησε το PROPERWISE κι εμένα, ώστε να βελτιώσουμε τις υπηρεσίες μας. Ό,τι γράψεις το διαβάζει άνθρωπος από την ομάδα και το παίρνουμε στα σοβαρά.`,
+          text: prefs.formal
+            ? 'Θέλετε να μου πείτε τι σας άρεσε και τι σας δυσκόλεψε; Κάθε σχόλιο το διαβάζει άνθρωπος.'
+            : 'Θέλεις να μου πεις τι σου άρεσε και τι σε δυσκόλεψε; Κάθε σχόλιο το διαβάζει άνθρωπος.',
           action: { type: 'feedback' },
         }]);
       }
@@ -1323,7 +1340,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
           if (handsFreeRef.current) setTimeout(() => startListening(), 350);
         });
       }
-    } catch { setErr('service'); setMsgs(m => m.slice(0, -1)); }
+    } catch { setErrDetail(''); setErr('service'); setMsgs(m => m.slice(0, -1)); setInput(q); }
     finally { setBusy(false); }
   };
 
@@ -1346,9 +1363,9 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // τότε — τρέχει η αναγνώριση συσκευής, που η μηχανή του Αρχείου δεν κάνει.
   const askImage = async (file: File) => {
     if (!file.type.startsWith('image/') || busy) return;
-    if (file.size > 10 * 1024 * 1024) { setMsgs(m => [...m, { role: 'assistant', text: 'Η φωτογραφία είναι πολύ μεγάλη (>10MB). Δοκίμασε μικρότερη.' }]); return; }
+    if (file.size > 10 * 1024 * 1024) { setMsgs(m => [...m, { role: 'assistant', text: 'Η φωτογραφία είναι πάνω από 10 MB. Δοκίμασε μικρότερη.' }]); return; }
     setErr('');
-    setMsgs(m => [...m, { role: 'user', text: 'Φωτογραφία (απόδειξη/λογαριασμός ή αντικείμενο)' }]);
+    setMsgs(m => [...m, { role: 'user', text: 'Φωτογραφία για ανάγνωση' }]);
     setBusy(true);
 
     // ── 1) Είναι παραστατικό; Το απαντά η ίδια σάρωση με το Αρχείο ──────────
@@ -1387,11 +1404,15 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
 
       const CATS = ['Έπιπλα', 'Ηλεκτρικές Συσκευές', 'Ηλεκτρονικά', 'Υδραυλικά', 'Θέρμανση & Ψύξη', 'Φωτιστικά', 'Διακόσμηση', 'Λοιπά'];
       const name = (d.name || [d.brand, d.model].filter(Boolean).join(' ') || '').slice(0, 120);
-      if (!name) { setMsgs(m => [...m, { role: 'assistant', text: 'Δεν κατάλαβα καθαρά τι δείχνει η φωτογραφία. Δοκίμασε πιο κοντινή/καθαρή λήψη ή πες μου τι είναι.' }]); setBusy(false); return; }
-      const val = d.price ? Math.round(parseFloat(String(d.price).replace(/[^\d.]/g, '')) || 0) : 0;
+      if (!name) { setMsgs(m => [...m, { role: 'assistant', text: 'Δεν κατάλαβα καθαρά τι δείχνει η φωτογραφία. Δοκίμασε πιο κοντινή και καθαρή λήψη ή πες μου τι είναι.' }]); setBusy(false); return; }
+      // ΕΝΑΣ ΑΝΑΛΥΤΗΣ ΠΟΣΩΝ. Το μοντέλο γράφει συχνά «449,99» ή «1.299,00» παρά την
+      // οδηγία· το παλιό replace(/[^\d.]/) τα έκανε 44.999€ και 1€ στην απογραφή.
+      const val = Math.round(parseAmount(String(d.price ?? '')) ?? 0);
       const category = d.category && CATS.includes(d.category) ? d.category : undefined;
+      // Τα κλειδιά μένουν όπως στη βάση· στον χρήστη δείχνουμε πεζά (sentence case).
+      const categoryLabel = category && ({ 'Ηλεκτρικές Συσκευές': 'Ηλεκτρικές συσκευές', 'Θέρμανση & Ψύξη': 'Θέρμανση και ψύξη' } as Record<string, string>)[category] || category;
       const action = { type: 'inventory' as const, name, category, value: val > 0 ? val : undefined, brand: d.brand || undefined, model: d.model || undefined };
-      const bits = [d.brand, d.model && `μοντ. ${d.model}`, val > 0 && `~${fe(val)}`, category].filter(Boolean).join(' · ');
+      const bits = [d.brand, d.model && `μοντέλο ${d.model}`, val > 0 && `~${fe(val)}`, categoryLabel].filter(Boolean).join(' · ');
       setMsgs(m => [...m, { role: 'assistant', text: `Διάβασα: ${name}${bits ? ` (${bits})` : ''}. Να το καταγράψω στα «${navLabel('inventory')}»;`, action }]);
     } catch { setMsgs(m => [...m, { role: 'assistant', text: 'Δεν μπόρεσα να διαβάσω τη φωτογραφία τώρα. Δοκίμασε ξανά.' }]); }
     finally { setBusy(false); }
@@ -1416,6 +1437,20 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // στενεύει σε σήμα στο κινητό. Άρα ΜΕΤΡΑΜΕ το μέγεθός του αντί να το μαντεύουμε
   // — αλλιώς η μισή πρόσκληση θα κατέληγε έξω από την οθόνη μετά από σύρσιμο.
   const fabRef = useRef<HTMLButtonElement | null>(null);
+  // ΤΟ ΠΑΝΕΛ ΠΑΙΡΝΕΙ ΤΗΝ ΕΣΤΙΑΣΗ ΚΑΙ ΤΗΝ ΕΠΙΣΤΡΕΦΕΙ. Με Ctrl+J ή με το πλωτό
+  // κουμπί η εστίαση έμενε στη σελίδα από κάτω και ο χρήστης πληκτρολογίου
+  // περνούσε όλη την Επισκόπηση με Tab για να φτάσει στο πεδίο. Σε αφή πάμε στο
+  // πάνελ, όχι στο πεδίο: αλλιώς κάθε άνοιγμα θα σήκωνε το πληκτρολόγιο.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    if (open) {
+      const fine = typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches;
+      (fine && inputRef.current && !inputRef.current.disabled ? inputRef.current : panelRef.current)?.focus({ preventScroll: true });
+    } else if (wasOpenRef.current) fabRef.current?.focus({ preventScroll: true });
+    wasOpenRef.current = open;
+  }, [open]);
 
   // ═══ ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΚΑΘΟΤΑΝ ΠΑΝΩ ΣΤΟ «ΑΠΟΘΗΚΕΥΣΗ» ════════════════════════
   // Το `.app-content` κρατά κάτω περιθώριο για το πλωτό κουμπί, οπότε στη σελίδα
@@ -1616,7 +1651,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       )}
 
       {open && (
-        <div className="pa-panel" style={panelFixed}>
+        <div ref={panelRef} tabIndex={-1} className="pa-panel" role="dialog" aria-modal="false" aria-label={`Συνομιλία με ${ASSISTANT_ACC}`} style={panelFixed}>
           {/* Κεφαλίδα */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
             {/* Το 15 δεν υπάρχει στην κλίμακα (…13, 14, 16, 18…) — ήταν ένα από
@@ -1686,7 +1721,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                         τεντώνει τα κενά, γι' αυτό η po-just πάει πάντα μαζί με hy(). */}
                     <p className="po-just" style={{ ...TT.body, fontSize: 14, lineHeight: 1.6, margin: 0, maxWidth: '36ch' }}>{hy(greeting)}</p>
                     <div>
-                      <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 6 }}>Ρώτα κάτι δικό σου</div>
+                      <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 6 }}>{prefs.formal ? 'Ρωτήστε κάτι δικό σας' : 'Ρώτα κάτι δικό σου'}</div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         {suggestedOpeners(openerCtx).map((s, i) => (
                           <button key={s} onClick={() => ask(s)}
@@ -1783,8 +1818,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     {hy(err === 'key'
                       ? noKeyNotice(prefs.formal)
                       : err === 'limit'
-                        ? (limitMsg || 'Έφτασες το όριο ερωτήσεων. Ανανεώνεται σύντομα.')
-                        : 'Δεν μπόρεσα να απαντήσω τώρα, δοκίμασε ξανά σε λίγο.')}
+                        ? (limitMsg || remainingLine(quota, prefs.formal) || (prefs.formal ? 'Φτάσατε το όριο ερωτήσεων.' : 'Έφτασες το όριο ερωτήσεων.'))
+                        : (errDetail || (prefs.formal ? 'Δεν μπόρεσα να απαντήσω τώρα. Δοκιμάστε ξανά σε λίγο.' : 'Δεν μπόρεσα να απαντήσω τώρα. Δοκίμασε ξανά σε λίγο.')))}
                   </div>
                 )}
               </div>
@@ -1792,7 +1827,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
               {/* Είσοδος */}
               <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--border-subtle)', alignItems: 'center' }}>
                 <input ref={imgRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) askImage(f); e.currentTarget.value = ''; }} />
-                <button onClick={() => { if (!busy) imgRef.current?.click(); }} disabled={busy} aria-label="Φωτογραφία απόδειξης, λογαριασμού ή αντικειμένου" title={`Φωτογράφισε απόδειξη ή λογαριασμό (πάει στον προϋπολογισμό), ή αντικείμενο (πάει στην ${navLabel('inventory')})`}
+                <button onClick={() => { if (!busy) imgRef.current?.click(); }} disabled={busy} aria-label="Φωτογραφία απόδειξης, λογαριασμού ή αντικειμένου" title={`Φωτογράφισε απόδειξη ή λογαριασμό (καταχωρείται στις Δαπάνες) ή αντικείμενο (μπαίνει στα «${navLabel('inventory')}»)`}
                   style={{ width: 42, height: 42, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', cursor: busy ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z" /><circle cx="12" cy="13" r="3.2" /></svg>
                 </button>
@@ -1802,9 +1837,10 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4" /></svg>
                   </button>
                 )}
-                <input value={input} aria-label="Η ερώτησή σου προς τη Νόα" onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(input); }} placeholder={listening ? 'Ακούω…' : placeholder} disabled={busy}
+                <input value={input} ref={inputRef} aria-label={prefs.formal ? `Η ερώτησή σας προς ${ASSISTANT_ACC}` : `Η ερώτησή σου προς ${ASSISTANT_ACC}`} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(input); }} placeholder={listening ? 'Ακούω…' : placeholder} disabled={busy}
                   style={{ flex: 1, minWidth: 0, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '10px 15px', color: 'var(--text-primary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, outline: 'none' }}
-                  onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-soft)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }} />
                 <button onClick={() => ask(input)} disabled={busy || !input.trim()} aria-label="Αποστολή"
                   style={{ width: 42, height: 42, flexShrink: 0, borderRadius: '50%', border: 'none', background: input.trim() && !busy ? 'var(--accent)' : 'var(--bg-elevated)', color: input.trim() && !busy ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: input.trim() && !busy ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" /></svg>
@@ -1819,9 +1855,9 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
               <div style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8, textWrap: 'balance' }}>
                 {aiDisclosure(prefs.formal)}
               </div>
-              {remainingLine(quota) && (
+              {remainingLine(quota, prefs.formal) && (
                 <div style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 4 }}>
-                  {remainingLine(quota)}
+                  {remainingLine(quota, prefs.formal)}
                 </div>
               )}
             </>
@@ -1911,6 +1947,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            ακριβώς τα νούμερα που συζητάτε. Ευθυγραμμίζεται μόνο η ακτίνα με το
            token (ήταν καρφωμένο 18px, δηλαδή η ίδια τιμή γραμμένη δεύτερη φορά). */
         .pa-panel{position:fixed;right:24px;bottom:92px;width:390px;max-width:calc(100vw - 32px);height:min(600px,calc(100vh - 130px));background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:${T.radius.modal}px;box-shadow:var(--highlight-inset),var(--elev-3);z-index:1200;display:flex;flex-direction:column;overflow:hidden}
+        .pa-panel:focus{outline:none}
         /* ΤΟ ΟΡΙΟ ΕΙΝΑΙ 768, ΟΣΟ ΚΑΙ ΤΗΣ ΚΑΤΩ ΠΛΟΗΓΗΣΗΣ.
            Ήταν 600 ενώ η κάτω πλοήγηση εμφανίζεται στα 768: στο ενδιάμεσο —
            iPad mini όρθιο, Galaxy Fold ανοιχτό, τα περισσότερα tablet Android —
@@ -1983,9 +2020,9 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
         <div style={row}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>Να θυμάται τις συζητήσεις</div>
-            <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.4 }}>Συνεχίζει από εκεί που μείνατε, ανά ακίνητο. Μένει μόνο στη συσκευή σου.</div>
+            <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.4 }}>Συνεχίζει από εκεί που μείναμε, ανά ακίνητο. Το ιστορικό μένει μόνο σε αυτή τη συσκευή.</div>
           </div>
-          <Toggle on={memory} onChange={setMemory} ariaLabel="Μνήμη" />
+          <Toggle on={memory} onChange={setMemory} ariaLabel="Να θυμάται τις συζητήσεις" />
         </div>
         {memory && hasMemory && (
           // Το περιτύλιγμα κρατά τη θέση με το alignSelf και την τυπογραφία που κληρονομεί το LinkBtn
@@ -2003,7 +2040,7 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
               {facts.map(f => (
                 <span key={f.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, padding: '5px 6px 5px 11px', fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-primary)', maxWidth: '100%' }}>
                   <span className="po-elide" style={{ maxWidth: 220 }}>{f.text}</span>
-                  <button onClick={() => onForgetFact(f.id)} aria-label="Ξέχασέ το" title="Ξέχασέ το" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                  <button onClick={() => onForgetFact(f.id)} aria-label="Ξέχασέ το" title="Ξέχασέ το" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
                     <svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                   </button>
                 </span>
@@ -2016,7 +2053,7 @@ function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasMemory, 
             <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>Σύγκριση μεταξύ ακινήτων</div>
             <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.4 }}>Να βλέπει και τα άλλα σου ακίνητα για συγκρίσεις (ποιο αποδίδει καλύτερα).</div>
           </div>
-          <Toggle on={compare} onChange={setCompare} ariaLabel="Σύγκριση" />
+          <Toggle on={compare} onChange={setCompare} ariaLabel="Σύγκριση μεταξύ ακινήτων" />
         </div>
       </div>
 

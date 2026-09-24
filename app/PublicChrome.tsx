@@ -18,9 +18,8 @@
 // συνήθως όχι στην αρχική. Αν η σελίδα προσγείωσης δεν μοιάζει με το προϊόν
 // που του προτείνει, το πρώτο πράγμα που μαθαίνει είναι ότι δεν προσέχουμε.
 //
-// ΤΙ ΔΕΝ ΚΑΝΕΙ. Δεν αφορά την αρχική σελίδα: εκείνη έχει δική της πλοήγηση με
-// σύνδεση, κατάσταση χρήστη και συμπεριφορά στο κύλισμα. Ένα κέλυφος που θα
-// κάλυπτε και τις πέντε θα ήταν παραμετροποιημένο σε βαθμό που δεν διαβάζεται.
+// ΤΙ ΔΕΝ ΚΑΝΕΙ. Η κεφαλίδα της αρχικής μένει δική της (κολλητή, ημιδιαφανής,
+// με θόλωμα). Οι ΣΥΝΔΕΣΜΟΙ της όμως είναι οι ίδιοι παντού, μέσω του `PublicNav`.
 // ═══════════════════════════════════════════════════════════════════════════
 import { PRODUCT_NAME } from '@/lib/core/site';
 import { jsonLdScript } from '@/lib/core/jsonLd';
@@ -63,32 +62,50 @@ export const WRAP_PAD = 'var(--pub-gutter)';
  */
 export const READING = 720;
 
-export function PublicHeader() {
+/**
+ * ΟΙ ΣΥΝΔΕΣΜΟΙ ΤΗΣ ΚΕΦΑΛΙΔΑΣ, ΙΔΙΟΙ ΣΕ ΚΑΘΕ ΔΗΜΟΣΙΑ ΣΕΛΙΔΑ.
+ *
+ * Η αρχική είχε «Σύνδεση» χωρίς «Τιμές» και οι υπόλοιπες «Τιμές» χωρίς
+ * «Σύνδεση»: ο συνδρομητής που προσγειωνόταν στο /paketa ή στο /trust δεν είχε
+ * τρόπο να μπει στον λογαριασμό του από την κεφαλίδα. Τώρα και οι τρεις
+ * σύνδεσμοι ζουν εδώ και τους διαβάζουν και οι δύο κεφαλίδες.
+ *
+ * ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΟ ΖΕΥΓΑΡΙ «ΤΙΜΕΣ · ΣΥΝΔΕΣΗ» ΓΙΝΕΤΑΙ «ΕΙΣΟΔΟΣ». Μετρημένο σε
+ * Chromium με την Inter: σήμα, τρεις σύνδεσμοι και κουμπί τελειώνουν στα 424
+ * εικονοστοιχεία με το κανονικό γέμισμα και στα 382 με γέμισμα τεσσάρων, ενώ
+ * η οθόνη των 390 αφήνει 370. Δεν χωρούν με κανένα γέμισμα. Ο επιστρέφων
+ * χρήστης δεν έχει άλλο δρόμο από την είσοδο· οι τιμές είναι στο υποσέλιδο
+ * κάθε σελίδας («Πακέτα και τιμές») και ένα κύλισμα πιο κάτω στην αρχική.
+ *
+ * Ο ΣΥΝΔΕΔΕΜΕΝΟΣ ΧΡΗΣΤΗΣ ΠΕΡΝΙΕΤΑΙ ΩΣ ΣΤΟΙΧΕΙΟ, ΟΧΙ ΩΣ ΣΗΜΑΙΑ. Ό,τι συνδέει
+ * αυτό το αρχείο το ελέγχει ο guard-public-routes ως δημόσια διαδρομή· ο
+ * σύνδεσμος προς τον πίνακα ζει στη σελίδα που ξέρει ότι υπάρχει συνεδρία.
+ */
+export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current?: 'paketa' }) {
+  const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
+      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-xs" style={link}>Τιμές</Link>
+      {!signedIn ? (<>
+        <Link href="/login" className="lp-link lp-nav-link" style={link}>
+          <span className="lp-hide-xs">Σύνδεση</span><span className="lp-only-xs">Είσοδος</span>
+        </Link>
+        <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 16px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
+          <span className="lp-hide-xs">Ξεκίνα τη δοκιμή</span><span className="lp-only-xs">Δοκιμή</span>
+        </Link>
+      </>) : signedIn}
+    </div>
+  );
+}
+
+export function PublicHeader({ current }: { current?: 'paketa' } = {}) {
   return (
     <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
       <div style={{ ...WRAP, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'var(--text-primary)' }}>
           <BrandLogo size={24} />
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.lg }}>
-          {/* Ο ΤΙΜΟΚΑΤΑΛΟΓΟΣ ΔΕΝ ΕΙΧΕ ΔΡΟΜΟ. Η ενότητα υπάρχει, έχει άγκυρα
-              `#pricing` και καμία σελίδα δεν έδειχνε προς τα εκεί: ο
-              επισκέπτης που έφτανε από τον υπολογιστή ΕΝΦΙΑ ή από τους Όρους
-              έπρεπε να μαντέψει ότι πρέπει να γυρίσει στην αρχική και να
-              κυλήσει. Η πιο συχνή ερώτηση πριν την εγγραφή είναι η τιμή. */}
-          <Link href="/#pricing" className="lp-link lp-nav-link" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-            Τιμές
-          </Link>
-          {/* ΟΛΟΚΛΗΡΟ ΤΟ ΛΕΚΤΙΚΟ ΕΒΓΑΖΕ ΤΗ ΣΕΛΙΔΑ ΕΞΩ ΑΠΟ ΤΗΝ ΟΘΟΝΗ. Μετρημένο
-              σε Chromium στα 390: η ομάδα δεξιά πιάνει 185 ώς 392, δηλαδή δύο
-              εικονοστοιχεία έξω και μαζί της αποκτούσε οριζόντια κύλιση κάθε
-              νομική σελίδα και κάθε δωρεάν εργαλείο. Η αρχική το είχε ήδη
-              λύσει με κοντό λεκτικό· εδώ έλειπαν οι κλάσεις, που ζούσαν μέσα
-              στο <style> της. Τώρα είναι καθολικές. */}
-          <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 16px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
-            <span className="lp-hide-xs">Ξεκίνα τη δοκιμή</span><span className="lp-only-xs">Δοκιμή</span>
-          </Link>
-        </div>
+        <PublicNav current={current} />
       </div>
     </header>
   );
@@ -110,7 +127,7 @@ function FootCol({ label, links }: { label: string; links: [string, string][] })
           εικονοστοιχείων, μετρημένη σε Chromium και στους τρεις υπολογιστές.
           Ο σύνδεσμος σπάει σε δύο γραμμές· η σελίδα δεν κουνιέται. */}
       {links.map(([href, text]) => (
-        <Link key={href} href={href} className="lp-link" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, lineHeight: 1.3, textWrap: 'pretty' }}>{text}</Link>
+        <Link key={href} href={href} className="lp-link" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, lineHeight: 1.3, textWrap: 'balance' }}>{text}</Link>
       ))}
     </div>
   );
@@ -130,8 +147,10 @@ export function PublicFooter() {
                 της στήλης: έσπαγε σε τρεις γραμμές και το πού έσπαγε άλλαζε
                 με κάθε μέγεθος οθόνης — άλλοτε στη μέση της πρώτης πρότασης,
                 άλλοτε μετά. Δύο μπλοκ σπάνε ΜΟΝΟ εκεί που τελειώνει νόημα. */}
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0, maxWidth: 340 }}>
-              <span style={{ display: 'block' }}>Έξοδα, φόροι και προθεσμίες για ακίνητα στην Ελλάδα.</span>
+            {/* 400 ΚΑΙ ΟΧΙ 340: στα 340 η πρώτη πρόταση άφηνε το «Ελλάδα.» μόνο
+                του σε δεύτερη σειρά, σε κάθε δημόσια σελίδα. */}
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0, maxWidth: 400, textWrap: 'pretty' }}>
+              <span style={{ display: 'block' }}>Έξοδα, φόροι και προθεσμίες ακινήτων στην Ελλάδα.</span>
               <span style={{ display: 'block' }}>Για ιδιοκτήτες και επαγγελματίες.</span>
             </p>
           </div>
@@ -176,10 +195,13 @@ export function PublicFooter() {
           <span>© {new Date().getFullYear()} PROPERWISE</span>
           {/* ΤΟ «ΣΧΕΔΙΑΣΜΕΝΟ ΓΙΑ GDPR» ΔΕΝ ΕΛΕΓΕ ΤΙΠΟΤΑ ΕΛΕΓΞΙΜΟ. Ο τόπος της βάσης
               είναι αυτός του μητρώου εκτελούντων (lib/legal/subprocessors) και
-              το απόρρητο είναι σελίδα που διαβάζεται. */}
+              το απόρρητο είναι σελίδα που διαβάζεται. Ούτε το «Απόρρητο κατά
+              GDPR» έλεγε κάτι ελέγξιμο: ήταν ισχυρισμός συμμόρφωσης σε κάθε
+              σελίδα, ενώ εκκρεμούν συμβάσεις επεξεργασίας που η ίδια η Πολιτική
+              ομολογεί. Ο σύνδεσμος λέει το όνομα της σελίδας, τίποτα παραπάνω. */}
           <span>
-            Βάση δεδομένων στην ΕΕ (Φρανκφούρτη) ·{' '}
-            <Link href="/privacy" className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2 }}>Απόρρητο κατά GDPR</Link>
+            <span style={{ whiteSpace: 'nowrap' }}>Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)</span> ·{' '}
+            <Link href="/privacy" className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>
           </span>
         </div>
       </div>
@@ -215,7 +237,8 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Η φράση της δοκιμής, μία φορά για όλα τα εργαλεία. */
-export const TRIAL_LINE = `${TRIAL_DAYS} ημέρες δωρεάν δοκιμή.`;
+// Χωρίς γυμνό «δωρεάν»: η λέξη ανήκει μόνο στη σταθερή φράση των υπολογιστών.
+export const TRIAL_LINE = `Δοκιμή ${TRIAL_DAYS} ημερών, χωρίς χρέωση.`;
 
 /**
  * Η ΕΠΙΦΥΛΑΞΗ ΠΟΥ ΚΛΕΙΝΕΙ ΚΑΘΕ ΥΠΟΛΟΓΙΣΜΟ.
@@ -320,8 +343,11 @@ export function ToolLede({ children }: { children: ReactNode }) {
           αφού τα ποσά γράφονται στη διεύθυνση για να κοινοποιούνται. */}
       <span style={{ display: 'block' }}>{hy(children)}</span>
       {hy('Ο υπολογισμός γίνεται στη συσκευή σου. Με τα δικά σου δεδομένα. Δωρεάν, χωρίς εγγραφή.')}
+      {/* ΧΩΡΙΣ ΑΣΤΕΡΙΣΚΟ ΚΑΙ ΧΩΡΙΣ ΣΥΛΛΑΒΙΣΜΟ. Ο αστερίσκος δεν παρέπεμπε σε
+          τίποτα από πάνω του και σε γραμμή 12 εικονοστοιχείων ο `hy` έκοβε
+          «Ενδεικτι-κός» στα 390. Δύο κοντές προτάσεις σπάνε στα κενά τους. */}
       <span style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
-        {hy('*Οι ίδιοι υπολογισμοί που τρέχει το ')}{PRODUCT_NAME}{hy('. Ενδεικτικός υπολογισμός, όχι επίσημο έγγραφο.')}
+        Οι ίδιοι υπολογισμοί με την εφαρμογή {PRODUCT_NAME}. Ενδεικτικοί, όχι επίσημο έγγραφο.
       </span>
     </p>
   );
@@ -336,8 +362,12 @@ export function ToolLede({ children }: { children: ReactNode }) {
 // εφεύρεση: μόνο ό,τι ήδη ισχύει στη μία πηγή αλήθειας των `lib`.
 const TOOL_SOURCES = {
   enfia: 'ΕΝΦΙΑ: άρθρο 4 ν.4223/2013 όπως ισχύει (ν.4916/2022) · αντικειμενικές αξίες ΑΑΔΕ',
-  rent: 'Κλίμακα ενοικίων 2026: ν.5246/2025 (ισχύς για εισοδήματα από 1/1/2026)',
-  short: 'Βραχυχρόνια μίσθωση: μητρώο ΑΑΔΕ · Τέλος Ανθεκτικότητας στην Κλιματική Κρίση · τέλος παρεπιδημούντων',
+  // Κάθε κανόνας που εφαρμόζει η σελίδα για τις δύο χρονιές του επιλογέα:
+  // η κλίμακα (άρθρο 40, με τα νέα κλιμάκια από 2026), το 5% και η τράπεζα.
+  rent: 'Κλίμακα ενοικίων: άρθρο 40 ΚΦΕ (ν.4172/2013), νέα κλιμάκια από 1/1/2026 με ν.5246/2025 · '
+    + 'τεκμαρτή έκπτωση 5%: άρθρο 39 §3 ΚΦΕ · είσπραξη μέσω τραπέζης: ν.5222/2025 άρθρο 210 (κύρωση από 1.7.2027)',
+  short: 'Τέλος ανθεκτικότητας στην κλιματική κρίση: ν.5162/2024 · φορολογία ενοικίων: άρθρα 39-40 ΚΦΕ, '
+    + 'κλίμακα ν.5246/2025 · μητρώο βραχυχρόνιας διαμονής (ΑΜΑ): ΑΑΔΕ',
   yield: 'Κλίμακα ενοικίων 2026: ν.5246/2025 · τεκμαρτή έκπτωση 5%: άρθρο 39 ΚΦΕ · ΕΝΦΙΑ: ν.4223/2013 όπως ισχύει',
 } as const;
 export function ToolSources({ kind }: { kind: keyof typeof TOOL_SOURCES }) {

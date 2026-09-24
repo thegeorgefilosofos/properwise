@@ -32,8 +32,16 @@ export interface StrWaterfallInput {
   incomeTaxPct: number         // οριακός συντελεστής για κράτηση φόρου
 }
 export interface StrWaterfall {
-  gross: number; platformFee: number; climateFee: number; cleaning: number
-  management: number; taxReserve: number; net: number; netPerNight: number; marginPct: number
+  gross: number; platformFee: number
+  /** `null` = υπάρχουν εισπράξεις χωρίς διανυκτερεύσεις: το τέλος οφείλεται αλλά δεν μετριέται. */
+  climateFee: number | null
+  cleaning: number
+  management: number; taxReserve: number
+  /** Χωρίς το τέλος ανθεκτικότητας όταν `climateFee === null`. */
+  net: number
+  /** `null` χωρίς διανυκτερεύσεις: δεν υπάρχει παρονομαστής. */
+  netPerNight: number | null
+  marginPct: number
 }
 /**
  * Το μέρος του ακαθάριστου που φορολογείται: τεκμαρτή έκπτωση 5% (άρθρο 39 §3).
@@ -48,12 +56,23 @@ export interface StrWaterfall {
  */
 const TAXABLE_SHARE_OF_GROSS = 1 - presumptiveDeductionRate()
 
+// ── ΣΤΟ ΛΕΠΤΟ, ΟΧΙ ΣΤΟ ΕΥΡΩ ────────────────────────────────────────────────
+// Το waterfall στρογγύλευε κάθε σκέλος στο ευρώ και η οθόνη το τύπωνε με δύο
+// δεκαδικά: 189,75€ προμήθεια γραφόταν «−190,00€», δηλαδή λεπτά που δεν
+// υπάρχουν. Η στρογγυλοποίηση ανήκει στην εμφάνιση· εδώ κρατιέται το λεπτό.
+//
+// ── ΧΩΡΙΣ ΔΙΑΝΥΚΤΕΡΕΥΣΕΙΣ, ΤΟ ΤΕΛΟΣ ΚΑΙ ΤΟ «ΑΝΑ ΒΡΑΔΙΑ» ΕΙΝΑΙ ΑΓΝΩΣΤΑ ──────────
+// Κρατήσεις με ποσό και χωρίς νύχτες έδιναν «Τέλος ανθεκτικότητας 0,00€» σαν
+// να μην οφείλεται τίποτα, ακόμη και «Καθαρό / διανυκτέρευση» ίσο με όλο το καθαρό.
+// Το τέλος οφείλεται ανά διανυκτέρευση· όταν αυτές λείπουν, η τιμή είναι
+// `null` και ο καλών το λέει, αντί να τυπώσει μηδέν.
 export function strWaterfall(i: StrWaterfallInput): StrWaterfall {
-  const gross = Math.max(0, i.gross || 0)
-  const platformFee = r0(gross * (i.platformFeePct || 0) / 100)
-  const climateFee = r0((i.climateFeePerNight || 0) * (i.nights || 0))
-  const management = r0(gross * (i.managementPct || 0) / 100)
-  const cleaning = r0(Math.max(0, i.cleaningFee || 0))
+  const gross = cents(Math.max(0, i.gross || 0))
+  const nights = Math.max(0, i.nights || 0)
+  const platformFee = cents(gross * (i.platformFeePct || 0) / 100)
+  const climateFee = nights === 0 && gross > 0 ? null : cents((i.climateFeePerNight || 0) * nights)
+  const management = cents(gross * (i.managementPct || 0) / 100)
+  const cleaning = cents(Math.max(0, i.cleaningFee || 0))
   // ── Η ΠΡΟΜΗΘΕΙΑ ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ ΔΕΝ ΜΕΙΩΝΕΙ ΤΟ ΔΗΛΩΤΕΟ ΕΙΣΟΔΗΜΑ ───────────
   // Εδώ γραφόταν `gross − platformFee − management` και μετά επίπεδος
   // συντελεστής. Η μηχανή της βραχυχρόνιας (lib/tax/shortTermTax.ts) φορολογεί
@@ -67,10 +86,10 @@ export function strWaterfall(i: StrWaterfallInput): StrWaterfall {
   //
   // Το τεστ κατοχύρωνε τον λάθος τύπο· άλλαξε μαζί του.
   const taxableBase = Math.max(0, gross * TAXABLE_SHARE_OF_GROSS)
-  const taxReserve = r0(taxableBase * (i.incomeTaxPct || 0) / 100)
-  const net = r0(gross - platformFee - climateFee - cleaning - management - taxReserve)
-  const netPerNight = (i.nights || 0) > 0 ? r0(net / i.nights) : net
-  const marginPct = gross > 0 ? Math.round((net / gross) * 100) : 0
+  const taxReserve = cents(taxableBase * (i.incomeTaxPct || 0) / 100)
+  const net = cents(gross - platformFee - (climateFee ?? 0) - cleaning - management - taxReserve)
+  const netPerNight = nights > 0 ? cents(net / nights) : null
+  const marginPct = gross > 0 ? cents((net / gross) * 100) : 0
   return { gross, platformFee, climateFee, cleaning, management, taxReserve, net, netPerNight, marginPct }
 }
 
@@ -83,12 +102,16 @@ export interface InvestmentInput {
   purchasePrice: number
   equityInvested: number        // ίδια κεφάλαια (προκαταβολή + έξοδα)
 }
-export interface InvestmentReturns { noi: number; preTaxCashFlow: number; capRatePct: number; cashOnCashPct: number }
+// ── ΑΓΝΩΣΤΟ ΔΕΝ ΣΗΜΑΙΝΕΙ ΜΗΔΕΝ ────────────────────────────────────────────
+// Χωρίς ίδια κεφάλαια η απόδοσή τους δεν ορίζεται. Επέστρεφε 0 και η οθόνη
+// τύπωνε «0,00%», δηλαδή την απουσία στοιχείου ντυμένη ως μέτρηση. Τώρα
+// επιστρέφεται `null` και το πλακίδιο λέει τι λείπει.
+export interface InvestmentReturns { noi: number; preTaxCashFlow: number; capRatePct: number; cashOnCashPct: number | null }
 export function investmentReturns(i: InvestmentInput): InvestmentReturns {
-  const noi = r0((i.annualIncome || 0) - (i.annualOpEx || 0))
-  const preTaxCashFlow = r0(noi - (i.annualLoanPayment || 0))
+  const noi = cents((i.annualIncome || 0) - (i.annualOpEx || 0))
+  const preTaxCashFlow = cents(noi - (i.annualLoanPayment || 0))
   const capRatePct = (i.purchasePrice || 0) > 0 ? cents((noi / i.purchasePrice) * 100) : 0
-  const cashOnCashPct = (i.equityInvested || 0) > 0 ? cents((preTaxCashFlow / i.equityInvested) * 100) : 0
+  const cashOnCashPct = (i.equityInvested || 0) > 0 ? cents((preTaxCashFlow / i.equityInvested) * 100) : null
   return { noi, preTaxCashFlow, capRatePct, cashOnCashPct }
 }
 

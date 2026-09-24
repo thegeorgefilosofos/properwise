@@ -67,7 +67,7 @@ import { ChevronRight } from 'lucide-react';
 import { T, TT, Btn, ChipToggle, Card, SecHdr, PageTitle, fixedCols, settingsField, feAuto, pageShell, Bar } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
 import { InfoHint, HintedText } from './InfoHint';
-import { SegmentControl } from './UIComponents';
+import { SegmentControl, fieldLabelStyle } from './UIComponents';
 import { createClient } from '@/lib/supabase/client';
 import * as checklist from '@/lib/data/checklist';
 import * as planData from '@/lib/data/plan';
@@ -321,8 +321,13 @@ function MoneyField({ label, hint, value, onChange }: {
 }) {
   return (
     <label style={{ display: 'block' }}>
-      <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', display: 'block', minHeight: 33 }}>{label}</span>
-      <span style={{ position: 'relative', display: 'block', marginTop: 6 }}>
+      {/* Η ΕΤΙΚΕΤΑ ΤΩΝ ΠΕΔΙΩΝ ΤΗΣ ΕΦΑΡΜΟΓΗΣ, ΟΧΙ ΚΕΦΑΛΑΙΑ ΕΝΟΤΗΤΑΣ. Ηταν
+          `TT.label` (κεφαλαία, αραιά γράμματα) και το κενό ετικέτας-πεδίου ίσο
+          με το κενό υπόδειξης-επόμενης ετικέτας, οπότε στο κινητό τα τέσσερα
+          πεδία δεν χωρίζονταν σε ομάδες. Η ετικέτα κάθεται στο κάτω άκρο του
+          ύψους των δύο σειρών, 6 πάνω από το κουτί της. */}
+      <span style={{ ...fieldLabelStyle, minHeight: 33 }}>{label}</span>
+      <span style={{ position: 'relative', display: 'block' }}>
         {/* ΤΟ placeholder ΗΤΑΝ «0» ΚΑΙ ΤΑ ΠΕΔΙΑ ΔΙΑΒΑΖΟΝΤΑΝ ΩΣ ΜΗΔΕΝΙΚΑ. Το ίδιο
             σφάλμα είχε ήδη βρεθεί στο ιστορικό κατανάλωσης του ρεύματος: κενή
             φόρμα που δηλώνει «ΕΝΦΙΑ μηδέν» δεν είναι κενή, είναι λάθος απάντηση.
@@ -675,6 +680,9 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
                 τυπογραφικό βάρος ξαναγίνεται το μόνο σήμα του επόμενου. */}
             <RowTitle state={on ? 'done' : isNext ? 'next' : 'plain'} text={s.title}
               hint={{ label: `Τι σημαίνει: ${s.title}`, body: <Tip lead={s.detail} rows={[['Πότε', s.when], ['Αν παραλειφθεί', s.cost]]} /> }} />
+            {/* Στο τηλέφωνο ο ρόλος γίνεται υπότιτλος του βήματος (globals.css,
+                `.plan-tag-sub`), σε πεζά, ώστε να μη διαβάζεται ως επικεφαλίδα. */}
+            <span className="plan-tag-sub" style={{ ...TT.caption, color: 'var(--text-tertiary)' }}>{ACTOR_LABEL[s.who]}</span>
           </span>
           <Tag>{ACTOR_LABEL[s.who]}</Tag>
         </div>
@@ -764,7 +772,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
                `fixedCols` είναι η μία απάντηση της εφαρμογής σε αυτό. Στοίχιση
                στην κορυφή: κάθε πεδίο κουβαλά υπόδειξη ΑΠΟ ΚΑΤΩ, οπότε το κάτω
                άκρο δεν είναι το κουτί. */
-            <div {...fixedCols(4, 14, 'start')}>
+            <div {...fixedCols(4, 20, 'start')}>
               <MoneyField label="ΕΝΦΙΑ (έτος)" hint="Από το εκκαθαριστικό" value={costs.enfiaYear} onChange={v => setCost('enfiaYear', v)} />
               <MoneyField label="Κοινόχρηστα (μήνας)" hint="Ό,τι πληρώνεις κλειστό" value={costs.commonMonthly} onChange={v => setCost('commonMonthly', v)} />
               <MoneyField label="Πάγια ρεύμα/νερό (μήνας)" hint="Χωρίς κατανάλωση" value={costs.utilitiesMonthly} onChange={v => setCost('utilitiesMonthly', v)} />
@@ -938,13 +946,25 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
                σε δεκατέσσερις οθόνες: μία ράγα, το επιλεγμένο ανασηκωμένο μέσα
                της. Εδώ ήταν δύο ξεχωριστά κουμπιά με δικό τους περίγραμμα, που
                διαβάζονται ως δύο ενέργειες αντί για μία επιλογή. */
-            <SegmentControl ariaLabel="Πώς πουλάς" value={useAgent ? 'agent' : 'owner'}
-              onChange={v => setUseAgent(v === 'agent')}
-              options={[{ value: 'agent', label: 'Με μεσίτη' }, { value: 'owner', label: 'Μόνος σου' }]} />
+            /* ΚΑΙ ΔΕΝ ΣΥΡΡΙΚΝΩΝΕΤΑΙ. Μέσα στο δεξί κελί της κεφαλίδας το
+               «Με μεσίτη» έσπαγε σε δύο σειρές ακόμη και στα 1.440, δίπλα σε
+               «Μόνος σου» μίας: δύο επιλογές σε δύο ύψη. */
+            <div style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
+              <SegmentControl ariaLabel="Πώς πουλάς" value={useAgent ? 'agent' : 'owner'}
+                onChange={v => setUseAgent(v === 'agent')}
+                options={[{ value: 'agent', label: 'Με μεσίτη' }, { value: 'owner', label: 'Μόνος σου' }]} />
+            </div>
           }>
           {sale.lines.map((l, i) => (
             <div key={l.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
-              <span style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>{l.label}</span>
+              {/* Η ΒΑΣΗ ΤΟΥ ΠΟΣΟΥ ΚΑΤΩ ΑΠΟ ΤΟ ΟΝΟΜΑ. Η σημείωση κάθε γραμμής
+                  («Ενδεικτικά 2% + ΦΠΑ.», «Υποχρεωτικό στην πώληση.») υπήρχε στο
+                  lib/accounting/transfer και πετιόταν στον δρόμο: «ΠΕΑ −150,00€»
+                  χωρίς να λέει από πού βγαίνει. */}
+              <span style={{ minWidth: 0 }}>
+                <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', display: 'block' }}>{l.label}</span>
+                {l.note && <span style={{ ...TT.caption, color: 'var(--text-tertiary)', display: 'block', marginTop: 2 }}>{l.note}</span>}
+              </span>
               {/* Το λογιστικό μείον γραφόταν με το χέρι, δίπλα σε `feAuto`, ενώ το
                   `feSigned` υπάρχει στο `lib/core/format` ακριβώς γι’ αυτό, με δικό
                   του test — και δεν το καλούσε ΚΑΝΕΝΑ σημείο της εφαρμογής. Μια

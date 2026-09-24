@@ -15,7 +15,8 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { publicMetadata } from './publicMetadata';
 import { SHARE_IMAGE } from '@/lib/core/site';
-import { GUIDES } from './odigos/guides';
+import { GUIDES, guideSlug } from './odigos/guides';
+import { SHARE_CARDS, shareImage } from './og/share';
 import sitemap from './sitemap';
 import { SITE } from '@/lib/core/site';
 
@@ -59,7 +60,30 @@ for (const g of GUIDES) {
   ok(`${g.href}: η ενημέρωση δεν προηγείται της δημοσίευσης`, g.updated >= g.published);
   const row = map.find(r => r.url === SITE + g.href);
   ok(`${g.href}: ο χάρτης δίνει την ημερομηνία του οδηγού`, row?.lastModified === g.updated);
+  // Η δική του κάρτα κοινοποίησης: αλλιώς ο σύνδεσμος φτάνει με τη γενική εικόνα.
+  ok(`${g.href}: έχει δική του εικόνα κοινοποίησης`, !!SHARE_CARDS[guideSlug(g)]);
 }
+const hub = map.find(r => r.url === `${SITE}/odigos`);
+ok('ο κόμβος των οδηγών έχει ημερομηνία στον χάρτη, την πιο πρόσφατη των οδηγών',
+  hub?.lastModified === GUIDES.map(g => g.updated).sort().at(-1));
+
+// Με δική της εικόνα η σελίδα δεν γράφει τη γενική, ούτε στην κάρτα X.
+const own = publicMetadata({ title: 'Τ', description: 'Π', url: `${SITE}/dokimi`, image: shareImage('odigos') });
+ok('με δική της εικόνα δεν μπαίνει η γενική στο openGraph',
+  JSON.stringify((own.openGraph as { images?: unknown }).images) === JSON.stringify([shareImage('odigos')]));
+ok('με δική της εικόνα η κάρτα X έχει την ίδια',
+  JSON.stringify((own.twitter as { images?: unknown }).images) === JSON.stringify([shareImage('odigos')]));
+// ΜΙΑ ΔΙΑΔΡΟΜΗ ΓΙΑ ΟΛΕΣ ΤΙΣ ΚΑΡΤΕΣ: κάθε opengraph-image.tsx εκτός ρίζας είναι
+// μια ακόμη συνάρτηση διακομιστή σε κάθε ανάπτυξη (app/og/share.ts).
+function ogFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) return ogFiles(p);
+    return /^(opengraph|twitter)-image\.tsx$/.test(e.name) ? [p] : [];
+  });
+}
+const extraOg = ogFiles('app').filter(p => p !== join('app', 'opengraph-image.tsx'));
+ok(`καμία κάρτα κοινοποίησης ως δικό της opengraph-image.tsx (βρέθηκαν: ${extraOg.join(', ') || 'καμία'})`, extraOg.length === 0);
 
 console.log(`publicMetadata: ✓ ${passed} · ✗ ${failed}`);
 if (failed) { for (const f of fails) console.log('  ✗ ' + f); process.exit(1); }

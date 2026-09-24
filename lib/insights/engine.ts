@@ -99,9 +99,6 @@ const eur = fe;
 const daysUntil = (d: string | null | undefined, now: number): number | null =>
   d ? athensDaysUntil(d, new Date(now)) : null;
 
-// Μετρητά (δεν μετρούν για την έκπτωση φόρου / «χτίσιμο» αποδείξεων).
-const CASH = new Set(['cash', 'cash_black']);
-
 const KIND_ORDER: Record<InsightKind, number> = { urgent: 0, attention: 1, opportunity: 2, positive: 3 };
 
 export function computeInsights(input: InsightInput): Insight[] {
@@ -138,14 +135,16 @@ export function computeInsights(input: InsightInput): Insight[] {
   const tasksOverdue = tasks.filter(t => { const x = daysUntil(t.due_date, now); return x !== null && x < 0; });
   const chkOverdue = checklist.filter(c => { const x = daysUntil(c.due_date, now); return x !== null && x < 0; });
   if (tasksOverdue.length) out.push({ id: 'tasks-overdue', kind: 'attention', title: `${tasksOverdue.length} ${tasksOverdue.length === 1 ? 'εργασία συντήρησης' : 'εργασίες συντήρησης'} σε καθυστέρηση`, detail: 'Η έγκαιρη συντήρηση κοστίζει πολύ λιγότερο από μια βλάβη. Δες τι εκκρεμεί.', action: { label: navLabel('calendar'), tab: 'calendar' } });
-  if (chkOverdue.length) out.push({ id: 'chk-overdue', kind: 'attention', title: `${chkOverdue.length} εκπρόθεσμα στη λίστα υποχρεώσεων`, detail: 'Υπάρχουν στοιχεία που πέρασε η προθεσμία τους.', action: { label: navLabel('checklist'), tab: 'checklist' } });
+  // Ίδια λέξη με την καρτέλα που ανοίγει το κουμπί («Εκκρεμότητες»). Η «λίστα
+  // υποχρεώσεων» δεν υπάρχει πουθενά στην εφαρμογή.
+  if (chkOverdue.length) out.push({ id: 'chk-overdue', kind: 'attention', title: `${chkOverdue.length} ${chkOverdue.length === 1 ? 'εκπρόθεσμη εκκρεμότητα' : 'εκπρόθεσμες εκκρεμότητες'}`, detail: chkOverdue.length === 1 ? 'Η προθεσμία της έχει περάσει.' : 'Η προθεσμία τους έχει περάσει.', action: { label: navLabel('checklist'), tab: 'checklist' } });
 
-  // ── 5. Εγγυήσεις που λήγουν (ευκαιρία να προλάβεις δωρεάν επισκευή) ───────
+  // ── 5. Εγγυήσεις που λήγουν (ευκαιρία να καλυφθεί η επισκευή) ────────────
   const warrantySoon = inventory.filter(i => { const x = daysUntil(i.warranty_expiry, now); return x !== null && x >= 0 && x <= 60; });
   if (warrantySoon.length) {
     const first = warrantySoon[0];
     const d = daysUntil(first.warranty_expiry, now);
-    out.push({ id: 'warranty-soon', kind: 'opportunity', title: warrantySoon.length === 1 ? 'Λήγει η εγγύηση μιας συσκευής' : `Λήγουν ${warrantySoon.length} εγγυήσεις`, detail: `${first.name ? `«${first.name}»: ` : ''}μένουν ${d} ${d === 1 ? 'ημέρα' : 'ημέρες'} εγγύηση. Αν κάτι δεν πάει καλά, τώρα η επισκευή είναι δωρεάν.`, action: { label: navLabel('inventory'), tab: 'inventory' } });
+    out.push({ id: 'warranty-soon', kind: 'opportunity', title: warrantySoon.length === 1 ? 'Λήγει η εγγύηση μιας συσκευής' : `Λήγουν ${warrantySoon.length} εγγυήσεις`, detail: `${first.name ? `«${first.name}»: ` : ''}μένουν ${d} ${d === 1 ? 'ημέρα' : 'ημέρες'} εγγύηση. Αν κάτι δεν πάει καλά, τώρα η επισκευή καλύπτεται από την εγγύηση.`, action: { label: navLabel('inventory'), tab: 'inventory' } });
   }
 
   // ── 6. Κενό ακίνητο = χαμένο εισόδημα ─────────────────────────────────────
@@ -162,15 +161,12 @@ export function computeInsights(input: InsightInput): Insight[] {
     out.push({ id: 'vacant-st', kind: 'opportunity', title: 'Ελεύθερες ημερομηνίες', detail: 'Το κενό ανάμεσα σε κρατήσεις είναι φυσιολογικό. Πριν από την υψηλή σεζόν δες τιμή, φωτογραφίες και αξιολογήσεις.', action: { label: navLabel('roi'), tab: 'roi' } });
   }
 
-  // ── 7. Έκπτωση φόρου: πλήρωνε ηλεκτρονικά ─────────────────────────────────
-  if (expensesYTD > 0 && expenses.length >= 3) {
-    const withMethod = expenses.filter(e => e.payment_method);
-    const cashTotal = withMethod.filter(e => e.payment_method && CASH.has(e.payment_method)).reduce((s, e) => s + e.amount, 0);
-    const cashShare = expensesYTD > 0 ? cashTotal / expensesYTD : 0;
-    if (withMethod.length >= 3 && cashShare > 0.35) {
-      out.push({ id: 'tax-electronic', kind: 'opportunity', title: 'Πλήρωνε ηλεκτρονικά και γλίτωσε φόρο', detail: `Το ${Math.round(cashShare * 100)}% των δαπανών σου είναι με μετρητά. Μόνο οι ηλεκτρονικές μετρούν για την έκπτωση φόρου.`, action: { label: navLabel('finances'), tab: 'finances' } });
-    }
-  }
+  // ── 7. ΑΦΑΙΡΕΘΗΚΕ: «Πλήρωνε ηλεκτρονικά και γλίτωσε φόρο» ───────────────
+  // Έλεγε «Μόνο οι ηλεκτρονικές μετρούν για την έκπτωση φόρου», χωρίς πηγή, για
+  // τις δαπάνες του ακινήτου. Στο εισόδημα από ενοίκια όμως ο ιδιώτης παίρνει
+  // την τεκμαρτή έκπτωση 5% και όχι τις πραγματικές δαπάνες: ο τρόπος πληρωμής
+  // τους δεν αλλάζει τον φόρο του ενοικίου. Ένα εύρημα που υπόσχεται
+  // φορολογικό όφελος που δεν υπάρχει είναι χειρότερο από κανένα.
 
   // ── 8. Ρεύμα: μεγάλο κόστος → σκέψου αλλαγή παρόχου ───────────────────────
   // ΑΠΟ ΤΗΝ ΚΑΤΗΓΟΡΙΑ, ΟΧΙ ΑΠΟ ΤΟ `type`. Η φόρμα γράφει `category` και το
@@ -178,7 +174,7 @@ export function computeInsights(input: InsightInput): Insight[] {
   const energyBills = bills.filter(b => (resolveCategory(b.category) ?? resolveCategory(b.type)) === 'electricity');
   const energyTotal = energyBills.reduce((s, b) => s + (b.amount || 0), 0);
   if (energyTotal > 0 && expensesYTD > 0 && energyTotal / Math.max(expensesYTD, energyTotal) > 0.25) {
-    out.push({ id: 'energy-review', kind: 'opportunity', title: 'Το ρεύμα «τρώει» μεγάλο μέρος των εξόδων', detail: 'Οι τιμές ρεύματος αλλάζουν συχνά. Μια σύγκριση παρόχων γλιτώνει αρκετά, ειδικά στους άδειους μήνες.', metric: eur(energyTotal), stake: energyTotal, action: { label: navLabel('finances'), tab: 'finances' } });
+    out.push({ id: 'energy-review', kind: 'opportunity', title: 'Το ρεύμα «τρώει» μεγάλο μέρος των εξόδων', detail: 'Οι τιμές ρεύματος αλλάζουν συχνά. Η σύγκριση παρόχων στα Συμβόλαια δείχνει αν υπάρχει φθηνότερο τιμολόγιο για την κατανάλωσή σου.', metric: eur(energyTotal), stake: energyTotal, action: { label: navLabel('finances'), tab: 'finances' } });
   }
 
   // ── 8β. Η κατηγορία που ξέφυγε τον περασμένο μήνα ──────────────────────
@@ -200,7 +196,10 @@ export function computeInsights(input: InsightInput): Insight[] {
       id: 'spend-spike',
       kind: 'attention',
       title: `${categoryLabel(top.category)}: ${top.overPct}% πάνω από το συνηθισμένο σου`,
-      detail: `Τον περασμένο μήνα ${eur(top.amount)} έναντι ${eur(top.usual)} που είναι ο διάμεσος των τελευταίων ${top.basedOn} μηνών.`
+      // ΛΕΕΙ ΑΥΤΟ ΠΟΥ ΚΑΝΕΙ Ο ΚΩΔΙΚΑΣ. Έγραφε «των τελευταίων 4 μηνών», ενώ ο
+      // ανιχνευτής παίρνει τους προηγούμενους μήνες ΜΕ δαπάνη στην κατηγορία,
+      // χωρίς παράθυρο και χωρίς τους μηδενικούς.
+      detail: `Τον περασμένο μήνα ${eur(top.amount)} έναντι ${eur(top.usual)}, τον διάμεσο των ${top.basedOn} προηγούμενων μηνών με δαπάνη σε αυτή την κατηγορία.`
         + (more > 0 ? ` Ακόμη ${more === 1 ? 'μία κατηγορία ξέφυγε' : `${more} κατηγορίες ξέφυγαν`}.` : '')
         + ' Αν είναι λάθος χρέωση, τώρα προλαβαίνεις να το πεις.',
       metric: `+${eur(top.excess)}`,
@@ -289,7 +288,7 @@ export function computeInsights(input: InsightInput): Insight[] {
   if (expenses.length === 0) {
     out.push({ id: 'no-expenses', kind: 'opportunity', title: 'Ξεκίνα με μία φωτογραφία', detail: 'Βγάλε φωτογραφία έναν λογαριασμό ή μια απόδειξη και μπαίνει μόνη της στη σωστή κατηγορία.', action: { label: 'Σάρωση', tab: 'scan' } });
   } else if (lastExpenseDays !== null && lastExpenseDays > 45) {
-    out.push({ id: 'stale', kind: 'attention', title: 'Έχεις καιρό να καταχωρήσεις κάτι', detail: `Πάνω από ${lastExpenseDays} ημέρες χωρίς νέα καταχώρηση. Μια γρήγορη φωτογραφία κρατά την εικόνα ενημερωμένη.`, action: { label: 'Σάρωση', tab: 'scan' } });
+    out.push({ id: 'stale', kind: 'attention', title: 'Έχεις καιρό να καταχωρήσεις κάτι', detail: `${lastExpenseDays} ημέρες χωρίς νέα καταχώρηση. Μια φωτογραφία του επόμενου λογαριασμού κρατά την εικόνα ενημερωμένη.`, action: { label: 'Σάρωση', tab: 'scan' } });
   }
 
   // Ταξινόμηση κατά προτεραιότητα, σταθερή για ίδιο input.

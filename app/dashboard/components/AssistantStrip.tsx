@@ -22,7 +22,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useSyncExternalStore } from 'react';
 import { T } from '@/components/Theme';
-import { ASSISTANT_NAME, ASSISTANT_INITIAL } from '@/lib/assistant/identity';
+import { ASSISTANT_NAME } from '@/lib/assistant/identity';
+import { AssistantMark } from './AssistantMark';
 import { greeting, suggestedOpeners, type OpenerContext } from '@/lib/assistant/openers';
 import { loadPrefs, PREFS_EVENT } from './assistantPersona';
 
@@ -61,16 +62,17 @@ export default function AssistantStrip({ ctx }: { ctx: OpenerContext | null }) {
       marginBottom: T.sp.lg, paddingBottom: 16, borderBottom: '1px solid var(--border-subtle)',
     }}>
       <div className="po-lead-ico" style={{
-        width: 30, height: 30, borderRadius: '50%',
+        // ΤΟ ΙΔΙΟ ΣΗΜΑ ΜΕ ΤΟ ΠΛΩΤΟ ΚΟΥΜΠΙ ΚΑΙ ΤΟ ΠΑΝΕΛ. Ηταν το «Ν» της Inter σε
+        // κύκλο, δηλαδή τρίτη μορφή για την ίδια Νόα (βλ. AssistantMark.tsx).
+        width: 30, height: 30, borderRadius: T.radius.inner, flexShrink: 0,
         background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
         color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 700,
-      }} aria-hidden>{ASSISTANT_INITIAL}</div>
+      }} aria-hidden><AssistantMark size={15} /></div>
 
       <div style={{ flex: 1, minWidth: 220 }}>
         <p style={{
           fontFamily: T.font.sans, fontSize: 14, lineHeight: 1.55,
-          color: 'var(--text-secondary)', margin: 0,
+          color: 'var(--text-secondary)', margin: 0, maxWidth: '68ch',
         }}>{greeting(ASSISTANT_NAME, ctx, formal)}</p>
 
         {asks.length > 0 && (

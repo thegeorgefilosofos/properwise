@@ -842,7 +842,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                           ΤΗΛΕΦΩΝΟ. Οποιος ιδιοκτήτης είχε μόνο το email του μισθωτή
                           του δεν είχε ΚΑΝΕΝΑΝ τρόπο να στείλει υπενθύμιση από εδώ. */}
                       {tenant.email&&(p.paid||canCollect)&&<a href={`mailto:${tenant.email}?subject=${encodeURIComponent(rentSubject(periodGen(p)))}&body=${encodeURIComponent(p.paid?receiptText(p):reminderText(p))}`} style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>Ηλεκτρονικό ταχυδρομείο</a>}
-                      <button style={s.btnDng} onClick={async()=>{if(!(await confirmDialog('Διαγραφή πληρωμής;',{tone:'negative'})))return;if(await saved('Η πληρωμή δεν διαγράφηκε',rentStore.remove(supabase,p.id)))onRefresh();}}>Διαγραφή</button>
+                      <button style={s.btnDng} onClick={async()=>{if(!(await confirmDialog('Διαγραφή πληρωμής;',{tone:'negative',confirmLabel:'Διαγραφή'})))return;if(await saved('Η πληρωμή δεν διαγράφηκε',rentStore.remove(supabase,p.id)))onRefresh();}}>Διαγραφή</button>
                     </div>
                   </td>
                 </tr>

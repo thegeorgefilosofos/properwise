@@ -20,6 +20,7 @@ import { T, TT, Modal, SecHdr, Btn, pressable, fn, Bar, RuntimeImg } from '@/com
 export { SelectBox } from '@/components/Theme'
 import { CustomSelect } from '../UIComponents'
 import { replacementSuggestion } from '@/lib/inventory/depreciation'
+import { plural } from '@/lib/core/greek'
 import { openReport, rEsc } from '../reportPdf'
 import { INK, RULE } from '@/lib/print/ink'
 import type { FieldDecision } from '@/lib/property/fields'
@@ -167,7 +168,7 @@ export const DepBar = ({pct,left,hasData=true,hasValue=true,compact}:{pct:number
       <div style={{display:'flex',justifyContent:'space-between',marginTop: 4}}>
         <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums'}}>{compact?'μένει ':'Εκτιμώμενη υπολειπόμενη αξία '}{fn(Math.round(remaining))}%</span>
         {left>0
-          ?<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums'}}>περίπου {left} χρόνια</span>
+          ?<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums'}}>περίπου {left} {plural(left,'χρόνος','χρόνια')} ακόμη</span>
           :<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>Τέλος ωφέλιμης ζωής</span>
         }
       </div>

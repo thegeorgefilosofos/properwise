@@ -222,9 +222,9 @@ export interface ShortTermStat {
   grossYield: number; longTermYield: number; redZone?: boolean; note: string
 }
 export const SHORT_TERM: ShortTermStat[] = [
-  { key: 'ath_center', label: 'Κέντρο Αθήνας', occupancy: 58, adr: 76, annualRevenue: 16000, grossYield: 8, longTermYield: 5.0, redZone: true, note: 'Κόκκινη ζώνη μητρώου ακινήτων, από το 1ο ως το 3ο δημοτικό διαμέρισμα, ως 31/12/2026: κανένα νέο μητρώο· για νέους αγοραστές η βραχυχρόνια δεν είναι επιλογή.' },
+  { key: 'ath_center', label: 'Κέντρο Αθήνας', occupancy: 58, adr: 76, annualRevenue: 16000, grossYield: 8, longTermYield: 5.0, redZone: true, note: 'Στο 1ο, 2ο και 3ο δημοτικό διαμέρισμα της Αθήνας δεν δίνεται νέος ΑΜΑ ως 31/12/2026. Έλεγξε σε ποιο ανήκει το ακίνητό σου.' },
   { key: 'ath_riviera', label: 'Αθηναϊκή Ριβιέρα', occupancy: 55, adr: 70, annualRevenue: 14000, grossYield: 6, longTermYield: 3.8, note: 'Εκτός κόκκινης ζώνης· επιτρέπονται νέα μητρώα ακινήτων· βασικός διαφοροποιητής έναντι του κέντρου.' },
-  { key: 'thess', label: 'Θεσσαλονίκη', occupancy: 62, adr: 62, annualRevenue: 14000, grossYield: 7, longTermYield: 4.4, redZone: true, note: 'Πάγωμα μητρώου ακινήτων στο 1ο διαμέρισμα από 1/7/2026.' },
+  { key: 'thess', label: 'Θεσσαλονίκη', occupancy: 62, adr: 62, annualRevenue: 14000, grossYield: 7, longTermYield: 4.4, redZone: true, note: 'Στο 1ο δημοτικό διαμέρισμα της Θεσσαλονίκης δεν δίνεται νέος ΑΜΑ από 1/7/2026. Έλεγξε σε ποιο ανήκει το ακίνητό σου.' },
   { key: 'mykonos_santorini', label: 'Μύκονος / Σαντορίνη', occupancy: 62, adr: 221, annualRevenue: 50000, grossYield: 5, longTermYield: 3.5, note: 'Τεράστια έσοδα, με μέση τιμή Αυγούστου πάνω από 360,00€ τη νύχτα, αλλά πολύ υψηλή τιμή αγοράς, άρα η % απόδοση μέτρια. Ακραία εποχικότητα, πέντε με έξι μήνες.' },
   { key: 'paros_naxos', label: 'Πάρος / Νάξος', occupancy: 75, adr: 117, annualRevenue: 32000, grossYield: 7, longTermYield: 3.0, note: 'Υψηλή πληρότητα και ταχεία άνοδος ADR στη βραχυχρόνια· η μακροχρόνια απόδοση χαμηλή λόγω τιμών.' },
   { key: 'crete', label: 'Κρήτη (Χανιά/Ηράκλειο)', occupancy: 74, adr: 85, annualRevenue: 23000, grossYield: 6.5, longTermYield: 4.5, note: 'Μεγάλη σεζόν, υψηλότερο RevPAR πανελλαδικά· Ηράκλειο κορυφή μακροχρόνιας απόδοσης (περίπου 5,7%).' },

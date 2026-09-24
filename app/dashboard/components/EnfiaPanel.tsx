@@ -36,10 +36,10 @@
 //    εφάρμοζε καμία αύξηση 8%: οι πίνακες είναι του ν.4916/2022. Η οθόνη
 //    ανακοίνωνε αύξηση που τα ίδια της τα μαθηματικά δεν έκαναν.
 //
-// ΤΙ ΠΡΟΣΤΕΘΗΚΕ, ΚΑΙ ΕΙΝΑΙ ΤΟ ΚΥΡΙΟ. Ο ΕΝΦΙΑ ενός ακινήτου δεν αλλάζει από
-// χρονιά σε χρονιά παρά μόνο αν αλλάξει το ίδιο το ακίνητο ή ο νόμος. Άρα το
-// ΠΕΡΣΙΝΟ ποσό είναι ασύγκριτα ακριβέστερο από κάθε μοντελοποίηση ζώνης και
-// ορόφου — και το ξέρει ήδη ο ιδιοκτήτης, γιατί το πλήρωσε. Η οθόνη το ζητά
+// ΤΙ ΠΡΟΣΤΕΘΗΚΕ, ΚΑΙ ΕΙΝΑΙ ΤΟ ΚΥΡΙΟ. Ο ΕΝΦΙΑ ενός ακινήτου μένει συνήθως κοντά
+// στο περσινό· αλλάζει με τις αντικειμενικές αξίες, το ποσοστό, την ασφάλιση ή
+// τον νόμο. Άρα το ΠΕΡΣΙΝΟ ποσό είναι ακριβέστερο από κάθε μοντελοποίηση ζώνης
+// και ορόφου — και το ξέρει ήδη ο ιδιοκτήτης, γιατί το πλήρωσε. Η οθόνη το ζητά
 // πρώτο και δέχεται είτε το ετήσιο του εκκαθαριστικού είτε τη δόση επί το
 // πλήθος των δόσεων, γιατί το εκκαθαριστικό δεν το κρατούν όλοι ενώ τις δόσεις
 // τις βλέπει ο καθένας στην τράπεζα.
@@ -48,24 +48,18 @@
 // περσινό, μετά εκτίμηση. Η οθόνη λέει ΠΑΝΤΑ ποιο από τα τρία χρησιμοποιεί.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
 import { T, TT, fe, fp, SecHdr, Spinner, fixedCols, Btn, ABSENT } from '@/components/Theme';
 import { NumberInput, CustomSelect } from './UIComponents';
-import { useBillsSettings } from './BillsSettings';
 import { AadePill } from '@/components/AadeLink';
 import {
-  estimateENFIA, enfiaInUse, enfiaLastYearAnnual,
   ENFIA_REDUCTIONS, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF, enfiaReductionInForce,
 } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
-
-// Το «Δεν γνωρίζω» ΔΕΝ είναι απουσία επιλογής: είναι η ουδέτερη επιλογή, με
-// συντελεστή 1,00. Ο χρήστης πρέπει να μπορεί να τη διαλέξει ρητά και να
-// είναι αυτή που βρίσκει μπροστά του.
-const UNKNOWN = '';
+import { ENFIA_UNKNOWN as UNKNOWN, type EnfiaState } from './useEnfia';
 
 const ZONE_OPTIONS = [
   { value: UNKNOWN,      label: 'Δεν γνωρίζω ακόμη'                 },
@@ -108,24 +102,29 @@ const INSTALMENT_OPTIONS = [
   { value: '1',  label: 'Εφάπαξ'    },
 ];
 
-const DEFAULTS = {
-  // Φετινό, αν το έχει ήδη στα χέρια του.
-  enfiaAnnual: '', enfiaMonthly: '',
-  // Περσινό: το ένα από τα δύο αρκεί.
-  enfiaLastAnnual: '', enfiaLastInstalment: '', enfiaLastCount: UNKNOWN,
-  // Εκτίμηση, μόνο όταν δεν υπάρχει κανένα από τα δύο.
-  enfiaSqm: '', enfiaZone: UNKNOWN, enfiaFloor: UNKNOWN, enfiaAge: UNKNOWN,
-  enfiaOwnership: '100', enfiaTotalVal: '', enfiaPropVal: '',
-  enfiaReductions: [] as string[],
-};
+// ΟΙ ΠΡΟΕΠΙΛΟΓΕΣ ΚΑΙ Η ΑΠΑΝΤΗΣΗ ΖΟΥΝ ΣΤΟ useEnfia.ts. Ο πίνακας κρατούσε δικές
+// του ρυθμίσεις και δική του εκτίμηση, που δεν έφταναν ποτέ στην Κατάσταση
+// Αποτελεσμάτων: τρία ποσά ΕΝΦΙΑ στην ίδια οθόνη. Τώρα τα παίρνει από τον
+// γονέα, που τα δίνει και στην Κατάσταση.
 
-/** Τι λέει η οθόνη για κάθε πηγή. Μία πρόταση, χωρίς υπεκφυγή. */
+/**
+ * Τι λέει η οθόνη για κάθε πηγή. Μία πρόταση, χωρίς υπεκφυγή.
+ *
+ * ΤΟ ΠΕΡΣΙΝΟ ΔΕΝ ΕΙΝΑΙ ΤΟ ΦΕΤΙΝΟ. Έγραφε «ο ΕΝΦΙΑ δεν αλλάζει από χρονιά σε
+ * χρονιά», ενώ αλλάζει με τις αντικειμενικές αξίες, το ποσοστό ιδιοκτησίας και
+ * την ασφάλιση που αυτός ο ίδιος ο πίνακας ελέγχει πιο κάτω.
+ */
 const SOURCE_NOTE = {
-  declared: 'Από το φετινό εκκαθαριστικό της ΑΑΔΕ. Δεν είναι εκτίμηση, είναι το ποσό.',
-  lastYear: 'Ίδιο με πέρσι. Ο ΕΝΦΙΑ δεν αλλάζει από χρονιά σε χρονιά, εκτός αν αλλάξει το ακίνητο ή ο νόμος.',
+  declared: 'Το ποσό του φετινού εκκαθαριστικού της ΑΑΔΕ.',
+  lastYear: 'Συνήθως κοντά στο περσινό. Αλλάζει αν αλλάξουν οι αντικειμενικές αξίες, το ποσοστό σου, η ασφάλιση του ακινήτου ή ο νόμος. Ενδεικτικά, έλεγχος με το εκκαθαριστικό.',
   estimate: 'Εκτίμηση από τα στοιχεία που έδωσες. Το ακριβές ποσό το ορίζει μόνο η ΑΑΔΕ.',
   none:     '',
 } as const;
+
+/** Το δηλωμένο ποσό που ήρθε από την καρτέλα του ακινήτου, όχι από εδώ. */
+const PROPERTY_NOTE = 'Το ποσό που έγραψες στην καρτέλα του ακινήτου. Αν έχει βγει το φετινό εκκαθαριστικό, γράψε το εδώ.';
+/** Η εκτίμηση που βγήκε από την καρτέλα του ακινήτου, πριν συμπληρωθεί η φόρμα. */
+const FACTS_NOTE = 'Εκτίμηση από την αξία και τα τετραγωνικά του ακινήτου. Με ζώνη και εμβαδόν από το Ε9 βγαίνει ακριβέστερη.';
 
 const SOURCE_LABEL = {
   declared: 'Φετινό εκκαθαριστικό',
@@ -197,8 +196,13 @@ function RouteTile({ route, value, inUse, active, onSelect }: {
   );
 }
 
-export default function EnfiaPanel({ propertyId, userId }: { propertyId: string; userId: string }) {
-  const [s, upd, loading] = useBillsSettings(propertyId, userId, 'services', DEFAULTS);
+export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
+  propertyId: string; userId: string;
+  /** Το έτος της Λογιστικής: ο πίνακας δεν διαλέγει δικό του. */
+  year: number;
+  enfia: EnfiaState;
+}) {
+  const { settings: s, update: upd, loading, now } = enfia;
   // ΕΝΑ «ΔΕΝ ΤΟ ΕΧΕΙ ΑΠΟΦΑΣΙΣΕΙ ΑΚΟΜΗ Ο ΧΡΗΣΤΗΣ», ΟΧΙ ΤΡΙΑ.
   // Το `null` σημαίνει «κανείς δεν πάτησε ακόμη», οπότε ισχύει ο κανόνας. Μόλις
   // πατήσει, η επιλογή του υπερισχύει. Παράγεται στην απόδοση και όχι σε effect:
@@ -230,31 +234,12 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
     // απλώς μεγαλύτερος φόρος στην οθόνη, με τον χρήστη να έχει δηλώσει σωστά.
   }, [propertyId, supabase, userId]);
 
-  // ΤΟ ΕΤΟΣ ΤΗΣ ΕΚΤΙΜΗΣΗΣ, ΔΙΑΒΑΣΜΕΝΟ ΜΙΑ ΦΟΡΑ. Ο ΕΝΦΙΑ βεβαιώνεται ανά έτος
-  // και κάποια μέτρα ψηφίζονται για ΕΝΑ έτος: χωρίς αυτό, ένα μέτρο του 2026
-  // θα συνέχιζε να κόβει τον φόρο στη μισή τον Ιανουάριο του 2027. Η μηχανή
-  // είναι καθαρή και δεν διαβάζει ρολόι — το ρολόι είναι δουλειά της οθόνης.
-  const enfiaYear = useMemo(() => new Date().getFullYear(), []);
-
-  const lastYear = useMemo(() => enfiaLastYearAnnual({
-    annual: s.enfiaLastAnnual, instalment: s.enfiaLastInstalment, instalments: s.enfiaLastCount,
-  }), [s.enfiaLastAnnual, s.enfiaLastInstalment, s.enfiaLastCount]);
-
-  // Ο όροφος και η παλαιότητα περνούν ΟΠΩΣ ΕΙΝΑΙ: κενό σημαίνει άγνωστο και η
-  // μηχανή το μεταφράζει σε 1,00. Καμία προεπιλογή που να σπρώχνει προς τα πάνω.
-  const est = useMemo(() => estimateENFIA({
-    sqm: parseFloat(s.enfiaSqm) || 0,
-    zone: s.enfiaZone,
-    floor: s.enfiaFloor || undefined,
-    age: s.enfiaAge || undefined,
-    ownership: parseFloat(s.enfiaOwnership) || 100,
-    totalValue: parseFloat(s.enfiaTotalVal) || 0,
-    propertyValue: parseFloat(s.enfiaPropVal) || 0,
-    reductions: s.enfiaReductions || [],
-    year: enfiaYear,
-  }), [s.enfiaSqm, s.enfiaZone, s.enfiaFloor, s.enfiaAge, s.enfiaOwnership, s.enfiaTotalVal, s.enfiaPropVal, s.enfiaReductions, enfiaYear]);
-
-  const inUse = enfiaInUse(s.enfiaAnnual, s.enfiaMonthly, est?.annual, lastYear);
+  // ΤΟ ΕΤΟΣ ΕΡΧΕΤΑΙ ΑΠΟ ΤΗ ΛΟΓΙΣΤΙΚΗ. Ήταν `new Date().getFullYear()`, οπότε
+  // με τη σελίδα γυρισμένη στο 2025 ο πίνακας έδειχνε ΕΝΦΙΑ 2026 κάτω από
+  // κατάσταση του 2025. Ο ΕΝΦΙΑ βεβαιώνεται ανά έτος και κάποια μέτρα
+  // ψηφίζονται για ΕΝΑ έτος· η μηχανή δεν διαβάζει ρολόι.
+  const enfiaYear = year;
+  const { inUse, lastYear, detailed: est } = now;
 
   // ΑΝΟΙΧΤΟΣ ΕΙΝΑΙ Ο ΔΡΟΜΟΣ ΠΟΥ ΔΙΝΕΙ ΤΗΝ ΑΠΑΝΤΗΣΗ. Όσο δεν υπάρχει καμία
   // απάντηση, ανοιχτό είναι το «πέρσι»: ο συντομότερος δρόμος, αυτός που
@@ -265,8 +250,13 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
   // πλακίδιό του.
   const declaredAnnual = inUse.source === 'declared' ? inUse.annual : 0;
   const routeValue: Record<Route, number> = {
-    declared: declaredAnnual, lastYear, estimate: est?.annual ?? 0,
+    declared: declaredAnnual, lastYear, estimate: now.estimate,
   };
+  // Η πρόταση κάτω από το ποσό λέει ΑΚΡΙΒΩΣ από πού ήρθε: το δηλωμένο μπορεί να
+  // είναι της καρτέλας του ακινήτου και η εκτίμηση από την αξία του.
+  const sourceNote = inUse.source === 'declared' && now.declaredFrom === 'property' ? PROPERTY_NOTE
+    : inUse.source === 'estimate' && now.estimateFrom === 'facts' ? FACTS_NOTE
+    : SOURCE_NOTE[inUse.source];
 
   const toggleReduction = (key: string) => {
     const cur = s.enfiaReductions || [];
@@ -317,7 +307,7 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
                 μέγεθος και η άλλη δηλώνει από πού βγήκε. */}
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
               <div>
-                <div style={{ ...TT.label, color: 'var(--text-tertiary)', marginBottom: 8 }}>ΕΝΦΙΑ τον χρόνο</div>
+                <div style={{ ...TT.label, color: 'var(--text-tertiary)', marginBottom: 8 }}>ΕΝΦΙΑ {year}</div>
                 <div style={{ ...TT.display }}>{fe(inUse.annual)}</div>
               </div>
               <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, padding: '4px 12px' }}>
@@ -328,7 +318,7 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
               Σύνολο για τη χρονιά. Το ένα δωδέκατο είναι {fe(inUse.monthly)} τον μήνα, για να το βάζεις στην άκρη.
             </div>
             <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
-              {SOURCE_NOTE[inUse.source]}
+              {sourceNote}
             </div>
             {/* ΤΟ ΠΛΗΘΟΣ ΤΩΝ ΔΟΣΕΩΝ ΔΕΝ ΓΡΑΦΕΤΑΙ ΩΣ ΒΕΒΑΙΟΤΗΤΑ. Άλλαξε τρεις
                 φορές την τελευταία δεκαετία και η ίδια η εφαρμογή το έλεγε με
@@ -523,6 +513,9 @@ export default function EnfiaPanel({ propertyId, userId }: { propertyId: string;
           ) : (
             <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: T.sp.lg, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
               Χρειάζονται εμβαδόν και τιμή ζώνης. Το εμβαδόν το βρίσκεις στο Ε9 σου, την τιμή ζώνης στον χάρτη αντικειμενικών αξιών.
+              {now.estimateFrom === 'facts' && now.estimate > 0 && (
+                <> Ως τότε η εκτίμηση βγαίνει από την αξία και τα τετραγωνικά του ακινήτου: {fe(now.estimate)}.</>
+              )}
             </div>
           )}
         </>)}

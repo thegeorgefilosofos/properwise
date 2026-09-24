@@ -24,7 +24,7 @@
 
 import { navLabel } from '@/lib/nav/labels';
 import { useState } from 'react';
-import { T, Btn, ChipToggle } from '@/components/Theme';
+import { T, Btn, ChipToggle, PageTitle } from '@/components/Theme';
 import ExpenseLedger from './ExpenseLedger';
 import InboundInbox from './InboundInbox';
 import { BankLinkRow } from './BankLink';
@@ -36,6 +36,8 @@ interface Props {
   propertyId: string; userId: string;
   /** Το όνομα του ακινήτου, για να λέει η ουρά των εισερχομένων πού γράφει. */
   propertyName?: string;
+  /** Όλα τα ακίνητα: η ουρά φέρνει μηνύματα όλων και ο χρήστης διαλέγει πού γράφεται. */
+  properties?: { id: string; name: string }[];
   profileType?: 'individual' | 'professional';
   /**
    * Η νομική μορφή, όπως δηλώθηκε στην υποδοχή. Ταξιδεύει ως εδώ για ΕΝΑ πράγμα:
@@ -56,7 +58,7 @@ interface Props {
 type View = 'expenses' | 'budget';
 
 export default function TabFinances({
-  propertyId, userId, propertyName,
+  propertyId, userId, propertyName, properties,
   profileType = 'individual', legalForm = 'individual', onScan, openAddNonce,
 }: Props) {
   const [view, setView] = useState<View>('expenses');
@@ -67,7 +69,7 @@ export default function TabFinances({
   const [ledgerKey, setLedgerKey] = useState(0);
 
   const segs: { k: View; label: string }[] = [
-    { k: 'expenses', label: 'Δαπάνες' },
+    { k: 'expenses', label: navLabel('finances') },
     { k: 'budget', label: 'Προϋπολογισμός' },
   ];
 
@@ -90,16 +92,12 @@ export default function TabFinances({
 
   return (
     <div>
-      {/* ── Η ΟΘΟΝΗ ΧΡΕΙΑΖΕΤΑΙ ΟΝΟΜΑ, ΚΑΙ ΑΣ ΜΗΝ ΤΟ ΔΕΙΧΝΕΙ ──────────────────
-          Δώδεκα καρτέλες έχουν ορατό τίτλο μέσω `PageTitle`, δηλαδή `h1`. Αυτή
-          δεν είχε ΚΑΝΕΝΑ: ο αναγνώστης οθόνης ανακοίνωνε τη σελίδα χωρίς όνομα,
-          η πλοήγηση ανά επικεφαλίδα —ο βασικός τρόπος που διαβάζει κανείς μια
-          άγνωστη οθόνη— ξεκινούσε από `h2` ή `h3` και η ιεραρχία δεν είχε
-          κορυφή. Το όνομα έρχεται από το `lib/nav/labels.ts`, την ίδια πηγή με
-          το μενού και τη Νόα: δεν επινοείται δεύτερο εδώ.
-          Κρυφό ΟΠΤΙΚΑ, όχι από τον αναγνώστη — η οθόνη έχει ήδη τη δική της
-          κεφαλίδα και δεν αλλάζει ούτε ένα εικονοστοιχείο. */}
-      <h1 className="sr-only">{navLabel('finances')}</h1>
+      {/* ── ΕΝΑ h1 ΑΝΑ ΟΨΗ, ΑΠΟ ΤΗΝ ΙΔΙΑ ΤΗΝ ΟΨΗ ─────────────────────────────
+          Εδώ καθόταν ένα κρυφό `<h1>Δαπάνες</h1>` για όλες τις όψεις. Στις
+          Δαπάνες έβγαινε ΔΙΠΛΟ (το `PageTitle` του καθολικού έχει ήδη h1) και
+          στον Προϋπολογισμό η σελίδα ανακοινωνόταν «Δαπάνες» πάνω από το
+          «Προϋπολογισμός». Τώρα κάθε όψη έχει τον δικό της ορατό τίτλο:
+          Δαπάνες, Προϋπολογισμός, Συμβόλαια. */}
       {/* ═══ Η ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΑΝΕΒΑΙΝΕΙ ΣΤΗ ΣΕΙΡΑ ΤΩΝ ΚΑΡΤΕΛΩΝ ═══════════════
           Η σάρωση ζούσε ΜΟΝΟ μέσα στην κενή κατάσταση, δηλαδή εξαφανιζόταν τη
           στιγμή που καταχωρούνταν η πρώτη δαπάνη: ακριβώς τότε που ο χρήστης
@@ -147,6 +145,13 @@ export default function TabFinances({
         )}
       </div>
 
+      {/* Ο ΤΙΤΛΟΣ ΤΩΝ ΔΑΠΑΝΩΝ ΑΜΕΣΩΣ ΜΕΤΑ ΤΙΣ ΚΑΡΤΕΛΕΣ. Ζούσε μέσα στο
+          καθολικό, το οποίο ερχόταν ΜΕΤΑ την ουρά των εισερχομένων και τη
+          γραμμή της τράπεζας: ο τίτλος έπεφτε τρίτος, εφτακόσια εικονοστοιχεία
+          κάτω. Οι άλλες δύο όψεις έχουν τον δικό τους τίτλο. */}
+      {!contracts && view === 'expenses' && (
+        <PageTitle title={navLabel('finances')} sub="Ό,τι πλήρωσες και ό,τι περιμένει πληρωμή, για αυτό το ακίνητο." />
+      )}
       {contracts
         ? <TabBills propertyId={propertyId} userId={userId} legalForm={legalForm} />
         : view === 'expenses'
@@ -154,12 +159,15 @@ export default function TabFinances({
           // κοιτάζει τι έχει καταχωρήσει και σκέφτεται «πρέπει να τα περνάω ένα
           // ένα;». Μία γραμμή, όχι κάρτα: η κάρτα θα έπαιρνε τη θέση αυτού που
           // ήρθε να δει.
-          ? <>
-              <InboundInbox propertyId={propertyId} userId={userId} propertyName={propertyName}
-                onFiled={() => setLedgerKey(k => k + 1)} />
-              <BankLinkRow />
-              <ExpenseLedger key={ledgerKey} propertyId={propertyId} userId={userId} onScan={onScan} openAddNonce={openAddNonce} />
-            </>
+          // Η ΣΕΙΡΑ ΕΙΝΑΙ Η ΙΕΡΑΡΧΙΑ: τίτλος, τα τρία νούμερα, μετά τα
+          // εισερχόμενα. Η γραμμή της τράπεζας εμφανίζεται μόνο όταν η σύνδεση
+          // είναι ανοιχτή· ως τότε θα ήταν υπόσχεση στην πιο ακριβή θέση.
+          ? <ExpenseLedger key={ledgerKey} propertyId={propertyId} userId={userId} onScan={onScan} openAddNonce={openAddNonce}
+              inbox={<>
+                <InboundInbox propertyId={propertyId} userId={userId} propertyName={propertyName} properties={properties}
+                  onFiled={() => setLedgerKey(k => k + 1)} />
+                <BankLinkRow />
+              </>} />
           : <BillsBudget propertyId={propertyId} userId={userId} profileType={profileType} />}
     </div>
   );

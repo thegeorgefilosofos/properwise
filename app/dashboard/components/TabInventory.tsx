@@ -336,7 +336,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
     // Ο διάλογος είναι ασύγχρονος και ζει σε global host, όχι μέσα στο μενού: το
     // μενού προλαβαίνει να κλείσει πριν απαντήσει ο χρήστης, αλλά η υπόσχεση δεν
     // εξαρτάται από τον κόμβο του κουμπιού, άρα η διαγραφή εκτελείται κανονικά.
-    {label:'Διαγραφή',icon:IconTrash,danger:true,onClick:async()=>{ if(await confirmDialog(`Διαγραφή «${item.name}»;`,{tone:'negative'})) onDelete(item.id) }},
+    {label:'Διαγραφή',icon:IconTrash,danger:true,onClick:async()=>{ if(await confirmDialog(`Διαγραφή «${item.name}»;`,{tone:'negative',confirmLabel:'Διαγραφή'})) onDelete(item.id) }},
   ]
   // ═══ ΤΕΣΣΕΡΑ ΧΕΙΡΙΣΤΗΡΙΑ, ΜΙΑ ΓΡΑΜΜΗ ΒΑΣΗΣ ══════════════════════════════
   // Τρία από τα τέσσερα φίλτρα δεν είχαν ετικέτα από πάνω και το τέταρτο είχε
@@ -410,7 +410,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
               η μετατροπή θα έσβηνε το κόκκινο από τη μαζική διαγραφή. */}
           <button onClick={async()=>{ /* Ρητό στιγμιότυπο ΠΡΙΝ την ερώτηση: ο διάλογος δεν παγώνει πια τη σελίδα, άρα φίλτρο και επιλογή μπορούν να αλλάξουν όσο περιμένουμε απάντηση. Διαγράφονται ακριβώς όσα ανακοίνωσε το μήνυμα. */
             const ids=visIds
-            if(ids.length && await confirmDialog(`Διαγραφή ${ids.length} αντικειμένων;`,{tone:'negative'})){ onBulkDelete(ids); exitSelect() } }} disabled={visIds.length===0} style={{display:'inline-flex',alignItems:'center',gap:6,height:T.h.sm,padding:'0 12px',borderRadius:T.radius.pill,fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,cursor:visIds.length?'pointer':'not-allowed',border:'1px solid var(--negative-border)',background:visIds.length?'var(--negative-dim)':'var(--bg-elevated)',color:visIds.length?'var(--negative)':'var(--text-tertiary)'}}>
+            if(ids.length && await confirmDialog(ids.length===1?'Διαγραφή 1 αντικειμένου;':`Διαγραφή ${ids.length} αντικειμένων;`,{tone:'negative',confirmLabel:'Διαγραφή'})){ onBulkDelete(ids); exitSelect() } }} disabled={visIds.length===0} style={{display:'inline-flex',alignItems:'center',gap:6,height:T.h.sm,padding:'0 12px',borderRadius:T.radius.pill,fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,cursor:visIds.length?'pointer':'not-allowed',border:'1px solid var(--negative-border)',background:visIds.length?'var(--negative-dim)':'var(--bg-elevated)',color:visIds.length?'var(--negative)':'var(--text-tertiary)'}}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
             Διαγραφή
           </button>
@@ -443,9 +443,13 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
             const repl=replacementSuggestion(item)
             const sel=selected.has(item.id)
             return (
-              <div key={item.id} {...pressable(()=>selectMode?toggleSel(item.id):onEdit(item))} style={{background:'var(--surface-raised)',border:`1px solid ${sel?'var(--accent)':'var(--border-raised)'}`,boxShadow:sel?'0 0 0 1px var(--accent)':'var(--highlight-inset), var(--elev-1)',borderRadius:T.radius.card,overflow:'hidden',display:'flex',flexDirection:'column',transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s',cursor:'pointer'}}
-                onMouseEnter={e=>{if(sel)return;(e.currentTarget as HTMLDivElement).style.boxShadow='var(--shadow-md)';(e.currentTarget as HTMLDivElement).style.borderColor='var(--border-default)'}}
-                onMouseLeave={e=>{if(sel)return;(e.currentTarget as HTMLDivElement).style.boxShadow='none';(e.currentTarget as HTMLDivElement).style.borderColor='var(--border-subtle)'}}
+              /* Η ΑΙΩΡΗΣΗ ΕΙΝΑΙ ΤΗΣ `.card`, ΟΧΙ ΔΥΟ ΧΕΙΡΙΣΤΩΝ. Το onMouseLeave έγραφε
+                 `boxShadow: none` και `border-subtle`, ενώ η κάρτα αναπαύεται σε
+                 `elev-1` με `border-raised`: μετά από ένα πέρασμα του ποντικιού
+                 έχανε οριστικά τη σκιά της. Η `.card` έχει ηρεμία και αιώρηση σε
+                 CSS· ενσωματωμένο μένει μόνο το σημάδι της επιλογής, που πρέπει να
+                 νικά και την αιώρηση, μαζί με το μηδενικό γέμισμα της φωτογραφίας. */
+              <div key={item.id} {...pressable(()=>selectMode?toggleSel(item.id):onEdit(item))} className="card" style={{padding:0,overflow:'hidden',display:'flex',flexDirection:'column',cursor:'pointer',...(sel?{borderColor:'var(--accent)',boxShadow:'0 0 0 1px var(--accent)'}:{})}}
               >
                 <div style={{height:118,background:'var(--bg-elevated)',position:'relative',overflow:'hidden',flexShrink:0}}>
                   {displayPhoto
@@ -484,8 +488,13 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                         ×11 σε μία οθόνη με δεκατρία αντικείμενα. Το ποσό σε ευρώ
                         δίπλα στο όνομα ενός επίπλου δεν χρειάζεται να συστηθεί
                         έντεκα φορές· λέγεται μία, στο κυκλάκι πάνω από το πλέγμα. */}
-                    {hasValue && (
-                      <p style={{fontSize:14,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',lineHeight:1.2,flexShrink:0}}>{fe(curVal)}</p>
+                    {/* ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ ΑΓΟΡΑΣ ΔΕΝ ΥΠΑΡΧΕΙ ΤΡΕΧΟΥΣΑ ΑΞΙΑ. Το ποσό
+                        ήταν η τιμή αγοράς, στη θέση όπου το κυκλάκι πάνω από το
+                        πλέγμα λέει «εκτιμώμενη τρέχουσα αξία». Λέγεται ως αυτό που
+                        είναι, πιο σβηστό. */}
+                    {hasValue && (hasDate
+                      ? <p style={{fontSize:14,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',lineHeight:1.2,flexShrink:0}}>{fe(curVal)}</p>
+                      : <p style={{fontSize:12,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',lineHeight:1.2,flexShrink:0}}>Αγορά {fe(curVal)}</p>
                     )}
                   </div>
                   <DepBar pct={depPct} left={left} hasData={hasDate} hasValue={hasValue} compact/>
@@ -582,8 +591,10 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                       </th>
                       <td style={{verticalAlign:'middle'}} onClick={e=>e.stopPropagation()}><InlineConditionEdit item={item} onUpdate={onUpdateCondition}/></td>
                       <td className="num" style={{verticalAlign:'middle'}}>
-                        {hasValue
+                        {hasValue && hasDate
                           ? <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(curVal)}</p>
+                          : hasValue
+                          ? <p style={{fontSize:12,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)'}}>Αγορά {fe(curVal)}</p>
                           : <p style={{fontSize:12,fontFamily:T.font.sans,color:'var(--text-tertiary)'}}>Χωρίς αξία</p>}
                       </td>
                       <td className="num" style={{verticalAlign:'middle'}}>{mc>0&&<p style={{fontSize:12,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(mc)}</p>}</td>
@@ -842,6 +853,10 @@ export default function TabInventory({propertyId,userId,profileType='individual'
   // στέκει πάνω από τις υποκαρτέλες και φαίνεται σε όλες τους. Καμία υποκαρτέλα
   // δεν έχει πια δικό της πλέγμα μετρικών.
   const invSummary=portfolioSummary(items)
+  // Ό,τι δεν έχει ημερομηνία αγοράς μπαίνει στο άθροισμα με την τιμή αγοράς
+  // του (δεν αποσβένεται χωρίς ηλικία). Λέγεται στον υπότιτλο, για να μη
+  // διαβάζεται ως εκτίμηση.
+  const undatedCount=items.filter(i=>(i.purchase_value||0)>0&&!i.purchase_date).length
   const totalValue=items.reduce((s,i)=>s+calcCurrentValue(i),0)
   const categoryCount=new Set(items.map(i=>i.category)).size
   const electricItems=items.filter(hasEnergy)
@@ -1004,7 +1019,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
               // εκτίμησης εκεί που δεν έγινε καμία εκτίμηση. Εμφανίζεται μόνο
               // όταν υπάρχει έστω μία τιμή αγοράς να αθροιστεί.
               ...(invSummary.totalOriginal>0?[{label:'Εκτιμώμενη υπολειπόμενη αξία',value:fe(totalValue),
-                sub:`από ${fe(invSummary.totalOriginal)} αξία αγοράς, μένει το ${Math.max(0,100-invSummary.avgDepreciatedPct)}%`}]:[]),
+                sub:`από ${fe(invSummary.totalOriginal)} αξία αγοράς, μένει το ${Math.max(0,100-invSummary.avgDepreciatedPct)}%${undatedCount>0?`· ${undatedCount} ${undatedCount===1?'αντικείμενο χωρίς ημερομηνία μετρά':'αντικείμενα χωρίς ημερομηνία μετρούν'} με την τιμή αγοράς`:''}`}]:[]),
               ...(electricItems.length>0?[kwhPrice>0
                 ? {label:'Ρεύμα ανά μήνα',value:fe(monthlyCost),sub:`${fn(monthlyKwh,1)} κιλοβατώρες, στα ${feRate(kwhPrice)} ανά κιλοβατώρα`}
                 : {label:'Ρεύμα ανά μήνα',value:`${fn(monthlyKwh,1)} kWh`,sub:'δήλωσε τιμή ανά κιλοβατώρα για κόστος'}]:[]),

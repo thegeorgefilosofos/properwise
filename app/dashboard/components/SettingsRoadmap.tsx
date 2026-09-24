@@ -2,9 +2,10 @@
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SettingsRoadmap, «Τι έρχεται». Αντικαθιστά το παλιό block «Ενσωματώσεις»:
-// αντί να απαριθμεί τι ήδη δουλεύει, χτίζει προσδοκία για ό,τι έρχεται. Ναυαρχίδα
-// είναι το PROPERWISE Mobile (iOS & Android). Καθαρό, premium, ζωντανό, χωρίς
-// ψεύτικα «σύνδεσε». Μπαίνει μέσα σε υπάρχουσα Card, οπότε ξεκινά με διαχωριστικό.
+// αντί να απαριθμεί τι ήδη δουλεύει, λέει τι ετοιμάζεται, χωρίς ημερομηνίες και
+// χωρίς ψεύτικα «σύνδεσε». Πρώτη θέση έχει η εφαρμογή κινητού, που σήμερα
+// εγκαθίσταται ήδη στην αρχική οθόνη. Μπαίνει μέσα σε υπάρχουσα Card, οπότε
+// ξεκινά με διαχωριστικό.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import BrandMark from '@/components/BrandMark'
@@ -31,13 +32,12 @@ interface RoadItem { name: string; line: string; detail: string; chip: string; t
 // διακόσιες γραμμές πιο κάτω, στην ίδια σελίδα, ως ΑΝΩΝΥΜΗ ΣΥΝΕΙΣΦΟΡΑ ΧΡΗΣΤΩΝ με
 // ελάχιστο πέντε ακίνητα (TabSettings → MarketDataSharing). Δύο ασυμβίβαστες
 // ιστορίες για το ίδιο πράγμα· έμεινε η αληθινή.
+//
+// «Channel manager δύο κατευθύνσεων», με chip «Σύντομα» και ονόματα τρίτων
+// πλατφορμών: οι λειτουργίες βραχυχρόνιας μίσθωσης είναι δεύτερο κύμα, χωρίς
+// νέες υποσχέσεις. Ένα «Σύντομα» χωρίς πλάνο πίσω του είναι δέσμευση που
+// κανείς δεν ανέλαβε.
 const ITEMS: RoadItem[] = [
-  {
-    name: 'Channel manager δύο κατευθύνσεων',
-    line: 'Αμφίδρομος συγχρονισμός τιμών και διαθεσιμότητας με Airbnb και Booking.',
-    detail: 'Μία αλλαγή ενημερώνει ταυτόχρονα όλα τα κανάλια, χωρίς διπλές κρατήσεις.',
-    chip: 'Σύντομα', tone: 'neutral',
-  },
   {
     name: 'Τραπεζικές ροές (open banking)',
     line: 'Αυτόματη άντληση κινήσεων λογαριασμού, χωρίς χειρωνακτική καταχώρηση.',
@@ -125,7 +125,7 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
         </div>
       </div>
 
-      {/* HERO, PROPERWISE Mobile */}
+      {/* HERO, η εφαρμογή κινητού */}
       <div
         className="acc-section"
         style={{
@@ -155,8 +155,10 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {/* Περιγραφή, όχι όνομα προϊόντος: το «PROPERWISE Mobile» δίπλα
+                  σε «iOS» και «Android» διαβαζόταν ως εφαρμογή στα καταστήματα. */}
               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, letterSpacing: '-0.01em' }}>
-                PROPERWISE Mobile
+                Εφαρμογή κινητού
               </span>
               <Chip tone="accent">
                 <span className="acc-live-dot accent" aria-hidden style={{ width: 6, height: 6, background: 'var(--accent)', display: 'inline-block' }} />
@@ -178,10 +180,9 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
               Σε <strong style={{ color: 'var(--text-primary)' }}>iPhone</strong>: «Κοινή χρήση» · «Πρόσθεση στην αρχική οθόνη».
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <Chip tone="neutral">iOS</Chip>
-              <Chip tone="neutral">Android</Chip>
-            </div>
+            {/* Τα σήματα «iOS» και «Android» έφυγαν: δίπλα σε όνομα προϊόντος
+                διαβάζονταν ως εφαρμογές στα καταστήματα, που δεν υπάρχουν. Οι
+                δύο πλατφόρμες λέγονται ήδη πιο πάνω, εκεί που ισχύουν σήμερα. */}
 
             {/* CTA: ένα κουμπί-διακόπτης. Μπαίνεις στη λίστα και, αν ξαναπατήσεις
                 το «Θα σε ειδοποιήσουμε», βγαίνεις και επιστρέφει στο «Ειδοποίησέ με». */}
@@ -220,9 +221,9 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
       {/* ΤΡΙΑ ΣΕ ΔΥΟ ΣΤΗΛΕΣ ΑΦΗΝΟΥΝ ΤΟ ΤΡΙΤΟ ΜΟΝΟ ΤΟΥ. Το `auto-fit` δίνει όσες
           στήλες ΧΩΡΑΝΕ, όχι όσες βγαίνουν σε γεμάτες σειρές: μετρημένο στα 412
           και στα 430, «2+1» με το τρίτο σε μισό πλάτος και τρύπα δίπλα του. Η
-          `fixedCols` κρατά τον κανόνα του έργου — ο μεγαλύτερος διαιρέτης που
-          χωράει, δηλαδή τρία ή ένα, ποτέ δύο. */}
-      <div {...fixedCols(3, 10, 'start')}>
+          `fixedCols` κρατά τον κανόνα του έργου: ο μεγαλύτερος διαιρέτης που
+          χωράει. Με δύο στοιχεία, δύο ή ένα. */}
+      <div {...fixedCols(2, 10, 'start')}>
         {ITEMS.map((it, i) => {
           const isOpen = !!open[i];
           return (

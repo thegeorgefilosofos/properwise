@@ -5,7 +5,7 @@ import { leaveDevice } from '@/lib/localPrivacy'
 import { authClient } from '@/lib/supabase/lazy';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
-import AuthAside from '../AuthAside'
+import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import GoogleG from '../GoogleG'
 import { BackLink } from '../BackLink'
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
@@ -19,6 +19,7 @@ import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
 import { isReferralCode } from '@/lib/referral/referral';
 import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
+import { usePlanTerms } from './PlanTerms'
 
 // Η έκδοση των Όρων που δέχεται ο χρήστης. Ήταν καρφωτή εδώ ως «2026-07», ενώ
 // οι δύο σελίδες που υπογράφει γράφουν «Αύγουστος 2026»: η απόδειξη
@@ -52,7 +53,38 @@ const TAP: React.CSSProperties = {
 const SEARCH_NEVER_CHANGES = () => () => {}
 const readSearch = () => window.location.search
 
+// ═══ Ο ΣΥΝΔΕΣΜΟΣ ΕΠΙΒΕΒΑΙΩΣΗΣ, ΓΡΑΜΜΕΝΟΣ ΜΙΑ ΦΟΡΑ ═════════════════════════════
+// Η πρώτη αποστολή περνούσε από την ανταλλαγή του διακριτικού και κρατούσε το
+// πακέτο· η επαναποστολή δεν είχε καθόλου διεύθυνση επιστροφής, οπότε ο
+// σύνδεσμος που ξαναστελνόταν άνοιγε στη γενική διεύθυνση του έργου: καμία
+// συνεδρία, κανένα πακέτο και ο άνθρωπος κοιτούσε πάλι τη «Σύνδεση». Και οι
+// δύο αποστολές περνούν πλέον από εδώ.
+const confirmRedirect = (plan: ReturnType<typeof planFromParam>, cycle: ReturnType<typeof cycleFromParam>) =>
+  `${window.location.origin}/auth/callback?next=${encodeURIComponent(checkoutLanding(plan, cycle))}`
+
+/** Ως πότε ένας λογαριασμός της Google μετρά ως «μόλις δημιουργήθηκε». */
+const FRESH_MS = 15 * 60 * 1000
+
+/**
+ * Ό,τι λείπει από το προφίλ μετά την επιστροφή από την Google: η απόδειξη
+ * συγκατάθεσης, η πρόσκληση και το πακέτο. Συμπληρώνει ΜΟΝΟ ό,τι λείπει: η
+ * απόδειξη που μετράει είναι η ΠΡΩΤΗ, όχι η σημερινή.
+ */
+function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams): Record<string, unknown> {
+  const patch: Record<string, unknown> = {}
+  if (!meta.consent_terms_accepted_at) {
+    patch.consent_terms_accepted_at = new Date().toISOString()
+    patch.consent_policy_version = CONSENT_VERSION
+  }
+  const r = q.get('ref'); if (r && !meta.referred_by) patch.referred_by = r
+  const p = planFromParam(q.get('plan'))
+  if (p && !meta.chosen_plan) { patch.chosen_plan = p; patch.chosen_cycle = cycleFromParam(q.get('cycle')) }
+  return patch
+}
+
 export default function SignupPage() {
+  // Από το billingWords, στον διακομιστή (layout.tsx): `null` όσο το ταμείο χρεώνει.
+  const planTerms = usePlanTerms()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -85,6 +117,8 @@ export default function SignupPage() {
   const [sessionEmail, setSessionEmail] = useState<string | null>(null)
   /** Ηρθε από τη σύνδεση με Google και δεν έχει δεχτεί ποτέ τους Ορους. */
   const [needsConsent, setNeedsConsent] = useState<string | null>(null)
+  /** Ο λογαριασμός της Google δημιουργήθηκε μόλις τώρα, άρα η «Ακύρωση» τον σβήνει. */
+  const [freshAccount, setFreshAccount] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [show, setShow] = useState(false)
   const [pwTouched, setPwTouched] = useState(false)
@@ -131,25 +165,34 @@ export default function SignupPage() {
       // σύνδεση και ΔΕΝ έχει ήδη συγκατάθεση σταματά εδώ και ερωτάται. Οποιος
       // έχει, προχωρά χωρίς να το καταλάβει.
       const oauth = q.get('oauth')
+      const meta = (u.user_metadata ?? {}) as Record<string, unknown>
+      // ΤΟ ΠΑΚΕΤΟ ΤΑΞΙΔΕΥΕΙ ΚΑΙ ΑΠΟ ΤΗ ΣΥΝΔΕΣΗ. Η επιστροφή «oauth=login»
+      // πήγαινε πάντα στον πίνακα, οπότε όποιος ερχόταν από τον τιμοκατάλογο
+      // με πακέτο και διάλεγε Google δεν έφτανε ποτέ στο ταμείο.
+      const landing = checkoutLanding(planFromParam(q.get('plan')), cycleFromParam(q.get('cycle')))
       if (oauth === 'login') {
-        const meta = (u.user_metadata ?? {}) as Record<string, unknown>
-        if (meta.consent_terms_accepted_at) { window.location.replace('/dashboard'); return }
+        if (meta.consent_terms_accepted_at) { window.location.replace(landing); return }
+        setFreshAccount(!!u.created_at && Date.now() - Date.parse(u.created_at) < FRESH_MS)
         setNeedsConsent(u.email ?? '')
         return
       }
       if (oauth === '1') {
-        const meta = (u.user_metadata ?? {}) as Record<string, unknown>
-        const patch: Record<string, unknown> = {}
-        if (!meta.consent_terms_accepted_at) {
-          patch.consent_terms_accepted_at = new Date().toISOString()
-          patch.consent_policy_version = CONSENT_VERSION
+        const patch = oauthPatch(meta, q)
+        if (Object.keys(patch).length) {
+          // Η `updateUser` ΔΕΝ ΠΕΤΑΕΙ, ΕΠΙΣΤΡΕΦΕΙ `{ error }`. Το `try/catch`
+          // που την τύλιγε δεν έπιανε τίποτα: μια αποτυχημένη εγγραφή της
+          // συγκατάθεσης περνούσε σιωπηλά και ο λογαριασμός έμπαινε χωρίς
+          // απόδειξη. Τώρα ο χρήστης μένει εδώ, βλέπει τι έγινε και ξαναδοκιμάζει.
+          const { error } = await supabase.auth.updateUser({ data: patch })
+          if (error) {
+            setError(failed('Η αποδοχή δεν καταχωρήθηκε', error))
+            setConsent(true)
+            setFreshAccount(!!u.created_at && Date.now() - Date.parse(u.created_at) < FRESH_MS)
+            setNeedsConsent(u.email ?? '')
+            return
+          }
         }
-        const r = q.get('ref'); if (r && !meta.referred_by) patch.referred_by = r
-        const p = planFromParam(q.get('plan'))
-        const c = cycleFromParam(q.get('cycle'))
-        if (p && !meta.chosen_plan) { patch.chosen_plan = p; patch.chosen_cycle = c }
-        if (Object.keys(patch).length) { try { await supabase.auth.updateUser({ data: patch }) } catch {} }
-        window.location.replace(checkoutLanding(p, c))
+        window.location.replace(landing)
         return
       }
       setSessionEmail(u.email ?? null)
@@ -169,14 +212,39 @@ export default function SignupPage() {
       box?.focus()
       return
     }
+    setError('')
     const supabase = await authClient()
-    try {
-      await supabase.auth.updateUser({ data: {
-        consent_terms_accepted_at: new Date().toISOString(),
-        consent_policy_version: CONSENT_VERSION,
-      } })
-    } catch {}
-    window.location.replace('/dashboard')
+    // Το προφίλ διαβάζεται ώστε να συμπληρωθεί ΜΟΝΟ ό,τι λείπει. Αν δεν
+    // διαβαστεί, δεν γράφουμε στα τυφλά πάνω σε ό,τι υπάρχει.
+    const { data, error: readError } = await supabase.auth.getUser()
+    if (readError) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', readError)); return }
+    const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>
+    const { error } = await supabase.auth.updateUser({ data: oauthPatch(meta, new URLSearchParams(window.location.search)) })
+    if (error) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', error)); return }
+    window.location.replace(checkoutLanding(chosenPlan, chosenCycle))
+  }
+
+  // ═══ Η «ΑΚΥΡΩΣΗ» ΔΕΝ ΑΦΗΝΕΙ ΠΙΣΩ ΛΟΓΑΡΙΑΣΜΟ ΠΟΥ ΚΑΝΕΙΣ ΔΕΝ ΘΕΛΗΣΕ ═══════════
+  // Η `signInWithOAuth` δημιουργεί τον λογαριασμό πριν δει ο άνθρωπος τους
+  // Ορους. Οταν εδώ λέει «όχι», η αποσύνδεση μόνη της κρατούσε στη βάση email
+  // και προφίλ Google χωρίς καμία αποδοχή: δεδομένα που δεν έχουμε λόγο να
+  // κρατάμε. Ο λογαριασμός που γεννήθηκε ΤΩΡΑ σβήνεται από τη μία διαδρομή
+  // διαγραφής (/api/account/delete), με ό,τι εκείνη φυλάει. Ενας παλιός
+  // λογαριασμός χωρίς συγκατάθεση ΔΕΝ σβήνεται από ένα κουμπί «Ακύρωση»· μόνο
+  // αποσυνδέεται.
+  async function declineOauthConsent() {
+    setSigningOut(true); setError('')
+    if (freshAccount) {
+      const res = await fetch('/api/account/delete', { method: 'POST' }).catch(() => null)
+      if (!res?.ok) {
+        const body = await res?.json().catch(() => null) as { error?: string } | null
+        setError(body?.error || failed('Ο λογαριασμός δεν διαγράφηκε'))
+        setSigningOut(false)
+        return
+      }
+    }
+    await signOut()
+    setNeedsConsent(null)
   }
 
   async function signOut() {
@@ -247,7 +315,10 @@ export default function SignupPage() {
   async function resend() {
     setResendErr('')
     const supabase = await authClient()
-    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    const { error } = await supabase.auth.resend({
+      type: 'signup', email: email.trim(),
+      options: { emailRedirectTo: confirmRedirect(chosenPlan, chosenCycle) },
+    })
     if (error) { setResendErr(failed('Το email δεν ξαναστάλθηκε', error)); return }
     setResent(true)
   }
@@ -274,9 +345,7 @@ export default function SignupPage() {
     }
     if (!pw.ok) {
       setPwTouched(true)
-      setError(pw.common
-        ? 'Ο κωδικός είναι πολύ κοινός. Διάλεξε κάτι πιο δύσκολο να μαντέψει κανείς.'
-        : PASSWORD_MSG.weak)
+      setError(pw.common ? PASSWORD_MSG.common : PASSWORD_MSG.weak)
       return
     }
     setError(''); setLoading(true)
@@ -293,7 +362,7 @@ export default function SignupPage() {
         // διαμεσολαβητής έστελνε τον νέο χρήστη στη φόρμα εισόδου, κρατώντας το
         // διακριτικό στη διεύθυνση: ο λογαριασμός άνοιγε, αλλά ο άνθρωπος
         // κατέληγε να κοιτά «Σύνδεση» αντί για την εφαρμογή του.
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(checkoutLanding(chosenPlan, chosenCycle))}`,
+        emailRedirectTo: confirmRedirect(chosenPlan, chosenCycle),
         data: {
           full_name: fullName.trim(),
           consent_terms_accepted_at: new Date().toISOString(),
@@ -320,14 +389,17 @@ export default function SignupPage() {
     fontSize: 14, fontFamily: 'inherit', transition: 'border-color .15s',
   }
   const label: React.CSSProperties = {
-    fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, display: 'block',
-    marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans,
+    fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700, display: 'block',
+    marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: T.font.sans,
   }
+  // Το κείμενο αποδοχής και οι δύο σύνδεσμοί του, ίδια και στα δύο πλαίσια.
+  // Οι σύνδεσμοι δεν σπάνε ΜΕΣΑ τους: στα 390 έμενε «Πολιτική» στη μία γραμμή
+  // και «απορρήτου.» στην άλλη, όπως είχε ήδη διορθωθεί στη Σύνδεση.
+  const consentText: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer', textWrap: 'balance' }
+  const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }
+  const errorBox: React.CSSProperties = { background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }
   const focus = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--accent)' }
   const blur = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)' }
-
-  /** Οσο ισχύει, η υποβολή δεν προχωρά — αλλά ΕΞΗΓΕΙΤΑΙ, δεν αγνοείται. */
-  const blocked = loading || !consent || !pw.ok || leaked
 
   /**
    * Τι λείπει, σε μία φράση. Κενό όταν η φόρμα είναι έτοιμη.
@@ -347,10 +419,13 @@ export default function SignupPage() {
       <a href="#main" className="skip-link">Μετάβαση στη φόρμα</a>
 
       {/* LEFT, κοινό marketing panel (AuthAside) */}
+      {/* «Λογαριασμός» ήταν και ο χρήστης και το χαρτί της ΔΕΗ, στην ίδια
+          πρόταση. Εδώ μένει μόνο το χαρτί. */}
       <AuthAside
-        headline="Ένας λογαριασμός,"
-        accent="ένα ακίνητο για αρχή."
-        sub="Δημιούργησε λογαριασμό, πρόσθεσε το ακίνητό σου και φωτογράφισε τον πρώτο λογαριασμό ρεύματος ή νερού."
+        headline="Ένα ακίνητο,"
+        accent="για αρχή."
+        sub="Πρόσθεσε το ακίνητό σου και φωτογράφισε τον πρώτο λογαριασμό ρεύματος ή νερού. Τα υπόλοιπα συμπληρώνονται στην πορεία."
+        note={`Δοκιμή ${TRIAL_DAYS} ημερών`}
       />
 
       {/* RIGHT, form */}
@@ -358,6 +433,7 @@ export default function SignupPage() {
           Μετρημένο: καμία περιοχή στο προσβάσιμο δέντρο, ούτε ένα <main>. */}
       <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
+          <AuthMobileBrand />
           {needsConsent ? (
             /* Ηρθε από τη σύνδεση με Google, ο λογαριασμός δημιουργήθηκε και οι
                Οροι δεν έχουν γίνει ποτέ δεκτοί. Δεν προχωρά χωρίς ρητή αποδοχή
@@ -370,7 +446,7 @@ export default function SignupPage() {
               <BackLink home />
               <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 8px' }}>Ένα βήμα ακόμη</h1>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 20px' }}>
-                Ο λογαριασμός <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{needsConsent}</strong> είναι καινούργιος. Πριν ανοίξει, χρειάζεται η αποδοχή σου.
+                Πριν συνεχίσεις με το <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{needsConsent}</strong>, χρειάζεται να αποδεχθείς τους Όρους χρήσης και την Πολιτική απορρήτου.
               </p>
               {/* ΤΟ ΙΔΙΟ ΠΛΑΙΣΙΟ, ΜΕ ΤΟ ΙΔΙΟ ΙΔΙΩΜΑ. Εδώ το τετράγωνο ήταν γυμνό
                   16 × 16, ενώ το αδελφό του παρακάτω έχει ετικέτα 44 × 44 γύρω
@@ -380,29 +456,37 @@ export default function SignupPage() {
                 <label htmlFor="su-consent-oauth" style={{ ...TAP, margin: '-12px -14px -14px -14px' }}>
                   <input id="su-consent-oauth" type="checkbox" checked={consent}
                     onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                    aria-label="Αποδοχή των Όρων χρήσης και της Πολιτικής απορρήτου"
+                    aria-label="Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου"
                     style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} />
                 </label>
-                <label htmlFor="su-consent-oauth" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer' }}>
+                <label htmlFor="su-consent-oauth" style={consentText}>
                   Αποδέχομαι τους{' '}
-                  <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Όρους χρήσης</Link>{' '}και την{' '}
-                  <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Πολιτική απορρήτου</Link>.
+                  <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους χρήσης</Link>. Διάβασα την{' '}
+                  <Link href="/privacy" className="lp-link po-tap-inline" style={consentLink}>Πολιτική απορρήτου</Link>.
                 </label>
               </div>
               {consentTouched && !consent && (
                 <p role="alert" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '0 0 12px', lineHeight: 1.5 }}>
-                  Χρειάζεται να αποδεχθείς τους Όρους και την Πολιτική απορρήτου για να συνεχίσεις.
+                  Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.
                 </p>
+              )}
+              {error && (
+                <div role="alert" style={{ ...errorBox, marginBottom: 12 }}>{error}</div>
               )}
               {/* `field` γιατί και τα δύο έπιαναν όλο το πλάτος της κάρτας. */}
               <Btn variant="primary" field onClick={acceptOauthConsent}>
                 Συνέχεια
               </Btn>
               <div style={{ marginTop: 10 }}>
-                <Btn variant="secondary" field onClick={signOut} disabled={signingOut}>
+                <Btn variant="secondary" field onClick={declineOauthConsent} disabled={signingOut}>
                   {signingOut ? 'Ακύρωση…' : 'Ακύρωση'}
                 </Btn>
               </div>
+              {freshAccount && (
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5, margin: '10px 0 0' }}>
+                  Αν ακυρώσεις, ο λογαριασμός που μόλις δημιουργήθηκε διαγράφεται.
+                </p>
+              )}
             </div>
           ) : sessionEmail ? (
             <AlreadySignedIn email={sessionEmail} onSignOut={signOut} signingOut={signingOut} mode="signup" />
@@ -424,7 +508,13 @@ export default function SignupPage() {
               </div>
               <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 8px' }}>Άνοιξε το email σου</h1>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 24px' }}>
-                Σου στείλαμε έναν σύνδεσμο επιβεβαίωσης στο <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{email}</strong>. Πάτησέ τον για να μπεις στον λογαριασμό σου{chosenPlan ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Δες και τον φάκελο ανεπιθύμητων.
+                {/* «ΣΟΥ ΣΤΕΙΛΑΜΕ» ΔΕΝ ΙΣΧΥΕΙ ΠΑΝΤΑ. Με επιβεβαίωση email, ο πάροχος
+                    ταυτότητας απαντά «επιτυχία» και για διεύθυνση που έχει ήδη
+                    λογαριασμό, χωρίς να στείλει τίποτα: ο άνθρωπος περίμενε
+                    email που δεν ερχόταν ποτέ. Η επαναφορά κωδικού το λέει ήδη
+                    με «αν υπάρχει λογαριασμός»· εδώ λέγονται και οι δύο δρόμοι.
+                    Και η «συνδρομή» λέγεται μόνο όσο το ταμείο χρεώνει. */}
+                Αν δεν υπάρχει ήδη λογαριασμός με το <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{email.trim()}</strong>, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει, <Link href="/login" className="lp-link" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο ανεπιθύμητων.
               </p>
               {/* Η σβηστή όψη μετά την αποστολή είναι το disabled του .po-btn. */}
               <Btn variant="primary" onClick={resend} disabled={resent}>
@@ -563,7 +653,7 @@ export default function SignupPage() {
                     {fe(chosenCycle === 'annual' ? PLANS[chosenPlan].priceAnnual : PLANS[chosenPlan].priceMonthly)}
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)' }}>
-                    {chosenCycle === 'annual' ? 'Ετήσια χρέωση' : 'Μηνιαία χρέωση'}
+                    {planTerms ?? (chosenCycle === 'annual' ? 'Ετήσια χρέωση' : 'Μηνιαία χρέωση')}
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)', textAlign: 'right', whiteSpace: 'nowrap' }}>
                     Δοκιμή {TRIAL_DAYS} ημερών
@@ -618,7 +708,7 @@ export default function SignupPage() {
                 </div>
 
                 {error && (
-                  <div role="alert" style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }}>
+                  <div role="alert" style={errorBox}>
                     {trans(error)}
                   </div>
                 )}
@@ -659,18 +749,28 @@ export default function SignupPage() {
                         οθόνης εξακολουθεί να λέει «υποχρεωτικό». */}
                     <input id="su-consent" type="checkbox" checked={consent}
                       onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                      aria-required="true" aria-label="Αποδοχή των Όρων χρήσης και της Πολιτικής απορρήτου"
+                      aria-required="true" aria-label="Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου"
                       style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} />
                   </label>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  {/* ΑΠΟΔΟΧΗ ΓΙΑ ΤΟΥΣ ΟΡΟΥΣ, ΕΝΗΜΕΡΩΣΗ ΓΙΑ ΤΗΝ ΠΟΛΙΤΙΚΗ. Εγραφε
+                      «Αποδέχομαι… την Πολιτική απορρήτου», ενώ η Πολιτική δεν
+                      ζητά αποδοχή: είναι ενημέρωση του άρθρου 13 GDPR και τη
+                      συγκατάθεση τη χρησιμοποιεί μόνο για τα δεδομένα κοινότητας.
+                      Ενα κουτί που «αποδέχεται» την ενημέρωση διαβάζεται ως
+                      συγκατάθεση σε όλα όσα περιγράφει. */}
+                  {/* Ετικέτα και το κείμενο, όπως στο πλαίσιο της Google: το
+                      πάτημα στο «Αποδέχομαι» δεν έκανε τίποτα. Ο σύνδεσμος μέσα
+                      σε ετικέτα ακολουθεί τον σύνδεσμο και ΔΕΝ τσεκάρει το
+                      κουτί, οπότε ο φόβος του σχολίου από πάνω δεν ισχύει. */}
+                  <label htmlFor="su-consent" style={consentText}>
                     Αποδέχομαι τους{' '}
-                    <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Όρους χρήσης</Link>{' '}και την{' '}
-                    <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Πολιτική απορρήτου</Link>.
-                  </span>
+                    <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους χρήσης</Link>. Διάβασα την{' '}
+                    <Link href="/privacy" className="lp-link po-tap-inline" style={consentLink}>Πολιτική απορρήτου</Link>.
+                  </label>
                 </div>
                 {consentTouched && !consent && (
                   <p role="alert" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: 0, lineHeight: 1.5 }}>
-                    Χρειάζεται να αποδεχθείς τους Όρους και την Πολιτική απορρήτου για να συνεχίσεις.
+                    Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.
                   </p>
                 )}
 
@@ -688,10 +788,13 @@ export default function SignupPage() {
                     μαθαίνει γιατί. Το ίδιο έκανε και ο αυτοματισμός δοκιμών,
                     που αρνήθηκε να το πατήσει.
 
-                    Μένει λοιπόν ΚΑΝΟΝΙΚΟ κουμπί. Η εμφάνιση παραμένει σβησμένη
-                    ως ένδειξη, ο λόγος λέγεται με λέξεις μέσω aria-describedby
-                    πριν το πάτημα και η υποβολή φτάνει στον handleSubmit που
-                    τον επαναλαμβάνει. Κανείς δεν μένει με κουμπί που σωπαίνει. */}
+                    Μένει λοιπόν ΚΑΝΟΝΙΚΟ κουμπί, ΚΑΙ ΣΤΗΝ ΟΨΗ. Ηταν σβησμένο
+                    στο 0,5 με δρομέα «απαγορεύεται», δηλαδή λευκό σε ανοιχτό
+                    μπλε περίπου 2:1, ενώ πατιόταν και δούλευε: η εξαίρεση της
+                    WCAG για ανενεργά στοιχεία δεν ισχύει σε κουμπί που κάνει
+                    κάτι. Ο λόγος λέγεται με λέξεις μέσω aria-describedby πριν
+                    το πάτημα και ο handleSubmit τον δείχνει πάνω στο πεδίο που
+                    φταίει. Κανείς δεν μένει με κουμπί που σωπαίνει. */}
                 {/* Ο λόγος, σε λέξεις, ΠΡΙΝ το πάτημα. Ο βλέπων χρήστης βλέπει το
                     κουμπί σβησμένο και μαντεύει· ο χρήστης αναγνώστη οθόνης δεν
                     έχει ούτε αυτό. */}
@@ -699,7 +802,7 @@ export default function SignupPage() {
                 {/* Το κοινό κύριο κουμπί, όπως στη Σύνδεση και στην Επαναφορά: ήταν
                     χειροποίητο «χάπι» επειδή το Btn δεν περνούσε ούτε το
                     `aria-describedby` ούτε τη σβηστή όψη χωρίς `disabled`. */}
-                <Btn variant="primary" type="submit" field dimmed={blocked} describedBy={why ? 'su-cta-why' : undefined}>
+                <Btn variant="primary" type="submit" field describedBy={why ? 'su-cta-why' : undefined}>
                   {loading ? 'Δημιουργία…' : 'Ξεκίνα τη δοκιμή'}
                 </Btn>
               </form>

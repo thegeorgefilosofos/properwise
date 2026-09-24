@@ -256,6 +256,36 @@ export function mergeLedger(bills: LedgerBill[], expenses: LedgerExpense[]): Led
 export const ledgerTotal = (entries: LedgerEntry[]): number =>
   entries.reduce((s, e) => s + e.amount, 0);
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ΤΑ ΕΞΟΔΑ ΜΙΑΣ ΧΡΟΝΙΑΣ, ΙΔΙΑ ΣΕ ΚΑΘΕ ΟΘΟΝΗ
+// ─────────────────────────────────────────────────────────────────────────
+// Για το ίδιο ακίνητο και το ίδιο 2026 η Τιμολόγηση έγραφε «Λειτουργικά έξοδα
+// 1.890,00€» και η Λογιστική με την Απόδοση «1.152,00€». Η πρώτη περνούσε από
+// αυτόν τον πυρήνα· οι άλλες δύο διάβαζαν μόνο τις δαπάνες και άφηναν έξω τους
+// λογαριασμούς που δεν είχαν γίνει ακόμη δαπάνη. Ο κανόνας γράφεται εδώ μία
+// φορά και τον καλούν και οι τρεις.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Οι γραμμές ενός έτους (με την ημερομηνία της γραμμής, όχι της καταχώρησης). */
+export const ledgerOfYear = (entries: LedgerEntry[], year: number): LedgerEntry[] =>
+  entries.filter(e => e.date.slice(0, 4) === String(year));
+
+/** Τα έξοδα του έτους, κάθε ευρώ μία φορά: δαπάνες και λογαριασμοί μαζί. */
+export function ledgerYearTotal(bills: LedgerBill[], expenses: LedgerExpense[], year: number): number {
+  return ledgerTotal(ledgerOfYear(mergeLedger(bills, expenses).entries, year));
+}
+
+/**
+ * Οι λογαριασμοί που ΔΕΝ έχουν γίνει δαπάνη.
+ *
+ * Για την οθόνη που κρατά τις δαπάνες με δικές της στήλες (κατηγορία, ομάδα,
+ * μερίδιο συνιδιοκτήτη) και χρειάζεται μόνο ό,τι λείπει από αυτές. Δαπάνες
+ * συν αυτοί οι λογαριασμοί κάνουν ακριβώς το `ledgerYearTotal`.
+ */
+export function billsWithoutExpense(bills: LedgerBill[], expenses: LedgerExpense[]): LedgerEntry[] {
+  return mergeLedger(bills, expenses).entries.filter(e => e.expenseId === null);
+}
+
 /** Όσα οφείλονται ακόμη. */
 export const ledgerUnpaid = (entries: LedgerEntry[]): LedgerEntry[] =>
   entries.filter(e => !e.paid);

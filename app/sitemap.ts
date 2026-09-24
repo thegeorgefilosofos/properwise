@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { SITE } from '@/lib/core/site'
-import { GUIDES } from './odigos/guides'
+import { GUIDES, GUIDES_UPDATED } from './odigos/guides'
 
 // Χάρτης της δημόσιας σελίδας για τις μηχανές αναζήτησης. Μόνο δημόσιες
 // διαδρομές: το dashboard, τα portals και οι σελίδες με token μένουν εκτός.
@@ -15,8 +15,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/vraxyxronia-i-makroxronia`, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/kathari-apodosi`, changeFrequency: 'monthly', priority: 0.9 },
     // Κόμβος οδηγών: η μία σελίδα που μαζεύει όλους τους οδηγούς, συνδεδεμένη
-    // από το υποσέλιδο κάθε δημόσιας σελίδας.
-    { url: `${base}/odigos`, changeFrequency: 'monthly', priority: 0.7 },
+    // από το υποσέλιδο κάθε δημόσιας σελίδας. Η ημερομηνία του είναι η πιο
+    // πρόσφατη των οδηγών του, αφού αυτούς δείχνει.
+    { url: `${base}/odigos`, lastModified: GUIDES_UPDATED, changeFrequency: 'monthly', priority: 0.7 },
     // Οδηγοί-πυλώνες: εξηγούν τον κανόνα και δένουν με τον υπολογιστή. Χτίζουν
     // topical authority (βλ. docs/marketing/seo-strategy). Η ΗΜΕΡΟΜΗΝΙΑ ΕΙΝΑΙ
     // ΤΟ ΜΟΝΟ ΣΗΜΑ ΠΟΥ ΔΙΑΒΑΖΕΙ Η GOOGLE: το `changeFrequency` και το

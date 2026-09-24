@@ -98,7 +98,7 @@ export function printAccountingReport(c: AccountingReportCtx): void {
   <div class="kpis">
     ${reportKpi('Μεικτά έσοδα', rEur(c.statement.grossIncome))}
     ${reportKpi('Φόρος εισοδήματος', rEur(c.statement.incomeTax))}
-    ${reportKpi('Καθαρό αποτέλεσμα', rSigned(c.statement.netProfit))}
+    ${reportKpi(netProfitLabel(c.statement), rSigned(c.statement.netProfit))}
     ${reportKpi('Πρόβλεψη φόρου / μήνα', rEur(c.provision.monthly))}
   </div>
 
@@ -127,6 +127,15 @@ export function printAccountingReport(c: AccountingReportCtx): void {
   openReport(html)
 }
 
+/**
+ * Το όνομα του `netProfit`, από την ίδια την Κατάσταση. Για φυσικό πρόσωπο
+ * είναι έσοδα μείον φόρος εισοδήματος, ΠΡΙΝ από ΕΝΦΙΑ, τέλη και δαπάνες· το
+ * «Καθαρό αποτέλεσμα» στο εξώφυλλο έλεγε κάτι που ο πίνακας από κάτω αναιρούσε.
+ */
+function netProfitLabel(st: IncomeStatement): string {
+  return st.lines.find(l => l.key === 'netProfit')?.label ?? 'Καθαρό αποτέλεσμα'
+}
+
 type SB = ReturnType<typeof createClient>
 
 /**
@@ -142,7 +151,7 @@ export async function downloadOfficialAccountingReport(c: AccountingReportCtx, o
     { type: 'kpis', title: 'Σύνοψη χρήσης', items: [
       { label: 'Μεικτά έσοδα', value: pEur(s.grossIncome) },
       { label: 'Φόρος εισοδήματος', value: pEur(s.incomeTax) },
-      { label: 'Καθαρό αποτέλεσμα', value: pSigned(s.netProfit) },
+      { label: netProfitLabel(s), value: pSigned(s.netProfit) },
       { label: 'Πρόβλεψη φόρου / μήνα', value: pEur(p.monthly) },
     ] },
     { type: 'rows', title: `Κατάσταση αποτελεσμάτων ${c.year}`, rows: s.lines.map(l => ({

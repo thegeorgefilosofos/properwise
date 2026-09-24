@@ -24,12 +24,23 @@ const near = (a: number, b: number, e = 0.01) => Math.abs(a - b) <= e
   // Η ΒΑΣΗ ΕΙΝΑΙ ΤΟ ΑΚΑΘΑΡΙΣΤΟ ΜΕΙΟΝ ΤΗΝ ΤΕΚΜΑΡΤΗ ΕΚΠΤΩΣΗ 5%, ΟΧΙ ΜΕΙΟΝ ΤΑ ΕΞΟΔΑ.
   // Ο παλιός έλεγχος κατοχύρωνε `1000 − 150 − 100 = 750` και κράτηση 113, δηλαδή
   // φύλαγε τον λάθος τύπο: η προμήθεια της πλατφόρμας είναι δαπάνη και δεν
-  // μειώνει το δηλωτέο εισόδημα. Σωστά: 1000 × 0,95 = 950 · 15% = 142,5 → 143.
-  ok('κράτηση φόρου 143 (στο 95% του ακαθάριστου)', w.taxReserve === 143)
-  // net = 1000 − 150 − 15 − 50 − 100 − 143 = 542
-  ok('καθαρό = 542', w.net === 542)
-  ok('καθαρό/διανυκτέρευση = 54', w.netPerNight === 54)
-  ok('περιθώριο 54%', w.marginPct === 54)
+  // μειώνει το δηλωτέο εισόδημα. Σωστά: 1000 × 0,95 = 950 · 15% = 142,50.
+  // Στο λεπτό και όχι στο ευρώ: η οθόνη τυπώνει δύο δεκαδικά.
+  ok('κράτηση φόρου 142,50 (στο 95% του ακαθάριστου)', w.taxReserve === 142.5)
+  // net = 1000 − 150 − 15 − 50 − 100 − 142,50 = 542,50
+  ok('καθαρό = 542,50', w.net === 542.5)
+  ok('καθαρό/διανυκτέρευση = 54,25', w.netPerNight === 54.25)
+  ok('περιθώριο 54,25%', w.marginPct === 54.25)
+}
+{
+  // Κρατήσεις με ποσό χωρίς διανυκτερεύσεις: το τέλος οφείλεται αλλά δεν
+  // μετριέται. Το «ανά βραδιά» δεν έχει παρονομαστή. Όχι μηδέν, όχι όλο το καθαρό.
+  const w = strWaterfall({ gross: 1265, platformFeePct: 15, nights: 0, climateFeePerNight: 8, cleaningFee: 0, managementPct: 0, incomeTaxPct: 15 })
+  ok('χωρίς νύχτες: τέλος άγνωστο (null), όχι 0', w.climateFee === null)
+  ok('χωρίς νύχτες: καθαρό/διανυκτέρευση null', w.netPerNight === null)
+  ok('προμήθεια στο λεπτό (189,75, όχι 190)', w.platformFee === 189.75)
+  const empty = strWaterfall({ gross: 0, platformFeePct: 15, nights: 0, climateFeePerNight: 8, cleaningFee: 0, managementPct: 0, incomeTaxPct: 15 })
+  ok('χωρίς έσοδα και νύχτες: τέλος 0 (δεν οφείλεται τίποτα)', empty.climateFee === 0)
 }
 
 // ── investmentReturns ────────────────────────────────────────────────────────
@@ -38,9 +49,10 @@ const near = (a: number, b: number, e = 0.01) => Math.abs(a - b) <= e
   ok('NOI = 9000 (χωρίς δάνειο)', r.noi === 9000)
   ok('ταμειακή ροή προ φόρων = 3000', r.preTaxCashFlow === 3000)
   ok('cap rate = 5% (9000/180000)', near(r.capRatePct, 5))
-  ok('cash-on-cash = 7,5% (3000/40000)', near(r.cashOnCashPct, 7.5))
+  ok('cash-on-cash = 7,5% (3000/40000)', r.cashOnCashPct != null && near(r.cashOnCashPct, 7.5))
   const noBuy = investmentReturns({ annualIncome: 1, annualOpEx: 0, annualLoanPayment: 0, purchasePrice: 0, equityInvested: 0 })
-  ok('χωρίς τιμή/κεφάλαιο → 0% (όχι διαίρεση με 0)', noBuy.capRatePct === 0 && noBuy.cashOnCashPct === 0)
+  // Χωρίς ίδια κεφάλαια η απόδοσή τους είναι άγνωστη, όχι 0%.
+  ok('χωρίς τιμή/κεφάλαιο → cap rate 0, cash-on-cash null (όχι διαίρεση με 0)', noBuy.capRatePct === 0 && noBuy.cashOnCashPct === null)
 }
 
 // ── Τέλος ανθεκτικότητας ──────────────────────────────────────────────────

@@ -140,8 +140,8 @@ export default function GuestCheckin() {
                     <div><label htmlFor="ci-nat" style={label}>Εθνικότητα</label><input id="ci-nat" value={nationality} onChange={e => setNationality(e.target.value)} placeholder="Ελληνική" style={field} /></div>
                     <div><label htmlFor="ci-birth" style={label}>Ημερομηνία γέννησης</label><input id="ci-birth" type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} style={field} /></div>
                     <div><label htmlFor="ci-arrival" style={label}>Ημερομηνία άφιξης</label><input id="ci-arrival" type="date" value={arrival} onChange={e => setArrival(e.target.value)} style={field} /></div>
-                    <div><label htmlFor="ci-phone" style={label}>Τηλέφωνο</label><input id="ci-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+30…" style={field} /></div>
-                    <div><label htmlFor="ci-email" style={label}>Ηλεκτρονικό ταχυδρομείο</label><input id="ci-email" type="email" value={email} onChange={e => setEmail(e.target.value)} style={field} /></div>
+                    <div><label htmlFor="ci-phone" style={label}>Τηλέφωνο (προαιρετικό)</label><input id="ci-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+30…" style={field} /></div>
+                    <div><label htmlFor="ci-email" style={label}>Ηλεκτρονικό ταχυδρομείο (προαιρετικό)</label><input id="ci-email" type="email" value={email} onChange={e => setEmail(e.target.value)} style={field} /></div>
                     <div><label htmlFor="ci-guests" style={label}>Αριθμός ατόμων</label><input id="ci-guests" inputMode="numeric" value={guests} onChange={e => setGuests(e.target.value.replace(/[^\d]/g, ''))} placeholder="2" style={field} /></div>
                   </div>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -149,7 +149,14 @@ export default function GuestCheckin() {
                     Αποδέχομαι τους κανόνες του καταλύματος
                   </label>
 
-                  {/* GDPR: ρητή συγκατάθεση επεξεργασίας προσωπικών δεδομένων (υποχρεωτική) */}
+                  {/* GDPR: ΔΥΟ ΒΑΣΕΙΣ, ΟΠΩΣ ΤΙΣ ΓΡΑΦΕΙ ΚΑΙ Η ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ. Ολα
+                      ζητούνταν «με συγκατάθεση», ενώ τα στοιχεία της δήλωσης
+                      διαμονής τα απαιτεί ο νόμος: εκεί η βάση είναι η έννομη
+                      υποχρέωση του οικοδεσπότη (άρθρο 6§1γ) και μια συγκατάθεση
+                      που δεν μπορείς να αρνηθείς δεν είναι ελεύθερη. Συγκατάθεση
+                      ζητείται μόνο για τα προαιρετικά, τηλέφωνο και email. Το
+                      κουτί μένει υποχρεωτικό, γιατί καταγράφει με χρονοσήμανση
+                      ότι ο επισκέπτης ενημερώθηκε (submit_checkin). */}
                   <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px' }}>
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
                       <input type="checkbox" checked={privacyConsent} onChange={e => setPrivacyConsent(e.target.checked)} className="po-lead-ico" style={{ width: 18, height: 18, accentColor: 'var(--accent)' }} />
@@ -160,7 +167,7 @@ export default function GuestCheckin() {
                           Το po-just δεν πάει ποτέ μόνο του: χωρίς συλλαβισμό η στοίχιση τεντώνει
                           τα κενά αντί να σπάσει λέξη. */}
                       <span className="po-just">
-                        {hy(<>Συναινώ στην επεξεργασία των στοιχείων μου από τον οικοδεσπότη, αποκλειστικά για τη νόμιμη δήλωση διαμονής και την επικοινωνία της κράτησης. Έλαβα γνώση της{' '}
+                        {hy(<>Τα στοιχεία ταυτότητας τα ζητά ο οικοδεσπότης επειδή τα απαιτεί ο νόμος για τη δήλωση διαμονής. Αν έδωσα τηλέφωνο ή email, συναινώ να τα χρησιμοποιήσει μόνο για την επικοινωνία της κράτησης. Έλαβα γνώση της{' '}
                         <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline' }}>Πολιτικής απορρήτου</a>.</>)}
                       </span>
                     </label>

@@ -26,14 +26,14 @@
 // να γίνει.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useCallback, useMemo, useRef, useId } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useId, type ReactNode } from 'react';
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { createClient } from '@/lib/supabase/client';
 import * as expenseStore from '@/lib/data/expenses'
 import * as billStore from '@/lib/data/bills'
 import ExpenseCompare from './ExpenseCompare';
 import type { Spend } from '@/lib/expenses/compare';
-import { T, TT, PageTitle, fe, fn, Btn, Card, EmptyState, Modal, Skeleton, fixedCols, ABSENT_DATE, Stat } from '@/components/Theme';
+import { T, TT, fe, fn, Btn, Card, EmptyState, Modal, Skeleton, fixedCols, ABSENT_DATE, Stat } from '@/components/Theme';
 import { ChevronRight } from 'lucide-react';
 import { notify, notifyError } from '@/components/toastBus';
 import { confirmDialog } from '@/components/ConfirmDialog';
@@ -69,6 +69,12 @@ interface Props {
    * άνοιγμα αφού ο χρήστης κλείσει τη φόρμα με το χέρι.
    */
   openAddNonce?: number;
+  /**
+   * Η ουρά των εισερχομένων, κάτω από τα τρία νούμερα. Ερχόταν ΠΡΙΝ από τον
+   * τίτλο της οθόνης: ο τίτλος «Δαπάνες» έπεφτε τρίτος, εφτακόσια
+   * εικονοστοιχεία κάτω, κάτω από μια κάρτα email και μια γραμμή τράπεζας.
+   */
+  inbox?: ReactNode;
 }
 
 
@@ -124,7 +130,11 @@ async function fetchLedger(
   };
 }
 
-export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce }: Props) {
+/** «1 απλήρωτος λογαριασμός», «4 απλήρωτοι λογαριασμοί». */
+const unpaidBillsLabel = (n: number): string =>
+  `${n} ${n === 1 ? 'απλήρωτος λογαριασμός' : 'απλήρωτοι λογαριασμοί'}`;
+
+export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce, inbox }: Props) {
   // Ένα instance ανά component. Χωρίς useMemo, κάθε render έφτιαχνε νέο client
   // και το κανάλι realtime ξαναδενόταν χωρίς λόγο.
   const supabase = useMemo(() => createClient(), []);
@@ -571,6 +581,13 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
            τηρεί η εφαρμογή παντού, όχι εξαίρεση γι' αυτή τη γραμμή· ο κανόνας
            ισχύει μόνο κάτω από τα 360, δηλαδή στα τηλέφωνα όπου πράγματι δεν
            χωράει· σε Galaxy A των 360 τα κουμπιά μένουν στα 12. */
+        /* ΣΤΟ ΤΗΛΕΦΩΝΟ Η ΑΝΑΖΗΤΗΣΗ ΠΙΑΝΕΙ ΤΟ ΠΛΑΤΟΣ ΤΩΝ ΚΑΡΤΩΝ. Ο διαχωριστής
+           που τη σπρώχνει δεξιά στον υπολογιστή, μαζί με το ταβάνι των 320,
+           άφηνε στα 390 μια λωρίδα 46 εικονοστοιχείων αριστερά της. */
+        @media (max-width: 620px) {
+          .ledger-spacer { display: none; }
+          .ledger-search { flex-basis: 100% !important; max-width: none !important; }
+        }
         @media (max-width: 360px) {
           .exp-row { padding-left: 9px; padding-right: 9px; }
           .exp-actions { gap: 2px; }
@@ -579,19 +596,9 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
       `}</style>
 
       {/* ── Κεφαλίδα ───────────────────────────────────────────────────────────
-          ΗΤΑΝ ΧΕΙΡΟΠΟΙΗΤΗ, ΚΑΙ ΗΤΑΝ Η ΜΟΝΗ. Δεκαέξι καρτέλες χρησιμοποιούν το
-          `PageTitle`· αυτή έγραφε δικό της `<h1>` με `TT.h1`. Το αποτέλεσμα
-          μετρήθηκε σε τηλέφωνο: ύψος κεφαλαίου 15 εδώ, 20,5 στις Εκκρεμότητες.
-          Δύο μεγέθη για το ίδιο πράγμα, στην ίδια εφαρμογή, δύο πατήματα μακριά.
-
-          Ο λόγος που είχε γραφτεί μικρότερος ήταν σωστός («η οθόνη δεν έχει
-          ανάγκη από αφίσα») και τηρείται πλέον ΓΙΑ ΟΛΕΣ: το `PageTitle` πέφτει
-          μόνο του στα 22 κάτω από τα 640. Μία απόφαση, ένα σημείο. */}
-      <PageTitle title="Δαπάνες" sub="Κάθε ευρώ που φεύγει, σε μία λίστα." />
-
-      {/* Πρώτα η απάντηση στο «ξόδεψα περισσότερα;», μετά η λίστα. Ο χρήστης δεν
-          ανοίγει τις Δαπάνες για να διαβάσει εγγραφές — ανοίγει για να καταλάβει. */}
-      <ExpenseCompare spends={spends} today={compareToday} />
+          Ο ΤΙΤΛΟΣ ΖΕΙ ΣΤΟ TabFinances, ακριβώς κάτω από τη σειρά των καρτελών,
+          ως το κοινό `PageTitle`. Εδώ ερχόταν μετά την ουρά των εισερχομένων
+          και τη γραμμή της τράπεζας, τρίτος στην οθόνη. */}
 
       {/* ── Τρία νούμερα ─────────────────────────────────────────────────────
           Χωρίς πλαίσια και χωρίς γεμίσματα. Τρεις στήλες χωρισμένες με μία
@@ -621,12 +628,22 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
         {/* Ο ΜΗΝΑΣ ΚΑΙ Η ΧΡΟΝΙΑ ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥΣ. «Μηνιαίες» και «Ετήσιες»
             διαβάζονταν σαν μέσοι όροι, ενώ είναι ο τρέχων μήνας και η χρονιά
             ως σήμερα. */}
+        {/* ΕΝΑ ΟΥΣΙΑΣΤΙΚΟ ΓΙΑ ΤΗΝ ΙΔΙΑ ΜΟΝΑΔΑ. Έγραφε «1 απλήρωτη» στο ένα
+            πλακίδιο, «4 χρεώσεις» στο διπλανό και η Επισκόπηση «4 απλήρωτα»
+            για τα ίδια ποσά. Παντού πλέον «απλήρωτοι λογαριασμοί». */}
         <Stat label={`Δαπάνες ${monthGen(Number(thisMonth.slice(5, 7)) - 1)}`} value={loading ? null : fe(monthTotal)}
-          sub={monthUnpaid ? `${monthUnpaid} ${monthUnpaid === 1 ? 'απλήρωτη' : 'απλήρωτες'}` : undefined} />
+          sub={monthUnpaid ? unpaidBillsLabel(monthUnpaid) : undefined} />
         <Stat label={'Ανεξόφλητες δαπάνες'} value={loading ? null : fe(unpaidTotal)}
-          sub={unpaid.length ? `${unpaid.length} ${unpaid.length === 1 ? 'χρέωση' : 'χρεώσεις'}` : undefined} />
+          sub={unpaid.length ? unpaidBillsLabel(unpaid.length) : undefined} />
         <Stat label={`Δαπάνες ${thisMonth.slice(0, 4)}`} value={loading ? null : fe(yearTotal)} />
       </div>
+
+      {inbox}
+
+      {/* Τα τρία νούμερα πρώτα, μετά η σύγκριση: το ανοιχτό και το ετήσιο
+          είναι ό,τι ήρθε να δει ο χρήστης και κάθονταν κάτω από μια κάρτα
+          πεντακοσίων εικονοστοιχείων. Η σύγκριση απαντά στο «γιατί». */}
+      <ExpenseCompare spends={spends} today={compareToday} />
 
       {/* ── ΤΙ ΛΕΙΠΕΙ ────────────────────────────────────────────────────────
           Μία γραμμή, όχι πίνακας. Δεν είναι σφάλμα και δεν παρουσιάζεται ως
@@ -721,7 +738,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
         {(adding || !onScan) && (
           <Btn variant={onScan ? 'secondary' : 'primary'} onClick={() => { setSeed(undefined); setAdding(v => !v); }}>{adding ? 'Ακύρωση' : 'Νέα δαπάνη'}</Btn>
         )}
-        <div style={{ flex: 1 }} />
+        <div className="ledger-spacer" style={{ flex: 1 }} />
         {/* Ίδιο ύψος και ίδιο σχήμα με τα κουμπιά δίπλα του. Πριν ήταν ψηλότερο
             και πιο στρογγυλό και η σειρά έμοιαζε στοιχισμένη κατά λάθος. */}
         <input
@@ -737,7 +754,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
              ονομάζει τα δύο που ψάχνει ο κόσμος. Μια υπόδειξη κομμένη στη μέση
              δεν διδάσκει την τρίτη δυνατότητα, την κρύβει. */
           placeholder="Περιγραφή ή πάροχος"
-          className="po-field" aria-label="Αναζήτηση δαπανών"
+          className="po-field ledger-search" aria-label="Αναζήτηση δαπανών"
           style={{
             /* ΤΟ ΣΤΑΘΕΡΟ ΠΛΑΤΟΣ ΕΚΟΒΕ ΤΗΝ ΥΠΟΔΕΙΞΗ ΣΤΟ ΚΙΝΗΤΟ. Στα 190 χωρούσαν
                είκοσι χαρακτήρες και η υπόδειξη έχει τριάντα: ο χρήστης διάβαζε

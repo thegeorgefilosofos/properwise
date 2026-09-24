@@ -113,7 +113,12 @@ export const PROFESSIONAL_ONLY_TABS: ReadonlySet<string> = new Set(
     .map(([tab]) => tab),
 );
 
-// Φιλικές ελληνικές ετικέτες για τα μηνύματα αναβάθμισης.
+// Φιλικές ελληνικές ετικέτες για τα μηνύματα αναβάθμισης και τον πίνακα /paketa.
+//
+// ΚΑΤΑΓΡΑΦΗ, ΟΧΙ ΕΙΣΠΡΑΞΗ. Το «Είσπραξη ενοικίου» με τικ σε κάθε πακέτο
+// διαβαζόταν σαν να περνούν τα χρήματα από εμάς· δεν περνούν ποτέ.
+// ΚΑΙ ΜΙΑ ΛΕΞΗ ΓΙΑ ΤΗ ΣΕΙΡΑ ΔΙΑΘΕΣΗΣ: ίδια με τη γραμμή του «Ιδιοκτήτης+» στο
+// plans.ts, ώστε κάρτα και πίνακας να λένε το ίδιο πράγμα με τα ίδια λόγια.
 export const FEATURE_LABEL: Record<Feature, string> = {
   multi_property:      'Περισσότερα ακίνητα',
   comparison:          'Σύγκριση ακινήτων',
@@ -121,11 +126,11 @@ export const FEATURE_LABEL: Record<Feature, string> = {
   clients:             'Πελατολόγιο',
   report_branding:     'Επώνυμες αναφορές',
   e2_export:           'Εξαγωγή Ε2',
-  rent_collection:     'Είσπραξη ενοικίου',
+  rent_collection:     'Καταγραφή εισπράξεων ενοικίου',
   accounting_journal:  'Λογιστικό ημερολόγιο',
   bank_import:         'Κινήσεις τράπεζας',
   investment_analysis: 'Επενδυτική ανάλυση',
-  early_access:        'Πρόωρη πρόσβαση',
+  early_access:        'Νέες δυνατότητες νωρίτερα',
 };
 
 const rank = (p: PlanId): number => {

@@ -337,7 +337,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
             {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `s.btnDng` είναι γεωμετρικά δευτερεύον κουμπί, αλλά
                 ο κόκκινος τόνος του δεν έχει ρόλο στο `Btn`: με `secondary` η διαγραφή
                 θα έχανε το χρώμα που την ξεχωρίζει από τις υπόλοιπες ενέργειες. */}
-            <button style={s.btnDng} onClick={async()=>{if(!(await confirmDialog('Διαγραφή καταγραφής επικοινωνίας;',{tone:'negative'})))return;if(await saved('Η καταγραφή δεν διαγράφηκε',supabase.from('tenant_comm_log').delete().eq('id',log.id)))loadLogs();}}>Διαγραφή</button>
+            <button style={s.btnDng} onClick={async()=>{if(!(await confirmDialog('Διαγραφή καταγραφής επικοινωνίας;',{tone:'negative',confirmLabel:'Διαγραφή'})))return;if(await saved('Η καταγραφή δεν διαγράφηκε',supabase.from('tenant_comm_log').delete().eq('id',log.id)))loadLogs();}}>Διαγραφή</button>
           </div>
         ))}
       </div>
@@ -563,7 +563,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
     else { if(!await saved('Η φθορά δεν καταχωρήθηκε', supabase.from('tenant_damages').insert(payload))) return; }
     setBusy(false); setAddOpen(false); setF(blankF()); setEditId(null); onRefresh();
   };
-  const del=async(d:TenantDamage)=>{ if(!(await confirmDialog('Διαγραφή φθοράς;',{tone:'negative'}))) return; if(await saved('Η φθορά δεν διαγράφηκε',supabase.from('tenant_damages').delete().eq('id',d.id))) onRefresh(); };
+  const del=async(d:TenantDamage)=>{ if(!(await confirmDialog('Διαγραφή φθοράς;',{tone:'negative',confirmLabel:'Διαγραφή'}))) return; if(await saved('Η φθορά δεν διαγράφηκε',supabase.from('tenant_damages').delete().eq('id',d.id))) onRefresh(); };
 
   // Ομαδοποίηση ανά έτος μίσθωσης (από lease_start· αλλιώς ανά ημερολογιακό έτος).
   const bucketOf=(occurred:string|null):{key:string;label:string;sort:number}=>{
@@ -749,7 +749,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
     const ok=await saved('Η φθορά δεν καταγράφηκε', supabase.from('tenant_damages').insert({ tenant_id:tenant.id, property_id:propertyId, user_id:userId, occurred_on:todayISO(), description:[m.title,m.description].filter(Boolean).join(': ').slice(0,500), cost:null, charged_to_tenant:false, repaired:false, notes:'Από αίτημα βλάβης ενοικιαστή' }));
     setBusy(false); onRefresh(); if(ok) notifyOk('Καταγράφηκε στις φθορές');
   };
-  const del=async(m:MaintenanceReq)=>{ if(!(await confirmDialog('Διαγραφή αιτήματος;',{tone:'negative'}))) return; if(await saved('Το αίτημα δεν διαγράφηκε',supabase.from('maintenance_requests').delete().eq('id',m.id))) onRefresh(); };
+  const del=async(m:MaintenanceReq)=>{ if(!(await confirmDialog('Διαγραφή αιτήματος;',{tone:'negative',confirmLabel:'Διαγραφή'}))) return; if(await saved('Το αίτημα δεν διαγράφηκε',supabase.from('maintenance_requests').delete().eq('id',m.id))) onRefresh(); };
   const gdt=(d:string|null)=>d?localDay(d).toLocaleDateString('el-GR',{day:'2-digit',month:'short',year:'numeric'}):ABSENT_DATE;
   const openAssign=(m:MaintenanceReq)=>{ setAssignFor(m.id); setAf({name:m.assignee_name||'',contact:m.assignee_contact||''}); };
   const saveAssign=async(m:MaintenanceReq)=>{

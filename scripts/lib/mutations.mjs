@@ -22,6 +22,10 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Η οδός του ιδιοκτήτη ως διεύθυνση σε στιγμιότυπο δοκιμής, όπως βρέθηκε.
+  // Η λέξη χτίζεται από σημεία κώδικα, ώστε να μη γράφεται αυτούσια ούτε εδώ.
+  'private-street': { add: 'lib/__mut__.test.ts', content: `const ctx = { address: '${String.fromCodePoint(0x391, 0x3c1, 0x3cd, 0x3b2, 0x3b2, 0x3bf, 0x3c5)} 45' }\nexport default ctx\n` },
+
   // Οι Οροι έλεγαν ότι η εφαρμογή κινητού «υπάρχει» στα stores σε ενεστώτα,
   // ενώ δεν έχει κυκλοφορήσει. Η μετάλλαξη προσθέτει ακριβώς τέτοιον ισχυρισμό,
   // χωρίς καμία λέξη που να τον δηλώνει μελλοντικό.
@@ -338,6 +342,10 @@ export const MUTATIONS = {
   'download': { add: 'components/__mut__.ts', content: "export const save = (blob: Blob) => {\n  const a = document.createElement('a')\n  a.href = URL.createObjectURL(blob)\n  a.download = 'arxeio.csv'\n  a.click()\n}\n" },
   'official-links': { add: 'components/__mut__.tsx', content: tsx('    <a href="https://www.aade.gr/polites">Ημερολόγιο</a>') },
   'site-url': { add: 'components/__mut__.ts', content: "export const url = 'https://properwise.gr/imerologio'\n" },
+  // Το όνομα του πακέτου στην ονομαστική μετά από «του»: «Όλα του «Ιδιοκτήτης» και:».
+  'plan-genitive': { file: 'app/page.tsx', from: 'Όλα του «${prev.nameGen}» και:', to: 'Όλα του «${prev.name}» και:' },
+  // Σχόλιο CSS που ταξιδεύει στον επισκέπτη: η παρεμβολή βγαίνει και μένει σκέτο «/* … */».
+  'style-comments': { file: 'app/ScrollStory.tsx', from: "${/* Σε στενό πλαίσιο (όχι στενή οθόνη), το πλευρικό μενού του πίνακα δεν χωρά. */''}", to: '/* Σε στενό πλαίσιο (όχι στενή οθόνη), το πλευρικό μενού του πίνακα δεν χωρά. */' },
   'security-txt': { file: 'public/.well-known/security.txt', from: 'Expires:', to: 'X-Expires:' },
   // Η κλασική απόκλιση: αλλάζει η προθεσμία στην πηγή, μένει η παλιά στα
   // δημόσια κείμενα. Και οι δύο κατευθύνσεις δοκιμάζονται.
@@ -503,6 +511,10 @@ export const MUTATIONS = {
   'way-out': { add: 'app/login/__mut__.tsx', content: "export default function P() {\n  return <h1>Μια οθόνη χωρίς δρόμο πίσω</h1>\n}\n" },
   // Ακριβώς ό,τι έριχνε το CI: το πλαστό αντικείμενο στη θέση του κατασκευαστή.
   'global-clobber': { add: 'lib/core/__mut__.ts', content: "export const stub = () => { (globalThis as unknown as Record<string, unknown>).URL = { createObjectURL: () => 'blob:x' } }\n" },
+  // Ο απαγορευμένος δρόμος ως «παράδειγμα» σε δοκιμή, όπως βρέθηκε. Γράφεται
+  // κωδικοποιημένος και εδώ: ο κατάλογος μεταλλάξεων είναι κι αυτός αρχείο
+  // του αποθετηρίου.
+  'forbidden-street': { add: 'lib/__mut__.test.ts', content: `const address = '${Buffer.from('zrHPgc+FzrLOss6/z4U=', 'base64').toString('utf8')} 45'\nexport default address\n` },
   // Η πληρωμένη διαδρομή που ξεχνά την πύλη πακέτου: ο έλεγχος του server
   // αντικαθίσταται από «πάντα ανοιχτό». Ο φύλακας πρέπει να το πιάσει.
   'server-entitlements': { file: 'app/api/investment/route.ts', from: "await requireFeature('investment_analysis')", to: "await Promise.resolve({ ok: true, plan: 'agency', userId: 'x' })" },

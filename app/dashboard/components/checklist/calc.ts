@@ -157,6 +157,14 @@ export const asStatus = (v: string | null): Status =>
 export const asRecurring = (v: string | null): Recurring =>
   v === 'monthly' || v === 'quarterly' || v === 'yearly' ? v : 'none'
 
+// ═══ Η ΚΑΤΗΓΟΡΙΑ ΠΟΥ ΔΕΝ ΥΠΑΡΧΕΙ ΣΤΟΝ ΚΑΤΑΛΟΓΟ ΕΚΡΥΒΕ ΤΗΝ ΕΡΓΑΣΙΑ ═══════════
+// Η λίστα ομαδοποιεί ανά κατηγορία του καταλόγου· μια εργασία με κατηγορία
+// παλιάς έκδοσης ή εισαγωγής («cleaning») μετριόταν στο «Όλα (3)» και στη
+// μπάρα προόδου αλλά δεν εμφανιζόταν σε καμία ομάδα. Ό,τι δεν αναγνωρίζεται
+// πηγαίνει στο «Άλλο», όπως κάνουν ήδη η προτεραιότητα και η κατάσταση.
+export const asCategory = (v: string | null): string =>
+  v && CATEGORIES.some(c => c.id === v) ? v : 'other'
+
 export function parseItem(row: ChecklistItemsRow): ChecklistItem {
   const item: ChecklistItem = {
     ...row,
@@ -167,6 +175,7 @@ export function parseItem(row: ChecklistItemsRow): ChecklistItem {
     created_at: row.created_at ?? '',
     estimated_cost: row.estimated_cost ?? 0,
     actual_cost: row.actual_cost ?? 0,
+    category: asCategory(row.category),
     priority: asPriority(row.priority),
     status: asStatus(row.status),
     recurring: asRecurring(row.recurring),

@@ -11,6 +11,7 @@ import BrandMark from '@/components/BrandMark';
 import { ABSENT, T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
+import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -172,6 +173,12 @@ export default function VerifyDocument() {
             </p>
           </div>
         )}
+
+        {/* Δημόσια σελίδα που ανοίγει άνθρωπος χωρίς λογαριασμό: ο δρόμος προς
+            το τι κρατάμε και γιατί υπάρχει σε κάθε κατάσταση, όχι μόνο στο «γνήσιο». */}
+        <p style={{ fontSize: 12, lineHeight: 1.6, margin: '20px 0 0' }}>
+          <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Πολιτική απορρήτου</Link>
+        </p>
       </div>
     </div>
   );

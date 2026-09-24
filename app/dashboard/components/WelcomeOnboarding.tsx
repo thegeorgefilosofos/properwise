@@ -29,10 +29,17 @@
 //    στο «Αργότερα» — δηλαδή θα έλεγε το ίδιο πράγμα δύο φορές.
 // 3. ΖΕΙ ΠΑΝΩ ΑΠΟ ΤΑ ΠΑΡΑΘΥΡΑ (z-index 3000): από εδώ ανοίγει ο οδηγός
 //    προσθήκης ακινήτου, δεν ανοίγει από πάνω του.
+//
+// ΤΗ ΣΥΜΠΕΡΙΦΟΡΑ ΟΜΩΣ ΤΗΝ ΠΑΙΡΝΕΙ ΑΠΟ ΤΟ Modal. Το χειρόγραφο κέλυφος δήλωνε
+// `aria-modal` και δεν έδινε εστίαση ούτε την κρατούσε: με πληκτρολόγιο, το
+// Tab περπατούσε στον πίνακα πίσω από το πέπλο. Το `useOverlayShell` δίνει
+// εστίαση στην κάρτα, παγιδεύει το Tab, κλειδώνει την κύλιση και επιστρέφει
+// την εστίαση· το Escape καλεί ένα `onClose` που δεν κάνει τίποτα, για τον
+// λόγο 1.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, fe, Btn, ChipToggle } from '@/components/Theme';
+import { T, TT, fe, Btn, ChipToggle, useOverlayShell } from '@/components/Theme';
 import { isoDate } from '@/lib/core/time';
 import { saved } from '@/components/dbWrite';
 import * as billing from '@/lib/data/billing';
@@ -51,7 +58,15 @@ interface Props {
 }
 
 interface CardRow { left: string; right: string }
-interface WelcomeCard { label: string; title: string; copy: string; rows: [CardRow, CardRow] }
+interface WelcomeCard { label: string; title: string; copy: string; source: string; rows: [CardRow, CardRow] }
+
+/** Το Escape δεν κλείνει την υποδοχή (βλ. λόγο 1 πιο πάνω). */
+const KEEP_OPEN = () => {};
+
+// ΤΑ ΝΟΥΜΕΡΑ ΤΩΝ ΚΑΡΤΩΝ ΛΕΝΕ ΑΠΟ ΠΟΥ ΕΡΧΟΝΤΑΙ. Ο νέος χρήστης, χωρίς κανένα
+// δεδομένο ακόμη, διάβαζε «Κατάσταση αποτελεσμάτων 2026» με ποσό δίπλα σαν
+// να ήταν δικό του. Μόνο η τελευταία κάρτα έλεγε «παράδειγμα».
+const SAMPLE = 'Παράδειγμα με φανταστικά στοιχεία';
 
 /** Ημέρα και μήνας μιας προθεσμίας, όπως γράφεται σε ημερολόγιο. */
 const dayMonth = (iso: string): string => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -73,39 +88,46 @@ function buildCards(today: string): WelcomeCard[] {
 
   return [
     {
-      label: 'ΛΟΓΙΣΤΙΚΗ',
+      label: 'Λογιστική',
       title: 'Ο φάκελος του λογιστή',
       copy: 'Ένα ενημερωμένο αρχείο με όσα ζητά ο λογιστής και μια σελίδα με τις ελλείψεις.',
+      source: SAMPLE,
       rows: [
         { left: `Κατάσταση αποτελεσμάτων ${s.year}`, right: fe(s.collected) },
-        { left: 'Δαπάνες σε λογαριασμούς ΕΛΠ', right: `${ledger.length} κατηγορίες` },
+        { left: 'Δαπάνες ταξινομημένες για τον λογιστή', right: `${ledger.length} κατηγορίες` },
       ],
     },
     {
-      label: 'ΔΑΠΑΝΕΣ',
+      label: 'Δαπάνες',
       title: 'Αναγνώριση παραστατικών',
       copy: 'Από τη σάρωση προκύπτουν η κατηγορία, το ΑΦΜ και ο λογαριασμός.',
+      source: SAMPLE,
       rows: [
         { left: power.description, right: fe(power.amount) },
         { left: categoryLabel(power.category), right: `λογαριασμός ${expenseAccount(power.category).code}` },
       ],
     },
     {
-      label: 'ΥΠΟΧΡΕΩΣΕΙΣ',
+      label: 'Υποχρεώσεις',
       title: 'Το ημερολόγιο προθεσμιών',
       copy: 'Κάθε δήλωση και κάθε δόση με την επίσημη καταληκτική ημερομηνία.',
+      // Οι προθεσμίες ΔΕΝ είναι παράδειγμα: βγαίνουν από το φορολογικό ημερολόγιο.
+      source: 'Οι επόμενες προθεσμίες του φορολογικού ημερολογίου',
       rows: [
         { left: deadlines[0]?.title ?? '', right: deadlines[0] ? dayMonth(deadlines[0].date) : '' },
         { left: deadlines[1]?.title ?? '', right: deadlines[1] ? dayMonth(deadlines[1].date) : '' },
       ],
     },
     {
-      label: 'ΒΟΗΘΟΣ',
+      // Η βοηθός έχει όνομα και το όνομα είναι ο τίτλος· η ετικέτα λέει τι
+      // κάνεις μαζί της, όπως οι ετικέτες των άλλων τριών καρτών.
+      label: 'Ερωτήσεις',
       title: 'Νόα, δίπλα σου',
-      copy: 'Απαντά στα ελληνικά, με βάση τα δικά σου δεδομένα και στοιχεία.',
+      copy: 'Απαντά στα ελληνικά, με βάση τα δικά σου δεδομένα.',
+      source: SAMPLE,
       rows: [
         { left: 'Πόσο φόρο θα πληρώσω φέτος;', right: fe(s.statement.incomeTax) },
-        { left: 'Στο παράδειγμα της χρονιάς', right: `${fe(monthlyTax)} τον μήνα` },
+        { left: 'Ενδεικτικά, στο παράδειγμα', right: `${fe(monthlyTax)} τον μήνα` },
       ],
     },
   ];
@@ -114,7 +136,11 @@ function buildCards(today: string): WelcomeCard[] {
 export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate, onProfile, onClose }: Props) {
   const supabase = createClient();
   const [step, setStep] = useState(0);
-  const [profile, setProfile] = useState<'individual' | 'professional'>('individual');
+  // ΚΑΜΙΑ ΠΡΟΕΠΙΛΟΓΗ, ΟΠΩΣ ΚΑΙ ΣΤΗ ΦΟΡΟΛΟΓΙΚΗ ΕΡΩΤΗΣΗ ΑΠΟ ΚΑΤΩ. Το «Ιδιώτης»
+  // φαινόταν επιλεγμένο αλλά γραφόταν μόνο με πάτημα: η οθόνη έλεγε κάτι που
+  // το προφίλ δεν είχε.
+  const [profile, setProfile] = useState<'individual' | 'professional' | null>(null);
+  const { panelRef } = useOverlayShell(true, KEEP_OPEN);
   const [cards] = useState(() => buildCards(isoDate(new Date())));
 
   const chooseProfile = (v: 'individual' | 'professional') => {
@@ -179,16 +205,20 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
     <div role="dialog" aria-modal="true" aria-label="Καλωσόρισμα"
       style={{ position: 'fixed', inset: 0, background: T.scrim, backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: T.sp.lg, overflowY: 'auto' }}>
       <style>{`@keyframes welcomeIn{from{opacity:0;transform:translateY(8px) scale(0.98)}to{opacity:1;transform:none}}`}</style>
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, width: 'min(460px, 100%)', boxShadow: 'var(--elev-3)', fontFamily: T.font.sans, animation: `welcomeIn 0.3s ${T.ease.standard}`, padding: '26px 26px 22px' }}>
+      <div ref={panelRef} tabIndex={-1} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, width: 'min(460px, 100%)', boxShadow: 'var(--elev-3)', fontFamily: T.font.sans, animation: `welcomeIn 0.3s ${T.ease.standard}`, padding: '26px 26px 22px', outline: 'none' }}>
 
         {/* ── Η ΚΑΡΤΑ ────────────────────────────────────────────────────────
             Ετικέτα, τίτλος, κείμενο, δεδομένα — πάντα με αυτή τη σειρά και σε
             σταθερά ύψη, ώστε καμία λέξη να μη μετακινείται από κάρτα σε κάρτα. */}
+        {/* Η εστίαση μένει στο «Επόμενο»· η νέα κάρτα ανακοινώνεται από εδώ. */}
+        <div aria-live="polite">
         <div style={{ ...TT.label, color: 'var(--accent)' }}>{c.label}</div>
         <div style={{ ...TT.h1, fontSize: 20, marginTop: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</div>
         <div style={{ ...TT.bodySm, fontSize: 'var(--fs-base)', lineHeight: 1.55, marginTop: 8, minHeight: 40 }}>{c.copy}</div>
+        </div>
 
-        <div style={{ marginTop: 16, border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, background: 'var(--bg-elevated)', padding: '12px 14px' }}>
+        <div style={{ ...TT.caption, marginTop: 16 }}>{c.source}</div>
+        <div style={{ marginTop: 6, border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, background: 'var(--bg-elevated)', padding: '12px 14px' }}>
           {c.rows.map((r, i) => (
             <div key={r.left} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: T.sp.md, marginTop: i === 0 ? 0 : 8 }}>
               <span style={{ ...(i === 0 ? TT.bodySm : TT.caption), color: i === 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.left}</span>
@@ -200,7 +230,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
         {/* ── ΟΙ ΕΡΩΤΗΣΕΙΣ, ΜΟΝΟ ΣΤΗΝ ΤΕΛΕΥΤΑΙΑ ΚΑΡΤΑ ────────────────────── */}
         {last && (
           <div style={{ marginTop: T.sp.xl, paddingTop: 20, borderTop: '1px solid var(--border-subtle)' }}>
-            <div style={capLabel}>ΤΙ ΣΕ ΠΕΡΙΓΡΑΦΕΙ</div>
+            <div style={capLabel}>Τι σε περιγράφει</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {([['individual', 'Ιδιώτης', 'δικά μου ακίνητα'], ['professional', 'Επαγγελματίας', 'διαχείριση πολλών']] as const).map(([v, t, sub]) => {
                 const on = profile === v;
@@ -213,9 +243,9 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
               })}
             </div>
 
-            <div style={{ ...capLabel, marginTop: T.sp.lg }}>ΦΟΡΟΛΟΓΙΚΑ, ΤΙ ΕΙΣΑΙ</div>
+            <div style={{ ...capLabel, marginTop: T.sp.lg }}>Πώς φορολογείσαι</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {([[false, 'Φυσικό πρόσωπο', 'μόνο δήλωση'], [true, 'Έχω επιχείρηση', 'ή ελεύθ. επαγγελματίας']] as const).map(([v, t, sub]) => (
+              {([[false, 'Φυσικό πρόσωπο', 'μόνο δήλωση'], [true, 'Έχω επιχείρηση', 'ή ελεύθερος επαγγελματίας']] as const).map(([v, t, sub]) => (
                 <button key={String(v)} onClick={() => chooseBiz(v)} style={choice(hasBiz === v)}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: hasBiz === v ? 'var(--accent)' : 'var(--text-primary)' }}>{t}</div>
                   <div style={{ ...TT.caption, marginTop: 2 }}>{sub}</div>
@@ -225,7 +255,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
 
             {hasBiz === true && (
               <>
-                <div style={{ ...capLabel, marginTop: 14 }}>ΜΟΡΦΗ</div>
+                <div style={{ ...capLabel, marginTop: 14 }}>Μορφή</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {/* `chip` γιατί η σειρά δεν έχει δική της ράγα, `grow` για ίσα μερίδια όπως το flex:1 του pill. */}
                   {([['sole_trader', 'Ατομική'], ['partnership', 'ΟΕ / ΕΕ'], ['company', 'ΑΕ / ΕΠΕ / ΙΚΕ']] as const).map(([v, t]) => (
@@ -233,7 +263,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
                   ))}
                 </div>
 
-                <div style={{ ...capLabel, marginTop: 14 }}>ΒΙΒΛΙΑ</div>
+                <div style={{ ...capLabel, marginTop: 14 }}>Βιβλία</div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {([['single_entry', 'Απλογραφικά'], ['double_entry', 'Διπλογραφικά']] as const).map(([v, t]) => (
                     <ChipToggle key={v} grow on={books === v} onClick={() => saveLegal(legalForm, v)}>{t}</ChipToggle>

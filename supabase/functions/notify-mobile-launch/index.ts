@@ -41,12 +41,12 @@ const ANDROID_URL    = Deno.env.get('ANDROID_APP_URL') || 'https://play.google.c
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 function launchEmail(): { subject: string; html: string } {
-  const subject = 'Το PROPERWISE Mobile κυκλοφόρησε'
+  const subject = 'Η εφαρμογή PROPERWISE για κινητά κυκλοφόρησε'
   const html = emailShell({
     preheader: 'Η εφαρμογή για κινητό είναι διαθέσιμη.',
     footerNote: 'Λαμβάνεις αυτό το email επειδή ζήτησες ειδοποίηση για την εφαρμογή. · properwise.gr',
     bodyHtml: eyebrow('Μόλις κυκλοφόρησε')
-      + h('Το PROPERWISE Mobile είναι εδώ')
+      + h('Η εφαρμογή για κινητά είναι εδώ')
       + p('Ζήτησες να μάθεις πρώτος. Η εφαρμογή για κινητό είναι πλέον διαθέσιμη: όλη η διαχείριση των ακινήτων σου στο κινητό, με λίγα πατήματα ή με τη φωνή σου.')
       + buttonPair({ label: 'App Store', url: IOS_URL }, { label: 'Google Play', url: ANDROID_URL })
       + linkLine('ή συνέχισε από τον υπολογιστή', APP_URL),

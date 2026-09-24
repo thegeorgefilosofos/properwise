@@ -23,7 +23,7 @@
 // στη διεύθυνση του δικού του περιηγητή· ταξιδεύουν μόνο αν ο ίδιος στείλει τον
 // σύνδεσμο. Η σελίδα εξακολουθεί να μη στέλνει τίποτα πουθενά.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { readTool, toolQuery, toolLink, type ToolSpec, type ToolValues } from '@/lib/tools/permalink';
 import { SITE_HOST } from '@/lib/core/site';
@@ -83,6 +83,10 @@ function IconPrint() {
   );
 }
 
+const noSubscribe = () => () => {};
+/** Φύλλο κοινοποίησης του συστήματος σε συσκευή αφής· στον υπολογιστή, αντιγραφή. */
+const shareSheet = () => typeof navigator.share === 'function' && window.matchMedia('(pointer: coarse)').matches;
+
 /**
  * Οι δύο έξοδοι του αποτελέσματος. Δεν εμφανίζονται στην εκτύπωση: ένα κουμπί
  * «Εκτύπωση» τυπωμένο σε χαρτί είναι ο ορισμός του περιττού.
@@ -98,8 +102,25 @@ export function ToolActions<S extends ToolSpec>(
   // και επιλεγμένος, έτοιμος για αντιγραφή με το χέρι.
   const [manual, setManual] = useState<string | null>(null);
 
+  // ── ΣΤΟ ΚΙΝΗΤΟ, ΤΟ ΦΥΛΛΟ ΚΟΙΝΟΠΟΙΗΣΗΣ ΤΟΥ ΣΥΣΤΗΜΑΤΟΣ ──────────────────
+  // Στα 390 η μόνη επιλογή ήταν η αντιγραφή μιας διεύθυνσης, για να ανοίξει
+  // μετά ο χρήστης μόνος του το Viber ή το email. Όπου υπάρχει φύλλο
+  // κοινοποίησης και οθόνη αφής, το κουμπί το ανοίγει. Ο διακομιστής δεν ξέρει
+  // τη συσκευή: παίρνει την ουδέτερη απάντηση (αντιγραφή) χωρίς δεύτερη
+  // απόδοση που να «διορθώνει» την πρώτη, όπως στο BackLink.
+  const canShare = useSyncExternalStore(noSubscribe, shareSheet, () => false);
+
   const copy = async () => {
     const link = toolLink(window.location.origin, path, spec, values);
+    if (canShare) {
+      try {
+        await navigator.share({ title: document.title, url: link });
+        return;
+      } catch (e) {
+        // Ο χρήστης έκλεισε το φύλλο: δεν έγινε λάθος, δεν γίνεται τίποτα.
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+      }
+    }
     try {
       await navigator.clipboard.writeText(link);
       setManual(null);
@@ -117,8 +138,12 @@ export function ToolActions<S extends ToolSpec>(
       }}>
         <Btn onClick={copy}>
           <IconLink/>
-          {copied ? 'Ο σύνδεσμος αντιγράφηκε' : 'Αντιγραφή συνδέσμου'}
+          {canShare ? 'Κοινοποίηση' : copied ? 'Ο σύνδεσμος αντιγράφηκε' : 'Αντιγραφή συνδέσμου'}
         </Btn>
+        {/* Η ΑΛΛΑΓΗ ΤΟΥ ΛΕΚΤΙΚΟΥ ΔΕΝ ΑΚΟΥΓΕΤΑΙ. Ο αναγνώστης οθόνης δεν ξαναδιαβάζει
+            το όνομα ενός κουμπιού που έχει ήδη την εστίαση· η επιβεβαίωση
+            ανακοινώνεται από περιοχή κατάστασης. */}
+        <span role="status" className="sr-only">{copied ? 'Ο σύνδεσμος αντιγράφηκε' : ''}</span>
         <Btn onClick={() => window.print()}>
           <IconPrint/>
           Εκτύπωση

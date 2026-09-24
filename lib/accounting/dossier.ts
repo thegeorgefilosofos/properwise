@@ -113,6 +113,14 @@ export interface Requirement {
   blocking: boolean;
   /** Προειδοποίηση για παγίδα που κοστίζει χρήματα. */
   trap?: string;
+  /**
+   * ΤΑ ΑΚΙΝΗΤΑ ΑΠΟ ΤΑ ΟΠΟΙΑ ΠΡΟΚΥΠΤΕΙ. Ο φάκελος είναι ένας για όλο το
+   * χαρτοφυλάκιο και ζει μέσα στη σελίδα ΕΝΟΣ ακινήτου: σε βραχυχρόνιο
+   * διαμέρισμα ο κατάλογος ζητούσε «Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης»
+   * χωρίς να λέει ότι αφορά τη μακροχρόνια μίσθωση ενός άλλου. Υπάρχει μόνο
+   * για ό,τι γεννά η κατάσταση ενός ακινήτου.
+   */
+  forProperties?: string[];
 }
 
 export interface DossierContext {
@@ -120,6 +128,8 @@ export interface DossierContext {
   books: BookKeeping;
   /** Οι καταστάσεις όλων των ακινήτων του χρήστη. */
   statuses: readonly PropertyStatus[];
+  /** Τα ίδια ακίνητα με το όνομά τους, για να λέει κάθε γραμμή από πού ήρθε. */
+  properties?: readonly { name: string; status: PropertyStatus }[];
   /** Έγιναν δαπάνες ανακαίνισης ή βελτίωσης μέσα στο έτος; */
   hasRenovation?: boolean;
   /** Υπάρχει δάνειο; */
@@ -127,6 +137,14 @@ export interface DossierContext {
   /** Άλλαξε κάτι στην ιδιοκτησία μέσα στο έτος (αγορά, πώληση, κληρονομιά); */
   ownershipChanged?: boolean;
 }
+
+// ── Ο ΚΑΝΟΝΑΣ ΤΩΝ ΑΝΕΙΣΠΡΑΚΤΩΝ, ΜΙΑ ΦΡΑΣΗ ────────────────────────────────
+// Η ίδια σελίδα τον έλεγε με δύο προθεσμίες: εδώ «πριν την υποβολή της
+// δήλωσης», στο κουτάκι της Λογιστικής «πριν την προθεσμία δήλωσης». Είναι δύο
+// διαφορετικοί όροι· ισχύει ο δεύτερος (άρθρο 39 ΚΦΕ, κωδικοί 125-126 του Ε1).
+// Γράφεται μία φορά και τον διαβάζουν και οι δύο.
+export const UNCOLLECTED_RENT_RULE =
+  'Τα ανείσπρακτα δεν φορολογούνται αν έχει εκδοθεί διαταγή πληρωμής ή έχει ασκηθεί αγωγή ως την προθεσμία της δήλωσης (άρθρο 39 ΚΦΕ). Έλεγχος με λογιστή.';
 
 // ── ΤΑ ΚΟΙΝΑ ───────────────────────────────────────────────────────────────
 
@@ -228,7 +246,7 @@ const BY_STATUS: Record<PropertyStatus, Requirement[]> = {
       who: 'owner',
       source: 'δικηγόρος',
       blocking: false,
-      trap: 'Η αγωγή ή η διαταγή πληρωμής πρέπει να έχει κατατεθεί ΠΡΙΝ την υποβολή της δήλωσης. Η σειρά είναι απαράβατη.',
+      trap: UNCOLLECTED_RENT_RULE,
     },
   ],
 
@@ -241,7 +259,7 @@ const BY_STATUS: Record<PropertyStatus, Requirement[]> = {
       who: 'owner',
       source: 'myAADE',
       blocking: true,
-      trap: 'Η πλατφόρμα δηλώνει ΑΚΑΘΑΡΙΣΤΑ, πριν την προμήθειά της. Αν κατέγραψες το ποσό που μπήκε στον λογαριασμό σου, το προσυμπληρωμένο θα δείχνει μεγαλύτερο νούμερο και θα έχει δίκιο.',
+      trap: 'Η πλατφόρμα δηλώνει τα ακαθάριστα, πριν από την προμήθειά της. Αν κατέγραψες το ποσό που μπήκε στον λογαριασμό σου, το προσυμπληρωμένο θα δείχνει μεγαλύτερο νούμερο και θα έχει δίκιο.',
     },
     {
       id: 'ama',
@@ -269,7 +287,7 @@ const BY_STATUS: Record<PropertyStatus, Requirement[]> = {
       who: 'owner',
       source: 'Airbnb, Booking, από τον λογαριασμό σου',
       blocking: true,
-      trap: 'Δήλωσε τα ΑΚΑΘΑΡΙΣΤΑ, πριν την προμήθεια της πλατφόρμας. Η προμήθεια είναι δαπάνη, όχι μείωση εσόδου.',
+      trap: 'Δήλωσε τα ακαθάριστα, πριν από την προμήθεια της πλατφόρμας. Η προμήθεια μπαίνει ως δαπάνη και δεν μειώνει το έσοδο.',
     },
     {
       id: 'climate_levy',
@@ -379,7 +397,7 @@ const SINGLE_ENTRY: Requirement[] = [
   },
   {
     id: 'books_single',
-    title: 'Βιβλίο Εσόδων-Εξόδων',
+    title: 'Βιβλίο εσόδων-εξόδων',
     why: 'Η βάση για το Ε3.',
     who: 'accountant',
     blocking: true,
@@ -493,8 +511,23 @@ export function requirementsFor(ctx: DossierContext): Requirement[] {
   const out: Requirement[] = [];
   const push = (r: Requirement) => { if (!seen.has(r.id)) { seen.add(r.id); out.push(r); } };
 
+  // Ποια ακίνητα γεννούν κάθε γραμμή. Η ίδια γραμμή (π.χ. το προσυμπληρωμένο
+  // Ε2) μπορεί να έρχεται και από μακροχρόνιο και από βραχυχρόνιο ακίνητο.
+  const origin = new Map<string, string[]>();
+  for (const p of ctx.properties ?? []) {
+    for (const r of BY_STATUS[p.status] ?? []) {
+      const names = origin.get(r.id) ?? [];
+      if (!names.includes(p.name)) names.push(p.name);
+      origin.set(r.id, names);
+    }
+  }
+  const withOrigin = (r: Requirement): Requirement => {
+    const names = origin.get(r.id);
+    return names ? { ...r, forProperties: names } : r;
+  };
+
   COMMON.forEach(push);
-  for (const s of new Set(ctx.statuses)) BY_STATUS[s]?.forEach(push);
+  for (const s of new Set(ctx.statuses)) BY_STATUS[s]?.forEach(r => push(withOrigin(r)));
 
   if (ctx.hasRenovation) BY_STATUS.renovation.forEach(push);
   if (ctx.hasLoan) push(EXTRAS.find(r => r.id === 'loan_interest')!);

@@ -46,6 +46,9 @@ export const PASSWORD_MIN_LABEL = `Τουλάχιστον ${PASSWORD_MIN_LENGTH}
 export const PASSWORD_MSG = {
   leaked: 'Αυτός ο κωδικός βρίσκεται σε γνωστή διαρροή δεδομένων. Διάλεξε άλλον.',
   weak: 'Ο κωδικός δεν πληροί όλες τις προϋποθέσεις ασφαλείας.',
+  // Η λίστα κάτω από το πεδίο και το σφάλμα της υποβολής το έλεγαν με δύο
+  // διαφορετικές προτάσεις για τον ίδιο κωδικό.
+  common: 'Ο κωδικός είναι πολύ κοινός. Διάλεξε άλλον.',
 } as const
 
 // Μικρή λίστα προφανών κωδικών — μπλοκάρει τα «123456789», «password» κ.λπ.
@@ -68,8 +71,11 @@ export function checkPassword(pw: string): PasswordResult {
   const common = COMMON_PASSWORDS.has(pw.toLowerCase())
   const checks: PasswordCheck[] = [
     { key: 'len', label: PASSWORD_MIN_LABEL, ok: pw.length >= PASSWORD_MIN_LENGTH },
-    { key: 'lower', label: 'Ένα πεζό γράμμα (a–z)', ok: /[a-z]/.test(pw) },
-    { key: 'upper', label: 'Ένα κεφαλαίο γράμμα (A–Z)', ok: /[A-Z]/.test(pw) },
+    // ΛΑΤΙΝΙΚΑ, ΚΑΙ ΤΟ ΛΕΜΕ. Ο κανόνας του διακομιστή μετρά μόνο a–z και A–Z:
+    // το «Καλοκαίρι2026!» αποτύγχανε και στα δύο και τα ελληνικά γράμματά του
+    // μετρούσαν ως σύμβολα. Η ετικέτα έγραφε σκέτο «γράμμα».
+    { key: 'lower', label: 'Ένα πεζό λατινικό γράμμα (a–z)', ok: /[a-z]/.test(pw) },
+    { key: 'upper', label: 'Ένα κεφαλαίο λατινικό γράμμα (A–Z)', ok: /[A-Z]/.test(pw) },
     { key: 'digit', label: 'Έναν αριθμό (0–9)', ok: /\d/.test(pw) },
     { key: 'symbol', label: 'Ένα σύμβολο (!@#$…)', ok: /[^A-Za-z0-9]/.test(pw) },
   ]
