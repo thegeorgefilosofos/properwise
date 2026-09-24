@@ -1688,7 +1688,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               <span style={{ fontSize:12, color:'var(--text-secondary)', fontFamily: T.font.sans, fontWeight:500 }}>Διανομή κερδών</span>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <input aria-label="Διανομή κερδών σε ποσοστό" type="number" inputMode="numeric" min={0} max={100} value={distribution} onChange={e=>setDistribution(e.target.value===''?'':Math.min(100,Math.max(0,Number(e.target.value))))} placeholder=""
-                  onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-default)'}
+                  onFocus={e=>{ e.currentTarget.style.borderColor='var(--accent)'; e.currentTarget.style.boxShadow='0 0 0 3px var(--accent-soft)' }} onBlur={e=>{ e.currentTarget.style.borderColor='var(--border-default)'; e.currentTarget.style.boxShadow='none' }}
                   style={{ width:74, height:T.h.lg, padding:'10px 16px', borderRadius:10, border:'1px solid var(--border-default)', background:'var(--bg-elevated)', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right', outline:'none', transition:'border-color 0.14s' }}/>
                 <span style={{ color:'var(--text-tertiary)', fontSize:14 }}>%</span>
               </div>
