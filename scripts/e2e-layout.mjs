@@ -40,6 +40,7 @@ import { abortIfStyleless } from './lib/served-css.mjs'
 import { benchUrl } from './lib/paths.mjs'
 import { MODE, applyMode } from './lib/bench-mode.mjs'
 import { cpus } from 'node:os'
+import { SEED_CONSENT } from './lib/consent.mjs'
 
 const PROBE = () => {
   const out = []
@@ -871,7 +872,7 @@ let done = 0
 async function scanDevice(dev, out) {
   const w = dev.w
   const ctx = await browser.newContext({ viewport:{width:w,height:dev.h}, deviceScaleFactor:2, isMobile:w<1100, hasTouch:TOUCH(w), locale:'el-GR' })
-  await ctx.addInitScript(() => { try { localStorage.setItem('pos-cookie-consent', JSON.stringify({v:'2026-08',ts:'x'})) } catch {} })
+  await ctx.addInitScript(SEED_CONSENT)
   // Ο πάγκος παίρνει το θέμα του από το data-mode του HTML· οι δημόσιες
   // σελίδες το διαβάζουν από το localStorage. Χωρίς τη γραμμή αυτή το
   // «φωτεινό» πέρασμα σάρωνε τις δημόσιες σελίδες στο σκούρο.

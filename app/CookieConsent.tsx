@@ -138,7 +138,11 @@ export default function CookieConsent() {
           ΚΑΙ Η ΜΕΤΡΗΣΗ ΛΕΓΕΤΑΙ. Το «καμία παρακολούθηση» διαβαζόταν ως «δεν
           μετράται τίποτα», ενώ το layout φορτώνει ανώνυμη μέτρηση επισκέψεων
           χωρίς cookies, όπως τη γράφει η Πολιτική απορρήτου. */}
-      <div style={{ flex: 1, minWidth: 200, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty', textAlign: 'center' }}>
+      {/* ΠΑΡΑΓΡΑΦΟΣ, ΟΧΙ ΚΟΥΤΙ. Είναι μία πρόταση με σύνδεσμο μέσα της· ως <div>
+          ο σύνδεσμος διαβαζόταν ως χειριστήριο μόνο του, 63×16, κάτω από τα 44
+          του κανόνα αφής. Μέσα σε <p> είναι λέξη της πρότασης, όπως ορίζει το
+          WCAG 2.5.8. */}
+      <p style={{ flex: 1, minWidth: 200, margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty', textAlign: 'center' }}>
         Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Ανώνυμη μέτρηση επισκέψεων χωρίς cookies, καμία διαφήμιση.{' '}
         {/* ΥΠΟΓΡΑΜΜΙΣΜΕΝΟΣ, ΓΙΑΤΙ ΤΟ ΧΡΩΜΑ ΜΟΝΟ ΤΟΥ ΔΕΝ ΕΙΝΑΙ ΣΥΝΔΕΣΜΟΣ. Με
             `textDecoration: none` το «Απόρρητο» ξεχώριζε ΜΟΝΟ από το χρώμα:
@@ -147,7 +151,7 @@ export default function CookieConsent() {
             ο μοναδικός δρόμος προς την πολιτική απορρήτου μέσα από αυτό το
             πλαίσιο. */}
         <Link href="/privacy" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Απόρρητο</Link>
-      </div>
+      </p>
       <Btn variant="primary" onClick={acknowledge} className="po-cookie-cta">Το κατάλαβα</Btn>
     </div>
   );
