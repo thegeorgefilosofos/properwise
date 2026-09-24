@@ -395,7 +395,12 @@ export default function SignupPage() {
   // Το κείμενο αποδοχής και οι δύο σύνδεσμοί του, ίδια και στα δύο πλαίσια.
   // Οι σύνδεσμοι δεν σπάνε ΜΕΣΑ τους: στα 390 έμενε «Πολιτική» στη μία γραμμή
   // και «απορρήτου.» στην άλλη, όπως είχε ήδη διορθωθεί στη Σύνδεση.
-  const consentText: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer', textWrap: 'balance' }
+  // Οι σύνδεσμοι μέσα της έχουν po-tap-inline: στόχο 44 σε ψευδοστοιχείο, 13px
+  // πάνω και κάτω από τη γραμμή των 18. Χωρίς χώρο, ο στόχος περισσεύει έξω από
+  // τη σειρά και ο σαρωτής διάταξης το μετρά ως ξεχείλισμα πάνω στο κουμπί από
+  // κάτω. Το padding τον κρατά μέσα στην ετικέτα, το αρνητικό margin κρατά ίδια
+  // τη διάταξη.
+  const consentText: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer', textWrap: 'balance', padding: '13px 0', margin: '-13px 0' }
   const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }
   const errorBox: React.CSSProperties = { background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }
   const focus = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--accent)' }
