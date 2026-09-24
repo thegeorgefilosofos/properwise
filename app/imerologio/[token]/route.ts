@@ -37,6 +37,7 @@ import * as rent from '@/lib/data/rent';
 import { deadlineItems, type DeadlineProperty, type DeadlineEvent, type DeadlineTask, type DeadlineBill, type DeadlineRent } from '@/lib/calendar/deadlines';
 import { buildCalendarFeed } from '@/lib/calendar/feed';
 import { athensDatePlus } from '@/lib/core/time';
+import { siteUrl } from '@/lib/core/site';
 
 /** Πόσο πίσω και πόσο μπροστά κοιτά η συνδρομή. */
 const DAYS_BACK = 30;
@@ -107,7 +108,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     bills: unpaidBills.rows, rent: dues.rows, from, to,
   });
 
-  const ics = buildCalendarFeed(items, { name: CALENDAR_NAME, now: new Date() });
+  const ics = buildCalendarFeed(items, { name: CALENDAR_NAME, now: new Date(), link: siteUrl('/dashboard?tab=calendar') });
   log(`${items.length} προθεσμίες, ${from} ώς ${to}`);
 
   return new Response(ics, {

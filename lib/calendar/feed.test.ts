@@ -59,6 +59,10 @@ ok(ics.includes('UID:bill-1@properwise'), 'το uid μένει ακέραιο');
 ok(ics.includes(`DTSTAMP:${icsStamp(NOW)}`), 'η στιγμή έκδοσης');
 ok(ics.includes('DESCRIPTION:Ποσό 87\\,45'), 'η περιγραφή, με διαφυγή στο κόμμα του ποσού');
 ok(!ics.includes('DESCRIPTION:\r\n'), 'γεγονός χωρίς σημείωση δεν παίρνει κενή περιγραφή');
+eq((ics.match(/TRANSP:TRANSPARENT/g) || []).length, 2, 'ΚΑΘΕ ΠΡΟΘΕΣΜΙΑ ΕΙΝΑΙ «ΔΙΑΘΕΣΙΜΟΣ» — δεν κλείνει τη μέρα στο Outlook');
+ok(!ics.includes('URL:'), 'χωρίς διεύθυνση εφαρμογής δεν γράφεται URL');
+const linked = buildCalendarFeed(items, { name: 'Δοκιμή', now: NOW, link: 'https://properwise.gr/dashboard?tab=calendar' });
+eq((linked.match(/URL:https:\/\/properwise\.gr\/dashboard\?tab=calendar/g) || []).length, 2, 'κάθε γεγονός οδηγεί στο ημερολόγιο της εφαρμογής');
 
 // ── Το σταθερό uid ─────────────────────────────────────────────────────────
 const again = buildCalendarFeed(items, { name: 'PROPERWISE · Προθεσμίες', now: new Date('2026-08-22T09:30:00Z') });

@@ -57,7 +57,12 @@ const P = (s: string) => new URLSearchParams(s)
      toolQuery(RENT, { ...RENT, mines: '7', enoikio: '850' }) === '?enoikio=850&mines=7')
   ok('η επιστροφή στην προεπιλογή καθαρίζει τη διεύθυνση',
      toolQuery(RENT, { ...RENT, enoikio: '600' }) === '')
-  ok('κενό πεδίο δεν γράφεται', toolQuery(RENT, { ...RENT, enoikio: '' }) === '')
+  // Το άδειο πεδίο η οθόνη το μετρά μηδέν· ο σύνδεσμος πρέπει να πει το ίδιο,
+  // αλλιώς ο παραλήπτης ξανανοίγει με την προεπιλογή και βλέπει άλλο ποσό.
+  ok('κενό πεδίο γράφεται ως μηδέν', toolQuery(RENT, { ...RENT, enoikio: '' }) === '?enoikio=0')
+  ok('πεδίο μόνο με κενά γράφεται ως μηδέν', toolQuery(RENT, { ...RENT, mines: '  ' }) === '?mines=0')
+  ok('πεδίο με κενή προεπιλογή δεν γράφεται όταν μένει κενό',
+     toolQuery({ ...RENT, etos: '' }, { ...RENT, etos: '' }) === '')
   ok('πεδίο εκτός προδιαγραφής δεν γράφεται',
      toolQuery(RENT, { ...RENT, kryfo: 'ναι' }) === '')
   ok('τιμή με κενά γύρω γράφεται κομμένη',
@@ -82,6 +87,10 @@ const P = (s: string) => new URLSearchParams(s)
     if (JSON.stringify(back) !== JSON.stringify(c)) { closed = false; console.log('    ↯ ' + JSON.stringify(c)) }
   }
   ok('ό,τι γράφεται ξαναδιαβάζεται απαράλλαχτο', closed)
+
+  // Το άδειο πεδίο δεν γυρίζει ως κενό αλλά ως «0»: ίδιο ποσό, όχι η προεπιλογή.
+  const back = readTool(RENT, P(toolQuery(RENT, { ...RENT, enoikio: '' }).replace(/^\?/, '')))
+  ok('το άδειο πεδίο ξανανοίγει ως μηδέν, όχι ως προεπιλογή', back.enoikio === '0')
 }
 
 // ── Ο ΠΛΗΡΗΣ ΣΥΝΔΕΣΜΟΣ ────────────────────────────────────────────────────

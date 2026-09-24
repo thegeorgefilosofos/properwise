@@ -163,6 +163,13 @@ export async function proxy(request: NextRequest) {
     // χρήστης ανακατευθυνόταν στη σύνδεση κρατώντας το διακριτικό στη
     // διεύθυνση, δηλαδή κατέληγε σε φόρμα εισόδου αντί για την εφαρμογή του.
     "/auth/callback",
+    // ── ΤΟ ΤΑΜΕΙΟ ΕΞΗΓΕΙ ΜΟΝΟ ΤΟΥ ΤΗΝ ΑΝΩΝΥΜΗ ΕΠΙΣΚΕΨΗ ──────────────────
+    // Η σελίδα έχει δική της κατάσταση «χωρίς συνεδρία», με το πακέτο στον
+    // σύνδεσμο σύνδεσης, αλλά δεν έφτανε ποτέ εκεί: το 307 προς /login
+    // προλάβαινε και η φόρμα εισόδου δεν έλεγε ότι το πακέτο κρατήθηκε. Η
+    // σελίδα ζητά τη συνεδρία μόνη της πριν αγγίξει οτιδήποτε και ο σύνδεσμος
+    // του εμπόρου βγαίνει από το /api/billing/checkout, που τη ζητά κι αυτό.
+    "/tameio",
   ]);
   // Σελίδες με capability-token (/portal, /accountant, /checkin, /verify) είναι
   // δημόσιες by-design — η πρόσβαση ελέγχεται από το ίδιο το token, όχι από login.
@@ -259,6 +266,13 @@ export const config = {
     // Το Google ζητά ανώνυμα το `google<token>.html` (public/) για να αποδείξει
     // την ιδιοκτησία. Αν έπεφτε στο middleware θα έπαιρνε 307 προς /login και η
     // επαλήθευση δεν θα ολοκληρωνόταν ποτέ — ακριβώς όπως τα robots/sitemap.
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|opengraph-image|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    //
+    // ── Η ΕΙΚΟΝΑ ΚΟΙΝΟΠΟΙΗΣΗΣ ΚΑΘΕ ΤΜΗΜΑΤΟΣ, ΟΧΙ ΜΟΝΟ ΤΗΣ ΡΙΖΑΣ ─────────────
+    // Η εξαίρεση έπιανε μόνο το `/opengraph-image`, γιατί το αρνητικό βλέμμα
+    // κοιτά την ΑΡΧΗ της διαδρομής. Ένα `app/<σελίδα>/opengraph-image.tsx`
+    // σερβίρεται στο `/<σελίδα>/opengraph-image` και έπαιρνε 307 προς /login,
+    // δηλαδή κάθε προεπισκόπηση συνδέσμου θα έμενε χωρίς εικόνα. Το
+    // `(?:.*/)?` πιάνει την εικόνα σε όποιο βάθος κι αν ζει.
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|(?:.*/)?opengraph-image|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

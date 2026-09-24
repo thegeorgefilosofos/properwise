@@ -2436,6 +2436,11 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 @media (max-width: 380px) {
   .po-seg > button { flex: 1 1 100%; }
 }
+/* Όταν η ράγα πέφτει κάτω από την εξήγησή της, πιάνει όλο το πλάτος: αλλιώς
+   στα 390 καθόταν αριστερά με ογδόντα εικονοστοιχεία κενό δεξιά της. */
+@media (max-width: 600px) {
+  .po-seg { width: 100%; }
+}
 
 /* ═══ ΕΝΑ ΠΕΡΙΘΩΡΙΟ ΓΙΑ ΚΕΦΑΛΙΔΑ ΚΑΙ ΠΕΡΙΕΧΟΜΕΝΟ ═══════════════════════════════
    Κάτω από τα 360 η κεφαλίδα στενεύει στα 14 (πιο κάτω) για να χωρέσουν σήμα
@@ -3949,6 +3954,17 @@ html { scroll-padding-bottom: var(--cookie-h, 0px); }
 @media (min-width: 601px) and (max-width: 1100px) {
   .fixed-cols.fc-chips { grid-template-columns: repeat(var(--fc-md), minmax(0, 1fr)); }
 }
+/* ═══ ΠΕΝΤΕ ΠΕΔΙΑ ΧΩΡΙΣ ΤΡΥΠΑ (υπολογιστής ΕΝΦΙΑ) ═══════════════════════════
+   Στην ταμπλέτα το 3+2 άφηνε άδειο κελί κάτω από το τρίτο πεδίο. Με έξι
+   λωρίδες (`--fc-md: 6`) τα τρία πάνω παίρνουν δύο και τα δύο κάτω τρεις: δύο
+   γεμάτες σειρές. */
+@media (min-width: 601px) and (max-width: 820px) {
+  .fixed-cols.fc-5-even > :nth-child(-n+3) { grid-column: span 2; }
+  .fixed-cols.fc-5-even > :nth-child(n+4) { grid-column: span 3; }
+}
+/* Στο τηλέφωνο τα δύο ποσά μένουν δίπλα δίπλα και οι δύο επιλογείς με το
+   ποσοστό παίρνουν όλο το πλάτος: στη μισή στήλη το «26 έτη και άνω» κοβόταν. */
+@media (max-width: 600px) { .fixed-cols.fc-5-even > :nth-child(n+3) { grid-column: 1 / -1; } }
 
 /* ═══ ΔΕΞΙΑ ΣΤΟΙΧΙΣΗ ΜΟΝΟ ΟΤΑΝ ΤΟ ΚΟΥΤΙ ΕΙΝΑΙ ΟΝΤΩΣ ΔΕΞΙΑ ══════════════════
    Η κάρτα δανείου έχει δύο πόλους: το υπόλοιπο αριστερά, τη δόση δεξιά. Στην
@@ -4900,6 +4916,9 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    με το lib/print/ink.ts για τα PDF: το χαρτί δεν έχει θέμα.
    ══════════════════════════════════════════════════════════════ */
 .po-printonly { display: none; }
+/* Γραμμή πίνακα που η οθόνη κρύβει ώσπου να ζητηθεί και το χαρτί την τυπώνει
+   (οι δόσεις του ΕΝΦΙΑ): γραμμή πίνακα, όχι μπλοκ, αλλιώς σπάει τις στήλες. */
+tr.po-row-more { display: none; }
 
 @media print {
   :root {
@@ -4926,6 +4945,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 
   .po-noprint { display: none !important; }
   .po-printonly { display: block; }
+  tr.po-row-more { display: table-row; }
 
   /* ── ΤΟ ΧΑΡΤΙ ΚΡΑΤΑΕΙ ΤΟ ΑΠΟΤΕΛΕΣΜΑ, ΟΧΙ ΤΗ ΣΕΛΙΔΑ ─────────────────────
      Οσα φεύγουν, φεύγουν επειδή δεν λένε τίποτα σε χαρτί: η πλοήγηση δεν

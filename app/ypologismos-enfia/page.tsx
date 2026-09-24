@@ -18,17 +18,20 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensParts, athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { publicMetadata } from '../publicMetadata';
 import { EnfiaCalculator } from './EnfiaCalculator';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
 
-const TITLE = 'Υπολογισμός ΕΝΦΙΑ 2026 με τα δικά σου δεδομένα';
+// ΤΟ ΕΤΟΣ ΤΟΥ ΤΙΤΛΟΥ ΕΙΝΑΙ ΤΟ ΕΤΟΣ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ. Ήταν γραμμένο «2026» με το
+// χέρι, ενώ ο υπολογιστής και ο πίνακας των δόσεων ακολουθούν το τρέχον έτος:
+// την 1.1.2027 ο τίτλος στη Google θα έλεγε 2026 πάνω από πίνακα του 2027.
+const titleFor = (year: number) => `Υπολογισμός ΕΝΦΙΑ ${year} με τα δικά σου δεδομένα`;
 const DESC =
   'Υπολόγισε τον ΕΝΦΙΑ του ακινήτου σου από τα τετραγωνικά, την τιμή ζώνης, τον όροφο '
-  + 'και την παλαιότητα. Δωρεάν, χωρίς εγγραφή, ο υπολογισμός γίνεται στη συσκευή σου.';
+  + 'και την παλαιότητα. Με τα δικά σου δεδομένα. Δωρεάν, χωρίς εγγραφή.';
 const PATH = '/ypologismos-enfia';
 const URL = siteUrl(PATH);
 
@@ -47,7 +50,9 @@ const URL = siteUrl(PATH);
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL });
+export function generateMetadata(): Metadata {
+  return publicMetadata({ title: titleFor(athensParts().year), description: DESC, url: URL });
+}
 
 // ΟΙ ΕΡΩΤΗΣΕΙΣ ΘΕΛΟΥΝ ΤΗ ΧΡΟΝΙΑ. Η μείωση του μικρού οικισμού ισχύει μόνο για
 // τον ΕΝΦΙΑ του 2026· η απάντηση για τις απαλλαγές την αναφέρει όσο ισχύει και
@@ -79,7 +84,9 @@ function faqFor(year: number): { q: string; a: string }[] {
        + 'τρίτεκνους, πολύτεκνους και αναπηρία 80% και άνω, υπό εισοδηματικά και περιουσιακά όρια '
        + 'και έκπτωση 20% για ασφαλισμένη κατοικία. '
        + (small ? `Ισχύει και η ${small}. ` : '')
-       + 'Ο υπολογιστής δεν τις εφαρμόζει, γιατί εξαρτώνται από στοιχεία που δεν του δίνεις.',
+       + 'Ο υπολογιστής δεν τις εφαρμόζει, γιατί εξαρτώνται από στοιχεία που δεν του δίνεις. '
+       + 'Αν πιστεύεις ότι δικαιούσαι κάποια από αυτές τις νόμιμες εκπτώσεις ή απαλλαγές, '
+       + 'έλεγξέ το με τον λογιστή σου.',
     },
     {
       q: 'Το ποσό είναι ακριβώς αυτό που θα πληρώσω;',
@@ -87,6 +94,7 @@ function faqFor(year: number): { q: string; a: string }[] {
        + 'Αν έχεις κι άλλα ακίνητα, οικόπεδα ή αποθήκες, αλλάζουν τόσο η μείωση όσο και η '
        + 'προσαύξηση. Το επίσημο ποσό βγαίνει από το εκκαθαριστικό της ΑΑΔΕ.',
     },
+    TOOL_PRIVACY_FAQ,
   ];
 }
 
@@ -98,7 +106,7 @@ export default function Page() {
     '@graph': [
       {
         '@type': 'WebApplication',
-        name: 'Υπολογισμός ΕΝΦΙΑ 2026',
+        name: `Υπολογισμός ΕΝΦΙΑ ${year}`,
         url: URL,
         applicationCategory: 'FinanceApplication',
         operatingSystem: 'Web',
@@ -131,8 +139,7 @@ export default function Page() {
         </h1>
         {/* Ίδια δομή με τον υπολογιστή φόρου ενοικίων και για τον ίδιο λόγο:
             η υπόσχεση κλείνει με την άνω τελεία της, η εγγύηση απορρήτου πιάνει
-            δική της σειρά και η υποσημείωση ακολουθεί με αστερίσκο στο τέλος
-            της. Δύο υπολογιστές με την ίδια δουλειά δεν επιτρέπεται να έχουν
+            δική της σειρά και η υποσημείωση ακολουθεί στο τέλος της. Δύο υπολογιστές με την ίδια δουλειά δεν επιτρέπεται να έχουν
             δύο διατάξεις. */}
         <ToolLede>Καθορίζεται από τα τετραγωνικά, την τιμή ζώνης, τον όροφο και την παλαιότητα.</ToolLede>
 

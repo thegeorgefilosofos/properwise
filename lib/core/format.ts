@@ -66,6 +66,19 @@ export const feAuto = fe;
 export const fp = (n: number) =>
   `${finite(n).toLocaleString(LOCALE, MONEY)}%`;
 
+/**
+ * ΣΥΝΤΕΛΕΣΤΗΣ ΤΟΥ ΝΟΜΟΥ Ή ΤΙΜΗ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΗΘΗΚΕ, ΟΧΙ ΑΠΟΤΕΛΕΣΜΑ ΔΙΑΙΡΕΣΗΣ.
+ *
+ * Το «25,00%» σε μια μείωση του νόμου ή στο «50,00%» ενός ποσοστού ιδιοκτησίας
+ * υπόσχεται δεκαδικά που δεν υπάρχουν: ο αναγνώστης ψάχνει τι σημαίνουν. Τα δύο
+ * ψηφία του `fp` μένουν για ό,τι ΥΠΟΛΟΓΙΣΤΗΚΕ (απόδοση 3,60%) και στοιχίζεται σε
+ * στήλη αποτελεσμάτων.
+ *
+ * `fpRate(25)` → «25%», `fpRate(12.5)` → «12,5%».
+ */
+export const fpRate = (n: number) =>
+  `${finite(n).toLocaleString(LOCALE, { maximumFractionDigits: 2 })}%`;
+
 // ── ΤΟ ΛΟΓΙΣΤΙΚΟ ΠΡΟΣΗΜΟ ───────────────────────────────────────────────────
 // Σε κατάσταση αποτελεσμάτων το αρνητικό γράφεται με ΤΥΠΟΓΡΑΦΙΚΟ μείον (U+2212),
 // όχι με το ενωτικό του πληκτρολογίου (U+002D): το ενωτικό είναι στενότερο και
@@ -78,7 +91,8 @@ export const fp = (n: number) =>
 // εγγράφου και κωδικό QR επαλήθευσης.
 /** Λογιστικό ποσό: `feSigned(-751)` → «−751,00€» (τυπογραφικό μείον, σφιχτό). */
 export const feSigned = (n: number | null | undefined): string => {
-  const v = finite(n);
+  // Το `|| 0` σβήνει το αρνητικό μηδέν: μια εκροή μηδέν (`-0`) τυπωνόταν «-0,00€».
+  const v = finite(n) || 0;
   return v < 0 ? `−${fe(Math.abs(v))}` : fe(v);
 };
 
@@ -93,7 +107,7 @@ export const feSigned = (n: number | null | undefined): string => {
  * ενωτικό, τρεις λέξεις μακριά.
  */
 export const fpSigned = (n: number | null | undefined): string => {
-  const v = finite(n);
+  const v = finite(n) || 0;
   return v < 0 ? `−${fp(Math.abs(v))}` : fp(v);
 };
 

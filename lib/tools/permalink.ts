@@ -55,12 +55,20 @@ export function readTool<S extends ToolSpec>(spec: S, params: URLSearchParams | 
  *
  * Επιστρέφει «» όταν όλα είναι στις προεπιλογές, ώστε ο καλών να δώσει σκέτη
  * τη διεύθυνση της σελίδας αντί για μια που τελειώνει σε ερωτηματικό.
+ *
+ * ΤΟ ΑΔΕΙΟ ΠΕΔΙΟ ΓΡΑΦΕΤΑΙ «0». Στην οθόνη ένα άδειο πεδίο μετρά μηδέν· στη
+ * διεύθυνση δεν γραφόταν καθόλου, οπότε ο σύνδεσμος ξανάνοιγε με την
+ * ΠΡΟΕΠΙΛΟΓΗ. Μετρημένο: πάγια βραχυχρόνιας αφημένα άδεια έδιναν 0 στην οθόνη
+ * και 90€ τον μήνα στον παραλήπτη, δηλαδή 1.080€ λιγότερα καθαρά από όσα είδε ο
+ * αποστολέας. Το «0» λέει ρητά αυτό που μέτρησε η οθόνη, ενώ το κομμένο
+ * «?enoikio=» εξακολουθεί να μην αδειάζει τη φόρμα (`readTool`). Όπου η
+ * προεπιλογή είναι η ίδια κενή, δεν γράφεται τίποτα.
  */
 export function toolQuery<S extends ToolSpec>(spec: S, values: Readonly<Record<string, string>>): string {
   const q = new URLSearchParams();
   for (const key of Object.keys(spec)) {
-    const v = (values[key] ?? '').trim();
-    if (v && v !== spec[key]) q.set(key, v);
+    const v = (values[key] ?? '').trim() || (spec[key] ? '0' : '');
+    if (v !== spec[key]) q.set(key, v);
   }
   const s = q.toString();
   return s ? `?${s}` : '';

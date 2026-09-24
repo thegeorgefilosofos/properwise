@@ -22,13 +22,13 @@
 import { useMemo, useId, useState } from 'react';
 import Link from 'next/link';
 import { T, feAuto, fixedCols } from '@/components/tokens';
-import { fn, fp, feSigned, fpSigned } from '@/lib/core/format';
+import { fn, fp, fpRate, feSigned, fpSigned } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { propertyYield } from '@/lib/tools/apodosi';
-import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
+import { ToolNumField, ToolFigure, ToolLedger, ToolStats, TOOL_LABEL, TOOL_FIELD } from '@/app/ToolParts';
 
 import LiveResult from '@/components/LiveResult';
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
@@ -40,55 +40,26 @@ const PATH = '/kathari-apodosi';
 
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
-const LBL: React.CSSProperties = {
-  display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
-  textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8,
-};
-const FIELD: React.CSSProperties = {
-  width: '100%', height: T.h.lg, padding: '0 14px', borderRadius: T.radius.btn,
-  border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
-  color: 'var(--text-primary)', fontSize: 16, fontFamily: T.font.num,
-    // ΚΑΜΙΑ ΑΠΕΝΕΡΓΟΠΟΙΗΣΗ ΤΟΥ ΔΑΧΤΥΛΙΔΙΟΥ ΕΣΤΙΑΣΗΣ. Το `outline: 'none'` εδώ
-    // ήταν inline, άρα νικούσε το :focus-visible του globals.css — και δεν
-    // έμπαινε τίποτα στη θέση του. Μετρημένο σε πραγματικό περιηγητή: με το
-    // πεδίο εστιασμένο, outlineWidth 0px, boxShadow none, εικόνα ΤΑΥΤΟΣΗΜΗ με
-    // την ανεστίαστη. Ο χρήστης πληκτρολογίου δεν έβλεπε πού βρίσκεται.
-  fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box',
-};
-const UNIT: React.CSSProperties = {
-  position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-  color: 'var(--text-tertiary)', fontSize: 15, pointerEvents: 'none',
-};
 const HINT: React.CSSProperties = {
-  margin: '7px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)',
-};
-const GROUP: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-  color: 'var(--text-secondary)', margin: '0 0 12px',
+  margin: '7px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)', textWrap: 'pretty',
 };
 
 /**
- * Ενα πεδίο ποσού με τη μονάδα του μέσα, ίδιο και στα έξι.
+ * ΟΜΑΔΑ ΠΕΔΙΩΝ ΜΕ ΤΙΤΛΟ ΠΟΥ ΞΕΧΩΡΙΖΕΙ ΑΠΟ ΤΙΣ ΕΤΙΚΕΤΕΣ.
  *
- * ΟΡΙΣΜΕΝΟ ΕΞΩ ΑΠΟ ΤΟ ΣΩΜΑ ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ, ΕΠΙΤΗΔΕΣ. Γραμμένο μέσα, η
- * ταυτότητα του τύπου αλλάζει σε κάθε απόδοση: το React αποσυναρμολογεί το
- * παλιό <input> και στήνει καινούριο, οπότε ο δρομέας φεύγει από το πεδίο σε
- * ΚΑΘΕ πληκτρολόγηση. Η φόρμα θα ήταν αδύνατο να συμπληρωθεί.
+ * Ο τίτλος ήταν `<p>` σε μικρά κεφαλαία 11 εικονοστοιχείων, όπως οι ετικέτες
+ * των πεδίων από κάτω του, με χρώμα που στο φωτεινό θέμα διαφέρει ελάχιστα:
+ * «ΤΟ ΑΚΙΝΗΤΟ» ακριβώς πάνω από «ΑΞΙΑ ΑΚΙΝΗΤΟΥ» ήταν δύο ίδιες γραμμές. Ως
+ * `<legend>` σε πεζά ο αναγνώστης οθόνης ακούει και την ομάδα κάθε πεδίου και
+ * το μάτι βλέπει τίτλο πάνω από ετικέτες.
  */
-function MoneyField({ id, name, value, onChange, mode = 'decimal', suffix = '€' }: {
-  id: string; name: string; value: string; onChange: (v: string) => void;
-  mode?: 'decimal' | 'numeric'; suffix?: string;
-}) {
+function Group({ title, children, first }: { title: string; children: React.ReactNode; first?: boolean }) {
   return (
-    <div>
-      <label htmlFor={id} style={LBL}>{name}</label>
-      <div style={{ position: 'relative' }}>
-        <input id={id} inputMode={mode} value={value} onChange={e => onChange(e.target.value)}
-          style={{ ...FIELD, paddingRight: suffix ? 34 : 14 }}
-          aria-describedby={suffix ? `${id}-unit` : undefined}/>
-        {suffix && <span id={`${id}-unit`} aria-hidden style={UNIT}>{suffix}</span>}
-      </div>
-    </div>
+    <fieldset className="po-tool-controls" style={{ border: 0, padding: 0, margin: first ? 0 : `${T.sp.xl}px 0 0`, minWidth: 0 }}>
+      <legend style={{ padding: 0, margin: '0 0 12px', fontSize: 14, fontWeight: 600,
+        color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{title}</legend>
+      {children}
+    </fieldset>
   );
 }
 
@@ -121,102 +92,73 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
   }), [v.axia, v.enoikio, v.mines, v.enfia, v.dapanes, v.alla, year]);
 
   const hasValue = amount(v.axia) > 0;
-  const presumed = r.gross * PRESUMPTIVE_DEDUCTION_RATE;
   const noCosts = r.enfia === 0 && r.expenses === 0;
+  const netLabel = noCosts ? 'Απόδοση μετά τον φόρο' : 'Καθαρή απόδοση';
+  // Τα κομμάτια της μπάρας και του υπομνήματός της, με το μερίδιο του ενοικίου.
+  const pct = (n: number) => `${fn(r.gross > 0 ? (n / r.gross) * 100 : 0)}%`;
+  const split = ([
+    { key: 'keep', name: 'Σου μένουν', n: Math.max(0, r.net), bg: 'var(--accent)', op: 1 },
+    { key: 'tax', name: 'Φόρος', n: r.tax, bg: 'var(--text-tertiary)', op: 0.7 },
+    { key: 'enfia', name: 'ΕΝΦΙΑ', n: r.enfia, bg: 'var(--text-tertiary)', op: 0.45 },
+    { key: 'costs', name: 'Δαπάνες', n: r.expenses, bg: 'var(--text-tertiary)', op: 0.25 },
+  ]).filter(p => p.n > 0).map(p => ({ ...p, pct: pct(p.n) }));
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
       {/* ── ΤΟ ΑΚΙΝΗΤΟ: ΤΑ ΤΡΙΑ ΠΟΥ ΞΕΡΕΙ ΑΠΕΞΩ Ο ΚΑΘΕΝΑΣ ──────────────────
           Αξία, ενοίκιο, μήνες. Ό,τι άλλο θελήσουμε να ρωτήσουμε πρώτο είναι
           μια αφορμή να φύγει κάποιος που μόλις μας βρήκε. */}
-      <div className="po-tool-controls">
-        <p style={GROUP}>Το ακίνητο</p>
+      <Group title="Το ακίνητο" first>
         <div {...fixedCols(3, 14, 'start')}>
-          <MoneyField id={ids.axia} name="Αξία ακινήτου" value={v.axia} onChange={x => set('axia', x)}/>
-          <MoneyField id={ids.enoikio} name="Μηνιαίο ενοίκιο" value={v.enoikio} onChange={x => set('enoikio', x)}/>
-          <MoneyField id={ids.mines} name="Μήνες που νοικιάζεται" value={v.mines}
-            onChange={x => set('mines', x)} mode="numeric" suffix=""/>
+          <ToolNumField id={ids.axia} label="Αξία ακινήτου" value={v.axia} onChange={x => set('axia', x)} unit="€"/>
+          <ToolNumField id={ids.enoikio} label="Μηνιαίο ενοίκιο" value={v.enoikio} onChange={x => set('enoikio', x)} unit="€"/>
+          <ToolNumField id={ids.mines} label="Μήνες που νοικιάζεται" value={v.mines}
+            onChange={x => set('mines', x)} mode="numeric"/>
         </div>
         <ToolClampNote notes={[
           Math.round(amount(v.mines)) > 12 && 'Μέγιστο 12 μήνες· υπολογίστηκαν 12.',
         ]}/>
-      </div>
+      </Group>
 
       {/* ── ΤΙ ΤΟ ΒΑΡΑΙΝΕΙ ────────────────────────────────────────────────
           Τρία πεδία που ξεκινούν στο μηδέν, με τη βοήθεια από κάτω τους. Το
           μηδέν δεν κρύβεται: το αποτέλεσμα λέει ρητά τι δεν περιλαμβάνει όσο
           μένουν άδεια. */}
-      <div className="po-tool-controls" style={{ marginTop: T.sp.xl }}>
-        <p style={GROUP}>Τι το βαραίνει</p>
+      <Group title="Τι το βαραίνει">
         <div {...fixedCols(3, 14, 'start')}>
           <div>
-            <MoneyField id={ids.enfia} name="ΕΝΦΙΑ τον χρόνο" value={v.enfia} onChange={x => set('enfia', x)}/>
-            {/* ΤΡΕΙΣ ΥΠΟΔΕΙΞΕΙΣ, ΤΡΕΙΣ ΓΡΑΜΜΕΣ — ΜΕΤΡΗΜΕΝΟ ΣΤΑ 339. Η στήλη είναι
-                339 εικονοστοιχεία και οι τρεις υποδείξεις έπιαναν 2, 3 και 2
-                γραμμές (386, 500 και 527 εικονοστοιχεία κειμένου). Δύο σειρές
-                πεδίων με ανισοϋψείς υποσημειώσεις από κάτω τους διαβάζονται ως
-                ραγισμένη διάταξη· η καθεμιά κόπηκε ώστε να χωρά σε ΜΙΑ γραμμή
-                χωρίς να χάσει το γεγονός που κουβαλά. Εδώ: ότι ο ΕΝΦΙΑ
-                πληρώνεται και σε άδειο ακίνητο. Το «φόρος κατοχής» έφυγε — το
-                λέει η ίδια η ονομασία του φόρου. */}
+            <ToolNumField id={ids.enfia} label="ΕΝΦΙΑ τον χρόνο" value={v.enfia} onChange={x => set('enfia', x)} unit="€"/>
+            {/* ΜΙΑ ΓΡΑΜΜΗ Η ΚΑΘΕ ΥΠΟΔΕΙΞΗ, ΚΑΙ Η ΦΡΑΣΗ-ΣΥΝΔΕΣΜΟΣ ΔΕΝ ΣΠΑΕΙ. Στα 820
+                η στήλη στενεύει και το «Υπολόγισέ τον» έμενε μισό στη δεύτερη
+                γραμμή. Το γεγονός που κουβαλά: ο ΕΝΦΙΑ πληρώνεται και σε άδειο
+                ακίνητο. */}
             <p style={HINT}>
               Τον πληρώνεις κι άδειο.{' '}
               <Link href="/ypologismos-enfia" className="lp-link"
-                style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+                style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 Υπολόγισέ τον
               </Link>.
             </p>
           </div>
           <div>
-            <MoneyField id={ids.dapanes} name="Δαπάνες τον χρόνο" value={v.dapanes} onChange={x => set('dapanes', x)}/>
-            {/* Η ΠΡΟΤΑΣΗ ΕΧΕΙ ΠΗΓΗ, ΚΑΙ ΓΙ' ΑΥΤΟ ΕΠΙΤΡΕΠΕΤΑΙ. Το 5% δεν είναι
-                δικός μας εμπειρικός κανόνας: είναι η τεκμαρτή δαπάνη επισκευών
-                που αναγνωρίζει ο νόμος χωρίς παραστατικά. Μπαίνει με ένα
-                πάτημα και ο χρήστης το αλλάζει. */}
-            {/* ΕΔΩ ΤΟ ΓΕΓΟΝΟΣ ΕΙΝΑΙ Η ΑΠΑΡΙΘΜΗΣΗ: η ετικέτα λέει «Δαπάνες τον
-                χρόνο» και δεν λέει ΠΟΙΕΣ. Η φράση «ο νόμος τεκμαίρει» έγινε
-                άνω-κάτω τελεία· η πηγή δεν χάνεται, γιατί την γράφει ολόκληρη
-                η ερώτηση «Τι δαπάνες να βάλω;» της ίδιας σελίδας: τεκμαρτή
-                δαπάνη 5% του ενοικίου χωρίς παραστατικά. */}
-            <p style={HINT}>
-              Συντήρηση, ασφάλιση, κοινόχρηστα:{' '}
-              {/* ΤΟ ΠΡΟΣΒΑΣΙΜΟ ΟΝΟΜΑ ΗΤΑΝ ΣΚΕΤΟ ΤΟ ΠΟΣΟ. Στη λίστα κουμπιών ενός
-                  αναγνώστη οθόνης ακουγόταν «420,00€» και τίποτε άλλο: ούτε
-                  ότι είναι κουμπί συμπλήρωσης, ούτε ποιο πεδίο γεμίζει. */}
-              {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `LinkBtn` δίνει την ίδια όψη συνδέσμου αλλά δεν
-                  παίρνει className: θα έχανε την `po-tap-inline`, δηλαδή ΟΛΗ τη ζώνη
-                  αφής των 44 που περιγράφεται από κάτω. Μαζί της θα έφευγε το ζεύγος
-                  γέμισμα 3 / περιθώριο −3 που κρατά τις λέξεις της πρότασης στη θέση
-                  τους μαζί με τα ψηφία tabular του T.font.num. */}
-              <button type="button" onClick={() => set('dapanes', presumed.toFixed(2))}
-                aria-label={`Συμπλήρωση ${feAuto(presumed)} στις δαπάνες τον χρόνο`}
-                className="po-tap-inline"
-                /* ΤΟ ΔΑΧΤΥΛΟ ΕΙΧΕ ΔΕΚΑΠΕΝΤΕ ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ ΝΑ ΠΙΑΣΕΙ. Μετρημένο
-                   στα 390: 56 × 15. Τα 44 τα δίνει ΟΛΑ το .po-tap-inline ως
-                   ψευδοστοιχείο, που απλώνεται πάνω και κάτω από το στοιχείο.
-
-                   ΤΟ ΚΑΘΕΤΟ ΓΕΜΙΣΜΑ ΕΦΥΓΕ, ΓΙΑΤΙ ΨΗΛΩΝΕ ΤΗ ΓΡΑΜΜΗ. Ηταν 8
-                   εικονοστοιχεία πάνω-κάτω· δεν χρειάζονταν για τον στόχο (ο
-                   υπολογισμός του ψευδοστοιχείου δίνει 44 είτε έτσι είτε
-                   αλλιώς) και σήκωναν το κουτί γραμμής της παραγράφου κατά 16.
-                   Δίπλα σε δύο διπλανές υποδείξεις μιας γραμμής, αυτή η μία
-                   καθόταν οκτώ εικονοστοιχεία πιο χαμηλά. */
-                style={{
-                  border: 'none', background: 'none', padding: '0 3px', margin: '0 -3px', cursor: 'pointer',
-                  color: 'var(--accent)', fontWeight: 600, fontSize: 13,
-                  fontFamily: T.font.num, textDecoration: 'underline',
-                }}>{feAuto(presumed)}</button>.
-            </p>
+            <ToolNumField id={ids.dapanes} label="Δαπάνες τον χρόνο" value={v.dapanes} onChange={x => set('dapanes', x)} unit="€"/>
+            {/* ΤΟ 5% ΔΕΝ ΣΥΜΠΛΗΡΩΝΕΤΑΙ ΠΙΑ ΕΔΩ. Υπήρχε κουμπί που έγραφε στο πεδίο
+                το 5% του ενοικίου, με την υπόδειξη «Συντήρηση, ασφάλιση,
+                κοινόχρηστα». Το 5% όμως είναι η τεκμαρτή ΕΚΠΤΩΣΗ του φόρου, όχι
+                εκτίμηση του τι ξοδεύεις: παρουσιασμένο ως δαπάνη υποτιμούσε τα
+                έξοδα και φούσκωνε την καθαρή απόδοση, δηλαδή έκανε το λάθος που η
+                σελίδα υπάρχει για να διορθώσει. Η έκπτωση μπαίνει ήδη στον φόρο. */}
+            <p style={HINT}>Συντήρηση, ασφάλιση, κοινόχρηστα που πληρώνεις εσύ.</p>
           </div>
           <div>
-            <MoneyField id={ids.alla} name="Άλλα ενοίκια που δηλώνεις" value={v.alla} onChange={x => set('alla', x)}/>
+            <ToolNumField id={ids.alla} label="Άλλα ενοίκια που δηλώνεις" value={v.alla} onChange={x => set('alla', x)} unit="€"/>
             {/* Το «από τα υπόλοιπα ακίνητά σου» το λέει ήδη η ετικέτα «Άλλα
                 ενοίκια που δηλώνεις». Μένουν τα δύο που ΔΕΝ λέει: ότι θέλουμε
                 ακαθάριστα και ότι ανεβάζουν το κλιμάκιο ΑΥΤΟΥ του ακινήτου. */}
             <p style={HINT}>Ακαθάριστα. Ανεβάζουν το κλιμάκιο αυτού εδώ.</p>
           </div>
         </div>
-      </div>
+      </Group>
 
       <ToolPaper title={name.trim() ? `Καθαρή απόδοση · ${name.trim()}` : 'Καθαρή απόδοση ακινήτου'} on={today} inputs={[
         { k: 'Αξία', v: feAuto(amount(v.axia)) },
@@ -233,15 +175,27 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
         background: 'var(--surface-raised)', border: '1px solid var(--border-raised)',
         boxShadow: 'var(--well-inset)',
       }}>
+        {/* ΤΟ ΜΗΔΕΝ ΠΟΥ ΔΕΝ ΔΗΛΩΘΗΚΕ ΛΕΓΕΤΑΙ ΠΡΙΝ ΑΠΟ ΤΟ ΝΟΥΜΕΡΟ, ΚΑΙ ΤΟ ΝΟΥΜΕΡΟ ΔΕΝ
+            ΛΕΓΕΤΑΙ «ΚΑΘΑΡΗ». Με ΕΝΦΙΑ και δαπάνες στο μηδέν (η προεπιλογή), το
+            πρώτο νούμερο της οθόνης είναι η μεικτή μείον τον φόρο. Γραμμένο
+            «Καθαρή απόδοση», με μια γκρίζα υποσημείωση στο τέλος της κάρτας,
+            ήταν ακριβώς το λάθος που η σελίδα υπάρχει για να διορθώσει. Η
+            ετικέτα λέει τι είναι και γίνεται «Καθαρή» μόλις μπει ένα από τα δύο. */}
+        {hasValue && noCosts && (
+          <p style={{ margin: '0 0 14px', fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+            Δεν δηλώθηκε ΕΝΦΙΑ ούτε δαπάνες, οπότε η απόδοση κρατά μόνο τον φόρο. Με τα
+            δύο πεδία συμπληρωμένα βγαίνει η καθαρή.
+          </p>
+        )}
         {/* ΔΥΟ ΝΟΥΜΕΡΑ, ΚΑΙ Η ΚΑΘΑΡΗ ΠΡΩΤΗ. Είναι η απάντηση στην ερώτηση που
             έφερε εδώ τον επισκέπτη· η μεικτή είναι το νούμερο που ήξερε πριν
             έρθει και υπάρχει μόνο για τη σύγκριση. Ίδιο μέγεθος, ώστε η
             σύγκριση να είναι σύγκριση και όχι υπόδειξη. */}
         {hasValue ? (
           <div {...fixedCols(2, 24, 'start')}>
-            <Figure label="Καθαρή απόδοση" value={fpSigned((r.netYield ?? 0) * 100)}/>
-            <Figure label="Μεικτή απόδοση" value={fp((r.grossYield ?? 0) * 100)}/>
-            <LiveResult say={`Καθαρή απόδοση ${fpSigned((r.netYield ?? 0) * 100)}. Μεικτή ${fp((r.grossYield ?? 0) * 100)}.`} />
+            <ToolFigure label={netLabel} value={fpSigned((r.netYield ?? 0) * 100)}/>
+            <ToolFigure label="Μεικτή απόδοση" value={fp((r.grossYield ?? 0) * 100)}/>
+            <LiveResult say={`${netLabel} ${fpSigned((r.netYield ?? 0) * 100)}. Μεικτή ${fp((r.grossYield ?? 0) * 100)}.`} />
           </div>
         ) : (
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
@@ -254,62 +208,57 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
 
         {/* ── ΠΟΥ ΠΑΕΙ ΤΟ ΕΝΟΙΚΙΟ ────────────────────────────────────────
             Μία γραμμή, τέσσερα κομμάτια. Δείχνει ΤΙ ΑΠΟΜΕΝΕΙ, που κανένας
-            πίνακας αριθμών δεν δείχνει με μια ματιά. Τα ευρώ τα λέει ο πίνακας
-            από κάτω, οπότε εδώ δεν γράφεται κανένα νούμερο και η γραμμή είναι
-            διακοσμητική για τον αναγνώστη οθόνης.
+            πίνακας αριθμών δεν δείχνει με μια ματιά.
             ΧΩΡΙΣ ΚΟΚΚΙΝΟ ΚΑΙ ΠΡΑΣΙΝΟ: το κρατούμενο παίρνει το χρώμα έμφασης,
             τα τρία βάρη διαβαθμίσεις του ίδιου ουδέτερου. Ο φόρος δεν είναι
-            σφάλμα, είναι υποχρέωση που μετρήθηκε. */}
+            σφάλμα, είναι υποχρέωση που μετρήθηκε.
+            ΜΕ ΥΠΟΜΝΗΜΑ. Τρεις αποχρώσεις του γκρι δεν ονομάζονται μόνες τους:
+            κάθε κομμάτι γράφει δίπλα στο δείγμα του τι είναι και τι μερίδιο του
+            ενοικίου παίρνει και η ίδια πρόταση είναι το όνομα της εικόνας για
+            τον αναγνώστη οθόνης. */}
         {r.gross > 0 && (
-          <div aria-hidden style={{ marginBottom: T.sp.lg }}>
-            <div style={{
+          <div style={{ marginBottom: T.sp.lg }}>
+            <div role="img" aria-label={`Πού πάει το ενοίκιο: ${split.map(p => `${p.name} ${p.pct}`).join(', ')}.`} style={{
               display: 'flex', gap: 2, height: 10, borderRadius: T.radius.pill, overflow: 'hidden',
               background: 'var(--bg-elevated)',
             }}>
-              {([
-                ['keep', Math.max(0, r.net), 'var(--accent)', 1],
-                ['tax', r.tax, 'var(--text-tertiary)', 0.7],
-                ['enfia', r.enfia, 'var(--text-tertiary)', 0.45],
-                ['costs', r.expenses, 'var(--text-tertiary)', 0.25],
-              ] as const).filter(([, n]) => n > 0).map(([k, n, bg, op]) => (
-                <span key={k} style={{ flex: n, background: bg, opacity: op, minWidth: 2 }}/>
+              {split.map(p => (
+                <span key={p.key} style={{ flex: p.n, background: p.bg, opacity: p.op, minWidth: 2 }}/>
               ))}
             </div>
-            <p style={{ margin: '8px 0 0', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
-              textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-              Πού πάει το ενοίκιο
-            </p>
+            <ul aria-hidden style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'flex', flexWrap: 'wrap',
+              columnGap: T.sp.lg, rowGap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
+              {split.map(p => (
+                <li key={p.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                  <span style={{ width: 10, height: 10, borderRadius: T.radius.pill, background: p.bg, opacity: p.op, flexShrink: 0 }}/>
+                  {p.name} <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{p.pct}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
-        <dl {...fixedCols(2, 24, 'start')} style={{ ...fixedCols(2, 24, 'start').style, rowGap: 12, margin: 0 }}>
-          <Row k="Ετήσιο ενοίκιο" v={feAuto(r.gross)}/>
-          <Row k="Φόρος εισοδήματος" v={feAuto(r.tax)}/>
-          <Row k="ΕΝΦΙΑ" v={feAuto(r.enfia)}/>
-          <Row k="Δαπάνες" v={feAuto(r.expenses)}/>
-          {/* Τα δύο καθαρά μπορεί να βγουν αρνητικά: τυπογραφικό μείον, σφιχτό. */}
-          <Row k="Σου μένουν τον χρόνο" v={feSigned(r.net)}/>
-          <Row k="Καθαρά ανά μισθωμένο μήνα" v={feSigned(r.netMonthly)}/>
-          {/* ΟΤΑΝ ΤΟ ΑΚΙΝΗΤΟ ΔΕΝ ΕΠΙΣΤΡΕΦΕΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ ΑΡΙΘΜΟΣ. Η διαίρεση
-              με αρνητικά καθαρά δίνει αρνητικά χρόνια, που τυπώνονται μια χαρά
-              και διαβάζονται ως απάντηση. Χωρίς αξία όμως δεν υπάρχει τι να
-              επιστρέψει: το `null` σημαίνει και τα δύο και η σειρά τα ξεχωρίζει. */}
-          <Row k="Χρόνια να επιστρέψει η αξία"
-            v={!hasValue ? 'Χρειάζεται αξία'
-              : r.paybackYears === null ? 'Δεν επιστρέφει' : fn(r.paybackYears, 1)}/>
-          <Row k="Συντελεστής στο επόμενο ευρώ" v={fp(r.marginal * 100)}/>
-        </dl>
-
-        {/* ΤΟ ΜΗΔΕΝ ΠΟΥ ΔΕΝ ΔΗΛΩΘΗΚΕ ΤΟ ΛΕΕΙ Η ΙΔΙΑ Η ΚΑΡΤΑ. Χωρίς αυτό, η
-            καθαρή απόδοση της πρώτης οθόνης θα ήταν η μεικτή μείον τον φόρο,
-            παρουσιασμένη ως «καθαρή» — δηλαδή ακριβώς το λάθος που η σελίδα
-            υπάρχει για να διορθώσει. */}
-        {noCosts && (
-          <p style={{ margin: '16px 0 0', fontSize: 13, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
-            Δεν δηλώθηκε ΕΝΦΙΑ ούτε δαπάνες, οπότε η καθαρή απόδοση παραπάνω κρατά
-            μόνο τον φόρο. Με τα δύο πεδία συμπληρωμένα πέφτει.
-          </p>
-        )}
+        {/* ΜΙΑ ΣΤΗΛΗ ΠΟΥ ΑΦΑΙΡΕΙ: ενοίκιο, μείον τα τρία βάρη, ίσον όσα μένουν.
+            Τα λεπτά μένουν εδώ, γιατί ο φόρος είναι ποσό του νόμου και η στήλη
+            πρέπει να κλείνει στο λεπτό. Τα καθαρά μπορεί να βγουν αρνητικά:
+            τυπογραφικό μείον, σφιχτό. */}
+        <ToolLedger rows={[
+          { k: 'Ετήσιο ενοίκιο', v: feAuto(r.gross) },
+          { k: 'Φόρος εισοδήματος', v: feSigned(-r.tax) },
+          { k: 'ΕΝΦΙΑ', v: feSigned(-r.enfia) },
+          { k: 'Δαπάνες', v: feSigned(-r.expenses) },
+          { k: 'Σου μένουν τον χρόνο', v: feSigned(r.net), kind: 'total' },
+        ]}/>
+        {/* ΟΤΑΝ ΤΟ ΑΚΙΝΗΤΟ ΔΕΝ ΕΠΙΣΤΡΕΦΕΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ ΑΡΙΘΜΟΣ. Η διαίρεση με
+            αρνητικά καθαρά δίνει αρνητικά χρόνια, που τυπώνονται μια χαρά και
+            διαβάζονται ως απάντηση. Χωρίς αξία όμως δεν υπάρχει τι να
+            επιστρέψει: το `null` σημαίνει και τα δύο και η σειρά τα ξεχωρίζει. */}
+        <ToolStats items={[
+          { k: 'Καθαρά ανά μισθωμένο μήνα', v: feSigned(r.netMonthly) },
+          { k: 'Χρόνια να επιστρέψει η αξία', v: !hasValue ? 'Χρειάζεται αξία'
+            : r.paybackYears === null ? 'Δεν επιστρέφει' : fn(r.paybackYears, 1) },
+          { k: 'Συντελεστής στο επόμενο ευρώ', v: fpRate(r.marginal * 100) },
+        ]}/>
       </div>
 
       <ToolActions path={PATH} spec={SPEC} values={v}/>
@@ -318,10 +267,10 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           Οποιος συγκρίνει τρία ακίνητα τυπώνει τρεις σελίδες που μοιάζουν
           ίδιες. Το πεδίο γράφει τον τίτλο της εκτύπωσης και τίποτε άλλο. */}
       <div className="po-noprint" style={{ marginTop: 16 }}>
-        <label htmlFor={ids.name} style={{ ...LBL, marginBottom: 6 }}>Όνομα για την εκτύπωση</label>
+        <label htmlFor={ids.name} style={{ ...TOOL_LABEL, marginBottom: 6 }}>Όνομα για την εκτύπωση</label>
         <input id={ids.name} value={name} onChange={e => setName(e.target.value)}
           placeholder="π.χ. Διαμέρισμα κέντρου, 3ος"
-          style={{ ...FIELD, fontFamily: T.font.sans, maxWidth: 340 }}/>
+          style={{ ...TOOL_FIELD, fontFamily: T.font.sans, maxWidth: 340 }}/>
       </div>
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ───────────────────────────────────────── */}
@@ -350,34 +299,6 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
         title="Για όλα σου τα ακίνητα, χωρίς να το ξαναϋπολογίσεις;"
         body="Το PROPERWISE κρατά ενοίκια, ΕΝΦΙΑ και δαπάνες ανά ακίνητο και δείχνει ποιο αποδίδει, ποιο σε βαραίνει."
       />
-    </div>
-  );
-}
-
-/**
- * Ένα μετρημένο νούμερο με την ετικέτα του. Χωρίς παράμετρο χρώματος: η έμφαση
- * δίνεται με μέγεθος και σειρά, που δουλεύουν και σε ασπρόμαυρη εκτύπωση.
- */
-function Figure({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-        color: 'var(--text-tertiary)', marginBottom: 8 }}>{label}</div>
-      <div style={{
-        fontFamily: T.font.num, fontSize: 'clamp(24px, 4.4vw, 32px)',
-        fontWeight: 680, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
-        color: 'var(--text-primary)',
-      }}>{value}</div>
-    </div>
-  );
-}
-
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
-      <dt style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{k}</dt>
-      <dd style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)',
-        fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{v}</dd>
     </div>
   );
 }

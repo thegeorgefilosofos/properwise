@@ -24,5 +24,6 @@ export const ENFIA_FLOOR_LABEL: Record<keyof typeof ENFIA_FLOOR_COEF, string> = 
   second: '2ος όροφος',
   third: '3ος όροφος',
   fourth: '4ος και 5ος',
-  fifth_plus: '6ος και πάνω',
+  // «άνω», όπως το «26 έτη και άνω» της παλαιότητας που κάθεται στην ίδια σειρά.
+  fifth_plus: '6ος και άνω',
 }
