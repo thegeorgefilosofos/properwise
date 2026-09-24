@@ -80,6 +80,21 @@ else {
     if (id !== 'free' && !mirror.some(([k]) => k === id)) problems.push(`το πακέτο «${id}» λείπει από το PACKAGE_NAME`);
 }
 
+// 6. Και το όριο ακινήτων ανά πακέτο (PACKAGE_MAX_PROPERTIES). Το «απεριόριστα
+// ακίνητα» γράφτηκε κάποτε για πακέτο των δεκαπέντε· από εδώ ο αριθμός έρχεται
+// από την πηγή του και το «απεριόριστα» μόνο από το Infinity της.
+const maxBody = /export const PACKAGE_MAX_PROPERTIES[^=]*=\s*\{([\s\S]*?)\}/.exec(tpl)?.[1];
+if (maxBody == null) problems.push(`δεν βρέθηκε το PACKAGE_MAX_PROPERTIES στο ${TPL}`);
+else {
+  const src = Object.fromEntries([...plans.matchAll(/^\s*id: '([a-z]+)',[^\n]*?maxProperties: (\w+)/gm)].map(m => [m[1], m[2]]));
+  const mirror = Object.fromEntries([...maxBody.matchAll(/(\w+)\s*:\s*(\w+)/g)].map(m => [m[1], m[2]]));
+  for (const id of Object.keys(src)) {
+    if (id === 'free') continue;
+    const want = src[id] === 'Infinity' ? 'null' : src[id];
+    if (mirror[id] !== want) problems.push(`το PACKAGE_MAX_PROPERTIES λέει «${id}: ${mirror[id]}» και το ${PLANS} «${src[id]}»`);
+  }
+}
+
 if (problems.length) {
   console.error(`✗ το κοινό των email δεν συμφωνεί με τους τύπους προφίλ:\n`);
   for (const p of problems) console.error(`  · ${p}`);

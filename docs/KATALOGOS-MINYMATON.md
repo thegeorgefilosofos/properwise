@@ -79,15 +79,15 @@ npm run katalogos
 
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
-| `free_month_upgrade` | Άλλος ένας μήνας. Μήπως ήρθε η ώρα; | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
-| `upsell_to_individual` | Δώσε στα ακίνητά σου το πλήρες PROPERWISE | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
-| `upsell_to_professional` | Το χαρτοφυλάκιό σου μεγαλώνει | `supabase/functions/_shared/emailPolicy.ts` |
-| `limit_reached` | Έφτασες στο όριο των ακινήτων σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
-| `value_left` | Αφήνεις αξία αναξιοποίητη | `supabase/functions/_shared/emailPolicy.ts` |
-| `annual_discount` | promo ? `Πλήρωσε ετησίως και εξοικονόμησε ${c.discountPct}%` : 'Πλήρωσε ετησίως και κέρδισε έως δύο μήνες', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts` |
+| `free_month_upgrade` | Άλλος ένας μήνας. Μήπως ήρθε η ώρα; | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+1) |
+| `upsell_to_individual` | Δώσε στα ακίνητά σου το πλήρες PROPERWISE | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+4) |
+| `upsell_to_professional` | Το χαρτοφυλάκιό σου μεγαλώνει | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
+| `limit_reached` | Έφτασες στο όριο των ακινήτων σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+1) |
+| `value_left` | Αφήνεις αξία αναξιοποίητη | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
+| `annual_discount` | promo ? `Πλήρωσε ετησίως και εξοικονόμησε ${c.discountPct}%` : 'Πλήρωσε ετησίως και κέρδισε έως δύο μήνες', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
 | `trial_ending` | Η δοκιμή σου τελειώνει σύντομα | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260819130000_o_kyklos_zois_diavazei_to_sosto_pedio.sql` (+2) |
-| `winback_downgrade` | Είμαστε εδώ, όποτε θες | `supabase/functions/_shared/emailPolicy.ts` |
-| `reactivation_offer` | Γύρνα με ${o.pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts` |
+| `winback_downgrade` | Είμαστε εδώ, όποτε θες | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
+| `reactivation_offer` | Γύρνα με ${o.pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
 | `trial_started` | Η δοκιμή σου ξεκίνησε. Ας την αξιοποιήσουμε | `lib/analytics/events.ts`, `lib/billing/morWebhook.ts` (+2) |
 
 ## SEASONAL
@@ -96,12 +96,12 @@ npm run katalogos
 
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
-| `black_friday` | Black Friday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
-| `cyber_monday` | Cyber Monday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts` |
-| `christmas` | Κλείσε τη χρονιά με τα ακίνητά σου σε τάξη | `supabase/functions/_shared/emailTemplates.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
-| `new_year` | Νέα χρονιά, καθαρά βιβλία | `supabase/functions/_shared/emailTemplates.ts` |
+| `black_friday` | Black Friday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+4) |
+| `cyber_monday` | Cyber Monday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
+| `christmas` | Κλείσε τη χρονιά με τα ακίνητά σου σε τάξη | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+4) |
+| `new_year` | Νέα χρονιά, καθαρά βιβλία | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
 | `tax_season` | Μπες στη φορολογική σεζόν χωρίς άγχος | `supabase/migrations/20260723091000_lifecycle_enqueue.sql`, `supabase/migrations/20260723092000_email_activation_fixes.sql` (+2) |
-| `summer_str` | Η σεζόν των βραχυχρόνιων ξεκινά | `supabase/migrations/20260723091000_lifecycle_enqueue.sql`, `supabase/migrations/20260723092000_email_activation_fixes.sql` (+2) |
+| `summer_str` | Η σεζόν των βραχυχρόνιων ξεκινά | `supabase/functions/send-lifecycle-email/index.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
 
 ## REFERRAL
 
@@ -137,7 +137,7 @@ npm run katalogos
 |---|---|---|
 | `inactive_30` | Πάει καιρός. Όλα σε περιμένουν | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `scripts/db/rls-probe.sql` |
 | `inactive_60` | Να κρατήσουμε τα δεδομένα σου ασφαλή; | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql` |
-| `winback_offer` | Μια αφορμή για να γυρίσεις: ${o.pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts` |
+| `winback_offer` | Μια αφορμή για να γυρίσεις: ${o.pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
 | `churn_survey` | Ένα λεπτό, για να γίνουμε καλύτεροι | `supabase/functions/_shared/emailPolicy.ts` |
 | `data_retention_notice` | Κράτησε τον λογαριασμό σου ενεργό | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 
@@ -181,16 +181,16 @@ npm run katalogos
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
 | `feature_launch` | c.featureName ? `Νέο: ${esc(c.featureName)}` : 'Κάτι νέο σε περιμένει', html: emailShell({ | **με το χέρι** · Ανακοίνωση χαρακτηριστικού. Ποιο και πότε, το ξέρει μόνο όποιος το κυκλοφόρησε. |
-| `assistant_upgraded` | Νόα απαντά πιο ακριβώς | **με το χέρι** · Ανακοίνωση αναβάθμισης του βοηθού. |
+| `assistant_upgraded` | Νέα ικανότητα για τη Νόα | **με το χέρι** · Ανακοίνωση αναβάθμισης του βοηθού. |
 | `assistant_showcase` | Νόα κάνει τη δουλειά | `supabase/functions/_shared/emailPolicy.ts` |
 | `changelog_monthly` | Τι φτιάξαμε αυτόν τον μήνα | **με το χέρι** · Μηνιαία σύνοψη αλλαγών, γραμμένη με το χέρι. |
 | `roadmap_preview` | Τι ετοιμάζουμε στη συνέχεια | `supabase/functions/_shared/emailPolicy.ts` |
 | `anniversary` | (has(c.anniversaryYears) && c.anniversaryYears > 1) ? `Κλείνουμε ${c.anniversaryYears} χρόνια μαζί` : 'Κλείνουμε έναν χρόνο μαζί', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+4) |
 | `milestone_reached` | Ένα ορόσημο που αξίζει αναγνώριση | **με το χέρι** · Το ορόσημο δεν είναι ορισμένο πουθενά. Ενα κατώφλι εδώ θα ήταν αυθαίρετο. |
 | `nps_survey` | Θα μας πρότεινες σε έναν φίλο; | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
-| `feedback_lottery` | Ένα λεπτό η γνώμη σου, ένας χρόνος δώρο | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
+| `feedback_lottery` | Ένα λεπτό για τη γνώμη σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `best_practice_tip` | c.headline ? esc(c.headline) : 'Η συμβουλή της εβδομάδας', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
-| `webinar_invite` | Πρόσκληση σε δωρεάν masterclass | `supabase/functions/_shared/emailPolicy.ts` |
+| `webinar_invite` | Πρόσκληση σε συνάντηση για ιδιοκτήτες | `supabase/functions/_shared/emailPolicy.ts` |
 
 ## CONVERSION
 
@@ -199,8 +199,8 @@ npm run katalogos
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
 | `roi_proof` | Πόσο σου απέδωσε το PROPERWISE | `supabase/functions/_shared/emailPolicy.ts` |
-| `plan_comparison` | Ποιο πακέτο συμφέρει για τη δική σου χρήση | `supabase/functions/_shared/emailPolicy.ts` |
-| `social_proof` | Γιατί οι επαγγελματίες επιλέγουν το PROPERWISE | `supabase/functions/_shared/emailPolicy.ts` |
+| `plan_comparison` | Ποιο πακέτο συμφέρει για τη δική σου χρήση | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
+| `social_proof` | Τι κάνει το PROPERWISE για τα ακίνητά σου | `supabase/functions/_shared/emailPolicy.ts` |
 | `rent_benchmark_alert` | Το ενοίκιό σου σε σχέση με την αγορά | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+2) |
 
 ## COMPLIANCE

@@ -25,7 +25,9 @@ const ACCENT = '#1a73e8';
 const INK = '#1d1d1f';
 const TEXT = '#4a4f55';
 const MUTE = '#6b7176';
-const FAINT = '#8a9099';
+// ΤΟ FAINT ΠΕΡΝΑ AA. Ηταν #8a9099 (3,2:1 σε λευκό) σε κείμενο 11-12px, όπου ο
+// στόχος είναι 4,5:1. Το #6b7176 δίνει 4,9:1· η σκοτεινή εκδοχή (.fa) ≥5:1.
+const FAINT = '#6b7176';
 const RULE = '#e8e8ed';
 const DEFAULT_APP = APP_URL;
 
@@ -73,6 +75,26 @@ export const PLAN_LABEL: Record<Plan, string> = {
 export const PACKAGE_NAME = {
   solo: 'Ιδιοκτήτης', owner: 'Ιδιοκτήτης+', agency: 'Επαγγελματίας', office: 'Επαγγελματίας+',
 } as const;
+export type PackageId = keyof typeof PACKAGE_NAME;
+
+/** Το όριο ακινήτων κάθε πακέτου (null = απεριόριστα). Αντίγραφο, με φύλακα. */
+export const PACKAGE_MAX_PROPERTIES: Record<PackageId, number | null> = {
+  solo: 1, owner: 3, agency: 15, office: null,
+};
+
+/**
+ * ΤΟ ΠΑΚΕΤΟ ΑΠΟ ΟΤΙ ΚΙ ΑΝ ΕΣΤΕΙΛΕ Ο ΚΑΛΩΝ. Τα παλιά γεγονότα περνούσαν τύπο
+ * προφίλ («individual») εκεί που εννοούσαν πακέτο και το θέμα έγραφε
+ * «Καλωσόρισες στο πακέτο Ιδιώτης». Ο τύπος προφίλ αντιστοιχεί στο πρώτο
+ * πακέτο της οικογένειάς του· ό,τι άλλο δεν είναι πακέτο επιστρέφει null.
+ */
+export function packageOf(v: unknown): PackageId | null {
+  const k = String(v ?? '');
+  if (k in PACKAGE_NAME) return k as PackageId;
+  if (k === 'individual') return 'solo';
+  if (k === 'professional') return 'agency';
+  return null;
+}
 
 // ── Δομικά κομμάτια σώματος (τυποποιημένα) ───────────────────────────────────
 export const p = (html: string): string =>
@@ -190,8 +212,8 @@ export const greeting = (name?: string): string => {
  */
 export const emailHeader = (): string =>
   `<a href="${APP_URL}" style="text-decoration:none;display:inline-block;line-height:1;">`
-  + `<img class="logo-light" src="${APP_URL}/brand/properwise-logotypo-skouro.png" alt="PROPERWISE" height="26" style="display:block;border:0;outline:none;text-decoration:none;height:26px;width:auto;">`
-  + `<img class="logo-dark" src="${APP_URL}/brand/properwise-logotypo-lefko.png" alt="PROPERWISE" height="26" style="display:none;border:0;outline:none;text-decoration:none;height:26px;width:auto;">`
+  + `<img class="logo-light" src="${APP_URL}/brand/properwise-logotypo-skouro.png" alt="PROPERWISE" width="164" height="26" style="display:block;border:0;outline:none;text-decoration:none;width:164px;height:26px;">`
+  + `<img class="logo-dark" src="${APP_URL}/brand/properwise-logotypo-lefko.png" alt="PROPERWISE" width="164" height="26" style="display:none;border:0;outline:none;text-decoration:none;width:164px;height:26px;">`
   + `</a>`
   + divider('20px 0 0');
 
@@ -218,8 +240,13 @@ export function emailShell(opts: {
   const pre = opts.preheader
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(opts.preheader)}${'&#847;&zwnj;&nbsp;'.repeat(10)}</div>`
     : '';
+  // Ο ΑΠΟΣΤΟΛΕΑΣ ΛΕΓΕΤΑΙ ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΣΤΟ ΕΜΠΟΡΙΚΟ ΜΗΝΥΜΑ (π.δ. 131/2003).
+  // Η ταυτότητα έρχεται από το περιβάλλον (SENDER_IDENTITY), γιατί το Deno δεν
+  // φτάνει στο lib/legal/identity.ts. Κενή, δεν τυπώνεται τίποτα επινοημένο·
+  // το send-lifecycle-email κρατά τότε πίσω τα προωθητικά.
+  const who = senderIdentity();
   const foot = opts.unsubUrl
-    ? `Λαμβάνεις αυτό το email ως χρήστης του PROPERWISE. <a class="lnk" href="${esc(opts.unsubUrl)}" style="color:${MUTE};text-decoration:underline;">Απεγγραφή</a>`
+    ? `Λαμβάνεις αυτό το email ως χρήστης του PROPERWISE.${who ? ` ${esc(who)}.` : ''} <a class="lnk" href="${esc(opts.unsubUrl)}" style="color:${MUTE};text-decoration:underline;">Απεγγραφή</a>`
     : (opts.footerNote || 'properwise.gr');
   return `<!DOCTYPE html>
 <html lang="el" dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -245,7 +272,7 @@ img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}
  .ink{color:#f2f3f5 !important;}
  .tx{color:#c2c7cd !important;}
  .mu{color:#9aa1a9 !important;}
- .fa{color:#767c84 !important;}
+ .fa{color:#8f959d !important;}
  .ac,.lnk{color:#6ba6f5 !important;}
  .rule{background:#2b2f35 !important;}
  .rule-b{border-bottom-color:#2b2f35 !important;}
@@ -262,7 +289,7 @@ img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}
 [data-ogsc] .ink{color:#f2f3f5 !important;}
 [data-ogsc] .tx{color:#c2c7cd !important;}
 [data-ogsc] .mu{color:#9aa1a9 !important;}
-[data-ogsc] .fa{color:#767c84 !important;}
+[data-ogsc] .fa{color:#8f959d !important;}
 [data-ogsc] .ac,[data-ogsc] .lnk{color:#6ba6f5 !important;}
 [data-ogsc] .neg{color:#f28b82 !important;}
 [data-ogsc] .pos{color:#81c995 !important;}
@@ -289,6 +316,25 @@ img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}
 <!--[if mso]></td></tr></table><![endif]-->
 </td></tr></table>
 </body></html>`;
+}
+
+/**
+ * ΟΙ ΚΕΦΑΛΙΔΕΣ ΑΠΕΓΓΡΑΦΗΣ ΕΝΟΣ ΠΑΤΗΜΑΤΟΣ (RFC 2369 / RFC 8058).
+ *
+ * Χωρίς αυτές, το Gmail και το Yahoo κατατάσσουν τα μαζικά εμπορικά μηνύματα
+ * χαμηλότερα και δεν δείχνουν δικό τους κουμπί «Απεγγραφή». Ο σύνδεσμος του
+ * υποσέλιδου δεν αρκεί: είναι μέσα στο σώμα και δεν τον διαβάζει ο πάροχος.
+ * Το POST φτάνει στο app/unsubscribe/[token]/one-click/route.ts.
+ */
+export const listUnsubscribeHeaders = (unsubUrl?: string): Record<string, string> | undefined =>
+  unsubUrl && /\/unsubscribe\/[^/]+$/.test(unsubUrl)
+    ? { 'List-Unsubscribe': `<${unsubUrl}/one-click>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }
+    : undefined;
+
+/** «Ονοματεπώνυμο · διεύθυνση» του αποστολέα, ή κενό όσο δεν έχει οριστεί. */
+export function senderIdentity(): string {
+  try { return (globalThis as { Deno?: { env: { get(k: string): string | undefined } } }).Deno?.env.get('SENDER_IDENTITY')?.trim() || ''; }
+  catch { return ''; }
 }
 
 export interface Ctx { name?: string; appUrl?: string; unsubUrl?: string }
@@ -357,7 +403,6 @@ export interface Personal extends Ctx {
   featureBenefit?: string;   // όφελος νέας δυνατότητας
   assistantSkill?: string;   // νέα ικανότητα του βοηθού
   anniversaryYears?: number; // χρόνια συνεργασίας
-  hoursSaved?: number;       // ώρες που εξοικονομήθηκαν
   // Πύλη λογιστή: ο πελάτης απάντησε σε αίτημα του λογιστή του
   clientName?: string;       // όνομα του ιδιοκτήτη, όπως τον ξέρει ο λογιστής
   requestItem?: string;      // τι ακριβώς είχε ζητηθεί
@@ -382,48 +427,60 @@ const app = (c: Ctx) => c.appUrl || DEFAULT_APP;
 
 // ── LIFECYCLE ────────────────────────────────────────────────────────────────
 
-/** Καλωσόρισμα μετά την εγγραφή · segmented ανά πακέτο. */
+/** Τι προσθέτει κάθε πακέτο, σε τρεις γραμμές. Το όριο ακινήτων από το αντίγραφο. */
+function packagePerks(pkg: PackageId): string[] {
+  const max = PACKAGE_MAX_PROPERTIES[pkg];
+  const limit = max == null ? 'Απεριόριστα ακίνητα' : max === 1 ? '1 ακίνητο, με όλα τα βασικά' : `Έως ${max} ακίνητα`;
+  switch (pkg) {
+    case 'solo': return [`${limit}.`, 'Καταστάσεις και βεβαιώσεις ενοικίου σε PDF με QR επαλήθευσης.', 'Αυτόματες υπενθυμίσεις προθεσμιών.'];
+    case 'owner': return [`${limit}.`, 'Σύγκριση ακινήτων: ποιο αποδίδει και ποιο κοστίζει.', 'Καταστάσεις και βεβαιώσεις ενοικίου σε PDF με QR επαλήθευσης.'];
+    case 'agency': return [`${limit}, με συγκεντρωτική εικόνα χαρτοφυλακίου.`, 'Αναφορές με την επωνυμία σου και μαζικό email πελατών.', 'Πελατολόγιο και ομάδα με ρόλους.'];
+    case 'office': return [`${limit}.`, 'Αναφορές με την επωνυμία σου και μαζικό email πελατών.', 'Ομάδα χωρίς όριο χρηστών.'];
+  }
+}
+
+/** Καλωσόρισμα μετά την εγγραφή · segmented ανά τύπο προφίλ. */
 export function welcomeEmail(c: Ctx & { plan?: Plan }): Out {
   const plan = c.plan || 'free';
   const next: Record<Plan, string[]> = {
-    free: ['Πρόσθεσε το πρώτο σου ακίνητο σε 2 λεπτά.', 'Δες αυτόματα έσοδα, έξοδα και φόρους.', 'Ρώτα τη Νόα για τα ακίνητά σου.'],
-    individual: ['Κατέγραψε ακίνητα, ενοικιαστές και εισπράξεις.', 'Βγάλε επίσημες καταστάσεις και βεβαιώσεις ενοικίου.', 'Άφησε τις υπενθυμίσεις να τρέχουν μόνες τους.'],
-    professional: ['Διαχειρίσου χαρτοφυλάκιο πολλών ακινήτων.', 'Branded αναφορές και μαζική επικοινωνία πελατών.', 'Λογιστικά, φόροι και ροές εργασίας για όλο το χαρτοφυλάκιο.'],
+    free: ['Πρόσθεσε το πρώτο σου ακίνητο.', 'Δες έσοδα, δαπάνες και φόρο με τα δικά σου στοιχεία.', 'Ρώτα τη Νόα για τα ακίνητά σου.'],
+    individual: ['Κατέγραψε ακίνητα, ενοικιαστές και εισπράξεις.', 'Βγάλε καταστάσεις και βεβαιώσεις ενοικίου σε PDF.', 'Άφησε τις υπενθυμίσεις να τρέχουν μόνες τους.'],
+    professional: ['Δες το χαρτοφυλάκιο συγκεντρωτικά.', 'Στείλε αναφορές με την επωνυμία σου.', 'Κράτα λογιστικά, φόρους και προθεσμίες για κάθε ακίνητο.'],
   };
-  const body = eyebrow('Καλωσόρισες') + h('Ξεκίνα με το PROPERWISE')
+  const body = eyebrow('Καλώς όρισες') + h('Ξεκίνα με το PROPERWISE')
     + greeting(c.name)
-    + p('Χαιρόμαστε που είσαι μαζί μας. Να τα πρώτα βήματα για να πάρεις αξία από την πρώτη μέρα:')
+    + p('Χαιρόμαστε που είσαι εδώ. Τα πρώτα βήματα:')
     + bullets(next[plan])
     + button('Άνοιξε τον πίνακα', `${app(c)}/dashboard`)
-    + note('Είμαστε εδώ για ό,τι χρειαστείς. Απάντησε απευθείας σε αυτό το email.');
-  return { subject: 'Καλωσόρισες στο PROPERWISE', html: emailShell({ bodyHtml: body, preheader: 'Τα πρώτα βήματα για να ξεκινήσεις.' }) };
+    + note('Για ό,τι χρειαστείς, απάντησε σε αυτό το email.');
+  return { subject: 'Καλώς όρισες στο PROPERWISE', html: emailShell({ bodyHtml: body, preheader: 'Τα πρώτα βήματα για να ξεκινήσεις.' }) };
 }
 
-/** Αναβάθμιση συνδρομής · ευχαριστία + τι ξεκλείδωσε. */
-export function planUpgradedEmail(c: Ctx & { plan: Plan }): Out {
-  const perks: Record<Plan, string[]> = {
-    free: ['Πρόσβαση στις βασικές λειτουργίες.'],
-    individual: ['Απεριόριστες καταστάσεις και βεβαιώσεις ενοικίου.', 'Αυτόματες υπενθυμίσεις και ειδοποιήσεις.', 'Επίσημες, επαληθεύσιμες αναφορές PDF.'],
-    professional: ['Χαρτοφυλάκιο πολλών ακινήτων χωρίς όριο.', 'Branded αναφορές και μαζικό email πελατών.', 'Προτεραιότητα στην υποστήριξη.'],
-  };
-  const body = eyebrow('Αναβάθμιση') + h(`Είσαι πλέον ${PLAN_LABEL[c.plan]}`)
+/** Αναβάθμιση συνδρομής · ευχαριστία + τι προσθέτει το πακέτο. Χωρίς πακέτο, τίποτα. */
+export function planUpgradedEmail(c: Ctx & { plan: Plan | PackageId }): Out | null {
+  const pkg = packageOf(c.plan);
+  if (!pkg) return null;
+  const name = PACKAGE_NAME[pkg];
+  const body = eyebrow('Αναβάθμιση') + h(`Το πακέτο σου είναι πλέον ${name}`)
     + greeting(c.name)
-    + p('Ευχαριστούμε για την εμπιστοσύνη. Μόλις ξεκλείδωσες:')
-    + bullets(perks[c.plan])
-    + button('Δες τι νέο έχεις', `${app(c)}/dashboard`)
-    + note('Η απόδειξη της συνδρομής σου είναι διαθέσιμη στις Ρυθμίσεις, στη Συνδρομή.');
-  return { subject: `Καλωσόρισες στο πακέτο ${PLAN_LABEL[c.plan]}`, html: emailShell({ bodyHtml: body, preheader: 'Ευχαριστούμε · να τι ξεκλείδωσες.' }) };
+    + p('Ευχαριστούμε για την εμπιστοσύνη. Τι προσθέτει:')
+    + bullets(packagePerks(pkg))
+    + button('Άνοιξε τον πίνακα', `${app(c)}/dashboard`)
+    + note('Την απόδειξη τη βρίσκεις στον Λογαριασμό, ενότητα Συνδρομή.');
+  return { subject: `Καλώς όρισες στο πακέτο ${name}`, html: emailShell({ bodyHtml: body, preheader: 'Ευχαριστούμε. Να τι προσθέτει το πακέτο σου.' }) };
 }
 
 /** Υποβάθμιση/λήξη συνδρομής · ευγενικό, χωρίς πίεση, με πόρτα επιστροφής. */
-export function planDowngradedEmail(c: Ctx & { plan: Plan }): Out {
-  const body = eyebrow('Αλλαγή πακέτου') + h(`Το πακέτο σου είναι τώρα ${PLAN_LABEL[c.plan]}`)
+export function planDowngradedEmail(c: Ctx & { plan: Plan | PackageId }): Out {
+  const pkg = packageOf(c.plan);
+  const title = pkg ? `Το πακέτο σου είναι τώρα ${PACKAGE_NAME[pkg]}` : 'Η συνδρομή σου σταμάτησε';
+  const body = eyebrow('Αλλαγή πακέτου') + h(title)
     + greeting(c.name)
-    + p('Καταγράψαμε την αλλαγή στο πακέτο σου. Τα δεδομένα σου παραμένουν ασφαλή και δικά σου · τίποτα δεν χάνεται.')
-    + p('Αν κάτι δεν πήγε όπως περίμενες ή θέλεις να επιστρέψεις σε περισσότερες δυνατότητες, είμαστε ένα κλικ μακριά.')
-    + button('Διαχείριση συνδρομής', `${app(c)}/dashboard`)
-    + note('Θα χαρούμε πολύ να ακούσουμε τη γνώμη σου · απάντησε και πες μας τι θα σε βοηθούσε.');
-  return { subject: 'Ενημέρωση για τη συνδρομή σου', html: emailShell({ bodyHtml: body, preheader: 'Τα δεδομένα σου παραμένουν ασφαλή.' }) };
+    + p('Καταγράψαμε την αλλαγή. Τα δεδομένα σου μένουν στον λογαριασμό σου.')
+    + p('Αν θέλεις να αλλάξεις ξανά πακέτο, η ενότητα Συνδρομή είναι στον Λογαριασμό.')
+    + button('Άνοιξε τον Λογαριασμό', `${app(c)}/dashboard?tab=settings`)
+    + note('Αν κάτι δεν πήγε όπως περίμενες, απάντησε σε αυτό το email και πες μας τι θα σε βοηθούσε.');
+  return { subject: 'Ενημέρωση για τη συνδρομή σου', html: emailShell({ bodyHtml: body, preheader: 'Τα δεδομένα σου μένουν στον λογαριασμό σου.' }) };
 }
 
 /** Προστέθηκε νέο ακίνητο · επιβεβαίωση + επόμενες κινήσεις. */
@@ -431,63 +488,61 @@ export function newPropertyEmail(c: Ctx & { propertyName: string }): Out {
   const body = eyebrow('Νέο ακίνητο') + h('Το ακίνητο προστέθηκε')
     + greeting(c.name)
     + p(`Το <b>${esc(c.propertyName)}</b> είναι πλέον στο χαρτοφυλάκιό σου. Για να δουλέψει «μόνο του», ολοκλήρωσε:`)
-    + bullets(['Στοιχεία μίσθωσης και ενοικιαστή.', 'Έσοδα/έξοδα για αυτόματη λογιστική.', 'Υπενθυμίσεις για πληρωμές και λήξεις.'])
-    + button('Άνοιξε το ακίνητο', `${app(c)}/dashboard`);
+    + bullets(['Στοιχεία μίσθωσης και ενοικιαστή.', 'Έσοδα και δαπάνες για αυτόματη λογιστική.', 'Υπενθυμίσεις για πληρωμές και λήξεις.'])
+    + button('Άνοιξε το ακίνητο', `${app(c)}/dashboard?tab=overview`);
   return { subject: `Προστέθηκε: ${c.propertyName}`, html: emailShell({ bodyHtml: body, preheader: 'Ολοκλήρωσε τις ρυθμίσεις του ακινήτου.' }) };
 }
 
 /** Feedback μετά ~1 εβδομάδα χρήσης · ζεστό, σύντομο, χωρίς πίεση. */
 export function feedbackRequestEmail(c: Ctx): Out {
-  const body = eyebrow('Η γνώμη σου μετράει') + h('Πώς πάει μέχρι τώρα;')
+  // ΧΩΡΙΣ ΚΟΥΜΠΙ. Ηταν «Πες μας τη γνώμη σου» προς τον γενικό πίνακα, ενώ η
+  // σημείωση από κάτω έλεγε «απάντησε σε αυτό το email». Ο δρόμος είναι ένας.
+  const body = eyebrow('Η γνώμη σου') + h('Πώς πάει μέχρι τώρα;')
     + greeting(c.name)
-    + p('Πέρασε περίπου μία εβδομάδα με το PROPERWISE. Θα εκτιμούσαμε πολύ 30 δευτερόλεπτα από τον χρόνο σου: τι σου άρεσε, τι σε δυσκόλεψε, τι λείπει;')
-    + p('Διαβάζουμε <b>κάθε</b> απάντηση · και χτίζουμε το προϊόν με βάση αυτά που μας λες.')
-    + button('Πες μας τη γνώμη σου', `${app(c)}/dashboard`)
-    + note('Απλώς απάντησε σε αυτό το email · φτάνει κατευθείαν σε εμάς.');
-  return { subject: 'Πώς σου φαίνεται το PROPERWISE;', html: emailShell({ bodyHtml: body, preheader: '30 δευτερόλεπτα που μας βοηθούν πολύ.' }) };
+    + p('Πέρασε περίπου μία εβδομάδα με το PROPERWISE. Τι σου άρεσε, τι σε δυσκόλεψε, τι λείπει;')
+    + p('Απάντησε σε αυτό το email. Διαβάζουμε κάθε απάντηση.');
+  return { subject: 'Πώς σου φαίνεται το PROPERWISE;', html: emailShell({ bodyHtml: body, preheader: 'Τρεις ερωτήσεις, μία απάντηση σε αυτό το email.' }) };
 }
 
 /** Ανακοίνωση mobile app. */
 export function mobileLaunchEmail(c: Ctx): Out {
   const body = eyebrow('Έρχεται') + h('Το PROPERWISE στο κινητό σου')
     + greeting(c.name)
-    + p('Ετοιμάζουμε την εφαρμογή για κινητά · τα ακίνητά σου, οι εισπράξεις και οι ειδοποιήσεις στην τσέπη σου, όπου κι αν είσαι.')
-    + bullets(['Ειδοποιήσεις σε πραγματικό χρόνο.', 'Γρήγορη καταχώρηση εσόδων/εξόδων.', 'Σάρωση εγγράφων με ένα tap.'])
-    + button('Μπες στη λίστα αναμονής', `${app(c)}/dashboard`)
-    + note('Θα είσαι από τους πρώτους που θα ειδοποιήσουμε μόλις είναι έτοιμη.');
-  return { subject: 'Το PROPERWISE έρχεται στο κινητό', html: emailShell({ bodyHtml: body, preheader: 'Μπες νωρίς στη λίστα αναμονής.' }) };
+    + p('Ετοιμάζουμε την εφαρμογή για κινητά. Τα ακίνητά σου, οι εισπράξεις και οι ειδοποιήσεις, όπου κι αν είσαι.')
+    + bullets(['Ειδοποιήσεις σε πραγματικό χρόνο.', 'Γρήγορη καταχώρηση εσόδων και δαπανών.', 'Σάρωση εγγράφων με ένα πάτημα.'])
+    + note('Θα σε ειδοποιήσουμε με email μόλις κυκλοφορήσει.');
+  return { subject: 'Το PROPERWISE έρχεται στο κινητό', html: emailShell({ bodyHtml: body, preheader: 'Θα σε ειδοποιήσουμε μόλις κυκλοφορήσει.' }) };
 }
 
-/** Πρόσκληση στο Referral program. */
+/** Πρόσκληση στο πρόγραμμα προσκλήσεων. */
 export function referralInviteEmail(c: Ctx): Out {
-  const body = eyebrow('Referral') + h('Κέρδισε προτείνοντας το PROPERWISE')
+  const body = eyebrow('Προσκλήσεις') + h('Κέρδισε προτείνοντας το PROPERWISE')
     + greeting(c.name)
     + p('Ξέρεις κάποιον με ακίνητα; Πρότεινέ του το PROPERWISE και <b>κερδίζεις με κάθε ενεργή σύσταση</b>.')
-    + bullets(['Μοναδικός σύνδεσμος πρόσκλησης, δικός σου.', 'Ανταμοιβή για κάθε ενεργό φίλο που φέρνεις.', 'Παρακολούθηση προσκλήσεων και ανταμοιβών live.'])
-    + button('Δες το πρόγραμμα', `${app(c)}/dashboard`);
+    + bullets(['Μοναδικός σύνδεσμος πρόσκλησης, δικός σου.', 'Ανταμοιβή για κάθε ενεργό φίλο που φέρνεις.', 'Παρακολούθηση προσκλήσεων και ανταμοιβών σε πραγματικό χρόνο.'])
+    + button('Δες το πρόγραμμα', `${app(c)}/dashboard?tab=settings`);
   return { subject: 'Πρότεινε το PROPERWISE και κέρδισε', html: emailShell({ bodyHtml: body, preheader: 'Με κάθε ενεργή σύσταση κερδίζεις.' }) };
 }
 
 /** Upsell δωρεάν → paid, με προαιρετική έκπτωση/εποχή. */
-export function upsellEmail(c: Ctx & { toPlan?: Plan; discountPct?: number; discountCode?: string; seasonLabel?: string }): Out {
-  const to = c.toPlan || 'individual';
+export function upsellEmail(c: Ctx & { toPlan?: Plan | PackageId; discountPct?: number; discountCode?: string; seasonLabel?: string }): Out {
+  const pkg = packageOf(c.toPlan) || 'solo';
+  const name = PACKAGE_NAME[pkg];
   // ΕΚΠΤΩΣΗ ΧΩΡΙΣ ΚΩΔΙΚΟ ΔΕΝ ΥΠΑΡΧΕΙ. Το ταμείο εφαρμόζει έκπτωση μόνο με
   // κωδικό· ένα ποσοστό χωρίς αυτόν ήταν υπόσχεση που κανένα κουμπί δεν τηρούσε.
   const code = (c.discountCode || '').trim();
   const disc = code && c.discountPct && c.discountPct > 0 ? c.discountPct : 0;
   const seasonLine = c.seasonLabel ? ` <b>${esc(c.seasonLabel)}</b>` : '';
   const body = eyebrow(disc ? `Προσφορά${seasonLine ? ' ·' : ''}${seasonLine}` : 'Αναβάθμιση')
-    + h(disc ? `${disc}% έκπτωση στο πακέτο ${PLAN_LABEL[to]}` : `Ξεκλείδωσε το πακέτο ${PLAN_LABEL[to]}`)
+    + h(disc ? `${disc}% έκπτωση στο πακέτο ${name}` : `Τι προσθέτει το πακέτο ${name}`)
     + greeting(c.name)
-    + p(`Κάνεις ήδη ωραία δουλειά στη δωρεάν δοκιμή. Με το <b>${PLAN_LABEL[to]}</b> κερδίζεις χρόνο και σιγουριά:`)
-    + bullets(to === 'professional'
-        ? ['Απεριόριστα ακίνητα και branded αναφορές.', 'Μαζική επικοινωνία πελατών.', 'Προτεραιότητα στην υποστήριξη.']
-        : ['Απεριόριστες καταστάσεις και βεβαιώσεις.', 'Αυτόματες υπενθυμίσεις πληρωμών.', 'Επίσημες αναφορές PDF με QR επαλήθευσης.'])
+    + p(`Αν το PROPERWISE σού είναι χρήσιμο στη δοκιμή, να τι προσθέτει το <b>${name}</b>:`)
+    + bullets(packagePerks(pkg))
     + (disc ? p(`Γράψε τον κωδικό <b>${esc(code)}</b> στο ταμείο και η έκπτωση εφαρμόζεται στη χρέωση.`) : '')
-    + button(disc ? `Κλείσε το ${disc}%` : 'Αναβάθμισε τώρα', `${app(c)}/dashboard`)
-    + note('Ακύρωση όποτε θες · χωρίς δεσμεύσεις.');
-  const subj = disc ? `${disc}% έκπτωση${c.seasonLabel ? ` · ${c.seasonLabel}` : ''} στο PROPERWISE` : `Αναβάθμισε στο πακέτο ${PLAN_LABEL[to]}`;
-  return { subject: subj, html: emailShell({ bodyHtml: body, preheader: disc ? `Ξεκλείδωσε το ${PLAN_LABEL[to]} με έκπτωση.` : 'Περισσότερος χρόνος, λιγότερος κόπος.' }) };
+    + button('Δες τη Συνδρομή', `${app(c)}/dashboard?tab=settings`)
+    + note('Η Συνδρομή είναι στον Λογαριασμό. Αν δεν σε αφορά τώρα, δεν χρειάζεται να κάνεις τίποτα.');
+  const subj = disc ? `${disc}% έκπτωση${c.seasonLabel ? ` · ${c.seasonLabel}` : ''} στο PROPERWISE` : `Τι προσθέτει το πακέτο ${name}`;
+  return { subject: subj, html: emailShell({ bodyHtml: body, preheader: disc ? `Έκπτωση ${disc}% στο ${name} με κωδικό.` : `Τι προσθέτει το ${name}.` }) };
 }
 
 /** Ενημέρωση αλλαγής νομοθεσίας ακινήτων · brand awareness + χρησιμότητα. */
@@ -495,8 +550,8 @@ export function legislationUpdateEmail(c: Ctx & { headline: string; summaryHtml:
   const body = eyebrow('Νομοθεσία ακινήτων') + h(esc(c.headline))
     + greeting(c.name)
     + p(c.summaryHtml)
-    + p('Το PROPERWISE ενημερώνεται συνεχώς ώστε τα ακίνητά σου να είναι <b>πάντα σε τάξη</b> · εύκολα, γρήγορα, σωστά. Τώρα είναι η καλύτερη στιγμή να το ελέγξεις.')
-    + button('Βάλε το ακίνητό σου σε τάξη', `${app(c)}/dashboard`)
+    + p('Δες αν αφορά το ακίνητό σου.')
+    + button('Άνοιξε τον πίνακα', `${app(c)}/dashboard`)
     + note('Ενημερωτικό, με επίσημες πηγές. Για την τελική εφαρμογή, επιβεβαίωσε με τον λογιστή σου ή στο myAADE/gov.gr.');
   return { subject: `PROPERWISE · ${c.headline}`, html: emailShell({ bodyHtml: body, preheader: 'Τι αλλάζει και τι πρέπει να κάνεις.' }) };
 }
@@ -504,14 +559,14 @@ export function legislationUpdateEmail(c: Ctx & { headline: string; summaryHtml:
 // ── ΕΠΟΧΙΚΕΣ ΚΑΜΠΑΝΙΕΣ ────────────────────────────────────────────────────────
 export type Season = 'black_friday' | 'cyber_monday' | 'christmas' | 'new_year';
 export const SEASONS: Record<Season, { label: string; hook: string }> = {
-  black_friday: { label: 'Black Friday', hook: 'Η μεγαλύτερη προσφορά της χρονιάς.' },
-  cyber_monday: { label: 'Cyber Monday', hook: 'Μια μέρα, μια ευκαιρία.' },
+  black_friday: { label: 'Black Friday', hook: 'Προσφορά περιορισμένης διάρκειας.' },
+  cyber_monday: { label: 'Cyber Monday', hook: 'Προσφορά περιορισμένης διάρκειας.' },
   christmas:    { label: 'Χριστούγεννα', hook: 'Κλείσε τη χρονιά με τα ακίνητά σου σε τάξη.' },
   new_year:     { label: 'Πρωτοχρονιά',  hook: 'Νέα χρονιά, καθαρά βιβλία.' },
 };
 
 /** Εποχική καμπάνια (τυποποιημένη) · χτίζει πάνω στο upsell με εποχικό πλαίσιο. */
-export function seasonalCampaignEmail(c: Ctx & { season: Season; toPlan?: Plan; discountPct?: number; discountCode?: string }): Out {
+export function seasonalCampaignEmail(c: Ctx & { season: Season; toPlan?: Plan | PackageId; discountPct?: number; discountCode?: string }): Out {
   const s = SEASONS[c.season];
   return upsellEmail({ ...c, seasonLabel: s.label, toPlan: c.toPlan });
 }

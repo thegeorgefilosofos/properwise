@@ -18,7 +18,8 @@ import { APP_URL } from '../_shared/site.ts'
 import {
   welcomeEmail, planUpgradedEmail, planDowngradedEmail, newPropertyEmail,
   feedbackRequestEmail, mobileLaunchEmail, referralInviteEmail, upsellEmail,
-  legislationUpdateEmail, seasonalCampaignEmail, type Plan, type Season, type Ctx, type Personal,
+  legislationUpdateEmail, seasonalCampaignEmail, listUnsubscribeHeaders, senderIdentity,
+  type Plan, type PackageId, type Season, type Ctx, type Personal,
 } from '../_shared/emailTemplates.ts'
 import { CATALOG, DIGESTS } from '../_shared/emailCopy.ts'
 import { guessGender } from '../_shared/gender.ts'
@@ -64,6 +65,23 @@ const COMMERCIAL = new Set([
   'upsell', 'seasonal', 'legislation', 'feedback', 'referral_invite', 'mobile_launch',
 ]);
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ΜΗΝΥΜΑΤΑ ΠΟΥ ΠΟΥΛΑΝΕ ΣΥΝΔΡΟΜΗ: ΦΕΥΓΟΥΝ ΜΟΝΟ ΟΤΑΝ ΜΠΟΡΟΥΝ ΝΑ ΤΗΡΗΘΟΥΝ
+//
+// «Αναβάθμισε τώρα», «έκπτωση με κωδικό», «η συνδρομή είναι στον Λογαριασμό»:
+// όσο ο έμπορος καταχώρησης δεν είναι ενεργός, κανένα κουμπί δεν ολοκληρώνει
+// αγορά. Το BILLING_LIVE ανάβει μαζί με το ταμείο της εφαρμογής (checkoutIsLive
+// στο lib/billing/lemonCheckout.ts). Και το SENDER_IDENTITY: το προωθητικό
+// μήνυμα λέει ποιος το στέλνει· όσο η ταυτότητα λείπει δεν φεύγει.
+// ═══════════════════════════════════════════════════════════════════════════
+const BILLING_LIVE = Deno.env.get('BILLING_LIVE') === 'true'
+const SELLS_SUBSCRIPTION = new Set([
+  'upsell', 'seasonal',
+  'free_month_upgrade', 'upsell_to_individual', 'upsell_to_professional', 'limit_reached', 'value_left',
+  'annual_discount', 'reactivation_offer', 'winback_offer', 'winback_downgrade', 'plan_comparison',
+  'black_friday', 'cyber_monday', 'christmas', 'new_year', 'summer_str',
+]);
+
 /** Εμπορικό είναι και κάθε ενοποιημένη ενημέρωση (digest) του καταλόγου. */
 const isCommercial = (event: string, copyId: string): boolean =>
   COMMERCIAL.has(event) || (!!copyId && copyId in DIGESTS);
@@ -89,18 +107,18 @@ async function marketingPrefs(email: string): Promise<{ optedIn: boolean; unsubU
 // τύπο. `unknown` αντί για `any` — κάθε ανάγνωση περνά ήδη από ρητή μετατροπή
 // («as Plan», «String(...)»), οπότε τίποτα δεν χάνεται και ο έλεγχος μένει.
 function render(event: string, ctx: Ctx, params: Record<string, unknown>): { subject: string; html: string } | null {
-  const plan = (params.plan as Plan) || 'free'
+  const plan = (params.plan as Plan | PackageId) || 'free'
   switch (event) {
-    case 'welcome':          return welcomeEmail({ ...ctx, plan })
+    case 'welcome':          return welcomeEmail({ ...ctx, plan: plan as Plan })
     case 'plan_upgraded':    return planUpgradedEmail({ ...ctx, plan })
     case 'plan_downgraded':  return planDowngradedEmail({ ...ctx, plan })
     case 'new_property':     return newPropertyEmail({ ...ctx, propertyName: String(params.propertyName || 'Ακίνητο') })
     case 'feedback':         return feedbackRequestEmail(ctx)
     case 'mobile_launch':    return mobileLaunchEmail(ctx)
     case 'referral_invite':  return referralInviteEmail(ctx)
-    case 'upsell':           return upsellEmail({ ...ctx, toPlan: params.toPlan as Plan, discountPct: Number(params.discountPct) || 0, discountCode: params.discountCode == null ? undefined : String(params.discountCode), seasonLabel: params.seasonLabel == null ? undefined : String(params.seasonLabel) })
+    case 'upsell':           return upsellEmail({ ...ctx, toPlan: params.toPlan as Plan | PackageId, discountPct: Number(params.discountPct) || 0, discountCode: params.discountCode == null ? undefined : String(params.discountCode), seasonLabel: params.seasonLabel == null ? undefined : String(params.seasonLabel) })
     case 'legislation':      return legislationUpdateEmail({ ...ctx, headline: String(params.headline || ''), summaryHtml: String(params.summaryHtml || '') })
-    case 'seasonal':         return seasonalCampaignEmail({ ...ctx, season: params.season as Season, toPlan: params.toPlan as Plan, discountPct: Number(params.discountPct) || undefined, discountCode: params.discountCode == null ? undefined : String(params.discountCode) })
+    case 'seasonal':         return seasonalCampaignEmail({ ...ctx, season: params.season as Season, toPlan: params.toPlan as Plan | PackageId, discountPct: Number(params.discountPct) || undefined, discountCode: params.discountCode == null ? undefined : String(params.discountCode) })
     default:                 return null
   }
 }
@@ -128,6 +146,9 @@ Deno.serve(async (req) => {
   // (amount, deadlineDate, period, tenantName, cardLast4, digestItems, κ.λπ.),
   // με το appUrl/όνομα να υπερισχύουν από τον φάκελο.
   // ── Η ΑΠΕΓΓΡΑΦΗ, ΠΡΙΝ ΑΠΟ ΟΤΙΔΗΠΟΤΕ ΑΛΛΟ ────────────────────────────────
+  const sells = SELLS_SUBSCRIPTION.has(copyId || event);
+  if (sells && !BILLING_LIVE) return json({ skipped: 'billing_not_live', event, copyId }, 200);
+  if (sells && !senderIdentity()) return json({ skipped: 'identity_pending', event, copyId }, 200);
   const commercial = isCommercial(event, copyId);
   const prefs = commercial ? await marketingPrefs(email) : null;
   if (commercial) {
@@ -156,13 +177,16 @@ Deno.serve(async (req) => {
   // Ο ΚΑΤΑΛΟΓΟΣ ΜΠΟΡΕΙ ΝΑ ΑΡΝΗΘΕΙ. Μια προσφορά χωρίς ποσοστό και κωδικό δεν
   // έχει τίποτα να προσφέρει και δεν στέλνεται· δεν είναι σφάλμα.
   if (!tpl && fromCatalog) return json({ skipped: 'no_offer', event, copyId }, 200)
+  // Αναβάθμιση χωρίς αναγνωρίσιμο πακέτο: καλύτερα κανένα email από «πακέτο undefined».
+  if (!tpl && event === 'plan_upgraded') return json({ skipped: 'no_package', event }, 200)
   if (!tpl) return json({ error: 'unknown_email', event, copyId }, 400)
 
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM_EMAIL, to: email, subject: tpl.subject, html: tpl.html }),
+      // Στο εμπορικό μπαίνουν και οι κεφαλίδες απεγγραφής ενός πατήματος (RFC 8058).
+      body: JSON.stringify({ from: FROM_EMAIL, to: email, subject: tpl.subject, html: tpl.html, headers: commercial ? listUnsubscribeHeaders(prefs?.unsubUrl) : undefined }),
     })
     if (!res.ok) { const detail = await res.text().catch(() => ''); return json({ error: 'send_failed', detail: detail.slice(0, 300) }, 502) }
     return json({ sent: true, event })

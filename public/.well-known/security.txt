@@ -1,6 +1,6 @@
 # ══════════════════════════════════════════════════════════════════════════
-#  PROPERWISE — Πολιτική γνωστοποίησης ευπαθειών
-#  PROPERWISE — Vulnerability disclosure policy
+#  PROPERWISE: πολιτική γνωστοποίησης ευπαθειών
+#  PROPERWISE: vulnerability disclosure policy
 #
 #  Μορφή: RFC 9116. Τα πεδία παρακάτω τα διαβάζουν μηχανές· τα σχόλια, εσύ.
 #  Format: RFC 9116. The fields below are machine-readable; the comments
@@ -36,7 +36,7 @@ Policy: https://properwise.gr/trust
 #
 #  · Ειδοποίησέ μας πρώτους και δώσε 90 ημέρες πριν δημοσιεύσεις. Αν η
 #    διόρθωση αργεί περισσότερο, θα σου πούμε γιατί και θα συμφωνήσουμε νέα
-#    ημερομηνία — δεν την παρατείνουμε μονομερώς.
+#    ημερομηνία. Δεν την παρατείνουμε μονομερώς.
 #  · Σταμάτα στο ελάχιστο που αποδεικνύει το εύρημα. Μην αποκτήσεις, μην
 #    αντιγράψεις, μη διαγράψεις και μην τροποποιήσεις δεδομένα τρίτων. Αν
 #    πέσεις πάνω σε προσωπικά δεδομένα, σταμάτα και γράψε μας.
@@ -63,7 +63,7 @@ Policy: https://properwise.gr/trust
 #  με σύνδεσμο (check-in επισκέπτη, λογιστή, ενοικιαστή), τα δημόσια API.
 #
 #  ΕΚΤΟΣ: υποδομή τρίτων παρόχων (Supabase, Vercel, GitHub, Resend,
-#  Anthropic, Google) — ανάφερέ το απευθείας σε αυτούς, έχουν δικά τους
+#  Anthropic, Google): ανάφερέ το απευθείας σε αυτούς, έχουν δικά τους
 #  προγράμματα. Εκτός επίσης: ευρήματα που προκύπτουν μόνο από έξοδο
 #  αυτόματου σαρωτή χωρίς αποδεδειγμένο αντίκτυπο, απουσία κεφαλίδων που δεν
 #  οδηγεί σε εκμεταλλεύσιμη συμπεριφορά και αναφορές για εκδόσεις
@@ -76,7 +76,7 @@ Policy: https://properwise.gr/trust
 #  ελληνικά ή στα αγγλικά, όπως σε βολεύει.
 
 # ══════════════════════════════════════════════════════════════════════════
-#  EN — SHORT VERSION
+#  EN: SHORT VERSION
 #
 #  Safe harbour: we will not pursue legal action against research that
 #  follows section 2, and we will confirm in writing that it was authorised
@@ -85,5 +85,5 @@ Policy: https://properwise.gr/trust
 #  third-party data, no DoS, no social engineering, test on your own account.
 #  We acknowledge within 3 business days, triage within 10, update you every
 #  14 days, and credit you if you want it. No bug bounty. Third-party
-#  infrastructure is out of scope — report it to the provider.
+#  infrastructure is out of scope: report it to the provider.
 # ══════════════════════════════════════════════════════════════════════════

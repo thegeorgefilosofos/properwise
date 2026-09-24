@@ -38,7 +38,8 @@ const esc = (s: string) => s.replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;'
 function inviteEmail(orgName: string, inviter: string, role: string): { subject: string; html: string } {
   const org = orgName ? esc(orgName) : 'μια ομάδα στο PROPERWISE'
   const who = inviter ? esc(inviter) : 'Ο διαχειριστής της ομάδας'
-  const subject = `Πρόσκληση στο PROPERWISE${orgName ? ` — ${esc(orgName)}` : ''}`
+  // Το θέμα είναι απλό κείμενο: το esc() εκεί θα έγραφε «&amp;» αυτούσιο.
+  const subject = orgName ? `Πρόσκληση στην ομάδα «${orgName}»` : 'Πρόσκληση στο PROPERWISE'
   const html = emailShell({
     preheader: `${who} σε προσκάλεσε στο ${org}.`,
     footerNote: 'Ελαβες αυτό το email επειδή προστέθηκες σε ομάδα. Αν δεν το περίμενες, αγνόησέ το. · properwise.gr',

@@ -16,7 +16,7 @@
 // 11) Ενίσχυση μετατροπής 12) Συμμόρφωση 13) Συνδρομή & Χρέωση
 // 14) Σχέσεις 15) Αξία & Εξοικονόμηση 16) Επικαιρότητα. Στρατηγική: docs/marketing/email-strategy.md.
 // ═══════════════════════════════════════════════════════════════════════════
-import { emailShell, eyebrow, h, p, bullets, button, greeting, note, heroStat, gv, PLAN_LABEL, PACKAGE_NAME, type Personal } from './emailTemplates.ts'
+import { emailShell, eyebrow, h, p, bullets, button, greeting, note, heroStat, gv, PLAN_LABEL, PACKAGE_NAME, PACKAGE_MAX_PROPERTIES, type PackageId, type Personal } from './emailTemplates.ts'
 import { APP_URL } from './site.ts'
 import { eur } from './format.ts'
 
@@ -27,6 +27,12 @@ const has = (n: unknown): n is number => typeof n === 'number' && isFinite(n) &&
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString('el-GR')} ${n === 1 ? one : many}`
 
 // Τυποποιημένες, ομοιογενείς ρήτρες κλεισίματος (μία φωνή σε όλο το catalog).
+/** Το όνομα του πακέτου αν το πεδίο κρατά ΠΑΚΕΤΟ· τύπος προφίλ δεν αρκεί. */
+const packageName = (v: unknown): string => {
+  const k = String(v ?? '');
+  return k in PACKAGE_NAME ? PACKAGE_NAME[k as PackageId] : '';
+};
+
 const NOTE = {
   reply: 'Απάντησε σε αυτό το μήνυμα. Το διαβάζουμε.',
   dataOwn: 'Τα δεδομένα σου είναι δικά σου.',
@@ -541,9 +547,9 @@ export const UPSELL: Record<string, CopyFn> = {
       unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Πακέτο Επαγγελματία') + h('Φτιαγμένο για χαρτοφυλάκιο') + greeting(c.name)
         + proof
-        + p('Τι ξεκλειδώνεις:')
+        + p('Τι προσθέτει:')
         + bullets([
-            'Απεριόριστα ακίνητα, με συνολική εικόνα και ανάλυση ανά ακίνητο.',
+            `Έως ${PACKAGE_MAX_PROPERTIES.agency} ακίνητα, με συνολική εικόνα και ανάλυση ανά ακίνητο.`,
             'Επώνυμες αναφορές και μαζική επικοινωνία με τους πελάτες σου.',
             'Λογιστικό ημερολόγιο και κατανομή σε συνιδιοκτήτες, έτοιμα για τον λογιστή.',
           ])
@@ -576,7 +582,7 @@ export const UPSELL: Record<string, CopyFn> = {
       unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Αξία που περιμένει') + h('Υπάρχει κι άλλο, έτοιμο για σένα') + greeting(c.name)
         + proof
-        + p('Με μια αναβάθμιση ξεκλειδώνεις αυτόματες υπενθυμίσεις, επίσημες αναφορές και βαθύτερη ανάλυση, χωρίς να αλλάξεις τίποτα στη ρουτίνα σου.')
+        + p('Με την αναβάθμιση έρχονται αυτόματες υπενθυμίσεις και αναλυτικότερες αναφορές, χωρίς να αλλάξεις τίποτα στη ρουτίνα σου.')
         + button('Δες τι κερδίζεις', dash(c))
         + note(NOTE.cancel),
     }) };
@@ -599,7 +605,7 @@ export const UPSELL: Record<string, CopyFn> = {
       hero: heroStat(promo ? `${c.discountPct}%` : 'έως 2 μήνες', promo ? 'εξοικονόμηση' : 'δωρεάν'),
       bodyHtml: eyebrow('Ετήσια χρέωση') + h('Λιγότερο κόστος με την ετήσια συνδρομή') + greeting(c.name)
         + p(lead)
-        + p('Το αλλάζεις με ένα κλικ και ισχύει από την επόμενη ανανέωση.')
+        + p('Η αλλαγή γίνεται στον Λογαριασμό, ενότητα Συνδρομή.')
         + button('Πέρνα σε ετήσια χρέωση', dash(c))
         + note(NOTE.cancel),
     }) };
@@ -659,9 +665,9 @@ export const UPSELL: Record<string, CopyFn> = {
     // κι αν είναι το προφίλ· το `c.plan` εδώ είναι τύπος προφίλ, όχι πακέτο.
     const planLine = ` στο <b>«${PACKAGE_NAME.owner}»</b>`;
     return { subject: 'Η δοκιμή σου ξεκίνησε. Ας την αξιοποιήσουμε', html: emailShell({
-      preheader: 'Δες τι ξεκλείδωσες, όσο το έχεις.', unsubUrl: c.unsubUrl,
+      preheader: 'Τι περιλαμβάνει η δοκιμή σου.', unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Δοκιμή') + h('Καλή αρχή. Πάμε να δεις την αξία') + greeting(c.name)
-        + p(`Ξεκίνησες τη δοκιμή${planLine} και έχεις πλήρη πρόσβαση για ${days}. Είναι η καλύτερη στιγμή να δεις τι μπορεί να κάνει το PROPERWISE για σένα.`)
+        + p(`Ξεκίνησες τη δοκιμή${planLine} και έχεις πλήρη πρόσβαση για ${days}. Δοκίμασέ το με τα δικά σου στοιχεία.`)
         + bullets([
             'Άφησε τις αυτόματες υπενθυμίσεις να δουλέψουν για σένα.',
             'Βγάλε μια επίσημη αναφορά ή κατάσταση.',
@@ -732,8 +738,8 @@ export const SEASONAL: Record<string, CopyFn> = {
       unsubUrl: c.unsubUrl,
       hero: heroStat(`${o.pct}%`, 'έκπτωση'),
       bodyHtml: eyebrow('Πρωτοχρονιά') + h('Μια καθαρή αρχή για τα ακίνητά σου') + greeting(c.name)
-        + p('Η καλύτερη στιγμή για να βάλεις τα ακίνητά σου σε τάξη είναι η αρχή της χρονιάς. Έσοδα, έξοδα και φόροι, όλα από την πρώτη μέρα στη θέση τους.')
-        + p(`Για να ξεκινήσεις δυναμικά, κρατάμε για σένα <b>${o.pct}%</b> έκπτωση στην αναβάθμιση.`)
+        + p('Η αρχή της χρονιάς είναι καλή αφετηρία για τα ακίνητά σου. Έσοδα, έξοδα και φόροι, από την πρώτη μέρα στη θέση τους.')
+        + p(`Για την αρχή, κρατάμε για σένα <b>${o.pct}%</b> έκπτωση στην αναβάθμιση.`)
         + codeLine(o)
         + button(`Ξεκίνα με ${o.pct}%`, dash(c))
         + note(NOTE.cancel),
@@ -760,7 +766,7 @@ export const SEASONAL: Record<string, CopyFn> = {
     const o = offer(c)
     if (!o) return null
     return { subject: 'Η σεζόν των βραχυχρόνιων ξεκινά', html: emailShell({
-      preheader: 'Κρατήσεις, έσοδα και ημερολόγιο σε ένα σημείο.',
+      preheader: 'Κρατήσεις, έσοδα και ημερολόγιο μαζί.',
       unsubUrl: c.unsubUrl,
       hero: heroStat(`${o.pct}%`, 'έκπτωση'),
       bodyHtml: eyebrow('Καλοκαιρινή σεζόν') + h('Η σεζόν ξεκινά. Πάμε μαζί') + greeting(c.name)
@@ -843,7 +849,10 @@ export const LIFECYCLE: Record<string, CopyFn> = {
   subscription_receipt: (c) => {
     const amt = has(c.invoiceAmount) ? eur(c.invoiceAmount) : '';
     const num = c.invoiceNumber ? esc(c.invoiceNumber) : '';
-    const planLine = c.plan ? `πακέτο <b>${PLAN_LABEL[c.plan]}</b>` : 'τη συνδρομή σου';
+    // ΤΟ ΠΑΚΕΤΟ, ΟΧΙ Ο ΤΥΠΟΣ ΠΡΟΦΙΛ. Το PLAN_LABEL τύπωνε «πακέτο Ιδιώτης»,
+    // που δεν αγοράζεται. Χωρίς αναγνωρίσιμο πακέτο, η γενική διατύπωση.
+    const pkg = packageName(c.plan);
+    const planLine = pkg ? `πακέτο <b>${pkg}</b>` : 'τη συνδρομή σου';
     const detail = (amt || num)
       ? p(`${num ? `Παραστατικό <b>${num}</b>. ` : ''}${amt ? `Ποσό <b>${amt}</b>. ` : ''}Αφορά ${planLine}.`)
       : p(`Η πληρωμή για ${planLine} καταχωρήθηκε κανονικά.`);
@@ -852,7 +861,7 @@ export const LIFECYCLE: Record<string, CopyFn> = {
       bodyHtml: eyebrow('Παραστατικό') + h('Ευχαριστούμε για τη συνδρομή σου') + greeting(c.name)
         + p('Λάβαμε την πληρωμή σου και όλα είναι εντάξει. Να τα στοιχεία για το αρχείο σου:')
         + detail
-        + p('Το πλήρες παραστατικό είναι διαθέσιμο στις Ρυθμίσεις, στην ενότητα Συνδρομή.')
+        + p('Το πλήρες παραστατικό είναι διαθέσιμο στον Λογαριασμό, στην ενότητα Συνδρομή.')
         + button('Δες τη συνδρομή σου', dash(c))
         + note('Κράτησε αυτό το μήνυμα για τα αρχεία σου.'),
     }) };
@@ -860,7 +869,8 @@ export const LIFECYCLE: Record<string, CopyFn> = {
 
   // 44. Επιβεβαίωση αλλαγής πακέτου
   plan_changed: (c) => {
-    const planSentence = c.plan ? `Το πακέτο σου είναι πλέον <b>${PLAN_LABEL[c.plan]}</b>.` : 'Το πακέτο σου μόλις ενημερώθηκε.';
+    const pkg = packageName(c.plan);
+    const planSentence = pkg ? `Το πακέτο σου είναι πλέον <b>${pkg}</b>.` : 'Το πακέτο σου μόλις ενημερώθηκε.';
     return { subject: 'Το πακέτο σου ενημερώθηκε', html: emailShell({
       preheader: 'Η αλλαγή καταχωρήθηκε.',
       bodyHtml: eyebrow('Αλλαγή πακέτου') + h('Η αλλαγή ολοκληρώθηκε') + greeting(c.name)
@@ -1045,7 +1055,7 @@ export const WINBACK: Record<string, CopyFn> = {
       preheader: 'Η ειλικρινής σου γνώμη μετράει.',
       unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Η γνώμη σου') + h('Τι θα σε κρατούσε;') + greeting(c.name)
-        + p('Δεν σε είδαμε για καιρό και το σεβόμαστε. Πριν φύγεις εντελώς, θα θέλαμε να μάθουμε ένα πράγμα: τι έλειψε ώστε το PROPERWISE να μη γίνει δικό σου εργαλείο;')
+        + p('Δεν σε είδαμε για καιρό και το σεβόμαστε. Πριν φύγεις εντελώς, θα θέλαμε να μάθουμε ένα πράγμα: τι έλειψε ώστε να χρησιμοποιείς το PROPERWISE;')
         + p('Μία ειλικρινής απάντηση από εσένα αξίζει όσο δέκα συναντήσεις για εμάς. Απάντησε απευθείας σε αυτό το μήνυμα.')
         + button('Πες μας τη γνώμη σου', dash(c))
         + note(NOTE.reply),
@@ -1089,9 +1099,9 @@ export const OPERATIONS: Record<string, CopyFn> = {
   lease_renewal_prompt: (c) => {
     const ref = c.propertyName ? ` για το «${esc(c.propertyName)}»` : '';
     return { subject: 'Ώρα για ανανέωση μίσθωσης;', html: emailShell({
-      preheader: 'Αναπροσάρμοσε το ενοίκιο σωστά, με τον νόμο.', unsubUrl: c.unsubUrl,
+      preheader: 'Αναπροσάρμοσε το ενοίκιο όπως ορίζει το μισθωτήριο.', unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Ανανέωση') + h('Ανανέωσε με σιγουριά') + greeting(c.name)
-        + p(`Αν σκέφτεσαι να ανανεώσεις τη μίσθωση${ref}, το PROPERWISE σε βοηθά να υπολογίσεις την αναπροσαρμογή του ενοικίου με βάση τα ισχύοντα όρια και ετοιμάζει ένα σχέδιο ειδοποίησης προς ${gv(c.tenantGender, { m: 'τον ενοικιαστή', f: 'την ενοικιάστρια', n: 'τον μισθωτή' })}, έτοιμο να το προσαρμόσεις και να το στείλεις.`)
+        + p(`Αν σκέφτεσαι να ανανεώσεις τη μίσθωση${ref}, το PROPERWISE σε βοηθά να υπολογίσεις την αναπροσαρμογή του ενοικίου με βάση τον όρο αναπροσαρμογής του μισθωτηρίου σου (π.χ. ΔΤΚ) και ετοιμάζει ένα σχέδιο ειδοποίησης προς ${gv(c.tenantGender, { m: 'τον ενοικιαστή', f: 'την ενοικιάστρια', n: 'τον μισθωτή' })}, έτοιμο να το προσαρμόσεις και να το στείλεις.`)
         + button('Ετοίμασε την ανανέωση', dash(c))
         + note(NOTE.legal),
     }) };
@@ -1370,13 +1380,14 @@ export const PRODUCT: Record<string, CopyFn> = {
   },
 
   // 71. Αναβάθμιση της Νόας
+  // ΜΟΝΟ ΜΕ ΣΥΓΚΕΚΡΙΜΕΝΗ ΙΚΑΝΟΤΗΤΑ. Το «καταλαβαίνει καλύτερα, πιο ακριβείς
+  // απαντήσεις» δεν μετριέται από πουθενά· χωρίς `assistantSkill` δεν στέλνεται.
   assistant_upgraded: (c) => {
-    const skill = c.assistantSkill ? p(`Τι νέο μαθαίνει: ${esc(c.assistantSkill)}.`) : '';
-    return { subject: 'Νόα απαντά πιο ακριβώς', html: emailShell({
-      preheader: 'Πιο ακριβείς απαντήσεις, με τα δικά σου δεδομένα.', unsubUrl: c.unsubUrl,
+    if (!c.assistantSkill) return null;
+    return { subject: 'Νέα ικανότητα για τη Νόα', html: emailShell({
+      preheader: 'Τι νέο μπορείς να ρωτήσεις.', unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Νόα') + h('Έμαθε κάτι καινούριο') + greeting(c.name)
-        + p('Νόα μόλις αναβαθμίστηκε. Καταλαβαίνει καλύτερα τις ερωτήσεις σου και δίνει πιο ακριβείς, πιο χρήσιμες απαντήσεις για τα ακίνητά σου.')
-        + skill
+        + p(`Νόα απαντά πλέον και σε αυτό: ${esc(c.assistantSkill)}.`)
         + button('Ρώτα τη Νόα', dash(c))
         + note('Όσο περισσότερα στοιχεία καταχωρείς, τόσο πιο συγκεκριμένες γίνονται οι απαντήσεις.'),
     }) };
@@ -1469,23 +1480,25 @@ export const PRODUCT: Record<string, CopyFn> = {
   }),
 
   // 77. Συμβουλή της εβδομάδας (αξία)
-  // 76β. Μηνιαία παρότρυνση feedback + κλήρωση (ήπια υπενθύμιση)
+  // 76β. Μηνιαία παρότρυνση feedback (ήπια υπενθύμιση)
+  // ΧΩΡΙΣ ΚΛΗΡΩΣΗ. Υποσχόταν «έναν χρόνο δωρεάν πακέτο» χωρίς δημοσιευμένους
+  // όρους, χωρίς διοργανωτή με ταυτότητα και χωρίς ενεργή χρέωση. Κλήρωση
+  // ξαναμπαίνει μόνο με όρους και ταυτότητα· το κλειδί του μηνύματος μένει.
   feedback_lottery: (c) => ({
-    subject: 'Ένα λεπτό η γνώμη σου, ένας χρόνος δώρο',
+    subject: 'Ένα λεπτό για τη γνώμη σου',
     html: emailShell({
-      preheader: 'Πες μας τη γνώμη σου και μπες στην κλήρωση.',
+      preheader: 'Τρεις ερωτήσεις, ένα λεπτό.',
       unsubUrl: c.unsubUrl,
-      bodyHtml: eyebrow('Η γνώμη σου') + h('Η γνώμη σου μετράει, πραγματικά') + greeting(c.name)
+      bodyHtml: eyebrow('Η γνώμη σου') + h('Πες μας τη γνώμη σου') + greeting(c.name)
         + p('Είδαμε ότι δεν έχεις μοιραστεί ακόμη τη γνώμη σου. Αφιέρωσε μόλις ένα λεπτό να μας πεις τις σκέψεις, τις ιδέες και την άποψή σου για το PROPERWISE.')
         + bullets([
             'Τι θεωρείς ότι κάνουμε καλά;',
             'Πού χρειάζεται να βελτιωθούμε;',
             'Τι θα πρότεινες να προσθέσουμε;',
           ])
-        + p('Είμαστε εδώ να σε ακούσουμε πραγματικά. Εσύ μας δείχνεις το επόμενο βήμα, γιατί εμείς κερδίζουμε όταν κερδίζεις κι εσύ.')
-        + p('Κάθε μήνα, όσοι μοιράζονται τη γνώμη τους μπαίνουν στην κλήρωση για <b>έναν χρόνο δωρεάν πακέτο Επαγγελματία</b>.')
+        + p('Κάθε απάντηση τη διαβάζει άνθρωπος.')
         + button('Πες μας τη γνώμη σου', dash(c))
-        + note(`Ισχύουν <a href="${app(c)}/terms/klirosi" style="color:#5f6368;text-decoration:underline;">όροι συμμετοχής</a>. Θα σου πάρει ένα λεπτό. Διαβάζουμε κάθε απάντηση, μία μία.`),
+        + note(NOTE.reply),
     }),
   }),
 
@@ -1502,15 +1515,17 @@ export const PRODUCT: Record<string, CopyFn> = {
   },
 
   // 78. Πρόσκληση σε webinar
+  // ΜΟΝΟ ΜΕ ΗΜΕΡΟΜΗΝΙΑ. Πρόσκληση χωρίς εκδήλωση ήταν υπόσχεση χωρίς αντίκρισμα.
   webinar_invite: (c) => {
-    const title = c.headline ? esc(c.headline) : 'Δωρεάν masterclass για ιδιοκτήτες ακινήτων';
-    const when = [c.appointmentDate && esc(c.appointmentDate), c.appointmentTime && esc(c.appointmentTime)].filter(Boolean).join(', ');
-    return { subject: 'Πρόσκληση σε δωρεάν masterclass', html: emailShell({
-      preheader: when ? `${when}. Κράτησε τη θέση σου.` : 'Πρακτική γνώση, χωρίς κόστος.', unsubUrl: c.unsubUrl,
+    if (!c.appointmentDate) return null;
+    const title = c.headline ? esc(c.headline) : 'Συνάντηση για ιδιοκτήτες ακινήτων';
+    const when = [esc(c.appointmentDate), c.appointmentTime && esc(c.appointmentTime)].filter(Boolean).join(', ');
+    return { subject: 'Πρόσκληση σε συνάντηση για ιδιοκτήτες', html: emailShell({
+      preheader: `${when}. Κράτησε τη θέση σου.`, unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Εκδήλωση') + h(title) + greeting(c.name)
-        + p(`Σε προσκαλούμε σε μια δωρεάν, πρακτική συνάντηση για ιδιοκτήτες και διαχειριστές ακινήτων${when ? `, ${when}` : ''}. Θα δούμε μαζί πώς να βγάζεις περισσότερα από κάθε ακίνητο, με λιγότερο κόπο.`)
+        + p(`Σε προσκαλούμε σε μια πρακτική συνάντηση για ιδιοκτήτες και διαχειριστές ακινήτων, ${when}. Η συμμετοχή δεν κοστίζει.`)
         + button('Κράτησε τη θέση σου', dash(c))
-        + note('Οι θέσεις είναι περιορισμένες. Θα λάβεις τον σύνδεσμο με την εγγραφή σου.'),
+        + note('Θα λάβεις τον σύνδεσμο με την εγγραφή σου.'),
     }) };
   },
 }
@@ -1520,14 +1535,15 @@ export const CONVERSION: Record<string, CopyFn> = {
 
   // 79. Απόδειξη αξίας (ROI)
   roi_proof: (c) => {
-    const hrs = has(c.hoursSaved) ? p(`Με βάση τη χρήση σου, το PROPERWISE σου γλίτωσε περίπου <b>${plural(c.hoursSaved, 'ώρα', 'ώρες')}</b> τον τελευταίο μήνα, χρόνο που αξιοποίησες αλλού.`) : '';
+    // ΧΩΡΙΣ «ΩΡΕΣ ΠΟΥ ΚΕΡΔΙΣΕΣ». Καμία συνάρτηση δεν τις μετρά· ήταν στατιστικό
+    // χωρίς πηγή που περίμενε να γεμίσει. Μένει μόνο ό,τι καταγράφηκε.
     const money = has(c.collected) ? p(`Παράλληλα, οργάνωσε <b>${eur(c.collected)}</b> σε εισπράξεις χωρίς να χαθεί τίποτα στη διαδρομή.`) : '';
-    const fallback = (!has(c.hoursSaved) && !has(c.collected)) ? p('Κάθε αυτόματη υπενθύμιση, κάθε έτοιμη αναφορά και κάθε καταχώρηση που δεν χρειάστηκε να κάνεις με το χέρι, είναι χρόνος που κέρδισες.') : '';
+    const fallback = !has(c.collected) ? p('Κάθε αυτόματη υπενθύμιση, κάθε έτοιμη αναφορά και κάθε καταχώρηση που δεν χρειάστηκε να κάνεις με το χέρι, είναι χρόνος που κέρδισες.') : '';
     return { subject: 'Πόσο σου απέδωσε το PROPERWISE', html: emailShell({
       preheader: 'Ο χρόνος που κέρδισες, σε δεδομένα.', unsubUrl: c.unsubUrl,
-      hero: has(c.hoursSaved) ? heroStat(`${c.hoursSaved}`, 'ώρες που κέρδισες') : (has(c.collected) ? heroStat(eur(c.collected), 'οργανωμένες εισπράξεις') : ''),
+      hero: has(c.collected) ? heroStat(eur(c.collected), 'οργανωμένες εισπράξεις') : '',
       bodyHtml: eyebrow('Η αξία σου') + h('Ας δούμε τι κέρδισες') + greeting(c.name)
-        + hrs + money + fallback
+        + money + fallback
         + p('Με μια αναβάθμιση, αυτός ο χρόνος μεγαλώνει: περισσότεροι αυτοματισμοί, βαθύτερη ανάλυση, λιγότερος κόπος.')
         + button('Δες τι κερδίζεις παραπάνω', dash(c))
         + note(NOTE.cancel),
@@ -1543,8 +1559,10 @@ export const CONVERSION: Record<string, CopyFn> = {
         + p(`${use}Αξίζει να δεις τι προσφέρει κάθε πακέτο σε σχέση με το πώς χρησιμοποιείς σήμερα το PROPERWISE.`)
         + bullets([
             `${PLAN_LABEL.free}: τα βασικά για να ξεκινήσεις και να δεις αξία.`,
-            'Ιδιοκτήτης: αυτόματες υπενθυμίσεις, επίσημες αναφορές, απεριόριστες καταστάσεις.',
-            'Επαγγελματίας: πολλά ακίνητα, επώνυμες αναφορές, κατανομή σε συνιδιοκτήτες.',
+            `${PACKAGE_NAME.solo}: 1 ακίνητο, με υπενθυμίσεις και αναφορές PDF με QR επαλήθευσης.`,
+            `${PACKAGE_NAME.owner}: έως ${PACKAGE_MAX_PROPERTIES.owner} ακίνητα και σύγκριση ακινήτων.`,
+            `${PACKAGE_NAME.agency}: έως ${PACKAGE_MAX_PROPERTIES.agency} ακίνητα, αναφορές με την επωνυμία σου, κατανομή σε συνιδιοκτήτες.`,
+            `${PACKAGE_NAME.office}: απεριόριστα ακίνητα και ομάδα χωρίς όριο χρηστών.`,
           ])
         + button('Σύγκρινε τα πακέτα', dash(c))
         + note(NOTE.cancel),
@@ -1553,11 +1571,11 @@ export const CONVERSION: Record<string, CopyFn> = {
 
   // 81. Κοινωνική απόδειξη
   social_proof: (c) => ({
-    subject: 'Γιατί οι επαγγελματίες επιλέγουν το PROPERWISE',
+    subject: 'Τι κάνει το PROPERWISE για τα ακίνητά σου',
     html: emailShell({
       preheader: 'Η δουλειά ρουτίνας, στον αυτόματο.', unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Γιατί PROPERWISE') + h('Φτιαγμένο για την ελληνική πραγματικότητα') + greeting(c.name)
-        + p('Ιδιοκτήτες και διαχειριστές εμπιστεύονται το PROPERWISE για μια δουλειά που πριν έτρωγε ώρες: ενοίκια, έξοδα, φόρους και υπενθυμίσεις σε ένα μέρος.')
+        + p('Ενοίκια, δαπάνες, φόροι και υπενθυμίσεις, με τα δικά σου στοιχεία.')
         + bullets([
             'Ελληνικοί φόροι, ΕΝΦΙΑ και Ε2, με ενδεικτικό υπολογισμό βάσει των ισχυόντων κανόνων.',
             'Αυτόματες υπενθυμίσεις που κρατούν τις υποχρεώσεις σου μπροστά σου.',
@@ -1954,13 +1972,12 @@ export const NEWS: Record<string, CopyFn> = {
       preheader: 'Προστασία σήμερα, πιθανό όφελος και στον ΕΝΦΙΑ.', unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Επικαιρότητα') + h('Η σιγουριά ξεκινά από την προστασία') + greeting(c.name)
         + ctx
-        + p('Το PROPERWISE σε βοηθά να δεις <b>ποιο ασφαλιστήριο κατοικίας ταιριάζει</b> στο ακίνητό σου και να συγκρίνεις, ώστε να μην πληρώνεις παραπάνω.')
+        + p('Κράτα στοιχεία και λήξη του ασφαλιστηρίου στο ακίνητο, για να μη σου ξεφύγει η ανανέωση.')
         + bullets([
             'Προστασία από σεισμό, φωτιά και πλημμύρα, ανάλογα με το πρόγραμμα.',
-            'Σύγκριση για να επιλέξεις με καθαρά κριτήρια.',
             'Για ασφαλισμένα ακίνητα ενδέχεται, υπό προϋποθέσεις, να προβλέπεται και μείωση στον ΕΝΦΙΑ.',
           ])
-        + button('Δες τι σου ταιριάζει', dash(c))
+        + button('Άνοιξε το ακίνητο', dash(c))
         + note(NOTE.aade),
     }) }
   },
@@ -1985,7 +2002,7 @@ export const NEWS: Record<string, CopyFn> = {
       preheader: 'Τα δικά σου δεδομένα, μέσα στο σήμερα.', unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Επικαιρότητα') + h('Δες πού βρίσκεσαι, σήμερα') + greeting(c.name)
         + ctx
-        + p('Απόδοση, αξία χαρτοφυλακίου και ευκαιρίες, όλα σε ένα σημείο, με τα δικά σου στοιχεία.')
+        + p('Απόδοση, αξία χαρτοφυλακίου και ευκαιρίες, με τα δικά σου στοιχεία.')
         + button('Άνοιξε τον πίνακά σου', dash(c))
         + note('Ενημερωτικά, με βάση δημόσια στοιχεία και τα δικά σου δεδομένα.'),
     }) }

@@ -6,7 +6,7 @@ import { aiLimitsFor } from '@/lib/billing/aiLimits';
 import { TRIAL_OFFER } from '@/lib/billing/trialOffer';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
-import { SITE, PRODUCT_NAME } from '@/lib/core/site';
+import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE } from '@/lib/core/site';
 import { IDENTITY } from '@/lib/legal/identity';
 import { billingWords } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
@@ -40,7 +40,10 @@ import { ASSISTANT_NAME, ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/ide
 // Η κάρτα κοινοποίησης κρατά το ρητό `OG_TITLE` με το σήμα μπροστά.
 const TAB_TITLE = 'Διαχείριση ακινήτων με μία φωτογραφία';
 const OG_TITLE = `${PRODUCT_NAME} · ${TAB_TITLE}`;
-const OG_DESC = 'Σάρωσε λογαριασμό, μισθωτήριο ή ασφαλιστήριο και καταχωρείται αυτόματα εκεί που πρέπει. Ρώτα τη Νόα με τη φωνή σου. Αποδόσεις, δαπάνες, φορολογία 2026 και σύγκριση παρόχων ενέργειας για κάθε ακίνητο.';
+// ΕΝΑ ΣΥΝΘΗΜΑ, ΚΑΤΩ ΑΠΟ 155 ΧΑΡΑΚΤΗΡΕΣ. Ηταν ~220 (κοβόταν στη Google) και
+// υποσχόταν φωνή που δεν δουλεύει σε κάθε περιηγητή. Ξεκινά από το PRODUCT_TAGLINE
+// που λένε ήδη το manifest και η εικόνα κοινοποίησης.
+const OG_DESC = `${PRODUCT_TAGLINE} Σάρωσε έναν λογαριασμό και καταχωρείται μόνος του.`;
 
 export const metadata = {
   // Το `metadataBase` έφυγε από εδώ: ζει στη ρίζα και ισχύει για κάθε σελίδα.

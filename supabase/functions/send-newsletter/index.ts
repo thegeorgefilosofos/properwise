@@ -10,7 +10,7 @@
 // authorized() το δέχεται. Προαιρετικά: RESEND_FROM (branded αποστολέας μετά την
 // επαλήθευση domain) & APP_URL (μία πηγή: _shared/site.ts).
 // ─────────────────────────────────────────────────────────────────────────
-import { emailShell, eyebrow, linkLine } from '../_shared/emailTemplates.ts';
+import { emailShell, eyebrow, linkLine, listUnsubscribeHeaders } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { APP_URL } from '../_shared/site.ts'
@@ -104,15 +104,16 @@ Deno.serve(async (req) => {
   if (!recipients.length) return json({ message: 'no_subscribers' })
 
   const inner = (updates as Update[]).map(updateBlock).join('')
-  const subject = updates.length === 1 ? `PROPERWISE — ${updates[0].title}` : `PROPERWISE · ${updates.length} νέες δυνατότητες`
+  // Χωρίς πρόθεμα «PROPERWISE»: το όνομα του αποστολέα το λέει ήδη στη λίστα.
+  const subject = updates.length === 1 ? updates[0].title : `${updates.length} νέες δυνατότητες`
 
   let sent = 0, failed = 0
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100)
-    const payload = chunk.map(u => ({
-      from: FROM_EMAIL, to: u.email, subject,
-      html: layout(inner, `${APP_URL}/unsubscribe/${prefMap.get(u.id)?.unsubscribe_token ?? ''}`),
-    }))
+    const payload = chunk.map(u => {
+      const unsubUrl = `${APP_URL}/unsubscribe/${prefMap.get(u.id)?.unsubscribe_token ?? ''}`
+      return { from: FROM_EMAIL, to: u.email, subject, html: layout(inner, unsubUrl), headers: listUnsubscribeHeaders(unsubUrl) }
+    })
     try {
       const res = await fetch('https://api.resend.com/emails/batch', {
         method: 'POST', headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },

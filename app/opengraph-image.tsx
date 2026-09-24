@@ -17,7 +17,7 @@
 // είναι ήδη η περιγραφή του ιστότοπου.
 // ═══════════════════════════════════════════════════════════════════════════
 import { ImageResponse } from 'next/og';
-import { BRAND_PATHS, BRAND_VIEWBOX, BRAND_MARK_ON_DARK } from '@/components/BrandMark';
+import { BRAND_PATHS, BRAND_VIEWBOX, BRAND_MARK_ON_DARK, BRAND_DARK_BG } from '@/components/BrandMark';
 import { PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE } from '@/lib/core/site';
 
 export const alt = SHARE_IMAGE.alt;
@@ -46,7 +46,7 @@ export function shareCard(title?: { over: string; text: string }) {
         style={{
           width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
           justifyContent: 'center', padding: '0 88px',
-          background: '#0f1115', color: '#e8eaed',
+          background: BRAND_DARK_BG, color: '#e8eaed',
           fontFamily: 'sans-serif',
         }}
       >

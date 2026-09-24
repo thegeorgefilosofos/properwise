@@ -76,7 +76,7 @@ ok('μηδέν εκκρεμότητες → δεν αναφέρονται', !sug
 // ── Ανά περίπτωση χρήστη ───────────────────────────────────────────────────
 ok('με δάνειο → ερώτηση για το δάνειο', suggestedOpeners({ hasLoan: true }).some(s => /δάνει/.test(s)))
 ok('χωρίς δάνειο → καμία ερώτηση δανείου', !suggestedOpeners({ monthlyRent: 500 }).join(' ').includes('δάνει'))
-ok('βραχυχρόνια → ερώτηση διανυκτέρευσης', suggestedOpeners({ isShortTerm: true }).some(s => /διανυκτέρευση/.test(s)))
+ok('βραχυχρόνια → ερώτηση για τις διαμονές, όχι πρόταση τιμής', suggestedOpeners({ isShortTerm: true }).some(s => /διαμονές/.test(s)) && !suggestedOpeners({ isShortTerm: true }).join(' ').includes('διανυκτέρευση'))
 ok('μακροχρόνια → καμία διανυκτέρευση', !suggestedOpeners({ monthlyRent: 500 }).join(' ').includes('διανυκτέρευση'))
 ok('πολλά ακίνητα → σύγκριση', suggestedOpeners({ propertyCount: 3, monthlyRent: 500 }).some(s => /αποδίδει καλύτερα/.test(s)))
 ok('ένα ακίνητο → καμία σύγκριση', !suggestedOpeners({ propertyCount: 1, monthlyRent: 500 }).join(' ').includes('αποδίδει καλύτερα'))
@@ -89,10 +89,9 @@ ok('κενό όνομα δεν αφήνει κενά', !suggestedOpeners({ prope
 {
   // Με δεδομένα, μία σύντομη γραμμή: όνομα, τι ρωτάς, για ποιο ακίνητο.
   const g = greeting(ASSISTANT_NAME, FULL)
-  ok('χαιρετισμός με το όνομα', g.startsWith(`${ASSISTANT_NAME}: `))
-  ok('χαιρετισμός λέει τι μπορείς να ρωτήσεις', /ρώτα για τα ενοίκια/.test(g))
-  ok('χαιρετισμός χωρίς σύσταση όταν υπάρχουν δεδομένα', !/Γεια σου|Είμαι/.test(g))
-  ok('χαιρετισμός χωρίς θαυμαστικό', !g.includes('!'))
+  ok('χαιρετισμός με το όνομα', g.includes(ASSISTANT_NAME))
+  ok('χαιρετισμός λέει τι βλέπει', /Βλέπω/.test(g))
+  ok('χαιρετισμός τονίζει «τα δικά σου»', /δικά σου στοιχεία\./.test(g))
   ok('χαιρετισμός αναφέρει πλήθος ακινήτων', g.includes('2 ακινήτων'))
 }
 {
@@ -117,17 +116,18 @@ ok('hasWord: αρνητικό όταν λείπει', !hasWord('Γεια σας'
 
 {
   const f = greeting(ASSISTANT_NAME, FULL, true)
-  ok('ευγενικός τύπος: ρήμα', f.includes('ρωτήστε για'))
-  ok('ευγενικός τύπος: κτητικό', f.includes('ακινήτων σας'))
+  ok('ευγενικός τύπος: ρήμα', f.includes('Ρωτήστε με'))
+  ok('ευγενικός τύπος: χαιρετισμός', f.includes('Γεια σας'))
+  ok('ευγενικός τύπος: κτητικό', f.includes('τα δικά σας στοιχεία'))
   ok('ευγενικός τύπος: κανένα «σου»', !hasWord(f, 'σου'))
   const inf = greeting(ASSISTANT_NAME, FULL, false)
-  ok('οικείος τύπος: ρήμα', inf.includes('ρώτα για'))
+  ok('οικείος τύπος: ρήμα', inf.includes('Ρώτα με'))
   ok('οικείος τύπος: κανένα «σας»', !hasWord(inf, 'σας'))
   // Η πλήρης σύσταση μένει για το ακίνητο χωρίς δεδομένα, στον σωστό τύπο.
   const introF = greeting(ASSISTANT_NAME, { propertyName: 'Κυψέλη' }, true)
   ok('σύσταση ευγενικός: χαιρετισμός', introF.includes('Γεια σας'))
   ok('σύσταση ευγενικός: ρήμα', introF.includes('Ρωτήστε με'))
-  ok('σύσταση ευγενικός: κτητικό', introF.includes('τα δικά σας δεδομένα και νούμερα'))
+  ok('σύσταση ευγενικός: ρήμα καταχώρησης', introF.includes('να καταχωρήσετε'))
   const introI = greeting(ASSISTANT_NAME, { propertyName: 'Κυψέλη' }, false)
   ok('σύσταση οικείος: χαιρετισμός', introI.includes('Γεια σου'))
   ok('σύσταση οικείος: ρήμα', introI.includes('Ρώτα με'))

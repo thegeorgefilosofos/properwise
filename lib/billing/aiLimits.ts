@@ -379,15 +379,17 @@ export interface QuotaSnapshot {
  * ΓΙΑΤΙ ΕΔΩ ΚΑΙ ΟΧΙ ΣΤΟ ΣΥΣΤΑΤΙΚΟ: είναι το ίδιο θέμα με τα μηνύματα
  * εξάντλησης από πάνω και θέλει τεστ. Μέσα σε JSX δεν δοκιμάζεται.
  */
-export function remainingLine(q: QuotaSnapshot | null | undefined): string {
+export function remainingLine(q: QuotaSnapshot | null | undefined, formal = false): string {
   if (!q) return '';
   const monthLeft = q.monthLimit > 0 ? q.monthLimit - q.month : Infinity;
   const dayLeft = q.dayLimit > 0 ? q.dayLimit - q.day : Infinity;
   if (!Number.isFinite(monthLeft) && !Number.isFinite(dayLeft)) return '';
+  const used = formal ? 'Εξαντλήσατε' : 'Εξάντλησες';
   // Το μηνιαίο προηγείται όταν έχει εξαντληθεί: τα μεσάνυχτα δεν λύνουν τίποτα.
-  if (monthLeft <= 0) return 'Εξάντλησες τις ερωτήσεις του μήνα. Ανανεώνονται την 1η.';
-  if (dayLeft <= 0) return 'Εξάντλησες τις ερωτήσεις της ημέρας. Ανανεώνονται τα μεσάνυχτα.';
+  if (monthLeft <= 0) return `${used} τις ερωτήσεις του μήνα. Ανανεώνονται την 1η.`;
+  if (dayLeft <= 0) return `${used} τις ερωτήσεις της ημέρας. Ανανεώνονται τα μεσάνυχτα.`;
+  const left = (n: number) => (n === 1 ? 'Απομένει 1' : `Απομένουν ${n}`);
   return dayLeft <= monthLeft
-    ? `Απομένουν ${dayLeft} από ${q.dayLimit} ερωτήσεις σήμερα`
-    : `Απομένουν ${monthLeft} από ${q.monthLimit} ερωτήσεις αυτόν τον μήνα`;
+    ? `${left(dayLeft)} από ${q.dayLimit} ερωτήσεις σήμερα`
+    : `${left(monthLeft)} από ${q.monthLimit} ερωτήσεις αυτόν τον μήνα`;
 }

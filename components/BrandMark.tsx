@@ -158,6 +158,13 @@ export const brandMarkSvg = (px = 34, color = BRAND_MARK_INK) =>
 /** Το λευκό του σήματος όπου δεν υπάρχει θέμα να το κρίνει: εικόνα, PDF. */
 export const BRAND_MARK_ON_DARK = '#ffffff';
 
+/**
+ * ΤΟ ΣΚΟΥΡΟ ΦΟΝΤΟ ΤΟΥ ΕΙΚΟΝΙΔΙΟΥ, ΜΙΑ ΦΟΡΑ. Το app/icon.svg και τα public/icons
+ * το έχουν ναυτικό μπλε· η οθόνη εκκίνησης (manifest) ήταν γκρι και η εικόνα
+ * κοινοποίησης σχεδόν μαύρη. Τρεις αποχρώσεις για το ίδιο σήμα.
+ */
+export const BRAND_DARK_BG = '#0B192C';
+
 export const brandMarkHtml = (size = 34) =>
   `<span style="display:inline-block;font-weight:800;letter-spacing:0.06em;`
   + `font-size:${Math.round(size * 0.5)}px;line-height:1;color:${BRAND_MARK_INK};`

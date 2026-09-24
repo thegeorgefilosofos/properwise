@@ -90,5 +90,5 @@ export const PRODUCT_TAGLINE =
  * μία φορά και τις διαβάζει και η ίδια η εικόνα.
  */
 export const SHARE_IMAGE = {
-  url: '/opengraph-image', width: 1200, height: 630, alt: PRODUCT_NAME,
+  url: '/opengraph-image', width: 1200, height: 630, alt: `${PRODUCT_NAME}: ${PRODUCT_TAGLINE}`,
 } as const;

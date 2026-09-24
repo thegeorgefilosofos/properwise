@@ -80,7 +80,7 @@ export function configuredProviderId(env: Env): AisProviderId | null {
  */
 export function aisConfigError(env: Env): string {
   const raw = (env[PROVIDER_ENV] || '').trim();
-  if (!raw) return `Δεν έχει επιλεγεί πάροχος. Ορισε τη μεταβλητή ${PROVIDER_ENV} σε έναν από: ${AIS_PROVIDERS.join(', ')}.`;
+  if (!raw) return `Δεν έχει επιλεγεί πάροχος. Όρισε τη μεταβλητή ${PROVIDER_ENV} σε έναν από: ${AIS_PROVIDERS.join(', ')}.`;
 
   const id = configuredProviderId(env);
   if (!id) return `Ο πάροχος «${raw}» δεν αναγνωρίζεται. Επιτρεπτές τιμές: ${AIS_PROVIDERS.join(', ')}.`;

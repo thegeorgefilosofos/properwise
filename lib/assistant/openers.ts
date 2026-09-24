@@ -120,7 +120,9 @@ export function suggestedOpeners(ctx: OpenerContext | null = {}): string[] {
     out.push('Συμφέρει να ρίξω κεφάλαιο στο δάνειό μου ή να το κρατήσω;');
   }
   if (ctx.isShortTerm) {
-    out.push('Πόσο να βάλω τη διανυκτέρευση τον επόμενο μήνα;');
+    // Ερώτηση που απαντιέται από τις καταχωρημένες διαμονές, όχι πρόταση τιμής:
+    // η τιμολόγηση βραχυχρόνιας στηρίζεται σε εμπειρικούς κανόνες (δεύτερο κύμα).
+    out.push('Πόσα εισέπραξα από διαμονές φέτος και πόσα δηλώνω;');
   }
   if ((ctx.propertyCount ?? 0) > 1) {
     out.push('Ποιο από τα ακίνητά μου αποδίδει καλύτερα;');
@@ -159,15 +161,13 @@ export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerCont
   const hi = formal ? 'Γεια σας' : 'Γεια σου';
   const you = formal ? 'Ρωτήστε με' : 'Ρώτα με';
   const your = formal ? 'σας' : 'σου';
-  // «Νούμερα» ήταν στενότερο από την αλήθεια: Νόα διαβάζει λογαριασμούς,
-  // συμβόλαια, μισθώσεις και ημερομηνίες, όχι μόνο ποσά. Στον χαιρετισμό, όπου
-  // υπάρχει χώρος, λέγονται και τα δύο, με δύο ουδέτερα ουσιαστικά ώστε το
-  // ένα άρθρο «τα» να ταιριάζει και στα δύο.
-  const yours = formal ? 'τα δικά σας δεδομένα και νούμερα' : 'τα δικά σου δεδομένα και νούμερα';
+  // «Στοιχεία», όχι «δεδομένα και νούμερα»: τα νούμερα είναι δεδομένα. Και η
+  // Νόα διαβάζει λογαριασμούς, συμβόλαια και ημερομηνίες, όχι μόνο ποσά.
+  const yours = formal ? 'τα δικά σας στοιχεία' : 'τα δικά σου στοιχεία';
 
   // Δεν έχουν φορτώσει ακόμη τα δεδομένα: δεν λέμε ούτε «βλέπω», ούτε «δεν έχεις».
   if (ctx === null) {
-    return `${hi}. Είμαι ${assistantName}. Κοιτάζω τα στοιχεία ${your}… ${you} για ${yours}.`;
+    return `${hi}. Είμαι ${assistantName}. Κοιτάζω τα στοιχεία ${your}…`;
   }
 
   const name = (ctx.propertyName || '').trim();
@@ -185,11 +185,10 @@ export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerCont
 
   if (knows.length === 0) {
     const enter = formal ? 'καταχωρήσετε' : 'καταχωρήσεις';
-    const can = formal ? 'σας απαντώ' : 'σου απαντώ';
-    return `${hi}. Είμαι ${assistantName}. Μόλις ${enter} τα πρώτα στοιχεία ${scope}, θα μπορώ να ${can} με ${yours}. ${you} τι χρειάζομαι.`;
+    const first = formal ? 'να καταχωρήσετε' : 'να καταχωρήσεις';
+    return `${hi}. Είμαι ${assistantName}. Μόλις ${enter} τα πρώτα στοιχεία ${scope}, θα απαντώ με βάση αυτά. ${you} τι ${first} πρώτα.`;
   }
 
   const list = knows.length === 1 ? knows[0] : `${knows.slice(0, -1).join(', ')} και ${knows[knows.length - 1]}`;
-  const ask = formal ? 'ρωτήστε' : 'ρώτα';
-  return `${assistantName}: ${ask} για ${list} ${scope}.`;
+  return `${hi}. Είμαι ${assistantName}. Βλέπω ${list} ${scope}. ${you} για ${yours}.`;
 }

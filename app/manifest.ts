@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { PRODUCT_NAME, PRODUCT_TAGLINE } from '@/lib/core/site';
+import { BRAND_DARK_BG } from '@/components/BrandMark';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Web App Manifest — κάνει το PROPERWISE εγκαταστάσιμο σαν εφαρμογή.
@@ -48,7 +49,7 @@ export default function manifest(): MetadataRoute.Manifest {
     // εγκατεστημένης εφαρμογής αναβοσβήνει σε λάθος φόντο και η μπάρα του
     // Android βγαίνει μπλε πάνω σε σκούρα εφαρμογή. Μία τιμή, η ίδια με τη
     // ρίζα: το --bg-base του σκούρου θέματος.
-    background_color: '#202124',
+    background_color: BRAND_DARK_BG,
     theme_color: '#202124',
     categories: ['finance', 'business', 'productivity'],
     icons: [
