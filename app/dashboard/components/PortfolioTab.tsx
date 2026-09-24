@@ -566,8 +566,10 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
               πλήθος λέγεται πάνω του, ώστε να ξέρει ο ιδιοκτήτης τι θα δει
               πριν το πατήσει. */}
           {collectable.length > 0 && (
+            // Το πλήθος δένεται με την τελευταία λέξη: στα 390 το κουμπί έσπαγε
+            // σε «Είσπραξη ενοικίων ·» και ένα «2» μόνο του στη δεύτερη γραμμή.
             <Btn variant="primary" onClick={() => setCollecting(true)}>
-              Είσπραξη ενοικίων · {collectable.length}
+              {`Είσπραξη ενοικίων\u00a0·\u00a0${collectable.length}`}
             </Btn>
           )}
           {/* Ισότιμη ενέργεια με την Εξαγωγή δίπλα της, όχι απορριπτική: χωρίς
