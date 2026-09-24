@@ -24,6 +24,8 @@ import BrandMark from '@/components/BrandMark';
 import { T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
+import Link from 'next/link';
+import { CircleCheckBig } from 'lucide-react';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -75,6 +77,14 @@ export default function ConfirmReminderEmail() {
             <p style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>
               Θέλεις να λαμβάνεις τις υπενθυμίσεις του PROPERWISE σε αυτή τη διεύθυνση;
             </p>
+            {/* ΠΟΙΟΣ ΕΔΩΣΕ ΤΗ ΔΙΕΥΘΥΝΣΗ ΚΑΙ ΠΟΥ ΛΕΓΕΤΑΙ ΤΙ ΚΡΑΤΑΜΕ. Ο παραλήπτης δεν
+                τη μοιράστηκε ο ίδιος: τη γράφει ένας χρήστης. Οταν τα στοιχεία
+                δεν συλλέγονται από το υποκείμενο, το άρθρο 14 GDPR ζητά να
+                μάθει την πηγή τους και πού διαβάζει την ενημέρωση. */}
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '12px 0 0' }}>
+              Αυτή τη διεύθυνση την όρισε χρήστης του PROPERWISE για να λαμβάνεις υπενθυμίσεις. Δες την{' '}
+              <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>.
+            </p>
             <div style={{ marginTop: 16 }}><Btn variant="primary" onClick={confirm}>Ναι, επιβεβαιώνω</Btn></div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '16px 0 0' }}>
               Αν δεν το ζήτησες, κλείσε τη σελίδα. Δεν θα λάβεις τίποτα.
@@ -89,8 +99,10 @@ export default function ConfirmReminderEmail() {
         {state === 'ok' && (
           <div style={{ paddingTop: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '11px 14px', marginBottom: T.sp.lg }}>
-              <span style={{ color: 'var(--positive)', fontWeight: 700 }}>✓</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--positive)' }}>Η διεύθυνση επιβεβαιώθηκε.</span>
+              {/* Το εικονίδιο της αδελφής /verify: ένα «✓» κειμένου δεν κάθεται
+                  στο ίδιο οπτικό ύψος με τη γραμμή και αλλάζει ανά γραμματοσειρά. */}
+              <CircleCheckBig size={18} strokeWidth={2.5} aria-hidden="true" style={{ color: 'var(--positive)', flexShrink: 0 }} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--positive)' }}>Η διεύθυνση επιβεβαιώθηκε.</span>
             </div>
             {/* ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΜΕ ΤΥΧΑΙΑ ΤΕΛΗ, ΣΕ ΚΑΡΤΑ 384. Η κάρτα είναι 440
                 μείον 2×28 γέμισμα, δηλαδή μέτρο ~58 χαρακτήρων στα 13 — στενή
@@ -118,7 +130,7 @@ export default function ConfirmReminderEmail() {
         {state === 'offline' && (
           <div style={{ paddingTop: T.sp.xl }}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-              Δεν λάβαμε απάντηση, οπότε ο σύνδεσμος δεν ελέγχθηκε. Μπορεί να είναι μια χαρά έγκυρος.
+              Δεν λάβαμε απάντηση, οπότε ο σύνδεσμος δεν ελέγχθηκε. Μπορεί να είναι έγκυρος.
             </p>
             <div style={{ marginTop: 16 }}><Btn onClick={confirm}>Δοκιμή ξανά</Btn></div>
           </div>

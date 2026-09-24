@@ -100,9 +100,7 @@ import PortalShare from './components/PortalShare';
 import OccupancyPanel from './components/OccupancyPanel';
 import BillingNudge from './components/BillingNudge';
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
-// Το Αρχείο έχει ένα σπίτι: lib/data/documents.
-import * as documents from '@/lib/data/documents';
-import { saved, savedData } from '@/components/dbWrite';
+import { saved } from '@/components/dbWrite';
 import { logActivity } from '@/lib/activity';
 import { useLoad } from '@/app/hooks/useLoad';
 
@@ -1396,7 +1394,7 @@ export default function Dashboard() {
   const [startSignals, setStartSignals] = useState({ documents: 0, taxEvents: 0 });
   const [startCollapsed, setStartCollapsed] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [scanDraftId, setScanDraftId] = useState<string|null>(null);// προσχέδιο από scan-to-create
+  const [scanAfterAdd, setScanAfterAdd] = useState(false);// «Σάρωση εγγράφου» της υποδοχής: σάρωση μόλις αποθηκευτεί το ακίνητο
   const [plan, setPlan] = useState<string>('free');       // τρέχον πακέτο συνδρομής (billing_profiles)
   const [compPlan, setCompPlan] = useState<string|null>(null);   // δωρεάν πρόσβαση: επίπεδο (π.χ. από referral)
   const [compUntil, setCompUntil] = useState<string|null>(null); // δωρεάν πρόσβαση: λήξη (ISO)
@@ -1603,11 +1601,14 @@ export default function Dashboard() {
     // token, έβλεπε «Καλωσήρθες — πρόσθεσε το πρώτο σου ακίνητο». Το χειρότερο
     // δεν είναι η λάθος οθόνη· είναι ότι πιστεύει πως έχασε τα δεδομένα του.
     const { rows: props, error } = await propertyStore.listWithError<Property>(supabase, uid, { columns: '*', orderBy: 'created_at' });
-    if (error) { setLoadError(true); return; }
+    if (error) { setLoadError(true); return null; }
     setLoadError(false);
     setProperties(props);
     if (props.length > 0 && !selected) setSelected(props[0]);
     else if (selected) setSelected(props.find(p => p.id === selected.id) || props[0] || null);
+    // Η λίστα επιστρέφεται για όποιον θέλει να διαλέξει ΑΜΕΣΩΣ ένα ακίνητο
+    // που μόλις γράφτηκε (οδηγός → σάρωση), χωρίς να περιμένει την απόδοση.
+    return props;
   }, [selected, supabase]);
 
   useEffect(() => {
@@ -1781,28 +1782,17 @@ export default function Dashboard() {
 
   // Καθάρισμα demo με ένα κλικ: σβήνει τα δείγματα ακίνητα/πελάτες/διαμονές.
 
-  // Κλείσιμο σάρωσης: αν ήταν προσχέδιο από scan-to-create και δεν αποθηκεύτηκε
-  // τίποτα (κανένα έγγραφο), σβήσε το κενό ακίνητο ώστε να μη μένουν σκουπίδια.
-  // ΟΣΟ ΔΙΑΒΑΖΕΤΑΙ ΤΟ ΕΓΓΡΑΦΟ, ΤΟ ΠΑΡΑΘΥΡΟ ΔΕΝ ΚΛΕΙΝΕΙ.
-  // Το `closeQuickAdd` παρακάτω ΔΙΑΓΡΑΦΕΙ το κενό προσχέδιο ακινήτου. Όταν το
-  // παράθυρο απέκτησε Escape και κλικ-στο-φόντο, απέκτησε και δύο τρόπους να
-  // πατηθεί κατά λάθος στη μέση της αναγνώρισης — και να σβήσει το ακίνητο που
-  // μόλις δημιουργήθηκε από τη «Σάρωσε…».
+  // ΟΣΟ ΔΙΑΒΑΖΕΤΑΙ ΤΟ ΕΓΓΡΑΦΟ, ΤΟ ΠΑΡΑΘΥΡΟ ΔΕΝ ΚΛΕΙΝΕΙ. Με Escape και
+  // κλικ-στο-φόντο, ένα κατά λάθος πάτημα στη μέση της αναγνώρισης θα έχανε
+  // τη σάρωση που πληρώθηκε.
+  //
+  // ΚΑΙ ΔΕΝ ΣΒΗΝΕΙ ΠΙΑ ΤΙΠΟΤΑ. Το κλείσιμο διέγραφε το «κενό προσχέδιο» που
+  // έφτιαχνε σιωπηλά η «Σάρωση εγγράφου» της υποδοχής. Το προσχέδιο δεν
+  // υπάρχει: η σάρωση ξεκινά πάνω σε ακίνητο που ο χρήστης αποθήκευσε από τον
+  // οδηγό, με δική του κατάσταση· ένα κλείσιμο δεν έχει λόγο να το αγγίξει.
   const [scanBusy, setScanBusy] = useState(false);
 
-  const closeQuickAdd = async () => {
-    setQuickAddOpen(false);
-    const draft = scanDraftId; setScanDraftId(null);
-    if (draft && user) {
-      const count = await documents.count(supabase, draft, user.id);
-      if ((count || 0) === 0) {
-        if (!await saved('Το κενό προσχέδιο δεν καθαρίστηκε',
-          propertyStore.remove(supabase, draft, user.id))) return;
-        if (selected?.id === draft) setSelected(null);
-        await fetchProperties(user.id);
-      }
-    }
-  };
+  const closeQuickAdd = () => setQuickAddOpen(false);
 
   // Υγιεινή αποσύνδεσης σε κοινόχρηστη συσκευή.
   //
@@ -2310,12 +2300,12 @@ export default function Dashboard() {
               <div style={{width:80,height:80,borderRadius: T.radius.modal,background:'var(--accent-dim)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 22px',color:'var(--accent)'}}>
                 <BrandMark size={52} />
               </div>
-              <h1 style={{fontFamily: T.font.sans,fontSize:28,fontWeight:700,letterSpacing:'-0.025em',color:'var(--text-primary)',margin:'0 0 10px',textWrap:'balance'}}>Ξεκίνα από ένα ακίνητο.</h1>
-              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'balance'}}>Φτάνει ένα όνομα για το ακίνητο, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θες.</p>
+              <h1 style={{fontFamily: T.font.sans,fontSize:28,fontWeight:700,letterSpacing:'-0.025em',color:'var(--text-primary)',margin:'0 0 10px',textWrap:'balance'}}>Ξεκίνα από ένα ακίνητο</h1>
+              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'balance'}}>Φτάνουν ο τύπος, η κατάσταση και ένα όνομα, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θες.</p>
               <ol style={{listStyle:'none',padding:0,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,170px),1fr))',gap:12,margin:'0 0 30px',textAlign:'left'}}>
                 {[
                   {t:'Τα βασικά',d:'Όνομα, διεύθυνση και τετραγωνικά.'},
-                  {t:'Ένας λογαριασμός',d:'Τον φωτογραφίζεις και μπαίνει μόνος του στο ακίνητο.'},
+                  {t:'Ένας λογαριασμός',d:'Τον φωτογραφίζεις, ελέγχεις τα ποσά και καταχωρείται στο ακίνητο.'},
                   {t:'Ο ΕΝΦΙΑ σου',d:'Ενδεικτικά, μαζί με ό,τι λείπει για τον λογιστή.'},
                 ].map((f,i)=>(
                   <li key={i} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,padding:'16px 16px 18px'}}>
@@ -2604,27 +2594,32 @@ export default function Dashboard() {
         title="Σάρωση εγγράφου">
         {user&&selected&&<DocumentScan propertyId={selected.id} userId={user.id} onBusyChange={setScanBusy}
           onManual={()=>{ closeQuickAdd(); setNav('finances'); setManualExpense(n=>n+1); }}
-          onSaved={async()=>{setScanDraftId(null);await fetchProperties(user.id);}}/>}
+          onSaved={async()=>{await fetchProperties(user.id);}}/>}
       </Modal>
 
       {showWelcome&&user&&<WelcomeOnboarding userId={user.id}
         onAddProperty={()=>{ setShowWelcome(false); setShowAddModal(true); }}
-        onScanCreate={async()=>{
-          setShowWelcome(false);
-          const data = await savedData<Property>('Το ακίνητο δεν δημιουργήθηκε',
-            propertyStore.addFull<Property>(supabase, { user_id:user.id, name:'Νέο ακίνητο', prop_type:'apartment', status_detail:'vacant' }));
-          await fetchProperties(user.id);
-          if (!data) return;
-          setSelected(data); setScanDraftId(data.id);
-          setNav('overview'); setQuickAddOpen(true);
-        }}
+        // ═══ Η ΣΑΡΩΣΗ ΠΕΡΝΑΕΙ ΑΠΟ ΤΟΝ ΟΔΗΓΟ ═════════════════════════════════
+        // Εδώ δημιουργούνταν σιωπηλά «Νέο ακίνητο», διαμέρισμα, με κατάσταση
+        // «Κενό», χωρίς καμία ερώτηση. Ο οδηγός όμως δεν έχει προεπιλογή
+        // κατάστασης επίτηδες: αυτή κρίνει καρτέλες και φορολογία. Ενα
+        // νοικιασμένο διαμέρισμα γραφόταν ως κενό. Τώρα ανοίγει ο οδηγός (τύπος,
+        // κατάσταση, όνομα· «Αποθήκευση τώρα» υπάρχει από το δεύτερο βήμα) και η
+        // σάρωση ξεκινά πάνω στο ακίνητο που αποθηκεύτηκε.
+        onScanCreate={()=>{ setShowWelcome(false); setScanAfterAdd(true); setShowAddModal(true); }}
         onProfile={setProfileType}
         onClose={()=>setShowWelcome(false)} />}
       {/* ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΔΕΝ ΓΡΑΦΕΙ ΤΙΠΟΤΑ. Ήταν ακίνητο μέσα στον λογαριασμό, με
           κουμπί καθαρισμού που έψαχνε λάθος όνομα και δεν εμφανιζόταν ποτέ. */}
       <DemoPreview open={showPreview} onClose={()=>setShowPreview(false)}
         onAddProperty={()=>{ setShowPreview(false); tryAddProperty(); }} />
-      {showAddModal&&user&&<AddPropertyWizard userId={user.id} onClose={()=>setShowAddModal(false)} onSaved={async()=>{setShowAddModal(false);await fetchProperties(user.id);}}/>}
+      {showAddModal&&user&&<AddPropertyWizard userId={user.id} onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);}} onSaved={async(id)=>{
+        setShowAddModal(false);
+        const list = await fetchProperties(user.id);
+        const added = scanAfterAdd && id ? list?.find(p => p.id === id) : undefined;
+        setScanAfterAdd(false);
+        if (added) { setSelected(added); setNav('overview'); setQuickAddOpen(true); }
+      }}/>}
       {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} onClose={()=>setEditProperty(null)} onSaved={async()=>{setEditProperty(null);await fetchProperties(user.id);}}/>}
       {showUpgrade&&<UpgradeModal currentCount={properties.length} planId={effPlan} profileType={effProfileType} onClose={()=>setShowUpgrade(false)} onManage={()=>{setShowUpgrade(false);setNav('settings');}}/>}
     </div>

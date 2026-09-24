@@ -26,8 +26,8 @@ ok('ο κωδικός προηγείται του κειμένου',
 
 // ── Σφάλματα χωρίς κωδικό ─────────────────────────────────────────────────
 ok('χαμένο δίκτυο', (dbReason({ message: 'TypeError: Failed to fetch' }) || '').includes('σύνδεση στο διαδίκτυο'));
-ok('όριο ρυθμού', (dbReason({ message: 'Email rate limit exceeded' }) || '').includes('Στάλθηκαν πολλά'));
-ok('λάθος στοιχεία εισόδου', dbReason({ message: 'Invalid login credentials' }) === 'Λάθος ηλεκτρονικό ταχυδρομείο ή κωδικός.');
+ok('όριο ρυθμού', (dbReason({ message: 'Email rate limit exceeded' }) || '').includes('Ζητήθηκαν πολλά μηνύματα'));
+ok('λάθος στοιχεία εισόδου', dbReason({ message: 'Invalid login credentials' }) === 'Λάθος email ή κωδικός.');
 ok('υπάρχων λογαριασμός', (dbReason({ message: 'User already registered' }) || '').includes('Υπάρχει ήδη λογαριασμός'));
 ok('πολιτική RLS', dbReason({ message: 'new row violates row-level security policy for table "expenses"' })
   === 'Δεν έχεις δικαίωμα σε αυτή την εγγραφή.');

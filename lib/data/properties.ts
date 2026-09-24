@@ -25,7 +25,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { UserPropertiesRow } from '@/lib/supabase/tables';
 // ΤΟ `row` ΠΑΙΡΝΕΙ ΨΕΥΔΩΝΥΜΟ: το αρχείο έχει ήδη παραμέτρους με το όνομα `row`
-// στις εγγραφές (`add`, `addFull`).
+// στις εγγραφές (`add`).
 import { read, readOne, row as readRow, type ReadResult, type ReadOneResult } from './read';
 
 const TABLE = 'user_properties';
@@ -169,13 +169,6 @@ export function add(
   db: Db, row: PropertyPatch,
 ): PromiseLike<{ data: { id: string } | null; error: { message?: string; code?: string } | null }> {
   return db.from(TABLE).insert(row).select('id').single();
-}
-
-/** Νέο ακίνητο, με ΟΛΗ τη γραμμή πίσω: η Επισκόπηση το βάζει αμέσως στη λίστα. */
-export function addFull<T>(
-  db: Db, row: PropertyPatch,
-): PromiseLike<{ data: T | null; error: { message?: string; code?: string } | null }> {
-  return db.from(TABLE).insert(row).select('*').single();
 }
 
 /** Διαγραφή ακινήτου. Ο χρήστης δίνεται πάντα: εδώ δεν υπάρχει «δεν τον ξέρω». */

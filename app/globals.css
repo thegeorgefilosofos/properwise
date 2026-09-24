@@ -3802,8 +3802,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* Σελίδες Σύνδεσης/Εγγραφής: το marketing panel κρύβεται σε κινητό,
    η φόρμα παίρνει όλο το πλάτος — καμία οριζόντια κύλιση. */
+.auth-mobile-brand { display: none; }
 @media (max-width: 860px) {
   .auth-aside { display: none !important; }
+  .auth-mobile-brand { display: flex; margin-bottom: 24px; }
   .auth-main  { flex: 1 1 100% !important; width: 100% !important; padding: 32px 20px !important; }
   .auth-main  { padding-bottom: calc(32px + var(--cookie-h, 0px)) !important; }
 }

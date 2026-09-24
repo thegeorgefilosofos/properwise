@@ -7,7 +7,7 @@ let passed = 0, failed = 0; const fails: string[] = [];
 const ok = (n: string, c: boolean) => { if (c) { passed++ } else { failed++; if (fails.length < 60) fails.push(n) } };
 
 // ── messages ──────────────────────────────────────────────────────────────
-const ctx = { clientName: 'Γιώργος Παπαδόπουλος', propertyName: 'Το Σπίτι μου', address: 'Αρύββου 45', checkIn: '2026-07-15' };
+const ctx = { clientName: 'Γιώργος Παπαδόπουλος', propertyName: 'Το Σπίτι μου', address: 'Οδός Παραδείγματος 12, Αθήνα', checkIn: '2026-07-15' };
 for (const t of MSG_TEMPLATES) {
   const body = t.build(ctx);
   ok(`msg ${t.id} non-empty`, body.length > 10);

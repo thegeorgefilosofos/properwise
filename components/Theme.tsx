@@ -190,7 +190,9 @@ export const OVERLAY_BASE_Z = 1000;
  */
 export const isOverlayOpen = (): boolean => overlayStack.length > 0;
 
-function useOverlayShell(open: boolean, onClose: () => void) {
+// Εξάγεται για τη μία επικάλυψη που ΔΕΝ είναι Modal (WelcomeOnboarding): παίρνει
+// την ίδια εστίαση και παγίδα Tab, με `onClose` που δεν κάνει τίποτα.
+export function useOverlayShell(open: boolean, onClose: () => void) {
   const panelRef = useRef<HTMLDivElement>(null);
   // Πού γυρίζει η εστίαση όταν κλείσει. Χωρίς αυτό, ο χρήστης πληκτρολογίου
   // πέφτει στο <body> και ξαναρχίζει το Tab από την κορυφή της σελίδας.

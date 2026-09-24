@@ -7,10 +7,11 @@ import { authClient } from '@/lib/supabase/lazy';
 import { secondStepPending, MFA_SAY } from '@/lib/auth/mfa';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
-import AuthAside from '../AuthAside'
+import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import GoogleG from '../GoogleG'
 import { BackLink } from '../BackLink'
 import { failed } from '@/lib/core/dbError';
+import { IDENTITY } from '@/lib/legal/identity';
 import { planFromParam, cycleFromParam, checkoutLanding } from '@/lib/billing/entitlements';
 
 // ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΤΑΞΙΔΕΨΕ ΩΣ ΕΔΩ ΔΕΝ ΧΑΝΕΤΑΙ ΣΤΗΝ ΠΟΡΤΑ. Ο διαμεσολαβητής στέλνει
@@ -123,8 +124,12 @@ export default function LoginPage() {
       //
       // ΜΟΝΟ ΣΕ ΑΣΥΝΔΕΤΟ: αν η συνεδρία υπάρχει, ο σύνδεσμος έκανε τη δουλειά
       // του και δεν υπάρχει τίποτα να διορθωθεί.
+      // ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΤΗΣ ΕΠΑΝΑΠΟΣΤΟΛΗΣ ΕΜΦΑΝΙΖΕΤΑΙ ΑΜΕΣΩΣ. Το μήνυμα ζητούσε
+      // email και κωδικό «για να σου στείλουμε νέο», αλλά η «Σύνδεση» μόνο
+      // δοκίμαζε είσοδο· το κουμπί έβγαινε μόνο μετά από δεύτερο σφάλμα.
       if (!data.user && failedConfirm()) {
-        setError('Ο σύνδεσμος επιβεβαίωσης δεν ισχύει πια. Γράψε το email σου και τον κωδικό σου για να σου στείλουμε νέο.')
+        setError('Ο σύνδεσμος επιβεβαίωσης δεν ισχύει πια. Γράψε το email σου και πάτησε «Ξαναστείλε το email επιβεβαίωσης».')
+        setUnconfirmed(true)
       }
     })
     })()
@@ -180,20 +185,33 @@ export default function LoginPage() {
   // περιγράφει ως διορθωμένο, ζωντανό μία διαδρομή παραδίπλα.
   //
   // Η επιστροφή πάει τώρα στο `/signup?oauth=login`, που ελέγχει αν υπάρχει ήδη
-  // συγκατάθεση. Αν υπάρχει, προωθεί στον πίνακα χωρίς να το καταλάβει κανείς.
+  // συγκατάθεση. Αν υπάρχει, προωθεί στο ταμείο ή στον πίνακα χωρίς να το καταλάβει κανείς.
   // Αν δεν υπάρχει, σταματά και ρωτά. Δεν συμπληρώνεται ποτέ εδώ: μια απόδειξη
   // που γράφτηκε χωρίς να δοθεί είναι χειρότερη από απόδειξη που λείπει.
+  //
+  // ΚΑΙ ΤΟ ΠΑΚΕΤΟ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ. Η σύνδεση με κωδικό γυρίζει στο ταμείο με το
+  // πακέτο και τον κύκλο (`afterSignIn`)· η Google τα έχανε στην επιστροφή και
+  // όποιος ερχόταν από τον τιμοκατάλογο κατέληγε στον πίνακα.
   async function signInWithGoogle() {
+    const q = new URLSearchParams(window.location.search)
+    const back = new URLSearchParams({ oauth: 'login' })
+    for (const k of ['plan', 'cycle']) { const v = q.get(k); if (v) back.set(k, v) }
     const supabase = await authClient()
-    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/signup?oauth=login` } })
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/signup?${back.toString()}` } })
+    if (error) setError(failed('Η σύνδεση δεν έγινε', error))
   }
 
   /** Νέος σύνδεσμος επιβεβαίωσης, με την ίδια επιστροφή που δίνει η εγγραφή. */
   async function resendConfirmation() {
+    if (!email.trim()) {
+      setError('Γράψε πρώτα το email του λογαριασμού σου.')
+      document.getElementById('login-email')?.focus()
+      return
+    }
     const supabase = await authClient()
     const { error } = await supabase.auth.resend({
       type: 'signup', email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(afterSignIn())}` },
     })
     if (error) { setError(failed('Το email δεν ξαναστάλθηκε', error)); return }
     setError(''); setResent(true)
@@ -212,8 +230,8 @@ export default function LoginPage() {
     fontFamily: 'inherit', transition: 'border-color .15s',
   }
   const label: React.CSSProperties = {
-    fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700,
-    display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em',
+    fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700,
+    display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em',
     fontFamily: T.font.sans,
   }
 
@@ -233,6 +251,7 @@ export default function LoginPage() {
       {/* RIGHT, form */}
       <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
+          <AuthMobileBrand />
           {/* ── ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΜΙΑ ΦΟΡΜΑ ─────────────────────────────────
               ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ΔΕΝ ΠΗΡΕ ΔΙΚΗ ΤΟΥ ΦΟΡΜΑ, ΕΠΙΤΗΔΕΣ. Μια δεύτερη θα
               σήμαινε δεύτερο κουμπί υποβολής ζωγραφισμένο στο χέρι, δηλαδή
@@ -286,6 +305,16 @@ export default function LoginPage() {
                   style={{ ...field, maxWidth: 200, fontFamily: T.font.mono, letterSpacing: '0.3em' }}
                   onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                   onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+                {/* ── Ο ΔΡΟΜΟΣ ΓΙΑ ΟΠΟΙΟΝ ΑΛΛΑΞΕ ΤΗΛΕΦΩΝΟ ─────────────────────
+                    Κωδικοί ανάκτησης δεν υπάρχουν, οπότε όποιος έχασε τη
+                    συσκευή με την εφαρμογή επαλήθευσης έβλεπε μόνο την
+                    «Έξοδο»: κλειδωμένος, χωρίς να ξέρει σε ποιον να γράψει. Το
+                    email του λογαριασμού είναι το πρώτο στοιχείο ταυτότητας
+                    που μπορεί να ελεγχθεί. */}
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '12px 0 0' }}>
+                  Δεν έχεις πρόσβαση στην εφαρμογή επαλήθευσης;{' '}
+                  <a href={`mailto:${IDENTITY.supportEmail}?subject=${encodeURIComponent('Επαναφορά δεύτερου βήματος')}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Γράψε μας από το email του λογαριασμού σου</a>.
+                </p>
               </div>
             ) : (<>
             <div>
@@ -297,7 +326,7 @@ export default function LoginPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <label htmlFor="login-password" style={{ ...label, marginBottom: 0 }}>Κωδικός</label>
-                <Link href="/reset-password" className="lp-link po-tap" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Ξέχασες τον κωδικό;</Link>
+                <Link href="/reset-password" className="lp-link po-tap" style={{ fontSize: 13, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Ξέχασες τον κωδικό;</Link>
               </div>
               <div style={{ position: 'relative' }}>
                 <input id="login-password" name="password" autoComplete="current-password" type={show ? 'text' : 'password'} value={password} required onChange={e => setPassword(e.target.value)} placeholder="Ο κωδικός σου" style={{ ...field, paddingRight: 48 }}
@@ -369,7 +398,7 @@ export default function LoginPage() {
               τυλίγει — και το «balance» μοιράζει τις δύο σειρές αντί να αφήσει
              πάλι μία λέξη μόνη της. Οι δύο σύνδεσμοι δεν σπάνε ΜΕΣΑ τους: στα
              390 το «Όρους χρήσης» χωριζόταν σε δύο σειρές. */
-          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 24, lineHeight: 1.6, width: 'calc(100% + 20px)', marginInline: -10, textWrap: 'balance' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 24, lineHeight: 1.6, width: 'calc(100% + 20px)', marginInline: -10, textWrap: 'balance' }}>
             Συνεχίζοντας, αποδέχεσαι τους{' '}
             <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Όρους χρήσης</Link>{' '}και την{' '}
             <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>.

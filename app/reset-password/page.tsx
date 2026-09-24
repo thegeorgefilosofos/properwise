@@ -2,8 +2,9 @@
 import { T, Btn } from '@/components/Theme'
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import { authClient } from '@/lib/supabase/lazy';
+import { leaveDevice } from '@/lib/localPrivacy'
 import Link from 'next/link'
-import AuthAside from '../AuthAside'
+import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
 import { failed } from '@/lib/core/dbError';
@@ -17,6 +18,8 @@ import { BackLink } from '../BackLink'
 // ═══════════════════════════════════════════════════════════════════════════
 
 type Mode = 'checking' | 'request' | 'sent' | 'update' | 'done'
+
+const MISMATCH = 'Οι κωδικοί δεν ταιριάζουν.'
 
 // ── Ο ΣΥΝΔΕΣΜΟΣ ΓΥΡΙΖΕΙ ΩΣ `?code=`, ΟΧΙ ΩΣ `#type=recovery` ──────────────
 // Ο πελάτης είναι PKCE (@supabase/ssr), οπότε ο έλεγχος του κατάγματος δεν
@@ -50,6 +53,8 @@ export default function ResetPasswordPage() {
   const [show, setShow] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  /** Κλείστηκαν οι άλλες συνεδρίες μετά την αλλαγή; Το λέει η οθόνη «done». */
+  const [othersOut, setOthersOut] = useState(false)
 
   useEffect(() => {
     // Διαβάζεται ΠΡΙΝ φορτωθεί ο πελάτης: η επιτυχής ανταλλαγή σβήνει το `code`.
@@ -98,21 +103,40 @@ export default function ResetPasswordPage() {
   async function updatePassword(e: React.FormEvent) {
     e.preventDefault(); setError('')
     if (!pwOk) { setError(leakedPw === password ? PASSWORD_MSG.leaked : PASSWORD_MSG.weak); return }
-    if (password !== confirm) { setError('Οι κωδικοί δεν ταιριάζουν.'); return }
+    if (password !== confirm) { setError(MISMATCH); return }
     setLoading(true)
     const supabase = await authClient()
     const { error } = await supabase.auth.updateUser({ password })
+    if (error) { setLoading(false); setError(failed('Ο κωδικός δεν άλλαξε', error)); return }
+    // ═══ ΟΙ ΑΛΛΕΣ ΣΥΣΚΕΥΕΣ ΚΛΕΙΝΟΥΝ ΜΑΖΙ ΜΕ ΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΟ ═══════════════
+    // Η οθόνη έλεγε «ο νέος κωδικός ισχύει σε όλες τις συσκευές σου» και
+    // καμία συνεδρία δεν έκλεινε. Οποιος αλλάζει κωδικό επειδή υποψιάζεται
+    // διαρροή νόμιζε ότι προστατεύτηκε, ενώ όποιος κρατούσε συνεδρία έμενε
+    // μέσα. Κλείνουν όλες εκτός από αυτή· αν αποτύχει, το λέμε και δείχνουμε
+    // πού γίνεται με το χέρι, αντί να υποσχεθούμε κάτι που δεν έγινε.
+    // ΚΑΙ ΟΙ ΤΟΠΙΚΕΣ ΚΟΠΙΕΣ ΑΥΤΗΣ ΤΗΣ ΣΥΣΚΕΥΗΣ ΦΕΥΓΟΥΝ. Η επαναφορά είναι
+    // γεγονός ασφαλείας και ο σύνδεσμος μπορεί να άνοιξε σε κοινόχρηστο
+    // μηχάνημα· ο πίνακας τα ξαναφορτώνει από τον διακομιστή.
+    const { error: outError } = await supabase.auth.signOut({ scope: 'others' })
+    leaveDevice()
     setLoading(false)
-    if (error) setError(failed('Ο κωδικός δεν άλλαξε', error)); else setMode('done')
+    setOthersOut(!outError)
+    setMode('done')
   }
+
+  // Ο ΛΟΓΟΣ ΛΕΓΕΤΑΙ ΠΑΝΩ ΣΤΟ ΠΕΔΙΟ, ΟΧΙ ΣΕ ΣΒΗΣΤΟ ΚΟΥΜΠΙ. Η ασυμφωνία δεν
+  // φωνάζει όσο ο χρήστης ακόμη πληκτρολογεί: μόνο όταν ό,τι έγραψε δεν μπορεί
+  // πια να καταλήξει στον ίδιο κωδικό.
+  const mismatch = confirm.length > 0 &&
+    (confirm.length >= password.length ? confirm !== password : !password.startsWith(confirm))
 
   const field: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box', background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
     borderRadius: T.radius.btn, padding: '10px 16px', minHeight: T.h.lg, color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit', transition: 'border-color .15s',
   }
   const label: React.CSSProperties = {
-    fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: 8,
-    textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans,
+    fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: 8,
+    textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: T.font.sans,
   }
   const eye = (
     /* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το IconBtn δεν προωθεί `aria-pressed` και το μάτι
@@ -159,6 +183,7 @@ export default function ResetPasswordPage() {
       {/* RIGHT, form: <main>, όπως στη Σύνδεση και στην Εγγραφή. */}
       <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
+          <AuthMobileBrand />
 
           {mode === 'checking' && (
             <>
@@ -170,6 +195,9 @@ export default function ResetPasswordPage() {
 
           {mode === 'request' && (
             <>
+              {/* Ο ίδιος δρόμος πίσω με κάθε άλλη κατάσταση της Σύνδεσης και της
+                  Εγγραφής: εδώ και στο «sent» έλειπε. */}
+              <BackLink home />
               <h1 style={h2s}>Επαναφορά κωδικού</h1>
               {linkFailed && (
                 <div role="alert" style={{ background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '12px 14px', fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)', marginBottom: 16 }}>
@@ -194,11 +222,14 @@ export default function ResetPasswordPage() {
           )}
 
           {mode === 'sent' && (
-            <div style={{ textAlign: 'center' }} role="status">
+            <div role="status">
+              <BackLink home />
+              <div style={{ textAlign: 'center' }}>
               {mailIcon}
               <h1 style={h2s}>Έλεγξε το email σου</h1>
               <p style={subs}>Αν υπάρχει λογαριασμός με αυτό το email, θα λάβεις σύνδεσμο επαναφοράς. Δες και τον φάκελο ανεπιθύμητων.</p>
               <Link href="/login" className="lp-link po-tap" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>Επιστροφή στη σύνδεση</Link>
+              </div>
             </div>
           )}
 
@@ -225,11 +256,14 @@ export default function ResetPasswordPage() {
                 </div>
                 <div>
                   <label htmlFor="rp-confirm" style={label}>Επιβεβαίωση</label>
-                  <input id="rp-confirm" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Ξαναγράψε τον κωδικό" style={field}
+                  <input id="rp-confirm" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Ξαναγράψε τον κωδικό" aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'rp-confirm-err' : undefined} style={field}
                     onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+                  {mismatch && <p id="rp-confirm-err" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '6px 0 0', lineHeight: 1.5 }}>{MISMATCH}</p>}
                 </div>
                 {errBox}
-                <Btn variant="primary" type="submit" field disabled={loading || !pwOk}>{loading ? 'Αποθήκευση…' : 'Αποθήκευση κωδικού'}</Btn>
+                {/* Πατήσιμο πάντα, όπως στην Εγγραφή: το σβηστό κουμπί δεν έλεγε
+                    γιατί. Ο λόγος έρχεται από τον updatePassword, στο πλαίσιο. */}
+                <Btn variant="primary" type="submit" field disabled={loading}>{loading ? 'Αποθήκευση…' : 'Αποθήκευση κωδικού'}</Btn>
               </form>
             </>
           )}
@@ -238,7 +272,9 @@ export default function ResetPasswordPage() {
             <div style={{ textAlign: 'center' }} role="status">
               {successIcon}
               <h1 style={h2s}>Ο κωδικός άλλαξε</h1>
-              <p style={subs}>Ο νέος κωδικός ισχύει από τώρα και σε όλες τις συσκευές σου.</p>
+              <p style={subs}>{othersOut
+                ? 'Αποσυνδέσαμε κάθε άλλη συσκευή όπου ήταν ανοιχτός ο λογαριασμός σου.'
+                : 'Ο νέος κωδικός ισχύει, αλλά οι άλλες συσκευές δεν αποσυνδέθηκαν. Κλείσ’ τες με την «Αποσύνδεση από όλες τις συσκευές», στην ενότητα Ασφάλεια.'}</p>
               {/* Προορισμός και όχι ενέργεια: με `href` γίνεται σύνδεσμος που ανοίγει
                   και σε νέα καρτέλα, με την ίδια ακριβώς όψη. */}
               <Btn variant="primary" href="/dashboard" field>Μετάβαση στον πίνακα</Btn>

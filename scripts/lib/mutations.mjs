@@ -22,6 +22,10 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Η οδός του ιδιοκτήτη ως διεύθυνση σε στιγμιότυπο δοκιμής, όπως βρέθηκε.
+  // Η λέξη χτίζεται από σημεία κώδικα, ώστε να μη γράφεται αυτούσια ούτε εδώ.
+  'private-street': { add: 'lib/__mut__.test.ts', content: `const ctx = { address: '${String.fromCodePoint(0x391, 0x3c1, 0x3cd, 0x3b2, 0x3b2, 0x3bf, 0x3c5)} 45' }\nexport default ctx\n` },
+
   // Οι Οροι έλεγαν ότι η εφαρμογή κινητού «υπάρχει» στα stores σε ενεστώτα,
   // ενώ δεν έχει κυκλοφορήσει. Η μετάλλαξη προσθέτει ακριβώς τέτοιον ισχυρισμό,
   // χωρίς καμία λέξη που να τον δηλώνει μελλοντικό.
