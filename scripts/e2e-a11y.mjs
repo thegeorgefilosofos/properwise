@@ -151,7 +151,10 @@ for (const path of ['/login', '/signup']) {
   const p = await ctx.newPage()
   await p.addInitScript(() => { try { localStorage.setItem('pos-cookie-consent', JSON.stringify({ v: '2026-08', ts: 'x' })) } catch { /* κενό */ } })
   await p.goto(B + '/signup', { waitUntil: 'networkidle' })
-  const cta = p.locator('button.auth-cta')
+  // Το κουμπί της φόρμας, όχι μια κλάση: έγινε το κοινό Btn και η κλάση
+  // `auth-cta` έφυγε μαζί με το χειροποίητο «χάπι».
+  const SUBMIT = 'main form button[type="submit"]'
+  const cta = p.locator(SUBMIT)
 
   // ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ ΚΑΝΟΝΙΚΟ. Ούτε `disabled` (βγαίνει από το Tab) ούτε
   // `aria-disabled` (ο αναγνώστης το λέει «μη διαθέσιμο» και δεν το πατά).
@@ -161,7 +164,7 @@ for (const path of ['/login', '/signup']) {
   let reached = false
   for (let i = 0; i < 40 && !reached; i++) {
     await p.keyboard.press('Tab')
-    reached = await p.evaluate(() => document.activeElement?.classList.contains('auth-cta') === true)
+    reached = await p.evaluate((sel) => document.activeElement?.matches(sel) === true, SUBMIT)
   }
   ok('εγγραφή: το Tab φτάνει στο κουμπί', reached)
 
