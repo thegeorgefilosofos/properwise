@@ -3467,6 +3467,29 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    όνομα, το σημείο δηλώνει τι κάνει· και όταν κάποτε αλλάξει η βασική
    γραμματοσειρά, αλλάζουν δύο γραμμές εδώ αντί για σαράντα εννέα σημεία. */
 .po-lead-ico { flex-shrink: 0; margin-top: 1px; }
+/* ═══ ΣΥΝΔΕΣΗ, ΕΓΓΡΑΦΗ, ΕΠΑΝΑΦΟΡΑ: ΔΥΟ ΣΤΗΛΕΣ ΠΟΥ ΖΥΓΙΖΟΥΝ ═══════════════════
+   Σε 1920 το πάνελ είχε το σώμα του κολλημένο πάνω και τη φόρμα των 400
+   κεντραρισμένη σε στήλη 1050: δύο ύψη εκκίνησης, δύο κλίμακες. Τώρα και οι
+   δύο κεντράρονται στο ίδιο ύψος και μεγαλώνουν μαζί με την οθόνη.
+   Η επικεφαλίδα κρατά τον κανόνα των δύο γραμμών (βλ. AuthAside): θέλει
+   13,09 φορές το μέγεθός της και το μέτρο της ομάδας είναι 600, άρα ταβάνι 44. */
+.auth-aside-body { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 600px; }
+/* Η γραμμή της υποσημείωσης στο ίδιο μέτρο με το σώμα: αλλιώς δύο δεξιές άκρες. */
+.auth-aside-foot { max-width: 600px; }
+.auth-aside-h { font-size: clamp(20px, calc(3.35vw - 7.2px), 38px); }
+.auth-aside-sub { font-size: 15px; }
+.auth-aside-pillars { gap: 24px; }
+.auth-aside-pl { font-size: 14px; }
+.auth-aside-pt { font-size: 13px; }
+.auth-form { width: 100%; max-width: 400px; }
+@media (min-width: 1440px) {
+  .auth-aside-h { font-size: clamp(38px, calc(2.2vw + 2px), 44px); }
+  .auth-aside-sub { font-size: 17px; }
+  .auth-aside-pillars { gap: 28px; }
+  .auth-aside-pl { font-size: 16px; }
+  .auth-aside-pt { font-size: 15px; }
+  .auth-form { max-width: 440px; }
+}
 .po-subline  { margin-top: 1px; }
 
 /* ═══ ΠΕΡΑ ΠΕΡΑ, ΜΕ ΑΛΗΘΙΝΟ ΣΥΛΛΑΒΙΣΜΟ ΑΠΟ ΚΑΤΩ ΤΗΣ ══════════════════════════
@@ -3508,6 +3531,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    Οπου το κείμενο ΔΕΝ στοιχίζεται πλήρως, το `pretty` μένει όπου ήταν: εκεί
    δεν έχει τίποτα να ακυρώσει. */
 .po-just { text-align: justify; }
+/* ΣΤΕΝΗ ΚΑΡΤΑ, ΟΧΙ ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ. Σε στήλη κάτω από ~460 με λέξεις που δεν
+   σπάνε («ν.5072/2023», «(ενσωμάτωση») η στοίχιση τέντωνε τα κενά σε τρύπες
+   (φωτογραφημένο, 25.09.2026). Οποιο πλαίσιο δηλώσει `.po-just-box` γίνεται
+   container: όσο είναι στενό, η παράγραφος μέσα του στοιχίζεται αριστερά και
+   ισορροπεί τις γραμμές της· όταν απλώσει, ξαναπαίρνει την πλήρη στοίχιση. */
+.po-just-box { container-type: inline-size; }
+@container (max-width: 460px) {
+  .po-just { text-align: start; text-wrap: pretty; }
+}
 .po-table tbody th, .po-table tbody td { border-bottom: 1px solid var(--border-subtle); }
 /* Η τελευταία γραμμή δεν έχει τι να χωρίσει από κάτω της. */
 .po-table tbody tr:last-child > * { border-bottom: none; }

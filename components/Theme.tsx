@@ -528,7 +528,12 @@ export function SecHdr({ label, sub, info, right }: { label: string; sub?: strin
 // είσαι». Αυτή είναι η γραμμή.
 export function PageTitle({ over, title, sub, lede, right, titleHint }: { over?: string; title: string; sub?: string; lede?: string; right?: ReactNode; titleHint?: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: T.sp.xxl, flexWrap: 'wrap' as const }}>
+    // ΟΙ ΕΝΕΡΓΕΙΕΣ ΣΤΟ ΚΕΝΤΡΟ ΤΗΣ ΚΕΦΑΛΙΔΑΣ, ΟΧΙ ΣΤΟ ΚΑΤΩ ΑΚΡΟ ΤΗΣ. Με
+    // `flex-end` το «Περισσότερα» καθόταν 20 εικονοστοιχεία χαμηλότερα από τον
+    // τίτλο, στο ύψος του υπότιτλου (φωτογραφημένο, 25.09.2026). Με εισαγωγή
+    // (`lede`) οι ενέργειες μένουν πάνω, στο ύψος του τίτλου: δίπλα σε
+    // παράγραφο τριών γραμμών το κέντρο θα τις έριχνε στη μέση του κειμένου.
+    <div style={{ display: 'flex', alignItems: lede ? 'flex-start' : 'center', justifyContent: 'space-between', gap: 16, marginBottom: T.sp.xxl, flexWrap: 'wrap' as const }}>
       <div style={{ minWidth: 0 }}>
         {over && <div style={{ ...TT.label, color: 'var(--text-tertiary)', marginBottom: 8 }}>{over}</div>}
         {/* Η ΚΛΑΣΗ ΥΠΑΡΧΕΙ ΓΙΑ ΝΑ ΜΙΚΡΑΙΝΕΙ Ο ΤΙΤΛΟΣ ΣΤΟ ΤΗΛΕΦΩΝΟ. Τα 28 είναι
@@ -538,7 +543,9 @@ export function PageTitle({ over, title, sub, lede, right, titleHint }: { over?:
             χρήστης αρχίζει μετά την πρώτη οθόνη. Το μέγεθος ζει στο CSS, όχι σε
             δεύτερη σταθερά: μία κλίμακα, ένα σπάσιμο. */}
         <h1 className="page-title" title={titleHint} style={{ ...TT.display, margin: 0 }}>{title}</h1>
-        {sub && <div style={{ ...TT.caption, fontSize: 12, marginTop: 4 }}>{sub}</div>}
+        {/* Ο υπότιτλος στα 14, όχι στα 12: κάτω από τίτλο 28 τα 12 διαβάζονταν
+            ως υποσημείωση, όχι ως η δεύτερη γραμμή του ίδιου τίτλου. */}
+        {sub && <div style={{ ...TT.caption, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', marginTop: 6 }}>{sub}</div>}
         {/* Η εισαγωγή είναι κείμενο σώματος, όχι λεζάντα: το `sub` των δέκα
             καρτελών είναι 12 εικονοστοιχεία και μια παράγραφος τριών σειρών σε
             αυτό το μέγεθος διαβάζεται ως ψιλά γράμματα.
@@ -1684,7 +1691,37 @@ export function ExportButton({ onClick, label = 'Εξαγωγή Excel', disabled
 // εδώ, λυπάμαι» — αφίσα, όχι διεπαφή. Οι κορυφαίες εφαρμογές πληρωμών γράφουν
 // την κενή κατάσταση σαν κάθε άλλη σειρά της οθόνης: αριστερά, πέρα πέρα, με
 // την πράξη ακριβώς από κάτω. Η κενή κατάσταση δεν είναι λιγότερο οθόνη.
-export function EmptyState({ title, hint, action, icon }: { title: string; hint?: string; action?: ReactNode; icon?: ReactNode }) {
+// ═══ Η ΚΕΝΗ ΣΕΛΙΔΑ ΔΕΝ ΕΙΝΑΙ ΚΕΝΗ ΚΑΡΤΑ ═════════════════════════════════════
+// Τα παραπάνω ισχύουν για κενή κατάσταση ΜΕΣΑ σε κάρτα ή λίστα. Οταν όμως
+// είναι ΟΛΟ το περιεχόμενο της σελίδας (η Απογραφή σε ακίνητο χωρίς επίπλωση),
+// η ίδια μικρή γραμμή στη γωνία μιας οθόνης 1920 διαβαζόταν ως σπασμένη
+// σελίδα («τι χάλι είναι αυτό», 25.09.2026). Το `page` τη γράφει ως πλαίσιο
+// της σελίδας: εικονίδιο σε πλακίδιο, τίτλος σε μέγεθος ενότητας, η εξήγηση,
+// ΤΙ θα βρεις εδώ όταν ανοίξει (`points`) και οι ενέργειες. Στοιχισμένο
+// αριστερά, στο πλάτος της σελίδας, όπως κάθε άλλη κάρτα.
+export function EmptyState({ title, hint, action, icon, page, points }: { title: string; hint?: string; action?: ReactNode; icon?: ReactNode; page?: boolean; points?: readonly string[] }) {
+  if (page) return (
+    <div style={{ padding: `${T.sp.xxl}px`, background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, boxShadow: 'var(--highlight-inset), var(--elev-1)', fontFamily: T.font.sans }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: T.sp.lg }}>
+        {icon && <span aria-hidden style={{ width: T.h.lg, height: T.h.lg, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: T.radius.inner, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)' }}>{icon}</span>}
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h2 style={{ ...TT.h2, fontSize: 18, margin: 0, color: 'var(--text-primary)', textWrap: 'balance' as const }}>{title}</h2>
+          {hint && <p style={{ margin: '6px 0 0', fontSize: 'var(--fs-md)', lineHeight: 1.6, color: 'var(--text-secondary)', textWrap: 'pretty' as const }}>{hint}</p>}
+        </div>
+      </div>
+      {points && points.length > 0 && (
+        <ul style={{ listStyle: 'none', margin: `${T.sp.xl}px 0 0`, padding: `${T.sp.lg}px 0 0`, borderTop: '1px solid var(--border-subtle)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: `${T.sp.md}px ${T.sp.xl}px` }}>
+          {points.map(pt => (
+            <li key={pt} style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+              <span aria-hidden style={{ width: 6, height: 6, flexShrink: 0, borderRadius: T.radius.pill, background: 'var(--accent)', transform: 'translateY(-2px)' }} />
+              {pt}
+            </li>
+          ))}
+        </ul>
+      )}
+      {action && <div className="act-row" style={{ marginTop: T.sp.xl, display: 'flex', gap: 10, flexWrap: 'wrap' }}>{action}</div>}
+    </div>
+  );
   return (
     <div style={{ padding: '22px 2px', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>

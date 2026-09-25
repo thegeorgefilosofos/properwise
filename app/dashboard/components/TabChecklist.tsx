@@ -836,7 +836,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
               `--text-secondary` είναι ήδη το «δεύτερο επίπεδο» και βγάζει
               5,44:1 στο φωτεινό. Ιδια πρόθεση, μετρήσιμο αποτέλεσμα, ίδιο
               αποτέλεσμα σε κάθε θέμα. */}
-                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{catDone}/{count}</span>
+                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{catDone}/{count}</span>
               </ChipToggle>
             )
           })}
@@ -922,7 +922,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
                       εικονοστοιχεία πιο κάτω, η μπάρα προόδου ΕΙΝΑΙ το ίδιο
                       ποσοστό, σχεδιασμένο. Μένει ο αριθμός των εργασιών, που η
                       μπάρα δεν τον δίνει, μαζί με το κόστος. */}
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0 }}>{catDone}/{catItems.length}{catEst > 0 ? ` · ${fe(catEst)}` : ''}</span>
+                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0 }}>{catDone}/{catItems.length}{catEst > 0 ? ` · ${fe(catEst)}` : ''}</span>
                 </div>
                 {/* Η ΜΠΑΡΑ ΤΗΣ ΚΑΤΗΓΟΡΙΑΣ ΕΦΥΓΕ. Τρία εικονοστοιχεία ύψος για να
                     ειπωθεί ξανά το «1/3» που κάθεται έξι εικονοστοιχεία από

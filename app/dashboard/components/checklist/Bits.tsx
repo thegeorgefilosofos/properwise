@@ -178,7 +178,7 @@ export function CommentsEditor({ comments, onChange }: { comments: Comment[]; on
         {comments.length === 0 && <EmptyState icon={<MessageSquare size={20} />} title="Κανένα σχόλιο ακόμη" hint="Γράψε σημείωση για να κρατήσεις το ιστορικό της εκκρεμότητας." />}
         {comments.map(c => (
           <div key={c.id} style={{ background: 'var(--bg-surface)', borderRadius: T.radius.inner, padding: '10px 14px', border: '1px solid var(--border-subtle)', position: 'relative' }}>
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 4, fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{new Date(c.ts).toLocaleString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 4, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{new Date(c.ts).toLocaleString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
             <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 1.5, paddingRight: 20 }}>{c.text}</div>
             {/* Η τοποθέτηση έρχεται απ' έξω: το κοινό εικονοκούμπι δίνει το σχήμα
                 του στόχου αφής, όχι τη θέση του μέσα στην κάρτα. */}

@@ -1,5 +1,6 @@
 'use client'
 
+import { formatNavHash } from '@/lib/nav/history'
 import { useState, useCallback, useMemo } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import * as tenantStore from '@/lib/data/tenants'
@@ -953,7 +954,12 @@ export default function TabInventory({propertyId,userId,profileType='individual'
              λέβητα ή ένα κλιματιστικό να καταγράψει τώρα δεν έχει λόγο να
              περάσει πρώτα από την καρτέλα ενοικιαστή. Το πρώτο αντικείμενο
              ανοίγει την απογραφή, οπότε ο δρόμος λέγεται εδώ που ρωτιέται. */
-          action={<Btn onClick={()=>{setEditingItem(null);setFormManual(true);setShowItemForm(true)}}>Πρόσθεσε ένα αντικείμενο</Btn>}
+          page
+          points={['Αξία και εγγύηση κάθε αντικειμένου', 'Επισκευές και κατανάλωση ρεύματος', 'Πρωτόκολλο παράδοσης στον ενοικιαστή']}
+          action={<>
+            {status==='rent_long' && <Btn variant="primary" onClick={()=>{ window.location.hash = formatNavHash({ tab:'tenant', propertyId }) }}>Άνοιξε τον Ενοικιαστή</Btn>}
+            <Btn onClick={()=>{setEditingItem(null);setFormManual(true);setShowItemForm(true)}}>Πρόσθεσε ένα αντικείμενο</Btn>
+          </>}
         />
       )}
 
