@@ -349,7 +349,17 @@ for (const w of PLAN_WIDTHS) {
   // Ο ΔΙΑΚΟΠΤΗΣ ΔΕΙΧΝΕΙ ΤΙ ΕΙΝΑΙ ΕΠΙΛΕΓΜΕΝΟ. Το χρώμα κρέμεται από επιλογέα
   // αδελφού (`:checked ~ * .pc-seg`)· μια αλλαγή στη δομή της κάρτας τον έσπασε
   // μία φορά σιωπηλά και η επιλογή «Με τη Νόα» δεν φωτιζόταν.
-  const segBg = () => p.evaluate(() => getComputedStyle(document.querySelector('label[for="pc-noa-on"]')).backgroundColor)
+  //
+  // ΚΑΙ ΔΙΑΒΑΖΕΤΑΙ ΕΝΩ ΦΑΙΝΕΤΑΙ. Η ενότητα των πακέτων έχει
+  // `content-visibility: auto`: έξω από την οθόνη ο περιηγητής του CI δεν
+  // υπολογίζει το στυλ της και το χρώμα έμενε «διάφανο» πριν και μετά,
+  // ενώ ο διακόπτης δούλευε (η στοίχιση της θέσης «Με τη Νόα» περνούσε στην
+  // ίδια εκτέλεση). Κύλιση ώς την κάρτα και δύο καρέ, όπως τη βλέπει ο χρήστης.
+  const segBg = async () => {
+    await p.locator('.pc-card').scrollIntoViewIfNeeded()
+    await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
+    return p.evaluate(() => getComputedStyle(document.querySelector('label[for="pc-noa-on"]')).backgroundColor)
+  }
   const bgOff = await segBg()
   await p.evaluate(() => document.getElementById('pc-noa-on')?.click())
   const on = await measure()
@@ -357,11 +367,17 @@ for (const w of PLAN_WIDTHS) {
     // Η ετικέτα αλλάζει χρώμα με μετάβαση. Σταθερή αναμονή δεν αρκεί: στο CI
     // στα 1280 τα 450ms βρήκαν ακόμη το διάφανο. Περιμένουμε ώσπου το χρώμα να
     // φύγει από την αρχική του τιμή, ως 3 δευτερόλεπτα.
+    await p.locator('.pc-card').scrollIntoViewIfNeeded()
     await p.waitForFunction((before) =>
       getComputedStyle(document.querySelector('label[for="pc-noa-on"]')).backgroundColor !== before,
       bgOff, { timeout: 3000 }).catch(() => {})
     const bgOn = await segBg()
-    ok(`ο διακόπτης «Με τη Νόα» φωτίζεται όταν επιλεγεί (${w})`, bgOn !== bgOff, `${bgOff} → ${bgOn}`)
+    // Αν κοπεί, το μήνυμα λέει ΓΙΑΤΙ: επιλέχθηκε το κουμπί; φαίνεται η κάρτα;
+    const why = await p.evaluate(() => {
+      const r = document.querySelector('.pc-card').getBoundingClientRect()
+      return `checked=${document.getElementById('pc-noa-on').checked} top=${Math.round(r.top)} innerHeight=${innerHeight}`
+    })
+    ok(`ο διακόπτης «Με τη Νόα» φωτίζεται όταν επιλεγεί (${w})`, bgOn !== bgOff, `${bgOff} → ${bgOn} · ${why}`)
   }
   const r = off && on ? (on.worst > off.worst ? { ...on, what: `${on.what} (με Νόα)` } : off) : null
   ok(`τα πακέτα ζυγίζουν στα ${w} (${r?.rows} ${r?.rows === 1 ? 'σειρά' : 'σειρές'})`,
