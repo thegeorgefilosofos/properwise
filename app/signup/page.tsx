@@ -489,7 +489,7 @@ export default function SignupPage() {
       {/* ── ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΕΙΝΑΙ <main>, ΚΑΙ ΛΕΓΕΤΑΙ ─────────────────────────
           Μετρημένο: καμία περιοχή στο προσβάσιμο δέντρο, ούτε ένα <main>. */}
       <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
-        <div style={{ width: '100%', maxWidth: 400 }}>
+        <div className="auth-form">
           <AuthMobileBrand />
           {needsConsent ? (
             /* Ηρθε από τη σύνδεση με Google, ο λογαριασμός δημιουργήθηκε και οι

@@ -62,7 +62,15 @@ export default function AuthAside({
         <BrandLogo size={28} style={{ color: '#fff' }} />
       </div>
 
-      {/* headline + sub */}
+      {/* ═══ ΤΟ ΣΩΜΑ ΤΟΥ ΠΑΝΕΛ, ΚΕΝΤΡΑΡΙΣΜΕΝΟ ΟΠΩΣ Η ΦΟΡΜΑ ════════════════════
+          Σε 1920 × 950 η επικεφαλίδα καθόταν στα 147, κολλημένη στο λογότυπο,
+          τα τρία σημεία τελείωναν στα 500 και το κάτω μισό του πάνελ έμενε
+          άδειο. Η φόρμα δίπλα του κεντράρεται κάθετα, οπότε οι δύο στήλες
+          ξεκινούσαν σε άλλο ύψος. Επικεφαλίδα, υπότιτλος και σημεία γίνονται
+          μία ομάδα στο κέντρο του ύψους, με μέτρο 600: λογότυπο πάνω,
+          υποσημείωση κάτω, όπως πριν. Τα μεγέθη ζουν στο globals.css
+          (`.auth-aside-*`), για να μεγαλώνουν στη μεγάλη οθόνη. */}
+      <div className="auth-aside-body">
       <div style={{ position: 'relative', marginBottom: 40 }}>
         {/* Διακοσμητική marketing επικεφαλίδα (όχι page heading): το h1 της σελίδας
             είναι η φόρμα δεξιά, ώστε να υπάρχει έγκυρο h1 και όταν το aside κρύβεται σε κινητό. */}
@@ -85,7 +93,7 @@ export default function AuthAside({
             γραμμές παντού: 880 → 22,3 σε πάνελ 304 · 1024 → 27,1 σε 365 ·
             1280 → 35,7 σε 480 · 1440 και πάνω → 38, το ίδιο ταβάνι που είχε.
             Το δάπεδο στα 20 δεν το πιάνει καμία οθόνη όπου φαίνεται το πάνελ. */}
-        <div style={{ fontSize: 'clamp(20px, calc(3.35vw - 7.2px), 38px)', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.12, margin: '0 0 18px', color: '#fff' }}>
+        <div className="auth-aside-h" style={{ fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.12, margin: '0 0 18px', color: '#fff' }}>
           {headline}<br /><span style={{ color: '#8ab4f8' }}>{accent}</span>
         </div>
         {/* ═══ ΤΟ ΚΕΙΜΕΝΟ ΣΤΑΜΑΤΟΥΣΕ ΣΤΗ ΜΕΣΗ ΤΟΥ ΠΑΝΕΛ ══════════════════════
@@ -100,24 +108,25 @@ export default function AuthAside({
             δίνει το ίδιο το πάνελ, όπως σε κάθε άλλη γραμμή εδώ μέσα. Και
             επειδή η γραμμή γίνεται μακρύτερη, το μέγεθος ανεβαίνει 14 → 15:
             μακρύ μέτρο με μικρά γράμματα είναι το μόνο που όντως κουράζει. */}
-        <p style={{ fontSize: 15, color: 'rgba(255,255,255,.66)', lineHeight: 1.65, margin: 0 }}>{sub}</p>
+        <p className="auth-aside-sub" style={{ color: 'rgba(255,255,255,.7)', lineHeight: 1.65, margin: 0, textWrap: 'pretty' }}>{sub}</p>
       </div>
 
       {/* three supporting bullets */}
-      <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div className="auth-aside-pillars" style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
         {pillars.map((p, i) => (
           <div key={i} style={{ display: 'grid', gridTemplateColumns: '22px 1fr', gap: 14, alignItems: 'start' }}>
             <span className="po-lead-ico" style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(138,180,248,.12)', border: '1px solid rgba(138,180,248,.32)', color: '#8ab4f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check /></span>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: '0 0 5px', letterSpacing: '-0.01em' }}>{p.label}</p>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,.58)', margin: 0, lineHeight: 1.65 }}>{p.text}</p>
+              <p className="auth-aside-pl" style={{ fontWeight: 700, color: '#fff', margin: '0 0 5px', letterSpacing: '-0.01em' }}>{p.label}</p>
+              <p className="auth-aside-pt" style={{ color: 'rgba(255,255,255,.66)', margin: 0, lineHeight: 1.65, textWrap: 'pretty' }}>{p.text}</p>
             </div>
           </div>
         ))}
       </div>
+      </div>
 
       {/* pricing footnote */}
-      <div style={{ position: 'relative', marginTop: 40, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,.1)', display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+      <div className="auth-aside-foot" style={{ position: 'relative', marginTop: 40, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,.1)', display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
         {/* ΔΥΟ ΒΑΘΜΙΔΕΣ, ΟΠΩΣ ΠΑΝΤΟΥ ΑΛΛΟΥ: η υπόσχεση με έμφαση, το πρακτικό
             δίπλα της σε δεύτερο τόνο. Το πρακτικό ήταν «Έτοιμο σε ένα λεπτό»
             σε κάθε οθόνη: χρόνος που δεν μετρήθηκε ποτέ, γραμμένος και στην
