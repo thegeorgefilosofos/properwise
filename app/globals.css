@@ -4966,26 +4966,51 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-sp-card dt:first-child { margin-top: 0; }
 .lg-sp-card dd { margin: 0; color: var(--text-secondary); line-height: 1.55; }
 
-/* ═══ ΜΕΓΑΛΗ ΟΘΟΝΗ: ΤΟ ΕΥΡΕΤΗΡΙΟ ΓΙΝΕΤΑΙ ΔΕΞΙΑ ΣΤΗΛΗ ════════════════════════
-   ΤΙ ΕΒΛΕΠΕ ΚΑΝΕΙΣ ΣΕ 24 ΚΑΙ 28 ΙΝΤΣΕΣ. Στα 1920 το μέτρο των 1044 κεντράρεται
-   και το κείμενο των 680 κάθεται στην αριστερή του άκρη: το δεξί τρίτο έμενε
-   άδειο, ενώ η κεφαλίδα και το ευρετήριο από πάνω έφταναν ως την άκρη. Δύο
-   δεξιές άκρες στην ίδια οθόνη.
+/* Ο ΟΔΗΓΟΣ ΤΗΣ ΑΝΑΛΥΣΗΣ (ToolLedger): η διάστικτη γραμμή ανάμεσα σε ετικέτα
+   και ποσό. Κάθεται στη γραμμή βάσης της ΠΡΩΤΗΣ σειράς (ύψος μηδέν, στοίχιση
+   baseline), ώστε όταν η ετικέτα έχει και δεύτερη σειρά να δείχνει το ποσό και
+   όχι την υποσημείωση. Υποχωρεί στο χρώμα των περιγραμμάτων· στο κινητό, όπου
+   ετικέτα και ποσό είναι ήδη κοντά, φεύγει. */
+.po-ledger-lead { flex: 1 1 24px; min-width: 24px; height: 0; align-self: baseline;
+  border-bottom: 1px dotted var(--border-default); }
+@media (max-width: 560px) { .po-ledger-lead { display: none; } }
 
-   ΓΙΑΤΙ ΤΩΡΑ ΣΤΕΚΕΙ Ο,ΤΙ ΠΑΛΙΑ ΔΕΝ ΣΤΕΚΟΤΑΝ. Το πλαϊνό ευρετήριο έφυγε κάποτε
-   επειδή έτρωγε το μέτρο (βλ. `.lg-grid`): σε στενότερη οθόνη το κείμενο έπεφτε
-   στους 55 χαρακτήρες. Εδώ ενεργοποιείται μόνο από τα 1200, όπου το μέτρο είναι
-   πάντα ολόκληρο: 1044 μείον 272 της στήλης μείον 56 του κενού αφήνουν 716,
-   δηλαδή περισσότερα από τα 680 του κειμένου. Καμία γραμμή δεν αλλάζει μήκος.
+/* ═══ ΜΙΑ ΔΕΞΙΑ ΑΚΡΗ, ΚΑΙ Η ΣΤΗΛΗ ΤΟΥ ΕΥΡΕΤΗΡΙΟΥ ΣΤΗΝ ΑΝΟΙΧΤΗ ΟΘΟΝΗ ═══════════
+   ΤΙ ΕΒΛΕΠΕ ΚΑΝΕΙΣ. Στο «Ποιοι είμαστε» σε 1920 ο πίνακας των διευθύνσεων
+   έκλεινε στα 716 και το πλαίσιο από κάτω του στα 680. Ο πίνακας των παρόχων
+   ζητούσε 720 σε στήλη 714 και έβγαζε μπάρα κύλισης για τέσσερα
+   εικονοστοιχεία. Κάτω από τα 1200 η στήλη ξανάνοιγε στα 1044 και το κείμενο
+   σταματούσε 250 πιο μέσα από τους πίνακες. Δύο δεξιές άκρες στην ίδια οθόνη
+   διαβάζονται ως αζύγιστο, όποια κι αν είναι η πρόθεση.
 
+   Ο ΚΑΝΟΝΑΣ. Το μέτρο μπαίνει στη ΣΤΗΛΗ, όχι σε κάθε κομμάτι της. Κείμενο,
+   λίστες, πλαίσια, πίνακες, εισαγωγή και σειρά αδελφών σελίδων γεμίζουν τη
+   στήλη και κλείνουν στο ίδιο σημείο:
+     · από 1200: 1044 − 272 στήλη ευρετηρίου − 56 κενό = 716 (≈ 89 χαρακτήρες
+       στα 15, όσο ήταν ο αρχικός σχεδιασμός των 712),
+     · 1024–1199: στήλη ευρετηρίου 220 με κενό 40, οπότε 668 ως 744,
+     · 641–1023: χωρίς ευρετήριο στο πλάι, στήλη ως 760,
+     · ως 640: όλο το πλάτος.
    Το ευρετήριο μένει καρφωμένο όσο κυλάς, με την ενότητα που διαβάζεις
    σημειωμένη (`TocSpy`). Στο χαρτί δεν υπάρχει: ο κανόνας είναι μόνο οθόνης. */
+:root { --rail: 0px; --rail-gap: 0px; }
+.lg-grid > .lg-body, .lg-head, .gd { --lg-measure: 100%; }
+.gd { max-width: 720px; }
+.gd .lg-p, .gd .lg-ul, .gd .lg-toc, .gd-table { max-width: none; }
 .gd-rail { display: none; }
-@media screen and (min-width: 1200px) {
+@media screen and (min-width: 641px) and (max-width: 1023px) {
+  .lg-head, .lg-grid { max-width: 760px; }
+}
+@media screen and (min-width: 1024px) {
+  :root { --rail: 220px; --rail-gap: 40px; }
   .lg-grid, .gd-layout {
-    display: grid; grid-template-columns: minmax(0, 1fr) 272px; column-gap: 56px; align-items: start;
+    display: grid; grid-template-columns: minmax(0, 1fr) var(--rail); column-gap: var(--rail-gap); align-items: start;
   }
+  /* Η εισαγωγή κάθεται πάνω από τη στήλη του κειμένου, όχι πάνω από όλο το
+     μέτρο: κλείνει εκεί που κλείνει και το κείμενο από κάτω της. */
+  .lg-head .lg-lede, .lg-head .lg-version { max-width: calc(100% - var(--rail) - var(--rail-gap)); }
   .lg-grid > .lg-body, .gd-layout > .gd { grid-column: 1; grid-row: 1; }
+  .gd-layout > .gd { max-width: none; }
   .lg-grid > .lg-toc, .gd-layout > .gd-rail {
     grid-column: 2; grid-row: 1; margin: 0;
     position: sticky; top: 24px; max-height: calc(100dvh - 48px); overflow-y: auto;
@@ -5010,6 +5035,9 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
     font-size: 14px; font-weight: 700; text-decoration: none;
   }
 }
+@media screen and (min-width: 1200px) {
+  :root { --rail: 272px; --rail-gap: 56px; }
+}
 @media (prefers-reduced-motion: reduce) { .lg-toc-list a { transition: none; } }
 
 @media (max-width: 640px) {
@@ -5023,19 +5051,16 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    τόνος, πλήρης στοίχιση. Σε κείμενο που διαβάζεται από την αρχή ως το τέλος
    αυτό έδινε ~95 χαρακτήρες ανά γραμμή στα 820, ποτάμια κενού στα 1440 και
    πέντε κομμένες λέξεις στην πρώτη οθόνη του κινητού. Εδώ: αριστερή στοίχιση
-   χωρίς συλλαβισμό, σώμα κοντά στο πρώτο χρώμα, μέτρο ~66 χαρακτήρων. Οι
-   πίνακες και οι σημειώσεις κρατούν το πλάτος της στήλης. Τα `.gd-*` ζουν
+   χωρίς συλλαβισμό, σώμα κοντά στο πρώτο χρώμα. Το μέτρο είναι η ίδια η
+   στήλη (βλ. «ΜΙΑ ΔΕΞΙΑ ΑΚΡΗ»): κείμενο, πίνακες και σημειώσεις κλείνουν μαζί. Τα `.gd-*` ζουν
    μόνο μέσα στο GuideMain (app/odigos/GuideParts.tsx). */
 .gd .lg-p, .gd .lg-ul li {
   font-size: 16px; line-height: 1.65; text-align: start; hyphens: none; text-wrap: pretty;
   color: color-mix(in srgb, var(--text-primary) 90%, transparent);
 }
-.gd .lg-p, .gd .lg-ul { max-width: 66ch; }
 .gd .lg-note { text-align: start; hyphens: none; }
 .gd .po-tool-sources .lg-ul li { font-size: 14px; color: var(--text-secondary); }
 @media (min-width: 768px) { .gd .lg-p, .gd .lg-ul li { font-size: 17px; } }
-.gd .lg-toc { max-width: 66ch; }
-.gd-table { max-width: 480px; }
 /* Η ΖΕΒΡΑ ΠΕΡΝΑ ΑΠΟ ΤΟ `--row-bg`, ΟΧΙ ΑΠΟ ΤΟ `background`. Γραμμένη ως
    `background` στα κελιά, έχανε από τον κανόνα της καρφωμένης πρώτης στήλης
    (`.po-scroll-x .po-table tbody th[scope="row"]`, ίδια εξειδίκευση, πιο κάτω

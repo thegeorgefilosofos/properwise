@@ -14,7 +14,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { SITE, siteUrl, PRODUCT_NAME } from '@/lib/core/site';
 import { monthGen } from '@/lib/core/months';
 import { T } from '@/components/tokens';
-import { SectionHead, WRAP, WRAP_PAD, READING } from '../PublicChrome';
+import { SectionHead, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
 import { TocSpy } from '../TocSpy';
 import { GUIDES, guideShareImageUrl, type Guide } from './guides';
@@ -39,15 +39,16 @@ export const LINK_STYLE = {
 /**
  * Η ΣΤΗΛΗ ΤΟΥ ΟΔΗΓΟΥ ΕΧΕΙ ΜΕΤΡΟ ΑΝΑΓΝΩΣΗΣ. Στα 1440 το κείμενο έπιανε όλο το
  * 1044 του WRAP, περίπου 150 χαρακτήρες ανά γραμμή. Η σελίδα κρατά το WRAP,
- * ώστε η επιστροφή να στέκεται κάτω από το λογότυπο· η στήλη σταματά στο READING
- * και οι παράγραφοι μέσα της στο δικό τους μέτρο (`.gd`, globals.css).
+ * ώστε η επιστροφή να στέκεται κάτω από το λογότυπο. Η στήλη `.gd` είναι το
+ * μέτρο (720, ή ό,τι αφήνει η δεξιά στήλη) και ό,τι είναι μέσα της κλείνει
+ * στην ίδια δεξιά άκρη (globals.css, «ΜΙΑ ΔΕΞΙΑ ΑΚΡΗ»).
  */
 export function GuideMain({ children, rail }: { children: ReactNode; rail?: GuideRailProps }) {
   return (
     <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
       <div className="gd-layout">
         {rail && <GuideRail {...rail} />}
-        <div className="gd" style={{ maxWidth: READING }}>
+        <div className="gd">
           <BackLink parent={HUB} />
           {children}
         </div>
