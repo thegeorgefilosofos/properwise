@@ -468,6 +468,13 @@ function useChecklistAlerts(propertyId: string | null) {
 // Μία λέξη το λύνει: εξάγεται, ο πάγκος τη στήνει με τα δικά του δεδομένα και
 // από εδώ και πέρα περνά κι αυτή από τους δώδεκα ελέγχους διάταξης και από τον
 // έλεγχο προσβασιμότητας, όπως κάθε άλλη οθόνη.
+/** Αν ένα βήμα ρύθμισης έχει νόημα για την κατάσταση του ακινήτου. */
+function stepFitsProperty(key: string, prop: Property): boolean {
+  if (key === 'tenant') return !isShortTerm(prop);
+  if (key === 'pricing') return isShortTerm(prop);
+  return true;
+}
+
 export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, profileType = 'individual', legalForm = 'individual' }: { prop: Property;
   /** ΟΛΑ τα ακίνητα του χρήστη — χρειάζονται για τον φόρο: η κλίμακα των ενοικίων
    *  είναι προοδευτική στο σύνολο του φορολογούμενου, όχι ανά ακίνητο. */
@@ -925,7 +932,14 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     { key:'inv',     weight:2, label:'Ξεκίνα την απογραφή', hint:'Εξοπλισμός, εγγυήσεις και αποσβέσεις', done: inv.length>0, nav:'inventory' },
     // Βήμα που δείχνει σε καρτέλα η οποία δεν αφορά τον χρήστη είναι νεκρός
     // σύνδεσμος: το πάτημα θα τον γύριζε στην Επισκόπηση.
-  ] as SetupStep[]).filter(s => tabVisible(s.nav));
+    //
+    // ΚΑΙ ΒΗΜΑ ΠΟΥ ΔΕΝ ΑΦΟΡΑ ΑΥΤΟ ΤΟ ΑΚΙΝΗΤΟ. Το `tabVisible` κρίνει όλο το
+    // χαρτοφυλάκιο: με ένα μακροχρόνιο κι ένα Airbnb φαίνονται και οι δύο
+    // καρτέλες. Ετσι το Airbnb έβλεπε δεύτερο σε βαρύτητα «Πρόσθεσε
+    // ενοικιαστή», για ακίνητο που δεν έχει ενοικιαστή και δεν θα αποκτήσει,
+    // και το μακροχρόνιο «τιμή ανά νύχτα». Τα βήματα ρύθμισης είναι του
+    // ΕΠΙΛΕΓΜΕΝΟΥ ακινήτου, οπότε ρωτούν και την κατάστασή του.
+  ] as SetupStep[]).filter(s => tabVisible(s.nav) && stepFitsProperty(s.key, prop));
 
   // ── ΜΙΑ ΛΙΣΤΑ, ΟΧΙ ΤΕΣΣΕΡΙΣ ──────────────────────────────────────────────
   // Πριν, αυτή η οθόνη σέρβιρε τέσσερις ανεξάρτητες μηχανές συμβουλής τη μία

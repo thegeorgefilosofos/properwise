@@ -6,6 +6,7 @@ import { T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { normalizeVerifyCode } from '@/lib/documents/verifyCode';
 
 export default function VerifyLookup() {
   const router = useRouter();
@@ -14,9 +15,9 @@ export default function VerifyLookup() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Κενά και πεζά της πληκτρολόγησης δεν αλλάζουν τον κωδικό: η γεννήτρια
-    // (lib/documents/issue.ts) γράφει μόνο κεφαλαία και ψηφία.
-    const id = code.replace(/\s+/g, '').toUpperCase();
+    // Κενά, πεζά, ελληνικό «ΡΟ» και «P0» δεν αλλάζουν τον κωδικό
+    // (lib/documents/verifyCode.ts).
+    const id = normalizeVerifyCode(code);
     if (!id) { setError('Γράψε τον κωδικό όπως είναι τυπωμένος στο έγγραφο.'); return; }
     router.push(`/verify/${encodeURIComponent(id)}`);
   };

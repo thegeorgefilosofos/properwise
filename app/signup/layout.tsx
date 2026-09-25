@@ -35,5 +35,6 @@ export function generateMetadata(): Metadata {
 // ΚΑΙ Η ΦΟΡΜΑ ΜΑΘΑΙΝΕΙ ΑΠΟ ΕΔΩ ΑΝ ΧΡΕΩΝΟΥΜΕ, για τον ίδιο λόγο (βλ. PlanTerms.tsx).
 // Χωρίς αυτό η περιγραφή έλεγε «καμία χρέωση» και η σελίδα «Ετήσια χρέωση».
 export default function SignupLayout({ children }: { children: ReactNode }) {
-  return <PlanTermsProvider value={billingWords().signupPlanTerms}>{children}</PlanTermsProvider>;
+  const words = billingWords();
+  return <PlanTermsProvider value={{ planTerms: words.signupPlanTerms, trialCard: words.trialCard }}>{children}</PlanTermsProvider>;
 }

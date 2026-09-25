@@ -23,8 +23,8 @@ export default function VerifyPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.lg, borderBottom: '1px solid var(--border-subtle)' }}>
           <BrandMark size={34} />
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>PROPERWISE</div>
-            <h1 style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, margin: 0 }}>Επαλήθευση γνησιότητας εγγράφου</h1>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>PROPERWISE</div>
+            <h1 style={{ fontSize: 16, color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3, margin: '2px 0 0', textWrap: 'balance' }}>Επαλήθευση γνησιότητας εγγράφου</h1>
           </div>
         </div>
 

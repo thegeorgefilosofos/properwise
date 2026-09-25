@@ -6,6 +6,7 @@ import { authClient } from '@/lib/supabase/lazy';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
 import AuthAside, { AuthMobileBrand } from '../AuthAside'
+import PasswordEye from '../PasswordEye'
 import GoogleG from '../GoogleG'
 import { BackLink } from '../BackLink'
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
@@ -19,7 +20,7 @@ import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
 import { isReferralCode } from '@/lib/referral/referral';
 import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
-import { usePlanTerms } from './PlanTerms'
+import { usePlanTerms, useTrialCard } from './PlanTerms'
 
 // Η έκδοση των Όρων που δέχεται ο χρήστης. Ήταν καρφωτή εδώ ως «2026-07», ενώ
 // οι δύο σελίδες που υπογράφει γράφουν «Αύγουστος 2026»: η απόδειξη
@@ -85,6 +86,7 @@ function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams): Record<s
 export default function SignupPage() {
   // Από το billingWords, στον διακομιστή (layout.tsx): `null` όσο το ταμείο χρεώνει.
   const planTerms = usePlanTerms()
+  const trialCard = useTrialCard()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -549,6 +551,11 @@ export default function SignupPage() {
                   σύνδεσμος. */}
               <BackLink home />
               <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 6px' }}>Δημιουργία λογαριασμού</h1>
+              {/* Η δοκιμή και τι σημαίνει για την κάρτα, εδώ και όχι μόνο στο
+                  πάνελ, που κρύβεται στο κινητό. */}
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                Δοκιμή {TRIAL_DAYS} ημερών{trialCard ? ` · ${trialCard}` : ''}
+              </p>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px' }}>
                 Έχεις ήδη λογαριασμό;{' '}
                 <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
@@ -690,14 +697,7 @@ export default function SignupPage() {
                   <label htmlFor="su-password" style={label}>Κωδικός</label>
                   <div style={{ position: 'relative' }}>
                     <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_LABEL} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
-                    {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το IconBtn δεν περνά `aria-pressed`, οπότε
-                        ο αναγνώστης οθόνης θα έχανε την κατάσταση του ματιού. */}
-                    <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Απόκρυψη κωδικού' : 'Εμφάνιση κωδικού'} aria-pressed={show}
-                      style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {show
-                        ? <svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
-                        : <svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.9 17.9A10.7 10.7 0 0 1 12 19c-6.5 0-10-7-10-7a19 19 0 0 1 5.1-5.9M9.9 4.2A10.9 10.9 0 0 1 12 4c6.5 0 10 7 10 7a19 19 0 0 1-2.2 3.2M1 1l22 22M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>}
-                    </button>
+                    <PasswordEye show={show} onToggle={() => setShow(s => !s)} />
                   </div>
 
                   {/* Μετρητής ισχύος + λίστα προϋποθέσεων (κοινό component) —
