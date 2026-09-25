@@ -1826,7 +1826,7 @@ function PlanCard({ planId, name, nameColor, sub, price, per, note, annual, inhe
           στη βάση του μεγάλου ποσού αντί να αιωρείται στο κέντρο του.
 
           Το `nowrap` είναι απαραίτητο, όχι διακοσμητικό: χωρίς αυτό το «τον
-          μήνα» έπεφτε κάτω από το «24,90€» και «79,90€» —τα δύο μεγαλύτερα
+          μήνα» έπεφτε κάτω από το «29,90€» και «79,90€» —τα δύο μεγαλύτερα
           ποσά— και οι λίστες ξεκινούσαν σε διαφορετικό ύψος σε κάθε κάρτα. */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
         <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'clamp(24px, 2.4vw, 29px)', fontWeight: 680, letterSpacing: '-0.03em', color: TEXT, lineHeight: 1.1 }}>{price}</span>

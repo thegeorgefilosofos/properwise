@@ -14,7 +14,7 @@ import {
   aiLimitsFor, remainingLine, dailyExhaustedMessage, monthlyExhaustedMessage,
   poolExhaustedMessage, COST_PER_REQUEST_USD, COST_PER_REQUEST_EUR, FREE_BUDGET_USD, TESTER_LIMITS,
   FREE_POOL_PER_MONTH, FREE_TESTERS_PER_MONTH, dailyLimitsByRank, monthlyLimitsByRank, PLAN_RANK_ORDER,
-  MAX_PER_MINUTE, AI_SHARE, monthlyQuestionBudget, roundQuestions, TRIAL_LIMITS, effectiveAiLimits,
+  MAX_PER_MINUTE, AI_SHARE, monthlyQuestionBudget, roundQuestions, limitFromBudget, TRIAL_LIMITS, effectiveAiLimits,
 } from './aiLimits'
 import { PLANS, PLAN_ORDER, type PlanId } from './plans'
 
@@ -112,7 +112,7 @@ const FREE_USERS_TARGET = 10
     // Το ΟΡΙΟ που ισχύει είναι το ταβάνι στρογγυλεμένο (20, 60, 150, 500) και
     // η στρογγύλευση δεν το περνά πάνω από 5%.
     ok(`${id}: το όριο είναι ο προϋπολογισμός στρογγυλεμένος`,
-      l.perMonth === roundQuestions(monthlyQuestionBudget(id, 'monthly')))
+      l.perMonth === limitFromBudget(monthlyQuestionBudget(id, 'monthly')))
     ok(`${id}: η στρογγύλευση περνά το 20% το πολύ κατά 5%`,
       l.perMonth * COST_PER_REQUEST_EUR <= cap * 1.05)
 
@@ -302,6 +302,8 @@ ok('τα όρια του μήνα είναι 20 / 60 / 150 / 500',
   (['solo', 'owner', 'agency', 'office'] as PlanId[]).map(p => aiLimitsFor(p).perMonth).join('/') === '20/60/150/500')
 ok('στρογγύλευση: μονοψήφιο μένει, δεκάδα, πεντηκοντάδα',
   [7, 23, 59, 125, 150, 167, 483].map(roundQuestions).join(',') === '7,20,60,150,150,150,500')
+ok('το στρογγύλο όριο δεν περνά τον προϋπολογισμό πάνω από 5%: 180 γίνεται 150, όχι 200',
+  [23, 59, 180, 483].map(limitFromBudget).join(',') === '20,60,150,500')
 
 console.log(`aiLimits.test.ts: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

@@ -251,9 +251,21 @@ export const FREE_BUDGET_USD = Math.ceil(FREE_POOL_PER_MONTH * BLENDED_COST_USD)
 export const roundQuestions = (n: number): number =>
   n < 10 ? n : n < 100 ? Math.round(n / 10) * 10 : Math.round(n / 50) * 50;
 
+// ΤΟ ΣΤΡΟΓΓΥΛΟ ΟΡΙΟ ΔΕΝ ΠΕΡΝΑ ΤΟ ΤΑΒΑΝΙ ΠΑΝΩ ΑΠΟ 5%. Με τον Επαγγελματία στα
+// 29,90€ (απόφαση ιδιοκτήτη, 25.09.2026) ο προϋπολογισμός βγαίνει 180 και ο
+// κοντινότερος στρογγυλός αριθμός είναι 200: 11% πάνω από το 20% της
+// συνδρομής. Τότε το όριο κατεβαίνει στο προηγούμενο σκαλί (150), που μένει
+// κάτω από το ταβάνι. Η ίδια απόφαση κρατά τα 20, 60, 150, 500 της σελίδας.
+export const limitFromBudget = (n: number): number => {
+  const r = roundQuestions(n);
+  if (r <= n * 1.05) return r;
+  const step = n < 100 ? 10 : 50;
+  return Math.floor(n / step) * step;
+};
+
 /** Τα όρια κάθε πλάνου, παραγμένα από τον κανόνα του προϋπολογισμού. */
 const LIMITS: Record<PlanId, AiLimits> = PLAN_ORDER.reduce((acc, id) => {
-  const perMonth = roundQuestions(monthlyQuestionBudget(id, 'monthly'));
+  const perMonth = limitFromBudget(monthlyQuestionBudget(id, 'monthly'));
   acc[id] = { perMinute: PER_MINUTE, perDay: roundQuestions(dailyFrom(perMonth)), perMonth };
   return acc;
 }, {} as Record<PlanId, AiLimits>);
