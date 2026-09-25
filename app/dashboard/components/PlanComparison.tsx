@@ -107,8 +107,10 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
           {/* Η αρχική σελίδα γράφει «ο βοηθός», γιατί ο επισκέπτης δεν ξέρει
               ακόμη το όνομα. Μέσα στην εφαρμογή το ξέρει και ο βοηθός έχει
               όνομα αντί για γένος (lib/assistant/identity.ts). */}
-          <span style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 700 }}>Κάθε πακέτο περιλαμβάνει {ASSISTANT_ACC}</span>
-          <span style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>Αλλάζει μόνο πόσες ερωτήσεις έχει το καθένα τον μήνα.</span>
+          {/* ΑΠΟ 25.09.2026: ο δωρεάν «Ιδιοκτήτης» δεν έχει τη Νόα· τα πακέτα
+              της σύγκρισης την έχουν όλα, με διαφορετικό πλήθος ερωτήσεων. */}
+          <span style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 700 }}>Όλα τα πακέτα εδώ περιλαμβάνουν {ASSISTANT_ACC}</span>
+          <span style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>Ο δωρεάν «{PLANS.free.name}» έχει τα φορολογικά χωρίς αυτήν.</span>
         </div>
 
         {/* ΠΕΝΤΕ ΓΝΩΣΤΕΣ ΣΤΗΛΕΣ, ΟΧΙ «ΟΣΕΣ ΧΩΡΑΝΕ». Με ελάχιστο 220 το auto-fit

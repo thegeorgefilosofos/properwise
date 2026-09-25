@@ -77,3 +77,19 @@ export async function refundAiUsage(userId: string, pool = true): Promise<boolea
     return false;
   }
 }
+
+/**
+ * Γυρίζει πίσω μία σάρωση στον μηνιαίο μετρητή του χρήστη.
+ *
+ * Ιδιοι λόγοι με την `refundAiUsage`: η `refund_scan_usage` ΜΕΙΩΝΕΙ, άρα
+ * εκτελείται μόνο με κλειδί υπηρεσίας και με ρητό χρήστη. Δεν πετά ποτέ.
+ */
+export async function refundScanUsage(userId: string): Promise<boolean> {
+  try {
+    return refundOutcome(await createServiceClient()
+      .rpc('refund_scan_usage', { p_uid: userId }));
+  } catch (err) {
+    console.error(REFUND_LOG, err instanceof Error ? err.message : err);
+    return false;
+  }
+}

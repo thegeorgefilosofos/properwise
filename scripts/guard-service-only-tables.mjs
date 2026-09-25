@@ -42,6 +42,9 @@ const SERVICE_ONLY = [
   // χρήστη από το auth.uid(). Ο περιηγητής δεν το αγγίζει ποτέ απευθείας.
   'product_events',
   'referrals',
+  // Μετρητής σαρώσεων ανά μήνα. Γράφεται ΜΟΝΟ μέσω των RPC bump_scan_usage
+  // και refund_scan_usage, από τη διαδρομή /api/anthropic.
+  'scan_usage',
   'send_quota',
   // Ποιον απαντήσαμε αυτόματα και πότε (reply_ack). Γράφεται ΜΟΝΟ μέσω της RPC
   // try_support_ack· είναι λίστα όσων επικοινώνησαν με την υποστήριξη και

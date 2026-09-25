@@ -1,8 +1,8 @@
 import { BrandLogo } from '@/components/BrandMark';
 import Link from 'next/link';
-import { PLANS, PLAN_ORDER, TRIAL_DAYS, RECOMMENDED_PLAN, TEAM_LINE, firstPlanWith } from '@/lib/billing/plans';
+import { PLANS, PLAN_ORDER, TRIAL_DAYS, RECOMMENDED_PLAN, TEAM_LINE, firstPlanWith, type PlanId } from '@/lib/billing/plans';
 import { FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
-import { aiLimitsFor } from '@/lib/billing/aiLimits';
+import { aiLimitsFor, SCAN_LIMITS } from '@/lib/billing/aiLimits';
 import { TRIAL_OFFER } from '@/lib/billing/trialOffer';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
@@ -155,14 +155,14 @@ function FaqList({ list }: { list: { q: string; a: string }[] }) {
 // ΟΙ «ΜΗΝΕΣ ΔΩΡΟ» ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΟΝ ΤΙΜΟΚΑΤΑΛΟΓΟ, ΔΕΝ ΓΡΑΦΟΝΤΑΙ ΣΤΟ ΧΕΡΙ.
 // Η ετήσια τιμή κάθε πακέτου είναι ήδη γραμμένη στο lib/billing/plans.ts, άρα
 // το πόσους μήνες γλιτώνει ο συνδρομητής ΕΙΝΑΙ αφαίρεση, όχι ισχυρισμός
-// μάρκετινγκ: 42,90 ÷ 3,90 = 11 μήνες για τον Ιδιοκτήτη, 99 ÷ 9,90 = 10 για
-// τον Ιδιοκτήτη+, το ίδιο για τα δύο επαγγελματικά. Δηλαδή ένας μήνας στο
+// μάρκετινγκ: 54,90 ÷ 4,99 = 11 μήνες για τον Ιδιοκτήτη με Νόα, 99 ÷ 9,90 = 10
+// για τον Ιδιοκτήτη+, το ίδιο για τα δύο επαγγελματικά. Δηλαδή ένας μήνας στο
 // φθηνότερο πακέτο και δύο στα υπόλοιπα τρία, οπότε το «ως δύο» είναι το
 // ακριβές μέγεθος. Αν αύριο αλλάξει μία ετήσια τιμή, η πρόταση αλλάζει μόνη
 // της· κανένας δεν χρειάζεται να θυμηθεί να ξαναγράψει τη σελίδα.
 //
-// ΚΑΙ ΔΕΝ ΛΕΓΕΤΑΙ «ΔΩΡΕΑΝ». Δωρεάν στο PROPERWISE είναι μόνο η δοκιμή και το
-// μπόνους συστάσεων. Η ετήσια συνδρομή δεν χαρίζει μήνες, χρεώνει λιγότερους:
+// ΚΑΙ ΔΕΝ ΛΕΓΕΤΑΙ «ΔΩΡΕΑΝ». Δωρεάν στο PROPERWISE είναι ο «Ιδιοκτήτης», η
+// δοκιμή και το μπόνους συστάσεων. Η ετήσια συνδρομή δεν χαρίζει μήνες, χρεώνει λιγότερους:
 // αυτό ακριβώς λέει και η πρόταση.
 const monthsSaved = PLAN_ORDER
   .filter(id => PLANS[id].priceMonthly > 0)
@@ -181,9 +181,11 @@ const FAQ = [
   // Η ΟΜΑΔΑ ΔΕΝ ΕΙΝΑΙ ΠΡΟΝΟΜΙΟ ΤΟΥ ΑΚΡΙΒΟΤΕΡΟΥ. Η απάντηση έγραφε «απεριόριστα
   // ακίνητα και χρήστες» δίπλα στην ακριβότερη τιμή, ενώ η ομάδα με ρόλους
   // ανοίγει ένα σκαλί νωρίτερα. Το πακέτο διαβάζεται από τη γραμμή του plans.ts.
-  { q: 'Πόσο κοστίζει;', a: `Τέσσερα πακέτα: από ${fe(PLANS.solo.priceMonthly)} τον μήνα για ένα ακίνητο, με τα φορολογικά και ${ASSISTANT_ACC} μέσα, ως ${fe(PLANS.office.priceMonthly)} τον μήνα για απεριόριστα ακίνητα. Ομάδα με ρόλους υπάρχει από το πακέτο «${PLANS[firstPlanWith(TEAM_LINE)].name}». Με ετήσια συνδρομή πληρώνεις έως ${monthsSaved} μήνες λιγότερους και το μηνιαίο κόστος μειώνεται.` },
+  // ΑΠΟ 25.09.2026 ΤΟ ΠΡΩΤΟ ΣΚΑΛΙ ΕΙΝΑΙ ΔΩΡΕΑΝ. Ο «Ιδιοκτήτης» έχει τα φορολογικά
+  // ενός ακινήτου χωρίς συνδρομή· ${ASSISTANT_NAME} είναι η προσθήκη που πληρώνεται.
+  { q: 'Πόσο κοστίζει;', a: `Τέσσερα πακέτα. Ο «${PLANS.free.name}» είναι δωρεάν για ένα ακίνητο, με όλα τα φορολογικά· με ${ASSISTANT_ACC}, τον ψηφιακό βοηθό, κοστίζει ${fe(PLANS.solo.priceMonthly)} τον μήνα. Τα μεγαλύτερα πακέτα φτάνουν ως ${fe(PLANS.office.priceMonthly)} τον μήνα για απεριόριστα ακίνητα. Ομάδα με ρόλους υπάρχει από το πακέτο «${PLANS[firstPlanWith(TEAM_LINE)].name}». Με ετήσια συνδρομή πληρώνεις έως ${monthsSaved} μήνες λιγότερους και το μηνιαίο κόστος μειώνεται.` },
   { q: 'Σε ποιους απευθύνεται;', a: 'Σε κάθε ιδιοκτήτη ακινήτου στην Ελλάδα, από τον ιδιώτη με ένα διαμέρισμα ως το μεσιτικό γραφείο που διαχειρίζεται χαρτοφυλάκιο τρίτων. Καλύπτει κατοικίες, επαγγελματικούς χώρους, αποθήκες και οικόπεδα, σε μακροχρόνια ή σε βραχυχρόνια μίσθωση.' },
-  { q: 'Πώς δουλεύει η σάρωση με φωτογραφία;', a: 'Φωτογραφίζεις λογαριασμό, μισθωτήριο, ασφαλιστήριο ή εκκαθαριστικό ΕΝΦΙΑ. Η εφαρμογή διαβάζει ποσό, πάροχο και προθεσμία και τα καταχωρεί στο σωστό ακίνητο. Βλέπεις πρώτα τι κατάλαβε και το διορθώνεις με ένα άγγιγμα: τίποτα δεν αποθηκεύεται χωρίς εσένα.' },
+  { q: 'Πώς δουλεύει η σάρωση με φωτογραφία;', a: `Φωτογραφίζεις λογαριασμό, μισθωτήριο, ασφαλιστήριο ή εκκαθαριστικό ΕΝΦΙΑ. Η εφαρμογή διαβάζει ποσό, πάροχο και προθεσμία και τα καταχωρεί στο σωστό ακίνητο. Βλέπεις πρώτα τι κατάλαβε και το διορθώνεις με ένα άγγιγμα: τίποτα δεν αποθηκεύεται χωρίς εσένα. Στο δωρεάν πακέτο έχεις ${SCAN_LIMITS.free} σαρώσεις τον μήνα, στα υπόλοιπα χωρίς όριο.` },
   { q: 'Αντικαθιστά τον λογιστή ή τον φοροτεχνικό μου;', a: 'Όχι, λειτουργεί υποστηρικτικά. Κρατά τις υποχρεώσεις και τις προθεσμίες σου ενήμερες όλον τον χρόνο, ώστε να φτάνεις στον λογιστή σου με τα στοιχεία έτοιμα προς εξαγωγή αντί να τα ψάχνεις τον Ιούνιο. Οι υπολογισμοί του είναι ενδεικτικοί, όχι δεσμευτικοί.' },
   { q: 'Είναι ασφαλή τα δεδομένα μου;', a: 'Η σύνδεση είναι πάντα κρυπτογραφημένη και κάθε λογαριασμός απομονώνεται σε επίπεδο βάσης: βλέπεις τα δικά σου δεδομένα και μόνο όσα εσύ μοιράζεσαι. Ο πάροχος AI δεσμεύεται με σύμβαση να μην εκπαιδεύει μοντέλα με τα έγγραφά σου. Η βάση και τα αρχεία φιλοξενούνται στη Φρανκφούρτη· ό,τι περνά εκτός ΕΕ το λέει η σελίδα «Ποιοι είμαστε».' },
   { q: `Μπορώ να μιλάω ${ASSISTANT_TO} στα ελληνικά;`, a: 'Ναι. Γράφει και καταλαβαίνει ελληνικά και σε Chrome ή Safari της μιλάς και σου διαβάζει τις απαντήσεις. Έχει μπροστά της τα δικά σου ακίνητα, δαπάνες και προθεσμίες· για νομικά και λογιστικά ζητήματα σε παραπέμπει στον κατάλληλο επαγγελματία.' },
@@ -200,7 +202,7 @@ const FAQ = [
   // αναγνώστη ούτε από κώδικα δεν μπαίνει σε απάντηση που ταξιδεύει ως FAQPage.
   // ΚΑΙ ΤΟ ΗΜΕΡΗΣΙΟ ΟΡΙΟ ΛΕΓΕΤΑΙ ΚΙ ΑΥΤΟ. Ο «Ιδιοκτήτης» έχει 23 τον μήνα αλλά
   // 8 την ημέρα (`dailyFrom`)· μέσα σε ένα απόγευμα δεσμεύει το δεύτερο.
-  { q: `Πόσες ερωτήσεις μπορώ να κάνω ${ASSISTANT_TO};`, a: `${ASSISTANT_NAME} περιλαμβάνεται σε κάθε πακέτο και αλλάζει μόνο το πλήθος των ερωτήσεων: από ${aiLimitsFor('solo').perMonth} τον μήνα (${PLANS.solo.name}) ως ${aiLimitsFor('office').perMonth} (${PLANS.office.name}), με ανανέωση την 1η κάθε μήνα. Κάθε μέρα χρησιμοποιείς έως το ένα τρίτο περίπου του μηνιαίου πακέτου, δηλαδή από ${aiLimitsFor('solo').perDay} ως ${aiLimitsFor('office').perDay} ερωτήσεις.` },
+  { q: `Πόσες ερωτήσεις μπορώ να κάνω ${ASSISTANT_TO};`, a: `${ASSISTANT_NAME} δεν περιλαμβάνεται στο δωρεάν πακέτο «${PLANS.free.name}». Στα υπόλοιπα αλλάζει μόνο το πλήθος των ερωτήσεων: από ${aiLimitsFor('solo').perMonth} τον μήνα (${PLANS.solo.name}) ως ${aiLimitsFor('office').perMonth} (${PLANS.office.name}), με ανανέωση την 1η κάθε μήνα. Κάθε μέρα χρησιμοποιείς έως το ένα τρίτο περίπου του μηνιαίου πακέτου, δηλαδή από ${aiLimitsFor('solo').perDay} ως ${aiLimitsFor('office').perDay} ερωτήσεις.` },
   // ΤΡΕΙΣ ΟΘΟΝΕΣ, ΤΡΕΙΣ ΑΠΑΝΤΗΣΕΙΣ, ΚΑΙ Η ΜΙΑ ΚΟΣΤΙΖΕ ΧΡΗΜΑΤΑ.
   // Εδώ γραφόταν «στη λήξη ξεκινά αυτόματα η συνδρομή, με την κάρτα που
   // δήλωσες στην εγγραφή». Οι Ρυθμίσεις έλεγαν «δεν ζητήσαμε κάρτα και δεν θα
@@ -362,14 +364,13 @@ const REFERRAL = [
   },
 ];
 
-// ΤΑ ΠΑΚΕΤΑ ΤΗΣ ΑΡΧΙΚΗΣ: μόνο όσα αγοράζονται.
+// ΤΑ ΠΑΚΕΤΑ ΤΗΣ ΑΡΧΙΚΗΣ: ΤΕΣΣΕΡΙΣ ΚΑΡΤΕΣ.
 //
-// ΔΕΝ ΥΠΑΡΧΕΙ ΔΩΡΕΑΝ ΠΑΚΕΤΟ, ΥΠΑΡΧΕΙ ΔΩΡΕΑΝ ΔΟΚΙΜΗ. Η σελίδα υποσχόταν «το
-// πρώτο ακίνητο δωρεάν για πάντα» και «μετά τη δοκιμή συνεχίζεις δωρεάν με ένα
-// ακίνητο». Δεν ισχύει: δωρεάν είναι οι τριάντα ημέρες και μετά το φθηνότερο
-// πακέτο είναι 3,90€ τον μήνα για ένα ακίνητο. Μια υπόσχεση που καταρρέει την
-// τριακοστή πρώτη ημέρα κοστίζει περισσότερο από όσους πελάτες φέρνει.
-const LANDING_PLANS = PLAN_ORDER.filter(id => PLANS[id].priceMonthly > 0);
+// ΑΠΟ 25.09.2026 Ο «ΙΔΙΟΚΤΗΤΗΣ» ΕΙΝΑΙ ΔΩΡΕΑΝ ΚΑΙ Η ΝΟΑ ΕΙΝΑΙ Η ΠΡΟΣΘΗΚΗ. Η πρώτη
+// κάρτα είναι μία, με διακόπτη: «Χωρίς βοηθό» (`free`, 0€) και «Με τη Νόα»
+// (`solo`, 4,99€). Δύο κάρτες για το ίδιο ένα σπίτι θα διαβάζονταν ως δύο
+// προϊόντα· ο διακόπτης λέει την αλήθεια: ίδιο πακέτο, με ή χωρίς βοηθό.
+const LANDING_PLANS: PlanId[] = ['solo', 'owner', 'agency', 'office'];
 // Το προτεινόμενο ζει στο plans.ts (RECOMMENDED_PLAN), ώστε η αρχική και το
 // /paketa να προτείνουν το ίδιο πακέτο.
 const FEATURED_PLAN = RECOMMENDED_PLAN;
@@ -1194,7 +1195,7 @@ export default async function Landing() {
             {loggedIn ? (
               <Link href="/dashboard" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>Άνοιξε τον πίνακά σου</Link>
             ) : (<>
-              <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>Ξεκίνα τη δοκιμή</Link>
+              <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>Ξεκίνα δωρεάν</Link>
               <Link href="/login" style={{ background: 'transparent', color: 'var(--text-primary)', textDecoration: 'none', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: T.radius.pill, border: '1px solid var(--border-strong)', transition: 'border-color .15s, background .15s' }}>Έχω λογαριασμό</Link>
             </>)}
           </div>
@@ -1204,9 +1205,9 @@ export default async function Landing() {
               τελείες. Το μεσαίο το λέει το billingWords: το αν ζητείται κάρτα
               αλλάζει με την κατάσταση της χρέωσης. */}
           <div className="lp-rise-4" style={{ marginTop: T.sp.xl, fontSize: 13, color: 'var(--text-tertiary)' }}>
+            <span style={{ whiteSpace: 'nowrap' }}>Δωρεάν για ένα ακίνητο</span> ·{' '}
             <span style={{ whiteSpace: 'nowrap' }}>{TRIAL_DAYS} ημέρες δοκιμή</span> ·{' '}
-            <span style={{ whiteSpace: 'nowrap' }}>{billingWords().trialCard}</span> ·{' '}
-            <span style={{ whiteSpace: 'nowrap' }}>Χωρίς δέσμευση</span>
+            <span style={{ whiteSpace: 'nowrap' }}>{billingWords().trialCard}</span>
           </div>
 
           <LandingShowcase />
@@ -1496,11 +1497,12 @@ export default async function Landing() {
           <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--accent-dim)', color: ACCENT, flexShrink: 0 }}>
             <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12" /><path d="M8.5 12h.01M12 12h.01M15.5 12h.01" /></svg>
           </span>
-          <span style={{ fontSize: 14, fontWeight: 680, color: TEXT }}>{ASSISTANT_NAME} περιλαμβάνεται σε κάθε πακέτο</span>
-          <span style={{ fontSize: 14, color: MUTED }}>Αλλάζει μόνο πόσες ερωτήσεις έχει το καθένα.</span>
+          <span style={{ fontSize: 14, fontWeight: 680, color: TEXT }}>{ASSISTANT_NAME}, ο ψηφιακός βοηθός, από {fe(PLANS.solo.priceMonthly)} τον μήνα</span>
+          <span style={{ fontSize: 14, color: MUTED }}>Ο «{PLANS.free.name}» είναι δωρεάν χωρίς αυτήν· τα μεγαλύτερα πακέτα την περιλαμβάνουν.</span>
         </div>
         <div className="lp-plans" style={{ display: 'grid', gridTemplateColumns: `repeat(${LANDING_PLANS.length}, minmax(0, 1fr))`, gap: 12, alignItems: 'stretch' }}>
           {LANDING_PLANS.map((id, i) => {
+            if (id === 'solo') return <OwnerPlanCard key={id} billingLive={billingLive} />;
             const plan = PLANS[id];
             const prev = i > 0 ? PLANS[LANDING_PLANS[i - 1]] : null;
             // Πόσους μήνες πληρώνεις με την ετήσια: η ετήσια τιμή διά τη μηνιαία.
@@ -1681,8 +1683,8 @@ export default async function Landing() {
         <div className="lp-aurora" aria-hidden="true" />
         <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP_ACT, paddingBottom: GAP_ACT }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
-          <p style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 620, margin: '0 auto 30px' }}>Φωτογράφισε το πρώτο σου έγγραφο. {TRIAL_DAYS} ημέρες δοκιμής, χωρίς δέσμευση.</p>
-          <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : 'Ξεκίνα τη δοκιμή'}</Link>
+          <p style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 620, margin: '0 auto 30px' }}>Φωτογράφισε το πρώτο σου έγγραφο. Δωρεάν για ένα ακίνητο, με {TRIAL_DAYS} ημέρες δοκιμής για όλα τα υπόλοιπα.</p>
+          <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : 'Ξεκίνα δωρεάν'}</Link>
         </div>
       </section>
 
@@ -1807,6 +1809,88 @@ function SectionHead({ over, title, sub }: { over: string; title: string; sub?: 
           να χωρά σε μία γραμμή. Δύο γραμμές υπότιτλου κάτω από μονόγραμμο τίτλο
           δίνουν βαρύ, ασύμμετρο μπλοκ· μία και μία διαβάζονται ως ζευγάρι. */}
       {sub && <p style={{ fontSize: 16, color: MUTED, lineHeight: 1.55, margin: '13px 0 0' }}>{sub}</p>}
+    </div>
+  );
+}
+
+// ═══ Η ΚΑΡΤΑ ΤΟΥ «ΙΔΙΟΚΤΗΤΗ», ΜΕ ΤΟΝ ΔΙΑΚΟΠΤΗ ΤΗΣ ΝΟΑΣ ═════════════════════
+// ΔΥΟ ΠΑΚΕΤΑ ΣΕ ΜΙΑ ΚΑΡΤΑ, ΧΩΡΙΣ JAVASCRIPT. Δύο κουμπιά επιλογής (radio) και
+// ο συνδυαστής `~` του CSS: η αρχική δεν φορτώνει κώδικα για να αλλάξει μια
+// τιμή (το νήμα της είχε μετρηθεί μπλοκαρισμένο 550ms σε μεσαίο Android). Τα
+// δύο σώματα, `.pc-off` και `.pc-on`, είναι αδέρφια των κουμπιών· το κρυμμένο
+// έχει `display: none`, άρα ούτε ο αναγνώστης οθόνης το διαβάζει.
+//
+// ΤΑ ΝΟΥΜΕΡΑ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΗ ΜΗΧΑΝΗ: τιμή από το PLANS, ερωτήσεις από το
+// aiLimits, σαρώσεις από το SCAN_LIMITS. Καμία γραμμή δεν γράφεται δεύτερη φορά.
+function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
+  const free = PLANS.free, noa = PLANS.solo;
+  const ai = aiLimitsFor('solo');
+  const paidMonths = Math.round(noa.priceAnnual / noa.priceMonthly);
+  const line = (t: string, k: number) => (
+    <div key={k} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{t}</span></div>
+  );
+  // Οι γραμμές του δωρεάν, με τη σάρωση στη θέση της· στη «Νόα» η ίδια θέση
+  // λέει «χωρίς όριο», ώστε το μάτι να βλέπει τι αλλάζει στο ίδιο σημείο.
+  const shared = free.features.filter(f => !f.startsWith('Σάρωση'));
+  const freeScan = free.features.find(f => f.startsWith('Σάρωση')) ?? '';
+  const noaScan = noa.features.find(f => f.startsWith('Σάρωση')) ?? '';
+  const noaMark = (
+    <svg width={13} height={13} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M4 3 H8.5 L15.5 14.5 V3 H20 V21 H15.5 L8.5 9.5 V21 H4 Z" /></svg>
+  );
+  const bubble = (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="po-lead-ico"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12" /></svg>
+  );
+  const price = (amount: string, per: string) => (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
+      <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'clamp(24px, 2.4vw, 29px)', fontWeight: 680, letterSpacing: '-0.03em', color: TEXT, lineHeight: 1.1 }}>{amount}</span>
+      <span style={{ fontSize: 13, color: MUTED }}>{per}</span>
+    </div>
+  );
+  const cta = (href: string, label: string) => (
+    <Link href={href} className="lp-ghost lp-press" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, textAlign: 'center', background: 'var(--bg-elevated)', color: TEXT, textDecoration: 'none', fontSize: 13, fontWeight: 700, padding: '10px', borderRadius: T.radius.pill, border: '1px solid var(--border-default)' }}>{label}</Link>
+  );
+  return (
+    <div className="lp-card pc-card" style={{ position: 'relative', background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(16px, 1.6vw, 20px)' }}>
+      <input type="radio" name="pc-noa" id="pc-noa-off" className="pc-radio" defaultChecked />
+      <input type="radio" name="pc-noa" id="pc-noa-on" className="pc-radio" />
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: TEXT, margin: '0 0 4px' }}>{free.name}</h3>
+      {/* ΥΠΟΤΙΤΛΟΣ ΚΑΙ ΔΙΑΚΟΠΤΗΣ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΤΟΥ SUBGRID. Οι κάρτες του
+          `.lp-plans` μοιράζονται επτά γραμμές (τίτλος, υπότιτλος, τιμή,
+          σημείωση, λίστα, κουμπί, ετήσια)· ο διακόπτης ως χωριστό παιδί έσπρωχνε
+          όλη την υπόλοιπη κάρτα σε μία γραμμή και οι τρεις διπλανές άνοιγαν
+          κενό μισής οθόνης. Τα `.pc-off`/`.pc-on` είναι `display: contents`,
+          οπότε τα παιδιά τους πιάνουν τις ίδιες γραμμές με τις άλλες κάρτες.
+
+          Ο ΔΙΑΚΟΠΤΗΣ. Δύο ετικέτες για τα δύο κουμπιά· το πάτημα οπουδήποτε στην
+          ετικέτα αλλάζει επιλογή και τα βέλη του πληκτρολογίου κάνουν το ίδιο. */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 12, color: FAINT, marginBottom: 12, lineHeight: 1.35 }}>{free.tagline}</div>
+        <div className="pc-seg" role="presentation">
+          <label htmlFor="pc-noa-off">Χωρίς βοηθό</label>
+          <label htmlFor="pc-noa-on"><span className="pc-mark">{noaMark}</span>Με τη {ASSISTANT_NAME}</label>
+        </div>
+      </div>
+      <div className="pc-off">
+        {price(fe(0), 'χωρίς συνδρομή')}
+        <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>Ένα ακίνητο, όλα τα φορολογικά</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', margin: '14px 0 16px' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: FAINT }}>{bubble}<span className="lp-even" style={{ fontSize: 13.5, lineHeight: 1.45 }}>Χωρίς ψηφιακό βοηθό</span></div>
+          {[...shared, freeScan].map(line)}
+        </div>
+        {cta('/signup', 'Ξεκίνα δωρεάν')}
+      </div>
+      <div className="pc-on">
+        {price(fe(noa.priceMonthly), 'τον μήνα')}
+        <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>ή <strong style={{ color: TEXT }}>{fe(noa.priceAnnual)} τον χρόνο</strong></div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', margin: '14px 0 16px' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: ACCENT }}>{bubble}<span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{ai.perMonth} ερωτήσεις τον μήνα, έως {ai.perDay} την ημέρα</span></div>
+          {[...shared, noaScan].map(line)}
+        </div>
+        {cta(`/signup?plan=solo&cycle=monthly`, 'Ξεκίνα τη δοκιμή')}
+        {billingLive && <Link href="/signup?plan=solo&cycle=annual" className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35 }}>{`Πλήρωσε ετήσια: ${paidMonths} μήνες αντί για 12`}</Link>}
+      </div>
     </div>
   );
 }

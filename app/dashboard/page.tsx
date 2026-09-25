@@ -84,6 +84,7 @@ import UpgradeModal from './components/UpgradeModal';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
 import { effectivePlan, isTabAllowed, isTabPurchasable, canAddProperty, planAtLeast, trialState, type EntitlementInput } from '@/lib/billing/entitlements';
+import { hasAssistant } from '@/lib/billing/aiLimits';
 import { isTabVisible, hiddenTabCount, reveal, sanitizeRevealed, coreTabs, CORE_TABS, type DisclosureSignals } from '@/lib/nav/disclosure';
 import AthensNow from './components/AthensNow';
 import CashHero from './components/CashHero';
@@ -2613,6 +2614,9 @@ export default function Dashboard() {
           // έχει κρίνει ότι δεν τον αφορά.
           onNavigate={(tab)=>{ if (navVisible(tab)) setNav(tab); }}
           canNavigate={navVisible}
+          // Ο δωρεάν «Ιδιοκτήτης» δεν έχει τη Νόα· η δοκιμή την έχει (ανεβάζει
+          // το επίπεδο στο «Ιδιοκτήτης+»), γι' αυτό κρίνει το ενεργό πακέτο.
+          assistantLocked={!hasAssistant(effPlan)}
           planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined)}
           onScan={()=>setQuickAddOpen(true)}
         />

@@ -118,7 +118,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
       if(!b64){setScanning(false);return}
       const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),30000)
       const res=await fetch('/api/anthropic',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl.signal,body:JSON.stringify({
-        model:'claude-sonnet-5',max_tokens:600,system:ITEM_SCAN_SYSTEM,
+        kind:'scan',model:'claude-sonnet-5',max_tokens:600,system:ITEM_SCAN_SYSTEM,
         messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:b64}},{type:'text',text:'Διάβασε τα στοιχεία του αντικειμένου/συσκευής από τη φωτογραφία.'}]}],
       })})
       clearTimeout(timer)

@@ -57,6 +57,7 @@ import {
   speakingLabel, settingsTitle, noKeyNotice,
 } from '@/lib/assistant/identity';
 import { classifyExpense } from '@/lib/expenses/classify';
+import { assistantLockedMessage } from '@/lib/billing/aiLimits';
 // Το Supabase δεν πετάει σε σφάλμα βάσης· η `must` το κάνει να πετάει, ώστε τα
 // try/catch αυτού του αρχείου να λένε αλήθεια. Βλ. lib/supabase/must.ts.
 import { must } from '@/lib/supabase/must';
@@ -90,6 +91,12 @@ interface Props {
    * απλώς ταξιδεύει μαζί με τα υπόλοιπα συμφραζόμενα.
    */
   planBrief?: string;
+  /**
+   * Το πακέτο που ισχύει δεν έχει τη Νόα (ο δωρεάν «Ιδιοκτήτης»). Η ερώτηση
+   * δεν φεύγει καν προς τον διακομιστή: η απάντηση λέει πού υπάρχει ο βοηθός
+   * και ανοίγει τις Ρυθμίσεις, όπου αλλάζει το πακέτο.
+   */
+  assistantLocked?: boolean;
 }
 type Action = AssistantAction;
 interface Msg { role: 'user' | 'assistant'; text: string; action?: Action; }
@@ -176,7 +183,7 @@ const snapCorner = (x: number, w: number) => {
   return { x: right ? vw - w - side : side, y: vh - FAB_H - bottom };
 };
 
-export default function PropertyAssistant({ propertyId, userId, propContext, allProperties = [], onNavigate, onScan, canNavigate, planBrief }: Props) {
+export default function PropertyAssistant({ propertyId, userId, propContext, allProperties = [], onNavigate, onScan, canNavigate, planBrief, assistantLocked = false }: Props) {
   const supabase = createClient();
   const [open, setOpen] = useState(false);
   const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null);
@@ -1237,6 +1244,14 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     const q = question.trim();
     if (!q || busy) return;
     setErr(''); setErrDetail(''); setLimitMsg(''); setInput('');
+    if (assistantLocked) {
+      // Η ΟΥΔΕΤΕΡΗ ΔΙΑΤΥΠΩΣΗ, ΟΧΙ ΤΗΣ ΑΓΟΡΑΣ. Το `billingWords` τραβά μαζί του
+      // τον έμπορο (node:crypto) και δεν ανήκει σε bundle του περιηγητή· το
+      // «υπάρχει στο πακέτο…» ισχύει είτε η χρέωση είναι ανοιχτή είτε όχι.
+      setMsgs([...msgs, { role: 'user', text: q },
+        { role: 'assistant', text: assistantLockedMessage(false), action: { type: 'go', tab: 'settings' } }]);
+      return;
+    }
     const history = [...msgs, { role: 'user' as const, text: q }];
     setMsgs(history); setBusy(true);
     // Το σκαλί της εμπιστοσύνης: ο χρήστης έδωσε ερώτηση στο προϊόν. Μετριέται

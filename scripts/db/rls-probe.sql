@@ -2161,6 +2161,92 @@ begin
   raise notice 'probe: ο συνδρομητής που πληρώνει κρατά τις 483 ερωτήσεις του';
 end $probe$;
 
+-- ── ΔΩΡΕΑΝ «ΙΔΙΟΚΤΗΤΗΣ»: ΧΩΡΙΣ ΝΟΑ, ΠΕΝΤΕ ΣΑΡΩΣΕΙΣ ─────────────────────────
+-- Απόφαση ιδιοκτήτη 25.09.2026 (μετάβαση 20260925190000). Τρία πράγματα
+-- κρίνονται εδώ, με την ΑΛΗΘΙΝΗ συνάρτηση ως ΑΛΗΘΙΝΟΣ χρήστης:
+--   1. Με όριο 0 η `bump_ai_usage` αρνείται ΠΡΙΝ γράψει οτιδήποτε, με λόγο
+--      'plan'· ούτε ο μετρητής του χρήστη ούτε η κοινή δεξαμενή κινούνται.
+--   2. Η `bump_scan_usage` δίνει πέντε σαρώσεις στον μήνα και κόβει την έκτη
+--      με λόγο 'scan_month'· η `refund_scan_usage` επιστρέφει μία.
+--   3. Ο συνδρομητής του «Ιδιοκτήτη με Νόα» σαρώνει χωρίς μηνιαίο όριο.
+do $probe$
+declare
+  f uuid := '33333333-3333-3333-3333-333333333334';
+  so uuid := '33333333-3333-3333-3333-333333333335';
+  day   int[] := array[0, 10, 20, 50, 150];
+  mon   int[] := array[0, 30, 60, 150, 500];
+  scans int[] := array[5, null, null, null, null];
+  res   json;
+  pool0 int;
+  pool1 int;
+  i     int;
+begin
+  insert into auth.users (id, email) values (f, 'dorean-idioktitis@properwise.gr');
+  insert into public.billing_profiles (user_id, plan, trial_used_at)
+    values (f, 'free', now())
+    on conflict (user_id) do update set plan = 'free', trial_used_at = now(), tester_since = null;
+  perform set_config('probe.uid', f::text, true);
+
+  select coalesce(sum(free_count), 0) into pool0 from public.ai_budget;
+  res := public.bump_ai_usage(200, day, mon, 1000, 7, 20, 30, 30);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'plan' then
+    raise exception 'Ο δωρεάν «Ιδιοκτήτης» πήρε ερώτηση στη Νόα: %', res;
+  end if;
+  select coalesce(sum(free_count), 0) into pool1 from public.ai_budget;
+  if pool1 <> pool0 then
+    raise exception 'Η άρνηση του πακέτου έφαγε από την κοινή δεξαμενή: % → %', pool0, pool1;
+  end if;
+  if exists (select 1 from public.ai_usage where user_id = f and month_count > 0) then
+    raise exception 'Η άρνηση του πακέτου μέτρησε ερώτηση στον χρήστη';
+  end if;
+
+  for i in 1..5 loop
+    res := public.bump_scan_usage(100, scans);
+    if (res->>'allowed')::boolean is not true then
+      raise exception 'Η σάρωση % από 5 κόπηκε: %', i, res;
+    end if;
+  end loop;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'scan_month' then
+    raise exception 'Η έκτη σάρωση του δωρεάν πακέτου ΠΕΡΑΣΕ ή κόπηκε για λάθος λόγο: %', res;
+  end if;
+  -- Η άρνηση δεν μέτρησε: ο μετρητής στέκεται στο 5, όχι στο 6.
+  if (res->>'month')::int <> 5 then
+    raise exception 'Η άρνηση σάρωσης μέτρησε ως σάρωση: %', res;
+  end if;
+  res := public.refund_scan_usage(f);
+  if (res->>'refunded')::boolean is not true then
+    raise exception 'Η επιστροφή σάρωσης δεν έγινε: %', res;
+  end if;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not true then
+    raise exception 'Η επιστροφή σάρωσης δεν ελευθέρωσε θέση: %', res;
+  end if;
+  -- Και ο χρήστης δεν την καλεί μόνος του: αλλιώς θα μηδένιζε το όριο.
+  if has_function_privilege('authenticated', 'public.refund_scan_usage(uuid)', 'execute') then
+    raise exception 'Ο authenticated μπορεί να καλέσει την refund_scan_usage: το όριο σαρώσεων ανοίγει';
+  end if;
+
+  insert into auth.users (id, email) values (so, 'idioktitis-noa@properwise.gr');
+  insert into public.billing_profiles (user_id, plan, trial_used_at)
+    values (so, 'solo', now())
+    on conflict (user_id) do update set plan = 'solo', trial_used_at = now(), tester_since = null;
+  perform set_config('probe.uid', so::text, true);
+  for i in 1..7 loop
+    res := public.bump_scan_usage(100, scans);
+    if (res->>'allowed')::boolean is not true then
+      raise exception 'Ο «Ιδιοκτήτης με Νόα» κόπηκε στη σάρωση %: %', i, res;
+    end if;
+  end loop;
+  res := public.bump_ai_usage(200, day, mon, 1000, 7, 20, 30, 30);
+  if (res->>'allowed')::boolean is not true or (res->>'month_limit')::int <> 30 then
+    raise exception 'Ο «Ιδιοκτήτης με Νόα» δεν παίρνει τις 30 ερωτήσεις του: %', res;
+  end if;
+
+  perform set_config('probe.uid', '', true);
+  raise notice 'probe: ο δωρεάν «Ιδιοκτήτης» δεν ρωτά τη Νόα και κόβεται στην έκτη σάρωση· ο «Ιδιοκτήτης με Νόα» σαρώνει ελεύθερα';
+end $probe$;
+
 -- ── ΤΑ ΕΞΙ ΚΕΙΜΕΝΑ ΦΕΥΓΟΥΝ ΠΡΑΓΜΑΤΙΚΑ ────────────────────────────────────
 -- Δεν αρκεί να υπάρχει το SQL: ελέγχεται ότι μετά την `lifecycle_enqueue()`
 -- υπάρχει γραμμή στην ουρά. Τα `year_end` και `quarterly_review` εξαρτώνται

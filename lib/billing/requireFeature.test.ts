@@ -54,13 +54,20 @@ async function main() {
 
   // ── ΔΩΡΕΑΝ ΠΑΚΕΤΟ → 403 ΓΙΑ ΠΛΗΡΩΜΕΝΗ ΔΥΝΑΤΟΤΗΤΑ ───────────────────────
   {
-    const r = await requireFeature('e2_export', fake({ id: UID }, rankOf('free')));
-    ok('free vs e2_export: κλειστή', r.ok === false);
+    // Το Ε2 είναι δωρεάν από 25.09.2026· η πληρωμένη δυνατότητα εδώ είναι η σύγκριση.
+    const r = await requireFeature('comparison', fake({ id: UID }, rankOf('free')));
+    ok('free vs comparison: κλειστή', r.ok === false);
     if (!r.ok) {
       eq('free: 403', r.status, 403);
       eq('free: επιστρέφει το πακέτο', r.plan, 'free');
-      ok('free: μήνυμα με την ετικέτα', r.error.includes(FEATURE_LABEL.e2_export));
+      ok('free: μήνυμα με την ετικέτα', r.error.includes(FEATURE_LABEL.comparison));
     }
+  }
+
+  // ── ΤΟ Ε2 ΑΝΟΙΓΕΙ ΚΑΙ ΣΤΟΝ ΔΩΡΕΑΝ «ΙΔΙΟΚΤΗΤΗ» ─────────────────────────
+  {
+    const r = await requireFeature('e2_export', fake({ id: UID }, rankOf('free')));
+    ok('free vs e2_export: ανοιχτή', r.ok === true);
   }
 
   // ── ΑΚΡΙΒΩΣ ΤΟ ΕΛΑΧΙΣΤΟ ΠΑΚΕΤΟ → ΑΝΟΙΓΜΑ (e2_export = solo) ─────────────
@@ -87,7 +94,7 @@ async function main() {
 
   // ── ΔΕΙΚΤΗΣ ΕΚΤΟΣ ΟΡΙΩΝ → ΠΕΦΤΕΙ ΣΕ free (ΑΣΦΑΛΗΣ ΑΡΝΗΣΗ) ──────────────
   {
-    const r = await requireFeature('e2_export', fake({ id: UID }, 999));
+    const r = await requireFeature('comparison', fake({ id: UID }, 999));
     ok('rank εκτός ορίων: κλειστή', r.ok === false);
     if (!r.ok) eq('rank εκτός ορίων: πλάνο free', r.plan, 'free');
   }

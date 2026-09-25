@@ -655,7 +655,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       const dataUrl:string=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result as string);r.onerror=rej;r.readAsDataURL(file);});
       const base64=dataUrl.split(',')[1]; const mime=file.type||'image/jpeg'; const isPdf=mime==='application/pdf';
       const contentPart=isPdf?{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}}:{type:'image',source:{type:'base64',media_type:mime,data:base64}};
-      const res=await fetch('/api/anthropic',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl.signal,body:JSON.stringify({model:'claude-sonnet-5',max_tokens:1500,system:SYSTEM_PROMPT,messages:[{role:'user',content:[contentPart,{type:'text',text:'Αναγνώρισε και ανάλυσε αυτό το έγγραφο. Διάβασε κάθε στοιχείο με ακρίβεια.'}]}]})});
+      const res=await fetch('/api/anthropic',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl.signal,body:JSON.stringify({kind:'scan',model:'claude-sonnet-5',max_tokens:1500,system:SYSTEM_PROMPT,messages:[{role:'user',content:[contentPart,{type:'text',text:'Αναγνώρισε και ανάλυσε αυτό το έγγραφο. Διάβασε κάθε στοιχείο με ακρίβεια.'}]}]})});
       const data=await res.json();
       // Ο διακομιστής επιστρέφει ήδη ελληνικό, χρήσιμο μήνυμα. Το πετούσαμε και
       // βάζαμε στη θέση του «η υπηρεσία δεν είναι διαθέσιμη» — δηλαδή λέγαμε

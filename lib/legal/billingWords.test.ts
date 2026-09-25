@@ -9,7 +9,7 @@ import { billingWords } from './billingWords'
 import { checkoutIsLive } from '../billing/lemonCheckout'
 import { subprocessors, activeSubprocessors, plannedSubprocessors } from './subprocessors'
 import { MERCHANT_NAMES, merchantId, PROVIDER_ENV } from './merchant'
-import { TRIAL_DAYS, ACCOUNT_GRACE_DAYS } from '../billing/plans'
+import { TRIAL_DAYS, PLANS } from '../billing/plans'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -52,7 +52,7 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
 {
   const live = billingWords(LIVE), dark = billingWords(DARK)
   ok('η σημαία ακολουθεί το ταμείο', live.live === true && dark.live === false)
-  const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge', 'contractSteps', 'lapsedRetentionShort', 'planChange', 'subscriptionPlace', 'renewal', 'merchantRow'] as const
+  const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge', 'contractSteps', 'planChange', 'subscriptionPlace', 'renewal', 'merchantRow'] as const
   // Αν μια φράση είναι ίδια και στις δύο καταστάσεις, τότε η μία από τις δύο
   // λέει ψέματα — και δεν θα το έπιανε κανείς, γιατί «υπάρχει διατύπωση».
   for (const k of keys) ok(`η «${k}» διαφέρει ανά κατάσταση`, live[k] !== dark[k])
@@ -76,10 +76,11 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
   // ΤΑ ΔΕΔΟΜΕΝΑ ΜΕΤΑ ΤΗ ΣΥΝΔΡΟΜΗ: ΤΟ ΔΙΑΣΤΗΜΑ ΤΗΣ ΣΥΝΤΟΜΗΣ ΑΠΑΝΤΗΣΗΣ ΕΙΝΑΙ
   // ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΠΟΛΙΤΙΚΗΣ. Χωρίς ταμείο ο καθαρισμός δεν τρέχει, άρα καμία
   // απειλή διαγραφής σε ημέρες· με ταμείο, ο αριθμός της βάσης.
-  ok('χωρίς χρέωση, η σύντομη διατήρηση δεν μετρά ημέρες',
-    !dark.lapsedRetentionShort.includes(`${ACCOUNT_GRACE_DAYS} ημέρες`))
-  ok('με χρέωση, λέει το διάστημα',
-    live.lapsedRetentionShort.includes(`${ACCOUNT_GRACE_DAYS} ημέρες`))
+  // ΑΠΟ 25.09.2026 Η ΔΙΑΤΗΡΗΣΗ ΔΕΝ ΕΞΑΡΤΑΤΑΙ ΑΠΟ ΤΟ ΤΑΜΕΙΟ. Ο λογαριασμός χωρίς
+  // συνδρομή συνεχίζει στο δωρεάν πακέτο και μένει ώσπου να τον διαγράψει ο
+  // ίδιος· η σύντομη απάντηση είναι η ίδια και στις δύο καταστάσεις, επίτηδες.
+  ok('η σύντομη διατήρηση είναι ίδια με ή χωρίς ταμείο', live.lapsedRetentionShort === dark.lapsedRetentionShort)
+  ok('και δεν απειλεί διαγραφή σε ημέρες', !/\d+ ημέρες/.test(live.lapsedRetentionShort) && live.lapsedRetentionShort.includes('δωρεάν πακέτο'))
   // ΤΟ ΠΛΑΙΣΙΟ ΤΟΥ ΠΑΚΕΤΟΥ ΣΤΗΝ ΕΓΓΡΑΦΗ: με ταμείο λέει τον κύκλο (null),
   // χωρίς ταμείο δεν γράφει «Ετήσια χρέωση» δίπλα σε περιγραφή που λέει «καμία».
   ok('χωρίς χρέωση, η εγγραφή δεν μιλά για κύκλο χρέωσης', !!dark.signupPlanTerms && dark.signupPlanTerms.includes('Χωρίς χρέωση'))
@@ -150,12 +151,15 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
   // άρθρο 13§2 στοιχείο α΄ GDPR ζητά να λέγεται ΤΟ ΔΙΑΣΤΗΜΑ, όχι ότι
   // «κάποτε διαγράφονται». Και τα δύο κείμενα, το μακρύ και το σύντομο, το
   // λένε με τον ίδιο αριθμό: γραμμένος δύο φορές, θα απέκλινε.
+  // ΑΠΟ 25.09.2026: χωρίς συνδρομή ο λογαριασμός ΣΥΝΕΧΙΖΕΙ στο δωρεάν πακέτο.
+  // Και τα δύο κείμενα το λένε με το όνομα του πακέτου και κανένα δεν απειλεί
+  // με διαγραφή, γιατί το χρονόμετρο της διαγραφής αφαιρέθηκε από τη βάση.
   for (const [name, w] of [['μακρύ', live.afterTrial], ['σύντομο', live.afterTrialShort]] as const) {
-    ok(`το ${name} κείμενο λέει πόσο κρατά ο λογαριασμός χωρίς συνδρομή`,
-      w.includes(`${ACCOUNT_GRACE_DAYS} ημέρες`))
-    ok(`και ότι μετά διαγράφεται`, /διαγράφ/.test(w))
+    ok(`το ${name} κείμενο λέει ότι συνεχίζεις στο δωρεάν πακέτο`, w.includes(`«${PLANS.free.name}»`))
+    // «δεν διαγράφονται» (τα ακίνητα πέρα από το πρώτο) είναι υπόσχεση, όχι απειλή.
+    ok(`και δεν απειλεί με διαγραφή`, !/(?<!δεν )διαγράφ/.test(w))
   }
-  ok('και ότι προηγούνται ειδοποιήσεις', live.afterTrial.includes('δύο ειδοποιήσεις'))
+  ok('η πολιτική διατήρησης δεν σβήνει λογαριασμό επειδή δεν πληρώνει', live.lapsedRetention.includes('Δεν διαγράφεται αυτόματα'))
   // ΚΑΙ ΟΤΑΝ ΔΕΝ ΥΠΑΡΧΕΙ ΤΑΜΕΙΟ, ΔΕΝ ΑΠΕΙΛΕΙΤΑΙ ΚΑΝΕΙΣ. Το «δεν πλήρωσες»
   // όταν δεν υπάρχει τρόπος να πληρώσεις είναι δικό μας κενό: ο σαρωτής δεν
   // τρέχει (φρένο στη βάση) και το κείμενο δεν επιτρέπεται να λέει άλλα.
