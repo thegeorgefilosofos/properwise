@@ -142,6 +142,7 @@ const SOURCES: string[] = [
   `Πρόσθετος φόρος ακινήτων αξίας άνω των ${feWhole(ENFIA_EXTRA_TAX_FREE)}: άρθρο 4 (Ενότητα Γ΄) ν.4223/2013, όπως ισχύει με τον ν.4916/2022.`,
   'Μειώσεις και απαλλαγές με κριτήρια (χαμηλό εισόδημα, τρίτεκνοι και πολύτεκνοι, αναπηρία): άρθρο 7 ν.4223/2013.',
   `Μείωση ασφαλισμένης κατοικίας ${pct(INS_OVER.pct)} ή ${pct(INSURANCE.pct)}: απόφαση ΑΑΔΕ Α.1005/2026.`,
+  'Μείωση κύριας κατοικίας σε μικρό οικισμό: άρθρο 10 ν.5246/2025 (ΦΕΚ Α΄ 198/11.11.2025) · εφαρμογή με την απόφαση ΑΑΔΕ Α.1063/2026 (ΦΕΚ Β΄ 1526/17.03.2026).',
 ];
 
 // Οι ενότητες τροφοδοτούν ΚΑΙ τις κεφαλίδες ΚΑΙ τα περιεχόμενα — μία πηγή.
@@ -164,7 +165,7 @@ export default function Page() {
       <JsonLd data={jsonLd} />
       <PublicHeader />
 
-      <GuideMain>
+      <GuideMain rail={{ sections: Object.values(S), cta: { href: '/ypologismos-enfia', action: 'Υπολόγισε τον ΕΝΦΙΑ σου' } }}>
         <div className="lp-eyebrow">Οδηγός</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
