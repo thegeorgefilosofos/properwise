@@ -116,9 +116,29 @@ for (const pg of PAGES) {
   for (let i = 0; i < n; i++) {
     const f = fields.nth(i)
     await f.focus()
+    // ΤΟ ΠΕΔΙΟ ΖΩΓΡΑΦΙΖΕΤΑΙ ΠΡΙΝ ΚΡΙΘΕΙ. Οι ενότητες της αρχικής έχουν
+    // `content-visibility: auto`: έξω από την οθόνη δεν ζωγραφίζονται και η
+    // εστίαση τις ξυπνά στο ΕΠΟΜΕΝΟ καρέ. Στο CI το μέτρημα έπεφτε πότε πριν
+    // πότε μετά (ο διακόπτης των πακέτων πέρασε στη μία εκτέλεση, κόπηκε στην
+    // επόμενη χωρίς αλλαγή). Κύλιση και δύο καρέ: ό,τι βλέπει ο χρήστης του
+    // πληκτρολογίου, που το πεδίο του έρχεται πρώτα στην οθόνη.
+    await f.scrollIntoViewIfNeeded()
+    await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
+    // ΚΡΥΦΟ ΧΕΙΡΙΣΤΗΡΙΟ, ΟΡΑΤΗ ΕΤΙΚΕΤΑ. Ο διακόπτης «Χωρίς βοηθό / Με τη Νόα»
+    // είναι δύο κουμπιά επιλογής με opacity 0· αυτό που βλέπει το μάτι είναι
+    // οι ετικέτες τους, οπότε εκεί ζει και το σημάδι εστίασης. Περίγραμμα
+    // πάνω σε αόρατο στοιχείο δεν το βλέπει κανείς: για τέτοιο πεδίο μετράει
+    // η ετικέτα του, ποτέ ένα σημάδι που δεν φαίνεται. Ενα ορατό πεδίο κρίνεται
+    // όπως πάντα, μόνο από τον εαυτό του.
     const seen = await f.evaluate(el => {
+      const mark = e => {
+        const c = getComputedStyle(e)
+        return (parseFloat(c.outlineWidth) > 0 && c.outlineStyle !== 'none') || (c.boxShadow && c.boxShadow !== 'none')
+      }
       const c = getComputedStyle(el)
-      return (parseFloat(c.outlineWidth) > 0 && c.outlineStyle !== 'none') || (c.boxShadow && c.boxShadow !== 'none')
+      const invisible = parseFloat(c.opacity) === 0 || el.getBoundingClientRect().width <= 1
+      if (!invisible) return mark(el)
+      return [...(el.labels || [])].some(l => l.getClientRects().length > 0 && mark(l))
     })
     if (!seen) blind++
   }
