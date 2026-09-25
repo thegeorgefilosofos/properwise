@@ -23,7 +23,7 @@ export const TAMEIO_ACTION: CSSProperties = {
 
 export function TameioCard({ children }: { children: ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
+    <main style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
       <div style={{ width: '100%', maxWidth: 440, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '30px 28px', boxShadow: 'var(--elev-1)' }}>
         {/* Ο ΚΥΡΙΟΣ ΤΙΤΛΟΣ ΗΤΑΝ ΛΕΖΑΝΤΑ 11 ΕΙΚΟΝΟΣΤΟΙΧΕΙΩΝ κάτω από το όνομα του
             προϊόντος: στο μάτι τίτλος ήταν το λογότυπο και ο αναγνώστης οθόνης
@@ -36,6 +36,6 @@ export function TameioCard({ children }: { children: ReactNode }) {
         </div>
         {children}
       </div>
-    </div>
+    </main>
   );
 }

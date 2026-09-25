@@ -4,16 +4,24 @@ import { GUIDES, GUIDES_UPDATED } from './odigos/guides'
 
 // Χάρτης της δημόσιας σελίδας για τις μηχανές αναζήτησης. Μόνο δημόσιες
 // διαδρομές: το dashboard, τα portals και οι σελίδες με token μένουν εκτός.
+// ΚΑΙ ΟΙ ΥΠΟΛΟΓΙΣΤΕΣ ΕΧΟΥΝ ΗΜΕΡΟΜΗΝΙΑ. Οι οδηγοί την είχαν, οι τέσσερις
+// υπολογιστές όχι: για τη μηχανή αναζήτησης ήταν οι μόνες σελίδες του χάρτη
+// χωρίς ένδειξη φρεσκάδας, ενώ είναι αυτές που αλλάζουν με κάθε νόμο. Η
+// ημερομηνία είναι της τελευταίας ουσιαστικής αλλαγής σε κάποιον από αυτούς
+// (κλίμακα, κανόνες ή πίνακες) και αλλάζει με το χέρι μαζί της, όπως το
+// `updated` των οδηγών.
+const TOOLS_UPDATED = '2026-09-25'
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE
   return [
     { url: base, changeFrequency: 'weekly', priority: 1 },
     // Δωρεάν εργαλείο χωρίς εγγραφή. Υψηλή προτεραιότητα επειδή είναι η μόνη
     // σελίδα που απαντά σε ερώτηση που ο ιδιοκτήτης ψάχνει ΠΡΙΝ μας ξέρει.
-    { url: `${base}/ypologismos-forou-enoikion`, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${base}/ypologismos-enfia`, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${base}/vraxyxronia-i-makroxronia`, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${base}/kathari-apodosi`, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/ypologismos-forou-enoikion`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/ypologismos-enfia`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/vraxyxronia-i-makroxronia`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/kathari-apodosi`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     // Κόμβος οδηγών: η μία σελίδα που μαζεύει όλους τους οδηγούς, συνδεδεμένη
     // από το υποσέλιδο κάθε δημόσιας σελίδας. Η ημερομηνία του είναι η πιο
     // πρόσφατη των οδηγών του, αφού αυτούς δείχνει.
