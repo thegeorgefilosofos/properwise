@@ -92,11 +92,12 @@ function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams, newsOff =
  * επιτρέπει στον χρήστη μόνο τη δική του.
  */
 async function newsOffNow(supabase: Awaited<ReturnType<typeof authClient>>, userId: string) {
-  // Αν αποτύχει, η γραμμή δεν υπάρχει ακόμη στη συντριπτική περίπτωση και ο
-  // trigger της βάσης θα την κλείσει όταν δημιουργηθεί: δεν κρατάμε τον
-  // χρήστη έξω από τον λογαριασμό του γι' αυτό.
-  await supabase.from('email_marketing_prefs')
+  // Η ΑΡΝΗΣΗ ΠΟΥ ΔΕΝ ΓΡΑΦΤΗΚΕ ΔΕΝ ΠΕΡΝΑ ΣΙΩΠΗΛΑ. Ο χρήστης που είπε «όχι» και
+  // λαμβάνει ενημερωτικό είναι ακριβώς αυτό που ο νόμος απαγορεύει· επιστρέφεται
+  // το σφάλμα και η οθόνη το δείχνει, με τη διέξοδο να ξαναδοκιμάσει.
+  const { error } = await supabase.from('email_marketing_prefs')
     .upsert({ user_id: userId, product_news: false, market_news: false }, { onConflict: 'user_id' })
+  return error
 }
 
 export default function SignupPage() {
@@ -216,7 +217,14 @@ export default function SignupPage() {
             return
           }
         }
-        if (patch.marketing_opt_out) await newsOffNow(supabase, u.id)
+        const newsError = patch.marketing_opt_out ? await newsOffNow(supabase, u.id) : null
+        if (newsError) {
+          setError(failed('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', newsError))
+          setConsent(true)
+          setNews(false)
+          setNeedsConsent(u.email ?? '')
+          return
+        }
         window.location.replace(landing)
         return
       }
@@ -247,7 +255,8 @@ export default function SignupPage() {
     const patch = oauthPatch(meta, new URLSearchParams(window.location.search), !news)
     const { error } = await supabase.auth.updateUser({ data: patch })
     if (error) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', error)); return }
-    if (patch.marketing_opt_out && data.user) await newsOffNow(supabase, data.user.id)
+    const newsError = patch.marketing_opt_out && data.user ? await newsOffNow(supabase, data.user.id) : null
+    if (newsError) { setError(failed('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', newsError)); return }
     window.location.replace(checkoutLanding(chosenPlan, chosenCycle))
   }
 
