@@ -19,8 +19,9 @@ import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
-import { fe, fp } from '@/lib/core/format';
-import { RENTAL_TAX_BRACKETS_2026, bracketRows, rentalIncomeTax } from '@/lib/billing/greekTax';
+import { fe, fp, fpRate, feWhole } from '@/lib/core/format';
+import { fn } from '@/components/tokens';
+import { RENTAL_TAX_BRACKETS_2026, rentalIncomeTax } from '@/lib/billing/greekTax';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
@@ -87,8 +88,19 @@ const FAQ: GuideFaqItem[] = [
   },
 ];
 
-// Η κλίμακα ενοικίων 2026, με τις ίδιες γραμμές που δείχνει ο υπολογισμός.
-const SCALE = bracketRows(RENTAL_TAX_BRACKETS_2026).map(r => [r.range, r.rate] as const);
+// Η κλίμακα ενοικίων 2026, από την ίδια κλίμακα που υπολογίζει.
+//
+// ΚΑΙ ΓΡΑΜΜΕΝΗ ΟΠΩΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ. Το `bracketRows` τυπώνει
+// «12.001,00 – 24.000,00€» και «25,00%»· ο υπολογιστής που ο οδηγός στέλνει
+// τον αναγνώστη γράφει «12.000 – 24.000€» και «25%», όπως τα γράφει ο νόμος
+// και οι συχνές ερωτήσεις. Δύο γραφές της ίδιας κλίμακας στο ίδιο πέρασμα
+// διαβάζονται σαν δύο κλίμακες. Το `bracketRows` μένει όπως είναι για τους
+// άλλους αναγνώστες του· εδώ τα όρια γράφονται με τους μορφοποιητές του
+// υπολογιστή (RentTaxCalculator.tsx).
+const SCALE = RENTAL_TAX_BRACKETS_2026.map(b => [
+  b.to === Infinity ? `Πάνω από ${feWhole(b.from)}` : `${fn(b.from)} – ${feWhole(b.to)}`,
+  fpRate(b.rate * 100),
+] as const);
 
 // Οι πηγές/νομική βάση, ορατές όπως στα εργαλεία (E-E-A-T).
 const SOURCES: string[] = [
