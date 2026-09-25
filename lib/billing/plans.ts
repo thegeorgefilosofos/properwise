@@ -133,6 +133,7 @@ export const ACCOUNT_GRACE_DAYS = 30;
 export const TEAM_LINE = 'Ομάδα με ρόλους, χωρίς όριο';
 export const DIRECT_CONTACT_LINE = 'Άμεση επικοινωνία μαζί μας';
 
+
 export const PLANS: Record<PlanId, Plan> = {
   // ═══════════════════════════════════════════════════════════════════════
   // ΤΟ «ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ» ΔΕΝ ΕΙΝΑΙ ΠΡΟΪΟΝ, ΕΙΝΑΙ ΚΑΤΑΣΤΑΣΗ
@@ -205,7 +206,10 @@ export const PLANS: Record<PlanId, Plan> = {
   // τρώει» είναι η ερώτηση που δεν απαντά κανένα φύλλο Excel.
   owner: {
     id: 'owner', name: 'Ιδιοκτήτης+', nameGen: 'Ιδιοκτήτη+', priceMonthly: 9.9, priceAnnual: 99, maxProperties: 3, trialDays: TRIAL_DAYS,
-    tagline: 'Πολλά ακίνητα, μία εικόνα',
+    // Ηταν «Πολλά ακίνητα» για πακέτο με όριο τρία: υπόσχεση που το ίδιο το
+    // πακέτο διαψεύδει στο τέταρτο ακίνητο. Γράφεται ο αριθμός του ορίου και
+    // το plans.test.ts ελέγχει ότι η ταμπέλα τον ακολουθεί.
+    tagline: 'Ως 3 ακίνητα, μία εικόνα',
     features: [
       'Έως 3 ακίνητα',
       'Σύγκριση απόδοσης ανά ακίνητο',

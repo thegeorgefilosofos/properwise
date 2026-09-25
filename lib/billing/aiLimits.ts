@@ -237,10 +237,24 @@ export const FREE_POOL_PER_MONTH = FREE_TESTERS_PER_MONTH * TRIAL_LIMITS.perMont
  */
 export const FREE_BUDGET_USD = Math.ceil(FREE_POOL_PER_MONTH * BLENDED_COST_USD);
 
+// ═══ ΤΑ ΟΡΙΑ ΓΡΑΦΟΝΤΑΙ ΣΤΡΟΓΓΥΛΑ ═══════════════════════════════════════════
+// Ο προϋπολογισμός έβγαζε 23, 59, 150 και 483 ερωτήσεις τον μήνα: σωστοί
+// αριθμοί, που στη σελίδα των πακέτων διαβάζονταν σαν υπολογισμένοι και όχι
+// σαν σχεδιασμένοι. Απόφαση του ιδιοκτήτη (25/09/2026): 20, 60, 150, 500.
+//
+// Ο κανόνας, για να ισχύει και στην επόμενη αλλαγή τιμής: κάτω από 10 ο
+// αριθμός μένει όπως είναι, κάτω από 100 πάει στη δεκάδα, από 100 και πάνω
+// στην πεντηκοντάδα. Το `monthlyQuestionBudget` μένει το ΤΑΒΑΝΙ κόστους· η
+// στρογγύλευση το περνά το πολύ κατά το μισό βήμα. Μετρημένο σήμερα: +1,7%
+// στο «Ιδιοκτήτης+» (60 αντί 59), +3,5% στο «Επαγγελματίας+» (500 αντί 483),
+// κάτω από το ταβάνι στα άλλα δύο. Το τεστ κρατά το όριο στο 5%.
+export const roundQuestions = (n: number): number =>
+  n < 10 ? n : n < 100 ? Math.round(n / 10) * 10 : Math.round(n / 50) * 50;
+
 /** Τα όρια κάθε πλάνου, παραγμένα από τον κανόνα του προϋπολογισμού. */
 const LIMITS: Record<PlanId, AiLimits> = PLAN_ORDER.reduce((acc, id) => {
-  const perMonth = monthlyQuestionBudget(id, 'monthly');
-  acc[id] = { perMinute: PER_MINUTE, perDay: dailyFrom(perMonth), perMonth };
+  const perMonth = roundQuestions(monthlyQuestionBudget(id, 'monthly'));
+  acc[id] = { perMinute: PER_MINUTE, perDay: roundQuestions(dailyFrom(perMonth)), perMonth };
   return acc;
 }, {} as Record<PlanId, AiLimits>);
 

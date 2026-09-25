@@ -5336,7 +5336,7 @@ tr.po-row-more { display: none; }
 .plan-card-num { font-variant-numeric: tabular-nums; }
 .plan-card-no { color: var(--text-tertiary); font-weight: 500; }
 
-.po-scroll-x, .lp-plans, .lp-aud, .lp-duo {
+.po-scroll-x, .lp-plans, .lp-duo {
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }

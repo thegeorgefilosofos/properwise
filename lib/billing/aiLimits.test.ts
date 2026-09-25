@@ -14,7 +14,7 @@ import {
   aiLimitsFor, remainingLine, dailyExhaustedMessage, monthlyExhaustedMessage,
   poolExhaustedMessage, COST_PER_REQUEST_USD, COST_PER_REQUEST_EUR, FREE_BUDGET_USD, TESTER_LIMITS,
   FREE_POOL_PER_MONTH, FREE_TESTERS_PER_MONTH, dailyLimitsByRank, monthlyLimitsByRank, PLAN_RANK_ORDER,
-  MAX_PER_MINUTE, AI_SHARE, monthlyQuestionBudget, TRIAL_LIMITS, effectiveAiLimits,
+  MAX_PER_MINUTE, AI_SHARE, monthlyQuestionBudget, roundQuestions, TRIAL_LIMITS, effectiveAiLimits,
 } from './aiLimits'
 import { PLANS, PLAN_ORDER, type PlanId } from './plans'
 
@@ -102,12 +102,19 @@ const FREE_USERS_TARGET = 10
   const PAID: PlanId[] = ['solo', 'owner', 'agency', 'office']
   for (const id of PAID) {
     const l = aiLimitsFor(id)
-    const worstEur = l.perMonth * COST_PER_REQUEST_EUR
     const cap = PLANS[id].priceMonthly * AI_SHARE
-    ok(`${id}: το χειρότερο κόστος δεν ξεπερνά το 20% της μηνιαίας`, worstEur <= cap)
-    // Και δεν είναι τσιγκούνικο: μία ερώτηση λιγότερη από το ταβάνι, όχι δέκα.
-    ok(`${id}: αξιοποιεί τον προϋπολογισμό του (μία ερώτηση από το ταβάνι)`,
-      worstEur + COST_PER_REQUEST_EUR > cap)
+    // Το ΤΑΒΑΝΙ: ο προϋπολογισμός πριν στρογγυλευτεί. Μία ερώτηση κάτω από το
+    // 20%, όχι δέκα.
+    const budgetEur = monthlyQuestionBudget(id, 'monthly') * COST_PER_REQUEST_EUR
+    ok(`${id}: ο προϋπολογισμός δεν ξεπερνά το 20% της μηνιαίας`, budgetEur <= cap)
+    ok(`${id}: ο προϋπολογισμός αξιοποιείται (μία ερώτηση από το ταβάνι)`,
+      budgetEur + COST_PER_REQUEST_EUR > cap)
+    // Το ΟΡΙΟ που ισχύει είναι το ταβάνι στρογγυλεμένο (20, 60, 150, 500) και
+    // η στρογγύλευση δεν το περνά πάνω από 5%.
+    ok(`${id}: το όριο είναι ο προϋπολογισμός στρογγυλεμένος`,
+      l.perMonth === roundQuestions(monthlyQuestionBudget(id, 'monthly')))
+    ok(`${id}: η στρογγύλευση περνά το 20% το πολύ κατά 5%`,
+      l.perMonth * COST_PER_REQUEST_EUR <= cap * 1.05)
 
     // Το ετήσιο μετριέται στο ΕΤΟΣ, γιατί εκεί δίνεται.
     const annualYear = monthlyQuestionBudget(id, 'annual') * 12 * COST_PER_REQUEST_EUR
@@ -129,8 +136,10 @@ const FREE_USERS_TARGET = 10
   // Η δοκιμή ανεβάζει το επίπεδο στο «Ιδιοκτήτης+» για να δείξει τις
   // δυνατότητες. Αν έπαιρνε και τις ερωτήσεις του, ο δοκιμαστής θα είχε
   // δυόμισι φορές περισσότερες από όσες πληρώνει ο συνδρομητής.
-  ok('η δοκιμή παίρνει λιγότερα από το φθηνότερο πληρωμένο',
-    TRIAL_LIMITS.perMonth < aiLimitsFor('solo').perMonth)
+  // Με τα στρογγυλά όρια ο «Ιδιοκτήτης» έχει όσα και η δοκιμή (20): ποτέ
+  // λιγότερα από όσα γνώρισε ο δοκιμαστής, ποτέ περισσότερα η δοκιμή.
+  ok('η δοκιμή δεν παίρνει περισσότερα από το φθηνότερο πληρωμένο',
+    TRIAL_LIMITS.perMonth <= aiLimitsFor('solo').perMonth)
   ok('η δοκιμή παίρνει περισσότερα από την αναμονή χωρίς συνδρομή',
     TRIAL_LIMITS.perMonth > aiLimitsFor('free').perMonth)
   ok('η δοκιμή κοστίζει λιγότερο από ένα ευρώ ανά λογαριασμό',
@@ -178,7 +187,7 @@ const FREE_USERS_TARGET = 10
 // «Απομένουν 15 από 23». Σωστό νούμερο, εντελώς άσχετο με το τι θα συμβεί.
 {
   const solo = aiLimitsFor('solo')
-  const afternoon = remainingLine({ month: 7, monthLimit: solo.perMonth, day: 7, dayLimit: solo.perDay })
+  const afternoon = remainingLine({ month: solo.perDay - 1, monthLimit: solo.perMonth, day: solo.perDay - 1, dayLimit: solo.perDay })
   ok('δείχνει την ΗΜΕΡΑ όταν το ημερήσιο είναι πιο κοντά',
      afternoon === `Απομένει 1 από ${solo.perDay} ερωτήσεις σήμερα`)
   ok('και ΔΕΝ δείχνει το άσχετο υπόλοιπο του μήνα', !/τον μήνα/.test(afternoon))
@@ -284,6 +293,15 @@ const FREE_USERS_TARGET = 10
   ok('ο λογαριασμός χωρίς συνδρομή μένει στο δικό του, μικρότερο πακέτο',
      effectiveAiLimits('free', false).perMonth === aiLimitsFor('free').perMonth)
 }
+
+// ── Η ΑΠΟΦΑΣΗ ΤΗΣ 25/09/2026: 20, 60, 150, 500 ─────────────────────────────
+// Αν αλλάξει τιμή ή κόστος μοντέλου, ο κανόνας βγάζει άλλα νούμερα και αυτός
+// ο έλεγχος κοκκινίζει: η σελίδα των πακέτων τα δείχνει, οπότε τα ξανακοιτά
+// άνθρωπος πριν φύγουν.
+ok('τα όρια του μήνα είναι 20 / 60 / 150 / 500',
+  (['solo', 'owner', 'agency', 'office'] as PlanId[]).map(p => aiLimitsFor(p).perMonth).join('/') === '20/60/150/500')
+ok('στρογγύλευση: μονοψήφιο μένει, δεκάδα, πεντηκοντάδα',
+  [7, 23, 59, 125, 150, 167, 483].map(roundQuestions).join(',') === '7,20,60,150,150,150,500')
 
 console.log(`aiLimits.test.ts: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)
