@@ -10,21 +10,27 @@
 // αξία διαβάζονται από εκεί, ώστε η φράση να σβήνει μόνη της τη χρονιά που το
 // μέτρο παύει και να μη λέει ποτέ άλλο νούμερο από τη μηχανή του προϊόντος.
 // ═══════════════════════════════════════════════════════════════════════════
-import { ENFIA_REDUCTIONS, enfiaReductionInForce } from '@/lib/billing/enfia';
+import { ENFIA_REDUCTIONS, enfiaReductionInForce, enfiaReductionRate } from '@/lib/billing/enfia';
 import { feWhole, fn } from '@/lib/core/format';
 
 const KEY = 'small_settlement_2026';
 
 /**
- * Η μείωση ως ονοματική φράση χωρίς άρθρο, ή `null` όταν δεν ισχύει τη χρονιά
- * αυτή. Χωρίς άρθρο, γιατί ο ένας καλών τη θέλει υποκείμενο («ισχύει και η…»)
- * και ο άλλος αντικείμενο («δεν περιλαμβάνει τη…»).
+ * Η μείωση ως ονοματική φράση, ή `null` όταν δεν ισχύει τη χρονιά αυτή. Ο ένας
+ * καλών τη θέλει υποκείμενο χωρίς άρθρο («ισχύει και η…») και ο άλλος
+ * αντικείμενο με άρθρο («δεν περιλαμβάνει την…»). Από το 2027 το μέτρο είναι
+ * πλήρης απαλλαγή και η αιτιατική αλλάζει μαζί με το ουσιαστικό, οπότε το
+ * άρθρο το βάζει εδώ η ίδια η φράση και όχι ο καλών.
  */
-export function smallSettlementRelief(year: number): string | null {
+export function smallSettlementRelief(year: number, accusative = false): string | null {
   const rd = ENFIA_REDUCTIONS.find(r => r.key === KEY);
   if (!rd || !enfiaReductionInForce(KEY, year)) return null;
   // Ο πληθυσμός του οικισμού δεν είναι πεδίο της μηχανής· ζει στη σημείωση του
   // μέτρου (≤1.500 κατ.) και γράφεται εδώ όπως εκεί.
   const cap = rd.maxHomeValue != null ? ` με αξία έως ${feWhole(rd.maxHomeValue)}` : '';
-  return `μείωση ${fn(rd.pct)}% του ${year} για κύρια κατοικία σε οικισμό έως 1.500 κατοίκων${cap}`;
+  const rate = enfiaReductionRate(KEY, year);
+  const what = rate >= 100
+    ? (accusative ? 'την πλήρη απαλλαγή' : 'πλήρης απαλλαγή')
+    : `${accusative ? 'τη ' : ''}μείωση ${fn(rate)}%`;
+  return `${what} του ${year} για κύρια κατοικία σε οικισμό έως 1.500 κατοίκων${cap}`;
 }

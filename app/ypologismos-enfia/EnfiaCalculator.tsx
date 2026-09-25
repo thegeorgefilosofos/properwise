@@ -60,7 +60,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
   // Ο ΚΑΝΟΝΑΣ ΤΟΥ ΠΟΣΟΣΤΟΥ ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ: τον διαβάζουν ο υπολογισμός, το
   // χαρτί και η σημείωση που λέει ότι η τιμή του πεδίου δεν πέρασε ως έχει.
   const own = Math.min(100, Math.max(1, amount(ownership) || 100));
-  const smallRelief = smallSettlementRelief(year);
+  const smallRelief = smallSettlementRelief(year, true);
 
   const r = useMemo(() => {
     const m = amount(sqm);
@@ -267,7 +267,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
           ή αποθήκες, η μείωση και η προσαύξηση αλλάζουν, οπότε το ποσό στο εκκαθαριστικό
           θα διαφέρει. Δεν περιλαμβάνει τις νόμιμες εκπτώσεις και απαλλαγές που θέλουν
           κριτήρια (χαμηλό εισόδημα, τρίτεκνοι, αναπηρία), την έκπτωση για ασφαλισμένη
-          κατοικία{smallRelief && <>, τη {smallRelief}</>} ούτε τους ειδικούς συντελεστές
+          κατοικία{smallRelief && <>, {smallRelief}</>} ούτε τους ειδικούς συντελεστές
           οικοπέδου και πρόσοψης. Αν δικαιούσαι κάποια έκπτωση ή απαλλαγή, έλεγξέ το με
           τον λογιστή σου. <EstimateNote />
         </p>
