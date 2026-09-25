@@ -8,7 +8,7 @@ import VercelAnalytics from "./VercelAnalytics";
 import { ToastHost } from "@/components/Toast";
 import ErrorListener from "@/components/ErrorListener";
 import { ConfirmHost } from "@/components/ConfirmDialog";
-import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/core/site";
+import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE } from "@/lib/core/site";
 
 const TITLE = PRODUCT_NAME;
 const DESCRIPTION = PRODUCT_TAGLINE;
@@ -24,8 +24,11 @@ export const metadata: Metadata = {
   // Και δεν υπήρχε `canonical`, οπότε το ίδιο περιεχόμενο με `?ref=` ή
   // `?plan=` μετριόταν από τις μηχανές ως ξεχωριστή σελίδα.
   //
-  // Η εικόνα ΠΑΡΑΓΕΤΑΙ από το app/opengraph-image.tsx, δεν είναι αρχείο που
-  // ξεχνιέται όταν αλλάξει το σήμα.
+  // Η εικόνα ΠΑΡΑΓΕΤΑΙ από τη διαδρομή /og/home (app/og/[slug]), δεν είναι
+  // αρχείο που ξεχνιέται όταν αλλάξει το σήμα. Δηλώνεται ρητά: με το αρχείο
+  // app/opengraph-image.tsx η εικόνα έμπαινε στο τμήμα της ρίζας και ό,τι
+  // διάβαζε από τον δίσκο (γραμματοσειρές, globals.css) ταξίδευε σε ΚΑΘΕ
+  // συνάρτηση της ανάπτυξης.
   // ═══════════════════════════════════════════════════════════════════════
   metadataBase: new URL(SITE),
   alternates: { canonical: "/" },
@@ -38,8 +41,9 @@ export const metadata: Metadata = {
     url: SITE,
     title: TITLE,
     description: DESCRIPTION,
+    images: [SHARE_IMAGE],
   },
-  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: [SHARE_IMAGE] },
   applicationName: "PROPERWISE",
   // Εγκαταστάσιμη εφαρμογή: το manifest παράγεται από το app/manifest.ts.
   manifest: "/manifest.webmanifest",

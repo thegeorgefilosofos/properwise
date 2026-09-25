@@ -20,6 +20,8 @@ export type ShareCard = {
   kind: 'guide' | 'calc';
   over: string;
   title: string;
+  /** Συνέχεια του τίτλου στο μπλε της μάρκας (μόνο η αρχική). */
+  accent?: string;
   /** Σύντομα γεγονότα της σελίδας για την κάρτα (app/og/frame.tsx). */
   chips: readonly string[];
   /** Η διαδρομή της σελίδας, γραμμένη στο κάτω μέρος της κάρτας. */
@@ -33,6 +35,11 @@ const RENT_RATES = RENTAL_TAX_BRACKETS_2026.map(b => fpRate(b.rate * 100)).join(
 const dotted = (iso: string) => iso.split('-').reverse().join('.');
 
 export const SHARE_CARDS: Record<string, ShareCard> = {
+  // Η αρχική και κάθε σελίδα χωρίς δική της κάρτα (SHARE_IMAGE, lib/core/site.ts).
+  // Ζούσε στο app/opengraph-image.tsx, που το Next βάζει στο τμήμα της ρίζας:
+  // ό,τι διάβαζε από τον δίσκο ταξίδευε σε κάθε συνάρτηση της ανάπτυξης.
+  'home': { kind: 'calc', over: '', title: 'Το ακίνητό σου,', accent: 'χωρίς χαρτιά στο συρτάρι.',
+    chips: ['Έσοδα και δαπάνες', 'Ενοικιαστές', 'Φόρος και ΕΝΦΙΑ', 'Προθεσμίες'], path: '' },
   'ypologismos-enfia': { kind: 'calc', over: 'Υπολογιστής', title: 'Υπολόγισε τον ΕΝΦΙΑ του ακινήτου σου',
     chips: ['Τετραγωνικά', 'Τιμή ζώνης', 'Όροφος', 'Παλαιότητα'], path: '/ypologismos-enfia' },
   'ypologismos-forou-enoikion': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόσο φόρο θα πληρώσεις για τα ενοίκιά σου',

@@ -13,5 +13,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const c = SHARE_CARDS[slug];
   if (!c) return new Response('Not found', { status: 404 });
-  return ogFrame({ kicker: c.over, title: c.title, chips: c.chips, path: c.path });
+  return ogFrame({ kicker: c.over || undefined, title: c.title, accent: c.accent, chips: c.chips, path: c.path });
 }
