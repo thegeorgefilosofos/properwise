@@ -583,7 +583,11 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   ok('gating: owner plan named', p.includes(`«${PLANS.owner.name}»`));
   ok('gating: agency plan named', p.includes(`«${PLANS.agency.name}»`));
   ok('gating: office plan named', p.includes(`«${PLANS.office.name}»`));
-  ok('gating: κανένα «Δωρεάν» πακέτο', !/«Δωρεάν»/.test(p) && /ΔΕΝ ΥΠΑΡΧΕΙ ΔΩΡΕΑΝ ΠΑΚΕΤΟ/.test(p));
+  // ΑΠΟ 25.09.2026 ΥΠΑΡΧΕΙ ΔΩΡΕΑΝ ΠΑΚΕΤΟ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΚΑΙ ΧΩΡΙΣ ΤΗ ΝΟΑ. Το
+  // prompt το λέει με το όνομα του PLANS, όχι ως «Δωρεάν»· και λέει ότι ο
+  // λογαριασμός χωρίς συνδρομή συνεχίζει εκεί αντί να διαγράφεται.
+  ok('gating: το δωρεάν πακέτο με το όνομά του', !/«Δωρεάν»/.test(p) && p.includes(`«${PLANS.free.name}» δωρεάν`)
+    && /ΔΕΝ διαγράφεται/.test(p) && p.includes('ΧΩΡΙΣ εμένα'));
   // Οι τιμές/όρια διαβάζονται από τα PLANS: το τεστ πιάνει απόκλιση prompt↔τιμολόγησης.
   ok('gating: solo price from PLANS', p.includes(`${PLANS.solo.priceMonthly.toFixed(2).replace('.', ',')}€/μήνα`));
   ok('gating: owner price from PLANS', p.includes(`${PLANS.owner.priceMonthly.toFixed(2).replace('.', ',')}€/μήνα`));
@@ -625,7 +629,7 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   ok('gating: πρόωρη πρόσβαση', /ΠΡΟΩΡΗ ΠΡΟΣΒΑΣΗ/.test(p) && p.includes(`${EARLY_ACCESS_DAYS} ημέρες νωρίτερα`));
 
   // profile ↔ plan
-  ok('gating: Ιδιώτης → τα δύο δικά του', p.includes(`ο «Ιδιώτης» παίρνει «${PLANS.solo.name}» ή «${PLANS.owner.name}»`));
+  ok('gating: Ιδιώτης → τα δικά του', p.includes(`ο «Ιδιώτης» έχει τον δωρεάν «${PLANS.free.name}» ή παίρνει «${PLANS.solo.name}» ή «${PLANS.owner.name}»`));
   ok('gating: Επαγγελματίας → τα δύο δικά του', p.includes(`Ο «Επαγγελματίας» παίρνει «${PLANS.agency.name}» ή «${PLANS.office.name}»`));
   ok('gating: Ιδιώτης θέλει pro → switch mode', /χρειάζεται να γυρίσει τον τρόπο σε «Επαγγελματίας»/.test(p));
 

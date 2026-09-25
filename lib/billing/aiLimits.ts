@@ -39,7 +39,7 @@
 
 import { PLAN_ORDER, PLANS, type PlanId, type BillingCycle } from './plans';
 import { BLENDED_COST_USD } from '../assistant/model';
-import { ASSISTANT_ACC } from '../assistant/identity';
+import { ASSISTANT_ACC, ASSISTANT_NAME } from '../assistant/identity';
 
 export interface AiLimits {
   /** Αιτήματα ανά λεπτό — φράγμα κατάχρησης, όχι κόστους. Ίδιο για όλους. */
@@ -137,7 +137,11 @@ export function monthlyQuestionBudget(plan: PlanId, cycle: BillingCycle = 'month
  * «Ιδιοκτήτης+». Αυτό εδώ είναι ο σταθμός μετά τη δοκιμή: αρκετό για να μη
  * μείνει κανείς στα κρύα του λουτρού, πολύ λίγο για να είναι προορισμός.
  */
-const FREE_MONTHLY = 10;
+//
+// ΑΠΟ 25.09.2026 ΜΗΔΕΝ. Ο «Ιδιοκτήτης» είναι πλέον δωρεάν πακέτο με όλα τα
+// φορολογικά και ΧΩΡΙΣ τη Νόα· ο βοηθός είναι αυτό που πληρώνεται («Ιδιοκτήτης
+// με Νόα», 4,99€). Η γνωριμία μένει στη δοκιμή των τριάντα ημερών.
+const FREE_MONTHLY = 0;
 
 /**
  * ΤΟ ΗΜΕΡΗΣΙΟ ΔΕΝ ΕΙΝΑΙ ΤΟ ΜΗΝΙΑΙΟ ΔΙΑ ΤΡΙΑΝΤΑ.
@@ -148,7 +152,9 @@ const FREE_MONTHLY = 10;
  * τελειώσει και εξακολουθεί να φράζει την έκρηξη κόστους μιας ημέρας.
  */
 const DAILY_SHARE = 1 / 3;
-const dailyFrom = (perMonth: number) => Math.max(5, Math.ceil(perMonth * DAILY_SHARE));
+// Χωρίς μηνιαίο πακέτο δεν υπάρχει ούτε ημερήσιο: το δάπεδο των πέντε θα
+// έδινε στον δωρεάν λογαριασμό ερωτήσεις που το μηνιαίο του δεν έχει.
+const dailyFrom = (perMonth: number) => perMonth <= 0 ? 0 : Math.max(5, Math.ceil(perMonth * DAILY_SHARE));
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΔΟΚΙΜΗ ΔΕΝ ΕΙΝΑΙ ΑΝΟΙΧΤΗ ΒΡΥΣΗ
@@ -297,6 +303,46 @@ export function monthlyLimitsByRank(): number[] {
 }
 
 export const MAX_PER_MINUTE = PER_MINUTE;
+
+/** Έχει αυτό το πακέτο καθόλου ερωτήσεις προς τη Νόα; */
+export function hasAssistant(plan: PlanId | string | null | undefined): boolean {
+  return aiLimitsFor(plan).perMonth > 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Η ΣΑΡΩΣΗ ΜΕΤΡΑΕΙ ΧΩΡΙΣΤΑ ΑΠΟ ΤΗ ΝΟΑ
+// ─────────────────────────────────────────────────────────────────────────
+// Ως τώρα κάθε σάρωση έτρωγε μία ερώτηση από το πακέτο του βοηθού (και ένα
+// θολό έγγραφο δύο ή τρεις, από τις επαναλήψεις του scanDoc). Με τη Νόα να
+// πληρώνεται χωριστά, ο δωρεάν «Ιδιοκτήτης» θα έμενε χωρίς σάρωση και ο
+// συνδρομητής θα έβλεπε τις ερωτήσεις του να λιγοστεύουν από φωτογραφίες.
+//
+// ΑΠΟΦΑΣΗ ΙΔΙΟΚΤΗΤΗ (25.09.2026): πέντε σαρώσεις τον μήνα στο δωρεάν, χωρίς
+// όριο στα πληρωμένα. Το `null` σημαίνει «χωρίς μηνιαίο όριο»· το όριο ανά
+// λεπτό μένει για όλους, γιατί πιάνει σενάρια και όχι ανθρώπους.
+// ═══════════════════════════════════════════════════════════════════════════
+export const SCAN_LIMITS: Record<PlanId, number | null> = {
+  free: 5, solo: null, owner: null, agency: null, office: null,
+};
+
+/** Τα μηνιαία όρια σάρωσης με τη σειρά των rank, όπως τα θέλει το RPC. */
+export function scanLimitsByRank(): (number | null)[] {
+  return PLAN_RANK_ORDER.map(p => SCAN_LIMITS[p]);
+}
+
+/** Μήνυμα όταν τελειώσουν οι σαρώσεις του μήνα. */
+export function scansExhaustedMessage(canBuy = false): string {
+  const base = `Χρησιμοποίησες και τις ${SCAN_LIMITS.free} σαρώσεις του μήνα. Ανανεώνονται την 1η του επόμενου μήνα.`;
+  return canBuy ? `${base} Με το πακέτο «${PLANS.solo.name}» η σάρωση δεν έχει όριο.` : base;
+}
+
+/** Μήνυμα όταν το πακέτο δεν έχει καθόλου τη Νόα. */
+export function assistantLockedMessage(canBuy = false): string {
+  const base = `${ASSISTANT_NAME} δεν περιλαμβάνεται στο δωρεάν πακέτο «${PLANS.free.name}».`;
+  return canBuy
+    ? `${base} Με το πακέτο «${PLANS.solo.name}» παίρνεις ${LIMITS.solo.perMonth} ερωτήσεις τον μήνα.`
+    : `${base} Υπάρχει στο πακέτο «${PLANS.solo.name}» και στα μεγαλύτερα.`;
+}
 
 /** Πλάνο χωρίς ανώτερο. Το να του προτείνεις αναβάθμιση είναι κοροϊδία. */
 const isTopPlan = (plan: PlanId | string | null | undefined) =>

@@ -44,16 +44,17 @@ ok('δηλαδή 3 ακίνητα στη δοκιμή', DB_MAX_PROPERTIES[DB_RAN
 
 // ── ΤΟ «ΕΝΑ ΑΚΙΝΗΤΟ» ────────────────────────────────────────────────────────
 ok('υπάρχει', !!PLANS.solo)
-ok('κοστίζει 3,90€', PLANS.solo.priceMonthly === 3.9)
+ok('κοστίζει 4,99€', PLANS.solo.priceMonthly === 4.99)
 ok('ένα ακίνητο', PLANS.solo.maxProperties === 1)
 ok('έχει δοκιμή', PLANS.solo.trialDays > 0)
 ok('φθηνότερο από τον Ιδιοκτήτη', PLANS.solo.priceMonthly < PLANS.owner.priceMonthly)
 ok('ακριβότερο από το δωρεάν', PLANS.solo.priceMonthly > PLANS.free.priceMonthly)
 
 // Ο ΛΟΓΟΣ ΥΠΑΡΞΗΣ ΤΟΥ: τα φορολογικά χωρίς να πληρώνεις για τρία ακίνητα.
-ok('ξεκλειδώνει το Ε2', FEATURE_MIN_PLAN.e2_export === 'solo')
-ok('ξεκλειδώνει τις εισπράξεις', FEATURE_MIN_PLAN.rent_collection === 'solo')
-ok('το δωρεάν ΔΕΝ τα έχει', !planAtLeast('free', FEATURE_MIN_PLAN.e2_export))
+// ΑΠΟ 25.09.2026 τα φορολογικά είναι δωρεάν· το solo προσθέτει τη Νόα.
+ok('το Ε2 είναι δωρεάν', FEATURE_MIN_PLAN.e2_export === 'free')
+ok('οι εισπράξεις είναι δωρεάν', FEATURE_MIN_PLAN.rent_collection === 'free')
+ok('το δωρεάν τα έχει', planAtLeast('free', FEATURE_MIN_PLAN.e2_export))
 ok('το solo τα έχει', planAtLeast('solo', FEATURE_MIN_PLAN.e2_export))
 // …αλλά ΔΕΝ δίνει δεύτερο ακίνητο· εκεί αρχίζει ο «Ιδιοκτήτης».
 ok('δεν δίνει δεύτερο ακίνητο', !planAtLeast('solo', FEATURE_MIN_PLAN.multi_property))

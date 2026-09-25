@@ -209,7 +209,8 @@ export function useDocScan<T>(opts: {
         const res = await fetch('/api/anthropic', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'claude-sonnet-5', max_tokens: 1200, system: opts.system,
+            // Σάρωση: μετρά στον μετρητή σαρώσεων, όχι στις ερωτήσεις της Νόας.
+            kind: 'scan', model: 'claude-sonnet-5', max_tokens: 1200, system: opts.system,
             messages: [{ role: 'user', content: [part, { type: 'text', text: opts.ask }] }],
           }),
         })

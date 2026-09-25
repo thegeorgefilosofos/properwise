@@ -51,7 +51,12 @@ const findings = [];
 for (const [name, why] of Object.entries(GATED)) {
   const hit = latest.get(name);
   if (!hit) { findings.push(`${name}: καμία γραφή στις μεταναστεύσεις — ${why}`); continue; }
-  if (!/user_plan_rank/.test(hit.body)) {
+  // ΑΠΟ 25.09.2026 Η ΠΥΛΗ ΕΙΝΑΙ ΑΝΟΙΧΤΗ ΣΕ ΚΑΘΕ ΠΑΚΕΤΟ. Ο δωρεάν «Ιδιοκτήτης»
+  // έχει το Ε2, άρα και την πύλη (20260925190000). Η κλειδαριά μπορεί να λείπει
+  // ΜΟΝΟ με το ρητό σημάδι της απόφασης μέσα στο σώμα· μια γραφή που απλώς την
+  // ξεχνά εξακολουθεί να κοκκινίζει.
+  const openByDecision = /Η ΚΛΕΙΔΑΡΙΑ ΤΟΥ ΒΑΘΜΟΥ 1 ΕΦΥΓΕ/.test(hit.body);
+  if (!/user_plan_rank/.test(hit.body) && !openByDecision) {
     findings.push(`${DIR}/${hit.file}  «${name}» ${why}, χωρίς user_plan_rank`);
   }
 }

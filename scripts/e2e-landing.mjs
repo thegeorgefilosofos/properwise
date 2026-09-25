@@ -317,15 +317,20 @@ for (const w of PLAN_WIDTHS) {
   const p = await newPage()
   await p.setViewportSize({ width: w, height: 1000 })
   await p.goto(BASE + '/', { waitUntil: 'networkidle' })
-  const r = await p.evaluate(() => {
+  // ΚΑΙ ΣΤΙΣ ΔΥΟ ΘΕΣΕΙΣ ΤΟΥ ΔΙΑΚΟΠΤΗ. Η κάρτα του «Ιδιοκτήτη» κρατά δύο
+  // εκδοχές (δωρεάν, με Νόα) και δείχνει μία· μετριέται ό,τι ΦΑΙΝΕΤΑΙ, αλλιώς
+  // το κρυμμένο κουμπί διαβάζεται ως 0px και ο έλεγχος κρίνει φάντασμα.
+  const measure = () => p.evaluate(() => {
     const g = document.querySelector('.lp-plans')
     if (!g) return null
+    const shown = el => el.getClientRects().length > 0
+    const first = (c, sel) => [...c.querySelectorAll(sel)].find(shown)?.getBoundingClientRect()
     const rows = new Map()
     for (const c of g.children) {
       const b = c.getBoundingClientRect()
-      const cta = c.querySelector('a[href*="cycle=monthly"]')?.getBoundingClientRect()
-      const ann = c.querySelector('a[href*="cycle=annual"]')?.getBoundingClientRect()
-      const price = c.querySelector('[style*="tabular-nums"]')?.getBoundingClientRect()
+      const cta = first(c, 'a[href^="/signup"]:not([href*="cycle=annual"])')
+      const ann = first(c, 'a[href*="cycle=annual"]')
+      const price = first(c, '[style*="tabular-nums"]')
       const key = Math.round(b.top)
       if (!rows.has(key)) rows.set(key, [])
       rows.get(key).push({ h: b.height, cta: cta?.top ?? 0, ann: ann?.bottom ?? 0, price: price?.top ?? 0 })
@@ -340,6 +345,41 @@ for (const w of PLAN_WIDTHS) {
     }
     return { per: [...rows.values()].map(cs => cs.length), rows: rows.size, worst: Math.round(worst), what }
   })
+  const off = await measure()
+  // Ο ΔΙΑΚΟΠΤΗΣ ΔΕΙΧΝΕΙ ΤΙ ΕΙΝΑΙ ΕΠΙΛΕΓΜΕΝΟ. Το χρώμα κρέμεται από επιλογέα
+  // αδελφού (`:checked ~ * .pc-seg`)· μια αλλαγή στη δομή της κάρτας τον έσπασε
+  // μία φορά σιωπηλά και η επιλογή «Με τη Νόα» δεν φωτιζόταν.
+  //
+  // ΚΑΙ ΔΙΑΒΑΖΕΤΑΙ ΕΝΩ ΦΑΙΝΕΤΑΙ. Η ενότητα των πακέτων έχει
+  // `content-visibility: auto`: έξω από την οθόνη ο περιηγητής του CI δεν
+  // υπολογίζει το στυλ της και το χρώμα έμενε «διάφανο» πριν και μετά,
+  // ενώ ο διακόπτης δούλευε (η στοίχιση της θέσης «Με τη Νόα» περνούσε στην
+  // ίδια εκτέλεση). Κύλιση ώς την κάρτα και δύο καρέ, όπως τη βλέπει ο χρήστης.
+  const segBg = async () => {
+    await p.locator('.pc-card').scrollIntoViewIfNeeded()
+    await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
+    return p.evaluate(() => getComputedStyle(document.querySelector('label[for="pc-noa-on"]')).backgroundColor)
+  }
+  const bgOff = await segBg()
+  await p.evaluate(() => document.getElementById('pc-noa-on')?.click())
+  const on = await measure()
+  if (w === 1280 || w === 390) {
+    // Η ετικέτα αλλάζει χρώμα με μετάβαση. Σταθερή αναμονή δεν αρκεί: στο CI
+    // στα 1280 τα 450ms βρήκαν ακόμη το διάφανο. Περιμένουμε ώσπου το χρώμα να
+    // φύγει από την αρχική του τιμή, ως 3 δευτερόλεπτα.
+    await p.locator('.pc-card').scrollIntoViewIfNeeded()
+    await p.waitForFunction((before) =>
+      getComputedStyle(document.querySelector('label[for="pc-noa-on"]')).backgroundColor !== before,
+      bgOff, { timeout: 3000 }).catch(() => {})
+    const bgOn = await segBg()
+    // Αν κοπεί, το μήνυμα λέει ΓΙΑΤΙ: επιλέχθηκε το κουμπί; φαίνεται η κάρτα;
+    const why = await p.evaluate(() => {
+      const r = document.querySelector('.pc-card').getBoundingClientRect()
+      return `checked=${document.getElementById('pc-noa-on').checked} top=${Math.round(r.top)} innerHeight=${innerHeight}`
+    })
+    ok(`ο διακόπτης «Με τη Νόα» φωτίζεται όταν επιλεγεί (${w})`, bgOn !== bgOff, `${bgOff} → ${bgOn} · ${why}`)
+  }
+  const r = off && on ? (on.worst > off.worst ? { ...on, what: `${on.what} (με Νόα)` } : off) : null
   ok(`τα πακέτα ζυγίζουν στα ${w} (${r?.rows} ${r?.rows === 1 ? 'σειρά' : 'σειρές'})`,
     !!r && r.worst <= 1, r ? `${r.what} ${r.worst}px` : 'δεν βρέθηκαν κάρτες')
   // ΚΑΜΙΑ ΟΡΦΑΝΗ ΚΑΡΤΑ. Τέσσερα πακέτα σε τρεις στήλες αφήνουν ένα μόνο του

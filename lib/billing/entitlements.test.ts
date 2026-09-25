@@ -65,8 +65,9 @@ ok(FEATURE_MIN_PLAN.comparison === 'owner', 'comparison ≥ owner');
 // Τα φορολογικά ΞΕΚΛΕΙΔΩΝΟΥΝ ΣΤΟ 3,90: αυτός είναι ο λόγος ύπαρξης του
 // πλάνου «Ένα ακίνητο». Πριν, ο ιδιοκτήτης ενός σπιτιού πλήρωνε 9,90 για τρία
 // ακίνητα ώστε να πάρει το Ε2 που αφορά το ένα του.
-ok(FEATURE_MIN_PLAN.e2_export === 'solo', 'e2_export ≥ solo');
-ok(FEATURE_MIN_PLAN.rent_collection === 'solo', 'rent_collection ≥ solo');
+// ΑΠΟ 25.09.2026 ΔΩΡΕΑΝ: ο «Ιδιοκτήτης» χωρίς συνδρομή έχει τα φορολογικά.
+ok(FEATURE_MIN_PLAN.e2_export === 'free', 'e2_export δωρεάν');
+ok(FEATURE_MIN_PLAN.rent_collection === 'free', 'rent_collection δωρεάν');
 ok(FEATURE_MIN_PLAN.clients === 'agency', 'clients ≥ agency');
 ok(FEATURE_MIN_PLAN.portfolio === 'agency', 'portfolio ≥ agency');
 ok(FEATURE_MIN_PLAN.report_branding === 'agency', 'report_branding ≥ agency');
@@ -75,7 +76,7 @@ ok(FEATURE_MIN_PLAN.report_branding === 'agency', 'report_branding ≥ agency');
 const free: EntitlementInput = { plan: 'free' };
 ok(hasFeature(free, 'multi_property') === false, 'free δεν έχει multi_property');
 ok(hasFeature(free, 'comparison') === false, 'free δεν έχει comparison');
-ok(hasFeature(free, 'e2_export') === false, 'free δεν έχει e2_export');
+ok(hasFeature(free, 'e2_export') === true, 'free έχει e2_export');
 ok(hasFeature(free, 'clients') === false, 'free δεν έχει clients');
 ok(hasFeature(free, 'portfolio') === false, 'free δεν έχει portfolio');
 ok(hasFeature(free, 'report_branding') === false, 'free δεν έχει report_branding');
@@ -232,7 +233,9 @@ ok(canAddProperty(compOwner, 3) === false, 'comp owner σταματά στα 3')
 
   // Στη δοκιμή ξεκλειδώνουν τα χαρακτηριστικά για τα οποία θα πληρώσει.
   ok(hasFeature(mk(5), 'e2_export') === true, 'δοκιμή ξεκλειδώνει Ε2');
-  ok(hasFeature(mk(40), 'e2_export') === false, 'μετά τη λήξη κλειδώνει το Ε2');
+  // Μετά τη λήξη κλειδώνει ό,τι είναι πληρωμένο· το Ε2 μένει, είναι δωρεάν.
+  ok(hasFeature(mk(40), 'comparison') === false, 'μετά τη λήξη κλειδώνει η σύγκριση');
+  ok(hasFeature(mk(40), 'e2_export') === true, 'μετά τη λήξη το Ε2 μένει');
 }
 
 // ── ΟΤΑΝ Η ΛΗΞΗ ΔΕΝ ΕΙΝΑΙ ΛΗΞΗ ──────────────────────────────────────────────

@@ -16,7 +16,7 @@
 // 11) Ενίσχυση μετατροπής 12) Συμμόρφωση 13) Συνδρομή & Χρέωση
 // 14) Σχέσεις 15) Αξία & Εξοικονόμηση 16) Επικαιρότητα. Στρατηγική: docs/marketing/email-strategy.md.
 // ═══════════════════════════════════════════════════════════════════════════
-import { emailShell, eyebrow, h, p, bullets, button, greeting, note, heroStat, gv, PLAN_LABEL, PACKAGE_NAME, PACKAGE_MAX_PROPERTIES, type PackageId, type Personal } from './emailTemplates.ts'
+import { emailShell, eyebrow, h, p, bullets, button, greeting, note, heroStat, gv, PACKAGE_NAME, PACKAGE_MAX_PROPERTIES, type PackageId, type Personal } from './emailTemplates.ts'
 import { APP_URL } from './site.ts'
 import { eur } from './format.ts'
 
@@ -506,7 +506,7 @@ export const UPSELL: Record<string, CopyFn> = {
       preheader: 'Περισσότερα δεδομένα, σωστότερες αποφάσεις.',
       unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Αναβάθμιση') + h('Δώσε στο ακίνητό σου περισσότερα') + greeting(c.name)
-        + p('Άλλος ένας μήνας χωρίς συνδρομή. Μήπως ήρθε η ώρα για περισσότερες δυνατότητες στο ακίνητό σου, για να έχεις περισσότερα δεδομένα και να παίρνεις σωστότερες αποφάσεις;')
+        + p('Άλλος ένας μήνας στο δωρεάν πακέτο. Μήπως ήρθε η ώρα για τη Νόα, τον ψηφιακό βοηθό, ή για περισσότερα ακίνητα, ώστε να παίρνεις σωστότερες αποφάσεις με λιγότερο κόπο;')
         + p(`Με ένα πακέτο συνδρομής, από το «${PACKAGE_NAME.solo}» ως το «${PACKAGE_NAME.office}», κερδίζεις χρόνο στη διαχείριση, με λίγα μόλις κλικ από το κινητό σου.`)
         + button('Δες τα πακέτα', dash(c))
         + note(NOTE.cancel),
@@ -620,7 +620,7 @@ export const UPSELL: Record<string, CopyFn> = {
       preheader: 'Κράτησε ό,τι έστησες, χωρίς διακοπή.',
       unsubUrl: c.unsubUrl,
       bodyHtml: eyebrow('Δοκιμή') + h('Ας μη σταματήσει η ροή σου') + greeting(c.name)
-        + p(`${left} ολοκληρώνεται η δοκιμαστική σου περίοδος. Για να συνεχίσουν οι υπενθυμίσεις, οι αναφορές και η αυτόματη λογιστική χωρίς διακοπή, διάλεξε πακέτο όποτε σε βολεύει.`)
+        + p(`${left} ολοκληρώνεται η δοκιμαστική σου περίοδος. Μετά συνεχίζεις δωρεάν στο πακέτο «Ιδιοκτήτης», με ένα ακίνητο και τα φορολογικά. Για τη Νόα, περισσότερα ακίνητα ή τα εργαλεία των μεγαλύτερων πακέτων, διάλεξε πακέτο όποτε σε βολεύει.`)
         + p('Ό,τι έχεις καταχωρήσει μένει ακριβώς εκεί που το άφησες.')
         + button('Διάλεξε πακέτο', dash(c))
         + note(NOTE.cancel),
@@ -1558,8 +1558,8 @@ export const CONVERSION: Record<string, CopyFn> = {
       bodyHtml: eyebrow('Σύγκριση πακέτων') + h('Ας βρούμε το σωστό πακέτο για σένα') + greeting(c.name)
         + p(`${use}Αξίζει να δεις τι προσφέρει κάθε πακέτο σε σχέση με το πώς χρησιμοποιείς σήμερα το PROPERWISE.`)
         + bullets([
-            `${PLAN_LABEL.free}: τα βασικά για να ξεκινήσεις και να δεις αξία.`,
-            `${PACKAGE_NAME.solo}: 1 ακίνητο, με υπενθυμίσεις και αναφορές PDF με QR επαλήθευσης.`,
+            'Ιδιοκτήτης: δωρεάν, 1 ακίνητο με τα φορολογικά, υπενθυμίσεις και αναφορές PDF με QR επαλήθευσης.',
+            `${PACKAGE_NAME.solo}: ο ίδιος, με τη Νόα και σάρωση χωρίς όριο.`,
             `${PACKAGE_NAME.owner}: έως ${PACKAGE_MAX_PROPERTIES.owner} ακίνητα και σύγκριση ακινήτων.`,
             `${PACKAGE_NAME.agency}: έως ${PACKAGE_MAX_PROPERTIES.agency} ακίνητα, αναφορές με την επωνυμία σου, κατανομή σε συνιδιοκτήτες.`,
             `${PACKAGE_NAME.office}: απεριόριστα ακίνητα και ομάδα χωρίς όριο χρηστών.`,

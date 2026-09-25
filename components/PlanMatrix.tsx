@@ -20,8 +20,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { PLANS, TEAM_LINE, DIRECT_CONTACT_LINE, firstPlanWith, type PlanId } from '@/lib/billing/plans';
-import { aiLimitsFor } from '@/lib/billing/aiLimits';
-import { ASSISTANT_TO } from '@/lib/assistant/identity';
+import { aiLimitsFor, SCAN_LIMITS } from '@/lib/billing/aiLimits';
+import { ASSISTANT_TO, ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { FEATURE_LABEL, FEATURE_MIN_PLAN, planAtLeast, type Feature } from '@/lib/billing/entitlements';
 import { T, fn } from '@/components/tokens';
 import { fe } from '@/lib/core/format';
@@ -82,17 +82,34 @@ const priceRow = (label: string, of: (id: ComparedPlan) => number): FeatureRow =
   label, values: Object.fromEntries(COMPARED.map(p => [p, fe(of(p))])) as Record<ComparedPlan, CellValue>,
 });
 
+// ═══ Η ΠΡΩΤΗ ΣΤΗΛΗ ΕΙΝΑΙ ΔΥΟ ΠΑΚΕΤΑ, ΟΠΩΣ ΚΑΙ Η ΚΑΡΤΑ ΤΗΣ ΑΡΧΙΚΗΣ ══════════
+// Από 25.09.2026 ο «Ιδιοκτήτης» είναι δωρεάν (`free`) και με τη Νόα γίνεται
+// `solo`, 4,99€. Τέσσερις στήλες μένουν τέσσερις: η στήλη `solo` λέγεται
+// «Ιδιοκτήτης» και όπου τα δύο διαφέρουν γράφει και τα δύο, πρώτα το δωρεάν.
+// Οι γραμμές με ναι/όχι δεν αλλάζουν: ό,τι έχει ο δωρεάν το έχει και ο με Νόα.
+const WITH_NOA = `με ${ASSISTANT_NAME}`;
+const both = (free: string, noa: string) => `${free} · ${noa} ${WITH_NOA}`;
+export const columnName = (id: ComparedPlan): string => id === 'solo' ? PLANS.free.name : PLANS[id].name;
+const withSolo = (row: FeatureRow, solo: string): FeatureRow => ({ ...row, values: { ...row.values, solo } });
+
 export const MATRIX: FeatureRow[] = [
-  priceRow('Τιμή τον μήνα', id => PLANS[id].priceMonthly),
-  priceRow('Τιμή τον χρόνο', id => PLANS[id].priceAnnual),
+  withSolo(priceRow('Τιμή τον μήνα', id => PLANS[id].priceMonthly), both(fe(0), fe(PLANS.solo.priceMonthly))),
+  withSolo(priceRow('Τιμή τον χρόνο', id => PLANS[id].priceAnnual), both(fe(0), fe(PLANS.solo.priceAnnual))),
   { label: 'Ακίνητα', values: Object.fromEntries(COMPARED.map(p => [p, limitLabel(p)])) as Record<ComparedPlan, CellValue> },
   { label: `Ερωτήσεις ${ASSISTANT_TO} τον μήνα`,
-    values: Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perMonth)])) as Record<ComparedPlan, CellValue> },
+    values: { ...Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perMonth)])) as Record<ComparedPlan, CellValue>,
+      solo: `${fn(aiLimitsFor('solo').perMonth)} ${WITH_NOA}` } },
   // ΤΟ ΗΜΕΡΗΣΙΟ ΟΡΙΟ ΛΕΓΕΤΑΙ ΠΡΙΝ ΤΗΝ ΑΓΟΡΑ. Μέσα σε ένα απόγευμα δεσμεύει
   // σχεδόν πάντα αυτό και όχι το μηνιαίο (βλ. `remainingLine` στο aiLimits).
   { label: `Ερωτήσεις ${ASSISTANT_TO} την ημέρα`,
-    values: Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perDay)])) as Record<ComparedPlan, CellValue> },
-  forAll('Σάρωση εγγράφων και φωνητική καταχώρηση'),
+    values: { ...Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perDay)])) as Record<ComparedPlan, CellValue>,
+      solo: `${fn(aiLimitsFor('solo').perDay)} ${WITH_NOA}` } },
+  // Η ΣΑΡΩΣΗ ΜΕΤΡΑΕΙ ΧΩΡΙΣΤΑ (SCAN_LIMITS): πέντε τον μήνα στο δωρεάν, χωρίς
+  // όριο σε όλα τα πληρωμένα.
+  { label: 'Σάρωση εγγράφων τον μήνα',
+    values: { ...Object.fromEntries(COMPARED.map(p => [p, 'Χωρίς όριο'])) as Record<ComparedPlan, CellValue>,
+      solo: both(fn(SCAN_LIMITS.free ?? 0), 'χωρίς όριο') } },
+  forAll('Φωνητική καταχώρηση'),
   forAll('Αποδόσεις, δαπάνες, ενέργεια και φόρος 2026'),
   forAll('Ειδοποιήσεις και υπενθυμίσεις'),
   gated('e2_export'),
@@ -134,11 +151,18 @@ const inSentence = (label: string) => label.charAt(0).toLocaleLowerCase('el-GR')
  * ολόκληρο «Ξεκίνα τη δοκιμή» έσπαγε σε δύο σειρές στις στενές στήλες. Ο
  * αναγνώστης οθόνης ακούει και το πακέτο, ώστε τα τέσσερα να μην ακούγονται ίδια.
  */
+// Ο «Ιδιοκτήτης» ξεκινά ΔΩΡΕΑΝ, χωρίς πακέτο στη διεύθυνση: η εγγραφή δίνει τη
+// δοκιμή και μετά συνεχίζει στο δωρεάν. Όποιος θέλει τη Νόα τη διαλέγει μετά.
 const TrialCta = ({ id, recommended, short }: { id: ComparedPlan; recommended?: PlanId; short?: boolean }) => (
-  <Btn variant={id === recommended ? 'primary' : 'secondary'} href={`/signup?plan=${id}&cycle=monthly`}>
-    {short ? 'Ξεκίνα' : 'Ξεκίνα τη δοκιμή'}
-    <span className="sr-only">{short ? ' τη δοκιμή' : ''} με το πακέτο «{PLANS[id].name}»</span>
-  </Btn>
+  id === 'solo'
+    ? <Btn variant="secondary" href="/signup">
+        {short ? 'Ξεκίνα' : 'Ξεκίνα δωρεάν'}
+        <span className="sr-only">{short ? ' δωρεάν' : ''} με το πακέτο «{PLANS.free.name}»</span>
+      </Btn>
+    : <Btn variant={id === recommended ? 'primary' : 'secondary'} href={`/signup?plan=${id}&cycle=monthly`}>
+        {short ? 'Ξεκίνα' : 'Ξεκίνα τη δοκιμή'}
+        <span className="sr-only">{short ? ' τη δοκιμή' : ''} με το πακέτο «{PLANS[id].name}»</span>
+      </Btn>
 );
 
 /** Η ετικέτα της προτεινόμενης στήλης, ίδια με την κορδέλα της αρχικής. */
@@ -197,8 +221,8 @@ export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highl
       {COMPARED.map(id => {
         const lacks = DISTINCT.filter(row => row.values[id] === false).map(row => inSentence(row.label));
         return (
-          <section key={id} className="plan-card" aria-label={PLANS[id].name}>
-            <H className="plan-card-name" style={{ color: id === highlight ? 'var(--accent)' : undefined }}>{PLANS[id].name}</H>
+          <section key={id} className="plan-card" aria-label={columnName(id)}>
+            <H className="plan-card-name" style={{ color: id === highlight ? 'var(--accent)' : undefined }}>{columnName(id)}</H>
             {id === recommended && <RecommendedChip />}
             <dl className="plan-card-list">
               {DISTINCT.filter(row => row.values[id] !== false).map(row => {
@@ -278,7 +302,7 @@ export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highl
               <th scope="col"><span className="sr-only">Δυνατότητα</span></th>
               {COMPARED.map(id => (
                 <th key={id} scope="col" style={{ textAlign: 'center', color: id === highlight ? 'var(--accent)' : undefined }}>
-                  {PLANS[id].name}
+                  {columnName(id)}
                   {id === recommended && <><br /><RecommendedChip /></>}
                 </th>
               ))}

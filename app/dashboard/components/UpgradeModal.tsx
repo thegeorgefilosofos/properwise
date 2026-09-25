@@ -104,19 +104,17 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
                   <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{feAuto(p.priceMonthly)}</span>
                   {p.priceMonthly > 0 && <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>/μήνα</span>}
                 </div>
-                {/* ΤΟ «ΓΙΑ ΠΑΝΤΑ» ΚΑΤΩ ΑΠΟ ΤΟ 0,00€ ΗΤΑΝ ΥΠΟΣΧΕΣΗ ΠΟΥ ΔΕΝ ΤΗΡΕΙΤΑΙ.
-                    Το «Χωρίς συνδρομή» δεν είναι δωρεάν πακέτο: είναι η κατάσταση
-                    ΩΣΠΟΥ να διαλέξεις πακέτο, με ένα ακίνητο και χωρίς τα φορολογικά
-                    εργαλεία. Δωρεάν είναι μόνο η δοκιμή και οι μήνες από συστάσεις.
-                    Η γραμμή δεν γράφει δεύτερη διατύπωση: παίρνει το tagline του
-                    ίδιου του πακέτου, ώστε να μην μπορεί να αποκλίνει από αυτό. */}
+                {/* ΚΑΤΩ ΑΠΟ ΤΟ 0,00€ ΤΟ TAGLINE, ΟΧΙ «ΓΙΑ ΠΑΝΤΑ». Από 25.09.2026 ο
+                    «Ιδιοκτήτης» είναι δωρεάν πακέτο για ένα ακίνητο, χωρίς τη Νόα·
+                    υπόσχεση αιωνιότητας δίπλα σε τιμή δεν γράφεται πουθενά. Η
+                    γραμμή παίρνει το tagline του ίδιου του πακέτου. */}
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', minHeight: 16 }}>
                   {p.priceAnnual > 0 ? `ή ${feAuto(p.priceAnnual)}/χρόνο (${feAuto(annualPerMonth(id as PlanId))}/μήνα)` : p.tagline}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '10px 0 0', lineHeight: 1.5 }}>
                   {p.maxProperties === Infinity ? 'Απεριόριστα ακίνητα' : `Έως ${p.maxProperties} ${p.maxProperties === 1 ? 'ακίνητο' : 'ακίνητα'}`}
                 </div>
-                {!isCurrent && p.id !== 'free' && (
+                {!isCurrent && (
                   <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {p.features.slice(0, 3).map((f, i) => (
                       <li key={i} style={{ display: 'flex', gap: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.4 }}>

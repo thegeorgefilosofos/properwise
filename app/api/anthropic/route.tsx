@@ -5,6 +5,7 @@ import {
   MAX_PER_MINUTE, PLAN_RANK_ORDER,
   dailyLimitsByRank, monthlyLimitsByRank, FREE_POOL_PER_MONTH, TRIAL_LIMITS, TESTER_LIMITS,
   dailyExhaustedMessage, monthlyExhaustedMessage, poolExhaustedMessage,
+  scanLimitsByRank, scansExhaustedMessage, assistantLockedMessage,
 } from '@/lib/billing/aiLimits';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { billingWords } from '@/lib/legal/billingWords';
@@ -12,7 +13,23 @@ import {
   UPSTREAM_TIMEOUT_MS, upstreamFailure,
   TIMEOUT_FAILURE, NETWORK_FAILURE, UNREADABLE_FAILURE,
 } from '@/lib/assistant/upstream';
-import { refundAiUsage } from '@/lib/billing/aiRefund';
+import { refundAiUsage, refundScanUsage } from '@/lib/billing/aiRefund';
+
+/**
+ * Είναι αυτό το αίτημα σάρωση; Το δηλώνει ο πελάτης (`kind: 'scan'`), αλλά
+ * δεν αρκεί: η σάρωση έχει ΔΙΚΟ της μετρητή (χωρίς όριο στα πληρωμένα), άρα
+ * μια ερώτηση προς τη Νόα που θα δήλωνε «σάρωση» θα περνούσε χωρίς μέτρημα.
+ * Γι' αυτό ζητάμε και ΑΡΧΕΙΟ μέσα στο μήνυμα: εικόνα ή έγγραφο.
+ */
+function isScanRequest(body: { kind?: unknown; messages?: unknown }): boolean {
+  if (body?.kind !== 'scan' || !Array.isArray(body.messages)) return false;
+  return body.messages.some(m =>
+    Array.isArray((m as { content?: unknown })?.content) &&
+    ((m as { content: unknown[] }).content).some(c => {
+      const t = (c as { type?: unknown })?.type;
+      return t === 'image' || t === 'document';
+    }));
+}
 
 // Rate limiting: simple in-memory store (για production χρησιμοποίησε Redis)
 // ΣΗΜ.: σε serverless/πολλαπλά instances αυτό είναι ανά-instance. Είναι φράγμα
@@ -122,6 +139,34 @@ export async function POST(req: NextRequest) {
     dailyLimit.set(ip, { count: 1, day: today });
   }
 
+  // ── ΤΟ ΣΩΜΑ ΔΙΑΒΑΖΕΤΑΙ ΠΡΙΝ ΑΠΟ ΤΟΝ ΜΕΤΡΗΤΗ ─────────────────
+  // Ο μετρητής είναι πλέον δύο (Νόα και σάρωση) και το ποιος από τους δύο
+  // χρεώνεται το λέει το σώμα. Μέγεθος και μηνύματα κρίνονται εδώ, πριν από
+  // κάθε χρέωση, οπότε ένα άκυρο αίτημα δεν χρειάζεται επιστροφή μονάδας.
+  //
+  // Διαβάζουμε πρώτα ως κείμενο για να επιβάλουμε σκληρό όριο μεγέθους (το
+  // Content-Length μπορεί να λείπει/να είναι πλαστό, μετράμε τα πραγματικά bytes).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: any;
+  try {
+    const raw = await req.text();
+    if (raw.length > MAX_BODY_BYTES) {
+      return NextResponse.json(
+        { error: 'Το αρχείο είναι πολύ μεγάλο. Δοκίμασε μικρότερη φωτογραφία ή PDF.' },
+        { status: 413 }
+      );
+    }
+    body = JSON.parse(raw);
+  } catch {
+    return NextResponse.json({ error: 'Το αίτημα δεν διαβάστηκε.' }, { status: 400 });
+  }
+  // Ασφάλεια: δεν προωθούμε ΟΛΟ το body του client (θα ήταν γενικός proxy
+  // Claude με χρέωση δική μας). Μηνύματα πρέπει να υπάρχουν.
+  if (!Array.isArray(body?.messages) || body.messages.length === 0) {
+    return NextResponse.json({ error: 'Λείπουν μηνύματα.' }, { status: 400 });
+  }
+  const scan = isScanRequest(body);
+
   // ── Durable, cross-instance cap (authoritative) ──────────────
   // Οι χάρτες στη μνήμη από πάνω ζουν ΑΝΑ ΣΤΙΓΜΙΟΤΥΠΟ: σε serverless, κάθε νέα
   // εκτέλεση ξεκινά με άδειους. Ο ατομικός μετρητής στο Supabase είναι το
@@ -133,7 +178,35 @@ export async function POST(req: NextRequest) {
   // δεύτερο ερώτημα εδώ και να μην μπορεί να δηλωθεί πλάνο από τον client.
   /** Πόσες ερωτήσεις έχει κάνει και πόσες δικαιούται. Μπαίνει σε κεφαλίδες. */
   let quota: { month: number; monthLimit: number; day: number; dayLimit: number } | null = null;
-  try {
+  // ── Η ΣΑΡΩΣΗ ΜΕΤΡΑΕΙ ΣΤΟΝ ΔΙΚΟ ΤΗΣ ΜΕΤΡΗΤΗ ────────────────────
+  // Δεν τρώει ερωτήσεις της Νόας. Πέντε τον μήνα στο δωρεάν «Ιδιοκτήτης»,
+  // χωρίς μηνιαίο όριο στα πληρωμένα· το φράγμα ανά λεπτό ισχύει για όλους.
+  if (scan) {
+    try {
+      const { data: su, error: suError } = await supabase.rpc('bump_scan_usage', {
+        p_max_min: MAX_REQUESTS_PER_MINUTE,
+        p_month:   scanLimitsByRank(),
+      });
+      if (suError || su == null) {
+        return NextResponse.json(
+          { error: 'Η σάρωση δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.' },
+          { status: 503 },
+        );
+      }
+      const u = su as { allowed?: boolean; reason?: string };
+      if (u.allowed === false) {
+        const error = u.reason === 'scan_month'
+          ? scansExhaustedMessage(billingWords().live)
+          : 'Πολλές σαρώσεις μαζί. Δοκίμασε ξανά σε ένα λεπτό.';
+        return NextResponse.json({ error, reason: u.reason }, { status: 429 });
+      }
+    } catch {
+      return NextResponse.json(
+        { error: 'Η σάρωση δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.' },
+        { status: 503 },
+      );
+    }
+  } else try {
     const { data: usage, error: usageError } = await supabase.rpc('bump_ai_usage', {
       p_max_min: MAX_REQUESTS_PER_MINUTE,
       p_day:     dailyLimitsByRank(),
@@ -177,6 +250,14 @@ export async function POST(req: NextRequest) {
     if (u && typeof u.month === 'number' && typeof u.month_limit === 'number') {
       quota = { month: u.month, monthLimit: u.month_limit, day: u.day ?? 0, dayLimit: u.day_limit ?? 0 };
     }
+    // ΤΟ ΠΑΚΕΤΟ ΧΩΡΙΣ ΝΟΑ. Ο δωρεάν «Ιδιοκτήτης» δεν έχει ερωτήσεις· η βάση
+    // αρνείται πριν μετρήσει (20260925190000) και εδώ λέμε πού υπάρχει ο βοηθός.
+    if (u && u.allowed === false && u.reason === 'plan') {
+      return NextResponse.json(
+        { error: assistantLockedMessage(billingWords().live), reason: 'plan', plan: 'free' },
+        { status: 403 },
+      );
+    }
     if (u && u.allowed === false) {
       // Το μήνυμα λέει το ΠΡΑΓΜΑΤΙΚΟ νούμερο του πλάνου του χρήστη. Ένα γενικό
       // «έφτασες το όριο» αφήνει τον χρήστη να μαντεύει πόσο είναι το όριο και
@@ -214,6 +295,12 @@ export async function POST(req: NextRequest) {
   const giveBack = async (pool: boolean) => {
     if (refunded) return;
     refunded = true;
+    if (scan) {
+      // Η σάρωση επιστρέφεται στον δικό της μετρητή· δεν έχει δεξαμενή ούτε
+      // κεφαλίδες υπολοίπου της Νόας.
+      await refundScanUsage(user.id);
+      return;
+    }
     if (!(await refundAiUsage(user.id, pool))) return;
     // ΚΑΙ ΟΙ ΚΕΦΑΛΙΔΕΣ ΛΕΝΕ ΤΟ ΥΠΟΛΟΙΠΟ ΜΕΤΑ ΤΗΝ ΕΠΙΣΤΡΟΦΗ. Ο πελάτης διαβάζει
     // τις x-ai-* ΚΑΙ στις αποτυχημένες απαντήσεις (PropertyAssistant.readQuota):
@@ -233,17 +320,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Διαβάζουμε πρώτα ως κείμενο για να επιβάλουμε σκληρό όριο μεγέθους (το
-    // Content-Length μπορεί να λείπει/να είναι πλαστό, μετράμε τα πραγματικά bytes).
-    const raw = await req.text();
-    if (raw.length > MAX_BODY_BYTES) {
-      await giveBack(true);
-      return NextResponse.json(
-        { error: 'Το αρχείο είναι πολύ μεγάλο. Δοκίμασε μικρότερη φωτογραφία ή PDF.' },
-        { status: 413, headers: quotaHeaders(quota) }
-      );
-    }
-    const body = JSON.parse(raw);
 
     // Ασφάλεια: κλείδωμα μοντέλου + max_tokens. Το 'claude-sonnet-4-6' ΗΤΑΝ ΑΚΥΡΟ
     // (κάθε κλήση απέτυχε). Σωστό ID: claude-sonnet-5 (ικανό για vision/PDF).
@@ -251,13 +327,6 @@ export async function POST(req: NextRequest) {
 
     // Δεν προωθούμε ΟΛΟ το body του client (θα ήταν γενικός proxy Claude με χρέωση
     // δική μας). Δεχόμαστε μόνο μια λίστα επιτρεπτών πεδίων και ελέγχουμε τα μηνύματα.
-    if (!Array.isArray(body?.messages) || body.messages.length === 0) {
-      await giveBack(true);
-      return NextResponse.json(
-        { error: 'Λείπουν μηνύματα.' },
-        { status: 400, headers: quotaHeaders(quota) }
-      );
-    }
     // ΚΟΒΟΥΜΕ, ΔΕΝ ΑΠΟΡΡΙΠΤΟΥΜΕ. Πριν, στο 40ό μήνυμα (≈20ή ερώτηση) ο χρήστης
     // έπαιρνε 413 «Πολύ μεγάλη συνομιλία» και η συνεδρία ΣΠΑΓΕ: κάθε επόμενη
     // ερώτηση απέτυχε, χωρίς τρόπο ανάκαμψης πέρα από ανανέωση σελίδας. Ο σκοπός

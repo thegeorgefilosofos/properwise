@@ -15,6 +15,7 @@ import {
   poolExhaustedMessage, COST_PER_REQUEST_USD, COST_PER_REQUEST_EUR, FREE_BUDGET_USD, TESTER_LIMITS,
   FREE_POOL_PER_MONTH, FREE_TESTERS_PER_MONTH, dailyLimitsByRank, monthlyLimitsByRank, PLAN_RANK_ORDER,
   MAX_PER_MINUTE, AI_SHARE, monthlyQuestionBudget, roundQuestions, limitFromBudget, TRIAL_LIMITS, effectiveAiLimits,
+  hasAssistant, assistantLockedMessage, scanLimitsByRank, scansExhaustedMessage,
 } from './aiLimits'
 import { PLANS, PLAN_ORDER, type PlanId } from './plans'
 
@@ -62,19 +63,19 @@ const FREE_USERS_TARGET = 10
     FREE_TESTERS_PER_MONTH >= 10 && FREE_TESTERS_PER_MONTH <= 200)
 
   // Η δεξαμενή πρέπει να ΔΕΣΜΕΥΕΙ: αν δεν έπιανε ποτέ, η εγγύηση θα ήταν
-  // διακοσμητική. Ο λογαριασμός χωρίς συνδρομή τρώει κι αυτός από εδώ.
-  const free = aiLimitsFor('free')
+  // διακοσμητική. Από 25.09.2026 ο δωρεάν «Ιδιοκτήτης» δεν έχει ερωτήσεις·
+  // από εδώ τρώνε η δοκιμή, οι δωρεάν μήνες και οι Συνεργάτες.
   ok('η δεξαμενή δεσμεύει σε ρεαλιστικό πλήθος λογαριασμών',
-    FREE_POOL_PER_MONTH / free.perMonth <= FREE_TESTERS_PER_MONTH * 2)
+    FREE_POOL_PER_MONTH / TRIAL_LIMITS.perMonth <= FREE_TESTERS_PER_MONTH * 2)
 
   // …αλλά ούτε τόσο σφιχτή ώστε να κόβει έναν μοναχικό χρήστη.
-  ok('πέντε δωρεάν χρήστες στο πλήρες μηνιαίο τους χωρούν',
-    FREE_POOL_PER_MONTH >= free.perMonth * 5)
+  ok('πέντε λογαριασμοί σε δοκιμή στο πλήρες μηνιαίο τους χωρούν',
+    FREE_POOL_PER_MONTH >= TRIAL_LIMITS.perMonth * 5)
 }
 
 // ── Το ατομικό μηνιαίο δεσμεύει πριν από το ημερήσιο ──────────────────────
 {
-  for (const id of PLAN_ORDER) {
+  for (const id of PLAN_ORDER.filter(p => aiLimitsFor(p).perMonth > 0)) {
     const l = aiLimitsFor(id)
     ok(`${id}: το ημερήσιο × 30 ξεπερνά το μηνιαίο (άρα το μηνιαίο δεσμεύει)`, l.perDay * 30 > l.perMonth)
     // …αλλά το ημερήσιο πρέπει να επιτρέπει να τελειώσει μια δουλειά σε μία μέρα.
@@ -149,7 +150,17 @@ const FREE_USERS_TARGET = 10
 
 // ── Κάθε πλάνο έχει όρια και άγνωστο πλάνο πέφτει στο δωρεάν ─────────────
 {
-  for (const id of PLAN_ORDER) ok(`υπάρχουν όρια για «${id}»`, aiLimitsFor(id).perDay > 0)
+  for (const id of PLAN_ORDER.filter(p => p !== 'free')) ok(`υπάρχουν όρια για «${id}»`, aiLimitsFor(id).perDay > 0)
+  // Ο ΔΩΡΕΑΝ «ΙΔΙΟΚΤΗΤΗΣ» ΔΕΝ ΕΧΕΙ ΤΗ ΝΟΑ (25.09.2026): μηδέν και την ημέρα, όχι
+  // το δάπεδο των πέντε, που θα έδινε ερωτήσεις που ο μήνας δεν έχει.
+  ok('ο δωρεάν «Ιδιοκτήτης» δεν έχει ερωτήσεις', aiLimitsFor('free').perMonth === 0 && aiLimitsFor('free').perDay === 0)
+  ok('και η εφαρμογή το ξέρει', !hasAssistant('free') && hasAssistant('solo'))
+  ok('το μήνυμα λέει πού υπάρχει ο βοηθός', assistantLockedMessage(true).includes(`«${PLANS.solo.name}»`)
+    && assistantLockedMessage(true).includes(`${aiLimitsFor('solo').perMonth} ερωτήσεις`))
+  // Η ΣΑΡΩΣΗ ΜΕΤΡΑΕΙ ΧΩΡΙΣΤΑ: πέντε στο δωρεάν, χωρίς μηνιαίο όριο στα πληρωμένα.
+  ok('σαρώσεις: 5 στο δωρεάν, χωρίς όριο στα άλλα',
+    JSON.stringify(scanLimitsByRank()) === JSON.stringify([5, null, null, null, null]))
+  ok('το μήνυμα των σαρώσεων λέει το όριο', scansExhaustedMessage(true).includes('5 σαρώσεις'))
   const free = aiLimitsFor('free')
   for (const bad of [null, undefined, '', 'enterprise', 'ΑΓΝΩΣΤΟ']) {
     const l = aiLimitsFor(bad as never)
@@ -294,12 +305,13 @@ const FREE_USERS_TARGET = 10
      effectiveAiLimits('free', false).perMonth === aiLimitsFor('free').perMonth)
 }
 
-// ── Η ΑΠΟΦΑΣΗ ΤΗΣ 25/09/2026: 20, 60, 150, 500 ─────────────────────────────
+// ── Η ΑΠΟΦΑΣΗ ΤΗΣ 25/09/2026: 30, 60, 150, 500 ─────────────────────────────
+// Ο «Ιδιοκτήτης με Νόα» στα 4,99€ δίνει 30 από τον ίδιο κανόνα του 20%.
 // Αν αλλάξει τιμή ή κόστος μοντέλου, ο κανόνας βγάζει άλλα νούμερα και αυτός
 // ο έλεγχος κοκκινίζει: η σελίδα των πακέτων τα δείχνει, οπότε τα ξανακοιτά
 // άνθρωπος πριν φύγουν.
-ok('τα όρια του μήνα είναι 20 / 60 / 150 / 500',
-  (['solo', 'owner', 'agency', 'office'] as PlanId[]).map(p => aiLimitsFor(p).perMonth).join('/') === '20/60/150/500')
+ok('τα όρια του μήνα είναι 30 / 60 / 150 / 500',
+  (['solo', 'owner', 'agency', 'office'] as PlanId[]).map(p => aiLimitsFor(p).perMonth).join('/') === '30/60/150/500')
 ok('στρογγύλευση: μονοψήφιο μένει, δεκάδα, πεντηκοντάδα',
   [7, 23, 59, 125, 150, 167, 483].map(roundQuestions).join(',') === '7,20,60,150,150,150,500')
 ok('το στρογγύλο όριο δεν περνά τον προϋπολογισμό πάνω από 5%: 180 γίνεται 150, όχι 200',

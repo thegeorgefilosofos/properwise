@@ -194,7 +194,9 @@ async function ask(body: unknown, timeoutMs = 45000): Promise<ScanFailure & { da
   try {
     const res = await fetch('/api/anthropic', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body), signal: ctrl.signal,
+      // ΚΑΘΕ ΚΛΗΣΗ ΑΠΟ ΕΔΩ ΕΙΝΑΙ ΣΑΡΩΣΗ: μετρά στον μετρητή σαρώσεων (5 τον
+      // μήνα στο δωρεάν πακέτο, χωρίς όριο στα πληρωμένα), όχι στις ερωτήσεις της Νόας.
+      body: JSON.stringify({ kind: 'scan', ...(body as object) }), signal: ctrl.signal,
     });
     const data = await res.json();
     if (!res.ok || data?.error) {

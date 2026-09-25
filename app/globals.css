@@ -5879,3 +5879,34 @@ tr.po-row-more { display: none; }
 /* ΜΕΤΡΟ ΚΑΙ ΣΤΙΣ ΠΗΓΕΣ. Στα 1440 η γραμμή του φόρου ενοικίων έφτανε τους 106
    χαρακτήρες με διάστιχο 1,55: το μάτι χάνει τη σειρά του στην επιστροφή. */
 .po-tool-sources .po-src-txt { max-width: 72ch; line-height: 1.65; }
+
+/* ── Η ΚΑΡΤΑ ΤΟΥ «ΙΔΙΟΚΤΗΤΗ»: ΔΙΑΚΟΠΤΗΣ ΝΟΑΣ ΧΩΡΙΣ JAVASCRIPT ─────────────────
+   Δύο κουμπιά επιλογής, κρυμμένα οπτικά αλλά εστιάσιμα· και δύο σώματα που
+   είναι αδέρφια τους. Ο συνδυαστής `~` αλλάζει ποιο φαίνεται· το κρυμμένο
+   έχει `display: none`, άρα δεν διαβάζεται ούτε από αναγνώστη οθόνης. */
+.pc-radio { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.pc-seg {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 0;
+  border-radius: 999px; background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+}
+.pc-seg label {
+  display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 8px;
+  border-radius: 999px; font-size: 12.5px; font-weight: 650; color: var(--text-secondary);
+  cursor: pointer; user-select: none; white-space: nowrap; transition: background-color .15s, color .15s;
+}
+.pc-seg label:hover { color: var(--text-primary); }
+.pc-mark {
+  display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+  border-radius: 999px; background: var(--accent-dim); color: var(--accent);
+}
+#pc-noa-off:checked ~ * .pc-seg label[for="pc-noa-off"] { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 2px color-mix(in srgb, var(--text-primary) 18%, transparent); }
+#pc-noa-on:checked ~ * .pc-seg label[for="pc-noa-on"] { background: var(--accent); color: var(--accent-text); }
+#pc-noa-on:checked ~ * .pc-seg label[for="pc-noa-on"] .pc-mark { background: color-mix(in srgb, var(--accent-text) 16%, transparent); color: var(--accent-text); }
+#pc-noa-off:focus-visible ~ * .pc-seg label[for="pc-noa-off"],
+#pc-noa-on:focus-visible ~ * .pc-seg label[for="pc-noa-on"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pc-on { display: none; }
+.pc-off { display: contents; }
+#pc-noa-on:checked ~ .pc-on { display: contents; }
+#pc-noa-on:checked ~ .pc-off { display: none; }
+.pc-card:has(#pc-noa-on:checked) { border-color: color-mix(in srgb, var(--accent) 45%, transparent) !important; }
+@media (prefers-reduced-motion: reduce) { .pc-seg label { transition: none; } }
