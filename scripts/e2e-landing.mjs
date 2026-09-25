@@ -354,8 +354,12 @@ for (const w of PLAN_WIDTHS) {
   await p.evaluate(() => document.getElementById('pc-noa-on')?.click())
   const on = await measure()
   if (w === 1280 || w === 390) {
-    // Η ετικέτα αλλάζει χρώμα με μετάβαση· διαβάζεται αφού τελειώσει.
-    await p.waitForTimeout(450)
+    // Η ετικέτα αλλάζει χρώμα με μετάβαση. Σταθερή αναμονή δεν αρκεί: στο CI
+    // στα 1280 τα 450ms βρήκαν ακόμη το διάφανο. Περιμένουμε ώσπου το χρώμα να
+    // φύγει από την αρχική του τιμή, ως 3 δευτερόλεπτα.
+    await p.waitForFunction((before) =>
+      getComputedStyle(document.querySelector('label[for="pc-noa-on"]')).backgroundColor !== before,
+      bgOff, { timeout: 3000 }).catch(() => {})
     const bgOn = await segBg()
     ok(`ο διακόπτης «Με τη Νόα» φωτίζεται όταν επιλεγεί (${w})`, bgOn !== bgOff, `${bgOff} → ${bgOn}`)
   }

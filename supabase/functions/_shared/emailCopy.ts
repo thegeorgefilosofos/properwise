@@ -16,7 +16,7 @@
 // 11) Ενίσχυση μετατροπής 12) Συμμόρφωση 13) Συνδρομή & Χρέωση
 // 14) Σχέσεις 15) Αξία & Εξοικονόμηση 16) Επικαιρότητα. Στρατηγική: docs/marketing/email-strategy.md.
 // ═══════════════════════════════════════════════════════════════════════════
-import { emailShell, eyebrow, h, p, bullets, button, greeting, note, heroStat, gv, PLAN_LABEL, PACKAGE_NAME, PACKAGE_MAX_PROPERTIES, type PackageId, type Personal } from './emailTemplates.ts'
+import { emailShell, eyebrow, h, p, bullets, button, greeting, note, heroStat, gv, PACKAGE_NAME, PACKAGE_MAX_PROPERTIES, type PackageId, type Personal } from './emailTemplates.ts'
 import { APP_URL } from './site.ts'
 import { eur } from './format.ts'
 
