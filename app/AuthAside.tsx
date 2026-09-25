@@ -5,11 +5,21 @@ import { T } from '@/components/Theme'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AuthAside, το ΕΝΙΑΙΟ marketing panel για ΟΛΕΣ τις οθόνες auth (Σύνδεση,
-// Εγγραφή, Επαναφορά). Κινηματογραφικό σκοτεινό σκηνικό, ίδιο DNA με το hero
-// της landing: πάντα σκοτεινό, με απαλή γαλάζια αύρα, ανεξάρτητα από το θέμα.
+// Εγγραφή, Επαναφορά). Πάντα σκοτεινό, στο ανθρακί του προϊόντος, με απαλή
+// γαλάζια αύρα, ανεξάρτητα από το θέμα.
 // Ένα «δωμάτιο»: logo lockup, μία επικεφαλίδα, τρία σημεία, υποσημείωση τιμής.
 // Κρύβεται σε κινητό μέσω της κλάσης .auth-aside (βλ. globals.css).
 // ═══════════════════════════════════════════════════════════════════════════
+
+// ═══ ΤΟ ΠΑΝΕΛ ΜΙΛΑ ΤΗ ΓΛΩΣΣΑ ΤΟΥ ΠΡΟΪΟΝΤΟΣ, ΟΧΙ ΤΗΣ ΒΙΤΡΙΝΑΣ ═══════════════
+// Ηταν το ναυτικό μπλε της αρχικής (#070b12 ως #0b101a) δίπλα στο ανθρακί της
+// φόρμας (#202124): στο σκούρο θέμα δύο διαφορετικά σκούρα με ραφή στη μέση,
+// ακριβώς τη στιγμή που ο επισκέπτης περνά από τη βιτρίνα στο προϊόν. Η
+// σύνδεση και η εγγραφή είναι η πόρτα του προϊόντος, οπότε το πάνελ παίρνει
+// το --bg-base του σκούρου θέματος. Στο σκούρο δένει με τη φόρμα και το
+// ξεχωρίζουν η αύρα και το περίγραμμα· στο φωτεινό μένει σκούρο πάνελ δίπλα
+// σε λευκή φόρμα, όπως ήθελε από την αρχή.
+const AUTH_ASIDE_BG = '#202124'
 
 const Check = () => (
   <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -19,7 +29,8 @@ const Check = () => (
 
 // Η σάρωση ΔΕΝ καταχωρεί μόνη της: ο χρήστης βλέπει τα στοιχεία και πατά
 // «Καταχώρηση» (DocumentScan). Και η βοηθός έχει όνομα, Νόα, όπως παντού.
-const PILLARS = [
+type Pillar = { label: string; text: string }
+const PILLARS: Pillar[] = [
   { label: 'Από τη φωτογραφία στη σωστή θέση', text: 'Φωτογράφισε λογαριασμό, μισθωτήριο ή ασφαλιστήριο. Το διαβάζει, ελέγχεις τα στοιχεία και καταχωρείται στη σωστή θέση.' },
   { label: 'Νόα, με φωνή ή με κείμενο', text: 'Ρώτα στα ελληνικά και πάρε απάντηση από τα δεδομένα του δικού σου ακινήτου.' },
   { label: 'Τα οικονομικά σου, ξεκάθαρα', text: 'Έσοδα, δαπάνες, απόδοση, ρεύμα και φορολογία 2026, σε μία οθόνη.' },
@@ -30,15 +41,18 @@ export default function AuthAside({
   accent = 'χωρίς χαρτιά στο συρτάρι.',
   sub = 'Έσοδα, δαπάνες, μισθώσεις και φόροι, για ένα ακίνητο ή για ολόκληρο χαρτοφυλάκιο.',
   note,
+  pillars = PILLARS,
 }: {
   headline?: string
   accent?: string
   sub?: string
   /** Δεύτερη βαθμίδα της υποσημείωσης, μόνο όπου έχει κάτι αληθινό να πει. */
   note?: string
+  /** Τα τρία σημεία. Η επαναφορά κωδικού λέει ασφάλεια, όχι λειτουργίες. */
+  pillars?: Pillar[]
 }) {
   return (
-    <div className="auth-aside" style={{ width: '45%', minWidth: 400, background: 'linear-gradient(180deg, #070b12 0%, #0a0f18 70%, #0b101a 100%)', borderRight: '1px solid rgba(255,255,255,.07)', display: 'flex', flexDirection: 'column', padding: '48px 48px', overflow: 'hidden', position: 'relative', fontFamily: T.font.sans }}>
+    <div className="auth-aside" style={{ width: '45%', minWidth: 400, background: AUTH_ASIDE_BG, borderRight: '1px solid rgba(255,255,255,.07)', display: 'flex', flexDirection: 'column', padding: '48px 48px', overflow: 'hidden', position: 'relative', fontFamily: T.font.sans }}>
       <style>{`
         .auth-aside::before { content: ''; position: absolute; top: -18%; left: -22%; width: 78%; aspect-ratio: 1; border-radius: 50%; filter: blur(90px); background: radial-gradient(circle, #1a73e8, transparent 64%); opacity: .18; pointer-events: none; animation: authDrift 30s ease-in-out infinite alternate; }
         @keyframes authDrift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(4vw, 4vh, 0) scale(1.12); } }
@@ -93,7 +107,7 @@ export default function AuthAside({
 
       {/* three supporting bullets */}
       <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>
-        {PILLARS.map((p, i) => (
+        {pillars.map((p, i) => (
           <div key={i} style={{ display: 'grid', gridTemplateColumns: '22px 1fr', gap: 14, alignItems: 'start' }}>
             <span className="po-lead-ico" style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(138,180,248,.12)', border: '1px solid rgba(138,180,248,.32)', color: '#8ab4f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check /></span>
             <div>

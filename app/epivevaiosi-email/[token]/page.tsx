@@ -61,14 +61,16 @@ export default function ConfirmReminderEmail() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.xl, borderBottom: '1px solid var(--border-subtle)' }}>
           <BrandMark size={34} />
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>PROPERWISE</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>PROPERWISE</div>
             {/* Ο ΤΙΤΛΟΣ ΤΗΣ ΣΕΛΙΔΑΣ ΕΙΝΑΙ ΑΥΤΗ Η ΓΡΑΜΜΗ, ΟΧΙ ΤΟ ΟΝΟΜΑ ΤΗΣ
                 ΕΦΑΡΜΟΓΗΣ. Το «PROPERWISE» από πάνω είναι σήμα, όχι επικεφαλίδα.
                 Η σελίδα δεν είχε καμία: ο αναγνώστης οθόνης την ανακοίνωνε
                 χωρίς όνομα, σε δημόσιο σύνδεσμο που ανοίγει άνθρωπος ο οποίος
-                μπορεί να μη μας έχει ξανασυναντήσει. Ιδια γνωρίσματα, συν
-                `margin:0` που ακυρώνει το προεπιλεγμένο περιθώριο του `h1`. */}
-            <h1 style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, margin: 0 }}>Επιβεβαίωση διεύθυνσης υπενθυμίσεων</h1>
+                μπορεί να μη μας έχει ξανασυναντήσει. Και ΦΑΙΝΕΤΑΙ ως τίτλος: ήταν
+                11px γκρι κάτω από το σήμα, ενώ η ερώτηση από κάτω ήταν σώμα
+                κειμένου, δηλαδή ιεραρχία ανάποδα. Τώρα το σήμα είναι μικρή
+                ετικέτα και ο τίτλος 16px. */}
+            <h1 style={{ fontSize: 16, color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3, margin: '2px 0 0', textWrap: 'balance' }}>Επιβεβαίωση διεύθυνσης υπενθυμίσεων</h1>
           </div>
         </div>
 

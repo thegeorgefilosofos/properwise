@@ -5,6 +5,7 @@ import { authClient } from '@/lib/supabase/lazy';
 import { leaveDevice } from '@/lib/localPrivacy'
 import Link from 'next/link'
 import AuthAside, { AuthMobileBrand } from '../AuthAside'
+import PasswordEye from '../PasswordEye'
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
 import { failed } from '@/lib/core/dbError';
@@ -35,6 +36,18 @@ const readLink = (): Link => {
   if (q.has('error_code') || h.has('error_code') || q.has('error') || h.has('error')) return 'failed'
   return q.has('code') || h.has('access_token') ? 'checking' : 'none'
 }
+
+// ═══ ΣΤΗΝ ΕΠΑΝΑΦΟΡΑ ΤΟ ΠΑΝΕΛ ΛΕΕΙ ΤΙ ΠΡΟΣΤΑΤΕΥΕΙ, ΟΧΙ ΤΙ ΠΟΥΛΑΕΙ ═══════════
+// Ηταν τα ίδια τρία σημεία με την εγγραφή (σάρωση, Νόα, οικονομικά): διαφήμιση
+// σε οθόνη όπου κάποιος ίσως φοβάται ότι μπήκε άλλος στον λογαριασμό του. Τα
+// τρία εδώ είναι όσα κάνει πράγματι η φόρμα από κάτω: το signOut({ scope:
+// 'others' }) του updatePassword, ο έλεγχος διαρροής του PasswordStrength και
+// το ότι αλλάζει μόνο ο κωδικός.
+const RESET_PILLARS = [
+  { label: 'Κλείνουν οι άλλες συνδέσεις', text: 'Με τον νέο κωδικό αποσυνδέονται όλες οι άλλες συσκευές του λογαριασμού. Μένει ανοιχτή μόνο η συσκευή όπου τον άλλαξες.' },
+  { label: 'Κωδικός που έχει διαρρεύσει δεν περνά', text: 'Πριν τον δεχτούμε, ελέγχουμε αν ο κωδικός υπάρχει σε γνωστή διαρροή δεδομένων.' },
+  { label: 'Τα δεδομένα σου δεν αγγίζονται', text: 'Ακίνητα, έγγραφα και κινήσεις μένουν όπως τα άφησες. Αλλάζει μόνο ο τρόπος που μπαίνεις.' },
+]
 
 export default function ResetPasswordPage() {
   // Ο ΣΥΝΔΕΣΜΟΣ ΤΟΥ EMAIL ΛΕΕΙ ΗΔΗ ΣΕ ΠΟΙΑ ΟΘΟΝΗ ΕΙΜΑΣΤΕ. Ηταν
@@ -139,14 +152,7 @@ export default function ResetPasswordPage() {
     textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: T.font.sans,
   }
   const eye = (
-    /* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το IconBtn δεν προωθεί `aria-pressed` και το μάτι
-       είναι διακόπτης — ο στόχος αφής είναι ήδη 44×44. */
-    <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Απόκρυψη κωδικού' : 'Εμφάνιση κωδικού'} aria-pressed={show}
-      style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {show
-        ? <svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
-        : <svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.9 17.9A10.7 10.7 0 0 1 12 19c-6.5 0-10-7-10-7a19 19 0 0 1 5.1-5.9M9.9 4.2A10.9 10.9 0 0 1 12 4c6.5 0 10 7 10 7a19 19 0 0 1-2.2 3.2M1 1l22 22M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>}
-    </button>
+    <PasswordEye show={show} onToggle={() => setShow(s => !s)} />
   )
 
   const errBox = error && (
@@ -178,6 +184,7 @@ export default function ResetPasswordPage() {
         headline="Νέος κωδικός,"
         accent="ίδια δεδομένα."
         sub="Ξέχασες τον κωδικό σου; Ορίζεις καινούριο και τα δεδομένα σου μένουν όπως τα άφησες."
+        pillars={RESET_PILLARS}
       />
 
       {/* RIGHT, form: <main>, όπως στη Σύνδεση και στην Εγγραφή. */}

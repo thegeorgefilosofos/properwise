@@ -16,6 +16,7 @@ import { useCallback, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useLoad } from '@/app/hooks/useLoad';
+import { normalizeVerifyCode } from '@/lib/documents/verifyCode';
 
 interface Verified {
   id: string; doc_type: string; subject: string; period: string; issued_at: string; issuer: string;
@@ -26,9 +27,14 @@ const fmtDateTime = (iso: string) => {
   return isNaN(d.getTime()) ? '' : d.toLocaleString('el-GR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
+const safeDecode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
+
 export default function VerifyDocument() {
   const params = useParams();
-  const id = String(params?.id || '');
+  // Ο κωδικός από τη διεύθυνση περνά από την ίδια κανονικοποίηση με τη φόρμα:
+  // όποιος τον πληκτρολόγησε στη γραμμή διεύθυνσης με ελληνικό «ΡΟ» βρίσκει
+  // κι αυτός το έγγραφο.
+  const id = normalizeVerifyCode(safeDecode(String(params?.id || '')));
   const supabase = createClient();
   // Η ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΟΘΟΝΗΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΑΠΟΤΕΛΕΣΜΑ, ΔΕΝ ΓΡΑΦΕΤΑΙ ΔΙΠΛΑ ΤΟΥ.
   // Ηταν δύο καταστάσεις με `setState('loading')` σύγχρονα μέσα σε effect: μία
@@ -74,14 +80,16 @@ export default function VerifyDocument() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.lg, borderBottom: '1px solid var(--border-subtle)' }}>
           <BrandMark size={34} />
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>PROPERWISE</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>PROPERWISE</div>
             {/* Ο ΤΙΤΛΟΣ ΤΗΣ ΣΕΛΙΔΑΣ ΕΙΝΑΙ ΑΥΤΗ Η ΓΡΑΜΜΗ, ΟΧΙ ΤΟ ΟΝΟΜΑ ΤΗΣ
                 ΕΦΑΡΜΟΓΗΣ. Το «PROPERWISE» από πάνω είναι σήμα, όχι επικεφαλίδα.
                 Η σελίδα δεν είχε καμία: ο αναγνώστης οθόνης την ανακοίνωνε
                 χωρίς όνομα, σε δημόσιο σύνδεσμο που ανοίγει άνθρωπος ο οποίος
-                μπορεί να μη μας έχει ξανασυναντήσει. Ιδια γνωρίσματα, συν
-                `margin:0` που ακυρώνει το προεπιλεγμένο περιθώριο του `h1`. */}
-            <h1 style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, margin: 0 }}>Επαλήθευση γνησιότητας εγγράφου</h1>
+                μπορεί να μη μας έχει ξανασυναντήσει. Και ΦΑΙΝΕΤΑΙ ως τίτλος: ήταν
+                11px γκρι κάτω από το σήμα, ενώ η ερώτηση από κάτω ήταν σώμα
+                κειμένου, δηλαδή ιεραρχία ανάποδα. Τώρα το σήμα είναι μικρή
+                ετικέτα και ο τίτλος 16px. */}
+            <h1 style={{ fontSize: 16, color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3, margin: '2px 0 0', textWrap: 'balance' }}>Επαλήθευση γνησιότητας εγγράφου</h1>
           </div>
         </div>
 

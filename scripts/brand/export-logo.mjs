@@ -59,11 +59,13 @@ const INK = (src.match(/BRAND_MARK_INK = '([^']+)'/) || [])[1];
 const ON_DARK = (src.match(/BRAND_MARK_ON_DARK = '([^']+)'/) || [])[1];
 if (!VIEWBOX || !INK || !ON_DARK) { console.error('Δεν βρέθηκαν το πλαίσιο ή τα μελάνια στο BrandMark.tsx'); process.exit(1); }
 
-// Το σκούρο φόντο των JPG είναι το ίδιο με της εγκατεστημένης εφαρμογής:
-// διαβάζεται από το app/manifest.ts, δεν ξαναγράφεται εδώ.
-const manifestSrc = readFileSync(join(root, 'app/manifest.ts'), 'utf8');
-const DARK_BG = (manifestSrc.match(/background_color: '(#[0-9a-fA-F]{3,8})'/) || [])[1];
-if (!DARK_BG) { console.error('Δεν βρέθηκε το background_color στο app/manifest.ts'); process.exit(1); }
+// Το σκούρο φόντο των JPG είναι το ίδιο με της εγκατεστημένης εφαρμογής, το
+// BRAND_DARK_BG του BrandMark.tsx. Το app/manifest.ts το εισάγει από εκεί από
+// τον δεύτερο γύρο του ελέγχου· ως τότε έγραφε την τιμή με το χέρι και το
+// σενάριο τη διάβαζε από το manifest. Με την εισαγωγή το μοτίβο δεν έβρισκε
+// πια τίποτα και το σενάριο σταματούσε. Διαβάζεται από την πηγή, όχι εδώ.
+const DARK_BG = (src.match(/BRAND_DARK_BG = '(#[0-9a-fA-F]{3,8})'/) || [])[1];
+if (!DARK_BG) { console.error('Δεν βρέθηκε το BRAND_DARK_BG στο BrandMark.tsx'); process.exit(1); }
 
 const fontB64 = readFileSync(join(root, 'public/fonts/inter-latin.woff2')).toString('base64');
 const FONT_CSS = `@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;`
