@@ -419,7 +419,7 @@ export default async function Landing() {
   const { live: billingLive, pricingNotice } = billingWords();
 
   return (
-    <div className="lp-root min-h-dvh" style={{ color: TEXT, fontFamily: T.font.sans, overflowX: 'clip', position: 'relative' }}>
+    <div className="lp-root min-h-dvh" data-mode="dark" style={{ color: TEXT, fontFamily: T.font.sans, overflowX: 'clip', position: 'relative' }}>
 
       {/* ΤΑ ΣΧΟΛΙΑ ΤΟΥ ΦΥΛΛΟΥ ΕΙΝΑΙ ΣΧΟΛΙΑ JAVASCRIPT, ΓΡΑΜΜΕΝΑ ΩΣ «${… ''}».
           Ως σχόλια CSS ταξίδευαν σε κάθε επισκέπτη δύο φορές, στο HTML και στο

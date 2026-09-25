@@ -44,7 +44,7 @@ export default function Page() {
   return (
     // `pub-root`: η παλέτα της αρχικής και εδώ (globals.css). Ο επισκέπτης
     // φτάνει από το «Τιμές» της αρχικής και δεν πρέπει να αλλάζει χρώμα.
-    <div className="pub-root min-h-dvh">
+    <div className="pub-root min-h-dvh" data-mode="dark">
       <JsonLd data={{
         '@context': 'https://schema.org',
         '@type': 'WebPage',

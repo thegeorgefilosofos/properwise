@@ -121,7 +121,7 @@ export default function Page() {
   };
 
   return (
-    <div className="po-tool-page" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
+    <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       {/* Το δομημένο σχήμα παράγεται από τον ΙΔΙΟ πίνακα FAQ που αποδίδεται
           παρακάτω, ώστε να μην μπορεί να πει άλλα η σελίδα και άλλα το σχήμα. */}
       <JsonLd data={jsonLd} />
