@@ -290,14 +290,22 @@ body {
 :root,
 [data-mode="dark"] {
 
-  /* Google dark surfaces — exactly like Google Calendar/Drive dark */
+  /* ── ΜΙΑ ΠΑΛΕΤΑ, ΑΠΟ ΤΗΝ ΑΡΧΙΚΗ ΩΣ ΤΟ ΤΑΜΠΛΟ ─────────────────────────────
+     Το σκούρο θέμα ήταν το ανθρακί του Google (#202124 · #292a2d · #35363a ·
+     #3c4043) και η βιτρίνα ναυτικό μπλε. Ο επισκέπτης άλλαζε χρώμα τη στιγμή
+     που γινόταν πελάτης: από την αρχική στην εγγραφή και από την εγγραφή στο
+     ταμπλό. Τώρα οι τρεις πρώτες επιφάνειες ΕΙΝΑΙ της βιτρίνας (`--mkt-*`) και
+     η τέταρτη συνεχίζει την ίδια σκάλα.
 
-  /* Map to PROPERWISE vars */
-  --bg-base:       #202124;
-  --bg-surface:    #292a2d;
-  --bg-elevated:   #35363a;
-  --bg-overlay:    #3c4043;
-  --bg-hover:      rgba(232,234,237,0.08);
+     Η ΑΝΤΙΘΕΣΗ ΑΝΕΒΗΚΕ, ΔΕΝ ΘΥΣΙΑΣΤΗΚΕ. Μετρημένο στις τέσσερις επιφάνειες και
+     με το --bg-hover από πάνω τους, χειρότερη περίπτωση: primary 10,41 ·
+     secondary 6,77 · tertiary 4,74 (ήταν 8,68 · 5,78 · 4,67). Γαλάζιο 6,98,
+     πράσινο 7,02, κόκκινο 5,89, χρυσό 7,34 στην πιο ανοιχτή επιφάνεια. */
+  --bg-base:       var(--mkt-bg-base);
+  --bg-surface:    var(--mkt-bg-surface);
+  --bg-elevated:   var(--mkt-bg-elevated);
+  --bg-overlay:    #1d2939;
+  --bg-hover:      rgba(238,242,247,0.08);
   --bg-active:     color-mix(in srgb, var(--accent) 16%, transparent);
 
   --accent:        #8ab4f8;   /* γαλάζιο (dark) */
@@ -377,7 +385,7 @@ body {
   --negative-on-container: color-mix(in srgb, var(--negative) 70%, #ffffff);
   --warning-on-container:  color-mix(in srgb, var(--warning)  70%, #ffffff);
 
-  --text-primary:   #e8eaed;
+  --text-primary:   var(--mkt-text-primary);
   /* 2η βαθμίδα. Η ΜΟΝΗ που είχε μείνει κάτω από το όριο και μάλιστα πιο αχνή
      από την 3η: η ιεραρχία ήταν αντεστραμμένη. Το #9aa0a6 μετρούσε
      6,10 / 5,43 / 4,57 / 3,96:1 σε bg-base / bg-surface / bg-elevated /
@@ -388,21 +396,21 @@ body {
      τέσσερις επιφάνειες και 7,18 / 6,35 / 5,34 / 4,67:1 με το hover πάνω
      τους. Ιεραρχία σε ΚΑΘΕ επιφάνεια, χειρότερη περίπτωση της καθεμιάς:
      8,68 (primary) > 5,78 (secondary) > 4,67 (tertiary), όλες πάνω από 4,5. */
-  --text-secondary: #bdc1c6;
+  --text-secondary: #bcc6d3;
   /* Ίδιος λόγος με το φωτεινό: ήταν #949a9f, δηλαδή 4,24:1 στο --bg-elevated
      και 3,68:1 στο --bg-overlay. Τώρα 4,67:1 στη χειρότερη των τεσσάρων. */
-  --text-tertiary:  #a8aeb3;
+  --text-tertiary:  #9aa6b7;
   --text-inverse:   #1f1f1f;
 
-  --border-subtle:  #3c4043;
-  --border-default: #5f6368;
-  --border-strong:  #5f6368;
+  --border-subtle:  #223044;
+  --border-default: #3d4d64;
+  --border-strong:  #52637c;
   --border-accent:  rgba(174,203,250,0.4);
 
-  --sidebar-bg:     #202124;
-  --sidebar-border: #3c4043;
+  --sidebar-bg:     var(--bg-base);
+  --sidebar-border: var(--border-subtle);
 
-  --scrollbar-thumb: #5f6368;
+  --scrollbar-thumb: var(--border-default);
 
   --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.60), 0 1px 3px 1px rgba(0,0,0,0.45);
   --shadow-md: 0 1px 2px 0 rgba(0,0,0,0.60), 0 2px 6px 2px rgba(0,0,0,0.45);
@@ -413,15 +421,15 @@ body {
   --elev-1: 0 1px 2px rgba(0,0,0,.5), 0 4px 12px -4px rgba(0,0,0,.55);
   --elev-2: 0 2px 5px -1px rgba(0,0,0,.5), 0 12px 24px -8px rgba(0,0,0,.6);
   --elev-3: 0 4px 10px -3px rgba(0,0,0,.5), 0 24px 44px -14px rgba(0,0,0,.68);
-  --surface-raised:         linear-gradient(180deg, #313236 0%, #2a2b2e 100%);
-  --surface-sunken:         linear-gradient(180deg, #1c1d1f 0%, #212225 100%);
-  --surface-hero:           radial-gradient(120% 140% at 50% -20%, #34363a 0%, #2a2b2e 60%, #232427 100%);
-  --surface-kpi:            linear-gradient(180deg, #34353a 0%, #2b2c2f 100%);
-  --border-raised:          #3c4043;
+  --surface-raised:         linear-gradient(180deg, #131d2b 0%, #0f1824 100%);
+  --surface-sunken:         linear-gradient(180deg, #05080e 0%, #080d15 100%);
+  --surface-hero:           radial-gradient(120% 140% at 50% -20%, #172234 0%, #0f1824 60%, #0a111b 100%);
+  --surface-kpi:            linear-gradient(180deg, #162131 0%, #101926 100%);
+  --border-raised:          var(--border-subtle);
   --highlight-inset:        inset 0 1px 0 rgba(255,255,255,.06);
   --highlight-inset-strong: inset 0 1px 0 rgba(255,255,255,.10);
   --well-inset:             inset 0 1px 2px rgba(0,0,0,.32), inset 0 0 0 1px rgba(0,0,0,.15);
-  --ring-track:             #3c4043;
+  --ring-track:             var(--bg-overlay);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -4958,6 +4966,52 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-sp-card dt:first-child { margin-top: 0; }
 .lg-sp-card dd { margin: 0; color: var(--text-secondary); line-height: 1.55; }
 
+/* ═══ ΜΕΓΑΛΗ ΟΘΟΝΗ: ΤΟ ΕΥΡΕΤΗΡΙΟ ΓΙΝΕΤΑΙ ΔΕΞΙΑ ΣΤΗΛΗ ════════════════════════
+   ΤΙ ΕΒΛΕΠΕ ΚΑΝΕΙΣ ΣΕ 24 ΚΑΙ 28 ΙΝΤΣΕΣ. Στα 1920 το μέτρο των 1044 κεντράρεται
+   και το κείμενο των 680 κάθεται στην αριστερή του άκρη: το δεξί τρίτο έμενε
+   άδειο, ενώ η κεφαλίδα και το ευρετήριο από πάνω έφταναν ως την άκρη. Δύο
+   δεξιές άκρες στην ίδια οθόνη.
+
+   ΓΙΑΤΙ ΤΩΡΑ ΣΤΕΚΕΙ Ο,ΤΙ ΠΑΛΙΑ ΔΕΝ ΣΤΕΚΟΤΑΝ. Το πλαϊνό ευρετήριο έφυγε κάποτε
+   επειδή έτρωγε το μέτρο (βλ. `.lg-grid`): σε στενότερη οθόνη το κείμενο έπεφτε
+   στους 55 χαρακτήρες. Εδώ ενεργοποιείται μόνο από τα 1200, όπου το μέτρο είναι
+   πάντα ολόκληρο: 1044 μείον 272 της στήλης μείον 56 του κενού αφήνουν 716,
+   δηλαδή περισσότερα από τα 680 του κειμένου. Καμία γραμμή δεν αλλάζει μήκος.
+
+   Το ευρετήριο μένει καρφωμένο όσο κυλάς, με την ενότητα που διαβάζεις
+   σημειωμένη (`TocSpy`). Στο χαρτί δεν υπάρχει: ο κανόνας είναι μόνο οθόνης. */
+.gd-rail { display: none; }
+@media screen and (min-width: 1200px) {
+  .lg-grid, .gd-layout {
+    display: grid; grid-template-columns: minmax(0, 1fr) 272px; column-gap: 56px; align-items: start;
+  }
+  .lg-grid > .lg-body, .gd-layout > .gd { grid-column: 1; grid-row: 1; }
+  .lg-grid > .lg-toc, .gd-layout > .gd-rail {
+    grid-column: 2; grid-row: 1; margin: 0;
+    position: sticky; top: 24px; max-height: calc(100dvh - 48px); overflow-y: auto;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  /* Το ευρετήριο μέσα στο κείμενο του οδηγού φεύγει: το λέει ήδη η στήλη. */
+  .gd-layout > .gd .lg-toc { display: none; }
+  /* Στη στήλη ο κατάλογος είναι γραμμή, όχι κουτί: μία στήλη ονομάτων με
+     λεπτή γραμμή αριστερά, που φωτίζεται εκεί που βρίσκεσαι. */
+  .lg-grid > .lg-toc .lg-toc-d, .gd-rail .lg-toc-d {
+    background: none; border: 0; border-left: 1px solid var(--border-subtle); border-radius: 0; padding: 2px 0 2px 18px;
+  }
+  .lg-grid > .lg-toc .lg-toc-list, .gd-rail .lg-toc-list { columns: 1; }
+  .lg-grid > .lg-toc .lg-toc-list a, .gd-rail .lg-toc-list a { position: relative; font-size: 13.5px; transition: color .15s; }
+  .lg-grid > .lg-toc .lg-toc-list a[aria-current="true"], .gd-rail .lg-toc-list a[aria-current="true"] { color: var(--text-primary); }
+  .lg-grid > .lg-toc .lg-toc-list a[aria-current="true"]::before, .gd-rail .lg-toc-list a[aria-current="true"]::before {
+    content: ''; position: absolute; left: -19px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: var(--accent);
+  }
+  .gd-rail-cta {
+    display: inline-flex; align-items: center; justify-content: center; align-self: flex-start;
+    height: 44px; padding: 0 20px; margin-left: 19px; border-radius: 999px;
+    font-size: 14px; font-weight: 700; text-decoration: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) { .lg-toc-list a { transition: none; } }
+
 @media (max-width: 640px) {
   .lg-toc-d, .lg-sp-table { display: none; }
   .lg-toc-m { display: block; }
@@ -5073,7 +5127,11 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 tr.po-row-more { display: none; }
 
 @media print {
-  :root {
+  /* Και τα `[data-mode="dark"]`: οι υπολογιστές και οι οδηγοί κρατούν τη
+     σκοτεινή παλέτα με αυτό το γνώρισμα στο δικό τους περιτύλιγμα, που
+     ξαναόριζε τις τιμές πάνω από του `:root` και τύπωνε σκούρο φόντο στο χαρτί. */
+  :root,
+  [data-mode="dark"] {
     color-scheme: light;
     --bg-base: #fff;
     --bg-surface: #fff;
@@ -5564,11 +5622,11 @@ tr.po-row-more { display: none; }
     --border-strong:  #5f6368;
   }
   [data-mode="dark"] {
-    --text-secondary: #e8eaed;
-    --text-tertiary:  #d2d6da;
-    --border-subtle:  #5f6368;
-    --border-default: #80868b;
-    --border-strong:  #9aa0a6;
+    --text-secondary: #e3e8ef;
+    --text-tertiary:  #cdd5df;
+    --border-subtle:  #3d4d64;
+    --border-default: #52637c;
+    --border-strong:  #6b7d97;
   }
   /* Η εστίαση δεν χάνεται μέσα στο πιο έντονο περιβάλλον: παχύτερο δαχτυλίδι. */
   :focus-visible { outline-width: 3px; }

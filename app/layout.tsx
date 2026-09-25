@@ -94,7 +94,7 @@ export const metadata: Metadata = {
 // #0b0f14 δεν ταίριαζε ούτε με το ίδιο μας το φόντο· εδώ είναι το --bg-base του
 // σκούρου θέματος, ώστε η μπάρα να συνεχίζει την επιφάνεια αντί να την κόβει.
 export const viewport: Viewport = {
-  themeColor: "#202124",
+  themeColor: "#070b12",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

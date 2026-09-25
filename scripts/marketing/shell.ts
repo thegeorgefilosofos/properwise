@@ -63,8 +63,8 @@ export const MODE: Mode = process.env.POSTS_MODE === 'light' ? 'light' : 'dark';
 // σε μια αφίσα, γιατί δεν υπάρχει κάρτα.
 const PALETTE: Record<Mode, string> = {
   dark: `
-    --ground:#202124; --ink:#e8eaed; --muted:#a8aeb3;
-    --accent:#8ab4f8; --rule:#3c4043;`,
+    --ground:#070b12; --ink:#eef2f7; --muted:#bcc6d3;
+    --accent:#8ab4f8; --rule:#223044;`,
   light: `
     --ground:#ffffff; --ink:#202124; --muted:#5f6368;
     --accent:#1560d4; --rule:#dadce0;`,

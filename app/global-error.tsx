@@ -24,8 +24,8 @@ const PALETTE = `
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ge-bg: #202124; --ge-surface: #292a2d; --ge-border: #5f6368;
-      --ge-text: #e8eaed; --ge-muted: #9aa0a6; --ge-accent: #8ab4f8; --ge-on-accent: #1f1f1f;
+      --ge-bg: #070b12; --ge-surface: #0e1622; --ge-border: #3d4d64;
+      --ge-text: #eef2f7; --ge-muted: #bcc6d3; --ge-accent: #8ab4f8; --ge-on-accent: #0a2647;
     }
   }
 `;
