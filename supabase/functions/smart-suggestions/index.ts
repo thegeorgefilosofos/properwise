@@ -217,7 +217,13 @@ ${JSON.stringify(expenses, null, 2)}
 
     if (!aiRes.ok) {
       const err = await aiRes.text()
-      console.error('Claude API error status', aiRes.status)
+      // ΤΟ ΓΙΑΤΙ ΣΤΟ LOG, ΟΧΙ ΜΟΝΟ Ο ΚΩΔΙΚΟΣ. Στις 25.09.2026 η παραγωγή έγραφε
+      // μόνο «Claude API error status 400» και δεν φαινόταν αν έφταιγε το
+      // υπόλοιπο του λογαριασμού, το μοντέλο ή το αίτημα. Ο τύπος και το μήνυμα
+      // του σφάλματος του API δεν κουβαλούν δεδομένα του χρήστη ούτε το κλειδί.
+      let kind = '', message = ''
+      try { const e = JSON.parse(err)?.error; kind = String(e?.type ?? ''); message = String(e?.message ?? '').slice(0, 200) } catch { /* όχι JSON */ }
+      console.error('Claude API error status', aiRes.status, kind, message)
       return json({ error: 'AI error', details: err }, 500)
     }
 
