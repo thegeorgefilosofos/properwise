@@ -6,6 +6,7 @@ import { PublicHeader, PublicFooter, WRAP, WRAP_PAD } from './PublicChrome';
 import { BackLink } from './BackLink';
 import { transliterate } from '@/lib/core/uploadPath';
 import { LegalForm } from './LegalForm';
+import { TocSpy } from './TocSpy';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΚΕΛΥΦΟΣ ΤΩΝ ΤΡΙΩΝ ΣΕΛΙΔΩΝ ΕΜΠΙΣΤΟΣΥΝΗΣ
@@ -271,11 +272,15 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
               της πλάτος: 712 εικονοστοιχεία στα 15 βγάζουν γραμμές ογδόντα
               εννέα χαρακτήρων και κάθε γραμμή τελειώνει εκεί που τελειώνει
               και η προηγούμενη. */}
+          {/* ΣΤΗΝ ΜΕΓΑΛΗ ΟΘΟΝΗ ΤΟ ΕΥΡΕΤΗΡΙΟ ΓΙΝΕΤΑΙ ΔΕΞΙΑ ΣΤΗΛΗ. Βγήκε από το
+              `lg-body` ώστε το πλέγμα να το στείλει στο πλάι· στο DOM μένει
+              πρώτο, για το πληκτρολόγιο και το κινητό (globals.css, `.lg-grid`). */}
+          <nav aria-label="Περιεχόμενα" className="lg-toc">
+            <details className="lg-toc-m"><summary>Περιεχόμενα ({blocks.length})</summary>{toc}</details>
+            <div className="lg-toc-d"><div className="lg-toc-h">Περιεχόμενα</div>{toc}</div>
+            <TocSpy />
+          </nav>
           <div className="lg-body">
-            <nav aria-label="Περιεχόμενα" className="lg-toc">
-              <details className="lg-toc-m"><summary>Περιεχόμενα ({blocks.length})</summary>{toc}</details>
-              <div className="lg-toc-d"><div className="lg-toc-h">Περιεχόμενα</div>{toc}</div>
-            </nav>
             {blocks.map((b, i) => (
               <section key={i} id={ids[i]} style={{ scrollMarginTop: 24, marginTop: i === 0 ? 0 : 'clamp(30px,4vw,46px)' }}>
                 {/* ΤΑ ΜΕΡΗ ΕΙΝΑΙ ΕΠΙΚΕΦΑΛΙΔΕΣ, ΟΧΙ ΔΙΑΚΟΣΜΗΣΗ. Ηταν `<div>`: ο

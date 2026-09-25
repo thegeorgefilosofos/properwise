@@ -19,7 +19,7 @@ ok(planForCount(4) === 'agency', 'count 4 → agency');
 
 ok(annualPerMonth('owner') < PLANS.owner.priceMonthly, 'annual cheaper per month than monthly');
 ok(PLANS.owner.priceMonthly === 9.9 && PLANS.owner.priceAnnual === 99, 'owner prices');
-ok(PLANS.agency.priceMonthly === 24.9 && PLANS.agency.priceAnnual === 249, 'agency prices');
+ok(PLANS.agency.priceMonthly === 29.9 && PLANS.agency.priceAnnual === 299, 'agency prices');
 // Η δωρεάν δοκιμή ισχύει στα πληρωμένα πλάνα, όχι στο δωρεάν.
 ok(TRIAL_DAYS === 30, 'trial 30 ημέρες');
 ok(PLANS.free.trialDays === 0, 'δωρεάν πλάνο χωρίς δοκιμή');
@@ -56,6 +56,9 @@ ok(annualPerMonth('agency') < PLANS.agency.priceMonthly, 'ετήσιο agency φ
   }
   ok(αύξουσα, 'κάθε πακέτο κοστίζει περισσότερο ΚΑΙ χωράει περισσότερα από το προηγούμενο')
 }
+
+// Η ΤΑΜΠΕΛΑ ΛΕΕΙ ΤΟ ΟΡΙΟ ΤΟΥ ΠΑΚΕΤΟΥ. Ηταν «Πολλά ακίνητα» για όριο τρία.
+ok(PLANS.owner.tagline.includes(`Ως ${PLANS.owner.maxProperties} ακίνητα`), 'η ταμπέλα του «Ιδιοκτήτη+» λέει το όριό του')
 
 console.log(`\nbilling/plans.ts — ${p} passed, ${f} failed`);
 if (f > 0) process.exit(1);

@@ -189,7 +189,7 @@ export default function ResetPasswordPage() {
 
       {/* RIGHT, form: <main>, όπως στη Σύνδεση και στην Εγγραφή. */}
       <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
-        <div style={{ width: '100%', maxWidth: 400 }}>
+        <div className="auth-form">
           <AuthMobileBrand />
 
           {mode === 'checking' && (

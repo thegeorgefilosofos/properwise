@@ -1199,7 +1199,7 @@ const contactRouteGrid: React.CSSProperties = {
   gap: T.sp.md, maxWidth: 420, margin: `${T.sp.sm}px auto 0`, alignItems: 'stretch',
 }
 
-const SUB_LINE = 15   // ύψος γραμμής υποτίτλου· δύο από αυτές κρατούν το ύψος
+const SUB_LINE = 15   // ύψος γραμμής υποτίτλου· μία γραμμή, ίδια στα δύο πλακίδια
 
 function ContactActionTile({ Icon, label, sub, onClick, primary }: { Icon: React.ComponentType<{ size?: number }>; label: string; sub?: string; onClick: () => void; primary?: boolean }) {
   const [h, setH] = useState(false)
@@ -1230,7 +1230,11 @@ function ContactActionTile({ Icon, label, sub, onClick, primary }: { Icon: React
             Η ιεραρχία βγαίνει από την ΚΛΙΜΑΚΑ (14/700 έναντι 11/400) και το
             χρώμα από ΔΕΙΚΤΗ, έναν ανά ρόλο. Μετρημένο μετά: 5,74 και 9,00 στο
             κύριο, 6,05 και 5,43 στο δεύτερο. */}
-        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 400, color: primary ? 'var(--accent-text)' : 'var(--text-secondary)', marginTop: 4, lineHeight: `${SUB_LINE}px`, minHeight: SUB_LINE * 2, textWrap: 'balance' }}>{sub}</div>
+        {/* ΜΙΑ ΓΡΑΜΜΗ (ιδιοκτήτης, 25.09.2026). Ο υπότιτλος κρατούσε ύψος δύο
+            γραμμών και το ένα πλακίδιο έσπαγε σε δύο ενώ το άλλο έμενε σε μία:
+            δύο ίδια κουμπιά με διαφορετικό σχήμα. Τα κείμενα κόπηκαν ώστε να
+            χωρούν στο στενότερο πλακίδιο· το αποσιωπητικό είναι δίχτυ, όχι σχέδιο. */}
+        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 400, color: primary ? 'var(--accent-text)' : 'var(--text-secondary)', marginTop: 4, lineHeight: `${SUB_LINE}px`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
       </div>
     </button>
   )
@@ -2096,9 +2100,9 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           hint="Η κάρτα ή ένα τιμολόγιο του συνεργάτη διαβάζεται και συμπληρώνει τα πεδία, μαζί με το IBAN. Τίποτα δεν αποθηκεύεται πριν το ελέγξεις."
           action={<div className="route-two" style={contactRouteGrid}>
             <ContactActionTile Icon={Camera} label="Σάρωσε" sub={scanning ? 'Ανάλυση…' : 'Με την κάμερα ή από αρχείο'} onClick={() => cardRef.current?.click()} primary />
-            {/* «Τέσσερα πεδία» ήταν σωστό και αόριστο. Τα τέσσερα ονομάζονται:
-                ο χρήστης ξέρει τι τον περιμένει πριν πατήσει. */}
-            <ContactActionTile Icon={UserPlus} label="Καταχώρησε" sub="Όνομα, ειδικότητα, τηλέφωνο, ΑΦΜ" onClick={openAdd} />
+            {/* «Τέσσερα πεδία» ήταν σωστό και αόριστο: τα πεδία ονομάζονται, όσα
+                χωρούν σε μία γραμμή, ώστε ο χρήστης να ξέρει τι τον περιμένει. */}
+            <ContactActionTile Icon={UserPlus} label="Καταχώρησε" sub="Όνομα, τηλέφωνο, ΑΦΜ" onClick={openAdd} />
           </div>}
         />
       ) : processed.length === 0 ? (

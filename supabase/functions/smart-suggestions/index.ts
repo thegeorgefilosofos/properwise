@@ -30,8 +30,8 @@ const AI_LIMITS = {
   // τον κανόνα «ο βοηθός δεν τρώει πάνω από το 20% της συνδρομής» και το
   // index.test.ts τα συγκρίνει γραμμή προς γραμμή: αν αποκλίνουν, η συνάρτηση
   // άκρου θα έδινε άλλα όρια από την εφαρμογή, στον ίδιο χρήστη.
-  perDayByRank: [5, 8, 20, 50, 161],
-  perMonthByRank: [10, 23, 59, 150, 483],
+  perDayByRank: [5, 7, 20, 50, 150],
+  perMonthByRank: [10, 20, 60, 150, 500],
   freePoolPerMonth: 1000,
   // Το πακέτο κάθε ανυψωμένου αλλά ΜΗ πληρωμένου λογαριασμού (δοκιμή, δωρεάν
   // μήνες, Συνεργάτης). Το `least` της bump_ai_usage δεν το αφήνει να ξεπεραστεί.
@@ -217,7 +217,13 @@ ${JSON.stringify(expenses, null, 2)}
 
     if (!aiRes.ok) {
       const err = await aiRes.text()
-      console.error('Claude API error status', aiRes.status)
+      // ΤΟ ΓΙΑΤΙ ΣΤΟ LOG, ΟΧΙ ΜΟΝΟ Ο ΚΩΔΙΚΟΣ. Στις 25.09.2026 η παραγωγή έγραφε
+      // μόνο «Claude API error status 400» και δεν φαινόταν αν έφταιγε το
+      // υπόλοιπο του λογαριασμού, το μοντέλο ή το αίτημα. Ο τύπος και το μήνυμα
+      // του σφάλματος του API δεν κουβαλούν δεδομένα του χρήστη ούτε το κλειδί.
+      let kind = '', message = ''
+      try { const e = JSON.parse(err)?.error; kind = String(e?.type ?? ''); message = String(e?.message ?? '').slice(0, 200) } catch { /* όχι JSON */ }
+      console.error('Claude API error status', aiRes.status, kind, message)
       return json({ error: 'AI error', details: err }, 500)
     }
 

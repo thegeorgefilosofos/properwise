@@ -50,7 +50,7 @@ const FACES = `
   @font-face{font-family:Inter;src:url("${FONT_DIR}/inter-latin.woff2") format("woff2");font-weight:100 900;font-display:block}`;
 
 // Τα χρώματα του σκοτεινού θέματος, όπως τα γράφει το app/globals.css.
-const GROUND = '#202124', INK = '#e8eaed', MUTED = '#a8aeb3', ACCENT = '#8ab4f8', RULE = '#3c4043';
+const GROUND = '#070b12', INK = '#eef2f7', MUTED = '#bcc6d3', ACCENT = '#8ab4f8', RULE = '#223044';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 

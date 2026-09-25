@@ -139,12 +139,15 @@ export interface LedgerRow { k: ReactNode; v: string; kind?: 'param' | 'total'; 
  * έλεγε «άρα». Εδώ η αριθμητική τρέχει προς τα κάτω, όπως σε απόδειξη· η
  * τελευταία γραμμή είναι το αποτέλεσμα, με γραμμή από πάνω της.
  *
- * Το ταβάνι πλάτους κρατά ποσό και ετικέτα κοντά: σε κάρτα 1.000
- * εικονοστοιχείων, το ποσό στη δεξιά άκρη δεν διαβάζεται πια με την ετικέτα του.
+ * ΟΛΟ ΤΟ ΠΛΑΤΟΣ, ΜΕ ΟΔΗΓΟ ΑΠΟ ΤΗΝ ΕΤΙΚΕΤΑ ΣΤΟ ΠΟΣΟ. Ηταν κλεισμένη στα 520,
+ * για να μη χάνεται το ποσό μακριά από την ετικέτα του: σε κάρτα 1.000 όμως
+ * άφηνε το δεξί μισό άδειο, κάτω από το «Ανά μήνα». Τώρα κλείνει στην άκρη της
+ * κάρτας, όπως κάθε άλλο στοιχείο της. Μια αχνή διάστικτη γραμμή δένει
+ * ετικέτα και ποσό, όπως στην εκκαθάριση και στην απόδειξη.
  */
 export function ToolLedger({ rows }: { rows: readonly (LedgerRow | false | null | undefined)[] }) {
   return (
-    <dl style={{ margin: 0, maxWidth: 520, display: 'grid', rowGap: 10 }}>
+    <dl style={{ margin: 0, display: 'grid', rowGap: 10 }}>
       {rows.filter((r): r is LedgerRow => !!r).map((r, i) => {
         const total = r.kind === 'total', param = r.kind === 'param';
         return (
@@ -157,6 +160,7 @@ export function ToolLedger({ rows }: { rows: readonly (LedgerRow | false | null 
               {r.k}
               {r.sub && <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)', textWrap: 'pretty' }}>{r.sub}</span>}
             </dt>
+            {!total && <span aria-hidden="true" className="po-ledger-lead" />}
             <dd style={{ margin: 0, whiteSpace: 'nowrap', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums',
               fontSize: total ? 16 : param ? 13 : 14, fontWeight: total ? 700 : param ? 500 : 600,
               color: param ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{r.v}</dd>

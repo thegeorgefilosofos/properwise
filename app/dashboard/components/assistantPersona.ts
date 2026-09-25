@@ -17,7 +17,7 @@
 
 import { parseQuickAdd } from '../../../lib/calendar/quickAdd';
 import { PLANS, TRIAL_DAYS, isPayingPlan, type PlanId } from '@/lib/billing/plans';
-import { effectiveAiLimits, monthlyQuestionBudget } from '@/lib/billing/aiLimits';
+import { effectiveAiLimits, aiLimitsFor } from '@/lib/billing/aiLimits';
 import { EARLY_ACCESS_DAYS, TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { REFERRER_SLOT_MONTHS, INDIV_PRO_BONUS_MONTHS, INDIV_VOLUME_TARGET, INDIV_VOLUME_BONUS_MONTHS } from '@/lib/referral/referral';
 import { ASSISTANT_NAME, PERSONA_BRIEF } from '@/lib/assistant/identity';
@@ -45,11 +45,13 @@ const P_SOLO = PLANS.solo, P_OWNER = PLANS.owner, P_AGENCY = PLANS.agency, P_OFF
  * πραγματική σχέση ήταν 2,56 φορές και θα άλλαζε στην πρώτη αλλαγή τιμής ή
  * κόστους μοντέλου χωρίς να το πάρει κανείς είδηση.
  */
-const Q_SOLO = monthlyQuestionBudget('solo');
-const Q_OWNER = monthlyQuestionBudget('owner');
-const Q_AGENCY = monthlyQuestionBudget('agency');
-const Q_OFFICE = monthlyQuestionBudget('office');
-const Q_FREE = monthlyQuestionBudget('free');
+// Τα όρια που ΙΣΧΥΟΥΝ (στρογγυλεμένα), όχι το ταβάνι κόστους από το οποίο
+// βγαίνουν: η Νόα λέει στον χρήστη τον αριθμό που θα τη σταματήσει.
+const Q_SOLO = aiLimitsFor('solo').perMonth;
+const Q_OWNER = aiLimitsFor('owner').perMonth;
+const Q_AGENCY = aiLimitsFor('agency').perMonth;
+const Q_OFFICE = aiLimitsFor('office').perMonth;
+const Q_FREE = aiLimitsFor('free').perMonth;
 const Q_TRIAL = effectiveAiLimits('owner', false).perMonth;
 
 // ═══ ΤΑ ΝΟΥΜΕΡΑ ΤΟΥ ΕΝΦΙΑ ΚΑΙ ΤΩΝ ΕΝΑΛΛΑΚΤΙΚΩΝ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΗΝ ΠΗΓΗ ΤΟΥΣ ═══

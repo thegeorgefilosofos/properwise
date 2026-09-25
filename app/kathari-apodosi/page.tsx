@@ -33,10 +33,11 @@ import { publicMetadata } from '../publicMetadata';
 import { ApodosiCalculator } from './ApodosiCalculator';
 
 const TITLE = 'Καθαρή απόδοση ακινήτου με τα δικά σου δεδομένα';
+// Ως 155 χαρακτήρες, όσα δείχνει το αποτέλεσμα αναζήτησης: τα 230 της πρώτης
+// γραφής κόβονταν πάνω στο «δικό σου κλιμάκιο», δηλαδή στο διαφοροποιό.
 const DESC =
-  'Πόσο αποδίδει πραγματικά το ακίνητό σου μετά τον φόρο εισοδήματος, τον ΕΝΦΙΑ '
-  + 'και τις δαπάνες. Μεικτή και καθαρή απόδοση δίπλα δίπλα, με τον φόρο στο δικό '
-  + 'σου κλιμάκιο. Με τα δικά σου δεδομένα. Δωρεάν, χωρίς εγγραφή.';
+  'Πόσο αποδίδει το ακίνητό σου μετά τον φόρο, τον ΕΝΦΙΑ και τις δαπάνες. '
+  + 'Μεικτή και καθαρή απόδοση, με τον φόρο στο δικό σου κλιμάκιο. Χωρίς εγγραφή.';
 const URL = siteUrl('/kathari-apodosi');
 
 // Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
@@ -120,7 +121,7 @@ export default function Page() {
   };
 
   return (
-    <div className="po-tool-page" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
+    <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       {/* Το δομημένο σχήμα παράγεται από τον ΙΔΙΟ πίνακα FAQ που αποδίδεται
           παρακάτω, ώστε να μην μπορεί να πει άλλα η σελίδα και άλλα το σχήμα. */}
       <JsonLd data={jsonLd} />

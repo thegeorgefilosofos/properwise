@@ -296,7 +296,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
       <div style={{ marginTop: T.sp.xxl }}>
         <div className="po-table-box">
          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="po-table" style={{ '--tbl-min': '380px', tableLayout: 'fixed' }}>
+          <table className="po-table" style={{ '--tbl-min': '320px', tableLayout: 'fixed' }}>
             <caption>
               Πού πάνε τα χρήματα, τον χρόνο
             </caption>
@@ -307,10 +307,11 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
                 τις βάζει δίπλα δίπλα δεν επιτρέπεται να διαφέρουν σε πλάτος:
                 το μάτι διαβάζει τη διαφορά ως έμφαση που δεν υπάρχει.
                 Το `fixed` με ρητά ποσοστά τις κάνει ίσες σε κάθε πλάτος. */}
+            {/* 40/30/30: στα 390 το «−1.204,50€» θέλει 98 και το 28% έδινε 97. */}
             <colgroup>
-              <col style={{ width: '44%' }} />
-              <col style={{ width: '28%' }} />
-              <col style={{ width: '28%' }} />
+              <col style={{ width: '40%' }} />
+              <col style={{ width: '30%' }} />
+              <col style={{ width: '30%' }} />
             </colgroup>
             <thead>
               <tr>
@@ -327,7 +328,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
                   2.961,00€» καθόταν κάτω από τις εισπράξεις σαν να ήταν κι αυτό
                   είσπραξη· με το μείον ο πίνακας διαβάζεται ως η αφαίρεση που είναι. */}
               <Line k="Εισπράξεις (με το τέλος για τη βραχυχρόνια)" a={r.long.gross} b={r.short.guestTotal} />
-              <Line k="Τέλος ανθεκτικότητας" a={0} b={-r.short.levy} />
+              <Line k="Τέλος ανθεκτικότητας (ΤΑΚΚ)" a={0} b={-r.short.levy} />
               <Line k="Φόρος εισοδήματος" a={-r.long.tax} b={-r.short.tax} />
               <Line k="Προμήθεια πλατφόρμας" a={0} b={-r.short.platformFee} />
               <Line k="Καθαριότητα και πάγια" a={0} b={-r.short.running} />
@@ -349,8 +350,8 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
       <div style={{ marginTop: T.sp.xxl }}>
         <div className="po-table-box">
          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="po-table" style={{ '--tbl-min': '500px', tableLayout: 'fixed' }}>
-            <caption>Αν πέσεις έξω στην πληρότητα</caption>
+          <table className="po-table" style={{ '--tbl-min': '320px', tableLayout: 'fixed' }}>
+            <caption>Αν πέσεις έξω στην πληρότητα · διαφορά από τη μακροχρόνια</caption>
             {/* ΚΑΙ ΟΙ ΤΕΣΣΕΡΙΣ ΣΤΗΛΕΣ ΕΙΝΑΙ ΑΡΙΘΜΟΙ, ΑΡΑ ΙΣΕΣ ΚΑΙ ΔΕΞΙΑ.
                 Μετρημένο στα 1280: 175,4 · 246 · 311,9 · 310,7. Τέσσερα
                 διαφορετικά πλάτη για το ίδιο είδος περιεχομένου, με την
@@ -358,18 +359,23 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
                 στοιχίζονται δεξιά. Ο αναγνώστης σαρώνει κάθετα και βρίσκει
                 κάθε στήλη σε άλλη θέση. Τώρα τέσσερα ίσα τέταρτα, όλα δεξιά,
                 όλα σε αριθμούς πίνακα. */}
+            {/* ΚΑΙ ΧΩΡΑΕΙ ΣΤΟ ΚΙΝΗΤΟ. Με ελάχιστο 500 ο πίνακας έβγαινε 539 σε κουτί
+                348 στα 390: τα καθαρά και η διαφορά, δηλαδή τα δύο νούμερα της
+                απόφασης, ήταν έξω από την οθόνη. Οι κεφαλίδες γίνονται μία λέξη
+                η καθεμιά (το πλήρες όνομα μένει για τον αναγνώστη οθόνης) και
+                η στήλη των νυχτών, που κρατά τριψήφιο, δίνει λίγο στην πρώτη. */}
             <colgroup>
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '25%' }} />
+              <col style={{ width: '28%' }} />
+              <col style={{ width: '22%' }} />
               <col style={{ width: '25%' }} />
               <col style={{ width: '25%' }} />
             </colgroup>
             <thead>
               <tr>
                 <th scope="col" className="num">Πληρότητα</th>
-                <th scope="col" className="num">Διανυκτερεύσεις</th>
-                <th scope="col" className="num">Καθαρά βραχυχρόνιας</th>
-                <th scope="col" className="num">Έναντι μακροχρόνιας</th>
+                <th scope="col" className="num">Νύχτες<span className="sr-only"> (διανυκτερεύσεις)</span></th>
+                <th scope="col" className="num">Καθαρά<span className="sr-only"> βραχυχρόνιας</span></th>
+                <th scope="col" className="num">Διαφορά<span className="sr-only"> έναντι μακροχρόνιας</span></th>
               </tr>
             </thead>
             <tbody>

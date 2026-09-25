@@ -94,16 +94,22 @@ function athensNow(){ return new Date(new Date().toLocaleString('en-US',{timeZon
 function athensYear(){ return athensNow().getFullYear() }
 function todayAthens(){ const d=athensNow(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
 
-// ΧΩΡΙΣ ΣΗΜΑΣΙΟΛΟΓΙΚΟ ΠΡΑΣΙΝΟ ΚΑΙ ΚΟΚΚΙΝΟ. Η κατάσταση της δόσης λέγεται με τη
-// ΛΕΞΗ της, που είναι σαφής και σε όποιον δεν ξεχωρίζει χρώματα. Το βάρος του
-// κειμένου ξεχωρίζει ό,τι ζητά ενέργεια από ό,τι έκλεισε — ιεραρχία με μέγεθος
-// και βάρος, όπως σε κάθε άλλη οθόνη της εφαρμογής.
-const STATUS_META:Record<ReconStatus,{label:string;color:string;strong:boolean}> = {
-  paid:     { label:'Πληρώθηκε',  color:'var(--text-tertiary)',  strong:false },
-  partial:  { label:'Μερικώς',    color:'var(--text-primary)',   strong:true  },
-  unpaid:   { label:'Εκκρεμεί',   color:'var(--text-secondary)', strong:false },
-  overdue:  { label:'Εκπρόθεσμο', color:'var(--text-primary)',   strong:true  },
+// Η ΚΑΤΑΣΤΑΣΗ ΛΕΓΕΤΑΙ ΜΕ ΤΗ ΛΕΞΗ ΚΑΙ ΦΩΤΙΖΕΤΑΙ ΜΕ ΤΟΝΟ. Η λέξη μένει ο φορέας
+// της πληροφορίας (σαφής και σε όποιον δεν ξεχωρίζει χρώματα). Ο τόνος ήταν
+// γκρι για όλες και ο ιδιοκτήτης το ζήτησε ρητά (25.09.2026): «θέλω το
+// πληρώθηκε να φωτίζει λίγο, να είναι πιο ζωντανό». Απαλό φόντο και περίγραμμα
+// του ίδιου ρόλου, όπως στα σήματα της υπόλοιπης εφαρμογής· το «Εκκρεμεί»
+// μένει ουδέτερο, γιατί δεν έχει ακόμη συμβεί τίποτα.
+type Tone = 'positive' | 'warning' | 'negative' | null
+const STATUS_META:Record<ReconStatus,{label:string;color:string;strong:boolean;tone:Tone}> = {
+  paid:     { label:'Πληρώθηκε',  color:'var(--text-tertiary)',  strong:false, tone:'positive' },
+  partial:  { label:'Μερικώς',    color:'var(--text-primary)',   strong:true,  tone:'warning'  },
+  unpaid:   { label:'Εκκρεμεί',   color:'var(--text-secondary)', strong:false, tone:null       },
+  overdue:  { label:'Εκπρόθεσμο', color:'var(--text-primary)',   strong:true,  tone:'negative' },
 }
+const toneStyle = (t: Tone): React.CSSProperties => t
+  ? { color: `var(--${t}-on-container)`, background: `var(--${t}-soft)`, border: `1px solid var(--${t}-border)` }
+  : { color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }
 
 // Οι ίδιοι τόνοι για το τυπωμένο χαρτί, όπου δεν υπάρχουν μεταβλητές θέματος.
 //
@@ -1742,7 +1748,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                   {/* Η κουκκίδα έφυγε: έλεγε με χρώμα ό,τι λέει η λέξη δίπλα της. */}
                   <span style={{ flex:1, fontSize: 'var(--fs-base)', fontWeight:m.strong?600:400, color:'var(--text-primary)', fontFamily: T.font.sans }}>{r.expected.label}</span>
                   <span style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans }}>{eur(r.paidAmount)} / {eur(r.expected.amount)}</span>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight:600, color:'var(--text-primary)', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.modal, padding:'2px 9px', fontFamily: T.font.sans, minWidth:78, textAlign:'center' }}>{m.label}</span>
+                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight:600, ...toneStyle(m.tone), borderRadius: T.radius.modal, padding:'2px 9px', fontFamily: T.font.sans, minWidth:78, textAlign:'center' }}>{m.label}</span>
                 </div>
               )})}
             </div>
@@ -2069,7 +2075,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                       <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:uo?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
                     </button>
                     {uo && (
-                      <div style={{ padding:'0 15px 14px' }}>
+                      <div className="po-just-box" style={{ padding:'0 15px 14px' }}>
                         {/* ΙΔΙΟ ΣΧΗΜΑ, ΙΔΙΑ ΑΠΑΝΤΗΣΗ. Η περίληψη του κανόνα κάθεται σε
                             `auto-fit, minmax(min(100%, 300px), 1fr)` με κενό 12, δηλαδή στήλη
                             300 ώς ~450 ανάλογα με το πλάτος, μείον 15+15 γέμισμα. Οι

@@ -251,11 +251,14 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
          όλα από την αριστερή άκρη. Αυτή η μία γραμμή ξεκινούσε από τη δεξιά,
          οπότε το μάτι έκανε ένα ταξίδι για μια πρόταση που δεν το άξιζε.
          Η ανοιχτή μορφή της ίδιας κάρτας ήταν ήδη αριστερά. */
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+      /* ΙΔΙΑ ΓΡΑΜΜΗ ΒΑΣΗΣ, ΙΔΙΟ ΜΕΓΕΘΟΣ. Η λεζάντα στα 12 και ο σύνδεσμος στα
+         13 κεντραρισμένα κάθετα: τα γράμματα των δύο στέκονταν σε διαφορετικό
+         ύψος (φωτογραφημένο, 25.09.2026). Μία πρόταση, ένα μέγεθος, μία βάση. */
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', gap: 8, marginBottom: 16, flexWrap: 'wrap', fontSize: 'var(--fs-base)' }}>
         {/* Η συμπτυγμένη μορφή ΔΕΝ αποδίδει τον τίτλο «Νόα · Προτάσεις», οπότε ο
             υπότιτλος έμενε χωρίς υποκείμενο: «Διαβάζει τα δεδομένα σου» — ποιος;
             Εδώ μπαίνει η εκδοχή που κουβαλά το όνομα μαζί της. */}
-        <span style={{ ...TT.caption }}>{suggestionsTeaser()}</span>
+        <span style={{ ...TT.caption, fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>{suggestionsTeaser()}</span>
         <LinkBtn onClick={() => { setCollapsed(false); generateSuggestions(); }}>{collapsed && visibleSuggestions.length > 0 ? `Δες τις προτάσεις (${visibleSuggestions.length})` : 'Δες τι έρχεται'}</LinkBtn>
       </div>
     );

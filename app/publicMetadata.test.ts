@@ -32,11 +32,11 @@ ok('το openGraph έχει την εικόνα κοινοποίησης', !!og?
 ok('η κάρτα X έχει την ίδια εικόνα', !!tw?.images?.includes(SHARE_IMAGE));
 ok('ο τύπος περνά όπως δόθηκε', og?.type === 'article');
 ok('ο τίτλος είναι απόλυτος', JSON.stringify(m.title) === JSON.stringify({ absolute: 'Τίτλος' }));
-ok('η εικόνα είναι η διαδρομή του app/opengraph-image.tsx', SHARE_IMAGE.url === '/opengraph-image' && existsSync('app/opengraph-image.tsx'));
+ok('η εικόνα είναι η κάρτα «home» της κοινής διαδρομής', SHARE_IMAGE.url === '/og/home' && !!SHARE_CARDS['home'] && existsSync('app/og/[slug]/route.tsx'));
 
 // ── (β) ΚΑΝΕΝΑ `openGraph` ΜΕ ΤΟ ΧΕΡΙ ───────────────────────────────────────
-// Η αρχική εξαιρείται: ζει στο ίδιο τμήμα με το opengraph-image.tsx, οπότε ο
-// Next της δίνει την εικόνα από το αρχείο (μετρημένο: η «/» βγάζει og:image).
+// Η αρχική εξαιρείται: παίρνει την εικόνα από το openGraph της ρίζας
+// (app/layout.tsx, SHARE_IMAGE).
 const ROOT_SEGMENT = new Set(['app/page.tsx', 'app/layout.tsx']);
 function pages(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap(e => {
@@ -82,8 +82,8 @@ function ogFiles(dir: string): string[] {
     return /^(opengraph|twitter)-image\.tsx$/.test(e.name) ? [p] : [];
   });
 }
-const extraOg = ogFiles('app').filter(p => p !== join('app', 'opengraph-image.tsx'));
-ok(`καμία κάρτα κοινοποίησης ως δικό της opengraph-image.tsx (βρέθηκαν: ${extraOg.join(', ') || 'καμία'})`, extraOg.length === 0);
+const extraOg = ogFiles('app');
+ok(`καμία κάρτα κοινοποίησης ως opengraph-image.tsx, ούτε στη ρίζα (βρέθηκαν: ${extraOg.join(', ') || 'καμία'})`, extraOg.length === 0);
 
 console.log(`publicMetadata: ✓ ${passed} · ✗ ${failed}`);
 if (failed) { for (const f of fails) console.log('  ✗ ' + f); process.exit(1); }

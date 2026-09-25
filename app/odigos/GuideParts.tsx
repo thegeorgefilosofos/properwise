@@ -14,8 +14,9 @@ import type { CSSProperties, ReactNode } from 'react';
 import { SITE, siteUrl, PRODUCT_NAME } from '@/lib/core/site';
 import { monthGen } from '@/lib/core/months';
 import { T } from '@/components/tokens';
-import { SectionHead, WRAP, WRAP_PAD, READING } from '../PublicChrome';
+import { SectionHead, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
+import { TocSpy } from '../TocSpy';
 import { GUIDES, guideShareImageUrl, type Guide } from './guides';
 
 const HUB = { href: '/odigos', label: 'Οδηγοί' } as const;
@@ -38,17 +39,48 @@ export const LINK_STYLE = {
 /**
  * Η ΣΤΗΛΗ ΤΟΥ ΟΔΗΓΟΥ ΕΧΕΙ ΜΕΤΡΟ ΑΝΑΓΝΩΣΗΣ. Στα 1440 το κείμενο έπιανε όλο το
  * 1044 του WRAP, περίπου 150 χαρακτήρες ανά γραμμή. Η σελίδα κρατά το WRAP,
- * ώστε η επιστροφή να στέκεται κάτω από το λογότυπο· η στήλη σταματά στο READING
- * και οι παράγραφοι μέσα της στο δικό τους μέτρο (`.gd`, globals.css).
+ * ώστε η επιστροφή να στέκεται κάτω από το λογότυπο. Η στήλη `.gd` είναι το
+ * μέτρο (720, ή ό,τι αφήνει η δεξιά στήλη) και ό,τι είναι μέσα της κλείνει
+ * στην ίδια δεξιά άκρη (globals.css, «ΜΙΑ ΔΕΞΙΑ ΑΚΡΗ»).
  */
-export function GuideMain({ children }: { children: ReactNode }) {
+export function GuideMain({ children, rail }: { children: ReactNode; rail?: GuideRailProps }) {
   return (
     <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
-      <div className="gd" style={{ maxWidth: READING }}>
-        <BackLink parent={HUB} />
-        {children}
+      <div className="gd-layout">
+        {rail && <GuideRail {...rail} />}
+        <div className="gd">
+          <BackLink parent={HUB} />
+          {children}
+        </div>
       </div>
     </main>
+  );
+}
+
+type GuideRailProps = {
+  sections: readonly GuideSection[];
+  /** Ο υπολογισμός του οδηγού, ο ίδιος με το `GuideCta` πιο κάτω. */
+  cta: { href: string; action: string };
+};
+
+/**
+ * Η ΔΕΞΙΑ ΣΤΗΛΗ ΤΗΣ ΜΕΓΑΛΗΣ ΟΘΟΝΗΣ. Σε 24 ιντσών οθόνη (1920) η στήλη των 720
+ * καθόταν αριστερά στο μέτρο των 1044 και άφηνε άδειο το δεξί της τρίτο, ενώ
+ * η κεφαλίδα από πάνω έφτανε ως την άκρη. Εκεί μπαίνουν τα περιεχόμενα,
+ * καρφωμένα όσο κυλάς και με την ενότητα που διαβάζεις σημειωμένη και ο
+ * υπολογισμός του οδηγού. Το μέτρο του κειμένου δεν αλλάζει. Κάτω από τα 1200
+ * η στήλη κρύβεται και μένει το ευρετήριο μέσα στο κείμενο (`GuideToc`).
+ */
+function GuideRail({ sections, cta }: GuideRailProps) {
+  return (
+    <nav aria-label="Σε αυτόν τον οδηγό" className="lg-toc gd-rail">
+      <div className="lg-toc-d">
+        <div className="lg-toc-h">Σε αυτόν τον οδηγό</div>
+        <TocList sections={sections} />
+      </div>
+      <Link href={cta.href} className="lp-cta lp-primary lp-press gd-rail-cta">{cta.action}</Link>
+      <TocSpy />
+    </nav>
   );
 }
 
@@ -92,17 +124,21 @@ export function GuideH2({ over, title, id }: { over: string; title: string; id?:
  * στηλών στον υπολογιστή, πτυσσόμενο στο κινητό. Οι τίτλοι έρχονται από τον
  * ίδιο πίνακα που τροφοδοτεί τις κεφαλίδες, οπότε δεν ξεφεύγουν.
  */
-export function GuideToc({ sections }: { sections: readonly GuideSection[] }) {
-  const all = [...sections, SOURCES_SECTION];
-  const list = (
+/** Ο κατάλογος των ενοτήτων, ίδιος στο κείμενο και στη δεξιά στήλη. */
+function TocList({ sections }: { sections: readonly GuideSection[] }) {
+  return (
     <ol className="lg-toc-list">
-      {all.map((s, i) => (
+      {[...sections, SOURCES_SECTION].map((s, i) => (
         <li key={s.id}>
           <a href={`#${s.id}`}><span className="lg-toc-n">{i + 1}</span>{s.title}</a>
         </li>
       ))}
     </ol>
   );
+}
+
+export function GuideToc({ sections }: { sections: readonly GuideSection[] }) {
+  const list = <TocList sections={sections} />;
   return (
     <nav aria-label="Σε αυτόν τον οδηγό" className="lg-toc" style={{ marginTop: 'clamp(24px,3vw,32px)' }}>
       <details className="lg-toc-m"><summary>Σε αυτόν τον οδηγό</summary>{list}</details>

@@ -27,7 +27,7 @@ import {
   ACTION_TAB, actionReachable, planBriefing,
 } from './assistantPersona';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
-import { monthlyQuestionBudget, TRIAL_LIMITS } from '@/lib/billing/aiLimits';
+import { aiLimitsFor, TRIAL_LIMITS } from '@/lib/billing/aiLimits';
 import { EARLY_ACCESS_DAYS } from '@/lib/billing/entitlements';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { NAV_LABELS } from '@/lib/nav/labels';
@@ -608,13 +608,13 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   // ΤΟ ΠΑΚΕΤΟ ΕΡΩΤΗΣΕΩΝ ΛΕΓΕΤΑΙ ΜΕ ΝΟΥΜΕΡΑ, ΟΧΙ ΜΕ ΕΠΙΘΕΤΟ. Εγραφε «διπλάσιο
   // πακέτο ερωτήσεων» και «το μεγαλύτερο πακέτο»: ισχυρισμοί χωρίς πηγή, που
   // κανένα τεστ δεν μπορούσε να διαψεύσει (η πραγματική σχέση ήταν 2,56 φορές).
-  ok('gating: τα νούμερα των ερωτήσεων βγαίνουν από τον προϋπολογισμό',
+  ok('gating: τα νούμερα των ερωτήσεων είναι τα όρια που ισχύουν',
      [PLANS.solo, PLANS.owner, PLANS.agency, PLANS.office].every(pl =>
-       new RegExp(`ΠΑΚΕΤΟ ΕΡΩΤΗΣΕΩΝ ΣΕ ΕΜΕΝΑ.*${pl.name.replace('+', '\\+')} ${monthlyQuestionBudget(pl.id)}`).test(p)));
+       new RegExp(`ΠΑΚΕΤΟ ΕΡΩΤΗΣΕΩΝ ΣΕ ΕΜΕΝΑ.*${pl.name.replace('+', '\\+')} ${aiLimitsFor(pl.id).perMonth}`).test(p)));
   ok('gating: κανένα επίθετο στη θέση νουμέρου', !/διπλάσιο πακέτο|μεγαλύτερο πακέτο ερωτήσεων/i.test(p));
   ok('gating: η δοκιμή λέει ΤΟ ΔΙΚΟ ΤΗΣ νούμερο, όχι του επιπέδου',
      new RegExp(`ανυψωμένο αλλά ΜΗ πληρωμένο επίπεδο[^.]*${TRIAL_LIMITS.perMonth} τον μήνα`).test(p)
-     && TRIAL_LIMITS.perMonth < monthlyQuestionBudget('owner'));
+     && TRIAL_LIMITS.perMonth < aiLimitsFor('owner').perMonth);
   ok('gating: τράπεζα → Επαγγελματίας', new RegExp(`Ο «${PLANS.agency.name}».*κινήσεων τράπεζας`).test(p));
   ok('gating: χαρτοφυλάκιο → Επαγγελματίας', new RegExp(`Ο «${PLANS.agency.name}».*«Χαρτοφυλάκιο»`).test(p));
   ok('gating: CRM → Επαγγελματίας', new RegExp(`Ο «${PLANS.agency.name}».*«Πελατολόγιο»/CRM`).test(p));
@@ -754,10 +754,10 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
 {
   const trial = planBriefing('owner', 'free', 9);
   ok('η δοκιμή λέει το ΔΙΚΟ της νούμερο', trial.includes(`${TRIAL_LIMITS.perMonth} τον μήνα`));
-  ok('η δοκιμή ΔΕΝ λέει το νούμερο του επιπέδου', !trial.includes(`${monthlyQuestionBudget('owner')} τον μήνα`));
+  ok('η δοκιμή ΔΕΝ λέει το νούμερο του επιπέδου', !trial.includes(`${aiLimitsFor('owner').perMonth} τον μήνα`));
   ok('η δοκιμή λέει πόσο της μένει', /απομένουν 9 ημέρες/.test(trial));
   ok('συνδρομητής → το πλήρες πακέτο του',
-     planBriefing('owner', 'owner').includes(`${monthlyQuestionBudget('owner')} τον μήνα`));
+     planBriefing('owner', 'owner').includes(`${aiLimitsFor('owner').perMonth} τον μήνα`));
   ok('«Χωρίς συνδρομή» δεν λέγεται δύο φορές',
      !/Χωρίς συνδρομή» χωρίς/.test(planBriefing('free', 'free')));
   ok('τελευταία ημέρα δοκιμής δεν γράφει «0 ημέρες»',

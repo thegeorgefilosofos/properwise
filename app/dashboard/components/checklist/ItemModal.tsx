@@ -97,20 +97,21 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
         <FL>Πραγματικό κόστος</FL>
         {item?._receipt ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{fe(item._receipt.amount)}</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(item._receipt.amount)}</span>
             <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
               {item._receipt.provider ? `${item._receipt.provider} · ` : ''}{fmtDate(item._receipt.date)} · {item._receipt.name}
             </span>
             {onScan && <span style={{ marginLeft: 'auto', display: 'inline-flex' }}><Btn onClick={onScan}>Άλλαξέ το</Btn></span>}
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {/* ΤΟ ΚΕΙΜΕΝΟ ΔΙΠΛΑ ΣΤΟ ΚΟΥΜΠΙ ΘΕΛΕΙ ΚΛΕΙΣΤΗ ΔΕΞΙΑ ΑΚΡΗ. Το παράθυρο «md»
-                είναι 620· μείον το γέμισμα των 24, το πλαίσιο των 14 κι το κουμπί της
-                φωτογράφισης, στην παράγραφο μένουν περίπου 342 — τρεις γραμμές στα 12.
-                Το minWidth 180 το λέει ήδη μόνο του: η στήλη είναι στενή επίτηδες.
-                Στοίχιση μαζί με συλλαβισμό, γιατί μόνη της τεντώνει τα κενά. */}
-            <p className="po-just" style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0, flex: 1, minWidth: 180, lineHeight: 1.5 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+            {/* ΤΟ ΚΕΙΜΕΝΟ ΠΑΙΡΝΕΙ ΟΛΟ ΤΟ ΠΛΑΤΟΣ, ΤΟ ΚΟΥΜΠΙ ΑΠΟ ΚΑΤΩ. Ηταν δίπλα στο
+                κουμπί, σε στήλη ~342 στα 12: τρεις γραμμές όπου η πλήρης στοίχιση
+                έκοβε λέξεις στη μέση («Φωτο-γράφισέ») για να κλείσει δεξιά.
+                Φωτογραφημένο από τον ιδιοκτήτη, 25.09.2026. Σε όλο το πλάτος του
+                πλαισίου (~560) η ίδια πρόταση βγαίνει σε δύο γραμμές στα 13 και
+                η στοίχιση κλείνει χωρίς να σπάει τίποτα. */}
+            <p className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: T.font.sans, margin: 0, lineHeight: 1.55 }}>
               {hy(<>Μπαίνει μόνο από το τιμολόγιο ή την απόδειξη. Φωτογράφισέ το και καταχωρείται το ποσό, το αρχείο και η δαπάνη μαζί.</>)}
             </p>
             {onScan && <Btn variant="primary" onClick={onScan}>Φωτογράφισε το τιμολόγιο</Btn>}
@@ -120,7 +121,8 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
       {/* ΟΙ ΔΥΟ EDITORS ΠΟΥ ΟΡΙΖΟΝΤΑΝ ΚΑΙ ΔΕΝ ΑΠΟΔΙΔΟΝΤΑΝ ΠΟΥΘΕΝΑ. Τα βήματα
           μετρούνταν στον Πίνακα («2/5 υπο-εργασίες») χωρίς κανέναν τρόπο να
           δημιουργηθούν και τα σχόλια δεν γράφονταν ποτέ. */}
-      <div><FL>Βήματα ({form.subtasks.filter(st => st.done).length}/{form.subtasks.length})</FL>
+      {/* «Βήματα (0/0)» δεν έλεγε τίποτα: ο μετρητής μπαίνει όταν υπάρχει τι να μετρήσει. */}
+      <div><FL>Βήματα{form.subtasks.length > 0 && ` (${form.subtasks.filter(st => st.done).length}/${form.subtasks.length})`}</FL>
         <SubTaskEditor subtasks={form.subtasks} onChange={sub => setForm(f => ({ ...f, subtasks: sub }))} />
       </div>
       <div><FL>Σημείωση</FL>

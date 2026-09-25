@@ -19,8 +19,9 @@ import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
-import { fe, fp } from '@/lib/core/format';
-import { RENTAL_TAX_BRACKETS_2026, bracketRows, rentalIncomeTax } from '@/lib/billing/greekTax';
+import { fe, fp, fpRate, feWhole } from '@/lib/core/format';
+import { fn } from '@/components/tokens';
+import { RENTAL_TAX_BRACKETS_2026, rentalIncomeTax } from '@/lib/billing/greekTax';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
@@ -87,14 +88,25 @@ const FAQ: GuideFaqItem[] = [
   },
 ];
 
-// Η κλίμακα ενοικίων 2026, με τις ίδιες γραμμές που δείχνει ο υπολογισμός.
-const SCALE = bracketRows(RENTAL_TAX_BRACKETS_2026).map(r => [r.range, r.rate] as const);
+// Η κλίμακα ενοικίων 2026, από την ίδια κλίμακα που υπολογίζει.
+//
+// ΚΑΙ ΓΡΑΜΜΕΝΗ ΟΠΩΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ. Το `bracketRows` τυπώνει
+// «12.001,00 – 24.000,00€» και «25,00%»· ο υπολογιστής που ο οδηγός στέλνει
+// τον αναγνώστη γράφει «12.000 – 24.000€» και «25%», όπως τα γράφει ο νόμος
+// και οι συχνές ερωτήσεις. Δύο γραφές της ίδιας κλίμακας στο ίδιο πέρασμα
+// διαβάζονται σαν δύο κλίμακες. Το `bracketRows` μένει όπως είναι για τους
+// άλλους αναγνώστες του· εδώ τα όρια γράφονται με τους μορφοποιητές του
+// υπολογιστή (RentTaxCalculator.tsx).
+const SCALE = RENTAL_TAX_BRACKETS_2026.map(b => [
+  b.to === Infinity ? `Πάνω από ${feWhole(b.from)}` : `${fn(b.from)} – ${feWhole(b.to)}`,
+  fpRate(b.rate * 100),
+] as const);
 
 // Οι πηγές/νομική βάση, ορατές όπως στα εργαλεία (E-E-A-T).
 const SOURCES: string[] = [
   'Κλίμακα ενοικίων 2026 (15 / 25 / 35 / 45%, όριο 36.000€): άρθρο 8 ν.5246/2025 (ΦΕΚ Α΄ 198/11.11.2025) · έναρξη ισχύος άρθρο 47 παρ. 3.',
   'Τεκμαρτή έκπτωση 5%: άρθρο 39 παρ. 3 περ. α΄ ν.4172/2013 (ΚΦΕ).',
-  'Τραπεζική είσπραξη μισθωμάτων: άρθρο 210 ν.5222/2025 (προσθήκη παρ. 5 στο άρθρο 39 ΚΦΕ) · έναρξη κυρώσεων 1.7.2027 με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026).',
+  'Τραπεζική είσπραξη μισθωμάτων: άρθρο 210 ν.5222/2025 (ΦΕΚ Α΄ 134/28.07.2025), που προσθέτει παρ. 5 στο άρθρο 39 ΚΦΕ · η έναρξη ορίστηκε με το άρθρο 129 παρ. 1 ν.5264/2025 (ΦΕΚ Α΄ 239/19.12.2025) και μετατέθηκε στην 1.7.2027 με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026).',
 ];
 
 // Η χρονική πορεία της τραπεζικής είσπραξης, από τη θέσπιση ως την ισχύουσα έναρξη.
@@ -146,11 +158,11 @@ export default function Page() {
   });
 
   return (
-    <div className="po-tool-page" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
+    <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       <JsonLd data={jsonLd} />
       <PublicHeader />
 
-      <GuideMain>
+      <GuideMain rail={{ sections: Object.values(S), cta: { href: '/ypologismos-forou-enoikion', action: 'Υπολόγισε τον φόρο σου' } }}>
         <div className="lp-eyebrow">Οδηγός</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>

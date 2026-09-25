@@ -71,8 +71,10 @@ const FRESH_MS = 15 * 60 * 1000
  * συγκατάθεσης, η πρόσκληση και το πακέτο. Συμπληρώνει ΜΟΝΟ ό,τι λείπει: η
  * απόδειξη που μετράει είναι η ΠΡΩΤΗ, όχι η σημερινή.
  */
-function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams): Record<string, unknown> {
+function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams, newsOff = q.get('news') === '0'): Record<string, unknown> {
   const patch: Record<string, unknown> = {}
+  // Η άρνηση των ενημερωτικών ταξιδεύει όπως το πακέτο, στη διεύθυνση επιστροφής.
+  if (newsOff && meta.marketing_opt_out === undefined) patch.marketing_opt_out = true
   if (!meta.consent_terms_accepted_at) {
     patch.consent_terms_accepted_at = new Date().toISOString()
     patch.consent_policy_version = CONSENT_VERSION
@@ -81,6 +83,21 @@ function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams): Record<s
   const p = planFromParam(q.get('plan'))
   if (p && !meta.chosen_plan) { patch.chosen_plan = p; patch.chosen_cycle = cycleFromParam(q.get('cycle')) }
   return patch
+}
+
+/**
+ * ΤΑ ΕΝΗΜΕΡΩΤΙΚΑ, ΑΜΕΣΑ ΚΛΕΙΣΤΑ. Η βάση τα κλείνει όταν δημιουργεί τη γραμμή
+ * των προτιμήσεων (migration 20260925120000)· εδώ γράφεται και ρητά, για την
+ * περίπτωση που η γραμμή υπάρχει ήδη. Η πολιτική `own_marketing_prefs`
+ * επιτρέπει στον χρήστη μόνο τη δική του.
+ */
+async function newsOffNow(supabase: Awaited<ReturnType<typeof authClient>>, userId: string) {
+  // Η ΑΡΝΗΣΗ ΠΟΥ ΔΕΝ ΓΡΑΦΤΗΚΕ ΔΕΝ ΠΕΡΝΑ ΣΙΩΠΗΛΑ. Ο χρήστης που είπε «όχι» και
+  // λαμβάνει ενημερωτικό είναι ακριβώς αυτό που ο νόμος απαγορεύει· επιστρέφεται
+  // το σφάλμα και η οθόνη το δείχνει, με τη διέξοδο να ξαναδοκιμάσει.
+  const { error } = await supabase.from('email_marketing_prefs')
+    .upsert({ user_id: userId, product_news: false, market_news: false }, { onConflict: 'user_id' })
+  return error
 }
 
 export default function SignupPage() {
@@ -94,6 +111,12 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [consent, setConsent] = useState(false)
+  // ΕΝΗΜΕΡΩΤΙΚΑ: ΕΝΕΡΓΑ ΑΠΟ ΠΡΟΕΠΙΛΟΓΗ, ΜΕ ΑΡΝΗΣΗ ΣΤΗΝ ΕΓΓΡΑΦΗ. Απόφαση
+  // ιδιοκτήτη (25.09.2026), πάνω στο άρθρο 11 παρ. 3 ν.3471/2006: ο πελάτης
+  // παίρνει νέα για δικά μας παρόμοια προϊόντα αν του δοθεί η ευκαιρία να
+  // αρνηθεί τη στιγμή της συλλογής. Δεν είναι συγκατάθεση, γι' αυτό και το
+  // κουτί ξεκινά τσεκαρισμένο· είναι η άρνηση που ο νόμος ζητά να προσφέρουμε.
+  const [news, setNews] = useState(true)
   // Το κουμπί της Google δεν έχει «υποβολή» για να δείξει το πρόβλημα. Χωρίς
   // αυτό, το πάτημα χωρίς αποδοχή δεν έκανε τίποτα και έμοιαζε με βλάβη.
   const [consentTouched, setConsentTouched] = useState(false)
@@ -194,6 +217,14 @@ export default function SignupPage() {
             return
           }
         }
+        const newsError = patch.marketing_opt_out ? await newsOffNow(supabase, u.id) : null
+        if (newsError) {
+          setError(failed('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', newsError))
+          setConsent(true)
+          setNews(false)
+          setNeedsConsent(u.email ?? '')
+          return
+        }
         window.location.replace(landing)
         return
       }
@@ -221,8 +252,11 @@ export default function SignupPage() {
     const { data, error: readError } = await supabase.auth.getUser()
     if (readError) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', readError)); return }
     const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>
-    const { error } = await supabase.auth.updateUser({ data: oauthPatch(meta, new URLSearchParams(window.location.search)) })
+    const patch = oauthPatch(meta, new URLSearchParams(window.location.search), !news)
+    const { error } = await supabase.auth.updateUser({ data: patch })
     if (error) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', error)); return }
+    const newsError = patch.marketing_opt_out && data.user ? await newsOffNow(supabase, data.user.id) : null
+    if (newsError) { setError(failed('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', newsError)); return }
     window.location.replace(checkoutLanding(chosenPlan, chosenCycle))
   }
 
@@ -294,6 +328,7 @@ export default function SignupPage() {
     const supabase = await authClient()
     const back = new URLSearchParams({ oauth: '1' })
     if (refCode) back.set('ref', refCode)
+    if (!news) back.set('news', '0')
     if (chosenPlan) { back.set('plan', chosenPlan); back.set('cycle', chosenCycle) }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -369,6 +404,7 @@ export default function SignupPage() {
           full_name: fullName.trim(),
           consent_terms_accepted_at: new Date().toISOString(),
           consent_policy_version: CONSENT_VERSION,
+          ...(news ? {} : { marketing_opt_out: true }),
           ...(refCode ? { referred_by: refCode } : {}),
           ...(chosenPlan ? { chosen_plan: chosenPlan, chosen_cycle: chosenCycle } : {}),
         },
@@ -405,6 +441,19 @@ export default function SignupPage() {
   const CONSENT_TAP_ROOM = 14
   const consentText: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer', textWrap: 'balance' }
   const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }
+  // Το δεύτερο κουτί, με το ίδιο ιδίωμα αφής με το πρώτο. Προαιρετικό: η
+  // εγγραφή προχωρά ό,τι κι αν διαλέξεις.
+  const newsRow = (id: string) => (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingBottom: CONSENT_TAP_ROOM }}>
+      <label htmlFor={id} style={{ ...TAP, margin: -14 }}>
+        <input id={id} type="checkbox" checked={news} onChange={e => setNews(e.target.checked)}
+          style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} />
+      </label>
+      <label htmlFor={id} style={consentText}>
+        Να μου στέλνετε νέα της εφαρμογής και της αγοράς ακινήτων. Σταματούν από τον σύνδεσμο σε κάθε email.
+      </label>
+    </div>
+  )
   const errorBox: React.CSSProperties = { background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }
   const focus = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--accent)' }
   const blur = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)' }
@@ -440,7 +489,7 @@ export default function SignupPage() {
       {/* ── ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΕΙΝΑΙ <main>, ΚΑΙ ΛΕΓΕΤΑΙ ─────────────────────────
           Μετρημένο: καμία περιοχή στο προσβάσιμο δέντρο, ούτε ένα <main>. */}
       <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
-        <div style={{ width: '100%', maxWidth: 400 }}>
+        <div className="auth-form">
           <AuthMobileBrand />
           {needsConsent ? (
             /* Ηρθε από τη σύνδεση με Google, ο λογαριασμός δημιουργήθηκε και οι
@@ -478,6 +527,7 @@ export default function SignupPage() {
                   Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.
                 </p>
               )}
+              {newsRow('su-news-oauth')}
               {error && (
                 <div role="alert" style={{ ...errorBox, marginBottom: 12 }}>{error}</div>
               )}
@@ -779,6 +829,7 @@ export default function SignupPage() {
                     Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.
                   </p>
                 )}
+                {newsRow('su-news')}
 
                 {/* ── ΤΟ ΑΝΕΝΕΡΓΟ ΚΟΥΜΠΙ ΠΟΥ ΔΕΝ ΕΛΕΓΕ ΓΙΑΤΙ ───────────────────
                     Ηταν `disabled`, δηλαδή ΕΞΩ από τη σειρά Tab. Ο χρήστης

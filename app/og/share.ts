@@ -13,18 +13,47 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { SHARE_IMAGE } from '@/lib/core/site';
 import { GUIDES, guideSlug } from '../odigos/guides';
+import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
+import { fpRate } from '@/lib/core/format';
 
-export type ShareCard = { kind: 'guide' | 'calc'; over: string; title: string };
+export type ShareCard = {
+  kind: 'guide' | 'calc';
+  over: string;
+  title: string;
+  /** Συνέχεια του τίτλου στο μπλε της μάρκας (μόνο η αρχική). */
+  accent?: string;
+  /** Σύντομα γεγονότα της σελίδας για την κάρτα (app/og/frame.tsx). */
+  chips: readonly string[];
+  /** Η διαδρομή της σελίδας, γραμμένη στο κάτω μέρος της κάρτας. */
+  path: string;
+};
 
-// ΧΩΡΙΣ «ω» ΣΤΟΥΣ ΤΙΤΛΟΥΣ ΤΩΝ ΥΠΟΛΟΓΙΣΤΩΝ: βλ. το shareCard στο
-// app/opengraph-image.tsx, όπου η ενσωματωμένη γραμματοσειρά το χαλά.
+// ΤΑ ΓΕΓΟΝΟΤΑ ΤΗΣ ΚΑΡΤΑΣ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΙΣ ΠΗΓΕΣ ΤΟΥΣ. Οι συντελεστές από την
+// κλίμακα του νόμου, η ημερομηνία από τον κατάλογο των οδηγών. Ποσά
+// αποτελέσματος δεν μπαίνουν: η πλατφόρμα κρατά την εικόνα εβδομάδες.
+const RENT_RATES = RENTAL_TAX_BRACKETS_2026.map(b => fpRate(b.rate * 100)).join(' · ');
+const dotted = (iso: string) => iso.split('-').reverse().join('.');
+
 export const SHARE_CARDS: Record<string, ShareCard> = {
-  'ypologismos-enfia': { kind: 'calc', over: 'Υπολογιστής', title: 'Υπολόγισε τον ΕΝΦΙΑ του ακινήτου σου' },
-  'ypologismos-forou-enoikion': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόσο φόρο θα πληρώσεις για τα ενοίκιά σου' },
-  'kathari-apodosi': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόσο αποδίδει πραγματικά το ακίνητό σου' },
-  'vraxyxronia-i-makroxronia': { kind: 'calc', over: 'Υπολογιστής', title: 'Βραχυχρόνια ή μακροχρόνια;' },
-  'odigos': { kind: 'guide', over: 'Οδηγοί', title: 'Οδηγοί φορολογίας ακινήτων' },
-  ...Object.fromEntries(GUIDES.map(g => [guideSlug(g), { kind: 'guide' as const, over: g.kicker, title: g.title }])),
+  // Η αρχική και κάθε σελίδα χωρίς δική της κάρτα (SHARE_IMAGE, lib/core/site.ts).
+  // Ζούσε στο app/opengraph-image.tsx, που το Next βάζει στο τμήμα της ρίζας:
+  // ό,τι διάβαζε από τον δίσκο ταξίδευε σε κάθε συνάρτηση της ανάπτυξης.
+  'home': { kind: 'calc', over: '', title: 'Το ακίνητό σου,', accent: 'χωρίς χαρτιά στο συρτάρι.',
+    chips: ['Έσοδα και δαπάνες', 'Ενοικιαστές', 'Φόρος και ΕΝΦΙΑ', 'Προθεσμίες'], path: '' },
+  'ypologismos-enfia': { kind: 'calc', over: 'Υπολογιστής', title: 'Υπολόγισε τον ΕΝΦΙΑ του ακινήτου σου',
+    chips: ['Τετραγωνικά', 'Τιμή ζώνης', 'Όροφος', 'Παλαιότητα'], path: '/ypologismos-enfia' },
+  'ypologismos-forou-enoikion': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόσο φόρο θα πληρώσεις για τα ενοίκιά σου',
+    chips: [`Κλίμακα ${FIRST_YEAR_NEW_BRACKETS}`, RENT_RATES, 'Με το δικό σου ενοίκιο'], path: '/ypologismos-forou-enoikion' },
+  'kathari-apodosi': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόσο αποδίδει πραγματικά το ακίνητό σου',
+    chips: ['Μεικτή και καθαρή', 'Φόρος στο κλιμάκιό σου', 'ΕΝΦΙΑ και δαπάνες'], path: '/kathari-apodosi' },
+  'vraxyxronia-i-makroxronia': { kind: 'calc', over: 'Υπολογιστής', title: 'Βραχυχρόνια ή μακροχρόνια;',
+    chips: ['Πληρότητα', 'ΤΑΚΚ', 'Προμήθεια', 'Φόρος'], path: '/vraxyxronia-i-makroxronia' },
+  'odigos': { kind: 'guide', over: 'Οδηγοί', title: 'Οδηγοί φορολογίας ακινήτων',
+    chips: GUIDES.map(g => g.kicker), path: '/odigos' },
+  ...Object.fromEntries(GUIDES.map(g => [guideSlug(g), {
+    kind: 'guide' as const, over: 'Οδηγός', title: g.title,
+    chips: [g.kicker, `Ενημερώθηκε ${dotted(g.updated)}`, 'Με τις πηγές του νόμου'], path: g.href,
+  }])),
 };
 
 export type ShareSlug = keyof typeof SHARE_CARDS;

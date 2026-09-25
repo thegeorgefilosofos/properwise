@@ -42,7 +42,7 @@ export default function manifest(): MetadataRoute.Manifest {
     dir: 'ltr',
     // Ουδέτερο, ώστε να μη «χτυπά» ούτε στο φωτεινό ούτε στο σκοτεινό θέμα.
     // ΤΡΙΑ ΧΡΩΜΑΤΑ ΓΙΑ ΤΟ ΙΔΙΟ ΠΡΑΓΜΑ. Το manifest έγραφε φόντο #0b0f14 και
-    // μπάρα #1a73e8, ενώ το app/layout.tsx γράφει #202124. Το πρώτο είναι
+    // μπάρα #1a73e8, ενώ το app/layout.tsx έγραφε άλλο. Το πρώτο είναι
     // ακριβώς η τιμή που το σχόλιο του globals.css απορρίπτει ονομαστικά
     // («δεν ταίριαζε ούτε με το ίδιο μας το φόντο») και το δεύτερο ένα παλιό
     // μπλε που δεν υπάρχει σε κανένα θέμα. Αποτέλεσμα: η οθόνη εκκίνησης της
@@ -55,7 +55,7 @@ export default function manifest(): MetadataRoute.Manifest {
     // δεν φαίνεται σαν τετράγωνο πάνω σε άλλο σκούρο. Η μπάρα μένει στο
     // --bg-base, αφού από πάνω της ζωγραφίζεται η ίδια η εφαρμογή.
     background_color: BRAND_DARK_BG,
-    theme_color: '#202124',
+    theme_color: '#070b12',
     categories: ['finance', 'business', 'productivity'],
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
