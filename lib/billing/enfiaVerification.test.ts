@@ -54,6 +54,9 @@ function enfiaOracle(sqm: number, zone: string, floor: string, age: string, owne
     // 400.000€ κατοικίας, η μείωση του μικρού οικισμού δεν δίνεται καθόλου —
     // άλλος κανόνας από το `pctOver`, που απλώς μικραίνει το ποσοστό.
     if (r === 'small_settlement_2026' && homeVal > 400000) return 0
+    // Ο ΜΙΚΡΟΣ ΟΙΚΙΣΜΟΣ ΜΕ ΤΑ ΔΙΚΑ ΤΟΥ ΕΤΗ (άρθρο 17 παρ. 3 ν.5219/2025): δεν
+    // υπήρχε πριν από το 2026, 50% το 2026, πλήρης απαλλαγή από το 2027.
+    if (r === 'small_settlement_2026') return year == null || year < 2026 ? 0 : year >= 2027 ? 100 : 50
     return r === 'insurance' && homeVal > 500000 ? 10 : rd.pct
   }))
   const combined = 1 - (1 - wealthPct / 100) * (1 - manualPct / 100)

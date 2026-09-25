@@ -205,8 +205,24 @@ export const ENFIA_REDUCTIONS: {
    * και χρωστά κατά την ΑΑΔΕ.
    *
    * Χωρίς τιμή, το μέτρο δεν έχει ημερομηνία λήξης στον νόμο.
+   *
+   * Η ΑΦΕΤΗΡΙΑ ΤΟΥ ΣΦΑΛΜΑΤΟΣ ΗΤΑΝ ΛΑΘΟΣ ΣΤΟ ΜΙΣΟ. Το μέτρο δεν λήγει το 2026:
+   * γίνεται πλήρης απαλλαγή από τον ΕΝΦΙΑ 2027, με τα ίδια όρια (άρθρο 17
+   * παρ. 3 ν.5219/2025, όπως προστέθηκε με το άρθρο 10 ν.5246/2025). Αυτό το
+   * λέει πλέον το `pctFrom`· το πεδίο εδώ μένει για τα μέτρα που λήγουν.
    */
   untilYear?: number
+  /**
+   * ΤΟ ΠΡΩΤΟ ΕΤΟΣ ΕΝΦΙΑ ΠΟΥ ΙΣΧΥΕΙ ΤΟ ΜΕΤΡΟ. Ο ΕΝΦΙΑ 2025 δεν είχε μείωση
+   * μικρού οικισμού και η οθόνη που ρωτά για το 2025 δεν πρέπει να τη δίνει.
+   * Χωρίς έτος δεν δίνεται, για τον ίδιο λόγο που δεν δίνεται μέτρο που λήγει.
+   */
+  sinceYear?: number
+  /**
+   * ΑΠΟ ΑΥΤΟ ΤΟ ΕΤΟΣ ΕΝΦΙΑ ΤΟ ΠΟΣΟΣΤΟ ΓΙΝΕΤΑΙ ΑΛΛΟ. Ο μικρός οικισμός: 50% το
+   * 2026, 100% από το 2027 (άρθρο 17 παρ. 3 ν.5219/2025).
+   */
+  pctFrom?: { year: number; pct: number }
   /**
    * ΑΝΩΤΑΤΗ ΑΞΙΑ ΚΑΤΟΙΚΙΑΣ ΠΑΝΩ ΑΠΟ ΤΗΝ ΟΠΟΙΑ ΤΟ ΜΕΤΡΟ ΔΕΝ ΔΙΝΕΤΑΙ ΚΑΘΟΛΟΥ.
    *
@@ -229,7 +245,8 @@ export const ENFIA_REDUCTIONS: {
   maxHomeValue?: number
 }[] = [
   { key: 'low_income', label: 'Χαμηλό εισόδημα (κύρια κατοικία)', pct: 50, note: 'Μείωση 50% με κριτήρια: εισόδημα ≤9.000€ (+1.000€/μέλος), κτίσματα ≤150 τ.μ., περιουσία ≤85.000€ (άγαμος) / 200.000€ (έγγαμος με 2 τέκνα)' },
-  { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού (2026)', pct: 50, untilYear: 2026, maxHomeValue: 400_000, note: 'Αυτόματη μείωση 50% ΕΝΦΙΑ 2026 για οικισμούς ≤1.500 κατ., αξία κατοικίας ≤400.000€' },
+  // Το κλειδί κρατά το «2026» επειδή είναι αποθηκευμένο στις επιλογές των χρηστών.
+  { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού', pct: 50, sinceYear: 2026, pctFrom: { year: 2027, pct: 100 }, maxHomeValue: 400_000, note: 'Αυτόματη μείωση 50% το 2026 και πλήρης απαλλαγή από το 2027, για οικισμούς ≤1.500 κατ., αξία κατοικίας ≤400.000€' },
   { key: 'large_family', label: 'Τρίτεκνοι / Πολύτεκνοι', pct: 100, note: '100% απαλλαγή με κριτήρια: εισόδημα ≤12.000€ (+1.000€/μέλος), κτίσματα ≤150 τ.μ.' },
   { key: 'disability', label: 'Αναπηρία ≥80%', pct: 100, note: '100% απαλλαγή με τα ίδια εισοδηματικά/περιουσιακά κριτήρια' },
   { key: 'insurance', label: 'Ασφαλισμένη κατοικία', pct: 20, pctOver: { above: 500_000, pct: 10 }, note: '20% (αξία ≤500.000€) ή 10% (>500.000€), κάλυψη σεισμού+πυρκαγιάς+πλημμύρας ≥3 μήνες' },
@@ -307,8 +324,19 @@ export function enfiaReductionPct(key: string, homeValue: number, year?: number)
   const rd = ENFIA_REDUCTIONS.find(r => r.key === key)
   if (!rd) return 0
   if (rd.untilYear != null && (year == null || year > rd.untilYear)) return 0
+  if (rd.sinceYear != null && (year == null || year < rd.sinceYear)) return 0
   if (rd.maxHomeValue != null && homeValue > rd.maxHomeValue) return 0
-  return rd.pctOver && homeValue > rd.pctOver.above ? rd.pctOver.pct : rd.pct
+  return rd.pctOver && homeValue > rd.pctOver.above ? rd.pctOver.pct : enfiaReductionRate(key, year)
+}
+
+/**
+ * Το ποσοστό του μέτρου για τη χρονιά, πριν από κατώφλια αξίας. Το διαβάζουν
+ * η οθόνη και οι φράσεις, ώστε να μη γράφουν 50% τη χρονιά που ισχύει το 100%.
+ */
+export function enfiaReductionRate(key: string, year?: number): number {
+  const rd = ENFIA_REDUCTIONS.find(r => r.key === key)
+  if (!rd) return 0
+  return rd.pctFrom && year != null && year >= rd.pctFrom.year ? rd.pctFrom.pct : rd.pct
 }
 
 /**
@@ -321,6 +349,7 @@ export function enfiaReductionInForce(key: string, year: number, homeValue = 0):
   const rd = ENFIA_REDUCTIONS.find(r => r.key === key)
   if (!rd) return false
   if (rd.untilYear != null && year > rd.untilYear) return false
+  if (rd.sinceYear != null && year < rd.sinceYear) return false
   return !(rd.maxHomeValue != null && homeValue > rd.maxHomeValue)
 }
 

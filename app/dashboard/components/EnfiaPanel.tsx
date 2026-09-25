@@ -56,7 +56,7 @@ import { T, TT, fe, fp, SecHdr, Spinner, fixedCols, Btn, ABSENT } from '@/compon
 import { NumberInput, CustomSelect } from './UIComponents';
 import { AadePill } from '@/components/AadeLink';
 import {
-  ENFIA_REDUCTIONS, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF, enfiaReductionInForce,
+  ENFIA_REDUCTIONS, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF, enfiaReductionInForce, enfiaReductionRate,
 } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
 import { ENFIA_UNKNOWN as UNKNOWN, type EnfiaState } from './useEnfia';
@@ -451,6 +451,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
               const homeVal = (parseFloat(s.enfiaPropVal) || 0) || (parseFloat(s.enfiaTotalVal) || 0);
               const inForce = enfiaReductionInForce(r.key, enfiaYear, homeVal);
               const lapsed = r.untilYear != null && enfiaYear > r.untilYear;
+              const notYet = r.sinceYear != null && enfiaYear < r.sinceYear;
               const active = inForce && (s.enfiaReductions || []).includes(r.key);
               return (
                 <button key={r.key} type="button" disabled={!inForce}
@@ -475,11 +476,13 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
                       <span style={{ ...TT.caption, display: 'block', marginTop: 2, color: 'var(--text-tertiary)' }}>
                         {lapsed
                           ? `Δεν ισχύει για τον ΕΝΦΙΑ ${enfiaYear}: το μέτρο εφαρμόστηκε ώς και το ${r.untilYear}.`
-                          : `Δεν δίνεται σε αυτή την αξία: το όριο του μέτρου είναι ${fe(r.maxHomeValue!)}.`}
+                          : notYet
+                            ? `Δεν ισχύει για τον ΕΝΦΙΑ ${enfiaYear}: το μέτρο ξεκινά από το ${r.sinceYear}.`
+                            : `Δεν δίνεται σε αυτή την αξία: το όριο του μέτρου είναι ${fe(r.maxHomeValue!)}.`}
                       </span>
                     )}
                   </span>
-                  <span style={{ ...TT.figure, fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>{fp(r.pct)}</span>
+                  <span style={{ ...TT.figure, fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>{fp(enfiaReductionRate(r.key, enfiaYear))}</span>
                 </button>
               );
             })}
