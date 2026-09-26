@@ -15,6 +15,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Typesetter from '@/components/Typesetter';
+import JustifyPolish from '@/components/JustifyPolish';
 import type { Responder } from '../e2e-money/fakeDb';
 import { portfolio } from './data';
 import { writeStatus } from '@/lib/property/status';
@@ -471,6 +472,6 @@ const withNoa = params.get('noa') === '1';
 // Ο ΣΤΟΙΧΕΙΟΘΕΤΗΣ ΤΗΣ ΕΦΑΡΜΟΓΗΣ ΜΠΑΙΝΕΙ ΚΑΙ ΕΔΩ, όπως στο app/dashboard/page.tsx:
 // αλλιώς οι σαρωτές θα μετρούσαν κείμενο που ο χρήστης δεν βλέπει ποτέ έτσι.
 createRoot(host).render(withNoa
-  ? <><Typesetter /><View /><PropertyAssistant propertyId="p1" userId="u1" propContext={{ name: 'Ακίνητο 2' }} onNavigate={() => {}} onScan={() => {}} assistantLocked={params.get('locked') === '1'} /></>
-  : <><Typesetter /><View /></>);
+  ? <><Typesetter /><JustifyPolish /><View /><PropertyAssistant propertyId="p1" userId="u1" propContext={{ name: 'Ακίνητο 2' }} onNavigate={() => {}} onScan={() => {}} assistantLocked={params.get('locked') === '1'} /></>
+  : <><Typesetter /><JustifyPolish /><View /></>);
 requestAnimationFrame(() => { window.__t.firstPaint = performance.now(); });

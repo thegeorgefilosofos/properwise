@@ -7,6 +7,7 @@ import PwaProvider from "./PwaProvider";
 import VercelAnalytics from "./VercelAnalytics";
 import { ToastHost } from "@/components/Toast";
 import ErrorListener from "@/components/ErrorListener";
+import JustifyPolish from "@/components/JustifyPolish";
 import { ConfirmHost } from "@/components/ConfirmDialog";
 import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE } from "@/lib/core/site";
 
@@ -197,6 +198,8 @@ export default async function RootLayout({
           <ToastHost />
           <ConfirmHost />
           <PwaProvider />
+          {/* Κλείνει τις τρύπες της πλήρους στοίχισης (βλ. JustifyPolish.tsx). */}
+          <JustifyPolish />
           {/* Ανώνυμη μέτρηση επισκεψιμότητας χωρίς cookies (βλ. VercelAnalytics.tsx). */}
           <VercelAnalytics />
         </ThemeProvider>

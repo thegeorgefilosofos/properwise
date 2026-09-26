@@ -25,7 +25,7 @@
 // εδώ μόνη της την επόμενη φορά που τρέχει το βήμα.
 //
 // Η ΤΑΥΤΟΤΗΤΑ ΕΙΝΑΙ ΤΟΥ scripts/marketing/shell.ts: ναυτικό έδαφος, ένας τόνος,
-// η γραμμή τόνου πάνω αριστερά με ετικέτα σε Roboto Mono, το σήμα κάτω.
+// η γραμμή τόνου πάνω αριστερά με ετικέτα σε Inter, το σήμα κάτω.
 // Προστίθεται ΜΟΝΟ ό,τι χρειάζεται μια διαφήμιση και όχι μια ανακοίνωση: το
 // κουμπί (CTA) και η λάμψη του τόνου πίσω από το κεντρικό στοιχείο.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -58,13 +58,13 @@ const font = (file: string) =>
 const FACES = `
   @font-face{font-family:Inter;src:${font('inter-greek.woff2')};font-weight:100 900;font-display:block}
   @font-face{font-family:Inter;src:${font('inter-latin.woff2')};font-weight:100 900;font-display:block}
-  @font-face{font-family:"Roboto Mono";src:${font('robotomono-greek.woff2')};font-weight:100 700;font-display:block}
-  @font-face{font-family:"Roboto Mono";src:${font('robotomono-latin.woff2')};font-weight:100 700;font-display:block}`;
+`;
 
 // ── Τα γεγονότα, από τις πηγές τους ──────────────────────────────────────
-// Στη διαφήμιση το μηδέν γράφεται «0 €» και όχι «0,00 €»: δεκαδικά σε μηδέν
-// διαβάζονται ως λογιστικό φύλλο. Κάθε άλλη τιμή κρατά τα δύο δεκαδικά.
-const eur = (n: number) => (n === 0 ? '0 €' : fe(n));
+// Στη διαφήμιση το μηδέν γράφεται «0€» και όχι «0,00€»: δεκαδικά σε μηδέν
+// διαβάζονται ως λογιστικό φύλλο. Χωρίς κενό, όπως το «4,99€» δίπλα του και
+// όπως κάθε ποσό της εφαρμογής (fe).
+const eur = (n: number) => (n === 0 ? '0€' : fe(n));
 const FREE = PLANS.free, NOA = PLANS.solo, AI = aiLimitsFor('solo');
 const FREE_SCANS = SCAN_LIMITS.free ?? 0;
 const TAX = FREE.features.filter(f => !f.startsWith('Σάρωση'));
@@ -112,13 +112,15 @@ function frame(s: Size, label: string, stage: string, cta: string, css = ''): st
   .ghost{position:absolute;right:${-Math.round(s.h * 0.08)}px;bottom:${-Math.round(s.h * 0.1)}px;opacity:${s.key === 'story' ? .03 : .04};pointer-events:none}
   .top{position:relative;display:flex;align-items:center;gap:22px;flex:none}
   .top i{display:block;width:88px;height:6px;background:${C.accent};border-radius:3px}
-  .label{font-family:"Roboto Mono",monospace;font-size:${s.key === 'wide' ? 17 : 22}px;font-weight:500;letter-spacing:.17em;color:${C.muted};white-space:nowrap}
+  .label{font-size:${s.key === 'wide' ? 16 : 21}px;font-weight:700;letter-spacing:.14em;color:${C.muted};white-space:nowrap}
   .stage{position:relative;flex:1;display:flex;flex-direction:column;min-height:0}
   .foot{position:relative;flex:none;display:flex;align-items:center;justify-content:space-between;gap:28px}
   .brand{display:inline-flex;align-items:center;gap:14px;font-size:${s.key === 'wide' ? 21 : 27}px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
   .cta{display:inline-flex;align-items:center;gap:14px;padding:${s.key === 'wide' ? '14px 26px' : '20px 34px'};border-radius:999px;background:${C.accent};color:${C.onAccent};
     font-size:${s.key === 'wide' ? 20 : 28}px;font-weight:750;letter-spacing:-.01em;white-space:nowrap}
-  .cta small{font-family:"Roboto Mono",monospace;font-size:.72em;font-weight:500;letter-spacing:.04em;opacity:.75}
+  .cta svg{flex:none}
+  .brand-wrap{display:flex;flex-direction:column;gap:${s.key === 'wide' ? 4 : 6}px}
+  .host{font-size:${s.key === 'wide' ? 15 : 20}px;font-weight:500;color:${C.faint};letter-spacing:.01em;padding-left:${s.key === 'wide' ? 42 : 52}px}
   h1{font-weight:800;letter-spacing:-.035em;line-height:1.02;text-wrap:balance}
   .sub{color:${C.muted};line-height:1.4;text-wrap:pretty}
   .list{display:flex;flex-direction:column}
@@ -131,13 +133,16 @@ function frame(s: Size, label: string, stage: string, cta: string, css = ''): st
   <div class="top"><i></i><div class="label">${esc(caps(label))}</div></div>
   <div class="stage">${stage}</div>
   <div class="foot">
-    <div class="brand">${brandMarkSvg(s.key === 'wide' ? 28 : 38, 'currentColor')}PROPERWISE</div>
+    <div class="brand-wrap"><div class="brand">${brandMarkSvg(s.key === 'wide' ? 28 : 38, 'currentColor')}PROPERWISE</div><div class="host">${SITE_HOST}</div></div>
     ${cta}
   </div>
 </body></html>`;
 }
 
-const ctaPill = (text: string) => `<div class="cta">${esc(text)}<small>${SITE_HOST}</small></div>`;
+// ΤΟ ΚΟΥΜΠΙ ΛΕΕΙ ΜΙΑ ΠΡΑΞΗ. Η διεύθυνση ζούσε μέσα του σε μονόχωρη γραμματοσειρά
+// και το έκανε να διαβάζεται σαν δύο πράγματα· πήγε κάτω από το σήμα.
+const arrow = `<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
+const ctaPill = (text: string) => `<div class="cta">${esc(text)}${arrow}</div>`;
 
 // ═══ 1. ΔΩΡΕΑΝ ══════════════════════════════════════════════════════════
 // Ενα σημείο έντασης: το 0 €. Ο τίτλος το εξηγεί, η λίστα το αποδεικνύει.
@@ -182,7 +187,9 @@ function noa(s: Size): string {
   const label = 'Ψηφιακός βοηθός';
   const title = `Γνώρισε ${ASSISTANT_ACC}.`;
   const sub = 'Ρωτάς για το ακίνητό σου στα ελληνικά. Απαντά με τα δικά σου νούμερα.';
-  const terms = `${AI.perMonth} ερωτήσεις τον μήνα · σάρωση χωρίς όριο · ${TRIAL_DAYS} ημέρες δοκιμή`;
+  // Τρία στοιχεία που δεν σπάνε στη μέση· το «τον μήνα» το λέει ήδη η τιμή από πάνω.
+  const terms = [`${AI.perMonth} ερωτήσεις`, 'σάρωση χωρίς όριο', `δοκιμή ${TRIAL_DAYS} ημερών`]
+    .map(t => `<span style="white-space:nowrap">${esc(t)}</span>`).join(' · ');
   const cta = ctaPill(`Δοκίμασε ${ASSISTANT_ACC}`);
   const wide = s.key === 'wide', story = s.key === 'story', square = s.key === 'square';
   const qs = square ? QUESTIONS.slice(0, 2) : QUESTIONS;
@@ -199,7 +206,7 @@ function noa(s: Size): string {
         <span class="amount num" style="font-size:${wide ? 56 : story ? 120 : square ? 84 : 104}px">${esc(eur(NOA.priceMonthly))}</span>
         <span class="sub" style="font-size:${wide ? 20 : 32}px">τον μήνα</span>
       </div>
-      <div class="sub" style="font-size:${wide ? 17 : story ? 30 : 26}px">${esc(terms)}</div>
+      <div class="sub" style="font-size:${wide ? 17 : story ? 30 : 26}px">${terms}</div>
     </div>`;
   const head = `
     <div class="row" style="gap:${wide ? 20 : 28}px">
@@ -243,7 +250,8 @@ const NOA_CSS = (wide: boolean) => `
 // Ο διακόπτης της αρχικής, ως αφίσα: ίδιο πακέτο, δύο στήλες, μία διαφορά.
 function sygkrisi(s: Size): string {
   const label = `Πακέτο ${FREE.name}`;
-  const title = 'Ένα πακέτο. Με ή χωρίς βοηθό.';
+  // Δύο προτάσεις, δύο σειρές: η ζύγιση έστελνε το «Με» στην πρώτη.
+  const title = ['Ένα πακέτο.', 'Με ή χωρίς βοηθό.'];
   const cta = ctaPill('Ξεκίνα δωρεάν');
   const story = s.key === 'story', square = s.key === 'square', wide = s.key === 'wide';
   const fs = wide ? 17 : square ? 22 : story ? 30 : 24;
@@ -261,7 +269,7 @@ function sygkrisi(s: Size): string {
   const onRows = [`+ ${ASSISTANT_NAME}: ${AI.perMonth} ερωτήσεις τον μήνα`, '+ Σάρωση χωρίς όριο', 'Όλα όσα έχει το δωρεάν'];
   return frame(s, label, `
     <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:${story ? 64 : wide ? 22 : 40}px">
-      <h1 style="font-size:${wide ? 44 : square ? 66 : story ? 92 : 80}px">${esc(title)}</h1>
+      <h1 style="font-size:${wide ? 44 : square ? 66 : story ? 92 : 80}px">${title.map(esc).join('<br>')}</h1>
       <div class="cols" style="gap:${wide ? 16 : 22}px;${story ? 'grid-template-columns:1fr' : ''}">
         ${col('Χωρίς βοηθό', eur(0), 'χωρίς συνδρομή', offRows, false)}
         ${col(`Με ${ASSISTANT_ACC}`, eur(NOA.priceMonthly), 'τον μήνα', onRows, true)}

@@ -10,7 +10,7 @@
 // ΤΑ ΠΑΡΑΔΕΙΓΜΑΤΑ ΕΙΝΑΙ ΤΑ ΚΑΝΟΝΙΚΑ ΤΗΣ ΓΡΑΜΜΑΤΙΚΗΣ, γιατί εκεί κρίνεται ο
 // κανόνας: «λά-σπη» έναντι «θάρ-ρος» είναι όλη η διαφορά του δεύτερου κανόνα.
 // ═══════════════════════════════════════════════════════════════════════════
-import { syllables, hyphenateWord, hyphenate, SHY } from './hyphenate';
+import { syllables, hyphenateWord, hyphenate, breakCitations, SHY } from './hyphenate';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗ ' + name) } };
@@ -141,6 +141,15 @@ eq('κεφαλαία με τόνο', hyphenate('ΆΡΘΡΟ'), 'ΆΡΘΡΟ');
 // ΚΑΙ ΤΟ ΚΕΝΟ ΚΕΙΜΕΝΟ ΔΕΝ ΣΚΑΕΙ.
 eq('κενό', hyphenate(''), '');
 eq('μόνο κενά', hyphenate('   '), '   ');
+
+// ── Σημείο αλλαγής στις παραπομπές (μόνο για την οθόνη) ──────────────────
+const Z = '\u200b';
+eq('νόμος: μετά την κάθετο', breakCitations('ν.4223/2013'), `ν.4223/${Z}2013`);
+eq('ΦΕΚ με ημερομηνία', breakCitations('4232/04.12.2017'), `4232/${Z}04.12.2017`);
+eq('ημερομηνία: άθικτη', breakCitations('31/12/2026'), '31/12/2026');
+eq('διεύθυνση: άθικτη', breakCitations('properwise.gr/scan'), 'properwise.gr/scan');
+eq('δεύτερο πέρασμα δεν αλλάζει τίποτα', breakCitations(breakCitations('ν.5246/2025')), `ν.5246/${Z}2025`);
+ok('το hyphenate δεν βάζει ποτέ σημείο αλλαγής', !hyphenate('ν.4223/2013').includes(Z));
 
 console.log(fail === 0 ? `✓ hyphenate: ${pass} έλεγχοι πέρασαν` : `✗ hyphenate: ${fail} απέτυχαν από ${pass + fail}`);
 if (fail > 0) process.exit(1);
