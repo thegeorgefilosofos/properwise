@@ -189,12 +189,12 @@ export default function Page() {
             ερώτησης, όχι μόνο μέσα από μηχανή αναζήτησης. */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           <SectionHead over="Ο αναλυτικός οδηγός" title="Από πού βγαίνει κάθε συντελεστής" />
-          <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0, textWrap: 'pretty' }}>
+          <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 }}>{hy(<>
             Ο υπολογιστής δίνει το ποσό· ο οδηγός{' '}
             <Link href="/odigos/pos-ypologizetai-o-enfia" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               πώς υπολογίζεται ο ΕΝΦΙΑ
             </Link>{' '}εξηγεί τον τύπο, τους συντελεστές (ζώνη, παλαιότητα, όροφος) και τις αυτόματες μειώσεις, με παράδειγμα σε ευρώ.
-          </p>
+          </>)}</p>
         </section>
 
         {/* Ο ΔΕΥΤΕΡΟΣ ΥΠΟΛΟΓΙΣΤΗΣ ΕΙΝΑΙ ΤΟ ΕΠΟΜΕΝΟ ΒΗΜΑ, ΟΧΙ ΥΠΟΣΗΜΕΙΩΣΗ. Ο
@@ -202,7 +202,7 @@ export default function Page() {
             έχει ακριβώς μία ακόμη ερώτηση. */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           <SectionHead over="Και μετά" title="Ο φόρος των ενοικίων υπολογίζεται χωριστά" />
-          <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0, textWrap: 'pretty' }}>
+          <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 }}>{hy(<>
             Ο ΕΝΦΙΑ είναι φόρος <strong style={{ color: 'var(--text-primary)' }}>κατοχής</strong> και δεν
             αφαιρείται από το εισόδημα των ενοικίων: τα δύο ποσά αθροίζονται, δεν συμψηφίζονται. Αν
             νοικιάζεις το ακίνητο, δες και τον{' '}
@@ -215,7 +215,7 @@ export default function Page() {
             <Link href="/kathari-apodosi" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               καθαρή απόδοση
             </Link>{' '}βάζει τον φόρο, τον ΕΝΦΙΑ και τις δαπάνες στην ίδια σελίδα.
-          </p>
+          </>)}</p>
         </section>
       </main>
 

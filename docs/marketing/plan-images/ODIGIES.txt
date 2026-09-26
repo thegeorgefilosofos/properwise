@@ -5,7 +5,7 @@ lib/billing/plans.ts, ώστε να μην μπορούν να αποκλίνο�
 
 Ανέβασμα: Lemon Squeezy -> Products -> κάθε προϊόν -> Media -> αντικατάσταση.
 
-docs/marketing/plan-images/solo.png  Ιδιοκτήτης — Το ακίνητό σου σε τάξη
-docs/marketing/plan-images/owner.png  Ιδιοκτήτης+ — Πολλά ακίνητα, μία εικόνα
+docs/marketing/plan-images/solo.png  Ιδιοκτήτης με Νόα — Με τον ψηφιακό βοηθό
+docs/marketing/plan-images/owner.png  Ιδιοκτήτης+ — Ως 3 ακίνητα, μία εικόνα
 docs/marketing/plan-images/agency.png  Επαγγελματίας — Ομάδα, ρόλοι και λογοδοσία
 docs/marketing/plan-images/office.png  Επαγγελματίας+ — Επαγγελματικό χαρτοφυλάκιο

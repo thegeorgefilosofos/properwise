@@ -176,7 +176,7 @@ export default function Page() {
             που τυχαίνει να ζουν στο ίδιο domain. */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           <SectionHead over="Και μετά" title="Τα δύο νούμερα που μπαίνουν εδώ μέσα" />
-          <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0, textWrap: 'pretty' }}>
+          <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 }}>{hy(<>
             Ο{' '}
             <Link href="/ypologismos-enfia" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               ΕΝΦΙΑ
@@ -188,7 +188,7 @@ export default function Page() {
             <Link href="/vraxyxronia-i-makroxronia" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               σύγκριση βραχυχρόνιας και μακροχρόνιας
             </Link>{' '}δείχνει από ποια πληρότητα και πάνω συμφέρει.
-          </p>
+          </>)}</p>
         </section>
       </main>
 

@@ -907,15 +907,20 @@ export function RecordCard({ lead, title, sub, badges, actions, tone, onOpen, op
           εικονοστοιχεία κενού κάτω από κάθε σειρά σημάτων που τύλιγε. Το ×
           κάθεται στη γωνία, όπου το περιμένει το χέρι και δεν σπρώχνει τίποτα. */}
       {actions && <div className="record-card-act" style={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}>{actions}</div>}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingRight: actions ? 36 : 0 }}>
+      {/* ΚΕΦΑΛΙΔΑ: σήμα και όνομα, κεντραρισμένα στον ίδιο άξονα. */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', paddingRight: actions ? 36 : 0 }}>
         {lead && <div style={{ flexShrink: 0 }}>{lead}</div>}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="po-elide" title={title}
             style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{title}</div>
           {sub && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>{sub}</div>}
-          {badges && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>{badges}</div>}
         </div>
       </div>
+      {/* ΤΑ ΣΗΜΑΤΑ ΞΕΚΙΝΟΥΝ ΑΠΟ ΤΗΝ ΑΚΡΗ ΤΗΣ ΚΑΡΤΑΣ (26.09.2026). Ζούσαν μέσα
+          στη στήλη του ονόματος, 54px δεξιότερα από τη λωρίδα στατιστικών και
+          τις επαφές από κάτω τους: τρία μπλοκ της ίδιας κάρτας με δύο αριστερές
+          άκρες. Τώρα ό,τι είναι κάτω από την κεφαλίδα ξεκινά στην ίδια γραμμή. */}
+      {badges && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{badges}</div>}
       {children}
     </div>
   );

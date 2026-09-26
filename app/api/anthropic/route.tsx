@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import {
@@ -29,6 +30,35 @@ function isScanRequest(body: { kind?: unknown; messages?: unknown }): boolean {
       const t = (c as { type?: unknown })?.type;
       return t === 'image' || t === 'document';
     }));
+}
+
+/**
+ * ΕΝΑ ΑΡΧΕΙΟ, ΜΙΑ ΣΑΡΩΣΗ. Η οθόνη διαβάζει μια φωτογραφία σε έως τρία βήματα
+ * (παραστατικό, δεύτερη ματιά αν ήταν θολή, ταξινόμηση ως φωτογραφία χώρου:
+ * scanDoc.ts `scanFile`). Για τον χρήστη είναι μία σάρωση· χωρίς αυτό, στο
+ * δωρεάν πακέτο μία φωτογραφία έτρωγε ώς τρεις από τις πέντε του μήνα.
+ *
+ * Το ίδιο αρχείο από τον ίδιο χρήστη, μέσα σε λίγα λεπτά, μετρά μία φορά. Το
+ * όριο στις επαναχρήσεις κλείνει την κατάχρηση: ένα αρχείο με αλλαγμένο prompt
+ * δεν γίνεται δωρεάν συνομιλία, γιατί περνά το πολύ SCAN_REUSE_MAX φορές.
+ * Ζει ανά στιγμιότυπο· αν η επόμενη κλήση πέσει αλλού, απλώς μετρά ξανά, όπως
+ * πριν. Ποτέ δεν μετρά λιγότερο από μία φορά ανά αρχείο.
+ */
+const SCAN_REUSE_MS = 5 * 60_000;
+const SCAN_REUSE_MAX = 3;
+const scanSeen = new Map<string, { at: number; uses: number }>();
+function scanKey(userId: string, messages: unknown[]): string | null {
+  for (const m of messages) {
+    const content = (m as { content?: unknown })?.content;
+    if (!Array.isArray(content)) continue;
+    for (const c of content) {
+      const data = (c as { source?: { data?: unknown } })?.source?.data;
+      if (typeof data === 'string' && data.length) {
+        return userId + ':' + createHash('sha256').update(data).digest('hex');
+      }
+    }
+  }
+  return null;
 }
 
 // Rate limiting: simple in-memory store (για production χρησιμοποίησε Redis)
@@ -181,7 +211,12 @@ export async function POST(req: NextRequest) {
   // ── Η ΣΑΡΩΣΗ ΜΕΤΡΑΕΙ ΣΤΟΝ ΔΙΚΟ ΤΗΣ ΜΕΤΡΗΤΗ ────────────────────
   // Δεν τρώει ερωτήσεις της Νόας. Πέντε τον μήνα στο δωρεάν «Ιδιοκτήτης»,
   // χωρίς μηνιαίο όριο στα πληρωμένα· το φράγμα ανά λεπτό ισχύει για όλους.
-  if (scan) {
+  const fileKey = scan ? scanKey(user.id, body.messages) : null;
+  const seen = fileKey ? scanSeen.get(fileKey) : undefined;
+  const reuse = !!seen && Date.now() - seen.at < SCAN_REUSE_MS && seen.uses < SCAN_REUSE_MAX;
+  if (scan && reuse && seen) {
+    seen.uses++;
+  } else if (scan) {
     try {
       const { data: su, error: suError } = await supabase.rpc('bump_scan_usage', {
         p_max_min: MAX_REQUESTS_PER_MINUTE,
@@ -199,6 +234,11 @@ export async function POST(req: NextRequest) {
           ? scansExhaustedMessage(billingWords().live)
           : 'Πολλές σαρώσεις μαζί. Δοκίμασε ξανά σε ένα λεπτό.';
         return NextResponse.json({ error, reason: u.reason }, { status: 429 });
+      }
+      if (fileKey) {
+        const now = Date.now();
+        for (const [k, v] of scanSeen) if (now - v.at >= SCAN_REUSE_MS) scanSeen.delete(k);
+        scanSeen.set(fileKey, { at: now, uses: 1 });
       }
     } catch {
       return NextResponse.json(
@@ -297,7 +337,11 @@ export async function POST(req: NextRequest) {
     refunded = true;
     if (scan) {
       // Η σάρωση επιστρέφεται στον δικό της μετρητή· δεν έχει δεξαμενή ούτε
-      // κεφαλίδες υπολοίπου της Νόας.
+      // κεφαλίδες υπολοίπου της Νόας. Μια επανάχρηση δεν χρεώθηκε, άρα δεν
+      // επιστρέφει τίποτα· η πρώτη κλήση που απέτυχε σβήνει και το ίχνος της,
+      // ώστε η επόμενη προσπάθεια να χρεωθεί κανονικά.
+      if (reuse) return;
+      if (fileKey) scanSeen.delete(fileKey);
       await refundScanUsage(user.id);
       return;
     }

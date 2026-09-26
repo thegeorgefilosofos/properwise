@@ -109,7 +109,8 @@ export const MATRIX: FeatureRow[] = [
   { label: 'Σάρωση εγγράφων τον μήνα',
     values: { ...Object.fromEntries(COMPARED.map(p => [p, 'Χωρίς όριο'])) as Record<ComparedPlan, CellValue>,
       solo: both(fn(SCAN_LIMITS.free ?? 0), 'χωρίς όριο') } },
-  forAll('Φωνητική καταχώρηση'),
+  // Η ΦΩΝΗ ΖΕΙ ΜΕΣΑ ΣΤΗ ΝΟΑ (PropertyAssistant): στο δωρεάν πακέτο δεν υπάρχει.
+  withSolo(forAll('Φωνητική καταχώρηση'), `Όχι · ναι ${WITH_NOA}`),
   forAll('Αποδόσεις, δαπάνες, ενέργεια και φόρος 2026'),
   forAll('Ειδοποιήσεις και υπενθυμίσεις'),
   gated('e2_export'),

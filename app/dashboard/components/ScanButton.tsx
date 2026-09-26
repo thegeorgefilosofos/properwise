@@ -9,6 +9,7 @@
 import { useRef, useState } from 'react';
 import { T, Btn } from '@/components/Theme';
 import { scanDocument } from './scanDoc';
+import { SAY } from '@/lib/core/dbError';
 import type { ScannedDoc } from '@/lib/billing/documents';
 
 // ΤΟ ΟΝΟΜΑ ΠΡΕΠΕΙ ΝΑ ΛΕΕΙ ΤΙ ΘΑ ΓΙΝΕΙ. Και οι τρεις καλούντες έγραφαν «Σάρωσε
@@ -40,7 +41,7 @@ export default function ScanButton({ label = SCAN_LABEL, hint = SCAN_HINT, onExt
     const r = await scanDocument(f);
     setBusy(false);
     if (r.doc) onExtract(r.doc);
-    else setErr(r.error === 'big' ? 'Πολύ μεγάλο αρχείο (όριο 10MB).' : r.error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή.' : 'Δεν διάβασα καθαρά το έγγραφο. Δοκίμασε καθαρότερη φωτό ή PDF.');
+    else setErr(r.error === 'big' ? 'Πολύ μεγάλο αρχείο (όριο 10MB).' : r.error === 'quota' ? (r.errorText || SAY.scanQuotaSpent) : r.error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή.' : 'Δεν διάβασα καθαρά το έγγραφο. Δοκίμασε καθαρότερη φωτό ή PDF.');
   };
 
   return (

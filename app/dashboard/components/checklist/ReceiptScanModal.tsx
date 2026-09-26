@@ -12,7 +12,7 @@ import { T, Modal, Btn, Skeleton, fe, formGrid } from '@/components/Theme'
 import { DatePicker } from '../UIComponents'
 import { FL, Inp } from './Bits'
 import { saved, savedData } from '@/components/dbWrite'
-import { MSG, failed } from '@/lib/core/dbError'
+import { MSG, SAY, failed } from '@/lib/core/dbError'
 import * as expenses from '@/lib/data/expenses'
 import * as documents from '@/lib/data/documents'
 import * as calendar from '@/lib/data/calendar'
@@ -72,6 +72,7 @@ export function ReceiptScanModal({ item, propertyId, userId, onClose, onSaved }:
     if (!r.doc) {
       setStage('pick')
       setErr(r.error === 'big' ? 'Πολύ μεγάλο αρχείο, το όριο είναι 10MB.'
+        : r.error === 'quota' ? (r.errorText || SAY.scanQuotaSpent)
         : r.error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή σε αυτόν τον λογαριασμό.'
         : 'Δεν διάβασα καθαρά το έγγραφο. Δοκίμασε καθαρότερη φωτογραφία ή PDF.')
       return

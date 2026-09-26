@@ -132,5 +132,20 @@ ok('κανένας μετρητής δεν πέφτει κάτω από το μ�
   (body.match(/greatest\([^)]*- 1, 0\)/g) || []).length === 3)
 ok('η συνάρτηση κλειδώνει το search_path', /set search_path to 'public'/.test(body))
 
+// ── 9. ΕΝΑ ΑΡΧΕΙΟ, ΜΙΑ ΣΑΡΩΣΗ ─────────────────────────────────────────────
+// Η οθόνη διαβάζει μια φωτογραφία σε έως τρία βήματα. Στο δωρεάν πακέτο αυτό
+// έτρωγε τρεις από τις πέντε σαρώσεις του μήνα για ένα χαρτί.
+const iReuse = SRC.indexOf('if (scan && reuse && seen)')
+const iScanBump = SRC.indexOf("'bump_scan_usage'")
+ok('το ίδιο αρχείο αναγνωρίζεται με αποτύπωμα περιεχομένου', /createHash\('sha256'\)\.update\(data\)/.test(SRC))
+ok('η επανάχρηση ελέγχεται ΠΡΙΝ τη χρέωση της σάρωσης', iReuse >= 0 && iScanBump > iReuse)
+ok('οι επαναχρήσεις έχουν όριο, αλλιώς ένα αρχείο γίνεται δωρεάν συνομιλία',
+  /seen\.uses < SCAN_REUSE_MAX/.test(SRC) && /const SCAN_REUSE_MAX = [1-5];/.test(SRC))
+ok('και όριο χρόνου', /Date\.now\(\) - seen\.at < SCAN_REUSE_MS/.test(SRC))
+ok('το ίχνος γράφεται μόνο μετά από επιτυχή χρέωση',
+  SRC.indexOf('scanSeen.set(fileKey') > SRC.indexOf("u.reason === 'scan_month'"))
+ok('η επανάχρηση δεν επιστρέφει σάρωση που δεν χρεώθηκε',
+  SRC.indexOf('if (reuse) return;') >= 0 && SRC.indexOf('if (reuse) return;') < SRC.indexOf('await refundScanUsage('))
+
 console.log(fail === 0 ? `✓ anthropic route: ${pass} έλεγχοι πέρασαν` : `✗ anthropic route: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

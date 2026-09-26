@@ -175,12 +175,12 @@ export default function Page() {
             σύνδεσμος στέκει εδώ ώστε να τον βρίσκει τη στιγμή της ερώτησης. */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           <SectionHead over="Ο αναλυτικός οδηγός" title="Το τέλος και ο φόρος της βραχυχρόνιας" />
-          <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0, textWrap: 'pretty' }}>
+          <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 }}>{hy(<>
             Η σύγκριση δείχνει ποιο συμφέρει· ο οδηγός{' '}
             <Link href="/odigos/airbnb-takk-2026" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               Airbnb και ΤΑΚΚ 2026
             </Link>{' '}εξηγεί το τέλος ανά διανυκτέρευση, τον φόρο της βραχυχρόνιας μίσθωσης και το τέλος παρεπιδημούντων, με παραδείγματα σε ευρώ.
-          </p>
+          </>)}</p>
         </section>
 
         {/* ΤΑ ΤΡΙΑ ΕΡΓΑΛΕΙΑ ΕΙΝΑΙ ΜΙΑ ΑΛΥΣΙΔΑ, ΟΧΙ ΤΡΕΙΣ ΣΕΛΙΔΕΣ. Όποιος
@@ -188,7 +188,7 @@ export default function Page() {
             τις απαντούν οι διπλανές σελίδες. */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           <SectionHead over="Και μετά" title="Ο φόρος και ο ΕΝΦΙΑ υπολογίζονται χωριστά" />
-          <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0, textWrap: 'pretty' }}>
+          <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 }}>{hy(<>
             Η σύγκριση δείχνει τι σου αφήνει κάθε επιλογή. Για τον ίδιο τον φόρο των ενοικίων δες τον{' '}
             <Link href="/ypologismos-forou-enoikion" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               υπολογισμό φόρου ενοικίων
@@ -199,7 +199,7 @@ export default function Page() {
             <Link href="/kathari-apodosi" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               καθαρή απόδοση
             </Link>.
-          </p>
+          </>)}</p>
         </section>
       </main>
 

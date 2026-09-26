@@ -149,10 +149,10 @@ export function PublicFooter() {
                 άλλοτε μετά. Δύο μπλοκ σπάνε ΜΟΝΟ εκεί που τελειώνει νόημα. */}
             {/* 400 ΚΑΙ ΟΧΙ 340: στα 340 η πρώτη πρόταση άφηνε το «Ελλάδα.» μόνο
                 του σε δεύτερη σειρά, σε κάθε δημόσια σελίδα. */}
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0, maxWidth: 400, textWrap: 'pretty' }}>
+            <p className="po-just" style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{hy(<>
               <span style={{ display: 'block' }}>Έξοδα, φόροι και προθεσμίες ακινήτων στην Ελλάδα.</span>
               <span style={{ display: 'block' }}>Για ιδιοκτήτες και επαγγελματίες.</span>
-            </p>
+            </>)}</p>
           </div>
           {/* ΤΡΕΙΣ ΣΤΗΛΕΣ ΤΩΝ ΤΡΙΩΝ. Η μεσαία είχε δύο συνδέσμους και έμοιαζε
               κολοβή δίπλα στις άλλες· έλειπε όμως και ο υπολογιστής ΕΝΦΙΑ, που
@@ -328,20 +328,19 @@ export function JsonLd({ data }: { data: unknown }) {
  * 390, έσπαγε στη μέση και άφηνε το «το PROPERWISE.» ορφανό.
  */
 export function ToolLede({ children }: { children: ReactNode }) {
-  // ΣΤΟΙΧΙΣΗ ΑΡΙΣΤΕΡΑ, ΟΧΙ ΠΛΗΡΗΣ. Στο στενό κινητό (~360px) η πλήρης στοίχιση
-  // (`po-just`) ανάγκαζε τα μαλακά ενωτικά του `hy` να σπάνε λέξεις στη μέση
-  // («δο-κιμή», «χρεώ-σεις») για να κλείσουν και οι δύο άκρες στον ίδιο άξονα.
-  // Χωρίς justify το κείμενο μένει ραγισμένο δεξιά και οι σύντομες λέξεις δεν
-  // σπάνε· ο `hy` μένει αβλαβής, μόνο για τις σπάνιες πολύ μεγάλες λέξεις. Ίδια
-  // αγωγή για τους τέσσερις υπολογιστές.
+  // ΠΕΡΑ ΠΕΡΑ, ΜΙΑ ΠΑΡΑΓΡΑΦΟΣ (απόφαση ιδιοκτήτη, 26.09.2026). Οι δύο
+  // προτάσεις ήταν δύο γραμμές-μπλοκ που σταματούσαν σε τυχαία σημεία, ενώ τα
+  // πεδία από κάτω έφταναν ως τη δεξιά άκρη της στήλης. Τώρα ρέουν σε ΜΙΑ
+  // παράγραφο με πλήρη στοίχιση πάνω στα μαλακά ενωτικά του `hy`: αρχίζει και
+  // κλείνει στις ίδιες κατακόρυφες με τα πεδία. Ίδια αγωγή για τους τέσσερις.
   return (
-    <p className="po-tool-lede" style={{ fontSize: 'clamp(15px,2vw,17px)', lineHeight: 1.6,
+    <p className="po-tool-lede po-just" style={{ fontSize: 'clamp(15px,2vw,17px)', lineHeight: 1.6,
       color: 'var(--text-secondary)', margin: '0 0 clamp(26px,3.5vw,36px)' }}>
       {/* Η ΔΕΥΤΕΡΗ ΣΕΙΡΑ ΚΛΕΙΝΕΙ ΜΕ ΤΗ ΣΤΑΘΕΡΗ ΦΡΑΣΗ ΤΟΥ ΠΡΟΪΟΝΤΟΣ ΓΙΑ ΤΟΥΣ
           ΥΠΟΛΟΓΙΣΤΕΣ. Πριν έσπαγε μετά το «Χωρίς εγγραφή και χωρίς email:» και
           στα 390 άφηνε ορφανή σειρά· και το «μένει εκεί» δεν ίσχυε αυστηρά,
           αφού τα ποσά γράφονται στη διεύθυνση για να κοινοποιούνται. */}
-      <span style={{ display: 'block' }}>{hy(children)}</span>
+      {hy(children)}{' '}
       {hy('Ο υπολογισμός γίνεται στη συσκευή σου. Με τα δικά σου δεδομένα. Δωρεάν, χωρίς εγγραφή.')}
       {/* ΧΩΡΙΣ ΑΣΤΕΡΙΣΚΟ ΚΑΙ ΧΩΡΙΣ ΣΥΛΛΑΒΙΣΜΟ. Ο αστερίσκος δεν παρέπεμπε σε
           τίποτα από πάνω του και σε γραμμή 12 εικονοστοιχείων ο `hy` έκοβε
@@ -390,9 +389,9 @@ export function ToolCta({ title, body }: { title: string; body: ReactNode }) {
         <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.015em' }}>
           {title}
         </p>
-        <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
+        <p className="po-just" style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)' }}>{hy(<>
           {body}
-        </p>
+        </>)}</p>
         <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--text-tertiary)' }}>
           {TRIAL_LINE}
         </p>

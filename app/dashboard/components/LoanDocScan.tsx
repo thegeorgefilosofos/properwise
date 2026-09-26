@@ -58,7 +58,7 @@ const SCAN_ERROR_TEXT: Record<Exclude<DocScanError, ''>, string> = {
   big: `Το αρχείο ξεπερνά το όριο των ${MAX_SCAN_MB} MB.`,
   // Οριο πακέτου, όχι βλάβη: η επανάληψη δεν πρόκειται να δουλέψει. Εφεδρεία,
   // γιατί κανονικά το κείμενο έρχεται από τον διακομιστή. Βλ. scanDoc.ts.
-  quota: SAY.aiQuotaSpent,
+  quota: SAY.scanQuotaSpent,
 }
 
 /**

@@ -17,6 +17,7 @@ import Spotlight from './Spotlight';
 import FaqMore from './FaqMore';
 import { PublicFooter, PublicNav, JsonLd } from './PublicChrome';
 import { T } from '@/components/tokens';
+import { hy } from '@/components/Hyphen';
 import { ASSISTANT_NAME, ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/identity';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -145,7 +146,7 @@ function FaqList({ list }: { list: { q: string; a: string }[] }) {
           οι απαντήσεις άνοιγαν κενά ανάμεσα στις λέξεις και έκοβαν λέξεις στη
           μέση («τρέ-χοντος») σε κάθε πλάτος κάτω από τον υπολογιστή. Ίδιος
           κανόνας με τις κάρτες και τις εισαγωγές της σελίδας. */}
-          <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.65, margin: '0 0 20px' }}>{f.a}</p>
+          <p className="po-just" style={{ fontSize: 15, color: MUTED, lineHeight: 1.65, margin: '0 0 20px' }}>{hy(f.a)}</p>
         </details>
       ))}
     </>
@@ -809,7 +810,7 @@ export default async function Landing() {
           letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent);
         }
         .lp-stat-l {
-          margin: 12px 0 0; font-size: 14px; line-height: 1.55; text-wrap: pretty;
+          margin: 12px 0 0; font-size: 14px; line-height: 1.55; text-wrap: balance;
           color: var(--text-secondary);
         }
 
@@ -1119,7 +1120,11 @@ export default async function Landing() {
         </nav>
       </header>
 
-      <main id="main">
+      {/* ΟΛΟ ΤΟ ΣΩΜΑ ΣΥΛΛΑΒΙΖΕΤΑΙ ΜΙΑ ΦΟΡΑ (26.09.2026). Οι παράγραφοι της αρχικής
+          στοιχίζονται πέρα πέρα (globals.css, «ΑΡΧΙΚΗ: ΠΕΡΑ ΠΕΡΑ») και αυτό στέκει
+          μόνο με μαλακά ενωτικά από κάτω. Τίτλοι, κουμπιά, ετικέτες και οι
+          ερωτήσεις των συχνών μένουν ακέραια (components/Hyphen.tsx, NO_HY). */}
+      <main id="main">{hy(<>
       {/* Ένας ακροατής για όλες τις κάρτες της σελίδας. Δεν προσθέτει κουτί στη
           διάταξη (display: contents), οπότε τα sticky και τα πλέγματα από μέσα
           μένουν ακριβώς όπως ήταν. */}
@@ -1145,6 +1150,15 @@ export default async function Landing() {
               ΕΝΦΙΑ.» δεν χωρούσε σε μία γραμμή στα 390, οπότε μένει η λέξη που
               ο ιδιοκτήτης ήδη χρησιμοποιεί. Και χωρίς αλλαγή γραμμής μετά την
               εναλλασσόμενη λέξη: είναι πλέον δική της γραμμή. */}
+          {/* Η ΑΝΑΚΟΙΝΩΣΗ ΠΑΝΩ ΑΠΟ ΤΟΝ ΤΙΤΛΟ. Η μεγαλύτερη αλλαγή του προϊόντος
+              (25.09.2026) δεν χωράει στα ψιλά κάτω από τα κουμπιά: ο επισκέπτης
+              που ψάχνει «πόσο κοστίζει» τη βλέπει πριν διαβάσει τίποτε άλλο.
+              Ενα σημάδι «Νέο», μία πρόταση, ένας σύνδεσμος στα πακέτα. */}
+          <Link href="#pricing" className="lp-rise lp-news">
+            <span className="lp-news-tag">Νέο</span>
+            <span>Ο «{PLANS.free.name}» είναι πλέον δωρεάν για ένα ακίνητο</span>
+            <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </Link>
           <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 20px', maxWidth: 1000, color: 'var(--text-primary)', textWrap: 'balance' }}>
             Φωτογραφίζεις{' '}
             <span className="lp-rotor">
@@ -1186,8 +1200,8 @@ export default async function Landing() {
               σε ίσο μήκος, ώστε να μη μένει η τελευταία με τρεις λέξεις. Δεν
               χρησιμοποιείται nowrap: θα έβγαζε το κείμενο εκτός οθόνης στα
               στενά πλάτη. */}
-          <p className="lp-rise-2" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '100%', margin: '0 auto 28px', textWrap: 'balance' }}>
-            Ενοίκια, λογαριασμοί, δάνεια και φόροι, για κάθε ακίνητο. Ρωτάς {ASSISTANT_ACC} στα
+          <p className="lp-rise-2 po-just-c" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 820, margin: '0 auto 28px' }}>
+            Ενοίκια, λογαριασμοί, δάνεια και φόροι, για κάθε ακίνητο. Με {ASSISTANT_ACC} ρωτάς στα
             ελληνικά και απαντά με{' '}
             <em style={{ fontStyle: 'normal', color: 'var(--text-primary)', fontWeight: 600 }}>τα δικά σου</em> δεδομένα.
           </p>
@@ -1271,7 +1285,7 @@ export default async function Landing() {
               <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{f.t}</h3>
               {/* Αριστερή στοίχιση χωρίς συλλαβισμό: σε στήλη 340 εικονοστοιχείων
                   η πλήρης στοίχιση άνοιγε κενά και έκοβε λέξεις («μεταβίβα-σης»). */}
-              <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: 0 }}>{f.d}</p>
+              <p className="po-just" style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: 0 }}>{f.d}</p>
             </div>
           ))}
         </div>
@@ -1341,7 +1355,7 @@ export default async function Landing() {
               ΤΟ ΜΕΓΕΘΟΣ ΤΟΥ ΡΟΛΟΥ ΤΟΥ. Η άνω τελεία μετά το «σου» ένωνε δύο
               ολοκληρωμένες προτάσεις με σημείο που δηλώνει επεξήγηση: η δεύτερη
               δεν επεξηγεί την πρώτη, τη συνεχίζει. Δύο περίοδοι, καθαρά. */}
-          <p className="lp-sec-lede">
+          <p className="lp-sec-lede po-just">
             Λογαριασμοί, συμβόλαια και στοιχεία του ακινήτου ή των{'\u00A0'}πελατών σου είναι από τα πιο ευαίσθητα δεδομένα που υπάρχουν. Γι’ αυτό τα φυλάμε ανάλογα.
           </p>
           {/* Δύο και δύο. Οι τίτλοι δεν αναδιπλώνονται ποτέ σε μισή στήλη και
@@ -1355,7 +1369,7 @@ export default async function Landing() {
                 </div>
                 <div>
                   <div className="lp-even" style={{ fontSize: 15, fontWeight: 680, color: TEXT, marginBottom: 4, letterSpacing: '-0.01em' }}>{s.t}</div>
-                  <div style={{ fontSize: 14, color: MUTED, lineHeight: 1.55 }}>{s.d}</div>
+                  <div className="po-just" style={{ fontSize: 14, color: MUTED, lineHeight: 1.55 }}>{s.d}</div>
                 </div>
               </div>
             ))}
@@ -1369,7 +1383,7 @@ export default async function Landing() {
               (TRANSFER_SAFEGUARDS) τις γράφει υπογεγραμμένες και η σελίδα δέχεται
               ήδη εγγραφές. Η κατάσταση των διαβιβάσεων ζει σε ένα σημείο· εδώ
               μπαίνει μόνο ο δρόμος προς αυτήν. */}
-          <p className="lp-sec-fine">
+          <p className="lp-sec-fine po-just">
             Σχεδιασμένο σύμφωνα με τον GDPR. Ποιοι πάροχοι επεξεργάζονται δεδομένα εκτός ΕΕ και με ποιες συμβάσεις, το λέει η σελίδα{' '}
             <Link href="/trust" className="lp-link po-tap-inline" style={{ color: ACCENT, textDecoration: 'none' }}>«Ποιοι είμαστε»</Link>.
           </p>
@@ -1455,6 +1469,8 @@ export default async function Landing() {
              και τα ξανασυναντούσε αργότερα με τιμές δίπλα τους σαν να ήταν άλλο
              πράγμα. Κολλητά, οι δύο ενότητες διαβάζονται ως μία κίνηση: «ποιος
              είμαι» και αμέσως «τι κοστίζει». ── */}
+      <NoaFeature />
+
       {/* ── Pricing ── */}
       <section id="pricing" className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
         <SectionHead over="Τιμολόγηση" title="Τι κοστίζει κάθε πακέτο" sub="Κάθε πακέτο περιλαμβάνει ό,τι έχει το προηγούμενο. Οι τιμές περιλαμβάνουν ΦΠΑ." />
@@ -1469,20 +1485,17 @@ export default async function Landing() {
             πέμπτο πακέτο σε δεύτερη σειρά, οπότε ο τιμοκατάλογος διαβαζόταν ως
             «τέσσερα και κάτι ακόμη» αντί για μία σκάλα. Ρητές πέντε στήλες πάνω
             από 1000px, δύο στο tablet, μία στο κινητό (globals.css). */}
-        {/* ΤΕΣΣΕΡΑ ΠΑΚΕΤΑ, ΟΧΙ ΠΕΝΤΕ. Η κάρτα «Δωρεάν 0€» δεν είναι πακέτο: είναι
-            εκεί που καταλήγεις όταν δεν αγοράζεις. Ως πέμπτη στήλη με τιμή «0€»
-            έμπαινε στην ίδια σύγκριση με τα υπόλοιπα και έσπαγε τη σκάλα στην
-            αρχή της. Λέγεται μία φορά, στα ψιλά γράμματα από κάτω.
+        {/* ΤΕΣΣΕΡΙΣ ΚΑΡΤΕΣ, ΠΕΝΤΕ ΠΑΚΕΤΑ. Ο δωρεάν «Ιδιοκτήτης» και ο «Ιδιοκτήτης
+            με Νόα» μοιράζονται την πρώτη κάρτα, με διακόπτη (OwnerPlanCard): είναι
+            το ίδιο πακέτο με και χωρίς τον βοηθό, όχι δύο σκαλιά της σκάλας.
 
             Η ΣΚΑΛΑ ΕΙΝΑΙ ΡΗΤΗ. Κάθε πακέτο λέει «Περιλαμβάνει ό,τι έχει το
             προηγούμενο και:» — και η κληρονομιά ΔΕΝ ξαναγράφεται μέσα στα
             χαρακτηριστικά, όπου πριν εμφανιζόταν άτακτα σε δύο από τα τέσσερα. */}
-        {/* ═══ Ο ΒΟΗΘΟΣ ΔΕΝ ΕΙΝΑΙ ΠΡΟΝΟΜΙΟ ΤΩΝ ΑΚΡΙΒΩΝ ΠΑΚΕΤΩΝ ═══════════════
-            Στον τιμοκατάλογο ο βοηθός εμφανιζόταν μόνο ως γραμμή στα δύο πάνω
-            πακέτα («διπλάσιο πακέτο ερωτήσεων», «το μεγαλύτερο πακέτο»). Ο
-            επισκέπτης που κοιτούσε το φθηνότερο έβγαζε το ακριβώς αντίθετο
-            συμπέρασμα από την αλήθεια: ότι δεν τον έχει. Λέγεται μία φορά, πάνω
-            από τη σκάλα, γιατί αφορά ΟΛΗ τη σκάλα. */}
+        {/* ═══ ΠΟΥ ΒΡΙΣΚΕΤΑΙ Ο ΒΟΗΘΟΣ, ΠΑΝΩ ΑΠΟ ΤΗ ΣΚΑΛΑ ═══════════════════════
+            Μία γραμμή που λέει την τιμή του και ότι το δωρεάν πακέτο είναι χωρίς
+            αυτόν. Την ιστορία του την λέει η ενότητα ακριβώς από πάνω (NoaFeature);
+            εδώ μένει μόνο ό,τι χρειάζεται δίπλα στις τιμές. */}
         {/* ΟΣΟ ΔΕΝ ΑΓΟΡΑΖΕΤΑΙ ΤΙΠΟΤΑ, ΤΟ ΛΕΜΕ ΠΑΝΩ ΑΠΟ ΤΙΣ ΤΙΜΕΣ. Τέσσερις τιμές,
             «Προτεινόμενο» και σύνδεσμοι για ετήσια συνδρομή διαβάζονται ως
             «αγόρασέ το τώρα»· το ότι η χρέωση δεν έχει ανοίξει καθόταν στη μέση
@@ -1556,7 +1569,7 @@ export default async function Landing() {
             η τρίτη έσπαγε μόνη της σε δεύτερη σειρά, οπότε τα ψιλά γράμματα
             διαβάζονταν κάτω κάτω αντί για πέρα πέρα. Μένουν οι ίδιες τρεις
             προτάσεις (η δοκιμή με το όριό της, ο ΦΠΑ, η εγγύηση), στη σειρά. */}
-        <p className="fineprint" style={{ fontSize: 13, lineHeight: 1.6, color: FAINT, margin: '22px 0 0', textWrap: 'pretty' }}>
+        <p className="fineprint po-just" style={{ fontSize: 13, lineHeight: 1.6, color: FAINT, margin: '22px 0 0' }}>
           {TRIAL_OFFER}{billingLive && <> {billingWords().firstCharge}</>}
           {' '}Οι τιμές αφορούν καταναλωτές στην Ελλάδα και περιλαμβάνουν ΦΠΑ. Χωρίς δέσμευση ή ποινή αποχώρησης.
           {' '}{billingWords().moneyBack}
@@ -1587,12 +1600,12 @@ export default async function Landing() {
                 <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: ACCENT }}>{r.tag}</span>
               </div>
               <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{r.t}</h3>
-              <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: '0 0 18px' }}>{r.d}</p>
+              <p className="po-just" style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: '0 0 18px' }}>{r.d}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {r.items.map((t, j) => (
                   <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>{check}<span className="lp-k" style={{ fontSize: 15, color: TEXT, lineHeight: 1.5 }}>{t}</span></div>
                 ))}
-                {'note' in r && r.note && <p style={{ fontSize: 13, color: FAINT, lineHeight: 1.5, margin: 0 }}>{r.note}</p>}
+                {'note' in r && r.note && <p className="po-just" style={{ fontSize: 13, color: FAINT, lineHeight: 1.5, margin: 0 }}>{r.note}</p>}
               </div>
             </div>
           ))}
@@ -1603,7 +1616,7 @@ export default async function Landing() {
             μετά δύο στήλες και ήταν χειρότερο: μία παράγραφος κομμένη στη μέση
             της οθόνης, με το μάτι να γυρίζει πάνω. Η επιφύλαξη διαβάζεται μία
             φορά και από πάνω προς τα κάτω, όπως κάθε άλλο κείμενο εδώ. */}
-        <p className="fineprint" style={{ fontSize: 13, color: FAINT, margin: '22px 0 0' }}>
+        <p className="fineprint po-just" style={{ fontSize: 13, color: FAINT, margin: '22px 0 0' }}>
           {/* ΤΟ ΔΩΡΟ ΤΟΥ ΣΥΝΕΡΓΑΤΗ ΔΕΝ ΕΙΝΑΙ ΕΝΑ ΠΑΚΕΤΟ, ΕΙΝΑΙ ΕΝΑ ΣΚΑΛΙ ΠΑΝΩ.
               Γραφόταν σταθερά «Επαγγελματίας+», μετά διορθώθηκε σε ό,τι έδινε
               το PARTNER_WELCOME και ήταν πάλι λάθος: σταθερό δώρο σημαίνει ότι
@@ -1683,13 +1696,13 @@ export default async function Landing() {
         <div className="lp-aurora" aria-hidden="true" />
         <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP_ACT, paddingBottom: GAP_ACT }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
-          <p style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 620, margin: '0 auto 30px' }}>Φωτογράφισε το πρώτο σου έγγραφο. Δωρεάν για ένα ακίνητο, με {TRIAL_DAYS} ημέρες δοκιμής για όλα τα υπόλοιπα.</p>
+          <p className="po-just-c" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 620, margin: '0 auto 30px' }}>Φωτογράφισε το πρώτο σου έγγραφο. Δωρεάν για ένα ακίνητο, με {TRIAL_DAYS} ημέρες δοκιμής για όλα τα υπόλοιπα.</p>
           <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : 'Ξεκίνα δωρεάν'}</Link>
         </div>
       </section>
 
       </Spotlight>
-      </main>
+      </>)}</main>
 
       {/* ── ΔΟΜΗΜΕΝΑ ΔΕΔΟΜΕΝΑ ───────────────────────────────────────────────
              Υπήρχε μόνο το FAQPage, δηλαδή οι μηχανές ήξεραν τι ΑΠΑΝΤΑΜΕ και
@@ -1799,6 +1812,81 @@ export default async function Landing() {
 // Από κάτω, υπάρχει ένας άξονας και μόνο ένας: ετικέτα, τίτλος, υπότιτλος, κάρτες.
 // Κάθε γραμμή της σελίδας ξεκινά στο ίδιο x. Αυτή είναι η στοίχιση που διαβάζεται
 // ως προσοχή στη λεπτομέρεια και είναι και η μόνη που δεν σπάει ποτέ.
+// ═══ Η ΝΟΑ, ΜΕ ΔΙΚΗ ΤΗΣ ΕΝΟΤΗΤΑ ══════════════════════════════════════════
+// ΓΙΑΤΙ ΞΕΧΩΡΙΣΤΑ. Από τις 25.09.2026 ο βοηθός είναι το πράγμα που
+// ΠΛΗΡΩΝΕΙΣ: τα φορολογικά ενός ακινήτου είναι δωρεάν. Ό,τι πουλιέται μόνο
+// του θέλει δική του σκηνή, όπως οι μεγάλοι παρουσιάζουν ένα add-on: τι
+// κάνει, με ποια παραδείγματα, πόσο κοστίζει, ένα κουμπί.
+//
+// ΔΕΝ ΞΑΝΑΔΕΙΧΝΕΙ ΣΥΝΟΜΙΛΙΑ. Η συνομιλία με απάντηση ζει στο «Πώς δουλεύει»
+// (ScrollStory). Εδώ μπαίνουν ΕΡΩΤΗΣΕΙΣ χωρίς απαντήσεις: τι μπορείς να
+// ρωτήσεις, ώστε ο επισκέπτης να δει τον εαυτό του στο παράδειγμα. Καμία δεν
+// γράφει ποσό, οπότε καμία δεν μπορεί να ειπωθεί λάθος.
+//
+// ΤΑ ΝΟΥΜΕΡΑ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΗ ΜΗΧΑΝΗ: τιμή από το PLANS, ερωτήσεις από το
+// aiLimits. Χωρίς JavaScript: είναι server component, όπως η υπόλοιπη αρχική.
+const NOA_ASKS = [
+  'Πόσα έδωσα σε κοινόχρηστα φέτος;',
+  'Ποιος ενοικιαστής μου χρωστά ακόμη;',
+  'Τι λήγει αυτόν τον μήνα;',
+] as const;
+
+function NoaFeature() {
+  const noa = PLANS.solo, ai = aiLimitsFor('solo');
+  const does = [
+    { t: 'Ρωτάς όπως μιλάς', d: 'Γραπτά ή με τη φωνή σου, στα ελληνικά.' },
+    { t: 'Απαντά με τα δικά σου', d: 'Διαβάζει τις καταχωρήσεις σου, όχι γενικές συμβουλές.' },
+    { t: 'Σε πάει εκεί που πρέπει', d: 'Ανοίγει την οθόνη που χρειάζεσαι για το επόμενο βήμα.' },
+  ];
+  return (
+    <section className="lp-reveal" aria-labelledby="noa-title" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
+      <hr className="lp-hair" />
+      <div className="nf-band">
+        <div className="nf-copy">
+          <div className="lp-eyebrow">Ψηφιακός βοηθός</div>
+          <h2 id="noa-title" className="nf-title">
+            <span className="nf-mono" aria-hidden="true">N</span>
+            Γνώρισε {ASSISTANT_ACC}.
+          </h2>
+          <p className="nf-lead po-just">{hy('Ρωτάς για το ακίνητό σου στα ελληνικά και απαντά με τα δικά σου νούμερα. Ό,τι θα ρωτούσες τον λογιστή, πριν τον πάρεις τηλέφωνο.')}</p>
+          <ul className="nf-does">
+            {does.map(x => (
+              <li key={x.t}><strong>{x.t}</strong><span>{hy(x.d)}</span></li>
+            ))}
+          </ul>
+          <div className="nf-offer">
+            <div className="nf-price">
+              <span className="nf-amount">{fe(noa.priceMonthly)}</span>
+              <span className="nf-per">τον μήνα</span>
+            </div>
+            <div className="nf-terms">{ai.perMonth} ερωτήσεις τον μήνα · σάρωση χωρίς όριο · {TRIAL_DAYS} ημέρες δοκιμή</div>
+          </div>
+          <div className="nf-cta">
+            <Link href="/signup?plan=solo&cycle=monthly" className="lp-cta lp-primary lp-press" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px 24px', borderRadius: T.radius.pill }}>Δοκίμασε {ASSISTANT_ACC}</Link>
+            <span className="nf-free">Ο «{PLANS.free.name}» μένει δωρεάν χωρίς αυτήν.</span>
+          </div>
+        </div>
+        <div className="nf-stage" aria-label={`Παραδείγματα ερωτήσεων προς ${ASSISTANT_ACC}`}>
+          <div className="nf-halo" aria-hidden="true" />
+          <div className="nf-card">
+            <div className="nf-head">
+              <span className="nf-avatar" aria-hidden="true">N</span>
+              <span><strong>{ASSISTANT_NAME}</strong><small>Για τα ακίνητά σου</small></span>
+            </div>
+            <ul className="nf-asks">
+              {NOA_ASKS.map(q => <li key={q}>{q}</li>)}
+            </ul>
+            <div className="nf-input" aria-hidden="true">
+              <span>Ρώτα κάτι για το ακίνητό σου…</span>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4" /></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function SectionHead({ over, title, sub }: { over: string; title: string; sub?: string }) {
   return (
     <div style={{ marginBottom: 'clamp(24px, 3.4vw, 40px)' }}>
@@ -1808,7 +1896,7 @@ function SectionHead({ over, title, sub }: { over: string; title: string; sub?: 
       {/* Ο υπότιτλος παίρνει όλο το πλάτος της στήλης και ΚΑΘΕ κείμενο κόπηκε ώστε
           να χωρά σε μία γραμμή. Δύο γραμμές υπότιτλου κάτω από μονόγραμμο τίτλο
           δίνουν βαρύ, ασύμμετρο μπλοκ· μία και μία διαβάζονται ως ζευγάρι. */}
-      {sub && <p style={{ fontSize: 16, color: MUTED, lineHeight: 1.55, margin: '13px 0 0' }}>{sub}</p>}
+      {sub && <p className="po-just" style={{ fontSize: 16, color: MUTED, lineHeight: 1.55, margin: '13px 0 0' }}>{hy(sub)}</p>}
     </div>
   );
 }

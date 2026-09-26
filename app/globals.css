@@ -2061,7 +2061,14 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   .tile-row > :last-child { grid-column: auto; }
 }
 
-.card-row { display: grid; gap: 12px; align-items: start; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* ΙΣΑ ΥΨΗ ΣΕ ΚΑΘΕ ΣΕΙΡΑ (26.09.2026). Με `align-items: start` κάθε κάρτα είχε
+   το ύψος του κειμένου της: στη «Συμβουλευτική» η πρώτη κάρτα της σειράς ήταν
+   92 και οι δίπλα 118, δηλαδή τρεις κάρτες που ξεκινούσαν μαζί και
+   τελείωναν σε τρία σημεία. Τώρα τεντώνουν στο ύψος της ψηλότερης και το
+   περιεχόμενο μένει πάνω. Κάρτα που ανοίγει επιτόπου (ακορντεόν) δηλώνει
+   `data-open` και πιάνει όλη τη σειρά, ώστε να μην τεντώνει τις γειτονικές. */
+.card-row { display: grid; gap: 12px; align-items: stretch; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card-row > [data-open="true"] { grid-column: 1 / -1; }
 .card-row > :last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
 @media (max-width: 900px) {
   .card-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2820,8 +2827,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    560 μένει η μία σειρά των τεσσάρων, όπου τα ονόματα χωρούν άνετα. Η καρτέλα
    «Ρυθμίσεις» δεν μετριέται από την καστάνια κάθετου χώρου, οπότε η επιπλέον
    σειρά δεν χαλά κανένα όριο· κερδίζει μόνο αναγνωσιμότητα. */
-.plan-ladder { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 560px) { .plan-ladder { grid-template-columns: repeat(2, 1fr); } }
+.plan-ladder { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.plan-ladder-cell { text-align: center; }
+/* Πέντε κελιά δεν χωρούν σε 2 στήλες χωρίς ορφανό: στο κινητό γίνονται λίστα,
+   όνομα αριστερά, ακίνητα δεξιά, όλα στις ίδιες δύο κατακόρυφες. */
+@media (max-width: 560px) {
+  .plan-ladder { grid-template-columns: 1fr; }
+  .plan-ladder-cell { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; text-align: left; padding-inline: 12px !important; }
+  .plan-ladder-cell > div + div { margin-top: 0 !important; }
+}
 
 /* ═══ Ο ΡΟΛΟΣ ΜΕΝΕΙ ΔΕΞΙΑ, ΔΕΝ ΠΕΦΤΕΙ ΑΠΟ ΚΑΤΩ ══════════════════════════════
    ΗΤΑΝ ΣΤΟΙΒΑ ΚΑΤΩ ΑΠΟ ΤΑ 720: ο τίτλος του βήματος σε μία σειρά και από κάτω
@@ -3531,13 +3545,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    Οπου το κείμενο ΔΕΝ στοιχίζεται πλήρως, το `pretty` μένει όπου ήταν: εκεί
    δεν έχει τίποτα να ακυρώσει. */
 .po-just { text-align: justify; }
+/* ΚΕΝΤΡΑΡΙΣΜΕΝΗ ΠΑΡΑΓΡΑΦΟΣ ΜΕ ΙΣΙΕΣ ΑΚΡΕΣ: κάθε γραμμή πέρα πέρα, η τελευταία
+   στο κέντρο (υπότιτλος του hero, κάλεσμα στο τέλος της αρχικής). Χωρίς αυτό
+   το κείμενο κάτω από κεντραρισμένο τίτλο έβγαινε γραμμές άνισου μήκους. */
+.po-just-c { text-align: justify; text-align-last: center; }
+/* ΑΡΧΙΚΗ: ΠΕΡΑ ΠΕΡΑ. Οι παράγραφοι του «Γιατί υπάρχει» και οι λεζάντες της
+   ζώνης μετρήσεων στοιχίζονται εδώ και όχι στο φύλλο της σελίδας, που έχει
+   κεφαλίδες με `balance` στο ίδιο μπλοκ (guard-justify-hyphen). */
+/* Οι λεζάντες της ζώνης μετρήσεων ΜΕΝΟΥΝ ζυγισμένες (φύλλο της σελίδας): είναι
+   δύο κοντές γραμμές σε κελί ~150px· πέρα πέρα άνοιγαν κενά 41px (μετρημένο). */
+.lp-why p { text-align: justify; }
 /* ΣΤΕΝΗ ΚΑΡΤΑ, ΟΧΙ ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ. Σε στήλη κάτω από ~460 με λέξεις που δεν
    σπάνε («ν.5072/2023», «(ενσωμάτωση») η στοίχιση τέντωνε τα κενά σε τρύπες
    (φωτογραφημένο, 25.09.2026). Οποιο πλαίσιο δηλώσει `.po-just-box` γίνεται
    container: όσο είναι στενό, η παράγραφος μέσα του στοιχίζεται αριστερά και
    ισορροπεί τις γραμμές της· όταν απλώσει, ξαναπαίρνει την πλήρη στοίχιση. */
 .po-just-box { container-type: inline-size; }
-@container (max-width: 460px) {
+@container (max-width: 240px) {
   .po-just { text-align: start; text-wrap: pretty; }
 }
 .po-table tbody th, .po-table tbody td { border-bottom: 1px solid var(--border-subtle); }
@@ -5061,10 +5085,15 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   .lg-grid > .lg-toc .lg-toc-list a[aria-current="true"]::before, .gd-rail .lg-toc-list a[aria-current="true"]::before {
     content: ''; position: absolute; left: -19px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: var(--accent);
   }
+  /* ΤΟ ΚΟΥΜΠΙ ΠΙΑΝΕΙ ΤΗ ΣΤΗΛΗ ΤΟΥ ΚΑΤΑΛΟΓΟΥ. Με σταθερό ύψος 44 και πλάτος
+     όσο το κείμενο, το «Υπολόγισε την καθαρή απόδοσή σου» έσπαγε σε δύο
+     γραμμές ΜΕΣΑ στο χάπι, στοιχισμένο αριστερά (φωτογραφημένο, 26.09.2026).
+     Τώρα ξεκινά εκεί που ξεκινούν τα ονόματα των ενοτήτων (19px, η γραμμή του
+     καταλόγου), τελειώνει στη δεξιά άκρη της στήλης και το κείμενο κεντράρεται. */
   .gd-rail-cta {
-    display: inline-flex; align-items: center; justify-content: center; align-self: flex-start;
-    height: 44px; padding: 0 20px; margin-left: 19px; border-radius: 999px;
-    font-size: 14px; font-weight: 700; text-decoration: none;
+    display: flex; align-items: center; justify-content: center; align-self: stretch;
+    min-height: 44px; padding: 10px 20px; margin-left: 19px; border-radius: 999px;
+    font-size: 14px; font-weight: 700; line-height: 1.3; text-align: center; text-wrap: balance; text-decoration: none;
   }
 }
 @media screen and (min-width: 1200px) {
@@ -5085,12 +5114,19 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    πέντε κομμένες λέξεις στην πρώτη οθόνη του κινητού. Εδώ: αριστερή στοίχιση
    χωρίς συλλαβισμό, σώμα κοντά στο πρώτο χρώμα. Το μέτρο είναι η ίδια η
    στήλη (βλ. «ΜΙΑ ΔΕΞΙΑ ΑΚΡΗ»): κείμενο, πίνακες και σημειώσεις κλείνουν μαζί. Τα `.gd-*` ζουν
-   μόνο μέσα στο GuideMain (app/odigos/GuideParts.tsx). */
+   μόνο μέσα στο GuideMain (app/odigos/GuideParts.tsx).
+
+   26.09.2026, ΑΠΟΦΑΣΗ ΙΔΙΟΚΤΗΤΗ: ΠΕΡΑ ΠΕΡΑ, ΠΑΝΤΟΥ. Κάθε παράγραφος ξεκινά
+   και τελειώνει στις ίδιες δύο κατακόρυφες με τη στήλη. Η παλιά αριστερή
+   στοίχιση είχε μπει για τα ποτάμια λευκού, όμως οι μετρήσεις του
+   «ΠΕΡΑ ΠΕΡΑ, ΜΕ ΑΛΗΘΙΝΟ ΣΥΛΛΑΒΙΣΜΟ» δείχνουν πού γεννιόνταν: στο
+   `text-wrap: pretty`, που αγνοεί τα μαλακά ενωτικά. Με το σώμα συλλαβισμένο
+   (GuideMain → hy) και χωρίς `pretty`, το κενό μένει στο φυσικό του. */
 .gd .lg-p, .gd .lg-ul li {
-  font-size: 16px; line-height: 1.65; text-align: start; hyphens: none; text-wrap: pretty;
+  font-size: 16px; line-height: 1.65; text-align: justify;
   color: color-mix(in srgb, var(--text-primary) 90%, transparent);
 }
-.gd .lg-note { text-align: start; hyphens: none; }
+.gd .lg-note { text-align: justify; }
 .gd .po-tool-sources .lg-ul li { font-size: 14px; color: var(--text-secondary); }
 @media (min-width: 768px) { .gd .lg-p, .gd .lg-ul li { font-size: 17px; } }
 /* Η ΖΕΒΡΑ ΠΕΡΝΑ ΑΠΟ ΤΟ `--row-bg`, ΟΧΙ ΑΠΟ ΤΟ `background`. Γραμμένη ως
@@ -5109,30 +5145,12 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    κανόνας εδώ για ΚΑΘΕ δικαιολογημένο κείμενο στο κινητό: αριστερή στοίχιση, ενώ
    ο συλλαβισμός μένει (ζημιά κάνει μόνο δίπλα στο justify, όχι μόνος του).
    Πάνω από τα 640px η στήλη είναι αρκετά φαρδιά ώστε το justify να διαβάζεται. */
-@media (max-width: 640px) {
-  .po-just,
-  .lg-p,
-  .lg-ul li,
-  .lg-note,
-  .lg-just,
-  .po-table td.lg-cell-prose,
-  .lg-lede > p:first-child {
-    text-align: start;
-  }
-  /* ΚΑΙ Ο ΣΥΛΛΑΒΙΣΜΟΣ ΣΒΗΝΕΙ ΜΑΖΙ ΜΕ ΤΗ ΣΤΟΙΧΙΣΗ. Χωρίς ευθεία δεξιά άκρη δεν
-     έχει κενά να κλείσει· έβγαζε μόνο σκάλες: δέκα γραμμές με ενωτικό στις
-     είκοσι τρεις της παραγράφου για το AI και παραγράφους που τελείωναν σε
-     «αποσυνδέ-/ται». Το `none` είναι το μόνο που κάνει τον περιηγητή να
-     αγνοήσει τα μαλακά ενωτικά (U+00AD) του `hy()`. */
-  .lg-p,
-  .lg-ul li,
-  .lg-note,
-  .lg-just,
-  .lg-sp-card dd,
-  .lg-lede > p:first-child {
-    hyphens: none;
-  }
-}
+/* 26.09.2026: Η ΣΤΟΙΧΙΣΗ ΔΕΝ ΑΛΛΑΖΕΙ ΣΤΟ ΚΙΝΗΤΟ. Εδώ ζούσε κανόνας που γύριζε
+   κάθε στοιχισμένο κείμενο σε αριστερή στοίχιση κάτω από τα 640 και έσβηνε
+   τον συλλαβισμό. Ο ιδιοκτήτης ζήτησε ρητά το αντίθετο: πέρα πέρα σε κάθε
+   οθόνη, με ενωτικό όπου η λέξη δεν χωρά. Στο κουτί των 272 ο πίνακας από
+   πάνω μέτρησε ήδη το αποτέλεσμα: με ενωτικά και χωρίς `pretty`, κενό 4,8
+   εκεί που το φυσικό είναι 4,2. */
 
 @media (max-width: 900px) {
   /* ΣΕ ΚΙΝΗΤΟ ΤΟ ΕΥΡΕΤΗΡΙΟ ΚΥΛΑΕΙ ΜΕΣΑ ΤΟΥ. Είκοσι τέσσερις ενότητες η μία
@@ -5910,3 +5928,102 @@ tr.po-row-more { display: none; }
 #pc-noa-on:checked ~ .pc-off { display: none; }
 .pc-card:has(#pc-noa-on:checked) { border-color: color-mix(in srgb, var(--accent) 45%, transparent) !important; }
 @media (prefers-reduced-motion: reduce) { .pc-seg label { transition: none; } }
+
+/* ═══ Η ΑΝΑΚΟΙΝΩΣΗ ΤΟΥ HERO ΚΑΙ Η ΕΝΟΤΗΤΑ ΤΗΣ ΝΟΑΣ (app/page.tsx) ══════════
+   Μόνο token της παλέτας· κανένα νέο χρώμα. Η ένταση βγαίνει από το
+   color-mix του ίδιου τόνου, όπως στον διακόπτη των πακέτων (.pc-*). */
+.lp-news {
+  display: inline-flex; align-items: center; gap: 10px; margin: 0 auto 20px;
+  padding: 5px 14px 5px 5px; min-height: 44px; box-sizing: border-box; border-radius: 999px; text-decoration: none;
+  font-size: 13.5px; font-weight: 600; color: var(--text-primary); line-height: 1.3;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  transition: border-color .15s, background .15s;
+  max-width: 100%;
+}
+.lp-news:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.lp-news:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.lp-news svg { flex: none; color: var(--accent); }
+.lp-news-tag {
+  flex: none; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  background: var(--accent); color: var(--accent-text); letter-spacing: 0.02em;
+}
+
+.nf-band { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 64px); align-items: center; }
+.nf-title {
+  display: flex; align-items: center; gap: 16px; margin: 0;
+  font-size: clamp(30px, 4.4vw, 50px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.05;
+}
+.nf-mono {
+  flex: none; width: 1.18em; height: 1.18em; border-radius: 30%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.82em; font-weight: 800; letter-spacing: -0.02em;
+  background: var(--accent); color: var(--accent-text);
+  box-shadow: 0 10px 34px -10px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.nf-lead { margin: 18px 0 0; font-size: clamp(16px, 1.7vw, 18px); line-height: 1.6; color: var(--text-secondary); }
+.nf-does { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; }
+.nf-does li { display: grid; grid-template-columns: 10px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; }
+.nf-does li::before { content: ''; grid-row: span 2; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: var(--accent); }
+.nf-does strong { font-size: 15.5px; font-weight: 680; color: var(--text-primary); letter-spacing: -0.01em; }
+.nf-does span { font-size: 14.5px; line-height: 1.5; color: var(--text-secondary); text-align: justify; }
+.nf-offer {
+  display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 18px; row-gap: 6px;
+  margin-top: 28px; padding: 16px 20px; border-radius: 16px; background: var(--bg-surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.nf-price { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.nf-amount { font-size: clamp(30px, 3.4vw, 38px); font-weight: 720; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; color: var(--text-primary); line-height: 1; }
+.nf-per { font-size: 15px; color: var(--text-secondary); }
+.nf-terms { font-size: 14px; color: var(--text-secondary); line-height: 1.45; }
+.nf-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; margin-top: 20px; }
+.nf-free { font-size: 13.5px; color: var(--text-tertiary); }
+
+.nf-stage { position: relative; }
+.nf-halo {
+  position: absolute; inset: 8% 6%; border-radius: 40%; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 26%, transparent), transparent);
+  filter: blur(28px);
+}
+.nf-card {
+  position: relative; padding: 18px; border-radius: 22px; background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 30px 70px -38px color-mix(in srgb, var(--text-primary) 45%, transparent);
+}
+.nf-head { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle); }
+.nf-head strong { display: block; font-size: 14.5px; font-weight: 700; color: var(--text-primary); }
+.nf-head small { display: block; font-size: 12px; color: var(--text-secondary); }
+.nf-avatar { flex: none; width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; background: var(--accent); color: var(--accent-text); }
+.nf-asks { list-style: none; margin: 0; padding: 18px 0 6px; display: flex; flex-direction: column; gap: 10px; }
+.nf-asks li {
+  margin-left: auto; max-width: 88%; padding: 11px 15px; border-radius: 18px 18px 5px 18px;
+  font-size: 14.5px; line-height: 1.45; background: var(--accent); color: var(--accent-text);
+}
+.nf-asks li:nth-child(2) { margin-right: 14px; opacity: .9; }
+.nf-asks li:nth-child(3) { margin-right: 28px; opacity: .8; }
+.nf-input {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px;
+  padding: 11px 14px 11px 16px; border-radius: 999px; border: 1px solid var(--border-default);
+  font-size: 13.5px; color: var(--text-tertiary); background: var(--bg-base);
+}
+.nf-input svg { flex: none; color: var(--accent); }
+@media (max-width: 900px) {
+  .nf-band { grid-template-columns: minmax(0, 1fr); }
+  .nf-asks li:nth-child(2), .nf-asks li:nth-child(3) { margin-right: 0; }
+}
+
+/* ═══ Ο ΣΤΟΙΧΕΙΟΘΕΤΗΣ ΤΗΣ ΕΦΑΡΜΟΓΗΣ (components/Typesetter.tsx) ═════════════
+   Ο,τι σημαδέψει ως παράγραφο στοιχίζεται πέρα πέρα, πάνω στα μαλακά ενωτικά
+   που έβαλε ο ίδιος. Χωρίς `text-wrap: pretty`: αγνοεί τα ενωτικά
+   (guard-justify-hyphen). Ρητό `textAlign` στο στοιχείο νικά, όπως πρέπει. */
+[data-ts="j"] { text-align: justify; }
+/* ΚΑΙ ΤΕΛΕΙΩΝΕΙ ΕΚΕΙ ΠΟΥ ΤΕΛΕΙΩΝΕΙ ΤΟ ΚΟΥΤΙ ΤΟΥ. Δεκάδες παράγραφοι της
+   εφαρμογής κουβαλούσαν όριο πλάτους (`maxWidth: '72ch'` και συγγενικά): στην
+   κάρτα των 1.300 η παράγραφος σταματούσε στη μέση και το δεξί μισό έμενε
+   άδειο, ενώ ό,τι άλλο στην κάρτα έφτανε ως την άκρη. Απόφαση ιδιοκτήτη
+   (26.09.2026): κάθε μπλοκ ξεκινά και τελειώνει στις ίδιες κατακόρυφες. */
+.app-content [data-ts="j"] { max-width: none !important; line-height: 1.65 !important; }
+/* ΦΑΡΔΙΑ ΓΡΑΜΜΗ ΘΕΛΕΙ ΑΕΡΑ. Χωρίς όριο πλάτους, στην κάρτα των 1.300 η γραμμή
+   φτάνει τους 130 χαρακτήρες· το μάτι χάνει την αρχή της επόμενης αν το
+   διάστιχο μείνει 1,5 (e2e-layout: «ΜΑΚΡΙΑ ΓΡΑΜΜΗ ΧΩΡΙΣ ΑΕΡΑ»). Το 1,65 είναι
+   το διάστιχο του βιβλίου με φαρδιά σελίδα και κρατά τη στοίχιση ως την άκρη. */

@@ -499,9 +499,9 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           η συνδρομή μένει ενεργή στον πάροχο· εκείνο που αλλάζει είναι ότι
           υπάρχει ημερομηνία λήξης αντί για ημερομηνία ανανέωσης. */}
       {tone === 'cancelled-running' ? (
-        <InfoBanner tone="warning">Η συνδρομή έχει ακυρωθεί και ισχύει ώς τις <strong>{fd(endsAt)}</strong>. Μετά την ημερομηνία αυτή ο λογαριασμός επιστρέφει σε χωρίς συνδρομή.</InfoBanner>
+        <InfoBanner tone="warning">Η συνδρομή έχει ακυρωθεί και ισχύει ώς τις <strong>{fd(endsAt)}</strong>. Μετά την ημερομηνία αυτή ο λογαριασμός συνεχίζει στο δωρεάν πακέτο «{PLANS.free.name}».</InfoBanner>
       ) : tone === 'cancelled-over' ? (
-        <InfoBanner tone="warning">Η συνδρομή έληξε στις <strong>{fd(endsAt)}</strong>. Ο λογαριασμός είναι χωρίς συνδρομή· διάλεξε πακέτο για να ξαναρχίσει.</InfoBanner>
+        <InfoBanner tone="warning">Η συνδρομή έληξε στις <strong>{fd(endsAt)}</strong>. Ο λογαριασμός συνεχίζει στο δωρεάν πακέτο «{PLANS.free.name}»· διάλεξε πακέτο για να ξαναπάρεις ό,τι είχες.</InfoBanner>
       ) : tone === 'trial' || tone === 'active' ? (
         <InfoBanner tone="info">
           {tone === 'trial' ? 'Δοκιμαστική περίοδος σε εξέλιξη' : `Ενεργή συνδρομή, ${plan.name}`}

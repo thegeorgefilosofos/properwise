@@ -16,6 +16,7 @@
 // χωρίς κουμπί, η σελίδα απαντούσε «τι παίρνω» και έστελνε τον επισκέπτη
 // αλλού για το «πόσο» και για το «πώς ξεκινώ».
 // ═══════════════════════════════════════════════════════════════════════════
+import { hy } from '@/components/Hyphen';
 import type { Metadata } from 'next';
 import { siteUrl } from '@/lib/core/site';
 import { RECOMMENDED_PLAN } from '@/lib/billing/plans';
@@ -84,9 +85,9 @@ export default function Page() {
             τρία σπασίματα λέξης σε εννέα γραμμές. Τρεις σύντομες προτάσεις: η
             δοκιμή με το όριό της (TRIAL_OFFER, η ίδια πηγή με την αρχική), η
             κατάσταση της χρέωσης (billingWords) και ο ΦΠΑ. */}
-        <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px', maxWidth: 720, textWrap: 'pretty' }}>
+        <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>{hy(<>
           {TRIAL_OFFER} {billingWords().firstCharge} Οι τιμές περιλαμβάνουν ΦΠΑ και σταματάς όποτε θέλεις.
-        </p>
+        </>)}</p>
         {/* Η ΙΔΙΑ ΠΡΟΤΑΣΗ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Χωρίς προτεινόμενη στήλη ο πίνακας έδειχνε
             τέσσερα ίδια κύρια κουμπιά, ενώ η αρχική προτείνει ρητά ένα πακέτο.
             Οι κάρτες του κινητού κάθονται κάτω από τον <h1>, άρα είναι <h2>. */}
