@@ -3378,7 +3378,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    σπάει η γραμμή (η πλήρης στοίχιση που είχε μαζί του έφυγε, βλ. από κάτω). Ειδικότερος
    επιλογέας από τον γενικό, άρα κερδίζει· `overflow-wrap: normal` γιατί εδώ
    σπάμε σε κενά και σε ενωτικά, ποτέ στη μέση της λέξης. */
-.po-table td.lg-cell-prose { text-align: start; hyphens: manual; overflow-wrap: normal; }
+.po-table td.lg-cell-prose { text-align: justify; hyphens: manual; overflow-wrap: normal; }
 /* ΣΤΑ 400 Η ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΑΝΟΙΓΕ ΠΟΤΑΜΙΑ ΚΕΝΟΥ. Μετρημένο στα 1440: «μέτρηση
    επισκεψιμότητας χωρίς cookies (Vercel Web…» με κενά τριπλάσια του φυσικού,
    γιατί μια στήλη σαράντα πέντε χαρακτήρων δεν έχει αρκετά κενά να μοιράσει
@@ -3388,10 +3388,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    Ο ΤΟΠΟΣ ΔΕΝ ΣΠΑΕΙ ΜΕΣΑ ΣΤΗ ΛΕΞΗ. Το γενικό `overflow-wrap: anywhere` έκοβε το
    «Ευρωπαϊκή Ένωση» (δεμένο με άθραυστο κενό) σε «Ευρωπαϊκή Ένω / ση» στα 820.
    Το `normal` αφήνει τη φράση να κατέβει ολόκληρη. */
-.po-table td.lg-place { overflow-wrap: normal; }
+.po-table td.lg-place { overflow-wrap: normal; color: var(--text-tertiary); }
+/* 26.09.2026: Η ΠΕΡΙΓΡΑΦΗ ΞΑΝΑΣΤΟΙΧΙΖΕΤΑΙ ΠΕΡΑ ΠΕΡΑ. Τα ποτάμια της στήλης των 45
+   χαρακτήρων έκλειναν με το ριγμένο δεξιά, αλλά ο πίνακας έμενε αζύγιστος. Η
+   στήλη του ρόλου έφυγε, η περιγραφή πήρε το 56% (γύρω στους 58 χαρακτήρες) και
+   ο τόπος έγινε ετικέτα μιας σειράς. Ετσι κάθε κελί ξεκινά και τελειώνει στις
+   κατακόρυφες της στήλης του. */
+.po-table .lg-sp-name { display: block; font-weight: 600; color: var(--text-primary); }
+.po-table tr.lg-sp-group th {
+  padding: 10px 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-tertiary); background: var(--bg-elevated);
+  border-top: 1px solid var(--border-default); border-bottom: 1px solid var(--border-subtle);
+}
 /* Ο ΑΝΕΝΕΡΓΟΣ ΠΑΡΟΧΟΣ ΣΒΗΝΕΙ ΟΛΟΚΛΗΡΟΣ, ΟΧΙ ΜΟΝΟ ΤΟ ΟΝΟΜΑ ΤΟΥ. Το σήμα «Όχι
    ενεργός σήμερα» το λέει με λέξεις· το χρώμα το επιβεβαιώνει σε όλη τη γραμμή. */
-.po-table tr.lg-sp-planned th, .po-table tr.lg-sp-planned td { color: var(--text-tertiary); }
+.po-table tbody.lg-sp-planned th, .po-table tbody.lg-sp-planned td, .po-table tbody.lg-sp-planned .lg-sp-name { color: var(--text-tertiary); }
 /* ═══ ΟΤΑΝ Ο ΠΙΝΑΚΑΣ ΔΗΛΩΝΕΙ ΠΛΑΤΗ, ΤΑ ΠΛΑΤΗ ΝΑ ΙΣΧΥΟΥΝ ══════════════════════
    Ο πίνακας των εκτελούντων γράφει `<colgroup>` με 20 / 56 / 24 τοις εκατό·
    ο περιηγητής τα αγνοούσε. Με αυτόματη διάταξη το `<colgroup>` είναι
@@ -5021,6 +5032,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-sp-card dt { margin-top: 8px; font-size: 13px; color: var(--text-tertiary); }
 .lg-sp-card dt:first-child { margin-top: 0; }
 .lg-sp-card dd { margin: 0; color: var(--text-secondary); line-height: 1.55; }
+.lg-sp-card dd:first-of-type { text-align: justify; hyphens: manual; }
 
 /* Ο ΟΔΗΓΟΣ ΤΗΣ ΑΝΑΛΥΣΗΣ (ToolLedger): η διάστικτη γραμμή ανάμεσα σε ετικέτα
    και ποσό. Κάθεται στη γραμμή βάσης της ΠΡΩΤΗΣ σειράς (ύψος μηδέν, στοίχιση

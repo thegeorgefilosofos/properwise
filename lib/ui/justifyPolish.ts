@@ -5,7 +5,7 @@ import { breakCitations } from '@/lib/core/hyphenate';
 // ΚΑΘΕ ΠΑΡΑΓΡΑΦΟΣ ΠΕΡΑ ΠΕΡΑ, ΑΠΟ ΟΠΟΥ ΚΙ ΑΝ ΗΡΘΕ Η ΣΤΟΙΧΙΣΗ. Οι κλάσεις
 // (`po-just`, `data-ts`) δεν αρκούν: οι οδηγοί στοιχίζουν από το δικό τους CSS
 // (`.gd .lg-p`) και έμεναν έξω, με κενό 3,4em στο κινητό.
-const SEL = '.po-just, .po-just-c, [data-ts="j"], p, li, dd';
+const SEL = '.po-just, .po-just-c, [data-ts="j"], p, li, dd, td.lg-cell-prose';
 const SHY = /­/g;
 /** Κενό (σε em) από το οποίο και πάνω το μάτι βλέπει τρύπα. */
 const LIMIT = 0.55;

@@ -395,6 +395,28 @@ for (const w of PLAN_WIDTHS) {
   await p.close()
 }
 
+// ═══ ΤΙΤΛΟΣ ΣΕ ΜΙΑ ΓΡΑΜΜΗ, ΛΕΖΑΝΤΑ ΣΕ ΔΥΟ ═════════════════════════════════
+// Απόφαση ιδιοκτήτη (26.09.2026, με φωτογραφίες): στη Συμβατότητα ο τίτλος κάθε
+// κελιού σε ΜΙΑ γραμμή και η λεζάντα σε ΔΥΟ το πολύ· στις Δυνατότητες η λεζάντα
+// σε ΔΥΟ το πολύ. Ήταν τίτλος δύο γραμμών και λεζάντες τριών, οπότε ο πίνακας
+// διαβαζόταν ανώμαλος. Μετριέται στα πλάτη όπου οι στήλες είναι πλήρεις.
+for (const w of [1280, 1440, 1920]) {
+  const p = await newPage()
+  await p.setViewportSize({ width: w, height: 1000 })
+  await p.goto(BASE + '/', { waitUntil: 'networkidle' })
+  const lines = await p.evaluate(() => {
+    const n = el => { const lh = parseFloat(getComputedStyle(el).lineHeight) || 20; return Math.round(el.getBoundingClientRect().height / lh) }
+    const txt = el => el.textContent.replace(/\u00ad/g, '').slice(0, 30)
+    const bad = []
+    document.querySelectorAll('.lp-works-t').forEach(el => { if (n(el) > 1) bad.push(`τίτλος «${txt(el)}» ${n(el)} γραμμές`) })
+    document.querySelectorAll('.lp-works-d').forEach(el => { if (n(el) > 2) bad.push(`λεζάντα «${txt(el)}» ${n(el)} γραμμές`) })
+    document.querySelectorAll('.lp-feat-d').forEach(el => { if (n(el) > 2) bad.push(`δυνατότητα «${txt(el)}» ${n(el)} γραμμές`) })
+    return { bad, count: document.querySelectorAll('.lp-works-t').length + document.querySelectorAll('.lp-feat-d').length }
+  })
+  ok(`τίτλοι σε μία γραμμή, λεζάντες σε δύο, στα ${w}`, lines.count >= 14 && lines.bad.length === 0, lines.bad.join(' · ') || `${lines.count} στοιχεία`)
+  await p.close()
+}
+
 await browser.close()
 console.log(`\nΑρχική σελίδα, θέμα ${MODE === 'light' ? 'φωτεινό' : 'σκούρο'} — ${pass} πέρασαν, ${fail} απέτυχαν`)
 process.exit(fail ? 1 : 0)
