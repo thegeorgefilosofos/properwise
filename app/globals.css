@@ -6047,3 +6047,14 @@ tr.po-row-more { display: none; }
   .lp-hero-ctas { flex-direction: column; align-items: stretch; max-width: 320px; margin-inline: auto; }
   .lp-hero-ctas > a { text-align: center; }
 }
+
+/* ═══ ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΘΕΛΕΙ ΑΠΛΗ ΑΝΑΔΙΠΛΩΣΗ, ΟΠΟΙΟΣ ΚΙ ΑΝ ΕΙΝΑΙ Ο ΓΟΝΕΑΣ ════════
+   Το `text-wrap: pretty` ζυγίζει την παράγραφο ολόκληρη και στον Chromium
+   ΑΓΝΟΕΙ τα μαλακά ενωτικά: μια σειρά που θα έκλεινε με «ασφα-» μένει κοντή
+   και η στοίχιση μοιράζει το κενό στα διαστήματα. Μετρημένο στην αρχική στα
+   390: 2,02em ανάμεσα σε δύο λέξεις, όταν το κανονικό διάστημα είναι 0,3em.
+   Ο guard-justify-hyphen πιάνει τις δύο ιδιότητες μόνο στον ΙΔΙΟ κανόνα· εδώ
+   το `pretty` ερχόταν από άλλον (`details.lp-faq > p`, `.fineprint`) και
+   περνούσε. Το `!important` είναι η δήλωση ότι αυτός ο κανόνας κρίνεται
+   τελευταίος: η στοίχιση και ο συλλαβισμός πάνε μαζί ή καθόλου. */
+.po-just, .po-just-c, [data-ts="j"], .lp-why p { text-wrap: wrap !important; }
