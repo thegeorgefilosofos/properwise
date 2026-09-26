@@ -2006,15 +2006,18 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             {advisory.map(a=>{
               const open = openAdvisory===a.id
               return (
-                <div key={a.id} style={{ borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${open?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
+                <div key={a.id} data-open={open} style={{ display:'flex', flexDirection:'column', borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${open?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s' }}>
                   {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: κεφαλίδα σε ΟΛΟ το πλάτος της κάρτας. Το Btn
                       είναι inline-flex κεντραρισμένο, χωρίς πλήρες πλάτος. */}
-                  <button onClick={()=>setOpenAdvisory(open?null:a.id)} aria-expanded={open} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
+                  <button onClick={()=>setOpenAdvisory(open?null:a.id)} aria-expanded={open} className="acc-toggle po-hov-fill" style={{ width:'100%', flex: open ? 'none' : 1, display:'flex', alignItems:'flex-start', gap:12, padding:'14px 16px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
                     <div style={{ flex:1, minWidth:0 }}>
                       <span style={{ display:'inline-flex', alignItems:'center', height:20, padding:'0 9px', borderRadius: T.radius.xs, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', fontWeight:600, letterSpacing:'0.5px', textTransform:'uppercase', color:'var(--text-tertiary)' }}>{ADVISORY_TONE[a.tone]}</span>
                       <p style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)', margin:'7px 0 0', lineHeight:1.35 }}>{a.title}</p>
                     </div>
-                    <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:open?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
+                    {/* Η ΕΤΙΚΕΤΑ ΚΑΙ Ο ΤΙΤΛΟΣ ΞΕΚΙΝΟΥΝ ΠΑΝΩ, ΤΟ ΒΕΛΟΣ ΜΕΝΕΙ ΣΤΟ ΚΕΝΤΡΟ. Με όλα
+                        κεντραρισμένα, στην ίδια σειρά η ετικέτα μιας κάρτας με τίτλο μίας
+                        γραμμής καθόταν 9px χαμηλότερα από της διπλανής με τίτλο δύο. */}
+                    <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, alignSelf:'center', transform:open?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
                   </button>
                   {open&&(
                     <div style={{ padding:'0 16px 15px' }}>
@@ -2058,7 +2061,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <ChevronRight size={17} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:changesOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
           </button>
           {changesOpen && (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap:12, marginTop:16, alignItems:'start' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap:12, marginTop:16, alignItems:'stretch' }}>
               {relevantChanges.map((u:RegulatoryUpdate, i:number)=>{
                 const uo = openChange===u.id
                 // ΚΑΝΕΝΑ ΟΡΦΑΝΟ ΠΛΑΚΙΔΙΟ. Το πλέγμα είναι `auto-fit`, οπότε μονός
@@ -2067,10 +2070,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 // όλο το πλάτος: γεμάτη σειρά, ποτέ ορφανό. Ισχύει για κάθε πλήθος.
                 const lastAlone = i === relevantChanges.length - 1 && relevantChanges.length % 2 === 1
                 return (
-                  <div key={u.id} style={{ borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${uo?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s', ...(lastAlone ? { gridColumn:'1 / -1' } : {}) }}>
+                  <div key={u.id} style={{ display:'flex', flexDirection:'column', borderRadius: T.radius.popup, background:'var(--bg-surface)', border:`1px solid ${uo?'var(--border-default)':'var(--border-subtle)'}`, overflow:'hidden', transition:'border-color 0.15s', ...(lastAlone || uo ? { gridColumn:'1 / -1' } : {}) }}>
                     {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: η αιώρηση γεμίσματος έρχεται από την κλάση
                         `po-hov-fill` · κανένα πρωτογενές δεν δέχεται className. */}
-                    <button onClick={()=>setOpenChange(uo?null:u.id)} aria-expanded={uo} className="acc-toggle po-hov-fill" style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'13px 15px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
+                    <button onClick={()=>setOpenChange(uo?null:u.id)} aria-expanded={uo} className="acc-toggle po-hov-fill" style={{ width:'100%', flex: uo ? 'none' : 1, display:'flex', alignItems:'center', gap:10, padding:'13px 15px', border:'none', cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }} >
                       <p style={{ flex:1, minWidth:0, fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', margin:0, lineHeight:1.35, fontFamily: T.font.sans }}>{u.title}</p>
                       <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:uo?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
                     </button>

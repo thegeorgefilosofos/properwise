@@ -190,12 +190,12 @@ export default function Page() {
             σύνδεσμος στέκει εδώ ώστε να τον βρίσκει τη στιγμή της ερώτησης. */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           <SectionHead over="Ο αναλυτικός οδηγός" title="Η φορολογία των ενοικίων, ολόκληρη" />
-          <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0, textWrap: 'pretty' }}>
+          <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 }}>{hy(<>
             Ο υπολογιστής δίνει τον φόρο· ο οδηγός{' '}
             <Link href="/odigos/forologia-enoikion-2026" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               φορολογία ενοικίων 2026
             </Link>{' '}εξηγεί την κλίμακα, την τεκμαρτή έκπτωση 5%, τον κανόνα της τραπεζικής είσπραξης (από 1.7.2027) και τις εξαιρέσεις, με παραδείγματα σε ευρώ.
-          </p>
+          </>)}</p>
         </section>
 
         {/* Ο ΕΠΙΣΚΕΠΤΗΣ ΠΟΥ ΒΡΗΚΕ ΤΟΝ ΦΟΡΟ ΤΟΥ ΕΧΕΙ ΔΥΟ ΑΚΟΜΗ ΕΡΩΤΗΣΕΙΣ, ΚΑΙ ΤΙΣ
@@ -203,7 +203,7 @@ export default function Page() {
             τρεις άσχετες σελίδες που τυχαίνει να ζουν στο ίδιο domain. */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           <SectionHead over="Και μετά" title="Ο φόρος δεν είναι το μόνο που πληρώνεις" />
-          <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0, textWrap: 'pretty' }}>
+          <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 }}>{hy(<>
             Ο ΕΝΦΙΑ είναι φόρος <strong style={{ color: 'var(--text-primary)' }}>κατοχής</strong> και
             υπολογίζεται χωριστά: δες τον{' '}
             <Link href="/ypologismos-enfia" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
@@ -216,7 +216,7 @@ export default function Page() {
             <Link href="/kathari-apodosi" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               καθαρή απόδοση
             </Link>.
-          </p>
+          </>)}</p>
         </section>
       </main>
 

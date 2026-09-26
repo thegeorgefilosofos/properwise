@@ -37,8 +37,6 @@ import * as accountantLink from '@/lib/data/accountantLink';
 import { PLANS, PLAN_ORDER, normalizePlan, type PlanId } from '@/lib/billing/plans';
 import { hasVerifiedFactor } from '@/lib/auth/mfa';
 
-/** Τα πακέτα που αγοράζονται. Το «χωρίς συνδρομή» είναι κατάσταση, όχι πακέτο. */
-const PAID_PLAN_ORDER = PLAN_ORDER.filter(id => PLANS[id].priceMonthly > 0) as PlanId[];
 import { effectivePlan, activeComp, planAtLeast, propertyLimit, trialState, isOpenEnded } from '@/lib/billing/entitlements';
 import { athensToday } from '@/lib/core/time';
 import { notifyError } from '@/components/Toast';
@@ -751,6 +749,8 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         </div>
 
         {/* ═══ ΤΑ ΤΕΣΣΕΡΑ ΠΑΚΕΤΑ, ΟΡΑΤΑ ΜΕΣΑ ΣΤΗΝ ΕΦΑΡΜΟΓΗ ══════════════════
+            ΠΕΝΤΕ ΣΚΑΛΙΑ, ΟΧΙ ΤΕΣΣΕΡΑ: ο «Ιδιοκτήτης» είναι πια δωρεάν πακέτο και όχι
+            κατάσταση «χωρίς συνδρομή», άρα ο δωρεάν χρήστης βλέπει πού στέκεται.
             Η οθόνη έλεγε μόνο ΠΟΙΟ πακέτο έχεις. Τα ονόματα των άλλων τριών
             ζούσαν στην αρχική σελίδα και σε ένα παράθυρο που άνοιγε με κουμπί:
             ο συνδρομητής δεν είχε τρόπο να δει τη σκάλα ολόκληρη, ούτε πού
@@ -758,15 +758,15 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
             σημαδεμένο. Χωρίς τιμές και χωρίς πίεση — η σύγκριση ανοίγει με το
             «Διαχείριση συνδρομής» για όποιον τη θέλει. */}
         <div className="plan-ladder" style={{ marginTop: 16, gap: 6 }}>
-          {PAID_PLAN_ORDER.map(id => {
+          {PLAN_ORDER.map(id => {
             const on = id === effPlan;
             // ΜΟΝΟ ΤΟ ΔΙΚΟ ΣΟΥ ΚΕΛΙ ΕΧΕΙ ΠΛΑΙΣΙΟ. Τέσσερα κουτιά με περίγραμμα
             // δίπλα στο «Διαχείριση συνδρομής» διαβάζονταν ως κουμπιά που δεν
             // πατιούνται. Η σκάλα είναι ένδειξη θέσης· τα υπόλοιπα είναι ετικέτες.
             // Το διάφανο περίγραμμα κρατά ίδιο το ύψος και των τεσσάρων.
             return (
-              <div key={id} style={{
-                textAlign: 'center', padding: '9px 6px', borderRadius: T.radius.inner,
+              <div key={id} className="plan-ladder-cell" style={{
+                padding: '9px 6px', borderRadius: T.radius.inner,
                 border: `1px solid ${on ? 'var(--accent-border)' : 'transparent'}`,
                 background: on ? 'var(--accent-dim)' : 'transparent',
               }}>

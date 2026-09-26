@@ -26,6 +26,7 @@ import {
 } from './scanDoc';
 import { inferRole } from '@/lib/contacts/roles';
 import { hy } from '@/components/Hyphen';
+import { SAY } from '@/lib/core/dbError';
 
 // Το prompt ζει στο scanDoc.ts (μαζί με όλη τη μηχανή σάρωσης). Επανεξάγεται εδώ
 // επειδή οθόνες που δεν ανήκουν σε αυτή τη ροή (Ενοικιαστής, Αρχείο) το εισάγουν
@@ -210,6 +211,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState<'upload' | 'review' | 'done'>('upload');
   const [error, setError] = useState('');
+  const [errorText, setErrorText] = useState('');
   const [savedInfo, setSavedInfo] = useState<string[]>([]);
   const [newField, setNewField] = useState({ label: '', value: '' });
 
@@ -260,7 +262,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     const r = await scanDocument(f);
     setScanning(false);
     if (r.doc) setEdited(r.doc);
-    else { setError(r.error || 'unreadable'); setEdited({ doc_type: 'other', confidence: 0 }); }
+    else { setError(r.error || 'unreadable'); setErrorText(r.errorText || ''); setEdited({ doc_type: 'other', confidence: 0 }); }
   }, []);
 
   // Στρίψιμο null/undefined από payload (χρησιμοποιείται στις Επαφές παρακάτω).
@@ -540,6 +542,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
 
               {error && (() => {
                 const title = error === 'unreadable' ? 'Δεν διάβασα καθαρά το έγγραφο'
+                  : error === 'quota' ? 'Οι σαρώσεις του μήνα τελείωσαν'
                   : error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή ακόμη'
                   : error === 'save' ? 'Κάτι πήγε στραβά στην αποθήκευση'
                   : 'Η υπηρεσία ανάγνωσης δεν είναι διαθέσιμη τώρα';
@@ -548,6 +551,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   // Ρύθμιση «κλειδί AI» δεν υπάρχει στον λογαριασμό: την ανάγνωση την ενεργοποιούμε εμείς.
                   : error === 'key_missing' ? ['Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά', 'Η αυτόματη ανάγνωση ενεργοποιείται από εμάς· δεν χρειάζεται καμία ρύθμιση από εσένα']
                   : error === 'save' ? ['Δοκίμασε ξανά, τα στοιχεία σου διατηρούνται']
+                  : error === 'quota' ? [errorText || SAY.scanQuotaSpent, 'Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά']
                   : ['Δοκίμασε ξανά σε λίγο', 'Συμπλήρωσε τα πεδία χειροκίνητα'];
                 return (
                   <div style={{ marginTop: 12, background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '12px 16px' }}>

@@ -1,6 +1,7 @@
 'use client';
 
 import BrandMark, { BrandLogo } from '@/components/BrandMark'
+import Typesetter from '@/components/Typesetter';
 import { useNavHistory } from './components/useNavHistory';
 import { heatingLabel } from '@/lib/property/heating';
 import { propertyTypeLabel } from '@/lib/property/types';
@@ -2378,6 +2379,8 @@ export default function Dashboard() {
                 σφάλμα σε μία να μην κρατά κλειδωμένες τις υπόλοιπες. */}
             <TabBoundary name={nav} key={nav}>
             <div className="app-content">
+              {/* Πέρα πέρα, με ενωτικό, σε κάθε παράγραφο της καρτέλας (26.09.2026). */}
+              <Typesetter />
               {/* Ο κανόνας ήταν ήδη γραμμένη αρχή — «η έξοδος είναι πάντα ένα
                   επίπεδο πάνω, δηλαδή η Επισκόπηση» — αλλά εφαρμοζόταν σε πέντε
                   καρτέλες από τις είκοσι δύο, γραμμένες με το χέρι. Δηλαδή στην

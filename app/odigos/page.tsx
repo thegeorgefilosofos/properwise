@@ -10,6 +10,7 @@
 // Είναι και SEO κέρδος: CollectionPage/ItemList που δένει τους τέσσερις οδηγούς
 // σε μία οικογένεια. Server Component, καμία εξάρτηση από 'use client'.
 // ═══════════════════════════════════════════════════════════════════════════
+import { hy } from '@/components/Hyphen';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
@@ -62,9 +63,9 @@ export default function Page() {
         {/* ΧΩΡΙΣ `hy()` ΕΔΩ ΚΑΙ ΣΤΙΣ ΚΑΡΤΕΣ. Το κείμενο στοιχίζεται αριστερά, άρα ο
             συλλαβισμός δεν έχει κενά να κλείσει· στα 1440 έκοβε μόνο λέξεις
             («υπο-λογίζει», «απαλλα-γές») σε γραμμές που χωρούσαν ολόκληρες. */}
-        <p style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--text-secondary)', margin: '0 0 clamp(28px,4vw,40px)', maxWidth: 640, textWrap: 'pretty' }}>
+        <p className="po-just" style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--text-secondary)', margin: '0 0 clamp(28px,4vw,40px)' }}>{hy(<>
           Κάθε κανόνας με τη νομική του βάση και κάθε ποσό με παράδειγμα σε ευρώ. Κάθε οδηγός δένει με τον υπολογισμό που εφαρμόζει τον κανόνα στα δικά σου νούμερα.
-        </p>
+        </>)}</p>
 
         {/* ΚΑΘΕ ΚΑΡΤΑ ΕΧΕΙ ΕΠΙΚΕΦΑΛΙΔΑ ΚΑΙ ΣΥΝΤΟΜΟ ΟΝΟΜΑ ΣΥΝΔΕΣΜΟΥ. Ο τίτλος ήταν
             `<span>`, οπότε η σελίδα είχε μόνο το H1 στο διάγραμμα επικεφαλίδων

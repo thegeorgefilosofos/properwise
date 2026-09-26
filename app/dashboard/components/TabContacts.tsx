@@ -1590,7 +1590,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       const sys = 'Είσαι βοηθός καταχώρησης επαφών για διαχείριση ακινήτων. Από επαγγελματική κάρτα ή τιμολόγιο, εξάγεις τα στοιχεία του επαγγελματία/εταιρείας. Σε τιμολόγιο, κράτα τον ΕΚΔΟΤΗ/προμηθευτή (όχι τον πελάτη). Απάντησε ΜΟΝΟ με έγκυρο JSON χωρίς επεξήγηση, με κλειδιά: full_name (string), role (μία λέξη στα αγγλικά που περιγράφει την ειδικότητα, π.χ. plumber, electrician, accountant, lawyer, notary, hvac· αλλιώς κενό), phone, phone2, email, website, address, afm (μόνο ψηφία), iban, specialty. Ό,τι δεν υπάρχει, κενή συμβολοσειρά.'
       const res = await fetch('/api/anthropic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'scan', model: 'claude-sonnet-5', max_tokens: 900, system: sys, messages: [{ role: 'user', content: [contentPart, { type: 'text', text: 'Εξάγαγε τα στοιχεία επαφής από αυτό το έγγραφο.' }] }] }) })
       const data = await res.json()
-      if (!res.ok || data?.error) { setScanning(false); notifyError('Η σάρωση δεν είναι διαθέσιμη τώρα'); return }
+      if (!res.ok || data?.error) { setScanning(false); notifyError(res.status === 429 && typeof data?.error === 'string' ? data.error : 'Η σάρωση δεν είναι διαθέσιμη τώρα'); return }
       const text = (data.content || []).find((c: { type: string }) => c.type === 'text')?.text || '{}'
       let d: Record<string, string> = {}
       try { d = JSON.parse(text.replace(/```json?|```/g, '').trim()) } catch { setScanning(false); notifyError('Δεν διάβασα καθαρά την κάρτα, δοκίμασε πάλι'); return }

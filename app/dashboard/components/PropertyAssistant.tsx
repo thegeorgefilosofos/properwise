@@ -16,6 +16,7 @@
 // από χρώμα ή βαριές σκιές. Καμία διακόσμηση που δεν κουβαλάει πληροφορία.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { SAY } from '@/lib/core/dbError';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { createClient } from '@/lib/supabase/client';
@@ -57,7 +58,8 @@ import {
   speakingLabel, settingsTitle, noKeyNotice,
 } from '@/lib/assistant/identity';
 import { classifyExpense } from '@/lib/expenses/classify';
-import { assistantLockedMessage } from '@/lib/billing/aiLimits';
+import { assistantLockedMessage, aiLimitsFor } from '@/lib/billing/aiLimits';
+import { PLANS } from '@/lib/billing/plans';
 // Το Supabase δεν πετάει σε σφάλμα βάσης· η `must` το κάνει να πετάει, ώστε τα
 // try/catch αυτού του αρχείου να λένε αλήθεια. Βλ. lib/supabase/must.ts.
 import { must } from '@/lib/supabase/must';
@@ -1395,6 +1397,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
           action: { type: 'commit-doc', label: d.title || d.provider || 'παραστατικό' } }]);
         setBusy(false); return;
       }
+      // Το όριο των σαρώσεων δεν λύνεται με δεύτερη κλήση: λέγεται και σταματά εδώ.
+      if (scan.error === 'quota') {
+        setMsgs(m => [...m, { role: 'assistant', text: scan.errorText || SAY.scanQuotaSpent }]);
+        setBusy(false); return;
+      }
     } catch { /* πέφτουμε στην αναγνώριση αντικειμένου παρακάτω */ }
 
     // ── 2) Δεν είναι χαρτί: τι αντικείμενο δείχνει; ────────────────────────
@@ -1406,13 +1413,15 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       const res = await fetch('/api/anthropic', {
         method: 'POST', signal: ctrl.signal,
         headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
-        body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 500, system: IMG_ITEM_SCAN_SYSTEM,
+        // ΣΑΡΩΣΗ, ΟΧΙ ΕΡΩΤΗΣΗ: η ίδια φωτογραφία με το βήμα 1, άρα ο διακομιστής
+        // τη μετρά μία φορά (route.tsx, scanKey) και δεν τρώει ερώτηση της Νόας.
+        body: JSON.stringify({ kind: 'scan', model: 'claude-sonnet-5', max_tokens: 500, system: IMG_ITEM_SCAN_SYSTEM,
           messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: file.type || 'image/jpeg', data: b64 } }, { type: 'text', text: 'Διάβασε το αντικείμενο/συσκευή από τη φωτογραφία.' }] }] }),
       });
       clearTimeout(timer);
       readQuota(res);
       const data = await res.json();
-      if (!res.ok || data?.error) { setMsgs(m => [...m, { role: 'assistant', text: 'Δεν μπόρεσα να διαβάσω τη φωτογραφία τώρα. Δοκίμασε ξανά ή πες μου τα στοιχεία.' }]); setBusy(false); return; }
+      if (!res.ok || data?.error) { setMsgs(m => [...m, { role: 'assistant', text: res.status === 429 && typeof data?.error === 'string' ? data.error : 'Δεν μπόρεσα να διαβάσω τη φωτογραφία τώρα. Δοκίμασε ξανά ή πες μου τα στοιχεία.' }]); setBusy(false); return; }
       const txt: string = data?.content?.find((c: { type: string }) => c.type === 'text')?.text || '{}';
       let d: Record<string, string> = {};
       try { d = JSON.parse(txt.replace(/```json?|```/g, '').trim()); } catch { /* ignore */ }
@@ -1734,6 +1743,20 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                         τέσσερις γραμμές μέσα σε πάνελ 390 και πέντε στα 288 του
                         κινητού, με ριγμένη δεξιά άκρη. Η στοίχιση ΧΩΡΙΣ συλλαβισμό
                         τεντώνει τα κενά, γι' αυτό η po-just πάει πάντα μαζί με hy(). */}
+                    {/* ΤΟ ΔΩΡΕΑΝ ΠΑΚΕΤΟ ΤΟ ΜΑΘΑΙΝΕΙ ΠΡΙΝ ΡΩΤΗΣΕΙ. Ο χρήστης του «Ιδιοκτήτη»
+                        βλέπει τι είναι η Νόα, πόσο κοστίζει και πού ενεργοποιείται,
+                        αντί να το ανακαλύψει γράφοντας μια ερώτηση που δεν θα απαντηθεί. */}
+                    {assistantLocked && (
+                      <div style={{ padding: '14px 16px', borderRadius: T.radius.inner, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--accent)' }}>{`Πακέτο «${PLANS.solo.name}»`}</div>
+                        {/* Η ΤΙΜΗ ΣΕ ΔΙΚΗ ΤΗΣ ΓΡΑΜΜΗ. Μέσα στην πρόταση, «4,99€» και «30» είναι
+                            λέξεις που δεν κόβονται και σε πάνελ 300 εικονοστοιχείων η στοίχιση
+                            άνοιγε τρύπες γύρω τους. */}
+                        <p style={{ ...TT.body, fontSize: 14, lineHeight: 1.55, margin: 0 }}>{hy(`${ASSISTANT_NAME} απαντά με τα δικά σου νούμερα, διαβάζει λογαριασμούς και σου θυμίζει προθεσμίες.`)}</p>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{`${fe(PLANS.solo.priceMonthly)} τον μήνα · ${aiLimitsFor('solo').perMonth} ερωτήσεις`}</div>
+                        <div><Btn variant="primary" onClick={() => onNavigate('settings')}>Δες το πακέτο</Btn></div>
+                      </div>
+                    )}
                     <p className="po-just" style={{ ...TT.body, fontSize: 14, lineHeight: 1.6, margin: 0, maxWidth: '36ch' }}>{hy(greeting)}</p>
                     <div>
                       <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 6 }}>{prefs.formal ? 'Ρωτήστε κάτι δικό σας' : 'Ρώτα κάτι δικό σου'}</div>

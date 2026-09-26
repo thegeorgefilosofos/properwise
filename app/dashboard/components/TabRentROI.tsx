@@ -21,7 +21,7 @@ import { useChartWidth } from '@/app/hooks/useChartWidth'
 import { businessFormOf } from '@/lib/accounting/taxProfile'
 import type { LegalForm as DossierLegalForm } from '@/lib/accounting/dossier'
 import { Skeleton, SkeletonKPIs, PageTitle, fe, feCompact, fp, fn, ABSENT, ABSENT_SHORT, T, fixedCols, Bar, Tile, widestOf, Stat, Btn } from '@/components/Theme';
-import { NumberInput, CustomSelect, fieldLabelStyle, SegmentControl, Toggle as Switch } from './UIComponents';
+import { NumberInput, CustomSelect, fieldLabelStyle, SegmentControl, Toggle as Switch, TOGGLE } from './UIComponents';
 import { ChevronRight, TrendingUp, Landmark, Percent, Wallet, Layers, ArrowUpRight, Info, ShieldCheck } from 'lucide-react';
 import { yields, compound, leverage, compareInvestments, propertyTotalReturn, projectLine, yieldGrade, dealAnalysis, type LeverageResult, type YieldGrade } from '@/lib/market/returns';
 import { shortTermEstimate, breakEvenOccupancy, adrReference, MAX_ST_GROSS_YIELD_WARN } from '@/lib/market/shortTerm';
@@ -539,8 +539,10 @@ const g4box = fixedCols(4, 12, 'stretch', 'fc-xs-2');
 //
 // Η ΠΕΡΙΓΡΑΦΗ ΜΕΝΕΙ, γιατί εδώ ο διακόπτης αλλάζει ΦΟΡΟ: χωρίς την επεξήγηση
 // του κανόνα, ο χρήστης πατά κάτι που μετακινεί νούμερα και δεν ξέρει γιατί.
-// Η εσοχή είναι το πλάτος του διακόπτη συν το κενό του (36 + 12), ώστε το
-// κείμενο να ευθυγραμμίζεται με την ετικέτα από πάνω του.
+// Η εσοχή είναι το πλάτος του διακόπτη συν το κενό του, ΔΙΑΒΑΣΜΕΝΑ από το
+// TOGGLE: ήταν καρφωμένα 48 (36 + 12) από όταν ο διακόπτης είχε πλάτος 36 και
+// μετά που μεγάλωσε στα 52 η σημείωση ξεκινούσε 16px αριστερότερα από την
+// ετικέτα της (φωτογραφημένο, 26.09.2026).
 function Toggle({ checked, onChange, label, note }: { checked: boolean; onChange: (v: boolean) => void; label: string; note: string }) {
   return (
     <div>
@@ -548,7 +550,7 @@ function Toggle({ checked, onChange, label, note }: { checked: boolean; onChange
       {/* ΜΑΚΡΙΑ ΓΡΑΜΜΗ, ΠΕΡΙΣΣΟΤΕΡΟΣ ΑΕΡΑΣ. Χωρίς όριο πλάτους η σημείωση πιάνει
           όλη την κάρτα και φτάνει τους 103 χαρακτήρες ανά γραμμή στα 820: το
           1,5 του ύψους γραμμής άφηνε το μάτι να χάνει τη σειρά στην επιστροφή. */}
-      <p style={{ margin: '4px 0 0 48px', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.7 }}>{note}</p>
+      <p style={{ margin: `4px 0 0 ${TOGGLE.w + 12}px`, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.7 }}>{note}</p>
     </div>
   );
 }
@@ -2056,7 +2058,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                     Μένουν οι τρεις προτάσεις που δεν λέγονται πουθενά αλλού: το
                     κατώφλι της επιχειρηματικής δραστηριότητας, ο Αριθμός
                     Μητρώου Ακινήτων και το ποιος επιβεβαιώνει τα τελικά. */}
-                <p style={{ margin: '10px 0 0', maxWidth: '72ch', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.55 }}>
+                <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.6 }}>
                   {individualPerson ? 'Όταν η δραστηριότητα ξεπεράσει τα όρια (πολλά ακίνητα ή παροχή υπηρεσιών ξενοδοχειακού τύπου), θεωρείται επιχειρηματική και υπάγεται σε ΦΠΑ και στην κλίμακα του άρθρου 15· είναι θέμα του λογιστή.' : 'Ως νομικό πρόσωπο, τα έσοδα υπάγονται σε ΦΠΑ και εταιρική φορολογία, ενώ τα τέλη εκπίπτουν ως δαπάνες.'} Κάθε ακίνητο χρειάζεται Αριθμό Μητρώου Ακινήτων σε κάθε αγγελία. Οι τελικές υποχρεώσεις επιβεβαιώνονται με τον λογιστή ή την ΑΑΔΕ.
                 </p>
               </div>
@@ -2136,7 +2138,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               {/* Μία σειρά. Το `flexWrap` μένει ως δίχτυ για πολύ στενή οθόνη ή
                   για τη ρύθμιση «μεγαλύτερο κείμενο» — δεν είναι η κανονική
                   κατάσταση, είναι η υποχώρηση. */}
-              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', columnGap: 14, rowGap: 0, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
                 {/* ΜΕΤΡΗΜΕΝΟΙ ΣΤΑ 17. Τέσσερις σύνδεσμοι σε γραμμή 11 στιγμών,
                     δηλαδή τέσσερις στόχοι αφής στο 39% του ορίου των 44. Η
                     κλάση δίνει το ύψος ΜΟΝΟ στο δάχτυλο· στο ποντίκι η γραμμή

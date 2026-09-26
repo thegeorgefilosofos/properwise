@@ -17,6 +17,7 @@ import { T } from '@/components/tokens';
 import { SectionHead, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
 import { TocSpy } from '../TocSpy';
+import { hy } from '@/components/Hyphen';
 import { GUIDES, guideShareImageUrl, type Guide } from './guides';
 
 const HUB = { href: '/odigos', label: 'Οδηγοί' } as const;
@@ -50,7 +51,11 @@ export function GuideMain({ children, rail }: { children: ReactNode; rail?: Guid
         {rail && <GuideRail {...rail} />}
         <div className="gd">
           <BackLink parent={HUB} />
-          {children}
+          {/* ΟΛΟ ΤΟ ΣΩΜΑ ΣΥΛΛΑΒΙΖΕΤΑΙ ΕΔΩ, ΜΙΑ ΦΟΡΑ. Οι παράγραφοι του οδηγού
+              στοιχίζονται πέρα πέρα (globals.css, «ΟΔΗΓΟΙ») και αυτό στέκει
+              ΜΟΝΟ με μαλακά ενωτικά από κάτω. Επικεφαλίδες, κουμπιά και πίνακες
+              μένουν ακέραια (components/Hyphen.tsx, NO_HY). */}
+          {hy(children)}
         </div>
       </div>
     </main>
@@ -158,7 +163,7 @@ export function GuideSources({ over, sources }: { over: string; sources: string[
       <GuideH2 id={SOURCES_SECTION.id} over={over} title={SOURCES_SECTION.title} />
       <div className="po-tool-sources" aria-label={SOURCES_SECTION.title} style={{ display: 'block' }}>
         <ul className="lg-ul">
-          {sources.map((s, i) => <li key={i}>{s}</li>)}
+          {sources.map((s, i) => <li key={i}>{hy(s)}</li>)}
         </ul>
       </div>
     </>
@@ -267,7 +272,7 @@ export function RelatedGuides({ current }: { current: Guide }) {
         {GUIDES.filter(g => g.href !== current.href).map(g => (
           <li key={g.href}>
             <Link href={g.href} className="lp-link" style={LINK_STYLE}>{g.title}</Link>
-            {`: ${g.desc}`}
+            {hy(`: ${g.desc}`)}
           </li>
         ))}
       </ul>

@@ -123,6 +123,8 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
       })})
       clearTimeout(timer)
       const data=await res.json()
+      // Το όριο των σαρώσεων δεν είναι βλάβη: λέγεται, αλλιώς ο χρήστης ξαναπροσπαθεί στα τυφλά.
+      if(res.status===429&&typeof data?.error==='string') notifyError(data.error)
       if(res.ok&&!data?.error){
         const txt=(data.content||[]).find((c:{type:string})=>c.type==='text')?.text||'{}'
         const d=JSON.parse(txt.replace(/```json?|```/g,'').trim()) as Record<string,string>

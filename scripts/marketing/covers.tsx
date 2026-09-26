@@ -90,7 +90,7 @@ const COVERS = [
 (async () => {
   mkdirSync(OUT, { recursive: true });
   for (const c of COVERS) {
-    const img = ogBanner({ width: c.width, height: c.height, title: 'Το ακίνητό σου,', accent: 'χωρίς χαρτιά στο συρτάρι.', sub: 'properwise.gr' });
+    const img = ogBanner({ width: c.width, height: c.height, title: 'Το ακίνητό σου,', accent: 'χωρίς χαρτιά στο συρτάρι.', sub: 'Δωρεάν για ένα ακίνητο · properwise.gr' });
     writeFileSync(join(OUT, c.file), Buffer.from(await img.arrayBuffer()));
     console.log(`✓ ${c.file} ${c.width}×${c.height}`);
   }

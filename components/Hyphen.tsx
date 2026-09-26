@@ -40,11 +40,25 @@ import { hyphenate } from '@/lib/core/hyphenate';
  * λεκτικά σε μία ματιά, σε πίνακα που διαβάζεται κάθετα. Το κελί τυλίγεται στα
  * κενά του και μένει ακέραιο.
  */
+/**
+ * ΟΣΑ ΔΕΝ ΣΥΛΛΑΒΙΖΟΝΤΑΙ ΠΟΤΕ. Ο πίνακας για τον λόγο που λέει το σχόλιο
+ * από πάνω. Οι επικεφαλίδες και τα κουμπιά επειδή δεν στοιχίζονται πέρα πέρα:
+ * εκεί ο συλλαβισμός δεν κλείνει κενά, μόνο κόβει τη λέξη που διαβάζεται
+ * πρώτη («Υπολο-γισμός» σε τίτλο είναι ατύχημα, όχι τυπογραφία). Ετσι το
+ * `hy()` μπορεί να τυλίξει ΟΛΟ το σώμα μιας σελίδας με μία κλήση.
+ */
+const NO_HY = new Set(['table', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'button', 'label', 'summary', 'code', 'pre', 'time', 'input', 'select', 'textarea']);
+
 export function hy(node: ReactNode): ReactNode {
   if (typeof node === 'string') return hyphenate(node);
   if (Array.isArray(node)) return node.map((n, i) => <Fragment key={i}>{hy(n)}</Fragment>);
   if (isValidElement(node)) {
-    if (node.type === 'table') return node;
+    if (typeof node.type === 'string' && NO_HY.has(node.type)) return node;
+    // Κουμπί που είναι σύνδεσμος (Link με κλάση lp-cta/btn) ή ό,τι δηλώσει
+    // `data-nohy`: ετικέτα, όχι παράγραφος. Δεν στοιχίζεται, άρα δεν συλλαβίζεται.
+    const props = node.props as { className?: unknown; 'data-nohy'?: unknown };
+    if (props['data-nohy'] !== undefined) return node;
+    if (typeof props.className === 'string' && /\b(lp-cta|btn|gd-rail-cta)\b/.test(props.className)) return node;
     const kids = (node.props as { children?: ReactNode }).children;
     return kids === undefined ? node : cloneElement(node, undefined, hy(kids));
   }
