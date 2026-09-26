@@ -31,7 +31,7 @@ import { useEffect } from 'react';
 import { hyphenate } from '@/lib/core/hyphenate';
 
 const MIN_CHARS = 48;
-const MIN_CPL = 34;
+const MIN_CPL = 44;
 const WIDE_CPL = 60;
 const SHY = /­/g;
 const SKIP = 'h1,h2,h3,h4,h5,h6,button,label,input,textarea,select,option,code,pre,svg,th,summary,[contenteditable],[data-nohy],[role="button"],[role="tab"],[role="menuitem"],.num';
@@ -48,7 +48,8 @@ function isProse(el: HTMLElement): boolean {
   // («505,51€») είναι λέξη που δεν κόβεται και η στοίχιση άνοιγε τα κενά σε
   // τρύπες. Πολύ στενό μέτρο δεν στοιχίζεται ποτέ· κείμενο κάτω από τρεις
   // γραμμές στοιχίζεται μόνο σε φαρδύ μέτρο. Η παράγραφος του κινητού (τρεις
-  // γραμμές και πάνω, 45 χαρακτήρες) στοιχίζεται κανονικά.
+  // γραμμές και πάνω, 46 ως 53 χαρακτήρες) στοιχίζεται κανονικά· η κάρτα στο
+  // πάνελ της Νόας (41) μένει αριστερά.
   const fs = parseFloat(cs.fontSize);
   const cpl = el.clientWidth / (fs * 0.52);
   const lines = Math.round(el.clientHeight / (parseFloat(cs.lineHeight) || fs * 1.5));

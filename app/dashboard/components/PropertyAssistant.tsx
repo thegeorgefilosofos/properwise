@@ -1749,7 +1749,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     {assistantLocked && (
                       <div style={{ padding: '14px 16px', borderRadius: T.radius.inner, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--accent)' }}>{`Πακέτο «${PLANS.solo.name}»`}</div>
-                        <p className="po-just" style={{ ...TT.body, fontSize: 14, lineHeight: 1.55, margin: 0 }}>{hy(`${ASSISTANT_NAME} απαντά με τα δικά σου νούμερα, διαβάζει λογαριασμούς και σου θυμίζει προθεσμίες. ${fe(PLANS.solo.priceMonthly)} τον μήνα, με ${aiLimitsFor('solo').perMonth} ερωτήσεις.`)}</p>
+                        {/* Η ΤΙΜΗ ΣΕ ΔΙΚΗ ΤΗΣ ΓΡΑΜΜΗ. Μέσα στην πρόταση, «4,99€» και «30» είναι
+                            λέξεις που δεν κόβονται και σε πάνελ 300 εικονοστοιχείων η στοίχιση
+                            άνοιγε τρύπες γύρω τους. */}
+                        <p style={{ ...TT.body, fontSize: 14, lineHeight: 1.55, margin: 0 }}>{hy(`${ASSISTANT_NAME} απαντά με τα δικά σου νούμερα, διαβάζει λογαριασμούς και σου θυμίζει προθεσμίες.`)}</p>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{`${fe(PLANS.solo.priceMonthly)} τον μήνα · ${aiLimitsFor('solo').perMonth} ερωτήσεις`}</div>
                         <div><Btn variant="primary" onClick={() => onNavigate('settings')}>Δες το πακέτο</Btn></div>
                       </div>
                     )}
