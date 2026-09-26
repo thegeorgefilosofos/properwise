@@ -28,6 +28,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { T } from '@/components/tokens';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
+import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
 
 /**
@@ -91,7 +92,7 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
           <span className="lp-hide-xs">Σύνδεση</span><span className="lp-only-xs">Είσοδος</span>
         </Link>
         <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 16px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
-          <span className="lp-hide-xs">Ξεκίνα τη δοκιμή</span><span className="lp-only-xs">Δοκιμή</span>
+          <span className="lp-hide-xs">Ξεκίνα δωρεάν</span><span className="lp-only-xs">Ξεκίνα</span>
         </Link>
       </>) : signedIn}
     </div>
@@ -163,7 +164,7 @@ export function PublicFooter() {
           {/* Τα πακέτα οδηγούν στη σελίδα που τα αναλύει γραμμή προς γραμμή: η
               ενότητα τιμών της αρχικής απέχει ένα κύλισμα, το /paketa δεν είχε
               καμία είσοδο από τη δημόσια πλευρά. */}
-          <FootCol label="Προϊόν" links={[['/', 'Αρχική'], ['/signup', 'Ξεκίνα τη δοκιμή'], ['/paketa', 'Πακέτα και τιμές'], ['/#faq', 'Συχνές ερωτήσεις']]} />
+          <FootCol label="Προϊόν" links={[['/', 'Αρχική'], ['/signup', 'Ξεκίνα δωρεάν'], ['/paketa', 'Πακέτα και τιμές'], ['/#faq', 'Συχνές ερωτήσεις']]} />
           {/* Υπολογισμοί χωρίς εγγραφή: απαντούν «πόσο» πριν μας γνωρίσει κανείς. */}
           <FootCol label="Υπολογισμοί" links={[['/ypologismos-enfia', 'ΕΝΦΙΑ'], ['/ypologismos-forou-enoikion', 'Φορολογία ενοικίων'], ['/kathari-apodosi', 'Καθαρή απόδοση'], ['/vraxyxronia-i-makroxronia', 'Βραχυχρόνια ή μακροχρόνια']]} />
           {/* ΟΙ ΟΔΗΓΟΙ ΘΕΛΟΥΝ ΔΙΚΗ ΤΟΥΣ ΣΤΗΛΗ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΚΑΘΕΝΟΣ. Ενας
@@ -238,7 +239,7 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
 
 /** Η φράση της δοκιμής, μία φορά για όλα τα εργαλεία. */
 // Χωρίς γυμνό «δωρεάν»: η λέξη ανήκει μόνο στη σταθερή φράση των υπολογιστών.
-export const TRIAL_LINE = `Δοκιμή ${TRIAL_DAYS} ημερών, χωρίς χρέωση.`;
+export const TRIAL_LINE = `Δωρεάν για ένα ακίνητο, με ${ASSISTANT_ACC} τις πρώτες ${TRIAL_DAYS} ημέρες.`;
 
 /**
  * Η ΕΠΙΦΥΛΑΞΗ ΠΟΥ ΚΛΕΙΝΕΙ ΚΑΘΕ ΥΠΟΛΟΓΙΣΜΟ.
@@ -401,7 +402,7 @@ export function ToolCta({ title, body }: { title: string; body: ReactNode }) {
         borderRadius: T.radius.pill, fontSize: 14, fontWeight: 700,
         textDecoration: 'none', whiteSpace: 'nowrap',
       }}>
-        Ξεκίνα τη δοκιμή
+        Ξεκίνα δωρεάν
       </Link>
     </div>
   );

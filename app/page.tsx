@@ -758,10 +758,12 @@ export default async function Landing() {
         @keyframes lpProgress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
         @media (prefers-reduced-motion: reduce) { .lp-readbar { display: none; } }
 
+        ${/* Η ΓΡΑΜΜΗ ΤΕΛΕΙΩΝΕΙ ΕΚΕΙ ΠΟΥ ΤΕΛΕΙΩΝΕΙ Η ΣΤΗΛΗ. Έσβηνε σε διαφάνεια
+           από τη μέση και πάνω, οπότε στο μάτι σταματούσε στα δύο τρίτα, ενώ
+           ο τίτλος, οι κάρτες και τα ψιλά από κάτω της φτάνουν ως την άκρη. */''}
         .lp-hair {
           height: 1px; border: 0; margin: 0 0 clamp(18px, 2.4vw, 28px);
-          background: linear-gradient(90deg,
-            var(--border-default) 0%, var(--border-subtle) 42%, transparent 100%);
+          background: var(--border-subtle);
         }
         ${/* ═══ ΖΥΓΙΣΗ ΚΕΙΜΕΝΟΥ: ΔΥΟ ΡΟΛΟΙ, ΔΥΟ ΣΥΜΠΕΡΙΦΟΡΕΣ ══════════════════
            Το λάθος είναι να τους μπερδέψεις και η σελίδα τους είχε μπερδέψει
@@ -1205,7 +1207,7 @@ export default async function Landing() {
             ελληνικά και απαντά με{' '}
             <em style={{ fontStyle: 'normal', color: 'var(--text-primary)', fontWeight: 600 }}>τα δικά σου</em> δεδομένα.
           </p>
-          <div className="lp-rise-3" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {loggedIn ? (
               <Link href="/dashboard" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>Άνοιξε τον πίνακά σου</Link>
             ) : (<>
@@ -1218,11 +1220,14 @@ export default async function Landing() {
               δέσμευση». Κάθε στοιχείο κρατιέται ολόκληρο και τυλίγει μόνο στις
               τελείες. Το μεσαίο το λέει το billingWords: το αν ζητείται κάρτα
               αλλάζει με την κατάσταση της χρέωσης. */}
-          <div className="lp-rise-4" style={{ marginTop: T.sp.xl, fontSize: 13, color: 'var(--text-tertiary)' }}>
-            <span style={{ whiteSpace: 'nowrap' }}>Δωρεάν για ένα ακίνητο</span> ·{' '}
-            <span style={{ whiteSpace: 'nowrap' }}>{TRIAL_DAYS} ημέρες δοκιμή</span> ·{' '}
-            <span style={{ whiteSpace: 'nowrap' }}>{billingWords().trialCard}</span>
-          </div>
+          {/* ΣΗΜΑΔΙ ΑΝΤΙ ΓΙΑ ΤΕΛΕΙΑ. Με τελείες ανάμεσα, στα 390 η γραμμή έσπαγε
+              και η τελεία κρεμόταν στο τέλος της πρώτης σειράς. Κάθε στοιχείο έχει
+              το σημάδι του και τυλίγει ολόκληρο. */}
+          <ul className="lp-rise-4 lp-facts" aria-label="Χωρίς ρίσκο">
+            <li>Δωρεάν για ένα ακίνητο</li>
+            <li>Δοκιμή {TRIAL_DAYS} ημερών με {ASSISTANT_ACC}</li>
+            <li>{billingWords().freeCard}</li>
+          </ul>
 
           <LandingShowcase />
         </div>
@@ -1492,27 +1497,19 @@ export default async function Landing() {
             Η ΣΚΑΛΑ ΕΙΝΑΙ ΡΗΤΗ. Κάθε πακέτο λέει «Περιλαμβάνει ό,τι έχει το
             προηγούμενο και:» — και η κληρονομιά ΔΕΝ ξαναγράφεται μέσα στα
             χαρακτηριστικά, όπου πριν εμφανιζόταν άτακτα σε δύο από τα τέσσερα. */}
-        {/* ═══ ΠΟΥ ΒΡΙΣΚΕΤΑΙ Ο ΒΟΗΘΟΣ, ΠΑΝΩ ΑΠΟ ΤΗ ΣΚΑΛΑ ═══════════════════════
-            Μία γραμμή που λέει την τιμή του και ότι το δωρεάν πακέτο είναι χωρίς
-            αυτόν. Την ιστορία του την λέει η ενότητα ακριβώς από πάνω (NoaFeature);
-            εδώ μένει μόνο ό,τι χρειάζεται δίπλα στις τιμές. */}
+        {/* Η ΛΩΡΙΔΑ ΤΗΣ ΝΟΑΣ ΠΑΝΩ ΑΠΟ ΤΗ ΣΚΑΛΑ ΕΦΥΓΕ. Έλεγε ξανά την τιμή που λέει η
+            ενότητα ακριβώς από πάνω (NoaFeature) και ο διακόπτης της πρώτης κάρτας:
+            τρεις φορές το ίδιο σε μία οθόνη είναι θόρυβος, όχι έμφαση. */}
         {/* ΟΣΟ ΔΕΝ ΑΓΟΡΑΖΕΤΑΙ ΤΙΠΟΤΑ, ΤΟ ΛΕΜΕ ΠΑΝΩ ΑΠΟ ΤΙΣ ΤΙΜΕΣ. Τέσσερις τιμές,
             «Προτεινόμενο» και σύνδεσμοι για ετήσια συνδρομή διαβάζονται ως
             «αγόρασέ το τώρα»· το ότι η χρέωση δεν έχει ανοίξει καθόταν στη μέση
             πέντε γραμμών ψιλών γραμμάτων από κάτω τους. Η διατύπωση ζει στο
             billingWords και σβήνει μόνη της τη μέρα που ανοίγει το ταμείο. */}
         {pricingNotice && (
-          <div role="note" style={{ padding: '14px 16px', marginBottom: 10, borderRadius: T.radius.popup, background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)', fontSize: 14, lineHeight: 1.55, color: MUTED }}>
+          <div role="note" style={{ padding: '14px 16px', marginBottom: 16, borderRadius: T.radius.popup, background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)', fontSize: 14, lineHeight: 1.55, color: MUTED }}>
             <strong style={{ color: TEXT, fontWeight: 680 }}>{pricingNotice.title}</strong>{' '}{pricingNotice.body}
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '13px 16px', marginBottom: 14, borderRadius: T.radius.popup, background: PANEL, border: `1px solid ${LINE}` }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--accent-dim)', color: ACCENT, flexShrink: 0 }}>
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12" /><path d="M8.5 12h.01M12 12h.01M15.5 12h.01" /></svg>
-          </span>
-          <span style={{ fontSize: 14, fontWeight: 680, color: TEXT }}>{ASSISTANT_NAME}, ο ψηφιακός βοηθός, από {fe(PLANS.solo.priceMonthly)} τον μήνα</span>
-          <span style={{ fontSize: 14, color: MUTED }}>Ο «{PLANS.free.name}» είναι δωρεάν χωρίς αυτήν· τα μεγαλύτερα πακέτα την περιλαμβάνουν.</span>
-        </div>
         <div className="lp-plans" style={{ display: 'grid', gridTemplateColumns: `repeat(${LANDING_PLANS.length}, minmax(0, 1fr))`, gap: 12, alignItems: 'stretch' }}>
           {LANDING_PLANS.map((id, i) => {
             if (id === 'solo') return <OwnerPlanCard key={id} billingLive={billingLive} />;
@@ -1696,7 +1693,7 @@ export default async function Landing() {
         <div className="lp-aurora" aria-hidden="true" />
         <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP_ACT, paddingBottom: GAP_ACT }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
-          <p className="po-just-c" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 620, margin: '0 auto 30px' }}>Φωτογράφισε το πρώτο σου έγγραφο. Δωρεάν για ένα ακίνητο, με {TRIAL_DAYS} ημέρες δοκιμής για όλα τα υπόλοιπα.</p>
+          <p className="po-just-c" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 620, margin: '0 auto 30px' }}>Φωτογράφισε το πρώτο σου έγγραφο. Δωρεάν για ένα ακίνητο, με {ASSISTANT_ACC} τις πρώτες {TRIAL_DAYS} ημέρες.</p>
           <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : 'Ξεκίνα δωρεάν'}</Link>
         </div>
       </section>
@@ -1859,7 +1856,7 @@ function NoaFeature() {
               <span className="nf-amount">{fe(noa.priceMonthly)}</span>
               <span className="nf-per">τον μήνα</span>
             </div>
-            <div className="nf-terms">{ai.perMonth} ερωτήσεις τον μήνα · σάρωση χωρίς όριο · {TRIAL_DAYS} ημέρες δοκιμή</div>
+            <div className="nf-terms">{ai.perMonth} ερωτήσεις τον μήνα · σάρωση χωρίς όριο · δοκιμή {TRIAL_DAYS} ημερών</div>
           </div>
           <div className="nf-cta">
             <Link href="/signup?plan=solo&cycle=monthly" className="lp-cta lp-primary lp-press" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px 24px', borderRadius: T.radius.pill }}>Δοκίμασε {ASSISTANT_ACC}</Link>
@@ -1959,11 +1956,11 @@ function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
         </div>
       </div>
       <div className="pc-off">
-        {price(fe(0), 'χωρίς συνδρομή')}
+        {/* Στη διαφήμιση το μηδέν γράφεται «0€»: δεκαδικά σε μηδέν διαβάζονται ως λογιστικό φύλλο. */}
+        {price('0€', 'χωρίς συνδρομή')}
         <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>Ένα ακίνητο, όλα τα φορολογικά</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', margin: '14px 0 16px' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: FAINT }}>{bubble}<span className="lp-even" style={{ fontSize: 13.5, lineHeight: 1.45 }}>Χωρίς ψηφιακό βοηθό</span></div>
           {[...shared, freeScan].map(line)}
         </div>
         {cta('/signup', 'Ξεκίνα δωρεάν')}

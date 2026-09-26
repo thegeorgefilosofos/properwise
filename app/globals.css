@@ -6027,3 +6027,23 @@ tr.po-row-more { display: none; }
    φτάνει τους 130 χαρακτήρες· το μάτι χάνει την αρχή της επόμενης αν το
    διάστιχο μείνει 1,5 (e2e-layout: «ΜΑΚΡΙΑ ΓΡΑΜΜΗ ΧΩΡΙΣ ΑΕΡΑ»). Το 1,65 είναι
    το διάστιχο του βιβλίου με φαρδιά σελίδα και κρατά τη στοίχιση ως την άκρη. */
+
+/* ═══ ΤΑ ΤΡΙΑ ΓΕΓΟΝΟΤΑ ΚΑΤΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ ΤΟΥ HERO ═════════════════════════
+   Σημάδι πριν από κάθε στοιχείο, όχι τελεία ανάμεσα: με τελείες η γραμμή έσπαγε
+   στα 390 και η τελεία κρεμόταν στο τέλος της πρώτης σειράς. */
+.lp-facts {
+  list-style: none; margin: 20px auto 0; padding: 0; display: flex; flex-wrap: wrap;
+  justify-content: center; column-gap: 18px; row-gap: 6px; font-size: 13px; color: var(--text-tertiary);
+}
+.lp-facts li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.lp-facts li::before {
+  content: ''; width: 12px; height: 12px; flex: none; background: var(--accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* ΔΥΟ ΚΟΥΜΠΙΑ ΤΟ ΕΝΑ ΚΑΤΩ ΑΠΟ ΤΟ ΑΛΛΟ, ΙΣΑ. Στο κινητό στοιβάζονταν με το
+   πλάτος του κειμένου τους (170 και 184) και διαβάζονταν ως δύο άσχετα πράγματα. */
+@media (max-width: 480px) {
+  .lp-hero-ctas { flex-direction: column; align-items: stretch; max-width: 320px; margin-inline: auto; }
+  .lp-hero-ctas > a { text-align: center; }
+}

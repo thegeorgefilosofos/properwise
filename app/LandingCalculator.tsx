@@ -212,7 +212,7 @@ export default function LandingCalculator() {
           {hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων 2026 (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
-          Ξεκίνα τη δοκιμή με το ακίνητό σου
+          Ξεκίνα δωρεάν με το ακίνητό σου
         </Link>
       </div>
     </div>
