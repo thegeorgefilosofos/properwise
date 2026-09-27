@@ -33,23 +33,24 @@ const mark = (size: number, fill: string) => (
   </svg>
 );
 
-type OgBanner = { width: number; height: number; title: string; accent?: string; sub?: string; lift?: number };
+// Ο τίτλος της αρχικής σελίδας (app/page.tsx), σε δύο γραμμές όπως εκεί: το
+// εξώφυλλο λέει το ίδιο με το site, όχι δεύτερη ατάκα που δεν υπάρχει πουθενά.
+type Line = { text: string; accent?: string };
+type OgBanner = { width: number; height: number; lines: Line[]; sub?: string; lift?: number };
 
 /**
- * Το εξώφυλλο προφίλ (LinkedIn, Facebook, X): ίδιο φόντο και ίδια γραφή με την
- * κάρτα, χωρίς σήμα. Τη θέση του σήματος την παίρνει η εικόνα του προφίλ, που
- * κάθε πλατφόρμα κολλά πάνω στο εξώφυλλο κάτω αριστερά· γι' αυτό το κείμενο
+ * Το εξώφυλλο προφίλ (LinkedIn, Facebook, X, Creem): ίδιο φόντο και ίδια γραφή
+ * με την κάρτα, χωρίς σήμα. Τη θέση του σήματος την παίρνει η εικόνα του
+ * προφίλ, που κάθε πλατφόρμα κολλά πάνω στο εξώφυλλο· γι' αυτό το κείμενο
  * κάθεται στο κέντρο, εκεί που καμία πλατφόρμα δεν το κόβει στο κινητό.
  */
-function ogBanner({ width, height, title, accent, sub, lift = 0 }: OgBanner) {
+function ogBanner({ width, height, lines, sub, lift = 0 }: OgBanner) {
   const { fonts, c } = assets();
   const alpha = (hex: string, a: string) => `${hex}${a}`;
-  // Από το ύψος ΚΑΙ από το πλάτος: το Facebook κόβει τα πλάγια στο κινητό, οπότε
-  // σε ψηλό εξώφυλλο η φράση πρέπει να μένει στο μεσαίο μισό.
-  const stacked = width / height < 3.5;
-  // Σε πλαίσιο πιο ψηλό από του LinkedIn το ύψος θα φούσκωνε τη φράση ως τις
-  // άκρες· με `lift` (Creem) κρατά την αναλογία του LinkedIn, 70% του πλάτους.
-  const size = Math.round(Math.min(height * (stacked ? 0.15 : 0.2), width * (stacked ? 0.055 : lift ? 0.0337 : 0.042)));
+  // Η μακρύτερη γραμμή πιάνει περίπου το 70% του πλάτους (0,039 του πλάτους ανά
+  // στιγμή γραμμάτων για ~33 χαρακτήρες) και οι δύο γραμμές μαζί με τον
+  // υπότιτλο χωρούν στο ύψος, όσο στενό κι αν είναι το πλαίσιο.
+  const size = Math.round(Math.min(height * 0.15, width * 0.039));
   return new ImageResponse(
     (
       <div
@@ -57,7 +58,7 @@ function ogBanner({ width, height, title, accent, sub, lift = 0 }: OgBanner) {
           width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center', gap: Math.round(height * 0.05),
           // Το Creem κολλά την εικόνα του προφίλ κάτω ΣΤΟ ΚΕΝΤΡΟ, όχι αριστερά:
-          // εκεί το κείμενο ανεβαίνει, για να μη σκεπαστεί η δεύτερη γραμμή.
+          // εκεί το κείμενο ανεβαίνει, για να μη σκεπαστεί ο υπότιτλος.
           paddingBottom: Math.round(height * lift),
           fontFamily: 'Inter', color: c.text, backgroundColor: c.bg,
           backgroundImage: [
@@ -70,18 +71,25 @@ function ogBanner({ width, height, title, accent, sub, lift = 0 }: OgBanner) {
         <div style={{ position: 'absolute', right: -Math.round(height * 0.2), bottom: -Math.round(height * 0.35), display: 'flex', opacity: 0.07 }}>
           {mark(Math.round(height * 1.4), BRAND_MARK_ON_DARK)}
         </div>
-        {/* Σε ψηλό εξώφυλλο (Facebook, X) η φράση σε δύο γραμμές, ώστε να χωρά στο
-            μεσαίο κομμάτι που δείχνει το κινητό· στο στενό του LinkedIn σε μία. */}
-        <div style={{ display: 'flex', flexDirection: stacked ? 'column' : 'row', alignItems: 'center', gap: stacked ? 0 : Math.round(size * 0.28), fontSize: size, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
-          <div style={{ display: 'flex' }}>{title}</div>
-          {accent && <div style={{ display: 'flex', color: c.accent }}>{accent}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: size, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.12 }}>
+          {lines.map(l => (
+            <div key={l.text + (l.accent ?? '')} style={{ display: 'flex', gap: Math.round(size * 0.26) }}>
+              {l.text && <span>{l.text}</span>}
+              {l.accent && <span style={{ color: c.accent }}>{l.accent}</span>}
+            </div>
+          ))}
         </div>
-        {sub && <div style={{ display: 'flex', fontSize: Math.round(size * 0.42), fontWeight: 600, color: c.muted }}>{sub}</div>}
+        {sub && <div style={{ display: 'flex', fontSize: Math.round(size * 0.4), fontWeight: 600, color: c.muted }}>{sub}</div>}
       </div>
     ),
     { width, height, fonts },
   );
 }
+
+const HEADLINE: Line[] = [
+  { text: 'Φωτογραφίζεις', accent: 'τον λογαριασμό.' },
+  { text: 'Το PROPERWISE κάνει τα υπόλοιπα.' },
+];
 
 const OUT = join(process.cwd(), 'docs/marketing/profil');
 
@@ -98,7 +106,7 @@ const COVERS = [
 (async () => {
   mkdirSync(OUT, { recursive: true });
   for (const c of COVERS) {
-    const img = ogBanner({ width: c.width, height: c.height, lift: c.lift, title: 'Το ακίνητό σου,', accent: 'χωρίς χαρτιά στο συρτάρι.', sub: 'Δωρεάν για ένα ακίνητο · properwise.gr' });
+    const img = ogBanner({ width: c.width, height: c.height, lift: c.lift, lines: HEADLINE, sub: 'Δωρεάν για ένα ακίνητο · properwise.gr' });
     writeFileSync(join(OUT, c.file), Buffer.from(await img.arrayBuffer()));
     console.log(`✓ ${c.file} ${c.width}×${c.height}`);
   }
