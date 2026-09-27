@@ -91,6 +91,31 @@
 prod_AAA:solo:monthly,prod_BBB:solo:annual,prod_CCC:owner:monthly,prod_DDD:owner:annual,prod_EEE:agency:monthly,prod_FFF:agency:annual,prod_GGG:office:monthly,prod_HHH:office:annual
 ```
 
+**Τα προϊόντα της κανονικής λειτουργίας (27.09.2026).** Τα αναγνωριστικά δεν
+είναι μυστικά: φαίνονται σε κάθε σύνδεσμο πληρωμής.
+
+| # | Προϊόν | Τιμή | Αναγνωριστικό |
+|---|---|---|---|
+| 1 | Ιδιοκτήτης με Νόα · Μηνιαίο | 4,99 € | `prod_6qrxof8VsjhaYroA4uAIGJ` |
+| 2 | Ιδιοκτήτης με Νόα · Ετήσιο | 54,90 € | `prod_1DcLGOtC9J1XpW618aTjdR` |
+| 3 | Ιδιοκτήτης+ · Μηνιαίο | 9,90 € | `prod_39QkUQzdQmV865iu1ktpKF` |
+| 4 | Ιδιοκτήτης+ · Ετήσιο | 99,00 € | `prod_4UMvieAjwKF0oZctZjcNAk` |
+| 5 | Επαγγελματίας · Μηνιαίο | 29,90 € | `prod_JyvdCdGcT3s8rHdN2MCtW` |
+| 6 | Επαγγελματίας · Ετήσιο | 299,00 € | `prod_6wrjLayWB0HPvlFKuiqAMk` |
+| 7 | Επαγγελματίας+ · Μηνιαίο | 79,90 € | `prod_69fxejdoeNippoXHP5d9nU` |
+| 8 | Επαγγελματίας+ · Ετήσιο | 799,00 € | `prod_3CW2fu2TCsyXpYV6o15BsB` |
+
+Η τιμή της μεταβλητής, ελεγμένη με τον αναλυτή (`configError` κενό):
+
+```
+prod_6qrxof8VsjhaYroA4uAIGJ:solo:monthly,prod_1DcLGOtC9J1XpW618aTjdR:solo:annual,prod_39QkUQzdQmV865iu1ktpKF:owner:monthly,prod_4UMvieAjwKF0oZctZjcNAk:owner:annual,prod_JyvdCdGcT3s8rHdN2MCtW:agency:monthly,prod_6wrjLayWB0HPvlFKuiqAMk:agency:annual,prod_69fxejdoeNippoXHP5d9nU:office:monthly,prod_3CW2fu2TCsyXpYV6o15BsB:office:annual
+```
+
+**Μην κοινοποιείς τους συνδέσμους πληρωμής των προϊόντων.** Αγορά από σκέτο
+σύνδεσμο δεν φέρει τον λογαριασμό (`metadata.user_id`) και το webhook την
+απορρίπτει ως `no_account`: ο πελάτης χρεώνεται και το πακέτο δεν ανοίγει. Οι
+αγορές γίνονται μόνο από τη σελίδα Πακέτα της εφαρμογής.
+
 Ο αναλυτής είναι ο ίδιος με του πρώτου εμπόρου (`parseVariantMap`) και **δεν
 συγχωρεί τυπογραφικά**: άγνωστο πακέτο, άγνωστος κύκλος ή διπλό αναγνωριστικό
 γίνονται μήνυμα σφάλματος με το όνομα της γραμμής που φταίει.
