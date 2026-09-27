@@ -1722,7 +1722,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                           αιτιολόγηση, το κουμπί άνοιγε τρίτη σειρά και η κάρτα
                           ψήλωνε χωρίς λόγο· δίπλα στο όνομα διαβάζεται ως «αυτή,
                           βάλ' τη στον υπολογιστή». Σε στενή οθόνη τυλίγει από κάτω. */}
-                      <div style={{display:'flex',alignItems:'center',gap:'8px 14px',flexWrap:'wrap'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'6px 12px',flexWrap:'wrap'}}>
                         <p style={{fontSize:16,fontWeight:700,color:'var(--text-primary)',fontFamily: T.font.sans,letterSpacing:'-0.02em',lineHeight:1.1}}>{topRec.bankName}</p>
                         {topRec.eligible&&(
                           <Btn variant="secondary" className="po-btn-keep" onClick={()=>applyBank(topRec.nominalRatePct, topRec.rateType, topRec.bankName)}>

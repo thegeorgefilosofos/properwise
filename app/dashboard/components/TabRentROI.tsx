@@ -98,7 +98,7 @@ const toolNote: React.CSSProperties = { fontSize: 'var(--fs-xs)', color: 'var(--
 // Το κάτω άκρο των καρτών εργαλείων: οι παραδοχές, κολλημένες στη βάση
 // (ο `roiGrow` από πάνω τους τρώει ό,τι περισσεύει στη στήλη flex), ώστε δύο κάρτες δίπλα
 // δίπλα να κλείνουν στην ίδια γραμμή όσο κι αν διαφέρει το περιεχόμενό τους.
-const roiFoot: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(0, 1fr)', gap: '8px 24px', paddingTop: 10, borderTop: '1px solid var(--border-subtle)' };
+const roiFoot: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(0, 1fr)', gap: '6px 20px', paddingTop: 10, borderTop: '1px solid var(--border-subtle)' };
 const roiGrow: React.CSSProperties = { flex: '1 0 12px' };
 // Η κεφαλίδα της κάρτας έχει το ύψος του κουμπιού που μπορεί να κάθεται δίπλα
 // της, ώστε οι τίτλοι δύο καρτών να είναι στην ίδια γραμμή με ή χωρίς αυτό.
