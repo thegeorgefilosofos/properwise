@@ -98,7 +98,7 @@ const toolNote: React.CSSProperties = { fontSize: 'var(--fs-xs)', color: 'var(--
 // Το κάτω άκρο των καρτών εργαλείων: οι παραδοχές, κολλημένες στη βάση
 // (ο `roiGrow` από πάνω τους τρώει ό,τι περισσεύει στη στήλη flex), ώστε δύο κάρτες δίπλα
 // δίπλα να κλείνουν στην ίδια γραμμή όσο κι αν διαφέρει το περιεχόμενό τους.
-const roiFoot: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(0, 1fr)', gap: '8px 22px', paddingTop: 10, borderTop: '1px solid var(--border-subtle)' };
+const roiFoot: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(0, 1fr)', gap: '8px 24px', paddingTop: 10, borderTop: '1px solid var(--border-subtle)' };
 const roiGrow: React.CSSProperties = { flex: '1 0 12px' };
 // Η κεφαλίδα της κάρτας έχει το ύψος του κουμπιού που μπορεί να κάθεται δίπλα
 // της, ώστε οι τίτλοι δύο καρτών να είναι στην ίδια γραμμή με ή χωρίς αυτό.
@@ -269,12 +269,12 @@ function BarRow({ label, value, max, valueLabel, tone = 'neutral', hint, sub, va
             μία: η γραμμή του έβγαινε ψηλότερη και η ράβδος του σε άλλο ύψος. Το
             όνομα μένει μόνο του, η λεπτομέρεια πάει από κάτω και η ετήσια
             απόδοση κάτω από το ποσό, σε κάθε γραμμή: όλες έχουν το ίδιο σχήμα. */}
-        {sub && <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>{sub}</span>}
+        {sub && <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{sub}</span>}
       </span>
       <Bar pct={pct} tone={bg} height={8} track="var(--bg-elevated)" label={label} />
       <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: tone === 'accent' ? 'var(--accent)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', fontFamily: SANS }}>
         {valueLabel}
-        {valueSub && <span style={{ display: 'block', fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text-tertiary)', marginTop: 1, whiteSpace: 'nowrap' }}>{valueSub}</span>}
+        {valueSub && <span style={{ display: 'block', fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap' }}>{valueSub}</span>}
       </span>
     </div>
   );
