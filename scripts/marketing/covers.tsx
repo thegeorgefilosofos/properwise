@@ -33,7 +33,7 @@ const mark = (size: number, fill: string) => (
   </svg>
 );
 
-type OgBanner = { width: number; height: number; title: string; accent?: string; sub?: string };
+type OgBanner = { width: number; height: number; title: string; accent?: string; sub?: string; lift?: number };
 
 /**
  * Το εξώφυλλο προφίλ (LinkedIn, Facebook, X): ίδιο φόντο και ίδια γραφή με την
@@ -41,19 +41,24 @@ type OgBanner = { width: number; height: number; title: string; accent?: string;
  * κάθε πλατφόρμα κολλά πάνω στο εξώφυλλο κάτω αριστερά· γι' αυτό το κείμενο
  * κάθεται στο κέντρο, εκεί που καμία πλατφόρμα δεν το κόβει στο κινητό.
  */
-function ogBanner({ width, height, title, accent, sub }: OgBanner) {
+function ogBanner({ width, height, title, accent, sub, lift = 0 }: OgBanner) {
   const { fonts, c } = assets();
   const alpha = (hex: string, a: string) => `${hex}${a}`;
   // Από το ύψος ΚΑΙ από το πλάτος: το Facebook κόβει τα πλάγια στο κινητό, οπότε
   // σε ψηλό εξώφυλλο η φράση πρέπει να μένει στο μεσαίο μισό.
   const stacked = width / height < 3.5;
-  const size = Math.round(Math.min(height * (stacked ? 0.15 : 0.2), width * (stacked ? 0.055 : 0.042)));
+  // Σε πλαίσιο πιο ψηλό από του LinkedIn το ύψος θα φούσκωνε τη φράση ως τις
+  // άκρες· με `lift` (Creem) κρατά την αναλογία του LinkedIn, 70% του πλάτους.
+  const size = Math.round(Math.min(height * (stacked ? 0.15 : 0.2), width * (stacked ? 0.055 : lift ? 0.0337 : 0.042)));
   return new ImageResponse(
     (
       <div
         style={{
           width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center', gap: Math.round(height * 0.05),
+          // Το Creem κολλά την εικόνα του προφίλ κάτω ΣΤΟ ΚΕΝΤΡΟ, όχι αριστερά:
+          // εκεί το κείμενο ανεβαίνει, για να μη σκεπαστεί η δεύτερη γραμμή.
+          paddingBottom: Math.round(height * lift),
           fontFamily: 'Inter', color: c.text, backgroundColor: c.bg,
           backgroundImage: [
             `radial-gradient(${Math.round(width * 0.6)}px ${Math.round(height * 1.2)}px at 30% -20%, ${alpha(c.accent, '38')}, transparent 72%)`,
@@ -85,12 +90,15 @@ const COVERS = [
   { file: 'linkedin-exofyllo.png', width: 2256, height: 382 },
   { file: 'facebook-exofyllo.png', width: 1640, height: 624 },
   { file: 'x-exofyllo.png', width: 1500, height: 500 },
-] as const;
+  // Build in Public του Creem: πλαίσιο 4,6:1 (μετρημένο στον πίνακα ελέγχου,
+  // 1323×286), με το εικονίδιο του προφίλ πάνω στο κάτω κέντρο.
+  { file: 'creem-exofyllo.png', width: 2646, height: 572, lift: 0.22 },
+] as { file: string; width: number; height: number; lift?: number }[];
 
 (async () => {
   mkdirSync(OUT, { recursive: true });
   for (const c of COVERS) {
-    const img = ogBanner({ width: c.width, height: c.height, title: 'Το ακίνητό σου,', accent: 'χωρίς χαρτιά στο συρτάρι.', sub: 'Δωρεάν για ένα ακίνητο · properwise.gr' });
+    const img = ogBanner({ width: c.width, height: c.height, lift: c.lift, title: 'Το ακίνητό σου,', accent: 'χωρίς χαρτιά στο συρτάρι.', sub: 'Δωρεάν για ένα ακίνητο · properwise.gr' });
     writeFileSync(join(OUT, c.file), Buffer.from(await img.arrayBuffer()));
     console.log(`✓ ${c.file} ${c.width}×${c.height}`);
   }
