@@ -34,16 +34,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { NextResponse } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/supabase/service';
-import { merchant } from '@/lib/billing/merchant';
+import { merchant, type MerchantPort, type BillingEnv } from '@/lib/billing/merchant';
 import { isEntitled, isMorStatus, type MorStatus } from '@/lib/billing/subscription';
 import { profileForPlan } from '@/lib/billing/entitlements';
-import { alertFor, sendMerchantAlert } from '@/lib/billing/merchantAlert';
+import { alertFor, duplicateAlert, sendMerchantAlert, type MerchantAlert } from '@/lib/billing/merchantAlert';
 
 /** Ο πίνακας που κρατά το πακέτο του κάθε λογαριασμού. */
 const TABLE = 'billing_profiles';
-
-const log = (...parts: unknown[]) => console.info(`[${merchant().id}]`, ...parts);
 
 // ═══ ΟΙ ΑΠΟΦΑΣΕΙΣ, ΧΩΡΙΣΤΑ ΑΠΟ ΤΗ ΜΕΤΑΦΟΡΑ ══════════════════════════════════
 // ΓΙΑΤΙ ΒΓΗΚΑΝ ΕΞΩ. Το `applyMerchantEvent` δένεται με τον έμπορο, με τον
@@ -54,6 +53,11 @@ const log = (...parts: unknown[]) => console.info(`[${merchant().id}]`, ...parts
 // πολιτική πρέπει να διαβάζεται και να ελέγχεται χωρίς δίκτυο.
 //
 // Καμία αλλαγή συμπεριφοράς: οι ίδιες γραμμές, σε συναρτήσεις με όνομα.
+//
+// ΚΑΙ Η ΡΟΗ ΕΛΕΓΧΕΤΑΙ ΠΛΕΟΝ ΟΛΟΚΛΗΡΗ, ΧΩΡΙΣ ΠΛΑΣΤΟ MODULE. Το περιβάλλον, η
+// βάση και ο αποστολέας περνούν ως όρισμα (`MerchantEventDeps`) και η σουίτα
+// «morWebhook.apply.test.ts» στέλνει αληθινά σώματα του εμπόρου σε ψεύτικη
+// βάση που θυμάται ό,τι γράφτηκε.
 
 /**
  * ΤΟ ΓΕΓΟΝΟΣ ΠΟΥ ΗΡΘΕ ΑΡΓΟΤΕΡΑ ΑΛΛΑ ΣΥΝΕΒΗ ΝΩΡΙΤΕΡΑ.
@@ -99,6 +103,42 @@ export function profileTypeToWrite(seenType: string | null | undefined, plan: Pa
 }
 
 /**
+ * ΜΙΑ ΕΙΔΟΠΟΙΗΣΗ ΠΟΥ ΔΕΝ ΜΠΟΡΕΙ ΝΑ ΡΙΞΕΙ ΤΟ ΓΕΓΟΝΟΣ.
+ *
+ * Ο προεπιλεγμένος αποστολέας δεν πετά ποτέ, αλλά ο webhook δεν το υποθέτει:
+ * ό,τι δοθεί ως αποστολέας τυλίγεται εδώ και μια εξαίρεση γίνεται «δεν
+ * στάλθηκε», όχι 500 προς τον έμπορο.
+ */
+async function safeSend(send: (a: MerchantAlert) => Promise<boolean>, alert: MerchantAlert): Promise<boolean> {
+  try { return await send(alert); } catch { return false; }
+}
+
+/**
+ * ΟΣΑ Ο WEBHOOK ΠΑΙΡΝΕΙ ΑΠΟ ΕΞΩ, ΩΣΤΕ Η ΡΟΗ ΝΑ ΔΟΚΙΜΑΖΕΤΑΙ ΧΩΡΙΣ ΔΙΚΤΥΟ.
+ *
+ * ΓΙΑΤΙ ΟΡΙΣΜΑ ΚΑΙ ΟΧΙ ΠΛΑΣΤΟΓΡΑΦΗΣΗ MODULE. Οι καθαρές κρίσεις παραπάνω
+ * ελέγχονται μόνες τους· η ΡΟΗ όμως (τι διαβάζεται, τι γράφεται, τι απαντά ο
+ * webhook) δεν ελεγχόταν πουθενά. Με το περιβάλλον, τη βάση και τον αποστολέα
+ * ως ορίσματα, η σουίτα δίνει αληθινό σώμα του εμπόρου και ψεύτικη βάση που
+ * θυμάται κάθε εγγραφή, χωρίς να αντικαταστήσει ούτε ένα module.
+ *
+ * Ολα προαιρετικά: η διαδρομή δεν δίνει τίποτα και παίρνει ακριβώς την
+ * προηγούμενη συμπεριφορά.
+ */
+export interface MerchantEventDeps {
+  /** Το περιβάλλον. Προεπιλογή το `process.env`. */
+  env?: BillingEnv;
+  /** Ο έμπορος. Προεπιλογή ο `merchant(env)`. */
+  mor?: MerchantPort;
+  /** Ο πελάτης της βάσης. Προεπιλογή ο πελάτης υπηρεσίας· μπορεί να πετάξει. */
+  db?: () => SupabaseClient;
+  /** Η αποστολή ειδοποίησης σε άνθρωπο. Δεν επιτρέπεται να ρίξει το γεγονός. */
+  sendAlert?: (alert: MerchantAlert) => Promise<boolean>;
+  /** Η ώρα, σε ISO, για το «ισχύει ακόμη». Προεπιλογή η τρέχουσα. */
+  now?: () => string;
+}
+
+/**
  * Ο,ΤΙ ΓΙΝΕΤΑΙ ΑΦΟΥ Η ΥΠΟΓΡΑΦΗ ΕΧΕΙ ΗΔΗ ΕΠΑΛΗΘΕΥΤΕΙ.
  *
  * Η ΕΠΑΛΗΘΕΥΣΗ ΜΕΝΕΙ ΣΤΗΝ ΠΟΡΤΑ, ΚΑΙ ΟΧΙ ΕΠΕΙΔΗ ΤΟ ΖΗΤΗΣΕ ΦΥΛΑΚΑΣ. Ο φύλακας
@@ -110,15 +150,18 @@ export function profileTypeToWrite(seenType: string | null | undefined, plan: Pa
  * Το ωμό σώμα περνά ως όρισμα γιατί διαβάζεται ΜΙΑ φορά: ένα δεύτερο
  * `request.text()` σε ήδη καταναλωμένο σώμα επιστρέφει κενό.
  */
-export async function applyMerchantEvent(raw: string) {
-  const mor = merchant();
+export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = {}) {
+  const env = deps.env ?? process.env;
+  const mor = deps.mor ?? merchant(env);
+  const sendAlert = deps.sendAlert ?? ((a: MerchantAlert) => sendMerchantAlert(a, env.RESEND_API_KEY));
+  const log = (...parts: unknown[]) => console.info(`[${mor.id}]`, ...parts);
   let payload: unknown;
   try { payload = JSON.parse(raw); } catch {
     log('σώμα που δεν είναι JSON');
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   }
 
-  const read = mor.readEvent(payload, process.env);
+  const read = mor.readEvent(payload, env);
   if (!read.ok) {
     // ΔΥΟ ΔΙΑΦΟΡΕΤΙΚΑ ΠΡΑΓΜΑΤΑ, ΔΥΟ ΑΠΑΝΤΗΣΕΙΣ. Γεγονός που δεν μας αφορά —
     // παραγγελία, παραστατικό, γεγονός που δεν ξέρουμε — είναι φυσιολογικό και
@@ -139,7 +182,7 @@ export async function applyMerchantEvent(raw: string) {
     // φτάνει σε άνθρωπο, γιατί η συνδρομή πρέπει να ακυρωθεί στον έμπορο.
     const alert = alertFor(payload);
     if (alert) {
-      const sent = await sendMerchantAlert(alert, process.env.RESEND_API_KEY);
+      const sent = await safeSend(sendAlert, alert);
       log(`${alert.subject}· ειδοποίηση ${sent ? 'στάλθηκε' : 'ΔΕΝ στάλθηκε'}`);
       return NextResponse.json({ ok: true, alerted: sent });
     }
@@ -158,7 +201,7 @@ export async function applyMerchantEvent(raw: string) {
   }
 
   let db;
-  try { db = createServiceClient(); } catch (e) {
+  try { db = (deps.db ?? (() => createServiceClient()))(); } catch (e) {
     log('πελάτης υπηρεσίας:', e instanceof Error ? e.message : e);
     return NextResponse.json({ error: 'not_configured' }, { status: 500 });
   }
@@ -206,7 +249,7 @@ export async function applyMerchantEvent(raw: string) {
   // ΤΟ ΠΑΚΕΤΟ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗΝ ΚΑΤΑΣΤΑΣΗ, ΟΧΙ ΑΠΟ ΤΟ ΟΝΟΜΑ ΤΟΥ ΓΕΓΟΝΟΤΟΣ. Οσο
   // η συνδρομή ισχύει, δίνει ό,τι αγοράστηκε· μόλις πάψει, ο λογαριασμός πέφτει
   // στο «χωρίς συνδρομή» και όχι σε κάτι ενδιάμεσο που δεν πλήρωσε κανείς.
-  const nowIso = new Date().toISOString();
+  const nowIso = deps.now ? deps.now() : new Date().toISOString();
   const entitled = isEntitled(sub, nowIso);
 
   // ── ΞΕΝΗ ΣΥΝΔΡΟΜΗ ΔΕΝ ΓΡΑΦΕΙ ΠΑΝΩ ΣΕ ΖΩΝΤΑΝΗ ──────────────────────────
@@ -216,8 +259,10 @@ export async function applyMerchantEvent(raw: string) {
   // φαίνεται πουθενά (έλεγχος 27.09.2026, D3). Γεγονός που ΔΕΝ δίνει πρόσβαση,
   // για συνδρομή διαφορετική από την καταγεγραμμένη που ισχύει, αγνοείται.
   // Γεγονός που δίνει πρόσβαση περνά (νέα αγορά μετά από ακύρωση), αλλά αν η
-  // παλιά ισχύει ακόμη, γράφεται στο αρχείο: δύο ζωντανές συνδρομές σημαίνουν
-  // διπλή χρέωση και θέλουν άνθρωπο.
+  // παλιά ισχύει ακόμη, γράφεται στο αρχείο ΚΑΙ φτάνει σε άνθρωπο: δύο
+  // ζωντανές συνδρομές σημαίνουν διπλή χρέωση και κανείς δεν διαβάζει τα
+  // αρχεία καταγραφής χωρίς λόγο.
+  let duplicate: MerchantAlert | null = null;
   const { data: stored, error: storedError } = await db.from(TABLE)
     .select('mor_subscription_id, subscription_status, mor_ends_at').eq('user_id', userId).maybeSingle();
   if (storedError) log('η καταγεγραμμένη συνδρομή δεν διαβάστηκε:', storedError.message);
@@ -230,6 +275,7 @@ export async function applyMerchantEvent(raw: string) {
       return NextResponse.json({ ok: true, skipped: 'other_subscription' });
     }
     log(`ΔΥΟ ΖΩΝΤΑΝΕΣ ΣΥΝΔΡΟΜΕΣ για τον λογαριασμό ${userId}: ${current.mor_subscription_id} και ${sub.id}. Ελεγξε για διπλή χρέωση.`);
+    duplicate = duplicateAlert(userId, current.mor_subscription_id, sub.id);
   }
 
   // ── Η ΔΟΚΙΜΗ ΣΦΡΑΓΙΖΕΤΑΙ ΟΤΑΝ ΟΝΤΩΣ ΔΟΘΗΚΕ ────────────────────────────
@@ -285,6 +331,19 @@ export async function applyMerchantEvent(raw: string) {
     // και κανένα ίχνος πουθενά.
     log('η εγγραφή του προφίλ απέτυχε:', error.message);
     return NextResponse.json({ error: 'write_failed' }, { status: 502 });
+  }
+
+  // ── Η ΕΙΔΟΠΟΙΗΣΗ ΔΙΠΛΗΣ ΣΥΝΔΡΟΜΗΣ ΦΕΥΓΕΙ ΜΕΤΑ ΤΗΝ ΕΓΓΡΑΦΗ ───────────────
+  // ΟΧΙ ΠΡΙΝ: μια εγγραφή που αποτυγχάνει γυρίζει 502 και ο έμπορος ξαναστέλνει
+  // το γεγονός, οπότε κάθε προσπάθεια θα έστελνε και δικό της μήνυμα. Μετά την
+  // εγγραφή η καταγεγραμμένη συνδρομή είναι η νέα, άρα η επανάληψη δεν
+  // ξαναβρίσκει δύο ζωντανές: ένα μήνυμα ανά περιστατικό.
+  //
+  // ΚΑΙ ΔΕΝ ΡΙΧΝΕΙ ΤΙΠΟΤΑ. Το πακέτο έχει ήδη γραφτεί· μια αποτυχία αποστολής
+  // που γύριζε σφάλμα θα έκανε τον έμπορο να ξαναστείλει ολόκληρο το γεγονός.
+  if (duplicate) {
+    const sent = await safeSend(sendAlert, duplicate);
+    log(`ειδοποίηση διπλής συνδρομής ${sent ? 'στάλθηκε' : 'ΔΕΝ στάλθηκε'}`);
   }
 
   // ── ΤΑ ΔΥΟ ΤΕΛΕΥΤΑΙΑ ΣΚΑΛΙΑ ΤΟΥ ΧΩΝΙΟΥ, ΑΠΟ ΤΗ ΜΟΝΗ ΠΗΓΗ ΠΟΥ ΤΑ ΞΕΡΕΙ ──
