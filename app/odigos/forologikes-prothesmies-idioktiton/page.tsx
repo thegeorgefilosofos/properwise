@@ -20,6 +20,7 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl, PRODUCT_NAME } from '@/lib/core/site';
 import { monthGen, monthShort } from '@/lib/core/months';
+import { athensToday } from '@/lib/core/time';
 import {
   greekPropertyTaxObligations, CONFIDENCE_LABEL, TAXHEAVEN_CALENDAR_URL, AADE_CALENDAR_URL,
   type TaxObligation,
@@ -92,7 +93,7 @@ function nextOf(rows: TaxObligation[], kind: TaxObligation['kind']): TaxObligati
  * εδώ ως 24 γραμμές: περιγράφονται μία φορά, στη δική τους ενότητα.
  */
 function upcoming(): TaxObligation[] {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = athensToday();
   const year = Number(today.slice(0, 4));
   const until = `${year + 1}${today.slice(4)}`;
   return [...greekPropertyTaxObligations(year - 1, 'owner'), ...greekPropertyTaxObligations(year, 'owner'), ...greekPropertyTaxObligations(year + 1, 'owner')]
