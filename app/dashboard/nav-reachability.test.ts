@@ -21,7 +21,14 @@ import { CORE_TABS, PROFESSIONAL_CORE_TABS } from '../../lib/nav/disclosure'
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
 
-const src = readFileSync(join(process.cwd(), 'app/dashboard/page.tsx'), 'utf8')
+// Το κέλυφος του πίνακα ζει σε τρία αρχεία: η απόδοση στο page.tsx, ο κατάλογος
+// της πλοήγησης στο shell/nav.tsx και η κατάσταση στο shell/useDashboard.ts.
+// Διαβάζονται μαζί, γιατί ο έλεγχος αφορά το κέλυφος, όχι το πού γράφτηκε.
+const src = [
+  'app/dashboard/page.tsx',
+  'app/dashboard/components/shell/nav.tsx',
+  'app/dashboard/components/shell/useDashboard.ts',
+].map(f => readFileSync(join(process.cwd(), f), 'utf8')).join('\n')
 
 /**
  * Κόβει ένα const block με όνομα `name` από την πηγή, ΧΩΡΙΣ τα σχόλιά του.

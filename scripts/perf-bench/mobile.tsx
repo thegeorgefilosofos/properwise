@@ -86,7 +86,7 @@ import TabDocuments from '@/app/dashboard/components/TabDocuments';
 import TabReferral from '@/app/dashboard/components/TabReferral';
 import Billing from '@/app/dashboard/components/Billing';
 import ReportBranding from '@/app/dashboard/components/ReportBranding';
-import { OverviewTab } from '@/app/dashboard/page';
+import { OverviewTab } from '@/app/dashboard/components/OverviewTab';
 // Η ΝΟΑ ΠΑΝΩ ΑΠΟ ΚΑΘΕ ΣΚΗΝΗ, ΟΤΑΝ ΖΗΤΗΘΕΙ. Το πλωτό κουμπί ζει σε κάθε καρτέλα
 // της εφαρμογής και σε καμία σκηνή του πάγκου: ό,τι σκέπαζε δεν το μετρούσε
 // κανείς. Με `?noa=1` αποδίδεται ΠΑΝΩ από τη σκηνή, όπως στο app/dashboard/page.tsx.
