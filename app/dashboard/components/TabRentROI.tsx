@@ -95,6 +95,46 @@ const subStyle: React.CSSProperties = { fontSize: 12, color: 'var(--text-tertiar
 /** Οι δύο κάρτες των «Εργαλείων απόδοσης»: ίδιο κουτί, ίδια σημείωση, ίδιο ύψος. */
 const toolCard: React.CSSProperties = { padding: 14, borderRadius: T.radius.popup, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column' };
 const toolNote: React.CSSProperties = { fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: 0, fontFamily: SANS, lineHeight: 1.5 };
+// Το κάτω άκρο των καρτών εργαλείων: οι παραδοχές, κολλημένες στη βάση
+// (ο `roiGrow` από πάνω τους τρώει ό,τι περισσεύει στη στήλη flex), ώστε δύο κάρτες δίπλα
+// δίπλα να κλείνουν στην ίδια γραμμή όσο κι αν διαφέρει το περιεχόμενό τους.
+const roiFoot: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(0, 1fr)', gap: '8px 22px', paddingTop: 10, borderTop: '1px solid var(--border-subtle)' };
+const roiGrow: React.CSSProperties = { flex: '1 0 12px' };
+// Η κεφαλίδα της κάρτας έχει το ύψος του κουμπιού που μπορεί να κάθεται δίπλα
+// της, ώστε οι τίτλοι δύο καρτών να είναι στην ίδια γραμμή με ή χωρίς αυτό.
+const roiHead: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap', minHeight: T.h.md };
+
+function CompoundBars({ perYear }: { perYear: { year: number; value: number; contributed: number }[] }) {
+  if (perYear.length === 0) return <div aria-hidden="true" style={roiGrow} />;
+  const max = Math.max(...perYear.map(p => p.value), 1);
+  const last = perYear[perYear.length - 1];
+  const dot = (bg: string): React.CSSProperties => ({ width: 8, height: 8, borderRadius: 2, background: bg, flexShrink: 0 });
+  return (
+    <figure style={{ flex: '1 1 96px', minHeight: 96, display: 'flex', flexDirection: 'column', margin: '16px 0 12px' }}
+      aria-label={`Αξία ανά έτος, από ${fe(perYear[0].value)} ως ${fe(last.value)}`}>
+      <div aria-hidden="true" style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: perYear.length > 12 ? 3 : 5, borderBottom: '1px solid var(--border-subtle)' }}>
+        {perYear.map(p => {
+          const growth = Math.max(0, p.value - p.contributed);
+          return (
+            <div key={p.year} style={{ flex: 1, height: `${(p.value / max) * 100}%`, display: 'flex', flexDirection: 'column', borderRadius: '3px 3px 0 0', overflow: 'hidden' }}>
+              <div style={{ flex: growth, background: 'var(--accent)', opacity: 0.85 }} />
+              <div style={{ flex: p.contributed, background: 'color-mix(in srgb, var(--text-tertiary) 30%, transparent)' }} />
+            </div>
+          );
+        })}
+      </div>
+      <figcaption style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 8, ...toolNote, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ display: 'inline-flex', gap: 14, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={dot('color-mix(in srgb, var(--text-tertiary) 30%, transparent)')} />Κεφάλαιο και εισφορές</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={dot('var(--accent)')} />Κέρδος ανατοκισμού</span>
+        </span>
+        <span>Έτος 1 ως {last.year}</span>
+      </figcaption>
+    </figure>
+  );
+}
+const roiFootLabel: React.CSSProperties = { ...toolNote, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 };
+const roiFootValue: React.CSSProperties = { fontSize: 12, fontFamily: SANS, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', margin: '2px 0 0' };
 
 // ── Επεξήγηση όρου (διακριτικό εικονίδιο· επαγγελματικός ορισμός) ─────────────
 // Προσβάσιμο: πραγματικό κουμπί (πληκτρολόγιο + αφή), ανοίγει σε hover, εστίαση ή άγγιγμα,
@@ -1756,7 +1796,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
             <div className="po-panelrow" style={{ '--panel-min': '364px' } as React.CSSProperties}>
               {/* Ανατοκισμός */}
               <div className="po-fig-card" tabIndex={0} style={toolCard}>
-                <p style={{ ...titleStyle, marginBottom: 12, display: 'flex', alignItems: 'center' }}>Ανατοκισμός επανεπένδυσης<TermInfo term="Ανατοκισμός επανεπένδυσης" text={G.compound} /></p>
+                <div style={roiHead}>
+                  <p style={{ ...titleStyle, margin: 0, display: 'flex', alignItems: 'center' }}>Ανατοκισμός επανεπένδυσης<TermInfo term="Ανατοκισμός επανεπένδυσης" text={G.compound} /></p>
+                </div>
                 <div {...fixedCols(2, 12)}>
                   <NumberInput label="Απόδοση επανεπένδυσης" value={compRate} onChange={setCompRate} suffix="%" />
                   <div><label style={fieldLabelStyle}>Ορίζοντας ανατοκισμού</label><SegmentControl ariaLabel="Ορίζοντας ανατοκισμού" value={compYears} onChange={v => setCompYears(v as typeof compYears)} options={yearOpts(10, 20)} /></div>
@@ -1772,11 +1814,31 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                     στήλη του εργαλείου. Η ίδια πρόταση χωρίς τα γεμίσματα: το
                     «ετήσια» το λέει το «τον χρόνο» στο τέλος και η «καθαρή
                     ταμειακή ροή» είναι ό,τι ακριβώς δείχνει το ποσό δίπλα της. */}
-                <p style={{ ...toolNote, marginTop: 12 }}>Αρχική αξία συν επανεπένδυση ροής {fe(Math.max(0, grossAnnual - effOpex - annualTax))} τον χρόνο.</p>
+                {/* ΤΟ ΙΔΙΟ ΚΑΤΩ ΑΚΡΟ ΜΕ ΤΗ ΔΙΠΛΑΝΗ ΚΑΡΤΑ. Η πρόταση «Αρχική αξία
+                    συν επανεπένδυση…» έκλεινε την κάρτα στη μέση του ύψους της
+                    και άφηνε από κάτω άδειο χώρο, ενώ η μόχλευση δίπλα κατέβαινε
+                    ως κάτω. Τώρα και οι δύο κλείνουν με τις παραδοχές τους, στην
+                    ίδια γραμμή, κολλημένες στη βάση της κάρτας. */}
+                {/* Η ΑΞΙΑ ΑΝΑ ΕΤΟΣ, ΟΧΙ ΚΕΝΟΣ ΧΩΡΟΣ. Η κάρτα είναι όσο ψηλή η
+                    μόχλευση δίπλα της· ο χώρος που περίσσευε δείχνει τώρα πώς
+                    χτίζεται η τελική αξία: κεφάλαιο και εισφορές από κάτω, κέρδος
+                    ανατοκισμού από πάνω, μία στήλη ανά έτος. Το διάγραμμα παίρνει
+                    όσο ύψος μένει, με ελάχιστο 96. */}
+                <CompoundBars perYear={comp.perYear} />
+                <div style={roiFoot}>
+                  <div>
+                    <p style={roiFootLabel}>Αρχική αξία</p>
+                    <p style={roiFootValue}>{fe(nVal)}</p>
+                  </div>
+                  <div>
+                    <p style={roiFootLabel}>Επανεπένδυση ροής</p>
+                    <p style={roiFootValue}>{fe(Math.max(0, grossAnnual - effOpex - annualTax))} τον χρόνο</p>
+                  </div>
+                </div>
               </div>
               {/* Μόχλευση */}
               <div className="po-fig-card" tabIndex={0} style={toolCard}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+                <div style={roiHead}>
                   <p style={{ ...titleStyle, margin: 0, display: 'flex', alignItems: 'center' }}>Μόχλευση (δανεισμός)<TermInfo term="Μόχλευση" text={G.leverage} /></p>
                   {savedLoan && savedLoan.amount > 0 && (
                     <Btn variant="secondary"
@@ -1827,12 +1889,21 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                     Τώρα: η ετυμηγορία με λέξεις, τα δύο μεγέθη που τη βγάζουν
                     δίπλα της, οι παραδοχές σε ήσυχη γραμμή στοιχείων από κάτω.
                     Ιδιο ιδίωμα με την κάρτα δανείου: όνομα πάνω, μέγεθος κάτω. */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '6px 18px', marginTop: 14 }}>
-                  <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, fontFamily: SANS, color: 'var(--text-primary)' }}>
+                {/* Η ΕΤΥΜΗΓΟΡΙΑ ΩΣ ΣΥΓΚΡΙΣΗ, ΟΧΙ ΩΣ ΣΕΙΡΑ ΛΕΞΕΩΝ. Τρία κομμάτια σε
+                    flex-wrap τύλιγαν όπου έβρισκαν και τα δύο ποσοστά κάθονταν σε
+                    άλλη κατακόρυφο το καθένα. Τώρα: η κρίση πάνω, από κάτω οι δύο
+                    αριθμοί που τη βγάζουν, ετικέτα αριστερά και τιμή δεξιά, στην
+                    ίδια στήλη ώστε να συγκρίνονται με μια ματιά. */}
+                <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+                  <p style={{ margin: 0, fontSize: 'var(--fs-base)', fontWeight: 700, fontFamily: SANS, color: 'var(--text-primary)' }}>
                     {lev.positiveCarry ? 'Θετική μόχλευση' : 'Αρνητική μόχλευση'}
-                  </span>
-                  <span style={{ fontSize: 12, fontFamily: SANS, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>καθαρή απόδοση {fp(lev.unleveredYield)}</span>
-                  <span style={{ fontSize: 12, fontFamily: SANS, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>κόστος δανείου {fp(lev.effectiveLoanRate)}</span>
+                  </p>
+                  <dl style={{ margin: '6px 0 0', display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 2, columnGap: 16, fontSize: 12, fontFamily: SANS, fontVariantNumeric: 'tabular-nums' }}>
+                    <dt style={{ color: 'var(--text-secondary)' }}>Καθαρή απόδοση ακινήτου</dt>
+                    <dd style={{ margin: 0, textAlign: 'right', color: 'var(--text-primary)', fontWeight: 600 }}>{fp(lev.unleveredYield)}</dd>
+                    <dt style={{ color: 'var(--text-secondary)' }}>Κόστος δανείου</dt>
+                    <dd style={{ margin: 0, textAlign: 'right', color: 'var(--text-primary)', fontWeight: 600 }}>{fp(lev.effectiveLoanRate)}</dd>
+                  </dl>
                 </div>
                 {lev.positiveCarry && (
                   <p style={{ ...toolNote, marginTop: 6 }}>Η ετήσια ροή μπορεί να είναι αρνητική λόγω χρεολυσίου, αυξάνεις όμως τα ίδια κεφάλαιά σου.</p>
@@ -1840,14 +1911,15 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                 {/* Το ποσοστό λειτουργικών εξόδων έμπαινε στη μηχανή σιωπηλά (με
                     εφεδρικό 20% όταν έλειπαν έσοδα). Δεν είναι υπόθεση: βγαίνει από
                     τα «Ετήσια έξοδα» που έγραψε ο χρήστης. Άρα λέγεται. */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 22px', marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
+                <div aria-hidden="true" style={roiGrow} />
+                <div style={roiFoot}>
                   <div>
-                    <p style={{ ...toolNote, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Λειτουργικά έξοδα</p>
-                    <p style={{ fontSize: 12, fontFamily: SANS, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', margin: '2px 0 0' }}>{fp(opexPctOfRent)} των εσόδων · {fe(effOpex)} σε {fe(grossAnnual)}</p>
+                    <p style={roiFootLabel}>Λειτουργικά έξοδα</p>
+                    <p style={roiFootValue}>{fp(opexPctOfRent)} των εσόδων · {fe(effOpex)} σε {fe(grossAnnual)}</p>
                   </div>
                   <div>
-                    <p style={{ ...toolNote, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Διάρκεια δανείου</p>
-                    <p style={{ fontSize: 12, fontFamily: SANS, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', margin: '2px 0 0' }}>{nLoanYears} έτη</p>
+                    <p style={roiFootLabel}>Διάρκεια δανείου</p>
+                    <p style={roiFootValue}>{nLoanYears} έτη</p>
                   </div>
                 </div>
               </div>

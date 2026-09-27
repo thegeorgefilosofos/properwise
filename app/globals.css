@@ -554,6 +554,9 @@ body {
 .po-btn[data-variant="primary"]   { background: var(--accent); color: var(--accent-text); }
 .po-btn[data-variant="secondary"] { background: transparent; border-color: var(--border-default); color: var(--text-secondary); }
 .po-btn[data-variant="ghost"]     { background: transparent; color: var(--text-secondary); }
+/* Κουμπί δίπλα σε κείμενο που μακραίνει: το λεκτικό του μένει σε μία γραμμή
+   και το κουμπί δεν στριμώχνεται. Το κείμενο δίπλα παίρνει ό,τι μένει. */
+.po-btn.po-btn-keep { white-space: nowrap; flex-shrink: 0; }
 
 /* Η ΑΙΩΡΗΣΗ ΜΟΝΟ ΟΠΟΥ ΥΠΑΡΧΕΙ ΔΕΙΚΤΗΣ. Σε οθόνη αφής το `:hover` κολλάει μετά
    το πάτημα και το κουμπί μένει «αναμμένο» ώσπου να αγγίξει ο χρήστης αλλού. */
@@ -1300,6 +1303,13 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    περίγραμμα, δεύτερο κουτί είναι κουτί μέσα σε κουτί. Το δοχείο χρειάζεται
    ούτως ή άλλως, γιατί το μέγεθος του αριθμού μετριέται σε `cqi`. */
 .kpi-plain { container-type: inline-size; }
+/* ΤΑ ΝΟΥΜΕΡΑ ΣΤΗΝ ΙΔΙΑ ΕΥΘΕΙΑ, ΟΣΕΣ ΓΡΑΜΜΕΣ ΚΙ ΑΝ ΠΙΑΣΕΙ Η ΕΤΙΚΕΤΑ. Σε πλέγμα,
+   μια ετικέτα που τυλίγει («ΟΝΟΜΑΣΤΙΚΟ ΕΠΙΤΟΚΙΟ», «ΑΣΦΑΛΕΙΕΣ (ΔΙΑΡΚΕΙΑ)»)
+   κατέβαζε την τιμή της πιο κάτω από τις διπλανές: έξι τιμές σε δύο ύψη. Το
+   κελί τεντώνεται ήδη στο ύψος της σειράς· εδώ η ετικέτα παίρνει τον χώρο που
+   περισσεύει, οπότε η τιμή κάθεται πάντα στη βάση του. */
+.kpi-plain { display: flex; flex-direction: column; }
+.kpi-plain > .kpi-label { flex: 1 0 auto; }
 
 /* Σημασιολογικός τόνος τιμής KPI: ουδέτερος by default, αποκαλύπτεται μόνο στο
    hover/focus της κάρτας — ομοιόμορφο, χαμηλού θορύβου look σε όλο το app. */
@@ -3619,6 +3629,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   border-top: 1px solid var(--border-default);
   color: var(--text-primary);
 }
+/* ΤΟ «ΣΥΝΟΛΑ» ΚΑΘΟΤΑΝ ΨΗΛΑ ΚΑΙ ΣΤΗΝ ΑΚΡΗ. Το `th` του `tfoot` δεν είχε κανόνα:
+   έπαιρνε το γέμισμα του περιηγητή (ένα εικονοστοιχείο) αντί για τα 10/14 των
+   κελιών δίπλα του, κι επειδή η ετικέτα είναι μικρότερη από τα ποσά και όλα
+   κρέμονται από πάνω, η λέξη ανέβαινε πάνω από τη γραμμή των αριθμών. Εδώ
+   παίρνει το ίδιο γέμισμα και η σειρά κεντράρεται κάθετα: ετικέτα και ποσά
+   διαβάζονται στο ίδιο ύψος. */
+.po-table tfoot th { text-align: left; padding: 10px 14px; }
+.po-table tr.is-total > * { vertical-align: middle; }
 
 /* ΤΟ ΚΥΛΙΟΜΕΝΟ ΑΚΡΟ ΔΟΚΙΜΑΣΤΗΚΕ ΜΕ ΣΚΙΑ ΚΑΙ Η ΣΚΙΑ ΔΕΝ ΦΑΙΝΕΤΑΙ. Γράφτηκε το
    κλασικό κόλπο των τεσσάρων υποβάθρων —δύο σκιές καρφωμένες στις άκρες, δύο
