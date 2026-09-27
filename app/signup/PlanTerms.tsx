@@ -14,13 +14,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { createContext, useContext, type ReactNode } from 'react';
 
-// ΚΑΙ Η ΔΟΚΙΜΗ ΛΕΓΕΤΑΙ ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ. Στο κινητό το πάνελ κρύβεται και μαζί
-// του η μόνη αναφορά στη δοκιμή· το κουμπί έλεγε «Ξεκίνα τη δοκιμή» χωρίς να
-// λέει τι σημαίνει για την κάρτα. Το `trialCard` αλλάζει μόνο του όταν ανοίξει
-// το ταμείο: «Χωρίς κάρτα» σήμερα, η ημέρα της πρώτης χρέωσης μετά.
-interface SignupTerms { planTerms: string | null; trialCard: string }
+interface SignupTerms { planTerms: string | null }
 
-const PlanTermsContext = createContext<SignupTerms>({ planTerms: null, trialCard: '' });
+const PlanTermsContext = createContext<SignupTerms>({ planTerms: null });
 
 export function PlanTermsProvider({ value, children }: { value: SignupTerms; children: ReactNode }) {
   return <PlanTermsContext.Provider value={value}>{children}</PlanTermsContext.Provider>;
@@ -28,6 +24,3 @@ export function PlanTermsProvider({ value, children }: { value: SignupTerms; chi
 
 /** Η γραμμή των όρων του πακέτου όσο δεν χρεώνουμε, αλλιώς `null`. */
 export const usePlanTerms = (): string | null => useContext(PlanTermsContext).planTerms;
-
-/** Τι σημαίνει η δοκιμή για την κάρτα, σε μία φράση. */
-export const useTrialCard = (): string => useContext(PlanTermsContext).trialCard;

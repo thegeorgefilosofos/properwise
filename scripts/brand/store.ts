@@ -17,13 +17,19 @@
 // γραμματοσειρά, ίδια υπογραφή κάτω αριστερά. Η σύνθεση αλλάζει ανά ερώτηση.
 //
 // ΧΡΗΣΗ:  npx tsx scripts/brand/store.ts
+//
+// ΚΑΜΙΑ ΔΟΚΙΜΗ ΣΤΙΣ ΣΕΛΙΔΕΣ ΤΟΥ ΕΜΠΟΡΟΥ (27.09.2026). Οι εικόνες και η περιγραφή
+// έλεγαν «30 ημέρες δωρεάν δοκιμή». Η δοκιμή όμως τρέχει ΜΕΣΑ στην εφαρμογή, από
+// την ημέρα του λογαριασμού και χωρίς κάρτα (trialState στο entitlements.ts)·
+// στο ταμείο του εμπόρου η χρέωση ξεκινά την ίδια μέρα. Υπόσχεση δοκιμής πάνω
+// από κουμπί πληρωμής που χρεώνει αμέσως είναι παραπλανητική.
 // ═══════════════════════════════════════════════════════════════════════════
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
-import { PLANS, PLAN_ORDER, TRIAL_DAYS, type PlanId } from '../../lib/billing/plans';
+import { PLANS, PLAN_ORDER, type PlanId } from '../../lib/billing/plans';
 import { aiLimitsFor } from '../../lib/billing/aiLimits';
-import { fe } from '../../lib/core/format';
+import { fe, grUpper } from '../../lib/core/format';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
@@ -44,10 +50,16 @@ const mark = (px: number, color: string) =>
   `<svg width="${px}" height="${px}" viewBox="${VIEWBOX}" fill="${color}" fill-rule="nonzero">`
   + SHAPE.map(d => `<path d="${d}"/>`).join('') + '</svg>';
 
-const FONT_DIR = 'file://' + join(ROOT, 'public/fonts');
+// Η ΓΡΑΜΜΑΤΟΣΕΙΡΑ ΜΠΑΙΝΕΙ ΜΕΣΑ ΣΤΟ ΑΡΧΕΙΟ. Με διεύθυνση `file://` ο περιηγητής
+// δεν τη φόρτωνε (η σελίδα στήνεται με setContent, χωρίς βάση) και οι εικόνες
+// του καταστήματος έβγαιναν σιωπηλά σε γραμματοσειρά συστήματος αντί για Inter.
+// Ιδια λύση με το scripts/marketing/shell.ts.
+const FONT_DIR = join(ROOT, 'public/fonts');
+const font = (file: string) =>
+  `url("data:font/woff2;base64,${readFileSync(join(FONT_DIR, file)).toString('base64')}") format("woff2")`;
 const FACES = `
-  @font-face{font-family:Inter;src:url("${FONT_DIR}/inter-greek.woff2") format("woff2");font-weight:100 900;font-display:block}
-  @font-face{font-family:Inter;src:url("${FONT_DIR}/inter-latin.woff2") format("woff2");font-weight:100 900;font-display:block}`;
+  @font-face{font-family:Inter;src:${font('inter-greek.woff2')};font-weight:100 900;font-display:block}
+  @font-face{font-family:Inter;src:${font('inter-latin.woff2')};font-weight:100 900;font-display:block}`;
 
 // Τα χρώματα του σκοτεινού θέματος, όπως τα γράφει το app/globals.css.
 const GROUND = '#070b12', INK = '#eef2f7', MUTED = '#bcc6d3', ACCENT = '#8ab4f8', RULE = '#223044';
@@ -142,12 +154,13 @@ for (const id of PLAN_ORDER.filter(p => p !== 'free') as PlanId[]) {
   // Πόσους μήνες χαρίζει η ετήσια: δώδεκα μείον όσους πληρώνεις. Ιδιος
   // υπολογισμός με την κάρτα της αρχικής σελίδας, όχι δεύτερος αριθμός.
   const freeMonths = 12 - Math.round(p.priceAnnual / p.priceMonthly);
-  const NAME = p.name.toUpperCase();
+  // Κεφαλαία ΧΩΡΙΣ τόνους: το toUpperCase() κρατά τον τόνο («ΑΚΊΝΗΤΟ»).
+  const NAME = grUpper(p.name);
 
   // ── 1. ΤΙ ΕΙΝΑΙ. Ενα κεντραρισμένο μπλοκ, ίδιο σε κάθε πακέτο. ───────────
   shots.push({
     file: `${id}-1-tetragono.png`, w: 1200, h: 1200,
-    html: card(1200, 1200, 'ΣΥΝΔΡΟΜΗ', cap.toUpperCase(), `
+    html: card(1200, 1200, 'ΣΥΝΔΡΟΜΗ', grUpper(cap), `
       <div>
         <div data-k="bar" style="width:120px;height:4px;background:${ACCENT};margin-bottom:40px"></div>
         <div data-k="onoma" style="font-size:${TS.hero}px;font-weight:800;letter-spacing:-0.035em;line-height:1.02">${esc(p.name)}</div>
@@ -159,12 +172,12 @@ for (const id of PLAN_ORDER.filter(p => p !== 'free') as PlanId[]) {
           <span class="num" style="font-size:${TS.kpi}px">${price(p.priceMonthly)}</span>
           <span style="font-size:${TS.sub}px;color:${MUTED}">τον μήνα</span>
         </div>
-        <div data-k="dokimi" style="margin-top:18px;font-size:${TS.body}px;color:${ACCENT};font-weight:700">${TRIAL_DAYS} ημέρες δωρεάν δοκιμή</div>
+        <div data-k="dokimi" style="margin-top:18px;font-size:${TS.body}px;color:${ACCENT};font-weight:700">Ακυρώνεις όποτε θέλεις</div>
       </div>`, true),
   });
 
   // ── 2. ΤΙ ΠΕΡΙΛΑΜΒΑΝΕΙ. Δύο στήλες που γεμίζουν ΚΑΤΑ ΣΤΗΛΗ, ζυγισμένες. ──
-  const items = [cap, ...p.features.filter(f => !/^Έως \d|^Ακίνητα χωρίς όριο/.test(f)), `${ai} ερωτήσεις στον βοηθό τον μήνα`];
+  const items = [cap, ...p.features.filter(f => !/^Έως \d|^Ακίνητα χωρίς όριο|^Απεριόριστα ακίνητα/.test(f)), `${ai} ερωτήσεις στον βοηθό τον μήνα`];
   const half = Math.ceil(items.length / 2);
   // ΤΟ ΣΗΜΑΔΙ ΜΠΑΙΝΕΙ ΣΤΗΝ ΠΡΩΤΗ ΓΡΑΜΜΗ, ΟΧΙ ΣΤΗ ΣΤΗΛΗ. Δοκιμάστηκε με
   // «padding-top» στη στήλη και ο έλεγχος πέρασε πράσινος: το γέμισμα είναι
@@ -198,7 +211,7 @@ for (const id of PLAN_ORDER.filter(p => p !== 'free') as PlanId[]) {
         ${money('ΕΤΗΣΙΑ', p.priceAnnual, 'etisia', `${freeMonths} ${freeMonths === 1 ? 'μήνας' : 'μήνες'} δωρεάν`)}
       </div>
       <div data-k="psila" style="margin-top:52px;font-size:${TS.micro}px;color:${MUTED};line-height:1.6;max-width:1100px">
-        ${TRIAL_DAYS} ημέρες δωρεάν δοκιμή. Χωρίς δέσμευση, χωρίς κρυφές χρεώσεις.
+        Ακυρώνεις όποτε θέλεις, η πρόσβαση μένει ως το τέλος της περιόδου. Χωρίς κρυφές χρεώσεις.
         Οι τιμές αφορούν καταναλωτές στην Ελλάδα και περιλαμβάνουν ΦΠΑ.
       </div>`),
   });
@@ -251,7 +264,7 @@ function copyMarkdown(): string {
     // πάνω στον δωρεάν «Ιδιοκτήτη»: οι γραμμές εκείνου γράφονται κι εδώ, εκτός
     // από τη σάρωση, που εδώ δεν έχει όριο.
     const inherited = id === 'solo' ? PLANS.free.features.filter(f => !f.startsWith('Σάρωση')) : [];
-    const bullets = [capKoukkida, ...inherited, ...p.features.filter(f => !/^Έως \d|^Ακίνητα χωρίς όριο/.test(f))];
+    const bullets = [capKoukkida, ...inherited, ...p.features.filter(f => !/^Έως \d|^Ακίνητα χωρίς όριο|^Απεριόριστα ακίνητα/.test(f))];
     // ΚΑΙ Η ΚΛΙΜΑΚΑ ΛΕΓΕΤΑΙ ΚΙ ΕΔΩ. Στην αρχική σελίδα κάθε κάρτα γράφει «Ολα
     // του προηγούμενου και:». Στο κατάστημα το κάθε προϊόν στέκει ΜΟΝΟ του:
     // χωρίς αυτή τη γραμμή, ο αγοραστής του «Ιδιοκτήτης+» διαβάζει δύο
@@ -267,9 +280,9 @@ function copyMarkdown(): string {
       PITCH[id], '',
       intro, '',
       ...bullets.map(f => `- ${f}`), '',
-      `Δοκιμή ${TRIAL_DAYS} ημερών χωρίς δέσμευση. Μηνιαία ${price(p.priceMonthly)} ή ετήσια `
+      `Μηνιαία ${price(p.priceMonthly)} ή ετήσια `
       + `${price(p.priceAnnual)}, δηλαδή ${freeMonths} ${freeMonths === 1 ? 'μήνας' : 'μήνες'} δωρεάν. `
-      + 'Ακυρώνεις όποτε θέλεις. Οι τιμές αφορούν καταναλωτές στην Ελλάδα και περιλαμβάνουν ΦΠΑ.', '',
+      + 'Ακυρώνεις όποτε θέλεις και η πρόσβαση μένει ως το τέλος της περιόδου που πλήρωσες. Οι τιμές αφορούν καταναλωτές στην Ελλάδα και περιλαμβάνουν ΦΠΑ.', '',
       '**Εικόνες:**', '',
       `- \`${id}-1-tetragono.png\` (1200×1200) για τη μικρογραφία του προϊόντος`,
       `- \`${id}-2-perilamvanei.png\` (1600×900) για το τι περιλαμβάνει`,

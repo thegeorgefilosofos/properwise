@@ -1,4 +1,4 @@
-Οι εικόνες προϊόντος για το Lemon Squeezy.
+Οι εικόνες προϊόντος του παλιού εμπόρου. Για τον Creem χρησιμοποίησε το docs/marketing/store/.
 Παράγονται από το scripts/build-plan-images.mjs. Μην τις φτιάξεις με το χέρι:
 το σχήμα έρχεται από το components/BrandMark.tsx και τα ονόματα από το
 lib/billing/plans.ts, ώστε να μην μπορούν να αποκλίνουν από την εφαρμογή.

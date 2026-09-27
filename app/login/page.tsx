@@ -391,10 +391,12 @@ export default function LoginPage() {
               μαζί με τη στήλη, οπότε τίποτα δεν βγαίνει από την οθόνη· εκεί
               τυλίγει — και το «balance» μοιράζει τις δύο σειρές αντί να αφήσει
              πάλι μία λέξη μόνη της. Οι δύο σύνδεσμοι δεν σπάνε ΜΕΣΑ τους: στα
-             390 το «Όρους χρήσης» χωριζόταν σε δύο σειρές. */
+             390 το «Όρους χρήσης» χωριζόταν σε δύο σειρές.
+             ΚΑΙ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (27.09.2026): «Όρους» αντί για
+             «Όρους χρήσης», όπως στην εγγραφή· ο σύνδεσμος οδηγεί εκεί. */
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 24, lineHeight: 1.6, width: 'calc(100% + 20px)', marginInline: -10, textWrap: 'balance' }}>
             Συνεχίζοντας, αποδέχεσαι τους{' '}
-            <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Όρους χρήσης</Link>{' '}και την{' '}
+            <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Όρους</Link>{' '}και την{' '}
             <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>.
           </p>
           )}
