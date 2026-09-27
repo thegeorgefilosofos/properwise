@@ -31,7 +31,8 @@
 - [ ] **Backup artifacts κρυπτογραφημένα** (`BACKUP_PASSPHRASE` set).
 
 ## 5. Creem — χρέωση συνδρομών (merchant of record)
-- [ ] Settings → Legal → DPA· η κάρτα μένει στο PCI scope της Creem, που πουλά ως merchant of record και αποδίδει τον ΦΠΑ κάθε χώρας.
+- [x] Settings → Legal → DPA· η κάρτα μένει στο PCI scope της Creem, που πουλά ως merchant of record και αποδίδει τον ΦΠΑ κάθε χώρας. **Αποδεκτή στις 23.09.2026** (πηγή: δήλωση του ιδιοκτήτη, 27.09.2026).
+- [x] Αντίγραφο PDF της αποδεκτής DPA σε ασφαλή αποθήκη εκτός αποθετηρίου (πηγή: δήλωση του ιδιοκτήτη, 27.09.2026).
 
 ## Μελλοντικοί (πριν το go-live)
 - [ ] **Google/Apple/Mozilla (υπηρεσίες push των περιηγητών)**: ενεργοποιούνται μόλις

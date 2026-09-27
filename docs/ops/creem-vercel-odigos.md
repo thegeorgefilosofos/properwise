@@ -91,6 +91,31 @@
 prod_AAA:solo:monthly,prod_BBB:solo:annual,prod_CCC:owner:monthly,prod_DDD:owner:annual,prod_EEE:agency:monthly,prod_FFF:agency:annual,prod_GGG:office:monthly,prod_HHH:office:annual
 ```
 
+**Τα προϊόντα της κανονικής λειτουργίας (27.09.2026).** Τα αναγνωριστικά δεν
+είναι μυστικά: φαίνονται σε κάθε σύνδεσμο πληρωμής.
+
+| # | Προϊόν | Τιμή | Αναγνωριστικό |
+|---|---|---|---|
+| 1 | Ιδιοκτήτης με Νόα · Μηνιαίο | 4,99 € | `prod_6qrxof8VsjhaYroA4uAIGJ` |
+| 2 | Ιδιοκτήτης με Νόα · Ετήσιο | 54,90 € | `prod_1DcLGOtC9J1XpW618aTjdR` |
+| 3 | Ιδιοκτήτης+ · Μηνιαίο | 9,90 € | `prod_39QkUQzdQmV865iu1ktpKF` |
+| 4 | Ιδιοκτήτης+ · Ετήσιο | 99,00 € | `prod_4UMvieAjwKF0oZctZjcNAk` |
+| 5 | Επαγγελματίας · Μηνιαίο | 29,90 € | `prod_JyvdCdGcT3s8rHdN2MCtW` |
+| 6 | Επαγγελματίας · Ετήσιο | 299,00 € | `prod_6wrjLayWB0HPvlFKuiqAMk` |
+| 7 | Επαγγελματίας+ · Μηνιαίο | 79,90 € | `prod_69fxejdoeNippoXHP5d9nU` |
+| 8 | Επαγγελματίας+ · Ετήσιο | 799,00 € | `prod_3CW2fu2TCsyXpYV6o15BsB` |
+
+Η τιμή της μεταβλητής, ελεγμένη με τον αναλυτή (`configError` κενό):
+
+```
+prod_6qrxof8VsjhaYroA4uAIGJ:solo:monthly,prod_1DcLGOtC9J1XpW618aTjdR:solo:annual,prod_39QkUQzdQmV865iu1ktpKF:owner:monthly,prod_4UMvieAjwKF0oZctZjcNAk:owner:annual,prod_JyvdCdGcT3s8rHdN2MCtW:agency:monthly,prod_6wrjLayWB0HPvlFKuiqAMk:agency:annual,prod_69fxejdoeNippoXHP5d9nU:office:monthly,prod_3CW2fu2TCsyXpYV6o15BsB:office:annual
+```
+
+**Μην κοινοποιείς τους συνδέσμους πληρωμής των προϊόντων.** Αγορά από σκέτο
+σύνδεσμο δεν φέρει τον λογαριασμό (`metadata.user_id`) και το webhook την
+απορρίπτει ως `no_account`: ο πελάτης χρεώνεται και το πακέτο δεν ανοίγει. Οι
+αγορές γίνονται μόνο από τη σελίδα Πακέτα της εφαρμογής.
+
 Ο αναλυτής είναι ο ίδιος με του πρώτου εμπόρου (`parseVariantMap`) και **δεν
 συγχωρεί τυπογραφικά**: άγνωστο πακέτο, άγνωστος κύκλος ή διπλό αναγνωριστικό
 γίνονται μήνυμα σφάλματος με το όνομα της γραμμής που φταίει.
@@ -135,16 +160,22 @@ prod_AAA:solo:monthly,prod_BBB:solo:annual,prod_CCC:owner:monthly,prod_DDD:owner
 
 | Μεταβλητή | Τι είναι | Χωρίς αυτήν |
 |---|---|---|
-| `MERCHANT_PROVIDER` | `creem` | ισχύει ο προηγούμενος έμπορος |
-| `CREEM_API_KEY` | Settings → API Keys | τίποτα δεν μιλά στον έμπορο |
 | `CREEM_PRODUCTS` | ο χάρτης του Β3 | το ταμείο δεν ανοίγει |
 | `CREEM_WEBHOOK_SECRET` | Developers → Webhooks | κάθε γεγονός παίρνει 401 |
+| `CREEM_API_KEY` | Settings → API Keys | η χρέωση μένει κλειστή παντού |
+| `MERCHANT_PROVIDER` | `creem` (προαιρετική) | ισχύει ο Creem, που είναι ο προεπιλεγμένος |
 | `CREEM_TEST_MODE` | κενή στην παραγωγή | — |
 
-**Η `MERCHANT_PROVIDER` είναι ο διακόπτης.** Οσο λείπει, τρέχει ο προηγούμενος
-πάροχος: ένα υπάρχον ανέβασμα δεν αλλάζει συμπεριφορά επειδή προστέθηκε ο νέος.
-Τυπογραφικό στην τιμή **πετά** αντί να πέσει σιωπηλά στον προεπιλεγμένο — αλλιώς
-η εφαρμογή θα χρέωνε από άλλον πάροχο απ' ό,τι νομίζει όποιος τη ρύθμισε.
+**Ο διακόπτης είναι το `CREEM_API_KEY`, όχι η `MERCHANT_PROVIDER`.** Ο Creem είναι
+ήδη ο προεπιλεγμένος έμπορος (`DEFAULT_MERCHANT` στο `lib/legal/merchant.ts`) και
+η χρέωση γίνεται ζωντανή μόλις υπάρχουν κλειδί ΚΑΙ χάρτης προϊόντων
+(`creemPort.isLive`): τότε εμφανίζονται τα κουμπιά αγοράς και τα νομικά κείμενα
+γράφουν το όνομα του εμπόρου. Γι' αυτό το κλειδί μπαίνει **τελευταίο, μετά την
+έγκριση του καταστήματος**· ο χάρτης και το μυστικό του webhook μπορούν να
+μπουν νωρίτερα χωρίς να αλλάξει τίποτα στον ιστότοπο.
+
+Η `MERCHANT_PROVIDER` μένει ως ρητή επιλογή: τυπογραφικό στην τιμή **πετά**
+αντί να πέσει σιωπηλά στον προεπιλεγμένο.
 
 Και μετά **ξαναχτίζεις**: οι μεταβλητές διαβάζονται στο χτίσιμο.
 
@@ -178,7 +209,7 @@ prod_AAA:solo:monthly,prod_BBB:solo:annual,prod_CCC:owner:monthly,prod_DDD:owner
 Οι οθόνες της εφαρμογής —πολιτική απορρήτου, όροι χρήσης, κατάλογος
 υπεργολάβων, σελίδα εμπιστοσύνης, συχνές ερωτήσεις— **δεν χρειάζονται καμία
 αλλαγή**: διαβάζουν το όνομα του εμπόρου από τη θύρα που εισπράττει, οπότε την
-ίδια στιγμή που η `MERCHANT_PROVIDER` γυρίζει, γυρίζει και το όνομα σε κάθε
+ίδια στιγμή που η χρέωση γίνεται ζωντανή, γυρίζει και το όνομα σε κάθε
 κείμενο. Ούτε ένα σημείο δεν το γράφει με το χέρι.
 
 Τα **δημοσιευμένα έγγραφα** στο `docs/legal/` και στο `docs/compliance/` όμως
