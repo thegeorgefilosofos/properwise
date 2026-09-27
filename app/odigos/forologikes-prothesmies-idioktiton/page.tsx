@@ -19,7 +19,7 @@
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl, PRODUCT_NAME } from '@/lib/core/site';
-import { monthGen } from '@/lib/core/months';
+import { monthGen, monthShort } from '@/lib/core/months';
 import {
   greekPropertyTaxObligations, CONFIDENCE_LABEL, TAXHEAVEN_CALENDAR_URL, AADE_CALENDAR_URL,
   type TaxObligation,
@@ -49,6 +49,15 @@ export const metadata: Metadata = publicMetadata({ title: TITLE, description: DE
 function longDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   return `${d} ${monthGen(m - 1)} ${y}`;
+}
+
+/**
+ * «26 Φεβ 2027» για τη στήλη του πίνακα. Με ολόκληρο τον μήνα η στήλη έπιανε
+ * τα μισά 390 του κινητού και οι τίτλοι έσπαγαν σε τέσσερις σειρές.
+ */
+function shortDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${monthShort(m - 1)} ${y}`;
 }
 
 /** «15 Απριλίου» από ISO ημερομηνία: για κανόνες που επαναλαμβάνονται κάθε χρόνο. */
@@ -200,7 +209,7 @@ export default function Page() {
                         {`${WHO[o.who]} · ${CONFIDENCE_LABEL[o.confidence]}`}
                       </span>
                     </th>
-                    <td className="num">{longDate(o.date)}</td>
+                    <td className="num"><time dateTime={o.date}>{shortDate(o.date)}</time></td>
                   </tr>
                 ))}
               </tbody>
