@@ -88,6 +88,12 @@ export async function GET(request: NextRequest) {
   // ακυρωμένη συνδρομή που τρέχει ώς την ημερομηνία της μετράει ζωντανή.
   const morStatus = (profile?.subscription_status || '').trim();
   if (isMorStatus(morStatus) && isEntitled({ status: morStatus, endsAt: profile?.mor_ends_at ?? null }, new Date().toISOString())) {
+    // Η ΕΡΩΤΗΣΗ «ΕΙΝΑΙ ΑΝΟΙΧΤΟ ΤΟ ΤΑΜΕΙΟ;» ΘΕΛΕΙ ΑΠΑΝΤΗΣΗ ΚΑΙ ΓΙΑ ΤΟΝ ΣΥΝΔΡΟΜΗΤΗ.
+    // Η οθόνη χρέωσης δείχνει την «Αλλαγή πακέτου» μόνο όταν η ερώτηση απαντά
+    // «ναι». Το 409 έπεφτε πριν από αυτήν, οπότε κανένας πληρωμένος πελάτης
+    // δεν έβλεπε ποτέ το κουμπί της αναβάθμισης (έλεγχος 27.09.2026, D6).
+    // Ταμείο δεν ανοίγει: το 409 παρακάτω ισχύει για κάθε κανονικό αίτημα.
+    if (probe) return NextResponse.json({ available: true, subscribed: true, url: null, note: billingWords().chargingToday });
     return NextResponse.json({
       error: 'Υπάρχει ήδη ενεργή συνδρομή. Η αλλαγή πακέτου γίνεται από τη διαχείριση συνδρομής.',
     }, { status: 409 });

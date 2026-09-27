@@ -26,15 +26,34 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { T } from '@/components/tokens';
 import { TameioCard, TAMEIO_TITLE, TAMEIO_ACTION } from './TameioCard';
-import { ChipToggle } from '@/components/Theme';
+import { ChipToggle, Btn } from '@/components/Theme';
 import { authClient } from '@/lib/supabase/lazy';
-import { PLANS, PLAN_ORDER, TRIAL_DAYS, type PlanId, type BillingCycle } from '@/lib/billing/plans';
+import { PLANS, PLAN_ORDER, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 import { planFromParam, cycleFromParam } from '@/lib/billing/entitlements';
 import { fe } from '@/lib/core/format';
 
-type Stage = 'opening' | 'choose' | 'closed' | 'anonymous';
+/** Το πακέτο και το ποσό του, όπως γράφονται πάνω από κάθε κατάληξη. */
+function describe(plan: PlanId, cyc: BillingCycle): string {
+  return `${PLANS[plan].name}, ${cyc === 'annual'
+    ? `με ετήσια χρέωση ${fe(PLANS[plan].priceAnnual)}`
+    : `με μηνιαία χρέωση ${fe(PLANS[plan].priceMonthly)}`}`;
+}
 
-export default function CheckoutLanding() {
+/** Η δεύτερη επιλογή: ίδιο ύψος με την πρώτη, χωρίς γέμισμα. */
+const TAMEIO_TRIAL = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, marginTop: 8,
+  borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)',
+  color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, textDecoration: 'none',
+} as const;
+
+type Stage = 'opening' | 'choose' | 'confirm' | 'closed' | 'anonymous';
+
+/**
+ * ΤΑ ΛΟΓΙΑ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΟΝ ΔΙΑΚΟΜΙΣΤΗ. Η οθόνη τρέχει στον περιηγητή και δεν
+ * ξέρει ποιος έμπορος εισπράττει· τα ίδια κείμενα με τους Ορους της τα δίνει
+ * το page.tsx (lib/legal/billingWords.ts).
+ */
+export default function CheckoutLanding({ firstCharge, moneyBack }: { firstCharge: string; moneyBack: string }) {
   const [stage, setStage] = useState<Stage>('opening');
   const [note, setNote] = useState('');
   const [what, setWhat] = useState('');
@@ -45,6 +64,8 @@ export default function CheckoutLanding() {
   // Ο κύκλος του επιλογέα. Ξεκινά μηνιαίος: είναι η μικρότερη δέσμευση και
   // όποιος θέλει ετήσια το λέει μόνος του.
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
+  // Το πακέτο που ταξίδεψε στη διεύθυνση, ώσπου να πει ο χρήστης «πληρωμή».
+  const [picked, setPicked] = useState<{ plan: PlanId; cycle: BillingCycle } | null>(null);
 
   /**
    * Ζητά τον σύνδεσμο του ταμείου και φεύγει.
@@ -55,9 +76,7 @@ export default function CheckoutLanding() {
    */
   const open = useCallback(async (plan: PlanId, cyc: BillingCycle) => {
     setStage('opening');
-    setWhat(`${PLANS[plan].name}, ${cyc === 'annual'
-      ? `με ετήσια χρέωση ${fe(PLANS[plan].priceAnnual)}`
-      : `με μηνιαία χρέωση ${fe(PLANS[plan].priceMonthly)}`}`);
+    setWhat(describe(plan, cyc));
     try {
       const res = await fetch(`/api/billing/checkout?plan=${plan}&cycle=${cyc}`);
       const body = await res.json() as { url?: string | null; tester?: boolean; note?: string };
@@ -100,7 +119,17 @@ export default function CheckoutLanding() {
       // λογαριασμός έμενε σε αναμονή, χωρίς να έχει δει ούτε μία φορά τιμή.
       if (!plan) { setStage('choose'); return; }
 
-      await open(plan, cycleFromParam(q.get('cycle')));
+      // ── ΠΡΙΝ ΑΠΟ ΤΟ ΤΑΜΕΙΟ, ΕΝΑ ΠΑΤΗΜΑ ΠΟΥ ΛΕΕΙ ΤΙ ΘΑ ΣΥΜΒΕΙ ──────────
+      // Η συνδρομή χρεώνεται τη στιγμή της αγοράς, ενώ η δοκιμή των τριάντα
+      // ημερών τρέχει χωρίς κάρτα για κάθε νέο λογαριασμό. Η οθόνη άνοιγε
+      // το ταμείο αμέσως, λέγοντας «οι πρώτες 30 ημέρες είναι χωρίς
+      // χρέωση»: ο πελάτης πλήρωνε την πρώτη μέρα αφού διάβασε το αντίθετο
+      // (έλεγχος 27.09.2026, P0). Τώρα βλέπει το ποσό, ότι χρεώνεται σήμερα
+      // και ότι μπορεί να συνεχίσει με τη δοκιμή χωρίς να πληρώσει τίποτα.
+      const cyc = cycleFromParam(q.get('cycle'));
+      setPicked({ plan, cycle: cyc });
+      setWhat(describe(plan, cyc));
+      setStage('confirm');
     })();
     return () => { alive = false; };
   }, [open]);
@@ -172,9 +201,24 @@ export default function CheckoutLanding() {
             </div>
 
             <p style={{ margin: '14px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)' }}>
-              Οι πρώτες {TRIAL_DAYS} ημέρες είναι χωρίς χρέωση και το πακέτο το αλλάζεις όποτε θέλεις από τις Ρυθμίσεις.
+              {firstCharge} {moneyBack}
             </p>
+            <Link href="/dashboard" style={TAMEIO_TRIAL}>Συνέχεια με τη δοκιμή</Link>
           </div>
+        )}
+
+        {stage === 'confirm' && picked && (
+          <>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.55, margin: '14px 0 0' }}>
+              {firstCharge} {moneyBack}
+            </p>
+            <div style={{ marginTop: 20, display: 'grid' }}>
+              <Btn variant="primary" size="lg" field onClick={() => open(picked.plan, picked.cycle)}>
+                Πληρωμή {fe(picked.cycle === 'annual' ? PLANS[picked.plan].priceAnnual : PLANS[picked.plan].priceMonthly)}
+              </Btn>
+            </div>
+            <Link href="/dashboard" style={TAMEIO_TRIAL}>Συνέχεια με τη δοκιμή</Link>
+          </>
         )}
 
         {stage === 'opening' && (

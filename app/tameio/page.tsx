@@ -18,7 +18,7 @@ import { TameioCard, TAMEIO_TITLE, TAMEIO_ACTION } from './TameioCard';
 
 export default function Page() {
   const w = billingWords();
-  if (w.live) return <CheckoutLanding/>;
+  if (w.live) return <CheckoutLanding firstCharge={w.firstCharge} moneyBack={w.moneyBack}/>;
   return (
     <TameioCard>
       <h1 style={TAMEIO_TITLE}>Δεν χρειάζεται πληρωμή</h1>

@@ -22,6 +22,10 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.er
 
 const PRODUCTS = 'prod_a:solo:monthly,prod_b:solo:annual,prod_c:owner:monthly';
 const env = { [CREEM_KEY_ENV]: 'k', [CREEM_PRODUCTS_ENV]: PRODUCTS, [CREEM_SECRET_ENV]: 's' };
+// ΟΛΟΚΛΗΡΟΣ Ο ΧΑΡΤΗΣ: τέσσερα πληρωμένα πακέτα σε δύο κύκλους.
+const FULL = 'prod_a:solo:monthly,prod_b:solo:annual,prod_c:owner:monthly,prod_d:owner:annual,'
+  + 'prod_e:agency:monthly,prod_f:agency:annual,prod_g:office:monthly,prod_h:office:annual';
+const full = { ...env, [CREEM_PRODUCTS_ENV]: FULL };
 
 /** Ενα γεγονός στο σχήμα που στέλνει όντως ο πάροχος. */
 const event = (over: Record<string, unknown> = {}, name = 'subscription.active') => ({
@@ -50,11 +54,23 @@ const event = (over: Record<string, unknown> = {}, name = 'subscription.active')
   // η συνδρομή υπάρχει ήδη. Ενώνοντάς τα, υπάρχων συνδρομητής θα έχανε τα
   // παραστατικά του επειδή λείπει μεταβλητή που αφορά ΝΕΕΣ αγορές.
   ok('με κλειδί χωρίς χάρτη ΔΕΝ πουλά', !creemPort.isLive({ [CREEM_KEY_ENV]: 'k' }));
-  ok('με κλειδί και χάρτη πουλά', creemPort.isLive(env));
+  ok('με κλειδί και πλήρη χάρτη πουλά', creemPort.isLive(full));
   ok('το σφάλμα ρύθμισης ονομάζει τη μεταβλητή που λείπει',
      creemPort.configError({}).includes(CREEM_KEY_ENV)
      && creemPort.configError({ [CREEM_KEY_ENV]: 'k' }).includes(CREEM_PRODUCTS_ENV));
-  ok('πλήρης ρύθμιση δεν παραπονιέται', creemPort.configError(env) === '');
+  ok('πλήρης ρύθμιση δεν παραπονιέται', creemPort.configError(full) === '');
+  // ΕΝΑ ΤΥΠΟΓΡΑΦΙΚΟ ΣΕ ΜΙΑ ΑΠΟ ΤΙΣ ΟΚΤΩ ΓΡΑΜΜΕΣ ΔΕΝ ΑΦΗΝΕΙ ΤΟ ΤΑΜΕΙΟ ΜΙΣΟΑΝΟΙΧΤΟ.
+  ok('μισός χάρτης δεν πουλά', !creemPort.isLive(env));
+  ok('το σφάλμα λέει ποια ζεύγη λείπουν',
+     creemPort.configError(env).includes('agency:monthly') && creemPort.configError(env).includes('office:annual'));
+
+  // ΤΟ ΚΛΕΙΔΙ ΛΕΕΙ ΤΗ ΛΕΙΤΟΥΡΓΙΑ, Ο ΔΙΑΚΟΠΤΗΣ ΜΟΝΟ ΕΛΕΓΧΕΙ.
+  const testKey = { ...full, [CREEM_KEY_ENV]: 'creem_test_abc' };
+  ok('δοκιμαστικό κλειδί εκτός παραγωγής πουλά', creemPort.isLive({ ...testKey, VERCEL_ENV: 'preview' }));
+  ok('δοκιμαστικό κλειδί στην παραγωγή δεν πουλά', !creemPort.isLive({ ...testKey, VERCEL_ENV: 'production' }));
+  ok('ζωντανό κλειδί με διακόπτη δοκιμής δεν πουλά', !creemPort.isLive({ ...full, CREEM_TEST_MODE: '1' }));
+  ok('ο διακόπτης «false» δεν σημαίνει δοκιμή', creemPort.isLive({ ...full, CREEM_TEST_MODE: 'false' }));
+  ok('ζωντανό κλειδί στην παραγωγή πουλά', creemPort.isLive({ ...full, VERCEL_ENV: 'production' }));
 }
 
 // ── Οι καταστάσεις, μία προς μία ─────────────────────────────────────────
@@ -183,8 +199,8 @@ async function main() {
     ok('ταυτοποιείται με x-api-key',
        (s?.init.headers as Record<string, string> | undefined)?.['x-api-key'] === 'k');
 
-    const test = await creemPort.openCheckout(order, { ...env, CREEM_TEST_MODE: '1' }, fake);
-    ok('η δοκιμαστική λειτουργία αλλάζει διακομιστή',
+    const test = await creemPort.openCheckout(order, { ...env, [CREEM_KEY_ENV]: 'creem_test_abc' }, fake);
+    ok('το δοκιμαστικό κλειδί αλλάζει διακομιστή',
        test.url !== null && String((sent as unknown as { url: string }).url).startsWith('https://test-api.creem.io'));
 
     const missing = await creemPort.openCheckout({ ...order, plan: 'agency' as const }, env, fake);
@@ -239,7 +255,7 @@ async function main() {
     await creemPort.changePlan({ ...base, kind: 'upgrade', onTrial: false }, env, fake);
     ok('η αναβάθμιση χρεώνεται αμέσως', body.update_behavior === 'proration-charge-immediately');
     await creemPort.changePlan({ ...base, kind: 'downgrade', onTrial: false }, env, fake);
-    ok('η υποβάθμιση δεν χρεώνει αμέσως', body.update_behavior === 'proration-charge');
+    ok('η υποβάθμιση δεν χρεώνει ούτε πιστώνει', body.update_behavior === 'proration-none');
     const after = await creemPort.changePlan({ ...base, kind: 'upgrade', onTrial: false }, env, fake);
     ok('η νέα κατάσταση επιστρέφεται', after.after?.variantId === 'prod_c' && after.after?.status === 'active');
   }
