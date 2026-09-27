@@ -78,7 +78,9 @@ import TabRentROI from '@/app/dashboard/components/TabRentROI';
 // μετρηθεί ΔΕΝ σήμαινε ότι ήταν εντάξει· σήμαινε ότι δεν το ξέραμε.
 import TabAccounting from '@/app/dashboard/components/TabAccounting';
 import TabSettings from '@/app/dashboard/components/TabSettings';
-import TabCalendar, { DaySheet, type CalEvent } from '@/app/dashboard/components/TabCalendar';
+import TabCalendar from '@/app/dashboard/components/TabCalendar';
+import { DaySheet } from '@/app/dashboard/components/calendar/MonthView';
+import type { CalEvent } from '@/app/dashboard/components/calendar/model';
 import TabClients from '@/app/dashboard/components/TabClients';
 import TabDocuments from '@/app/dashboard/components/TabDocuments';
 import TabReferral from '@/app/dashboard/components/TabReferral';
