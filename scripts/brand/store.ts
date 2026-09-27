@@ -144,20 +144,47 @@ const tick = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke
   stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:5px"><path d="M20 6 9 17l-5-5"/></svg>`;
 
 type Shot = { file: string; w: number; h: number; html: string };
+
+const PAID = PLAN_ORDER.filter(p => p !== 'free') as PlanId[];
+const prevOf = (id: PlanId) => { const i = PAID.indexOf(id); return i > 0 ? PLANS[PAID[i - 1]] : null; };
+const capOf = (id: PlanId) => { const m = PLANS[id].maxProperties;
+  return m === Infinity ? 'Ακίνητα χωρίς όριο' : `${m} ${m === 1 ? 'ακίνητο' : 'ακίνητα'}`; };
+/**
+ * Η ΛΙΣΤΑ ΕΙΝΑΙ ΜΙΑ, ΓΙΑ ΕΙΚΟΝΑ ΚΑΙ ΠΕΡΙΓΡΑΦΗ. Ο «Ιδιοκτήτης με Νόα» χτίζει
+ * πάνω στον δωρεάν «Ιδιοκτήτη», οπότε παίρνει και τις γραμμές εκείνου (εκτός
+ * από τη σάρωση, που εδώ δεν έχει όριο). Τα ακριβότερα λένε μόνο τι προσθέτουν
+ * και το «ό,τι έχει ο …» το γράφει το κείμενο δίπλα.
+ */
+const listFor = (id: PlanId): string[] => {
+  const p = PLANS[id];
+  const inherited = id === 'solo' ? PLANS.free.features.filter(f => !f.startsWith('Σάρωση')) : [];
+  return [capOf(id), ...inherited, ...p.features.filter(f => !/^Έως \d|^Ακίνητα χωρίς όριο|^Απεριόριστα ακίνητα/.test(f))];
+};
+/** Το ένα σημείο που ξεχωρίζει κάθε πακέτο, για το τετράγωνο. */
+const HIGHLIGHT: Record<string, string> = {
+  solo: 'Ε2 έτοιμο για τον λογιστή',
+  owner: 'Σύγκριση απόδοσης ανά ακίνητο',
+  agency: 'Ομάδα με ρόλους, χωρίς όριο',
+  office: 'Πρώτο στη σειρά διάθεσης',
+};
 const shots: Shot[] = [];
 
-for (const id of PLAN_ORDER.filter(p => p !== 'free') as PlanId[]) {
+for (const id of PAID) {
   const p = PLANS[id];
   const ai = aiLimitsFor(id).perMonth;
-  const cap = p.maxProperties === Infinity ? 'Ακίνητα χωρίς όριο'
-    : `${p.maxProperties} ${p.maxProperties === 1 ? 'ακίνητο' : 'ακίνητα'}`;
+  const cap = capOf(id);
   // Πόσους μήνες χαρίζει η ετήσια: δώδεκα μείον όσους πληρώνεις. Ιδιος
   // υπολογισμός με την κάρτα της αρχικής σελίδας, όχι δεύτερος αριθμός.
   const freeMonths = 12 - Math.round(p.priceAnnual / p.priceMonthly);
   // Κεφαλαία ΧΩΡΙΣ τόνους: το toUpperCase() κρατά τον τόνο («ΑΚΊΝΗΤΟ»).
   const NAME = grUpper(p.name);
 
-  // ── 1. ΤΙ ΕΙΝΑΙ. Ενα κεντραρισμένο μπλοκ, ίδιο σε κάθε πακέτο. ───────────
+  // ── 1. ΤΙ ΕΙΝΑΙ. Ονομα, τρία σημεία, τιμή: τρεις ζώνες, ίδιες σε κάθε πακέτο.
+  // Η ΜΕΣΗ ΗΤΑΝ ΑΔΕΙΑ. Ονομα πάνω και τιμή κάτω με σκέτο κενό ανάμεσα: σε
+  // μικρογραφία του καταστήματος διαβαζόταν ως μισοτελειωμένη εικόνα. Τώρα
+  // εκεί μπαίνουν τα τρία πράγματα που ξεχωρίζουν το πακέτο, πάντα τρία, ώστε
+  // οι τέσσερις μικρογραφίες να έχουν το ίδιο σχήμα η μία δίπλα στην άλλη.
+  const top3 = [cap, `${ai} ερωτήσεις στη Νόα τον μήνα`, HIGHLIGHT[id]];
   shots.push({
     file: `${id}-1-tetragono.png`, w: 1200, h: 1200,
     html: card(1200, 1200, 'ΣΥΝΔΡΟΜΗ', grUpper(cap), `
@@ -166,8 +193,11 @@ for (const id of PLAN_ORDER.filter(p => p !== 'free') as PlanId[]) {
         <div data-k="onoma" style="font-size:${TS.hero}px;font-weight:800;letter-spacing:-0.035em;line-height:1.02">${esc(p.name)}</div>
         <div data-k="ypotitlos" style="margin-top:20px;font-size:${TS.sub}px;color:${MUTED};line-height:1.35">${esc(p.tagline)}</div>
       </div>
-      <div class="rule"></div>
+      <div data-k="simeia" style="display:flex;flex-direction:column;gap:22px">
+        ${top3.map(t => `<div style="display:flex;align-items:flex-start;gap:16px;font-size:${TS.body}px;line-height:1.35">${tick}<span>${esc(t)}</span></div>`).join('')}
+      </div>
       <div>
+        <div class="rule" style="margin-bottom:40px"></div>
         <div data-k="timi" style="display:flex;align-items:baseline;gap:16px">
           <span class="num" style="font-size:${TS.kpi}px">${price(p.priceMonthly)}</span>
           <span style="font-size:${TS.sub}px;color:${MUTED}">τον μήνα</span>
@@ -176,42 +206,55 @@ for (const id of PLAN_ORDER.filter(p => p !== 'free') as PlanId[]) {
       </div>`, true),
   });
 
-  // ── 2. ΤΙ ΠΕΡΙΛΑΜΒΑΝΕΙ. Δύο στήλες που γεμίζουν ΚΑΤΑ ΣΤΗΛΗ, ζυγισμένες. ──
-  const items = [cap, ...p.features.filter(f => !/^Έως \d|^Ακίνητα χωρίς όριο|^Απεριόριστα ακίνητα/.test(f)), `${ai} ερωτήσεις στον βοηθό τον μήνα`];
-  const half = Math.ceil(items.length / 2);
-  // ΤΟ ΣΗΜΑΔΙ ΜΠΑΙΝΕΙ ΣΤΗΝ ΠΡΩΤΗ ΓΡΑΜΜΗ, ΟΧΙ ΣΤΗ ΣΤΗΛΗ. Δοκιμάστηκε με
-  // «padding-top» στη στήλη και ο έλεγχος πέρασε πράσινος: το γέμισμα είναι
-  // ΜΕΣΑ στο κουτί, οπότε το πάνω όριο της στήλης δεν κουνιέται ενώ το
-  // περιεχόμενο κατεβαίνει. Αυτό που πρέπει να ευθυγραμμίζεται είναι το πρώτο
-  // τσεκάκι της κάθε στήλης, άρα αυτό μετριέται.
-  const col = (list: string[], k: string) => `<div style="display:flex;flex-direction:column;gap:24px">`
-    + list.map((t, i) => `<div${i === 0 ? ` data-k="${k}"` : ''} style="display:flex;align-items:flex-start;gap:16px;font-size:${TS.body}px;line-height:1.35">`
-      + `${tick}<span>${esc(t)}</span></div>`).join('') + '</div>';
+  // ── 2. ΤΙ ΠΕΡΙΛΑΜΒΑΝΕΙ. Αριστερά το πακέτο, δεξιά ΟΛΗ η λίστα. ─────────────
+  // Η ΛΙΣΤΑ ΕΛΕΓΕ ΛΙΓΟΤΕΡΑ ΑΠ' ΟΣΑ ΠΕΡΙΛΑΜΒΑΝΕΙ ΤΟ ΠΑΚΕΤΟ. Ο «Ιδιοκτήτης με Νόα»
+  // έδειχνε τέσσερα σημεία ενώ η περιγραφή του καταστήματος γράφει επτά. Και τα
+  // ακριβότερα πακέτα δεν έλεγαν ότι χτίζουν πάνω στο προηγούμενο: ο αγοραστής
+  // του «Ιδιοκτήτης+» έβλεπε τρεις γραμμές και συμπέραινε ότι παίρνει λιγότερα.
+  // Εδώ η λίστα είναι η ΙΔΙΑ με της περιγραφής (listFor) και η αριστερή στήλη
+  // λέει από πού ξεκινά το πακέτο.
+  // Το πακέτο ερωτήσεων κλείνει τη λίστα: στο κείμενο το λέει η εισαγωγή.
+  const items = [...listFor(id), `${ai} ερωτήσεις στη Νόα τον μήνα`];
+  const prev = prevOf(id);
+  // Η ΑΛΛΑΓΗ ΓΡΑΜΜΗΣ ΕΙΝΑΙ ΕΠΙΛΟΓΗ: αλλιώς το «και επιπλέον:» έσπαγε όπου τύχαινε.
+  const lead = prev ? `Ό,τι έχει ο «${esc(prev.name)}»<br>και επιπλέον:` : `Όλα όσα χρειάζεται ένα ακίνητο,<br>με τη Νόα δίπλα σου.`;
   shots.push({
     file: `${id}-2-perilamvanei.png`, w: 1600, h: 900,
     html: card(1600, 900, 'ΤΙ ΠΕΡΙΛΑΜΒΑΝΕΙ', NAME, `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 56px;align-items:start">
-        ${col(items.slice(0, half), 'stili-a')}${col(items.slice(half), 'stili-b')}
+      <div style="display:grid;grid-template-columns:520px 1fr;gap:0 80px;align-items:center">
+        <div data-k="aristera">
+          <div style="width:96px;height:4px;background:${ACCENT};margin-bottom:32px"></div>
+          <div style="font-size:${TS.h2}px;font-weight:800;letter-spacing:-0.03em;line-height:1.05">${esc(p.name)}</div>
+          <div style="margin-top:22px;font-size:${TS.body}px;color:${MUTED};line-height:1.45">${lead}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:${items.length > 7 ? 16 : 22}px;padding-left:56px;border-left:1px solid ${RULE}">
+          ${items.map(t => `<div style="display:flex;align-items:flex-start;gap:16px;font-size:${TS.body}px;line-height:1.35">${tick}<span>${esc(t)}</span></div>`).join('')}
+        </div>
       </div>`),
   });
 
   // ── 3. ΤΙ ΚΟΣΤΙΖΕΙ. Δύο ΙΣΑ μισά, με τη γραμμή ακριβώς στη μέση. ─────────
-  const money = (label: string, value: number, k: string, note?: string) => `
+  // Κάθε ποσό λέει και τη μονάδα του («τον μήνα», «τον χρόνο»): δύο σκέτα
+  // νούμερα δίπλα δίπλα ζητούν από τον αγοραστή να μαντέψει ποιο είναι ποιο.
+  const money = (label: string, value: number, unit: string, k: string, note?: string) => `
     <div data-k="${k}" style="display:flex;flex-direction:column;align-items:flex-start">
       <div style="font-size:${TS.micro}px;color:${MUTED};letter-spacing:0.14em;font-weight:700">${label}</div>
-      <div class="num" style="margin-top:14px;font-size:${TS.kpi}px;line-height:1">${price(value)}</div>
-      <div style="margin-top:14px;font-size:${TS.body}px;color:${note ? ACCENT : 'transparent'};font-weight:700">${note || 'κενό'}</div>
+      <div style="margin-top:14px;display:flex;align-items:baseline;gap:14px">
+        <span class="num" style="font-size:${TS.kpi}px;line-height:1">${price(value)}</span>
+        <span style="font-size:${TS.body}px;color:${MUTED}">${unit}</span>
+      </div>
+      <div style="margin-top:18px;font-size:${TS.body}px;color:${note ? ACCENT : 'transparent'};font-weight:700">${note || 'κενό'}</div>
     </div>`;
   shots.push({
     file: `${id}-3-timi.png`, w: 1600, h: 900,
     html: card(1600, 900, 'ΤΙΜΗ', NAME, `
       <div style="display:grid;grid-template-columns:1fr 1px 1fr;align-items:center;gap:0 64px">
-        ${money('ΜΗΝΙΑΙΑ', p.priceMonthly, 'miniaia')}
+        ${money('ΜΗΝΙΑΙΑ', p.priceMonthly, 'τον μήνα', 'miniaia')}
         <div style="width:1px;height:200px;background:${RULE}"></div>
-        ${money('ΕΤΗΣΙΑ', p.priceAnnual, 'etisia', `${freeMonths} ${freeMonths === 1 ? 'μήνας' : 'μήνες'} δωρεάν`)}
+        ${money('ΕΤΗΣΙΑ', p.priceAnnual, 'τον χρόνο', 'etisia', `${freeMonths} ${freeMonths === 1 ? 'μήνας' : 'μήνες'} δωρεάν`)}
       </div>
-      <div data-k="psila" style="margin-top:52px;font-size:${TS.micro}px;color:${MUTED};line-height:1.6;max-width:1100px">
-        Ακυρώνεις όποτε θέλεις, η πρόσβαση μένει ως το τέλος της περιόδου. Χωρίς κρυφές χρεώσεις.
+      <div data-k="psila" style="margin-top:56px;padding-top:32px;border-top:1px solid ${RULE};font-size:${TS.micro}px;color:${MUTED};line-height:1.6">
+        Ακυρώνεις όποτε θέλεις και η πρόσβαση μένει ως το τέλος της περιόδου που πλήρωσες.<br>
         Οι τιμές αφορούν καταναλωτές στην Ελλάδα και περιλαμβάνουν ΦΠΑ.
       </div>`),
   });
@@ -254,8 +297,6 @@ function copyMarkdown(): string {
     // Το όριο σε δύο μορφές: μία για μέσα σε πρόταση, μία για κουκκίδα.
     const capFrasi = p.maxProperties === Infinity ? 'χωρίς όριο ακινήτων'
       : `έως ${p.maxProperties} ${p.maxProperties === 1 ? 'ακίνητο' : 'ακίνητα'}`;
-    const capKoukkida = p.maxProperties === Infinity ? 'Ακίνητα χωρίς όριο'
-      : `${p.maxProperties} ${p.maxProperties === 1 ? 'ακίνητο' : 'ακίνητα'}`;
     const freeMonths = 12 - Math.round(p.priceAnnual / p.priceMonthly);
     // ΤΟ ΟΡΙΟ ΑΚΙΝΗΤΩΝ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΩΣ ΚΟΥΚΚΙΔΑ. Ηταν και στην πρόταση
     // «Περιλαμβάνει έως 3 ακίνητα» και ξανά ως κουκκίδα «Εως 3 ακίνητα»: το ίδιο
@@ -263,8 +304,7 @@ function copyMarkdown(): string {
     // Ο «Ιδιοκτήτης με Νόα» είναι το πρώτο προϊόν του καταστήματος, αλλά χτίζει
     // πάνω στον δωρεάν «Ιδιοκτήτη»: οι γραμμές εκείνου γράφονται κι εδώ, εκτός
     // από τη σάρωση, που εδώ δεν έχει όριο.
-    const inherited = id === 'solo' ? PLANS.free.features.filter(f => !f.startsWith('Σάρωση')) : [];
-    const bullets = [capKoukkida, ...inherited, ...p.features.filter(f => !/^Έως \d|^Ακίνητα χωρίς όριο|^Απεριόριστα ακίνητα/.test(f))];
+    const bullets = listFor(id);
     // ΚΑΙ Η ΚΛΙΜΑΚΑ ΛΕΓΕΤΑΙ ΚΙ ΕΔΩ. Στην αρχική σελίδα κάθε κάρτα γράφει «Ολα
     // του προηγούμενου και:». Στο κατάστημα το κάθε προϊόν στέκει ΜΟΝΟ του:
     // χωρίς αυτή τη γραμμή, ο αγοραστής του «Ιδιοκτήτης+» διαβάζει δύο
