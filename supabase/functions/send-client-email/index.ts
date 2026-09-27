@@ -21,7 +21,7 @@ const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_ANON  = Deno.env.get('SUPABASE_ANON_KEY')!
 // Env-driven αποστολέας: μόλις επαληθεύσεις domain στο Resend, όρισε το RESEND_FROM
 // και ΟΛΑ τα emails φεύγουν από τη δική σου διεύθυνση, χωρίς αλλαγή κώδικα.
-const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <onboarding@resend.dev>'
+const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <no-reply@properwise.gr>'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

@@ -22,9 +22,12 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
-  // Η οδός του ιδιοκτήτη ως διεύθυνση σε στιγμιότυπο δοκιμής, όπως βρέθηκε.
-  // Η λέξη χτίζεται από σημεία κώδικα, ώστε να μη γράφεται αυτούσια ούτε εδώ.
-  'private-street': { add: 'lib/__mut__.test.ts', content: `const ctx = { address: '${String.fromCodePoint(0x391, 0x3c1, 0x3cd, 0x3b2, 0x3b2, 0x3bf, 0x3c5)} 45' }\nexport default ctx\n` },
+  // Η ΜΕΤΑΛΛΑΞΗ ΓΡΑΦΕΙ ΤΟ ΔΟΛΩΜΑ, ΟΧΙ ΤΗ ΔΙΕΥΘΥΝΣΗ. Ο φύλακας κρατά και το
+  // αποτύπωμα μιας λέξης χωρίς νόημα που δεν γράφεται πουθενά αλλού· αν
+  // κοκκινίζει για αυτήν, η ανάγνωση, η κανονικοποίηση και η σύγκριση
+  // δουλεύουν. Η πραγματική οδός δεν χρειάζεται να υπάρχει σε κανένα αρχείο.
+  // Γραμμένο ανάποδα, ώστε ούτε αυτό το αρχείο να μην το περιέχει αυτούσιο.
+  'private-street': { add: 'lib/__mut__.test.ts', content: `const ctx = { address: '${[...'θφωξψχΖ'].reverse().join('')} 12' }\nexport default ctx\n` },
 
   // Οι Οροι έλεγαν ότι η εφαρμογή κινητού «υπάρχει» στα stores σε ενεστώτα,
   // ενώ δεν έχει κυκλοφορήσει. Η μετάλλαξη προσθέτει ακριβώς τέτοιον ισχυρισμό,
@@ -511,10 +514,6 @@ export const MUTATIONS = {
   'way-out': { add: 'app/login/__mut__.tsx', content: "export default function P() {\n  return <h1>Μια οθόνη χωρίς δρόμο πίσω</h1>\n}\n" },
   // Ακριβώς ό,τι έριχνε το CI: το πλαστό αντικείμενο στη θέση του κατασκευαστή.
   'global-clobber': { add: 'lib/core/__mut__.ts', content: "export const stub = () => { (globalThis as unknown as Record<string, unknown>).URL = { createObjectURL: () => 'blob:x' } }\n" },
-  // Ο απαγορευμένος δρόμος ως «παράδειγμα» σε δοκιμή, όπως βρέθηκε. Γράφεται
-  // κωδικοποιημένος και εδώ: ο κατάλογος μεταλλάξεων είναι κι αυτός αρχείο
-  // του αποθετηρίου.
-  'forbidden-street': { add: 'lib/__mut__.test.ts', content: `const address = '${Buffer.from('zrHPgc+FzrLOss6/z4U=', 'base64').toString('utf8')} 45'\nexport default address\n` },
   // Η πληρωμένη διαδρομή που ξεχνά την πύλη πακέτου: ο έλεγχος του server
   // αντικαθίσταται από «πάντα ανοιχτό». Ο φύλακας πρέπει να το πιάσει.
   'server-entitlements': { file: 'app/api/investment/route.ts', from: "await requireFeature('investment_analysis')", to: "await Promise.resolve({ ok: true, plan: 'agency', userId: 'x' })" },
