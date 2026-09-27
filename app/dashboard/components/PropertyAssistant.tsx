@@ -54,7 +54,7 @@ import {
   addMemory, removeMemory, clearMemories, actionReachable,
 } from './assistantPersona';
 import {
-  ASSISTANT_NAME, ASSISTANT_ACC, tagline, askCta, askPlaceholder, openAria, aiDisclosure,
+  ASSISTANT_NAME, ASSISTANT_ACC, tagline, askCta, askPlaceholder, openAria, aiDisclosureLines, openersLabel,
   speakingLabel, settingsTitle, noKeyNotice,
 } from '@/lib/assistant/identity';
 import { classifyExpense } from '@/lib/expenses/classify';
@@ -1759,7 +1759,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     )}
                     <p className="po-just" style={{ ...TT.body, fontSize: 14, lineHeight: 1.6, margin: 0, maxWidth: '36ch' }}>{hy(greeting)}</p>
                     <div>
-                      <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 6 }}>{prefs.formal ? 'Ρωτήστε κάτι δικό σας' : 'Ρώτα κάτι δικό σου'}</div>
+                      <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 6 }}>{openersLabel()}</div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         {suggestedOpeners(openerCtx).map((s, i) => (
                           <button key={s} onClick={() => ask(s)}
@@ -1890,9 +1890,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                   που θέλει να ξέρει, κοιτάζει· ο χρήστης που δεν θέλει, δεν το
                   προσέχει. Εμφανίζεται μόνο αφού απαντήσει η βάση: πριν από την
                   πρώτη ερώτηση το υπόλοιπο θα ήταν μαντεψιά. */}
-              <div style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8, textWrap: 'balance' }}>
-                {aiDisclosure(prefs.formal)}
-              </div>
+              {/* ΜΙΑ ΠΡΟΤΑΣΗ ΑΝΑ ΓΡΑΜΜΗ. Ως ενιαίο κείμενο έσπαγε σε τρεις
+                  κεντραρισμένες γραμμές στη μέση της φράσης. */}
+              <p style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', margin: '8px 14px 0', textWrap: 'balance' }}>
+                {aiDisclosureLines(prefs.formal).map((l, i) => <span key={i} style={{ display: 'block' }}>{l}</span>)}
+              </p>
               {remainingLine(quota, prefs.formal) && (
                 <div style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 4 }}>
                   {remainingLine(quota, prefs.formal)}
@@ -1999,7 +2001,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
              Οι δύο τιμές ζουν πλέον στα --fab-bottom και --fab-side του
              globals.css: τις ήθελε ΚΑΙ η JavaScript του κουμπώματος και δύο
              αντίγραφα θα απέκλιναν — απέκλιναν ήδη μία φορά. */
-          .pa-panel{right:8px;left:8px;bottom:78px;width:auto;max-width:none;height:min(560px,calc(100dvh - 100px))}
+          /* ΤΟ ΠΑΝΕΛ ΚΑΘΕΤΑΙ ΠΑΝΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ, ΟΧΙ ΑΠΟ ΚΑΤΩ ΤΟΥ. Με σταθερό
+             bottom:78px το κουμπί κλεισίματος (που κάθεται στο --fab-bottom,
+             πάνω από την πλοήγηση) σκέπαζε την τελευταία γραμμή του πάνελ:
+             τη γνωστοποίηση ότι Νόα είναι τεχνητή νοημοσύνη. */
+          .pa-panel{right:8px;left:8px;bottom:calc(var(--fab-bottom) + var(--fab-h) + 10px);width:auto;max-width:none;height:min(560px,calc(100dvh - var(--fab-bottom) - var(--fab-h) - 34px))}
         }
         /* Η πρόσκληση μαζεύεται στο σήμα: μόλις κυλήσει η σελίδα και εξαρχής
            κάτω από τα 1.280, όπου το περιεχόμενο φτάνει ώς την άκρη. Ο λόγος και

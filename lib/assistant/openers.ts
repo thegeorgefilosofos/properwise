@@ -106,12 +106,14 @@ export function suggestedOpeners(ctx: OpenerContext | null = {}): string[] {
     out.push(`Από τα ${eur(ctx.monthlyRent)} τον μήνα, πόσο μου μένει καθαρά;`);
   }
   if (has(ctx.expensesYtd)) {
-    out.push(`Ξόδεψα ${eur(ctx.expensesYtd)} φέτος${forProp}· πού πήγαν;`);
+    // Χωρίς το όνομα: ο χαιρετισμός ακριβώς από πάνω το λέει ήδη και μέσα
+    // στην ερώτηση έβγαζε «στο ακίνητο «Ακίνητο 2»», σε δύο σειρές.
+    out.push(`Ξόδεψα ${eur(ctx.expensesYtd)} φέτος· πού πήγαν;`);
   }
 
   // 3. ΦΟΡΟΣ & ΑΠΟΔΟΣΗ — ο λόγος που έψαξε λύση.
   if (has(ctx.monthlyRent)) {
-    out.push('Πόσο φόρο θα πληρώσω φέτος για τα δικά μου ενοίκια;');
+    out.push('Πόσο φόρο θα πληρώσω φέτος για τα ενοίκια;');
   }
   if (has(ctx.monthlyRent) && has(ctx.propertyValue)) {
     out.push(`Τι απόδοση βγάζει${forProp ? forProp.replace(' στο ', ' το ') : ' το ακίνητό μου'} με τα σημερινά νούμερα;`);
@@ -133,7 +135,7 @@ export function suggestedOpeners(ctx: OpenerContext | null = {}): string[] {
   // χρήστης να δει διαδρομή αντί για άδεια οθόνη.
   if (out.length < MAX) {
     const fallbacks: string[] = [];
-    if (!has(ctx.monthlyRent)) fallbacks.push('Τι χρειάζεσαι από μένα για να μου πεις πόσο φόρο θα πληρώσω;');
+    if (!has(ctx.monthlyRent)) fallbacks.push('Τι χρειάζεσαι για να υπολογίσεις τον φόρο μου;');
     if (!has(ctx.expensesYtd)) fallbacks.push('Πώς καταχωρώ μια δαπάνη με μια φωτογραφία;');
     if (!has(ctx.propertyValue)) fallbacks.push('Τι στοιχεία λείπουν από το ακίνητό μου;');
     fallbacks.push('Τι μπορείς να κάνεις με τα δικά μου δεδομένα;');
@@ -161,9 +163,6 @@ export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerCont
   const hi = formal ? 'Γεια σας' : 'Γεια σου';
   const you = formal ? 'Ρωτήστε με' : 'Ρώτα με';
   const your = formal ? 'σας' : 'σου';
-  // «Στοιχεία», όχι «δεδομένα και νούμερα»: τα νούμερα είναι δεδομένα. Και η
-  // Νόα διαβάζει λογαριασμούς, συμβόλαια και ημερομηνίες, όχι μόνο ποσά.
-  const yours = formal ? 'τα δικά σας στοιχεία' : 'τα δικά σου στοιχεία';
 
   // Δεν έχουν φορτώσει ακόμη τα δεδομένα: δεν λέμε ούτε «βλέπω», ούτε «δεν έχεις».
   if (ctx === null) {
@@ -190,5 +189,8 @@ export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerCont
   }
 
   const list = knows.length === 1 ? knows[0] : `${knows.slice(0, -1).join(', ')} και ${knows[knows.length - 1]}`;
-  return `${hi}. Είμαι ${assistantName}. Βλέπω ${list} ${scope}. ${you} για ${yours}.`;
+  // ΜΙΑ ΠΡΟΤΑΣΗ, ΟΧΙ ΤΡΕΙΣ. Το όνομα το γράφει ήδη η κεφαλίδα του πάνελ και
+  // το «ρώτα με για τα δικά σου» ο υπότιτλος από κάτω της· ο χαιρετισμός
+  // λέει μόνο ό,τι δεν λέει τίποτε άλλο στην οθόνη: τι βλέπει τώρα.
+  return `${hi}. Βλέπω ${list} ${scope}.`;
 }
