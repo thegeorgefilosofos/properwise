@@ -35,8 +35,9 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { merchant } from '@/lib/billing/merchant';
-import { isEntitled } from '@/lib/billing/subscription';
+import { isEntitled, isMorStatus, type MorStatus } from '@/lib/billing/subscription';
 import { profileForPlan } from '@/lib/billing/entitlements';
+import { alertFor, sendMerchantAlert } from '@/lib/billing/merchantAlert';
 
 /** Ο πίνακας που κρατά το πακέτο του κάθε λογαριασμού. */
 const TABLE = 'billing_profiles';
@@ -133,6 +134,14 @@ export async function applyMerchantEvent(raw: string) {
       log('η ρύθμιση του εμπόρου δεν διαβάστηκε:', read.reason);
       return NextResponse.json({ error: 'not_configured' }, { status: 500 });
     }
+    // ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ Η ΑΜΦΙΣΒΗΤΗΣΗ: δεν αλλάζει πρόσβαση εδώ, αλλά
+    // φτάνει σε άνθρωπο, γιατί η συνδρομή πρέπει να ακυρωθεί στον έμπορο.
+    const alert = alertFor(payload);
+    if (alert) {
+      const sent = await sendMerchantAlert(alert, process.env.RESEND_API_KEY);
+      log(`${alert.subject}· ειδοποίηση ${sent ? 'στάλθηκε' : 'ΔΕΝ στάλθηκε'}`);
+      return NextResponse.json({ ok: true, alerted: sent });
+    }
     log('γεγονός που δεν εφαρμόστηκε:', read.reason);
     return NextResponse.json({ ok: !read.ours }, { status: read.ours ? 422 : 200 });
   }
@@ -196,7 +205,31 @@ export async function applyMerchantEvent(raw: string) {
   // ΤΟ ΠΑΚΕΤΟ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗΝ ΚΑΤΑΣΤΑΣΗ, ΟΧΙ ΑΠΟ ΤΟ ΟΝΟΜΑ ΤΟΥ ΓΕΓΟΝΟΤΟΣ. Οσο
   // η συνδρομή ισχύει, δίνει ό,τι αγοράστηκε· μόλις πάψει, ο λογαριασμός πέφτει
   // στο «χωρίς συνδρομή» και όχι σε κάτι ενδιάμεσο που δεν πλήρωσε κανείς.
-  const entitled = isEntitled(sub, new Date().toISOString());
+  const nowIso = new Date().toISOString();
+  const entitled = isEntitled(sub, nowIso);
+
+  // ── ΞΕΝΗ ΣΥΝΔΡΟΜΗ ΔΕΝ ΓΡΑΦΕΙ ΠΑΝΩ ΣΕ ΖΩΝΤΑΝΗ ──────────────────────────
+  // Ο λογαριασμός κρατά ΜΙΑ συνδρομή. Ενα γεγονός για ΑΛΛΗ συνδρομή, π.χ. η
+  // επιστροφή χρημάτων μιας παλιάς, θα έγραφε `plan = 'free'` και θα έστρεφε
+  // την πύλη στην παλιά, ενώ η καινούργια συνεχίζει να χρεώνει χωρίς να
+  // φαίνεται πουθενά (έλεγχος 27.09.2026, D3). Γεγονός που ΔΕΝ δίνει πρόσβαση,
+  // για συνδρομή διαφορετική από την καταγεγραμμένη που ισχύει, αγνοείται.
+  // Γεγονός που δίνει πρόσβαση περνά (νέα αγορά μετά από ακύρωση), αλλά αν η
+  // παλιά ισχύει ακόμη, γράφεται στο αρχείο: δύο ζωντανές συνδρομές σημαίνουν
+  // διπλή χρέωση και θέλουν άνθρωπο.
+  const { data: stored, error: storedError } = await db.from(TABLE)
+    .select('mor_subscription_id, subscription_status, mor_ends_at').eq('user_id', userId).maybeSingle();
+  if (storedError) log('η καταγεγραμμένη συνδρομή δεν διαβάστηκε:', storedError.message);
+  const current = stored as { mor_subscription_id?: string | null; subscription_status?: string | null; mor_ends_at?: string | null } | null;
+  if (current?.mor_subscription_id && current.mor_subscription_id !== sub.id
+      && isMorStatus(current.subscription_status || '')
+      && isEntitled({ status: current.subscription_status as MorStatus, endsAt: current.mor_ends_at ?? null }, nowIso)) {
+    if (!entitled) {
+      log(`γεγονός ${read.event.name} για τη συνδρομή ${sub.id}, ενώ ισχύει η ${current.mor_subscription_id}· αγνοήθηκε`);
+      return NextResponse.json({ ok: true, skipped: 'other_subscription' });
+    }
+    log(`ΔΥΟ ΖΩΝΤΑΝΕΣ ΣΥΝΔΡΟΜΕΣ για τον λογαριασμό ${userId}: ${current.mor_subscription_id} και ${sub.id}. Ελεγξε για διπλή χρέωση.`);
+  }
 
   // ── Η ΔΟΚΙΜΗ ΣΦΡΑΓΙΖΕΤΑΙ ΟΤΑΝ ΟΝΤΩΣ ΔΟΘΗΚΕ ────────────────────────────
   // ΟΧΙ ΟΤΑΝ ΑΝΟΙΞΕ ΤΟ ΤΑΜΕΙΟ: ένα ταμείο που άνοιξε και εγκαταλείφθηκε δεν

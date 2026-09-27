@@ -21,7 +21,7 @@ import { APP_URL } from '../_shared/site.ts'
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_ANON  = Deno.env.get('SUPABASE_ANON_KEY')!
-const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <onboarding@resend.dev>'
+const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <no-reply@properwise.gr>'
 const SIGNUP_URL     = `${APP_URL}/signup`
 
 const CORS = {

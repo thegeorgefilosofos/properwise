@@ -26,7 +26,7 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const LAUNCH_SECRET  = Deno.env.get('MOBILE_LAUNCH_SECRET') || ''
-const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <onboarding@resend.dev>'
+const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <no-reply@properwise.gr>'
 const APP_URL        = `${SITE}/dashboard`
 // ΤΑ ΔΥΟ ΚΑΤΑΣΤΗΜΑΤΑ, ΑΠΟ ΤΟ ΠΕΡΙΒΑΛΛΟΝ ΚΑΙ ΟΧΙ ΚΑΡΦΩΤΑ.
 // Καμία από τις δύο καταχωρήσεις δεν υπάρχει ακόμη, άρα ΚΑΝΕΝΑ αναγνωριστικό

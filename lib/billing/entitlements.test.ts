@@ -1,5 +1,6 @@
 // npx tsx lib/billing/entitlements.test.ts
 import {
+  livePlan,
   ALLOWED_PLANS, FEATURE_MIN_PLAN, TAB_MIN_PLAN, PROFESSIONAL_ONLY_TABS,
   planAtLeast, effectivePlan, activeComp, hasFeature, isTabAllowed,
   requiredPlanForTab, requiredPlanForFeature, propertyLimit, canAddProperty,
@@ -333,6 +334,21 @@ ok(profileForPlan('free') === 'individual', 'χωρίς συνδρομή, ιδι
 // Αλλιώς ο webhook θα έγραφε τύπο που κλειδώνει αυτό που μόλις πληρώθηκε.
 for (const id of ['free', 'solo', 'owner', 'agency', 'office'] as const) {
   ok(isPlanAllowedForProfile(profileForPlan(id), id), `ο τύπος του ${id} το αγοράζει`);
+}
+
+// ── ΑΚΥΡΩΜΕΝΗ ΣΥΝΔΡΟΜΗ: ΛΗΓΕΙ ΣΤΗΝ ΩΡΑ ΤΗΣ, ΟΧΙ ΟΤΑΝ ΦΤΑΣΕΙ ΓΕΓΟΝΟΣ ─────────
+// Ιδιος κανόνας με την `public.user_plan_rank` (20260927200000).
+{
+  const T = Date.parse('2026-10-01T00:00:00Z');
+  ok(livePlan({ plan: 'agency', subscription_status: 'cancelled', mor_ends_at: '2026-10-15T00:00:00Z' }, T) === 'agency',
+     'ακυρωμένη με πληρωμένη περίοδο που τρέχει: κρατά το πακέτο');
+  ok(livePlan({ plan: 'agency', subscription_status: 'cancelled', mor_ends_at: '2026-09-30T00:00:00Z' }, T) === 'free',
+     'ακυρωμένη που έληξε: δωρεάν ακόμη κι αν η στήλη γράφει agency');
+  ok(livePlan({ plan: 'agency', subscription_status: 'active', mor_ends_at: '2026-09-30T00:00:00Z' }, T) === 'agency',
+     'ενεργή: η ημερομηνία λήξης δεν κρίνει');
+  ok(livePlan({ plan: 'agency', subscription_status: 'cancelled', mor_ends_at: null }, T) === 'agency',
+     'χωρίς ημερομηνία: η στήλη αποφασίζει, όπως πριν');
+  ok(livePlan(null, T) === 'free', 'χωρίς γραμμή: δωρεάν');
 }
 
 console.log(`\nbilling/entitlements.ts — ${p} passed, ${f} failed`);

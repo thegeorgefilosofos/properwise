@@ -39,9 +39,11 @@ Supabase → Project Settings → **Edge Functions** → Secrets:
     RESEND_API_KEY = re_...              υποχρεωτικό
     RESEND_FROM    = PROPERWISE <no-reply@properwise.gr>    προαιρετικό
 
-Το `RESEND_FROM` γράφεται **μετά** την επαλήθευση του τομέα. Χωρίς αυτό, όλες
-οι συναρτήσεις πέφτουν σε `PROPERWISE <onboarding@resend.dev>` — που δουλεύει
-για δοκιμή και για κανέναν άλλο.
+Χωρίς `RESEND_FROM`, οι συναρτήσεις στέλνουν από `PROPERWISE <no-reply@properwise.gr>`,
+που δουλεύει επειδή ο τομέας είναι επαληθευμένος για αποστολή. Ως τις
+27.09.2026 η προεπιλογή ήταν το `onboarding@resend.dev`, που το Resend
+παραδίδει μόνο στον κάτοχο του λογαριασμού: κάθε πελάτης θα έχανε το email
+του χωρίς κανένα σφάλμα.
 
 Το κλειδί φτιάχνεται στο `resend.com/api-keys` με δικαίωμα **Sending access**
 μόνο. Δεν χρειάζεται πρόσβαση σε τομείς ή σε ρυθμίσεις.

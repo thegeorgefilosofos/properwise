@@ -37,26 +37,62 @@ import type {
   BillingEnv, MerchantPort, CheckoutOrder, ChangeOrder,
   CheckoutResult, PortalResult, ChangeResult, ReadEvent, SubscriptionState,
 } from './port';
-import type { PlanId, BillingCycle } from '../plans';
+import { PLAN_ORDER, BILLING_CYCLES, type PlanId, type BillingCycle } from '../plans';
 
 // ── ΟΙ ΜΕΤΑΒΛΗΤΕΣ, ΟΝΟΜΑΤΙΣΜΕΝΕΣ ΜΙΑ ΦΟΡΑ ────────────────────────────────
 export const CREEM_KEY_ENV = 'CREEM_API_KEY';
 export const CREEM_PRODUCTS_ENV = 'CREEM_PRODUCTS';
 export const CREEM_SECRET_ENV = 'CREEM_WEBHOOK_SECRET';
-/** Οποιαδήποτε τιμή εκτός από κενό στέλνει τις κλήσεις στον δοκιμαστικό. */
+/**
+ * Παλιός διακόπτης δοκιμαστικής λειτουργίας. Τον τρόπο τον ορίζει πλέον το
+ * ίδιο το κλειδί· η μεταβλητή μένει μόνο ως έλεγχος συνέπειας.
+ */
 export const CREEM_TEST_ENV = 'CREEM_TEST_MODE';
+/** Τα δοκιμαστικά κλειδιά του παρόχου ξεκινούν έτσι· τα ζωντανά όχι. */
+export const CREEM_TEST_KEY_PREFIX = 'creem_test_';
 export const SIGNATURE_HEADER = 'creem-signature';
 
 const PROD_API = 'https://api.creem.io';
 const TEST_API = 'https://test-api.creem.io';
 
 const key = (env: BillingEnv): string => (env[CREEM_KEY_ENV] || '').trim();
-const isTest = (env: BillingEnv): boolean => !!(env[CREEM_TEST_ENV] || '').trim();
+// ── ΔΟΚΙΜΑΣΤΙΚΟ Ή ΖΩΝΤΑΝΟ: ΤΟ ΛΕΕΙ ΤΟ ΚΛΕΙΔΙ ────────────────────────────
+// ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΔΙΟΡΘΩΝΕΙ (έλεγχος 27.09.2026, D4). Ο διακομιστής διαλεγόταν
+// από το `CREEM_TEST_MODE`: κάθε μη κενή τιμή σήμαινε δοκιμή, ακόμη και το
+// «false» ή το «0». Ζωντανό κλειδί με ξεχασμένη μεταβλητή έστελνε κάθε
+// ταμείο στον δοκιμαστικό διακομιστή και έπαιρνε 502. Το ανάποδο ήταν
+// χειρότερο: δοκιμαστικό κλειδί στην παραγωγή άφηνε όποιον ήθελε να
+// «αγοράσει» οποιοδήποτε πακέτο με δοκιμαστική κάρτα.
+//
+// Τώρα ο διακομιστής βγαίνει από το πρόθεμα του κλειδιού, που δεν μπορεί να
+// διαφωνεί με τον εαυτό του. Η μεταβλητή μένει μόνο ως έλεγχος: αν λέει
+// «δοκιμή» ενώ το κλειδί είναι ζωντανό, η ρύθμιση λογίζεται σπασμένη.
+const flagOn = (v: string | undefined): boolean => /^(1|true|yes|on)$/i.test((v || '').trim());
+const isTest = (env: BillingEnv): boolean => key(env).startsWith(CREEM_TEST_KEY_PREFIX);
 const base = (env: BillingEnv): string => (isTest(env) ? TEST_API : PROD_API);
+/** Παραγωγή της Vercel: εκεί δεν πουλά ποτέ δοκιμαστικό κλειδί. */
+const isProduction = (env: BillingEnv): boolean => (env.VERCEL_ENV || '').trim() === 'production';
 
 const productMap = (env: BillingEnv) => parseVariantMap(env[CREEM_PRODUCTS_ENV], CREEM_PRODUCTS_ENV);
 
 /** Το αναγνωριστικό προϊόντος για ένα πακέτο και κύκλο. Κενό όταν λείπει. */
+/**
+ * ΤΑ ΖΕΥΓΗ ΠΟΥ ΛΕΙΠΟΥΝ ΑΠΟ ΤΟΝ ΧΑΡΤΗ. Κάθε πληρωμένο πακέτο σε κάθε κύκλο
+ * πρέπει να έχει προϊόν. Με ένα τυπογραφικό λάθος σε μία από τις οκτώ γραμμές
+ * ο ιστότοπος έλεγε «ζωντανός» και το ένα πακέτο απαντούσε 502 στο ταμείο
+ * (έλεγχος 27.09.2026, D5).
+ */
+function missingPairs(env: BillingEnv): string[] {
+  const { map } = productMap(env);
+  const have = new Set([...map.values()].map(v => `${v.plan}:${v.cycle}`));
+  const out: string[] = [];
+  for (const plan of PLAN_ORDER) {
+    if (plan === 'free') continue;
+    for (const cycle of BILLING_CYCLES) if (!have.has(`${plan}:${cycle}`)) out.push(`${plan}:${cycle}`);
+  }
+  return out;
+}
+
 function productFor(env: BillingEnv, plan: PlanId, cycle: BillingCycle): string {
   const { map } = productMap(env);
   for (const [id, v] of map) if (v.plan === plan && v.cycle === cycle) return id;
@@ -158,6 +194,33 @@ function toState(sub: Record<string, unknown> | null | undefined): SubscriptionS
   };
 }
 
+/** Πότε συνέβη το γεγονός: τα χιλιοστά του φακέλου, αλλιώς η ώρα της συνδρομής. */
+function occurredAtOf(p: Record<string, unknown>, obj: Record<string, unknown>): string | null {
+  const created = typeof p.created_at === 'number' && isFinite(p.created_at)
+    ? new Date(p.created_at).toISOString()
+    : null;
+  return created ?? str(obj.updated_at);
+}
+
+/**
+ * ΠΟΤΕ ΤΕΛΕΙΩΝΕΙ Η ΠΡΟΣΒΑΣΗ. Σε ακύρωση ο πάροχος κρατά την πληρωμένη
+ * περίοδο: το τέλος είναι η λήξη της, όχι η στιγμή που πατήθηκε η ακύρωση.
+ *
+ * ΚΑΙ ΤΟ «canceled» ΤΟ ΣΤΕΛΝΕΙ ΣΤΟ ΠΑΤΗΜΑ, ΟΧΙ ΣΤΗ ΛΗΞΗ. Ακύρωση στη μέση της
+ * περιόδου φτάνει ως `subscription.canceled` με `current_period_end_date` στο
+ * μέλλον (το ίδιο κατέγραψε και το kaneo, PR #1741). Αν το διαβάζαμε ως
+ * τέλος, θα κόβαμε μήνα που ο πελάτης έχει πληρώσει.
+ *
+ * ΤΟ ΤΕΛΟΣ ΔΕΝ ΠΕΡΙΜΕΝΕΙ ΓΕΓΟΝΟΣ. Η ημερομηνία κρίνεται τη στιγμή της
+ * ανάγνωσης, στην `public.user_plan_rank` και στη `livePlan` (έλεγχος
+ * 27.09.2026, D1). Πριν, το πακέτο έμενε ανοιχτό για πάντα αν δεν ερχόταν
+ * άλλο γεγονός στη λήξη.
+ */
+function endsAtOf(obj: Record<string, unknown>, status: MorStatus, occurredAt: string | null): string | null {
+  if (status !== 'cancelled') return null;
+  return str(obj.current_period_end_date) ?? str(obj.canceled_at) ?? occurredAt;
+}
+
 async function fetchSubscription(
   subscriptionId: string, env: BillingEnv, fetcher?: typeof fetch,
 ): Promise<{ sub: Record<string, unknown> | null; error: string }> {
@@ -173,7 +236,10 @@ export const creemPort: MerchantPort = {
 
   // ΠΩΛΗΣΗ ΘΕΛΕΙ ΚΛΕΙΔΙ ΚΑΙ ΧΑΡΤΗ. Χωρίς χάρτη προϊόντων το ταμείο δεν ξέρει
   // τι πουλά, οπότε δεν ανοίγει καθόλου.
-  isLive: (env) => !!key(env) && productMap(env).map.size > 0,
+  //
+  // ΚΑΙ ΘΕΛΕΙ ΡΥΘΜΙΣΗ ΧΩΡΙΣ ΚΑΝΕΝΑ ΣΦΑΛΜΑ: ολόκληρο χάρτη, κλειδί που συμφωνεί
+  // με τον διακόπτη, όχι δοκιμαστικό κλειδί στην παραγωγή.
+  isLive(env) { return creemPort.configError(env) === ''; },
 
   // ΟΜΙΛΙΑ ΘΕΛΕΙ ΜΟΝΟ ΚΛΕΙΔΙ. Η πύλη πελάτη και η ανάγνωση συνδρομής αφορούν
   // συνδρομές που ΥΠΑΡΧΟΥΝ ήδη: ενώνοντάς τα με το `isLive`, ένας υπάρχων
@@ -182,9 +248,17 @@ export const creemPort: MerchantPort = {
 
   configError(env) {
     if (!key(env)) return `Λείπει η μεταβλητή: ${CREEM_KEY_ENV}.`;
+    if (flagOn(env[CREEM_TEST_ENV]) && !isTest(env)) {
+      return `Το ${CREEM_TEST_ENV} ζητά δοκιμαστική λειτουργία, αλλά το ${CREEM_KEY_ENV} είναι ζωντανό κλειδί. Σβήσε τη μεταβλητή ή βάλε δοκιμαστικό κλειδί.`;
+    }
+    if (isTest(env) && isProduction(env)) {
+      return `Δοκιμαστικό ${CREEM_KEY_ENV} στην παραγωγή: το ταμείο δεν ανοίγει με δοκιμαστικές κάρτες για πραγματικούς πελάτες.`;
+    }
     const { map, error } = productMap(env);
     if (error) return error;
-    return map.size > 0 ? '' : `Λείπει η μεταβλητή: ${CREEM_PRODUCTS_ENV}.`;
+    if (map.size === 0) return `Λείπει η μεταβλητή: ${CREEM_PRODUCTS_ENV}.`;
+    const missing = missingPairs(env);
+    return missing.length ? `Στο ${CREEM_PRODUCTS_ENV} λείπουν: ${missing.join(', ')}.` : '';
   },
 
   async openCheckout(order: CheckoutOrder, env, fetcher): Promise<CheckoutResult> {
@@ -233,9 +307,16 @@ export const creemPort: MerchantPort = {
     // δοκιμή να τρέξει ώς το τέλος της· χωρίς αυτό, μια αναβάθμιση μέσα στη
     // δοκιμή θα έβγαζε χρέωση την ίδια μέρα, δηλαδή θα τερμάτιζε τη δοκιμή που
     // ο ίδιος ο ιστότοπός μας υπόσχεται.
-    const behavior = order.onTrial
+    //
+    // ΚΑΙ Η ΥΠΟΒΑΘΜΙΣΗ ΔΕΝ ΠΙΣΤΩΝΕΙ ΤΙΠΟΤΑ. Ο πελάτης κρατά το ακριβότερο
+    // πακέτο ώς την ανανέωση (`hold_plan`), γιατί το έχει πληρώσει. Το
+    // «proration-charge» θα του έδινε ΚΑΙ πίστωση για το ίδιο αχρησιμοποίητο
+    // διάστημα: μήνας «Γραφείου» σε χρήση και μήνας «Γραφείου» ως έκπτωση
+    // (έλεγχος 27.09.2026, D2). Ιδιος κανόνας με το `disable_prorations` του
+    // προηγούμενου εμπόρου.
+    const behavior = order.onTrial || order.kind === 'downgrade'
       ? 'proration-none'
-      : (order.kind === 'downgrade' ? 'proration-charge' : 'proration-charge-immediately');
+      : 'proration-charge-immediately';
     const { data, error } = await call(
       env, 'POST', `/v1/subscriptions/${encodeURIComponent(order.subscriptionId)}/upgrade`,
       { product_id: productId, update_behavior: behavior }, fetcher,
@@ -318,20 +399,13 @@ export const creemPort: MerchantPort = {
       customerId,
       userId: str(meta.user_id),
       renewsAt: str(obj.current_period_end_date) ?? str(obj.next_transaction_date),
-      // ΠΟΤΕ ΤΕΛΕΙΩΝΕΙ Η ΠΡΟΣΒΑΣΗ. Σε ακύρωση ο πάροχος κρατά την πληρωμένη
-      // περίοδο: το τέλος είναι η λήξη της, όχι η στιγμή που πατήθηκε η
-      // ακύρωση. Το `canceled_at` είναι η στιγμή του πατήματος και δεν κόβει
-      // πρόσβαση που ο συνδρομητής έχει ήδη πληρώσει.
-      endsAt: status === 'cancelled' ? (str(obj.current_period_end_date) ?? str(obj.canceled_at)) : null,
+      endsAt: endsAtOf(obj, status, occurredAtOf(p, obj)),
     };
 
     // ΠΟΤΕ ΣΥΝΕΒΗ, ΩΣΤΕ ΕΝΑ ΚΑΘΥΣΤΕΡΗΜΕΝΟ ΝΑ ΜΗ ΓΡΑΨΕΙ ΠΑΝΩ ΣΕ ΝΕΟΤΕΡΟ. Ο
     // φάκελος στέλνει χιλιοστά εποχής· η συνδρομή στέλνει ISO. Προτιμάται το
     // πρώτο, γιατί αφορά το ΓΕΓΟΝΟΣ και όχι το αντικείμενο.
-    const created = typeof p.created_at === 'number' && isFinite(p.created_at)
-      ? new Date(p.created_at).toISOString()
-      : null;
-    const occurredAt = created ?? str(obj.updated_at);
+    const occurredAt = occurredAtOf(p, obj);
 
     return { ok: true, event: { name, sub, plan: planOfVariant(map, productId), occurredAt } };
   },
