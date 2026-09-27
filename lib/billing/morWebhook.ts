@@ -37,6 +37,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { merchant } from '@/lib/billing/merchant';
 import { isEntitled, isMorStatus, type MorStatus } from '@/lib/billing/subscription';
 import { profileForPlan } from '@/lib/billing/entitlements';
+import { alertFor, sendMerchantAlert } from '@/lib/billing/merchantAlert';
 
 /** Ο πίνακας που κρατά το πακέτο του κάθε λογαριασμού. */
 const TABLE = 'billing_profiles';
@@ -132,6 +133,14 @@ export async function applyMerchantEvent(raw: string) {
     if (read.config) {
       log('η ρύθμιση του εμπόρου δεν διαβάστηκε:', read.reason);
       return NextResponse.json({ error: 'not_configured' }, { status: 500 });
+    }
+    // ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ Η ΑΜΦΙΣΒΗΤΗΣΗ: δεν αλλάζει πρόσβαση εδώ, αλλά
+    // φτάνει σε άνθρωπο, γιατί η συνδρομή πρέπει να ακυρωθεί στον έμπορο.
+    const alert = alertFor(payload);
+    if (alert) {
+      const sent = await sendMerchantAlert(alert, process.env.RESEND_API_KEY);
+      log(`${alert.subject}· ειδοποίηση ${sent ? 'στάλθηκε' : 'ΔΕΝ στάλθηκε'}`);
+      return NextResponse.json({ ok: true, alerted: sent });
     }
     log('γεγονός που δεν εφαρμόστηκε:', read.reason);
     return NextResponse.json({ ok: !read.ours }, { status: read.ours ? 422 : 200 });
