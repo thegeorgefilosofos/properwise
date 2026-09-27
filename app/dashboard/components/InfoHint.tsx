@@ -47,7 +47,12 @@ export function InfoHint({ children, size = 14, label = 'Περισσότερα'
     const place = roomBelow >= roomAbove ? 'bottom' : 'top'
     const top = place === 'bottom' ? r.bottom + 8 : r.top - 8
     let left = r.left + r.width / 2
-    left = Math.max(150, Math.min(left, window.innerWidth - 150))
+    // Το κουτί είναι κεντραρισμένο και φτάνει τα 300: το μισό του και 8 ανάσα
+    // από κάθε άκρη. Η δεξιά άκρη μετριέται χωρίς τη γραμμή κύλισης, αλλιώς η
+    // σημείωση χανόταν κάτω από αυτή.
+    const vw = document.documentElement.clientWidth
+    const half = Math.min(150, vw / 2 - 8) + 8
+    left = Math.max(half, Math.min(left, vw - half))
     setPos({ top, left, place })
   }, [])
   const hide = useCallback(() => setPos(null), [])
@@ -135,7 +140,7 @@ export function InfoHint({ children, size = 14, label = 'Περισσότερα'
           style={{
             position: 'fixed', top: pos.top, left: pos.left,
             transform: `translate(-50%, ${pos.place === 'bottom' ? '0' : '-100%'})`,
-            zIndex: 9999, maxWidth: 300, minWidth: 220, width: 'max-content',
+            zIndex: 9999, maxWidth: 'min(300px, calc(100vw - 16px))', minWidth: 'min(220px, calc(100vw - 16px))', width: 'max-content',
             background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
             border: '1px solid var(--border-default)', borderRadius: 10,
             padding: '12px 14px', fontSize: 12, lineHeight: 1.6, fontFamily: T.font.sans,

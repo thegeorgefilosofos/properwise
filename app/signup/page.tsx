@@ -20,7 +20,7 @@ import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
 import { isReferralCode } from '@/lib/referral/referral';
 import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
-import { usePlanTerms, useTrialCard } from './PlanTerms'
+import { usePlanTerms } from './PlanTerms'
 
 // Η έκδοση των Όρων που δέχεται ο χρήστης. Ήταν καρφωτή εδώ ως «2026-07», ενώ
 // οι δύο σελίδες που υπογράφει γράφουν «Αύγουστος 2026»: η απόδειξη
@@ -103,7 +103,6 @@ async function newsOffNow(supabase: Awaited<ReturnType<typeof authClient>>, user
 export default function SignupPage() {
   // Από το billingWords, στον διακομιστή (layout.tsx): `null` όσο το ταμείο χρεώνει.
   const planTerms = usePlanTerms()
-  const trialCard = useTrialCard()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -439,6 +438,10 @@ export default function SignupPage() {
   // κουμπί (ο σαρωτής διάταξης: «ξεχειλίζει πάνω στον επόμενο 13px»). Το κενό
   // είναι πραγματικό, όχι αρνητικό margin, ώστε ο στόχος να μην πατά σε τίποτα.
   const CONSENT_TAP_ROOM = 14
+  // ΜΙΑ ΓΡΑΜΜΗ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (27.09.2026). «Όρους χρήσης» γίνεται «Όρους»:
+  // το κείμενο ήταν 452 εικονοστοιχεία σε ετικέτα 374 ώς 394 και έσπαγε σε δύο.
+  // Ο σύνδεσμος οδηγεί στους Όρους χρήσης και το aria-label του κουτιού τους
+  // ονομάζει ολόκληρους.
   const consentText: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer', textWrap: 'balance' }
   const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }
   // Το δεύτερο κουτί, με το ίδιο ιδίωμα αφής με το πρώτο. Προαιρετικό: η
@@ -477,12 +480,15 @@ export default function SignupPage() {
 
       {/* LEFT, κοινό marketing panel (AuthAside) */}
       {/* «Λογαριασμός» ήταν και ο χρήστης και το χαρτί της ΔΕΗ, στην ίδια
-          πρόταση. Εδώ μένει μόνο το χαρτί. */}
+          πρόταση. Εδώ μένει μόνο το χαρτί.
+          ΟΧΙ «ΕΝΑ ΑΚΙΝΗΤΟ» (27.09.2026). Το «Ένα ακίνητο, για αρχή.» απέκλειε
+          όποιον έχει δύο και περισσότερα, δηλαδή τους πελάτες των πακέτων με
+          πολλά ακίνητα. Και σε μία γραμμή, όπως ζήτησε ο ιδιοκτήτης. */}
       <AuthAside
-        headline="Ένα ακίνητο,"
-        accent="για αρχή."
-        sub="Πρόσθεσε το ακίνητό σου και φωτογράφισε τον πρώτο λογαριασμό ρεύματος ή νερού. Τα υπόλοιπα συμπληρώνονται στην πορεία."
-        note={`Δοκιμή ${TRIAL_DAYS} ημερών`}
+        headline="Τα ακίνητά σου,"
+        accent="σε τάξη."
+        oneLine
+        sub="Πρόσθεσε τα ακίνητά σου και φωτογράφισε τον πρώτο λογαριασμό ρεύματος ή νερού. Τα υπόλοιπα συμπληρώνονται στην πορεία."
       />
 
       {/* RIGHT, form */}
@@ -518,7 +524,7 @@ export default function SignupPage() {
                 </label>
                 <label htmlFor="su-consent-oauth" style={consentText}>
                   Αποδέχομαι τους{' '}
-                  <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους χρήσης</Link>. Διάβασα την{' '}
+                  <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους</Link>. Διάβασα την{' '}
                   <Link href="/privacy" className="lp-link po-tap-inline" style={consentLink}>Πολιτική απορρήτου</Link>.
                 </label>
               </div>
@@ -601,11 +607,16 @@ export default function SignupPage() {
                   σύνδεσμος. */}
               <BackLink home />
               <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 6px' }}>Δημιουργία λογαριασμού</h1>
-              {/* Η δοκιμή και τι σημαίνει για την κάρτα, εδώ και όχι μόνο στο
-                  πάνελ, που κρύβεται στο κινητό. */}
-              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
-                Δοκιμή {TRIAL_DAYS} ημερών{trialCard ? ` · ${trialCard}` : ''}
-              </p>
+              {/* Η δοκιμή λέγεται ΜΙΑ φορά. Με διαλεγμένο πακέτο τη λέει η
+                  κάρτα του πακέτου από κάτω· χωρίς αυτό, αυτή η γραμμή, γιατί
+                  το πάνελ που την έλεγε κρύβεται στο κινητό. Το «Χωρίς κάρτα»
+                  έφυγε (27.09.2026): με το άνοιγμα των πληρωμών η κάρτα θα
+                  ζητείται στην εγγραφή. */}
+              {!chosenPlan && (
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                  Δοκιμή {TRIAL_DAYS} ημερών
+                </p>
+              )}
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px' }}>
                 Έχεις ήδη λογαριασμό;{' '}
                 <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
@@ -713,7 +724,10 @@ export default function SignupPage() {
                     {PLANS[chosenPlan].name}
                   </span>
                   <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.45, color: 'var(--text-primary)', textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    {/* Η ΤΙΜΗ ΛΕΕΙ ΚΑΙ ΤΗΝ ΠΕΡΙΟΔΟ. Σκέτο «79,90€» δεν έλεγε αν είναι
+                        τον μήνα ή τον χρόνο. */}
                     {fe(chosenCycle === 'annual' ? PLANS[chosenPlan].priceAnnual : PLANS[chosenPlan].priceMonthly)}
+                    <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{chosenCycle === 'annual' ? ' τον χρόνο' : ' τον μήνα'}</span>
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)' }}>
                     {planTerms ?? (chosenCycle === 'annual' ? 'Ετήσια χρέωση' : 'Μηνιαία χρέωση')}
@@ -820,7 +834,7 @@ export default function SignupPage() {
                       κουτί, οπότε ο φόβος του σχολίου από πάνω δεν ισχύει. */}
                   <label htmlFor="su-consent" style={consentText}>
                     Αποδέχομαι τους{' '}
-                    <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους χρήσης</Link>. Διάβασα την{' '}
+                    <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους</Link>. Διάβασα την{' '}
                     <Link href="/privacy" className="lp-link po-tap-inline" style={consentLink}>Πολιτική απορρήτου</Link>.
                   </label>
                 </div>

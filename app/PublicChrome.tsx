@@ -374,7 +374,7 @@ export function ToolSources({ kind }: { kind: keyof typeof TOOL_SOURCES }) {
   return (
     <aside className="po-tool-sources po-noprint" aria-label="Νομική βάση και πηγές">
       <span className="po-src-badge">Νομική βάση</span>
-      <span className="po-src-txt">{hy(TOOL_SOURCES[kind])}</span>
+      <span className="po-src-txt po-just">{hy(TOOL_SOURCES[kind])}</span>
     </aside>
   );
 }

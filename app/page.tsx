@@ -635,7 +635,19 @@ export default async function Landing() {
            αριστερά της δεύτερης. Κανένα «justify-items» δεν το λύνει όσο οι
            κρυφές λέξεις μοιράζονται γραμμή με το ρήμα. Σε δική της γραμμή, το
            πλάτος της γραμμής παύει να εξαρτάται από τις λέξεις που δεν φαίνονται. */''}
-        .lp-rotor { display: grid; width: 100%; justify-items: center; color: var(--accent); }
+        ${/* ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ΜΕ ΤΟ ΡΗΜΑ, ΜΕ ΠΛΑΤΟΣ ΤΗΣ ΛΕΞΗΣ ΠΟΥ ΜΕΝΕΙ (27.09.2026).
+           Σε δική της γραμμή ο τίτλος έπιανε τρεις σειρές στον υπολογιστή
+           («Φωτογραφίζεις / τον λογαριασμό. / Το PROPERWISE…») και ο ιδιοκτήτης
+           ζήτησε δύο. Το πρόβλημα που την είχε στείλει εκεί (η γραμμή κεντραρόταν
+           με το πλάτος της ΜΑΚΡΥΤΕΡΗΣ κρυφής λέξης) λύνεται αλλιώς: μόνο η πρώτη
+           λέξη, αυτή όπου σταματά ο γύρος, είναι στη ροή και ορίζει το πλάτος·
+           οι υπόλοιπες κάθονται απόλυτα από πάνω της, με αφετηρία το ίδιο
+           σημείο, ώστε να ακολουθούν το ρήμα χωρίς κενό. Όσο φαίνονται, οι
+           μακρύτερες απλώνονται λίγο δεξιότερα· η γραμμή σταματά κεντραρισμένη. */''}
+        .lp-rotor { display: inline-block; position: relative; white-space: nowrap; color: var(--accent); }
+        .lp-rotor > span:not(:first-child) { position: absolute; top: 0; left: 0; }
+        .lp-h1-line { display: block; }
+        @media (min-width: 900px) { .lp-h1-line { white-space: nowrap; } }
         ${/* ΕΝΑΣ ΓΥΡΟΣ ΚΑΙ ΣΤΑΣΗ ΣΤΗΝ ΠΡΩΤΗ ΛΕΞΗ. Η εναλλαγή έτρεχε για πάντα, χωρίς
            τρόπο να σταματήσει: κίνηση που κρατά πάνω από πέντε δευτερόλεπτα δίπλα
            σε κείμενο που διαβάζεται είναι ακριβώς ό,τι ζητά να σταματά το WCAG
@@ -643,7 +655,7 @@ export default async function Landing() {
            λογαριασμό.», που είναι και ό,τι ακούει ο αναγνώστης οθόνης. Το δεύτερο
            animation της πρώτης λέξης ξεκινά στο τέλος του γύρου (11,2 δευτ.),
            ακριβώς όπου θα ξανάρχιζε ο κύκλος· κρατά την τελική του κατάσταση. */''}
-        .lp-rotor > span { grid-area: 1 / 1; position: relative; opacity: 0; white-space: nowrap; animation: lpRotor 11.2s cubic-bezier(.16,1,.3,1) 1; }
+        .lp-rotor > span { display: inline-block; opacity: 0; white-space: nowrap; animation: lpRotor 11.2s cubic-bezier(.16,1,.3,1) 1; }
         .lp-rotor > span:first-child { animation: lpRotor 11.2s cubic-bezier(.16,1,.3,1) 1, lpRotorRest .7s cubic-bezier(.16,1,.3,1) 11.2s forwards; }
         .lp-rotor > span:nth-child(2) { animation-delay: 2.8s; }
         .lp-rotor > span:nth-child(3) { animation-delay: 5.6s; }
@@ -1166,18 +1178,21 @@ export default async function Landing() {
             <span>Ο «{PLANS.free.name}» είναι πλέον δωρεάν για ένα ακίνητο</span>
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
-          <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 20px', maxWidth: 1000, color: 'var(--text-primary)', textWrap: 'balance' }}>
-            Φωτογραφίζεις{' '}
-            <span className="lp-rotor">
-              <span>τον λογαριασμό.</span>
-              <span aria-hidden="true">το μισθωτήριο.</span>
-              <span aria-hidden="true">το ασφαλιστήριο.</span>
-              <span aria-hidden="true">το εκκαθαριστικό.</span>
+          <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
+            {/* ΔΥΟ ΠΡΟΤΑΣΕΙΣ, ΔΥΟ ΓΡΑΜΜΕΣ. Από τα 900 και πάνω καμία δεν σπάει·
+                πιο κάτω η καθεμία τυλίγεται μόνη της, χωρίς να μπλέκει με την άλλη. */}
+            <span className="lp-h1-line">
+              Φωτογραφίζεις{' '}
+              <span className="lp-rotor">
+                <span>τον λογαριασμό.</span>
+                <span aria-hidden="true">το μισθωτήριο.</span>
+                <span aria-hidden="true">το ασφαλιστήριο.</span>
+                <span aria-hidden="true">το εκκαθαριστικό.</span>
+              </span>
             </span>
             {/* nowrap ώστε να μη μένει ποτέ το «υπόλοιπα.» μόνο του σε τρίτη γραμμή:
-                ένα ορφανό στο τέλος τίτλου διαβάζεται ως τυπογραφικό ατύχημα. Σε
-                στενές οθόνες το clamp ρίχνει το μέγεθος, οπότε χωράει ούτως ή άλλως. */}
-            <span style={{ whiteSpace: 'nowrap' }}>Το PROPERWISE</span> κάνει τα υπόλοιπα.
+                ένα ορφανό στο τέλος τίτλου διαβάζεται ως τυπογραφικό ατύχημα. */}
+            <span className="lp-h1-line"><span style={{ whiteSpace: 'nowrap' }}>Το PROPERWISE</span> κάνει τα υπόλοιπα.</span>
           </h1>
           {/* ── Ο ΥΠΟΤΙΤΛΟΣ: δύο προτάσεις, δύο δουλειές ──────────────────────────
               Η πρώτη λέει το ΕΥΡΟΣ. Τέσσερα ουσιαστικά χωρίς συνδέσμους (ασύνδετο
@@ -1204,11 +1219,16 @@ export default async function Landing() {
 
               Σε κάθε πλάτος η πρόταση αναδιπλώνεται φυσιολογικά: η γραμματοσειρά
               μικραίνει με clamp() και το textWrap: balance μοιράζει τις γραμμές
-              σε ίσο μήκος, ώστε να μη μένει η τελευταία με τρεις λέξεις. Δεν
-              χρησιμοποιείται nowrap: θα έβγαζε το κείμενο εκτός οθόνης στα
-              στενά πλάτη. */}
-          <p className="lp-rise-2 po-just-c" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 820, margin: '0 auto 28px' }}>
-            Ενοίκια, λογαριασμοί, δάνεια και φόροι, για κάθε ακίνητο. Με {ASSISTANT_ACC} ρωτάς στα
+              σε ίσο μήκος, ώστε να μη μένει η τελευταία με τρεις λέξεις.
+
+              ΜΙΑ ΓΡΑΜΜΗ ΣΤΗΝ ΟΘΟΝΗ ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ (27.09.2026, κείμενο του
+              ιδιοκτήτη). Το μέτρο έγινε όσο ο τίτλος (1044) και από τα 1280 και
+              πάνω ο υπότιτλος χωρά σε μία γραμμή μόνος του (1040)· πιο κάτω
+              αναδιπλώνεται σε δύο ζυγισμένες, ώστε να μη βγαίνει ποτέ έξω από την
+              οθόνη. Κανένα nowrap: τη θέση του την έχει ήδη το text-wrap της
+              πλήρους στοίχισης. */}
+          <p className="lp-rise-2 po-just-c" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 1044, margin: '0 auto 28px' }}>
+            Ενοίκια, λογαριασμοί, δάνεια και φόροι για κάθε ακίνητο. Ρωτάς {ASSISTANT_ACC} στα
             ελληνικά και απαντά με{' '}
             <em style={{ fontStyle: 'normal', color: 'var(--text-primary)', fontWeight: 600 }}>τα δικά σου</em> δεδομένα.
           </p>
@@ -1220,18 +1240,19 @@ export default async function Landing() {
               <Link href="/login" style={{ background: 'transparent', color: 'var(--text-primary)', textDecoration: 'none', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: T.radius.pill, border: '1px solid var(--border-strong)', transition: 'border-color .15s, background .15s' }}>Έχω λογαριασμό</Link>
             </>)}
           </div>
-          {/* ΤΡΙΑ ΣΤΟΙΧΕΙΑ ΠΟΥ ΔΕΝ ΣΠΑΝΕ ΣΤΗ ΜΕΣΗ. Στα 390 η γραμμή έπεφτε «…· Χωρίς
-              / δέσμευση · …» και το «Σταματάς όποτε θέλεις» ξανάλεγε το «Χωρίς
-              δέσμευση». Κάθε στοιχείο κρατιέται ολόκληρο και τυλίγει μόνο στις
-              τελείες. Το μεσαίο το λέει το billingWords: το αν ζητείται κάρτα
-              αλλάζει με την κατάσταση της χρέωσης. */}
+          {/* ΣΤΟΙΧΕΙΑ ΠΟΥ ΔΕΝ ΣΠΑΝΕ ΣΤΗ ΜΕΣΗ. Στα 390 η γραμμή έπεφτε «…· Χωρίς
+              / δέσμευση · …»· κάθε στοιχείο κρατιέται ολόκληρο και τυλίγει μόνο
+              ανάμεσα στα στοιχεία. */}
           {/* ΣΗΜΑΔΙ ΑΝΤΙ ΓΙΑ ΤΕΛΕΙΑ. Με τελείες ανάμεσα, στα 390 η γραμμή έσπαγε
               και η τελεία κρεμόταν στο τέλος της πρώτης σειράς. Κάθε στοιχείο έχει
               το σημάδι του και τυλίγει ολόκληρο. */}
+          {/* ΤΟ «ΧΩΡΙΣ ΚΑΡΤΑ» ΕΦΥΓΕ (27.09.2026). Μόλις ανοίξουν οι πληρωμές, η
+              κάρτα θα ζητείται στην εγγραφή και για το δωρεάν πακέτο, ώστε η
+              αναβάθμιση να μη χρειάζεται δεύτερο βήμα. Υπόσχεση που θα έπαυε να
+              ισχύει την ημέρα του λανσαρίσματος δεν μπαίνει στην πρώτη οθόνη. */}
           <ul className="lp-rise-4 lp-facts" aria-label="Χωρίς ρίσκο">
             <li>Δωρεάν για ένα ακίνητο</li>
             <li>Δοκιμή {TRIAL_DAYS} ημερών με {ASSISTANT_ACC}</li>
-            <li>{billingWords().freeCard}</li>
           </ul>
 
           <LandingShowcase />

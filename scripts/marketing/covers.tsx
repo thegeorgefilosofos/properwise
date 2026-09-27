@@ -33,27 +33,33 @@ const mark = (size: number, fill: string) => (
   </svg>
 );
 
-type OgBanner = { width: number; height: number; title: string; accent?: string; sub?: string };
+// Ο τίτλος της αρχικής σελίδας (app/page.tsx), σε δύο γραμμές όπως εκεί: το
+// εξώφυλλο λέει το ίδιο με το site, όχι δεύτερη ατάκα που δεν υπάρχει πουθενά.
+type Line = { text: string; accent?: string };
+type OgBanner = { width: number; height: number; lines: Line[]; sub?: string; lift?: number };
 
 /**
- * Το εξώφυλλο προφίλ (LinkedIn, Facebook, X): ίδιο φόντο και ίδια γραφή με την
- * κάρτα, χωρίς σήμα. Τη θέση του σήματος την παίρνει η εικόνα του προφίλ, που
- * κάθε πλατφόρμα κολλά πάνω στο εξώφυλλο κάτω αριστερά· γι' αυτό το κείμενο
+ * Το εξώφυλλο προφίλ (LinkedIn, Facebook, X, Creem): ίδιο φόντο και ίδια γραφή
+ * με την κάρτα, χωρίς σήμα. Τη θέση του σήματος την παίρνει η εικόνα του
+ * προφίλ, που κάθε πλατφόρμα κολλά πάνω στο εξώφυλλο· γι' αυτό το κείμενο
  * κάθεται στο κέντρο, εκεί που καμία πλατφόρμα δεν το κόβει στο κινητό.
  */
-function ogBanner({ width, height, title, accent, sub }: OgBanner) {
+function ogBanner({ width, height, lines, sub, lift = 0 }: OgBanner) {
   const { fonts, c } = assets();
   const alpha = (hex: string, a: string) => `${hex}${a}`;
-  // Από το ύψος ΚΑΙ από το πλάτος: το Facebook κόβει τα πλάγια στο κινητό, οπότε
-  // σε ψηλό εξώφυλλο η φράση πρέπει να μένει στο μεσαίο μισό.
-  const stacked = width / height < 3.5;
-  const size = Math.round(Math.min(height * (stacked ? 0.15 : 0.2), width * (stacked ? 0.055 : 0.042)));
+  // Η μακρύτερη γραμμή πιάνει περίπου το 70% του πλάτους (0,039 του πλάτους ανά
+  // στιγμή γραμμάτων για ~33 χαρακτήρες) και οι δύο γραμμές μαζί με τον
+  // υπότιτλο χωρούν στο ύψος, όσο στενό κι αν είναι το πλαίσιο.
+  const size = Math.round(Math.min(height * 0.15, width * 0.039));
   return new ImageResponse(
     (
       <div
         style={{
           width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center', gap: Math.round(height * 0.05),
+          // Το Creem κολλά την εικόνα του προφίλ κάτω ΣΤΟ ΚΕΝΤΡΟ, όχι αριστερά:
+          // εκεί το κείμενο ανεβαίνει, για να μη σκεπαστεί ο υπότιτλος.
+          paddingBottom: Math.round(height * lift),
           fontFamily: 'Inter', color: c.text, backgroundColor: c.bg,
           backgroundImage: [
             `radial-gradient(${Math.round(width * 0.6)}px ${Math.round(height * 1.2)}px at 30% -20%, ${alpha(c.accent, '38')}, transparent 72%)`,
@@ -65,18 +71,75 @@ function ogBanner({ width, height, title, accent, sub }: OgBanner) {
         <div style={{ position: 'absolute', right: -Math.round(height * 0.2), bottom: -Math.round(height * 0.35), display: 'flex', opacity: 0.07 }}>
           {mark(Math.round(height * 1.4), BRAND_MARK_ON_DARK)}
         </div>
-        {/* Σε ψηλό εξώφυλλο (Facebook, X) η φράση σε δύο γραμμές, ώστε να χωρά στο
-            μεσαίο κομμάτι που δείχνει το κινητό· στο στενό του LinkedIn σε μία. */}
-        <div style={{ display: 'flex', flexDirection: stacked ? 'column' : 'row', alignItems: 'center', gap: stacked ? 0 : Math.round(size * 0.28), fontSize: size, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
-          <div style={{ display: 'flex' }}>{title}</div>
-          {accent && <div style={{ display: 'flex', color: c.accent }}>{accent}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: size, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.12 }}>
+          {lines.map(l => (
+            <div key={l.text + (l.accent ?? '')} style={{ display: 'flex', gap: Math.round(size * 0.26) }}>
+              {l.text && <span>{l.text}</span>}
+              {l.accent && <span style={{ color: c.accent }}>{l.accent}</span>}
+            </div>
+          ))}
         </div>
-        {sub && <div style={{ display: 'flex', fontSize: Math.round(size * 0.42), fontWeight: 600, color: c.muted }}>{sub}</div>}
+        {sub && <div style={{ display: 'flex', fontSize: Math.round(size * 0.4), fontWeight: 600, color: c.muted }}>{sub}</div>}
       </div>
     ),
     { width, height, fonts },
   );
 }
+
+/**
+ * ΤΟ ΕΞΩΦΥΛΛΟ ΤΟΥ CREEM (Build in Public). Μία γραμμή, «φράση | διεύθυνση».
+ *
+ * ΤΟ ΠΛΑΙΣΙΟ ΚΟΠΗΣ ΤΟΥ CREEM ΕΙΝΑΙ 16:9. Μετρημένο στο παράθυρο «Upload & crop
+ * image» (350×197): ένα 3:1 κοβόταν στο μισό του πλάτους. Η εικόνα είναι λοιπόν
+ * 16:9. Η σελίδα του προφίλ την δείχνει σε φαρδιά λωρίδα (4,6:1 στον πίνακα
+ * ελέγχου, κεντραρισμένη), με την εικόνα του προφίλ πάνω στο κάτω 29% της
+ * λωρίδας. Η φράση κάθεται στο 44% του ύψους: μέσα στη λωρίδα και πάνω από
+ * την εικόνα του προφίλ και φαίνεται ολόκληρη και όταν η εικόνα δειχτεί 16:9.
+ */
+function creemBanner({ width, height, at = 0.44 }: { width: number; height: number; at?: number }) {
+  const { fonts, c } = assets();
+  const alpha = (hex: string, a: string) => `${hex}${a}`;
+  const size = Math.round(width * 0.036);
+  // Το σήμα μετριέται από το ύψος της ορατής λωρίδας, όχι της εικόνας.
+  const band = Math.min(height, Math.round(width / 4.6));
+  return new ImageResponse(
+    (
+      <div style={{
+        width: '100%', height: '100%', position: 'relative', display: 'flex',
+        fontFamily: 'Inter', color: c.text, backgroundColor: c.bg,
+        backgroundImage: [
+          `radial-gradient(${Math.round(width * 0.6)}px ${Math.round(height * 1.2)}px at 30% -20%, ${alpha(c.accent, '38')}, transparent 72%)`,
+          `radial-gradient(${Math.round(width * 0.5)}px ${Math.round(height)}px at 100% 120%, ${alpha(c.accent, '22')}, transparent 70%)`,
+          `linear-gradient(165deg, ${c.mid} 0%, ${c.bg} 100%)`,
+        ].join(', '),
+      }}>
+        {/* Πιο αχνό από των άλλων εξωφύλλων: εδώ η γραμμή περνά από πάνω του και
+            το «properwise.gr» πρέπει να διαβάζεται χωρίς τα τετράγωνα από πίσω. */}
+        <div style={{ position: 'absolute', right: -Math.round(band * 0.5), top: Math.round(height * 0.5 - band * 0.62), display: 'flex', opacity: 0.035 }}>
+          {mark(Math.round(band * 1.25), BRAND_MARK_ON_DARK)}
+        </div>
+        <div style={{
+          position: 'absolute', left: 0, right: 0, top: Math.round(height * at - size * 0.6),
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: Math.round(size * 0.55),
+          fontSize: size, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2,
+        }}>
+          <div style={{ display: 'flex', gap: Math.round(size * 0.26) }}>
+            <span>Βάλε το ακίνητό σου</span>
+            <span style={{ color: c.accent }}>σε τάξη</span>
+          </div>
+          <div style={{ display: 'flex', width: Math.max(2, Math.round(size * 0.05)), height: Math.round(size * 0.9), backgroundColor: alpha(c.muted, '80') }} />
+          <div style={{ display: 'flex', fontSize: Math.round(size * 0.72), fontWeight: 600, color: c.muted, letterSpacing: '-0.01em' }}>properwise.gr</div>
+        </div>
+      </div>
+    ),
+    { width, height, fonts },
+  );
+}
+
+const HEADLINE: Line[] = [
+  { text: 'Φωτογραφίζεις', accent: 'τον λογαριασμό.' },
+  { text: 'Το PROPERWISE κάνει τα υπόλοιπα.' },
+];
 
 const OUT = join(process.cwd(), 'docs/marketing/profil');
 
@@ -90,8 +153,18 @@ const COVERS = [
 (async () => {
   mkdirSync(OUT, { recursive: true });
   for (const c of COVERS) {
-    const img = ogBanner({ width: c.width, height: c.height, title: 'Το ακίνητό σου,', accent: 'χωρίς χαρτιά στο συρτάρι.', sub: 'Δωρεάν για ένα ακίνητο · properwise.gr' });
+    const img = ogBanner({ width: c.width, height: c.height, lines: HEADLINE, sub: 'Δωρεάν για ένα ακίνητο · properwise.gr' });
     writeFileSync(join(OUT, c.file), Buffer.from(await img.arrayBuffer()));
     console.log(`✓ ${c.file} ${c.width}×${c.height}`);
   }
+  // 16:9, όσο ζητά το παράθυρο κοπής του Creem, σε ανάλυση για πυκνές οθόνες.
+  const creem = creemBanner({ width: 2560, height: 1440 });
+  writeFileSync(join(OUT, 'creem-exofyllo.png'), Buffer.from(await creem.arrayBuffer()));
+  console.log('✓ creem-exofyllo.png 2560×1440');
+  // Το εξώφυλλο του καταστήματος του Creem (Settings → Branding → Store
+  // banner): προτεινόμενο 1920×400, εδώ σε διπλή ανάλυση. Δεν έχει εικόνα
+  // προφίλ από πάνω του, οπότε η φράση κάθεται στη μέση.
+  const store = creemBanner({ width: 3840, height: 800, at: 0.5 });
+  writeFileSync(join(OUT, 'creem-katastima.png'), Buffer.from(await store.arrayBuffer()));
+  console.log('✓ creem-katastima.png 3840×800');
 })().catch(e => { console.error(e); process.exit(1); });

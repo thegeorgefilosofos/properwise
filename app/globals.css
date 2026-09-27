@@ -554,6 +554,9 @@ body {
 .po-btn[data-variant="primary"]   { background: var(--accent); color: var(--accent-text); }
 .po-btn[data-variant="secondary"] { background: transparent; border-color: var(--border-default); color: var(--text-secondary); }
 .po-btn[data-variant="ghost"]     { background: transparent; color: var(--text-secondary); }
+/* Κουμπί δίπλα σε κείμενο που μακραίνει: το λεκτικό του μένει σε μία γραμμή
+   και το κουμπί δεν στριμώχνεται. Το κείμενο δίπλα παίρνει ό,τι μένει. */
+.po-btn.po-btn-keep { white-space: nowrap; flex-shrink: 0; }
 
 /* Η ΑΙΩΡΗΣΗ ΜΟΝΟ ΟΠΟΥ ΥΠΑΡΧΕΙ ΔΕΙΚΤΗΣ. Σε οθόνη αφής το `:hover` κολλάει μετά
    το πάτημα και το κουμπί μένει «αναμμένο» ώσπου να αγγίξει ο χρήστης αλλού. */
@@ -655,6 +658,14 @@ body {
   .po-chip[aria-pressed="true"]:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 }
 .po-chip[data-shape="seg"] { border-color: transparent; }
+/* ΤΟ «20 ΕΤΗ» ΕΣΠΑΓΕ ΣΕ ΔΥΟ ΓΡΑΜΜΕΣ. Το πλακίδιο είναι `flex: 1` με
+   `minWidth: 0`, οπότε σε στενή σειρά μίκραινε κάτω από το λεκτικό του και το
+   «20» έμενε πάνω από το «έτη», δίπλα σε ένα «10 έτη» σε μία γραμμή. Επιλογή
+   που διαβάζεται σε δύο κομμάτια δεν διαβάζεται ως επιλογή: το λεκτικό μένει
+   ακέραιο και η ράγα μεγαλώνει όσο χρειάζεται. Με `flex-shrink: 0` και όχι με
+   `min-width: max-content`: το δεύτερο πατούσε και το δάπεδο των 44 της αφής
+   και τα εικονοκουμπιά των Εγγράφων έπεφταν στα 41. */
+.po-chip[data-shape="seg"] { white-space: nowrap; flex-shrink: 0 !important; }
 .po-chip[data-shape="seg"][aria-pressed="true"] {
   background: var(--bg-elevated); border-color: transparent;
   box-shadow: var(--shadow-sm); color: var(--accent);
@@ -946,6 +957,11 @@ body {
    οπότε στοιχίζονται είτε τύλιξε κάποια ετικέτα είτε όχι — και το αυλάκι παίρνει
    ύψος μόνο όταν κάτι πράγματι το ζητήσει. */
 .stat-cells > * { display: grid; grid-template-rows: subgrid; grid-row: span 2; align-content: start; min-width: 0; }
+/* ΚΑΘΕ ΜΕΓΕΘΟΣ ΣΤΟ ΚΕΝΤΡΟ ΤΟΥ ΚΕΛΙΟΥ ΤΟΥ. Στοιχισμένα αριστερά, δύο νούμερα
+   μονοψήφια σε λωρίδα 640 άφηναν το δεξί μισό κάθε κελιού άδειο και η λωρίδα
+   έγερνε αριστερά. Στο κέντρο ετικέτα και αριθμός διαβάζονται ως ζεύγος και η
+   λωρίδα ζυγίζει, όσα κελιά κι αν έχει. */
+.stat-cells > * { justify-items: center; text-align: center; }
 /* Το κελί ΔΕΝ φορά `.kpi-plain` (βλ. StatStrip στο Theme.tsx), οπότε ο κανόνας
    των δύο γραμμών του στενού πλακιδίου δεν το αγγίζει και το subgrid κάνει τη
    δουλειά της στοίχισης. */
@@ -1300,6 +1316,13 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    περίγραμμα, δεύτερο κουτί είναι κουτί μέσα σε κουτί. Το δοχείο χρειάζεται
    ούτως ή άλλως, γιατί το μέγεθος του αριθμού μετριέται σε `cqi`. */
 .kpi-plain { container-type: inline-size; }
+/* ΤΑ ΝΟΥΜΕΡΑ ΣΤΗΝ ΙΔΙΑ ΕΥΘΕΙΑ, ΟΣΕΣ ΓΡΑΜΜΕΣ ΚΙ ΑΝ ΠΙΑΣΕΙ Η ΕΤΙΚΕΤΑ. Σε πλέγμα,
+   μια ετικέτα που τυλίγει («ΟΝΟΜΑΣΤΙΚΟ ΕΠΙΤΟΚΙΟ», «ΑΣΦΑΛΕΙΕΣ (ΔΙΑΡΚΕΙΑ)»)
+   κατέβαζε την τιμή της πιο κάτω από τις διπλανές: έξι τιμές σε δύο ύψη. Το
+   κελί τεντώνεται ήδη στο ύψος της σειράς· εδώ η ετικέτα παίρνει τον χώρο που
+   περισσεύει, οπότε η τιμή κάθεται πάντα στη βάση του. */
+.kpi-plain { display: flex; flex-direction: column; }
+.kpi-plain > .kpi-label { flex: 1 0 auto; }
 
 /* Σημασιολογικός τόνος τιμής KPI: ουδέτερος by default, αποκαλύπτεται μόνο στο
    hover/focus της κάρτας — ομοιόμορφο, χαμηλού θορύβου look σε όλο το app. */
@@ -3619,6 +3642,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   border-top: 1px solid var(--border-default);
   color: var(--text-primary);
 }
+/* ΤΟ «ΣΥΝΟΛΑ» ΚΑΘΟΤΑΝ ΨΗΛΑ ΚΑΙ ΣΤΗΝ ΑΚΡΗ. Το `th` του `tfoot` δεν είχε κανόνα:
+   έπαιρνε το γέμισμα του περιηγητή (ένα εικονοστοιχείο) αντί για τα 10/14 των
+   κελιών δίπλα του. Κι επειδή η ετικέτα είναι μικρότερη από τα ποσά και όλα
+   κρέμονται από πάνω, η λέξη ανέβαινε πάνω από τη γραμμή των αριθμών. Εδώ
+   παίρνει το ίδιο γέμισμα και η σειρά κεντράρεται κάθετα: ετικέτα και ποσά
+   διαβάζονται στο ίδιο ύψος. */
+.po-table tfoot th { text-align: left; padding: 10px 14px; }
+.po-table tr.is-total > * { vertical-align: middle; }
 
 /* ΤΟ ΚΥΛΙΟΜΕΝΟ ΑΚΡΟ ΔΟΚΙΜΑΣΤΗΚΕ ΜΕ ΣΚΙΑ ΚΑΙ Η ΣΚΙΑ ΔΕΝ ΦΑΙΝΕΤΑΙ. Γράφτηκε το
    κλασικό κόλπο των τεσσάρων υποβάθρων —δύο σκιές καρφωμένες στις άκρες, δύο
@@ -3731,7 +3762,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Γραμμή σύγκρισης της Αποδοσης: το γιατί είναι γραμμένο στο TabRentROI.tsx,
    πάνω από το `BarRow`. Σε στενή οθόνη η ράβδος πέφτει σε δεύτερη σειρά και
    παίρνει όλο το πλάτος, με το όνομα αριστερά και το ποσοστό δεξιά από πάνω. */
-.bar-row { grid-template-columns: 168px minmax(0, 1fr) 92px; }
+.bar-row { grid-template-columns: 168px minmax(0, 1fr) 112px; }
 @media (max-width: 560px) {
   .bar-row { grid-template-columns: minmax(0, 1fr) minmax(56px, auto); }
   .bar-row > :nth-child(1) { grid-column: 1; grid-row: 1; }
@@ -5908,7 +5939,12 @@ tr.po-row-more { display: none; }
 .po-src-txt { flex: 1 1 auto; min-width: 220px; }
 /* ΜΕΤΡΟ ΚΑΙ ΣΤΙΣ ΠΗΓΕΣ. Στα 1440 η γραμμή του φόρου ενοικίων έφτανε τους 106
    χαρακτήρες με διάστιχο 1,55: το μάτι χάνει τη σειρά του στην επιστροφή. */
-.po-tool-sources .po-src-txt { max-width: 72ch; line-height: 1.65; }
+/* 27.09.2026: ΠΕΡΑ ΠΕΡΑ, ΟΧΙ ΜΕ ΜΕΤΡΟ. Με όριο 72ch η παραπομπή σταματούσε στη
+   μέση του πλαισίου και η δεξιά άκρη έμενε ριγμένη, με το μισό κουτί άδειο.
+   Είναι σημείωση δύο ή τριών γραμμών, όχι σώμα κειμένου: απλώνεται ως την άκρη
+   του πλαισίου, στοιχίζεται πέρα πέρα με συλλαβισμό και οι παραπομπές νόμων
+   σπάνε μετά την κάθετο (breakCitations), ώστε να μην ανοίγουν τρύπες. */
+.po-tool-sources .po-src-txt { line-height: 1.65; text-align: justify; hyphens: manual; }
 
 /* ── Η ΚΑΡΤΑ ΤΟΥ «ΙΔΙΟΚΤΗΤΗ»: ΔΙΑΚΟΠΤΗΣ ΝΟΑΣ ΧΩΡΙΣ JAVASCRIPT ─────────────────
    Δύο κουμπιά επιλογής, κρυμμένα οπτικά αλλά εστιάσιμα· και δύο σώματα που

@@ -96,7 +96,7 @@ export default function PwaProvider() {
 
   return (
     <div role="dialog" aria-label="Εγκατάσταση εφαρμογής"
-      style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))', zIndex: 900, maxWidth: 420, margin: '0 auto', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, boxShadow: 'var(--shadow-xl)', padding: 16, display: 'flex', gap: 12, alignItems: 'flex-start', fontFamily: T.font.sans }}>
+      style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))', zIndex: 900, maxWidth: 420, margin: '0 auto', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, boxShadow: 'var(--shadow-xl)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12, fontFamily: T.font.sans }}>
       {/* ── ΤΟ `next/image` ΕΔΩ ΚΟΣΤΙΖΕΙ ΠΕΡΙΣΣΟΤΕΡΟ ΑΠ' ΟΣΟ ΓΛΙΤΩΝΕΙ ──────────
           Ο κανόνας `no-img-element` προτείνει το `next/image` και για αυτό το
           εικονίδιο. Δοκιμάστηκε: το PwaProvider ζει στο ΡΙΖΙΚΟ layout, οπότε ο
@@ -104,16 +104,24 @@ export default function PwaProvider() {
           σελίδας — 161,9 KB → 177,5 KB, δηλαδή έσπασε ο προϋπολογισμός βάρους.
           Για ένα PNG 40×40 από τον δημόσιο φάκελο δεν υπάρχει τίποτα να
           βελτιστοποιηθεί: το μέτρησε ο `perf:budget` και το γυρίσαμε πίσω. */}
-      <RuntimeImg src="/icons/icon-192.png" alt="" width={40} height={40} style={{ borderRadius: 10, flexShrink: 0 }} />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Βάλ’ το στην αρχική οθόνη</div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
-          Ανοίγει σαν εφαρμογή, χωρίς μπάρα διεύθυνσης. Χρήσιμο όταν φωτογραφίζεις έναν λογαριασμό εν κινήσει.
+      {/* ΕΙΚΟΝΙΔΙΟ ΚΑΙ ΤΙΤΛΟΣ ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ, ΚΕΙΜΕΝΟ ΚΑΙ ΚΟΥΜΠΙΑ ΣΕ ΟΛΟ ΤΟ
+          ΠΛΑΤΟΣ. Με το εικονίδιο σε δική του στήλη το κείμενο στρίμωχνε σε
+          στενή στήλη με ριγμένη δεξιά άκρη και τα δύο κουμπιά είχαν άλλο πλάτος
+          το καθένα. Τώρα η παράγραφος στοιχίζεται πέρα πέρα και τα κουμπιά
+          μοιράζονται τη σειρά σε ίσα μέρη. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <RuntimeImg src="/icons/icon-192.png" alt="" width={40} height={40} style={{ borderRadius: 10, flexShrink: 0 }} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>Βάλ’ το στην αρχική οθόνη</div>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.4, marginTop: 2 }}>PROPERWISE, σαν εφαρμογή</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Btn variant="primary" onClick={install}>Εγκατάσταση</Btn>
-          <Btn onClick={dismiss}>Όχι τώρα</Btn>
-        </div>
+      </div>
+      <p className="po-just" style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+        Ανοίγει με ένα πάτημα, σε πλήρη οθόνη και χωρίς μπάρα διεύθυνσης. Βολικό όταν φωτογραφίζεις έναν λογαριασμό εκεί που βρίσκεσαι.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <Btn variant="primary" onClick={install}>Εγκατάσταση</Btn>
+        <Btn onClick={dismiss}>Όχι τώρα</Btn>
       </div>
     </div>
   );

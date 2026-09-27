@@ -1893,8 +1893,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               {taxRows.map((r,i)=>{ const active=statement.taxableIncome>r.from&&statement.taxableIncome<=r.to; const hot=hoverBracket===i; return (
                 <div key={r.range} onMouseEnter={()=>setHoverBracket(i)} onMouseLeave={()=>setHoverBracket(null)}
                   style={{ padding:'10px 12px', borderRadius: T.radius.popup, minWidth:0, border:`1px solid ${hot?'var(--accent)':active?'var(--border-default)':'var(--border-subtle)'}`, background:active?'var(--bg-elevated)':'var(--bg-surface)', transition:'border-color 0.15s, background 0.15s', cursor:'default' }}>
-                  <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:0, fontFamily: T.font.sans }}>{r.range}</p>
-                  <p style={{ fontSize:16, fontWeight:700, color:hot?'var(--accent)':'var(--text-primary)', margin:'2px 0 0', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans, transition:'color 0.16s ease' }}>{r.rate}</p>
+                  {/* ΤΟ ΕΥΡΟΣ ΣΕ ΔΥΟ ΣΤΑΘΕΡΕΣ ΓΡΑΜΜΕΣ, ΣΕ ΚΑΘΕ ΚΟΥΤΙ. Ολόκληρο το
+                      «10.001,00 – 20.000,00€» σε κουτί ενός έκτου τύλιγε όπου
+                      έβρισκε: το πρώτο σκαλί σε μία γραμμή, τα άλλα σε δύο, με
+                      τον συντελεστή σε άλλο ύψος στο καθένα. Κάτω όριο πάνω,
+                      άνω όριο κάτω: όλα τα σκαλιά ίδιο σχήμα, ίδιο ύψος. */}
+                  <p style={{ fontSize:12, lineHeight:1.45, color:'var(--text-tertiary)', margin:0, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums' }}>
+                    {(() => { const k = r.range.indexOf(' – '); const [a, b] = k >= 0 ? [r.range.slice(0, k + 2), r.range.slice(k + 3)] : r.range.startsWith('Πάνω από ') ? ['Πάνω από', r.range.slice(9)] : [r.range, '']; return <><span style={{ display:'block', whiteSpace:'nowrap' }}>{a}</span><span style={{ display:'block', whiteSpace:'nowrap' }}>{b}</span></> })()}
+                  </p>
+                  <p style={{ fontSize:16, fontWeight:700, color:hot?'var(--accent)':'var(--text-primary)', margin:'6px 0 0', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans, transition:'color 0.16s ease' }}>{r.rate}</p>
                 </div>
               )})}
             </div>

@@ -176,8 +176,12 @@ export function InfoDot({ text }: { text: string }) {
   const show = () => {
     const r = ref.current?.getBoundingClientRect();
     if (!r || typeof window === 'undefined') return;
-    const W = 260;
-    const left = Math.min(Math.max(8, r.left - 2), window.innerWidth - W - 8);
+    // Το πλάτος του κουτιού είναι 280 και η δεξιά άκρη μετριέται χωρίς τη
+    // γραμμή κύλισης: το `innerWidth` τη μετρά μέσα, οπότε η σημείωση έμπαινε
+    // κάτω από αυτή και κοβόταν στην άκρη της οθόνης.
+    const vw = document.documentElement.clientWidth;
+    const W = Math.min(280, vw - 16);
+    const left = Math.min(Math.max(8, r.left - 2), vw - W - 8);
     const up = r.bottom + 120 > window.innerHeight;
     setPos({ top: up ? r.top - 8 : r.bottom + 8, left, up });
     setOpen(true);
@@ -698,7 +702,7 @@ export function CustomSelect({
     // Το ΠΡΑΓΜΑΤΙΚΟ πλάτος είναι το μεγαλύτερο από τα δύο, γιατί στο CSS το
     // `min-width` κερδίζει το `max-width`. Ο περιορισμός γράφεται με αυτό.
     const panelW = Math.max(r.width, Math.min(340, window.innerWidth * 0.86));
-    const left = Math.max(8, Math.min(r.left, window.innerWidth - panelW - 8));
+    const left = Math.max(8, Math.min(r.left, document.documentElement.clientWidth - panelW - 8));
     setMenuPos({ top: up ? r.top - GAP : r.bottom + GAP, left, minWidth: r.width, maxH, up });
   };
   useEffect(() => {
@@ -958,7 +962,7 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
     const panelW = popupRef.current?.offsetWidth || 280;
     // Πραγματικό ύψος πίνακα (μεταβλητό: 5–6 εβδομάδες) — με fallback πριν ζωγραφιστεί.
     const panelH = popupRef.current?.offsetHeight || 344;
-    const left = Math.max(MARGIN, Math.min(r.left, window.innerWidth - panelW - MARGIN));
+    const left = Math.max(MARGIN, Math.min(r.left, document.documentElement.clientWidth - panelW - MARGIN));
     const below = window.innerHeight - r.bottom - MARGIN;
     // Προτίμηση προς τα κάτω· αν δεν χωράει ολόκληρο, γύρισμα προς τα πάνω, αλλιώς
     // clamp ώστε ο πίνακας να μένει πάντα πλήρως ορατός στην οθόνη.

@@ -1231,13 +1231,16 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       {/* Μία γραμμή, μία φορά. Τα σύνολα άλλαξαν και ο χρήστης δικαιούται να ξέρει
           γιατί — χωρίς πανό, χωρίς παράθυρο, χωρίς να ζητά κλικ για να συνεχίσει. */}
       {!ledgerNoteSeen && (monthItems.length > 0 || Object.keys(monthTotals).length > 0) && (
-        <div className="po-stack-sm" style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12, fontFamily: T.font.sans, fontSize: 12, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
-          <span>
+        /* ΤΟ ΚΟΥΜΠΙ ΔΕΝ ΣΠΑΕΙ ΣΕ ΔΥΟ ΓΡΑΜΜΕΣ. Χωρίς `nowrap` και `flexShrink: 0`
+           το κείμενο έπαιρνε όλο τον χώρο και το «Το κατάλαβα» στριμωχνόταν σε
+           δύο σειρές δίπλα του. Το κείμενο παίρνει ό,τι μένει και στοιχίζεται. */
+        <div className="po-stack-sm" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12, padding: '8px 8px 8px 16px', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, background: 'var(--bg-surface)', fontFamily: T.font.sans, fontSize: 12, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+          <span className="po-just" style={{ flex: 1, minWidth: 0 }}>
             Τα σύνολα μετρούν λογαριασμούς και δαπάνες μαζί, στον μήνα της ημερομηνίας τους. Όσα δεν έχουν πληρωθεί μετρούν κι αυτά και σημειώνονται «εκκρεμεί».
           </span>
           {/* Ήσυχο και όχι δευτερεύον: η σημείωση δεν ζητά απόφαση, οπότε η
               απόρριψή της δεν παίρνει περίγραμμα. */}
-          <Btn variant="ghost" onClick={dismissLedgerNote}>
+          <Btn variant="ghost" onClick={dismissLedgerNote} className="po-btn-keep">
             Το κατάλαβα
           </Btn>
         </div>

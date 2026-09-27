@@ -1718,16 +1718,20 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                         <span style={{fontSize: 'var(--fs-xs)',padding:'2px 8px',borderRadius: T.radius.chip,background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',color:'var(--text-secondary)',fontWeight:600,fontFamily: T.font.sans,letterSpacing:'0.02em'}}>Καλύτερη επιλογή</span>
                         {topRec.spitiMouApplied&&<span style={{fontSize: 'var(--fs-xs)',padding:'2px 8px',borderRadius: T.radius.chip,background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',color:'var(--text-secondary)',fontWeight:500,fontFamily: T.font.sans}}>Σπίτι μου ΙΙ</span>}
                       </div>
-                      <p style={{fontSize:16,fontWeight:700,color:'var(--text-primary)',fontFamily: T.font.sans,letterSpacing:'-0.02em',lineHeight:1.1}}>{topRec.bankName}</p>
-                      <p style={{fontSize:12,color:'var(--text-secondary)',marginTop: 4,lineHeight:1.45,fontFamily: T.font.sans}}>{topRec.eligible?topRec.why:topRec.blockers.join(' · ')}</p>
-                      {topRec.eligible&&(
-                        <div style={{marginTop:10}}>
-                          <Btn variant="secondary" onClick={()=>applyBank(topRec.nominalRatePct, topRec.rateType, topRec.bankName)}>
+                      {/* Η ΕΝΕΡΓΕΙΑ ΔΙΠΛΑ ΣΤΟ ΟΝΟΜΑ ΤΗΣ ΤΡΑΠΕΖΑΣ. Από κάτω, μετά την
+                          αιτιολόγηση, το κουμπί άνοιγε τρίτη σειρά και η κάρτα
+                          ψήλωνε χωρίς λόγο· δίπλα στο όνομα διαβάζεται ως «αυτή,
+                          βάλ' τη στον υπολογιστή». Σε στενή οθόνη τυλίγει από κάτω. */}
+                      <div style={{display:'flex',alignItems:'center',gap:'6px 12px',flexWrap:'wrap'}}>
+                        <p style={{fontSize:16,fontWeight:700,color:'var(--text-primary)',fontFamily: T.font.sans,letterSpacing:'-0.02em',lineHeight:1.1}}>{topRec.bankName}</p>
+                        {topRec.eligible&&(
+                          <Btn variant="secondary" className="po-btn-keep" onClick={()=>applyBank(topRec.nominalRatePct, topRec.rateType, topRec.bankName)}>
                             <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                             Εφαρμογή στον υπολογιστή
                           </Btn>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                      <p className="po-just" style={{fontSize:12,color:'var(--text-secondary)',marginTop: 6,lineHeight:1.5,fontFamily: T.font.sans}}>{topRec.eligible?topRec.why:topRec.blockers.join(' · ')}</p>
                     </div>
                     <div style={{textAlign:'right' as const,flexShrink:0}}>
                       <p style={{fontSize:22,fontWeight:700,color:recHover?'var(--accent)':'var(--text-primary)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',lineHeight:1,letterSpacing:'-0.03em',transition:'color 0.15s'}}>{fmtPct(topRec.effectiveRatePct)}</p>
