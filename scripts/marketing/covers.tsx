@@ -89,17 +89,19 @@ function ogBanner({ width, height, lines, sub, lift = 0 }: OgBanner) {
 /**
  * ΤΟ ΕΞΩΦΥΛΛΟ ΤΟΥ CREEM (Build in Public). Μία γραμμή, «φράση | διεύθυνση».
  *
- * Το Creem δεν δημοσιεύει διαστάσεις. Το πλαίσιο στον πίνακα ελέγχου μετρήθηκε
- * 4,6:1, με την εικόνα του προφίλ πάνω στο κάτω κέντρο (το κάτω 29%). Η εικόνα
- * φτιάχνεται στο κοινό 3:1 (1500×500) και το κείμενο κάθεται σε ζώνη που μένει
- * ορατή και στις δύο αναλογίες: αν το Creem την κόψει σε 4,6:1 μένει η λωρίδα
- * 88–412, και η εικόνα του προφίλ πιάνει το κάτω της κομμάτι. Η φράση κάθεται
- * στο 40% του ύψους, πάνω και από τα δύο.
+ * ΤΟ ΠΛΑΙΣΙΟ ΚΟΠΗΣ ΤΟΥ CREEM ΕΙΝΑΙ 16:9. Μετρημένο στο παράθυρο «Upload & crop
+ * image» (350×197): ένα 3:1 κοβόταν στο μισό του πλάτους. Η εικόνα είναι λοιπόν
+ * 16:9, και η σελίδα του προφίλ την δείχνει σε φαρδιά λωρίδα (4,6:1 στον πίνακα
+ * ελέγχου, κεντραρισμένη), με την εικόνα του προφίλ πάνω στο κάτω 29% της
+ * λωρίδας. Η φράση κάθεται στο 44% του ύψους: μέσα στη λωρίδα και πάνω από
+ * την εικόνα του προφίλ, και φαίνεται ολόκληρη και όταν η εικόνα δειχτεί 16:9.
  */
 function creemBanner({ width, height }: { width: number; height: number }) {
   const { fonts, c } = assets();
   const alpha = (hex: string, a: string) => `${hex}${a}`;
   const size = Math.round(width * 0.036);
+  // Το σήμα μετριέται από το ύψος της ορατής λωρίδας, όχι της εικόνας.
+  const band = Math.round(width / 4.6);
   return new ImageResponse(
     (
       <div style={{
@@ -113,11 +115,11 @@ function creemBanner({ width, height }: { width: number; height: number }) {
       }}>
         {/* Πιο αχνό από των άλλων εξωφύλλων: εδώ η γραμμή περνά από πάνω του και
             το «properwise.gr» πρέπει να διαβάζεται χωρίς τα τετράγωνα από πίσω. */}
-        <div style={{ position: 'absolute', right: -Math.round(height * 0.25), bottom: -Math.round(height * 0.3), display: 'flex', opacity: 0.035 }}>
-          {mark(Math.round(height * 1.25), BRAND_MARK_ON_DARK)}
+        <div style={{ position: 'absolute', right: -Math.round(band * 0.5), top: Math.round(height * 0.5 - band * 0.62), display: 'flex', opacity: 0.035 }}>
+          {mark(Math.round(band * 1.25), BRAND_MARK_ON_DARK)}
         </div>
         <div style={{
-          position: 'absolute', left: 0, right: 0, top: Math.round(height * 0.4 - size * 0.6),
+          position: 'absolute', left: 0, right: 0, top: Math.round(height * 0.44 - size * 0.6),
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: Math.round(size * 0.55),
           fontSize: size, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2,
         }}>
@@ -155,8 +157,8 @@ const COVERS = [
     writeFileSync(join(OUT, c.file), Buffer.from(await img.arrayBuffer()));
     console.log(`✓ ${c.file} ${c.width}×${c.height}`);
   }
-  // Διπλάσια ανάλυση του 1500×500, για οθόνες υψηλής πυκνότητας.
-  const creem = creemBanner({ width: 3000, height: 1000 });
+  // 16:9, όσο ζητά το παράθυρο κοπής του Creem, σε ανάλυση για πυκνές οθόνες.
+  const creem = creemBanner({ width: 2560, height: 1440 });
   writeFileSync(join(OUT, 'creem-exofyllo.png'), Buffer.from(await creem.arrayBuffer()));
-  console.log('✓ creem-exofyllo.png 3000×1000');
+  console.log('✓ creem-exofyllo.png 2560×1440');
 })().catch(e => { console.error(e); process.exit(1); });
