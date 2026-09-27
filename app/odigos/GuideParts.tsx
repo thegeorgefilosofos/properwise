@@ -263,19 +263,32 @@ export function GuideFaq({ title, faq }: { title: string; faq: GuideFaqItem[] })
   );
 }
 
-/** Οι άλλοι οδηγοί, ώστε κανένας να μη μένει αδιέξοδο. */
+/**
+ * Οι άλλοι οδηγοί, ώστε κανένας να μη μένει αδιέξοδο.
+ *
+ * ΤΕΣΣΕΡΙΣ, ΟΧΙ ΟΛΟΙ. Με τέσσερις οδηγούς η λίστα «όλοι οι άλλοι» ήταν τρεις
+ * γραμμές· με εννέα έγινε οκτώ παράγραφοι στο τέλος κάθε σελίδας. Πρώτα όσοι
+ * μοιράζονται το θέμα (ίδιο `kicker`), μετά οι υπόλοιποι με τη σειρά του
+ * καταλόγου· ο κόμβος /odigos κρατά ολόκληρη τη λίστα.
+ */
+const RELATED_MAX = 4;
 export function RelatedGuides({ current }: { current: Guide }) {
+  const others = GUIDES.filter(g => g.href !== current.href);
+  const related = [...others.filter(g => g.kicker === current.kicker), ...others.filter(g => g.kicker !== current.kicker)].slice(0, RELATED_MAX);
   return (
     <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
       <SectionHead over="Σχετικοί οδηγοί" title="Διάβασε ακόμη" />
       <ul className="lg-ul">
-        {GUIDES.filter(g => g.href !== current.href).map(g => (
+        {related.map(g => (
           <li key={g.href}>
             <Link href={g.href} className="lp-link" style={LINK_STYLE}>{g.title}</Link>
             {hy(`: ${g.desc}`)}
           </li>
         ))}
       </ul>
+      <p className="lg-p" style={{ marginTop: 12 }}>
+        <Link href={HUB.href} className="lp-link" style={LINK_STYLE}>{`Όλοι οι οδηγοί (${GUIDES.length})`}</Link>
+      </p>
     </section>
   );
 }

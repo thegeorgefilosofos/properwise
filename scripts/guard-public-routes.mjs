@@ -43,6 +43,12 @@ if (!block) {
   process.exit(1)
 }
 const publicRoutes = new Set([...block[1].matchAll(/"([^"]+)"/g)].map(m => m[1]))
+// ── ΚΑΙ ΤΑ ΔΗΜΟΣΙΑ ΠΡΟΘΕΜΑΤΑ ─────────────────────────────────────────────
+// Το `isPublic` δέχεται και προθέματα (`pathname.startsWith("/odigos/")`).
+// Διαβάζονται από την ίδια έκφραση, ώστε ο φύλακας να κρίνει ό,τι κρίνει και ο
+// διαμεσολαβητής, όχι ένα αντίγραφό του.
+const isPublicExpr = /const isPublic = ([\s\S]*?);\n/.exec(proxy)?.[1] ?? ''
+const publicPrefixes = [...isPublicExpr.matchAll(/pathname\.startsWith\("([^"]+)"\)/g)].map(m => m[1])
 
 /** Κάθε εσωτερική διαδρομή που εμφανίζεται ως σύνδεσμος στο δημόσιο κέλυφος. */
 const linked = new Set()
@@ -52,11 +58,18 @@ for (const m of chrome.matchAll(/href=["'](\/[^"']*)["']/g)) linked.add(route(m[
 for (const m of chrome.matchAll(/\['(\/[^']*)',\s*'/g)) linked.add(route(m[1]))
 // Ο χάρτης γράφει «${base}/διαδρομή»: κρατάμε ό,τι ακολουθεί τη βάση.
 for (const m of sitemap.matchAll(/\$\{base\}(\/[^`]*)`/g)) linked.add(route(m[1]))
+// ── ΚΑΙ ΟΙ ΟΔΗΓΟΙ ΤΟΥ ΚΑΤΑΛΟΓΟΥ ────────────────────────────────────────────
+// Ο χάρτης τους γράφει με `GUIDES.map(g => base + g.href)`, όχι ως κείμενο,
+// οπότε ο έλεγχος από πάνω δεν τους έβλεπε. Ετσι πέρασαν πέντε οδηγοί στον
+// χάρτη που γύριζαν 307 προς το /login (27.09.2026). Διαβάζεται ο κατάλογος.
+const GUIDES_FILE = 'app/odigos/guides.ts'
+for (const m of readFileSync(GUIDES_FILE, 'utf8').matchAll(/href:\s*'(\/[^']+)'/g)) linked.add(route(m[1]))
 
 const TOKEN_PREFIXES = ['/portal/', '/accountant/', '/checkin/', '/verify/', '/unsubscribe/']
 const missing = [...linked]
   .filter(r => !TOKEN_PREFIXES.some(p => r.startsWith(p)))
   .filter(r => !publicRoutes.has(r))
+  .filter(r => !publicPrefixes.some(p => r.startsWith(p)))
   .sort()
 
 if (missing.length) {
