@@ -198,7 +198,7 @@ export const MUTATIONS = {
   // Νέο κείμενο επιστολής που δεν το ζητά κανείς: ακριβώς ο τρόπος με τον
   // οποίο μαζεύτηκαν τα δεκαοκτώ ορφανά, ένα κάθε φορά.
   'email-senders': {
-    file: 'supabase/functions/_shared/emailCopy.ts',
+    file: 'supabase/functions/_shared/emailCopy/onboarding.ts',
     from: '  welcome_free: (',
     to: "  orfani_epistoli: (c) => ({ subject: 'Δοκιμή', html: '' }),\n  welcome_free: (",
   },

@@ -19,6 +19,11 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const COPY = 'supabase/functions/_shared/emailCopy.ts'
+// Το emailCopy.ts είναι το ευρετήριο· τα κείμενα ζουν ανά πρόγραμμα στον φάκελο
+// δίπλα του. Διαβάζονται ΟΛΑ μαζί και κανένα δεν μετράει ως «ζητά επιστολή»:
+// αλλιώς κάθε αναγνωριστικό θα έβρισκε τον εαυτό του στο αρχείο του προγράμματος.
+const COPY_DIR = 'supabase/functions/_shared/emailCopy'
+export const COPY_FILES = [COPY, ...readdirSync(COPY_DIR).filter(f => f.endsWith('.ts')).sort().map(f => join(COPY_DIR, f))]
 
 /**
  * ΤΑ ΧΕΙΡΟΚΙΝΗΤΑ, ΚΑΙ ΓΙΑΤΙ ΤΟ ΚΑΘΕΝΑ. Δεν αυτοματοποιούνται επειδή το
@@ -40,7 +45,7 @@ export const MANUAL = {
   loan_first_scenario: 'Χωρίς σήμα «έχει δάνειο και δεν δοκίμασε σενάριο» δεν υπάρχει τίμια σκανδάλη.',
 }
 
-const src = readFileSync(COPY, 'utf8')
+const src = COPY_FILES.map(f => readFileSync(f, 'utf8')).join('\n')
 const ids = [...src.matchAll(/^  ([a-z_0-9]+): \(/gm)].map(m => m[1])
 
 // Ο,τι άλλο μπορεί να ζητήσει επιστολή: μεταναστεύσεις, συναρτήσεις άκρης,
@@ -50,7 +55,7 @@ const walk = (d) => {
   for (const e of readdirSync(d, { withFileTypes: true })) {
     const p = join(d, e.name)
     if (e.isDirectory()) { if (!['node_modules', '.next', '.git'].includes(e.name)) walk(p) }
-    else if (/\.(ts|tsx|sql|mjs)$/.test(e.name) && p !== COPY) files.push(p)
+    else if (/\.(ts|tsx|sql|mjs)$/.test(e.name) && !COPY_FILES.includes(p)) files.push(p)
   }
 }
 for (const d of ['supabase/migrations', 'supabase/functions', 'app', 'lib', 'scripts']) walk(d)

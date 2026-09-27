@@ -25,12 +25,16 @@ import { join } from 'node:path'
 
 const ROOT = 'supabase/functions/_shared'
 const files = []
-if (existsSync(ROOT)) {
-  for (const e of readdirSync(ROOT)) {
-    const full = join(ROOT, e)
-    if (statSync(full).isFile() && e.endsWith('.ts')) files.push(full)
+// Και οι υποφάκελοι: τα κείμενα του καταλόγου ζουν ανά πρόγραμμα στο
+// _shared/emailCopy/ και ένας ισχυρισμός εκεί φεύγει με email όπως και δίπλα.
+const walk = (dir) => {
+  for (const e of readdirSync(dir)) {
+    const full = join(dir, e)
+    if (statSync(full).isDirectory()) walk(full)
+    else if (e.endsWith('.ts')) files.push(full)
   }
 }
+if (existsSync(ROOT)) walk(ROOT)
 
 // Ισχυρισμοί «η εφαρμογή υπάρχει τώρα». Στενοί, ώστε να μην πιάνουν αθώες
 // φράσεις: το «η προσφορά είναι εδώ» δεν έχει «εφαρμογή» δίπλα· το «στο κινητό
