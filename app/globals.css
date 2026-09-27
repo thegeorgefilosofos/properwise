@@ -658,6 +658,12 @@ body {
   .po-chip[aria-pressed="true"]:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 }
 .po-chip[data-shape="seg"] { border-color: transparent; }
+/* ΤΟ «20 ΕΤΗ» ΕΣΠΑΓΕ ΣΕ ΔΥΟ ΓΡΑΜΜΕΣ. Το πλακίδιο είναι `flex: 1` με
+   `minWidth: 0`, οπότε σε στενή σειρά μίκραινε κάτω από το λεκτικό του και το
+   «20» έμενε πάνω από το «έτη», δίπλα σε ένα «10 έτη» σε μία γραμμή. Επιλογή
+   που διαβάζεται σε δύο κομμάτια δεν διαβάζεται ως επιλογή: το λεκτικό μένει
+   ακέραιο και η ράγα μεγαλώνει όσο χρειάζεται. */
+.po-chip[data-shape="seg"] { white-space: nowrap; min-width: max-content !important; }
 .po-chip[data-shape="seg"][aria-pressed="true"] {
   background: var(--bg-elevated); border-color: transparent;
   box-shadow: var(--shadow-sm); color: var(--accent);
@@ -949,6 +955,11 @@ body {
    οπότε στοιχίζονται είτε τύλιξε κάποια ετικέτα είτε όχι — και το αυλάκι παίρνει
    ύψος μόνο όταν κάτι πράγματι το ζητήσει. */
 .stat-cells > * { display: grid; grid-template-rows: subgrid; grid-row: span 2; align-content: start; min-width: 0; }
+/* ΚΑΘΕ ΜΕΓΕΘΟΣ ΣΤΟ ΚΕΝΤΡΟ ΤΟΥ ΚΕΛΙΟΥ ΤΟΥ. Στοιχισμένα αριστερά, δύο νούμερα
+   μονοψήφια σε λωρίδα 640 άφηναν το δεξί μισό κάθε κελιού άδειο και η λωρίδα
+   έγερνε αριστερά. Στο κέντρο ετικέτα και αριθμός διαβάζονται ως ζεύγος και η
+   λωρίδα ζυγίζει, όσα κελιά κι αν έχει. */
+.stat-cells > * { justify-items: center; text-align: center; }
 /* Το κελί ΔΕΝ φορά `.kpi-plain` (βλ. StatStrip στο Theme.tsx), οπότε ο κανόνας
    των δύο γραμμών του στενού πλακιδίου δεν το αγγίζει και το subgrid κάνει τη
    δουλειά της στοίχισης. */
@@ -3631,7 +3642,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 /* ΤΟ «ΣΥΝΟΛΑ» ΚΑΘΟΤΑΝ ΨΗΛΑ ΚΑΙ ΣΤΗΝ ΑΚΡΗ. Το `th` του `tfoot` δεν είχε κανόνα:
    έπαιρνε το γέμισμα του περιηγητή (ένα εικονοστοιχείο) αντί για τα 10/14 των
-   κελιών δίπλα του, κι επειδή η ετικέτα είναι μικρότερη από τα ποσά και όλα
+   κελιών δίπλα του. Κι επειδή η ετικέτα είναι μικρότερη από τα ποσά και όλα
    κρέμονται από πάνω, η λέξη ανέβαινε πάνω από τη γραμμή των αριθμών. Εδώ
    παίρνει το ίδιο γέμισμα και η σειρά κεντράρεται κάθετα: ετικέτα και ποσά
    διαβάζονται στο ίδιο ύψος. */
@@ -3749,7 +3760,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Γραμμή σύγκρισης της Αποδοσης: το γιατί είναι γραμμένο στο TabRentROI.tsx,
    πάνω από το `BarRow`. Σε στενή οθόνη η ράβδος πέφτει σε δεύτερη σειρά και
    παίρνει όλο το πλάτος, με το όνομα αριστερά και το ποσοστό δεξιά από πάνω. */
-.bar-row { grid-template-columns: 168px minmax(0, 1fr) 92px; }
+.bar-row { grid-template-columns: 168px minmax(0, 1fr) 112px; }
 @media (max-width: 560px) {
   .bar-row { grid-template-columns: minmax(0, 1fr) minmax(56px, auto); }
   .bar-row > :nth-child(1) { grid-column: 1; grid-row: 1; }

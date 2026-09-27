@@ -108,7 +108,7 @@ function CompoundBars({ perYear }: { perYear: { year: number; value: number; con
   if (perYear.length === 0) return <div aria-hidden="true" style={roiGrow} />;
   const max = Math.max(...perYear.map(p => p.value), 1);
   const last = perYear[perYear.length - 1];
-  const dot = (bg: string): React.CSSProperties => ({ width: 8, height: 8, borderRadius: 2, background: bg, flexShrink: 0 });
+  const dot = (bg: string): React.CSSProperties => ({ width: 10, height: 10, background: bg, flexShrink: 0 });
   return (
     <figure style={{ flex: '1 1 96px', minHeight: 96, display: 'flex', flexDirection: 'column', margin: '16px 0 12px' }}
       aria-label={`Αξία ανά έτος, από ${fe(perYear[0].value)} ως ${fe(last.value)}`}>
@@ -116,7 +116,7 @@ function CompoundBars({ perYear }: { perYear: { year: number; value: number; con
         {perYear.map(p => {
           const growth = Math.max(0, p.value - p.contributed);
           return (
-            <div key={p.year} style={{ flex: 1, height: `${(p.value / max) * 100}%`, display: 'flex', flexDirection: 'column', borderRadius: '3px 3px 0 0', overflow: 'hidden' }}>
+            <div key={p.year} style={{ flex: 1, height: `${(p.value / max) * 100}%`, display: 'flex', flexDirection: 'column' }}>
               <div style={{ flex: growth, background: 'var(--accent)', opacity: 0.85 }} />
               <div style={{ flex: p.contributed, background: 'color-mix(in srgb, var(--text-tertiary) 30%, transparent)' }} />
             </div>
@@ -232,7 +232,7 @@ function GradeCard({ grade, note }: { grade: YieldGrade; note: string }) {
 }
 
 // ── Μίνι μπάρα-γράφημα (ιστορικό / σύγκριση) ─────────────────────────────────
-function BarRow({ label, value, max, valueLabel, tone = 'neutral', hint }: { label: string; value: number; max: number; valueLabel: string; tone?: 'accent' | 'neutral' | 'muted'; hint?: string }) {
+function BarRow({ label, value, max, valueLabel, tone = 'neutral', hint, sub, valueSub }: { label: string; value: number; max: number; valueLabel: string; tone?: 'accent' | 'neutral' | 'muted'; hint?: string; sub?: string; valueSub?: string }) {
   const pct = max > 0 ? Math.max(2, Math.min(100, (value / max) * 100)) : 0;
   // ΕΝΑΣ ΤΟΝΟΣ ΑΝΑ ΡΟΛΟ. Η αναφορά ήταν `--border-default` και στο φωτεινό θέμα
   // χανόταν πάνω στη ράγα (κάτω από 3:1), ενώ η διπλανή της ήταν σκούρα· στο
@@ -262,9 +262,20 @@ function BarRow({ label, value, max, valueLabel, tone = 'neutral', hint }: { lab
        συγκρίνεται. Δύο λέξεις σε δεύτερη σειρά κοστίζουν δεκαέξι
        εικονοστοιχεία ύψους· η μισή πρόταση κοστίζει το νόημα. */
     <div className="bar-row" style={{ display: 'grid', alignItems: 'center', columnGap: 12, rowGap: 6, padding: '5px 0' }} title={hint}>
-      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.35 }}>{label}</span>
+      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.35, minWidth: 0 }}>
+        {label}
+        {/* Η ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΕΙΝΑΙ ΠΑΝΤΑ ΕΚΕΙ, ΟΧΙ ΟΠΟΥ ΤΥΧΕΙ. Το «S&P 500 (σε
+            ευρώ, κεφαλαιοποιητικό)» τύλιγε σε δύο σειρές ενώ οι διπλανές έμεναν σε
+            μία: η γραμμή του έβγαινε ψηλότερη και η ράβδος του σε άλλο ύψος. Το
+            όνομα μένει μόνο του, η λεπτομέρεια πάει από κάτω και η ετήσια
+            απόδοση κάτω από το ποσό, σε κάθε γραμμή: όλες έχουν το ίδιο σχήμα. */}
+        {sub && <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>{sub}</span>}
+      </span>
       <Bar pct={pct} tone={bg} height={8} track="var(--bg-elevated)" label={label} />
-      <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: tone === 'accent' ? 'var(--accent)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', fontFamily: SANS }}>{valueLabel}</span>
+      <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: tone === 'accent' ? 'var(--accent)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', fontFamily: SANS }}>
+        {valueLabel}
+        {valueSub && <span style={{ display: 'block', fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text-tertiary)', marginTop: 1, whiteSpace: 'nowrap' }}>{valueSub}</span>}
+      </span>
     </div>
   );
 }
@@ -1711,9 +1722,14 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               <span key={s.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: SANS }}><span style={{ width: 12, height: 2.5, borderRadius: 3, background: s.color }} />{s.label}</span>
             ))}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {compare.map(c => (
-              <BarRow key={c.key} label={c.label} value={c.futureValue} max={compMax} valueLabel={feC(c.futureValue)} tone={c.key === 'property' ? 'accent' : 'neutral'} hint={`${fp(c.annualReturnPct)} ετησίως · ${c.totalReturnPct >= 0 ? '+' : ''}${fp(c.totalReturnPct)} συνολικά`} />
+              (() => {
+                const m = /^(.*?)\s*\((.*)\)$/.exec(c.label);
+                const name = m ? m[1] : c.label;
+                return <BarRow key={c.key} label={name} sub={m?.[2]} valueSub={`${fp(c.annualReturnPct)} τον χρόνο`} value={c.futureValue} max={compMax} valueLabel={feC(c.futureValue)} tone={c.key === 'property' ? 'accent' : 'neutral'} hint={`${fp(c.annualReturnPct)} ετησίως · ${c.totalReturnPct >= 0 ? '+' : ''}${fp(c.totalReturnPct)} συνολικά`} />;
+              })()
+
             ))}
           </div>
           {/* ═══ ΕΝΝΙΑΚΟΣΙΟΙ ΧΑΡΑΚΤΗΡΕΣ ΚΑΤΩ ΑΠΟ ΤΕΣΣΕΡΙΣ ΜΠΑΡΕΣ ══════════════════
