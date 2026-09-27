@@ -41,7 +41,7 @@ const SOURCE = 'lib/accounting/statement.ts'
 const UNRELATED = [
   'lib/pricing/dynamicPricing.ts',            // πολλαπλασιαστές ημέρας/ζήτησης
   'lib/market/greekMarket.ts',                // συντελεστής τύπου ακινήτου
-  'app/dashboard/components/BillsInsurance.tsx', // συντελεστής παλαιότητας
+  'app/dashboard/components/insurance/catalog.ts', // συντελεστής παλαιότητας
   'app/dashboard/components/TabLoanCalculator.tsx', // stopOpacity σε SVG
 ]
 

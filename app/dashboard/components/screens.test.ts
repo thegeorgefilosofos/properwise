@@ -25,7 +25,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import ExpenseCompare from './ExpenseCompare';
 import CashHero from './CashHero';
 import type { CashPosition } from '@/lib/home/cash';
-import { deriveCoverages } from './BillsInsurance';
+import { deriveCoverages } from './insurance/catalog';
 import type { Spend } from '@/lib/expenses/compare';
 
 let passed = 0, failed = 0;

@@ -51,7 +51,7 @@ eq('το κατώφλι παλαιότητας συμφωνεί με το maxAge
 // ── ΤΟ ΙΔΙΟ ΓΙΑ ΤΗΝ ΑΣΦΑΛΕΙΑ ────────────────────────────────────────────
 // Σαράντα οκτώ ασφάλιστρα παρουσιάζονταν χωρίς καμία ημερομηνία, ενώ η οθόνη
 // ανακήρυσσε «ΠΡΟΤΕΙΝΟΜΕΝΟ ΓΙΑ ΕΣΕΝΑ». Τρεις κατάλογοι, τρία πρότυπα.
-const ins = readFileSync('app/dashboard/components/BillsInsurance.tsx', 'utf8');
+const ins = readFileSync('app/dashboard/components/insurance/catalog.ts', 'utf8');
 const iv = /const INSURANCE_VERIFIED = '([^']+)'/.exec(ins);
 const im = /const INSURANCE_MAX_AGE_DAYS = (\d+)/.exec(ins);
 eq('η ημερομηνία της ασφάλειας συμφωνεί με το checkedAt', iv?.[1], sources.insurance.checkedAt);

@@ -46,7 +46,7 @@ const providers = catBlock ? [...catBlock[1].matchAll(/^ {4}value: '/gm)].length
 
 // 3. Ασφαλιστικές: όσες έχουν πραγματική διεύθυνση. Το «Άλλη Ασφαλιστική» είναι
 //    πεδίο εισαγωγής, όχι εταιρεία και γι' αυτό έχει κενό url.
-const ins = read('app/dashboard/components/BillsInsurance.tsx');
+const ins = read('app/dashboard/components/insurance/catalog.ts');
 const insurers = [...ins.matchAll(/^ {2}\{ value: '[a-z_]+',\s+label: '[^']+',\s+url: 'https:\/\//gm)].length;
 
 // 4. Κλιμάκια της κλίμακας ενοικίων που ισχύει από το 2026.
@@ -57,7 +57,7 @@ const brackets = taxBlock ? [...taxBlock[1].matchAll(/\{\s*from:/g)].length : 0;
 const checks = [
   ['είδη εγγράφων',     docKinds,  'DOC_TYPES χωρίς το «other» (lib/billing/documents.ts)'],
   ['πάροχοι ρεύματος',  providers, 'PROVIDERS (lib/energy/catalogue.ts)'],
-  ['ασφαλιστικές',      insurers,  'INSURERS με διεύθυνση (app/dashboard/components/BillsInsurance.tsx)'],
+  ['ασφαλιστικές',      insurers,  'INSURERS με διεύθυνση (app/dashboard/components/insurance/catalog.ts)'],
   ['κλιμάκια φόρου',     brackets,  'RENTAL_TAX_BRACKETS_2026 (lib/billing/greekTax.ts)'],
 ];
 

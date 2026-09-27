@@ -22,7 +22,7 @@ import * as billStore from '@/lib/data/bills';
 import * as settings from '@/lib/data/settings';
 import { T, feAuto, Btn, IconBtn } from '@/components/Theme';
 import { electricitySwitchFinding, type SwitchFinding } from './BillsElectricity';
-import { insuranceSwitchFinding } from './BillsInsurance';
+import { insuranceSwitchFinding } from './insurance/catalog';
 
 type Section = 'electricity' | 'insurance';
 
