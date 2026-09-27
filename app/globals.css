@@ -662,8 +662,10 @@ body {
    `minWidth: 0`, οπότε σε στενή σειρά μίκραινε κάτω από το λεκτικό του και το
    «20» έμενε πάνω από το «έτη», δίπλα σε ένα «10 έτη» σε μία γραμμή. Επιλογή
    που διαβάζεται σε δύο κομμάτια δεν διαβάζεται ως επιλογή: το λεκτικό μένει
-   ακέραιο και η ράγα μεγαλώνει όσο χρειάζεται. */
-.po-chip[data-shape="seg"] { white-space: nowrap; min-width: max-content !important; }
+   ακέραιο και η ράγα μεγαλώνει όσο χρειάζεται. Με `flex-shrink: 0` και όχι με
+   `min-width: max-content`: το δεύτερο πατούσε και το δάπεδο των 44 της αφής,
+   και τα εικονοκουμπιά των Εγγράφων έπεφταν στα 41. */
+.po-chip[data-shape="seg"] { white-space: nowrap; flex-shrink: 0 !important; }
 .po-chip[data-shape="seg"][aria-pressed="true"] {
   background: var(--bg-elevated); border-color: transparent;
   box-shadow: var(--shadow-sm); color: var(--accent);
