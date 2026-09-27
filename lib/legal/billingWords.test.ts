@@ -6,9 +6,9 @@
 // ενεργοποιηθεί». Ο έλεγχος δεν ρωτά «τι λέει η σελίδα» — ρωτά αν οι δύο
 // καταστάσεις είναι όντως δύο και αν διαλέγονται από τη ΣΩΣΤΗ συνθήκη.
 import { billingWords } from './billingWords'
-import { checkoutIsLive } from '../billing/lemonCheckout'
+import { merchant } from '../billing/merchant'
 import { subprocessors, activeSubprocessors, plannedSubprocessors } from './subprocessors'
-import { MERCHANT_NAMES, merchantId, PROVIDER_ENV } from './merchant'
+import { MERCHANT_NAMES, KNOWN_MERCHANTS, merchantId, PROVIDER_ENV } from './merchant'
 import { TRIAL_DAYS, PLANS } from '../billing/plans'
 
 let pass = 0, fail = 0
@@ -17,38 +17,40 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.er
 /** Ο έμπορος αυτού του περιβάλλοντος, ονομαστικά. */
 const mor = (env: Record<string, string | undefined>) => MERCHANT_NAMES[merchantId(env)]
 
-// Ο ΠΡΩΤΟΣ ΕΜΠΟΡΟΣ, ΖΩΝΤΑΝΟΣ — ΚΑΙ ΔΗΛΩΜΕΝΟΣ ΡΗΤΑ. Από τότε που ο
-// προεπιλεγμένος έγινε ο Creem, ο Lemon δεν είναι πια «ό,τι ισχύει χωρίς
-// μεταβλητή»: χρειάζεται το `MERCHANT_PROVIDER=lemon` για να επιλεγεί. Χωρίς
-// αυτό, τα lemon-κλειδιά θα έμεναν αδιάβαστα και το ταμείο κλειστό.
+/** Η ΙΔΙΑ συνθήκη με το κουμπί του ταμείου, από τη θύρα και όχι από πάροχο. */
+const checkoutIsLive = (env: Record<string, string | undefined>) => merchant(env).isLive(env)
+
+// Ο ΕΜΠΟΡΟΣ, ΖΩΝΤΑΝΟΣ, ΜΕ ΟΛΟΚΛΗΡΟ ΤΟΝ ΧΑΡΤΗ. Ο έμπορος πουλά μόνο με και τα
+// οκτώ ζεύγη (τέσσερα πακέτα σε δύο κύκλους): με ένα λιγότερο το ταμείο μένει
+// κλειστό και η σουίτα θα δοκίμαζε μόνο την κλειστή κατάσταση, δύο φορές.
+const PRODUCTS = 'p1:solo:monthly,p2:solo:annual,p3:owner:monthly,p4:owner:annual,'
+  + 'p5:agency:monthly,p6:agency:annual,p7:office:monthly,p8:office:annual'
 const LIVE = {
-  [PROVIDER_ENV]: 'lemon',
-  LEMON_SQUEEZY_API_KEY: 'κλειδί',
-  LEMON_STORE_ID: '12345',
-  LEMON_VARIANTS: '811223:solo:monthly',
-}
-const DARK = {}
-// Ο ΔΕΥΤΕΡΟΣ ΕΜΠΟΡΟΣ, ΖΩΝΤΑΝΟΣ. Ιδιο προϊόν, άλλος εισπράκτορας: εδώ κρίνεται
-// αν τα νομικά κείμενα ονομάζουν αυτόν που ΟΝΤΩΣ εισπράττει.
-const LIVE_2 = {
   [PROVIDER_ENV]: 'creem',
   CREEM_API_KEY: 'κλειδί',
-  // ΟΛΟΚΛΗΡΟΣ Ο ΧΑΡΤΗΣ: ο έμπορος πουλά μόνο με και τα οκτώ ζεύγη.
-  CREEM_PRODUCTS: 'p1:solo:monthly,p2:solo:annual,p3:owner:monthly,p4:owner:annual,'
-    + 'p5:agency:monthly,p6:agency:annual,p7:office:monthly,p8:office:annual',
+  CREEM_PRODUCTS: PRODUCTS,
+  CREEM_WEBHOOK_SECRET: 'μυστικό',
+}
+const DARK = {}
+// Ο ΙΔΙΟΣ ΕΜΠΟΡΟΣ ΧΩΡΙΣ ΜΕΤΑΒΛΗΤΗ ΕΠΙΛΟΓΗΣ. Ο προεπιλεγμένος πρέπει να
+// διαβάζει τα ίδια κλειδιά: αλλιώς μια εγκατάσταση που ξέχασε το
+// MERCHANT_PROVIDER θα έμενε με κλειστό ταμείο και ανοιχτά κλειδιά.
+const LIVE_2 = {
+  CREEM_API_KEY: 'κλειδί',
+  CREEM_PRODUCTS: PRODUCTS,
 }
 
 // ── Η ΣΥΝΘΗΚΗ ─────────────────────────────────────────────────────────────
 ok('με τη ρύθμιση πλήρη, το ταμείο είναι ζωντανό', checkoutIsLive(LIVE))
 ok('χωρίς ρύθμιση, δεν είναι', !checkoutIsLive(DARK))
-// ΤΟ ΜΙΣΟ ΕΙΝΑΙ ΧΕΙΡΟΤΕΡΟ ΑΠΟ ΤΟ ΤΙΠΟΤΑ και γι' αυτό μετράνε και οι τρεις:
-// με ζωντανό ταμείο και ξεχασμένο χάρτη παραλλαγών, ο πελάτης πληρώνει και ο
-// webhook απαντά σφάλμα σε κάθε γεγονός — χρεωμένος, χωρίς πακέτο.
-ok('χωρίς χάρτη παραλλαγών δεν μετράει ως ζωντανό ταμείο',
-  !checkoutIsLive({ ...LIVE, LEMON_VARIANTS: '' }))
-ok('χωρίς κλειδί API δεν μετράει', !checkoutIsLive({ ...LIVE, LEMON_SQUEEZY_API_KEY: '' }))
-ok('χαλασμένο αναγνωριστικό καταστήματος δεν μετράει',
-  !checkoutIsLive({ ...LIVE, LEMON_STORE_ID: 'PROPERWISE' }))
+// ΤΟ ΜΙΣΟ ΕΙΝΑΙ ΧΕΙΡΟΤΕΡΟ ΑΠΟ ΤΟ ΤΙΠΟΤΑ και γι' αυτό μετράνε όλα: με
+// ζωντανό ταμείο και ξεχασμένο χάρτη προϊόντων, ο πελάτης πληρώνει και ο
+// webhook απαντά σφάλμα σε κάθε γεγονός: χρεωμένος, χωρίς πακέτο.
+ok('χωρίς χάρτη προϊόντων δεν μετράει ως ζωντανό ταμείο',
+  !checkoutIsLive({ ...LIVE, CREEM_PRODUCTS: '' }))
+ok('χωρίς κλειδί API δεν μετράει', !checkoutIsLive({ ...LIVE, CREEM_API_KEY: '' }))
+ok('χάρτης με ζεύγος που λείπει δεν μετράει',
+  !checkoutIsLive({ ...LIVE, CREEM_PRODUCTS: PRODUCTS.replace(',p8:office:annual', '') }))
 
 // ── ΟΙ ΔΥΟ ΚΑΤΑΣΤΑΣΕΙΣ ΕΙΝΑΙ ΟΝΤΩΣ ΔΥΟ ────────────────────────────────────
 {
@@ -212,7 +214,7 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
 // ως εκτελούντα την επεξεργασία εταιρεία που δεν αγγίζει τα δεδομένα του.
 {
   ok('χωρίς μεταβλητή ισχύει ο προεπιλεγμένος (creem)', merchantId(DARK) === 'creem')
-  ok('η μεταβλητή διαλέγει τον δεύτερο', merchantId(LIVE_2) === 'creem')
+  ok('η μεταβλητή διαλέγει ρητά τον ίδιο', merchantId(LIVE) === 'creem')
   ok('κεφαλαία και κενά δεν χαλούν το όνομα',
     merchantId({ [PROVIDER_ENV]: '  CREEM ' }) === 'creem')
 
@@ -221,19 +223,29 @@ ok('χαλασμένο αναγνωριστικό καταστήματος δε�
   let threw = ''
   try { merchantId({ [PROVIDER_ENV]: 'stripe' }) } catch (e) { threw = String(e) }
   ok('άγνωστο όνομα δεν πέφτει σιωπηλά στον προεπιλεγμένο', threw.includes(PROVIDER_ENV))
+  // ΚΑΙ Ο ΠΑΛΙΟΣ ΠΑΡΟΧΟΣ ΕΙΝΑΙ ΠΛΕΟΝ ΑΓΝΩΣΤΟΣ. Ο κώδικάς του αφαιρέθηκε· μια
+  // ξεχασμένη μεταβλητή στον Vercel πρέπει να σκάσει, όχι να χρεώνει άλλος.
+  let threwOld = ''
+  try { merchantId({ [PROVIDER_ENV]: 'lemon' }) } catch (e) { threwOld = String(e) }
+  ok('ο αφαιρεμένος πάροχος δεν επιλέγεται πια', threwOld.includes(PROVIDER_ENV))
 
-  const other = MERCHANT_NAMES.lemon
+  // ΞΕΝΑ ΟΝΟΜΑΤΑ, ΠΕΖΑ: ο φύλακας των ισχυρισμών κόβει το όνομα άλλου
+  // παρόχου γραμμένο κυριολεκτικά, ακόμη και σε σουίτα.
+  const FOREIGN = /stripe|paddle|lemon/i
+  const others: string[] = KNOWN_MERCHANTS.filter(id => id !== 'creem').map(id => MERCHANT_NAMES[id])
   const w2 = billingWords(LIVE_2)
-  ok('ο δεύτερος έμπορος είναι ζωντανός με τα δικά του κλειδιά', w2.live === true)
+  ok('ο έμπορος είναι ζωντανός και χωρίς μεταβλητή επιλογής', w2.live === true)
   ok('τα λόγια ονομάζουν αυτόν που εισπράττει',
     w2.chargingToday.includes(MERCHANT_NAMES.creem) && w2.cardData.includes(MERCHANT_NAMES.creem))
-  ok('και ΔΕΝ ονομάζουν τον προηγούμενο',
-    !w2.chargingToday.includes(other) && !w2.cardData.includes(other))
+  ok('και ΔΕΝ ονομάζουν άλλον πάροχο',
+    !FOREIGN.test(w2.chargingToday) && !FOREIGN.test(w2.cardData)
+    && others.every(o => !w2.chargingToday.includes(o) && !w2.cardData.includes(o)))
 
   const reg2 = subprocessors(LIVE_2)
   ok('το μητρώο υπεργολάβων γράφει τον ίδιο έμπορο',
     reg2.some(s => s.name === MERCHANT_NAMES.creem && s.active))
-  ok('και δεν γράφει τον προηγούμενο', !reg2.some(s => s.name === other))
+  ok('και δεν γράφει άλλον πάροχο πληρωμών',
+    !reg2.some(s => FOREIGN.test(s.name) || others.includes(s.name)))
 }
 
 console.log(fail === 0 ? `✓ billingWords: ${pass} έλεγχοι πέρασαν` : `✗ billingWords: ${fail} απέτυχαν από ${pass + fail}`)

@@ -16,17 +16,29 @@
 // Ο ΚΑΝΟΝΑΣ. Τα αρθρώματα του παρόχου τα εισάγει ΜΟΝΟ ο φάκελος
 // «lib/billing/merchant/» και οι σουίτες τους. Ο,τι άλλο περνά από
 // «merchant()».
+//
+// ── ΓΙΑΤΙ Ο ΚΑΝΟΝΑΣ ΔΕΝ ΛΕΕΙ ΠΙΑ ΟΝΟΜΑ ΠΑΡΟΧΟΥ ──────────────────────────
+// Ο φύλακας έψαχνε εισαγωγές «lemon*», γιατί εκείνα τα αρχεία ζούσαν ΕΞΩ από
+// τη θύρα, στο lib/billing/. Ο κώδικας του πρώτου εμπόρου αφαιρέθηκε και ο
+// δεύτερος ζει ΜΕΣΑ στη θύρα (lib/billing/merchant/creem.ts). Ενας φύλακας
+// που θα έψαχνε ακόμη «lemon» θα έμενε πράσινος πάνω από μια διαδρομή που
+// εισάγει κατευθείαν τον Creem. Τώρα κρίνει τη ΘΕΣΗ και όχι το όνομα: από
+// τον φάκελο της θύρας επιτρέπονται απ' έξω μόνο το «index» (η επιλογή) και
+// το «port» (οι τύποι). Ο επόμενος πάροχος καλύπτεται χωρίς να αγγίξει κανείς
+// αυτό το αρχείο.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs';
 import { projectFiles } from './lib/git-files.mjs';
 
-/** Τα αρθρώματα που ξέρουν τον πάροχο ονομαστικά. */
-const PROVIDER = /from\s+['"](?:@\/lib\/billing\/|\.\/|\.\.\/)(lemon[A-Za-z]*)['"]/g;
+/** Μια εισαγωγή αρθρώματος μέσα στον φάκελο της θύρας, απόλυτη ή σχετική. */
+const INTO_SEAM = /from\s+['"](?:@\/lib\/billing\/merchant\/|(?:\.\.?\/)+(?:billing\/)?merchant\/)([A-Za-z]+)['"]/g;
 
-/** Ποιος επιτρέπεται να τα βλέπει. */
+/** Τα δύο αρθρώματα της θύρας που ΔΕΝ ξέρουν πάροχο. */
+const PUBLIC = new Set(['index', 'port']);
+
+/** Ποιος επιτρέπεται να βλέπει τους παρόχους. */
 const ALLOWED = (f) =>
   f.startsWith('lib/billing/merchant/')   // η ίδια η θύρα
-  || /^lib\/billing\/lemon[A-Za-z]*\.ts$/.test(f)  // μεταξύ τους
   || f.endsWith('.test.ts');              // οι σουίτες τους
 
 const files = projectFiles("'app/**' 'components/**' 'lib/**'")
@@ -35,9 +47,10 @@ const files = projectFiles("'app/**' 'components/**' 'lib/**'")
 const hits = [];
 for (const f of files) {
   const src = readFileSync(f, 'utf8');
-  if (!src.includes('lemon')) continue;
-  PROVIDER.lastIndex = 0;
-  for (const m of src.matchAll(PROVIDER)) {
+  if (!src.includes('merchant/')) continue;
+  INTO_SEAM.lastIndex = 0;
+  for (const m of src.matchAll(INTO_SEAM)) {
+    if (PUBLIC.has(m[1])) continue;
     hits.push({ f, line: src.slice(0, m.index).split('\n').length, mod: m[1] });
   }
 }

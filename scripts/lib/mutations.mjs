@@ -375,11 +375,13 @@ export const MUTATIONS = {
     { add: 'lib/core/__mut2__.tsx', content: tsx('    <div>{price === 0 ? \'για πάντα\' : \'τον μήνα\'}</div>') },
     // ΤΟ ΟΝΟΜΑ ΤΟΥ ΕΜΠΟΡΟΥ, ΓΡΑΜΜΕΝΟ ΜΕ ΤΟ ΧΕΡΙ ΣΕ ΚΩΔΙΚΑ. Ακριβώς όπως ήταν
     // στα λόγια της χρέωσης: μια πρόταση που θα ονόμαζε τον προηγούμενο
-    // έμπορο την ημέρα που η μεταβλητή γύριζε στον επόμενο.
-    { add: 'lib/core/__mut3__.tsx', content: tsx('    <div>Η χρέωση γίνεται μέσω της Lemon Squeezy.</div>') },
-    // ΚΑΙ ΤΟ ΙΔΙΟ ΣΕ ΔΗΜΟΣΙΕΥΜΕΝΟ ΝΟΜΙΚΟ ΕΓΓΡΑΦΟ, ΜΕ ΟΝΟΜΑ ΠΟΥ ΔΕΝ ΕΙΣΠΡΑΤΤΕΙ.
-    // Δεύτερος κανόνας, δεύτερη απόδειξη: τα έγγραφα ΟΦΕΙΛΟΥΝ να ονομάζουν,
-    // οπότε ο έλεγχος εκεί δεν είναι «μην το γράφεις» αλλά «γράψε τον σωστό».
+    // έμπορο την ημέρα που η μεταβλητή γύριζε στον επόμενο. Και ο ΕΝΕΡΓΟΣ
+    // κόβεται: ο κώδικας δεν γράφει κανένα όνομα, το ζητά.
+    { add: 'lib/core/__mut3__.tsx', content: tsx('    <div>Η χρέωση γίνεται μέσω της Creem.</div>') },
+    // ΚΑΙ ΣΕ ΔΗΜΟΣΙΕΥΜΕΝΟ ΝΟΜΙΚΟ ΕΓΓΡΑΦΟ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΠΑΛΙΟΥ ΕΜΠΟΡΟΥ. Τα
+    // έγγραφα ΟΦΕΙΛΟΥΝ να ονομάζουν, οπότε ο έλεγχος εκεί δεν είναι «μην το
+    // γράφεις» αλλά «γράψε τον σωστό»: ο πάροχος που δεν εισέπραξε ποτέ δεν
+    // επιτρέπεται να ξαναγίνει εκτελών στο μητρώο.
     { add: 'docs/legal/__mut__.md', content: '# Δοκιμή\n\nΧρέωση μέσω Lemon Squeezy ως merchant of record.\n' },
   ] },
   // Η ΣΥΝΑΙΝΕΣΗ ΠΟΥ ΓΙΝΕΤΑΙ «ΝΑΙ» ΑΠΟ ΑΠΟΤΥΧΙΑ. Ακριβώς η γραμμή που έστελνε
@@ -508,7 +510,7 @@ export const MUTATIONS = {
   'accounting-sources': { add: 'lib/core/__mut__.ts', content: "// Κατά το ν.9999/2020, το τεκμαρτό ποσοστό αλλάζει.\nexport const rate = 0.05\n" },
   'landing-theme': { file: 'app/page.tsx', from: '          --bg-base: var(--mkt-bg-base);', to: '          --bg-base: #101418;' },
   // Διαδρομή που παρακάμπτει τη θύρα και μιλά κατευθείαν στον πάροχο.
-  'merchant-seam': { add: 'app/api/__mut__/route.ts', content: "import { checkoutIsLive } from '@/lib/billing/lemonCheckout'\nexport const GET = () => Response.json({ live: checkoutIsLive(process.env) })\n" },
+  'merchant-seam': { add: 'app/api/__mut__/route.ts', content: "import { creemPort } from '@/lib/billing/merchant/creem'\nexport const GET = () => Response.json({ live: creemPort.isLive(process.env) })\n" },
   // Νέα οθόνη ταυτοποίησης με επικεφαλίδα και καμία έξοδο: το αδιέξοδο που
   // εμφανίστηκε τέσσερις φορές.
   'way-out': { add: 'app/login/__mut__.tsx', content: "export default function P() {\n  return <h1>Μια οθόνη χωρίς δρόμο πίσω</h1>\n}\n" },
