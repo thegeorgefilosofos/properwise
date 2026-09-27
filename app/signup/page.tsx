@@ -9,6 +9,7 @@ import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import PasswordEye from '../PasswordEye'
 import GoogleG from '../GoogleG'
 import { BackLink } from '../BackLink'
+import MailSent from '../MailSent'
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
 import { hy } from '@/components/Hyphen'
@@ -555,51 +556,44 @@ export default function SignupPage() {
           ) : sessionEmail ? (
             <AlreadySignedIn email={sessionEmail} onSignOut={signOut} signingOut={signingOut} mode="signup" />
           ) : done ? (
-            <div role="status">
+            <>
               {/* ΤΟ ΑΔΙΕΞΟΔΟ. Η οθόνη «Ανοιξε το email σου» είχε ΕΝΑ κουμπί, το
-                  «Ξαναστείλε» και τίποτα άλλο: ούτε αρχική, ούτε σύνδεση,
-                  ούτε τρόπο να διορθώσει τη διεύθυνση. Οποιος πληκτρολόγησε
-                  λάθος γράμμα —δηλαδή αυτός ακριβώς που κοιτάζει αυτή την
-                  οθόνη περιμένοντας email που δεν έρχεται— δεν είχε πού να
-                  πάει παρά μόνο πίσω με το βελάκι του περιηγητή.
-                  Ο δρόμος πίσω μπαίνει πάνω, όπως σε κάθε άλλη κατάσταση
-                  αυτής της σελίδας και η διόρθωση της διεύθυνσης κάτω, δίπλα
-                  στην ενέργεια που κάποιος δοκιμάζει πρώτη. */}
+                  «Ξαναστείλε» και τίποτα άλλο. Ο δρόμος πίσω μπαίνει πάνω, όπως
+                  σε κάθε άλλη κατάσταση αυτής της σελίδας· η διόρθωση της
+                  διεύθυνσης και η σύνδεση κάτω, δίπλα στην ενέργεια που κάποιος
+                  δοκιμάζει πρώτη. Η όψη ζει στο app/MailSent.tsx, κοινή με την
+                  επαναφορά κωδικού.
+
+                  «ΣΟΥ ΣΤΕΙΛΑΜΕ» ΔΕΝ ΙΣΧΥΕΙ ΠΑΝΤΑ. Με επιβεβαίωση email, ο πάροχος
+                  ταυτότητας απαντά «επιτυχία» και για διεύθυνση που έχει ήδη
+                  λογαριασμό, χωρίς να στείλει τίποτα· γι' αυτό λέγονται και οι
+                  δύο δρόμοι. Και η «συνδρομή» λέγεται μόνο όσο το ταμείο χρεώνει. */}
               <BackLink home />
-              <div style={{ textAlign: 'center' }}>
-              <div style={{ width: 56, height: 56, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--accent)' }}>
-                <svg aria-hidden="true" width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 6 12 13 2 6" /></svg>
-              </div>
-              <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 8px' }}>Άνοιξε το email σου</h1>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 24px' }}>
-                {/* «ΣΟΥ ΣΤΕΙΛΑΜΕ» ΔΕΝ ΙΣΧΥΕΙ ΠΑΝΤΑ. Με επιβεβαίωση email, ο πάροχος
-                    ταυτότητας απαντά «επιτυχία» και για διεύθυνση που έχει ήδη
-                    λογαριασμό, χωρίς να στείλει τίποτα: ο άνθρωπος περίμενε
-                    email που δεν ερχόταν ποτέ. Η επαναφορά κωδικού το λέει ήδη
-                    με «αν υπάρχει λογαριασμός»· εδώ λέγονται και οι δύο δρόμοι.
-                    Και η «συνδρομή» λέγεται μόνο όσο το ταμείο χρεώνει. */}
-                Αν δεν υπάρχει ήδη λογαριασμός με το <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{email.trim()}</strong>, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει, <Link href="/login" className="lp-link" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο ανεπιθύμητων.
-              </p>
-              {/* Η σβηστή όψη μετά την αποστολή είναι το disabled του .po-btn. */}
-              <Btn variant="primary" onClick={resend} disabled={resent}>
-                {resent ? 'Το ξαναστείλαμε ✓' : 'Ξαναστείλε το email'}
-              </Btn>
-              {/* Η αποτυχία κάθεται ΚΑΤΩ από το κουμπί που την προκάλεσε, με το
-                  κουμπί ακόμη πατήσιμο: ο χρήστης έχει και την εξήγηση και τον
-                  δρόμο. */}
-              {resendErr && (
-                <p role="alert" style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.6, color: 'var(--negative)', fontWeight: 600 }}>{resendErr}</p>
-              )}
-              <p style={{ margin: '18px 0 0', fontSize: 13, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
-                Λάθος διεύθυνση;{' '}
-                <LinkBtn onClick={() => { setDone(false); setResent(false); setResendErr(''); }}>
-                  Γράψε άλλη
-                </LinkBtn>
-                {' · '}
-                <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
-              </p>
-              </div>
-            </div>
+              <MailSent
+                title="Άνοιξε το email σου"
+                email={email.trim()}
+                body={<>Αν δεν υπάρχει ήδη λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει ήδη, <Link href="/login" className="lp-link" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
+                action={
+                  /* Η σβηστή όψη μετά την αποστολή είναι το disabled του .po-btn. */
+                  <>
+                    <Btn variant="primary" field onClick={resend} disabled={resent}>
+                      {resent ? 'Το ξαναστείλαμε' : 'Ξαναστείλε το email'}
+                    </Btn>
+                    {/* Η αποτυχία κάθεται ΚΑΤΩ από το κουμπί που την προκάλεσε, με
+                        το κουμπί ακόμη πατήσιμο. */}
+                    {resendErr && (
+                      <p role="alert" style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.6, color: 'var(--negative)', fontWeight: 600 }}>{resendErr}</p>
+                    )}
+                  </>
+                }
+                footer={<>
+                  Λάθος διεύθυνση;{' '}
+                  <LinkBtn onClick={() => { setDone(false); setResent(false); setResendErr(''); }}>Γράψε άλλη</LinkBtn>
+                  {' · '}
+                  <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
+                </>}
+              />
+            </>
           ) : (
             <>
               {/* ΣΕ ΚΙΝΗΤΟ ΔΕΝ ΥΠΗΡΧΕ ΚΑΝΕΝΑΣ ΔΡΟΜΟΣ ΠΙΣΩ. Το λογότυπο ζει στο

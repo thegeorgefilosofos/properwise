@@ -1,5 +1,5 @@
 'use client'
-import { T, Btn } from '@/components/Theme'
+import { T, Btn, LinkBtn } from '@/components/Theme'
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import { authClient } from '@/lib/supabase/lazy';
 import { leaveDevice } from '@/lib/localPrivacy'
@@ -10,6 +10,7 @@ import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/pass
 import PasswordStrength from '@/components/PasswordStrength'
 import { failed } from '@/lib/core/dbError';
 import { BackLink } from '../BackLink'
+import MailSent from '../MailSent'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Επαναφορά κωδικού, δύο καταστάσεις:
@@ -163,11 +164,6 @@ export default function ResetPasswordPage() {
   const h2s: React.CSSProperties = { fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 8px' }
   const subs: React.CSSProperties = { fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.6 }
 
-  const mailIcon = (
-    <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--accent)' }}>
-      <svg aria-hidden="true" width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 6 12 13 2 6" /></svg>
-    </div>
-  )
   const successIcon = (
     <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--positive)' }}>
       <svg aria-hidden="true" width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
@@ -229,15 +225,23 @@ export default function ResetPasswordPage() {
           )}
 
           {mode === 'sent' && (
-            <div role="status">
+            <>
               <BackLink home />
-              <div style={{ textAlign: 'center' }}>
-              {mailIcon}
-              <h1 style={h2s}>Έλεγξε το email σου</h1>
-              <p style={subs}>Αν υπάρχει λογαριασμός με αυτό το email, θα λάβεις σύνδεσμο επαναφοράς. Δες και τον φάκελο ανεπιθύμητων.</p>
-              <Link href="/login" className="lp-link po-tap" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>Επιστροφή στη σύνδεση</Link>
-              </div>
-            </div>
+              {/* Η ΙΔΙΑ ΟΨΗ ΜΕ ΤΗΝ ΕΓΓΡΑΦΗ (app/MailSent.tsx). Εδώ η επιφύλαξη
+                  είναι στο ίδιο το «σου στείλαμε»: η επαναφορά δεν λέει ποτέ αν
+                  υπάρχει λογαριασμός, ώστε να μη γίνεται μηχανή ελέγχου email. */}
+              <MailSent
+                title="Άνοιξε το email σου"
+                email={email.trim()}
+                body={<>Αν υπάρχει λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επαναφοράς. Πάτησέ τον για να ορίσεις νέο κωδικό. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
+                footer={<>
+                  Λάθος διεύθυνση;{' '}
+                  <LinkBtn onClick={() => setMode('request')}>Γράψε άλλη</LinkBtn>
+                  {' · '}
+                  <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
+                </>}
+              />
+            </>
           )}
 
           {mode === 'update' && (

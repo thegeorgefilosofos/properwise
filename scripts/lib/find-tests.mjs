@@ -26,7 +26,10 @@ import { readdirSync, statSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 /** Ό,τι δεν είναι πηγαίος κώδικας του έργου. Ρητά και σε ΕΝΑ σημείο. */
-const SKIP = new Set(['node_modules', '.next', '.git', '.vscode', 'public', 'coverage'])
+// Το `.claude` κρατά αντίγραφα εργασίας (`.claude/worktrees/`), δηλαδή
+// ολόκληρα δεύτερα αντίγραφα του αποθετηρίου: μετρημένο 28.09.2026, δέκα
+// φύλακες κοκκίνιζαν πάνω σε αρχεία που δεν ανήκουν στο κλαδί.
+const SKIP = new Set(['node_modules', '.next', '.git', '.vscode', 'public', 'coverage', '.claude'])
 
 /**
  * ΤΑ ΠΡΟΠΛΑΣΜΑΤΑ ΔΕΝ ΕΙΝΑΙ ΚΩΔΙΚΑΣ ΤΟΥ ΠΡΟΪΟΝΤΟΣ, ΚΑΙ ΕΙΝΑΙ ΓΕΜΑΤΑ ΣΦΑΛΜΑΤΑ.
