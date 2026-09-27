@@ -508,7 +508,7 @@ export const MUTATIONS = {
   ] },
   // Παραπομπή σε νόμο μέσα στον κώδικα, χωρίς εγγραφή στο μητρώο πηγών.
   'accounting-sources': { add: 'lib/core/__mut__.ts', content: "// Κατά το ν.9999/2020, το τεκμαρτό ποσοστό αλλάζει.\nexport const rate = 0.05\n" },
-  'landing-theme': { file: 'app/page.tsx', from: '          --bg-base: var(--mkt-bg-base);', to: '          --bg-base: #101418;' },
+  'landing-theme': { file: 'app/LandingStyles.tsx', from: '          --bg-base: var(--mkt-bg-base);', to: '          --bg-base: #101418;' },
   // Διαδρομή που παρακάμπτει τη θύρα και μιλά κατευθείαν στον πάροχο.
   'merchant-seam': { add: 'app/api/__mut__/route.ts', content: "import { creemPort } from '@/lib/billing/merchant/creem'\nexport const GET = () => Response.json({ live: creemPort.isLive(process.env) })\n" },
   // Νέα οθόνη ταυτοποίησης με επικεφαλίδα και καμία έξοδο: το αδιέξοδο που
