@@ -96,12 +96,12 @@ function ogBanner({ width, height, lines, sub, lift = 0 }: OgBanner) {
  * λωρίδας. Η φράση κάθεται στο 44% του ύψους: μέσα στη λωρίδα και πάνω από
  * την εικόνα του προφίλ και φαίνεται ολόκληρη και όταν η εικόνα δειχτεί 16:9.
  */
-function creemBanner({ width, height }: { width: number; height: number }) {
+function creemBanner({ width, height, at = 0.44 }: { width: number; height: number; at?: number }) {
   const { fonts, c } = assets();
   const alpha = (hex: string, a: string) => `${hex}${a}`;
   const size = Math.round(width * 0.036);
   // Το σήμα μετριέται από το ύψος της ορατής λωρίδας, όχι της εικόνας.
-  const band = Math.round(width / 4.6);
+  const band = Math.min(height, Math.round(width / 4.6));
   return new ImageResponse(
     (
       <div style={{
@@ -119,7 +119,7 @@ function creemBanner({ width, height }: { width: number; height: number }) {
           {mark(Math.round(band * 1.25), BRAND_MARK_ON_DARK)}
         </div>
         <div style={{
-          position: 'absolute', left: 0, right: 0, top: Math.round(height * 0.44 - size * 0.6),
+          position: 'absolute', left: 0, right: 0, top: Math.round(height * at - size * 0.6),
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: Math.round(size * 0.55),
           fontSize: size, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2,
         }}>
@@ -161,4 +161,10 @@ const COVERS = [
   const creem = creemBanner({ width: 2560, height: 1440 });
   writeFileSync(join(OUT, 'creem-exofyllo.png'), Buffer.from(await creem.arrayBuffer()));
   console.log('✓ creem-exofyllo.png 2560×1440');
+  // Το εξώφυλλο του καταστήματος του Creem (Settings → Branding → Store
+  // banner): προτεινόμενο 1920×400, εδώ σε διπλή ανάλυση. Δεν έχει εικόνα
+  // προφίλ από πάνω του, οπότε η φράση κάθεται στη μέση.
+  const store = creemBanner({ width: 3840, height: 800, at: 0.5 });
+  writeFileSync(join(OUT, 'creem-katastima.png'), Buffer.from(await store.arrayBuffer()));
+  console.log('✓ creem-katastima.png 3840×800');
 })().catch(e => { console.error(e); process.exit(1); });
