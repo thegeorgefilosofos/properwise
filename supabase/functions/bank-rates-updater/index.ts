@@ -234,7 +234,12 @@ async function runUpdate(): Promise<void> {
       // δεν πετάμε πληροφορία· αυτό που δεν γράφεται είναι η υπογραφή.
       const episimi = isOfficialSource(f.id, f.url)
       const patch: Record<string, unknown> = episimi ? { verified_at: today } : {}
-      if (f.url) patch.source_url = f.url
+      // ΤΟ ΕΠΙΣΗΜΟ ΔΕΛΤΙΟ ΔΕΝ ΑΝΤΙΚΑΘΙΣΤΑΤΑΙ ΑΠΟ ΣΥΓΚΡΙΤΙΚΟ ΙΣΤΟΤΟΠΟ (28.09.2026).
+      // Οι τιμές διορθώθηκαν με το χέρι από το δελτίο κάθε τράπεζας
+      // (20260928150000). Ενα πέρασμα που βρίσκει μόνο τρίτη πηγή θα έσβηνε τον
+      // σύνδεσμο προς το δελτίο, ενώ η υπογραφή (verified_at) μένει παλιά.
+      const curUrl = (cur as unknown as { source_url?: string | null }).source_url ?? null
+      if (f.url && (episimi || !isOfficialSource(f.id, curUrl))) patch.source_url = f.url
       if (!episimi) perBank[f.id + ':πηγή'] = f.url ? 'μη επίσημη πηγή, χωρίς επιβεβαίωση' : 'χωρίς διεύθυνση πηγής'
       if (f.spiti !== undefined) patch.spiti_mou = f.spiti
       for (const c of apply) {
@@ -247,6 +252,10 @@ async function runUpdate(): Promise<void> {
         changeRows.push({ bank_id: c.bank_id, field: c.field, old_value: c.old, new_value: c.next, applied: false,
           reason: `μεταβολή ${c.delta! > 0 ? '+' : ''}${c.delta}: περιμένει δεύτερη επιβεβαίωση` })
       }
+      // Τιμή που άλλαξε από το πέρασμα δεν βγαίνει πια από το δελτίο με την
+      // ημερομηνία του: η ημερομηνία εγγράφου σβήνει, για να μη δείχνει η οθόνη
+      // «δελτίο της τάδε» δίπλα σε τιμή που δεν γράφει εκείνο το δελτίο.
+      if (apply.length) patch.source_doc_date = null
       const fixed = ['fixed_3yr', 'fixed_5yr', 'fixed_10yr', 'fixed_15yr', 'fixed_20yr']
         .map(k => parseFloat(String(patch[k] ?? cur[k as keyof CurrentBank] ?? '')))
         .filter(x => Number.isFinite(x))
