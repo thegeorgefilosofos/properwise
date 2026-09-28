@@ -8,6 +8,8 @@ import { T, fixedCols, Btn } from '@/components/Theme'
 import { greekWhen, seriesPage, ECB_SERIES } from '@/lib/market/ecb'
 import { LOAN_TYPES, rateRange, GLOSSARY, EURIBOR_HISTORY, SERVICERS_GUIDE, fmtPct } from '../TabLoanData'
 import { hy } from '@/components/Hyphen'
+import { athensToday } from '@/lib/core/time'
+import { spitiMouOpen, spitiMouClosedLine } from '@/lib/loans/recommend'
 import Glossary from '../Glossary'
 import { InfoDot, InfoChip } from '../UIComponents'
 import { labelStyle } from '../LoanShared'
@@ -15,6 +17,11 @@ import { LensPanel, MiniSection, CatRow, InlineLink, LinkCard, EuriborArea } fro
 import type { LoanProps, LoanState } from './useLoan'
 
 export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanProps & LoanState, 'advType' | 'openCalcDocs' | 'market' | 'profile'>) {
+  // Οι δύο γραμμές των ειδικών κατηγοριών έλεγαν «το μισό δάνειο άτοκο» και
+  // «+50% επιδότηση επιτοκίου» τέσσερις μήνες μετά το κλείσιμο των αιτήσεων,
+  // ενώ τρεις ενότητες πιο πάνω ο ίδιος οδηγός έγραφε ότι το πρόγραμμα έκλεισε.
+  const today = athensToday()
+  const spitiClosed = spitiMouClosedLine(today)
   return (
     <LensPanel title="Οδηγός δανείου" subtitle="Πώς λειτουργεί η αγορά, τι ζητά η τράπεζα και πού βρίσκεις την πηγή">
       <div style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -123,9 +130,13 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
             {[
               {title:'Ένοπλες Δυνάμεις',desc:'Στεγαστική υποστήριξη σε εν ενεργεία στελέχη δίνουν ο Αυτόνομος Οικοδομικός Οργανισμός Αξιωματικών (ΑΟΟΑ) και το Ταμείο Παρακαταθηκών και Δανείων, με δικούς τους όρους. Το σταθερό εισόδημα βοηθά και στην τραπεζική αξιολόγηση.',url:'https://www.aooa.gr'},
               {title:'Κάτοικοι εξωτερικού',desc:'Δάνειο έως 55% ή 70% της αξίας. Επίσημες μεταφράσεις, αποδεικτικό κατοικίας, εισοδήματα ξένης χώρας.',url:'https://www.nbg.gr/el/idiwtes/daneia/stegastika-daneia'},
-              {title:'Νέοι 25 έως 50 ετών',desc:'Σπίτι μου ΙΙ: το μισό δάνειο άτοκο. Εισόδημα έως 25.000,00€ για άγαμο και 35.000,00€ για έγγαμους, συν 5.000,00€ ανά τέκνο. Ακίνητο έως 150 τ.μ.',url:'https://greece20.gov.gr/home-loans/'},
+              spitiMouOpen(today)
+                ? {title:'Νέοι 25 έως 50 ετών',desc:'Σπίτι μου ΙΙ: το μισό δάνειο άτοκο. Εισόδημα έως 25.000,00€ για άγαμο και 35.000,00€ για έγγαμους, συν 5.000,00€ ανά τέκνο. Ακίνητο έως 150 τ.μ.',url:'https://greece20.gov.gr/home-loans/'}
+                : {title:'Νέοι αγοραστές',desc:`Σπίτι μου ΙΙ: ${spitiClosed} Τα όρια δόσης προς εισόδημα της Τράπεζας της Ελλάδος είναι ευνοϊκότερα για όποιον δανείζεται για πρώτη φορά.`,url:'https://www.bankofgreece.gr/kyria-themata/epopteia/makroprolithiki-politiki'},
               {title:'Ελεύθεροι επαγγελματίες',desc:'Μέσος όρος εισοδήματος διετίας. Δάνειο έως 65–70% της αξίας. Συνέπεια στις δηλώσεις.',url:AADE_HOME},
-              {title:'Πολύτεκνοι και τρίτεκνοι',desc:'+50% επιδότηση επιτοκίου στο Σπίτι μου ΙΙ. Εισόδημα έως 45.000€ (2 παιδιά) ή 50.000€ (3+).',url:'https://greece20.gov.gr/home-loans/'},
+              spitiMouOpen(today)
+                ? {title:'Πολύτεκνοι και τρίτεκνοι',desc:'+50% επιδότηση επιτοκίου στο Σπίτι μου ΙΙ. Εισόδημα έως 45.000€ (2 παιδιά) ή 50.000€ (3+).',url:'https://greece20.gov.gr/home-loans/'}
+                : {title:'Πολύτεκνοι και τρίτεκνοι',desc:`Το όριο απαλλαγής από τον φόρο μεταβίβασης πρώτης κατοικίας ανεβαίνει με κάθε εξαρτώμενο τέκνο. Σπίτι μου ΙΙ: ${spitiClosed}`,url:AADE_HOME},
               {title:'Εταιρείες και επαγγελματικά',desc:'Ισολογισμοί 3 ετών, απόφαση διοίκησης, προσωπική εγγύηση. Πλήρης έκπτωση τόκων.',url:'https://www.nbg.gr/el/epixeiriseis'},
             ].sort((a,b)=>a.title.localeCompare(b.title,'el')).map((cat,i,a)=>(
               <CatRow key={cat.title} title={cat.title} desc={cat.desc} url={cat.url} linkLabel="περισσότερα" last={i===a.length-1}/>

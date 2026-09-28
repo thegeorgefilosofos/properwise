@@ -5,6 +5,7 @@
 
 import { fe } from '@/lib/core/format'
 import { fp } from '../core/format'
+import { programStatus, programDateLabel, parseProgramDate, type ProgramStatus } from './programStatus'
 
 export type RateType = 'fixed' | 'variable' | 'mixed'
 export type LoanPurpose =
@@ -116,6 +117,51 @@ export const SPITI_MOU = {
   contractDeadline: '2026-08-31',
 }
 
+// ═══ Η ΚΑΤΑΣΤΑΣΗ ΤΟΥ «ΣΠΙΤΙ ΜΟΥ ΙΙ» ΒΓΑΙΝΕΙ ΑΠΟ ΕΔΩ ΚΑΙ ΜΟΝΟ ΑΠΟ ΕΔΩ ═══════
+// ΤΟ ΣΦΑΛΜΑ, ΜΕΤΡΗΜΕΝΟ ΣΤΙΣ 28/09/2026. Τέσσερις μήνες μετά το κλείσιμο των
+// αιτήσεων, ο υπολογιστής έκρινε το «Σπίτι μου ΙΙ» επιλέξιμο με τέσσερα
+// κριτήρια και καμία ημερομηνία: σε 150.000€ για 25 έτη έγραφε δόση με το μισό
+// δάνειο άτοκο και «εκτιμώμενη εξοικονόμηση» δεκάδων χιλιάδων ευρώ. Ο οδηγός,
+// ο σύμβουλος, η αγορά και ο βοηθός έλεγαν ακόμη ότι το πρόγραμμα «μειώνει
+// δραστικά το κόστος». Κάθε οθόνη κρατούσε τη δική της εκδοχή του
+// προγράμματος και καμία δεν ρωτούσε το ημερολόγιο.
+//
+// Οι δύο προθεσμίες ζουν στο `SPITI_MOU`· η κρίση στο `programStatus`. Κάθε
+// οθόνη που αναφέρει όφελος του προγράμματος ρωτά μία από τις τρεις
+// συναρτήσεις παρακάτω. Το `scripts/guard-spiti-closed.mjs` το επιβάλλει.
+
+/** Η κατάσταση του προγράμματος τη δεδομένη μέρα («ΕΕΕΕ-ΜΜ-ΗΗ», ώρα Αθήνας). */
+export function spitiMouStatus(today: string): ProgramStatus {
+  // Μέρα που δεν διαβάζεται κρίνεται ως η πιο πρόσφατη δυνατή: ένα άκυρο
+  // όρισμα δεν επιτρέπεται να ξανανοίξει κλειστό πρόγραμμα.
+  const day = parseProgramDate(today) ?? new Date(8.64e15)
+  return programStatus(
+    { applicationDeadline: SPITI_MOU.applicationDeadline, deadline: SPITI_MOU.contractDeadline }, day)
+}
+
+/** Δέχεται νέες αιτήσεις σήμερα; Το μόνο ερώτημα που χρειάζεται μια οθόνη για να δείξει όφελος. */
+export const spitiMouOpen = (today: string): boolean => spitiMouStatus(today).acceptsApplications
+
+/**
+ * Η γραμμή που λένε όλες οι οθόνες όταν το πρόγραμμα δεν δέχεται αιτήσεις.
+ * Κενή όσο δέχεται: τότε η οθόνη γράφει ό,τι έγραφε.
+ */
+export function spitiMouClosedLine(today: string): string {
+  const s = spitiMouStatus(today)
+  if (s.acceptsApplications) return ''
+  const apply = programDateLabel(SPITI_MOU.applicationDeadline)
+  const sign = programDateLabel(SPITI_MOU.contractDeadline)
+  return s.state === 'applications-closed'
+    ? `Κλειστό για νέες αιτήσεις από ${apply}. Όσοι έχουν ήδη έγκριση υπογράφουν έως ${sign}.`
+    : `Κλειστό για νέες αιτήσεις από ${apply}. Όσοι είχαν έγκριση υπέγραφαν έως ${sign}.`
+}
+
+/** Η ίδια γραμμή με υποκείμενο, για κείμενο όπου το όνομα δεν γράφεται ήδη από πάνω. */
+export function spitiMouClosedSentence(today: string): string {
+  const line = spitiMouClosedLine(today)
+  return line ? `Το «Σπίτι μου ΙΙ» είναι ${line.charAt(0).toLowerCase()}${line.slice(1)}` : ''
+}
+
 // Τοκοχρεολύσιο: σταθερή μηνιαία δόση (annuity).
 /**
  * Η ΜΗΝΙΑΙΑ ΔΟΣΗ ΓΡΑΦΟΤΑΝ ΤΡΕΙΣ ΦΟΡΕΣ, ΜΕ ΤΡΙΑ ΟΝΟΜΑΤΑ.
@@ -190,10 +236,11 @@ export function spitiMouEligibility(n: UserLoanNeeds, today: string): SpitiMouRe
   const reasons: string[] = []
   let eligible = true
 
-  if (today > SPITI_MOU.applicationDeadline) {
+  const status = spitiMouStatus(today)
+  if (!status.acceptsApplications) {
     eligible = false
     reasons.push(
-      today > SPITI_MOU.contractDeadline
+      status.state === 'closed'
         ? 'Ο κύκλος του «Σπίτι μου ΙΙ» έχει κλείσει. Νέος κύκλος ανακοινώνεται από τον φορέα του προγράμματος.'
         : 'Οι αιτήσεις υπαγωγής έκλεισαν. Η προθεσμία σύναψης σύμβασης αφορά μόνο όσους έχουν ήδη έγκριση.',
     )
@@ -253,6 +300,28 @@ export function spitiMouPayment(amount: number, bankRatePct: number, years: numb
   const interest = totalInterest(bankPart, bankRate, years)
   const blendedRatePct = amount > 0 ? (bankRate * bankPart) / amount : 0
   return { monthly, interest, blendedRatePct }
+}
+
+/**
+ * Η εκτίμηση «Σπίτι μου ΙΙ» του υπολογιστή, ή `null` όταν δεν υπάρχει όφελος να δειχτεί.
+ *
+ * Ο υπολογιστής έγραφε μόνος του `LA*0.5` με 0% και `LA*0.5` με το επιτόκιο
+ * της τράπεζας, με φίλτρο τέσσερα κριτήρια και ΚΑΜΙΑ ημερομηνία. Τώρα ρωτά
+ * την ίδια μηχανή με τη σύσταση: την `spitiMouEligibility`, που ελέγχει και
+ * τις δύο προθεσμίες. Όσο το πρόγραμμα δεν δέχεται αιτήσεις, δεν βγαίνει
+ * ούτε δόση ούτε επιτόκιο ούτε εξοικονόμηση.
+ */
+export function spitiMouEstimate(
+  i: { amount: number; propertyValue: number; years: number; bankRatePct: number
+       firstHome: boolean; newBuild?: boolean; commercial?: boolean },
+  today: string,
+): { monthly: number; interest: number; blendedRatePct: number } | null {
+  if (!i.firstHome || i.newBuild || i.commercial) return null
+  const elig = spitiMouEligibility(
+    { amount: i.amount, propertyValue: i.propertyValue, years: i.years, purpose: 'first_home', firstHome: true },
+    today)
+  if (!elig.eligible) return null
+  return spitiMouPayment(i.amount, i.bankRatePct, i.years, elig.interestFreeShare, elig.rateSubsidyShare)
 }
 
 // Κεντρική σύσταση: κατατάσσει τις τράπεζες κατά ΣΥΝΟΛΙΚΟ κόστος (όχι μόνο επιτόκιο).

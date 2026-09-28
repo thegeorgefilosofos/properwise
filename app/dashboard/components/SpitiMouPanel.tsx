@@ -1,8 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { programStatus } from '@/lib/loans/programStatus'
 import {
-  SPITI_MOU, spitiMouEligibility, spitiMouPayment, spitiMouIncomeLimit,
+  SPITI_MOU, spitiMouEligibility, spitiMouPayment, spitiMouIncomeLimit, spitiMouStatus, spitiMouClosedLine,
   annuityMonthly, rankLoans, type UserLoanNeeds, type BankInput,
 } from '@/lib/loans/recommend'
 import { T } from '@/components/tokens'
@@ -41,7 +40,8 @@ export default function SpitiMouPanel({
     income: incomeAnnual, maritalStatus: marital ?? 'single', children: childCount ?? 0,
     propertySqm: sqm, propertyYearBuilt: yearBuilt, firstHome: true,
   }
-  const elig = spitiMouEligibility(needs, athensToday())
+  const today = athensToday()
+  const elig = spitiMouEligibility(needs, today)
   const pay = spitiMouPayment(amount, bankRatePct, years, elig.interestFreeShare, elig.rateSubsidyShare)
   const normalMonthly = annuityMonthly(amount, bankRatePct, years)
   const months = years * 12
@@ -63,7 +63,7 @@ export default function SpitiMouPanel({
   const hardFail = crit.some(c => c.status === 'fail')
 
   // Συμμετέχουσες τράπεζες, κατά συνολικό κόστος.
-  const ranked = rankLoans(needs, banks, euribor, athensToday()).filter(r => r.spitiMouApplied && r.eligible).slice(0, 3)
+  const ranked = rankLoans(needs, banks, euribor, today).filter(r => r.spitiMouApplied && r.eligible).slice(0, 3)
 
   // ── ΤΟ ΠΡΟΓΡΑΜΜΑ ΔΕΧΕΤΑΙ ΑΚΟΜΗ ΑΙΤΗΣΗ; ─────────────────────────────────────
   // ΤΟ ΣΦΑΛΜΑ: η αντίστροφη μέτρηση ήταν ως τη λήξη ΣΥΝΑΨΗΣ ΣΥΜΒΟΛΑΙΩΝ και το
@@ -72,15 +72,29 @@ export default function SpitiMouPanel({
   // επιλέξιμο» — σε χρήστη που ΔΕΝ έχει κάνει αίτηση και δεν μπορεί πια: οι
   // αιτήσεις είχαν κλείσει στις 31/05. Οι 23 μέρες αφορούν μόνο όσους έχουν ήδη
   // έγκριση. Η κρίση έρχεται τώρα από το ΕΝΑ σημείο που την ξέρει.
-  const status = programStatus(
-    { applicationDeadline: SPITI_MOU.applicationDeadline, deadline: SPITI_MOU.contractDeadline },
-    new Date())
+  //
+  // Και η μέρα είναι της Αθήνας, όπως σε κάθε άλλη κρίση προθεσμίας: με το
+  // ρολόι του περιηγητή, ένας χρήστης σε άλλη ζώνη έβλεπε το πρόγραμμα ανοιχτό
+  // ή κλειστό μία μέρα λάθος.
+  const status = spitiMouStatus(today)
+  const closedLine = spitiMouClosedLine(today)
   const deadline = new Date(SPITI_MOU.contractDeadline + 'T23:59:59')
   // Η αντίστροφη μέτρηση διαβάζει το ρολόι ΜΙΑ φορά, στην προσάρτηση: αλλιώς
   // κάθε απόδοση δίνει άλλη τιμή και ο διακομιστής διαφωνεί με τον περιηγητή.
   const [nowMs] = useState(() => Date.now())
   const daysLeft = Math.ceil((deadline.getTime() - nowMs) / 86400000)
   const deadlineStr = deadline.toLocaleDateString('el-GR', { day: '2-digit', month: 'long', year: 'numeric' })
+
+  // ══ ΚΛΕΙΣΤΟ ΠΡΟΓΡΑΜΜΑ, ΜΙΑ ΓΡΑΜΜΗ ════════════════════════════════════════
+  // Το πάνελ έγραφε σήμα «Έκλεισε» και αμέσως κάτω μέσο επιτόκιο με το μισό
+  // δάνειο χωρίς τόκο, «Δόση με Σπίτι μου ΙΙ» και «Εξοικονόμηση τον μήνα»: το
+  // σήμα έλεγε ένα πράγμα και τα τρία μεγαλύτερα νούμερα της κάρτας το αντίθετο.
+  // Όσο δεν δέχεται αιτήσεις, δεν δείχνεται κανένα όφελος.
+  if (closedLine) {
+    return (
+      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', lineHeight: 1.55, fontFamily: FONT, fontWeight: 500 }}>{closedLine}</p>
+    )
+  }
 
 
   return (

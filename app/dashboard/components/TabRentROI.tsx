@@ -1862,7 +1862,12 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                         const base = (savedLoan.property_value || parseFloat(value) || 0);
                         if (base > 0) setLtv(String(Math.min(100, Math.round((savedLoan.amount / base) * 100))));
                         setLoanRate(String(savedLoan.rate));
-                        setIfree(savedLoan.loan_type === 'first_home' ? '50' : '0');
+                        // «Πρώτη κατοικία» ΔΕΝ σημαίνει «Σπίτι μου ΙΙ». Εδώ έμπαινε 50%
+                        // άτοκο σε κάθε αποθηκευμένο δάνειο πρώτης κατοικίας, δηλαδή
+                        // μισός τόκος και φουσκωμένη απόδοση για δάνειο με κανονικό
+                        // επιτόκιο, σε πρόγραμμα κλειστό για αιτήσεις. Το άτοκο σκέλος
+                        // το δηλώνει ο χρήστης, αν το έχει.
+                        setIfree('0');
                       }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M21 12a9 9 0 11-6.2-8.5"/><polyline points="21 3 21 9 15 9"/></svg>
                       Χρησιμοποίησε το πραγματικό μου δάνειο
@@ -1880,7 +1885,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                       μισή κάρτα τσάκιζε σε δεύτερη γραμμή, ενώ η «Διάρκεια δανείου»
                       δίπλα της έμενε σε μία. Δεν είναι μέρος του ονόματος: είναι ο
                       λόγος που υπάρχει το πεδίο, δηλαδή επεξήγηση. */}
-                  <NumberInput label="Άτοκο μέρος" labelInfo="Το «Σπίτι μου ΙΙ» δίνει άτοκο το μισό δάνειο. Γράψε εδώ το ποσοστό του δανείου που δεν τοκίζεται." value={ifree} onChange={setIfree} suffix="%" max={100} />
+                  <NumberInput label="Άτοκο μέρος" labelInfo="Το ποσοστό του δανείου που δεν τοκίζεται, αν το δάνειό σου έχει τέτοιο σκέλος. Αλλιώς άφησε 0." value={ifree} onChange={setIfree} suffix="%" max={100} />
                 </div>
                 {/* ΣΤΑ 768 Η ΚΑΡΤΑ ΕΙΝΑΙ ΜΙΣΗ ΚΑΙ ΟΙ ΤΡΕΙΣ ΣΤΗΛΕΣ ΔΙΝΟΥΝ 100. Η
                     ετικέτα «Απόδοση ιδίων» θέλει 105 στα 11 με την αραίωσή της,

@@ -2,6 +2,7 @@
 import {
   annuityMonthly, totalInterest, interestForYear, spitiMouIncomeLimit, spitiMouEligibility,
   spitiMouPayment, rankLoans, fixedRateForTerm, type UserLoanNeeds, type BankInput,
+  spitiMouStatus, spitiMouOpen, spitiMouClosedLine, spitiMouEstimate,
 } from './recommend'
 
 let passed = 0, failed = 0
@@ -133,6 +134,40 @@ ok('green class lowers Cheap nominal rate', greenRanked.find(r => r.bankId === '
   ok('χωρίς εύρη μένει το fixed_min', fixedRateForTerm({ ...bank, fixed_20yr: undefined, fixed_15yr: undefined }, 25) === 2.4)
   const r = rankLoans({ ...baseNeeds, amount: 120_000, years: 25, purpose: 'purchase' }, [bank], 2.324, OPEN_DAY)[0]
   ok('η κατάταξη χρεώνει το εικοσαετές', Math.abs(r.nominalRatePct - 4.5) < 1e-9)
+}
+
+// ══ 28/09/2026: ΚΑΝΕΝΑ ΟΦΕΛΟΣ «ΣΠΙΤΙ ΜΟΥ ΙΙ» ΑΠΟ ΚΑΝΕΝΑΝ ΥΠΟΛΟΓΙΣΜΟ ═════
+// Ο υπολογιστής δανείου έκρινε το πρόγραμμα με τέσσερα κριτήρια και καμία
+// ημερομηνία: στις 28/09/2026, τέσσερις μήνες μετά το κλείσιμο των αιτήσεων,
+// έγραφε ακόμη δόση με το μισό δάνειο άτοκο και «εκτιμώμενη εξοικονόμηση».
+{
+  const TODAY = '2026-09-28'
+  const calc = { amount: 150_000, propertyValue: 185_000, years: 25, bankRatePct: 3.2, firstHome: true }
+  ok('28/09/2026: καμία εκτίμηση «Σπίτι μου ΙΙ»', spitiMouEstimate(calc, TODAY) === null)
+  ok('...ούτε στην περίοδο των υπογραφών', spitiMouEstimate(calc, AFTER_APPLY) === null)
+  ok('...ούτε με άκυρη ημερομηνία', spitiMouEstimate(calc, 'χθες') === null)
+  const open = spitiMouEstimate(calc, OPEN_DAY)
+  ok('όσο δεχόταν αιτήσεις, η εκτίμηση υπήρχε', open !== null)
+  ok('...και ήταν η ίδια με της μηχανής', !!open &&
+    Math.abs(open.monthly - spitiMouPayment(150_000, 3.2, 25, 0.5).monthly) < 1e-9)
+  ok('νεόδμητο δεν παίρνει εκτίμηση', spitiMouEstimate({ ...calc, newBuild: true }, OPEN_DAY) === null)
+  ok('επαγγελματικό δεν παίρνει εκτίμηση', spitiMouEstimate({ ...calc, commercial: true }, OPEN_DAY) === null)
+  ok('όχι πρώτη κατοικία, όχι εκτίμηση', spitiMouEstimate({ ...calc, firstHome: false }, OPEN_DAY) === null)
+
+  ok('28/09/2026: δεν δέχεται αιτήσεις', spitiMouOpen(TODAY) === false)
+  ok('...η κατάσταση είναι «closed»', spitiMouStatus(TODAY).state === 'closed')
+  ok('31/05/2026 ήταν η τελευταία μέρα αιτήσεων', spitiMouOpen('2026-05-31') === true && spitiMouOpen('2026-06-01') === false)
+  ok('η γραμμή λέει την ημερομηνία κλεισίματος',
+    spitiMouClosedLine(TODAY).startsWith('Κλειστό για νέες αιτήσεις από 31/05/2026.'))
+  ok('...σε αόριστο για τις υπογραφές που πέρασαν', /υπέγραφαν έως 31\/08\/2026/.test(spitiMouClosedLine(TODAY)))
+  ok('...σε ενεστώτα όσο τρέχουν ακόμη', /υπογράφουν έως 31\/08\/2026/.test(spitiMouClosedLine(AFTER_APPLY)))
+  ok('...κενή όσο δέχεται αιτήσεις', spitiMouClosedLine(OPEN_DAY) === '')
+  ok('...χωρίς κανένα ποσοστό οφέλους', !/%|άτοκ|επιδότ/.test(spitiMouClosedLine(TODAY)))
+
+  // Και η κατάταξη της ίδιας μέρας δεν μοιράζει άτοκο κεφάλαιο σε καμία τράπεζα.
+  const today = rankLoans(baseNeeds, banks, 2.324, TODAY)
+  ok('28/09/2026: καμία τράπεζα με «Σπίτι μου ΙΙ»', today.every(r => !r.spitiMouApplied))
+  ok('...και καμία εξήγηση με «άτοκο»', today.every(r => !/άτοκ/.test(r.why)))
 }
 
 console.log(`\nrecommend.test: ${passed} passed, ${failed} failed`)
