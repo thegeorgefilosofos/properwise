@@ -80,7 +80,7 @@ claude setup-token
 
 ### Βήμα 2 — Το μυστικό στο GitHub
 
-`github.com/thegeorgefilosofos/properwise` → **Settings** → **Secrets and
+Το αποθετήριο στο GitHub → **Settings** → **Secrets and
 variables** → **Actions** → **New repository secret**
 
 | Ονομα | Τιμή |
