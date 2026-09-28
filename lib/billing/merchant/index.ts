@@ -7,7 +7,6 @@
 // μάθει μία λέξη. Εδώ γίνεται μόνο η αντιστοίχιση αναγνωριστικού σε θύρα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { merchantId, type MerchantId } from '@/lib/legal/merchant';
-import { lemonPort } from './lemon';
 import { creemPort } from './creem';
 import type { MerchantPort, BillingEnv } from './port';
 
@@ -15,7 +14,6 @@ export * from './port';
 
 /** Ο κατάλογος. Ενας νέος πάροχος μπαίνει εδώ και στο lib/legal/merchant.ts. */
 const PORTS: Record<MerchantId, MerchantPort> = {
-  lemon: lemonPort,
   creem: creemPort,
 };
 

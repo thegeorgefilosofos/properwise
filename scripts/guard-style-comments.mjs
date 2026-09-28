@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs'
 
 const FILES = [
   'app/page.tsx',
+  'app/LandingStyles.tsx',
   'app/ScrollStory.tsx',
   'app/ShowcasePanels.tsx',
   'app/LandingShowcase.tsx',

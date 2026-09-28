@@ -30,7 +30,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { MERCHANT_NAMES } from '@/lib/legal/merchant';
-import { parseVariantMap, planOfVariant } from '../lemon';
+import { parseVariantMap, planOfVariant } from '../variantMap';
 import type { MorStatus, MorSubscription } from '../subscription';
 import { isMorStatus } from '../subscription';
 import type {

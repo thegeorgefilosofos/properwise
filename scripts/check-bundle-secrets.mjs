@@ -26,7 +26,7 @@ walk(ROOT);
 const PATTERNS = [
   ['κλειδί υπηρεσίας Supabase', /SUPABASE_SERVICE_ROLE|service_role/],
   ['μυστικό χρονοδιαγράμματος', /CRON_SECRET/],
-  ['μυστικό webhook', /LEMON[A-Z_]*SECRET|INBOUND[A-Z_]*SECRET/],
+  ['μυστικό webhook', /CREEM[A-Z_]*SECRET|INBOUND[A-Z_]*SECRET/],
   ['ιδιωτικό κλειδί VAPID', /VAPID_PRIVATE/],
   ['κλειδί Resend', /RESEND_API_KEY|\bre_[A-Za-z0-9]{20,}/],
   ['κλειδί OpenAI/Anthropic', /\bsk-[A-Za-z0-9_-]{20,}/],

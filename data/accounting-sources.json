@@ -361,7 +361,7 @@
     "pinned": "ν. 4438/2016",
     "marker": "4438/2016",
     "uses": [
-      "app/dashboard/components/TabLoan.tsx"
+      "app/dashboard/components/loan/LoanGuide.tsx"
     ],
     "watch": "",
     "checkedAt": "2026-08-19",

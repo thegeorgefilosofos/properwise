@@ -79,4 +79,42 @@ begin
   raise notice 'probe: 11 δημόσιες διαδρομές, όλες γραμμένες· κάθε SECURITY DEFINER κλειδώνει το search_path';
 end $audit$;
 
+-- ═══════════════════════════════════════════════════════════════════════════
+--  ΚΑΙ ΟΣΕΣ ΤΡΕΧΟΥΝ ΜΟΝΟ ΣΤΟΝ ΔΙΑΚΟΜΙΣΤΗ ΔΕΝ ΦΤΑΝΟΥΝ ΣΤΟΝ ΣΥΝΔΕΔΕΜΕΝΟ
+-- ─────────────────────────────────────────────────────────────────────────
+--  Ο κατάλογος από πάνω κοιτά μόνο τον `anon`. Ο έλεγχος της 27.09.2026 βρήκε
+--  έξι SECURITY DEFINER που τις καλεί μόνο το cron, άλλη SQL ή κανείς. Παρ'
+--  όλα αυτά ήταν εκτελέσιμες από κάθε συνδεδεμένο λογαριασμό. Η
+--  `enqueue_email` ήταν ανοιχτός αναμεταδότης email· η `drain_email_outbox`
+--  είχε ξαναδοθεί στον `authenticated` μέσα σε βρόχο που κανένας φύλακας
+--  κειμένου δεν διάβαζε. Η μετανάστευση
+--  20260928100000_oi_synartiseis_tou_diakomisti_kleinoun_ston_pelati.sql τις
+--  έκλεισε· εδώ ρωτιέται η ίδια η βάση ότι μένουν κλειστές.
+-- ═══════════════════════════════════════════════════════════════════════════
+do $server_only$
+declare
+  s text;
+  f regprocedure;
+  open_ text;
+begin
+  foreach s in array array[
+    'public.drain_email_outbox(integer)',
+    'public.enqueue_email(text,text,text,jsonb,text,text,interval)',
+    'public.accountant_link_live(uuid,uuid)',
+    'public.set_org_member_role(text,text)',
+    'public.bump_ai_usage(integer,integer[],integer[],integer)',
+    'public.bump_ai_usage(integer,integer[],integer[],integer,integer,integer)'
+  ] loop
+    f := to_regprocedure(s);
+    continue when f is null;
+    if has_function_privilege('anon', f, 'execute') or has_function_privilege('authenticated', f, 'execute') then
+      open_ := concat_ws(', ', open_, f::text);
+    end if;
+  end loop;
+  if open_ is not null then
+    raise exception E'SECURITY DEFINER ΤΟΥ ΔΙΑΚΟΜΙΣΤΗ ΑΝΟΙΧΤΗ ΣΕ ΡΟΛΟ ΠΕΛΑΤΗ: %\n  Την καλεί μόνο το cron ή άλλη SQL. revoke execute on function … from public, anon, authenticated;', open_;
+  end if;
+  raise notice 'probe: οι συναρτήσεις του διακομιστή μένουν κλειστές σε anon και authenticated';
+end $server_only$;
+
 drop table expected_anon;

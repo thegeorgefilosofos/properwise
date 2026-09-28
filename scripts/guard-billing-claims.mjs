@@ -131,8 +131,16 @@ const TRIAL_CLAIMS = [
 const FOREVER = /για παντα|παντοτινα|εσαει/;
 const FOREVER_SUBJECT = /δωρεαν|price|πακετο|συνδρομ/;
 
-/** Πάροχοι πληρωμών που ΔΕΝ είναι ο δικός μας. Ονομαστικά, γιατί συνέβη. */
-const WRONG_PROVIDER = /\b(Stripe|Paddle|Chargebee|FastSpring)\b/;
+/**
+ * Πάροχοι πληρωμών που ΔΕΝ είναι ο δικός μας. Ονομαστικά, γιατί συνέβη.
+ *
+ * ΚΑΙ Ο ΠΡΩΤΟΣ ΜΑΣ ΕΜΠΟΡΟΣ ΜΠΗΚΕ ΣΤΗ ΛΙΣΤΑ. Οσο ήταν στον κατάλογο του
+ * lib/legal/merchant.ts, ο κανόνας «τα νομικά έγγραφα ονομάζουν ΜΟΝΟ τον
+ * ενεργό» τον έπιανε. Ο κώδικάς του αφαιρέθηκε και ο κατάλογος έμεινε με
+ * έναν· χωρίς αυτή τη γραμμή, ένα έγγραφο που θα ξαναέγραφε το παλιό όνομα
+ * θα περνούσε πράσινο, ενώ δηλώνει εκτελούντα που δεν αγγίζει τίποτα.
+ */
+const WRONG_PROVIDER = /\b(Stripe|Paddle|Chargebee|FastSpring|Lemon Squeezy)\b/;
 
 /** Οπου το όνομα ξένου παρόχου είναι νόμιμο: παραδείγματα προς τον χρήστη. */
 const PROVIDER_ALLOW = new Set([
@@ -160,12 +168,15 @@ if (namesBlock) {
   for (const m of namesBlock[1].matchAll(/(\w+)\s*:\s*'([^']+)'/g)) NAMES.set(m[1], m[2]);
 }
 const defaultId = (merchantSrc.match(/DEFAULT_MERCHANT[^=]*=\s*'([^']+)'/) || [])[1] || '';
-if (NAMES.size < 2 || !defaultId) {
+// ΕΝΑ ΟΝΟΜΑ ΑΡΚΕΙ. Ο κατάλογος είχε δύο εμπόρους και ο έλεγχος ζητούσε δύο·
+// από τότε που ο πρώτος αφαιρέθηκε, ζητά τουλάχιστον έναν, δηλαδή ότι ο
+// αναλυτής διάβασε ΚΑΤΙ. Κενό σημαίνει ότι το σχήμα της πηγής άλλαξε.
+if (NAMES.size < 1 || !defaultId) {
   problems.push(`${MERCHANT_SRC}: δεν διαβάστηκαν τα ονόματα των εμπόρων. Αν το σχήμα άλλαξε, άλλαξε και ο ${GUARD}.`);
 }
 const activeId = (process.env.MERCHANT_PROVIDER || defaultId).trim().toLowerCase();
 const activeName = NAMES.get(activeId) || '';
-if (NAMES.size >= 2 && !activeName) {
+if (NAMES.size >= 1 && !activeName) {
   problems.push(`Η MERCHANT_PROVIDER λέει «${activeId}», που δεν είναι έμπορος του ${MERCHANT_SRC}.`);
 }
 

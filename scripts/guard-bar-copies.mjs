@@ -28,7 +28,7 @@ const ALLOWED = new Map([
     'μπάρα με δείκτη μέσου όρου που ΒΓΑΙΝΕΙ έξω από την αυλακιά, πάνω και κάτω'],
   ['app/dashboard/components/ExpenseCompare.tsx',
     'απόκλιση εκατέρωθεν κέντρου: το γέμισμα ξεκινά αριστερά ή δεξιά του μηδενός'],
-  ['app/dashboard/components/TabAccounting.tsx',
+  ['app/dashboard/components/accounting/AdvancedTools.tsx',
     'δύο άξονες γύρω από κοινό μηδέν, με ασύμμετρες γωνίες ανά πλευρά'],
   ['app/dashboard/components/BillsBudget.tsx',
     'σύνθετα διαγράμματα προϋπολογισμού με επικαλύψεις και δείκτες ορίου'],

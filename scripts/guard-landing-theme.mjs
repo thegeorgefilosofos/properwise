@@ -32,9 +32,12 @@
 import { readFileSync } from 'node:fs'
 
 const PAGE = 'app/page.tsx'
+// Το φύλλο στυλ της αρχικής, με το μπλοκ `.lp-root`, ζει στο δικό του αρχείο·
+// η σελίδα κρατά τα inline στυλ. Διαβάζονται μαζί, το φύλλο πρώτο.
+const STYLES = 'app/LandingStyles.tsx'
 const GLOBALS = 'app/globals.css'
 
-const page = readFileSync(PAGE, 'utf8')
+const page = readFileSync(STYLES, 'utf8') + '\n' + readFileSync(PAGE, 'utf8')
 const globals = readFileSync(GLOBALS, 'utf8')
 
 const findings = []
@@ -42,7 +45,7 @@ const findings = []
 // ── 1. Το μπλοκ αντιστοίχισης δεν κρύβει χρώματα ──────────────────────────
 const block = page.match(/\.lp-root\s*\{([\s\S]*?)\n\s*\}/)
 if (!block) {
-  findings.push('Δεν βρέθηκε το μπλοκ `.lp-root` στο ' + PAGE + '. Αν μετονομάστηκε, ενημέρωσε τον φύλακα.')
+  findings.push('Δεν βρέθηκε το μπλοκ `.lp-root` στο ' + STYLES + '. Αν μετονομάστηκε, ενημέρωσε τον φύλακα.')
 } else {
   const body = block[1]
   const lineNo = page.slice(0, block.index).split('\n').length
@@ -52,12 +55,12 @@ if (!block) {
     const decl = t.split(':')[0].trim()
     // Τα ίδια τα `--mkt-*` δηλώνονται στο globals.css, όχι εδώ.
     if (decl.startsWith('--mkt-')) {
-      findings.push(`${PAGE}:${lineNo + i} — το \`${decl}\` δηλώνεται εδώ· η παλέτα της βιτρίνας ζει στο ${GLOBALS}`)
+      findings.push(`${STYLES}:${lineNo + i} — το \`${decl}\` δηλώνεται εδώ· η παλέτα της βιτρίνας ζει στο ${GLOBALS}`)
       return
     }
     const value = t.slice(t.indexOf(':') + 1)
     if (/#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(value)) {
-      findings.push(`${PAGE}:${lineNo + i} — ωμό χρώμα στην αντιστοίχιση: \`${t.slice(0, 80)}\``)
+      findings.push(`${STYLES}:${lineNo + i} — ωμό χρώμα στην αντιστοίχιση: \`${t.slice(0, 80)}\``)
     }
   })
 }
@@ -85,7 +88,7 @@ if (!pub) {
 } else if (block) {
   const a = pairs(block[1]), b = pairs(pub[1])
   for (const p of a) if (!b.has(p)) findings.push(`${GLOBALS} — η \`.pub-root\` δεν έχει το \`${p}\` της αρχικής`)
-  for (const p of b) if (!a.has(p)) findings.push(`${PAGE} — το \`.lp-root\` δεν έχει το \`${p}\` της \`.pub-root\``)
+  for (const p of b) if (!a.has(p)) findings.push(`${STYLES} — το \`.lp-root\` δεν έχει το \`${p}\` της \`.pub-root\``)
 }
 
 if (findings.length) {

@@ -526,7 +526,7 @@ function LeverCard({ lever }: { lever: YieldLever }) {
             : <span aria-hidden style={{ display: 'inline-block', minWidth: T.h.md, marginRight: -8 }} />}
         </span>
       </div>
-      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, fontFamily: SANS, lineHeight: 1.55 }}>{lever.impact}</p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, fontFamily: SANS, lineHeight: 1.6 }}>{lever.impact}</p>
     </div>
   );
 }

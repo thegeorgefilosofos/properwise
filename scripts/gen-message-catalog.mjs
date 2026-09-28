@@ -23,9 +23,8 @@
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { MANUAL } from './guard-email-senders.mjs'
+import { MANUAL, COPY_FILES } from './guard-email-senders.mjs'
 
-const COPY = 'supabase/functions/_shared/emailCopy.ts'
 const OUT = 'docs/KATALOGOS-MINYMATON.md'
 
 /** Τι κάνει το κάθε πρόγραμμα, στα ελληνικά. Χωρίς αυτό ο κατάλογος είναι λίστα κωδικών. */
@@ -49,7 +48,7 @@ const PROGRAMS = {
   DIGESTS: 'Συνόψεις αγοράς και χαρτοφυλακίου',
 }
 
-const src = readFileSync(COPY, 'utf8')
+const src = COPY_FILES.map(f => readFileSync(f, 'utf8')).join('\n')
 
 /** Ολα τα αρχεία του αποθετηρίου, για να βρεθεί πού πυροδοτείται το καθένα. */
 const files = []
@@ -58,7 +57,7 @@ const walk = d => {
     if (e === 'node_modules' || e === '.next' || e === '.git' || e.startsWith('.perf')) continue
     const p = join(d, e)
     if (statSync(p).isDirectory()) walk(p)
-    else if (/\.(ts|tsx|sql|mjs|yml)$/.test(p) && p !== COPY) files.push(p)
+    else if (/\.(ts|tsx|sql|mjs|yml)$/.test(p) && !COPY_FILES.includes(p)) files.push(p)
   }
 }
 for (const root of ['app', 'lib', 'supabase', 'scripts', '.github']) { try { walk(root) } catch {} }

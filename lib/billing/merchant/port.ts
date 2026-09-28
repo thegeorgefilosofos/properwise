@@ -27,10 +27,10 @@
 // έξω από τη θύρα, ο επόμενος πάροχος θα άλλαζε και τις διαδρομές.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { PlanId, BillingCycle } from '../plans';
-import type { BillingEnv } from '../lemonApi';
+import type { BillingEnv } from '../types';
 
 export type { BillingEnv };
-import type { MorStatus, MorSubscription, VariantPlan } from '../lemon';
+import type { MorStatus, MorSubscription, VariantPlan } from '../subscription';
 
 export type { MorStatus, MorSubscription, VariantPlan };
 
