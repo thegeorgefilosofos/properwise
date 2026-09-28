@@ -52,6 +52,11 @@ declare v bigint; begin
 create or replace function cron.schedule(schedule text, command text) returns bigint language sql as $$ select cron.schedule(md5(command), schedule, command) $$;
 create or replace function cron.unschedule(job_name text) returns boolean language plpgsql as $$ begin delete from cron.job where jobname=job_name; return true; end $$;
 create or replace function cron.unschedule(job_id bigint) returns boolean language plpgsql as $$ begin delete from cron.job where jobid=job_id; return true; end $$;
+-- alter_job: αλλάζει χρονοδιάγραμμα χωρίς να ξαναγραφτεί η εντολή (και τα μυστικά της).
+create or replace function cron.alter_job(job_id bigint, schedule text default null, command text default null, database text default null, username text default null, active boolean default null) returns void language plpgsql as $$
+begin
+  update cron.job j set schedule = coalesce(alter_job.schedule, j.schedule), command = coalesce(alter_job.command, j.command), active = coalesce(alter_job.active, j.active) where j.jobid = job_id;
+end $$;
 
 -- vault: τα μυστικά του project.
 create schema if not exists vault;

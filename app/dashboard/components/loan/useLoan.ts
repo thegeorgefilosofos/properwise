@@ -207,11 +207,12 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
   const banksAgeDays = Math.floor((Date.now() - new Date(verifiedAt || BANKS_VERIFIED).getTime())/86400000)
   // ═══ «ΕΛΕΓΧΘΗΚΑΝ ΣΗΜΕΡΑ» ΔΕΝ ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΜΕ «ΑΛΛΑΞΑΝ ΣΗΜΕΡΑ» ═════════
   // Η οθόνη έγραφε «επιβεβαιώθηκαν πριν από 56 ημέρες» επειδή το verified_at
-  // ήταν η μόνη πληροφορία που είχε. Τώρα η τροφοδοσία τρέχει κάθε μέρα και
-  // αφήνει ίχνος (bank_feed_health): αν έτρεξε τις τελευταίες 36 ώρες και
-  // πέτυχε, τα επιτόκια ΕΛΕΓΧΘΗΚΑΝ — και η ημερομηνία που δείχνουμε είναι
-  // πότε επιβεβαιώθηκαν, όχι πότε τα κοίταξε τελευταία κάποιος.
-  const feedFresh = feed.checked && feed.ok && feed.hoursSilent != null && feed.hoursSilent <= 36
+  // ήταν η μόνη πληροφορία που είχε. Τώρα η τροφοδοσία τρέχει κάθε Δευτέρα και
+  // αφήνει ίχνος (bank_feed_health): αν έτρεξε τις τελευταίες 200 ώρες (μία
+  // εβδομάδα με περιθώριο) και πέτυχε, τα επιτόκια ΕΛΕΓΧΘΗΚΑΝ — και η
+  // ημερομηνία που δείχνουμε είναι πότε επιβεβαιώθηκαν, όχι πότε τα κοίταξε
+  // τελευταία κάποιος.
+  const feedFresh = feed.checked && feed.ok && feed.hoursSilent != null && feed.hoursSilent <= 200
   const feedCheckedStr = feed.lastOk ? new Date(feed.lastOk).toLocaleDateString('el-GR',{day:'2-digit',month:'short'}) : ''
   const banksStale = !feedFresh && banksAgeDays > 45
   // Μία πηγή αλήθειας: η ανάλυση αντλεί απευθείας τα στοιχεία του Υπολογιστή
