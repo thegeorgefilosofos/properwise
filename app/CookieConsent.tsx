@@ -8,7 +8,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { T, Btn } from '@/components/Theme';
+import { Btn } from '@/components/Theme';
 // Η ΕΚΔΟΣΗ ΕΡΧΕΤΑΙ ΑΠΟ ΤΑ ΝΟΜΙΚΑ ΚΕΙΜΕΝΑ, ΟΧΙ ΑΠΟ ΕΔΩ. Ηταν «2026-08»
 // γραμμένο με το χέρι, ενώ η Πολιτική είχε ήδη αλλάξει στις ενότητες για τα
 // cookies: όποιος είχε δει την παλιά ενημέρωση δεν έβλεπε ποτέ τη νέα.
@@ -136,9 +136,7 @@ export default function CookieConsent() {
     // Το `--float-z` (950) μπαίνει για τον ίδιο λόγο: το 2000 το έβαζε πάνω
     // ΚΑΙ από τα μηνύματα επιβεβαίωσης, δηλαδή μια ενημέρωση χωρίς επείγον
     // σκέπαζε ό,τι ο χρήστης μόλις ζήτησε.
-    <div ref={box} role="region" aria-label="Ενημέρωση για cookies" className="po-noprint po-cookie" style={{ position: 'fixed', left: 12, right: 12, bottom: 'var(--float-bottom)', zIndex: 'var(--float-z)', maxWidth: 720, margin: '0 auto',
-      background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.card, boxShadow: 'var(--elev-3)',
-      padding: '10px 12px 10px 16px', display: 'flex', alignItems: 'center', gap: 14, fontFamily: T.font.sans }}>
+    <div ref={box} role="region" aria-label="Ενημέρωση για cookies" className="po-noprint po-cookie">
       {/* ΓΙΑΤΙ ΤΟΣΟ ΣΥΝΤΟΜΟ: το κείμενο ήταν τέσσερις σειρές σε desktop και έξι σε
           κινητό, οπότε το πλαίσιο σκέπαζε το προϊόν ακριβώς στην πρώτη οθόνη —
           δηλαδή το πρώτο πράγμα που έβλεπε ένας υποψήφιος πελάτης ήταν νομικό

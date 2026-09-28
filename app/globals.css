@@ -4546,6 +4546,19 @@ html.a11y-large-text { zoom: 1.08; }
    πάνω· δεν χρειάζεται ειδική περίπτωση εδώ. */
 .po-cookie { animation: po-toast-in 0.22s cubic-bezier(0.2, 0, 0, 1) both; }
 
+/* ── ΤΟ ΣΤΥΛ ΤΟΥ ΠΛΑΙΣΙΟΥ ΖΕΙ ΕΔΩ, ΟΧΙ ΣΤΟ JAVASCRIPT ───────────────────
+   Ηταν αντικείμενο `style` μέσα στο CookieConsent.tsx, δηλαδή bytes στο
+   κρίσιμο JS ΚΑΘΕ σελίδας για κάτι στατικό. Μετρημένο 28.09.2026: το
+   /kathari-apodosi έφτανε ακριβώς στο όριο του docs/perf/budget.json. Οι
+   τιμές είναι αυτές των tokens (T.radius.card = 14, T.font.sans). */
+.po-cookie {
+  position: fixed; left: 12px; right: 12px; bottom: var(--float-bottom); z-index: var(--float-z);
+  max-width: 720px; margin: 0 auto; padding: 10px 12px 10px 16px;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--bg-elevated); border: 1px solid var(--border-default);
+  border-radius: 14px; box-shadow: var(--elev-3); font-family: 'Inter', system-ui, sans-serif;
+}
+
 /* ── ΣΤΗΝ ΑΡΧΙΚΗ ΤΟ ΜΗΝΥΜΑ ΜΙΛΑ ΤΗΝ ΠΑΛΕΤΑ ΤΗΣ ΒΙΤΡΙΝΑΣ ──────────────────
    Το πλαίσιο ζει στο layout, έξω από το `.lp-root`, οπότε διάβαζε τα tokens
    του θέματος της εφαρμογής: σε φωτεινό θέμα έβγαινε λευκή κάρτα πάνω στη
