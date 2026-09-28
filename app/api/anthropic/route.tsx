@@ -11,10 +11,11 @@ import {
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { billingWords } from '@/lib/legal/billingWords';
 import {
-  UPSTREAM_TIMEOUT_MS, upstreamFailure,
+  UPSTREAM_TIMEOUT_MS, upstreamFailure, CREDIT_FAILURE,
   TIMEOUT_FAILURE, NETWORK_FAILURE, UNREADABLE_FAILURE,
 } from '@/lib/assistant/upstream';
 import { refundAiUsage, refundScanUsage } from '@/lib/billing/aiRefund';
+import { alertOutOfCredit } from '@/lib/assistant/creditAlert';
 
 /**
  * Είναι αυτό το αίτημα σάρωση; Το δηλώνει ο πελάτης (`kind: 'scan'`), αλλά
@@ -474,8 +475,11 @@ export async function POST(req: NextRequest) {
       // ClientCompose:118.
       const upstream = (data as { error?: { message?: string } } | null)?.error?.message;
       console.error('Anthropic API error:', response.status, upstream ?? text.slice(0, 300));
-      const f = upstreamFailure(response.status);
+      const f = upstreamFailure(response.status, upstream);
       await giveBack(f.pool);
+      // Το τέλος του υπολοίπου δεν διορθώνεται από τον πελάτη: το μαθαίνει
+      // αμέσως ο ιδιοκτήτης (lib/assistant/creditAlert.ts).
+      if (f === CREDIT_FAILURE) await alertOutOfCredit(process.env.RESEND_API_KEY);
       return NextResponse.json({ error: f.message }, { status: f.status, headers: quotaHeaders(quota) });
     }
 

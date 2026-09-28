@@ -151,13 +151,37 @@ export const UNREADABLE_FAILURE: UpstreamFailure = {
 };
 
 /**
+ * ΤΟ ΥΠΟΛΟΙΠΟ ΜΑΣ ΣΤΟΝ ΠΑΡΟΧΟ ΤΕΛΕΙΩΣΕ.
+ *
+ * Ο πάροχος το λέει με 400 `invalid_request_error`, τον ίδιο κωδικό με ένα
+ * αίτημα που δεν δέχεται. Ετσι έπεφτε στο `REJECTED_FAILURE` και ο πελάτης
+ * διάβαζε «δοκίμασε μικρότερο ή καθαρότερο αρχείο» για βλάβη που είναι δική
+ * μας και που κανένα αρχείο δεν διορθώνει (μετρημένο 27.09.2026, στον
+ * καθημερινό έλεγχο επιτοκίων: «Your credit balance is too low»).
+ *
+ * 503, ΟΧΙ 402. Για τον πελάτη είναι διακοπή, όχι θέμα δικής του πληρωμής.
+ * Τίποτα δεν παρήχθη, άρα γυρίζει και η μονάδα της δεξαμενής.
+ */
+export const CREDIT_FAILURE: UpstreamFailure = {
+  message: 'Η Νόα δεν είναι διαθέσιμη αυτή τη στιγμή από δική μας βλάβη. Η ερώτηση δεν χρεώθηκε. Δοκίμασε ξανά αργότερα.',
+  status: 503,
+  pool: true,
+};
+
+/** Αν η αποτυχία είναι το τέλος του υπολοίπου μας και όχι λάθος του αιτήματος. */
+function isOutOfCredit(status: number, providerMessage?: string): boolean {
+  return status === 400 && /credit balance/i.test(providerMessage || '');
+}
+
+/**
  * Τι απαντά η διαδρομή μας για τον κωδικό που έδωσε ο πάροχος.
  *
  * ΚΑΝΕΝΑΣ ΚΩΔΙΚΟΣ ΔΕΝ ΠΕΡΝΑΕΙ ΑΥΤΟΥΣΙΟΣ εκτός από το 413, που έχει την ίδια
  * σημασία και στις δύο πλευρές («μίκρυνε το αρχείο»). Τα υπόλοιπα μεταφράζονται
  * σε κωδικό που περιγράφει ΤΗ ΔΙΚΗ ΜΑΣ κατάσταση προς τον πελάτη.
  */
-export function upstreamFailure(status: number): UpstreamFailure {
+export function upstreamFailure(status: number, providerMessage?: string): UpstreamFailure {
+  if (isOutOfCredit(status, providerMessage)) return CREDIT_FAILURE;
   if (status === 401 || status === 403) return KEY_FAILURE;
   if (status === 413) return TOO_LARGE_FAILURE;
   if (status === 429) return BUSY_FAILURE;

@@ -23,7 +23,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import {
-  UPSTREAM_TIMEOUT_MS, upstreamFailure,
+  UPSTREAM_TIMEOUT_MS, upstreamFailure, CREDIT_FAILURE,
   KEY_FAILURE, TOO_LARGE_FAILURE, BUSY_FAILURE, DOWN_FAILURE, REJECTED_FAILURE,
   TIMEOUT_FAILURE, NETWORK_FAILURE, UNREADABLE_FAILURE,
   type UpstreamFailure,
@@ -41,7 +41,7 @@ const read = (rel: string) => readFileSync(join(ROOT, rel), 'utf8')
 
 const ALL: UpstreamFailure[] = [
   KEY_FAILURE, TOO_LARGE_FAILURE, BUSY_FAILURE, DOWN_FAILURE, REJECTED_FAILURE,
-  TIMEOUT_FAILURE, NETWORK_FAILURE, UNREADABLE_FAILURE,
+  TIMEOUT_FAILURE, NETWORK_FAILURE, UNREADABLE_FAILURE, CREDIT_FAILURE,
 ]
 
 // ═══ Ο ΚΩΔΙΚΟΣ: ΤΟ 429 ΤΟΥ ΠΑΡΟΧΟΥ ΔΕΝ ΕΙΝΑΙ ΤΟ 429 ΤΟΥ ΠΑΚΕΤΟΥ ════════════
@@ -106,6 +106,18 @@ const scanTimeout = Number(read('app/dashboard/components/scanDoc.ts').match(/ti
 ok('ο πελάτης της σάρωσης δηλώνει δικό του όριο', Number.isFinite(scanTimeout))
 ok('ο διακομιστής δεν περιμένει περισσότερο από τον πιο υπομονετικό πελάτη',
   UPSTREAM_TIMEOUT_MS <= scanTimeout)
+
+// ═══ ΤΟ ΥΠΟΛΟΙΠΟ ΜΑΣ ΤΕΛΕΙΩΣΕ: ΔΕΝ ΦΤΑΙΕΙ ΤΟ ΑΡΧΕΙΟ ΤΟΥ ΠΕΛΑΤΗ ═══════════════
+// Το ακριβές κείμενο του παρόχου, όπως γράφτηκε στον έλεγχο επιτοκίων στις 27.09.2026.
+const NO_CREDIT = 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'
+eq('το τέλος του υπολοίπου αναγνωρίζεται', upstreamFailure(400, NO_CREDIT), CREDIT_FAILURE)
+eq('το τέλος του υπολοίπου γίνεται 503', upstreamFailure(400, NO_CREDIT).status, 503)
+ok('το μήνυμα δεν ζητά από τον πελάτη μικρότερο αρχείο', !/αρχείο/.test(upstreamFailure(400, NO_CREDIT).message))
+ok('το μήνυμα λέει ότι η ερώτηση δεν χρεώθηκε', /δεν χρεώθηκε/.test(CREDIT_FAILURE.message))
+ok('η μονάδα της δεξαμενής γυρίζει', CREDIT_FAILURE.pool)
+eq('άλλο 400 μένει απόρριψη αιτήματος', upstreamFailure(400, 'messages: text content blocks must be non-empty'), REJECTED_FAILURE)
+eq('400 χωρίς μήνυμα μένει απόρριψη αιτήματος', upstreamFailure(400), REJECTED_FAILURE)
+eq('το ίδιο κείμενο με άλλον κωδικό δεν μετρά', upstreamFailure(500, NO_CREDIT), DOWN_FAILURE)
 
 console.log(fail === 0 ? `✓ upstream: ${pass} έλεγχοι πέρασαν` : `✗ upstream: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)
