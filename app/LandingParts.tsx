@@ -221,7 +221,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
           {[...shared, noaScan].map(line)}
         </div>
         {cta(`/signup?plan=solo&cycle=monthly`, 'Ξεκίνα τη δοκιμή')}
-        {billingLive && <Link href="/signup?plan=solo&cycle=annual" className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35 }}>{`Πλήρωσε ετήσια: ${paidMonths} μήνες αντί για 12`}</Link>}
+        {billingLive && <Link href="/signup?plan=solo&cycle=annual" className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{`Ετήσια: ${paidMonths} μήνες αντί για 12`}</Link>}
       </div>
     </div>
   );
@@ -307,7 +307,7 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
       <Link href={`/signup?plan=${planId}&cycle=monthly`} className={ctaGhost ? 'lp-ghost lp-press' : 'lp-cta lp-primary lp-press'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, textAlign: 'center', background: ctaGhost ? 'var(--bg-elevated)' : undefined, color: ctaGhost ? TEXT : undefined, textDecoration: 'none', fontSize: 13, fontWeight: 700, padding: '10px', borderRadius: T.radius.pill, border: ctaGhost ? '1px solid var(--border-default)' : 'none' }}>{cta}</Link>
       {/* ΣΥΝΔΕΣΜΟΣ ΠΟΥ ΜΟΙΑΖΕΙ ΣΥΝΔΕΣΜΟΣ. Γκρι, δώδεκα εικονοστοιχεία, χωρίς
           υπογράμμιση: διαβαζόταν ως λεζάντα και όχι ως επιλογή. */}
-      {annual && <Link href={`/signup?plan=${planId}&cycle=annual`} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35 }}>{annual}</Link>}
+      {annual && <Link href={`/signup?plan=${planId}&cycle=annual`} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{annual}</Link>}
     </div>
   );
 }

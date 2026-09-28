@@ -599,7 +599,7 @@ export default async function Landing() {
                 note={<>ή <strong style={{ color: TEXT }}>{fe(plan.priceAnnual)} τον χρόνο</strong></>}
                 // Χωρίς ταμείο δεν υπάρχει κύκλος να διαλέξεις: ο σύνδεσμος της
                 // ετήσιας κρύβεται μαζί με κάθε άλλη ένδειξη ότι κάτι αγοράζεται.
-                annual={billingLive ? `Πλήρωσε ετήσια: ${paidMonths} μήνες αντί για 12` : undefined}
+                annual={billingLive ? `Ετήσια: ${paidMonths} μήνες αντί για 12` : undefined}
                 // ΓΕΝΙΚΗ, ΟΧΙ ΟΝΟΜΑΣΤΙΚΗ: «Όλα του «Ιδιοκτήτη» και:». Το `nameGen`
                 // υπάρχει στο plans.ts ακριβώς γι' αυτό και ο φύλακας
                 // scripts/guard-plan-genitive κόβει την ονομαστική μετά από «του».
