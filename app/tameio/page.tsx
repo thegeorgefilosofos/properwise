@@ -13,12 +13,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from 'next/link';
 import { billingWords } from '@/lib/legal/billingWords';
+import { merchant } from '@/lib/billing/merchant';
 import CheckoutLanding from './CheckoutLanding';
 import { TameioCard, TAMEIO_TITLE, TAMEIO_ACTION } from './TameioCard';
 
 export default function Page() {
   const w = billingWords();
-  if (w.live) return <CheckoutLanding firstCharge={w.firstCharge} moneyBack={w.moneyBack}/>;
+  if (w.live) return <CheckoutLanding firstCharge={w.firstCharge} moneyBack={w.moneyBack} securedBy={w.securedBy} securedHref={merchant().site}/>;
   return (
     <TameioCard>
       <h1 style={TAMEIO_TITLE}>Δεν χρειάζεται πληρωμή</h1>

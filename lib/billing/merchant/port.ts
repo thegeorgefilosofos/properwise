@@ -127,6 +127,8 @@ export interface MerchantPort {
   readonly id: MerchantId;
   /** Το όνομα που διαβάζει ο πελάτης και τα νομικά κείμενα. */
   readonly name: string;
+  /** Ο δημόσιος ιστότοπος του εμπόρου, για τον σύνδεσμο του σήματος ασφαλούς πληρωμής. */
+  readonly site: string;
   /** Ολα ρυθμισμένα για ΠΩΛΗΣΗ; Οσο είναι `false`, το ταμείο δεν ανοίγει. */
   isLive(env: BillingEnv): boolean;
   /**
