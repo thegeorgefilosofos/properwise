@@ -5,7 +5,7 @@ import { aiLimitsFor } from '@/lib/billing/aiLimits';
 import { TRIAL_OFFER } from '@/lib/billing/trialOffer';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
-import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE } from '@/lib/core/site';
+import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES } from '@/lib/core/site';
 import { IDENTITY } from '@/lib/legal/identity';
 import { billingWords } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
@@ -44,7 +44,7 @@ import { LandingStyles } from './LandingStyles'
 // ψάχνουν στη Google. Η «διαχείριση ακινήτων» ΔΕΝ διπλασιάζεται πια (ζει μόνο
 // στον τίτλο, όχι στο manifest name), οπότε το παλιό «διπλό» έχει μαλακώσει.
 // Η κάρτα κοινοποίησης κρατά το ρητό `OG_TITLE` με το σήμα μπροστά.
-const TAB_TITLE = 'Διαχείριση ακινήτων με μία φωτογραφία';
+const TAB_TITLE = HOME_TITLE;
 const OG_TITLE = `${PRODUCT_NAME} · ${TAB_TITLE}`;
 // ΕΝΑ ΣΥΝΘΗΜΑ, ΚΑΤΩ ΑΠΟ 155 ΧΑΡΑΚΤΗΡΕΣ. Ηταν ~220 (κοβόταν στη Google) και
 // υποσχόταν φωνή που δεν δουλεύει σε κάθε περιηγητή. Ξεκινά από το PRODUCT_TAGLINE
@@ -195,14 +195,10 @@ export default async function Landing() {
               περιέχει το ΟΝΟΜΑ ΤΟΥ ΠΡΟΪΟΝΤΟΣ — ήταν rgba(255,255,255,.52), δηλαδή
               το πιο αχνό στοιχείο ολόκληρης της σελίδας. Δεν διαβαζόταν ως
               σχεδιαστική ιεράρχηση· διαβαζόταν ως απενεργοποιημένο κείμενο.
-              Η ιεράρχηση προκύπτει τώρα από το ΧΡΩΜΑ ΤΟΥ ΤΟΝΟΥ (το εναλλασσόμενο
-              αντικείμενο σε accent) και όχι από ξεθώριασμα του brand.
+              Η ιεράρχηση προκύπτει τώρα από το ΧΡΩΜΑ ΤΟΥ ΤΟΝΟΥ (η δεύτερη γραμμή
+              σε accent) και όχι από ξεθώριασμα του brand.
               Και το μέγεθος έπεσε από 78px σε 60px: στα 78 ο τίτλος έσπαγε σε
               τέσσερις γραμμές με κακά σημεία κοπής («…κάνει τα / υπόλοιπα»). */}
-          {/* Ο ΕΝΦΙΑ ΔΕΝ ΦΩΤΟΓΡΑΦΙΖΕΤΑΙ, ΤΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΤΟΥ ΝΑΙ. «Το εκκαθαριστικό
-              ΕΝΦΙΑ.» δεν χωρούσε σε μία γραμμή στα 390, οπότε μένει η λέξη που
-              ο ιδιοκτήτης ήδη χρησιμοποιεί. Και χωρίς αλλαγή γραμμής μετά την
-              εναλλασσόμενη λέξη: είναι πλέον δική της γραμμή. */}
           {/* Η ΑΝΑΚΟΙΝΩΣΗ ΠΑΝΩ ΑΠΟ ΤΟΝ ΤΙΤΛΟ. Η μεγαλύτερη αλλαγή του προϊόντος
               (25.09.2026) δεν χωράει στα ψιλά κάτω από τα κουμπιά: ο επισκέπτης
               που ψάχνει «πόσο κοστίζει» τη βλέπει πριν διαβάσει τίποτε άλλο.
@@ -213,20 +209,10 @@ export default async function Landing() {
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
           <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
-            {/* ΔΥΟ ΠΡΟΤΑΣΕΙΣ, ΔΥΟ ΓΡΑΜΜΕΣ. Από τα 900 και πάνω καμία δεν σπάει·
-                πιο κάτω η καθεμία τυλίγεται μόνη της, χωρίς να μπλέκει με την άλλη. */}
-            <span className="lp-h1-line">
-              Φωτογραφίζεις{' '}
-              <span className="lp-rotor">
-                <span>τον λογαριασμό.</span>
-                <span aria-hidden="true">το μισθωτήριο.</span>
-                <span aria-hidden="true">το ασφαλιστήριο.</span>
-                <span aria-hidden="true">το εκκαθαριστικό.</span>
-              </span>
-            </span>
-            {/* nowrap ώστε να μη μένει ποτέ το «υπόλοιπα.» μόνο του σε τρίτη γραμμή:
-                ένα ορφανό στο τέλος τίτλου διαβάζεται ως τυπογραφικό ατύχημα. */}
-            <span className="lp-h1-line"><span style={{ whiteSpace: 'nowrap' }}>Το PROPERWISE</span> κάνει τα υπόλοιπα.</span>
+            {/* Ο ΙΔΙΟΣ ΤΙΤΛΟΣ ΜΕ ΤΗΝ ΚΑΡΤΕΛΑ ΚΑΙ ΤΗΝ ΚΑΡΤΑ ΚΟΙΝΟΠΟΙΗΣΗΣ (HOME_TITLE_LINES,
+                lib/core/site.ts). Δύο γραμμές· από τα 900 και πάνω καμία δεν σπάει. */}
+            <span className="lp-h1-line">{HOME_TITLE_LINES[0]}</span>
+            <span className="lp-h1-line lp-h1-accent">{HOME_TITLE_LINES[1]}</span>
           </h1>
           {/* ── Ο ΥΠΟΤΙΤΛΟΣ: δύο προτάσεις, δύο δουλειές ──────────────────────────
               Η πρώτη λέει το ΕΥΡΟΣ. Τέσσερα ουσιαστικά χωρίς συνδέσμους (ασύνδετο

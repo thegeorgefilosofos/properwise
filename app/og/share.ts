@@ -11,7 +11,7 @@
 // μεταδεδομένα των σελίδων· αν ζούσε μαζί με τη σχεδίαση της κάρτας, κάθε
 // σελίδα θα κουβαλούσε τη μηχανή εικόνων στο ίχνος της.
 // ═══════════════════════════════════════════════════════════════════════════
-import { SHARE_IMAGE } from '@/lib/core/site';
+import { SHARE_IMAGE, HOME_TITLE_LINES } from '@/lib/core/site';
 import { GUIDES, guideSlug } from '../odigos/guides';
 import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { fpRate } from '@/lib/core/format';
@@ -38,7 +38,8 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
   // Η αρχική και κάθε σελίδα χωρίς δική της κάρτα (SHARE_IMAGE, lib/core/site.ts).
   // Ζούσε στο app/opengraph-image.tsx, που το Next βάζει στο τμήμα της ρίζας:
   // ό,τι διάβαζε από τον δίσκο ταξίδευε σε κάθε συνάρτηση της ανάπτυξης.
-  'home': { kind: 'calc', over: '', title: 'Το ακίνητό σου,', accent: 'χωρίς χαρτιά στο συρτάρι.',
+  // Ο τίτλος της αρχικής, ο ίδιος με την καρτέλα και τη σελίδα (lib/core/site.ts).
+  'home': { kind: 'calc', over: '', title: HOME_TITLE_LINES[0], accent: `${HOME_TITLE_LINES[1]}.`,
     // Το πρώτο γεγονός είναι η τιμή εισόδου: ο «Ιδιοκτήτης» είναι δωρεάν για ένα
     // ακίνητο και αυτό το διαβάζει ο καθένας πριν πατήσει.
     chips: ['Δωρεάν για ένα ακίνητο', 'Έσοδα και δαπάνες', 'Φόρος και ΕΝΦΙΑ', 'Προθεσμίες'], path: '' },
