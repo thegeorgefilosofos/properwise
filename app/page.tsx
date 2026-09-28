@@ -5,7 +5,7 @@ import { aiLimitsFor } from '@/lib/billing/aiLimits';
 import { TRIAL_OFFER } from '@/lib/billing/trialOffer';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
-import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE } from '@/lib/core/site';
+import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE } from '@/lib/core/site';
 import { IDENTITY } from '@/lib/legal/identity';
 import { billingWords } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
@@ -60,8 +60,12 @@ export const metadata = {
   title: { absolute: `${TAB_TITLE} · ${PRODUCT_NAME}` },
   description: OG_DESC,
   alternates: { canonical: SITE },
-  openGraph: { title: OG_TITLE, description: OG_DESC, url: SITE, type: 'website', locale: 'el_GR', siteName: 'PROPERWISE' },
-  twitter: { card: 'summary_large_image', title: OG_TITLE, description: OG_DESC },
+  // Η ΕΙΚΟΝΑ ΞΑΝΑΓΡΑΦΕΤΑΙ ΕΔΩ. Ο δικός μας `openGraph` ΑΝΤΙΚΑΘΙΣΤΑ ολόκληρο
+  // το αντίστοιχο της ρίζας, δεν το συμπληρώνει: χωρίς `images` η αρχική ήταν
+  // η μόνη σελίδα χωρίς og:image και κάθε κοινοποίηση του properwise.gr έβγαινε
+  // χωρίς εικόνα (28.09.2026, το βράδυ πριν την πρώτη ανάρτηση).
+  openGraph: { title: OG_TITLE, description: OG_DESC, url: SITE, type: 'website', locale: 'el_GR', siteName: 'PROPERWISE', images: [SHARE_IMAGE] },
+  twitter: { card: 'summary_large_image', title: OG_TITLE, description: OG_DESC, images: [SHARE_IMAGE] },
 };
 
 // ΓΙΑΤΙ ΕΦΥΓΕ Η ΤΑΙΝΙΑ ΔΥΝΑΤΟΤΗΤΩΝ: εννέα ετικέτες κεφαλαία που κυλούσαν στο κάτω
