@@ -79,4 +79,65 @@ if (missing.length) {
   process.exit(1)
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ΚΑΙ ΑΝΑΠΟΔΑ: ΚΑΘΕ ΣΕΛΙΔΑ ΕΧΕΙ ΔΗΛΩΜΕΝΗ ΠΟΡΤΑ
+// ─────────────────────────────────────────────────────────────────────────
+// Από 28.09.2026 ο διαμεσολαβητής στέλνει στη σύνδεση ΜΟΝΟ τις διαδρομές του
+// `PRIVATE_PREFIXES`· ό,τι άλλο δεν είναι δημόσιο περνά, ώστε μια άγνωστη
+// διεύθυνση να δίνει «δεν βρέθηκε» και όχι φόρμα εισόδου. Το τίμημα: μια νέα
+// ιδιωτική σελίδα που κανείς δεν γράφει στον κατάλογο θα άνοιγε χωρίς σύνδεση.
+// Εδώ κόβεται: κάθε σελίδα του app/ πρέπει να είναι δημόσια, με διακριτικό,
+// εξαιρεμένη από τον διαμεσολαβητή ή ιδιωτική — ρητά, με το όνομά της.
+// ═══════════════════════════════════════════════════════════════════════════
+import { readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+
+const privBlock = /const PRIVATE_PREFIXES = \[([^\]]*)\]/.exec(proxy)
+if (!privBlock) {
+  console.error(`✗ Ο κατάλογος PRIVATE_PREFIXES δεν βρέθηκε στο ${PROXY}.`)
+  process.exit(1)
+}
+const privatePrefixes = [...privBlock[1].matchAll(/"([^"]+)"/g)].map(m => m[1])
+const isPrivateRoute = (r) => privatePrefixes.some(p => r === p || r.startsWith(p + '/'))
+// Ό,τι εξαιρεί το `matcher` δεν περνά καν από τον διαμεσολαβητή (/health, /og/).
+const MATCHER_EXCLUDED = ['/health', '/og/']
+
+/** Οι διαδρομές σελίδων του app/, με τα δυναμικά τμήματα ως πρόθεμα: app/portal/[token] → «/portal/». */
+function pageRoutes(dir = 'app', base = '') {
+  const out = []
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name)
+    if (!statSync(full).isDirectory()) {
+      if (/^(page|route)\.tsx?$/.test(name)) out.push(base || '/')
+      continue
+    }
+    if (name === 'api' && !base) continue
+    if (name.startsWith('_')) continue
+    // Ομάδα διαδρομών «(όνομα)»: δεν γράφεται στη διεύθυνση.
+    if (/^\(.*\)$/.test(name)) { out.push(...pageRoutes(full, base)); continue }
+    // Δυναμικό τμήμα: η διαδρομή κρίνεται από το πρόθεμα ως εκεί.
+    if (/^\[.*\]$/.test(name)) { if (pageRoutes(full, `${base}/_`).length) out.push(`${base}/`); continue }
+    out.push(...pageRoutes(full, `${base}/${name}`))
+  }
+  return [...new Set(out)]
+}
+
+const pages = pageRoutes()
+const unclassified = pages
+  .filter(r => !publicRoutes.has(r))
+  .filter(r => !publicPrefixes.some(p => r.startsWith(p) || r + '/' === p))
+  .filter(r => !TOKEN_PREFIXES.some(p => r.startsWith(p)))
+  .filter(r => !MATCHER_EXCLUDED.some(p => r === p || r.startsWith(p)))
+  .filter(r => !isPrivateRoute(r))
+  .sort()
+
+if (unclassified.length) {
+  console.error(`\n✗ ${unclassified.length} σελίδες του app/ δεν έχουν δηλωμένη πόρτα στο ${PROXY}:\n`)
+  for (const r of unclassified) console.error(`  ${r}`)
+  console.error(`\nΑν ζητά σύνδεση, πρόσθεσέ τη στο PRIVATE_PREFIXES· αν είναι δημόσια, στο PUBLIC.`)
+  console.error(`Χωρίς αυτό ο ανώνυμος επισκέπτης την ανοίγει χωρίς σύνδεση.`)
+  process.exit(1)
+}
+
 console.log(`✓ και οι ${linked.size} δημόσιες διαδρομές, κελύφους και χάρτη, ανοίγουν χωρίς σύνδεση`)
+console.log(`✓ και οι ${pages.length} σελίδες του app/ έχουν δηλωμένη πόρτα (${privatePrefixes.length} ιδιωτική)`)
