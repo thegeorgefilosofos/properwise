@@ -167,25 +167,32 @@ const overageMonthly = (t: Tariff, kwhMonthly: number): number => {
 /**
  * Η χρέωση ενέργειας, χωρίς πάγιο και χωρίς ρυθμιζόμενα.
  *
- * ΚΛΙΜΑΚΩΤΑ ΚΑΙ ΝΥΧΤΕΡΙΝΗ ΖΩΝΗ ΔΕΝ ΣΥΝΥΠΑΡΧΟΥΝ σε κανένα τιμολόγιο του
- * καταλόγου και υπάρχει test που το επιβεβαιώνει. Αν κάποτε προστεθεί τέτοιο
- * τιμολόγιο, το test σπάει και κάποιος πρέπει να αποφασίσει συνειδητά πώς
- * συνδυάζονται, αντί να βγάλει σιωπηλά λάθος νούμερο ο κώδικας.
+ * ΚΛΙΜΑΚΩΤΑ ΚΑΙ ΝΥΧΤΕΡΙΝΗ ΖΩΝΗ ΣΥΝΥΠΑΡΧΟΥΝ ΣΕ ΕΝΑ ΤΙΜΟΛΟΓΙΟ, ΤΟ Γ1Ν ΤΗΣ ΔΕΗ.
+ * Ως τον Σεπτέμβριο 2026 δεν υπήρχε τέτοιο στον κατάλογο και ο κώδικας
+ * αγνοούσε σιωπηλά τη νύχτα όταν έβρισκε κλίμακα. Το τιμολόγιο Σεπτεμβρίου
+ * (https://www.dei.gr/media/gvskkpxa/g1_g1n_sept26.pdf) δίνει στο Γ1Ν «ίδια
+ * ημερήσια κλιμάκια» με το Γ1 και χωριστή τιμή μειωμένης χρέωσης. Η απόφαση:
+ * οι νυχτερινές κιλοβατώρες χρεώνονται με τη νυχτερινή τιμή και το κατώφλι
+ * της κλίμακας μετρά ΜΟΝΟ τις ημερήσιες. Αν ένα τιμολόγιο ορίσει κάποτε
+ * κατώφλι στο σύνολο, χρειάζεται δικό του πεδίο· το `tariff.test.ts` κρατά το
+ * σημερινό κανόνα με αριθμούς.
  */
 function energyCharge(t: Tariff, u: Usage): number {
   const kwh = Math.max(0, u.kwhMonthly);
   if (kwh === 0) return 0;
 
-  if (t.kwh_tier2 && t.tier2_threshold) {
-    const tier1 = Math.min(kwh, t.tier2_threshold);
-    const tier2 = Math.max(0, kwh - t.tier2_threshold);
-    return tier1 * t.kwh_day + tier2 * t.kwh_tier2;
-  }
-
   const nightPct = Math.min(100, Math.max(0, u.nightPct));
   const nightKwh = t.kwh_night ? kwh * (nightPct / 100) : 0;
   const dayKwh = kwh - nightKwh;
-  return dayKwh * t.kwh_day + nightKwh * (t.kwh_night ?? t.kwh_day);
+  const night = nightKwh * (t.kwh_night ?? t.kwh_day);
+
+  if (t.kwh_tier2 && t.tier2_threshold) {
+    const tier1 = Math.min(dayKwh, t.tier2_threshold);
+    const tier2 = Math.max(0, dayKwh - t.tier2_threshold);
+    return tier1 * t.kwh_day + tier2 * t.kwh_tier2 + night;
+  }
+
+  return dayKwh * t.kwh_day + night;
 }
 
 /**

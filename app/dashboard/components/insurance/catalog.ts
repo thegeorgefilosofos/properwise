@@ -137,13 +137,27 @@ export const INSURANCE_COMPANIES: InsuranceCompany[] = [
       { id: 'axa_plus',   name: 'Home Protect Plus',         monthly: 15.90, annual: 149, covers: ['Πυρκαγιά','Κλοπή','Πλημμύρα','Αστική Ευθύνη','Φυσικά Φαινόμενα'], earthquake: false, flood: true,  natural: true  },
       { id: 'axa_prem',   name: 'Home Protect Premium',      monthly: 23.00, annual: 219, covers: ['Πλήρης Κάλυψη + Σεισμός'], earthquake: true,  flood: true,  natural: true  },
     ] },
-  { value: 'ethniki',       label: 'Εθνική Ασφαλιστική',        url: 'https://www.ethniki-asfalistiki.gr', agent_label: 'Ασφαλιστής Εθνικής',
+  // ══ ΤΑ «ΟΙΚΙΑ CLASSIC / EXTRA / PREMIUM» ΔΕΝ ΥΠΗΡΧΑΝ ═════════════════════
+  // Πηγή: https://www.ethnikiasfalistiki.gr/home-property, ανάγνωση ομάδας Grok
+  // 28/09/2026 (ops.handoffs a41bd5b2, P2-2). Η επίσημη σελίδα έχει τα Full Home
+  // Basic, Extra, Advance και Max. Η ΜΟΝΗ δημοσιευμένη τιμή: μόνιμη κατοικία
+  // 80 τ.μ., Full Home Advance, ενδεικτικά 15€ τον μήνα, με απαλλαγές, εκπτώσεις
+  // συστημάτων ασφαλείας και 15% νέου συμβολαίου. Και η διεύθυνση ήταν λάθος
+  // (ethniki-asfalistiki.gr, με παύλα).
+  //
+  // Τα άλλα τρία δεν έχουν τιμή: `monthly: 0`, που η οθόνη γράφει ήδη ως
+  // «Χειροκίνητο» και ο `computeLiveQuotes` δεν τα εκτιμά. Οι καλύψεις δεν
+  // δημοσιεύονται ανά πρόγραμμα στη σελίδα, οπότε δεν δηλώνεται καμία: ένα
+  // πρόγραμμα που «καλύπτει σεισμό» επειδή το γράψαμε εμείς θα πρότεινε στον
+  // ιδιοκτήτη ασφάλεια που ίσως δεν τον καλύπτει.
+  { value: 'ethniki',       label: 'Εθνική Ασφαλιστική',        url: 'https://www.ethnikiasfalistiki.gr/home-property', agent_label: 'Ασφαλιστής Εθνικής',
     propertyTypes: ['Κύρια Κατοικία','Εξοχική Κατοικία','Ενοικιαζόμενη','Κατοικία με Δάνειο'],
-    note: 'Παραδοσιακή ελληνική ασφαλιστική. Εκτεταμένο δίκτυο ασφαλιστών.',
+    note: 'Full Home Advance ενδεικτικά από 15€ τον μήνα για μόνιμη κατοικία 80 τ.μ., όχι προσφορά. Για τα υπόλοιπα προγράμματα ζήτησε προσφορά.',
     plans: [
-      { id: 'eth_classic', name: 'Οικία Classic',            monthly: 12.00, annual: 114, covers: ['Πυρκαγιά','Θραύση Σωληνώσεων','Αστική Ευθύνη'], earthquake: false, flood: false, natural: false },
-      { id: 'eth_extra',   name: 'Οικία Extra',              monthly: 17.90, annual: 169, covers: ['Πυρκαγιά','Κλοπή','Πλημμύρα','Αστική Ευθύνη'], earthquake: false, flood: true,  natural: true  },
-      { id: 'eth_prem',    name: 'Οικία Premium',            monthly: 24.90, annual: 235, covers: ['Πλήρης Κάλυψη + Σεισμός + Κατολίσθηση'], earthquake: true,  flood: true,  natural: true  },
+      { id: 'eth_fh_basic',   name: 'Full Home Basic',    monthly: 0,     covers: [], earthquake: false, flood: false, natural: false },
+      { id: 'eth_fh_extra',   name: 'Full Home Extra',    monthly: 0,     covers: [], earthquake: false, flood: false, natural: false },
+      { id: 'eth_fh_advance', name: 'Full Home Advance',  monthly: 15.00, covers: [], earthquake: false, flood: false, natural: false },
+      { id: 'eth_fh_max',     name: 'Full Home Max',      monthly: 0,     covers: [], earthquake: false, flood: false, natural: false },
     ] },
   { value: 'allianz',       label: 'Allianz Hellas',            url: 'https://www.allianz.gr', agent_label: 'Ασφαλιστής Allianz / Online',
     propertyTypes: ['Κύρια Κατοικία','Εξοχική Κατοικία','Ενοικιαζόμενη'],
@@ -287,9 +301,11 @@ export function computeLiveQuotes(sqm: number, propValue: number, contentValue: 
   // επιβαρυμένη περιοχή. Αφαιρέθηκε αντί να αντικατασταθεί με άλλη μαντεψιά.
   const totalFactor  = sqmFactor * valueFactor * contentF * floorRisk * ageRisk;
 
+  // Πρόγραμμα χωρίς δημοσιευμένη τιμή δεν εκτιμάται: μηδέν επί συντελεστή
+  // είναι μηδέν και θα έβγαινε «το φθηνότερο» της σύγκρισης.
   return INSURANCE_COMPANIES
     .filter(c => c.value !== 'other')
-    .flatMap(c => (c.plans ?? []).map(p => {
+    .flatMap(c => (c.plans ?? []).filter(p => p.monthly > 0).map(p => {
       const base = p.monthly;
       const estimate = base * totalFactor;
       // ΤΟ ΕΤΗΣΙΟ ΔΕΝ ΕΙΝΑΙ ΜΗΝΙΑΙΟ ΕΠΙ ΔΩΔΕΚΑ. Κάθε πρόγραμμα φέρει και δικό του

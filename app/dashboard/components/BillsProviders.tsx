@@ -160,14 +160,23 @@ const INTERNET_PLANS: Record<string, {
     // ── Double Play (Σταθερή + Internet) ─────────────────────────────────
     { id:'n_24',       name: 'Nova 24 Double Play',         speed: '24 Mbps',   price: 18.90, hasPhone: true,  note: 'ADSL. Απεριόριστα λεπτά σταθερά και κινητά.', networkType: 'ADSL', contract: '24 μήνες' },
     { id:'n_50',       name: 'Nova 50 Double Play',         speed: '50 Mbps',   price: 22.90, hasPhone: true,  note: 'VDSL. Απεριόριστα λεπτά σταθερά και κινητά.', networkType: 'VDSL', contract: '24 μήνες' },
-    { id:'n_f100',     name: 'Nova Fiber 100',              speed: '100 Mbps',  price: 24.90, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f300',     name: 'Nova Fiber 300',              speed: '300 Mbps',  price: 27.90, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f600',     name: 'Nova Fiber 600',              speed: '600 Mbps',  price: 32.90, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f1g',      name: 'Nova Fiber 1 Gbps',           speed: '1 Gbps',    price: 37.90, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
+    // ═══ ΟΙ ΒΑΘΜΙΔΕΣ ΟΠΤΙΚΗΣ ΙΝΑΣ, ΑΠΟ ΤΗ ΣΕΛΙΔΑ ΤΗΣ NOVA (28/09/2026) ═══════
+    // Πηγή: https://nova.gr/statheri-tilefonia/programmata/stathero-internet,
+    // ανάγνωση ομάδας Grok 28/09/2026 (ops.handoffs a41bd5b2, P1-11).
+    // Ο κατάλογος έγραφε 24,90 · 27,90 · 32,90 · 37,90 για 100/300/600/1G. Η
+    // σελίδα γράφει 21 · 23 · 26 · 31 · 54 για 100/300/500/1G/3G και δεν έχει
+    // βαθμίδα 600: ήταν ανύπαρκτο προϊόν, που έβγαινε και φθηνότερο από το 1G.
+    { id:'n_f100',     name: 'Nova Fiber 100',              speed: '100 Mbps',  price: 21.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f300',     name: 'Nova Fiber 300',              speed: '300 Mbps',  price: 23.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά. Τιμή προσφοράς· η σελίδα της Nova γράφει «από 26€».', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f500',     name: 'Nova Fiber 500',              speed: '500 Mbps',  price: 26.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f1g',      name: 'Nova Fiber 1 Gbps',           speed: '1 Gbps',    price: 31.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f3g',      name: 'Nova Fiber 3 Gbps',           speed: '3 Gbps',    price: 54.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
     // ── Triple Play (Σταθερή + Internet + Τηλεόραση) ─────────────────────
-    { id:'n_f100_tv',  name: 'Nova Fiber 100 + TV',         speed: '100 Mbps',  price: 41.90, hasPhone: true, hasTV: true, note: 'FTTH + Nova TV Sport + Cinema.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f300_tv',  name: 'Nova Fiber 300 + TV',         speed: '300 Mbps',  price: 44.90, hasPhone: true, hasTV: true, note: 'FTTH + Nova TV Sport + Cinema.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f1g_tv',   name: 'Nova Fiber 1 Gbps + TV',      speed: '1 Gbps',    price: 54.90, hasPhone: true, hasTV: true, note: 'FTTH + Nova TV Sport + Cinema + Netflix.', networkType: 'Fiber', contract: '24 μήνες' },
+    // ΔΕΝ ΕΠΑΛΗΘΕΥΤΗΚΑΝ στον έλεγχο της 28/09/2026. Τα ποσά μένουν και το λέει
+    // η σημείωση, ώστε κανείς να μη τα διαβάσει ως ελεγμένα.
+    { id:'n_f100_tv',  name: 'Nova Fiber 100 + TV',         speed: '100 Mbps',  price: 41.90, hasPhone: true, hasTV: true, note: 'FTTH + Nova TV Sport + Cinema. Τιμή μη επαληθευμένη.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f300_tv',  name: 'Nova Fiber 300 + TV',         speed: '300 Mbps',  price: 44.90, hasPhone: true, hasTV: true, note: 'FTTH + Nova TV Sport + Cinema. Τιμή μη επαληθευμένη.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f1g_tv',   name: 'Nova Fiber 1 Gbps + TV',      speed: '1 Gbps',    price: 54.90, hasPhone: true, hasTV: true, note: 'FTTH + Nova TV Sport + Cinema + Netflix. Τιμή μη επαληθευμένη.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   vodafone: [
     // ── Double Play (Σταθερή + Internet) ─────────────────────────────────
