@@ -53,6 +53,7 @@ import PortalShare from './PortalShare'
 import OccupancyPanel from './OccupancyPanel'
 import BillingNudge from './BillingNudge'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
+import { staysOfYearToDate } from '@/lib/clients/reports'
 import { useLoad } from '@/app/hooks/useLoad'
 import type { Property, Expense, Bill, Task, Tenant, TenRow, TenantFull } from './shell/model'
 
@@ -361,8 +362,11 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Έσοδα φιλοξενίας από το Πελατολόγιο (διαμονές συνδεδεμένες σε αυτό το ακίνητο): η
   // Επισκόπηση «ξέρει» πλέον τα πραγματικά έσοδα βραχυχρόνιας, όχι μόνο τον στόχο ενοικίου.
   const todayIso = athensToday();
-  const hostingYTD = hostStays.filter(s=>((s.check_in||s.check_out||'').slice(0,4))===String(year)).reduce((sum,s)=>sum+stayTotal(s),0);
-  const hostingNights = hostStays.filter(s=>((s.check_in||s.check_out||'').slice(0,4))===String(year)).reduce((sum,s)=>sum+(s.nights ?? 0),0);
+  // «Εισπράξεις» είναι ό,τι μπήκε: η κράτηση που δεν έχει ξεκινήσει μένει έξω
+  // (lib/clients/reports.ts, staysOfYearToDate). Η επόμενη άφιξη τη δείχνει ήδη.
+  const hostStaysToDate = staysOfYearToDate(hostStays, year, todayIso);
+  const hostingYTD = hostStaysToDate.reduce((sum,s)=>sum+stayTotal(s),0);
+  const hostingNights = hostStaysToDate.reduce((sum,s)=>sum+(s.nights ?? 0),0);
   const nextArrival = hostStays.map(s=>s.check_in).filter((d): d is string => !!d && d>=todayIso).sort()[0] || null;
   // Ο ΥΠΟΛΟΓΙΣΜΟΣ ΤΟΥ ΓΡΑΦΗΜΑΤΟΣ ΕΦΥΓΕ ΜΑΖΙ ΜΕ ΤΟ ΓΡΑΦΗΜΑ: δύο κατάλογοι μηνών,
   // δώδεκα αθροίσματα, κατηγορίες επιλεγμένου μήνα και κατάλογος ετών — σαράντα

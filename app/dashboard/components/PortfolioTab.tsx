@@ -22,7 +22,7 @@ import { resolveRent } from '@/lib/billing/propertyFacts';
 import { statusLabel, type StatusRow } from '@/lib/property/status';
 import { propertyTypeLabel } from '@/lib/property/types';
 import { declarableGross, declarableGrossOrTotal } from '@/lib/clients/stayAmounts';
-import { yearOccupancy } from '@/lib/clients/reports';
+import { yearOccupancy, staysOfYearToDate } from '@/lib/clients/reports';
 import { athensToday, daysUntil } from '@/lib/core/time';
 import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger';
 import { portfolioReturns } from '@/lib/market/portfolio';
@@ -252,11 +252,15 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       // επισκέπτης − τέλος ανθεκτικότητας). Διαφορά ~15% για το ίδιο ακίνητο,
       // στην ίδια χρονιά, σε δύο οθόνες — και η μία απ' αυτές τυπώνεται σε
       // υπογεγραμμένο PDF με QR. Μία πηγή, η ίδια με το Ε2.
-      const hostingY = staysY.reduce((sum, s) => sum + declarableGrossOrTotal(s), 0);
+      // «ΩΣ ΣΗΜΕΡΑ»: η κράτηση που δεν έχει ξεκινήσει δεν είναι έσοδο ακόμη
+      // (lib/clients/reports.ts, staysOfYearToDate). Το `staysY` μένει για το
+      // `mode`: ακίνητο με μόνο μελλοντικές κρατήσεις είναι βραχυχρόνιο.
+      const staysToDate = staysOfYearToDate(staysY, year, today);
+      const hostingY = staysToDate.reduce((sum, s) => sum + declarableGrossOrTotal(s), 0);
       // Ιστορικές γραμμές χωρίς ανάλυση: το ποσό είναι το ωμό `total` και δεν
       // ξέρουμε αν είναι ακαθάριστο ή payout. Σημαίνεται ως εκτίμηση, όπως
       // ακριβώς και το υποθετικό ενοίκιο της μακροχρόνιας.
-      const staysUnresolved = staysY.filter(s => declarableGross(s) == null && declarableGrossOrTotal(s) > 0).length;
+      const staysUnresolved = staysToDate.filter(s => declarableGross(s) == null && declarableGrossOrTotal(s) > 0).length;
       const rent = resolveRent({ tenantRent: rentByProp.get(p.id), targetRent: p.target_rent }).value;
       const pay = payByProp.get(p.id);
       const hasRentRows = (pay?.rows || 0) > 0;
@@ -352,7 +356,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
         value: p.value || 0, annualRevenue, annualExpenses,
       };
     });
-  }, [properties, stays, bills, exp, rentByTenant, rentPays, chk, year, monthsElapsed, daysElapsed, nowMs]);
+  }, [properties, stays, bills, exp, rentByTenant, rentPays, chk, year, today, monthsElapsed, daysElapsed, nowMs]);
 
   const agg = useMemo(() => portfolioReturns(rows.map(r => ({ value: r.value, annualRevenue: r.annualRevenue, annualExpenses: r.annualExpenses }))), [rows]);
   /** Πόσα από τα ακίνητα που μετρούν στην απόδοση μπαίνουν με εκτιμώμενα έσοδα. */
