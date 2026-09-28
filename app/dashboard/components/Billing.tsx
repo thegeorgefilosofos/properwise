@@ -25,7 +25,7 @@ import * as properties from '@/lib/data/properties';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
 import { TextInput, CustomSelect, FIELD_LABEL_ROW } from './UIComponents';
-import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, fixedCols, fe, fd } from '@/components/Theme';
+import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, ChipToggle, fixedCols, fe, fd } from '@/components/Theme';
 import { PLANS, PLAN_ORDER, normalizePlan, annualPerMonth, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 // Η ΦΑΣΗ ΤΗΣ ΣΥΝΔΡΟΜΗΣ ΔΕΝ ΚΡΙΝΕΤΑΙ ΕΔΩ. Οι καταστάσεις τις ονομάζει ο
 // έμπορος και τις γράφει ο webhook· η οθόνη τις διαβάζει από την ίδια πηγή.
@@ -545,9 +545,13 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           ))}
         </div>
       ) : (
-        <div style={{ marginTop: 4, marginBottom: 14, maxWidth: 560 }}>
-          <SegmentControl value={target} onChange={v => setPick(v as PlanId)} ariaLabel="Δες την τιμή του πακέτου"
-            options={choices.map(id => ({ value: id, label: PLANS[id].name }))} />
+        // ΠΛΑΚΙΔΙΑ ΠΟΥ ΑΝΑΔΙΠΛΩΝΟΝΤΑΙ, ΟΧΙ ΤΜΗΜΑΤΙΚΟΣ ΔΙΑΚΟΠΤΗΣ. Με τέσσερα πακέτα
+        // ο διακόπτης δεν χωρούσε σε τηλέφωνο: στα 320-440 οι ετικέτες έπεφταν η
+        // μία πάνω στην άλλη (σαρωτής διάταξης, 28.09.2026).
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 14 }}>
+          {choices.map(id => (
+            <ChipToggle key={id} on={target === id} onClick={() => setPick(id)}>{PLANS[id].name}</ChipToggle>
+          ))}
         </div>
       ))}
 
