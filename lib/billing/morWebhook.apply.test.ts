@@ -169,11 +169,19 @@ async function main() {
        db.rpcs.length === 1 && db.rpcs[0].fn === 'log_event_for' && db.rpcs[0].args.p_event === 'subscription_started');
   }
 
-  // Η ΔΗΛΩΣΗ ΤΟΥ ΧΡΗΣΤΗ ΔΕΝ ΞΑΝΑΓΡΑΦΕΤΑΙ.
+  // Η ΔΗΛΩΣΗ ΠΟΥ ΣΥΜΦΩΝΕΙ ΜΕ ΤΗΝ ΑΓΟΡΑ ΔΕΝ ΞΑΝΑΓΡΑΦΕΤΑΙ.
+  {
+    const db = fakeDb([profile({ profile_type: 'individual' })]);
+    await run(event(), db);
+    ok('δηλωμένος τύπος που συμφωνεί δεν πατιέται', !('profile_type' in (db.upserts[0]?.row ?? {})));
+  }
+
+  // Η ΑΓΟΡΑ ΠΟΥ ΑΝΤΙΛΕΓΕΙ ΣΤΗ ΔΗΛΩΣΗ ΚΕΡΔΙΖΕΙ: είναι νεότερη. Ο δηλωμένος
+  // «Επαγγελματίας» χωρίς το πακέτο του δεν αγόραζε τίποτα (28.09.2026).
   {
     const db = fakeDb([profile({ profile_type: 'professional' })]);
     await run(event(), db);
-    ok('δηλωμένος τύπος προφίλ δεν πατιέται', !('profile_type' in (db.upserts[0]?.row ?? {})));
+    ok('η αγορά ευθυγραμμίζει τον τύπο', db.upserts[0]?.row?.profile_type === 'individual');
   }
 
   // Η ΔΟΚΙΜΗ ΤΟΥ ΕΜΠΟΡΟΥ ΣΦΡΑΓΙΖΕΤΑΙ ΜΕ ΤΗΝ ΩΡΑ ΤΟΥ ΓΕΓΟΝΟΤΟΣ.
