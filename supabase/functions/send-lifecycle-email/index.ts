@@ -24,12 +24,13 @@ import {
 import { CATALOG, DIGESTS } from '../_shared/emailCopy.ts'
 import { guessGender } from '../_shared/gender.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
+import { senderFrom } from '../_shared/sender.mjs'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const CRON_SECRET    = Deno.env.get('LIFECYCLE_CRON_SECRET') || ''
-const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <no-reply@properwise.gr>'
+const FROM_EMAIL     = senderFrom(Deno.env.get('RESEND_FROM'))
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } })

@@ -8,36 +8,29 @@
 
 import { IDENTITY } from '@/lib/legal/identity';
 import { PLANS, PLAN_ORDER, normalizePlan, planForCount, annualPerMonth, type PlanId } from '@/lib/billing/plans';
-import { isPlanAllowedForProfile, paidPlanForProfile, type ProfileType } from '@/lib/billing/entitlements';
+import { paidPlanForProfile } from '@/lib/billing/entitlements';
 import { T, feAuto, Btn, CloseButton } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
 
-export default function UpgradeModal({ currentCount, planId, profileType = 'individual', onClose, onManage }: {
+export default function UpgradeModal({ currentCount, planId, onClose, onManage }: {
   currentCount: number;
   planId: string | null | undefined;
-  profileType?: ProfileType;
   onClose: () => void;
   onManage: () => void;
 }) {
   const current = normalizePlan(planId);
-  // Η πρόταση πρέπει να είναι ΑΓΟΡΑΣΙΜΗ από αυτό το προφίλ. Το σκέτο
-  // planForCount() προτείνει «Επαγγελματίας» σε Ιδιώτη που έπιασε τα 3 ακίνητα —
-  // πλάνο που το ALLOWED_PLANS του απαγορεύει, οπότε πατάει «Αναβάθμιση» και
-  // βρίσκει κλειδωμένη στήλη. Αδιέξοδο· κρατάμε το ανώτατο επιτρεπτό.
-  const byCount = planForCount(currentCount + 1);
-  const allowed = isPlanAllowedForProfile(profileType, byCount) ? byCount : paidPlanForProfile(profileType);
+  // Η ΠΡΟΤΑΣΗ ΕΙΝΑΙ ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΧΩΡΑΕΙ ΤΟ ΕΠΟΜΕΝΟ ΑΚΙΝΗΤΟ. Παλιότερα
+  // περιοριζόταν στα πακέτα του τρόπου χρήσης και ο Ιδιώτης στα 3 ακίνητα
+  // στελνόταν πρώτα να αλλάξει τρόπο. Από 28.09.2026 κάθε πακέτο αγοράζεται
+  // από κάθε λογαριασμό και ο τρόπος χρήσης ακολουθεί την αγορά.
+  const allowed = planForCount(currentCount + 1);
 
-  // Το ταβάνι που μπορεί να ΑΓΟΡΑΣΕΙ αυτό το προφίλ — όχι το πλάνο που έχει.
-  // Κρίσιμο ότι δεν εξαρτάται από το τρέχον πλάνο: ο χρήστης που έληξε η δοκιμή
-  // του κρατώντας 3 ακίνητα είναι στο ίδιο αδιέξοδο με τον συνδρομητή στα 3,
-  // απλώς με άλλη ταμπέλα.
-  const profileCeiling = PLANS[paidPlanForProfile(profileType)].maxProperties;
-  const atCeiling = currentCount >= profileCeiling;
-
-  // Ιδιώτης στο ταβάνι: η λύση είναι αλλαγή τρόπου χρήσης, όχι πλάνου.
-  const needsProfileSwitch = profileType === 'individual' && atCeiling;
-  // Επαγγελματίας στο ταβάνι: δεν υπάρχει μεγαλύτερο πλάνο — ανοίγουμε συζήτηση.
-  const beyondTopPlan = profileType === 'professional' && atCeiling;
+  // Το ταβάνι είναι του μεγαλύτερου πακέτου, όχι αυτού που έχει: ο χρήστης που
+  // έληξε η δοκιμή του κρατώντας 3 ακίνητα χρειάζεται την ίδια πρόταση με τον
+  // συνδρομητή στα 3.
+  const atCeiling = currentCount >= PLANS[paidPlanForProfile('professional')].maxProperties;
+  // Στο ταβάνι δεν υπάρχει μεγαλύτερο πακέτο: ανοίγουμε συζήτηση.
+  const beyondTopPlan = atCeiling;
 
   // ΚΑΝΟΝΑΣ: δεν προτείνουμε ΠΟΤΕ πλάνο που δεν λύνει το πρόβλημα. Ούτε αυτό που
   // ήδη έχει (θα έγραφε «Προτεινόμενο» και «Το τρέχον πλάνο σου» στο ίδιο κουτί),
@@ -83,9 +76,7 @@ export default function UpgradeModal({ currentCount, planId, profileType = 'indi
             <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: '0 0 6px' }}>Χρειάζεσαι λίγο περισσότερο χώρο</h2>
             <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.55 }}>
               Το πακέτο σου ({PLANS[current].name}) καλύπτει {PLANS[current].maxProperties === Infinity ? 'απεριόριστα' : PLANS[current].maxProperties} {PLANS[current].maxProperties === 1 ? 'ακίνητο' : 'ακίνητα'}.{' '}
-              {needsProfileSwitch
-                ? <>Με περισσότερα από {PLANS.owner.maxProperties} ακίνητα η διαχείριση γίνεται επαγγελματική δουλειά. Στις Ρυθμίσεις άλλαξε τον τρόπο χρήσης σε «Επαγγελματίας» (περνά αμέσως, χωρίς προϋπόθεση) και ξεκλειδώνει η αγορά του πακέτου Επαγγελματίας: έως {PLANS.agency.maxProperties} ακίνητα, χαρτοφυλάκιο και ομάδα.</>
-                : <>Για να προσθέσεις κι άλλο, διάλεξε ένα πακέτο που σου ταιριάζει. Χωρίς δέσμευση, ακυρώνεις όποτε θέλεις.</>}
+              Για να προσθέσεις κι άλλο, διάλεξε ένα πακέτο που σου ταιριάζει. Χωρίς δέσμευση, ακυρώνεις όποτε θέλεις.
             </p>
           </div>
           <CloseButton onClose={onClose} />

@@ -89,13 +89,15 @@ export default function Page() {
         <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>{hy(<>
           {TRIAL_OFFER} {billingWords().firstCharge} Οι τιμές περιλαμβάνουν ΦΠΑ και σταματάς όποτε θέλεις. {billingWords().moneyBack}
         </>)}</p>
-        {/* ΠΟΙΟΣ ΕΙΣΠΡΑΤΤΕΙ, ΑΜΕΣΩΣ ΚΑΤΩ ΑΠΟ ΤΑ ΨΙΛΑ. Μόνο όταν το ταμείο είναι
-            ανοιχτό· το κείμενο και το όνομα έρχονται από το billingWords. */}
-        <PaymentsBadge />
         {/* Η ΙΔΙΑ ΠΡΟΤΑΣΗ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Χωρίς προτεινόμενη στήλη ο πίνακας έδειχνε
             τέσσερα ίδια κύρια κουμπιά, ενώ η αρχική προτείνει ρητά ένα πακέτο.
             Οι κάρτες του κινητού κάθονται κάτω από τον <h1>, άρα είναι <h2>. */}
         <div style={{ marginTop: 'clamp(22px,3vw,34px)' }}><PlanMatrix recommended={RECOMMENDED_PLAN} headingLevel={2} /></div>
+        {/* ΠΟΙΟΣ ΕΙΣΠΡΑΤΤΕΙ, ΚΑΤΩ ΑΠΟ ΤΑ ΚΟΥΜΠΙΑ ΤΗΣ ΑΓΟΡΑΣ, ΣΤΟ ΚΕΝΤΡΟ. Εκεί
+            κοιτά όποιος μόλις διάλεξε πακέτο και ρωτά «πού πληρώνω;», όπως το
+            «Powered by» στο κάτω μέρος ενός ταμείου (28.09.2026). Μόνο όταν το
+            ταμείο είναι ανοιχτό· κείμενο και όνομα από το billingWords. */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'clamp(14px,2vw,22px)' }}><PaymentsBadge /></div>
       </main>
       <PublicFooter />
     </div>

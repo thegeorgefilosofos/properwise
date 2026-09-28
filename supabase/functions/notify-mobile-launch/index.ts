@@ -21,12 +21,13 @@ import { emailShell, eyebrow, h, p, buttonPair, linkLine } from '../_shared/emai
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL as SITE } from '../_shared/site.ts'
 import { timingSafeEqual } from '../_shared/auth.ts'
+import { senderFrom } from '../_shared/sender.mjs'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const LAUNCH_SECRET  = Deno.env.get('MOBILE_LAUNCH_SECRET') || ''
-const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <no-reply@properwise.gr>'
+const FROM_EMAIL     = senderFrom(Deno.env.get('RESEND_FROM'))
 const APP_URL        = `${SITE}/dashboard`
 // ΤΑ ΔΥΟ ΚΑΤΑΣΤΗΜΑΤΑ, ΑΠΟ ΤΟ ΠΕΡΙΒΑΛΛΟΝ ΚΑΙ ΟΧΙ ΚΑΡΦΩΤΑ.
 // Καμία από τις δύο καταχωρήσεις δεν υπάρχει ακόμη, άρα ΚΑΝΕΝΑ αναγνωριστικό

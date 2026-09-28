@@ -3,6 +3,8 @@ import { navLabel } from '@/lib/nav/labels';
 import { fp, fe } from '@/lib/core/format'
 import { ABSENT } from '@/components/tokens'
 import { programDateLabel } from '@/lib/loans/programStatus'
+import { spitiMouOpen } from '@/lib/loans/recommend'
+import { athensToday } from '@/lib/core/time'
 import { T, EmptyState, Btn, IconBtn, ChipToggle } from '@/components/Theme'
 import { Gift } from 'lucide-react'
 import TabLoanCalculator from './TabLoanCalculator'
@@ -234,9 +236,12 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             </div>
           )}
           <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-            <ChipToggle on={filterSpiti} onClick={()=>setFS(f=>!f)}>
+            {/* Φίλτρο «τράπεζες του προγράμματος» έχει νόημα μόνο όσο το
+                πρόγραμμα δέχεται αιτήσεις· μετά διαλέγει τράπεζες για κάτι που
+                δεν μπορεί πια να ζητηθεί. */}
+            {spitiMouOpen(athensToday()) && <ChipToggle on={filterSpiti} onClick={()=>setFS(f=>!f)}>
               Σπίτι μου ΙΙ
-            </ChipToggle>
+            </ChipToggle>}
             <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginLeft:'auto',fontFamily: T.font.sans}}>
               {banksLoading?'Φόρτωση…':feedFresh?`Ελέγχθηκαν ${feedCheckedStr} · επιβεβαιωμένα ${banksUpdStr}`:`vresdaneio.gr · ${banksUpdStr}`}
               {liveBanks.length>0&&!feedFresh&&<span style={{color:'var(--text-secondary)',marginLeft:6}}>Ενημερωμένα στοιχεία</span>}
@@ -331,7 +336,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                     {label:'Κυμαινόμενο περιθώριο',value:bank.variable_spread_min!==undefined?`+${fp(bank.variable_spread_min)} έως +${fp(bank.variable_spread_max)}`:NO_RATE,sub:varRate?`≈ ${varRate} σήμερα`:null},
                     {label:'Εκτιμώμενη δόση',value: myM !== null ? fmtEur(myM) : fe(0),sub: myM !== null ? `${fmtEur(LA)} · ${Y} έτη` : bankRate === null ? 'Η τράπεζα δεν έχει δημοσιεύσει επιτόκιο' : 'Συμπλήρωσε ποσό δανείου για υπολογισμό'},
                     {label:'Μέγιστο δάνειο προς αξία',value:bank.max_ltv?fp(bank.max_ltv):NO_RATE,sub:bank.max_amount?`έως ${fmtEur(bank.max_amount)}`:null},
-                    {label:'Σπίτι μου ΙΙ',value:bank.spiti_mou?'Ναι':'Όχι',sub:bank.spiti_mou?'Συμμετέχει στο πρόγραμμα':'Δεν συμμετέχει'},
+                    ...(spitiMouOpen(athensToday()) ? [{label:'Σπίτι μου ΙΙ',value:bank.spiti_mou?'Ναι':'Όχι',sub:bank.spiti_mou?'Συμμετέχει στο πρόγραμμα':'Δεν συμμετέχει'}] : []),
                   ].map(s=>(
                     <div key={s.label} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'11px 13px'}}>
                       <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase' as const,letterSpacing:'0.05em',fontWeight:600,fontFamily: T.font.sans,marginBottom:6}}>{s.label}</p>
@@ -446,6 +451,13 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               {/* Η ΠΡΟΤΑΣΗ ΠΟΥ ΕΛΕΙΠΕ. Χωρίς αυτήν, δύο ημερομηνίες κάθονταν
                   δίπλα-δίπλα και ο χρήστης μάντευε ποια τον αφορά. */}
               {st.note&&<p className="po-prose po-just" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,marginBottom:12,padding:'9px 12px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>{hy(<>{st.note}</>)}</p>}
+              {/* ΚΛΕΙΣΤΟ ΠΡΟΓΡΑΜΜΑ: Η ΚΑΤΑΣΤΑΣΗ ΚΑΙ Η ΠΗΓΗ, ΟΧΙ ΟΙ ΟΡΟΙ. Η κάρτα
+                  έγραφε σήμα «Έκλεισε» και από κάτω «άτοκο 50%», κριτήρια,
+                  τράπεζες και «εξοικονόμηση δεκάδων χιλιάδων €»: όροι για κάτι
+                  που δεν μπορεί πια να ζητηθεί, που διαβάζονταν ως προσφορά.
+                  Το «Επερχόμενο» κρατά την περιγραφή του: λέει το ίδιο ότι δεν
+                  δέχεται αιτήσεις και γιατί. */}
+              {!(st.state==='closed'||st.state==='applications-closed')&&(<>
               <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginBottom:10,fontWeight:600,fontFamily: T.font.sans,textTransform:'uppercase' as const,letterSpacing:'0.05em'}}>{prog.type}</p>
               <p className="po-prose po-just" style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',fontFamily: T.font.sans,marginBottom:16}}>{hy(<>{prog.desc}</>)}</p>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',gap:14,marginBottom:12}}>
@@ -480,6 +492,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               <div style={{display:'flex',gap: 4,flexWrap:'wrap',marginBottom:14}}>
                 {prog.banks.map(b=><span key={b} style={{fontSize: 'var(--fs-xs)',padding:'3px 9px',borderRadius: T.radius.chip,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',color:'var(--text-secondary)',fontFamily: T.font.sans}}>{b}</span>)}
               </div>
+              </>)}
               <SourceLinkPill href={prog.url}>Επίσημη σελίδα προγράμματος</SourceLinkPill>
             </MiniSection>
             )

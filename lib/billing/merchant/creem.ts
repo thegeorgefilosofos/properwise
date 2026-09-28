@@ -38,6 +38,7 @@ import type {
   CheckoutResult, PortalResult, ChangeResult, ReadEvent, SubscriptionState,
 } from './port';
 import { PLAN_ORDER, BILLING_CYCLES, type PlanId, type BillingCycle } from '../plans';
+import { CREEM_LOGO } from './creemLogo';
 
 // ── ΟΙ ΜΕΤΑΒΛΗΤΕΣ, ΟΝΟΜΑΤΙΣΜΕΝΕΣ ΜΙΑ ΦΟΡΑ ────────────────────────────────
 export const CREEM_KEY_ENV = 'CREEM_API_KEY';
@@ -234,6 +235,7 @@ export const creemPort: MerchantPort = {
   id: 'creem',
   name: MERCHANT_NAMES.creem,
   site: 'https://www.creem.io/',
+  logo: CREEM_LOGO,
 
   // ΠΩΛΗΣΗ ΘΕΛΕΙ ΚΛΕΙΔΙ ΚΑΙ ΧΑΡΤΗ. Χωρίς χάρτη προϊόντων το ταμείο δεν ξέρει
   // τι πουλά, οπότε δεν ανοίγει καθόλου.

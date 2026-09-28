@@ -17,11 +17,12 @@
 import { emailShell, eyebrow, h, p, button } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL } from '../_shared/site.ts'
+import { senderFrom } from '../_shared/sender.mjs'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_ANON  = Deno.env.get('SUPABASE_ANON_KEY')!
-const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <no-reply@properwise.gr>'
+const FROM_EMAIL     = senderFrom(Deno.env.get('RESEND_FROM'))
 const SIGNUP_URL     = `${APP_URL}/signup`
 
 const CORS = {

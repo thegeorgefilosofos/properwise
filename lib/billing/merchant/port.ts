@@ -129,6 +129,8 @@ export interface MerchantPort {
   readonly name: string;
   /** Ο δημόσιος ιστότοπος του εμπόρου, για τον σύνδεσμο του σήματος ασφαλούς πληρωμής. */
   readonly site: string;
+  /** Το σήμα του εμπόρου ως διαδρομή SVG χωρίς χρώμα, για το σήμα ασφαλούς πληρωμής. */
+  readonly logo?: { readonly viewBox: string; readonly d: string };
   /** Ολα ρυθμισμένα για ΠΩΛΗΣΗ; Οσο είναι `false`, το ταμείο δεν ανοίγει. */
   isLive(env: BillingEnv): boolean;
   /**

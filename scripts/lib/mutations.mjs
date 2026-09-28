@@ -519,4 +519,11 @@ export const MUTATIONS = {
   // Η πληρωμένη διαδρομή που ξεχνά την πύλη πακέτου: ο έλεγχος του server
   // αντικαθίσταται από «πάντα ανοιχτό». Ο φύλακας πρέπει να το πιάσει.
   'server-entitlements': { file: 'app/api/investment/route.ts', from: "await requireFeature('investment_analysis')", to: "await Promise.resolve({ ok: true, plan: 'agency', userId: 'x' })" },
+  // Δύο κανόνες, δύο αποδείξεις. Η συμβουλή που έμεινε γραμμένη με το χέρι
+  // τέσσερις μήνες μετά το κλείσιμο, σε νέα οθόνη· και το σήμα «50% άτοκο» του
+  // συμβούλου με τον έλεγχο κατάστασης βγαλμένο, στο ίδιο του το αρχείο.
+  'spiti-closed': { every: [
+    { add: 'app/__mut_spiti__.tsx', content: tsx('    <p>Για πρώτη κατοικία, το «Σπίτι μου ΙΙ» μειώνει δραστικά το κόστος (50% άτοκο).</p>') },
+    { file: 'app/dashboard/components/loan/LoanAdvisor.tsx', from: 'badges={spitiMouOpen(today) ? <span', to: 'badges={true ? <span' },
+  ] },
 }

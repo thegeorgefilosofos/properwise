@@ -15,16 +15,31 @@
 import { LockKeyhole } from 'lucide-react';
 import { T } from '@/components/tokens';
 
-export function SecuredBy({ text, href }: { text: string; href: string }) {
+// ΜΕ ΤΟ ΛΟΓΟΤΥΠΟ ΤΟΥ ΕΜΠΟΡΟΥ (28.09.2026): «Πληρωμές με ασφάλεια μέσω» και
+// δίπλα το σήμα του, όπως το «Powered by» στο κάτω μέρος ενός ταμείου. Το
+// πλήρες κείμενο μένει ως όνομα του συνδέσμου για τον αναγνώστη οθόνης. Χωρίς
+// λογότυπο, γράφεται ολόκληρο.
+export function SecuredBy({ text, href, lead, logo }: {
+  text: string; href: string;
+  lead?: string | null; logo?: { readonly viewBox: string; readonly d: string };
+}) {
+  const withLogo = !!(lead && logo);
   return (
-    <a href={href} target="_blank" rel="noopener" className="po-secured" style={{
+    <a href={href} target="_blank" rel="noopener" className="po-secured" aria-label={withLogo ? text : undefined} style={{
       display: 'inline-flex', alignItems: 'center', gap: T.sp.sm,
       marginTop: T.sp.md, padding: `${T.sp.xs}px ${T.sp.md}px`,
       border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill,
       fontSize: 13, lineHeight: 1.4, color: 'var(--text-secondary)', textDecoration: 'none',
     }}>
       <LockKeyhole size={14} strokeWidth={2} style={{ flexShrink: 0 }} aria-hidden="true" />
-      <span>{text}</span>
+      {withLogo ? (
+        <>
+          <span aria-hidden="true">{lead}</span>
+          <svg aria-hidden="true" viewBox={logo!.viewBox} height={12} style={{ flexShrink: 0, color: 'var(--text-primary)', display: 'block' }}>
+            <path fill="currentColor" fillRule="evenodd" d={logo!.d} />
+          </svg>
+        </>
+      ) : <span>{text}</span>}
     </a>
   );
 }

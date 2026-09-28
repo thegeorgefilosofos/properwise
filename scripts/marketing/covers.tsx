@@ -141,6 +141,39 @@ const HEADLINE: Line[] = [
   { text: 'Το PROPERWISE κάνει τα υπόλοιπα.' },
 ];
 
+// ΤΟ ΑΓΓΛΙΚΟ ΕΞΩΦΥΛΛΟ ΤΟΥ LINKEDIN (28.09.2026). Η σελίδα της εταιρείας εκεί
+// διαβάζεται και εκτός Ελλάδας: η ίδια φράση με την αρχική, στα αγγλικά και ο
+// υπότιτλος λέει πού ισχύει, γιατί ο ξένος αναγνώστης δεν το μαντεύει.
+const HEADLINE_EN: Line[] = [
+  { text: 'Snap', accent: 'the bill.' },
+  { text: 'PROPERWISE does the rest.' },
+];
+
+/**
+ * ΤΟ ΣΗΜΑ ΤΗΣ ΣΕΛΙΔΑΣ ΣΤΟ LINKEDIN. Το εικονίδιο του site κάθεται σε γκρι· εδώ
+ * μπαίνει στο ίδιο ναυτικό με το εξώφυλλο, ώστε σήμα και εξώφυλλο να
+ * διαβάζονται ως ένα κομμάτι. Τετράγωνο, με το σύμβολο στο κέντρο και αέρα
+ * γύρω του: το LinkedIn το κόβει σε κύκλο στις αναρτήσεις.
+ */
+function squareMark(size: number) {
+  const { c } = assets();
+  return new ImageResponse(
+    (
+      <div style={{
+        width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: c.bg,
+        backgroundImage: [
+          `radial-gradient(${Math.round(size * 0.9)}px ${Math.round(size * 0.9)}px at 30% 10%, ${c.accent}33, transparent 70%)`,
+          `linear-gradient(165deg, ${c.mid} 0%, ${c.bg} 100%)`,
+        ].join(', '),
+      }}>
+        {mark(Math.round(size * 0.52), BRAND_MARK_ON_DARK)}
+      </div>
+    ),
+    { width: size, height: size },
+  );
+}
+
 const OUT = join(process.cwd(), 'docs/marketing/profil');
 
 // Διπλάσια ανάλυση από το ελάχιστο κάθε πλατφόρμας, για οθόνες υψηλής πυκνότητας.
@@ -157,6 +190,12 @@ const COVERS = [
     writeFileSync(join(OUT, c.file), Buffer.from(await img.arrayBuffer()));
     console.log(`✓ ${c.file} ${c.width}×${c.height}`);
   }
+  const en = ogBanner({ width: 2256, height: 382, lines: HEADLINE_EN, sub: 'Property finances, taxes and paperwork in Greece · properwise.gr' });
+  writeFileSync(join(OUT, 'linkedin-cover-en.png'), Buffer.from(await en.arrayBuffer()));
+  console.log('✓ linkedin-cover-en.png 2256×382');
+  const logo = squareMark(800);
+  writeFileSync(join(OUT, 'linkedin-logo.png'), Buffer.from(await logo.arrayBuffer()));
+  console.log('✓ linkedin-logo.png 800×800');
   // 16:9, όσο ζητά το παράθυρο κοπής του Creem, σε ανάλυση για πυκνές οθόνες.
   const creem = creemBanner({ width: 2560, height: 1440 });
   writeFileSync(join(OUT, 'creem-exofyllo.png'), Buffer.from(await creem.arrayBuffer()));

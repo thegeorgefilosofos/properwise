@@ -16,7 +16,6 @@
 import { useState } from 'react';
 import { PLANS, PLAN_ORDER, annualPerMonth, type PlanId } from '@/lib/billing/plans';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
-import { isPlanAllowedForProfile } from '@/lib/billing/entitlements';
 import { T, TT, Card, SecHdr, Btn, ChipToggle, Chip, feAuto, fixedCols } from '@/components/Theme';
 
 // ── Ποια πλάνα συγκρίνονται εδώ ─────────────────────────────────────────────
@@ -45,15 +44,6 @@ import { T, TT, Card, SecHdr, Btn, ChipToggle, Chip, feAuto, fixedCols } from '@
 // έβλεπε καμία αλλαγή στην οθόνη και θα νόμιζε ότι διόρθωσε.
 import { COMPARED } from '@/components/PlanMatrix';
 
-// ── Μικρά εικονίδια ────────────────────────────────────────────────────────
-function LockGlyph() {
-  return (
-    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}
-
 // Η δωρεάν δοκιμή ΔΕΝ ανακοινώνεται εδώ. Όσο τρέχει, ανεβάζει το ενεργό πλάνο
 // σε «Ιδιοκτήτης», οπότε αυτή η στήλη είναι ήδη «το τρέχον πλάνο σου» — ένα τσιπ
 // «30 ημέρες δωρεάν» δεν θα εμφανιζόταν ποτέ. Η κατάσταση της δοκιμής λέγεται
@@ -73,9 +63,6 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
   const rankOf = (id: PlanId) => PLAN_ORDER.indexOf(id);
   const curRank = rankOf(currentPlan);
   const recommended: PlanId = profileType === 'professional' ? 'agency' : 'owner';
-  const lockHint = profileType === 'professional'
-    ? 'Διαθέσιμο στον τρόπο «Ιδιώτης»'
-    : 'Διαθέσιμο στον τρόπο «Επαγγελματίας»';
 
   return (
     <div>
@@ -121,9 +108,11 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
           {COMPARED.map(id => {
             const p = PLANS[id];
             const isCurrent = id === currentPlan;
-            const allowed = isPlanAllowedForProfile(profileType, id);
-            const locked = !allowed && !isCurrent;
-            const popular = !locked && !isCurrent && id === recommended;
+            // ΚΑΜΙΑ ΣΤΗΛΗ ΚΛΕΙΔΩΜΕΝΗ. Οι στήλες του άλλου τρόπου χρήσης έβγαιναν
+            // θαμπές με λουκέτο και ο τρόπος χρήσης δεν άλλαζε χωρίς το πακέτο:
+            // κλειστός κύκλος. Κάθε πακέτο αγοράζεται από κάθε λογαριασμό και ο
+            // τρόπος χρήσης ακολουθεί την αγορά (28.09.2026).
+            const popular = !isCurrent && id === recommended;
             const colRank = rankOf(id);
 
             // Κάθε στήλη έχει τιμή, οπότε δεν υπάρχει «χωρίς χρέωση» να
@@ -170,13 +159,13 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
             // χρήστη σε κάρτα που μάντευε μόνη της πακέτο. Τώρα στέλνει ΠΟΙΟ.
             // Το λεκτικό μένει κοντό: στα 360 εικονοστοιχεία η σειρά σπάει σε
             // δύο στήλες και το κουμπί έχει περίπου 124 να χωρέσει, όχι 160.
-            const cta = isCurrent || locked || colRank <= curRank
+            const cta = isCurrent || colRank <= curRank
               ? null
               : <Btn variant="primary" onClick={() => onUpgrade?.(id)}>Αναβάθμιση</Btn>;
 
             return (
-              <div key={id} className={locked ? undefined : 'acc-choice'} title={locked ? lockHint : undefined}
-                style={{ position: 'relative', display: 'flex', flexDirection: 'column', opacity: locked ? 0.55 : 1, background: heroBg, border: `1.5px solid ${borderColor}`, borderRadius: T.radius.card, boxShadow, padding: T.sp.lg }}>
+              <div key={id} className="acc-choice"
+                style={{ position: 'relative', display: 'flex', flexDirection: 'column', background: heroBg, border: `1.5px solid ${borderColor}`, borderRadius: T.radius.card, boxShadow, padding: T.sp.lg }}>
 
                 {/* ══ Η ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΣΤΗΛΗΣ ΕΧΕΙ ΜΙΑ ΘΕΣΗ, ΚΑΙ ΕΙΝΑΙ ΑΥΤΗ ══════
                     Το «Πιο δημοφιλές» καθόταν ως κορδέλα πάνω από την κάρτα και
@@ -186,8 +175,8 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
                     με ζωντανή τελεία, μέσα σε στήλη διακοσίων τριάντα
                     εικονοστοιχείων. Η κονκάρδα ΠΑΤΟΥΣΕ πάνω στο όνομα, γιατί
                     κανένα από τα δύο δεν είχε άδεια να συρρικνωθεί.
-                    Οι τρεις καταστάσεις αποκλείουν η μία την άλλη (`popular`
-                    ορίζεται ως «ούτε τρέχον ούτε κλειδωμένο»), οπότε μοιράζονται
+                    Οι δύο καταστάσεις αποκλείουν η μία την άλλη (`popular`
+                    ορίζεται ως «όχι το τρέχον»), οπότε μοιράζονται
                     την ίδια κορδέλα και η σειρά του τίτλου μένει στο όνομα. */}
                 {(popular || isCurrent) && (
                   <span style={{ position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: 6, background: isCurrent ? 'var(--bg-surface)' : 'var(--accent)', color: isCurrent ? 'var(--accent)' : 'var(--accent-text)', border: isCurrent ? '1px solid var(--accent-border)' : 'none', borderRadius: T.radius.pill, padding: '2px 10px', fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.sans, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
@@ -203,9 +192,6 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                   </span>
-                  {locked && (
-                    <span style={{ color: 'var(--text-tertiary)', display: 'inline-flex', flexShrink: 0 }}><LockGlyph /></span>
-                  )}
                 </div>
 
                 {/* Ταγκλάιν πλάνου */}

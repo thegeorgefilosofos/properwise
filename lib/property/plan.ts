@@ -37,7 +37,8 @@
 // χρόνο ή δεδομένα δίνεται ως όρισμα, ώστε τα tests να είναι ντετερμινιστικά.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { annuityMonthly, totalInterest, SPITI_MOU } from '@/lib/loans/recommend';
+import { annuityMonthly, totalInterest, SPITI_MOU, spitiMouOpen } from '@/lib/loans/recommend';
+import { athensToday } from '@/lib/core/time';
 import { transferCosts } from '@/lib/accounting/transfer';
 import type { PropertyStatus } from './status';
 
@@ -1014,7 +1015,13 @@ const RENO_FUNDING: Funding[] = [
     id: 'not-spiti-mou',
     kind: 'loan',
     title: '«Σπίτι μου ΙΙ» · δεν είναι πρόγραμμα ανακαίνισης',
-    what: `Αφορά την ΑΓΟΡΑ πρώτης κατοικίας από δικαιούχους ${SPITI_MOU.ageMin}–${SPITI_MOU.ageMax} ετών, με άτοκο τμήμα του δανείου. Δεν χρηματοδοτεί ανακαίνιση ακινήτου που ήδη έχεις.`,
+    // Έλεγε «με άτοκο τμήμα του δανείου» σε ενεστώτα, για πρόγραμμα κλειστό σε
+    // νέες αιτήσεις. Η κατάσταση έρχεται από τις προθεσμίες του `SPITI_MOU`, όπως
+    // τα όρια ηλικίας. Χωρίς ημερομηνία στο κείμενο: το σχέδιο γράφει χρονολογία
+    // μόνο με παραπομπή σε ΦΕΚ (δες plan.test.ts).
+    what: spitiMouOpen(athensToday())
+      ? `Αφορά την ΑΓΟΡΑ πρώτης κατοικίας από δικαιούχους ${SPITI_MOU.ageMin}–${SPITI_MOU.ageMax} ετών, με άτοκο τμήμα του δανείου. Δεν χρηματοδοτεί ανακαίνιση ακινήτου που ήδη έχεις.`
+      : `Αφορούσε την ΑΓΟΡΑ πρώτης κατοικίας από δικαιούχους ${SPITI_MOU.ageMin}–${SPITI_MOU.ageMax} ετών και δεν δέχεται πια νέες αιτήσεις. Δεν χρηματοδοτούσε ανακαίνιση ακινήτου που ήδη έχεις.`,
     confirm: 'Μπαίνει εδώ για να μη χάσεις χρόνο: αν κάποιος σου το πρότεινε για την ανακαίνιση, δεν ισχύει. Αν σε αφορά η αγορά, οι κύκλοι, οι προθεσμίες και τα εισοδηματικά όρια ελέγχονται στην επίσημη πύλη του προγράμματος.',
     href: 'https://stegasi.gov.gr/programs/spiti-mou-ii/',
   },

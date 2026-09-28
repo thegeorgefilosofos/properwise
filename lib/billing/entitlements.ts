@@ -388,10 +388,6 @@ export function canAddProperty(input: EntitlementInput, currentCount: number): b
   return currentCount < propertyLimit(input);
 }
 
-/** Επιτρέπεται αυτό το πλάνο για το συγκεκριμένο προφίλ; */
-export function isPlanAllowedForProfile(profile: ProfileType, plan: PlanId): boolean {
-  return ALLOWED_PLANS[profile].includes(plan);
-}
 
 /**
  * ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΗΡΘΕ ΩΣ `?plan=`, ΕΠΑΛΗΘΕΥΜΕΝΟ ΑΠΟ ΤΟΝ ΤΙΜΟΚΑΤΑΛΟΓΟ.
@@ -402,10 +398,9 @@ export function isPlanAllowedForProfile(profile: ProfileType, plan: PlanId): boo
  * 'free' καρφωμένη έξω από τα πλάνα. Ο κανόνας βγαίνει πλέον από την πηγή:
  * δεκτό είναι ό,τι έχει τιμή στο PLANS, δηλαδή τα τέσσερα πακέτα των καρτών.
  *
- * ΤΙ ΔΕΝ ΕΛΕΓΧΕΤΑΙ ΕΔΩ ΚΑΙ ΓΙΑΤΙ: αν το πακέτο ταιριάζει στον τύπο προφίλ. Ο
- * τύπος δηλώνεται μετά την εγγραφή (WelcomeOnboarding), οπότε τη στιγμή που
- * διαβάζεται το `?plan=` δεν υπάρχει με τι να συγκριθεί. Η οθόνη της εγγραφής
- * το ΛΕΕΙ αντί να το κρύψει, με το `isPlanAllowedForProfile`.
+ * ΤΙ ΔΕΝ ΕΛΕΓΧΕΤΑΙ ΕΔΩ: αν το πακέτο ταιριάζει στον τύπο προφίλ. Από
+ * 28.09.2026 κάθε πακέτο αγοράζεται από κάθε λογαριασμό και ο τύπος
+ * ακολουθεί την αγορά (`profileTypeToWrite` στον webhook).
  */
 export function planFromParam(id: string | null | undefined): PlanId | null {
   const plan = normalizePlan(id);

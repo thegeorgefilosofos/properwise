@@ -23,7 +23,8 @@ import { merchant } from '@/lib/billing/merchant';
 import { SecuredBy } from './SecuredBy';
 
 export function PaymentsBadge() {
-  const { live, securedBy } = billingWords();
+  const { live, securedBy, securedByLead } = billingWords();
   if (!live || !securedBy) return null;
-  return <SecuredBy text={securedBy} href={merchant().site} />;
+  const m = merchant();
+  return <SecuredBy text={securedBy} href={m.site} lead={securedByLead} logo={m.logo} />;
 }

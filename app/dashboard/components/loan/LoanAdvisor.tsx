@@ -6,7 +6,7 @@ import { fp } from '@/lib/core/format'
 import { programDateLabel } from '@/lib/loans/programStatus'
 import { T, Btn } from '@/components/Theme'
 import { RATES_DISCLAIMER, calcMonthly, fmtEur, fmtPct, MARKET_FALLBACK, rateTypeLabel } from '../TabLoanData'
-import { rankLoans, spitiMouEligibility, type UserLoanNeeds } from '@/lib/loans/recommend'
+import { rankLoans, spitiMouEligibility, spitiMouOpen, spitiMouClosedLine, spitiMouClosedSentence, type UserLoanNeeds } from '@/lib/loans/recommend'
 import { hy } from '@/components/Hyphen'
 import { euriborInsight } from '@/lib/loans/affordability'
 import LoanDocScan from '../LoanDocScan'
@@ -59,8 +59,12 @@ export function LoanAdvisor({
         purpose: advType, ratePreference: calcState.rateType,
       }
       const euribor = market.euribor_3m || MARKET_FALLBACK.euribor_3m
-      const ranked = rankLoans(needs, BANKS, euribor, athensToday())
-      const spiti = spitiMouEligibility(needs, athensToday())
+      const today = athensToday()
+      const ranked = rankLoans(needs, BANKS, euribor, today)
+      const spiti = spitiMouEligibility(needs, today)
+      // Η μία γραμμή που λέει ότι το πρόγραμμα δεν δέχεται αιτήσεις. Κενή όσο
+      // δέχεται. Από εδώ κρίνεται κάθε σήμα και κάθε κείμενο οφέλους παρακάτω.
+      const spitiClosed = spitiMouClosedLine(today)
       // Το πλήρες πάνελ «Σπίτι μου ΙΙ» εμφανίζεται μόνο όταν αφορά· τότε αποφεύγουμε
       // να επαναλάβουμε την ίδια πληροφορία στη σύνοψη πιο κάτω (ενιαία πηγή).
       const spitiPanelShown = advType==='first_home'||advBorr==='young'||advBorr==='family'
@@ -251,7 +255,9 @@ export function LoanAdvisor({
 
           {/* ── Σπίτι μου ΙΙ, για σένα — όταν αφορά (πρώτη κατοικία ή νέος/οικογένεια) ── */}
           {spitiPanelShown && (
-            <MiniSection title="Σπίτι μου ΙΙ, για σένα" badges={<span style={{fontSize: 'var(--fs-xs)',padding:'2px 8px',borderRadius: T.radius.chip,background:'var(--accent-dim)',border:'1px solid var(--border-accent)',color:'var(--accent)',fontWeight:600,fontFamily: T.font.sans}}>50% άτοκο</span>}>
+            // Το σήμα οφέλους μπαίνει ΜΟΝΟ όσο το πρόγραμμα δέχεται αιτήσεις:
+            // «50% άτοκο» δίπλα σε κλειστό πρόγραμμα διαβάζεται ως «προλαβαίνεις».
+            <MiniSection title={spitiClosed ? 'Σπίτι μου ΙΙ' : 'Σπίτι μου ΙΙ, για σένα'} badges={spitiMouOpen(today) ? <span style={{fontSize: 'var(--fs-xs)',padding:'2px 8px',borderRadius: T.radius.chip,background:'var(--accent-dim)',border:'1px solid var(--border-accent)',color:'var(--accent)',fontWeight:600,fontFamily: T.font.sans}}>50% άτοκο</span> : undefined}>
               <SpitiMouPanel
                 amount={LA} propertyValue={cs.propertyValue} years={Y} bankRatePct={cs.effectiveRate}
                 incomeMonthly={calcState.incomeMonthly} marital={calcState.marital} childCount={calcState.children}
@@ -431,8 +437,13 @@ export function LoanAdvisor({
             {!spitiPanelShown && (
             <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',marginBottom:otherRecs.length?12:0,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
               <div style={{minWidth:0}}>
-                <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)'}}>Σπίτι μου ΙΙ: {spiti.eligible?'πιθανώς επιλέξιμο':'μη επιλέξιμο'} <span style={{color:'var(--text-secondary)',fontWeight:400}}>· {Math.round(spiti.interestFreeShare*100)}% άτοκο</span></p>
+                {spitiClosed ? (<>
+                <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)'}}>Σπίτι μου ΙΙ</p>
+                <p className="po-prose po-just" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:2,fontFamily: T.font.sans}}>{hy(<>{spitiClosed}</>)}</p>
+                </>) : (<>
+                <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)'}}>Σπίτι μου ΙΙ: {spiti.eligible?'πιθανώς επιλέξιμο':'μη επιλέξιμο'} {spitiMouOpen(today)&&<span style={{color:'var(--text-secondary)',fontWeight:400}}>· {Math.round(spiti.interestFreeShare*100)}% άτοκο</span>}</p>
                 <p className="po-prose po-just" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:2,fontFamily: T.font.sans}}>{hy(<>{spiti.reasons.slice(0,3).join(' · ')}. Ενδεικτικό, επιβεβαίωσε στην πύλη.</>)}</p>
+                </>)}
               </div>
             </div>
             )}
@@ -511,7 +522,11 @@ export function LoanAdvisor({
               // φορέα, όχι πρόγραμμα με όρους· και ζει εκεί που δίνονται οι
               // υποδείξεις ανά προφίλ.
               ...(advBorr==='military' ? [{t:'Ταμεία των Ενόπλων Δυνάμεων', b:'Ο ΑΟΟΑ και το Ταμείο Παρακαταθηκών δίνουν στεγαστικά με δικούς τους όρους, συχνά ευνοϊκότερους από την αγορά. Ζήτησέ τους γραπτή προσφορά και σύγκρινέ την με τις τράπεζες του πίνακα.'}] : []),
-              {t:'Αξιοποίηση κρατικών προγραμμάτων', b:'Για πρώτη κατοικία, το «Σπίτι μου ΙΙ» μειώνει δραστικά το κόστος (50% άτοκο). Έλεγξε την επιλεξιμότητα πριν επιλέξεις τράπεζα· δεν επιτρέπονται ταυτόχρονες αιτήσεις.'},
+              // Η ΣΥΜΒΟΥΛΗ ΕΛΕΓΕ «ΜΕΙΩΝΕΙ ΔΡΑΣΤΙΚΑ ΤΟ ΚΟΣΤΟΣ» ΤΕΣΣΕΡΙΣ ΜΗΝΕΣ ΜΕΤΑ
+              // ΤΟ ΚΛΕΙΣΙΜΟ. Γραμμένη με το χέρι, δεν ήξερε ποια μέρα είναι.
+              {t:'Αξιοποίηση κρατικών προγραμμάτων', b: spitiMouOpen(today)
+                ? 'Για πρώτη κατοικία, το «Σπίτι μου ΙΙ» μειώνει δραστικά το κόστος (50% άτοκο). Έλεγξε την επιλεξιμότητα πριν επιλέξεις τράπεζα· δεν επιτρέπονται ταυτόχρονες αιτήσεις.'
+                : `${spitiMouClosedSentence(today)} Για πρώτη κατοικία σύγκρινε τις τράπεζες με βάση το συνολικό κόστος και δες στα «Κρατικά προγράμματα» ποια δέχονται αιτήσεις σήμερα.`},
               {t:'Πειθαρχία στον δείκτη δόσης', b:'Όρια της Τράπεζας της Ελλάδος από 1/1/2025 (ΠΕΕ 227/1/2024): δόση έως 50% του εισοδήματος για όσους δανείζονται για πρώτη φορά, 40% για τους υπόλοιπους. Το κριτήριο είναι ο πρωτοαγοραστής, όχι η πρώτη κατοικία: όποιος έχει ήδη ακίνητο ή προηγούμενο στεγαστικό μετρά στο 40%.'},
               {t:'Αύξηση αξίας με ενεργειακή αναβάθμιση', b:'Προγράμματα όπως «Εξοικονομώ» και «Αναβαθμίζω» ανεβάζουν την ενεργειακή κλάση, την αξία και το ενοίκιο, με επιδοτούμενο επιτόκιο και επιχορήγηση.'},
               // ══ Η ΓΡΑΜΜΗ ΕΛΕΓΕ ΣΕ ΣΤΑΘΕΡΟ ΔΑΝΕΙΟ ΟΤΙ Η ΔΟΣΗ ΤΟΥ ΘΑ ΑΝΕΒΕΙ ══

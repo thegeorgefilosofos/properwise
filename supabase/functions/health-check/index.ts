@@ -30,6 +30,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { runHealth, diagnose } from '../_shared/probe.mjs'
 import { FEEDS, feedEntry, previousFeeds, feedAlert } from '../_shared/feedAlert.mjs'
+import { senderFrom } from '../_shared/sender.mjs'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -40,13 +41,13 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || ''
 // έτσι, άρα δεν υπάρχει στα secrets. Η ειδοποίηση διακοπής δεν θα έφευγε ποτέ
 // και το μόνο σημάδι θα ήταν ένα «δεν έχει ρυθμιστεί παραλήπτης» που κανείς
 // δεν διαβάζει. Ενα monitor που δεν ειδοποιεί είναι χειρότερο από κανένα.
-const FROM_EMAIL = Deno.env.get('RESEND_FROM') || ''
+const FROM_EMAIL = senderFrom(Deno.env.get('RESEND_FROM'))
 const ALERT_EMAIL = Deno.env.get('HEALTH_ALERT_EMAIL') || ''
 // Οι τροφοδοσίες ειδοποιούν και χωρίς ρυθμισμένο παραλήπτη: η υποστήριξη είναι
 // το γραμματοκιβώτιο που διαβάζεται. Ο αποστολέας είναι ο ίδιος με τις εννιά
 // αδελφές συναρτήσεις. Μια τροφοδοσία που σπάει σιωπηλά είναι ο λόγος που
 // υπάρχει αυτό το μήνυμα (feedAlert.mjs).
-const FEED_FROM = FROM_EMAIL || 'PROPERWISE <no-reply@properwise.gr>'
+const FEED_FROM = FROM_EMAIL
 const FEED_TO = ALERT_EMAIL || 'support@properwise.gr'
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
@@ -209,7 +210,10 @@ Deno.serve(async (req) => {
     failed_count: failed.length,
     details: [
       ...results.map(r => ({ path: r.route.path, ok: r.res.ok, status: r.res.status, ms: r.res.ms, why: r.res.why })),
-      ...feeds,
+      // ΜΝΗΜΗ ΜΟΝΟ ΓΙΑ ΟΣΑ ΕΙΠΑΜΕ. Αν το μήνυμα δεν έφυγε (28.09.2026: 422 από
+      // λάθος αποστολέα), οι τροφοδοσίες δεν γράφονται· το επόμενο πέρασμα δεν
+      // ξέρει πώς ήταν και ξαναστέλνει, αντί να σωπάσει για πάντα.
+      ...(feedsAlert.startsWith('απέτυχε') || feedsAlert.startsWith('λείπει') ? [] : feeds),
     ],
   })
   if (error) return json({ ok, kind, alert, feeds_alert: feedsAlert, write_error: error.message }, 502)

@@ -25,7 +25,7 @@ import * as properties from '@/lib/data/properties';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
 import { TextInput, CustomSelect, FIELD_LABEL_ROW } from './UIComponents';
-import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, fixedCols, fe, fd } from '@/components/Theme';
+import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, ChipToggle, fixedCols, fe, fd } from '@/components/Theme';
 import { PLANS, PLAN_ORDER, normalizePlan, annualPerMonth, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 // Η ΦΑΣΗ ΤΗΣ ΣΥΝΔΡΟΜΗΣ ΔΕΝ ΚΡΙΝΕΤΑΙ ΕΔΩ. Οι καταστάσεις τις ονομάζει ο
 // έμπορος και τις γράφει ο webhook· η οθόνη τις διαβάζει από την ίδια πηγή.
@@ -306,10 +306,13 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
   // «Ιδιοκτήτης με Νόα · 4,99€» (ο «Ιδιοκτήτης» χωρίς Νόα είναι δωρεάν). Μια προεπιλογή που τυχαίνει να είναι η κερδοφόρα δεν
   // είναι προεπιλογή, είναι πώληση με το ζόρι.
   const entry = ALLOWED_PLANS[type].find(p => PLANS[p].priceMonthly > 0) ?? ALLOWED_PLANS[type][0];
-  // Η επιθυμία της εγγραφής μπαίνει ΜΟΝΟ αν το προφίλ την αγοράζει. Ενας
-  // ιδιώτης που πάτησε από περιέργεια την κάρτα «Επαγγελματίας» θα έβλεπε
-  // αλλιώς ένα πακέτο που το ταμείο του απαντά 403.
-  const wished = wishPlan && ALLOWED_PLANS[type].includes(wishPlan) ? wishPlan : null;
+  // Η επιθυμία της εγγραφής μπαίνει όπως ήρθε: από 28.09.2026 κάθε πακέτο
+  // αγοράζεται από κάθε λογαριασμό (το ταμείο δεν απαντά πια 403).
+  const wished = wishPlan && PLANS[wishPlan].priceMonthly > 0 ? wishPlan : null;
+  // ΟΛΑ ΤΑ ΠΛΗΡΩΜΕΝΑ ΠΑΚΕΤΑ, ΟΧΙ ΜΟΝΟ ΤΟΥ ΤΡΟΠΟΥ ΧΡΗΣΗΣ. Με τα τρία του
+  // ιδιώτη ή τα δύο του επαγγελματία, ο λογαριασμός που ο τρόπος του δεν
+  // ταίριαζε με ό,τι έβλεπε στην οθόνη δεν έβρισκε εδώ το πακέτο που ήθελε.
+  const choices = PLAN_ORDER.filter(id => PLANS[id].priceMonthly > 0);
   // Η ΕΠΙΛΟΓΗ ΤΟΥ ΧΡΗΣΤΗ ΜΕΣΑ ΣΤΗΝ ΙΔΙΑ ΚΑΡΤΑ. Ο συνδρομητής έβλεπε τον
   // διακόπτη κύκλου να αλλάζει την τιμή και κανένα κουμπί να την εφαρμόζει:
   // ένα χειριστήριο που δεν κάνει τίποτα. Και το πακέτο δεν άλλαζε καθόλου
@@ -526,15 +529,15 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           Ο συνδρομητής δεν είχε κανέναν τρόπο να αλλάξει πακέτο μέσα σε αυτή
           την κάρτα: έβλεπε την τιμή του δικού του και ένα κουμπί «Διαχείριση
           συνδρομής» που ανοίγει την πύλη του εμπόρου — όπου η αλλαγή πακέτου
-          δεν υπάρχει καν. Οι επιλογές είναι όσες επιτρέπει ο τύπος προφίλ,
-          όπως και στο ταμείο: ένα κουμπί που απαντά 403 δεν είναι επιλογή. */}
+          δεν υπάρχει καν. Οι επιλογές είναι όλα τα πληρωμένα πακέτα, όσα
+          δέχεται και το ταμείο. */}
       {/* ΚΟΥΜΠΙΑ ΜΟΝΟ ΟΤΑΝ ΟΔΗΓΟΥΝ ΣΕ ΑΛΛΑΓΗ. Χωρίς ζωντανό ταμείο το κουμπί
           εφαρμογής δεν εμφανίζεται, οπότε τα «κουμπιά πακέτου» άλλαζαν μόνο την
           τιμή από κάτω. Τότε η επιλογή είναι ό,τι πράγματι κάνει: διακόπτης
           που δείχνει την τιμή κάθε πακέτου. */}
       {running && (live === true ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 14 }}>
-          {ALLOWED_PLANS[type].filter(id => PLANS[id].priceMonthly > 0).map(id => (
+          {choices.map(id => (
             <Btn key={id} variant={target === id ? 'primary' : 'secondary'}
               onClick={() => setPick(id)} disabled={busy}>
               {PLANS[id].name}
@@ -542,9 +545,13 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
           ))}
         </div>
       ) : (
-        <div style={{ marginTop: 4, marginBottom: 14, maxWidth: 360 }}>
-          <SegmentControl value={target} onChange={v => setPick(v as PlanId)} ariaLabel="Δες την τιμή του πακέτου"
-            options={ALLOWED_PLANS[type].filter(id => PLANS[id].priceMonthly > 0).map(id => ({ value: id, label: PLANS[id].name }))} />
+        // ΠΛΑΚΙΔΙΑ ΠΟΥ ΑΝΑΔΙΠΛΩΝΟΝΤΑΙ, ΟΧΙ ΤΜΗΜΑΤΙΚΟΣ ΔΙΑΚΟΠΤΗΣ. Με τέσσερα πακέτα
+        // ο διακόπτης δεν χωρούσε σε τηλέφωνο: στα 320-440 οι ετικέτες έπεφταν η
+        // μία πάνω στην άλλη (σαρωτής διάταξης, 28.09.2026).
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 14 }}>
+          {choices.map(id => (
+            <ChipToggle key={id} on={target === id} onClick={() => setPick(id)}>{PLANS[id].name}</ChipToggle>
+          ))}
         </div>
       ))}
 

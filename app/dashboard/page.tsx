@@ -64,7 +64,7 @@ export default function Dashboard() {
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
     setManualExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
-    scanAfterAdd, setScanAfterAdd, plan, setProfileType, taxForm, showUpgrade, setShowUpgrade,
+    scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, updateStatus, deleteProperty,
@@ -747,7 +747,7 @@ export default function Dashboard() {
                 </>
               )}
               {nav==='referral'  && <TabReferral userId={user.id} plan={plan} profileType={effProfileType}/>}
-              {nav==='settings'  && <TabSettings key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} onProfileChange={setProfileType}/>}
+              {nav==='settings'  && <TabSettings key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} declaredType={profileType} onProfileChange={setProfileType}/>}
             </div>
             </TabBoundary>
           </>
@@ -863,7 +863,7 @@ export default function Dashboard() {
         if (added) { setSelected(added); setNav('overview'); setQuickAddOpen(true); }
       }}/>}
       {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} onClose={()=>setEditProperty(null)} onSaved={async()=>{setEditProperty(null);await fetchProperties(user.id);}}/>}
-      {showUpgrade&&<UpgradeModal currentCount={properties.length} planId={effPlan} profileType={effProfileType} onClose={()=>setShowUpgrade(false)} onManage={()=>{setShowUpgrade(false);setNav('settings');}}/>}
+      {showUpgrade&&<UpgradeModal currentCount={properties.length} planId={effPlan} onClose={()=>setShowUpgrade(false)} onManage={()=>{setShowUpgrade(false);setNav('settings');}}/>}
     </div>
   );
 }

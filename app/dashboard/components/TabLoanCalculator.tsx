@@ -29,6 +29,7 @@ import { athensParts } from '@/lib/core/time'
 import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate'
 import { regionByKey, GREECE_AVG_GROSS_YIELD, MARKET_DATA_ASOF } from '@/lib/market/greekMarket'
 import { athensToday } from '@/lib/core/time';
+import { SPITI_MOU, spitiMouEstimate, spitiMouClosedLine } from '@/lib/loans/recommend'
 import { TRANSFER_TAX_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL } from '@/lib/accounting/transfer'
 import { failed, MSG } from '@/lib/core/dbError';
 import { useChartWidth } from '@/app/hooks/useChartWidth'
@@ -477,8 +478,18 @@ const MARITAL_OPTIONS   = [{value:'single',label:'Άγαμος / Άγαμη',des
 const CHILDREN_OPTIONS  = [0,1,2,3,4,5].map(n=>({value:String(n),label:n===0?'Χωρίς τέκνα':`${n} εξαρτώμεν${n===1?'ο':'α'} τέκν${n===1?'ο':'α'}`,description:n===0?'':n===1?'+25.000€':n===2?'+50.000€':`+${50+(n-2)*30}.000€`}))
 const PROP_TYPE_OPTIONS = PROPERTY_TYPES.map(p=>({value:p.value,label:p.label,description:p.desc}))
 
+// ══ ΤΟ ΕΠΙΤΟΚΙΟ ΤΟΥ ΝΕΟΥ ΑΓΟΡΑΣΤΗ ΗΤΑΝ ΤΟΥ «ΣΠΙΤΙ ΜΟΥ ΙΙ» ══════════════════
+// Η προεπιλογή έγραφε 1,80% με περιγραφή «Σπίτι μου ΙΙ»: το μεικτό επιτόκιο με
+// το μισό δάνειο χωρίς τόκο, για πρόγραμμα που δεν δέχεται πια αιτήσεις. Κανένα
+// τιμολόγιο τράπεζας δεν δίνει 1,80% σε σταθερό. Τώρα είναι το χαμηλότερο
+// σταθερό του πίνακα τραπεζών (`BANKS[].fixed_min` στο TabLoanData.tsx, σταθερό
+// 3 έως 5 ετών, επαληθευμένο στις `BANKS_VERIFIED`), που ταιριάζει με την
+// πενταετή σταθερή περίοδο της προεπιλογής. Δεν γράφεται αριθμός με το χέρι:
+// όταν αλλάξει ο πίνακας, αλλάζει και η προεπιλογή.
+const FIRST_BUYER_RATE = Math.min(...BANKS.map(b=>b.fixed_min)).toFixed(2)
+
 const PRESETS = [
-  {id:'first_buyer',label:'Νέος αγοραστής',desc:'Πρώτη κατοικία, Σπίτι μου ΙΙ',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'150000',propValue:'185000',sqm:'80',rate:'1.80',years:'25',rateType:'fixed' as RateType,loanType:'first_home' as LoanType,borrower:'young' as BorrowerType,fixedPeriod:'5',propType:'residence',area:'center_athens'}},
+  {id:'first_buyer',label:'Νέος αγοραστής',desc:'Πρώτη κατοικία',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'150000',propValue:'185000',sqm:'80',rate:FIRST_BUYER_RATE,years:'25',rateType:'fixed' as RateType,loanType:'first_home' as LoanType,borrower:'young' as BorrowerType,fixedPeriod:'5',propType:'residence',area:'center_athens'}},
   {id:'investor',label:'Επενδυτής',desc:'Ακίνητο προς ενοικίαση',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'200000',propValue:'280000',sqm:'90',rate:'3.20',years:'20',rateType:'fixed' as RateType,loanType:'investment' as LoanType,borrower:'individual' as BorrowerType,fixedPeriod:'5',propType:'residence',area:'south_suburbs'}},
   {id:'commercial',label:'Επαγγελματικό',desc:'Κατάστημα / Γραφείο',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'150000',propValue:'220000',sqm:'50',rate:'3.80',years:'15',rateType:'fixed' as RateType,loanType:'commercial' as LoanType,borrower:'professional' as BorrowerType,fixedPeriod:'5',propType:'store',area:'center_athens'}},
   {id:'renovation',label:'Ανακαίνιση',desc:'Ενεργειακή αναβάθμιση',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'25000',propValue:'200000',sqm:'85',rate:'2.90',years:'15',rateType:'fixed' as RateType,loanType:'energy' as LoanType,borrower:'individual' as BorrowerType,fixedPeriod:'5',propType:'residence',area:'center_athens'}},
@@ -775,16 +786,20 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   const renInc   = loanType==='investment'?rentRef.monthly*12:0
   // Ο φόρος από τη ΜΟΝΑΔΙΚΗ πηγή, με τη τεκμαρτή έκπτωση υπό τον όρο του 2026.
   const renTax   = calcRentalTax(taxableRental(renInc, rentsBank))
-  // «Σπίτι μου ΙΙ»: το 50% του δανείου είναι άτοκο (0%), το υπόλοιπο 50% με το
-  // επιτόκιο της τράπεζάς σου. Μοντελοποιούμε τα δύο σκέλη αντί για αυθαίρετο
-  // ευριστικό. Το εμφανιζόμενο «επιτόκιο» είναι το μεικτό (~μισό του κανονικού).
-  const spitiM   = calcMonthly(LA*0.5,0,Y) + calcMonthly(LA*0.5,effRate,Y)
-  const spitiR   = effRate/2
+  // ══ «ΣΠΙΤΙ ΜΟΥ ΙΙ»: Η ΜΗΧΑΝΗ ΚΡΙΝΕΙ, ΟΧΙ ΤΕΣΣΕΡΑ ΚΡΙΤΗΡΙΑ ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ ══
+  // Εδώ καθόταν το `spitiEligible` με σκοπό, αξία, νεόδμητο και επαγγελματικό,
+  // χωρίς καμία προθεσμία: στις 28/09/2026 ο υπολογιστής έγραφε δόση με το μισό
+  // δάνειο χωρίς τόκο και «εκτιμώμενη εξοικονόμηση» για πρόγραμμα που είχε
+  // κλείσει για αιτήσεις στις 31/05. Τώρα ρωτά την `spitiMouEstimate`, που περνά
+  // από την ίδια κρίση επιλεξιμότητας με τη σύσταση, μαζί με τις δύο προθεσμίες.
+  const spitiToday  = athensToday()
+  const spitiClosed = spitiMouClosedLine(spitiToday)
+  const spitiEst    = spitiMouEstimate({ amount:LA, propertyValue:PV, years:Y, bankRatePct:effRate,
+    firstHome:loanType==='first_home', newBuild:isNewBuilding, commercial:isCommercial }, spitiToday)
+  const spitiEligible = spitiEst!==null
+  const spitiM   = spitiEst?.monthly ?? monthly
+  const spitiR   = spitiEst?.blendedRatePct ?? effRate
   const spitiSv  = (monthly-spitiM)*Y*12
-  // «Σπίτι μου ΙΙ»: μόνο πρώτη κατοικία, αξία έως 250.000€, υφιστάμενο (όχι νεόδμητο)
-  // και όχι επαγγελματικό. Χωρίς αυτά τα κριτήρια η εκτίμηση εξοικονόμησης είναι
-  // παραπλανητική — γι' αυτό την εμφανίζουμε μόνο όταν το ακίνητο πληροί τα βασικά.
-  const spitiEligible = loanType==='first_home' && PV<=250000 && !isNewBuilding && !isCommercial
 
   // Στην αναχρηματοδότηση το «τρέχον» επιτόκιο είναι του υπάρχοντος δανείου
   // (curRate), όχι το νέο μοντελοποιημένο επιτόκιο.
@@ -1319,7 +1334,16 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         </div>
       </Section>
 
-      <Section title="Σπίτι μου ΙΙ έναντι κανονικού δανείου" sub={spitiEligible?'Εκτίμηση εξοικονόμησης, προθεσμία συμβολαίων 31/08/2026':'Κριτήρια ένταξης'}>
+      {/* Όσο το πρόγραμμα δεν δέχεται αιτήσεις, μία γραμμή: ούτε δόση ούτε
+          επιτόκιο ούτε εξοικονόμηση. Αναδιπλούμενη ενότητα με κρυμμένη μέσα
+          τη μόνη πρόταση θα έκρυβε ακριβώς αυτό που πρέπει να διαβαστεί. */}
+      {spitiClosed ? (
+        <div style={{...panelStyle,padding:'14px 16px'}}>
+          <p style={{fontSize:14,color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:600}}>Σπίτι μου ΙΙ</p>
+          <p style={{fontSize:12,color:'var(--text-secondary)',marginTop: 4,lineHeight:1.5,fontFamily: T.font.sans}}>{spitiClosed}</p>
+        </div>
+      ) : (
+      <Section title="Σπίτι μου ΙΙ έναντι κανονικού δανείου" sub={spitiEligible?'Εκτίμηση εξοικονόμησης':'Κριτήρια ένταξης'}>
         {spitiEligible?(<>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',gap:12,marginBottom:14}}>
           {[
@@ -1349,7 +1373,9 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
             {[
               {ok:loanType==='first_home',t:'Σκοπός: αγορά πρώτης κατοικίας'},
-              {ok:PV<=250000,t:'Αξία ακινήτου έως 250.000€'},
+              {ok:PV<=SPITI_MOU.maxPropertyValue,t:`Αξία ακινήτου έως ${fmtEur(SPITI_MOU.maxPropertyValue)}`},
+              {ok:LA<=SPITI_MOU.maxAmount,t:`Ποσό δανείου έως ${fmtEur(SPITI_MOU.maxAmount)}`},
+              {ok:Y<=SPITI_MOU.maxYears,t:`Διάρκεια έως ${SPITI_MOU.maxYears} έτη`},
               {ok:!isNewBuilding,t:'Υφιστάμενο ακίνητο (όχι νεόδμητο)'},
               {ok:!isCommercial,t:'Κατοικία (όχι επαγγελματικό ακίνητο)'},
             ].map(c=>(
@@ -1363,6 +1389,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         </div>
         )}
       </Section>
+      )}
       </>)}
 
       {lens==='capacity' && (<>

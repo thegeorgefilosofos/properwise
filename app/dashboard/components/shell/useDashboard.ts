@@ -566,7 +566,7 @@ export function useDashboard() {
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
     setManualExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
-    scanAfterAdd, setScanAfterAdd, plan, setProfileType, taxForm, showUpgrade, setShowUpgrade,
+    scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, updateStatus, deleteProperty,

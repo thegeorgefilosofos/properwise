@@ -13,6 +13,8 @@ import { marginalRate, RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax'
 import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026'
 import { fe } from '../core/format';
 import { MYAADE } from '@/lib/tax/aade';
+import { athensToday } from '@/lib/core/time';
+import { spitiMouOpen, spitiMouClosedSentence } from '@/lib/loans/recommend';
 
 const upd = (id: string) => REGULATORY_UPDATES_2026.find(u => u.id === id)
 
@@ -32,6 +34,8 @@ export interface AdvisoryInput {
   propertyCount: number
   hasLoan: boolean
   loanInterestYear?: number
+  /** Η σημερινή μέρα («ΕΕΕΕ-ΜΜ-ΗΗ»), για ό,τι έχει προθεσμία. Λείπει: σήμερα στην Αθήνα. */
+  today?: string
 }
 
 export interface AdvisoryItem {
@@ -131,12 +135,23 @@ export function buildAdvisory(input: AdvisoryInput, limit = 6): AdvisoryItem[] {
   }
 
   // 5) Δάνειο: Σπίτι μου ΙΙ / επισκευαστικό, ανάλογα με προφίλ.
-  if (!input.hasLoan) {
+  // Η πρόταση έλεγε ότι το «Σπίτι μου ΙΙ» «δίνει άτοκο ή χαμηλότοκο τμήμα
+  // δανείου» τέσσερις μήνες αφότου έκλεισε για αιτήσεις. Η κατάσταση βγαίνει
+  // πλέον από τις προθεσμίες του προγράμματος, όχι από τη μέρα που γράφτηκε.
+  const today = input.today ?? athensToday()
+  if (!input.hasLoan && spitiMouOpen(today)) {
     items.push({
       id: 'loan-idea', tone: 'insight',
       title: 'Χρηματοδότηση: «Σπίτι μου ΙΙ» και επισκευαστικά',
       body: `Για αγορά πρώτης κατοικίας (νέοι/νέα ζευγάρια) το «Σπίτι μου ΙΙ» δίνει άτοκο ή χαμηλότοκο τμήμα δανείου με κριτήρια. Για ανακαίνιση υπάρχουν επισκευαστικά/«Ανακαινίζω-Νοικιάζω». Στο εργαλείο Δάνεια βλέπεις επιλεξιμότητα και σύγκριση δόσης πριν πας στην τράπεζα.`,
       refer: 'bank', linkLabel: 'Σπίτι μου ΙΙ (gov.gr)', linkHref: SRC.spitiMou,
+    })
+  } else if (!input.hasLoan) {
+    items.push({
+      id: 'loan-idea', tone: 'insight',
+      title: 'Χρηματοδότηση: σύγκριση τραπεζών και επισκευαστικά',
+      body: `Για αγορά πρώτης κατοικίας σύγκρινε τις τράπεζες με βάση το συνολικό κόστος του δανείου, όχι μόνο το επιτόκιο. ${spitiMouClosedSentence(today)} Για ανακαίνιση υπάρχουν επισκευαστικά/«Ανακαινίζω-Νοικιάζω». Στο εργαλείο Δάνεια βλέπεις σύγκριση δόσης πριν πας στην τράπεζα.`,
+      refer: 'bank',
     })
   } else if ((input.loanInterestYear ?? 0) > 0 && !business) {
     items.push({

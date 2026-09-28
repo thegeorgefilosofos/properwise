@@ -15,13 +15,14 @@
 // ─────────────────────────────────────────────────────────────────────────
 import { NO_RESEND_KEY } from '../_shared/resendKey.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
+import { senderFrom } from '../_shared/sender.mjs'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_ANON  = Deno.env.get('SUPABASE_ANON_KEY')!
 // Env-driven αποστολέας: μόλις επαληθεύσεις domain στο Resend, όρισε το RESEND_FROM
 // και ΟΛΑ τα emails φεύγουν από τη δική σου διεύθυνση, χωρίς αλλαγή κώδικα.
-const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <no-reply@properwise.gr>'
+const FROM_EMAIL     = senderFrom(Deno.env.get('RESEND_FROM'))
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
