@@ -55,7 +55,7 @@ serve them**.
 | **Bills & energy** | Every electricity/gas/water/internet provider and tariff in Greece, per-property; reads real market prices and flags savings. |
 | **Tenants & leases** | Lease ledger (base rent + service charges), monthly statements, rent receipts / βεβαίωση ενοικίου, dunning, a tenant portal with PIN gate and payment requests (IBAN/QR). |
 | **Accounting & tax** | Greek tax engine (income scales, ΕΝΦΙΑ, ΕΦΚΑ, advance tax, depreciation, transfer costs), Ε2/Ε1 filing bundle, period locking with audit trail, bank-statement import & auto-match. |
-| **Loans** | «Σπίτι μου ΙΙ» eligibility, best-loan recommender, amortization, live bank-rate data, and an assistant that coaches the whole journey. |
+| **Loans** | Best-loan recommender, amortization, bank-rate table from official bank documents, with the document date shown, and an assistant that coaches the whole journey. «Σπίτι μου ΙΙ» closed to new applications on 31/05/2026; the app says so instead of computing a benefit. |
 | **Short-stay** | Dynamic pricing engine, iCal sync (Airbnb/Booking), occupancy & yield projections, season recap. |
 | **CRM** | Client/guest relationship model with stay history, notes timeline, rating/tags — for brokers and managers. |
 | **Reporting** | Branded investor/accountant PDF reports with charts, cross-property comparison, universal Excel/CSV export. |
