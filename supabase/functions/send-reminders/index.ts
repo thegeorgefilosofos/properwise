@@ -6,6 +6,7 @@ import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 // Η εισαγωγή είναι μόνο τύπων: σβήνεται στη μεταγλώττιση και δεν φτάνει στο Deno.
 import type { CalendarEventsRow, NotificationLogRow, RentPaymentsRow, TenantsRow, UserPropertiesRow } from '../../../lib/supabase/tables.ts'
 import { eur } from '../_shared/format.ts'
+import { senderFrom } from '../_shared/sender.mjs'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -15,7 +16,7 @@ const SUPABASE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 // χρειάζεται πια το service-role key στην κλήση). Το function κρατά το δικό του
 // service key εσωτερικά για τα queries.
 const CRON_SECRET    = Deno.env.get('REMINDERS_CRON_SECRET') || ''
-const FROM_EMAIL     = Deno.env.get('RESEND_FROM') || 'PROPERWISE <no-reply@properwise.gr>'
+const FROM_EMAIL     = senderFrom(Deno.env.get('RESEND_FROM'))
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
