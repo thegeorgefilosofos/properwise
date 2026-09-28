@@ -24,6 +24,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { SecuredBy } from '../paketa/SecuredBy';
 import { T } from '@/components/tokens';
 import { TameioCard, TAMEIO_TITLE, TAMEIO_ACTION } from './TameioCard';
 import { ChipToggle, Btn } from '@/components/Theme';
@@ -53,7 +54,7 @@ type Stage = 'opening' | 'choose' | 'confirm' | 'closed' | 'anonymous';
  * ξέρει ποιος έμπορος εισπράττει· τα ίδια κείμενα με τους Ορους της τα δίνει
  * το page.tsx (lib/legal/billingWords.ts).
  */
-export default function CheckoutLanding({ firstCharge, moneyBack }: { firstCharge: string; moneyBack: string }) {
+export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, securedHref }: { firstCharge: string; moneyBack: string; securedBy: string | null; securedHref: string }) {
   const [stage, setStage] = useState<Stage>('opening');
   const [note, setNote] = useState('');
   const [what, setWhat] = useState('');
@@ -217,6 +218,9 @@ export default function CheckoutLanding({ firstCharge, moneyBack }: { firstCharg
                 Πληρωμή {fe(picked.cycle === 'annual' ? PLANS[picked.plan].priceAnnual : PLANS[picked.plan].priceMonthly)}
               </Btn>
             </div>
+            {/* ΤΟ ΣΗΜΑ ΚΑΤΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ, ΟΧΙ ΣΤΑ ΠΑΚΕΤΑ ΜΟΝΟ. Εδώ ρωτά ο πελάτης «πού
+                θα δώσω την κάρτα μου»: ένα κλικ πριν ανοίξει η σελίδα του εμπόρου. */}
+            {securedBy && <div style={{ textAlign: 'center' }}><SecuredBy text={securedBy} href={securedHref} /></div>}
             <Link href="/dashboard" style={TAMEIO_TRIAL}>Συνέχεια με τη δοκιμή</Link>
           </>
         )}

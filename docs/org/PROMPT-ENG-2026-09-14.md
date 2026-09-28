@@ -15,7 +15,7 @@
 
 ---
 
-Αποθετήριο: `thegeorgefilosofos/properwise`
+Αποθετήριο: `properwise` (GitHub)
 
 **Εκτός πεδίου:** περιεχόμενο κοινωνικών δικτύων, άρθρα, LinkedIn/Meta/Reddit/
 TikTok. Μόνο κώδικας και ροές.

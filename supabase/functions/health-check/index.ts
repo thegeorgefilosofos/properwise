@@ -29,6 +29,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { runHealth, diagnose } from '../_shared/probe.mjs'
+import { FEEDS, feedEntry, previousFeeds, feedAlert } from '../_shared/feedAlert.mjs'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -41,6 +42,12 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || ''
 // δεν διαβάζει. Ενα monitor που δεν ειδοποιεί είναι χειρότερο από κανένα.
 const FROM_EMAIL = Deno.env.get('RESEND_FROM') || ''
 const ALERT_EMAIL = Deno.env.get('HEALTH_ALERT_EMAIL') || ''
+// Οι τροφοδοσίες ειδοποιούν και χωρίς ρυθμισμένο παραλήπτη: η υποστήριξη είναι
+// το γραμματοκιβώτιο που διαβάζεται. Ο αποστολέας είναι ο ίδιος με τις εννιά
+// αδελφές συναρτήσεις. Μια τροφοδοσία που σπάει σιωπηλά είναι ο λόγος που
+// υπάρχει αυτό το μήνυμα (feedAlert.mjs).
+const FEED_FROM = FROM_EMAIL || 'PROPERWISE <no-reply@properwise.gr>'
+const FEED_TO = ALERT_EMAIL || 'support@properwise.gr'
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 const json = (b: unknown, s = 200) =>
@@ -104,6 +111,22 @@ async function alertOnTransition(wasOk: boolean | null, isOk: boolean, results: 
   }
 }
 
+async function sendFeedAlert(alert: { subject: string; lines: string[] } | null) {
+  if (!alert) return 'χωρίς μεταβολή'
+  if (!RESEND_API_KEY) return 'λείπει το RESEND_API_KEY'
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FEED_FROM, to: FEED_TO, subject: alert.subject, text: alert.lines.join('\n') }),
+      signal: AbortSignal.timeout(10_000),
+    })
+    return res.ok ? 'στάλθηκε' : `απέτυχε ${res.status}`
+  } catch (err) {
+    return `απέτυχε: ${String(err)}`
+  }
+}
+
 Deno.serve(async (req) => {
   const auth = await authorizeCron(req, {
     serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase,
@@ -159,7 +182,7 @@ Deno.serve(async (req) => {
   // ακριβώς αυτό το `null`: ο μηχανισμός που υπάρχει για να ξυπνήσει άνθρωπο
   // όταν πέσει η υπηρεσία, έμενε σιωπηλός επειδή έπεσε και η βάση του.
   const { data: prev, error: prevErr } = await supabase
-    .from('health_checks').select('ok').order('ran_at', { ascending: false }).limit(1)
+    .from('health_checks').select('ok, details').order('ran_at', { ascending: false }).limit(1)
   if (prevErr) console.error('[health-check] προηγούμενη κατάσταση:', prevErr)
   // Με αποτυχία ανάγνωσης δεν προσποιούμαστε ότι ξέρουμε: αν η τωρινή μέτρηση
   // είναι ΚΑΚΗ, τη δηλώνουμε ως μετάβαση από «καλά», ώστε να φύγει ειδοποίηση.
@@ -168,13 +191,28 @@ Deno.serve(async (req) => {
 
   const alert = await alertOnTransition(wasOk, ok, results, kind)
 
+  // ΟΙ ΤΡΟΦΟΔΟΣΙΕΣ ΚΡΙΝΟΝΤΑΙ ΧΩΡΙΣΤΑ. Δεν αλλάζουν το `ok`, που σημαίνει «οι
+  // σελίδες απαντούν» και το διαβάζει η `health_status()`. Γράφονται στο
+  // `details` με πρόθεμα `feed:`, για να ξέρει το επόμενο πέρασμα πώς ήταν.
+  // Με αποτυχία ανάγνωσης της προηγούμενης γραμμής δεν στέλνουμε: χωρίς
+  // μνήμη, κάθε πέρασμα θα ξανάστελνε το ίδιο μήνυμα.
+  const feeds = await Promise.all(FEEDS.map(async (f) => {
+    const { data, error: e } = await supabase.rpc(f.rpc)
+    return feedEntry(f, Array.isArray(data) ? data[0] : data, e)
+  }))
+  const feedPrev = previousFeeds(prev && prev.length ? prev[0].details : null)
+  const feedsAlert = prevErr ? 'χωρίς μνήμη, καμία αποστολή' : await sendFeedAlert(feedAlert(feedPrev, feeds))
+
   const { error } = await supabase.from('health_checks').insert({
     ok, kind, base,
     routes_count: results.length,
     failed_count: failed.length,
-    details: results.map(r => ({ path: r.route.path, ok: r.res.ok, status: r.res.status, ms: r.res.ms, why: r.res.why })),
+    details: [
+      ...results.map(r => ({ path: r.route.path, ok: r.res.ok, status: r.res.status, ms: r.res.ms, why: r.res.why })),
+      ...feeds,
+    ],
   })
-  if (error) return json({ ok, kind, alert, write_error: error.message }, 502)
+  if (error) return json({ ok, kind, alert, feeds_alert: feedsAlert, write_error: error.message }, 502)
 
-  return json({ ok, kind, checked: results.length, failed: failed.length, alert })
+  return json({ ok, kind, checked: results.length, failed: failed.length, alert, feeds: feeds.map(f => `${f.path}:${f.ok ? 'ok' : 'σπασμένη'}`), feeds_alert: feedsAlert })
 })

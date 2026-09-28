@@ -233,6 +233,7 @@ async function fetchSubscription(
 export const creemPort: MerchantPort = {
   id: 'creem',
   name: MERCHANT_NAMES.creem,
+  site: 'https://www.creem.io/',
 
   // ΠΩΛΗΣΗ ΘΕΛΕΙ ΚΛΕΙΔΙ ΚΑΙ ΧΑΡΤΗ. Χωρίς χάρτη προϊόντων το ταμείο δεν ξέρει
   // τι πουλά, οπότε δεν ανοίγει καθόλου.

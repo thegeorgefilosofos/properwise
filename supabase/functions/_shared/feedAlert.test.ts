@@ -1,0 +1,51 @@
+// Οι τροφοδοσίες στον έλεγχο υγείας: μήνυμα στη μετάβαση. Στέλνει και στην
+// πρώτη μέτρηση που βρίσκει σπασμένη τροφοδοσία.
+// Τρέξε: npx tsx supabase/functions/_shared/feedAlert.test.ts
+import { FEEDS, feedEntry, previousFeeds, feedAlert } from './feedAlert.mjs'
+
+let passed = 0, failed = 0
+function ok(name: string, cond: boolean) {
+  if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) }
+}
+
+const [bank, market] = FEEDS
+const NO_CREDIT = 'το τελευταίο πέρασμα απέτυχε: anthropic 400: Your credit balance is too low to access the Anthropic API.'
+
+// ── Η γραμμή από το RPC ──────────────────────────────────────────────────────
+ok('υγιής τροφοδοσία', feedEntry(bank, { ok: true, reason: 'εντάξει' }, null).ok)
+ok('σπασμένη τροφοδοσία κρατά την αιτία', feedEntry(bank, { ok: false, reason: NO_CREDIT }, null).why.includes('credit balance'))
+ok('σφάλμα ανάγνωσης μετρά ως σπασμένη', !feedEntry(bank, null, { message: 'permission denied' }).ok)
+ok('κενή απάντηση μετρά ως σπασμένη', !feedEntry(market, null, null).ok)
+ok('μεγάλη αιτία κόβεται', feedEntry(bank, { ok: false, reason: 'x'.repeat(900) }, null).why.length <= 301)
+
+// ── Η προηγούμενη κατάσταση ─────────────────────────────────────────────────
+const prev = previousFeeds([{ path: '/', ok: true }, { path: 'feed:bank', ok: false }, { path: 'feed:market', ok: true }])
+ok('διαβάζει μόνο τις τροφοδοσίες', prev.size === 2 && prev.get('feed:bank') === false && prev.get('feed:market') === true)
+ok('παλιά γραμμή χωρίς τροφοδοσίες: τίποτα γνωστό', previousFeeds([{ path: '/', ok: true }]).size === 0)
+ok('details που δεν είναι πίνακας: τίποτα γνωστό', previousFeeds(null).size === 0)
+
+// ── Οι μεταβάσεις ───────────────────────────────────────────────────────────
+const up = (f: typeof bank) => ({ path: f.path, ok: true, why: 'εντάξει' })
+const down = (f: typeof bank, why = NO_CREDIT) => ({ path: f.path, ok: false, why })
+
+ok('όλα υγιή, πρώτη φορά: σιωπή', feedAlert(new Map(), [up(bank), up(market)]) === null)
+ok('σπασμένη στην πρώτη μέτρηση: στέλνει', feedAlert(new Map(), [down(bank), up(market)]) !== null)
+ok('έμεινε σπασμένη: σιωπή', feedAlert(new Map([['feed:bank', false]]), [down(bank)]) === null)
+ok('έμεινε υγιής: σιωπή', feedAlert(new Map([['feed:bank', true]]), [up(bank)]) === null)
+
+const broke = feedAlert(new Map([['feed:bank', true], ['feed:market', true]]), [down(bank), up(market)])
+ok('υγιής → σπασμένη: στέλνει', broke !== null)
+ok('το θέμα ονομάζει την τροφοδοσία', /Επιτόκια τραπεζών/.test(broke?.subject ?? ''))
+ok('χωρίς υπόλοιπο: λέει τι να κάνει', (broke?.lines ?? []).some(l => /Billing/.test(l)))
+
+const other = feedAlert(new Map([['feed:market', true]]), [down(market, 'σιωπή 40 ωρών')])
+ok('άλλη αιτία: χωρίς οδηγία για υπόλοιπο', !(other?.lines ?? []).some(l => /Billing/.test(l)))
+
+const healed = feedAlert(new Map([['feed:bank', false]]), [up(bank)])
+ok('σπασμένη → υγιής: στέλνει', /δουλεύει ξανά/.test(healed?.subject ?? ''))
+
+const all = [broke, other, healed].flatMap(a => a ? [a.subject, ...a.lines] : []).join('\n')
+ok('κανένα κόμμα πριν από «και»', !/, κ(αι|ι) /.test(all))
+
+console.log(`\nfeedAlert: ${passed} passed, ${failed} failed`)
+if (failed) process.exit(1)

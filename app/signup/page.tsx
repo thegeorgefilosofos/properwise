@@ -21,7 +21,7 @@ import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
 import { isReferralCode } from '@/lib/referral/referral';
 import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
-import { usePlanTerms } from './PlanTerms'
+import { usePlanTerms, useTrialBadge } from './PlanTerms'
 
 // Η έκδοση των Όρων που δέχεται ο χρήστης. Ήταν καρφωτή εδώ ως «2026-07», ενώ
 // οι δύο σελίδες που υπογράφει γράφουν «Αύγουστος 2026»: η απόδειξη
@@ -104,6 +104,7 @@ async function newsOffNow(supabase: Awaited<ReturnType<typeof authClient>>, user
 export default function SignupPage() {
   // Από το billingWords, στον διακομιστή (layout.tsx): `null` όσο το ταμείο χρεώνει.
   const planTerms = usePlanTerms()
+  const trialBadge = useTrialBadge()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -600,17 +601,26 @@ export default function SignupPage() {
                   αριστερό πάνελ, που κρύβεται κάτω από τις 900 και δεν ήταν καν
                   σύνδεσμος. */}
               <BackLink home />
-              <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 6px' }}>Δημιουργία λογαριασμού</h1>
-              {/* Η δοκιμή λέγεται ΜΙΑ φορά. Με διαλεγμένο πακέτο τη λέει η
-                  κάρτα του πακέτου από κάτω· χωρίς αυτό, αυτή η γραμμή, γιατί
-                  το πάνελ που την έλεγε κρύβεται στο κινητό. Το «Χωρίς κάρτα»
-                  έφυγε (27.09.2026): με το άνοιγμα των πληρωμών η κάρτα θα
-                  ζητείται στην εγγραφή. */}
-              {!chosenPlan && (
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
-                  Δοκιμή {TRIAL_DAYS} ημερών
-                </p>
-              )}
+              {/* Η ΔΟΚΙΜΗ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ΜΕ ΤΟΝ ΤΙΤΛΟ (28.09.2026). Ως σκέτη γραμμή
+                  κάτω από τον τίτλο διαβαζόταν σαν δεύτερος υπότιτλος. Σήμα δίπλα
+                  του όταν χωρά· στη στήλη της φόρμας (και στο κινητό) κάθεται
+                  ακριβώς από κάτω, στο ίδιο αριστερό άκρο. Λέγεται ΜΙΑ φορά:
+                  με διαλεγμένο πακέτο τη λέει η κάρτα του πακέτου. Το «χωρίς
+                  κάρτα» ξαναμπαίνει: η δοκιμή δεν ζητά κάρτα (απόφαση
+                  ιδιοκτήτη, 27.09.2026) και το κείμενο έρχεται από το
+                  billingWords. */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: T.sp.md, rowGap: T.sp.sm, margin: '0 0 10px' }}>
+                <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>Δημιουργία λογαριασμού</h1>
+                {!chosenPlan && trialBadge && (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', padding: `${T.sp.xs}px ${T.sp.md}px`,
+                    borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
+                    color: 'var(--accent)', fontSize: 13, fontWeight: 600, lineHeight: 1.4, whiteSpace: 'nowrap',
+                  }}>
+                    {trialBadge}
+                  </span>
+                )}
+              </div>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px' }}>
                 Έχεις ήδη λογαριασμό;{' '}
                 <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>

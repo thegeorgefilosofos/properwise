@@ -172,6 +172,13 @@ export interface BillingWords {
    */
   signupPlanTerms: string | null;
   /**
+   * Το σήμα δίπλα στον τίτλο της εγγραφής. Ιδιο με ταμείο ανοιχτό ή κλειστό:
+   * η δοκιμή δεν ζητά κάρτα σε καμία από τις δύο καταστάσεις (απόφαση
+   * ιδιοκτήτη, 27.09.2026). Ζει εδώ επειδή κάθε «χωρίς κάρτα» είναι δήλωση για
+   * τη χρέωση και τέτοιες δηλώσεις γράφονται μόνο σε αυτό το αρχείο.
+   */
+  trialBadge: string;
+  /**
    * Η ήσυχη γραμμή κάτω από τα ψιλά του τιμοκαταλόγου: ποιος εισπράττει, ή
    * `null` όσο το ταμείο είναι κλειστό.
    *
@@ -249,8 +256,11 @@ const liveWords = (mor: string): Omit<BillingWords, 'live'> => ({
     `Η δοκιμή των ${TRIAL_DAYS} ημερών δεν ζητά κάρτα. Σε συνδρομή η χρέωση γίνεται τη στιγμή της αγοράς.`,
   partnerTarget: null,
   signupPlanTerms: null,
+  trialBadge: TRIAL_BADGE,
   securedBy: `Πληρωμές με ασφάλεια μέσω της ${mor}`,
 });
+
+const TRIAL_BADGE = `Δοκιμή ${TRIAL_DAYS} ημερών χωρίς κάρτα`;
 
 const NOT_LIVE: Omit<BillingWords, 'live'> = {
   chargingToday:
@@ -294,6 +304,7 @@ const NOT_LIVE: Omit<BillingWords, 'live'> = {
   partnerTarget:
     'Ο στόχος μετρά συνδρομητές, οπότε ισχύει από τη μέρα που θα ενεργοποιηθεί η χρέωση συνδρομών.',
   signupPlanTerms: 'Χωρίς χρέωση προς το παρόν',
+  trialBadge: TRIAL_BADGE,
   // ΚΑΝΕΝΑ ΣΗΜΑ ΑΣΦΑΛΕΙΑΣ ΧΩΡΙΣ ΤΑΜΕΙΟ. Μια γραμμή «πληρωμές μέσω…» πάνω από
   // τιμές που δεν αγοράζονται θα υπονοούσε ότι αγοράζονται.
   securedBy: null,
