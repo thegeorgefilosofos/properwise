@@ -100,7 +100,7 @@ frame(2, 'Το ακουμε συνεχεια',
  <div class="card" style="left:0;right:0;top:10px;padding:0;overflow:hidden;background:linear-gradient(180deg,rgba(22,34,56,.96),rgba(12,20,36,.97))">
   <div style="display:flex;align-items:center;gap:18px;padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)">
    <div style="display:flex;gap:9px">${['#ff5f57','#febc2e','#28c840'].map(c=>`<i style="width:14px;height:14px;border-radius:50%;background:${c};opacity:.85"></i>`).join('')}</div>
-   <div style="font-family:Mono,monospace;font-size:18px;color:#7d8da6">ακίνητο_ΤΕΛΙΚΟ_v3.xlsx</div>
+   <div style="font-family:Mono,monospace;font-size:18px;color:#7d8da6">ακίνητο_ΤΕΛΙΚΟ_ΤΕΛΙΚΟ.xlsx</div>
   </div>
   <div style="display:flex;align-items:center;gap:16px;padding:14px 24px;border-bottom:1px solid rgba(255,255,255,.08);font-family:Mono,monospace;font-size:18px">
    <span style="color:#7d8da6;font-style:italic">fx</span><span style="color:#aebbd0">=ΑΘΡΟΙΣΜΑ(B2:B4)</span></div>
