@@ -104,7 +104,7 @@ export interface SeriesSpec {
 const RATE_MIN = -5, RATE_MAX = 25;
 
 const ECB = 'Ευρωπαϊκή Κεντρική Τράπεζα';
-const MONTH_MEAN = 'μέσος όρος μήνα';
+export const MONTH_MEAN = 'μέσος όρος μήνα';
 const ON_CHANGE = 'ισχύει από την τελευταία μεταβολή';
 
 /** Euribor: μηνιαίος μέσος όρος, η μόνη συχνότητα που δημοσιεύει η ΕΚΤ. */

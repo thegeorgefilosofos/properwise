@@ -8,7 +8,8 @@ import { athensToday } from '@/lib/core/time'
 import { T, EmptyState, Btn, IconBtn, ChipToggle } from '@/components/Theme'
 import { Gift } from 'lucide-react'
 import TabLoanCalculator from './TabLoanCalculator'
-import { greekWhen } from '@/lib/market/ecb'
+import { greekWhen, MONTH_MEAN } from '@/lib/market/ecb'
+import { monthGen } from '@/lib/core/months'
 import { RATES_DISCLAIMER, calcMonthly, fmtEur, fmtPct, spreadRange } from './TabLoanData'
 import { isOfficialSource } from '@/lib/loans/rateFeed'
 import { hy } from '@/components/Hyphen'
@@ -27,6 +28,18 @@ import { LoanGuide } from './loan/LoanGuide'
 // χρησιμοποιούνταν ποτέ — ένα νεκρό καλώδιο που έδινε την εντύπωση ότι ο
 // Υπολογιστής ξέρει το ενοίκιο, ενώ αυτός υπολόγιζε «4% της αξίας». Πλέον ο
 // Υπολογιστής διαβάζει ο ίδιος το πραγματικό ενοίκιο (rent_config) από τη βάση.
+/**
+ * «μέσος όρος Αυγούστου» δίπλα σε κάθε τιμή που είναι μέσος όρος μήνα.
+ *
+ * ΤΟ «Αυγ 2026» ΔΙΑΒΑΖΟΤΑΝ ΩΣ ΣΗΜΕΡΙΝΗ ΤΙΜΗ (28.09.2026). Το Euribor της ΕΚΤ
+ * στη λωρίδα είναι ο μέσος όρος του προηγούμενου μήνα· γράφεται αυτό ακριβώς.
+ * Οι σειρές που αλλάζουν σε συγκεκριμένη μέρα κρατούν την ημερομηνία τους.
+ */
+function periodOf(asOf: string, basis: string): string {
+  const m = /^\d{4}-(\d{2})-\d{2}$/.exec(asOf || '');
+  return m && basis === MONTH_MEAN ? `μέσος όρος ${monthGen(Number(m[1]) - 1)}` : greekWhen(asOf, basis);
+}
+
 export default function TabLoan({propertyId,userId,propertyValue,propertySqm,propertyYearBuilt,profileType='individual'}:LoanProps) {
   const {
     initValue, initAmount, FIXED_TERM_COLUMNS, openSec, setOpenSec, profile, calcRef,
@@ -116,7 +129,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 <span title={`${market.provenance[item.k]!.basis}, ${market.provenance[item.k]!.source}${market.stale.includes(item.k)?'. Δεν ανανεώθηκε στον αναμενόμενο χρόνο':''}`}
                   style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',fontWeight:500,
                     borderBottom:market.stale.includes(item.k)?'1px dotted var(--text-tertiary)':undefined}}>
-                  {greekWhen(market.provenance[item.k]!.asOf, market.provenance[item.k]!.basis)}
+                  {periodOf(market.provenance[item.k]!.asOf, market.provenance[item.k]!.basis)}
                 </span>
               )}
               {/* ΧΩΡΙΣ ΤΑΥΤΟΤΗΤΑ Η ΤΙΜΗ ΕΙΝΑΙ Η ΕΦΕΔΡΙΚΗ, ΚΑΙ ΤΟ ΛΕΕΙ. Γυμνή, μια
