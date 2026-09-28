@@ -290,7 +290,7 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
       log(`γεγονός ${read.event.name} για τη συνδρομή ${sub.id}, ενώ ισχύει η ${current.mor_subscription_id}· αγνοήθηκε`);
       return NextResponse.json({ ok: true, skipped: 'other_subscription' });
     }
-    log(`ΔΥΟ ΖΩΝΤΑΝΕΣ ΣΥΝΔΡΟΜΕΣ για τον λογαριασμό ${userId}: ${current.mor_subscription_id} και ${sub.id}. Ελεγξε για διπλή χρέωση.`);
+    log(`ΔΥΟ ΖΩΝΤΑΝΕΣ ΣΥΝΔΡΟΜΕΣ για τον λογαριασμό ${userId}: ${current.mor_subscription_id} και ${sub.id}. Έλεγξε για διπλή χρέωση.`);
     duplicate = duplicateAlert(userId, current.mor_subscription_id, sub.id);
   }
 

@@ -288,7 +288,7 @@ function DeleteAccount() {
         setBusy(false); return;
       }
     } catch {
-      setError('Ο λογαριασμός δεν διαγράφηκε. Ελεγξε τη σύνδεσή σου και δοκίμασε ξανά.');
+      setError('Ο λογαριασμός δεν διαγράφηκε. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.');
       setBusy(false); return;
     }
     const report = (payload ?? {}) as DeleteReport;

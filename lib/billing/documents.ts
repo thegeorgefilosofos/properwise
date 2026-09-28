@@ -361,7 +361,7 @@ export function normalizeScannedDoc(doc: ScannedDoc): ScannedDoc {
   // ακριβώς την πληροφορία για την οποία τον ζητάμε.
   if (out.provider_vat) out.provider_vat = String(out.provider_vat).replace(/[\s.-]/g, '').toUpperCase() || undefined;
   // Δύο κεφαλαία γράμματα ή τίποτα: το «Ιρλανδία» και το «Ireland» δεν είναι
-  // κωδικοί και μια μισή τιμή σε πεδίο χώρας ταξιδεύει ώς τη δήλωση ΦΠΑ.
+  // κωδικοί και μια μισή τιμή σε πεδίο χώρας ταξιδεύει ως τη δήλωση ΦΠΑ.
   if (out.provider_country) {
     const c = String(out.provider_country).trim().toUpperCase();
     out.provider_country = /^[A-Z]{2}$/.test(c) ? c : undefined;

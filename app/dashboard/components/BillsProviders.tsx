@@ -130,14 +130,14 @@ const INTERNET_PLANS: Record<string, {
     // το κρατήσει επιλεγμένο. Το λέει όμως η ίδια, ώστε κανείς να μη νομίσει
     // ότι μπορεί να το πάρει σήμερα.
     { id:'c_dp_24',    name: 'Double Play Unlimited 24 (παλαιό)', speed: '24 Mbps', price: 19.90, hasPhone: true,  note: 'ADSL. Δεν προσφέρεται πλέον σε νέες συνδέσεις· μένει για όσους το έχουν ήδη.', networkType: 'ADSL', contract: '24 μήνες' },
-    { id:'c_dp_50',    name: 'Telekom Double Play Advanced Unlimited', speed: '50 Mbps', price: 22.90, hasPhone: true,  note: '100% οπτική ίνα ώς την πρίζα, με εγγύηση καλής εγκατάστασης.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_dp_50',    name: 'Telekom Double Play Advanced Unlimited', speed: '50 Mbps', price: 22.90, hasPhone: true,  note: '100% οπτική ίνα ως την πρίζα, με εγγύηση καλής εγκατάστασης.', networkType: 'Fiber', contract: '24 μήνες' },
     // ═══ ΔΥΟ ΠΑΚΕΤΑ ΜΕ ΤΟ ΙΔΙΟ ΟΝΟΜΑ ΚΑΙ ΔΙΑΦΟΡΕΤΙΚΗ ΤΙΜΗ ══════════════════
     // Ο κατάλογος δείχνει ΔΥΟ «Fiber 100 Unlimited»: ένα στα 24,90€ με «έως
     // 100 Mbps» και μόνο δωρεάν router. Το δεύτερο είναι στα 23,71€, διαγραμμένο από
-    // 24,90€ — με 100% οπτική ίνα ώς την πρίζα και εγγύηση εγκατάστασης. Το
+    // 24,90€ — με 100% οπτική ίνα ως την πρίζα και εγγύηση εγκατάστασης. Το
     // φθηνότερο είναι το ΚΑΛΥΤΕΡΟ· αυτό δεν διαβάζεται από την τιμή: όποιος
     // δει μόνο «24,90» θα νομίσει ότι πληρώνει λιγότερο για το ίδιο πράγμα.
-    { id:'c_f100',     name: 'Telekom Fiber 100 Unlimited', speed: '100 Mbps',  price: 23.71, hasPhone: true,  note: '100% οπτική ίνα ώς την πρίζα, με εγγύηση καλής εγκατάστασης. Τιμή προσφοράς από 24,90€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f100',     name: 'Telekom Fiber 100 Unlimited', speed: '100 Mbps',  price: 23.71, hasPhone: true,  note: '100% οπτική ίνα ως την πρίζα, με εγγύηση καλής εγκατάστασης. Τιμή προσφοράς από 24,90€.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'c_f100_vdsl', name: 'Telekom Fiber 100 Unlimited (έως 100)', speed: '100 Mbps', price: 24.90, hasPhone: true, note: 'Έως 100 Mbps, χωρίς εγγύηση εγκατάστασης. Δωρεάν ασύρματο router.', networkType: 'VDSL', contract: '24 μήνες' },
     { id:'c_f300',     name: 'Telekom Fiber 300 Unlimited', speed: '300 Mbps',  price: 27.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 150 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'c_f500',     name: 'Telekom Fiber 500 Unlimited', speed: '500 Mbps',  price: 31.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 250 Mbps upload. Με MagentaTV Start δώρο.', networkType: 'Fiber', contract: '24 μήνες' },

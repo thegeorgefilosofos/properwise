@@ -8,12 +8,12 @@
 //   cron.job_run_details, jobid 53 «health-every-15»   59 succeeded, 0 failed
 //   cron.job_run_details, jobid 54 «health-watch»       1 succeeded, 0 failed
 //   cron.job_run_details, jobid 52 «bank-feed-watch»    5 succeeded, ok = FALSE
-//   net._http_response, 24 γραμμές ώς 16:45 UTC        200 {"skipped":"λείπει…"}
+//   net._http_response, 24 γραμμές ως 16:45 UTC        200 {"skipped":"λείπει…"}
 //   .github/workflows/health.yml                      βήμα «skipped», run «success»
 //
 // Πράσινα σήματα πάνω σε μηδέν μετρήσεις. Η σουίτα φυλάει τα σημεία που τα
 // παρήγαγαν: τη συνάρτηση, τους ΤΡΕΙΣ νυχτερινούς φύλακες της βάσης — ο
-// κώδικάς τους είναι ο ίδιος ώς τη λέξη — το workflow και τον έλεγχο
+// κώδικάς τους είναι ο ίδιος ως τη λέξη — το workflow και τον έλεγχο
 // εξαρτήσεων του PR.
 //
 // ΓΙΑΤΙ ΕΛΕΓΧΕΙ ΚΕΙΜΕΝΟ ΚΑΙ ΟΧΙ ΣΥΜΠΕΡΙΦΟΡΑ: η index.ts είναι Deno (Deno.env

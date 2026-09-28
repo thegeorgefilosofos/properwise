@@ -119,7 +119,7 @@ async function metrics(page) {
     const paint = performance.getEntriesByName('first-contentful-paint')[0];
     const nav = one('navigation');
     // ΤΟ ΜΠΛΟΚΑΡΙΣΜΕΝΟ ΝΗΜΑ ΕΙΝΑΙ Ο ΧΡΟΝΟΣ ΠΟΥ Η ΟΘΟΝΗ ΔΕΝ ΑΠΑΝΤΑΕΙ. Μετρά
-    // μόνο ό,τι ΞΕΠΕΡΝΑΕΙ τα 50 χιλιοστά σε κάθε μακρά εργασία: ώς εκεί ο
+    // μόνο ό,τι ΞΕΠΕΡΝΑΕΙ τα 50 χιλιοστά σε κάθε μακρά εργασία: ως εκεί ο
     // άνθρωπος δεν αντιλαμβάνεται καθυστέρηση στο πάτημα.
     const blocking = (window.__longTasks || [])
       .reduce((sum, d) => sum + Math.max(0, d - 50), 0);

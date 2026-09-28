@@ -141,7 +141,7 @@ export function monthsInFirstYear(acquired: string): number {
 }
 
 /**
- * Ο πίνακας αποσβέσεων ενός παγίου, από την κτήση ώς το `throughYear`.
+ * Ο πίνακας αποσβέσεων ενός παγίου, από την κτήση ως το `throughYear`.
  *
  * Κενός όταν λείπει ημερομηνία, συντελεστής ή αξία: ο πίνακας δεν
  * συμπληρώνεται με μηδενικά που μοιάζουν με απάντηση.
@@ -250,7 +250,7 @@ export interface RegisterInput {
   }[];
   /**
    * ΟΛΕΣ οι δαπάνες, όχι της χρήσης. Κρατούνται όσες είναι υποψήφιες για πάγιο
-   * και αποκτήθηκαν ώς το τέλος του `year`.
+   * και αποκτήθηκαν ως το τέλος του `year`.
    */
   expenses?: readonly {
     date: string; category?: string | null; description?: string | null; amount?: number | null;
@@ -297,7 +297,7 @@ export interface RegisterInput {
  */
 export function buildRegister(inp: RegisterInput): FixedAsset[] {
   const out: FixedAsset[] = [];
-  /** Αποκτήθηκε ώς το τέλος της χρήσης; Χωρίς ημερομηνία, δεν κρίνεται. */
+  /** Αποκτήθηκε ως το τέλος της χρήσης; Χωρίς ημερομηνία, δεν κρίνεται. */
   const acquiredByYearEnd = (iso: string | null | undefined): boolean =>
     inp.year == null || !iso || String(iso).slice(0, 4) <= String(inp.year);
   const p = inp.property;

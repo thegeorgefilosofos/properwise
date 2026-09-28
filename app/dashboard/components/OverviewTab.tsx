@@ -771,7 +771,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               στήλες έβγαλε: ο κανόνας του ορφανού χρειάζεται να ισχύει ΜΟΝΟ στις
               δύο στήλες (στις τρεις, δύο στοιχεία στην τελευταία σειρά είναι
               σειρά που τελείωσε, όχι ορφανό). Οι στήλες γράφονται ρητά, στα ίδια
-              ακριβώς πλάτη που έβγαζε το `auto-fit`: μία ώς τα 700, δύο ώς τα
+              ακριβώς πλάτη που έβγαζε το `auto-fit`: μία ως τα 700, δύο ως τα
               900, τρεις από εκεί και πάνω. */}
           <div className="prop-facts">
             {([['Τύπος',propertyTypeLabel(prop.prop_type)],['Εμβαδόν',prop.sqm?`${prop.sqm} τ.μ.`:null],['Υπνοδωμάτια',prop.bedrooms?String(prop.bedrooms):null],['Διεύθυνση',prop.address],['ΑΤΑΚ',prop.atak],['Έτος κατασκευής',prop.year_built?String(prop.year_built):null],['Όροφος',prop.floor!=null?String(prop.floor):null],['Θέρμανση',heatingLabel(prop.heating)||null],['Ενεργειακή κλάση',prop.pea_class],['Θέσεις στάθμευσης',prop.parking_spaces?String(prop.parking_spaces):null],['Αποθήκη',prop.storage_sqm?`${prop.storage_sqm} τ.μ.`:null],['Αντικειμενική αξία',prop.obj_value?fmtEur(prop.obj_value):null],['Εκτιμώμενος ΕΝΦΙΑ',prop.enfia?fmtEur(prop.enfia):null]] as [string,string|null][]).filter(([,v])=>v).map(([k,v]) => (
@@ -853,7 +853,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             title:`Οι δαπάνες που έχεις καταχωρήσει για το ${year}, μετρημένες όσες φορές πραγματικά συμβαίνουν: οι εφάπαξ (π.χ. ΕΝΦΙΑ, συμβόλαιο) μία φορά, οι πάγιες όσες φορές επαναλαμβάνονται. Δεν πολλαπλασιάζεται το σύνολο του έτους ×12.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
           // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ, ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
           // «Μερίδιο φόρου ενοικίου» είναι 22 χαρακτήρες δίπλα σε τρεις
-          // ετικέτες των 7 ώς 17: έσπαγε σε δεύτερη γραμμή και ΜΟΝΟ αυτή,
+          // ετικέτες των 7 ως 17: έσπαγε σε δεύτερη γραμμή και ΜΟΝΟ αυτή,
           // οπότε η τιμή της ξεκινούσε χαμηλότερα από τις άλλες τρεις. Τέσσερα
           // ποσά στη σειρά που δεν διαβάζονται σε ευθεία.
           //

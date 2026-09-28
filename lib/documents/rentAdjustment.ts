@@ -45,7 +45,7 @@ export function computeRentAdjustment(i: AdjInput): AdjResult {
 // μέση ετήσια κάθε χρόνο· χωρίς το έτος, το νούμερο δεν επαληθεύεται.
 export function adjustmentNoticeText(o: {
   tenantName?: string; address?: string; effectiveDate: string; method: AdjMethod; res: AdjResult;
-  /** Το δωδεκάμηνο του δείκτη, π.χ. «Ιουλίου 2025 ώς Ιουνίου 2026». Μόνο για 'cpi'. */
+  /** Το δωδεκάμηνο του δείκτη, π.χ. «Ιουλίου 2025 ως Ιουνίου 2026». Μόνο για 'cpi'. */
   cpiPeriod?: string;
   /** Η σύμβαση προβλέπει το 75% της μεταβολής (τυπικό σε επαγγελματική μίσθωση). */
   cpiShare75?: boolean;

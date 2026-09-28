@@ -79,9 +79,9 @@ export function staysOnDay(stays: StaySpan[], dateStr: string): StaySpan[] {
 
 export interface WeekSegment {
   stay: StaySpan
-  /** Στήλη έναρξης μέσα στην εβδομάδα, 0 ώς 6. */
+  /** Στήλη έναρξης μέσα στην εβδομάδα, 0 ως 6. */
   startCol: number
-  /** Πόσες στήλες πιάνει, 1 ώς 7. */
+  /** Πόσες στήλες πιάνει, 1 ως 7. */
   span: number
   /** Σε ποια σειρά κάθεται, ώστε δύο κρατήσεις να μη γράφονται η μία πάνω στην άλλη. */
   lane: number

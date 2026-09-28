@@ -46,7 +46,7 @@ const PAIRS = [
   { ink: '--on-tone',        on: '--negative',   min: 4.5, why: 'κείμενο σε αρνητικό γέμισμα' },
   { ink: '--on-tone',        on: '--warning',    min: 4.5, why: 'κείμενο σε γέμισμα προσοχής' },
   { ink: '--on-tone',        on: '--info',       min: 4.5, why: 'κείμενο σε ενημερωτικό γέμισμα' },
-  { ink: '--logo-mark-text', on: '--accent',     min: 4.5, why: 'το «P» του σήματος, σε 22 ώς 34px' },
+  { ink: '--logo-mark-text', on: '--accent',     min: 4.5, why: 'το «P» του σήματος, σε 22 ως 34px' },
   { ink: '--accent',         on: '--bg-base',    min: 3.0, why: 'σύνδεσμος και εικονίδιο στο βάθος' },
   { ink: '--accent',         on: '--bg-surface', min: 3.0, why: 'σύνδεσμος και εικονίδιο σε κάρτα' },
 ]
@@ -73,7 +73,7 @@ const raw = readFileSync(CSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
  * μένει πράσινος με το σφάλμα του μέσα.
  *
  * Τα περιτυλίγματα κόβονται με μέτρημα αγκίστρων, όχι με regex: το φύλλο έχει
- * ένθετα `@media` μέσα σε `@supports` και ένα regex θα έκοβε ώς το πρώτο `}`.
+ * ένθετα `@media` μέσα σε `@supports` και ένα regex θα έκοβε ως το πρώτο `}`.
  * Ο κάθε χώρος μετριέται μετά ΧΩΡΙΣΤΑ, ως δικό του θέμα.
  */
 function splitAtRules(text) {
@@ -225,7 +225,7 @@ for (const mode of ['light', 'dark']) {
 }
 if (resolve(theme.light, '--accent') === resolve(theme.dark, '--accent')) {
   console.error('✗ Τα δύο θέματα δίνουν το ίδιο --accent. Ο φύλακας διαβάζει το ένα δύο φορές.')
-  console.error('  Δες τη συνάρτηση blocks(): κάποιο μπλοκ δεν φτάνει ώς εδώ.')
+  console.error('  Δες τη συνάρτηση blocks(): κάποιο μπλοκ δεν φτάνει ως εδώ.')
   process.exit(1)
 }
 if (!checked) {

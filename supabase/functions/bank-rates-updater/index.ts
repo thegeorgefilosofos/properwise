@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
   // pg_cron, που ΔΕΝ διαβάζει σώμα· του απαντάμε «δεκτό» στη στιγμή και η
   // δουλειά συνεχίζει με `waitUntil`. Το αποτέλεσμα δεν χάνεται: γράφεται στο
   // `bank_rate_checks`, εκεί ακριβώς που το διαβάζει η οθόνη. Χωρίς το
-  // waitUntil η εργασία θα κοβόταν με την απάντηση· με αυτό ζει ώς το τέλος της.
+  // waitUntil η εργασία θα κοβόταν με την απάντηση· με αυτό ζει ως το τέλος της.
   const work = runUpdate().catch((e) =>
     console.error('bank-rates-updater bg:', (e as Error).message))
   const rt = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime

@@ -49,7 +49,7 @@ interface BillingData {
   mor_subscription_id: string;
   /** Ο λογαριασμός δοκιμαστή. Οσο υπάρχει, δεν υπάρχει τίποτα να αγοραστεί. */
   tester_since: string;
-  /** Υποβάθμιση που περιμένει την ανανέωση: τι κρατιέται και ώς πότε. */
+  /** Υποβάθμιση που περιμένει την ανανέωση: τι κρατιέται και ως πότε. */
   hold_plan: string; hold_until: string;
 }
 const INIT: BillingData = {
@@ -388,7 +388,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
       if (!body.url) { notifyError(`${what} δεν άνοιξε. Δοκίμασε ξανά σε λίγο.`); setBusy(false); return; }
       window.location.href = body.url;
     } catch {
-      notifyError(`${what} δεν άνοιξε. Ελεγξε τη σύνδεσή σου και δοκίμασε ξανά.`);
+      notifyError(`${what} δεν άνοιξε. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.`);
       setBusy(false);
     }
   };
@@ -403,7 +403,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
   const isTester = !!(d.tester_since || '').trim();
 
   // ── Η ΥΠΟΒΑΘΜΙΣΗ ΠΟΥ ΠΕΡΙΜΕΝΕΙ ────────────────────────────────────────
-  // Ο,τι κρατιέται ώς την ανανέωση. Το `plan` δείχνει ήδη το ΝΕΟ πακέτο (ο
+  // Ο,τι κρατιέται ως την ανανέωση. Το `plan` δείχνει ήδη το ΝΕΟ πακέτο (ο
   // webhook το έγραψε τη στιγμή της αλλαγής): χωρίς αυτή τη γραμμή, ο πελάτης
   // θα διάβαζε ότι έχει ήδη κατέβει ενώ κρατά ακόμη ό,τι πλήρωσε.
   const heldPlan = normalizePlan(d.hold_plan);
@@ -448,7 +448,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
       setCode(''); setCodeOpen(false);
       onChanged();
     } catch {
-      notifyError('Η εξαργύρωση δεν ολοκληρώθηκε. Ελεγξε τη σύνδεσή σου.');
+      notifyError('Η εξαργύρωση δεν ολοκληρώθηκε. Έλεγξε τη σύνδεσή σου.');
     }
     setBusy(false);
   };
@@ -456,10 +456,10 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
   /**
    * Η αλλαγή πακέτου. Ενα κουμπί, τρεις καταλήξεις και ο διακομιστής ξέρει
    * ποια ισχύει: ο δοκιμαστής γράφεται επιτόπου, ο συνδρομητής που ανεβαίνει
-   * χρεώνεται τη διαφορά, ο συνδρομητής που κατεβαίνει κρατά ώς την ανανέωση.
+   * χρεώνεται τη διαφορά, ο συνδρομητής που κατεβαίνει κρατά ως την ανανέωση.
    *
    * ΤΟ ΜΗΝΥΜΑ ΛΕΕΙ ΤΙ ΕΓΙΝΕ ΠΡΑΓΜΑΤΙΚΑ, όχι τι ζητήθηκε: ένα «το πακέτο έγινε
-   * Ιδιοκτήτης» μετά από υποβάθμιση θα ήταν ψέμα ώς την ανανέωση.
+   * Ιδιοκτήτης» μετά από υποβάθμιση θα ήταν ψέμα ως την ανανέωση.
    */
   const switchPlan = async (id: PlanId) => {
     setBusy(true);
@@ -476,14 +476,14 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
         setBusy(false); return;
       }
       if (body.kind === 'downgrade' && body.holdPlan && body.holdUntil) {
-        notifyOk(`Κρατάς το «${PLANS[normalizePlan(body.holdPlan)].name}» ώς τις ${fd(body.holdUntil)}`);
+        notifyOk(`Κρατάς το «${PLANS[normalizePlan(body.holdPlan)].name}» ως τις ${fd(body.holdUntil)}`);
       } else {
         notifyOk(`Το πακέτο έγινε «${PLANS[id].name}»`);
       }
       setPick(null);
       onChanged();
     } catch {
-      notifyError('Το πακέτο δεν άλλαξε. Ελεγξε τη σύνδεσή σου.');
+      notifyError('Το πακέτο δεν άλλαξε. Έλεγξε τη σύνδεσή σου.');
     }
     setBusy(false);
   };
@@ -518,7 +518,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
           η συνδρομή μένει ενεργή στον πάροχο· εκείνο που αλλάζει είναι ότι
           υπάρχει ημερομηνία λήξης αντί για ημερομηνία ανανέωσης. */}
       {tone === 'cancelled-running' ? (
-        <InfoBanner tone="warning">Η συνδρομή έχει ακυρωθεί και ισχύει ώς τις <strong>{fd(endsAt)}</strong>. Μετά την ημερομηνία αυτή ο λογαριασμός συνεχίζει στο δωρεάν πακέτο «{PLANS.free.name}».</InfoBanner>
+        <InfoBanner tone="warning">Η συνδρομή έχει ακυρωθεί και ισχύει ως τις <strong>{fd(endsAt)}</strong>. Μετά την ημερομηνία αυτή ο λογαριασμός συνεχίζει στο δωρεάν πακέτο «{PLANS.free.name}».</InfoBanner>
       ) : tone === 'cancelled-over' ? (
         <InfoBanner tone="warning">Η συνδρομή έληξε στις <strong>{fd(endsAt)}</strong>. Ο λογαριασμός συνεχίζει στο δωρεάν πακέτο «{PLANS.free.name}»· διάλεξε πακέτο για να ξαναπάρεις ό,τι είχες.</InfoBanner>
       ) : tone === 'trial' || tone === 'active' ? (
@@ -533,11 +533,11 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
       {/* ── Η ΥΠΟΒΑΘΜΙΣΗ ΠΟΥ ΠΕΡΙΜΕΝΕΙ, ΓΡΑΜΜΕΝΗ ────────────────────────────
           Ο έμπορος έχει ήδη αλλάξει την παραλλαγή, οπότε το `plan` δείχνει το
           ΝΕΟ πακέτο. Χωρίς αυτή τη γραμμή ο πελάτης θα διάβαζε ότι έχει ήδη
-          κατέβει, ενώ κρατά ώς την ανανέωση ό,τι πλήρωσε — και θα ρωτούσε
+          κατέβει, ενώ κρατά ως την ανανέωση ό,τι πλήρωσε — και θα ρωτούσε
           γιατί «δεν εφαρμόστηκε» κάτι που εφαρμόστηκε σωστά. */}
       {holding && (
         <InfoBanner tone="info">
-          Ζήτησες αλλαγή σε <strong>{plan.name}</strong>. Κρατάς το <strong>{PLANS[heldPlan].name}</strong> ώς τις <strong>{fd(heldUntil)}</strong>, γιατί το έχεις ήδη πληρώσει.
+          Ζήτησες αλλαγή σε <strong>{plan.name}</strong>. Κρατάς το <strong>{PLANS[heldPlan].name}</strong> ως τις <strong>{fd(heldUntil)}</strong>, γιατί το έχεις ήδη πληρώσει.
         </InfoBanner>
       )}
 
@@ -634,8 +634,8 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
           {phase === 'trial'
             ? `Δεν χρεώνεσαι σήμερα. Η πρώτη χρέωση γίνεται ${renewsAt ? `στις ${fd(renewsAt)}` : 'στη λήξη της δοκιμής'}, στη νέα τιμή.`
             : goingDown
-              ? `Δεν επιστρέφονται χρήματα. Κρατάς το «${PLANS[current].name}» ${renewsAt ? `ώς τις ${fd(renewsAt)}` : 'ώς την ανανέωση'} και από εκεί χρεώνεσαι στη νέα τιμή.`
-              : 'Χρεώνεται σήμερα μόνο η διαφορά, για τις ημέρες που απομένουν ώς την ανανέωση.'}
+              ? `Δεν επιστρέφονται χρήματα. Κρατάς το «${PLANS[current].name}» ${renewsAt ? `ως τις ${fd(renewsAt)}` : 'ως την ανανέωση'} και από εκεί χρεώνεσαι στη νέα τιμή.`
+              : 'Χρεώνεται σήμερα μόνο η διαφορά, για τις ημέρες που απομένουν ως την ανανέωση.'}
         </div>
       )}
 
@@ -655,7 +655,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
           τον ΦΠΑ — και δεν τον αποδίδει αυτός. */}
       {live === true && note && (
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55, marginTop: 14 }}>
-          {note} Σταματάς όποτε θες και η συνδρομή τρέχει ώς το τέλος της περιόδου που έχεις πληρώσει.
+          {note} Σταματάς όποτε θες και η συνδρομή τρέχει ως το τέλος της περιόδου που έχεις πληρώσει.
         </div>
       )}
 

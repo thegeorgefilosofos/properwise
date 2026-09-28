@@ -241,7 +241,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
     // οπότε αρνητικό υπόλοιπο σημαίνει ότι η γραφή δεν πέρασε, όχι ότι δεν
     // δοκιμάστηκε. Λέγεται αυτό ακριβώς, αντί για οδηγία που δεν βοηθά.
     if (d < 0) return `Ο σύνδεσμος έληξε στις ${on} κι η ανανέωση δεν αποθηκεύτηκε. Ξαναδοκίμασε σε λίγο.`;
-    return `Ισχύει άλλες ${d} ${d === 1 ? 'ημέρα' : 'ημέρες'}, ώς τις ${on}. Ανανεώνεται μόνος του όσο ανοίγεις αυτή την οθόνη.`;
+    return `Ισχύει άλλες ${d} ${d === 1 ? 'ημέρα' : 'ημέρες'}, ως τις ${on}. Ανανεώνεται μόνος του όσο ανοίγεις αυτή την οθόνη.`;
   }, [token, expiresAt]);
   const copy = () => { if (url) { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } };
   const setStatus = async (id: string, status: string) => {

@@ -109,7 +109,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   });
 
   const ics = buildCalendarFeed(items, { name: CALENDAR_NAME, now: new Date(), link: siteUrl('/dashboard?tab=calendar') });
-  log(`${items.length} προθεσμίες, ${from} ώς ${to}`);
+  log(`${items.length} προθεσμίες, ${from} ως ${to}`);
 
   return new Response(ics, {
     status: 200,

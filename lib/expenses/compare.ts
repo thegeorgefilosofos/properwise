@@ -459,7 +459,7 @@ export function history(spends: readonly Spend[], today: Date, months = 12): Mon
  */
 export function monthlyDigest(spends: readonly Spend[], today: Date): string | null {
   // ΚΑΙ Η ΕΙΔΟΠΟΙΗΣΗ ΜΙΛΑ ΓΙΑ ΟΛΟΚΛΗΡΩΜΕΝΟ ΜΗΝΑ. Εστελνε τον μήνα ΠΟΥ ΤΡΕΧΕΙ,
-  // δηλαδή έναν αριθμό που άλλαζε κάθε μέρα ώς το τέλος του μήνα.
+  // δηλαδή έναν αριθμό που άλλαζε κάθε μέρα ως το τέλος του μήνα.
   const key = lastCompleteMonth(today);
   const c = compareMonth(spends, key, { today });
   if (!c.meaningful) return null;

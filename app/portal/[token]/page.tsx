@@ -34,14 +34,14 @@ export default function TenantPortal() {
 
   const [data, setData] = useState<PortalData | null>(null);
   // ═══ Η ΑΠΟΤΥΧΙΑ ΔΙΚΤΥΟΥ ΔΕΝ ΕΙΝΑΙ ΑΚΥΡΟΣ ΣΥΝΔΕΣΜΟΣ ══════════════════════════
-  // ΤΙ ΕΛΕΓΕ Η ΟΘΟΝΗ. Καθε αποτυχία, από λάθος κουπόνι ώς πεσμένο δίκτυο,
+  // ΤΙ ΕΛΕΓΕ Η ΟΘΟΝΗ. Καθε αποτυχία, από λάθος κουπόνι ως πεσμένο δίκτυο,
   // κατέληγε στο ίδιο «Ο σύνδεσμος δεν είναι έγκυρος. Ζήτησε ενημερωμένο».
   // Ο ενοικιαστής σε ασανσέρ ή σε τούνελ διαβάζει ότι ο ιδιοκτήτης του έστειλε
   // χαλασμένο σύνδεσμο. Παίρνει τηλέφωνο, ο ιδιοκτήτης ακυρώνει και εκδίδει
   // νέο, ο παλιός σταματά να δουλεύει· το πρόβλημα ΗΤΑΝ το σήμα.
   //
   // Τρεις καταστάσεις, τρία διαφορετικά πράγματα: άκυρο κουπόνι, κλειδωμένο με
-  // PIN, «δεν φτάσαμε ώς τον διακομιστή». Μόνο η πρώτη ζητά νέο σύνδεσμο.
+  // PIN, «δεν φτάσαμε ως τον διακομιστή». Μόνο η πρώτη ζητά νέο σύνδεσμο.
   const [state, setState] = useState<'loading' | 'ok' | 'notfound' | 'locked' | 'offline'>('loading');
 
   const [pin, setPin] = useState('');
@@ -105,7 +105,7 @@ export default function TenantPortal() {
     setPinErr(''); setPinChecking(true);
     const { data: d, error } = await supabase.rpc('get_portal_data', { p_token: token, p_pin: pin });
     setPinChecking(false);
-    if (error) { setPinErr('Δεν φτάσαμε ώς τον διακομιστή. Ελεγξε τη σύνδεσή σου και δοκίμασε ξανά.'); return; }
+    if (error) { setPinErr('Δεν φτάσαμε ως τον διακομιστή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'); return; }
     if (!d || (d as { locked?: boolean }).locked) {
       const rl = (d as { rate_limited?: boolean } | null)?.rate_limited;
       setPinErr(rl ? 'Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά σε λίγα λεπτά.' : 'Λάθος κωδικός');
@@ -272,9 +272,9 @@ export default function TenantPortal() {
             ο ενοικιαστής να ψάξει το email από την αρχή. */}
         {state === 'offline' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Δεν φτάσαμε ώς τον διακομιστή</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Δεν φτάσαμε ως τον διακομιστή</div>
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: 16 }}>
-              Ο σύνδεσμός σου είναι εντάξει. Ελεγξε τη σύνδεσή σου και δοκίμασε ξανά.
+              Ο σύνδεσμός σου είναι εντάξει. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.
             </div>
             {/* Το κοινό κουμπί, όχι ζωγραφισμένο στο χέρι: ίδια όψη, ίδιες
                 καταστάσεις αιώρησης και εστίασης, ίδιο ύψος αφής με όλη την

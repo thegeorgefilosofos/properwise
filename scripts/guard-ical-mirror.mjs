@@ -34,7 +34,7 @@ const SHARED = ['unfold', 'toIsoDate', 'parseICal', 'isBlocked', 'syncStayRow']
  * Κόβει το σώμα μιας `function <name>(` μετρώντας άγκιστρα.
  *
  * Το ζύγισμα δεν είναι πολυτέλεια: το `parseICal` έχει εμφωλευμένα μπλοκ και
- * ένα «ώς το πρώτο `\n}`» θα σταματούσε στο πρώτο εσωτερικό κλείσιμο.
+ * ένα «ως το πρώτο `\n}`» θα σταματούσε στο πρώτο εσωτερικό κλείσιμο.
  */
 function body(src, name) {
   const at = src.indexOf(`function ${name}(`)

@@ -457,7 +457,7 @@ eq('καταστάσεις από γραμμές βάσης', statusesOf([{ stat
   // το «10» κάθεται πριν από το «2» και ο φάκελος διαβάζεται ανάποδα.
   const many = Array.from({ length: 12 }, (_, i) => ({ fileName: `${i}.pdf`, supplier: `Α${String(i).padStart(2, '0')}` }));
   const filed = filePapers(many, []);
-  eq('δύο ψηφία ώς τα 99', filed[0].label, '01');
+  eq('δύο ψηφία ως τα 99', filed[0].label, '01');
   eq('και το δωδέκατο', filed[11].label, '12');
   const huge = Array.from({ length: 101 }, (_, i) => ({ fileName: `${i}.pdf`, supplier: `Α${String(i).padStart(3, '0')}` }));
   eq('τρία ψηφία από τα 100', filePapers(huge, [])[0].label, '001');

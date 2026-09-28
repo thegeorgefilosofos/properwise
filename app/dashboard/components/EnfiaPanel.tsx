@@ -475,7 +475,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
                     {!inForce && (
                       <span style={{ ...TT.caption, display: 'block', marginTop: 2, color: 'var(--text-tertiary)' }}>
                         {lapsed
-                          ? `Δεν ισχύει για τον ΕΝΦΙΑ ${enfiaYear}: το μέτρο εφαρμόστηκε ώς και το ${r.untilYear}.`
+                          ? `Δεν ισχύει για τον ΕΝΦΙΑ ${enfiaYear}: το μέτρο εφαρμόστηκε ως και το ${r.untilYear}.`
                           : notYet
                             ? `Δεν ισχύει για τον ΕΝΦΙΑ ${enfiaYear}: το μέτρο ξεκινά από το ${r.sinceYear}.`
                             : `Δεν δίνεται σε αυτή την αξία: το όριο του μέτρου είναι ${fe(r.maxHomeValue!)}.`}

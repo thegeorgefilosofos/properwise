@@ -40,7 +40,7 @@ const hits = []
 for (const f of files) {
   const src = readFileSync(f, 'utf8')
   let i = 0
-  // Κάθε άνοιγμα `<style>{\`` ώς το κλείσιμο του literal.
+  // Κάθε άνοιγμα `<style>{\`` ως το κλείσιμο του literal.
   const OPEN = '<style>{`'
   while ((i = src.indexOf(OPEN, i)) !== -1) {
     const start = i + OPEN.length

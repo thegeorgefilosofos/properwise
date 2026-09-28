@@ -78,7 +78,7 @@ export const AADE_CALENDAR = 'https://www.aade.gr/eforologiko-imerologio';
 export const OBJECTIVE_VALUES = 'https://www.valuemaps.gov.gr';
 /** Η βραχυχρόνια μίσθωση έχει σελίδα στο gov.gr, με τις ισχύουσες υποχρεώσεις. */
 export const GOV_SHORT_TERM =
-  'https://www.gov.gr/arxes/anexartete-arkhe-demosion-esodon-aade/anexartete-arkhe-demosion-esodon-aade/brakhukhronia-misthose-akineton';
+  'https://www.gov.gr/el/services/1001521/brakhukhronia-misthose-akineton';
 
 export interface AadeDestination {
   /** Τι θέλει να κάνει ο χρήστης, στη γλώσσα του. */

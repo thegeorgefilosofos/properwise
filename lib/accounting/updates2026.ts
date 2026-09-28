@@ -36,7 +36,7 @@ export interface RegulatoryUpdate {
 const SRC = {
   aadeRentals: MYAADE,
   shortTerm: GOV_SHORT_TERM,
-  anakainizo: 'https://www.gov.gr/ipiresies/periousia-kai-phorologia/epidoteseis-politon/anakainizo-noikiazo',
+  anakainizo: 'https://www.gov.gr/el/services/1001507/anakainizo-noikiazo',
   spitiMou: 'https://stegasi.gov.gr/programs/spiti-mou-ii/',
   tte: 'https://www.bankofgreece.gr/kyria-themata/epopteia/makroprolithiki-politiki',
   goldenVisa: 'https://www.gov.gr/ipiresies/polites-kai-kathemerinoteta/polites-allon-kraton/adeia-diamones-ependute-golden-visa',

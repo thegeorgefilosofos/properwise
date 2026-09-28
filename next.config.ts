@@ -78,6 +78,19 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     '**/*': ['node_modules/@img/**', 'node_modules/sharp/**'],
   },
+  // ── ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΕΙ Ο ΚΟΣΜΟΣ ─────────────────────────────
+  // Τα αγγλικά ονόματα που δοκιμάζει όποιος ψάχνει τιμές, εργαλεία ή cookies.
+  // Χωρίς αυτά έβγαιναν «δεν βρέθηκε» (πριν τις 28.09.2026: φόρμα εισόδου).
+  // Προσωρινές (307): αν αύριο αποκτήσουν δική τους σελίδα, δεν έχει μείνει
+  // μόνιμη ανακατεύθυνση στις μηχανές αναζήτησης. Το cookies δείχνει την
+  // ενότητα του Απορρήτου με το `anchorOf` του τίτλου της (app/legal-shell.tsx).
+  async redirects() {
+    return [
+      { source: "/calculators", destination: "/ypologismos-forou-enoikion", permanent: false },
+      { source: "/pricing", destination: "/paketa", permanent: false },
+      { source: "/cookies", destination: "/privacy#cookies-kai-synafeis-technologies", permanent: false },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
