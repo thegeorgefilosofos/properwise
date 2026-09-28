@@ -298,10 +298,13 @@ async function main() {
   }
   {
     const db = fakeDb([profile({ user_id: 'u7', mor_subscription_id: 'sub_other' })]);
-    const r = await run(event({ metadata: {} }), db);
+    const alerts = fakeAlerts();
+    const r = await run(event({ metadata: {} }), db, alerts);
     ok('χωρίς user_id και χωρίς καταγεγραμμένη συνδρομή: 422 no_account',
        r.status === 422 && r.body.error === 'no_account');
     ok('και καμία εγγραφή σε ξένο λογαριασμό', db.upserts.length === 0);
+    ok('πληρωμή χωρίς λογαριασμό: ειδοποίηση στην υποστήριξη', alerts.sent.length === 1
+       && /χωρίς λογαριασμό/.test(alerts.sent[0].subject) && alerts.sent[0].text.includes('sub_1'));
   }
   {
     const db = fakeDb([], { lookup: true });

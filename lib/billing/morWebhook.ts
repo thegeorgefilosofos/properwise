@@ -39,7 +39,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { merchant, type MerchantPort, type BillingEnv } from '@/lib/billing/merchant';
 import { isEntitled, isMorStatus, type MorStatus } from '@/lib/billing/subscription';
 import { profileForPlan } from '@/lib/billing/entitlements';
-import { alertFor, duplicateAlert, sendMerchantAlert, type MerchantAlert } from '@/lib/billing/merchantAlert';
+import { alertFor, duplicateAlert, orphanAlert, sendMerchantAlert, type MerchantAlert } from '@/lib/billing/merchantAlert';
 
 /** Ο πίνακας που κρατά το πακέτο του κάθε λογαριασμού. */
 const TABLE = 'billing_profiles';
@@ -225,6 +225,9 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
   }
   if (!userId) {
     log(`το γεγονός ${read.event.name} για τη συνδρομή ${sub.id} δεν αντιστοιχεί σε λογαριασμό`);
+    // Κάποιος πλήρωσε χωρίς να περάσει από την εφαρμογή: το μαθαίνει άνθρωπος
+    // (merchantAlert.ts, orphanAlert). Μένει 422, ώστε το γεγονός να μη χαθεί.
+    await safeSend(sendAlert, orphanAlert(read.event.name, sub.id, variant.plan, variant.cycle));
     return NextResponse.json({ error: 'no_account' }, { status: 422 });
   }
 
