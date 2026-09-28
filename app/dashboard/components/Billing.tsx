@@ -59,10 +59,12 @@ const INIT: BillingData = {
   mor_subscription_id: '', tester_since: '', hold_plan: '', hold_until: '',
 };
 
-export default function Billing({ userId, wantPlan = null }: {
+export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
   userId: string;
   /** Το πακέτο που διάλεξε ο χρήστης στη σύγκριση από πάνω. */
   wantPlan?: PlanId | null;
+  /** Ο κύκλος που είχε η σύγκριση τη στιγμή της επιλογής. */
+  wantCycle?: BillingCycle | null;
 }) {
   const supabase = createClient();
   const [d, setD] = useState<BillingData>(INIT);
@@ -165,7 +167,7 @@ export default function Billing({ userId, wantPlan = null }: {
           ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΠΡΟΑΠΑΙΤΟΥΜΕΝΟ. Το ταμείο δεν ζει σε αυτή τη σελίδα: ο
           διακομιστής βγάζει σύνδεσμο μιας χρήσης προς τον έμπορο, που ζητά ο
           ίδιος ό,τι του λείπει. Η σειρά δεν ήταν ροή — ήταν συνήθεια. */}
-      <Subscription d={d} wantPlan={wantPlan} wishPlan={wishPlan} wishCycle={wishCycle} onChanged={reload} onLive={setBillingLive} />
+      <Subscription d={d} wantPlan={wantPlan} wantCycle={wantCycle} wishPlan={wishPlan} wishCycle={wishCycle} onChanged={reload} onLive={setBillingLive} />
 
       {/* ΧΩΡΙΣ ΤΑΜΕΙΟ, ΧΩΡΙΣ ΦΟΡΜΑ. Η οθόνη ζητούσε ΑΦΜ, ΔΟΥ, διεύθυνση και
           τηλέφωνο «για να μη σου ζητηθεί τίποτα στην ενεργοποίηση», ενώ το
@@ -268,9 +270,10 @@ const CHECKOUT_UNREACHABLE = 'Η πληρωμή με κάρτα δεν είνα�
 //
 // Το ταμείο εμφανίζεται μόνο όταν ο πάροχος είναι ρυθμισμένος — αυτό το ξέρει
 // ο διακομιστής, όχι η οθόνη, γιατί το κλειδί ζει σε μεταβλητή περιβάλλοντος.
-function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthly', onChanged, onLive }: {
+function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, wishCycle = 'monthly', onChanged, onLive }: {
   d: BillingData;
   wantPlan?: PlanId | null;
+  wantCycle?: BillingCycle | null;
   /** Ο,τι διάλεξε στην εγγραφή, όσο δεν έχει συνδρομή. */
   wishPlan?: PlanId | null;
   wishCycle?: BillingCycle;
@@ -318,6 +321,19 @@ function Subscription({ d, wantPlan = null, wishPlan = null, wishCycle = 'monthl
   // ένα χειριστήριο που δεν κάνει τίποτα. Και το πακέτο δεν άλλαζε καθόλου
   // από εδώ — έπρεπε να κατέβει στη σύγκριση, να διαλέξει και να ανέβει πάλι.
   const [pick, setPick] = useState<PlanId | null>(null);
+  // Η ΕΠΙΛΟΓΗ ΤΗΣ ΣΥΓΚΡΙΣΗΣ ΝΙΚΑ ΤΗΝ ΠΑΛΙΑ ΕΠΙΛΟΓΗ ΤΗΣ ΚΑΡΤΑΣ. Χωρίς αυτό, ένα
+  // πακέτο που είχε πατηθεί εδώ νωρίτερα έμενε επιλεγμένο και η «Αλλαγή» της
+  // σύγκρισης κατέληγε σε άλλο πακέτο από αυτό που διάλεξε ο χρήστης. Ο κύκλος
+  // ταξιδεύει μαζί: η σύγκριση ανοίγει στην ετήσια, η κάρτα στη μηνιαία.
+  // Ρυθμίζεται κατά την απόδοση, όπως προτείνει το React για τιμή που
+  // εξαρτάται από ιδιότητα — όχι σε effect που θα ζωγράφιζε πρώτα την παλιά.
+  const [seenWant, setSeenWant] = useState<string>('');
+  const wantKey = `${wantPlan ?? ''}:${wantCycle ?? ''}`;
+  if (wantKey !== seenWant) {
+    setSeenWant(wantKey);
+    if (wantPlan) setPick(wantPlan);
+    if (wantCycle) setCycle(wantCycle);
+  }
   const target: PlanId = pick ?? wantPlan ?? (current !== 'free' ? current : (wished ?? entry));
   const plan = PLANS[target];
   const price = cycle === 'annual' ? annualPerMonth(target) : plan.priceMonthly;
