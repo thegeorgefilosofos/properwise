@@ -62,14 +62,12 @@ h1 .a{background:linear-gradient(95deg,#a9c8ff 0%,#5f9bff 60%,#3d7ef0 100%);-web
 .noa{flex:none;width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#9ec0ff,#1560d4);display:grid;place-items:center;font-size:26px;font-weight:800;box-shadow:0 8px 24px rgba(21,96,212,.5)}
 .foot{display:flex;justify-content:space-between;align-items:center;padding-top:28px;border-top:1px solid rgba(255,255,255,.1)}
 .url{font-family:Mono,monospace;font-size:22px;letter-spacing:.06em;color:#9ec0ff}
-.swipe{font-size:22px;font-weight:600;color:#aebbd0;display:flex;align-items:center;gap:14px}
-.swipe span{width:46px;height:46px;border-radius:50%;border:1.5px solid rgba(255,255,255,.22);display:grid;place-items:center;color:#f1f5fc;font-size:22px}
 `;
 const frame = (n, eyebrow, h1, sub, stage, foot) => `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${css}</style></head><body><div class="bg"></div><div class="grid"></div><div class="edge"></div>
 <div class="pad"><div class="head"><img src="${LOGO}" alt="PROPERWISE"><div class="prog">${[1,2,3,4].map(i=>`<b class="${i===n?'on':''}"></b>`).join('')}</div></div>
 <div class="eyebrow">${eyebrow}</div><h1>${h1}</h1><div class="sub">${sub}</div>
 <div class="stage">${stage}</div>
-<div class="foot">${foot ?? `<div class="url">properwise.gr</div><div class="swipe">Σύρε <span>→</span></div>`}</div></div></body></html>`;
+<div class="foot">${foot ?? `<div class="url">properwise.gr</div>`}</div></div></body></html>`;
 
 const slides = [
 // 1 · Το εξώφυλλο: το ακίνητο, τακτοποιημένο
@@ -151,7 +149,7 @@ frame(3, 'Πως δουλευει',
 // 4 · Φάκελος, όχι άγχος
 frame(4, 'Για τον λογιστη σου',
  'Φάκελος,<br><span class="a">όχι άγχος.</span>',
- 'Φτάνεις στο ραντεβού με τα χαρτιά σου στη σειρά. Το τελικό νούμερο μένει δουλειά του λογιστή. <b>Το χάος, όχι.</b>', `
+ 'Φτάνεις στο ραντεβού με τα χαρτιά σου οργανωμένα. Το τελικό ποσό μένει δουλειά του λογιστή.<br><b>Δώσε τέλος στο χάος.</b>', `
  <div style="position:absolute;left:0;top:30px;width:560px;height:520px;transform:rotate(-2deg)">
   <div style="position:absolute;left:0;top:0;width:220px;height:60px;border-radius:22px 22px 0 0;background:linear-gradient(180deg,#2a62c9,#1d4fae)"></div>
   <div style="position:absolute;left:44px;right:44px;top:22px;height:120px;border-radius:14px;background:#e9eef6;transform:rotate(2.5deg);box-shadow:0 10px 30px rgba(0,0,0,.35)"></div>
