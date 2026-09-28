@@ -82,7 +82,7 @@ for (const file of files) {
       }
     }
     if (vathos > 0) {
-      provlimata.push({ file, gr, ti: `${vathos} κανόνας δεν κλείνει ώς το τέλος του <style>` })
+      provlimata.push({ file, gr, ti: `${vathos} κανόνας δεν κλείνει ως το τέλος του <style>` })
     }
     ANOIGMA.lastIndex = arxi + mikos
   }
@@ -93,7 +93,7 @@ if (provlimata.length) {
   for (const p of provlimata) console.error(`  ${p.file}:${p.gr}  ${p.ti}`)
   console.error(`
   ΔΕΝ ΘΑ ΔΕΙΣ ΣΦΑΛΜΑ ΠΟΥΘΕΝΑ. Ο TypeScript βλέπει συμβολοσειρά και ο περιηγητής
-  κάνει ανάκαμψη σιωπηλά: μαζεύει κανόνα ώς το πρώτο μπλοκ και τον πετά ΟΛΟ.
+  κάνει ανάκαμψη σιωπηλά: μαζεύει κανόνα ως το πρώτο μπλοκ και τον πετά ΟΛΟ.
   Χάνεται ο ΕΠΟΜΕΝΟΣ κανόνας, όχι αυτός που έχει το λάθος — γι' αυτό και ψάχνεις
   πάντα σε λάθος σημείο.
 

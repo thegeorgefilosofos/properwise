@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
   //   public.health_checks                              0 γραμμές, ποτέ καμία
   //   public.health_status()                            ok = false
   //   cron.job_run_details, jobid 53 «health-every-15»   59 succeeded, 0 failed
-  //   net._http_response, 24 γραμμές ώς 16:45 UTC        200 {"skipped":"λείπει…"}
+  //   net._http_response, 24 γραμμές ως 16:45 UTC        200 {"skipped":"λείπει…"}
   //
   // Το HEALTH_BASE_URL δεν μπήκε ποτέ στα secrets της συνάρτησης: υπάρχει μόνο
   // ως secret του GitHub, για το health.yml. Καθε μία από τις 59 κλήσεις

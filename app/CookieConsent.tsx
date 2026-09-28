@@ -7,13 +7,17 @@
 // αποδεικτικό και να ζητείται εκ νέου όταν η πολιτική αλλάξει ουσιωδώς.
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { T, Btn } from '@/components/Theme';
+import { usePathname } from 'next/navigation';
+import { Btn } from '@/components/Theme';
 // Η ΕΚΔΟΣΗ ΕΡΧΕΤΑΙ ΑΠΟ ΤΑ ΝΟΜΙΚΑ ΚΕΙΜΕΝΑ, ΟΧΙ ΑΠΟ ΕΔΩ. Ηταν «2026-08»
 // γραμμένο με το χέρι, ενώ η Πολιτική είχε ήδη αλλάξει στις ενότητες για τα
 // cookies: όποιος είχε δει την παλιά ενημέρωση δεν έβλεπε ποτέ τη νέα.
 import { POLICY_VERSION } from '@/lib/legal/identity';
 
 const KEY = 'pos-cookie-consent';
+
+/** Οι φόρμες όπου το πλαίσιο δεν εμφανίζεται· το κουτάκι των Όρων προηγείται. */
+const AUTH_PATHS = new Set(['/signup', '/login', '/reset-password']);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΓΙΑΤΙ `useSyncExternalStore` ΚΑΙ ΟΧΙ `useEffect` ΜΕ `setState`
@@ -48,7 +52,14 @@ function subscribe(l: () => void) {
 }
 
 export default function CookieConsent() {
-  const show = useSyncExternalStore(subscribe, needsNotice, () => false);
+  const pending = useSyncExternalStore(subscribe, needsNotice, () => false);
+  // ΟΧΙ ΣΤΙΣ ΦΟΡΜΕΣ ΕΙΣΟΔΟΥ (28.09.2026). Στα 390 εικονοστοιχεία το πλαίσιο
+  // καθόταν πάνω στο κουτάκι των Όρων της εγγραφής και στο κάτω μέρος της
+  // σύνδεσης: ο χώρος του `--cookie-h` επέτρεπε να κυλήσεις από κάτω του, αλλά
+  // η πρώτη εικόνα έκρυβε ακριβώς το βήμα που ζητάμε. Η ενημέρωση δεν ζητά
+  // απόφαση, οπότε μπορεί να περιμένει την επόμενη σελίδα· η εγγραφή όχι.
+  const pathname = usePathname();
+  const show = pending && !AUTH_PATHS.has(pathname ?? '');
   const box = useRef<HTMLDivElement>(null);
 
   // ═══ ΤΟ ΠΛΑΙΣΙΟ ΣΚΕΠΑΖΕ ΤΟ ΚΟΥΜΠΙ ΤΗΣ ΣΥΝΔΕΣΗΣ, ΜΟΝΙΜΑ ══════════════════
@@ -70,7 +81,7 @@ export default function CookieConsent() {
   // ΟΧΙ ΤΟ ΥΨΟΣ ΤΟΥ, Η ΖΩΝΗ ΠΟΥ ΠΙΑΝΕΙ. Το πλαίσιο αιωρείται πάνω από τον πάτο
   // κατά `--float-bottom`: με σκέτο ύψος, το κουτί της φόρμας τελείωνε ΜΕΣΑ στη
   // λωρίδα του κατά ακριβώς αυτή την απόσταση και ο σύνδεσμος «Πολιτική
-  // απορρήτου» έμενε σκεπασμένος. Η απόσταση από τον πάτο του κάδρου ώς την
+  // απορρήτου» έμενε σκεπασμένος. Η απόσταση από τον πάτο του κάδρου ως την
   // κορυφή του τα περιέχει και τα δύο, σε έναν αριθμό.
   //
   // ΚΑΙ ΜΟΝΟ `ResizeObserver`, ΧΩΡΙΣ ΑΚΡΟΑΤΗ `resize`. Το πλαίσιο είναι
@@ -125,9 +136,7 @@ export default function CookieConsent() {
     // Το `--float-z` (950) μπαίνει για τον ίδιο λόγο: το 2000 το έβαζε πάνω
     // ΚΑΙ από τα μηνύματα επιβεβαίωσης, δηλαδή μια ενημέρωση χωρίς επείγον
     // σκέπαζε ό,τι ο χρήστης μόλις ζήτησε.
-    <div ref={box} role="region" aria-label="Ενημέρωση για cookies" className="po-noprint po-cookie" style={{ position: 'fixed', left: 12, right: 12, bottom: 'var(--float-bottom)', zIndex: 'var(--float-z)', maxWidth: 720, margin: '0 auto',
-      background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.card, boxShadow: 'var(--elev-3)',
-      padding: '10px 12px 10px 16px', display: 'flex', alignItems: 'center', gap: 14, fontFamily: T.font.sans }}>
+    <div ref={box} role="region" aria-label="Ενημέρωση για cookies" className="po-noprint po-cookie">
       {/* ΓΙΑΤΙ ΤΟΣΟ ΣΥΝΤΟΜΟ: το κείμενο ήταν τέσσερις σειρές σε desktop και έξι σε
           κινητό, οπότε το πλαίσιο σκέπαζε το προϊόν ακριβώς στην πρώτη οθόνη —
           δηλαδή το πρώτο πράγμα που έβλεπε ένας υποψήφιος πελάτης ήταν νομικό

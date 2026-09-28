@@ -261,7 +261,7 @@ export const localDay = (d: string | Date): Date =>
 // κράτησαν το σπίτι τους και πήραν όνομα που λέει τι κάνουν.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Ακέραιες ημέρες από την `fromIso` ώς την `toIso`. Αρνητικό αν η δεύτερη είναι πριν. */
+/** Ακέραιες ημέρες από την `fromIso` ως την `toIso`. Αρνητικό αν η δεύτερη είναι πριν. */
 export function daysBetweenIso(fromIso: string, toIso: string): number {
   const a = Date.UTC(+fromIso.slice(0, 4), +fromIso.slice(5, 7) - 1, +fromIso.slice(8, 10));
   const b = Date.UTC(+toIso.slice(0, 4), +toIso.slice(5, 7) - 1, +toIso.slice(8, 10));

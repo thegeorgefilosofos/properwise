@@ -60,7 +60,7 @@ export default function BillsInsurance({ propertyId, userId = '', only, legalFor
   // Ιδια κλάση και ίδιοι κανόνες με τους δείκτες του KPIGrid: στα στενά πλάτη
   // μία στήλη, που είναι ζυγισμένη.
   const g3: React.CSSProperties  = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 14, marginBottom: 14, '--kpi-lg': 3, '--kpi-md': 3, '--kpi-sm': 1 } as React.CSSProperties;
-  // ΤΑ 120 ΕΚΟΒΑΝ ΤΟ «ΟΝΟΜΑΤΕΠΩΝΥΜΟ». Το πεδίο άφηνε 99 ώς 127 εικονοστοιχεία
+  // ΤΑ 120 ΕΚΟΒΑΝ ΤΟ «ΟΝΟΜΑΤΕΠΩΝΥΜΟ». Το πεδίο άφηνε 99 ως 127 εικονοστοιχεία
   // για ένα παράδειγμα που ζητά 132, σε τρία από τα οκτώ πλάτη. Το ελάχιστο
   // ενός πεδίου δεν είναι αισθητική επιλογή, είναι το πλατύτερο κείμενο που
   // πρέπει να χωρέσει μέσα του.

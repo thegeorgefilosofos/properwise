@@ -29,7 +29,7 @@ const OUT = 'docs/KATALOGOS-MINYMATON.md'
 
 /** Τι κάνει το κάθε πρόγραμμα, στα ελληνικά. Χωρίς αυτό ο κατάλογος είναι λίστα κωδικών. */
 const PROGRAMS = {
-  ONBOARDING: 'Πρώτες ημέρες: από την εγγραφή ώς το πρώτο ακίνητο και την πρώτη αναφορά',
+  ONBOARDING: 'Πρώτες ημέρες: από την εγγραφή ως το πρώτο ακίνητο και την πρώτη αναφορά',
   ENGAGEMENT: 'Τακτική επαφή: μηνιαία κατάσταση, επιτόκια, φορολογικές προθεσμίες, ενοίκια',
   UPSELL: 'Αναβάθμιση πακέτου, όταν η χρήση το δικαιολογεί',
   SEASONAL: 'Εποχικά: σεζόν βραχυχρόνιας, χειμώνας, κλείσιμο χρονιάς',
@@ -63,7 +63,7 @@ const walk = d => {
 for (const root of ['app', 'lib', 'supabase', 'scripts', '.github']) { try { walk(root) } catch {} }
 const haystack = files.map(f => ({ f, s: readFileSync(f, 'utf8') }))
 
-/** Το σώμα μιας ομάδας, από το `export const NAME` ώς το ταιριαστό άγκιστρο. */
+/** Το σώμα μιας ομάδας, από το `export const NAME` ως το ταιριαστό άγκιστρο. */
 function groupBody(name) {
   const m = new RegExp(`export const ${name}: Record<string, CopyFn> = \\{`).exec(src)
   if (!m) return null
@@ -86,7 +86,7 @@ function messages(body) {
     else if (d === 0) {
       const m = /^\n\s*([a-z0-9_]+):/.exec(body.slice(i, i + 60))
       if (m) {
-        // Το σώμα της καταχώρησης: ώς το επόμενο κλειδί πρώτου επιπέδου.
+        // Το σώμα της καταχώρησης: ως το επόμενο κλειδί πρώτου επιπέδου.
         let j = i + m[0].length, dd = 0, end = body.length
         for (; j < body.length; j++) {
           const cc = body[j]

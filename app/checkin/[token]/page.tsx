@@ -62,7 +62,7 @@ export default function GuestCheckin() {
     setSending(false);
     // Το σφάλμα δικτύου λέει «ξαναδοκίμασε»· η άρνηση της βάσης λέει «κοίτα τα
     // στοιχεία». Ενα μήνυμα για τα δύο στέλνει τον μισό κόσμο να ψάχνει λάθος.
-    if (error) { setErr('Δεν φτάσαμε ώς τον διακομιστή. Ελεγξε τη σύνδεσή σου και δοκίμασε ξανά.'); return; }
+    if (error) { setErr('Δεν φτάσαμε ως τον διακομιστή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'); return; }
     if (!ok) { setErr('Δεν ήταν δυνατή η υποβολή. Έλεγξε τα στοιχεία και δοκίμασε ξανά.'); return; }
     setSent(true);
   };
@@ -101,9 +101,9 @@ export default function GuestCheckin() {
 
         {state === 'offline' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>Δεν φτάσαμε ώς τον διακομιστή</div>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>Δεν φτάσαμε ως τον διακομιστή</div>
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: 16 }}>
-              Ο σύνδεσμός σου είναι εντάξει. Ελεγξε τη σύνδεσή σου και δοκίμασε ξανά.
+              Ο σύνδεσμός σου είναι εντάξει. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.
             </div>
             {/* Το κοινό κουμπί, όχι ζωγραφισμένο στο χέρι: ίδια όψη, ίδιες
                 καταστάσεις αιώρησης και εστίασης, ίδιο ύψος αφής με όλη την

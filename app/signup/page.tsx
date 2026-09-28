@@ -442,7 +442,7 @@ export default function SignupPage() {
   // είναι πραγματικό, όχι αρνητικό margin, ώστε ο στόχος να μην πατά σε τίποτα.
   const CONSENT_TAP_ROOM = 14
   // ΜΙΑ ΓΡΑΜΜΗ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (27.09.2026). «Όρους χρήσης» γίνεται «Όρους»:
-  // το κείμενο ήταν 452 εικονοστοιχεία σε ετικέτα 374 ώς 394 και έσπαγε σε δύο.
+  // το κείμενο ήταν 452 εικονοστοιχεία σε ετικέτα 374 ως 394 και έσπαγε σε δύο.
   // Ο σύνδεσμος οδηγεί στους Όρους χρήσης και το aria-label του κουτιού τους
   // ονομάζει ολόκληρους.
   const consentText: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer', textWrap: 'balance' }

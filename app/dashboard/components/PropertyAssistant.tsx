@@ -636,7 +636,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
           .pa-panel{right:8px;left:8px;bottom:calc(var(--fab-bottom) + var(--fab-h) + 10px);width:auto;max-width:none;height:min(560px,calc(100dvh - var(--fab-bottom) - var(--fab-h) - 34px))}
         }
         /* Η πρόσκληση μαζεύεται στο σήμα: μόλις κυλήσει η σελίδα και εξαρχής
-           κάτω από τα 1.280, όπου το περιεχόμενο φτάνει ώς την άκρη. Ο λόγος και
+           κάτω από τα 1.280, όπου το περιεχόμενο φτάνει ως την άκρη. Ο λόγος και
            η μέτρηση είναι γραμμένα πάνω από την κατάσταση scrolled πιο πάνω. */
         .pa-fab-wrap[data-scrolled] .pa-fab{padding:0 8px;gap:0}
         .pa-fab-wrap[data-scrolled] .pa-fab-cta{display:none}

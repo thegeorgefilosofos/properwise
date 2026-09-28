@@ -40,7 +40,7 @@ for (const f of files) {
     const re = new RegExp(`create\\s+or\\s+replace\\s+function\\s+public\\.${name}\\s*\\(`, 'i');
     const m = re.exec(src);
     if (!m) continue;
-    // Το σώμα φτάνει ώς το κλείσιμο του dollar-quote.
+    // Το σώμα φτάνει ως το κλείσιμο του dollar-quote.
     const from = m.index;
     const end = src.indexOf('\n$$;', from);
     latest.set(name, { file: f, body: src.slice(from, end === -1 ? src.length : end) });

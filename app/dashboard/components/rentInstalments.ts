@@ -79,7 +79,7 @@ export function rowsForPeriods(
   }));
 }
 
-/** Ολες οι γραμμές που πρέπει να υπάρχουν για μια μίσθωση, από την έναρξη ώς σήμερα. */
+/** Ολες οι γραμμές που πρέπει να υπάρχουν για μια μίσθωση, από την έναρξη ως σήμερα. */
 export function instalmentRows(
   t: Tenant, propertyId: string, userId: string, dueDay = dueDayOf(t),
 ): rentStore.RentPatch[] {

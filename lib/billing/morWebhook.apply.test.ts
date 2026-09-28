@@ -203,7 +203,7 @@ async function main() {
     const r = await run(event({ status, product: { id: 'prod_d' }, canceled_at: '2026-09-27T10:59:00.000Z' }, 'subscription.canceled'), db);
     const w = db.upserts[0]?.row ?? {};
     ok(`${status}: απαντά 200`, r.status === 200 && r.body.ok === true);
-    ok(`${status}: το πακέτο μένει ώς το τέλος της περιόδου`, w.plan === 'owner' && w.billing_cycle === 'annual');
+    ok(`${status}: το πακέτο μένει ως το τέλος της περιόδου`, w.plan === 'owner' && w.billing_cycle === 'annual');
     ok(`${status}: η κατάσταση είναι «ακυρωμένη»`, w.subscription_status === 'cancelled');
     ok(`${status}: η λήξη είναι το τέλος της περιόδου, όχι το πάτημα`, w.mor_ends_at === FUTURE);
   }

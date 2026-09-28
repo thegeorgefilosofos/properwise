@@ -995,7 +995,7 @@ const RENO_FUNDING: Funding[] = [
     title: '«Ανακαινίζω–Νοικιάζω» · για κενά που βγαίνουν σε μακροχρόνια μίσθωση',
     what: 'Επιδοτεί ανακαίνιση κατοικίας που είναι κενή και δεσμεύεται να μισθωθεί μακροχρόνια για ορισμένα έτη.',
     confirm: 'Το ποσοστό, το ανώτατο ποσό, τα όρια εμβαδού, αξίας και εισοδήματος και η υποχρεωτική διάρκεια της μίσθωσης ορίζονται ανά κύκλο. Έλεγξε αν υπάρχει ανοιχτή πρόσκληση πριν σχεδιάσεις γύρω της.',
-    href: 'https://www.gov.gr/ipiresies/periousia-kai-phorologia/epidoteseis-politon/anakainizo-noikiazo',
+    href: 'https://www.gov.gr/el/services/1001507/anakainizo-noikiazo',
   },
   {
     id: 'tax-credit',

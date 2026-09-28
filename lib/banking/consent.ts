@@ -27,7 +27,7 @@ export const RENEWAL_NOTICE_DAYS = 14;
 export interface ConsentState {
   /** Δίνει κινήσεις αυτή τη στιγμή; */
   usable: boolean;
-  /** Ημέρες ώς τη λήξη. Αρνητικό = έληξε. `null` = δεν ξέρουμε ακόμη. */
+  /** Ημέρες ως τη λήξη. Αρνητικό = έληξε. `null` = δεν ξέρουμε ακόμη. */
   daysLeft: number | null;
   /** Πρέπει να δει ο χρήστης προτροπή ανανέωσης; */
   needsRenewal: boolean;

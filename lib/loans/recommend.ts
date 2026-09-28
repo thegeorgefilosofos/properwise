@@ -279,7 +279,7 @@ export function spitiMouEligibility(n: UserLoanNeeds, today: string): SpitiMouRe
     const limit = spitiMouIncomeLimit(n.maritalStatus, n.children)
     if (n.income > limit) { eligible = false; reasons.push(`Εισόδημα ${fe(n.income)} > ενδεικτικό όριο ${fe(limit)}`) }
     else if (n.income < SPITI_MOU.incomeMin) { eligible = false; reasons.push(`Εισόδημα ${fe(n.income)} < ελάχιστο ${fe(SPITI_MOU.incomeMin)}`) }
-    else reasons.push(`Εισόδημα εντός ορίου (${fe(SPITI_MOU.incomeMin)} ώς ${fe(limit)})`)
+    else reasons.push(`Εισόδημα εντός ορίου (${fe(SPITI_MOU.incomeMin)} ως ${fe(limit)})`)
   } else reasons.push('Εισόδημα: προς επιβεβαίωση')
 
   // Το άτοκο σκέλος είναι 50% για ΟΛΟΥΣ. Οι τρίτεκνοι/πολύτεκνοι λαμβάνουν επιπλέον

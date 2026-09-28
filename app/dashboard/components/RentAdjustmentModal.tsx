@@ -480,7 +480,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
                     Το μητρώο εγγράφων δεν απάντησε.
                   </p>
                   <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
-                    Δεν μπορούμε να δούμε αν έχει ήδη εκδοθεί ειδοποίηση για αυτόν τον μήνα. Ελεγξε το «Τρέχον μίσθωμα» πιο κάτω πριν προχωρήσεις.
+                    Δεν μπορούμε να δούμε αν έχει ήδη εκδοθεί ειδοποίηση για αυτόν τον μήνα. Έλεγξε το «Τρέχον μίσθωμα» πιο κάτω πριν προχωρήσεις.
                   </p>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, cursor: 'pointer', minHeight: 44 }}>
                     <input type="checkbox" checked={priorAck} onChange={e => setPriorAck(e.target.checked)}

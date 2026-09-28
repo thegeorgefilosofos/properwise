@@ -78,6 +78,21 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     '**/*': ['node_modules/@img/**', 'node_modules/sharp/**'],
   },
+  // ── ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΕΙ Ο ΚΟΣΜΟΣ ─────────────────────────────
+  // Τα αγγλικά ονόματα που δοκιμάζει όποιος ψάχνει τιμές, εργαλεία ή cookies.
+  // Χωρίς αυτά έβγαιναν «δεν βρέθηκε» (πριν τις 28.09.2026: φόρμα εισόδου).
+  // Μόνιμες (301), απόφαση ιδιοκτήτη: οι μηχανές αναζήτησης μεταφέρουν τη
+  // διεύθυνση στη σελίδα που υπάρχει. Δεν υπάρχει σελίδα-κατάλογος εργαλείων,
+  // οπότε το /calculators πάει στον πιο ζητούμενο υπολογιστή, που συνδέεται με
+  // τους άλλους τρεις. Το cookies δείχνει την ενότητα του Απορρήτου με το
+  // `anchorOf` του τίτλου της (app/legal-shell.tsx).
+  async redirects() {
+    return [
+      { source: "/calculators", destination: "/ypologismos-forou-enoikion", statusCode: 301 },
+      { source: "/pricing", destination: "/paketa", statusCode: 301 },
+      { source: "/cookies", destination: "/privacy#cookies-kai-synafeis-technologies", statusCode: 301 },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

@@ -23,7 +23,7 @@
 import { readFileSync } from 'node:fs'
 import { findSources } from './lib/find-tests.mjs'
 
-/** Το σώμα από τη θέση `at` ώς το τέλος της συνάρτησης που την περιέχει. */
+/** Το σώμα από τη θέση `at` ως το τέλος της συνάρτησης που την περιέχει. */
 function untilFunctionEnd(src, at) {
   let depth = 0
   for (let i = at; i < src.length; i++) {

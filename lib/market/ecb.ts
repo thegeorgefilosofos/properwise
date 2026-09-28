@@ -100,11 +100,11 @@ export interface SeriesSpec {
 
 // Το εύρος είναι φαρδύ επίτηδες: δεν κρίνει αν το επιτόκιο είναι «λογικό», μόνο
 // αν είναι ΕΠΙΤΟΚΙΟ. Το Euribor έχει πάει −0,55% το 2021 και 4% το 2023· ό,τι
-// είναι έξω από το −5 ώς το 25 δεν είναι επιτόκιο της ευρωζώνης, είναι σφάλμα.
+// είναι έξω από το −5 ως το 25 δεν είναι επιτόκιο της ευρωζώνης, είναι σφάλμα.
 const RATE_MIN = -5, RATE_MAX = 25;
 
 const ECB = 'Ευρωπαϊκή Κεντρική Τράπεζα';
-const MONTH_MEAN = 'μέσος όρος μήνα';
+export const MONTH_MEAN = 'μέσος όρος μήνα';
 const ON_CHANGE = 'ισχύει από την τελευταία μεταβολή';
 
 /** Euribor: μηνιαίος μέσος όρος, η μόνη συχνότητα που δημοσιεύει η ΕΚΤ. */
@@ -310,7 +310,7 @@ export function valuesOf(p: Provenance): Partial<Record<MarketKey, number>> {
   return out;
 }
 
-/** Πόσες ημέρες πέρασαν από την παρατήρηση ώς σήμερα. Και οι δύο σε ISO. */
+/** Πόσες ημέρες πέρασαν από την παρατήρηση ως σήμερα. Και οι δύο σε ISO. */
 export function ageDays(asOf: string, today: string): number {
   const a = Date.parse(`${asOf}T00:00:00Z`), b = Date.parse(`${today}T00:00:00Z`);
   if (!Number.isFinite(a) || !Number.isFinite(b)) return Number.POSITIVE_INFINITY;

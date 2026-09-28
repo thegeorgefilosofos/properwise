@@ -171,7 +171,7 @@ const AXIS_CELL: CSSProperties = { color: 'var(--text-primary)', fontWeight: 600
  * αλλάζει τίποτα άλλο: το `hyphenate` βάζει ΜΟΝΟ αόρατα U+00AD και ο
  * περιηγητής σπάει μόνο εκεί που δεν χωράει.
  *
- * Οι ετικέτες (`k`) ΔΕΝ συλλαβίζονται: είναι κεφαλαία δύο ώς τριών λέξεων σε
+ * Οι ετικέτες (`k`) ΔΕΝ συλλαβίζονται: είναι κεφαλαία δύο ως τριών λέξεων σε
  * δική τους γραμμή, δεν στοιχίζονται πλήρως και δεν έχουν κενά να κλείσουν.
  */
 function Tip({ lead, rows }: { lead?: string; rows?: readonly (readonly [string, string | undefined])[] }) {
@@ -336,7 +336,7 @@ function MoneyField({ label, hint, value, onChange }: {
           value={value ?? ''}
           onChange={e => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
           style={{ ...settingsField, height: T.h.md, fontSize: 'var(--fs-base)',
-            // Ο χώρος του «€» δεξιά: απόσταση 11 συν το πλάτος του συμβόλου συν κενό ώς τον αριθμό.
+            // Ο χώρος του «€» δεξιά: απόσταση 11 συν το πλάτος του συμβόλου συν κενό ως τον αριθμό.
             paddingRight: 30 }} />
         <span aria-hidden style={{
           position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)',
@@ -1123,7 +1123,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
       </Card>
 
       {/* Η ΓΡΑΜΜΗ ΕΔΩ ΦΤΑΝΕΙ 101 ΧΑΡΑΚΤΗΡΕΣ, ΣΕ ΥΨΟΣ ΓΡΑΜΜΗΣ ΛΕΖΑΝΤΑΣ. Μετρημένο
-          σε πέντε πλάτη, από τα 768 ώς τα 1.440: δύο προτάσεις πέρα πέρα, σε
+          σε πέντε πλάτη, από τα 768 ως τα 1.440: δύο προτάσεις πέρα πέρα, σε
           ύψος φτιαγμένο για λεζάντα τριών λέξεων. Το κείμενο δεν στενεύει —
           παίρνει τον αέρα του από την `.po-prose`, όπως κάθε άλλη παράγραφος
           πλήρους πλάτους. */}

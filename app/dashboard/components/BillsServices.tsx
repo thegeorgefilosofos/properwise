@@ -303,7 +303,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
               μόλις χρειαστεί: ένα «συνήθως 3% έως 6%» δίπλα σε ένα 40% δεν
               βοηθά κανέναν. */}
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 10, lineHeight: 1.45 }}>
-            {share.implausible ? 'Ελεγξε τα δύο ποσά, φαίνονται αντεστραμμένα'
+            {share.implausible ? 'Έλεγξε τα δύο ποσά, φαίνονται αντεστραμμένα'
               : share.pct != null && !share.typical ? `Ασυνήθιστο ποσοστό, τυπικά ${fp(TYPICAL_SHARE.min)} έως ${fp(TYPICAL_SHARE.max)} του λογαριασμού`
               : `Συνήθως ${fp(TYPICAL_SHARE.min)} έως ${fp(TYPICAL_SHARE.max)} του λογαριασμού`}
           </div>

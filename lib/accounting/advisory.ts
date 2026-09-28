@@ -70,7 +70,7 @@ const SRC = {
   aadeRentals: MYAADE,
   aadeIncome: MYAADE,
   spitiMou: 'https://stegasi.gov.gr/programs/spiti-mou-ii/',
-  anakainizo: 'https://www.gov.gr/ipiresies/periousia-kai-phorologia/epidoteseis-politon/anakainizo-noikiazo',
+  anakainizo: 'https://www.gov.gr/el/services/1001507/anakainizo-noikiazo',
   exoikonomo: 'https://www.gov.gr/ipiresies/periousia-kai-phorologia/diakheirise-akinetes-periousias/exoikonomo-2025',
   business: 'https://www.gov.gr/ipiresies/epikheirematike-drasterioteta/enarxe-kai-luse-epikheireses/enarxe-atomikes-epikheireses',
 }

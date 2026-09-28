@@ -71,7 +71,9 @@ export const READING = 720;
  * τρόπο να μπει στον λογαριασμό του από την κεφαλίδα. Τώρα και οι τρεις
  * σύνδεσμοι ζουν εδώ και τους διαβάζουν και οι δύο κεφαλίδες.
  *
- * ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΟ ΖΕΥΓΑΡΙ «ΤΙΜΕΣ · ΣΥΝΔΕΣΗ» ΓΙΝΕΤΑΙ «ΕΙΣΟΔΟΣ». Μετρημένο σε
+ * ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΟ ΖΕΥΓΑΡΙ «ΤΙΜΕΣ · ΣΥΝΔΕΣΗ» ΓΙΝΕΤΑΙ ΣΚΕΤΟ «ΣΥΝΔΕΣΗ». Ηταν
+ * «Είσοδος» στο τηλέφωνο και «Σύνδεση» στον υπολογιστή, δύο λέξεις για την ίδια
+ * κίνηση· από 28.09.2026 μία, ίδια με τη σελίδα που ανοίγει. Μετρημένο σε
  * Chromium με την Inter: σήμα, τρεις σύνδεσμοι και κουμπί τελειώνουν στα 424
  * εικονοστοιχεία με το κανονικό γέμισμα και στα 382 με γέμισμα τεσσάρων, ενώ
  * η οθόνη των 390 αφήνει 370. Δεν χωρούν με κανένα γέμισμα. Ο επιστρέφων
@@ -86,10 +88,10 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
   const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
-      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-xs" style={link}>Τιμές</Link>
+      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-xs" data-xs-elsewhere="/paketa" style={link}>Τιμές</Link>
       {!signedIn ? (<>
         <Link href="/login" className="lp-link lp-nav-link" style={link}>
-          <span className="lp-hide-xs">Σύνδεση</span><span className="lp-only-xs">Είσοδος</span>
+          Σύνδεση
         </Link>
         <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 16px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
           <span className="lp-hide-xs">Ξεκίνα δωρεάν</span><span className="lp-only-xs">Ξεκίνα</span>

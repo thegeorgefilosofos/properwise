@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
   //
   // Ο ΙΔΙΟΣ ΚΑΝΟΝΑΣ ΜΕ ΤΗΝ ΠΡΟΣΒΑΣΗ, ΚΑΙ ΟΧΙ ΔΕΥΤΕΡΟΣ. Το «ισχύει ακόμη;» το
   // απαντά η `isEntitled`, εκεί όπου το απαντά και για κάθε άλλη διαδρομή: η
-  // ακυρωμένη συνδρομή που τρέχει ώς την ημερομηνία της μετράει ζωντανή.
+  // ακυρωμένη συνδρομή που τρέχει ως την ημερομηνία της μετράει ζωντανή.
   const morStatus = (profile?.subscription_status || '').trim();
   if (isMorStatus(morStatus) && isEntitled({ status: morStatus, endsAt: profile?.mor_ends_at ?? null }, new Date().toISOString())) {
     // Η ΕΡΩΤΗΣΗ «ΕΙΝΑΙ ΑΝΟΙΧΤΟ ΤΟ ΤΑΜΕΙΟ;» ΘΕΛΕΙ ΑΠΑΝΤΗΣΗ ΚΑΙ ΓΙΑ ΤΟΝ ΣΥΝΔΡΟΜΗΤΗ.

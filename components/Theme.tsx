@@ -1049,7 +1049,7 @@ export function KPIGrid({ items, columns, nested }: { items: KPIItem[]; columns?
 
 /** Ενα κομμάτι της μπάρας: πόσο πιάνει, με τι χρώμα και τι λέει. */
 export interface BarPart {
-  /** Ποσοστό του πλάτους, 0 ώς 100. Συγκρατείται. */
+  /** Ποσοστό του πλάτους, 0 ως 100. Συγκρατείται. */
   pct: number;
   /** Χρώμα γεμίσματος. Προεπιλογή ο τόνος της εφαρμογής. */
   tone?: string;

@@ -98,7 +98,7 @@ export function stayTotal(s: StayLike): number {
 export interface ClientStats {
   revenue: number; nights: number; stayCount: number;
   avgRating: number | null;
-  /** Η πιο πρόσφατη επίσκεψη που έχει ξεκινήσει, ώς σήμερα. */
+  /** Η πιο πρόσφατη επίσκεψη που έχει ξεκινήσει, ως σήμερα. */
   lastVisit: string | null;
   /** Η πιο κοντινή άφιξη που δεν έχει έρθει ακόμη. */
   nextArrival: string | null;
