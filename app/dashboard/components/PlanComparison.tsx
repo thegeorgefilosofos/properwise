@@ -48,20 +48,24 @@ import { COMPARED } from '@/components/PlanMatrix';
 // σε «Ιδιοκτήτης», οπότε αυτή η στήλη είναι ήδη «το τρέχον πλάνο σου» — ένα τσιπ
 // «30 ημέρες δωρεάν» δεν θα εμφανιζόταν ποτέ. Η κατάσταση της δοκιμής λέγεται
 // μία φορά, στο πλαίσιο των Ρυθμίσεων, με τις ημέρες που απομένουν.
-export default function PlanComparison({ profileType, currentPlan, onUpgrade }: {
+export default function PlanComparison({ profileType, currentPlan, paidPlan = 'free', onUpgrade }: {
   profileType: 'individual' | 'professional';
+  /** Το πακέτο που ανοίγει σήμερα: το πληρωμένο ή αυτό της δοκιμής. */
   currentPlan: PlanId;
-  /** Ποιο πακέτο διάλεξε. Η χρέωση από κάτω αγοράζει ΑΥΤΟ, όχι μια προεπιλογή. */
-  onUpgrade?: (plan: PlanId) => void;
+  /** Το πακέτο που ΠΛΗΡΩΝΕΤΑΙ. `free` όταν δεν τρέχει συνδρομή. */
+  paidPlan?: PlanId;
+  /** Ποιο πακέτο διάλεξε και σε ποιον κύκλο. Η χρέωση από κάτω αγοράζει ΑΥΤΟ. */
+  onUpgrade?: (plan: PlanId, cycle: 'monthly' | 'annual') => void;
 }) {
-  // ΞΕΚΙΝΑ ΣΤΗΝ ΕΤΗΣΙΑ, ΚΑΙ ΕΙΝΑΙ ΤΙΜΙΟ ΕΠΕΙΔΗ ΦΑΙΝΟΝΤΑΙ ΚΑΙ ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ.
-  // Η κάρτα δείχνει το μηνιαίο ισοδύναμο ΚΑΙ το ετήσιο σύνολο δίπλα του, οπότε
-  // κανείς δεν μπορεί να νομίσει ότι πληρώνει 3,58€ τον μήνα χωρίς δέσμευση
-  // έτους. Χωρίς το ετήσιο σύνολο ορατό, η προεπιλογή θα ήταν παραπλάνηση.
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('annual');
 
   const rankOf = (id: PlanId) => PLAN_ORDER.indexOf(id);
-  const curRank = rankOf(currentPlan);
+  // ΤΟ «ΔΙΚΟ ΣΟΥ» ΕΙΝΑΙ ΑΥΤΟ ΠΟΥ ΠΛΗΡΩΝΕΙΣ, ΟΧΙ ΑΥΤΟ ΤΗΣ ΔΟΚΙΜΗΣ (28.09.2026).
+  // Η δοκιμή ανεβάζει το ενεργό πακέτο σε «Ιδιοκτήτης+» και η σύγκριση το
+  // έδειχνε ως «Το πακέτο σου» χωρίς κουμπί. Ο χρήστης σε δοκιμή δεν μπορούσε
+  // να αγοράσει ούτε αυτό ούτε το φθηνότερο: μόνο τα ακριβότερα είχαν κουμπί.
+  const paid = paidPlan !== 'free';
+  const curRank = paid ? rankOf(paidPlan) : -1;
   const recommended: PlanId = profileType === 'professional' ? 'agency' : 'owner';
 
   return (
@@ -107,12 +111,13 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
         <div {...fixedCols(COMPARED.length, 12, 'stretch')}>
           {COMPARED.map(id => {
             const p = PLANS[id];
-            const isCurrent = id === currentPlan;
+            const isCurrent = paid && id === paidPlan;
+            const inTrial = !paid && id === currentPlan;
             // ΚΑΜΙΑ ΣΤΗΛΗ ΚΛΕΙΔΩΜΕΝΗ. Οι στήλες του άλλου τρόπου χρήσης έβγαιναν
             // θαμπές με λουκέτο και ο τρόπος χρήσης δεν άλλαζε χωρίς το πακέτο:
             // κλειστός κύκλος. Κάθε πακέτο αγοράζεται από κάθε λογαριασμό και ο
             // τρόπος χρήσης ακολουθεί την αγορά (28.09.2026).
-            const popular = !isCurrent && id === recommended;
+            const popular = !isCurrent && !inTrial && id === recommended;
             const colRank = rankOf(id);
 
             // Κάθε στήλη έχει τιμή, οπότε δεν υπάρχει «χωρίς χρέωση» να
@@ -128,8 +133,8 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
 
             // Ένα και μόνο «ήρωας»: η προτεινόμενη στήλη (βάθος με surface-hero).
             const heroBg = popular ? 'var(--surface-hero)' : 'var(--bg-surface)';
-            const borderColor = isCurrent ? 'var(--accent)' : popular ? 'var(--accent-border)' : 'var(--border-subtle)';
-            const boxShadow = popular ? 'var(--highlight-inset), var(--elev-2)' : isCurrent ? '0 0 0 3px var(--accent-dim)' : 'none';
+            const borderColor = isCurrent || inTrial ? 'var(--accent)' : popular ? 'var(--accent-border)' : 'var(--border-subtle)';
+            const boxShadow = popular ? 'var(--highlight-inset), var(--elev-2)' : isCurrent || inTrial ? '0 0 0 3px var(--accent-dim)' : 'none';
 
             // ΤΟ ΚΟΥΜΠΙ ΕΛΕΓΕ Ο,ΤΙ ΚΑΙ Η ΚΟΝΚΑΡΔΑ ΤΗΣ ΙΔΙΑΣ ΚΑΡΤΑΣ. Πάνω δεξιά
             // «Το πλάνο σου» με ζωντανή τελεία και εκατόν πενήντα εικονοστοιχεία
@@ -159,9 +164,15 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
             // χρήστη σε κάρτα που μάντευε μόνη της πακέτο. Τώρα στέλνει ΠΟΙΟ.
             // Το λεκτικό μένει κοντό: στα 360 εικονοστοιχεία η σειρά σπάει σε
             // δύο στήλες και το κουμπί έχει περίπου 124 να χωρέσει, όχι 160.
-            const cta = isCurrent || colRank <= curRank
+            // ΚΑΘΕ ΠΑΚΕΤΟ ΜΕ ΚΟΥΜΠΙ, ΠΡΟΣ ΤΑ ΠΑΝΩ ΚΑΙ ΠΡΟΣ ΤΑ ΚΑΤΩ (28.09.2026). Χωρίς
+            // πληρωμένο πακέτο όλα λέγονται «Επιλογή» και ανοίγουν κατευθείαν το
+            // ταμείο. Με πληρωμένο, «Αναβάθμιση» ή «Αλλαγή» στέλνουν στην κάρτα
+            // χρέωσης, που λέει τι θα γίνει με τα χρήματα πριν πατηθεί το κουμπί.
+            const cta = isCurrent
               ? null
-              : <Btn variant="primary" onClick={() => onUpgrade?.(id)}>Αναβάθμιση</Btn>;
+              : <Btn variant={!paid || colRank > curRank ? 'primary' : 'secondary'} onClick={() => onUpgrade?.(id, cycle)}>
+                  {!paid ? 'Επιλογή' : colRank > curRank ? 'Αναβάθμιση' : 'Αλλαγή'}
+                </Btn>;
 
             return (
               <div key={id} className="acc-choice"
@@ -178,10 +189,10 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
                     Οι δύο καταστάσεις αποκλείουν η μία την άλλη (`popular`
                     ορίζεται ως «όχι το τρέχον»), οπότε μοιράζονται
                     την ίδια κορδέλα και η σειρά του τίτλου μένει στο όνομα. */}
-                {(popular || isCurrent) && (
-                  <span style={{ position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: 6, background: isCurrent ? 'var(--bg-surface)' : 'var(--accent)', color: isCurrent ? 'var(--accent)' : 'var(--accent-text)', border: isCurrent ? '1px solid var(--accent-border)' : 'none', borderRadius: T.radius.pill, padding: '2px 10px', fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.sans, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
-                    {isCurrent && <span className="acc-live-dot accent" style={{ width: 6, height: 6, background: 'var(--accent)' }} />}
-                    {isCurrent ? 'Το πακέτο σου' : 'Πιο δημοφιλές'}
+                {(popular || isCurrent || inTrial) && (
+                  <span style={{ position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: 6, background: isCurrent || inTrial ? 'var(--bg-surface)' : 'var(--accent)', color: isCurrent || inTrial ? 'var(--accent)' : 'var(--accent-text)', border: isCurrent || inTrial ? '1px solid var(--accent-border)' : 'none', borderRadius: T.radius.pill, padding: '2px 10px', fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.sans, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+                    {(isCurrent || inTrial) && <span className="acc-live-dot accent" style={{ width: 6, height: 6, background: 'var(--accent)' }} />}
+                    {isCurrent ? 'Το πακέτο σου' : inTrial ? 'Σε δοκιμή' : 'Πιο δημοφιλές'}
                   </span>
                 )}
 
@@ -199,7 +210,7 @@ export default function PlanComparison({ profileType, currentPlan, onUpgrade }: 
 
                 {/* Τιμή */}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 12 }}>
-                  <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: isCurrent ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{priceMain}</span>
+                  <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: isCurrent || inTrial ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{priceMain}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>τον μήνα</span>
                 </div>
 

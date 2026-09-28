@@ -518,6 +518,8 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   const billingRef = useRef<HTMLDivElement | null>(null);
   /** Το πακέτο που διάλεξε ο χρήστης στη σύγκριση, για να το αγοράσει από κάτω. */
   const [wantPlan, setWantPlan] = useState<PlanId | null>(null);
+  const [wantCycle, setWantCycle] = useState<'monthly' | 'annual' | null>(null);
+  const [choosing, setChoosing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [sheetNote, setSheetNote] = useState('');
   const [exportErr, setExportErr] = useState('');
@@ -627,14 +629,33 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   //
   // Το επόμενο βήμα είναι η χρέωση από κάτω: στοιχεία τιμολόγησης και το ταμείο
   // του εμπόρου. Εκεί οδηγεί και το πακέτο ταξιδεύει μαζί.
-  const openBilling = (want?: PlanId) => {
+  const openBilling = (want?: PlanId, cycle?: 'monthly' | 'annual') => {
     setShowManage(true);
+    if (cycle) setWantCycle(cycle);
     // ΠΟΙΟ ΠΑΚΕΤΟ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΗΝ ΚΥΛΙΣΗ. Χωρίς αυτό, η κάρτα χρέωσης
     // διάλεγε μόνη της — και η «λογική» προεπιλογή ήταν το ακριβότερο πακέτο
     // που επιτρέπει το προφίλ. Ο χρήστης πατούσε «Ιδιοκτήτης» και έβλεπε τιμή
     // «Ιδιοκτήτης+».
     if (want) setWantPlan(want);
     setTimeout(() => billingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+  // ── ΜΙΑ ΕΠΙΛΟΓΗ, ΚΑΤΕΥΘΕΙΑΝ ΣΤΗΝ ΠΛΗΡΩΜΗ (28.09.2026) ─────────────────────
+  // Χωρίς πληρωμένο πακέτο, το κουμπί της σύγκρισης ανοίγει αμέσως το ταμείο
+  // με το πακέτο και τον κύκλο που διάλεξε ο χρήστης. Πριν, τον έστελνε στην
+  // κάρτα χρέωσης να ξαναδιαλέξει και να πατήσει δεύτερο κουμπί.
+  // Με συνδρομή που τρέχει, η αλλαγή περνά από την κάρτα χρέωσης: εκεί
+  // γράφεται τι θα γίνει με τα χρήματα πριν πατηθεί το κουμπί.
+  // Αν το ταμείο δεν ανοίξει για οποιονδήποτε λόγο, η κάρτα χρέωσης λέει γιατί.
+  const choosePlan = async (want: PlanId, cycle: 'monthly' | 'annual') => {
+    if (normalizePlan(plan) !== 'free' || choosing) { openBilling(want, cycle); return; }
+    setChoosing(true);
+    try {
+      const res = await fetch(`/api/billing/checkout?plan=${want}&cycle=${cycle}`);
+      const body = await res.json().catch(() => ({})) as { url?: string | null };
+      if (body.url) { window.location.href = body.url; return; }
+    } catch { /* η κάρτα χρέωσης από κάτω λέει τι συμβαίνει */ }
+    setChoosing(false);
+    openBilling(want, cycle);
   };
 
   const ent = { plan, profileType, partner, compPlan, compUntil, trialUsedAt, holdPlan, holdUntil, bonusProperties: bonusProps, bonusUntil, createdAt: accountCreatedAt };
@@ -854,26 +875,21 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 12 }}>
             {PROFILE_OPTS.map(o => {
               const on = chosenType === o.v;
-              const requiresUpgrade = o.v === 'professional' && !proEligible;
+              // ΧΩΡΙΣ ΛΟΥΚΕΤΟ. Η κάρτα διαλέγεται πάντα· αν λείπει το πακέτο, λέμε
+              // ήσυχα ποιο το ανοίγει και ανοίγει η σύγκριση — δεν απαγορεύουμε.
+              const needsPlan = o.v === 'professional' && !proEligible;
               return (
                 <button key={o.v} onClick={() => setProfile(o.v)} className="acc-choice"
-                  title={requiresUpgrade ? 'Απαιτεί το πακέτο Επαγγελματίας' : undefined}
                   style={{ textAlign: 'left', cursor: 'pointer', borderRadius: T.radius.card, padding: '16px 16px 15px', border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent-soft)' : 'var(--bg-surface)', boxShadow: on ? '0 0 0 3px var(--accent-dim)' : 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <span style={{ fontSize: 15, fontWeight: 700, color: on ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.sans }}>{o.title}</span>
-                    {requiresUpgrade ? (
-                      <span aria-hidden style={{ flexShrink: 0, color: 'var(--text-tertiary)', display: 'inline-flex' }}>
-                        <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                      </span>
-                    ) : (
-                      <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, border: `2px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {on && <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
-                      </span>
-                    )}
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, border: `2px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {on && <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                    </span>
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, marginTop: 4, lineHeight: 1.5 }}>{o.sub}</div>
-                  {requiresUpgrade && (
-                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8 }}>Απαιτεί αναβάθμιση στο πακέτο Επαγγελματίας.</div>
+                  {needsPlan && (
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8 }}>Ανοίγει με το πακέτο Επαγγελματίας.</div>
                   )}
                 </button>
               );
@@ -899,8 +915,8 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           έπειτα τα στοιχεία τιμολόγησης και η χρέωση (νηφάλια). Μία αποκάλυψη. */}
       {showManage && (
         <div ref={manageRef} style={{ scrollMarginTop: 16 }}>
-          <PlanComparison profileType={chosenType} currentPlan={effPlan} onUpgrade={openBilling} />
-          <div ref={billingRef} style={{ scrollMarginTop: 16 }}><Billing userId={userId} wantPlan={wantPlan} /></div>
+          <PlanComparison profileType={chosenType} currentPlan={effPlan} paidPlan={normalizePlan(plan)} onUpgrade={choosePlan} />
+          <div ref={billingRef} style={{ scrollMarginTop: 16 }}><Billing userId={userId} wantPlan={wantPlan} wantCycle={wantCycle} /></div>
         </div>
       )}
 
