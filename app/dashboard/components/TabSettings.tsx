@@ -473,7 +473,13 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
 
 // ═══════════════════════════════════════════════════════════════════════════
 
-export default function TabSettings({ propertyId, userId, profileType = 'individual', onProfileChange }: { propertyId: string; userId: string; profileType?: ProfileType; onProfileChange?: (v: ProfileType) => void }) {
+// ΔΥΟ ΤΥΠΟΙ, ΚΑΙ ΕΙΝΑΙ ΔΙΑΦΟΡΕΤΙΚΑ ΠΡΑΓΜΑΤΑ. Το `profileType` είναι αυτό που
+// ΑΝΟΙΓΕΙ (ο επαγγελματικός τρόπος ανοίγει μόνο με το πακέτο του)· το
+// `declaredType` είναι αυτό που ΕΠΕΛΕΞΕ ο χρήστης. Ο επιλογέας δούλευε με το
+// πρώτο: δηλωμένος «Επαγγελματίας» χωρίς το πακέτο έβλεπε επιλεγμένο τον
+// «Ιδιώτη» και το πάτημά του δεν αποθήκευε τίποτα, γιατί «ήταν ήδη εκεί».
+export default function TabSettings({ propertyId, userId, profileType = 'individual', declaredType, onProfileChange }: { propertyId: string; userId: string; profileType?: ProfileType; declaredType?: ProfileType; onProfileChange?: (v: ProfileType) => void }) {
+  const chosenType: ProfileType = declaredType ?? profileType;
   const supabase = createClient();
 
   // Ταυτότητα λογαριασμού & χρέωσης
@@ -587,18 +593,15 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
 
   // Έξυπνη αλλαγή τύπου προφίλ (persist όπως πριν· η ειδοποίηση εμφανίζεται από το derived state)
   const setProfile = async (v: ProfileType) => {
-    if (v === profileType) return;
+    if (v === chosenType) return;
     // Ο τρόπος χρήσης είναι ΔΗΛΩΣΗ ΠΡΟΘΕΣΗΣ, όχι δικαίωμα — και γι' αυτό περνά
-    // πάντα. Παλιότερα μπλοκαριζόταν αν δεν είχες ήδη το πλάνο Επαγγελματίας,
-    // που έφτιαχνε κλειστό κύκλο: για να πάρεις το πλάνο έπρεπε να είσαι σε
-    // επαγγελματικό προφίλ (ALLOWED_PLANS) και για να μπεις σε επαγγελματικό
-    // προφίλ έπρεπε να έχεις το πλάνο. Ο Ιδιώτης στα 3 ακίνητα δεν είχε ΚΑΜΙΑ
-    // διαδρομή προς τα εμπρός.
+    // πάντα. Κανένα πακέτο δεν εξαρτάται πια από αυτόν: αγοράζονται όλα από
+    // κάθε λογαριασμό και ο webhook ευθυγραμμίζει τον τρόπο με την αγορά.
     //
     // Οι επαγγελματικές δυνατότητες εξακολουθούν να ανοίγουν ΜΟΝΟ με το πλάνο:
     // το effProfileType στο page.tsx παραμένει «individual» όσο λείπει. Αλλάζει
-    // μόνο ποιο πλάνο μπορείς να αγοράσεις.
-    const prev = profileType;
+    // μόνο ποιο πακέτο σου προτείνεται πρώτο.
+    const prev = chosenType;
     onProfileChange?.(v);
     const { error } = await billing.save(supabase, userId, { profile_type: v });
     if (error) { onProfileChange?.(prev); return; } // επαναφορά αν απέτυχε
@@ -850,7 +853,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 12 }}>
             {PROFILE_OPTS.map(o => {
-              const on = profileType === o.v;
+              const on = chosenType === o.v;
               const requiresUpgrade = o.v === 'professional' && !proEligible;
               return (
                 <button key={o.v} onClick={() => setProfile(o.v)} className="acc-choice"
@@ -896,7 +899,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           έπειτα τα στοιχεία τιμολόγησης και η χρέωση (νηφάλια). Μία αποκάλυψη. */}
       {showManage && (
         <div ref={manageRef} style={{ scrollMarginTop: 16 }}>
-          <PlanComparison profileType={profileType} currentPlan={effPlan} onUpgrade={openBilling} />
+          <PlanComparison profileType={chosenType} currentPlan={effPlan} onUpgrade={openBilling} />
           <div ref={billingRef} style={{ scrollMarginTop: 16 }}><Billing userId={userId} wantPlan={wantPlan} /></div>
         </div>
       )}

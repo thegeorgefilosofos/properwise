@@ -62,20 +62,23 @@ eq('δοκιμή χωρίς ώρα γεγονότος: τίποτα να γρα�
 }
 
 // ── Ο ΤΥΠΟΣ ΠΡΟΦΙΛ ────────────────────────────────────────────────────────
-// Η δήλωση του χρήστη δεν ξαναγράφεται από webhook· όταν λείπει, τη
-// συμπληρώνει αυτό που ΑΓΟΡΑΣΕ.
-eq('δηλωμένος τύπος δεν αγγίζεται', profileTypeToWrite('individual', 'agency'), null);
-eq('ούτε ο επαγγελματίας', profileTypeToWrite('professional', 'solo'), null);
-ok('τύπος που λείπει συμπληρώνεται', profileTypeToWrite(null, 'agency') !== null);
-ok('κενή συμβολοσειρά μετράει ως «λείπει»', profileTypeToWrite('', 'agency') !== null);
-ok('μόνο κενά μετράει ως «λείπει»', profileTypeToWrite('   ', 'agency') !== null);
+// Οταν λείπει, τον συμπληρώνει αυτό που ΑΓΟΡΑΣΕ. Οταν η αγορά τον αντιλέγει,
+// κερδίζει η αγορά: ο δηλωμένος «Επαγγελματίας» χωρίς το πακέτο του δεν
+// αγόραζε τίποτα (28.09.2026).
+ok('τύπος που λείπει συμπληρώνεται', profileTypeToWrite(null, 'agency', true) !== null);
+ok('κενή συμβολοσειρά μετράει ως «λείπει»', profileTypeToWrite('', 'agency', true) !== null);
+ok('μόνο κενά μετράει ως «λείπει»', profileTypeToWrite('   ', 'agency', true) !== null);
+eq('ίδιος τύπος: τίποτα να γραφτεί', profileTypeToWrite('professional', 'office', true), null);
+eq('ιδιώτης αγόρασε «Επαγγελματίας»', profileTypeToWrite('individual', 'agency', true), 'professional');
+eq('επαγγελματίας αγόρασε «Ιδιοκτήτης»', profileTypeToWrite('professional', 'solo', true), 'individual');
+eq('λήξη παλιάς συνδρομής δεν αλλάζει τη δήλωση', profileTypeToWrite('individual', 'agency', false), null);
 
 // ΚΑΙ ΤΟ ΠΑΚΕΤΟ ΚΡΙΝΕΙ ΤΟΝ ΤΥΠΟ. Οποιος πλήρωσε «Γραφείο» δεν πρέπει να βρει
 // κλειδωμένες τις καρτέλες που μόλις αγόρασε.
-eq('«agency» → επαγγελματίας', profileTypeToWrite(null, 'agency'), 'professional');
-eq('«office» → επαγγελματίας', profileTypeToWrite(null, 'office'), 'professional');
-eq('«owner» → ιδιώτης', profileTypeToWrite(null, 'owner'), 'individual');
-eq('«solo» → ιδιώτης', profileTypeToWrite(null, 'solo'), 'individual');
+eq('«agency» → επαγγελματίας', profileTypeToWrite(null, 'agency', true), 'professional');
+eq('«office» → επαγγελματίας', profileTypeToWrite(null, 'office', true), 'professional');
+eq('«owner» → ιδιώτης', profileTypeToWrite(null, 'owner', true), 'individual');
+eq('«solo» → ιδιώτης', profileTypeToWrite(null, 'solo', true), 'individual');
 
 console.log(fail === 0 ? `✓ morWebhook: ${pass} έλεγχοι πέρασαν` : `✗ morWebhook: ${fail} απέτυχαν από ${pass + fail}`);
 if (fail > 0) process.exit(1);

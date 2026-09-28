@@ -4,7 +4,7 @@ import {
   ALLOWED_PLANS, FEATURE_MIN_PLAN, TAB_MIN_PLAN, PROFESSIONAL_ONLY_TABS,
   planAtLeast, effectivePlan, activeComp, hasFeature, isTabAllowed,
   requiredPlanForTab, requiredPlanForFeature, propertyLimit, canAddProperty,
-  isPlanAllowedForProfile, paidPlanForProfile, isTabPurchasable,
+  paidPlanForProfile, isTabPurchasable,
   trialState, isOpenEnded, planFromParam, cycleFromParam, profileForPlan, activeHold,
   checkoutLanding, type EntitlementInput,
 } from './entitlements';
@@ -18,12 +18,12 @@ const daysFromNow = (d: number) => new Date(NOW + d * 86400000).toISOString();
 // ── Επιτρεπόμενα πλάνα ανά προφίλ ──
 ok(ALLOWED_PLANS.individual.join(',') === 'free,solo,owner', 'ιδιώτης → free,solo,owner');
 ok(ALLOWED_PLANS.professional.join(',') === 'agency,office', 'επαγγελματίας → agency,office');
-ok(isPlanAllowedForProfile('individual', 'free') === true, 'ιδιώτης μπορεί δωρεάν');
-ok(isPlanAllowedForProfile('individual', 'owner') === true, 'ιδιώτης μπορεί ιδιοκτήτης');
-ok(isPlanAllowedForProfile('individual', 'agency') === false, 'ιδιώτης ΔΕΝ μπορεί επαγγελματίας');
-ok(isPlanAllowedForProfile('professional', 'agency') === true, 'επαγγελματίας μπορεί agency');
-ok(isPlanAllowedForProfile('professional', 'free') === false, 'επαγγελματίας ΔΕΝ μένει δωρεάν');
-ok(isPlanAllowedForProfile('professional', 'owner') === false, 'επαγγελματίας ΔΕΝ παίρνει ιδιοκτήτη');
+ok(ALLOWED_PLANS['individual'].includes('free') === true, 'ιδιώτης μπορεί δωρεάν');
+ok(ALLOWED_PLANS['individual'].includes('owner') === true, 'ιδιώτης μπορεί ιδιοκτήτης');
+ok(ALLOWED_PLANS['individual'].includes('agency') === false, 'ιδιώτης ΔΕΝ μπορεί επαγγελματίας');
+ok(ALLOWED_PLANS['professional'].includes('agency') === true, 'επαγγελματίας μπορεί agency');
+ok(ALLOWED_PLANS['professional'].includes('free') === false, 'επαγγελματίας ΔΕΝ μένει δωρεάν');
+ok(ALLOWED_PLANS['professional'].includes('owner') === false, 'επαγγελματίας ΔΕΝ παίρνει ιδιοκτήτη');
 ok(paidPlanForProfile('individual') === 'owner', 'πληρωμένο πλάνο ιδιώτη = owner');
 ok(paidPlanForProfile('professional') === 'office', 'πληρωμένο πλάνο επαγγελματία = office');
 
@@ -272,7 +272,7 @@ ok(planFromParam('') === null, 'κενή παράμετρος, καμία επι
 for (const id of ['solo', 'owner', 'agency', 'office'] as const) {
   const chosen = planFromParam(id);
   ok(chosen !== null
-    && (isPlanAllowedForProfile('individual', chosen) || isPlanAllowedForProfile('professional', chosen)),
+    && (ALLOWED_PLANS['individual'].includes(chosen) || ALLOWED_PLANS['professional'].includes(chosen)),
     `το ${id} αγοράζεται από κάποιο προφίλ`);
 }
 
@@ -333,7 +333,7 @@ ok(profileForPlan('free') === 'individual', 'χωρίς συνδρομή, ιδι
 // Ο ΚΑΝΟΝΑΣ ΚΛΕΙΝΕΙ: ό,τι επιστρέφει πρέπει να ΜΠΟΡΕΙ να αγοράσει το πακέτο.
 // Αλλιώς ο webhook θα έγραφε τύπο που κλειδώνει αυτό που μόλις πληρώθηκε.
 for (const id of ['free', 'solo', 'owner', 'agency', 'office'] as const) {
-  ok(isPlanAllowedForProfile(profileForPlan(id), id), `ο τύπος του ${id} το αγοράζει`);
+  ok(ALLOWED_PLANS[profileForPlan(id)].includes(id), `ο τύπος του ${id} το αγοράζει`);
 }
 
 // ── ΑΚΥΡΩΜΕΝΗ ΣΥΝΔΡΟΜΗ: ΛΗΓΕΙ ΣΤΗΝ ΩΡΑ ΤΗΣ, ΟΧΙ ΟΤΑΝ ΦΤΑΣΕΙ ΓΕΓΟΝΟΣ ─────────

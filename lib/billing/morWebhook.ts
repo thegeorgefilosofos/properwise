@@ -90,16 +90,29 @@ export function trialStamp(seenTrialAt: string | null | undefined, status: strin
 }
 
 /**
- * Ο ΤΥΠΟΣ ΠΡΟΦΙΛ ΓΡΑΦΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΛΕΙΠΕΙ.
+ * Ο ΤΥΠΟΣ ΠΡΟΦΙΛ ΑΚΟΛΟΥΘΕΙ ΤΗΝ ΑΓΟΡΑ.
  *
- * Δήλωση που έκανε ο ίδιος ο χρήστης δεν ξαναγράφεται από webhook. Οταν λείπει,
- * τη συμπληρώνει η ΑΓΟΡΑ: όποιος πέρασε από τον τιμοκατάλογο κατευθείαν στο
- * ταμείο έφτασε εδώ χωρίς τύπο· χωρίς τύπο λογίζεται «ιδιώτης» — δηλαδή ο
- * πελάτης που μόλις πλήρωσε «Επαγγελματία» θα έβλεπε κλειδωμένες ακριβώς τις
- * καρτέλες που αγόρασε.
+ * Πρώτη γραφή: γραφόταν μόνο όταν έλειπε, για να μη σβήσει ο webhook τη
+ * δήλωση του χρήστη. Ομως ο δηλωμένος «Επαγγελματίας» χωρίς το πακέτο του
+ * έμενε κολλημένος: η οθόνη τον έδειχνε «Ιδιώτη», το ταμείο τον έκρινε
+ * «Επαγγελματία» και δεν αγόραζε τίποτα (έλεγχος 28.09.2026).
+ *
+ * Η αγορά είναι νεότερη δήλωση από το κουμπί των Ρυθμίσεων. Οποιος πλήρωσε
+ * «Επαγγελματίας» βρίσκει ανοιχτές τις καρτέλες που αγόρασε και όποιος
+ * πλήρωσε «Ιδιοκτήτης+» βλέπει τον τρόπο που αντιστοιχεί στο πακέτο του.
+ *
+ * Μόνο γεγονός που ΔΙΝΕΙ πρόσβαση γράφει. Η λήξη μιας παλιάς συνδρομής δεν
+ * αγόρασε τίποτα και δεν έχει λόγο να αλλάξει τον τρόπο χρήσης.
  */
-export function profileTypeToWrite(seenType: string | null | undefined, plan: Parameters<typeof profileForPlan>[0]): string | null {
-  return (seenType || '').trim() ? null : profileForPlan(plan);
+export function profileTypeToWrite(
+  seenType: string | null | undefined,
+  plan: Parameters<typeof profileForPlan>[0],
+  entitled: boolean,
+): string | null {
+  const bought = profileForPlan(plan);
+  const seen = (seenType || '').trim();
+  if (!seen) return bought;
+  return entitled && seen !== bought ? bought : null;
 }
 
 /**
@@ -305,8 +318,8 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
   // κοίταξε την ακριβή κάρτα και η οθόνη χρέωσης θα του πρότεινε στο εξής
   // μόνο πακέτα του Επαγγελματία. Εδώ ξέρουμε τι ΑΓΟΡΑΣΕ.
   //
-  // ΚΑΙ ΜΟΝΟ ΟΤΑΝ ΛΕΙΠΕΙ: δήλωση που έκανε ο ίδιος ο χρήστης δεν ξαναγράφεται.
-  const profileType = profileTypeToWrite(seen?.profile_type, variant.plan);
+  // ΚΑΙ ΟΤΑΝ Η ΑΓΟΡΑ ΑΝΤΙΛΕΓΕΙ ΣΤΗ ΔΗΛΩΣΗ, ΚΕΡΔΙΖΕΙ Η ΑΓΟΡΑ: είναι νεότερη.
+  const profileType = profileTypeToWrite(seen?.profile_type, variant.plan, entitled);
 
   const { error } = await db.from(TABLE).upsert({
     user_id: userId,

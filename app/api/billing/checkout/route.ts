@@ -27,7 +27,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { PLANS, type PlanId, type BillingCycle } from '@/lib/billing/plans';
-import { isPlanAllowedForProfile, type ProfileType } from '@/lib/billing/entitlements';
 import { merchant } from '@/lib/billing/merchant';
 import { isEntitled, isMorStatus } from '@/lib/billing/subscription';
 import { billingWords } from '@/lib/legal/billingWords';
@@ -99,21 +98,16 @@ export async function GET(request: NextRequest) {
     }, { status: 409 });
   }
 
-  // ── Ο ΤΥΠΟΣ ΠΡΟΦΙΛ ΚΡΙΝΕΙ ΜΟΝΟ ΟΤΑΝ ΕΧΕΙ ΔΗΛΩΘΕΙ ───────────────────────
-  // Ο έλεγχος υπάρχει ώστε να μην αγοράσει ιδιώτης πακέτο επαγγελματία
-  // γράφοντάς το στη διεύθυνση: θα πλήρωνε για καρτέλες που το προφίλ του δεν
-  // ανοίγει ποτέ. Ομως ο τύπος δηλώνεται στο καλωσόρισμα, δηλαδή ΜΕΤΑ την
-  // εγγραφή και η παλιά γραμμή «ό,τι δεν είναι επαγγελματίας είναι ιδιώτης»
-  // έκανε τον έλεγχο να απαντά 403 σε ΚΑΘΕ νέο λογαριασμό που πάτησε
-  // «Επαγγελματία» στον τιμοκατάλογο: η ακριβότερη πώληση κοβόταν στην πόρτα.
+  // ── ΤΟ ΠΑΚΕΤΟ ΕΙΝΑΙ Η ΔΗΛΩΣΗ ────────────────────────────────────────
+  // Εδώ υπήρχε 403 όταν το πακέτο δεν ταίριαζε στον δηλωμένο τύπο προφίλ.
+  // Σε λογαριασμό δηλωμένο «Επαγγελματία» χωρίς το πακέτο του, η οθόνη
+  // έδειχνε «Ιδιώτη» (ο επαγγελματικός τρόπος ανοίγει μόνο με το πακέτο)
+  // και κλείδωνε τα δύο επαγγελματικά. Το ταμείο απέρριπτε τα τρία του
+  // ιδιώτη. Κανένα πακέτο δεν αγοραζόταν (έλεγχος 28.09.2026).
   //
-  // Οπου δεν υπάρχει δήλωση δεν υπάρχει και αντίφαση. Τον τύπο τον γράφει ο
-  // webhook, μόλις τον αποδείξει η ίδια η αγορά.
-  const declared = (profile?.profile_type || '').trim();
-  const isDeclared = (v: string): v is ProfileType => v === 'individual' || v === 'professional';
-  if (isDeclared(declared) && !isPlanAllowedForProfile(declared, plan as PlanId)) {
-    return NextResponse.json({ error: 'Το πακέτο δεν αντιστοιχεί στον τύπο του λογαριασμού.' }, { status: 403 });
-  }
+  // Ο τύπος δεν προστατεύει τίποτα που να αξίζει άρνηση πώλησης. Ο,τι ανοίγει
+  // το κρίνει το πακέτο. Τον τύπο τον ξαναγράφει ο webhook μόλις η
+  // αγορά ολοκληρωθεί (`profileTypeToWrite`).
 
   if (probe) return NextResponse.json({ available: true, url: null, note: billingWords().chargingToday });
 
