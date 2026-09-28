@@ -57,6 +57,15 @@ export interface LocalTariff extends Tariff {
    */
   settled?: boolean;
 
+  /**
+   * ΠΡΟΩΘΗΤΙΚΗ ΤΙΜΗ, ΟΠΩΣ ΤΗ ΓΡΑΦΕΙ ΤΟ ΤΙΜΟΛΟΓΙΟ ΤΟΥ ΠΑΡΟΧΟΥ. Μόνο για την οθόνη.
+   *
+   * Η σύγκριση τρέχει με το `kwh_day`, τη βασική τιμή: η προωθητική έκπτωση
+   * έχει όρους και λήξη που δεν τα κρατά ο κατάλογος. Αν έμπαινε στον
+   * υπολογισμό, το τιμολόγιο θα κατατασσόταν με τιμή που ο χρήστης μπορεί να
+   * μην πάρει. Δείχνεται δίπλα, με το όνομά της.
+   */
+  promo_kwh_day?: number;
 }
 
 export interface ProviderGroup { value: string; label: string; url: string; tariffs: LocalTariff[] }
@@ -132,14 +141,32 @@ export const PROVIDERS: ProviderGroup[] = [
       { id: 'dei_enter',        name: 'myHome Enter',           badge: 'ΜΠΛΕ',    type: 'fixed',         kwh_day: 0.1421, kwh_night: null,   fixed: 7.35, fixed_ebill: 3.50, contract_months: 12, vat: 6, segment: 'residential', desc: 'Σταθερό 12 μήνες. Το πάγιο πέφτει με ηλεκτρονικό λογαριασμό και πάγια εντολή.' },
       // FIX: πάγιο myHome EnterTwo αναπροσαρμόστηκε → 9,00€ (επιβεβαιωμένο, Ιούλιος 2026)
       { id: 'dei_entertwo',     name: 'myHome EnterTwo',        badge: 'ΜΠΛΕ',    type: 'fixed',         kwh_day: 0.1421, kwh_night: 0.1029, fixed: 8.82, fixed_ebill: 3.50, contract_months: 24, vat: 6, segment: 'residential', desc: 'Σταθερό 24 μήνες με νυχτερινή ζώνη, από τις 23:00 έως τις 07:00. Ιδανικό για πλυντήρια, θερμοσίφωνα.' },
-      { id: 'dei_online', priceStatus: 'verified',       name: 'myHome Online',          badge: 'ΜΠΛΕ',    type: 'fixed',         kwh_day: 0.1420, kwh_night: null,   fixed: 3.50, fixed_ebill: 3.50, contract_months: 12, vat: 6, segment: 'residential', desc: 'Σταθερό online-only 12 μήνες. Χαμηλότερη τιμή με e-bill + πάγια εντολή.' },
+      // ══ ΣΕΠΤΕΜΒΡΙΟΣ 2026, ΑΠΟ ΤΑ ΤΙΜΟΛΟΓΙΑ ΤΗΣ ΔΕΗ ══════════════════════════
+      // Πηγή: ops.handoffs a41bd5b2 (ομάδα Grok, P1-6, λήψη 28/09/2026), από τα
+      // PDF της ΔΕΗ. Ο υπόλοιπος κατάλογος μένει στον έλεγχο του Αυγούστου· γι'
+      // αυτό το data/price-sources.json γράφει τα τρία ξεχωριστά.
+      //   myHome Online  https://www.dei.gr/media/fbqfayfk/myhome-online-0826.pdf (08.26)
+      //     0,14200€ ανά kWh, αμετάβλητη· 0,11500 μετά την προωθητική έκπτωση
+      //     0,02700. Η λήξη της προσφοράς δεν επιβεβαιώθηκε στο PDF και δεν
+      //     γράφεται.
+      { id: 'dei_online', priceStatus: 'verified',       name: 'myHome Online',          badge: 'ΜΠΛΕ',    type: 'fixed',         kwh_day: 0.1420, kwh_night: null,   fixed: 3.50, fixed_ebill: 3.50, promo_kwh_day: 0.115, contract_months: 12, vat: 6, segment: 'residential', desc: 'Σταθερό online-only 12 μήνες. Χαμηλότερη τιμή με e-bill + πάγια εντολή.' },
       // FIX: κλιμάκια myHome Maxima αναπροσαρμόστηκαν 0.132/0.122 → 0.141/0.129 (επιβεβαιωμένο, Ιούλιος 2026)
       { id: 'dei_maxima',       name: 'myHome Maxima',          badge: 'ΜΠΛΕ',    type: 'fixed',         kwh_day: 0.13818, kwh_night: null,   kwh_tier2: 0.12642, tier2_threshold: 600, fixed: 13.23, fixed_ebill: 3.50, contract_months: 18, vat: 6, segment: 'residential', desc: 'Κλιμακωτό: 0,141€ έως τις 600 kWh και 0,129€ πάνω από αυτές. Συμφέρει για υψηλή κατανάλωση.' },
       { id: 'dei_plan', settled: true,         name: 'myHome Plan',            badge: 'ΜΠΛΕ',    type: 'fixed_monthly', kwh_day: 0, kwh_night: null, flat_monthly: 60.00, fixed: 0, contract_months: 12, vat: 6, segment: 'residential', desc: 'Πληρώνεις 60€ τον μήνα έναντι και η ΔΕΗ εκκαθαρίζει την πραγματική κατανάλωση δύο φορές τον χρόνο, στον έκτο και στον δωδέκατο μήνα. Το μηνιαίο ποσό δεν είναι το κόστος σου και το τιμολόγιο δεν μπαίνει στη σύγκριση.' },
       { id: 'dei_4all',         name: 'myHome 4All',            badge: 'ΚΙΤΡΙΝΟ', type: 'variable',      kwh_day: 0.15135, kwh_night: null,   kwh_tier2: 0.19482, tier2_threshold: 500, fixed: 4.90, fixed_ebill: 3.50, contract_months: 12, vat: 6, segment: 'residential', desc: 'Κυμαινόμενο κλιμακωτό: χαμηλότερη τιμή έως τις 500 kWh τον μήνα, υψηλότερη πάνω από αυτές. Χωρίς δέσμευση.' },
       { id: 'dei_4students', studentOnly: true,    name: 'myHome 4Students',       badge: 'ΚΙΤΡΙΝΟ', type: 'variable',      kwh_day: 0.11155, kwh_night: null,   kwh_tier2: 0.1850, tier2_threshold: 150, fixed: 2.91, fixed_ebill: 0, contract_months: 12, vat: 6, segment: 'residential', desc: 'Φοιτητικό κλιμακωτό, με όριο τις 150 kWh τον μήνα. Bonus καλοκαίρι. Απαιτείται φοιτητική ιδιότητα.' },
-      { id: 'dei_prasino',      name: 'Γ1 Πράσινο',            badge: 'ΠΡΑΣΙΝΟ', type: 'variable',      kwh_day: 0.1440, kwh_night: null,   fixed: 5.00, fixed_ebill: 3.50, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ειδικό Οικιακό (Γ1), κυμαινόμενο. Ανακοινώνεται κάθε 1η του μήνα.' },
-      { id: 'dei_prasino_n',    name: 'Γ1Ν Πράσινο Νυχτερινό', badge: 'ΠΡΑΣΙΝΟ', type: 'variable',      kwh_day: 0.1440, kwh_night: 0.1160, fixed: 5.00, fixed_ebill: 3.50, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ειδικό με νυχτερινή ζώνη. Ανακοινώνεται κάθε 1η του μήνα.' },
+      // ══ Γ1 ΚΑΙ Γ1Ν: ΚΛΙΜΑΚΩΤΑ, ΟΧΙ ΜΙΑ ΤΙΜΗ ═════════════════════════════════
+      // Πηγή: https://www.dei.gr/media/gvskkpxa/g1_g1n_sept26.pdf (Σεπτέμβριος
+      // 2026, λήψη 28/09/2026, ops.handoffs a41bd5b2 P1-6). Τελική τιμή με
+      // εμπρόθεσμη εξόφληση και ενεργό myΔΕΗ, μαζί με τον μηχανισμό διακύμανσης
+      // 0,05575. Πάγιο 5,00€ τον μήνα, αμετάβλητο.
+      //   Γ1   kwh_day 0,1440 χωρίς κλιμάκιο → 0,14913 έως 200 kWh, 0,18544 πάνω
+      //   Γ1Ν  ίδια ημερήσια κλιμάκια· νυχτερινή 0,1160 → 0,14605
+      // Ο κατάλογος έγραφε μία τιμή για όλη την κατανάλωση: πάνω από τις 200
+      // κιλοβατώρες η ΔΕΗ χρεώνει κάθε επιπλέον κιλοβατώρα 29% ακριβότερα απ'
+      // όσο υπολόγιζε ο κατάλογος.
+      { id: 'dei_prasino',      name: 'Γ1 Πράσινο',            badge: 'ΠΡΑΣΙΝΟ', type: 'variable',      kwh_day: 0.14913, kwh_night: null,   kwh_tier2: 0.18544, tier2_threshold: 200, fixed: 5.00, fixed_ebill: 3.50, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ειδικό Οικιακό (Γ1), κυμαινόμενο και κλιμακωτό: ακριβότερη κιλοβατώρα πάνω από τις 200 kWh τον μήνα. Ανακοινώνεται κάθε 1η του μήνα.' },
+      { id: 'dei_prasino_n',    name: 'Γ1Ν Πράσινο Νυχτερινό', badge: 'ΠΡΑΣΙΝΟ', type: 'variable',      kwh_day: 0.14913, kwh_night: 0.14605, kwh_tier2: 0.18544, tier2_threshold: 200, fixed: 5.00, fixed_ebill: 3.50, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ειδικό με νυχτερινή ζώνη. Η ημερήσια κατανάλωση χρεώνεται κλιμακωτά, ακριβότερα πάνω από τις 200 kWh τον μήνα. Ανακοινώνεται κάθε 1η του μήνα.' },
       { id: 'dei_dynamic',      name: 'myHome Dynamic',         badge: 'ΔΥΝΑΜΙΚΟ',type: 'dynamic',       kwh_day: 0, kwh_night: null, fixed: 5.00, smart_meter: true, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ωριαία τιμολόγηση βάσει χονδρεμπορικής (HEnEx). Απαιτεί έξυπνο μετρητή ΔΕΔΔΗΕ.' },
       // ── Επαγγελματικά (Γ21/Γ22) ────────────────────────────────────────
       { id: 'dei_biz_4all', priceStatus: 'verified', name: 'MyBussiness4ALL', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.16863, kwh_night: null, flat_monthly: null, fixed: 4.9, fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'business', desc: 'Η τιμή και το πάγιο ισχύουν με πάγια εντολή πληρωμής.' },

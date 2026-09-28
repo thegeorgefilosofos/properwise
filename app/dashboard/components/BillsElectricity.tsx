@@ -526,6 +526,13 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
               {tariff.smart_meter && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, fontFamily: T.font.sans }}>Έξυπνος μετρητής</span>}
             </div>
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, fontFamily: T.font.sans }}>{tariff.desc}</div>
+            {/* Η προωθητική τιμή λέγεται με το όνομά της και ΔΕΝ μπαίνει στη
+                σύγκριση: έχει όρους και λήξη που ο κατάλογος δεν κρατά. */}
+            {tariff.promo_kwh_day != null && (
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, fontFamily: T.font.sans, marginTop: 4 }}>
+                Προωθητική τιμή {fk(tariff.promo_kwh_day)} ανά κιλοβατώρα, όπως τη γράφει το τιμολόγιο του παρόχου. Ο υπολογισμός γίνεται με τη βασική τιμή {fk(tariff.kwh_day)}.
+              </div>
+            )}
             {tariff.desc.includes('ΜΔΚΑ') && (
               <div style={{ marginTop: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, padding: '6px 12px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" className="po-lead-ico"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>

@@ -55,7 +55,8 @@ export interface LiveBankRate {
   fixed_15yr: string
   fixed_20yr: string
   variable_spread_min: number
-  variable_spread_max: number
+  /** `null` όταν η τράπεζα δεν δημοσιεύει ανώτατο περιθώριο. */
+  variable_spread_max: number | null
   fixed_min: number
   max_ltv: number
   max_years: number
@@ -68,7 +69,11 @@ export interface LiveBankRate {
   fees: string
   note: string
   url: string
-  source_url: string
+  source_url: string | null
+  /** Ημερομηνία ισχύος του δελτίου της τράπεζας. Κενή όταν η πηγή δεν τη γράφει. */
+  source_doc_date: string | null
+  /** '1M' ή '3M': ο δείκτης του κυμαινόμενου. */
+  rate_index: string | null
   verified_at: string
 }
 
@@ -113,11 +118,16 @@ export interface LiveProgram {
 // στηρίζει κάθε υπολογισμό κυμαινόμενου δανείου. Το ελληνικό μέσο υφιστάμενο
 // έγραφε 3,50 και είναι 3,01. Αντικαταστάθηκαν με τις τιμές που επιστρέφει η
 // πηγή, με την ημερομηνία της παρατήρησης και όχι με σφραγίδα «τώρα».
+//
+// ΤΑ ΕΠΙΤΟΚΙΑ ΤΗΣ ΕΚΤ ΕΙΝΑΙ ΤΑ ΤΡΕΧΟΝΤΑ: 2,65 κύριας αναχρηματοδότησης και
+// 2,50 αποδοχής καταθέσεων από 16/09/2026 (απόφαση 10/09/2026,
+// https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp260910~314e508016.en.html).
+// Εγραφαν 2,40 και 2,25, τις τιμές πριν από την απόφαση.
 const FALLBACK_AS_OF = '2026-08-01T00:00:00Z';
 
 const RATES_FALLBACK: LiveMarketRates = {
   euribor_3m: 2.513, euribor_1m: 2.221, euribor_6m: 2.713, euribor_12m: 2.954,
-  ecb_rate: 2.40, ecb_dfl: 2.25, bog_housing_new: 3.56, bog_housing_stock: 3.01,
+  ecb_rate: 2.65, ecb_dfl: 2.50, bog_housing_new: 3.56, bog_housing_stock: 3.01,
   updated_at: FALLBACK_AS_OF, source_euribor: 'fallback', source_bog: 'fallback',
   rate_changed: false, isLoading: true, provenance: {}, stale: [], isStale: false,
 }

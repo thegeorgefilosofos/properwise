@@ -16,7 +16,7 @@ import { useLoad } from '@/app/hooks/useLoad';
 interface AdminBank {
   bank_id:string; bank_name:string
   fixed_3yr:string; fixed_5yr:string; fixed_10yr:string; fixed_15yr:string; fixed_20yr:string
-  variable_spread_min:number; variable_spread_max:number; fixed_min:number
+  variable_spread_min:number; variable_spread_max:number|null; fixed_min:number
   max_ltv:number; spiti_mou:boolean; source_url:string; verified_at:string
 }
 // ΜΟΝΟ τα πεδία κειμένου. Ήταν `keyof AdminBank`, δηλαδή ο τύπος επέτρεπε και
@@ -100,7 +100,9 @@ export default function BankRatesAdmin({ onSaved }:{
       fixed_3yr:edit.fixed_3yr, fixed_5yr:edit.fixed_5yr, fixed_10yr:edit.fixed_10yr,
       fixed_15yr:edit.fixed_15yr, fixed_20yr:edit.fixed_20yr,
       variable_spread_min:Number(edit.variable_spread_min)||0,
-      variable_spread_max:Number(edit.variable_spread_max)||0,
+      // Κενό μένει κενό: η Εθνική δεν δημοσιεύει ανώτατο περιθώριο και το μηδέν
+      // θα διαβαζόταν στην οθόνη ως «έως +0,00%».
+      variable_spread_max:Number(edit.variable_spread_max)||null,
       fixed_min:Number(edit.fixed_min)||0,
       max_ltv:Math.round(Number(edit.max_ltv))||0,
       spiti_mou:!!edit.spiti_mou,

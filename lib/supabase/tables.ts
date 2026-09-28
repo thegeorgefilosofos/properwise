@@ -187,6 +187,8 @@ export interface BankRatesRow {
   source_url: string | null;
   verified_at: string | null;
   is_active: boolean | null;
+  source_doc_date: string | null;
+  rate_index: string | null;
 }
 
 export interface BankTransactionsRow {
