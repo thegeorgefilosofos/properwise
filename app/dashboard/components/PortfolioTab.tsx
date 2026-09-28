@@ -18,12 +18,11 @@ import * as expenses from '@/lib/data/expenses'
 import * as tenantStore from '@/lib/data/tenants'
 import { CustomSelect, BulkActionBar } from './UIComponents';
 import { T, PageTitle, KPIGrid, Badge, Btn, ExportButton, EmptyState, InfoBanner, SecHdr, SelectBox, SkeletonKPIs, Skeleton, fe, fp, fixedCols, ABSENT_SHORT, Modal, TT, Stat, RecordCard, StatStrip } from '@/components/Theme';
-import { resolveRent } from '@/lib/billing/propertyFacts';
 import { statusLabel, type StatusRow } from '@/lib/property/status';
 import { propertyTypeLabel } from '@/lib/property/types';
-import { declarableGross, declarableGrossOrTotal } from '@/lib/clients/stayAmounts';
-import { yearOccupancy, staysOfYearToDate } from '@/lib/clients/reports';
-import { athensToday, daysUntil } from '@/lib/core/time';
+import { yearOccupancy } from '@/lib/clients/reports';
+import { propertyIncome } from '@/lib/income/propertyIncome';
+import { athensToday } from '@/lib/core/time';
 import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger';
 import { portfolioReturns } from '@/lib/market/portfolio';
 import { downloadTableXlsx } from './exportCsv';
@@ -48,7 +47,7 @@ import { toggleIn } from '@/lib/core/toggleSet';
 
 interface PropLite { id: string; name: string; prop_type: string | null; address: string | null; target_rent: number | null; value: number | null; }
 /** Δόση ενοικίου όπως την καταχωρεί ο ιδιοκτήτης — `paid` = εισπράχθηκε. */
-type RentPay = Pick<RentPaymentsRow, 'property_id' | 'amount' | 'paid' | 'period_month'>;
+type RentPay = Pick<RentPaymentsRow, 'property_id' | 'amount' | 'paid' | 'paid_date' | 'due_date' | 'period_year' | 'period_month'>;
 /** Η μίσθωση, όσο χρειάζεται για να ξέρουμε τι συμφωνήθηκε ως τρόπος είσπραξης. */
 type LeasePay = { id: string; e_payment: boolean | null };
 interface Props { properties: PropLite[]; userId: string; onSelectProperty: (id: string) => void; }
@@ -97,7 +96,6 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
   const today = useMemo(() => athensToday(now), [now]);
   const year = Number(today.slice(0, 4));
   const monthsElapsed = Number(today.slice(5, 7));
-  const daysElapsed = Math.max(1, 1 - (daysUntil(`${year}-01-01`, now) ?? 0));
 
   // ── ΤΑ ΣΧΗΜΑΤΑ ΤΩΝ ΓΡΑΜΜΩΝ, ΟΠΩΣ ΑΚΡΙΒΩΣ ΤΑ ΖΗΤΑ ΤΟ ΕΡΩΤΗΜΑ ────────────────
   // Ήταν `any[]`, δηλαδή οι στήλες ήταν γραμμένες ΜΙΑ φορά στο `select(...)` και
@@ -187,7 +185,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       supabase.from('clients').select('id,full_name').eq('user_id', userId),
       // Οι ΚΑΤΑΓΕΓΡΑΜΜΕΝΕΣ δόσεις ενοικίου της χρήσης — από εδώ βγαίνει το έσοδο
       // της μακροχρόνιας, ίδια πηγή με ReportBuilder/OwnerSplit/Λογιστική.
-      rentStore.ofUser<RentPay>(supabase, userId, 'property_id,amount,paid,period_month', { year }),
+      rentStore.ofUser<RentPay>(supabase, userId, 'property_id,amount,paid,paid_date,due_date,period_year,period_month', { year }),
       rentStore.ofUser<CollectableRent>(supabase, userId,
         'id,property_id,tenant_id,amount,due_date,paid,period_year,period_month',
         { unpaid: true, dueTo: athensToday() }),
@@ -225,46 +223,35 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
     // θα έμπαινε στον χάρτη και το ενοίκιό της θα χανόταν σιωπηλά.
     for (const [id, t] of rentByTenant) if (!rentByProp.has(id)) rentByProp.set(id, Number(t.monthly_rent) || 0);
 
-    // Καταγεγραμμένες δόσεις της χρήσης ανά ακίνητο: τι εισπράχθηκε πραγματικά,
-    // και τι είχε δεδουλευτεί ως σήμερα (οι δόσεις παράγονται για όλο το έτος).
-    const payByProp = new Map<string, { collected: number; dueToDate: number; rows: number }>();
+    // Καταγεγραμμένες δόσεις της χρήσης ανά ακίνητο: οι ίδιες οι γραμμές για
+    // τον κοινό υπολογισμό των εσόδων και τι είχε δεδουλευτεί ως σήμερα (οι
+    // δόσεις παράγονται για όλο το έτος).
+    const rentsByProp = new Map<string, RentPay[]>();
+    const payByProp = new Map<string, { dueToDate: number }>();
     rentPays.forEach(rp => {
       // Δόση χωρίς ακίνητο δεν ανήκει σε κανένα ακίνητο. Ο τύπος της στήλης το
       // λέει (`property_id` μπορεί να είναι κενό)· πριν καθόταν σε κλειδί «null»
       // που δεν το ζητούσε ποτέ κανείς, δηλαδή αθροιζόταν στο πουθενά.
       const pid = rp.property_id;
       if (!pid) return;
-      const acc = payByProp.get(pid) || { collected: 0, dueToDate: 0, rows: 0 };
+      const acc = payByProp.get(pid) || { dueToDate: 0 };
       const amt = Number(rp.amount) || 0;
-      acc.rows += 1;
-      if (rp.paid) acc.collected += amt;
+      rentsByProp.set(pid, [...(rentsByProp.get(pid) || []), rp]);
       if ((Number(rp.period_month) || 0) <= monthsElapsed) acc.dueToDate += amt;
       payByProp.set(pid, acc);
     });
 
     return properties.map(p => {
       const propStays = stays.filter(s => s.property_id === p.id);
-      const staysY = propStays.filter(s => ((s.check_in || s.check_out || '').slice(0, 4)) === String(year));
-      // ΤΟ ΧΑΡΤΟΦΥΛΑΚΙΟ ΕΛΕΓΕ ΑΛΛΟ ΝΟΥΜΕΡΟ ΑΠΟ ΤΗ ΦΟΡΟΛΟΓΙΚΗ ΣΥΝΟΨΗ.
-      // Εδώ αθροιζόταν το ωμό `client_stays.total` — το πεδίο που ο εισαγωγέας
-      // email γεμίζει με PAYOUT — ενώ η «Βραχυχρόνια», το Ε2 και ο
-      // φάκελος του λογιστή αθροίζουν ΔΗΛΩΤΕΟ ΑΚΑΘΑΡΙΣΤΟ (τι πλήρωσε ο
-      // επισκέπτης − τέλος ανθεκτικότητας). Διαφορά ~15% για το ίδιο ακίνητο,
-      // στην ίδια χρονιά, σε δύο οθόνες — και η μία απ' αυτές τυπώνεται σε
-      // υπογεγραμμένο PDF με QR. Μία πηγή, η ίδια με το Ε2.
-      // «ΩΣ ΣΗΜΕΡΑ»: η κράτηση που δεν έχει ξεκινήσει δεν είναι έσοδο ακόμη
-      // (lib/clients/reports.ts, staysOfYearToDate). Το `staysY` μένει για το
-      // `mode`: ακίνητο με μόνο μελλοντικές κρατήσεις είναι βραχυχρόνιο.
-      const staysToDate = staysOfYearToDate(staysY, year, today);
-      const hostingY = staysToDate.reduce((sum, s) => sum + declarableGrossOrTotal(s), 0);
-      // Ιστορικές γραμμές χωρίς ανάλυση: το ποσό είναι το ωμό `total` και δεν
-      // ξέρουμε αν είναι ακαθάριστο ή payout. Σημαίνεται ως εκτίμηση, όπως
-      // ακριβώς και το υποθετικό ενοίκιο της μακροχρόνιας.
-      const staysUnresolved = staysToDate.filter(s => declarableGross(s) == null && declarableGrossOrTotal(s) > 0).length;
-      const rent = resolveRent({ tenantRent: rentByProp.get(p.id), targetRent: p.target_rent }).value;
+      // ΤΑ ΕΣΟΔΑ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΟΝ ΚΟΙΝΟ ΥΠΟΛΟΓΙΣΜΟ (lib/income/propertyIncome.ts),
+      // τον ίδιο με την Επισκόπηση: δηλωτέο ακαθάριστο των διαμονών με άφιξη ως
+      // σήμερα, αλλιώς πληρωμένες δόσεις με ημερομηνία ως σήμερα, αλλιώς
+      // εκτίμηση από το ενοίκιο του ενοικιαστή. Πριν μετρούσαν κι οι κρατήσεις
+      // του Δεκεμβρίου κι οι δόσεις με ημερομηνία στο μέλλον.
+      const inc = propertyIncome({ rents: rentsByProp.get(p.id) || [], stays: propStays, year, today,
+        value: p.value, estimateMonthly: rentByProp.get(p.id) });
+      const staysUnresolved = inc.unresolvedStays;
       const pay = payByProp.get(p.id);
-      const hasRentRows = (pay?.rows || 0) > 0;
-      const hasTenant = (rentByProp.get(p.id) || 0) > 0 || hasRentRows;
       // ΔΥΟ ΔΙΑΦΟΡΕΤΙΚΑ ΠΡΑΓΜΑΤΑ ΜΕ ΕΝΑ ΟΝΟΜΑ. Το `mode` κρίνει ΠΩΣ υπολογίζονται
       // τα έσοδα (διαμονές ή μηνιαίο ενοίκιο) και βγαίνει σωστά από τα δεδομένα.
       // Χρησιμοποιούνταν όμως ΚΑΙ ως η «Κατάσταση» στη στήλη του πίνακα, με δικό
@@ -272,7 +259,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       // ή «Προς πώληση» εμφανιζόταν «Κενό» και βραχυχρόνιο χωρίς καταχωρημένες
       // διαμονές εμφανιζόταν επίσης «Κενό». Η οθόνη διέψευδε δήλωση που μόλις
       // είχε κάνει ο χρήστης, δύο κλικ πριν.
-      const mode: Mode = staysY.length ? 'short' : hasTenant ? 'long' : 'vacant';
+      const mode: Mode = inc.source === 'stays' ? 'short' : inc.source === 'none' ? 'vacant' : 'long';
       const declaredStatus = statusLabel(p as StatusRow);
       // ΤΑ «ΕΣΟΔΑ ΕΤΟΥΣ» ΤΗΣ ΜΑΚΡΟΧΡΟΝΙΑΣ ΗΤΑΝ ΥΠΟΘΕΣΗ — ΚΑΙ ΕΜΠΑΙΝΑΝ ΣΕ
       // ΥΠΟΓΕΓΡΑΜΜΕΝΟ PDF ΜΕ QR ΕΠΑΛΗΘΕΥΣΗΣ.
@@ -291,13 +278,9 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       // δόση, κρατάμε την εκτίμηση (αλλιώς η οθόνη θα άδειαζε) αλλά τη
       // ΣΗΜΑΙΝΟΥΜΕ ρητά: στον πίνακα, στο CSV και μέσα στο PDF. Ίδια σειρά
       // προτεραιότητας με το Ε2 (lib/billing/e2.ts, buildE2Row).
-      const revenueEstimated = mode === 'short'
-        ? staysUnresolved > 0
-        : mode === 'long' && !hasRentRows && rent > 0;
-      const revenue = mode === 'short' ? hostingY
-        : mode === 'long' ? (hasRentRows ? pay!.collected : rent * monthsElapsed)
-        : 0;
-      const rentExpected = mode === 'long' && hasRentRows ? pay!.dueToDate : 0;
+      const revenueEstimated = inc.estimated;
+      const revenue = inc.receivedToDate;
+      const rentExpected = inc.source === 'rent' ? (pay?.dueToDate ?? 0) : 0;
       // ΤΑ ΕΞΟΔΑ ΠΕΡΝΟΥΝ ΑΠΟ ΤΟΝ ΚΟΙΝΟ ΠΥΡΗΝΑ (lib/expenses/ledger.ts).
       //
       // Πριν αθροίζαμε ΜΟΝΟ τον πίνακα `expenses`. Ο απλήρωτος λογαριασμός όμως
@@ -345,9 +328,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       // παρονομαστής, από τα ίδια εισπραχθέντα. Ο στόχος μένει μόνο για ακίνητο
       // χωρίς καμία δόση, όπου δεν υπάρχει τίποτα άλλο — και εκείνο σημαίνεται
       // ήδη ως εκτίμηση από το `revenueEstimated`.
-      const annualRevenue = mode === 'long'
-        ? (hasRentRows ? Math.round(pay!.collected * (12 / monthsElapsed)) : rent * 12)
-        : mode === 'short' ? Math.round(revenue * (365 / daysElapsed)) : 0;
+      const annualRevenue = Math.round(inc.annualized);
       const annualExpenses = Math.round(expenses * (12 / monthsElapsed));
       return {
         id: p.id, name: p.name, typeLabel: propertyTypeLabel(p.prop_type) || 'Ακίνητο', mode, statusLabel: declaredStatus,
@@ -356,7 +337,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
         value: p.value || 0, annualRevenue, annualExpenses,
       };
     });
-  }, [properties, stays, bills, exp, rentByTenant, rentPays, chk, year, today, monthsElapsed, daysElapsed, nowMs]);
+  }, [properties, stays, bills, exp, rentByTenant, rentPays, chk, year, today, monthsElapsed, nowMs]);
 
   const agg = useMemo(() => portfolioReturns(rows.map(r => ({ value: r.value, annualRevenue: r.annualRevenue, annualExpenses: r.annualExpenses }))), [rows]);
   /** Πόσα από τα ακίνητα που μετρούν στην απόδοση μπαίνουν με εκτιμώμενα έσοδα. */
