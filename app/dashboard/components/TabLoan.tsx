@@ -9,7 +9,8 @@ import { T, EmptyState, Btn, IconBtn, ChipToggle } from '@/components/Theme'
 import { Gift } from 'lucide-react'
 import TabLoanCalculator from './TabLoanCalculator'
 import { greekWhen } from '@/lib/market/ecb'
-import { RATES_DISCLAIMER, calcMonthly, fmtEur, fmtPct } from './TabLoanData'
+import { RATES_DISCLAIMER, calcMonthly, fmtEur, fmtPct, spreadRange } from './TabLoanData'
+import { isOfficialSource } from '@/lib/loans/rateFeed'
 import { hy } from '@/components/Hyphen'
 import BankRatesAdmin from './BankRatesAdmin'
 import { LensBar, labelStyle, cardStyle } from './LoanShared'
@@ -243,7 +244,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               Σπίτι μου ΙΙ
             </ChipToggle>}
             <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginLeft:'auto',fontFamily: T.font.sans}}>
-              {banksLoading?'Φόρτωση…':feedFresh?`Ελέγχθηκαν ${feedCheckedStr} · επιβεβαιωμένα ${banksUpdStr}`:`vresdaneio.gr · ${banksUpdStr}`}
+              {banksLoading?'Φόρτωση…':feedFresh?`Ελέγχθηκαν ${feedCheckedStr} · επιβεβαιωμένα ${banksUpdStr}`:`Δελτία τραπεζών · ${banksUpdStr}`}
               {liveBanks.length>0&&!feedFresh&&<span style={{color:'var(--text-secondary)',marginLeft:6}}>Ενημερωμένα στοιχεία</span>}
               {feed.heldChanges>0&&<span style={{color:'var(--warning)',marginLeft:6}}>{feed.heldChanges} {feed.heldChanges===1?'μεταβολή περιμένει':'μεταβολές περιμένουν'} επιβεβαίωση</span>}
             </p>
@@ -296,7 +297,10 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           {(()=>{
             const bank = BANKS.filter(b=>!filterSpiti||b.spiti_mou).find(b=>(b.id||b.name)===selBank)
             if(!bank) return null
-            const varRate = bank.variable_spread_min?fmtPct(market.euribor_3m+bank.variable_spread_min):null
+            // Ο ΔΕΙΚΤΗΣ ΤΗΣ ΤΡΑΠΕΖΑΣ, ΟΧΙ Ο ΙΔΙΟΣ ΓΙΑ ΟΛΕΣ. Η Πειραιώς τιμολογεί σε
+            // Euribor μηνός· με το τριμήνου το «σήμερα» έβγαινε ψηλότερο απ' όσο είναι.
+            const euribor = bank.rate_index==='1M' ? market.euribor_1m : market.euribor_3m
+            const varRate = bank.variable_spread_min?fmtPct(euribor+bank.variable_spread_min):null
             const bankRate = publishedRate(bank)
             const myM = bankRate !== null && LA > 0 ? calcMonthly(LA, bankRate, Y) : null
             const terms = [['3 ετών','fixed_3yr'],['5 ετών','fixed_5yr'],['10 ετών','fixed_10yr'],['15 ετών','fixed_15yr'],['20 ετών','fixed_20yr']] as const
@@ -306,6 +310,17 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   <div>
                     <p style={{fontSize:16,fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)',letterSpacing:'-0.01em'}}>{bank.name}</p>
                     {bank.note&&<p style={{fontSize:12,color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>{bank.note}</p>}
+                    {/* ΑΠΟ ΠΟΥ ΕΡΧΟΝΤΑΙ ΤΑ ΝΟΥΜΕΡΑ ΚΑΙ ΠΟΣΟ ΠΑΛΙΟ ΕΙΝΑΙ ΤΟ ΕΓΓΡΑΦΟ.
+                        Το δελτίο της Optima είναι του Νοεμβρίου 2025· χωρίς την
+                        ημερομηνία του, το «επιβεβαιωμένα» της κεφαλίδας θα το
+                        έκανε να μοιάζει σημερινό. Και ο σύνδεσμος βγαίνει μόνο
+                        όταν δείχνει στην ίδια την τράπεζα: ένας συγκριτικός
+                        ιστότοπος δεν είναι δελτίο της. */}
+                    <p style={{fontSize:12,color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>
+                      {isOfficialSource(bank.id, bank.source_url)
+                        ? <><a href={bank.source_url} target="_blank" rel="noreferrer" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>Δελτίο επιτοκίων της τράπεζας</a>{bank.source_doc_date ? ` · ισχύς ${bank.source_doc_date.split('-').reverse().join('/')}` : ' · χωρίς ημερομηνία δελτίου'}</>
+                        : 'Δεν βρέθηκε επίσημο δελτίο επιτοκίων'}
+                    </p>
                   </div>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
                     {bank.url&&<a href={bank.url} target="_blank" rel="noreferrer" style={{padding:'0 16px',height:T.h.md,borderRadius: T.radius.modal,border:'1px solid var(--border-default)',background:'none',color:'var(--text-secondary)',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,textDecoration:'none',fontWeight:500,display:'flex',alignItems:'center'}}>Επίσκεψη</a>}
@@ -333,7 +348,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',gap:8}}>
                   {[
-                    {label:'Κυμαινόμενο περιθώριο',value:bank.variable_spread_min!==undefined?`+${fp(bank.variable_spread_min)} έως +${fp(bank.variable_spread_max)}`:NO_RATE,sub:varRate?`≈ ${varRate} σήμερα`:null},
+                    {label:bank.rate_index?`Περιθώριο πάνω από Euribor ${bank.rate_index}`:'Κυμαινόμενο περιθώριο',value:bank.variable_spread_min!==undefined?spreadRange(bank):NO_RATE,sub:varRate?`≈ ${varRate} σήμερα`:null},
                     {label:'Εκτιμώμενη δόση',value: myM !== null ? fmtEur(myM) : fe(0),sub: myM !== null ? `${fmtEur(LA)} · ${Y} έτη` : bankRate === null ? 'Η τράπεζα δεν έχει δημοσιεύσει επιτόκιο' : 'Συμπλήρωσε ποσό δανείου για υπολογισμό'},
                     {label:'Μέγιστο δάνειο προς αξία',value:bank.max_ltv?fp(bank.max_ltv):NO_RATE,sub:bank.max_amount?`έως ${fmtEur(bank.max_amount)}`:null},
                     ...(spitiMouOpen(athensToday()) ? [{label:'Σπίτι μου ΙΙ',value:bank.spiti_mou?'Ναι':'Όχι',sub:bank.spiti_mou?'Συμμετέχει στο πρόγραμμα':'Δεν συμμετέχει'}] : []),
@@ -383,7 +398,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                       {FIXED_TERM_COLUMNS.map(k=>(
                         <td key={k} className="num" style={{fontSize: 'var(--fs-base)',color:bank[k]?(hoverBankRow===i?'var(--accent)':'var(--text-primary)'):'var(--text-tertiary)',fontWeight:500,transition:'color 0.12s'}}>{cellRate(bank[k])}</td>
                       ))}
-                      <td className="num" style={{fontSize: 'var(--fs-base)',color:hoverBankRow===i?'var(--accent)':'var(--text-primary)',transition:'color 0.12s'}}>{bank.variable_spread_min!==undefined?`+${fp(bank.variable_spread_min)} έως +${fp(bank.variable_spread_max)}`:NO_RATE}</td>
+                      <td className="num" style={{fontSize: 'var(--fs-base)',color:hoverBankRow===i?'var(--accent)':'var(--text-primary)',transition:'color 0.12s'}}>{bank.variable_spread_min!==undefined?spreadRange(bank):NO_RATE}</td>
                       <td className="num" style={{fontSize: 'var(--fs-base)',color:bank.max_ltv?(hoverBankRow===i?'var(--accent)':'var(--text-primary)'):'var(--text-tertiary)',fontWeight:500,transition:'color 0.12s'}}>{bank.max_ltv?fp(bank.max_ltv):NO_RATE}</td>
                       <td>
                         {bank.spiti_mou
