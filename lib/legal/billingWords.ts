@@ -188,6 +188,8 @@ export interface BillingWords {
    * θα έμενε ορατή τη μέρα που το ταμείο κλείνει.
    */
   securedBy: string | null;
+  /** Το ίδιο σήμα χωρίς το όνομα, για όταν το όνομα το λέει το λογότυπο του εμπόρου. */
+  securedByLead: string | null;
   /**
    * Τα βήματα της σύναψης, για το άρθρο 9 του π.δ. 131/2003.
    *
@@ -258,6 +260,7 @@ const liveWords = (mor: string): Omit<BillingWords, 'live'> => ({
   signupPlanTerms: null,
   trialBadge: TRIAL_BADGE,
   securedBy: `Πληρωμές με ασφάλεια μέσω της ${mor}`,
+  securedByLead: 'Πληρωμές με ασφάλεια μέσω',
 });
 
 const TRIAL_BADGE = `Δοκιμή ${TRIAL_DAYS} ημερών χωρίς κάρτα`;
@@ -308,6 +311,7 @@ const NOT_LIVE: Omit<BillingWords, 'live'> = {
   // ΚΑΝΕΝΑ ΣΗΜΑ ΑΣΦΑΛΕΙΑΣ ΧΩΡΙΣ ΤΑΜΕΙΟ. Μια γραμμή «πληρωμές μέσω…» πάνω από
   // τιμές που δεν αγοράζονται θα υπονοούσε ότι αγοράζονται.
   securedBy: null,
+  securedByLead: null,
 };
 
 /** Τα λόγια που ισχύουν αυτή τη στιγμή. Διαβάζεται ΜΟΝΟ σε διακομιστή. */

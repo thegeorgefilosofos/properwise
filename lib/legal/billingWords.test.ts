@@ -93,7 +93,8 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
   // ΤΟ ΣΗΜΑ ΤΟΥ ΤΙΜΟΚΑΤΑΛΟΓΟΥ: ΜΟΝΟ ΟΤΑΝ ΧΡΕΩΝΟΥΜΕ, ΜΕ ΤΟ ΟΝΟΜΑ ΑΠΟ ΤΗ ΘΥΡΑ.
   ok('με χρέωση, το σήμα ονομάζει αυτόν που εισπράττει',
     !!live.securedBy && live.securedBy.includes(merchant(LIVE).name))
-  ok('χωρίς χρέωση, κανένα σήμα', dark.securedBy === null)
+  ok('χωρίς χρέωση, κανένα σήμα', dark.securedBy === null && dark.securedByLead === null)
+  ok('η αρχή του σήματος είναι η αρχή του πλήρους κειμένου', !!live.securedByLead && !!live.securedBy && live.securedBy.startsWith(live.securedByLead))
 }
 
 // ── ΤΟ ΜΟΝΤΕΛΟ ΤΩΝ ΧΡΗΜΑΤΩΝ, ΓΡΑΜΜΕΝΟ ΚΑΙ ΚΑΡΦΩΜΕΝΟ ─────────────────────

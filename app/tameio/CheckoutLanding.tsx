@@ -54,7 +54,7 @@ type Stage = 'opening' | 'choose' | 'confirm' | 'closed' | 'anonymous';
  * ξέρει ποιος έμπορος εισπράττει· τα ίδια κείμενα με τους Ορους της τα δίνει
  * το page.tsx (lib/legal/billingWords.ts).
  */
-export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, securedHref }: { firstCharge: string; moneyBack: string; securedBy: string | null; securedHref: string }) {
+export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, securedHref, securedLead, securedLogo }: { firstCharge: string; moneyBack: string; securedBy: string | null; securedHref: string; securedLead?: string | null; securedLogo?: { readonly viewBox: string; readonly d: string } }) {
   const [stage, setStage] = useState<Stage>('opening');
   const [note, setNote] = useState('');
   const [what, setWhat] = useState('');
@@ -220,7 +220,7 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
             </div>
             {/* ΤΟ ΣΗΜΑ ΚΑΤΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ, ΟΧΙ ΣΤΑ ΠΑΚΕΤΑ ΜΟΝΟ. Εδώ ρωτά ο πελάτης «πού
                 θα δώσω την κάρτα μου»: ένα κλικ πριν ανοίξει η σελίδα του εμπόρου. */}
-            {securedBy && <div style={{ textAlign: 'center' }}><SecuredBy text={securedBy} href={securedHref} /></div>}
+            {securedBy && <div style={{ textAlign: 'center' }}><SecuredBy text={securedBy} href={securedHref} lead={securedLead} logo={securedLogo} /></div>}
             <Link href="/dashboard" style={TAMEIO_TRIAL}>Συνέχεια με τη δοκιμή</Link>
           </>
         )}
