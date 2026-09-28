@@ -36,5 +36,5 @@ export function generateMetadata(): Metadata {
 // Χωρίς αυτό η περιγραφή έλεγε «καμία χρέωση» και η σελίδα «Ετήσια χρέωση».
 export default function SignupLayout({ children }: { children: ReactNode }) {
   const words = billingWords();
-  return <PlanTermsProvider value={{ planTerms: words.signupPlanTerms }}>{children}</PlanTermsProvider>;
+  return <PlanTermsProvider value={{ planTerms: words.signupPlanTerms, trialBadge: words.trialBadge }}>{children}</PlanTermsProvider>;
 }

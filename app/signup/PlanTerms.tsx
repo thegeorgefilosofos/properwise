@@ -14,9 +14,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { createContext, useContext, type ReactNode } from 'react';
 
-interface SignupTerms { planTerms: string | null }
+interface SignupTerms { planTerms: string | null; trialBadge: string | null }
 
-const PlanTermsContext = createContext<SignupTerms>({ planTerms: null });
+const PlanTermsContext = createContext<SignupTerms>({ planTerms: null, trialBadge: null });
 
 export function PlanTermsProvider({ value, children }: { value: SignupTerms; children: ReactNode }) {
   return <PlanTermsContext.Provider value={value}>{children}</PlanTermsContext.Provider>;
@@ -24,3 +24,6 @@ export function PlanTermsProvider({ value, children }: { value: SignupTerms; chi
 
 /** Η γραμμή των όρων του πακέτου όσο δεν χρεώνουμε, αλλιώς `null`. */
 export const usePlanTerms = (): string | null => useContext(PlanTermsContext).planTerms;
+
+/** Το σήμα της δοκιμής δίπλα στον τίτλο, από το `billingWords().trialBadge`. */
+export const useTrialBadge = (): string | null => useContext(PlanTermsContext).trialBadge;
