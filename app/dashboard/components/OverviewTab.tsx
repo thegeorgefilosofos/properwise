@@ -384,7 +384,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const todayIso = athensToday();
   // «Εισπράξεις» είναι ό,τι μπήκε: η κράτηση που δεν έχει ξεκινήσει μένει έξω
   // (lib/clients/reports.ts, staysOfYearToDate). Η επόμενη άφιξη τη δείχνει ήδη.
-  const hostStaysToDate = staysOfYearToDate(hostStays, year, todayIso);
+  // Σε `useMemo`: ως γυμνή κλήση ο μεταγλωττιστής της React υπέθετε ότι η
+  // συνάρτηση μπορεί να αλλάξει τον πίνακα και εγκατέλειπε όλο το component
+  // (react-hooks/preserve-manual-memoization, δύο σφάλματα στο `cash`).
+  const hostStaysToDate = useMemo(() => staysOfYearToDate(hostStays, year, todayIso), [hostStays, year, todayIso]);
   const hostingYTD = hostStaysToDate.reduce((sum,s)=>sum+stayTotal(s),0);
   const hostingNights = hostStaysToDate.reduce((sum,s)=>sum+(s.nights ?? 0),0);
   const nextArrival = hostStays.map(s=>s.check_in).filter((d): d is string => !!d && d>=todayIso).sort()[0] || null;
