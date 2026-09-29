@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client';
 import * as billing from '@/lib/data/billing';
 import { T, Btn, Chip, fixedCols } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
+import { canPrompt, runPrompt, isInstalled, INSTALL_EVENT } from '@/lib/pwa/install';
 
 type ChipTone = 'accent' | 'neutral';
 
@@ -57,6 +58,15 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<Record<number, boolean>>({});
+  // Η πρόσκληση του περιηγητή, αν υπάρχει: τότε οι οδηγίες γίνονται κουμπί.
+  const [installable, setInstallable] = useState(false);
+  const [installed, setInstalled] = useState(false);
+  useEffect(() => {
+    const sync = () => { setInstallable(canPrompt()); setInstalled(isInstalled()); };
+    sync();
+    window.addEventListener(INSTALL_EVENT, sync);
+    return () => window.removeEventListener(INSTALL_EVENT, sync);
+  }, []);
 
   // Στο mount: αν ο χρήστης έχει ήδη δηλώσει ενδιαφέρον, δείξε κατευθείαν το
   // επιβεβαιωμένο state. Σφάλματα σιωπηλά (χωρίς alert).
@@ -173,12 +183,24 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
             {/* Μέχρι να βγει η αυτόνομη εφαρμογή, το PROPERWISE εγκαθίσταται ήδη
                 στην αρχική οθόνη. Το λέμε εδώ, δίπλα στην αναμονή, αντί να
                 αφήνουμε τον χρήστη να περιμένει κάτι που έχει ήδη σε άλλη μορφή. */}
-            <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Εγκατέστησέ το ήδη στην αρχική σου οθόνη.</strong>{' '}
-              Ανοίγει με δικό του εικονίδιο, χωρίς μπάρα διεύθυνσης.
-              Σε <strong style={{ color: 'var(--text-primary)' }}>Android</strong>: μενού «⋮» · «Εγκατάσταση εφαρμογής».
-              Σε <strong style={{ color: 'var(--text-primary)' }}>iPhone</strong>: «Κοινή χρήση» · «Πρόσθεση στην αρχική οθόνη».
-            </div>
+            {installed ? (
+              <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Το έχεις ήδη στην αρχική σου οθόνη.</strong>{' '}
+                Οι ειδοποιήσεις συσκευής ανάβουν από τις Ρυθμίσεις · Ειδοποιήσεις.
+              </div>
+            ) : (
+              <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 10 }}>
+                <div>
+                  <strong style={{ color: 'var(--text-primary)' }}>Εγκατέστησέ το ήδη στην αρχική σου οθόνη.</strong>{' '}
+                  Ανοίγει με δικό του εικονίδιο, χωρίς μπάρα διεύθυνσης· δέχεται και ειδοποιήσεις.
+                  {!installable && <>
+                    {' '}Σε <strong style={{ color: 'var(--text-primary)' }}>Android</strong>: μενού «⋮» · «Εγκατάσταση εφαρμογής».
+                    Σε <strong style={{ color: 'var(--text-primary)' }}>iPhone</strong>: «Κοινή χρήση» · «Προσθήκη στην οθόνη Αφετηρίας».
+                  </>}
+                </div>
+                {installable && <Btn variant="primary" onClick={() => { void runPrompt(); }}>Εγκατάσταση</Btn>}
+              </div>
+            )}
 
             {/* Τα σήματα «iOS» και «Android» έφυγαν: δίπλα σε όνομα προϊόντος
                 διαβάζονταν ως εφαρμογές στα καταστήματα, που δεν υπάρχουν. Οι

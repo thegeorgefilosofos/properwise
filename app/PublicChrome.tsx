@@ -21,7 +21,7 @@
 // ΤΙ ΔΕΝ ΚΑΝΕΙ. Η κεφαλίδα της αρχικής μένει δική της (κολλητή, ημιδιαφανής,
 // με θόλωμα). Οι ΣΥΝΔΕΣΜΟΙ της όμως είναι οι ίδιοι παντού, μέσω του `PublicNav`.
 // ═══════════════════════════════════════════════════════════════════════════
-import { PRODUCT_NAME } from '@/lib/core/site';
+import { PRODUCT_NAME, LINKEDIN_URL } from '@/lib/core/site';
 import { jsonLdScript } from '@/lib/core/jsonLd';
 import { BrandLogo } from '@/components/BrandMark';
 import Link from 'next/link';
@@ -197,7 +197,7 @@ export function PublicFooter() {
               σελίδες, όχι τρεις σελίδες και μία ενέργεια. */}
           <FootCol label="Εμπιστοσύνη" links={[['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], ['/trust#epikoinonia', 'Επικοινωνία']]} />
         </div>
-        <div style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: T.sp.lg, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
+        <div className="po-foot-bar" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: T.sp.lg, borderTop: '1px solid var(--border-subtle)', fontSize: 12, color: 'var(--text-tertiary)' }}>
           <span>© {new Date().getFullYear()} PROPERWISE</span>
           {/* ΤΟ «ΣΧΕΔΙΑΣΜΕΝΟ ΓΙΑ GDPR» ΔΕΝ ΕΛΕΓΕ ΤΙΠΟΤΑ ΕΛΕΓΞΙΜΟ. Ο τόπος της βάσης
               είναι αυτός του μητρώου εκτελούντων (lib/legal/subprocessors) και
@@ -205,10 +205,21 @@ export function PublicFooter() {
               GDPR» έλεγε κάτι ελέγξιμο: ήταν ισχυρισμός συμμόρφωσης σε κάθε
               σελίδα, ενώ εκκρεμούν συμβάσεις επεξεργασίας που η ίδια η Πολιτική
               ομολογεί. Ο σύνδεσμος λέει το όνομα της σελίδας, τίποτα παραπάνω. */}
-          <span>
+          <span className="po-foot-legal">
             <span style={{ whiteSpace: 'nowrap' }}>Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)</span> ·{' '}
             <Link href="/privacy" className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>
           </span>
+          {/* ΤΟ ΣΗΜΑ ΣΤΟ ΤΕΛΟΣ ΤΗΣ ΤΕΛΕΥΤΑΙΑΣ ΓΡΑΜΜΗΣ, ΟΠΟΥ ΤΟ ΨΑΧΝΕΙ ΤΟ ΜΑΤΙ. Εκεί
+                το βάζουν όσοι στήνουν υποσέλιδα με συνέπεια: μονόχρωμο, στο χρώμα
+                του κειμένου γύρω του και όχι στο μπλε του LinkedIn, που θα ήταν το
+                μόνο ξένο χρώμα της σελίδας. Ανοίγει σε νέα καρτέλα: ο επισκέπτης
+                δεν χάνει τη θέση του στον υπολογισμό που είχε ανοιχτό. */}
+            <a href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer me" className="po-social"
+              aria-label="Το PROPERWISE στο LinkedIn (ανοίγει σε νέα καρτέλα)" title="Το PROPERWISE στο LinkedIn">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden focusable="false">
+                <path fill="currentColor" d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z" />
+              </svg>
+            </a>
         </div>
       </div>
     </footer>

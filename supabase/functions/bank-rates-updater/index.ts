@@ -93,6 +93,13 @@ type RateRow = Record<string, unknown>
 // Τώρα κάθε τράπεζα έχει τη δική της κλήση με δύο αναζητήσεις και όριο
 // `PER_BANK_MS`· οι έξι τρέχουν μαζί, άρα το σύνολο κρατά όσο η αργότερη.
 // Τράπεζα που αργεί ή αποτυγχάνει γράφεται στα details και δεν ρίχνει τις άλλες.
+//
+// ΚΑΙ ΜΕΤΑ, ΚΑΙ ΟΙ ΕΞΙ ΣΤΑ 100s (29.09.2026, 11:04). Το πέρασμα πλέον
+// καταγραφόταν, αλλά με «Signal timed out» για όλες. Δύο πράγματα έτρωγαν τον
+// χρόνο χωρίς να δίνουν τίποτα σε αυτή τη δουλειά: η αναζήτηση
+// `web_search_20260209`, που φιλτράρει τα αποτελέσματα τρέχοντας κώδικα στο
+// παρασκήνιο· και η σκέψη σε πλήρες βάθος για να διαβαστούν πέντε αριθμοί από
+// μια σελίδα. Τώρα βασική αναζήτηση και `effort: low`.
 const BANKS = ['Εθνική', 'Alpha Bank', 'Eurobank', 'Τράπεζα Πειραιώς', 'Optima Bank', 'CrediaBank']
 const PER_BANK_MS = 100_000
 
@@ -107,7 +114,8 @@ async function callAnthropic(bank: string): Promise<RateRow[]> {
       headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({
         model: MODEL, max_tokens: 1500, system: SYSTEM,
-        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 2 }],
+        output_config: { effort: 'low' },
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         messages,
       }),
     })
