@@ -1,5 +1,5 @@
 // npx tsx lib/pwa/install.test.ts
-import { isAppleMobile } from './install';
+import { isAppleMobile, holdPrompt, runPrompt, onHomeScreen, type BeforeInstallPromptEvent } from './install';
 
 let p = 0, f = 0;
 const ok = (c: boolean, m: string) => { if (c) p++; else { f++; console.error('✗', m); } };
@@ -16,5 +16,20 @@ ok(isAppleMobile({ userAgent: IPAD_AS_MAC, maxTouchPoints: 5, platform: 'MacInte
 ok(!isAppleMobile({ userAgent: IPAD_AS_MAC, maxTouchPoints: 0, platform: 'MacIntel' }), 'αληθινό Mac: χωρίς αφή, δεν είναι iPad');
 ok(!isAppleMobile({ userAgent: ANDROID, maxTouchPoints: 5, platform: 'Linux armv8l' }), 'Android: έχει δικό του παράθυρο εγκατάστασης');
 
-console.log(`pwa/install: ${p} ✓, ${f} ✗`);
-if (f) process.exit(1);
+// Εγκατάσταση από την καρτέλα του περιηγητή: η σελίδα δεν γίνεται «standalone»,
+// αλλά η εφαρμογή ΕΙΝΑΙ πλέον στην αρχική οθόνη και η κάρτα πρέπει να το ξέρει.
+const fakePrompt = (outcome: 'accepted' | 'dismissed') =>
+  ({ prompt: async () => {}, userChoice: Promise.resolve({ outcome }) }) as unknown as BeforeInstallPromptEvent;
+
+(async () => {
+  ok(!onHomeScreen(), 'πριν από οτιδήποτε: όχι στην αρχική οθόνη');
+  holdPrompt(fakePrompt('dismissed'));
+  await runPrompt();
+  ok(!onHomeScreen(), '«Όχι» στο παράθυρο: δεν εγκαταστάθηκε');
+  holdPrompt(fakePrompt('accepted'));
+  ok(await runPrompt() === 'accepted', 'το runPrompt επιστρέφει την απάντηση');
+  ok(onHomeScreen(), '«Εγκατάσταση» στο παράθυρο: στην αρχική οθόνη, χωρίς standalone');
+
+  console.log(`pwa/install: ${p} ✓, ${f} ✗`);
+  if (f) process.exit(1);
+})();

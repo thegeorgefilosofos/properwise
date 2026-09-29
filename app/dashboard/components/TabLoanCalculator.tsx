@@ -18,9 +18,9 @@ import { ShieldCheck } from 'lucide-react'
 import { hy } from '@/components/Hyphen'
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import {
-  BANKS, LOAN_TYPES, BORROWER_PROFILES, rateRange,
+  LOAN_TYPES, BORROWER_PROFILES, rateRange,
   calcMonthly, calcAmortization, calcFmaExemption, calcRentalTax, taxableRental,
-  fmtEur, fmtPct, fmtPct1, BANKS_VERIFIED,
+  fmtEur, fmtPct, fmtPct1, type ComparisonBank, loanTaxNote,
   LoanType, RateType, BorrowerType, LoanScenario, MarketRates, SavedLoan, rateTypeLabel
 } from './TabLoanData'
 import { greekWhen } from '@/lib/market/ecb'
@@ -471,7 +471,6 @@ function calcNotaryFees(propValue:number):{notary:number;landReg:number;agent:nu
 
 const LOAN_TYPE_OPTIONS = Object.entries(LOAN_TYPES).map(([k,v])=>({value:k,label:v.label,description:`${rateRange(v)} · Δάνειο προς αξία έως ${fp(v.typical_ltv)}`}))
 const BORROWER_OPTIONS  = Object.entries(BORROWER_PROFILES).map(([k,v])=>({value:k,label:v.label,description:v.notes}))
-const BANK_OPTIONS      = [...BANKS.map(b=>({value:b.id,label:b.name,description:`${b.note} · ${b.fees}`})),{value:'custom',label:'Άλλη τράπεζα',description:'Καταχώρησε το όνομά της'}]
 const RATE_TYPE_OPTIONS = [{value:'fixed',label:'Σταθερό',description:'Σταθερό για την επιλεγμένη περίοδο'},{value:'variable',label:'Κυμαινόμενο',description:'Euribor συν περιθώριο τράπεζας'},{value:'mixed',label:'Μεικτό',description:'Σταθερό αρχικά, μετά κυμαινόμενο'}]
 const FIXED_PERIOD_OPTIONS = ['3','5','10','15','20'].map(v=>({value:v,label:`${v} χρόνια`,description:v==='5'?'Πιο συνηθισμένο':v==='10'?'Καλή ισορροπία':''}))
 const MARITAL_OPTIONS   = [{value:'single',label:'Άγαμος / Άγαμη',description:'Όριο ΦΜΑ: 200.000€'},{value:'married',label:'Έγγαμος / Έγγαμη',description:'Όριο ΦΜΑ: 250.000€'}]
@@ -482,14 +481,11 @@ const PROP_TYPE_OPTIONS = PROPERTY_TYPES.map(p=>({value:p.value,label:p.label,de
 // Η προεπιλογή έγραφε 1,80% με περιγραφή «Σπίτι μου ΙΙ»: το μεικτό επιτόκιο με
 // το μισό δάνειο χωρίς τόκο, για πρόγραμμα που δεν δέχεται πια αιτήσεις. Κανένα
 // τιμολόγιο τράπεζας δεν δίνει 1,80% σε σταθερό. Τώρα είναι το χαμηλότερο
-// σταθερό του πίνακα τραπεζών (`BANKS[].fixed_min` στο TabLoanData.tsx, σταθερό
-// 3 έως 5 ετών, επαληθευμένο στις `BANKS_VERIFIED`), που ταιριάζει με την
-// πενταετή σταθερή περίοδο της προεπιλογής. Δεν γράφεται αριθμός με το χέρι:
-// όταν αλλάξει ο πίνακας, αλλάζει και η προεπιλογή.
-const FIRST_BUYER_RATE = Math.min(...BANKS.map(b=>b.fixed_min)).toFixed(2)
-
-const PRESETS = [
-  {id:'first_buyer',label:'Νέος αγοραστής',desc:'Πρώτη κατοικία',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'150000',propValue:'185000',sqm:'80',rate:FIRST_BUYER_RATE,years:'25',rateType:'fixed' as RateType,loanType:'first_home' as LoanType,borrower:'young' as BorrowerType,fixedPeriod:'5',propType:'residence',area:'center_athens'}},
+// σταθερό των τραπεζών που δείχνει η σύγκριση (`fixed_min`, σταθερό 3 έως 5
+// ετών), που ταιριάζει με την πενταετή σταθερή περίοδο της προεπιλογής. Δεν
+// γράφεται αριθμός με το χέρι: όταν αλλάξει ο πίνακας, αλλάζει και η προεπιλογή.
+const presetsFor = (firstBuyerRate:string) => [
+  {id:'first_buyer',label:'Νέος αγοραστής',desc:'Πρώτη κατοικία',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'150000',propValue:'185000',sqm:'80',rate:firstBuyerRate,years:'25',rateType:'fixed' as RateType,loanType:'first_home' as LoanType,borrower:'young' as BorrowerType,fixedPeriod:'5',propType:'residence',area:'center_athens'}},
   {id:'investor',label:'Επενδυτής',desc:'Ακίνητο προς ενοικίαση',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'200000',propValue:'280000',sqm:'90',rate:'3.20',years:'20',rateType:'fixed' as RateType,loanType:'investment' as LoanType,borrower:'individual' as BorrowerType,fixedPeriod:'5',propType:'residence',area:'south_suburbs'}},
   {id:'commercial',label:'Επαγγελματικό',desc:'Κατάστημα / Γραφείο',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'150000',propValue:'220000',sqm:'50',rate:'3.80',years:'15',rateType:'fixed' as RateType,loanType:'commercial' as LoanType,borrower:'professional' as BorrowerType,fixedPeriod:'5',propType:'store',area:'center_athens'}},
   {id:'renovation',label:'Ανακαίνιση',desc:'Ενεργειακή αναβάθμιση',color:'var(--accent-dim)',border:'var(--border-accent)',textColor:'var(--accent)',values:{loanAmount:'25000',propValue:'200000',sqm:'85',rate:'2.90',years:'15',rateType:'fixed' as RateType,loanType:'energy' as LoanType,borrower:'individual' as BorrowerType,fixedPeriod:'5',propType:'residence',area:'center_athens'}},
@@ -599,6 +595,10 @@ interface Props {
   // κρατιόταν εσωτερικά, ο γονέας δεν θα είχε τρόπο να τον ανοίξει — και η
   // παραπομπή θα έμενε νεκρό κείμενο («βρίσκονται στον Υπολογιστή…»).
   lens:string; onLens:(v:string)=>void; lensRef?:React.Ref<HTMLDivElement>
+  // ΟΙ ΤΡΑΠΕΖΕΣ ΤΗΣ ΣΥΓΚΡΙΣΗΣ, ΟΧΙ ΤΟ ΣΤΑΤΙΚΟ ΑΝΤΙΓΡΑΦΟ. Ο υπολογιστής διάβαζε
+  // το `BANKS` του TabLoanData ενώ η σύγκριση έδειχνε τα ζωντανά της βάσης και
+  // το κείμενο έγραφε «τα ίδια επιτόκια». Η ημερομηνία έρχεται ήδη γραμμένη.
+  banks:ComparisonBank[]; banksVerified:string
 }
 
 // Τα τέσσερα κελιά του σεναρίου γράφονται από ΜΙΑ συνάρτηση, οπότε το όνομα
@@ -611,8 +611,13 @@ const SCEN_NAME: Record<'label' | 'amount' | 'rate' | 'years', string> = {
 const NATURAL_BORROWERS:BorrowerType[] = ['individual','young','family','senior','military','abroad']
 const BUSINESS_BORROWERS:BorrowerType[] = ['professional','company']
 
-export default function TabLoanCalculator({propertyId,userId,market,initial,applied,onSaveLoan,onSaveToCalendar,onSaveToExpenses,onStateChange,profile='individual',lens,onLens,lensRef}:Props) {
+export default function TabLoanCalculator({propertyId,userId,market,initial,applied,onSaveLoan,onSaveToCalendar,onSaveToExpenses,onStateChange,profile='individual',lens,onLens,lensRef,banks,banksVerified}:Props) {
   const supabase = createClient()
+  const BANK_OPTIONS = useMemo(()=>[...banks.map(b=>({value:b.id,label:b.name,description:[b.note,b.fees].filter(Boolean).join(' · ')})),{value:'custom',label:'Άλλη τράπεζα',description:'Καταχώρησε το όνομά της'}],[banks])
+  const PRESETS = useMemo(()=>{
+    const mins = banks.map(b=>Number(b.fixed_min)).filter(x=>x>0)
+    return presetsFor(mins.length ? Math.min(...mins).toFixed(2) : '3.50')
+  },[banks])
   const branding = useReportBranding(userId)
   const [genOfficial, setGenOfficial] = useState(false)
   const [loanAmount,  setLoanAmount]  = useState(initial?.loanAmount || '150000')
@@ -816,20 +821,20 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   // ΠΡΙΝ ήταν σταθερά 1,5 με τον χαρακτηρισμό «τυπικό περιθώριο αγοράς», χωρίς πηγή,
   // και καθόριζε ΟΛΗ τη σύγκριση σταθερού/κυμαινόμενου. Τώρα προκύπτει από τα ίδια
   // δεδομένα τραπεζών που δείχνει ο συγκριτικός πίνακας δύο ενότητες παρακάτω
-  // (variable_spread_min ανά τράπεζα, επιβεβαιωμένα BANKS_VERIFIED): ο διάμεσος των
+  // (variable_spread_min ανά τράπεζα, ίδια λίστα με τη σύγκριση): ο διάμεσος των
   // ελάχιστων περιθωρίων. Αν αλλάξουν τα επιτόκια, αλλάζει και η σύγκριση.
   const refVarSpread = useMemo(()=>{
-    const mins = BANKS.map(b=>Number(b.variable_spread_min)).filter(x=>x>0).sort((a,b)=>a-b)
+    const mins = banks.map(b=>Number(b.variable_spread_min)).filter(x=>x>0).sort((a,b)=>a-b)
     if(!mins.length) return { pct: 0, count: 0 }
     const mid = Math.floor(mins.length/2)
     return { pct: mins.length%2 ? mins[mid] : (mins[mid-1]+mins[mid])/2, count: mins.length }
-  },[])
+  },[banks])
   const variableRate = market.euribor_3m + (rateType==='variable'?R:refVarSpread.pct)
   const varMonthly  = calcMonthly(LA,variableRate,Y)
   // Γνήσια σύγκριση σταθερού/κυμαινόμενου: σε λειτουργία «κυμαινόμενου» το effRate
   // ΕΙΝΑΙ ήδη Euribor+περιθώριο, άρα ταυτίζεται με το variableRate και η σύγκριση
   // εκφυλίζεται· χρησιμοποιούμε αντιπροσωπευτικό σταθερό της αγοράς ως αναφορά.
-  const bankFixedMins = BANKS.map(b=>Number(b.fixed_min)).filter(x=>x>0)
+  const bankFixedMins = banks.map(b=>Number(b.fixed_min)).filter(x=>x>0)
   const fixedRefRate = rateType==='variable' && bankFixedMins.length ? Math.min(...bankFixedMins) : effRate
   const fixedRefMonthly = calcMonthly(LA,fixedRefRate,Y)
   const varShownRate = rateType==='variable' ? effRate : variableRate
@@ -861,11 +866,11 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[loanType,borrower,LA,Y,rateType,effRate,monthly,totalInt,PV,fixedPeriod,SQM,propType,area,INC,marital,children])
 
-  const bankName = bankId==='custom'?customBank:BANKS.find(b=>b.id===bankId)?.name||''
+  const bankName = bankId==='custom'?customBank:banks.find(b=>b.id===bankId)?.name||''
   const areaLabel = AREA_OPTIONS.find(a=>a.value===area)?.label||''
   const propTypeLabel = PROPERTY_TYPES.find(p=>p.value===propType)?.label||''
 
-  function applyPreset(p:typeof PRESETS[0]){setLoanAmount(p.values.loanAmount);setPropValue(p.values.propValue);setSqm(p.values.sqm);setRate(p.values.rate);setYears(p.values.years);setRateType(p.values.rateType);setLoanType(p.values.loanType);setBorrower(p.values.borrower);setFixedPeriod(p.values.fixedPeriod);setPropType(p.values.propType);setArea(p.values.area);setActivePreset(p.id)}
+  function applyPreset(p:ReturnType<typeof presetsFor>[number]){setLoanAmount(p.values.loanAmount);setPropValue(p.values.propValue);setSqm(p.values.sqm);setRate(p.values.rate);setYears(p.values.years);setRateType(p.values.rateType);setLoanType(p.values.loanType);setBorrower(p.values.borrower);setFixedPeriod(p.values.fixedPeriod);setPropType(p.values.propType);setArea(p.values.area);setActivePreset(p.id)}
   function addScen(){setScenarios(s=>[...s,{id:Date.now().toString(),label:`Σενάριο ${s.length+1}`,amount:LA,rate:effRate,years:Y,rateType}])}
   function updScen<K extends keyof LoanScenario>(id:string,f:K,v:LoanScenario[K]){setScenarios(s=>s.map(x=>x.id===id?{...x,[f]:v}:x))}
   function delScen(id:string){setScenarios(s=>s.filter(x=>x.id!==id))}
@@ -1071,7 +1076,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
             <CustomSelect label="Περιοχή" value={area} onChange={v=>{setArea(v);setActivePreset(null)}} options={AREA_OPTIONS}/>
             <NumberInput label="Τιμή αγοράς" value={propValue} onChange={v=>{setPropValue(v);setActivePreset(null)}} suffix="€"/>
             <NumberInput label="Εμβαδόν" value={sqm} onChange={v=>{setSqm(v);setActivePreset(null)}} suffix="τ.μ."/>
-            <CustomSelect label="Σκοπός δανείου" labelInfo={LOAN_TYPES[loanType].tax_note?<InfoDot text={LOAN_TYPES[loanType].tax_note}/>:undefined} value={loanType} onChange={v=>{setLoanType(v as LoanType);setActivePreset(null)}} options={LOAN_TYPE_OPTIONS}/>
+            <CustomSelect label="Σκοπός δανείου" labelInfo={loanTaxNote(loanType)?<InfoDot text={loanTaxNote(loanType)}/>:undefined} value={loanType} onChange={v=>{setLoanType(v as LoanType);setActivePreset(null)}} options={LOAN_TYPE_OPTIONS}/>
             <CustomSelect label="Τύπος δανειολήπτη" labelInfo={<InfoDot text={[BORROWER_PROFILES[borrower].tax_benefits,BORROWER_PROFILES[borrower].special].filter(Boolean).join(' · ')}/>} value={borrower} onChange={v=>{setBorrower(v as BorrowerType);setActivePreset(null)}} options={borrowerOptions}/>
             {/* Τιμή ανά τ.μ. — μέσα στο πλέγμα, δίπλα στον τύπο δανειολήπτη (πιο μαζεμένη κάρτα) */}
             {sqmPrice>0&&<ReadStat label="Τιμή ανά τ.μ." value={fmtEur(sqmPrice)}/>}
@@ -1323,8 +1328,8 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
             Τώρα προκύπτει από τα ίδια επιτόκια τραπεζών που δείχνει η καρτέλα. */}
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.6,marginBottom:14,fontFamily: T.font.sans}}>
           {rateType==='variable'
-            ? <>Το κυμαινόμενο είναι το δικό σου: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν περιθώριο {fmtPct(R)}. Το σταθερό αναφοράς είναι το χαμηλότερο καταχωρημένο σταθερό επιτόκιο {BANKS.length} τραπεζών ({fmtPct(fixedRefRate)}, επιβεβαιωμένα {BANKS_VERIFIED}).</>
-            : <>Το σταθερό είναι το δικό σου ({fmtPct(effRate)}). Κυμαινόμενο αναφοράς: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν <strong style={{color:'var(--text-secondary)'}}>διάμεσο περιθώριο {fmtPct(refVarSpread.pct)}</strong>: ο διάμεσος των ελάχιστων περιθωρίων {refVarSpread.count} τραπεζών, από τα ίδια καταχωρημένα επιτόκια της σύγκρισης τραπεζών (επιβεβαιωμένα {BANKS_VERIFIED}), όχι στρογγυλή υπόθεση. Το δικό σου περιθώριο εξαρτάται από το προφίλ σου· μπορεί να είναι υψηλότερο.</>}
+            ? <>Το κυμαινόμενο είναι το δικό σου: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν περιθώριο {fmtPct(R)}. Το σταθερό αναφοράς είναι το χαμηλότερο καταχωρημένο σταθερό επιτόκιο {bankFixedMins.length} τραπεζών ({fmtPct(fixedRefRate)}, επιβεβαιωμένα {banksVerified}).</>
+            : <>Το σταθερό είναι το δικό σου ({fmtPct(effRate)}). Κυμαινόμενο αναφοράς: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν <strong style={{color:'var(--text-secondary)'}}>διάμεσο περιθώριο {fmtPct(refVarSpread.pct)}</strong>: ο διάμεσος των ελάχιστων περιθωρίων {refVarSpread.count} τραπεζών, από τα ίδια καταχωρημένα επιτόκια της σύγκρισης τραπεζών (επιβεβαιωμένα {banksVerified}), όχι στρογγυλή υπόθεση. Το δικό σου περιθώριο εξαρτάται από το προφίλ σου· μπορεί να είναι υψηλότερο.</>}
         </p>
         <p style={{...labelStyle,marginBottom:10}}>Σωρευτικοί τόκοι στη διάρκεια</p>
         <DualLine data={fvChartData} keyA="Σταθερό" keyB="Κυμαινόμενο" fmt={fmtEur}/>

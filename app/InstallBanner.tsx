@@ -32,9 +32,12 @@ export default function InstallBanner({ mode, onInstall, onDismiss }: {
   onInstall: () => void;
   onDismiss: () => void;
 }) {
+  // Κάθεται εκεί που κάθεται κάθε πλωτό στοιχείο (Toast, MonthlyFeedbackNudge).
+  // Με 16px από το κάτω άκρο και z-index 900, στο κινητό έπεφτε πάνω στην κάτω
+  // πλοήγηση, που έχει κι αυτή 900: σκέπαζε τα εικονίδιά της.
   return (
     <div role="dialog" aria-label="Εγκατάσταση εφαρμογής"
-      style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))', zIndex: 900, maxWidth: 420, margin: '0 auto', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, boxShadow: 'var(--shadow-xl)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12, fontFamily: T.font.sans }}>
+      style={{ position: 'fixed', left: 16, right: 16, bottom: 'var(--float-bottom)', zIndex: 'var(--float-z)', maxWidth: 420, margin: '0 auto', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, boxShadow: 'var(--shadow-xl)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12, fontFamily: T.font.sans }}>
       {/* ── ΤΟ `next/image` ΕΔΩ ΚΟΣΤΙΖΕΙ ΠΕΡΙΣΣΟΤΕΡΟ ΑΠ' ΟΣΟ ΓΛΙΤΩΝΕΙ ──────────
           Δοκιμάστηκε όταν το μήνυμα ζούσε στο ριζικό layout: 161,9 KB →
           177,5 KB και έσπασε ο προϋπολογισμός βάρους. Για ένα PNG 40×40 από τον

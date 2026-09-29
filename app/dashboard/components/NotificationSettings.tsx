@@ -270,7 +270,6 @@ export default function NotificationSettings({ userId }: { userId: string }) {
           Δεν κρέμεται από το `email_enabled`: είναι άλλος δρόμος, όχι ρύθμιση
           του email. Αποθηκεύεται μόνο του, γι' αυτό στέκει κάτω από την ένδειξη
           αποθήκευσης των υπολοίπων και όχι μέσα της. */}
-      <SetGroup>Στη συσκευή</SetGroup>
       <DeviceNotifications userId={userId} />
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', minHeight: 18 }}>

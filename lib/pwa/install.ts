@@ -23,9 +23,23 @@ export const INSTALL_EVENT = 'pos-install-changed';
 
 let deferred: BeforeInstallPromptEvent | null = null;
 
+// ── ΕΓΚΑΤΑΣΤΑΘΗΚΕ ΑΠΟ ΑΥΤΗ ΤΗΝ ΚΑΡΤΕΛΑ ────────────────────────────────────
+// Το `isInstalled` βλέπει μόνο αν η σελίδα ΤΡΕΧΕΙ ως εφαρμογή. Όποιος πατά
+// «Εγκατάσταση» μένει στην καρτέλα του περιηγητή: η κάρτα των Ρυθμίσεων
+// έπεφτε ξανά στις οδηγίες χειροκίνητης εγκατάστασης για κάτι που μόλις είχε
+// γίνει. Κρατιέται όσο ζει το έγγραφο· δεν γράφεται στον δίσκο, γιατί μια
+// απεγκατάσταση αργότερα δεν ειδοποιεί κανέναν και θα έμενε ψέμα.
+let addedHere = false;
+
 /** Κρατά (ή ξεχνά) την πρόσκληση του περιηγητή και το λέει σε όποιον ακούει. */
 export function holdPrompt(e: BeforeInstallPromptEvent | null): void {
   deferred = e;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(INSTALL_EVENT));
+}
+
+/** Ο περιηγητής είπε ότι η εφαρμογή μπήκε στην αρχική οθόνη (`appinstalled` ή «accepted»). */
+export function markAdded(): void {
+  addedHere = true;
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(INSTALL_EVENT));
 }
 
@@ -45,6 +59,7 @@ export async function runPrompt(): Promise<'accepted' | 'dismissed' | 'unavailab
   holdPrompt(null);
   await e.prompt();
   const { outcome } = await e.userChoice;
+  if (outcome === 'accepted') markAdded();
   return outcome;
 }
 
@@ -66,6 +81,9 @@ export function isInstalled(): boolean {
   if (window.matchMedia?.('(display-mode: standalone)').matches) return true;
   return (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
+
+/** Είναι στην αρχική οθόνη: τρέχει ως εφαρμογή ή εγκαταστάθηκε από αυτή την καρτέλα. */
+export const onHomeScreen = (): boolean => addedHere || isInstalled();
 
 /** iPhone/iPad στον περιηγητή: εκεί η εγκατάσταση γίνεται με το χέρι. */
 export function needsManualInstall(): boolean {

@@ -6,7 +6,7 @@ import { fp } from '@/lib/core/format'
 import { AADE_HOME } from '@/lib/tax/aade'
 import { T, fixedCols, Btn } from '@/components/Theme'
 import { greekWhen, seriesPage, ECB_SERIES } from '@/lib/market/ecb'
-import { LOAN_TYPES, rateRange, GLOSSARY, EURIBOR_HISTORY, SERVICERS_GUIDE, fmtPct } from '../TabLoanData'
+import { LOAN_TYPES, rateRange, GLOSSARY, EURIBOR_HISTORY, SERVICERS_GUIDE, fmtPct, loanTaxNote } from '../TabLoanData'
 import { hy } from '@/components/Hyphen'
 import { athensToday } from '@/lib/core/time'
 import { spitiMouOpen, spitiMouClosedLine } from '@/lib/loans/recommend'
@@ -60,7 +60,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
               ))}
               <div style={{flex:'1 1 100%',padding:'13px 0 15px',borderTop:'1px solid var(--border-subtle)'}}>
                 <div style={{...labelStyle,marginBottom:6}}>Φορολογικά και νομικά</div>
-                <p style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{info.tax_note}</p>
+                <p style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{loanTaxNote(advType)}</p>
               </div>
             </div>
             <Btn variant="secondary" onClick={openCalcDocs}>
@@ -270,8 +270,11 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
             ]},
             {category:'Τράπεζες και επιτόκια',links:[
               {label:'Τράπεζα Ελλάδος · επιτόκια',sub:'Επίσημα μέσα επιτόκια αγοράς',url:'https://www.bankofgreece.gr/el/statistiki/nomismatiki-kai-trapeziki-statistiki/epitokia-katatheseon-kai-daneion'},
-              {label:'Σύγκριση επιτοκίων τραπεζών',sub:'Ενημερωμένη σύγκριση όλων των τραπεζών',url:'https://vresdaneio.gr/epitokia/index.html'},
-              {label:'e-stegastiko · πλατφόρμα Τράπεζας Ελλάδος',sub:'Επίσημη πλατφόρμα στεγαστικών',url:'https://e-stegastiko.gr'},
+              // ΔΥΟ ΣΥΓΚΡΙΤΙΚΟΙ ΙΣΤΟΤΟΠΟΙ ΕΦΥΓΑΝ (29.09.2026). Ο ένας περιγραφόταν
+              // «πλατφόρμα Τράπεζας Ελλάδος · Επίσημη», που δεν είναι· και οι δύο
+              // είναι πηγές που ο έλεγχος επιτοκίων (lib/loans/rateFeed.ts)
+              // απορρίπτει ρητά. Επίσημη πηγή εδώ μένει η ίδια η Τράπεζα της
+              // Ελλάδος και, για κάθε τράπεζα, το δελτίο της στη σύγκριση.
               {label:'Τειρεσίας · έλεγχος πιστοληπτικής',sub:'Έλεγξε αν έχεις εγγραφές πριν αιτηθείς',url:'https://www.tiresias.gr'},
             ]},
             {category:'Φορολογικά και τίτλοι',links:[

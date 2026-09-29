@@ -37,7 +37,8 @@ import TabComparison from '@/app/dashboard/components/TabComparison';
 // που κανείς δεν κοίταζε. Δάνειο, τιμολόγηση βραχυχρόνιας, λογαριασμοί, επαφές.
 import TabLoan from '@/app/dashboard/components/TabLoan';
 import TabLoanCalculator from '@/app/dashboard/components/TabLoanCalculator';
-import { MARKET_FALLBACK } from '@/app/dashboard/components/TabLoanData';
+import { MARKET_FALLBACK, BANKS_NORM, BANKS_VERIFIED } from '@/app/dashboard/components/TabLoanData';
+import { grDate } from '@/lib/core/format';
 import TabPricing from '@/app/dashboard/components/TabPricing';
 // Η ΑΠΟΓΡΑΦΗ ΔΕΝ ΕΙΧΕ ΣΚΗΝΗ. Δεκατρείς κάρτες σε πλέγμα, φίλτρα, μενού και δύο
 // προβολές· καμία μέτρηση σε καμία συσκευή, ποτέ.
@@ -251,7 +252,7 @@ function LoanScene() {
   const [lens, setLens] = useState('amort');
   return <TabLoanCalculator propertyId="p0" userId="u1" market={MARKET_FALLBACK}
     onSaveLoan={async () => {}} onSaveToCalendar={async () => {}} onSaveToExpenses={async () => {}}
-    lens={lens} onLens={setLens} />;
+    lens={lens} onLens={setLens} banks={BANKS_NORM} banksVerified={grDate(BANKS_VERIFIED)} />;
 }
 
 const supabase = createClient();
