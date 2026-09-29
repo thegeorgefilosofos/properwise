@@ -229,11 +229,19 @@ async function runUpdate(): Promise<void> {
     const foundIds = new Set(found.map(f => f.id))
     const empty = BANKS.filter((b, i) => settled[i].status === 'fulfilled' && !foundIds.has(resolveBankId(b) ?? ''))
 
-    // Αμυντικό: λίγες τράπεζες σημαίνει κακή αναζήτηση, όχι κακή αγορά.
-    if (found.length < MIN_BANKS) {
-      await log(false, `insufficient_valid_rows: ${found.length} από ${MIN_BANKS}`, { found: found.length, failures, empty })
+    // ΚΑΘΕ ΤΡΑΠΕΖΑ ΚΡΙΝΕΤΑΙ ΜΟΝΗ ΤΗΣ (απόφαση ιδιοκτήτη, 29.09.2026). Ως τώρα,
+    // κάτω από MIN_BANKS επίσημα ευρήματα δεν γραφόταν ΤΙΠΟΤΑ: δύο τράπεζες με
+    // τιμή από τη δική τους σελίδα πετιούνταν επειδή οι άλλες τέσσερις δεν
+    // βρέθηκαν. Ο λόγος του κανόνα («λίγες τράπεζες = κακή αναζήτηση») δεν
+    // κάνει λάθος την τιμή που ΒΡΕΘΗΚΕ: κάθε εύρημα έχει ήδη περάσει επίσημη
+    // πηγή, λογικά όρια και περνά από κράτηση για μεγάλες μεταβολές. Οι
+    // τράπεζες χωρίς εύρημα δεν αγγίζονται και το `verified_at` τους μένει
+    // παλιό, όπως πρέπει. Ανεπαρκές είναι μόνο το μηδέν.
+    if (found.length === 0) {
+      await log(false, 'insufficient_valid_rows: 0', { found: 0, failures, empty })
       return
     }
+    const partial = found.length < MIN_BANKS
 
     // ── Ο,τι ισχύει σήμερα, για σύγκριση ─────────────────────────────────
     const { data: rows, error: readErr } = await supabase.from('bank_rates').select('*')
@@ -318,7 +326,7 @@ async function runUpdate(): Promise<void> {
     }
 
     const summary = { found: found.length, applied, held: heldNow, unchanged, banks: perBank, failures, empty, verified_at: today }
-    await log(true, 'εντάξει', summary)
+    await log(true, partial ? `μερικό: ${found.length} από ${BANKS.length} τράπεζες` : 'εντάξει', summary)
     console.log('bank-rates-updater:', JSON.stringify(summary))
   } catch (e) {
     const msg = (e as Error).message
