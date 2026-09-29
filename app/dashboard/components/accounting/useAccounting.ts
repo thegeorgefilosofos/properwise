@@ -21,6 +21,7 @@ import { REGULATORY_UPDATES_2026, type UpdateAudience } from '@/lib/accounting/u
 import { transferCosts } from '@/lib/accounting/transfer'
 import type { LegalForm as DossierLegalForm } from '@/lib/accounting/dossier'
 import { businessFormOf } from '@/lib/accounting/taxProfile'
+import { sameTaxpayer } from '@/lib/accounting/taxpayer'
 import type {
   ClientStaysRow, ExpensesRow, InventoryItemsRow, RentPaymentsRow, UserPropertiesRow,
 } from '@/lib/supabase/tables'
@@ -279,8 +280,8 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // (2ος όροφος, 10-20 ετών) και έβγαινε 16,15% ψηλότερα από την ουδέτερη βάση.
   // Και ο `prop_type`: χωρίς αυτόν η εκτίμηση χρέωνε αποθήκη 20 τ.μ. με τον
   // πίνακα των κατοικιών (39,20€ τον χρόνο) και οικόπεδο 400 τ.μ. με 600,00€.
-  type PropRow     = Pick<UserPropertiesRow, 'id'|'name'|'address'|'rental_mode'|'enfia'|'sqm'|'value'|'year_built'|'floor'|'purchase_price'|'purchase_date'|'prop_type'|'ownership'>
-  type PropListRow = Pick<UserPropertiesRow, 'id'|'name'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'ownership'|'prop_type'>
+  type PropRow     = Pick<UserPropertiesRow, 'id'|'name'|'address'|'rental_mode'|'enfia'|'sqm'|'value'|'year_built'|'floor'|'purchase_price'|'purchase_date'|'prop_type'|'ownership'|'postal_code'>
+  type PropListRow = Pick<UserPropertiesRow, 'id'|'name'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'ownership'|'prop_type'|'client_id'>
   type InventoryRow = Pick<InventoryItemsRow, 'name'|'purchase_value'|'category'|'purchase_date'>
 
   const [expenses,setExpenses] = useState<ExpenseRow[]>([])
@@ -294,6 +295,9 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const [allProps,setAllProps] = useState<PropListRow[]>([])
   const [allRent,setAllRent] = useState<PortfolioRentRow[]>([])
   const [allStays,setAllStays] = useState<PortfolioStayRow[]>([])
+  // Οι καρτέλες «Ιδιοκτήτης» του Πελατολογίου: καθεμία είναι χωριστός
+  // φορολογούμενος (lib/accounting/taxpayer.ts). `null` όσο δεν διαβάστηκαν.
+  const [ownerClientIds,setOwnerClientIds] = useState<Set<string>|null>(null)
 
   // ΑΚΥΡΩΣΗ ΑΝΑ ΑΚΙΝΗΤΟ. Εννέα ερωτήματα φορτώνουν έσοδα, δαπάνες, δάνεια και
   // στοιχεία ακινήτου. Με αλλαγή ακινήτου μέσα στο διάστημα φόρτωσης, η
@@ -317,15 +321,15 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
       //                                 η τεκμαρτή έκπτωση 5%
       //
       // Ολα αυτά παρουσιάζονταν ως υπολογισμός, με κουμπί εξαγωγής από κάτω.
-      const [exR, rpR, stR, lnR, prR, apsR, arpR, astR, invR, tnR, ownR, blR] = await Promise.all([
+      const [exR, rpR, stR, lnR, prR, apsR, arpR, astR, invR, tnR, ownR, blR, ocR] = await Promise.all([
         expenseStore.ledgerWithError<ExpenseRow>(supabase,propertyId,{ columns:'id,bill_id,paid,date,amount,category,expense_group,description,supplier_country,supply,supplier_afm,paid_by,share_percent' }),
         // Ο ΤΡΟΠΟΣ ΠΛΗΡΩΜΗΣ ΕΙΝΑΙ ΦΟΡΟΛΟΓΙΚΟ ΣΤΟΙΧΕΙΟ, ΟΧΙ ΔΙΑΚΟΣΜΗΤΙΚΟ: από
         // αυτόν κρίνεται η τεκμαρτή έκπτωση 5%. Μία στήλη παραπάνω στο ίδιο ερώτημα.
         rentStore.ofPropertyWithError<RentRow>(supabase,propertyId,`${rentStore.LEDGER_COLUMNS},method`,userId),
         stayStore.ofPropertyWithError<StayRow>(supabase,propertyId,`id,${stayStore.ACCOUNTING_COLUMNS}`,userId),
         loanStore.ofPropertyWithError(supabase,propertyId,userId),
-        properties.oneWithError<PropRow>(supabase, propertyId, 'id,name,address,rental_mode,enfia,sqm,value,year_built,floor,purchase_price,purchase_date,prop_type,ownership', userId),
-        properties.listWithError<PropListRow>(supabase, userId, { columns: 'id,name,rental_mode,status_detail,enfia,sqm,ownership,prop_type' }),
+        properties.oneWithError<PropRow>(supabase, propertyId, 'id,name,address,rental_mode,enfia,sqm,value,year_built,floor,purchase_price,purchase_date,prop_type,ownership,postal_code', userId),
+        properties.listWithError<PropListRow>(supabase, userId, { columns: 'id,name,rental_mode,status_detail,enfia,sqm,ownership,prop_type,client_id' }),
         rentStore.ofUserWithError<PortfolioRentRow>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS}`),
         stayStore.ofUserWithError<PortfolioStayRow>(supabase,userId,`property_id,${stayStore.ACCOUNTING_COLUMNS}`),
         inventoryStore.ofPropertyWithError<InventoryRow>(supabase,propertyId,'name,purchase_value,category,purchase_date',userId),
@@ -339,14 +343,18 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
         // ΟΙ ΛΟΓΑΡΙΑΣΜΟΙ ΠΟΥ ΔΕΝ ΕΓΙΝΑΝ ΔΑΠΑΝΗ. Χωρίς αυτούς τα έξοδα της χρονιάς
         // έβγαιναν εδώ 1.152€ και στην Τιμολόγηση 1.890€ για το ίδιο ακίνητο.
         billStore.ofPropertyWithError<LedgerBill>(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
+        // ΠΟΙΟΙ ΕΙΝΑΙ ΟΙ ΦΟΡΟΛΟΓΟΥΜΕΝΟΙ ΤΟΥ ΛΟΓΑΡΙΑΣΜΟΥ. Χωρίς αυτό η ενοποίηση
+        // έβαζε τα ακίνητα δύο ιδιοκτητών σε μία κλίμακα.
+        supabase.from('clients').select('id').eq('user_id', userId).eq('type', 'owner'),
       ])
       if(!alive) return
-      setReadFailed([exR,rpR,stR,lnR,prR,apsR,arpR,astR,invR,tnR,blR].some(r=>!!r.error))
+      setReadFailed([exR,rpR,stR,lnR,prR,apsR,arpR,astR,invR,tnR,blR,ocR].some(r=>!!r.error))
       setExpenses(exR.rows); setBills(blR.rows); setRent(rpR.rows); setLeaseViaBank(tnR.row ? (tnR.row.e_payment !== false) : null)
       setStays(stR.rows); setLoans(lnR.views)
       setProp(prR.row); setAllProps(apsR.rows); setOwner(ownR)
       setAllRent(arpR.rows); setAllStays(astR.rows)
       setInventory(invR.rows)
+      setOwnerClientIds(ocR.error ? null : new Set(((ocR.data || []) as { id: string }[]).map(c=>c.id)))
     }catch(_){ if(alive) setReadFailed(true) /* διατηρούμε ό,τι ήδη έχει φορτωθεί· το UI δεν κολλάει */ }
     finally{ if(alive) setLoading(false) }
   })(); return ()=>{ alive = false } },[propertyId,userId,refreshKey,supabase])
@@ -359,6 +367,12 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // μηδέν πρόβλεψη — σε PDF με αριθμό εγγράφου και κωδικό QR επαλήθευσης.
   const isShort = readStatus(prop as StatusRow) === 'rent_short'
   const regime:TaxRegime = isShort ? 'individual_shortterm' : 'individual_longterm'
+  // ══ ΕΝΑΣ ΛΟΓΑΡΙΑΣΜΟΣ ΔΕΝ ΕΙΝΑΙ ΠΑΝΤΑ ΕΝΑΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ ═════════════════
+  // Ο επαγγελματίας διαχειριστής κρατά ακίνητα πολλών ιδιοκτητών. Η κλίμακα
+  // και η εξαίρεση των δύο βραχυχρόνιων μετρούν ΑΝΑ ιδιοκτήτη, όχι ανά
+  // λογαριασμό. Ο ιδιώτης μένει ένας φορολογούμενος, όπως ήταν.
+  const taxpayerProps = useMemo(()=>sameTaxpayer(allProps, propertyId, mode==='professional' ? ownerClientIds : null),
+    [allProps, propertyId, mode, ownerClientIds])
   // ══ ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΜΕΤΡΑΕΙ ΒΡΑΧΥΧΡΟΝΙΑ ΑΚΙΝΗΤΑ, ΟΧΙ ΑΚΙΝΗΤΑ ══════
   // Ο νόμος (ν.5073/2023) εξαιρεί τα φυσικά πρόσωπα που εκμισθώνουν ΒΡΑΧΥΧΡΟΝΙΑ
   // έως δύο ακίνητα. Εδώ μετριούνταν ΟΛΑ όσα έχει ο χρήστης: μακροχρόνιες
@@ -371,7 +385,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // Το `Math.max(1, …)` μένει: όσο ο κατάλογος δεν έχει φορτώσει, το ανοιχτό
   // ακίνητο μετράει ως ένα — κι η εξαίρεση ισχύει, που είναι η σωστή στάση
   // απέναντι σε δεδομένα που λείπουν.
-  const propCount = Math.max(1, allProps.filter(p=>readStatus(p as StatusRow)==='rent_short').length)
+  const propCount = Math.max(1, taxpayerProps.filter(p=>readStatus(p as StatusRow)==='rent_short').length)
   // ══════════════════════════════════════════════════════════════════════════
   // ΤΟ ΜΕΡΙΔΙΟ ΤΟΥ ΣΥΝΙΔΙΟΚΤΗΤΗ, ΠΟΥ Η ΚΑΡΤΕΛΑ ΔΕΝ ΡΩΤΟΥΣΕ ΚΑΝ
   //
@@ -412,6 +426,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     stored: prop?.enfia, value: prop?.value, sqm: prop?.sqm,
     yearBuilt: prop?.year_built, floor: prop?.floor, propType: prop?.prop_type,
     ownershipPct: prop?.ownership == null ? null : Number(prop.ownership),
+    postalCode: prop?.postal_code,
   }),[enfiaSettings,year,prop])
   const enfia = enfiaNow.inUse.annual
   const enfiaSource = enfiaNow.inUse.source
@@ -584,7 +599,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // των ενοικίων (Ε1), όχι ανά ακίνητο. Υπολογίζεται ΠΑΝΤΑ, ώστε ο φόρος του τρέχοντος
   // ακινήτου να είναι το ΜΕΡΙΔΙΟ του από τον συνολικό, σωστά και για πολλά ακίνητα.
   const consolidation = useMemo(()=>{
-    const items = (allProps.length?allProps:[{id:propertyId,name:prop?.name,rental_mode:prop?.rental_mode,enfia:prop?.enfia,sqm:prop?.sqm,prop_type:prop?.prop_type}]).map(p=>{
+    const items = (taxpayerProps.length?taxpayerProps:[{id:propertyId,name:prop?.name,rental_mode:prop?.rental_mode,enfia:prop?.enfia,sqm:prop?.sqm,prop_type:prop?.prop_type}]).map(p=>{
       const rmode:TaxRegime = readStatus(p as StatusRow) === 'rent_short' ? 'individual_shortterm' : 'individual_longterm'
       const pRentAccrued = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).reduce((s,r)=>s+(r.amount||0),0)
       // ══ Ο ΦΟΡΟΣ ΑΓΝΟΟΥΣΕ ΤΗΝ ΑΠΑΛΛΑΓΗ ΠΟΥ Η ΙΔΙΑ ΚΑΡΤΑ ΕΔΕΙΧΝΕ ══════════════
@@ -623,7 +638,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     }).filter(x=>x.input.grossIncome>0)
     if(items.length===0) return null
     return { con: consolidateIndividual(items.map(i=>({id:i.id,input:i.input})), rentalBracketsForYear(year)), names:Object.fromEntries(items.map(i=>[i.id,i.name])), count:items.length }
-  },[allProps,allRent,allStays,year,propCount,prop,propertyId,rentsBank,bankMatters,pctOf,individualPerson,claimedUncollected,enfia])
+  },[taxpayerProps,allRent,allStays,year,propCount,prop,propertyId,rentsBank,bankMatters,pctOf,individualPerson,claimedUncollected,enfia])
   const myTaxShare = useMemo(()=>consolidation?.con.perProperty.find(p=>p.id===propertyId)?.taxShare,[consolidation,propertyId])
   const portfolio = (mode==='professional' && elp==='personal') ? consolidation : null
 

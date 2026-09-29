@@ -243,10 +243,25 @@ export const ENFIA_REDUCTIONS: {
    * πεδίο θα ήταν σιωπηλή τιμωρία για κενό, όχι εφαρμογή του νόμου.
    */
   maxHomeValue?: number
+  /**
+   * ΔΕΝ ΔΙΝΕΤΑΙ ΣΤΗΝ ΗΠΕΙΡΩΤΙΚΗ ΑΤΤΙΚΗ.
+   *
+   * ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΗΤΑΝ (28.09.2026). Η μείωση του μικρού οικισμού εξαιρεί ρητά
+   * τους οικισμούς της Περιφέρειας Αττικής, πλην της Περιφερειακής Ενότητας
+   * Νήσων (άρθρο 17 παρ. 3 ν.5219/2025, όπως προστέθηκε με το άρθρο 10
+   * ν.5246/2025· ΦΕΚ Α΄ 198/11.11.2025). Η μηχανή το αγνοούσε: ιδιοκτήτης σε
+   * μικρό οικισμό της Ανατολικής Αττικής που τσέκαρε το κουτί έβλεπε τον μισό
+   * φόρο το 2026 και μηδέν από το 2027 — ποσό που η ΑΑΔΕ δεν θα του χαρίσει.
+   *
+   * Κρίνει μόνο όταν ξέρουμε πού είναι το ακίνητο (`atticaMainlandFromPostcode`).
+   * Χωρίς ΤΚ ισχύει ό,τι και για την αξία: τα κριτήρια τα βεβαιώνει ο ίδιος
+   * τσεκάροντας το κουτί· η σημείωση του μέτρου γράφει την εξαίρεση.
+   */
+  excludesAtticaMainland?: boolean
 }[] = [
   { key: 'low_income', label: 'Χαμηλό εισόδημα (κύρια κατοικία)', pct: 50, note: 'Μείωση 50% με κριτήρια: εισόδημα ≤9.000€ (+1.000€/μέλος), κτίσματα ≤150 τ.μ., περιουσία ≤85.000€ (άγαμος) / 200.000€ (έγγαμος με 2 τέκνα)' },
   // Το κλειδί κρατά το «2026» επειδή είναι αποθηκευμένο στις επιλογές των χρηστών.
-  { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού', pct: 50, sinceYear: 2026, pctFrom: { year: 2027, pct: 100 }, maxHomeValue: 400_000, note: 'Αυτόματη μείωση 50% το 2026 και πλήρης απαλλαγή από το 2027, για οικισμούς ≤1.500 κατ., αξία κατοικίας ≤400.000€' },
+  { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού', pct: 50, sinceYear: 2026, pctFrom: { year: 2027, pct: 100 }, maxHomeValue: 400_000, excludesAtticaMainland: true, note: 'Αυτόματη μείωση 50% το 2026 και πλήρης απαλλαγή από το 2027, για οικισμούς κάτω των 1.500 κατ., αξία κατοικίας ≤400.000€. Δεν ισχύει στην Περιφέρεια Αττικής, εκτός από την Π.Ε. Νήσων.' },
   { key: 'large_family', label: 'Τρίτεκνοι / Πολύτεκνοι', pct: 100, note: '100% απαλλαγή με κριτήρια: εισόδημα ≤12.000€ (+1.000€/μέλος), κτίσματα ≤150 τ.μ.' },
   { key: 'disability', label: 'Αναπηρία ≥80%', pct: 100, note: '100% απαλλαγή με τα ίδια εισοδηματικά/περιουσιακά κριτήρια' },
   { key: 'insurance', label: 'Ασφαλισμένη κατοικία', pct: 20, pctOver: { above: 500_000, pct: 10 }, note: '20% (αξία ≤500.000€) ή 10% (>500.000€), κάλυψη σεισμού+πυρκαγιάς+πλημμύρας ≥3 μήνες' },
@@ -320,12 +335,13 @@ export function enfiaExtraPropertyTax(propertyValue: number, ownership = 100): n
  * @param year το έτος ΕΝΦΙΑ. Χωρίς αυτό, τα μέτρα με ημερομηνία λήξης δεν
  *             εφαρμόζονται· όσα δεν λήγουν, εφαρμόζονται κανονικά.
  */
-export function enfiaReductionPct(key: string, homeValue: number, year?: number): number {
+export function enfiaReductionPct(key: string, homeValue: number, year?: number, atticaMainland?: boolean | null): number {
   const rd = ENFIA_REDUCTIONS.find(r => r.key === key)
   if (!rd) return 0
   if (rd.untilYear != null && (year == null || year > rd.untilYear)) return 0
   if (rd.sinceYear != null && (year == null || year < rd.sinceYear)) return 0
   if (rd.maxHomeValue != null && homeValue > rd.maxHomeValue) return 0
+  if (rd.excludesAtticaMainland && atticaMainland === true) return 0
   return rd.pctOver && homeValue > rd.pctOver.above ? rd.pctOver.pct : enfiaReductionRate(key, year)
 }
 
@@ -345,12 +361,30 @@ export function enfiaReductionRate(key: string, year?: number): number {
  *
  * @param homeValue η αξία της κατοικίας, ή 0 όταν δεν έχει δηλωθεί
  */
-export function enfiaReductionInForce(key: string, year: number, homeValue = 0): boolean {
+export function enfiaReductionInForce(key: string, year: number, homeValue = 0, atticaMainland?: boolean | null): boolean {
   const rd = ENFIA_REDUCTIONS.find(r => r.key === key)
   if (!rd) return false
   if (rd.untilYear != null && year > rd.untilYear) return false
   if (rd.sinceYear != null && year < rd.sinceYear) return false
+  if (rd.excludesAtticaMainland && atticaMainland === true) return false
   return !(rd.maxHomeValue != null && homeValue > rd.maxHomeValue)
+}
+
+/**
+ * Είναι το ακίνητο στην Περιφέρεια Αττικής, ΕΞΩ από την Π.Ε. Νήσων; Από τον ΤΚ.
+ *
+ * Οι ΤΚ της Αττικής αρχίζουν από 1. Η Π.Ε. Νήσων έχει τη Σαλαμίνα (189 xx) και
+ * τα νησιά του Αργοσαρωνικού με τα Μέθανα (180 xx: Αίγινα 180 10, Πόρος 180 20,
+ * Μέθανα 180 30, Ύδρα 180 40, Σπέτσες 180 50). Τα Κύθηρα (801 00) δεν αρχίζουν
+ * από 1, άρα βγαίνουν ήδη «εκτός».
+ *
+ * @returns `true` ηπειρωτική Αττική, `false` αλλού, `null` χωρίς έγκυρο ΤΚ
+ */
+export function atticaMainlandFromPostcode(postcode: string | null | undefined): boolean | null {
+  const d = String(postcode ?? '').replace(/\D/g, '')
+  if (d.length !== 5) return null
+  if (d[0] !== '1') return false
+  return !(d.startsWith('180') || d.startsWith('189'))
 }
 
 export function wealthReductionPct(totalValue: number): number {
@@ -368,6 +402,8 @@ export interface ENFIAInput {
   totalValue?: number  // συνολική αξία ακίνητης περιουσίας (για μείωση & προσαύξηση)
   propertyValue?: number // αντικειμενική αξία ΤΟΥ ακινήτου (για Ενότητα Γ, >400.000€)
   reductions?: string[]
+  /** Ηπειρωτική Αττική (`atticaMainlandFromPostcode`)· `null`/κενό όταν δεν ξέρουμε. */
+  atticaMainland?: boolean | null
   /**
    * Το έτος ΕΝΦΙΑ. Κρίνει ποια μέτρα ισχύουν ακόμη.
    *
@@ -420,7 +456,7 @@ export function estimateENFIA(input: ENFIAInput): ENFIAResult | null {
   const wealthPct = wealthReductionPct(totalVal)
   // Η ΑΞΙΑ ΠΟΥ ΚΡΙΝΕΙ ΤΟ ΚΑΤΩΦΛΙ ΕΙΝΑΙ ΤΗΣ ΚΑΤΟΙΚΙΑΣ. Δες `enfiaReductionPct`.
   const homeVal = propVal || totalVal
-  const manualPct = Math.max(0, ...(input.reductions ?? []).map(r => enfiaReductionPct(r, homeVal, input.year)))
+  const manualPct = Math.max(0, ...(input.reductions ?? []).map(r => enfiaReductionPct(r, homeVal, input.year, input.atticaMainland)))
   const combinedFrac = 1 - (1 - wealthPct / 100) * (1 - manualPct / 100)
   const reductionAmount = subtotal * combinedFrac
   // ΚΑΜΙΑ ΔΟΣΗ ΔΕΝ ΒΓΑΙΝΕΙ ΑΠΟ ΕΔΩ. Η μηχανή επέστρεφε `installment` ίσο με

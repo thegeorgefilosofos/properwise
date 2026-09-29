@@ -24,7 +24,7 @@ import { Skeleton, SkeletonKPIs, PageTitle, fe, feCompact, fp, fn, ABSENT, ABSEN
 import { NumberInput, CustomSelect, fieldLabelStyle, SegmentControl, Toggle as Switch, TOGGLE } from './UIComponents';
 import { ChevronRight, TrendingUp, Landmark, Percent, Wallet, Layers, ArrowUpRight, Info, ShieldCheck } from 'lucide-react';
 import { yields, compound, leverage, compareInvestments, propertyTotalReturn, projectLine, yieldGrade, dealAnalysis, type LeverageResult, type YieldGrade } from '@/lib/market/returns';
-import { shortTermEstimate, breakEvenOccupancy, adrReference, MAX_ST_GROSS_YIELD_WARN } from '@/lib/market/shortTerm';
+import { shortTermEstimate, breakEvenOccupancy, adrReference, MAX_ST_GROSS_YIELD_WARN, assumesMarket, MARKET_ESTIMATE_LABEL } from '@/lib/market/shortTerm';
 import { isHouseType } from '@/lib/tax/shortTermTax';
 import {
   REGIONS, BENCHMARKS, BENCHMARKS_ASOF, HISTORY_INDEX, HISTORY_ANCHORS, SHORT_TERM, YIELD_LEVERS,
@@ -862,6 +862,14 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
     fromBookings && stOcc === bookedOcc && stAdr === bookedAdr ? 'bookings'
     : stOcc === String(stRef.occupancy) && stAdr === areaAdr ? 'area'
     : 'own';
+  // Τα μεγάλα πλακίδια λένε «εκτίμηση αγοράς» όταν έστω ένα από τα δύο
+  // (πληρότητα, τιμή νύχτας) είναι της περιοχής — όχι μόνο όταν είναι και τα δύο.
+  const marketEstimate = term === 'short' && assumesMarket({
+    occupancy: stOcc, adr: stAdr,
+    area: { occupancy: String(stRef.occupancy), adr: areaAdr },
+    booked: fromBookings ? { occupancy: bookedOcc, adr: bookedAdr } : null,
+  });
+  const mkt = (sub: string) => (marketEstimate ? `${MARKET_ESTIMATE_LABEL} · ${sub}` : sub);
 
   const nVal = parseFloat(value) || 0;
   const nRent = parseFloat(rent) || 0;
@@ -1483,19 +1491,19 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       {!empty && (<>
         {/* KPIs */}
         <div {...g4box}>
-          <Tile label="Μεικτή απόδοση" value={fp(y.grossYield)} sub={`${fe(y.annualRent)} έσοδα τον χρόνο`} info={<TermInfo term="Μεικτή απόδοση" text={G.gross_yield} />} />
+          <Tile label="Μεικτή απόδοση" value={fp(y.grossYield)} sub={mkt(`${fe(y.annualRent)} έσοδα τον χρόνο`)} info={<TermInfo term="Μεικτή απόδοση" text={G.gross_yield} />} />
           <Tile label="Καθαρή απόδοση" value={fp(y.netYield)}
-            sub={term === 'short' ? `μετά από ${fe(effOpex)} έξοδα, προμήθειες και τέλη` : `μετά από ${fe(effOpex)} έξοδα`}
+            sub={mkt(term === 'short' ? `μετά από ${fe(effOpex)} έξοδα, προμήθειες και τέλη` : `μετά από ${fe(effOpex)} έξοδα`)}
             info={<TermInfo term="Καθαρή απόδοση" text={G.net_yield} />} />
           {/* «Μετά τον φόρο» και όχι «Απόδοση μετά τον φόρο»: δίπλα στη μεικτή και
               την καθαρή η λέξη «απόδοση» εννοείται· στα 390 η ετικέτα
               έσπαγε σε δύο γραμμές. Η εταιρεία πληρώνει φόρο μερίσματος μόνο
               στη διανομή· ο υπολογισμός υποθέτει πλήρη διανομή και το λέει. */}
           <Tile label="Μετά τον φόρο" value={fp(y.netYieldAfterTax)}
-            sub={consolidated ? `μερίδιο φόρου ${fe(annualTax)} τον χρόνο` : pro && entity === 'company' ? `φόρος ${fe(annualTax)} τον χρόνο, με πλήρη διανομή κερδών` : `φόρος ${fe(annualTax)} τον χρόνο`}
+            sub={mkt(consolidated ? `μερίδιο φόρου ${fe(annualTax)} τον χρόνο` : pro && entity === 'company' ? `φόρος ${fe(annualTax)} τον χρόνο, με πλήρη διανομή κερδών` : `φόρος ${fe(annualTax)} τον χρόνο`)}
             tone="accent" info={<TermInfo term="Απόδοση μετά τον φόρο" text={consolidated ? `${G.after_tax_yield} ${CONSOLIDATION_NOTE}` : G.after_tax_yield} />} />
           {canInvest
-            ? <Tile label="Απόδοση ιδίων κεφαλαίων" value={fpSigned(lev.cashOnCash)} sub={lev.cashOnCash >= 0 ? 'θετική μόχλευση' : (lev.positiveCarry ? 'θετική μόχλευση, αρνητική ροή' : 'αρνητική μόχλευση')} info={<TermInfo term="Απόδοση ιδίων κεφαλαίων" text={G.cash_on_cash} />} />
+            ? <Tile label="Απόδοση ιδίων κεφαλαίων" value={fpSigned(lev.cashOnCash)} sub={mkt(lev.cashOnCash >= 0 ? 'θετική μόχλευση' : (lev.positiveCarry ? 'θετική μόχλευση, αρνητική ροή' : 'αρνητική μόχλευση'))} info={<TermInfo term="Απόδοση ιδίων κεφαλαίων" text={G.cash_on_cash} />} />
             : term === 'short'
               ? <Tile label="Τυπική περιοχής" value={fp(stRef.grossYield)} sub={`βραχυχρόνια, ${reg?.region || 'Ελλάδα'}`} info={<TermInfo term="Τυπική βραχυχρόνια της περιοχής" text={G.region_short_ref} />} />
               : <Tile label="Μέσος όρος περιοχής" value={fp(reg?.grossYield || GREECE_AVG_GROSS_YIELD)} sub={reg?.label || 'Ελλάδα'} info={<TermInfo term="Μέσος όρος περιοχής" text={G.region_ref} />} />}

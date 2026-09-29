@@ -282,3 +282,18 @@ export function totals(stays: (ReportStay & { declared_at?: string | null })[], 
     };
   }, { revenue: 0, nights: 0, count: 0, unresolved: 0, unresolvedAmount: 0, platformFees: 0, climateLevy: 0, undeclared: 0, upcoming: 0 });
 }
+
+// ═══ «ΩΣ ΣΗΜΕΡΑ» ΣΗΜΑΙΝΕΙ ΩΣ ΣΗΜΕΡΑ, ΚΑΙ ΣΤΙΣ ΔΙΑΜΟΝΕΣ ══════════════════════
+// Το Χαρτοφυλάκιο («Έσοδα 2026 ως σήμερα») και η Επισκόπηση («Εισπράξεις
+// φιλοξενίας») κρατούσαν τις διαμονές του ΕΤΟΥΣ: μαζί και την κράτηση του
+// Δεκεμβρίου που δεν έχει ξεκινήσει. Στον λογαριασμό δεν έχει μπει τίποτα από
+// αυτήν, ενώ το Χαρτοφυλάκιο την ετησιοποιούσε κιόλας (× 365 / ημέρες που
+// πέρασαν). Μετρά η ημέρα άφιξης, η ίδια ημερομηνία που κρίνει και το έτος.
+/** Οι διαμονές του `year` με άφιξη ως και το `today` (Αθήνα, ISO). */
+export function staysOfYearToDate<S extends ReportStay>(stays: readonly S[], year: number, today: string): S[] {
+  const y = String(year);
+  return stays.filter(s => {
+    const d = (s.check_in || s.check_out || '').slice(0, 10);
+    return d.slice(0, 4) === y && d <= today.slice(0, 10);
+  });
+}

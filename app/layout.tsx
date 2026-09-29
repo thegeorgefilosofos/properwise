@@ -9,10 +9,13 @@ import { ToastHost } from "@/components/Toast";
 import ErrorListener from "@/components/ErrorListener";
 import JustifyPolish from "@/components/JustifyPolish";
 import { ConfirmHost } from "@/components/ConfirmDialog";
-import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE } from "@/lib/core/site";
+import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE } from "@/lib/core/site";
 
 const TITLE = PRODUCT_NAME;
 const DESCRIPTION = PRODUCT_TAGLINE;
+// Η ΚΑΡΤΑ ΚΟΙΝΟΠΟΙΗΣΗΣ ΛΕΕΙ ΟΣΑ ΚΑΙ Η ΕΙΚΟΝΑ ΤΗΣ. Κάθε σελίδα χωρίς δικό της
+// `openGraph` δείχνει την κάρτα «home», που γράφει τον τίτλο της αρχικής.
+const SHARE_TITLE = `${PRODUCT_NAME} · ${HOME_TITLE}`;
 
 export const metadata: Metadata = {
   // ═══════════════════════════════════════════════════════════════════════
@@ -40,11 +43,11 @@ export const metadata: Metadata = {
     siteName: TITLE,
     locale: "el_GR",
     url: SITE,
-    title: TITLE,
+    title: SHARE_TITLE,
     description: DESCRIPTION,
     images: [SHARE_IMAGE],
   },
-  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: [SHARE_IMAGE] },
+  twitter: { card: "summary_large_image", title: SHARE_TITLE, description: DESCRIPTION, images: [SHARE_IMAGE] },
   applicationName: "PROPERWISE",
   // Εγκαταστάσιμη εφαρμογή: το manifest παράγεται από το app/manifest.ts.
   manifest: "/manifest.webmanifest",

@@ -4,7 +4,7 @@ import { enfiaLastYearAnnual,
   ENFIA_ZONE_TAX, enfiaInUse, enfiaAgeCoef, enfiaFloorCoef,
   enfiaAgeKeyFromYears, enfiaAgeKeyFromYearBuilt, enfiaFloorKeyFromValue,
   enfiaTypeBlock, ENFIA_TYPE_BLOCK_NOTE,
-  enfiaReductionPct, enfiaReductionInForce, ENFIA_REDUCTIONS,
+  enfiaReductionPct, enfiaReductionInForce, ENFIA_REDUCTIONS, atticaMainlandFromPostcode,
 } from './enfia'
 
 let passed = 0, failed = 0
@@ -485,6 +485,35 @@ ok('μηδέν έτη → νεόδμητο (κανονική περίπτωση)
   ok('σε μικρό διαμέρισμα δεν υπήρχε καμία διαφορά',
      estimateENFIA({ ...small, ownership: 50, totalValue: sHalf, propertyValue: sHalf })!.annual ===
      estimateENFIA({ ...small, ownership: 50, totalValue: sHalf, propertyValue: sFull })!.annual)
+}
+
+// ── Ο ΜΙΚΡΟΣ ΟΙΚΙΣΜΟΣ ΔΕΝ ΙΣΧΥΕΙ ΣΤΗΝ ΗΠΕΙΡΩΤΙΚΗ ΑΤΤΙΚΗ ─────────────────────
+// Άρθρο 17 παρ. 3 ν.5219/2025 (άρθρο 10 ν.5246/2025): εξαιρούνται οι οικισμοί
+// της Περιφέρειας Αττικής, πλην Π.Ε. Νήσων. Η μηχανή έδινε τη μείωση παντού.
+{
+  const KEY = 'small_settlement_2026'
+  ok('ΤΚ Αθήνας: ηπειρωτική Αττική', atticaMainlandFromPostcode('105 58') === true)
+  ok('ΤΚ Ανατολικής Αττικής (Μαρκόπουλο): ηπειρωτική', atticaMainlandFromPostcode('19003') === true)
+  ok('Σαλαμίνα 189 00: Π.Ε. Νήσων, όχι ηπειρωτική', atticaMainlandFromPostcode('18900') === false)
+  ok('Αίγινα 180 10: Π.Ε. Νήσων', atticaMainlandFromPostcode('180 10') === false)
+  ok('Κύθηρα 801 00: εκτός', atticaMainlandFromPostcode('80100') === false)
+  ok('Θεσσαλονίκη: εκτός Αττικής', atticaMainlandFromPostcode('54624') === false)
+  ok('χωρίς ΤΚ: άγνωστο', atticaMainlandFromPostcode('') === null && atticaMainlandFromPostcode(null) === null)
+  ok('λειψός ΤΚ: άγνωστο', atticaMainlandFromPostcode('1055') === null)
+
+  ok('ηπειρωτική Αττική: καμία μείωση το 2026', enfiaReductionPct(KEY, 150_000, 2026, true) === 0)
+  ok('ηπειρωτική Αττική: καμία απαλλαγή το 2027', enfiaReductionPct(KEY, 150_000, 2027, true) === 0)
+  ok('Π.Ε. Νήσων: 50% το 2026', enfiaReductionPct(KEY, 150_000, 2026, false) === 50)
+  ok('άγνωστη θέση: μένει η βεβαίωση του ιδιοκτήτη', enfiaReductionPct(KEY, 150_000, 2026, null) === 50)
+  ok('η οθόνη δεν αφήνει να τσεκαριστεί στην Αττική', !enfiaReductionInForce(KEY, 2026, 150_000, true))
+  ok('…αλλά ναι στη Σαλαμίνα', enfiaReductionInForce(KEY, 2026, 150_000, atticaMainlandFromPostcode('18900')))
+  ok('οι άλλες μειώσεις δεν επηρεάζονται', enfiaReductionPct('insurance', 150_000, 2026, true) === 20)
+
+  const base = { sqm: 90, zone: '751_1500', floor: 'second', age: 'y26_plus', totalValue: 150_000, propertyValue: 150_000, reductions: [KEY], year: 2026 }
+  const inAttica = estimateENFIA({ ...base, atticaMainland: true })!
+  const inIslands = estimateENFIA({ ...base, atticaMainland: false })!
+  ok('ίδιο σπίτι: στην ηπειρωτική Αττική πληρώνει περισσότερο', inAttica.annual > inIslands.annual)
+  ok('…όσο χωρίς καμία χειροκίνητη μείωση', inAttica.annual === estimateENFIA({ ...base, reductions: [] })!.annual)
 }
 
 console.log(`enfia.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)

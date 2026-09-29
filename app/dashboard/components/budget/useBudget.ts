@@ -38,7 +38,7 @@ import { mergeLedger, type LedgerBill, type LedgerExpense, type LedgerEntry } fr
 import { budgetBucket } from '@/lib/expenses/taxonomy'
 import { subscriptionsMonthly } from '@/lib/expenses/subscriptions'
 // Ο ΕΝΦΙΑ διαβάζεται από την ίδια απόφαση με την καρτέλα Υπηρεσίες.
-import { enfiaInUse, estimateENFIA } from '@/lib/billing/enfia'
+import { enfiaInUse, estimateENFIA, atticaMainlandFromPostcode } from '@/lib/billing/enfia'
 import { climateLevyRates, isHighSeasonMonth } from '@/lib/billing/greekTax'
 import { isHouseType } from '@/lib/tax/shortTermTax'
 import { useLoad } from '@/app/hooks/useLoad'
@@ -190,7 +190,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
 
       // ── Έσοδα + δεσμευμένες εκροές (για το «Ασφαλές διαθέσιμο») ──
       const [propRes, loansRes, tenantsRes, staysRes] = await Promise.all([
-        properties.one(supabase, propertyId, 'rental_mode,target_rent,value,year_built,enfia,purchase_price,sqm,prop_type'),
+        properties.one(supabase, propertyId, 'rental_mode,target_rent,value,year_built,enfia,purchase_price,sqm,prop_type,postal_code'),
         loanStore.ofProperty(supabase, propertyId, userId),
         tenantStore.currentAll<{ monthly_rent: number | null }>(supabase, propertyId, 'monthly_rent'),
         // Καταλύματα από την αρχή του έτους: το τρέχον μήνα για έσοδα μήνα, το σύνολο YTD
@@ -393,6 +393,10 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
             totalValue: parseFloat(String(svc.enfiaTotalVal)) || 0,
             propertyValue: parseFloat(String(svc.enfiaPropVal)) || 0,
             reductions: Array.isArray(svc.enfiaReductions) ? svc.enfiaReductions as string[] : [],
+            // Έτος και θέση, όπως στη Λογιστική: χωρίς έτος η μείωση του μικρού
+            // οικισμού δεν δινόταν ποτέ· ο ΤΚ κρίνει την εξαίρεση της Αττικής.
+            year: y,
+            atticaMainland: atticaMainlandFromPostcode(propRes?.postal_code as string | null | undefined),
           })?.annual,
         ).monthly;
         const hist  = Array.isArray(svc.dimotikaHistory) ? svc.dimotikaHistory as string[] : [];

@@ -140,3 +140,28 @@ export function breakEvenOccupancy(targetNetAnnual: number, params: Omit<ShortTe
   const neededNights = max0(targetNetAnnual) / netPerNight
   return round2((neededNights / 365) * 100)
 }
+
+// ═══ ΟΠΟΥ Ο ΑΡΙΘΜΟΣ ΕΙΝΑΙ ΤΗΣ ΑΓΟΡΑΣ, ΤΟ ΛΕΕΙ ═══════════════════════════════
+// Οι Αποδόσεις προσυμπληρώνουν πληρότητα και τιμή νύχτας από την περιοχή όταν
+// το ακίνητο δεν έχει αρκετές κρατήσεις. Τα τρία μεγάλα πλακίδια έγραφαν τότε
+// «Μεικτή απόδοση 14,70%» χωρίς τίποτα δίπλα, ενώ η Επισκόπηση και το
+// Χαρτοφυλάκιο έδειχναν για το ίδιο ακίνητο όσα εισπράχθηκαν. Φτάνει ΕΝΑ από
+// τα δύο να είναι της περιοχής: το γινόμενο είναι πια υπόθεση.
+export const MARKET_ESTIMATE_LABEL = 'εκτίμηση αγοράς'
+
+export interface ShortTermBasisInput {
+  /** Οι τιμές των πεδίων, όπως τις βλέπει ο χρήστης. */
+  occupancy: string
+  adr: string
+  /** Οι τιμές αναφοράς της περιοχής. */
+  area: { occupancy: string; adr: string }
+  /** Οι τιμές από τις κρατήσεις του ακινήτου, όταν είναι αρκετές. */
+  booked: { occupancy: string; adr: string } | null
+}
+
+/** Στηρίζεται η εκτίμηση βραχυχρόνιας σε πληρότητα ή τιμή νύχτας της περιοχής; */
+export function assumesMarket(i: ShortTermBasisInput): boolean {
+  const occ = i.occupancy === i.area.occupancy && i.occupancy !== i.booked?.occupancy
+  const adr = i.adr === i.area.adr && i.adr !== i.booked?.adr
+  return occ || adr
+}
