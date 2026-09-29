@@ -1,5 +1,5 @@
 // Η διασταύρωση των επιτοκίων, με τους αριθμούς της παραγωγής (bank_rates, 02/09/2026).
-import { fromRate, diffBank, decide, changeKey, HOLD_ABOVE, isOfficialSource, BANK_HOSTS, type CurrentBank } from './rateFeed';
+import { fromRate, rangeOf, diffBank, decide, changeKey, HOLD_ABOVE, isOfficialSource, BANK_HOSTS, type CurrentBank } from './rateFeed';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -62,6 +62,26 @@ ok('χωρίς διεύθυνση, χωρίς http ή με άγνωστη τρά
   && !isOfficialSource('agnosti', 'https://www.alpha.gr/x'));
 ok('κάθε τράπεζα του χάρτη έχει τουλάχιστον έναν τομέα',
   Object.values(BANK_HOSTS).every(h => h.length > 0));
+
+// ── Eurobank, 29.09.2026: τιμή μέσα στο εύρος και σελίδα συχνών ερωτήσεων ──
+ok('εύρος «2.50-2.90» → [2,50, 2,90]', JSON.stringify(rangeOf('2.50-2.90')) === '[2.5,2.9]');
+ok('μονή τιμή δεν είναι εύρος', rangeOf('3.40') === null && rangeOf(2.4) === null && rangeOf(null) === null);
+const eurobank: CurrentBank = {
+  bank_id: 'eurobank', fixed_3yr: '2.50-2.90', fixed_5yr: '3.40-3.50', fixed_10yr: '3.80-3.90',
+  fixed_15yr: '4.10-4.20', fixed_20yr: '4.10-4.20', variable_spread_min: 0.8, variable_spread_max: 2.7, max_ltv: 90,
+};
+// Αυτό ακριβώς βρήκε η αναζήτηση: το πάνω άκρο κάθε εύρους. Δεν είναι αλλαγή.
+ok('Eurobank: το πάνω άκρο κάθε εύρους δεν αλλάζει τίποτα',
+  diffBank(eurobank, { fixed_3yr: 2.9, fixed_5yr: 3.5, fixed_10yr: 3.9, fixed_15yr: 4.2, fixed_20yr: 4.2 }).length === 0);
+ok('Eurobank: τιμή έξω από το εύρος είναι αλλαγή',
+  diffBank(eurobank, { fixed_3yr: 3.1 }).length === 1);
+ok('Eurobank: τιμή ανάμεσα στα άκρα είναι αλλαγή του «από»',
+  diffBank(eurobank, { fixed_3yr: 2.7 }).length === 1);
+ok('σελίδα συχνών ερωτήσεων της ίδιας τράπεζας δεν είναι επίσημη πηγή',
+  !isOfficialSource('eurobank', 'https://www.eurobank.gr/el/retail/proionta-upiresies/proionta/daneia/stegastika/stegastiko-daneio/suxnes-erotiseis')
+  && !isOfficialSource('alpha', 'https://www.alpha.gr/el/faq/stegastika'));
+ok('το δελτίο της ίδιας τράπεζας μένει επίσημο',
+  isOfficialSource('eurobank', 'https://www.eurobank.gr/-/media/eurobank/rates/epitokia-daneiakon-proionton.pdf'));
 
 console.log(fail ? `✗ rateFeed: ${fail} απέτυχαν, ${pass} πέρασαν` : `✓ rateFeed: ${pass} έλεγχοι πέρασαν`);
 if (fail) process.exit(1);

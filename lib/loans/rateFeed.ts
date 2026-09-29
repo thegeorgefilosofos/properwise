@@ -69,7 +69,30 @@ export function fromRate(text: string | number | null | undefined): number | nul
   return Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
 }
 
-/** Ποια πεδία της πρότασης διαφέρουν από τη γραμμή. Ισότητα στο εκατοστό. */
+/**
+ * Το εύρος ενός επιτοκίου, αν είναι γραμμένο ως εύρος: «2.50-2.90» → [2,50, 2,90].
+ * Μονή τιμή ή κενό → null.
+ */
+export function rangeOf(text: string | number | null | undefined): [number, number] | null {
+  if (text == null || typeof text === 'number') return null;
+  const m = String(text).replace(/,/g, '.').match(/^\s*(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*$/);
+  if (!m) return null;
+  const lo = parseFloat(m[1]), hi = parseFloat(m[2]);
+  return Number.isFinite(lo) && Number.isFinite(hi) && lo <= hi ? [lo, hi] : null;
+}
+
+/**
+ * Ποια πεδία της πρότασης διαφέρουν από τη γραμμή. Ισότητα στο εκατοστό.
+ *
+ * ΤΙΜΗ ΜΕΣΑ ΣΤΟ ΕΥΡΟΣ ΔΕΝ ΕΙΝΑΙ ΑΛΛΑΓΗ (29.09.2026). Η Eurobank είχε από το
+ * δελτίο της «2.50-2.90» για το 3ετές: 2,90 βασικό, 2,50 για πρώτη κατοικία.
+ * Η αναζήτηση βρήκε 2,90 σε σελίδα συχνών ερωτήσεων, η σύγκριση κοίταξε μόνο
+ * το «από» (2,50), είδε +0,40 και έγραψε «2.90» στη θέση του εύρους: το «από
+ * 2,50%» χάθηκε, ενώ τίποτα δεν είχε αλλάξει. Αριθμός ίσος με ένα από τα δύο
+ * άκρα του δημοσιευμένου εύρους είναι επιβεβαίωση, όχι μεταβολή. Αριθμός
+ * ΑΝΑΜΕΣΑ στα άκρα παραμένει αλλαγή: στην Πειραιώς (2,40-4,70) ένα νέο «από»
+ * 2,60 σημαίνει ότι το χαμηλότερο ανέβηκε.
+ */
 export function diffBank(current: CurrentBank, proposed: ProposedBank): Change[] {
   const out: Change[] = [];
   const fields: CheckedField[] = [...RATE_FIELDS, ...SPREAD_FIELDS, 'max_ltv'];
@@ -77,6 +100,8 @@ export function diffBank(current: CurrentBank, proposed: ProposedBank): Change[]
     const next = proposed[f];
     if (next == null || !Number.isFinite(next)) continue;
     const raw = current[f];
+    const range = rangeOf(raw as string | number | null | undefined);
+    if (range && range.some(end => Math.abs(end - next) < 0.005)) continue;
     const old = typeof raw === 'number' ? Math.round(raw * 100) / 100 : fromRate(raw);
     if (old != null && Math.abs(old - next) < 0.005) continue;
     out.push({ bank_id: current.bank_id, field: f, old, next, delta: old == null ? null : Math.round((next - old) * 100) / 100 });
@@ -162,5 +187,12 @@ export function isOfficialSource(bankId: string, url: string | null | undefined)
   catch { return false; }
   const hosts = BANK_HOSTS[bankId];
   if (!hosts) return false;
-  return hosts.some(h => host === h || host.endsWith('.' + h));
+  if (!hosts.some(h => host === h || host.endsWith('.' + h))) return false;
+  // ΣΥΧΝΕΣ ΕΡΩΤΗΣΕΙΣ ΔΕΝ ΕΙΝΑΙ ΔΕΛΤΙΟ, ΑΚΟΜΗ ΚΙ ΑΝ ΖΟΥΝ ΣΤΟ ΣΩΣΤΟ DOMAIN. Εκεί
+  // γράφονται παραδείγματα («π.χ. επιτόκιο 2,90%, περιθώριο από 1,45%»), όχι
+  // τιμολόγιο με ημερομηνία. Από τέτοια σελίδα η Eurobank «επιβεβαιώθηκε» στις
+  // 29.09.2026 με περιθώριο 1,45% αντί για το 0,80% του δελτίου της.
+  return !FAQ_PATH.test(new URL(url).pathname);
 }
+
+const FAQ_PATH = /(faq|suxnes|syxnes|sychnes|erotiseis|erwtiseis|erotisis)/i;
