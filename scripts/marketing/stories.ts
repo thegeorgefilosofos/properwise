@@ -62,6 +62,11 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const today = athensToday();
 const S = demoSummary(today);
 const PROP = DEMO_PROPERTY.name;
+// Στην ετικέτα κάρτας το όνομα μένει όπως το γράφει η εφαρμογή («Διαμέρισμα,
+// Παγκράτι»). Μέσα σε πρόταση διαβάζεται σαν πεδίο φόρμας· εκεί γίνεται λόγος:
+// «το διαμέρισμα στο Παγκράτι».
+const [propKind, propArea] = PROP.split(/,\s*/);
+const PROP_SPOKEN = propArea ? `${propKind.toLocaleLowerCase('el')} στο ${propArea}` : PROP;
 const WATER = demoExpenses(S.year).find(e => e.category === 'water')!;
 const WATER_ACC = expenseAccount('water');
 const line = (key: string) => S.statement.lines.find(l => l.key === key);
@@ -235,7 +240,7 @@ function noa(): string {
       <div class="reply">
         <div class="av">${ASSISTANT_INITIAL}</div>
         <div class="bubble glass">
-          <p>Από το ${esc(PROP)} σού έμειναν <b class="num" style="color:${C.ink}">${esc(fe(NET))}</b>, μετά από φόρο, ΕΝΦΙΑ και δαπάνες.</p>
+          <p>Από το ${esc(PROP_SPOKEN)} σού έμειναν <b class="num" style="color:${C.ink}">${esc(fe(NET))}</b>, μετά από φόρο, ΕΝΦΙΑ και δαπάνες.</p>
           <div class="ledger">
             ${led('Ενοίκια που εισπράχθηκαν', fe(S.collected))}
             ${led('Φόρος εισοδήματος', minus(TAX))}
