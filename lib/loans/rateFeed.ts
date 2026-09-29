@@ -146,7 +146,6 @@ export const BANK_HOSTS: Record<string, readonly string[]> = {
   piraeus: ['piraeusbank.gr', 'piraeus.gr'],
   optima: ['optimabank.gr'],
   credia: ['crediabank.gr', 'pancretabank.gr'],
-  attica: ['atticabank.gr'],
 };
 
 /**
