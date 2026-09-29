@@ -34,7 +34,6 @@ export default function GuestCheckin() {
   const [email, setEmail] = useState('');
   const [arrival, setArrival] = useState('');
   const [guests, setGuests] = useState('');
-  const [accepts, setAccepts] = useState(false);
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -57,7 +56,11 @@ export default function GuestCheckin() {
       p_token: token, p_full_name: fullName.trim(), p_id_number: idNumber.trim(),
       p_nationality: nationality.trim(), p_birth_date: birthDate || '', p_phone: phone.trim(),
       p_email: email.trim(), p_arrival_date: arrival || '', p_guests: parseInt(guests, 10) || null,
-      p_accepts: accepts, p_privacy_consent: privacyConsent,
+      // ΚΑΝΟΝΕΣ ΠΟΥ ΔΕΝ ΔΕΙΧΝΟΝΤΑΙ ΠΟΥΘΕΝΑ ΔΕΝ ΓΙΝΟΝΤΑΙ ΑΠΟΔΕΚΤΟΙ. Η φόρμα ζητούσε
+      // «Αποδέχομαι τους κανόνες του καταλύματος», ενώ ο οικοδεσπότης δεν έχει
+      // πού να γράψει κανόνες και ο επισκέπτης δεν έβλεπε κανέναν. Το κουτί
+      // έφυγε· η παράμετρος μένει, γιατί ανήκει στην υπογραφή της submit_checkin.
+      p_accepts: false, p_privacy_consent: privacyConsent,
     });
     setSending(false);
     // Το σφάλμα δικτύου λέει «ξαναδοκίμασε»· η άρνηση της βάσης λέει «κοίτα τα
@@ -144,11 +147,6 @@ export default function GuestCheckin() {
                     <div><label htmlFor="ci-email" style={label}>Ηλεκτρονικό ταχυδρομείο (προαιρετικό)</label><input id="ci-email" type="email" value={email} onChange={e => setEmail(e.target.value)} style={field} /></div>
                     <div><label htmlFor="ci-guests" style={label}>Αριθμός ατόμων</label><input id="ci-guests" inputMode="numeric" value={guests} onChange={e => setGuests(e.target.value.replace(/[^\d]/g, ''))} placeholder="2" style={field} /></div>
                   </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    <input type="checkbox" checked={accepts} onChange={e => setAccepts(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--accent)' }} />
-                    Αποδέχομαι τους κανόνες του καταλύματος
-                  </label>
-
                   {/* GDPR: ΔΥΟ ΒΑΣΕΙΣ, ΟΠΩΣ ΤΙΣ ΓΡΑΦΕΙ ΚΑΙ Η ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ. Ολα
                       ζητούνταν «με συγκατάθεση», ενώ τα στοιχεία της δήλωσης
                       διαμονής τα απαιτεί ο νόμος: εκεί η βάση είναι η έννομη

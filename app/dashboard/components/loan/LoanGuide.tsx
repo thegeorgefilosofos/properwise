@@ -6,7 +6,7 @@ import { fp } from '@/lib/core/format'
 import { AADE_HOME } from '@/lib/tax/aade'
 import { T, fixedCols, Btn } from '@/components/Theme'
 import { greekWhen, seriesPage, ECB_SERIES } from '@/lib/market/ecb'
-import { LOAN_TYPES, rateRange, GLOSSARY, EURIBOR_HISTORY, SERVICERS_GUIDE, fmtPct } from '../TabLoanData'
+import { LOAN_TYPES, rateRange, GLOSSARY, EURIBOR_HISTORY, SERVICERS_GUIDE, fmtPct, loanTaxNote } from '../TabLoanData'
 import { hy } from '@/components/Hyphen'
 import { athensToday } from '@/lib/core/time'
 import { spitiMouOpen, spitiMouClosedLine } from '@/lib/loans/recommend'
@@ -60,7 +60,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
               ))}
               <div style={{flex:'1 1 100%',padding:'13px 0 15px',borderTop:'1px solid var(--border-subtle)'}}>
                 <div style={{...labelStyle,marginBottom:6}}>Φορολογικά και νομικά</div>
-                <p style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{info.tax_note}</p>
+                <p style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{loanTaxNote(advType)}</p>
               </div>
             </div>
             <Btn variant="secondary" onClick={openCalcDocs}>

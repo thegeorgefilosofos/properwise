@@ -29,7 +29,8 @@ import {
   MARKET_FALLBACK, rateTypeLabel,
 } from '../TabLoanData'
 import type { AppliedLoan } from '../LoanDocScan'
-import { athensToday, isoDate } from '@/lib/core/time'
+import { athensToday, isoDate, daysUntil } from '@/lib/core/time'
+import { grDate } from '@/lib/core/format'
 import { failed } from '@/lib/core/dbError'
 import type { CalcState } from './model'
 
@@ -99,7 +100,7 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
   const [loadingSaved,setLoadingSaved] = useState(true)
 
   const market      = useMarketRates()
-  const {banks:liveBanks,loading:banksLoading,verifiedAt,health:feed,reload:reloadBanks} = useBankRates()
+  const {banks:liveBanks,loading:banksLoading,health:feed,reload:reloadBanks} = useBankRates()
   const {programs:livePrograms }   = useLoanPrograms()
   const {isAdmin} = useIsAdmin()
   // Ρωτιέται ΜΟΝΟ όταν ο χρήστης είναι διαχειριστής: κανένα περιττό αίτημα
@@ -112,7 +113,9 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
   // Και ό,τι λείπει από τη ζωντανή γραμμή έρχεται από τον κατάλογο: «όλο ή
   // τίποτα» έσβηνε την προθεσμία αίτησης του «Σπίτι μου ΙΙ» και η οθόνη πήρε
   // την προθεσμία υπογραφής στη θέση της. Ο λόγος γράφεται στο TabLoanData.
-  const BANKS: ComparisonBank[]       = liveBanks.length    ? mergeBanks(liveBanks)       : BANKS_NORM
+  // Σταθερή ταυτότητα: ο Υπολογιστής παράγει από αυτή τη λίστα προεπιλογές και
+  // περιθώρια αναφοράς και δεν χρειάζεται να τα ξαναφτιάχνει σε κάθε απόδοση.
+  const BANKS: ComparisonBank[]       = useMemo(()=>liveBanks.length ? mergeBanks(liveBanks) : BANKS_NORM,[liveBanks])
   const PROGRAMS: ComparisonProgram[] = livePrograms.length ? mergePrograms(livePrograms) : PROGRAMS_NORM
 
   const [calcState,setCalcState] = useState<CalcState>({
@@ -200,11 +203,18 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
     await loadSaved()
   }
 
-  const banksUpdStr = new Date(verifiedAt || BANKS_VERIFIED).toLocaleDateString('el-GR',{day:'2-digit',month:'short',year:'numeric'})
+  // ── Η ΗΜΕΡΟΜΗΝΙΑ ΕΙΝΑΙ ΤΗΣ ΠΑΛΑΙΟΤΕΡΗΣ ΤΡΑΠΕΖΑΣ ΠΟΥ ΔΕΙΧΝΟΥΜΕ ─────────────
+  // Ερχόταν από το `verified_at` της πρώτης γραμμής της βάσης (της φθηνότερης,
+  // όχι της παλαιότερης) ή από το κοινό `BANKS_VERIFIED`, που δεν ακολουθεί
+  // τις ανά τράπεζα επαληθεύσεις. «Επιβεβαιωμένα» για όλη τη λίστα σημαίνει ότι
+  // ισχύει και για την πιο παλιά της. Γράφεται με το `grDate` όπως κάθε άλλη
+  // ημερομηνία της εφαρμογής, όχι ως σκέτο ISO.
+  const banksVerifiedIso = BANKS.map(b=>b.verified_at).filter(Boolean).sort()[0] || BANKS_VERIFIED
+  const banksUpdStr = grDate(banksVerifiedIso)
   // Έντιμη φρεσκάδα: τα ανά-τράπεζα επιτόκια είναι επαληθευμένα δεδομένα με
   // ημερομηνία (όχι αυτόματη ροή). Αν παλιώσουν, το λέμε καθαρά και παραπέμπουμε
   // στην πηγή, αντί να δίνουμε ψευδή εντύπωση «ζωντανών» τιμών.
-  const banksAgeDays = Math.floor((Date.now() - new Date(verifiedAt || BANKS_VERIFIED).getTime())/86400000)
+  const banksAgeDays = Math.max(0, -(daysUntil(banksVerifiedIso) ?? 0))
   // ═══ «ΕΛΕΓΧΘΗΚΑΝ ΣΗΜΕΡΑ» ΔΕΝ ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΜΕ «ΑΛΛΑΞΑΝ ΣΗΜΕΡΑ» ═════════
   // Η οθόνη έγραφε «επιβεβαιώθηκαν πριν από 56 ημέρες» επειδή το verified_at
   // ήταν η μόνη πληροφορία που είχε. Τώρα η τροφοδοσία τρέχει κάθε Δευτέρα και

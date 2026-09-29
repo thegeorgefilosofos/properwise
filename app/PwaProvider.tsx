@@ -21,7 +21,7 @@
 
 import { useEffect, useState, type ComponentType } from 'react';
 import { usePathname } from 'next/navigation';
-import { holdPrompt, runPrompt, isInstalled, needsManualInstall, type BeforeInstallPromptEvent } from '@/lib/pwa/install';
+import { holdPrompt, runPrompt, isInstalled, needsManualInstall, markAdded, type BeforeInstallPromptEvent } from '@/lib/pwa/install';
 
 // Το μήνυμα φορτώνεται μόνο όταν πρόκειται να φανεί (δες InstallBanner.tsx).
 // Με σκέτο `import()` και όχι `next/dynamic`: ο φορτωτής του δεύτερου θα
@@ -84,7 +84,7 @@ export default function PwaProvider() {
       if (eligible()) setMode('prompt');
     };
     // Εγκαταστάθηκε (από εδώ ή από το μενού του περιηγητή): τίποτα να προτείνει.
-    const onInstalled = () => { holdPrompt(null); setMode(null); };
+    const onInstalled = () => { holdPrompt(null); markAdded(); setMode(null); };
 
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);

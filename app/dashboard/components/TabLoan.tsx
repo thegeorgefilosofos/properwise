@@ -52,6 +52,10 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
     publishedRate, advType, advBorr, LA, Y, isSpitiMou2, stateOf, openPrograms, activePrograms,
     exportSavedLoans,
   } = useLoan({ propertyId, userId, propertyValue, propertySqm, propertyYearBuilt, profileType })
+  const spitiOpen = spitiMouOpen(athensToday())
+  // Μόνο διεύθυνση https γίνεται σύνδεσμος: η στήλη έρχεται από τη βάση.
+  const sheetBanks = BANKS.filter(b=>/^https:\/\//.test(b.source_url))
+  const noSheetBanks = BANKS.filter(b=>!/^https:\/\//.test(b.source_url))
 
   const savedContent = (
     <SavedLoans savedLoans={savedLoans} exportSavedLoans={exportSavedLoans} deleteLoan={deleteLoan} />
@@ -208,6 +212,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           onSaveToExpenses={handleSaveExp}
           onStateChange={setCalcState}
           lens={calcLens} onLens={setCalcLens} lensRef={lensRef}
+          banks={BANKS} banksVerified={banksUpdStr}
         />
         </MiniSection>
       </div>
@@ -253,7 +258,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             {/* Φίλτρο «τράπεζες του προγράμματος» έχει νόημα μόνο όσο το
                 πρόγραμμα δέχεται αιτήσεις· μετά διαλέγει τράπεζες για κάτι που
                 δεν μπορεί πια να ζητηθεί. */}
-            {spitiMouOpen(athensToday()) && <ChipToggle on={filterSpiti} onClick={()=>setFS(f=>!f)}>
+            {spitiOpen && <ChipToggle on={filterSpiti} onClick={()=>setFS(f=>!f)}>
               Σπίτι μου ΙΙ
             </ChipToggle>}
             <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginLeft:'auto',fontFamily: T.font.sans}}>
@@ -273,7 +278,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               ποτέ να σπάσουν σε δεύτερη σειρά. Το `data-list` μένει: το πλήθος
               το ορίζουν όσες τράπεζες δίνουν στεγαστικό, όχι ο σχεδιασμός. */}
           <div data-list className="po-scroll-x no-sbar" style={{display:'grid',gridAutoFlow:'column',gridAutoColumns:'minmax(250px, 1fr)',gap:10,scrollSnapType:'x proximity',minWidth:0,margin:'0 -1px',padding:'2px 1px'}}>
-            {BANKS.filter(b=>!filterSpiti||b.spiti_mou).map(bank=>{
+            {BANKS.filter(b=>!(spitiOpen&&filterSpiti)||b.spiti_mou).map(bank=>{
               const key = bank.id||bank.name
               const on = selBank===key
               const fixed5 = bank.fixed_5yr||bank.fixed_min||ABSENT
@@ -308,7 +313,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
 
           {/* Λεπτομέρειες επιλεγμένης τράπεζας */}
           {(()=>{
-            const bank = BANKS.filter(b=>!filterSpiti||b.spiti_mou).find(b=>(b.id||b.name)===selBank)
+            const bank = BANKS.filter(b=>!(spitiOpen&&filterSpiti)||b.spiti_mou).find(b=>(b.id||b.name)===selBank)
             if(!bank) return null
             // Ο ΔΕΙΚΤΗΣ ΤΗΣ ΤΡΑΠΕΖΑΣ, ΟΧΙ Ο ΙΔΙΟΣ ΓΙΑ ΟΛΕΣ. Η Πειραιώς τιμολογεί σε
             // Euribor μηνός· με το τριμήνου το «σήμερα» έβγαινε ψηλότερο απ' όσο είναι.
@@ -364,7 +369,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                     {label:bank.rate_index?`Περιθώριο πάνω από Euribor ${bank.rate_index}`:'Κυμαινόμενο περιθώριο',value:bank.variable_spread_min!==undefined?spreadRange(bank):NO_RATE,sub:varRate?`≈ ${varRate} σήμερα`:null},
                     {label:'Εκτιμώμενη δόση',value: myM !== null ? fmtEur(myM) : fe(0),sub: myM !== null ? `${fmtEur(LA)} · ${Y} έτη` : bankRate === null ? 'Η τράπεζα δεν έχει δημοσιεύσει επιτόκιο' : 'Συμπλήρωσε ποσό δανείου για υπολογισμό'},
                     {label:'Μέγιστο δάνειο προς αξία',value:bank.max_ltv?fp(bank.max_ltv):NO_RATE,sub:bank.max_amount?`έως ${fmtEur(bank.max_amount)}`:null},
-                    ...(spitiMouOpen(athensToday()) ? [{label:'Σπίτι μου ΙΙ',value:bank.spiti_mou?'Ναι':'Όχι',sub:bank.spiti_mou?'Συμμετέχει στο πρόγραμμα':'Δεν συμμετέχει'}] : []),
+                    ...(spitiOpen ? [{label:'Σπίτι μου ΙΙ',value:bank.spiti_mou?'Ναι':'Όχι',sub:bank.spiti_mou?'Συμμετέχει στο πρόγραμμα':'Δεν συμμετέχει'}] : []),
                   ].map(s=>(
                     <div key={s.label} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'11px 13px'}}>
                       <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase' as const,letterSpacing:'0.05em',fontWeight:600,fontFamily: T.font.sans,marginBottom:6}}>{s.label}</p>
@@ -397,13 +402,16 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               <table className="po-table pin-1" style={{'--tbl-min':'900px','--row-bg':'var(--surface-raised)'}}>
                 <thead>
                   <tr>
-                    {([['Τράπεζα','left'],['3 έτη','right'],['5 έτη','right'],['10 έτη','right'],['15 έτη','right'],['20 έτη','right'],['Κυμαινόμενο περιθώριο','right'],['Δάνειο προς αξία','right'],['Σπίτι μου ΙΙ','left']] as const).map(([h,al])=>(
+                    {/* Η στήλη «Σπίτι μου ΙΙ» ακολουθεί την ίδια πύλη με το φίλτρο και
+                        τη γραμμή λεπτομερειών: για κλειστό πρόγραμμα, ένα «Ναι» ανά
+                        τράπεζα διαβάζεται ως «μπορείς να κάνεις αίτηση εδώ». */}
+                    {([['Τράπεζα','left'],['3 έτη','right'],['5 έτη','right'],['10 έτη','right'],['15 έτη','right'],['20 έτη','right'],['Κυμαινόμενο περιθώριο','right'],['Δάνειο προς αξία','right'],...(spitiOpen?[['Σπίτι μου ΙΙ','left']] as const:[])] as const).map(([h,al])=>(
                       <th key={h} scope="col" style={{textAlign:al,whiteSpace:'nowrap' as const}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {BANKS.filter(b=>!filterSpiti||b.spiti_mou).map((bank,i)=>(
+                  {BANKS.filter(b=>!(spitiOpen&&filterSpiti)||b.spiti_mou).map((bank,i)=>(
                     <tr key={bank.id||bank.name} onMouseEnter={()=>setHoverBankRow(i)} onMouseLeave={()=>setHoverBankRow(null)} onTouchStart={()=>setHoverBankRow(i)} onTouchEnd={()=>setHoverBankRow(null)} style={{'--row-bg':hoverBankRow===i?'var(--bg-hover)':'var(--surface-raised)',background:hoverBankRow===i?'var(--bg-hover)':'transparent',transition:'background 0.12s'}}>
                       <td>
                         <span style={{fontSize: 'var(--fs-base)',fontWeight:500,color:'var(--text-primary)'}}>{bank.name}</span>
@@ -413,12 +421,12 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                       ))}
                       <td className="num" style={{fontSize: 'var(--fs-base)',color:hoverBankRow===i?'var(--accent)':'var(--text-primary)',transition:'color 0.12s'}}>{bank.variable_spread_min!==undefined?spreadRange(bank):NO_RATE}</td>
                       <td className="num" style={{fontSize: 'var(--fs-base)',color:bank.max_ltv?(hoverBankRow===i?'var(--accent)':'var(--text-primary)'):'var(--text-tertiary)',fontWeight:500,transition:'color 0.12s'}}>{bank.max_ltv?fp(bank.max_ltv):NO_RATE}</td>
-                      <td>
+                      {spitiOpen && <td>
                         {bank.spiti_mou
                           ?<span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>Ναι</span>
                           :<span style={{fontSize:12,color:'var(--text-tertiary)'}}>Όχι</span>
                         }
-                      </td>
+                      </td>}
                     </tr>
                   ))}
                 </tbody>
@@ -426,8 +434,15 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               </div>
             </div>
             <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:12,lineHeight:1.6,fontFamily: T.font.sans}}>
-              Εμφανίζονται τα χαμηλότερα («από») επιτόκια ανά διάρκεια. {RATES_DISCLAIMER} Επιβεβαιωμένα {banksUpdStr}. Πηγή:{' '}
-              <a href="https://e-stegastiko.gr" target="_blank" rel="noreferrer" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>e-stegastiko.gr</a>
+              {/* ΠΗΓΗ ΕΙΝΑΙ ΤΟ ΔΕΛΤΙΟ ΚΑΘΕ ΤΡΑΠΕΖΑΣ, ΟΧΙ ΣΥΓΚΡΙΤΙΚΟΣ ΙΣΤΟΤΟΠΟΣ. Η
+                  υποσημείωση απέδιδε τα επιτόκια στο e-stegastiko.gr, ενώ η
+                  τροφοδοσία (lib/loans/rateFeed) απορρίπτει ρητά τέτοιους
+                  ιστότοπους. Κάθε όνομα οδηγεί στο δελτίο από το οποίο διαβάστηκε. */}
+              Εμφανίζονται τα χαμηλότερα («από») επιτόκια ανά διάρκεια. {RATES_DISCLAIMER} Επιβεβαιωμένα {banksUpdStr}. Πηγή: τα δελτία επιτοκίων των τραπεζών
+              {sheetBanks.length>0 && <>{' ('}{sheetBanks.map((b,i)=>(
+                <span key={b.id||b.name}>{i>0?', ':''}<a href={b.source_url} target="_blank" rel="noreferrer" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>{b.name}</a></span>
+              ))}{')'}</>}.
+              {noSheetBanks.length>0 && <> Χωρίς επίσημο δελτίο: {noSheetBanks.map(b=>b.name).join(', ')}.</>}
             </p>
           </MiniSection>
         </div>

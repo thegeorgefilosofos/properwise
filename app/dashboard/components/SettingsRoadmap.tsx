@@ -15,7 +15,8 @@ import { createClient } from '@/lib/supabase/client';
 import * as billing from '@/lib/data/billing';
 import { T, Btn, Chip, fixedCols } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
-import { canPrompt, runPrompt, isInstalled, INSTALL_EVENT } from '@/lib/pwa/install';
+import { canPrompt, runPrompt, onHomeScreen, INSTALL_EVENT } from '@/lib/pwa/install';
+import { notify, notifyError } from '@/components/Toast';
 
 type ChipTone = 'accent' | 'neutral';
 
@@ -62,7 +63,10 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
   const [installable, setInstallable] = useState(false);
   const [installed, setInstalled] = useState(false);
   useEffect(() => {
-    const sync = () => { setInstallable(canPrompt()); setInstalled(isInstalled()); };
+    // `onHomeScreen` και όχι `isInstalled`: μετά το «Εγκατάσταση» ο χρήστης μένει
+    // στην καρτέλα του περιηγητή, που δεν γίνεται ποτέ «standalone». Η κάρτα
+    // γύριζε στις οδηγίες χειροκίνητης εγκατάστασης για κάτι που μόλις έγινε.
+    const sync = () => { setInstallable(canPrompt()); setInstalled(onHomeScreen()); };
     sync();
     window.addEventListener(INSTALL_EVENT, sync);
     return () => window.removeEventListener(INSTALL_EVENT, sync);
@@ -85,7 +89,7 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  const notify = async () => {
+  const joinList = async () => {
     if (busy || confirmed) return;
     setBusy(true);
     try {
@@ -106,9 +110,13 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
     setBusy(true);
     try {
       const { error } = await supabase.rpc('leave_mobile_waitlist');
-      if (!error) setConfirmed(false);
+      if (error) throw error;
+      setConfirmed(false);
+      notify('Βγήκες από τη λίστα. Μπορείς να ξαναμπείς όποτε θέλεις.');
     } catch {
-      /* σιωπηλά */
+      // Εδώ όχι σιωπηλά: ο χρήστης ζήτησε ρητά κάτι και πρέπει να ξέρει ότι
+      // είναι ακόμη στη λίστα.
+      notifyError('Δεν βγήκες από τη λίστα. Δοκίμασε ξανά.');
     } finally {
       setBusy(false);
     }
@@ -206,32 +214,34 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
                 διαβάζονταν ως εφαρμογές στα καταστήματα, που δεν υπάρχουν. Οι
                 δύο πλατφόρμες λέγονται ήδη πιο πάνω, εκεί που ισχύουν σήμερα. */}
 
-            {/* CTA: ένα κουμπί-διακόπτης. Μπαίνεις στη λίστα και, αν ξαναπατήσεις
-                το «Θα σε ειδοποιήσουμε», βγαίνεις και επιστρέφει στο «Ειδοποίησέ με». */}
+            {/* ── Η ΚΑΤΑΣΤΑΣΗ ΔΕΝ ΕΙΝΑΙ ΚΟΥΜΠΙ ─────────────────────────────────
+                Το πράσινο «Θα σε ειδοποιήσουμε» ήταν κουμπί-διακόπτης: ένα
+                πάτημα, για να το ξαναδεί ή κατά λάθος, έβγαζε τον χρήστη από
+                τη λίστα χωρίς να του το πει. Η οδηγία ζούσε μόνο σε `title`
+                (στην αφή δεν φαίνεται) και ο στόχος ήταν 33 εικονοστοιχεία.
+                Τώρα η κατάσταση είναι σήμα και η έξοδος δικό της κουμπί, με
+                όνομα που λέει τι κάνει και μήνυμα όταν γίνει. */}
             <div style={{ marginTop: 14 }}>
               {confirmed ? (
-                <button
-                  type="button"
-                  onClick={leave}
-                  disabled={busy}
-                  aria-pressed
-                  title="Πάτησε ξανά για να βγεις από τη λίστα"
-                  onMouseEnter={e => { if (!busy) e.currentTarget.style.borderColor = 'var(--positive)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--positive-border)'; }}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    padding: '9px 18px', borderRadius: T.radius.btn,
-                    fontSize: 12, fontWeight: 700, fontFamily: T.font.sans,
-                    cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
-                    background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', color: 'var(--positive)',
-                    transition: 'border-color 0.15s cubic-bezier(0.2,0,0,1)',
-                  }}
-                >
-                  <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-                  Θα σε ειδοποιήσουμε
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span
+                    role="status"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      padding: '9px 18px', borderRadius: T.radius.btn,
+                      fontSize: 12, fontWeight: 700, fontFamily: T.font.sans,
+                      background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', color: 'var(--positive)',
+                    }}
+                  >
+                    <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                    Θα σε ειδοποιήσουμε
+                  </span>
+                  <Btn variant="ghost" onClick={leave} disabled={busy}>
+                    {busy ? 'Έξοδος…' : 'Βγες από τη λίστα'}
+                  </Btn>
+                </div>
               ) : (
-                <Btn variant="primary" onClick={notify} disabled={busy}>
+                <Btn variant="primary" onClick={joinList} disabled={busy}>
                   {busy ? 'Ειδοποίηση…' : 'Ειδοποίησέ με μόλις βγει'}
                 </Btn>
               )}

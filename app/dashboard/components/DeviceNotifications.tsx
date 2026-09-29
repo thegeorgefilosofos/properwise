@@ -22,7 +22,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { TT, Btn } from '@/components/Theme'
 import { Toggle } from './UIComponents'
-import { SetRow } from './SettingsKit'
+import { SetRow, SetGroup } from './SettingsKit'
 import * as devices from '@/lib/data/pushSubscriptions'
 import { readSubscription, type RawSubscription } from '@/lib/push/subscription'
 import {
@@ -71,10 +71,16 @@ export default function DeviceNotifications({ userId }: { userId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
+  // Η ΕΠΙΚΕΦΑΛΙΔΑ ΖΕΙ ΕΔΩ, ΟΧΙ ΣΤΟΝ ΓΟΝΕΑ. Όταν η συσκευή δεν μπορεί, το
+  // component δεν δείχνει τίποτα· ο τίτλος «Στη συσκευή» όμως γραφόταν από το
+  // NotificationSettings και έμενε μόνος του, πάνω από κενό.
   if (iosHint) return (
-    <SetRow
-      title="Ειδοποιήσεις στη συσκευή"
-      desc={<>Στο iPhone φτάνουν μόνο όταν το PROPERWISE είναι στην αρχική οθόνη. Πάτα <strong style={{ color: 'var(--text-primary)' }}>Κοινή χρήση</strong> στη μπάρα του Safari, μετά <strong style={{ color: 'var(--text-primary)' }}>«Προσθήκη στην οθόνη Αφετηρίας»</strong> και άνοιξέ το από το εικονίδιο. Ο διακόπτης θα είναι εδώ.</>} />
+    <>
+      <SetGroup>Στη συσκευή</SetGroup>
+      <SetRow
+        title="Ειδοποιήσεις στη συσκευή"
+        desc={<>Στο iPhone φτάνουν μόνο όταν το PROPERWISE είναι στην αρχική οθόνη. Πάτα <strong style={{ color: 'var(--text-primary)' }}>Κοινή χρήση</strong> στη μπάρα του Safari, μετά <strong style={{ color: 'var(--text-primary)' }}>«Προσθήκη στην οθόνη Αφετηρίας»</strong> και άνοιξέ το από το εικονίδιο. Ο διακόπτης θα είναι εδώ.</>} />
+    </>
   )
 
   if (!available) return null
@@ -120,7 +126,8 @@ export default function DeviceNotifications({ userId }: { userId: string }) {
     setBusy(false)
   }
 
-  return (
+  return (<>
+    <SetGroup>Στη συσκευή</SetGroup>
     <SetRow
       title="Ειδοποιήσεις στη συσκευή"
       desc="Μία ειδοποίηση το πρωί, μόνο όταν κάτι λήγει σήμερα ή αύριο, ακόμη και με την εφαρμογή κλειστή. Όσο είναι ανοιχτή, προειδοποιεί και δέκα λεπτά πριν από κάθε ραντεβού."
@@ -133,5 +140,5 @@ export default function DeviceNotifications({ userId }: { userId: string }) {
         </div>
       )}
     </SetRow>
-  )
+  </>)
 }
