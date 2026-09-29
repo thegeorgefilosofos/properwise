@@ -24,7 +24,7 @@
 
 import { useBillsSettings } from './BillsSettings';
 import {
-  estimateENFIA, estimateENFIAFromFacts, enfiaInUse, enfiaLastYearAnnual,
+  estimateENFIA, estimateENFIAFromFacts, atticaMainlandFromPostcode, enfiaInUse, enfiaLastYearAnnual,
   type ENFIAResult, type EnfiaInUse,
 } from '@/lib/billing/enfia';
 import { resolveEnfia } from '@/lib/billing/propertyFacts';
@@ -57,6 +57,8 @@ export interface EnfiaFacts {
   floor?: string | number | null;
   propType?: string | null;
   ownershipPct?: number | null;
+  /** Ο ΤΚ του ακινήτου· κρίνει αν ισχύει η μείωση του μικρού οικισμού (Αττική). */
+  postalCode?: string | null;
 }
 
 export interface EnfiaNow {
@@ -72,6 +74,8 @@ export interface EnfiaNow {
   estimate: number;
   /** Από πού βγαίνει η εκτίμηση. */
   estimateFrom: 'form' | 'facts' | null;
+  /** Ηπειρωτική Αττική από τον ΤΚ· `null` όταν δεν ξέρουμε. */
+  atticaMainland: boolean | null;
 }
 
 const num = (v: string): number => parseFloat(v) || 0;
@@ -86,6 +90,7 @@ export function enfiaForYear(s: EnfiaSettings, year: number, facts: EnfiaFacts =
   });
   // Ο όροφος και η παλαιότητα περνούν ΟΠΩΣ ΕΙΝΑΙ: κενό σημαίνει άγνωστο και η
   // μηχανή το μεταφράζει σε 1,00. Καμία προεπιλογή που να σπρώχνει προς τα πάνω.
+  const atticaMainland = atticaMainlandFromPostcode(facts.postalCode);
   const detailed = estimateENFIA({
     sqm: num(s.enfiaSqm),
     zone: s.enfiaZone,
@@ -95,6 +100,7 @@ export function enfiaForYear(s: EnfiaSettings, year: number, facts: EnfiaFacts =
     totalValue: num(s.enfiaTotalVal),
     propertyValue: num(s.enfiaPropVal),
     reductions: s.enfiaReductions || [],
+    atticaMainland,
     year,
   });
   const fromFacts = detailed ? null : estimateENFIAFromFacts({
@@ -119,6 +125,7 @@ export function enfiaForYear(s: EnfiaSettings, year: number, facts: EnfiaFacts =
     detailed,
     estimate,
     estimateFrom: detailed ? 'form' : fromFacts ? 'facts' : null,
+    atticaMainland,
   };
 }
 

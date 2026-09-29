@@ -32,5 +32,5 @@ export function smallSettlementRelief(year: number, accusative = false): string 
   const what = rate >= 100
     ? (accusative ? 'την πλήρη απαλλαγή' : 'πλήρης απαλλαγή')
     : `${accusative ? 'τη ' : ''}μείωση ${fn(rate)}%`;
-  return `${what} του ${year} για κύρια κατοικία σε οικισμό έως 1.500 κατοίκων${cap}`;
+  return `${what} του ${year} για κύρια κατοικία σε οικισμό κάτω των 1.500 κατοίκων${cap}, εκτός Περιφέρειας Αττικής (πλην Π.Ε. Νήσων)`;
 }

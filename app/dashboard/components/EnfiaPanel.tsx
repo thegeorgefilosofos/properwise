@@ -449,7 +449,8 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
               // όταν δηλώθηκε, αλλιώς της συνολικής περιουσίας. Δύο διαφορετικές
               // απαντήσεις στην ίδια ερώτηση θα ήταν χειρότερες από καμία.
               const homeVal = (parseFloat(s.enfiaPropVal) || 0) || (parseFloat(s.enfiaTotalVal) || 0);
-              const inForce = enfiaReductionInForce(r.key, enfiaYear, homeVal);
+              const inForce = enfiaReductionInForce(r.key, enfiaYear, homeVal, now.atticaMainland);
+              const attica = !!r.excludesAtticaMainland && now.atticaMainland === true;
               const lapsed = r.untilYear != null && enfiaYear > r.untilYear;
               const notYet = r.sinceYear != null && enfiaYear < r.sinceYear;
               const active = inForce && (s.enfiaReductions || []).includes(r.key);
@@ -478,7 +479,9 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
                           ? `Δεν ισχύει για τον ΕΝΦΙΑ ${enfiaYear}: το μέτρο εφαρμόστηκε ως και το ${r.untilYear}.`
                           : notYet
                             ? `Δεν ισχύει για τον ΕΝΦΙΑ ${enfiaYear}: το μέτρο ξεκινά από το ${r.sinceYear}.`
-                            : `Δεν δίνεται σε αυτή την αξία: το όριο του μέτρου είναι ${fe(r.maxHomeValue!)}.`}
+                            : attica
+                              ? 'Δεν δίνεται στην Περιφέρεια Αττικής, εκτός από την Π.Ε. Νήσων (από τον ΤΚ του ακινήτου).'
+                              : `Δεν δίνεται σε αυτή την αξία: το όριο του μέτρου είναι ${fe(r.maxHomeValue!)}.`}
                       </span>
                     )}
                   </span>
