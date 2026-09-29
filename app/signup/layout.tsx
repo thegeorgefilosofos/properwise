@@ -14,6 +14,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { siteUrl } from '@/lib/core/site';
+import { publicMetadata } from '../publicMetadata';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { billingWords } from '@/lib/legal/billingWords';
 import { PlanTermsProvider } from './PlanTerms';
@@ -25,11 +26,14 @@ import { PlanTermsProvider } from './PlanTerms';
 // `generateMetadata` τρέχει στον διακομιστή, όπου η αλήθεια για τη χρέωση
 // είναι γνωστή. Στατικό `metadata` δεν θα μπορούσε να τη ρωτήσει.
 export function generateMetadata(): Metadata {
-  return {
-    title: 'Εγγραφή',
+  // ΔΙΚΗ ΤΗΣ ΚΑΡΤΑ ΚΟΙΝΟΠΟΙΗΣΗΣ. Χωρίς openGraph η σελίδα κληρονομούσε το
+  // og:url της αρχικής: ο σύνδεσμος παραπομπής /signup?ref=… κοινοποιούνταν
+  // ως η αρχική και η παραπομπή χανόταν.
+  return publicMetadata({
+    title: 'Εγγραφή · PROPERWISE',
     description: `Δημιούργησε λογαριασμό και ξεκίνα τη δοκιμή των ${TRIAL_DAYS} ημερών. ${billingWords().firstCharge}`,
-    alternates: { canonical: siteUrl('/signup') },
-  };
+    url: siteUrl('/signup'),
+  });
 }
 
 // ΚΑΙ Η ΦΟΡΜΑ ΜΑΘΑΙΝΕΙ ΑΠΟ ΕΔΩ ΑΝ ΧΡΕΩΝΟΥΜΕ, για τον ίδιο λόγο (βλ. PlanTerms.tsx).

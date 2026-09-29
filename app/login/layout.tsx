@@ -7,11 +7,16 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { siteUrl } from '@/lib/core/site';
+import { publicMetadata } from '../publicMetadata';
 
+// Δικό της og:url, όπως η εγγραφή: αλλιώς ένας σύνδεσμος σύνδεσης που
+// κοινοποιείται δείχνει και ανοίγει την αρχική.
 export const metadata: Metadata = {
-  title: 'Σύνδεση',
-  description: 'Σύνδεση στον λογαριασμό σου.',
-  alternates: { canonical: siteUrl('/login') },
+  ...publicMetadata({
+    title: 'Σύνδεση · PROPERWISE',
+    description: 'Σύνδεση στον λογαριασμό σου στο PROPERWISE, με email ή με Google.',
+    url: siteUrl('/login'),
+  }),
   robots: { index: false, follow: true },
 };
 
