@@ -4759,6 +4759,16 @@ body:has(.po-tool-page) .po-cookie {
 }
 .po-social:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; color: var(--text-primary); }
 @media (hover: none) { .po-social { width: 44px; height: 44px; margin: -13px -13px -13px 0; } }
+/* ΣΤΗ ΔΙΠΛΗ ΣΕΙΡΑ Η ΖΩΝΗ ΔΕΝ ΒΓΑΙΝΕΙ ΚΑΘΕΤΑ ΑΠΟ ΤΗ ΣΕΙΡΑ ΤΗΣ. Με −13 πάνω
+   και κάτω, το τετράγωνο των 44 κρεμόταν 13 pixel κάτω από την πρώτη σειρά και
+   με κενό 8 έπεφτε πάνω στο «Πολιτική απορρήτου» της δεύτερης (σαρωτής
+   επικαλύψεων, 430×932, σε κάθε δημόσια σελίδα): πάτημα στην άκρη του
+   συνδέσμου άνοιγε το LinkedIn. Τώρα −6: η σειρά ψηλώνει λίγο, η ζώνη κρέμεται
+   6 και το κενό 12 αφήνει 6 καθαρά ανάμεσα. */
+@media (max-width: 720px) {
+  .po-foot-bar { row-gap: 12px; }
+  .po-social { margin-block: -6px; }
+}
 @media (max-width: 760px) {
   .lp-foot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
