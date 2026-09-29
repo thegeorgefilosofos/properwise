@@ -4137,7 +4137,12 @@ html { scroll-padding-bottom: var(--cookie-h, 0px); }
    Στην ταμπλέτα το 3+2 άφηνε άδειο κελί κάτω από το τρίτο πεδίο. Με έξι
    λωρίδες (`--fc-md: 6`) τα τρία πάνω παίρνουν δύο και τα δύο κάτω τρεις: δύο
    γεμάτες σειρές. */
-@media (min-width: 601px) and (max-width: 820px) {
+/* ΩΣ ΤΑ 1.000, ΟΧΙ ΤΑ 820 (29.09.2026). Από 821 ως 979 οι πέντε έμεναν σε μία
+   σειρά των 139 εικονοστοιχείων και οι επιλογείς έκοβαν «2ος όροφ…» και «26 έτη
+   κα…». Μετρημένο: το «26 έτη και άνω» χωρά σε ένα πεδίο από τα 980. Το όριο
+   είναι το ίδιο με του `fc-roomy`. */
+@media (min-width: 601px) and (max-width: 1000px) {
+  .fixed-cols.fc-5-even { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .fixed-cols.fc-5-even > :nth-child(-n+3) { grid-column: span 2; }
   .fixed-cols.fc-5-even > :nth-child(n+4) { grid-column: span 3; }
 }
@@ -4749,6 +4754,16 @@ body:has(.po-tool-page) .po-cookie {
    Κάτω από 720 γίνονται μία στήλη, χωρίς ελάχιστο πλάτος που να ξεχειλίζει. */
 .og-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 720px) { .og-grid { grid-template-columns: 1fr; } }
+/* ΟΙ ΔΥΟ ΚΑΡΤΕΣ ΤΗΣ ΣΕΙΡΑΣ ΜΟΙΡΑΖΟΝΤΑΙ ΤΙΣ ΣΕΙΡΕΣ ΤΟΥΣ (29.09.2026). Οταν ο
+   τίτλος της μίας έσπαγε σε δύο γραμμές, η περιγραφή της διπλανής ξεκινούσε
+   23 εικονοστοιχεία ψηλότερα. Με subgrid ετικέτα, τίτλος, περιγραφή και
+   σύνδεσμος στέκονται στο ίδιο ύψος και στις δύο. */
+.og-card { display: flex; flex-direction: column; gap: 8px; }
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 721px) {
+    .og-grid > .og-card { display: grid; grid-row: span 4; grid-template-rows: subgrid; row-gap: 8px; }
+  }
+}
 
 /* ═══ ΜΙΑ ΠΑΛΕΤΑ ΑΠΟ ΤΗΝ ΑΡΧΙΚΗ ΣΤΑ ΠΑΚΕΤΑ ΚΑΙ ΣΤΑ ΝΟΜΙΚΑ ═══════════════════
    Η αρχική μιλά πάντα την παλέτα της βιτρίνας (`--mkt-*`, ναυτικό μπλε), ενώ
@@ -5472,7 +5487,10 @@ tr.po-row-more { display: none; }
    στήλη των 90 τα 28 της ήταν σχεδόν το ένα τρίτο. */
 @media (max-width: 560px) {
   .po-table thead th.num { white-space: normal; text-wrap: balance; }
-  .po-table th, .po-table td { padding-left: 10px; padding-right: 10px; }
+  /* Και το `thead th`: ο κανόνας του (9px 14px) είναι πιο ειδικός και κρατούσε
+     τα 14 στις κεφαλίδες, που ξεχείλιζαν από το κελί τους στα 390. */
+  .po-table th, .po-table td, .po-table thead th { padding-left: 10px; padding-right: 10px; }
+  .po-table thead th.num { hyphens: manual; }
 }
 /* Οι στήλες των πακέτων είναι στενές και κεντραρισμένες: το γέμισμα των 14 ανά
    πλευρά έτρωγε 28 από τα 155 που έχει η στήλη. Δέκα αρκούν όταν το κείμενο

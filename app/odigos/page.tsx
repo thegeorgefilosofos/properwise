@@ -78,7 +78,7 @@ export default function Page() {
             const id = `odigos-${g.href.split('/').at(-1)}`;
             return (
               <Link key={g.href} href={g.href} aria-labelledby={id} className="og-card lp-link"
-                style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '22px 22px 20px', borderRadius: T.radius.modal,
+                style={{ padding: '22px 22px 20px', borderRadius: T.radius.modal,
                   border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', textDecoration: 'none' }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent)' }}>{g.kicker}</span>
                 <h2 id={id} style={{ margin: 0, fontSize: 18, fontWeight: 680, letterSpacing: '-0.02em', color: 'var(--text-primary)', lineHeight: 1.25 }}>{g.title}</h2>

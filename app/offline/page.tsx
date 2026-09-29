@@ -5,11 +5,14 @@
 
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
+import { noindexPage } from '@/lib/seo/noindex';
 
 // ΤΟ ΟΝΟΜΑ ΤΟ ΒΑΖΕΙ ΤΟ ΠΡΟΤΥΠΟ, ΟΧΙ Η ΣΕΛΙΔΑ. Το app/layout.tsx ορίζει
 // «template: '%s · PROPERWISE'», οπότε γράφοντας το όνομα και εδώ η καρτέλα
 // του περιηγητή έλεγε «Χωρίς σύνδεση · PROPERWISE · PROPERWISE».
-export const metadata: Metadata = { title: 'Χωρίς σύνδεση' };
+// Εκτός ευρετηρίου: σελίδα του service worker, όχι περιεχόμενο. Χωρίς αυτό
+// ήταν ευρετηριάσιμη με canonical την αρχική.
+export const metadata: Metadata = noindexPage('Χωρίς σύνδεση', 'Δεν υπάρχει σύνδεση στο διαδίκτυο. Δοκίμασε ξανά όταν επανέλθει.');
 
 export default function OfflinePage() {
   return (
