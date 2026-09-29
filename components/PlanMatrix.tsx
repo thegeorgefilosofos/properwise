@@ -138,6 +138,27 @@ export const MATRIX: FeatureRow[] = [
 const COMMON = MATRIX.filter(row => COMPARED.every(p => row.values[p] === true));
 const DISTINCT = MATRIX.filter(row => !COMMON.includes(row));
 
+// ── ΤΑ ΟΡΙΑ ΕΙΝΑΙ ΙΔΙΕΣ ΓΡΑΜΜΕΣ ΣΕ ΚΑΘΕ ΚΑΡΤΑ, ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ ─────────────────
+// Όσες γραμμές έχουν αριθμό ή κείμενο σε κάποιο πακέτο (τιμή, ακίνητα,
+// ερωτήσεις, σάρωση, φωνή) εμφανίζονται σε ΟΛΕΣ τις κάρτες. Ετσι στην ταμπλέτα
+// δύο γειτονικές κάρτες μοιράζονται τις ίδιες σειρές (subgrid στο globals.css)
+// και η «Τιμή τον χρόνο» του ενός στέκεται δίπλα στην «Τιμή τον χρόνο» του
+// άλλου. Οι γραμμές ναι/όχι μένουν μόνο όπου ισχύουν.
+const LIMITS = DISTINCT.filter(row => COMPARED.some(p => typeof row.values[p] === 'string'));
+const FEATURES = DISTINCT.filter(row => !LIMITS.includes(row));
+
+/**
+ * «0,00€ · 4,99€ με Νόα» σε δύο γραμμές: το δωρεάν πάνω, η Νόα από κάτω σε
+ * δεύτερο τόνο. Σε μία γραμμή η τιμή έτρωγε το πλάτος και η ετικέτα δίπλα της
+ * έσπαγε σε τρεις σειρές («Σάρωση / εγγράφων τον / μήνα»).
+ */
+function CellText({ v }: { v: string }) {
+  const [main, ...rest] = v.split(' · ');
+  return rest.length
+    ? <span className="plan-card-num">{main}<span className="plan-card-alt">{rest.join(' · ')}</span></span>
+    : <span className="plan-card-num">{v}</span>;
+}
+
 /** «Εξαγωγή Ε2» μέσα σε πρόταση: πεζό μόνο το πρώτο γράμμα, τα αρκτικόλεξα μένουν. */
 const inSentence = (label: string) => label.charAt(0).toLocaleLowerCase('el-GR') + label.slice(1);
 
@@ -219,29 +240,52 @@ export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highl
           φθηνότερου πακέτου ήταν εννέα «Όχι» στη σειρά: σε σελίδα τιμών αυτό
           παρουσιάζει το πακέτο ως λίστα ελλείψεων και διπλασιάζει την κύλιση.
           Οι ίδιες γραμμές μαζεύονται στο τέλος σε μία πρόταση. */}
+      {/* ΠΕΝΤΕ ΖΩΝΕΣ ΣΕ ΚΑΘΕ ΚΑΡΤΑ, ΠΑΝΤΑ ΟΙ ΙΔΙΕΣ: τίτλος, όρια, δυνατότητες,
+          «δεν περιλαμβάνει», κουμπί. Και οι πέντε υπάρχουν ακόμη κι όταν είναι
+          άδειες, ώστε στην ταμπλέτα οι δύο γειτονικές κάρτες να μοιράζονται τις
+          ίδιες σειρές: η ετικέτα «Προτεινόμενο» δεν σπρώχνει μόνο τη μία κάρτα
+          και τα κουμπιά στέκονται στο ίδιο ύψος. */}
       {COMPARED.map(id => {
         const lacks = DISTINCT.filter(row => row.values[id] === false).map(row => inSentence(row.label));
+        const has = FEATURES.filter(row => row.values[id] === true);
         return (
-          <section key={id} className="plan-card" aria-label={columnName(id)}>
-            <H className="plan-card-name" style={{ color: id === highlight ? 'var(--accent)' : undefined }}>{columnName(id)}</H>
-            {id === recommended && <RecommendedChip />}
-            <dl className="plan-card-list">
-              {DISTINCT.filter(row => row.values[id] !== false).map(row => {
+          <section key={id} className="plan-card plan-card-plan" aria-label={columnName(id)}
+            style={{ ['--plan-limits' as string]: LIMITS.length }}>
+            <div className="plan-card-head">
+              <H className="plan-card-name" style={{ color: id === highlight ? 'var(--accent)' : undefined }}>{columnName(id)}</H>
+              {id === recommended && <RecommendedChip />}
+            </div>
+            <dl className="plan-card-list plan-card-limits">
+              {LIMITS.map(row => {
                 const v = row.values[id];
                 return (
                   <div key={row.label} className="plan-card-row">
                     <dt>{row.label}</dt>
                     <dd>
                       {typeof v === 'string'
-                        ? <span className="plan-card-num">{v}</span>
-                        : <><Tick /><span className="sr-only">Ναι</span></>}
+                        ? <CellText v={v} />
+                        : v
+                          ? <><Tick /><span className="sr-only">Ναι</span></>
+                          : <span className="plan-card-no">Όχι</span>}
                     </dd>
                   </div>
                 );
               })}
             </dl>
-            {lacks.length > 0 && <p className="plan-card-lacks">Δεν περιλαμβάνει: {lacks.join(', ')}.</p>}
-            <div style={{ display: 'grid', padding: '8px 0' }}><TrialCta id={id} recommended={recommended} /></div>
+            {has.length > 0
+              ? <dl className="plan-card-list plan-card-feats">
+                  {has.map(row => (
+                    <div key={row.label} className="plan-card-row">
+                      <dt>{row.label}</dt>
+                      <dd><Tick /><span className="sr-only">Ναι</span></dd>
+                    </div>
+                  ))}
+                </dl>
+              : <div className="plan-card-feats" aria-hidden="true" />}
+            {lacks.length > 0
+              ? <p className="plan-card-lacks">Δεν περιλαμβάνει: {lacks.join(', ')}.</p>
+              : <div className="plan-card-lacks plan-card-lacks-none" aria-hidden="true" />}
+            <div className="plan-card-cta"><TrialCta id={id} recommended={recommended} /></div>
           </section>
         );
       })}

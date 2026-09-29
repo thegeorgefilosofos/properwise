@@ -5497,8 +5497,44 @@ tr.po-row-more { display: none; }
   .plan-cmp-cards { display: grid; gap: 14px; align-items: start; }
 }
 @media (min-width: 600px) and (max-width: 959px) {
-  .plan-cmp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-cmp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
   .plan-card-common { grid-column: 1 / -1; }
+}
+/* ═══ ΣΤΗΝ ΤΑΜΠΛΕΤΑ ΟΙ ΔΥΟ ΚΑΡΤΕΣ ΜΟΙΡΑΖΟΝΤΑΙ ΤΙΣ ΙΔΙΕΣ ΣΕΙΡΕΣ ════════════════
+   ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΤΟ ΕΙΔΕ Ο ΙΔΙΟΚΤΗΤΗΣ (29.09.2026, ταμπλέτα). Δίπλα δίπλα οι
+   κάρτες δεν στοιχίζονταν: η ετικέτα «Προτεινόμενο» κατέβαζε όλες τις σειρές
+   του «Ιδιοκτήτης+» κατά μία ετικέτα, το «0,00€ · 4,99€ με Νόα» έσπαγε την
+   ετικέτα του σε δύο και τρεις γραμμές, οι κάρτες είχαν άλλο ύψος η καθεμιά
+   και τα κουμπιά στέκονταν σε άλλο ύψος.
+
+   ΤΩΡΑ κάθε κάρτα πλάνου είναι subgrid του πλέγματος: τίτλος, κάθε γραμμή
+   ορίου, δυνατότητες, «δεν περιλαμβάνει» και κουμπί είναι σειρές ΚΟΙΝΕΣ με τη
+   γειτονική κάρτα. Το ύψος κάθε σειράς το ορίζει η ψηλότερη από τις δύο, άρα
+   η «Τιμή τον χρόνο» στέκεται δίπλα στην «Τιμή τον χρόνο» και τα κουμπιά στο
+   ίδιο ύψος, στο κάτω μέρος. Χωρίς subgrid ο περιηγητής δείχνει απλώς
+   στοιβαγμένες κάρτες, όπως πριν. */
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 600px) and (max-width: 959px) {
+    .plan-cmp-cards .plan-card-plan {
+      display: grid; grid-template-rows: subgrid; row-gap: 0;
+      grid-row: span calc(var(--plan-limits, 7) + 4);
+    }
+    .plan-card-plan .plan-card-limits {
+      display: grid; grid-template-rows: subgrid; row-gap: 0;
+      grid-row: span var(--plan-limits, 7);
+    }
+    .plan-card-plan .plan-card-row { align-items: center; }
+  }
+}
+.plan-card-plan { display: flex; flex-direction: column; }
+.plan-card-head { padding-bottom: 4px; }
+.plan-card-feats .plan-card-row:first-child { border-top: 1px solid var(--border-subtle); }
+.plan-card-lacks-none { border-top: none; padding: 0; margin: 0; }
+.plan-card-cta { display: grid; padding: 12px 0 8px; margin-top: auto; align-self: end; width: 100%; }
+/* Η δεύτερη τιμή («4,99€ με Νόα») κάτω από την πρώτη, σε δεύτερο τόνο. */
+.plan-card-alt {
+  display: block; margin-top: 2px;
+  font-size: 12.5px; font-weight: 600; color: var(--text-secondary);
 }
 /* Η ετικέτα του προτεινόμενου πακέτου, ίδια με την κορδέλα της αρχικής. */
 .plan-rec {
@@ -5538,6 +5574,9 @@ tr.po-row-more { display: none; }
   font-variant-numeric: tabular-nums; text-align: right;
 }
 .plan-card-num { font-variant-numeric: tabular-nums; }
+/* Η ΤΙΜΗ ΔΕΝ ΣΠΑΕΙ ΜΕΣΑ ΤΗΣ. Στα 640 έβγαινε «30 με / Νόα» και «Χωρίς / όριο»·
+   σπάει μόνο η ετικέτα αριστερά, σε κενό λέξης. */
+.plan-card-num, .plan-card-alt { white-space: nowrap; }
 .plan-card-no { color: var(--text-tertiary); font-weight: 500; }
 
 .po-scroll-x, .lp-plans, .lp-duo {
