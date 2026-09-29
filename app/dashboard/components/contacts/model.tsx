@@ -154,7 +154,9 @@ export const GROUPS = [
       { value: 'bank_eurobank', label: 'Eurobank' },
       { value: 'bank_piraeus', label: 'Τράπεζα Πειραιώς' },
       { value: 'bank_nbg', label: 'Εθνική Τράπεζα (ΕΤΕ)' },
-      { value: 'bank_attica', label: 'Attica Bank' },
+      // Η Attica απορροφήθηκε από την CrediaBank. Η τιμή μένει για τις επαφές
+      // που την έχουν ήδη· η ετικέτα λέει πού ανήκει σήμερα.
+      { value: 'bank_attica', label: 'Attica Bank (πλέον CrediaBank)' },
       { value: 'bank_optima', label: 'Optima Bank' },
       { value: 'bank_credia', label: 'Credia Bank (πρώην Παγκρήτια)' },
       { value: 'bank_aegean', label: 'Aegean Baltic Bank' },
