@@ -77,23 +77,37 @@ const SYSTEM = `Είσαι αναλυτής στεγαστικών δανείω�
 Η ΔΙΕΥΘΥΝΣΗ ΠΟΥ ΘΑ ΕΠΙΣΤΡΕΨΕΙΣ ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΣΕ ΕΝΑΝ ΑΠΟ ΑΥΤΟΥΣ ΤΟΥΣ ΤΟΜΕΙΣ: ${EPISIMOI_TOMEIS}.
 Συγκριτικοί ιστότοποι δανείων ΔΕΝ γίνονται δεκτοί ως πηγή, ούτε καν όταν η τιμή τους φαίνεται σωστή: ζουν από προμήθεια παραπομπής και γερνούν χωρίς ημερομηνία. Αν δεν βρίσκεις την τιμή στη σελίδα ή στο PDF της ίδιας της τράπεζας, ΠΑΡΕΛΕΙΨΕ την τράπεζα.
 Για κάθε τράπεζα βρες: το χαμηλότερο («από») σταθερό επιτόκιο ανά διάρκεια 3/5/10/15/20 ετών, το περιθώριο (spread) πάνω από Euribor για κυμαινόμενο, το ανώτατο δάνειο προς αξία (LTV %), αν συμμετέχει στο πρόγραμμα «Σπίτι μου ΙΙ» και τη σελίδα (URL) από την οποία πήρες τις τιμές.
-Τράπεζες: Εθνική, Alpha Bank, Eurobank, Τράπεζα Πειραιώς, Optima Bank, CrediaBank.
 Επίστρεψε ΑΠΟΚΛΕΙΣΤΙΚΑ έγκυρο JSON, χωρίς κείμενο εκτός JSON:
 {"banks":[{"bank":"Εθνική","fixed_3yr":2.9,"fixed_5yr":3.3,"fixed_10yr":3.8,"fixed_15yr":4.1,"fixed_20yr":4.2,"variable_spread_min":1.6,"variable_spread_max":2.8,"max_ltv":90,"spiti_mou":true,"source_url":"https://..."}]}
 Παρέλειψε όποιο πεδίο δεν βρίσκεις με ασφάλεια. Ποτέ μην μαντεύεις αριθμό. Αριθμοί με τελεία δεκαδικό, χωρίς σύμβολα.`
 
 type RateRow = Record<string, unknown>
 
-async function callAnthropic(): Promise<RateRow[]> {
-  const messages: { role: 'user' | 'assistant'; content: unknown }[] = [{ role: 'user', content: 'Βρες τα τρέχοντα στεγαστικά επιτόκια και επίστρεψε μόνο το JSON.' }]
+// ═══ ΜΙΑ ΚΛΗΣΗ ΑΝΑ ΤΡΑΠΕΖΑ, ΠΑΡΑΛΛΗΛΑ, ΜΕ ΔΙΚΟ ΤΗΣ ΧΡΟΝΙΚΟ ΟΡΙΟ ═══════════
+// ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΦΑΝΗΚΕ (29.09.2026). Με έγκυρο κλειδί για πρώτη φορά, το
+// πέρασμα ΔΕΝ άφησε καμία γραμμή στο `bank_rate_checks`: μία κλήση με έξι
+// αναζητήσεις στη σειρά ξεπερνούσε το όριο χρόνου της εργασίας παρασκηνίου και
+// ο χρόνος εκτέλεσης την έκοβε πριν φτάσει στην καταγραφή. Ως τότε δεν είχε
+// φανεί, γιατί κάθε πέρασμα αποτύγχανε στο πρώτο δευτερόλεπτο (υπόλοιπο 0).
+//
+// Τώρα κάθε τράπεζα έχει τη δική της κλήση με δύο αναζητήσεις και όριο
+// `PER_BANK_MS`· οι έξι τρέχουν μαζί, άρα το σύνολο κρατά όσο η αργότερη.
+// Τράπεζα που αργεί ή αποτυγχάνει γράφεται στα details και δεν ρίχνει τις άλλες.
+const BANKS = ['Εθνική', 'Alpha Bank', 'Eurobank', 'Τράπεζα Πειραιώς', 'Optima Bank', 'CrediaBank']
+const PER_BANK_MS = 100_000
+
+async function callAnthropic(bank: string): Promise<RateRow[]> {
+  const messages: { role: 'user' | 'assistant'; content: unknown }[] = [{ role: 'user', content: `Τράπεζα: ${bank}. Βρες τα τρέχοντα στεγαστικά επιτόκια ΜΟΝΟ αυτής της τράπεζας και επίστρεψε μόνο το JSON.` }]
   let text = ''
-  for (let i = 0; i < 5; i++) {
+  const signal = AbortSignal.timeout(PER_BANK_MS)
+  for (let i = 0; i < 3; i++) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal,
       headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({
-        model: MODEL, max_tokens: 4000, system: SYSTEM,
-        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6 }],
+        model: MODEL, max_tokens: 1500, system: SYSTEM,
+        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 2 }],
         messages,
       }),
     })
@@ -183,12 +197,18 @@ async function runUpdate(): Promise<void> {
 
   try {
     if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not set')
-    const raw = await callAnthropic()
+    const settled = await Promise.allSettled(BANKS.map(b => callAnthropic(b)))
+    const failures: Record<string, string> = {}
+    settled.forEach((r, i) => { if (r.status === 'rejected') failures[BANKS[i]] = String((r.reason as Error)?.message ?? r.reason).slice(0, 160) })
+    // Αν απέτυχαν ΟΛΕΣ, ο λόγος είναι κοινός (κλειδί, υπόλοιπο, δίκτυο): τον
+    // γράφουμε αυτούσιο, όπως πριν, για να τον διαβάζει η bank_feed_health().
+    if (Object.keys(failures).length === BANKS.length) throw new Error(Object.values(failures)[0])
+    const raw = settled.flatMap(r => r.status === 'fulfilled' ? r.value : [])
     const found = raw.map(narrow).filter((x): x is NonNullable<typeof x> => !!x)
 
     // Αμυντικό: λίγες τράπεζες σημαίνει κακή αναζήτηση, όχι κακή αγορά.
     if (found.length < MIN_BANKS) {
-      await log(false, `insufficient_valid_rows: ${found.length} από ${MIN_BANKS}`, { found: found.length })
+      await log(false, `insufficient_valid_rows: ${found.length} από ${MIN_BANKS}`, { found: found.length, failures })
       return
     }
 
@@ -274,7 +294,7 @@ async function runUpdate(): Promise<void> {
       if (error) console.error('bank_rate_changes insert:', error.message)
     }
 
-    const summary = { found: found.length, applied, held: heldNow, unchanged, banks: perBank, verified_at: today }
+    const summary = { found: found.length, applied, held: heldNow, unchanged, banks: perBank, failures, verified_at: today }
     await log(true, 'εντάξει', summary)
     console.log('bank-rates-updater:', JSON.stringify(summary))
   } catch (e) {
