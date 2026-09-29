@@ -20,7 +20,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { TT } from '@/components/Theme'
+import { TT, Btn } from '@/components/Theme'
 import { Toggle } from './UIComponents'
 import { SetRow } from './SettingsKit'
 import * as devices from '@/lib/data/pushSubscriptions'
@@ -29,6 +29,7 @@ import {
   pushSupported, pushConfigured, subscribeDevice, unsubscribeDevice,
   currentSubscription, setDeviceNotify,
 } from '@/lib/push/client'
+import { needsManualInstall } from '@/lib/pwa/install'
 
 /** Τι λέει η οθόνη όταν η απόπειρα δεν πέτυχε. Κάθε λόγος, η δική του κίνηση. */
 const REASONS: Record<string, string> = {
@@ -45,6 +46,8 @@ export default function DeviceNotifications({ userId }: { userId: string }) {
   const [on, setOn] = useState(false)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
+  const [iosHint, setIosHint] = useState(false)
+  const [testNote, setTestNote] = useState<{ ok: boolean; text: string } | null>(null)
 
   // ΤΟ ΑΛΗΘΙΝΟ ΑΝΑΜΜΕΝΟ ΘΕΛΕΙ ΚΑΙ ΤΑ ΔΥΟ: συνδρομή στον περιηγητή ΚΑΙ γραμμή στη
   // βάση. Με μόνο το πρώτο, ο διακομιστής δεν ξέρει πού να στείλει· με μόνο το
@@ -52,6 +55,10 @@ export default function DeviceNotifications({ userId }: { userId: string }) {
   useEffect(() => {
     let alive = true
     ;(async () => {
+      // ΣΤΟ iPhone Ο ΔΙΑΚΟΠΤΗΣ ΚΡΥΒΟΤΑΝ ΧΩΡΙΣ ΛΕΞΗ. Στον περιηγητή το Safari δεν
+      // έχει `PushManager`, άρα «δεν υποστηρίζεται» και η γραμμή εξαφανιζόταν.
+      // Υποστηρίζεται όμως, μόλις μπει στην αρχική οθόνη: αυτό λέμε.
+      if (pushConfigured() && needsManualInstall()) { if (alive) setIosHint(true); return }
       if (!pushSupported() || !pushConfigured()) return
       if (alive) setAvailable(true)
       const sub = await currentSubscription()
@@ -63,6 +70,12 @@ export default function DeviceNotifications({ userId }: { userId: string }) {
     return () => { alive = false }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
+
+  if (iosHint) return (
+    <SetRow
+      title="Ειδοποιήσεις στη συσκευή"
+      desc={<>Στο iPhone φτάνουν μόνο όταν το PROPERWISE είναι στην αρχική οθόνη. Πάτα <strong style={{ color: 'var(--text-primary)' }}>Κοινή χρήση</strong> στη μπάρα του Safari, μετά <strong style={{ color: 'var(--text-primary)' }}>«Προσθήκη στην οθόνη Αφετηρίας»</strong> και άνοιξέ το από το εικονίδιο. Ο διακόπτης θα είναι εδώ.</>} />
+  )
 
   if (!available) return null
 
@@ -79,12 +92,31 @@ export default function DeviceNotifications({ userId }: { userId: string }) {
     setOn(true)
   }
 
+  async function sendTest() {
+    setBusy(true); setTestNote(null)
+    try {
+      const sub = await currentSubscription()
+      const res = await fetch('/api/push/test', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: sub?.endpoint ?? '' }),
+      })
+      const data = await res.json().catch(() => ({})) as { error?: string }
+      setTestNote(res.ok
+        ? { ok: true, text: 'Στάλθηκε. Αν δεν τη δεις σε λίγα δευτερόλεπτα, έλεγξε τις ειδοποιήσεις του περιηγητή στις ρυθμίσεις του τηλεφώνου.' }
+        : { ok: false, text: data.error || 'Η δοκιμή δεν στάλθηκε.' })
+    } catch {
+      setTestNote({ ok: false, text: 'Χωρίς σύνδεση. Δοκίμασε ξανά όταν έρθει σήμα.' })
+    }
+    setBusy(false)
+  }
+
   async function turnOff() {
     setBusy(true); setNote('')
     const endpoint = await unsubscribeDevice()
     if (endpoint) await devices.remove(supabase, endpoint)
     setDeviceNotify(false)
     setOn(false)
+    setTestNote(null)
     setBusy(false)
   }
 
@@ -94,6 +126,12 @@ export default function DeviceNotifications({ userId }: { userId: string }) {
       desc="Μία ειδοποίηση το πρωί, μόνο όταν κάτι λήγει σήμερα ή αύριο, ακόμη και με την εφαρμογή κλειστή. Όσο είναι ανοιχτή, προειδοποιεί και δέκα λεπτά πριν από κάθε ραντεβού."
       control={<Toggle on={on} onChange={v => { if (!busy) void (v ? turnOn() : turnOff()) }} />}>
       {note && <div style={{ ...TT.bodySm, color: 'var(--negative)' }}>{note}</div>}
+      {on && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+          <Btn onClick={() => { if (!busy) void sendTest() }} disabled={busy}>Στείλε δοκιμαστική ειδοποίηση</Btn>
+          {testNote && <div style={{ ...TT.bodySm, color: testNote.ok ? 'var(--text-secondary)' : 'var(--negative)' }}>{testNote.text}</div>}
+        </div>
+      )}
     </SetRow>
   )
 }

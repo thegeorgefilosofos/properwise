@@ -5,7 +5,7 @@ import { aiLimitsFor } from '@/lib/billing/aiLimits';
 import { TRIAL_OFFER } from '@/lib/billing/trialOffer';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
-import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES } from '@/lib/core/site';
+import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES, LINKEDIN_URL } from '@/lib/core/site';
 import { IDENTITY } from '@/lib/legal/identity';
 import { billingWords } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
@@ -781,6 +781,7 @@ export default async function Landing() {
             email: IDENTITY.supportEmail,
             logo: `${SITE}/icons/icon-192.png`,
             areaServed: 'GR',
+            sameAs: [LINKEDIN_URL],
           },
           // ΤΟ WebSite ΔΕΝΕΙ ΤΟ ΟΝΟΜΑ ΤΗΣ ΜΑΡΚΑΣ ΜΕ ΤΟΝ ΤΟΜΕΑ. Χωρίς αυτό η
           // Google είχε την Organization και την εφαρμογή, αλλά κανένα κόμβο που

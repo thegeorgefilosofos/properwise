@@ -79,3 +79,14 @@ export function drop(db: Db, id: string): PromiseLike<{ error: DbError | null }>
 export function markFailure(db: Db, id: string, failures: number): PromiseLike<{ error: DbError | null }> {
   return db.from(TABLE).update({ failures: failures + 1 }).eq('id', id);
 }
+
+/**
+ * Η συνδρομή ΑΥΤΗΣ της συσκευής, με την ταυτότητα του χρήστη. Η RLS αφήνει
+ * μόνο τις δικές του γραμμές, οπότε μια ξένη διεύθυνση δίνει απλώς `null`.
+ */
+export async function ownByEndpoint(
+  db: Db, endpoint: string,
+): Promise<{ row: SendRow | null; error: DbError | null }> {
+  const { data, error } = await db.from(TABLE).select(SEND_COLUMNS).eq('endpoint', endpoint).maybeSingle();
+  return { row: (data as SendRow | null) ?? null, error: error as DbError | null };
+}
