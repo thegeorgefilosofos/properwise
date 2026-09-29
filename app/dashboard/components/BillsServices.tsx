@@ -6,7 +6,8 @@ import * as expenseStore from '@/lib/data/expenses';
 import { NumberInput, CustomSelect, TextInput, Toggle, DatePicker, FIELD_HEIGHT, FIELD_RADIUS, fieldLabelStyle } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
 import { T, fe, fieldRow, fixedCols, fp, Spinner, histInputStyle, Bar, Btn, IconBtn } from '@/components/Theme';
-import { estimateENFIA, enfiaInUse, enfiaLastYearAnnual } from '@/lib/billing/enfia';
+import { estimateENFIA, enfiaInUse, enfiaLastYearAnnual, atticaMainlandFromPostcode } from '@/lib/billing/enfia';
+import * as properties from '@/lib/data/properties';
 import { MONTHS_SHORT } from '@/lib/core/months';
 import { averageMonthly, feeOriginNote, feeShare, monthlyFees, TYPICAL_SHARE, type FeeSourceRow } from '@/lib/expenses/municipalFees';
 import { athensParts } from '@/lib/core/time';
@@ -29,10 +30,10 @@ const toMonthly = (cost: string, freq: string) => {
 
 // Ο υπολογισμός ζει πλέον στο lib/billing/enfia (μία πηγή αλήθειας). Thin wrapper
 // με τα ίδια ονόματα πεδίων για συμβατότητα του υπάρχοντος UI.
-function calcENFIA(sqm: number, zone: string, floor: string, age: string, ownership: number, totalVal: number, propVal: number, reductions: string[]) {
+function calcENFIA(sqm: number, zone: string, floor: string, age: string, ownership: number, totalVal: number, propVal: number, reductions: string[], year: number, atticaMainland: boolean | null) {
   // propVal = αντικειμενική αξία ΑΥΤΟΥ του ακινήτου (Ενότητα Γ). Αν δεν δοθεί ξεχωριστά και
   // η συνολική αξία αφορά ένα μόνο ακίνητο, ο χρήστης βάζει το ίδιο ποσό και στα δύο πεδία.
-  const r = estimateENFIA({ sqm, zone, floor, age, ownership, totalValue: totalVal, propertyValue: propVal, reductions });
+  const r = estimateENFIA({ sqm, zone, floor, age, ownership, totalValue: totalVal, propertyValue: propVal, reductions, year, atticaMainland });
   if (!r) return null;
   return { basic: r.basic, extra: r.extra, suppl: r.supplementary, subtotal: r.subtotal, redAmt: r.reductionAmount, maxPct: r.reductionPct, final: r.annual };
 }
@@ -106,11 +107,27 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
   // γράφει κανείς, οπότε το πλαίσιό του δεν εμφανίστηκε ποτέ. Ό,τι αφορά τον
   // φόρο ζει τώρα στη Λογιστική, μαζί με τα δεδομένα του.
 
+  // ΕΤΟΣ ΚΑΙ ΘΕΣΗ ΠΕΡΝΟΥΝ ΣΤΗ ΜΗΧΑΝΗ, ΟΠΩΣ ΣΤΗ ΛΟΓΙΣΤΙΚΗ. Χωρίς έτος η
+  // μηχανή δεν δίνει κανένα μέτρο με ημερομηνία έναρξης: η μείωση του μικρού
+  // οικισμού (από τον ΕΝΦΙΑ 2026) δεν εφαρμοζόταν ΠΟΤΕ εδώ, ενώ η Λογιστική
+  // την εφάρμοζε. Ο ΤΚ κρίνει την εξαίρεση της ηπειρωτικής Αττικής.
+  const [postalCode, setPostalCode] = useState<string | null>(null);
+  useEffect(() => {
+    let stop = false;
+    (async () => {
+      if (!propertyId) { if (!stop) setPostalCode(null); return; }
+      const row = await properties.one<{ postal_code: string | null }>(createClient(), propertyId, 'postal_code', userId || undefined);
+      if (!stop) setPostalCode(row?.postal_code ?? null);
+    })();
+    return () => { stop = true; };
+  }, [propertyId, userId]);
+  const atticaMainland = atticaMainlandFromPostcode(postalCode);
+
   const enfiaResult = useMemo(() => calcENFIA(
     parseFloat(s.enfiaSqm) || 0, s.enfiaZone, s.enfiaFloor, s.enfiaAge,
     parseFloat(s.enfiaOwnership) || 100, parseFloat(s.enfiaTotalVal) || 0,
-    parseFloat(s.enfiaPropVal) || 0, s.enfiaReductions || []
-  ), [s.enfiaSqm, s.enfiaZone, s.enfiaFloor, s.enfiaAge, s.enfiaOwnership, s.enfiaTotalVal, s.enfiaPropVal, s.enfiaReductions]);
+    parseFloat(s.enfiaPropVal) || 0, s.enfiaReductions || [], feeYear, atticaMainland,
+  ), [s.enfiaSqm, s.enfiaZone, s.enfiaFloor, s.enfiaAge, s.enfiaOwnership, s.enfiaTotalVal, s.enfiaPropVal, s.enfiaReductions, feeYear, atticaMainland]);
 
   // ΤΟ ΔΗΛΩΜΕΝΟ ΠΟΣΟ ΝΙΚΑ ΤΗΝ ΕΚΤΙΜΗΣΗ. Η απόφαση ζει στο lib/billing/enfia.ts,
   // γιατί τη χρειάζεται και ο Προϋπολογισμός — και εκεί διάβαζε ΜΟΝΟ το δηλωμένο,
