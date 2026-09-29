@@ -317,8 +317,8 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
               <tr>
                 {/* Η γωνία δεν λέει τίποτα στο μάτι· στον αναγνώστη οθόνης λέει τι είναι η στήλη. */}
                 <th scope="col"><span className="sr-only">Κατηγορία</span></th>
-                <th scope="col" className="num">Μακροχρόνια</th>
-                <th scope="col" className="num">Βραχυχρόνια</th>
+                <th scope="col" className="num">Μακρο­χρόνια</th>
+                <th scope="col" className="num">Βραχυ­χρόνια</th>
               </tr>
             </thead>
             <tbody>
@@ -372,7 +372,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col" className="num">Πληρότητα</th>
+                <th scope="col" className="num">Πληρό­τητα</th>
                 <th scope="col" className="num">Νύχτες<span className="sr-only"> (διανυκτερεύσεις)</span></th>
                 <th scope="col" className="num">Καθαρά<span className="sr-only"> βραχυχρόνιας</span></th>
                 <th scope="col" className="num">Διαφορά<span className="sr-only"> έναντι μακροχρόνιας</span></th>
