@@ -39,6 +39,7 @@ import { T, Btn, Modal, Spinner, SecHdr } from '@/components/Theme';
 import PropertyAssistant from './components/PropertyAssistant';
 import PropertySwitcher from './components/PropertySwitcher';
 import MonthlyFeedbackNudge from './components/MonthlyFeedbackNudge';
+import UpdateWatcher from './components/UpdateWatcher';
 import { planBriefing } from './components/assistantPersona';
 import UpgradeModal from './components/UpgradeModal';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
@@ -782,6 +783,7 @@ export default function Dashboard() {
           χρήστης έβλεπε παρότρυνση, πατούσε το κύριο κουμπί της και δεν
           συνέβαινε απολύτως τίποτα. */}
       {user&&selected&&<MonthlyFeedbackNudge/>}
+      <UpdateWatcher/>
 
       {/* Βοηθός ακινήτου, ορατός σε ΚΑΘΕ καρτέλα, πλωτό κουμπί κάτω δεξιά */}
       {selected&&user&&(

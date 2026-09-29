@@ -99,11 +99,19 @@ type RateRow = Record<string, unknown>
 // χρόνο χωρίς να δίνουν τίποτα σε αυτή τη δουλειά: η αναζήτηση
 // `web_search_20260209`, που φιλτράρει τα αποτελέσματα τρέχοντας κώδικα στο
 // παρασκήνιο· και η σκέψη σε πλήρες βάθος για να διαβαστούν πέντε αριθμοί από
-// μια σελίδα. Τώρα βασική αναζήτηση και `effort: low`.
+// μια σελίδα. Τώρα βασική αναζήτηση.
+//
+// ΚΑΙ ΜΕΤΑ, 14s ΑΛΛΑ ΜΟΝΟ 2 ΑΠΟ ΤΙΣ 3 (29.09.2026, 11:45). Καμία αποτυχία, αλλά
+// τέσσερις τράπεζες γύρισαν χωρίς αριθμό που να περνά: η αναζήτηση έβγαζε
+// συγκριτικούς ιστότοπους, που ο έλεγχος πηγής (`isOfficialSource`) ορθά
+// απορρίπτει. Τώρα κάθε κλήση ψάχνει ΜΟΝΟ στους τομείς της δικής της τράπεζας
+// (`allowed_domains` από το ίδιο `BANK_HOSTS` που κρίνει την πηγή), με μία
+// αναζήτηση παραπάνω και `effort: medium` — ο χρόνος το σηκώνει άνετα.
 const BANKS = ['Εθνική', 'Alpha Bank', 'Eurobank', 'Τράπεζα Πειραιώς', 'Optima Bank', 'CrediaBank']
 const PER_BANK_MS = 100_000
 
 async function callAnthropic(bank: string): Promise<RateRow[]> {
+  const hosts = BANK_HOSTS[resolveBankId(bank) ?? ''] ?? []
   const messages: { role: 'user' | 'assistant'; content: unknown }[] = [{ role: 'user', content: `Τράπεζα: ${bank}. Βρες τα τρέχοντα στεγαστικά επιτόκια ΜΟΝΟ αυτής της τράπεζας και επίστρεψε μόνο το JSON.` }]
   let text = ''
   const signal = AbortSignal.timeout(PER_BANK_MS)
@@ -114,8 +122,11 @@ async function callAnthropic(bank: string): Promise<RateRow[]> {
       headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({
         model: MODEL, max_tokens: 1500, system: SYSTEM,
-        output_config: { effort: 'low' },
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
+        output_config: { effort: 'medium' },
+        tools: [{
+          type: 'web_search_20250305', name: 'web_search', max_uses: 3,
+          ...(hosts.length ? { allowed_domains: [...hosts] } : {}),
+        }],
         messages,
       }),
     })
@@ -213,10 +224,14 @@ async function runUpdate(): Promise<void> {
     if (Object.keys(failures).length === BANKS.length) throw new Error(Object.values(failures)[0])
     const raw = settled.flatMap(r => r.status === 'fulfilled' ? r.value : [])
     const found = raw.map(narrow).filter((x): x is NonNullable<typeof x> => !!x)
+    // Ποια τράπεζα δεν έδωσε τίποτα που περνά: χωρίς αυτό το «2 από 3» δεν
+    // λέει ποιες τέσσερις έλειψαν, ούτε αν φταίει η αναζήτηση ή ο έλεγχος.
+    const foundIds = new Set(found.map(f => f.id))
+    const empty = BANKS.filter((b, i) => settled[i].status === 'fulfilled' && !foundIds.has(resolveBankId(b) ?? ''))
 
     // Αμυντικό: λίγες τράπεζες σημαίνει κακή αναζήτηση, όχι κακή αγορά.
     if (found.length < MIN_BANKS) {
-      await log(false, `insufficient_valid_rows: ${found.length} από ${MIN_BANKS}`, { found: found.length, failures })
+      await log(false, `insufficient_valid_rows: ${found.length} από ${MIN_BANKS}`, { found: found.length, failures, empty })
       return
     }
 
@@ -302,7 +317,7 @@ async function runUpdate(): Promise<void> {
       if (error) console.error('bank_rate_changes insert:', error.message)
     }
 
-    const summary = { found: found.length, applied, held: heldNow, unchanged, banks: perBank, failures, verified_at: today }
+    const summary = { found: found.length, applied, held: heldNow, unchanged, banks: perBank, failures, empty, verified_at: today }
     await log(true, 'εντάξει', summary)
     console.log('bank-rates-updater:', JSON.stringify(summary))
   } catch (e) {
