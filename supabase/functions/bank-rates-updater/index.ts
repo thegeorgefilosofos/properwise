@@ -272,6 +272,16 @@ async function runUpdate(): Promise<void> {
     for (const f of found) {
       const cur = current.get(f.id)
       if (!cur) { perBank[f.id] = 'άγνωστη τράπεζα στον πίνακα'; continue }
+      // ΜΗ ΕΠΙΣΗΜΗ ΠΗΓΗ: ΚΑΜΙΑ ΤΙΜΗ (29.09.2026). Ως τώρα η τιμή γραφόταν έτσι κι
+      // αλλιώς, απλώς χωρίς υπογραφή (verified_at). Με τον κανόνα «κάθε τράπεζα
+      // κρίνεται μόνη της» αυτό θα σήμαινε ότι μία σελίδα συχνών ερωτήσεων ή ένας
+      // συγκριτικός ιστότοπος αλλάζει μόνος του το επιτόκιο στην οθόνη. Τώρα
+      // γράφεται μόνο ό,τι επιβεβαιώνει η ίδια η τράπεζα στο δελτίο της.
+      if (!isOfficialSource(f.id, f.url)) {
+        perBank[f.id] = f.url ? 'μη επίσημη πηγή: καμία αλλαγή' : 'χωρίς διεύθυνση πηγής: καμία αλλαγή'
+        unchanged++
+        continue
+      }
       const changes: Change[] = diffBank(cur, f.proposed)
       const { apply, hold } = decide(changes, confirmed)
 
