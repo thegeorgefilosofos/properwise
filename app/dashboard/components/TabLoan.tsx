@@ -251,7 +251,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           {banksStale&&(
             <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'11px 14px',background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:10}}>
               <svg aria-hidden="true" className="po-lead-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
-              <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{feed.checked && !feed.ok ? `Ο αυτόματος έλεγχος επιτοκίων δεν τρέχει (${feed.reason}). ` : ''}Τα επιτόκια επιβεβαιώθηκαν πριν από {banksAgeDays} ημέρες και ενδέχεται να έχουν αλλάξει. Για δεσμευτική προσφορά επιβεβαιώστε απευθείας με την τράπεζα ή στο <a href="https://vresdaneio.gr/epitokia/index.html" target="_blank" rel="noreferrer" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>vresdaneio.gr</a>.</p>
+              <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{feed.checked && !feed.ok ? `Ο αυτόματος έλεγχος επιτοκίων δεν τρέχει (${feed.reason}). ` : ''}Τα επιτόκια επιβεβαιώθηκαν πριν από {banksAgeDays} ημέρες και ενδέχεται να έχουν αλλάξει. Για δεσμευτική προσφορά επιβεβαίωσε απευθείας με την τράπεζα, στο δελτίο επιτοκίων της που δίνει η σύγκριση παρακάτω.</p>
             </div>
           )}
           <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>

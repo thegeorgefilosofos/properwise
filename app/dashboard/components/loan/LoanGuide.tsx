@@ -270,8 +270,11 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
             ]},
             {category:'Τράπεζες και επιτόκια',links:[
               {label:'Τράπεζα Ελλάδος · επιτόκια',sub:'Επίσημα μέσα επιτόκια αγοράς',url:'https://www.bankofgreece.gr/el/statistiki/nomismatiki-kai-trapeziki-statistiki/epitokia-katatheseon-kai-daneion'},
-              {label:'Σύγκριση επιτοκίων τραπεζών',sub:'Ενημερωμένη σύγκριση όλων των τραπεζών',url:'https://vresdaneio.gr/epitokia/index.html'},
-              {label:'e-stegastiko · πλατφόρμα Τράπεζας Ελλάδος',sub:'Επίσημη πλατφόρμα στεγαστικών',url:'https://e-stegastiko.gr'},
+              // ΔΥΟ ΣΥΓΚΡΙΤΙΚΟΙ ΙΣΤΟΤΟΠΟΙ ΕΦΥΓΑΝ (29.09.2026). Ο ένας περιγραφόταν
+              // «πλατφόρμα Τράπεζας Ελλάδος · Επίσημη», που δεν είναι· και οι δύο
+              // είναι πηγές που ο έλεγχος επιτοκίων (lib/loans/rateFeed.ts)
+              // απορρίπτει ρητά. Επίσημη πηγή εδώ μένει η ίδια η Τράπεζα της
+              // Ελλάδος και, για κάθε τράπεζα, το δελτίο της στη σύγκριση.
               {label:'Τειρεσίας · έλεγχος πιστοληπτικής',sub:'Έλεγξε αν έχεις εγγραφές πριν αιτηθείς',url:'https://www.tiresias.gr'},
             ]},
             {category:'Φορολογικά και τίτλοι',links:[
