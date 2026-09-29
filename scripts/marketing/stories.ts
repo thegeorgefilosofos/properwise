@@ -33,7 +33,9 @@ import { DEMO_PROPERTY, demoExpenses, demoSummary } from '../../lib/demo/sample'
 import { expenseAccount } from '../../lib/accounting/journal';
 import { categoryLabel } from '../../lib/expenses/taxonomy';
 import { fe } from '../../lib/core/format';
-import { athensToday } from '../../lib/core/time';
+import { athensToday, athensDatePlus } from '../../lib/core/time';
+import { deadlineItems } from '../../lib/calendar/deadlines';
+import { dailyPush } from '../../lib/push/message';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
@@ -275,6 +277,126 @@ function noa(): string {
   ['80% 30%', '5% 70%']);
 }
 
+
+// ═══ 4. ΥΠΕΝΘΥΜΙΣΗ (ΔΕΥΤΕΡΗ ΜΕΡΑ) ══════════════════════════════════════
+// Η οθόνη κλειδώματος με την ΠΡΑΓΜΑΤΙΚΗ πρωινή ειδοποίηση: το κείμενο το
+// γράφει η `dailyPush`, η ίδια συνάρτηση που τη στέλνει στα τηλέφωνα, για το
+// ενοίκιο και τα δημοτικά τέλη του ακινήτου επίδειξης. Η ώρα είναι η ώρα του
+// χρονοδιαγράμματος (05:00 UTC, send-push-daily) σε ώρα Ελλάδας.
+const PUSH_UTC_HOUR = 5;
+function ypenthymisi(): string {
+  const d0 = athensToday(), d1 = athensDatePlus(1);
+  const municipal = demoExpenses(S.year).find(e => e.category === 'municipal')!;
+  const items = deadlineItems({
+    properties: [{ id: 'demo', name: PROP }], events: [], tasks: [],
+    bills: [{ id: 'm', property_id: 'demo', name: municipal.description.split(',')[0], type: 'municipal', amount: municipal.amount, due_date: d1, paid: false }],
+    rent: [{ id: 'r', property_id: 'demo', amount: DEMO_PROPERTY.monthlyRent, due_date: d0, paid: false }],
+    from: d0, to: d1,
+  });
+  const msg = dailyPush(items, d0);
+  if (!msg) throw new Error('Η dailyPush δεν έβγαλε ειδοποίηση για το παράδειγμα.');
+  const at = new Date(`${d0}T${String(PUSH_UTC_HOUR).padStart(2, '0')}:00:00Z`);
+  const time = new Intl.DateTimeFormat('el-GR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Athens' }).format(at);
+  return frame('ΥΠΕΝΘΥΜΙΣΕΙΣ', `
+    <h1 style="font-size:112px;margin-top:92px">Ποτέ ξανά<br><span style="color:${C.accent}">«το ξέχασα».</span></h1>
+    <p class="sub" style="margin-top:40px;max-width:880px">Μία ειδοποίηση το πρωί, μόνο όταν κάτι λήγει σήμερα ή αύριο.</p>
+    <div class="lock">
+      <div class="clock num">${esc(time)}</div>
+      <div class="note glass">
+        <div class="n-head"><span class="n-ic">${mark(34, C.ink)}</span><b>PROPERWISE</b><span class="n-now">τώρα</span></div>
+        <div class="n-title">${esc(msg.title)}</div>
+        <div class="n-body">${esc(msg.body)}</div>
+      </div>
+      <div class="tag" style="margin-top:26px">ΠΑΡΑΔΕΙΓΜΑ</div>
+    </div>`, `
+    .lock{margin-top:auto;margin-bottom:390px;border-radius:64px;padding:70px 46px 54px;display:flex;flex-direction:column;align-items:center;
+      background:radial-gradient(700px 520px at 30% 10%, #2b4a7a, transparent 70%), radial-gradient(600px 500px at 90% 90%, #1d3358, transparent 70%), #0b1424;
+      border:1.5px solid ${C.rule};box-shadow:0 60px 140px -50px #000}
+    .clock{font-size:168px;font-weight:300;letter-spacing:-.04em;line-height:1;color:${C.ink};opacity:.94}
+    .note{margin-top:56px;width:100%;border-radius:40px;padding:30px 34px;background:linear-gradient(180deg,#1b2638ee,#141d2dee)}
+    .n-head{display:flex;align-items:center;gap:14px;font-size:22px;color:${C.faint};letter-spacing:.04em}
+    .n-ic{width:52px;height:52px;border-radius:14px;background:${C.ground};border:1.5px solid ${C.rule};display:flex;align-items:center;justify-content:center}
+    .n-head b{font-weight:700;color:${C.muted}}
+    .n-now{margin-left:auto}
+    .n-title{margin-top:20px;font-size:34px;font-weight:750;letter-spacing:-.01em}
+    .n-body{margin-top:8px;font-size:29px;color:${C.muted};line-height:1.35}`,
+  ['70% 20%', '0% 80%']);
+}
+
+// ═══ 5. ΦΑΚΕΛΟΣ ΛΟΓΙΣΤΗ ═════════════════════════════════════════════════
+// Το αρχείο που παίρνει ο λογιστής, όπως ανοίγει: η κατάσταση αποτελεσμάτων
+// του ακινήτου επίδειξης, με τις γραμμές και τα λεκτικά της incomeStatement,
+// και από κάτω τα φύλλα με τα ονόματα που τους δίνει ο accountantExport.
+const SHEETS = ['Σύνοψη', 'Κατάσταση αποτελεσμάτων', `Κινήσεις ${S.year}`, 'Λογαριασμοί ΕΛΠ', 'Τι λείπει'];
+function fakelos(): string {
+  const rows = S.statement.lines.map(l => {
+    const strong = l.kind === 'subtotal' || l.kind === 'result';
+    const v = `${l.negative ? '−' : ''}${fe(l.amount)}`;
+    return `<div class="xr${strong ? ' strong' : ''}${l.kind === 'result' ? ' result' : ''}"><span>${esc(l.label)}</span><b class="num">${esc(v)}</b></div>`;
+  }).join('');
+  return frame('ΦΑΚΕΛΟΣ ΓΙΑ ΤΟΝ ΛΟΓΙΣΤΗ', `
+    <h1 style="font-size:112px;margin-top:92px">Ο φάκελος<br><span style="color:${C.accent}">του λογιστή.</span></h1>
+    <p class="sub" style="margin-top:40px;max-width:880px">Όλη η χρονιά σε ένα Excel. Ό,τι λείπει, γραμμένο σε δικό του φύλλο.</p>
+    <div class="xl glass">
+      <div class="x-bar"><i></i><i></i><i></i><span>Φάκελος ${esc(String(S.year))} · ${esc(PROP)}.xlsx</span></div>
+      <div class="x-title"><b>Κατάσταση αποτελεσμάτων</b><span class="tag">ΠΑΡΑΔΕΙΓΜΑ</span></div>
+      <div class="x-rows">${rows}</div>
+      <div class="x-tabs">${SHEETS.map((t, i) => `<span class="${i === 1 ? 'on' : ''}${t === 'Τι λείπει' ? ' miss' : ''}">${esc(t)}</span>`).join('')}</div>
+    </div>`, `
+    .xl{margin-top:auto;margin-bottom:390px;border-radius:36px;overflow:hidden}
+    .x-bar{display:flex;align-items:center;gap:10px;padding:22px 28px;background:#0a111d;border-bottom:1.5px solid ${C.rule};font-size:21px;color:${C.faint}}
+    .x-bar i{width:14px;height:14px;border-radius:50%;background:${C.rule}}
+    .x-bar span{margin-left:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .x-title{display:flex;align-items:center;justify-content:space-between;padding:26px 32px 12px}
+    .x-title b{font-size:30px;font-weight:750;letter-spacing:-.01em}
+    .x-title .tag{font-size:17px}
+    .x-rows{padding:0 32px 18px}
+    .xr{display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:12px 0;border-bottom:1.5px solid ${C.rule}80;font-size:25px;color:${C.faint}}
+    .xr b{color:${C.muted};font-weight:600}
+    .xr.strong{color:${C.ink};font-weight:650}
+    .xr.strong b{color:${C.ink}}
+    .xr.result{border-bottom:0;padding-top:16px}
+    .xr.result b{color:${C.accent};font-size:32px;font-weight:800}
+    .x-tabs{display:flex;gap:6px;padding:14px 18px;background:#0a111d;border-top:1.5px solid ${C.rule};overflow:hidden}
+    .x-tabs span{flex:none;font-size:18px;padding:9px 14px;border-radius:10px;color:${C.faint};white-space:nowrap}
+    .x-tabs span.on{background:${C.accent}24;color:${C.accent};font-weight:700}
+    .x-tabs span.miss{color:#f0c27a}`,
+  ['85% 25%', '0% 75%']);
+}
+
+// ═══ 6. ΥΠΟΛΟΓΙΣΤΕΣ ΧΩΡΙΣ ΕΓΓΡΑΦΗ ═══════════════════════════════════════
+// Η πόρτα για όποιον δεν είναι έτοιμος να γραφτεί: οι δημόσιοι υπολογιστές,
+// με τα ονόματα που έχουν στο υποσέλιδο του site. Τρέχουν στη συσκευή του
+// επισκέπτη, χωρίς λογαριασμό. Στο τέλος, λωρίδα για το αυτοκόλλητο.
+const TOOLS = [
+  { name: 'ΕΝΦΙΑ', line: 'Πόσος είναι ο φόρος του ακινήτου σου.' },
+  { name: 'Φορολογία ενοικίων', line: 'Πόσος φόρος αναλογεί στα ενοίκιά σου.' },
+  { name: 'Καθαρή απόδοση', line: 'Τι αποδίδει πραγματικά το ακίνητο, μετά από όλα.' },
+  { name: 'Βραχυχρόνια ή μακροχρόνια', line: 'Ποια από τις δύο σου αφήνει περισσότερα.' },
+];
+function ypologistes(): string {
+  return frame('ΔΩΡΕΑΝ ΥΠΟΛΟΓΙΣΤΕΣ', `
+    <h1 style="font-size:112px;margin-top:92px">Δοκίμασε<br><span style="color:${C.accent}">χωρίς εγγραφή.</span></h1>
+    <p class="sub" style="margin-top:40px;max-width:880px">Υπολογισμοί που τρέχουν στη συσκευή σου. Χωρίς λογαριασμό.</p>
+    <div class="tools">
+      ${TOOLS.map(t => `<div class="tool glass"><div><b>${esc(t.name)}</b><small>${esc(t.line)}</small></div><span class="t-go">${ico.arrow(C.accent, 30)}</span></div>`).join('')}
+    </div>
+    <div class="cta"><span><b>Υπολόγισε τώρα</b>, στο properwise.gr.</span>${ico.down(C.accent, 34)}</div>
+    <div class="sticker" aria-hidden="true"></div>`, `
+    .tools{margin-top:auto;display:flex;flex-direction:column;gap:18px}
+    .tool{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:28px 34px;border-radius:30px}
+    /* ΒΕΛΟΣ, ΟΧΙ ΑΡΙΘΜΟΣ: οι υπολογιστές δεν είναι βήματα με σειρά· «01-04»
+       θα έλεγε «κάνε τα με τη σειρά». Το βέλος λέει «ανοίγει». */
+    .t-go{flex:none;width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      background:${C.accent}1a;border:1.5px solid ${C.accent}40}
+    .tool b{display:block;font-size:34px;font-weight:750;letter-spacing:-.015em}
+    .tool small{display:block;font-size:24px;color:${C.faint};margin-top:6px}
+    .cta{margin-top:40px;display:flex;align-items:center;gap:12px;font-size:32px;color:${C.muted};letter-spacing:-.01em}
+    .cta b{color:${C.accent};font-weight:800}
+    .sticker{height:118px;margin-top:18px;margin-bottom:330px}`,
+  ['15% 25%', '100% 70%']);
+}
+
 const STORIES = [
   { key: '1-arxi', build: arxi, what: 'Γνωριμία: το ακίνητο σε τάξη',
     alt: `Τρεις κάρτες της εφαρμογής PROPERWISE για το ακίνητο επίδειξης «${PROP}»: ενοίκιο που εισπράχθηκε, λογαριασμός νερού που καταχωρήθηκε, φάκελος για τον λογιστή έτοιμος.` },
@@ -282,7 +404,14 @@ const STORIES = [
     alt: 'Λογαριασμός ύδρευσης μέσα σε σκόπευτρο κάμερας και δίπλα τα στοιχεία που διάβασε η εφαρμογή: κατηγορία, ποσό, ακίνητο, λογαριασμός, με την ένδειξη «Καταχωρήθηκε».' },
   { key: '3-noa', build: noa, what: 'Ο ψηφιακός βοηθός και το «Ξεκίνα δωρεάν»',
     alt: 'Ερώτηση «Πόσα μου έμειναν καθαρά πέρσι;» και απάντηση του ψηφιακού βοηθού με ανάλυση: ενοίκια, φόρος εισοδήματος, ΕΝΦΙΑ, δαπάνες, καθαρά. Κάτω, «Ξεκίνα δωρεάν» με βέλος προς τον σύνδεσμο.' },
+  { key: '4-ypenthymisi', build: ypenthymisi, what: 'Υπενθυμίσεις: η πρωινή ειδοποίηση', day: 2,
+    alt: 'Οθόνη κλειδώματος κινητού με ειδοποίηση του PROPERWISE για δύο προθεσμίες: ενοίκιο σήμερα και δημοτικά τέλη αύριο.' },
+  { key: '5-fakelos', build: fakelos, what: 'Ο φάκελος για τον λογιστή', day: 2,
+    alt: 'Αρχείο Excel του PROPERWISE με την κατάσταση αποτελεσμάτων του ακινήτου επίδειξης, από τα μεικτά έσοδα ώς το ταμειακό υπόλοιπο. Από κάτω, τα φύλλα Σύνοψη, Κινήσεις, Λογαριασμοί ΕΛΠ και Τι λείπει.' },
+  { key: '6-ypologistes', build: ypologistes, what: 'Δωρεάν υπολογιστές χωρίς εγγραφή', day: 2,
+    alt: 'Τέσσερις δωρεάν υπολογιστές του PROPERWISE: ΕΝΦΙΑ, φορολογία ενοικίων, καθαρή απόδοση, βραχυχρόνια ή μακροχρόνια μίσθωση. Κάτω, «Υπολόγισε τώρα» με βέλος προς τον σύνδεσμο.' },
 ] as const;
+const dayOf = (st: typeof STORIES[number]) => ('day' in st ? st.day : 1);
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
@@ -312,7 +441,7 @@ async function main() {
     await browser.close();
   }
   writeFileSync(join(OUT, 'README.md'), [
-    '# Instagram: τα πρώτα τρία stories',
+    '# Instagram: τα πρώτα stories',
     '',
     'Παράγονται από το `npx tsx scripts/marketing/stories.ts`. Μην τα φτιάξεις με το',
     'χέρι: τα ποσά είναι του ακινήτου επίδειξης (`lib/demo/sample.ts`), περασμένα από',
@@ -320,15 +449,24 @@ async function main() {
     '',
     '## Σειρά και δημοσίευση',
     '',
-    'Και τα τρία την ίδια μέρα, με ένα ώς δύο λεπτά ανάμεσα, με αυτή τη σειρά. Ώρα:',
-    'μεσημέρι (13:00-14:00) ή βράδυ (20:00-21:00)· τίποτα δημόσιο μετά τις 21:00.',
+    'Τρία τη μέρα, με ένα ώς δύο λεπτά ανάμεσα, με αυτή τη σειρά. Ώρα: μεσημέρι',
+    '(13:00-14:00) ή βράδυ (20:00-21:00)· τίποτα δημόσιο μετά τις 21:00.',
     '',
+    '### Πρώτη μέρα',
     '',
-    ...STORIES.map(st => `- \`${st.key}.png\`: ${st.what}`),
+    ...STORIES.filter(st => dayOf(st) === 1).map(st => `- \`${st.key}.png\`: ${st.what}`),
     '',
-    'Στο τρίτο, το αυτοκόλλητο συνδέσμου (Link) προς `https://properwise.gr/signup`',
+    'Στο `3-noa.png`, το αυτοκόλλητο συνδέσμου (Link) προς `https://properwise.gr/signup`',
     'μπαίνει στην άδεια λωρίδα κάτω από το «Ξεκίνα δωρεάν» και το βέλος, πάνω από το',
     'σήμα. Κείμενο αυτοκόλλητου: «Ξεκίνα δωρεάν».',
+    '',
+    '### Δεύτερη μέρα (την επόμενη ή τη μεθεπόμενη)',
+    '',
+    ...STORIES.filter(st => dayOf(st) === 2).map(st => `- \`${st.key}.png\`: ${st.what}`),
+    '',
+    'Στο `6-ypologistes.png`, το αυτοκόλλητο συνδέσμου προς `https://properwise.gr`',
+    'μπαίνει στην άδεια λωρίδα κάτω από το «Υπολόγισε τώρα». Κείμενο αυτοκόλλητου:',
+    '«Υπολόγισε δωρεάν».',
     '',
     '## Εναλλακτικό κείμενο',
     '',
