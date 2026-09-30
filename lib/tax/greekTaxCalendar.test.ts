@@ -1,6 +1,6 @@
 // Αυστηρά τεστ για το φορολογικό ημερολόγιο ακινήτων (greekTaxCalendar.ts).
 // Τρέξε: npx tsx lib/tax/greekTaxCalendar.test.ts
-import { greekPropertyTaxObligations, taxObligationToEvent, taxObligationNotes, nextWorkingDay, lastWorkingDayOfMonth, taxObligationsHorizon, taxProfileOf, taxEventSource, taxKindOfEventSource, taxKindMeta, isTaxEventSource, TAX_KINDS, TAX_EVENT_CATEGORY, CONFIDENCE_HINT, type TaxObligation } from './greekTaxCalendar'
+import { greekPropertyTaxObligations, taxObligationToEvent, taxObligationNotes, nextWorkingDay, lastWorkingDayOfMonth, taxObligationsHorizon, taxProfileOf, taxEventSource, taxKindOfEventSource, taxKindMeta, taxObligationOfEventSource, isTaxEventSource, TAX_KINDS, TAX_EVENT_CATEGORY, CONFIDENCE_HINT, type TaxObligation } from './greekTaxCalendar'
 import { isNonWorkingDay } from '../calendar/greekHolidays'
 import { AADE_DESTINATIONS, destinationForKind } from './aade'
 import { requirementsFor, WHO_LABEL, type Who } from '../accounting/dossier'
@@ -50,7 +50,20 @@ ok('εισόδημα ~Ιούλιος', owner.find(o => o.id.startsWith('income-d
 
 // confidence: όλα «announced» (οι ημερομηνίες ανακοινώνονται/μετακινούνται ετησίως)
 ok('Ε9 announced', owner.find(o => o.id.startsWith('e9-'))!.confidence === 'announced')
-ok('ΕΝΦΙΑ announced', owner.find(o => o.id.startsWith('enfia-first'))!.confidence === 'announced')
+// ΕΝΦΙΑ ΠΟΥ ΕΧΕΙ ΕΚΔΟΘΕΙ: οι δόσεις του είναι του νόμου (ν. 4223/2013 άρθρο 6).
+// Ο ΕΝΦΙΑ 2026 εκδόθηκε 15/3/2026 (ΑΑΔΕ Α.1061/13-03-2026): 1η δόση 31/3/2026,
+// 12η δόση 26/2/2027. Το 2027 δεν έχει εκδοθεί: οι ημερομηνίες μένουν «περυσινές».
+const e26 = (k: string) => owner.find(o => o.id === `${k}-2026`)!
+ok('ΕΝΦΙΑ 2026 1η δόση 31/3/2026, του νόμου', e26('enfia-first').date === '2026-03-31' && e26('enfia-first').confidence === 'statutory')
+ok('ΕΝΦΙΑ 2026 12η δόση 26/2/2027, του νόμου', e26('enfia-last').date === '2027-02-26' && e26('enfia-last').confidence === 'statutory')
+ok('ΕΝΦΙΑ 2026 εκδόθηκε (ανάρτηση Κυριακή 15/3, εργάσιμη 16/3)', e26('enfia-issue').date === '2026-03-16' && !e26('enfia-issue').title.includes('αναμένεται'))
+ok('το γεγονός κρατά το confidence του έτους του', taxObligationOfEventSource(taxEventSource('enfia-last-2026'))?.confidence === 'statutory'
+  && taxObligationOfEventSource(taxEventSource('enfia-last-2027'))?.confidence === 'announced'
+  && taxObligationOfEventSource('tenant:x') === null)
+ok('και οι σημειώσεις λένε την πηγή', e26('enfia-last').notes.includes('Α.1061/13-03-2026') && e26('enfia-last').notes.includes('4223/2013'))
+const e27 = (k: string) => greekPropertyTaxObligations(2027, 'owner').find(o => o.id === `${k}-2027`)!
+ok('ΕΝΦΙΑ 2027 χωρίς έκδοση μένει announced', e27('enfia-first').confidence === 'announced' && e27('enfia-last').confidence === 'announced')
+ok('ΕΝΦΙΑ 2027 τελευταία δόση τέλος Φεβ 2028', e27('enfia-last').date === lastWorkingDayOfMonth(2028, 1))
 
 // ── long_term ────────────────────────────────────────────────────────────────
 const lt = greekPropertyTaxObligations(2026, 'long_term')
@@ -113,9 +126,11 @@ ok('isTaxEventSource μόνο για tax:', isTaxEventSource('tax:enfia-first-20
 ok('kind άγνωστου κλειδιού = null', taxKindOfEventSource('tenant:abc:lease_end') === null && taxKindOfEventSource('tax:κάτι-άλλο-2026') === null)
 const meta = taxKindMeta(2026)
 ok('meta ανά kind, πλήρες', TAX_KINDS.every(k => !!meta[k] && meta[k].kind === k))
-ok('meta ανεξάρτητο από έτος', TAX_KINDS.every(k => {
-  const m2 = taxKindMeta(2031)[k]
-  return m2.who === meta[k].who && m2.confidence === meta[k].confidence && m2.title === meta[k].title
+ok('meta: ποιος το κάνει ανεξάρτητο από έτος', TAX_KINDS.every(k => taxKindMeta(2031)[k].who === meta[k].who))
+// Χωρίς εκδοθέντα ΕΝΦΙΑ (ENFIA_ISSUED), δύο έτη δίνουν ίδια meta.
+ok('meta ανεξάρτητο από έτος όταν κανένα δεν έχει εκδοθεί', TAX_KINDS.every(k => {
+  const a = taxKindMeta(2030)[k], b = taxKindMeta(2031)[k]
+  return a.who === b.who && a.confidence === b.confidence && a.title === b.title
 }))
 
 // ── ΠΟΙΟΣ ΤΟ ΚΑΝΕΙ — κληρονομείται από τον φάκελο του λογιστή ────────────────

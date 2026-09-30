@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { allCalendarLinks, buildICS } from '@/lib/calendar/externalLinks'
 import { groupSeries, rowCount, type SeriesRow } from '@/lib/calendar/series'
-import { taxKindOfEventSource, CONFIDENCE_LABEL, CONFIDENCE_HINT } from '@/lib/tax/greekTaxCalendar'
+import { taxKindOfEventSource, taxObligationOfEventSource, CONFIDENCE_LABEL, CONFIDENCE_HINT } from '@/lib/tax/greekTaxCalendar'
 import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { downloadFile } from '@/lib/core/download'
 import { type CalEvent, CATEGORIES, TAX_META, fmt, fmtShort, daysUntil, isOverdue } from './model'
@@ -113,7 +113,8 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
   // Φορολογική προθεσμία: το ημερολόγιο ξέρει ΠΟΙΟΣ την κάνει και ΠΟΣΟ σίγουρη
   // είναι η ημερομηνία. Δεν τα κρατά για τον εαυτό του.
   const taxKind = taxKindOfEventSource(event.source)
-  const taxInfo = taxKind ? TAX_META[taxKind] : null
+  // Το έτος του γεγονότος, όχι το τρέχον: η δόση ενός εκδοθέντος ΕΝΦΙΑ είναι «του νόμου».
+  const taxInfo = taxKind ? (taxObligationOfEventSource(event.source) ?? TAX_META[taxKind]) : null
   const due     = daysUntil(event.event_date)
   const relLbl = (n:number) => { const a=Math.abs(n); return a===1?'1 ημέρα':`${a} ημέρες` }
   const [menuOpen,setMenuOpen]=useState(false)
