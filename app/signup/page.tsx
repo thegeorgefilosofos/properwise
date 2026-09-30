@@ -8,6 +8,7 @@ import AlreadySignedIn from '../AlreadySignedIn'
 import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import PasswordEye from '../PasswordEye'
 import GoogleButton from '../GoogleButton'
+import { countSignupStep } from '@/lib/analytics/signupFunnel'
 import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
@@ -165,6 +166,11 @@ export default function SignupPage() {
     : /rate limit|too many/i.test(m) ? SAY.tooManyTries
     : /valid email/i.test(m) ? 'Το email δεν φαίνεται έγκυρο.'
     : m
+  // Η ΚΟΡΥΦΗ ΤΟΥ ΧΩΝΙΟΥ, ανώνυμα (lib/analytics/signupFunnel.ts). Οι επιστροφές
+  // από την Google (`oauth=…`) δεν είναι νέα επίσκεψη και δεν μετρώνται.
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('oauth')) countSignupStep('view')
+  }, [])
   useEffect(() => {
     // Ασύγχρονο ξετύλιγμα: το effect δεν επιστρέφει ποτέ υπόσχεση.
     void (async () => {
@@ -316,6 +322,7 @@ export default function SignupPage() {
   // στη διεύθυνση επιστροφής και γράφεται μόλις υπάρξει συνεδρία.
   // ═══════════════════════════════════════════════════════════════════════
   async function signInWithGoogle() {
+    countSignupStep('google')
     // ΤΟ ΤΕΤΡΑΓΩΝΟ ΕΙΝΑΙ ΠΙΑ ΠΙΟ ΚΑΤΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ, ΑΡΑ ΔΕΙΧΝΕΤΑΙ. Χωρίς
     // αυτό, όποιος πατούσε «Συνέχισε με Google» χωρίς αποδοχή έβλεπε το κουμπί
     // να μην κάνει τίποτα: το μήνυμα υπήρχε, αλλά εκτός οθόνης.
@@ -375,18 +382,22 @@ export default function SignupPage() {
       // δύο φορές.
       setConsentTouched(true)
       setError('')
+      countSignupStep('invalid')
       return
     }
     if (leaked) {
       setPwTouched(true)
       setError(PASSWORD_MSG.leaked)
+      countSignupStep('invalid')
       return
     }
     if (!pw.ok) {
       setPwTouched(true)
       setError(pw.common ? PASSWORD_MSG.common : PASSWORD_MSG.weak)
+      countSignupStep('invalid')
       return
     }
+    countSignupStep('submit')
     setError(''); setLoading(true)
     const supabase = await authClient()
     // Αποδεικτικό συγκατάθεσης (GDPR, αρχή λογοδοσίας): καταγράφουμε στο προφίλ
@@ -418,6 +429,7 @@ export default function SignupPage() {
     // κλειδωμένο στο «Δημιουργία…», για πάντα. Καμία διέξοδος εκτός από
     // ανανέωση της σελίδας και ο χρήστης δεν είχε τρόπο να το μαντέψει.
     setLoading(false)
+    countSignupStep(error ? 'error' : 'sent')
     if (error) setError(failed('Η εγγραφή δεν ολοκληρώθηκε', error))
     else setDone(true)
   }
@@ -744,7 +756,7 @@ export default function SignupPage() {
               )}
 
               {/* Η αιώρηση ερχόταν από την `.auth-hov`· τώρα τη δίνει το `.po-btn`. */}
-              <GoogleButton onClick={signInWithGoogle} />
+              <GoogleButton onClick={signInWithGoogle} funnel />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>ή</span>

@@ -8,11 +8,12 @@
 // σύνδεσμος για τον Chrome) και ο επισκέπτης συνεχίζει με email στην ίδια σελίδα.
 // Μία πηγή για Σύνδεση και Εγγραφή, όπως και το σήμα της Google.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { Btn } from '@/components/Theme'
 import { T } from '@/components/tokens'
 import GoogleG from './GoogleG'
 import { inAppBrowser, chromeIntent } from '@/lib/core/inAppBrowser'
+import { countSignupStep } from '@/lib/analytics/signupFunnel'
 
 const NEVER_CHANGES = () => () => {}
 const readUa = () => navigator.userAgent
@@ -20,8 +21,11 @@ const readUa = () => navigator.userAgent
 // η οδηγία παίρνει τη θέση του μόλις φορτώσει η σελίδα.
 const serverUa = () => ''
 
-export default function GoogleButton({ onClick }: { onClick: () => void }) {
+/** `funnel`: μόνο η εγγραφή μετρά τα βήματά της· η σύνδεση όχι. */
+export default function GoogleButton({ onClick, funnel = false }: { onClick: () => void; funnel?: boolean }) {
   const iab = inAppBrowser(useSyncExternalStore(NEVER_CHANGES, readUa, serverUa))
+  const noted = iab !== null
+  useEffect(() => { if (funnel && noted) countSignupStep('app_note') }, [funnel, noted])
   if (!iab) {
     return (
       <Btn variant="secondary" field onClick={onClick}>
@@ -36,7 +40,7 @@ export default function GoogleButton({ onClick }: { onClick: () => void }) {
         Συνέχισε με email παρακάτω ή άνοιξε τη σελίδα στον περιηγητή σου.
       </p>
       {iab.android ? (
-        <Btn variant="secondary" field href={chromeIntent(window.location.href)}>
+        <Btn variant="secondary" field href={chromeIntent(window.location.href)} onClick={funnel ? () => countSignupStep('chrome') : undefined}>
           Άνοιγμα στον Chrome
         </Btn>
       ) : (
