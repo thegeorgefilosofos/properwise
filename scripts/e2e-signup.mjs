@@ -72,6 +72,24 @@ await submit().click();
 const back = await page.waitForSelector('text=Άνοιξε το email σου', { timeout: 4000 }).then(() => true).catch(() => false);
 check('η δεύτερη υποβολή προχωρά κανονικά', back);
 
+// ── ΜΕΣΑ ΣΤΟ INSTAGRAM ────────────────────────────────────────────────────
+// Εκεί η Google απαντά «403: disallowed_useragent». Το κουμπί της δεν πρέπει
+// να φαίνεται· στη θέση του οδηγία και η φόρμα email ανέπαφη από κάτω.
+const IG = 'Mozilla/5.0 (Linux; Android 14; SM-S911B Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/129.0.6668.100 Mobile Safari/537.36 Instagram 350.0.0.43.109 Android';
+for (const [name, ua, android] of [['Android', IG, true], ['iPhone', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 350.0.0.30.94', false]]) {
+  const ctx = await browser.newContext({ userAgent: ua, viewport: { width: 390, height: 844 } });
+  const ig = await ctx.newPage();
+  await ig.goto(pathToFileURL(PAGE).href);
+  await ig.waitForSelector('#su-consent');
+  await ig.waitForSelector('[role="note"]', { timeout: 4000 }).catch(() => null);
+  check(`Instagram (${name}): χωρίς «Συνέχισε με Google»`, await ig.getByText('Συνέχισε με Google').count() === 0);
+  check(`Instagram (${name}): η οδηγία ονομάζει την εφαρμογή`, await ig.getByText('μέσα από το Instagram').count() === 1);
+  const chrome = await ig.locator('a[href^="intent://"]').count();
+  check(`Instagram (${name}): σύνδεσμος για Chrome ${android ? 'υπάρχει' : 'δεν υπάρχει'}`, android ? chrome === 1 : chrome === 0);
+  check(`Instagram (${name}): η φόρμα email μένει`, await ig.locator('#su-email').isVisible());
+  await ctx.close();
+}
+
 await browser.close();
 
 if (fails.length) {

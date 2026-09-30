@@ -7,7 +7,7 @@ import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
 import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import PasswordEye from '../PasswordEye'
-import GoogleG from '../GoogleG'
+import GoogleButton from '../GoogleButton'
 import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
@@ -744,9 +744,7 @@ export default function SignupPage() {
               )}
 
               {/* Η αιώρηση ερχόταν από την `.auth-hov`· τώρα τη δίνει το `.po-btn`. */}
-              <Btn variant="secondary" field onClick={signInWithGoogle}>
-                <GoogleG />Συνέχισε με Google
-              </Btn>
+              <GoogleButton onClick={signInWithGoogle} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>ή</span>

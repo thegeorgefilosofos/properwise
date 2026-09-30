@@ -161,7 +161,8 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
 
       {/* ── Η κεφαλίδα του χαρτιού, πάνω από το αποτέλεσμα ─────────────── */}
       {r && <ToolPaper title={`Εκτίμηση ΕΝΦΙΑ ${year}`} on={today} inputs={[
-        { k: 'Τετραγωνικά', v: fn(amount(sqm), 2) },
+        // Τετραγωνικά, όχι ποσό: «85», όχι «85,00». Δεκαδικά μόνο όταν υπάρχουν.
+        { k: 'Τετραγωνικά', v: fn(amount(sqm), Number.isInteger(amount(sqm)) ? 0 : 2) },
         { k: 'Τιμή ζώνης', v: `${feAuto(amount(zonePrice))}/τ.μ.` },
         { k: 'Όροφος', v: FLOORS.find(f => f.key === floor)?.label ?? floor },
         { k: 'Παλαιότητα', v: AGES.find(a => a.key === age)?.label ?? age },

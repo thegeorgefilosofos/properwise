@@ -8,7 +8,13 @@ import { Btn } from '@/components/Theme';
 import { T } from '@/components/tokens';
 import { PublicHeader, PublicFooter, WRAP, WRAP_PAD } from './PublicChrome';
 
-export const metadata: Metadata = { title: 'Η σελίδα δεν βρέθηκε', robots: { index: false } };
+// Χωρίς canonical και με δική της περιγραφή: η ρίζα έδινε σε κάθε 404 το
+// canonical και την περιγραφή της αρχικής.
+export const metadata: Metadata = {
+  title: 'Η σελίδα δεν βρέθηκε', robots: { index: false },
+  description: 'Η διεύθυνση δεν αντιστοιχεί σε σελίδα του PROPERWISE.',
+  alternates: { canonical: null },
+};
 
 export default function NotFound() {
   return (
