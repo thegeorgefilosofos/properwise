@@ -9,7 +9,7 @@ import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
 import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import PasswordEye from '../PasswordEye'
-import GoogleG from '../GoogleG'
+import GoogleButton from '../GoogleButton'
 import { BackLink } from '../BackLink'
 import { failed } from '@/lib/core/dbError';
 import { IDENTITY } from '@/lib/legal/identity';
@@ -286,9 +286,7 @@ export default function LoginPage() {
           {/* `field` γιατί ο πάροχος κρατά όλο το πλάτος της στήλης, όπως πριν.
               Το `.auth-hov` έφυγε μαζί με το στυλ: την αιώρηση τη δίνει πλέον το
               `.po-btn[data-variant=secondary]`, που ξέρει και εστίαση με πληκτρολόγιο. */}
-          <Btn variant="secondary" field onClick={signInWithGoogle}>
-            <GoogleG />Συνέχισε με Google
-          </Btn>
+          <GoogleButton onClick={signInWithGoogle} />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
             <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />

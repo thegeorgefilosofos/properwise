@@ -122,6 +122,10 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
     live.paymentMethodAsked.includes('επιβεβαίωση του email'))
   ok('η σύντομη μορφή λέει πότε γίνεται η χρέωση',
     live.firstCharge.includes('τη στιγμή της αγοράς'))
+  // Κάθε επιφάνεια που δανείζεται το firstCharge έχει ήδη πει τις ημέρες της
+  // δοκιμής στην προηγούμενη πρόταση (TRIAL_OFFER, περιγραφή εγγραφής).
+  for (const [name, w] of [['live', live], ['dark', dark]] as const)
+    ok(`το firstCharge (${name}) δεν ξαναλέει τις ${TRIAL_DAYS} ημέρες`, !w.firstCharge.includes(String(TRIAL_DAYS)))
   ok('και χωρίς ταμείο δεν υπόσχεται καμία χρέωση',
     dark.firstCharge.includes('δεν έχει ενεργοποιηθεί'))
   // ΚΑΜΙΑ ΔΗΛΩΣΗ ΠΟΥ ΔΕΝ ΖΗΤΕΙΤΑΙ ΠΟΥΘΕΝΑ. Το ταμείο δεν ρωτά για «άμεση
