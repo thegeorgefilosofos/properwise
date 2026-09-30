@@ -45,6 +45,7 @@ const { gross: GROSS, tax: TAX, enfia: ENFIA, other: OTHER, net: NET, lost: LOST
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
+type Page = import('playwright-core').Page;
 const { chromePath } = require('../lib/chrome.mjs');
 
 // Το βίντεο είναι βαρύ και παράγεται: μένει έξω από το git (.gitignore:
@@ -475,8 +476,8 @@ const CAPTION = [
 ].join('\n');
 
 /** Ό,τι διαβάζεται τη στιγμή t πρέπει να κάθεται έξω από τις ζώνες του Instagram. */
-async function checkSafe(page: any, t: number): Promise<string[]> {
-  await page.evaluate((x: number) => (window as any).render(x), t);
+async function checkSafe(page: Page, t: number): Promise<string[]> {
+  await page.evaluate((x: number) => (window as unknown as { render: (t: number) => void }).render(x), t);
   // Ως κείμενο: το tsx ντύνει τις ονομασμένες συναρτήσεις με έναν βοηθό (__name)
   // που μέσα στον περιηγητή δεν υπάρχει.
   return page.evaluate(`(() => {
@@ -512,7 +513,7 @@ async function main() {
     // REEL_PREVIEW=0.5,4,11 → μόνο στιγμιότυπα, για να κριθεί η σύνθεση πριν από τα καρέ.
     if (process.env.REEL_PREVIEW) {
       for (const t of process.env.REEL_PREVIEW.split(',').map(Number)) {
-        await page.evaluate((x: number) => (window as any).render(x), t);
+        await page.evaluate((x: number) => (window as unknown as { render: (t: number) => void }).render(x), t);
         await page.screenshot({ path: join(OUT_VIDEO, `preview-${t}.png`) });
       }
       return;
@@ -523,7 +524,7 @@ async function main() {
     if (bad.length) throw new Error(`Έξω από τις ζώνες:\n  ${bad.slice(0, 30).join('\n  ')}`);
 
     // Εξώφυλλο: η ερώτηση και η απάντηση μαζί, η στιγμή που λέει όλη την ιστορία.
-    await page.evaluate((x: number) => (window as any).render(x), REEL.result + 1.8);
+    await page.evaluate((x: number) => (window as unknown as { render: (t: number) => void }).render(x), REEL.result + 1.8);
     await page.screenshot({ path: join(OUT_DOC, 'cover.jpg'), type: 'jpeg', quality: 94 });
 
     // Τα καρέ γράφονται από τέσσερα παράθυρα παράλληλα και το ffmpeg τα ενώνει
@@ -537,7 +538,7 @@ async function main() {
     await Promise.all(Array.from({ length: WORKERS }, async (_, w) => {
       const pg = w === 0 ? page : await open();
       for (let f = w; f < frames; f += WORKERS) {
-        await pg.evaluate((x: number) => (window as any).render(x), f / CAPTURE_FPS);
+        await pg.evaluate((x: number) => (window as unknown as { render: (t: number) => void }).render(x), f / CAPTURE_FPS);
         await pg.screenshot({ path: join(dir, `${String(f).padStart(5, '0')}.png`) });
         if (++done % 200 === 0) console.log(`  καρέ ${done}/${frames}`);
       }

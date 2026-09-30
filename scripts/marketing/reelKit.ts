@@ -20,6 +20,7 @@ import { C, FACES, MONO_FACES, GRAIN } from './igKit';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
+type Page = import('playwright-core').Page;
 const { chromePath } = require('../lib/chrome.mjs');
 
 export const W = 1080, H = 1920;
@@ -124,7 +125,7 @@ export async function shoot(s: Shoot): Promise<void> {
       return pg;
     };
     const page = await open();
-    const at = (pg: any, t: number) => pg.evaluate((x: number) => (window as any).render(x), t);
+    const at = (pg: Page, t: number) => pg.evaluate((x: number) => (window as unknown as { render: (t: number) => void }).render(x), t);
 
     if (process.env.REEL_PREVIEW) {
       for (const t of process.env.REEL_PREVIEW.split(',').map(Number)) {
