@@ -1397,6 +1397,8 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
         title={title}
         target={newTab ? '_blank' : undefined}
         rel={newTab ? 'noopener noreferrer' : undefined}
+        // Ο σύνδεσμος πλοηγεί μόνος του· το `onClick` εδώ μόνο παρατηρεί (π.χ. μέτρηση).
+        onClick={onClick}
         style={{ ...base, textDecoration: 'none' }}
       >{children}</a>
     );

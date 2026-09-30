@@ -24,6 +24,7 @@
 
 create temporary table expected_anon (name text primary key, why text);
 insert into expected_anon values
+  ('count_signup_step',         'Ανώνυμος μετρητής του χωνιού εγγραφής. Εξαίρεση από το κριτήριο του token: δεν διαβάζει και δεν επιστρέφει τίποτα, δέχεται μόνο τιμές από κλειστούς καταλόγους και γράφει μόνο +1 σε μετρητή με ταβάνι.'),
   ('confirm_reminder_email',    'Ο παραλήπτης πατά τον σύνδεσμο επιβεβαίωσης από το email του. Το token είναι uuid μιας χρήσης.'),
   ('declare_rent_payment',      'Ο μισθωτής δηλώνει ότι πλήρωσε, από την πύλη του. Ενημερώνει ΜΟΝΟ δόση του ακινήτου του συνδέσμου και μόνο απλήρωτη.'),
   ('get_accountant_data',       'Ο λογιστής ανοίγει τον σύνδεσμο που του έστειλε ο ιδιοκτήτης. Επιστρέφει μόνο τα ακίνητα ΕΚΕΙΝΟΥ του ιδιοκτήτη.'),
@@ -76,7 +77,7 @@ begin
     raise exception 'SECURITY DEFINER ΧΩΡΙΣ ΚΛΕΙΔΩΜΕΝΟ SEARCH_PATH: %', unsafe;
   end if;
 
-  raise notice 'probe: 11 δημόσιες διαδρομές, όλες γραμμένες· κάθε SECURITY DEFINER κλειδώνει το search_path';
+  raise notice 'probe: 12 δημόσιες διαδρομές, όλες γραμμένες· κάθε SECURITY DEFINER κλειδώνει το search_path';
 end $audit$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -116,5 +117,56 @@ begin
   end if;
   raise notice 'probe: οι συναρτήσεις του διακομιστή μένουν κλειστές σε anon και authenticated';
 end $server_only$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+--  ΤΟ ΧΩΝΙ ΤΗΣ ΕΓΓΡΑΦΗΣ: Ο ΑΝΩΝΥΜΟΣ ΠΡΟΣΘΕΤΕΙ +1 ΚΑΙ ΤΙΠΟΤΑ ΑΛΛΟ
+-- ─────────────────────────────────────────────────────────────────────────
+--  Η `count_signup_step` είναι η μόνη γραφή που επιτρέπεται χωρίς λογαριασμό.
+--  Ρωτιέται η βάση, ως `anon`: μετρά το γνωστό βήμα, σωπαίνει στο άγνωστο,
+--  σταματά στο ταβάνι και ο πελάτης δεν διαβάζει ούτε γράφει τον πίνακα
+--  απευθείας. Το rls-probe.sql έχει ήδη δώσει GRANT σε όλους τους πίνακες,
+--  όπως η πλατφόρμα: άρα εδώ κρίνεται η RLS, η κλειδαριά που μένει πάντα.
+-- ═══════════════════════════════════════════════════════════════════════════
+delete from public.signup_funnel;
+set role anon;
+select public.count_signup_step('view', 'instagram', true, true);
+select public.count_signup_step('view', 'instagram', true, true);
+select public.count_signup_step('kati_allo', 'instagram', true, true);
+select public.count_signup_step('view', 'https://example.com/?email=x', true, true);
+do $anon_reads$
+declare seen int;
+begin
+  select count(*) into seen from public.signup_funnel;
+  if seen <> 0 then
+    raise exception 'Ο ανώνυμος διαβάζει % γραμμές του χωνιού', seen;
+  end if;
+  begin
+    insert into public.signup_funnel (day, step, source, in_app, mobile, n)
+    values (current_date, 'sent', 'direct', false, false, 999);
+    raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος γράφει το χωνί απευθείας, χωρίς τη συνάρτηση';
+  exception when insufficient_privilege then null;
+  end;
+end $anon_reads$;
+reset role;
+do $funnel$
+declare v int; rows_ int;
+begin
+  select n into v from public.signup_funnel where step = 'view' and source = 'instagram' and in_app and mobile;
+  if v is distinct from 2 then
+    raise exception 'Ο ανώνυμος μετρητής του χωνιού έγραψε % αντί για 2', v;
+  end if;
+  select count(*) into rows_ from public.signup_funnel;
+  if rows_ <> 1 then
+    raise exception 'Άγνωστο βήμα ή πηγή μπήκε στο χωνί ως ΝΕΑ γραμμή: % γραμμές', rows_;
+  end if;
+  update public.signup_funnel set n = 1000;
+  perform public.count_signup_step('view', 'instagram', true, true);
+  select n into v from public.signup_funnel;
+  if v <> 1000 then
+    raise exception 'Ο μετρητής του χωνιού πέρασε το ταβάνι: %', v;
+  end if;
+  delete from public.signup_funnel;
+  raise notice 'probe: ο ανώνυμος μετρά το χωνί της εγγραφής και δεν διαβάζει τίποτα';
+end $funnel$;
 
 drop table expected_anon;
