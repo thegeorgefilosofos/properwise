@@ -10,6 +10,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useSyncExternalStore } from 'react'
 import { Btn } from '@/components/Theme'
+import { T } from '@/components/tokens'
 import GoogleG from './GoogleG'
 import { inAppBrowser, chromeIntent } from '@/lib/core/inAppBrowser'
 
@@ -29,7 +30,7 @@ export default function GoogleButton({ onClick }: { onClick: () => void }) {
     )
   }
   return (
-    <div role="note" style={{ padding: '14px 16px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-sunken)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div role="note" style={{ padding: '14px 16px', borderRadius: T.radius.inner, border: '1px solid var(--border-subtle)', background: 'var(--surface-sunken)', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
         <b style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Η Google δεν επιτρέπει σύνδεση μέσα από {iab.where}.</b>{' '}
         Συνέχισε με email παρακάτω ή άνοιξε τη σελίδα στον περιηγητή σου.
