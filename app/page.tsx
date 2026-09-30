@@ -211,7 +211,10 @@ export default async function Landing() {
           <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
             {/* Ο ΙΔΙΟΣ ΤΙΤΛΟΣ ΜΕ ΤΗΝ ΚΑΡΤΕΛΑ ΚΑΙ ΤΗΝ ΚΑΡΤΑ ΚΟΙΝΟΠΟΙΗΣΗΣ (HOME_TITLE_LINES,
                 lib/core/site.ts). Δύο γραμμές· από τα 900 και πάνω καμία δεν σπάει. */}
-            <span className="lp-h1-line">{HOME_TITLE_LINES[0]}</span>
+            {/* Το κενό ανάμεσα δεν φαίνεται (οι γραμμές είναι block) αλλά το
+                διαβάζουν ο αναγνώστης οθόνης και οι μηχανές: χωρίς αυτό ο τίτλος
+                ακουγόταν «ακινήτωνμε». */}
+            <span className="lp-h1-line">{HOME_TITLE_LINES[0]}</span>{' '}
             <span className="lp-h1-line lp-h1-accent">{HOME_TITLE_LINES[1]}</span>
           </h1>
           {/* ── Ο ΥΠΟΤΙΤΛΟΣ: δύο προτάσεις, δύο δουλειές ──────────────────────────

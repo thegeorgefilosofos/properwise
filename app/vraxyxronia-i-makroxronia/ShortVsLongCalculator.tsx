@@ -222,7 +222,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         { k: 'Μηνιαίο ενοίκιο', v: feAuto(amount(v.enoikio)) },
         { k: 'Τιμή διανυκτέρευσης', v: feAuto(amount(v.timi)) },
         { k: 'Πληρότητα', v: fpRate(amount(v.plirotita)) },
-        { k: 'Ακίνητο', v: `${TYPES.find(t => t.value === v.typos)?.label ?? v.typos}, ${fn(amount(v.tm), 2)} τ.μ.` },
+        { k: 'Ακίνητο', v: `${TYPES.find(t => t.value === v.typos)?.label ?? v.typos}, ${fn(amount(v.tm), Number.isInteger(amount(v.tm)) ? 0 : 2)} τ.μ.` },
         { k: 'Προμήθεια', v: fpRate(amount(v.promitheia)) },
         { k: 'Καθαριότητα', v: `${feAuto(amount(v.kostos))} τη διανυκτέρευση` },
         { k: 'Πάγια', v: `${feAuto(amount(v.pagia))} τον μήνα` },
