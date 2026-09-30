@@ -85,12 +85,23 @@ export function taxKindOfEventSource(source?: string | null): TaxObligationKind 
   return TAX_KINDS.includes(kind as TaxObligationKind) ? (kind as TaxObligationKind) : null
 }
 
-/** Μία αντιπροσωπευτική υποχρέωση ανά είδος. Τα πεδία που χρησιμοποιεί η οθόνη
- *  (`who`, `confidence`, `title`, `official_url`) δεν εξαρτώνται από το έτος. */
+/** Μία αντιπροσωπευτική υποχρέωση ανά είδος. Το `who` και το `official_url` δεν
+ *  εξαρτώνται από το έτος. Το `confidence` του ΕΝΦΙΑ εξαρτάται (βλ. ENFIA_ISSUED):
+ *  για συγκεκριμένο γεγονός διάβασε την `taxObligationOfEventSource`. */
 export function taxKindMeta(year: number): Record<TaxObligationKind, TaxObligation> {
   const m = {} as Record<TaxObligationKind, TaxObligation>
   for (const o of greekPropertyTaxObligations(year, 'short_term')) if (!m[o.kind]) m[o.kind] = o
   return m
+}
+
+/** Η υποχρέωση ΑΚΡΙΒΩΣ αυτού του γεγονότος (είδος και έτος), ώστε η δόση του
+ *  ΕΝΦΙΑ 2026 να λέει «του νόμου» ακόμη κι όταν τη βλέπεις μέσα στο 2027. */
+export function taxObligationOfEventSource(source: string | null | undefined): TaxObligation | null {
+  if (!taxKindOfEventSource(source)) return null
+  const id = (source as string).slice(TAX_SOURCE_PREFIX.length)
+  const year = Number(/-(\d{4})(?:-\d{1,2})?$/.exec(id)?.[1])
+  if (!Number.isFinite(year)) return null
+  return greekPropertyTaxObligations(year, 'short_term').find(o => o.id === id) ?? null
 }
 
 /** Η κατηγορία του γεγονότος στο ημερολόγιο. Οι φορολογικές προθεσμίες ΔΕΝ
@@ -139,33 +150,53 @@ export function lastWorkingDayOfMonth(y: number, mIndex0: number): string {
   return d
 }
 
+// ── ΕΝΦΙΑ ΠΟΥ ΕΧΕΙ ΗΔΗ ΕΚΔΟΘΕΙ: οι δόσεις του είναι προθεσμίες του νόμου ──
+// Ν. 4223/2013, άρθρο 6: έως δώδεκα ισόποσες μηνιαίες δόσεις, η πρώτη ως την
+// τελευταία εργάσιμη του μήνα έκδοσης και κάθε επόμενη ως την τελευταία
+// εργάσιμη κάθε επόμενου μήνα. Πριν από την έκδοση ο μήνας δεν είναι γνωστός
+// (γι' αυτό «περυσινή»)· μετά την έκδοση οι ημερομηνίες είναι του νόμου.
+// Κάθε έτος μπαίνει εδώ ΜΟΝΟ με την πηγή του.
+//   2026: ΑΑΔΕ Α.1061/13-03-2026 και Δελτίο Τύπου 15/03/2026 («Αναρτήθηκαν τα
+//         εκκαθαριστικά ΕΝΦΙΑ 2026»): 12 μηνιαίες δόσεις, πρώτη ως 31/3/2026,
+//         άρα δωδέκατη ως την τελευταία εργάσιμη Φεβρουαρίου 2027 (26/2/2027).
+const ENFIA_ISSUED: Readonly<Record<number, { date: string; source: string }>> = {
+  2026: { date: '2026-03-15', source: 'ΑΑΔΕ Α.1061/13-03-2026, Δελτίο Τύπου 15/03/2026' },
+}
+const LAW_4223_ART6 = 'ν. 4223/2013, άρθρο 6'
+
 // Οι υποχρεώσεις που ισχύουν για ΟΛΟΥΣ τους ιδιοκτήτες ακινήτων, ανά έτος.
 function ownerObligations(year: number): Draft[] {
   const out: Draft[] = []
+  const issued = ENFIA_ISSUED[year]
+  const issueMonth = issued ? Number(issued.date.slice(5, 7)) - 1 : 2
+  const enfiaConfidence = issued ? 'statutory' as const : 'announced' as const
+  const enfiaBasis = issued ? ` Εκκαθαριστικό ${year}: ${issued.source}· προθεσμίες κατά το ${LAW_4223_ART6}.` : ''
+
 
   // ── ΕΝΦΙΑ: ετήσιος φόρος κατοχής ακινήτων. Εκκαθαριστικό εκδίδεται συνήθως
   // Απρίλιο/Μάιο, πληρωμή σε μηνιαίες δόσεις (τελευταία εργάσιμη κάθε μήνα) έως
   // τον Φεβρουάριο του επόμενου έτους. Οι ακριβείς ημερομηνίες ανακοινώνονται.
   // `who`: ο φάκελος έχει το «Εκκαθαριστικό ΕΝΦΙΑ» ως δικό του (dossier: enfia).
   out.push({
-    kind: 'enfia-issue', id: `enfia-issue-${year}`, date: nextWorkingDay(iso(year, 2, 15)), // ~μέσα Μαρτίου (2026: 15/3)
-    title: 'ΕΝΦΙΑ, έκδοση εκκαθαριστικού (αναμένεται)',
-    notes: `Ο ΕΝΦΙΑ (Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων) εκκαθαρίζεται πλέον νωρίτερα (τα τελευταία έτη ~μέσα Μαρτίου) και πληρώνεται εφάπαξ ή σε 12 μηνιαίες δόσεις έως τον Φεβρουάριο του επόμενου έτους. ${CONFIRM}`,
-    category: 'tax', confidence: 'announced', profiles: ['owner', 'long_term', 'short_term'],
+    kind: 'enfia-issue', id: `enfia-issue-${year}`, date: nextWorkingDay(issued ? issued.date : iso(year, 2, 15)), // ~μέσα Μαρτίου (2026: ανάρτηση Κυριακή 15/3)
+    title: issued ? 'ΕΝΦΙΑ, έκδοση εκκαθαριστικού' : 'ΕΝΦΙΑ, έκδοση εκκαθαριστικού (αναμένεται)',
+    notes: `Ο ΕΝΦΙΑ (Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων) εκκαθαρίζεται πλέον νωρίτερα (τα τελευταία έτη ~μέσα Μαρτίου) και πληρώνεται εφάπαξ ή σε 12 μηνιαίες δόσεις έως τον Φεβρουάριο του επόμενου έτους.${enfiaBasis} ${CONFIRM}`,
+    category: 'tax', confidence: enfiaConfidence, profiles: ['owner', 'long_term', 'short_term'],
     who: 'owner', dossier: 'enfia',
   })
   out.push({
-    kind: 'enfia-first', id: `enfia-first-${year}`, date: lastWorkingDayOfMonth(year, 2), // τέλος Μαρτίου
+    kind: 'enfia-first', id: `enfia-first-${year}`, date: lastWorkingDayOfMonth(year, issueMonth), // τέλος του μήνα έκδοσης (τα τελευταία έτη Μάρτιος)
     title: 'ΕΝΦΙΑ, 1η δόση',
-    notes: `Καταληκτική 1ης δόσης ΕΝΦΙΑ (τα τελευταία έτη τέλος Μαρτίου). Ακολουθούν έως 12 μηνιαίες δόσεις έως τον Φεβρουάριο του επόμενου έτους. ${CONFIRM}`,
-    category: 'tax', confidence: 'announced', profiles: ['owner', 'long_term', 'short_term'],
+    notes: `Καταληκτική 1ης δόσης ΕΝΦΙΑ (τα τελευταία έτη τέλος Μαρτίου). Ακολουθούν έως 12 μηνιαίες δόσεις έως τον Φεβρουάριο του επόμενου έτους.${enfiaBasis} ${CONFIRM}`,
+    category: 'tax', confidence: enfiaConfidence, profiles: ['owner', 'long_term', 'short_term'],
     who: 'owner', dossier: 'enfia',
   })
   out.push({
-    kind: 'enfia-last', id: `enfia-last-${year}`, date: lastWorkingDayOfMonth(year + 1, 1), // τέλος Φεβρουαρίου επόμενου έτους
+    // Η δωδέκατη δόση: έντεκα μήνες μετά τον μήνα της πρώτης.
+    kind: 'enfia-last', id: `enfia-last-${year}`, date: lastWorkingDayOfMonth(year + Math.floor((issueMonth + 11) / 12), (issueMonth + 11) % 12), // τέλος Φεβρουαρίου επόμενου έτους
     title: 'ΕΝΦΙΑ, τελευταία δόση',
-    notes: `Καταληκτική τελευταίας δόσης ΕΝΦΙΑ (τυπικά τελευταία εργάσιμη Φεβρουαρίου του επόμενου έτους, 12η δόση). ${CONFIRM}`,
-    category: 'tax', confidence: 'announced', profiles: ['owner', 'long_term', 'short_term'],
+    notes: `Καταληκτική τελευταίας δόσης ΕΝΦΙΑ (τυπικά τελευταία εργάσιμη Φεβρουαρίου του επόμενου έτους, 12η δόση).${enfiaBasis} ${CONFIRM}`,
+    category: 'tax', confidence: enfiaConfidence, profiles: ['owner', 'long_term', 'short_term'],
     who: 'owner', dossier: 'enfia',
   })
 
