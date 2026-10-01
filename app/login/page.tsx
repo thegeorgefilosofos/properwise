@@ -230,11 +230,6 @@ export default function LoginPage() {
     color: 'var(--text-primary)', fontSize: 14,
     fontFamily: 'inherit', transition: 'border-color .15s',
   }
-  const label: React.CSSProperties = {
-    fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700,
-    display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em',
-    fontFamily: T.font.sans,
-  }
 
   return (
     <div className="auth-split" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
@@ -298,7 +293,7 @@ export default function LoginPage() {
           <form onSubmit={factorId ? verifySecondStep : handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {factorId ? (
               <div>
-                <label htmlFor="login-mfa-code" style={label}>Εξαψήφιος κωδικός</label>
+                <label htmlFor="login-mfa-code" className="po-field-label">Εξαψήφιος κωδικός</label>
                 <input id="login-mfa-code" name="one-time-code" inputMode="numeric" maxLength={6} autoComplete="one-time-code"
                   value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456"
                   style={{ ...field, maxWidth: 200, fontFamily: T.font.mono, letterSpacing: '0.3em' }}
@@ -317,15 +312,21 @@ export default function LoginPage() {
               </div>
             ) : (<>
             <div>
-              <label htmlFor="login-email" style={label}>Ηλεκτρονικό ταχυδρομείο</label>
+              <label htmlFor="login-email" className="po-field-label">Ηλεκτρονικό ταχυδρομείο</label>
               <input id="login-email" name="email" autoComplete="email" type="email" value={email} required onChange={e => setEmail(e.target.value)} placeholder="onoma@email.com" style={field}
                 onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <label htmlFor="login-password" style={{ ...label, marginBottom: 0 }}>Κωδικός</label>
-                <Link href="/reset-password" className="lp-link po-tap" style={{ fontSize: 13, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Ξέχασες τον κωδικό;</Link>
+              {/* Η ΣΕΙΡΑ ΤΗΣ ΕΤΙΚΕΤΑΣ ΚΡΑΤΑ ΤΟ ΥΨΟΣ ΤΗΣ ΕΤΙΚΕΤΑΣ (01.10.2026). Το
+                  «Ξέχασες τον κωδικό;» έχει στόχο αφής 44 και φούσκωνε ολόκληρη τη
+                  σειρά: στο τηλέφωνο η ετικέτα «Κωδικός» απείχε 30 από το πεδίο
+                  της, ενώ η «Ηλεκτρονικό ταχυδρομείο» από πάνω 12. Ο στόχος
+                  μένει 44 (`po-tap-inline`, ψευδοστοιχείο γύρω από το λεκτικό) και
+                  η σειρά έχει το ύψος του κειμένου, ίδιο με κάθε άλλη ετικέτα. */}
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                <label htmlFor="login-password" className="po-field-label" style={{ marginBottom: 0 }}>Κωδικός</label>
+                <Link href="/reset-password" className="lp-link po-tap-inline" style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Ξέχασες τον κωδικό;</Link>
               </div>
               <div style={{ position: 'relative' }}>
                 <input id="login-password" name="password" autoComplete="current-password" type={show ? 'text' : 'password'} value={password} required onChange={e => setPassword(e.target.value)} placeholder="Ο κωδικός σου" style={{ ...field, paddingRight: 48 }}
@@ -392,7 +393,11 @@ export default function LoginPage() {
              390 το «Όρους χρήσης» χωριζόταν σε δύο σειρές.
              ΚΑΙ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (27.09.2026): «Όρους» αντί για
              «Όρους χρήσης», όπως στην εγγραφή· ο σύνδεσμος οδηγεί εκεί. */
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 24, lineHeight: 1.6, width: 'calc(100% + 20px)', marginInline: -10, textWrap: 'balance' }}>
+          /* ΑΡΙΣΤΕΡΑ, ΟΠΩΣ ΚΑΘΕ ΑΛΛΟ ΣΤΟΙΧΕΙΟ ΤΗΣ ΦΟΡΜΑΣ (01.10.2026). Ηταν το
+             μόνο κεντραρισμένο στοιχείο της στήλης και, φαρδύτερο κατά 20, το
+             μόνο που ξέφευγε από τις ευθείες των πεδίων. Ιδια θέση και ίδιο
+             μέγεθος με τη συναίνεση της εγγραφής. */
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 20, marginBottom: 0, lineHeight: 1.6, textWrap: 'pretty' }}>
             Συνεχίζοντας, αποδέχεσαι τους{' '}
             <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Όρους</Link>{' '}και την{' '}
             <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>.

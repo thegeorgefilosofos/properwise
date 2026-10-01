@@ -7,7 +7,7 @@
 // ημ. έκδοσης, εκδότης. Καμία ευαίσθητη πληροφορία/ποσά.
 // ═══════════════════════════════════════════════════════════════════════════
 import { TriangleAlert, CircleCheckBig } from 'lucide-react';
-import BrandMark from '@/components/BrandMark';
+import { StandaloneCard, CARD_TITLE } from '@/app/StandaloneCard';
 import { ABSENT, T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
@@ -65,8 +65,6 @@ export default function VerifyDocument() {
   }, [id]);
   useLoad(check);
 
-  const wrap: React.CSSProperties = { minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'Inter, system-ui, Arial, sans-serif', color: 'var(--text-primary)' };
-  const card: React.CSSProperties = { width: '100%', maxWidth: 460, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '30px 30px 26px', boxShadow: 'var(--elev-1)' };
   const label: React.CSSProperties = { fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 700 };
   const value: React.CSSProperties = { fontSize: 14, color: 'var(--text-primary)', fontWeight: 600, marginTop: 4 };
   // Ο ΚΩΔΙΚΟΣ ΜΕΤΑΚΟΜΙΖΕΙ ΟΛΟΚΛΗΡΟΣ ΣΤΗΝ ΕΠΟΜΕΝΗ ΓΡΑΜΜΗ. Στα 390 έσπαγε στο
@@ -75,23 +73,13 @@ export default function VerifyDocument() {
   const codeInline: React.CSSProperties = { color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em', display: 'inline-block', maxWidth: '100%', overflowWrap: 'anywhere' };
 
   return (
-    <div style={wrap}>
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: T.sp.lg, borderBottom: '1px solid var(--border-subtle)' }}>
-          <BrandMark size={34} />
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>PROPERWISE</div>
-            {/* Ο ΤΙΤΛΟΣ ΤΗΣ ΣΕΛΙΔΑΣ ΕΙΝΑΙ ΑΥΤΗ Η ΓΡΑΜΜΗ, ΟΧΙ ΤΟ ΟΝΟΜΑ ΤΗΣ
-                ΕΦΑΡΜΟΓΗΣ. Το «PROPERWISE» από πάνω είναι σήμα, όχι επικεφαλίδα.
-                Η σελίδα δεν είχε καμία: ο αναγνώστης οθόνης την ανακοίνωνε
-                χωρίς όνομα, σε δημόσιο σύνδεσμο που ανοίγει άνθρωπος ο οποίος
-                μπορεί να μη μας έχει ξανασυναντήσει. Και ΦΑΙΝΕΤΑΙ ως τίτλος: ήταν
-                11px γκρι κάτω από το σήμα, ενώ η ερώτηση από κάτω ήταν σώμα
-                κειμένου, δηλαδή ιεραρχία ανάποδα. Τώρα το σήμα είναι μικρή
-                ετικέτα και ο τίτλος 16px. */}
-            <h1 style={{ fontSize: 16, color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3, margin: '2px 0 0', textWrap: 'balance' }}>Επαλήθευση γνησιότητας εγγράφου</h1>
-          </div>
-        </div>
+    <StandaloneCard>
+        {/* Ο ΤΙΤΛΟΣ ΤΗΣ ΣΕΛΙΔΑΣ ΕΙΝΑΙ ΑΥΤΗ Η ΓΡΑΜΜΗ, ΟΧΙ ΤΟ ΟΝΟΜΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ.
+            Η σελίδα δεν είχε καμία επικεφαλίδα και ο αναγνώστης οθόνης την
+            ανακοίνωνε χωρίς όνομα. Η κάρτα είναι η κοινή του ταμείου και της
+            φόρμας επαλήθευσης (app/StandaloneCard.tsx): ίδιο λογότυπο, ίδιος
+            τίτλος, ίδιο πλάτος. Πριν, εδώ ο τίτλος ήταν 16 και στο ταμείο 24. */}
+        <h1 style={CARD_TITLE}>Επαλήθευση γνησιότητας εγγράφου</h1>
 
         {state === 'loading' && (
           <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Έλεγχος εγγράφου…</div>
@@ -187,7 +175,6 @@ export default function VerifyDocument() {
         <p style={{ fontSize: 12, lineHeight: 1.6, margin: '20px 0 0' }}>
           <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Πολιτική απορρήτου</Link>
         </p>
-      </div>
-    </div>
+    </StandaloneCard>
   );
 }

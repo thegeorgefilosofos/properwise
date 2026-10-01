@@ -440,10 +440,6 @@ export default function SignupPage() {
     borderRadius: T.radius.btn, padding: '10px 16px', minHeight: T.h.lg, color: 'var(--text-primary)',
     fontSize: 14, fontFamily: 'inherit', transition: 'border-color .15s',
   }
-  const label: React.CSSProperties = {
-    fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700, display: 'block',
-    marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: T.font.sans,
-  }
   // Το κείμενο αποδοχής και οι δύο σύνδεσμοί του, ίδια και στα δύο πλαίσια.
   // Οι σύνδεσμοι δεν σπάνε ΜΕΣΑ τους: στα 390 έμενε «Πολιτική» στη μία γραμμή
   // και «απορρήτου.» στην άλλη, όπως είχε ήδη διορθωθεί στη Σύνδεση.
@@ -457,7 +453,11 @@ export default function SignupPage() {
   // το κείμενο ήταν 452 εικονοστοιχεία σε ετικέτα 374 ως 394 και έσπαγε σε δύο.
   // Ο σύνδεσμος οδηγεί στους Όρους χρήσης και το aria-label του κουτιού τους
   // ονομάζει ολόκληρους.
-  const consentText: React.CSSProperties = { fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer', textWrap: 'balance' }
+  // ΚΑΙ «pretty», ΟΧΙ «balance» (01.10.2026): η ισορροπημένη αναδίπλωση μοίραζε
+  // τις δύο σειρές εξίσου και έκοβε την πρώτη στη μέση της στήλης, με μισή
+  // γραμμή άδεια δεξιά. Το «pretty» γεμίζει τη σειρά και φυλάει μόνο το τέλος
+  // από ορφανή λέξη.
+  const consentText: React.CSSProperties = { fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer', textWrap: 'pretty' }
   const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }
   // Το δεύτερο κουτί, με το ίδιο ιδίωμα αφής με το πρώτο. Προαιρετικό: η
   // εγγραφή προχωρά ό,τι κι αν διαλέξεις.
@@ -465,7 +465,7 @@ export default function SignupPage() {
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingBottom: CONSENT_TAP_ROOM }}>
       <label htmlFor={id} style={{ ...TAP, margin: -14 }}>
         <input id={id} type="checkbox" checked={news} onChange={e => setNews(e.target.checked)}
-          style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} />
+          className="po-check" />
       </label>
       <label htmlFor={id} style={consentText}>
         Να μου στέλνετε νέα της εφαρμογής και της αγοράς ακινήτων. Σταματούν από τον σύνδεσμο σε κάθε email.
@@ -489,7 +489,12 @@ export default function SignupPage() {
     : ''
 
   return (
-    <div className="auth-split" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
+    // ΜΙΑ ΕΥΘΕΙΑ ΓΙΑ ΤΙΣ ΔΥΟ ΣΤΗΛΕΣ (01.10.2026, `auth-top` στο globals.css).
+    // Κεντραρισμένες κάθετα, η φόρμα της εγγραφής (ψηλότερη από της σύνδεσης)
+    // ξεκινούσε στα 150 και το σώμα του πάνελ στα 265. Στη σύνδεση, με φόρμα
+    // κοντή, έπεφταν και οι δύο στα 247 κατά τύχη. Εδώ ξεκινούν από την ίδια
+    // ευθεία, επίτηδες.
+    <div className="auth-split auth-top" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
 
       <a href="#main" className="skip-link">Μετάβαση στη φόρμα</a>
 
@@ -509,7 +514,7 @@ export default function SignupPage() {
       {/* RIGHT, form */}
       {/* ── ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΕΙΝΑΙ <main>, ΚΑΙ ΛΕΓΕΤΑΙ ─────────────────────────
           Μετρημένο: καμία περιοχή στο προσβάσιμο δέντρο, ούτε ένα <main>. */}
-      <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
+      <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'var(--auth-top) 40px 48px' }}>
         <div className="auth-form">
           <AuthMobileBrand />
           {needsConsent ? (
@@ -535,7 +540,7 @@ export default function SignupPage() {
                   <input id="su-consent-oauth" type="checkbox" checked={consent}
                     onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
                     aria-label="Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου"
-                    style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} />
+                    className="po-check" />
                 </label>
                 <label htmlFor="su-consent-oauth" style={consentText}>
                   Αποδέχομαι τους{' '}
@@ -614,26 +619,16 @@ export default function SignupPage() {
                   αριστερό πάνελ, που κρύβεται κάτω από τις 900 και δεν ήταν καν
                   σύνδεσμος. */}
               <BackLink home />
-              {/* Η ΔΟΚΙΜΗ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ΜΕ ΤΟΝ ΤΙΤΛΟ (28.09.2026). Ως σκέτη γραμμή
-                  κάτω από τον τίτλο διαβαζόταν σαν δεύτερος υπότιτλος. Σήμα δίπλα
-                  του όταν χωρά· στη στήλη της φόρμας (και στο κινητό) κάθεται
-                  ακριβώς από κάτω, στο ίδιο αριστερό άκρο. Λέγεται ΜΙΑ φορά:
-                  με διαλεγμένο πακέτο τη λέει η κάρτα του πακέτου. Το «χωρίς
-                  κάρτα» ξαναμπαίνει: η δοκιμή δεν ζητά κάρτα (απόφαση
-                  ιδιοκτήτη, 27.09.2026) και το κείμενο έρχεται από το
-                  billingWords. */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: T.sp.md, rowGap: T.sp.sm, margin: '0 0 10px' }}>
-                <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>Δημιουργία λογαριασμού</h1>
-                {!chosenPlan && trialBadge && (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', padding: `${T.sp.xs}px ${T.sp.md}px`,
-                    borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
-                    color: 'var(--accent)', fontSize: 13, fontWeight: 600, lineHeight: 1.4, whiteSpace: 'nowrap',
-                  }}>
-                    {trialBadge}
-                  </span>
-                )}
-              </div>
+              {/* Η ΔΟΚΙΜΗ ΕΙΝΑΙ ΠΡΟΣΦΩΝΗΣΗ ΠΑΝΩ ΑΠΟ ΤΟΝ ΤΙΤΛΟ (01.10.2026). Ως σήμα
+                  δίπλα στον τίτλο δεν χωρούσε στη στήλη των 400 και κατέβαινε
+                  μόνο του σε δική του σειρά, ανάμεσα στον τίτλο και στο «Έχεις
+                  ήδη λογαριασμό;»: τρία στοιχεία με τρία διαφορετικά κενά.
+                  Ως μάτι πάνω από τον τίτλο κάθεται εκεί που το βάζει κάθε
+                  δημόσια σελίδα (βλ. `lp-eyebrow`) και τίτλος και υπότιτλος
+                  μένουν ζευγάρι. Λέγεται ΜΙΑ φορά: με διαλεγμένο πακέτο τη λέει
+                  η κάρτα του πακέτου. Το κείμενο έρχεται από το billingWords. */}
+              {!chosenPlan && trialBadge && <div className="lp-eyebrow" style={{ marginBottom: 10 }}>{trialBadge}</div>}
+              <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 8px' }}>Δημιουργία λογαριασμού</h1>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px' }}>
                 Έχεις ήδη λογαριασμό;{' '}
                 <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
@@ -765,15 +760,15 @@ export default function SignupPage() {
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label htmlFor="su-name" style={label}>Ονοματεπώνυμο <span style={{ color: 'var(--text-tertiary)', fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>(προαιρετικό)</span></label>
+                  <label htmlFor="su-name" className="po-field-label">Ονοματεπώνυμο <span className="po-field-opt">(προαιρετικό)</span></label>
                   <input id="su-name" name="name" autoComplete="name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Όνομα και επώνυμο" style={field} onFocus={focus} onBlur={blur} />
                 </div>
                 <div>
-                  <label htmlFor="su-email" style={label}>Ηλεκτρονικό ταχυδρομείο</label>
+                  <label htmlFor="su-email" className="po-field-label">Ηλεκτρονικό ταχυδρομείο</label>
                   <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="onoma@email.com" required style={field} onFocus={focus} onBlur={blur} />
                 </div>
                 <div>
-                  <label htmlFor="su-password" style={label}>Κωδικός</label>
+                  <label htmlFor="su-password" className="po-field-label">Κωδικός</label>
                   <div style={{ position: 'relative' }}>
                     <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_LABEL} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
                     <PasswordEye show={show} onToggle={() => setShow(s => !s)} />
@@ -835,7 +830,7 @@ export default function SignupPage() {
                     <input id="su-consent" type="checkbox" checked={consent}
                       onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
                       aria-required="true" aria-label="Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου"
-                      style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }} />
+                      className="po-check" />
                   </label>
                   {/* ΑΠΟΔΟΧΗ ΓΙΑ ΤΟΥΣ ΟΡΟΥΣ, ΕΝΗΜΕΡΩΣΗ ΓΙΑ ΤΗΝ ΠΟΛΙΤΙΚΗ. Εγραφε
                       «Αποδέχομαι… την Πολιτική απορρήτου», ενώ η Πολιτική δεν

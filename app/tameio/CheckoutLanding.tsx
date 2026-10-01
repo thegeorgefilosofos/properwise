@@ -23,10 +23,9 @@
 // με ημερομηνία λήξης: δεν επιτρέπεται να μπει σε καμία μνήμη ενδιάμεσου.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { SecuredBy } from '../paketa/SecuredBy';
 import { T } from '@/components/tokens';
-import { TameioCard, TAMEIO_TITLE, TAMEIO_ACTION } from './TameioCard';
+import { StandaloneCard, CARD_TITLE, CARD_BODY, CARD_NOTE } from '../StandaloneCard';
 import { ChipToggle, Btn } from '@/components/Theme';
 import { authClient } from '@/lib/supabase/lazy';
 import { PLANS, PLAN_ORDER, type PlanId, type BillingCycle } from '@/lib/billing/plans';
@@ -40,12 +39,18 @@ function describe(plan: PlanId, cyc: BillingCycle): string {
     : `με μηνιαία χρέωση ${fe(PLANS[plan].priceMonthly)}`}`;
 }
 
-/** Η δεύτερη επιλογή: ίδιο ύψος με την πρώτη, χωρίς γέμισμα. */
-const TAMEIO_TRIAL = {
-  display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, marginTop: 8,
-  borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)',
-  color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, textDecoration: 'none',
-} as const;
+/**
+ * Η δεύτερη επιλογή: το δευτερεύον κουμπί της δημόσιας πλευράς, ίδιο ύψος και
+ * σχήμα με το κύριο. Ηταν σύνδεσμος ζωγραφισμένος στο χέρι, με δικό του
+ * περίγραμμα και λεκτικό 14 δίπλα σε κύριο κουμπί 15.
+ */
+const TrialLink = () => (
+  <div style={{ marginTop: 8, display: 'grid' }}><Btn variant="secondary" field href="/dashboard">Συνέχεια με τη δοκιμή</Btn></div>
+);
+/** Η μία ενέργεια της κάρτας όταν δεν υπάρχει επιλογή να γίνει. */
+const MainAction = ({ href, children }: { href: string; children: React.ReactNode }) => (
+  <div style={{ marginTop: 24, display: 'grid' }}><Btn variant="primary" field href={href}>{children}</Btn></div>
+);
 
 type Stage = 'opening' | 'choose' | 'confirm' | 'closed' | 'anonymous';
 
@@ -136,8 +141,8 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
   }, [open]);
 
   return (
-    <TameioCard>
-        <h1 style={TAMEIO_TITLE}>
+    <StandaloneCard>
+        <h1 style={CARD_TITLE}>
           {stage === 'choose' ? 'Διάλεξε πακέτο' : 'Ολοκλήρωση συνδρομής'}
         </h1>
 
@@ -145,7 +150,7 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
             οθόνες πριν και ανάμεσα μεσολάβησε ένα email: το να τη δει
             γραμμένη είναι η μόνη απόδειξη ότι ταξίδεψε σωστά. */}
         {what && (
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, paddingTop: T.sp.xl }}>
+          <div style={{ ...CARD_BODY, margin: 0, paddingTop: T.sp.lg }}>
             Το πακέτο σου: <strong style={{ color: 'var(--text-primary)' }}>{what}</strong>.
           </div>
         )}
@@ -201,19 +206,19 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
               })}
             </div>
 
-            <p style={{ margin: '14px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)' }}>
+            <p style={CARD_NOTE}>
               {firstCharge} {moneyBack}
             </p>
-            <Link href="/dashboard" style={TAMEIO_TRIAL}>Συνέχεια με τη δοκιμή</Link>
+            <TrialLink />
           </div>
         )}
 
         {stage === 'confirm' && picked && (
           <>
-            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.55, margin: '14px 0 0' }}>
+            <p style={CARD_NOTE}>
               {firstCharge} {moneyBack}
             </p>
-            <div style={{ marginTop: 20, display: 'grid' }}>
+            <div style={{ marginTop: 24, display: 'grid' }}>
               <Btn variant="primary" size="lg" field onClick={() => open(picked.plan, picked.cycle)}>
                 Πληρωμή {fe(picked.cycle === 'annual' ? PLANS[picked.plan].priceAnnual : PLANS[picked.plan].priceMonthly)}
               </Btn>
@@ -221,32 +226,32 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
             {/* ΤΟ ΣΗΜΑ ΚΑΤΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ, ΟΧΙ ΣΤΑ ΠΑΚΕΤΑ ΜΟΝΟ. Εδώ ρωτά ο πελάτης «πού
                 θα δώσω την κάρτα μου»: ένα κλικ πριν ανοίξει η σελίδα του εμπόρου. */}
             {securedBy && <div style={{ textAlign: 'center' }}><SecuredBy text={securedBy} href={securedHref} lead={securedLead} logo={securedLogo} /></div>}
-            <Link href="/dashboard" style={TAMEIO_TRIAL}>Συνέχεια με τη δοκιμή</Link>
+            <TrialLink />
           </>
         )}
 
         {stage === 'opening' && (
-          <div role="status" style={{ padding: '26px 0 4px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Ανοίγει το ταμείο…</div>
+          <div role="status" style={{ padding: '26px 0 4px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 15 }}>Ανοίγει το ταμείο…</div>
         )}
 
         {stage === 'closed' && (
           <>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '14px 0 0' }}>
+            <p style={CARD_BODY}>
               Η πληρωμή δεν άνοιξε αυτή τη στιγμή. {note || 'Η δοκιμή σου τρέχει κανονικά και τη συνδρομή την ολοκληρώνεις όποτε θέλεις από τις Ρυθμίσεις.'}
             </p>
-            <Link href="/dashboard" style={TAMEIO_ACTION}>Συνέχεια στην εφαρμογή</Link>
+            <MainAction href="/dashboard">Συνέχεια στην εφαρμογή</MainAction>
           </>
         )}
 
         {stage === 'anonymous' && (
           <>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '14px 0 0' }}>
+            <p style={CARD_BODY}>
               Ο σύνδεσμος άνοιξε χωρίς ενεργή συνεδρία. Συνδέσου με το email σου
               {signIn === '/login' ? ' και συνέχισε τη συνδρομή από τις Ρυθμίσεις.' : ' και η πληρωμή ανοίγει ξανά με το ίδιο πακέτο.'}
             </p>
-            <Link href={signIn} style={TAMEIO_ACTION}>Σύνδεση</Link>
+            <MainAction href={signIn}>Σύνδεση</MainAction>
           </>
         )}
-    </TameioCard>
+    </StandaloneCard>
   );
 }

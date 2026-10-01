@@ -558,6 +558,28 @@ body {
    και το κουμπί δεν στριμώχνεται. Το κείμενο δίπλα παίρνει ό,τι μένει. */
 .po-btn.po-btn-keep { white-space: nowrap; flex-shrink: 0; }
 
+/* ═══ ΕΝΑ ΚΟΥΜΠΙ ΣΕ ΟΛΗ ΤΗ ΔΗΜΟΣΙΑ ΠΛΕΥΡΑ ════════════════════════════════════
+   ΤΙ ΜΕΤΡΗΘΗΚΕ (01.10.2026, 360 · 768 · 1440). Πέντε σχήματα κουμπιού σε πέντε
+   σελίδες που ο επισκέπτης περνά στη σειρά: χάπι 44 με λεκτικό 15 στην
+   κεφαλίδα και στο ταμείο, γωνία 10 με ύψος 40 και λεκτικό 13 στην εγγραφή
+   και στη σύνδεση, γωνία 8 με 36 στον πίνακα των πακέτων, 37 στη σελίδα 404
+   και 36 δίπλα σε πεδίο 40 στην επαλήθευση. Κανένα δεν ήταν λάθος μόνο του·
+   μαζί έλεγαν ότι κάθε σελίδα φτιάχτηκε από άλλο χέρι.
+
+   ΤΩΡΑ ΕΝΑ ΚΥΡΙΟ ΚΑΙ ΕΝΑ ΔΕΥΤΕΡΕΥΟΝ, ΜΕ ΤΟ ΣΧΗΜΑ ΤΗΣ ΑΡΧΙΚΗΣ: χάπι, ύψος 44
+   (ο στόχος αφής, ίδιο και με ποντίκι), λεκτικό 15 στα 700. Το `Btn` διαβάζει τις
+   τέσσερις μεταβλητές με εφεδρικές τιμές· εδώ ορίζονται μόνο για τα
+   περιτυλίγματα της δημόσιας πλευράς, οπότε η εφαρμογή δεν αλλάζει σε τίποτα.
+   Το δευτερεύον παίρνει το κύριο χρώμα κειμένου: στο ναυτικό ο δεύτερος τόνος
+   έκανε το περίγραμμα να μοιάζει ανενεργό κουμπί. */
+.pub-root, .auth-split, .po-standalone {
+  --btn-h: 44px;
+  --btn-pad: 0 22px;
+  --btn-radius: 100px;
+  --btn-fs: 15px;
+}
+:is(.pub-root, .auth-split, .po-standalone) .po-btn[data-variant="secondary"] { color: var(--text-primary); }
+
 /* Η ΑΙΩΡΗΣΗ ΜΟΝΟ ΟΠΟΥ ΥΠΑΡΧΕΙ ΔΕΙΚΤΗΣ. Σε οθόνη αφής το `:hover` κολλάει μετά
    το πάτημα και το κουμπί μένει «αναμμένο» ώσπου να αγγίξει ο χρήστης αλλού. */
 @media (hover: hover) {
@@ -4732,8 +4754,8 @@ body:has(.po-tool-page) .po-cookie {
    στήλες: Προϊόν, Εργαλεία, Οδηγοί, Εμπιστοσύνη. Οι οδηγοί πήραν δική τους
    στήλη με το όνομα του καθενός, αντί για έναν σύνδεσμο «Οδηγοί» κρυμμένο στο
    τέλος των εργαλείων — που διαβαζόταν ως πάρεργο. Τέσσερις στήλες στο μέτρο
-   1.044 βγάζουν ~240 η καθεμία με τρία κενά 28· κάτω από 760 γίνονται δύο
-   (η μάρκα πάντα ολόκληρη πάνω), κάτω από 440 μία. */
+   1.044 βγάζουν ~240 η καθεμία με τρία κενά 28· από τα 1024 και κάτω
+   γίνονται δύο (η μάρκα πάντα ολόκληρη πάνω) ακόμη και στο τηλέφωνο. */
 .lp-foot > :first-child { grid-column: 1 / -1; margin-bottom: clamp(4px, 1vw, 10px); }
 /* Η ΤΕΛΕΥΤΑΙΑ ΓΡΑΜΜΗ: ΠΝΕΥΜΑΤΙΚΑ, ΤΟΠΟΣ ΤΗΣ ΒΑΣΗΣ, LinkedIn. Η ζώνη πατήματος
    του σήματος (36, στην αφή 44) βγαίνει με αρνητικό περιθώριο, ώστε να μη
@@ -4769,11 +4791,18 @@ body:has(.po-tool-page) .po-cookie {
   .po-foot-bar { row-gap: 12px; }
   .po-social { margin-block: -6px; }
 }
-@media (max-width: 760px) {
+/* ΔΥΟ ΕΠΙ ΔΥΟ ΑΠΟ ΤΑ 1024 ΚΑΙ ΚΑΤΩ, ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ (01.10.2026). Στα 768 οι
+   τέσσερις στήλες έπαιρναν από 180 και τύλιγαν τα μισά λεκτικά σε δύο
+   γραμμές («Πώς υπολογίζεται / ο ΕΝΦΙΑ»), οπότε οι σύνδεσμοι της ίδιας σειράς
+   δεν στέκονταν πια στην ίδια ευθεία. Κάτω από τα 440 η μία στήλη έκανε το
+   υποσέλιδο μιάμιση ως δυόμισι οθόνες: δεκαέξι σύνδεσμοι των 44 ο ένας κάτω
+   από τον άλλον. Δύο στήλες χωρούν και στα 320 (περίπου 140 η καθεμιά), με
+   κενό 16 ώστε το λεκτικό να κρατά όσο πλάτος γίνεται. */
+@media (max-width: 1024px) {
   .lp-foot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 440px) {
-  .lp-foot { grid-template-columns: 1fr; }
+  .lp-foot { column-gap: 16px; }
 }
 
 /* ΚΑΡΤΑ ΟΔΗΓΟΥ ΣΤΟΝ ΚΟΜΒΟ /odigos. Χρώμα μόνο από tokens· η αιώρηση είναι
@@ -5544,13 +5573,16 @@ tr.po-row-more { display: none; }
 /* ΤΟ ΟΡΙΟ ΕΙΝΑΙ ΤΑ 960, ΟΧΙ ΤΑ 768. Ο πίνακας θέλει 860 και το περιθώριο της
    σελίδας τρώει ως 96: στα 820 της ταμπλέτας η στήλη του «Επαγγελματίας+» και
    το κουμπί της έμεναν έξω από την οθόνη, χωρίς κανένα σημάδι ότι υπάρχουν.
-   Από τα 600 οι κάρτες πάνε δύο δύο, με τα κοινά σε όλο το πλάτος. */
+   Από τα 600 οι κάρτες πάνε δύο δύο, με τα κοινά σε όλο το πλάτος.
+   ΚΑΙ ΑΠΟ 01.10.2026 ΤΑ 1024: το κουμπί κάθε στήλης λέει πλέον ολόκληρο το
+   «Ξεκίνα τη δοκιμή», όπως οι κάρτες και η αρχική. Θέλει 160 καθαρά.
+   Στήλη πακέτου 19,5% του πίνακα μείον γέμισμα 20 τα δίνει από τα 1024. */
 .plan-cmp-cards { display: none; }
-@media (max-width: 959px) {
+@media (max-width: 1023px) {
   .plan-cmp-table { display: none; }
   .plan-cmp-cards { display: grid; gap: 14px; align-items: start; }
 }
-@media (min-width: 600px) and (max-width: 959px) {
+@media (min-width: 600px) and (max-width: 1023px) {
   .plan-cmp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
   .plan-card-common { grid-column: 1 / -1; }
 }
@@ -5567,28 +5599,64 @@ tr.po-row-more { display: none; }
    η «Τιμή τον χρόνο» στέκεται δίπλα στην «Τιμή τον χρόνο» και τα κουμπιά στο
    ίδιο ύψος, στο κάτω μέρος. Χωρίς subgrid ο περιηγητής δείχνει απλώς
    στοιβαγμένες κάρτες, όπως πριν. */
+/* ΚΑΙ ΜΟΝΟ ΟΣΑ ΥΠΑΡΧΟΥΝ ΣΕ ΚΑΘΕ ΚΑΡΤΑ (01.10.2026). Οι δυνατότητες και το «δεν
+   περιλαμβάνει» ήταν κι αυτά κοινές σειρές: το «Ιδιοκτήτης» δεν έχει καμία
+   δυνατότητα πέρα από τα κοινά και ο γείτονάς του δύο, οπότε η κοντύτερη κάρτα
+   έμενε με τρύπα 50 ως 100 εικονοστοιχείων ανάμεσα στα όρια και στο κείμενό
+   της. Τώρα κοινές είναι οι σειρές που έχει κάθε κάρτα (τίτλος, τιμή,
+   κουμπί, όρια) και ό,τι διαφέρει ρέει σε μία τελευταία σειρά. Το κενό, όταν
+   υπάρχει, μένει στο κάτω άκρο της κάρτας, όχι στη μέση του περιεχομένου. */
 @supports (grid-template-rows: subgrid) {
-  @media (min-width: 600px) and (max-width: 959px) {
+  @media (min-width: 600px) and (max-width: 1023px) {
     .plan-cmp-cards .plan-card-plan {
       display: grid; grid-template-rows: subgrid; row-gap: 0;
-      grid-row: span calc(var(--plan-limits, 7) + 4);
+      grid-row: span calc(var(--plan-limits, 5) + 4);
     }
     .plan-card-plan .plan-card-limits {
       display: grid; grid-template-rows: subgrid; row-gap: 0;
-      grid-row: span var(--plan-limits, 7);
+      grid-row: span var(--plan-limits, 5);
     }
-    .plan-card-plan .plan-card-row { align-items: center; }
   }
 }
 .plan-card-plan { display: flex; flex-direction: column; }
-.plan-card-head { padding-bottom: 4px; }
+/* Η ετικέτα «Προτεινόμενο» στην ίδια γραμμή με το όνομα: δεν προσθέτει ύψος,
+   άρα δεν σπρώχνει τη μία κάρτα κάτω από τη γειτονική της. */
+.plan-card-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  column-gap: 10px; row-gap: 6px; padding-bottom: 2px;
+}
+.plan-card-head .plan-card-name { margin: 0; }
+.plan-card-head .plan-rec { margin: 0; }
 .plan-card-feats .plan-card-row:first-child { border-top: 1px solid var(--border-subtle); }
-.plan-card-lacks-none { border-top: none; padding: 0; margin: 0; }
-.plan-card-cta { display: grid; padding: 12px 0 8px; margin-top: auto; align-self: end; width: 100%; }
-/* Η δεύτερη τιμή («4,99€ με Νόα») κάτω από την πρώτη, σε δεύτερο τόνο. */
+.plan-card-limits { border-top: 1px solid var(--border-subtle); }
+.plan-card-cta { display: grid; padding: 4px 0 14px; width: 100%; }
+/* Η ΠΡΟΤΕΙΝΟΜΕΝΗ ΚΑΡΤΑ ΞΕΧΩΡΙΖΕΙ ΜΕ ΔΑΧΤΥΛΙΔΙ, ΟΧΙ ΜΟΝΟ ΜΕ ΕΤΙΚΕΤΑ. Ιδιο
+   χρώμα με το γεμάτο κουμπί της, σε δεύτερη ένταση στο γέμισμα. */
+.plan-card.is-rec {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+  background: linear-gradient(color-mix(in srgb, var(--accent) 6%, transparent), color-mix(in srgb, var(--accent) 6%, transparent)) var(--surface-raised);
+}
+
+/* ═══ Η ΤΙΜΗ ═════════════════════════════════════════════════════════════════
+   Ο αριθμός στο μέγεθος τίτλου, με ψηφία ίσου πλάτους· το «/μήνα» δίπλα του σε
+   δεύτερο τόνο και η εναλλακτική (ετήσια ή Νόα) σε δική της γραμμή. */
+.plan-price { display: block; padding: 10px 0 14px; line-height: 1.1; }
+.plan-price-num {
+  font-size: clamp(28px, 2.6vw, 32px); font-weight: 700; letter-spacing: -0.03em;
+  color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.plan-price-per { margin-left: 2px; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+.plan-price-alt {
+  display: block; margin-top: 6px;
+  font-size: 13px; font-weight: 500; line-height: 1.4; color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Η δεύτερη τιμή («χωρίς όριο με Νόα») κάτω από την πρώτη, σε δεύτερο τόνο. */
 .plan-card-alt {
-  display: block; margin-top: 2px;
-  font-size: 12.5px; font-weight: 600; color: var(--text-secondary);
+  display: block; margin-top: 1px;
+  font-size: 12.5px; font-weight: 600; line-height: 1.35; color: var(--text-secondary);
 }
 /* Η ετικέτα του προτεινόμενου πακέτου, ίδια με την κορδέλα της αρχικής. */
 .plan-rec {
@@ -5598,22 +5666,26 @@ tr.po-row-more { display: none; }
   border-radius: 999px; white-space: nowrap;
 }
 .plan-card-lacks {
-  margin: 4px 0 0; padding-top: 10px; border-top: 1px solid var(--border-subtle);
+  margin: 0; padding-top: 10px; border-top: 1px solid var(--border-subtle);
   font-size: 13px; line-height: 1.5; color: var(--text-tertiary);
 }
+.plan-card-rest { display: flex; flex-direction: column; }
 .plan-card {
   background: var(--surface-raised);
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
-  padding: 16px 16px 8px;
+  padding: 16px 16px 14px;
 }
 .plan-card-name {
   margin: 0 0 4px; font-size: 18px; font-weight: 680; letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 .plan-card-list { margin: 0; }
+/* ΚΑΘΕ ΣΕΙΡΑ ΚΕΝΤΡΑΡΙΣΜΕΝΗ ΣΤΟ ΥΨΟΣ ΤΗΣ. Με στοίχιση στη γραμμή βάσης η
+   διπλή τιμή του «Ιδιοκτήτης» («5» και από κάτω «χωρίς όριο με Νόα») κρεμόταν
+   κάτω από την ετικέτα της και οι σειρές έμοιαζαν άλλου ύψους η καθεμιά. */
 .plan-card-row {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+  display: flex; justify-content: space-between; align-items: center; gap: 14px;
   padding: 9px 0; border-top: 1px solid var(--border-subtle);
 }
 .plan-card-row:first-child { border-top: none; }
@@ -5632,6 +5704,59 @@ tr.po-row-more { display: none; }
    σπάει μόνο η ετικέτα αριστερά, σε κενό λέξης. */
 .plan-card-num, .plan-card-alt { white-space: nowrap; }
 .plan-card-no { color: var(--text-tertiary); font-weight: 500; }
+
+/* ═══ Ο ΠΙΝΑΚΑΣ: ΚΕΦΑΛΗ ΠΑΚΕΤΟΥ, ΣΤΗΛΗ ΠΡΟΤΑΣΗΣ, ΣΗΜΑΔΙΑ ΣΤΗ ΜΕΣΗ ════════════
+   ΤΡΙΑ ΠΟΥ ΦΑΙΝΟΝΤΑΝ ΣΤΑ 1440 (01.10.2026):
+   1) Η κεφαλή των είκοσι τεσσάρων γραμμών έφευγε στο πρώτο κύλισμα και από τη
+      δέκατη γραμμή ο επισκέπτης μετρούσε στήλες για να ξέρει ποιο πακέτο
+      διαβάζει. Καρφώνεται στην κορυφή της οθόνης. Για να δουλέψει το `sticky`
+      ο πίνακας δεν πρέπει να κάθεται σε κουτί που κυλά: εδώ, από τα 1024 και
+      πάνω, ο πίνακας χωράει, οπότε η κύλιση φεύγει και το κουτί κόβει τις
+      γωνίες του με `overflow: clip`, που ΔΕΝ φτιάχνει κουτί κύλισης.
+   2) Τα σημάδια κάθονταν στην κορυφή του κελιού (`vertical-align: top` του
+      `.po-table`, σωστό για πίνακες κειμένου) και η ετικέτα στη μέση του
+      δικού της ύψους: δύο ευθείες σε κάθε σειρά. Εδώ όλα στη μέση.
+   3) Η προτεινόμενη στήλη ήταν μόνο μια ετικέτα στην κεφαλή. Τώρα ένα λεπτό
+      γέμισμα την κρατά από την κεφαλή ως το κουμπί. */
+@media (min-width: 1024px) {
+  .plan-cmp-table .po-table-box { overflow: clip; }
+  .plan-cmp-table .plan-matrix { overflow: visible; }
+  .plan-matrix .po-table thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: var(--bg-surface);
+    box-shadow: inset 0 -1px 0 var(--border-default);
+  }
+}
+.plan-matrix .po-table thead th.plan-th {
+  text-align: center; vertical-align: bottom; padding-top: 14px; padding-bottom: 14px;
+  text-transform: none; letter-spacing: normal; font-weight: 400;
+}
+.plan-th-flag { display: flex; justify-content: center; min-height: 22px; margin-bottom: 6px; }
+.plan-th-flag .plan-rec { margin: 0; }
+.plan-th-name {
+  display: block; font-size: 16px; font-weight: 680; letter-spacing: -0.02em; line-height: 1.25;
+  color: var(--text-primary);
+}
+.plan-th .plan-price { padding: 8px 0 0; }
+.plan-th .plan-price-alt { font-size: 12px; margin-top: 4px; }
+.plan-matrix .po-table tbody th,
+.plan-matrix .po-table tbody td { vertical-align: middle; }
+/* Το σημάδι στο κέντρο του κελιού, ένα εικονοστοιχείο χαμηλότερα: η μέση της
+   ελληνικής πεζής γραμμής κάθεται κάτω από τη μέση του κουτιού της. */
+.plan-matrix td > .plan-tick { display: block; margin: 0 auto; transform: translateY(1px); }
+.plan-matrix .plan-card-alt { font-size: 12px; }
+/* Οι τιμές των κελιών στον πρώτο τόνο και σε βάρος, όπως στις κάρτες: τα
+   «Έως 3» και «Χωρίς όριο» είναι η απάντηση, η ετικέτα αριστερά η ερώτηση. */
+.plan-matrix td .plan-card-num { font-weight: 600; color: var(--text-primary); }
+/* Στη στενή στήλη το κουμπί κρατά λιγότερο πλευρικό γέμισμα, ίδιο ύψος και
+   ίδιο λεκτικό με κάθε άλλο κουμπί της δημόσιας πλευράς. */
+.plan-matrix { --btn-pad: 0 12px; }
+.plan-matrix .po-table .is-rec { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.plan-matrix .po-table thead th.is-rec {
+  background: linear-gradient(color-mix(in srgb, var(--accent) 7%, transparent), color-mix(in srgb, var(--accent) 7%, transparent)) var(--bg-surface);
+  box-shadow: inset 0 2px 0 var(--accent), inset 0 -1px 0 var(--border-default);
+}
+.plan-matrix .po-table tr.plan-cta-row td { padding-top: 14px; padding-bottom: 16px; }
 
 .po-scroll-x, .lp-plans, .lp-duo {
   overscroll-behavior-x: contain;
@@ -6215,3 +6340,65 @@ tr.po-row-more { display: none; }
    περνούσε. Το `!important` είναι η δήλωση ότι αυτός ο κανόνας κρίνεται
    τελευταίος: η στοίχιση και ο συλλαβισμός πάνε μαζί ή καθόλου. */
 .po-just, .po-just-c, [data-ts="j"], .lp-why p { text-wrap: wrap !important; }
+
+/* ═══ Η ΣΕΛΙΔΑ 404: ΑΓΚΥΡΑ ΚΑΙ ΔΥΟ ΔΡΟΜΟΙ ══════════════════════════════════════
+   Ο αριθμός είναι εικόνα, όχι κείμενο (`aria-hidden`): μεγάλος, με ψηφία ίσου
+   πλάτους, γεμάτος στον τόνο της γραμμής (όχι περίγραμμα: η Inter έχει
+   επικαλυπτόμενα περιγράμματα και το `text-stroke` ζωγράφιζε τις ενώσεις
+   των σχημάτων μέσα στα ψηφία), ώστε να δίνει βάρος στη
+   σύνθεση χωρίς να ανταγωνίζεται τον τίτλο. Στο τηλέφωνο τα δύο κουμπιά
+   γίνονται ίσα και στοιβαγμένα, αντί για δύο πλάτη που τυλίγουν άτακτα. */
+.e404-code {
+  margin: 0 0 8px; font-size: clamp(88px, 16vw, 144px); font-weight: 800; line-height: 1;
+  letter-spacing: -0.06em; font-variant-numeric: tabular-nums;
+  color: var(--border-default); user-select: none;
+}
+.e404-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+@media (max-width: 440px) {
+  .e404-actions { flex-direction: column; align-items: stretch; }
+}
+
+/* Ο σύνδεσμος της σελίδας όπου βρίσκεσαι, στην κεφαλίδα: γραμμή έμφασης κάτω
+   από το λεκτικό, μέσα στο γέμισμά του ώστε να μη μετακινεί τίποτα. */
+.lp-nav-link[aria-current="page"] {
+  text-decoration: underline; text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px; text-underline-offset: 8px;
+}
+
+/* Η αυτοτελής κάρτα (app/StandaloneCard.tsx): ταμείο και επαλήθευση εγγράφου. */
+.po-standalone-card {
+  width: 100%; max-width: 440px; box-sizing: border-box;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: 14px; padding: 28px; box-shadow: var(--elev-1);
+}
+@media (max-width: 480px) { .po-standalone-card { padding: 24px 20px; } }
+
+/* ═══ Η ΕΤΙΚΕΤΑ ΠΕΔΙΟΥ ΣΤΗ ΔΗΜΟΣΙΑ ΠΛΕΥΡΑ ════════════════════════════════════
+   Εγγραφή, σύνδεση και επαλήθευση έγραφαν τις ετικέτες σε κεφαλαία 12 με
+   αραίωμα: «ΟΝΟΜΑΤΕΠΩΝΥΜΟ (προαιρετικό)», μισή σε κεφαλαία και μισή σε πεζά,
+   να φωνάζει πάνω από κάθε πεδίο. Πεζά 13 σε μεσαίο βάρος: διαβάζεται ως
+   ετικέτα και αφήνει τον τίτλο της φόρμας να είναι ο τίτλος. */
+.po-field-label {
+  display: block; margin-bottom: 8px;
+  font-size: 13px; font-weight: 500; line-height: 1.4; color: var(--text-secondary);
+}
+.po-field-label .po-field-opt { color: var(--text-tertiary); font-weight: 400; }
+
+/* ═══ ΕΓΓΡΑΦΗ: ΦΟΡΜΑ ΚΑΙ ΠΑΝΕΛ ΞΕΚΙΝΟΥΝ ΑΠΟ ΤΗΝ ΙΔΙΑ ΕΥΘΕΙΑ ══════════════════
+   Η φόρμα της εγγραφής είναι ψηλότερη από τον χώρο που αφήνει το κεντράρισμα,
+   οπότε δεν μπορούσε να ξεκινήσει στο ύψος του κεντραρισμένου πάνελ δίπλα της
+   (150 έναντι 265). Με `auth-top` και οι δύο κρέμονται από το `--auth-top`. Το
+   πάνελ έχει ήδη 128 πάνω από το σώμα του (γέμισμα 48, λογότυπο 24, κενό 56),
+   οπότε του δίνεται μόνο η διαφορά. Στο τηλέφωνο το πάνελ κρύβεται και το
+   γέμισμα το ορίζει ο κανόνας του `.auth-main` για τα 860. */
+.auth-top { --auth-top: max(128px, 14vh); }
+.auth-top .auth-aside-body { justify-content: flex-start; padding-top: calc(var(--auth-top) - 128px); }
+
+/* ═══ ΤΑ ΚΟΥΤΑΚΙΑ ΤΗΣ ΣΥΝΑΙΝΕΣΗΣ ΣΤΟ ΣΚΟΥΡΟ ═════════════════════════════════
+   Το `accent-color` χρωμάτιζε μόνο το τσεκαρισμένο κουτάκι· το άδειο έμενε το
+   λευκό τετράγωνο του συστήματος, το μόνο φωτεινό σημείο της σελίδας. Με
+   `color-scheme` το σύστημα ζωγραφίζει το άδειο κουτάκι στο σκούρο, με
+   περίγραμμα, όπως τα πεδία από πάνω του. Στο φωτεινό θέμα ισχύει το φωτεινό. */
+.auth-split { color-scheme: dark; }
+:root[data-mode="light"] .auth-split { color-scheme: light; }
+.po-check { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; }

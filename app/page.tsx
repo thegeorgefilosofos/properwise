@@ -162,7 +162,7 @@ export default async function Landing() {
             «Είσοδος», έβγαινε τρία εικονοστοιχεία έξω από την οθόνη. */}
         <nav style={{ ...wrap, height: 64, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-            <BrandLogo size={26} />
+            <BrandLogo />
           </div>
           {/* Οι ίδιοι σύνδεσμοι με κάθε άλλη δημόσια σελίδα (PublicNav): «Τιμές»,
               «Σύνδεση» και η δοκιμή. Στο κινητό το «Σύνδεση» κονταίνει σε
