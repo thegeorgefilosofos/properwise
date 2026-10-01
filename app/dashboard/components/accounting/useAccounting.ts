@@ -13,6 +13,7 @@ import * as loanStore from '@/lib/data/loans'
 import * as stayStore from '@/lib/data/stays'
 import * as rentStore from '@/lib/data/rent'
 import * as tenantStore from '@/lib/data/tenants'
+import { rentIncomeOf } from '@/lib/rent/split'
 import { rentCollectionMode, collectionViaBankOf } from '@/lib/tax/rentCollectionMode'
 import * as expenseStore from '@/lib/data/expenses'
 import { ownerShareOf, ownerShareOfAmount } from '@/lib/expenses/sharing'
@@ -280,7 +281,9 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // Το `id`, το `bill_id` και το `paid` ζητούνται για ΕΝΑ λόγο: να ξέρει η
   // συγχώνευση με τους λογαριασμούς ποιος λογαριασμός έχει ήδη γίνει δαπάνη.
   type ExpenseRow  = Pick<ExpensesRow, 'id'|'bill_id'|'paid'|'date'|'amount'|'category'|'expense_group'|'description'|'supplier_country'|'supply'|'supplier_afm'|'paid_by'|'share_percent'>
-  type RentRow     = Pick<RentPaymentsRow, 'period_year'|'period_month'|'amount'|'paid'|'paid_date'|'due_date'|'method'>
+  // Το `base_rent` χωρίζει το μίσθωμα από τις υπηρεσίες της ίδιας δόσης: ο φόρος
+  // μετρά μόνο το πρώτο (lib/rent/split.ts).
+  type RentRow     = Pick<RentPaymentsRow, 'period_year'|'period_month'|'amount'|'base_rent'|'services_charge'|'paid'|'paid_date'|'due_date'|'method'>
   type PortfolioRentRow = RentRow & Pick<RentPaymentsRow, 'property_id'>
   type StayRow     = TaxStay & Pick<ClientStaysRow, 'id'|'channel'|'declared_at'>
   type PortfolioStayRow = StayRow & Pick<ClientStaysRow, 'property_id'>
@@ -334,12 +337,12 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
         expenseStore.ledgerWithError<ExpenseRow>(supabase,propertyId,{ columns:'id,bill_id,paid,date,amount,category,expense_group,description,supplier_country,supply,supplier_afm,paid_by,share_percent' }),
         // Ο ΤΡΟΠΟΣ ΠΛΗΡΩΜΗΣ ΕΙΝΑΙ ΦΟΡΟΛΟΓΙΚΟ ΣΤΟΙΧΕΙΟ, ΟΧΙ ΔΙΑΚΟΣΜΗΤΙΚΟ: από
         // αυτόν κρίνεται η τεκμαρτή έκπτωση 5%. Μία στήλη παραπάνω στο ίδιο ερώτημα.
-        rentStore.ofPropertyWithError<RentRow>(supabase,propertyId,`${rentStore.LEDGER_COLUMNS},method`,userId),
+        rentStore.ofPropertyWithError<RentRow>(supabase,propertyId,`${rentStore.LEDGER_COLUMNS},base_rent,services_charge,method`,userId),
         stayStore.ofPropertyWithError<StayRow>(supabase,propertyId,`id,${stayStore.ACCOUNTING_COLUMNS}`,userId),
         loanStore.ofPropertyWithError(supabase,propertyId,userId),
         properties.oneWithError<PropRow>(supabase, propertyId, 'id,name,address,rental_mode,enfia,sqm,value,year_built,floor,purchase_price,purchase_date,prop_type,ownership,postal_code', userId),
         properties.listWithError<PropListRow>(supabase, userId, { columns: 'id,name,rental_mode,status_detail,enfia,sqm,ownership,prop_type,client_id' }),
-        rentStore.ofUserWithError<PortfolioRentRow>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS}`),
+        rentStore.ofUserWithError<PortfolioRentRow>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS},base_rent,services_charge`),
         stayStore.ofUserWithError<PortfolioStayRow>(supabase,userId,`property_id,${stayStore.ACCOUNTING_COLUMNS}`),
         inventoryStore.ofPropertyWithError<InventoryRow>(supabase,propertyId,'name,purchase_value,category,purchase_date',userId),
         // Η ΠΡΟΘΕΣΗ ΤΗΣ ΜΙΣΘΩΣΗΣ, όταν δεν υπάρχει απόδειξη απο τις εισπράξεις.
@@ -466,8 +469,11 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // Ετήσια στοιχεία τρέχοντος ακινήτου. Φόρος επί ΔΕΔΟΥΛΕΥΜΕΝΟΥ (accrued) ενοικίου
   //, φορολογείται ό,τι οφείλεται, ανεξάρτητα είσπραξης· τα ανείσπρακτα μειώνουν
   // μόνο το ταμείο. (Μακροχρόνια.)
-  const rentAccruedYear = useMemo(()=>mine(rent.filter(p=>p.period_year===year).reduce((s,p)=>s+(p.amount||0),0)),[rent,year,mine])
-  const rentCollectedYear = useMemo(()=>mine(rent.filter(p=>p.paid&&p.period_year===year).reduce((s,p)=>s+(p.amount||0),0)),[rent,year,mine])
+  // ΤΟ ΜΙΣΘΩΜΑ, ΟΧΙ Η ΔΟΣΗ: το `amount` περιέχει και τις υπηρεσίες που
+  // χρεώνονται στον μισθωτή (ίντερνετ, συνδρομές, καθαρισμός, στάθμευση) και
+  // ο φόρος τις μετρούσε ως ενοίκιο. Το ίδιο μέτρο με το Ε2.
+  const rentAccruedYear = useMemo(()=>mine(rent.filter(p=>p.period_year===year).reduce((s,p)=>s+rentIncomeOf(p),0)),[rent,year,mine])
+  const rentCollectedYear = useMemo(()=>mine(rent.filter(p=>p.paid&&p.period_year===year).reduce((s,p)=>s+rentIncomeOf(p),0)),[rent,year,mine])
   // Τι λένε τα δεδομένα και τι ισχύει τελικά (η παράκαμψη του χρήστη νικά).
   const collection = useMemo(() => rentCollectionMode(rent, year, leaseViaBank), [rent, year, leaseViaBank])
   // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΜΕΤΡΑΕΙ ΜΟΝΟ ΑΠΟ ΤΗ ΧΡΗΣΗ 2026. Ο δημόσιος υπολογιστής
@@ -617,7 +623,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const consolidation = useMemo(()=>{
     const items = (taxpayerProps.length?taxpayerProps:[{id:propertyId,name:prop?.name,rental_mode:prop?.rental_mode,enfia:prop?.enfia,sqm:prop?.sqm,prop_type:prop?.prop_type}]).map(p=>{
       const rmode:TaxRegime = readStatus(p as StatusRow) === 'rent_short' ? 'individual_shortterm' : 'individual_longterm'
-      const pRentAccrued = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).reduce((s,r)=>s+(r.amount||0),0)
+      const pRentAccrued = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).reduce((s,r)=>s+rentIncomeOf(r),0)
       // ══ Ο ΦΟΡΟΣ ΑΓΝΟΟΥΣΕ ΤΗΝ ΑΠΑΛΛΑΓΗ ΠΟΥ Η ΙΔΙΑ ΚΑΡΤΑ ΕΔΕΙΧΝΕ ══════════════
       // Το `incomeStatement` κατεβάζει το ΦΟΡΟΛΟΓΗΤΕΟ κατά τα διεκδικημένα
       // ανείσπρακτα, αλλά ο ΦΟΡΟΣ δεν βγαίνει από εκεί: για φυσικό πρόσωπο
@@ -626,7 +632,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
       // απαλλαγή. Η κάρτα έγραφε «φόρος 3.550€ σε φορολογητέο 7.600€», δηλαδή
       // 46,7% εκεί που ο ανώτατος συντελεστής της κλίμακας είναι 45%.
       // Το αδύνατο ποσοστό ήταν το μόνο ορατό ίχνος.
-      const pUncollected = allRent.filter(r=>r.property_id===p.id&&r.period_year===year&&!r.paid).reduce((s,r)=>s+(r.amount||0),0)
+      const pUncollected = allRent.filter(r=>r.property_id===p.id&&r.period_year===year&&!r.paid).reduce((s,r)=>s+rentIncomeOf(r),0)
       // Μόνο για ΤΟ ακίνητο του τσεκ: η απαλλαγή είναι ανά μίσθωση.
       const pRelief = claimedUncollected && p.id===propertyId ? pUncollected : 0
       // ══ Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΕΙΝΑΙ ΤΟΥ ΑΚΙΝΗΤΟΥ, ΟΧΙ ΤΗΣ ΑΝΟΙΧΤΗΣ ΚΑΡΤΕΛΑΣ ══

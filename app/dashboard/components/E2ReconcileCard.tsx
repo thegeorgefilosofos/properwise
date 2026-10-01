@@ -41,6 +41,7 @@ import { ATAK_SOURCE, ATAK_DIGITS, atakDigits, isAtak } from '@/lib/property/ata
 import * as propertyStore from '@/lib/data/properties';
 import { failed } from '@/lib/core/dbError';
 import { shortTermYearSummary } from '@/lib/tax/shortTermTax';
+import { rentIncomeOf } from '@/lib/rent/split';
 
 // Χρώμα ΜΟΝΟ όπου υπάρχει κάτι να γίνει. Η συμφωνία δεν είναι επίτευγμα που
 // θέλει πράσινο· είναι η αναμενόμενη κατάσταση και γράφεται με τον τόνο του
@@ -152,7 +153,8 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
           // δόσεις: εκεί τα ανείσπρακτα μισθώματα δεν έχουν νόημα, ακριβώς
           // όπως τα μηδενίζει και η Λογιστική.
           const due = shortTerm ? [] : (paymentsByProp.get(p.id) || []);
-          const unpaid = due.reduce((s, x) => s + (x.paid ? 0 : (x.amount || 0)), 0);
+          // Το μίσθωμα της δόσης, όχι οι υπηρεσίες της: το ίδιο ποσό που μετρά το έντυπο.
+          const unpaid = due.reduce((s, x) => s + (x.paid ? 0 : rentIncomeOf(x)), 0);
           return {
             atak: p.atak,
             name: p.name || p.address || p.atak || 'Ακίνητο',
