@@ -147,7 +147,7 @@ async function main() {
       { name: 'Αντικατάσταση θερμοσίφωνα', elp: '11', cost: 420, acquired: null, rate: null, source: 'Δαπάνη', candidate: true },
     ],
     dossier: {
-      requirements: requirementsFor({ form: 'individual', books: 'none', year: 2026, hasShortTerm: true, hasLongTerm: true } as never),
+      requirements: requirementsFor({ form: 'individual', books: 'none', statuses: ['rent_long', 'rent_short'] }),
       haveIds: [], gaps: ['Καμία δαπάνη κοινοχρήστων για το 2026.'],
       readinessMessage: 'Λείπουν τρία δικαιολογητικά πριν φύγει ο φάκελος.',
       formLabel: 'Φυσικό πρόσωπο', booksLabel: 'Χωρίς βιβλία',
