@@ -517,7 +517,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
     finally { setGenOfficial(false); }
   };
 
-  const fieldStyle: CSSProperties = { width: '100%', padding: '10px 16px', borderRadius: T.radius.xs, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 14, outline: 'none' };
+  const fieldStyle: CSSProperties = { width: '100%', padding: '10px 16px', borderRadius: T.radius.xs, border: '1px solid var(--border-control)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 14, outline: 'none' };
 
   const exportCsv = () => {
     const head = ['Ακίνητο', 'Τύπος', 'Κατάσταση', 'Έσοδα έτους', 'Βάση εσόδων', 'Δαπάνες έτους', 'Καθαρό', 'Πληρότητα %', 'Διαθέσιμες ημέρες', 'Νύχτες', 'Εκκρεμότητες', 'Οφειλές (€)'];
