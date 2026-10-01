@@ -313,7 +313,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
               // μόνο όταν ο κέρσορας/δάχτυλο περνά πάνω από τη γραμμή (ήσυχο UI).
               <div key={i} onMouseEnter={() => setHoverRow(i)} onMouseLeave={() => setHoverRow(null)} onFocusCapture={() => setHoverRow(i)}
                 style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input aria-label="Ονομα συνιδιοκτήτη" value={r.name} onChange={e => setRow(i, 'name', e.target.value)} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="Όνομα" style={{ ...field, flex: '2 1 140px' }} />
+                <input aria-label="Όνομα συνιδιοκτήτη" value={r.name} onChange={e => setRow(i, 'name', e.target.value)} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="Όνομα" style={{ ...field, flex: '2 1 140px' }} />
                 <input aria-label="ΑΦΜ συνιδιοκτήτη" value={r.afm} onChange={e => setRow(i, 'afm', e.target.value.replace(/\D/g, '').slice(0, 9))} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="ΑΦΜ" style={{ ...field, flex: '1 1 100px' }} inputMode="numeric" />
                 <div style={{ position: 'relative', flex: '0 0 92px' }}>
                   {/* ΤΟ ΠΟΣΟΣΤΟ ΙΔΙΟΚΤΗΣΙΑΣ ΔΕΝ ΠΕΡΝΑΕΙ ΤΟ 100 ΚΑΙ ΔΕΝ ΓΙΝΕΤΑΙ

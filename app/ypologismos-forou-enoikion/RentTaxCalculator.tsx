@@ -219,7 +219,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
       }}>
         <div style={{ flex: 1, minWidth: 210 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-            Εισπράττω μέσω τραπέζης
+            Εισπράττω μέσω τράπεζας
           </div>
           {/* ΤΟ ΚΕΙΜΕΝΟ ΑΛΛΑΖΕΙ ΜΕ ΤΗΝ ΑΠΑΝΤΗΣΗ ΚΑΙ ΔΕΝ ΛΕΕΙ ΔΥΟ ΦΟΡΕΣ ΤΟ ΙΔΙΟ.
               Όσο ο διακόπτης είναι ανοιχτός αρκεί ο κανόνας· μόλις κλείσει,
@@ -231,7 +231,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
           </p>
         </div>
         <Toggle on={viaBank} onChange={on => set('trapeza', on ? '1' : '0')}
-          ariaLabel="Εισπράττω μέσω τραπέζης"/>
+          ariaLabel="Εισπράττω μέσω τράπεζας"/>
       </div>}
 
       {/* ── Η κεφαλίδα του χαρτιού, πάνω από το αποτέλεσμα ─────────────── */}
@@ -242,7 +242,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
         { k: 'Μηνιαίο ενοίκιο', v: feAuto(amount(monthly)) },
         { k: 'Μήνες', v: fn(r.months) },
         { k: 'Ετήσιο ενοίκιο', v: feAuto(r.gross) },
-        ...(bankMatters ? [{ k: 'Είσπραξη', v: viaBank ? 'μέσω τραπέζης' : 'με μετρητά' }] : []),
+        ...(bankMatters ? [{ k: 'Είσπραξη', v: viaBank ? 'μέσω τράπεζας' : 'με μετρητά' }] : []),
       ]}/>
 
       {/* ── Το αποτέλεσμα ──────────────────────────────────────────────── */}

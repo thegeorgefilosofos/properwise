@@ -421,7 +421,7 @@ export function useClients({ userId }: ClientsProps) {
       const data: unknown = await res.json();
       if (!res.ok) {
         const msg = isRecord(data) ? data.error : undefined;
-        setEmailErr(typeof msg === 'string' && msg ? msg : 'Σφάλμα ανάλυσης.'); setEmailBusy(false); return;
+        setEmailErr(typeof msg === 'string' && msg ? msg : 'Η ανάλυση του email δεν ολοκληρώθηκε. Δοκίμασε ξανά.'); setEmailBusy(false); return;
       }
       const content: unknown = isRecord(data) ? data.content : undefined;
       const blocks: readonly unknown[] = Array.isArray(content) ? content : [];
@@ -594,14 +594,14 @@ export function useClients({ userId }: ClientsProps) {
     const safe = file.name.replace(/[^\w.\-]+/g, '_');
     const path = `${userId}/clients/${openId}/${Date.now()}_${safe}`;
     const { error: upErr } = await supabase.storage.from('property-files').upload(path, file, { upsert: false, contentType: file.type || undefined });
-    if (upErr) { setDocMsgOf({ clientId: openId, msg: { text: `Σφάλμα ανεβάσματος: ${upErr.message}`, error: true } }); setDocBusy(false); return; }
+    if (upErr) { setDocMsgOf({ clientId: openId, msg: { text: failed('Το έγγραφο δεν ανέβηκε', upErr), error: true } }); setDocBusy(false); return; }
     const { error: insErr } = await supabase.from('client_documents').insert({
       user_id: userId, client_id: openId, name: file.name, file_path: path,
       mime: file.type || null, size: file.size, kind: docKind,
     });
     if (insErr) {
       await supabase.storage.from('property-files').remove([path]);
-      setDocMsgOf({ clientId: openId, msg: { text: `Σφάλμα καταχώρησης: ${insErr.message}`, error: true } }); setDocBusy(false); return;
+      setDocMsgOf({ clientId: openId, msg: { text: failed('Το έγγραφο δεν αποθηκεύτηκε', insErr), error: true } }); setDocBusy(false); return;
     }
     setDocBusy(false); setDocMsgOf({ clientId: openId, msg: { text: 'Το έγγραφο προστέθηκε' } });
     setTimeout(() => setDocMsgOf(null), 3000);
@@ -640,14 +640,16 @@ export function useClients({ userId }: ClientsProps) {
     try {
       const { data, error } = await supabase.functions.invoke('ical-sync', { body: { action: 'preview', url } });
       if (error || !data?.ok) {
-        const detail = data?.error || error?.message || '';
-        setIcalMsg({ text: `Δεν ήταν δυνατή η ανάκτηση από το URL${detail ? `: ${detail}` : ''}. Αν δεν έχει ενεργοποιηθεί ο αυτόματος συγχρονισμός, άνοιξε τον σύνδεσμο, αντίγραψε το .ics και επικόλλησέ το κάτω.`, error: true });
+        // Το κείμενο του διακομιστή περνά μόνο όταν είναι ελληνικό· το αγγλικό
+        // «non-2xx status code» της βιβλιοθήκης δεν φτάνει στον χρήστη.
+        const detail = typeof data?.error === 'string' && /[Α-ώ]/.test(data.error) ? data.error : '';
+        setIcalMsg({ text: `Το ημερολόγιο δεν ανακτήθηκε από τον σύνδεσμο${detail ? `: ${detail}` : ''}. Αν δεν έχει ενεργοποιηθεί ο αυτόματος συγχρονισμός, άνοιξε τον σύνδεσμο, αντίγραψε το .ics και επικόλλησέ το κάτω.`, error: true });
         setIcalBusy(false); return;
       }
       setIcalEvents((data.events || []) as ICalEvent[]);
       if (!data.events?.length) setIcalMsg({ text: 'Δεν βρέθηκαν κρατήσεις στο ημερολόγιο.', error: true });
     } catch (e) {
-      setIcalMsg({ text: `Σφάλμα ανάκτησης: ${String(e)}`, error: true });
+      setIcalMsg({ text: failed('Το ημερολόγιο δεν ανακτήθηκε', e), error: true });
     } finally { setIcalBusy(false); }
   };
   // Αποθήκευση συνδέσμου για αυτόματο συγχρονισμό + άμεσος πρώτος συγχρονισμός.
@@ -658,7 +660,7 @@ export function useClients({ userId }: ClientsProps) {
     const { error } = await supabase.from('ical_feeds').upsert({
       user_id: userId, property_id: icalPropertyId, channel: icalChannel, url, include_blocked: icalIncludeBlocked, active: true,
     }, { onConflict: 'user_id,property_id,url' });
-    if (error) { setIcalMsg({ text: `Σφάλμα αποθήκευσης: ${error.message}`, error: true }); setIcalBusy(false); return; }
+    if (error) { setIcalMsg({ text: failed('Ο σύνδεσμος δεν αποθηκεύτηκε', error), error: true }); setIcalBusy(false); return; }
     await loadIcalFeeds();
     setIcalBusy(false);
     setIcalMsg({ text: 'Ο σύνδεσμος αποθηκεύτηκε. Ο συγχρονισμός θα τρέχει αυτόματα· μπορείς και χειροκίνητα με «Συγχρονισμός τώρα».' });
@@ -670,7 +672,7 @@ export function useClients({ userId }: ClientsProps) {
     try {
       const { data, error } = await supabase.functions.invoke('ical-sync', { body: { action: 'sync', propertyId } });
       if (error || !data?.ok) {
-        setIcalMsg({ text: `Ο συγχρονισμός απέτυχε${data?.error ? `: ${data.error}` : ''}. Βεβαιώσου ότι έχει γίνει deploy η function ical-sync.`, error: true });
+        setIcalMsg({ text: failed('Ο συγχρονισμός δεν ολοκληρώθηκε', error ?? undefined), error: true });
       } else {
         const failed = (data.results || []).filter((r: { ok: boolean }) => !r.ok).length;
         setIcalMsg({ text: `Συγχρονισμός ολοκληρώθηκε: ${data.inserted || 0} νέες κρατήσεις από ${data.feeds || 0} συνδέσμους${failed ? ` (${failed} με σφάλμα)` : ''}.`, error: failed > 0 });
@@ -678,7 +680,7 @@ export function useClients({ userId }: ClientsProps) {
       }
       loadIcalFeeds();
     } catch (e) {
-      setIcalMsg({ text: `Σφάλμα συγχρονισμού: ${String(e)}`, error: true });
+      setIcalMsg({ text: failed('Ο συγχρονισμός δεν ολοκληρώθηκε', e), error: true });
     } finally { setIcalBusy(false); }
   };
   const delIcalFeed = async (f: IcalFeed) => {
@@ -710,7 +712,7 @@ export function useClients({ userId }: ClientsProps) {
       .filter(d => !d.cancelled && (icalIncludeBlocked || !d.blocked));
     if (drafts.length === 0) { setIcalMsg({ text: 'Δεν υπάρχουν κρατήσεις προς εισαγωγή (μόνο μπλοκαρίσματα ημερομηνιών).', error: true }); setIcalBusy(false); return; }
     const clientId = await ensureChannelClient(icalChannel);
-    if (!clientId) { setIcalMsg({ text: 'Σφάλμα δημιουργίας επισκέπτη καναλιού.', error: true }); setIcalBusy(false); return; }
+    if (!clientId) { setIcalMsg({ text: failed('Ο επισκέπτης του καναλιού δεν δημιουργήθηκε'), error: true }); setIcalBusy(false); return; }
     // Αποφυγή διπλοεγγραφών: κλειδί ακίνητο+άφιξη+αναχώρηση απέναντι στις υπάρχουσες.
     const existingKeys = new Set(stays.map(s => stayKey(s.property_id || '', s.check_in || '', s.check_out || '')));
     const fresh = drafts.filter(d => !existingKeys.has(stayKey(d.property_id, d.check_in, d.check_out)));
@@ -724,7 +726,7 @@ export function useClients({ userId }: ClientsProps) {
     // Η παρτίδα των πενήντα ήταν γραμμένη εδώ· είναι κανόνας του πίνακα, όχι
     // της οθόνης και ζει πλέον στο στρώμα μαζί με τη διακοπή στο πρώτο σφάλμα.
     const { error } = await stayStore.addBatched(supabase, rows);
-    if (error) { setIcalMsg({ text: `Σφάλμα εισαγωγής: ${error.message}`, error: true }); setIcalBusy(false); loadStays(); return; }
+    if (error) { setIcalMsg({ text: failed('Οι κρατήσεις δεν αποθηκεύτηκαν', error), error: true }); setIcalBusy(false); loadStays(); return; }
     const inserted = rows.length;
     setIcalBusy(false);
     setIcalMsg({ text: `Εισήχθησαν ${inserted} κρατήσεις${skipped > 0 ? ` · ${skipped} υπήρχαν ήδη` : ''}.` });

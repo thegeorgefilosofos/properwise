@@ -16,7 +16,7 @@ import { ENERGY_MODE_LABEL } from '@/lib/property/energy'
 import { NOT_TAX_DEPRECIATION_NOTE } from '@/lib/inventory/depreciation'
 import { ABSENT, ABSENT_DATE } from '@/components/Theme'
 import { INK, INK_FAINT, INK_MUTED, PAPER_ALT, RULE } from '@/lib/print/ink'
-import { INVENTORY_CATEGORIES, inventoryLabel, type InventoryItem, type InventoryRepair } from './model'
+import { INVENTORY_CATEGORIES, inventoryLabel, conditionLabel, type InventoryItem, type InventoryRepair } from './model'
 import {
   calcCurrentValue, calcDepreciationPct, calcAgeDisplay, calcMonthlyKwh, calcMonthlyCost,
   hasEnergy, fmtDate,
@@ -67,13 +67,13 @@ export function inventoryExports({items,repairs,kwhPrice}:{items:InventoryItem[]
     downloadTableXlsx('Απογραφή ακινήτου', {
       title: 'Απογραφή ακινήτου',
       headers:['Ονομασία','Κατηγορία','Δωμάτιο','Μάρκα','Μοντέλο','Σειριακός','Κατάσταση','Αξία αγοράς (€)','Εκτιμώμενη υπολειπόμενη αξία (€)','Ποσοστό υπολειπόμενης αξίας','Κόστος αντικατάστασης (€)','Ενεργειακή κλάση','Τρόπος μέτρησης','kWh ανά 100 κύκλους','Κύκλοι ανά μήνα','kWh ανά έτος','Watt','Ώρες ανά ημέρα','kWh ανά μήνα','Κόστος ρεύματος ανά μήνα (€)','Ηλικία','Ημερομηνία αγοράς','Λήξη εγγύησης','Σημειώσεις'],
-      rows: items.map(i=>[i.name,i.category,i.room,i.brand,i.model,i.serial_number,i.condition,i.purchase_value||'',calcCurrentValue(i),Math.max(0,100-calcDepreciationPct(i)),i.replacement_cost||'',i.energy_class||'',i.energy_mode?ENERGY_MODE_LABEL[i.energy_mode]:'',i.kwh_per_100_cycles||'',i.cycles_per_month||'',i.annual_kwh||'',i.power_watts||'',i.daily_hours_use||'',hasEnergy(i)?calcMonthlyKwh(i):'',kwhPrice>0?calcMonthlyCost(i,kwhPrice):'',calcAgeDisplay(i.purchase_date),i.purchase_date,i.warranty_expiry,i.notes]),
+      rows: items.map(i=>[i.name,i.category,i.room,i.brand,i.model,i.serial_number,conditionLabel(i.condition),i.purchase_value||'',calcCurrentValue(i),Math.max(0,100-calcDepreciationPct(i)),i.replacement_cost||'',i.energy_class||'',i.energy_mode?ENERGY_MODE_LABEL[i.energy_mode]:'',i.kwh_per_100_cycles||'',i.cycles_per_month||'',i.annual_kwh||'',i.power_watts||'',i.daily_hours_use||'',hasEnergy(i)?calcMonthlyKwh(i):'',kwhPrice>0?calcMonthlyCost(i,kwhPrice):'',calcAgeDisplay(i.purchase_date),i.purchase_date,i.warranty_expiry,i.notes]),
     })
   }
   const exportPDF=()=>{
     const byCat=[...INVENTORY_CATEGORIES].map(cat=>{const ci=items.filter(i=>i.category===cat);return{cat,count:ci.length,val:ci.reduce((s,i)=>s+calcCurrentValue(i),0)}}).filter(x=>x.count>0)
     const catRows=byCat.sort((a,b)=>b.val-a.val).map(({cat,count,val})=>reportRow(`${inventoryLabel(cat)} (${count})`,rEur(val))).join('')
-    const detailRows=items.map(i=>`<tr><td><strong>${rEsc(i.name)}</strong>${i.brand?`<br><small class="muted">${rEsc(i.brand)} ${rEsc(i.model||'')}</small>`:''}</td><td>${rEsc(i.energy_class||ABSENT)}</td><td>${rEsc(i.condition)}</td><td class="n">${rEsc(rEur(i.purchase_value||0))}</td><td class="n">${rEsc(rEur(calcCurrentValue(i)))}</td><td class="n">${rEsc(rPct(Math.max(0,100-calcDepreciationPct(i))))}</td><td class="n">${rEsc(rEur(i.replacement_cost||0))}</td><td class="n">${rEsc(hasEnergy(i)?calcMonthlyKwh(i)+' kWh':ABSENT)}</td><td>${rEsc(i.warranty_expiry?fmtDate(i.warranty_expiry):ABSENT_DATE)}</td></tr>`).join('')
+    const detailRows=items.map(i=>`<tr><td><strong>${rEsc(i.name)}</strong>${i.brand?`<br><small class="muted">${rEsc(i.brand)} ${rEsc(i.model||'')}</small>`:''}</td><td>${rEsc(i.energy_class||ABSENT)}</td><td>${rEsc(conditionLabel(i.condition))}</td><td class="n">${rEsc(rEur(i.purchase_value||0))}</td><td class="n">${rEsc(rEur(calcCurrentValue(i)))}</td><td class="n">${rEsc(rPct(Math.max(0,100-calcDepreciationPct(i))))}</td><td class="n">${rEsc(rEur(i.replacement_cost||0))}</td><td class="n">${rEsc(hasEnergy(i)?calcMonthlyKwh(i)+' kWh':ABSENT)}</td><td>${rEsc(i.warranty_expiry?fmtDate(i.warranty_expiry):ABSENT_DATE)}</td></tr>`).join('')
     const html = reportHead('Κατάσταση εξοπλισμού')
       + `<body><div class="page">`
       + reportHeader(null, 'Κατάσταση εξοπλισμού')
@@ -101,7 +101,7 @@ export function inventoryExports({items,repairs,kwhPrice}:{items:InventoryItem[]
         <div class="cb"><div class="nm">${rEsc(i.name)}</div>
         <div class="mt">${rEsc([i.brand,i.model].filter(Boolean).join(' ')||i.category)}${i.room?` · ${rEsc(i.room)}`:''}</div>
         ${i.serial_number?`<div class="sn">Σειριακός ${rEsc(i.serial_number)}</div>`:''}
-        <div class="crow"><span>Κατάσταση</span><span>${rEsc(i.condition)}</span></div>
+        <div class="crow"><span>Κατάσταση</span><span>${rEsc(conditionLabel(i.condition))}</span></div>
         <div class="crow"><span>Αξία αγοράς</span><span>${rEsc(rEur(i.purchase_value||0))}</span></div>
         <div class="crow val"><span>Κόστος αντικατάστασης</span><span>${insurableOf(i)>0?rEsc(rEur(insurableOf(i))):'Δεν δηλώθηκε'}</span></div>
         </div></div>`}

@@ -434,9 +434,9 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         )}
       </Card>
 
-      {/* ── Διαχείριση Κτηρίου ───────────────────────────────────────────── */}
+      {/* ── Διαχείριση κτιρίου ───────────────────────────────────────────── */}
       <Card pad="lg">
-        {secHdr('Διαχείριση Κτηρίου')}
+        {secHdr('Διαχείριση κτιρίου')}
 
         {/* FIX: 3 cols so DatePicker has enough room, was 4 cols causing overflow */}
         <div {...fieldRow(180, 14, { marginBottom: 14 })}>
@@ -466,9 +466,9 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
 
       </Card>
 
-      {/* ── Ταμείο Κτηρίου ───────────────────────────────────────────────── */}
+      {/* ── Ταμείο κτιρίου ───────────────────────────────────────────────── */}
       <Card pad="lg">
-        {secHdr('Ταμείο Κτηρίου')}
+        {secHdr('Ταμείο κτιρίου')}
 
         {/* Τα τέσσερα στοιχεία του ταμείου είναι ΕΝΑ πράγμα: υπόλοιπο, μερίδιο,
             εισφορά, πότε ενημερώθηκε. Ήταν σπασμένα σε δύο σειρές των δύο, με
@@ -501,7 +501,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
 
       {/* ── Έκτακτες Εισφορές ────────────────────────────────────────────── */}
       <Card pad="lg">
-        {secHdr('Έκτακτες Εισφορές')}
+        {secHdr('Έκτακτες εισφορές')}
         <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: 16, marginBottom: 14, border: '1px solid var(--border-subtle)' }}>
           {/* Η ενέργεια είναι η τέταρτη στήλη της σειράς, όχι κουμπί κρεμασμένο
               από κάτω δεξιά. Και δεν φαίνεται πατήσιμη χωρίς αιτία και ποσό. */}
@@ -659,9 +659,9 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         {monthlyAvg > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 10, marginTop: 14 }}>
             {[
-              { label: 'Μέσο Μηνιαίο',      value: fe(monthlyAvg),                                         color: 'var(--text-primary)' },
-              { label: 'Ακριβότερος Μήνας',  value: fe(Math.max(...history.map(v => parseFloat(v) || 0))), color: 'var(--text-primary)' },
-              { label: 'Ετήσιο Εκτιμώμενο', value: fe(monthlyAvg * 12),                                    color: 'var(--text-primary)' },
+              { label: 'Μέσο μηνιαίο',      value: fe(monthlyAvg),                                         color: 'var(--text-primary)' },
+              { label: 'Ακριβότερος μήνας',  value: fe(Math.max(...history.map(v => parseFloat(v) || 0))), color: 'var(--text-primary)' },
+              { label: 'Ετήσιο εκτιμώμενο', value: fe(monthlyAvg * 12),                                    color: 'var(--text-primary)' },
             ].map((k, i) => (
               <div key={i} style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '10px 14px', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 6, fontFamily: T.font.sans }}>{k.label}</div>
@@ -675,11 +675,11 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
       {/* ── Σύνοψη Κοινοχρήστων ──────────────────────────────────────────── */}
       {totalCommon > 0 && (
         <Card pad="lg">
-          {secHdr('Σύνοψη Κοινοχρήστων')}
+          {secHdr('Σύνοψη κοινοχρήστων')}
           {[
             { label: 'Διαχείριση',         amount: mgmtMonthly,                  skip: !mgmtMonthly },
-            { label: 'Εισφορά Ταμείου',    amount: parseFloat(fundMonthly) || 0, skip: !(parseFloat(fundMonthly) || 0) },
-            { label: 'Μέσος Όρος Κοινοχρήστων',  amount: monthlyAvg,                   skip: !monthlyAvg  },
+            { label: 'Εισφορά ταμείου',    amount: parseFloat(fundMonthly) || 0, skip: !(parseFloat(fundMonthly) || 0) },
+            { label: 'Μέσος όρος κοινοχρήστων',  amount: monthlyAvg,                   skip: !monthlyAvg  },
           ].filter(r => !r.skip && r.amount > 0).map((r, i) => (
             <div key={i} style={{ marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

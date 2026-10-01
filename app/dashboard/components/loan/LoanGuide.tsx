@@ -248,7 +248,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
           <Glossary items={[...GLOSSARY.filter(g=>profile==='business'||g.level==='basic')].sort((a,b)=>a.term.localeCompare(b.term,'el'))}/>
           {profile!=='business'&&(
             <p style={{fontSize:12,color:'var(--text-tertiary)',marginTop:14,lineHeight:1.55,fontFamily: T.font.sans}}>
-              Περισσότεροι, πιο εξειδικευμένοι όροι εμφανίζονται στη λειτουργία «Επαγγελματίας», από τις Ρυθμίσεις.
+              Περισσότεροι, πιο εξειδικευμένοι όροι εμφανίζονται στη λειτουργία «Επαγγελματίας», που ανοίγει από τον «Λογαριασμό».
             </p>
           )}
         </MiniSection>

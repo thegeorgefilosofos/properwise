@@ -20,6 +20,7 @@ import { classifyExpense } from '@/lib/expenses/classify'
 // Το Supabase δεν πετάει σε σφάλμα βάσης· η `must` το κάνει να πετάει, ώστε τα
 // try/catch αυτού του αρχείου να λένε αλήθεια. Βλ. lib/supabase/must.ts.
 import { must } from '@/lib/supabase/must'
+import { failed } from '@/lib/core/dbError'
 // Οι επαφές έχουν ένα σπίτι: lib/data/contacts.
 import * as contactStore from '@/lib/data/contacts'
 import { inferRole, roleLabel } from '@/lib/contacts/roles'
@@ -294,10 +295,10 @@ export function useAssistantActions({
         full_name: name.slice(0, 120), role: roleValue,
         phone: phone || null, email: null, notes: null,
       });
-      if (error) throw new Error(error.message ?? 'Σφάλμα βάσης');
+      if (error) throw error;
       setMsgs(m => [...m, { role: 'assistant', text: `Την κράτησα. Πρόσθεσα την επαφή «${name}»${phone ? ` (${phone})` : ''} στις Επαφές του ακινήτου. Θέλεις να ανοίξω τις Επαφές για να προσθέσεις κι άλλα;`, action: { type: 'go', tab: 'contacts' } }]);
-    } catch {
-      setMsgs(m => [...m, { role: 'assistant', text: 'Δεν μπόρεσα να αποθηκεύσω την επαφή τώρα. Δοκίμασε ξανά ή πρόσθεσέ την από την καρτέλα Επαφές.' }]);
+    } catch (e) {
+      setMsgs(m => [...m, { role: 'assistant', text: `${failed('Η επαφή δεν αποθηκεύτηκε', e)} Μπορείς να την προσθέσεις και από τις «${navLabel('contacts')}».` }]);
     }
   };
 
@@ -309,10 +310,10 @@ export function useAssistantActions({
         brand: a.brand || null, model: a.model || null, room: a.room || null,
         purchase_value: a.value || 0, condition: 'Καλή',
       }]);
-      if (error) throw new Error(error.message ?? 'Σφάλμα βάσης');
+      if (error) throw error;
       setMsgs(m => [...m, { role: 'assistant', text: `Το κατέγραψα στα «${navLabel('inventory')}»: «${a.name}»${a.value ? ` (αξία ${eur(a.value)})` : ''}. Θέλεις να ανοίξω την καρτέλα για να προσθέσεις φωτογραφία, εγγύηση ή άλλες λεπτομέρειες;`, action: { type: 'go', tab: 'inventory' } }]);
-    } catch {
-      setMsgs(m => [...m, { role: 'assistant', text: `Δεν μπόρεσα να το καταγράψω τώρα. Δοκίμασε από την καρτέλα «${navLabel('inventory')}».` }]);
+    } catch (e) {
+      setMsgs(m => [...m, { role: 'assistant', text: `${failed('Το αντικείμενο δεν καταγράφηκε', e)} Μπορείς να το προσθέσεις και από την καρτέλα «${navLabel('inventory')}».` }]);
     }
   };
 

@@ -18,7 +18,7 @@ import { uploadUserScoped } from '@/lib/storage/scopedUpload'
 import { reportHead, reportHeader, reportDisclaimer, openReport, rEsc, rDate } from '../reportPdf'
 import { INK, INK_FAINT, INK_MUTED, PAPER_ALT, RULE } from '@/lib/print/ink'
 import { athensToday } from '@/lib/core/time'
-import { CONDITIONS, CONDITION_COLOR, inventoryLabel, type InventoryItem, type InventoryHandover, type HandoverIntent } from './model'
+import { CONDITIONS, CONDITION_COLOR, inventoryLabel, conditionLabel, type InventoryItem, type InventoryHandover, type HandoverIntent } from './model'
 import { fmtDate } from './calc'
 import { Badge, SectionLabel, labelStyle } from './Bits'
 import { MSG, SAY, failed } from '@/lib/core/dbError'
@@ -119,7 +119,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
     <h1>${rEsc(h.tenant_name)}</h1>
     <div class="sub">${[h.tenant_phone, fmtDate(h.handover_date)].filter(Boolean).map(x=>rEsc(String(x))).join(' · ')}</div>
     <table class="grid"><thead><tr><th>Αντικείμενο</th><th>Κατηγορία</th><th>Κατάσταση</th><th>Παρατηρήσεις</th><th>Φωτογραφία κατάστασης</th></tr></thead><tbody>
-    ${snap.map(s=>`<tr><td>${rEsc(s.name)}</td><td>${rEsc(s.category)}</td><td>${rEsc(s.condition_at_handover)}</td><td>${rEsc(s.condition_notes||ABSENT)}</td><td>${s.condition_photo?`<img src="${rEsc(s.condition_photo)}" class="shot"/>${s.captured_at?`<br><span class="shot-at">${rEsc(fmtDate(s.captured_at))}</span>`:''}`:rEsc(ABSENT)}</td></tr>`).join('')}
+    ${snap.map(s=>`<tr><td>${rEsc(s.name)}</td><td>${rEsc(s.category)}</td><td>${rEsc(conditionLabel(s.condition_at_handover))}</td><td>${rEsc(s.condition_notes||ABSENT)}</td><td>${s.condition_photo?`<img src="${rEsc(s.condition_photo)}" class="shot"/>${s.captured_at?`<br><span class="shot-at">${rEsc(fmtDate(s.captured_at))}</span>`:''}`:rEsc(ABSENT)}</td></tr>`).join('')}
     </tbody></table>
     <div class="sig"><div class="sig-box">Υπογραφή ιδιοκτήτη</div><div class="sig-box">Υπογραφή ενοικιαστή</div><div class="sig-box">Ημερομηνία</div></div>
     ${reportDisclaimer('Πρωτόκολλο παράδοσης και παραλαβής εξοπλισμού. Ισχύει με τις υπογραφές και των δύο μερών.')}
@@ -251,7 +251,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
                 <p style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</p>
                 <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{inventoryLabel(item.category)}{item.room?` · ${inventoryLabel(item.room)}`:''}</p>
               </div>
-              <CustomSelect ariaLabel={`Κατάσταση: ${item.name}`} value={itemConds[item.id]?.condition||item.condition} onChange={v=>setItemConds(p=>({...p,[item.id]:{...p[item.id],condition:v}}))} options={CONDITIONS.map(c=>({value:c,label:c}))}/>
+              <CustomSelect ariaLabel={`Κατάσταση: ${item.name}`} value={itemConds[item.id]?.condition||item.condition} onChange={v=>setItemConds(p=>({...p,[item.id]:{...p[item.id],condition:v}}))} options={CONDITIONS.map(c=>({value:c,label:conditionLabel(c)}))}/>
               <TextInput ariaLabel={`Παρατηρήσεις: ${item.name}`} value={itemConds[item.id]?.notes||''} onChange={v=>setItemConds(p=>({...p,[item.id]:{...p[item.id],notes:v}}))} placeholder="μικρή γρατζουνιά στην πόρτα"/>
             </div>
           ))}
@@ -306,7 +306,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
                   <div style={{padding:'8px 12px',background:'var(--negative-dim)',borderRadius: T.radius.chip,border:'1px solid var(--negative-border)'}}>
                     {snap.filter(s=>s.condition_at_handover==='Κακή'||s.condition_at_handover==='Εκτός Λειτουργίας').map((s,i)=>(
                       <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily:T.font.sans,padding:'2px 0'}}>
-                        <span>{s.name}</span><span style={{color:'var(--negative)'}}>{s.condition_at_handover}{s.condition_notes?`, ${s.condition_notes}`:''}</span>
+                        <span>{s.name}</span><span style={{color:'var(--negative)'}}>{conditionLabel(s.condition_at_handover)}{s.condition_notes?`, ${s.condition_notes}`:''}</span>
                       </div>
                     ))}
                   </div>

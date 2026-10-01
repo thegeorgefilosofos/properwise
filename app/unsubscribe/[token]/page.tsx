@@ -78,7 +78,7 @@ export default function Unsubscribe() {
       return;
     }
     if (!data) {
-      setFailed('Ο σύνδεσμος δεν είναι πλέον έγκυρος. Χρησιμοποίησε τον σύνδεσμο του τελευταίου email, ή τις Ρυθμίσεις μέσα στην εφαρμογή.');
+      setFailed('Ο σύνδεσμος δεν είναι πλέον έγκυρος. Χρησιμοποίησε τον σύνδεσμο του τελευταίου email ή τον «Λογαριασμό» μέσα στην εφαρμογή.');
       return;
     }
     if (kind === 'product' || kind === 'all') setProduct(false);
@@ -103,7 +103,7 @@ export default function Unsubscribe() {
         </div>
 
         {state === 'loading' && <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Φόρτωση…</div>}
-        {state === 'notfound' && <p style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει. Μπορείς να διαχειριστείς τις προτιμήσεις σου από τις Ρυθμίσεις μέσα στην εφαρμογή.</p>}
+        {state === 'notfound' && <p style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει. Τις προτιμήσεις σου τις αλλάζεις από τον «Λογαριασμό» μέσα στην εφαρμογή.</p>}
         {/* Ο σύνδεσμος δεν κρίθηκε: δεν πήραμε απάντηση. Το λέμε με αυτά τα
             λόγια και δίνουμε το κουμπί, γιατί η μόνη σωστή ενέργεια είναι να
             ξαναρωτήσεις — όχι να φύγεις νομίζοντας ότι έχασες το δικαίωμά σου. */}

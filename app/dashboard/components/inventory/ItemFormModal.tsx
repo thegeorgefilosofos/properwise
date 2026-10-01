@@ -18,7 +18,7 @@ import { notifyError } from '@/components/Toast'
 import { failed, MSG } from '@/lib/core/dbError'
 import { uploadPath } from '@/lib/core/uploadPath'
 import { uploadUserScoped } from '@/lib/storage/scopedUpload'
-import { INVENTORY_CATEGORIES, CONDITIONS, ENERGY_CLASSES, inventoryLabel, type InventoryItem } from './model'
+import { INVENTORY_CATEGORIES, CONDITIONS, ENERGY_CLASSES, inventoryLabel, conditionLabel, type InventoryItem } from './model'
 import { blankIfZero, calcCurrentValue, calcDepreciationPct, calcYearsLeft } from './calc'
 import { DOCS_BUCKET, openInventoryDoc } from './storage'
 import { Field, RoomInput, SectionLabel, labelStyle } from './Bits'
@@ -227,8 +227,8 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
               :<svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.2"/></svg>}
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:14,fontWeight:600,color:'var(--accent)'}}>{scanning?'Ανάγνωση φωτογραφίας…':photoBusy?'Μεταφόρτωση…':'Προσθήκη φωτογραφίας'}</div>
-            <div style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.45,marginTop:2}}>Ανεβάστε φωτογραφία του αντικειμένου, της ετικέτας ή της απόδειξης και συμπληρώνουμε αυτόματα μάρκα, μοντέλο, αξία, εγγύηση και ενεργειακή κλάση.</div>
+            <div style={{fontSize:14,fontWeight:600,color:'var(--accent)'}}>{scanning?'Ανάγνωση φωτογραφίας…':photoBusy?'Ανέβασμα…':'Προσθήκη φωτογραφίας'}</div>
+            <div style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.45,marginTop:2}}>Ανέβασε φωτογραφία του αντικειμένου, της ετικέτας ή της απόδειξης και συμπληρώνονται αυτόματα μάρκα, μοντέλο, αξία, εγγύηση και ενεργειακή κλάση.</div>
           </div>
         </button>
       ) : (
@@ -265,7 +265,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
       </>)}
       <div style={{...formGrid(200, 270),gap:12}}>
         <Field d={f('inv.condition')}>
-          <CustomSelect ariaLabel="Κατάσταση" value={form.condition||'Καλή'} onChange={v=>set('condition',v)} options={CONDITIONS.map(c=>({value:c,label:c}))}/>
+          <CustomSelect ariaLabel="Κατάσταση" value={form.condition||'Καλή'} onChange={v=>set('condition',v)} options={CONDITIONS.map(c=>({value:c,label:conditionLabel(c)}))}/>
         </Field>
         <Field d={f('inv.room')}><RoomInput value={form.room||''} onChange={v=>set('room',v)}/></Field>
       </div>

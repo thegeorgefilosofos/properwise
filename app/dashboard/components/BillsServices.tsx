@@ -451,7 +451,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
 
       {/* ── Κλιματιστικά ─────────────────────────────────────────────────── */}
       <div style={svcSection}>
-        {svcHdr('Συντήρηση Κλιματιστικών', s.hasAC, v => upd({ hasAC: v }), acM)}
+        {svcHdr('Συντήρηση κλιματιστικών', s.hasAC, v => upd({ hasAC: v }), acM)}
         {s.hasAC && (
           <>
             <div style={g4}>
@@ -506,7 +506,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
 
       {/* ── Άλλες Υπηρεσίες ──────────────────────────────────────────────── */}
       <div style={card}>
-        {secHdr('Άλλες Υπηρεσίες')}
+        {secHdr('Άλλες υπηρεσίες')}
         <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: 14, marginBottom: 14, border: '1px solid var(--border-subtle)' }}>
           {/* Πέντε πεδία και μια ενέργεια ήταν τρία μικρά πάνω, δύο πλατιά κάτω
               και ένα κουμπί στριμωγμένο στην άκρη: τρία διαφορετικά πλάτη στο
@@ -555,7 +555,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
       {/* ── Σύνοψη ───────────────────────────────────────────────────────── */}
       {totalServices > 0 && (
         <div style={card}>
-          {secHdr('Σύνοψη Υπηρεσιών')}
+          {secHdr('Σύνοψη υπηρεσιών')}
           {/* Η ΕΤΙΚΕΤΑ ΕΛΕΓΕ «ΕΝΦΙΑ 2026» ΓΙΑ ΠΟΣΟ ΠΟΥ ΜΠΟΡΕΙ ΝΑ ΕΙΝΑΙ ΠΕΡΣΙΝΟ.
               Το `enfiaM` βγαίνει από την `enfiaInUse`, που δέχεται τρεις πηγές:
               φετινό εκκαθαριστικό, ΠΕΡΣΙΝΟ ποσό ή εκτίμηση. Μόνο η πρώτη ανήκει
@@ -563,14 +563,14 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
               λέει η οθόνη του ΕΝΦΙΑ, εκεί που φαίνεται και η πηγή του. */}
           {([
             { label: 'ΕΝΦΙΑ',                   amount: enfiaM      },
-            { label: 'Δημοτικά Τέλη (μέσος όρος)',    amount: dimotikaAvg },
+            { label: 'Δημοτικά τέλη (μέσος όρος)',    amount: dimotikaAvg },
             { label: 'Καθαρισμός',              amount: cleaningM   },
             { label: 'Κηπουρός',                amount: gardenM     },
             { label: 'Πισίνα',                  amount: poolM       },
-            { label: 'Σέρβις Κλιματιστικών',    amount: acM         },
+            { label: 'Σέρβις κλιματιστικών',    amount: acM         },
             { label: 'Ανελκυστήρας',            amount: elevM       },
             { label: 'Απεντόμωση',              amount: pestM       },
-            { label: 'Άλλες Υπηρεσίες',         amount: otherM      },
+            { label: 'Άλλες υπηρεσίες',         amount: otherM      },
           ] as { label: string; amount: number }[]).filter(r => r.amount > 0).map((r, i) => (
             <div key={i} style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

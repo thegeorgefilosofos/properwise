@@ -158,7 +158,7 @@ type Referee = { created_at: string; activated_at: string | null };
 // τον αναγνώριζε ως αυτό που του υποσχέθηκε η πρόσκληση.
 // ═══════════════════════════════════════════════════════════════════════════
 const REWARD_REASON: Record<string, string> = {
-  per_referral: 'Σύσταση φίλου', per_referral_pro: 'Σύσταση Επαγγελματία',
+  per_referral: 'Σύσταση φίλου', per_referral_pro: 'Σύσταση επαγγελματία',
   indiv_volume: `${INDIV_VOLUME_TARGET} νέοι μέσα στον μήνα`,
   pro_paid: `${PRO_PAID_TARGET} συνδρομητές μέσα στον μήνα`,
   referee_welcome: 'Δώρο καλωσορίσματος',

@@ -36,7 +36,7 @@ export default function DocChecklist({ docs, storageKey, title = 'Δικαιολ
         <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', fontFamily: font, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</p>
         <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 500, color: complete ? 'var(--accent)' : 'var(--text-tertiary)', fontFamily: font, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{count}/{total} έτοιμα</span>
       </div>
-      <Bar pct={pct} height={4} track="var(--bg-surface)" label="Ετοιμα δικαιολογητικά" style={{ marginBottom: compact ? 10 : 12 }} />
+      <Bar pct={pct} height={4} track="var(--bg-surface)" label="Έτοιμα δικαιολογητικά" style={{ marginBottom: compact ? 10 : 12 }} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? 6 : 7 }}>
         {docs.map((d, i) => {
           const on = done.has(i)

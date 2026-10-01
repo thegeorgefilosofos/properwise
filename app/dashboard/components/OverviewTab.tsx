@@ -158,7 +158,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // προοδευτικό φόρο σε επίπεδο φορολογούμενου.
   // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΟ ΕΝΟΙΚΙΟ.
   // Από 1.7.2027 (ν.5222/2025, άρθρο 210) η τεκμαρτή έκπτωση 5% θα προϋποθέτει
-  // είσπραξη μέσω τραπέζης· με μετρητά ο φόρος στο 100% του ενοικίου. Ο χρήστης
+  // είσπραξη μέσω τράπεζας· με μετρητά ο φόρος στο 100% του ενοικίου. Ο χρήστης
   // το δηλώνει ήδη στην καρτέλα Ενοικιαστή (`tenants.e_payment`)· η κύρωση
   // περνά στον φόρο μόνο για χρήσεις από το 2027 (bankReceiptMatters(year)).
   const [portfolioRents, setPortfolioRents] = useState<{ property_id:string; monthly:number; viaBank:boolean }[]>([]);
@@ -486,7 +486,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Η στρογγυλοποίηση ανήκει στην εμφάνιση, που ήδη γράφει δύο δεκαδικά.
   const estTax = taxShareOf(portfolioTax, prop.id);
   const taxNote = consolidationSummary(portfolioTax, fmtEur);
-  // Εισπράττεται το ενοίκιο ΑΥΤΟΥ του ακινήτου μέσω τραπέζης; Κρίνει το κείμενο
+  // Εισπράττεται το ενοίκιο ΑΥΤΟΥ του ακινήτου μέσω τράπεζας; Κρίνει το κείμενο
   // δίπλα στον φόρο, όπως ο ίδιος έλεγχος κρίνει και το ποσό.
   const rentViaBank = tenantFull?.e_payment !== false;
 

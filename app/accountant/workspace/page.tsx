@@ -295,7 +295,7 @@ export default function AccountantWorkspace() {
             ariaLabel="Αναζήτηση πελάτη"
             value={find}
             onChange={setFind}
-            placeholder="Ονομα ή ΑΦΜ"
+            placeholder="Όνομα ή ΑΦΜ"
           />
           {find.trim() && (
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '8px 0 0', fontFamily: T.font.sans }}>

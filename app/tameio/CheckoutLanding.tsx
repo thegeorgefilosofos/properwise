@@ -232,7 +232,7 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
         {stage === 'closed' && (
           <>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '14px 0 0' }}>
-              Η πληρωμή δεν άνοιξε αυτή τη στιγμή. {note || 'Η δοκιμή σου τρέχει κανονικά και τη συνδρομή την ολοκληρώνεις όποτε θέλεις από τις Ρυθμίσεις.'}
+              Η πληρωμή δεν άνοιξε αυτή τη στιγμή. {note || 'Η δοκιμή σου τρέχει κανονικά και τη συνδρομή την ολοκληρώνεις όποτε θέλεις από τον «Λογαριασμό».'}
             </p>
             <Link href="/dashboard" style={TAMEIO_ACTION}>Συνέχεια στην εφαρμογή</Link>
           </>
@@ -242,7 +242,7 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
           <>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '14px 0 0' }}>
               Ο σύνδεσμος άνοιξε χωρίς ενεργή συνεδρία. Συνδέσου με το email σου
-              {signIn === '/login' ? ' και συνέχισε τη συνδρομή από τις Ρυθμίσεις.' : ' και η πληρωμή ανοίγει ξανά με το ίδιο πακέτο.'}
+              {signIn === '/login' ? ' και συνέχισε τη συνδρομή από τον «Λογαριασμό».' : ' και η πληρωμή ανοίγει ξανά με το ίδιο πακέτο.'}
             </p>
             <Link href={signIn} style={TAMEIO_ACTION}>Σύνδεση</Link>
           </>

@@ -270,7 +270,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
                   ))}
                 </div>
                 <div style={{ ...TT.caption, marginTop: 8 }}>
-                  Η πρόταση αλλάζει από τις Ρυθμίσεις όποτε χρειαστεί.
+                  Η πρόταση αλλάζει όποτε χρειαστεί, από τον «Λογαριασμό».
                 </div>
               </>
             )}

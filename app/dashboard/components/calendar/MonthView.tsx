@@ -474,7 +474,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                           «1 Αυγ έως 1 Αυγ · 1 νύχτα» για κράτηση που δεν ξέρουμε
                           πόσο κράτησε. Τώρα λέει τι λείπει και ποιος το συμπληρώνει. */}
                       <Tooltip fill text={g.nights === null
-                        ? `${g.stay.guest} · ${cc.label}\nΑφιξη ${g.stay.start} · χωρίς καταχωρημένη αναχώρηση${g.stay.total?`\n${fe(g.stay.total)}`:''}`
+                        ? `${g.stay.guest} · ${cc.label}\nΆφιξη ${g.stay.start} · χωρίς καταχωρημένη αναχώρηση${g.stay.total?`\n${fe(g.stay.total)}`:''}`
                         : `${g.stay.guest} · ${cc.label}\n${g.stay.start} έως ${g.stay.end} · ${g.nights} ${g.nights===1?'νύχτα':'νύχτες'}${g.stay.total?`\n${fe(g.stay.total)}`:''}`}>
                         <div onClick={e=>e.stopPropagation()} style={{ width:'100%', height:BAR_H, boxSizing:'border-box', display:'flex', alignItems:'center', gap:4, padding:`0 ${g.openRight?4:8}px 0 ${g.openLeft?4:9}px`, background:cc.solid, color:'var(--on-tone)', fontSize: 'var(--fs-xs)', fontWeight:600, fontFamily: T.font.sans, letterSpacing:'0.1px', borderTopLeftRadius:g.openLeft?2:BAR_H/2, borderBottomLeftRadius:g.openLeft?2:BAR_H/2, borderTopRightRadius:g.openRight?2:BAR_H/2, borderBottomRightRadius:g.openRight?2:BAR_H/2, overflow:'hidden', whiteSpace:'nowrap', cursor:'default' }}>
                           {!g.openLeft&&<User size={10} style={{ flexShrink:0, opacity:0.9 }}/>}

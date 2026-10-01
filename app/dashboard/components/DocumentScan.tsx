@@ -650,7 +650,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {(edited.custom || []).map((c, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input aria-label="Ονομα πεδίου" value={c.label} placeholder="Πεδίο" onChange={e => setEdited(p => { if (!p) return p; const cs = [...(p.custom || [])]; cs[i] = { ...cs[i], label: e.target.value }; return { ...p, custom: cs }; })}
+                    <input aria-label="Όνομα πεδίου" value={c.label} placeholder="Πεδίο" onChange={e => setEdited(p => { if (!p) return p; const cs = [...(p.custom || [])]; cs[i] = { ...cs[i], label: e.target.value }; return { ...p, custom: cs }; })}
                       style={{ flex: '0 0 38%', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
                     <input aria-label="Τιμή πεδίου" value={c.value} placeholder="Τιμή" onChange={e => setEdited(p => { if (!p) return p; const cs = [...(p.custom || [])]; cs[i] = { ...cs[i], value: e.target.value }; return { ...p, custom: cs }; })}
                       style={{ flex: 1, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
@@ -660,7 +660,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               </div>
             )}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
-              <input aria-label="Ονομα νέου πεδίου" value={newField.label} placeholder="Νέο πεδίο (π.χ. Αριθμός πρωτοκόλλου)" onChange={e => setNewField(f => ({ ...f, label: e.target.value }))}
+              <input aria-label="Όνομα νέου πεδίου" value={newField.label} placeholder="Νέο πεδίο (π.χ. Αριθμός πρωτοκόλλου)" onChange={e => setNewField(f => ({ ...f, label: e.target.value }))}
                 style={{ flex: '0 0 38%', background: 'var(--bg-base)', border: '1px dashed var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
               <input aria-label="Τιμή νέου πεδίου" value={newField.value} placeholder="Τιμή" onChange={e => setNewField(f => ({ ...f, value: e.target.value }))}
                 onKeyDown={e => { if (e.key === 'Enter' && newField.label.trim()) { setEdited(p => p ? { ...p, custom: [...(p.custom || []), { ...newField }] } : p); setNewField({ label: '', value: '' }); } }}

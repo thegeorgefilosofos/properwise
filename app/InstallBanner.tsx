@@ -55,7 +55,7 @@ export default function InstallBanner({ mode, onInstall, onDismiss }: {
         </p>
       ) : (
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          Πάτα <strong style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap' }}><ShareGlyph /> Κοινή χρήση</strong> στη
+          Πάτα <strong style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap' }}><ShareGlyph /> Κοινή χρήση</strong> στην
           μπάρα του περιηγητή και μετά <strong style={{ color: 'var(--text-primary)' }}>«Προσθήκη στην οθόνη Αφετηρίας»</strong>.
           Στο iPhone μόνο έτσι φτάνουν οι ειδοποιήσεις για ό,τι λήγει.
         </p>

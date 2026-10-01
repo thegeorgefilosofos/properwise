@@ -191,11 +191,11 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
     // Οι δόσεις γράφονται πρώτα και οι παλιές σβήνονται μετά: αν σπάσει κάτι στη
     // μέση, το ημερολόγιο δείχνει διπλά, όχι μισό δάνειο.
     if(!await saved('Οι δόσεις δεν αποθηκεύτηκαν στο ημερολόγιο',calendar.replaceSource(supabase,{propertyId,userId},{source:src},events))) return
-    if(!silent) notifyOk(`${n} δόσεις αποθηκεύτηκαν στο Ημερολόγιο`)
+    if(!silent) notifyOk(`${n} δόσεις αποθηκεύτηκαν στο «Ημερολόγιο»`)
   }
   async function handleSaveExp(monthly:number,bankName:string){
     if(!await saved('Η δόση δεν καταχωρήθηκε στις δαπάνες',expenses.insert(supabase,[expenses.row({propertyId,userId},{description:`Δόση δανείου${bankName?`, ${bankName}`:''}`,amount:Math.round(monthly),category:'Δόση Δανείου',date:athensToday()})]))) return
-    notifyOk('Δόση καταχωρήθηκε στις Δαπάνες')
+    notifyOk('Η δόση καταχωρήθηκε στις «Δαπάνες»')
   }
   async function deleteLoan(id:string){
     if(!(await confirmDialog('Διαγραφή δανείου;',{tone:'negative'})))return

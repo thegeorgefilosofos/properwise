@@ -146,8 +146,8 @@ export default function CashHero({ cash, showIncome, onNavigate, onRecordRent }:
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch' }}>
         {showIncome && (
           <>
-            <Side label="Μου χρωστάνε" side={cash.owedToMe} kind="in" compact={cash.owedToMe.count === 0} stacked={oneQuiet}
-                  actionLabel="Άνοιγμα στον Ενοικιαστή" onOpen={() => onNavigate('tenant')}
+            <Side label="Μου οφείλουν" side={cash.owedToMe} kind="in" compact={cash.owedToMe.count === 0} stacked={oneQuiet}
+                  actionLabel="Άνοιγμα στους Ενοικιαστές" onOpen={() => onNavigate('tenant')}
                   action={onRecordRent && <Btn onClick={onRecordRent}>Μπήκε το ενοίκιο</Btn>} />
             {/* Ο διαχωριστής είναι η δήλωση ότι τα δύο ΔΕΝ αθροίζονται. */}
             <div aria-hidden style={oneQuiet
@@ -155,7 +155,7 @@ export default function CashHero({ cash, showIncome, onNavigate, onRecordRent }:
               : { width: 1, background: 'var(--border-subtle)', alignSelf: 'stretch', margin: '14px 0' }} />
           </>
         )}
-        <Side label="Χρωστάω" side={cash.owedByMe} kind="out" compact={cash.owedByMe.count === 0} stacked={oneQuiet}
+        <Side label="Οφείλω" side={cash.owedByMe} kind="out" compact={cash.owedByMe.count === 0} stacked={oneQuiet}
               actionLabel="Άνοιγμα στις Δαπάνες" onOpen={() => onNavigate('finances')} />
       </div>
     </div>

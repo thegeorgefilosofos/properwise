@@ -118,7 +118,7 @@ export interface TemplateItem { description: string; category: string; priority:
 export interface Template { label: string; items: TemplateItem[]; when?: (c: FieldContext) => boolean; why?: string }
 
 export const TEMPLATES: Record<string, Template> = {
-  checkin: { label: 'Νέος Ενοικιαστής', when: c => c.status === 'rent_long' || c.status === 'vacant', why: 'Μακροχρόνια μίσθωση', items: [
+  checkin: { label: 'Νέος ενοικιαστής', when: c => c.status === 'rent_long' || c.status === 'vacant', why: 'Μακροχρόνια μίσθωση', items: [
     { description: 'Φωτογράφηση κάθε δωματίου (before)', category: 'checkin', priority: 'critical' },
     { description: 'Παράδοση κλειδιών, καταγραφή αριθμού σετ', category: 'checkin', priority: 'critical' },
     { description: 'Καταγραφή μετρητή ΔΕΗ', category: 'checkin', priority: 'critical' },
@@ -132,7 +132,7 @@ export const TEMPLATES: Record<string, Template> = {
     { description: 'Αλλαγή κωδικών WiFi', category: 'checkin', priority: 'normal' },
     { description: 'Μεταβίβαση λογαριασμών ΔΕΗ / ΕΥΔΑΠ', category: 'checkin', priority: 'normal' },
   ]},
-  checkout: { label: 'Αποχώρηση Ενοικιαστή', when: c => c.status === 'rent_long', why: 'Υπάρχει ενοικιαστής', items: [
+  checkout: { label: 'Αποχώρηση ενοικιαστή', when: c => c.status === 'rent_long', why: 'Υπάρχει ενοικιαστής', items: [
     { description: 'Επιστροφή κλειδιών, έλεγχος αριθμού', category: 'checkout', priority: 'critical' },
     { description: 'Τελική ανάγνωση μετρητή ΔΕΗ', category: 'checkout', priority: 'critical' },
     { description: 'Τελική ανάγνωση μετρητή ΕΥΔΑΠ', category: 'checkout', priority: 'critical' },
@@ -145,7 +145,7 @@ export const TEMPLATES: Record<string, Template> = {
     { description: 'Αλλαγή κλειδαριάς', category: 'checkout', priority: 'normal' },
     { description: 'Ενημέρωση ΔΟΥ για λήξη μίσθωσης', category: 'legal', priority: 'normal' },
   ]},
-  maintenance: { label: 'Ετήσια Συντήρηση', items: [
+  maintenance: { label: 'Ετήσια συντήρηση', items: [
     { description: 'Service καλοριφέρ / λέβητα', category: 'maintenance', priority: 'critical', recurring: 'yearly' },
     { description: 'Έλεγχος πυροσβεστήρων', category: 'maintenance', priority: 'critical', recurring: 'yearly' },
     { description: 'Τσεκ ηλεκτρολογικού πίνακα', category: 'maintenance', priority: 'high', recurring: 'yearly' },
@@ -190,7 +190,7 @@ export const TEMPLATES: Record<string, Template> = {
     { description: 'Ανεφοδιασμός (σαπούνια, χαρτί και άλλα)', category: 'airbnb', priority: 'normal', recurring: 'monthly' },
     { description: 'Τσεκ κλιματισμού πριν κάθε σεζόν', category: 'airbnb', priority: 'high', recurring: 'quarterly' },
   ]},
-  purchase: { label: 'Αγορά Ακινήτου', when: c => c.propertyCount >= 3 || c.status === 'for_sale', why: 'Χαρτοφυλάκιο σε κίνηση', items: [
+  purchase: { label: 'Αγορά ακινήτου', when: c => c.propertyCount >= 3 || c.status === 'for_sale', why: 'Χαρτοφυλάκιο σε κίνηση', items: [
     { description: 'Νομικός έλεγχος τίτλων ιδιοκτησίας', category: 'purchase', priority: 'critical' },
     { description: 'Τεχνικός έλεγχος ακινήτου από μηχανικό', category: 'purchase', priority: 'critical' },
     { description: 'Έλεγχος βαρών / υποθηκών κτηματολόγιο', category: 'purchase', priority: 'critical' },

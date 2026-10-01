@@ -35,7 +35,7 @@ function buildMainSheet(officialRows: (string | number)[][], ownerAfmCommon: str
     ['ΣΤΟΙΧΕΙΑ ΥΠΟΧΡΕΟΥ'],
     ['ΑΦΜ / Ονοματεπώνυμο', '', ownerAfmCommon],
     ['Αριθμός υποβολής / Ημερομηνία', '', ''],
-    ['Στοιχεία Λογιστή', '', ''],
+    ['Στοιχεία λογιστή', '', ''],
     [],
     [`ΠΙΝΑΚΑΣ I · ΕΚΜΙΣΘΟΥΜΕΝΑ / ΛΟΙΠΑ ΑΚΙΝΗΤΑ (${officialRows.length} ${officialRows.length === 1 ? 'ακίνητο' : 'ακίνητα'})`],
     [...E2_OFFICIAL_HEADERS],

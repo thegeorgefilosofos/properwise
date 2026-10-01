@@ -162,7 +162,7 @@ export async function exportChecklistExcel(items: ChecklistItem[]) {
   ]
   const ws3 = XLSX.utils.aoa_to_sheet(actionRows)
   ws3['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 42 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 22 }, { wch: 20 }, { wch: 16 }]
-  XLSX.utils.book_append_sheet(wb, ws3, 'Εκκρεμείς Ενέργειες')
+  XLSX.utils.book_append_sheet(wb, ws3, 'Εκκρεμείς ενέργειες')
 
   downloadWorkbook(wb, `Εκκρεμότητες ακινήτου ${athensToday()}`)
 }

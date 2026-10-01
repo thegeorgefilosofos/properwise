@@ -612,14 +612,14 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       ? lines.map(l=>reportRow(l.label, rEur(l.amount))).join('')
       : `<tr><td colspan="2" class="empty">Καμία επιπλέον υπηρεσία</td></tr>`;
     const tenantLine=`${tenant.full_name||ABSENT}${tenant.afm?` · ΑΦΜ ${tenant.afm}`:''}`;
-    const html=reportHead(`Μηνιαία Κατάσταση ${num}`)
+    const html=reportHead(`Μηνιαία κατάσταση ${num}`)
       + `<body><div class="page">`
       + reportHeader(branding, 'Μηνιαία κατάσταση', { rightLabel:'Περίοδος', rightValue:monthLabel(p), rightNote:`Έκδοση ${rDate()}` })
       + `<h1>Μηνιαία κατάσταση ενοικίου</h1>`
       + `<div class="sub">${rEsc(landlord)}</div>`
-      + reportSection('Στοιχεία μισθωτή')
+      + reportSection('Στοιχεία ενοικιαστή')
       + `<table><tbody>`
-        + reportRow('Μισθωτής', tenantLine)
+        + reportRow('Ενοικιαστής', tenantLine)
         + (propLabel()?reportRow('Ακίνητο', propLabel()):'')
         + (p.due_date?reportRow('Ημερομηνία λήξης', rDate(p.due_date)):'')
       + `</tbody></table>`
@@ -745,10 +745,10 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
         {declaredPending.length>0&&(
           <div style={{ background:'var(--accent-soft)', border:'1px solid var(--accent-border)', borderRadius:T.radius.inner, padding:'14px 16px', margin:'4px 0 8px' }}>
             <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans, marginBottom:2 }}>
-              {fn(declaredPending.length)} {declaredPending.length===1?'πληρωμή δηλώθηκε':'πληρωμές δηλώθηκαν'} από τον μισθωτή
+              {fn(declaredPending.length)} {declaredPending.length===1?'πληρωμή δηλώθηκε':'πληρωμές δηλώθηκαν'} από τον ενοικιαστή
             </div>
             <div style={{ fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:12, lineHeight:1.5 }}>
-              Ο μισθωτής δήλωσε πληρωμή μέσω της πύλης. Επιβεβαίωσε την είσπραξη για να καταχωρηθεί ως πληρωμένη.
+              Ο ενοικιαστής δήλωσε πληρωμή μέσω της πύλης. Επιβεβαίωσε την είσπραξη για να καταχωρηθεί ως πληρωμένη.
             </div>
             <div style={{ display:'flex', flexDirection:'column' as const, gap:8 }}>
               {declaredPending.map(p=>(
@@ -818,7 +818,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                   <td className="num" style={{ fontWeight:600, color:'var(--text-primary)' }}>{fmt(p.amount)}
                     {p.services_charge&&p.services_charge>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', fontWeight:400, color:'var(--text-tertiary)', fontFamily:T.font.sans }}>ενοίκιο {fmt(p.base_rent)} + υπηρεσίες {fmt(p.services_charge)}</span>:null}
                   </td>
-                  <td><StatusPill p={p}/>{p.tenant_declared&&!p.paid?<span style={{ display:'block', marginTop:4, fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans, fontWeight:600 }}>Δηλώθηκε από μισθωτή</span>:null}</td>
+                  <td><StatusPill p={p}/>{p.tenant_declared&&!p.paid?<span style={{ display:'block', marginTop:4, fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans, fontWeight:600 }}>Δηλώθηκε από τον ενοικιαστή</span>:null}</td>
                   <td>{p.method||ABSENT}</td>
                   <td>{fmtD(p.paid_date)}</td>
                   <td>{fmtD(p.due_date)}{p.days_late&&p.days_late>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', color:p.days_late>14?'var(--negative)':'var(--warning)' }}>+{days(p.days_late)}</span>:null}</td>
@@ -899,7 +899,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
               </div>
             </>
           ):(
-            <InfoBanner tone="info">Πρόσθεσε IBAN πληρωμής στα στοιχεία του μισθωτή για δημιουργία QR και προσυμπλήρωση της μεταφοράς.</InfoBanner>
+            <InfoBanner tone="info">Πρόσθεσε IBAN πληρωμής στα στοιχεία του ενοικιαστή για δημιουργία QR και προσυμπλήρωση της μεταφοράς.</InfoBanner>
           )}
 
           <div>

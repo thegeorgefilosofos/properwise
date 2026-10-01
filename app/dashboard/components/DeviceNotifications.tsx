@@ -79,7 +79,7 @@ export default function DeviceNotifications({ userId }: { userId: string }) {
       <SetGroup>Στη συσκευή</SetGroup>
       <SetRow
         title="Ειδοποιήσεις στη συσκευή"
-        desc={<>Στο iPhone φτάνουν μόνο όταν το PROPERWISE είναι στην αρχική οθόνη. Πάτα <strong style={{ color: 'var(--text-primary)' }}>Κοινή χρήση</strong> στη μπάρα του Safari, μετά <strong style={{ color: 'var(--text-primary)' }}>«Προσθήκη στην οθόνη Αφετηρίας»</strong> και άνοιξέ το από το εικονίδιο. Ο διακόπτης θα είναι εδώ.</>} />
+        desc={<>Στο iPhone φτάνουν μόνο όταν το PROPERWISE είναι στην αρχική οθόνη. Πάτα <strong style={{ color: 'var(--text-primary)' }}>Κοινή χρήση</strong> στην μπάρα του Safari, μετά <strong style={{ color: 'var(--text-primary)' }}>«Προσθήκη στην οθόνη Αφετηρίας»</strong> και άνοιξέ το από το εικονίδιο. Ο διακόπτης θα είναι εδώ.</>} />
     </>
   )
 

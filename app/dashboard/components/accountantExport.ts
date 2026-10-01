@@ -1179,7 +1179,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
             head: ['Πεδίο', 'Τιμή'],
             rows: [
               ['Χρήση', `01/01/${year} έως 31/12/${year}`],
-              ['Φορολογούμενος', taxpayer || 'Δεν έχει συμπληρωθεί (Ρυθμίσεις ακινήτου: όνομα και ΑΦΜ ιδιοκτήτη)'],
+              ['Φορολογούμενος', taxpayer || 'Δεν έχει συμπληρωθεί (Επεξεργασία ακινήτου: όνομα και ΑΦΜ ιδιοκτήτη)'],
               ['Ακίνητο', propName],
               ['Νομική μορφή', d.formLabel],
               ['Βιβλία', d.booksLabel],

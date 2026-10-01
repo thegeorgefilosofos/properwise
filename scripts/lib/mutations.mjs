@@ -171,7 +171,11 @@ export const MUTATIONS = {
   'month-case': { add: 'lib/core/__mut__.ts', content: "import { monthNom } from '@/lib/core/months'\nexport const d = (i: number) => `Μεταφορά από ${monthNom(i)}`\n" },
   'raw-errors': { add: 'components/__mut__.tsx', content: 'export function P({ setError, err }: { setError: (s: string) => void; err: Error }) {\n  return <button onClick={() => setError(err.message)}>Δοκιμή</button>\n}\n' },
   'rendered-zero': { add: 'components/__mut__.tsx', content: 'export function P({ n }: { n: number }) {\n  return <div>{n && <span>{n}</span>}</div>\n}\n' },
-  'terminology': { add: 'components/__mut__.tsx', content: tsx('    <div>Η καταχώριση ολοκληρώθηκε</div>') },
+  'terminology': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Η καταχώριση ολοκληρώθηκε</div>') },
+    // Η γενική με τον τόνο στο γιώτα, όπως ήταν στα Κοινόχρηστα.
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Ταμείο Κτηρίου</div>') },
+  ] },
   'assistant-name': { add: 'components/__mut__.tsx', content: tsx('    <div>Ο βοηθός σου προτείνει τρεις κινήσεις</div>') },
 
   // ── Βάση δεδομένων και ασφάλεια ───────────────────────────────────────
