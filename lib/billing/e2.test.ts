@@ -3,7 +3,7 @@
 import {
   monthsRentedInYear, e2LeaseKind, e2IncomeCategory,
   buildE2Row, e2RowToCells, buildE1Summary, e1LineToCells, E2_OFFICIAL_HEADERS, E2_NUM_COLS, e2OfficialRows,
-  E2_SHORT_TERM_NOTE, E1_UNMAPPED_LABEL,
+  E2_SHORT_TERM_NOTE, E1_UNMAPPED_LABEL, E2_COLUMNS, E2_USE, e2SupplementaryRows, e2AcquiredRows,
   type E2Property, type E2Tenant, type E2Payment, type E2Row, type E2Stay,
 } from './e2';
 import { leasesInYear } from '@/lib/data/tenants';
@@ -377,7 +377,7 @@ const TWO_LEASE_PAYS: E2Payment[] = [
   ok('βραχυχρόνια: εξήγηση στις επισημάνσεις', r.flags.includes(E2_SHORT_TERM_NOTE));
   const cells = buildE2OfficialCells(prop, null, [], '999999999', 2025, 1, st)[0];
   ok('βραχυχρόνια στο έντυπο: στ. 10 = 3, στ. 11 κενή', cells[E2_NUM_COLS.months] === 3 && cells[E2_NUM_COLS.monthly] === '');
-  ok('βραχυχρόνια στο έντυπο: κωδικός 60', String(cells[5]).startsWith('60 ·'));
+  ok('βραχυχρόνια στο έντυπο: στ. 17 του άρθρου 39Α', cells[5] === E2_USE.shortTerm && cells[5] === 'Βραχυχρόνια μίσθωση (άρθρο 39Α ΚΦΕ)');
   // Διαμονή που περνά την αλλαγή του χρόνου κόβεται στο έτος.
   const cross: E2Stay[] = [{ property_id: 'p1', check_in: '2024-12-30', check_out: '2025-01-02', nights: 3, gross_guest_paid: 300, climate_levy: 0 }];
   const rc = buildE2Row(prop, null, [], '999999999', 2025, cross);
@@ -401,6 +401,51 @@ const TWO_LEASE_PAYS: E2Payment[] = [
   ok('Ε1: κατηγορία χωρίς κωδικό ΔΕΝ γίνεται σιωπηλά 103', !!un && un.code === '' && un.amount === 2000 && un.label === E1_UNMAPPED_LABEL);
   ok('Ε1: σύνολο εκμίσθωσης 8000 (χωρίς την ιδιοχρησιμοποίηση)', e1.totalGross === 8000);
   ok('Ε1: η σημείωση ζητά επιβεβαίωση από τον λογιστή', /λογιστή/.test(e1.note));
+}
+
+// ═══ ΤΟ ΕΠΙΣΗΜΟ ΕΝΤΥΠΟ, ΣΤΗΛΗ ΠΡΟΣ ΣΤΗΛΗ (Φ-01.002/Έκδοση 2026) ═══════════════
+{
+  // Η αρίθμηση όπως τυπώνεται από αριστερά προς τα δεξιά στο έντυπο.
+  ok('οι αριθμοί των στηλών με τη σειρά του εντύπου',
+     E2_COLUMNS.map(c => c.no).join(',') === '1,2,3,4,5,17,18,6,7,19,8,9,10,11,12,13,14,15,16');
+  ok('η στήλη 18 ζητά 9 ψηφία', E2_COLUMNS[6].label.includes('9 πρώτα ψηφία'));
+
+  // Στ. 17 ανά είδος: κατοικία, επαγγελματικός χώρος, γη, ιδιοχρησιμοποίηση, ΚΕΝΟ.
+  const home = buildE2Row(P(), T({ lease_start: '2025-01-01', lease_category: 'residential' }), [], '999', 2025);
+  ok('στ. 17: μακροχρόνια μίσθωση κατοικίας', home.lines[0].use === 'Μακροχρόνια μίσθωση κατοικίας');
+  const shopCommercial = buildE2Row(P({ prop_type: 'shop' }), T({ lease_start: '2025-01-01', lease_category: 'commercial' }), [], '999', 2025);
+  ok('στ. 17: μίσθωση επαγγελματικού χώρου', shopCommercial.lines[0].use === E2_USE.businessLease);
+  const homeAsOffice = buildE2Row(P(), T({ lease_start: '2025-01-01', lease_category: 'commercial' }), [], '999', 2025);
+  ok('στ. 17: διαμέρισμα με επαγγελματικό μισθωτήριο', homeAsOffice.lines[0].use === E2_USE.businessLease);
+  const own = buildE2Row(P({ status_detail: 'own_use' }), null, [], '999', 2025);
+  ok('στ. 17: ιδιοχρησιμοποίηση', own.lines[0].use === 'Ιδιοχρησιμοποίηση');
+  const vacant = buildE2Row(P({ status_detail: 'vacant', target_rent: null }), null, [], '999', 2025);
+  ok('οδηγία 2: κενό όλο τον χρόνο, γραμμή με ΚΕΝΟ', vacant.lines.length === 1 && vacant.lines[0].use === 'ΚΕΝΟ' && vacant.grossIncome === 0);
+  const reno = buildE2Row(P({ status_detail: 'renovation', target_rent: null }), null, [], '999', 2025);
+  ok('ανακαίνιση χωρίς μίσθωση: ΚΕΝΟ και όχι κενή στήλη 17', reno.lines[0].use === 'ΚΕΝΟ' && !reno.flags.some(f => f.includes('χειροκίνητος')) && reno.flags.some(f => f.includes('Ανακαίνιση')));
+  const vacantCells = e2OfficialRows(P({ status_detail: 'vacant', power_supply_no: '123456789017' }), vacant, 1)[0];
+  ok('ΚΕΝΟ: η στήλη 18 γράφεται κι εδώ (οδηγία 8)', vacantCells[6] === '123456789');
+
+  // Στ. 19 ανά μίσθωση: δύο μισθωτές στο έτος, δύο αριθμοί δήλωσης.
+  const two = buildE2Row(P(), [
+    T({ id: 'a', afm: '111111111', lease_start: '2024-01-01', lease_end: '2025-05-31', aade_lease_decl_ref: '1234 5678' }),
+    T({ id: 'b', afm: '222222222', lease_start: '2025-06-01', lease_end: null, aade_lease_decl_ref: '87654321' }),
+  ], [], '999', 2025);
+  const twoCells = e2OfficialRows(P(), two, 1);
+  ok('στ. 19: ο αριθμός κάθε μίσθωσης στη γραμμή της, μόνο ψηφία', twoCells[0][9] === '12345678' && twoCells[1][9] === '87654321');
+
+  // Συμπληρωματικά I: ένας συνιδιοκτήτης χωρίς ποσοστό παίρνει το υπόλοιπο.
+  const shared = P({ ownership: 60, co_owners: [{ name: 'Νίκος Π.', afm: '987654321', address: 'Πατησίων 5' }], power_supply_no: '123456789' });
+  const sr = buildE2Row(shared, T({ lease_start: '2025-01-01', lease_category: 'residential' }), [], '999', 2025);
+  const sup = e2SupplementaryRows(shared, sr);
+  ok('Συμπληρωματικά I: μία γραμμή ανά συνιδιοκτήτη', sup.length === 1 && sup[0][7] === 'Νίκος Π.' && sup[0][8] === '987654321' && sup[0][9] === 'Πατησίων 5');
+  ok('Συμπληρωματικά I: ποσοστό 100 μείον το μερίδιο', sup[0][10] === 40);
+  ok('Συμπληρωματικά I: παροχή ρεύματος', sup[0][6] === '123456789');
+  ok('Συμπληρωματικά I: χωρίς συνιδιοκτήτες τίποτα', e2SupplementaryRows(P(), home).length === 0);
+
+  // Συμπληρωματικά II: κτήση μέσα στο έτος.
+  ok('Συμπληρωματικά II: αγορά του έτους', e2AcquiredRows(P({ purchase_date: '2025-04-10' }), 2025)[0]?.[3].toString().startsWith('Αγορά 10/04/2025'));
+  ok('Συμπληρωματικά II: παλιότερη αγορά δεν μπαίνει', e2AcquiredRows(P({ purchase_date: '2019-04-10' }), 2025).length === 0);
 }
 
 // ── report ───────────────────────────────────────────────────────────────────

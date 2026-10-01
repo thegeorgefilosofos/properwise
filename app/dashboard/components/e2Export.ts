@@ -8,15 +8,16 @@ import * as rentStore from '@/lib/data/rent';
 import * as tenantStore from '@/lib/data/tenants';
 import { XLSX, setCell, sheetFinish } from './xlsxStyle';
 import { FMT, S, ROW, type Cell } from './sheetFormat';
-import { E2_OFFICIAL_HEADERS, E2_NUM_COLS, e2OfficialRows, buildE2Row, buildE1Summary, type E2Stay, E1_HEADERS, e1LineToCells, E1_CODES_NOTE, E2_INSTRUCTIONS, type E1Summary, type E2Property, type E2Tenant, type E2Payment, type E2RowDetail } from '@/lib/billing/e2';
+import { E2_OFFICIAL_HEADERS, E2_COLUMNS, E2_COLUMN_GROUPS, E2_SUPPL_I_COLUMNS, E2_SUPPL_II_COLUMNS, E2_NUM_COLS, e2OfficialRows, e2SupplementaryRows, e2AcquiredRows, buildE2Row, buildE1Summary, type E2Stay, E1_HEADERS, e1LineToCells, E1_CODES_NOTE, E2_INSTRUCTIONS, type E1Summary, type E2Property, type E2Tenant, type E2Payment, type E2RowDetail } from '@/lib/billing/e2';
 import { fe } from '@/lib/core/format';
 import { afmGroups } from './e2Compare';
+import { myAccountants } from '@/lib/data/accountant';
 
 const NCOLS = E2_OFFICIAL_HEADERS.length; // 19
 /** Η κεφαλίδα του φύλλου που μαζεύει τα ακίνητα χωρίς ΑΦΜ ιδιοκτήτη. */
 const NO_AFM_HEADER = 'ΔΕΝ ΕΧΕΙ ΟΡΙΣΤΕΙ ΑΦΜ: όρισέ το στις ρυθμίσεις κάθε ακινήτου';
 // Πλάτη στηλών (χαρακτήρες) — με αναδιπλωμένες επικεφαλίδες χωράνε άνετα δεδομένα+τίτλοι.
-const WIDTHS = [5, 34, 13, 18, 10, 24, 15, 26, 15, 16, 12, 12, 8, 14, 13, 16, 17, 17, 15];
+const WIDTHS = [5, 34, 12, 20, 10, 26, 15, 26, 12, 16, 11, 11, 8, 14, 11, 16, 16, 16, 16];
 const numZ: Record<number, string> = {
   [E2_NUM_COLS.sqm]: FMT.dec2, [E2_NUM_COLS.months]: FMT.int, [E2_NUM_COLS.monthly]: FMT.eur, [E2_NUM_COLS.pct]: FMT.pct,
   [E2_NUM_COLS.gross13]: FMT.eur, [E2_NUM_COLS.gross14]: FMT.eur, [E2_NUM_COLS.gross15]: FMT.eur, [E2_NUM_COLS.gross16]: FMT.eur,
@@ -24,68 +25,91 @@ const numZ: Record<number, string> = {
 // Οι τέσσερις στήλες «ακαθάριστο εισόδημα» (στ.13–16) — αθροίζονται όλες στο ΣΥΝΟΛΟ.
 const GROSS_COLS = [E2_NUM_COLS.gross13, E2_NUM_COLS.gross14, E2_NUM_COLS.gross15, E2_NUM_COLS.gross16];
 
+/** Τα στοιχεία της κεφαλίδας του εντύπου για έναν υπόχρεο. */
+export interface E2Declarant { afm: string; name: string; accountant: string }
+
 /**
- * Το κύριο φύλλο ΕΝΟΣ υπόχρεου. Το Ε2 υποβάλλεται ανά ΑΦΜ: ακίνητα δύο
- * συζύγων ή ακίνητο σε άλλο όνομα δεν μπαίνουν στο ίδιο έντυπο.
+ * Το κύριο φύλλο ΕΝΟΣ υπόχρεου: η πρώτη σελίδα του Ε2, στήλη προς στήλη
+ * (Φ-01.002/Έκδοση 2026). Το Ε2 υποβάλλεται ανά ΑΦΜ: ακίνητα δύο συζύγων ή
+ * ακίνητο σε άλλο όνομα δεν μπαίνουν στο ίδιο έντυπο.
+ *
+ * ΟΠΩΣ ΤΟ ΕΝΤΥΠΟ: κεφαλίδα υπόχρεου (ΑΦΜ και ονοματεπώνυμο, αριθμός υποβολής
+ * κενός, στοιχεία λογιστή), οι ομάδες στηλών, οι επικεφαλίδες, η σειρά με τους
+ * αριθμούς των στηλών (1, 2, 3, 4, 5, 17, 18, 6, 7, 19, …) και το ΑΘΡΟΙΣΜΑ των
+ * στηλών 13 έως 16 με ζωντανά SUM.
  */
-function buildMainSheet(officialRows: (string | number)[][], ownerAfm: string, year: number, propertyCount: number): XLSX.WorkSheet {
-  const headerRow = 9;
+function buildMainSheet(officialRows: (string | number)[][], who: E2Declarant, year: number, propertyCount: number): XLSX.WorkSheet {
+  const groupRow = 11, headerRow = 12, numberRow = 13;
+  const firstData = numberRow + 1;
   const totalRow: (string | number)[] = Array(NCOLS).fill('');
-  totalRow[0] = 'ΣΥΝΟΛΟ';
+  totalRow[0] = 'ΑΘΡΟΙΣΜΑ';
   const sumCol = (c: number) => officialRows.reduce((s, r) => s + (typeof r[c] === 'number' ? (r[c] as number) : 0), 0);
-  // Άθροισε ΚΑΙ τις τέσσερις στήλες ακαθαρίστου (13–16) — αλλιώς δωρεάν παραχώρηση/ανείσπρακτα χάνονταν.
+  // Και οι τέσσερις στήλες ακαθαρίστου (13 έως 16): αλλιώς δωρεάν παραχώρηση και ανείσπρακτα χάνονταν.
   for (const c of GROSS_COLS) totalRow[c] = sumCol(c);
+  const groups: (string | number)[] = Array(NCOLS).fill('');
+  for (const g of E2_COLUMN_GROUPS) groups[g.from] = g.label;
 
   const aoa: (string | number)[][] = [
     [`ΑΝΑΛΥΤΙΚΗ ΚΑΤΑΣΤΑΣΗ ΜΙΣΘΩΜΑΤΩΝ ΑΚΙΝΗΤΗΣ ΠΕΡΙΟΥΣΙΑΣ · ΦΟΡΟΛΟΓΙΚΟ ΕΤΟΣ ${year}`],
-    ['Έντυπο Ε2 · προσυμπληρωμένο από το PROPERWISE · συμπληρώστε τα πεδία στο myAADE (τα εκτιμώμενα ελέγχονται πριν την υποβολή)'],
+    [`Έντυπο Ε2 (Φ-01.002/Έκδοση 2026) · προσυμπληρωμένο από το PROPERWISE · τα εκτιμώμενα ελέγχονται πριν την υποβολή στο myAADE`],
     [],
-    ['ΣΤΟΙΧΕΙΑ ΥΠΟΧΡΕΟΥ'],
-    ['ΑΦΜ / Ονοματεπώνυμο', '', ownerAfm || NO_AFM_HEADER],
-    ['Αριθμός υποβολής / Ημερομηνία', '', ''],
-    ['Στοιχεία λογιστή', '', ''],
+    ['ΣΤΟΙΧΕΙΑ ΥΠΟΧΡΕΟΥ ΦΥΣΙΚΟΥ Ή ΝΟΜΙΚΟΥ ΠΡΟΣΩΠΟΥ Ή ΝΟΜΙΚΗΣ ΟΝΤΟΤΗΤΑΣ'],
+    ['ΑΦΜ / Ονοματεπώνυμο-Πατρ. / Επωνυμία', '', who.afm ? [who.afm, who.name].filter(Boolean).join(' / ') : NO_AFM_HEADER],
+    ['Αρ. υποβολής / Ημερομηνία', '', ''],
+    ['Στοιχεία λογιστή', '', who.accountant],
+    ['Από / Έως', '', `01/01/${year} / 31/12/${year}`],
     [],
-    [`ΠΙΝΑΚΑΣ I · ΕΚΜΙΣΘΟΥΜΕΝΑ / ΛΟΙΠΑ ΑΚΙΝΗΤΑ (${propertyCount} ${propertyCount === 1 ? 'ακίνητο' : 'ακίνητα'}${officialRows.length !== propertyCount ? `, ${officialRows.length} γραμμές: μία ανά μίσθωση` : ''})`],
+    [`ΑΝΑΛΥΤΙΚΗ ΚΑΤΑΣΤΑΣΗ (${propertyCount} ${propertyCount === 1 ? 'ακίνητο' : 'ακίνητα'}${officialRows.length !== propertyCount ? `, ${officialRows.length} γραμμές: μία ανά μίσθωση` : ''})`],
+    [],
+    groups,
     [...E2_OFFICIAL_HEADERS],
+    E2_COLUMNS.map(c => c.no),
     ...officialRows,
     totalRow,
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  const lastDataRow = headerRow + officialRows.length;
+  const lastDataRow = numberRow + officialRows.length;
   const totalR = lastDataRow + 1;
 
   ws['!cols'] = WIDTHS.map(w => ({ wch: w }));
   // ΤΟ ΟΝΟΜΑ ΤΟΥ ΠΕΔΙΟΥ ΘΕΛΕΙ ΤΟΠΟ, ΑΛΛΙΩΣ ΚΟΒΕΤΑΙ ΠΑΝΩ ΣΤΟΝ ΑΡΙΘΜΟ.
-  // Η πρώτη στήλη είναι πλάτους «α/α», δηλαδή έξι χαρακτήρες: το «ΑΦΜ /
-  // Ονοματεπώνυμο» χωρούσε μόνο όσο η διπλανή στήλη ήταν άδεια. Με γεμάτο ΑΦΜ
-  // το Excel το έκοβε και ο λογιστής διάβαζε «ΑΦΜ / Ο  987654321».
-  // Δύο ζώνες λοιπόν: το όνομα του πεδίου στις δύο πρώτες στήλες, η τιμή στις
-  // τρεις επόμενες, με τη γραμμή συμπλήρωσης να τρέχει σε ΟΛΟ το πλάτος τους.
+  // Η πρώτη στήλη είναι πλάτους «α/α»: το όνομα του πεδίου πιάνει τις δύο
+  // πρώτες στήλες και η τιμή τις επόμενες, με τη γραμμή συμπλήρωσης σε όλο
+  // το πλάτος τους.
   ws['!merges'] = [
-    ...[0, 1, 3, 8].map(r => ({ s: { r, c: 0 }, e: { r, c: NCOLS - 1 } })),
-    ...[4, 5, 6].flatMap(r => [
+    ...[0, 1, 3, 9].map(r => ({ s: { r, c: 0 }, e: { r, c: NCOLS - 1 } })),
+    ...[4, 5, 6, 7].flatMap(r => [
       { s: { r, c: 0 }, e: { r, c: 1 } },
-      { s: { r, c: 2 }, e: { r, c: 4 } },
+      { s: { r, c: 2 }, e: { r, c: 8 } },
     ]),
+    ...E2_COLUMN_GROUPS.map(g => ({ s: { r: groupRow, c: g.from }, e: { r: groupRow, c: g.to } })),
+    // Το ΑΘΡΟΙΣΜΑ πιάνει όσο πλάτος έχουν οι στήλες πριν από τη 13, όπως στο έντυπο.
+    { s: { r: totalR, c: 0 }, e: { r: totalR, c: GROSS_COLS[0] - 1 } },
   ];
   ws['!rows'] = [];
   ws['!rows'][1] = { hpt: 16 };
   ws['!rows'][3] = { hpt: 18 };
-  ws['!rows'][8] = { hpt: 18 };
-  ws['!rows'][headerRow] = { hpt: 58 }; // ψηλή επικεφαλίδα → πλήρως ορατοί αναδιπλωμένοι τίτλοι
-  for (let r = headerRow + 1; r <= totalR; r++) ws['!rows'][r] = { hpt: 18 };
+  ws['!rows'][9] = { hpt: 18 };
+  ws['!rows'][groupRow] = { hpt: 30 };
+  ws['!rows'][headerRow] = { hpt: 72 }; // ψηλή επικεφαλίδα: οι τίτλοι του εντύπου φαίνονται ολόκληροι
+  ws['!rows'][numberRow] = { hpt: 15 };
+  for (let r = firstData; r <= totalR; r++) ws['!rows'][r] = { hpt: 18 };
   ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: headerRow, c: 0 }, e: { r: lastDataRow, c: NCOLS - 1 } }) };
 
   setCell(ws, 0, 0, { s: S.title });
   setCell(ws, 1, 0, { s: S.sub });
   setCell(ws, 3, 0, { s: S.section });
-  setCell(ws, 8, 0, { s: S.section });
-  for (let r = 4; r <= 6; r++) {
+  setCell(ws, 9, 0, { s: S.section });
+  for (let r = 4; r <= 7; r++) {
     setCell(ws, r, 0, { s: S.label });
-    for (let c = 2; c <= 4; c++) setCell(ws, r, c, { s: S.field });
+    for (let c = 2; c <= 8; c++) setCell(ws, r, c, { s: S.field });
   }
-  for (let c = 0; c < NCOLS; c++) setCell(ws, headerRow, c, { s: S.head });
-  for (let r = headerRow + 1; r <= lastDataRow; r++) {
+  for (let c = 0; c < NCOLS; c++) {
+    setCell(ws, groupRow, c, { s: S.head });
+    setCell(ws, headerRow, c, { s: S.head });
+    setCell(ws, numberRow, c, { s: S.head, t: 'n', z: FMT.int });
+  }
+  for (let r = firstData; r <= lastDataRow; r++) {
     for (let c = 0; c < NCOLS; c++) {
       const z = numZ[c];
       const cell = ws[XLSX.utils.encode_cell({ r, c })] as Cell | undefined;
@@ -94,17 +118,68 @@ function buildMainSheet(officialRows: (string | number)[][], ownerAfm: string, y
     }
   }
   for (let c = 0; c < NCOLS; c++) {
-    const z = numZ[c];
-    const cell = ws[XLSX.utils.encode_cell({ r: totalR, c })] as Cell | undefined;
-    const numeric = z !== undefined && cell && typeof cell.v === 'number';
-    // Τα σύνολα ακαθαρίστου = ΖΩΝΤΑΝΑ SUM ώστε να μένουν σωστά μετά από χειροκίνητες αλλαγές.
+    // Τα σύνολα ακαθαρίστου = ΖΩΝΤΑΝΑ SUM, ώστε να μένουν σωστά μετά από χειροκίνητες
+    // αλλαγές· η τιμή τους μένει αποθηκευμένη ως αριθμός για όποιον δεν ξαναϋπολογίζει.
     const isGross = GROSS_COLS.includes(c);
     const formula = isGross && officialRows.length
-      ? `SUM(${XLSX.utils.encode_cell({ r: headerRow + 1, c })}:${XLSX.utils.encode_cell({ r: lastDataRow, c })})`
+      ? `SUM(${XLSX.utils.encode_cell({ r: firstData, c })}:${XLSX.utils.encode_cell({ r: lastDataRow, c })})`
       : undefined;
-    setCell(ws, totalR, c, { s: numeric ? S.totNum : S.totTxt, ...(numeric ? { t: 'n', z } : {}), ...(formula ? { f: formula } : {}) });
+    setCell(ws, totalR, c, { s: isGross ? S.totNum : S.totTxt, ...(isGross ? { t: 'n', z: FMT.eur } : {}), ...(formula ? { f: formula } : {}) });
   }
-  sheetFinish(ws, { freezeRows: headerRow + 1, brandMark: true });
+  sheetFinish(ws, { freezeRows: firstData, brandMark: true });
+  return ws;
+}
+
+/**
+ * Η δεύτερη σελίδα του εντύπου, «Συμπληρωματικά στοιχεία ακίνητης περιουσίας»,
+ * σε δύο φύλλα: πίνακας I (συνιδιοκτήτες) και πίνακας II (κτήσεις και
+ * μεταβιβάσεις του έτους). Κάθε φύλλο λέει από πάνω σε ποιο Ε2 ανήκει.
+ */
+function buildSupplementarySheet(
+  title: string, head: readonly string[], numbers: readonly (number | null)[] | null,
+  rows: (string | number)[][], who: E2Declarant, year: number, empty: string, note: string, widths: number[],
+  zOf: Record<number, string> = {},
+): XLSX.WorkSheet {
+  const n = head.length;
+  const numbered = rows.map((r, i) => [i + 1, ...r.slice(1)]);
+  const aoa: (string | number)[][] = [
+    [`Ε2 ${year} / ΑΦΜ: ${who.afm || 'δεν έχει οριστεί'} / ΑΡ. ΥΠΟΒΟΛΗΣ:`],
+    ['ΣΥΜΠΛΗΡΩΜΑΤΙΚΑ ΣΤΟΙΧΕΙΑ ΑΚΙΝΗΤΗΣ ΠΕΡΙΟΥΣΙΑΣ'],
+    [title],
+    [...head],
+    ...(numbers ? [numbers.map(x => (x == null ? '' : x))] : []),
+    ...(numbered.length ? numbered : [[empty]]),
+    [],
+    [note],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const headR = 3, firstData = headR + (numbers ? 2 : 1);
+  const lastData = firstData + Math.max(1, numbered.length) - 1;
+  const noteR = aoa.length - 1;
+  ws['!cols'] = widths.map(w => ({ wch: w }));
+  ws['!merges'] = [
+    ...[0, 1, 2, noteR].map(r => ({ s: { r, c: 0 }, e: { r, c: n - 1 } })),
+    ...(numbered.length ? [] : [{ s: { r: firstData, c: 0 }, e: { r: firstData, c: n - 1 } }]),
+  ];
+  ws['!rows'] = [];
+  ws['!rows'][headR] = { hpt: 58 };
+  ws['!rows'][noteR] = { hpt: Math.max(30, Math.ceil(note.length / 150) * 15 + 6) };
+  setCell(ws, 0, 0, { s: S.sub });
+  setCell(ws, 1, 0, { s: S.title });
+  setCell(ws, 2, 0, { s: S.section });
+  for (let c = 0; c < n; c++) {
+    setCell(ws, headR, c, { s: S.head });
+    if (numbers) setCell(ws, headR + 1, c, { s: S.head });
+  }
+  for (let r = firstData; r <= lastData; r++) {
+    for (let c = 0; c < n; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c })] as Cell | undefined;
+      const numeric = cell && typeof cell.v === 'number';
+      setCell(ws, r, c, { s: numeric ? S.num : S.txtWrap, ...(numeric ? { t: 'n', ...(zOf[c] ? { z: zOf[c] } : {}) } : {}) });
+    }
+  }
+  setCell(ws, noteR, 0, { s: S.txtWrap });
+  sheetFinish(ws, { brandMark: true });
   return ws;
 }
 
@@ -125,31 +200,35 @@ export async function loadE2Rows(
   supabase: SupabaseClient, userId: string, year: number,
 ): Promise<{ properties: E2Property[]; rows: E2RowDetail[];
             leasesByProp: Map<string, E2Tenant[]>; paymentsByProp: Map<string, E2Payment[]>;
-            afmByProp: Map<string, string>; staysByProp: Map<string, E2Stay[]> }> {
+            afmByProp: Map<string, string>; staysByProp: Map<string, E2Stay[]>;
+            nameByAfm: Map<string, string>; accountant: string }> {
   const properties = await propertyStore.list<E2Property>(supabase, userId, {
-    columns: 'id, name, ama, atak, address, postal_code, ownership, prop_type, status_detail, rental_mode, target_rent, sqm, floor, power_supply_no',
+    columns: 'id, name, ama, atak, address, postal_code, ownership, prop_type, status_detail, rental_mode, target_rent, sqm, floor, power_supply_no, co_owners, purchase_date',
     orderBy: 'created_at',
   });
   if (!properties.length) {
-    return { properties: [], rows: [], leasesByProp: new Map(), paymentsByProp: new Map(), afmByProp: new Map(), staysByProp: new Map() };
+    return { properties: [], rows: [], leasesByProp: new Map(), paymentsByProp: new Map(), afmByProp: new Map(), staysByProp: new Map(), nameByAfm: new Map(), accountant: '' };
   }
   const ids = properties.map(p => p.id);
-  const [tenants, payments, { data: settings }, stays] = await Promise.all([
+  const [tenants, payments, { data: settings }, stays, accountants] = await Promise.all([
     // ΟΙ ΜΙΣΘΩΣΕΙΣ ΤΟΥ ΕΤΟΥΣ, ΟΧΙ Ο ΣΗΜΕΡΙΝΟΣ ΜΙΣΘΩΤΗΣ. Με το `currentByProperty`
     // το Ε2 του 2025, βγαλμένο αφού ξεκίνησε νέα μίσθωση το 2026, έγραφε όνομα
     // και ΑΦΜ του νέου μισθωτή δίπλα στο ενοίκιο του παλιού.
     tenantStore.inYearByProperty<E2Tenant>(
-      supabase, userId, year, 'id,property_id,afm,full_name,monthly_rent,lease_start,lease_end,lease_type,move_out_date,status,created_at'),
+      supabase, userId, year, 'id,property_id,afm,full_name,monthly_rent,lease_start,lease_end,lease_type,lease_category,aade_lease_decl_ref,move_out_date,status,created_at'),
     // Το `paid` χωρίζει οφειλόμενο από εισπραγμένο (ανείσπρακτα του έτους). Το
     // `tenant_id` δένει τη δόση με τη μίσθωσή της. Τα `base_rent` και
     // `services_charge` χωρίζουν το μίσθωμα από τις υπηρεσίες της ίδιας δόσης.
     rentStore.ofProperties<E2Payment>(supabase, ids, 'property_id,tenant_id,amount,base_rent,services_charge,period_year,period_month,paid', userId, { year }),
-    supabase.from('property_settings').select('property_id, owner_afm').in('property_id', ids).eq('user_id', userId),
+    supabase.from('property_settings').select('property_id, owner_afm, owner_name').in('property_id', ids).eq('user_id', userId),
     // ΟΙ ΔΙΑΜΟΝΕΣ ΕΙΝΑΙ ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΕΣΟΔΟ ΤΗΣ ΒΡΑΧΥΧΡΟΝΙΑΣ. Φιλτράρονται με
     // `in('property_id', ids)` και ομαδοποιούνται ΑΝΑ ΑΚΙΝΗΤΟ ακριβώς όπως
     // πληρωμές και μισθωτές: αν περνιόνταν ενιαία, κάθε ακίνητο θα δήλωνε τα
     // έσοδα ΟΛΟΥ του χαρτοφυλακίου.
     stayStore.ofProperties<E2Stay & { property_id: string }>(supabase, ids, `${stayStore.PORTFOLIO_COLUMNS},declared_at`, userId),
+    // «Στοιχεία λογιστή» της κεφαλίδας: ο λογιστής με ζωντανή σύνδεση, αν
+    // υπάρχει. Αποτυχία εδώ αφήνει απλώς το πεδίο κενό, όπως στο έντυπο.
+    myAccountants(supabase).catch(() => []),
   ]);
   const leasesByProp = tenants.inYear;
   const paymentsByProp = new Map<string, E2Payment[]>();
@@ -160,14 +239,20 @@ export async function loadE2Rows(
     const a = staysByProp.get(key) || []; a.push(st); staysByProp.set(key, a);
   });
   const afmByProp = new Map<string, string>();
-  (settings || []).forEach((s: { property_id: string; owner_afm: string | null }) => {
+  const nameByAfm = new Map<string, string>();
+  (settings || []).forEach((s: { property_id: string; owner_afm: string | null; owner_name?: string | null }) => {
     const afm = normAfm(s.owner_afm);
     if (afm) afmByProp.set(s.property_id, afm);
+    const name = (s.owner_name || '').trim();
+    if (afm && name && !nameByAfm.has(afm)) nameByAfm.set(afm, name);
   });
+  // Το όνομα που δίνει η βάση όταν ο λογιστής δεν έχει γράψει το δικό του δεν
+  // είναι «στοιχεία λογιστή»· τότε το πεδίο μένει κενό για να το γράψει ο ίδιος.
+  const accountant = accountants.map(a => a.name).filter(n => n && n !== 'Ο λογιστής σου').join(', ');
   const rows = properties.map(p => buildE2Row(
     p, leasesByProp.get(p.id) || [], paymentsByProp.get(p.id) || [], afmByProp.get(p.id) || '', year,
     staysByProp.get(p.id) || [], { hasLeaseHistory: tenants.known.has(p.id) }));
-  return { properties, rows, leasesByProp, paymentsByProp, afmByProp, staysByProp };
+  return { properties, rows, leasesByProp, paymentsByProp, afmByProp, staysByProp, nameByAfm, accountant };
 }
 
 /** ΑΦΜ χωρίς κενά, για να μη γίνουν δύο ομάδες ο ίδιος άνθρωπος. */
@@ -244,6 +329,8 @@ export function buildE2Workbook(
   loaded: Awaited<ReturnType<typeof loadE2Rows>>, year: number,
 ): XLSX.WorkBook | null {
   const { properties, rows: e2rows, afmByProp } = loaded;
+  const whoOf = (afm: string): E2Declarant => ({ afm, name: loaded.nameByAfm?.get(afm) ?? '', accountant: loaded.accountant ?? '' });
+  const supplements: { afm: string; idx: number[] }[] = [];
   if (!properties.length) return null;
 
   const wb = XLSX.utils.book_new();
@@ -263,8 +350,36 @@ export function buildE2Workbook(
       where.set(i, { sheet: name, n: officialRows.length + 1 });
       officialRows.push(...e2OfficialRows(properties[i], e2rows[i], officialRows.length + 1));
     }
-    XLSX.utils.book_append_sheet(wb, buildMainSheet(officialRows, g.afm, year, g.idx.length), name);
+    XLSX.utils.book_append_sheet(wb, buildMainSheet(officialRows, whoOf(g.afm), year, g.idx.length), name);
+    supplements.push({ afm: g.afm, idx: g.idx });
     e1ByGroup.push({ afm: g.afm, e1: buildE1Summary(g.idx.map(i => e2rows[i])) });
+  }
+
+  // ═══ Η ΔΕΥΤΕΡΗ ΣΕΛΙΔΑ: ΣΥΜΠΛΗΡΩΜΑΤΙΚΑ Ι ΚΑΙ ΙΙ, ΑΝΑ ΥΠΟΧΡΕΟ ═════════════════
+  for (const g of supplements) {
+    const who = whoOf(g.afm);
+    const suffix = single ? '' : ` ${label(g.afm)}`;
+    const missingCo = g.idx.filter(i => e2rows[i].ownershipPct < 100 && !e2SupplementaryRows(properties[i], e2rows[i]).length);
+    const supI = g.idx.flatMap(i => e2SupplementaryRows(properties[i], e2rows[i]));
+    XLSX.utils.book_append_sheet(wb, buildSupplementarySheet(
+      'I. ΕΚΜΙΣΘΩΜΕΝΑ ΚΤΛ. ΑΚΙΝΗΤΑ: ΣΥΝΙΔΙΟΚΤΗΤΕΣ, ΣΥΝΕΠΙΚΑΡΠΩΤΕΣ, ΑΝΗΛΙΚΑ ΤΕΚΝΑ, ΥΠΕΚΜΙΣΘΩΣΕΙΣ',
+      E2_SUPPL_I_COLUMNS.map(c => c.label), E2_SUPPL_I_COLUMNS.map(c => c.no), supI, who, year,
+      'Κανένα ακίνητο με καταχωρημένους συνιδιοκτήτες.',
+      [
+        'Συμπληρώνεται όταν υπάρχει συνιδιοκτησία, συνεπικαρπία, ακίνητο ανήλικου τέκνου ή υπεκμίσθωση (οδηγία 11). Οι συνιδιοκτήτες έρχονται από την Κατανομή σε συνιδιοκτήτες. Η στήλη 11 (μίσθωμα υπεκμίσθωσης) δεν καταγράφεται στην εφαρμογή.',
+        ...(missingCo.length ? [`Χωρίς στοιχεία συνιδιοκτητών, ενώ το ποσοστό είναι κάτω από 100%: ${missingCo.map(i => properties[i].address || properties[i].name || 'ακίνητο').join(', ')}.`] : []),
+      ].join(' '),
+      [5, 30, 9, 16, 9, 24, 14, 28, 12, 26, 10, 14],
+      { 4: FMT.dec2, 10: FMT.pct },
+    ), sheetName(`Συμπληρωματικά Ι${suffix}`, taken));
+    const supII = g.idx.flatMap(i => e2AcquiredRows(properties[i], year));
+    XLSX.utils.book_append_sheet(wb, buildSupplementarySheet(
+      `II. ΑΚΙΝΗΤΗ ΠΕΡΙΟΥΣΙΑ ΠΟΥ ΤΟ ΦΟΡΟΛΟΓΙΚΟ ΕΤΟΣ ${year} ΕΙΝΑΙ ΗΜΙΤΕΛΗΣ Ή ΜΕΤΑΒΙΒΑΣΤΗΚΕ Ή ΑΠΟΚΤΗΘΗΚΕ`,
+      E2_SUPPL_II_COLUMNS, null, supII, who, year,
+      `Κανένα ακίνητο με ημερομηνία αγοράς μέσα στο ${year}.`,
+      `Η εφαρμογή ξέρει μόνο την ημερομηνία αγοράς κάθε ακινήτου. Μεταβιβάσεις, κληρονομιές, δωρεές, γονικές παροχές και ημιτελή στις 31/12/${year} δεν καταγράφονται και συμπληρώνονται από τον λογιστή.`,
+      [5, 60, 16, 70],
+    ), sheetName(`Συμπληρωματικά ΙΙ${suffix}`, taken));
   }
 
   // ═══ ΤΟ ΑΤΑΚ ΔΕΝ ΜΠΑΙΝΕΙ ΣΤΟΝ ΠΙΝΑΚΑ I ΚΑΙ ΜΠΑΙΝΕΙ ΕΔΩ ═══════════════════
@@ -342,7 +457,7 @@ export function buildE2Workbook(
   XLSX.utils.book_append_sheet(wb, fws, sheetName('Έλεγχος και ΑΤΑΚ', taken));
 
   // ── Οδηγίες συμπλήρωσης ─────────────────────────────────────────────────────
-  const gAoa: (string | number)[][] = [['ΟΔΗΓΙΕΣ ΣΥΜΠΛΗΡΩΣΗΣ ΕΝΤΥΠΟΥ Ε2'], [], ...E2_INSTRUCTIONS.map(t => [t]), [], ['Σημείωση: οι στήλες ακολουθούν το επίσημο έντυπο Ε2. Επιβεβαιώστε τυχόν ετήσιες αλλαγές στο myAADE.']];
+  const gAoa: (string | number)[][] = [['ΟΔΗΓΙΕΣ ΓΙΑ ΤΗ ΣΥΜΠΛΗΡΩΣΗ ΤΟΥ ΕΝΤΥΠΟΥ Ε2'], [], ...E2_INSTRUCTIONS.map(t => [t]), [], ['Πηγή: Ε2, Φ-01.002/Έκδοση 2026. Οι στήλες του βιβλίου ακολουθούν το έντυπο με την αρίθμησή του.']];
   const guide = XLSX.utils.aoa_to_sheet(gAoa);
   guide['!cols'] = [{ wch: 118 }];
   guide['!rows'] = [];

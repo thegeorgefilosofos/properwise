@@ -218,7 +218,7 @@ export async function buildMeetingPack(db: SupabaseClient, req: MeetingPackReque
     const shortTerm = readStatus(p) === 'rent_short';
     const stays = loaded.staysByProp.get(p.id) || [];
     const s = shortTerm ? shortTermYearSummary(stays, year, { sqm: p.sqm ?? null, isHouse: isHouseType(p.prop_type) }) : null;
-    const kinds = [...new Set(row.lines.map(l => l.kind.label).filter(Boolean))];
+    const kinds = [...new Set(row.lines.map(l => l.use).filter(Boolean))];
     return {
       id: p.id,
       name: (p.name || '').trim() || p.address || 'Ακίνητο',
