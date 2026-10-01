@@ -211,7 +211,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
     boxShadow: 'var(--highlight-inset), var(--elev-1)', marginBottom: 16,
   };
   const inp: React.CSSProperties = {
-    background: 'var(--bg-base)', border: '1px solid var(--border-default)',
+    background: 'var(--bg-base)', border: '1px solid var(--border-control)',
     borderRadius: T.radius.inner, height: T.h.md, padding: '0 12px', width: 130,
     color: 'var(--text-primary)', fontFamily: T.font.num, fontSize: 14,
     // ΧΩΡΙΣ `outline: none`: το ενσώματο στυλ έσβηνε τον καθολικό κανόνα

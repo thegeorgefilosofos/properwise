@@ -200,7 +200,7 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
           style={{
             width: '100%', boxSizing: 'border-box', marginTop: 14, resize: 'vertical', minHeight: 76,
             padding: '12px 14px', borderRadius: T.radius.inner,
-            border: `1px solid ${focused ? 'var(--accent)' : 'var(--border-default)'}`,
+            border: `1px solid ${focused ? 'var(--accent)' : 'var(--border-control)'}`,
             boxShadow: focused ? '0 0 0 3px var(--accent-dim)' : 'none',
             background: 'var(--bg-surface)', color: 'var(--text-primary)',
             fontFamily: T.font.sans, fontSize: 14, lineHeight: 1.55, outline: 'none',

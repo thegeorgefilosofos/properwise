@@ -873,7 +873,7 @@ export default function TabDocuments({
               να αναζητείται: το παράδειγμα δίνει τα δύο συνηθισμένα, δεν
               απαριθμεί τι δέχεται το πεδίο. */}
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Όνομα ή πάροχος" aria-label="Αναζήτηση στο αρχείο, με όνομα, πάροχο ή έτος"
-            style={{ width: '100%', height: T.h.lg, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '0 34px 0 34px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans, boxSizing: 'border-box' }}/>
+            style={{ width: '100%', height: T.h.lg, background: 'var(--bg-elevated)', border: '1px solid var(--border-control)', borderRadius: T.radius.pill, padding: '0 34px 0 34px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans, boxSizing: 'border-box' }}/>
           {/* Η θέση μένει εδώ, στο περιτύλιγμα: το κοινό εικονοκούμπι δίνει το
               σχήμα του στόχου αφής, όχι απόλυτη τοποθέτηση. */}
           {query && <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}><IconBtn label="Καθαρισμός αναζήτησης" onClick={() => setQuery('')}><IconX/></IconBtn></span>}

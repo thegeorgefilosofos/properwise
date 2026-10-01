@@ -598,8 +598,8 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
               και η «Αναζήτηση» θέλει 89. */}
           <Search size={15} aria-hidden="true" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'var(--text-tertiary)', pointerEvents:'none' }}/>
           <input className="po-field" aria-label="Αναζήτηση γεγονότος με τον τίτλο του" placeholder="Εύρεση" value={searchQ} onChange={e=>setSearchQ(e.target.value)}
-            style={{ width:'100%', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.modal, padding:'0 10px 0 34px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none' }}
-            onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-subtle)'}/>
+            style={{ width:'100%', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-control)', borderRadius: T.radius.modal, padding:'0 10px 0 34px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none' }}
+            onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-control)'}/>
         </div>
 
         <Btn variant="primary" size="lg" onClick={()=>openNew()} title="Νέο γεγονός">
