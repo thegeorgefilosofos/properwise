@@ -14,7 +14,16 @@
 //
 // Τώρα: πλάτος 440, γέμισμα 28 (24 στο τηλέφωνο), το λογότυπο της κεφαλίδας
 // της βιτρίνας, τίτλος 24 με ύψος γραμμής 1,2 και σώμα 15 σε κάθε πλάτος.
-// Στο σκούρο της βιτρίνας και με το σχήμα κουμπιού της (`po-standalone`).
+// Με το σχήμα κουμπιού της βιτρίνας (`po-standalone`).
+//
+// ΔΥΟ ΘΕΜΑΤΑ, ΓΙΑΤΙ ΟΙ ΔΥΟ ΣΕΛΙΔΕΣ ΔΕΝ ΑΝΗΚΟΥΝ ΣΤΟ ΙΔΙΟ ΜΕΡΟΣ (01.10.2026).
+// Η επαλήθευση εγγράφου είναι δημόσια σελίδα της βιτρίνας: μένει στο σκούρο
+// της (`pub-root`, `data-mode="dark"`), όπως η 404 και οι οδηγοί. Το ταμείο
+// όμως είναι μέρος του λογαριασμού: ο χρήστης φτάνει εκεί συνδεδεμένος, από την
+// εγγραφή, όπως στη σύνδεση και στην εγγραφή. Εκείνες ακολουθούν το θέμα του
+// χρήστη (`auth-split`, χωρίς επιβολή σκούρου) και το ταμείο έπεφτε ανάμεσά
+// τους σκούρο σε φωτεινό λογαριασμό. Με `themed` παίρνει το περιτύλιγμα της
+// σύνδεσης και τα χρώματα του προϊόντος στο θέμα του χρήστη.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { CSSProperties, ReactNode } from 'react';
 import { BrandLogo } from '@/components/BrandMark';
@@ -36,9 +45,17 @@ export const CARD_NOTE: CSSProperties = {
   fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.55, margin: '14px 0 0',
 };
 
-export function StandaloneCard({ children }: { children: ReactNode }) {
+export function StandaloneCard({ children, themed = false }: {
+  children: ReactNode;
+  /** Ακολουθεί το θέμα του χρήστη, όπως η σύνδεση και η εγγραφή (το ταμείο). */
+  themed?: boolean;
+}) {
+  const shell: CSSProperties = { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 24px)', fontFamily: T.font.sans };
   return (
-    <main className="pub-root po-standalone" data-mode="dark" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 24px)', fontFamily: T.font.sans }}>
+    <main
+      className={themed ? 'auth-split po-standalone' : 'pub-root po-standalone'}
+      data-mode={themed ? undefined : 'dark'}
+      style={themed ? { ...shell, background: 'var(--bg-base)', color: 'var(--text-primary)' } : shell}>
       <div className="po-standalone-card">
         {/* Το σήμα με τη λέξη, όπως στην κεφαλίδα: όχι τίτλος, απλό στοιχείο. */}
         <div style={{ paddingBottom: T.sp.lg, borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>

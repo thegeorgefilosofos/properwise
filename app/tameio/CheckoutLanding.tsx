@@ -141,7 +141,7 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
   }, [open]);
 
   return (
-    <StandaloneCard>
+    <StandaloneCard themed>
         <h1 style={CARD_TITLE}>
           {stage === 'choose' ? 'Διάλεξε πακέτο' : 'Ολοκλήρωση συνδρομής'}
         </h1>
