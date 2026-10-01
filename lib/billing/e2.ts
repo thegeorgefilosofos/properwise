@@ -124,6 +124,15 @@ export interface E2Line {
   /** Ακαθάριστο του μεριδίου του υπόχρεου, στρογγυλεμένο. */
   gross: number;
   source: E2IncomeSource;
+  /**
+   * Το ακαθάριστο ΑΥΤΗΣ της γραμμής είναι εκτίμηση (μηνιαίο × μήνες ή στόχος),
+   * όχι καταγραφή. Η σημαία του ακινήτου δεν φτάνει: ακίνητο με δύο μισθώσεις
+   * μπορεί να έχει τη μία καταγεγραμμένη και την άλλη εκτιμώμενη. Η
+   * σύγκριση με την ΑΑΔΕ λέει «διόρθωσε στην εφαρμογή» μόνο για τη δεύτερη.
+   */
+  estimated?: boolean;
+  /** Οι μήνες της γραμμής δεν βγήκαν από ημερομηνίες ή διαμονές. */
+  monthsEstimated?: boolean;
 }
 
 /** Η γραμμή του ακινήτου μαζί με τις γραμμές του εντύπου που τη συνθέτουν. */
@@ -264,7 +273,7 @@ export function buildE2Row(
       const g = (lead?.monthly_rent ?? p.target_rent ?? 0) * mm.months;
       estimatedMonths = mm.months;
       grossEstimated = g > 0;
-      lines.push(line({ kind: statusKind, gross: share(g) }));
+      lines.push(line({ kind: statusKind, gross: share(g), estimated: g > 0, monthsEstimated: true }));
     }
   } else {
     // ── ΜΑΚΡΟΧΡΟΝΙΑ: ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΜΙΣΘΩΣΗ ΤΟΥ ΕΤΟΥΣ ─────────────────────
@@ -295,6 +304,7 @@ export function buildE2Row(
       else { full = monthly * mm.months; if (full > 0) grossEstimated = true; }
       const win = leaseWindowInYear(l.lease_start, end, year, p.status_detail);
       lines.push(line({
+        estimated: !byLease[i].length && full > 0, monthsEstimated: mm.estimated,
         tenantName: l.full_name || '', tenantAfm: l.afm || '', from: win.from, to: win.to,
         months: mm.months || '', monthly: monthly ? Number(monthly) : '',
         kind: E2_LEASE_KIND.rented, gross: share(full),
@@ -327,6 +337,7 @@ export function buildE2Row(
         const win = leaseWindowInYear(null, null, year, p.status_detail);
         lines.push(line({
           from: win.from, to: win.to, months: mm.months || '', monthly: p.target_rent ? Number(p.target_rent) : '',
+          estimated: g > 0, monthsEstimated: mm.estimated,
           kind: statusKind, gross: share(g),
           // ΤΟ ΧΡΗΜΑ ΠΟΥ ΕΙΣΠΡΑΧΘΗΚΕ ΕΙΝΑΙ ΠΑΝΤΑ ΜΙΣΘΩΜΑ. Μόνο μια εκτίμηση πάνω
           // σε ιδιοχρησία, χωρίς καμία είσπραξη, είναι ιδιοχρησιμοποίηση.
