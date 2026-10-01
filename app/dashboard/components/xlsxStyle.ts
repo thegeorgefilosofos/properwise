@@ -213,6 +213,13 @@ export interface SheetBlock {
   notes?: readonly string[];
   /** Γραμμές του μπλοκ που είναι σύνολα (δείκτες μέσα στο `rows`). */
   totals?: readonly number[];
+  /**
+   * Μορφή αριθμού ανά στήλη (FMT.eur, FMT.int…). Οι αριθμοί γράφονται ως
+   * ΑΡΙΘΜΟΙ με τη μορφή τους, όχι ως κείμενο: ο λογιστής τους αθροίζει.
+   */
+  formats?: Readonly<Record<number, string>>;
+  /** Στήλες όπου η γραμμή συνόλου γίνεται ΖΩΝΤΑΝΟ SUM των γραμμών του μπλοκ. */
+  sum?: readonly number[];
 }
 
 /**
@@ -234,7 +241,7 @@ export function sectionSheet(o: {
   )));
 
   const aoa: (string | number)[][] = [[o.title], [o.sub], []];
-  type Mark = { r: number; kind: 'section' | 'lead' | 'head' | 'row' | 'note' | 'total'; block: SheetBlock };
+  type Mark = { r: number; kind: 'section' | 'lead' | 'head' | 'row' | 'note' | 'total'; block: SheetBlock; first?: number; last?: number };
   const marks: Mark[] = [];
   let firstHead = -1;
   for (const b of o.blocks) {
@@ -247,8 +254,11 @@ export function sectionSheet(o: {
     }
     const rows = b.rows ?? [];
     if (rows.length) {
+      // Οι γραμμές δεδομένων του μπλοκ, για το SUM της γραμμής συνόλου.
+      const dataIdx = rows.map((_, i) => i).filter(i => !b.totals?.includes(i));
+      const first = aoa.length + (dataIdx[0] ?? 0), last = aoa.length + (dataIdx[dataIdx.length - 1] ?? 0);
       rows.forEach((row, i) => {
-        marks.push({ r: aoa.length, kind: b.totals?.includes(i) ? 'total' : 'row', block: b });
+        marks.push({ r: aoa.length, kind: b.totals?.includes(i) ? 'total' : 'row', block: b, first, last });
         aoa.push([...row]);
       });
     } else if (b.empty) {
@@ -282,7 +292,16 @@ export function sectionSheet(o: {
     ws['!rows'][m.r] = { hpt: ROW.data };
     for (let c = 0; c < cols; c++) {
       const numeric = m.block.numeric?.includes(c);
-      setCell(ws, m.r, c, { s: total ? (numeric ? S.totNum : S.totTxt) : (numeric ? S.num : S.txt) });
+      const z = m.block.formats?.[c];
+      const v = (ws[XLSX.utils.encode_cell({ r: m.r, c })] as Cell | undefined)?.v;
+      const f = total && m.block.sum?.includes(c) && m.first != null && m.last != null && m.last >= m.first
+        ? `SUM(${XLSX.utils.encode_cell({ r: m.first, c })}:${XLSX.utils.encode_cell({ r: m.last, c })})`
+        : undefined;
+      setCell(ws, m.r, c, {
+        s: total ? (numeric ? S.totNum : S.totTxt) : (numeric ? S.num : S.txt),
+        ...(z && typeof v === 'number' ? { t: 'n', z } : {}),
+        ...(f ? { f } : {}),
+      });
     }
   }
   const headRow = firstHead < 0 ? 3 : firstHead;

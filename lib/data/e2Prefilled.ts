@@ -134,6 +134,52 @@ export async function savePackStatus(db: Db, userId: string, year: number, owner
   return true;
 }
 
+/** Τα bytes ενός αρχείου του φακέλου, για να μπουν μέσα στο zip. */
+export async function fileBytes(db: Db, path: string): Promise<Uint8Array | null> {
+  const { data, error } = await db.storage.from(BUCKET).download(path);
+  if (error || !data) { console.error('[e2Prefilled] λήψη αρχείου:', error); return null; }
+  return new Uint8Array(await data.arrayBuffer());
+}
+
+/** Η κατάσταση του φακέλου κάθε ΑΦΜ για ένα έτος. */
+export async function packStatuses(db: Db, userId: string, year: number): Promise<{ rows: PackStatus[]; failed: boolean }> {
+  const { data, error } = await db.from('accountant_packs')
+    .select('owner_afm,aade_differences,aade_checked_at,missing_count,missing_top,file_path,size_bytes,shared_at')
+    .eq('user_id', userId).eq('tax_year', year);
+  if (error) { console.error('[e2Prefilled] φάκελοι:', error); return { rows: [], failed: true }; }
+  return {
+    rows: (data ?? []).map((r: Pick<AccountantPacksRow, 'owner_afm' | 'aade_differences' | 'aade_checked_at' | 'missing_count' | 'missing_top' | 'file_path' | 'size_bytes' | 'shared_at'>) => ({
+      ownerAfm: r.owner_afm, aadeDifferences: r.aade_differences, aadeCheckedAt: r.aade_checked_at,
+      missingCount: r.missing_count, missingTop: r.missing_top ?? [], filePath: r.file_path,
+      sizeBytes: r.size_bytes == null ? null : Number(r.size_bytes), sharedAt: r.shared_at,
+    })),
+    failed: false,
+  };
+}
+
+/**
+ * Ο ιδιοκτήτης ΣΤΕΛΝΕΙ τον φάκελο: το zip ανεβαίνει στον δικό του φάκελο και η
+ * γραμμή γράφει πού είναι. Ο συνδεδεμένος λογιστής το κατεβάζει από τη λίστα
+ * του. Ο λογιστής δεν φτιάχνει ποτέ φάκελο από τα δεδομένα του ιδιοκτήτη: παίρνει
+ * ό,τι του έστειλε ο ίδιος.
+ */
+export async function sharePack(db: Db, userId: string, year: number, ownerAfm: string, zip: Uint8Array<ArrayBuffer>, status: {
+  aadeDifferences: number | null; missingCount: number; missingTop: readonly string[];
+}): Promise<{ ok: true; sharedAt: string } | { ok: false; error: string }> {
+  const path = `${userId}/accountant-pack/${year}/${ownerAfm}.zip`;
+  const { error: upErr } = await db.storage.from(BUCKET).upload(path, new Blob([zip], { type: 'application/zip' }), { contentType: 'application/zip', upsert: true });
+  if (upErr) { console.error('[e2Prefilled] ανέβασμα φακέλου:', upErr); return { ok: false, error: upErr.message }; }
+  const sharedAt = new Date().toISOString();
+  const { error } = await db.from('accountant_packs').upsert({
+    user_id: userId, tax_year: year, owner_afm: ownerAfm,
+    aade_differences: status.aadeDifferences, aade_checked_at: sharedAt,
+    missing_count: status.missingCount, missing_top: status.missingTop.slice(0, 5).map(s => s.slice(0, 200)),
+    file_path: path, size_bytes: zip.length, shared_at: sharedAt,
+  }, { onConflict: 'user_id,tax_year,owner_afm' });
+  if (error) { console.error('[e2Prefilled] γραμμή φακέλου:', error); return { ok: false, error: error.message }; }
+  return { ok: true, sharedAt };
+}
+
 /**
  * Ο αριθμός δήλωσης μίσθωσης που κατέγραψε ο ιδιοκτήτης, ανά ακίνητο: η πιο
  * πρόσφατη γραμμή `lease_declaration_submitted` του activity_log
@@ -151,4 +197,20 @@ export async function declRefsByProperty(db: Db, userId: string): Promise<Map<st
     if (id && !out.has(id) && typeof ref === 'string' && ref.trim()) out.set(id, ref.trim());
   }
   return out;
+}
+
+/**
+ * Οι υπόχρεοι του χαρτοφυλακίου: ΑΦΜ ιδιοκτήτη από τις ρυθμίσεις κάθε ακινήτου,
+ * με πόσα ακίνητα έχει ο καθένας. Ο ίδιος κανόνας με την ομαδοποίηση του Ε2
+ * (e2Compare.ts): ένα Ε2 και ένας φάκελος ανά ΑΦΜ.
+ */
+export async function ownerAfms(db: Db, userId: string): Promise<{ afm: string; properties: number }[] | null> {
+  const { data, error } = await db.from('property_settings').select('property_id,owner_afm').eq('user_id', userId);
+  if (error) { console.error('[e2Prefilled] ΑΦΜ ιδιοκτητών:', error); return null; }
+  const count = new Map<string, number>();
+  for (const r of data ?? []) {
+    const afm = String(r.owner_afm ?? '').replace(/\s+/g, '');
+    if (/^\d{9}$/.test(afm) && r.property_id) count.set(afm, (count.get(afm) ?? 0) + 1);
+  }
+  return [...count.entries()].map(([afm, properties]) => ({ afm, properties }));
 }

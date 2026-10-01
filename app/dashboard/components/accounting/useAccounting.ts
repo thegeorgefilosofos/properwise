@@ -806,7 +806,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
       const status = readStatus(p) as PropertyStatus
       const rentPeriods = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).length
       const stayCount = allStays.filter(st=>st.property_id===p.id&&yearShare(st,year)>0).length
-      return { name: p.name || 'Ακίνητο', status, yearStatuses: statusesForYear(status, { rentPeriods, stays: stayCount }) }
+      return { id: p.id || undefined, name: p.name || 'Ακίνητο', status, yearStatuses: statusesForYear(status, { rentPeriods, stays: stayCount }) }
     })
   },[allProps,prop,allRent,allStays,year])
   // Αφετηρία, μόνο για χρήστη που δεν έχει δηλώσει ακόμη τίποτα: ό,τι ήδη ξέρουμε.
@@ -866,6 +866,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
 
   const dossierExport = useMemo(()=>({
     propName: prop?.name || 'Ακίνητο',
+    propertyId,
     ownerName: owner?.owner_name || undefined,
     ownerAfm: owner?.owner_afm || undefined,
     statementLines: statement.lines.map(l=>({ label:l.label, amount:l.amount, kind:l.kind, negative:l.negative })),

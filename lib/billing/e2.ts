@@ -16,7 +16,7 @@ import { leaseEndOf } from '@/lib/data/tenants';
 // ξεχωρίσει βραχυχρόνια από μακροχρόνια όταν η κατάσταση ήταν «rented».
 // Ακριβώς αυτό το ζευγάρι πεδίων περιγράφει το lib/property/status.ts ως πηγή
 // ασυμφωνίας: «ακίνητο μπορούσε να είναι 'rented' με rental_mode 'short_term'».
-export interface E2Property { id: string; name?: string | null; atak: string | null; address: string | null; postal_code: string | null; ownership: string | number | null; prop_type: string | null; status_detail: string | null; rental_mode?: string | null; target_rent: number | null; sqm?: number | null; floor?: string | number | null; }
+export interface E2Property { id: string; name?: string | null; ama?: string | null; atak: string | null; address: string | null; postal_code: string | null; ownership: string | number | null; prop_type: string | null; status_detail: string | null; rental_mode?: string | null; target_rent: number | null; sqm?: number | null; floor?: string | number | null; }
 // Το `id` και η αποχώρηση χρειάζονται για να μοιραστούν οι εισπράξεις στη σωστή
 // μίσθωση και για να κλείσει η μίσθωση όταν ο μισθωτής έφυγε νωρίτερα.
 export interface E2Tenant { id?: string | null; property_id: string; afm: string | null; monthly_rent: number | null; lease_start: string | null; lease_end: string | null; lease_type: string | null; full_name?: string | null; move_out_date?: string | null; status?: string | null; }
