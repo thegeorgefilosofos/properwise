@@ -206,7 +206,7 @@ const INTERNET_PLANS: Record<string, {
     // ── Οικιακά (με σύμβαση 24 μηνών) ────────────────────────────────────
     { id:'i_300_24',   name: 'Fiber 300 (24 μήνες)',        speed: '300/300 Mbps συμμετρικό', price: 28.00, hasPhone: false, note: 'Χωρίς τηλεφωνία. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'i_300_ph',   name: 'Fiber 300 + Τηλεφωνία',      speed: '300/300 Mbps + τηλεφωνία', price: 28.00, hasPhone: true,  note: 'Απεριόριστα λεπτά εντός Ευρωπαϊκής Ένωσης.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'i_1g_24',    name: 'Fiber 1 Gbps (24 μήνες)',     speed: '1 Gbps/1 Gbps συμμετρικό', price: 38.00, hasPhone: false, note: 'Υπερ-γρήγορο FTTH. Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'i_1g_24',    name: 'Fiber 1 Gbps (24 μήνες)',     speed: '1 Gbps/1 Gbps συμμετρικό', price: 38.00, hasPhone: false, note: 'Οπτική ίνα ως το σπίτι (FTTH). Δωρεάν εξοπλισμός.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'i_1g_ph',    name: 'Fiber 1 Gbps + Τηλεφωνία',   speed: '1 Gbps + τηλεφωνία', price: 38.00, hasPhone: true, note: 'Απεριόριστα λεπτά + 300 λεπτά σε ΕΕ/ΗΠΑ/Καναδά.', networkType: 'Fiber', contract: '24 μήνες' },
     // ── Αδέσμευτα ────────────────────────────────────────────────────────
     { id:'i_300_free', name: 'Fiber 300 Χωρίς Δέσμευση',   speed: '300/300 Mbps', price: 22.90, hasPhone: false, note: 'Χωρίς σύμβαση. Δωρεάν εξοπλισμός και εγκατάσταση.', networkType: 'Fiber' },

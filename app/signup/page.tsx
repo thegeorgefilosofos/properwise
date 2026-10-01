@@ -671,7 +671,7 @@ export default function SignupPage() {
                       χωρίς. Ο κωδικός είναι PO με επτά λατινικά ή ψηφία: ο συλλαβισμός
                       δεν αγγίζει λατινικά, οπότε μένει ακέραιος. */}
                   <span className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                    {hy(<>Ήρθες με πρόσκληση. Ο κωδικός <strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong> καταγράφεται στον λογαριασμό σου με την εγγραφή και μετράει σε εκείνον που σε κάλεσε. Η δοκιμή των {TRIAL_DAYS} ημερών είναι η ίδια για κάθε νέο λογαριασμό, με πρόσκληση ή χωρίς.</>)}
+                    {hy(<>Ήρθες με πρόσκληση. Ο κωδικός <strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong> καταγράφεται με την εγγραφή και μετράει σε εκείνον που σε κάλεσε. Η δοκιμή των {TRIAL_DAYS} ημερών είναι ίδια για όλους.</>)}
                   </span>
                 </div>
               )}

@@ -283,7 +283,7 @@ console.log('Το ταμείο');
     cash: owed, showIncome: false, onNavigate: () => {}, onRecordRent: null,
   }));
   ok('με εκκρεμότητα, το ποσό γράφεται', t2.includes('84,50€'));
-  ok('και η ετικέτα είναι «Χρωστάω»', t2.includes('Χρωστάω'));
+  ok('και η ετικέτα είναι «Οφείλω»', t2.includes('Οφείλω'));
 }
 
 

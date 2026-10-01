@@ -72,7 +72,7 @@ export default function BillingNudge({ userId, onNavigate }: { userId: string; o
           Ολοκλήρωσε τα στοιχεία τιμολόγησης
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, marginTop: 2 }}>
-          Ώστε η επόμενη χρέωση να κόψει σωστό παραστατικό. Λείπει: {missingLabels.slice(0, 4).join(', ')}{missingLabels.length > 4 ? '…' : ''}.
+          Χρειάζονται για σωστό παραστατικό στην επόμενη χρέωση. {missingLabels.length > 1 ? 'Λείπουν' : 'Λείπει'}: {missingLabels.slice(0, 4).join(', ')}{missingLabels.length > 4 ? '…' : ''}.
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>

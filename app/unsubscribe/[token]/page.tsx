@@ -112,7 +112,7 @@ export default function Unsubscribe() {
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
               Δεν καταφέραμε να διαβάσουμε τις προτιμήσεις σου. Ο σύνδεσμος δεν ελέγχθηκε, οπότε μπορεί κάλλιστα να είναι έγκυρος.
             </p>
-            <div style={{ marginTop: 16 }}><Btn onClick={retry}>Δοκιμή ξανά</Btn></div>
+            <div style={{ marginTop: 16 }}><Btn onClick={retry}>Δοκίμασε ξανά</Btn></div>
             {/* Η ΑΠΕΓΓΡΑΦΗ ΔΕΝ ΕΞΑΡΤΑΤΑΙ ΑΠΟ ΤΟ ΔΙΚΤΥΟ ΜΑΣ. Αν ούτε η δεύτερη
                 προσπάθεια πετύχει, υπάρχει δρόμος που δεν περνά από αυτή τη σελίδα. */}
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '16px 0 0' }}>

@@ -16,6 +16,13 @@ import { Sparkline, MonthBars, Donut } from './budget/charts'
 import { InlineNumber, InlineText } from './budget/Bits'
 import { useBudget } from './budget/useBudget'
 
+/**
+ * Από πόσα βραχυχρόνια ακίνητα και πάνω η εκμίσθωση φυσικού προσώπου θεωρείται
+ * επιχειρηματική δραστηριότητα. Ο ίδιος αριθμός κρίνει πότε εμφανίζεται η
+ * προειδοποίηση και τι γράφει: δεν γράφεται δεύτερη φορά με το χέρι.
+ */
+const STR_BUSINESS_FROM = 3
+
 export default function BillsBudget({ propertyId, userId = '', profileType = 'individual' }: Props) {
   const {
     isPro, budgets, actuals, monthTotals, catMonth, income, incomeYtd, loanMonthly, rentalMode,
@@ -226,7 +233,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 <div className="po-fig" data-tone={hasIncome ? (safeRaw < 0 ? 'negative' : 'accent') : undefined} style={{ fontSize: 28, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1, letterSpacing: '-0.02em', transition: 'color 0.15s' }}>{feSigned(val)}</div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 6, fontFamily: T.font.sans }}>
                   {hasIncome
-                    ? (composition ? `μετά από ${composition}` : 'χωρίς δεσμευμένα έξοδα')
+                    ? (composition ? `μετά από ${composition}` : 'χωρίς δεσμευμένες δαπάνες')
                     : (parts.length > 1 ? compositionNom : (parts[0]?.sub ?? ''))}
                 </div>
               </div>
@@ -347,7 +354,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 φορολογικό νόημα και δεν είναι κανένα από τα τρία. */}
             {secHdr(isSTRmode ? 'Εισπράξεις' : 'Ενοίκιο', 'income', undefined,
               <InfoDot text={isSTRmode
-                ? 'Ό,τι μπήκε στο ταμείο από τα καταλύματα: του μήνα, από την αρχή του έτους, διανυκτερεύσεις και μέση τιμή ανά βραδιά. Το ΔΗΛΩΤΕΟ ποσό είναι μεγαλύτερο, γιατί περιλαμβάνει την προμήθεια της πλατφόρμας: το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».'
+                ? 'Ό,τι μπήκε στο ταμείο από τα καταλύματα: του μήνα, από την αρχή του έτους, διανυκτερεύσεις και μέση τιμή ανά βραδιά. Το δηλωτέο ποσό είναι μεγαλύτερο, γιατί περιλαμβάνει την προμήθεια της πλατφόρμας: το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».'
                 : 'Αναμενόμενο ενοίκιο από τους ενεργούς ενοικιαστές: μηνιαίο, ετήσιο και η καθαρή ροή μετά τα μηνιαία κόστη. Είναι πρόβλεψη, όχι καταγεγραμμένες εισπράξεις· αυτές τις βλέπεις στους «Ενοικιαστές» και στη «Λογιστική».'} />)}
             {!collapsed.has('income') && (
               <KPIGrid nested items={isSTRmode ? [
@@ -458,12 +465,12 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         </div>
       )}
 
-      {/* Όριο 3+ βραχυχρόνιων (ΜΟΝΟ ιδιώτης) — νομικό κατώφλι επιχειρηματικής δραστηριότητας */}
-      {!isPro && strPropCount >= 3 && (
+      {/* Όριο βραχυχρόνιων (ΜΟΝΟ ιδιώτης) — νομικό κατώφλι επιχειρηματικής δραστηριότητας */}
+      {!isPro && strPropCount >= STR_BUSINESS_FROM && (
         <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '10px 16px' }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
           <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-            Έχεις <strong style={{ color: 'var(--text-primary)' }}>{strPropCount} βραχυχρόνια ακίνητα</strong>. Από 3 και πάνω, η δραστηριότητα θεωρείται επιχειρηματική και προκύπτουν υποχρεώσεις ΦΠΑ, ΕΦΚΑ και προκαταβολής φόρου. Συμβουλέψου τη Λογιστική και τον λογιστή σου.
+            Έχεις <strong style={{ color: 'var(--text-primary)' }}>{strPropCount} βραχυχρόνια ακίνητα</strong>. Από {STR_BUSINESS_FROM} και πάνω, η δραστηριότητα θεωρείται επιχειρηματική και προκύπτουν υποχρεώσεις ΦΠΑ, ΕΦΚΑ και προκαταβολής φόρου. Συμβουλέψου τη Λογιστική και τον λογιστή σου.
           </span>
         </div>
       )}
@@ -548,7 +555,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
             <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans }}>Προτάσεις</span>
-            <InfoDot text="Προτάσεις που προκύπτουν από το πραγματικό μοτίβο των δαπανών σου. Εφαρμόζεις με ένα άγγιγμα (με δυνατότητα αναίρεσης) ή τις απορρίπτεις για να μην ξαναεμφανιστούν." />
+            <InfoDot text="Προτάσεις που προκύπτουν από το πραγματικό μοτίβο των δαπανών σου. Τις εφαρμόζεις με ένα άγγιγμα και αναιρούνται, ή τις απορρίπτεις για να μην ξαναεμφανιστούν." />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {targetSuggestions.map(s => (
@@ -631,10 +638,10 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 </div>
                 {/* Ετήσιο εργαλείο: ράβδοι εξόδων ανά μήνα (με ήπια κατάσταση όταν δεν υπάρχει ιστορικό) */}
                 <div style={{ marginTop: T.sp.lg, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, fontFamily: T.font.sans }}>Έξοδα ανά μήνα</div>
+                  <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, fontFamily: T.font.sans }}>Δαπάνες ανά μήνα</div>
                   {yearBars.some(b => b.value > 0)
                     ? <MonthBars data={yearBars} activeYm={_curYm} />
-                    : <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, padding: '14px 0' }}>Μόλις καταγραφούν έξοδα, θα δεις εδώ την πορεία ανά μήνα.</div>}
+                    : <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, padding: '14px 0' }}>Μόλις καταγραφούν δαπάνες, θα δεις εδώ την πορεία ανά μήνα.</div>}
                 </div>
                 {/* Ετήσιο εργαλείο: κατανομή δαπανών ανά κατηγορία */}
                 {catYtd.length > 0 && (
@@ -704,7 +711,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 δαπανών. */}
             {secHdr('Επαναλαμβανόμενες χρεώσεις', 'recurring',
               recurring.length > 1
-                ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feAuto(monthlyTotal)}/μήνα · {feAuto(annualTotal)}/έτος</span>
+                ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feAuto(monthlyTotal)} τον μήνα · {feAuto(annualTotal)} τον χρόνο</span>
                 : undefined,
               <InfoDot text="Συνδρομές και πάγιες χρεώσεις που εντοπίζονται αυτόματα από τις καταγεγραμμένες δαπάνες σου, όταν ο ίδιος πάροχος επαναλαμβάνεται σε πολλούς μήνες. Δείχνει συχνότητα, τυπικό ποσό και ετήσιο κόστος, ώστε να εντοπίζεις εύκολα τις «κρυφές» συνδρομές." />)}
             {!collapsed.has('recurring') && (
@@ -734,7 +741,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
 
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
         {secHdr('Ανά κατηγορία', 'cats', undefined,
-          <InfoDot text="Κάθε κατηγορία δείχνει τι έχεις ξοδέψει έναντι του στόχου. Κάνε κλικ στον στόχο για να τον αλλάξεις επιτόπου, ή στο όνομα για μετονομασία. Οι στόχοι αποθηκεύονται αυτόματα." />)}
+          <InfoDot text="Κάθε κατηγορία δείχνει τι έχεις ξοδέψει έναντι του στόχου. Πάτησε τον στόχο για να τον αλλάξεις επιτόπου ή το όνομα για να το μετονομάσεις. Οι στόχοι αποθηκεύονται αυτόματα." />)}
         {!(collapsed.has('cats')) &&
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {activeCats.map(cat => {
@@ -1018,7 +1025,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
           δεις κάτι που χωρούσε να φαίνεται. Η ίδια η ενότητα μαζεύει ήδη. */}
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginTop: 12 }}>
         {secHdr('Εισαγωγή δεδομένων', 'import', undefined,
-          <InfoDot text="Ανέβασε τραπεζικό αντίγραφο ή λίστα εξόδων (CSV ή Excel) και το εργαλείο αναγνωρίζει αυτόματα ημερομηνία, ποσό και κατηγορία. Ελέγχεις και διορθώνεις πριν την καταχώρηση, ώστε οι δαπάνες να μπαίνουν στον σωστό μήνα και στη σωστή κατηγορία." />)}
+          <InfoDot text="Ανέβασε τραπεζικό αντίγραφο ή λίστα δαπανών (CSV ή Excel) και το εργαλείο αναγνωρίζει αυτόματα ημερομηνία, ποσό και κατηγορία. Ελέγχεις και διορθώνεις πριν την καταχώρηση, ώστε οι δαπάνες να μπαίνουν στον σωστό μήνα και στη σωστή κατηγορία." />)}
             {!collapsed.has('import') && (
           <BudgetImport propertyId={propertyId} userId={userId} cats={activeCats.map(c => ({ key: c.key, label: c.label }))} onImported={loadData} />
         )}

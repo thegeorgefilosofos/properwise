@@ -102,7 +102,7 @@ export default function FeatureLock({ title, benefit, requiredPlan, currentPlanN
 
             {/* Τιμή, δεύτερη και διακριτική */}
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16 }}>
-              {feAuto(plan.priceMonthly)}/μήνα{plan.priceAnnual > 0 ? ` ή ${feAuto(plan.priceAnnual)}/χρόνο (${feAuto(annualPerMonth(requiredPlan))}/μήνα)` : ''}
+              {feAuto(plan.priceMonthly)} τον μήνα{plan.priceAnnual > 0 ? ` ή ${feAuto(plan.priceAnnual)} τον χρόνο (${feAuto(annualPerMonth(requiredPlan))} τον μήνα)` : ''}
             </div>
           </div>
 
@@ -113,7 +113,7 @@ export default function FeatureLock({ title, benefit, requiredPlan, currentPlanN
             )}
           </div>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-            Χωρίς δέσμευση. Αναβαθμίζεις ή προσαρμόζεις όποτε θέλεις, με ένα κλικ.
+            Χωρίς δέσμευση. Αλλάζεις πακέτο όποτε θέλεις.
           </div>
         </div>
       </Card>

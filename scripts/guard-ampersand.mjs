@@ -57,12 +57,32 @@ const STRING = /(?:"([^"\n]{3,160})"|'([^'\n]{3,160})')/g
  */
 const JSX_TEXT = /(?:^|>)([^<>{}\n]{3,160}?)(?:<|$)/g
 
+/**
+ * ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ JSX ΠΟΥ ΣΠΑΕΙ ΣΕ ΓΡΑΜΜΕΣ. Μια παράγραφος JSX τυλίγεται όπου
+ * τη σπάσει ο συντάκτης· αν η αλλαγή γραμμής πέσει δίπλα στο «&», η γραμμή
+ * τελειώνει σε « &» ή αρχίζει με «& »· το « & » με δύο κενά δεν υπάρχει
+ * πουθενά. Για το κείμενο JSX αρκεί κενό ή άκρη γραμμής από τη μία πλευρά.
+ */
+const LOOSE_AMP = /(?:^|\s)&(?:\s|$)/
+/**
+ * ΑΝΟΙΓΜΑ ΣΧΟΛΙΟΥ ΕΙΝΑΙ ΜΟΝΟ ΤΟ «/*» ΠΟΥ ΔΕΝ ΚΟΛΛΑΕΙ ΣΕ ΛΕΞΗ. Ο φύλακας
+ * μετρούσε κάθε «/*» ως αρχή σχολίου· το `accept="image/*"` ενός πεδίου
+ * αρχείου τον έκανε να θεωρεί σχόλιο ό,τι ακολουθούσε. Ετσι πέρασε «κατά την
+ * είσοδο & έξοδο του ενοικιαστή» στην Παράδοση της απογραφής, εκατό γραμμές
+ * κάτω από ένα τέτοιο πεδίο.
+ */
+const lastOpen = (raw) => {
+  let at = -1
+  for (const m of raw.matchAll(/(?:^|[^\w"'/*])\/\*/g)) at = m.index + m[0].length - 2
+  return at
+}
+
 const findings = []
 for (const f of findSources().filter(x => !x.includes('.test.'))) {
   let inBlock = false
   readFileSync(f, 'utf8').split('\n').forEach((raw, i) => {
     const t = raw.trim()
-    const opens = raw.lastIndexOf('/*'), closes = raw.lastIndexOf('*/')
+    const opens = lastOpen(raw), closes = raw.lastIndexOf('*/')
     const wasInBlock = inBlock
     if (opens > closes) inBlock = true
     else if (closes > opens) inBlock = false
@@ -70,18 +90,19 @@ for (const f of findSources().filter(x => !x.includes('.test.'))) {
     // Σχόλιο στο τέλος της γραμμής: κόβεται, δεν είναι κείμενο που διαβάζει χρήστης.
     const line = raw.split('//')[0]
     const seen = new Set()
-    const check = (raw) => {
+    const check = (raw, jsx = false) => {
       let v = raw
-      if (!v.includes(' & ') || !GREEK.test(v)) return
+      const has = (x) => jsx ? LOOSE_AMP.test(x) : x.includes(' & ')
+      if (!has(v) || !GREEK.test(v)) return
       for (const s of [...STORED, ...TERMS]) v = v.split(s).join('')
-      if (!v.includes(' & ')) return
+      if (!has(v)) return
       const key = `${i}:${raw}`
       if (seen.has(key)) return
       seen.add(key)
       findings.push(`${f}:${i + 1}  «${raw.trim().slice(0, 70)}»`)
     }
     for (const m of line.matchAll(STRING)) check(m[1] ?? m[2])
-    if (/\.tsx$/.test(f)) for (const m of line.matchAll(JSX_TEXT)) check(m[1])
+    if (/\.tsx$/.test(f)) for (const m of line.matchAll(JSX_TEXT)) check(m[1], true)
   })
 }
 

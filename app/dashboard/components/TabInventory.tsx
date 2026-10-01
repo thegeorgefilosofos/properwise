@@ -426,7 +426,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
       {filtered.length===0?(
         <EmptyState
           icon={items.length===0?<PackageOpen size={20}/>:<SearchX size={20}/>}
-          title={items.length===0?'Δεν έχεις καταχωρήσει αντικείμενα':'Δεν βρέθηκαν αποτελέσματα'}
+          title={items.length===0?'Κανένα αντικείμενο ακόμη':'Δεν βρέθηκαν αποτελέσματα'}
           hint={items.length===0?'Πρόσθεσε το πρώτο αντικείμενο για να ξεκινήσεις.':'Δοκίμασε διαφορετικά φίλτρα ή αναζήτηση.'}
           action={items.length===0?<Btn variant="primary" onClick={onAdd}>Νέο αντικείμενο</Btn>:undefined}
         />

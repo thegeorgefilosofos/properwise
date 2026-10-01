@@ -145,7 +145,7 @@ export default function VerifyDocument() {
               Αυτό δεν λέει τίποτα για το έγγραφο: δεν προλάβαμε να το ελέγξουμε.
             </p>
             <div style={{ marginTop: 16 }}>
-              <Btn onClick={() => { setResult(null); void check(); }}>Δοκιμή ξανά</Btn>
+              <Btn onClick={() => { setResult(null); void check(); }}>Νέα προσπάθεια</Btn>
             </div>
           </div>
         )}

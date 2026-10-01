@@ -492,7 +492,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
     <Card>
       <SecHdr label="Συνδρομή" />
       <InfoBanner tone="info">
-        Λογαριασμός δοκιμαστή. Όλα τα πακέτα είναι ανοιχτά, χωρίς καμία χρέωση και χωρίς συνδρομή στον έμπορο και αλλάζεις όποτε θέλεις.
+        Λογαριασμός δοκιμαστή. Όλα τα πακέτα είναι ανοιχτά χωρίς χρέωση και αλλάζεις πακέτο όποτε θέλεις.
       </InfoBanner>
       {/* ΟΛΑ ΤΑ ΠΑΚΕΤΑ, ΧΩΡΙΣ ΦΡΑΓΜΟ ΤΥΠΟΥ ΠΡΟΦΙΛ. Ο δοκιμαστής δεν αγοράζει:
           δοκιμάζει. Το να του κλείσουμε τα μισά θα ακύρωνε τον λόγο που του
@@ -506,7 +506,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
         ))}
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55, marginTop: 14 }}>
-        Η ιδιότητα δόθηκε στις {fd(d.tester_since)}. Όταν τελειώσει η δοκιμαστική φάση θα σου το πούμε πριν αλλάξει οτιδήποτε.
+        Η ιδιότητα δόθηκε στις {fd(d.tester_since)}. Όταν τελειώσει η δοκιμή θα σου το πούμε πριν αλλάξει οτιδήποτε.
       </div>
     </Card>
   );
@@ -523,11 +523,11 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
         <InfoBanner tone="warning">Η συνδρομή έληξε στις <strong>{fd(endsAt)}</strong>. Ο λογαριασμός συνεχίζει στο δωρεάν πακέτο «{PLANS.free.name}»· διάλεξε πακέτο για να ξαναπάρεις ό,τι είχες.</InfoBanner>
       ) : tone === 'trial' || tone === 'active' ? (
         <InfoBanner tone="info">
-          {tone === 'trial' ? 'Δοκιμαστική περίοδος σε εξέλιξη' : `Ενεργή συνδρομή, ${plan.name}`}
+          {tone === 'trial' ? 'Σε δοκιμή' : `Ενεργή συνδρομή, ${plan.name}`}
           {renewsAt ? `. Ανανέωση στις ${fd(renewsAt)}.` : '.'}
         </InfoBanner>
       ) : tone === 'retrying' ? (
-        <InfoBanner tone="warning">Η τελευταία χρέωση δεν ολοκληρώθηκε. Ο λογαριασμός παραμένει ανοιχτός όσο ο έμπορος ξαναδοκιμάζει την κάρτα. Ανανέωσε την κάρτα σου από τη διαχείριση συνδρομής.</InfoBanner>
+        <InfoBanner tone="warning">Η τελευταία χρέωση δεν ολοκληρώθηκε. Ο λογαριασμός παραμένει ανοιχτός όσο ο έμπορος ξαναδοκιμάζει την κάρτα. Ενημέρωσε την κάρτα σου από τη διαχείριση συνδρομής.</InfoBanner>
       ) : null}
 
       {/* ── Η ΥΠΟΒΑΘΜΙΣΗ ΠΟΥ ΠΕΡΙΜΕΝΕΙ, ΓΡΑΜΜΕΝΗ ────────────────────────────

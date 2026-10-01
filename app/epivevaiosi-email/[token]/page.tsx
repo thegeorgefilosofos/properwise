@@ -134,7 +134,7 @@ export default function ConfirmReminderEmail() {
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
               Δεν λάβαμε απάντηση, οπότε ο σύνδεσμος δεν ελέγχθηκε. Μπορεί να είναι έγκυρος.
             </p>
-            <div style={{ marginTop: 16 }}><Btn onClick={confirm}>Δοκιμή ξανά</Btn></div>
+            <div style={{ marginTop: 16 }}><Btn onClick={confirm}>Δοκίμασε ξανά</Btn></div>
           </div>
         )}
       </div>

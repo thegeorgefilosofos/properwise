@@ -1111,7 +1111,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
             empty: 'Κανένα. Όλα τα απαραίτητα υπάρχουν.',
           },
           ...(pending.length ? [{
-            title: `ΚΑΛΟ ΝΑ ΥΠΑΡΧΟΥΝ, ΔΕΝ ΜΠΛΟΚΑΡΟΥΝ (${pending.length})`,
+            title: `ΧΡΗΣΙΜΑ ΑΛΛΑ ΟΧΙ ΑΠΑΡΑΙΤΗΤΑ (${pending.length})`,
             head: reqHead, rows: reqRows(pending),
           }] : []),
           ...(gaps.length ? [{
@@ -1160,7 +1160,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
         [COMBO_SHEET]: 'Ποιος χαρακτηρισμός επιτρέπεται σε ποιον τύπο παραστατικού.',
         'Κωδικοί Ε3 ανά συνδυασμό': 'Οι επιτρεπτοί κωδικοί Ε3 για κάθε συνδυασμό.',
         'Δικαιολογητικά': 'Τι χρειάζεται, ποιος το φέρνει και τι συνοδεύει τον φάκελο.',
-        'Τι λείπει': 'Ό,τι ΔΕΝ βρέθηκε. Διαβάστε το πρώτο.',
+        'Τι λείπει': 'Όσα λείπουν. Να διαβαστεί πρώτο.',
       };
       const { ws } = sectionSheet({
         title: 'ΦΑΚΕΛΟΣ ΓΙΑ ΤΟΝ ΛΟΓΙΣΤΗ',

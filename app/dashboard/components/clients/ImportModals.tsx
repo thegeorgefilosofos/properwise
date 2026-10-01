@@ -117,7 +117,7 @@ export function IcalImportModal({
         {icalPropertyId && icalFeedsFailed && (
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
             Οι αποθηκευμένοι σύνδεσμοι δεν διαβάστηκαν. Δεν ξέρουμε αν υπάρχει ήδη σύνδεσμος για αυτό το ακίνητο ούτε αν πέτυχε ο τελευταίος συγχρονισμός.{' '}
-            <LinkBtn onClick={() => { void loadIcalFeeds(); }}>Δοκιμή ξανά</LinkBtn>
+            <LinkBtn onClick={() => { void loadIcalFeeds(); }}>Δοκίμασε ξανά</LinkBtn>
           </div>
         )}
         {/* Αποθηκευμένοι σύνδεσμοι (ανά επιλεγμένο ακίνητο) */}

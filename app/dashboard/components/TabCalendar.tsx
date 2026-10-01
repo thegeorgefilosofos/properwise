@@ -289,7 +289,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     // Η ΟΜΑΔΑ ΠΑΡΑΓΟΤΑΝ ΑΠΟ ΤΗΝ ΚΑΤΗΓΟΡΙΑ ΤΟΥ ΓΕΓΟΝΟΤΟΣ, ΟΧΙ ΤΗΣ ΔΑΠΑΝΗΣ και
     // η τιμή 'general' δεν υπάρχει καν στην ταξινομία: ασφάλιστρο καταχωρημένο
     // από εδώ έπαυε να εκπίπτει. Την παράγει πλέον το στρώμα, από την κατηγορία.
-    await saved('Η δαπάνη δεν καταχωρήθηκε στα έξοδα',
+    await saved('Η δαπάνη δεν καταχωρήθηκε στις δαπάνες',
       expenses.insert(supabase,[expenses.row({propertyId,userId},{amount:amt,description:form.title,date:form.event_date,category:catMap[form.category]||'Λοιπά έξοδα',paid:form.status==='paid'})]))
   }
   // Μετακίνηση με σύρσιμο (drag): αλλάζει ημερομηνία (και ώρα σε προβολή ωρών). Οι

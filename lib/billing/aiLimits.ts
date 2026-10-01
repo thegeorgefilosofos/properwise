@@ -37,7 +37,7 @@
 //             ακριβώς επειδή υπάρχει, το ατομικό όριο μπορεί να είναι γενναίο.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { PLAN_ORDER, PLANS, type PlanId, type BillingCycle } from './plans';
+import { PLAN_ORDER, PLANS, FREE_SCANS_PER_MONTH, type PlanId, type BillingCycle } from './plans';
 import { BLENDED_COST_USD } from '../assistant/model';
 import { ASSISTANT_ACC, ASSISTANT_NAME } from '../assistant/identity';
 
@@ -327,7 +327,7 @@ export function hasAssistant(plan: PlanId | string | null | undefined): boolean 
 // λεπτό μένει για όλους, γιατί πιάνει σενάρια και όχι ανθρώπους.
 // ═══════════════════════════════════════════════════════════════════════════
 export const SCAN_LIMITS: Record<PlanId, number | null> = {
-  free: 5, solo: null, owner: null, agency: null, office: null,
+  free: FREE_SCANS_PER_MONTH, solo: null, owner: null, agency: null, office: null,
 };
 
 /** Τα μηνιαία όρια σάρωσης με τη σειρά των rank, όπως τα θέλει το RPC. */

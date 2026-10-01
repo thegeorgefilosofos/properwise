@@ -1523,7 +1523,7 @@ function FixModal({ items, onCancel, onSave }: { items: Item[]; onCancel: () => 
         </div>
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.5, fontFamily: T.font.sans }}>
           Ο πάροχος, το ΑΦΜ, το ποσό, η ημερομηνία και η περίοδος είναι τα πέντε πεδία
-          με τα οποία το app διαπιστώνει ότι ένας λογαριασμός πληρώθηκε.
+          με τα οποία η εφαρμογή διαπιστώνει ότι ένας λογαριασμός πληρώθηκε.
         </div>
       </>)}
     </Modal>

@@ -365,7 +365,7 @@ export default function LoginPage() {
           {factorId ? (
             <div style={{ marginTop: 24, textAlign: 'center' }}>
               <Btn variant="ghost" onClick={signOut} disabled={signingOut}>
-                {signingOut ? 'Έξοδος…' : 'Έξοδος από τη σύνδεση'}
+                {signingOut ? 'Αποσύνδεση…' : 'Αποσύνδεση'}
               </Btn>
             </div>
           ) : (

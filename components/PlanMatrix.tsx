@@ -36,7 +36,7 @@ interface FeatureRow { label: string; values: Record<ComparedPlan, CellValue> }
 /** Το όριο ακινήτων γράφεται ΠΑΝΤΑ από τα PLANS, ποτέ με το χέρι. */
 const limitLabel = (id: ComparedPlan): string => {
   const n = PLANS[id].maxProperties;
-  if (!Number.isFinite(n)) return 'Απεριόριστα';
+  if (!Number.isFinite(n)) return 'Χωρίς όριο';
   return n === 1 ? '1' : `Έως ${n}`;
 };
 

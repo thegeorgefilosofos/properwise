@@ -440,7 +440,7 @@ export default async function Landing() {
               ήδη εγγραφές. Η κατάσταση των διαβιβάσεων ζει σε ένα σημείο· εδώ
               μπαίνει μόνο ο δρόμος προς αυτήν. */}
           <p className="lp-sec-fine po-just">
-            Σχεδιασμένο σύμφωνα με τον GDPR. Ποιοι πάροχοι επεξεργάζονται δεδομένα εκτός ΕΕ και με ποιες συμβάσεις, το λέει η σελίδα{' '}
+            Ποιοι πάροχοι επεξεργάζονται δεδομένα εκτός ΕΕ και με ποιες συμβάσεις, το λέει η σελίδα{' '}
             <Link href="/trust" className="lp-link po-tap-inline" style={{ color: ACCENT, textDecoration: 'none' }}>«Ποιοι είμαστε»</Link>.
           </p>
         </div>
@@ -528,7 +528,7 @@ export default async function Landing() {
 
       {/* ── Pricing ── */}
       <section id="pricing" className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead over="Τιμολόγηση" title="Τι κοστίζει κάθε πακέτο" sub="Κάθε πακέτο περιλαμβάνει ό,τι έχει το προηγούμενο. Οι τιμές περιλαμβάνουν ΦΠΑ." />
+        <SectionHead over="Τιμολόγηση" title="Τι κοστίζει κάθε πακέτο" sub="Κάθε πακέτο περιλαμβάνει ό,τι έχει το προηγούμενο." />
         {/* ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΙΣ ΤΙΜΕΣ ΚΑΙ ΤΑ ΧΑΡΑΚΤΗΡΙΣΤΙΚΑ.
             Οι κάρτες ήταν γραμμένες με το χέρι: τιμές, ετήσιες τιμές και λίστες
             χαρακτηριστικά αντιγραμμένα από το lib/billing/plans.ts. Είχαν ήδη
@@ -638,7 +638,7 @@ export default async function Landing() {
           του site. Εμφανίζεται μόνη της τη μέρα που ανοίγει η χρέωση. */}
       {billingLive && (
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead over="Σύσταση" title="Σύστησέ το σε όσους έχουν ακίνητο" sub="Για ιδιώτες, η ανταμοιβή πιστώνεται όταν ο φίλος σου προσθέσει ακίνητο και σαρώσει ένα έγγραφο. Για επαγγελματίες, μετρούν οι συνδρομητές." />
+        <SectionHead over="Σύσταση" title="Σύστησέ το σε όσους έχουν ακίνητο" sub="Για ιδιώτες μετρά κάθε φίλος που ξεκινά. Για επαγγελματίες μετρούν οι συνδρομητές." />
         <div className="lp-duo" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
           {REFERRAL.map((r, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(22px, 2.6vw, 30px)' }}>
@@ -686,12 +686,10 @@ export default async function Landing() {
 
               ΚΑΙ ΧΩΡΙΣ ΓΥΜΝΟ «ΔΩΡΕΑΝ». Η δοκιμή λέγεται με το όνομά της και οι
               ανταμοιβές ως μήνες που δεν χρεώνονται. */}
-          Ο φίλος σου ξεκινά με τη δοκιμή των {TRIAL_DAYS} ημερών, όπως κάθε νέος λογαριασμός.
-          Η ανταμοιβή κλειδώνει όταν προσθέσει ακίνητο και σαρώσει ένα έγγραφο.
           Ο Συνεργάτης κερδίζει έναν μήνα {PLANS[partnerWelcomeTier('owner')].nameGen} ή{' '}
           {PLANS[partnerWelcomeTier('agency')].nameGen} (ανάλογα με το πακέτο του) και δεν χρεώνεται κάθε
           επόμενο μήνα που πιάνει τον στόχο, με προτεραιότητα σε νέες κυκλοφορίες.
-          Οι ανταμοιβές είναι μήνες χωρίς χρέωση και θέσεις ακινήτων· μετρητά δεν αποδίδονται.
+          Οι ανταμοιβές είναι μήνες συνδρομής χωρίς χρέωση και επιπλέον θέσεις ακινήτων και δεν εξαργυρώνονται σε μετρητά.
         </p>
       </section>
       )}

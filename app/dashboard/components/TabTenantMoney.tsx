@@ -195,7 +195,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
 
       {(isExpired||isExpiring)&&(
         <AlertBar
-          text={isExpired?`Το μισθωτήριο έληξε στις ${fmtDate(tenant.lease_end)}, ανανέωσε άμεσα πριν οποιαδήποτε αναπροσαρμογή`:`Λήγει σε ${daysExp} ημέρες (${fmtDate(tenant.lease_end)}), προετοίμασε ανανέωση εγκαίρως`}
+          text={isExpired?`Το μισθωτήριο έληξε στις ${fmtDate(tenant.lease_end)}. Ανανέωσέ το πριν από οποιαδήποτε αναπροσαρμογή.`:`Το μισθωτήριο λήγει ${daysExp===0?'σήμερα':daysExp===1?'αύριο':`σε ${daysExp} ημέρες`} (${fmtDate(tenant.lease_end)}).`}
           level={isExpired?'critical':'warning'}
         />
       )}

@@ -31,6 +31,18 @@ import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { ApodosiCalculator } from './ApodosiCalculator';
+import { rentalIncomeTax } from '@/lib/billing/greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
+import { feWhole } from '@/lib/core/format';
+
+// ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΤΗΣ ΑΠΑΝΤΗΣΗΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΜΗΧΑΝΗ, ΟΧΙ ΑΠΟ ΤΟ ΧΕΡΙ. Τα 1.197€,
+// 2.293€ και 1.096€ ήταν γραμμένα στο κείμενο: την επόμενη αλλαγή κλίμακας ή
+// τεκμαρτής έκπτωσης θα έλεγαν άλλα από τον υπολογιστή της ίδιας σελίδας.
+const EX_RENT = 8400;
+const EX_OTHER = 20000;
+const exTaxable = (gross: number) => gross * (1 - PRESUMPTIVE_DEDUCTION_RATE);
+const EX_ALONE = rentalIncomeTax(exTaxable(EX_RENT));
+const EX_ON_TOP = rentalIncomeTax(exTaxable(EX_RENT + EX_OTHER)) - rentalIncomeTax(exTaxable(EX_OTHER));
 
 const TITLE = 'Καθαρή απόδοση ακινήτου με τα δικά σου δεδομένα';
 // Ως 155 χαρακτήρες, όσα δείχνει το αποτέλεσμα αναζήτησης: τα 230 της πρώτης
@@ -58,9 +70,9 @@ const FAQ: { q: string; a: string; link?: { text: string; href: string } }[] = [
   {
     q: 'Γιατί ο φόρος εξαρτάται από τα άλλα μου ενοίκια;',
     a: 'Επειδή η κλίμακα των ενοικίων είναι προοδευτική στο ΣΥΝΟΛΟ του εισοδήματός '
-     + 'σου από ακίνητα, όχι ανά ακίνητο. Ένα διαμέρισμα με 8.400€ ενοίκια κοστίζει '
-     + '1.197€ φόρο αν είναι το μοναδικό σου και 2.293€ αν δηλώνεις ήδη άλλα '
-     + '20.000€. Ίδιο ακίνητο, διαφορά 1.096€ τον χρόνο. Γι’ αυτό ο υπολογιστής '
+     + `σου από ακίνητα, όχι ανά ακίνητο. Ένα διαμέρισμα με ${feWhole(EX_RENT)} ενοίκια κοστίζει `
+     + `${feWhole(EX_ALONE)} φόρο αν είναι το μοναδικό σου και ${feWhole(EX_ON_TOP)} αν δηλώνεις ήδη άλλα `
+     + `${feWhole(EX_OTHER)}. Ίδιο ακίνητο, διαφορά ${feWhole(EX_ON_TOP - EX_ALONE)} τον χρόνο. Γι’ αυτό ο υπολογιστής `
      + 'ρωτά τι άλλο δηλώνεις.',
   },
   {

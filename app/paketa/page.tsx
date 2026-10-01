@@ -87,7 +87,7 @@ export default function Page() {
             δοκιμή με το όριό της (TRIAL_OFFER, η ίδια πηγή με την αρχική), η
             κατάσταση της χρέωσης (billingWords) και ο ΦΠΑ. */}
         <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>{hy(<>
-          {TRIAL_OFFER} {billingWords().firstCharge} Οι τιμές περιλαμβάνουν ΦΠΑ και σταματάς όποτε θέλεις. {billingWords().moneyBack}
+          {TRIAL_OFFER} {billingWords().firstCharge} Οι τιμές περιλαμβάνουν ΦΠΑ και ακυρώνεις όποτε θέλεις. {billingWords().moneyBack}
         </>)}</p>
         {/* Η ΙΔΙΑ ΠΡΟΤΑΣΗ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Χωρίς προτεινόμενη στήλη ο πίνακας έδειχνε
             τέσσερα ίδια κύρια κουμπιά, ενώ η αρχική προτείνει ρητά ένα πακέτο.

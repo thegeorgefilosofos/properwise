@@ -161,10 +161,10 @@ const REWARD_REASON: Record<string, string> = {
   per_referral: 'Σύσταση φίλου', per_referral_pro: 'Σύσταση επαγγελματία',
   indiv_volume: `${INDIV_VOLUME_TARGET} νέοι μέσα στον μήνα`,
   pro_paid: `${PRO_PAID_TARGET} συνδρομητές μέσα στον μήνα`,
-  referee_welcome: 'Δώρο καλωσορίσματος',
-  milestone: 'Μηνιαίο μπόνους', partner: 'Ιδιότητα συνεργάτη',
+  referee_welcome: 'Ανταμοιβή καλωσορίσματος',
+  milestone: 'Μηνιαία ανταμοιβή', partner: 'Ιδιότητα συνεργάτη',
 };
-const rewardReason = (reason: string) => REWARD_REASON[reason] || 'Μπόνους';
+const rewardReason = (reason: string) => REWARD_REASON[reason] || 'Ανταμοιβή';
 const rewardTitle = (r: Reward) => r.kind === 'slot'
   ? `1 ακίνητο χωρίς χρέωση για ${moAcc(r.months)}`
   : `${moNom(r.months)} ${planQ(r.tier === 'agency' ? 'agency' : 'solo')} χωρίς χρέωση`;
@@ -242,8 +242,8 @@ function Milestone({ title, icon, count, target, unit, kind, rewardTitle, claimS
             : pr.count === 0
               ? `Προσκάλεσε ${target} μέσα στον ίδιο μήνα.`
               : pr.remaining === 1
-                ? 'Σου λείπει μόλις ένας ακόμη. Είσαι ένα βήμα πριν τον στόχο.'
-                : `Σου λείπουν ${pr.remaining} ακόμη. Συνέχισε.`)}
+                ? 'Σου λείπει μόλις ένας ακόμη.'
+                : `Σου λείπουν ${pr.remaining} ακόμη.`)}
         </p>
         {children && <div style={{ marginTop: 12 }}>{children}</div>}
         {deadline && !pr.reached && (
@@ -255,9 +255,9 @@ function Milestone({ title, icon, count, target, unit, kind, rewardTitle, claimS
         {pr.reached && kind && onClaim && (
           <div style={{ marginTop: 12 }}>
             {st === 'done'
-              ? <span role="status" style={{ ...TT.bodySm, color: 'var(--positive)', fontWeight: 600 }}>Το δώρο σου καταχωρήθηκε. Πιστώνεται στη συνδρομή σου.</span>
-              : <Btn variant="primary" onClick={() => onClaim(kind)} disabled={st === 'saving'}>{st === 'saving' ? 'Καταχώρηση…' : 'Πάρ’ το δώρο σου'}</Btn>}
-            {st === 'error' && <div role="alert" style={{ ...TT.caption, color: 'var(--warning)', marginTop: 8 }}>Το δώρο δεν καταχωρήθηκε. Δοκίμασε ξανά.</div>}
+              ? <span role="status" style={{ ...TT.bodySm, color: 'var(--positive)', fontWeight: 600 }}>Η ανταμοιβή σου καταχωρήθηκε. Πιστώνεται στη συνδρομή σου.</span>
+              : <Btn variant="primary" onClick={() => onClaim(kind)} disabled={st === 'saving'}>{st === 'saving' ? 'Καταχώρηση…' : 'Πάρε την ανταμοιβή σου'}</Btn>}
+            {st === 'error' && <div role="alert" style={{ ...TT.caption, color: 'var(--warning)', marginTop: 8 }}>Η ανταμοιβή δεν καταχωρήθηκε. Δοκίμασε ξανά.</div>}
           </div>
         )}
       </div>
@@ -438,14 +438,14 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
   // είναι βήμα, είναι όρος — και οι όροι ζουν στον στόχο που τους μετρά.
   const steps = isPro
     ? [
-        { n: '1', t: 'Στέλνεις τον σύνδεσμο', d: 'Στους ιδιοκτήτες που έχεις πελάτες.', d2: 'M22 2 11 13|M22 2 15 22l-4-9-9-4z' },
+        { n: '1', t: 'Στέλνεις τον σύνδεσμο', d: 'Στους ιδιοκτήτες που εξυπηρετείς.', d2: 'M22 2 11 13|M22 2 15 22l-4-9-9-4z' },
         { n: '2', t: 'Ο νέος ιδιοκτήτης ξεκινά', d: 'Ένα ακίνητο, ένα σαρωμένο έγγραφο.', d2: 'M22 11.08V12a10 10 0 1 1-5.93-9.14|M22 4 12 14.01l-3-3' },
         { n: '3', t: 'Κερδίζεις μήνες συνδρομής', d: `Μήνες ${planQ('agency')} χωρίς χρέωση.`, d2: 'M23 6l-9.5 9.5-5-5L1 18|M17 6h6v6' },
       ]
     : [
         { n: '1', t: 'Στέλνεις τον σύνδεσμο', d: 'Σε έναν ιδιοκτήτη ακινήτου.', d2: 'M22 2 11 13|M22 2 15 22l-4-9-9-4z' },
         { n: '2', t: 'Ο νέος ιδιοκτήτης ξεκινά', d: 'Ένα ακίνητο, ένα σαρωμένο έγγραφο.', d2: 'M22 11.08V12a10 10 0 1 1-5.93-9.14|M22 4 12 14.01l-3-3' },
-        { n: '3', t: 'Παίρνεις το δώρο σου', d: `Ένα επιπλέον ακίνητο για ${moAcc(REFERRER_SLOT_MONTHS)}.`, d2: 'M20 12v9H4v-9|M2 7h20v5H2z|M12 22V7|M12 7S9 2 6.5 4.5 12 7 12 7z|M12 7s3-5 5.5-2.5S12 7 12 7z' },
+        { n: '3', t: 'Παίρνεις την ανταμοιβή σου', d: `Ένα επιπλέον ακίνητο για ${moAcc(REFERRER_SLOT_MONTHS)}.`, d2: 'M20 12v9H4v-9|M2 7h20v5H2z|M12 22V7|M12 7S9 2 6.5 4.5 12 7 12 7z|M12 7s3-5 5.5-2.5S12 7 12 7z' },
       ];
 
   const partner = stats?.partner ?? false;

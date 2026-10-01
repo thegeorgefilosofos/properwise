@@ -207,12 +207,15 @@ export function leaseAlerts(payments:RentPayment[], tenant:Tenant|null):{text:st
   const d=daysLeft(tenant.lease_end);
   if(d!==null){
     if(d<0) alerts.push({text:'Το μισθωτήριο έχει λήξει, ανανέωσε ή ξεκίνα διαδικασία αποχώρησης',level:'critical'});
-    else if(d<=30) alerts.push({text:`Κρίσιμο: Λήξη μισθωτηρίου σε ${d} ημέρες, απαιτείται άμεση ενέργεια`,level:'critical'});
-    else if(d<=60) alerts.push({text:`Λήξη μισθωτηρίου σε ${d} ημέρες, ξεκίνα διαπραγματεύσεις ανανέωσης`,level:'warning'});
-    else if(d<=90) alerts.push({text:`Λήξη μισθωτηρίου σε ${d} ημέρες`,level:'info'});
+    // Το «Κρίσιμο:» και το «απαιτείται άμεση ενέργεια» τα έλεγε ήδη το χρώμα·
+    // η πρόταση λέει μόνο το γεγονός. Και το «σε 1 ημέρες» δεν γράφεται.
+    else if(d<=30) alerts.push({text:`Το μισθωτήριο λήγει ${d===0?'σήμερα':d===1?'αύριο':`σε ${d} ημέρες`}`,level:'critical'});
+    else if(d<=60) alerts.push({text:`Το μισθωτήριο λήγει σε ${d} ημέρες: ξεκίνα τη συζήτηση για ανανέωση`,level:'warning'});
+    else if(d<=90) alerts.push({text:`Το μισθωτήριο λήγει σε ${d} ημέρες`,level:'info'});
   }
   const unpaid=payments.filter(p=>!p.paid);
-  if(unpaid.length>=2) alerts.push({text:`${unpaid.length} εκκρεμείς πληρωμές, απαιτείται άμεση ενέργεια`,level:'critical'});
+  // Μόνο από δύο και πάνω, οπότε ο πληθυντικός είναι πάντα σωστός.
+  if(unpaid.length>=2) alerts.push({text:`${unpaid.length} απλήρωτα ενοίκια.`,level:'critical'});
   return alerts;
 }
 

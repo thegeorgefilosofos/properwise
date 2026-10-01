@@ -109,7 +109,13 @@ export const MUTATIONS = {
 
 
   // ── Ελληνικό κείμενο οθόνης ────────────────────────────────────────────
-  'ampersand': { add: 'components/__mut__.tsx', content: tsx('    <div>Έσοδα & δαπάνες του ακινήτου σου</div>') },
+  'ampersand': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Έσοδα & δαπάνες του ακινήτου σου</div>') },
+    // Κείμενο JSX που σπάει σε δύο γραμμές ακριβώς πριν από το «&».
+    { add: 'components/__mut__.tsx', content: tsx('    <p>\n      Καταγράφει την κατάσταση κατά την είσοδο\n      & έξοδο του ενοικιαστή.\n    </p>') },
+    // Το `image/*` δεν ανοίγει σχόλιο: ό,τι ακολουθεί ελέγχεται κανονικά.
+    { add: 'components/__mut__.tsx', content: tsx('    <div><input type="file" accept="image/*" />\n      <p>Είσοδος & έξοδος</p></div>') },
+  ] },
   'no-arrows': { add: 'components/__mut__.tsx', content: tsx('    <div>Πήγαινε στις Δαπάνες → Κατηγορίες</div>') },
   'em-dash': { add: 'components/__mut__.tsx', content: tsx('    <p>\n      Τα δεδομένα σου είναι ασφαλή — μόλις επανέλθει η σύνδεση\n      εμφανίζονται όλα κανονικά στη θέση τους.\n    </p>') },
   'uppercase-tonos': { add: 'components/__mut__.tsx', content: tsx('    <div>ΈΣΟΔΑ ΑΚΙΝΗΤΟΥ</div>') },

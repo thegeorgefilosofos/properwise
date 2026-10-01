@@ -953,7 +953,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
 
         // ── Dynamic tariff suggestion ───────────────────────────────────────────
         if (tariff.type !== 'dynamic' && kwhNum > 300) {
-          hints.push({ text: 'Με έξυπνο μετρητή ΔΕΔΔΗΕ, το δυναμικό (ωριαίο) τιμολόγιο μπορεί να μειώσει το κόστος έως 20% μεταφέροντας χρήση σε ώρες χαμηλής ζήτησης.', severity: 'info' });
+          hints.push({ text: 'Με έξυπνο μετρητή ΔΕΔΔΗΕ, το δυναμικό (ωριαίο) τιμολόγιο μπορεί να μειώσει το κόστος, αν μεταφέρεις κατανάλωση σε ώρες χαμηλής ζήτησης.', severity: 'info' });
         }
 
         // ── Night tariff suggestion ─────────────────────────────────────────────
