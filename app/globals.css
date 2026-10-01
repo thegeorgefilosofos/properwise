@@ -4777,6 +4777,9 @@ body:has(.po-tool-page) .po-cookie {
   .po-foot-legal > * { display: block; width: fit-content; }
   .po-foot-legal > * + * { margin-top: 4px; }
   .po-foot-legal > .po-foot-sep { display: none; }
+  /* Μόνος του στη γραμμή ο σύνδεσμος παύει να είναι λέξη μέσα σε πρόταση:
+     θέλει ολόκληρο στόχο αφής 44px, όπως κάθε άλλος του υποσέλιδου. */
+  .po-foot-legal > a { display: flex; align-items: center; min-height: 44px; margin-top: 0; }
 }
 .po-social { grid-area: social; }
 @media (max-width: 720px) {
