@@ -29,7 +29,7 @@
 // κείμενο, ο παρατηρητής το ξαναπιάνει· η σύγκριση με το ήδη συλλαβισμένο
 // κείμενο κρατά τον βρόχο κλειστό.
 // ═══════════════════════════════════════════════════════════════════════════
-import { hyphenate, breakCitations } from '@/lib/core/hyphenate';
+import { hyphenate, bindRefs } from '@/lib/core/hyphenate';
 
 const MIN_CHARS = 48;
 const MIN_CPL = 44;
@@ -39,12 +39,26 @@ const SHY = /­/g;
 // κειμένου εκεί μπορεί να ξαναδιαβαστεί από αναγνώστη οθόνης. Το έπιασε το
 // e2e-a11y στο μήνυμα της εγγραφής, όταν ο στοιχειοθέτης πέρασε στις δημόσιες σελίδες.
 const SKIP = 'h1,h2,h3,h4,h5,h6,button,label,input,textarea,select,option,code,pre,svg,th,summary,[contenteditable],[data-nohy],[role="button"],[role="tab"],[role="menuitem"],.num,[role="alert"],[role="status"],[aria-live]';
+// ΚΑΙ ΜΕΣΑ ΣΕ ΣΥΝΔΕΣΜΟ ΔΕΝ ΣΤΟΙΧΕΙΟΘΕΤΕΙΤΑΙ ΤΙΠΟΤΑ (01.10.2026). Μπλοκ μέσα σε
+// `<a>` είναι κάρτα, όχι παράγραφος: οι περιγραφές του ευρετηρίου των οδηγών
+// (/odigos) γράφονται ΣΚΟΠΙΜΑ με ελεύθερη δεξιά άκρη (app/odigos/page.tsx) και
+// ο στοιχειοθέτης τις ξαναστοίχιζε και τις έκοβε («διανυκτέρευ-ση,»).
+const SKIP_BLOCK = SKIP + ',a';
+// Ο σύνδεσμος μέσα στην παράγραφο μένει ακέραιος και το έντονο κόβεται μόνο
+// σε μακριές λέξεις, όπως και στο `hy()` (components/Hyphen.tsx).
+const SKIP_TEXT = SKIP + ',a';
+const BOLD = 'strong,b';
+const BOLD_MIN_WORD = 8;
 
 function isProse(el: HTMLElement): boolean {
   // Δομικά στοιχεία δεν είναι ποτέ παράγραφος, ό,τι κι αν περιέχουν.
   if (/^(MAIN|SECTION|ARTICLE|BODY|HEADER|FOOTER|NAV|ASIDE)$/.test(el.tagName)) return false;
-  if (el.closest(SKIP)) return false;
+  if (el.closest(SKIP_BLOCK)) return false;
   const cs = getComputedStyle(el);
+  // ΚΕΦΑΛΑΙΑ ΑΠΟ ΤΟ CSS: ΕΤΙΚΕΤΑ, ΟΧΙ ΠΑΡΑΓΡΑΦΟΣ. Το «ΡΕΥΜΑ-ΤΟΣ» της ζώνης
+  // μετρήσεων ήταν πεζά στην πηγή, άρα ο συλλαβιστής δεν το αναγνώριζε ως
+  // αρκτικόλεξο (ALL_CAPS) και το έκοβε.
+  if (cs.textTransform === 'uppercase') return false;
   if (cs.display !== 'block' && cs.display !== 'list-item') return false;
   if (cs.textAlign !== 'start' && cs.textAlign !== 'left' && cs.textAlign !== 'justify') return false;
   if (parseFloat(cs.fontSize) > 18) return false;
@@ -78,14 +92,20 @@ function isProse(el: HTMLElement): boolean {
 
 function hyphenateTextIn(el: HTMLElement) {
   const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-  let n: Node | null;
-  while ((n = tw.nextNode())) {
-    const parent = (n as Text).parentElement;
-    if (!parent || parent.closest(SKIP)) continue;
-    const raw = (n as Text).data;
-    const next = breakCitations(hyphenate(raw.replace(SHY, '')));
-    if (next !== raw) (n as Text).data = next;
-  }
+  const nodes: Text[] = [];
+  for (let n = tw.nextNode(); n; n = tw.nextNode()) nodes.push(n as Text);
+  // Η ΤΕΛΕΥΤΑΙΑ ΛΕΞΗ ΤΗΣ ΠΑΡΑΓΡΑΦΟΥ ΔΕΝ ΑΦΗΝΕΙ ΘΡΑΥΣΜΑ (βλ. `keepLast`): ζει στον
+  // τελευταίο κόμβο κειμένου που έχει γράμμα ή ψηφίο.
+  let last = -1;
+  nodes.forEach((n, i) => { if (/[\p{L}\p{N}]/u.test(n.data)) last = i; });
+  nodes.forEach((n, i) => {
+    const parent = n.parentElement;
+    if (!parent || parent.closest(SKIP_TEXT)) return;
+    const raw = n.data;
+    const minWord = parent.closest(BOLD) ? BOLD_MIN_WORD : undefined;
+    const next = hyphenate(bindRefs(raw.replace(SHY, '')), { keepLast: i === last, minWord });
+    if (next !== raw) n.data = next;
+  });
 }
 
 function visit(el: HTMLElement) {

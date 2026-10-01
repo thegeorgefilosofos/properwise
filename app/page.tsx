@@ -244,13 +244,17 @@ export default async function Landing() {
               μικραίνει με clamp() και το textWrap: balance μοιράζει τις γραμμές
               σε ίσο μήκος, ώστε να μη μένει η τελευταία με τρεις λέξεις.
 
-              ΜΙΑ ΓΡΑΜΜΗ ΣΤΗΝ ΟΘΟΝΗ ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ (27.09.2026, κείμενο του
-              ιδιοκτήτη). Το μέτρο έγινε όσο ο τίτλος (1044) και από τα 1280 και
-              πάνω ο υπότιτλος χωρά σε μία γραμμή μόνος του (1040)· πιο κάτω
-              αναδιπλώνεται σε δύο ζυγισμένες, ώστε να μη βγαίνει ποτέ έξω από την
-              οθόνη. Κανένα nowrap: τη θέση του την έχει ήδη το text-wrap της
-              πλήρους στοίχισης. */}
-          <p className="lp-rise-2 po-just-c" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 1044, margin: '0 auto 28px' }}>
+              ΔΥΟ ΖΥΓΙΣΜΕΝΕΣ ΓΡΑΜΜΕΣ, ΟΧΙ ΜΙΑ ΤΩΝ 135 ΧΑΡΑΚΤΗΡΩΝ (01.10.2026). Με
+              μέτρο 1044 ο υπότιτλος έπιανε στα 1440 μία γραμμή 1040
+              εικονοστοιχείων: το μάτι διέσχιζε όλη την οθόνη για μία πρόταση
+              και η δεύτερη ξεκινούσε μακριά από εκεί που τελείωσε η πρώτη. Στα
+              680 σπάει σε δύο ίσες γραμμές κάτω από τον τίτλο.
+
+              ΚΑΙ ΧΩΡΙΣ ΣΥΛΛΑΒΙΣΜΟ, ΧΩΡΙΣ ΠΛΗΡΗ ΣΤΟΙΧΙΣΗ. Κεντραρισμένο κείμενο
+              δύο γραμμών δεν έχει κενά να κλείσει· η πλήρης στοίχιση μαζί με τα
+              μαλακά ενωτικά έκοβαν το «απα-ντά» στο κινητό, στο πρώτο κείμενο
+              που διαβάζει ο επισκέπτης. `data-nohy` και `balance`. */}
+          <p className="lp-rise-2" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 680, margin: '0 auto 28px', textWrap: 'balance' }}>
             Ενοίκια, λογαριασμοί, δάνεια και φόροι για κάθε ακίνητο. Ρωτάς {ASSISTANT_ACC} στα
             ελληνικά και απαντά με{' '}
             <em style={{ fontStyle: 'normal', color: 'var(--text-primary)', fontWeight: 600 }}>τα δικά σου</em> δεδομένα.
@@ -302,7 +306,10 @@ export default async function Landing() {
             που ήδη στοιχίζει τα πακέτα και τα κοινά. Ό,τι κι αν γραφτεί μέσα,
             οι τέσσερις αριθμοί κάθονται στην ίδια γραμμή γραφής, οι τέσσερις
             μονάδες στην επόμενη και οι τέσσερις λεζάντες ξεκινούν μαζί. */}
-        <div className="lp-stats" style={{ background: LINE, border: `1px solid ${LINE}`, borderRadius: T.radius.card, overflow: 'hidden' }}>
+        {/* ΕΤΙΚΕΤΕΣ, ΟΧΙ ΠΑΡΑΓΡΑΦΟΙ: ΚΑΝΕΝΑΣ ΣΥΛΛΑΒΙΣΜΟΣ. Η μονάδα είναι κεφαλαία
+            από το CSS και η λεζάντα δύο ζυγισμένες γραμμές· τα μαλακά ενωτικά
+            έβγαζαν «ΡΕΥΜΑ-ΤΟΣ» και «τελευ-ταίου» σε κελί που δεν στοιχίζεται. */}
+        <div className="lp-stats" data-nohy="" style={{ background: LINE, border: `1px solid ${LINE}`, borderRadius: T.radius.card, overflow: 'hidden' }}>
           {STATS.map((s, i) => (
             <div key={i} className="lp-stat" style={{ background: PANEL }}>
               <div className="lp-stat-n">{s.n}</div>
@@ -744,7 +751,8 @@ export default async function Landing() {
         <div className="lp-aurora" aria-hidden="true" />
         <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP_ACT, paddingBottom: GAP_ACT }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
-          <p className="po-just-c" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 620, margin: '0 auto 30px' }}>Φωτογράφισε το πρώτο σου έγγραφο. Δωρεάν για ένα ακίνητο, με {ASSISTANT_ACC} τις πρώτες {TRIAL_DAYS} ημέρες.</p>
+          {/* Κεντραρισμένη, δύο γραμμές: ζυγισμένη, χωρίς ενωτικά (όπως ο υπότιτλος του hero). */}
+          <p data-nohy="" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 620, margin: '0 auto 30px', textWrap: 'balance' }}>Φωτογράφισε το πρώτο σου έγγραφο. Δωρεάν για ένα ακίνητο, με {ASSISTANT_ACC} τις πρώτες {TRIAL_DAYS} ημέρες.</p>
           <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : 'Ξεκίνα δωρεάν'}</Link>
         </div>
       </section>

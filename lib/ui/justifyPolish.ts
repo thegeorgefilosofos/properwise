@@ -1,6 +1,6 @@
 // Η λογική του components/JustifyPolish.tsx, σε δικό της κομμάτι: φορτώνεται
 // ΜΕΤΑ την πρώτη οθόνη, ώστε να μη βαραίνει το αρχικό JavaScript καμίας σελίδας.
-import { breakCitations } from '@/lib/core/hyphenate';
+import { bindRefs } from '@/lib/core/hyphenate';
 
 // ΚΑΘΕ ΠΑΡΑΓΡΑΦΟΣ ΠΕΡΑ ΠΕΡΑ, ΑΠΟ ΟΠΟΥ ΚΙ ΑΝ ΗΡΘΕ Η ΣΤΟΙΧΙΣΗ. Οι κλάσεις
 // (`po-just`, `data-ts`) δεν αρκούν: οι οδηγοί στοιχίζουν από το δικό τους CSS
@@ -49,10 +49,11 @@ export function polish(el: HTMLElement) {
   const sig = `${Math.round(el.clientWidth)}:${(el.textContent || '').replace(SHY, '').length}`;
   if (el.dataset.jp === sig) return;
   el.dataset.jp = sig;
-  // Η παραπομπή («ν.4223/2013») σπάει μετά την κάθετο (βλ. breakCitations).
+  // Η παραπομπή («ΦΕΚ Β΄ 5590/2026») μένει ολόκληρη· η γραμμή σπάει πριν
+  // από αυτήν (βλ. bindRefs).
   const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   for (let n = tw.nextNode(); n; n = tw.nextNode()) {
-    const t = n as Text, next = breakCitations(t.data);
+    const t = n as Text, next = bindRefs(t.data);
     if (next !== t.data) t.data = next;
   }
   el.style.letterSpacing = ''; el.style.wordSpacing = '';

@@ -320,8 +320,8 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
               <tr>
                 {/* Η γωνία δεν λέει τίποτα στο μάτι· στον αναγνώστη οθόνης λέει τι είναι η στήλη. */}
                 <th scope="col"><span className="sr-only">Κατηγορία</span></th>
-                <th scope="col" className="num">Μακρο­χρόνια</th>
-                <th scope="col" className="num">Βραχυ­χρόνια</th>
+                <th scope="col" className="num"><ThLabel full="Μακροχρόνια" short="Μακροχρ." /></th>
+                <th scope="col" className="num"><ThLabel full="Βραχυχρόνια" short="Βραχυχρ." /></th>
               </tr>
             </thead>
             <tbody>
@@ -375,7 +375,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col" className="num">Πληρό­τητα</th>
+                <th scope="col" className="num"><ThLabel full="Πληρότητα" short="Πληρότ." /></th>
                 <th scope="col" className="num">Νύχτες<span className="sr-only"> (διανυκτερεύσεις)</span></th>
                 <th scope="col" className="num">Καθαρά<span className="sr-only"> βραχυχρόνιας</span></th>
                 <th scope="col" className="num">Διαφορά<span className="sr-only"> έναντι μακροχρόνιας</span></th>
@@ -498,4 +498,16 @@ function Line({ k, a, b, strong }: { k: string; a: number; b: number; strong?: b
       <td className="num" style={{ fontWeight: weight, color: ink }}>{feSigned(b)}</td>
     </tr>
   );
+}
+
+/**
+ * ΚΕΦΑΛΙΔΑ ΣΤΗΛΗΣ ΠΟΥ ΔΕΝ ΚΟΒΕΤΑΙ ΜΕ ΕΝΩΤΙΚΟ (01.10.2026). Οι κεφαλίδες είχαν
+ * μαλακό ενωτικό μέσα τους για να χωρούν σε στήλη 78 εικονοστοιχείων στα 360·
+ * σε κεφαλαία έβγαιναν «ΜΑΚΡΟ- / ΧΡΟΝΙΑ» και «ΠΛΗΡΟ- / ΤΗΤΑ», δηλαδή μισή λέξη
+ * σε κάθε γραμμή του πιο στενού κελιού της σελίδας. Τώρα: ολόκληρη λέξη όπου
+ * χωρά, συντομογραφία με τελεία κάτω από τα 420 (`.th-short`, globals.css). Ο
+ * αναγνώστης οθόνης ακούει πάντα την πλήρη λέξη.
+ */
+function ThLabel({ full, short }: { full: string; short: string }) {
+  return <><span className="th-full">{full}</span><span className="th-short" aria-hidden="true">{short}</span></>;
 }

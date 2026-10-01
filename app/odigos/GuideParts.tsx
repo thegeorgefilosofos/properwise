@@ -89,10 +89,11 @@ function GuideRail({ sections, cta }: GuideRailProps) {
   );
 }
 
-/** «23 Σεπτεμβρίου 2026» από ISO ημερομηνία. */
+/** «23 Σεπτεμβρίου 2026» από ISO ημερομηνία, με αδιάσπαστα κενά: η χρονιά
+ *  δεν κατεβαίνει μόνη της στη δεύτερη γραμμή. */
 function longDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
-  return `${d} ${monthGen(m - 1)} ${y}`;
+  return `${d}\u00a0${monthGen(m - 1)}\u00a0${y}`;
 }
 
 /**
@@ -104,7 +105,9 @@ export function GuideUpdated({ guide }: { guide: Guide }) {
   return (
     <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 18px' }}>
       Τελευταία ενημέρωση: <time dateTime={guide.updated}>{longDate(guide.updated)}</time>
-      {' · '}
+      {/* Το «·» κολλά στην ημερομηνία: στο κινητό έμενε μόνο του στην αρχή της
+          δεύτερης γραμμής, πριν από το «Πηγές». */}
+      {'\u00a0· '}
       {/* Μία λέξη που δεν σπάει: το «Νομική / βάση και πηγές» κοβόταν στα 390. */}
       <a href={`#${SOURCES_SECTION.id}`} className="lp-link" style={{ ...LINK_STYLE, whiteSpace: 'nowrap' }}>Πηγές</a>
     </p>
@@ -157,7 +160,7 @@ export function GuideToc({ sections }: { sections: readonly GuideSection[] }) {
  * Χωρίς το σήμα «Νομική βάση»: ακριβώς από πάνω του στεκόταν ο τίτλος με τις
  * ίδιες λέξεις.
  */
-export function GuideSources({ over, sources }: { over: string; sources: string[] }) {
+export function GuideSources({ over, sources }: { over: string; sources: ReactNode[] }) {
   return (
     <>
       <GuideH2 id={SOURCES_SECTION.id} over={over} title={SOURCES_SECTION.title} />

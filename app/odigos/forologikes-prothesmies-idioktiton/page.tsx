@@ -31,7 +31,7 @@ import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
-  RelatedGuides, guideJsonLd, type GuideFaqItem,
+  RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
 } from '../GuideParts';
 
 export const revalidate = 86400;
@@ -134,12 +134,19 @@ const FAQ: GuideFaqItem[] = [
   },
 ];
 
-const SOURCES: string[] = [
+// ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΓΙΝΟΝΤΑΙ ΣΥΝΔΕΣΜΟΙ ΜΕ ΟΝΟΜΑ (01.10.2026). Τυπώνονταν ως
+// κείμενο («https://www.aade.gr/…»): μία «λέξη» σαράντα χαρακτήρων χωρίς σημείο
+// κοπής, που στο κινητό άνοιγε τρύπα στη γραμμή από πάνω και δεν πατιόταν.
+const EXT = { target: '_blank', rel: 'noopener noreferrer', className: 'lp-link', style: LINK_STYLE } as const;
+const SOURCES: React.ReactNode[] = [
   'ΕΝΦΙΑ: ν.4223/2013, όπως ισχύει. Έκδοση εκκαθαριστικού και αριθμός δόσεων ανακοινώνονται κάθε χρόνο από την ΑΑΔΕ.',
   'Ε9: προθεσμία 30 ημερών από κάθε μεταβολή, άρθρο 6 παρ. 3 ν.4223/2013.',
   'Δήλωση φορολογίας εισοδήματος (Ε1, Ε2): προθεσμίες και αυτόματη οριστικοποίηση των προσυμπληρωμένων δηλώσεων όπως τις ανακοινώνει η ΑΑΔΕ για κάθε φορολογικό έτος.',
   'Βραχυχρόνια: δήλωση βραχυχρόνιας διαμονής στο Μητρώο Ακινήτων Βραχυχρόνιας Διαμονής της ΑΑΔΕ · τέλος ανθεκτικότητας στην κλιματική κρίση, ν.5073/2023 όπως ισχύει.',
-  `Φορολογικό ημερολόγιο ΑΑΔΕ (${AADE_CALENDAR_URL}) · διπλός έλεγχος στο ${TAXHEAVEN_CALENDAR_URL}.`,
+  <>
+    <a href={AADE_CALENDAR_URL} {...EXT}>Φορολογικό ημερολόγιο ΑΑΔΕ</a> · διπλός έλεγχος στο{' '}
+    <a href={TAXHEAVEN_CALENDAR_URL} {...EXT}>ημερολόγιο του Taxheaven</a>.
+  </>,
 ];
 
 const S = {
