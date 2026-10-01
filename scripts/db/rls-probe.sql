@@ -65,6 +65,16 @@ begin
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο Α έσβησε % γραμμές του Β', n; end if;
 
+  -- Οι στήλες του Ε2 (20261001130000): ίδια απομόνωση με τη γραμμή τους. Ο Α
+  -- γράφει παροχή ρεύματος και συνιδιοκτήτες στο δικό του, όχι στου Β.
+  update public.user_properties set power_supply_no = '123456789', co_owners = '[{"name":"Συνιδιοκτήτης"}]'::jsonb
+   where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'ΑΠΟΜΟΝΩΣΗ: ο Α δεν έγραψε την παροχή ρεύματος του δικού του (% γραμμές)', n; end if;
+  update public.user_properties set power_supply_no = '999999999' where id = 'bbbbbbbb-0000-0000-0000-000000000001';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο Α έγραψε την παροχή ρεύματος του Β'; end if;
+
   -- Και δεν μπορεί να φυτέψει γραμμή ΓΙΑ τον Β (WITH CHECK).
   begin
     insert into public.user_properties(user_id, name)

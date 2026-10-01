@@ -26,6 +26,7 @@ import { logActivity } from '@/lib/activity';
 import { INK } from '@/lib/print/ink';
 import { aadePath } from '@/lib/tax/aade';
 import { failed } from '@/lib/core/dbError';
+import { cleanDigits } from '@/lib/property/powerSupply';
 import {
   buildLeaseDeclaration, declarationSheet, RULES,
   type LeaseDeclarationInput, type DeclField,
@@ -69,6 +70,9 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
   const [submitted, setSubmitted] = useState<{ at: string; ref: string } | null>(null);
   const [refInput, setRefInput] = useState('');
   const [saving, setSaving] = useState(false);
+  // Η μίσθωση που δηλώνεται: ο αριθμός της δήλωσης γράφεται και στη γραμμή της
+  // (`tenants.aade_lease_decl_ref`, στήλη 19 του Ε2), όχι μόνο στο ιστορικό.
+  const [tenantId, setTenantId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -98,7 +102,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
           // ονοματεπώνυμο και το ΑΦΜ του μισθωτή και οι ημερομηνίες και το μίσθωμα —
           // δηλαδή η μισή δήλωση. Το `updated_at` είναι ό,τι ζητούν ήδη οι υπόλοιπες
           // οθόνες για «τον τρέχοντα μισθωτή» (π.χ. ObligationsPanel).
-          tenantStore.currentAll(supabase, propertyId, 'full_name,afm,id_doc_type,id_doc_number,email,phone,lease_start,lease_end,monthly_rent'),
+          tenantStore.currentAll(supabase, propertyId, 'id,full_name,afm,id_doc_type,id_doc_number,email,phone,lease_start,lease_end,monthly_rent'),
           // ΚΛΕΙΔΙ ΑΚΙΝΗΤΟΥ, ΟΧΙ ΧΡΗΣΤΗ.
           //
           // Εδώ έγραφε `.eq('user_id', userId).maybeSingle()`. Ο πίνακας όμως έχει
@@ -122,6 +126,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
         const s = settings as Record<string, unknown> | null;
         if (!alive) return;
         setSubmitted(prior);
+        setTenantId(typeof t?.id === 'string' ? t.id : null);
         setRefInput(prior?.ref ?? '');
         setInput({
           owner: { name: (s?.owner_name as string) ?? null, afm: (s?.owner_afm as string) ?? null },
@@ -166,13 +171,21 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
   };
 
   const markSubmitted = async () => {
+    const ref = cleanDigits(refInput);
+    if (ref.error) { notifyError(`Αριθμός δήλωσης: ${ref.error}`); return; }
     setSaving(true);
     try {
       // ΤΟ ΓΡΑΨΙΜΟ ΠΕΡΝΑ ΜΟΝΟ ΑΠΟ ΤΟ RPC. Εδώ γινόταν απευθείας insert στο
       // activity_log, που έχει πολιτική SELECT και καμία INSERT: η RLS το
       // έκοβε με 42501 και καμία δήλωση δεν μπήκε ποτέ στο ιστορικό.
       await logActivity(supabase, DECL_ACTION, 'property', propertyId,
-        { reference: refInput.trim() || null, deadline: decl.deadline.due });
+        { reference: ref.value, deadline: decl.deadline.due });
+      // Ο ΑΡΙΘΜΟΣ ΤΗΣ ΑΑΔΕ ΑΝΗΚΕΙ ΣΤΗ ΜΙΣΘΩΣΗ. Από εδώ τον διαβάζει το Ε2 (στ. 19)
+      // και η σύγκριση με το προσυμπληρωμένο, ανά μίσθωση.
+      if (ref.value && tenantId) {
+        const { error: tErr } = await tenantStore.update(supabase, tenantId, { aade_lease_decl_ref: ref.value });
+        if (tErr) notifyError(failed('Ο αριθμός δήλωσης δεν γράφτηκε στον ενοικιαστή', tErr));
+      }
       // Η ΕΠΙΒΕΒΑΙΩΣΗ ΕΡΧΕΤΑΙ ΑΠΟ ΤΗ ΒΑΣΗ, ΟΧΙ ΑΠΟ ΤΗΝ ΠΡΟΘΕΣΗ. Το logActivity
       // σωπαίνει σε αποτυχία, οπότε το «Καταγράφηκε» πριν την ανάγνωση ήταν
       // ακριβώς το ψέμα που έβλεπε ο ιδιοκτήτης δίπλα στο κόκκινο μήνυμα.

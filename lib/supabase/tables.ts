@@ -516,6 +516,7 @@ export interface E2PrefilledRow {
   source_file: string | null;
   created_at: string;
   updated_at: string;
+  power_supply_no: string | null;
 }
 
 export interface EmailCampaignsRow {
@@ -1424,6 +1425,7 @@ export interface TenantsRow {
   created_at: string | null;
   pending_rent: number | null;
   pending_rent_from: string | null;
+  aade_lease_decl_ref: string | null;
 }
 
 export interface UserFeedbackRow {
@@ -1473,6 +1475,7 @@ export interface UserPropertiesRow {
   co_owners: Json | null;
   ama: string | null;
   ama_listed_confirmed_at: string | null;
+  power_supply_no: string | null;
 }
 
 /** Όνομα πίνακα → τύπος γραμμής, για γενικούς βοηθούς. */

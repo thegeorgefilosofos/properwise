@@ -7,6 +7,9 @@ import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
+import * as billStore from '@/lib/data/bills';
+import { readCoOwners, mergeCoOwnerNames, hasCoOwnerDetails, writeCoOwners } from '@/lib/property/coOwners';
+import { cleanDigits, powerSupplyFromNote, E2_POWER_SUPPLY_DIGITS } from '@/lib/property/powerSupply';
 import { T, fe, fn, fp, fd, fixedCols, ABSENT, Modal, TT, Btn, ChipToggle } from '@/components/Theme';
 import { CustomSelect, DatePicker } from './UIComponents';
 import { cleanAma, isValidAmaFormat, amaLengthLooksUnusual } from '@/lib/property/ama';
@@ -219,7 +222,7 @@ interface ExistingProperty {
   obj_value?: number | string | null; enfia?: number | string | null; pea_class?: string | null;
   heating?: string | null; purchase_date?: string | null; parking_spaces?: number | string | null;
   storage_sqm?: number | string | null; bedrooms?: number | string | null; rental_mode?: string | null;
-  co_owners?: string[] | null; ama?: string | null;
+  co_owners?: unknown; ama?: string | null; power_supply_no?: string | null;
 }
 const s = (v: number | string | null | undefined) => (v == null ? '' : String(v));
 
@@ -357,8 +360,12 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
   );
   const [ownership, setOwnership] = useState(s(existing?.ownership) || '100');
   // Συνιδιοκτήτες: όταν το ποσοστό < 100%, ζητάμε πλήθος (1–99) και ονόματα.
+  // Η στήλη κρατά αντικείμενα {name, afm, pct, address}· ο οδηγός αλλάζει μόνο
+  // ονόματα και τα υπόλοιπα (από την Κατανομή σε συνιδιοκτήτες) ξαναδένονται
+  // στην αποθήκευση με το `mergeCoOwnerNames`.
+  const knownCoOwners = readCoOwners(existing?.co_owners);
   const [coOwners, setCoOwners] = useState<string[]>(
-    Array.isArray(existing?.co_owners) && existing!.co_owners!.length ? existing!.co_owners!.map(String) : ['']
+    knownCoOwners.length ? knownCoOwners.map(c => c.name) : ['']
   );
   const setCoOwnerCount = (n: number) => {
     const c = Math.max(1, Math.min(99, Math.floor(n) || 1));
@@ -373,6 +380,26 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
   const [heating, setHeating] = useState(normalizeHeating(existing?.heating));
   const [parking, setParking] = useState(s(existing?.parking_spaces));
   const [storageSqm, setStorageSqm] = useState(s(existing?.storage_sqm));
+  // Ε2 στήλη 18: ο αριθμός παροχής ρεύματος, όπως τον γράφει ο χρήστης.
+  const [powerSupply, setPowerSupply] = useState(existing?.power_supply_no || '');
+  const powerCheck = cleanDigits(powerSupply);
+  // Πρόταση από σαρωμένο λογαριασμό ρεύματος. Δεν γράφεται μόνη της: ο
+  // χρήστης την επιβεβαιώνει με ένα πάτημα, γιατί η σάρωση μπορεί να διάβασε
+  // αριθμό λογαριασμού πελάτη αντί για παροχή.
+  const [powerHint, setPowerHint] = useState<string | null>(null);
+  useEffect(() => {
+    if (!existing?.id || existing.power_supply_no) return;
+    let active = true;
+    billStore.ofProperty<{ notes: string | null; created_at: string | null }>(
+      supabase, existing.id, 'notes,created_at', userId, { category: 'electricity' },
+    ).then(rows => {
+      if (!active) return;
+      const latest = [...rows].sort((a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')));
+      setPowerHint(latest.map(r => powerSupplyFromNote(r.notes)).find(Boolean) ?? null);
+    });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existing?.id]);
   const [bedrooms, setBedrooms] = useState(s(existing?.bedrooms));
 
   // property_settings (μόνο για υπάρχον ακίνητο υπάρχει ήδη γραμμή· για νέο τη δημιουργούμε στο save)
@@ -469,7 +496,15 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
 
   const save = async () => {
     if (!name.trim()) { setStep(1); return; }
+    if (powerCheck.error) { setStep(1); setError(`Αριθμός παροχής ρεύματος: ${powerCheck.error}`); return; }
     setSaving(true); setError('');
+
+    // Συνιδιοκτήτες: τα ονόματα του οδηγού ξαναδένονται με ΑΦΜ, ποσοστό και
+    // διεύθυνση που ήξερε ήδη η βάση. Στο 100% η λίστα σβήνει, εκτός αν η
+    // Κατανομή σε συνιδιοκτήτες έχει γράψει στοιχεία που ο οδηγός δεν δείχνει.
+    const coOwnersOut = isShared
+      ? writeCoOwners(mergeCoOwnerNames(knownCoOwners, coOwners))
+      : hasCoOwnerDetails(knownCoOwners) ? writeCoOwners(knownCoOwners) : null;
 
     const payload = {
       name: name.trim(),
@@ -484,7 +519,8 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
       floor: isLandLike ? null : (floor.trim() || null),
       year_built: isLandLike ? null : (yearBuilt ? parseInt(yearBuilt) : null),
       ownership: num(ownership) ?? 100,
-      co_owners: isShared ? coOwners.map(x => x.trim()).filter(Boolean) : null,
+      co_owners: coOwnersOut,
+      power_supply_no: powerCheck.value,
       status_detail: dbStatus.status_detail,
       obj_value: num(objValue),
       enfia: num(enfia),
@@ -859,6 +895,19 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
               <CustomSelect ariaLabel="Θέρμανση" value={heating} onChange={setHeating} placeholder="Επίλεξε" options={[...HEATING_TYPES]} />),
             row('prop.parking', 'auto',
               <input style={monoInputStyle} type="number" min={0} value={parking} onChange={e => setParking(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
+            row('prop.power_supply_no', 'full', <>
+              <input style={monoInputStyle} value={powerSupply} onChange={e => { setPowerSupply(e.target.value); setError(''); }} inputMode="numeric" aria-invalid={!!powerCheck.error} onFocus={onFocus} onBlur={onBlur} />
+              <p style={{ ...TT.caption, marginTop: 6, color: powerCheck.error ? 'var(--negative)' : undefined }}>
+                {powerCheck.error ?? `Από τον λογαριασμό ρεύματος. Στο Ε2 μπαίνουν τα ${E2_POWER_SUPPLY_DIGITS} πρώτα ψηφία, ακόμη και σε κενό ακίνητο.`}
+              </p>
+              {!powerSupply.trim() && powerHint && (
+                <div style={{ marginTop: 8 }}>
+                  <Btn variant="secondary" onClick={() => setPowerSupply(powerHint)}>
+                    Από σαρωμένο λογαριασμό: {powerHint}
+                  </Btn>
+                </div>
+              )}
+            </>, 'Αριθμός παροχής ρεύματος'),
             row('prop.storage_sqm', 'auto',
               <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={storageSqm} onChange={e => setStorageSqm(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Αποθήκη (τ.μ.)'),
           ]}

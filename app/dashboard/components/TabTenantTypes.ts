@@ -50,6 +50,8 @@ export interface Tenant {
   status:'active'|'past'|null; rent_due_day:number|null;
   deposit_method:string|null; deposit_paid_on:string|null; move_out_date:string|null;
   furnishing:string|null; rent_iban:string|null;
+  /** Ε2 στήλη 19: ο αριθμός της δήλωσης μίσθωσης στην ΑΑΔΕ, μόνο ψηφία. */
+  aade_lease_decl_ref:string|null;
   created_at:string;
 }
 export interface RentPayment { id:string; tenant_id:string; property_id:string; user_id:string; period_month:number; period_year:number; amount:number; base_rent:number|null; services_charge:number|null; paid:boolean; paid_date:string|null; days_late:number|null; notes:string|null; method:string|null; receipt_url:string|null; receipt_doc_id:string|null; due_date:string|null; tenant_declared:boolean|null; tenant_declared_at:string|null; tenant_note:string|null; created_at:string; }
@@ -189,6 +191,7 @@ export const blank=()=>({
   parking_included:false,parking_extra:false,parking_extra_price:'',
   extra_perks:'',
   lease_doc_external_url:'',
+  aade_lease_decl_ref:'',
 });
 
 /**
@@ -200,7 +203,7 @@ export const hasMoreData = (f:ReturnType<typeof blank>):boolean => !!(
   f.email||f.profession||f.iban||f.id_doc_type||f.id_doc_number||f.notes||
   f.deposit_method||f.deposit_paid_on||f.deposit_returned||
   f.parking_included||f.parking_extra||f.extra_perks||
-  f.payment_frequency!=='monthly'
+  f.payment_frequency!=='monthly'||f.aade_lease_decl_ref
 );
 
 /**

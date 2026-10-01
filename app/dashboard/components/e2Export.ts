@@ -127,7 +127,7 @@ export async function loadE2Rows(
             leasesByProp: Map<string, E2Tenant[]>; paymentsByProp: Map<string, E2Payment[]>;
             afmByProp: Map<string, string>; staysByProp: Map<string, E2Stay[]> }> {
   const properties = await propertyStore.list<E2Property>(supabase, userId, {
-    columns: 'id, name, ama, atak, address, postal_code, ownership, prop_type, status_detail, rental_mode, target_rent, sqm, floor',
+    columns: 'id, name, ama, atak, address, postal_code, ownership, prop_type, status_detail, rental_mode, target_rent, sqm, floor, power_supply_no',
     orderBy: 'created_at',
   });
   if (!properties.length) {

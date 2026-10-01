@@ -127,6 +127,7 @@ import { useLoad } from '@/app/hooks/useLoad';
 import { plural } from '@/lib/core/greek';
 import { ActionMenu } from '@/components/ActionMenu';
 import { navLabel } from '@/lib/nav/labels';
+import { cleanDigits } from '@/lib/property/powerSupply';
 
 // ─── Design tokens, shared source of truth (components/Theme) ────────────────
 
@@ -355,6 +356,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       parking_included:t.parking_included||false,parking_extra:t.parking_extra||false,parking_extra_price:n(t.parking_extra_price),
       extra_perks:t.extra_perks||'',
       lease_doc_external_url:t.lease_doc_external_url||'',
+      aade_lease_decl_ref:t.aade_lease_decl_ref||'',
     };
     // «Περισσότερα» ανοίγει μόνο αν ο χρήστης έχει όντως δεδομένα εκεί μέσα.
     setForm(f); setFormDocs([]); setMoreOpen(hasMoreData(f));
@@ -390,6 +392,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   const save=async()=>{
     if(!form.full_name.trim()){setError('Το ονοματεπώνυμο είναι υποχρεωτικό');return;}
     if(!form.lease_category){setError('Ο τύπος μίσθωσης (κατοικία ή επαγγελματική) είναι υποχρεωτικός');return;}
+    const declRef=cleanDigits(form.aade_lease_decl_ref);
+    if(declRef.error){setError(`Αριθμός δήλωσης μίσθωσης: ${declRef.error}`);setMoreOpen(true);return;}
     setSaving(true);setError(null);
     const n=(v:string)=>v?Math.max(0,parseFloat(v)):null;
     const dueDay=Math.min(Math.max(1,parseInt(form.rent_due_day)||1),28);
@@ -409,6 +413,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       e_payment:form.e_payment,streaming:svcLines,cleaning:null,extra_perks:form.extra_perks||null,
       parking_included:form.parking_included,parking_extra:form.parking_extra,parking_extra_price:n(form.parking_extra_price),
       lease_doc_external_url:form.lease_doc_external_url||null,
+      aade_lease_decl_ref:declRef.value,
       // ΤΟ ΧΕΡΙ ΥΠΕΡΙΣΧΥΕΙ ΤΟΥ ΡΑΝΤΕΒΟΥ. Με εκκρεμή αναπροσαρμογή και χειροκίνητη
       // αλλαγή του ενοικίου, οι δύο τιμές συγκρούονται: αφημένο το ραντεβού θα
       // επανέγραφε τη νέα τιμή μια νύχτα, χωρίς να το έχει ζητήσει κανείς. Το
@@ -1078,6 +1083,14 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                       {more('tenant.id_doc')&&<SelectField label="Τύπος εγγράφου" labelInfo={whyOf('tenant.id_doc')} value={form.id_doc_type} onChange={v=>{ if(isIdDocType(v)) sf('id_doc_type',v); }} options={ID_DOCS.map(d=>({value:d,label:d}))} placeholder="Επιλογή…"/>}
                       {more('tenant.id_doc')&&<TextInput label="Αριθμός εγγράφου" value={form.id_doc_number} onChange={v=>sf('id_doc_number',v)}/>}
                     </div>
+
+                    {/* Ε2 στήλη 19. Ψηφία μόνο· τον γράφει και η Δήλωση μίσθωσης
+                        όταν σημειωθεί ότι υποβλήθηκε. */}
+                    {more('tenant.aade_lease_decl_ref')&&(
+                      <div className="form-row form-row-3" style={{ marginBottom:14 }}>
+                        <TextInput label={labelOf('tenant.aade_lease_decl_ref')} labelInfo={whyOf('tenant.aade_lease_decl_ref')} value={form.aade_lease_decl_ref} onChange={v=>sf('aade_lease_decl_ref',v)}/>
+                      </div>
+                    )}
 
                     {more('tenant.id_doc')&&(
                       <FilePickRow label="Σαρωμένη ταυτότητα ή διαβατήριο" hint="PDF ή εικόνα" busy={docBusy} onPick={f=>uploadFormDoc(f,'id')} docs={formDocs.filter(d=>d.tag==='id')}/>

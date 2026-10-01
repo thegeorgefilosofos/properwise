@@ -57,6 +57,7 @@ import { staysOfYearToDate } from '@/lib/clients/reports'
 import { propertyIncome, type IncomeRent } from '@/lib/income/propertyIncome'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 import { useLoad } from '@/app/hooks/useLoad'
+import { readCoOwners } from '@/lib/property/coOwners'
 import type { Property, Expense, Bill, Task, Tenant, TenRow, TenantFull } from './shell/model'
 
 /** Οι στήλες του `stayStore.DECLARABLE_COLUMNS`: ό,τι χρειάζεται το δηλωτέο ακαθάριστο. */
@@ -715,7 +716,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           floor: prop.floor!=null?prop.floor:undefined, yearBuilt: prop.year_built!=null?prop.year_built:undefined,
           energyClass: prop.pea_class||undefined, atak: prop.atak||undefined,
           ownership: prop.ownership!=null?Number(prop.ownership):undefined,
-          coOwners: Array.isArray(prop.co_owners)?prop.co_owners:undefined,
+          coOwners: readCoOwners(prop.co_owners).map(c=>c.name),
           shortTerm: isShortTerm(prop),
           monthlyRent: rent, rentIsEstimate: incomeIsEstimate, annualRent, grossYield, netYield,
           expensesYTD: totalExpYear, categories: catEntries, branding,

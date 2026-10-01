@@ -16,7 +16,9 @@ export interface Property {
   insurance_expiry: string | null; pea_class: string | null; year_built: number | null;
   atak: string | null; floor: number | string | null; heating: string | null;
   parking_spaces: number | null; storage_sqm: number | null; bedrooms: number | null;
-  rental_mode: string | null; client_id: string | null; co_owners: string[] | null;
+  rental_mode: string | null; client_id: string | null;
+  /** jsonb [{name, afm, pct, address}]· διαβάζεται με το `readCoOwners` (lib/property/coOwners.ts). */
+  co_owners: unknown; power_supply_no: string | null;
   notes: string | null; status_detail: string | null; created_at: string;
 }
 // ΤΑ ΠΕΔΙΑ ΠΟΥ ΛΕΙΠΑΝ. Οι δύο τύποι περιέγραφαν λιγότερα από όσα διαβάζει η

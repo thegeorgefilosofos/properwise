@@ -11,12 +11,13 @@ import { readStatus, BY_KEY } from '@/lib/property/status';
 import { fe } from '@/lib/core/format';
 import { rentIncomeOf, servicesOf, hasRentSplit } from '@/lib/rent/split';
 import { leaseEndOf } from '@/lib/data/tenants';
+import { e2PowerSupply } from '@/lib/property/powerSupply';
 
 // Το `rental_mode` ΔΕΝ υπήρχε εδώ και γι' αυτό το έντυπο δεν μπορούσε να
 // ξεχωρίσει βραχυχρόνια από μακροχρόνια όταν η κατάσταση ήταν «rented».
 // Ακριβώς αυτό το ζευγάρι πεδίων περιγράφει το lib/property/status.ts ως πηγή
 // ασυμφωνίας: «ακίνητο μπορούσε να είναι 'rented' με rental_mode 'short_term'».
-export interface E2Property { id: string; name?: string | null; ama?: string | null; atak: string | null; address: string | null; postal_code: string | null; ownership: string | number | null; prop_type: string | null; status_detail: string | null; rental_mode?: string | null; target_rent: number | null; sqm?: number | null; floor?: string | number | null; }
+export interface E2Property { id: string; name?: string | null; ama?: string | null; atak: string | null; address: string | null; postal_code: string | null; ownership: string | number | null; prop_type: string | null; status_detail: string | null; rental_mode?: string | null; target_rent: number | null; sqm?: number | null; floor?: string | number | null; power_supply_no?: string | null; }
 // Το `id` και η αποχώρηση χρειάζονται για να μοιραστούν οι εισπράξεις στη σωστή
 // μίσθωση και για να κλείσει η μίσθωση όταν ο μισθωτής έφυγε νωρίτερα.
 export interface E2Tenant { id?: string | null; property_id: string; afm: string | null; monthly_rent: number | null; lease_start: string | null; lease_end: string | null; lease_type: string | null; full_name?: string | null; move_out_date?: string | null; status?: string | null; }
@@ -531,7 +532,7 @@ export function e2OfficialRows(p: E2Property, row: E2RowDetail, index: number): 
     e2CategoryLabel(p.prop_type),
     p.sqm != null ? p.sqm : '',
     l.kind.code ? `${l.kind.code} · ${l.kind.label}` : '',
-    '',                                   // στ.18 αρ. παροχής ρεύματος: δεν αντλείται
+    e2PowerSupply(p.power_supply_no),     // στ.18: τα 9 πρώτα ψηφία (οδηγία 8, Φ-01.002/Έκδοση 2026)
     l.tenantName,
     l.tenantAfm,
     '',                                   // στ.19 αρ. δήλωσης μίσθωσης: δεν αντλείται
