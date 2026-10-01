@@ -290,10 +290,15 @@ const prop = (over: Partial<PortalProperty> = {}): PortalProperty => ({
   eq('2026: ο φόρος στο 95%', t26.tax, rentalIncomeTax(9500, rentalBracketsForYear(2026)));
   eq('2026: η σημείωση δεν μιλά για τράπεζα', deductionNote(t26, 2026), 'Με τεκμαρτή έκπτωση 5%.');
 
+  // 2027: η κύρωση μετρά από 1.7.2027 (Α.1187/2026), άρα τα μετρητά χάνουν τη μισή έκπτωση.
   const t27 = indicativeTax(propertyLines([cashy, banky], 2027), 2027);
-  eq('2027: μετρητά χωρίς έκπτωση, τράπεζα με', t27.taxable, 10000 + 9500);
+  eq('2027: μετρητά με τη μισή έκπτωση, τράπεζα με ολόκληρη', t27.taxable, 9750 + 9500);
   eq('2027: η απόδειξη νικά την πρόθεση της μίσθωσης', t27.withoutDeduction.map(w => w.name), ['Μετρητά']);
-  eq('2027: η σημείωση λέει ποιο και γιατί', deductionNote(t27, 2027),
+  eq('2027: η σημείωση λέει από πότε', deductionNote(t27, 2027),
+    'Τεκμαρτή έκπτωση 5% μόνο όπου η είσπραξη έγινε μέσω τραπέζης. Χωρίς έκπτωση για τα ενοίκια από 1.7.2027: Μετρητά (3 από 12 εισπράξεις σε μετρητά).');
+  const t28 = indicativeTax(propertyLines([cashy, banky], 2028), 2028);
+  eq('2028: μετρητά χωρίς έκπτωση, τράπεζα με', t28.taxable, 10000 + 9500);
+  eq('2028: η σημείωση λέει ποιο και γιατί', deductionNote(t28, 2028),
     'Τεκμαρτή έκπτωση 5% μόνο όπου η είσπραξη έγινε μέσω τραπέζης. Χωρίς έκπτωση: Μετρητά (3 από 12 εισπράξεις σε μετρητά).');
 
   // Χωρίς καμία είσπραξη με τρόπο, μιλά η μίσθωση.
@@ -307,10 +312,11 @@ const prop = (over: Partial<PortalProperty> = {}): PortalProperty => ({
 
   // Παλιά βάση, χωρίς τα πλήθη: δεν μαντεύουμε την κερδοφόρα εκδοχή.
   const old = prop({ name: 'Παλιά', rent_collected: 6000, rent_months: 12 });
-  const tOld = indicativeTax(propertyLines([old], 2027), 2027);
-  eq('2027 χωρίς δεδομένα: καμία έκπτωση', tOld.taxable, 6000);
-  ok('2027 χωρίς δεδομένα: λέγεται ότι δεν φαίνεται',
-    deductionNote(tOld, 2027).includes('δεν φαίνεται από αυτόν τον σύνδεσμο'));
+  const tOld = indicativeTax(propertyLines([old], 2028), 2028);
+  eq('2028 χωρίς δεδομένα: καμία έκπτωση', tOld.taxable, 6000);
+  eq('2027 χωρίς δεδομένα: μόνο η μισή', indicativeTax(propertyLines([old], 2027), 2027).taxable, 5850);
+  ok('χωρίς δεδομένα: λέγεται ότι δεν φαίνεται',
+    deductionNote(tOld, 2028).includes('δεν φαίνεται από αυτόν τον σύνδεσμο'));
 
   // Συνιδιοκτησία: ο φόρος στο μερίδιο, όπως πριν.
   const half = prop({ ownership: 50, rent_due: 12000, rent_collected: 12000, rent_months: 12 });
