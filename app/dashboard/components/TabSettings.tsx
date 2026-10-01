@@ -61,7 +61,7 @@ type S = Record<string, unknown>;
  * ασφάλεια υπάρχει.
  */
 const SETTINGS_FIELDS: readonly (readonly [string, string])[] = [
-  ['owner_name', 'Ονομα ιδιοκτήτη'],
+  ['owner_name', 'Όνομα ιδιοκτήτη'],
   ['owner_afm', 'ΑΦΜ ιδιοκτήτη'],
   ['owner_phone', 'Τηλέφωνο ιδιοκτήτη'],
   ['owner_email', 'Ηλεκτρονικό ταχυδρομείο ιδιοκτήτη'],
@@ -305,7 +305,7 @@ function DeleteAccount() {
         // Μόνο για όποιον έχει δεύτερο παράγοντα: η διαγραφή θα τον ζητήσει,
         // οπότε ας μην τον ξαφνιάσει τη στιγμή της οριστικής πράξης.
         <div style={{ background: 'var(--info-soft)', border: '1px solid var(--info-border)', borderRadius: T.radius.inner, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-          Η διαγραφή θα ζητήσει επιβεβαίωση με τον δεύτερο παράγοντα (2FA).
+          Η διαγραφή θα ζητήσει τον κωδικό της εφαρμογής επαλήθευσης.
         </div>
       )}
       {leftover ? (
@@ -692,7 +692,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
       .filter(([, value]) => value !== '');
     if (rows.length === 0) {
       setSheetNote(sUnread
-        ? 'Δεν διαβάστηκαν οι ρυθμίσεις του ακινήτου, οπότε δεν ξέρουμε τι υπάρχει. Ανανέωσε τη σελίδα κι δοκίμασε ξανά.'
+        ? 'Δεν διαβάστηκαν οι ρυθμίσεις του ακινήτου, οπότε δεν ξέρουμε τι υπάρχει. Ανανέωσε τη σελίδα και δοκίμασε ξανά.'
         : 'Δεν υπάρχει καμία καταχωρημένη ρύθμιση σε αυτό το ακίνητο.');
       return;
     }
@@ -737,7 +737,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           σειρά: Προφίλ, Συνδρομή, Ειδοποιήσεις, Ασφάλεια, Δεδομένα. Ο ίδιος
           κατάλογος δύο φορές, σε απόσταση σαράντα εικονοστοιχείων. Ο υπότιτλος
           λέει τώρα τι ΕΙΝΑΙ η σελίδα· τι περιέχει το λένε οι κεφαλίδες της. */}
-      <PageTitle title="Λογαριασμός" sub="Ό,τι αφορά εσένα και τον έλεγχό σου πάνω στα δεδομένα σου" />
+      <PageTitle title="Λογαριασμός" sub="Ό,τι αφορά εσένα και τα δεδομένα σου" />
 
       {/* ── 1. ΠΡΟΦΙΛ ─────────────────────────────────────────────────── */}
       <ProfileCard userId={userId} email={accountEmail} />
@@ -858,10 +858,11 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
                   πρόσβαση δεν λήγει ποτέ. Ο χρήστης διάβαζε ένα αστείο εκεί που
                   περίμενε όρο. Ό,τι απέχει πάνω από δέκα χρόνια λέγεται με
                   λέξεις, γιατί αυτό ακριβώς σημαίνει. */}
-              Έχεις πρόσβαση <strong style={{ color: 'var(--text-primary)' }}>{PLANS[comp.plan].name}</strong>
-              {isOpenEnded(comp.until)
-                ? ', χωρίς ημερομηνία λήξης'
-                : <> έως και {fdLong(comp.until)}</>}, χωρίς χρέωση. Την κέρδισες από το Πρόγραμμα πρόσκλησης.
+              {/* ΚΑΙ ΧΩΡΙΣ «ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ ΛΗΞΗΣ». Υπόσχεση αόριστης διάρκειας
+                  δίπλα σε πακέτο δεν γράφεται· όταν δεν υπάρχει ημερομηνία, η
+                  πρόταση απλώς δεν λέει ημερομηνία. */}
+              Έχεις το «<strong style={{ color: 'var(--text-primary)' }}>{PLANS[comp.plan].name}</strong>» χωρίς χρέωση
+              {isOpenEnded(comp.until) ? null : <> έως και {fdLong(comp.until)}</>}, από το Πρόγραμμα πρόσκλησης.
             </div>
           </div>
         )}
@@ -870,7 +871,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         <div style={divider}>
           <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 4 }}>Τρόπος χρήσης</div>
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 14, lineHeight: 1.5 }}>
-            Αλλάζει όποτε θες.{partner ? ' Είσαι ενεργός συνεργάτης PROPERWISE.' : ''}
+            Αλλάζει όποτε θέλεις.{partner ? ' Είσαι ενεργός συνεργάτης PROPERWISE.' : ''}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 12 }}>
             {PROFILE_OPTS.map(o => {
@@ -889,7 +890,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, marginTop: 4, lineHeight: 1.5 }}>{o.sub}</div>
                   {needsPlan && (
-                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8 }}>Ανοίγει με το πακέτο Επαγγελματίας.</div>
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8 }}>Ανοίγει με το πακέτο «{PLANS.agency.name}».</div>
                   )}
                 </button>
               );

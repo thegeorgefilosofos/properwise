@@ -655,7 +655,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
           τον ΦΠΑ — και δεν τον αποδίδει αυτός. */}
       {live === true && note && (
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55, marginTop: 14 }}>
-          {note} Σταματάς όποτε θες και η συνδρομή τρέχει ως το τέλος της περιόδου που έχεις πληρώσει.
+          {note} Σταματάς όποτε θέλεις και η συνδρομή τρέχει ως το τέλος της περιόδου που έχεις πληρώσει.
         </div>
       )}
 

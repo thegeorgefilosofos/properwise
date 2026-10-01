@@ -539,7 +539,7 @@ export default function Dashboard() {
                 <BrandMark size={52} />
               </div>
               <h1 style={{fontFamily: T.font.sans,fontSize:28,fontWeight:700,letterSpacing:'-0.025em',color:'var(--text-primary)',margin:'0 0 10px',textWrap:'balance'}}>Ξεκίνα από ένα ακίνητο</h1>
-              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'balance'}}>Φτάνουν ο τύπος, η κατάσταση και ένα όνομα, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θες.</p>
+              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'balance'}}>Φτάνουν ο τύπος, η κατάσταση και ένα όνομα, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θέλεις.</p>
               <ol style={{listStyle:'none',padding:0,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,170px),1fr))',gap:12,margin:'0 0 30px',textAlign:'left'}}>
                 {[
                   {t:'Τα βασικά',d:'Όνομα, διεύθυνση και τετραγωνικά.'},

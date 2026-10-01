@@ -336,7 +336,7 @@ export function tenantScheduleRows(
       title: `Λήξη πληρωμής ενοικίου, ${name}`,
       event_date: nextRentDueISO(opts.rentDueDay ?? 1),
       amount: t.monthly_rent, recurring: true, recurring_interval: 'monthly',
-      notes: 'Μηνιαία υπενθύμιση είσπραξης ενοικίου. Κατέγραψε την πληρωμή στην καρτέλα «Ενοικιαστής», στις Πληρωμές».',
+      notes: 'Μηνιαία υπενθύμιση είσπραξης. Κατέγραψε την πληρωμή στους «Ενοικιαστές», ενότητα «Πληρωμές».',
     });
   }
 

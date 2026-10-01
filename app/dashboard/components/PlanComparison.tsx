@@ -123,11 +123,10 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
             // Κάθε στήλη έχει τιμή, οπότε δεν υπάρχει «χωρίς χρέωση» να
             // ξεχωρίσει. Το ποσό περνά πάντα από τον μορφοποιητή.
             const priceMain = cycle === 'annual' ? feAuto(annualPerMonth(id)) : feAuto(p.priceMonthly);
-            // ΤΟ ΚΕΡΔΟΣ ΛΕΓΕΤΑΙ ΩΣ ΚΕΡΔΟΣ, ΜΕ ΤΑ ΙΔΙΑ ΛΟΓΙΑ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Το
-            // «12 μήνες στην τιμή των 11» ζητά από τον αναγνώστη να κάνει την
-            // αφαίρεση για να καταλάβει τι παίρνει — και η αρχική σελίδα, δύο
-            // κλικ πιο πριν, του έλεγε ήδη «1 μήνας δωρεάν». Δύο διατυπώσεις για
-            // την ίδια έκπτωση, στην ίδια αγορά.
+            // ΤΟ ΚΕΡΔΟΣ ΛΕΓΕΤΑΙ ΜΕ ΤΑ ΙΔΙΑ ΛΟΓΙΑ ΜΕ ΤΗΝ ΑΡΧΙΚΗ: η ετήσια συνδρομή
+            // δεν χαρίζει μήνες, χρεώνει λιγότερους (app/landingContent.ts,
+            // «ΚΑΙ ΔΕΝ ΛΕΓΕΤΑΙ ΔΩΡΕΑΝ»). Γι' αυτό «11 μήνες αντί για 12», όχι
+            // «1 μήνας δωρεάν».
             const paidMonths = p.priceAnnual > 0 && p.priceMonthly > 0 ? Math.round(p.priceAnnual / p.priceMonthly) : 0;
             const freeMonths = paidMonths > 0 ? 12 - paidMonths : 0;
 
@@ -192,7 +191,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
                 {(popular || isCurrent || inTrial) && (
                   <span style={{ position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: 6, background: isCurrent || inTrial ? 'var(--bg-surface)' : 'var(--accent)', color: isCurrent || inTrial ? 'var(--accent)' : 'var(--accent-text)', border: isCurrent || inTrial ? '1px solid var(--accent-border)' : 'none', borderRadius: T.radius.pill, padding: '2px 10px', fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.sans, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
                     {(isCurrent || inTrial) && <span className="acc-live-dot accent" style={{ width: 6, height: 6, background: 'var(--accent)' }} />}
-                    {isCurrent ? 'Το πακέτο σου' : inTrial ? 'Σε δοκιμή' : 'Πιο δημοφιλές'}
+                    {isCurrent ? 'Το πακέτο σου' : inTrial ? 'Σε δοκιμή' : 'Προτεινόμενο'}
                   </span>
                 )}
 
@@ -218,7 +217,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                     <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feAuto(p.priceAnnual)}/χρόνο</span>
                     {freeMonths > 0 && (
-                      <Chip>{freeMonths === 1 ? '1 μήνας δωρεάν' : `${freeMonths} μήνες δωρεάν`}</Chip>
+                      <Chip>{`${12 - freeMonths} μήνες αντί για 12`}</Chip>
                     )}
                   </div>
                 )}

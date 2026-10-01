@@ -9,7 +9,8 @@ import { InfoHint } from './InfoHint'
 import BankImport from './BankImport'
 import E2ReconcileCard from './E2ReconcileCard'
 import { Landmark, Lock, Unlock } from 'lucide-react'
-import { bracketsLabelForYear } from '@/lib/billing/greekTax'
+import { bracketsLabelForYear, BUSINESS_INCOME_BRACKETS_2026, CORPORATE_TAX_RATE_2026, ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, DIVIDEND_WITHHOLDING_RATE } from '@/lib/billing/greekTax'
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
 import { FEATURE_MIN_PLAN } from '@/lib/billing/entitlements'
 import { PLANS } from '@/lib/billing/plans'
 import EnfiaPanel from './EnfiaPanel';
@@ -17,7 +18,7 @@ import AccountantDossier from './AccountantDossier'
 import { UNCOLLECTED_RENT_RULE as UNCOLLECTED_RULE } from '@/lib/accounting/dossier'
 import { readStatus, statusLabel, type StatusRow } from '@/lib/property/status'
 // Το λογιστικό πρόσημο: τυπογραφικό μείον, όχι ενωτικό και ποτέ «−0,00€».
-import { feSigned } from '@/lib/core/format'
+import { feSigned, fpRate } from '@/lib/core/format'
 import { incomeEntry } from '@/lib/property/visibility'
 import { printAccountingReport, downloadOfficialAccountingReport, type ReconLite } from './accountingReport'
 import ReportBuilder from './ReportBuilder'
@@ -232,10 +233,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           Τα οικονομικά δεδομένα δεν διαβάστηκαν
         </p>
         <p style={{ fontSize: 'var(--fs-base)', lineHeight:1.6, color:'var(--text-secondary)', fontFamily:T.font.sans, margin:'6px 0 0' }}>
-          Η σύνδεση με τη βάση απέτυχε, οπότε τα έσοδα, οι δαπάνες και οι διαμονές
-          λείπουν. Τα ποσά που θα έβλεπες εδώ θα ήταν μηδενικά χωρίς να είναι και
-          από αυτή την οθόνη βγαίνουν το Ε2, η βεβαίωση ενοικίου και ο φάκελος του
-          λογιστή. Δοκίμασε ξανά· τα δεδομένα σου δεν έχουν χαθεί.
+          Τα έσοδα, οι δαπάνες και οι διαμονές δεν φορτώθηκαν. Μην εξαγάγεις Ε2,
+          βεβαίωση ενοικίου ή φάκελο λογιστή πριν φορτωθούν: θα έβγαιναν με
+          μηδενικά. Τα δεδομένα σου δεν έχουν χαθεί.
         </p>
         <div style={{ marginTop:12 }}>
           <Btn variant="secondary" onClick={()=>setRefreshKey(k=>k+1)}>Δοκίμασε ξανά</Btn>
@@ -328,8 +328,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <div style={{ flex:1, minWidth:240 }}>
               <p style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)', margin:0, fontFamily: T.font.sans, letterSpacing:'0.1px' }}>Ξεκίνα τη λογιστική σου για το {year}</p>
               <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'6px 0 0', lineHeight:1.6, fontFamily: T.font.sans, maxWidth:520 }}>{income
-                ? `Καταχώρησε ${income.noun} και έξοδα. Από αυτά βγαίνουν ο φόρος, το ταμειακό υπόλοιπο και οι αναφορές για τον λογιστή σου.`
-                : 'Καταχώρησε τα έξοδα του ακινήτου. Από αυτά βγαίνουν το ταμειακό υπόλοιπο και οι αναφορές για τον λογιστή σου.'}</p>
+                ? `Καταχώρησε ${income.noun} και δαπάνες. Από αυτά βγαίνουν ο φόρος, το ταμειακό υπόλοιπο και οι αναφορές για τον λογιστή σου.`
+                : 'Καταχώρησε τις δαπάνες του ακινήτου. Από αυτά βγαίνουν το ταμειακό υπόλοιπο και οι αναφορές για τον λογιστή σου.'}</p>
               <div style={{ display:'flex', alignItems:'center', gap:16, margin:'14px 0 0', flexWrap:'wrap' }}>
                 {/* ΤΑ ΟΝΟΜΑΤΑ ΕΙΝΑΙ ΤΑ ΟΝΟΜΑΤΑ ΠΟΥ ΘΑ ΔΕΙ. Η κενή οθόνη υποσχόταν «Καθαρό
                     ταμείο», ταμπέλα που δεν υπάρχει σε καμία γεμάτη οθόνη: εκεί η
@@ -532,8 +532,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             Ενδεικτικά ποσά. Το τελικό ποσό το επιβεβαιώνει ο λογιστής σου ή το εκκαθαριστικό στο <a href={AADE_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color:'var(--accent)', textDecoration:'none' }}>myAADE</a>.
             <InfoHint>
               {businessMode
-                ? (elpForm==='company' ? 'Νομικό πρόσωπο: 22% επί των καθαρών κερδών (μετά από εκπιπτόμενα έξοδα, αποσβέσεις κτιρίου και εξοπλισμού, καθώς και τόκους), συν προκαταβολή φόρου 80% και 5% φόρος στη διανομή μερίσματος.' : `Ατομική επιχείρηση: κλίμακα άρθρου 15 (9-44%) επί των καθαρών κερδών, μετά από εκπιπτόμενα έξοδα, ΕΦΚΑ, αποσβέσεις και τόκους, με τεκμαρτό ελάχιστο καθαρό εισόδημα ${eur(minNetIncome.amount)}${minNetIncome.sourceYear!==year?` (ποσό ${minNetIncome.sourceYear}: για το ${year} δεν έχει ανακοινωθεί κατώτατος μισθός)`:''} και προκαταβολή φόρου 55%.`)
-                : (regime==='individual_longterm' ? 'Μακροχρόνια μίσθωση φυσικού προσώπου: το εισόδημα φορολογείται κατά το άρθρο 40, με τεκμαρτή έκπτωση 5% για επισκευές και συντήρηση. Οι λοιπές δαπάνες, ο ΕΝΦΙΑ και οι τόκοι δανείου δεν εκπίπτουν.' : 'Βραχυχρόνια μίσθωση φυσικού προσώπου: εισόδημα ακινήτων, με τεκμαρτή έκπτωση 5% στα μεικτά (άρθρο 39 ΚΦΕ). Οι πραγματικές δαπάνες δεν εκπίπτουν. Επιπλέον το τέλος ανθεκτικότητας ανά διανυκτέρευση και το τέλος παρεπιδημούντων όπου ισχύει.')}
+                ? (elpForm==='company' ? `Νομικό πρόσωπο: ${fpRate(CORPORATE_TAX_RATE_2026*100)} επί των καθαρών κερδών (μετά από εκπιπτόμενα έξοδα, αποσβέσεις κτιρίου και εξοπλισμού, καθώς και τόκους), συν προκαταβολή φόρου ${fpRate(ADVANCE_TAX_RATE_COMPANY*100)} και ${fpRate(DIVIDEND_WITHHOLDING_RATE*100)} φόρος στη διανομή μερίσματος.` : `Ατομική επιχείρηση: κλίμακα άρθρου 15 (${fpRate(BUSINESS_INCOME_BRACKETS_2026[0].rate*100)} έως ${fpRate(BUSINESS_INCOME_BRACKETS_2026[BUSINESS_INCOME_BRACKETS_2026.length-1].rate*100)}) επί των καθαρών κερδών, μετά από εκπιπτόμενα έξοδα, ΕΦΚΑ, αποσβέσεις και τόκους, με τεκμαρτό ελάχιστο καθαρό εισόδημα ${eur(minNetIncome.amount)}${minNetIncome.sourceYear!==year?` (ποσό ${minNetIncome.sourceYear}: για το ${year} δεν έχει ανακοινωθεί κατώτατος μισθός)`:''} και προκαταβολή φόρου ${fpRate(ADVANCE_TAX_RATE_SOLE*100)}.`)
+                : (regime==='individual_longterm' ? `Μακροχρόνια μίσθωση φυσικού προσώπου: το εισόδημα φορολογείται κατά το άρθρο 40, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} για επισκευές και συντήρηση. Οι λοιπές δαπάνες, ο ΕΝΦΙΑ και οι τόκοι δανείου δεν εκπίπτουν.` : `Βραχυχρόνια μίσθωση φυσικού προσώπου: εισόδημα ακινήτων, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} στα μεικτά (άρθρο 39 ΚΦΕ). Οι πραγματικές δαπάνες δεν εκπίπτουν. Επιπλέον το τέλος ανθεκτικότητας ανά διανυκτέρευση και το τέλος παρεπιδημούντων όπου ισχύει.`)}
               {/* Η πρόταση απαριθμούσε ΔΥΟ στοιχεία («αξία και τ.μ.»)
                   ενώ η εκτίμηση διαβάζει πλέον ΤΕΣΣΕΡΑ. Ο ιδιοκτήτης που
                   συμπλήρωσε έτος κατασκευής ή όροφο έβλεπε το νούμερο να
