@@ -74,14 +74,20 @@ export default function Page() {
             «Διάβασε τον οδηγό» είναι οπτική ένδειξη και κάθεται στη βάση της
             κάρτας, στο ίδιο ύψος σε όλη τη σειρά. */}
         <div className="og-grid">
-          {GUIDES.map(g => {
+          {/* ΕΝΝΙΑ ΚΑΡΤΕΣ ΣΕ ΔΥΟ ΣΤΗΛΕΣ ΑΦΗΝΑΝ ΤΗΝ ΕΝΑΤΗ ΜΟΝΗ ΤΗΣ, με μισή σειρά
+              άδεια στο τέλος του καταλόγου. Η πρώτη γίνεται προβεβλημένη, σε όλο
+              το πλάτος· οι υπόλοιπες οκτώ κλείνουν σε τέσσερις γεμάτες σειρές.
+              Ο κανόνας ισχύει μόνο όσο το πλήθος είναι μονό. */}
+          {GUIDES.map((g, i) => {
             const id = `odigos-${g.href.split('/').at(-1)}`;
+            const featured = i === 0 && GUIDES.length % 2 === 1;
             return (
-              <Link key={g.href} href={g.href} aria-labelledby={id} className="og-card lp-link"
-                style={{ padding: '22px 22px 20px', borderRadius: T.radius.modal,
-                  border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', textDecoration: 'none' }}>
+              <Link key={g.href} href={g.href} aria-labelledby={id} className={featured ? 'og-card og-featured lp-link' : 'og-card lp-link'}
+                style={{ padding: featured ? '26px 26px 22px' : '22px 22px 20px', borderRadius: T.radius.modal,
+                  border: featured ? '1px solid color-mix(in srgb, var(--accent) 35%, transparent)' : '1px solid var(--border-subtle)',
+                  background: featured ? 'color-mix(in srgb, var(--accent) 6%, var(--bg-surface))' : 'var(--bg-surface)', textDecoration: 'none' }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent)' }}>{g.kicker}</span>
-                <h2 id={id} style={{ margin: 0, fontSize: 18, fontWeight: 680, letterSpacing: '-0.02em', color: 'var(--text-primary)', lineHeight: 1.25 }}>{g.title}</h2>
+                <h2 id={id} style={{ margin: 0, fontSize: featured ? 22 : 18, fontWeight: 680, letterSpacing: '-0.02em', color: 'var(--text-primary)', lineHeight: 1.25 }}>{g.title}</h2>
                 <span style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>{g.desc}</span>
                 <span aria-hidden="true" style={{ marginTop: 'auto', paddingTop: 4, fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>Διάβασε τον οδηγό</span>
               </Link>

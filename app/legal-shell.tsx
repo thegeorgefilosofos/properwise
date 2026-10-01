@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { type ReactNode } from 'react';
 import { hy } from '@/components/Hyphen';
 import { T } from '@/components/tokens';
-import { PublicHeader, PublicFooter, WRAP, WRAP_PAD } from './PublicChrome';
+import { PublicHeader, PublicFooter, SectionHead, WRAP, WRAP_PAD } from './PublicChrome';
+import { LINK_STYLE } from './linkStyle';
 import { BackLink } from './BackLink';
 import { transliterate } from '@/lib/core/uploadPath';
 import { LegalForm } from './LegalForm';
@@ -69,7 +70,7 @@ const MAIL_IN_TEXT = /[\w.+-]+@(?:[\w-]+\.)+[a-z]{2,}/gi;
 export function MailLink({ to }: { to: string }) {
   const at = to.indexOf('@') + 1;
   return (
-    <a href={`mailto:${to}`} className="lp-link po-tap-inline" style={{ color: 'var(--accent)', textDecoration: 'none', overflowWrap: 'break-word', wordBreak: 'normal' }}>
+    <a href={`mailto:${to}`} className="lp-link po-tap-inline" style={{ ...LINK_STYLE, overflowWrap: 'break-word', wordBreak: 'normal' }}>
       {to.slice(0, at)}<wbr />{to.slice(at)}
     </a>
   );
@@ -102,7 +103,7 @@ interface RefContext {
   anchors: ReadonlyMap<string, string>;
 }
 
-const REF_STYLE = { color: 'var(--accent)', textDecoration: 'none' } as const;
+const REF_STYLE = LINK_STYLE;
 
 /** Κείμενο με κάθε email και κάθε παραπομπή του σε σύνδεσμο. */
 function withRefs(text: string, ctx: RefContext): ReactNode {
@@ -189,7 +190,20 @@ export interface LegalBlock {
  * Ήταν «1. Ορισμοί» μέσα στο ίδιο κείμενο, οπότε ένας τίτλος δύο γραμμών
  * τύλιγε κάτω από τον αριθμό και η δεύτερη σειρά ξεκινούσε από άλλο σημείο.
  */
-export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, closing, self }: {
+export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, closing, self, guideHeads }: {
+  /**
+   * ΤΟ «ΠΟΙΟΙ ΕΙΜΑΣΤΕ» ΜΙΛΑ ΤΗ ΓΛΩΣΣΑ ΤΩΝ ΟΔΗΓΩΝ, ΟΧΙ ΤΩΝ ΣΥΜΒΑΣΕΩΝ.
+   *
+   * Ηταν η μόνη σελίδα της βιτρίνας, μαζί με τα δύο νομικά, με γαλάζια
+   * ετικέτα μέρους, αριθμό στο περιθώριο και τίτλο σπρωγμένο τριάντα
+   * εικονοστοιχεία μέσα από το κείμενο· και η δεξιά στήλη ξεκινούσε στο μέρος
+   * Α, κάτω από την εισαγωγή, με λευκό δίπλα της. Οι οδηγοί, που διαβάζει ο
+   * ίδιος επισκέπτης λίγο πριν, έχουν ετικέτα «1. Θέμα» πάνω από τον τίτλο και
+   * στήλη που ξεκινά στην κορυφή. Με `guideHeads` η σελίδα παίρνει ακριβώς
+   * αυτό το σχήμα (`.gd-layout`, `SectionHead`)· οι Όροι και το Απόρρητο
+   * κρατούν την αρίθμηση στο περιθώριο, γιατί παραπέμπουν σε «ενότητα 12».
+   */
+  guideHeads?: boolean;
   eyebrow: string;
   title: string;
   intro: ReactNode;
@@ -233,6 +247,57 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
       ))}
     </ol>
   );
+  if (guideHeads) {
+    // Η ετικέτα πάνω από τον τίτλο: «2. Πού πάνε». Το μέρος κληρονομείται από
+    // την πρώτη του ενότητα· γράφεται η πρώτη του φράση, χωρίς το γράμμα.
+    const partOf = (i: number): string => {
+      const owner = blocks.slice(0, i + 1).findLast(b => b.part);
+      return owner?.part ? owner.part.replace(/^[Α-Ω]\.\s*/, '').split(',')[0] : blocks[i].h;
+    };
+    const overs = blocks.map((_, i) => `${i + 1}. ${partOf(i)}`);
+    return (
+      <div className="pub-root min-h-dvh" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: T.font.sans }}>
+        <PublicHeader />
+        <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(48px,6vw,80px)` }}>
+          <div className="gd-layout">
+            <nav aria-label="Περιεχόμενα" className="lg-toc gd-rail">
+              <div className="lg-toc-d"><div className="lg-toc-h">Περιεχόμενα</div>{toc}</div>
+              <TocSpy />
+            </nav>
+            <div className="gd">
+              <BackLink />
+              <div className="lp-eyebrow">{eyebrow}</div>
+              <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
+                {title}
+              </h1>
+              {/* Μία γραμμή στοιχείων κάτω από τον τίτλο, όπως η ημερομηνία των
+                  οδηγών: η έκδοση την περιέχει ήδη, οπότε δεν γράφεται δεύτερη. */}
+              {(version ?? meta) && <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 18px' }}>{version ?? meta}</p>}
+              <nav aria-label="Περιεχόμενα" className="lg-toc" style={{ margin: '0 0 clamp(24px,3vw,32px)' }}>
+                <details className="lg-toc-m"><summary>Περιεχόμενα ({blocks.length})</summary>{toc}</details>
+                <div className="lg-toc-d"><div className="lg-toc-h">Περιεχόμενα</div>{toc}</div>
+              </nav>
+              <p className="lg-p">{hy(intro)}</p>
+              {blocks.map((b, i) => (
+                <section key={i} id={ids[i]} style={{ scrollMarginTop: 24, marginTop: 'clamp(40px,5vw,60px)' }}>
+                  <SectionHead over={overs[i]} title={b.h} />
+                  {hy(b.body)}
+                </section>
+              ))}
+              {hy(closing)}
+              <div className="lg-siblings" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                {TRUST_PAGES.filter(([href]) => href !== self).map(([href, label]) => (
+                  <Link key={href} href={href} className="lp-link po-tap" style={{ color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600 }}>{label}</Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </main>
+        <PublicFooter />
+      </div>
+    );
+  }
+
   return (
     // `pub-root`: η παλέτα της αρχικής και εδώ (globals.css), ώστε το «Ποιοι
     // είμαστε», οι Όροι και το Απόρρητο να μην αλλάζουν χρώμα από την αρχική.

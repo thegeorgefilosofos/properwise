@@ -25,7 +25,9 @@ import { ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/identity';
 import { hyphenate } from '@/lib/core/hyphenate';
 import { billingWords } from '@/lib/legal/billingWords';
 import { LegalLayout, MailLink, type LegalBlock } from '../legal-shell';
+import Link from 'next/link';
 import { siteUrl } from '@/lib/core/site';
+import { LINK_STYLE } from '../linkStyle';
 import { publicMetadata } from '../publicMetadata';
 
 export const metadata: Metadata = publicMetadata({
@@ -325,7 +327,7 @@ export default function TrustPage() {
           <p className="lg-p">
             Αυτοί επεξεργάζονται δεδομένα μαζί μας. Όσοι είναι «εκτελούντες» ενεργούν για λογαριασμό μας· οι
             «αυτοτελείς υπεύθυνοι» αποφασίζουν οι ίδιοι για τα δεδομένα που λαμβάνουν. Ο ρόλος του
-            καθενός γράφεται στην <a href="/privacy">Πολιτική απορρήτου</a>.
+            καθενός γράφεται στην <Link href="/privacy" className="lp-link" style={LINK_STYLE}>Πολιτική απορρήτου</Link>.
           </p>
           <p className="lg-note">{TRANSFER_SAFEGUARDS}</p>
           <p className="lg-p" style={{ marginTop: 12 }}>Πριν προσθέσουμε νέο πάροχο, σε ενημερώνουμε με email.</p>
@@ -437,7 +439,8 @@ export default function TrustPage() {
             <li><strong>Εναντίωση και περιορισμός:</strong> γράψε μας και απαντάμε το αργότερο μέσα σε έναν μήνα.</li>
           </ul>
           <p className="lg-p">
-            Έχεις επίσης δικαίωμα καταγγελίας στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα (dpa.gr).
+            Έχεις επίσης δικαίωμα καταγγελίας στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα (
+            <a href="https://www.dpa.gr" target="_blank" rel="noopener noreferrer" className="lp-link" style={LINK_STYLE}>dpa.gr</a>).
           </p>
         </>
       ),
@@ -472,7 +475,7 @@ export default function TrustPage() {
             ανοιχτό και σε αναφέρουμε ονομαστικά όταν διορθωθεί, αν το θέλεις.
             Δεσμευόμαστε να μη στραφούμε νομικά εναντίον ερευνητή που ενεργεί καλόπιστα και δεν αποκτά πρόσβαση σε
             δεδομένα τρίτων. Οι πλήρεις όροι, μαζί με το τι είναι εντός και εκτός εμβέλειας, βρίσκονται στην{' '}
-            <a href="/.well-known/security.txt" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none' }}>πολιτική γνωστοποίησης ευπαθειών</a>.
+            <a href="/.well-known/security.txt" className="lp-link" style={LINK_STYLE}>πολιτική γνωστοποίησης ευπαθειών</a>.
           </p>
         </>
       ),
@@ -481,6 +484,7 @@ export default function TrustPage() {
 
   return (
     <LegalLayout
+      guideHeads
       self="/trust"
       eyebrow="Εμπιστοσύνη"
       title="Ποιοι είμαστε"

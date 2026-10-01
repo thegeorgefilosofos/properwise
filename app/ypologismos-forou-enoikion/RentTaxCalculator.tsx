@@ -20,9 +20,8 @@
 // την εγγραφή — που είναι ο γρηγορότερος τρόπος να χάσεις την εμπιστοσύνη του.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
-import { T, TT, feAuto, fn, fp, fixedCols } from '@/components/tokens';
+import { T, feAuto, fn, fp } from '@/components/tokens';
 import { fpRate, feWhole, feSigned } from '@/lib/core/format';
-import { ChipToggle } from '@/components/Theme';
 import {
   rentalIncomeTax, marginalRate,
   rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS,
@@ -32,7 +31,7 @@ import { bankReceiptMatters, presumptiveDeductionRateForYear } from '@/lib/billi
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { Toggle } from '@/app/dashboard/components/UIComponents';
 import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
-import { ToolNumField, ToolFigure, ToolLedger, ToolStats } from '@/app/ToolParts';
+import { ToolNumField, ToolFields, ToolSeg, ToolHero, ToolLedger, ToolStats } from '@/app/ToolParts';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { toolQuery } from '@/lib/tools/permalink';
 
@@ -167,49 +166,29 @@ export function RentTaxCalculator({ today }: { today: string }) {
           σωστή απάντηση. */}
       {/* ΔΥΟ ΓΝΩΣΤΑ ΠΕΔΙΑ, ΡΗΤΑ ΔΥΟ ΣΤΗΛΕΣ. Το auto-fit έβγαζε άλλοτε δύο και
           άλλοτε ένα ανάλογα με το zoom του περιηγητή, στην ίδια οθόνη. */}
-      <div {...fixedCols(2, 14, 'start', 'po-tool-controls')}>
+      {/* ΔΥΟ ΠΟΣΑ ΚΑΙ Η ΧΡΟΝΙΑ, ΣΤΟ ΚΟΙΝΟ ΠΛΕΓΜΑ ΤΩΝ ΤΕΣΣΑΡΩΝ (`ToolFields`).
+          Ηταν δύο στήλες των 515 εικονοστοιχείων για ένα «600» και ένα «12»,
+          με την επιλογή της χρονιάς σε δική της σειρά από κάτω. Τώρα τα δύο
+          πεδία πιάνουν από μία στήλη και η χρονιά τις άλλες δύο: μία σειρά. */}
+      <ToolFields xs2>
         <ToolNumField id={monthlyId} label="Μηνιαίο ενοίκιο" value={monthly} onChange={x => set('enoikio', x)} unit="€"/>
-        <ToolNumField id={monthsId} label="Μήνες που νοικιάζεται" value={months} onChange={x => set('mines', x)} mode="numeric"/>
-      </div>
+        <ToolNumField id={monthsId} label="Μήνες ενοικίασης" value={months} onChange={x => set('mines', x)}
+          mode="numeric" unit="μήνες" unitPad={64}/>
+        {/* ── ΠΟΙΑΣ ΧΡΟΝΙΑΣ ΕΙΣΟΔΗΜΑ ─────────────────────────────────────
+            Δύο κουμπιά, όχι μενού: οι επιλογές είναι δύο και θα μείνουν δύο ώσπου
+            να αλλάξει ο νόμος. Η προεπιλογή και η βοήθεια βγαίνουν από τη
+            σημερινή ημερομηνία (`openingYear`, `filingNote`). Το «πότε
+            δηλώνεται» ζούσε σε δεύτερη σειρά μέσα σε κάθε κουμπί και έκανε τη
+            ράγα ψηλότερη από τα πεδία δίπλα της· μένει στη βοήθεια από κάτω. */}
+        <ToolSeg label="Εισόδημα ποιας χρονιάς" value={v.etos} onChange={x => set('etos', x)}
+          options={YEARS.map(y => ({ value: y, label: y }))}
+          hint={<>Του {year}, {filingNote(year, today)}. {year >= FIRST_YEAR_NEW_BRACKETS
+            ? 'Κλίμακα 15 / 25 / 35 / 45% (ν.5246/2025).'
+            : 'Κλίμακα 15 / 35 / 45%, χωρίς το ενδιάμεσο κλιμάκιο.'}</>}/>
+      </ToolFields>
       <ToolClampNote notes={[
         Math.round(amount(months)) > MAX_MONTHS && `Μέγιστο ${MAX_MONTHS} μήνες· υπολογίστηκαν ${MAX_MONTHS}.`,
       ]}/>
-
-      {/* ── Ο ΟΡΟΣ ΠΟΥ ΑΛΛΑΖΕΙ ΤΟ ΝΟΥΜΕΡΟ, ΣΕ ΔΙΚΗ ΤΟΥ ΣΕΙΡΑ ────────────────
-             Δεν μπαίνει τρίτο κελί στο πλέγμα των δύο πεδίων: τα άλλα δύο είναι
-             ΠΟΣΑ που πληκτρολογείς, αυτό είναι ΓΕΓΟΝΟΣ που δηλώνεις. Μια
-             ολόκληρη σειρά με την εξήγηση δίπλα του λέει και τι ρωτάμε και
-             γιατί ρωτάμε, χωρίς να στριμωχτεί κάτω από ετικέτα δύο λέξεων. */}
-      {/* ── ΠΟΙΑΣ ΧΡΟΝΙΑΣ ΕΙΣΟΔΗΜΑ ─────────────────────────────────────────
-          Δύο κουμπιά, όχι μενού: οι επιλογές είναι δύο και θα μείνουν δύο ώσπου
-          να αλλάξει ο νόμος. Η προεπιλογή και οι ετικέτες βγαίνουν από τη
-          σημερινή ημερομηνία (`openingYear`, `filingNote`). */}
-      <div className="po-tool-controls" style={{ marginTop: 16 }}>
-        <div style={{ ...TT.label, marginBottom: 8 }}>Εισόδημα ποιας χρονιάς</div>
-        {/* `seg` και όχι `chip`: η ράγα έχει ήδη δικό της περίγραμμα. Η ράγα
-            κατεβαίνει σε `bg-base` ώστε το ανασηκωμένο τμήμα να ξεχωρίζει.
-            Οι δύο σειρές μπαίνουν σε ΕΝΑ παιδί: το πλακίδιο είναι flex, οπότε
-            δύο ξεχωριστά παιδιά θα κάθονταν το ένα δίπλα στο άλλο. */}
-        <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-base)',
-          border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-          {YEARS.map(val => {
-            const on = v.etos === val, lab = val, sub = filingNote(Number(val), today);
-            return (
-              <ChipToggle key={val} shape="seg" grow on={on} onClick={() => set('etos', val)}>
-                <span style={{ display: 'block', textAlign: 'center', fontSize: 13, lineHeight: 1.25 }}>
-                  {lab}
-                  <span style={{ display: 'block', fontSize: 11, fontWeight: 400, opacity: on ? 0.85 : 1 }}>{sub}</span>
-                </span>
-              </ChipToggle>
-            );
-          })}
-        </div>
-        <p style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)' }}>
-          {year >= FIRST_YEAR_NEW_BRACKETS
-            ? 'Κλίμακα 15 / 25 / 35 / 45% (ν.5246/2025), για εισοδήματα από 1/1/2026.'
-            : 'Κλίμακα 15 / 35 / 45%, χωρίς το ενδιάμεσο κλιμάκιο. Ισχύει για τα εισοδήματα του 2025.'}
-        </p>
-      </div>
 
       {bankMatters && <div className="po-tool-controls" style={{
         marginTop: 14, padding: '12px 14px', borderRadius: T.radius.inner,
@@ -272,10 +251,12 @@ export function RentTaxCalculator({ today }: { today: string }) {
             πάνω — δηλαδή ένα από τα τρία μεγάλα νούμερα δεν του έλεγε τίποτα.
             Κατεβαίνει στην ανάλυση, όπου ανήκει και μένουν δύο ισομεγέθη
             νούμερα με κοινή γραμμή βάσης: αυτό που κρατάει και αυτό που δίνει. */}
-        <div {...fixedCols(2, 24, 'start')}>
-          <ToolFigure label="Σου μένουν" value={feAuto(r.net)}/>
-          <ToolFigure label="Φόρος" value={feAuto(r.tax)}/>
-        </div>
+        {/* Η ΣΕΛΙΔΑ ΡΩΤΑ «ΠΟΣΟ ΦΟΡΟ ΘΑ ΠΛΗΡΩΣΕΙΣ», ΑΡΑ Ο ΦΟΡΟΣ ΟΔΗΓΕΙ. Τα δύο
+            ισομεγέθη νούμερα άφηναν το «Σου μένουν» πρώτο, δηλαδή η απάντηση
+            στην ερώτηση του τίτλου ήταν δεύτερη. Ακέραια ευρώ στην κορυφή· τα
+            λεπτά τα κρατά η ανάλυση από κάτω, που πρέπει να κλείνει στο λεπτό. */}
+        <ToolHero primary={{ label: 'Φόρος', value: feWhole(r.tax) }}
+          secondary={[{ label: 'Σου μένουν', value: feWhole(r.net) }]}/>
         <LiveResult say={`Φόρος ${feAuto(r.tax)}. Σου μένουν ${feAuto(r.net)}.`} />
 
         <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
@@ -298,10 +279,12 @@ export function RentTaxCalculator({ today }: { today: string }) {
         {/* Δύο γραφές για το ίδιο είδος νούμερου στην ίδια σειρά κάνουν τον
             αναγνώστη να ψάχνει διαφορά που δεν υπάρχει: ο συντελεστής του νόμου
             γράφεται «15%», το ποσοστό που ΥΠΟΛΟΓΙΣΤΗΚΕ με δύο δεκαδικά. */}
+        {/* Ετικέτες μιας γραμμής και στα 768: «Φόρος ως ποσοστό του ενοικίου»
+            έπιανε δύο και κατέβαζε το νούμερό της κάτω από τα διπλανά. */}
         <ToolStats items={[
-          { k: 'Καθαρά ανά μήνα', v: feAuto(r.monthlyNet) },
-          { k: 'Φόρος ως ποσοστό του ενοικίου', v: fp(r.rentShare * 100) },
-          { k: 'Συντελεστής στο επόμενο ευρώ', v: fpRate(r.marginal * 100) },
+          { k: 'Καθαρά τον μήνα', v: feWhole(r.monthlyNet) },
+          { k: 'Φόρος επί ενοικίου', v: fp(r.rentShare * 100) },
+          { k: 'Οριακός συντελεστής', v: fpRate(r.marginal * 100) },
         ]}/>
       </div>
 
@@ -318,13 +301,20 @@ export function RentTaxCalculator({ today }: { today: string }) {
       <div style={{ marginTop: T.sp.xxl }}>
         <div className="po-table-box">
          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="po-table" style={{ '--tbl-min': '300px' }}>
+          <table className="po-table po-tool-table tbl-fixed" style={{ '--tbl-min': '300px' }}>
             <caption>Η κλίμακα του {year}</caption>
+            {/* ΡΗΤΑ ΠΛΑΤΗ, ΚΑΙ ΚΕΦΑΛΙΔΕΣ ΠΟΥ ΧΩΡΑΝΕ ΣΤΑ 360. Το «Φόρος σε αυτό το
+                κλιμάκιο» έπιανε τρεις σειρές και το εύρος έσπαγε στην παύλα. */}
+            <colgroup>
+              <col style={{ width: '46%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '32%' }} />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Εισόδημα</th>
                 <th scope="col" className="num">Συντελεστής</th>
-                <th scope="col" className="num">Φόρος σε αυτό το κλιμάκιο</th>
+                <th scope="col" className="num">Φόρος κλιμακίου</th>
               </tr>
             </thead>
             <tbody>
@@ -360,11 +350,12 @@ export function RentTaxCalculator({ today }: { today: string }) {
                 // τα 12.000,50€ χωρίς κλιμάκιο και διαφωνούσε με τις συχνές ερωτήσεις
                 // της ίδιας σελίδας («25% από 12.000 έως 24.000€»). Τα όρια του
                 // νόμου είναι στρογγυλά· γράφονται όπως τα γράφει ο νόμος.
-                const amount = (v: number, unit = true) =>
-                  <span style={{ whiteSpace: 'nowrap' }}>{unit ? feWhole(v) : fn(v)}</span>;
+                // ΤΟ ΕΥΡΟΣ ΜΕΝΕΙ ΣΕ ΜΙΑ ΓΡΑΜΜΗ: στη στήλη των 46% χωρά ακέραιο
+                // και στα 360· ένα «0 –» πάνω από ένα «12.000€» δεν διαβάζεται
+                // ως ένα ποσό.
                 const range = b.to === Infinity
-                  ? <>Πάνω από {amount(b.from)}</>
-                  : <>{amount(b.from, false)} – {amount(b.to)}</>;
+                  ? <>Πάνω από <span style={{ whiteSpace: 'nowrap' }}>{feWhole(b.from)}</span></>
+                  : <span style={{ whiteSpace: 'nowrap' }}>{fn(b.from)} – {feWhole(b.to)}</span>;
                 return (
                   <tr key={b.from} className={active ? 'is-on' : undefined}>
                     {/* Το κλιμάκιο ΕΙΝΑΙ η ταυτότητα της γραμμής: ο συντελεστής κι

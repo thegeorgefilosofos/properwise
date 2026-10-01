@@ -118,6 +118,9 @@ export default function Page() {
           {H1}
         </h1>
         <GuideUpdated guide={GUIDE} />
+        {/* Το ευρετήριο ακριβώς κάτω από τη γραμμή της ημερομηνίας: στο κινητό
+            ερχόταν μετά από δύο παραγράφους εισαγωγής, μισή οθόνη πιο κάτω. */}
+        <GuideToc sections={Object.values(S)} />
 
         {/* Εισαγωγή */}
         <p className="lg-p">
@@ -126,8 +129,6 @@ export default function Page() {
         <p className="lg-p">
           {'Ο οδηγός δείχνει ποιες μισθώσεις πιάνει το όριο, ποιες μένουν έξω, ποιοι εκμισθωτές εξαιρούνται και πόσο αλλάζει το μίσθωμα σε ένα παράδειγμα με αριθμούς.'}
         </p>
-
-        <GuideToc sections={Object.values(S)} />
 
         {/* 1. Ο κανόνας */}
         <H2 {...S.cap} />
@@ -177,11 +178,11 @@ export default function Page() {
           {'Επαγγελματική μίσθωση με μίσθωμα 1.500€ τον μήνα το 2025. Η σύμβαση προβλέπει ετήσια αναπροσαρμογή 5%.'}
         </p>
         <ul className="lg-ul">
-          <li>{'Κατά τον όρο της σύμβασης: 1.500€ × 5% = 75€, άρα 1.575€.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Κατά τον όρο της σύμβασης:'}</strong>{' 1.500€ × 5% = 75€, άρα 1.575€.'}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Με το όριο: 1.500€ × 3% = 45€, άρα έως 1.545€.'}</strong></li>
-          <li>{'Διαφορά: 1.575€ − 1.545€ = 30€ τον μήνα, δηλαδή 30€ × 12 = 360€ σε δώδεκα μήνες.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Διαφορά:'}</strong>{' 1.575€ − 1.545€ = 30€ τον μήνα, δηλαδή 30€ × 12 = 360€ σε δώδεκα μήνες.'}</li>
         </ul>
-        <div className="lg-note" style={{ marginTop: 16 }}>
+        <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>
           {'Αν ο όρος έδινε 2%, το νέο μίσθωμα θα ήταν 1.500€ × 1,02 = 1.530€. Είναι κάτω από το όριο των 1.545€, οπότε ισχύει ο όρος χωρίς αλλαγή.'}
         </div>
 
@@ -207,7 +208,7 @@ export default function Page() {
         <RelatedGuides current={GUIDE} />
 
         {/* Αποποίηση */}
-        <div className="lg-note" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
+        <div className="lg-note lg-note-fine" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           {'Ο παρών οδηγός είναι ενημερωτικός. Η εφαρμογή του ορίου εξαρτάται από τη σύμβαση και από το ποιος είναι ο εκμισθωτής. Δεν αποτελεί νομική συμβουλή ούτε υποκαθιστά δικηγόρο ή λογιστή.'}
         </div>
       </GuideMain>

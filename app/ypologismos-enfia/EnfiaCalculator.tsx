@@ -22,7 +22,7 @@ import { OBJECTIVE_VALUES } from '@/lib/tax/aade';
 // ακίνητο θα δει διαφορετικό ποσό στο εκκαθαριστικό.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId, useState } from 'react';
-import { T, feAuto, fixedCols } from '@/components/tokens';
+import { T, feAuto } from '@/components/tokens';
 import { fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS } from '@/lib/billing/enfia';
@@ -32,7 +32,7 @@ import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
 import { enfiaLedger, enfiaWealthBracketLimit } from '@/lib/tools/enfiaLedger';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
-import { ToolNumField, ToolSelect, ToolFigure, ToolLedger } from '@/app/ToolParts';
+import { ToolNumField, ToolSelect, ToolFields, ToolHero, ToolLedger } from '@/app/ToolParts';
 import { Btn } from '@/components/Theme';
 
 import LiveResult from '@/components/LiveResult';
@@ -103,7 +103,6 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
 
   // Ο ΚΥΡΙΟΣ ΦΟΡΟΣ, Η ΜΕΙΩΣΗ ΚΑΙ ΤΟ ΕΤΗΣΙΟ ΑΘΡΟΙΖΟΥΝ ΣΤΟ ΛΕΠΤΟ (lib/tools/enfiaLedger.ts).
   const ledger = r ? enfiaLedger(r) : null;
-  const controls = fixedCols(5, 14, 'end', 'po-tool-controls fc-5-even fc-xs-2 fc-xxs-1', 6);
   const bracket = r ? enfiaWealthBracketLimit(r.share) : null;
 
   return (
@@ -137,27 +136,31 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
           δίπλα δίπλα και οι επιλογείς με το ποσοστό παίρνουν όλο το πλάτος,
           γιατί στη μισή στήλη το «26 έτη και άνω» κοβόταν (`.fc-5-even` στο
           globals.css). Κάτω από τα 340 όλα γίνονται μία στήλη. */}
-      <div {...controls} style={{ ...controls.style, '--fc-sm': 2 } as React.CSSProperties}>
-        <ToolNumField id={ids.sqm} label="Τετραγωνικά" value={sqm} onChange={x => set('tm', x)}/>
+      {/* ΣΤΟ ΚΟΙΝΟ ΠΛΕΓΜΑ ΤΩΝ ΤΕΣΣΑΡΩΝ (`ToolFields`). Ηταν έξι λωρίδες με
+          κλάση μόνο γι' αυτόν (`fc-5-even`): στα 768 τα τρία πάνω έπιαναν δύο
+          λωρίδες και τα δύο κάτω τρεις, οπότε καμία κάθετη δεν συνέχιζε από
+          σειρά σε σειρά. Τώρα τέσσερα πεδία σε μία σειρά και το ποσοστό στην
+          επόμενη, στην ίδια στήλη με τα τετραγωνικά· στην ταμπλέτα δύο και δύο.
+          Η βοήθεια ζει κάτω από το πεδίο που εξηγεί. */}
+      <ToolFields>
+        <ToolNumField id={ids.sqm} label="Τετραγωνικά" value={sqm} onChange={x => set('tm', x)}
+          unit="τ.μ." unitPad={44}/>
         <ToolNumField id={ids.zone} label="Τιμή ζώνης" value={zonePrice} onChange={x => set('zoni', x)}
-          unit="€/τ.μ." unitPad={52}/>
+          unit="€/τ.μ." unitPad={52}
+          hint={<>Στο συμβόλαιο, στο Ε9 ή στον{' '}
+            <a href={OBJECTIVE_VALUES} target="_blank" rel="noopener noreferrer"
+              style={{ color: 'var(--accent)' }}>χάρτη αντικειμενικών αξιών</a>.</>}/>
         <ToolSelect label="Όροφος" value={floor} onChange={x => set('orofos', x)}
           options={FLOORS.map(f => ({ value: f.key, label: f.label }))}/>
         <ToolSelect label="Παλαιότητα" value={age} onChange={x => set('palaiotita', x)}
           options={AGES.map(a => ({ value: a.key, label: a.label }))}/>
         <ToolNumField id={ids.own} label="Ποσοστό ιδιοκτησίας" value={ownership} onChange={x => set('pososto', x)}
-          unit="%" mode="numeric"/>
-      </div>
+          unit="%" mode="numeric" hint="Αν το ακίνητο είναι μοιρασμένο."/>
+      </ToolFields>
 
       <ToolClampNote notes={[
         own !== amount(ownership) && `Το ποσοστό ιδιοκτησίας μετρά από 1% έως 100%· υπολογίστηκε με ${fpRate(own)}.`,
       ]}/>
-
-      <p className="po-tool-controls" style={{ margin: '10px 0 0', fontSize: 12, lineHeight: 1.7, color: 'var(--text-tertiary)' }}>
-        Την τιμή ζώνης τη βρίσκεις στο συμβόλαιο, στο Ε9 ή στον{' '}
-        <a href={OBJECTIVE_VALUES} target="_blank" rel="noopener noreferrer"
-          style={{ color: 'var(--accent)' }}>χάρτη αντικειμενικών αξιών (valuemaps.gov.gr)</a>.
-      </p>
 
       {/* ── Η κεφαλίδα του χαρτιού, πάνω από το αποτέλεσμα ─────────────── */}
       {r && <ToolPaper title={`Εκτίμηση ΕΝΦΙΑ ${year}`} on={today} inputs={[
@@ -191,12 +194,10 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
                 όσα μόλις πληκτρολόγησε ο χρήστης· κατεβαίνει στην ανάλυση, όπου
                 ανήκει. Μένουν το ετήσιο και ο μήνας: αυτό που χρωστάς και αυτό
                 που πρέπει να βρίσκεις κάθε μήνα. */}
-            <div {...fixedCols(2, 24, 'start')}>
-              <ToolFigure label="ΕΝΦΙΑ ετησίως" value={feAuto(r.annual)}/>
-              {/* Το «σε 12 δόσεις» έφυγε από την ετικέτα: το λέει πλέον ο
-                  πίνακας των δόσεων από κάτω, με ημερομηνίες. */}
-              <ToolFigure label="Ανά μήνα" value={feAuto(r.annual / ENFIA_INSTALMENTS)}/>
-            </div>
+            {/* ΤΟ ΕΤΗΣΙΟ ΟΔΗΓΕΙ, Ο ΜΗΝΑΣ ΤΟ ΠΛΑΙΣΙΩΝΕΙ. Ακέραια ευρώ στην κορυφή·
+                τα λεπτά τα κρατούν η ανάλυση και ο πίνακας των δόσεων. */}
+            <ToolHero primary={{ label: 'ΕΝΦΙΑ ετησίως', value: feWhole(r.annual) }}
+              secondary={[{ label: 'Ανά μήνα', value: feWhole(r.annual / ENFIA_INSTALMENTS) }]}/>
               <LiveResult say={`ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, ${feAuto(r.annual / ENFIA_INSTALMENTS)} τον μήνα.`} />
 
             <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
@@ -234,8 +235,8 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
                 ζώνης· τα λεπτά της θα υπόσχονταν ακρίβεια που δεν έχει. Λεπτά
                 κρατούν μόνο τα ποσά του φόρου. */}
             <ToolLedger rows={[
-              { k: 'Αντικειμενική αξία ακινήτου (εκτίμηση)', v: feWhole(r.value), kind: 'param' },
-              r.own < 100 && { k: `Το μερίδιό σου (${fpRate(r.own)})`, v: feWhole(r.share), kind: 'param' },
+              { k: 'Αντικειμενική αξία ακινήτου (εκτίμηση)', v: feAuto(r.value) },
+              r.own < 100 && { k: `Το μερίδιό σου (${fpRate(r.own)})`, v: feAuto(r.share) },
               { k: 'Βασικός φόρος ζώνης', v: `${feRate(ENFIA_ZONE_TAX[r.zone] ?? 0)}/τ.μ.`, kind: 'param' },
               { k: 'Συντελεστής ορόφου', v: fn(enfiaFloorCoef(floor), 2), kind: 'param' },
               { k: 'Συντελεστής παλαιότητας', v: fn(enfiaAgeCoef(age), 2), kind: 'param' },
@@ -252,9 +253,10 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
         )}
       </div>
 
-      {r && <Instalments annual={r.annual} year={year} today={today}/>}
-
+      {/* Οι δύο έξοδοι στην ΙΔΙΑ θέση και στους τέσσερις: αμέσως μετά την κάρτα. */}
       <ToolActions path={PATH} spec={SPEC} values={v}/>
+
+      {r && <Instalments annual={r.annual} year={year} today={today}/>}
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ──────────────────────────────────────────── */}
       <div className="po-tool-note" style={{
@@ -317,14 +319,20 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
     <div style={{ marginTop: T.sp.xxl }}>
       <div className="po-table-box">
        <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-        <table className="po-table" style={{ '--tbl-min': '300px' }}>
-          {/* Ίδια τυπογραφία λεζάντας με τον πίνακα κλιμακίων του αδελφού
-              υπολογιστή: οι δύο σελίδες διαβάζονται ως ένα εργαλείο. */}
-          <caption>Οι {ENFIA_INSTALMENTS} δόσεις του {year}</caption>
+        <table className="po-table po-tool-table" style={{ '--tbl-min': '280px' }}>
+          {/* ΚΛΕΙΣΤΟΣ, Ο ΠΙΝΑΚΑΣ ΛΕΕΙ ΟΤΙ ΔΕΙΧΝΕΙ ΤΙΣ ΕΠΟΜΕΝΕΣ. Η λεζάντα έγραφε
+              «Οι 12 δόσεις» πάνω από τρεις γραμμές. Στο χαρτί τυπώνονται και οι
+              δώδεκα, οπότε εκεί μένει ο πλήρης τίτλος. */}
+          <caption>
+            {all ? `Οι ${ENFIA_INSTALMENTS} δόσεις του ${year}` : <>
+              <span className="po-noprint">Επόμενες δόσεις</span>
+              <span className="po-printonly">Οι {ENFIA_INSTALMENTS} δόσεις του {year}</span>
+            </>}
+          </caption>
           <thead>
             <tr>
               <th scope="col">Δόση</th>
-              <th scope="col">Καταληκτική ημερομηνία</th>
+              <th scope="col">Λήξη</th>
               <th scope="col" className="num">Ποσό</th>
             </tr>
           </thead>
@@ -335,14 +343,13 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
               return (
                 <tr key={row.no} className={[isNext ? 'is-on' : '', shown(i) ? '' : 'po-row-more'].filter(Boolean).join(' ') || undefined}>
                   <td style={{ fontVariantNumeric: 'tabular-nums', width: '1%', whiteSpace: 'nowrap', color: ink }}>{row.no}</td>
-                  <td style={{ whiteSpace: 'nowrap', color: ink }}>
+                  {/* Η ημερομηνία σε ψηφία σταθερού πλάτους, ώστε οι μέρες να
+                      στοιχίζονται κάθετα. Η «επόμενη» είναι σήμα δίπλα της, όχι
+                      δεύτερη σειρά που ψήλωνε μόνο εκείνη τη γραμμή. */}
+                  <td style={{ whiteSpace: 'nowrap', color: ink, fontVariantNumeric: 'tabular-nums' }}>
                     {row.label}
-                    {(past || isNext) && (
-                      <span style={{ display: 'block', fontSize: 12, fontWeight: isNext ? 600 : 400,
-                        color: isNext ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>
-                        {past ? 'έληξε' : 'επόμενη'}
-                      </span>
-                    )}
+                    {isNext && <span className="po-tool-tag">επόμενη</span>}
+                    {past && <span style={{ marginLeft: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>έληξε</span>}
                   </td>
                   <td className="num" style={{ color: ink, fontWeight: past ? 400 : 600 }}>{feAuto(row.amount)}</td>
                 </tr>

@@ -18,7 +18,7 @@ import { PublicFooter, PublicNav, JsonLd } from './PublicChrome';
 import { T } from '@/components/tokens';
 import { hy } from '@/components/Hyphen';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
-import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, GAP_ACT, wrap, ic, check } from './landingKit'
+import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, CARD_GAP, wrap, ic, check } from './landingKit'
 import {
   FEATURES, FAQ_VISIBLE, FAQ, WORKS_WITH, SECURITY, REFERRAL, LANDING_PLANS, FEATURED_PLAN,
 } from './landingContent'
@@ -284,7 +284,7 @@ export default async function Landing() {
       </section>
 
       {/* ── Proof band: μετρήσιμα, πραγματικά (χωρίς ψεύτικα «νούμερα χρηστών») ── */}
-      <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP_ACT }}>
+      <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
         {/* Ρητά τέσσερις στήλες, όχι auto-fit: με minmax(200px) στα 1440 ο browser
             χωρούσε ΠΕΝΤΕ κολόνες για τέσσερα στοιχεία, οπότε η ζώνη τελείωνε με
             ένα άδειο κελί που έδειχνε μόνο το χρώμα του πλέγματος. Οι μετρήσεις
@@ -302,9 +302,13 @@ export default async function Landing() {
             που ήδη στοιχίζει τα πακέτα και τα κοινά. Ό,τι κι αν γραφτεί μέσα,
             οι τέσσερις αριθμοί κάθονται στην ίδια γραμμή γραφής, οι τέσσερις
             μονάδες στην επόμενη και οι τέσσερις λεζάντες ξεκινούν μαζί. */}
-        <div className="lp-stats" style={{ background: LINE, border: `1px solid ${LINE}`, borderRadius: T.radius.card, overflow: 'hidden' }}>
+        {/* ΚΑΡΤΕΣ ΜΕ ΤΟ ΚΟΙΝΟ ΚΕΝΟ, ΟΧΙ ΚΕΛΙΑ ΜΕ ΓΡΑΜΜΗ ΕΝΟΣ ΕΙΚΟΝΟΣΤΟΙΧΕΙΟΥ. Οι
+            τέσσερις μετρήσεις ήταν η μόνη ομάδα καρτών της σελίδας χωρίς κενό
+            ανάμεσα: η ζώνη διαβαζόταν ως πίνακας ενώ οι Δυνατότητες και τα
+            Πακέτα από κάτω ως κάρτες. */}
+        <div className="lp-stats" style={{ gap: CARD_GAP }}>
           {STATS.map((s, i) => (
-            <div key={i} className="lp-stat" style={{ background: PANEL }}>
+            <div key={i} className="lp-stat" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card }}>
               <div className="lp-stat-n">{s.n}</div>
               <div className="lp-stat-u">{s.u}</div>
               <p className="lp-stat-l">{s.l}</p>
@@ -315,7 +319,7 @@ export default async function Landing() {
 
       {/* ── Scrollytelling: το προϊόν μένει sticky και αλλάζει πράξη όσο διαβάζεις.
              ΠΡΟΣΟΧΗ: χωρίς lp-reveal εδώ (transform στον πρόγονο σπάει το sticky). */}
-      <section style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP_ACT }}>
+      <section style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
         <SectionHead over="Πώς λειτουργεί" title="Τρεις κινήσεις και το ακίνητο μπαίνει σε τάξη" sub="Φωτογραφίζεις, ρωτάς, αποφασίζεις. Ό,τι μεσολαβεί το αναλαμβάνει η εφαρμογή." />
         <ScrollStory />
       </section>
@@ -332,7 +336,7 @@ export default async function Landing() {
             είναι το πιο ορατό λάθος διάταξης που υπάρχει: δεν χρειάζεται να ξέρεις
             τίποτα από σχεδιασμό για να το προσέξεις. Έξι κάρτες κλείνουν σε τέλειο
             3×2 και η ενότητα διαβάζεται ως ένα σχήμα, όχι ως λίστα που ξέμεινε. */}
-        <div className="lp-feat" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+        <div className="lp-feat" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: CARD_GAP }}>
           {FEATURES.map((f, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
               <div style={{ width: 38, height: 38, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg }}>{ic(f.i)}</div>
@@ -405,7 +409,10 @@ export default async function Landing() {
 
             Η κάρτα κρατά ό,τι είναι όντως περιεχόμενο: την εισαγωγή, τις
             τέσσερις εγγυήσεις και τα ψιλά γράμματα. */}
-        <SectionHead over="Ασφάλεια" title="Τα δεδομένα σού ανήκουν" />
+        {/* Η ΜΟΝΗ ΚΕΦΑΛΙΔΑ ΧΩΡΙΣ ΥΠΟΤΙΤΛΟ, ΚΑΙ Η ΚΑΡΤΑ ΑΝΕΒΑΙΝΕ ΚΑΤΩ ΑΠΟ ΤΟΝ ΤΙΤΛΟ
+            ΧΩΡΙΣ ΤΟ ΣΚΑΛΙ ΠΟΥ ΕΧΟΥΝ ΟΙ ΑΛΛΕΣ ΕΝΝΕΑ. Ο υπότιτλος λέει μόνο ό,τι
+            ισχυρίζονται ήδη οι τέσσερις εγγυήσεις από κάτω. */}
+        <SectionHead over="Ασφάλεια" title="Τα δεδομένα σού ανήκουν" sub="Κρυπτογραφημένη σύνδεση, απομόνωση ανά χρήστη και βάση δεδομένων στην Ευρωπαϊκή Ένωση." />
         <div className="lp-sec" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(24px, 3vw, 38px)' }}>
           {/* ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΤΩΡΑ ΕΙΣΑΓΩΓΗ, ΟΧΙ ΛΕΖΑΝΤΑ ΣΤΗΛΗΣ, ΚΑΙ ΠΑΙΡΝΕΙ
               ΤΟ ΜΕΓΕΘΟΣ ΤΟΥ ΡΟΛΟΥ ΤΟΥ. Η άνω τελεία μετά το «σου» ένωνε δύο
@@ -460,7 +467,7 @@ export default async function Landing() {
              ΤΙ ΔΕΝ ΛΕΕΙ: δεν επικαλείται βιογραφία, ιδρυτές ή ιστορίες που δεν
              μπορεί να επαληθεύσει ο αναγνώστης. Περιγράφει ένα πρόβλημα που
              αναγνωρίζει όποιος έχει ακίνητο στην Ελλάδα και σταματά εκεί. */}
-      <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP_ACT }}>
+      <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
         {/* ═══ ΤΡΙΑ ΠΡΑΓΜΑΤΑ ΔΙΟΡΘΩΘΗΚΑΝ ΕΔΩ, ΚΑΙ ΤΑ ΤΡΙΑ ΦΑΙΝΟΝΤΑΝ ══════════
             ΤΟ ΜΕΓΕΘΟΣ. Ο τίτλος ήταν 30 εικονοστοιχεία σε βάρος 450, ενώ κάθε
             άλλη ενότητα της σελίδας έχει 40 σε βάρος 680. Δίπλα στο «Τέσσερα
@@ -561,7 +568,7 @@ export default async function Landing() {
             <strong style={{ color: TEXT, fontWeight: 680 }}>{pricingNotice.title}</strong>{' '}{pricingNotice.body}
           </div>
         )}
-        <div className="lp-plans" style={{ display: 'grid', gridTemplateColumns: `repeat(${LANDING_PLANS.length}, minmax(0, 1fr))`, gap: 12, alignItems: 'stretch' }}>
+        <div className="lp-plans" style={{ display: 'grid', gridTemplateColumns: `repeat(${LANDING_PLANS.length}, minmax(0, 1fr))`, gap: CARD_GAP, alignItems: 'stretch' }}>
           {LANDING_PLANS.map((id, i) => {
             if (id === 'solo') return <OwnerPlanCard key={id} billingLive={billingLive} />;
             const plan = PLANS[id];
@@ -640,7 +647,7 @@ export default async function Landing() {
       {billingLive && (
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
         <SectionHead over="Σύσταση" title="Σύστησέ το σε όσους έχουν ακίνητο" sub="Για ιδιώτες, η ανταμοιβή πιστώνεται όταν ο φίλος σου προσθέσει ακίνητο και σαρώσει ένα έγγραφο. Για επαγγελματίες, μετρούν οι συνδρομητές." />
-        <div className="lp-duo" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+        <div className="lp-duo" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: CARD_GAP }}>
           {REFERRAL.map((r, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(22px, 2.6vw, 30px)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -740,9 +747,13 @@ export default async function Landing() {
       </section>
 
       {/* ── Final CTA: σκοτεινό κλείσιμο, καθρέφτης του hero ── */}
-      <section className="lp-hero lp-reveal" style={{ position: 'relative', overflow: 'hidden', borderBottom: 'none' }}>
+      {/* Η ΡΑΦΗ ΑΝΑΜΕΣΑ ΣΤΙΣ ΕΡΩΤΗΣΕΙΣ ΚΑΙ ΣΤΟ ΚΛΕΙΣΙΜΟ. Το σέλας της ενότητας
+          κοβόταν από το `overflow: hidden` στην πάνω ακμή της: μια ευθεία
+          τόνου κάτω από την τελευταία ερώτηση. Η `lp-final` σβήνει το σέλας
+          προς τα πάνω, ώστε το φως να ανεβαίνει από τη μέση και όχι από τη γραμμή. */}
+      <section className="lp-hero lp-reveal lp-final" style={{ position: 'relative', overflow: 'hidden', borderBottom: 'none' }}>
         <div className="lp-aurora" aria-hidden="true" />
-        <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP_ACT, paddingBottom: GAP_ACT }}>
+        <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
           <p className="po-just-c" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 620, margin: '0 auto 30px' }}>Φωτογράφισε το πρώτο σου έγγραφο. Δωρεάν για ένα ακίνητο, με {ASSISTANT_ACC} τις πρώτες {TRIAL_DAYS} ημέρες.</p>
           <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : 'Ξεκίνα δωρεάν'}</Link>

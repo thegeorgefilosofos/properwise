@@ -20,16 +20,15 @@
 // διαφορετική δουλειά. Η έμφαση βγαίνει από μέγεθος και θέση.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
-import { T, feAuto, fixedCols } from '@/components/tokens';
-import { ChipToggle } from '@/components/Theme';
-import { fn, fpRate, feSigned, feWhole } from '@/lib/core/format';
+import { T, feAuto } from '@/components/tokens';
+import { fe, fn, fpRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { compareShortVsLong, netByOccupancy, NIGHTS_PER_YEAR, HIGH_SEASON_NIGHTS, type SeasonSpread } from '@/lib/tools/shortVsLong';
 import { climateLevyRates, CLIMATE_LEVY_FROM_2025, FIRST_YEAR_CURRENT_LEVY } from '@/lib/billing/greekTax';
 import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
-import { ToolNumField, ToolSelect, ToolFigure } from '@/app/ToolParts';
+import { ToolNumField, ToolSelect, ToolFields, ToolSeg, ToolHint, ToolHero } from '@/app/ToolParts';
 
 import LiveResult from '@/components/LiveResult';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
@@ -64,8 +63,8 @@ const wholeSigned = (n: number) => (Math.round(n) < 0 ? `−${feWhole(-n)}` : fe
  * κέρδος δεν διαβαζόταν ως κέρδος.
  */
 const delta = (n: number) => {
-  const w = Math.round(n);
-  return w > 0 ? `+${feWhole(w)}` : w < 0 ? `−${feWhole(-w)}` : feWhole(0);
+  const c = Math.round(n * 100) / 100;
+  return c > 0 ? `+${fe(c)}` : c < 0 ? `−${fe(-c)}` : fe(0);
 };
 
 export function ShortVsLongCalculator({ today }: { today: string }) {
@@ -90,7 +89,12 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
     season: (v.sezon === 'high' ? 'high' : 'even') as SeasonSpread,
   }), [v]);
   const r = useMemo(() => compareShortVsLong(input), [input]);
-  const curve = useMemo(() => netByOccupancy(input, OCCUPANCY_STEPS), [input]);
+  // Η ΔΙΚΗ ΣΟΥ ΠΛΗΡΟΤΗΤΑ ΜΠΑΙΝΕΙ ΣΤΟΝ ΠΙΝΑΚΑ. Ο αναγνώστης ψάχνει πρώτα τη
+  // γραμμή του και μετά τις γειτονικές· όταν η πληρότητά του δεν είναι βήμα του
+  // δέκα, η γραμμή του δεν υπήρχε καν.
+  const mine = input.occupancyPct;
+  const curve = useMemo(() => netByOccupancy(input,
+    [...new Set([...OCCUPANCY_STEPS, mine])].filter(p => p > 0).sort((a, b) => a - b)), [input, mine]);
   const levyRates = climateLevyRates(amount(v.tm), v.typos === 'house');
 
   /** Πεδίο με μονάδα μέσα του, όπως και στους αδελφούς υπολογιστές. */
@@ -132,90 +136,49 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
              και η απάντηση άρχιζε 1.350 εικονοστοιχεία πιο κάτω. Δύο στήλες
              κάνουν τις οκτώ σειρές τέσσερις· κάτω από τα 340 τα ποσά δεν χωρούν
              δίπλα δίπλα και γίνονται πάλι μία. */}
-      <div {...fixedCols(4, 14, 'end', 'po-tool-controls fc-roomy fc-xs-2 fc-xxs-1')}>
+      {/* ΣΤΟ ΚΟΙΝΟ ΠΛΕΓΜΑ ΤΩΝ ΤΕΣΣΑΡΩΝ (`ToolFields`): τέσσερις στήλες, δύο στην
+          ταμπλέτα, δύο και στο τηλέφωνο (`xs2`), γιατί κάθε πεδίο εδώ κρατά
+          ένα «60» ή ένα «12». Οι ετικέτες κόντυναν ώστε να χωρούν σε μία γραμμή
+          και στα 360 («Καθαριότητα ανά διανυκτέρευση» έπιανε δύο και κατέβαζε
+          το κουτί της)· η μονάδα μέσα στο πεδίο λέει το «ανά νύχτα».
+          Η σειρά: πρώτα τα τέσσερα ποσά της σύγκρισης, μετά τα έξοδα και το
+          ακίνητο, τελευταία η παραδοχή της εποχής με τη δική της εξήγηση. */}
+      <ToolFields xs2>
         {num(ids.rent, 'enoikio', 'Μηνιαίο ενοίκιο', '€')}
-        {num(ids.price, 'timi', 'Τιμή ανά διανυκτέρευση', '€')}
+        {num(ids.price, 'timi', 'Τιμή νύχτας', '€')}
         {num(ids.occ, 'plirotita', 'Πληρότητα', '%')}
+        {num(ids.fee, 'promitheia', 'Προμήθεια', '%')}
+        {num(ids.cost, 'kostos', 'Καθαριότητα', '€/νύχτα', 72)}
+        {num(ids.fixed, 'pagia', 'Πάγια', '€/μήνα', 66)}
         {num(ids.sqm, 'tm', 'Τετραγωνικά', 'τ.μ.', 44)}
         <ToolSelect label="Τύπος ακινήτου" value={v.typos}
           onChange={x => set('typos', x)} options={TYPES}/>
-        {num(ids.fee, 'promitheia', 'Προμήθεια πλατφόρμας', '%')}
-        {num(ids.cost, 'kostos', 'Καθαριότητα ανά διανυκτέρευση', '€')}
-        {num(ids.fixed, 'pagia', 'Πάγια ανά μήνα', '€')}
-      </div>
+        {/* ═══ ΠΟΤΕ ΓΕΜΙΖΕΙ ΤΟ ΑΚΙΝΗΤΟ ═══════════════════════════════════════
+            ΔΕΝ ΕΙΝΑΙ ΛΕΠΤΟΜΕΡΕΙΑ. Το τέλος ανθεκτικότητας είναι ΤΕΤΡΑΠΛΑΣΙΟ από
+            Απρίλιο ως Οκτώβριο. Με τις ίδιες νύχτες και την ίδια τιμή, το
+            εξοχικό που γεμίζει μόνο το καλοκαίρι πληρώνει σχεδόν διπλάσιο τέλος
+            από ένα διαμέρισμα πόλης που δουλεύει όλο τον χρόνο. Ιδια προδιαγραφή
+            με την «Εισόδημα ποιας χρονιάς» του φόρου ενοικίων (`ToolSeg`). */}
+        <ToolSeg label="Πότε γεμίζει" value={input.season} onChange={x => set('sezon', x)}
+          options={[{ value: 'even', label: 'Όλο τον χρόνο' }, { value: 'high', label: 'Κυρίως το καλοκαίρι' }]}
+          hint={input.season === 'high'
+            ? `Οι κρατήσεις πέφτουν πρώτα στους επτά μήνες της υψηλής περιόδου, δηλαδή έως ${HIGH_SEASON_NIGHTS} διανυκτερεύσεις, όπου το τέλος είναι ${feWhole(levyRates.high)} τη διανυκτέρευση. Αλλάζει τι πληρώνει ο επισκέπτης, όχι τι κρατάς εσύ.`
+            : `Οι κρατήσεις μοιράζονται ισομερώς στους δώδεκα μήνες. Το τέλος είναι ${feWhole(levyRates.high)} τη διανυκτέρευση από Απρίλιο ως Οκτώβριο και ${feWhole(levyRates.low)} τους υπόλοιπους.`}/>
+        {/* ═══ Η ΤΙΜΗ ΤΗΣ ΑΙΧΜΗΣ ΕΙΝΑΙ Η ΠΙΟ ΣΥΝΗΘΗΣ ΑΥΤΟΕΞΑΠΑΤΗΣΗ ═══════════════
+            Ο ιδιοκτήτης θυμάται την ΚΑΛΥΤΕΡΗ του βραδιά και τη γράφει εδώ. Το
+            εργαλείο ζητά ρητά τον μέσο όρο. Κάθεται δίπλα στην εποχή, στο
+            σημείο της φόρμας όπου διαβάζονται οι παραδοχές. */}
+        <ToolHint span={2} flush>
+          Η τιμή νύχτας είναι η δική σου, χωρίς το τέλος ανθεκτικότητας που πληρώνει ο
+          επισκέπτης και αποδίδεις εσύ. Βάλε τον μέσο όρο που πιάνεις μέσα στη χρονιά, όχι
+          την τιμή της αιχμής. Τα πάγια είναι ρεύμα, νερό και ίντερνετ, που στη μακροχρόνια τα
+          πληρώνει ο ενοικιαστής.
+        </ToolHint>
+      </ToolFields>
       <ToolClampNote notes={[
         amount(v.plirotita) > 100 && 'Η πληρότητα φτάνει έως 100%· υπολογίστηκε με 100%.',
         amount(v.promitheia) > 100 && 'Η προμήθεια φτάνει έως 100%· υπολογίστηκε με 100%.',
       ]}/>
-
-      {/* ═══ Η ΤΙΜΗ ΤΗΣ ΑΙΧΜΗΣ ΕΙΝΑΙ Ο ΠΙΟ ΣΥΝΗΘΗΣ ΑΥΤΟΕΞΑΠΑΤΗΣΗ ═════════════════
-          Η βραχυχρόνια δουλεύει με δυναμική τιμολόγηση: άλλη τιμή τον Αύγουστο,
-          άλλη τον Νοέμβριο, άλλη το Σαββατοκύριακο. Ο ιδιοκτήτης θυμάται την
-          ΚΑΛΥΤΕΡΗ του βραδιά και τη γράφει εδώ — και μετά τη διαβάζει
-          πολλαπλασιασμένη επί τριακόσιες εξήντα πέντε. Το εργαλείο ζητά ρητά τον
-          μέσο όρο, γιατί αλλιώς παράγει το ίδιο ακριβώς λάθος που υπάρχει για
-          να διορθώσει. */}
-      <p className="po-tool-controls po-prose" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
-        Η τιμή είναι η δική σου ανά διανυκτέρευση· ο επισκέπτης πληρώνει επιπλέον το τέλος
-        ανθεκτικότητας, που εσύ το αποδίδεις. Στη βραχυχρόνια η τιμή αλλάζει με την εποχή και τη
-        ζήτηση: βάλε τον μέσο όρο που πιάνεις, όχι την τιμή της αιχμής. Τα πάγια είναι ρεύμα, νερό
-        και ίντερνετ, που στη μακροχρόνια τα πληρώνει ο ενοικιαστής.
-      </p>
-
-      {/* ═══ ΠΟΤΕ ΓΕΜΙΖΕΙ ΤΟ ΑΚΙΝΗΤΟ ══════════════════════════════════════════
-          ΔΕΝ ΕΙΝΑΙ ΛΕΠΤΟΜΕΡΕΙΑ. Το τέλος ανθεκτικότητας είναι ΤΕΤΡΑΠΛΑΣΙΟ από
-          Απρίλιο ως Οκτώβριο. Με τις ίδιες ακριβώς νύχτες και την ίδια τιμή, το
-          ελληνικό εξοχικό που γεμίζει μόνο το καλοκαίρι πληρώνει σχεδόν
-          διπλάσιο τέλος από ένα διαμέρισμα πόλης που δουλεύει όλο τον χρόνο.
-          Η πρώτη εκδοχή μοίραζε πάντα ισομερώς και το έγραφε ως παραδοχή· ήταν
-          τίμιο, αλλά ήταν και λάθος για τα μισά ελληνικά ακίνητα.
-
-          ΔΕΝ ΕΙΝΑΙ ΠΕΔΙΟ ΤΟΥ ΠΛΕΓΜΑΤΟΣ, ΓΙΑΤΙ ΔΕΝ ΕΙΝΑΙ ΠΟΣΟ. Τα οκτώ από πάνω
-          είναι μεγέθη που πληκτρολογείς· αυτό είναι παραδοχή του μοντέλου και
-          χρειάζεται τη δική του σειρά για να εξηγηθεί. */}
-      <div className="po-tool-controls" style={{
-        marginTop: 14, padding: '12px 14px', borderRadius: T.radius.inner,
-        border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 16, flexWrap: 'wrap',
-      }}>
-        <div style={{ flex: 1, minWidth: 230 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-            Πότε γεμίζει
-          </div>
-          <p style={{ margin: '3px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)' }}>
-            {input.season === 'high'
-              ? `Οι κρατήσεις πέφτουν πρώτα στους επτά μήνες της υψηλής περιόδου, δηλαδή έως ${HIGH_SEASON_NIGHTS} διανυκτερεύσεις, όπου το τέλος είναι ${feWhole(levyRates.high)} τη διανυκτέρευση. Αλλάζει τι πληρώνει ο επισκέπτης, όχι τι κρατάς εσύ.`
-              : `Οι κρατήσεις μοιράζονται ισομερώς στους δώδεκα μήνες. Το τέλος είναι ${feWhole(levyRates.high)} τη διανυκτέρευση από Απρίλιο ως Οκτώβριο και ${feWhole(levyRates.low)} τους υπόλοιπους.`}
-          </p>
-        </div>
-        {/* ── Η ΕΝΕΡΓΗ ΕΠΙΛΟΓΗ ΔΕΝ ΛΕΓΕΤΑΙ ΜΟΝΟ ΜΕ ΧΡΩΜΑ ─────────────────────
-               Τα δύο κουμπιά δήλωναν ποιο είναι πατημένο αποκλειστικά με το
-               φόντο του τοπικού στυλ. Μετρημένο σε πραγματικό Chromium,
-               aria-pressed, aria-selected και aria-current ήταν και τα τρία
-               κενά: ο αναγνώστης οθόνης άκουγε δύο ίδια κουμπιά και καμία
-               κατάσταση, δηλαδή η παραδοχή που αλλάζει το τέλος ανθεκτικότητας
-               ήταν αόρατη για όποιον δεν βλέπει το χρώμα.
-               Ίδιο ιδίωμα με τον επιλογέα έτους στον φόρο ενοικίων: aria-pressed
-               πάνω στο κουμπί, με την ΙΔΙΑ συνθήκη που δίνει και το χρώμα, ώστε
-               τα δύο να μην μπορούν να ξεφύγουν το ένα από το άλλο. */}
-        {/* ΤΑ ΔΥΟ ΛΕΚΤΙΚΑ ΔΕΝ ΧΩΡΑΝΕ ΔΙΠΛΑ ΣΤΑ 320. Μετρημένο σε πραγματικό
-            Chromium: η σειρά πιάνει 286 μέσα σε κάρτα που της δίνει 250 και
-            βγαίνει και ένα εικονοστοιχείο έξω από την οθόνη. Ούτε το λεκτικό
-            κονταίνει ούτε το κουμπί σπάει σε δύο γραμμές: η σειρά αναδιπλώνεται
-            και κάτω από τα 380 το κάθε κουμπί πιάνει ολόκληρη τη γραμμή του.
-            Πάνω από εκεί τα δύο χωράνε δίπλα και τίποτα δεν αλλάζει. */}
-        <div className="po-seg" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 4, background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-          {/* `seg` γιατί η ράγα από πάνω έχει ήδη δικό της περίγραμμα. Το aria-pressed
-              το βάζει πλέον μόνο του το πρωτογενές, με την ίδια συνθήκη που δίνει το χρώμα. */}
-          {/* `grow`: όταν η ράγα πέσει σε δική της γραμμή (κάτω από τα 600
-              πιάνει όλο το πλάτος, globals.css) τα δύο μοιράζονται ίσα, όπως ο
-              επιλογέας έτους στον φόρο ενοικίων. */}
-          <ChipToggle shape="seg" grow on={input.season === 'even'} onClick={() => set('sezon', 'even')}>Όλο τον χρόνο</ChipToggle>
-          <ChipToggle shape="seg" grow on={input.season === 'high'} onClick={() => set('sezon', 'high')}>Κυρίως το καλοκαίρι</ChipToggle>
-        </div>
-      </div>
 
       {/* ── Η κεφαλίδα του χαρτιού, πάνω από το αποτέλεσμα ─────────────── */}
       <ToolPaper title="Σύγκριση βραχυχρόνιας και μακροχρόνιας" on={today} inputs={[
@@ -235,30 +198,26 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         background: 'var(--surface-raised)', border: '1px solid var(--border-raised)',
         boxShadow: 'var(--well-inset)',
       }}>
-        {/* Η ΕΤΥΜΗΓΟΡΙΑ ΣΕ ΜΙΑ ΠΡΟΤΑΣΗ. Χωρίς αυτήν, ο επισκέπτης βλέπει δύο
-            ποσά και κάνει ο ίδιος την αφαίρεση — που είναι η μόνη πράξη για την
-            οποία ήρθε. Η ισοπαλία λέγεται ισοπαλία, δεν στρογγυλοποιείται προς
-            κάποια πλευρά. */}
-        <p style={{
-          margin: '0 0 18px', fontSize: 'clamp(16px, 2.2vw, 20px)', lineHeight: 1.4,
-          fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)', textWrap: 'balance',
-        }}>
-          {/* ΑΚΕΡΑΙΑ ΕΥΡΩ. Όλα εδώ κρέμονται από μια πληρότητα που μαντεύεται· το
-              «8.223,00€» υπόσχεται λεπτά που η είσοδος δεν έχει. Η διαφορά της
-              πρότασης βγαίνει από τα ΣΤΡΟΓΓΥΛΑ ποσά από κάτω, ώστε να είναι η
-              αφαίρεση που θα κάνει ο αναγνώστης. Λεπτά κρατά μόνο ο πίνακας,
-              που πρέπει να κλείνει στο λεπτό. */}
-          {gap === 0
-            ? 'Οι δύο επιλογές αφήνουν ουσιαστικά τα ίδια.'
-            : `Η ${gap > 0 ? 'βραχυχρόνια' : 'μακροχρόνια'} αφήνει ${feWhole(Math.abs(gap))} περισσότερα τον χρόνο.`}
-        </p>
-
-        <div {...fixedCols(2, 24, 'start')}>
-          {/* Τα καθαρά μπορεί να βγουν αρνητικά: τυπογραφικό μείον, σφιχτό. */}
-          <ToolFigure label="Μακροχρόνια, καθαρά" value={wholeSigned(r.long.net)}/>
-          <ToolFigure label="Βραχυχρόνια, καθαρά" value={wholeSigned(r.short.net)}/>
-          <LiveResult say={`Μακροχρόνια ${wholeSigned(r.long.net)} καθαρά. Βραχυχρόνια ${wholeSigned(r.short.net)} καθαρά.`} />
-        </div>
+        {/* Η ΔΙΑΦΟΡΑ ΕΙΝΑΙ Η ΑΠΑΝΤΗΣΗ, ΑΡΑ ΕΙΝΑΙ ΤΟ ΜΕΓΑΛΟ ΝΟΥΜΕΡΟ. Ηταν πρόταση
+            των 20 εικονοστοιχείων πάνω από δύο ισομεγέθη ποσά των 32: το μάτι
+            πήγαινε στα ποσά και έκανε μόνο του την αφαίρεση για την οποία ήρθε.
+            Τώρα η διαφορά οδηγεί και τα δύο καθαρά την πλαισιώνουν. Η ισοπαλία
+            λέγεται ισοπαλία, δεν στρογγυλοποιείται προς κάποια πλευρά.
+            ΑΚΕΡΑΙΑ ΕΥΡΩ: όλα εδώ κρέμονται από μια πληρότητα που μαντεύεται. Η
+            διαφορά βγαίνει από τα ΣΤΡΟΓΓΥΛΑ ποσά δίπλα της, ώστε να είναι η
+            αφαίρεση που θα κάνει ο αναγνώστης. Λεπτά κρατούν οι πίνακες. */}
+        <ToolHero
+          primary={{
+            label: gap === 0 ? 'Διαφορά τον χρόνο' : `Υπέρ ${gap > 0 ? 'βραχυχρόνιας' : 'μακροχρόνιας'}, τον χρόνο`,
+            value: gap === 0 ? feWhole(0) : `+${feWhole(Math.abs(gap))}`,
+          }}
+          secondary={[
+            { label: 'Μακροχρόνια, καθαρά', value: wholeSigned(r.long.net) },
+            { label: 'Βραχυχρόνια, καθαρά', value: wholeSigned(r.short.net) },
+          ]}/>
+        <LiveResult say={gap === 0
+          ? 'Οι δύο επιλογές αφήνουν ουσιαστικά τα ίδια.'
+          : `Η ${gap > 0 ? 'βραχυχρόνια' : 'μακροχρόνια'} αφήνει ${feWhole(Math.abs(gap))} περισσότερα τον χρόνο. Μακροχρόνια ${wholeSigned(r.long.net)}, βραχυχρόνια ${wholeSigned(r.short.net)} καθαρά.`} />
 
         <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
 
@@ -288,6 +247,9 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         </div>
       </div>
 
+      {/* Οι δύο έξοδοι στην ΙΔΙΑ θέση και στους τέσσερις: αμέσως μετά την κάρτα. */}
+      <ToolActions path={PATH} spec={SPEC} values={v}/>
+
       {/* ── Πού πήγαν τα χρήματα, στις δύο πλευρές ──────────────────────────
              Κάθε γραμμή εκτός από την τελευταία είναι χρήμα που ΦΕΥΓΕΙ, οπότε ο
              πίνακας διαβάζεται ως αφαίρεση που κλείνει: εισπράξεις μείον τα
@@ -296,18 +258,13 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
       <div style={{ marginTop: T.sp.xxl }}>
         <div className="po-table-box">
          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="po-table" style={{ '--tbl-min': '320px', tableLayout: 'fixed' }}>
-            <caption>
-              Πού πάνε τα χρήματα, τον χρόνο
-            </caption>
-            {/* ΟΙ ΔΥΟ ΠΛΕΥΡΕΣ ΤΗΣ ΣΥΓΚΡΙΣΗΣ ΕΠΑΙΡΝΑΝ ΔΙΑΦΟΡΕΤΙΚΟ ΠΛΑΤΟΣ.
-                Μετρημένο στα 1280: μακροχρόνια 298,8 και βραχυχρόνια 289,4. Ο
-                περιηγητής μοιράζει το πλάτος κατά περιεχόμενο, οπότε η στήλη με
-                το μακρύτερο ποσό έπαιρνε παραπάνω. Δύο στήλες που ο αναγνώστης
-                τις βάζει δίπλα δίπλα δεν επιτρέπεται να διαφέρουν σε πλάτος:
-                το μάτι διαβάζει τη διαφορά ως έμφαση που δεν υπάρχει.
-                Το `fixed` με ρητά ποσοστά τις κάνει ίσες σε κάθε πλάτος. */}
-            {/* 40/30/30: στα 390 το «−1.204,50€» θέλει 98 και το 28% έδινε 97. */}
+          <table className="po-table po-tool-table tbl-fixed" style={{ '--tbl-min': '300px' }}>
+            <caption>Πού πάνε τα χρήματα, τον χρόνο</caption>
+            {/* ΙΣΕΣ ΟΙ ΔΥΟ ΠΛΕΥΡΕΣ, ΜΕ ΡΗΤΑ ΠΛΑΤΗ. Οι κεφαλίδες γράφονταν με μαλακό
+                ενωτικό («Μακρο-/χρόνια») για να χωρέσουν στα 360: ενωτικό σε
+                κεφαλίδα στήλης διαβάζεται ως λάθος. Πλέον η στήλη των ετικετών
+                δίνει χώρο, το γέμισμα στενεύει στο τηλέφωνο (`.po-tool-table`) και
+                η λέξη χωρά ολόκληρη. */}
             <colgroup>
               <col style={{ width: '40%' }} />
               <col style={{ width: '30%' }} />
@@ -315,28 +272,31 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
             </colgroup>
             <thead>
               <tr>
-                {/* Η γωνία δεν λέει τίποτα στο μάτι· στον αναγνώστη οθόνης λέει τι είναι η στήλη. */}
                 <th scope="col"><span className="sr-only">Κατηγορία</span></th>
-                <th scope="col" className="num">Μακρο­χρόνια</th>
-                <th scope="col" className="num">Βραχυ­χρόνια</th>
+                <th scope="col" className="num">Μακροχρόνια</th>
+                <th scope="col" className="num">Βραχυχρόνια</th>
               </tr>
             </thead>
             <tbody>
-              {/* Στη μακροχρόνια πληρώνει ενοικιαστής, όχι επισκέπτης· και μόνο στη
-                  βραχυχρόνια το ποσό κουβαλά το τέλος που αφαιρείται από κάτω. */}
-              {/* ΟΙ ΕΚΡΟΕΣ ΓΡΑΦΟΝΤΑΙ ΜΕ ΜΕΙΟΝ. Χωρίς πρόσημο, το «Φόρος εισοδήματος
-                  2.961,00€» καθόταν κάτω από τις εισπράξεις σαν να ήταν κι αυτό
-                  είσπραξη· με το μείον ο πίνακας διαβάζεται ως η αφαίρεση που είναι. */}
-              <Line k="Εισπράξεις (με το τέλος για τη βραχυχρόνια)" a={r.long.gross} b={r.short.guestTotal} />
-              <Line k="Τέλος ανθεκτικότητας (ΤΑΚΚ)" a={0} b={-r.short.levy} />
+              {/* ΟΙ ΕΚΡΟΕΣ ΓΡΑΦΟΝΤΑΙ ΜΕ ΜΕΙΟΝ, ΚΑΙ ΟΣΑ ΔΕΝ ΑΦΟΡΟΥΝ ΤΗ ΜΑΚΡΟΧΡΟΝΙΑ ΔΕΝ
+                  ΓΡΑΦΟΝΤΑΙ «0,00€». Η μακροχρόνια δεν έχει τέλος, προμήθεια ή
+                  καθαριότητα: το μηδέν εκεί διαβαζόταν ως ποσό που έτυχε μηδέν.
+                  Ετικέτες δύο γραμμών το πολύ στα 360· η εξήγηση των εισπράξεων
+                  πάει κάτω από τον πίνακα. */}
+              <Line k="Εισπράξεις" a={r.long.gross} b={r.short.guestTotal} />
+              <Line k="Τέλος ανθεκτικότητας" a={null} b={-r.short.levy} />
               <Line k="Φόρος εισοδήματος" a={-r.long.tax} b={-r.short.tax} />
-              <Line k="Προμήθεια πλατφόρμας" a={0} b={-r.short.platformFee} />
-              <Line k="Καθαριότητα και πάγια" a={0} b={-r.short.running} />
+              <Line k="Προμήθεια πλατφόρμας" a={null} b={-r.short.platformFee} />
+              <Line k="Καθαριότητα και πάγια" a={null} b={-r.short.running} />
               <Line k="Καθαρά" a={r.long.net} b={r.short.net} strong />
             </tbody>
           </table>
          </div>
         </div>
+        <p className="po-prose" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+          Στη βραχυχρόνια οι εισπράξεις περιλαμβάνουν το τέλος ανθεκτικότητας που πληρώνει ο
+          επισκέπτης και αποδίδεις εσύ, γι’ αυτό αφαιρείται στην επόμενη γραμμή.
+        </p>
       </div>
 
       {/* ═══ Η ΠΛΗΡΟΤΗΤΑ ΕΙΝΑΙ ΜΑΝΤΕΨΙΑ, ΚΑΙ Ο ΠΙΝΑΚΑΣ ΤΟ ΠΑΡΑΔΕΧΕΤΑΙ ══════════
@@ -350,44 +310,43 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
       <div style={{ marginTop: T.sp.xxl }}>
         <div className="po-table-box">
          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-          <table className="po-table" style={{ '--tbl-min': '320px', tableLayout: 'fixed' }}>
-            <caption>Αν πέσεις έξω στην πληρότητα · διαφορά από τη μακροχρόνια</caption>
-            {/* ΚΑΙ ΟΙ ΤΕΣΣΕΡΙΣ ΣΤΗΛΕΣ ΕΙΝΑΙ ΑΡΙΘΜΟΙ, ΑΡΑ ΙΣΕΣ ΚΑΙ ΔΕΞΙΑ.
-                Μετρημένο στα 1280: 175,4 · 246 · 311,9 · 310,7. Τέσσερα
-                διαφορετικά πλάτη για το ίδιο είδος περιεχομένου, με την
-                πληρότητα να στοιχίζεται αριστερά ενώ τα υπόλοιπα νούμερα
-                στοιχίζονται δεξιά. Ο αναγνώστης σαρώνει κάθετα και βρίσκει
-                κάθε στήλη σε άλλη θέση. Τώρα τέσσερα ίσα τέταρτα, όλα δεξιά,
-                όλα σε αριθμούς πίνακα. */}
-            {/* ΚΑΙ ΧΩΡΑΕΙ ΣΤΟ ΚΙΝΗΤΟ. Με ελάχιστο 500 ο πίνακας έβγαινε 539 σε κουτί
-                348 στα 390: τα καθαρά και η διαφορά, δηλαδή τα δύο νούμερα της
-                απόφασης, ήταν έξω από την οθόνη. Οι κεφαλίδες γίνονται μία λέξη
-                η καθεμιά (το πλήρες όνομα μένει για τον αναγνώστη οθόνης) και
-                η στήλη των νυχτών, που κρατά τριψήφιο, δίνει λίγο στην πρώτη. */}
+          <table className="po-table po-tool-table tbl-fixed" style={{ '--tbl-min': '300px' }}>
+            <caption>Αν πέσεις έξω στην πληρότητα</caption>
+            {/* ΤΡΕΙΣ ΣΤΗΛΕΣ ΑΝΤΙ ΓΙΑ ΤΕΣΣΕΡΙΣ, Η ΠΡΩΤΗ ΑΡΙΣΤΕΡΑ. Η πληρότητα είναι η
+                ταυτότητα της γραμμής, όχι ποσό, οπότε στοιχίζεται όπως κάθε
+                ετικέτα· οι νύχτες πάνε από κάτω της. Ετσι τα ποσά παίρνουν
+                πλάτος για λεπτά, όπως ο πίνακας από πάνω. Η δική σου πληρότητα
+                σημειώνεται· το πρόσημο της διαφοράς έχει και χρώμα, αλλά το λέει
+                πρώτα το «+» και το «−». */}
             <colgroup>
-              <col style={{ width: '28%' }} />
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '25%' }} />
+              <col style={{ width: '34%' }} />
+              <col style={{ width: '33%' }} />
+              <col style={{ width: '33%' }} />
             </colgroup>
             <thead>
               <tr>
-                <th scope="col" className="num">Πληρό­τητα</th>
-                <th scope="col" className="num">Νύχτες<span className="sr-only"> (διανυκτερεύσεις)</span></th>
+                <th scope="col">Πληρότητα</th>
                 <th scope="col" className="num">Καθαρά<span className="sr-only"> βραχυχρόνιας</span></th>
                 <th scope="col" className="num">Διαφορά<span className="sr-only"> έναντι μακροχρόνιας</span></th>
               </tr>
             </thead>
             <tbody>
               {curve.map(row => {
-                const ahead = row.net >= r.long.net;
+                const ahead = row.net >= r.long.net, isMine = row.pct === mine;
+                const d = row.net - r.long.net;
                 return (
-                  <tr key={row.pct} className={ahead ? 'is-on' : undefined}>
-                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{fpRate(row.pct)}</td>
-                    <td className="num">{fn(row.nights)}</td>
-                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{wholeSigned(row.net)}</td>
-                    {/* Η διαφορά των ΣΤΡΟΓΓΥΛΩΝ, ώστε να βγαίνει από τα ποσά που φαίνονται. */}
-                    <td className="num">{delta(Math.round(row.net) - Math.round(r.long.net))}</td>
+                  <tr key={row.pct} className={[ahead && 'is-on', isMine && 'is-mine'].filter(Boolean).join(' ') || undefined}>
+                    <th scope="row" style={{ fontWeight: isMine ? 600 : 400, color: 'var(--text-primary)' }}>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fpRate(row.pct)}</span>
+                      {isMine && <span className="po-tool-tag">η δική σου</span>}
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 400 }}>
+                        {fn(row.nights)} νύχτες
+                      </span>
+                    </th>
+                    <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{feSigned(row.net)}</td>
+                    <td className="num" style={{ color: Math.abs(d) < 0.005 ? undefined : d > 0 ? 'var(--positive)' : 'var(--negative)' }}>
+                      {delta(d)}
+                    </td>
                   </tr>
                 );
               })}
@@ -396,8 +355,6 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
          </div>
         </div>
       </div>
-
-      <ToolActions path={PATH} spec={SPEC} values={v}/>
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ──────────────────────────────────────────── */}
       {/* ΤΑ ΠΟΣΑ ΤΟΥ ΤΕΛΟΥΣ ΛΕΓΟΝΤΑΝ «ενδεικτικά του 2025» σε σελίδα που υπόσχεται
@@ -476,7 +433,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
 // εικονοστοιχεία μέσα σε κελί 88 στα 390: ξεχυνόταν πάνω στη διπλανή στήλη.
 // Μετρημένο: επτά κελιά ξεχείλιζαν στα 360. Δύο γραμμές επικεφαλίδας κοστίζουν
 // λιγότερο από 250 εικονοστοιχεία οριζόντιας κύλισης.
-function Line({ k, a, b, strong }: { k: string; a: number; b: number; strong?: boolean }) {
+function Line({ k, a, b, strong }: { k: string; a: number | null; b: number; strong?: boolean }) {
   const weight = strong ? 700 : 400;
   const ink = strong ? 'var(--text-primary)' : 'var(--text-secondary)';
   // ── Η ΕΤΙΚΕΤΑ ΤΗΣ ΓΡΑΜΜΗΣ ΕΙΝΑΙ ΚΕΦΑΛΙΔΑ, ΟΧΙ ΚΕΛΙ ─────────────────────────
@@ -491,7 +448,9 @@ function Line({ k, a, b, strong }: { k: string; a: number; b: number; strong?: b
   return (
     <tr className={strong ? 'is-total' : undefined}>
       <th scope="row" style={{ fontWeight: strong ? 600 : 400, color: ink }}>{k}</th>
-      <td className="num" style={{ fontWeight: weight, color: ink }}>{feSigned(a)}</td>
+      {a === null
+        ? <td className="num" style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>δεν ισχύει</td>
+        : <td className="num" style={{ fontWeight: weight, color: ink }}>{feSigned(a)}</td>}
       <td className="num" style={{ fontWeight: weight, color: ink }}>{feSigned(b)}</td>
     </tr>
   );
