@@ -22,20 +22,27 @@ export default function VerifyLookup() {
     router.push(`/verify/${encodeURIComponent(id)}`);
   };
 
+  // ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ ΠΟΥ ΜΟΙΑΖΕΙ ΜΕ ΑΛΗΘΙΝΟ ΚΩΔΙΚΟ (01.10.2026). Το «PO-…» στη
+  // γραμματοσειρά σταθερού πλάτους διαβαζόταν «P0-…» και έμοιαζε σπασμένο
+  // πεδίο. Η μορφή είναι αυτή της γεννήτριας (lib/documents/verifyCode.ts):
+  // PO, ημερομηνία ΕΕΜΜΗΗ, οκτώ σύμβολα χωρίς 0/O και 1/I/L.
   return (
-    <form onSubmit={submit} style={{ paddingTop: T.sp.xl }}>
-      <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 16px' }}>
+    <form onSubmit={submit} style={{ paddingTop: T.sp.md }}>
+      <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 20px', textWrap: 'pretty' }}>
         Ο κωδικός είναι τυπωμένος δίπλα στο QR του εγγράφου.
       </p>
-      <label htmlFor="verify-code" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+      {/* Ετικέτα σε πεζά 13, όπως στη σύνδεση και στην εγγραφή. */}
+      <label htmlFor="verify-code" className="po-field-label">
         Κωδικός εγγράφου
       </label>
       <input id="verify-code" name="code" value={code} autoComplete="off" autoCapitalize="characters" spellCheck={false}
         onChange={e => { setCode(e.target.value); if (error) setError(''); }}
-        placeholder="PO-…" aria-invalid={!!error || undefined} aria-describedby={error ? 'verify-code-err' : undefined}
+        placeholder="PO-260915-7KQ3MXNA" aria-invalid={!!error || undefined} aria-describedby={error ? 'verify-code-err' : undefined}
         style={{ width: '100%', boxSizing: 'border-box', minHeight: T.h.lg, padding: '10px 16px', borderRadius: T.radius.btn, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.mono, letterSpacing: '0.02em' }} />
-      {error && <p id="verify-code-err" role="alert" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '6px 0 0', lineHeight: 1.5 }}>{error}</p>}
-      <div style={{ marginTop: 16 }}><Btn variant="primary" type="submit">Έλεγχος</Btn></div>
+      {error && <p id="verify-code-err" role="alert" style={{ fontSize: 13, color: 'var(--negative-on-container)', margin: '6px 0 0', lineHeight: 1.5 }}>{error}</p>}
+      {/* Ολο το πλάτος, κάτω από το πεδίο, όπως η υποβολή κάθε άλλης φόρμας της
+          δημόσιας πλευράς. Ηταν 36 ψηλό και όσο το λεκτικό, δίπλα σε πεδίο 40. */}
+      <div style={{ marginTop: 16, display: 'grid' }}><Btn variant="primary" type="submit" field>Έλεγχος</Btn></div>
     </form>
   );
 }

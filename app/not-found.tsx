@@ -16,20 +16,29 @@ export const metadata: Metadata = {
   alternates: { canonical: null },
 };
 
+// ── ΣΚΟΥΡΗ ΟΠΩΣ ΚΑΘΕ ΔΗΜΟΣΙΑ ΣΕΛΙΔΑ, ΜΕ ΚΑΤΙ ΝΑ ΚΟΙΤΑΞΕΙ ΤΟ ΜΑΤΙ (01.10.2026) ──
+// Ηταν η μόνη σελίδα με την κεφαλίδα και το υποσέλιδο της βιτρίνας ΧΩΡΙΣ το
+// περιτύλιγμά της (`pub-root`, `data-mode="dark"`): σε φωτεινό θέμα έβγαινε
+// λευκή ανάμεσα σε ναυτικές σελίδες. Και στο κέντρο της είχε μόνο έναν τίτλο
+// και δύο γραμμές, που έπλεαν σε άδειο χώρο. Ενα μεγάλο, σβηστό «404» δίνει
+// στη σύνθεση άγκυρα χωρίς να φωνάζει· το κείμενο κάτω του ισορροπεί.
 export default function NotFound() {
   return (
-    <div style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans, display: 'flex', flexDirection: 'column' }}>
+    <div className="pub-root min-h-dvh" data-mode="dark" style={{ fontFamily: T.font.sans, display: 'flex', flexDirection: 'column' }}>
       <PublicHeader />
       <main style={{ ...WRAP, flex: 1, width: '100%', padding: `clamp(48px,8vw,96px) ${WRAP_PAD}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ maxWidth: 460, textAlign: 'center' }}>
-          <h1 style={{ fontSize: 'clamp(24px,4vw,30px)', fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 12px', textWrap: 'balance' }}>
+        <div style={{ maxWidth: 480, textAlign: 'center' }}>
+          <p aria-hidden="true" className="e404-code">404</p>
+          <h1 style={{ fontSize: 'clamp(24px,4vw,30px)', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 12px', textWrap: 'balance' }}>
             Αυτή η σελίδα δεν υπάρχει
           </h1>
-          {/* Κεντραρισμένο: ζυγισμένες γραμμές, όχι «επηρεάζονται.» μόνο του στην τελευταία. */}
-          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', lineHeight: 1.65, margin: '0 0 24px', textWrap: 'balance' }}>
-            Ο σύνδεσμος μπορεί να έχει λάθος ή η σελίδα να έχει μετακινηθεί. Τα δεδομένα σου δεν επηρεάζονται.
+          {/* Δύο προτάσεις, δύο μπλοκ: η εξήγηση και η καθησύχαση. Ως μία ροή η
+              δεύτερη έσπαγε στη μέση («Τα / δεδομένα») στα 360. */}
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', lineHeight: 1.65, margin: '0 auto 28px', maxWidth: 400 }}>
+            <span style={{ display: 'block', textWrap: 'balance' }}>Ο σύνδεσμος μπορεί να έχει λάθος ή η σελίδα να έχει μετακινηθεί.</span>
+            <span style={{ display: 'block' }}>Τα δεδομένα σου δεν επηρεάζονται.</span>
           </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div className="e404-actions">
             <Btn href="/" variant="primary">Στην αρχική</Btn>
             <Btn href="/paketa">Δες τα πακέτα</Btn>
           </div>

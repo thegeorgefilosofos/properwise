@@ -11,22 +11,22 @@
 // Όταν η χρέωση είναι ενεργή, όλη η δουλειά γίνεται στον περιηγητή και ο λόγος
 // γράφεται στο CheckoutLanding.tsx.
 // ═══════════════════════════════════════════════════════════════════════════
-import Link from 'next/link';
+import { Btn } from '@/components/Theme';
 import { billingWords } from '@/lib/legal/billingWords';
 import { merchant } from '@/lib/billing/merchant';
 import CheckoutLanding from './CheckoutLanding';
-import { TameioCard, TAMEIO_TITLE, TAMEIO_ACTION } from './TameioCard';
+import { StandaloneCard, CARD_TITLE, CARD_BODY } from '../StandaloneCard';
 
 export default function Page() {
   const w = billingWords();
   if (w.live) return <CheckoutLanding firstCharge={w.firstCharge} moneyBack={w.moneyBack} securedBy={w.securedBy} securedHref={merchant().site} securedLead={w.securedByLead} securedLogo={merchant().logo}/>;
   return (
-    <TameioCard>
-      <h1 style={TAMEIO_TITLE}>Δεν χρειάζεται πληρωμή</h1>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '14px 0 0' }}>
+    <StandaloneCard>
+      <h1 style={CARD_TITLE}>Δεν χρειάζεται πληρωμή</h1>
+      <p style={CARD_BODY}>
         {w.firstCharge} Όταν ενεργοποιηθεί, το πακέτο το διαλέγεις από τον «Λογαριασμό».
       </p>
-      <Link href="/dashboard" style={TAMEIO_ACTION}>Συνέχεια στην εφαρμογή</Link>
-    </TameioCard>
+      <div style={{ marginTop: 24, display: 'grid' }}><Btn variant="primary" field href="/dashboard">Συνέχεια στην εφαρμογή</Btn></div>
+    </StandaloneCard>
   );
 }

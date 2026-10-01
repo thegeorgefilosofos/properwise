@@ -1340,10 +1340,19 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
     // Το padding έδινε ύψος ~38: κάτω από το ελάχιστο μέγεθος αφής, σε 148
     // σημεία. Το `minHeight` από την κοινή κλίμακα το ανεβάζει στα 44 όταν ο
     // δείκτης είναι δάχτυλο, χωρίς να αλλάξει τίποτα στο ποντίκι.
-    minHeight: (field || size === 'lg') ? T.h.lg : T.h.md,
+    //
+    // ── Η ΔΗΜΟΣΙΑ ΠΛΕΥΡΑ ΔΗΛΩΝΕΙ ΤΗ ΔΙΚΗ ΤΗΣ ΚΛΙΜΑΚΑ, ΜΙΑ ΦΟΡΑ ────────────────
+    // Στη βιτρίνα μετρήθηκαν πέντε σχήματα κουμπιού (01.10.2026): χάπι 44 με
+    // 15px στην κεφαλίδα, γωνία 10 και 40 με 13px στην εγγραφή, 36 στον πίνακα
+    // των πακέτων, 37 στη σελίδα 404, 36 δίπλα σε πεδίο 40 στην επαλήθευση. Οι
+    // τέσσερις μεταβλητές `--btn-*` ορίζονται ΜΟΝΟ στα περιτυλίγματα της
+    // δημόσιας πλευράς (globals.css) και δίνουν σε κάθε `Btn` εκεί το σχήμα της
+    // αρχικής. Μέσα στην εφαρμογή δεν ορίζονται και ισχύουν οι εφεδρικές, δηλαδή
+    // ακριβώς ό,τι ίσχυε ως τώρα.
+    minHeight: `var(--btn-h, ${(field || size === 'lg') ? T.h.lg : T.h.md})`,
     ...(field ? { display: 'flex', width: '100%' } : null),
-    padding: '9px 18px', borderRadius: T.radius.btn,
-    fontSize: 12, fontWeight: 700, fontFamily: T.font.sans,
+    padding: 'var(--btn-pad, 9px 18px)', borderRadius: `var(--btn-radius, ${T.radius.btn}px)`,
+    fontSize: 'var(--btn-fs, 12px)', fontWeight: 700, fontFamily: T.font.sans,
     cursor: (disabled || dimmed) ? 'not-allowed' : 'pointer', opacity: (disabled || dimmed) ? 0.5 : 1,
     transition: 'background-color 0.15s cubic-bezier(0.2,0,0,1), border-color 0.15s cubic-bezier(0.2,0,0,1), color 0.15s cubic-bezier(0.2,0,0,1), box-shadow 0.15s cubic-bezier(0.2,0,0,1), transform 0.15s cubic-bezier(0.2,0,0,1), opacity 0.15s cubic-bezier(0.2,0,0,1)',
     // ΠΑΧΟΣ ΚΑΙ ΕΙΔΟΣ ΕΙΝΑΙ ΓΕΩΜΕΤΡΙΑ: κρατούν το ύψος ίδιο και στις τρεις

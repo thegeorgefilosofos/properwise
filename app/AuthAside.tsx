@@ -68,7 +68,7 @@ export default function AuthAside({
 
       {/* logo lockup */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 56 }}>
-        <BrandLogo size={28} style={{ color: 'var(--mkt-text-primary)' }} />
+        <BrandLogo style={{ color: 'var(--mkt-text-primary)' }} />
       </div>
 
       {/* ═══ ΤΟ ΣΩΜΑ ΤΟΥ ΠΑΝΕΛ, ΚΕΝΤΡΑΡΙΣΜΕΝΟ ΟΠΩΣ Η ΦΟΡΜΑ ════════════════════
@@ -141,7 +141,10 @@ export default function AuthAside({
             σε κάθε οθόνη: χρόνος που δεν μετρήθηκε ποτέ, γραμμένος και στην
             επαναφορά κωδικού, όπου δεν σημαίνει τίποτα. Το δίνει πλέον η οθόνη
             που έχει κάτι αληθινό να πει. */}
-        <p style={{ fontSize: 14, color: 'var(--mkt-accent)', fontWeight: 700, margin: 0 }}>Σχεδιασμένο για την ελληνική αγορά ακινήτων</p>
+        {/* ΣΕ ΔΕΥΤΕΡΟ ΤΟΝΟ, ΟΧΙ ΣΤΟ ΜΠΛΕ ΤΩΝ ΣΥΝΔΕΣΜΩΝ (01.10.2026). Στο χρώμα
+            της έμφασης και σε έντονα διαβαζόταν ως σύνδεσμος που δεν πάει
+            πουθενά. Είναι υπογραφή, όχι ενέργεια. */}
+        <p style={{ fontSize: 14, color: 'var(--mkt-text-secondary)', fontWeight: 500, margin: 0 }}>Σχεδιασμένο για την ελληνική αγορά ακινήτων</p>
         {note && <p style={{ fontSize: 13, color: 'var(--mkt-text-tertiary)', margin: 0 }}>{note}</p>}
       </div>
     </div>
@@ -156,7 +159,7 @@ export default function AuthAside({
 export function AuthMobileBrand() {
   return (
     <div className="auth-mobile-brand">
-      <BrandLogo size={24} />
+      <BrandLogo />
     </div>
   )
 }

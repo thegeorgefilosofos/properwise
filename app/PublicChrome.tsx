@@ -88,12 +88,20 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
   const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
-      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-xs" data-xs-elsewhere="/paketa" style={link}>Τιμές</Link>
+      {/* Η ΣΕΛΙΔΑ ΠΟΥ ΔΙΑΒΑΖΕΙΣ ΦΑΙΝΕΤΑΙ ΣΤΗΝ ΚΕΦΑΛΙΔΑ (01.10.2026). Το
+          `aria-current` υπήρχε για τον αναγνώστη οθόνης και το μάτι δεν έβλεπε
+          τίποτα: στο /paketa το «Τιμές» ήταν ίδιο με το «Σύνδεση». Πρώτος τόνος
+          και μια γραμμή στο χρώμα της έμφασης από κάτω (globals.css). */}
+      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-xs" data-xs-elsewhere="/paketa"
+        style={current === 'paketa' ? { ...link, color: 'var(--text-primary)', textDecoration: undefined } : link}>Τιμές</Link>
       {!signedIn ? (<>
         <Link href="/login" className="lp-link lp-nav-link" style={link}>
           Σύνδεση
         </Link>
-        <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 16px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
+        {/* Το σχήμα του κοινού κουμπιού της δημόσιας πλευράς (`--btn-*` στο
+            globals.css): χάπι, 44, λεκτικό 15. Μένει `Link` για την πλοήγηση
+            χωρίς επαναφόρτωση· τη γεωμετρία την παίρνει από τις ίδιες τιμές. */}
+        <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 'var(--btn-h, 44px)', textDecoration: 'none', fontSize: 'var(--btn-fs, 15px)', fontWeight: 700, padding: '0 20px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
           <span className="lp-hide-xs">Ξεκίνα δωρεάν</span><span className="lp-only-xs">Ξεκίνα</span>
         </Link>
       </>) : signedIn}
@@ -106,7 +114,7 @@ export function PublicHeader({ current }: { current?: 'paketa' } = {}) {
     <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
       <div style={{ ...WRAP, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'var(--text-primary)' }}>
-          <BrandLogo size={24} />
+          <BrandLogo />
         </Link>
         <PublicNav current={current} />
       </div>
@@ -143,7 +151,7 @@ export function PublicFooter() {
         <div className="lp-foot">
           <div>
             <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textDecoration: 'none', color: 'var(--text-primary)', width: 'fit-content' }}>
-              <BrandLogo size={26} />
+              <BrandLogo />
             </Link>
             {/* ΔΥΟ ΠΡΟΤΑΣΕΙΣ, ΔΥΟ ΓΡΑΜΜΕΣ ΚΑΙ Η ΑΛΛΑΓΗ ΕΙΝΑΙ ΡΗΤΗ.
                 Ηταν μία συνεχόμενη φράση που άφηνε την αναδίπλωση στο πλάτος
