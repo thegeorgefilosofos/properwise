@@ -342,8 +342,8 @@ export const MUTATIONS = {
   'landing-containment': { every: [
     { file: 'app/globals.css', from: '  content-visibility: auto;\n', to: '' },
     { file: 'app/page.tsx',
-      from: '      <section style={{ ...wrap, position: \'relative\', zIndex: 1, paddingBottom: GAP_ACT }}>\n        <SectionHead over="Πώς λειτουργεί"',
-      to: '      <section className="lp-reveal" style={{ ...wrap, position: \'relative\', zIndex: 1, paddingBottom: GAP_ACT }}>\n        <SectionHead over="Πώς λειτουργεί"' },
+      from: '      <section style={{ ...wrap, position: \'relative\', zIndex: 1, paddingBottom: GAP }}>\n        <SectionHead over="Πώς λειτουργεί"',
+      to: '      <section className="lp-reveal" style={{ ...wrap, position: \'relative\', zIndex: 1, paddingBottom: GAP }}>\n        <SectionHead over="Πώς λειτουργεί"' },
   ] },
   'silent-reads': { every: [
     { add: 'lib/core/__mut__.ts', content: "export async function load(sb: { from: (t: string) => { select: (c: string) => Promise<{ data: unknown[] | null }> } }) {\n  const { data } = await sb.from('bills').select('*')\n  return data\n}\n" },
