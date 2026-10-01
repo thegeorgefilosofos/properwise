@@ -118,8 +118,8 @@ const themeInitScript = `
     var el = document.documentElement;
     el.setAttribute('data-mode',  mode === 'light' ? 'light' : 'dark');
     if (mode === 'light') {
-      var bar = document.querySelector('meta[name="theme-color"]');
-      if (bar) bar.setAttribute('content', ${JSON.stringify(THEME_COLOR.light)});
+      var bars = document.querySelectorAll('meta[name="theme-color"]');
+      for (var i = 0; i < bars.length; i++) bars[i].setAttribute('content', ${JSON.stringify(THEME_COLOR.light)});
     }
   } catch(e) {}
 })();

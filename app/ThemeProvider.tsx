@@ -43,10 +43,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.setAttribute('data-mode',  mode);
     // Η ΜΠΑΡΑ ΤΟΥ ΚΙΝΗΤΟΥ ΑΚΟΛΟΥΘΕΙ ΤΟ ΘΕΜΑ. Εμενε #070b12 και στο φωτεινό:
     // μαύρη λωρίδα πάνω από λευκή εφαρμογή. Το Next γράφει ένα meta από το
-    // `viewport`· αν λείπει (σελίδα σφάλματος), το φτιάχνουμε.
-    let bar = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    if (!bar) { bar = document.createElement('meta'); bar.name = 'theme-color'; document.head.appendChild(bar); }
-    bar.content = THEME_COLOR[mode];
+    // `viewport`· αν λείπει (σελίδα σφάλματος), το φτιάχνουμε. ΟΛΑ, όχι το
+    // πρώτο: μετρημένο στον dev server, η σελίδα κρατούσε δύο meta theme-color
+    // (#f5f7fa και #070b12) και ποιο διαβάζει ο περιηγητής δεν είναι εγγυημένο.
+    const bars = [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')];
+    if (!bars.length) { const m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); bars.push(m); }
+    for (const b of bars) b.content = THEME_COLOR[mode];
     localStorage.setItem('pos_mode',  mode);
   }, [mode]);
 
