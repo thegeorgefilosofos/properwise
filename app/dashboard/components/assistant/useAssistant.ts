@@ -30,7 +30,8 @@ import { computeInsights, type Insight } from '@/lib/insights/engine'
 import {
   RENTAL_TAX_SUMMARY_2026, CLIMATE_LEVY_SUMMARY_2025, MUNICIPAL_ACCOM_SUMMARY,
 } from '@/lib/billing/greekTax'
-import { annuityMonthly, interestForYear } from '@/lib/loans/recommend'
+import { annuityMonthly } from '@/lib/loans/recommend'
+import { loanCalendarYear } from '@/lib/loans/progress'
 import { incomeStatement, taxProvision } from '@/lib/accounting/statement'
 import { clientStats, stayTotal, CLIENT_TYPE_LABELS, type ClientType } from '@/lib/clients/clients'
 import { suggestBase, realizedAdr, indicativeMonthly } from '@/lib/pricing/dynamicPricing'
@@ -395,10 +396,11 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     const rateTypeGr = (rt?: string) => rt === 'variable' ? 'κυμαινόμενο' : rt === 'mixed' ? 'μεικτό' : 'σταθερό';
     const monthlyDebt = loanRows.reduce((s, l) => s + annuityMonthly(l.amount || 0, l.rate || 0, l.years || 0), 0);
     // Ο τόκος της φετινής χρήσης, ώστε το κεφάλαιο να ξεχωρίζει από τη δόση.
-    const loanInterestYear = loanRows.reduce((s, l) => {
-      const startY = l.start_date ? Number(String(l.start_date).slice(0, 4)) : year;
-      return s + interestForYear(l.amount || 0, l.rate || 0, l.years || 0, year - startY + 1);
-    }, 0);
+    // Ο τόκος της ΗΜΕΡΟΛΟΓΙΑΚΗΣ χρήσης, όχι του ν-οστού έτους του δανείου: με
+    // έναρξη τον Σεπτέμβριο η πρώτη χρήση έχει τρεις δόσεις, όχι δώδεκα.
+    const loanInterestYear = loanRows.reduce((s, l) => s + loanCalendarYear({
+      amount: l.amount || 0, annualRatePct: l.rate || 0, years: l.years || 0, startDate: l.start_date,
+    }, year).interest, 0);
     // ── Ο ΤΟΚΟΣ ΥΠΟΛΟΓΙΖΟΤΑΝ ΚΑΙ ΔΕΝ ΕΛΕΓΕΤΑΙ ΠΟΤΕ ───────────────────────────
     // Η γραμμή έλεγε μόνο τη ΔΟΣΗ. Στη δήλωση όμως δεν εκπίπτει η δόση —
     // εκπίπτει ο τόκος: το κεφάλαιο είναι εξόφληση χρέους, όχι δαπάνη. Ρωτώντας

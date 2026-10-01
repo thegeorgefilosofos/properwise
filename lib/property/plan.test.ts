@@ -247,6 +247,10 @@ for (const s of PLAN_STATUSES) {
   ok('Εξοικονομώ', fids.includes('exoikonomo'));
   ok('Ανακαινίζω–Νοικιάζω', fids.includes('anakainizo'));
   ok('έκπτωση φόρου', fids.includes('tax-credit'));
+  // Ο ΚΑΝΟΝΑΣ ΤΟΥ 39Β ΕΙΝΑΙ Ο ΣΗΜΕΡΙΝΟΣ: μείωση ίση με τη δαπάνη, έως 16.000€ σε
+  // πέντε έτη (ν.5073/2023 · ΚΥΑ Α.1153/2025), όχι «μέρος της δαπάνης».
+  const credit = p.funding.find(f => f.id === 'tax-credit');
+  ok('έκπτωση φόρου: 16.000€ και 3.200€ τον χρόνο', !!credit && /16\.000€/.test(credit.what) && /3\.200€/.test(credit.what));
   ok('επισκευαστικό δάνειο', fids.includes('repair-loan'));
   ok('και η διόρθωση ότι το «Σπίτι μου ΙΙ» ΔΕΝ είναι ανακαίνιση',
     p.funding.some(f => f.id === 'not-spiti-mou' && /ΑΓΟΡΑ/.test(f.what)));

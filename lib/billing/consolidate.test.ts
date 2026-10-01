@@ -6,9 +6,10 @@
 import {
   consolidateRentTax, taxShareOf, consolidationSummary,
   presumptiveDeductionRate, presumptiveDeductionRateForYear, bankReceiptMatters,
-  PRESUMPTIVE_RULE, CONSOLIDATION_NOTE,
+  PRESUMPTIVE_RULE, CONSOLIDATION_NOTE, PLATFORM_FEE_NOTE,
 } from './consolidate';
 import { rentalIncomeTax } from './greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 
 let pass = 0, fail = 0;
 function ok(name: string, cond: boolean) { if (cond) { pass++; } else { fail++; console.error(`✗ ${name}`); } }
@@ -103,28 +104,37 @@ const src = (id: string, annualRent: number, over: Record<string, unknown> = {})
   eq('2025 με μετρητά κρατά την έκπτωση', presumptiveDeductionRateForYear(2025, false), 0.05);
   eq('2026 με μετρητά κρατά την έκπτωση', presumptiveDeductionRateForYear(2026, false), 0.05);
   eq('2026 με τράπεζα την κρατά', presumptiveDeductionRateForYear(2026, true), 0.05);
-  eq('2027 με μετρητά τη χάνει', presumptiveDeductionRateForYear(2027, false), 0);
+  // Η ΚΥΡΩΣΗ ΤΟΥ 2027 ΠΙΑΝΕΙ ΜΟΝΟ ΤΟΥΣ ΜΗΝΕΣ ΑΠΟ ΤΟΝ ΙΟΥΛΙΟ (Α.1187/2026, ΦΕΚ Β΄
+  // 5590/17.09.2026). Η εφαρμογή την έβαζε σε όλη τη χρήση.
+  eq('2027 με μετρητά χάνει την έκπτωση μόνο για Ιούλιο ως Δεκέμβριο', presumptiveDeductionRateForYear(2027, false), 0.025);
+  eq('2028 με μετρητά τη χάνει ολόκληρη', presumptiveDeductionRateForYear(2028, false), 0);
+  eq('2028 με τράπεζα την κρατά', presumptiveDeductionRateForYear(2028, true), 0.05);
   eq('2027 με τράπεζα την κρατά', presumptiveDeductionRateForYear(2027, true), 0.05);
 
   // ΚΑΙ ΤΟ ΝΟΥΜΕΡΟ ΠΟΥ ΕΦΤΑΝΕ ΣΤΟΝ ΛΟΓΙΣΤΗ. Ενοίκια 20.000,00€ στη χρήση
-  // 2027, εισπραγμένα με μετρητά: φορολογητέο 20.000,00€ (χαμένη η έκπτωση).
-  eq('χρήση 2027, 20.000€ με μετρητά → φορολογητέο 20.000€',
-    Math.round(20000 * (1 - presumptiveDeductionRateForYear(2027, false))), 20000);
+  // 2027, εισπραγμένα ισόποσα με μετρητά: οι 10.000€ ως τον Ιούνιο κρατούν την
+  // έκπτωση, οι 10.000€ από τον Ιούλιο τη χάνουν. Φορολογητέο 19.500€, όχι 20.000€.
+  eq('χρήση 2027, 20.000€ με μετρητά → φορολογητέο 19.500€',
+    Math.round(20000 * (1 - presumptiveDeductionRateForYear(2027, false))), 19500);
+  eq('χρήση 2028, 20.000€ με μετρητά → φορολογητέο 20.000€',
+    Math.round(20000 * (1 - presumptiveDeductionRateForYear(2028, false))), 20000);
 
   // Για χρήση 2026 τα μετρητά ΔΕΝ κοστίζουν: ίδιο φορολογητέο με την τράπεζα.
   const bank26 = consolidateRentTax([src('a', 10000, { rentsPaidViaBank: false })], undefined, 2026);
   ok('χρήση 2026: μετρητά → φορολογητέο 95% (καμία κύρωση)', near(bank26.totalTaxable, 9500));
 
-  // Η κύρωση φαίνεται μόνο σε χρήση από το 2027 και μετά.
-  const bank = consolidateRentTax([src('a', 10000), src('b', 10000)], undefined, 2027);
-  const cash = consolidateRentTax([src('a', 10000, { rentsPaidViaBank: false }), src('b', 10000, { rentsPaidViaBank: false })], undefined, 2027);
-  ok('2027 μετρητά → μεγαλύτερο φορολογητέο', cash.totalTaxable > bank.totalTaxable);
-  ok('2027 μετρητά → φορολογητέο = 100% των μεικτών', near(cash.totalTaxable, 20000));
-  ok('2027 τράπεζα → φορολογητέο = 95% των μεικτών', near(bank.totalTaxable, 19000));
-  ok('2027 μετρητά → μεγαλύτερος φόρος', cash.totalTax > bank.totalTax);
+  // Η κύρωση φαίνεται μόνο σε χρήση από το 2027 και μετά: μισή το 2027, ολόκληρη από το 2028.
+  const cash27 = consolidateRentTax([src('a', 10000, { rentsPaidViaBank: false }), src('b', 10000, { rentsPaidViaBank: false })], undefined, 2027);
+  ok('2027 μετρητά → φορολογητέο 19.500€ (κύρωση από 1.7.2027)', near(cash27.totalTaxable, 19500));
+  const bank = consolidateRentTax([src('a', 10000), src('b', 10000)], undefined, 2028);
+  const cash = consolidateRentTax([src('a', 10000, { rentsPaidViaBank: false }), src('b', 10000, { rentsPaidViaBank: false })], undefined, 2028);
+  ok('2028 μετρητά → μεγαλύτερο φορολογητέο', cash.totalTaxable > bank.totalTaxable);
+  ok('2028 μετρητά → φορολογητέο = 100% των μεικτών', near(cash.totalTaxable, 20000));
+  ok('2028 τράπεζα → φορολογητέο = 95% των μεικτών', near(bank.totalTaxable, 19000));
+  ok('2028 μετρητά → μεγαλύτερος φόρος', cash.totalTax > bank.totalTax);
 
-  // Μεικτή περίπτωση (χρήση 2027): ένα με τράπεζα, ένα με μετρητά.
-  const mix = consolidateRentTax([src('a', 10000), src('b', 10000, { rentsPaidViaBank: false })], undefined, 2027);
+  // Μεικτή περίπτωση (χρήση 2028): ένα με τράπεζα, ένα με μετρητά.
+  const mix = consolidateRentTax([src('a', 10000), src('b', 10000, { rentsPaidViaBank: false })], undefined, 2028);
   ok('μεικτή: φορολογητέο 19.500€', near(mix.totalTaxable, 19500));
   ok('μεικτή: το μετρητοίς πληρώνει μεγαλύτερο μερίδιο', taxShareOf(mix, 'b') > taxShareOf(mix, 'a'));
   ok('μεικτή: άθροισμα μεριδίων = σύνολο',
@@ -162,6 +172,16 @@ const src = (id: string, annualRent: number, over: Record<string, unknown> = {})
   ok('ο κανόνας δείχνει τη σωστή ημερομηνία 1.7.2027', PRESUMPTIVE_RULE.includes('1.7.2027'));
   ok('ο κανόνας δείχνει τον σωστό νόμο ν.5222/2025', PRESUMPTIVE_RULE.includes('5222/2025'));
   ok('η επεξήγηση ενοποίησης μιλά για το σύνολο', CONSOLIDATION_NOTE.includes('ΣΥΝΟΛΟ'));
+}
+
+// ═══ Η ΠΡΟΜΗΘΕΙΑ ΠΛΑΤΦΟΡΜΑΣ ΔΕΝ ΕΚΠΙΠΤΕΙ ΓΙΑ ΙΔΙΩΤΗ ═════════════════════════
+// Η καρτέλα Πελατών και η εισαγωγή κρατήσεων την έλεγαν «δαπάνη που εκπίπτει»
+// για κάθε καθεστώς. Για ιδιώτη ισχύει μόνο η τεκμαρτή έκπτωση.
+{
+  ok('προμήθεια: δεν λέει «δαπάνη που εκπίπτει»', typeof PLATFORM_FEE_NOTE === 'string' && !/δαπάνη που εκπίπτει/i.test(PLATFORM_FEE_NOTE));
+  ok('προμήθεια: για ιδιώτη δεν μειώνει τον φόρο', /ιδιώτη δεν μειώνει ούτε τον φόρο/.test(PLATFORM_FEE_NOTE ?? ''));
+  ok('προμήθεια: η τεκμαρτή από τη σταθερά', (PLATFORM_FEE_NOTE ?? '').includes(`${Math.round(PRESUMPTIVE_DEDUCTION_RATE * 100)}%`));
+  ok('προμήθεια: εκπίπτει μόνο σε επιχείρηση', /μόνο σε επιχείρηση/.test(PLATFORM_FEE_NOTE ?? ''));
 }
 
 console.log(fail === 0 ? `✓ consolidate: ${pass} έλεγχοι πέρασαν` : `✗ consolidate: ${fail} απέτυχαν από ${pass + fail}`);

@@ -8,6 +8,8 @@ import { SPITI_MOU } from '@/lib/loans/recommend'
 import { programDateLabel } from '@/lib/loans/programStatus'
 import { EXOIKONOMO_2025, ANAVATHMIZO, openEnergyPrograms, joinGreek } from '@/lib/loans/energyPrograms'
 import { athensToday } from '@/lib/core/time'
+import { feWhole } from '@/lib/core/format'
+import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b'
 
 export type LoanType = 'purchase'|'first_home'|'renovation'|'energy'|'investment'|'auction'|'construction'|'commercial'|'land'|'refinance'
 export type RateType = 'fixed'|'variable'|'mixed'
@@ -403,7 +405,7 @@ export const LOAN_TYPES: Record<LoanType,{label:string;desc:string;rate_from:num
     {name:'Τίτλος ιδιοκτησίας', where:'Συμβολαιογράφος, Κτηματολόγιο'},
     {name:'Προσφορές αναδόχων ή εργολάβων'},
     {name:'Οικοδομική άδεια, εφόσον απαιτείται', where:'Πολεοδομία'},
-  ], tax_note:'Δαπάνες ανακαίνισης με ηλεκτρονική πληρωμή μειώνουν τον φόρο κατά 40% της επιλέξιμης δαπάνης (άρθρο 39Β ΚΦΕ)'},
+  ], tax_note:`Δαπάνες ανακαίνισης με ηλεκτρονική πληρωμή μειώνουν τον φόρο κατά ίσο ποσό, έως ${feWhole(RENO_39B_CAP)} σε ${RENO_39B_YEARS} έτη (άρθρο 39Β ΚΦΕ, δαπάνες έως ${RENO_39B_TO})`},
   energy:       {label:'Ενεργειακή αναβάθμιση', desc:'Πράσινα δάνεια, περιθώριο από 1,25%',   rate_from:2.40, rate_to:3.50, typical_ltv:80, notes:'Έκπτωση περιθωρίου 0,15% έως 0,80% για κλάση Α+, Α ή Β+, ανάλογα με την τράπεζα', docs:[
     {name:'Πιστοποιητικό Ενεργειακής Απόδοσης (πριν την αναβάθμιση)', where:'Ενεργειακός επιθεωρητής'},
     {name:'Δελτίο ταυτότητας ή διαβατήριο'},

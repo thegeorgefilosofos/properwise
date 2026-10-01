@@ -11,7 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import * as properties from '@/lib/data/properties';
 import * as tenantStore from '@/lib/data/tenants';
 import { saved } from '@/components/dbWrite';
-import { T, TT, Btn, ChipToggle, Spinner, EmptyState, Modal, fixedCols } from '@/components/Theme';
+import { T, TT, Btn, ChipToggle, Spinner, EmptyState, Modal, InfoBanner, fixedCols } from '@/components/Theme';
 import { Building2 } from 'lucide-react';
 import { InfoHint } from './InfoHint';
 
@@ -20,7 +20,7 @@ import ScanButton from './ScanButton';
 import SignaturePad from '@/components/SignaturePad';
 import { grDate, todayIso, num, archivePdfToProperty } from './docUtils';
 import { fn } from '@/lib/core/format';
-import { computeRentAdjustment, adjustmentNoticeText, type AdjMethod } from '@/lib/documents/rentAdjustment';
+import { computeRentAdjustment, adjustmentNoticeText, rentCapPct, type AdjMethod } from '@/lib/documents/rentAdjustment';
 import { issueDocument } from '@/lib/documents/issue';
 import { generateReportPdf, reportPdfBlob, pEur, pPct, type PdfReportModel } from '@/lib/pdf/pdfReport';
 import type { ReportBranding } from '@/lib/reportBranding';
@@ -56,6 +56,8 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
   // όνομα από πάνω είναι επεξεργάσιμο κείμενο για το έγγραφο, δεν δείχνει
   // γραμμή· χωρίς το id η εγγραφή δεν έχει πού να πάει.
   const [tenantId, setTenantId] = useState('');
+  // Είδος και έναρξη της μίσθωσης: κρίνουν αν ισχύει το πλαφόν 3% του 2026.
+  const [lease, setLease] = useState<{ category: string | null; start: string | null }>({ category: null, start: null });
   const [currentRent, setCurrentRent] = useState('');
   // Γράφτηκε όντως το νέο μίσθωμα; Κρατιέται από την επιστροφή της `saved`,
   // ώστε το υποσέλιδο να μην ανακοινώνει εγγραφή που απέτυχε ή δεν έγινε.
@@ -137,9 +139,10 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
   useEffect(() => {
     if (!open || !propId) return;
     (async () => {
-      const t = await tenantStore.current<{ id: string; full_name: string | null; monthly_rent: number | null }>(
-        supabase, propId, 'id,full_name,monthly_rent', userId);
+      const t = await tenantStore.current<{ id: string; full_name: string | null; monthly_rent: number | null; lease_category: string | null; lease_start: string | null }>(
+        supabase, propId, 'id,full_name,monthly_rent,lease_category,lease_start', userId);
       setTenantId(t?.id || '');
+      setLease({ category: t?.lease_category ?? null, start: t?.lease_start ?? null });
       if (t?.full_name) setTenant(t.full_name);
       if (t?.monthly_rent) setCurrentRent(String(t.monthly_rent));
     })();
@@ -209,7 +212,11 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
   // πλέον μέσα στην ίδια απόδοση, εμπόδιζε τον μεταγλωττιστή του React να
   // βελτιστοποιήσει ΟΛΟΚΛΗΡΟ το component. Η αυτόματη απομνημόνευση κάνει
   // καλύτερη δουλειά από τη χειροκίνητη εδώ.
-  const res = computeRentAdjustment({ currentRent: num(currentRent), method, percent: num(percent), cpiPct: cpiPct ?? 0, newRentManual: num(newRentManual) });
+  // ΤΟ ΠΛΑΦΟΝ 3% ΤΟΥ 2026. Με όρο 5% σε επαγγελματική μίσθωση των 1.500€ το
+  // έγγραφο έγραφε 1.575€, ενώ ο νόμος επιτρέπει 1.545€. Ο κανόνας και η πηγή
+  // του ζουν στο lib/documents/rentAdjustment.ts (`rentCapPct`).
+  const capPct = rentCapPct({ leaseCategory: lease.category, leaseStart: lease.start, effectiveDate: effective });
+  const res = computeRentAdjustment({ currentRent: num(currentRent), method, percent: num(percent), cpiPct: cpiPct ?? 0, newRentManual: num(newRentManual), capPct });
 
   if (!open) return null;
 
@@ -547,6 +554,12 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
                   <div style={{ ...TT.body, fontWeight: 600, color: res.increase >= 0 ? 'var(--text-secondary)' : 'var(--negative)', fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>{pPct(res.pctApplied)} · {res.increase >= 0 ? '+' : ''}{pEur(res.increase)}</div>
                 </div>
               </div>
+
+              {res.capped && capPct != null && (
+                <InfoBanner tone="warning">
+                  {`Πλαφόν ${fn(capPct)}% για το 2026 στις υφιστάμενες επαγγελματικές μισθώσεις (άρθρο 59 ν.5255/2025). Το νέο μίσθωμα περιορίστηκε σε ${pEur(res.newRent)} αντί για ${pEur(res.uncappedRent)}. Δεν ισχύει για εκμισθωτές που εξαιρεί ο νόμος (ΑΕΕΑΠ, ΟΣΕΚΑ, μεγάλα εμπορικά κέντρα, εταιρείες του Δημοσίου).`}
+                </InfoBanner>
+              )}
 
               <div {...fixedCols(2, 12, 'start')}>
                 <div><div style={lbl}>Εκμισθωτής (υπογράφων)</div><input aria-label="Ονοματεπώνυμο εκμισθωτή" value={ownerName} onChange={e => setOwnerName(e.target.value)} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="Ονοματεπώνυμο ή επωνυμία" style={field} /></div>

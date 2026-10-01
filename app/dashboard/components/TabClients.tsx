@@ -60,6 +60,7 @@ import {
 import { MSG_TEMPLATES, buildMessage, whatsappLink, viberLink as viberTextLink } from '@/lib/clients/messages';
 import { revenueByChannel, revenueByMonth, occupancyFromMonths, totals } from '@/lib/clients/reports';
 import { nightsByMonthForYear } from '@/lib/tax/shortTermTax';
+import { PLATFORM_FEE_NOTE } from '@/lib/billing/consolidate';
 import { navLabel } from '@/lib/nav/labels';
 import { isoYear } from '@/lib/core/time';
 import { MONTHS_NOM } from '@/lib/core/months';
@@ -618,7 +619,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
             {dcStats.stayCount > 0 && (
               <div {...fixedCols(4, 10, 'stretch')}>
                 {statTile('Ακαθάριστα', fe(dcTotals.revenue), { title: 'Δηλωτέο ακαθάριστο: τι πλήρωσε ο επισκέπτης μείον το τέλος ανθεκτικότητας. Η προμήθεια ΔΕΝ αφαιρείται.' })}
-                {dcTotals.platformFees > 0 && statTile('Προμήθειες', fe(dcTotals.platformFees), { title: 'Δαπάνη που εκπίπτει, όχι μείωση εσόδου' })}
+                {dcTotals.platformFees > 0 && statTile('Προμήθειες', fe(dcTotals.platformFees), { title: PLATFORM_FEE_NOTE })}
                 {dcTotals.climateLevy > 0 && statTile('Τέλος ανθεκτικότητας', fe(dcTotals.climateLevy), { title: 'Εισπράχθηκε για λογαριασμό του κράτους. Δεν είναι έσοδό σου.' })}
                 {statTile('Νύχτες', String(dcStats.nights))}
                 {statTile('Διαμονές', String(dcStats.stayCount))}

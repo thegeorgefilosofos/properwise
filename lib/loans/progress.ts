@@ -149,3 +149,62 @@ export function addMonths(iso: string | null | undefined, months: number): strin
 function daysInMonth(y: number, m: number): number {
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Ο ΤΟΚΟΣ ΜΙΑΣ ΗΜΕΡΟΛΟΓΙΑΚΗΣ ΧΡΗΣΗΣ, ΟΧΙ ΕΝΟΣ ΕΤΟΥΣ ΤΟΥ ΔΑΝΕΙΟΥ
+// ─────────────────────────────────────────────────────────────────────────
+// Η Λογιστική και η Νόα ζητούσαν τον τόκο της χρήσης Y ως `interestForYear(…,
+// Y − έτος έναρξης + 1)`, δηλαδή τους μήνες 1 έως 12 του ΔΑΝΕΙΟΥ. Ένα δάνειο που
+// ξεκινά 1 Σεπτεμβρίου έχει μέσα στην πρώτη χρήση τρεις δόσεις (Οκτώβριο,
+// Νοέμβριο, Δεκέμβριο), όχι δώδεκα. Σε 150.000€ με 4% για 25 χρόνια η χρήση της
+// έναρξης έγραφε τόκους 5.935,10€ αντί για 1.497,08€ και οι «δόσεις του έτους»
+// έβγαιναν δώδεκα. Σε επιχειρηματικό καθεστώς ο τόκος εκπίπτει: τετραπλάσιος
+// τόκος είναι τετραπλάσια έκπτωση που δεν υπάρχει.
+//
+// Η ΣΥΜΒΑΣΗ ΕΙΝΑΙ ΤΟΥ `loanProgress`. Η δόση k πέφτει στο `addMonths(έναρξη, k)`:
+// η πρώτη έναν μήνα μετά την έναρξη, η τελευταία στο `endDate`. Έτσι το άθροισμα
+// των χρήσεων ισούται με το σύνολο των τόκων και η τελευταία χρήση παίρνει μόνο
+// τους μήνες που απομένουν.
+//
+// ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ ΕΝΑΡΞΗΣ η χρήση λογίζεται ως το πρώτο πλήρες έτος του
+// δανείου, όπως έκαναν ως τώρα οι καλούντες: δώδεκα δόσεις από το αρχικό κεφάλαιο.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface LoanCalendarYear {
+  /** Πόσες δόσεις πέφτουν μέσα στη χρήση. */
+  payments: number;
+  /** Τι πληρώθηκε συνολικά: δόσεις × δόση (η τελευταία ίσως μικρότερη). */
+  paid: number;
+  /** Ο τόκος αυτών των δόσεων. */
+  interest: number;
+  /** Το κεφάλαιο αυτών των δόσεων. */
+  principal: number;
+}
+
+/** Δόσεις, τόκος και κεφάλαιο που πέφτουν στο ημερολογιακό έτος `year`. */
+export function loanCalendarYear(input: {
+  amount: number; annualRatePct: number; years: number; startDate: string | null | undefined;
+}, year: number): LoanCalendarYear {
+  const none: LoanCalendarYear = { payments: 0, paid: 0, interest: 0, principal: 0 };
+  const amount = finite(input.amount);
+  const totalMonths = Math.round(finite(input.years) * 12);
+  if (amount <= 0 || totalMonths <= 0 || !Number.isFinite(year)) return none;
+  // Ο απόλυτος μήνας της έναρξης. Χωρίς ημερομηνία: Δεκέμβριος του προηγούμενου
+  // έτους, ώστε οι δόσεις 1 έως 12 να πέφτουν Ιανουάριο ως Δεκέμβριο της χρήσης.
+  const a = parseIso(input.startDate);
+  const start = a ? a.y * 12 + (a.m - 1) : (year - 1) * 12 + 11;
+  const first = Math.max(1, year * 12 - start);
+  const last = Math.min(totalMonths, year * 12 + 11 - start);
+  if (last < first) return none;
+
+  const monthly = monthlyPayment(amount, input.annualRatePct, input.years);
+  const r = finite(input.annualRatePct) / 100 / 12;
+  let balance = amount, interest = 0, principal = 0;
+  for (let k = 1; k <= last && balance > 0; k++) {
+    const i = balance * r;
+    const p = Math.min(balance, monthly - i);
+    if (k >= first) { interest += i; principal += p; }
+    balance = Math.max(0, balance - p);
+  }
+  return { payments: last - first + 1, paid: interest + principal, interest, principal };
+}

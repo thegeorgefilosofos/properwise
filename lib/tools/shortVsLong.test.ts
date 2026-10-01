@@ -86,6 +86,12 @@ const BASE: ShortVsLongInput = {
   ok('Δ. μια μονάδα κάτω, η βραχυχρόνια χάνει', shortTermSide(BASE, be - 1).net < c.long.net)
   ok('Δ. μια μονάδα πάνω, η βραχυχρόνια κερδίζει', shortTermSide(BASE, be + 1).net > c.long.net)
 
+  // ΟΙ ΝΥΧΤΕΣ ΑΠΟ ΤΟ ΑΣΤΡΟΓΓΥΛΟ ΚΑΤΩΦΛΙ. Η οθόνη έπαιρνε το ήδη στρογγυλεμένο
+  // 53% (από 52,45%) και έβγαζε 194 νύχτες· το κατώφλι πέφτει στις 192.
+  ok('Δ. κατώφλι σε νύχτες: 192, όχι 194', c.breakEvenNights === 192)
+  ok('Δ. οι νύχτες βγαίνουν από το αστρόγγυλο ποσοστό', c.breakEvenNights === Math.ceil(be / 100 * NIGHTS_PER_YEAR))
+  ok('Δ. χωρίς κατώφλι, χωρίς νύχτες', compareShortVsLong({ ...BASE, monthlyRent: 9000 }).breakEvenNights === null)
+
   // Απαγορευτικό ενοίκιο: ούτε με 100% πληρότητα δεν φτάνει. Το `null` είναι
   // απάντηση, όχι σφάλμα — και η οθόνη οφείλει να το λέει με λέξεις.
   const impossible = { ...BASE, monthlyRent: 9000 }

@@ -24,7 +24,7 @@ import { T, feAuto, fixedCols } from '@/components/tokens';
 import { ChipToggle } from '@/components/Theme';
 import { fn, fpRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
-import { compareShortVsLong, netByOccupancy, NIGHTS_PER_YEAR, HIGH_SEASON_NIGHTS, type SeasonSpread } from '@/lib/tools/shortVsLong';
+import { compareShortVsLong, netByOccupancy, HIGH_SEASON_NIGHTS, type SeasonSpread } from '@/lib/tools/shortVsLong';
 import { climateLevyRates, CLIMATE_LEVY_FROM_2025, FIRST_YEAR_CURRENT_LEVY } from '@/lib/billing/greekTax';
 import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
@@ -119,10 +119,10 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
              οθόνης. Τέσσερις στήλες δίνουν 4+4 σε δύο ζυγισμένες σειρές, με 250
              ανά πεδίο. Το `fc-roomy` κρατά δύο στήλες στη ζώνη 821–1000, όπου
              οι τέσσερις θα στένευαν τις μακριές ετικέτες
-             («Καθαριότητα ανά διανυκτέρευση»).
+             («Μέση καθαριότητα ανά νύχτα»).
 
              ΚΑΙ Η ΣΤΟΙΧΙΣΗ ΠΑΕΙ ΣΤΟ ΚΑΤΩ ΑΚΡΟ. Στη ζώνη 1001–1060 το πεδίο
-             πέφτει στα 216 και η «Καθαριότητα ανά διανυκτέρευση» τυλίγεται:
+             πέφτει στα 216 και η «Μέση καθαριότητα ανά νύχτα» τυλίγεται:
              με στοίχιση στην αρχή κατέβαινε ΜΟΝΟ το δικό της κουτί κατά μία
              γραμμή, δηλαδή η σειρά έσπαγε σε τρεις στάθμες. Κανένα πεδίο εδώ
              δεν έχει σημείωση από κάτω.
@@ -140,7 +140,10 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         <ToolSelect label="Τύπος ακινήτου" value={v.typos}
           onChange={x => set('typos', x)} options={TYPES}/>
         {num(ids.fee, 'promitheia', 'Προμήθεια πλατφόρμας', '%')}
-        {num(ids.cost, 'kostos', 'Καθαριότητα ανά διανυκτέρευση', '€')}
+        {/* ΜΕΣΟΣ ΟΡΟΣ ΑΝΑ ΝΥΧΤΑ, ΟΧΙ ΑΝΑ ΑΛΛΑΓΗ. Ο υπολογισμός το πολλαπλασιάζει
+            με τις νύχτες· όποιος πλήρωνε 30€ ανά αλλαγή επισκέπτη έγραφε 30 και
+            τριπλασίαζε το κόστος για διαμονές τριών νυχτών. */}
+        {num(ids.cost, 'kostos', 'Μέση καθαριότητα ανά νύχτα', '€')}
         {num(ids.fixed, 'pagia', 'Πάγια ανά μήνα', '€')}
       </div>
       <ToolClampNote notes={[
@@ -224,7 +227,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         { k: 'Πληρότητα', v: fpRate(amount(v.plirotita)) },
         { k: 'Ακίνητο', v: `${TYPES.find(t => t.value === v.typos)?.label ?? v.typos}, ${fn(amount(v.tm), Number.isInteger(amount(v.tm)) ? 0 : 2)} τ.μ.` },
         { k: 'Προμήθεια', v: fpRate(amount(v.promitheia)) },
-        { k: 'Καθαριότητα', v: `${feAuto(amount(v.kostos))} τη διανυκτέρευση` },
+        { k: 'Καθαριότητα', v: `${feAuto(amount(v.kostos))} τη νύχτα, κατά μέσο όρο` },
         { k: 'Πάγια', v: `${feAuto(amount(v.pagia))} τον μήνα` },
         { k: 'Πότε γεμίζει', v: input.season === 'high' ? 'κυρίως το καλοκαίρι' : 'όλο τον χρόνο' },
       ]}/>
@@ -282,7 +285,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
                     fontVariantNumeric: 'tabular-nums' }}>{fn(be)}%</strong> πληρότητα και πάνω η
                     βραχυχρόνια αφήνει περισσότερα, δηλαδή από{' '}
                     <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num,
-                      fontVariantNumeric: 'tabular-nums' }}>{fn(Math.ceil(be / 100 * NIGHTS_PER_YEAR))}</strong>{' '}
+                      fontVariantNumeric: 'tabular-nums' }}>{fn(r.breakEvenNights ?? 0)}</strong>{' '}
                     διανυκτερεύσεις τον χρόνο.</>}
           </p>
         </div>

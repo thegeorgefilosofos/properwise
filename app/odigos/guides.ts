@@ -9,6 +9,8 @@
 // Το υποσέλιδο κρατά τη δική του λίστα επίτηδες: εκεί η σειρά ακολουθεί τη
 // στήλη των υπολογισμών και το guard-public-routes διαβάζει τις διαδρομές του.
 // ═══════════════════════════════════════════════════════════════════════════
+import { feWhole } from '@/lib/core/format';
+import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b';
 
 export type Guide = {
   href: string;
@@ -92,10 +94,10 @@ export const GUIDES: readonly Guide[] = [
     href: '/odigos/ekptosi-forou-anakainisis',
     kicker: 'Ανακαίνιση',
     title: 'Έκπτωση φόρου για ανακαίνιση',
-    desc: 'Το όριο των 16.000€ αφορά τη δαπάνη, όχι την έκπτωση: μέγιστο όφελος 6.400€. '
-        + 'Προϋποθέσεις, πληρωμή, υλικά και τι να επιβεβαιώσεις.',
+    desc: `Η μείωση φόρου ισούται με τη δαπάνη, έως ${feWhole(RENO_39B_CAP)} σε ${RENO_39B_YEARS} έτη, `
+        + `για δαπάνες έως ${RENO_39B_TO}. Προϋποθέσεις, πληρωμή, υλικά και παράδειγμα.`,
     published: '2026-09-27',
-    updated: '2026-09-27',
+    updated: '2026-10-01',
   },
   {
     href: '/odigos/vraxyxronia-ama-prodiagrafes-2026',

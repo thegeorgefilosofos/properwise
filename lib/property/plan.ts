@@ -39,6 +39,8 @@
 
 import { annuityMonthly, totalInterest, SPITI_MOU, spitiMouOpen } from '@/lib/loans/recommend';
 import { athensToday } from '@/lib/core/time';
+import { feWhole } from '@/lib/core/format';
+import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO, RENO_39B_KYA } from '@/lib/accounting/renovation39b';
 import { transferCosts } from '@/lib/accounting/transfer';
 import type { PropertyStatus } from './status';
 
@@ -1001,8 +1003,10 @@ const RENO_FUNDING: Funding[] = [
     id: 'tax-credit',
     kind: 'tax',
     title: 'Έκπτωση φόρου για δαπάνες αναβάθμισης',
-    what: 'Μέρος της δαπάνης ενεργειακής, λειτουργικής και αισθητικής αναβάθμισης εκπίπτει από τον φόρο εισοδήματος, κατανεμημένο σε βάθος ετών, με ηλεκτρονική πληρωμή και παραστατικά στο όνομά σου (άρθρο 39Β ΚΦΕ).',
-    confirm: 'Το ποσοστό, το ανώτατο όριο δαπάνης, η κατανομή στα έτη, η αναλογία υλικών προς εργασία και το χρονικό παράθυρο ισχύος επιβεβαιώνονται για το τρέχον έτος με τον λογιστή σου ή στην ΑΑΔΕ.',
+    // Έλεγε «μέρος της δαπάνης», απόηχος του 40% του 2020. Από 1.1.2024 η
+    // μείωση ισούται με τη δαπάνη (ν.5073/2023 · ΚΥΑ Α.1153/2025).
+    what: `Η δαπάνη ενεργειακής, λειτουργικής και αισθητικής αναβάθμισης μειώνει τον φόρο εισοδήματος κατά ίσο ποσό, έως ${feWhole(RENO_39B_CAP)} συνολικά, ισόποσα σε ${RENO_39B_YEARS} έτη (το πολύ ${feWhole(RENO_39B_PER_YEAR)} τον χρόνο). Θέλει ηλεκτρονική πληρωμή και παραστατικά στο ΑΦΜ σου (άρθρο 39Β ΚΦΕ).`,
+    confirm: `Ισχύει για δαπάνες από ${RENO_39B_FROM} έως ${RENO_39B_TO}, με την ${RENO_39B_KYA}. Επιβεβαίωσε με τον λογιστή σου ότι η δική σου δαπάνη πέφτει μέσα στο παράθυρο και ότι ο ετήσιος φόρος σου φτάνει για να απορροφήσει έως ${feWhole(RENO_39B_PER_YEAR)}.`,
   },
   {
     id: 'repair-loan',

@@ -19,12 +19,13 @@
 // πια «αυτόματη έκπτωση» ούτε λάθος νόμο/ημερομηνία.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { rentalIncomeTax, marginalRate, FIRST_YEAR_BANK_RECEIPT, type TaxBracket } from './greekTax'
+import { rentalIncomeTax, marginalRate, FIRST_YEAR_BANK_RECEIPT, bankReceiptPenaltyShare, type TaxBracket } from './greekTax'
 import {
   consolidateIndividual, PRESUMPTIVE_DEDUCTION_RATE,
   type StatementInput, type TaxRegime,
 } from '@/lib/accounting/statement'
 import { centsOr0 } from '@/lib/core/money'
+import { fn } from '@/lib/core/format'
 
 
 
@@ -59,14 +60,34 @@ export function bankReceiptMatters(year?: number | null): boolean {
  *
  * Οπου ο τρόπος είσπραξης δεν μετράει ακόμη, η έκπτωση δίνεται ολόκληρη: το να
  * περάσει εκεί ένα «με μετρητά» θα αφαιρούσε έκπτωση που ο νόμος έδινε.
+ *
+ * ΤΟ 2027 ΕΙΝΑΙ ΜΙΣΗ ΧΡΗΣΗ. Η κύρωση πιάνει μισθώματα που εισπράττονται μετρητά
+ * από 1.7.2027 (Α.1187/2026, ΦΕΚ Β΄ 5590/17.09.2026), όχι όλη τη χρονιά. Με
+ * ενοίκιο μοιρασμένο ισόποσα, οι μήνες Ιανουάριος ως Ιούνιος κρατούν την
+ * έκπτωση: 20.000€ μετρητοίς το 2027 δίνουν φορολογητέο 19.500€, όχι 20.000€.
+ * Από το 2028 η κύρωση πιάνει ολόκληρη τη χρήση. Οπου ξέρουμε πώς μοιράζεται
+ * το ενοίκιο στους μήνες (νύχτες βραχυχρόνιας, μισθώματα ανά μήνα), τα
+ * `monthWeights` δίνουν το ακριβές μερίδιο αντί για το ισόποσο.
  */
-export function presumptiveDeductionRateForYear(year: number | null | undefined, rentsPaidViaBank = true): number {
-  return presumptiveDeductionRate(bankReceiptMatters(year) ? rentsPaidViaBank : true)
+export function presumptiveDeductionRateForYear(
+  year: number | null | undefined, rentsPaidViaBank = true, monthWeights?: readonly number[],
+): number {
+  if (rentsPaidViaBank) return PRESUMPTIVE_DEDUCTION_RATE
+  return PRESUMPTIVE_DEDUCTION_RATE * (1 - bankReceiptPenaltyShare(year, monthWeights))
 }
 
 /** Το κείμενο του κανόνα, ίδιο σε κάθε οθόνη. ΔΕΝ είναι «αυτόματη» έκπτωση. */
 export const PRESUMPTIVE_RULE =
   'Τεκμαρτή έκπτωση 5% για επισκευές/συντήρηση, χωρίς παραστατικά. Από 1.7.2027 (ν.5222/2025) θα προϋποθέτει είσπραξη του ενοικίου μέσω τραπέζης· με μετρητά θα χάνεται και ο φόρος θα υπολογίζεται στο 100% του ενοικίου.'
+
+/**
+ * Η προμήθεια πλατφόρμας για ΙΔΙΩΤΗ. Η καρτέλα Πελατών και η εισαγωγή κρατήσεων
+ * την έλεγαν «δαπάνη που εκπίπτει». Για εισόδημα από ακίνητη περιουσία φυσικού
+ * προσώπου καμία δαπάνη δεν εκπίπτει αναλυτικά: ισχύει μόνο η τεκμαρτή έκπτωση
+ * του άρθρου 39 ΚΦΕ. Εκπίπτει μόνο σε επιχειρηματική δραστηριότητα.
+ */
+export const PLATFORM_FEE_NOTE =
+  `Δεν μειώνει το δηλωτέο ακαθάριστο. Για ιδιώτη δεν μειώνει ούτε τον φόρο: ισχύει μόνο η τεκμαρτή έκπτωση ${fn(PRESUMPTIVE_DEDUCTION_RATE * 100)}%. Εκπίπτει μόνο σε επιχείρηση.`
 
 /** Γιατί ο φόρος δεν είναι «ανά ακίνητο» — το ίδιο λεκτικό σε κάθε οθόνη. */
 export const CONSOLIDATION_NOTE =
@@ -123,8 +144,7 @@ const regimeOf = (s: RentSource): TaxRegime =>
 export function consolidateRentTax(items: RentSource[], brackets?: TaxBracket[], year?: number | null): ConsolidatedRentTax {
   // Ο τρόπος είσπραξης αλλάζει τον φόρο ΜΟΝΟ όταν η κύρωση ισχύει (χρήσεις από
   // το 2027). Ως τότε κάθε ακίνητο κρατά την τεκμαρτή έκπτωση, ό,τι κι αν
-  // δήλωσε ο χρήστης για την τράπεζα — δες `bankReceiptMatters`.
-  const bankMatters = bankReceiptMatters(year)
+  // δήλωσε ο χρήστης για την τράπεζα· δες `presumptiveDeductionRateForYear`.
   const earning = items.filter(i => (Number(i.annualRent) || 0) > 0)
   const empty: ConsolidatedRentTax = {
     count: 0, totalAnnualRent: 0, totalTaxable: 0, totalTax: 0,
@@ -140,7 +160,9 @@ export function consolidateRentTax(items: RentSource[], brackets?: TaxBracket[],
     input: {
       regime: regimeOf(i),
       grossIncome: Number(i.annualRent) || 0,
-      rentsPaidViaBank: bankMatters ? (i.rentsPaidViaBank !== false) : true,
+      // Ο συντελεστής της χρήσης, όχι ναι ή όχι: το 2027 η κύρωση πιάνει μόνο
+      // τους μήνες από τον Ιούλιο (δες `presumptiveDeductionRateForYear`).
+      presumptiveRate: presumptiveDeductionRateForYear(year, i.rentsPaidViaBank !== false),
     } satisfies StatementInput,
   })), brackets)
 

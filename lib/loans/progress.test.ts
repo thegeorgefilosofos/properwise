@@ -4,7 +4,7 @@
 // Αν το υπόλοιπο πέσει έξω, ο ιδιοκτήτης παίρνει απόφαση αναχρηματοδότησης πάνω
 // σε λάθος νούμερο. Οι έλεγχοι εδώ σταυρώνουν τον υπολογισμό με ανεξάρτητο
 // τρόπο (τύπος παρούσας αξίας), αντί να επαναλαμβάνουν τον ίδιο βρόχο.
-import { loanProgress, monthlyPayment, monthsBetween, addMonths } from './progress'
+import { loanProgress, monthlyPayment, monthsBetween, addMonths, loanCalendarYear } from './progress'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -131,6 +131,29 @@ eq('χωρίς ημερομηνία', addMonths(null, 12), null)
   const p = loanProgress({ ...L, startDate: '2018-08-05', today: '2026-08-05' })!
   eq('η λήξη είναι 25 χρόνια μετά την έναρξη', p.endDate, '2043-08-05')
   ok('δηλώνει ότι είναι εκτίμηση', p.estimated === true)
+}
+
+// ── Ο τόκος της ΗΜΕΡΟΛΟΓΙΑΚΗΣ χρήσης ─────────────────────────────────────────
+// 150.000€ με 4% σε 25 χρόνια, έναρξη 1.9.2026. Η χρήση 2026 έγραφε τον τόκο
+// δώδεκα μηνών του δανείου (5.935,10€) για τρεις μόνο δόσεις.
+{
+  const L26 = { amount: 150000, annualRatePct: 4, years: 25, startDate: '2026-09-01' }
+  const y0 = loanCalendarYear(L26, 2026)
+  eq('χρήση έναρξης: τρεις δόσεις (Οκτ, Νοε, Δεκ)', y0.payments, 3)
+  near('χρήση έναρξης: τόκος 1.497,08€, όχι 5.935,10€', y0.interest, 1497.08)
+  near('χρήση έναρξης: πληρώθηκαν τρεις δόσεις', y0.paid, 3 * monthlyPayment(150000, 4, 25), 0.001)
+  const y1 = loanCalendarYear(L26, 2027)
+  eq('ενδιάμεση χρήση: δώδεκα δόσεις', y1.payments, 12)
+  near('ενδιάμεση χρήση: τόκοι Ιαν ως Δεκ 2027', y1.interest, 5899.32)
+  const yEnd = loanCalendarYear(L26, 2051)
+  eq('τελευταία χρήση: εννέα δόσεις ως 1.9.2051', yEnd.payments, 9)
+  eq('μετά τη λήξη: καμία δόση', loanCalendarYear(L26, 2052).payments, 0)
+  eq('πριν την έναρξη: καμία δόση', loanCalendarYear(L26, 2025).payments, 0)
+  let sum = 0
+  for (let y = 2026; y <= 2051; y++) sum += loanCalendarYear(L26, y).interest
+  near('οι χρήσεις αθροίζουν όλους τους τόκους του δανείου', sum,
+    loanProgress({ ...L26, today: '2060-01-01' })!.interestPaid)
+  near('χωρίς έναρξη: το πρώτο πλήρες έτος', loanCalendarYear({ ...L26, startDate: null }, 2030).interest, 5935.10)
 }
 
 console.log(fail === 0 ? `✓ progress: ${pass} έλεγχοι πέρασαν` : `✗ progress: ${fail} απέτυχαν από ${pass + fail}`)

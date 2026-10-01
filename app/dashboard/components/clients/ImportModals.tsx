@@ -8,6 +8,7 @@ import { channelOptions } from './model'
 import type { ClientsProps, ClientsState } from './useClients'
 import { icalToStayDrafts } from '@/lib/clients/ical'
 import { statTile } from './Bits'
+import { PLATFORM_FEE_NOTE } from '@/lib/billing/consolidate'
 
 export function EmailStayModal({
   emailOpen, setEmailOpen, emailDraft, parseEmail, emailBusy, emailText, setEmailDraft,
@@ -48,7 +49,7 @@ export function EmailStayModal({
               διαβαζόταν αλλού ως ακαθάριστο και φορολογούνταν. */}
           <NumberInput label="Πλήρωσε ο επισκέπτης" labelInfo="Το σύνολο που πλήρωσε ο επισκέπτης, πριν την προμήθεια." value={emailDraft.gross} onChange={v => setEmailDraft(d => d && { ...d, gross: v })} suffix="€" />
           <NumberInput label="Τέλος ανθεκτικότητας" labelInfo="Δεν είναι έσοδό σου· αφαιρείται από το δηλωτέο ακαθάριστο." value={emailDraft.levy} onChange={v => setEmailDraft(d => d && { ...d, levy: v })} suffix="€" />
-          <NumberInput label="Προμήθεια πλατφόρμας" labelInfo="Δαπάνη που εκπίπτει· ΔΕΝ μειώνει το δηλωτέο ακαθάριστο." value={emailDraft.fee} onChange={v => setEmailDraft(d => d && { ...d, fee: v })} suffix="€" />
+          <NumberInput label="Προμήθεια πλατφόρμας" labelInfo={PLATFORM_FEE_NOTE} value={emailDraft.fee} onChange={v => setEmailDraft(d => d && { ...d, fee: v })} suffix="€" />
           <CustomSelect label="Κανάλι" value={emailDraft.channel} onChange={v => setEmailDraft(d => d && { ...d, channel: v })} options={channelOptions} />
         </div>
         {(parseFloat(emailDraft.gross) || 0) > 0 && (
