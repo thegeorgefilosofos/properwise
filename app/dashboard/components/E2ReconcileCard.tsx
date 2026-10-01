@@ -1,101 +1,80 @@
 'use client';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// «Η ΑΑΔΕ ΛΕΕΙ Χ. ΤΑ ΔΙΚΑ ΣΟΥ ΛΕΝΕ Υ.»
+// «Η ΑΑΔΕ ΓΡΑΦΕΙ Χ. Η ΕΦΑΡΜΟΓΗ Υ. ΝΑ ΓΙΑΤΙ, ΚΑΙ ΠΟΥ ΔΙΟΡΘΩΝΕΤΑΙ.»
 //
-// ΤΙ ΑΝΤΙΚΑΘΙΣΤΑ ΚΑΙ ΓΙΑΤΙ
-// Στη θέση αυτή καθόταν ένας χειροκίνητος υπολογιστής φόρου: ζητούσε από τον
-// χρήστη να πληκτρολογήσει «Ετήσια Μισθώματα» — νούμερο που η εφαρμογή είχε ήδη
-// μετρήσει δύο κάρτες πιο πάνω — και έβγαζε δικό του φόρο, διαφορετικό από τον
-// φόρο της ίδιας οθόνης.
+// ΤΙ ΗΤΑΝ. Ενα πεδίο ανά ακίνητο, «Το έντυπο λέει», όπου ο χρήστης έγραφε ένα
+// νούμερο από το myAADE. Αποθηκευόταν μόνο ο ΑΤΑΚ: το νούμερο χανόταν μόλις
+// έκλεινε η οθόνη, η σύγκριση γινόταν ανά ακίνητο (όχι ανά μίσθωση) και ο
+// λογιστής δεν την έβλεπε ποτέ.
 //
-// Το χειρότερο όμως δεν ήταν το λάθος νούμερο: ήταν η ΘΕΣΗ. Η ΑΑΔΕ στέλνει
-// πλέον το Ε2 προσυμπληρωμένο. Ένα εργαλείο που «σου συμπληρώνει το έντυπο»
-// ανταγωνίζεται το myAADE στο έδαφος όπου το κράτος είναι δομικά καλύτερο και
-// χάνει λίγο περισσότερο κάθε χρόνο.
+// ΤΙ ΕΙΝΑΙ ΤΩΡΑ. Το προσυμπληρωμένο ανεβαίνει μία φορά (PDF, επικόλληση ή με το
+// χέρι) και αποθηκεύεται ανά ΑΦΜ και έτος. Η σύγκριση γίνεται κάθε φορά με τα
+// ΠΡΑΓΜΑΤΙΚΑ δεδομένα και των δύο πλευρών, μίσθωση προς μίσθωση. Κάθε διαφορά
+// λέει τα δύο νούμερα και πού διορθώνεται. Το ίδιο προσυμπληρωμένο μπορεί να το
+// ανεβάσει ο λογιστής από τον χώρο του· εδώ φαίνεται ποιος το ανέβασε.
 //
-// Αυτή η κάρτα κάνει το αντίστροφο και είναι το μόνο που το κράτος δεν μπορεί
-// να αποκτήσει: ελέγχει το προσυμπληρωμένο του.
-//
-// ΤΙ ΖΗΤΑΜΕ ΑΠΟ ΤΟΝ ΧΡΗΣΤΗ: ένα νούμερο ανά ακίνητο, από το έντυπο που ήδη
-// βλέπει στο myAADE. Τίποτε άλλο. Τα δικά μας τα ξέρουμε ήδη.
-//
-// ΤΙ ΔΕΝ ΚΑΝΟΥΜΕ: δεν λέμε ποιο νούμερο είναι σωστό. Αυτό είναι απόφαση του
-// φορολογούμενου και του λογιστή του. Λέμε πού διαφέρουν και τι εξηγεί τη
-// διαφορά — και όπου δεν μπορούμε να εξηγήσουμε, το λέμε.
+// ΤΙ ΔΕΝ ΚΑΝΟΥΜΕ: δεν αποφασίζουμε μόνοι μας ποιο νούμερο είναι σωστό όπου τα
+// στοιχεία δεν το λένε. Τότε η ενέργεια είναι «Έλεγξε με τον λογιστή».
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FileUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, EmptyState, Btn, fe } from '@/components/Theme';
+import { T, TT, EmptyState, Btn, ChipToggle, StatStrip, fe, fd } from '@/components/Theme';
 import { loadE2Rows } from './sheets';
 import { downloadFile } from '@/lib/core/download';
 import { notify, notifyError } from '@/components/Toast';
-import { reconcileE2, type DeclaredRow, type OurEvidence, type Line } from '@/lib/billing/e2Reconcile';
 import { hasFeature } from '@/lib/billing/entitlements';
 import type { PlanId } from '@/lib/billing/plans';
 import { FeatureBtn } from './FeatureLock';
-import type { E2Row } from '@/lib/billing/e2';
-import { readStatus } from '@/lib/property/status';
 import { ATAK_SOURCE, ATAK_DIGITS, atakDigits, isAtak } from '@/lib/property/atak';
 import * as propertyStore from '@/lib/data/properties';
 import { failed } from '@/lib/core/dbError';
-import { shortTermYearSummary } from '@/lib/tax/shortTermTax';
-import { rentIncomeOf } from '@/lib/rent/split';
+import { listPrefilled, declRefsByProperty, savePackStatus, fileUrl, type StoredE2Row } from '@/lib/data/e2Prefilled';
+import { afmGroups, compareGroup, type E2Loaded } from './e2Compare';
+import type { ReconLine } from '@/lib/billing/e2Reconcile';
+import E2PrefilledImport from './E2PrefilledImport';
 
-// Χρώμα ΜΟΝΟ όπου υπάρχει κάτι να γίνει. Η συμφωνία δεν είναι επίτευγμα που
-// θέλει πράσινο· είναι η αναμενόμενη κατάσταση και γράφεται με τον τόνο του
-// κειμένου. Ό,τι χρειάζεται προσοχή ξεχωρίζει τότε από μόνο του.
-function toneOf(l: Line): { color: string; label: string } {
-  if (l.verdict === 'match') return { color: 'var(--text-secondary)', label: 'Συμφωνούν' };
-  if (l.verdict === 'only_theirs') return { color: 'var(--negative)', label: 'Μόνο στο έντυπο' };
-  if (l.verdict === 'only_ours') return { color: 'var(--warning)', label: 'Μόνο στα δικά σου' };
-  const unexplained = Math.abs(l.unexplained ?? 0) > 1;
-  return unexplained
-    ? { color: 'var(--warning)', label: 'Διαφορά χωρίς εξήγηση' }
-    : { color: 'var(--text-secondary)', label: 'Διαφορά που εξηγείται' };
-}
+// Χρώμα ΜΟΝΟ όπου υπάρχει κάτι να γίνει. Η συμφωνία είναι η αναμενόμενη
+// κατάσταση και γράφεται με τον τόνο του κειμένου.
+const STATUS: Record<ReconLine['status'], { color: string; label: string }> = {
+  match: { color: 'var(--text-secondary)', label: 'Συμφωνεί' },
+  differs: { color: 'var(--warning)', label: 'Διαφέρει' },
+  missing_in_aade: { color: 'var(--warning)', label: 'Λείπει από την ΑΑΔΕ' },
+  missing_in_app: { color: 'var(--negative)', label: 'Λείπει από την εφαρμογή' },
+  vacant: { color: 'var(--text-tertiary)', label: 'Κενό ή χωρίς ποσό' },
+};
+
+const SOURCE_LABEL: Record<StoredE2Row['source'], string> = { pdf: 'από PDF', paste: 'με επικόλληση', manual: 'με το χέρι' };
 
 export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade }: {
   userId: string; year: number; plan?: PlanId; onUpgrade?: () => void;
 }) {
-  // Η εξαγωγή ξεκλειδώνει από το «Ένα ακίνητο» και πάνω. Ο έλεγχος του
-  // προσυμπληρωμένου — η ίδια η κάρτα — μένει ανοιχτός σε όλους: είναι ο λόγος
-  // που ο δοκιμαστής καταλαβαίνει τι αγοράζει.
+  // Η εξαγωγή ξεκλειδώνει από το «Ένα ακίνητο» και πάνω. Η σύγκριση μένει
+  // ανοιχτή σε όλους: είναι ο λόγος που ο δοκιμαστής καταλαβαίνει τι αγοράζει.
   const canExport = hasFeature({ plan }, 'e2_export');
   const supabase = useMemo(() => createClient(), []);
-  const [rows, setRows] = useState<E2Row[]>([]);
-  const [evidence, setEvidence] = useState<OurEvidence[]>([]);
+  const [loaded, setLoaded] = useState<E2Loaded | null>(null);
+  const [aade, setAade] = useState<StoredE2Row[]>([]);
+  const [readFailed, setReadFailed] = useState(false);
+  const [declRefs, setDeclRefs] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
-  /** Τι έγραψε ο χρήστης από το έντυπο, ανά ΑΤΑΚ. Κενό = δεν το έχει δει ακόμη. */
-  const [declared, setDeclared] = useState<Record<string, string>>({});
+  const [afm, setAfm] = useState('');
+  const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  // ΤΑ ΑΝΑΓΝΩΡΙΣΤΙΚΑ, ΓΙΑ ΝΑ ΜΠΟΡΕΙ Ο ΑΤΑΚ ΝΑ ΓΡΑΦΤΕΙ ΕΔΩ.
-  // Το `E2Row` είναι γραμμή ΕΝΤΥΠΟΥ και δεν κουβαλά κλειδί βάσης — σωστά. Οι
-  // γραμμές όμως βγαίνουν απο `properties.map(...)` μέσα στο `loadE2Rows`,
-  // άρα είναι ένα προς ένα και στην ίδια σειρά· κρατάμε τα αναγνωριστικά
-  // παράλληλα, απο την ΙΔΙΑ φόρτωση και ταιριάζουν κατά θέση.
-  const [propIds, setPropIds] = useState<string[]>([]);
-  const [propNames, setPropNames] = useState<string[]>([]);
   const [atakDraft, setAtakDraft] = useState<Record<string, string>>({});
   const [savingAtak, setSavingAtak] = useState('');
+  const [reload, setReload] = useState(0);
 
-  // ── ΤΟ ΑΡΧΕΙΟ ΠΟΥ ΠΟΥΛΙΕΤΑΙ ────────────────────────────────────────────
-  // Η συνάρτηση που φτιάχνει το βιβλίο υπήρχε και δούλευε χωρίς να την καλεί
-  // κανένα κουμπί· ο συνδρομητής πλήρωνε για έντυπο που δεν κατέβαινε. Όταν
-  // μπήκε το κουμπί, μπήκε χωρίς κλειδαριά: το ίδιο έντυπο το έπαιρνε και ο
-  // δωρεάν λογαριασμός. Τώρα το κουμπί υπάρχει ΚΑΙ φυλάγεται.
+  // ── ΤΟ ΑΡΧΕΙΟ ΠΟΥ ΠΟΥΛΙΕΤΑΙ ──────────────────────────────────────────────
+  // Παράγεται στον server, πίσω από την πύλη πακέτου· ο browser το κατεβάζει.
   const exportE2 = async () => {
     if (!canExport) return;
     setExporting(true);
     try {
-      // Το αρχείο ΠΑΡΑΓΕΤΑΙ ΣΤΟΝ SERVER, πίσω από την πύλη πακέτου· ο browser
-      // απλώς το κατεβάζει. Ετσι το προσυμπληρωμένο Ε2 δεν χτίζεται ποτέ σε
-      // δωρεάν λογαριασμό, όσο κι αν πειραχτεί η οθόνη.
       const res = await fetch('/api/e2/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ year }),
       });
       const isJson = (res.headers.get('content-type') || '').includes('application/json');
       if (!res.ok) {
@@ -103,16 +82,13 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
         notifyError(msg || 'Η εξαγωγή δεν ολοκληρώθηκε. Δοκίμασε ξανά.');
         return;
       }
-      // JSON με 200 σημαίνει «κανένα ακίνητο» — δεν υπάρχει αρχείο να κατέβει.
       if (isJson) { notifyError('Δεν υπάρχει ακίνητο για εξαγωγή.'); return; }
       const n = Number(res.headers.get('X-Property-Count')) || 0;
       downloadFile(await res.blob(), `Έντυπο Ε2 ${year}.xlsx`);
       notify(`Το Ε2 ${year} κατέβηκε · ${n} ${n === 1 ? 'ακίνητο' : 'ακίνητα'}`);
     } catch {
       notifyError('Η εξαγωγή δεν ολοκληρώθηκε. Δοκίμασε ξανά.');
-    } finally {
-      setExporting(false);
-    }
+    } finally { setExporting(false); }
   };
 
   useEffect(() => {
@@ -120,92 +96,59 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
     (async () => {
       setLoading(true);
       try {
-        const { properties, rows: r, paymentsByProp, staysByProp } =
-          await loadE2Rows(supabase, userId, year);
+        const [l, pre, refs] = await Promise.all([
+          loadE2Rows(supabase, userId, year),
+          listPrefilled(supabase, userId, year),
+          declRefsByProperty(supabase, userId),
+        ]);
         if (!alive) return;
-        setRows(r);
-        setPropIds(properties.map(p => p.id));
-        setPropNames(properties.map(p => (p.name || '').trim()));
-        // ── ΤΕΣΣΕΡΑ ΜΕΓΕΘΗ ΠΟΥ ΥΠΗΡΧΑΝ ΚΑΙ ΔΕΝ ΠΕΡΝΟΥΣΑΝ ────────────────────
-        //
-        // Η μηχανή συμφωνίας ξέρει επτά λόγους διαφοράς. Εδώ της δίνονταν
-        // στοιχεία για δύο (μήνες, συνιδιοκτησία): οι τέσσερις λόγοι που
-        // στηρίζονται σε προμήθεια πλατφόρμας, τέλος ανθεκτικότητας,
-        // ανείσπρακτα και απροσδιόριστη βάση ποσού ΔΕΝ μπορούσαν να
-        // ενεργοποιηθούν ποτέ, όσο σωστά κι αν ήταν τα δεδομένα. Ο χρήστης
-        // διάβαζε «διαφορά χωρίς εξήγηση» για διαφορά που τα δικά του
-        // δεδομένα εξηγούσαν και την πήγαινε στον λογιστή του ως άγνωστη.
-        //
-        // Καμία νέα αριθμητική: τα τρία της βραχυχρόνιας βγαίνουν απο την ίδια
-        // `shortTermYearSummary` που δίνει το ακαθάριστο στο `buildE2Row`, τα
-        // ανείσπρακτα απο τις δόσεις του έτους που δεν έχουν σημανθεί ως
-        // εισπραγμένες. Κόστος: μία στήλη παραπάνω στο ερώτημα των δόσεων.
-        //
-        // Η ΚΑΤΑΣΤΑΣΗ ΔΙΑΒΑΖΕΤΑΙ ΟΠΩΣ ΣΤΟ ΕΝΤΥΠΟ. Εδώ κρινόταν μόνο απο το
-        // `status_detail === 'seasonal'`, ενώ το `buildE2Row` περνά απο το
-        // `readStatus`: ακίνητο αποθηκευμένο «rented» με `rental_mode`
-        // «short_term» έμπαινε στο έντυπο ως βραχυχρόνιο και ταυτόχρονα
-        // έχανε εδώ τις δύο εξηγήσεις της βραχυχρόνιας.
-        setEvidence(properties.map(p => {
-          const shortTerm = readStatus(p) === 'rent_short';
-          const stayYear = shortTerm ? shortTermYearSummary(staysByProp.get(p.id) || [], year) : null;
-          // Στη βραχυχρόνια το ακαθάριστο βγαίνει απο τις διαμονές, όχι απο
-          // δόσεις: εκεί τα ανείσπρακτα μισθώματα δεν έχουν νόημα, ακριβώς
-          // όπως τα μηδενίζει και η Λογιστική.
-          const due = shortTerm ? [] : (paymentsByProp.get(p.id) || []);
-          // Το μίσθωμα της δόσης, όχι οι υπηρεσίες της: το ίδιο ποσό που μετρά το έντυπο.
-          const unpaid = due.reduce((s, x) => s + (x.paid ? 0 : rentIncomeOf(x)), 0);
-          return {
-            atak: p.atak,
-            name: p.name || p.address || p.atak || 'Ακίνητο',
-            shortTerm,
-            platformFees: stayYear?.platformFees ?? null,
-            climateLevy: stayYear?.collectedLevy ?? null,
-            unresolvedAmounts: stayYear?.unresolvedAmount ?? null,
-            unpaid: unpaid > 0 ? unpaid : null,
-          };
-        }));
+        setLoaded(l);
+        setAade(pre.rows);
+        setReadFailed(pre.failed);
+        setDeclRefs(refs);
       } finally { if (alive) setLoading(false); }
     })();
     return () => { alive = false; };
-  }, [supabase, userId, year]);
+  }, [supabase, userId, year, reload]);
 
-  // ── Ο ΑΤΑΚ ΓΡΑΦΕΤΑΙ ΕΔΩ, ΟΧΙ ΑΛΛΟΥ ────────────────────────────────────────
-  // Εδώ καθόταν μια πρόταση: «Χωρίς ΑΤΑΚ δεν γίνεται σύγκριση.» Σωστή και
-  // αδιέξοδη: το πεδίο ζούσε στο δεύτερο βήμα του οδηγού ακινήτου, δηλαδή
-  // τέσσερα πατήματα και μία εικασία μακριά απο την οθόνη που το ζητούσε.
-  // Τώρα ζητείται όπου λείπει, με το ίδιο σχήμα εισόδου που έχει και το
-  // νούμερο του εντύπου δίπλα του — ένα πεδίο ανά γραμμή, αυτό που χρειάζεται.
-  const saveAtak = async (i: number) => {
-    const id = propIds[i];
-    const value = atakDigits(atakDraft[id]);
-    if (!id || !isAtak(value)) return;
-    setSavingAtak(id);
-    const { error } = await propertyStore.update(supabase, id, { atak: value }, userId);
+  const groups = useMemo(() => (loaded ? afmGroups(loaded) : []), [loaded]);
+  const withAfm = useMemo(() => groups.filter(g => g.afm), [groups]);
+  const current = useMemo(() => withAfm.find(g => g.afm === afm) ?? withAfm[0] ?? null, [withAfm, afm]);
+  const rows = useMemo(() => aade.filter(r => r.ownerAfm === current?.afm), [aade, current]);
+  const result = useMemo(
+    () => (loaded && current ? compareGroup(loaded, current, aade, year, declRefs) : null),
+    [loaded, current, aade, year, declRefs],
+  );
+
+  // ── Η ΚΑΤΑΣΤΑΣΗ ΦΤΑΝΕΙ ΣΤΟΝ ΛΟΓΙΣΤΗ ──────────────────────────────────────
+  // Πλήθος διαφορών και ημερομηνία, τίποτα άλλο. Γράφεται μόνο όταν αλλάξει,
+  // ώστε το άνοιγμα της οθόνης να μη γράφει στη βάση κάθε φορά.
+  const written = useRef('');
+  useEffect(() => {
+    if (!current || !result || result.status === 'not_uploaded' || readFailed) return;
+    const key = `${current.afm}:${year}:${result.differences}:${rows.length}`;
+    if (written.current === key) return;
+    written.current = key;
+    void savePackStatus(supabase, userId, year, current.afm, { aadeDifferences: result.differences });
+  }, [supabase, userId, year, current, result, rows.length, readFailed]);
+
+  const saveAtak = useCallback(async (propertyId: string) => {
+    const value = atakDigits(atakDraft[propertyId]);
+    if (!isAtak(value)) return;
+    setSavingAtak(propertyId);
+    const { error } = await propertyStore.update(supabase, propertyId, { atak: value }, userId);
     setSavingAtak('');
     if (error) { notifyError(failed('Ο ΑΤΑΚ δεν αποθηκεύτηκε', error)); return; }
     notify('Ο ΑΤΑΚ καταχωρήθηκε');
-    // Οι γραμμές και τα στοιχεία βγαίνουν και τα δύο απο `properties.map(...)`,
-    // άρα η θέση `i` δείχνει το ίδιο ακίνητο και στα δύο.
-    setRows(rs => rs.map((row, j) => (j === i ? { ...row, atak: value } : row)));
-    setEvidence(ev => ev.map((e, j) => (j === i ? { ...e, atak: value } : e)));
-    setAtakDraft(d => { const n = { ...d }; delete n[id]; return n; });
+    setAtakDraft(d => { const n = { ...d }; delete n[propertyId]; return n; });
+    setReload(n => n + 1);
+  }, [atakDraft, supabase, userId]);
+
+  const openOriginal = async (path: string) => {
+    const url = await fileUrl(supabase, path);
+    if (url) window.open(url, '_blank', 'noopener');
+    else notifyError('Το πρωτότυπο δεν ανοίγει αυτή τη στιγμή. Δοκίμασε ξανά.');
   };
-
-  const declaredRows: DeclaredRow[] = useMemo(() =>
-    Object.entries(declared)
-      .filter(([, v]) => v.trim() !== '' && !isNaN(parseFloat(v)))
-      .map(([atak, v]) => ({ atak, gross: parseFloat(v) })),
-  [declared]);
-
-  const result = useMemo(
-    () => reconcileE2(rows, declaredRows, evidence),
-    [rows, declaredRows, evidence],
-  );
-
-  // Πόσα ακίνητα περιμένουν ακόμη νούμερο από το έντυπο.
-  const awaiting = rows.filter(r => !(declared[r.atak] || '').trim()).length;
-  const started = declaredRows.length > 0;
 
   const card: React.CSSProperties = {
     background: 'var(--surface-raised)', border: '1px solid var(--border-raised)',
@@ -214,181 +157,171 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
   };
   const inp: React.CSSProperties = {
     background: 'var(--bg-base)', border: '1px solid var(--border-control)',
-    borderRadius: T.radius.inner, height: T.h.md, padding: '0 12px', width: 130,
+    borderRadius: T.radius.inner, height: T.h.md, padding: '0 12px', width: 150,
     color: 'var(--text-primary)', fontFamily: T.font.num, fontSize: 14,
-    // ΧΩΡΙΣ `outline: none`: το ενσώματο στυλ έσβηνε τον καθολικό κανόνα
-    // `input:focus-visible` και το πεδίο του ΑΤΑΚ δεν έδειχνε πού βρίσκεται το
-    // πληκτρολόγιο. Μετρημένο με πραγματικό Tab στη σκηνή της Λογιστικής.
-    fontVariantNumeric: 'tabular-nums', textAlign: 'right',
-    boxSizing: 'border-box',
+    fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box',
   };
 
   if (loading) return null;
 
-  if (!rows.length) {
+  if (!loaded || !loaded.properties.length) {
     return (
       <div style={card}>
         <EmptyState
-          title="Έλεγχος του προσυμπληρωμένου Ε2"
+          title="Σύγκριση με το προσυμπληρωμένο Ε2"
           hint="Με ένα ακίνητο που έχει ΑΤΑΚ και καταχωρημένα μισθώματα, η σύγκριση με το προσυμπληρωμένο έντυπο γίνεται εδώ, πριν υπογράψεις."
         />
       </div>
     );
   }
 
+  const noAtak = loaded.properties.filter(p => !(p.atak || '').trim());
+  const noAfmGroup = groups.find(g => !g.afm);
+  const lastUpload = rows.reduce<StoredE2Row | null>((a, r) => (!a || r.updatedAt > a.updatedAt ? r : a), null);
+  const known = current ? current.idx.map(i => ({ atak: loaded.properties[i].atak, name: loaded.properties[i].name || loaded.properties[i].address || 'Ακίνητο' })) : [];
+
   return (
     <div style={card}>
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <p style={{ ...TT.h2 }}>Έλεγχος του προσυμπληρωμένου Ε2 · {year}</p>
+          <p style={{ ...TT.h2 }}>Σύγκριση με το προσυμπληρωμένο Ε2 · {year}</p>
           <FeatureBtn locked={!canExport} onUpgrade={() => onUpgrade?.()} onClick={exportE2} disabled={exporting}>
             {exporting ? 'Σε εξέλιξη…' : 'Λήψη Ε2 σε Excel'}
           </FeatureBtn>
         </div>
         <p style={{ ...TT.bodySm, marginTop: 4 }}>
-          Η ΑΑΔΕ στέλνει το Ε2 προσυμπληρωμένο και συχνά λανθασμένο. Γράψε το ακαθάριστο
-          που δείχνει το myAADE για κάθε ακίνητο και θα δεις πού διαφέρει από τα δικά σου.
+          Η ΑΑΔΕ στέλνει το Ε2 προσυμπληρωμένο, συχνά με λάθη. Ανέβασέ το μία φορά και η εφαρμογή το συγκρίνει μίσθωση προς μίσθωση με τα δικά σου στοιχεία.
         </p>
       </div>
 
-      {/* Η κεντρική φράση. Εμφανίζεται μόνο όταν υπάρχει κάτι να συγκριθεί. */}
-      {started && result.headline && (
-        <div style={{
-          padding: '12px 14px', marginBottom: 14,
-          background: 'var(--bg-elevated)', borderRadius: T.radius.inner,
-          borderLeft: `2px solid ${result.needsAttention === 0 ? 'var(--border-default)' : 'var(--warning)'}`,
-        }}>
-          <span style={{ ...TT.body, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-            {result.headline}
-          </span>
-          {awaiting > 0 && (
-            <p style={{ ...TT.caption, marginTop: 4 }}>
-              {awaiting} {awaiting === 1 ? 'ακίνητο ακόμη χωρίς' : 'ακίνητα ακόμη χωρίς'} νούμερο από το έντυπο.
-            </p>
-          )}
+      {withAfm.length > 1 && (
+        <div role="group" aria-label="ΑΦΜ υπόχρεου" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+          {withAfm.map(g => (
+            <ChipToggle key={g.afm} on={g.afm === current?.afm} onClick={() => setAfm(g.afm)}>
+              {`ΑΦΜ ${g.afm} · ${g.idx.length === 1 ? '1 ακίνητο' : `${g.idx.length} ακίνητα`}`}
+            </ChipToggle>
+          ))}
         </div>
       )}
 
-      {/* ═══ Η ΕΞΗΓΗΣΗ ΤΟΥ ΑΤΑΚ ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΟΧΙ ΜΙΑ ΑΝΑ ΑΚΙΝΗΤΟ ═══════
-          ΗΤΑΝ ΜΕΣΑ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ ΧΩΡΙΣ ΑΤΑΚ. Μετρημένο στη σκηνή της
-          Λογιστικής με δώδεκα ακίνητα, στα 375: δώδεκα φορές οι ίδιες δύο
-          προτάσεις, «Χωρίς ΑΤΑΚ δεν γίνεται σύγκριση. Ο ΑΤΑΚ είναι δώδεκα
-          ψηφία και βρίσκεται στο Ε9…». Η λίστα έπιανε 1.858 εικονοστοιχεία.
-          Το κείμενο δεν αφορά το ΑΚΙΝΗΤΟ — αφορά το ΠΕΔΙΟ, που είναι το ίδιο
-          σε κάθε γραμμή. Η γραμμή κρατά ό,τι είναι δικό της: το όνομα, τα
-          δικά μας νούμερα και το κουτί που περιμένει τον ΑΤΑΚ.
-
-          ΕΜΦΑΝΙΖΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΛΕΙΠΕΙ ΚΑΠΟΙΟΣ. Οποιος τους έχει καταχωρήσει
-          όλους δεν διαβάζει τι είναι ο ΑΤΑΚ. */}
-      {rows.some(r => !r.atak) && (
-        <p style={{ ...TT.caption, marginBottom: 10 }}>
-          Χωρίς ΑΤΑΚ δεν γίνεται σύγκριση. {ATAK_SOURCE}
+      {readFailed ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <p role="alert" style={{ ...TT.bodySm, color: 'var(--negative)', margin: 0, flex: 1, minWidth: 220 }}>
+            Το αποθηκευμένο προσυμπληρωμένο δεν διαβάστηκε. Δεν σημαίνει ότι δεν ανέβηκε.
+          </p>
+          <Btn variant="secondary" onClick={() => setReload(n => n + 1)}>Δοκίμασε ξανά</Btn>
+        </div>
+      ) : !current ? (
+        <p style={{ ...TT.bodySm, margin: 0 }}>
+          Το Ε2 υποβάλλεται ανά ΑΦΜ. Όρισε το ΑΦΜ του ιδιοκτήτη στις ρυθμίσεις του ακινήτου και η σύγκριση ανοίγει εδώ.
         </p>
-      )}
-
-      {/* Μία γραμμή ανά ακίνητο: τι λέμε εμείς, τι λέει το έντυπο. */}
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {rows.map((r, i) => {
-          const line = result.lines.find(l => (l.atak || '') === (r.atak || '') && l.ours != null);
-          const tone = line ? toneOf(line) : null;
-          const hasNumber = !!(declared[r.atak] || '').trim();
-          return (
-            <div key={r.atak || i} style={{
-              padding: '14px 2px',
-              borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)',
+      ) : !result || result.status === 'not_uploaded' ? (
+        <div style={{ padding: '14px 16px', background: 'var(--bg-elevated)', borderRadius: T.radius.inner }}>
+          <p style={{ ...TT.body, fontWeight: 600, margin: 0 }}>Δεν έχει ανέβει ακόμη το προσυμπληρωμένο για το ΑΦΜ {current.afm}.</p>
+          <p style={{ ...TT.caption, margin: '4px 0 12px' }}>
+            {`Η εφαρμογή έχει ${result ? fe(result.totalOurs) : fe(0)} σε ${current.idx.length === 1 ? '1 ακίνητο' : `${current.idx.length} ακίνητα`}. Το ανεβάζεις εσύ ή ο λογιστής σου.`}
+          </p>
+          <Btn variant="primary" onClick={() => setImporting(true)}><FileUp size={15} />Ανέβασε το προσυμπληρωμένο</Btn>
+        </div>
+      ) : (
+        <>
+          {result.headline && (
+            <div style={{
+              padding: '12px 14px', marginBottom: 14, background: 'var(--bg-elevated)', borderRadius: T.radius.inner,
+              borderLeft: `2px solid ${result.differences === 0 ? 'var(--border-default)' : 'var(--warning)'}`,
             }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  {/* ΤΙΤΛΟΣ ΤΟ ΟΝΟΜΑ, ΟΧΙ Ο ΤΑΧΥΔΡΟΜΙΚΟΣ ΚΩΔΙΚΑΣ. Χωρίς διεύθυνση το
-                      `r.address` είναι σκέτο «10000»: η διεύθυνση του εντύπου πάει
-                      στη λεζάντα και ο τίτλος λέει ποιο ακίνητο είναι. */}
-                  <div style={{ ...TT.body, fontWeight: 600 }}>{propNames[i] || r.address || 'Ακίνητο'}</div>
-                  <div style={{ ...TT.caption, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-                    {propNames[i] && r.address ? `${r.address} · ` : ''}{r.atak ? `ΑΤΑΚ ${r.atak} · ` : ''}Τα δικά σου: {fe(r.grossIncome)}
-                    {r.months ? ` · ${r.months} μήνες` : ''}
-                  </div>
-                </div>
-                {/* ΕΝΑ ΠΕΔΙΟ ΑΝΑ ΓΡΑΜΜΗ: αυτό που λείπει τώρα. Οσο δεν υπάρχει
-                    ΑΤΑΚ, το νούμερο του εντύπου δεν έχει πού να ταιριάξει. */}
-                {r.atak ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <label style={{ ...TT.caption, whiteSpace: 'nowrap' }} htmlFor={`e2-${i}`}>
-                      Το έντυπο λέει
-                    </label>
-                    <input
-                      id={`e2-${i}`} type="number" min={0} inputMode="decimal" style={inp}
-                      placeholder=""
-                      value={declared[r.atak] ?? ''}
-                      onChange={e => setDeclared(d => ({ ...d, [r.atak]: e.target.value }))}
-                    />
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <label style={{ ...TT.caption, whiteSpace: 'nowrap' }} htmlFor={`atak-${i}`}>
-                      ΑΤΑΚ
-                    </label>
-                    <input
-                      id={`atak-${i}`} inputMode="numeric" autoComplete="off"
-                      style={{ ...inp, width: 150, textAlign: 'left' }}
-                      placeholder={`${ATAK_DIGITS} ψηφία`}
-                      value={atakDraft[propIds[i]] ?? ''}
-                      onChange={e => setAtakDraft(d => ({ ...d, [propIds[i]]: atakDigits(e.target.value) }))}
-                      onKeyDown={e => { if (e.key === 'Enter') saveAtak(i); }}
-                    />
-                    <Btn
-                      onClick={() => saveAtak(i)}
-                      disabled={!isAtak(atakDraft[propIds[i]]) || savingAtak === propIds[i]}
-                    >
-                      {savingAtak === propIds[i] ? 'Καταχώρηση…' : 'Καταχώρηση'}
-                    </Btn>
-                  </div>
-                )}
-              </div>
-
-              {hasNumber && line && tone && (
-                <div style={{ marginTop: 10, paddingLeft: 12, borderLeft: `2px solid ${tone.color}` }}>
-                  <div style={{ ...TT.bodySm, fontWeight: 600, color: tone.color }}>
-                    {tone.label}
-                    {line.diff != null && Math.abs(line.diff) > 1 &&
-                      <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                        {' · '}διαφορά {fe(Math.abs(line.diff))}
-                      </span>}
-                  </div>
-                  {line.reasons.map(reason => (
-                    <p key={reason.code} style={{ ...TT.caption, marginTop: 4 }}>
-                      {reason.text}
-                    </p>
-                  ))}
-                  <p style={{ ...TT.caption, marginTop: 6, color: 'var(--text-primary)' }}>
-                    {line.action}
-                  </p>
-                </div>
-              )}
+              <span style={{ ...TT.body, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{result.headline}</span>
             </div>
-          );
-        })}
-      </div>
+          )}
+          <StatStrip items={[
+            { label: 'Η ΑΑΔΕ γράφει', value: fe(result.totalTheirs) },
+            { label: 'Η εφαρμογή', value: fe(result.totalOurs), strong: true },
+            { label: 'Διαφορά', value: fe(Math.abs(result.totalDiff)), tone: Math.abs(result.totalDiff) > 1 ? 'warning' : undefined },
+          ]} />
 
-      {/* Γραμμές του εντύπου για ακίνητα που δεν έχουμε — το πιο επικίνδυνο εύρημα:
-          το κράτος γνωρίζει εισόδημα που εσύ δεν κατέγραψες. */}
-      {result.lines.filter(l => l.verdict === 'only_theirs').map(l => (
-        <div key={`t-${l.atak}`} style={{
-          marginTop: 12, padding: '12px 14px',
-          background: 'var(--negative-soft)', border: '1px solid var(--negative-border)',
-          borderRadius: T.radius.inner,
-        }}>
-          <div style={{ ...TT.bodySm, fontWeight: 600 }}>
-            Το έντυπο έχει γραμμή για ΑΤΑΚ {l.atak} που δεν υπάρχει στα ακίνητά σου
-            {l.theirs != null ? ` (${fe(l.theirs)})` : ''}.
+          <div style={{ display: 'flex', flexDirection: 'column', marginTop: 8 }}>
+            {result.lines.map((l, i) => {
+              const tone = STATUS[l.status];
+              return (
+                <div key={l.key} style={{ padding: '14px 2px', borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ ...TT.body, fontWeight: 600 }}>{l.propertyName}{l.tenant ? ` · ${l.tenant}` : ''}</div>
+                      <div style={{ ...TT.caption, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+                        {l.atak ? `ΑΤΑΚ ${l.atak} · ` : ''}
+                        {l.app ? `Εφαρμογή ${fe(l.app.gross)}` : 'Δεν υπάρχει στην εφαρμογή'}
+                        {' · '}
+                        {l.aade ? `ΑΑΔΕ ${fe(l.aade.gross)}` : 'δεν υπάρχει στην ΑΑΔΕ'}
+                      </div>
+                    </div>
+                    <span style={{ ...TT.bodySm, fontWeight: 600, color: tone.color }}>{tone.label}</span>
+                  </div>
+                  {l.findings.length > 0 && (
+                    <div style={{ marginTop: 10, paddingLeft: 12, borderLeft: `2px solid ${tone.color}`, display: 'grid', gap: 10 }}>
+                      {l.findings.map(f => (
+                        <div key={f.kind}>
+                          <p style={{ ...TT.bodySm, margin: 0, fontVariantNumeric: 'tabular-nums' }}>{f.text}</p>
+                          {f.reasons?.map(r => <p key={r.code} style={{ ...TT.caption, margin: '3px 0 0' }}>{r.text}</p>)}
+                          <p style={{ ...TT.caption, margin: '4px 0 0', color: 'var(--text-primary)', fontWeight: 600 }}>{f.action}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <p style={{ ...TT.caption, marginTop: 4 }}>{l.action}</p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+            <p style={{ ...TT.caption, margin: 0, flex: 1, minWidth: 220 }}>
+              {lastUpload
+                ? `${rows.length === 1 ? '1 γραμμή' : `${rows.length} γραμμές`} της ΑΑΔΕ · ανέβηκαν ${SOURCE_LABEL[lastUpload.source]} ${lastUpload.uploadedBy === 'accountant' ? 'από τον λογιστή σου' : 'από εσένα'} στις ${fd(lastUpload.updatedAt)}`
+                : ''}
+            </p>
+            {lastUpload?.sourceFile && <Btn variant="ghost" onClick={() => void openOriginal(lastUpload.sourceFile!)}>Το πρωτότυπο</Btn>}
+            <Btn variant="secondary" onClick={() => setImporting(true)}>Αντικατάσταση</Btn>
+          </div>
+        </>
+      )}
+
+      {noAfmGroup && current && (
+        <p style={{ ...TT.caption, margin: '12px 0 0' }}>
+          {noAfmGroup.idx.length === 1 ? 'Ένα ακίνητο δεν έχει' : `${noAfmGroup.idx.length} ακίνητα δεν έχουν`} ΑΦΜ ιδιοκτήτη και μένουν εκτός σύγκρισης. Όρισέ το στις ρυθμίσεις του ακινήτου.
+        </p>
+      )}
+
+      {/* Ο ΑΤΑΚ ΓΡΑΦΕΤΑΙ ΕΔΩ, ΟΧΙ ΤΕΣΣΕΡΑ ΠΑΤΗΜΑΤΑ ΜΑΚΡΙΑ. Χωρίς αυτόν, η μίσθωση
+          ταιριάζει μόνο με ΑΦΜ μισθωτή ή αριθμό δήλωσης. */}
+      {noAtak.length > 0 && (
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+          <p style={{ ...TT.caption, margin: '0 0 8px' }}>Χωρίς ΑΤΑΚ η ταύτιση με την ΑΑΔΕ γίνεται μόνο με ΑΦΜ μισθωτή. {ATAK_SOURCE}</p>
+          {noAtak.map(p => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 0' }}>
+              <label htmlFor={`atak-${p.id}`} style={{ ...TT.bodySm, flex: 1, minWidth: 160 }}>{p.name || p.address || 'Ακίνητο'}</label>
+              <input id={`atak-${p.id}`} inputMode="numeric" autoComplete="off" style={inp}
+                placeholder={`${ATAK_DIGITS} ψηφία`} value={atakDraft[p.id] ?? ''}
+                onChange={e => setAtakDraft(d => ({ ...d, [p.id]: atakDigits(e.target.value) }))}
+                onKeyDown={e => { if (e.key === 'Enter') void saveAtak(p.id); }} />
+              <Btn onClick={() => void saveAtak(p.id)} disabled={!isAtak(atakDraft[p.id]) || savingAtak === p.id}>
+                {savingAtak === p.id ? 'Καταχώρηση…' : 'Καταχώρηση'}
+              </Btn>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
 
       <p style={{ ...TT.caption, marginTop: 14 }}>
-        Ποιο νούμερο είναι σωστό το αποφασίζεις εσύ με τον λογιστή σου. Εδώ φαίνεται πού
-        διαφέρουν και τι εξηγεί τη διαφορά.
+        Όπου τα στοιχεία δεν λένε ποιο νούμερο είναι σωστό, το αποφασίζεις με τον λογιστή σου. Εδώ φαίνεται πού διαφέρουν, γιατί και πού διορθώνεται.
       </p>
+
+      {importing && current && (
+        <E2PrefilledImport
+          ownerId={userId} year={year} afms={withAfm.map(g => g.afm)} initialAfm={current.afm}
+          known={known} existing={rows}
+          onClose={() => setImporting(false)}
+          onSaved={(_, savedAfm) => { setImporting(false); setAfm(savedAfm); setReload(n => n + 1); }}
+        />
+      )}
     </div>
   );
 }

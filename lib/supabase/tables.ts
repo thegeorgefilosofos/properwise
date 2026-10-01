@@ -57,6 +57,20 @@ export interface AccountantLinksRow {
   expires_at: string | null;
 }
 
+export interface AccountantPacksRow {
+  user_id: string;
+  tax_year: number;
+  owner_afm: string;
+  aade_differences: number | null;
+  aade_checked_at: string | null;
+  missing_count: number;
+  missing_top: string[];
+  file_path: string | null;
+  size_bytes: number | null;
+  shared_at: string | null;
+  updated_at: string;
+}
+
 export interface AccountantRequestsRow {
   id: string | null;
   accountant_id: string;
@@ -477,6 +491,33 @@ export interface CronSecretsRow {
   created_at: string;
 }
 
+export interface E2PrefilledRow {
+  id: string | null;
+  user_id: string;
+  tax_year: number;
+  owner_afm: string;
+  row_no: number | null;
+  atak: string | null;
+  address: string | null;
+  category: string | null;
+  tenant_name: string | null;
+  tenant_afm: string | null;
+  lease_from: string | null;
+  lease_to: string | null;
+  months: number | null;
+  monthly_rent: number | null;
+  ownership_pct: number | null;
+  gross: number;
+  income_column: number;
+  lease_decl_ref: string | null;
+  source: string;
+  uploaded_by: string;
+  uploaded_by_user: string | null;
+  source_file: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface EmailCampaignsRow {
   id: string;
   user_id: string;
@@ -635,6 +676,17 @@ export interface GuestCheckinsRow {
   created_at: string | null;
   privacy_consent: boolean | null;
   privacy_consent_at: string | null;
+}
+
+export interface HealthChecksRow {
+  id: number | null;
+  ran_at: string;
+  ok: boolean;
+  kind: string;
+  base: string;
+  routes_count: number;
+  failed_count: number;
+  details: Json;
 }
 
 export interface IcalFeedsRow {
@@ -1201,12 +1253,30 @@ export interface ReportBrandingRow {
   updated_at: string | null;
 }
 
+export interface ScanUsageRow {
+  user_id: string | null;
+  minute_bucket: string;
+  minute_count: number;
+  month: string;
+  month_count: number;
+  updated_at: string;
+}
+
 export interface SendQuotaRow {
   user_id: string;
   kind: string;
   bucket: string;
   units: number;
   updated_at: string;
+}
+
+export interface SignupFunnelRow {
+  day: string;
+  step: string;
+  source: string;
+  in_app: boolean;
+  mobile: boolean;
+  n: number;
 }
 
 export interface StoragePurgeQueueRow {
@@ -1217,6 +1287,13 @@ export interface StoragePurgeQueueRow {
   queued_at: string;
   attempts: string;
   last_error: string | null;
+}
+
+export interface SupportAckLogRow {
+  sender_hash: string | null;
+  last_ack_at: string;
+  ack_count: string;
+  created_at: string;
 }
 
 export interface TenantCommLogRow {
@@ -1404,6 +1481,7 @@ export interface Tables {
   accountant_clients: AccountantClientsRow;
   accountant_dossier: AccountantDossierRow;
   accountant_links: AccountantLinksRow;
+  accountant_packs: AccountantPacksRow;
   accountant_requests: AccountantRequestsRow;
   activity_log: ActivityLogRow;
   ai_budget: AiBudgetRow;
@@ -1432,6 +1510,7 @@ export interface Tables {
   clients: ClientsRow;
   contacts: ContactsRow;
   cron_secrets: CronSecretsRow;
+  e2_prefilled: E2PrefilledRow;
   email_campaigns: EmailCampaignsRow;
   email_marketing_prefs: EmailMarketingPrefsRow;
   email_outbox: EmailOutboxRow;
@@ -1440,6 +1519,7 @@ export interface Tables {
   expenses: ExpensesRow;
   feedback_campaign_winners: FeedbackCampaignWinnersRow;
   guest_checkins: GuestCheckinsRow;
+  health_checks: HealthChecksRow;
   ical_feeds: IcalFeedsRow;
   inbound_mailboxes: InboundMailboxesRow;
   inbound_messages: InboundMessagesRow;
@@ -1479,8 +1559,11 @@ export interface Tables {
   rent_config: RentConfigRow;
   rent_payments: RentPaymentsRow;
   report_branding: ReportBrandingRow;
+  scan_usage: ScanUsageRow;
   send_quota: SendQuotaRow;
+  signup_funnel: SignupFunnelRow;
   storage_purge_queue: StoragePurgeQueueRow;
+  support_ack_log: SupportAckLogRow;
   tenant_comm_log: TenantCommLogRow;
   tenant_damages: TenantDamagesRow;
   tenants: TenantsRow;

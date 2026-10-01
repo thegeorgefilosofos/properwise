@@ -38,6 +38,7 @@ import { failed } from '@/lib/core/dbError';
 import { openRequests, answerRequest, type OpenRequest } from '@/lib/data/accountant';
 import { aadeTitle } from '@/components/AadeLink';
 import { aadePath, AADE_DESTINATIONS } from '@/lib/tax/aade';
+import MeetingPackCard from './MeetingPackCard';
 
 // ── Οι παραδοχές που ορίζουν τη λίστα ──────────────────────────────────────
 export interface DossierProfile {
@@ -231,6 +232,8 @@ function Row({ r, checked, onToggle, attribute }: { r: Requirement; checked: boo
 
 export interface DossierExportSource {
   propName: string
+  /** Το ανοιχτό ακίνητο: ο φάκελός του κρατά μόνο τα δικά του δικαιολογητικά. */
+  propertyId?: string
   /** Ο άνθρωπος, όχι το ακίνητο: το πεδίο «Φορολογούμενος» του φακέλου. */
   ownerName?: string
   ownerAfm?: string
@@ -259,8 +262,10 @@ export interface DossierExportSource {
 }
 
 export default function AccountantDossier({
-  state, year, properties, exportSource, actions, compact = false, appReady,
+  state, year, properties, exportSource, actions, compact = false, appReady, userId,
 }: {
+  /** Ο ιδιοκτήτης: ο φάκελος ανά ΑΦΜ φορτώνεται με το δικό του αναγνωριστικό. */
+  userId?: string
   state: DossierState
   year: number
   properties: readonly DossierProperty[]
@@ -320,6 +325,19 @@ export default function AccountantDossier({
         setPreparing(false)
       }
     }
+    // ══ Ο ΦΑΚΕΛΟΣ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΕΙ ΜΟΝΟ ΤΑ ΔΙΚΑ ΤΟΥ ═══════════════════════
+    // Το βιβλίο έχει τα νούμερα ΤΟΥ ΑΝΟΙΧΤΟΥ ακινήτου. Ο κατάλογος όμως έβγαινε
+    // από ΟΛΟ το χαρτοφυλάκιο: η δήλωση μίσθωσης και τα ΑΜΑ των άλλων ακινήτων
+    // έμπαιναν στο «Τι λείπει» δίπλα σε ποσά που δεν τα αφορούν και ο λογιστής
+    // διάβαζε έναν φάκελο που αυτοαναιρείται. Ο φάκελος ολόκληρου του ΑΦΜ είναι
+    // πλέον ο φάκελος της συνάντησης (MeetingPackCard).
+    const own = properties.filter(p => exportSource.propertyId && p.id === exportSource.propertyId)
+    const ownProps = own.length ? own : properties.slice(0, 1)
+    const ownReqs = requirementsFor({
+      form: profile.form, books: profile.books, statuses: ownProps.map(p => p.status), properties: ownProps,
+      hasRenovation: profile.hasRenovation, hasLoan: profile.hasLoan, ownershipChanged: profile.ownershipChanged,
+    })
+    const ownReady = readiness(ownReqs, haveAll.filter(id => ownReqs.some(r => r.id === id)))
     exportAccountantDossier({
       year,
       propName: exportSource.propName,
@@ -332,10 +350,10 @@ export default function AccountantDossier({
       assets: exportSource.assets,
       buildingFraction: exportSource.buildingFraction,
       dossier: {
-        requirements: reqs,
+        requirements: ownReqs,
         haveIds: haveAll,
-        readinessMessage: ready.message,
-        properties: properties.map(p => ({ name: p.name, status: yearStatusLabel(p) })),
+        readinessMessage: ownReady.message,
+        properties: ownProps.map(p => ({ name: p.name, status: yearStatusLabel(p) })),
         formLabel: LEGAL_FORM_LABEL[profile.form],
         booksLabel: BOOKS_LABEL[profile.books],
         gaps: [...(exportSource.gaps || []), ...notes],
@@ -364,8 +382,8 @@ export default function AccountantDossier({
           </div>
           {/* Το flexShrink μετακόμισε σε περιτύλιγμα: το Btn δεν δέχεται style και χωρίς αυτό το λεκτικό στριμώχνεται δίπλα στο μήνυμα */}
           <div style={{ flexShrink: 0 }}>
-            <Btn variant="primary" onClick={download} disabled={preparing}>
-              <Download size={14} />{preparing ? 'Ετοιμάζεται' : downloaded ? 'Κατέβηκε' : 'Κατέβασε τον φάκελο'}
+            <Btn variant="secondary" onClick={download} disabled={preparing}>
+              <Download size={14} />{preparing ? 'Ετοιμάζεται' : downloaded ? 'Κατέβηκε' : 'Φάκελος του ακινήτου'}
             </Btn>
           </div>
         </div>
@@ -428,7 +446,7 @@ export default function AccountantDossier({
             διάβαζε παράγραφο για να μάθει τρία πράγματα. Τρεις όροι μετά την
             άνω κάτω τελεία λένε τα ίδια τρία σε 87 χαρακτήρες. */}
         <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '14px 0 0', fontFamily: T.font.sans, lineHeight: 1.6 }}>
-          Ένα βιβλίο εργασίας: σύνοψη μπροστά, φύλλο ανά ερώτημα, τα παραστατικά μαζί αριθμημένα.
+          Φάκελος του ακινήτου: τα λογιστικά του ανοιχτού ακινήτου σε ένα βιβλίο εργασίας, με τα παραστατικά του αριθμημένα.
         </p>
 
         {/* ── ΤΙ ΣΟΥ ΖΗΤΗΣΕ Ο ΛΟΓΙΣΤΗΣ ────────────────────────────────────
@@ -463,6 +481,15 @@ export default function AccountantDossier({
           </div>
         )}
       </div>
+
+      {/* Ο ΦΑΚΕΛΟΣ ΤΗΣ ΣΥΝΑΝΤΗΣΗΣ, ΑΝΑ ΑΦΜ: αυτό που πάει στον λογιστή. */}
+      {userId && (
+        <MeetingPackCard userId={userId} year={year} ownerName={exportSource.ownerName ?? null}
+          dossier={{
+            form: profile.form, books: profile.books, hasRenovation: profile.hasRenovation,
+            hasLoan: profile.hasLoan, ownershipChanged: profile.ownershipChanged, have: haveAll, properties,
+          }} />
+      )}
 
       {(!compact || listOpen) && (<>
 

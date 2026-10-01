@@ -1,10 +1,11 @@
 // npx tsx lib/billing/e2Reconcile.test.ts
 //
-// Το ερώτημα που ελέγχουμε δεν είναι «αφαιρεί σωστά» — είναι «λέει ψέματα;».
-// Μια εξήγηση που ακούγεται σαν διάγνωση αλλά δεν στηρίζεται σε νούμερο είναι
-// χειρότερη από τη σιωπή, γιατί ο χρήστης θα την επαναλάβει στον λογιστή του.
-import { reconcileE2, TOLERANCE, type DeclaredRow, type OurEvidence } from './e2Reconcile';
-import type { E2Row } from './e2';
+// Η ερώτηση δεν είναι «αφαιρεί σωστά» αλλά «λέει ψέματα;». Κάθε εύρημα πρέπει
+// να κουβαλά τα δύο νούμερα και τη διαφορά και να λέει ΠΟΥ διορθώνεται. Και
+// κανένα ζευγάρι γραμμών δεν φτιάχνεται στην τύχη.
+import { reconcilePrefilled, appLinesOf, TOLERANCE, FIX_LABEL, type AppLeaseLine } from './e2Reconcile';
+import { buildE2Row, type E2Property } from './e2';
+import type { AadeE2Row } from '@/lib/tax/aadeE2';
 
 let pass = 0, fail = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -13,233 +14,171 @@ function eq(name: string, got: unknown, want: unknown) {
 }
 function ok(name: string, cond: boolean) { if (cond) pass++; else { fail++; console.error(`✗ ${name}`); } }
 
-const row = (o: Partial<E2Row> = {}): E2Row => ({
-  atak: '11111111111', address: 'Οδός 1, 11111', ownerAfm: '123456789',
-  ownershipPct: 100, leaseKind: 'Εκμίσθωση', months: 12,
-  incomeCategory: 'Κατοικία', grossIncome: 7200, incomeSource: 'rent', flags: [], ...o,
-});
-const dec = (o: Partial<DeclaredRow> = {}): DeclaredRow => ({ atak: '11111111111', gross: 7200, ...o });
-const ev = (o: Partial<OurEvidence> = {}): OurEvidence => ({ atak: '11111111111', ...o });
+const T1 = '123456783', T2 = '987654324', T3 = '111222336', BAD = '123456789';
 
-const codes = (l: { reasons: { code: string }[] }) => l.reasons.map(r => r.code);
+const app = (o: Partial<AppLeaseLine> = {}): AppLeaseLine => ({
+  key: 'p1:0', propertyId: 'p1', propertyName: 'Πατησίων', atak: '01234567890',
+  tenantName: 'Παπαδόπουλος', tenantAfm: T1, months: 12, monthly: 600, ownershipPct: 100,
+  gross: 7200, incomeColumn: 13, from: '2025-01-01', to: '2025-12-31',
+  monthsFromRecords: true, estimated: false, shortTerm: false, declRef: null, ...o,
+});
+const aade = (o: Partial<AadeE2Row> = {}): AadeE2Row => ({
+  rowNo: 1, atak: '01234567890', address: 'Πατησίων 10', category: null, tenantName: null, tenantAfm: T1,
+  from: '2025-01-01', to: '2025-12-31', months: 12, monthlyRent: 600, ownershipPct: 100,
+  gross: 7200, incomeColumn: 13, leaseDeclRef: null, ...o,
+});
+const kinds = (l: { findings: { kind: string }[] }) => l.findings.map(f => f.kind);
+
+// ═══ ΧΩΡΙΣ ΠΡΟΣΥΜΠΛΗΡΩΜΕΝΟ ═══════════════════════════════════════════════
+{
+  const r = reconcilePrefilled([app()], []);
+  eq('δεν ανέβηκε: κατάσταση', r.status, 'not_uploaded');
+  eq('δεν ανέβηκε: καμία επικεφαλίδα', r.headline, null);
+}
 
 // ═══ ΣΥΜΦΩΝΙΑ ════════════════════════════════════════════════════════════
 {
-  const r = reconcileE2([row()], [dec()]);
-  eq('ίδια νούμερα → match', r.lines[0].verdict, 'match');
-  eq('καμία εξήγηση όταν δεν υπάρχει διαφορά', r.lines[0].reasons.length, 0);
-  eq('σύνολα', [r.totalOurs, r.totalTheirs, r.totalDiff], [7200, 7200, 0]);
-  eq('τίποτα δεν χρειάζεται προσοχή', r.needsAttention, 0);
-  ok('η επικεφαλίδα λέει ότι συμφωνούν', /συμφωνεί/.test(r.headline || ''));
-}
-{
-  // Στρογγυλοποίηση ενός ευρώ ΔΕΝ είναι διαφορά — το buildE2Row στρογγυλοποιεί.
-  const r = reconcileE2([row({ grossIncome: 7201 })], [dec({ gross: 7200 })]);
-  eq('διαφορά εντός ανοχής → match', r.lines[0].verdict, 'match');
-  const r2 = reconcileE2([row({ grossIncome: 7202 })], [dec({ gross: 7200 })]);
-  ok('ένα ευρώ πάνω από την ανοχή ΦΑΙΝΕΤΑΙ', r2.lines[0].verdict !== 'match');
-  eq('η ανοχή είναι δηλωμένη', TOLERANCE, 1);
+  const r = reconcilePrefilled([app()], [aade()]);
+  eq('ίδια γραμμή: συμφωνεί', [r.status, r.differences, r.matched], ['matches', 0, 1]);
+  eq('ταυτίστηκε με ΑΤΑΚ και ΑΦΜ', r.lines[0].matchedBy, 'atak_tenant');
+  ok('η επικεφαλίδα λέει το ποσό', /7\.200,00€/.test(r.headline || ''));
+  // Ενα ευρώ στρογγυλοποίησης δεν είναι διαφορά.
+  eq('διαφορά εντός ανοχής', reconcilePrefilled([app({ gross: 7201 })], [aade()]).status, 'matches');
+  ok('ένα ευρώ πάνω από την ανοχή φαίνεται', reconcilePrefilled([app({ gross: 7200 + TOLERANCE + 1 })], [aade()]).status === 'differences');
 }
 
-// ═══ Η ΚΕΝΤΡΙΚΗ ΦΡΑΣΗ ════════════════════════════════════════════════════
+// ═══ ΔΙΑΦΟΡΑ ΑΚΑΘΑΡΙΣΤΟΥ ΜΕ ΜΗΝΕΣ ═════════════════════════════════════════
 {
-  const r = reconcileE2([row({ grossIncome: 6900 })], [dec({ gross: 7200 })]);
-  ok('η επικεφαλίδα δίνει και τα δύο νούμερα',
-    /7\.200/.test(r.headline || '') && /6\.900/.test(r.headline || ''));
-  ok('και τη διαφορά', /300/.test(r.headline || ''));
-  eq('η ΑΑΔΕ δείχνει περισσότερα', r.lines[0].verdict, 'theirs_higher');
-}
-
-// ═══ ΜΗΝΕΣ — η συχνότερη πραγματική αιτία ════════════════════════════════
-{
-  const r = reconcileE2([row({ grossIncome: 6600, months: 11 })], [dec({ gross: 7200, months: 12 })]);
+  // Η εφαρμογή μετρά 11 μήνες από τις ημερομηνίες της μίσθωσης, η ΑΑΔΕ 12.
+  const r = reconcilePrefilled([app({ months: 11, gross: 6600, to: '2025-11-30' })], [aade()]);
   const l = r.lines[0];
-  ok('εξηγεί με τους μήνες', codes(l).includes('months'));
-  ok('λέει και τα δύο πλήθη', /11/.test(l.reasons[0].text) && /12/.test(l.reasons[0].text));
-  // 6600/11 = 600 ανά μήνα × (11−12) = −600, όσο ακριβώς η διαφορά.
-  eq('η εξήγηση καλύπτει τη διαφορά', l.unexplained, 0);
-  ok('και λέει ότι μπορεί να προχωρήσει', /εξηγείται πλήρως/.test(l.action));
+  eq('μήνες και ποσό', kinds(l).sort(), ['gross', 'months']);
+  const g = l.findings.find(f => f.kind === 'gross')!;
+  ok('το εύρημα ποσού λέει και τα δύο νούμερα και τη διαφορά',
+    /6\.600,00€/.test(g.text) && /7\.200,00€/.test(g.text) && /600,00€/.test(g.text));
+  eq('η διαφορά με πρόσημο: εφαρμογή μείον ΑΑΔΕ', g.diff, -600);
+  eq('εξηγείται από τους μήνες', g.reasons?.map(x => x.code), ['months']);
+  eq('οι μήνες βγήκαν από ημερομηνίες: διόρθωση στο myAADE', g.fixIn, 'aade');
+  ok('η ενέργεια ξεκινά με το πού', g.action.startsWith(FIX_LABEL.aade));
+  const m = l.findings.find(f => f.kind === 'months')!;
+  eq('μήνες: εφαρμογή, ΑΑΔΕ, διαφορά', [m.ours, m.theirs, m.diff], ['11', '12', -1]);
 }
 {
-  // Ίδιοι μήνες → ΔΕΝ επιτρέπεται να επικαλεστεί μήνες.
-  const r = reconcileE2([row({ grossIncome: 6900 })], [dec({ gross: 7200, months: 12 })]);
-  ok('ίδιοι μήνες: κανένας λόγος «μήνες»', !codes(r.lines[0]).includes('months'));
-}
-{
-  // Το έντυπο δεν δείχνει μήνες → δεν εφευρίσκουμε σύγκριση μηνών.
-  const r = reconcileE2([row({ grossIncome: 6900, months: 11 })], [dec({ gross: 7200 })]);
-  ok('χωρίς μήνες στο έντυπο, κανένας λόγος «μήνες»', !codes(r.lines[0]).includes('months'));
+  // Ο ίδιος αριθμός μηνών αλλά εκτίμηση: διόρθωση στην εφαρμογή.
+  const r = reconcilePrefilled([app({ gross: 6000, estimated: true })], [aade()]);
+  const g = r.lines[0].findings.find(f => f.kind === 'gross')!;
+  eq('εκτίμηση: η διόρθωση είναι στην εφαρμογή', g.fixIn, 'app');
+  ok('και ο λόγος λέγεται', g.reasons!.some(x => x.code === 'ours_estimated'));
 }
 
 // ═══ ΣΥΝΙΔΙΟΚΤΗΣΙΑ ═══════════════════════════════════════════════════════
 {
-  // Το έντυπο δείχνει ολόκληρο, εμείς το 50%.
-  const r = reconcileE2([row({ grossIncome: 3600, ownershipPct: 50 })], [dec({ gross: 7200 })]);
+  // Η ΑΑΔΕ γράφει ολόκληρο το μίσθωμα με 100%, η εφαρμογή το 50%.
+  const r = reconcilePrefilled([app({ ownershipPct: 50, gross: 3600 })], [aade({ gross: 7200, ownershipPct: 100 })]);
   const l = r.lines[0];
-  ok('εξηγεί με τη συνιδιοκτησία', codes(l).includes('ownership'));
-  ok('λέει το ποσοστό', /50%/.test(l.reasons[0].text));
-  eq('εξηγεί όλη τη διαφορά', l.unexplained, 0);
-}
-{
-  // 50% αλλά τα νούμερα ΔΕΝ πέφτουν στην αναλογία → δεν το επικαλούμαστε.
-  const r = reconcileE2([row({ grossIncome: 3000, ownershipPct: 50 })], [dec({ gross: 7200 })]);
-  ok('αναλογία που δεν ταιριάζει: κανένας λόγος συνιδιοκτησίας',
-    !codes(r.lines[0]).includes('ownership'));
-  ok('και μένει ανεξήγητο', Math.abs(r.lines[0].unexplained!) > TOLERANCE);
-}
-{
-  // 100% ιδιοκτησία → η εξήγηση δεν έχει νόημα ποτέ.
-  const r = reconcileE2([row({ grossIncome: 3600 })], [dec({ gross: 7200 })]);
-  ok('πλήρης ιδιοκτησία: κανένας λόγος συνιδιοκτησίας', !codes(r.lines[0]).includes('ownership'));
+  ok('ποσό και ποσοστό', kinds(l).includes('gross') && kinds(l).includes('share'));
+  const g = l.findings.find(f => f.kind === 'gross')!;
+  eq('εξηγείται από τη συνιδιοκτησία', g.reasons?.[0].code, 'ownership');
+  eq('ολόκληρο στο έντυπο: διόρθωση στο myAADE', g.fixIn, 'aade');
+  ok('η ενέργεια λέει το μερίδιο', /3\.600,00€/.test(g.action) && /50,00%/.test(g.action));
+  const s = l.findings.find(f => f.kind === 'share')!;
+  eq('ποσοστό: τα δύο νούμερα', [s.ours, s.theirs], ['50,00%', '100,00%']);
 }
 
-// ═══ ΒΡΑΧΥΧΡΟΝΙΑ: ΠΡΟΜΗΘΕΙΑ ΚΑΙ ΤΕΛΟΣ ═══════════════════════════════════
+// ═══ ΑΦΜ ΜΙΣΘΩΤΗ ═════════════════════════════════════════════════════════
 {
-  // Ο χρήστης κατέγραψε payout· η πλατφόρμα δήλωσε ακαθάριστα.
-  const r = reconcileE2(
-    [row({ grossIncome: 8500 })], [dec({ gross: 10000 })],
-    [ev({ shortTerm: true, platformFees: 1500 })],
-  );
-  const l = r.lines[0];
-  ok('εξηγεί με την προμήθεια', codes(l).includes('platform_fee'));
-  ok('λέει ότι είναι δαπάνη, όχι μείωση εσόδου', /δαπάνη σου, όχι μείωση/.test(l.reasons[0].text));
-  eq('εξηγεί τη διαφορά', l.unexplained, 0);
+  // Ιδιος ΑΤΑΚ, άλλος μισθωτής στην ΑΑΔΕ: ζευγάρι κατά ΑΤΑΚ, εύρημα ΑΦΜ.
+  const r = reconcilePrefilled([app()], [aade({ tenantAfm: T2 })]);
+  eq('ζευγάρι κατά ΑΤΑΚ', r.lines[0].matchedBy, 'atak');
+  const f = r.lines[0].findings.find(x => x.kind === 'tenant_afm')!;
+  eq('δύο έγκυρα ΑΦΜ: έλεγχος', f.fixIn, 'check');
+  ok('λέει και τα δύο ΑΦΜ', f.text.includes(T1) && f.text.includes(T2));
 }
 {
-  // ΙΔΙΑ δεδομένα αλλά ΜΑΚΡΟΧΡΟΝΙΑ → η προμήθεια δεν υπάρχει ως έννοια.
-  const r = reconcileE2(
-    [row({ grossIncome: 8500 })], [dec({ gross: 10000 })],
-    [ev({ shortTerm: false, platformFees: 1500 })],
-  );
-  ok('μακροχρόνια: καμία επίκληση προμήθειας', !codes(r.lines[0]).includes('platform_fee'));
-}
-{
-  // Η προμήθεια δεν ταιριάζει στο μέγεθος της διαφοράς → δεν την επικαλούμαστε.
-  const r = reconcileE2(
-    [row({ grossIncome: 8500 })], [dec({ gross: 10000 })],
-    [ev({ shortTerm: true, platformFees: 200 })],
-  );
-  ok('προμήθεια εκτός μεγέθους: δεν μπαίνει', !codes(r.lines[0]).includes('platform_fee'));
-}
-{
-  const r = reconcileE2(
-    [row({ grossIncome: 9700 })], [dec({ gross: 10000 })],
-    [ev({ shortTerm: true, climateLevy: 300 })],
-  );
-  ok('εξηγεί με το τέλος ανθεκτικότητας', codes(r.lines[0]).includes('climate_levy'));
-  ok('και λέει ότι δεν είναι έσοδό σου', /Δεν είναι έσοδό σου/.test(r.lines[0].reasons[0].text));
+  const r = reconcilePrefilled([app()], [aade({ tenantAfm: BAD })]);
+  const f = r.lines[0].findings.find(x => x.kind === 'tenant_afm')!;
+  eq('άκυρο ΑΦΜ στην ΑΑΔΕ: διόρθωση στο myAADE', f.fixIn, 'aade');
+  ok('και το λέει άκυρο', /άκυρο/.test(f.text));
+  const r2 = reconcilePrefilled([app({ tenantAfm: BAD })], [aade()]);
+  eq('άκυρο ΑΦΜ στην εφαρμογή: διόρθωση στην εφαρμογή', r2.lines[0].findings.find(x => x.kind === 'tenant_afm')!.fixIn, 'app');
 }
 
-// ═══ ΑΝΕΙΣΠΡΑΚΤΑ: ΠΡΟΕΙΔΟΠΟΙΗΣΗ, ΟΧΙ ΕΞΗΓΗΣΗ ════════════════════════════
+// ═══ ΑΡΙΘΜΟΣ ΔΗΛΩΣΗΣ ════════════════════════════════════════════════════
 {
-  const r = reconcileE2(
-    [row({ grossIncome: 6000 })], [dec({ gross: 7200 })],
-    [ev({ unpaid: 1200 })],
-  );
-  const l = r.lines[0];
-  ok('αναφέρει τα ανείσπρακτα', codes(l).includes('unpaid'));
-  const unpaidReason = l.reasons.find(x => x.code === 'unpaid')!;
-  // ΤΟ ΚΡΙΣΙΜΟ: τα ανείσπρακτα ΔΕΝ δικαιολογούν μικρότερο ποσό. Το Ε2 δηλώνει
-  // δεδουλευμένα. Αν τους αποδίδαμε ποσό, θα λέγαμε στον χρήστη «είσαι εντάξει»
-  // ενώ υποδηλώνει.
-  eq('ΔΕΝ αποδίδεται ποσό στα ανείσπρακτα', unpaidReason.amount, null);
-  ok('και το λέει ρητά', /ΔΕΔΟΥΛΕΥΜΕΝΑ/.test(unpaidReason.text));
-  ok('η διαφορά μένει ανεξήγητη', Math.abs(l.unexplained!) > TOLERANCE);
-  ok('και στέλνει στον λογιστή', /λογιστή/.test(l.action));
+  // Χωρίς ΑΤΑΚ στην ΑΑΔΕ, ταύτιση με τον αριθμό δήλωσης.
+  const r = reconcilePrefilled([app({ declRef: '45678912', tenantAfm: null })], [aade({ atak: null, tenantAfm: null, leaseDeclRef: '45678912' })]);
+  eq('ζευγάρι κατά αριθμό δήλωσης', [r.lines[0].matchedBy, r.status], ['decl', 'matches']);
+  const r2 = reconcilePrefilled([app({ declRef: '45678912' })], [aade({ leaseDeclRef: '45678999' })]);
+  const f = r2.lines[0].findings.find(x => x.kind === 'decl_ref')!;
+  eq('άλλος αριθμός δήλωσης: διόρθωση στην εφαρμογή', f.fixIn, 'app');
+  ok('με τον σωστό αριθμό μέσα', f.action.includes('45678999'));
 }
 
-// ═══ ΟΤΑΝ ΔΕΝ ΞΕΡΟΥΜΕ, ΤΟ ΛΕΜΕ ══════════════════════════════════════════
+// ═══ ΛΕΙΠΕΙ ΑΠΟ ΤΗ ΜΙΑ ΠΛΕΥΡΑ ═════════════════════════════════════════════
 {
-  const r = reconcileE2(
-    [row({ grossIncome: 6900 })], [dec({ gross: 7200 })],
-    [ev({ unresolvedAmounts: 900 })],
+  const r = reconcilePrefilled(
+    [app(), app({ key: 'p2:0', propertyId: 'p2', propertyName: 'Ερμού', atak: '01234567891', tenantAfm: T2, gross: 4800 })],
+    [aade(), aade({ atak: '01234567899', tenantAfm: T3, gross: 3000, months: 5 })],
   );
-  const l = r.lines[0];
-  ok('λέει ότι η βάση των ποσών είναι απροσδιόριστη', codes(l).includes('unresolved_basis'));
-  eq('χωρίς να αποδίδει ποσό', l.reasons.find(x => x.code === 'unresolved_basis')!.amount, null);
-  ok('και ότι η σύγκριση δεν είναι ασφαλής', /δεν είναι ασφαλής/.test(l.reasons.find(x => x.code === 'unresolved_basis')!.text));
+  eq('δύο διαφορές: μία από κάθε πλευρά', r.differences, 2);
+  const inAade = r.lines.find(l => l.status === 'missing_in_aade')!;
+  const inApp = r.lines.find(l => l.status === 'missing_in_app')!;
+  eq('λείπει από την ΑΑΔΕ: διόρθωση στο myAADE', inAade.findings[0].fixIn, 'aade');
+  ok('με το ποσό της εφαρμογής', /4\.800,00€/.test(inAade.findings[0].text));
+  eq('λείπει από την εφαρμογή: καταχώρηση', inApp.findings[0].fixIn, 'app');
+  ok('με το ποσό, τους μήνες και τον μισθωτή της ΑΑΔΕ', /3\.000,00€/.test(inApp.findings[0].text) && /5 μήνες/.test(inApp.findings[0].text) && inApp.findings[0].text.includes(T3));
+  eq('πρώτα όσα λείπουν από την εφαρμογή', r.lines[0].status, 'missing_in_app');
+  eq('σύνολα', [r.totalOurs, r.totalTheirs, r.totalDiff], [12000, 10200, 1800]);
+  ok('η επικεφαλίδα λέει και τα δύο σύνολα', /10\.200,00€/.test(r.headline!) && /12\.000,00€/.test(r.headline!));
 }
 {
-  const r = reconcileE2([row({ grossIncome: 6900, flags: ['Ακαθάριστο εισόδημα: εκτίμηση (μηνιαίο × μήνες)'] })], [dec({ gross: 7200 })]);
-  ok('παραδέχεται ότι το δικό μας είναι εκτίμηση', codes(r.lines[0]).includes('ours_estimated'));
-  eq('χωρίς ποσό', r.lines[0].reasons.find(x => x.code === 'ours_estimated')!.amount, null);
-}
-{
-  // Καμία απόδειξη → ΚΑΜΙΑ εξήγηση. Αυτό είναι το σημαντικότερο τεστ του αρχείου.
-  const r = reconcileE2([row({ grossIncome: 6900 })], [dec({ gross: 7200 })]);
-  eq('χωρίς στοιχεία, καμία εφευρεμένη εξήγηση', r.lines[0].reasons.length, 0);
-  eq('και όλη η διαφορά μένει ανεξήγητη', r.lines[0].unexplained, -300);
-  ok('η ενέργεια το λέει καθαρά', /δεν εξηγούνται|χωρίς εξήγηση/.test(r.lines[0].action));
+  // Κενό ακίνητο χωρίς γραμμή στην ΑΑΔΕ: δεν είναι διαφορά.
+  const r = reconcilePrefilled([app({ gross: 0, tenantAfm: null, months: null })], [aade({ atak: '01234567891' })]);
+  eq('κενό χωρίς ζευγάρι: πληροφορία', r.lines.find(l => l.app)?.status, 'vacant');
 }
 
-// ═══ ΤΑΥΤΙΣΗ ΜΟΝΟ ΜΕ ΑΤΑΚ ════════════════════════════════════════════════
+// ═══ ΔΥΟ ΜΙΣΘΩΣΕΙΣ ΣΤΟ ΙΔΙΟ ΑΚΙΝΗΤΟ ══════════════════════════════════════
 {
-  const r = reconcileE2([row({ atak: '' })], [dec()]);
-  eq('χωρίς ΑΤΑΚ δεν γίνεται σύγκριση', r.lines[0].verdict, 'only_ours');
-  ok('και εξηγεί γιατί', codes(r.lines[0]).includes('no_atak'));
-  ok('η γραμμή του εντύπου εμφανίζεται χωριστά', r.lines.some(l => l.verdict === 'only_theirs'));
-}
-{
-  // Κενά και πεζά/κεφαλαία δεν πρέπει να χαλάνε την ταύτιση.
-  const r = reconcileE2([row({ atak: ' 111 111 11111 ' })], [dec({ atak: '11111111111' })]);
-  eq('ο ΑΤΑΚ κανονικοποιείται', r.lines[0].verdict, 'match');
-}
-{
-  // Το πιο επικίνδυνο: το κράτος ξέρει εισόδημα που εμείς δεν έχουμε.
-  const r = reconcileE2([], [dec({ gross: 4800 })]);
-  eq('γραμμή εντύπου χωρίς δικό μας ακίνητο', r.lines[0].verdict, 'only_theirs');
-  ok('και λέει τι να κάνει', /Πρόσθεσέ το|διόρθωση/.test(r.lines[0].action));
-  eq('μετράει στα σύνολα του εντύπου', r.totalTheirs, 4800);
+  // Χωρίς ΑΦΜ στην ΑΑΔΕ: η ταύτιση γίνεται με την επικάλυψη διαστημάτων.
+  const a1 = app({ key: 'p1:0', tenantAfm: null, months: 6, gross: 3600, from: '2025-01-01', to: '2025-06-30' });
+  const a2 = app({ key: 'p1:1', tenantAfm: null, months: 6, gross: 4200, from: '2025-07-01', to: '2025-12-31' });
+  const d1 = aade({ tenantAfm: null, months: 6, gross: 4200, from: '2025-07-01', to: '2025-12-31' });
+  const d2 = aade({ tenantAfm: null, months: 6, gross: 3000, from: '2025-01-01', to: '2025-06-30' });
+  const r = reconcilePrefilled([a1, a2], [d1, d2]);
+  const first = r.lines.find(l => l.app?.key === 'p1:0')!;
+  eq('η πρώτη μίσθωση ταιριάζει με το πρώτο εξάμηνο', first.aade?.gross, 3000);
+  eq('και διαφέρει κατά 600', first.findings[0].diff, 600);
+  eq('η δεύτερη συμφωνεί', r.lines.find(l => l.app?.key === 'p1:1')!.status, 'match');
+  // Χωρίς ημερομηνίες: δεν μαντεύουμε.
+  const r2 = reconcilePrefilled([{ ...a1, from: null, to: null }, { ...a2, from: null, to: null }], [{ ...d1, from: null, to: null }, { ...d2, from: null, to: null }]);
+  eq('χωρίς ημερομηνίες: καμία ταύτιση στην τύχη', r2.lines.filter(l => l.matchedBy).length, 0);
 }
 
-// ═══ ΧΑΡΤΟΦΥΛΑΚΙΟ ════════════════════════════════════════════════════════
+// ═══ ΣΤΗΛΗ ═════════════════════════════════════════════════════════════════
 {
-  const r = reconcileE2(
-    [row({ atak: 'A1', grossIncome: 7200 }), row({ atak: 'A2', grossIncome: 4800 })],
-    [dec({ atak: 'A1', gross: 7200 }), dec({ atak: 'A2', gross: 5400 })],
-  );
-  eq('σύνολα χαρτοφυλακίου', [r.totalOurs, r.totalTheirs], [12000, 12600]);
-  eq('μία γραμμή χρειάζεται προσοχή', r.needsAttention, 1);
-  eq('η πρώτη συμφωνεί', r.lines[0].verdict, 'match');
-}
-{
-  // Τα σύνολα συμφωνούν αλλά οι γραμμές όχι — παγίδα που περνά απαρατήρητη.
-  const r = reconcileE2(
-    [row({ atak: 'A1', grossIncome: 8000 }), row({ atak: 'A2', grossIncome: 4000 })],
-    [dec({ atak: 'A1', gross: 7000 }), dec({ atak: 'A2', gross: 5000 })],
-  );
-  eq('συνολική διαφορά μηδέν', r.totalDiff, 0);
-  eq('αλλά δύο γραμμές διαφέρουν', r.needsAttention, 2);
-  ok('και η επικεφαλίδα το λέει', /σύνολα συμφωνούν/.test(r.headline || ''));
+  const r = reconcilePrefilled([app({ incomeColumn: 15 })], [aade()]);
+  ok('ιδιοχρησιμοποίηση απέναντι σε εκμίσθωση: εύρημα στήλης', kinds(r.lines[0]).includes('column'));
 }
 
-// ═══ ΑΝΤΟΧΗ ══════════════════════════════════════════════════════════════
+// ═══ ΑΠΟ ΤΟ ΠΡΑΓΜΑΤΙΚΟ buildE2Row ═════════════════════════════════════════
 {
-  const r = reconcileE2([], []);
-  eq('κενή είσοδος δεν σκάει', r.lines.length, 0);
-  eq('χωρίς επικεφαλίδα όταν δεν υπάρχει τι να πει', r.headline, null);
-  eq('μηδενικά σύνολα', [r.totalOurs, r.totalTheirs, r.totalDiff], [0, 0, 0]);
-}
-{
-  const r = reconcileE2([row({ grossIncome: 0 })], [dec({ gross: 0 })]);
-  eq('μηδενικά και στις δύο πλευρές → match', r.lines[0].verdict, 'match');
-}
-{
-  // Κανένας λόγος δεν επιτρέπεται να είναι κενός ή χωρίς κωδικό.
-  const r = reconcileE2(
-    [row({ grossIncome: 6000, months: 10, ownershipPct: 50, flags: ['Ακαθάριστο εισόδημα: εκτίμηση'] })],
-    [dec({ gross: 7200, months: 12 })],
-    [ev({ shortTerm: true, platformFees: 1200, unpaid: 300, unresolvedAmounts: 100 })],
-  );
-  const l = r.lines[0];
-  ok('κάθε λόγος έχει κωδικό', l.reasons.every(x => x.code.length > 0));
-  ok('κάθε λόγος έχει κείμενο με ουσία', l.reasons.every(x => x.text.length > 25));
-  ok('κανένας διπλός κωδικός', new Set(l.reasons.map(x => x.code)).size === l.reasons.length);
-  // Οι ποσοτικοί λόγοι μπαίνουν πριν τους ποιοτικούς.
-  const firstQualitative = l.reasons.findIndex(x => x.amount == null);
-  const lastQuantitative = l.reasons.map(x => x.amount).lastIndexOf(l.reasons.filter(x => x.amount != null).slice(-1)[0]?.amount ?? null);
-  ok('πρώτα όσα εξηγούν ευρώ', firstQualitative === -1 || firstQualitative >= lastQuantitative);
+  const p: E2Property = { id: 'p1', name: 'Πατησίων', atak: '01234567890', address: 'Πατησίων 10', postal_code: '10434', ownership: 100, prop_type: 'apartment', status_detail: 'rented', target_rent: 600 };
+  const tenants = [
+    { id: 't1', property_id: 'p1', afm: T1, full_name: 'Α', monthly_rent: 500, lease_start: '2024-02-01', lease_end: '2025-05-31', lease_type: 'residential' },
+    { id: 't2', property_id: 'p1', afm: T2, full_name: 'Β', monthly_rent: 650, lease_start: '2025-06-01', lease_end: '2027-05-31', lease_type: 'residential' },
+  ];
+  const payments = [1, 2, 3, 4, 5].map(m => ({ property_id: 'p1', tenant_id: 't1', amount: 500, base_rent: 500, period_year: 2025, period_month: m, paid: true }));
+  const row = buildE2Row(p, tenants, payments, '094014201', 2025);
+  const lines = appLinesOf(p, row, { declRef: '45678912' });
+  eq('δύο μισθώσεις, δύο γραμμές', lines.map(l => [l.tenantAfm, l.gross, l.months, l.estimated]), [[T1, 2500, 5, false], [T2, 4550, 7, true]]);
+  eq('ημερομηνίες σε ISO', [lines[0].from, lines[0].to, lines[1].from], ['2025-01-01', '2025-05-31', '2025-06-01']);
+  eq('ο αριθμός δήλωσης πάει στην τρέχουσα μίσθωση', lines.map(l => l.declRef), [null, '45678912']);
+  const r = reconcilePrefilled(lines, [
+    aade({ tenantAfm: T1, months: 5, gross: 2500, from: '2025-01-01', to: '2025-05-31' }),
+    aade({ tenantAfm: T2, months: 7, gross: 4550, from: '2025-06-01', to: '2025-12-31', leaseDeclRef: '45678912' }),
+  ]);
+  eq('ίδια με την ΑΑΔΕ: συμφωνούν και οι δύο', [r.status, r.matched], ['matches', 2]);
 }
 
 console.log(fail === 0 ? `✓ e2Reconcile: ${pass} έλεγχοι πέρασαν` : `✗ e2Reconcile: ${fail} απέτυχαν από ${pass + fail}`);
-if (fail > 0) process.exit(1);
+process.exit(fail ? 1 : 0);

@@ -128,6 +128,8 @@ export interface Requirement {
  * έγινε μέσα στη χρήση (δες `statusesForYear`). Χωρίς αυτό ισχύει μόνο το σήμερα.
  */
 export interface DossierProperty {
+  /** Το ακίνητο της εφαρμογής: ο φάκελος ανά ΑΦΜ κρατά μόνο τα δικά του. */
+  id?: string;
   name: string;
   status: PropertyStatus;
   yearStatuses?: readonly PropertyStatus[];

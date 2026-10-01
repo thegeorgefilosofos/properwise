@@ -10,6 +10,7 @@ import { XLSX, setCell, sheetFinish } from './xlsxStyle';
 import { FMT, S, ROW, type Cell } from './sheetFormat';
 import { E2_OFFICIAL_HEADERS, E2_NUM_COLS, e2OfficialRows, buildE2Row, buildE1Summary, type E2Stay, E1_HEADERS, E1_CODES_NOTE, E2_INSTRUCTIONS, type E1Summary, type E2Property, type E2Tenant, type E2Payment, type E2RowDetail } from '@/lib/billing/e2';
 import { fe } from '@/lib/core/format';
+import { afmGroups } from './e2Compare';
 
 const NCOLS = E2_OFFICIAL_HEADERS.length; // 19
 /** Η κεφαλίδα του φύλλου που μαζεύει τα ακίνητα χωρίς ΑΦΜ ιδιοκτήτη. */
@@ -126,7 +127,7 @@ export async function loadE2Rows(
             leasesByProp: Map<string, E2Tenant[]>; paymentsByProp: Map<string, E2Payment[]>;
             afmByProp: Map<string, string>; staysByProp: Map<string, E2Stay[]> }> {
   const properties = await propertyStore.list<E2Property>(supabase, userId, {
-    columns: 'id, name, atak, address, postal_code, ownership, prop_type, status_detail, rental_mode, target_rent, sqm, floor',
+    columns: 'id, name, ama, atak, address, postal_code, ownership, prop_type, status_detail, rental_mode, target_rent, sqm, floor',
     orderBy: 'created_at',
   });
   if (!properties.length) {
@@ -172,18 +173,6 @@ export async function loadE2Rows(
 /** ΑΦΜ χωρίς κενά, για να μη γίνουν δύο ομάδες ο ίδιος άνθρωπος. */
 const normAfm = (v: string | null | undefined): string => String(v ?? '').replace(/\s+/g, '');
 
-/** Ακίνητα ανά υπόχρεο, με τη σειρά που εμφανίζονται· όσα δεν έχουν ΑΦΜ στο τέλος. */
-function groupByOwner(properties: readonly E2Property[], afmByProp: ReadonlyMap<string, string>): { afm: string; idx: number[] }[] {
-  const groups = new Map<string, number[]>();
-  properties.forEach((p, i) => {
-    const afm = afmByProp.get(p.id) || '';
-    const g = groups.get(afm);
-    if (g) g.push(i); else groups.set(afm, [i]);
-  });
-  return [...groups.entries()]
-    .sort(([a], [b]) => Number(a === '') - Number(b === ''))
-    .map(([afm, idx]) => ({ afm, idx }));
-}
 
 /** Όνομα φύλλου μοναδικό και ως 31 χαρακτήρες (όριο του Excel). */
 function sheetName(wanted: string, taken: Set<string>): string {
@@ -252,7 +241,8 @@ export function buildE2Workbook(
 
   const wb = XLSX.utils.book_new();
   const taken = new Set<string>();
-  const groups = groupByOwner(properties, afmByProp);
+  // Η ΟΜΑΔΟΠΟΙΗΣΗ ΕΙΝΑΙ ΚΟΙΝΗ ΜΕ ΤΗ ΣΥΓΚΡΙΣΗ: ίδιο ΑΦΜ, ίδια ακίνητα, ίδια σειρά.
+  const groups = afmGroups({ properties, afmByProp });
   const single = groups.length === 1;
   const label = (afm: string) => (afm ? `ΑΦΜ ${afm}` : 'χωρίς ΑΦΜ');
   /** Για το φύλλο ελέγχου: σε ποιο φύλλο και σε ποιο α/α βρίσκεται κάθε ακίνητο. */
