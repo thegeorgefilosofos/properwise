@@ -15,10 +15,18 @@
 //      αντιστοίχιση γίνεται κατά στήλη. Χωρίς επικεφαλίδες, όπως το 1.
 //   3. ΠΡΟΒΟΛΗ ΛΕΠΤΟΜΕΡΕΙΩΝ, όπου κάθε πεδίο είναι «Ετικέτα: τιμή».
 //
-// Οι στήλες είναι του επίσημου εντύπου (lib/billing/e2.ts, E2_OFFICIAL_HEADERS):
+// Οι στήλες είναι του επίσημου εντύπου (lib/billing/e2.ts, E2_COLUMNS):
 // 2 διεύθυνση, 4 κατηγορία, 6 μισθωτής, 7 ΑΦΜ, 8 και 9 διάστημα, 10 μήνες,
-// 11 μηνιαίο, 12 ποσοστό, 13 έως 16 ακαθάριστο, 17 είδος, 19 αριθμός δήλωσης
-// μίσθωσης. Ο ΑΤΑΚ, όπου εμφανίζεται, διαβάζεται επίσης.
+// 11 μηνιαίο, 12 ποσοστό, 13 έως 16 ακαθάριστο, 17 είδος, 18 παροχή ρεύματος,
+// 19 αριθμός δήλωσης μίσθωσης. Ο ΑΤΑΚ, όπου εμφανίζεται, διαβάζεται επίσης.
+//
+// Η ΣΕΙΡΑ ΤΟΥ ΕΝΤΥΠΟΥ (Φ-01.002/Έκδοση 2026). Το έντυπο τυπώνει τις στήλες
+// από αριστερά προς τα δεξιά ως 1, 2, 3, 4, 5, 17, 18, 6, 7, 19, 8, 9, 10, 11,
+// 12, 13, 14, 15, 16: οι 17 έως 19 μπήκαν ανάμεσα. Ο αναγνώστης θεωρούσε το
+// πρώτο εννιαψήφιο της γραμμής ΑΦΜ μισθωτή, οπότε στην εκτύπωση της νέας
+// έκδοσης έπαιρνε τον αριθμό παροχής ρεύματος (στ. 18, πριν από τον μισθωτή)
+// για ΑΦΜ και έχανε τον αριθμό δήλωσης (στ. 19), που πήγε πριν από τις
+// ημερομηνίες.
 //
 // ΚΑΜΙΑ ΣΙΩΠΗΛΗ ΜΑΝΤΕΨΙΑ. Κάθε γραμμή επιστρέφει με τα προβλήματά της
 // (`issues`) και με σημαία `check` όταν κάποιο πεδίο βγήκε από τη θέση του και
@@ -52,6 +60,8 @@ export interface AadeE2Row {
   incomeColumn: E2IncomeColumn;
   /** Αριθμός Δήλωσης Πληροφοριακών Στοιχείων Μίσθωσης (στ. 19). */
   leaseDeclRef: string | null;
+  /** Αριθμός παροχής ρεύματος (στ. 18, Φ-01.002/Έκδοση 2026), μόνο ψηφία. */
+  powerSupplyNo?: string | null;
 }
 
 export interface ParsedE2Row extends AadeE2Row {
@@ -104,11 +114,12 @@ const RULES: [Field, RegExp][] = [
   ['g15', /ΙΔΙΟΧΡΗΣ/],
   ['g16', /ΑΝΕΙΣΠΡΑΚΤ/],
   ['g13', /ΑΚΑΘΑΡΙΣΤ|ΕΚΜΙΣΘΩΣΗ|ΕΙΣΟΔΗΜΑ/],
-  ['category', /ΚΑΤΗΓΟΡΙΑ/],
+  // «Κατηγ.» και «Επιφάν.» είναι οι σύντομες επικεφαλίδες του Φ-01.002/Έκδοση 2026.
+  ['category', /ΚΑΤΗΓ/],
   ['tenantName', /ΜΙΣΘΩΤ|ΕΝΟΙΚΙΑΣΤ|ΟΝΟΜΑΤΕΠΩΝΥΜΟ|ΕΠΩΝΥΜΙΑ/],
   ['address', /ΔΙΕΥΘΥΝΣΗ|ΤΟΠΟΘΕΣΙΑ|ΟΔΟΣ/],
   ['floor', /ΟΡΟΦΟΣ|ΘΕΣΗ/],
-  ['sqm', /ΕΠΙΦΑΝΕΙΑ|ΤΜ$|ΤΕΤΡΑΓΩΝΙΚ/],
+  ['sqm', /ΕΠΙΦΑΝ|ΤΜ$|ΤΕΤΡΑΓΩΝΙΚ/],
   ['rowNo', /^Α\/?Α$|^ΑΑ$/],
 ];
 
@@ -134,6 +145,11 @@ const KIND_COLUMN: [RegExp, E2IncomeColumn | 'vacant'][] = [
   [/ΔΩΡΕΑΝ/, 14],
   [/^ΚΕΝΟ|ΜΗ ΜΙΣΘΩΜΕΝΟ|ΚΕΝΟ ΑΚΙΝΗΤΟ/, 'vacant'],
 ];
+
+/** Η στήλη 17 του Φ-01.002/Έκδοση 2026: το είδος της μίσθωσης και η χρήση. */
+const USE_TEXT = /ΜΙΣΘΩΣΗ|ΒΡΑΧΥΧΡΟΝΙΑ|ΠΑΡΑΧΩΡΗΣΗ|39Α/;
+/** Η στήλη 3: ισόγειο, 1ος όροφος κ.λπ. */
+const FLOOR_TEXT = /^(ΙΣΟΓΕΙΟ|ΥΠΟΓΕΙΟ|ΗΜΙΥΠΟΓΕΙΟ|ΗΜΙΟΡΟΦΟΣ|ΡΕΤΙΡΕ|ΔΩΜΑ|\d{1,2}ΟΣ( ΟΡΟΦΟΣ| ΟΡ)?)$/;
 
 const cleanDigits = (s: string): string => s.replace(/[\s.]/g, '');
 const money = (s: string): number | null => {
@@ -167,7 +183,7 @@ export function validateAadeRow(r: AadeE2Row, year?: number | null): string[] {
 const blankRow = (): AadeE2Row => ({
   rowNo: null, atak: null, address: null, category: null, tenantName: null, tenantAfm: null,
   from: null, to: null, months: null, monthlyRent: null, ownershipPct: null,
-  gross: 0, incomeColumn: 13, leaseDeclRef: null,
+  gross: 0, incomeColumn: 13, leaseDeclRef: null, powerSupplyNo: null,
 });
 
 /** Μία τιμή στο πεδίο της. Επιστρέφει false όταν η τιμή δεν είχε τη μορφή του πεδίου. */
@@ -196,7 +212,9 @@ function assign(row: AadeE2Row & { _g: Partial<Record<13 | 14 | 15 | 16, number>
       return true;
     }
     case 'decl': { const d = v.replace(/\s/g, ''); if (!/\d/.test(d)) return false; row.leaseDeclRef = d; return true; }
-    default: return true; // θέση, επιφάνεια, παροχή: δεν συγκρίνονται
+    // Στ. 18 (Φ-01.002/Έκδοση 2026): μόνο ψηφία, όσα γράφει η ΑΑΔΕ.
+    case 'power': { const d = v.replace(/[\s.\-/]/g, ''); if (!/^\d+$/.test(d)) return false; row.powerSupplyNo = d; return true; }
+    default: return true; // θέση, επιφάνεια: δεν συγκρίνονται
   }
 }
 
@@ -242,6 +260,12 @@ function splitCells(line: string, sep: string): string[] {
   return line.split(sep).map(c => c.trim());
 }
 
+function isColumnNumberRow(cells: readonly string[]): boolean {
+  const vals = cells.filter(c => c !== '');
+  return vals.length >= 8 && vals.every(c => /^\d{1,2}$/.test(c) && Number(c) >= 1 && Number(c) <= 19)
+    && new Set(vals).size === vals.length;
+}
+
 function tableLayout(lines: readonly string[], year: number | null): { rows: ParsedE2Row[]; unread: string[] } | null {
   const sep = lines.some(l => l.includes('\t')) ? '\t' : lines.some(l => (l.match(/;/g) || []).length >= 4) ? ';' : null;
   if (!sep) return null;
@@ -260,8 +284,11 @@ function tableLayout(lines: readonly string[], year: number | null): { rows: Par
   const rows: ParsedE2Row[] = [];
   const unread: string[] = [];
   for (const line of lines.slice(headerAt + 1)) {
-    if (!/\d/.test(line) || /ΣΥΝΟΛ/.test(fold(line))) continue;
+    if (!/\d/.test(line) || /ΣΥΝΟΛ|ΑΘΡΟΙΣΜΑ/.test(fold(line))) continue;
     const cells = splitCells(line, sep);
+    // Η σειρά με τους αριθμούς των στηλών κάτω από τις επικεφαλίδες (1, 2, 3,
+    // 4, 5, 17, 18, 6, …, Φ-01.002/Έκδοση 2026) δεν είναι γραμμή του εντύπου.
+    if (isColumnNumberRow(cells)) continue;
     // ΟΤΑΝ ΤΑ ΚΕΛΙΑ ΔΕΝ ΣΤΟΙΧΙΖΟΝΤΑΙ ΜΕ ΤΙΣ ΕΠΙΚΕΦΑΛΙΔΕΣ, Η ΘΕΣΗ ΔΕΝ ΛΕΕΙ ΤΙΠΟΤΑ.
     // Το PDF ενώνει γειτονικά κελιά και παραλείπει τα κενά: τότε η γραμμή
     // διαβάζεται από τη μορφή των τιμών της, όπως στο ελεύθερο κείμενο.
@@ -323,7 +350,7 @@ interface Tok { t: string; cell: number; i: number }
 
 function textRow(line: string, year: number | null): ParsedE2Row | null {
   const f = fold(line);
-  if (/ΣΥΝΟΛ/.test(f)) return null;
+  if (/ΣΥΝΟΛ|ΑΘΡΟΙΣΜΑ/.test(f)) return null;
   // Κελιά: tab, ή δύο και περισσότερα κενά (κείμενο αντιγραμμένο από προβολέα PDF).
   const cells = line.split(/\t| {2,}/).map(c => c.trim()).filter(Boolean);
   const toks: Tok[] = [];
@@ -344,23 +371,50 @@ function textRow(line: string, year: number | null): ParsedE2Row | null {
   if (toks[0] && RE_INT.test(toks[0].t) && cells[0] === toks[0].t) row.rowNo = Number(toks[0].t);
   if (elevens[0]) row.atak = elevens[0].t;
 
-  const firstMoney = moneyToks[0].i;
   const lastMoney = moneyToks[moneyToks.length - 1].i;
   const firstDate = dates[0]?.i ?? Infinity;
   const lastDate = dates.length ? dates[dates.length - 1].i : -1;
   if (dates[0]) row.from = parseDate(dates[0].t);
   if (dates[1]) row.to = parseDate(dates[1].t);
 
-  // ΑΦΜ μισθωτή: εννιαψήφιο ΠΡΙΝ από ημερομηνίες και ποσά. Μετά τα ποσά, ένας
-  // μακρύς αριθμός είναι ο αριθμός δήλωσης μίσθωσης (στ. 19).
-  const afmTok = nines.find(x => x.i < Math.min(firstDate, firstMoney));
+  // ── ΤΑ ΕΝΝΙΑΨΗΦΙΑ ΠΡΙΝ ΑΠΟ ΤΙΣ ΗΜΕΡΟΜΗΝΙΕΣ (Φ-01.002/Έκδοση 2026) ────────
+  // Με τη σειρά του εντύπου: 18 παροχή ρεύματος, 6 μισθωτής, 7 ΑΦΜ, 19 αριθμός
+  // δήλωσης, 8 από. Τρία εννιαψήφια είναι παροχή, ΑΦΜ, δήλωση. Με δύο, το όνομα
+  // του μισθωτή ανάμεσά τους λέει «παροχή και ΑΦΜ»· αλλιώς κρίνει το ψηφίο
+  // ελέγχου του ΑΦΜ. Ένα μόνο είναι ΑΦΜ, εκτός αν ακολουθεί όνομα (τότε είναι
+  // παροχή) ή η γραμμή δηλώνει χρήση χωρίς μισθωτή (ΚΕΝΟ, ιδιοχρησιμοποίηση).
+  // Ό,τι κρίθηκε χωρίς βέβαιο σημάδι σημαδεύει τη γραμμή.
+  const pre = nines.filter(x => x.i < firstDate);
+  const lettersBetween = (a: number, b: number) => toks.some(t => t.i > a && t.i < b && /\p{L}{2,}/u.test(t.t));
+  const noTenantUse = KIND_COLUMN.some(([re]) => re.test(f));
+  let afmTok: Tok | undefined, powerTok: Tok | undefined, declTok: Tok | undefined;
+  if (pre.length >= 3) [powerTok, afmTok, declTok] = pre;
+  else if (pre.length === 2) {
+    const [x, y] = pre;
+    if (lettersBetween(x.i, y.i)) { powerTok = x; afmTok = y; }
+    else if (isValidAfm(x.t) && !isValidAfm(y.t)) { afmTok = x; declTok = y; }
+    else if (!isValidAfm(x.t) && isValidAfm(y.t)) { powerTok = x; afmTok = y; }
+    else { afmTok = x; declTok = y; guessed = true; }
+  } else if (pre.length === 1) {
+    const x = pre[0];
+    const before = Math.min(firstDate, ...moneyToks.filter(m => m.i > x.i).map(m => m.i));
+    if (noTenantUse || lettersBetween(x.i, before)) powerTok = x; else afmTok = x;
+  }
   if (afmTok) row.tenantAfm = afmTok.t;
-  const tail = toks.filter(x => x.i > lastMoney && /^\d{6,12}$/.test(x.t) && x !== elevens[0]);
-  if (tail.length) row.leaseDeclRef = tail[tail.length - 1].t;
+  if (powerTok) row.powerSupplyNo = powerTok.t;
+  // Αριθμός δήλωσης άλλου μήκους, ανάμεσα στο ΑΦΜ και στις ημερομηνίες (στ. 19).
+  declTok ??= afmTok ? toks.find(x => x.i > afmTok!.i && x.i < firstDate && /^\d{6,12}$/.test(x.t) && x.t.length !== 9 && x !== elevens[0]) : undefined;
+  if (declTok) row.leaseDeclRef = declTok.t;
+  else {
+    // Παλιότερες εκτυπώσεις: ο αριθμός δήλωσης μετά τα ποσά.
+    const tail = toks.filter(x => x.i > lastMoney && /^\d{6,12}$/.test(x.t) && x !== elevens[0]);
+    if (tail.length) row.leaseDeclRef = tail[tail.length - 1].t;
+  }
 
   // Μήνες: ο πρώτος μικρός ακέραιος (έως 12) μετά τις ημερομηνίες· χωρίς
-  // ημερομηνίες, μετά τον ΑΦΜ ή τον ΑΤΑΚ και πριν από τα ποσά.
-  const after = lastDate >= 0 ? lastDate : Math.max(afmTok?.i ?? -1, elevens[0]?.i ?? -1);
+  // ημερομηνίες, μετά τον ΑΦΜ, τον αριθμό δήλωσης, την παροχή ή τον ΑΤΑΚ και πριν
+  // από τα ποσά. Η επιφάνεια (στ. 5) είναι πάντα πριν από αυτά και δεν μετρά.
+  const after = lastDate >= 0 ? lastDate : Math.max(afmTok?.i ?? -1, declTok?.i ?? -1, powerTok?.i ?? -1, elevens[0]?.i ?? -1);
   const monthsTok = toks.find(x => x.i > after && x.i < lastMoney && /^\d{1,2}$/.test(x.t) && Number(x.t) <= 12);
   if (monthsTok) row.months = Number(monthsTok.t);
   else guessed = true;
@@ -406,6 +460,10 @@ function textRow(line: string, year: number | null): ParsedE2Row | null {
     const kind = KIND_COLUMN.find(([re]) => re.test(fx));
     if (kind) { if (kind[1] !== 'vacant') row.incomeColumn = kind[1]; continue; }
     if (/^(\d+\s*)?(ΒΡΑΧΥΧΡΟΝΙΑ|ΕΚΜΙΣΘΩΣΗ)/.test(fx) && x.c.length < 40) continue;
+    // Στ. 17 και στ. 3 του Φ-01.002/Έκδοση 2026: είδος μίσθωσης και θέση δεν
+    // είναι ούτε διεύθυνση ούτε μισθωτής.
+    if (USE_TEXT.test(fx) && x.c.length < 60) continue;
+    if (FLOOR_TEXT.test(fx)) continue;
     if (!row.category && CATEGORY.test(fx) && x.c.length < 40) { row.category = x.c; continue; }
     rest.push(x);
   }
@@ -438,7 +496,7 @@ function textLayout(lines: readonly string[], year: number | null): { rows: Pars
   for (const line of lines) {
     const r = textRow(line, year);
     if (r) rows.push(r);
-    else if (/\d{1,3}(\.\d{3})*,\d{2}/.test(line) && !/ΣΥΝΟΛ/.test(fold(line))) unread.push(line);
+    else if (/\d{1,3}(\.\d{3})*,\d{2}/.test(line) && !/ΣΥΝΟΛ|ΑΘΡΟΙΣΜΑ/.test(fold(line))) unread.push(line);
   }
   return { rows, unread };
 }

@@ -180,5 +180,27 @@ const kinds = (l: { findings: { kind: string }[] }) => l.findings.map(f => f.kin
   eq('ίδια με την ΑΑΔΕ: συμφωνούν και οι δύο', [r.status, r.matched], ['matches', 2]);
 }
 
+// ═══ ΣΤΗΛΕΣ 18 ΚΑΙ 19 (Φ-01.002/Έκδοση 2026), ΟΤΑΝ ΤΙΣ ΞΕΡΟΥΝ ΚΑΙ ΟΙ ΔΥΟ ═════
+{
+  const p: E2Property = { id: 'p1', name: 'Πατησίων', atak: '01234567890', address: 'Πατησίων 10', postal_code: '10434', ownership: 100, prop_type: 'apartment', status_detail: 'rented', target_rent: 600, power_supply_no: '123456789017' };
+  const tenants = [
+    { id: 't1', property_id: 'p1', afm: T1, full_name: 'Α', monthly_rent: 500, lease_start: '2024-02-01', lease_end: '2025-05-31', lease_type: 'residential', aade_lease_decl_ref: '11112222' },
+    { id: 't2', property_id: 'p1', afm: T2, full_name: 'Β', monthly_rent: 650, lease_start: '2025-06-01', lease_end: '2027-05-31', lease_type: 'residential', aade_lease_decl_ref: '33334444' },
+  ];
+  const row = buildE2Row(p, tenants, [], '094014201', 2025);
+  const lines = appLinesOf(p, row, { declRef: '99999999' });
+  eq('στ. 19 ανά μίσθωση, όχι ένας ανά ακίνητο', lines.map(l => l.declRef), ['11112222', '33334444']);
+  eq('στ. 18: τα 9 πρώτα ψηφία', lines.map(l => l.powerSupply), ['123456789', '123456789']);
+  const same = reconcilePrefilled(lines, [
+    aade({ tenantAfm: T1, months: 5, gross: 2500, from: '2025-01-01', to: '2025-05-31', leaseDeclRef: '11112222', powerSupplyNo: '123456789' }),
+  ]);
+  ok('ίδια παροχή και ίδιος αριθμός δήλωσης: κανένα εύρημα 18 ή 19', !same.lines.some(l => kinds(l).includes('power_supply') || kinds(l).includes('decl_ref')));
+  const diff = reconcilePrefilled([app({ powerSupply: '123456789', declRef: '11112222' })], [aade({ powerSupplyNo: '223456789', leaseDeclRef: '11119999' })]);
+  ok('διαφορετική παροχή: εύρημα με τα δύο νούμερα', diff.lines[0].findings.some(f => f.kind === 'power_supply' && f.ours === '123456789' && f.theirs === '223456789' && f.fixIn === 'check'));
+  ok('διαφορετικός αριθμός δήλωσης: εύρημα', kinds(diff.lines[0]).includes('decl_ref'));
+  const oneSide = reconcilePrefilled([app({ powerSupply: '123456789' })], [aade({ powerSupplyNo: null })]);
+  ok('παροχή μόνο στη μία πλευρά: καμία σύγκριση', !kinds(oneSide.lines[0]).includes('power_supply'));
+}
+
 console.log(fail === 0 ? `✓ e2Reconcile: ${pass} έλεγχοι πέρασαν` : `✗ e2Reconcile: ${fail} απέτυχαν από ${pass + fail}`);
 process.exit(fail ? 1 : 0);

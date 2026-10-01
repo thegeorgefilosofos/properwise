@@ -45,6 +45,8 @@ interface Draft {
   gross: string;
   column: E2IncomeColumn;
   decl: string;
+  /** Στ. 18 όπως τη διάβασε η ανάγνωση· δεν επεξεργάζεται εδώ, ταξιδεύει ως τη βάση. */
+  power: string;
   /** Σημαδεμένη από την ανάγνωση: κάποιο πεδίο βγήκε από τη θέση του. */
   check: boolean;
   /** Ο χρήστης την κοίταξε και την άλλαξε: η σημαία της ανάγνωσης σβήνει. */
@@ -64,7 +66,7 @@ const toDraft = (r: AadeE2Row, check = false): Draft => ({
   id: ++seq, rowNo: r.rowNo, atak: r.atak ?? '', tenantAfm: r.tenantAfm ?? '', tenantName: r.tenantName ?? '',
   address: r.address ?? '', category: r.category ?? '', from: r.from, to: r.to,
   months: str(r.months), monthly: str(r.monthlyRent), pct: str(r.ownershipPct), gross: str(r.gross || null),
-  column: r.incomeColumn, decl: r.leaseDeclRef ?? '', check, touched: false,
+  column: r.incomeColumn, decl: r.leaseDeclRef ?? '', power: r.powerSupplyNo ?? '', check, touched: false,
 });
 const fromDraft = (d: Draft, i: number): AadeE2Row => ({
   rowNo: d.rowNo ?? i + 1,
@@ -80,6 +82,7 @@ const fromDraft = (d: Draft, i: number): AadeE2Row => ({
   gross: numOrNull(d.gross) ?? 0,
   incomeColumn: d.column,
   leaseDeclRef: d.decl.replace(/\s/g, '') || null,
+  powerSupplyNo: d.power.replace(/\D/g, '') || null,
 });
 
 const COLUMN_OPTIONS = [

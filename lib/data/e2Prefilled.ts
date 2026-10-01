@@ -28,11 +28,11 @@ export interface StoredE2Row extends AadeE2Row {
   updatedAt: string;
 }
 
-const COLUMNS = 'row_no,atak,address,category,tenant_name,tenant_afm,lease_from,lease_to,months,monthly_rent,ownership_pct,gross,income_column,lease_decl_ref,owner_afm,source,uploaded_by,source_file,updated_at';
+const COLUMNS = 'row_no,atak,address,category,tenant_name,tenant_afm,lease_from,lease_to,months,monthly_rent,ownership_pct,gross,income_column,lease_decl_ref,power_supply_no,owner_afm,source,uploaded_by,source_file,updated_at';
 
 const num = (v: number | string | null): number | null => (v == null || v === '' ? null : Number(v));
 
-function fromRow(r: Pick<E2PrefilledRow, 'row_no' | 'atak' | 'address' | 'category' | 'tenant_name' | 'tenant_afm' | 'lease_from' | 'lease_to' | 'months' | 'monthly_rent' | 'ownership_pct' | 'gross' | 'income_column' | 'lease_decl_ref' | 'owner_afm' | 'source' | 'uploaded_by' | 'source_file' | 'updated_at'>): StoredE2Row {
+function fromRow(r: Pick<E2PrefilledRow, 'row_no' | 'atak' | 'address' | 'category' | 'tenant_name' | 'tenant_afm' | 'lease_from' | 'lease_to' | 'months' | 'monthly_rent' | 'ownership_pct' | 'gross' | 'income_column' | 'lease_decl_ref' | 'power_supply_no' | 'owner_afm' | 'source' | 'uploaded_by' | 'source_file' | 'updated_at'>): StoredE2Row {
   return {
     rowNo: r.row_no, atak: r.atak, address: r.address, category: r.category,
     tenantName: r.tenant_name, tenantAfm: r.tenant_afm,
@@ -40,7 +40,7 @@ function fromRow(r: Pick<E2PrefilledRow, 'row_no' | 'atak' | 'address' | 'catego
     to: r.lease_to ? String(r.lease_to).slice(0, 10) : null,
     months: num(r.months), monthlyRent: num(r.monthly_rent), ownershipPct: num(r.ownership_pct),
     gross: Number(r.gross) || 0, incomeColumn: (Number(r.income_column) || 13) as E2IncomeColumn,
-    leaseDeclRef: r.lease_decl_ref, ownerAfm: r.owner_afm,
+    leaseDeclRef: r.lease_decl_ref, powerSupplyNo: r.power_supply_no, ownerAfm: r.owner_afm,
     source: r.source as StoredE2Row['source'], uploadedBy: r.uploaded_by as StoredE2Row['uploadedBy'],
     sourceFile: r.source_file, updatedAt: r.updated_at,
   };
@@ -69,6 +69,8 @@ export async function replacePrefilled(db: Db, o: {
     tenant_name: r.tenantName, tenant_afm: r.tenantAfm, lease_from: r.from, lease_to: r.to,
     months: r.months, monthly_rent: r.monthlyRent, ownership_pct: r.ownershipPct,
     gross: r.gross, income_column: r.incomeColumn, lease_decl_ref: r.leaseDeclRef,
+    // Στ. 18 (Φ-01.002/Έκδοση 2026): μόνο ψηφία, όπως το δέχεται η βάση.
+    power_supply_no: String(r.powerSupplyNo ?? '').replace(/\D/g, '') || null,
   }));
   const { data, error } = await db.rpc('e2_prefilled_replace', {
     p_owner: o.ownerId, p_year: o.year, p_owner_afm: o.ownerAfm, p_source: o.source, p_file: o.file, p_rows: rows,

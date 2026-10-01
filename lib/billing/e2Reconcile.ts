@@ -31,6 +31,7 @@ import type { E2Property, E2RowDetail } from './e2';
 import type { AadeE2Row, E2IncomeColumn } from '@/lib/tax/aadeE2';
 import { isValidAfm } from '@/lib/core/greek';
 import { fe, fp } from '../core/format';
+import { e2PowerSupply } from '@/lib/property/powerSupply';
 
 /**
  * Ανοχή στρογγυλοποίησης, σε ευρώ. Το `buildE2Row` στρογγυλοποιεί το μερίδιο
@@ -61,8 +62,10 @@ export interface AppLeaseLine {
   /** Το ακαθάριστο είναι εκτίμηση (στόχος ή μηνιαίο × μήνες), όχι καταγραφή. */
   estimated: boolean;
   shortTerm: boolean;
-  /** Ο αριθμός δήλωσης μίσθωσης που κατέγραψε ο χρήστης για το ακίνητο. */
+  /** Ο αριθμός δήλωσης μίσθωσης (στ. 19): της μίσθωσης, αλλιώς του ακινήτου. */
   declRef: string | null;
+  /** Ο αριθμός παροχής ρεύματος του ακινήτου (στ. 18), τα 9 πρώτα ψηφία. */
+  powerSupply?: string | null;
   /** Στοιχεία που εξηγούν διαφορές ποσού (μόνο στην πρώτη γραμμή του ακινήτου). */
   platformFees?: number | null;
   climateLevy?: number | null;
@@ -87,7 +90,7 @@ const iso = (dmy: string): string | null => {
  * Ε2. Καμία δεύτερη αριθμητική: ό,τι συγκρίνεται είναι ό,τι θα υποβαλλόταν.
  */
 export function appLinesOf(
-  p: Pick<E2Property, 'id' | 'name' | 'address' | 'atak'>, row: E2RowDetail,
+  p: Pick<E2Property, 'id' | 'name' | 'address' | 'atak' | 'power_supply_no'>, row: E2RowDetail,
   opts: { declRef?: string | null; evidence?: AppEvidence; shortTerm?: boolean } = {},
 ): AppLeaseLine[] {
   const name = (p.name || '').trim() || p.address || p.atak || 'Ακίνητο';
@@ -108,13 +111,16 @@ export function appLinesOf(
     monthsFromRecords: !l.monthsEstimated && l.months !== '',
     estimated: !!l.estimated,
     shortTerm: !!opts.shortTerm,
-    declRef: i === row.lines.length - 1 ? (opts.declRef || null) : null,
+    // Ο αριθμός της ίδιας της μίσθωσης πρώτα (tenants.aade_lease_decl_ref). Ο
+    // αριθμός του ιστορικού είναι ένας ανά ακίνητο και πάει στην τελευταία.
+    declRef: l.declRef || (i === row.lines.length - 1 ? (opts.declRef || null) : null),
+    powerSupply: e2PowerSupply(p.power_supply_no) || null,
     ...(i === 0 ? opts.evidence : {}),
   }));
 }
 
 export type FixIn = 'aade' | 'app' | 'check';
-export type FindingKind = 'missing_in_aade' | 'missing_in_app' | 'gross' | 'column' | 'months' | 'tenant_afm' | 'decl_ref' | 'share';
+export type FindingKind = 'missing_in_aade' | 'missing_in_app' | 'gross' | 'column' | 'months' | 'tenant_afm' | 'decl_ref' | 'power_supply' | 'share';
 
 /** Ενας λόγος που εξηγεί μέρος μιας διαφοράς ποσού, με το ποσό του. */
 export interface Reason { code: string; text: string; amount: number | null }
@@ -320,6 +326,18 @@ function compare(app: AppLeaseLine, aade: AadeE2Row): Finding[] {
       text: `Αριθμός δήλωσης μίσθωσης: η εφαρμογή ${app.declRef}, η ΑΑΔΕ ${aade.leaseDeclRef}.`,
       ours: app.declRef, theirs: aade.leaseDeclRef, diff: null, fixIn: 'app',
       action: `${FIX_LABEL.app}: τον αριθμό τον δίνει η ΑΑΔΕ· γράψε ${aade.leaseDeclRef} στη δήλωση μίσθωσης του ακινήτου.`,
+    });
+  }
+
+  // ── Αριθμός παροχής ρεύματος (στ. 18, Φ-01.002/Έκδοση 2026) ────────────
+  // Συγκρίνονται τα 9 πρώτα ψηφία, όσα ζητά η στήλη· μόνο όταν τα ξέρουν και οι δύο.
+  const ourPower = e2PowerSupply(app.powerSupply), theirPower = e2PowerSupply(aade.powerSupplyNo);
+  if (ourPower && theirPower && ourPower !== theirPower) {
+    out.push({
+      kind: 'power_supply',
+      text: `Αριθμός παροχής ρεύματος: η εφαρμογή ${ourPower}, η ΑΑΔΕ ${theirPower}.`,
+      ours: ourPower, theirs: theirPower, diff: null, fixIn: 'check',
+      action: `${FIX_LABEL.check}: σύγκρινε με τον λογαριασμό ρεύματος του ακινήτου και διόρθωσε όποια πλευρά διαφέρει.`,
     });
   }
   return out;
