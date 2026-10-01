@@ -469,7 +469,16 @@ export const MUTATIONS = {
   // Ένας νέος κανόνας εστίασης που σβήνει το outline και μένει μόνο με σκιά:
   // ακριβώς το ελάττωμα που ο φύλακας υπάρχει για να πιάσει.
   'forced-colors-focus': { file: 'app/globals.css', from: '::selection {', to: '.mut-probe:focus-visible { outline: none; box-shadow: 0 0 0 2px red; }\n::selection {' },
-  'contrast': { file: 'app/globals.css', from: '--text-secondary:', to: '--text-secondary: #8f8f8f; --text-secondary-unused:' },
+  // Τέσσερα σφάλματα, ένα για κάθε κανόνα που ο φύλακας έμαθε να βλέπει:
+  // γκρι 2η βαθμίδα · πέπλο αιώρησης που σβήνει την 3η βαθμίδα (το σφάλμα του
+  // φωτεινού θέματος πριν το ναυτικό) · όριο πεδίου ίσο με όριο κάρτας (1,37:1)
+  // · μπάρα περιηγητή που δεν είναι το --bg-base.
+  'contrast': { every: [
+    { file: 'app/globals.css', from: '--text-secondary:', to: '--text-secondary: #8f8f8f; --text-secondary-unused:' },
+    { file: 'app/globals.css', from: '--bg-hover:      rgba(15,27,46,0.06);', to: '--bg-hover:      rgba(15,27,46,0.22);' },
+    { file: 'app/globals.css', from: '--border-control: #7a8594;', to: '--border-control: #d3dae3;' },
+    { file: 'lib/core/themeColor.ts', from: "light: '#f5f7fa',", to: "light: '#070b12'," },
+  ] },
   // Τρία σφάλματα, ένα ανά κανόνα: το κόκκινο του Google ξανά σε συνάρτηση
   // αποστολής · η παλέτα του email ξεφεύγει από το token της εφαρμογής · ένα
   // κουτί της παλέτας γίνεται τόσο πυκνό που το κείμενό του πέφτει κάτω από 4,5:1.
