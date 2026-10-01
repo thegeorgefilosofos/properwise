@@ -20,15 +20,19 @@
 
 // Τα σημάδια του brand, όπως στην υπόλοιπη επικοινωνία: navy κεφαλής, μπλε
 // accent, μελάνι για τους τίτλους, γκρι για το σώμα, αχνό για τη γραμμή.
+// ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΑΛΕΤΑ ΜΕ ΤΑ EMAIL ΤΗΣ SUPABASE. Εδώ ζούσε τρίτη ιδιωτική
+// παλέτα: γαλάζιο του Google (#1a73e8) και υποσέλιδο σε #8a9099, 3,2:1 σε
+// λευκό σε κείμενο 12px. Το emailPalette.ts αντιγράφει τα token της εφαρμογής.
 import { IDENTITY } from '@/lib/legal/identity';
 import { siteUrl } from '@/lib/core/site';
+import { EMAIL_LIGHT as C, EMAIL_BRAND_INK } from '@/supabase/functions/_shared/emailPalette';
 
-const NAVY = '#0b1b33';
-const ACCENT = '#1a73e8';
-const INK = '#1d1d1f';
-const TEXT = '#454a51';
-const MUTE = '#8a9099';
-const RULE = '#e9eaee';
+const NAVY = EMAIL_BRAND_INK;
+const ACCENT = C.accent;
+const INK = C.ink;
+const TEXT = C.text;
+const MUTE = C.mute;
+const RULE = C.rule;
 
 // Το λογότυπο είναι στατικό αρχείο της ίδιας εφαρμογής (public/brand), οπότε η
 // διεύθυνσή του βγαίνει από τη μία πηγή του site — σε παραγωγή δίνει το
@@ -67,12 +71,12 @@ export function replyAckEmail(name: string): { subject: string; html: string } {
 <meta name="color-scheme" content="light">
 <title>${esc(subject)}</title>
 </head>
-<body style="margin:0;padding:0;background:#f4f5f7;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;color:#f4f5f7;">${esc(preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background:#f4f5f7;">
+<body style="margin:0;padding:0;background:${C.canvas};">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;color:${C.canvas};">${esc(preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background:${C.canvas};">
 <tr>
 <td align="center" style="padding:24px 16px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%;max-width:600px;background:#ffffff;border:1px solid ${RULE};border-radius:12px;overflow:hidden;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%;max-width:600px;background:${C.page};border:1px solid ${RULE};border-radius:12px;overflow:hidden;">
 <tr>
 <td style="padding:24px 32px;border-bottom:1px solid ${RULE};">
 <a href="${esc(siteUrl(''))}" style="text-decoration:none;color:${NAVY};font-size:20px;font-weight:700;letter-spacing:0.14em;">

@@ -14,6 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { APP_URL } from './site.ts';
+import { EMAIL_LIGHT as L, EMAIL_DARK as D, EMAIL_TONE, type EmailTone } from './emailPalette.ts';
 export type Plan = 'free' | 'individual' | 'professional';
 
 // ═══ ΜΙΑ ΠΑΛΕΤΑ, ΔΥΟ ΘΕΜΑΤΑ ═══════════════════════════════════════════════
@@ -21,14 +22,16 @@ export type Plan = 'free' | 'individual' | 'professional';
 // `color:${INK}` παίρνει `class="ink"` — και η σκοτεινή εκδοχή του ορίζεται ΜΙΑ
 // φορά στο <style>. Χωρίς αυτή τη σύμβαση, σκοτεινό θέμα σημαίνει να κυνηγάς
 // 118 πρότυπα ένα ένα.
-const ACCENT = '#1a73e8';
-const INK = '#1d1d1f';
-const TEXT = '#4a4f55';
-const MUTE = '#6b7176';
+// ΟΙ ΤΙΜΕΣ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΟ emailPalette.ts, που αντιγράφει τα token της
+// εφαρμογής. Εδώ ζούσε ιδιωτική παλέτα του Google (#1a73e8, #1d1d1f, #4a4f55).
+const ACCENT = L.accent;
+const INK = L.ink;
+const TEXT = L.text;
+const MUTE = L.mute;
 // ΤΟ FAINT ΠΕΡΝΑ AA. Ηταν #8a9099 (3,2:1 σε λευκό) σε κείμενο 11-12px, όπου ο
-// στόχος είναι 4,5:1. Το #6b7176 δίνει 4,9:1· η σκοτεινή εκδοχή (.fa) ≥5:1.
-const FAINT = '#6b7176';
-const RULE = '#e8e8ed';
+// στόχος είναι 4,5:1. Είναι πλέον η 3η βαθμίδα της εφαρμογής: 6,3:1.
+const FAINT = L.mute;
+const RULE = L.rule;
 const DEFAULT_APP = APP_URL;
 
 // Το πλάτος του μηνύματος. 560 για τα μηνύματα προϊόντος, που κουβαλούν
@@ -112,8 +115,10 @@ export const h = (html: string): string =>
 // αποτέλεσμα: τρία διαφορετικά μεγέθη (10,5 · 11 · 11 με monospace) και ωμό
 // ελληνικό λεκτικό κάτω από `text-transform:uppercase`, δηλαδή «ΛΗΞΙΠΡΌΘΕΣΜΟ
 // ΕΝΟΊΚΙΟ» με τόνο, κάθε πρωί στις 06:00.
-export const eyebrow = (text: string, color?: string): string =>
-  `<p class="${color ? '' : 'ac'}" style="margin:0 0 7px;font-size:11px;color:${color || ACCENT};text-transform:uppercase;letter-spacing:0.09em;font-weight:700;mso-line-height-rule:exactly;line-height:16px;">${esc(grUp(text))}</p>`;
+// Ο ΤΟΝΟΣ, ΟΧΙ ΤΟ HEX. Το όρισμα ήταν ωμό χρώμα (#d93025) χωρίς κλάση, άρα στο
+// σκούρο θέμα του πελάτη έμενε το κόκκινο του φωτεινού: 3,72:1.
+export const eyebrow = (text: string, tone?: EmailTone): string =>
+  `<p class="${tone ? EMAIL_TONE[tone].cls : 'ac'}" style="margin:0 0 7px;font-size:11px;color:${tone ? EMAIL_TONE[tone].color : ACCENT};text-transform:uppercase;letter-spacing:0.09em;font-weight:700;mso-line-height-rule:exactly;line-height:16px;">${esc(grUp(text))}</p>`;
 // Η ΚΟΥΚΙΔΑ ΚΑΘΕΤΑΙ ΣΤΗ ΜΕΣΗ ΤΗΣ ΠΡΩΤΗΣ ΣΕΙΡΑΣ, ΚΑΙ ΤΟ ΝΟΥΜΕΡΟ ΒΓΑΙΝΕΙ ΑΠΟ
 // ΤΟ ΔΙΑΣΤΙΧΟ. Με ίδιο γέμισμα σε κουκκίδα και κείμενο, η κουκκίδα έπεφτε
 // οκτώ εικονοστοιχεία ψηλότερα από τη γραμμή που σημαδεύει — φαινόταν να
@@ -130,8 +135,8 @@ export const bullets = (items: string[]): string =>
 // Outlook· όλοι οι υπόλοιποι βλέπουν το <a> από κάτω.
 export const button = (label: string, url: string): string =>
   `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 6px;"><tr><td>`
-  + `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${esc(url)}" style="height:46px;v-text-anchor:middle;width:220px;" arcsize="18%" stroke="f" fillcolor="${ACCENT}"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${esc(label)}</center></v:roundrect><![endif]-->`
-  + `<!--[if !mso]><!--><a class="btn" href="${esc(url)}" style="display:inline-block;background:${ACCENT};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:600;font-size:15px;mso-line-height-rule:exactly;line-height:20px;">${esc(label)}</a><!--<![endif]-->`
+  + `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${esc(url)}" style="height:46px;v-text-anchor:middle;width:220px;" arcsize="18%" stroke="f" fillcolor="${ACCENT}"><w:anchorlock/><center style="color:${L.onAccent};font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${esc(label)}</center></v:roundrect><![endif]-->`
+  + `<!--[if !mso]><!--><a class="btn" href="${esc(url)}" style="display:inline-block;background:${ACCENT};color:${L.onAccent};text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:600;font-size:15px;mso-line-height-rule:exactly;line-height:20px;">${esc(label)}</a><!--<![endif]-->`
   + `</td></tr></table>`;
 // Δύο ισότιμες πράξεις δίπλα δίπλα (π.χ. App Store · Google Play). Ξεχωριστή
 // από το `button` γιατί το VML δεν στοιχίζει δύο roundrect σε μία σειρά χωρίς
@@ -139,8 +144,8 @@ export const button = (label: string, url: string): string =>
 export const buttonPair = (a: { label: string; url: string }, b: { label: string; url: string }): string => {
   const cell = (x: { label: string; url: string }, pad: string) =>
     `<td style="padding:${pad};">`
-    + `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${esc(x.url)}" style="height:46px;v-text-anchor:middle;width:150px;" arcsize="18%" stroke="f" fillcolor="${INK}"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${esc(x.label)}</center></v:roundrect><![endif]-->`
-    + `<!--[if !mso]><!--><a class="btn2" href="${esc(x.url)}" style="display:inline-block;background:${INK};color:#ffffff;text-decoration:none;padding:13px 22px;border-radius:8px;font-weight:600;font-size:15px;mso-line-height-rule:exactly;line-height:20px;">${esc(x.label)}</a><!--<![endif]-->`
+    + `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${esc(x.url)}" style="height:46px;v-text-anchor:middle;width:150px;" arcsize="18%" stroke="f" fillcolor="${INK}"><w:anchorlock/><center style="color:${L.page};font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${esc(x.label)}</center></v:roundrect><![endif]-->`
+    + `<!--[if !mso]><!--><a class="btn2" href="${esc(x.url)}" style="display:inline-block;background:${INK};color:${L.page};text-decoration:none;padding:13px 22px;border-radius:8px;font-weight:600;font-size:15px;mso-line-height-rule:exactly;line-height:20px;">${esc(x.label)}</a><!--<![endif]-->`
     + `</td>`;
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 6px;"><tr>${cell(a, '0 10px 0 0')}${cell(b, '0')}</tr></table>`;
 };
@@ -160,8 +165,8 @@ export const divider = (margin = '22px 0'): string =>
 // ίδιου σχήματος ζούσαν μέσα στις functions, με τρία διαφορετικά ραδιόσχημα.
 export const callout = (html: string, tone: 'accent' | 'alert' = 'accent'): string => {
   const alert = tone === 'alert';
-  const fill = alert ? 'rgba(217,48,37,.06)' : 'rgba(26,115,232,.06)';
-  const edge = alert ? 'rgba(217,48,37,.24)' : 'rgba(26,115,232,.22)';
+  const fill = alert ? L.negativeFill : L.accentFill;
+  const edge = alert ? L.negativeEdge : L.accentEdge;
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="${alert ? 'box-alert' : 'box'}" style="border-collapse:separate;background:${fill};border:1px solid ${edge};border-radius:10px;margin:0 0 18px;"><tr><td style="padding:15px 17px;">${html}</td></tr></table>`;
 };
 
@@ -268,44 +273,48 @@ img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}
 @media (prefers-color-scheme:dark){
  .logo-light{display:none !important;}
  .logo-dark{display:block !important;}
- .bg{background:#16181c !important;}
- .ink{color:#f2f3f5 !important;}
- .tx{color:#c2c7cd !important;}
- .mu{color:#9aa1a9 !important;}
- .fa{color:#8f959d !important;}
- .ac,.lnk{color:#6ba6f5 !important;}
- .rule{background:#2b2f35 !important;}
- .rule-b{border-bottom-color:#2b2f35 !important;}
- .rule-t{border-top-color:#2b2f35 !important;}
- .btn{background:#2f80ed !important;color:#ffffff !important;}
- .btn2{background:#f2f3f5 !important;color:#16181c !important;}
- .neg{color:#f28b82 !important;}
- .pos{color:#81c995 !important;}
- .box{background:rgba(107,166,245,.10) !important;border-color:rgba(107,166,245,.26) !important;}
- .box-alert{background:rgba(242,139,130,.10) !important;border-color:rgba(242,139,130,.28) !important;}
+ .bg{background:${D.page} !important;}
+ .ink{color:${D.ink} !important;}
+ .tx{color:${D.text} !important;}
+ .mu{color:${D.mute} !important;}
+ .fa{color:${D.mute} !important;}
+ .ac,.lnk{color:${D.accent} !important;}
+ .dot{background:${D.accent} !important;}
+ .rule{background:${D.rule} !important;}
+ .rule-b{border-bottom-color:${D.rule} !important;}
+ .rule-t{border-top-color:${D.rule} !important;}
+ .btn{background:${D.accent} !important;color:${D.onAccent} !important;}
+ .btn2{background:${D.ink} !important;color:${D.page} !important;}
+ .neg{color:${D.negative} !important;}
+ .pos{color:${D.positive} !important;}
+ .warn{color:${D.warning} !important;}
+ .box{background:${D.accentFill} !important;border-color:${D.accentEdge} !important;}
+ .box-alert{background:${D.negativeFill} !important;border-color:${D.negativeEdge} !important;}
 }
 [data-ogsc] .logo-light{display:none !important;}
 [data-ogsc] .logo-dark{display:block !important;}
-[data-ogsc] .ink{color:#f2f3f5 !important;}
-[data-ogsc] .tx{color:#c2c7cd !important;}
-[data-ogsc] .mu{color:#9aa1a9 !important;}
-[data-ogsc] .fa{color:#8f959d !important;}
-[data-ogsc] .ac,[data-ogsc] .lnk{color:#6ba6f5 !important;}
-[data-ogsc] .neg{color:#f28b82 !important;}
-[data-ogsc] .pos{color:#81c995 !important;}
-[data-ogsb] .bg{background:#16181c !important;}
-[data-ogsb] .rule{background:#2b2f35 !important;}
-[data-ogsb] .btn{background:#2f80ed !important;}
-[data-ogsb] .btn2{background:#f2f3f5 !important;}
-[data-ogsc] .btn2{color:#16181c !important;}
+[data-ogsc] .ink{color:${D.ink} !important;}
+[data-ogsc] .tx{color:${D.text} !important;}
+[data-ogsc] .mu{color:${D.mute} !important;}
+[data-ogsc] .fa{color:${D.mute} !important;}
+[data-ogsc] .ac,[data-ogsc] .lnk{color:${D.accent} !important;}
+[data-ogsc] .neg{color:${D.negative} !important;}
+[data-ogsc] .pos{color:${D.positive} !important;}
+[data-ogsc] .warn{color:${D.warning} !important;}
+[data-ogsb] .bg{background:${D.page} !important;}
+[data-ogsb] .rule{background:${D.rule} !important;}
+[data-ogsb] .btn{background:${D.accent} !important;}
+[data-ogsc] .btn{color:${D.onAccent} !important;}
+[data-ogsb] .btn2{background:${D.ink} !important;}
+[data-ogsc] .btn2{color:${D.page} !important;}
 @media only screen and (max-width:480px){
  .pad{padding-left:20px !important;padding-right:20px !important;}
  .h1{font-size:20px !important;line-height:27px !important;}
 }
 </style>
 </head>
-<body class="bg" style="margin:0;padding:0;background:#ffffff;">${pre}
-<table role="presentation" class="bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
+<body class="bg" style="margin:0;padding:0;background:${L.page};">${pre}
+<table role="presentation" class="bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${L.page};">
 <tr><td align="center" class="pad" style="padding:44px 24px 52px;">
 <!--[if mso]><table role="presentation" width="${w}" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${w}px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">

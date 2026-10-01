@@ -13,6 +13,7 @@
 // Χρειάζεται RESEND_API_KEY (υπάρχει) + προαιρετικά RESEND_FROM (branded αποστολέας).
 // ─────────────────────────────────────────────────────────────────────────
 import { emailShell, eyebrow, grUp, h, p, button, dataTable } from '../_shared/emailTemplates.ts';
+import { EMAIL_LIGHT as C, EMAIL_TONE, type EmailTone } from '../_shared/emailPalette.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
@@ -43,15 +44,22 @@ function statementHtml(ownerRows: { primary: string; secondary: string; expected
     // ΚΑΜΙΑ ΠΑΥΛΑ ΣΕ ΘΕΣΗ ΤΙΜΗΣ. Οταν δεν αναμένεται μίσθωμα, η κατάσταση δεν
     // είναι άγνωστη: είναι «δεν οφείλεται τίποτα». Η παύλα το έκρυβε πίσω από
     // ένα σημάδι που ο αναγνώστης οθόνης διαβάζει ως «παύλα».
-    const status = r.expected === 0 ? 'Χωρίς μίσθωμα' : r.paid >= r.expected ? 'Πλήρης' : r.paid > 0 ? 'Μερική' : 'Εκκρεμεί'
-    const color = r.expected === 0 ? '#80868b' : r.paid >= r.expected ? '#188038' : r.paid > 0 ? '#b8860b' : '#d93025'
+    // Η κατάσταση αφορά τον ΠΡΟΗΓΟΥΜΕΝΟ μήνα και φεύγει την 1η του επόμενου:
+    // ό,τι δεν πληρώθηκε έχει ήδη λήξει. Ελεγε «Εκκρεμεί» (λέξη για κάτι που
+    // δεν έχει λήξει ακόμη) και το έβαφε κόκκινο· τώρα λέξη και τόνος συμφωνούν.
+    const status = r.expected === 0 ? 'Χωρίς μίσθωμα' : r.paid >= r.expected ? 'Πλήρης' : r.paid > 0 ? 'Μερική' : 'Ληξιπρόθεσμο'
+    // ΤΟ ΛΕΞΙΛΟΓΙΟ ΤΗΣ ΕΦΑΡΜΟΓΗΣ (lib/core/status.ts): πληρωμένο θετικό, μερικό
+    // προσοχή, ληξιπρόθεσμο αρνητικό, χωρίς οφειλή ουδέτερο. Ηταν τέσσερα
+    // χρώματα του Google και τα δύο έκοβαν το 4,5:1 (#b8860b 3,25 · #80868b 3,68).
+    const tone: EmailTone = r.expected === 0 ? 'neutral' : r.paid >= r.expected ? 'positive' : r.paid > 0 ? 'warning' : 'negative'
+    const t = EMAIL_TONE[tone]
     return `<tr>
-      <td class="rule-b" style="padding:11px 0;border-bottom:1px solid #e8e8ed;">
-        <span class="ink" style="display:block;font-size:13px;color:#1d1d1f;font-weight:500;">${r.primary}</span>
-        <span class="fa" style="display:block;font-size:11px;color:#8a9099;">${r.secondary}</span>
+      <td class="rule-b" style="padding:11px 0;border-bottom:1px solid ${C.rule};">
+        <span class="ink" style="display:block;font-size:13px;color:${C.ink};font-weight:500;">${r.primary}</span>
+        <span class="fa" style="display:block;font-size:12px;color:${C.mute};">${r.secondary}</span>
       </td>
-      <td class="rule-b tx" style="padding:11px 0;border-bottom:1px solid #e8e8ed;text-align:right;font-size:13px;color:#4a4f55;">${eur(r.paid)} / ${eur(r.expected)}</td>
-      <td class="rule-b" style="padding:11px 0;border-bottom:1px solid #e8e8ed;text-align:right;font-size:12px;font-weight:700;color:${color};">${status}</td>
+      <td class="rule-b tx" style="padding:11px 0;border-bottom:1px solid ${C.rule};text-align:right;font-size:13px;color:${C.text};">${eur(r.paid)} / ${eur(r.expected)}</td>
+      <td class="rule-b" style="padding:11px 0;border-bottom:1px solid ${C.rule};text-align:right;font-size:12px;font-weight:700;color:${t.color};"><span class="${t.cls}">${status}</span></td>
     </tr>`
   }).join('')
   // ΤΟ ΔΑΠΕΔΟ ΤΩΝ 11px ΙΣΧΥΕΙ ΚΑΙ ΕΔΩ, ΚΑΙ ΤΑ ΚΕΦΑΛΑΙΑ ΔΕΝ ΚΡΑΤΟΥΝ ΤΟΝΟ. Ηταν
@@ -59,14 +67,14 @@ function statementHtml(ownerRows: { primary: string; secondary: string; expected
   // που ανοίγει σχεδόν πάντα σε τηλέφωνο. Και το «uppercase» πάνω σε ωμό
   // ελληνικό έγραφε «ΑΚΊΝΗΤΟ» και «ΚΑΤΆΣΤΑΣΗ».
   const head = `<tr>${['Ακίνητο / Ενοικιαστής', 'Εισπρ. / Αναμ.', 'Κατάσταση'].map((t, i) =>
-    `<td class="fa rule-b" style="padding:0 0 7px;${i ? 'text-align:right;' : ''}font-size:11px;color:#8a9099;letter-spacing:.06em;font-weight:700;border-bottom:1px solid #e8e8ed;">${grUp(t)}</td>`).join('')}</tr>`
-  const total = `<tr><td class="ink" style="padding:13px 0 0;font-size:14px;font-weight:700;color:#1d1d1f;">Σύνολο</td><td class="ink" style="padding:13px 0 0;text-align:right;font-size:14px;font-weight:700;color:#1d1d1f;">${eur(collected)} / ${eur(expected)}</td><td></td></tr>`
+    `<td class="fa rule-b" style="padding:0 0 7px;${i ? 'text-align:right;' : ''}font-size:11px;color:${C.mute};letter-spacing:.06em;font-weight:700;border-bottom:1px solid ${C.rule};">${grUp(t)}</td>`).join('')}</tr>`
+  const total = `<tr><td class="ink" style="padding:13px 0 0;font-size:14px;font-weight:700;color:${C.ink};">Σύνολο</td><td class="ink" style="padding:13px 0 0;text-align:right;font-size:14px;font-weight:700;color:${C.ink};">${eur(collected)} / ${eur(expected)}</td><td></td></tr>`
   return emailShell({
     preheader: `Εισπράχθηκαν ${eur(collected)} από ${eur(expected)} τον ${periodLabel}.`,
     footerNote: 'Ενημερωτική κατάσταση με βάση τα δεδομένα σου. Δεν αποτελεί επίσημο λογιστικό ή φορολογικό έγγραφο. · properwise.gr',
     bodyHtml: eyebrow('Μηνιαία κατάσταση')
       + h(`Εισπράξεις ${periodLabel}`)
-      + p(`Εισπράχθηκαν <b class="ink" style="color:#1d1d1f;">${eur(collected)}</b> από ${eur(expected)}${outstanding > 0 ? ` · ανείσπρακτα <b class="neg" style="color:#d93025;">${eur(outstanding)}</b>` : ''}.`)
+      + p(`Εισπράχθηκαν <b class="ink" style="color:${C.ink};">${eur(collected)}</b> από ${eur(expected)}${outstanding > 0 ? ` · ανείσπρακτα <b class="neg" style="color:${C.negative};">${eur(outstanding)}</b>` : ''}.`)
       + dataTable(head + rows + total)
       + button('Άνοιγμα στο PROPERWISE', `${APP_URL}/dashboard`),
   })

@@ -16,6 +16,7 @@ import { emailShell, eyebrow, h, p, button, note } from '../_shared/emailTemplat
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL } from '../_shared/site.ts'
 import { senderFrom } from '../_shared/sender.mjs'
+import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -58,7 +59,7 @@ function confirmEmailHtml(link: string, owner: string): { subject: string; html:
     bodyHtml: eyebrow('Επιβεβαίωση')
       + h('Να στέλνουμε τις υπενθυμίσεις εδώ;')
       + p(`Ο κάτοχος του λογαριασμού ${owner} όρισε αυτή τη διεύθυνση για τις υπενθυμίσεις του PROPERWISE: λογαριασμοί, ενοίκια και γεγονότα ημερολογίου.`)
-      + p('Αν το περιμένεις, επιβεβαίωσέ το. <strong class="ink" style="color:#1d1d1f;">Αν όχι, αγνόησε αυτό το μήνυμα</strong>: χωρίς επιβεβαίωση δεν στέλνεται τίποτα άλλο σε αυτή τη διεύθυνση.')
+      + p(`Αν το περιμένεις, επιβεβαίωσέ το. <strong class="ink" style="color:${C.ink};">Αν όχι, αγνόησε αυτό το μήνυμα</strong>: χωρίς επιβεβαίωση δεν στέλνεται τίποτα άλλο σε αυτή τη διεύθυνση.`)
       + button('Επιβεβαίωση διεύθυνσης', link)
       + note('Ο σύνδεσμος λήγει σε 48 ώρες.'),
   })

@@ -2,6 +2,7 @@ import {
   emailShell, eyebrow, h, p, bullets, button, greeting, note, type Personal,
 } from '../emailTemplates.ts'
 import { dash, esc, NOTE, type CopyFn } from './kit.ts'
+import { EMAIL_LIGHT as C } from '../emailPalette.ts'
 
 // ── Ενοποιημένα μηνύματα (digests) ───────────────────────────────────────────
 // Δεν είναι καμπάνιες: τα παράγει ο scheduler (emailPolicy.planDeliveries) όταν
@@ -10,7 +11,7 @@ import { dash, esc, NOTE, type CopyFn } from './kit.ts'
 // c.digestItems. Μεταδοτικά (transactional): χωρίς footer απεγγραφής.
 const digestList = (items?: Personal['digestItems']) =>
   bullets((items && items.length ? items : [{ title: 'Δες τις λεπτομέρειες στον πίνακά σου' }])
-    .map(it => `<b>${esc(it.title)}</b>${it.detail ? ` <span style="color:#5f6368;">${esc(it.detail)}</span>` : ''}`))
+    .map(it => `<b>${esc(it.title)}</b>${it.detail ? ` <span class="mu" style="color:${C.mute};">${esc(it.detail)}</span>` : ''}`))
 
 export const DIGESTS: Record<string, CopyFn> = {
 
