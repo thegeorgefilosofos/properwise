@@ -2,6 +2,7 @@
 import {
   requirementsFor, readiness, groupByWho, traps, defaultBookkeeping,
   statusForAccountant, statusesOf, WHO_LABEL, missingAfmGroups, filePapers,
+  statusesForYear, yearStatusLabel,
   type DossierContext, type Requirement, type LegalForm, type DossierPaper,
 } from './dossier';
 import type { PropertyStatus } from '../property/status';
@@ -481,6 +482,38 @@ eq('καταστάσεις από γραμμές βάσης', statusesOf([{ stat
   eq('το προσυμπληρωμένο Ε2 αφορά και τα τρία', by('e2_prefilled')?.forProperties, ['Διαμέρισμα Α', 'Διαμέρισμα Β', 'Διαμέρισμα Γ']);
   eq('τα κοινά δεν ανήκουν σε ένα ακίνητο', by('atak')?.forProperties, undefined);
   ok('ο κανόνας των ανείσπρακτων λέει την προθεσμία της δήλωσης', /ως την προθεσμία της δήλωσης/.test(by('unpaid_rent')?.trap || ''));
+}
+
+// ═══ Ο ΚΑΤΑΛΟΓΟΣ ΑΚΟΛΟΥΘΕΙ ΤΗ ΧΡΗΣΗ, ΟΧΙ ΤΟ ΣΗΜΕΡΑ ═════════════════════════
+// Νοικιασμένο Ιανουάριο ως Ιούνιο, άδειο σήμερα. Επαιρνε τον κατάλογο του
+// «κενού», χωρίς τη δήλωση μίσθωσης και χωρίς Ε2 εκμίσθωσης.
+{
+  const today = requirementsFor(ctx({ statuses: ['vacant'], properties: [{ name: 'Παγκράτι', status: 'vacant' }] }));
+  ok('μόνο με το σήμερα λείπει η δήλωση μίσθωσης (το σφάλμα)', !ids(today).includes('lease_declaration'));
+
+  const ys = statusesForYear('vacant', { rentPeriods: 6 });
+  eq('έξι περίοδοι ενοικίου προσθέτουν εκμίσθωση', ys, ['vacant', 'rent_long']);
+  const r = requirementsFor(ctx({ statuses: ['vacant'], properties: [{ name: 'Παγκράτι', status: 'vacant', yearStatuses: ys }] }));
+  ok('η δήλωση μίσθωσης ζητείται', ids(r).includes('lease_declaration'));
+  ok('και το Ε2 εκμίσθωσης', ids(r).includes('e2'));
+  ok('και οι αποδείξεις είσπραξης', ids(r).includes('rent_receipts'));
+  ok('το κενό της χρονιάς μένει: οι μήνες κενού δηλώνονται', ids(r).includes('e2_vacant'));
+  eq('και η γραμμή λέει από ποιο ακίνητο', r.find(x => x.id === 'lease_declaration')?.forProperties, ['Παγκράτι']);
+  eq('η ετικέτα λέει και τα δύο', yearStatusLabel({ name: 'Παγκράτι', status: 'vacant', yearStatuses: ys }),
+    'Κενό σήμερα · μέσα στη χρήση: Εκμίσθωση');
+}
+{
+  // Διαμονές μέσα στη χρήση: ο κατάλογος της βραχυχρόνιας, ό,τι κι αν λέει το σήμερα.
+  const ys = statusesForYear('own_use', { stays: 3 });
+  eq('διαμονές προσθέτουν βραχυχρόνια', ys, ['own_use', 'rent_short']);
+  const r = requirementsFor(ctx({ statuses: ['own_use'], properties: [{ name: 'Σπίτι', status: 'own_use', yearStatuses: ys }] }));
+  ok('ο ΑΜΑ ζητείται', ids(r).includes('ama'));
+  ok('η κύρια κατοικία μένει', ids(r).includes('e1_residence'));
+}
+{
+  eq('χωρίς κινήσεις: μόνο το σήμερα', statusesForYear('rent_long', {}), ['rent_long']);
+  eq('η εκμίσθωση δεν διπλασιάζεται', statusesForYear('rent_long', { rentPeriods: 12 }), ['rent_long']);
+  eq('χωρίς ιστορικό η ετικέτα μένει ίδια', yearStatusLabel({ name: 'Α', status: 'rent_long' }), 'Εκμίσθωση');
 }
 
 console.log(fail === 0 ? `✓ dossier: ${pass} έλεγχοι πέρασαν` : `✗ dossier: ${fail} απέτυχαν από ${pass + fail}`);

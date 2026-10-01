@@ -44,7 +44,7 @@ import {
 } from '@/lib/accounting/statement'
 import {
   shortTermYearSummary, derivedPlatformFees, monthsWithOwnPlatformFee, staysMissingPlatformFee,
-  isHouseType,
+  isHouseType, yearShare,
 } from '@/lib/tax/shortTermTax'
 import { bankReceiptMatters } from '@/lib/billing/consolidate'
 import { resolveEnfia } from '@/lib/billing/propertyFacts'
@@ -73,7 +73,7 @@ import { CAPITALISABLE } from '@/lib/tax/elpAccounts'
 import { CATEGORIES, isDeductible, resolveCategory } from '@/lib/expenses/taxonomy'
 import { useAccountantDossier } from '../AccountantDossier'
 import { fetchDossierPapers } from '../dossierPapers'
-import { defaultBookkeeping, type LegalForm } from '@/lib/accounting/dossier'
+import { defaultBookkeeping, statusesForYear, type LegalForm, type DossierProperty } from '@/lib/accounting/dossier'
 import { readStatus, type PropertyStatus, type StatusRow } from '@/lib/property/status'
 import { printRentCertificate, downloadOfficialRentCertificate } from '../rentCertificate'
 import { notifyError } from '@/components/Toast'
@@ -773,10 +773,20 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // Η κατάσταση κάθε ακινήτου (εκμίσθωση, κενό, ιδιοχρησία…) ορίζει ΤΙ ζητάει ο
   // λογιστής. Ο κανόνας ζει μία φορά, στο lib/accounting/dossier.ts· εδώ απλώς
   // του δίνουμε τα δεδομένα και δείχνουμε την απάντησή του.
-  const dossierProps = useMemo(()=>{
-    const rows:{ name?:string|null; status_detail?:string|null; rental_mode?:string|null }[] = allProps.length ? allProps : (prop?[prop]:[])
-    return rows.map(p=>({ name: p.name || 'Ακίνητο', status: readStatus(p) as PropertyStatus }))
-  },[allProps,prop])
+  //
+  // ΚΑΙ ΜΕ ΤΗ ΧΡΗΣΗ, ΟΧΙ ΜΟΝΟ ΜΕ ΤΟ ΣΗΜΕΡΑ. Ακίνητο νοικιασμένο τον Μάρτιο κι
+  // άδειο σήμερα έπαιρνε τον κατάλογο του κενού, χωρίς τη δήλωση μίσθωσης. Οι
+  // περίοδοι ενοικίου και οι διαμονές της χρήσης προσθέτουν τις καταστάσεις τους
+  // (`statusesForYear`).
+  const dossierProps = useMemo(():DossierProperty[]=>{
+    const rows:{ id?:string|null; name?:string|null; status_detail?:string|null; rental_mode?:string|null }[] = allProps.length ? allProps : (prop?[prop]:[])
+    return rows.map(p=>{
+      const status = readStatus(p) as PropertyStatus
+      const rentPeriods = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).length
+      const stayCount = allStays.filter(st=>st.property_id===p.id&&yearShare(st,year)>0).length
+      return { name: p.name || 'Ακίνητο', status, yearStatuses: statusesForYear(status, { rentPeriods, stays: stayCount }) }
+    })
+  },[allProps,prop,allRent,allStays,year])
   // Αφετηρία, μόνο για χρήστη που δεν έχει δηλώσει ακόμη τίποτα: ό,τι ήδη ξέρουμε.
   // Η μορφή έρχεται από τη δήλωση της υποδοχής, όχι από τη δυαδική περίληψη:
   // μια ΟΕ δεν είναι ΑΕ και τα βιβλία τους διαφέρουν.

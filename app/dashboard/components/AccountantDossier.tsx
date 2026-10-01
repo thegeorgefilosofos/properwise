@@ -26,10 +26,9 @@ import { T, TT, Badge, SelectBox, Bar, Btn, ChipToggle } from '@/components/Them
 import { ChevronRight, Download } from 'lucide-react'
 import {
   requirementsFor, readiness, groupByWho, traps, defaultBookkeeping,
-  statusForAccountant, LEGAL_FORM_LABEL,
-  type LegalForm, type BookKeeping, type Requirement,
+  yearStatusLabel, LEGAL_FORM_LABEL,
+  type LegalForm, type BookKeeping, type Requirement, type DossierProperty,
 } from '@/lib/accounting/dossier'
-import type { PropertyStatus } from '@/lib/property/status'
 import type { DossierAttachment } from './accountantExport';
 import type { AccountantStatementLine, AccountantMovement } from './accountantTypes';
 import { exportAccountantDossier } from './sheets';
@@ -264,7 +263,7 @@ export default function AccountantDossier({
 }: {
   state: DossierState
   year: number
-  properties: readonly { name: string; status: PropertyStatus }[]
+  properties: readonly DossierProperty[]
   exportSource: DossierExportSource
   /**
    * ΟΣΑ ΑΛΛΑ ΦΕΥΓΟΥΝ ΠΡΟΣ ΤΟΝ ΛΟΓΙΣΤΗ, ΣΤΟ ΙΔΙΟ ΣΗΜΕΙΟ.
@@ -336,7 +335,7 @@ export default function AccountantDossier({
         requirements: reqs,
         haveIds: haveAll,
         readinessMessage: ready.message,
-        properties: properties.map(p => ({ name: p.name, status: statusForAccountant(p.status) })),
+        properties: properties.map(p => ({ name: p.name, status: yearStatusLabel(p) })),
         formLabel: LEGAL_FORM_LABEL[profile.form],
         booksLabel: BOOKS_LABEL[profile.books],
         gaps: [...(exportSource.gaps || []), ...notes],
@@ -582,7 +581,7 @@ export default function AccountantDossier({
                   {properties.map((p, i) => (
                     <div key={`${p.name}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-base)', fontFamily: T.font.sans }}>
                       <span style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                      <span style={{ color: 'var(--text-tertiary)' }}>{statusForAccountant(p.status)}</span>
+                      <span style={{ color: 'var(--text-tertiary)' }}>{yearStatusLabel(p)}</span>
                     </div>
                   ))}
                 </div>

@@ -70,6 +70,8 @@ export interface OblTenant {
   lease_start?: string | null;
   lease_end?: string | null;
   monthly_rent?: number | null;
+  /** Πότε έφυγε ο μισθωτής. Πριν από τη λήξη σημαίνει λύση που δηλώνεται. */
+  move_out_date?: string | null;
 }
 export interface OblMaint {
   task: string;
@@ -123,6 +125,8 @@ export function computeObligations(
   now = new Date(),
   profile: PropertyTaxProfile = 'owner',
   done: OblDone = {},
+  /** Οι μισθωτές που έφυγαν από το ακίνητο. Ο τρέχων δεν έχει ημερομηνία αποχώρησης. */
+  leavers: readonly OblTenant[] = [],
 ): Obligation[] {
   const out: Obligation[] = [];
   const push = (o: Omit<Obligation, 'daysUntil' | 'tone' | 'date'> & { date: Date }) => {
@@ -204,6 +208,36 @@ export function computeObligations(
         note: 'Κάθε νέα ή τροποποιημένη μίσθωση δηλώνεται ηλεκτρονικά στην ΑΑΔΕ εντός του επόμενου μήνα από την έναρξη.',
       });
     }
+  }
+
+  // ── ΛΥΣΗ ΜΙΣΘΩΣΗΣ ΠΡΙΝ ΤΗ ΛΗΞΗ ─────────────────────────────────────────
+  // ΤΟ ΚΕΝΟ. Η πρόωρη λύση δηλώνεται στην ΑΑΔΕ όπως η έναρξη, ως το τέλος του
+  // επόμενου μήνα από τη μεταβολή (το λέει και η Φροντίδα μισθωτή). Καμία
+  // υπενθύμιση δεν το ζητούσε: ο μισθωτής έφευγε, η μίσθωση έμενε ενεργή στο
+  // myAADE ως τη συμβατική λήξη και το Ε2 της επόμενης χρονιάς έβγαινε με
+  // μισθώματα που κανείς δεν πλήρωσε.
+  //
+  // Ο ΤΡΕΧΩΝ ΜΙΣΘΩΤΗΣ ΔΕΝ ΕΧΕΙ ΑΠΟΧΩΡΗΣΗ (lib/data/tenants.ts, `hasLeft`), οπότε
+  // ο καλών περνά όσους έφυγαν χωριστά. Η προθεσμία βγαίνει από την ίδια
+  // `declarationDeadline` με τη δήλωση έναρξης.
+  const seenLeaver = new Set<string>();
+  for (const t of [tenant, ...leavers]) {
+    const moveOut = (t?.move_out_date || '').slice(0, 10);
+    const end = (t?.lease_end || '').slice(0, 10);
+    if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(moveOut) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || moveOut >= end) continue;
+    const key = t.id || `${moveOut}:${end}`;
+    if (seenLeaver.has(key)) continue;
+    seenLeaver.add(key);
+    const deadline = fromISO(declarationDeadline(moveOut));
+    const du = daysUntilDate(deadline, now);
+    if (du < -30 || du > 60) continue;
+    push({
+      id: t.id ? `lease_termination:${t.id}` : 'lease_termination',
+      source: t.id ? `tenant:${t.id}:lease_termination` : 'obligations:lease_termination',
+      date: deadline, category: 'contract', priority: 'high', who: 'owner',
+      title: 'Δήλωση λύσης μίσθωσης στην ΑΑΔΕ',
+      note: 'Ο μισθωτής έφυγε πριν από τη λήξη της μίσθωσης. Η λύση δηλώνεται ηλεκτρονικά στην ΑΑΔΕ ως το τέλος του επόμενου μήνα από την αποχώρηση, αλλιώς η μίσθωση μένει ενεργή στο myAADE.',
+    });
   }
 
   // ── CROSS-TAB: Συντήρηση εξοπλισμού (από Απογραφή) ────────────────────

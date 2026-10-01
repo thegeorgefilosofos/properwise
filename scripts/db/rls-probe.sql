@@ -2360,3 +2360,89 @@ begin
   raise notice '✓ ο μετρητής αποστολών κρατά το δικό του παράθυρο';
 end
 $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ ΛΕΕΙ «ΕΙΣΠΡΑΞΕΙΣ» ΜΟΝΟ ΓΙΑ ΟΣΑ ΕΙΣΠΡΑΧΘΗΚΑΝ
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20261001100000_i_pyli_logisti_xorizei_eispraxi_apo_dedoulevmeno.sql. Πριν, το
+-- `rent_collected` άθροιζε και τις απλήρωτες περιόδους, το `rent_months`
+-- μετρούσε γραμμές (τριμηνιαίο μίσθωμα: «4» για ολόκληρη χρονιά) και η
+-- διαμονή που περνά την Πρωτοχρονιά έλειπε από τη δεύτερη χρονιά.
+--
+-- Μικρό σενάριο: τριμηνιαίο μίσθωμα 1.500€ τη δόση. Δόση Νοεμβρίου 2025 ως
+-- Ιανουαρίου 2026, τέσσερις δόσεις του 2026 (τρεις πληρωμένες, μία σε
+-- μετρητά, μία απλήρωτη) και μία διαμονή 28/12/2025 έως 05/01/2026. Ο
+-- λογιστής ρωτά ως `anon`, όπως ανοίγει τον σύνδεσμο.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+
+do $probe$
+declare
+  own uuid := 'eeeeeeee-0000-0000-0000-000000000001';
+  pid uuid := 'eeeeeeee-0000-0000-0000-0000000000f1';
+  tid uuid := 'eeeeeeee-0000-0000-0000-0000000000a1';
+  cid uuid := 'eeeeeeee-0000-0000-0000-0000000000c1';
+begin
+  insert into auth.users(id, email) values (own, 'logistis-poso@probe.test');
+  insert into public.user_properties(id, user_id, name) values (pid, own, 'Τριμηνιαίο');
+  insert into public.tenants(id, property_id, user_id, full_name, monthly_rent, lease_start, lease_end,
+                             payment_frequency, e_payment)
+    values (tid, pid, own, 'Μισθωτής τριμήνου', 500, '2025-11-01', current_date + 365, 'quarterly', true);
+  insert into public.rent_payments(user_id, property_id, tenant_id, period_year, period_month, amount, paid, method)
+    values (own, pid, tid, 2025, 11, 1500, true,  'Τραπεζική κατάθεση'),
+           (own, pid, tid, 2026,  1, 1500, true,  'Τραπεζική κατάθεση'),
+           (own, pid, tid, 2026,  4, 1500, true,  'Μετρητά'),
+           (own, pid, tid, 2026,  7, 1500, true,  'Τραπεζική κατάθεση'),
+           (own, pid, tid, 2026, 10, 1500, false, null);
+  insert into public.clients(id, user_id, type, full_name) values (cid, own, 'client', 'Επισκέπτης');
+  insert into public.client_stays(user_id, client_id, property_id, check_in, check_out, nights, total,
+                                  gross_guest_paid, climate_levy, platform_fee, amount_basis)
+    values (own, cid, pid, '2025-12-28', '2026-01-05', 8, 800, 800, 16, 120, 'gross'),
+           (own, cid, pid, '2024-07-01', '2024-07-03', 2, 200, 200, 0, 0, 'gross');
+  insert into public.accountant_links(user_id, token, active) values (own, 'probe-token-poso', true);
+end $probe$;
+
+set role anon;
+do $probe$
+declare
+  p26 json := (public.get_accountant_data('probe-token-poso', 2026) -> 'properties') -> 0;
+  p25 json := (public.get_accountant_data('probe-token-poso', 2025) -> 'properties') -> 0;
+begin
+  if (p26->>'rent_due')::numeric is distinct from 6000 then
+    raise exception 'rent_due 2026: % αντί για 6000 (όλες οι περίοδοι της χρήσης)', p26->>'rent_due';
+  end if;
+  if (p26->>'rent_collected')::numeric is distinct from 4500 then
+    raise exception 'rent_collected 2026: % αντί για 4500. Η απλήρωτη δόση μετρά ως είσπραξη', p26->>'rent_collected';
+  end if;
+  if (p26->>'rent_months')::int is distinct from 12 then
+    raise exception 'rent_months 2026: % αντί για 12. Μετρά γραμμές, όχι μήνες', p26->>'rent_months';
+  end if;
+  if (p25->>'rent_months')::int is distinct from 2 then
+    raise exception 'rent_months 2025: % αντί για 2 (Νοέμβριος και Δεκέμβριος)', p25->>'rent_months';
+  end if;
+  if (p26->>'rent_paid_with_method')::int is distinct from 3 or (p26->>'rent_paid_cash')::int is distinct from 1 then
+    raise exception 'πλήθη τρόπου είσπραξης 2026: % με τρόπο, % μετρητά', p26->>'rent_paid_with_method', p26->>'rent_paid_cash';
+  end if;
+  if (p26->>'lease_via_bank')::boolean is not true then
+    raise exception 'lease_via_bank: % αντί για true', p26->>'lease_via_bank';
+  end if;
+  if json_array_length(p26->'stays') <> 1 or json_array_length(p25->'stays') <> 1 then
+    raise exception 'η διαμονή της Πρωτοχρονιάς πρέπει να φτάνει και στις δύο χρήσεις: 2025=%, 2026=%',
+      json_array_length(p25->'stays'), json_array_length(p26->'stays');
+  end if;
+  raise notice 'probe: η πύλη του λογιστή χωρίζει είσπραξη από δεδουλευμένο και μετρά μήνες, όχι γραμμές';
+end $probe$;
+reset role;
+
+do $probe$
+declare own uuid := 'eeeeeeee-0000-0000-0000-000000000001';
+begin
+  delete from public.accountant_links where user_id = own;
+  delete from public.client_stays where user_id = own;
+  delete from public.clients where user_id = own;
+  delete from public.rent_payments where user_id = own;
+  delete from public.tenants where user_id = own;
+  delete from public.user_properties where user_id = own;
+  delete from auth.users where id = own;
+end $probe$;

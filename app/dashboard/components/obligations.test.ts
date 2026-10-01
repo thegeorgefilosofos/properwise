@@ -227,6 +227,36 @@ ok('η καστάνια σαρώνει πραγματικά αρχεία', files
   ok('κενή τιμή δεν κλείνει τίποτα', has({ leaseDeclaredAt: null }))
 }
 
+// ── Η ΛΥΣΗ ΠΡΙΝ ΤΗ ΛΗΞΗ ΔΗΛΩΝΕΤΑΙ ─────────────────────────────────────────
+// Ο μισθωτής έφυγε στις 15/07/2026 ενώ η μίσθωση έληγε 31/12/2027. Η λύση
+// δηλώνεται ως το τέλος Αυγούστου· καμία υπενθύμιση δεν το ζητούσε.
+{
+  const empty = { ...prop, status_detail: 'vacant', rental_mode: null }
+  const left = { id: 't-old', lease_start: '2025-01-01', lease_end: '2027-12-31', move_out_date: '2026-07-15' }
+  const term = (o: Obligation[]) => o.filter(x => x.id.startsWith('lease_termination'))
+
+  const got = term(computeObligations(empty, null, [], NOW, 'long_term', {}, [left]))
+  ok('η πρόωρη αποχώρηση γεννά υπενθύμιση', got.length === 1)
+  ok('με προθεσμία το τέλος του επόμενου μήνα', got[0]?.date === '2026-08-31')
+  ok('και η προθεσμία είναι ίδια με τη μηχανή της δήλωσης', got[0]?.date === declarationDeadline('2026-07-15'))
+  ok('με τον τίτλο της ΑΑΔΕ', got[0]?.title === 'Δήλωση λύσης μίσθωσης στην ΑΑΔΕ')
+  ok('γράφεται στο ημερολόγιο με κλειδί του μισθωτή', got[0]?.source === 'tenant:t-old:lease_termination')
+  ok('υψηλή προτεραιότητα, δουλειά του ιδιοκτήτη', got[0]?.priority === 'high' && got[0]?.who === 'owner')
+
+  // Αποχώρηση ΣΤΗ λήξη ή μετά δεν είναι λύση: η μίσθωση τελείωσε μόνη της.
+  ok('αποχώρηση στη λήξη: τίποτα', term(computeObligations(empty, null, [], NOW, 'long_term', {},
+    [{ ...left, move_out_date: '2027-12-31' }])).length === 0)
+  ok('χωρίς ημερομηνία λήξης: τίποτα', term(computeObligations(empty, null, [], NOW, 'long_term', {},
+    [{ ...left, lease_end: null }])).length === 0)
+  // Παλιά αποχώρηση, με προθεσμία που πέρασε πριν πολύ: δεν γεμίζει τη λίστα.
+  ok('αποχώρηση πριν από έναν χρόνο: τίποτα', term(computeObligations(empty, null, [], NOW, 'long_term', {},
+    [{ ...left, move_out_date: '2025-06-10' }])).length === 0)
+  // Ο ίδιος μισθωτής από δύο δρόμους μετριέται μία φορά.
+  ok('ο ίδιος μισθωτής μία φορά', term(computeObligations(empty, left, [], NOW, 'long_term', {}, [left])).length === 1)
+  // Χωρίς αποχωρήσεις δεν εμφανίζεται τίποτα στο κανονικό ακίνητο.
+  ok('μίσθωση σε εξέλιξη: καμία λύση', term(obls).length === 0)
+}
+
 console.log(`\nobligations.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed) { console.log('FAILED:\n' + fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1) }
 console.log('όλα πέρασαν')
