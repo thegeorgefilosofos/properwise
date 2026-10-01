@@ -1,25 +1,31 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Ε2 — Αναλυτική Κατάσταση Μισθωμάτων Ακίνητης Περιουσίας (Πίνακας I).
-// Καθαρή λογική (χωρίς I/O): ΜΙΑ γραμμή ανά ακίνητο. Καλείται από e2Export.ts.
+// Καθαρή λογική (χωρίς I/O): μία γραμμή ανά μίσθωση του έτους. Καλείται από e2Export.ts.
 // Σημασιολογία Ε2: το έντυπο υποβάλλεται ανά φορολογούμενο· κάθε συνιδιοκτήτης
 // δηλώνει ΜΟΝΟ το ποσοστό του → «Ακαθάριστο Εισόδημα» = συνολικό μίσθωμα ×
 // (ποσοστό/100). «Μήνες εκμίσθωσης» = τομή μισθωτηρίου με το φορολογικό έτος.
 // Το ακαθάριστο είναι δεδουλευμένο (ανεξαρτήτως είσπραξης).
 // ═══════════════════════════════════════════════════════════════════════════
-import { shortTermYearSummary, type TaxStay } from '@/lib/tax/shortTermTax';
+import { shortTermYearSummary, nightsSplit, type TaxStay } from '@/lib/tax/shortTermTax';
 import { readStatus, BY_KEY } from '@/lib/property/status';
 import { fe } from '@/lib/core/format';
+import { rentIncomeOf, servicesOf, hasRentSplit } from '@/lib/rent/split';
+import { leaseEndOf } from '@/lib/data/tenants';
 
 // Το `rental_mode` ΔΕΝ υπήρχε εδώ και γι' αυτό το έντυπο δεν μπορούσε να
 // ξεχωρίσει βραχυχρόνια από μακροχρόνια όταν η κατάσταση ήταν «rented».
 // Ακριβώς αυτό το ζευγάρι πεδίων περιγράφει το lib/property/status.ts ως πηγή
 // ασυμφωνίας: «ακίνητο μπορούσε να είναι 'rented' με rental_mode 'short_term'».
 export interface E2Property { id: string; name?: string | null; atak: string | null; address: string | null; postal_code: string | null; ownership: string | number | null; prop_type: string | null; status_detail: string | null; rental_mode?: string | null; target_rent: number | null; sqm?: number | null; floor?: string | number | null; }
-export interface E2Tenant { property_id: string; afm: string | null; monthly_rent: number | null; lease_start: string | null; lease_end: string | null; lease_type: string | null; full_name?: string | null; }
+// Το `id` και η αποχώρηση χρειάζονται για να μοιραστούν οι εισπράξεις στη σωστή
+// μίσθωση και για να κλείσει η μίσθωση όταν ο μισθωτής έφυγε νωρίτερα.
+export interface E2Tenant { id?: string | null; property_id: string; afm: string | null; monthly_rent: number | null; lease_start: string | null; lease_end: string | null; lease_type: string | null; full_name?: string | null; move_out_date?: string | null; status?: string | null; }
 // Το `paid` δεν το χρειάζεται το ακαθάριστο του εντύπου (δεδουλευμένο, ανεξάρτητα
 // είσπραξης) — το χρειάζεται ο ΕΛΕΓΧΟΣ του προσυμπληρωμένου, που εξηγεί τη διαφορά
 // με τα ανείσπρακτα του έτους. Προαιρετικό: παλιοί καλούντες δεν αλλάζουν.
-export interface E2Payment { property_id: string; amount: number | null; period_year: number; period_month: number; paid?: boolean | null; }
+// `tenant_id` δένει τη δόση με τη μίσθωσή της· `base_rent`/`services_charge`
+// χωρίζουν το μίσθωμα από τις υπηρεσίες της ίδιας δόσης (lib/rent/split.ts).
+export interface E2Payment { property_id: string; amount: number | null; period_year: number; period_month: number; paid?: boolean | null; tenant_id?: string | null; base_rent?: number | null; services_charge?: number | null; }
 /** Διαμονή βραχυχρόνιας (client_stays) — τα ΠΡΑΓΜΑΤΙΚΑ έσοδα ενός `seasonal` ακινήτου. */
 export interface E2Stay extends TaxStay { property_id?: string | null }
 
@@ -93,31 +99,121 @@ export function monthsRentedInYear(leaseStart: string | null, leaseEnd: string |
 export type E2IncomeSource = 'rent' | 'own_use' | 'none';
 
 export interface E2Row { atak: string; address: string; ownerAfm: string; ownershipPct: number; leaseKind: string; months: number; incomeCategory: string; grossIncome: number; incomeSource: E2IncomeSource; flags: string[]; }
+
 /**
- * Μία γραμμή Ε2. Το `stays` είναι οι διαμονές ΑΥΤΟΥ του ακινήτου (όπως το
- * `payments`, ομαδοποιημένες από τον καλούντα)· χρησιμοποιείται μόνο στη
- * βραχυχρόνια.
+ * Μία γραμμή του Πίνακα I: μία μίσθωση ενός ακινήτου μέσα στο έτος, ή μία
+ * κατάσταση (κενό, βραχυχρόνια, ιδιοχρησιμοποίηση) όταν δεν υπάρχει μίσθωση.
+ *
+ * ΓΙΑΤΙ ΟΧΙ ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΑΚΙΝΗΤΟ. Ακίνητο που άλλαξε μισθωτή μέσα στο έτος
+ * έχει δύο μισθωτές, δύο ΑΦΜ και δύο διαστήματα. Με μία γραμμή, το έντυπο
+ * έγραφε έναν μισθωτή δίπλα στο ενοίκιο και των δύο.
+ */
+export interface E2Line {
+  /** Στ. 6 και 7. */
+  tenantName: string;
+  tenantAfm: string;
+  /** Στ. 8 και 9, «ΗΗ/ΜΜ/ΕΕΕΕ», μέσα στο έτος. Κενό όταν δεν ορίζεται. */
+  from: string;
+  to: string;
+  /** Στ. 10. Κενό όταν δεν ορίζεται. */
+  months: number | '';
+  /** Στ. 11. Κενό όταν δεν υπάρχει σταθερό μίσθωμα (βραχυχρόνια). */
+  monthly: number | '';
+  /** Στ. 17. */
+  kind: { code: string; label: string };
+  /** Ακαθάριστο του μεριδίου του υπόχρεου, στρογγυλεμένο. */
+  gross: number;
+  source: E2IncomeSource;
+}
+
+/** Η γραμμή του ακινήτου μαζί με τις γραμμές του εντύπου που τη συνθέτουν. */
+export interface E2RowDetail extends E2Row {
+  lines: E2Line[];
+  /** Υπηρεσίες του έτους που χρεώθηκαν στον μισθωτή και ΔΕΝ μπήκαν στο ακαθάριστο (μερίδιο). */
+  servicesExcluded: number;
+  /** Ανείσπρακτο μίσθωμα του έτους, μετρημένο στη στ. 13 (μερίδιο). */
+  unpaidRent: number;
+}
+
+export interface E2RowOptions {
+  /**
+   * Το ακίνητο έχει καταχωρημένους μισθωτές, έστω και σε άλλα έτη. Χωρίς
+   * καμία μίσθωση μέσα στο έτος, ήταν κενό εκείνο το έτος.
+   */
+  hasLeaseHistory?: boolean;
+}
+
+const isoDay = (v: string | null | undefined): string | null => {
+  const s = String(v ?? '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s + 'T00:00:00Z')) ? s : null;
+};
+const dmy = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+
+/** Οι μήνες (1 έως 12) του έτους που αγγίζει ένα διάστημα. */
+function monthsTouched(start: string, end: string | null, year: number): number[] {
+  const ys = `${year}-01-01`, ye = `${year}-12-31`;
+  const s = start > ys ? start : ys, e = end && end < ye ? end : ye;
+  if (e < s) return [];
+  const out: number[] = [];
+  for (let m = Number(s.slice(5, 7)); m <= Number(e.slice(5, 7)); m++) out.push(m);
+  return out;
+}
+
+/**
+ * Πρώτη και τελευταία μέρα με διαμονή μέσα στο έτος. Διαμονή που περνά την
+ * αλλαγή του χρόνου κόβεται στα όρια του έτους.
+ */
+function stayWindowInYear(stays: readonly E2Stay[], year: number): { from: string; to: string } {
+  const ys = `${year}-01-01`, ye = `${year}-12-31`;
+  let first = '', last = '';
+  for (const s of stays) {
+    const ci = isoDay(s.check_in);
+    if (!ci || nightsSplit(s, year).inYear <= 0) continue;
+    const co = isoDay(s.check_out) || ci;
+    const a = ci < ys ? ys : ci, b = co > ye ? ye : co;
+    if (!first || a < first) first = a;
+    if (!last || b > last) last = b;
+  }
+  return first ? { from: dmy(first), to: dmy(last) } : { from: '', to: '' };
+}
+
+/** Κοινή οδηγία για κάθε γραμμή βραχυχρόνιας με διαμονές. */
+export const E2_SHORT_TERM_NOTE = 'Βραχυχρόνια: στη στ. 10 οι μήνες με διανυκτερεύσεις, στις στ. 8 και 9 η πρώτη και η τελευταία διαμονή του έτους. Η στ. 11 μένει κενή γιατί δεν υπάρχει σταθερό μηνιαίο μίσθωμα· το ακαθάριστο είναι το άθροισμα των διαμονών.';
+
+/**
+ * Το ακίνητο για το έτος: μία γραμμή ανά μίσθωση που το καλύπτει. Το `stays`
+ * είναι οι διαμονές ΑΥΤΟΥ του ακινήτου (όπως το `payments`, ομαδοποιημένες από
+ * τον καλούντα)· χρησιμοποιείται μόνο στη βραχυχρόνια.
  *
  * ΤΙ ΕΒΓΑΖΕ ΛΑΘΟΣ ΠΡΙΝ: στα ακίνητα βραχυχρόνιας το ακαθάριστο έβγαινε από το
  * «μηνιαίο μίσθωμα» × μήνες — δηλαδή από το `target_rent`, έναν ΣΤΟΧΟ που έβαλε
  * ο χρήστης στην καρτέλα του ακινήτου, ή από 0 όταν δεν τον είχε βάλει. Οι
- * καταγεγραμμένες διαμονές, που είναι τα πραγματικά έσοδα, δεν διαβάζονταν ΠΟΤΕ:
- * η βραχυχρόνια δεν έχει ούτε μισθωτή ούτε γραμμές `rent_payments`. Ο ιδιοκτήτης
- * παρέδιδε στον λογιστή Ε2 με υποθετικό (ή μηδενικό) ποσό σε κάθε ακίνητο Airbnb.
+ * καταγεγραμμένες διαμονές, που είναι τα πραγματικά έσοδα, δεν διαβάζονταν ΠΟΤΕ.
  *
  * Το άθροισμα ΔΕΝ ξαναγράφεται εδώ: περνά από την ίδια `shortTermYearSummary`
  * που δίνει τα ακαθάριστα στην καρτέλα Φορολογίας — αλλιώς οι δύο οθόνες θα
  * έλεγαν άλλο νούμερο για την ίδια χρονιά.
+ *
+ * ΟΙ ΜΙΣΘΩΣΕΙΣ ΕΙΝΑΙ ΟΣΕΣ ΚΑΛΥΠΤΟΥΝ ΤΟ ΕΤΟΣ, ΟΧΙ Ο ΣΗΜΕΡΙΝΟΣ ΜΙΣΘΩΤΗΣ
+ * (`tenantStore.inYearByProperty`). Οι εισπράξεις μοιράζονται στις μισθώσεις
+ * με το `tenant_id` τους· όπου λείπει, με τον μήνα της περιόδου.
+ *
+ * ΤΟ ΑΚΑΘΑΡΙΣΤΟ ΕΙΝΑΙ ΤΟ ΜΙΣΘΩΜΑ, ΟΧΙ Η ΔΟΣΗ. Η δόση περιέχει και υπηρεσίες
+ * που μετακυλίονται στον μισθωτή· μετρά μόνο το `base_rent` (lib/rent/split.ts).
  */
-export function buildE2Row(p: E2Property, tenant: E2Tenant | null, payments: E2Payment[], ownerAfm: string, year: number, stays: E2Stay[] = []): E2Row {
+export function buildE2Row(
+  p: E2Property, tenants: E2Tenant | readonly E2Tenant[] | null, payments: E2Payment[], ownerAfm: string,
+  year: number, stays: E2Stay[] = [], opts: E2RowOptions = {},
+): E2RowDetail {
   const flags: string[] = [];
+  const flag = (f: string) => { if (!flags.includes(f)) flags.push(f); };
   const on = typeof p.ownership === 'string' ? parseFloat(p.ownership) : p.ownership;
   const ownershipPct = (on == null || isNaN(on as number)) ? 100 : (on as number);
-  const kind = e2LeaseKind(p.status_detail, p.rental_mode);
-  if (!kind.code) flags.push('Χρειάζεται χειροκίνητος καθορισμός είδους μίσθωσης');
-  const mm = monthsRentedInYear(tenant?.lease_start ?? null, tenant?.lease_end ?? null, year, p.status_detail);
-  if (mm.estimated && mm.months > 0) flags.push('Μήνες εκμίσθωσης: εκτίμηση');
+  const share = (n: number) => Math.round(n * ownershipPct / 100); // μερίδιο συνιδιοκτήτη
+  const statusKind = e2LeaseKind(p.status_detail, p.rental_mode);
+  const leases: readonly E2Tenant[] = tenants == null ? [] : Array.isArray(tenants) ? tenants as readonly E2Tenant[] : [tenants as E2Tenant];
   const yearRows = payments.filter(x => x.period_year === year);
+  const sumRent = (rows: readonly E2Payment[]) => rows.reduce((s, x) => s + rentIncomeOf(x), 0);
   // ΜΙΑ ΑΝΑΓΝΩΣΗ ΚΑΤΑΣΤΑΣΗΣ, Η ΚΟΙΝΗ. Ήταν `status_detail === 'seasonal'` — που
   // αγνοεί το `rental_mode`. Ακίνητο αποθηκευμένο ως «rented» με mode
   // «short_term» (το `readStatus` το λέει ρητά βραχυχρόνιο) περνούσε εδώ για
@@ -125,74 +221,170 @@ export function buildE2Row(p: E2Property, tenant: E2Tenant | null, payments: E2P
   // έβγαινε από μισθώματα ή από τον στόχο ενοικίου — σε φορολογικό έντυπο.
   const status = readStatus(p);
   const shortTerm = status === 'rent_short';
-  // ΑΜΥΝΑ: ΚΡΑΤΑΜΕ ΜΟΝΟ ΤΙΣ ΔΙΑΜΟΝΕΣ ΑΥΤΟΥ ΤΟΥ ΑΚΙΝΗΤΟΥ.
-  //
-  // Η υπογραφή δέχεται πίνακα διαμονών και μέχρι τώρα τον χρησιμοποιούσε
-  // ολόκληρο. Ένας καλών που θα περνούσε τις διαμονές ΟΛΟΥ του χαρτοφυλακίου —
-  // το φυσικό λάθος, αφού το ερώτημα τις φέρνει έτσι — θα δήλωνε σε ΚΑΘΕ ακίνητο
-  // τα έσοδα όλων. Σε φορολογικό έντυπο αυτό δεν είναι σφάλμα οθόνης.
-  //
-  // Το φιλτράρισμα εδώ κάνει τη σωστή ομαδοποίηση του καλούντος πλεονασμό αντί
-  // για προϋπόθεση. Διαμονή χωρίς property_id θεωρείται δική του: είναι
-  // ιστορική γραμμή πριν μπει η στήλη και ο καλών ούτως ή άλλως περνά ήδη
-  // φιλτραρισμένο σύνολο.
+  // ΑΜΥΝΑ: ΚΡΑΤΑΜΕ ΜΟΝΟ ΤΙΣ ΔΙΑΜΟΝΕΣ ΑΥΤΟΥ ΤΟΥ ΑΚΙΝΗΤΟΥ. Ένας καλών που θα
+  // περνούσε τις διαμονές ΟΛΟΥ του χαρτοφυλακίου θα δήλωνε σε ΚΑΘΕ ακίνητο τα
+  // έσοδα όλων. Διαμονή χωρίς property_id θεωρείται δική του: είναι ιστορική
+  // γραμμή πριν μπει η στήλη.
   const ownStays = stays.filter(st => st.property_id == null || st.property_id === p.id);
-  const stayYear = shortTerm ? shortTermYearSummary(ownStays, year) : null;
-  let grossFull: number; let grossEstimated = false;
-  if (stayYear && stayYear.grossRevenue > 0) {
-    grossFull = stayYear.grossRevenue;
-    // Ιστορικές γραμμές που δεν ξέρουμε αν είναι ακαθάριστα ή payout: το ποσό
-    // μπαίνει, αλλά ο χρήστης οφείλει να το δει πριν το δώσει στον λογιστή.
-    if (stayYear.unresolvedCount > 0) flags.push(`Ακαθάριστο βραχυχρόνιας: ${stayYear.unresolvedCount} ${stayYear.unresolvedCount === 1 ? 'διαμονή' : 'διαμονές'} χωρίς ρητή βάση ποσού (ακαθάριστο ή payout)· επιβεβαίωσέ τες`);
+
+  const lines: E2Line[] = [];
+  const monthSet = new Set<number>();
+  let estimatedMonths = 0;
+  let grossEstimated = false;
+  /** Οι δόσεις που μετρήθηκαν στο ακαθάριστο. */
+  let counted: E2Payment[] = [];
+  const line = (o: Partial<E2Line> & Pick<E2Line, 'kind' | 'gross'>): E2Line => ({
+    tenantName: '', tenantAfm: '', from: '', to: '', months: '', monthly: '',
+    source: o.gross > 0 ? 'rent' : 'none', ...o,
+  });
+
+  if (shortTerm) {
+    // ── ΒΡΑΧΥΧΡΟΝΙΑ: ΜΙΑ ΓΡΑΜΜΗ, ΑΠΟ ΤΙΣ ΔΙΑΜΟΝΕΣ ─────────────────────────
+    // Ήταν 12 μήνες, 01/01 έως 31/12 και μηνιαίο μίσθωμα ο στόχος, δίπλα σε
+    // ακαθάριστο από διαμονές: μια γραμμή που έμοιαζε με ετήσιο μισθωτήριο.
+    const stayYear = shortTermYearSummary(ownStays, year);
+    if (stayYear.grossRevenue > 0) {
+      // Ιστορικές γραμμές που δεν ξέρουμε αν είναι ακαθάριστα ή payout: το ποσό
+      // μπαίνει, αλλά ο χρήστης οφείλει να το δει πριν το δώσει στον λογιστή.
+      if (stayYear.unresolvedCount > 0) flag(`Ακαθάριστο βραχυχρόνιας: ${stayYear.unresolvedCount} ${stayYear.unresolvedCount === 1 ? 'διαμονή' : 'διαμονές'} χωρίς ρητή βάση ποσού (ακαθάριστο ή payout)· επιβεβαίωσέ τες`);
+      stayYear.nightsByMonth.forEach((n, i) => { if (n > 0) monthSet.add(i + 1); });
+      lines.push(line({ ...stayWindowInYear(ownStays, year), months: monthSet.size || '', kind: statusKind, gross: share(stayYear.grossRevenue) }));
+      flag(E2_SHORT_TERM_NOTE);
+    } else if (yearRows.length) {
+      counted = yearRows;
+      yearRows.forEach(x => monthSet.add(x.period_month));
+      lines.push(line({ months: monthSet.size || '', kind: statusKind, gross: share(sumRent(yearRows)) }));
+    } else {
+      // Καμία διαμονή, καμία είσπραξη: ο στόχος επιτρέπεται ως ΡΗΤΗ εκτίμηση
+      // του ακαθαρίστου. Μήνες, ημερομηνίες και μηνιαίο μένουν κενά: δεν
+      // υπάρχει τίποτα από το οποίο να βγουν.
+      const lead = leases[leases.length - 1] ?? null;
+      const mm = monthsRentedInYear(lead?.lease_start ?? null, lead ? leaseEndOf(lead) : null, year, p.status_detail);
+      if (mm.estimated && mm.months > 0) flag('Μήνες εκμίσθωσης: εκτίμηση');
+      const g = (lead?.monthly_rent ?? p.target_rent ?? 0) * mm.months;
+      estimatedMonths = mm.months;
+      grossEstimated = g > 0;
+      lines.push(line({ kind: statusKind, gross: share(g) }));
+    }
+  } else {
+    // ── ΜΑΚΡΟΧΡΟΝΙΑ: ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΜΙΣΘΩΣΗ ΤΟΥ ΕΤΟΥΣ ─────────────────────
+    const ids = leases.map(l => l.id ?? null);
+    const withIds = ids.some(Boolean);
+    const covered = leases.map(l => {
+      const s = isoDay(l.lease_start);
+      return s ? new Set(monthsTouched(s, leaseEndOf(l), year)) : null;
+    });
+    const byLease = leases.map(() => [] as E2Payment[]);
+    const loose: E2Payment[] = [];
+    for (const x of yearRows) {
+      const i = x.tenant_id && withIds ? ids.indexOf(x.tenant_id)
+        : leases.length === 1 ? 0
+        : covered.findIndex(ms => ms == null || ms.has(x.period_month));
+      if (i >= 0) byLease[i].push(x); else loose.push(x);
+    }
+    counted = yearRows;
+    leases.forEach((l, i) => {
+      const end = leaseEndOf(l);
+      const mm = monthsRentedInYear(l.lease_start, end, year, p.status_detail);
+      if (mm.estimated && mm.months > 0) flag('Μήνες εκμίσθωσης: εκτίμηση');
+      const cov = covered[i];
+      if (cov) cov.forEach(m => monthSet.add(m)); else estimatedMonths = Math.max(estimatedMonths, mm.months);
+      const monthly = l.monthly_rent ?? p.target_rent ?? 0;
+      let full: number;
+      if (byLease[i].length) full = sumRent(byLease[i]);
+      else { full = monthly * mm.months; if (full > 0) grossEstimated = true; }
+      const win = leaseWindowInYear(l.lease_start, end, year, p.status_detail);
+      lines.push(line({
+        tenantName: l.full_name || '', tenantAfm: l.afm || '', from: win.from, to: win.to,
+        months: mm.months || '', monthly: monthly ? Number(monthly) : '',
+        kind: E2_LEASE_KIND.rented, gross: share(full),
+      }));
+    });
+    if (loose.length) {
+      // Είσπραξη χωρίς μίσθωση που να καλύπτει το έτος. Το ποσό ΔΕΝ χάνεται
+      // (είναι εισόδημα), αλλά ο μισθωτής του δεν μαντεύεται.
+      const g = sumRent(loose);
+      const ms = new Set(loose.map(x => x.period_month));
+      ms.forEach(m => monthSet.add(m));
+      lines.push(line({ months: ms.size || '', kind: leases.length ? E2_LEASE_KIND.rented : statusKind, gross: share(g) }));
+      flag(`Εισπράξεις ${fe(share(g))} του ${year} χωρίς μίσθωση που να καλύπτει το έτος: συμπλήρωσε μισθωτή, ΑΦΜ και ημερομηνίες μίσθωσης (στ. 6 έως 9).`);
+    }
+    if (!lines.length) {
+      if (opts.hasLeaseHistory && status !== 'own_use') {
+        // Το ακίνητο έχει μισθωτές σε άλλα έτη και κανέναν σε αυτό: ήταν κενό.
+        // Πριν, ο ΣΗΜΕΡΙΝΟΣ μισθωτής (π.χ. νέα μίσθωση του επόμενου έτους)
+        // έμπαινε στη γραμμή με μήνες 0 και κενές ημερομηνίες.
+        lines.push(line({ kind: E2_LEASE_KIND.vacant, gross: 0 }));
+        flag(`Καμία μίσθωση δεν καλύπτει το ${year}: η γραμμή δηλώνεται ΚΕΝΟ. Αν υπήρξε μίσθωση, καταχώρησέ τη με ημερομηνίες.`);
+      } else {
+        // Χωρίς καμία καταγραφή, η κατάσταση του ακινήτου κρίνει (ΚΕΝΟ για όλο
+        // το έτος, ή εκτίμηση από τον στόχο για «μισθωμένο» χωρίς στοιχεία).
+        const mm = monthsRentedInYear(null, null, year, p.status_detail);
+        if (mm.estimated && mm.months > 0) flag('Μήνες εκμίσθωσης: εκτίμηση');
+        estimatedMonths = mm.months;
+        const g = (p.target_rent ?? 0) * mm.months;
+        grossEstimated = g > 0;
+        const win = leaseWindowInYear(null, null, year, p.status_detail);
+        lines.push(line({
+          from: win.from, to: win.to, months: mm.months || '', monthly: p.target_rent ? Number(p.target_rent) : '',
+          kind: statusKind, gross: share(g),
+          // ΤΟ ΧΡΗΜΑ ΠΟΥ ΕΙΣΠΡΑΧΘΗΚΕ ΕΙΝΑΙ ΠΑΝΤΑ ΜΙΣΘΩΜΑ. Μόνο μια εκτίμηση πάνω
+          // σε ιδιοχρησία, χωρίς καμία είσπραξη, είναι ιδιοχρησιμοποίηση.
+          source: g <= 0 ? 'none' : status === 'own_use' ? 'own_use' : 'rent',
+        }));
+      }
+    }
   }
-  else if (yearRows.length) { grossFull = yearRows.reduce((s, x) => s + (x.amount || 0), 0); }
-  else { grossFull = (tenant?.monthly_rent ?? p.target_rent ?? 0) * mm.months; grossEstimated = true; }
-  if (grossEstimated && grossFull > 0) {
+
+  if (grossEstimated) {
     // ΤΟ ΜΗΝΥΜΑ ΔΕΝ ΕΠΙΤΡΕΠΕΤΑΙ ΝΑ ΙΣΧΥΡΙΖΕΤΑΙ ΠΕΡΙΣΣΟΤΕΡΑ ΑΠ' ΟΣΑ ΚΟΙΤΑΞΕ.
-    //
-    // Εδώ έγραφε «καμία καταγεγραμμένη διαμονή για το έτος». Ο μοναδικός καλών
-    // στην παραγωγή (app/dashboard/components/e2Export.ts) ΔΕΝ περνά διαμονές —
-    // δεν διαβάζει καν το client_stays — οπότε το `stays` φτάνει πάντα άδειο.
-    // Δηλαδή το έντυπο δήλωνε στον λογιστή ότι η βάση είναι άδεια, ενώ ο κώδικας
-    // απλώς δεν κοίταξε ποτέ. Χειρότερα, το έλεγε ακριβώς σε όποιον ΕΧΕΙ ολόκληρη
-    // σεζόν καταγεγραμμένη — δηλαδή σε αυτόν που θα έπρεπε να υποψιαστεί ότι
-    // λείπουν δεδομένα και τον καθησύχαζε.
-    //
-    // Ξεχωρίζουμε τα δύο: «κοίταξα και δεν βρήκα» λέγεται μόνο όταν ΟΝΤΩΣ
-    // δόθηκαν διαμονές. Αλλιώς λέμε ό,τι ισχύει — ότι είναι εκτίμηση.
-    const consultedStays = ownStays.length > 0;
-    flags.push(shortTerm
-      ? (consultedStays
+    // «Κοίταξα και δεν βρήκα» λέγεται μόνο όταν ΟΝΤΩΣ δόθηκαν διαμονές.
+    // Αλλιώς λέμε ό,τι ισχύει: ότι είναι εκτίμηση.
+    flag(shortTerm
+      ? (ownStays.length > 0
           ? 'Ακαθάριστο βραχυχρόνιας: εκτίμηση από τον στόχο μισθώματος· καμία καταγεγραμμένη διαμονή για το έτος'
           : 'Ακαθάριστο βραχυχρόνιας: εκτίμηση από τον στόχο μισθώματος· οι καταγεγραμμένες διαμονές ΔΕΝ ελήφθησαν υπόψη')
       : 'Ακαθάριστο εισόδημα: εκτίμηση (μηνιαίο × μήνες)');
   }
-  const grossIncome = Math.round(grossFull * ownershipPct / 100); // μερίδιο συνιδιοκτήτη
-  // ΤΟ ΧΡΗΜΑ ΠΟΥ ΕΙΣΠΡΑΧΘΗΚΕ ΕΙΝΑΙ ΠΑΝΤΑ ΜΙΣΘΩΜΑ, ΟΠΟΙΑ ΚΙ ΑΝ ΕΙΝΑΙ Η
-  // ΣΗΜΕΡΙΝΗ ΚΑΤΑΣΤΑΣΗ. Η κατάσταση περιγράφει το ΣΗΜΕΡΑ· το έντυπο ρωτά τι
-  // έγινε ΜΕΣΑ ΣΤΗ ΧΡΟΝΙΑ. Μόνο μια εκτίμηση πάνω σε ιδιοχρησία, χωρίς καμία
-  // είσπραξη, είναι ιδιοχρησιμοποίηση.
-  const earned = yearRows.length > 0 || (stayYear?.grossRevenue ?? 0) > 0;
+
+  // ── ΥΠΗΡΕΣΙΕΣ, ΠΑΛΙΕΣ ΓΡΑΜΜΕΣ, ΑΝΕΙΣΠΡΑΚΤΑ ──────────────────────────────
+  const servicesExcluded = share(counted.reduce((s, x) => s + servicesOf(x), 0));
+  if (servicesExcluded > 0) flag(`Υπηρεσίες ${fe(servicesExcluded)} (ίντερνετ, συνδρομές, καθαρισμός, στάθμευση) χρεώθηκαν στον μισθωτή μαζί με το ενοίκιο και ΔΕΝ μπήκαν στη στ. 13: δεν είναι μίσθωμα.`);
+  const legacy = counted.filter(x => !hasRentSplit(x) && (x.amount || 0) > 0).length;
+  if (legacy) flag(`${legacy} ${legacy === 1 ? 'δόση' : 'δόσεις'} χωρίς χωριστό ενοίκιο (παλιές γραμμές): στη στ. 13 μετρήθηκε ολόκληρο το ποσό. Αν περιέχει υπηρεσίες, αφαίρεσέ τες.`);
+  // ΣΤΗΛΗ 16. Η νομική διεκδίκηση των ανείσπρακτων (άρθρο 39 ΚΦΕ) ΔΕΝ
+  // αποθηκεύεται: στη Λογιστική είναι τσεκ της οθόνης που χάνεται με την
+  // αλλαγή ακινήτου. Χωρίς καταγραφή, το έντυπο δεν μεταφέρει μόνο του ποσό
+  // από τη 13 στη 16· το λέει. Το `paid` που λείπει από το ερώτημα σημαίνει
+  // «δεν ξέρουμε», όχι «απλήρωτο».
+  const unpaidRent = share(counted.filter(x => x.paid === false || x.paid === null).reduce((s, x) => s + rentIncomeOf(x), 0));
+  if (unpaidRent > 0) flag(`Ανείσπρακτο μίσθωμα ${fe(unpaidRent)} μετρήθηκε στη στ. 13. Αν έχει εκδοθεί διαταγή πληρωμής ή ασκηθεί αγωγή (άρθρο 39 ΚΦΕ), το ποσό μεταφέρεται στη στ. 16· η εφαρμογή δεν το καταγράφει.`);
+
+  const grossIncome = lines.reduce((s, l) => s + l.gross, 0);
   const incomeSource: E2IncomeSource =
-    grossIncome <= 0 ? 'none'
-      : (status === 'own_use' && !earned) ? 'own_use'
-      : 'rent';
-  // ΚΑΙ Η ΑΝΤΙΦΑΣΗ ΛΕΓΕΤΑΙ, ΑΝΤΙ ΝΑ ΤΑΞΙΔΕΨΕΙ ΣΙΩΠΗΛΑ. Ενα ακίνητο δηλωμένο
-  // «Κενό» με εισπράξεις μέσα στη χρονιά παράγει γραμμή που λέει ταυτόχρονα
-  // «39 Κενό (μη μισθωμένο)» και ένα ποσό. Ο κωδικός 39 είναι υπαρκτός, οπότε
-  // ο έλεγχος «λείπει είδος μίσθωσης» δεν πυροδοτούσε ποτέ.
-  if (incomeSource === 'rent' && !(status === 'rent_long' || status === 'rent_short')) {
-    // Η ΕΤΙΚΕΤΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΜΗΤΡΩΟ ΚΑΤΑΣΤΑΣΕΩΝ. Το `kind.label` είναι κενό
-    // για «ανακαίνιση», «προς πώληση» και «αμφισβητούμενο», οπότε το μήνυμα
-    // τύπωνε το ωμό κλειδί της βάσης («renovation») σε κείμενο που διαβάζει
-    // λογιστής.
-    flags.push(`Η κατάσταση λέει «${BY_KEY[status].label}» αλλά υπάρχει εισόδημα ${fe(grossIncome)}: το έντυπο το δηλώνει ως εκμίσθωση (στ. 13). Διόρθωσε την κατάσταση ή το είδος μίσθωσης.`);
+    lines.some(l => l.source === 'rent' && l.gross > 0) ? 'rent'
+      : lines.some(l => l.source === 'own_use' && l.gross > 0) ? 'own_use'
+      : 'none';
+  // ΚΑΙ Η ΑΝΤΙΦΑΣΗ ΛΕΓΕΤΑΙ, ΑΝΤΙ ΝΑ ΤΑΞΙΔΕΨΕΙ ΣΙΩΠΗΛΑ. Ακίνητο «Κενό» με
+  // εισπράξεις μέσα στη χρονιά και ΚΑΜΙΑ μίσθωση που να τις εξηγεί. Με μίσθωση
+  // μέσα στο έτος δεν υπάρχει αντίφαση: η κατάσταση περιγράφει το σήμερα.
+  if (incomeSource === 'rent' && !leases.length && !(status === 'rent_long' || status === 'rent_short')) {
+    // Η ΕΤΙΚΕΤΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΜΗΤΡΩΟ ΚΑΤΑΣΤΑΣΕΩΝ, όχι το ωμό κλειδί της βάσης.
+    flag(`Η κατάσταση λέει «${BY_KEY[status].label}» αλλά υπάρχει εισόδημα ${fe(grossIncome)}: το έντυπο το δηλώνει ως εκμίσθωση (στ. 13). Διόρθωσε την κατάσταση ή το είδος μίσθωσης.`);
   }
+  if (lines.some(l => !l.kind.code)) flag('Χρειάζεται χειροκίνητος καθορισμός είδους μίσθωσης');
   const address = [p.address, p.postal_code].filter(Boolean).join(', ');
-  if (!p.atak) flags.push('Λείπει ΑΤΑΚ');
-  if (!ownerAfm) flags.push('Λείπει ΑΦΜ ιδιοκτήτη');
-  if (ownershipPct < 100) flags.push('Συνιδιοκτησία < 100%: πρόσθεσε ΑΦΜ λοιπών συνιδιοκτητών');
-  return { atak: p.atak || '', address, ownerAfm: ownerAfm || '', ownershipPct, leaseKind: kind.code ? `${kind.code} ${kind.label}` : '', months: mm.months, incomeCategory: e2IncomeCategory(p.prop_type, p.status_detail), grossIncome, incomeSource, flags };
+  if (!p.atak) flag('Λείπει ΑΤΑΚ');
+  if (!ownerAfm) flag('Λείπει ΑΦΜ ιδιοκτήτη');
+  if (ownershipPct < 100) flag('Συνιδιοκτησία < 100%: πρόσθεσε ΑΦΜ λοιπών συνιδιοκτητών');
+  const lead = lines.find(l => l.gross > 0) ?? lines[0];
+  return {
+    atak: p.atak || '', address, ownerAfm: ownerAfm || '', ownershipPct,
+    leaseKind: lead?.kind.code ? `${lead.kind.code} ${lead.kind.label}` : '',
+    months: Math.min(12, Math.max(monthSet.size, estimatedMonths)),
+    incomeCategory: e2IncomeCategory(p.prop_type, shortTerm ? 'seasonal' : p.status_detail),
+    grossIncome, incomeSource, flags, lines, servicesExcluded, unpaidRent,
+  };
 }
 
 export function e2RowToCells(r: E2Row, index: number): (string | number)[] {
@@ -200,39 +392,61 @@ export function e2RowToCells(r: E2Row, index: number): (string | number)[] {
   return [index, r.atak, r.address, r.ownerAfm, dec(r.ownershipPct), r.leaseKind, r.months, r.incomeCategory, String(Math.round(r.grossIncome))];
 }
 
-// ── Σύνοψη Ε1 (Πίνακας 4Δ1) — άθροισμα ακαθάριστου εισοδήματος ανά κωδικό ─────
+// ── Σύνοψη Ε1 (Πίνακας 4Δ, ακίνητη περιουσία): ακαθάριστο εκμίσθωσης ανά κωδικό ──
 // Το Ε2 τροφοδοτεί το Ε1: τα ακαθάριστα ανά κατηγορία μεταφέρονται σε συγκεκριμένους
-// κωδικούς. Οι ΑΡΙΘΜΗΤΙΚΟΙ κωδικοί είναι ΕΝΔΕΙΚΤΙΚΟΙ (αλλάζουν ανά έτος) — επιβεβαίωσε
-// στο έντυπο του τρέχοντος έτους στο myAADE.
-// Ισχύον Ε1 (Πίνακας 4Δ2): 103/104 κατοικίες, 105/106 επαγγελματική στέγη,
-// 109/110 γαίες/γήπεδα. Η βραχυχρόνια δηλώνεται στο Ε2 (κωδ. 60) και μεταφέρεται
-// στους κωδικούς εισοδήματος ακινήτων ανά τύπο (κατοικία → 103).
+// κωδικούς. Οι αριθμοί παρακάτω είναι αυτοί που χρησιμοποιούσε πάντα η εφαρμογή
+// (103 κατοικίες, 105 επαγγελματική στέγη, 109 γαίες/γήπεδα). ΔΕΝ υπάρχει εδώ
+// επίσημη πηγή που να τους επιβεβαιώνει, ούτε για τον υποπίνακα του 4Δ: το
+// σχόλιο έλεγε «4Δ2» και το φύλλο «4Δ1». Το φύλλο λέει πια μόνο «4Δ» και η
+// σημείωση ζητά επιβεβαίωση κωδικών από τον λογιστή.
+//
+// ΤΙ ΔΕΝ ΜΠΑΙΝΕΙ ΣΤΟΝ ΚΩΔΙΚΟ ΕΚΜΙΣΘΩΣΗΣ:
+// · η ιδιοχρησιμοποίηση (Ε2 στ. 15): δεν είναι μίσθωμα· φαίνεται χωριστά.
+// · η κατηγορία χωρίς αντιστοίχιση: γινόταν σιωπηλά 103. Τώρα βγαίνει γραμμή
+//   χωρίς κωδικό, σημασμένη, για να τη συμπληρώσει άνθρωπος.
 export const E1_CODE_MAP: Record<string, { code: string; label: string }> = {
   'Κατοικία': { code: '103', label: 'Ακαθάριστο εισόδημα από εκμίσθωση κατοικιών' },
   'Βραχυχρόνια μίσθωση': { code: '103', label: 'Εισόδημα βραχυχρόνιας μίσθωσης (μεταφορά από Ε2, ανά τύπο ακινήτου)' },
   'Επαγγελματική στέγη': { code: '105', label: 'Ακαθάριστο εισόδημα από εκμίσθωση επαγγελματικής στέγης' },
   'Γη / Αγρός': { code: '109', label: 'Ακαθάριστο εισόδημα από εκμίσθωση γαιών / γηπέδων' },
   'Βοηθητικός χώρος': { code: '103', label: 'Ακαθάριστο εισόδημα από εκμίσθωση κατοικιών (βοηθητικοί χώροι)' },
-  'Ακίνητο': { code: '103', label: 'Ακαθάριστο εισόδημα από ακίνητα (επιβεβαίωσε τον κωδικό ανά τύπο)' },
 }
 
-export interface E1CodeLine { code: string; label: string; category: string; amount: number }
-export interface E1Summary { lines: E1CodeLine[]; totalGross: number; note: string }
+/** Η περιγραφή της γραμμής που δεν βρήκε κωδικό. */
+export const E1_UNMAPPED_LABEL = 'Χωρίς αντιστοίχιση κωδικού Ε1: όρισε τον τύπο του ακινήτου ή συμπλήρωσε τον κωδικό με τον λογιστή'
 
-/** Ομαδοποιεί τα Ε2 ακαθάριστα εισοδήματα στους κωδικούς του Ε1 (Πίνακας 4Δ1). */
+export interface E1CodeLine { code: string; label: string; category: string; amount: number; unmapped?: boolean }
+export interface E1Summary {
+  /** Ακαθάριστο ΕΚΜΙΣΘΩΣΗΣ ανά κωδικό μαζί με όσα δεν βρήκαν κωδικό (`unmapped`). */
+  lines: E1CodeLine[];
+  /** Σύνολο εκμίσθωσης, μαζί με τις γραμμές χωρίς κωδικό (είναι μίσθωμα, απλώς χωρίς θέση). */
+  totalGross: number;
+  /** Ιδιοχρησιμοποίηση (Ε2 στ. 15). Εκτός του συνόλου εκμίσθωσης. */
+  ownUse: number;
+  note: string;
+}
+
+export const E1_CODES_NOTE = 'Οι κωδικοί Ε1 είναι ενδεικτικοί: ο υποπίνακας του 4Δ και οι κωδικοί επιβεβαιώνονται από τον λογιστή στο έντυπο του τρέχοντος έτους (myAADE).'
+
+/** Ομαδοποιεί τα ακαθάριστα εκμίσθωσης του Ε2 στους κωδικούς του Ε1 (Πίνακας 4Δ). */
 export function buildE1Summary(rows: E2Row[]): E1Summary {
   const byCode = new Map<string, E1CodeLine>()
+  let ownUse = 0
   for (const r of rows) {
     if (!(r.grossIncome > 0)) continue
-    const map = E1_CODE_MAP[r.incomeCategory] || E1_CODE_MAP['Ακίνητο']
-    const key = map.code + '|' + r.incomeCategory
+    if (r.incomeSource === 'own_use') { ownUse += r.grossIncome; continue }
+    if (r.incomeSource !== 'rent') continue
+    const map = E1_CODE_MAP[r.incomeCategory]
+    const key = (map ? map.code : 'χωρίς') + '|' + r.incomeCategory
     const existing = byCode.get(key)
     if (existing) existing.amount += r.grossIncome
-    else byCode.set(key, { code: map.code, label: map.label, category: r.incomeCategory, amount: r.grossIncome })
+    else byCode.set(key, map
+      ? { code: map.code, label: map.label, category: r.incomeCategory, amount: r.grossIncome }
+      : { code: '', label: E1_UNMAPPED_LABEL, category: r.incomeCategory, amount: r.grossIncome, unmapped: true })
   }
   const lines = [...byCode.values()].map(l => ({ ...l, amount: Math.round(l.amount) })).sort((a, b) => b.amount - a.amount)
   const totalGross = lines.reduce((s, l) => s + l.amount, 0)
-  return { lines, totalGross, note: 'Οι κωδικοί Ε1 είναι ενδεικτικοί· επιβεβαίωσε στο έντυπο του τρέχοντος έτους (myAADE).' }
+  return { lines, totalGross, ownUse: Math.round(ownUse), note: E1_CODES_NOTE }
 }
 
 export const E1_HEADERS = ['Κωδικός Ε1', 'Περιγραφή', 'Κατηγορία', 'Ακαθάριστο Εισόδημα']
@@ -290,39 +504,36 @@ export const E2_OFFICIAL_HEADERS = [
 // Ποιες στήλες (0-based) είναι αριθμητικές, για μορφοποίηση/άθροισμα.
 export const E2_NUM_COLS = { sqm: 4, months: 12, monthly: 13, pct: 14, gross13: 15, gross14: 16, gross15: 17, gross16: 18 };
 
-/** Μία γραμμή πίνακα I με τις επίσημες στήλες, από τα δεδομένα του χρήστη. */
-export function buildE2OfficialCells(p: E2Property, tenant: E2Tenant | null, payments: E2Payment[], ownerAfm: string, year: number, index: number, stays: E2Stay[] = []): (string | number)[] {
-  const base = buildE2Row(p, tenant, payments, ownerAfm, year, stays); // επαναχρησιμοποίηση: μήνες, ποσοστό, ακαθάριστο μεριδίου
-  const win = leaseWindowInYear(tenant?.lease_start ?? null, tenant?.lease_end ?? null, year, p.status_detail);
-  const kind = e2LeaseKind(p.status_detail, p.rental_mode);
-  const monthly = tenant?.monthly_rent ?? p.target_rent ?? 0;
-  // Η ΣΤΗΛΗ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΓΡΑΜΜΗ, ΟΧΙ ΑΠΟ ΔΕΥΤΕΡΗ ΑΝΑΓΝΩΣΗ ΤΗΣ ΚΑΤΑΣΤΑΣΗΣ.
-  // Βλ. το σχόλιο του `E2IncomeSource`: εδώ γεννήθηκε το κενό έντυπο.
-  const rentLike = base.incomeSource === 'rent';
-  const ownUse = base.incomeSource === 'own_use';
-  const g = base.grossIncome;
+/**
+ * Οι γραμμές του Πίνακα I για ένα ακίνητο, από ΗΔΗ χτισμένη γραμμή
+ * (`buildE2Row`): μία ανά μίσθωση του έτους, με α/α από το `index` και μετά.
+ *
+ * Η ΣΤΗΛΗ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΓΡΑΜΜΗ, ΟΧΙ ΑΠΟ ΔΕΥΤΕΡΗ ΑΝΑΓΝΩΣΗ ΤΗΣ ΚΑΤΑΣΤΑΣΗΣ.
+ * Βλ. το σχόλιο του `E2IncomeSource`: εδώ γεννήθηκε το κενό έντυπο.
+ */
+export function e2OfficialRows(p: E2Property, row: E2RowDetail, index: number): (string | number)[][] {
   const loc = [p.address, p.postal_code].filter(Boolean).join(', ');
-  return [
-    index,
+  return row.lines.map((l, i) => [
+    index + i,
     loc,
     p.floor != null && p.floor !== '' ? String(p.floor) : '',
     e2CategoryLabel(p.prop_type),
     p.sqm != null ? p.sqm : '',
-    kind.code ? `${kind.code} · ${kind.label}` : '',
-    '',                                   // στ.18 αρ. παροχής ρεύματος — δεν αντλείται
-    tenant?.full_name || '',
-    tenant?.afm || '',
-    '',                                   // στ.19 αρ. δήλωσης μίσθωσης — δεν αντλείται
-    win.from,
-    win.to,
-    base.months || '',
-    monthly ? Number(monthly) : '',
-    base.ownershipPct,
-    rentLike && g > 0 ? g : '',           // στ.13 εκμίσθωση
-    '',                                   // στ.14 δωρεάν παραχώρηση
-    ownUse && g > 0 ? g : '',             // στ.15 ιδιοχρησιμοποίηση
-    '',                                   // στ.16 ανείσπρακτα
-  ];
+    l.kind.code ? `${l.kind.code} · ${l.kind.label}` : '',
+    '',                                   // στ.18 αρ. παροχής ρεύματος: δεν αντλείται
+    l.tenantName,
+    l.tenantAfm,
+    '',                                   // στ.19 αρ. δήλωσης μίσθωσης: δεν αντλείται
+    l.from,
+    l.to,
+    l.months,
+    l.monthly,
+    row.ownershipPct,
+    l.source === 'rent' && l.gross > 0 ? l.gross : '',      // στ.13 εκμίσθωση
+    '',                                                      // στ.14 δωρεάν παραχώρηση
+    l.source === 'own_use' && l.gross > 0 ? l.gross : '',   // στ.15 ιδιοχρησιμοποίηση
+    '',                                   // στ.16 ανείσπρακτα: βλ. `unpaidRent` στο `buildE2Row`
+  ]);
 }
 
 // Οδηγίες συμπλήρωσης εντύπου Ε2 (σύμφωνα με την επίσημη περίληψη της ΑΑΔΕ).

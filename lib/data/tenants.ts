@@ -167,6 +167,81 @@ export async function currentByProperty<T extends TenantStatus & { property_id?:
   return out;
 }
 
+// ── ΜΙΣΘΩΣΕΙΣ ΕΝΟΣ ΕΤΟΥΣ ──────────────────────────────────────────────────
+//
+// Ο «ΤΡΕΧΩΝ» ΕΙΝΑΙ ΕΡΩΤΗΣΗ ΓΙΑ ΤΟ ΣΗΜΕΡΑ. Το Ε2 ρωτά για ένα έτος που έχει
+// κλείσει. Με τον τρέχοντα μισθωτή, το Ε2 του 2025 που βγήκε αφού ξεκίνησε νέα
+// μίσθωση το 2026 έγραφε το όνομα και το ΑΦΜ του νέου μισθωτή δίπλα στο ενοίκιο
+// του παλιού, με μήνες 0 και κενές ημερομηνίες.
+
+/** Το σχήμα που χρειάζεται η κρίση «μίσθωση μέσα στο έτος». */
+export interface LeaseDates extends TenantStatus {
+  lease_start?: string | null;
+  lease_end?: string | null;
+}
+
+const isoDay = (v: string | null | undefined): string | null => {
+  const s = String(v ?? '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s + 'T00:00:00Z')) ? s : null;
+};
+
+/**
+ * Πότε τελείωσε στην πράξη η μίσθωση: η νωρίτερη από τη λήξη του συμβολαίου
+ * και την αποχώρηση. Μισθωτής με συμβόλαιο ως το 2027 που έφυγε τον Ιούνιο
+ * δεν πλήρωσε ενοίκιο τον Ιούλιο.
+ */
+export function leaseEndOf(t: LeaseDates): string | null {
+  const ends = [isoDay(t.lease_end), isoDay(t.move_out_date)].filter((d): d is string => !!d).sort();
+  return ends[0] ?? null;
+}
+
+/**
+ * Οι μισθώσεις ενός ακινήτου που καλύπτουν το `year`, παλαιότερη πρώτη.
+ *
+ * Με ημερομηνία έναρξης: μετρά αν η έναρξη είναι ως το τέλος του έτους και η
+ * λήξη (ή αποχώρηση) από την αρχή του και μετά.
+ *
+ * ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ ΕΝΑΡΞΗΣ δεν ξέρουμε πότε ξεκίνησε. Μετρά μόνο αν καμία
+ * χρονολογημένη μίσθωση δεν καλύπτει το έτος και ο μισθωτής δεν είχε φύγει πριν
+ * από αυτό. Αλλιώς ο νέος μισθωτής χωρίς ημερομηνία θα έμπαινε σε κάθε
+ * παλαιότερο Ε2.
+ */
+export function leasesInYear<T extends LeaseDates & { created_at?: string | null }>(rows: readonly T[], year: number): T[] {
+  const ys = `${year}-01-01`, ye = `${year}-12-31`;
+  const endsInTime = (t: T) => { const e = leaseEndOf(t); return !e || e >= ys; };
+  const dated = rows.filter(t => { const s = isoDay(t.lease_start); return !!s && s <= ye && endsInTime(t); });
+  const chosen = dated.length ? dated
+    : rows.filter(t => !isoDay(t.lease_start) && endsInTime(t) && (!hasLeft(t) || !!leaseEndOf(t)));
+  return [...chosen].sort((a, b) =>
+    String(isoDay(a.lease_start) || a.created_at || '').localeCompare(String(isoDay(b.lease_start) || b.created_at || '')));
+}
+
+/**
+ * Οι μισθώσεις κάθε ακινήτου μέσα στο `year`, με ένα ερώτημα για όλο το
+ * χαρτοφυλάκιο. Το `known` λέει ποια ακίνητα έχουν καταχωρημένο έστω και έναν
+ * μισθωτή, σε οποιοδήποτε έτος: ακίνητο με ιστορικό μισθώσεων και καμία μέσα
+ * στο έτος ήταν κενό εκείνο το έτος, όχι «μισθωμένο χωρίς στοιχεία».
+ */
+export async function inYearByProperty<T extends LeaseDates & { property_id?: string | null }>(
+  db: Db, userId: string, year: number, columns: string,
+): Promise<{ inYear: Map<string, T[]>; known: Set<string> }> {
+  const cols = withStatus(columns.includes('property_id') ? columns : `property_id,${columns}`);
+  const rows = await ofUser<T>(db, userId, [...new Set([...cols.split(','), 'id', 'lease_end'])].join(','));
+  const byProperty = new Map<string, T[]>();
+  for (const r of rows) {
+    const pid = String(r.property_id || '');
+    if (!pid) continue;
+    const arr = byProperty.get(pid);
+    if (arr) arr.push(r); else byProperty.set(pid, [r]);
+  }
+  const inYear = new Map<string, T[]>();
+  for (const [pid, list] of byProperty) {
+    const leases = leasesInYear(list as (T & { created_at?: string | null })[], year);
+    if (leases.length) inYear.set(pid, leases);
+  }
+  return { inYear, known: new Set(byProperty.keys()) };
+}
+
 // ── ΕΓΓΡΑΦΗ ────────────────────────────────────────────────────────────────
 
 /**

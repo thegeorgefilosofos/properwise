@@ -2,9 +2,15 @@
 // Τρέξε: npx tsx lib/billing/e2.test.ts
 import {
   monthsRentedInYear, e2LeaseKind, e2IncomeCategory,
-  buildE2Row, e2RowToCells, buildE1Summary, e1LineToCells, E2_OFFICIAL_HEADERS, E2_NUM_COLS, buildE2OfficialCells,
+  buildE2Row, e2RowToCells, buildE1Summary, e1LineToCells, E2_OFFICIAL_HEADERS, E2_NUM_COLS, e2OfficialRows,
+  E2_SHORT_TERM_NOTE, E1_UNMAPPED_LABEL,
   type E2Property, type E2Tenant, type E2Payment, type E2Row, type E2Stay,
 } from './e2';
+import { leasesInYear } from '@/lib/data/tenants';
+
+/** Οι επίσημες γραμμές ενός ακινήτου, όπως τις χτίζει το βιβλίο: γραμμή ακινήτου, μετά Πίνακας I. */
+const buildE2OfficialCells = (p: E2Property, t: E2Tenant | E2Tenant[] | null, pays: E2Payment[], afm: string, year: number, index: number, stays: E2Stay[] = []) =>
+  e2OfficialRows(p, buildE2Row(p, t, pays, afm, year, stays), index);
 
 let passed = 0, failed = 0;
 const fails: string[] = [];
@@ -217,9 +223,179 @@ const STAYS: E2Stay[] = [
   // αναπαράσταση (και έχει ΑΤΑΚ, γιατί δεν είναι το επίσημο έντυπο). Το φύλλο
   // που πάει στο myAADE το χτίζει η `buildE2OfficialCells`.
   const cells = buildE2OfficialCells(SEASONAL, null, [], '999999999', 2025, 1, []);
-  ok('η επίσημη γραμμή έχει όσα κελιά και οι επικεφαλίδες', cells.length === E2_OFFICIAL_HEADERS.length);
+  ok('η επίσημη γραμμή έχει όσα κελιά και οι επικεφαλίδες', cells.length === 1 && cells[0].length === E2_OFFICIAL_HEADERS.length);
   const legacy = e2RowToCells(buildE2Row(SEASONAL, null, [], '999999999', 2025, []), 1);
   ok('η παλιά αναπαράσταση δεν συγχέεται με την επίσημη', legacy.length !== E2_OFFICIAL_HEADERS.length);
+}
+
+// ═══ ΔΥΟ ΜΙΣΘΩΣΕΙΣ ΣΤΟ ΙΔΙΟ ΕΤΟΣ: ΔΥΟ ΓΡΑΜΜΕΣ, ΔΥΟ ΑΦΜ ═══════════════════════
+// Παλιός μισθωτής Ιαν έως Ιουν με 700€, νέος από 15/07 με 900€. Πριν: μία
+// γραμμή με τον «τρέχοντα» μισθωτή δίπλα στο ενοίκιο και των δύο.
+//   γραμμή 1: 6 × 700 = 4200, 01/01/2025 έως 30/06/2025, 6 μήνες
+//   γραμμή 2: 5 × 900 = 4500 (Αύγ έως Δεκ), 15/07/2025 έως 31/12/2025, 6 μήνες (Ιούλ έως Δεκ)
+const L1: E2Tenant = { id: 't1', property_id: 'p1', afm: '111111111', full_name: 'Άννα Παλιά', monthly_rent: 700, lease_start: '2023-02-01', lease_end: '2025-06-30', lease_type: null };
+const L2: E2Tenant = { id: 't2', property_id: 'p1', afm: '222222222', full_name: 'Βασίλης Νέος', monthly_rent: 900, lease_start: '2025-07-15', lease_end: null, lease_type: null };
+const pay = (month: number, amount: number, o: Partial<E2Payment> = {}): E2Payment => ({ property_id: 'p1', amount, period_year: 2025, period_month: month, ...o });
+const TWO_LEASE_PAYS: E2Payment[] = [
+  ...[1, 2, 3, 4, 5, 6].map(m => pay(m, 700, { tenant_id: 't1' })),
+  ...[8, 9, 10, 11, 12].map(m => pay(m, 900, { tenant_id: 't2' })),
+];
+{
+  const r = buildE2Row(P(), [L1, L2], TWO_LEASE_PAYS, '999999999', 2025);
+  ok('δύο μισθώσεις → δύο γραμμές', r.lines.length === 2);
+  const [a, b] = r.lines;
+  ok('γραμμή 1: ΑΦΜ του παλιού μισθωτή', a.tenantAfm === '111111111' && a.tenantName === 'Άννα Παλιά');
+  ok('γραμμή 1: ημερομηνίες μέσα στο έτος', a.from === '01/01/2025' && a.to === '30/06/2025');
+  ok('γραμμή 1: 6 μήνες, 4200', a.months === 6 && a.gross === 4200);
+  ok('γραμμή 2: ΑΦΜ του νέου μισθωτή', b.tenantAfm === '222222222');
+  ok('γραμμή 2: 15/07 έως 31/12', b.from === '15/07/2025' && b.to === '31/12/2025');
+  ok('γραμμή 2: 6 μήνες, 4500 από τις δικές του δόσεις', b.months === 6 && b.gross === 4500);
+  ok('σύνολο ακινήτου 8700, 12 μήνες', r.grossIncome === 8700 && r.months === 12);
+  ok('με εισπράξεις δεν είναι εκτίμηση', !r.flags.some(f => f.includes('εκτίμηση')));
+  const cells = buildE2OfficialCells(P(), [L1, L2], TWO_LEASE_PAYS, '999999999', 2025, 3);
+  ok('επίσημες γραμμές: δύο, α/α 3 και 4', cells.length === 2 && cells[0][0] === 3 && cells[1][0] === 4);
+  ok('επίσημες γραμμές: ΑΦΜ στη στ. 7', cells[0][8] === '111111111' && cells[1][8] === '222222222');
+  ok('επίσημες γραμμές: στ. 13 ανά μίσθωση', cells[0][E2_NUM_COLS.gross13] === 4200 && cells[1][E2_NUM_COLS.gross13] === 4500);
+  ok('επίσημες γραμμές: μηνιαίο ανά μίσθωση', cells[0][E2_NUM_COLS.monthly] === 700 && cells[1][E2_NUM_COLS.monthly] === 900);
+}
+{
+  // Χωρίς `tenant_id` (παλιές δόσεις) το μοίρασμα γίνεται με τον μήνα.
+  const noIds = TWO_LEASE_PAYS.map(x => ({ ...x, tenant_id: null }));
+  const r = buildE2Row(P(), [L1, L2], noIds, '999999999', 2025);
+  ok('χωρίς tenant_id: μοίρασμα κατά μήνα', r.lines[0].gross === 4200 && r.lines[1].gross === 4500);
+}
+{
+  // Δόση με tenant_id μισθωτή που δεν καλύπτει το έτος: ΔΕΝ φορτώνεται σε άλλον.
+  const r = buildE2Row(P(), [L1], [pay(1, 700, { tenant_id: 't1' }), pay(9, 950, { tenant_id: 'x9' })], '999999999', 2025);
+  ok('ξένη δόση: χωριστή γραμμή χωρίς μισθωτή', r.lines.length === 2 && r.lines[1].tenantAfm === '' && r.lines[1].gross === 950);
+  ok('ξένη δόση: σημαίνεται', r.flags.some(f => f.startsWith('Εισπράξεις') && f.includes('χωρίς μίσθωση')));
+}
+
+// ═══ ΠΑΛΙΟ ΕΤΟΣ ΜΕΤΑ ΑΠΟ ΑΛΛΑΓΗ ΜΙΣΘΩΤΗ ═══════════════════════════════════
+// Ε2 του 2025 βγαλμένο το 2026, αφού ήρθε νέος μισθωτής. Πριν: ο ΣΗΜΕΡΙΝΟΣ
+// μισθωτής έμπαινε στη γραμμή του 2025, μήνες 0, ημερομηνίες κενές, δίπλα
+// στο ενοίκιο του παλιού.
+{
+  const tenants = [
+    { id: 'old', property_id: 'p1', afm: '111111111', full_name: 'Παλιός', monthly_rent: 800, lease_start: '2024-03-01', lease_end: '2027-02-28', lease_type: null, move_out_date: '2026-02-28', status: 'past', created_at: '2024-03-01' },
+    { id: 'new', property_id: 'p1', afm: '333333333', full_name: 'Νέος', monthly_rent: 950, lease_start: '2026-03-01', lease_end: null, lease_type: null, move_out_date: null, status: 'active', created_at: '2026-02-20' },
+  ];
+  const leases = leasesInYear(tenants, 2025);
+  ok('μισθώσεις του 2025: μόνο ο παλιός', leases.length === 1 && leases[0].id === 'old');
+  const pays = Array.from({ length: 12 }, (_, i) => pay(i + 1, 800, { tenant_id: 'old' }));
+  const r = buildE2Row(P(), leases, pays, '999999999', 2025);
+  ok('παλιό έτος: ΑΦΜ του μισθωτή εκείνου του έτους', r.lines[0].tenantAfm === '111111111');
+  ok('παλιό έτος: ΟΧΙ το ΑΦΜ του σημερινού', !r.lines.some(l => l.tenantAfm === '333333333'));
+  ok('παλιό έτος: 12 μήνες, όχι 0', r.lines[0].months === 12 && r.months === 12);
+  ok('παλιό έτος: ημερομηνίες κομμένες στο έτος', r.lines[0].from === '01/01/2025' && r.lines[0].to === '31/12/2025');
+  ok('παλιό έτος: 9600', r.grossIncome === 9600);
+  // Και ο νέος χωρίς ημερομηνία έναρξης δεν μπαίνει σε παλιό έτος όταν
+  // υπάρχει χρονολογημένη μίσθωση που το καλύπτει.
+  const undated = tenants.map(t => (t.id === 'new' ? { ...t, lease_start: null } : t));
+  ok('ο νέος χωρίς έναρξη δεν μπαίνει στο 2025', leasesInYear(undated, 2025).every(t => t.id === 'old'));
+  // Έτος χωρίς καμία μίσθωση, με ιστορικό μισθωτών: ΚΕΝΟ, ρητά.
+  const r24 = buildE2Row(P(), leasesInYear(tenants, 2023), [], '999999999', 2023, [], { hasLeaseHistory: true });
+  ok('χωρίς μίσθωση στο έτος, με ιστορικό: ΚΕΝΟ (39)', r24.lines.length === 1 && r24.lines[0].kind.code === '39' && r24.grossIncome === 0);
+  ok('…όχι εκτίμηση από τον στόχο', !r24.flags.some(f => f.includes('εκτίμηση')));
+  ok('…και το λέει', r24.flags.some(f => f.includes('ΚΕΝΟ')));
+}
+{
+  // Η κατάσταση περιγράφει το σήμερα: «Κενό» σήμερα, μίσθωση Ιαν έως Ιουν.
+  // Η γραμμή είναι εκμίσθωση χωρίς επισήμανση αντίφασης.
+  const lease: E2Tenant = { id: 'a', property_id: 'p1', afm: '444444444', monthly_rent: 700, lease_start: '2025-01-01', lease_end: '2025-06-30', lease_type: null };
+  const r = buildE2Row(P({ status_detail: 'vacant' }), [lease], [1, 2, 3, 4, 5, 6].map(m => pay(m, 700, { tenant_id: 'a' })), '999999999', 2025);
+  ok('σημερινό «Κενό», μίσθωση μέσα στο έτος: εκμίσθωση', r.lines[0].kind.code === '1' && r.grossIncome === 4200);
+  ok('…χωρίς επισήμανση αντίφασης', !r.flags.some(f => f.startsWith('Η κατάσταση λέει')));
+}
+
+// ═══ ΕΝΟΙΚΙΟ ΚΑΙ ΥΠΗΡΕΣΙΕΣ ΣΤΗΝ ΙΔΙΑ ΔΟΣΗ ═════════════════════════════════
+// Δόση 1100 = ενοίκιο 1000 + υπηρεσίες 100 (ίντερνετ, Netflix, καθαρισμός).
+// Πριν: στ. 13 = 12 × 1100 = 13200. Σωστό: 12 × 1000 = 12000· οι 1200 των
+// υπηρεσιών βγαίνουν στο φύλλο ελέγχου.
+{
+  const lease: E2Tenant = { id: 's', property_id: 'p1', afm: '555555555', monthly_rent: 1000, lease_start: '2024-01-01', lease_end: null, lease_type: null };
+  const pays = Array.from({ length: 12 }, (_, i) => pay(i + 1, 1100, { tenant_id: 's', base_rent: 1000, services_charge: 100, paid: true }));
+  const r = buildE2Row(P(), [lease], pays, '999999999', 2025);
+  ok('στ. 13 = μόνο το ενοίκιο (12000)', r.grossIncome === 12000);
+  ok('ΟΧΙ 13200', r.grossIncome !== 13200);
+  ok('οι υπηρεσίες μετρήθηκαν χωριστά (1200)', r.servicesExcluded === 1200);
+  ok('οι υπηρεσίες λέγονται στις επισημάνσεις', r.flags.some(f => f.startsWith('Υπηρεσίες') && f.includes('ΔΕΝ μπήκαν στη στ. 13')));
+  ok('χωρίς επισήμανση παλιών γραμμών', !r.flags.some(f => f.includes('χωρίς χωριστό ενοίκιο')));
+  // Μερίδιο 50%: και οι υπηρεσίες στο μερίδιο.
+  const half = buildE2Row(P({ ownership: 50 }), [lease], pays, '999999999', 2025);
+  ok('μερίδιο 50%: 6000 και υπηρεσίες 600', half.grossIncome === 6000 && half.servicesExcluded === 600);
+  // Χωρίς services_charge: υπηρεσίες = ποσό μείον ενοίκιο.
+  const noSvc = buildE2Row(P(), [lease], [pay(1, 1100, { tenant_id: 's', base_rent: 1000 })], '999999999', 2025);
+  ok('υπηρεσίες από τη διαφορά όταν λείπει η στήλη', noSvc.grossIncome === 1000 && noSvc.servicesExcluded === 100);
+  // Παλιά γραμμή χωρίς base_rent: μετρά ολόκληρη, αλλά σημαίνεται.
+  const legacy = buildE2Row(P(), [lease], [pay(1, 1100, { tenant_id: 's' }), pay(2, 1100, { tenant_id: 's', base_rent: 1000, services_charge: 100 })], '999999999', 2025);
+  ok('παλιά γραμμή: ολόκληρο το ποσό (1100 + 1000)', legacy.grossIncome === 2100);
+  ok('παλιά γραμμή: σημαίνεται', legacy.flags.some(f => f.startsWith('1 δόση χωρίς χωριστό ενοίκιο')));
+}
+
+// ═══ ΣΤΗΛΗ 16: ΑΝΕΙΣΠΡΑΚΤΑ ═══════════════════════════════════════════════
+// Η νομική διεκδίκηση δεν αποθηκεύεται, οπότε η 16 μένει κενή και το ποσό
+// μένει στη 13, με ρητή επισήμανση.
+{
+  const lease: E2Tenant = { id: 'u', property_id: 'p1', afm: '666666666', monthly_rent: 1000, lease_start: '2024-01-01', lease_end: null, lease_type: null };
+  const pays = Array.from({ length: 12 }, (_, i) => pay(i + 1, 1000, { tenant_id: 'u', base_rent: 1000, services_charge: 0, paid: i < 10 ? true : (i === 10 ? false : null) }));
+  const r = buildE2Row(P(), [lease], pays, '999999999', 2025);
+  ok('ανείσπρακτα: 2 δόσεις (false και null) = 2000', r.unpaidRent === 2000);
+  ok('ανείσπρακτα: μένουν στη στ. 13', r.grossIncome === 12000);
+  ok('ανείσπρακτα: επισήμανση για στ. 16 και άρθρο 39', r.flags.some(f => f.includes('στ. 16') && f.includes('άρθρο 39')));
+  ok('ανείσπρακτα: όχι «εκτίμηση» (δεν μπερδεύει τον έλεγχο)', !r.flags.some(f => f.includes('εκτίμηση')));
+  const cells = buildE2OfficialCells(P(), [lease], pays, '999999999', 2025, 1);
+  ok('στ. 16 κενή', cells[0][E2_NUM_COLS.gross16] === '');
+  // Το `paid` που δεν ζητήθηκε δεν είναι «απλήρωτο».
+  const unknown = buildE2Row(P(), [lease], [pay(1, 1000, { tenant_id: 'u' })], '999999999', 2025);
+  ok('χωρίς στήλη paid: κανένα ανείσπρακτο', unknown.unpaidRent === 0);
+}
+
+// ═══ ΒΡΑΧΥΧΡΟΝΙΑ ΜΕ ΔΙΑΜΟΝΕΣ ΣΕ ΤΡΕΙΣ ΜΗΝΕΣ ═════════════════════════════
+// Πριν: 12 μήνες, 01/01 έως 31/12 και μηνιαίο = στόχος, δίπλα σε ακαθάριστο
+// από διαμονές. Σωστό: μήνες με διανυκτερεύσεις (3), πρώτη και τελευταία
+// διαμονή, μηνιαίο κενό. Ακαθάριστο 500 + 300 + 700 = 1500.
+{
+  const st: E2Stay[] = [
+    { property_id: 'p1', check_in: '2025-03-10', check_out: '2025-03-15', nights: 5, gross_guest_paid: 500, climate_levy: 0, platform_fee: 50 },
+    { property_id: 'p1', check_in: '2025-06-01', check_out: '2025-06-04', nights: 3, gross_guest_paid: 300, climate_levy: 0, platform_fee: 30 },
+    { property_id: 'p1', check_in: '2025-08-20', check_out: '2025-08-27', nights: 7, gross_guest_paid: 700, climate_levy: 0, platform_fee: 70 },
+  ];
+  const prop = P({ status_detail: 'rented', rental_mode: 'short_term', target_rent: 800 });
+  const r = buildE2Row(prop, null, [], '999999999', 2025, st);
+  ok('βραχυχρόνια: μία γραμμή', r.lines.length === 1);
+  ok('βραχυχρόνια: 3 μήνες, όχι 12', r.lines[0].months === 3 && r.months === 3);
+  ok('βραχυχρόνια: από την πρώτη διαμονή', r.lines[0].from === '10/03/2025');
+  ok('βραχυχρόνια: ως την τελευταία', r.lines[0].to === '27/08/2025');
+  ok('βραχυχρόνια: χωρίς μηνιαίο μίσθωμα', r.lines[0].monthly === '');
+  ok('βραχυχρόνια: ακαθάριστο από διαμονές (1500)', r.grossIncome === 1500);
+  ok('βραχυχρόνια: εξήγηση στις επισημάνσεις', r.flags.includes(E2_SHORT_TERM_NOTE));
+  const cells = buildE2OfficialCells(prop, null, [], '999999999', 2025, 1, st)[0];
+  ok('βραχυχρόνια στο έντυπο: στ. 10 = 3, στ. 11 κενή', cells[E2_NUM_COLS.months] === 3 && cells[E2_NUM_COLS.monthly] === '');
+  ok('βραχυχρόνια στο έντυπο: κωδικός 60', String(cells[5]).startsWith('60 ·'));
+  // Διαμονή που περνά την αλλαγή του χρόνου κόβεται στο έτος.
+  const cross: E2Stay[] = [{ property_id: 'p1', check_in: '2024-12-30', check_out: '2025-01-02', nights: 3, gross_guest_paid: 300, climate_levy: 0 }];
+  const rc = buildE2Row(prop, null, [], '999999999', 2025, cross);
+  ok('διαμονή αλλαγής χρόνου: από 01/01', rc.lines[0].from === '01/01/2025' && rc.lines[0].to === '02/01/2025' && rc.lines[0].months === 1);
+  // Χωρίς καμία διαμονή: το ακαθάριστο μένει ρητή εκτίμηση, μήνες και μηνιαίο κενά.
+  const est = buildE2OfficialCells(prop, null, [], '999999999', 2025, 1, [])[0];
+  ok('βραχυχρόνια χωρίς διαμονές: κανένα πλασματικό μηνιαίο', est[E2_NUM_COLS.monthly] === '' && est[E2_NUM_COLS.months] === '' && est[10] === '' && est[11] === '');
+}
+
+// ═══ Ε1: ΙΔΙΟΧΡΗΣΙΜΟΠΟΙΗΣΗ ΕΚΤΟΣ, ΑΝΤΙΣΤΟΙΧΙΣΗ ΡΗΤΗ ═══════════════════════
+{
+  const base: E2Row = { atak: '1', address: 'Α', ownerAfm: '9', ownershipPct: 100, leaseKind: '', months: 12, incomeCategory: 'Κατοικία', grossIncome: 6000, incomeSource: 'rent', flags: [] };
+  const e1 = buildE1Summary([
+    base,
+    { ...base, grossIncome: 3000, incomeSource: 'own_use' },
+    { ...base, grossIncome: 2000, incomeCategory: 'Ακίνητο' },
+  ]);
+  ok('Ε1: η ιδιοχρησιμοποίηση ΔΕΝ μπαίνει στο 103', e1.lines.find(l => l.code === '103')?.amount === 6000);
+  ok('Ε1: η ιδιοχρησιμοποίηση φαίνεται χωριστά', e1.ownUse === 3000);
+  const un = e1.lines.find(l => l.unmapped);
+  ok('Ε1: κατηγορία χωρίς κωδικό ΔΕΝ γίνεται σιωπηλά 103', !!un && un.code === '' && un.amount === 2000 && un.label === E1_UNMAPPED_LABEL);
+  ok('Ε1: σύνολο εκμίσθωσης 8000 (χωρίς την ιδιοχρησιμοποίηση)', e1.totalGross === 8000);
+  ok('Ε1: η σημείωση ζητά επιβεβαίωση από τον λογιστή', /λογιστή/.test(e1.note));
 }
 
 // ── report ───────────────────────────────────────────────────────────────────

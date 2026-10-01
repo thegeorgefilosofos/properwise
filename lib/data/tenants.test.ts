@@ -5,7 +5,7 @@
 // `updated_at desc`, με `neq status past` και με τίποτα — ανάλογα με την οθόνη.
 // Η βεβαίωση ενοικίου έβγαινε στο όνομα άλλου ανθρώπου από αυτόν που έδειχνε η
 // Επισκόπηση, για το ίδιο ακίνητο, την ίδια στιγμή. Εδώ κλειδώνει η μία απάντηση.
-import { hasLeft, sortCurrentFirst, current, currentByProperty, markPast } from './tenants';
+import { hasLeft, sortCurrentFirst, current, currentByProperty, markPast, leaseEndOf, leasesInYear, inYearByProperty } from './tenants';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } };
@@ -47,6 +47,28 @@ ok('άδεια γραμμή δεν θεωρείται φευγάτη', !hasLeft(
 }
 {
   ok('κενό ακίνητο δίνει κενή λίστα', sortCurrentFirst([{ id: 'x', status: 'past' }]).length === 0);
+}
+
+// ── ΜΙΣΘΩΣΕΙΣ ΕΝΟΣ ΕΤΟΥΣ (Ε2) ─────────────────────────────────────────────
+// Το Ε2 ρωτά για έτος που έκλεισε, όχι για το σήμερα. Ο «τρέχων» μισθωτής
+// έμπαινε στο Ε2 του περασμένου έτους με το ΑΦΜ του.
+ok('λήξη = η νωρίτερη από συμβόλαιο και αποχώρηση',
+  leaseEndOf({ lease_end: '2027-02-28', move_out_date: '2026-02-28' }) === '2026-02-28');
+ok('λήξη: χωρίς τίποτα, ανοιχτή', leaseEndOf({}) === null);
+{
+  const rows = [
+    { id: 'palios', lease_start: '2024-03-01', lease_end: '2027-02-28', move_out_date: '2026-02-28', status: 'past' },
+    { id: 'neos', lease_start: '2026-03-01', lease_end: null, move_out_date: null, status: 'active' },
+  ];
+  ok('2025: μόνο ο παλιός', leasesInYear(rows, 2025).map(t => t.id).join() === 'palios');
+  ok('2026: και οι δύο, παλαιότερος πρώτος', leasesInYear(rows, 2026).map(t => t.id).join() === 'palios,neos');
+  ok('2027: μόνο ο νέος (ο παλιός έφυγε το 2026)', leasesInYear(rows, 2027).map(t => t.id).join() === 'neos');
+  ok('2023: κανείς', leasesInYear(rows, 2023).length === 0);
+  // Χωρίς έναρξη: μετρά μόνο όταν καμία χρονολογημένη μίσθωση δεν καλύπτει το έτος.
+  const undated = [rows[0], { id: 'atelis', lease_start: null, lease_end: null, move_out_date: null, status: 'active' }];
+  ok('χωρίς έναρξη δεν μπαίνει δίπλα σε χρονολογημένη', leasesInYear(undated, 2025).map(t => t.id).join() === 'palios');
+  ok('χωρίς έναρξη μετρά όταν δεν υπάρχει άλλη', leasesInYear([undated[1]], 2025).map(t => t.id).join() === 'atelis');
+  ok('φευγάτος χωρίς ημερομηνίες δεν μετρά', leasesInYear([{ id: 'x', lease_start: null, status: 'past' }], 2025).length === 0);
 }
 
 // ── Ψεύτικη βάση: τι ζητιέται στην πραγματικότητα ─────────────────────────
@@ -103,6 +125,20 @@ async function asyncChecks() {
     const map = await currentByProperty<{ property_id?: string | null; id: string; status?: string | null }>(db, 'u1', 'id,full_name');
     ok('χάρτης: κάθε ακίνητο παίρνει τον δικό του τρέχοντα', map.get('p1')?.id === 'b' && map.get('p2')?.id === 'c');
     ok('χάρτης: μόνο δύο ακίνητα', map.size === 2);
+  }
+  {
+    const { db, calls } = fakeDb([
+      { property_id: 'p1', id: 'a', afm: '1', status: 'past', move_out_date: '2026-02-28', lease_start: '2024-03-01', lease_end: null, created_at: '2024-03-01' },
+      { property_id: 'p1', id: 'b', afm: '2', status: 'active', move_out_date: null, lease_start: '2026-03-01', lease_end: null, created_at: '2026-02-20' },
+      { property_id: 'p2', id: 'c', afm: '3', status: 'active', move_out_date: null, lease_start: '2026-01-01', lease_end: null, created_at: '2026-01-01' },
+    ]);
+    const { inYear, known } = await inYearByProperty<{ property_id?: string | null; id: string; lease_start?: string | null; status?: string | null }>(db, 'u1', 2025, 'afm');
+    ok('έτος 2025: στο p1 ο μισθωτής του 2025, όχι ο σημερινός', inYear.get('p1')?.map(t => t.id).join() === 'a');
+    ok('έτος 2025: το p2 δεν έχει μίσθωση', !inYear.has('p2'));
+    ok('έτος 2025: και τα δύο έχουν ιστορικό', known.has('p1') && known.has('p2'));
+    ok('ζητήθηκαν id, λήξη και αποχώρηση',
+      ['id', 'lease_end', 'move_out_date', 'lease_start', 'property_id'].every(c => calls[0].columns.split(',').includes(c)));
+    ok('φίλτρο χρήστη', calls[0].filters.some(([c, v]) => c === 'user_id' && v === 'u1'));
   }
 }
 // ── Η αποχώρηση γράφει ΚΑΙ τις δύο στήλες ─────────────────────────────────
