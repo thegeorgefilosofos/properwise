@@ -5,7 +5,7 @@ import { T } from '@/components/tokens'
 import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax'
 import { fe, fp, fn } from '@/lib/core/format'
 import { parseAmount } from '@/lib/core/greek'
-import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
 import LiveResult from '@/components/LiveResult'
 import { hy } from '@/components/Hyphen'
 

@@ -256,7 +256,9 @@ export const REGULATED: readonly Regulated[] = [
   {
     id: 'presumptive-deduction',
     label: 'Τεκμαρτή έκπτωση 5% και η προϋπόθεση τραπεζικής είσπραξης',
-    where: 'lib/accounting/statement.ts',
+    // Μετακόμισε στις 01.10.2026 από το lib/accounting/statement.ts (που τον
+    // επανεξάγει) ώστε οι δημόσιοι υπολογιστές να μη φορτώνουν όλη τη λογιστική.
+    where: 'lib/billing/presumptive.ts',
     validFrom: '2026-01-01',
     validTo: null,
     source: `${AADE_HOME}/polites/akinita`,

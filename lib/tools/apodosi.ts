@@ -28,7 +28,7 @@
 // δαπάνες τα δίνει ο χρήστης.
 // ═══════════════════════════════════════════════════════════════════════════
 import { rentalIncomeTax, marginalRate, rentalBracketsForYear } from '@/lib/billing/greekTax'
-import { presumptiveDeductionRateForYear } from '@/lib/billing/consolidate'
+import { presumptiveDeductionRateForYear } from '@/lib/billing/presumptive'
 
 export interface YieldInput {
   /** Αξία του ακινήτου σήμερα, ή το τίμημα που θα δώσεις. */

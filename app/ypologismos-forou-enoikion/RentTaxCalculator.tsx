@@ -28,8 +28,7 @@ import {
   rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS,
 } from '@/lib/billing/greekTax';
 import { parseAmount } from '@/lib/core/greek';
-import { bankReceiptMatters, presumptiveDeductionRateForYear } from '@/lib/billing/consolidate';
-import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
+import { bankReceiptMatters, presumptiveDeductionRateForYear, PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { Toggle } from '@/app/dashboard/components/UIComponents';
 import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
 import { ToolNumField, ToolFigure, ToolLedger, ToolStats } from '@/app/ToolParts';
