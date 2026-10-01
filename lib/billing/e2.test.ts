@@ -448,6 +448,8 @@ const TWO_LEASE_PAYS: E2Payment[] = [
   ok('Συμπληρωματικά I: ποσοστό 100 μείον το μερίδιο', sup[0][10] === 40);
   ok('Συμπληρωματικά I: παροχή ρεύματος', sup[0][6] === '123456789');
   ok('Συμπληρωματικά I: χωρίς συνιδιοκτήτες τίποτα', e2SupplementaryRows(P(), home).length === 0);
+  const whole = P({ ownership: 100, co_owners: [{ name: 'Μαρία Κ.', afm: '111111111', pct: 50 }] });
+  ok('Συμπληρωματικά I: υπόχρεος στο 100%, κανένας συνιδιοκτήτης', e2SupplementaryRows(whole, buildE2Row(whole, T({ lease_start: '2025-01-01' }), [], '999', 2025)).length === 0);
 
   // Συμπληρωματικά II: κτήση μέσα στο έτος.
   ok('Συμπληρωματικά II: αγορά του έτους', e2AcquiredRows(P({ purchase_date: '2025-04-10' }), 2025)[0]?.[3].toString().startsWith('Αγορά 10/04/2025'));

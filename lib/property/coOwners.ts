@@ -79,10 +79,21 @@ export function mergeCoOwnerNames(existing: readonly CoOwner[], names: readonly 
   const clean = names.map(n => n.trim()).filter(Boolean);
   const byName = clean.map(n => take(x => x.c.name === n));
   return clean.map((name, i) => {
-    const prior = byName[i] ?? take(x => x.i === i);
+    // ΙΔΙΑ ΘΕΣΗ ΜΟΝΟ ΓΙΑ ΔΙΟΡΘΩΜΕΝΟ ΟΝΟΜΑ. Αν στη θέση της «Μαρίας» γραφτεί
+    // «Νίκος», είναι άλλος άνθρωπος: χωρίς αυτόν τον έλεγχο ο Νίκος έπαιρνε
+    // το ΑΦΜ και το ποσοστό της Μαρίας στα Συμπληρωματικά του Ε2.
+    const prior = byName[i] ?? take(x => x.i === i && samePerson(x.c.name, name));
     return prior ? { ...prior, name } : { name, afm: null, pct: null, address: null };
   });
 }
+
+const words = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+  .split(/[^\p{L}]+/u).filter(w => w.length >= 3);
+/** Διόρθωση του ίδιου ονόματος: κοινή λέξη τριών γραμμάτων και πάνω, χωρίς τόνους. */
+const samePerson = (a: string, b: string) => {
+  const A = new Set(words(a));
+  return words(b).some(w => A.has(w));
+};
 
 /** Έχει η βάση κάτι παραπάνω από ονόματα; Τότε ο οδηγός δεν το σβήνει. */
 export const hasCoOwnerDetails = (list: readonly CoOwner[]): boolean =>
@@ -111,15 +122,60 @@ const sameAfm = (a: string | null | undefined, b: string | null | undefined) =>
 export function splitRowsFromRecord(owner: OwnerOfRecord, coOwnersJson: unknown): SplitRow[] | null {
   const co = readCoOwners(coOwnersJson);
   if (!co.length) return null;
-  const own = Number(String(owner.ownership ?? '').replace(',', '.'));
-  const self: SplitRow = {
-    name: (owner.name || '').trim() || 'Ιδιοκτήτης', afm: (owner.afm || '').replace(/\s+/g, ''),
-    pct: Number.isFinite(own) && own > 0 ? numText(own) : '', address: '', self: true,
-  };
+  const self = selfRow(owner);
   const others = co
     .filter(c => !sameAfm(c.afm, owner.afm))
     .map(c => ({ name: c.name, afm: c.afm ?? '', pct: numText(c.pct), address: c.address ?? '' }));
   return [self, ...others];
+}
+
+/** Η γραμμή του υπόχρεου, όπως την ξέρει η βάση. */
+export function selfRow(owner: OwnerOfRecord): SplitRow {
+  const own = Number(String(owner.ownership ?? '').replace(',', '.'));
+  return {
+    name: (owner.name || '').trim() || 'Ιδιοκτήτης', afm: (owner.afm || '').replace(/\s+/g, ''),
+    pct: Number.isFinite(own) && own > 0 ? numText(own) : '', address: '', self: true,
+  };
+}
+
+const selfIndex = (rows: readonly SplitRow[], owner: Pick<OwnerOfRecord, 'name' | 'afm'>) => {
+  const flagged = rows.findIndex(r => r.self);
+  if (flagged >= 0) return flagged;
+  const byAfm = rows.findIndex(r => sameAfm(r.afm, owner.afm));
+  if (byAfm >= 0) return byAfm;
+  const nm = (owner.name || '').trim();
+  return nm ? rows.findIndex(r => r.name.trim() === nm) : -1;
+};
+
+/**
+ * ΠΑΝΤΑ ΜΙΑ ΓΡΑΜΜΗ ΤΟΥ ΥΠΟΧΡΕΟΥ. Χωρίς αυτήν, η αποθήκευση έγραφε τον ίδιο τον
+ * ιδιοκτήτη ως συνιδιοκτήτη του εαυτού του και άφηνε το `ownership` στο 100: στο
+ * επόμενο άνοιγμα τα ποσοστά έβγαιναν 200% και το Ε2 τον έδειχνε στα
+ * Συμπληρωματικά. Η κενή αρχική φόρμα γίνεται η γραμμή του υπόχρεου· παλιά
+ * διάταξη από τον περιηγητή χωρίς αναγνωρίσιμο υπόχρεο κρατά την πρώτη της
+ * γραμμή ως υπόχρεο, όπως τη συμπλήρωνε η παλιά οθόνη.
+ */
+export function withSelfRow(rows: readonly SplitRow[], owner: OwnerOfRecord): SplitRow[] {
+  const at = selfIndex(rows, owner);
+  if (at >= 0) return rows.map((r, i) => (i === at ? { ...r, self: true } : r));
+  if (!rows.some(r => r.name.trim())) return [selfRow(owner)];
+  return rows.map((r, i) => (i === 0 ? { ...r, self: true } : r));
+}
+
+/**
+ * Η σάρωση συμβολαίου φέρνει όλους τους ιδιοκτήτες. Ο υπόχρεος μένει η δική
+ * του γραμμή (παίρνει το ποσοστό και, αν λείπει, το ΑΦΜ από τη σάρωση όταν
+ * αναγνωρίζεται)· οι υπόλοιποι μπαίνουν από κάτω. Οσο τα ποσοστά δεν κλείνουν
+ * στο 100, η κατάσταση δεν εκδίδεται.
+ */
+export function mergeScannedRows(current: readonly SplitRow[], scanned: readonly SplitRow[], owner: OwnerOfRecord): SplitRow[] {
+  const self = current.find(r => r.self) ?? selfRow(owner);
+  const at = selfIndex(scanned.map(r => ({ ...r, self: false })), { name: self.name, afm: self.afm || owner.afm });
+  const others = scanned.filter((r, i) => i !== at && r.name.trim())
+    .map(r => ({ name: r.name, afm: r.afm, pct: r.pct, address: r.address }));
+  const hit = at >= 0 ? scanned[at] : null;
+  const me: SplitRow = hit ? { ...self, pct: hit.pct || self.pct, afm: self.afm || hit.afm } : self;
+  return [me, ...others];
 }
 
 /**

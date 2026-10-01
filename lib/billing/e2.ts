@@ -666,6 +666,9 @@ export const E2_SUPPL_II_COLUMNS: readonly string[] = [
  * δηλωμένο ποσοστό βγαίνει από το 100 μείον το μερίδιο του υπόχρεου.
  */
 export function e2SupplementaryRows(p: E2Property, row: E2RowDetail): (string | number)[][] {
+  // Υπόχρεος στο 100%: δεν υπάρχει συνιδιοκτησία να δηλωθεί, όσα ονόματα κι
+  // αν έμειναν από παλαιότερη κατανομή (κρατιούνται για όταν ξαναλλάξει).
+  if (row.ownershipPct >= 100) return [];
   const co = readCoOwners(p.co_owners);
   const loc = [p.address, p.postal_code].filter(Boolean).join(', ');
   const use = [...new Set(row.lines.map(l => l.use).filter(Boolean))].join(', ');

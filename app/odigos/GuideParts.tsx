@@ -288,7 +288,7 @@ export function RelatedGuides({ current }: { current: Guide }) {
         ))}
       </ul>
       <p className="lg-p" style={{ marginTop: 12 }}>
-        <Link href={HUB.href} className="lp-link" style={LINK_STYLE}>{`Όλοι οι οδηγοί (${GUIDES.length})`}</Link>
+        <Link href={HUB.href} className="lp-link po-tap" style={LINK_STYLE}>{`Όλοι οι οδηγοί (${GUIDES.length})`}</Link>
       </p>
     </section>
   );

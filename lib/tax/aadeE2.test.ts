@@ -4,7 +4,7 @@
 // πίνακα, προβολή λεπτομερειών) και η ερώτηση είναι πάντα η ίδια: διαβάστηκε
 // το ΣΩΣΤΟ νούμερο στο ΣΩΣΤΟ πεδίο και, όπου δεν είμαστε βέβαιοι, το λέμε;
 import PDFDocument from 'pdfkit';
-import { parseAadeE2, validateAadeRow, fieldOf, type AadeE2Row } from './aadeE2';
+import { parseAadeE2, validateAadeRow, fieldOf, blockingProblem, type AadeE2Row } from './aadeE2';
 import { extractPdfText } from '@/lib/pdf/pdfText';
 
 let pass = 0, fail = 0;
@@ -252,6 +252,16 @@ const OFFICIAL_ROWS = [
   const r = parseAadeE2('Καλημέρα\nΔεν υπάρχει πίνακας εδώ');
   eq('χωρίς γραμμές: άδειο αποτέλεσμα', [r.layout, r.rows.length], ['empty', 0]);
   eq('κενό κείμενο', parseAadeE2('').layout, 'empty');
+}
+
+// ── Τα όρια του πίνακα πριν από την αποθήκευση, ανά γραμμή ──────────────────
+{
+  const base: AadeE2Row = { rowNo: 1, atak: '01234567890', address: null, category: null, tenantName: null, tenantAfm: null,
+    from: null, to: null, months: 12, monthlyRent: 500, ownershipPct: 100, gross: 6000, incomeColumn: 13, leaseDeclRef: null };
+  eq('έγκυρη γραμμή: τίποτα δεν εμποδίζει', blockingProblem(base), null);
+  ok('αρνητικό μηνιαίο εμποδίζει', !!blockingProblem({ ...base, monthlyRent: -100 }));
+  ok('παροχή με γράμματα εμποδίζει', !!blockingProblem({ ...base, powerSupplyNo: '12A' }));
+  ok('διεύθυνση πάνω από 300 εμποδίζει', !!blockingProblem({ ...base, address: 'α'.repeat(301) }));
 }
 
 pdfCases().then(() => {

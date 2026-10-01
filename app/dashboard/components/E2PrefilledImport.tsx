@@ -177,6 +177,9 @@ export default function E2PrefilledImport({ ownerId, year, afms, initialAfm, kno
   const afmOk = isValidAfm(afm);
   const yearClash = detected.year != null && detected.year !== year;
   const afmClash = !!detected.afm && afmOk && detected.afm !== afm;
+  // ΑΦΜ που δεν είναι υπόχρεος κανενός ακινήτου: η σύγκριση ομαδοποιεί ανά ΑΦΜ
+  // ιδιοκτήτη, οπότε οι γραμμές θα έμεναν αθέατες.
+  const afmUnknown = afmOk && afms.length > 0 && !afms.includes(afm);
   const canSave = rows.length > 0 && firstBlocking < 0 && afmOk && !yearClash && step === 'review';
 
   const save = async () => {
@@ -274,6 +277,7 @@ export default function E2PrefilledImport({ ownerId, year, afms, initialAfm, kno
               : <TextInput label="ΑΦΜ υπόχρεου" value={afm} onChange={v => setAfm(afmDigits(v).slice(0, 9))} placeholder="9 ψηφία" />}
           </div>
           {!afmOk && <InfoBanner tone="negative">Γράψε το ΑΦΜ του υπόχρεου του Ε2: 9 ψηφία, με σωστό ψηφίο ελέγχου.</InfoBanner>}
+          {afmUnknown && <InfoBanner tone="warning">Το {afm} δεν είναι ΑΦΜ ιδιοκτήτη σε κανένα ακίνητο της εφαρμογής ({afms.join(', ')}). Η σύγκριση θα δείξει μόνο γραμμές που αποθηκεύονται σε αυτά.</InfoBanner>}
           {afmClash && <InfoBanner tone="warning">Το αρχείο γράφει ΑΦΜ υπόχρεου {detected.afm}. Οι γραμμές θα αποθηκευτούν στο {afm}: έλεγξε ότι είναι το σωστό έντυπο.</InfoBanner>}
           {yearClash && <InfoBanner tone="negative">Το αρχείο είναι του {detected.year}. Εδώ αποθηκεύεται το {year}: άλλαξε έτος και ξαναδοκίμασε.</InfoBanner>}
           {detected.unread > 0 && <InfoBanner tone="warning">{detected.unread === 1 ? 'Μία γραμμή με ποσό δεν αναγνωρίστηκε' : `${detected.unread} γραμμές με ποσά δεν αναγνωρίστηκαν`}. Αν λείπει γραμμή από κάτω, πρόσθεσέ τη με το χέρι.</InfoBanner>}

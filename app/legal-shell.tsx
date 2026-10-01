@@ -254,10 +254,18 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
   );
   if (guideHeads) {
     // Η ετικέτα πάνω από τον τίτλο: «2. Πού πάνε». Το μέρος κληρονομείται από
-    // την πρώτη του ενότητα· γράφεται η πρώτη του φράση, χωρίς το γράμμα.
+    // την πρώτη του ενότητα και κάθε ενότητα παίρνει τη ΔΙΚΗ ΤΗΣ φράση του, με
+    // τη σειρά: «Πού πάνε, πώς φυλάσσονται, ποιος τα αγγίζει» για τις ενότητες
+    // 2, 3 και 4. Πριν γραφόταν η πρώτη φράση σε όλες: τρεις φορές «Πού πάνε»
+    // και «Τι δεν κάνουμε» πάνω από τα δικαιώματά σου (οπτικός έλεγχος, 01.10.2026).
     const partOf = (i: number): string => {
-      const owner = blocks.slice(0, i + 1).findLast(b => b.part);
-      return owner?.part ? owner.part.replace(/^[Α-Ω]\.\s*/, '').split(',')[0] : blocks[i].h;
+      const at = blocks.slice(0, i + 1).findLastIndex(b => b.part);
+      const owner = at >= 0 ? blocks[at] : null;
+      if (!owner?.part) return blocks[i].h;
+      const phrases = owner.part.replace(/^[Α-Ω]\.\s*/, '').split(',').map(x => x.trim()).filter(Boolean);
+      const k = Math.min(i - at, phrases.length - 1);
+      const p = phrases[k] ?? phrases[0];
+      return p.charAt(0).toLocaleUpperCase('el') + p.slice(1);
     };
     const overs = blocks.map((_, i) => `${i + 1}. ${partOf(i)}`);
     return (

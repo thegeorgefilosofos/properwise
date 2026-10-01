@@ -579,12 +579,12 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
         </div>
 
         {viewMode!=='agenda'&&(
-          <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+          <div className="cal-nav" style={{ display:'flex', alignItems:'center', gap:4 }}>
             <IconBtn label="Προηγούμενο" title="Προηγούμενο" size="md" round onClick={prevPeriod}><ChevronLeft size={18}/></IconBtn>
-            <span aria-live="polite" style={{ fontSize:15, fontWeight:600, fontFamily: T.font.sans, color:'var(--text-primary)', minWidth:150, textAlign:'center', letterSpacing:'0.1px' }}>{periodLabel()}</span>
+            <span aria-live="polite" className="cal-period" style={{ fontSize:15, fontWeight:600, fontFamily: T.font.sans, color:'var(--text-primary)', minWidth:150, textAlign:'center', letterSpacing:'0.1px', whiteSpace:'nowrap' }}>{periodLabel()}</span>
             <IconBtn label="Επόμενο" title="Επόμενο" size="md" round onClick={nextPeriod}><ChevronRight size={18}/></IconBtn>
             {/* size="lg" γιατί η γραμμή εργαλείων είναι όλη στα 40, μαζί με το πεδίο αναζήτησης δίπλα. */}
-            <Btn size="lg" onClick={()=>setCurrentDate(athensNow())}>Σήμερα</Btn>
+            <Btn size="lg" className="cal-today" onClick={()=>setCurrentDate(athensNow())}>Σήμερα</Btn>
           </div>
         )}
 

@@ -21,7 +21,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
 import { T, feAuto, fn, fp } from '@/components/tokens';
-import { fpRate, feWhole, feSigned } from '@/lib/core/format';
+import { fe, fpRate, feWhole, feSigned } from '@/lib/core/format';
 import {
   rentalIncomeTax, marginalRate,
   rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS,
@@ -254,8 +254,8 @@ export function RentTaxCalculator({ today }: { today: string }) {
             ισομεγέθη νούμερα άφηναν το «Σου μένουν» πρώτο, δηλαδή η απάντηση
             στην ερώτηση του τίτλου ήταν δεύτερη. Ακέραια ευρώ στην κορυφή· τα
             λεπτά τα κρατά η ανάλυση από κάτω, που πρέπει να κλείνει στο λεπτό. */}
-        <ToolHero primary={{ label: 'Φόρος', value: feWhole(r.tax) }}
-          secondary={[{ label: 'Σου μένουν', value: feWhole(r.net) }]}/>
+        <ToolHero primary={{ label: 'Φόρος', value: fe(r.tax) }}
+          secondary={[{ label: 'Σου μένουν', value: fe(r.net) }]}/>
         <LiveResult say={`Φόρος ${feAuto(r.tax)}. Σου μένουν ${feAuto(r.net)}.`} />
 
         <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
@@ -281,7 +281,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
         {/* Ετικέτες μιας γραμμής και στα 768: «Φόρος ως ποσοστό του ενοικίου»
             έπιανε δύο και κατέβαζε το νούμερό της κάτω από τα διπλανά. */}
         <ToolStats items={[
-          { k: 'Καθαρά τον μήνα', v: feWhole(r.monthlyNet) },
+          { k: 'Καθαρά τον μήνα', v: fe(r.monthlyNet) },
           { k: 'Φόρος επί ενοικίου', v: fp(r.rentShare * 100) },
           { k: 'Οριακός συντελεστής', v: fpRate(r.marginal * 100) },
         ]}/>

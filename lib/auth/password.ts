@@ -34,6 +34,9 @@ export const PASSWORD_MIN_LENGTH = 10
 /** «Τουλάχιστον N χαρακτήρες», γραμμένο μία φορά. */
 export const PASSWORD_MIN_LABEL = `Τουλάχιστον ${PASSWORD_MIN_LENGTH} χαρακτήρες`
 
+/** Το ίδιο, για placeholder: στα 320 το «Τουλάχιστον 10 χαρακτήρες» κοβόταν στο «χαρακτήρεc». */
+export const PASSWORD_MIN_HINT = `Από ${PASSWORD_MIN_LENGTH} χαρακτήρες`
+
 /**
  * ΤΑ ΔΥΟ ΜΗΝΥΜΑΤΑ ΑΠΟΡΡΙΨΗΣ, ΣΕ ΕΝΑ ΣΗΜΕΙΟ.
  *

@@ -5024,6 +5024,13 @@ body:has(.po-tool-page) .po-cookie {
   .lp-hide-xs { display: none !important; }
   .lp-only-xs { display: inline !important; }
 }
+/* Το ίδιο, για κουμπιά μέσα σε κάρτα που στενεύουν μόνο κάτω από τα 360: στα
+   320 το «Ξεκίνα δωρεάν με το ακίνητό σου» άφηνε το «σου» μόνο του. */
+.lp-only-xxs { display: none; }
+@media (max-width: 360px) {
+  .lp-hide-xxs { display: none !important; }
+  .lp-only-xxs { display: inline !important; }
+}
 
 /* Συχνές ερωτήσεις: λεπτή γραμμή αντί για κουτί και σταυρός που γίνεται
    «χ» όταν ανοίγει. Το προεπιλεγμένο βελάκι του περιηγητή φεύγει.
@@ -5488,7 +5495,25 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   /* Στη στενή στήλη (272) τα ονόματα των ενοτήτων τύλιγαν με μία λέξη μόνη
      στη δεύτερη γραμμή. Δύο ίσες γραμμές διαβάζονται ως ένα όνομα. */
   .lg-grid > .lg-toc .lg-toc-list a, .gd-rail .lg-toc-list a { text-wrap: balance; }
+  @media (max-height: 1000px) {
+    .lg-grid > .lg-toc .lg-toc-list a, .gd-rail .lg-toc-list a { padding: 2px 0; line-height: 1.4; }
+  }
   .lg-grid > .lg-toc .lg-toc-list a[aria-current="true"], .gd-rail .lg-toc-list a[aria-current="true"] { color: var(--text-primary); }
+  /* Η ΣΤΗΛΗ ΔΕΝ ΚΟΒΕΤΑΙ ΣΤΗ ΜΕΣΗ ΣΤΟΙΧΕΙΟΥ ΧΩΡΙΣ ΝΑ ΤΟ ΛΕΕΙ (01.10.2026). Οι
+     Όροι στα 1440×900 ζητούσαν 1009 σε 852: το ορατό τέλος ήταν ένα μισό
+     «24 Παράπονα και» και τα 25 έως 28 κρύβονταν σε εσωτερική κύλιση χωρίς
+     σημάδι. Πιο πυκνές γραμμές όπου η οθόνη είναι χαμηλή και ένα σβήσιμο στο
+     κάτω άκρο όσο υπάρχει συνέχεια· στο τέλος της κύλισης το σβήσιμο φεύγει. */
+  .lg-grid > .lg-toc, .gd-rail { scrollbar-width: thin; }
+  @supports (animation-timeline: scroll()) {
+    .lg-grid > .lg-toc, .gd-rail {
+      animation: toc-more linear both; animation-timeline: scroll(self);
+    }
+    @keyframes toc-more {
+      from, 96% { mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); }
+      to { mask-image: none; }
+    }
+  }
   .lg-grid > .lg-toc .lg-toc-list a[aria-current="true"]::before, .gd-rail .lg-toc-list a[aria-current="true"]::before {
     content: ''; position: absolute; left: -19px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: var(--accent);
   }
@@ -5832,6 +5857,12 @@ tr.po-row-more { display: none; }
      τα 14 στις κεφαλίδες, που ξεχείλιζαν από το κελί τους στα 390. */
   .po-table th, .po-table td, .po-table thead th { padding-left: 10px; padding-right: 10px; }
   .po-table thead th.num { hyphens: manual; }
+}
+/* ΣΤΑ 320 ΟΙ ΠΙΝΑΚΕΣ ΣΕΡΝΟΝΤΑΝ 10 ΕΩΣ 30 ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ (01.10.2026): κλίμακα
+   ενοικίων 300 σε 290, δόσεις ΕΝΦΙΑ 319 σε 290. Κύλιση για μια λωρίδα δεν
+   είναι κύλιση, είναι τρέμουλο. Κάτω από τα 360 το γέμισμα πέφτει στα 6. */
+@media (max-width: 360px) {
+  .po-table th, .po-table td, .po-table thead th { padding-left: 6px; padding-right: 6px; }
 }
 /* Οι στήλες των πακέτων είναι στενές και κεντραρισμένες: το γέμισμα των 14 ανά
    πλευρά έτρωγε 28 από τα 155 που έχει η στήλη. Δέκα αρκούν όταν το κείμενο
@@ -6703,3 +6734,21 @@ tr.po-row-more { display: none; }
 .auth-split { color-scheme: dark; }
 :root[data-mode="light"] .auth-split { color-scheme: light; }
 .po-check { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+
+/* ΤΟ «ΣΗΜΕΡΑ» ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ ΚΟΒΟΤΑΝ ΣΤΑ 320 (01.10.2026). ‹ μήνας › Σήμερα
+   ζητούσαν 344 σε στήλη 288: 24 εικονοστοιχεία έξω και πλευρική κύλιση. Κάτω
+   από τα 360 η πλοήγηση παίρνει δική της σειρά, ο μήνας στενεύει στο κείμενό
+   του και τα κουμπιά κρατούν τα 44 τους. */
+@media (max-width: 360px) {
+  .cal-nav { flex: 1 1 100%; justify-content: space-between; }
+  .cal-period { min-width: 0 !important; flex: 1 1 auto; font-size: 14px !important; }
+  .cal-today { padding-left: 12px !important; padding-right: 12px !important; }
+}
+
+/* ΚΑΜΙΑ ΛΕΞΗ ΜΟΝΗ ΣΤΗΝ ΤΕΛΕΥΤΑΙΑ ΓΡΑΜΜΗ ΤΙΤΛΟΥ (01.10.2026). Ο οπτικός
+   έλεγχος στα 320 και 390 βρήκε «Φωτογραφίζεις, δεν / πληκτρολογείς.», είκοσι
+   ερωτήσεις των συχνών με το «μίσθωση;» μόνο του και κεφαλίδες πίνακα με το
+   «5%» σε δική του σειρά. Τίτλοι, ερωτήσεις και κεφαλίδες ζυγίζουν τις γραμμές
+   τους· όπου ένα σημείο έχει γράψει δικό του `text-wrap`, νικά εκείνο. Το
+   κόστος μετρήθηκε αμελητέο (βλ. «ΤΙ ΔΟΚΙΜΑΣΤΗΚΕ ΚΑΙ ΑΠΟΡΡΙΦΘΗΚΕ» πιο πάνω). */
+h1, h2, h3, h4, details > summary, th, dt { text-wrap: balance; }

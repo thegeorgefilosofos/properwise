@@ -54,7 +54,7 @@ const TYPES = [
 ];
 
 /** Ακέραια ευρώ, με τυπογραφικό μείον όταν τα καθαρά βγαίνουν αρνητικά. */
-const wholeSigned = (n: number) => (Math.round(n) < 0 ? `−${feWhole(-n)}` : feWhole(n));
+const wholeSigned = (n: number) => (Math.round(n * 100) < 0 ? `−${fe(-n)}` : fe(n));
 
 /**
  * Διαφορά σε ακέραια ευρώ με πρόσημο ΚΑΙ στο κέρδος: «+1.020€», «−330€».
@@ -209,7 +209,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
         <ToolHero
           primary={{
             label: gap === 0 ? 'Διαφορά τον χρόνο' : `Υπέρ ${gap > 0 ? 'βραχυχρόνιας' : 'μακροχρόνιας'}, τον χρόνο`,
-            value: gap === 0 ? feWhole(0) : `+${feWhole(Math.abs(gap))}`,
+            value: gap === 0 ? fe(0) : `+${fe(Math.abs(gap))}`,
           }}
           secondary={[
             { label: 'Μακροχρόνια, καθαρά', value: wholeSigned(r.long.net) },
@@ -217,7 +217,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
           ]}/>
         <LiveResult say={gap === 0
           ? 'Οι δύο επιλογές αφήνουν ουσιαστικά τα ίδια.'
-          : `Η ${gap > 0 ? 'βραχυχρόνια' : 'μακροχρόνια'} αφήνει ${feWhole(Math.abs(gap))} περισσότερα τον χρόνο. Μακροχρόνια ${wholeSigned(r.long.net)}, βραχυχρόνια ${wholeSigned(r.short.net)} καθαρά.`} />
+          : `Η ${gap > 0 ? 'βραχυχρόνια' : 'μακροχρόνια'} αφήνει ${fe(Math.abs(gap))} περισσότερα τον χρόνο. Μακροχρόνια ${wholeSigned(r.long.net)}, βραχυχρόνια ${wholeSigned(r.short.net)} καθαρά.`} />
 
         <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
 

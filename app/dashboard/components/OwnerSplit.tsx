@@ -26,7 +26,7 @@ import { MONTHS_NOM } from '@/lib/core/months';
 import { failed } from '@/lib/core/dbError';
 import { monthEndIso } from '@/lib/core/time';
 import { useRemembered } from '@/components/useRememberedFlag';
-import { splitRowsFromRecord, recordFromSplitRows, writeCoOwners, type SplitRow } from '@/lib/property/coOwners';
+import { splitRowsFromRecord, recordFromSplitRows, writeCoOwners, withSelfRow, mergeScannedRows, type SplitRow } from '@/lib/property/coOwners';
 import { notifyError } from '@/components/Toast';
 
 interface Prop { id: string; name: string; address: string | null; ownership: number | string | null; co_owners: unknown }
@@ -130,7 +130,8 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
   // Πρώτα η βάση· μόνο όταν δεν ξέρει κανέναν συνιδιοκτήτη, οι παλιές γραμμές
   // του περιηγητή, ώστε η πρώτη αποθήκευση να τις μεταφέρει στη βάση.
   const fromDb = record ? splitRowsFromRecord(ofRecord, record.co_owners) : null;
-  const base: SavedSplit = { ...stored, rows: fromDb ?? stored.rows.map(asRow) };
+  // Με ή χωρίς βάση, η πρώτη γραμμή είναι πάντα ο υπόχρεος (withSelfRow).
+  const base: SavedSplit = { ...stored, rows: fromDb ?? withSelfRow(stored.rows.map(asRow), ofRecord) };
   const split = edited && edited.key === propId ? edited.value : base;
   const rows = split.rows;
   const feePct = split.feePct;
@@ -253,7 +254,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
 
   const setRow = (i: number, k: keyof Row, v: string) => setRows(rs => rs.map((r, j) => j === i ? { ...r, [k]: v } : r));
   const addRow = () => setRows(rs => [...rs, asRow({})]);
-  const delRow = (i: number) => setRows(rs => rs.filter((_, j) => j !== i));
+  const delRow = (i: number) => setRows(rs => rs.filter((r, j) => j !== i || r.self));
 
   const exportPdf = async () => {
     setErr('');
@@ -265,7 +266,9 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
     if (!result.valid) { setErr(result.warning || 'Έλεγξε τα ποσοστά.'); return; }
     setBusy(true);
     try {
-      saveLayout();
+      // Η κατάσταση βγαίνει μόνο με αποθηκευμένη κατανομή: αλλιώς το χαρτί θα
+      // έλεγε άλλα ποσοστά από όσα διαβάζει μετά το Ε2.
+      if (!(await saveLayout())) return;
       const issued = await issueDocument(supabase, {
         userId, docType: 'Κατάσταση κατανομής', subject: prop.name, period: periodLabel,
         summary: { gross: result.gross, expenses: result.expenses, fee: result.managementFee, distributable: result.distributable, owners: result.owners.length },
@@ -347,8 +350,10 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
           <div style={{ marginBottom: 10 }}>
             <ScanButton onExtract={doc => {
               const ex = (doc.owners || []).filter(o => o?.name);
-              if (ex.length) setRows(ex.map(o => asRow({ name: o.name || '', afm: o.afm || '', pct: o.pct != null ? String(o.pct) : '' })));
-              else if (doc.landlord_name) setRows([asRow({ name: doc.landlord_name, afm: doc.afm || '' })]);
+              const scanned = ex.length
+                ? ex.map(o => asRow({ name: o.name || '', afm: o.afm || '', pct: o.pct != null ? String(o.pct) : '' }))
+                : doc.landlord_name ? [asRow({ name: doc.landlord_name, afm: doc.afm || '' })] : [];
+              if (scanned.length) setRows(rs => mergeScannedRows(rs, scanned, ofRecord));
             }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -377,7 +382,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
                     πληκτρολόγιο και οθόνη αφής. Το «×» μένει 18 όπως ήταν· μεγαλώνει
                     μόνο το κουτί γύρω του, που είναι ο στόχος αφής. */}
                 <IconBtn onClick={() => delRow(i)} label="Αφαίρεση ιδιοκτήτη" title="Αφαίρεση" tone="danger"
-                  style={{ fontSize: 18, lineHeight: 1, visibility: rows.length > 1 && hoverRow === i ? 'visible' : 'hidden' }}>×</IconBtn>
+                  style={{ fontSize: 18, lineHeight: 1, visibility: !r.self && rows.length > 1 && hoverRow === i ? 'visible' : 'hidden' }}>×</IconBtn>
               </div>
             ))}
           </div>

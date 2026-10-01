@@ -22,7 +22,7 @@
 import { useMemo, useId, useState } from 'react';
 import Link from 'next/link';
 import { T, feAuto } from '@/components/tokens';
-import { fn, fp, fpRate, feSigned, fpSigned, feWhole } from '@/lib/core/format';
+import { fe, fn, fp, fpRate, feSigned, fpSigned } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { propertyYield } from '@/lib/tools/apodosi';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
@@ -41,7 +41,7 @@ const PATH = '/kathari-apodosi';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
 /** Ακέραια ευρώ με τυπογραφικό μείον, όπως στη σύγκριση βραχυχρόνιας. */
-const wholeSigned = (n: number) => (Math.round(n) < 0 ? `−${feWhole(-n)}` : feWhole(n));
+const wholeSigned = (n: number) => (Math.round(n * 100) < 0 ? `−${fe(-n)}` : fe(n));
 
 /**
  * ΟΜΑΔΑ ΠΕΔΙΩΝ ΜΕ ΤΙΤΛΟ ΠΟΥ ΞΕΧΩΡΙΖΕΙ ΑΠΟ ΤΙΣ ΕΤΙΚΕΤΕΣ.

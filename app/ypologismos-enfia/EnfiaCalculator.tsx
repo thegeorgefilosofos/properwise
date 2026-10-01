@@ -23,7 +23,7 @@ import { OBJECTIVE_VALUES } from '@/lib/tax/aade';
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId, useState } from 'react';
 import { T, feAuto } from '@/components/tokens';
-import { fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
+import { fe, fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
@@ -205,8 +205,8 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
                 που πρέπει να βρίσκεις κάθε μήνα. */}
             {/* ΤΟ ΕΤΗΣΙΟ ΟΔΗΓΕΙ, Ο ΜΗΝΑΣ ΤΟ ΠΛΑΙΣΙΩΝΕΙ. Ακέραια ευρώ στην κορυφή·
                 τα λεπτά τα κρατούν η ανάλυση και ο πίνακας των δόσεων. */}
-            <ToolHero primary={{ label: 'ΕΝΦΙΑ ετησίως', value: feWhole(r.annual) }}
-              secondary={[{ label: 'Ανά μήνα', value: feWhole(r.annual / ENFIA_INSTALMENTS) }]}/>
+            <ToolHero primary={{ label: 'ΕΝΦΙΑ ετησίως', value: fe(r.annual) }}
+              secondary={[{ label: 'Ανά μήνα', value: fe(r.annual / ENFIA_INSTALMENTS) }]}/>
               <LiveResult say={`ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, ${feAuto(r.annual / ENFIA_INSTALMENTS)} τον μήνα.`} />
 
             <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>

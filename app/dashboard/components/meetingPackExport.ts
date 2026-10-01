@@ -193,6 +193,10 @@ export async function buildMeetingPack(db: SupabaseClient, req: MeetingPackReque
     listPrefilled(db, userId, year),
     declRefsByProperty(db, userId),
   ]);
+  // ΑΠΟΤΥΧΙΑ ΑΝΑΓΝΩΣΗΣ ΔΕΝ ΕΙΝΑΙ «ΔΕΝ ΑΝΕΒΗΚΕ». Χωρίς αυτόν τον έλεγχο ο
+  // φάκελος έγραφε «λείπει το προσυμπληρωμένο» για ένα ανεβασμένο αρχείο και,
+  // όταν στελνόταν, μηδένιζε τις διαφορές στη γραμμή του λογιστή.
+  if (prefilled.failed) throw new Error('Το προσυμπληρωμένο Ε2 δεν διαβάστηκε.');
   const group = afmGroups(loaded).find(g => g.afm === ownerAfm);
   if (!group) return null;
   const reconciliation = compareGroup(loaded, group, prefilled.rows, year, refs);

@@ -16,7 +16,7 @@ import { hardNavigate } from '@/lib/core/navigate';
 import { T, TT, Btn, settingsField, Spinner, ABSENT, ABSENT_DATE, fixedCols, InfoBanner } from '@/components/Theme';
 import { SetList, SetRow, SetFact } from './SettingsKit';
 import { logActivity } from '@/lib/activity';
-import { checkPassword, PASSWORD_MSG } from '@/lib/auth/password';
+import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password';
 import PasswordStrength from '@/components/PasswordStrength';
 import { SAY, failed } from '@/lib/core/dbError';
 
@@ -276,7 +276,7 @@ export default function SecuritySettings() {
 
       {/* 1. Κωδικός πρόσβασης */}
       <SetRow title="Κωδικός πρόσβασης"
-        desc="Τουλάχιστον οκτώ χαρακτήρες, με πεζό, κεφαλαίο, αριθμό και σύμβολο.">
+        desc={`${PASSWORD_MIN_LABEL}, με πεζό, κεφαλαίο, αριθμό και σύμβολο.`}>
         <div {...fixedCols(2, 12, 'start')}>
           <div>
             <label htmlFor="sec-new-pass" style={fieldLabel}>Νέος κωδικός</label>

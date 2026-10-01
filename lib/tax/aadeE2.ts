@@ -530,6 +530,14 @@ export function blockingProblem(r: AadeE2Row): string | null {
   if (r.months != null && (!Number.isInteger(r.months) || r.months < 0 || r.months > 12)) return 'Οι μήνες είναι ακέραιος από 0 έως 12.';
   if (r.ownershipPct != null && (r.ownershipPct <= 0 || r.ownershipPct > 100)) return 'Το ποσοστό είναι από 0 έως 100.';
   if (!(r.gross >= 0)) return 'Το ακαθάριστο δεν μπορεί να είναι αρνητικό.';
+  // Τα όρια του πίνακα e2_prefilled (20261001120000, 20261001130000): χωρίς
+  // αυτά μια μόνο γραμμή έριχνε όλη την αποθήκευση με γενικό μήνυμα.
+  if (r.monthlyRent != null && !(r.monthlyRent >= 0)) return 'Το μηνιαίο μίσθωμα δεν μπορεί να είναι αρνητικό.';
+  if (r.leaseDeclRef && r.leaseDeclRef.length > 40) return 'Ο αριθμός δήλωσης μίσθωσης είναι έως 40 ψηφία.';
+  if (r.powerSupplyNo && !/^\d{1,40}$/.test(r.powerSupplyNo)) return 'Ο αριθμός παροχής ρεύματος είναι έως 40 ψηφία.';
+  if (r.address && r.address.length > 300) return 'Η διεύθυνση είναι έως 300 χαρακτήρες.';
+  if (r.category && r.category.length > 120) return 'Η κατηγορία είναι έως 120 χαρακτήρες.';
+  if (r.tenantName && r.tenantName.length > 200) return 'Το όνομα μισθωτή είναι έως 200 χαρακτήρες.';
   if (r.from && r.to && r.from > r.to) return 'Η έναρξη είναι μετά τη λήξη.';
   if (!r.atak && !r.tenantAfm && !r.leaseDeclRef) return 'Χρειάζεται ΑΤΑΚ, ΑΦΜ μισθωτή ή αριθμός δήλωσης για να γίνει η σύγκριση.';
   return null;

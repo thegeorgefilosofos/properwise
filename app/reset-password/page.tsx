@@ -6,7 +6,7 @@ import { leaveDevice } from '@/lib/localPrivacy'
 import Link from 'next/link'
 import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import PasswordEye from '../PasswordEye'
-import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password'
+import { checkPassword, PASSWORD_MIN_HINT, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
 import { failed } from '@/lib/core/dbError';
 import { BackLink } from '../BackLink'
@@ -259,7 +259,7 @@ export default function ResetPasswordPage() {
                 <div>
                   <label htmlFor="rp-password" style={label}>Νέος κωδικός</label>
                   <div style={{ position: 'relative' }}>
-                    <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_LABEL} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
+                    <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_HINT} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
                       onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                     {eye}
                   </div>

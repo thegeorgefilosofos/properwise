@@ -435,7 +435,7 @@ export default async function Landing() {
                   <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{s.i.split('M').filter(Boolean).map((p, j) => <path key={j} d={'M' + p} />)}</svg>
                 </div>
                 <div>
-                  <div className="lp-even" style={{ fontSize: 15, fontWeight: 680, color: TEXT, marginBottom: 4, letterSpacing: '-0.01em' }}>{s.t}</div>
+                  <div className="lp-even" data-nohy="" style={{ fontSize: 15, fontWeight: 680, color: TEXT, marginBottom: 4, letterSpacing: '-0.01em' }}>{s.t}</div>
                   <div className="po-just" style={{ fontSize: 14, color: MUTED, lineHeight: 1.55 }}>{s.d}</div>
                 </div>
               </div>

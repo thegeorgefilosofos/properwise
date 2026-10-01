@@ -60,6 +60,10 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
   const [readFailed, setReadFailed] = useState(false);
   const [declRefs, setDeclRefs] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
+  // Για ποιο έτος ήρθαν τα δεδομένα που φαίνονται: η ανανέωση του ίδιου έτους
+  // (αποθήκευση ΑΤΑΚ, εισαγωγή) κρατά την κάρτα στη θέση της αντί να την
+  // εξαφανίζει και να πηδά η σελίδα· η αλλαγή έτους την κρύβει ώσπου να έρθουν.
+  const [loadedFor, setLoadedFor] = useState<number | null>(null);
   const [afm, setAfm] = useState('');
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -106,6 +110,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
         setAade(pre.rows);
         setReadFailed(pre.failed);
         setDeclRefs(refs);
+        setLoadedFor(year);
       } finally { if (alive) setLoading(false); }
     })();
     return () => { alive = false; };
@@ -157,12 +162,12 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
   };
   const inp: React.CSSProperties = {
     background: 'var(--bg-base)', border: '1px solid var(--border-control)',
-    borderRadius: T.radius.inner, height: T.h.md, padding: '0 12px', width: 150,
+    borderRadius: T.radius.inner, height: T.h.lg, padding: '0 12px', width: 150,
     color: 'var(--text-primary)', fontFamily: T.font.num, fontSize: 14,
     fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box',
   };
 
-  if (loading) return null;
+  if (loading && loadedFor !== year) return null;
 
   if (!loaded || !loaded.properties.length) {
     return (
@@ -221,7 +226,8 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
           <p style={{ ...TT.caption, margin: '4px 0 12px' }}>
             {`Η εφαρμογή έχει ${result ? fe(result.totalOurs) : fe(0)} σε ${current.idx.length === 1 ? '1 ακίνητο' : `${current.idx.length} ακίνητα`}. Το ανεβάζεις εσύ ή ο λογιστής σου.`}
           </p>
-          <Btn variant="primary" onClick={() => setImporting(true)}><FileUp size={15} />Ανέβασε το προσυμπληρωμένο</Btn>
+          {/* Στα 320 το κουμπί έσπαγε σε δύο γραμμές (234×50). */}
+          <Btn variant="primary" onClick={() => setImporting(true)}><FileUp size={15} /><span className="lp-hide-xxs">Ανέβασε το προσυμπληρωμένο</span><span className="lp-only-xxs">Ανέβασε το Ε2</span></Btn>
         </div>
       ) : (
         <>

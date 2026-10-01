@@ -323,10 +323,12 @@ export default function LoginPage() {
                   σειρά: στο τηλέφωνο η ετικέτα «Κωδικός» απείχε 30 από το πεδίο
                   της, ενώ η «Ηλεκτρονικό ταχυδρομείο» από πάνω 12. Ο στόχος
                   μένει 44 (`po-tap-inline`, ψευδοστοιχείο γύρω από το λεκτικό) και
-                  η σειρά έχει το ύψος του κειμένου, ίδιο με κάθε άλλη ετικέτα. */}
+                  η σειρά έχει το ύψος του κειμένου, ίδιο με κάθε άλλη ετικέτα.
+                  Ύψος γραμμής ακέραιο (18, όχι 1,4 × 13 = 18,2): με το δεκαδικό ο
+                  στόχος έβγαινε 43,99 και ο σαρωτής αφής τον έκοβε. */}
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
                 <label htmlFor="login-password" className="po-field-label" style={{ marginBottom: 0 }}>Κωδικός</label>
-                <Link href="/reset-password" className="lp-link po-tap-inline" style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Ξέχασες τον κωδικό;</Link>
+                <Link href="/reset-password" className="lp-link po-tap-inline" style={{ fontSize: 13, lineHeight: '18px', color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Ξέχασες τον κωδικό;</Link>
               </div>
               <div style={{ position: 'relative' }}>
                 <input id="login-password" name="password" autoComplete="current-password" type={show ? 'text' : 'password'} value={password} required onChange={e => setPassword(e.target.value)} placeholder="Ο κωδικός σου" style={{ ...field, paddingRight: 48 }}

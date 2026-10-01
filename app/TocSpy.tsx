@@ -40,6 +40,17 @@ export function TocSpy() {
         if (i === on) p.a.setAttribute('aria-current', 'true');
         else p.a.removeAttribute('aria-current');
       });
+      // Η ΣΤΗΛΗ ΑΚΟΛΟΥΘΕΙ ΤΟ ΚΕΙΜΕΝΟ. Στους Όρους (28 ενότητες) η στήλη είναι
+      // ψηλότερη από την οθόνη και κυλά μόνη της· η σημειωμένη ενότητα
+      // έφευγε κάτω από την άκρη της. Μόνο η στήλη κυλά, ποτέ η σελίδα.
+      const a = on >= 0 ? pairs[on].a : null;
+      const rail = a?.closest<HTMLElement>('.lg-grid > .lg-toc, .gd-rail');
+      if (a && rail && rail.scrollHeight > rail.clientHeight) {
+        const r = a.getBoundingClientRect(), box = rail.getBoundingClientRect();
+        if (r.top < box.top + 24 || r.bottom > box.bottom - 40) {
+          rail.scrollTop += r.top - box.top - box.height / 3;
+        }
+      }
     };
     const onScroll = () => { if (!frame) frame = requestAnimationFrame(mark); };
     mark();

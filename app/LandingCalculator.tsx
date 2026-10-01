@@ -76,7 +76,9 @@ function Control({ label, hint, value, set, min, max, step, format }: {
   const commit = () => {
     if (draft !== null) {
       const n = parseAmount(draft)
-      if (n !== null && Number.isFinite(n)) set(clamp(Math.round(n)))
+      // ΣΕ ΛΕΠΤΑ, ΟΧΙ ΣΕ ΕΥΡΩ. Το «1.250,50» γινόταν «1.251,00€»: ακέραιο ποσό
+      // που φαινόταν ακριβές επειδή η μορφή έχει δύο δεκαδικά.
+      if (n !== null && Number.isFinite(n)) set(clamp(Math.round(n * 100) / 100))
     }
     setDraft(null)
   }
@@ -217,7 +219,8 @@ export default function LandingCalculator() {
           {hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων 2026 (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
-          Ξεκίνα δωρεάν με το ακίνητό σου
+          {/* Στα 320 η πλήρης φράση έσπαγε σε δύο γραμμές με το «σου» μόνο του. */}
+          <span className="lp-hide-xxs">Ξεκίνα δωρεάν με το ακίνητό σου</span><span className="lp-only-xxs">Ξεκίνα δωρεάν</span>
         </Link>
       </div>
     </div>

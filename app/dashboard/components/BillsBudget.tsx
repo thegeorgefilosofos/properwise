@@ -134,9 +134,16 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
            το κείμενο έπαιρνε όλο τον χώρο και το «Το κατάλαβα» στριμωχνόταν σε
            δύο σειρές δίπλα του. Το κείμενο παίρνει ό,τι μένει και στοιχίζεται. */
         <div className="po-stack-sm" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12, padding: '8px 8px 8px 16px', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, background: 'var(--bg-surface)', fontFamily: T.font.sans, fontSize: 12, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-          <span className="po-just" style={{ flex: 1, minWidth: 0 }}>
-            Τα σύνολα μετρούν λογαριασμούς και δαπάνες μαζί, στον μήνα της ημερομηνίας τους. Όσα δεν έχουν πληρωθεί μετρούν κι αυτά και σημειώνονται «εκκρεμεί».
-          </span>
+          {/* ΧΩΡΙΣ ΕΝΣΩΜΑΤΟ `flex`. Το `flex: 1` εδώ νικούσε το `.po-stack-sm`
+              (βλ. globals.css): στα 320 το κείμενο έμενε σε στήλη ~150 δίπλα στο
+              κουμπί και η πλήρης στοίχιση άνοιγε τρύπες. Τώρα κάτω από τα 560 το
+              κουμπί πάει από κάτω· το `.po-just-box` κρατά αριστερή στοίχιση αν
+              η στήλη ξαναστενέψει. */}
+          <div className="po-just-box">
+            <span className="po-just" style={{ display: 'block' }}>
+              Τα σύνολα μετρούν λογαριασμούς και δαπάνες μαζί, στον μήνα της ημερομηνίας τους. Όσα δεν έχουν πληρωθεί μετρούν κι αυτά και σημειώνονται «εκκρεμεί».
+            </span>
+          </div>
           {/* Ήσυχο και όχι δευτερεύον: η σημείωση δεν ζητά απόφαση, οπότε η
               απόρριψή της δεν παίρνει περίγραμμα. */}
           <Btn variant="ghost" onClick={dismissLedgerNote} className="po-btn-keep">

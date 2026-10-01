@@ -11,7 +11,7 @@ import GoogleButton from '../GoogleButton'
 import { countSignupStep } from '@/lib/analytics/signupFunnel'
 import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
-import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
+import { checkPassword, PASSWORD_MIN_HINT, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
 import { hy } from '@/components/Hyphen'
 import { SAY, failed } from '@/lib/core/dbError';
@@ -770,7 +770,7 @@ export default function SignupPage() {
                 <div>
                   <label htmlFor="su-password" className="po-field-label">Κωδικός</label>
                   <div style={{ position: 'relative' }}>
-                    <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_LABEL} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
+                    <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_HINT} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
                     <PasswordEye show={show} onToggle={() => setShow(s => !s)} />
                   </div>
 

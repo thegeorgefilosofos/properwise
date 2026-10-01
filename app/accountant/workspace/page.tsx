@@ -539,7 +539,13 @@ export default function AccountantWorkspace() {
       {importFor && (
         <E2PrefilledImport
           ownerId={importFor.owner.ownerId} year={year}
-          afms={[...new Set([...(importFor.owner.e2?.packs.map(p => p.ownerAfm) ?? []), ...(importFor.owner.afm ? [importFor.owner.afm] : [])])]}
+          // ΤΑ ΑΦΜ ΤΩΝ ΑΚΙΝΗΤΩΝ ΠΡΩΤΑ. Το ΑΦΜ τιμολόγησης του πελάτη μπαίνει μόνο
+          // όταν δεν υπάρχει κανένας φάκελος: αλλιώς ένα ανέβασμα σε ΑΦΜ που
+          // διαφέρει από τον υπόχρεο των ακινήτων δεν το έβρισκε ποτέ η σύγκριση.
+          afms={(() => {
+            const packs = [...new Set(importFor.owner.e2?.packs.map(p => p.ownerAfm).filter(Boolean) ?? [])];
+            return packs.length ? packs : importFor.owner.afm ? [importFor.owner.afm] : [];
+          })()}
           known={importFor.known}
           onClose={() => setImportFor(null)}
           onSaved={() => { setImportFor(null); void load(year); }}
