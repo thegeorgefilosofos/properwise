@@ -12,6 +12,7 @@ import { fe } from '@/lib/core/format';
 import { rentIncomeOf, servicesOf, hasRentSplit } from '@/lib/rent/split';
 import { leaseEndOf } from '@/lib/data/tenants';
 import { e2PowerSupply } from '@/lib/property/powerSupply';
+import { e1CodeFor, E1_CLASS_LABEL, E1_4D2_SOURCE, E1_UNKNOWN_TYPE } from '@/lib/accounting/e1Codes';
 
 // Το `rental_mode` ΔΕΝ υπήρχε εδώ και γι' αυτό το έντυπο δεν μπορούσε να
 // ξεχωρίσει βραχυχρόνια από μακροχρόνια όταν η κατάσταση ήταν «rented».
@@ -99,7 +100,9 @@ export function monthsRentedInYear(leaseStart: string | null, leaseEnd: string |
  */
 export type E2IncomeSource = 'rent' | 'own_use' | 'none';
 
-export interface E2Row { atak: string; address: string; ownerAfm: string; ownershipPct: number; leaseKind: string; months: number; incomeCategory: string; grossIncome: number; incomeSource: E2IncomeSource; flags: string[]; }
+export interface E2Row { atak: string; address: string; ownerAfm: string; ownershipPct: number; leaseKind: string; months: number; incomeCategory: string; grossIncome: number; incomeSource: E2IncomeSource; flags: string[];
+  /** Ο τύπος του ακινήτου, για τον κωδικό του πίνακα 4Δ2 (lib/accounting/e1Codes.ts). */
+  propType?: string | null; }
 
 /**
  * Μία γραμμή του Πίνακα I: μία μίσθωση ενός ακινήτου μέσα στο έτος, ή μία
@@ -391,7 +394,7 @@ export function buildE2Row(
   if (ownershipPct < 100) flag('Συνιδιοκτησία < 100%: πρόσθεσε ΑΦΜ λοιπών συνιδιοκτητών');
   const lead = lines.find(l => l.gross > 0) ?? lines[0];
   return {
-    atak: p.atak || '', address, ownerAfm: ownerAfm || '', ownershipPct,
+    atak: p.atak || '', address, ownerAfm: ownerAfm || '', ownershipPct, propType: p.prop_type,
     leaseKind: lead?.kind.code ? `${lead.kind.code} ${lead.kind.label}` : '',
     months: Math.min(12, Math.max(monthSet.size, estimatedMonths)),
     incomeCategory: e2IncomeCategory(p.prop_type, shortTerm ? 'seasonal' : p.status_detail),
@@ -404,66 +407,69 @@ export function e2RowToCells(r: E2Row, index: number): (string | number)[] {
   return [index, r.atak, r.address, r.ownerAfm, dec(r.ownershipPct), r.leaseKind, r.months, r.incomeCategory, String(Math.round(r.grossIncome))];
 }
 
-// ── Σύνοψη Ε1 (Πίνακας 4Δ, ακίνητη περιουσία): ακαθάριστο εκμίσθωσης ανά κωδικό ──
-// Το Ε2 τροφοδοτεί το Ε1: τα ακαθάριστα ανά κατηγορία μεταφέρονται σε συγκεκριμένους
-// κωδικούς. Οι αριθμοί παρακάτω είναι αυτοί που χρησιμοποιούσε πάντα η εφαρμογή
-// (103 κατοικίες, 105 επαγγελματική στέγη, 109 γαίες/γήπεδα). ΔΕΝ υπάρχει εδώ
-// επίσημη πηγή που να τους επιβεβαιώνει, ούτε για τον υποπίνακα του 4Δ: το
-// σχόλιο έλεγε «4Δ2» και το φύλλο «4Δ1». Το φύλλο λέει πια μόνο «4Δ» και η
-// σημείωση ζητά επιβεβαίωση κωδικών από τον λογιστή.
+// ── Σύνοψη Ε1, πίνακας 4Δ2 (εισόδημα από ακίνητη περιουσία) ─────────────────
+// Οι κωδικοί ζουν στο lib/accounting/e1Codes.ts, με την πηγή τους: Ε1, πίνακας
+// 4Δ2, Φ-01.001. Εδώ γινόταν ο παλιός χάρτης «κατηγορία → κωδικός» χωρίς πηγή,
+// που έστελνε τη γη στο 109 (βιομηχανοστάσια με ΦΠΑ) και τους βοηθητικούς
+// χώρους στο 103 (κατοικίες).
 //
-// ΤΙ ΔΕΝ ΜΠΑΙΝΕΙ ΣΤΟΝ ΚΩΔΙΚΟ ΕΚΜΙΣΘΩΣΗΣ:
-// · η ιδιοχρησιμοποίηση (Ε2 στ. 15): δεν είναι μίσθωμα· φαίνεται χωριστά.
-// · η κατηγορία χωρίς αντιστοίχιση: γινόταν σιωπηλά 103. Τώρα βγαίνει γραμμή
-//   χωρίς κωδικό, σημασμένη, για να τη συμπληρώσει άνθρωπος.
-export const E1_CODE_MAP: Record<string, { code: string; label: string }> = {
-  'Κατοικία': { code: '103', label: 'Ακαθάριστο εισόδημα από εκμίσθωση κατοικιών' },
-  'Βραχυχρόνια μίσθωση': { code: '103', label: 'Εισόδημα βραχυχρόνιας μίσθωσης (μεταφορά από Ε2, ανά τύπο ακινήτου)' },
-  'Επαγγελματική στέγη': { code: '105', label: 'Ακαθάριστο εισόδημα από εκμίσθωση επαγγελματικής στέγης' },
-  'Γη / Αγρός': { code: '109', label: 'Ακαθάριστο εισόδημα από εκμίσθωση γαιών / γηπέδων' },
-  'Βοηθητικός χώρος': { code: '103', label: 'Ακαθάριστο εισόδημα από εκμίσθωση κατοικιών (βοηθητικοί χώροι)' },
-}
+// ΤΙ ΔΕΝ ΜΠΑΙΝΕΙ ΣΕ ΚΩΔΙΚΟ:
+// · η ιδιοχρησιμοποίηση κατοικίας: ο πίνακας 4Δ2 δεν έχει γραμμή· φαίνεται χωριστά.
+// · ο τύπος ακινήτου που δεν αναγνωρίζεται: γραμμή χωρίς κωδικό, σημασμένη,
+//   για να τη συμπληρώσει άνθρωπος. Ποτέ σιωπηλά 103.
 
 /** Η περιγραφή της γραμμής που δεν βρήκε κωδικό. */
-export const E1_UNMAPPED_LABEL = 'Χωρίς αντιστοίχιση κωδικού Ε1: όρισε τον τύπο του ακινήτου ή συμπλήρωσε τον κωδικό με τον λογιστή'
+export const E1_UNMAPPED_LABEL = E1_UNKNOWN_TYPE
 
-export interface E1CodeLine { code: string; label: string; category: string; amount: number; unmapped?: boolean }
+export interface E1CodeLine { code: string; spouseCode: string; label: string; category: string; amount: number; unmapped?: boolean }
 export interface E1Summary {
-  /** Ακαθάριστο ΕΚΜΙΣΘΩΣΗΣ ανά κωδικό μαζί με όσα δεν βρήκαν κωδικό (`unmapped`). */
+  /** Ποσά ανά κωδικό του 4Δ2, μαζί με όσα δεν βρήκαν κωδικό (`unmapped`). */
   lines: E1CodeLine[];
-  /** Σύνολο εκμίσθωσης, μαζί με τις γραμμές χωρίς κωδικό (είναι μίσθωμα, απλώς χωρίς θέση). */
+  /** Σύνολο των γραμμών, μαζί με όσες δεν βρήκαν κωδικό. */
   totalGross: number;
-  /** Ιδιοχρησιμοποίηση (Ε2 στ. 15). Εκτός του συνόλου εκμίσθωσης. */
+  /** Ιδιοχρησιμοποίηση κατοικίας: ο πίνακας 4Δ2 δεν έχει κωδικό. Εκτός συνόλου. */
   ownUse: number;
   note: string;
 }
 
-export const E1_CODES_NOTE = 'Οι κωδικοί Ε1 είναι ενδεικτικοί: ο υποπίνακας του 4Δ και οι κωδικοί επιβεβαιώνονται από τον λογιστή στο έντυπο του τρέχοντος έτους (myAADE).'
+export const E1_CODES_NOTE = `Πηγή: ${E1_4D2_SOURCE}. Ο πρώτος κωδικός είναι του υπόχρεου, ο δεύτερος του ή της συζύγου. Τα ποσά τα ελέγχει ο λογιστής πριν την υποβολή.`
 
-/** Ομαδοποιεί τα ακαθάριστα εκμίσθωσης του Ε2 στους κωδικούς του Ε1 (Πίνακας 4Δ). */
+/**
+ * Η κατηγορία της γραμμής όταν λείπει ο τύπος (παλιοί καλούντες, χειροποίητες
+ * γραμμές): η ετικέτα του `e2IncomeCategory` λέει αρκετά για τις τέσσερις
+ * γνωστές. Η «Βραχυχρόνια μίσθωση» δεν λέει τύπο και μένει χωρίς κωδικό.
+ */
+const CATEGORY_TYPE: Record<string, string> = {
+  'Κατοικία': 'apartment', 'Επαγγελματική στέγη': 'office', 'Γη / Αγρός': 'land', 'Βοηθητικός χώρος': 'storage',
+}
+
+/** Ομαδοποιεί τα ακαθάριστα του Ε2 στους κωδικούς του Ε1 (πίνακας 4Δ2). */
 export function buildE1Summary(rows: E2Row[]): E1Summary {
   const byCode = new Map<string, E1CodeLine>()
   let ownUse = 0
   for (const r of rows) {
     if (!(r.grossIncome > 0)) continue
-    if (r.incomeSource === 'own_use') { ownUse += r.grossIncome; continue }
-    if (r.incomeSource !== 'rent') continue
-    const map = E1_CODE_MAP[r.incomeCategory]
-    const key = (map ? map.code : 'χωρίς') + '|' + r.incomeCategory
-    const existing = byCode.get(key)
-    if (existing) existing.amount += r.grossIncome
-    else byCode.set(key, map
-      ? { code: map.code, label: map.label, category: r.incomeCategory, amount: r.grossIncome }
-      : { code: '', label: E1_UNMAPPED_LABEL, category: r.incomeCategory, amount: r.grossIncome, unmapped: true })
+    if (r.incomeSource !== 'rent' && r.incomeSource !== 'own_use') continue
+    const m = e1CodeFor(r.propType ?? CATEGORY_TYPE[r.incomeCategory] ?? null, r.incomeSource === 'own_use' ? 'own_use' : 'lease')
+    if (!m.ok && !m.flagged) { ownUse += r.grossIncome; continue }
+    const line: E1CodeLine = m.ok
+      ? { code: m.code.code, spouseCode: m.code.spouseCode, label: m.code.label, category: E1_CLASS_LABEL[m.cls], amount: 0 }
+      : { code: '', spouseCode: '', label: E1_UNMAPPED_LABEL, category: r.incomeCategory, amount: 0, unmapped: true }
+    const key = `${line.code}|${line.category}`
+    const existing = byCode.get(key) ?? line
+    existing.amount += r.grossIncome
+    byCode.set(key, existing)
   }
-  const lines = [...byCode.values()].map(l => ({ ...l, amount: Math.round(l.amount) })).sort((a, b) => b.amount - a.amount)
+  // Με τη σειρά του εντύπου (αύξων κωδικός) και όσα θέλουν χέρι στο τέλος.
+  const lines = [...byCode.values()].map(l => ({ ...l, amount: Math.round(l.amount) }))
+    .sort((a, b) => Number(!!a.unmapped) - Number(!!b.unmapped) || Number(a.code) - Number(b.code))
   const totalGross = lines.reduce((s, l) => s + l.amount, 0)
   return { lines, totalGross, ownUse: Math.round(ownUse), note: E1_CODES_NOTE }
 }
 
-export const E1_HEADERS = ['Κωδικός Ε1', 'Περιγραφή', 'Κατηγορία', 'Ακαθάριστο Εισόδημα']
+export const E1_HEADERS = ['Κωδικός υπόχρεου', 'Κωδικός συζύγου', 'Περιγραφή (πίνακας 4Δ2)', 'Κατηγορία', 'Ακαθάριστο εισόδημα']
 export function e1LineToCells(l: E1CodeLine): (string | number)[] {
-  return [l.code, l.label, l.category, String(Math.round(l.amount))]
+  return [l.unmapped ? 'Χωρίς κωδικό' : l.code, l.spouseCode, l.label, l.category, l.amount]
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

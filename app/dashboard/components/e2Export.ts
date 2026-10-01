@@ -8,7 +8,7 @@ import * as rentStore from '@/lib/data/rent';
 import * as tenantStore from '@/lib/data/tenants';
 import { XLSX, setCell, sheetFinish } from './xlsxStyle';
 import { FMT, S, ROW, type Cell } from './sheetFormat';
-import { E2_OFFICIAL_HEADERS, E2_NUM_COLS, e2OfficialRows, buildE2Row, buildE1Summary, type E2Stay, E1_HEADERS, E1_CODES_NOTE, E2_INSTRUCTIONS, type E1Summary, type E2Property, type E2Tenant, type E2Payment, type E2RowDetail } from '@/lib/billing/e2';
+import { E2_OFFICIAL_HEADERS, E2_NUM_COLS, e2OfficialRows, buildE2Row, buildE1Summary, type E2Stay, E1_HEADERS, e1LineToCells, E1_CODES_NOTE, E2_INSTRUCTIONS, type E1Summary, type E2Property, type E2Tenant, type E2Payment, type E2RowDetail } from '@/lib/billing/e2';
 import { fe } from '@/lib/core/format';
 import { afmGroups } from './e2Compare';
 
@@ -182,42 +182,49 @@ function sheetName(wanted: string, taken: Set<string>): string {
   return name;
 }
 
-/** Το φύλλο «Σύνοψη Ε1» ενός υπόχρεου. */
+/** Το φύλλο «Ε1 πίνακας 4Δ2» ενός υπόχρεου: κωδικός υπόχρεου, κωδικός συζύγου, ποσό. */
 function buildE1Sheet(e1: E1Summary, ownerAfm: string): XLSX.WorkSheet {
   const who = ownerAfm ? `ΑΦΜ ${ownerAfm}` : 'ΧΩΡΙΣ ΑΦΜ ΙΔΙΟΚΤΗΤΗ';
+  const N = E1_HEADERS.length, AMT = N - 1;
+  const blank = (): (string | number)[] => Array(N).fill('');
+  const at = (cells: [number, string | number][]) => { const r = blank(); for (const [i, v] of cells) r[i] = v; return r; };
   const e1aoa: (string | number)[][] = [
-    [`ΣΥΝΟΨΗ Ε1 (Πίνακας 4Δ) · ${who} · ακαθάριστο εκμίσθωσης ανά κωδικό`], [],
-    // Αριθμητικά ποσά (όχι κείμενο) → ομοιόμορφη μορφή ευρώ, ίδια με το σύνολο.
+    [`Ε1 · ΠΙΝΑΚΑΣ 4Δ2 «ΕΙΣΟΔΗΜΑ ΑΠΟ ΑΚΙΝΗΤΗ ΠΕΡΙΟΥΣΙΑ» · ${who}`], [],
     [...E1_HEADERS],
-    ...e1.lines.map(l => [l.unmapped ? 'Χωρίς κωδικό' : l.code, l.label, l.category, l.amount]),
-    ['Σύνολο ακαθάριστου εκμίσθωσης', '', '', e1.totalGross],
+    // Αριθμητικά ποσά (όχι κείμενο) → ομοιόμορφη μορφή ευρώ, ίδια με το σύνολο.
+    ...e1.lines.map(e1LineToCells),
+    at([[0, 'Σύνολο'], [AMT, e1.totalGross]]),
     [],
-    ...(e1.ownUse > 0 ? [['Εκτός κωδικού εκμίσθωσης', 'Ιδιοχρησιμοποίηση (Ε2 στ. 15): δεν είναι μίσθωμα', '', e1.ownUse], []] : []),
+    ...(e1.ownUse > 0 ? [at([[0, 'Χωρίς κωδικό'], [2, 'Ιδιοχρησιμοποίηση κατοικίας: ο πίνακας 4Δ2 δεν έχει γραμμή'], [AMT, e1.ownUse]]), []] : []),
     [e1.note],
   ];
   const e1ws = XLSX.utils.aoa_to_sheet(e1aoa);
-  e1ws['!cols'] = [{ wch: 22 }, { wch: 60 }, { wch: 24 }, { wch: 20 }];
-  e1ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
+  e1ws['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 64 }, { wch: 30 }, { wch: 20 }];
+  e1ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: AMT } }, { s: { r: e1aoa.length - 1, c: 0 }, e: { r: e1aoa.length - 1, c: AMT } }];
   e1ws['!rows'] = []; e1ws['!rows'][2] = { hpt: 30 };
   const hr = 2, last = 3 + e1.lines.length;
   setCell(e1ws, 0, 0, { s: S.title });
-  for (let c = 0; c < 4; c++) setCell(e1ws, hr, c, { s: S.head });
+  for (let c = 0; c < N; c++) setCell(e1ws, hr, c, { s: S.head });
   for (let r = hr + 1; r <= last; r++) {
-    for (let c = 0; c < 4; c++) {
-      const isTot = r === last, isNum = c === 3;
+    for (let c = 0; c < N; c++) {
+      const isTot = r === last, isNum = c === AMT;
       const cell = e1ws[XLSX.utils.encode_cell({ r, c })] as Cell | undefined;
       const numeric = isNum && cell && typeof cell.v === 'number';
-      // Το σύνολο ακαθαρίστου = ΖΩΝΤΑΝΟ SUM της στήλης ποσού.
+      // Το σύνολο = ΖΩΝΤΑΝΟ SUM της στήλης ποσού.
       const formula = isTot && isNum && e1.lines.length
-        ? `SUM(${XLSX.utils.encode_cell({ r: hr + 1, c: 3 })}:${XLSX.utils.encode_cell({ r: last - 1, c: 3 })})`
+        ? `SUM(${XLSX.utils.encode_cell({ r: hr + 1, c: AMT })}:${XLSX.utils.encode_cell({ r: last - 1, c: AMT })})`
         : undefined;
-      setCell(e1ws, r, c, { s: isTot ? (isNum ? S.totNum : S.totTxt) : (isNum ? S.num : S.txt), ...(numeric ? { t: 'n', z: FMT.eur } : {}), ...(formula ? { f: formula } : {}) });
+      const wrap = c === 2 && !isTot;
+      setCell(e1ws, r, c, { s: isTot ? (isNum ? S.totNum : S.totTxt) : (isNum ? S.num : wrap ? S.txtWrap : S.txt), ...(numeric ? { t: 'n', z: FMT.eur } : {}), ...(formula ? { f: formula } : {}) });
     }
+    if (r < last) e1ws['!rows']![r] = { hpt: 30 };
   }
   if (e1.ownUse > 0) {
     const r = last + 2;
-    for (let c = 0; c < 4; c++) setCell(e1ws, r, c, { s: c === 3 ? S.num : S.txt, ...(c === 3 ? { t: 'n', z: FMT.eur } : {}) });
+    for (let c = 0; c < N; c++) setCell(e1ws, r, c, { s: c === AMT ? S.num : S.txt, ...(c === AMT ? { t: 'n', z: FMT.eur } : {}) });
   }
+  setCell(e1ws, e1aoa.length - 1, 0, { s: S.txtWrap });
+  e1ws['!rows']![e1aoa.length - 1] = { hpt: 32 };
   sheetFinish(e1ws, { brandMark: true });
   return e1ws;
 }
@@ -348,10 +355,10 @@ export function buildE2Workbook(
   sheetFinish(guide, { brandMark: true });
   XLSX.utils.book_append_sheet(wb, guide, sheetName('Οδηγίες συμπλήρωσης', taken));
 
-  // ── Σύνοψη Ε1 (Πίνακας 4Δ), μία ανά ΑΦΜ ─────────────────────────────────────
+  // ── Ε1 πίνακας 4Δ2, ένα φύλλο ανά ΑΦΜ ──────────────────────────────────────
   for (const { afm, e1 } of e1ByGroup) {
     if (!e1.lines.length && !(e1.ownUse > 0)) continue;
-    XLSX.utils.book_append_sheet(wb, buildE1Sheet(e1, afm), sheetName(single ? 'Σύνοψη Ε1' : `Σύνοψη Ε1 ${label(afm)}`, taken));
+    XLSX.utils.book_append_sheet(wb, buildE1Sheet(e1, afm), sheetName(single ? 'Ε1 πίνακας 4Δ2' : `Ε1 4Δ2 ${label(afm)}`, taken));
   }
 
   return wb;

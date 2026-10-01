@@ -66,7 +66,7 @@ async function main() {
   if (!wb) { console.error('✗ e2Export: κανένα βιβλίο'); process.exit(1) }
   ok('έχει το κύριο φύλλο του έτους', wb.SheetNames.includes(`Ε2 ${YEAR}`))
   ok('έχει οδηγίες συμπλήρωσης', wb.SheetNames.some(s => s.includes('Οδηγίες')))
-  ok('έχει σύνοψη Ε1', wb.SheetNames.some(s => s.includes('Ε1')))
+  ok('έχει το φύλλο Ε1 πίνακας 4Δ2', wb.SheetNames.includes('Ε1 πίνακας 4Δ2'))
 
   const aoa = XLSX.utils.sheet_to_json(wb.Sheets[`Ε2 ${YEAR}`], { header: 1, defval: '' }) as unknown[][]
   const flat = aoa.flat().map(String)
@@ -144,11 +144,12 @@ async function main() {
   const totalOf = (n: string) => (XLSX.utils.sheet_to_json(wb4.Sheets[n], { header: 1, defval: '' }) as unknown[][]).find(r => String(r[0]) === 'ΣΥΝΟΛΟ') as unknown[]
   ok('ΣΥΝΟΛΟ Α = 6000', totalOf(sA)[15] === 6000)
   ok('ΣΥΝΟΛΟ Β = 7200, χωρίς τις υπηρεσίες', totalOf(sB)[15] === 7200)
-  ok('σύνοψη Ε1 ανά ΑΦΜ', wb4.SheetNames.includes('Σύνοψη Ε1 ΑΦΜ 111111111') && wb4.SheetNames.includes('Σύνοψη Ε1 ΑΦΜ 222222222'))
-  const e1b = (XLSX.utils.sheet_to_json(wb4.Sheets['Σύνοψη Ε1 ΑΦΜ 222222222'], { header: 1, defval: '' }) as unknown[][]).flat()
+  ok('Ε1 4Δ2 ανά ΑΦΜ', wb4.SheetNames.includes('Ε1 4Δ2 ΑΦΜ 111111111') && wb4.SheetNames.includes('Ε1 4Δ2 ΑΦΜ 222222222'))
+  const e1b = (XLSX.utils.sheet_to_json(wb4.Sheets['Ε1 4Δ2 ΑΦΜ 222222222'], { header: 1, defval: '' }) as unknown[][]).flat()
   ok('Ε1 του Β: μόνο το δικό του ποσό', e1b.includes(7200) && !e1b.includes(6000) && !e1b.includes(13200))
+  ok('Ε1 του Β: κωδικοί υπόχρεου και συζύγου', e1b.includes('103') && e1b.includes('104'))
   const chk = (XLSX.utils.sheet_to_json(wb4.Sheets['Έλεγχος και ΑΤΑΚ'], { header: 1, defval: '' }) as unknown[][]).flat().map(String)
-  ok('έλεγχος: η σημείωση για τους κωδικούς Ε1', chk.some(c => c.includes('επιβεβαιώνονται από τον λογιστή')))
+  ok('έλεγχος: η σημείωση για τους κωδικούς Ε1 με την πηγή τους', chk.some(c => c.includes('πίνακας 4Δ2, Φ-01.001')))
   ok('έλεγχος: οι υπηρεσίες που έμειναν έξω', chk.some(c => c.startsWith('Υπηρεσίες 1.200,00€')))
   ok('έλεγχος: το ακίνητο χωρίς ΑΦΜ σημαίνεται', chk.some(c => c.includes('Λείπει ΑΦΜ ιδιοκτήτη')))
   ok('έλεγχος: σε ποιο φύλλο βρίσκεται κάθε ακίνητο', chk.includes(sC))

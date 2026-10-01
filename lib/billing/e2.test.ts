@@ -165,10 +165,15 @@ const STAYS: E2Stay[] = [
   ok('Ε1: κατοικίες αθροίζονται σε έναν κωδικό (103)', e1.lines.some(l => l.code === '103' && l.amount === 10000));
   ok('Ε1: επαγγελματική στέγη ξεχωριστός κωδικός (105)', e1.lines.some(l => l.code === '105' && l.amount === 5000));
   ok('Ε1: σύνολο ακαθάριστου = 15000', e1.totalGross === 15000);
-  ok('Ε1: ταξινόμηση φθίνουσα', e1.lines[0].amount >= e1.lines[e1.lines.length - 1].amount);
-  ok('Ε1: σημείωση για ενδεικτικούς κωδικούς', /ενδεικτικοί/.test(e1.note));
+  ok('Ε1: με τη σειρά του εντύπου (αύξων κωδικός)', e1.lines.map(l => l.code).join() === '103,105');
+  ok('Ε1: η σημείωση λέει την πηγή, πίνακας 4Δ2', /4Δ2/.test(e1.note) && /Φ-01\.001/.test(e1.note));
   const cells = e1LineToCells(e1.lines[0]);
-  ok('Ε1: κελιά [κωδικός, περιγραφή, κατηγορία, ποσό]', cells.length === 4 && cells[0] === e1.lines[0].code);
+  ok('Ε1: κελιά [υπόχρεος, σύζυγος, περιγραφή, κατηγορία, ποσό]', cells.length === 5 && cells[0] === '103' && cells[1] === '104' && cells[4] === 10000);
+  // Η ΓΗ ΕΙΝΑΙ 101, ΟΧΙ 109. Ο παλιός χάρτης τη δήλωνε στα βιομηχανοστάσια.
+  const land = buildE1Summary([buildE2Row(P({ id: 'l', prop_type: 'land' }), T({ property_id: 'l' }), [{ property_id: 'l', amount: 900, period_year: 2025, period_month: 1 }], '999', 2025)]);
+  ok('Ε1: γη → 101, όχι 109', land.lines.length === 1 && land.lines[0].code === '101');
+  const park = buildE1Summary([buildE2Row(P({ id: 'k', prop_type: 'parking' }), T({ property_id: 'k' }), [{ property_id: 'k', amount: 600, period_year: 2025, period_month: 1 }], '999', 2025)]);
+  ok('Ε1: θέση στάθμευσης → 105, όχι 103', park.lines[0].code === '105');
   // μηδενικά εισοδήματα δεν μπαίνουν
   const empty = buildE1Summary([buildE2Row(P({ id: 'z', status_detail: 'vacant', target_rent: 0 }), T({ property_id: 'z', monthly_rent: 0 }), [], '999', 2025)]);
   ok('Ε1: κενά ακίνητα εξαιρούνται', empty.lines.length === 0 && empty.totalGross === 0);
