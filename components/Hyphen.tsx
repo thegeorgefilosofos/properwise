@@ -1,5 +1,5 @@
 import { cloneElement, Fragment, isValidElement, type ReactNode } from 'react';
-import { hyphenate } from '@/lib/core/hyphenate';
+import { hyphenate, bindRefs } from '@/lib/core/hyphenate';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ο ΣΥΛΛΑΒΙΣΜΟΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΙΣ ΤΡΕΙΣ ΝΟΜΙΚΕΣ ΣΕΛΙΔΕΣ ΚΑΙ ΓΙΝΕΤΑΙ ΤΟΥ ΕΡΓΟΥ
@@ -46,21 +46,64 @@ import { hyphenate } from '@/lib/core/hyphenate';
  * εκεί ο συλλαβισμός δεν κλείνει κενά, μόνο κόβει τη λέξη που διαβάζεται
  * πρώτη («Υπολο-γισμός» σε τίτλο είναι ατύχημα, όχι τυπογραφία). Ετσι το
  * `hy()` μπορεί να τυλίξει ΟΛΟ το σώμα μιας σελίδας με μία κλήση.
+ *
+ * ΚΑΙ Ο,ΤΙ ΣΗΜΑΔΕΥΕΙ ΤΟ ΜΑΤΙ (01.10.2026). Ο οπτικός έλεγχος στα 360 βρήκε
+ * κομμένα: συνδέσμους («Ποιοι εί-μαστε», «Πολιτική απορρή-του»), έντονα
+ * εισαγωγικά («Ένω-σης»), κεφαλίδες πίνακα («ΜΑΚΡΟ-ΧΡΟΝΙΑ»). Ο σύνδεσμος
+ * είναι το σημείο που ψάχνει το μάτι όταν σαρώνει τη σελίδα· κομμένος δεν
+ * διαβάζεται με μια ματιά, που είναι όλη του η δουλειά. Η παράγραφος γύρω
+ * του συλλαβίζεται κανονικά.
  */
-const NO_HY = new Set(['table', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'button', 'label', 'summary', 'code', 'pre', 'time', 'input', 'select', 'textarea']);
+const NO_HY = new Set(['table', 'th', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'button', 'label', 'summary', 'code', 'pre', 'time', 'input', 'select', 'textarea']);
+/**
+ * ΤΟ ΕΝΤΟΝΟ: ΜΟΝΟ ΟΙ ΜΑΚΡΙΕΣ ΛΕΞΕΙΣ (βλ. `minWord`). Δοκιμάστηκε και ολόκληρο
+ * αδιάσπαστο: στο «Ποιοι είμαστε» στα 360 οι έντονες αρχές των εγγυήσεων
+ * («Το κρυπτογραφημένο αντίγραφο ασφαλείας») άνοιγαν κενά 1,8em στην πρώτη
+ * γραμμή. Το «Ένωσης» μένει ακέραιο ούτως ή άλλως: είναι όνομα (hyphenate.ts).
+ */
+const BOLD = new Set(['strong', 'b']);
+const BOLD_MIN_WORD = 8;
 
-export function hy(node: ReactNode): ReactNode {
-  if (typeof node === 'string') return hyphenate(node);
-  if (Array.isArray(node)) return node.map((n, i) => <Fragment key={i}>{hy(n)}</Fragment>);
+/**
+ * ΤΑ ΜΠΛΟΚ ΠΟΥ ΚΛΕΙΝΟΥΝ ΠΑΡΑΓΡΑΦΟ. Η τελευταία λέξη τους δεν αφήνει θραύσμα
+ * (βλ. `keepLast` στο lib/core/hyphenate.ts)· τα ενσωματωμένα (`span`, `em`)
+ * κληρονομούν το «είμαι στο τέλος» από τον γονέα τους.
+ */
+const BLOCK = new Set(['p', 'li', 'dd', 'dt', 'div', 'td', 'blockquote', 'figcaption', 'section', 'article', 'aside', 'header', 'footer', 'main', 'ul', 'ol', 'dl', 'details']);
+
+/** Εχει λέξη; Το τελευταίο «.» ή κενό δεν είναι η τελευταία λέξη. */
+const hasWord = (n: ReactNode): boolean =>
+  typeof n === 'string' ? /[\p{L}\p{N}]/u.test(n) : isValidElement(n) || (Array.isArray(n) && n.some(hasWord));
+
+/**
+ * `tail`: το κείμενο κλείνει παράγραφο. Η εξωτερική κλήση τυλίγει πάντα ΟΛΟ το
+ * περιεχόμενο ενός μπλοκ (`<p>{hy(…)}</p>`, `<main>{hy(…)}</main>`), οπότε η
+ * προεπιλογή είναι «ναι»· μέσα στο δέντρο το παίρνει μόνο το τελευταίο παιδί.
+ */
+export function hy(node: ReactNode, tail = true): ReactNode {
+  return walk(node, tail, undefined);
+}
+
+function walk(node: ReactNode, tail: boolean, minWord: number | undefined): ReactNode {
+  if (typeof node === 'string') return hyphenate(bindRefs(node), { keepLast: tail, minWord });
+  if (Array.isArray(node)) {
+    let lastWord = -1;
+    node.forEach((n, i) => { if (hasWord(n)) lastWord = i; });
+    return node.map((n, i) => <Fragment key={i}>{walk(n, tail && i === lastWord, minWord)}</Fragment>);
+  }
   if (isValidElement(node)) {
     if (typeof node.type === 'string' && NO_HY.has(node.type)) return node;
     // Κουμπί που είναι σύνδεσμος (Link με κλάση lp-cta/btn) ή ό,τι δηλώσει
     // `data-nohy`: ετικέτα, όχι παράγραφος. Δεν στοιχίζεται, άρα δεν συλλαβίζεται.
-    const props = node.props as { className?: unknown; 'data-nohy'?: unknown };
-    if (props['data-nohy'] !== undefined) return node;
+    // Ο σύνδεσμος του Next (`Link`) δεν είναι συμβολοσειρά τύπου· τον
+    // αναγνωρίζει το `href` του.
+    const props = node.props as { className?: unknown; href?: unknown; 'data-nohy'?: unknown };
+    if (props['data-nohy'] !== undefined || props.href !== undefined) return node;
     if (typeof props.className === 'string' && /\b(lp-cta|btn|gd-rail-cta)\b/.test(props.className)) return node;
     const kids = (node.props as { children?: ReactNode }).children;
-    return kids === undefined ? node : cloneElement(node, undefined, hy(kids));
+    const block = typeof node.type === 'string' && BLOCK.has(node.type);
+    const bold = typeof node.type === 'string' && BOLD.has(node.type);
+    return kids === undefined ? node : cloneElement(node, undefined, walk(kids, block || tail, bold ? BOLD_MIN_WORD : minWord));
   }
   return node;
 }

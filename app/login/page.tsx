@@ -275,7 +275,7 @@ export default function LoginPage() {
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.5 }}>
             {factorId ? MFA_SAY.ask : (<>
               Δεν έχεις λογαριασμό;{' '}
-              <Link href="/signup" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Δημιούργησε λογαριασμό</Link>
+              <Link href="/signup" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Δημιούργησε λογαριασμό</Link>
             </>)}
           </p>
 

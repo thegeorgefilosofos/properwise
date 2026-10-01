@@ -25,7 +25,8 @@ export default function NotFound() {
           <h1 style={{ fontSize: 'clamp(24px,4vw,30px)', fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 12px', textWrap: 'balance' }}>
             Αυτή η σελίδα δεν υπάρχει
           </h1>
-          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', lineHeight: 1.65, margin: '0 0 24px' }}>
+          {/* Κεντραρισμένο: ζυγισμένες γραμμές, όχι «επηρεάζονται.» μόνο του στην τελευταία. */}
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', lineHeight: 1.65, margin: '0 0 24px', textWrap: 'balance' }}>
             Ο σύνδεσμος μπορεί να έχει λάθος ή η σελίδα να έχει μετακινηθεί. Τα δεδομένα σου δεν επηρεάζονται.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>

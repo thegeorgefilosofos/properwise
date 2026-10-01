@@ -283,7 +283,9 @@ export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highl
                 </dl>
               : <div className="plan-card-feats" aria-hidden="true" />}
             {lacks.length > 0
-              ? <p className="plan-card-lacks">Δεν περιλαμβάνει: {lacks.join(', ')}.</p>
+              // Λίστα ονομάτων σε στενή κάρτα, όχι παράγραφος: αριστερά, χωρίς
+              // ενωτικά (`data-nohy` κρατά έξω τον στοιχειοθέτη), με `pretty`.
+              ? <p className="plan-card-lacks" data-nohy="">Δεν περιλαμβάνει: {lacks.join(', ')}.</p>
               : <div className="plan-card-lacks plan-card-lacks-none" aria-hidden="true" />}
             <div className="plan-card-cta"><TrialCta id={id} recommended={recommended} /></div>
           </section>

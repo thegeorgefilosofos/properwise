@@ -206,7 +206,12 @@ export function PublicFooter() {
               σελίδα, ενώ εκκρεμούν συμβάσεις επεξεργασίας που η ίδια η Πολιτική
               ομολογεί. Ο σύνδεσμος λέει το όνομα της σελίδας, τίποτα παραπάνω. */}
           <span className="po-foot-legal">
-            <span style={{ whiteSpace: 'nowrap' }}>Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)</span> ·{' '}
+            {/* Η ΤΕΛΕΙΑ ΔΕΝ ΚΡΕΜΕΤΑΙ (01.10.2026). Στα 360 η γραμμή αναδιπλωνόταν
+                και το «·» έμενε μόνο στο τέλος της πρώτης σειράς. Κάτω από τα 440
+                τα δύο στοιχεία μπαίνουν το ένα κάτω από το άλλο και το σημάδι
+                που τα χωρίζει φεύγει (`.po-foot-sep`, globals.css). */}
+            <span style={{ whiteSpace: 'nowrap' }}>Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)</span>
+            <span className="po-foot-sep" aria-hidden="true"> · </span>
             <Link href="/privacy" className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>
           </span>
           {/* ΤΟ ΣΗΜΑ ΣΤΟ ΤΕΛΟΣ ΤΗΣ ΤΕΛΕΥΤΑΙΑΣ ΓΡΑΜΜΗΣ, ΟΠΟΥ ΤΟ ΨΑΧΝΕΙ ΤΟ ΜΑΤΙ. Εκεί

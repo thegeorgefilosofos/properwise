@@ -3592,6 +3592,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Οι λεζάντες της ζώνης μετρήσεων ΜΕΝΟΥΝ ζυγισμένες (φύλλο της σελίδας): είναι
    δύο κοντές γραμμές σε κελί ~150px· πέρα πέρα άνοιγαν κενά 41px (μετρημένο). */
 .lp-why p { text-align: justify; }
+/* ΜΕΤΡΟ ΚΑΙ ΣΤΗΝ ΑΡΧΙΚΗ (01.10.2026). Οι παράγραφοι του «Γιατί υπάρχει» και τα
+   ψιλά των πακέτων έπιαναν όλα τα 1044 της στήλης στα 1440: 130 ως 160
+   χαρακτήρες τη γραμμή, όπου το μάτι χάνει την αρχή της επόμενης. Το 68ch
+   είναι το μέτρο του βιβλίου (~75 ελληνικοί χαρακτήρες). Ξεχωριστός κανόνας
+   από τη στοίχιση, ώστε το `.fineprint` του ταμπλό, που αποφάσισε ρητά να
+   πιάνει την κάρτα (βλ. «.fineprint»), να μην αλλάξει. */
+.lp-why p, .lp-root .fineprint { max-width: 68ch; }
 /* ΣΤΕΝΗ ΚΑΡΤΑ, ΟΧΙ ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ. Σε στήλη κάτω από ~460 με λέξεις που δεν
    σπάνε («ν.5072/2023», «(ενσωμάτωση») η στοίχιση τέντωνε τα κενά σε τρύπες
    (φωτογραφημένο, 25.09.2026). Οποιο πλαίσιο δηλώσει `.po-just-box` γίνεται
@@ -3626,6 +3633,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    κάτω από την ετικέτα της, όπως και το υπόλοιπο κείμενο των νομικών σελίδων. */
 .po-table .po-kv-val { text-align: right; overflow-wrap: anywhere; }
 @media (max-width: 560px) { .po-table .po-kv-val { text-align: left; } }
+/* ΚΑΤΩ ΑΠΟ ΤΑ 400 Η ΕΤΙΚΕΤΑ ΠΑΕΙ ΠΑΝΩ ΑΠΟ ΤΗΝ ΤΙΜΗ (01.10.2026). Στα 360 η
+   στήλη της τιμής έμενε ~150 εικονοστοιχεία και η διεύθυνση email δεν χωρούσε
+   ολόκληρη: έσπαγε στο @ («support@» και από κάτω «properwise.gr»). Με την
+   ετικέτα από πάνω η τιμή παίρνει όλο το πλάτος και η διεύθυνση μένει μία. */
+@media (max-width: 400px) {
+  .lg-kv tbody tr { display: block; border-bottom: 1px solid var(--border-subtle); }
+  .lg-kv tbody tr:last-child { border-bottom: none; }
+  .lg-kv tbody th, .lg-kv tbody td { display: block; border-bottom: none; }
+  .lg-kv tbody th { padding-bottom: 0; }
+  .lg-kv tbody td { padding-top: 2px; }
+}
+/* Η ΣΥΝΤΟΜΟΓΡΑΦΙΑ ΤΗΣ ΚΕΦΑΛΙΔΑΣ (ThLabel, ShortVsLongCalculator.tsx): ολόκληρη
+   λέξη όπου χωρά, «Μακροχρ.» κάτω από τα 420, ποτέ «ΜΑΚΡΟ- / ΧΡΟΝΙΑ». Η πλήρης
+   λέξη μένει για τον αναγνώστη οθόνης, κρυμμένη μόνο οπτικά. */
+.th-short { display: none; }
+@media (max-width: 420px) {
+  .th-short { display: inline; }
+  .th-full { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 
 /* Η γραμμή που ισχύει τώρα. Δηλώνει ΚΑΙ το `--row-bg`, ώστε ένα καρφωμένο
    πρώτο κελί να μη ζωγραφίσει άλλο χρώμα πάνω της.
@@ -4747,6 +4773,11 @@ body:has(.po-tool-page) .po-cookie {
 }
 .po-foot-bar > :first-child { grid-area: copy; }
 .po-foot-legal { grid-area: legal; }
+@media (max-width: 440px) {
+  .po-foot-legal > * { display: block; width: fit-content; }
+  .po-foot-legal > * + * { margin-top: 4px; }
+  .po-foot-legal > .po-foot-sep { display: none; }
+}
 .po-social { grid-area: social; }
 @media (max-width: 720px) {
   .po-foot-bar { grid-template-columns: 1fr auto; grid-template-areas: "copy social" "legal legal"; }
@@ -5031,12 +5062,24 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-ul { margin: 2px 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 .lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-align: justify; }
 .lg-note {
-  font-size: 14px; color: var(--text-tertiary); line-height: 1.65; text-align: justify;
+  font-size: 14px; color: var(--text-secondary); line-height: 1.65; text-align: justify;
   margin: 12px 0 0; padding: 13px 16px;
   background: var(--bg-elevated); border: 1px solid var(--border-subtle);
   border-radius: 12px;
 }
 .lg-closing { margin-top: clamp(32px, 4vw, 48px); }
+/* ΤΟ ΣΩΜΑ ΤΩΝ ΝΟΜΙΚΩΝ ΣΕΛΙΔΩΝ ΣΤΟ ΜΕΓΕΘΟΣ ΚΑΙ ΣΤΟ ΧΡΩΜΑ ΤΩΝ ΟΔΗΓΩΝ (01.10.2026).
+   Στα 15 και στον δεύτερο τόνο το «Ποιοι είμαστε» έβγαζε 95 ως 115 χαρακτήρες
+   τη γραμμή και ήταν πιο αχνό από κάθε οδηγό, ενώ λέει τι υποσχόμαστε. Ιδιο
+   σώμα με το `.gd .lg-p`: 16, 17 από τα 768, πρώτο χρώμα στο 90%, ~85
+   χαρακτήρες στη στήλη των 716. Και οι σημειώσεις (`.lg-note`) ανέβηκαν στον
+   δεύτερο τόνο: κρατούν δεσμεύσεις, όχι υποσημειώσεις. */
+.lg-body .lg-p, .lg-body .lg-ul li, .lg-body .lg-just {
+  font-size: 16px; line-height: 1.65;
+  color: color-mix(in srgb, var(--text-primary) 90%, transparent);
+}
+.lg-point-t { font-size: 16px; }
+@media (min-width: 768px) { .lg-body .lg-p, .lg-body .lg-ul li, .lg-body .lg-just, .lg-point-t { font-size: 17px; } }
 /* Η έκδοση κάτω από την εισαγωγή: μικρή, ήσυχη, αλλά στην πρώτη οθόνη. */
 .lg-version { margin: 12px 0 0; font-size: 13px; color: var(--text-tertiary); }
 /* ΤΟ ΥΠΟΔΕΙΓΜΑ ΥΠΑΝΑΧΩΡΗΣΗΣ: έντυπο με τις γραμμές του, όχι λίστα όρων. */
@@ -5189,6 +5232,9 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   }
   .lg-grid > .lg-toc .lg-toc-list, .gd-rail .lg-toc-list { columns: 1; }
   .lg-grid > .lg-toc .lg-toc-list a, .gd-rail .lg-toc-list a { position: relative; font-size: 13.5px; transition: color .15s; }
+  /* Στη στενή στήλη (272) τα ονόματα των ενοτήτων τύλιγαν με μία λέξη μόνη
+     στη δεύτερη γραμμή. Δύο ίσες γραμμές διαβάζονται ως ένα όνομα. */
+  .lg-grid > .lg-toc .lg-toc-list a, .gd-rail .lg-toc-list a { text-wrap: balance; }
   .lg-grid > .lg-toc .lg-toc-list a[aria-current="true"], .gd-rail .lg-toc-list a[aria-current="true"] { color: var(--text-primary); }
   .lg-grid > .lg-toc .lg-toc-list a[aria-current="true"]::before, .gd-rail .lg-toc-list a[aria-current="true"]::before {
     content: ''; position: absolute; left: -19px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: var(--accent);
@@ -5235,6 +5281,10 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   color: color-mix(in srgb, var(--text-primary) 90%, transparent);
 }
 .gd .lg-note { text-align: justify; }
+/* Ο ΤΥΠΟΣ ΤΟΥ ΕΝΦΙΑ: ΑΡΙΣΤΕΡΑ, ΧΩΡΙΣ ΕΝΩΤΙΚΑ, ΣΠΑΕΙ ΜΟΝΟ ΠΡΙΝ ΑΠΟ ΤΟ «×».
+   Οι όροι έχουν αδιάσπαστα κενά (app/odigos/pos-ypologizetai-o-enfia). Πέρα
+   πέρα έκοβε το «συ-ντελεστής» και τέντωνε τα κενά γύρω από τα «×». */
+.gd .gd-formula { text-align: left; hyphens: none; }
 .gd .po-tool-sources .lg-ul li { font-size: 14px; color: var(--text-secondary); }
 @media (min-width: 768px) { .gd .lg-p, .gd .lg-ul li { font-size: 17px; } }
 /* Η ΖΕΒΡΑ ΠΕΡΝΑ ΑΠΟ ΤΟ `--row-bg`, ΟΧΙ ΑΠΟ ΤΟ `background`. Γραμμένη ως
@@ -5278,12 +5328,14 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 
      Η στήλη του κειμένου κρατά το μέτρο της και σε στενή οθόνη. */
 }
-@media (max-width: 560px) {
-  /* ΣΤΟ ΤΗΛΕΦΩΝΟ Η ΣΤΟΙΧΙΣΗ ΦΕΥΓΕΙ. Η στήλη πέφτει κάτω από τα 330
-     εικονοστοιχεία, δηλαδή γύρω στους σαράντα χαρακτήρες: εκεί ακόμη και με
-     συλλαβισμό μία μακριά λέξη αφήνει τρύπα σε ολόκληρη γραμμή. */
-  .lg-p, .lg-ul li, .lg-note, .lg-just, .lg-lede > p:first-child { text-align: left; }
-}
+/* 01.10.2026: ΚΑΙ Ο ΚΑΝΟΝΑΣ ΤΩΝ 560 ΕΦΥΓΕ. Γύριζε τις νομικές σελίδες σε
+   αριστερή στοίχιση στο τηλέφωνο, παλαιότερος από την απόφαση «πέρα πέρα σε
+   κάθε οθόνη» και ξεχασμένος όταν έφυγε ο κανόνας των 640. Στο «Ποιοι είμαστε»
+   στα 360 έβγαζε ριγμένες παραγράφους δίπλα σε στοιχισμένες σημειώσεις (τις
+   στοίχιζε ο στοιχειοθέτης), με τα ενωτικά να κόβουν λέξεις σε ριγμένη άκρη
+   όπου δεν χρειάζονταν. Οι τρύπες για τις οποίες μπήκε κλείνουν πλέον με
+   συλλαβισμό, παραπομπές που δεν σπάνε μέσα τους (bindRefs) και τη λεία του
+   JustifyPolish. */
 
 /* ══════════════════════════════════════════════════════════════
    Η ΕΚΤΥΠΩΣΗ ΤΩΝ ΔΗΜΟΣΙΩΝ ΥΠΟΛΟΓΙΣΤΩΝ
@@ -5599,7 +5651,7 @@ tr.po-row-more { display: none; }
 }
 .plan-card-lacks {
   margin: 4px 0 0; padding-top: 10px; border-top: 1px solid var(--border-subtle);
-  font-size: 13px; line-height: 1.5; color: var(--text-tertiary);
+  font-size: 13px; line-height: 1.5; color: var(--text-tertiary); text-wrap: pretty;
 }
 .plan-card {
   background: var(--surface-raised);
@@ -6051,8 +6103,9 @@ tr.po-row-more { display: none; }
 /* 27.09.2026: ΠΕΡΑ ΠΕΡΑ, ΟΧΙ ΜΕ ΜΕΤΡΟ. Με όριο 72ch η παραπομπή σταματούσε στη
    μέση του πλαισίου και η δεξιά άκρη έμενε ριγμένη, με το μισό κουτί άδειο.
    Είναι σημείωση δύο ή τριών γραμμών, όχι σώμα κειμένου: απλώνεται ως την άκρη
-   του πλαισίου, στοιχίζεται πέρα πέρα με συλλαβισμό και οι παραπομπές νόμων
-   σπάνε μετά την κάθετο (breakCitations), ώστε να μην ανοίγουν τρύπες. */
+   του πλαισίου, στοιχίζεται πέρα πέρα με συλλαβισμό. Οι παραπομπές νόμων
+   μένουν ολόκληρες και η γραμμή σπάει ΠΡΙΝ από αυτές (bindRefs, 01.10.2026:
+   το σπάσιμο μετά την κάθετο διαβαζόταν ως δύο αριθμοί). */
 .po-tool-sources .po-src-txt { line-height: 1.65; text-align: justify; hyphens: manual; }
 
 /* ── Η ΚΑΡΤΑ ΤΟΥ «ΙΔΙΟΚΤΗΤΗ»: ΔΙΑΚΟΠΤΗΣ ΝΟΑΣ ΧΩΡΙΣ JAVASCRIPT ─────────────────
