@@ -10,6 +10,7 @@ import ErrorListener from "@/components/ErrorListener";
 import JustifyPolish from "@/components/JustifyPolish";
 import { ConfirmHost } from "@/components/ConfirmDialog";
 import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE } from "@/lib/core/site";
+import { THEME_COLOR } from "@/lib/core/themeColor";
 
 const TITLE = PRODUCT_NAME;
 const DESCRIPTION = PRODUCT_TAGLINE;
@@ -97,8 +98,10 @@ export const metadata: Metadata = {
 // στο φωτεινό έβλεπε λευκή μπάρα να πλαισιώνει σκούρα εφαρμογή. Η παλιά τιμή
 // #0b0f14 δεν ταίριαζε ούτε με το ίδιο μας το φόντο· εδώ είναι το --bg-base του
 // σκούρου θέματος, ώστε η μπάρα να συνεχίζει την επιφάνεια αντί να την κόβει.
+// Οποιος έχει διαλέξει φωτεινό, παίρνει τη φωτεινή μπάρα από το σενάριο πριν
+// το paint (πιο κάτω) και από τον ThemeProvider σε κάθε εναλλαγή.
 export const viewport: Viewport = {
-  themeColor: "#070b12",
+  themeColor: THEME_COLOR.dark,
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -117,6 +120,10 @@ const themeInitScript = `
     var el = document.documentElement;
     el.setAttribute('data-mode',  mode === 'light' ? 'light' : 'dark');
     el.setAttribute('data-theme', theme);
+    if (mode === 'light') {
+      var bar = document.querySelector('meta[name="theme-color"]');
+      if (bar) bar.setAttribute('content', ${JSON.stringify(THEME_COLOR.light)});
+    }
   } catch(e) {}
 })();
 `;

@@ -59,16 +59,16 @@ export default function AuthAside({
   oneLine?: boolean
 }) {
   return (
-    <div className="auth-aside" style={{ width: '45%', minWidth: 400, background: AUTH_ASIDE_BG, borderRight: '1px solid rgba(255,255,255,.07)', display: 'flex', flexDirection: 'column', padding: '48px 48px', overflow: 'hidden', position: 'relative', fontFamily: T.font.sans }}>
+    <div className="auth-aside" style={{ width: '45%', minWidth: 400, background: AUTH_ASIDE_BG, borderRight: '1px solid var(--mkt-border-subtle)', display: 'flex', flexDirection: 'column', padding: '48px 48px', overflow: 'hidden', position: 'relative', fontFamily: T.font.sans }}>
       <style>{`
-        .auth-aside::before { content: ''; position: absolute; top: -18%; left: -22%; width: 78%; aspect-ratio: 1; border-radius: 50%; filter: blur(90px); background: radial-gradient(circle, #1a73e8, transparent 64%); opacity: .18; pointer-events: none; animation: authDrift 30s ease-in-out infinite alternate; }
+        .auth-aside::before { content: ''; position: absolute; top: -18%; left: -22%; width: 78%; aspect-ratio: 1; border-radius: 50%; filter: blur(90px); background: radial-gradient(circle, var(--mkt-accent), transparent 64%); opacity: .18; pointer-events: none; animation: authDrift 30s ease-in-out infinite alternate; }
         @keyframes authDrift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(4vw, 4vh, 0) scale(1.12); } }
         @media (prefers-reduced-motion: reduce) { .auth-aside::before { animation: none; } }
       `}</style>
 
       {/* logo lockup */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 56 }}>
-        <BrandLogo size={28} style={{ color: '#fff' }} />
+        <BrandLogo size={28} style={{ color: 'var(--mkt-text-primary)' }} />
       </div>
 
       {/* ═══ ΤΟ ΣΩΜΑ ΤΟΥ ΠΑΝΕΛ, ΚΕΝΤΡΑΡΙΣΜΕΝΟ ΟΠΩΣ Η ΦΟΡΜΑ ════════════════════
@@ -102,8 +102,8 @@ export default function AuthAside({
             γραμμές παντού: 880 → 22,3 σε πάνελ 304 · 1024 → 27,1 σε 365 ·
             1280 → 35,7 σε 480 · 1440 και πάνω → 38, το ίδιο ταβάνι που είχε.
             Το δάπεδο στα 20 δεν το πιάνει καμία οθόνη όπου φαίνεται το πάνελ. */}
-        <div className="auth-aside-h" style={{ fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.12, margin: '0 0 18px', color: '#fff' }}>
-          {headline}{oneLine ? ' ' : <br />}<span style={{ color: '#8ab4f8' }}>{accent}</span>
+        <div className="auth-aside-h" style={{ fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.12, margin: '0 0 18px', color: 'var(--mkt-text-primary)' }}>
+          {headline}{oneLine ? ' ' : <br />}<span style={{ color: 'var(--mkt-accent)' }}>{accent}</span>
         </div>
         {/* ═══ ΤΟ ΚΕΙΜΕΝΟ ΣΤΑΜΑΤΟΥΣΕ ΣΤΗ ΜΕΣΗ ΤΟΥ ΠΑΝΕΛ ══════════════════════
             ΦΩΤΟΓΡΑΦΗΜΕΝΟ ΣΕ ΣΥΝΔΕΣΗ ΚΑΙ ΕΠΑΝΑΦΟΡΑ. Το πάνελ είναι 45% της
@@ -117,17 +117,17 @@ export default function AuthAside({
             δίνει το ίδιο το πάνελ, όπως σε κάθε άλλη γραμμή εδώ μέσα. Και
             επειδή η γραμμή γίνεται μακρύτερη, το μέγεθος ανεβαίνει 14 → 15:
             μακρύ μέτρο με μικρά γράμματα είναι το μόνο που όντως κουράζει. */}
-        <p className="auth-aside-sub" style={{ color: 'rgba(255,255,255,.7)', lineHeight: 1.65, margin: 0, textWrap: 'pretty' }}>{sub}</p>
+        <p className="auth-aside-sub" style={{ color: 'var(--mkt-text-secondary)', lineHeight: 1.65, margin: 0, textWrap: 'pretty' }}>{sub}</p>
       </div>
 
       {/* three supporting bullets */}
       <div className="auth-aside-pillars" style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
         {pillars.map((p, i) => (
           <div key={i} style={{ display: 'grid', gridTemplateColumns: '22px 1fr', gap: 14, alignItems: 'start' }}>
-            <span className="po-lead-ico" style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(138,180,248,.12)', border: '1px solid rgba(138,180,248,.32)', color: '#8ab4f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check /></span>
+            <span className="po-lead-ico" style={{ width: 22, height: 22, borderRadius: '50%', background: 'color-mix(in srgb, var(--mkt-accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--mkt-accent) 32%, transparent)', color: 'var(--mkt-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check /></span>
             <div>
-              <p className="auth-aside-pl" style={{ fontWeight: 700, color: '#fff', margin: '0 0 5px', letterSpacing: '-0.01em' }}>{p.label}</p>
-              <p className="auth-aside-pt" style={{ color: 'rgba(255,255,255,.66)', margin: 0, lineHeight: 1.65, textWrap: 'pretty' }}>{p.text}</p>
+              <p className="auth-aside-pl" style={{ fontWeight: 700, color: 'var(--mkt-text-primary)', margin: '0 0 5px', letterSpacing: '-0.01em' }}>{p.label}</p>
+              <p className="auth-aside-pt" style={{ color: 'var(--mkt-text-secondary)', margin: 0, lineHeight: 1.65, textWrap: 'pretty' }}>{p.text}</p>
             </div>
           </div>
         ))}
@@ -135,14 +135,14 @@ export default function AuthAside({
       </div>
 
       {/* pricing footnote */}
-      <div className="auth-aside-foot" style={{ position: 'relative', marginTop: 40, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,.1)', display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+      <div className="auth-aside-foot" style={{ position: 'relative', marginTop: 40, paddingTop: 24, borderTop: '1px solid var(--mkt-border-default)', display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
         {/* ΔΥΟ ΒΑΘΜΙΔΕΣ, ΟΠΩΣ ΠΑΝΤΟΥ ΑΛΛΟΥ: η υπόσχεση με έμφαση, το πρακτικό
             δίπλα της σε δεύτερο τόνο. Το πρακτικό ήταν «Έτοιμο σε ένα λεπτό»
             σε κάθε οθόνη: χρόνος που δεν μετρήθηκε ποτέ, γραμμένος και στην
             επαναφορά κωδικού, όπου δεν σημαίνει τίποτα. Το δίνει πλέον η οθόνη
             που έχει κάτι αληθινό να πει. */}
-        <p style={{ fontSize: 14, color: '#8ab4f8', fontWeight: 700, margin: 0 }}>Σχεδιασμένο για την ελληνική αγορά ακινήτων</p>
-        {note && <p style={{ fontSize: 13, color: 'rgba(255,255,255,.45)', margin: 0 }}>{note}</p>}
+        <p style={{ fontSize: 14, color: 'var(--mkt-accent)', fontWeight: 700, margin: 0 }}>Σχεδιασμένο για την ελληνική αγορά ακινήτων</p>
+        {note && <p style={{ fontSize: 13, color: 'var(--mkt-text-tertiary)', margin: 0 }}>{note}</p>}
       </div>
     </div>
   )

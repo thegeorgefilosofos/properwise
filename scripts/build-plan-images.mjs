@@ -23,7 +23,8 @@ import { assertFontApplied } from './lib/font-ready.mjs';
 
 const CHROME = chromePath();
 const OUT = 'docs/marketing/plan-images';
-const NAVY = '#0B192C';
+// Το φόντο του brand από την πηγή του (components/BrandMark.tsx · BRAND_DARK_BG).
+const NAVY = /BRAND_DARK_BG = '(#[0-9a-fA-F]{3,8})'/.exec(readFileSync('components/BrandMark.tsx', 'utf8'))?.[1] || '#070b12';
 const WHITE = '#ffffff';
 const MUTED = '#9fb0c4';
 const PX = 1024;

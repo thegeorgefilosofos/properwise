@@ -192,8 +192,8 @@ export const MUTATIONS = {
   // να λένε το παλιό χωρίς να το δει κανείς.
   'auth-templates': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
-    from: "const ACCENT = '#1a73e8'",
-    to: "const ACCENT = '#0b57d0'",
+    from: "const ACCENT = L.accent;",
+    to: "const ACCENT = '#0b57d0';",
   },
   // Νέο κείμενο επιστολής που δεν το ζητά κανείς: ακριβώς ο τρόπος με τον
   // οποίο μαζεύτηκαν τα δεκαοκτώ ορφανά, ένα κάθε φορά.

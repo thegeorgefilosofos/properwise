@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { THEME_COLOR } from '@/lib/core/themeColor';
 
 type Theme = 'midnight' | 'obsidian' | 'violet';
 type Mode  = 'dark' | 'light';
@@ -43,6 +44,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.setAttribute('data-mode',  mode);
+    // Η ΜΠΑΡΑ ΤΟΥ ΚΙΝΗΤΟΥ ΑΚΟΛΟΥΘΕΙ ΤΟ ΘΕΜΑ. Εμενε #070b12 και στο φωτεινό:
+    // μαύρη λωρίδα πάνω από λευκή εφαρμογή. Το Next γράφει ένα meta από το
+    // `viewport`· αν λείπει (σελίδα σφάλματος), το φτιάχνουμε.
+    let bar = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!bar) { bar = document.createElement('meta'); bar.name = 'theme-color'; document.head.appendChild(bar); }
+    bar.content = THEME_COLOR[mode];
     localStorage.setItem('pos_theme', theme);
     localStorage.setItem('pos_mode',  mode);
   }, [theme, mode]);
