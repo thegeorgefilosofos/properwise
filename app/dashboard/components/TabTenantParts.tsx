@@ -10,7 +10,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import React from 'react';
 import { T, EmptyState, fn, ChipToggle } from '@/components/Theme';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Check, Clock, X } from 'lucide-react';
+import { statusColor } from '@/lib/core/status';
 import { daysLeft, s as sty } from './TabTenantHelpers';
 import { MONTHS_SHORT } from '@/lib/core/months';
 import { fieldDecision, type FieldContext, type FieldDecision } from '@/lib/property/fields';
@@ -309,6 +310,20 @@ export const filledTenantIds = (t:{full_name?:string|null;afm?:string|null;lease
 };
 
 // ─── Payment Bar Chart ────────────────────────────────────────────────────────
+// ── Η ΚΑΘΥΣΤΕΡΗΣΗ ΣΕ ΤΡΙΑ ΣΚΑΛΙΑ, ΜΕ ΣΧΗΜΑ ΚΑΙ ΛΕΞΗ ─────────────────────────────
+// Ηταν τέσσερα χρώματα: πράσινο → ΜΠΛΕ → κίτρινο → κόκκινο. Το μπλε σε αυτή
+// την εφαρμογή σημαίνει «πάτησέ με» και η «μικρή καθυστέρηση» το φορούσε σαν
+// σύνδεσμο· και τα τέσσερα ξεχώριζαν ΜΟΝΟ με απόχρωση, άρα όχι για όποιον δεν
+// βλέπει χρώματα. Τρία σκαλιά από το κοινό λεξιλόγιο (lib/core/status.ts),
+// το καθένα με δικό του εικονίδιο μέσα στη μπάρα και λέξη στο υπόμνημα.
+type Lateness = 'ontime' | 'late' | 'unpaid'
+const LATENESS: Record<Lateness, { color: string; label: string; Icon: typeof Check }> = {
+  ontime: { color: statusColor('paid'),    label: 'Εμπρόθεσμη',      Icon: Check },
+  late:   { color: statusColor('partial'), label: 'Με καθυστέρηση',  Icon: Clock },
+  unpaid: { color: statusColor('overdue'), label: 'Απλήρωτη',        Icon: X },
+}
+const latenessOf = (p: RentPayment): Lateness => !p.paid ? 'unpaid' : (p.days_late || 0) > 0 ? 'late' : 'ontime'
+
 export function PaymentBars({ payments }:{payments:RentPayment[]}) {
   if(!payments.length) return (
     <EmptyState icon={<BarChart3 size={20}/>} title="Καμία πληρωμή ακόμη" hint="Μόλις καταγραφεί η πρώτη είσπραξη, το γράφημα 12 μηνών γεμίζει αυτόματα." />
@@ -319,11 +334,13 @@ export function PaymentBars({ payments }:{payments:RentPayment[]}) {
       <div style={{ display:'flex', alignItems:'flex-end', gap: 4, height:72, marginBottom:6 }}>
         {last12.map((p)=>{
           const late=p.days_late||0;
-          const color=!p.paid?'var(--negative)':late>14?'var(--warning)':late>0?'var(--info)':'var(--positive)';
+          const L=LATENESS[latenessOf(p)];
           return (
             <div key={p.id} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}
-              title={`${MONTHS_SHORT[p.period_month-1]} ${p.period_year}: ${p.paid?'Εξοφλήθη':'Εκκρεμεί'}${late>0?` (καθυστέρηση ${days(late)})`:''}`}>
-              <div style={{ width:'100%', height:p.paid?72:36, background:color, borderRadius:'3px 3px 0 0', opacity:0.8, transition:'height 0.4s ease' }}/>
+              title={`${MONTHS_SHORT[p.period_month-1]} ${p.period_year}: ${p.paid?'Εξοφλήθη':'Απλήρωτη'}${late>0?` (καθυστέρηση ${days(late)})`:''}`}>
+              <div style={{ width:'100%', height:p.paid?72:36, background:L.color, borderRadius:'3px 3px 0 0', transition:'height 0.4s ease', display:'flex', justifyContent:'center', paddingTop:4, color:'var(--on-tone)' }}>
+                <L.Icon size={10} strokeWidth={3} aria-hidden="true" />
+              </div>
             </div>
           );
         })}
@@ -336,10 +353,12 @@ export function PaymentBars({ payments }:{payments:RentPayment[]}) {
         ))}
       </div>
       <div style={{ display:'flex', flexWrap:'wrap' as const, gap:'10px 16px', marginTop:12 }}>
-        {[['var(--positive)','Εμπρόθεσμη'],['var(--info)','Μικρή καθυστέρηση'],['var(--warning)','Μεγάλη καθυστέρηση'],['var(--negative)','Εκκρεμεί']].map(([c,l])=>(
-          <div key={l} style={{ display:'flex', alignItems:'center', gap: 4 }}>
-            <div style={{ width:8, height:8, borderRadius:3, background:c, flexShrink:0 }}/>
-            <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans }}>{l}</span>
+        {Object.values(LATENESS).map(({color,label,Icon})=>(
+          <div key={label} style={{ display:'flex', alignItems:'center', gap: 4 }}>
+            <span style={{ width:14, height:14, borderRadius:3, background:color, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--on-tone)' }}>
+              <Icon size={9} strokeWidth={3} aria-hidden="true" />
+            </span>
+            <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans }}>{label}</span>
           </div>
         ))}
       </div>

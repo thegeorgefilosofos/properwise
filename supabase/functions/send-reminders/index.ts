@@ -81,19 +81,19 @@ function buildEmail(events: CalendarEventsRow[], reminderType: string) {
   const n = events.length
   const when = whenPhrase[reminderType] || ''
   const subject = reminderType === 'overdue'
-    ? (n === 1 ? `Εκπρόθεσμο: ${events[0].title}` : `Εκπρόθεσμα: ${n} προθεσμίες`)
+    ? (n === 1 ? `Ληξιπρόθεσμο: ${events[0].title}` : `Ληξιπρόθεσμα: ${n} προθεσμίες`)
     : reminderType === 'today'
       ? (n === 1 ? `Σήμερα: ${events[0].title}` : `Σήμερα: ${n} προθεσμίες`)
       : `${n === 1 ? '1 προθεσμία λήγει' : `${n} προθεσμίες λήγουν`} ${when}`
   const headline = reminderType === 'overdue'
-    ? (n === 1 ? '1 προθεσμία είναι εκπρόθεσμη' : `${n} προθεσμίες είναι εκπρόθεσμες`)
+    ? (n === 1 ? '1 προθεσμία είναι ληξιπρόθεσμη' : `${n} προθεσμίες είναι ληξιπρόθεσμες`)
     : `${n === 1 ? '1 προθεσμία λήγει' : `${n} προθεσμίες λήγουν`} ${when}`
 
   const html = emailShell({
     preheader: `${headline}.`,
     footerNote: 'Αυτόματη ειδοποίηση ημερολογίου · properwise.gr',
     bodyHtml: callout(
-      eyebrow(reminderType === 'overdue' ? 'Εκπρόθεσμο' : reminderType === 'today' ? 'Σήμερα' : 'Υπενθύμιση', isUrgent ? 'negative' : undefined)
+      eyebrow(reminderType === 'overdue' ? 'Ληξιπρόθεσμο' : reminderType === 'today' ? 'Σήμερα' : 'Υπενθύμιση', isUrgent ? 'negative' : undefined)
       + `<p class="ink" style="margin:0;font-size:15px;color:${C.ink};font-weight:600;mso-line-height-rule:exactly;line-height:22px;">${headline}</p>`
       + (totalAmount > 0 ? `<p class="ac" style="margin:6px 0 0;font-size:13px;color:${C.accent};font-weight:700;mso-line-height-rule:exactly;line-height:19px;">Σύνολο: ${eur(totalAmount)}</p>` : ''),
       isUrgent ? 'alert' : 'accent')
@@ -294,7 +294,7 @@ Deno.serve(async (req) => {
       const overdue = pref.reminder_overdue === false ? [] : events.filter(e => e.event_date < todayStr)
       if (overdue.length) {
         const { data: sentOD, error: sentODErr } = await supabase.from('notification_log').select('event_id').in('event_id', overdue.map(e=>e.id)).eq('reminder_type','overdue')
-        if (sentODErr) { console.error('[send-reminders] μητρώο εκπρόθεσμων:', sentODErr); skipped++ }
+        if (sentODErr) { console.error('[send-reminders] μητρώο ληξιπρόθεσμων:', sentODErr); skipped++ }
         const sentODIds = new Set(((sentOD||[]) as Pick<NotificationLogRow,'event_id'>[]).map(l=>l.event_id))
         const toSendOD  = overdue.filter(e => !sentODIds.has(e.id))
         if (toSendOD.length) {
@@ -335,7 +335,7 @@ Deno.serve(async (req) => {
       // όλα» — και είναι ψέμα όταν η ανάγνωση απέτυχε.
       const { data: overdueRent, error: odErr } = await supabase.from('rent_payments')
         .select('*').eq('user_id', pref.user_id).eq('paid', false).lt('due_date', todayStr)
-      if (odErr) { console.error('[send-reminders] εκπρόθεσμες δόσεις:', odErr); skipped++; continue }
+      if (odErr) { console.error('[send-reminders] ληξιπρόθεσμες δόσεις:', odErr); skipped++; continue }
       // Μόνο δόσεις με non-null due_date αυστηρά πριν από σήμερα (belt-and-suspenders·
       // η .lt() ήδη αποκλείει NULL due_date στην Postgres).
       const overdue = ((overdueRent || []) as RentPaymentsRow[]).filter(r => r.due_date != null && r.due_date < todayStr)
