@@ -61,7 +61,7 @@ type S = Record<string, unknown>;
  * ασφάλεια υπάρχει.
  */
 const SETTINGS_FIELDS: readonly (readonly [string, string])[] = [
-  ['owner_name', 'Ονομα ιδιοκτήτη'],
+  ['owner_name', 'Όνομα ιδιοκτήτη'],
   ['owner_afm', 'ΑΦΜ ιδιοκτήτη'],
   ['owner_phone', 'Τηλέφωνο ιδιοκτήτη'],
   ['owner_email', 'Ηλεκτρονικό ταχυδρομείο ιδιοκτήτη'],
@@ -136,7 +136,7 @@ function CollapsibleSection({ title, hint, defaultOpen = false, delay, children 
 // το κουμπί έλεγε «Αντιγράφηκε» και παρέδιδε ληγμένο σύνδεσμο· ο ιδιοκτήτης τον
 // έστελνε, ο λογιστής έβλεπε «δεν είναι έγκυρος» και κανείς δεν ήξερε γιατί.
 //
-// ΤΙ ΚΑΝΕΙ ΤΩΡΑ, ΚΑΙ ΓΙΑΤΙ ΑΥΤΟ. Η ΠΑΡΑΧΩΡΗΣΗ ζει στη Λογιστική, μέσα στη ροή
+// ΤΙ ΚΑΝΕΙ ΤΩΡΑ ΚΑΙ ΓΙΑΤΙ ΑΥΤΟ. Η ΠΑΡΑΧΩΡΗΣΗ ζει στη Λογιστική, μέσα στη ροή
 // όπου ετοιμάζεις τη χρήση και θέλεις να τη στείλεις. Οι Ρυθμίσεις απαντούν
 // άλλη ερώτηση, τη μόνη που φέρνει κάποιον στα «Δεδομένα και απόρρητο»: ποιος
 // βλέπει τα δεδομένα μου αυτή τη στιγμή και πώς του το κόβω. Ενα κουμπί ανά
@@ -207,7 +207,7 @@ function MarketDataSharing({ userId }: { userId: string }) {
   }, [userId]);
   const toggle = async (v: boolean) => {
     setOn(v);
-    // Η ΧΡΟΝΟΣΗΜΑΝΣΗ ΜΕΝΕΙ, ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΔΙΑΚΟΣΜΗΤΙΚΗ: το άρθρο 7§1 GDPR ζητά
+    // Η ΧΡΟΝΟΣΗΜΑΝΣΗ ΜΕΝΕΙ ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΔΙΑΚΟΣΜΗΤΙΚΗ: το άρθρο 7§1 GDPR ζητά
     // να μπορούμε να ΑΠΟΔΕΙΞΟΥΜΕ πότε δόθηκε η συγκατάθεση. Απλώς δεν την
     // ανακοινώνει πια η οθόνη — ο διακόπτης λέει ήδη πού βρίσκεται.
     const { error } = await billing.save(supabase, userId,
@@ -267,7 +267,7 @@ function DeleteAccount() {
   };
 
   /**
-   * Η ΔΙΑΓΡΑΦΗ ΠΕΡΝΑΕΙ ΑΠΟ ΤΟΝ ΔΙΑΚΟΜΙΣΤΗ, ΚΑΙ ΟΧΙ ΓΙΑ ΤΥΠΙΚΟΤΗΤΑ.
+   * Η ΔΙΑΓΡΑΦΗ ΠΕΡΝΑΕΙ ΑΠΟ ΤΟΝ ΔΙΑΚΟΜΙΣΤΗ ΚΑΙ ΟΧΙ ΓΙΑ ΤΥΠΙΚΟΤΗΤΑ.
    *
    * Πριν, η οθόνη καλούσε κατευθείαν τη `delete_my_account`. Ο λογαριασμός
    * έφευγε, το προφίλ χρέωσης με το αναγνωριστικό της συνδρομής έφευγε μαζί
@@ -305,7 +305,7 @@ function DeleteAccount() {
         // Μόνο για όποιον έχει δεύτερο παράγοντα: η διαγραφή θα τον ζητήσει,
         // οπότε ας μην τον ξαφνιάσει τη στιγμή της οριστικής πράξης.
         <div style={{ background: 'var(--info-soft)', border: '1px solid var(--info-border)', borderRadius: T.radius.inner, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-          Η διαγραφή θα ζητήσει επιβεβαίωση με τον δεύτερο παράγοντα (2FA).
+          Η διαγραφή θα ζητήσει τον κωδικό της εφαρμογής επαλήθευσης.
         </div>
       )}
       {leftover ? (
@@ -359,7 +359,7 @@ function DeleteAccount() {
 /**
  * Στοιχείο ταυτότητας που αλλάζει: κλειστό δείχνει την τιμή, ανοιχτό γίνεται πεδίο.
  *
- * ΗΤΑΝ ΓΡΑΜΜΕΝΟ ΔΥΟ ΦΟΡΕΣ, ΚΑΙ ΤΟ «ΣΧΕΔΟΝ ΙΔΙΟ» ΦΑΙΝΟΤΑΝ. Η μία γραμμή έλεγε
+ * ΗΤΑΝ ΓΡΑΜΜΕΝΟ ΔΥΟ ΦΟΡΕΣ ΚΑΙ ΤΟ «ΣΧΕΔΟΝ ΙΔΙΟ» ΦΑΙΝΟΤΑΝ. Η μία γραμμή έλεγε
  * για την κενή τιμή «—» και η άλλη «Δεν έχει οριστεί»· η μία κρατούσε το
  * μήνυμα σε πράσινο και η άλλη μόνο σε κόκκινο· η μία είχε ετικέτα «Νέο email»
  * στην επεξεργασία και η άλλη «Όνομα ή επωνυμία». Τέσσερις μικρές αποκλίσεις σε
@@ -473,7 +473,7 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
 
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ΔΥΟ ΤΥΠΟΙ, ΚΑΙ ΕΙΝΑΙ ΔΙΑΦΟΡΕΤΙΚΑ ΠΡΑΓΜΑΤΑ. Το `profileType` είναι αυτό που
+// ΔΥΟ ΤΥΠΟΙ ΚΑΙ ΕΙΝΑΙ ΔΙΑΦΟΡΕΤΙΚΑ ΠΡΑΓΜΑΤΑ. Το `profileType` είναι αυτό που
 // ΑΝΟΙΓΕΙ (ο επαγγελματικός τρόπος ανοίγει μόνο με το πακέτο του)· το
 // `declaredType` είναι αυτό που ΕΠΕΛΕΞΕ ο χρήστης. Ο επιλογέας δούλευε με το
 // πρώτο: δηλωμένος «Επαγγελματίας» χωρίς το πακέτο έβλεπε επιλεγμένο τον
@@ -692,7 +692,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
       .filter(([, value]) => value !== '');
     if (rows.length === 0) {
       setSheetNote(sUnread
-        ? 'Δεν διαβάστηκαν οι ρυθμίσεις του ακινήτου, οπότε δεν ξέρουμε τι υπάρχει. Ανανέωσε τη σελίδα κι δοκίμασε ξανά.'
+        ? 'Δεν διαβάστηκαν οι ρυθμίσεις του ακινήτου, οπότε δεν ξέρουμε τι υπάρχει. Ανανέωσε τη σελίδα και δοκίμασε ξανά.'
         : 'Δεν υπάρχει καμία καταχωρημένη ρύθμιση σε αυτό το ακίνητο.');
       return;
     }
@@ -737,7 +737,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           σειρά: Προφίλ, Συνδρομή, Ειδοποιήσεις, Ασφάλεια, Δεδομένα. Ο ίδιος
           κατάλογος δύο φορές, σε απόσταση σαράντα εικονοστοιχείων. Ο υπότιτλος
           λέει τώρα τι ΕΙΝΑΙ η σελίδα· τι περιέχει το λένε οι κεφαλίδες της. */}
-      <PageTitle title="Λογαριασμός" sub="Ό,τι αφορά εσένα και τον έλεγχό σου πάνω στα δεδομένα σου" />
+      <PageTitle title="Λογαριασμός" sub="Ό,τι αφορά εσένα και τα δεδομένα σου" />
 
       {/* ── 1. ΠΡΟΦΙΛ ─────────────────────────────────────────────────── */}
       <ProfileCard userId={userId} email={accountEmail} />
@@ -858,10 +858,11 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
                   πρόσβαση δεν λήγει ποτέ. Ο χρήστης διάβαζε ένα αστείο εκεί που
                   περίμενε όρο. Ό,τι απέχει πάνω από δέκα χρόνια λέγεται με
                   λέξεις, γιατί αυτό ακριβώς σημαίνει. */}
-              Έχεις πρόσβαση <strong style={{ color: 'var(--text-primary)' }}>{PLANS[comp.plan].name}</strong>
-              {isOpenEnded(comp.until)
-                ? ', χωρίς ημερομηνία λήξης'
-                : <> έως και {fdLong(comp.until)}</>}, χωρίς χρέωση. Την κέρδισες από το Πρόγραμμα πρόσκλησης.
+              {/* ΚΑΙ ΧΩΡΙΣ «ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ ΛΗΞΗΣ». Υπόσχεση αόριστης διάρκειας
+                  δίπλα σε πακέτο δεν γράφεται· όταν δεν υπάρχει ημερομηνία, η
+                  πρόταση απλώς δεν λέει ημερομηνία. */}
+              Έχεις το «<strong style={{ color: 'var(--text-primary)' }}>{PLANS[comp.plan].name}</strong>» χωρίς χρέωση
+              {isOpenEnded(comp.until) ? null : <> έως και {fdLong(comp.until)}</>}, από το Πρόγραμμα πρόσκλησης.
             </div>
           </div>
         )}
@@ -870,7 +871,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         <div style={divider}>
           <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 4 }}>Τρόπος χρήσης</div>
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 14, lineHeight: 1.5 }}>
-            Αλλάζει όποτε θες.{partner ? ' Είσαι ενεργός συνεργάτης PROPERWISE.' : ''}
+            Αλλάζει όποτε θέλεις.{partner ? ' Είσαι ενεργός συνεργάτης PROPERWISE.' : ''}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 12 }}>
             {PROFILE_OPTS.map(o => {
@@ -889,7 +890,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, marginTop: 4, lineHeight: 1.5 }}>{o.sub}</div>
                   {needsPlan && (
-                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8 }}>Ανοίγει με το πακέτο Επαγγελματίας.</div>
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8 }}>Ανοίγει με το πακέτο «{PLANS.agency.name}».</div>
                   )}
                 </button>
               );
@@ -920,7 +921,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         </div>
       )}
 
-      {/* ═══ Η ΣΕΙΡΑ ΤΩΝ ΕΝΟΤΗΤΩΝ ΑΛΛΑΞΕ, ΚΑΙ ΕΙΝΑΙ ΑΠΟΦΑΣΗ ══════════════════
+      {/* ═══ Η ΣΕΙΡΑ ΤΩΝ ΕΝΟΤΗΤΩΝ ΑΛΛΑΞΕ ΚΑΙ ΕΙΝΑΙ ΑΠΟΦΑΣΗ ══════════════════
           «Η γνώμη σου» και «Τι έρχεται» κάθονταν ΑΝΑΜΕΣΑ στις ειδοποιήσεις και
           στην εμφάνιση: δύο μεγάλες, μόνιμα ανοιχτές κάρτες που έκοβαν στη μέση
           τη στήλη των έξι ελαχιστοποιημένων ρυθμίσεων. Όποιος κατέβαινε για την
@@ -942,7 +943,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
       <CollapsibleSection title="Εμφάνιση και γλώσσα" hint="Θέμα, κείμενο, προθεσμίες" delay="170ms">
         <SetList>
           <SetRow title="Θέμα" desc="Εναλλαγή ανάμεσα σε φωτεινό και σκοτεινό." control={<ThemeToggle />} />
-          {/* Η ΡΥΘΜΙΣΗ «ΔΕΚΑΔΙΚΑ ΣΤΑ ΠΟΣΑ» ΕΦΥΓΕ, ΚΑΙ ΔΕΝ ΕΛΕΙΨΕ ΣΕ ΚΑΝΕΝΑΝ.
+          {/* Η ΡΥΘΜΙΣΗ «ΔΕΚΑΔΙΚΑ ΣΤΑ ΠΟΣΑ» ΕΦΥΓΕ ΚΑΙ ΔΕΝ ΕΛΕΙΨΕ ΣΕ ΚΑΝΕΝΑΝ.
               Δεν τη διάβαζε ΟΥΤΕ ΕΝΑ σημείο της εφαρμογής: ο χρήστης άλλαζε την
               επιλογή, η οθόνη έδειχνε ότι αποθηκεύτηκε και δεν συνέβαινε τίποτα.
               Ένας διακόπτης που δεν κάνει τίποτα είναι χειρότερος από απόντα —
@@ -1025,7 +1026,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         </SetList>
       </CollapsibleSection>
 
-      {/* ── ΤΙ ΕΡΧΕΤΑΙ, ΚΑΙ ΜΕΤΑ Η ΓΝΩΜΗ ΣΟΥ ─────────────────────────────
+      {/* ── ΤΙ ΕΡΧΕΤΑΙ ΚΑΙ ΜΕΤΑ Η ΓΝΩΜΗ ΣΟΥ ─────────────────────────────
           Στο τέλος, όχι επειδή μετρούν λιγότερο, αλλά επειδή δεν είναι
           ρυθμίσεις: κοιτούν μπροστά, ενώ όλα τα παραπάνω ρυθμίζουν το τώρα. */}
       <Card className="acc-section" style={{ animationDelay: '290ms' }}>

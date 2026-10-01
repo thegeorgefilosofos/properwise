@@ -24,7 +24,7 @@ export default function Page() {
     <TameioCard>
       <h1 style={TAMEIO_TITLE}>Δεν χρειάζεται πληρωμή</h1>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '14px 0 0' }}>
-        {w.firstCharge} Όταν ενεργοποιηθεί, το πακέτο το διαλέγεις από τις Ρυθμίσεις.
+        {w.firstCharge} Όταν ενεργοποιηθεί, το πακέτο το διαλέγεις από τον «Λογαριασμό».
       </p>
       <Link href="/dashboard" style={TAMEIO_ACTION}>Συνέχεια στην εφαρμογή</Link>
     </TameioCard>

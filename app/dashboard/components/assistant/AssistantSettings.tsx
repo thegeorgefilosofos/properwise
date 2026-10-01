@@ -25,7 +25,7 @@ export function AssistantSettings({ draft, onSave, onCancel, onClearMemory, hasM
     <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
       <div>
         <div style={{ ...TT.h2, fontSize: 'var(--fs-base)' }}>{settingsTitle()}</div>
-        <div style={{ ...TT.bodySm, marginTop: 4 }}>Πώς θέλεις να δουλεύει μαζί σου. Αλλάζει όποτε θες.</div>
+        <div style={{ ...TT.bodySm, marginTop: 4 }}>Πώς θέλεις να δουλεύει μαζί σου. Αλλάζει όποτε θέλεις.</div>
       </div>
 
       <div>

@@ -12,6 +12,15 @@
 import { feWhole } from '@/lib/core/format';
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b';
 
+import { RENTAL_TAX_BRACKETS_2026, MUNICIPAL_ACCOM_TAX_RATE } from '@/lib/billing/greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
+import { feWhole, fpRate } from '@/lib/core/format';
+
+// Η κλίμακα της περιγραφής βγαίνει από την κλίμακα που υπολογίζει: «15 / 25 /
+// 35 / 45%», το όριο του τελευταίου κλιμακίου και η τεκμαρτή έκπτωση.
+const RENT_SCALE = RENTAL_TAX_BRACKETS_2026.map(b => Math.round(b.rate * 100)).join(' / ') + '%';
+const RENT_TOP_FROM = RENTAL_TAX_BRACKETS_2026[RENTAL_TAX_BRACKETS_2026.length - 1].from;
+
 export type Guide = {
   href: string;
   kicker: string;
@@ -28,7 +37,7 @@ export const GUIDES: readonly Guide[] = [
     href: '/odigos/forologia-enoikion-2026',
     kicker: 'Ενοίκια',
     title: 'Φορολογία ενοικίων 2026',
-    desc: 'Η κλίμακα 15 / 25 / 35 / 45% (όριο 36.000€), η τεκμαρτή έκπτωση 5% και η '
+    desc: `Η κλίμακα ${RENT_SCALE} (όριο ${feWhole(RENT_TOP_FROM)}), η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} και η `
         + 'προϋπόθεση της τραπεζικής είσπραξης, με παραδείγματα σε ευρώ.',
     published: '2026-09-21',
     updated: '2026-09-24',
@@ -38,7 +47,7 @@ export const GUIDES: readonly Guide[] = [
     kicker: 'Βραχυχρόνια',
     title: 'Airbnb και ΤΑΚΚ 2026',
     desc: 'Τι πληρώνεις για βραχυχρόνια μίσθωση: το ΤΑΚΚ ανά διανυκτέρευση, το τέλος '
-        + 'παρεπιδημούντων 0,5% και ο φόρος εισοδήματος.',
+        + `παρεπιδημούντων ${fpRate(MUNICIPAL_ACCOM_TAX_RATE * 100)} και ο φόρος εισοδήματος.`,
     published: '2026-09-21',
     updated: '2026-09-24',
   },

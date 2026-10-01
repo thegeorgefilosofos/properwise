@@ -91,7 +91,7 @@ export default function Page() {
             26.09.2026)· ο συλλαβισμός δεν φεύγει, γιατί πλήρης στοίχιση χωρίς
             αυτόν τεντώνει τα κενά (guard-justify-hyphen). */}
         <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px', maxWidth: '68ch' }}>{hy(<>
-          {TRIAL_OFFER} {billingWords().firstCharge} Οι τιμές περιλαμβάνουν ΦΠΑ και σταματάς όποτε θέλεις. {billingWords().moneyBack}
+          {TRIAL_OFFER} {billingWords().firstCharge} Οι τιμές περιλαμβάνουν ΦΠΑ και ακυρώνεις όποτε θέλεις. {billingWords().moneyBack}
         </>)}</p>
         {/* Η ΙΔΙΑ ΠΡΟΤΑΣΗ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Χωρίς προτεινόμενη στήλη ο πίνακας έδειχνε
             τέσσερα ίδια κύρια κουμπιά, ενώ η αρχική προτείνει ρητά ένα πακέτο.

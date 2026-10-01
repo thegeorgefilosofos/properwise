@@ -123,7 +123,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   //
   // Το `legal_form` ξέρει ήδη και τα δύο: αν υπάρχει επιχείρηση και αν είναι
   // ατομική ή νομικό πρόσωπο. Αν κάτι είναι λάθος, διορθώνεται εκεί που δηλώθηκε.
-  // ── ΤΟ «ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ Ή ΕΠΙΧΕΙΡΗΣΗ» ΜΕΝΕΙ ΕΡΩΤΗΣΗ, ΚΑΙ ΝΑ ΓΙΑΤΙ ────────
+  // ── ΤΟ «ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ Ή ΕΠΙΧΕΙΡΗΣΗ» ΜΕΝΕΙ ΕΡΩΤΗΣΗ ΚΑΙ ΝΑ ΓΙΑΤΙ ────────
   // Το είχα παραγάγει από τη νομική μορφή: «έχει επιχείρηση, άρα επιχείρηση».
   // Είναι λάθος και το γράφει η ίδια η εφαρμογή σε τρία σημεία: το ενοίκιο
   // φυσικού προσώπου φορολογείται με το ΑΡΘΡΟ 40 (δική του κλίμακα, τεκμαρτή
@@ -497,7 +497,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const individualPerson = !(mode==='professional' && elp==='business' && elpForm==='company')
   const shortSummary = useMemo(()=>shortTermYearSummary(stays, year, { sqm: prop?.sqm, isHouse: isHouseType(prop?.prop_type), propertyCount:propCount, individual:individualPerson, rentsPaidViaBank:rentsBank }),[stays,year,prop,propCount,individualPerson,rentsBank])
   const expensesYear = useMemo(()=>expenses.filter(e=>(e.date||'').slice(0,4)===String(year)&&(e.amount||0)>0),[expenses,year])
-  // ── Η ΠΡΟΜΗΘΕΙΑ ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ ΕΙΝΑΙ ΔΑΠΑΝΗ, ΚΑΙ ΜΠΑΙΝΕΙ ΣΤΑ ΒΙΒΛΙΑ ──────
+  // ── Η ΠΡΟΜΗΘΕΙΑ ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ ΕΙΝΑΙ ΔΑΠΑΝΗ ΚΑΙ ΜΠΑΙΝΕΙ ΣΤΑ ΒΙΒΛΙΑ ──────
   // Καταγραφόταν ανά κράτηση, φαινόταν σε τέσσερις οθόνες ως «δαπάνη που
   // εκπίπτει» και δεν έφτανε ΠΟΤΕ στο ημερολόγιο, στο ισοζύγιο ή στον φάκελο
   // του λογιστή. Ο κανόνας και η αιτιολογία ζουν στο lib/tax/shortTermTax.ts.
@@ -543,7 +543,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
 
   const businessMode = mode==='professional' && elp==='business'
 
-  // ── ΤΟ ΜΗΤΡΩΟ ΠΑΓΙΩΝ, ΚΑΙ ΓΙΑΤΙ ΕΙΝΑΙ ΑΥΤΟ ΠΟΥ ΔΙΝΕΙ ΤΗΝ ΑΠΟΣΒΕΣΗ ──────────
+  // ── ΤΟ ΜΗΤΡΩΟ ΠΑΓΙΩΝ ΚΑΙ ΓΙΑΤΙ ΕΙΝΑΙ ΑΥΤΟ ΠΟΥ ΔΙΝΕΙ ΤΗΝ ΑΠΟΣΒΕΣΗ ──────────
   // Η απόσβεση κτιρίου υπολογιζόταν εδώ με μια γραμμή: αξία × 60% × 4%, ίδια
   // κάθε χρόνο, από την πρώτη μέρα ως το άπειρο. Δύο λάθη μέσα σε μία γραμμή:
   // η πρώτη χρήση αποσβένεται ΚΑΤΑ ΜΗΝΑ (άρθρο 24 §2) και μετά την πλήρη
@@ -580,7 +580,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // περιμένει τον συντελεστή του λογιστή και δίνει μηδέν ως τότε.
   const buildingDepr = useMemo(()=>
     Math.round(assets.filter(a=>a.elp!==EQUIPMENT_ACCOUNT).reduce((s,a)=>s+chargeForYear(a,year),0)),[assets,year])
-  // ══ Η ΑΠΟΣΒΕΣΗ ΕΞΟΠΛΙΣΜΟΥ ΗΤΑΝ ΕΚΤΙΜΗΣΗ ΠΡΟΪΟΝΤΟΣ, ΚΑΙ ΕΚΠΙΠΤΟΤΑΝ ΩΣ ΦΟΡΟΣ ══
+  // ══ Η ΑΠΟΣΒΕΣΗ ΕΞΟΠΛΙΣΜΟΥ ΗΤΑΝ ΕΚΤΙΜΗΣΗ ΠΡΟΪΟΝΤΟΣ ΚΑΙ ΕΚΠΙΠΤΟΤΑΝ ΩΣ ΦΟΡΟΣ ══
   //
   // Υπολογιζόταν εδώ με το `usefulLifeYears` — «τυπική διάρκεια ζωής» ανά
   // κατηγορία, που το ίδιο του το αρχείο (lib/inventory/depreciation.ts)
@@ -850,7 +850,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     return g
   },[rent,stays,expensesYear,year,regime,uncollectedRent,tenant,enfiaEstimated,enfiaSource,enfiaBlock,ownFeeMonths,businessMode])
 
-  // ── ΠΟΙΟΣ ΚΑΝΕΙ myDATA, ΚΑΙ ΜΕ ΠΟΙΟ ΔΙΚΑΙΩΜΑ ΕΚΠΤΩΣΗΣ ────────────────────
+  // ── ΠΟΙΟΣ ΚΑΝΕΙ myDATA ΚΑΙ ΜΕ ΠΟΙΟ ΔΙΚΑΙΩΜΑ ΕΚΠΤΩΣΗΣ ────────────────────
   // Ο ιδιοκτήτης που εκμισθώνει ως φυσικό πρόσωπο δεν χαρακτηρίζει έξοδα: δεν
   // τηρεί βιβλία, δεν διαβιβάζει. Για εκείνον η στήλη δεν υπάρχει καθόλου.
   //

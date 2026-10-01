@@ -57,7 +57,7 @@ const PAIRS = [
   {
     control: 'δεύτερο βήμα στη σύνδεση (TOTP)',
     promises: [
-      { file: TRUST, text: 'σύνδεση δύο βημάτων' },
+      { file: TRUST, text: 'επαλήθευση δύο βημάτων' },
       { file: REGISTRY, text: 'ροή MFA' },
     ],
     proofs: [

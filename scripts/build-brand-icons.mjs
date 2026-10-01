@@ -91,7 +91,7 @@ const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-san
 for (const t of TARGETS) {
   const p = await browser.newPage({ viewport: { width: t.px, height: t.px } });
   await p.setContent(page(t.px, t));
-  // ΠΑΝΤΑ `omitBackground`, ΚΑΙ ΟΧΙ ΓΙΑ ΤΗ ΔΙΑΦΑΝΕΙΑ. Το πλακίδιο είναι έτσι κι
+  // ΠΑΝΤΑ `omitBackground` ΚΑΙ ΟΧΙ ΓΙΑ ΤΗ ΔΙΑΦΑΝΕΙΑ. Το πλακίδιο είναι έτσι κι
   // αλλιώς αδιαφανές· αυτό που αλλάζει είναι ότι το PNG βγαίνει σε RGBA. Χωρίς
   // αυτό, το `next build` σταματούσε με «The PNG is not in RGBA format» όταν
   // διάβαζε το favicon.ico και ολόκληρο το build έπεφτε για ένα εικονίδιο.
@@ -191,7 +191,7 @@ function toRgba(png) {
   ]);
 }
 
-// ── ΤΟ .ico ΦΤΙΑΧΝΕΤΑΙ ΜΕ ΤΟ ΧΕΡΙ, ΚΑΙ ΕΙΝΑΙ ΑΠΛΟΥΣΤΕΡΟ ΑΠ' ΟΣΟ ΑΚΟΥΓΕΤΑΙ ──
+// ── ΤΟ .ico ΦΤΙΑΧΝΕΤΑΙ ΜΕ ΤΟ ΧΕΡΙ ΚΑΙ ΕΙΝΑΙ ΑΠΛΟΥΣΤΕΡΟ ΑΠ' ΟΣΟ ΑΚΟΥΓΕΤΑΙ ──
 // Από τα Windows Vista και μετά, το ICO δέχεται ΑΥΤΟΥΣΙΑ δεδομένα PNG μέσα
 // στις εγγραφές του. Δηλαδή δεν χρειάζεται μετατροπή σε bitmap: μόνο μια
 // κεφαλίδα έξι byte, μια εγγραφή δεκαέξι byte ανά μέγεθος και τα PNG από πίσω.

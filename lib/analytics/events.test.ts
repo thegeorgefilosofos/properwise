@@ -24,7 +24,7 @@ const NAME_RULE = /^[a-z][a-z0-9_]{2,47}$/;
   ok('εννέα σκαλιά', names.length === 9);
 }
 
-// ── ΤΟ ΧΩΝΙ ΕΧΕΙ ΣΕΙΡΑ, ΚΑΙ Η ΣΕΙΡΑ ΕΧΕΙ ΝΟΗΜΑ ───────────────────────────
+// ── ΤΟ ΧΩΝΙ ΕΧΕΙ ΣΕΙΡΑ ΚΑΙ Η ΣΕΙΡΑ ΕΧΕΙ ΝΟΗΜΑ ───────────────────────────
 {
   const order = Object.values(PRODUCT_EVENTS);
   const idx = (e: ProductEvent) => order.indexOf(e);

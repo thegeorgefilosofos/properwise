@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // ΕΠΙΣΚΕΠΤΕΣ ΒΡΑΧΥΧΡΟΝΙΑΣ ΜΙΣΘΩΣΗΣ — όχι CRM επαγγελματία σε ιδιώτη με ένα εξοχικό.
 //
-// ΤΙ ΕΦΥΓΕ, ΚΑΙ ΓΙΑΤΙ
+// ΤΙ ΕΦΥΓΕ ΚΑΙ ΓΙΑΤΙ
 //
 // 1. Η «ΜΑΥΡΗ ΛΙΣΤΑ» (`do_not_rent`) με ονοματεπώνυμο, ΑΦΜ και αριθμό
 //    ταυτότητας. Είναι κατηγοριοποίηση προσώπου με νομικό βάρος (GDPR) για
@@ -943,7 +943,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
               {docsFailed ? (
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '8px 0', lineHeight: 1.6 }}>
                   Τα έγγραφα δεν διαβάστηκαν. Δεν σημαίνει ότι δεν υπάρχουν: δεν πήραμε απάντηση.{' '}
-                  <LinkBtn onClick={() => { if (openId) loadDocs(openId); }}>Δοκιμή ξανά</LinkBtn>
+                  <LinkBtn onClick={() => { if (openId) loadDocs(openId); }}>Δοκίμασε ξανά</LinkBtn>
                 </div>
               ) : docs.length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '8px 0' }}>Δεν έχουν αποθηκευτεί έγγραφα.</div>
@@ -989,7 +989,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
               {notesFailed ? (
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '4px 0', lineHeight: 1.6 }}>
                   Τα σχόλια δεν διαβάστηκαν. Δεν σημαίνει ότι δεν υπάρχουν: δεν πήραμε απάντηση.{' '}
-                  <LinkBtn onClick={() => { if (openId) loadNotes(openId); }}>Δοκιμή ξανά</LinkBtn>
+                  <LinkBtn onClick={() => { if (openId) loadNotes(openId); }}>Δοκίμασε ξανά</LinkBtn>
                 </div>
               ) : notes.length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '4px 0' }}>Κανένα σχόλιο ακόμη</div>

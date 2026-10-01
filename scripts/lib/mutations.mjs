@@ -109,7 +109,13 @@ export const MUTATIONS = {
 
 
   // ── Ελληνικό κείμενο οθόνης ────────────────────────────────────────────
-  'ampersand': { add: 'components/__mut__.tsx', content: tsx('    <div>Έσοδα & δαπάνες του ακινήτου σου</div>') },
+  'ampersand': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Έσοδα & δαπάνες του ακινήτου σου</div>') },
+    // Κείμενο JSX που σπάει σε δύο γραμμές ακριβώς πριν από το «&».
+    { add: 'components/__mut__.tsx', content: tsx('    <p>\n      Καταγράφει την κατάσταση κατά την είσοδο\n      & έξοδο του ενοικιαστή.\n    </p>') },
+    // Το `image/*` δεν ανοίγει σχόλιο: ό,τι ακολουθεί ελέγχεται κανονικά.
+    { add: 'components/__mut__.tsx', content: tsx('    <div><input type="file" accept="image/*" />\n      <p>Είσοδος & έξοδος</p></div>') },
+  ] },
   'no-arrows': { add: 'components/__mut__.tsx', content: tsx('    <div>Πήγαινε στις Δαπάνες → Κατηγορίες</div>') },
   'em-dash': { add: 'components/__mut__.tsx', content: tsx('    <p>\n      Τα δεδομένα σου είναι ασφαλή — μόλις επανέλθει η σύνδεση\n      εμφανίζονται όλα κανονικά στη θέση τους.\n    </p>') },
   'uppercase-tonos': { add: 'components/__mut__.tsx', content: tsx('    <div>ΈΣΟΔΑ ΑΚΙΝΗΤΟΥ</div>') },
@@ -171,7 +177,11 @@ export const MUTATIONS = {
   'month-case': { add: 'lib/core/__mut__.ts', content: "import { monthNom } from '@/lib/core/months'\nexport const d = (i: number) => `Μεταφορά από ${monthNom(i)}`\n" },
   'raw-errors': { add: 'components/__mut__.tsx', content: 'export function P({ setError, err }: { setError: (s: string) => void; err: Error }) {\n  return <button onClick={() => setError(err.message)}>Δοκιμή</button>\n}\n' },
   'rendered-zero': { add: 'components/__mut__.tsx', content: 'export function P({ n }: { n: number }) {\n  return <div>{n && <span>{n}</span>}</div>\n}\n' },
-  'terminology': { add: 'components/__mut__.tsx', content: tsx('    <div>Η καταχώριση ολοκληρώθηκε</div>') },
+  'terminology': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Η καταχώριση ολοκληρώθηκε</div>') },
+    // Η γενική με τον τόνο στο γιώτα, όπως ήταν στα Κοινόχρηστα.
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Ταμείο Κτηρίου</div>') },
+  ] },
   'assistant-name': { add: 'components/__mut__.tsx', content: tsx('    <div>Ο βοηθός σου προτείνει τρεις κινήσεις</div>') },
 
   // ── Βάση δεδομένων και ασφάλεια ───────────────────────────────────────
@@ -264,6 +274,8 @@ export const MUTATIONS = {
   'comma-kai': { every: [
     { add: 'components/__mut__.tsx', content: tsx('    <div>Το ακίνητο μπαίνει σε τάξη, και ο λογαριασμός βγαίνει μόνος του</div>') },
     { add: 'lib/core/__mut__.ts', content: "export const note = 'Ο φόρος αποδίδεται με αντίστροφη χρέωση, '\n  + 'και η λήψη δηλώνεται στον πίνακα.'\n" },
+    // Το κεφαλαίο: τίτλος ενότητας στον φάκελο του λογιστή.
+    { add: 'lib/core/__mut__.ts', content: "export const title = 'ΤΙ ΧΡΕΙΑΖΕΤΑΙ, ΚΑΙ ΠΟΙΟΣ ΤΟ ΦΕΡΝΕΙ'\n" },
   ] },
   'type-floor': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ fontSize: 9 }}>Πολύ μικρό για τηλέφωνο</div>") },
   'hidden-on-small': { add: 'components/__mut__.tsx', content: tsx('    <div className="lp-hide-xs">Το κείμενο που χάνεται</div>') },

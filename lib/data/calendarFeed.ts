@@ -15,7 +15,7 @@ import type { DbError } from '@/lib/supabase/writeResult';
 import { readOne, type ReadOneResult } from './read';
 import { siteUrl } from '@/lib/core/site';
 
-// Ο ΠΙΝΑΚΑΣ ΥΠΗΡΧΕ ΗΔΗ, ΚΑΙ ΤΟΝ ΧΡΗΣΙΜΟΠΟΙΕΙ Η «ΖΩΝΤΑΝΗ ΣΥΝΔΡΟΜΗ» ΤΟΥ
+// Ο ΠΙΝΑΚΑΣ ΥΠΗΡΧΕ ΗΔΗ ΚΑΙ ΤΟΝ ΧΡΗΣΙΜΟΠΟΙΕΙ Η «ΖΩΝΤΑΝΗ ΣΥΝΔΡΟΜΗ» ΤΟΥ
 // ΗΜΕΡΟΛΟΓΙΟΥ. Δεύτερος πίνακας για το ίδιο μυστικό θα σήμαινε δύο διευθύνσεις
 // ανά χρήστη και μία από τις δύο να μένει ζωντανή όταν ακυρωθεί η άλλη.
 const TABLE = 'calendar_feed_tokens';

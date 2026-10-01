@@ -10,7 +10,7 @@ import { readSheetAsCsv, SheetError } from '@/lib/core/readSheet'
 import { csvTable } from '@/lib/core/csv'
 import { S, ROW } from '../sheetFormat';
 import type { InventoryItem } from './model'
-import { INVENTORY_CATEGORIES, CONDITIONS, CONDITION_COLOR } from './model'
+import { INVENTORY_CATEGORIES, CONDITIONS, CONDITION_COLOR, conditionLabel } from './model'
 import { Badge } from './Bits'
 import * as inventory from '@/lib/data/inventory'
 import { failed } from '@/lib/core/dbError'
@@ -66,7 +66,7 @@ export function BulkImportModal({propertyId,userId,onImported,onClose}:{property
       if(!cols[0])continue
       const cat=cols[1]||'Λοιπά'; const cond=cols[6]||'Καλή'
       if(![...INVENTORY_CATEGORIES].includes(cat))errs.push(`Γραμμή ${i+1}: Άγνωστη κατηγορία "${cat}"`)
-      parsed.push({name:cols[0],category:cat,room:cols[2]||'',brand:cols[3]||'',model:cols[4]||'',serial_number:cols[5]||'',condition:CONDITIONS.includes(cond)?cond:'Καλή',purchase_value:parseFloat(cols[7])||0,purchase_date:cols[8]||'',warranty_expiry:cols[9]||'',energy_class:cols[10]||'',power_watts:parseFloat(cols[11])||0,daily_hours_use:parseFloat(cols[12])||0,replacement_cost:parseFloat(cols[13])||0})
+      parsed.push({name:cols[0],category:cat,room:cols[2]||'',brand:cols[3]||'',model:cols[4]||'',serial_number:cols[5]||'',condition:CONDITIONS.find(c=>c.toLocaleLowerCase('el')===cond.toLocaleLowerCase('el'))??'Καλή',purchase_value:parseFloat(cols[7])||0,purchase_date:cols[8]||'',warranty_expiry:cols[9]||'',energy_class:cols[10]||'',power_watts:parseFloat(cols[11])||0,daily_hours_use:parseFloat(cols[12])||0,replacement_cost:parseFloat(cols[13])||0})
     }
     setRows(parsed);setErrors(errs);if(parsed.length>0)setStep('preview')
   }
@@ -111,7 +111,7 @@ export function BulkImportModal({propertyId,userId,onImported,onClose}:{property
           {/* Ρητά, όχι με spread: δες DocumentScan — το spread κρύβει τις ιδιότητες
               από τον μεταγλωττιστή και ξυπνά τα σφάλματα των διπλανών χειριστών. */}
           <div role="button" tabIndex={0} onClick={openFilePicker} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openFilePicker()}}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)handleFile(f)}} style={{border:'2px dashed var(--border-accent)',borderRadius:T.radius.card,padding:'40px 20px',textAlign:'center',cursor:'pointer',background:'var(--accent-dim)'}}>
-            <p style={{fontSize:14,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:8}}>Σύρτε ή κλικ για ανέβασμα αρχείου</p>
+            <p style={{fontSize:14,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:8}}>Σύρε εδώ το αρχείο ή πάτησε για να το επιλέξεις</p>
             <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>Excel ή CSV</p>
           </div>
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)handleFile(f)}}/>
@@ -128,7 +128,7 @@ export function BulkImportModal({propertyId,userId,onImported,onClose}:{property
            <div className="po-scroll-x">
             <table className="po-table" style={{'--tbl-min':'420px'}}>
               <thead><tr>{['Ονομασία','Κατηγορία','Κατάσταση','Αξία'].map((h,i)=><th key={h} scope="col" style={{textAlign:i===3?'right' as const:undefined}}>{h}</th>)}</tr></thead>
-              <tbody>{rows.slice(0,15).map((r,i)=><tr key={i}><td style={{color:'var(--text-primary)',fontWeight:500}}>{r.name}</td><td>{r.category}</td><td><Badge label={r.condition||ABSENT} color={CONDITION_COLOR[r.condition||'']||'var(--text-tertiary)'}/></td><td className="num" style={{color:'var(--text-primary)'}}>{r.purchase_value?fe(r.purchase_value):fe(0)}</td></tr>)}</tbody>
+              <tbody>{rows.slice(0,15).map((r,i)=><tr key={i}><td style={{color:'var(--text-primary)',fontWeight:500}}>{r.name}</td><td>{r.category}</td><td><Badge label={conditionLabel(r.condition)||ABSENT} color={CONDITION_COLOR[r.condition||'']||'var(--text-tertiary)'}/></td><td className="num" style={{color:'var(--text-primary)'}}>{r.purchase_value?fe(r.purchase_value):fe(0)}</td></tr>)}</tbody>
             </table>
            </div>
           </div>

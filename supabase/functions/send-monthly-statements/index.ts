@@ -54,7 +54,7 @@ function statementHtml(ownerRows: { primary: string; secondary: string; expected
       <td class="rule-b" style="padding:11px 0;border-bottom:1px solid #e8e8ed;text-align:right;font-size:12px;font-weight:700;color:${color};">${status}</td>
     </tr>`
   }).join('')
-  // ΤΟ ΔΑΠΕΔΟ ΤΩΝ 11px ΙΣΧΥΕΙ ΚΑΙ ΕΔΩ, ΚΑΙ ΤΑ ΚΕΦΑΛΑΙΑ ΔΕΝ ΚΡΑΤΟΥΝ ΤΟΝΟ. Ηταν
+  // ΤΟ ΔΑΠΕΔΟ ΤΩΝ 11px ΙΣΧΥΕΙ ΚΑΙ ΕΔΩ ΚΑΙ ΤΑ ΚΕΦΑΛΑΙΑ ΔΕΝ ΚΡΑΤΟΥΝ ΤΟΝΟ. Ηταν
   // 10 εικονοστοιχεία, το μικρότερο κείμενο ολόκληρου του προϊόντος, σε email
   // που ανοίγει σχεδόν πάντα σε τηλέφωνο. Και το «uppercase» πάνω σε ωμό
   // ελληνικό έγραφε «ΑΚΊΝΗΤΟ» και «ΚΑΤΆΣΤΑΣΗ».

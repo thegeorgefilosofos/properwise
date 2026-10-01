@@ -124,7 +124,7 @@ export async function subscribeDevice(): Promise<SubscribeOutcome> {
 /**
  * Σβήνει τη συνδρομή από την υπηρεσία push.
  *
- * Η ΑΔΕΙΑ ΔΕΝ ΑΝΑΚΑΛΕΙΤΑΙ ΑΠΟ ΕΔΩ, ΚΑΙ ΔΕΝ ΓΙΝΕΤΑΙ. Την ανακαλεί ο χρήστης
+ * Η ΑΔΕΙΑ ΔΕΝ ΑΝΑΚΑΛΕΙΤΑΙ ΑΠΟ ΕΔΩ ΚΑΙ ΔΕΝ ΓΙΝΕΤΑΙ. Την ανακαλεί ο χρήστης
  * από τον περιηγητή. Εμείς σταματάμε να στέλνουμε, που είναι το ζητούμενο.
  */
 export async function unsubscribeDevice(): Promise<string | null> {

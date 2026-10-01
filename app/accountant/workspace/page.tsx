@@ -295,7 +295,7 @@ export default function AccountantWorkspace() {
             ariaLabel="Αναζήτηση πελάτη"
             value={find}
             onChange={setFind}
-            placeholder="Ονομα ή ΑΦΜ"
+            placeholder="Όνομα ή ΑΦΜ"
           />
           {find.trim() && (
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '8px 0 0', fontFamily: T.font.sans }}>
@@ -314,7 +314,7 @@ export default function AccountantWorkspace() {
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 14px', lineHeight: 1.7, fontFamily: T.font.sans }}>
             Η λίστα των πελατών σου δεν διαβάστηκε. Δεν σημαίνει ότι είναι άδεια: δεν πήραμε απάντηση.
           </p>
-          <Btn onClick={() => void load(year)}>Δοκιμή ξανά</Btn>
+          <Btn onClick={() => void load(year)}>Δοκίμασε ξανά</Btn>
         </Card>
       ) : rows === null ? (
         /* ΤΟ ΛΕΥΚΟ ΔΕΝ ΕΙΝΑΙ ΚΑΤΑΣΤΑΣΗ. Οσο τα δεδομένα έρχονταν, η οθόνη δεν

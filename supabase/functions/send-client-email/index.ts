@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
   // arbitrary list under our sending domain. The caller's JWT already scopes
   // `clients` via RLS; we build the allow-set from it (+ the owner's own address
   // for self-tests) and silently drop anything else, reporting the count.
-  // Η ΑΠΟΤΥΧΙΑ ΕΔΩ ΑΠΟΤΥΓΧΑΝΕΙ ΚΛΕΙΣΤΑ, ΚΑΙ ΕΙΝΑΙ ΣΩΣΤΟ: κενός κατάλογος
+  // Η ΑΠΟΤΥΧΙΑ ΕΔΩ ΑΠΟΤΥΓΧΑΝΕΙ ΚΛΕΙΣΤΑ ΚΑΙ ΕΙΝΑΙ ΣΩΣΤΟ: κενός κατάλογος
   // επιτρεπτών σημαίνει ότι κόβονται ΟΛΟΙ οι παραλήπτες. Λάθος ήταν μόνο η
   // ΑΙΤΙΑ που διάβαζε ο χρήστης — «οι παραλήπτες πρέπει να είναι καταχωρημένοι
   // πελάτες», ενώ οι δικοί του πελάτες απλώς δεν διαβάστηκαν.

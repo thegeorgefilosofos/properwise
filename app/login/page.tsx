@@ -244,7 +244,7 @@ export default function LoginPage() {
       {/* LEFT, κοινό marketing panel (AuthAside) */}
       <AuthAside />
 
-      {/* ── ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΕΙΝΑΙ <main>, ΚΑΙ ΛΕΓΕΤΑΙ ─────────────────────────
+      {/* ── ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΕΙΝΑΙ <main> ΚΑΙ ΛΕΓΕΤΑΙ ─────────────────────────
           Μετρημένο: `document.querySelectorAll('main').length === 0` και καμία
           περιοχή στο προσβάσιμο δέντρο. Ο χρήστης αναγνώστη οθόνης δεν είχε
           τρόπο να πηδήξει στο κύριο μέρος — έπρεπε να διασχίσει ολόκληρη τη
@@ -365,7 +365,7 @@ export default function LoginPage() {
           {factorId ? (
             <div style={{ marginTop: 24, textAlign: 'center' }}>
               <Btn variant="ghost" onClick={signOut} disabled={signingOut}>
-                {signingOut ? 'Έξοδος…' : 'Έξοδος από τη σύνδεση'}
+                {signingOut ? 'Αποσύνδεση…' : 'Αποσύνδεση'}
               </Btn>
             </div>
           ) : (

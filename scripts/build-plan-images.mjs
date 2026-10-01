@@ -39,10 +39,17 @@ const VIEWBOX = /const BRAND_VIEWBOX = '([^']+)'/.exec(brand)[1];
 const plans = readFileSync('lib/billing/plans.ts', 'utf8');
 const PAID = ['solo', 'owner', 'agency', 'office'];
 const read = (id) => {
-  const re = new RegExp(`id: '${id}', name: '([^']+)'[\\s\\S]{0,400}?tagline: '([^']+)'`);
+  const re = new RegExp(`id: '${id}', name: '([^']+)'[\\s\\S]{0,400}?tagline: ['\`]([^'\`]+)['\`]`);
   const m = re.exec(plans);
   if (!m) throw new Error(`Δεν βρέθηκε το πακέτο «${id}» στο lib/billing/plans.ts`);
-  return { id, name: m[1], tagline: m[2] };
+  // Η ταμπέλα μπορεί να γράφει το όριο από σταθερά («Έως ${OWNER_MAX_PROPERTIES}
+  // ακίνητα»): η σταθερά λύνεται από το ίδιο αρχείο, όπως θα την έλυνε η εφαρμογή.
+  const tagline = m[2].replace(/\$\{(\w+)\}/g, (_, k) => {
+    const v = new RegExp(`const ${k} = (\\d+);`).exec(plans)?.[1];
+    if (v == null) throw new Error(`Η σταθερά «${k}» της ταμπέλας δεν βρέθηκε στο lib/billing/plans.ts`);
+    return v;
+  });
+  return { id, name: m[1], tagline };
 };
 
 // Η ΙΔΙΑ ΓΡΑΜΜΑΤΟΣΕΙΡΑ ΜΕ ΤΗΝ ΕΦΑΡΜΟΓΗ, ΑΠΟ ΤΟΝ ΔΙΣΚΟ

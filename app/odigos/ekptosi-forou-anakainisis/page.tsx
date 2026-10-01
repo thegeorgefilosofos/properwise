@@ -120,7 +120,7 @@ const S = {
   terms: { id: 'proypotheseis', over: '3. Προϋποθέσεις', title: 'Πληρωμή, τιμολόγια, υλικά' },
   example: { id: 'paradeigma', over: '4. Παράδειγμα', title: 'Δύο ανακαινίσεις, βήμα βήμα' },
   confirm: { id: 'ti-allazei', over: '5. Τι επιβεβαιώνεις', title: 'Παράθυρο και φόρος που φτάνει' },
-  grant: { id: 'anakainizo', over: '6. Άλλο πράγμα', title: 'Η διαφορά από το «Ανακαινίζω»' },
+  grant: { id: 'anakainizo', over: '6. Μην το μπερδέψεις', title: 'Η διαφορά από το «Ανακαινίζω»' },
 } as const;
 
 export default function Page() {

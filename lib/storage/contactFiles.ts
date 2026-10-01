@@ -36,7 +36,7 @@ export interface ContactFile {
 export function objectOf(file: ContactFile): { bucket: string; path: string } | null {
   const path = (file.path || '').trim();
   if (path) return { bucket: CONTACT_BUCKET, path };
-  // ΤΟ ΠΑΛΙΟ ΑΡΧΕΙΟ ΕΧΕΙ ΜΟΝΟ ΔΙΕΥΘΥΝΣΗ, ΚΑΙ ΤΗ ΔΙΑΒΑΖΟΥΜΕ. Η μορφή είναι
+  // ΤΟ ΠΑΛΙΟ ΑΡΧΕΙΟ ΕΧΕΙ ΜΟΝΟ ΔΙΕΥΘΥΝΣΗ ΚΑΙ ΤΗ ΔΙΑΒΑΖΟΥΜΕ. Η μορφή είναι
   // «…/storage/v1/object/public/<κάδος>/<μονοπάτι>» και είναι η μόνη που
   // παράγει το ίδιο το Supabase.
   const m = /\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/.exec((file.url || '').trim());

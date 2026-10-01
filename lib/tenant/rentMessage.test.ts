@@ -72,7 +72,7 @@ ok(rentReminder({ ...base, portalUrl: URL_ }).endsWith(`Τι οφείλεται 
   'Η ΠΥΛΗ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΟ ΜΗΝΥΜΑ');
 ok(!rentReminder({ ...base, portalUrl: '' }).includes('πληρώνεται:'), 'χωρίς πύλη, καμία γραμμή πύλης');
 ok(!rentReminder({ ...base, portalUrl: null }).includes('πληρώνεται:'), 'ούτε όταν λείπει');
-// Η ΠΥΛΗ ΔΕΝ ΚΡΑΤΑ ΑΠΟΔΕΙΞΕΙΣ, ΚΑΙ ΤΟ ΜΗΝΥΜΑ ΔΕΝ ΥΠΟΣΧΕΤΑΙ ΑΠΟΔΕΙΞΕΙΣ.
+// Η ΠΥΛΗ ΔΕΝ ΚΡΑΤΑ ΑΠΟΔΕΙΞΕΙΣ ΚΑΙ ΤΟ ΜΗΝΥΜΑ ΔΕΝ ΥΠΟΣΧΕΤΑΙ ΑΠΟΔΕΙΞΕΙΣ.
 for (const text of [rentReminder({ ...base, portalUrl: URL_ }), rentRequest({ ...base, portalUrl: URL_ }), rentReceipt({ ...base, portalUrl: URL_ })]) {
   ok(!/αποδείξ/i.test(text), `καμία υπόσχεση για αποδείξεις: «${text}»`);
 }

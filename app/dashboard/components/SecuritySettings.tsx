@@ -205,7 +205,7 @@ export default function SecuritySettings() {
     try {
       const { data: list, error: listErr } = await supabase.auth.mfa.listFactors();
       if (listErr) {
-        setMfaErr(failed('Η επαλήθευση δύο βημάτων ΔΕΝ απενεργοποιήθηκε', listErr));
+        setMfaErr(failed('Η επαλήθευση δύο βημάτων δεν απενεργοποιήθηκε', listErr));
         return;
       }
       const totp = (list?.totp ?? []) as MfaFactor[];
@@ -215,7 +215,7 @@ export default function SecuritySettings() {
         if (error) { stuck.push(f.id); console.warn('mfa.unenroll', error); }
       }
       if (stuck.length) {
-        setMfaErr('Η επαλήθευση δύο βημάτων ΔΕΝ απενεργοποιήθηκε: ο διακομιστής κράτησε τη συσκευή σου. Μη σβήσεις την εφαρμογή αυθεντικοποίησης και δοκίμασε ξανά.');
+        setMfaErr('Η επαλήθευση δύο βημάτων δεν απενεργοποιήθηκε: ο διακομιστής κράτησε τη συσκευή σου. Μη σβήσεις την εφαρμογή επαλήθευσης και δοκίμασε ξανά.');
         return;
       }
       setMfaState('off');
@@ -318,7 +318,7 @@ export default function SecuritySettings() {
 
         {mfaUnavailable && (
           <div style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>
-            Η επαλήθευση δύο βημάτων δεν είναι ενεργή για τον λογαριασμό ακόμη.
+            Η επαλήθευση δύο βημάτων δεν είναι διαθέσιμη αυτή τη στιγμή.
           </div>
         )}
 

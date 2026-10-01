@@ -114,7 +114,7 @@ export const h = (html: string): string =>
 // ΕΝΟΊΚΙΟ» με τόνο, κάθε πρωί στις 06:00.
 export const eyebrow = (text: string, color?: string): string =>
   `<p class="${color ? '' : 'ac'}" style="margin:0 0 7px;font-size:11px;color:${color || ACCENT};text-transform:uppercase;letter-spacing:0.09em;font-weight:700;mso-line-height-rule:exactly;line-height:16px;">${esc(grUp(text))}</p>`;
-// Η ΚΟΥΚΙΔΑ ΚΑΘΕΤΑΙ ΣΤΗ ΜΕΣΗ ΤΗΣ ΠΡΩΤΗΣ ΣΕΙΡΑΣ, ΚΑΙ ΤΟ ΝΟΥΜΕΡΟ ΒΓΑΙΝΕΙ ΑΠΟ
+// Η ΚΟΥΚΙΔΑ ΚΑΘΕΤΑΙ ΣΤΗ ΜΕΣΗ ΤΗΣ ΠΡΩΤΗΣ ΣΕΙΡΑΣ ΚΑΙ ΤΟ ΝΟΥΜΕΡΟ ΒΓΑΙΝΕΙ ΑΠΟ
 // ΤΟ ΔΙΑΣΤΙΧΟ. Με ίδιο γέμισμα σε κουκκίδα και κείμενο, η κουκκίδα έπεφτε
 // οκτώ εικονοστοιχεία ψηλότερα από τη γραμμή που σημαδεύει — φαινόταν να
 // ανήκει στο κενό πάνω από αυτήν. Το κέντρο της πρώτης σειράς είναι
@@ -234,7 +234,7 @@ export function emailShell(opts: {
   bodyHtml: string; preheader?: string; unsubUrl?: string; footerNote?: string; hero?: string; width?: number;
 }): string {
   const w = opts.width || WIDTH;
-  // ΤΟ ΠΡΟΘΕΜΑ ΕΙΝΑΙ Η ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΣΤΗ ΛΙΣΤΑ, ΚΑΙ ΗΤΑΝ ΑΓΕΜΙΣΤΗ. Χωρίς
+  // ΤΟ ΠΡΟΘΕΜΑ ΕΙΝΑΙ Η ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΣΤΗ ΛΙΣΤΑ ΚΑΙ ΗΤΑΝ ΑΓΕΜΙΣΤΗ. Χωρίς
   // γέμισμα, ο πελάτης αλληλογραφίας τραβά ό,τι βρει μετά — δηλαδή τη λέξη
   // PROPERWISE και το κείμενο του υποσέλιδου — και τα κολλά στην προεπισκόπηση.
   const pre = opts.preheader

@@ -107,7 +107,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   const [smartSuggestions, setSmartSuggestions] = useState<SmartSuggestion[]>([])
   const [tenantInfo, setTenantInfo] = useState<{full_name?: string; phone?: string; afm?: string; email?: string} | null>(null)
   const [loanPayment, setLoanPayment] = useState(0)
-  // ── ΤΙ ΕΧΕΙ ΕΠΙΛΕΞΕΙ Ο ΧΡΗΣΤΗΣ, ΚΑΙ ΤΙ ΒΛΕΠΕΙ ΓΙ' ΑΥΤΟ ────────────────────
+  // ── ΤΙ ΕΧΕΙ ΕΠΙΛΕΞΕΙ Ο ΧΡΗΣΤΗΣ ΚΑΙ ΤΙ ΒΛΕΠΕΙ ΓΙ' ΑΥΤΟ ────────────────────
   // Η κατάσταση του ακινήτου, η νομική μορφή, τα βιβλία και το πλήθος ακινήτων.
   // Κρίνουν ΠΟΙΑ πρότυπα εμφανίζονται και ΠΟΙΕΣ υποχρεώσεις προτείνονται: ο
   // ιδιώτης με κενό ακίνητο δεν βλέπει «δήλωση βραχυχρόνιας διαμονής», το φυσικό
@@ -123,7 +123,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   // Το τοπικό toast έφευγε στον κοινό host: ο δικός του setTimeout δεν καθαριζόταν
   // ποτέ σε unmount (διαρροή) και το z-index 9998 έκανε αυτή την καρτέλα να απαντά
   // αλλιώς από κάθε άλλη.
-  // ΜΙΑ ΦΟΡΤΩΣΗ ΤΗ ΦΟΡΑ, ΚΑΙ ΚΕΡΔΙΖΕΙ Η ΝΕΟΤΕΡΗ. Η `fetchAll` ξαναχτίζεται σε κάθε
+  // ΜΙΑ ΦΟΡΤΩΣΗ ΤΗ ΦΟΡΑ ΚΑΙ ΚΕΡΔΙΖΕΙ Η ΝΕΟΤΕΡΗ. Η `fetchAll` ξαναχτίζεται σε κάθε
   // αλλαγή ακινήτου και το effect την ξανακαλεί, αλλά η ΠΡΟΗΓΟΥΜΕΝΗ εκτέλεση
   // συνέχιζε: όποια απάντηση προσγειωνόταν δεύτερη, αυτή έγραφε. Ο χρήστης έβλεπε
   // τις εκκρεμότητες, τις επαφές και τη δόση δανείου του άλλου ακινήτου και ένα
@@ -252,7 +252,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   const exitSelectMode = () => { setSelectMode(false); setSelected(new Set()) }
 
 
-  // ── ΤΟ ΠΛΑΙΣΙΟ ΤΟΥ ΧΡΗΣΤΗ, ΚΑΙ ΟΙ ΥΠΟΧΡΕΩΣΕΙΣ ΠΟΥ ΛΕΙΠΟΥΝ ────────────────
+  // ── ΤΟ ΠΛΑΙΣΙΟ ΤΟΥ ΧΡΗΣΤΗ ΚΑΙ ΟΙ ΥΠΟΧΡΕΩΣΕΙΣ ΠΟΥ ΛΕΙΠΟΥΝ ────────────────
   // `taxProfileOf` και `readStatus` ζουν στη μία πηγή τους: καμία δεύτερη
   // ερμηνεία του `rental_mode` εδώ μέσα.
   const taxProfile: PropertyTaxProfile = useMemo(() => taxProfileOf(statusRow), [statusRow])
@@ -642,7 +642,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
         </div>
       )}
 
-      {/* ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ ΣΥΜΠΙΕΣΜΕΝΕΣ ΣΕ ΔΥΟ, ΚΑΙ Η ΤΡΙΤΗ ΕΒΓΑΖΕ ΑΣΥΝΤΑΚΤΟ.
+      {/* ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ ΣΥΜΠΙΕΣΜΕΝΕΣ ΣΕ ΔΥΟ ΚΑΙ Η ΤΡΙΤΗ ΕΒΓΑΖΕ ΑΣΥΝΤΑΚΤΟ.
           Το `openCount === 0` είναι αληθές ΚΑΙ όταν όλα ολοκληρώθηκαν ΚΑΙ όταν
           δεν υπάρχει τίποτα. Με άδεια λίστα ο υπότιτλος έγραφε «Ολοκληρώθηκαν
           και οι 0»: γραμματικά σπασμένο και ψέμα — τίποτα δεν ολοκληρώθηκε,
@@ -675,7 +675,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
             + (attention > 0 ? ` · ${fn(attention)} ${attention === 1 ? 'χρειάζεται' : 'χρειάζονται'} προσοχή` : '')}
         right={loading || items.length === 0 ? undefined : (
           <>
-            {/* ΤΟ «ghost» ΕΙΝΑΙ ΓΙΑ ΤΙΣ ΑΠΟΡΡΙΠΤΙΚΕΣ ΕΝΕΡΓΕΙΕΣ, ΚΑΙ ΜΟΝΟ.
+            {/* ΤΟ «ghost» ΕΙΝΑΙ ΓΙΑ ΤΙΣ ΑΠΟΡΡΙΠΤΙΚΕΣ ΕΝΕΡΓΕΙΕΣ ΚΑΙ ΜΟΝΟ.
                 Το φοράνε το «Ακύρωση», το «Άλλη φορά», το «Διαγραφή»: πράγματα
                 που ο χρήστης πατά για να ΜΗΝ κάνει κάτι. Εδώ όμως τα «Πρότυπα»
                 είναι ισότιμη ενέργεια με την Εξαγωγή που κάθεται δίπλα τους και
@@ -767,7 +767,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
           options={[{ value: 'all', label: 'Όλες οι καταστάσεις' }, ...STATUSES.map(s => ({ value: s.value, label: s.label })), { value: 'overdue', label: 'Ληξιπρόθεσμα' }]} />
         <FilterSelect value={filterPri} onChange={setFilterPri} minWidth={178} idle="Προτεραιότητα"
           options={[{ value: 'all', label: 'Όλες οι προτεραιότητες' }, ...PRIORITIES.map(p => ({ value: p.value, label: p.label }))]} />
-        {/* ΤΟ «ΟΛΟΚΛΗΡΩΜΕΝΑ» ΗΤΑΝ ΔΕΥΤΕΡΟ ΦΙΛΤΡΟ ΓΙΑ ΤΗΝ ΙΔΙΑ ΣΤΗΛΗ, ΚΑΙ
+        {/* ΤΟ «ΟΛΟΚΛΗΡΩΜΕΝΑ» ΗΤΑΝ ΔΕΥΤΕΡΟ ΦΙΛΤΡΟ ΓΙΑ ΤΗΝ ΙΔΙΑ ΣΤΗΛΗ ΚΑΙ
             ΜΠΟΡΟΥΣΑΝ ΝΑ ΔΙΑΦΩΝΗΣΟΥΝ. Το φίλτρο κατάστασης έχει ήδη
             «Ολοκληρώθηκε»: με αυτό επιλεγμένο ΚΑΙ τον διακόπτη ενεργό, η λίστα
             άδειαζε και δεν υπήρχε τίποτα στην οθόνη να εξηγήσει γιατί — δύο
@@ -832,7 +832,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
               λευκό και πέφτει κάτω από το όριο. Και δεν φαίνεται πουθενά στον
               κώδικα: το χρώμα εξακολουθεί να λέει `--text-secondary`.
 
-              Η ΘΑΜΠΑΔΑ ΕΙΝΑΙ ΧΡΩΜΑ, ΚΑΙ ΤΟ ΧΡΩΜΑ ΕΙΝΑΙ TOKEN. Το
+              Η ΘΑΜΠΑΔΑ ΕΙΝΑΙ ΧΡΩΜΑ ΚΑΙ ΤΟ ΧΡΩΜΑ ΕΙΝΑΙ TOKEN. Το
               `--text-secondary` είναι ήδη το «δεύτερο επίπεδο» και βγάζει
               5,44:1 στο φωτεινό. Ιδια πρόθεση, μετρήσιμο αποτέλεσμα, ίδιο
               αποτέλεσμα σε κάθε θέμα. */}
@@ -871,7 +871,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
             ? `${firstDueLine(nextObligation)} Μπαίνουν στη λίστα με ημερομηνία και επίσημη πηγή, χωρίς να γραφτεί τίποτα από μόνο του.`.trim()
             : 'Ξεκίνα με ένα έτοιμο πρότυπο ή πρόσθεσε τη δική σου εκκρεμότητα.'}
           action={
-            /* ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ, ΚΑΙ ΦΑΙΝΕΤΑΙ ΠΟΙΑ. Τα τρία κουμπιά είχαν
+            /* ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΚΑΙ ΦΑΙΝΕΤΑΙ ΠΟΙΑ. Τα τρία κουμπιά είχαν
                σχεδόν ίδιο βάρος, ενώ η απάντηση στην οθόνη είναι προφανώς μία:
                φέρε τις υποχρεώσεις που ήδη μετρήθηκαν. Τα «Πρότυπα» δεν είναι
                τρίτος ισότιμος δρόμος αλλά συντόμευση, οπότε φεύγει από τη σειρά

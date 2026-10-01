@@ -2,7 +2,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΚΟΙΝΟ ΤΩΝ EMAIL ΕΙΝΑΙ ΤΥΠΟΣ ΠΡΟΦΙΛ, ΟΧΙ ΠΑΚΕΤΟ ΧΡΕΩΣΗΣ
 // ─────────────────────────────────────────────────────────────────────────
-// ΔΥΟ ΛΕΞΙΛΟΓΙΑ ΜΕ ΕΝΑ ΟΝΟΜΑ, ΚΑΙ ΕΧΕΙ ΗΔΗ ΔΑΓΚΩΣΕΙ ΜΙΑ ΦΟΡΑ:
+// ΔΥΟ ΛΕΞΙΛΟΓΙΑ ΜΕ ΕΝΑ ΟΝΟΜΑ ΚΑΙ ΕΧΕΙ ΗΔΗ ΔΑΓΚΩΣΕΙ ΜΙΑ ΦΟΡΑ:
 //
 //   τύπος προφίλ   individual | professional        (lib/billing/entitlements.ts)
 //   πακέτο χρέωσης free | solo | owner | agency | office   (lib/billing/plans.ts)
@@ -12,7 +12,7 @@
 // πετύχαινε ποτέ και κάθε χρήστης έπαιρνε το κείμενο του «free». Διορθώθηκε
 // στη μετανάστευση 20260819130000 και η SQL περνά πλέον ρητά το `profile`.
 //
-// ΤΟ ΛΑΘΟΣ ΟΜΩΣ ΦΥΛΑΓΕΤΑΙ ΜΕ ΣΧΟΛΙΟ, ΚΑΙ ΤΑ ΣΧΟΛΙΑ ΔΕΝ ΚΟΚΚΙΝΙΖΟΥΝ. Αν κάποιος
+// ΤΟ ΛΑΘΟΣ ΟΜΩΣ ΦΥΛΑΓΕΤΑΙ ΜΕ ΣΧΟΛΙΟ ΚΑΙ ΤΑ ΣΧΟΛΙΑ ΔΕΝ ΚΟΚΚΙΝΙΖΟΥΝ. Αν κάποιος
 // προσθέσει «solo» ή «owner» στο PLAN_LABEL νομίζοντας ότι συμπληρώνει κάτι
 // που λείπει, ή αν αλλάξουν οι τύποι προφίλ και το PLAN_LABEL μείνει πίσω, η
 // επιστολή θα τυπώσει «undefined» στη θέση του ονόματος. Εδώ ελέγχεται.
@@ -86,7 +86,10 @@ else {
 const maxBody = /export const PACKAGE_MAX_PROPERTIES[^=]*=\s*\{([\s\S]*?)\}/.exec(tpl)?.[1];
 if (maxBody == null) problems.push(`δεν βρέθηκε το PACKAGE_MAX_PROPERTIES στο ${TPL}`);
 else {
-  const src = Object.fromEntries([...plans.matchAll(/^\s*id: '([a-z]+)',[^\n]*?maxProperties: (\w+)/gm)].map(m => [m[1], m[2]]));
+  // Το όριο μπορεί να είναι ονομασμένη σταθερά του ίδιου αρχείου (το ίδιο
+  // νούμερο διαβάζει και η ταμπέλα του πακέτου): λύνεται στην τιμή της.
+  const named = (v) => /^\d+$|^Infinity$/.test(v) ? v : (new RegExp(`const ${v} = (\\d+);`).exec(plans)?.[1] ?? v);
+  const src = Object.fromEntries([...plans.matchAll(/^\s*id: '([a-z]+)',[^\n]*?maxProperties: (\w+)/gm)].map(m => [m[1], named(m[2])]));
   const mirror = Object.fromEntries([...maxBody.matchAll(/(\w+)\s*:\s*(\w+)/g)].map(m => [m[1], m[2]]));
   for (const id of Object.keys(src)) {
     if (id === 'free') continue;

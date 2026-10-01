@@ -167,7 +167,7 @@ const src = (id: string, annualRent: number, over: Record<string, unknown> = {})
 
 // ═══ ΤΑ ΚΕΙΜΕΝΑ ΥΠΑΡΧΟΥΝ ΚΑΙ ΛΕΝΕ ΤΟ ΣΩΣΤΟ ════════════════════════════════
 {
-  ok('ο κανόνας αναφέρει την τράπεζα', PRESUMPTIVE_RULE.includes('τραπέζης'));
+  ok('ο κανόνας αναφέρει την τράπεζα', PRESUMPTIVE_RULE.includes('τράπεζας'));
   ok('ο κανόνας ΔΕΝ λέει «αυτόματη»', !PRESUMPTIVE_RULE.includes('υτόματη'));
   ok('ο κανόνας δείχνει τη σωστή ημερομηνία 1.7.2027', PRESUMPTIVE_RULE.includes('1.7.2027'));
   ok('ο κανόνας δείχνει τον σωστό νόμο ν.5222/2025', PRESUMPTIVE_RULE.includes('5222/2025'));

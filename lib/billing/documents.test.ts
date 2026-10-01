@@ -170,7 +170,7 @@ eq('validate payment: amount blocking', validateDoc(doc({ doc_type: 'payment' })
   const p = planDocSave(doc({ doc_type: 'deed', atak: '111222' }), TODAY);
   check('deed: μισός ΑΤΑΚ δεν γράφεται', p.property?.atak === undefined);
 }
-// ΤΟ Ε9 ΕΙΝΑΙ ΤΟ ΕΓΓΡΑΦΟ ΤΟΥ ΑΤΑΚ, ΚΑΙ ΚΑΤΑΤΑΣΣΕΤΑΙ ΣΤΑ ΦΟΡΟΛΟΓΙΚΑ.
+// ΤΟ Ε9 ΕΙΝΑΙ ΤΟ ΕΓΓΡΑΦΟ ΤΟΥ ΑΤΑΚ ΚΑΙ ΚΑΤΑΤΑΣΣΕΤΑΙ ΣΤΑ ΦΟΡΟΛΟΓΙΚΑ.
 {
   const p = planDocSave(doc({ doc_type: 'tax', title: 'Ε9', atak: '  111-222-333 44 ' }), TODAY);
   eq('tax: ο ΑΤΑΚ του Ε9 γράφεται στη στήλη του', p.property!.atak, '11122233344');

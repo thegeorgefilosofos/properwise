@@ -40,7 +40,7 @@ console.error = (...a: unknown[]) => { logged.push(a.map(String).join(' ')) };
 // ── ΕΠΙΤΥΧΙΑ ──────────────────────────────────────────────────────────────
 ok('η βάση μείωσε τον μετρητή → true', refundOutcome({ data: { refunded: true }, error: null }));
 
-// ── «ΔΕΝ ΒΡΗΚΑ ΓΡΑΜΜΗ»: ΟΧΙ ΣΦΑΛΜΑ, ΚΑΙ ΟΧΙ ΕΠΙΣΤΡΟΦΗ ────────────────────
+// ── «ΔΕΝ ΒΡΗΚΑ ΓΡΑΜΜΗ»: ΟΧΙ ΣΦΑΛΜΑ ΚΑΙ ΟΧΙ ΕΠΙΣΤΡΟΦΗ ────────────────────
 ok('«no_row» → false', !refundOutcome({ data: { refunded: false, reason: 'no_row' }, error: null }));
 ok('κενή απάντηση → false', !refundOutcome({ data: null, error: null }));
 ok('απάντηση χωρίς πεδίο → false', !refundOutcome({ data: {}, error: null }));
@@ -52,7 +52,7 @@ ok('undefined → false', !refundOutcome({ data: undefined, error: null }));
 ok('«true» ως κείμενο ΔΕΝ μετράει', !refundOutcome({ data: { refunded: 'true' }, error: null }));
 ok('1 ως αριθμός ΔΕΝ μετράει', !refundOutcome({ data: { refunded: 1 }, error: null }));
 
-// ── ΣΦΑΛΜΑ: false, ΚΑΙ ΓΡΑΦΤΗΚΕ ΜΕ ΤΟ ΚΟΙΝΟ ΠΡΟΘΕΜΑ ─────────────────────
+// ── ΣΦΑΛΜΑ: false ΚΑΙ ΓΡΑΦΤΗΚΕ ΜΕ ΤΟ ΚΟΙΝΟ ΠΡΟΘΕΜΑ ─────────────────────
 logged.length = 0;
 ok('σφάλμα βάσης → false', !refundOutcome({ data: null, error: { message: 'permission denied' } }));
 eq('γράφτηκε μία γραμμή', logged.length, 1);

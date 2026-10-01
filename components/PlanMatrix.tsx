@@ -36,7 +36,7 @@ interface FeatureRow { label: string; values: Record<ComparedPlan, CellValue> }
 /** Το όριο ακινήτων γράφεται ΠΑΝΤΑ από τα PLANS, ποτέ με το χέρι. */
 const limitLabel = (id: ComparedPlan): string => {
   const n = PLANS[id].maxProperties;
-  if (!Number.isFinite(n)) return 'Απεριόριστα';
+  if (!Number.isFinite(n)) return 'Χωρίς όριο';
   return n === 1 ? '1' : `Έως ${n}`;
 };
 
@@ -236,7 +236,7 @@ export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highl
           ))}
         </dl>
       </section>
-      {/* ΚΑΘΕ ΚΑΡΤΑ ΛΕΕΙ ΤΙ ΕΧΕΙ, ΚΑΙ ΜΙΑ ΓΡΑΜΜΗ ΤΙ ΔΕΝ ΕΧΕΙ. Η κάρτα του
+      {/* ΚΑΘΕ ΚΑΡΤΑ ΛΕΕΙ ΤΙ ΕΧΕΙ ΚΑΙ ΜΙΑ ΓΡΑΜΜΗ ΤΙ ΔΕΝ ΕΧΕΙ. Η κάρτα του
           φθηνότερου πακέτου ήταν εννέα «Όχι» στη σειρά: σε σελίδα τιμών αυτό
           παρουσιάζει το πακέτο ως λίστα ελλείψεων και διπλασιάζει την κύλιση.
           Οι ίδιες γραμμές μαζεύονται στο τέλος σε μία πρόταση. */}

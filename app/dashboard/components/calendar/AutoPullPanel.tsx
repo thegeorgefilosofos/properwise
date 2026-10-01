@@ -142,7 +142,7 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
         return{title:b.name||b.type||'Λογαριασμός',category:'bills' as EventCategory,event_date:dueDate,amount:b.amount||null,status:(b.paid?'paid':'pending') as EventStatus,recurring:true,recurring_interval:'monthly',notes:b.category?`Κατηγορία: ${b.category}`:null}
       })
       await must(calendar.replaceSource(supabase,scope,{source:'bills'},rows))
-      // ΤΟ ΣΚΑΝΑΡΙΣΜΕΝΟ ΔΙΑΓΡΑΦΕΤΑΙ ΜΕΤΑ, ΚΑΙ ΜΟΝΟ ΑΝ ΠΕΤΥΧΕ Η ΕΓΓΡΑΦΗ.
+      // ΤΟ ΣΚΑΝΑΡΙΣΜΕΝΟ ΔΙΑΓΡΑΦΕΤΑΙ ΜΕΤΑ ΚΑΙ ΜΟΝΟ ΑΝ ΠΕΤΥΧΕ Η ΕΓΓΡΑΦΗ.
       //
       // Αυτή η γραμμή ήταν πριν από την εισαγωγή. Τα υπόλοιπα γεγονότα εδώ είναι
       // ΠΑΡΑΓΩΓΑ — ξαναφτιάχνονται από τον πίνακα λογαριασμών σε κάθε συγχρονισμό,
@@ -213,7 +213,7 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
     }
     // ── Δόσεις δανείου: ίδιο source με το κουμπί των Δανείων → idempotent, χωρίς διπλά ──
     if(k==='loans'){
-      // ΤΟ ΠΟΣΟ ΤΟΥ ΔΑΝΕΙΟΥ ΔΕΝ ΛΕΓΕΤΑΙ `amount`, ΚΑΙ ΤΟ ΕΠΙΤΟΚΙΟ ΔΕΝ ΕΙΝΑΙ ΣΤΗΛΗ.
+      // ΤΟ ΠΟΣΟ ΤΟΥ ΔΑΝΕΙΟΥ ΔΕΝ ΛΕΓΕΤΑΙ `amount` ΚΑΙ ΤΟ ΕΠΙΤΟΚΙΟ ΔΕΝ ΕΙΝΑΙ ΣΤΗΛΗ.
       // Εδώ διαβαζόταν `(l as any).amount` και `(l as any).rate`. Η στήλη λέγεται
       // `loan_amount` και το επιτόκιο προκύπτει από `fixed_rate` ή από
       // `euribor + spread` ανάλογα με τον τύπο. Δηλαδή και τα δύο έβγαιναν

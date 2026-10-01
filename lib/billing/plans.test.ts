@@ -58,7 +58,7 @@ ok(annualPerMonth('agency') < PLANS.agency.priceMonthly, 'ετήσιο agency φ
 }
 
 // Η ΤΑΜΠΕΛΑ ΛΕΕΙ ΤΟ ΟΡΙΟ ΤΟΥ ΠΑΚΕΤΟΥ. Ηταν «Πολλά ακίνητα» για όριο τρία.
-ok(PLANS.owner.tagline.includes(`Ως ${PLANS.owner.maxProperties} ακίνητα`), 'η ταμπέλα του «Ιδιοκτήτη+» λέει το όριό του')
+ok(PLANS.owner.tagline.includes(`Έως ${PLANS.owner.maxProperties} ακίνητα`), 'η ταμπέλα του «Ιδιοκτήτη+» λέει το όριό του')
 
 console.log(`\nbilling/plans.ts — ${p} passed, ${f} failed`);
 if (f > 0) process.exit(1);

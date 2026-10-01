@@ -21,7 +21,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { Modal, Btn, T, TT, fe, fp, Stat } from '@/components/Theme';
-import { DEMO_PROPERTY, demoLedger, demoSummary } from '@/lib/demo/sample';
+import { DEMO_PROPERTY, demoLedger, demoRents, demoSummary } from '@/lib/demo/sample';
+import { MONTHS_GEN } from '@/lib/core/months';
 import { isoDate } from '@/lib/core/time';
 
 const numStyle = { fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' as const };
@@ -35,6 +36,11 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
   const today = isoDate(new Date());
   const s = demoSummary(today);
   const ledger = demoLedger(s.year);
+  // Οι μήνες και η καθυστερημένη είσπραξη βγαίνουν από το ίδιο δείγμα με τα
+  // ποσά: το «έντεκα μήνες» και το «8 Ιανουαρίου» ήταν γραμμένα με το χέρι.
+  const rents = demoRents(s.year);
+  const inYear = rents.filter(r => r.paidDate.startsWith(String(s.year))).length;
+  const late = rents.find(r => !r.paidDate.startsWith(String(s.year)));
 
   // Οι γραμμές της κατάστασης έρχονται έτοιμες από το incomeStatement, με τη
   // σειρά και τα λεκτικά του νόμου. Δεν ξαναγράφονται εδώ — αλλιώς θα υπήρχαν
@@ -54,7 +60,7 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
       {/* ── ΤΑ ΤΡΙΑ ΠΟΣΑ ─────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: T.sp.lg }}>
         <Stat label="Εισπράχθηκαν" value={fe(s.collected)}
-          sub={`${fe(DEMO_PROPERTY.monthlyRent)} τον μήνα, έντεκα μήνες μέσα στη χρονιά`} />
+          sub={`${fe(DEMO_PROPERTY.monthlyRent)} τον μήνα, ${inYear} μήνες μέσα στη χρονιά`} />
         <Stat label="Δαπάνες" value={fe(s.expenses)}
           sub={`${ledger.length} κατηγορίες, μαζί με τον ΕΝΦΙΑ`} />
         <Stat label="Στο ταμείο" value={fe(s.statement.netCash)}
@@ -82,16 +88,18 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
             );
           })}
         </div>
-        {/* ΔΥΟ ΑΛΗΘΕΙΕΣ ΠΟΥ ΔΕΝ ΦΑΙΝΟΝΤΑΙ ΣΤΟΥΣ ΑΡΙΘΜΟΥΣ, ΚΑΙ ΜΙΑ ΓΡΑΜΜΗ ΓΙΑ
+        {/* ΔΥΟ ΑΛΗΘΕΙΕΣ ΠΟΥ ΔΕΝ ΦΑΙΝΟΝΤΑΙ ΣΤΟΥΣ ΑΡΙΘΜΟΥΣ ΚΑΙ ΜΙΑ ΓΡΑΜΜΗ ΓΙΑ
             ΚΑΘΕ ΜΙΑ: ποιας χρονιάς κλίμακα εφαρμόστηκε και πού πήγε ο
             δωδέκατος μήνας. Χωρίς τη δεύτερη, ο αναγνώστης μετρά έντεκα ενοίκια
             και υποθέτει ότι λείπει ένα. */}
         <div style={{ ...TT.caption, marginTop: 10 }}>
           Φόρος με {s.bracketsLabel}. Πραγματικός συντελεστής {fp(s.statement.effectiveRate * 100)}.
         </div>
-        <div style={{ ...TT.caption, marginTop: 4 }}>
-          Το ενοίκιο Δεκεμβρίου εισπράχθηκε στις 8 Ιανουαρίου, οπότε ανήκει στη χρήση {s.year + 1}: {fe(s.carriedOver)}.
-        </div>
+        {late && (
+          <div style={{ ...TT.caption, marginTop: 4 }}>
+            Το ενοίκιο {MONTHS_GEN[late.month - 1]} εισπράχθηκε στις {Number(late.paidDate.slice(8, 10))} {MONTHS_GEN[Number(late.paidDate.slice(5, 7)) - 1]}, οπότε ανήκει στη χρήση {s.year + 1}: {fe(s.carriedOver)}.
+          </div>
+        )}
       </div>
 
       {/* ── ΤΟ ΙΣΟΖΥΓΙΟ ──────────────────────────────────────────────────── */}
