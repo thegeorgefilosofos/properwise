@@ -371,7 +371,7 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
   const viaBank=tenant.e_payment!==false;
   const deductionRate=viaBank?PRESUMPTIVE_DEDUCTION_RATE:0;
   const taxable=annualRent*(1-deductionRate);
-  // Η ΚΛΙΜΑΚΑ ΠΟΥ ΔΕΙΧΝΕΙ Η ΟΘΟΝΗ ΕΙΝΑΙ Η ΚΛΙΜΑΚΑ ΠΟΥ ΥΠΟΛΟΓΙΖΕΙ, ΚΑΙ Η ΧΡΟΝΙΑ
+  // Η ΚΛΙΜΑΚΑ ΠΟΥ ΔΕΙΧΝΕΙ Η ΟΘΟΝΗ ΕΙΝΑΙ Η ΚΛΙΜΑΚΑ ΠΟΥ ΥΠΟΛΟΓΙΖΕΙ ΚΑΙ Η ΧΡΟΝΙΑ
   // ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ. Η προβολή αφορά το ΤΡΕΧΟΝ μίσθωμα, όχι περασμένη χρήση,
   // οπότε η χρονιά είναι η σημερινή — και όχι ένα «2026» καρφωμένο σε τρία
   // σημεία, που θα έμενε στην οθόνη ολόκληρο το 2027.
@@ -390,7 +390,7 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
     { label:'Ετήσιο Ακαθάριστο Ενοίκιο', value:fe(annualRent), tone:'accent' },
     { label:'Φόρος για ΑΥΤΟ το ακίνητο', value:fe(tax), tone:'warning', sub:annualRent>0?`πραγματικός συντελεστής ${fp((effRate*100))} επί των ακαθάριστων`:undefined },
     ...(isCommercial?[{ label:'Ψηφιακό Τέλος Συναλλαγής (3,6%)', value:fe(stampDuty), tone:'warning' as const }]:[]),
-    // ΤΟ ΟΝΟΜΑ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΘΗΚΕ, ΚΑΙ ΤΙΠΟΤΑ ΠΑΡΑΠΑΝΩ. Σε μίσθωση κατοικίας
+    // ΤΟ ΟΝΟΜΑ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΘΗΚΕ ΚΑΙ ΤΙΠΟΤΑ ΠΑΡΑΠΑΝΩ. Σε μίσθωση κατοικίας
     // δεν υπάρχει κανένα τέλος: το «και Τέλη» ήταν λέξη για ποσό που δεν
     // αφαιρέθηκε ποτέ. Και στην επαγγελματική, το τέλος αφαιρείται ΟΛΟΚΛΗΡΟ,
     // που είναι η δυσμενέστερη εκδοχή για τον ιδιοκτήτη· ποιον βαρύνει τελικά
@@ -429,7 +429,7 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
         {/* Φόρος εισοδήματος από ενοίκια */}
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
           <SectionTitle>Φόρος εισοδήματος από ενοίκια ({taxYear})</SectionTitle>
-          {/* ═══ ΔΕΥΤΕΡΟ ΣΥΣΤΗΜΑ ΠΙΝΑΚΑ, ΚΑΙ ΤΕΛΟΣ ═══════════════════════════════
+          {/* ═══ ΔΕΥΤΕΡΟ ΣΥΣΤΗΜΑ ΠΙΝΑΚΑ ΚΑΙ ΤΕΛΟΣ ═══════════════════════════════
               Τα `s.th` και `s.td` του TabTenantHelpers ήταν ΑΛΛΟΣ πίνακας από
               τον πίνακα του προϊόντος: κεφαλίδα 9 εικονοστοιχείων αντί 11,
               γέμισμα 8×12 αντί 9×14, καμία επιφάνεια και κανένα περίγραμμα — οι
@@ -726,7 +726,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
   const completeWithCost=async(m:MaintenanceReq)=>{
     const cost=parseFloat(String(doneCost).replace(',','.'));
     setBusy(true);
-    // ΔΥΟ ΓΡΑΨΙΜΑΤΑ, ΚΑΙ ΤΟ ΔΕΥΤΕΡΟ ΕΞΑΡΤΑΤΑΙ ΑΠΟ ΤΟ ΠΡΩΤΟ. Αν το αίτημα δεν
+    // ΔΥΟ ΓΡΑΨΙΜΑΤΑ ΚΑΙ ΤΟ ΔΕΥΤΕΡΟ ΕΞΑΡΤΑΤΑΙ ΑΠΟ ΤΟ ΠΡΩΤΟ. Αν το αίτημα δεν
     // έκλεισε, η δαπάνη δεν πρέπει να μπει: θα έμενε κόστος επισκευής χωρίς
     // επισκευή. Και το τελικό μήνυμα λέει ΤΙ ΕΓΙΝΕ ΠΡΑΓΜΑΤΙΚΑ, όχι τι ζητήθηκε.
     const closed=await saved('Το αίτημα δεν κλείστηκε', supabase.from('maintenance_requests').update({ status:'done', resolved_at:new Date().toISOString() }).eq('id',m.id));

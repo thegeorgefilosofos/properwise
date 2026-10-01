@@ -252,7 +252,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
               // τα πάγια του προηγούμενου μήνα και η διαφορά γράφεται με πρόσημο.
               const prev  = FIXED_CATS.reduce((s, k) => s + (catMonth[_prevYm]?.[k] || 0), 0);
               const diff  = committedBills - prev;
-              // ΤΟ «ΕΝΑΝΤΙ» ΘΕΛΕΙ ΓΕΝΙΚΗ, ΚΑΙ Ο ΜΗΝΑΣ ΤΗΝ ΕΧΕΙ. Έγραφε «751,00€
+              // ΤΟ «ΕΝΑΝΤΙ» ΘΕΛΕΙ ΓΕΝΙΚΗ ΚΑΙ Ο ΜΗΝΑΣ ΤΗΝ ΕΧΕΙ. Έγραφε «751,00€
               // τον Ιούλιος»: ονομαστική μετά από πρόθεση, από τα πιο ορατά λάθη
               // σε ελληνικό κείμενο. Η αιτιατική και η γενική υπάρχουν ήδη στο
               // lib/core/months.ts ακριβώς γι' αυτό — απλώς δεν είχαν κληθεί εδώ.
@@ -275,7 +275,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                   v: diff, txt: `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${feAuto(Math.abs(diff))}`, sub: `από ${feAuto(prev)}` }] : []),
               ];
               if (tiles.length === 0) return null;
-              // ΤΟ `style` ΣΒΗΝΕΙ ΟΛΟΚΛΗΡΟ ΤΟ `style` ΤΟΥ SPREAD, ΚΑΙ ΤΟ ΕΣΒΗΝΕ.
+              // ΤΟ `style` ΣΒΗΝΕΙ ΟΛΟΚΛΗΡΟ ΤΟ `style` ΤΟΥ SPREAD ΚΑΙ ΤΟ ΕΣΒΗΝΕ.
               // Ο βοηθός `fixedCols` δίνει τις μεταβλητές των στηλών ΜΕΣΑ στο
               // `style`· γραμμένο σκέτο ένα `style={{ marginTop: 16 }}` από
               // δίπλα, τις έπαιρνε όλες μαζί του. Μετρημένο στα 430: το πλέγμα
@@ -504,7 +504,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 <div style={{ height: '100%', width: `${pct}%`, background: col, borderRadius: 3, transition: 'width 0.6s ease' }}/>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-                {/* Η ΡΑΒΔΟΣ ΜΕΤΡΑ ΚΑΙ ΤΙΣ ΕΚΤΙΜΗΣΕΙΣ, ΚΑΙ ΤΟ ΛΕΕΙ. Έγραφε «χρησιμοποιήθηκε»
+                {/* Η ΡΑΒΔΟΣ ΜΕΤΡΑ ΚΑΙ ΤΙΣ ΕΚΤΙΜΗΣΕΙΣ ΚΑΙ ΤΟ ΛΕΕΙ. Έγραφε «χρησιμοποιήθηκε»
                     για ποσό που περιείχε λογαριασμούς που δεν έχουν έρθει ακόμη. */}
                 <span style={{ color: 'var(--text-tertiary)', fontWeight: 700 }}>{fp(pct)} του στόχου{isCurMonth && viewActualTotal - viewRecordedTotal > 0.005 ? ', με τις εκτιμήσεις' : ''}</span>
                 {/* Το «Μένει» φαίνεται ήδη στο πλακίδιο δίπλα, εδώ μόνο η υπέρβαση. */}
@@ -621,7 +621,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
                   <span className="po-fig" data-tone={annual.variance > 0 ? 'negative' : undefined}>{annual.variance > 0 ? `Υπέρβαση ${feAuto(annual.variance)} έναντι στόχου` : `Εντός στόχου κατά ${feAuto(-annual.variance)}`}</span>
-                  {/* Η ΤΑΣΗ ΤΟΥ ΤΡΙΜΗΝΟΥ ΔΕΝ ΕΙΝΑΙ ΕΤΗΣΙΑ ΕΙΚΟΝΑ, ΚΑΙ ΓΡΑΦΟΤΑΝ ΗΔΗ.
+                  {/* Η ΤΑΣΗ ΤΟΥ ΤΡΙΜΗΝΟΥ ΔΕΝ ΕΙΝΑΙ ΕΤΗΣΙΑ ΕΙΚΟΝΑ ΚΑΙ ΓΡΑΦΟΤΑΝ ΗΔΗ.
                       Καθόταν στο δεξί άκρο μιας κάρτας που μιλά για ΤΟ ΕΤΟΣ («προβολή
                       τέλους έτους», «από την αρχή του έτους», «έξοδα ανά μήνα») και
                       έλεγε «−91% έναντι τριμήνου». Το ίδιο γεγονός το γράφει ήδη με
@@ -766,7 +766,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 <div {...(hasBd ? pressable(toggleCat) : {})} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, cursor: hasBd ? 'pointer' : 'default' }}>
                   <div style={{ width: 3, height: 26, borderRadius: 3, background: hov ? 'var(--accent)' : col, flexShrink: 0, transition: 'background 0.15s' }}/>
                   <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}><InlineText value={cat.label} onCommit={v => renameCategory(cat.key, v)} ariaLabel={`Μετονομασία «${cat.label}»`} /></span>
-                  {/* ═══ ΓΡΑΜΜΗ ΤΑΣΗΣ ΧΩΡΙΣ ΤΑΣΗ, ΚΑΙ ΠΤΩΣΗ ΠΟΥ ΔΕΝ ΕΓΙΝΕ ═════════════
+                  {/* ═══ ΓΡΑΜΜΗ ΤΑΣΗΣ ΧΩΡΙΣ ΤΑΣΗ ΚΑΙ ΠΤΩΣΗ ΠΟΥ ΔΕΝ ΕΓΙΝΕ ═════════════
                       ΤΟ ΜΙΚΡΟΓΡΑΦΗΜΑ ΣΧΕΔΙΑΖΟΤΑΝ ΠΑΝΤΑ, ΑΚΟΜΗ ΚΑΙ ΜΕ ΕΝΑ ΝΟΥΜΕΡΟ.
                       Δώδεκα μήνες με δεδομένα σε έναν δεν είναι τάση: είναι μία
                       κορυφή πάνω σε ίσια γραμμή. Μετρημένο στην οθόνη του χρήστη:
@@ -976,7 +976,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                         })}
                         {/* Μερική εξαίρεση: πόσο από το ποσό να εξαιρεθεί (κενό = όλο)
 
-                            ΤΟ ΕΥΡΩ ΓΡΑΦΟΤΑΝ ΔΥΟ ΦΟΡΕΣ, ΚΑΙ Η ΠΑΡΕΝΘΕΣΗ ΚΟΒΟΤΑΝ. Το
+                            ΤΟ ΕΥΡΩ ΓΡΑΦΟΤΑΝ ΔΥΟ ΦΟΡΕΣ ΚΑΙ Η ΠΑΡΕΝΘΕΣΗ ΚΟΒΟΤΑΝ. Το
                             κείμενο υπόδειξης ήταν «όλο (31,20€)» μέσα σε πεδίο 108
                             εικονοστοιχείων που κρατά 22 δεξιά για το δικό του «€»:
                             έμεναν 76 για δεκατρείς χαρακτήρες. Η οθόνη έγραφε «όλο

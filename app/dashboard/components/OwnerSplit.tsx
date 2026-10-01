@@ -361,7 +361,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
               {miniStat('Έξοδα', pEur(result.expenses))}
               {miniStat('Αμοιβή', pEur(result.managementFee))}
               {miniStat('Προς διανομή', pEur(result.distributable), true)}
-              {/* ═══ ΤΟ ΚΙΤΡΙΝΟ ΕΦΥΓΕ, ΚΑΙ ΜΑΖΙ ΤΟΥ Η ΑΣΑΦΕΙΑ ══════════════════
+              {/* ═══ ΤΟ ΚΙΤΡΙΝΟ ΕΦΥΓΕ ΚΑΙ ΜΑΖΙ ΤΟΥ Η ΑΣΑΦΕΙΑ ══════════════════
                   Το σήμα έβγαινε πράσινο στα 100% και κίτρινο σε οτιδήποτε
                   άλλο — δύο σημασιολογικά χρώματα για έναν αριθμό που τα λέει
                   ήδη όλα, στη μοναδική οθόνη όπου δεν υπάρχει τίποτα άλλο

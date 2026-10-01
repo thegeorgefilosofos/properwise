@@ -132,7 +132,7 @@ export function ToolFigure({ label, value }: { label: string; value: string }) {
 export interface LedgerRow { k: ReactNode; v: string; kind?: 'param' | 'total'; sub?: ReactNode }
 
 /**
- * ΜΙΑ ΣΤΗΛΗ, ΜΕ ΤΗ ΣΕΙΡΑ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ, ΚΑΙ ΚΛΕΙΝΕΙ ΜΕ ΣΥΝΟΛΟ.
+ * ΜΙΑ ΣΤΗΛΗ, ΜΕ ΤΗ ΣΕΙΡΑ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ ΚΑΙ ΚΛΕΙΝΕΙ ΜΕ ΣΥΝΟΛΟ.
  *
  * Η ανάλυση ήταν πλέγμα δύο στηλών: διαβαζόταν ζιγκ-ζαγκ («Ετήσιο ενοίκιο |
  * Τεκμαρτή έκπτωση / Φορολογητέο | Καθαρά ανά μήνα») και καμία γραμμή δεν

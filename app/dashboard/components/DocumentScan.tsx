@@ -455,7 +455,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                το λέει ρητά στο πλέγμα αντί να το αφήνει στο πλάτος. */
             <>
             <div className="scan-tiles" data-tiles={2 + (onManual ? 1 : 0) + (bankOpen ? 1 : 0)}>
-              {/* ΓΡΑΜΜΕΝΟ ΡΗΤΑ, ΟΧΙ ΜΕ ΤΟΝ ΒΟΗΘΟ `pressable`, ΚΑΙ ΕΧΕΙ ΛΟΓΟ.
+              {/* ΓΡΑΜΜΕΝΟ ΡΗΤΑ, ΟΧΙ ΜΕ ΤΟΝ ΒΟΗΘΟ `pressable` ΚΑΙ ΕΧΕΙ ΛΟΓΟ.
                   Το JSX spread κρύβει τις ιδιότητες από τη στατική ανάλυση: με
                   `{...pressable(…)}` ο μεταγλωττιστής του React παύει να βλέπει τι
                   δέχεται το στοιχείο και αρχίζει να αναφέρει τις μεταλλάξεις

@@ -62,7 +62,7 @@ import type { Property, Expense, Bill, Task, Tenant, TenRow, TenantFull } from '
 /** Οι στήλες του `stayStore.DECLARABLE_COLUMNS`: ό,τι χρειάζεται το δηλωτέο ακαθάριστο. */
 type HostStay = Pick<ClientStaysRow, 'check_in'|'check_out'|'nights'|'nightly_rate'|'total'|'channel'|'gross_guest_paid'|'platform_fee'|'climate_levy'|'amount_basis'>
 
-// ═══ ΔΥΟ ΤΥΠΟΙ ΠΟΣΟΥ ΣΤΗΝ ΙΔΙΑ ΕΦΑΡΜΟΓΗ, ΚΑΙ Ο ΕΝΑΣ ΕΒΓΑΖΕ ΠΑΥΛΑ ══════════
+// ═══ ΔΥΟ ΤΥΠΟΙ ΠΟΣΟΥ ΣΤΗΝ ΙΔΙΑ ΕΦΑΡΜΟΓΗ ΚΑΙ Ο ΕΝΑΣ ΕΒΓΑΖΕ ΠΑΥΛΑ ══════════
 // Ο τοπικός `fmtEur` έγραφε ακέραια ευρώ («1.234€») ενώ ο κοινός `fe` γράφει
 // πάντα δύο δεκαδικά («1.234,50€»): στην ΙΔΙΑ οθόνη, το πλακίδιο «Δαπάνες»
 // στοιχιζόταν αλλού από το «Καθαρό αποτέλεσμα». Και για `null` επέστρεφε «—»,
@@ -616,7 +616,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     })),
     [tasks],
   );
-  // ΧΩΡΙΣ useMemo, ΚΑΙ ΟΧΙ ΑΠΟ ΑΜΕΛΕΙΑ. Το `insights` παράγεται με απευθείας κλήση
+  // ΧΩΡΙΣ useMemo ΚΑΙ ΟΧΙ ΑΠΟ ΑΜΕΛΕΙΑ. Το `insights` παράγεται με απευθείας κλήση
   // σε κάθε απόδοση, άρα είναι ΠΑΝΤΑ νέος πίνακας: η χειροκίνητη απομνημόνευση
   // εδώ δεν γλίτωνε ποτέ ούτε μία εκτέλεση, κρατούσε μια σιωπηλή παράκαμψη του
   // κανόνα εξαρτήσεων και εμπόδιζε τον μεταγλωττιστή του React να απομνημονεύσει
@@ -670,7 +670,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
 
   return (
     <div>
-      {/* ── Η ΟΘΟΝΗ ΧΡΕΙΑΖΕΤΑΙ ΟΝΟΜΑ, ΚΑΙ ΑΣ ΜΗΝ ΤΟ ΔΕΙΧΝΕΙ ──────────────────
+      {/* ── Η ΟΘΟΝΗ ΧΡΕΙΑΖΕΤΑΙ ΟΝΟΜΑ ΚΑΙ ΑΣ ΜΗΝ ΤΟ ΔΕΙΧΝΕΙ ──────────────────
           Δώδεκα καρτέλες έχουν ορατό τίτλο μέσω `PageTitle`, δηλαδή `h1`. Η
           Επισκόπηση —η ΠΡΩΤΗ οθόνη που βλέπει ο χρήστης— δεν είχε κανένα: ο
           αναγνώστης οθόνης την ανακοίνωνε χωρίς όνομα και η πλοήγηση ανά
@@ -692,7 +692,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16,flexWrap:'wrap',marginBottom:20}}>
         <div style={{minWidth:0}}>
           <AthensNow style={{fontFamily:T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--text-tertiary)',letterSpacing:'0.02em',marginBottom:4,minHeight:15}}/>
-          {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
+          {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
               Εδώ γραφόταν ξανά, εξήντα εικονοστοιχεία κάτω από την ίδια
               πρόταση: όνομα, τύπος, κατάσταση, διεύθυνση — τα ίδια τέσσερα
               πεδία, με δεύτερη μορφοποίηση και τρίτη φορά στην κάρτα
@@ -804,7 +804,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             {([['Τύπος',propertyTypeLabel(prop.prop_type)],['Εμβαδόν',prop.sqm?`${prop.sqm} τ.μ.`:null],['Υπνοδωμάτια',prop.bedrooms?String(prop.bedrooms):null],['Διεύθυνση',prop.address],['ΑΤΑΚ',prop.atak],['Έτος κατασκευής',prop.year_built?String(prop.year_built):null],['Όροφος',prop.floor!=null?String(prop.floor):null],['Θέρμανση',heatingLabel(prop.heating)||null],['Ενεργειακή κλάση',prop.pea_class],['Θέσεις στάθμευσης',prop.parking_spaces?String(prop.parking_spaces):null],['Αποθήκη',prop.storage_sqm?`${prop.storage_sqm} τ.μ.`:null],['Αντικειμενική αξία',prop.obj_value?fmtEur(prop.obj_value):null],['Εκτιμώμενος ΕΝΦΙΑ',prop.enfia?fmtEur(prop.enfia):null]] as [string,string|null][]).filter(([,v])=>v).map(([k,v]) => (
               <div key={k} title={k==='ΑΤΑΚ'?'Αριθμός Ταυτότητας Ακινήτου, από το έντυπο Ε9':k==='Εκτιμώμενος ΕΝΦΙΑ'?'Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων: ο ετήσιος φόρος περιουσίας':undefined}
                 style={{padding:'9px 0',borderBottom:'1px solid var(--border-subtle)',minWidth:0}}>
-                {/* ══ Η ΤΙΜΗ ΚΟΒΟΤΑΝ, ΚΑΙ ΜΑΖΙ ΤΗΣ ΚΟΒΟΤΑΝ ΚΑΙ ΤΟ ΠΟΣΟ ══════════
+                {/* ══ Η ΤΙΜΗ ΚΟΒΟΤΑΝ ΚΑΙ ΜΑΖΙ ΤΗΣ ΚΟΒΟΤΑΝ ΚΑΙ ΤΟ ΠΟΣΟ ══════════
                     Ετικέτα και τιμή κάθονταν στην ΙΔΙΑ γραμμή, η μία απέναντι
                     στην άλλη, με τρεις τελείες όταν δεν χωρούσαν. Σε τρεις
                     στήλες η τιμή παίρνει ό,τι περισσεύει από την ετικέτα, που
@@ -882,7 +882,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           { label:'Δαπάνες', value:fmtEur(projectedExpYear),
             sub: [`${fmtEur(totalExpToDate)} ως σήμερα`, recurringCount>0 ? `${recurringCount} πάγιες` : null].filter(Boolean).join(' · '),
             title:`Οι δαπάνες που έχεις καταχωρήσει για το ${year}, μετρημένες όσες φορές πραγματικά συμβαίνουν: οι εφάπαξ (π.χ. ΕΝΦΙΑ, συμβόλαιο) μία φορά, οι πάγιες όσες φορές επαναλαμβάνονται. Δεν πολλαπλασιάζεται το σύνολο του έτους ×12.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
-          // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ, ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
+          // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
           // «Μερίδιο φόρου ενοικίου» είναι 22 χαρακτήρες δίπλα σε τρεις
           // ετικέτες των 7 ως 17: έσπαγε σε δεύτερη γραμμή και ΜΟΝΟ αυτή,
           // οπότε η τιμή της ξεκινούσε χαμηλότερα από τις άλλες τρεις. Τέσσερα

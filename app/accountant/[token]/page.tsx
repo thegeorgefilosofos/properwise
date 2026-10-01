@@ -6,7 +6,7 @@
 // Read-only, χωρίς λογαριασμό. Διαβάζει μέσω `get_accountant_data` την εικόνα
 // εσόδων και δαπανών ανά ακίνητο για μία χρήση.
 //
-// ΤΡΙΑ ΠΡΑΓΜΑΤΑ ΑΛΛΑΞΑΝ ΕΔΩ, ΚΑΙ ΤΑ ΤΡΙΑ ΕΙΝΑΙ ΟΥΣΙΑ:
+// ΤΡΙΑ ΠΡΑΓΜΑΤΑ ΑΛΛΑΞΑΝ ΕΔΩ ΚΑΙ ΤΑ ΤΡΙΑ ΕΙΝΑΙ ΟΥΣΙΑ:
 //
 // 1. Η ΟΘΟΝΗ ΔΕΝ ΚΑΤΕΒΑΖΕ ΤΙΠΟΤΑ. Ο λογιστής διάβαζε νούμερα και τα
 //    ξαναπληκτρολογούσε στο πρόγραμμά του. Τώρα φεύγει .xlsx με ζωντανά
@@ -35,7 +35,7 @@ import { createClient } from '@/lib/supabase/client';
 import { rentalIncomeTax, rentalBracketsForYear, bracketsLabelForYear } from '@/lib/billing/greekTax';
 import { presumptiveDeductionRate, PRESUMPTIVE_RULE } from '@/lib/billing/consolidate';
 import { T, feAuto, Card, Btn } from '@/components/Theme';
-// Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ ΕΙΝΑΙ ΔΙΚΗ ΤΗΣ ΔΙΑΔΡΟΜΗ, ΚΑΙ ΚΟΥΒΑΛΟΥΣΕ ΚΙ ΕΚΕΙΝΗ ΤΑ
+// Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ ΕΙΝΑΙ ΔΙΚΗ ΤΗΣ ΔΙΑΔΡΟΜΗ ΚΑΙ ΚΟΥΒΑΛΟΥΣΕ ΚΙ ΕΚΕΙΝΗ ΤΑ
 // 2,5 MB: ο λογιστής ανοίγει έναν σύνδεσμο, κοιτάζει και συνήθως δεν κατεβάζει
 // τίποτα. Η πρόσοψη φορτώνει τη βιβλιοθήκη με το πάτημα.
 import { downloadXlsx } from '@/app/dashboard/components/sheets';
@@ -92,7 +92,7 @@ export default function AccountantPortal() {
     (async () => {
       const { data: u, error: authFailed } = await supabase.auth.getUser();
       if (!alive) return;
-      // ΑΓΝΩΣΤΟΣ ΕΠΙΣΚΕΠΤΗΣ ΔΕΝ ΕΧΕΙ ΠΟΥ ΝΑ ΓΥΡΙΣΕΙ, ΚΑΙ ΔΕΝ ΤΟΥ ΤΟ ΛΕΜΕ. Ο
+      // ΑΓΝΩΣΤΟΣ ΕΠΙΣΚΕΠΤΗΣ ΔΕΝ ΕΧΕΙ ΠΟΥ ΝΑ ΓΥΡΙΣΕΙ ΚΑΙ ΔΕΝ ΤΟΥ ΤΟ ΛΕΜΕ. Ο
       // λογιστής που άνοιξε τον σύνδεσμο χωρίς λογαριασμό είναι η συνηθισμένη
       // περίπτωση: μια έξοδος προς οθόνη σύνδεσης θα ήταν πόρτα, όχι έξοδος.
       if (authFailed || !u.user) { setBack(undefined); return; }

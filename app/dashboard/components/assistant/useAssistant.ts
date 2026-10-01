@@ -299,7 +299,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   const allPropsContext = prefs.compare && allProperties.length > 1
     ? allProperties.map((p, i) => {
         const gy = computeYields(resolveRent({ targetRent: p.targetRent }).value, resolveValue(p.value).value, 0).grossYield;
-        // ΤΟ `toFixed` ΒΓΑΖΕΙ ΤΕΛΕΙΑ, ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟ. Εγραφε
+        // ΤΟ `toFixed` ΒΓΑΖΕΙ ΤΕΛΕΙΑ ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟ. Εγραφε
         // «6.7%» μέσα στα συμφραζόμενα που διαβάζει το μοντέλο — δίπλα σε ποσά
         // «1.234,56€» της ίδιας γραμμής, όπου η τελεία χωρίζει ΧΙΛΙΑΔΕΣ.
         const y = gy > 0 ? fp(gy) : null;
@@ -421,7 +421,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     const isShortAcct = propStays.length > 0;
     const yearStays = propStays.filter(s => (s.check_in || '').slice(0, 4) === String(year));
 
-    // ── ΤΟ ΜΕΙΚΤΟ ΕΙΣΟΔΗΜΑ ΕΙΝΑΙ ΤΙ ΟΦΕΙΛΕΤΑΙ, ΚΑΙ ΤΟ ΤΑΜΕΙΟ ΕΙΝΑΙ ΤΙ ΜΠΗΚΕ ──
+    // ── ΤΟ ΜΕΙΚΤΟ ΕΙΣΟΔΗΜΑ ΕΙΝΑΙ ΤΙ ΟΦΕΙΛΕΤΑΙ ΚΑΙ ΤΟ ΤΑΜΕΙΟ ΕΙΝΑΙ ΤΙ ΜΠΗΚΕ ──
     // Εδώ γραφόταν `rent * 12`, όπου το `rent` μπορεί να προέρχεται από τον
     // ΣΤΟΧΟ του ακινήτου (resolveRent → πηγή 'target'). Δηλαδή ένας στόχος
     // γινόταν «μεικτά έσοδα» και θεωρούνταν δώδεκα μήνες εισπραγμένοι — ενώ
@@ -588,7 +588,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     const mLines: string[] = [];
     if (rates?.euribor_3m != null) mLines.push(`Euribor 3 μηνών: ${fp(Number(rates.euribor_3m))} (ο δείκτης πάνω στον οποίο πατούν τα κυμαινόμενα επιτόκια στεγαστικών).`);
     if (rates?.bog_housing_new != null) mLines.push(`Μέσο επιτόκιο νέου στεγαστικού δανείου (στοιχεία Τράπεζας της Ελλάδος): περίπου ${fp(Number(rates.bog_housing_new))}.`);
-    // ΤΟ ΕΥΡΟΣ ΤΙΜΩΝ ΡΕΥΜΑΤΟΣ ΕΦΥΓΕ, ΚΑΙ ΕΙΝΑΙ ΚΕΡΔΟΣ.
+    // ΤΟ ΕΥΡΟΣ ΤΙΜΩΝ ΡΕΥΜΑΤΟΣ ΕΦΥΓΕ ΚΑΙ ΕΙΝΑΙ ΚΕΡΔΟΣ.
     //
     // Διαβαζόταν από τον πίνακα `energy_tariffs`, που γέμιζε από χειρόγραφη
     // λίστα σφραγισμένη με τον ΤΡΕΧΟΝΤΑ μήνα — δηλαδή τιμές Ιουνίου

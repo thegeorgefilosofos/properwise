@@ -37,7 +37,7 @@ interface LegacyCleaning { total_owner?: unknown; total_tenant?: unknown }
 const num = (v: unknown): number => { const n = typeof v === 'number' ? v : parseFloat(String(v ?? '')); return Number.isFinite(n) && n > 0 ? n : 0; };
 
 /**
- * Διαβάζει τις γραμμές υπηρεσιών, ΚΑΙ από τα παλιά δεδομένα.
+ * Διαβάζει τις γραμμές υπηρεσιών ΚΑΙ από τα παλιά δεδομένα.
  *
  * ΓΙΑΤΙ ΜΕΤΑΤΡΟΠΗ ΚΑΙ ΟΧΙ ΝΕΑ ΣΤΗΛΗ: τα υπάρχοντα δεδομένα ζουν στις στήλες
  * `streaming` (πίνακας υπηρεσιών) και `cleaning` (μία ρύθμιση καθαρισμού). Καμία

@@ -54,7 +54,7 @@ ok('yahoo allday', yahooCalendarUrl(allDay).includes('dur=allday'))
 // ── ICS ─────────────────────────────────────────────────────────────────────
 const ics = buildICS(timed)
 ok('ics begins', ics.startsWith('BEGIN:VCALENDAR\r\n'))
-// ΚΑΘΕ ΓΡΑΜΜΗ ΤΟΥ ΠΡΟΤΥΠΟΥ ΤΕΛΕΙΩΝΕΙ ΜΕ CRLF, ΚΑΙ Η ΤΕΛΕΥΤΑΙΑ ΔΕΝ ΕΞΑΙΡΕΙΤΑΙ.
+// ΚΑΘΕ ΓΡΑΜΜΗ ΤΟΥ ΠΡΟΤΥΠΟΥ ΤΕΛΕΙΩΝΕΙ ΜΕ CRLF ΚΑΙ Η ΤΕΛΕΥΤΑΙΑ ΔΕΝ ΕΞΑΙΡΕΙΤΑΙ.
 // Το αρχείο έκλεινε χωρίς αυτό όσο έχτιζε τις γραμμές μόνο του· τώρα περνά από
 // το κοινό `icsBody`, που τυλίγει ΚΑΙ τερματίζει σωστά.
 ok('ics ends', ics.endsWith('END:VCALENDAR\r\n'))

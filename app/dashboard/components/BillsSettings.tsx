@@ -16,7 +16,7 @@ export function useBillsSettings<T extends Record<string, unknown>>(
   section: settings.Section,
   defaults: T
 ): [T, (patch: Partial<T>) => void, boolean] {
-  // ΤΑ ΔΕΔΟΜΕΝΑ ΦΕΡΟΥΝ ΤΟ ΚΛΕΙΔΙ ΤΟΥΣ, ΚΑΙ Η ΦΟΡΤΩΣΗ ΒΓΑΙΝΕΙ ΑΠΟ ΑΥΤΟ. Ηταν δύο
+  // ΤΑ ΔΕΔΟΜΕΝΑ ΦΕΡΟΥΝ ΤΟ ΚΛΕΙΔΙ ΤΟΥΣ ΚΑΙ Η ΦΟΡΤΩΣΗ ΒΓΑΙΝΕΙ ΑΠΟ ΑΥΤΟ. Ηταν δύο
   // καταστάσεις με `setData(defaults)` και `setLoading` σύγχρονα μέσα σε effect:
   // περιττή απόδοση· δύο πηγές αλήθειας που μπορούσαν να διαφωνήσουν. Οσο τα
   // δεδομένα δεν είναι αυτού του ακινήτου και αυτής της ενότητας, ισχύουν οι

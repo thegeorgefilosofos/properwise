@@ -557,7 +557,7 @@ export default function TabComparison({ properties, userId, onNavigate }: Props)
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="table-wrap" style={{ overflowX: 'auto' }}>
-          {/* ΟΙ ΣΤΗΛΕΣ ΤΩΝ ΑΚΙΝΗΤΩΝ ΕΙΝΑΙ ΙΣΕΣ, ΚΑΙ ΑΥΤΟ ΘΕΛΕΙ ΡΗΤΗ ΔΗΛΩΣΗ.
+          {/* ΟΙ ΣΤΗΛΕΣ ΤΩΝ ΑΚΙΝΗΤΩΝ ΕΙΝΑΙ ΙΣΕΣ ΚΑΙ ΑΥΤΟ ΘΕΛΕΙ ΡΗΤΗ ΔΗΛΩΣΗ.
               Με αυτόματη διάταξη ο περιηγητής μοιράζει το πλάτος κατά
               ΠΕΡΙΕΧΟΜΕΝΟ: μετρημένο στα 375, το «Στούντιο Κουκάκι» έπαιρνε 159
               και το «Διαμέρισμα Παγκράτι» 186. Δύο στήλες που συγκρίνονται δεν

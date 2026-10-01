@@ -21,7 +21,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
 
-  // ΔΥΟ ΑΝΕΞΑΡΤΗΤΟΙ ΟΡΟΙ, ΚΑΙ ΟΙ ΔΥΟ ΑΠΑΡΑΙΤΗΤΟΙ. Τιμή για το πρόσθετο και
+  // ΔΥΟ ΑΝΕΞΑΡΤΗΤΟΙ ΟΡΟΙ ΚΑΙ ΟΙ ΔΥΟ ΑΠΑΡΑΙΤΗΤΟΙ. Τιμή για το πρόσθετο και
   // πάροχος που δουλεύει. Χωρίς τιμή θα χρεώναμε άγνωστο ποσό· χωρίς πάροχο θα
   // υποσχόμασταν σύνδεση που δεν γίνεται.
   const reason = aisConfigError(process.env);

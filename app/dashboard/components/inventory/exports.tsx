@@ -50,7 +50,7 @@ export function inventoryExports({items,repairs,kwhPrice}:{items:InventoryItem[]
   const declaredRepl=items.filter(i=>(i.replacement_cost||0)>0)
   const totalDeclaredRepl=declaredRepl.reduce((s,i)=>s+(i.replacement_cost||0),0)
   const missingRepl=items.length-declaredRepl.length
-  // ΔΥΟ ΛΑΘΗ ΣΕ ΜΙΑ ΕΞΑΓΩΓΗ, ΚΑΙ ΤΑ ΔΥΟ ΑΘΟΡΥΒΑ:
+  // ΔΥΟ ΛΑΘΗ ΣΕ ΜΙΑ ΕΞΑΓΩΓΗ ΚΑΙ ΤΑ ΔΥΟ ΑΘΟΡΥΒΑ:
   //
   //   1. Ήταν χειροποίητο .csv, ενώ οι άλλες δεκαεπτά εξαγωγές της εφαρμογής
   //      παράγουν προσεγμένο .xlsx. Ο παραλήπτης έπαιρνε άλλο πράγμα από την

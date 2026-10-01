@@ -37,7 +37,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 await page.goto(pathToFileURL(PAGE).href);
 await page.waitForSelector('#su-consent');
 
-// ΤΟ ΚΟΥΜΠΙ ΔΕΝ ΕΙΝΑΙ ΠΟΤΕ `disabled`, ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΣΚΟΠΙΜΟ: μένει
+// ΤΟ ΚΟΥΜΠΙ ΔΕΝ ΕΙΝΑΙ ΠΟΤΕ `disabled` ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΣΚΟΠΙΜΟ: μένει
 // πατήσιμο ώστε ο handler να πει τον λόγο αντί να σωπάσει. Αρα το σφάλμα
 // φαίνεται στο ΛΕΚΤΙΚΟ και στη ΣΥΜΠΕΡΙΦΟΡΑ, όχι σε μια ιδιότητα.
 const submit = () => page.locator('form button[type="submit"]');

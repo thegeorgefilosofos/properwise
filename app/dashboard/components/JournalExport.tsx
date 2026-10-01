@@ -130,7 +130,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
     const from = `${year}-${String(month || 1).padStart(2, '0')}-01`;
     const to = month > 0 ? monthEndIso(year, month) : `${year}-12-31`;
     const [rentData, expData, loanData, stayData] = await Promise.all([
-      // ΧΩΡΙΣ ΦΙΛΤΡΟ ΠΕΡΙΟΔΟΥ ΣΤΟΝ ΔΙΑΚΟΜΙΣΤΗ, ΚΑΙ ΓΙ' ΑΥΤΟ ΥΠΑΡΧΕΙ ΛΟΓΟΣ.
+      // ΧΩΡΙΣ ΦΙΛΤΡΟ ΠΕΡΙΟΔΟΥ ΣΤΟΝ ΔΙΑΚΟΜΙΣΤΗ ΚΑΙ ΓΙ' ΑΥΤΟ ΥΠΑΡΧΕΙ ΛΟΓΟΣ.
       // Το `period_year` λέει ΤΙ ΜΗΝΑ αφορά η δόση, όχι πότε εισπράχθηκε. Το
       // ημερολόγιο είναι ταμειακό: κρατά ό,τι μπήκε στο ταμείο μέσα στην
       // περίοδο. Το ενοίκιο Δεκεμβρίου που πληρώθηκε τον Ιανουάριο ανήκει στον

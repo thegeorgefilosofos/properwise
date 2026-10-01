@@ -29,6 +29,19 @@
 //     πάγκο, άρα οφείλει να περιέχει ακριβώς ό,τι απαγορεύεται (το φιλτράρει
 //     ήδη το projectFiles ως πρόπλασμα)·
 //   · αυτός ο ίδιος ο φύλακας, που τυπώνει τον κανόνα με τα λόγια του.
+//
+// ΚΑΙ ΤΟ ΚΕΦΑΛΑΙΟ «ΚΑΙ». Η κανονική έκφραση έψαχνε μόνο πεζά, οπότε ο ίδιος
+// κανόνας δεν ίσχυε για κανέναν τίτλο: «ΤΙ ΧΡΕΙΑΖΕΤΑΙ, ΚΑΙ ΠΟΙΟΣ ΤΟ ΦΕΡΝΕΙ»
+// ήταν επικεφαλίδα στον φάκελο του λογιστή, «ΤΟ ΣΧΕΔΙΟ ΛΟΓΑΡΙΑΣΜΩΝ …, ΚΑΙ ΟΙ
+// ΚΙΝΗΣΕΙΣ» τίτλος φύλλου. Μετρήθηκαν 855 σε 473 αρχεία (01/10/2026), τα
+// περισσότερα σε κεφαλαίους τίτλους σχολίων, απ' όπου τα αντιγράφει ο επόμενος.
+// Η αναζήτηση είναι πλέον χωρίς διάκριση πεζών και κεφαλαίων.
+//
+// ΤΑ ΠΑΓΩΜΕΝΑ ΑΡΧΕΙΑ ΚΡΑΤΟΥΝ ΤΟ ΚΕΦΑΛΑΙΟ ΤΟΥΣ. Οι μεταναστεύσεις της βάσης, ο
+// φορολογικός πυρήνας, τα νομικά κείμενα και τα δεδομένα αλλάζουν μόνο με δική
+// τους αναθεώρηση· μια τυπογραφική σάρωση δεν τα αγγίζει. Εκεί ο φύλακας
+// συνεχίζει να απαιτεί το πεζό «και» χωρίς κόμμα, όπως πάντα· το κεφαλαίο
+// το αφήνει μόνο εκεί.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs';
 import { projectFiles } from './lib/git-files.mjs';
@@ -43,7 +56,11 @@ const files = projectFiles().filter(f => f !== SELF && !BINARY.test(f) && f !== 
 // Το «\b» δεν δουλεύει μετά από ελληνικό γράμμα: το «ι» δεν είναι χαρακτήρας
 // λέξης κατά ASCII, οπότε το όριο δεν βρίσκεται ποτέ και ο έλεγχος θα ήταν
 // σιωπηλά κενός. Το αρνητικό lookahead το λέει σωστά.
-const RE = /,[ \t\n]*(και|κι)(?![α-ωΑ-Ωά-ώΆ-Ώ])/gu;
+const RE = /,[ \t\n]*(και|κι)(?![α-ωΑ-Ωά-ώΆ-Ώ])/giu;
+
+/** Αρχεία που δεν περνούν από τυπογραφική σάρωση: δέχονται μόνο τον πεζό κανόνα. */
+const FROZEN = /^(lib\/tax\/|lib\/billing\/greekTax\.ts|lib\/billing\/enfia\.ts|data\/|supabase\/migrations\/|app\/privacy\/|app\/terms\/|docs\/legal\/|lib\/legal\/)/;
+const isLower = (w) => w === w.toLowerCase();
 
 // ═══ ΚΑΙ Ο ΔΕΥΤΕΡΟΣ ΦΑΚΟΣ: Η ΠΡΟΤΑΣΗ ΣΠΑΣΜΕΝΗ ΣΕ ΔΥΟ ΓΡΑΜΜΕΣ ═══════════════
 // Το κόμμα κλείνει τη μια γραμμή και το «και» ανοίγει την επόμενη:
@@ -81,14 +98,17 @@ const hits = [];
 for (const f of files) {
   let src;
   try { src = readFileSync(f, 'utf8'); } catch { continue; }
-  if (!src.includes('κα') && !src.includes('κι')) continue;
+  if (!/κα|κι|ΚΑ|ΚΙ|Κα|Κι/.test(src)) continue;
+  const frozen = FROZEN.test(f);
   for (const m of src.matchAll(RE)) {
+    if (frozen && !isLower(m[1])) continue;
     const line = src.slice(0, m.index).split('\n').length;
     const from = Math.max(0, m.index - 44);
     hits.push({ f, line, t: src.slice(from, m.index + 28).replace(/\s+/g, ' ').trim() });
   }
   const j = joined(src);
   for (const m of j.matchAll(RE)) {
+    if (frozen && !isLower(m[1])) continue;
     const from = Math.max(0, m.index - 44);
     const t = j.slice(from, m.index + 28).replace(/\s+/g, ' ').trim();
     if (!hits.some(h => h.f === f && h.t === t)) hits.push({ f, line: 0, t });
@@ -101,7 +121,7 @@ if (hits.length) {
   for (const h of hits.slice(0, 14)) console.error(`  ${h.f}${h.line ? ':' + h.line : ' (σπασμένο σε δύο γραμμές)'}\n     …${h.t}…`);
   if (hits.length > 14) console.error(`  … και ${hits.length - 14} ακόμη`);
   console.error(`
-  Γράφουμε «και», όχι « και». Το ίδιο και για το «κι».
+  Γράφουμε «και», όχι « και». Το ίδιο για το «κι» και για τα κεφαλαία «ΚΑΙ», «ΚΙ».
 `);
   process.exit(1);
 }

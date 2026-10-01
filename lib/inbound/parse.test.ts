@@ -25,7 +25,7 @@ eq(amountIn(flatten(textFromHtml('<style>.a{font-size:12px}</style><p>Πληρω
 eq(bodyOf(src({ text: 'σκέτο', html: '<p>άλλο</p>' })), 'σκέτο', 'το απλό κείμενο προηγείται');
 eq(bodyOf(src({ text: '  ', html: '<p>άλλο</p>' })), 'άλλο', 'κενό κείμενο δεν είναι κείμενο');
 eq(bodyOf(src({})), '', 'χωρίς σώμα, κενό');
-// ΤΟ ΣΩΜΑ ΤΟ ΣΤΕΛΝΕΙ ΑΓΝΩΣΤΟΣ, ΚΑΙ ΔΕΝ ΔΙΑΒΑΖΕΤΑΙ ΑΤΕΡΜΟΝΑ.
+// ΤΟ ΣΩΜΑ ΤΟ ΣΤΕΛΝΕΙ ΑΓΝΩΣΤΟΣ ΚΑΙ ΔΕΝ ΔΙΑΒΑΖΕΤΑΙ ΑΤΕΡΜΟΝΑ.
 eq(bodyOf(src({ text: 'α'.repeat(MAX_BODY_CHARS + 5000) })).length, MAX_BODY_CHARS,
   'υπερμεγέθες κείμενο κόβεται στο όριο');
 eq(bodyOf(src({ html: '<p>' + 'β'.repeat(MAX_BODY_CHARS * 6) + '</p>' })).length, MAX_BODY_CHARS,

@@ -14,7 +14,7 @@ import type { ClientStaysRow } from '@/lib/supabase/tables'
 // κρατήσεων (χωρίς nights/guests). Δηλώνονται ξεχωριστά, ακριβώς όσες λέει το
 // select(), ώστε στήλη που δεν ζητήθηκε να μη διαβάζεται κατά λάθος ως υπαρκτή.
 //
-// ΤΟ `clients(full_name)` ΜΕΝΕΙ `unknown`, ΚΑΙ ΟΧΙ ΑΠΟ ΤΕΜΠΕΛΙΑ. Το σχήμα του
+// ΤΟ `clients(full_name)` ΜΕΝΕΙ `unknown` ΚΑΙ ΟΧΙ ΑΠΟ ΤΕΜΠΕΛΙΑ. Το σχήμα του
 // συνδεδεμένου πίνακα δεν είναι στήλη: το `client_stays.client_id` δείχνει σε ΕΝΑΝ
 // πελάτη, άρα το PostgREST επιστρέφει αντικείμενο — αλλά ο τύπος που συμπεραίνει το
 // postgrest-js χωρίς γεννημένους τύπους βάσης υποθέτει ΠΙΝΑΚΑ (`{full_name}[]`).
@@ -161,7 +161,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   }
   useEffect(()=>{ if(!showMenu)return; positionMenu(); const h=(ev:MouseEvent)=>{ const t=ev.target as Node; if((menuRef.current?.contains(t))||(menuPopRef.current?.contains(t)))return; setShowMenu(false) }; const rp=()=>positionMenu(); document.addEventListener('mousedown',h); window.addEventListener('scroll',rp,true); window.addEventListener('resize',rp); return ()=>{document.removeEventListener('mousedown',h); window.removeEventListener('scroll',rp,true); window.removeEventListener('resize',rp)} },[showMenu])
 
-  // ΟΙ ΕΙΔΟΠΟΙΗΣΕΙΣ ΣΥΣΚΕΥΗΣ ΕΧΟΥΝ ΕΝΑΝ ΔΙΑΚΟΠΤΗ, ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΕΔΩ. Ζει στις
+  // ΟΙ ΕΙΔΟΠΟΙΗΣΕΙΣ ΣΥΣΚΕΥΗΣ ΕΧΟΥΝ ΕΝΑΝ ΔΙΑΚΟΠΤΗ ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΕΔΩ. Ζει στις
   // Ρυθμίσεις → Ειδοποιήσεις (DeviceNotifications.tsx) και ανάβει ΚΑΙ την πρωινή
   // ειδοποίηση με την εφαρμογή κλειστή ΚΑΙ αυτή εδώ την τοπική, ~10' πριν από
   // κάθε ραντεβού, όσο η εφαρμογή είναι ανοιχτή. Το ημερολόγιο ΑΚΟΥΕΙ: όποιος
@@ -412,7 +412,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       const d=e.event_date.replace(/-/g,''); const cat=CATEGORIES[e.category]
       const descParts=[e.notes||'', e.amount?`Ποσό: ${fe(e.amount)}`:''].filter(Boolean)
       lines.push('BEGIN:VEVENT',
-        // ΤΟ ΕΠΙΘΕΜΑ ΤΟΥ UID ΕΙΝΑΙ ΑΝΑΓΝΩΡΙΣΤΙΚΟ, ΟΧΙ ΕΠΩΝΥΜΙΑ, ΚΑΙ ΜΕΝΕΙ.
+        // ΤΟ ΕΠΙΘΕΜΑ ΤΟΥ UID ΕΙΝΑΙ ΑΝΑΓΝΩΡΙΣΤΙΚΟ, ΟΧΙ ΕΠΩΝΥΜΙΑ ΚΑΙ ΜΕΝΕΙ.
         // Το Google και το Apple ταυτίζουν τα γεγονότα του ημερολογίου με το
         // UID. Αν αλλάξει, κάθε ήδη κατεβασμένο γεγονός γίνεται ΞΕΝΟ: μένει ως
         // φάντασμα και δίπλα του εμφανίζεται διπλότυπο. Η μετονομασία δεν

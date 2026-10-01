@@ -26,7 +26,7 @@ const F = (p: Partial<ContactFile>): ContactFile =>
   ok('και το μονοπάτι όπως γράφτηκε', o?.path === 'uid-1/contact-files/7/1712.pdf');
 }
 
-// ── ΤΟ ΠΑΛΙΟ ΚΡΑΤΑ ΔΗΜΟΣΙΑ ΔΙΕΥΘΥΝΣΗ, ΚΑΙ ΔΙΑΒΑΖΕΤΑΙ ─────────────────────
+// ── ΤΟ ΠΑΛΙΟ ΚΡΑΤΑ ΔΗΜΟΣΙΑ ΔΙΕΥΘΥΝΣΗ ΚΑΙ ΔΙΑΒΑΖΕΤΑΙ ─────────────────────
 // Χωρίς αυτό, όσα ανέβηκαν ως σήμερα θα έμεναν άσβηστα για πάντα.
 {
   const o = objectOf(F({ url: 'https://abc.supabase.co/storage/v1/object/public/avatars/uid-1/contact-files/7/1712.pdf' }));

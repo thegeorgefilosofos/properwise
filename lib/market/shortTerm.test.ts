@@ -29,7 +29,7 @@ eq('100% → 365', shortTermEstimate({ ...BASE, occupancyPct: 100 }).nights, 365
 eq('πάνω από 100 κουμπώνει στο 100', shortTermEstimate({ ...BASE, occupancyPct: 250 }).nights, 365)
 eq('αρνητική πληρότητα κουμπώνει στο μηδέν', shortTermEstimate({ ...BASE, occupancyPct: -20 }).nights, 0)
 
-// ═══ ΤΑ ΕΞΟΔΑ ΑΦΑΙΡΟΥΝΤΑΙ ΟΛΑ, ΚΑΙ ΜΙΑ ΦΟΡΑ ═══════════════════════════════
+// ═══ ΤΑ ΕΞΟΔΑ ΑΦΑΙΡΟΥΝΤΑΙ ΟΛΑ ΚΑΙ ΜΙΑ ΦΟΡΑ ═══════════════════════════════
 {
   const r = shortTermEstimate({ ...BASE, occupancyPct: 50 })
   near('μεικτά = νύχτες × τιμή', r.grossRevenue, 183 * 80)

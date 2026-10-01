@@ -319,7 +319,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   const preferred = contacts.filter(c => c._extra?.preferred)
   const overdueContacts = contacts.filter(c => c._extra?.next_appointment && isOverdue(c._extra.next_appointment))
   const allTags = [...new Set(contacts.flatMap(c => c._extra?.tags || []))]
-  // ΠΕΝΤΕ ΠΛΗΘΗ ΕΓΙΝΑΝ ΤΡΙΑ, ΚΑΙ ΤΟ ΣΗΜΑ ΑΝΕΒΗΚΕ ΠΑΝΩ. Πριν, η μόνη γραμμή που
+  // ΠΕΝΤΕ ΠΛΗΘΗ ΕΓΙΝΑΝ ΤΡΙΑ ΚΑΙ ΤΟ ΣΗΜΑ ΑΝΕΒΗΚΕ ΠΑΝΩ. Πριν, η μόνη γραμμή που
   // ζητούσε ενέργεια (ληγμένα ραντεβού) ήταν ΚΑΤΩ από πέντε μετρητές που δεν
   // ζητούν τίποτα. Ένα πλήθος δεν είναι κρίση: «4 τεχνικοί» δεν σε βάζει να κάνεις
   // κάτι. Το «λείπει ΑΦΜ» σε βάζει, γιατί χωρίς αυτό δεν δένουν τα παραστατικά.
@@ -393,7 +393,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
               { key: 'vcf', label: 'Επαφές στο κινητό', description: 'Αρχείο vCard για το τηλεφωνικό σου ευρετήριο.', onClick: () => downloadVcf(contacts, 'epafes.vcf') },
             ] : []),
           ]} />
-          {/* Η ΙΔΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΔΥΟ ΦΟΡΕΣ, ΚΑΙ ΟΙ ΔΥΟ ΜΠΛΕ, ΣΤΗΝ ΙΔΙΑ ΟΘΟΝΗ.
+          {/* Η ΙΔΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΔΥΟ ΦΟΡΕΣ ΚΑΙ ΟΙ ΔΥΟ ΜΠΛΕ, ΣΤΗΝ ΙΔΙΑ ΟΘΟΝΗ.
               Με άδειο κατάλογο, ο χρήστης έβλεπε «Σάρωση κάρτας» πάνω δεξιά ΚΑΙ
               «Φωτογράφισε κάρτα» στο κέντρο — δύο γεμάτα γαλάζια κουμπιά που
               καλούν το ΙΔΙΟ `cardRef.current?.click()`. Το μάτι δεν ξέρει πού να

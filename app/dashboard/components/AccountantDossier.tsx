@@ -211,7 +211,7 @@ function Row({ r, checked, onToggle, attribute }: { r: Requirement; checked: boo
         {attribute && r.forProperties && r.forProperties.length > 0 && (
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>Για: {r.forProperties.join(', ')}</p>
         )}
-        {/* ΤΟ «ΠΟΥ» ΕΓΙΝΕ ΔΡΟΜΟΣ, ΟΧΙ ΟΝΟΜΑ ΠΥΛΗΣ, ΚΑΙ ΓΡΑΦΕΤΑΙ ΙΔΙΑ ΠΑΝΤΟΥ. Η
+        {/* ΤΟ «ΠΟΥ» ΕΓΙΝΕ ΔΡΟΜΟΣ, ΟΧΙ ΟΝΟΜΑ ΠΥΛΗΣ ΚΑΙ ΓΡΑΦΕΤΑΙ ΙΔΙΑ ΠΑΝΤΟΥ. Η
             διαδρομή του myAADE καθόταν μέσα σε πιλούλα που στο κινητό γινόταν
             τριώροφη, ενώ δίπλα της το «Πού: e-banking» ήταν σκέτο κείμενο: δύο
             σχήματα για την ίδια πληροφορία. Τώρα η διαδρομή είναι κείμενο και ο
@@ -302,7 +302,7 @@ export default function AccountantDossier({
   const groups = useMemo(() => groupByWho(reqs), [reqs])
   const warnings = useMemo(() => traps(reqs), [reqs])
 
-  // ΤΟ ΚΟΥΜΠΙ ΠΕΡΙΜΕΝΕΙ ΤΑ ΧΑΡΤΙΑ, ΚΑΙ ΤΟ ΛΕΕΙ. Το κατέβασμα των παραστατικών
+  // ΤΟ ΚΟΥΜΠΙ ΠΕΡΙΜΕΝΕΙ ΤΑ ΧΑΡΤΙΑ ΚΑΙ ΤΟ ΛΕΕΙ. Το κατέβασμα των παραστατικών
   // παίρνει δευτερόλεπτα· χωρίς ένδειξη ο χρήστης πατά δεύτερη φορά και παίρνει
   // δύο φακέλους. Το κουμπί κλειδώνει όσο ετοιμάζεται.
   const [preparing, setPreparing] = useState(false)
@@ -604,7 +604,7 @@ export default function AccountantDossier({
 }
 
 /**
- * ΟΣΑ ΖΗΤΗΣΕ Ο ΛΟΓΙΣΤΗΣ, ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΤΑ ΚΛΕΙΝΕΙ.
+ * ΟΣΑ ΖΗΤΗΣΕ Ο ΛΟΓΙΣΤΗΣ ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΤΑ ΚΛΕΙΝΕΙ.
  *
  * ΔΕΝ ΚΑΤΑΛΑΜΒΑΝΕΙ ΧΩΡΟ ΟΤΑΝ ΔΕΝ ΕΧΕΙ ΝΑ ΠΕΙ ΤΙΠΟΤΑ. Μια ενότητα «Αιτήματα (0)»
  * είναι θόρυβος που ο χρήστης μαθαίνει να προσπερνά και μαζί της προσπερνά και

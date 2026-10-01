@@ -101,7 +101,7 @@ export function SubscriptionSection({ label, catalog, active, onToggle, onUpdate
       <SecHdr label={label} sub={active.length === 0 ? 'Πάτησε ό,τι έχεις. Τα υπόλοιπα μένουν σβηστά.' : undefined}
         right={total > 0 ? <span style={{ ...TT.kpi, fontSize: 18 }}>{fe(total)}</span> : undefined}/>
 
-      {/* ΤΟ ΠΛΑΚΙΔΙΟ ΕΙΝΑΙ ΠΕΔΙΟ ΤΗΣ ΦΟΡΜΑΣ, ΚΑΙ ΤΩΡΑ ΤΟ ΔΕΙΧΝΕΙ.
+      {/* ΤΟ ΠΛΑΚΙΔΙΟ ΕΙΝΑΙ ΠΕΔΙΟ ΤΗΣ ΦΟΡΜΑΣ ΚΑΙ ΤΩΡΑ ΤΟ ΔΕΙΧΝΕΙ.
           Ίδιο ύψος, ίδια γωνία, ίδιο περιθώριο και ίδιο μέγεθος γραμμάτων με
           τον επιλογέα «Πάροχος» δίπλα του — ένα σχήμα σε όλη την εφαρμογή.
 
@@ -176,7 +176,7 @@ export function SubscriptionSection({ label, catalog, active, onToggle, onUpdate
             const supply = business ? supplyOf(a.supplierCountry) : null;
             const supplyLine = supply ? `${supplyLabel(supply)}. ${supplyNote(supply)}` : '';
             return (
-              /* Ο ΤΙΤΛΟΣ ΔΕΝ ΕΙΝΑΙ ΠΕΔΙΟ, ΚΑΙ ΟΣΟ ΗΤΑΝ ΜΕΣΑ ΣΤΟ ΠΛΕΓΜΑ ΤΟ ΧΑΛΟΥΣΕ.
+              /* Ο ΤΙΤΛΟΣ ΔΕΝ ΕΙΝΑΙ ΠΕΔΙΟ ΚΑΙ ΟΣΟ ΗΤΑΝ ΜΕΣΑ ΣΤΟ ΠΛΕΓΜΑ ΤΟ ΧΑΛΟΥΣΕ.
                  Απλωνόταν σε όλες τις στήλες (`1 / -1`) και αυτό ακριβώς εμποδίζει
                  το `auto-fit` να μαζέψει τις κενές: το πλέγμα κρατούσε οκτώ στήλες
                  επειδή τόσες χωρούσαν, τα τέσσερα πεδία έπιαναν τις τέσσερις πρώτες

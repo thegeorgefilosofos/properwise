@@ -93,7 +93,7 @@ export function makeFakeDb(respond: Responder = () => undefined) {
       channel: () => channelDouble(),
       removeChannel: () => {},
       functions: { invoke: async () => ({ data: null, error: null }) },
-      // ═══ Ο ΑΠΟΘΗΚΕΥΤΙΚΟΣ ΧΩΡΟΣ ΕΛΕΙΠΕ, ΚΑΙ ΕΡΙΧΝΕ ΟΛΟΚΛΗΡΗ ΤΗΝ ΟΘΟΝΗ ══════
+      // ═══ Ο ΑΠΟΘΗΚΕΥΤΙΚΟΣ ΧΩΡΟΣ ΕΛΕΙΠΕ ΚΑΙ ΕΡΙΧΝΕ ΟΛΟΚΛΗΡΗ ΤΗΝ ΟΘΟΝΗ ══════
       // Μόλις ο πάγκος απέκτησε έγγραφα, ο Φάκελος Ακινήτου έσκασε με «Cannot
       // read properties of undefined (reading 'from')»: ζητά υπογεγραμμένους
       // συνδέσμους από το `supabase.storage`, που ο διπλός δεν είχε καθόλου. Το

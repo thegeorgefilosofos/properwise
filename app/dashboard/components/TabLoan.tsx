@@ -63,7 +63,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
 
   return (
     <div style={{fontFamily: T.font.sans,color:'var(--text-primary)',display:'flex',flexDirection:'column',gap:16}}>
-      {/* ── Η ΟΘΟΝΗ ΧΡΕΙΑΖΕΤΑΙ ΟΝΟΜΑ, ΚΑΙ ΑΣ ΜΗΝ ΤΟ ΔΕΙΧΝΕΙ ──────────────────
+      {/* ── Η ΟΘΟΝΗ ΧΡΕΙΑΖΕΤΑΙ ΟΝΟΜΑ ΚΑΙ ΑΣ ΜΗΝ ΤΟ ΔΕΙΧΝΕΙ ──────────────────
           Δώδεκα καρτέλες έχουν ορατό τίτλο μέσω `PageTitle`, δηλαδή `h1`. Αυτή
           δεν είχε ΚΑΝΕΝΑ: ο αναγνώστης οθόνης ανακοίνωνε τη σελίδα χωρίς όνομα,
           η πλοήγηση ανά επικεφαλίδα —ο βασικός τρόπος που διαβάζει κανείς μια
@@ -105,7 +105,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             {l:'ΕΚΤ, καταθέσεις',v:market.ecb_dfl,k:'ecb_dfl' as const},
             ...(market.bog_housing_new?[{l:'ΤτΕ μέσο',v:market.bog_housing_new,k:'bog_housing_new' as const}]:[]),
           ].map(item=>(
-            /* ΤΟ ΔΙΑΧΩΡΙΣΤΙΚΟ ΗΤΑΝ ΑΡΙΣΤΕΡΟ ΠΕΡΙΓΡΑΜΜΑ, ΚΑΙ ΣΤΟ ΤΥΛΙΓΜΑ ΕΠΕΦΤΕ ΣΤΗΝ
+            /* ΤΟ ΔΙΑΧΩΡΙΣΤΙΚΟ ΗΤΑΝ ΑΡΙΣΤΕΡΟ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΣΤΟ ΤΥΛΙΓΜΑ ΕΠΕΦΤΕ ΣΤΗΝ
                ΑΡΧΗ ΤΗΣ ΓΡΑΜΜΗΣ. Μετρημένο στα 390: η λωρίδα σπάει σε 1+2+1 και
                δύο κάθετες γραμμούλες κάθονταν κολλητά στο αριστερό περιθώριο,
                χωρίς να χωρίζουν τίποτα. Ενα διαχωριστικό που δεν ξέρει πού
@@ -136,7 +136,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   {periodOf(market.provenance[item.k]!.asOf, market.provenance[item.k]!.basis)}
                 </span>
               )}
-              {/* ΧΩΡΙΣ ΤΑΥΤΟΤΗΤΑ Η ΤΙΜΗ ΕΙΝΑΙ Η ΕΦΕΔΡΙΚΗ, ΚΑΙ ΤΟ ΛΕΕΙ. Γυμνή, μια
+              {/* ΧΩΡΙΣ ΤΑΥΤΟΤΗΤΑ Η ΤΙΜΗ ΕΙΝΑΙ Η ΕΦΕΔΡΙΚΗ ΚΑΙ ΤΟ ΛΕΕΙ. Γυμνή, μια
                   τιμή γραμμένη στον κώδικα έμοιαζε με σημερινή. Γράφεται ο
                   μήνας της τελευταίας γνωστής παρατήρησης, με διακεκομμένη
                   υπογράμμιση όπως κάθε παλιά τιμή της λωρίδας. */}
@@ -373,7 +373,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   ].map(s=>(
                     <div key={s.label} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'11px 13px'}}>
                       <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase' as const,letterSpacing:'0.05em',fontWeight:600,fontFamily: T.font.sans,marginBottom:6}}>{s.label}</p>
-                      {/* ΤΙΜΗ ΚΑΙ ΒΑΣΗ ΤΗΣ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ, ΚΑΙ ΤΑ ΤΕΣΣΕΡΑ ΙΔΙΑ.
+                      {/* ΤΙΜΗ ΚΑΙ ΒΑΣΗ ΤΗΣ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ΚΑΙ ΤΑ ΤΕΣΣΕΡΑ ΙΔΙΑ.
                           Το `flex-wrap` τα κρατά δίπλα όσο χωρούν και ρίχνει τη βάση
                           κάτω από την τιμή όταν το πλακίδιο στενέψει — καθαρά, χωρίς
                           κόψιμο, ομοιόμορφα σε όλα τα πλακίδια. */}

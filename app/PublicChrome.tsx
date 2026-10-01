@@ -145,7 +145,7 @@ export function PublicFooter() {
             <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textDecoration: 'none', color: 'var(--text-primary)', width: 'fit-content' }}>
               <BrandLogo size={26} />
             </Link>
-            {/* ΔΥΟ ΠΡΟΤΑΣΕΙΣ, ΔΥΟ ΓΡΑΜΜΕΣ, ΚΑΙ Η ΑΛΛΑΓΗ ΕΙΝΑΙ ΡΗΤΗ.
+            {/* ΔΥΟ ΠΡΟΤΑΣΕΙΣ, ΔΥΟ ΓΡΑΜΜΕΣ ΚΑΙ Η ΑΛΛΑΓΗ ΕΙΝΑΙ ΡΗΤΗ.
                 Ηταν μία συνεχόμενη φράση που άφηνε την αναδίπλωση στο πλάτος
                 της στήλης: έσπαγε σε τρεις γραμμές και το πού έσπαγε άλλαζε
                 με κάθε μέγεθος οθόνης — άλλοτε στη μέση της πρώτης πρότασης,

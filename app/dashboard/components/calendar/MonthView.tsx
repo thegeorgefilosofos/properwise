@@ -152,7 +152,7 @@ export function DaySheet({ date, events, onClose, onPick, onNew }: {
 export function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, onEventClick, upcomingAll, drag, stays=[] }: {
   events: CalEvent[]; currentDate: Date; selectedDate?:string; onDayClick:(date:string)=>void; onDayOpen:(date:string)=>void; onEventClick:(e:CalEvent)=>void; upcomingAll:CalEvent[]; drag?:DragCtl; stays?:StaySpan[]
 }) {
-  // ═══ ΔΥΟ ΣΤΟΧΟΙ ΟΝΤΑΣ Ο ΕΝΑΣ ΜΕΣΑ ΣΤΟΝ ΑΛΛΟ, ΚΑΙ Ο ΕΣΩΤΕΡΙΚΟΣ 20 ΨΗΛΟΣ ═══
+  // ═══ ΔΥΟ ΣΤΟΧΟΙ ΟΝΤΑΣ Ο ΕΝΑΣ ΜΕΣΑ ΣΤΟΝ ΑΛΛΟ ΚΑΙ Ο ΕΣΩΤΕΡΙΚΟΣ 20 ΨΗΛΟΣ ═══
   // Το τσιπάκι του γεγονότος είχε δικό του `role="button"` μέσα σε κελί που
   // είναι κι αυτό πατήσιμο. Μετρημένο στα 390: 39×20 το τσιπάκι, 43×80 το
   // κελί. Με δάχτυλο, ένα πάτημα πάνω στο τσιπάκι πετυχαίνει το κελί τις πιο

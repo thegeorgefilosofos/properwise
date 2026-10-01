@@ -272,7 +272,7 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{t}</span></div>
         ))}
       </div>
-      {/* ══ Η ΕΠΙΛΟΓΗ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΟ ΚΛΙΚ, ΚΑΙ ΟΙ ΕΠΙΛΟΓΕΣ ΕΙΝΑΙ ΔΥΟ ══
+      {/* ══ Η ΕΠΙΛΟΓΗ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΟ ΚΛΙΚ ΚΑΙ ΟΙ ΕΠΙΛΟΓΕΣ ΕΙΝΑΙ ΔΥΟ ══
           Και οι τέσσερις κάρτες οδηγούσαν στο ίδιο γυμνό «/signup», οπότε η
           επιλογή πακέτου —η μόνη απόφαση που παίρνει ο επισκέπτης σε αυτή τη
           σελίδα— χανόταν στη μετάβαση.

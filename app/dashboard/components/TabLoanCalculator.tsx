@@ -1409,7 +1409,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         return (
       <Section title="Δανειοληπτική ικανότητα" sub="Μέγιστο δάνειο βάσει εισοδήματος και ορίων Τράπεζας Ελλάδος" defaultOpen>
         <div style={{marginBottom:16}}><NumberInput label="Μηνιαίο καθαρό εισόδημα" value={income} onChange={setIncome} suffix="€"/></div>
-        {/* ═══ ΠΕΜΠΤΗ ΓΡΑΦΗ ΤΟΥ ΠΛΑΚΙΔΙΟΥ, ΚΑΙ Η ΠΙΟ ΑΚΡΙΒΗ ═══════════════════════
+        {/* ═══ ΠΕΜΠΤΗ ΓΡΑΦΗ ΤΟΥ ΠΛΑΚΙΔΙΟΥ ΚΑΙ Η ΠΙΟ ΑΚΡΙΒΗ ═══════════════════════
             Ζωγράφιζε δικό της κουτί, δική της ανύψωση με κατάσταση React και
             τέσσερις ακροατές, ετικέτα 700 με 0,06em αντί για την 600 με 0,08em
             του βιβλίου· και νούμερο ΣΤΑΘΕΡΟ στα 28. Ο χρήστης το φωτογράφισε σε
@@ -1770,7 +1770,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
 
       <div style={cardStyle}>
         <SectionLabel label="Πλήρης ανάλυση κόστους απόκτησης" right={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{propTypeLabel}{SQM>0?` · ${SQM}τ.μ.`:''} · {areaLabel}</span>}/>
-        {/* ΟΚΤΩ ΚΟΣΤΗ, ΤΕΣΣΕΡΑ ΚΑΙ ΤΕΣΣΕΡΑ, ΚΑΙ ΟΛΑ ΜΕ ΤΗΝ ΙΔΙΑ ΓΕΩΜΕΤΡΙΑ.
+        {/* ΟΚΤΩ ΚΟΣΤΗ, ΤΕΣΣΕΡΑ ΚΑΙ ΤΕΣΣΕΡΑ ΚΑΙ ΟΛΑ ΜΕ ΤΗΝ ΙΔΙΑ ΓΕΩΜΕΤΡΙΑ.
             Ήταν σειρές «ετικέτα αριστερά, ποσό δεξιά» με `space-between`: όταν η
             ετικέτα τύλιγε σε δεύτερη γραμμή, το ποσό κολλούσε πάνω της χωρίς
             κενό («Συμβολαιογραφικά2.128,00€») και κάθε πλακίδιο έβγαινε άλλο
