@@ -308,7 +308,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
                 placeholder={`${ATAK_DIGITS} ψηφία`} value={atakDraft[p.id] ?? ''}
                 onChange={e => setAtakDraft(d => ({ ...d, [p.id]: atakDigits(e.target.value) }))}
                 onKeyDown={e => { if (e.key === 'Enter') void saveAtak(p.id); }} />
-              <Btn onClick={() => void saveAtak(p.id)} disabled={!isAtak(atakDraft[p.id]) || savingAtak === p.id}>
+              <Btn size="lg" onClick={() => void saveAtak(p.id)} disabled={!isAtak(atakDraft[p.id]) || savingAtak === p.id}>
                 {savingAtak === p.id ? 'Καταχώρηση…' : 'Καταχώρηση'}
               </Btn>
             </div>
