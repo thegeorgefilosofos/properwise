@@ -97,6 +97,11 @@ const input = (o: Partial<MeetingPackInput> = {}): MeetingPackInput => ({
   ok('η βραχυχρόνια με ΤΑΚΚ', m.sections.some(s => s.type === 'rows' && s.title === 'Βραχυχρόνια'));
   const dd = buildDocDefinition(m);
   ok('το PDF χτίζεται στο ίδιο σύστημα με τα επίσημα έγγραφα (Α4, υποσέλιδο)', dd.pageSize === 'A4' && typeof dd.footer === 'function');
+  // «Όλο το ΑΦΜ» σε μία γραμμή: η στήλη «Για» δεν σπάει.
+  const missingTable = m.sections.find(s => s.type === 'table' && s.title === 'Τι λείπει');
+  ok('Τι λείπει: η στήλη «Για» σε μία γραμμή', missingTable?.type === 'table' && missingTable.head[1] === 'Για' && !!missingTable.noWrap?.includes(1));
+  const ddText = JSON.stringify(dd.content);
+  ok('Τι λείπει: το PDF κρατά το noWrap στη στήλη «Για»', /"text":"ΓΙΑ"[^}]*"noWrap":true/.test(ddText));
   // Μία σελίδα: κανένας πίνακας δεν ξεπερνά τις 8 γραμμές και μία για «και άλλα».
   const many = coverModel(input({ properties: Array.from({ length: 14 }, (_, i) => prop({ id: `p${i}`, name: `Ακίνητο ${i + 1}` })) }), { id: 'X', issuedAt: '2026-03-12T10:00:00Z', verifyUrl: '' });
   const t = many.sections.find(s => s.type === 'table' && s.title === 'Ακίνητα');

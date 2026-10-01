@@ -48,7 +48,9 @@ export type PdfChartPoint = { label: string; value: number };
 export type PdfSection =
   | { type: 'rows'; title?: string; rows: PdfRow[] }
   | { type: 'kpis'; title?: string; items: { label: string; value: string }[] }
-  | { type: 'table'; title?: string; head: string[]; align?: ('l' | 'r')[]; rows: string[][]; result?: string[] }
+  | { type: 'table'; title?: string; head: string[]; align?: ('l' | 'r')[]; rows: string[][]; result?: string[];
+      /** Στήλες που δεν σπάνε σε δεύτερη γραμμή (π.χ. «Όλο το ΑΦΜ»): το πλάτος τους είναι όσο το κείμενο. */
+      noWrap?: number[] }
   | { type: 'chart'; title?: string; chart: 'bars' | 'line'; data: PdfChartPoint[]; unit?: 'eur' | 'pct' | 'num' }
   | { type: 'sign'; title?: string; signers: { role: string; name?: string; image?: string; place?: string; date?: string }[] }
   | { type: 'note'; title?: string; text: string };
@@ -163,14 +165,15 @@ function kpisRow(items: { label: string; value: string }[]): Node {
 }
 
 // Πίνακας πολλών στηλών με επικεφαλίδες.
-function headedTable(head: string[], rows: string[][], align?: ('l' | 'r')[], result?: string[]): Node {
+function headedTable(head: string[], rows: string[][], align?: ('l' | 'r')[], result?: string[], noWrap: number[] = []): Node {
   const al = (i: number) => (align?.[i] === 'r' ? 'right' : 'left');
+  const nw = (i: number) => (noWrap.includes(i) ? { noWrap: true } : {});
   const headRow = head.map((h, i) => ({
-    text: grUpper(h), fontSize: 8, bold: true, color: INK_FAINT, alignment: al(i),
+    text: grUpper(h), fontSize: 8, bold: true, color: INK_FAINT, alignment: al(i), ...nw(i),
     border: [false, false, false, true], borderColor: [HEAVY_RULE, HEAVY_RULE, HEAVY_RULE, HEAVY_RULE], margin: [0, 0, 0, 6],
   }));
   const bodyRows = rows.map(r => r.map((c, i) => ({
-    text: c, fontSize: 10.5, alignment: al(i), color: al(i) === 'right' ? INK : INK_MUTED, bold: al(i) === 'right',
+    text: c, fontSize: 10.5, alignment: al(i), color: al(i) === 'right' ? INK : INK_MUTED, bold: al(i) === 'right', ...nw(i),
     border: [false, false, false, true], borderColor: [RULE_SOFT, RULE_SOFT, RULE_SOFT, RULE_SOFT], margin: [0, 4, 0, 4],
   })));
   const body = [headRow, ...bodyRows];
@@ -338,7 +341,7 @@ export function buildDocDefinition(model: PdfReportModel): Node {
     if (s.title) content.push(...sectionTitle(s.title));
     if (s.type === 'rows') content.push(rowsTable(s.rows));
     else if (s.type === 'kpis') content.push(kpisRow(s.items));
-    else if (s.type === 'table') content.push(headedTable(s.head, s.rows, s.align, s.result));
+    else if (s.type === 'table') content.push(headedTable(s.head, s.rows, s.align, s.result, s.noWrap));
     else if (s.type === 'chart') content.push(s.chart === 'line' ? lineChart(s.data, s.unit) : barsChart(s.data, s.unit));
     else if (s.type === 'sign') content.push(signNode(s.signers));
     else if (s.type === 'note') content.push({ text: s.text, fontSize: 10.5, color: INK_MUTED, lineHeight: 1.35, margin: [0, 2, 0, 0] });

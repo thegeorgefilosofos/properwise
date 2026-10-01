@@ -279,7 +279,9 @@ export function coverModel(input: MeetingPackInput, meta: { id: string; issuedAt
       { label: 'ΤΑΚΚ οφειλόμενο / εισπραγμένο', value: `${fe(t.levyDue)} / ${fe(t.levyCollected)}` },
     ] });
   }
-  sections.push({ type: 'table', title: 'Τι λείπει', head: ['Τι', 'Για', 'Ποιος'], align: ['l', 'l', 'l'],
+  // Η στήλη «Για» δεν σπάει: το «Όλο το ΑΦΜ» τυλιγόταν σε δύο γραμμές, γιατί
+  // η πρώτη στήλη (`*`) έπαιρνε όλο το πλάτος και η «Για» έμενε στο ελάχιστο.
+  sections.push({ type: 'table', title: 'Τι λείπει', head: ['Τι', 'Για', 'Ποιος'], align: ['l', 'l', 'l'], noWrap: [1],
     rows: missing.length
       ? [...cut(missing).map(m => [m.blocking ? `${m.what} (απαραίτητο)` : m.what, m.scope, m.who]), ...(missing.length > COVER_ROWS ? [[`Και ${missing.length - COVER_ROWS} ακόμη στο «02 Έλεγχος φακέλου».`, '', '']] : [])]
       : [['Τίποτα. Ο φάκελος είναι πλήρης.', '', '']] });
