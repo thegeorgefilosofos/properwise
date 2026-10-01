@@ -8,7 +8,9 @@
 // key (Authorization: Bearer, από το vault) και η authorized() το δέχεται.
 // Προαιρετικά: RESEND_FROM (branded αποστολέας μετά την επαλήθευση domain).
 // ─────────────────────────────────────────────────────────────────────────
-import { emailShell, eyebrow, h, note, dataTable, listUnsubscribeHeaders } from '../_shared/emailTemplates.ts';
+import { emailShell, eyebrow, h, note, dataTable, listUnsubscribeHeaders } from '../_shared/emailTemplates.ts'
+import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
+;
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
@@ -51,13 +53,13 @@ function rowHtml(label: string, cur: number | null, prev: number | null): string
   // email που στέλνεται τα υπόλοιπα εμφανίζονταν με «—». Ενα σημάδι που σημαίνει
   // άλλοτε «δεν άλλαξε» και άλλοτε «δεν έχουμε προηγούμενη τιμή» δεν λέει τίποτα
   // από τα δύο· και ο αναγνώστης οθόνης το διαβάζει ως «παύλα».
-  const arrow = d == null ? '<span class="fa" style="color:#8a9099;">Χωρίς σύγκριση</span>'
-    : Math.abs(d) < 0.001 ? '<span class="fa" style="color:#8a9099;">Αμετάβλητο</span>'
-    : d > 0 ? `<span class="neg" style="color:#d93025;">▲ ${pct(Math.abs(d))}</span>` : `<span class="pos" style="color:#188038;">▼ ${pct(Math.abs(d))}</span>`
+  const arrow = d == null ? `<span class="fa" style="color:${C.mute};">Χωρίς σύγκριση</span>`
+    : Math.abs(d) < 0.001 ? `<span class="fa" style="color:${C.mute};">Αμετάβλητο</span>`
+    : d > 0 ? `<span class="neg" style="color:${C.negative};">▲ ${pct(Math.abs(d))}</span>` : `<span class="pos" style="color:${C.positive};">▼ ${pct(Math.abs(d))}</span>`
   return `<tr>
-    <td class="rule-b tx" style="padding:11px 0;border-bottom:1px solid #e8e8ed;font-size:13px;color:#4a4f55;">${label}</td>
-    <td class="ink rule-b" style="padding:11px 0;border-bottom:1px solid #e8e8ed;text-align:right;font-size:13px;font-weight:600;color:#1d1d1f;">${pct(cur)}</td>
-    <td class="rule-b" style="padding:11px 0;border-bottom:1px solid #e8e8ed;text-align:right;font-size:12px;">${arrow}</td>
+    <td class="rule-b tx" style="padding:11px 0;border-bottom:1px solid ${C.rule};font-size:13px;color:${C.text};">${label}</td>
+    <td class="ink rule-b" style="padding:11px 0;border-bottom:1px solid ${C.rule};text-align:right;font-size:13px;font-weight:600;color:${C.ink};">${pct(cur)}</td>
+    <td class="rule-b" style="padding:11px 0;border-bottom:1px solid ${C.rule};text-align:right;font-size:12px;">${arrow}</td>
   </tr>`
 }
 

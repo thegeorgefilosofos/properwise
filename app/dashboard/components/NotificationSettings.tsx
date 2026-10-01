@@ -218,7 +218,7 @@ export default function NotificationSettings({ userId }: { userId: string }) {
               control={<Toggle on={prefs.reminder_1day} onChange={v => update({ reminder_1day: v })} />} />
             <SetRow title="Την ίδια ημέρα" desc="Υπενθύμιση στις 08:00."
               control={<Toggle on={prefs.reminder_today} onChange={v => update({ reminder_today: v })} />} />
-            <SetRow title="Εκπρόθεσμα" desc="Ειδοποίηση για ληξιπρόθεσμες υποχρεώσεις."
+            <SetRow title="Ληξιπρόθεσμα" desc="Ειδοποίηση για ληξιπρόθεσμες υποχρεώσεις."
               control={<Toggle on={prefs.reminder_overdue} onChange={v => update({ reminder_overdue: v })} />} />
 
             <SetGroup>Ενοίκιο</SetGroup>

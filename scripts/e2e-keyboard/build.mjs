@@ -31,7 +31,7 @@ await build({
 });
 
 writeFileSync(join(out, 'globals.css'), readFileSync(join(root, 'app/globals.css'), 'utf8'));
-writeFileSync(join(out, 'keyboard.html'), `<!doctype html><html lang="el" data-mode="dark" data-theme="midnight"><head>
+writeFileSync(join(out, 'keyboard.html'), `<!doctype html><html lang="el" data-mode="dark"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Πάγκος πληκτρολογίου</title>
 <link rel="stylesheet" href="./globals.css">

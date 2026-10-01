@@ -292,9 +292,9 @@ export function OverflowMenu({actions,align='right',dark}:{actions:OverflowActio
           σχήμα του: το ίδιο ιδίωμα που κρατά τα τετράγωνα σημάδια στα 18. */}
       <button ref={btnRef} className="po-box" title="Ενέργειες" aria-label="Ενέργειες" onClick={()=>setOpen(v=>!v)}
         style={{width:28,height:28,borderRadius:T.radius.pill,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-          border:`1px solid ${dark?'rgba(255,255,255,0.25)':'var(--border-subtle)'}`,
-          background:dark?'rgba(0,0,0,0.45)':(open?'var(--bg-hover)':'var(--bg-surface)'),
-          color:dark?'#fff':'var(--text-secondary)',backdropFilter:dark?'blur(4px)':undefined}}>
+          border:`1px solid ${dark?'color-mix(in srgb, var(--on-media) 25%, transparent)':'var(--border-subtle)'}`,
+          background:dark?'var(--scrim-media)':(open?'var(--bg-hover)':'var(--bg-surface)'),
+          color:dark?'var(--on-media)':'var(--text-secondary)',backdropFilter:dark?'blur(4px)':undefined}}>
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
       </button>
       {open&&rect&&typeof document!=='undefined'&&createPortal(

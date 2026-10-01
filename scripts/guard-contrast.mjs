@@ -12,239 +12,148 @@
 // ΓΙΑΤΙ ΔΕΝ ΤΟ ΕΠΙΑΝΕ ΤΙΠΟΤΑ: η αντίθεση ελεγχόταν με το χέρι και το χέρι
 // έγραφε το αποτέλεσμα σε σχόλιο. Ενα σχόλιο δεν ξαναϋπολογίζεται όταν αλλάξει
 // το χρώμα δίπλα του και δεν αμφισβητείται από κανέναν όταν ακούγεται λογικό.
-// Το ίδιο το αρχείο έλεγε τρεις γραμμές πιο πάνω «ΠΟΤΕ δεν γράφουμε #fff πάνω
-// σε γέμισμα» και αμέσως μετά έγραφε #fff πάνω σε γέμισμα.
+//
+// ΤΟ ΔΕΥΤΕΡΟ ΠΕΡΙΣΤΑΤΙΚΟ, ΟΚΤΩΒΡΙΟΣ 2026: Ο ΦΥΛΑΚΑΣ ΜΕΤΡΟΥΣΕ ΤΑ ΕΥΚΟΛΑ.
+// Δεκαπέντε ζεύγη, όλα πάνω σε καθαρή επιφάνεια. Δεν άγγιζε το `color-mix()`,
+// οπότε κανένα -soft, κανένα πέπλο αιώρησης, κανένα σήμα. Ακριβώς εκεί έπεφτε
+// το φωτεινό θέμα: 3η βαθμίδα 4,08–4,44, γαλάζιο 4,05–4,49 και κόκκινο
+// 4,11–4,28:1 κάτω από επιλογή ή αιώρηση, ενώ ο φύλακας τύπωνε ✅. Και το ένα
+// από τα δεκαπέντε (--logo-mark-text) δεν υπήρχε πια: μετριόταν ως
+// «εκτός μέτρησης» σε κάθε εκτέλεση χωρίς να το προσέχει κανείς.
 //
 // ΤΙ ΚΑΝΕΙ. Διαβάζει τα ΠΡΑΓΜΑΤΙΚΑ token του app/globals.css ανά θέμα, λύνει
-// τα var() και υπολογίζει τον λόγο αντίθεσης WCAG 2.1 για τα ζεύγη που
-// δηλώνονται εδώ. Κάθε ζεύγος έχει όριο και λόγο.
-//
-// ΤΙ ΔΕΝ ΚΑΝΕΙ. Δεν αγγίζει τιμές `color-mix()`: δεν λύνονται χωρίς μηχανή
-// χρωμάτων του περιηγητή και ένας φύλακας που μαντεύει είναι χειρότερος από
-// φύλακα που δηλώνει τι δεν κοίταξε. Οσα παραλείπονται τυπώνονται ονομαστικά.
+// var() ΚΑΙ color-mix(in srgb) (scripts/lib/palette.mjs) και συνθέτει τα
+// ημιδιάφανα πάνω στην επιφάνεια όπου κάθονται. Μετρά:
+//   · κείμενο (τρεις βαθμίδες, γαλάζιο, τέσσερις τόνοι) σε τέσσερις επιφάνειες,
+//     καθαρές και κάτω από το πέπλο αιώρησης και επιλογής — 4,5:1
+//   · κάθε σήμα: μελάνι on-container και ο ίδιος ο τόνος πάνω στο -soft του — 4,5:1
+//   · το μελάνι γεμίσματος πάνω σε κάθε κορεσμένο γέμισμα — 4,5:1
+//   · όρια πεδίων, σειρές γραφημάτων, δαχτυλίδι εστίασης — 3:1 (WCAG 1.4.11)
+//   · τη βιτρίνα (--mkt-*) και την παλέτα αυξημένης αντίθεσης
+//   · ότι το χρώμα της μπάρας του περιηγητή (lib/core/themeColor.ts) είναι
+//     το --bg-base κάθε θέματος.
+// ΚΑΘΕ token που δεν λύνεται είναι ΣΦΑΛΜΑ, όχι παράλειψη: ένα ζεύγος που δεν
+// μετριέται είναι ένα ζεύγος που κάποτε θα σπάσει σιωπηλά.
 //
 // Τρέξε: node scripts/guard-contrast.mjs
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
+import { readPalettes, token, over, contrast, toHex, gr } from './lib/palette.mjs'
 
-const CSS = new URL('../app/globals.css', import.meta.url).pathname
+// ── ΤΑ ΖΕΥΓΗ ─────────────────────────────────────────────────────────────
+// `on` είναι επιφάνεια, ή [πέπλο, επιφάνεια] για ημιδιάφανο πάνω σε αδιαφανές.
+const SURFACES = ['--bg-base', '--bg-surface', '--bg-elevated', '--bg-overlay']
+const VEILS = [null, '--bg-hover', '--accent-soft']
+const TEXT = ['--text-primary', '--text-secondary', '--text-tertiary', '--accent', '--positive', '--negative', '--warning', '--info']
+const TONES = ['accent', 'info', 'positive', 'warning', 'negative']
+const FILLS = ['--accent', '--accent-hover', '--positive', '--negative', '--warning', '--info', '--ch-airbnb', '--ch-booking', '--ch-vrbo']
 
-// ── ΤΑ ΖΕΥΓΗ ΠΟΥ ΕΛΕΓΧΟΝΤΑΙ ───────────────────────────────────────────────
-// `min` κατά WCAG 2.1: 4,5 για κείμενο, 3,0 για μεγάλο κείμενο και για
-// γραφικά στοιχεία (1.4.11). Το σήμα είναι γραφικό, αλλά κουβαλά γράμμα σε
-// 22px — κρίνεται ως κείμενο.
-const PAIRS = [
-  { ink: '--text-primary',   on: '--bg-base',    min: 4.5, why: 'κύριο κείμενο στο βάθος της σελίδας' },
-  { ink: '--text-primary',   on: '--bg-surface', min: 4.5, why: 'κύριο κείμενο μέσα σε κάρτα' },
-  { ink: '--text-primary',   on: '--bg-elevated',min: 4.5, why: 'κύριο κείμενο σε ανυψωμένη επιφάνεια' },
-  { ink: '--text-secondary', on: '--bg-base',    min: 4.5, why: 'δευτερεύον κείμενο στο βάθος' },
-  { ink: '--text-secondary', on: '--bg-surface', min: 4.5, why: 'δευτερεύον κείμενο σε κάρτα' },
-  { ink: '--text-tertiary',  on: '--bg-base',    min: 4.5, why: 'τριτεύον κείμενο στο βάθος' },
-  { ink: '--text-tertiary',  on: '--bg-surface', min: 4.5, why: 'τριτεύον κείμενο σε κάρτα' },
-  { ink: '--on-tone',        on: '--accent',     min: 4.5, why: 'κείμενο σε κουμπί δράσης' },
-  { ink: '--on-tone',        on: '--positive',   min: 4.5, why: 'κείμενο σε θετικό γέμισμα' },
-  { ink: '--on-tone',        on: '--negative',   min: 4.5, why: 'κείμενο σε αρνητικό γέμισμα' },
-  { ink: '--on-tone',        on: '--warning',    min: 4.5, why: 'κείμενο σε γέμισμα προσοχής' },
-  { ink: '--on-tone',        on: '--info',       min: 4.5, why: 'κείμενο σε ενημερωτικό γέμισμα' },
-  { ink: '--logo-mark-text', on: '--accent',     min: 4.5, why: 'το «P» του σήματος, σε 22 ως 34px' },
-  { ink: '--accent',         on: '--bg-base',    min: 3.0, why: 'σύνδεσμος και εικονίδιο στο βάθος' },
-  { ink: '--accent',         on: '--bg-surface', min: 3.0, why: 'σύνδεσμος και εικονίδιο σε κάρτα' },
-]
-
-// ── ΑΝΑΓΝΩΣΗ ΤΩΝ TOKEN ΑΝΑ ΘΕΜΑ ───────────────────────────────────────────
-// Ο επιλογέας `:root, [data-mode="dark"]` δίνει ΚΑΙ τη βάση ΚΑΙ το σκοτεινό:
-// η εφαρμογή ανοίγει σκοτεινή και το φωτεινό είναι η εξαίρεση που γράφεται
-// στο `:root[data-mode="light"]`. Τα δύο θέματα χτίζονται με αυτή τη σειρά.
-// ΤΑ ΣΧΟΛΙΑ ΦΕΥΓΟΥΝ ΠΡΩΤΑ ΚΑΙ ΑΥΤΟ ΔΕΝ ΕΙΝΑΙ ΚΑΛΛΩΠΙΣΜΟΣ. Η πρώτη εκδοχή
-// τα αφαιρούσε μόνο από τον επιλογέα και το μπλοκ του φωτεινού θέματος
-// χανόταν ολόκληρο: μέσα του υπάρχει σχόλιο με άγκιστρα, που έσπαγε το
-// ταίριασμα του σώματος. Ο φύλακας τύπωνε «περνούν» έχοντας μετρήσει ΜΟΝΟ το
-// σκοτεινό. Γι' αυτό υπάρχει και ο έλεγχος ότι μετρήθηκαν ΚΑΙ ΤΑ ΔΥΟ θέματα.
-const raw = readFileSync(CSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
-
-/**
- * ΤΟ `@media` ΕΞΑΦΑΝΙΖΕ ΤΗ ΜΕΤΑΛΛΑΞΗ ΚΑΙ ΜΑΖΙ ΤΗΣ ΤΗΝ ΑΞΙΑ ΤΟΥ ΦΥΛΑΚΑ.
- *
- * Η `blocks()` δεν βλέπει περιτύλιγμα: το `@media (prefers-contrast: more) {
- * :root[data-mode="light"] { --text-secondary: … } }` της έδινε απλώς άλλο
- * ένα μπλοκ φωτεινού θέματος, γραμμένο πιο κάτω στο αρχείο. Μόλις μπήκε η
- * παλέτα αυξημένης αντίθεσης, ΚΑΘΕ κακή τιμή του βασικού θέματος σκεπαζόταν
- * από την καλή τιμή της εξαίρεσης: ο πάγκος μεταλλάξεων έδειξε τον φύλακα να
- * μένει πράσινος με το σφάλμα του μέσα.
- *
- * Τα περιτυλίγματα κόβονται με μέτρημα αγκίστρων, όχι με regex: το φύλλο έχει
- * ένθετα `@media` μέσα σε `@supports` και ένα regex θα έκοβε ως το πρώτο `}`.
- * Ο κάθε χώρος μετριέται μετά ΧΩΡΙΣΤΑ, ως δικό του θέμα.
- */
-function splitAtRules(text) {
-  let base = '', i = 0
-  const wrapped = []
-  while (i < text.length) {
-    const at = text.indexOf('@media', i)
-    if (at < 0) { base += text.slice(i); break }
-    base += text.slice(i, at)
-    const open = text.indexOf('{', at)
-    if (open < 0) { base += text.slice(at); break }
-    let depth = 1, j = open + 1
-    for (; j < text.length && depth > 0; j++) {
-      if (text[j] === '{') depth++
-      else if (text[j] === '}') depth--
-    }
-    wrapped.push({ condition: text.slice(at + 6, open).trim(), body: text.slice(open + 1, j - 1) })
-    i = j
-  }
-  return { base, wrapped }
+const PAIRS = []
+for (const ink of TEXT) for (const s of SURFACES) for (const v of VEILS)
+  PAIRS.push({ ink, on: v ? [v, s] : s, min: 4.5, why: v ? `κείμενο κάτω από ${v === '--bg-hover' ? 'αιώρηση' : 'επιλογή'}` : 'κείμενο σε επιφάνεια' })
+for (const t of TONES) for (const s of ['--bg-surface', '--bg-elevated', '--bg-overlay']) {
+  PAIRS.push({ ink: `--${t}-on-container`, on: [`--${t}-soft`, s], min: 4.5, why: 'μελάνι σήματος πάνω στο φόντο του' })
+  PAIRS.push({ ink: `--${t}`, on: [`--${t}-soft`, s], min: 4.5, why: 'τόνος πάνω στο δικό του -soft' })
 }
+for (const f of FILLS) PAIRS.push({ ink: '--on-tone', on: f, min: 4.5, why: 'κείμενο σε κορεσμένο γέμισμα (κουμπί, σήμα)' })
+PAIRS.push({ ink: '--text-inverse', on: '--text-primary', min: 4.5, why: 'ανεστραμμένη ετικέτα / υπόδειξη' })
+// Μη κειμενικά, 3:1. Το όριο του ΠΕΔΙΟΥ είναι χειριστήριο· το όριο της κάρτας
+// δεν είναι και επίτηδες δεν μετριέται εδώ.
+for (const s of ['--bg-base', '--bg-surface', '--bg-elevated'])
+  PAIRS.push({ ink: '--border-control', on: s, min: 3, why: 'όριο πεδίου, κουτιού, διακόπτη' })
+for (const s of SURFACES) PAIRS.push({ ink: '--accent', on: s, min: 3, why: 'δαχτυλίδι εστίασης' })
+// Τα γραφήματα κάθονται σε κάρτα (--bg-surface).
+for (const c of ['--series-in', '--series-out', '--chart-cat-1', '--chart-cat-2', '--chart-cat-3', '--chart-cat-4', '--chart-cat-5'])
+  PAIRS.push({ ink: c, on: '--bg-surface', min: 3, why: 'σειρά γραφήματος πάνω στην κάρτα' })
 
-const { base: css, wrapped } = splitAtRules(raw)
+// Η βιτρίνα είναι πάντα σκοτεινή: μετριέται μία φορά, στη βάση.
+const MKT = []
+for (const ink of ['--mkt-text-primary', '--mkt-text-secondary', '--mkt-text-tertiary', '--mkt-accent', '--mkt-positive', '--mkt-negative'])
+  for (const s of ['--mkt-bg-base', '--mkt-bg-surface', '--mkt-bg-elevated']) MKT.push({ ink, on: s, min: 4.5, why: 'κείμενο της βιτρίνας' })
+MKT.push({ ink: '--mkt-accent-text', on: '--mkt-accent', min: 4.5, why: 'κουμπί της βιτρίνας' })
 
-// Η παλέτα της «αύξησης αντίθεσης» είναι ΞΕΧΩΡΙΣΤΟ θέμα, όχι διακόσμηση: αν
-// πέσει κάτω από τα όρια, ο χρήστης που ζήτησε ΠΕΡΙΣΣΟΤΕΡΗ αντίθεση παίρνει
-// λιγότερη. Μετριέται με τα ίδια ζεύγη, στρωμένη πάνω στη βάση.
-const contrastCss = wrapped.filter(w => /prefers-contrast/.test(w.condition)).map(w => w.body).join('\n')
-
-/**
- * Ολα τα μπλοκ, με τον επιλογέα τους.
- *
- * ΤΟ ΑΓΚΙΣΤΡΟ ΚΛΕΙΣΙΜΑΤΟΣ ΔΕΝ ΚΑΤΑΝΑΛΩΝΕΤΑΙ. Η πρώτη εκδοχή ξεκινούσε το
- * ταίριασμα με `(^|\})`, δηλαδή έτρωγε το `}` του προηγούμενου μπλοκ — και
- * επειδή το επόμενο ταίριασμα ζητούσε πάλι `}` από μπροστά, ο φύλακας
- * διάβαζε ΕΝΑ ΜΠΛΟΚ ΣΤΑ ΔΥΟ. Το μπλοκ του φωτεινού θέματος έπεφτε ακριβώς
- * σε παράλειψη, οπότε το «φωτεινό» μετριόταν με τα χρώματα του σκοτεινού και
- * ο φύλακας τύπωνε ✅ έχοντας ελέγξει δύο φορές το ίδιο πράγμα.
- * Ο επιλογέας δεν περιέχει ποτέ άγκιστρο, οπότε δεν χρειάζεται πρόθεμα.
- */
-function blocks(text) {
-  const out = []
-  const re = /([^{}]+)\{([^{}]*)\}/g
-  let m
-  while ((m = re.exec(text))) {
-    const selector = m[1].trim()
-    if (selector) out.push({ selector, body: m[2] })
-  }
-  return out
-}
-
-function declarations(body) {
-  const out = new Map()
-  const re = /(--[\w-]+)\s*:\s*([^;]+);/g
-  let m
-  while ((m = re.exec(body))) out.set(m[1], m[2].trim())
-  return out
-}
-
-// Η ΒΑΣΗ ΕΙΝΑΙ ΤΟ ΣΚΟΤΕΙΝΟ ΚΑΙ ΤΟ ΦΩΤΕΙΝΟ ΕΙΝΑΙ Η ΕΞΑΙΡΕΣΗ.
-// Ο επιλογέας `:root, [data-mode="dark"]` κάνει δύο δουλειές ταυτόχρονα:
-// ορίζει το σκοτεινό ΚΑΙ γίνεται η προεπιλογή κάθε νέου επισκέπτη. Το φωτεινό
-// θέμα ΔΕΝ ξαναγράφει τα πάντα — γράφει μόνο όσα αλλάζουν. Αρα το φωτεινό
-// χτίζεται πάνω στην ίδια βάση, αλλιώς ο φύλακας μετρά ελλιπή παλέτα.
-function palette(text, seed) {
-  const base = new Map(seed?.base ?? [])
-  const overrides = { light: new Map(seed?.light ?? []), dark: new Map(seed?.dark ?? []) }
-  for (const b of blocks(text)) {
-    const hitsRoot = /(^|,)\s*:root\s*(,|$)/.test(b.selector)
-    const dark = b.selector.includes('[data-mode="dark"]')
-    const light = b.selector.includes('[data-mode="light"]')
-    if (!hitsRoot && !dark && !light) continue
-    for (const [k, v] of declarations(b.body)) {
-      if (hitsRoot) base.set(k, v)
-      if (dark) overrides.dark.set(k, v)
-      if (light) overrides.light.set(k, v)
-    }
-  }
-  return {
-    parts: { base, light: overrides.light, dark: overrides.dark },
-    light: new Map([...base, ...overrides.light]),
-    dark: new Map([...base, ...overrides.dark]),
-  }
-}
-
-const basePalette = palette(css)
-const theme = basePalette
-// Οι χώροι που μετριούνται. Το `@media print` έχει δικό του φύλακα μελανιού
-// (lib/print/ink.ts) και δεν μπαίνει εδώ.
-const SPACES = [{ name: 'βασικό', theme: basePalette }]
-if (contrastCss.trim())
-  SPACES.push({ name: 'αυξημένη αντίθεση', theme: palette(contrastCss, basePalette.parts) })
-
-/** Λύνει var(--x) όσο χρειάζεται. Επιστρέφει null για ό,τι δεν είναι hex. */
-function resolve(map, name, depth = 0) {
-  if (depth > 8) return null
-  const raw = map.get(name)
-  if (!raw) return null
-  const v = raw.trim()
-  if (/^#[0-9a-f]{6}$/i.test(v)) return v.toLowerCase()
-  if (/^#[0-9a-f]{3}$/i.test(v)) return ('#' + v.slice(1).split('').map(c => c + c).join('')).toLowerCase()
-  const ref = v.match(/^var\(\s*(--[\w-]+)\s*\)$/)
-  if (ref) return resolve(map, ref[1], depth + 1)
-  return null
-}
-
-const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4) }
-const lum = h => 0.2126 * lin(parseInt(h.slice(1, 3), 16))
-  + 0.7152 * lin(parseInt(h.slice(3, 5), 16))
-  + 0.0722 * lin(parseInt(h.slice(5, 7), 16))
-const ratio = (a, b) => {
-  const x = lum(a), y = lum(b)
-  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
-}
-const gr = n => n.toFixed(2).replace('.', ',')
+const { main, contrast: hc } = readPalettes()
+const SPACES = [{ name: 'βασικό', theme: main }]
+if (hc) SPACES.push({ name: 'αυξημένη αντίθεση', theme: hc })
 
 const fails = []
-const skipped = []
+const unresolved = []
 let checked = 0
 
-for (const space of SPACES) {
-  for (const mode of ['light', 'dark']) {
-    const map = space.theme[mode]
-    for (const p of PAIRS) {
-      const ink = resolve(map, p.ink)
-      const on = resolve(map, p.on)
-      if (!ink || !on) {
-        skipped.push(`${space.name} · ${mode} · ${p.ink} πάνω σε ${p.on} — ${!ink ? p.ink : p.on} δεν λύνεται σε hex`)
-        continue
-      }
-      checked++
-      const r = ratio(ink, on)
-      if (r < p.min) fails.push({ space: space.name, mode, ...p, ink2: ink, on2: on, r })
-    }
-  }
+const surfaceOf = (map, on) => {
+  if (!Array.isArray(on)) return token(map, on)
+  const [veil, base] = on
+  const v = token(map, veil), b = token(map, base)
+  return v && b ? over(v, b) : null
 }
+const label = on => Array.isArray(on) ? `${on[0]} πάνω σε ${on[1]}` : on
+
+function measure(space, mode, map, p) {
+  const ink = token(map, p.ink)
+  const bg = surfaceOf(map, p.on)
+  if (!ink || !bg) { unresolved.push(`${space} · ${mode} · ${p.ink} πάνω σε ${label(p.on)}`); return }
+  checked++
+  // Ημιδιάφανο μελάνι (π.χ. όριο) κρίνεται όπως φαίνεται: συντεθειμένο.
+  const inkSolid = ink[3] < 1 ? over(ink, bg) : ink
+  const r = contrast(inkSolid, bg)
+  if (r < p.min) fails.push({ space, mode, ...p, ink2: toHex(inkSolid), on2: toHex(bg), r })
+}
+
+for (const space of SPACES) for (const mode of ['light', 'dark']) for (const p of PAIRS) measure(space.name, mode, space.theme[mode], p)
+for (const p of MKT) measure('βιτρίνα', 'dark', main.dark, p)
 
 // ── ΟΤΙ Ο ΦΥΛΑΚΑΣ ΔΙΑΒΑΣΕ ΔΥΟ ΔΙΑΦΟΡΕΤΙΚΑ ΘΕΜΑΤΑ ────────────────────────────
 // Δεν αρκεί «βρήκα token». Αν το ένα θέμα δεν διαβαστεί, ο φύλακας μετρά δύο
 // φορές το άλλο και τυπώνει ✅ χωρίς να έχει ελέγξει τίποτα. Το `--accent`
 // είναι ΕΞ ΟΡΙΣΜΟΥ διαφορετικό στα δύο θέματα: αν βγει ίδιο, η ανάγνωση είναι
-// χαλασμένη, όχι η παλέτα.
+// χαλασμένη, όχι η παλέτα. (ΤΑ ΣΧΟΛΙΑ ΦΕΥΓΟΥΝ ΠΡΩΤΑ και τα `@media` κόβονται
+// με μέτρημα αγκίστρων: δύο φορές στο παρελθόν το μπλοκ του φωτεινού χανόταν
+// και ο φύλακας μετρούσε μόνο το σκοτεινό — βλ. scripts/lib/palette.mjs.)
 for (const mode of ['light', 'dark']) {
-  if (theme[mode].size < 20) {
-    console.error(`✗ Το ${mode === 'light' ? 'φωτεινό' : 'σκοτεινό'} θέμα διάβασε μόλις ${theme[mode].size} token.`)
+  if (main[mode].size < 20) {
+    console.error(`✗ Το ${mode === 'light' ? 'φωτεινό' : 'σκοτεινό'} θέμα διάβασε μόλις ${main[mode].size} token.`)
     console.error('  Ο φύλακας δεν βλέπει το μπλοκ του, άρα δεν ελέγχει τίποτα εκεί.')
     process.exit(1)
   }
 }
-if (resolve(theme.light, '--accent') === resolve(theme.dark, '--accent')) {
+const accentOf = m => { const c = token(main[m], '--accent'); return c && toHex(c) }
+if (accentOf('light') === accentOf('dark')) {
   console.error('✗ Τα δύο θέματα δίνουν το ίδιο --accent. Ο φύλακας διαβάζει το ένα δύο φορές.')
-  console.error('  Δες τη συνάρτηση blocks(): κάποιο μπλοκ δεν φτάνει ως εδώ.')
-  process.exit(1)
-}
-if (!checked) {
-  console.error('✗ Κανένα ζεύγος δεν μετρήθηκε. Ο φύλακας δεν διαβάζει τα token — δες τον επιλογέα.')
   process.exit(1)
 }
 
-for (const s of skipped) console.log(`  ⋯ ${s}`)
+// ── Η ΜΠΑΡΑ ΤΟΥ ΠΕΡΙΗΓΗΤΗ = ΤΟ ΦΟΝΤΟ ΚΑΘΕ ΘΕΜΑΤΟΣ ───────────────────────────
+// Το meta theme-color θέλει κυριολεκτικό χρώμα, άρα αντίγραφο του --bg-base.
+const barSrc = readFileSync(new URL('../lib/core/themeColor.ts', import.meta.url), 'utf8')
+for (const mode of ['light', 'dark']) {
+  const lit = barSrc.match(new RegExp(`${mode}:\\s*'(#[0-9a-fA-F]{6})'`))?.[1]?.toLowerCase()
+  const want = token(main[mode], '--bg-base')
+  checked++
+  if (!lit || !want || lit !== toHex(want))
+    fails.push({ space: 'μπάρα περιηγητή', mode, ink: 'THEME_COLOR', on: '--bg-base', ink2: lit, on2: want && toHex(want), r: 0, min: 0,
+      why: 'το lib/core/themeColor.ts πρέπει να είναι ίσο με το --bg-base του θέματος', exact: true })
+}
+
+if (unresolved.length) {
+  console.error(`✗ ${unresolved.length} ζεύγη δεν μετρήθηκαν: κάποιο token δεν λύνεται σε χρώμα.\n`)
+  for (const u of unresolved.slice(0, 30)) console.error('  ' + u)
+  if (unresolved.length > 30) console.error(`  … και ${unresolved.length - 30} ακόμη`)
+  console.error('\n  Αν το token διαγράφηκε, βγάλ\' το από τα ζεύγη ΕΔΩ· αν μετονομάστηκε, άλλαξέ το.')
+  process.exit(1)
+}
 
 if (fails.length) {
-  console.error(`✗ ${fails.length} ${fails.length === 1 ? 'ζεύγος' : 'ζεύγη'} κάτω από το όριο αντίθεσης:\n`)
-  for (const f of fails) {
+  console.error(`✗ ${fails.length} ${fails.length === 1 ? 'ζεύγος' : 'ζεύγη'} κάτω από το όριό ${fails.length === 1 ? 'του' : 'τους'}:\n`)
+  for (const f of fails.slice(0, 30)) {
     console.error(`  ${f.space} · ${f.mode} · ${f.why}`)
-    console.error(`    ${f.ink} (${f.ink2}) πάνω σε ${f.on} (${f.on2})`)
+    if (f.exact) { console.error(`    ${f.ink} = ${f.ink2}, ${f.on} = ${f.on2}\n`); continue }
+    console.error(`    ${f.ink} (${f.ink2}) πάνω σε ${label(f.on)} (${f.on2})`)
     console.error(`    ${gr(f.r)}:1, όριο ${gr(f.min)}:1\n`)
   }
+  if (fails.length > 30) console.error(`  … και ${fails.length - 30} ακόμη\n`)
   console.error('  Το χρώμα αλλάζει στο app/globals.css. Αν το ζεύγος δεν συνυπάρχει')
-  console.error('  ποτέ στην οθόνη, βγάλ\' το από το PAIRS εδώ, με γραμμένο τον λόγο.')
+  console.error('  ποτέ στην οθόνη, βγάλ\' το από τα ζεύγη εδώ, με γραμμένο τον λόγο.')
   process.exit(1)
 }
 
-console.log(`✅ Αντίθεση: ${checked} ζεύγη σε ${SPACES.length * 2} θέματα περνούν τα όριά τους${skipped.length ? `, ${skipped.length} εκτός μέτρησης` : ''}.`)
+console.log(`✅ Αντίθεση: ${checked} ζεύγη σε ${SPACES.length * 2} θέματα και στη βιτρίνα περνούν τα όριά τους (μαζί με πέπλα, -soft και color-mix).`)

@@ -950,7 +950,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               διδάσκει ότι οι ρυθμίσεις δεν μετράνε.
               Τα ποσά γράφονται πάντα με δύο δεκαδικά, γιατί αλλιώς η υποδιαστολή
               κάθεται σε άλλη θέση σε κάθε γραμμή και η στήλη σπάει. */}
-          <SetRow title="Ορίζοντας προθεσμιών" desc="Πόσο μπροστά κοιτά η λίστα «Τι χρειάζεται τώρα». Ο,τι είναι πιο μακριά ζει στο Ημερολόγιο· οι εκπρόθεσμες εμφανίζονται πάντα."
+          <SetRow title="Ορίζοντας προθεσμιών" desc="Πόσο μπροστά κοιτά η λίστα «Τι χρειάζεται τώρα». Ο,τι είναι πιο μακριά ζει στο Ημερολόγιο· οι ληξιπρόθεσμες εμφανίζονται πάντα."
             control={<div style={{ width: 264 }}>
               <CustomSelect ariaLabel="Ορίζοντας προθεσμιών" value={String(prefs.agendaHorizonDays)}
                 onChange={v => updatePrefs({ agendaHorizonDays: Number(v) as AppPreferences['agendaHorizonDays'] })}

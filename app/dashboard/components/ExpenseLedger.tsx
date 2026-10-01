@@ -765,7 +765,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
                χωρούσε ήδη και ο διαχωριστής το σπρώχνει δεξιά όπως πριν. */
             flex: '1 1 300px', maxWidth: 320,
             height: T.h.md, padding: '0 14px', boxSizing: 'border-box',
-            borderRadius: T.radius.btn, border: '1px solid var(--border-default)',
+            borderRadius: T.radius.btn, border: '1px solid var(--border-control)',
             background: 'var(--bg-surface)', color: 'var(--text-primary)',
             fontSize: 'var(--fs-base)', fontFamily: T.font.sans, outline: 'none',
           }}

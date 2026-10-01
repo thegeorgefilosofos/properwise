@@ -56,15 +56,21 @@ export function MonthBars({ data, activeYm }: { data: { ym: string; label: strin
   );
 }
 
-// Δαχτυλίδι (donut) κατανομής — premium, στο ΓΑΛΑΖΙΟ μας: τόξα σε αποχρώσεις accent με
-// στρογγυλά άκρα και μικρά κενά, ζωντανή αντίδραση (το τόξο/υπόμνημα που δείχνει ο
-// κέρσορας ανοίγει, φωτίζεται με λάμψη) και κέντρο που δείχνει κατηγορία, ποσό και %.
+// Δαχτυλίδι (donut) κατανομής — στο ΓΑΛΑΖΙΟ μας: πέντε αδιαφανή σκαλιά
+// (--chart-cat-1…5, το «Λοιπά» στον ουδέτερο σχιστόλιθο), στρογγυλά άκρα και
+// μικρά κενά, ζωντανή αντίδραση (το τόξο που δείχνει ο κέρσορας παχαίνει, η
+// γραμμή του υπομνήματος φωτίζεται) και κέντρο με κατηγορία, ποσό και %.
+// ΗΤΑΝ ΕΞΙ ΔΙΑΦΑΝΕΙΕΣ ΤΟΥ ACCENT: το τελευταίο τόξο 1,6:1 πάνω στην κάρτα.
+// Τα ονόματα γράφονται ολόκληρα, όχι συναρμολογημένα: ο φύλακας των token
+// (scripts/guard-tokens.mjs) ελέγχει ότι το καθένα ορίζεται.
+const CHART_CAT = ['var(--chart-cat-1)', 'var(--chart-cat-2)', 'var(--chart-cat-3)', 'var(--chart-cat-4)', 'var(--chart-cat-5)'] as const;
+
 export function Donut({ slices }: { slices: { label: string; value: number }[] }) {
   const [hi, setHi] = useState<number | null>(null);
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total <= 0) return null;
   const sorted = slices.filter(s => s.value > 0).sort((a, b) => b.value - a.value);
-  const MAX = 6;
+  const MAX = 5;
   let segs = sorted;
   if (sorted.length > MAX) {
     const head = sorted.slice(0, MAX - 1);
@@ -73,7 +79,9 @@ export function Donut({ slices }: { slices: { label: string; value: number }[] }
   }
   const r = 56, sw = 14, C = 2 * Math.PI * r;
   const GAP = segs.length > 1 ? 6 : 0;   // κενό μεταξύ τόξων (σε μονάδες περιμέτρου)
-  const shade = (i: number, on: boolean) => `color-mix(in srgb, var(--accent) ${Math.min(100, Math.max(32, 94 - i * 13) + (on ? 6 : 0))}%, transparent)`;
+  // Ενα σκαλί ανά τόξο, με τη σειρά του μεγέθους. Το «Λοιπά» είναι πάντα το
+  // τελευταίο τόξο, άρα παίρνει πάντα το ουδέτερο πέμπτο.
+  const shade = (i: number) => CHART_CAT[Math.min(i, CHART_CAT.length - 1)];
   const active = hi != null ? segs[hi] : null;
   // ΤΑ ΞΕΚΙΝΗΜΑΤΑ ΤΩΝ ΤΟΞΩΝ ΥΠΟΛΟΓΙΖΟΝΤΑΙ ΠΡΙΝ ΤΗΝ ΑΠΟΔΟΣΗ. Ήταν συσσωρευτής
   // `let off` που άλλαζε ΜΕΣΑ στο .map(): τιμή που γράφεται αφού έχει ξεκινήσει
@@ -92,10 +100,10 @@ export function Donut({ slices }: { slices: { label: string; value: number }[] }
             const raw = (s.value / total) * C;
             const len = Math.max(0.5, raw - GAP);
             const el = (
-              <circle key={i} cx="76" cy="76" r={r} fill="none" stroke={shade(i, on)} strokeWidth={sw} strokeLinecap="round"
+              <circle key={i} cx="76" cy="76" r={r} fill="none" stroke={shade(i)} strokeWidth={on ? sw + 3 : sw} strokeLinecap="round"
                 strokeDasharray={`${len.toFixed(2)} ${(C - len).toFixed(2)}`} strokeDashoffset={(-starts[i]).toFixed(2)}
                 onMouseEnter={() => setHi(i)} onMouseLeave={() => setHi(null)}
-                style={{ transition: 'stroke 0.18s ease', cursor: 'default' }} />
+                style={{ transition: 'stroke-width 0.18s ease', cursor: 'default' }} />
             );
             return el;
           })}
@@ -110,7 +118,7 @@ export function Donut({ slices }: { slices: { label: string; value: number }[] }
           return (
             <div key={i} onMouseEnter={() => setHi(i)} onMouseLeave={() => setHi(null)}
               style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontFamily: T.font.sans, padding: '4px 8px', margin: '0 -8px', borderRadius: T.radius.chip, background: on ? 'var(--bg-elevated)' : 'transparent', cursor: 'default', transition: 'background 0.15s' }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: shade(i, on), flexShrink: 0, transition: 'background 0.15s' }} />
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: shade(i), flexShrink: 0 }} />
               <span style={{ flex: 1, minWidth: 0, color: on ? 'var(--text-primary)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.15s' }}>{s.label}</span>
               <span style={{ color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)' }}>{feAuto(s.value)}</span>
               <span style={{ width: 34, textAlign: 'right', color: on ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontWeight: 700, transition: 'color 0.15s' }}>{Math.round((s.value / total) * 100)}%</span>

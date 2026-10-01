@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { PRODUCT_NAME, PRODUCT_TAGLINE } from '@/lib/core/site';
 import { BRAND_DARK_BG } from '@/components/BrandMark';
+import { THEME_COLOR } from '@/lib/core/themeColor';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Web App Manifest — κάνει το PROPERWISE εγκαταστάσιμο σαν εφαρμογή.
@@ -55,7 +56,9 @@ export default function manifest(): MetadataRoute.Manifest {
     // δεν φαίνεται σαν τετράγωνο πάνω σε άλλο σκούρο. Η μπάρα μένει στο
     // --bg-base, αφού από πάνω της ζωγραφίζεται η ίδια η εφαρμογή.
     background_color: BRAND_DARK_BG,
-    theme_color: '#070b12',
+    // Το manifest δεν ξέρει θέμα· η εγκατεστημένη εφαρμογή ανοίγει σκούρα και
+    // ο ThemeProvider αλλάζει τη μπάρα αν ο χρήστης έχει διαλέξει φωτεινό.
+    theme_color: THEME_COLOR.dark,
     categories: ['finance', 'business', 'productivity'],
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

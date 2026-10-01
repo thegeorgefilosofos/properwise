@@ -76,6 +76,7 @@ import {
   type PayMethod,
 } from './TabTenantTypes';
 import { days } from '@/lib/core/greek';
+import { STATUS_LABEL, statusPill, type StatusKind } from '@/lib/core/status';
 import {
   SectionTitle,
   KpiCard,
@@ -130,7 +131,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
 
   // 42 ήταν off-scale: κάθε άλλο πεδίο του app (UIComponents.FIELD_HEIGHT, settingsField)
   // είναι 40, οπότε αυτό το select καθόταν 2px ψηλότερα από τα διπλανά του.
-  const selectStyle:React.CSSProperties={width:'100%',height:T.h.lg,background:'var(--bg-elevated)',border:'1px solid var(--border-default)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',cursor:'pointer'};
+  const selectStyle:React.CSSProperties={width:'100%',height:T.h.lg,background:'var(--bg-elevated)',border:'1px solid var(--border-control)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',cursor:'pointer'};
 
   const genLetter=()=>{
     if(!hasPct) return;   // δεν παράγεται έγγραφο χωρίς ποσοστό με προέλευση
@@ -704,9 +705,12 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
 
 
   const StatusPill=({p}:{p:RentPayment})=>{
+    // Λέξη και τόνος από το κοινό λεξιλόγιο (lib/core/status.ts): ίδιο σήμα με
+    // τη λογιστική, το ημερολόγιο και τη μηνιαία κατάσταση του email.
     const st=payStatus(p);
-    const cfg=st==='paid'?{c:'var(--positive)',bg:'var(--positive-dim)',l:'Πληρώθηκε'}:st==='overdue'?{c:'var(--negative)',bg:'var(--negative-dim)',l:'Ληξιπρόθεσμο'}:{c:'var(--text-secondary)',bg:'var(--bg-overlay)',l:'Εκκρεμεί'};
-    return <span style={{ ...s.badge(cfg.c,cfg.bg), border:`1px solid color-mix(in srgb, ${cfg.c} 26%, transparent)`, fontFamily:T.font.sans }}>{cfg.l}</span>;
+    const k:StatusKind=st==='paid'?'paid':st==='overdue'?'overdue':'pending';
+    const pill=statusPill(k);
+    return <span style={{ ...s.badge(pill.color,pill.background), border:pill.border, fontFamily:T.font.sans }}>{STATUS_LABEL[k]}</span>;
   };
 
   return (
@@ -715,7 +719,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap:10, marginBottom:16 }}>
         <KpiCard label="Εισπραχθέντα" value={fmt(received)} color="var(--text-primary)"/>
         <KpiCard label="Ληξιπρόθεσμα" value={fmt(arrearsTotal)} sub={`${overdue.length} δόσεις`} color={arrearsTotal>0?'var(--negative)':'var(--text-primary)'}/>
-        <KpiCard label="Εκκρεμείς" value={String(open.length)} color={open.length>0?'var(--warning)':'var(--positive)'}/>
+        <KpiCard label="Εκκρεμείς" value={String(open.length)} color="var(--text-primary)"/>
         <KpiCard label="Δόσεις" value={`${payments.filter(p=>p.paid).length}/${payments.length}`} color="var(--text-primary)"/>
       </div>
 

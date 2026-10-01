@@ -317,7 +317,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
 
   // Το ύψος ήταν literal 40, δηλαδή η τιμή του T.h.lg στο ποντίκι — αλλά ΜΟΝΟ
   // στο ποντίκι: με δάχτυλο η κλίμακα ανεβαίνει στα 44 και το πεδίο έμενε στα 40.
-  const field: React.CSSProperties = { height: T.h.lg, padding: '0 13px', borderRadius: T.radius.inner, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box', width: '100%', transition: 'border-color 0.14s' };
+  const field: React.CSSProperties = { height: T.h.lg, padding: '0 13px', borderRadius: T.radius.inner, border: '1px solid var(--border-control)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box', width: '100%', transition: 'border-color 0.14s' };
   const lbl = { ...TT.label, marginBottom: 6 } as React.CSSProperties;
   const onFieldFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--accent)'; };
   const onFieldBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)'; };

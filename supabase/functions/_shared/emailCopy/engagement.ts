@@ -1,6 +1,7 @@
 import { emailShell, eyebrow, h, p, bullets, button, greeting, note, heroStat } from '../emailTemplates.ts'
 import { eur } from '../format.ts'
 import { dash, esc, has, plural, NOTE, type CopyFn } from './kit.ts'
+import { EMAIL_LIGHT as C } from '../emailPalette.ts'
 
 // ── Φάση 2: Engagement & Retention ───────────────────────────────────────────
 export const ENGAGEMENT: Record<string, CopyFn> = {
@@ -183,7 +184,7 @@ export const ENGAGEMENT: Record<string, CopyFn> = {
     const lead = frac ? `Η δόση ${frac} του ΕΝΦΙΑ` : 'Η επόμενη δόση του ΕΝΦΙΑ'
     const when = c.deadlineDate ? ` λήγει στις <b>${esc(c.deadlineDate)}</b>` : ' λήγει σύντομα'
     const perProp = (c.digestItems && c.digestItems.length)
-      ? bullets(c.digestItems.map(it => `<b>${esc(it.title)}</b>${it.detail ? ` <span style="color:#5f6368;">${esc(it.detail)}</span>` : ''}`))
+      ? bullets(c.digestItems.map(it => `<b>${esc(it.title)}</b>${it.detail ? ` <span class="mu" style="color:${C.mute};">${esc(it.detail)}</span>` : ''}`))
       : ''
     const total = has(c.amount) ? p(`Σύνολο αυτού του μήνα: <b>${eur(c.amount)}</b>.`) : ''
     return { subject: frac ? `ΕΝΦΙΑ · η δόση ${frac} λήγει σύντομα` : 'ΕΝΦΙΑ · δόση που λήγει σύντομα', html: emailShell({

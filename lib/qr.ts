@@ -74,7 +74,7 @@ export function drawQrToCanvas(
 ): void {
   const size = opts?.size ?? 220;
   const margin = opts?.margin ?? 4;        // quiet zone σε modules (πρότυπο: 4)
-  const dark = opts?.dark ?? '#0d1b2e';    // near-black navy, ~16:1 σε λευκό
+  const dark = opts?.dark ?? '#0b1b33';    // το μελάνι του brand (BRAND_MARK_INK), 17:1 σε λευκό
   const light = opts?.light ?? '#ffffff';
 
   // Το qr.make() πετά ΣΚΕΤΟ string ('code length overflow') όταν το κείμενο δεν

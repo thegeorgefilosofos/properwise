@@ -211,7 +211,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   // (globals.css, `@media (pointer: coarse)`) και το πεδίο έμενε στα 40. Ο
   // τμηματικός επιλογέας «Χρήση» δεν έχει πια δικό του αντικείμενο στυλ: το
   // ύψος και η όψη του βγαίνουν από το ChipToggle.
-  const field: React.CSSProperties = { height: T.h.lg, padding: '0 13px', borderRadius: T.radius.inner, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box', width: '100%', transition: 'border-color 0.14s' };
+  const field: React.CSSProperties = { height: T.h.lg, padding: '0 13px', borderRadius: T.radius.inner, border: '1px solid var(--border-control)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box', width: '100%', transition: 'border-color 0.14s' };
   const lbl = { ...TT.label, marginBottom: 6 } as React.CSSProperties;
   const onF = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--accent)'; };
   const onB = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)'; };

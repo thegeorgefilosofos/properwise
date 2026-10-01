@@ -1,7 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════
-   PROPERWISE — Google Material Design 3
-   Exact Google ecosystem: colors, typography, elevation, motion
-   Light (default) + Dark mode
+   PROPERWISE — το φύλλο στυλ της εφαρμογής
+   Παλέτα «ναυτικό»: σκούρο θέμα ως βάση (:root), φωτεινό ως εξαίρεση
+   (:root[data-mode="light"]) και η βιτρίνα με δικά της --mkt-*.
+   Η αντίθεση κάθε ζεύγους μετριέται από το scripts/guard-contrast.mjs.
 ═══════════════════════════════════════════════════════════════ */
 
 /* Όλα τα εικονίδια είναι inline SVG — δεν φορτώνουμε καμία εξωτερική γραμματοσειρά
@@ -100,7 +101,7 @@ body {
 .min-h-dvh { min-height: 100vh; min-height: 100dvh; }
 
 /* ══════════════════════════════════════════════════════════════
-   ΧΡΩΜΑΤΙΚΟ ΣΥΣΤΗΜΑ — ΑΝΟΙΧΤΟ ΘΕΜΑ (ΠΡΟΕΠΙΛΟΓΗ)
+   ΧΡΩΜΑΤΙΚΟ ΣΥΣΤΗΜΑ — ΦΩΤΕΙΝΟ ΘΕΜΑ (Η ΕΞΑΙΡΕΣΗ· ΒΑΣΗ ΕΙΝΑΙ ΤΟ ΣΚΟΥΡΟ)
    ─────────────────────────────────────────────────────────────
    ΜΙΑ πηγή αλήθειας. Κάθε χρώμα εδώ έχει ΣΗΜΑΣΙΑ, όχι απόχρωση:
    ένα στοιχείο δεν είναι «πράσινο», είναι --positive. Αν αλλάξει
@@ -123,32 +124,43 @@ body {
    και όχι σκέτο [data-mode="light"] (0,1,0), γιατί αλλιώς θα έχανε από το
    :root του σκούρου που έρχεται αργότερα στο αρχείο. */
 :root[data-mode="light"] {
+  /* ΤΑ ΕΓΓΕΝΗ ΧΕΙΡΙΣΤΗΡΙΑ ΑΚΟΛΟΥΘΟΥΝ ΤΟ ΘΕΜΑ. Βλ. το σκούρο μπλοκ πιο κάτω. */
+  color-scheme: light;
 
-  /* ── Map to PROPERWISE vars (used by components) ── */
-  --bg-base:       #f8f9fa;
+  /* ── ΤΟ ΦΩΤΕΙΝΟ ΗΤΑΝ ΤΟ ΓΚΡΙ ΤΟΥ GOOGLE, ΟΧΙ ΤΟ ΝΑΥΤΙΚΟ ΜΑΣ ────────────────
+     Το σκούρο θέμα πάτησε στο ναυτικό της βιτρίνας· το φωτεινό έμεινε ωμή
+     μεταφορά των ουδέτερων του Google (#f8f9fa · #f1f3f4 · #e8eaed, κείμενο
+     #202124 / #5f6368 / #63686d). Τρία πράγματα έσπαγαν:
+       · η 2η και η 3η βαθμίδα κειμένου απείχαν ΔE 1,9 — ίδιο χρώμα στο μάτι·
+       · το --bg-overlay ήταν ΑΚΡΙΒΩΣ το --border-subtle, άρα κάθε διαχωριστικό
+         πάνω σε παράθυρο εξαφανιζόταν·
+       · κείμενο πάνω σε πέπλο αιώρησης ή επιλογής έπεφτε κάτω από 4,5:1
+         (3η βαθμίδα 4,08–4,44 · γαλάζιο 4,05–4,49 · κόκκινο 4,28).
+     Οι επιφάνειες παίρνουν την απόχρωση του ναυτικού σε πολύ χαμηλή ένταση
+     και το κείμενο γίνεται μελάνι ναυτικού. Ολοι οι λόγοι μετριούνται από το
+     scripts/guard-contrast.mjs, ΜΑΖΙ με τα πέπλα και τα -soft. */
+  --bg-base:       #f5f7fa;
   --bg-surface:    #ffffff;
-  --bg-elevated:   #f1f3f4;
-  --bg-overlay:    #e8eaed;
-  --bg-hover:      rgba(60,64,67,0.08);
-  --bg-active:     color-mix(in srgb, var(--accent) 12%, transparent);
+  --bg-elevated:   #eef2f6;
+  --bg-overlay:    #e5eaf0;
+  --bg-hover:      rgba(15,27,46,0.06);
 
-  /* Accent: το γαλάζιο (Google blue). ΜΙΑ τιμή· dim/soft/border/hover
-     παράγονται από αυτό ώστε να μη ξαναδιαφωνήσουν ποτέ. */
-  /* ΤΟ «AA» ΤΟΥ ΣΧΟΛΙΟΥ ΗΤΑΝ ΜΕΤΡΗΜΕΝΟ ΣΕ ΛΑΘΟΣ ΦΟΝΤΟ. Το #1a6ae8 περνούσε
-     πράγματι πάνω στο --bg-base (4,66:1), αλλά το ίδιο γαλάζιο γράφεται και
-     πάνω στις δύο βαθύτερες επιφάνειες — --bg-elevated και --bg-overlay — όπου
-     έπεφτε σε 4,42 και 4,08:1. Δηλαδή κάθε σύνδεσμος μέσα σε ανασηκωμένη κάρτα
-     ή σε παράθυρο έκοβε το όριο. Το #1560d4 μετρά 5,74 ώς 4,77:1 και στις
-     τέσσερις επιφάνειες και κρατά την ίδια απόχρωση. */
-  --accent:        #1560d4;   /* γαλάζιο (light) — AA (≥4,5:1) πάνω ΚΑΙ στις τέσσερις επιφάνειες του θέματος */
-  --accent-dim:    color-mix(in srgb, var(--accent) 12%, transparent);
-  --accent-hover:  #1257ba;
+  /* Accent: το γαλάζιο του brand. ΜΙΑ τιμή· soft/border/on-container
+     παράγονται από αυτό (στη βάση) ώστε να μη ξαναδιαφωνήσουν ποτέ. */
+  /* ΤΟ «AA» ΜΕΤΡΙΕΤΑΙ ΣΤΗ ΒΑΘΥΤΕΡΗ ΕΠΙΦΑΝΕΙΑ ΚΑΙ ΜΕ ΤΟ ΠΕΠΛΟ ΑΠΟ ΠΑΝΩ. Το
+     #1a6ae8 περνούσε μόνο στο --bg-base· το #1560d4 που το διαδέχτηκε περνούσε
+     στις τέσσερις επιφάνειες αλλά έπεφτε σε 4,05–4,49:1 κάτω από επιλογή ή
+     αιώρηση (το γαλάζιο πάνω στο δικό του -soft, πάνω σε παράθυρο). Το
+     #1356c2 κρατά την απόχρωση και περνά και εκεί. */
+  --accent:        #1356c2;   /* γαλάζιο (light) — AA (≥4,5:1) σε κάθε επιφάνεια, πέπλο και -soft */
+  --accent-hover:  #0f4aa8;
 
   /* Το μελάνι που κάθεται πάνω σε ΚΑΘΕ κορεσμένο γέμισμα — accent, positive,
      negative, warning, info. Ένας κανόνας, μία τιμή ανά θέμα: στο light τα
      γεμίσματα είναι σκούρα (θέλουν λευκό), στο dark γίνονται ανοιχτά παστέλ
      (θέλουν σκούρο). Γι' αυτό ΠΟΤΕ δεν γράφουμε '#fff' πάνω σε γέμισμα.
-     Ελεγμένο: χειρότερη αντίθεση 4.86:1 (light) / 7.60:1 (dark) — AA παντού. */
+     Ελεγμένο: χειρότερη αντίθεση 5,20:1 (φωτεινό, πάνω στο --ch-airbnb) /
+     6,91:1 (σκούρο, πάνω στο --negative) — το μετρά το guard-contrast. */
   --on-tone:       #ffffff;
   --accent-text:   var(--on-tone);
 
@@ -172,11 +184,11 @@ body {
   /* Εκλεπτυσμένη, muted σημασιολογική παλέτα (deep emerald / bronze-amber /
      brick-rose / indigo) — premium & σοβαρή, όχι «traffic-light». Dim
      παράγεται από το ίδιο το χρώμα ώστε να μη διαφωνεί ποτέ. */
-  --positive:      #0a6f4e;   /* deep emerald/jade — 5,13:1 στη βαθύτερη επιφάνεια (ήταν #0c815a, 4,05) */
+  --positive:      #086648;   /* deep emerald/jade — ήταν #0a6f4e, 4,34:1 στο δικό του -dim πάνω σε παράθυρο */
   --positive-dim:  color-mix(in srgb, var(--positive) 12%, transparent);
-  --negative:      #b23b3b;   /* refined brick-rose */
+  --negative:      #a83434;   /* refined brick-rose — ήταν #b23b3b, 4,28:1 κάτω από πέπλο σε παράθυρο */
   --negative-dim:  color-mix(in srgb, var(--negative) 12%, transparent);
-  --warning:       #855810;   /* bronze-amber (όχι λεμονί) — 5,12:1 στη βαθύτερη επιφάνεια (ήταν #9a6714, 4,03) */
+  --warning:       #7a510f;   /* bronze-amber (όχι λεμονί) — ήταν #855810, 4,37:1 στο δικό του -dim πάνω σε παράθυρο */
   --warning-dim:   color-mix(in srgb, var(--warning) 12%, transparent);
   /* ── ΤΟ ΜΕΛΑΝΙ ΤΟΥ ΣΗΜΑΤΟΣ, ΓΙΑ ΚΑΘΕ ΤΟΝΟ ────────────────────────────────
      Το σήμα (Badge/Chip) γράφει τον τόνο ΠΑΝΩ ΣΕ tint 9 ώς 11% ΤΟΥ ΙΔΙΟΥ
@@ -211,7 +223,7 @@ body {
   --positive-on-container: color-mix(in srgb, var(--positive) 90%, #000000);
   --negative-on-container: color-mix(in srgb, var(--negative) 90%, #000000);
   --warning-on-container:  color-mix(in srgb, var(--warning)  90%, #000000);
-  --info:          #2f58cc;   /* indigo-blue, στην οικογένεια του accent */
+  --info:          #2b52c2;   /* indigo-blue, στην οικογένεια του accent — ήταν #2f58cc, 4,44:1 κάτω από επιλογή σε παράθυρο */
 
   /* ΟΙ ΣΗΜΑΣΙΟΛΟΓΙΚΟΙ ΤΟΝΟΙ ΜΕΤΑΚΟΜΙΣΑΝ ΣΤΟ ΜΠΛΟΚ ΒΑΣΗΣ (πιο κάτω).
      Ήταν ΕΔΩ, δηλαδή μόνο μέσα στο `:root[data-mode="light"]` — και το σκούρο
@@ -228,52 +240,53 @@ body {
      κάθονταν στο φωτεινό μπλοκ, οπότε στο σκούρο οι μπάρες έμεναν χωρίς
      χρώμα και ο άξονας χωρίς γραμμή. */
 
-  --text-primary:   #202124;   /* Google exact */
-  /* 2η βαθμίδα. Ξαναμετρήθηκε μαζί με του σκούρου και ΔΕΝ άλλαξε τιμή, γιατί
-     εδώ στέκει: 5,74 / 6,05 / 5,44 / 5,02:1 σε bg-base / bg-surface /
-     bg-elevated / bg-overlay, δηλαδή πάνω από το όριο και πάνω από την 3η
-     βαθμίδα (4,67) σε κάθε επιφάνεια. Με το --bg-hover από πάνω τους πέφτει
-     σε 5,03 / 5,29 / 4,77 / 4,42:1: μόνο ο συνδυασμός πέπλου πάνω σε
-     --bg-overlay κόβει και τον κόβει και η 3η βαθμίδα (4,11), οπότε είναι
-     ζήτημα του πέπλου, όχι της ιεραρχίας. Δεν αγγίχτηκε εδώ. */
-  --text-secondary: #5f6368;
-  /* 3η βαθμίδα. ΜΕΤΡΗΜΕΝΗ ΣΤΗΝ ΠΙΟ ΣΚΟΥΡΗ ΕΠΙΦΑΝΕΙΑ, ΟΧΙ ΣΤΟ ΛΕΥΚΟ: ήταν
-     #6b7075, που περνούσε στο --bg-base αλλά έπεφτε σε 4,49:1 πάνω στο
-     --bg-elevated (φόντο των περισσότερων παραθύρων) και 4,15:1 στο
-     --bg-overlay. Τώρα 4,67:1 στη χειρότερη περίπτωση των τεσσάρων. */
-  --text-tertiary:  #63686d;
-  --text-inverse:   #ffffff;
+  /* ΤΡΕΙΣ ΒΑΘΜΙΔΕΣ ΠΟΥ ΞΕΧΩΡΙΖΟΥΝ. Η 2η (#5f6368) και η 3η (#63686d) απείχαν
+     ΔE 1,9, δηλαδή η ιεραρχία είχε καταρρεύσει σε δύο βαθμίδες. Τώρα
+     μελάνι ναυτικού σε τρία καθαρά σκαλιά και η 3η περνά 4,5:1 ακόμη και
+     πάνω σε πέπλο αιώρησης ή επιλογής στο --bg-overlay. */
+  --text-primary:   #0f1b2e;
+  --text-secondary: #3f4b60;
+  --text-tertiary:  #536075;
 
-  --border-subtle:  #e8eaed;   /* Google exact divider */
-  --border-default: #dadce0;   /* Google exact border */
-  --border-strong:  #bdc1c6;
-  --border-accent:  rgba(25,103,210,0.4);
+  --border-subtle:  #e3e8ee;
+  --border-default: #d3dae3;
+  --border-strong:  #b3bdca;
+  /* Βλ. σχόλιο στο σκούρο μπλοκ: το όριο ενός ΠΕΔΙΟΥ, όχι μιας κάρτας. */
+  --border-control: #7a8594;
+  /* Βλ. σχόλιο ΓΡΑΦΗΜΑΤΑ στο σκούρο μπλοκ. */
+  --series-out:     #7e8ba0;
 
   --sidebar-bg:     #ffffff;
-  --sidebar-border: #e0e0e0;
+  --sidebar-border: var(--border-subtle);
 
-  --scrollbar-thumb: #bdc1c6;
+  --scrollbar-thumb: var(--border-strong);
 
-  /* MD3 Elevation (Google's exact box-shadows) */
-  --shadow-sm: 0 1px 2px 0 rgba(60,64,67,0.30), 0 1px 3px 1px rgba(60,64,67,0.15);
-  --shadow-md: 0 1px 2px 0 rgba(60,64,67,0.30), 0 2px 6px 2px rgba(60,64,67,0.15);
-  --shadow-lg: 0 4px 8px 3px rgba(60,64,67,0.15), 0 1px 3px 0 rgba(60,64,67,0.30);
-  --shadow-xl: 0 6px 10px 4px rgba(60,64,67,0.15), 0 2px 3px 0 rgba(60,64,67,0.30);
+  /* ── ΕΝΑ ΜΕΛΑΝΙ ΣΚΙΑΣ ─────────────────────────────────────────────────
+     Οι σκιές του φωτεινού θέματος ήταν σε ΔΥΟ μελάνια: το γκρι του Google
+     (60,64,67) στις --shadow-* και ένα μπλε-γκρι (16,24,40) στις --elev-*.
+     Δύο κάρτες δίπλα δίπλα έριχναν σκιά σε άλλη απόχρωση. Ενα μελάνι, το
+     ναυτικό του κειμένου, σε διαφορετικές πυκνότητες. */
+  --shadow-ink: #0f1b2e;
+  --shadow-sm: 0 1px 2px 0 color-mix(in srgb, var(--shadow-ink) 24%, transparent), 0 1px 3px 1px color-mix(in srgb, var(--shadow-ink) 12%, transparent);
+  --shadow-md: 0 1px 2px 0 color-mix(in srgb, var(--shadow-ink) 24%, transparent), 0 2px 6px 2px color-mix(in srgb, var(--shadow-ink) 12%, transparent);
+  --shadow-lg: 0 4px 8px 3px color-mix(in srgb, var(--shadow-ink) 12%, transparent), 0 1px 3px 0 color-mix(in srgb, var(--shadow-ink) 24%, transparent);
+  --shadow-xl: 0 6px 10px 4px color-mix(in srgb, var(--shadow-ink) 12%, transparent), 0 2px 3px 0 color-mix(in srgb, var(--shadow-ink) 24%, transparent);
 
   /* ── Βάθος & επιφάνειες (tactile depth, calm Material 3). ΝΕΑ tokens μόνο —
      δεν αλλάζουν υπάρχοντα ονόματα. Κάνουν κάθε card/KPI ανάγλυφο ταυτόχρονα. ── */
-  --elev-1: 0 1px 2px rgba(16,24,40,.05), 0 4px 12px -4px rgba(16,24,40,.10);
-  --elev-2: 0 2px 5px -1px rgba(16,24,40,.08), 0 12px 24px -8px rgba(16,24,40,.16);
-  --elev-3: 0 4px 10px -3px rgba(16,24,40,.10), 0 24px 44px -14px rgba(16,24,40,.22);
-  --surface-raised:         linear-gradient(180deg, #ffffff 0%, #f7f9fb 100%);
-  --surface-sunken:         linear-gradient(180deg, #eef1f4 0%, #f5f7f9 100%);
-  --surface-hero:           radial-gradient(120% 140% at 50% -20%, #ffffff 0%, #f4f7fb 62%, #edf1f6 100%);
-  --surface-kpi:            linear-gradient(180deg, #ffffff 0%, #f4f7fc 100%);
-  --border-raised:          #e2e6ea;
+  --elev-1: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 5%, transparent), 0 4px 12px -4px color-mix(in srgb, var(--shadow-ink) 10%, transparent);
+  --elev-2: 0 2px 5px -1px color-mix(in srgb, var(--shadow-ink) 8%, transparent), 0 12px 24px -8px color-mix(in srgb, var(--shadow-ink) 16%, transparent);
+  --elev-3: 0 4px 10px -3px color-mix(in srgb, var(--shadow-ink) 10%, transparent), 0 24px 44px -14px color-mix(in srgb, var(--shadow-ink) 22%, transparent);
+  --surface-raised:         linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  --surface-sunken:         linear-gradient(180deg, #ebeff4 0%, #f2f5f9 100%);
+  --surface-hero:           radial-gradient(120% 140% at 50% -20%, #ffffff 0%, #f3f6fa 62%, #ebf0f6 100%);
+  --surface-kpi:            linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
+  /* Το --border-raised και το --ring-track δεν ξαναγράφονται εδώ: η βάση τα
+     δένει στο --border-subtle και στο --bg-overlay, που είναι πλέον ναυτικά
+     και στο φωτεινό. Ηταν δύο ακόμη γκρι του Google (#e2e6ea, #e6e9ee). */
   --highlight-inset:        inset 0 1px 0 rgba(255,255,255,.85);
   --highlight-inset-strong: inset 0 1px 0 rgba(255,255,255,.95);
-  --well-inset:             inset 0 1px 2px rgba(16,24,40,.07), inset 0 0 0 1px rgba(16,24,40,.015);
-  --ring-track:             #e6e9ee;
+  --well-inset:             inset 0 1px 2px color-mix(in srgb, var(--shadow-ink) 7%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--shadow-ink) 1.5%, transparent);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -289,6 +302,13 @@ body {
    προϊόντος, όχι εικασία· ο χρήστης το αλλάζει από τις Ρυθμίσεις. */
 :root,
 [data-mode="dark"] {
+  /* ── ΤΑ ΕΓΓΕΝΗ ΧΕΙΡΙΣΤΗΡΙΑ ΗΤΑΝ ΦΩΤΕΙΝΑ ΜΕΣΑ ΣΤΟ ΣΚΟΥΡΟ ΘΕΜΑ ──────────────
+     Χωρίς `color-scheme` ο περιηγητής ζωγραφίζει ημερολόγιο, βελάκι επιλογής,
+     αυτόματη συμπλήρωση και μπάρες κύλισης στο ΦΩΤΕΙΝΟ σχήμα. Το εικονίδιο
+     ημερολογίου του `<input type="date">` (check-in επισκέπτη, ημερομηνίες
+     είσπραξης) έβγαινε σκούρο γκρι πάνω στο --bg-base: ~1,1:1, αόρατο. Δηλωνόταν
+     μόνο στις δημόσιες σελίδες· η εφαρμογή, που ΑΝΟΙΓΕΙ σκούρα, δεν το είχε. */
+  color-scheme: dark;
 
   /* ── ΜΙΑ ΠΑΛΕΤΑ, ΑΠΟ ΤΗΝ ΑΡΧΙΚΗ ΩΣ ΤΟ ΤΑΜΠΛΟ ─────────────────────────────
      Το σκούρο θέμα ήταν το ανθρακί του Google (#202124 · #292a2d · #35363a ·
@@ -306,10 +326,8 @@ body {
   --bg-elevated:   var(--mkt-bg-elevated);
   --bg-overlay:    #1d2939;
   --bg-hover:      rgba(238,242,247,0.08);
-  --bg-active:     color-mix(in srgb, var(--accent) 16%, transparent);
 
   --accent:        #8ab4f8;   /* γαλάζιο (dark) */
-  --accent-dim:    color-mix(in srgb, var(--accent) 16%, transparent);
   --accent-hover:  #aecbfa;
 
   /* Σημασιολογικοί τόνοι — soft (φόντο) + border, παράγονται από τον ρόλο.
@@ -336,6 +354,17 @@ body {
 
   --accent-soft:     color-mix(in srgb, var(--accent) 10%, transparent);
   --accent-border:   color-mix(in srgb, var(--accent) 28%, transparent);
+  /* ── ΤΡΙΑ ΟΝΟΜΑΤΑ ΓΙΑ ΤΟ ΙΔΙΟ ΠΕΠΛΟ, ΤΩΡΑ ΕΝΑ ──────────────────────────────
+     Το --accent-dim (12% / 16%), το --bg-active (12% / 16%) και το
+     --accent-soft (10%) ήταν τρία σχεδόν ίδια πέπλα του accent, με άλλη
+     πυκνότητα ανά θέμα: η «επιλεγμένη» γραμμή είχε άλλη απόχρωση σε κάθε
+     οθόνη. Το ίδιο και το --border-accent, γραμμένο ως ωμό rgba του
+     γαλάζιου κάθε θέματος, δίπλα στο --accent-border που παράγεται από το
+     --accent. Τα παλιά ονόματα μένουν ως ψευδώνυμα για να μη σπάσει καμία
+     χρήση· νέος κώδικας γράφει τα κανονικά. */
+  --accent-dim:      var(--accent-soft);
+  --bg-active:       var(--accent-soft);
+  --border-accent:   var(--accent-border);
   --info-soft:       color-mix(in srgb, var(--info) 9%, transparent);
   --info-border:     color-mix(in srgb, var(--info) 24%, transparent);
   --positive-soft:   color-mix(in srgb, var(--positive) 10%, transparent);
@@ -355,15 +384,39 @@ body {
      στο ίδιο γαλάζιο δεμένο με το φόντο. Στο φωτεινό θέμα ανοίγει, στο σκούρο
      σκουραίνει — δηλαδή υποχωρεί και στα δύο, χωρίς δεύτερη απόφαση.
      Το σημασιολογικό χρώμα μένει για τα σήματα, όπου κάτι πρέπει να γίνει. */
+  /* Η ΕΚΡΟΗ ΗΤΑΝ ΓΑΛΑΖΙΟ ΔΕΜΕΝΟ ΜΕ ΤΟ ΦΟΝΤΟ, ΚΑΙ ΔΕΝ ΦΑΙΝΟΤΑΝ. Το
+     `color-mix(accent 42%, bg-elevated)` έβγαζε #475e83 στο σκούρο (2,77:1
+     πάνω στην κάρτα) και #95b5e7 στο φωτεινό (2,09:1), κάτω από το 3:1 που
+     ζητά το WCAG 1.4.11 για γραφικό που κουβαλά πληροφορία. Η εκροή γίνεται
+     ουδέτερο σχιστόλιθο: διαφέρει από την εισροή σε απόχρωση ΚΑΙ φωτεινότητα
+     και περνά 3:1 πάνω στην κάρτα και στα δύο θέματα. */
   --series-in:    var(--accent);
-  --series-out:   color-mix(in srgb, var(--accent) 42%, var(--bg-elevated));
+  --series-out:   #6b7a90;
   --series-axis:  var(--border-default);
-  /* Βλ. σχόλιο στο light: ένα μελάνι για κάθε κορεσμένο γέμισμα. */
-  --on-tone:       #0c1116;
+  /* ── ΚΑΤΑΝΟΜΗ ΣΕ ΚΑΤΗΓΟΡΙΕΣ: ΠΕΝΤΕ ΑΔΙΑΦΑΝΗ ΣΚΑΛΙΑ ───────────────────────
+     Το δαχτυλίδι του προϋπολογισμού έβαφε έξι τόξα με ΔΙΑΦΑΝΕΙΑ του accent
+     (94% ώς 32%). Το τελευταίο έπεφτε στο 1,6:1 πάνω στην κάρτα και τα
+     μεσαία απείχαν μεταξύ τους λιγότερο από όσο ξεχωρίζει το μάτι. Πέντε
+     αδιαφανή σκαλιά της ίδιας οικογένειας (βαθύ, accent, δύο ανοιχτά) και το
+     «Λοιπά» στον ουδέτερο σχιστόλιθο· το καθένα ≥3:1 πάνω στην κάρτα και στα
+     δύο θέματα (ο φύλακας αντίθεσης το μετρά). Τα ονόματα τα λέει το
+     υπόμνημα, όχι η απόχρωση. */
+  --chart-cat-1:  color-mix(in srgb, var(--accent) 58%, var(--text-primary));
+  --chart-cat-2:  var(--accent);
+  --chart-cat-3:  color-mix(in srgb, var(--accent) 80%, var(--bg-surface));
+  --chart-cat-4:  color-mix(in srgb, var(--accent) 64%, var(--bg-surface));
+  --chart-cat-5:  var(--series-out);
+  /* ── ΤΟ ΣΚΟΥΡΟ ΜΕΛΑΝΙ ΤΟΥ BRAND, ΜΙΑ ΤΙΜΗ ─────────────────────────────────
+     Ηταν τέσσερα σχεδόν ίδια σκούρα: #0c1116 (μελάνι γεμίσματος της
+     εφαρμογής), #0a2647 (μελάνι κουμπιού της βιτρίνας), #0d1b2e (QR) και
+     #0B192C (σήμα). Ο επισκέπτης πατούσε το κουμπί της αρχικής με ένα μελάνι
+     και το ίδιο κουμπί μέσα στην εφαρμογή με άλλο. Ενα: #0b1b33. Ζει στη
+     βάση γιατί δεν αλλάζει με το θέμα· το --on-tone του σκούρου το δανείζεται. */
+  --brand-ink:     #0b1b33;
+  /* Βλ. σχόλιο στο light: ένα μελάνι για κάθε κορεσμένο γέμισμα. Στο σκούρο
+     τα γεμίσματα είναι ανοιχτά παστέλ, άρα το μελάνι είναι σκούρο. */
+  --on-tone:       var(--brand-ink);
   --accent-text:   var(--on-tone);
-  /* Βλ. σχόλιο στο light: λευκό και εδώ. Το πλακίδιο του σκούρου θέματος είναι
-     ανοιχτό παστέλ, οπότε το λευκό γράμμα έχει μικρότερη αντίθεση απ' ό,τι στο
-     φωτεινό — αλλά μένει ΤΟ ΙΔΙΟ ΓΡΑΜΜΑ, που είναι το ζητούμενο σε ένα σήμα. */
 
   /* Muted premium παλέτα (dark): πιο απαλά, όχι φωτεινά «traffic-light». */
   --positive:      #52c79e;   /* soft jade */
@@ -400,27 +453,47 @@ body {
   /* Ίδιος λόγος με το φωτεινό: ήταν #949a9f, δηλαδή 4,24:1 στο --bg-elevated
      και 3,68:1 στο --bg-overlay. Τώρα 4,67:1 στη χειρότερη των τεσσάρων. */
   --text-tertiary:  #9aa6b7;
-  --text-inverse:   #1f1f1f;
+  /* Κείμενο πάνω σε φόντο --text-primary (υπόδειξη, ανεστραμμένη ετικέτα).
+     Ηταν #1f1f1f εδώ και #ffffff στο φωτεινό, δηλαδή ακριβώς το --on-tone
+     κάθε θέματος με δεύτερο όνομα και άλλη τιμή στο σκούρο. */
+  --text-inverse:   var(--on-tone);
 
   --border-subtle:  #223044;
   --border-default: #3d4d64;
   --border-strong:  #52637c;
-  --border-accent:  rgba(174,203,250,0.4);
+  /* ── ΤΟ ΟΡΙΟ ΤΟΥ ΠΕΔΙΟΥ ΔΕΝ ΕΙΝΑΙ ΤΟ ΟΡΙΟ ΤΗΣ ΚΑΡΤΑΣ ──────────────────────
+     Ενα πεδίο κειμένου είναι χειριστήριο: το WCAG 1.4.11 ζητά το όριό του να
+     φαίνεται με 3:1 πάνω στην επιφάνεια. Τα πεδία φορούσαν --border-default,
+     που είναι διαχωριστικό καρτών: 2,11:1 εδώ, 1,37:1 στο φωτεινό. Ο χρήστης
+     έβλεπε ετικέτα και κενό, όχι κουτί. Οι κάρτες ΚΡΑΤΟΥΝ το --border-default
+     (ένα 3:1 περίγραμμα σε κάθε κάρτα θα έκανε τη σελίδα πλέγμα). */
+  --border-control: #687b95;
 
   --sidebar-bg:     var(--bg-base);
   --sidebar-border: var(--border-subtle);
 
   --scrollbar-thumb: var(--border-default);
 
-  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.60), 0 1px 3px 1px rgba(0,0,0,0.45);
-  --shadow-md: 0 1px 2px 0 rgba(0,0,0,0.60), 0 2px 6px 2px rgba(0,0,0,0.45);
-  --shadow-lg: 0 4px 8px 3px rgba(0,0,0,0.45), 0 1px 3px 0 rgba(0,0,0,0.60);
-  --shadow-xl: 0 6px 10px 4px rgba(0,0,0,0.45), 0 2px 3px 0 rgba(0,0,0,0.60);
+  /* Βλ. σχόλιο στο φωτεινό: ένα μελάνι σκιάς. Στο σκούρο είναι το μαύρο. */
+  --shadow-ink: #000000;
+  --shadow-sm: 0 1px 2px 0 color-mix(in srgb, var(--shadow-ink) 60%, transparent), 0 1px 3px 1px color-mix(in srgb, var(--shadow-ink) 45%, transparent);
+  --shadow-md: 0 1px 2px 0 color-mix(in srgb, var(--shadow-ink) 60%, transparent), 0 2px 6px 2px color-mix(in srgb, var(--shadow-ink) 45%, transparent);
+  --shadow-lg: 0 4px 8px 3px color-mix(in srgb, var(--shadow-ink) 45%, transparent), 0 1px 3px 0 color-mix(in srgb, var(--shadow-ink) 60%, transparent);
+  --shadow-xl: 0 6px 10px 4px color-mix(in srgb, var(--shadow-ink) 45%, transparent), 0 2px 3px 0 color-mix(in srgb, var(--shadow-ink) 60%, transparent);
+  /* ── ΤΑ ΠΕΠΛΑ ─────────────────────────────────────────────────────────────
+     Τέσσερα πέπλα παραθύρου στο αρχείο (32% · 45% · 50% · 55%) και άλλα
+     τρία μέσα σε συστατικά: κάθε παράθυρο σκοτείνιαζε τη σελίδα αλλιώς.
+     --scrim για ό,τι σκεπάζει τη σελίδα, ίδιο και στα δύο θέματα (η προβολή
+     εικόνας γράφει --on-media πάνω του). --scrim-media για τα κουμπάκια και
+     τις ετικέτες που κάθονται ΠΑΝΩ σε φωτογραφία: λευκό πάνω του δίνει
+     ≥5,7:1 ακόμη και πάνω σε κατάλευκη φωτογραφία. */
+  --scrim:        rgba(4,8,15,0.56);
+  --scrim-media:  rgba(0,0,0,0.6);
 
   /* ── Βάθος & επιφάνειες — dark (σκιά + λεπτό top sheen κάνουν το «σήκωμα») ── */
-  --elev-1: 0 1px 2px rgba(0,0,0,.5), 0 4px 12px -4px rgba(0,0,0,.55);
-  --elev-2: 0 2px 5px -1px rgba(0,0,0,.5), 0 12px 24px -8px rgba(0,0,0,.6);
-  --elev-3: 0 4px 10px -3px rgba(0,0,0,.5), 0 24px 44px -14px rgba(0,0,0,.68);
+  --elev-1: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 50%, transparent), 0 4px 12px -4px color-mix(in srgb, var(--shadow-ink) 55%, transparent);
+  --elev-2: 0 2px 5px -1px color-mix(in srgb, var(--shadow-ink) 50%, transparent), 0 12px 24px -8px color-mix(in srgb, var(--shadow-ink) 60%, transparent);
+  --elev-3: 0 4px 10px -3px color-mix(in srgb, var(--shadow-ink) 50%, transparent), 0 24px 44px -14px color-mix(in srgb, var(--shadow-ink) 68%, transparent);
   --surface-raised:         linear-gradient(180deg, #131d2b 0%, #0f1824 100%);
   --surface-sunken:         linear-gradient(180deg, #05080e 0%, #080d15 100%);
   --surface-hero:           radial-gradient(120% 140% at 50% -20%, #172234 0%, #0f1824 60%, #0a111b 100%);
@@ -428,7 +501,7 @@ body {
   --border-raised:          var(--border-subtle);
   --highlight-inset:        inset 0 1px 0 rgba(255,255,255,.06);
   --highlight-inset-strong: inset 0 1px 0 rgba(255,255,255,.10);
-  --well-inset:             inset 0 1px 2px rgba(0,0,0,.32), inset 0 0 0 1px rgba(0,0,0,.15);
+  --well-inset:             inset 0 1px 2px color-mix(in srgb, var(--shadow-ink) 32%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--shadow-ink) 15%, transparent);
   --ring-track:             var(--bg-overlay);
 }
 
@@ -464,8 +537,11 @@ body {
   /* Το κείμενο: πιο φωτεινό από του προϊόντος, γιατί κάθεται σε πολύ πιο
      σκούρο φόντο και σε μεγαλύτερα μεγέθη. */
   --mkt-text-primary:   #eef2f7;
-  --mkt-text-secondary: #a7b2c2;
-  --mkt-text-tertiary:  #7c899b;
+  /* Ιδιες με τη 2η και 3η βαθμίδα του σκούρου θέματος της εφαρμογής: ήταν
+     #a7b2c2 / #7c899b, δηλαδή ο επισκέπτης διάβαζε άλλο γκρι στη βιτρίνα και
+     άλλο μέσα, πάνω στο ίδιο ναυτικό φόντο. */
+  --mkt-text-secondary: #bcc6d3;
+  --mkt-text-tertiary:  #9aa6b7;
 
   /* Τα περιγράμματα είναι φως, όχι χρώμα: διαφάνειες πάνω στο βάθος. */
   --mkt-border-subtle:  rgba(255,255,255,.07);
@@ -477,7 +553,10 @@ body {
      νόημα, γιατί μαθαίνει «τι είναι κουμπί». Γράφονται ρητά επειδή η βιτρίνα
      είναι πάντα σκοτεινή ακόμη κι όταν το προϊόν είναι στο φωτεινό θέμα. */
   --mkt-accent:      #8ab4f8;
-  --mkt-accent-text: #0a2647;
+  /* Το μελάνι του κουμπιού: το ΙΔΙΟ με το --on-tone του σκούρου θέματος.
+     Ηταν #0a2647, οπότε το κουμπί της αρχικής και το ίδιο κουμπί μέσα στην
+     εφαρμογή είχαν δύο διαφορετικά σκούρα γράμματα. */
+  --mkt-accent-text: var(--brand-ink);
   --mkt-positive:    #52c79e;
   --mkt-negative:    #e58c84;
 
@@ -504,13 +583,13 @@ body {
   color: var(--text-primary);
 }
 
-/* ── Scrollbar (Google-style: thin, grey) ── */
+/* ── Μπάρα κύλισης: λεπτή, στο --border-strong του θέματος ── */
 ::-webkit-scrollbar       { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 6px; border: 2px solid var(--bg-base); }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
 
-/* ── Focus ring (Google blue) — αγκαλιάζει τη δική του ακτίνα του στοιχείου ──
+/* ── Δαχτυλίδι εστίασης (--accent) — αγκαλιάζει τη δική του ακτίνα του στοιχείου ──
    ΚΑΙ ΔΕΝ ΚΑΝΕΙ ΚΙΝΗΣΗ. Ογδόντα σημεία δήλωναν `transition: all`, που
    περιλαμβάνει και το `outline-width`: μετρήθηκε στον φυλλομετρητή ότι στα 0ms
    μετά το Tab το πλάτος ήταν 0px και στα 250ms 2px. Δηλαδή το δαχτυλίδι
@@ -520,7 +599,7 @@ body {
    Το `60%` πάνω σε λευκό δίνει #76a6f1: λόγος 2,47:1, όταν το WCAG 1.4.11 ζητά
    3:1 για μη-κειμενικά στοιχεία. Σε κάθε ανοιχτή επιφάνεια της εφαρμογής
    μετρήθηκε 2,28 ώς 2,47 — δηλαδή ο χρήστης πληκτρολογίου δεν έβλεπε πού
-   βρίσκεται. Με πλήρη κορεσμό: 4,92:1 στο ανοιχτό θέμα, 7,64:1 στο σκούρο. */
+   βρίσκεται. Με πλήρη κορεσμό: 6,69:1 στο ανοιχτό θέμα, 9,35:1 στο σκούρο. */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -616,7 +695,7 @@ body {
   .po-ico[data-tone="accent"]:hover:not(:disabled) { background: var(--accent-dim); color: var(--accent); }
   /* Πάνω σε φωτογραφία δεν υπάρχει «φόντο επιφάνειας» να ανάψει: η αιώρηση
      ανεβάζει το ίδιο πέπλο από 0,14 σε 0,24 αδιαφάνεια. */
-  .po-ico[data-tone="media"]:hover:not(:disabled) { background: rgba(255,255,255,0.24); color: var(--on-media); }
+  .po-ico[data-tone="media"]:hover:not(:disabled) { background: color-mix(in srgb, var(--on-media) 24%, transparent); color: var(--on-media); }
 }
 /* ── ΑΠΟΚΡΙΣΗ ΣΤΟ ΑΓΓΙΓΜΑ ΚΑΙ ΣΕ ΔΑΧΤΥΛΟ ──────────────────────────────────
    Η αιώρηση ζει πίσω από `@media (hover: hover)`, οπότε σε αφή ΔΕΝ ισχύει —
@@ -628,14 +707,14 @@ body {
 .po-ico:active:not(:disabled) { background: var(--bg-hover); color: var(--text-secondary); }
 .po-ico[data-tone="danger"]:active:not(:disabled) { background: var(--negative-dim); color: var(--negative); }
 .po-ico[data-tone="accent"]:active:not(:disabled) { background: var(--accent-dim); color: var(--accent); }
-.po-ico[data-tone="media"]:active:not(:disabled) { background: rgba(255,255,255,0.24); color: var(--on-media); }
+.po-ico[data-tone="media"]:active:not(:disabled) { background: color-mix(in srgb, var(--on-media) 24%, transparent); color: var(--on-media); }
 .po-ico[data-tone="danger"] { color: var(--negative); }
 .po-ico[data-tone="accent"] { color: var(--accent); }
 /* ΤΟ ΚΛΕΙΣΙΜΟ ΠΑΝΩ ΣΕ ΦΩΤΟΓΡΑΦΙΑ. Το τριτεύον γκρι χάνεται σε μια σκούρα
    εικόνα και κόβεται σε μια ανοιχτή· το πέπλο του δίνει σταθερή αντίθεση
    ό,τι κι αν έχει από κάτω. Το χρώμα ΔΕΝ είναι θεματικό εδώ: η φωτογραφία
    δεν αλλάζει με το θέμα της εφαρμογής. */
-.po-ico[data-tone="media"] { background: rgba(255,255,255,0.14); color: var(--on-media); }
+.po-ico[data-tone="media"] { background: color-mix(in srgb, var(--on-media) 14%, transparent); color: var(--on-media); }
 .po-ico:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ── .po-chip · ΠΛΑΚΙΔΙΟ ΜΕ ΚΑΤΑΣΤΑΣΗ ───────────────────────────────────────
@@ -1456,7 +1535,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
      color-mix(in srgb, var(--accent) 3%, var(--sidebar-bg)) 0%,
      var(--sidebar-bg) 220px);
   border-right: 1px solid var(--sidebar-border);
-  box-shadow: 4px 0 24px -18px rgba(16,24,40,.28);
+  box-shadow: 4px 0 24px -18px color-mix(in srgb, var(--shadow-ink) 28%, transparent);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -3007,10 +3086,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    γραμμές βημάτων, προγραμμάτων και εκκρεμοτήτων της ίδιας οθόνης, που είναι
    λίστες μιας διάστασης — όχι πίνακες. */
 
-/* MD3 Scrim (for dialogs/modals) */
+/* Πέπλο παραθύρου: το ένα --scrim. */
 .md-scrim {
   position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.32);  /* MD3 scrim opacity */
+  background: var(--scrim);
   z-index: 1000;
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
@@ -3107,7 +3186,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .app-scrim {
     display: block;
     position: fixed; inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--scrim);
     z-index: 1100;
     opacity: 0;
     pointer-events: none;
@@ -4317,7 +4396,7 @@ html { scroll-padding-bottom: var(--cookie-h, 0px); }
     border-top: 1px solid var(--border-subtle);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
     justify-content: space-around;
-    box-shadow: 0 -1px 3px rgba(0,0,0,0.06);
+    box-shadow: 0 -1px 3px color-mix(in srgb, var(--shadow-ink) 6%, transparent);
   }
   /* Στο κινητό στοιβάζονται ΔΥΟ πλωτά στοιχεία: η κάτω πλοήγηση κολλητά στο
      άκρο και πάνω της το κουμπί του βοηθού (bottom:82px). Το περιθώριο πρέπει
@@ -4401,7 +4480,7 @@ html { scroll-padding-bottom: var(--cookie-h, 0px); }
    COMMAND PALETTE (⌘K) — καθολική γρήγορη πλοήγηση/αναζήτηση
    ══════════════════════════════════════════════════════════════════════════ */
 .cmdk-scrim {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1500;
+  position: fixed; inset: 0; background: var(--scrim); z-index: 1500;
   display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px;
   animation: cmdk-in 0.12s ease;
 }
@@ -5884,21 +5963,22 @@ tr.po-row-more { display: none; }
 
    Οι τιμές δεν είναι αυθαίρετες: κρατούν την ΙΕΡΑΡΧΙΑ των τριών βαθμίδων —
    δεν γίνονται όλες μαύρες — αλλά ανεβάζουν τη χειρότερη περίπτωση. Στο
-   φωτεινό θέμα η 2η βαθμίδα πάει 5,02 → 8,59:1 και η 3η 4,67 → 7,00:1 στην
+   φωτεινό θέμα η 2η βαθμίδα πάει 7,27 → 10,60:1 και η 3η 5,26 → 8,24:1 στην
    πιο δύσκολη επιφάνεια. Στο σκούρο, 5,78 → 9,85:1 και 4,67 → 8,02:1.
    Τα όρια περνούν στην αμέσως εντονότερη βαθμίδα που ήδη υπάρχει, οπότε δεν
    εισάγεται κανένα νέο χρώμα στην παλέτα. */
 @media (prefers-contrast: more) {
   /* Οι επιλογείς είναι ΑΚΡΙΒΩΣ οι ίδιοι με τους ορισμούς της παλέτας
-     (γραμμές 120 · 286). Ένα σκέτο `:root` έχει μικρότερη ειδικότητα από το
+     (τα δύο μπλοκ θέματος στην αρχή του αρχείου). Ένα σκέτο `:root` έχει μικρότερη ειδικότητα από το
      `:root[data-mode="light"]` και δεν θα ίσχυε ποτέ — ο κανόνας θα υπήρχε
      στο αρχείο χωρίς να αλλάζει τίποτα στην οθόνη. */
   :root[data-mode="light"] {
-    --text-secondary: #3c4043;
-    --text-tertiary:  #494f54;
-    --border-subtle:  #bdc1c6;
-    --border-default: #9aa0a6;
-    --border-strong:  #5f6368;
+    --text-secondary: #26324a;
+    --text-tertiary:  #36435a;
+    --border-subtle:  #b3bdca;
+    --border-default: #8994a4;
+    --border-strong:  #536075;
+    --border-control: #536075;
   }
   [data-mode="dark"] {
     --text-secondary: #e3e8ef;
@@ -5906,6 +5986,7 @@ tr.po-row-more { display: none; }
     --border-subtle:  #3d4d64;
     --border-default: #52637c;
     --border-strong:  #6b7d97;
+    --border-control: #8a9bb3;
   }
   /* Η εστίαση δεν χάνεται μέσα στο πιο έντονο περιβάλλον: παχύτερο δαχτυλίδι. */
   :focus-visible { outline-width: 3px; }

@@ -8,6 +8,7 @@
 import { TASK_CATEGORIES, TASK_PRIORITIES, TASK_STATUSES } from '@/lib/checklist/taxonomy'
 import type { FieldContext } from '@/lib/property/fields'
 import type { Who } from '@/lib/accounting/dossier'
+import { statusPill, type StatusKind } from '@/lib/core/status'
 
 export type Priority = 'critical' | 'high' | 'normal' | 'low'
 export type Status   = 'pending' | 'in_progress' | 'done' | 'skipped'
@@ -78,11 +79,17 @@ export const PRI_TONE: Record<string, { color: string; bg: string }> = {
   normal:   { color: 'var(--text-secondary)', bg: 'var(--bg-elevated)'   },
   low:      { color: 'var(--text-tertiary)',  bg: 'var(--bg-elevated)'   },
 }
+// ΟΙ ΚΑΤΑΣΤΑΣΕΙΣ ΑΠΟ ΤΟ ΚΟΙΝΟ ΛΕΞΙΛΟΓΙΟ (lib/core/status.ts). Η ολοκλήρωση
+// ήταν γαλάζια εδώ και πράσινη σε κάθε άλλη οθόνη· το «Εκκρεμεί» σβηστό εδώ
+// και ουδέτερο αλλού. Το ολοκληρωμένο παίρνει το απαλό θετικό σήμα (μελάνι
+// on-container πάνω σε -soft), όχι γέμισμα: δεκαοκτώ ολοκληρωμένα δεν γίνονται
+// το πιο δυνατό χρώμα της οθόνης.
+const statusTone = (k: StatusKind) => { const p = statusPill(k); return { color: p.color, bg: p.background } }
 export const STATUS_TONE: Record<string, { color: string; bg: string }> = {
-  pending:     { color: 'var(--text-tertiary)',  bg: 'var(--bg-elevated)' },
-  in_progress: { color: 'var(--text-secondary)', bg: 'var(--bg-elevated)' },
-  done:        { color: 'var(--accent)',         bg: 'var(--accent-soft)' },
-  skipped:     { color: 'var(--text-tertiary)',  bg: 'var(--bg-elevated)' },
+  pending:     statusTone('pending'),
+  in_progress: statusTone('active'),
+  done:        statusTone('done'),
+  skipped:     statusTone('cancelled'),
 }
 export const NEUTRAL_TONE = { color: 'var(--text-tertiary)', bg: 'var(--bg-elevated)' }
 export const PRIORITIES = TASK_PRIORITIES.map(p => ({ ...p, ...(PRI_TONE[p.value] ?? NEUTRAL_TONE) }))

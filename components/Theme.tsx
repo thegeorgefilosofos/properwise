@@ -1634,7 +1634,7 @@ export function SelectBox({ checked, indeterminate, onChange, label }: {
       style={{
         width: 18, height: 18, flexShrink: 0, padding: 0, borderRadius: T.radius.xs,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`,
+        border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-control)'}`,
         background: on ? 'var(--accent)' : 'var(--bg-elevated)',
         color: 'var(--accent-text)', cursor: 'pointer',
         transition: `background 0.14s ${T.ease.standard}, border-color 0.14s ${T.ease.standard}`,
@@ -1777,7 +1777,7 @@ export const pageShell = (measure: number): CSSProperties => ({
 // `po-field` (globals.css), χωρίς ανά-input JS handlers.
 export const settingsField: CSSProperties = {
   width: '100%', height: T.h.lg, padding: '0 14px', borderRadius: T.radius.inner,
-  border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
+  border: '1px solid var(--border-control)', background: 'var(--bg-surface)',
   color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box',
 };
 

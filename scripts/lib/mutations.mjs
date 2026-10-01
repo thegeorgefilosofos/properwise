@@ -202,8 +202,8 @@ export const MUTATIONS = {
   // να λένε το παλιό χωρίς να το δει κανείς.
   'auth-templates': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
-    from: "const ACCENT = '#1a73e8'",
-    to: "const ACCENT = '#0b57d0'",
+    from: "const ACCENT = L.accent;",
+    to: "const ACCENT = '#0b57d0';",
   },
   // Νέο κείμενο επιστολής που δεν το ζητά κανείς: ακριβώς ο τρόπος με τον
   // οποίο μαζεύτηκαν τα δεκαοκτώ ορφανά, ένα κάθε φορά.
@@ -481,7 +481,24 @@ export const MUTATIONS = {
   // Ένας νέος κανόνας εστίασης που σβήνει το outline και μένει μόνο με σκιά:
   // ακριβώς το ελάττωμα που ο φύλακας υπάρχει για να πιάσει.
   'forced-colors-focus': { file: 'app/globals.css', from: '::selection {', to: '.mut-probe:focus-visible { outline: none; box-shadow: 0 0 0 2px red; }\n::selection {' },
-  'contrast': { file: 'app/globals.css', from: '--text-secondary:', to: '--text-secondary: #8f8f8f; --text-secondary-unused:' },
+  // Τέσσερα σφάλματα, ένα για κάθε κανόνα που ο φύλακας έμαθε να βλέπει:
+  // γκρι 2η βαθμίδα · πέπλο αιώρησης που σβήνει την 3η βαθμίδα (το σφάλμα του
+  // φωτεινού θέματος πριν το ναυτικό) · όριο πεδίου ίσο με όριο κάρτας (1,37:1)
+  // · μπάρα περιηγητή που δεν είναι το --bg-base.
+  'contrast': { every: [
+    { file: 'app/globals.css', from: '--text-secondary:', to: '--text-secondary: #8f8f8f; --text-secondary-unused:' },
+    { file: 'app/globals.css', from: '--bg-hover:      rgba(15,27,46,0.06);', to: '--bg-hover:      rgba(15,27,46,0.22);' },
+    { file: 'app/globals.css', from: '--border-control: #7a8594;', to: '--border-control: #d3dae3;' },
+    { file: 'lib/core/themeColor.ts', from: "light: '#f5f7fa',", to: "light: '#070b12'," },
+  ] },
+  // Τρία σφάλματα, ένα ανά κανόνα: το κόκκινο του Google ξανά σε συνάρτηση
+  // αποστολής · η παλέτα του email ξεφεύγει από το token της εφαρμογής · ένα
+  // κουτί της παλέτας γίνεται τόσο πυκνό που το κείμενό του πέφτει κάτω από 4,5:1.
+  'email-palette': { every: [
+    { file: 'supabase/functions/send-reminders/index.ts', from: "eyebrow('Ληξιπρόθεσμο ενοίκιο', 'negative')", to: "eyebrow('Ληξιπρόθεσμο ενοίκιο', 'negative') + '<b style=\"color:#d93025\">!</b>'" },
+    { file: 'supabase/functions/_shared/emailPalette.ts', from: "ink: '#0f1b2e',", to: "ink: '#1d1d1f'," },
+    { file: 'supabase/functions/_shared/emailPalette.ts', from: "accentFill: 'rgba(19,86,194,.06)',", to: "accentFill: 'rgba(19,86,194,.6)'," },
+  ] },
   // Δηλώνεται ΜΟΝΟ στο φωτεινό και κάποιος τη ζητά: στο σκοτεινό είναι κενή.
   'theme-tokens': { steps: [
     { file: 'app/globals.css', from: ':root[data-mode="light"] {', to: ':root[data-mode="light"] {\n  --mut-probe-only-light: #fff;' },

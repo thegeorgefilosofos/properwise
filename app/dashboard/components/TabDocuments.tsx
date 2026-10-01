@@ -873,7 +873,7 @@ export default function TabDocuments({
               να αναζητείται: το παράδειγμα δίνει τα δύο συνηθισμένα, δεν
               απαριθμεί τι δέχεται το πεδίο. */}
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Όνομα ή πάροχος" aria-label="Αναζήτηση στο αρχείο, με όνομα, πάροχο ή έτος"
-            style={{ width: '100%', height: T.h.lg, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '0 34px 0 34px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans, boxSizing: 'border-box' }}/>
+            style={{ width: '100%', height: T.h.lg, background: 'var(--bg-elevated)', border: '1px solid var(--border-control)', borderRadius: T.radius.pill, padding: '0 34px 0 34px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans, boxSizing: 'border-box' }}/>
           {/* Η θέση μένει εδώ, στο περιτύλιγμα: το κοινό εικονοκούμπι δίνει το
               σχήμα του στόχου αφής, όχι απόλυτη τοποθέτηση. */}
           {query && <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}><IconBtn label="Καθαρισμός αναζήτησης" onClick={() => setQuery('')}><IconX/></IconBtn></span>}
@@ -1129,7 +1129,7 @@ function FileInner({ items, a }: { items: Item[]; a: FileActions }) {
 // media βάφει λευκό 0,14 χωρίς θόλωμα, εδώ είναι το σκίαστρο 0,55 με blur(2px).
 const OverlayBtn = ({ title, onClick, children }: { title: string; onClick: (e: React.MouseEvent) => void; children: React.ReactNode }) => (
   <button onClick={onClick} title={title} className="po-box"
-    style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', background: T.scrim, color: 'var(--on-media)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)' }}>{children}</button>
+    style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'var(--scrim-media)', color: 'var(--on-media)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)' }}>{children}</button>
 );
 
 function FileCard({ i, a }: { i: Item; a: FileActions }) {
@@ -1153,7 +1153,7 @@ function FileCard({ i, a }: { i: Item; a: FileActions }) {
         {i.isImage && i.url
           ? <RuntimeImg src={i.url} alt={i.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
           : <span style={{ color: 'var(--accent)' }}><svg aria-hidden="true" {...S} width={30} height={30}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>}
-        {isPdfItem(i) && <span style={{ position: 'absolute', bottom: 6, left: 6, fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--on-media)', background: T.scrim, padding: '2px 6px', borderRadius: T.radius.xs }}>PDF</span>}
+        {isPdfItem(i) && <span style={{ position: 'absolute', bottom: 6, left: 6, fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--on-media)', background: 'var(--scrim-media)', padding: '2px 6px', borderRadius: T.radius.xs }}>PDF</span>}
         {selectable && (shown || sel) && <div style={{ position: 'absolute', top: 6, left: 6 }} onClick={e => e.stopPropagation()}><SelectBox checked={sel} onChange={() => a.onToggleSel(i.id)} label={`Επιλογή ${i.title}`}/></div>}
         {shown && i.raw && (
           <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4 }}>

@@ -162,8 +162,14 @@ export const BRAND_MARK_ON_DARK = '#ffffff';
  * ΤΟ ΣΚΟΥΡΟ ΦΟΝΤΟ ΤΟΥ ΕΙΚΟΝΙΔΙΟΥ, ΜΙΑ ΦΟΡΑ. Το app/icon.svg και τα public/icons
  * το έχουν ναυτικό μπλε· η οθόνη εκκίνησης (manifest) ήταν γκρι και η εικόνα
  * κοινοποίησης σχεδόν μαύρη. Τρεις αποχρώσεις για το ίδιο σήμα.
+ *
+ * ΚΑΙ ΜΕΤΑ ΗΤΑΝ ΤΕΤΑΡΤΗ. Το #0B192C δεν ήταν καμία επιφάνεια της εφαρμογής:
+ * η οθόνη εκκίνησης έδειχνε ένα μπλε και η εφαρμογή που άνοιγε από πίσω της
+ * (#070b12) ένα άλλο. Τα σκούρα του brand είναι πλέον ΔΥΟ: #070b12 για
+ * επιφάνειες (φόντο, μπάρα, εκκίνηση, εικονίδιο) και #0b1b33 για μελάνι
+ * (BRAND_MARK_INK, --brand-ink).
  */
-export const BRAND_DARK_BG = '#0B192C';
+export const BRAND_DARK_BG = '#070b12';
 
 export const brandMarkHtml = (size = 34) =>
   `<span style="display:inline-block;font-weight:800;letter-spacing:0.06em;`

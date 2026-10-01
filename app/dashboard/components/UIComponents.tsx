@@ -21,7 +21,7 @@ export const FIELD_HEIGHT = T.h.lg;
 // Ακτίνα πεδίων: ίδια με τα κουμπιά και το inner token (T.radius.inner = 10),
 // ώστε πεδία και κουμπιά να έχουν την ίδια γεωμετρία παντού.
 export const FIELD_RADIUS = T.radius.inner;
-export const fieldBorderColor = (active: boolean) => (active ? 'var(--accent)' : 'var(--border-default)');
+export const fieldBorderColor = (active: boolean) => (active ? 'var(--accent)' : 'var(--border-control)');
 export const fieldRing = (active: boolean) => (active ? '0 0 0 3px var(--accent-dim)' : 'none');
 
 /**
@@ -84,7 +84,7 @@ export function ToggleField({ label, labelInfo, on, onChange }: { label: string;
 const mdInputBase: React.CSSProperties = {
   width: '100%',
   background: 'var(--bg-surface)',
-  border: '1px solid var(--border-default)',
+  border: '1px solid var(--border-control)',
   borderRadius: FIELD_RADIUS,
   padding: '10px 16px',
   color: 'var(--text-primary)',
@@ -1296,7 +1296,7 @@ export function ToggleTrack({ on }: { on: boolean }) {
       display: 'block',
       width: w, height: h, borderRadius: h,
       background: on ? 'var(--accent)' : 'transparent',
-      border: `2px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`,
+      border: `2px solid ${on ? 'var(--accent)' : 'var(--border-control)'}`,
       position: 'relative', boxSizing: 'border-box', flexShrink: 0,
       transition: 'background 0.2s, border-color 0.2s',
     }}>

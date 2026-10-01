@@ -25,7 +25,7 @@ import type { Comment, SubTask } from './model'
 // 40: 32 το κουμπί, 3 το γέμισμα, 1 το περίγραμμα.
 export const iStyle: React.CSSProperties = {
   width: '100%', height: T.h.lg, padding: '0 14px', borderRadius: T.radius.inner,
-  border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
+  border: '1px solid var(--border-control)', background: 'var(--bg-surface)',
   // ΧΩΡΙΣ `outline: none`. Το ενσώματο στυλ πατούσε τον καθολικό κανόνα
   // `input:focus-visible` και η θέση της εστίασης χανόταν: μετρημένο με
   // πραγματικό Tab, το πεδίο αναζήτησης δεν άλλαζε ΚΑΜΙΑ ιδιότητα όψης.

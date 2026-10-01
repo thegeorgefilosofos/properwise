@@ -199,7 +199,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
                     οθόνης ανακοίνωνε «πεδίο κειμένου» χωρίς να λέει ποιου πράγματος.
                     Η ετικέτα μένει κενή επίτηδες (το λέει ο τίτλος από πάνω), οπότε
                     το όνομα δίνεται με `ariaLabel` — που το `TextInput` δέχεται ήδη. */}
-                <TextInput label="" ariaLabel="Κωδικός χρώματος επωνυμίας" value={accent} onChange={v => setAccent(v)} placeholder="#1a73e8" />
+                <TextInput label="" ariaLabel="Κωδικός χρώματος επωνυμίας" value={accent} onChange={v => setAccent(v)} placeholder={DEFAULT_ACCENT} />
               </div>
             </div>
           </div>

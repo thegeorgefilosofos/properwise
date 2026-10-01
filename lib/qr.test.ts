@@ -44,7 +44,7 @@ const draw = (text: string, opts?: Parameters<typeof drawQrToCanvas>[2]) => {
   const { rects, dark } = draw('https://properwise.gr')
   ok('ζωγραφίζει φόντο πρώτα', rects.length > 0 && rects[0].fill === '#ffffff')
   ok('ζωγραφίζει σκούρα modules', dark.length > 20)
-  ok('τα modules είναι στο χρώμα προσκηνίου', dark.every(r => r.fill === '#0d1b2e'))
+  ok('τα modules είναι στο χρώμα προσκηνίου', dark.every(r => r.fill === '#0b1b33'))
 }
 
 // ── ΖΩΝΗ ΗΣΥΧΙΑΣ: 4 modules, το πρότυπο. Λιγότερα ⇒ αναξιόπιστη σάρωση ─────

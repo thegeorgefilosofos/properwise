@@ -214,7 +214,7 @@ export default function TenantPortal() {
 
   const wrap: React.CSSProperties = { maxWidth: 560, margin: '0 auto', padding: '0 clamp(16px,5vw,24px)' };
   const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 'clamp(18px,4vw,24px)', marginBottom: 16 };
-  const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit' };
+  const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-control)', borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit' };
   const label: React.CSSProperties = { fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' };
   // ═══ Η ΓΡΑΜΜΗ ΤΗΣ ΜΙΣΘΩΣΗΣ ═══════════════════════════════════════════════════
   // ΤΟ MONO ΕΦΥΓΕ. Η στήλη τιμών γραφόταν σε γραμματοσειρά σταθερού πλάτους,

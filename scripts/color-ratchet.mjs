@@ -24,6 +24,7 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { tightened } from './lib/ratchet.mjs'
 
 const ROOT = new URL('..', import.meta.url).pathname
 // ΤΟ `lib/` ΔΕΝ ΣΑΡΩΝΟΤΑΝ ΠΟΤΕ και εκεί ζούσε το ΕΠΙΣΗΜΟ έγγραφο. Το
@@ -179,7 +180,85 @@ if (total > cap) {
   process.exit(1)
 }
 
-console.log(`✅ Καστάνια χρώματος πέρασε — ${total} ωμά hex ≤ όριο ${cap}.`)
-if (total < cap) {
-  console.log(`   ↓ Βελτίωση κατά ${cap - total}. Κατέβασε το "maxHex" στο scripts/color-baseline.json στο ${total} για να κλειδώσει.`)
+// ═══ ΤΑ ΔΥΟ ΤΥΦΛΑ ΣΗΜΕΙΑ: rgb()/rgba() ΚΑΙ ΟΙ ΣΥΝΑΡΤΗΣΕΙΣ ΑΚΡΗΣ ═══════════════
+// Η καστάνια μετρούσε ΜΟΝΟ «#…». Το ίδιο ωμό χρώμα γραμμένο ως rgba() περνούσε
+// αμέτρητο και έτσι ζούσαν επτά πέπλα παραθύρου, δύο μελάνια σκιάς και το
+// λευκό της πλαϊνής στήλης της σύνδεσης σε πέντε διαφάνειες. Και ο φάκελος
+// supabase/functions —όπου γράφεται κάθε email— δεν σαρωνόταν καθόλου: εκεί
+// ζούσε ολόκληρη η παλέτα του Google Material (#1a73e8, #d93025, #b8860b …),
+// με πέντε ζεύγη κάτω από το 4,5:1. Τρεις μετρήσεις, η καθεμία μόνο προς τα κάτω.
+const RGB = /\brgba?\(\s*\d/g
+let rgbTotal = 0
+const rgbOffenders = []
+for (const dir of SCAN) {
+  let files = []
+  try { files = walk(join(ROOT, dir)) } catch { continue }
+  for (const f of files) {
+    const rel = relative(ROOT, f)
+    if (ALLOW.find(a => a.re.test(rel))) continue
+    const hits = stripComments(readFileSync(f, 'utf8')).match(RGB)
+    if (!hits) continue
+    rgbTotal += hits.length
+    rgbOffenders.push({ file: rel, count: hits.length })
+  }
 }
+rgbOffenders.sort((a, b) => b.count - a.count)
+
+// Οι συναρτήσεις άκρης: hex ΚΑΙ rgb. Η παλέτα του email είναι ο ΟΡΙΣΜΟΣ, όπως
+// το lib/print/ink.ts για το χαρτί· οι σουίτες γράφουν κυριολεκτικά ό,τι ελέγχουν.
+const EDGE = 'supabase/functions'
+const EDGE_ALLOW = /_shared\/emailPalette\.ts$/
+const EDGE_EXT = /(?<!\.test)\.(ts|mjs)$/
+let edgeTotal = 0
+const edgeOffenders = []
+const walkEdge = (dir, acc = []) => {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name)
+    if (statSync(p).isDirectory()) walkEdge(p, acc)
+    else if (EDGE_EXT.test(name)) acc.push(p)
+  }
+  return acc
+}
+for (const f of walkEdge(join(ROOT, EDGE))) {
+  const rel = relative(ROOT, f)
+  if (EDGE_ALLOW.test(rel)) continue
+  const code = stripComments(readFileSync(f, 'utf8'))
+  const n = (code.match(HEX) || []).length + (code.match(RGB) || []).length
+  if (!n) continue
+  edgeTotal += n
+  edgeOffenders.push({ file: rel, count: n })
+}
+
+const capRgb = baseline.maxRgb
+const capEdge = baseline.maxEdge
+if (typeof capRgb !== 'number' || typeof capEdge !== 'number') {
+  console.error('🔴 Λείπουν τα «maxRgb» / «maxEdge» από το scripts/color-baseline.json.')
+  process.exit(1)
+}
+let over = false
+if (rgbTotal > capRgb) {
+  over = true
+  console.error(`🔴 Ωμά rgb()/rgba() σε app/ + components/ + lib/: ${rgbTotal} > όριο ${capRgb} (+${rgbTotal - capRgb}).`)
+  console.error('   Πέπλο παραθύρου → var(--scrim) · πάνω σε φωτογραφία → var(--scrim-media)')
+  console.error('   σκιά → var(--elev-*) ή color-mix(in srgb, var(--shadow-ink) Ν%, transparent)')
+  console.error('   απόχρωση τόνου → color-mix(in srgb, var(--<τόνος>) Ν%, transparent)')
+  for (const o of rgbOffenders.slice(0, 10)) console.error(`     ${String(o.count).padStart(4)}  ${o.file}`)
+}
+if (edgeTotal > capEdge) {
+  over = true
+  console.error(`🔴 Ωμά χρώματα σε ${EDGE}: ${edgeTotal} > όριο ${capEdge} (+${edgeTotal - capEdge}).`)
+  console.error('   Τα email παίρνουν χρώμα ΜΟΝΟ από το _shared/emailPalette.ts (EMAIL_LIGHT, EMAIL_TONE).')
+  for (const o of edgeOffenders.slice(0, 10)) console.error(`     ${String(o.count).padStart(4)}  ${o.file}`)
+}
+if (over) process.exit(1)
+
+// ΜΟΝΟ ΠΡΟΣ ΤΑ ΚΑΤΩ, ΚΑΙ ΚΛΕΙΔΩΜΕΝΟ. Ηταν «πρόταση» να κατέβει το όριο και
+// στις 01/10/2026 βρέθηκε εννέα θέσεις πιο χαλαρό από τη μέτρηση: εννέα ωμά
+// hex μπορούσαν να ξαναμπούν πράσινα. Ιδιος κανόνας με κάθε άλλη καστάνια.
+const firm = [
+  tightened({ total, max: cap, what: 'ωμά hex σε app/ + components/ + lib/', file: 'scripts/color-baseline.json', key: 'maxHex' }),
+  tightened({ total: rgbTotal, max: capRgb, what: 'ωμά rgb()/rgba() σε app/ + components/ + lib/', file: 'scripts/color-baseline.json', key: 'maxRgb' }),
+  tightened({ total: edgeTotal, max: capEdge, what: `ωμά χρώματα σε ${EDGE}`, file: 'scripts/color-baseline.json', key: 'maxEdge' }),
+]
+if (firm.includes(false)) process.exit(1)
+console.log(`✅ Καστάνια χρώματος πέρασε — ${total} hex · ${rgbTotal} rgb · ${edgeTotal} στις συναρτήσεις άκρης.`)

@@ -62,7 +62,7 @@ export default function AgendaPanel({ items, total, onNavigate }: {
         {items.length > 0 && (
           <span className="agenda-count">
             {late > 0
-              ? `${late} ${late === 1 ? 'εκπρόθεσμο' : 'εκπρόθεσμα'}`
+              ? `${late} ${late === 1 ? 'ληξιπρόθεσμο' : 'ληξιπρόθεσμα'}`
               : dated
                 ? `${items.length} κατά προτεραιότητα`
                 : `${items.length} ${items.length === 1 ? 'θέμα' : 'θέματα'}`}

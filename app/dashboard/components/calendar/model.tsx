@@ -11,6 +11,7 @@ import * as calendar from '@/lib/data/calendar'
 import { FileText, User, Bell, Receipt, Euro, Wrench, Landmark } from 'lucide-react'
 import { taxKindMeta } from '@/lib/tax/greekTaxCalendar'
 import { MONTHS_SHORT, DAY_NAMES_SHORT } from '@/lib/core/months'
+import { STATUS_LABEL, statusColor, type StatusKind } from '@/lib/core/status'
 
 // Οι τρεις απαριθμήσεις του γεγονότος ζουν στο στρώμα δεδομένων, όχι εδώ: τις
 // γράφουν και άλλες οθόνες και μία λάθος συμβολοσειρά είναι αόρατη μέχρι να
@@ -42,7 +43,8 @@ export interface FormState {
   notes: string; attachment_url: string; phone: string; email: string; add_expense: boolean
 }
 
-// Χρώματα κατηγοριών ευθυγραμμισμένα με το Google
+// Οι κατηγορίες είναι ΟΥΔΕΤΕΡΕΣ επίτηδες: το είδος λέγεται με εικονίδιο και λέξη,
+// το χρώμα κρατιέται για την κατάσταση (lib/core/status.ts).
 export const CATEGORIES: Record<EventCategory, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
   tax:         { label: 'Φορολογικά',   color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <Landmark size={11}/> },
   financial:   { label: 'Οικονομικά',   color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <Euro size={11}/> },
@@ -61,11 +63,15 @@ export const PRIORITIES: Record<EventPriority, { label: string; color: string }>
   critical: { label: 'Κρίσιμη', color: 'var(--negative)' },
 }
 
+// ΤΟ ΛΕΞΙΛΟΓΙΟ ΑΠΟ ΤΟ lib/core/status.ts. Εδώ το «Εκκρεμεί» ήταν κίτρινο (σαν
+// προειδοποίηση για κάτι που δεν έχει λήξει) και το «Ακυρώθηκε» κόκκινο, ίδιο
+// με το ληξιπρόθεσμο: μια ακύρωση διαβαζόταν ως πρόβλημα.
+const statusOf = (k: StatusKind) => ({ label: STATUS_LABEL[k], color: statusColor(k) })
 export const STATUSES: Record<EventStatus, { label: string; color: string }> = {
-  pending:     { label: 'Εκκρεμεί',    color: 'var(--warning)' },
-  paid:        { label: 'Πληρώθηκε',   color: 'var(--positive)' },
-  in_progress: { label: 'Σε εξέλιξη', color: 'var(--accent)' },
-  cancelled:   { label: 'Ακυρώθηκε',  color: 'var(--negative)' },
+  pending:     statusOf('pending'),
+  paid:        statusOf('paid'),
+  in_progress: statusOf('active'),
+  cancelled:   statusOf('cancelled'),
 }
 
 // ── Κατηγορίες που γράφουν ΑΛΛΕΣ καρτέλες ─────────────────────────────────────

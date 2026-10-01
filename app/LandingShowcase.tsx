@@ -57,8 +57,8 @@ export default function LandingShowcase() {
            εξαίρεση που δηλώνεται ρητά. Πριν υπήρχαν τρεις κανόνες για δύο θέματα:
            η σκιά του σκούρου ήταν γραμμένη δύο φορές, μία για το [data-mode] και
            μία για την προτίμηση λειτουργικού. */''}
-        .ls-mockup { box-shadow: 0 1px 2px rgba(16,24,40,.40), 0 20px 40px -12px rgba(16,24,40,.55), 0 48px 90px -24px rgba(16,24,40,.65); transform-origin: center top; will-change: transform; }
-        :root[data-mode="light"] .ls-mockup { box-shadow: 0 1px 1px rgba(16,24,40,.05), 0 12px 24px -8px rgba(16,24,40,.10), 0 40px 64px -24px rgba(16,24,40,.14); }
+        .ls-mockup { box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 40%, transparent), 0 20px 40px -12px color-mix(in srgb, var(--shadow-ink) 55%, transparent), 0 48px 90px -24px color-mix(in srgb, var(--shadow-ink) 65%, transparent); transform-origin: center top; will-change: transform; }
+        :root[data-mode="light"] .ls-mockup { box-shadow: 0 1px 1px color-mix(in srgb, var(--shadow-ink) 5%, transparent), 0 12px 24px -8px color-mix(in srgb, var(--shadow-ink) 10%, transparent), 0 40px 64px -24px color-mix(in srgb, var(--shadow-ink) 14%, transparent); }
         ${/* Λεπτό 3D «κάθισμα» καθώς μπαίνει στην οθόνη, scroll-driven, χωρίς engine.
            Progressive enhancement: όπου δεν υποστηρίζεται, το mockup είναι απλώς επίπεδο. */''}
         @keyframes lsTilt { from { opacity: .55; transform: perspective(1500px) rotateX(7deg) scale(.985); } to { opacity: 1; transform: perspective(1500px) rotateX(0deg) scale(1); } }
@@ -69,7 +69,7 @@ export default function LandingShowcase() {
         }
         ${/* Μέσα στο σκοτεινό hero, το mockup φωτίζεται σαν έκθεμα: απαλή γαλάζια
            λάμψη πίσω του, ώστε το προϊόν να είναι το φωτεινότερο σημείο της σκηνής. */''}
-        .lp-hero .ls-mockup { box-shadow: 0 1px 2px rgba(2,6,18,.5), 0 24px 48px -12px rgba(2,6,18,.6), 0 0 140px -16px color-mix(in srgb, var(--accent) 45%, transparent) !important; border-color: rgba(255,255,255,.14); }
+        .lp-hero .ls-mockup { box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 50%, transparent), 0 24px 48px -12px color-mix(in srgb, var(--shadow-ink) 60%, transparent), 0 0 140px -16px color-mix(in srgb, var(--accent) 45%, transparent) !important; border-color: rgba(255,255,255,.14); }
       `}</style>
       <div ref={tiltRef} onMouseMove={onTilt} onMouseLeave={resetTilt} style={{ transition: 'transform 0.35s cubic-bezier(0.2, 0, 0, 1)', willChange: 'transform' }}>
         <div className="ls-mockup" style={{ position: 'relative', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.card, overflow: 'hidden' }}>

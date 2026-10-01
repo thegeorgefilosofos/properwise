@@ -30,11 +30,14 @@ import { inflateSync, deflateSync } from 'node:zlib';
 import { chromium } from 'playwright-core';
 
 const CHROME = chromePath();
-const NAVY = '#0B192C';
 const WHITE = '#ffffff';
 
 // Η γεωμετρία διαβάζεται από την πηγή της, χωρίς εισαγωγή TypeScript.
 const src = readFileSync('components/BrandMark.tsx', 'utf8');
+// ΚΑΙ ΤΟ ΦΟΝΤΟ ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ. Ηταν γραμμένο εδώ δεύτερη φορά και θα έμενε
+// πίσω στην πρώτη αλλαγή του BRAND_DARK_BG.
+const NAVY = /BRAND_DARK_BG = '(#[0-9a-fA-F]{3,8})'/.exec(src)?.[1];
+if (!NAVY) throw new Error('Δεν βρέθηκε το BRAND_DARK_BG στο BrandMark.tsx');
 const block = /const SHAPE = \[([\s\S]*?)\n\];/.exec(src);
 if (!block) throw new Error('Δεν βρέθηκε ο κατάλογος SHAPE στο BrandMark.tsx');
 const SHAPE = [...block[1].matchAll(/'([^']+)'/g)].map(x => x[1]);
