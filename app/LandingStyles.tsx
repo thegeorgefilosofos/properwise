@@ -50,7 +50,7 @@ export function LandingStyles() {
           background-repeat: no-repeat;
         }
         .lp-card { position: relative; transition: transform .22s cubic-bezier(.2,0,0,1), box-shadow .22s cubic-bezier(.2,0,0,1), border-color .22s; }
-        .lp-card:hover { transform: translateY(-3px); box-shadow: 0 20px 44px -20px rgba(0,0,0,.6); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+        .lp-card:hover { transform: translateY(-3px); box-shadow: 0 20px 44px -20px color-mix(in srgb, var(--shadow-ink) 60%, transparent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 
         ${/* Ο φωτισμός που ακολουθεί τον δείκτη. Οι συντεταγμένες γράφονται από το
            app/Spotlight.tsx, μία φορά ανά καρέ. Η αρχική τιμή είναι το πάνω μέσο
@@ -101,8 +101,8 @@ export function LandingStyles() {
         .lp-atmos::before {
           content: ''; position: absolute; inset: 0;
           background-image:
-            linear-gradient(rgba(138,180,248,.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(138,180,248,.06) 1px, transparent 1px);
+            linear-gradient(color-mix(in srgb, var(--mkt-accent) 6%, transparent) 1px, transparent 1px),
+            linear-gradient(90deg, color-mix(in srgb, var(--mkt-accent) 6%, transparent) 1px, transparent 1px);
           background-size: 72px 72px;
           -webkit-mask-image: radial-gradient(ellipse 76% 52% at 50% 0%, #000 0%, transparent 72%);
           mask-image: radial-gradient(ellipse 76% 52% at 50% 0%, #000 0%, transparent 72%);

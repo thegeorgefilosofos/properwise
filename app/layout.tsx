@@ -108,18 +108,15 @@ export const viewport: Viewport = {
 };
 
 // Αποτρέπει το αναβόσβημα λάθος θέματος — τρέχει πριν την ενυδάτωση του React.
-// Πρέπει να διαβάζει ΑΚΡΙΒΩΣ τα ίδια κλειδιά και το ίδιο default με τον
-// ThemeProvider (pos_mode για dark/light, pos_theme για την παλέτα, default
-// 'dark'/'midnight'), αλλιώς το pre-paint διαφέρει από το post-hydration και
-// εμφανίζεται στιγμιαία λάθος θέμα.
+// Πρέπει να διαβάζει ΑΚΡΙΒΩΣ το ίδιο κλειδί και το ίδιο default με τον
+// ThemeProvider (pos_mode, default 'dark'), αλλιώς το pre-paint διαφέρει από
+// το post-hydration και εμφανίζεται στιγμιαία λάθος θέμα.
 const themeInitScript = `
 (function() {
   try {
     var mode  = localStorage.getItem('pos_mode')  || 'dark';
-    var theme = localStorage.getItem('pos_theme') || 'midnight';
     var el = document.documentElement;
     el.setAttribute('data-mode',  mode === 'light' ? 'light' : 'dark');
-    el.setAttribute('data-theme', theme);
     if (mode === 'light') {
       var bar = document.querySelector('meta[name="theme-color"]');
       if (bar) bar.setAttribute('content', ${JSON.stringify(THEME_COLOR.light)});

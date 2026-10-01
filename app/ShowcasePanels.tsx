@@ -75,7 +75,7 @@ export const PanelFX = () => (
     @keyframes lpGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
     .lp-grow { transform-origin: bottom; animation: lpGrow .5s cubic-bezier(.2, 0, 0, 1) both; }
     .lp-live { transition: filter .18s ease, transform .18s cubic-bezier(.2, 0, 0, 1), box-shadow .18s ease; }
-    .lp-live:hover { filter: brightness(1.13); transform: translateY(-1.5px); box-shadow: 0 4px 14px -6px rgba(16,24,40,.22); }
+    .lp-live:hover { filter: brightness(1.13); transform: translateY(-1.5px); box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--shadow-ink) 22%, transparent); }
     .lp-vbar { transition: filter .18s ease; }
     .lp-vbar:hover { filter: brightness(1.4) saturate(1.15); }
     ${/* ═══ ΔΥΟ ΚΑΝΟΝΕΣ ΠΟΥ ΕΚΡΥΒΑΝ ΤΗΝ ΠΛΑΪΝΗ ΣΤΗΛΗ, ΚΑΙ ΚΑΝΕΝΑΣ ΔΕΝ ΙΣΧΥΕ ══

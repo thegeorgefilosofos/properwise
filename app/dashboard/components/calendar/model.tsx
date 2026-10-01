@@ -43,7 +43,8 @@ export interface FormState {
   notes: string; attachment_url: string; phone: string; email: string; add_expense: boolean
 }
 
-// Χρώματα κατηγοριών ευθυγραμμισμένα με το Google
+// Οι κατηγορίες είναι ΟΥΔΕΤΕΡΕΣ επίτηδες: το είδος λέγεται με εικονίδιο και λέξη,
+// το χρώμα κρατιέται για την κατάσταση (lib/core/status.ts).
 export const CATEGORIES: Record<EventCategory, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
   tax:         { label: 'Φορολογικά',   color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <Landmark size={11}/> },
   financial:   { label: 'Οικονομικά',   color: 'var(--text-secondary)', bg: 'var(--bg-elevated)', border: 'var(--border-subtle)', icon: <Euro size={11}/> },
