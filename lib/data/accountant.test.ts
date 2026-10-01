@@ -7,7 +7,7 @@
 // κάθε φράση πρέπει να στέκεται μόνη της, να είναι στον σωστό αριθμό και η
 // σειρά να βάζει μπροστά αυτό που όντως εμποδίζει.
 // ═══════════════════════════════════════════════════════════════════════════
-import { gapsOf, readinessOf, type ClientCounts } from './accountant';
+import { gapsOf, readinessOf, aadeStateOf, aadeStateLabel, type ClientCounts, type ClientPack } from './accountant';
 
 let pass = 0, fail = 0;
 const fails: string[] = [];
@@ -81,6 +81,31 @@ eq('και το λέει με μία λέξη', readinessOf(gapsOf(base)).label,
   eq('καμία φράση με τελεία ή κενά στις άκρες', bad.map(g => g.key).join(', '), '');
   const dup = new Set(all.map(g => g.key));
   eq('κάθε κλειδί μία φορά', dup.size, all.length);
+}
+
+// ── Το προσυμπληρωμένο Ε2 και ο φάκελος ────────────────────────────────────
+// Ο λογιστής βλέπει ΠΛΗΘΗ: πόσες διαφορές, αν ανέβηκε, αν στάλθηκε φάκελος.
+// Ενα παλιό «συμφωνεί» μετά από νέο ανέβασμα δεν επιτρέπεται να μείνει.
+{
+  const pack = (o: Partial<ClientPack> = {}): ClientPack => ({
+    ownerAfm: '094014201', differences: 0, checkedAt: '2026-03-10T10:00:00Z', missingCount: 0, missingTop: [],
+    filePath: 'o1/accountant-pack/2025/094014201.zip', sizeBytes: 2048, sharedAt: '2026-03-10T10:00:00Z', ...o,
+  });
+  eq('δεν ανέβηκε', aadeStateOf({ aadeRows: 0, aadeChangedAt: null, packs: [] }).kind, 'not_uploaded');
+  eq('χωρίς απάντηση της νέας βάσης: τίποτα δεν λέγεται', gapsOf(base).length, 0);
+  eq('ανέβηκε, χωρίς σύγκριση: εκκρεμεί', aadeStateOf({ aadeRows: 3, aadeChangedAt: '2026-03-11T10:00:00Z', packs: [] }).kind, 'pending');
+  eq('συμφωνεί', aadeStateOf({ aadeRows: 3, aadeChangedAt: '2026-03-09T10:00:00Z', packs: [pack()] }).kind, 'matches');
+  eq('νέο ανέβασμα μετά τη σύγκριση: εκκρεμεί, όχι «συμφωνεί»',
+    aadeStateOf({ aadeRows: 3, aadeChangedAt: '2026-03-12T10:00:00Z', packs: [pack()] }).kind, 'pending');
+  const two = aadeStateOf({ aadeRows: 5, aadeChangedAt: '2026-03-09T10:00:00Z', packs: [pack({ differences: 2 }), pack({ ownerAfm: '123456783', differences: 1 })] });
+  eq('διαφορές από δύο ΑΦΜ αθροίζονται', two, { kind: 'differences', count: 3 });
+  eq('η φράση λέει το πλήθος', aadeStateLabel(two), '3 διαφορές με το προσυμπληρωμένο Ε2');
+  const g = gapsOf({ ...base, e2: { aadeRows: 5, aadeChangedAt: '2026-03-09T10:00:00Z', packs: [pack({ differences: 2, filePath: null })] } });
+  ok('οι διαφορές μπλοκάρουν', g.some(x => x.key === 'aade_diff' && x.blocking));
+  ok('φάκελος που δεν στάλθηκε: λέγεται', g.some(x => x.key === 'pack' && !x.blocking));
+  const none = gapsOf({ ...base, e2: { aadeRows: 0, aadeChangedAt: null, packs: [] } });
+  ok('το προσυμπληρωμένο που λείπει λέγεται', none.some(x => x.key === 'aade_e2'));
+  eq('έτοιμος πελάτης: σύγκριση που συμφωνεί και φάκελος', gapsOf({ ...base, e2: { aadeRows: 2, aadeChangedAt: '2026-03-09T10:00:00Z', packs: [pack()] } }).length, 0);
 }
 
 console.log(`\naccountant: ${fail === 0 ? `✓ ${pass} έλεγχοι` : `✗ ${fail} απέτυχαν από ${pass + fail}`}`);

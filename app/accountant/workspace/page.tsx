@@ -25,7 +25,12 @@ import { createClient } from '@/lib/supabase/client';
 import { T, Card, Btn, Skeleton } from '@/components/Theme';
 import { TextInput } from '@/app/dashboard/components/UIComponents';
 import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
-import { claim, clients, request, withdrawRequest, dropClient, gapsOf, readinessOf, type ClientCounts } from '@/lib/data/accountant';
+import { claim, clients, request, withdrawRequest, dropClient, gapsOf, readinessOf, aadeStateOf, aadeStateLabel, type ClientCounts } from '@/lib/data/accountant';
+import { fileBytes } from '@/lib/data/e2Prefilled';
+import { PACK_FILES } from '@/lib/accounting/meetingPack';
+import { downloadFile } from '@/lib/core/download';
+import { fmtBytes } from '@/lib/core/bytes';
+import E2PrefilledImport, { type KnownProperty } from '@/app/dashboard/components/E2PrefilledImport';
 import { loadStatements, downloadAll, lastMove, type BulkClient, type ClientStatement } from '../bulk';
 import { foldName } from '@/lib/contacts/alpha';
 import { notify, notifyError } from '@/components/Toast';
@@ -73,6 +78,9 @@ export default function AccountantWorkspace() {
   // κείμενο ανήκει στο αίτημα και το διαβάζει ο ιδιοκτήτης στον πίνακά του.
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [openNote, setOpenNote] = useState<string | null>(null);
+  // Το προσυμπληρωμένο που ανεβάζει ο λογιστής για λογαριασμό του πελάτη.
+  const [importFor, setImportFor] = useState<{ owner: ClientCounts; known: KnownProperty[] } | null>(null);
+  const [packBusy, setPackBusy] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
@@ -133,6 +141,32 @@ export default function AccountantWorkspace() {
   const unask = async (id: string) => {
     if (await withdrawRequest(supabase, id)) await load(year);
     else notifyError('Το αίτημα δεν αποσύρθηκε');
+  };
+
+  // ── ΤΟ ΠΡΟΣΥΜΠΛΗΡΩΜΕΝΟ ΚΑΙ Ο ΦΑΚΕΛΟΣ ──────────────────────────────────────
+  // Ο φάκελος είναι αυτός που ΕΣΤΕΙΛΕ ο ιδιοκτήτης: η βάση τον δίνει μόνο όσο
+  // ισχύει η σύνδεση. Ο λογιστής δεν φτιάχνει φάκελο από τα δεδομένα του πελάτη.
+  const downloadPack = async (c: ClientCounts, afm: string, path: string) => {
+    setPackBusy(path);
+    const bytes = await fileBytes(supabase, path);
+    setPackBusy('');
+    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε τον σύνδεσμο, ζήτησε νέο.'); return; }
+    downloadFile(new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/zip' }), `${c.name} · ${PACK_FILES.zip(year, afm)}`, 'application/zip');
+  };
+
+  // Οι ΑΤΑΚ των ακινήτων του πελάτη, από την ίδια ανάγνωση που ανοίγει την
+  // κατάστασή του, για να ξεκινά η καταχώρηση με το χέρι από αυτούς.
+  const openImport = async (c: ClientCounts) => {
+    let known: KnownProperty[] = [];
+    if (c.token) {
+      // Η αποτυχία εδώ δεν γίνεται ποσό: απλώς η καταχώρηση με το χέρι ξεκινά
+      // χωρίς έτοιμους ΑΤΑΚ. Και το λέμε.
+      const { data, error } = await supabase.rpc('get_accountant_data', { p_token: c.token, p_year: year });
+      if (error) notifyError('Οι ΑΤΑΚ του πελάτη δεν διαβάστηκαν· η καταχώρηση με το χέρι ξεκινά κενή.');
+      const props = ((data as { properties?: { name?: string | null; atak?: string | null }[] } | null)?.properties) ?? [];
+      known = props.map(p => ({ atak: p.atak ?? null, name: p.name || 'Ακίνητο' }));
+    }
+    setImportFor({ owner: c, known });
   };
 
   const removeClient = async (ownerId: string, name: string) => {
@@ -395,6 +429,33 @@ export default function AccountantWorkspace() {
                   </div>
                 </div>
 
+                {/* Ο ΠΕΛΑΤΗΣ ΠΟΥ ΕΡΧΕΤΑΙ ΕΤΟΙΜΟΣ: σύγκριση με την ΑΑΔΕ και φάκελος. */}
+                {c.e2 && (
+                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+                    <p style={label}>Ε2 {year} και φάκελος</p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
+                      <span style={{ fontSize: 13, fontFamily: T.font.sans, lineHeight: 1.5, color: aadeStateOf(c.e2).kind === 'differences' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: aadeStateOf(c.e2).kind === 'differences' ? 600 : 400 }}>
+                        {aadeStateLabel(aadeStateOf(c.e2))}
+                      </span>
+                      <span className="po-noprint" style={{ flexShrink: 0 }}>
+                        <Btn variant="ghost" onClick={() => void openImport(c)}>{c.e2.aadeRows ? 'Αντικατάσταση προσυμπληρωμένου' : 'Ανέβασε το προσυμπληρωμένο'}</Btn>
+                      </span>
+                    </div>
+                    {c.e2.packs.filter(p => p.filePath).map(p => (
+                      <div key={p.ownerAfm} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+                          {`Φάκελος ΑΦΜ ${p.ownerAfm} · στάλθηκε ${p.sharedAt ? fd(p.sharedAt) : ''}${p.sizeBytes ? ` · ${fmtBytes(p.sizeBytes)}` : ''}${p.missingCount ? ` · λείπουν ${p.missingCount}` : ' · πλήρης'}`}
+                        </span>
+                        <span className="po-noprint" style={{ flexShrink: 0 }}>
+                          <Btn variant="secondary" onClick={() => void downloadPack(c, p.ownerAfm, p.filePath!)} disabled={packBusy === p.filePath}>
+                            {packBusy === p.filePath ? 'Κατεβαίνει…' : 'Κατέβασε τον φάκελο'}
+                          </Btn>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {gaps.length > 0 && (
                   <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'grid', gap: 0 }}>
                     {gaps.map(g => {
@@ -473,6 +534,16 @@ export default function AccountantWorkspace() {
             );
           })}
         </div>
+      )}
+
+      {importFor && (
+        <E2PrefilledImport
+          ownerId={importFor.owner.ownerId} year={year}
+          afms={[...new Set([...(importFor.owner.e2?.packs.map(p => p.ownerAfm) ?? []), ...(importFor.owner.afm ? [importFor.owner.afm] : [])])]}
+          known={importFor.known}
+          onClose={() => setImportFor(null)}
+          onSaved={() => { setImportFor(null); void load(year); }}
+        />
       )}
 
       <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '26px 0 0', lineHeight: 1.7, fontFamily: T.font.sans }}>
