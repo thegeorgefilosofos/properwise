@@ -54,6 +54,26 @@ const cents = (n: number) => Math.round(n * 100)
   ok(`κανένας από τους ${cases} συνδυασμούς δεν αφήνει λεπτό που περισσεύει (βρέθηκαν ${broken})`, cases > 100 && broken === 0)
 }
 
+// ── ΒΟΗΘΗΤΙΚΟΙ ΧΩΡΟΙ: ΔΙΚΗ ΤΟΥΣ ΓΡΑΜΜΗ ΚΑΙ ΤΟ ΑΘΡΟΙΣΜΑ ΚΛΕΙΝΕΙ ΣΤΟ ΛΕΠΤΟ ─────
+{
+  // 85 τ.μ. + 10 τ.μ. αποθήκη, ζώνη 3,70, 2ος, 21 ετών (1,05), αξία 170.000€.
+  const r = estimateENFIA({ sqm: 85, auxSqm: 10, zone: '1501_2500', floor: 'second', age: 'y20_25', totalValue: 170000, propertyValue: 170000 })!
+  const l = enfiaLedger(r)
+  ok('γραμμή κύριου φόρου 333,53€', l.basic === 333.53)
+  ok('γραμμή βοηθητικών χώρων 3,89€', l.auxiliary === 3.89)
+  ok('κύριος + βοηθητικός − μείωση = ετήσιο', cents(l.basic) + cents(l.auxiliary) - cents(l.reduction) === cents(r.annual))
+  ok('χωρίς βοηθητικούς η γραμμή είναι μηδέν', enfiaLedger({ basic: 10, extra: 0, supplementary: 0, reductionPct: 0, annual: 10 }).auxiliary === 0)
+  let broken = 0
+  for (const aux of [3, 7.5, 10, 18, 25]) for (const price of [650, 1400, 2150, 3000]) for (const age of ENFIA_AGE_BANDS.map(a => a.key)) {
+    const zone = zoneKeyFromPricePerSqm(price)!
+    const value = 85 * price
+    const x = estimateENFIA({ sqm: 85, auxSqm: aux, zone, floor: 'third', age, totalValue: value, propertyValue: value })!
+    const y = enfiaLedger(x)
+    if (cents(y.basic) + cents(y.auxiliary) + cents(y.extra) + cents(y.supplementary) - cents(y.reduction) !== cents(x.annual)) broken++
+  }
+  ok(`με βοηθητικούς κανένα λεπτό δεν περισσεύει (βρέθηκαν ${broken})`, broken === 0)
+}
+
 // ── ΤΟ ΟΡΙΟ ΤΟΥ ΚΛΙΜΑΚΙΟΥ ΤΗΣ ΑΥΤΟΜΑΤΗΣ ΜΕΙΩΣΗΣ ────────────────────────────
 ok('119.000€ πέφτουν στο κλιμάκιο έως 150.000€', enfiaWealthBracketLimit(119_000) === 150_000)
 ok('ακριβώς 100.000€ μένουν στο πρώτο κλιμάκιο', enfiaWealthBracketLimit(100_000) === 100_000)

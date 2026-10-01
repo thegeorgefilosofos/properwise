@@ -18,20 +18,22 @@ import { ENFIA_WEALTH_REDUCTION, type ENFIAResult } from '@/lib/billing/enfia';
 const cents = (n: number) => Math.round(n * 100) / 100;
 
 /** Τα ποσά της ανάλυσης όπως τυπώνονται, με το ετήσιο της μηχανής ως σύνολο. */
-interface EnfiaLedger { basic: number; extra: number; supplementary: number; reduction: number }
+interface EnfiaLedger { basic: number; auxiliary: number; extra: number; supplementary: number; reduction: number }
 
 /**
- * Οι γραμμές της ανάλυσης, ώστε κύριος + πρόσθετος + προσαύξηση − μείωση =
- * ετήσιο, στο λεπτό.
+ * Οι γραμμές της ανάλυσης, ώστε κύριος + βοηθητικοί χώροι + πρόσθετος +
+ * προσαύξηση − μείωση = ετήσιο, στο λεπτό. Ο βοηθητικός χώρος είναι δική του
+ * γραμμή (συντελεστής 0,10 χωρίς όροφο, lib/billing/enfia.ts).
  *
  * Με μείωση, η μείωση είναι η διαφορά. Χωρίς μείωση (περιουσία πάνω από τα
  * 400.000€) μένει ως ένα λεπτό από τη χωριστή στρογγύλευση των τριών ποσών·
  * το παίρνει η τελευταία γραμμή που υπάρχει, όπως η τελευταία δόση παίρνει τη
  * διαφορά της στρογγυλοποίησης στον πίνακα των δόσεων.
  */
-export function enfiaLedger(r: Pick<ENFIAResult, 'basic' | 'extra' | 'supplementary' | 'reductionPct' | 'annual'>): EnfiaLedger {
-  const out = { basic: r.basic, extra: r.extra, supplementary: r.supplementary, reduction: 0 };
-  const diff = cents(r.basic + r.extra + r.supplementary - r.annual);
+export function enfiaLedger(r: Pick<ENFIAResult, 'basic' | 'extra' | 'supplementary' | 'reductionPct' | 'annual'> & { auxiliary?: number }): EnfiaLedger {
+  const aux = r.auxiliary ?? 0;
+  const out = { basic: r.basic, auxiliary: aux, extra: r.extra, supplementary: r.supplementary, reduction: 0 };
+  const diff = cents(r.basic + aux + r.extra + r.supplementary - r.annual);
   if (r.reductionPct > 0) out.reduction = Math.max(0, diff);
   else if (out.supplementary > 0) out.supplementary = cents(out.supplementary - diff);
   else if (out.extra > 0) out.extra = cents(out.extra - diff);

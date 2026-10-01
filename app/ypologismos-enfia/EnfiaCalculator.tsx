@@ -25,7 +25,7 @@ import { useMemo, useId, useState } from 'react';
 import { T, feAuto } from '@/components/tokens';
 import { fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
-import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS } from '@/lib/billing/enfia';
+import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
 import { enfiaInstalments, ENFIA_INSTALMENTS } from '@/lib/tools/enfiaSchedule';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
@@ -39,7 +39,7 @@ import LiveResult from '@/components/LiveResult';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
-const SPEC = { tm: '85', zoni: '1400', orofos: 'second', palaiotita: 'y26_plus', pososto: '100' } as const;
+const SPEC = { tm: '85', zoni: '1400', orofos: 'second', palaiotita: 'y26_plus', pososto: '100', voith: '' } as const;
 const PATH = '/ypologismos-enfia';
 
 // Οι ετικέτες αντλούνται από τα ΚΛΕΙΔΙΑ του lib, ώστε αν προστεθεί συντελεστής
@@ -54,8 +54,8 @@ const AGES = ENFIA_AGE_BANDS;
 
 export function EnfiaCalculator({ year, today }: { year: number; today: string }) {
   const [v, set] = useToolState(SPEC, PATH);
-  const sqm = v.tm, zonePrice = v.zoni, floor = v.orofos, age = v.palaiotita, ownership = v.pososto;
-  const ids = { sqm: useId(), zone: useId(), floor: useId(), age: useId(), own: useId() };
+  const sqm = v.tm, zonePrice = v.zoni, floor = v.orofos, age = v.palaiotita, ownership = v.pososto, auxSqm = v.voith;
+  const ids = { sqm: useId(), zone: useId(), floor: useId(), age: useId(), own: useId(), aux: useId() };
 
   // Ο ΚΑΝΟΝΑΣ ΤΟΥ ΠΟΣΟΣΤΟΥ ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ: τον διαβάζουν ο υπολογισμός, το
   // χαρτί και η σημείωση που λέει ότι η τιμή του πεδίου δεν πέρασε ως έχει.
@@ -94,12 +94,18 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
     // συντριπτική πλειοψηφία όσων ανοίγουν τη σελίδα.
     const value = m * price;
     const share = value * (own / 100);
+    // ΟΙ ΒΟΗΘΗΤΙΚΟΙ ΧΩΡΟΙ ΜΠΑΙΝΟΥΝ ΣΤΟΝ ΦΟΡΟ, ΟΧΙ ΣΤΗΝ ΑΞΙΑ. Η αξία εδώ είναι
+    // προσέγγιση τ.μ. του κτίσματος × τιμή ζώνης και δεν μετρούσε ποτέ αποθήκη
+    // ή θέση στάθμευσης· για να μένει ίδια η βάση της μείωσης και της
+    // προσαύξησης, ο βοηθητικός χώρος δεν προστίθεται ούτε τώρα. Ο φόρος του
+    // είναι χωριστή γραμμή (lib/billing/enfia.ts, συντελεστής 0,10 χωρίς όροφο).
+    const aux = amount(auxSqm);
     const res = estimateENFIA({
-      sqm: m, zone, floor, age, ownership: own,
+      sqm: m, auxSqm: aux, zone, floor, age, ownership: own,
       totalValue: share, propertyValue: value,
     });
-    return res ? { ...res, value, share, own, zone } : null;
-  }, [sqm, zonePrice, floor, age, own]);
+    return res ? { ...res, value, share, own, zone, aux } : null;
+  }, [sqm, zonePrice, floor, age, own, auxSqm]);
 
   // Ο ΚΥΡΙΟΣ ΦΟΡΟΣ, Η ΜΕΙΩΣΗ ΚΑΙ ΤΟ ΕΤΗΣΙΟ ΑΘΡΟΙΖΟΥΝ ΣΤΟ ΛΕΠΤΟ (lib/tools/enfiaLedger.ts).
   const ledger = r ? enfiaLedger(r) : null;
@@ -156,6 +162,8 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
           options={AGES.map(a => ({ value: a.key, label: a.label }))}/>
         <ToolNumField id={ids.own} label="Ποσοστό ιδιοκτησίας" value={ownership} onChange={x => set('pososto', x)}
           unit="%" mode="numeric" hint="Αν το ακίνητο είναι μοιρασμένο."/>
+        <ToolNumField id={ids.aux} label="Βοηθητικοί χώροι" value={auxSqm} onChange={x => set('voith', x)}
+          unit="τ.μ." unitPad={44} hint="Αποθήκη ή θέση στάθμευσης. Προαιρετικό."/>
       </ToolFields>
 
       <ToolClampNote notes={[
@@ -170,6 +178,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
         { k: 'Όροφος', v: FLOORS.find(f => f.key === floor)?.label ?? floor },
         { k: 'Παλαιότητα', v: AGES.find(a => a.key === age)?.label ?? age },
         { k: 'Ποσοστό ιδιοκτησίας', v: fpRate(own) },
+        ...(r.aux > 0 ? [{ k: 'Βοηθητικοί χώροι', v: `${fn(r.aux, Number.isInteger(r.aux) ? 0 : 2)} τ.μ.` }] : []),
       ]}/>}
 
       {/* ── Το αποτέλεσμα ──────────────────────────────────────────────── */}
@@ -241,6 +250,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
               { k: 'Συντελεστής ορόφου', v: fn(enfiaFloorCoef(floor), 2), kind: 'param' },
               { k: 'Συντελεστής παλαιότητας', v: fn(enfiaAgeCoef(age), 2), kind: 'param' },
               { k: 'Κύριος φόρος κτίσματος', v: feAuto(ledger.basic) },
+              r.aux > 0 && { k: `Βοηθητικοί χώροι (συντελεστής ${fn(ENFIA_AUX_COEF, 2)}, χωρίς όροφο)`, v: feAuto(ledger.auxiliary) },
               ledger.extra > 0 && { k: 'Πρόσθετος φόρος (αξία πάνω από 400.000€)', v: feAuto(ledger.extra) },
               ledger.supplementary > 0 && { k: 'Προσαύξηση (περιουσία πάνω από 500.000€)', v: feAuto(ledger.supplementary) },
               r.reductionPct > 0 && {

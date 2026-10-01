@@ -444,7 +444,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const enfiaSource = enfiaNow.inUse.source
   const enfiaEstimated = enfiaSource==='estimate'
   const enfiaState:EnfiaState = useMemo(()=>({ settings:enfiaSettings, update:updateEnfia, loading:enfiaLoading, now:enfiaNow }),[enfiaSettings,updateEnfia,enfiaLoading,enfiaNow])
-  // Οικόπεδο ή βοηθητικός χώρος χωρίς κανένα ποσό: ο ΕΝΦΙΑ λείπει από τα
+  // Οικόπεδο ή επαγγελματική αποθήκη χωρίς κανένα ποσό: ο ΕΝΦΙΑ λείπει από τα
   // βιβλία και η οθόνη το λέει, αντί να δείχνει εκτίμηση κατοικίας.
   const enfiaBlock = useMemo(()=>{
     if(enfiaSource!=='none') return null

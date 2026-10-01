@@ -3,7 +3,7 @@ import { enfiaLastYearAnnual,
   estimateENFIA, estimateENFIAFromFacts, enfiaExtraPropertyTax, zoneKeyFromPricePerSqm,
   ENFIA_ZONE_TAX, enfiaInUse, enfiaAgeCoef, enfiaFloorCoef,
   enfiaAgeKeyFromYears, enfiaAgeKeyFromYearBuilt, enfiaFloorKeyFromValue,
-  enfiaTypeBlock, ENFIA_TYPE_BLOCK_NOTE,
+  enfiaTypeBlock, ENFIA_TYPE_BLOCK_NOTE, enfiaIsAuxiliary,
   enfiaReductionPct, enfiaReductionInForce, ENFIA_REDUCTIONS, atticaMainlandFromPostcode,
 } from './enfia'
 
@@ -134,42 +134,58 @@ const near = (a: number, b: number, eps = 0.5) => Math.abs(a - b) <= eps
   ok('auto: προσαύξηση όταν αξία >500k', big.supplementary > 0)
 }
 
-// ═══ ΟΙΚΟΠΕΔΟ ΚΑΙ ΒΟΗΘΗΤΙΚΟΣ ΧΩΡΟΣ ΔΕΝ ΕΙΝΑΙ ΚΑΤΟΙΚΙΑ ══════════════════════
+// ═══ ΟΙΚΟΠΕΔΟ ΔΕΝ ΕΙΝΑΙ ΚΑΤΟΙΚΙΑ· ΒΟΗΘΗΤΙΚΟΣ ΧΩΡΟΣ ΜΕ ΔΙΚΟ ΤΟΥ ΣΥΝΤΕΛΕΣΤΗ ════
 // Το σφάλμα: η αυτόματη εκτίμηση εφάρμοζε τον πίνακα των ΚΤΙΣΜΑΤΩΝ σε ό,τι είχε
-// αξία και τετραγωνικά. Αποθήκη 20 τ.μ. αξίας 30.000€ έβγαζε 39,20€ τον χρόνο,
-// οικόπεδο 400 τ.μ. αξίας 120.000€ έβγαζε 600,00€ — και τα δύο περνούσαν στους
-// φόρους ακινήτου και στην πρόβλεψη. Ο νόμος έχει άλλον πίνακα για τα γήπεδα και
-// δικό του συντελεστή για τους βοηθητικούς χώρους· δεν υπάρχουν εδώ, άρα δεν
-// βγαίνει νούμερο.
+// αξία και τετραγωνικά. Οικόπεδο 400 τ.μ. αξίας 120.000€ έβγαζε 600,00€ σαν
+// κατοικία. Ο νόμος έχει άλλον πίνακα για τα γήπεδα· δεν υπάρχει εδώ, άρα δεν
+// βγαίνει νούμερο. Ο βοηθητικός χώρος (αποθήκη, θέση στάθμευσης) έχει δικό του
+// συντελεστή 0,10 χωρίς όροφο (ν.4223/2013 άρθρο 4) και υπολογίζεται πλέον:
+// δεν φορολογείται σαν κατοικία ΟΥΤΕ μένει χωρίς εκτίμηση.
 {
   ok('κλειδί οδηγού: land', enfiaTypeBlock('land') === 'land')
   ok('ελληνική ετικέτα: Οικόπεδο', enfiaTypeBlock('Οικόπεδο') === 'land')
-  ok('κλειδιά βοηθητικών', enfiaTypeBlock('storage') === 'auxiliary' && enfiaTypeBlock('parking') === 'auxiliary')
-  // Η αυτοτελής αποθήκη δεν είναι βοηθητικός χώρος και δεν παίρνει το κείμενό του.
   ok('η επαγγελματική αποθήκη ξεχωρίζει', enfiaTypeBlock('warehouse') === 'warehouse')
   ok('ετικέτα «Επαγγελματική αποθήκη»', enfiaTypeBlock('Επαγγελματική αποθήκη') === 'warehouse')
-  ok('ετικέτα «Αποθήκη πολυκατοικίας»', enfiaTypeBlock('Αποθήκη πολυκατοικίας') === 'auxiliary')
-  ok('καμία αποθήκη δεν βγάζει εκτίμηση',
-    ENFIA_TYPE_BLOCK_NOTE.warehouse !== ENFIA_TYPE_BLOCK_NOTE.auxiliary)
-  ok('ετικέτα «Αποθήκη Κτιρίου»', enfiaTypeBlock('Αποθήκη Κτιρίου') === 'auxiliary')
-  ok('ετικέτα «Θέση Στάθμευσης»', enfiaTypeBlock('Θέση Στάθμευσης') === 'auxiliary')
+  ok('οι βοηθητικοί χώροι δεν μπλοκάρουν πια', enfiaTypeBlock('storage') === null && enfiaTypeBlock('parking') === null && enfiaTypeBlock('Αποθήκη πολυκατοικίας') === null)
+  ok('βοηθητικός: κλειδιά και ετικέτες', ['storage', 'parking', 'Αποθήκη Κτιρίου', 'Θέση Στάθμευσης', 'Αποθήκη πολυκατοικίας'].every(enfiaIsAuxiliary))
+  ok('η επαγγελματική αποθήκη δεν είναι βοηθητικός χώρος', !enfiaIsAuxiliary('warehouse') && !enfiaIsAuxiliary('Επαγγελματική αποθήκη'))
   ok('κατοικία δεν μπλοκάρει', enfiaTypeBlock('Κατοικία') === null && enfiaTypeBlock('apartment') === null)
   ok('γραφείο/κατάστημα δεν μπλοκάρουν', enfiaTypeBlock('office') === null && enfiaTypeBlock('shop') === null)
   ok('άγνωστος τύπος δεν μπλοκάρει', enfiaTypeBlock(null) === null && enfiaTypeBlock('') === null)
 
-  // Τα ίδια στοιχεία, μόνο ο τύπος αλλάζει: με κτίσμα βγαίνει ποσό, χωρίς όχι.
-  ok('αποθήκη 20 τ.μ. → καμία εκτίμηση',
-    estimateENFIAFromFacts({ value: 30000, sqm: 20, propType: 'storage' }) === null)
+  // Αποθήκη 20 τ.μ. αξίας 30.000€: 1.500€/τ.μ. → ΣΒΦ 2,80. Χωρίς έτος, παλαιότητα 1,00.
+  // 20 × 2,80 × 1,00 × 0,10 = 5,60€· μείωση 30% (περιουσία ≤100.000€) → 3,92€.
+  const st = estimateENFIAFromFacts({ value: 30000, sqm: 20, propType: 'storage', floor: '5' })!
+  ok('αποθήκη 20 τ.μ.: φόρος βοηθητικού 5,60€, όχι 56,00€ κατοικίας', st.auxiliary === 5.60 && st.basic === 0)
+  ok('αποθήκη 20 τ.μ.: ο όροφος δεν μετρά', st.auxiliary === estimateENFIAFromFacts({ value: 30000, sqm: 20, propType: 'storage' })!.auxiliary)
+  ok('αποθήκη 20 τ.μ.: ετήσιο μετά τη μείωση 3,92€', st.annual === 3.92 && st.reductionPct === 30)
   ok('τα ίδια στοιχεία ως διαμέρισμα έβγαζαν 39,20€',
     estimateENFIAFromFacts({ value: 30000, sqm: 20, propType: 'apartment' })?.annual === 39.20)
   ok('οικόπεδο 400 τ.μ. → καμία εκτίμηση',
     estimateENFIAFromFacts({ value: 120000, sqm: 400, propType: 'Οικόπεδο' }) === null)
   ok('τα ίδια στοιχεία ως κατοικία έβγαζαν 600,00€',
     estimateENFIAFromFacts({ value: 120000, sqm: 400, propType: 'Κατοικία' })?.annual === 600.00)
+  ok('κείμενο για κάθε λόγο που μένει', ENFIA_TYPE_BLOCK_NOTE.land.includes('Δεν βγαίνει') && ENFIA_TYPE_BLOCK_NOTE.warehouse.includes('Δεν βγαίνει'))
+}
 
-  // Κάθε λόγος έχει κείμενο και το κείμενο λέει ότι δεν βγαίνει εκτίμηση.
-  ok('κείμενο για κάθε λόγο',
-    ENFIA_TYPE_BLOCK_NOTE.land.includes('Δεν βγαίνει') && ENFIA_TYPE_BLOCK_NOTE.auxiliary.includes('Δεν βγαίνει'))
+// ═══ ΚΥΡΙΟ ΚΤΙΣΜΑ ΜΑΖΙ ΜΕ ΒΟΗΘΗΤΙΚΟ ΧΩΡΟ (το παράδειγμα της εργασίας) ══════════
+// 85 τ.μ., ζώνη 1.501 έως 2.500 (3,70), 2ος όροφος (1,01), 21 ετών (1,05):
+//   85 × 3,70 × 1,01 × 1,05 = 333,52725 → 333,53€
+// + αποθήκη 10 τ.μ.: 10 × 3,70 × 1,05 × 0,10 = 3,885 → 3,89€ (χωρίς όροφο)
+// Αξία 85 × 2.000 = 170.000€ → μείωση 20% (ENFIA_WEALTH_REDUCTION, έως 250.000€).
+{
+  const age = enfiaAgeKeyFromYears(21)!
+  ok('21 έτη → συντελεστής 1,05', enfiaAgeCoef(age) === 1.05)
+  const main = estimateENFIA({ sqm: 85, zone: '1501_2500', floor: 'second', age, totalValue: 170000, propertyValue: 170000 })!
+  ok('κύριο κτίσμα 333,53€', main.basic === 333.53 && main.auxiliary === 0)
+  const both = estimateENFIA({ sqm: 85, auxSqm: 10, zone: '1501_2500', floor: 'second', age, totalValue: 170000, propertyValue: 170000 })!
+  ok('βοηθητικός 3,89€', both.auxiliary === 3.89)
+  ok('ο κύριος φόρος δεν αλλάζει από τον βοηθητικό', both.basic === 333.53)
+  ok('μείωση 20% για 170.000€', both.reductionPct === 20)
+  ok('ετήσιο = (333,52725 + 3,885) × 0,80 = 269,93€', both.annual === 269.93)
+  ok('ο όροφος δεν αγγίζει τον βοηθητικό', estimateENFIA({ sqm: 85, auxSqm: 10, zone: '1501_2500', floor: 'fifth_plus', age })!.auxiliary === 3.89)
+  ok('μόνο βοηθητικός, χωρίς κύριο κτίσμα', estimateENFIA({ sqm: 0, auxSqm: 10, zone: '1501_2500', age })!.auxiliary === 3.89)
+  ok('ποσοστό ιδιοκτησίας και στον βοηθητικό', estimateENFIA({ sqm: 85, auxSqm: 10, zone: '1501_2500', age, ownership: 50 })!.auxiliary === 1.94)
 }
 
 // ═══ ΕΤΟΣ ΚΑΤΑΣΚΕΥΗΣ ΚΑΙ ΟΡΟΦΟΣ — ΔΙΑΒΑΖΟΝΤΑΙ, ΔΕΝ ΜΑΝΤΕΥΟΝΤΑΙ ═════════════
