@@ -127,7 +127,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           μένουν άδεια. */}
       <Group title="Τι το βαραίνει">
         <ToolFields>
-          {/* ΜΙΑ ΓΡΑΜΜΗ Η ΚΑΘΕ ΥΠΟΔΕΙΞΗ, ΚΑΙ Η ΦΡΑΣΗ-ΣΥΝΔΕΣΜΟΣ ΔΕΝ ΣΠΑΕΙ. Το γεγονός
+          {/* ΜΙΑ ΓΡΑΜΜΗ Η ΚΑΘΕ ΥΠΟΔΕΙΞΗ ΚΑΙ Η ΦΡΑΣΗ-ΣΥΝΔΕΣΜΟΣ ΔΕΝ ΣΠΑΕΙ. Το γεγονός
               που κουβαλά: ο ΕΝΦΙΑ πληρώνεται και σε άδειο ακίνητο. */}
           <ToolNumField id={ids.enfia} label="ΕΝΦΙΑ τον χρόνο" value={v.enfia} onChange={x => set('enfia', x)} unit="€"
             hint={<>Τον πληρώνεις κι άδειο.{' '}

@@ -302,7 +302,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
           <table className="po-table po-tool-table tbl-fixed" style={{ '--tbl-min': '300px' }}>
             <caption>Η κλίμακα του {year}</caption>
-            {/* ΡΗΤΑ ΠΛΑΤΗ, ΚΑΙ ΚΕΦΑΛΙΔΕΣ ΠΟΥ ΧΩΡΑΝΕ ΣΤΑ 360. Το «Φόρος σε αυτό το
+            {/* ΡΗΤΑ ΠΛΑΤΗ ΚΑΙ ΚΕΦΑΛΙΔΕΣ ΠΟΥ ΧΩΡΑΝΕ ΣΤΑ 360. Το «Φόρος σε αυτό το
                 κλιμάκιο» έπιανε τρεις σειρές και το εύρος έσπαγε στην παύλα. */}
             <colgroup>
               <col style={{ width: '46%' }} />

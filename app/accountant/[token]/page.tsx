@@ -375,7 +375,7 @@ export default function AccountantPortal() {
             <div className="po-noprint" style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)', marginTop: T.sp.xxl, lineHeight: 1.8 }}>
               Έχεις κι άλλους πελάτες με PROPERWISE;{' '}
               <Link href="/accountant/workspace" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Δες τους όλους μαζί</Link>, με ό,τι λείπει από τον καθένα.
-              {/* Ο ΦΑΚΕΛΟΣ ΔΕΝ ΚΑΤΕΒΑΙΝΕΙ ΑΠΟ ΕΔΩ, ΚΑΙ ΕΧΕΙ ΛΟΓΟ. Ο σύνδεσμος ανοίγει
+              {/* Ο ΦΑΚΕΛΟΣ ΔΕΝ ΚΑΤΕΒΑΙΝΕΙ ΑΠΟ ΕΔΩ ΚΑΙ ΕΧΕΙ ΛΟΓΟ. Ο σύνδεσμος ανοίγει
                   χωρίς λογαριασμό και ο φάκελος έχει μισθωτές, ΑΦΜ και παραστατικά.
                   Τον κατεβάζει μόνο συνδεδεμένος λογιστής, όσο ισχύει η σύνδεση. */}
               <div style={{ ...meta, marginTop: 4 }}>Χρειάζεται δικός σου λογαριασμός, μία φορά. Εκεί κατεβάζεις και τον φάκελο που σου στέλνει ο πελάτης, με τη σύγκριση του Ε2 με την ΑΑΔΕ.</div>
