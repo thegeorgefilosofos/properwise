@@ -47,7 +47,7 @@ import AgendaPanel from './AgendaPanel'
 import AssistantStrip from './AssistantStrip'
 import { cashPosition } from '@/lib/home/cash'
 import { buildAgenda, type SetupLike as SetupStep } from '@/lib/home/agenda'
-import { computeObligations, type OblMaint } from './obligations'
+import { computeObligations, type OblMaint, type OblTenant } from './obligations'
 import { taxProfileOf } from '@/lib/tax/greekTaxCalendar'
 import PortalShare from './PortalShare'
 import OccupancyPanel from './OccupancyPanel'
@@ -154,6 +154,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   /** Πότε καταγράφηκε η υποβολή της δήλωσης μίσθωσης· κλείνει την υποχρέωση. */
   const [leaseDeclaredAt, setLeaseDeclaredAt] = useState<string|null>(null);
   const [tenantFull, setTenantFull] = useState<TenantFull | null>(null);
+  /** Οι μισθωτές αυτού του ακινήτου που έφυγαν: η πρόωρη λύση δηλώνεται στην ΑΑΔΕ. */
+  const [leavers, setLeavers] = useState<OblTenant[]>([]);
   // Ενοίκια ΟΛΩΝ των ακινήτων (μισθωτήρια + ρυθμίσεις ενοικίου), για τον
   // προοδευτικό φόρο σε επίπεδο φορολογούμενου.
   // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΟ ΕΝΟΙΚΙΟ.
@@ -203,7 +205,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // ΟΛΟ το χαρτοφυλάκιο: ο φόρος ενοικίων είναι προοδευτικός στο ΣΥΝΟΛΟ (Ε1),
       // οπότε δεν αρκούν τα δεδομένα του επιλεγμένου ακινήτου. Ίδια σειρά
       // προτεραιότητας με το resolveRent: μισθωτήριο → actual → target → ακίνητο.
-      tenantStore.ofUser<TenRow & tenantStore.TenantStatus>(supabase,userId,'monthly_rent,property_id,e_payment,status,move_out_date'),
+      tenantStore.ofUser<TenRow & tenantStore.TenantStatus & OblTenant>(supabase,userId,'id,monthly_rent,property_id,e_payment,status,move_out_date,lease_start,lease_end'),
       supabase.from('rent_config').select('property_id,actual_rent,target_rent').in('property_id',propIds).eq('user_id',userId),
       // ΤΟ ΤΑΜΕΙΟ. Μόνο οι ΑΠΛΗΡΩΤΕΣ περίοδοι — οι πληρωμένες είναι ιστορικό και
       // ζουν στον Ενοικιαστή. Ό,τι δεν εμφανίζεται, δεν κατεβαίνει.
@@ -247,6 +249,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     // ΚΑΙ ΜΟΝΟ ΟΣΟΙ ΜΕΝΟΥΝ ΑΚΟΜΗ. Εδώ δεν υπήρχε κανένα φίλτρο κατάστασης: το
     // ενοίκιο μισθωτή που έφυγε πέρσι έμπαινε στη φορολογική ενοποίηση όλου του
     // χαρτοφυλακίου και μαζί του ο τρόπος είσπραξής του.
+    setLeavers(allTen.filter(t=>t.property_id===prop.id && !!t.move_out_date));
     const tenById = new Map<string,{ monthly:number; viaBank:boolean }>();
     allTen.filter(t=>!tenantStore.hasLeft(t)).forEach(t=>{
       const v = Number(t.monthly_rent)||0;
@@ -593,9 +596,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // φορές, η ασφάλεια δύο, τα ελλιπή στοιχεία δύο. Τώρα οι πηγές συγχωνεύονται
   // ανά ΘΕΜΑ (lib/home/agenda.ts) και βγαίνει μία σειρά προτεραιότητας.
   const obligations = useMemo(
-    () => computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt }),
+    () => computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt }, leavers),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [prop, tenantFull, maint, todayIso, leaseDeclaredAt],
+    [prop, tenantFull, maint, todayIso, leaseDeclaredAt, leavers],
   );
   // ═══ ΔΥΟ ΛΙΣΤΕΣ «ΤΙ ΕΡΧΕΤΑΙ», Η ΜΙΑ ΚΑΤΩ ΑΠΟ ΤΗΝ ΑΛΛΗ ═══════════════════
   // Η ατζέντα στην κορυφή έλεγε «τι χρειάζεται τώρα». Τρεις ζώνες πιο κάτω, μια

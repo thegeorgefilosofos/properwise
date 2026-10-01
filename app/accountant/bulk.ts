@@ -68,7 +68,7 @@ export async function loadStatements(
     const { data, error } = await db.rpc('get_accountant_data', { p_token: c.token, p_year: year });
     if (error || !data) return null;
     const d = data as PortalData;
-    const lines = propertyLines(d.properties || []);
+    const lines = propertyLines(d.properties || [], year);
     const totals = statementTotals(lines);
     return {
       ownerId: c.ownerId,
