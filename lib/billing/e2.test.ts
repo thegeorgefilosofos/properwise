@@ -90,6 +90,12 @@ const T = (o: Partial<E2Tenant> = {}): E2Tenant => ({ property_id: 'p1', afm: nu
   ok('flag missing ΑΦΜ', r.flags.includes('Λείπει ΑΦΜ ιδιοκτήτη'));
 }
 {
+  // Στ. 18: το πεδίο ζει πίσω από το «Περισσότερα», οπότε η γραμμή του Ε2 λέει ότι λείπει.
+  const missing = (f: string) => f.startsWith('Λείπει ο αριθμός παροχής ρεύματος');
+  ok('flag missing power supply', buildE2Row(P(), T(), [], '999999999', 2025).flags.some(missing));
+  ok('no power supply flag when stored', !buildE2Row(P({ power_supply_no: '123456789017' }), T(), [], '999999999', 2025).flags.some(missing));
+}
+{
   // ownership null → 100% (grossIncome ίσο με grossFull)
   const r = buildE2Row(P({ ownership: null }), T(), [], '999999999', 2025);
   ok('ownership null defaults 100', r.ownershipPct === 100 && r.grossIncome === 9600);

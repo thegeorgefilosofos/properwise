@@ -2620,6 +2620,14 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .po-brand-logo > svg { width: 21px !important; height: 21px !important; }
   .lp-head nav, .lp-wrap, header > div { padding-left: 14px !important; padding-right: 14px !important; }
   .lp-cta { padding-left: 12px !important; padding-right: 12px !important; }
+  /* ΤΟ ΚΟΥΜΠΙ ΤΩΝ 44 ΔΕΝ ΧΩΡΑΓΕ ΣΤΑ 320 (01.10.2026). Με το κουμπί στα 44 και
+     λεκτικό 15 η σειρά «Σύνδεση · Ξεκίνα» έβγαινε 4 έξω από την οθόνη και 18
+     πέρα από το περιθώριο. Το ύψος των 44 μένει· στενεύουν μόνο τα κενά
+     ανάμεσα και τα πλάγια του συνδέσμου, που δεν είναι στόχος αφής από μόνα
+     τους (το ύψος του συνδέσμου μένει). */
+  .lp-nav-row { gap: 4px !important; }
+  .lp-nav-link { padding-left: 6px !important; padding-right: 6px !important; }
+  header > div, .lp-head > nav { gap: 8px !important; }
 }
 
 /* ── ΣΥΝΔΕΣΜΟΣ ΠΑΡΑΚΑΜΨΗΣ ────────────────────────────────────────────────

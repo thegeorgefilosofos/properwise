@@ -87,7 +87,7 @@ export const READING = 720;
 export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current?: 'paketa' }) {
   const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
+    <div className="lp-nav-row" style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
       {/* Η ΣΕΛΙΔΑ ΠΟΥ ΔΙΑΒΑΖΕΙΣ ΦΑΙΝΕΤΑΙ ΣΤΗΝ ΚΕΦΑΛΙΔΑ (01.10.2026). Το
           `aria-current` υπήρχε για τον αναγνώστη οθόνης και το μάτι δεν έβλεπε
           τίποτα: στο /paketa το «Τιμές» ήταν ίδιο με το «Σύνδεση». Πρώτος τόνος

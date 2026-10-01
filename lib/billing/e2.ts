@@ -450,6 +450,9 @@ export function buildE2Row(
   if (lines.some(l => !l.kind.code)) flag('Χρειάζεται χειροκίνητος καθορισμός είδους μίσθωσης');
   const address = [p.address, p.postal_code].filter(Boolean).join(', ');
   if (!p.atak) flag('Λείπει ΑΤΑΚ');
+  // Στ. 18 υποχρεωτική και σε κενό ακίνητο (οδηγία 8). Το πεδίο ζει πίσω από
+  // το «Περισσότερα» του ακινήτου, οπότε το λέει η γραμμή που το χρειάζεται.
+  if (!e2PowerSupply(p.power_supply_no)) flag('Λείπει ο αριθμός παροχής ρεύματος (στ. 18). Γράφεται στον λογαριασμό ρεύματος· συμπληρώνεται στο ακίνητο, στα «Περισσότερα».');
   if (!ownerAfm) flag('Λείπει ΑΦΜ ιδιοκτήτη');
   if (ownershipPct < 100) flag('Συνιδιοκτησία < 100%: πρόσθεσε ΑΦΜ λοιπών συνιδιοκτητών');
   const lead = lines.find(l => l.gross > 0) ?? lines[0];
