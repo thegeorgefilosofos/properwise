@@ -4044,9 +4044,14 @@ html { scroll-padding-bottom: var(--cookie-h, 0px); }
 
    Δύο στήλες δίνουν 2+2: στα 900 η κάρτα πιάνει 399px, δηλαδή περισσότερο από
    τα 320 του καρουζέλ· οι τέσσερις τιμές φαίνονται μαζί χωρίς κύλιση.
-   Κάτω από τα 861 αναλαμβάνει το καρουζέλ (app/page.tsx): οι παλιοί κανόνες
+   Κάτω από τα 601 αναλαμβάνει το καρουζέλ (app/LandingStyles.tsx): οι παλιοί κανόνες
    των 720 και 470 δεν εφαρμόζονταν ποτέ, γιατί εκεί το πλέγμα δεν υπάρχει. */
-@media (max-width: 1020px) { .lp-plans { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+/* 01.10.2026: ΔΥΟ ΣΤΗΛΕΣ ΩΣ ΤΑ 1.279, ΟΧΙ ΩΣ ΤΑ 1.020. Από 1.021 ως 1.279 οι
+   τέσσερις κάρτες έπεφταν κάτω από τα 230 εικονοστοιχεία: ο διακόπτης της Νόας
+   στην πρώτη ξεχείλιζε από το γέμισμά της και οι λίστες τυλίγονταν σε τόσες
+   σειρές που το «Επαγγελματίας» βγαινε 150 ψηλότερο από τις άλλες τρεις, με
+   άδειο χώρο πάνω από κάθε κουμπί. Σε 2×2 κάθε κάρτα έχει πάνω από 450. */
+@media (max-width: 1279px) { .lp-plans { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
 
 /* ── ΠΛΑΚΙΔΙΑ ΣΥΝΔΡΟΜΩΝ: ΡΗΤΟ ΠΛΗΘΟΣ ΣΤΗΛΩΝ ────────────────────────────────
    ΓΙΑΤΙ ΟΧΙ auto-fit ΕΔΩ. Το `repeat(auto-fit, minmax(Xpx, 1fr))` δίνει όσες
@@ -4817,6 +4822,22 @@ body:has(.po-tool-page) .po-cookie {
    Κάτω από 720 γίνονται μία στήλη, χωρίς ελάχιστο πλάτος που να ξεχειλίζει. */
 .og-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 720px) { .og-grid { grid-template-columns: 1fr; } }
+.og-grid > .og-featured { grid-column: 1 / -1; }
+/* «Διάβασε ακόμη» στο τέλος κάθε οδηγού: συμπαγείς κάρτες, ίδια οικογένεια με
+   τον κόμβο (`.og-card`), δύο στη σειρά, μία στο τηλέφωνο. */
+.gd-related { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 640px) { .gd-related { grid-template-columns: minmax(0, 1fr); } }
+.gd-related > li { display: flex; }
+.gd-related-card {
+  flex: 1; padding: 14px 16px; border-radius: 14px; text-decoration: none;
+  border: 1px solid var(--border-subtle); background: var(--bg-surface); gap: 4px;
+}
+.gd-related-k { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.gd-related-t { font-size: 15px; font-weight: 680; letter-spacing: -0.01em; line-height: 1.3; color: var(--text-primary); }
+.gd-related-d {
+  font-size: 13px; line-height: 1.5; color: var(--text-secondary);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 /* ΟΙ ΔΥΟ ΚΑΡΤΕΣ ΤΗΣ ΣΕΙΡΑΣ ΜΟΙΡΑΖΟΝΤΑΙ ΤΙΣ ΣΕΙΡΕΣ ΤΟΥΣ (29.09.2026). Οταν ο
    τίτλος της μίας έσπαγε σε δύο γραμμές, η περιγραφή της διπλανής ξεκινούσε
    23 εικονοστοιχεία ψηλότερα. Με subgrid ετικέτα, τίτλος, περιγραφή και
@@ -5065,6 +5086,21 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   background: var(--bg-elevated); border: 1px solid var(--border-subtle);
   border-radius: 12px;
 }
+/* ΤΡΙΑ ΕΙΔΗ ΠΛΑΙΣΙΟΥ ΣΤΟΥΣ ΟΔΗΓΟΥΣ, ΚΑΙ ΕΜΟΙΑΖΑΝ ΙΔΙΑ. Ο τύπος του ΕΝΦΙΑ, η
+   συμβουλή μέσα στην ενότητα και η επιφύλαξη στο τέλος φορούσαν το ίδιο γκρι
+   κουτί με τις πηγές: ο αναγνώστης δεν ήξερε ποιο να διαβάσει και ποιο να
+   προσπεράσει. Η ΣΥΜΒΟΥΛΗ παίρνει ράβδο έμφασης στα αριστερά· η ΕΠΙΦΥΛΑΞΗ
+   χάνει το κουτί και μικραίνει (γραμμή από πάνω, ψιλά γράμματα)· οι ΠΗΓΕΣ
+   μένουν λίστα σε κουτί (`.po-tool-sources`). */
+.lg-note-tip {
+  border-left: 3px solid var(--accent); border-radius: 4px 12px 12px 4px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-elevated));
+  color: var(--text-secondary);
+}
+.lg-note-fine {
+  font-size: 13px; line-height: 1.6; padding: 14px 0 0;
+  background: none; border: 0; border-top: 1px solid var(--border-subtle); border-radius: 0;
+}
 .lg-closing { margin-top: clamp(32px, 4vw, 48px); }
 /* Η έκδοση κάτω από την εισαγωγή: μικρή, ήσυχη, αλλά στην πρώτη οθόνη. */
 .lg-version { margin: 12px 0 0; font-size: 13px; color: var(--text-tertiary); }
@@ -5164,9 +5200,87 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    baseline), ώστε όταν η ετικέτα έχει και δεύτερη σειρά να δείχνει το ποσό και
    όχι την υποσημείωση. Υποχωρεί στο χρώμα των περιγραμμάτων· στο κινητό, όπου
    ετικέτα και ποσό είναι ήδη κοντά, φεύγει. */
-.po-ledger-lead { flex: 1 1 24px; min-width: 24px; height: 0; align-self: baseline;
+/* Η ΣΕΙΡΑ ΕΙΝΑΙ ΠΛΕΓΜΑ ΤΡΙΩΝ ΣΤΗΛΩΝ, ΚΑΙ Η ΥΠΟΣΗΜΕΙΩΣΗ ΠΙΑΝΕΙ ΤΗ ΔΕΥΤΕΡΗ ΣΕΙΡΑ.
+   Ως flex, η υποσημείωση ζούσε μέσα στην ετικέτα και την πλάταινε όσο ζητούσε η
+   πρόταση: ο οδηγός του «Φόρου εισοδήματος» γινόταν μία κουκκίδα. Ο οδηγός δεν
+   φεύγει από τη ροή στο κινητό, κρύβεται: αλλιώς το ποσό θα έπεφτε στη μεσαία
+   στήλη και θα έχανε τη δεξιά άκρη. */
+.po-ledger-row {
+  display: grid; grid-template-columns: minmax(0, max-content) minmax(16px, 1fr) max-content;
+  column-gap: 12px; align-items: baseline;
+}
+.po-ledger-sub { grid-column: 1 / -1; }
+.po-ledger-lead { height: 0; align-self: baseline;
   border-bottom: 1px dotted var(--border-default); }
-@media (max-width: 560px) { .po-ledger-lead { display: none; } }
+.po-ledger-lead-none { visibility: hidden; }
+@media (max-width: 560px) { .po-ledger-lead { visibility: hidden; } }
+
+/* ═══ ΟΙ ΤΕΣΣΕΡΙΣ ΥΠΟΛΟΓΙΣΤΕΣ, ΕΝΑ ΠΛΕΓΜΑ ΠΕΔΙΩΝ (app/ToolParts.tsx) ═══════════
+   Τέσσερις στήλες στον υπολογιστή, δύο στην ταμπλέτα, μία στο τηλέφωνο. Η
+   `po-tf-xs2` κρατά δύο στο τηλέφωνο για σειρές μικρών αριθμών («600», «12»),
+   ώς τα 340. Ενα πεδίο ζητά χώρο ρητά με `po-tf-span2` ή `po-tf-row`. */
+.po-tool-fields {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px 14px; align-items: start;
+}
+.po-tool-fields > .po-tf-span2 { grid-column: span 2; }
+.po-tool-fields > .po-tf-row { grid-column: 1 / -1; }
+@media (max-width: 820px) { .po-tool-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) {
+  .po-tool-fields:not(.po-tf-xs2) { grid-template-columns: minmax(0, 1fr); }
+  .po-tool-fields:not(.po-tf-xs2) > .po-tf-span2 { grid-column: auto; }
+}
+@media (max-width: 340px) {
+  .po-tool-fields.po-tf-xs2 { grid-template-columns: minmax(0, 1fr); }
+  .po-tool-fields.po-tf-xs2 > .po-tf-span2 { grid-column: auto; }
+}
+
+/* ΕΝΑΣ ΕΠΙΛΟΓΕΑΣ, ΜΙΑ ΠΡΟΔΙΑΓΡΑΦΗ («Πότε γεμίζει», «Εισόδημα ποιας χρονιάς»).
+   Η ράγα κάθεται στο ύψος των πεδίων (32 + 2×3 γέμισμα + 2×1 περίγραμμα = 40,
+   το `--h-lg`) και το επιλεγμένο τμήμα ΓΕΜΙΖΕΙ με το χρώμα έμφασης. Πριν
+   ξεχώριζε με μια σκιά και ένα `--bg-elevated` που πάνω στη σκούρα ράγα έδινε
+   λόγο κάτω από 1,3:1: η επιλογή διαβαζόταν μόνο από το χρώμα των γραμμάτων.
+   Το γέμισμα δίνει πάνω από 3:1 με τη ράγα και το κείμενο το `--accent-text`. */
+.po-tool-seg {
+  display: flex; gap: 4px; padding: 3px;
+  background: var(--bg-base); border: 1px solid var(--border-default); border-radius: 10px;
+}
+.po-tool-seg > .po-chip { flex: 1 1 0; }
+.po-tool-seg > .po-chip[aria-pressed="true"] {
+  background: var(--accent); color: var(--accent-text); box-shadow: none; font-weight: 600;
+}
+@media (hover: hover) {
+  .po-tool-seg > .po-chip[aria-pressed="true"]:hover:not(:disabled) { color: var(--accent-text); }
+}
+
+/* Η ΚΟΡΥΦΗ ΚΑΙ ΤΑ ΣΤΑΤΙΣΤΙΚΑ ΤΗΣ ΚΑΡΤΑΣ, ΣΤΙΣ ΙΔΙΕΣ ΤΡΕΙΣ ΣΤΗΛΕΣ. Στο τηλέφωνο
+   δύο· ο κύριος αριθμός παίρνει όλη τη σειρά και ένα μονό τελευταίο
+   στατιστικό επίσης, ώστε να μη μείνει μισή σειρά με τρύπα. */
+.po-tool-grid3 {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 24px; align-items: end;
+}
+/* ΟΙ ΠΙΝΑΚΕΣ ΤΩΝ ΥΠΟΛΟΓΙΣΤΩΝ ΣΤΟ ΤΗΛΕΦΩΝΟ. Με γέμισμα 14 δεξιά κι αριστερά, μια
+   στήλη 32% στα 360 άφηνε 70 εικονοστοιχεία για το «Μακροχρόνια» και το
+   «−1.204,50€»: η κεφαλίδα κοβόταν με ενωτικό και η ετικέτα έπιανε τρεις
+   σειρές. Στα 8 χωρούν ολόκληρα. */
+@media (max-width: 480px) {
+  .po-table.po-tool-table th, .po-table.po-tool-table td { padding-left: 8px; padding-right: 8px; }
+  .po-table.po-tool-table thead th { letter-spacing: 0.03em; }
+}
+/* Η ΓΡΑΜΜΗ ΤΟΥ ΧΡΗΣΤΗ: μια ράβδος έμφασης στην αρχή της και η λέξη δίπλα στο
+   ποσοστό, ώστε να βρίσκεται και χωρίς χρώμα. */
+.po-table tr.is-mine > th:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.po-tool-tag {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 100px;
+  font-size: 11px; font-weight: 600; line-height: 1.5; white-space: nowrap; vertical-align: 1px;
+  background: var(--accent-soft); color: var(--accent); border: 1px solid var(--border-accent);
+}
+@media (max-width: 600px) {
+  .po-tool-grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .po-tool-hero > .po-tool-fig-primary { grid-column: 1 / -1; }
+  .po-tool-stats > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 
 /* ═══ ΜΙΑ ΔΕΞΙΑ ΑΚΡΗ, ΚΑΙ Η ΣΤΗΛΗ ΤΟΥ ΕΥΡΕΤΗΡΙΟΥ ΣΤΗΝ ΑΝΟΙΧΤΗ ΟΘΟΝΗ ═══════════
    ΤΙ ΕΒΛΕΠΕ ΚΑΝΕΙΣ. Στο «Ποιοι είμαστε» σε 1920 ο πίνακας των διευθύνσεων
@@ -5189,7 +5303,28 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 :root { --rail: 0px; --rail-gap: 0px; }
 .lg-grid > .lg-body, .lg-head, .gd { --lg-measure: 100%; }
 .gd { max-width: 720px; }
-.gd .lg-p, .gd .lg-ul, .gd .lg-toc, .gd-table { max-width: none; }
+.gd .lg-p, .gd .lg-ul, .gd .lg-toc { max-width: none; }
+/* ΠΙΝΑΚΑΣ ΔΥΟ ΣΤΗΛΩΝ ΣΤΑ 480, ΟΧΙ ΣΤΑ 715. Απλωμένος σε όλη τη στήλη άφηνε
+   πεντακόσια εικονοστοιχεία ανάμεσα στο «έως 750€» και στο «2,00€». Η ετικέτα
+   της γραμμής γράφεται στο δεύτερο χρώμα, η τιμή στο πρώτο: διαβάζεις τιμές. */
+.gd-table { max-width: 480px; }
+/* Ο πίνακας των προθεσμιών κρατά τίτλο και υπεύθυνο στο ίδιο κελί: χρειάζεται τη στήλη. */
+.gd-table.gd-table-wide { max-width: none; }
+.po-table td.gd-date { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.gd-date-m { display: inline-block; min-width: 2.2em; }
+.gd-table .po-table tbody th { color: var(--text-secondary); }
+.gd-table .po-table tbody td { color: var(--text-primary); }
+/* Η γραμμή που προλογίζει πίνακα κάθεται κοντά του, όχι στη μέση της απόστασης. */
+.gd .gd-lead { margin: 20px 0 0; }
+/* Η ΑΠΑΝΤΗΣΗ ΤΟΥ ΠΑΡΑΔΕΙΓΜΑΤΟΣ: γραμμή αποτελέσματος, όπως το σύνολο στους
+   υπολογιστές· ετικέτα αριστερά, ποσό δεξιά, γραμμή έμφασης στα αριστερά. */
+.gd-result {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px;
+  margin: 14px 0 0; padding: 14px 18px; border-radius: 4px 12px 12px 4px;
+  border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--bg-elevated));
+}
+.gd-result-k { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
+.gd-result-v { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--text-primary); }
 .gd-rail { display: none; }
 @media screen and (min-width: 641px) and (max-width: 1023px) {
   .lg-head, .lg-grid { max-width: 760px; }
@@ -6185,18 +6320,23 @@ tr.po-row-more { display: none; }
    είναι αδέρφια τους. Ο συνδυαστής `~` αλλάζει ποιο φαίνεται· το κρυμμένο
    έχει `display: none`, άρα δεν διαβάζεται ούτε από αναγνώστη οθόνης. */
 .pc-radio { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+/* Ο ΔΙΑΚΟΠΤΗΣ ΧΩΡΑΕΙ ΣΤΗΝ ΚΑΡΤΑ ΤΟΥ. Με `1fr 1fr` (δηλαδή ελάχιστο το
+   περιεχόμενο), `nowrap` και 8 γέμισμα ανά ετικέτα ζητούσε 217 εικονοστοιχεία σε
+   κάρτα που στα 1.440 δίνει 210: έβγαινε επτά πάνω στο γέμισμα της κάρτας.
+   Οι στήλες μπορούν πια να στενέψουν (`minmax(0, 1fr)`), το γέμισμα πέφτει στα
+   6 και το σήμα της Νόας στα 18: 201 εικονοστοιχεία. */
 .pc-seg {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; padding: 4px; margin: 0;
   border-radius: 999px; background: var(--bg-elevated); border: 1px solid var(--border-subtle);
 }
 .pc-seg label {
-  display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 8px;
+  display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 0 6px; min-width: 0;
   border-radius: 999px; font-size: 12.5px; font-weight: 650; color: var(--text-secondary);
   cursor: pointer; user-select: none; white-space: nowrap; transition: background-color .15s, color .15s;
 }
 .pc-seg label:hover { color: var(--text-primary); }
 .pc-mark {
-  display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex-shrink: 0;
   border-radius: 999px; background: var(--accent-dim); color: var(--accent);
 }
 #pc-noa-off:checked ~ * .pc-seg label[for="pc-noa-off"] { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 2px color-mix(in srgb, var(--text-primary) 18%, transparent); }
@@ -6231,10 +6371,16 @@ tr.po-row-more { display: none; }
   background: var(--accent); color: var(--accent-text); letter-spacing: 0.02em;
 }
 
-.nf-band { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 64px); align-items: center; }
+/* Η ΚΑΡΤΑ ΤΗΣ ΣΥΖΗΤΗΣΗΣ ΞΕΚΙΝΑ ΣΤΟ ΥΨΟΣ ΤΟΥ ΤΙΤΛΟΥ (`start`, όχι `center`):
+   κεντραρισμένη, καθόταν εκατό εικονοστοιχεία πιο χαμηλά από το «Γνώρισε τη
+   Νόα» και η ενότητα δεν είχε καμία κοινή οριζόντια.
+   Ο ΤΙΤΛΟΣ ΣΤΗΝ ΚΛΙΜΑΚΑ ΤΩΝ ΑΛΛΩΝ H2 (25 → 40, `SectionHead`). Ηταν 30 → 50,
+   ο μόνος δεύτερος τίτλος της σελίδας μεγαλύτερος από τους άλλους: διαβαζόταν
+   ως δεύτερο hero μέσα στη σελίδα. */
+.nf-band { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 64px); align-items: start; }
 .nf-title {
-  display: flex; align-items: center; gap: 16px; margin: 0;
-  font-size: clamp(30px, 4.4vw, 50px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.05;
+  display: flex; align-items: center; gap: 14px; margin: 0;
+  font-size: clamp(25px, 3.4vw, 40px); font-weight: 680; letter-spacing: -0.03em; line-height: 1.1;
 }
 .nf-mono {
   flex: none; width: 1.18em; height: 1.18em; border-radius: 30%;
@@ -6246,7 +6392,15 @@ tr.po-row-more { display: none; }
 .nf-lead { margin: 18px 0 0; font-size: clamp(16px, 1.7vw, 18px); line-height: 1.6; color: var(--text-secondary); }
 .nf-does { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; }
 .nf-does li { display: grid; grid-template-columns: 10px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; }
-.nf-does li::before { content: ''; grid-row: span 2; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: var(--accent); }
+/* ΕΝΑ ΣΥΣΤΗΜΑ ΣΗΜΑΔΙΩΝ ΛΙΣΤΑΣ ΣΤΗΝ ΑΡΧΙΚΗ: το τικ των πακέτων, της
+   σύστασης και της ιστορίας. Εδώ ήταν κουκκίδα, η μόνη της σελίδας. Ιδιο
+   σχήμα με το `check` του landingKit, ζωγραφισμένο με μάσκα στο χρώμα έμφασης. */
+.nf-does li { grid-template-columns: 14px minmax(0, 1fr); }
+.nf-does li::before {
+  content: ''; grid-row: span 2; width: 14px; height: 14px; margin-top: 4px; background: var(--accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
 .nf-does strong { font-size: 15.5px; font-weight: 680; color: var(--text-primary); letter-spacing: -0.01em; }
 .nf-does span { font-size: 14.5px; line-height: 1.5; color: var(--text-secondary); text-align: justify; }
 .nf-offer {
@@ -6262,6 +6416,9 @@ tr.po-row-more { display: none; }
 .nf-free { font-size: 13.5px; color: var(--text-tertiary); }
 
 .nf-stage { position: relative; }
+/* Η κάρτα ξεκινά στη γραμμή του τίτλου, όχι της ταμπέλας από πάνω του: η
+   ταμπέλα πιάνει 31 εικονοστοιχεία (μετρημένο στα 1.100 και στα 1.440). */
+@media (min-width: 901px) { .nf-stage { margin-top: 31px; } }
 .nf-halo {
   position: absolute; inset: 8% 6%; border-radius: 40%; pointer-events: none;
   background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 26%, transparent), transparent);

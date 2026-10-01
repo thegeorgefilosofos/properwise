@@ -169,9 +169,11 @@ export default function LandingCalculator() {
 
         {/* Πού πέφτεις στην κλίμακα ενοικίων 2026 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-tertiary)' }}>
+          {/* ΣΤΑ 360 Η ΣΕΙΡΑ ΣΤΡΙΜΩΧΝΟΤΑΝ: τίτλος και ποσό κολλούσαν χωρίς
+              αέρα ανάμεσα. Τυλίγεται και το ποσό μένει ακέραιο. */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '2px 12px', fontSize: 12, color: 'var(--text-tertiary)' }}>
             <span>Κλίμακα ενοικίων 2026</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>φορολογητέο {fe(taxable)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>φορολογητέο {fe(taxable)}</span>
           </div>
           <div className="calc-track">
             <div className="calc-band">
@@ -181,8 +183,11 @@ export default function LandingCalculator() {
             </div>
             <div className="calc-marker" style={{ left: `${markerPct}%` }} />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-            {BANDS.map((b, i) => <span key={i}>{b.rate}</span>)}
+          {/* Κάθε συντελεστής κάτω από τη ΔΙΚΗ του ζώνη, με το ίδιο φάρδος· με
+              `space-between` το «45%» καθόταν στη δεξιά άκρη, μακριά από τη
+              ζώνη του· και στα 360 οι τέσσερις ετικέτες στριμώχνονταν. */}
+          <div style={{ display: 'flex', fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+            {BANDS.map((b, i) => <span key={i} style={{ flex: (b.to - (BANDS[i - 1]?.to ?? 0)), minWidth: 0, whiteSpace: 'nowrap' }}>{b.rate}</span>)}
           </div>
         </div>
       </div>

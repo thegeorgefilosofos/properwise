@@ -131,6 +131,13 @@ export function NoaFeature() {
   );
 }
 
+/**
+ * ΑΡΙΘΜΟΣ ΚΑΙ ΜΟΝΑΔΑ ΔΕΝ ΧΩΡΙΖΟΝΤΑΙ ΣΕ ΑΛΛΑΓΗ ΓΡΑΜΜΗΣ. Στις στήλες των 210
+ * εικονοστοιχείων το «15» έμενε στο τέλος της μιας σειράς και τα «ακίνητα» στην
+ * αρχή της επόμενης· η κάρτα ψήλωνε κατά μία σειρά για ένα κενό.
+ */
+const glue = (t: string) => t.replace(/(\d+)\s+(?=\S)/g, '$1\u00A0');
+
 export function SectionHead({ over, title, sub }: { over: string; title: string; sub?: string }) {
   return (
     <div style={{ marginBottom: 'clamp(24px, 3.4vw, 40px)' }}>
@@ -165,7 +172,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
   const ai = aiLimitsFor('solo');
   const paidMonths = Math.round(noa.priceAnnual / noa.priceMonthly);
   const line = (t: string, k: number) => (
-    <div key={k} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{t}</span></div>
+    <div key={k} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(t)}</span></div>
   );
   // Οι γραμμές του δωρεάν, με τη σάρωση στη θέση της· στη «Νόα» η ίδια θέση
   // λέει «χωρίς όριο», ώστε το μάτι να βλέπει τι αλλάζει στο ίδιο σημείο.
@@ -223,7 +230,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
         <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>ή <strong style={{ color: TEXT }}>{fe(noa.priceAnnual)} τον χρόνο</strong></div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', margin: '14px 0 16px' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: ACCENT }}>{bubble}<span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{ai.perMonth} ερωτήσεις τον μήνα, έως {ai.perDay} την ημέρα</span></div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: ACCENT }}>{bubble}<span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(`${ai.perMonth} ερωτήσεις τον μήνα, έως ${ai.perDay} την ημέρα`)}</span></div>
           {[...shared, noaScan].map(line)}
         </div>
         {cta(`/signup?plan=solo&cycle=monthly`, 'Ξεκίνα τη δοκιμή')}
@@ -272,10 +279,10 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
           {/* ΚΑΙ ΤΟ ΗΜΕΡΗΣΙΟ, ΠΡΙΝ ΤΗΝ ΑΓΟΡΑ. Μέσα σε ένα απόγευμα δεσμεύει αυτό
               και όχι το μηνιαίο· το να το μάθει κανείς τη στιγμή που το χτυπά
               είναι η έκπληξη που ακυρώνει συνδρομές. */}
-          <span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{ai} ερωτήσεις τον μήνα, έως {aiDay} την ημέρα</span>
+          <span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(`${ai} ερωτήσεις τον μήνα, έως ${aiDay} την ημέρα`)}</span>
         </div>
         {items.map((t, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{t}</span></div>
+          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(t)}</span></div>
         ))}
       </div>
       {/* ══ Η ΕΠΙΛΟΓΗ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΟ ΚΛΙΚ ΚΑΙ ΟΙ ΕΠΙΛΟΓΕΣ ΕΙΝΑΙ ΔΥΟ ══

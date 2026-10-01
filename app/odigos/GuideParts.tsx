@@ -15,6 +15,7 @@ import { SITE, siteUrl, PRODUCT_NAME } from '@/lib/core/site';
 import { monthGen } from '@/lib/core/months';
 import { T } from '@/components/tokens';
 import { SectionHead, WRAP, WRAP_PAD } from '../PublicChrome';
+import { LINK_STYLE } from '../linkStyle';
 import { BackLink } from '../BackLink';
 import { TocSpy } from '../TocSpy';
 import { hy } from '@/components/Hyphen';
@@ -25,17 +26,8 @@ const HUB = { href: '/odigos', label: 'Οδηγοί' } as const;
 /** Μια ερώτηση με προαιρετικό σύνδεσμο κάτω από την απάντηση (όχι στο σχήμα). */
 export type GuideFaqItem = { q: string; a: string; link?: { href: string; label: string } };
 
-/**
- * Ο ΣΥΝΔΕΣΜΟΣ ΜΕΣΑ ΣΤΟ ΚΕΙΜΕΝΟ ΥΠΟΓΡΑΜΜΙΖΕΤΑΙ. Με μόνο χρώμα και βάρος
- * ξεχώριζε από το σώμα με αντίθεση ~1,2:1 στο σκοτεινό και ~1,05:1 στο φωτεινό,
- * κάτω από το 3:1 που ζητά το WCAG 1.4.1 όταν το χρώμα είναι το μόνο σημάδι.
- * Η γραμμή είναι λεπτή και μισοδιάφανη, ώστε να μη βαραίνει την παράγραφο.
- */
-export const LINK_STYLE = {
-  color: 'var(--accent)', fontWeight: 600,
-  textDecoration: 'underline', textDecorationThickness: '1px', textUnderlineOffset: '3px',
-  textDecorationColor: 'color-mix(in srgb, var(--accent) 45%, transparent)',
-} as const;
+/** Το στυλ του συνδέσμου μέσα στο κείμενο ζει στο PublicChrome, κοινό με το «Ποιοι είμαστε». */
+export { LINK_STYLE };
 
 /**
  * Η ΣΤΗΛΗ ΤΟΥ ΟΔΗΓΟΥ ΕΧΕΙ ΜΕΤΡΟ ΑΝΑΓΝΩΣΗΣ. Στα 1440 το κείμενο έπιανε όλο το
@@ -281,11 +273,17 @@ export function RelatedGuides({ current }: { current: Guide }) {
   return (
     <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
       <SectionHead over="Σχετικοί οδηγοί" title="Διάβασε ακόμη" />
-      <ul className="lg-ul">
+      {/* ΚΑΡΤΕΣ, ΟΧΙ ΠΑΡΑΓΡΑΦΟΙ. Τέσσερις κουκκίδες με σύνδεσμο και ολόκληρη
+          περιγραφή σε πλήρη στοίχιση διαβάζονταν ως άλλη μία ενότητα κειμένου.
+          Μικρές κάρτες, όπως στον κόμβο /odigos: θέμα, τίτλος, μία γραμμή. */}
+      <ul className="gd-related">
         {related.map(g => (
           <li key={g.href}>
-            <Link href={g.href} className="lp-link" style={LINK_STYLE}>{g.title}</Link>
-            {hy(`: ${g.desc}`)}
+            <Link href={g.href} className="og-card gd-related-card">
+              <span className="gd-related-k">{g.kicker}</span>
+              <span className="gd-related-t">{g.title}</span>
+              <span className="gd-related-d">{g.desc}</span>
+            </Link>
           </li>
         ))}
       </ul>

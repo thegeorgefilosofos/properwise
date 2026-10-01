@@ -9,11 +9,10 @@
 // Το υποσέλιδο κρατά τη δική του λίστα επίτηδες: εκεί η σειρά ακολουθεί τη
 // στήλη των υπολογισμών και το guard-public-routes διαβάζει τις διαδρομές του.
 // ═══════════════════════════════════════════════════════════════════════════
-import { feWhole } from '@/lib/core/format';
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b';
 
 import { RENTAL_TAX_BRACKETS_2026, MUNICIPAL_ACCOM_TAX_RATE } from '@/lib/billing/greekTax';
-import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { feWhole, fpRate } from '@/lib/core/format';
 
 // Η κλίμακα της περιγραφής βγαίνει από την κλίμακα που υπολογίζει: «15 / 25 /

@@ -141,6 +141,9 @@ export default function Page() {
           {H1}
         </h1>
         <GuideUpdated guide={GUIDE} />
+        {/* Το ευρετήριο ακριβώς κάτω από τη γραμμή της ημερομηνίας: στο κινητό
+            ερχόταν μετά από δύο παραγράφους εισαγωγής, μισή οθόνη πιο κάτω. */}
+        <GuideToc sections={Object.values(S)} />
 
         {/* Εισαγωγή */}
         <p className="lg-p">
@@ -149,8 +152,6 @@ export default function Page() {
         <p className="lg-p">
           {`Ο οδηγός δείχνει πώς υπολογίζεται η μείωση, ποιες προϋποθέσεις τηρούνται πριν πληρώσεις το πρώτο τιμολόγιο και τι επιβεβαιώνεις πριν από τις ${RENO_39B_TO}.`}
         </p>
-
-        <GuideToc sections={Object.values(S)} />
 
         {/* 1. Τι είναι */}
         <H2 {...S.what} />
@@ -170,10 +171,10 @@ export default function Page() {
         {/* 3. Προϋποθέσεις */}
         <H2 {...S.terms} />
         <ul className="lg-ul">
-          <li>{'Ηλεκτρονική πληρωμή. Κάρτα, έμβασμα ή άμεση πληρωμή. Δαπάνη που πληρώθηκε με μετρητά δεν μετρά, όσο σωστό κι αν είναι το παραστατικό.'}</li>
-          <li>{'Παραστατικά στο όνομά σου. Τιμολόγιο στο ΑΦΜ σου για κάθε εργασία και κάθε αγορά υλικών.'}</li>
-          <li>{'Πάροχος με έδρα στην Ελλάδα. Το συνεργείο ή ο προμηθευτής έχει φορολογική κατοικία ή μόνιμη εγκατάσταση στην Ελλάδα.'}</li>
-          <li>{'Υλικά έως το 1/3 των υπηρεσιών. Η αξία των υλικών λαμβάνεται υπόψη μόνο έως το ένα τρίτο της αξίας των υπηρεσιών. Ό,τι περισσεύει μένει εκτός.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Ηλεκτρονική πληρωμή.'}</strong>{' Κάρτα, έμβασμα ή άμεση πληρωμή. Δαπάνη που πληρώθηκε με μετρητά δεν μετρά, όσο σωστό κι αν είναι το παραστατικό.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Παραστατικά στο όνομά σου.'}</strong>{' Τιμολόγιο στο ΑΦΜ σου για κάθε εργασία και κάθε αγορά υλικών.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Πάροχος με έδρα στην Ελλάδα.'}</strong>{' Το συνεργείο ή ο προμηθευτής έχει φορολογική κατοικία ή μόνιμη εγκατάσταση στην Ελλάδα.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Υλικά έως το 1/3 των υπηρεσιών.'}</strong>{' Η αξία των υλικών λαμβάνεται υπόψη μόνο έως το ένα τρίτο της αξίας των υπηρεσιών. Ό,τι περισσεύει μένει εκτός.'}</li>
         </ul>
         <p className="lg-p">
           {'Κράτα τιμολόγια και αποδεικτικά πληρωμής ανά ακίνητο από την πρώτη μέρα. Αυτά ζητά ο λογιστής όταν φτάσει η δήλωση.'}
@@ -185,20 +186,20 @@ export default function Page() {
           {`Ανακαίνιση διαμερίσματος με ${feWhole(EX1.services)} εργασία και ${feWhole(EX1.materials)} υλικά, όλα πληρωμένα ηλεκτρονικά και τιμολογημένα στο ΑΦΜ του ιδιοκτήτη.`}
         </p>
         <ul className="lg-ul">
-          <li>{`Όριο υλικών: ${feWhole(EX1.services)} / 3 = ${feWhole(EX1.services / 3)}. Τα υλικά είναι ${feWhole(EX1.materials)}, άρα μετράνε ολόκληρα.`}</li>
-          <li>{`Επιλέξιμη δαπάνη: ${feWhole(EX1.services)} + ${feWhole(R1.materialsCounted)} = ${feWhole(R1.eligible)}, ακριβώς στο όριο.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Όριο υλικών:'}</strong>{` ${feWhole(EX1.services)} / 3 = ${feWhole(EX1.services / 3)}. Τα υλικά είναι ${feWhole(EX1.materials)}, άρα μετράνε ολόκληρα.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Επιλέξιμη δαπάνη:'}</strong>{` ${feWhole(EX1.services)} + ${feWhole(R1.materialsCounted)} = ${feWhole(R1.eligible)}, ακριβώς στο όριο.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Μείωση φόρου: ${feWhole(R1.total)},`}</strong>{` δηλαδή ${feWhole(R1.perYear)} τον χρόνο για ${RENO_39B_YEARS} έτη, εφόσον ο φόρος κάθε έτους φτάνει.`}</li>
         </ul>
         <p className="lg-p">
           {`Τώρα άλλη αναλογία: ${feWhole(EX2.services)} εργασία και ${feWhole(EX2.materials)} υλικά, σύνολο ${feWhole(EX2.services + EX2.materials)}.`}
         </p>
         <ul className="lg-ul">
-          <li>{`Όριο υλικών: ${feWhole(EX2.services)} / 3 = ${feWhole(R2.materialsCounted)}. Τα υλικά είναι ${feWhole(EX2.materials)}, άρα μετράνε μόνο τα ${feWhole(R2.materialsCounted)}.`}</li>
-          <li>{`Επιλέξιμη δαπάνη: ${feWhole(EX2.services)} + ${feWhole(R2.materialsCounted)} = ${feWhole(R2.eligible)}. Τα ${feWhole(EX2.materials - R2.materialsCounted)} υλικών πάνω από το όριο δεν μετράνε.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Όριο υλικών:'}</strong>{` ${feWhole(EX2.services)} / 3 = ${feWhole(R2.materialsCounted)}. Τα υλικά είναι ${feWhole(EX2.materials)}, άρα μετράνε μόνο τα ${feWhole(R2.materialsCounted)}.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Επιλέξιμη δαπάνη:'}</strong>{` ${feWhole(EX2.services)} + ${feWhole(R2.materialsCounted)} = ${feWhole(R2.eligible)}. Τα ${feWhole(EX2.materials - R2.materialsCounted)} υλικών πάνω από το όριο δεν μετράνε.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Μείωση φόρου: ${feWhole(R2.total)},`}</strong>{` δηλαδή ${feWhole(R2.perYear)} τον χρόνο για ${RENO_39B_YEARS} έτη, αντί για ${feWhole(EX2.services + EX2.materials)} αν μετρούσαν όλα τα υλικά.`}</li>
         </ul>
 
-        <div className="lg-note" style={{ marginTop: 16 }}>
+        <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>
           {'Η αναλογία φαίνεται ήδη στην προσφορά. Ζήτα από το συνεργείο αναλυτική προσφορά που χωρίζει την εργασία από τα υλικά.'}
         </div>
 
@@ -239,7 +240,7 @@ export default function Page() {
         <RelatedGuides current={GUIDE} />
 
         {/* Αποποίηση */}
-        <div className="lg-note" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
+        <div className="lg-note lg-note-fine" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           {'Ο παρών οδηγός είναι ενημερωτικός. Η μείωση εξαρτάται από τη διάταξη που ισχύει την ημέρα της δαπάνης, από τον φόρο σου κάθε έτους και από τα δικά σου παραστατικά. Δεν αποτελεί επίσημη γνωμάτευση ούτε υποκαθιστά λογιστή ή φοροτεχνικό.'}
         </div>
       </GuideMain>
