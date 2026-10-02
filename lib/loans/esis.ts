@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { annuityMonthly } from './recommend'
 import { fe } from '../core/format'
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 export interface EsisFee { label: string; amount: number }
 

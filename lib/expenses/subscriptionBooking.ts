@@ -20,7 +20,7 @@
 import { SUB_GROUPS, subShare, type SubscriptionEntry, type SubService } from './subscriptions';
 import { supplyOf, reverseChargeVat, type Supply } from '../tax/placeOfSupply';
 import { fn, fe } from '../core/format';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /** Η κατηγορία δαπάνης των συνδρομών — μία και οδηγεί στον κουβά «Συνδρομές». */
 export const SUBSCRIPTION_CATEGORY = 'subscription';

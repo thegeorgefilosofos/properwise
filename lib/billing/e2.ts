@@ -15,7 +15,7 @@ import { e2PowerSupply } from '@/lib/property/powerSupply';
 import { e1CodeFor, e1PropertyClass, E1_CLASS_LABEL, E1_4D2_SOURCE, E1_UNKNOWN_TYPE } from '@/lib/accounting/e1Codes';
 import { readCoOwners } from '@/lib/property/coOwners';
 import { E2_POWER_SUPPLY_DIGITS } from '@/lib/property/powerSupply';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 // Το `rental_mode` ΔΕΝ υπήρχε εδώ και γι' αυτό το έντυπο δεν μπορούσε να
 // ξεχωρίσει βραχυχρόνια από μακροχρόνια όταν η κατάσταση ήταν «rented».

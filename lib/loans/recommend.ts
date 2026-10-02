@@ -6,7 +6,7 @@
 import { fe } from '@/lib/core/format'
 import { fp } from '../core/format'
 import { programStatus, programDateLabel, parseProgramDate, type ProgramStatus } from './programStatus'
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 export type RateType = 'fixed' | 'variable' | 'mixed'
 export type LoanPurpose =

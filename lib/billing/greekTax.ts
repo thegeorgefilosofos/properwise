@@ -171,7 +171,7 @@ export function effectiveRentalRate(taxable: number, brackets: TaxBracket[] = RE
  * άλλο ποσοστό σε κάθε άλλη οθόνη.
  */
 import { fp, fn, fe } from '@/lib/core/format';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 export const taxRateLabel = (rate: number): string => fp(rate * 100);
 

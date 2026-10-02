@@ -32,7 +32,7 @@ import {
   rentalIncomeTax, climateLevyForNights, municipalAccommodationTax,
 } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /** Οι νύχτες του χρόνου. Δίσεκτα έτη δεν αλλάζουν συμπέρασμα σε εκτίμηση. */
 export const NIGHTS_PER_YEAR = 365;

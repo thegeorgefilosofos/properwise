@@ -22,7 +22,7 @@ import {
 } from '@/lib/billing/greekTax'
 import { fp } from '@/lib/core/format'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 const cents = (n: number): number => roundHalfUp((Number.isFinite(n) ? n : 0), 2)
 const pos = (n: number): number => Math.max(0, cents(n))

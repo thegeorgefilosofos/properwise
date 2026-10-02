@@ -32,7 +32,7 @@ import type { AadeE2Row, E2IncomeColumn } from '@/lib/tax/aadeE2';
 import { isValidAfm } from '@/lib/core/greek';
 import { fe, fp } from '../core/format';
 import { e2PowerSupply } from '@/lib/property/powerSupply';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /**
  * Ανοχή στρογγυλοποίησης, σε ευρώ. Το `buildE2Row` στρογγυλοποιεί το μερίδιο

@@ -37,7 +37,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { lastWorkingDayOfMonth } from '@/lib/tax/greekTaxCalendar'
 import { monthGen } from '@/lib/core/months'
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /** Πόσες δόσεις: Μάρτιος έως Φεβρουάριο του επόμενου έτους. */
 export const ENFIA_INSTALMENTS = 12

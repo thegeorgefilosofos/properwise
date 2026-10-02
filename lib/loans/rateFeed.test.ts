@@ -4,6 +4,10 @@ import { fromRate, rangeOf, diffBank, decide, changeKey, HOLD_ABOVE, isOfficialS
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
 
+// Το μισό εκατοστό προς τα πάνω, όπως στο lib/core/money (αντίγραφο για το Deno).
+ok('fromRate: 3,125 → 3,13', fromRate(3.125) === 3.13)
+ok('fromRate: 2,115 → 2,12', fromRate(2.115) === 2.12)
+
 // ── Το «από» ενός επιτοκίου ─────────────────────────────────────────────────
 ok('εύρος «2.40-4.70» δίνει το χαμηλότερο', fromRate('2.40-4.70') === 2.4);
 ok('μονή τιμή «3.40»', fromRate('3.40') === 3.4);

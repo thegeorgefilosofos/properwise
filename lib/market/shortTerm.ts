@@ -4,7 +4,7 @@
 // για ΤΑΚΚ και τέλος παρεπιδημούντων (lib/billing/greekTax).
 // ═══════════════════════════════════════════════════════════════════════════
 import { climateLevyRates, municipalAccommodationTax } from '@/lib/billing/greekTax'
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 const num = (n: number): number => (Number.isFinite(n) ? n : 0)
 const max0 = (n: number): number => Math.max(0, num(n))

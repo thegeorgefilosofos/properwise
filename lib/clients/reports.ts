@@ -24,7 +24,7 @@ import {
   isDeclared, awaitsDeclaration, type StayAmountLike,
 } from './stayAmounts';
 import { athensToday } from '../core/time';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 export interface ReportStay extends StayAmountLike {
   property_id?: string | null;

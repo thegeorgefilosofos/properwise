@@ -30,7 +30,7 @@
 import { expectedSeries } from './expected';
 import { entryName, type LedgerEntry } from './ledger';
 import { fe, fpSigned } from '../core/format';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /**
  * Κατηγορίες όπου το ποσό ΔΕΝ εξαρτάται από κατανάλωση.

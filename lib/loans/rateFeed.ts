@@ -1,4 +1,3 @@
-import { roundHalfUp } from '@/lib/core/money';
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΔΙΑΣΤΑΥΡΩΣΗ ΤΩΝ ΕΠΙΤΟΚΙΩΝ, ΧΩΡΙΣ ΔΙΚΤΥΟ ΚΑΙ ΧΩΡΙΣ ΒΑΣΗ
 // ─────────────────────────────────────────────────────────────────────────
@@ -21,6 +20,17 @@ import { roundHalfUp } from '@/lib/core/money';
 // εισαγωγές `@/`, ώστε να τη φορτώνουν και τα δύο περιβάλλοντα με σχετική
 // διαδρομή — όπως κάνει ήδη το `lib/market/ecb.ts` για την τροφοδοσία της ΕΚΤ.
 // ═══════════════════════════════════════════════════════════════════════════
+
+// ΤΟ ΜΙΣΟ ΛΕΠΤΟ ΠΡΟΣ ΤΑ ΠΑΝΩ, ΑΝΤΙΓΡΑΦΟ ΤΟΥ lib/core/money `roundHalfUp`. Το
+// αρχείο το φορτώνει και η edge function bank-rates-updater (Deno), που δεν
+// λύνει το «@/» και θέλει κατάληξη «.ts», ενώ το tsc της εφαρμογής δεν τη
+// δέχεται. Ίδιος κώδικας, ίδιο τεστ (rateFeed.test.ts).
+function roundHalfUp(n: number, dp = 2): number {
+  if (!Number.isFinite(n)) return n;
+  const f = 10 ** dp;
+  const r = Math.round(Number((Math.abs(n) * f).toPrecision(15))) / f;
+  return n < 0 && r !== 0 ? -r : r;
+}
 
 /** Τα πεδία που ελέγχονται, με το κατώφλι ΚΡΑΤΗΣΗΣ του καθενός (ποσοστιαίες μονάδες). */
 export const RATE_FIELDS = ['fixed_3yr', 'fixed_5yr', 'fixed_10yr', 'fixed_15yr', 'fixed_20yr'] as const;

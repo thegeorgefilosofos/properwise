@@ -25,7 +25,7 @@ import {
   consolidateIndividual, PRESUMPTIVE_DEDUCTION_RATE,
   type StatementInput, type TaxRegime,
 } from '@/lib/accounting/statement'
-import { centsOr0 } from '@/lib/core/money'
+import { centsOr0 } from '../core/money'
 import { fpRate } from '@/lib/core/format'
 
 // Ο κανόνας ζει στο lib/billing/presumptive.ts ώστε οι δημόσιοι υπολογιστές να

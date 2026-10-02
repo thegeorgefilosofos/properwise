@@ -36,7 +36,7 @@
 
 import type { LedgerEntry } from './ledger';
 import { daysUntil } from '@/lib/core/time';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /**
  * Πόσοι διαφορετικοί μήνες χρειάζονται για να πούμε ότι κάτι «επαναλαμβάνεται».

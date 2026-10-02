@@ -13,7 +13,7 @@
 import { declarationDeadline as taxDeclarationDeadline } from '../tax/leaseDeclaration';
 import { fe, fp } from '../core/format';
 import { grDate } from '@/lib/core/format';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 export type LeaseUse = 'residence' | 'professional';
 

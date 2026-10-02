@@ -43,7 +43,7 @@ import { feWhole } from '@/lib/core/format';
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO, RENO_39B_KYA } from '@/lib/accounting/renovation39b';
 import { transferCosts } from '@/lib/accounting/transfer';
 import type { PropertyStatus } from './status';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 // ── ΤΟ ΠΕΔΙΟ ΕΦΑΡΜΟΓΗΣ ─────────────────────────────────────────────────────
 

@@ -5,7 +5,7 @@
 
 import { isValidAfm, nightsBetween, normalizePhone } from '../core/greek';
 import { athensToday } from '../core/time'
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 export type ClientType = 'owner' | 'lead' | 'client';
 export const CLIENT_TYPES: ClientType[] = ['owner', 'lead', 'client'];

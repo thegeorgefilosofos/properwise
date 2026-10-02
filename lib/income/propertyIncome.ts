@@ -30,7 +30,7 @@
 import { declarableGross, declarableGrossOrTotal, type StayAmountLike } from '@/lib/clients/stayAmounts'
 import { staysOfYearToDate } from '@/lib/clients/reports'
 import { daysBetweenIso } from '@/lib/core/time'
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 export interface IncomeRent {
   amount: number | null

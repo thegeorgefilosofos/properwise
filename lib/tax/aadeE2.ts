@@ -36,7 +36,7 @@
 import { parseAmount, parseDate, isValidAfm, afmDigits } from '@/lib/core/greek';
 import { ATAK_DIGITS } from '@/lib/property/atak';
 import { fe, fp } from '@/lib/core/format';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /** Σε ποια στήλη ακαθαρίστου του εντύπου είναι το ποσό της γραμμής. */
 export type E2IncomeColumn = 13 | 14 | 15 | 16;

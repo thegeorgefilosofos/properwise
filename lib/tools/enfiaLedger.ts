@@ -14,7 +14,7 @@
 // στο στρογγυλό ποσό, οπότε δεν είναι τέχνασμα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { ENFIA_WEALTH_REDUCTION, type ENFIAResult } from '@/lib/billing/enfia';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 const cents = (n: number) => roundHalfUp(n, 2);
 

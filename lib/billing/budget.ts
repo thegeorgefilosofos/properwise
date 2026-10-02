@@ -1,4 +1,4 @@
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 // lib/billing/budget.ts
 // Καθαρός υπολογιστικός πυρήνας προϋπολογισμού — πρόβλεψη τέλους μήνα, ετήσια
 // εικόνα (YTD) και σύγκριση περιόδων. Χωρίς I/O, πλήρως ελεγχόμενος με tests.

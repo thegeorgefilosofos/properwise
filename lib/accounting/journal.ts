@@ -2,7 +2,7 @@ import { ELP_ALL, elpAccount, elpAccountFor, type ElpAccount } from '../tax/elpA
 import { resolveCategory } from '../expenses/taxonomy';
 import { fe } from '../core/format';
 import { csvCell } from '../core/csv';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 // ═══════════════════════════════════════════════════════════════════════════
 // journal — Καθαρή double-entry (διπλογραφική) μηχανή για το λογιστικό handoff.
 //

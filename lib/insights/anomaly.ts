@@ -32,7 +32,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { athensParts } from '../core/time';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 export interface SpendRow {
   category?: string;

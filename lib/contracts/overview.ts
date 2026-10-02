@@ -24,7 +24,7 @@
 
 import { expectedSeries, type ExpectedSeries } from '../expenses/expected';
 import type { LedgerEntry } from '../expenses/ledger';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /**
  * Οι κατηγορίες που έχουν πάροχο και συμβόλαιο. Η σειρά είναι η σειρά οθόνης.

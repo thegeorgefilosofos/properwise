@@ -28,7 +28,7 @@ import { expenseAccount } from '@/lib/accounting/journal';
 import { categoryLabel, isDeductible } from '@/lib/expenses/taxonomy';
 import { rentalBracketsForYear, bracketsLabelForYear } from '@/lib/billing/greekTax';
 import { greekPropertyTaxObligations } from '@/lib/tax/greekTaxCalendar';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /** Το ακίνητο του παραδείγματος. Ένα, μακροχρόνια μισθωμένο, με πλήρη στοιχεία. */
 export const DEMO_PROPERTY = {

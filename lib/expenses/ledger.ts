@@ -25,7 +25,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { resolveCategory, BY_SLUG } from './taxonomy';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /**
  * Ο ΤΙΤΛΟΣ ΟΤΑΝ ΔΕΝ ΥΠΑΡΧΕΙ ΤΙΤΛΟΣ.

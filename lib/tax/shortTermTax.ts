@@ -28,7 +28,7 @@ import {
   rentalIncomeTax, rentalBracketsForYear, municipalAccommodationTax,
   currentLevyRegime,
 } from '@/lib/billing/greekTax';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 export interface PropertyTaxMeta { sqm?: number | null; isHouse?: boolean; propertyCount?: number; individual?: boolean; rentsPaidViaBank?: boolean }
 

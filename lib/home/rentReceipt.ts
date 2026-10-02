@@ -19,7 +19,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { fe } from '@/lib/core/format';
-import { roundHalfUp } from '@/lib/core/money';
+import { roundHalfUp } from '../core/money';
 
 /** Οσο χρειάζεται από μια γραμμή για να αθροιστεί και να ονομαστεί. */
 export interface ReceiptLine { id: string; amount: number }
