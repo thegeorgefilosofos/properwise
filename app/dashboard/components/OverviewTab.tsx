@@ -16,7 +16,7 @@ import * as expenseStore from '@/lib/data/expenses'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
-import { taxpayerRentSources } from '@/lib/accounting/taxpayerIncome'
+import { taxpayerRentSources, ownershipPctOf, wholePropertyTax } from '@/lib/accounting/taxpayerIncome'
 import type { StayAmountLike } from '@/lib/clients/stayAmounts'
 import MonthlyFeedbackNudge from './MonthlyFeedbackNudge'
 import type { LegalForm } from '@/lib/accounting/dossier'
@@ -509,7 +509,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   );
   // Χωρίς `Math.round`: 1.060,20€ γραφόταν «1.060,00€», λεπτά που δεν υπάρχουν.
   // Η στρογγυλοποίηση ανήκει στην εμφάνιση, που ήδη γράφει δύο δεκαδικά.
-  const estTax = taxShareOf(portfolioTax, prop.id);
+  // Ο φόρος βγαίνει στο ποσοστό συνιδιοκτησίας· τα πλακίδια δείχνουν όλο το
+  // ακίνητο, οπότε ο αριθμός ανάγεται στο ακίνητο με τον ίδιο συντελεστή.
+  const estTax = wholePropertyTax(taxShareOf(portfolioTax, prop.id), ownershipPctOf(prop));
   // ΕΝΑ ΝΟΥΜΕΡΟ ΠΡΩΤΟ (02.10.2026). Η Επισκόπηση άνοιγε με ημερομηνία και
   // κουμπί PDF· ο πρώτος αριθμός ήταν κάτω από τη Νόα. Ο ίδιος υπολογισμός με
   // το πλακίδιο «Καθαρό αποτέλεσμα»: σε ακίνητο με έσοδα το καθαρό, αλλιώς οι

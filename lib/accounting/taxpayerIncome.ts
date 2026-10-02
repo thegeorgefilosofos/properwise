@@ -18,10 +18,35 @@
 import { sameTaxpayer, type TaxpayerProperty } from './taxpayer'
 import { propertyIncome, type IncomeRent } from '../income/propertyIncome'
 import { readStatus, type StatusRow } from '../property/status'
+import { ownerShareOfAmount } from '../expenses/sharing'
 import type { StayAmountLike } from '../clients/stayAmounts'
 import type { RentSource } from '../billing/consolidate'
 
-export interface TaxpayerPropInput extends TaxpayerProperty, StatusRow { id: string }
+export interface TaxpayerPropInput extends TaxpayerProperty, StatusRow {
+  id: string
+  /** Ποσοστό συνιδιοκτησίας (στήλη `ownership`)· χωρίς τιμή, 100. */
+  ownership?: string | number | null
+}
+
+// ΣΥΝΙΔΙΟΚΤΗΣΙΑ. Ο φόρος βγαίνει στο μερίδιο του φορολογούμενου: ο
+// ιδιοκτήτης του 50% ενός ακινήτου 24.000€ δηλώνει 12.000€. Η
+// Λογιστική και το Ε2 το εφάρμοζαν ήδη· εδώ μετρούσε όλο το ποσό, για το
+// τρέχον ακίνητο και για τα άλλα, οπότε η κλίμακα ανέβαινε κλιμάκια που ο
+// χρήστης δεν θα δει ποτέ στο εκκαθαριστικό του.
+/** Το ποσοστό του φορολογούμενου στο ακίνητο, 0–100. Ίδια ανάγνωση με τη Λογιστική. */
+export function ownershipPctOf(p: Pick<TaxpayerPropInput, 'ownership'> | undefined): number {
+  const v = Number(p?.ownership)
+  return Number.isFinite(v) && v > 0 ? Math.min(100, v) : 100
+}
+
+/**
+ * Από τον φόρο του μεριδίου στον φόρο όλου του ακινήτου, για οθόνες που δείχνουν
+ * όλο το ακίνητο (ενοίκιο, απόδοση). Υπόθεση: οι συνιδιοκτήτες φορολογούνται με
+ * τον ίδιο μέσο συντελεστή. Με 100% επιστρέφει τον ίδιο αριθμό.
+ */
+export function wholePropertyTax(shareTax: number, ownershipPct: number): number {
+  return ownershipPct > 0 && ownershipPct < 100 ? shareTax * 100 / ownershipPct : shareTax
+}
 
 export interface OtherPropertyIncome {
   rents?: readonly IncomeRent[]
@@ -51,10 +76,11 @@ export function taxpayerRentSources(i: TaxpayerSourcesInput): RentSource[] {
     const inc = propertyIncome({ rents: o.rents ?? [], stays: o.stays ?? [], year: i.year, today: i.today, estimateMonthly: o.estimateMonthly })
     return {
       id: p.id,
-      annualRent: inc.annualized,
+      annualRent: ownerShareOfAmount(inc.annualized, ownershipPctOf(p)),
       shortTerm: readStatus(p) === 'rent_short' || inc.source === 'stays',
       rentsPaidViaBank: o.viaBank ?? true,
     }
   })
-  return [i.current, ...others]
+  const cur = i.props.find(p => p.id === i.current.id)
+  return [{ ...i.current, annualRent: ownerShareOfAmount(i.current.annualRent, ownershipPctOf(cur)) }, ...others]
 }

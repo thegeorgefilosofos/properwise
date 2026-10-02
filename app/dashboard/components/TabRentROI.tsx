@@ -15,7 +15,7 @@ import * as stayStore from '@/lib/data/stays';
 import * as rentStore from '@/lib/data/rent';
 import { roundHalfUp } from '@/lib/core/money';
 import { propertyIncome, type IncomeRent, type PropertyIncome } from '@/lib/income/propertyIncome';
-import { taxpayerRentSources, type TaxpayerPropInput, type OtherPropertyIncome } from '@/lib/accounting/taxpayerIncome';
+import { taxpayerRentSources, ownershipPctOf, wholePropertyTax, type TaxpayerPropInput, type OtherPropertyIncome } from '@/lib/accounting/taxpayerIncome';
 import type { StayAmountLike } from '@/lib/clients/stayAmounts';
 import { ledgerYearTotal, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
 import { trailingStays, type ReportStay, type TrailingStays } from '@/lib/clients/reports';
@@ -778,7 +778,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           // χρήστες με 2+ ακίνητα — δηλαδή ακριβώς εκεί όπου ο ανά-ακίνητο φόρος
           // είναι λάθος. Χωρίς τα υπόλοιπα ενοίκια δεν υπάρχει τρόπος να βγει ο
           // σωστός φόρος: η κλίμακα είναι προοδευτική στο σύνολο του Ε1.
-          properties.list<{ id: string; target_rent: number | null; rental_mode: string | null; status_detail: string | null; client_id: string | null }>(supabase, userId, { columns: 'id,target_rent,rental_mode,status_detail,client_id' }),
+          properties.list<{ id: string; target_rent: number | null; rental_mode: string | null; status_detail: string | null; client_id: string | null; ownership: string | null }>(supabase, userId, { columns: 'id,target_rent,rental_mode,status_detail,client_id,ownership' }),
           supabase.from('rent_config').select('property_id,actual_rent,target_rent').eq('user_id', userId),
           billStore.ofProperty<LedgerBill>(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
           // Οι κρατήσεις, για να βγει η πληρότητα και η τιμή νύχτας από τα
@@ -987,9 +987,10 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       // Ατομική επιχείρηση: κλίμακα άρθρου 15 στο καθαρό κέρδος (όχι άρθρο 40).
       return incomeStatement({ regime: 'business', businessForm: 'sole', grossIncome: grossAnnual, itemizedExpenses: effOpex }).incomeTax;
     }
-    // Φυσικό πρόσωπο: το μερίδιό του από τον ΕΝΑ προοδευτικό φόρο του χαρτοφυλακίου.
-    return taxShareOf(portfolioTax, propertyId);
-  }, [grossAnnual, effOpex, pro, entity, portfolioTax, propertyId]);
+    // Φυσικό πρόσωπο: το μερίδιό του από τον ΕΝΑ προοδευτικό φόρο του χαρτοφυλακίου,
+    // στο ποσοστό του· η οθόνη δείχνει όλο το ακίνητο, οπότε και τον φόρο όλου.
+    return wholePropertyTax(taxShareOf(portfolioTax, propertyId), ownershipPctOf(taxBase.props.find(p => p.id === propertyId)));
+  }, [grossAnnual, effOpex, pro, entity, portfolioTax, propertyId, taxBase]);
   // Εμφανίζουμε την ενοποίηση μόνο όταν υπάρχει τι να ενοποιηθεί (2+ ακίνητα με έσοδα).
   const consolidated = !pro && portfolioTax.count > 1;
 
