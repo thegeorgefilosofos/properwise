@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
-import { SITE, siteUrl, PRODUCT_NAME } from '@/lib/core/site';
+import { SITE, siteUrl, PRODUCT_NAME, ORG_ID } from '@/lib/core/site';
 import { monthGen } from '@/lib/core/months';
 import { T } from '@/components/tokens';
 import { SectionHead, WRAP, WRAP_PAD } from '../PublicChrome';
@@ -307,7 +307,8 @@ export function guideJsonLd({ guide, headline, description, about, faq }: {
   guide: Guide; headline: string; description: string; about: string; faq: GuideFaqItem[];
 }) {
   const url = siteUrl(guide.href);
-  const orgId = `${SITE}#org`;
+  // Το ίδιο `@id` με την αρχική (ORG_ID): ένας εκδότης και συγγραφέας, όχι δύο.
+  const orgId = ORG_ID;
   return {
     '@context': 'https://schema.org',
     '@graph': [

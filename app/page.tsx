@@ -2,10 +2,10 @@ import { BrandLogo } from '@/components/BrandMark';
 import Link from 'next/link';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 import { aiLimitsFor } from '@/lib/billing/aiLimits';
-import { TRIAL_OFFER } from '@/lib/billing/trialOffer';
+import { TRIAL_OFFER, trialCta } from '@/lib/billing/trialOffer';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
-import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES, LINKEDIN_URL } from '@/lib/core/site';
+import { SITE, ORG_ID, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES, LINKEDIN_URL } from '@/lib/core/site';
 import { IDENTITY } from '@/lib/legal/identity';
 import { billingWords } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
@@ -20,7 +20,7 @@ import { hy } from '@/components/Hyphen';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, CARD_GAP, wrap, ic, check } from './landingKit'
 import {
-  FEATURES, FAQ_VISIBLE, FAQ, WORKS_WITH, SECURITY, REFERRAL, LANDING_PLANS, FEATURED_PLAN,
+  FEATURES, FAQ_VISIBLE, FAQ, faqForSchema, WORKS_WITH, SECURITY, REFERRAL, LANDING_PLANS, FEATURED_PLAN,
 } from './landingContent'
 import { FaqList, NoaFeature, SectionHead, OwnerPlanCard, PlanCard } from './LandingParts'
 import { LandingStyles } from './LandingStyles'
@@ -619,7 +619,9 @@ export default async function Landing() {
                 items={plan.features}
                 // ΡΗΜΑ, ΟΧΙ ΤΑΜΠΕΛΑ. Το «30 ημέρες δωρεάν» σε τέσσερα κουμπιά δεν
                 // έλεγε τι κάνει το πάτημα· η δοκιμή λέγεται στα ψιλά από κάτω.
-                cta="Ξεκίνα τη δοκιμή"
+                // Και «δοκιμή» μόνο όπου η δοκιμή δίνει το πακέτο: πάνω από το
+                // TRIAL_PLAN το κουμπί λέει μόνο ότι η αρχή είναι δωρεάν.
+                cta={trialCta(id)}
                 ctaGhost={id !== FEATURED_PLAN}
                 featured={id === FEATURED_PLAN}
               />
@@ -804,7 +806,7 @@ export default async function Landing() {
         '@graph': [
           {
             '@type': 'Organization',
-            '@id': `${SITE}/#organization`,
+            '@id': ORG_ID,
             name: IDENTITY.tradeName,
             // Νόμιμες παραλλαγές γραφής της μάρκας (πεζά/κεφαλαία/κενό) ώστε η
             // Google να τις συνδέει με την ίδια οντότητα. ΟΧΙ ορθογραφικά λάθη:
@@ -829,7 +831,7 @@ export default async function Landing() {
             url: SITE,
             name: IDENTITY.tradeName,
             inLanguage: 'el',
-            publisher: { '@id': `${SITE}/#organization` },
+            publisher: { '@id': ORG_ID },
           },
           {
             '@type': 'SoftwareApplication',
@@ -844,11 +846,11 @@ export default async function Landing() {
             url: SITE,
             inLanguage: 'el',
             description: OG_DESC,
-            publisher: { '@id': `${SITE}/#organization` },
+            publisher: { '@id': ORG_ID },
           },
           {
             '@type': 'FAQPage',
-            mainEntity: FAQ.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+            mainEntity: faqForSchema(pricingNotice?.title ?? null).map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
           },
         ],
       }} />

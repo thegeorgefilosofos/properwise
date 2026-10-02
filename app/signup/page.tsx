@@ -17,7 +17,7 @@ import { hy } from '@/components/Hyphen'
 import { SAY, failed } from '@/lib/core/dbError';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 // Καθαρή λογική, χωρίς React/Supabase: ασφαλής σε 'use client'.
-import { planFromParam, cycleFromParam, checkoutLanding } from '@/lib/billing/entitlements';
+import { planFromParam, cycleFromParam, checkoutLanding, planAtLeast, TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
 import { isReferralCode } from '@/lib/referral/referral';
@@ -716,7 +716,7 @@ export default function SignupPage() {
                   ΤΟ ΣΧΗΜΑ ΕΙΝΑΙ ΠΛΕΓΜΑ, ΟΧΙ ΔΥΟ ΠΑΡΑΓΡΑΦΟΙ. Δύο στήλες, δύο
                   σειρές, ένας άξονας αριστερά και ένας δεξιά:
 
-                      Επαγγελματίας+            799,00€
+                      Ιδιοκτήτης+                99,00€
                       Ετήσια χρέωση          Δοκιμή 30 ημερών
 
                   Αριστερά ΤΙ ΕΙΝΑΙ, δεξιά ΤΙ ΠΛΗΡΩΝΕΙΣ. Η πάνω σειρά κρατά την
@@ -746,8 +746,10 @@ export default function SignupPage() {
                   <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)' }}>
                     {planTerms ?? (chosenCycle === 'annual' ? 'Ετήσια χρέωση' : 'Μηνιαία χρέωση')}
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    Δοκιμή {TRIAL_DAYS} ημερών
+                  {/* Η ΔΟΚΙΜΗ ΔΙΝΕΙ ΤΟ TRIAL_PLAN, ΟΧΙ ΟΠΟΙΟ ΠΑΚΕΤΟ ΔΙΑΛΕΞΕΣ. Πάνω από
+                      αυτό η ταμπέλα λέει σε ποιο πακέτο τρέχει η δοκιμή. */}
+                  <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)', textAlign: 'right', whiteSpace: planAtLeast(TRIAL_PLAN, chosenPlan) ? 'nowrap' : undefined }}>
+                    Δοκιμή {TRIAL_DAYS} ημερών{!planAtLeast(TRIAL_PLAN, chosenPlan) && <> στο «{PLANS[TRIAL_PLAN].name}»</>}
                   </span>
                 </div>
               )}

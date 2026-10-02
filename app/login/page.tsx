@@ -398,10 +398,12 @@ export default function LoginPage() {
           /* ΑΡΙΣΤΕΡΑ, ΟΠΩΣ ΚΑΘΕ ΑΛΛΟ ΣΤΟΙΧΕΙΟ ΤΗΣ ΦΟΡΜΑΣ (01.10.2026). Ηταν το
              μόνο κεντραρισμένο στοιχείο της στήλης και, φαρδύτερο κατά 20, το
              μόνο που ξέφευγε από τις ευθείες των πεδίων. Ιδια θέση και ίδιο
-             μέγεθος με τη συναίνεση της εγγραφής. */
+             μέγεθος με τη συναίνεση της εγγραφής.
+             Η ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ ΔΕΝ ΓΙΝΕΤΑΙ ΑΠΟΔΕΚΤΗ. Είναι ενημέρωση (άρθρα 13
+             και 14 ΓΚΠΔ), όχι σύμβαση: «αποδέχεσαι» λέγεται μόνο για τους Όρους. */
           <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 20, marginBottom: 0, lineHeight: 1.6, textWrap: 'pretty' }}>
             Συνεχίζοντας, αποδέχεσαι τους{' '}
-            <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Όρους</Link>{' '}και την{' '}
+            <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Όρους</Link>. Δες και την{' '}
             <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>.
           </p>
           )}

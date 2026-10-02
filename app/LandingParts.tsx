@@ -5,11 +5,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from 'next/link'
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans'
-import { aiLimitsFor } from '@/lib/billing/aiLimits'
-import { fe } from '@/lib/core/format'
+import { aiLimitsFor, TRIAL_LIMITS, SCAN_LIMITS } from '@/lib/billing/aiLimits'
+import { fe, feWhole } from '@/lib/core/format'
 import { T } from '@/components/tokens'
 import { hy } from '@/components/Hyphen'
 import { ASSISTANT_NAME, ASSISTANT_ACC } from '@/lib/assistant/identity'
+import { trialCta } from '@/lib/billing/trialOffer'
 import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, wrap, check } from './landingKit'
 
 /** Μία ερώτηση, ένα σχήμα. Οι δύο λίστες (ορατές και κρυμμένες) δεν επιτρέπεται
@@ -69,6 +70,16 @@ export function FaqList({ list }: { list: { q: string; a: string }[] }) {
 //
 // ΤΑ ΝΟΥΜΕΡΑ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΗ ΜΗΧΑΝΗ: τιμή από το PLANS, ερωτήσεις από το
 // aiLimits. Χωρίς JavaScript: είναι server component, όπως η υπόλοιπη αρχική.
+/** Η σάρωση από το SCAN_LIMITS: `null` σημαίνει χωρίς μηνιαίο όριο. */
+const scanLine = (n: number | null): string => n === null ? 'σάρωση χωρίς όριο' : `${n} σαρώσεις τον μήνα`;
+
+/** Η δοκιμή με τα δικά της όρια (TRIAL_LIMITS), όχι με του πακέτου. */
+const trialLine = (): string =>
+  `Δοκιμή ${TRIAL_DAYS} ημερών: ${TRIAL_LIMITS.perMonth} ερωτήσεις, έως ${TRIAL_LIMITS.perDay} την ημέρα`;
+
+/** Το όριο ακινήτων από τα PLANS, σε λέξεις για το ένα. */
+const propertiesLine = (n: number): string => n === 1 ? 'Ένα ακίνητο' : `Έως ${n} ακίνητα`;
+
 const NOA_ASKS = [
   'Πόσα έδωσα σε κοινόχρηστα φέτος;',
   'Ποιος ενοικιαστής μου χρωστά ακόμη;',
@@ -104,11 +115,16 @@ export function NoaFeature() {
               <span className="nf-per">τον μήνα</span>
               <span className="nf-per">{`ή ${fe(noa.priceAnnual)} τον χρόνο`}</span>
             </div>
-            <div className="nf-terms">{ai.perMonth} ερωτήσεις τον μήνα · σάρωση χωρίς όριο · δοκιμή {TRIAL_DAYS} ημερών</div>
+            {/* ΤΟ ΠΑΚΕΤΟ ΚΑΙ Η ΔΟΚΙΜΗ ΕΧΟΥΝ ΑΛΛΑ ΟΡΙΑ. Η γραμμή έλεγε τις ερωτήσεις
+                του πληρωμένου δίπλα στο «δοκιμή 30 ημερών» και κάτω από το κουμπί
+                της δοκιμής· η δοκιμή όμως μετρά με τα TRIAL_LIMITS (effectiveAiLimits).
+                Η πρώτη γραμμή είναι το πακέτο, δίπλα στην τιμή του· η δεύτερη η δοκιμή. */}
+            <div className="nf-terms">{ai.perMonth} ερωτήσεις τον μήνα · {scanLine(SCAN_LIMITS.solo)}</div>
+            <div className="nf-terms">{trialLine()}</div>
           </div>
           <div className="nf-cta">
             <Link href="/signup?plan=solo&cycle=monthly" className="lp-cta lp-primary lp-press" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px 24px', borderRadius: T.radius.pill }}>Δοκίμασε {ASSISTANT_ACC}</Link>
-            <span className="nf-free">Ο «{PLANS.free.name}» μένει δωρεάν χωρίς αυτήν.</span>
+            <span className="nf-free">{`Ο «${PLANS.free.name}» μένει δωρεάν, χωρίς ${ASSISTANT_ACC}.`}</span>
           </div>
         </div>
         <div className="nf-stage" aria-label={`Παραδείγματα ερωτήσεων προς ${ASSISTANT_ACC}`}>
@@ -212,14 +228,19 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 12, color: FAINT, marginBottom: 12, lineHeight: 1.35 }}>{free.tagline}</div>
         <div className="pc-seg" role="presentation">
-          <label htmlFor="pc-noa-off">Χωρίς βοηθό</label>
-          <label htmlFor="pc-noa-on"><span className="pc-mark">{noaMark}</span>Με τη {ASSISTANT_NAME}</label>
+          {/* ΙΔΙΑ ΛΕΞΗ ΜΕ ΤΟ ΠΑΚΕΤΟ ΚΑΙ ΜΕ ΤΟΝ ΠΙΝΑΚΑ. Το πακέτο λέγεται «Ιδιοκτήτης
+              με Νόα» και ο πίνακας του /paketa γράφει «με Νόα»· ο διακόπτης
+              έγραφε άλλο όνομα στο κάθε κουμπί, δηλαδή τρία ονόματα για το ίδιο. */}
+          <label htmlFor="pc-noa-off">{`Χωρίς ${ASSISTANT_NAME}`}</label>
+          <label htmlFor="pc-noa-on"><span className="pc-mark">{noaMark}</span>{`Με ${ASSISTANT_NAME}`}</label>
         </div>
       </div>
       <div className="pc-off">
-        {/* Στη διαφήμιση το μηδέν γράφεται «0€»: δεκαδικά σε μηδέν διαβάζονται ως λογιστικό φύλλο. */}
-        {price('0€', 'χωρίς συνδρομή')}
-        <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>Ένα ακίνητο, όλα τα φορολογικά</div>
+        {/* Στη διαφήμιση το μηδέν γράφεται «0€»: δεκαδικά σε μηδέν διαβάζονται ως
+            λογιστικό φύλλο. Η τιμή και το όριο όμως από τα PLANS, όπως σε κάθε
+            άλλη κάρτα. */}
+        {price(free.priceMonthly === 0 ? feWhole(free.priceMonthly) : fe(free.priceMonthly), 'χωρίς συνδρομή')}
+        <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>{`${propertiesLine(free.maxProperties)}, όλα τα φορολογικά`}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', margin: '14px 0 16px' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
           {[...shared, freeScan].map(line)}
@@ -233,8 +254,13 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: ACCENT }}>{bubble}<span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(`${ai.perMonth} ερωτήσεις τον μήνα, έως ${ai.perDay} την ημέρα`)}</span></div>
           {[...shared, noaScan].map(line)}
+          {/* Ακριβώς πάνω από το κουμπί της δοκιμής, τα όρια της δοκιμής: οι
+              ερωτήσεις στην κορυφή της λίστας είναι του πληρωμένου πακέτου.
+              Μέσα στη λίστα και όχι δίπλα της, για να μη γίνει όγδοη γραμμή
+              του subgrid που μοιράζονται οι κάρτες. */}
+          <div style={{ fontSize: 12, color: FAINT, lineHeight: 1.4, marginTop: 2 }}>{trialLine()}</div>
         </div>
-        {cta(`/signup?plan=solo&cycle=monthly`, 'Ξεκίνα τη δοκιμή')}
+        {cta(`/signup?plan=solo&cycle=monthly`, trialCta('solo'))}
         {billingLive && <Link href="/signup?plan=solo&cycle=annual" className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{`Ετήσια: ${paidMonths} μήνες αντί για 12`}</Link>}
       </div>
     </div>
