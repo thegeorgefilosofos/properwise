@@ -6,6 +6,7 @@
 import { fe } from '@/lib/core/format'
 import { fp } from '../core/format'
 import { programStatus, programDateLabel, parseProgramDate, type ProgramStatus } from './programStatus'
+import { roundHalfUp } from '../core/money';
 
 export type RateType = 'fixed' | 'variable' | 'mixed'
 export type LoanPurpose =
@@ -201,7 +202,7 @@ export function interestForYear(principal: number, annualRatePct: number, years:
     if (month >= startMonth && month <= endMonth) interestSum += interest
     balance -= principalPaid
   }
-  return Math.round(interestSum * 100) / 100
+  return roundHalfUp(interestSum, 2)
 }
 
 // Το εισοδηματικό όριο «Σπίτι μου ΙΙ» για τη δεδομένη οικογενειακή κατάσταση.

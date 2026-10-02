@@ -108,16 +108,16 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Αποτυχία σύνταξης.');
+      // Το κείμενο του διακομιστή είναι δικό μας και ελληνικό· ό,τι άλλο πετάξει
+      // (δίκτυο, JSON) περνά από την `failed`, όχι ωμό στην οθόνη.
+      if (!res.ok) { setAiErr(typeof data?.error === 'string' && data.error ? data.error : failed('Η σύνταξη δεν ολοκληρώθηκε')); return; }
       const raw = ((data.content || []) as { type: string; text?: string }[]).find(c => c.type === 'text')?.text?.replace(/```json?|```/g, '').trim() || '{}';
       const p = JSON.parse(raw);
       if (p.subject) setSubject(String(p.subject));
       if (p.body) setBody(String(p.body));
       setAiOpen(false);
     } catch (e) {
-      // Το `catch` δίνει `unknown`, όχι `any`: ρωτάμε τι είναι πριν το διαβάσουμε.
-      const msg = e instanceof Error ? e.message : '';
-      setAiErr(msg === 'Unexpected token' || e instanceof SyntaxError ? 'Η απάντηση δεν ήταν έγκυρη. Δοκίμασε ξανά.' : (msg || 'Αποτυχία σύνταξης.'));
+      setAiErr(e instanceof SyntaxError ? 'Η απάντηση δεν ήταν έγκυρη. Δοκίμασε ξανά.' : failed('Η σύνταξη δεν ολοκληρώθηκε', e));
     } finally { setAiBusy(false); }
   };
 

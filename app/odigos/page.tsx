@@ -60,9 +60,14 @@ export default function Page() {
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           {TITLE}
         </h1>
-        {/* ΧΩΡΙΣ `hy()` ΕΔΩ ΚΑΙ ΣΤΙΣ ΚΑΡΤΕΣ. Το κείμενο στοιχίζεται αριστερά, άρα ο
-            συλλαβισμός δεν έχει κενά να κλείσει· στα 1440 έκοβε μόνο λέξεις
-            («υπο-λογίζει», «απαλλα-γές») σε γραμμές που χωρούσαν ολόκληρες. */}
+        {/* Η ΕΙΣΑΓΩΓΗ: ΠΕΡΑ ΠΕΡΑ, ΣΤΟ ΠΛΑΤΟΣ ΤΩΝ ΚΑΡΤΩΝ. Στοιχίζεται όπως κάθε
+            παράγραφος (απόφαση ιδιοκτήτη, 26.09.2026), άρα συλλαβίζεται. Ενα
+            μέτρο 640 την έκοβε στο μισό της σειράς των καρτών (01.10.2026).
+
+            ΟΙ ΚΑΡΤΕΣ ΟΧΙ. Η περιγραφή κάθε κάρτας είναι τρεις γραμμές σε στήλη
+            τριακοσίων: αριστερά, χωρίς `hy()`, με `pretty`. Ο στοιχειοθέτης
+            (lib/ui/typeset.ts) δεν μπαίνει πια μέσα σε σύνδεσμο, οπότε δεν τις
+            ξαναστοιχίζει («διανυκτέρευ-ση», «απαλλα-γές» στα 1440). */}
         <p className="po-just" style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--text-secondary)', margin: '0 0 clamp(28px,4vw,40px)' }}>{hy(<>
           Κάθε κανόνας με τη νομική του βάση και κάθε ποσό με παράδειγμα σε ευρώ. Κάθε οδηγός δένει με τον υπολογισμό που εφαρμόζει τον κανόνα στα δικά σου νούμερα.
         </>)}</p>
@@ -74,14 +79,20 @@ export default function Page() {
             «Διάβασε τον οδηγό» είναι οπτική ένδειξη και κάθεται στη βάση της
             κάρτας, στο ίδιο ύψος σε όλη τη σειρά. */}
         <div className="og-grid">
-          {GUIDES.map(g => {
+          {/* ΕΝΝΙΑ ΚΑΡΤΕΣ ΣΕ ΔΥΟ ΣΤΗΛΕΣ ΑΦΗΝΑΝ ΤΗΝ ΕΝΑΤΗ ΜΟΝΗ ΤΗΣ, με μισή σειρά
+              άδεια στο τέλος του καταλόγου. Η πρώτη γίνεται προβεβλημένη, σε όλο
+              το πλάτος· οι υπόλοιπες οκτώ κλείνουν σε τέσσερις γεμάτες σειρές.
+              Ο κανόνας ισχύει μόνο όσο το πλήθος είναι μονό. */}
+          {GUIDES.map((g, i) => {
             const id = `odigos-${g.href.split('/').at(-1)}`;
+            const featured = i === 0 && GUIDES.length % 2 === 1;
             return (
-              <Link key={g.href} href={g.href} aria-labelledby={id} className="og-card lp-link"
-                style={{ padding: '22px 22px 20px', borderRadius: T.radius.modal,
-                  border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', textDecoration: 'none' }}>
+              <Link key={g.href} href={g.href} aria-labelledby={id} className={featured ? 'og-card og-featured lp-link' : 'og-card lp-link'}
+                style={{ padding: featured ? '26px 26px 22px' : '22px 22px 20px', borderRadius: T.radius.modal,
+                  border: featured ? '1px solid color-mix(in srgb, var(--accent) 35%, transparent)' : '1px solid var(--border-subtle)',
+                  background: featured ? 'color-mix(in srgb, var(--accent) 6%, var(--bg-surface))' : 'var(--bg-surface)', textDecoration: 'none' }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent)' }}>{g.kicker}</span>
-                <h2 id={id} style={{ margin: 0, fontSize: 18, fontWeight: 680, letterSpacing: '-0.02em', color: 'var(--text-primary)', lineHeight: 1.25 }}>{g.title}</h2>
+                <h2 id={id} style={{ margin: 0, fontSize: featured ? 22 : 18, fontWeight: 680, letterSpacing: '-0.02em', color: 'var(--text-primary)', lineHeight: 1.25 }}>{g.title}</h2>
                 <span style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>{g.desc}</span>
                 <span aria-hidden="true" style={{ marginTop: 'auto', paddingTop: 4, fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>Διάβασε τον οδηγό</span>
               </Link>

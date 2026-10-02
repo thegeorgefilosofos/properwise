@@ -162,7 +162,7 @@ export async function exportChecklistExcel(items: ChecklistItem[]) {
   ]
   const ws3 = XLSX.utils.aoa_to_sheet(actionRows)
   ws3['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 42 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 22 }, { wch: 20 }, { wch: 16 }]
-  XLSX.utils.book_append_sheet(wb, ws3, 'Εκκρεμείς Ενέργειες')
+  XLSX.utils.book_append_sheet(wb, ws3, 'Εκκρεμείς ενέργειες')
 
   downloadWorkbook(wb, `Εκκρεμότητες ακινήτου ${athensToday()}`)
 }
@@ -213,7 +213,7 @@ export function exportChecklistPDF(items: ChecklistItem[], branding?: ReportBran
         </td>
         <td>${rEsc(pri.label)}</td>
         <td>${rEsc(sm.label)}</td>
-        <td class="np">${item.due_date ? rEsc(fmtDate(item.due_date)) : rEsc(ABSENT_DATE)}${od ? `<div style="font-size: 11px;color:${INK_FAINT}">Εκπρόθεσμο</div>` : ''}</td>
+        <td class="np">${item.due_date ? rEsc(fmtDate(item.due_date)) : rEsc(ABSENT_DATE)}${od ? `<div style="font-size: 11px;color:${INK_FAINT}">Ληξιπρόθεσμο</div>` : ''}</td>
         <td class="n">${rEsc(rEur(item.estimated_cost))}</td>
         <td class="n">${rEsc(rEur(item.actual_cost))}${item._receipt ? `<div style="font-size: 11px;color:${INK_FAINT}">${rEsc(item._receipt.name)}</div>` : ''}</td>
       </tr>`

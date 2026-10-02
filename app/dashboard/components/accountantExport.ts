@@ -47,6 +47,7 @@ import {
 } from '@/lib/accounting/dossier';
 import { downloadFile } from '@/lib/core/download';
 import { grDate } from '@/lib/core/format';
+import { roundHalfUp } from '@/lib/core/money';
 
 export interface AccountantBundleInput {
   year: number;
@@ -140,7 +141,7 @@ const e3Cell = (type: string, category: string): string => {
 /**
  * Το ΑΦΜ του εκδότη, μόνο όταν είναι ΑΦΜ.
  *
- * ΕΛΕΓΧΕΤΑΙ ΞΑΝΑ ΕΔΩ, ΚΑΙ ΟΧΙ ΑΠΟ ΚΑΧΥΠΟΨΙΑ. Η στήλη γεμίζει και με το χέρι και
+ * ΕΛΕΓΧΕΤΑΙ ΞΑΝΑ ΕΔΩ ΚΑΙ ΟΧΙ ΑΠΟ ΚΑΧΥΠΟΨΙΑ. Η στήλη γεμίζει και με το χέρι και
  * από παλιές εγγραφές που γράφτηκαν πριν υπάρξει ο περιορισμός της βάσης. Ένα
  * οκταψήφιο σε στήλη ΑΦΜ δεν είναι «σχεδόν σωστό»: ταξιδεύει ως τη διαβίβαση
  * και γυρίζει ως απόρριψη, μήνες μετά, χωρίς να ξέρει κανείς από πού ήρθε.
@@ -252,7 +253,7 @@ const lettered = <T extends { title?: string }>(blocks: readonly T[]): T[] => {
 /**
  * Το βιβλίο του έτους ως βιβλίο εργασίας.
  *
- * ΤΑ ΧΑΡΤΙΑ ΕΡΧΟΝΤΑΙ ΩΣ ΔΕΥΤΕΡΟ ΟΡΙΣΜΑ, ΚΑΙ ΜΟΝΟ ΑΠΟ ΤΟΝ ΦΑΚΕΛΟ. Το κουμπί
+ * ΤΑ ΧΑΡΤΙΑ ΕΡΧΟΝΤΑΙ ΩΣ ΔΕΥΤΕΡΟ ΟΡΙΣΜΑ ΚΑΙ ΜΟΝΟ ΑΠΟ ΤΟΝ ΦΑΚΕΛΟ. Το κουμπί
  * «Excel» κατεβάζει ένα αρχείο που ταξιδεύει μόνο του: μια στήλη «Παραστατικό»
  * εκεί θα έδειχνε αριθμούς αρχείων που ο παραλήπτης δεν έχει. Μέσα στον φάκελο
  * τα αρχεία ΕΙΝΑΙ δίπλα, οπότε η στήλη δείχνει σε κάτι υπαρκτό.
@@ -283,7 +284,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
         kind: (l.kind === 'result' ? 'result' : l.kind === 'subtotal' ? 'subtotal' : 'line') as Kind,
       })),
       { label: '', amount: null, kind: 'spacer' },
-      { label: 'Πρόβλεψη φόρου / μήνα (εκτίμηση)', amount: Math.round(provisionMonthly * 100) / 100, kind: 'memo' },
+      { label: 'Πρόβλεψη φόρου / μήνα (εκτίμηση)', amount: roundHalfUp(provisionMonthly, 2), kind: 'memo' },
     ];
     const aoa: (string | number)[][] = [
       [`ΚΑΤΑΣΤΑΣΗ ΑΠΟΤΕΛΕΣΜΑΤΩΝ ΧΡΗΣΗΣ ${year}`],
@@ -328,7 +329,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
     // Η ΣΕΙΡΑ ΕΙΝΑΙ Η ΣΕΙΡΑ ΠΟΥ ΔΙΑΒΑΖΕΙ ΛΟΓΙΣΤΗΣ: τι, με ποιο χαρτί, από ποιον,
     // από πού, πώς χαρακτηρίζεται, πόσο. Τα ποσά κλείνουν πάντα τη γραμμή.
     const myData = inp.myData;
-    // ΠΟΙΑ ΓΡΑΜΜΗ ΕΧΕΙ ΧΑΡΤΙ, ΚΑΙ ΠΟΙΟ. Ο αριθμός εδώ είναι ο ίδιος αριθμός που
+    // ΠΟΙΑ ΓΡΑΜΜΗ ΕΧΕΙ ΧΑΡΤΙ ΚΑΙ ΠΟΙΟ. Ο αριθμός εδώ είναι ο ίδιος αριθμός που
     // έχει μπροστά του το αρχείο μέσα στον φάκελο: ο λογιστής διαβάζει «07» και
     // ξέρει ποιο αρχείο να ανοίξει, χωρίς να ψάξει σε ευρετήριο. Δύο χαρτιά για
     // την ίδια κίνηση (τιμολόγιο και απόδειξη) γράφονται και τα δύο.
@@ -394,7 +395,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
       ...(sorted.length ? [] : [[...Array(C_LABEL).fill(''), `Καμία καταγεγραμμένη κίνηση για το ${year}`]]),
       ...dataRows as (string | number | Date)[][],
       totalsRow('ΣΥΝΟΛΑ', sumIn, sumEx),
-      totalsRow('Καθαρό αποτέλεσμα (Έσοδα − Έξοδα)', Math.round((sumIn - sumEx) * 100) / 100, ''),
+      totalsRow('Καθαρό αποτέλεσμα (Έσοδα − Έξοδα)', roundHalfUp((sumIn - sumEx), 2), ''),
     ];
     const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
     // ΤΟ ΠΛΑΤΟΣ ΚΑΘΕ ΣΤΗΛΗΣ ΕΙΝΑΙ ΤΟ ΜΑΚΡΥΤΕΡΟ ΚΕΙΜΕΝΟ ΤΗΣ, ΜΕΤΡΗΜΕΝΟ. Το Excel
@@ -447,7 +448,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
     // διαβαζόταν ως έσοδο· απλώνεται στις δύο στήλες των ποσών, γιατί είναι η
     // διαφορά τους και δεν ανήκει σε καμία.
     for (let c = 0; c < NC; c++) setCell(ws, netR, c, { s: c === C_IN || c === C_EX ? S.totNum : S.totTxt });
-    setCell(ws, netR, C_IN, { v: moneySigned(Math.round((sumIn - sumEx) * 100) / 100), t: 's' });
+    setCell(ws, netR, C_IN, { v: moneySigned(roundHalfUp((sumIn - sumEx), 2)), t: 's' });
     (ws['!merges'] ||= []).push({ s: { r: netR, c: C_IN }, e: { r: netR, c: C_EX } });
     {
       const { cols, wrap } = autoWidths(ws, { headRow: HR, max: 56 });
@@ -469,7 +470,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
       freezeRows: HR + 1, brandMark: true,
       ...(sorted.length ? { lists: [{ ref: `${supplyCol}${HR + 2}:${supplyCol}${lastData + 1}`, values: SUPPLY_VALUES }] } : {}),
     });
-    // Ο ΛΟΓΙΣΤΗΣ ΤΥΠΩΝΕΙ, ΚΑΙ Η ΔΕΥΤΕΡΗ ΣΕΛΙΔΑ ΧΡΕΙΑΖΕΤΑΙ ΟΝΟΜΑΤΑ. Χωρίς
+    // Ο ΛΟΓΙΣΤΗΣ ΤΥΠΩΝΕΙ ΚΑΙ Η ΔΕΥΤΕΡΗ ΣΕΛΙΔΑ ΧΡΕΙΑΖΕΤΑΙ ΟΝΟΜΑΤΑ. Χωρίς
     // επανάληψη της επικεφαλίδας, από τη σελίδα 2 και μετά ο πίνακας είναι
     // στήλες αριθμών χωρίς τίτλο — και το «Έσοδα / Έξοδα» δεν μαντεύεται.
     // Μπαίνει στις «Κινήσεις» μόνο: είναι το φύλλο που απλώνεται σε σελίδες.
@@ -532,7 +533,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
       // εξακολουθεί να αξίζει: ο λογιστής βλέπει πού θα καθίσει τι.
       blocks: [{
         title: moved
-          ? 'ΤΟ ΣΧΕΔΙΟ ΛΟΓΑΡΙΑΣΜΩΝ ΤΟΥ ν. 4308/2014, ΚΑΙ ΟΙ ΚΙΝΗΣΕΙΣ ΤΗΣ ΧΡΟΝΙΑΣ'
+          ? 'ΤΟ ΣΧΕΔΙΟ ΛΟΓΑΡΙΑΣΜΩΝ ΤΟΥ ν. 4308/2014 ΚΑΙ ΟΙ ΚΙΝΗΣΕΙΣ ΤΗΣ ΧΡΟΝΙΑΣ'
           : 'ΤΟ ΣΧΕΔΙΟ ΛΟΓΑΡΙΑΣΜΩΝ ΤΟΥ ν. 4308/2014',
         head: moved
           ? ['Κωδικός', 'Ονομασία κατά τον νόμο', 'Αντιστοιχία ΕΓΛΣ', 'Κατηγορίες της χρονιάς', 'Κινήσεις', 'Ποσό']
@@ -572,7 +573,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
     const NC = 12, HR = 4;
     const sorted = sortAssets(assets);
     const totals = totalsByAccount(sorted, year);
-    // ΤΕΤΑΡΤΟ ΑΝΤΙΓΡΑΦΟ ΤΟΥ ΜΟΡΦΟΠΟΙΗΤΗ ΠΟΣΟΣΤΟΥ, ΚΑΙ ΤΟ ΜΟΝΟ ΜΕ ΚΕΝΟ. Εγραφε
+    // ΤΕΤΑΡΤΟ ΑΝΤΙΓΡΑΦΟ ΤΟΥ ΜΟΡΦΟΠΟΙΗΤΗ ΠΟΣΟΣΤΟΥ ΚΑΙ ΤΟ ΜΟΝΟ ΜΕ ΚΕΝΟ. Εγραφε
     // τον δικό του `toLocaleString` και κολλούσε « %» στο τέλος, τη στιγμή που
     // το `sheetFormat.ts` εξάγει ήδη `percent()` για ακριβώς αυτό. Το μόνο που
     // πρόσθετε ήταν το κενό πριν το σύμβολο, δηλαδή τη διαφορά από την οθόνη.
@@ -663,7 +664,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
       [],
       ['Γ. ΟΙ ΛΟΓΑΡΙΑΣΜΟΙ ΠΑΓΙΩΝ ΤΟΥ ν. 4308/2014'],
       ['Κωδικός', 'Ονομασία κατά τον νόμο', 'Μικτή αξία', 'Σωρευμένες αποσβέσεις', 'Σωρευμένες απομειώσεις', 'Έξοδο απόσβεσης'],
-      // Η ΓΗ ΕΧΕΙ ΚΕΝΟ ΕΚΕΙ ΠΟΥ ΟΙ ΑΛΛΟΙ ΕΧΟΥΝ ΑΠΟΣΒΕΣΕΙΣ, ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΤΟ
+      // Η ΓΗ ΕΧΕΙ ΚΕΝΟ ΕΚΕΙ ΠΟΥ ΟΙ ΑΛΛΟΙ ΕΧΟΥΝ ΑΠΟΣΒΕΣΕΙΣ ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΤΟ
       // ΜΗΝΥΜΑ. Ο νόμος δεν δίνει λογαριασμό σωρευμένων αποσβέσεων γης επειδή
       // δεν υπάρχουν αποσβέσεις γης.
       ...ELP_ASSETS.map(a => [a.code, a.name, a.gross, a.depreciation || '', a.impairment,
@@ -970,7 +971,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
   // της ΑΑΔΕ· εδώ γράφεται ολόκληρος, μία γραμμή ανά επιτρεπτή τριάδα, με
   // αυτόματο φίλτρο ώστε να απαντά «τι δέχεται το 14.3;» με δύο κλικ.
   //
-  // ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΚΩΔΙΚΟ, ΚΑΙ ΟΧΙ ΛΙΣΤΑ ΜΕ ΚΟΜΜΑΤΑ: έτσι το φίλτρο δουλεύει
+  // ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΚΩΔΙΚΟ ΚΑΙ ΟΧΙ ΛΙΣΤΑ ΜΕ ΚΟΜΜΑΤΑ: έτσι το φίλτρο δουλεύει
   // και στη στήλη του κωδικού («ποιοι συνδυασμοί οδηγούν στο E3_585_016;»).
   if (inp.myData) {
     const NC = 6, HR = 4;
@@ -1051,7 +1052,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
         sub: idLine,
         blocks: lettered([
           {
-            title: 'ΤΙ ΧΡΕΙΑΖΕΤΑΙ, ΚΑΙ ΠΟΙΟΣ ΤΟ ΦΕΡΝΕΙ',
+            title: 'ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΚΑΙ ΠΟΙΟΣ ΤΟ ΦΕΡΝΕΙ',
             head: ['Παραστατικό', 'Κατάσταση', 'Ποιος το φέρνει', 'Απαραίτητο', 'Γιατί χρειάζεται', 'Πού βρίσκεται'],
             rows: d.requirements.map(r => [
               r.title, have.has(r.id) ? 'Υπάρχει' : 'Λείπει', WHO_LABEL[r.who],
@@ -1111,7 +1112,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
             empty: 'Κανένα. Όλα τα απαραίτητα υπάρχουν.',
           },
           ...(pending.length ? [{
-            title: `ΚΑΛΟ ΝΑ ΥΠΑΡΧΟΥΝ, ΔΕΝ ΜΠΛΟΚΑΡΟΥΝ (${pending.length})`,
+            title: `ΧΡΗΣΙΜΑ ΑΛΛΑ ΟΧΙ ΑΠΑΡΑΙΤΗΤΑ (${pending.length})`,
             head: reqHead, rows: reqRows(pending),
           }] : []),
           ...(gaps.length ? [{
@@ -1160,7 +1161,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
         [COMBO_SHEET]: 'Ποιος χαρακτηρισμός επιτρέπεται σε ποιον τύπο παραστατικού.',
         'Κωδικοί Ε3 ανά συνδυασμό': 'Οι επιτρεπτοί κωδικοί Ε3 για κάθε συνδυασμό.',
         'Δικαιολογητικά': 'Τι χρειάζεται, ποιος το φέρνει και τι συνοδεύει τον φάκελο.',
-        'Τι λείπει': 'Ό,τι ΔΕΝ βρέθηκε. Διαβάστε το πρώτο.',
+        'Τι λείπει': 'Όσα λείπουν. Να διαβαστεί πρώτο.',
       };
       const { ws } = sectionSheet({
         title: 'ΦΑΚΕΛΟΣ ΓΙΑ ΤΟΝ ΛΟΓΙΣΤΗ',
@@ -1179,7 +1180,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
             head: ['Πεδίο', 'Τιμή'],
             rows: [
               ['Χρήση', `01/01/${year} έως 31/12/${year}`],
-              ['Φορολογούμενος', taxpayer || 'Δεν έχει συμπληρωθεί (Ρυθμίσεις ακινήτου: όνομα και ΑΦΜ ιδιοκτήτη)'],
+              ['Φορολογούμενος', taxpayer || 'Δεν έχει συμπληρωθεί (Επεξεργασία ακινήτου: όνομα και ΑΦΜ ιδιοκτήτη)'],
               ['Ακίνητο', propName],
               ['Νομική μορφή', d.formLabel],
               ['Βιβλία', d.booksLabel],

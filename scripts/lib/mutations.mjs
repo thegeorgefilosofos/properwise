@@ -109,7 +109,13 @@ export const MUTATIONS = {
 
 
   // ── Ελληνικό κείμενο οθόνης ────────────────────────────────────────────
-  'ampersand': { add: 'components/__mut__.tsx', content: tsx('    <div>Έσοδα & δαπάνες του ακινήτου σου</div>') },
+  'ampersand': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Έσοδα & δαπάνες του ακινήτου σου</div>') },
+    // Κείμενο JSX που σπάει σε δύο γραμμές ακριβώς πριν από το «&».
+    { add: 'components/__mut__.tsx', content: tsx('    <p>\n      Καταγράφει την κατάσταση κατά την είσοδο\n      & έξοδο του ενοικιαστή.\n    </p>') },
+    // Το `image/*` δεν ανοίγει σχόλιο: ό,τι ακολουθεί ελέγχεται κανονικά.
+    { add: 'components/__mut__.tsx', content: tsx('    <div><input type="file" accept="image/*" />\n      <p>Είσοδος & έξοδος</p></div>') },
+  ] },
   'no-arrows': { add: 'components/__mut__.tsx', content: tsx('    <div>Πήγαινε στις Δαπάνες → Κατηγορίες</div>') },
   'em-dash': { add: 'components/__mut__.tsx', content: tsx('    <p>\n      Τα δεδομένα σου είναι ασφαλή — μόλις επανέλθει η σύνδεση\n      εμφανίζονται όλα κανονικά στη θέση τους.\n    </p>') },
   'uppercase-tonos': { add: 'components/__mut__.tsx', content: tsx('    <div>ΈΣΟΔΑ ΑΚΙΝΗΤΟΥ</div>') },
@@ -171,7 +177,11 @@ export const MUTATIONS = {
   'month-case': { add: 'lib/core/__mut__.ts', content: "import { monthNom } from '@/lib/core/months'\nexport const d = (i: number) => `Μεταφορά από ${monthNom(i)}`\n" },
   'raw-errors': { add: 'components/__mut__.tsx', content: 'export function P({ setError, err }: { setError: (s: string) => void; err: Error }) {\n  return <button onClick={() => setError(err.message)}>Δοκιμή</button>\n}\n' },
   'rendered-zero': { add: 'components/__mut__.tsx', content: 'export function P({ n }: { n: number }) {\n  return <div>{n && <span>{n}</span>}</div>\n}\n' },
-  'terminology': { add: 'components/__mut__.tsx', content: tsx('    <div>Η καταχώριση ολοκληρώθηκε</div>') },
+  'terminology': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Η καταχώριση ολοκληρώθηκε</div>') },
+    // Η γενική με τον τόνο στο γιώτα, όπως ήταν στα Κοινόχρηστα.
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Ταμείο Κτηρίου</div>') },
+  ] },
   'assistant-name': { add: 'components/__mut__.tsx', content: tsx('    <div>Ο βοηθός σου προτείνει τρεις κινήσεις</div>') },
 
   // ── Βάση δεδομένων και ασφάλεια ───────────────────────────────────────
@@ -192,8 +202,8 @@ export const MUTATIONS = {
   // να λένε το παλιό χωρίς να το δει κανείς.
   'auth-templates': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
-    from: "const ACCENT = '#1a73e8'",
-    to: "const ACCENT = '#0b57d0'",
+    from: "const ACCENT = L.accent;",
+    to: "const ACCENT = '#0b57d0';",
   },
   // Νέο κείμενο επιστολής που δεν το ζητά κανείς: ακριβώς ο τρόπος με τον
   // οποίο μαζεύτηκαν τα δεκαοκτώ ορφανά, ένα κάθε φορά.
@@ -264,6 +274,8 @@ export const MUTATIONS = {
   'comma-kai': { every: [
     { add: 'components/__mut__.tsx', content: tsx('    <div>Το ακίνητο μπαίνει σε τάξη, και ο λογαριασμός βγαίνει μόνος του</div>') },
     { add: 'lib/core/__mut__.ts', content: "export const note = 'Ο φόρος αποδίδεται με αντίστροφη χρέωση, '\n  + 'και η λήψη δηλώνεται στον πίνακα.'\n" },
+    // Το κεφαλαίο: τίτλος ενότητας στον φάκελο του λογιστή.
+    { add: 'lib/core/__mut__.ts', content: "export const title = 'ΤΙ ΧΡΕΙΑΖΕΤΑΙ, ΚΑΙ ΠΟΙΟΣ ΤΟ ΦΕΡΝΕΙ'\n" },
   ] },
   'type-floor': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ fontSize: 9 }}>Πολύ μικρό για τηλέφωνο</div>") },
   'hidden-on-small': { add: 'components/__mut__.tsx', content: tsx('    <div className="lp-hide-xs">Το κείμενο που χάνεται</div>') },
@@ -330,8 +342,8 @@ export const MUTATIONS = {
   'landing-containment': { every: [
     { file: 'app/globals.css', from: '  content-visibility: auto;\n', to: '' },
     { file: 'app/page.tsx',
-      from: '      <section style={{ ...wrap, position: \'relative\', zIndex: 1, paddingBottom: GAP_ACT }}>\n        <SectionHead over="Πώς λειτουργεί"',
-      to: '      <section className="lp-reveal" style={{ ...wrap, position: \'relative\', zIndex: 1, paddingBottom: GAP_ACT }}>\n        <SectionHead over="Πώς λειτουργεί"' },
+      from: '      <section style={{ ...wrap, position: \'relative\', zIndex: 1, paddingBottom: GAP }}>\n        <SectionHead over="Πώς λειτουργεί"',
+      to: '      <section className="lp-reveal" style={{ ...wrap, position: \'relative\', zIndex: 1, paddingBottom: GAP }}>\n        <SectionHead over="Πώς λειτουργεί"' },
   ] },
   'silent-reads': { every: [
     { add: 'lib/core/__mut__.ts', content: "export async function load(sb: { from: (t: string) => { select: (c: string) => Promise<{ data: unknown[] | null }> } }) {\n  const { data } = await sb.from('bills').select('*')\n  return data\n}\n" },
@@ -469,7 +481,24 @@ export const MUTATIONS = {
   // Ένας νέος κανόνας εστίασης που σβήνει το outline και μένει μόνο με σκιά:
   // ακριβώς το ελάττωμα που ο φύλακας υπάρχει για να πιάσει.
   'forced-colors-focus': { file: 'app/globals.css', from: '::selection {', to: '.mut-probe:focus-visible { outline: none; box-shadow: 0 0 0 2px red; }\n::selection {' },
-  'contrast': { file: 'app/globals.css', from: '--text-secondary:', to: '--text-secondary: #8f8f8f; --text-secondary-unused:' },
+  // Τέσσερα σφάλματα, ένα για κάθε κανόνα που ο φύλακας έμαθε να βλέπει:
+  // γκρι 2η βαθμίδα · πέπλο αιώρησης που σβήνει την 3η βαθμίδα (το σφάλμα του
+  // φωτεινού θέματος πριν το ναυτικό) · όριο πεδίου ίσο με όριο κάρτας (1,37:1)
+  // · μπάρα περιηγητή που δεν είναι το --bg-base.
+  'contrast': { every: [
+    { file: 'app/globals.css', from: '--text-secondary:', to: '--text-secondary: #8f8f8f; --text-secondary-unused:' },
+    { file: 'app/globals.css', from: '--bg-hover:      rgba(15,27,46,0.06);', to: '--bg-hover:      rgba(15,27,46,0.22);' },
+    { file: 'app/globals.css', from: '--border-control: #7a8594;', to: '--border-control: #d3dae3;' },
+    { file: 'lib/core/themeColor.ts', from: "light: '#f5f7fa',", to: "light: '#070b12'," },
+  ] },
+  // Τρία σφάλματα, ένα ανά κανόνα: το κόκκινο του Google ξανά σε συνάρτηση
+  // αποστολής · η παλέτα του email ξεφεύγει από το token της εφαρμογής · ένα
+  // κουτί της παλέτας γίνεται τόσο πυκνό που το κείμενό του πέφτει κάτω από 4,5:1.
+  'email-palette': { every: [
+    { file: 'supabase/functions/send-reminders/index.ts', from: "eyebrow('Ληξιπρόθεσμο ενοίκιο', 'negative')", to: "eyebrow('Ληξιπρόθεσμο ενοίκιο', 'negative') + '<b style=\"color:#d93025\">!</b>'" },
+    { file: 'supabase/functions/_shared/emailPalette.ts', from: "ink: '#0f1b2e',", to: "ink: '#1d1d1f'," },
+    { file: 'supabase/functions/_shared/emailPalette.ts', from: "accentFill: 'rgba(19,86,194,.06)',", to: "accentFill: 'rgba(19,86,194,.6)'," },
+  ] },
   // Δηλώνεται ΜΟΝΟ στο φωτεινό και κάποιος τη ζητά: στο σκοτεινό είναι κενή.
   'theme-tokens': { steps: [
     { file: 'app/globals.css', from: ':root[data-mode="light"] {', to: ':root[data-mode="light"] {\n  --mut-probe-only-light: #fff;' },

@@ -86,6 +86,14 @@ ok('2027 μετρητά → φόρος επί 100% μεικτών', near(shortTe
   const cash2027 = shortTermYearSummary(stays2027, 2027, { rentsPaidViaBank: false });
   const bank2027 = shortTermYearSummary(stays2027, 2027, { rentsPaidViaBank: true });
   ok('χρήση 2027: τα μετρητά κοστίζουν την έκπτωση', cash2027.incomeTax > bank2027.incomeTax);
+  // Η ΚΥΡΩΣΗ ΤΟΥ 2027 ΞΕΚΙΝΑ ΤΟΝ ΙΟΥΛΙΟ (Α.1187/2026). Διαμονή του Μαρτίου
+  // 2027 με μετρητά κρατά την έκπτωση· η σύνοψη την αφαιρούσε από όλη τη χρονιά.
+  const march2027 = [{ check_in: '2027-03-10', check_out: '2027-03-14', nights: 4, total: 1500, channel: 'airbnb' }];
+  ok('Μάρτιος 2027 με μετρητά: φόρος επί 95%, όχι 100%',
+    near(shortTermYearSummary(march2027, 2027, { rentsPaidViaBank: false }).incomeTax, rentalIncomeTax(1500 * 0.95)));
+  const both2027 = [...march2027, { check_in: '2027-08-10', check_out: '2027-08-14', nights: 4, total: 1500, channel: 'airbnb' }];
+  ok('Μάρτιος και Αύγουστος 2027 με μετρητά: έκπτωση μόνο στον Μάρτιο',
+    near(shortTermYearSummary(both2027, 2027, { rentsPaidViaBank: false }).incomeTax, rentalIncomeTax(1500 * 0.95 + 1500)));
 }
 ok('κενό set → μηδενικά', shortTermYearSummary([], 2026).grossRevenue === 0 && shortTermYearSummary([], 2026).effectiveRate === 0);
 

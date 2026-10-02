@@ -21,16 +21,36 @@ export function TocSpy() {
       .map(a => ({ a, el: document.getElementById(decodeURIComponent(a.hash.slice(1))) }))
       .filter((p): p is { a: HTMLAnchorElement; el: HTMLElement } => !!p.el);
     if (!pairs.length) return;
+    // ΤΟ ΕΥΡΕΤΗΡΙΟ ΤΕΛΕΙΩΝΕΙ ΕΚΕΙ ΠΟΥ ΤΕΛΕΙΩΝΟΥΝ ΟΙ ΕΝΟΤΗΤΕΣ ΤΟΥ. Η τελευταία
+    // αριθμημένη ενότητα έμενε σημειωμένη ενώ ο αναγνώστης διάβαζε τις συχνές
+    // ερωτήσεις, τον υπολογισμό και τους σχετικούς οδηγούς, που δεν είναι στον
+    // κατάλογο. Το όριο είναι το πρώτο `.po-tool-more` (ή `[data-toc-end]`)
+    // μετά την τελευταία ενότητα: μόλις περάσει τη γραμμή, τίποτα δεν σημειώνεται.
+    const last = pairs[pairs.length - 1].el;
+    const end = [...document.querySelectorAll<HTMLElement>('.po-tool-more, [data-toc-end]')]
+      .find(el => last.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) ?? null;
     let frame = 0;
     const mark = () => {
       frame = 0;
       const line = window.innerHeight * 0.33;
       let on = -1;
       pairs.forEach((p, i) => { if (p.el.getBoundingClientRect().top <= line) on = i; });
+      if (end && end.getBoundingClientRect().top <= line) on = -1;
       pairs.forEach((p, i) => {
         if (i === on) p.a.setAttribute('aria-current', 'true');
         else p.a.removeAttribute('aria-current');
       });
+      // Η ΣΤΗΛΗ ΑΚΟΛΟΥΘΕΙ ΤΟ ΚΕΙΜΕΝΟ. Στους Όρους (28 ενότητες) η στήλη είναι
+      // ψηλότερη από την οθόνη και κυλά μόνη της· η σημειωμένη ενότητα
+      // έφευγε κάτω από την άκρη της. Μόνο η στήλη κυλά, ποτέ η σελίδα.
+      const a = on >= 0 ? pairs[on].a : null;
+      const rail = a?.closest<HTMLElement>('.lg-grid > .lg-toc, .gd-rail');
+      if (a && rail && rail.scrollHeight > rail.clientHeight) {
+        const r = a.getBoundingClientRect(), box = rail.getBoundingClientRect();
+        if (r.top < box.top + 24 || r.bottom > box.bottom - 40) {
+          rail.scrollTop += r.top - box.top - box.height / 3;
+        }
+      }
     };
     const onScroll = () => { if (!frame) frame = requestAnimationFrame(mark); };
     mark();

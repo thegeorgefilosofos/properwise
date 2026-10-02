@@ -28,6 +28,7 @@ import {
   rentalIncomeTax, rentalBracketsForYear, municipalAccommodationTax,
   currentLevyRegime,
 } from '@/lib/billing/greekTax';
+import { roundHalfUp } from '../core/money';
 
 export interface PropertyTaxMeta { sqm?: number | null; isHouse?: boolean; propertyCount?: number; individual?: boolean; rentsPaidViaBank?: boolean }
 
@@ -168,7 +169,7 @@ export function channelBreakdownForYear(stays: TaxStay[], year: number): TaxChan
     if (y4(s.check_in) === String(year)) row.stays += 1;
     m.set(ch, row);
   }
-  for (const row of m.values()) row.revenue = Math.round(row.revenue * 100) / 100;
+  for (const row of m.values()) row.revenue = roundHalfUp(row.revenue, 2);
   return [...m.values()].sort((a, b) => b.revenue - a.revenue);
 }
 
@@ -182,7 +183,11 @@ export interface ShortTermYearSummary {
   nightsByMonth: number[];
   levy: number;            // ΤΑΚΚ που ΟΦΕΙΛΕΤΑΙ, από τις διανυκτερεύσεις και τους συντελεστές
   collectedLevy: number;   // ΤΑΚΚ που καταγράφηκε ως εισπραχθέν από τους επισκέπτες
-  platformFees: number;    // ΔΑΠΑΝΗ (εκπίπτει) — δεν μειώνει το ακαθάριστο
+  /** ΕΞΟΔΟ ΤΑΜΕΙΟΥ, δεν μειώνει το ακαθάριστο. Εκπίπτει ΜΟΝΟ σε επιχειρηματική
+   *  δραστηριότητα· για ιδιώτη (εισόδημα από ακίνητη περιουσία) δεν εκπίπτει καμία
+   *  δαπάνη αναλυτικά, ισχύει μόνο η τεκμαρτή έκπτωση. Πηγή: άρθρο 39 ν.4172/2013
+   *  (ΚΦΕ). Εδώ έγραφε «ΔΑΠΑΝΗ (εκπίπτει)» για κάθε καθεστώς. */
+  platformFees: number;
   municipalTax: number;    // τέλος παρεπιδημούντων (0,5% ή 0 με εξαίρεση)
   municipalExempt: boolean;
   incomeTax: number;       // εκτιμώμενος φόρος εισοδήματος (κλίμακα ενοικίων)
@@ -234,7 +239,7 @@ export function shortTermYearSummary(stays: TaxStay[], year: number, meta?: Prop
   const inYear = stays.filter(s => y4(s.check_in) === String(year));
   const nightsByMonth = nightsByMonthForYear(stays, year);
   const totalNights = nightsByMonth.reduce((a, b) => a + b, 0);
-  const cents2 = (n: number) => Math.round(n * 100) / 100;
+  const cents2 = (n: number) => roundHalfUp(n, 2);
   const grossRevenue = cents2(stays.reduce((sum, s) => sum + declarableGrossOrTotal(s) * yearShare(s, year), 0));
   const unresolved = inYear.filter(s => declarableGross(s) == null && declarableGrossOrTotal(s) > 0);
   const platformFees = cents2(stays.reduce((sum, s) => sum + platformFee(s) * yearShare(s, year), 0));
@@ -261,7 +266,11 @@ export function shortTermYearSummary(stays: TaxStay[], year: number, meta?: Prop
   // γι' αυτό. Η κύρωση ισχύει από τη χρήση 2027: σε χρήσεις 2025-2026 ένα «με
   // μετρητά» θα αφαιρούσε έκπτωση που ο νόμος ΔΙΝΕΙ ακόμη. Η Λογιστική φράζει
   // ήδη σωστά με το έτος στην ίδια απόφαση.
-  const taxableFactor = 1 - presumptiveDeductionRateForYear(year, meta?.rentsPaidViaBank !== false);
+  // ΤΟ 2027 ΜΕΤΡΑΕΙ Ο ΜΗΝΑΣ ΤΗΣ ΝΥΧΤΑΣ. Η κύρωση πιάνει μισθώματα που
+  // εισπράττονται μετρητά από 1.7.2027 (απόφαση ΑΑΔΕ Α.1187/2026, ΦΕΚ Β΄
+  // 5590/17.09.2026), όχι όλη τη χρήση· οι νύχτες ανά μήνα λένε ποιο μέρος
+  // του ακαθάριστου πέφτει μέσα της.
+  const taxableFactor = 1 - presumptiveDeductionRateForYear(year, meta?.rentsPaidViaBank !== false, nightsByMonth);
   // Η ΚΛΙΜΑΚΑ ΤΟΥ ΕΤΟΥΣ, ΟΧΙ ΠΑΝΤΑ ΤΟΥ 2026. Η συνάρτηση δέχεται `year` από
   // την πρώτη μέρα και το χρησιμοποιούσε παντού ΕΚΤΟΣ από τον φόρο — που είναι
   // το νούμερο για το οποίο υπάρχει.
@@ -453,7 +462,7 @@ export function guestPriceBreakdown(
   const price = Math.max(0, guestPrice);
   const gross = Math.max(0, price - levy);
   const rate = opts?.platformFeeRate != null && opts.platformFeeRate > 0 ? opts.platformFeeRate : null;
-  const fee = rate != null ? Math.round(price * rate * 100) / 100 : null;
+  const fee = rate != null ? roundHalfUp(price * rate, 2) : null;
   return {
     guestPrice: price,
     climateLevy: levy,

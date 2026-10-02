@@ -26,16 +26,30 @@ import { MONTHS_NOM } from '@/lib/core/months';
 import { failed } from '@/lib/core/dbError';
 import { monthEndIso } from '@/lib/core/time';
 import { useRemembered } from '@/components/useRememberedFlag';
+import { splitRowsFromRecord, recordFromSplitRows, writeCoOwners, withSelfRow, mergeScannedRows, type SplitRow } from '@/lib/property/coOwners';
+import { notifyError } from '@/components/Toast';
+import { roundHalfUp } from '@/lib/core/money';
 
-interface Prop { id: string; name: string; address: string | null }
+interface Prop { id: string; name: string; address: string | null; ownership: number | string | null; co_owners: unknown }
+interface Owner { property_id: string; owner_name: string | null; owner_afm: string | null }
 const LS = (pid: string) => `po_owner_split_${pid}`;
+
+// ═══ ΟΙ ΣΥΝΙΔΙΟΚΤΗΤΕΣ ΖΟΥΝ ΣΤΗ ΒΑΣΗ, ΟΧΙ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ ═══════════════════════
+// Η διάταξη (ονόματα, ΑΦΜ, ποσοστά) γραφόταν ΜΟΝΟ στο localStorage. Δεν τη
+// έβλεπε κανείς άλλος: ούτε άλλη συσκευή, ούτε το Ε2, που ζητά για κάθε
+// συνιδιοκτήτη ονοματεπώνυμο, ΑΦΜ, διεύθυνση και ποσοστό (Συμπληρωματικά
+// στοιχεία, πίνακας I, Φ-01.002/Έκδοση 2026). Τώρα γράφεται στο
+// `user_properties.co_owners` (lib/property/coOwners.ts) και το ποσοστό του
+// υπόχρεου στο `ownership`. Ο περιηγητής κρατά μόνο την αμοιβή και τον
+// διαχειριστή· οι παλιές του γραμμές διαβάζονται όσο η βάση δεν έχει τίποτα.
 
 /** Η αποθηκευμένη διάταξη, όπως γράφεται στον περιηγητή. */
 type SavedSplit = { rows: Row[]; feePct: string; managerName: string };
 // Σταθερή αναφορά: νέο αντικείμενο σε κάθε απόδοση θα έβαζε τη React σε βρόχο.
-const EMPTY_SPLIT: SavedSplit = { rows: [{ name: '', pct: '', afm: '' }], feePct: '', managerName: '' };
+const EMPTY_SPLIT: SavedSplit = { rows: [{ name: '', pct: '', afm: '', address: '' }], feePct: '', managerName: '' };
 
-interface Row { name: string; pct: string; afm: string }
+type Row = SplitRow;
+const asRow = (r: Partial<Row>): Row => ({ name: r.name ?? '', pct: r.pct ?? '', afm: r.afm ?? '', address: r.address ?? '', ...(r.self ? { self: true } : {}) });
 
 export default function OwnerSplit({ open, onClose, userId, supabase, branding }: {
   open: boolean; onClose: () => void; userId: string; supabase: SupabaseClient; branding?: ReportBranding | null;
@@ -43,6 +57,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
   const nowYear = new Date().getFullYear();
   const [props, setProps] = useState<Prop[]>([]);
   const [propId, setPropId] = useState('');
+  const [ownerOf, setOwnerOf] = useState<Map<string, Owner>>(new Map());
   const [year, setYear] = useState(nowYear);
   const [month, setMonth] = useState(0);
   const [hoverRow, setHoverRow] = useState<number | null>(null);
@@ -75,8 +90,12 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
     let alive = true;
     (async () => {
       setLoading(true);
-      const ps = await properties.list<Prop>(supabase, userId, { orderBy: 'name' });
+      const [ps, { data: os }] = await Promise.all([
+        properties.list<Prop>(supabase, userId, { orderBy: 'name', columns: 'id,name,address,ownership,co_owners' }),
+        supabase.from('property_settings').select('property_id,owner_name,owner_afm').eq('user_id', userId),
+      ]);
       if (!alive) return;
+      setOwnerOf(new Map(((os ?? []) as Owner[]).map(o => [o.property_id, o])));
       setProps(ps); setPropId(prev => prev || ps[0]?.id || ''); setLoading(false);
     })();
     return () => { alive = false; };
@@ -93,12 +112,28 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
   // αγγίξει τίποτα για ΑΥΤΟ το ακίνητο, βλέπει ό,τι είναι γραμμένο.
   const [stored, setStored] = useRemembered<SavedSplit>(
     LS(propId),
-    raw => { try { const v = raw ? JSON.parse(raw) : null; return v?.rows?.length ? v as SavedSplit : EMPTY_SPLIT } catch { return EMPTY_SPLIT } },
+    // Μετά την αποθήκευση στη βάση οι γραμμές εδώ αδειάζουν· αμοιβή και
+    // διαχειριστής μένουν.
+    raw => {
+      try {
+        const v = raw ? JSON.parse(raw) : null;
+        if (!v || typeof v !== 'object') return EMPTY_SPLIT;
+        return { rows: Array.isArray(v.rows) && v.rows.length ? v.rows.map(asRow) : EMPTY_SPLIT.rows, feePct: String(v.feePct ?? ''), managerName: String(v.managerName ?? '') };
+      } catch { return EMPTY_SPLIT }
+    },
     v => JSON.stringify(v),
     EMPTY_SPLIT,
   );
   const [edited, setEdited] = useState<{ key: string; value: SavedSplit } | null>(null);
-  const split = edited && edited.key === propId ? edited.value : stored;
+  const record = props.find(p => p.id === propId);
+  const owner = ownerOf.get(propId);
+  const ofRecord = { name: owner?.owner_name ?? null, afm: owner?.owner_afm ?? null, ownership: record?.ownership ?? null };
+  // Πρώτα η βάση· μόνο όταν δεν ξέρει κανέναν συνιδιοκτήτη, οι παλιές γραμμές
+  // του περιηγητή, ώστε η πρώτη αποθήκευση να τις μεταφέρει στη βάση.
+  const fromDb = record ? splitRowsFromRecord(ofRecord, record.co_owners) : null;
+  // Με ή χωρίς βάση, η πρώτη γραμμή είναι πάντα ο υπόχρεος (withSelfRow).
+  const base: SavedSplit = { ...stored, rows: fromDb ?? withSelfRow(stored.rows.map(asRow), ofRecord) };
+  const split = edited && edited.key === propId ? edited.value : base;
   const rows = split.rows;
   const feePct = split.feePct;
   const managerName = split.managerName;
@@ -193,23 +228,34 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
     const netSum = result.owners.reduce((s, o) => s + o.net, 0);
     return {
       label: result.pctSum > 100 ? 'Δόθηκε δύο φορές' : 'Χωρίς ιδιοκτήτη',
-      pct: Math.round((100 - result.pctSum) * 100) / 100,
-      amount: Math.round((result.distributable - netSum) * 100) / 100,
+      pct: roundHalfUp((100 - result.pctSum), 2),
+      amount: roundHalfUp((result.distributable - netSum), 2),
     };
   }, [result]);
 
   const prop = props.find(p => p.id === propId);
   const periodLabel = month === 0 ? `Έτος ${year}` : `${MONTHS_NOM[month - 1]} ${year}`;
 
-  // Η αποθήκευση περνά από τον ίδιο δρόμο που διαβάζει: γράφει ΚΑΙ ειδοποιεί,
-  // ώστε μια δεύτερη ανοιχτή καρτέλα να μη μείνει με την παλιά διάταξη.
-  const saveLayout = () => setStored({ rows, feePct, managerName });
+  // Οι ιδιοκτήτες στη βάση, η αμοιβή και ο διαχειριστής στον περιηγητή. Η
+  // αποτυχία της βάσης λέγεται και το παράθυρο μένει ανοιχτό.
+  const saveLayout = async (): Promise<boolean> => {
+    if (!propId) return true;
+    const out = recordFromSplitRows(rows, ofRecord);
+    const co = writeCoOwners(out.coOwners);
+    const patch = { co_owners: co.length ? co : null, ...(out.ownership != null ? { ownership: out.ownership } : {}) };
+    const { error } = await properties.update(supabase, propId, patch, userId);
+    if (error) { notifyError(failed('Οι ιδιοκτήτες δεν αποθηκεύτηκαν', error)); return false; }
+    setProps(ps => ps.map(p => (p.id === propId ? { ...p, ...patch } : p)));
+    setEdited(null);
+    setStored({ rows: [], feePct, managerName });
+    return true;
+  };
 
   if (!open) return null;
 
   const setRow = (i: number, k: keyof Row, v: string) => setRows(rs => rs.map((r, j) => j === i ? { ...r, [k]: v } : r));
-  const addRow = () => setRows(rs => [...rs, { name: '', pct: '', afm: '' }]);
-  const delRow = (i: number) => setRows(rs => rs.filter((_, j) => j !== i));
+  const addRow = () => setRows(rs => [...rs, asRow({})]);
+  const delRow = (i: number) => setRows(rs => rs.filter((r, j) => j !== i || r.self));
 
   const exportPdf = async () => {
     setErr('');
@@ -221,7 +267,9 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
     if (!result.valid) { setErr(result.warning || 'Έλεγξε τα ποσοστά.'); return; }
     setBusy(true);
     try {
-      saveLayout();
+      // Η κατάσταση βγαίνει μόνο με αποθηκευμένη κατανομή: αλλιώς το χαρτί θα
+      // έλεγε άλλα ποσοστά από όσα διαβάζει μετά το Ε2.
+      if (!(await saveLayout())) return;
       const issued = await issueDocument(supabase, {
         userId, docType: 'Κατάσταση κατανομής', subject: prop.name, period: periodLabel,
         summary: { gross: result.gross, expenses: result.expenses, fee: result.managementFee, distributable: result.distributable, owners: result.owners.length },
@@ -251,7 +299,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
 
   // Το ύψος ήταν καρφωμένο 40: κάτω από τα 44 που θέλει το δάχτυλο, σε επτά
   // πεδία της ίδιας φόρμας. Η κοινή κλίμακα το ανεβάζει σε coarse pointer.
-  const field: React.CSSProperties = { height: T.h.lg, padding: '0 13px', borderRadius: T.radius.inner, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.14s' };
+  const field: React.CSSProperties = { height: T.h.lg, padding: '0 13px', borderRadius: T.radius.inner, border: '1px solid var(--border-control)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.14s' };
   const onFieldFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--accent)'; };
   const onFieldBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)'; };
   // ── ΔΕΝ ΚΛΕΙΝΕΙ ΟΣΟ ΕΚΔΙΔΕΙ ───────────────────────────────────────────────
@@ -280,7 +328,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
       subtitle="Το καθαρό κάθε συνιδιοκτήτη, μετά τα έξοδα και τη διαχειριστική αμοιβή"
       footerInfo={`${prop?.name || ABSENT} · ${periodLabel}`}
       footer={<>
-        <Btn variant="secondary" onClick={() => { saveLayout(); onClose(); }}>Αποθήκευση και κλείσιμο</Btn>
+        <Btn variant="secondary" onClick={async () => { if (await saveLayout()) onClose(); }}>Αποθήκευση και κλείσιμο</Btn>
         <Btn variant="primary" onClick={exportPdf} disabled={busy || !result.valid || !figures}>{busy ? 'Δημιουργία…' : 'Κατάσταση κατανομής (PDF)'}</Btn>
       </>}>
       {loading ? <Spinner size={18} label="Φόρτωση…" /> : props.length === 0 ? <EmptyState icon={<Building2 size={20} />} title="Κανένα ακίνητο ακόμη" hint="Πρόσθεσε ακίνητο για να ορίσεις ποσοστά συνιδιοκτησίας." /> : (
@@ -303,8 +351,10 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
           <div style={{ marginBottom: 10 }}>
             <ScanButton onExtract={doc => {
               const ex = (doc.owners || []).filter(o => o?.name);
-              if (ex.length) setRows(ex.map(o => ({ name: o.name || '', afm: o.afm || '', pct: o.pct != null ? String(o.pct) : '' })));
-              else if (doc.landlord_name) setRows([{ name: doc.landlord_name, afm: doc.afm || '', pct: '' }]);
+              const scanned = ex.length
+                ? ex.map(o => asRow({ name: o.name || '', afm: o.afm || '', pct: o.pct != null ? String(o.pct) : '' }))
+                : doc.landlord_name ? [asRow({ name: doc.landlord_name, afm: doc.afm || '' })] : [];
+              if (scanned.length) setRows(rs => mergeScannedRows(rs, scanned, ofRecord));
             }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -312,9 +362,14 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
               // Η αφαίρεση εμφανίζεται μόνο όταν υπάρχουν πολλοί ιδιοκτήτες και
               // μόνο όταν ο κέρσορας/δάχτυλο περνά πάνω από τη γραμμή (ήσυχο UI).
               <div key={i} onMouseEnter={() => setHoverRow(i)} onMouseLeave={() => setHoverRow(null)} onFocusCapture={() => setHoverRow(i)}
-                style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input aria-label="Ονομα συνιδιοκτήτη" value={r.name} onChange={e => setRow(i, 'name', e.target.value)} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="Όνομα" style={{ ...field, flex: '2 1 140px' }} />
+                style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input aria-label={r.self ? 'Όνομα ιδιοκτήτη ακινήτου' : 'Όνομα συνιδιοκτήτη'} value={r.name} onChange={e => setRow(i, 'name', e.target.value)} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="Όνομα" style={{ ...field, flex: '2 1 140px' }} />
                 <input aria-label="ΑΦΜ συνιδιοκτήτη" value={r.afm} onChange={e => setRow(i, 'afm', e.target.value.replace(/\D/g, '').slice(0, 9))} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="ΑΦΜ" style={{ ...field, flex: '1 1 100px' }} inputMode="numeric" />
+                {/* Η διεύθυνση του συνιδιοκτήτη μπαίνει στο Ε2 (Συμπληρωματικά, στ. 9).
+                    Ο ιδιοκτήτης του ακινήτου είναι ο υπόχρεος και δεν τη χρειάζεται εδώ. */}
+                {r.self
+                  ? <span style={{ flex: '2 1 160px', ...TT.caption }}>Ιδιοκτήτης ακινήτου</span>
+                  : <input aria-label="Διεύθυνση συνιδιοκτήτη" value={r.address} onChange={e => setRow(i, 'address', e.target.value)} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="Διεύθυνση" style={{ ...field, flex: '2 1 160px' }} />}
                 <div style={{ position: 'relative', flex: '0 0 92px' }}>
                   {/* ΤΟ ΠΟΣΟΣΤΟ ΙΔΙΟΚΤΗΣΙΑΣ ΔΕΝ ΠΕΡΝΑΕΙ ΤΟ 100 ΚΑΙ ΔΕΝ ΓΙΝΕΤΑΙ
                       ΑΡΝΗΤΙΚΟ. Το πεδίο δεχόταν «250» και «-40» και το ποσό
@@ -328,7 +383,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
                     πληκτρολόγιο και οθόνη αφής. Το «×» μένει 18 όπως ήταν· μεγαλώνει
                     μόνο το κουτί γύρω του, που είναι ο στόχος αφής. */}
                 <IconBtn onClick={() => delRow(i)} label="Αφαίρεση ιδιοκτήτη" title="Αφαίρεση" tone="danger"
-                  style={{ fontSize: 18, lineHeight: 1, visibility: rows.length > 1 && hoverRow === i ? 'visible' : 'hidden' }}>×</IconBtn>
+                  style={{ fontSize: 18, lineHeight: 1, visibility: !r.self && rows.length > 1 && hoverRow === i ? 'visible' : 'hidden' }}>×</IconBtn>
               </div>
             ))}
           </div>
@@ -361,7 +416,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
               {miniStat('Έξοδα', pEur(result.expenses))}
               {miniStat('Αμοιβή', pEur(result.managementFee))}
               {miniStat('Προς διανομή', pEur(result.distributable), true)}
-              {/* ═══ ΤΟ ΚΙΤΡΙΝΟ ΕΦΥΓΕ, ΚΑΙ ΜΑΖΙ ΤΟΥ Η ΑΣΑΦΕΙΑ ══════════════════
+              {/* ═══ ΤΟ ΚΙΤΡΙΝΟ ΕΦΥΓΕ ΚΑΙ ΜΑΖΙ ΤΟΥ Η ΑΣΑΦΕΙΑ ══════════════════
                   Το σήμα έβγαινε πράσινο στα 100% και κίτρινο σε οτιδήποτε
                   άλλο — δύο σημασιολογικά χρώματα για έναν αριθμό που τα λέει
                   ήδη όλα, στη μοναδική οθόνη όπου δεν υπάρχει τίποτα άλλο

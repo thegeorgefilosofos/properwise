@@ -16,7 +16,7 @@ import { hardNavigate } from '@/lib/core/navigate';
 import { T, TT, Btn, settingsField, Spinner, ABSENT, ABSENT_DATE, fixedCols, InfoBanner } from '@/components/Theme';
 import { SetList, SetRow, SetFact } from './SettingsKit';
 import { logActivity } from '@/lib/activity';
-import { checkPassword, PASSWORD_MSG } from '@/lib/auth/password';
+import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password';
 import PasswordStrength from '@/components/PasswordStrength';
 import { SAY, failed } from '@/lib/core/dbError';
 
@@ -205,7 +205,7 @@ export default function SecuritySettings() {
     try {
       const { data: list, error: listErr } = await supabase.auth.mfa.listFactors();
       if (listErr) {
-        setMfaErr(failed('Η επαλήθευση δύο βημάτων ΔΕΝ απενεργοποιήθηκε', listErr));
+        setMfaErr(failed('Η επαλήθευση δύο βημάτων δεν απενεργοποιήθηκε', listErr));
         return;
       }
       const totp = (list?.totp ?? []) as MfaFactor[];
@@ -215,7 +215,7 @@ export default function SecuritySettings() {
         if (error) { stuck.push(f.id); console.warn('mfa.unenroll', error); }
       }
       if (stuck.length) {
-        setMfaErr('Η επαλήθευση δύο βημάτων ΔΕΝ απενεργοποιήθηκε: ο διακομιστής κράτησε τη συσκευή σου. Μη σβήσεις την εφαρμογή αυθεντικοποίησης και δοκίμασε ξανά.');
+        setMfaErr('Η επαλήθευση δύο βημάτων δεν απενεργοποιήθηκε: ο διακομιστής κράτησε τη συσκευή σου. Μη σβήσεις την εφαρμογή επαλήθευσης και δοκίμασε ξανά.');
         return;
       }
       setMfaState('off');
@@ -276,7 +276,7 @@ export default function SecuritySettings() {
 
       {/* 1. Κωδικός πρόσβασης */}
       <SetRow title="Κωδικός πρόσβασης"
-        desc="Τουλάχιστον οκτώ χαρακτήρες, με πεζό, κεφαλαίο, αριθμό και σύμβολο.">
+        desc={`${PASSWORD_MIN_LABEL}, με πεζό, κεφαλαίο, αριθμό και σύμβολο.`}>
         <div {...fixedCols(2, 12, 'start')}>
           <div>
             <label htmlFor="sec-new-pass" style={fieldLabel}>Νέος κωδικός</label>
@@ -318,7 +318,7 @@ export default function SecuritySettings() {
 
         {mfaUnavailable && (
           <div style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>
-            Η επαλήθευση δύο βημάτων δεν είναι ενεργή για τον λογαριασμό ακόμη.
+            Η επαλήθευση δύο βημάτων δεν είναι διαθέσιμη αυτή τη στιγμή.
           </div>
         )}
 

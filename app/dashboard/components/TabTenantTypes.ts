@@ -11,6 +11,7 @@ import { athensToday } from '@/lib/core/time';
 import { normalizePhone } from '@/lib/clients/clients';
 import { instalmentPeriods, type InstalmentPeriod } from '@/lib/rent/frequency';
 import { ABSENT_DATE } from '@/components/Theme';
+import { roundHalfUp } from '@/lib/core/money';
 // ΟΙ ΔΥΟ ΣΥΝΑΡΤΗΣΕΙΣ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΟ lib/, ΟΧΙ ΑΠΟ ΤΟ ΑΡΧΕΙΟ ΤΩΝ ΟΘΟΝΩΝ.
 // Το TabTenantHelpers ξεκινά με 'use client'· αυτό εδώ είναι σχήματα και
 // κανόνες, που πρέπει να διαβάζονται και από τον διακομιστή. Τιμή που έρχεται
@@ -50,6 +51,8 @@ export interface Tenant {
   status:'active'|'past'|null; rent_due_day:number|null;
   deposit_method:string|null; deposit_paid_on:string|null; move_out_date:string|null;
   furnishing:string|null; rent_iban:string|null;
+  /** Ε2 στήλη 19: ο αριθμός της δήλωσης μίσθωσης στην ΑΑΔΕ, μόνο ψηφία. */
+  aade_lease_decl_ref:string|null;
   created_at:string;
 }
 export interface RentPayment { id:string; tenant_id:string; property_id:string; user_id:string; period_month:number; period_year:number; amount:number; base_rent:number|null; services_charge:number|null; paid:boolean; paid_date:string|null; days_late:number|null; notes:string|null; method:string|null; receipt_url:string|null; receipt_doc_id:string|null; due_date:string|null; tenant_declared:boolean|null; tenant_declared_at:string|null; tenant_note:string|null; created_at:string; }
@@ -137,7 +140,7 @@ export function tenantServiceLines(t:SvcInput):{label:string;amount:number}[]{
 // όποια κι αν είναι η συχνότητα, ο χρόνος κλείνει με δώδεκα μισθώματα.
 // Δύο δεκαδικά, ΠΑΝΤΑ: ο πολλαπλασιασμός επί τρεις μήνες πάνω σε ενοίκιο με
 // λεπτά (π.χ. 833,33) βγάζει 2499,9900000000002 σε κινητή υποδιαστολή.
-export const r2=(n:number)=>Math.round(n*100)/100;
+export const r2=(n:number)=>roundHalfUp(n, 2);
 
 export function expectedPeriods(tenant:Tenant, rentDueDay:number):InstalmentPeriod[] {
   if(!tenant.lease_start||!tenant.monthly_rent||tenant.monthly_rent<=0) return [];
@@ -189,6 +192,7 @@ export const blank=()=>({
   parking_included:false,parking_extra:false,parking_extra_price:'',
   extra_perks:'',
   lease_doc_external_url:'',
+  aade_lease_decl_ref:'',
 });
 
 /**
@@ -200,7 +204,7 @@ export const hasMoreData = (f:ReturnType<typeof blank>):boolean => !!(
   f.email||f.profession||f.iban||f.id_doc_type||f.id_doc_number||f.notes||
   f.deposit_method||f.deposit_paid_on||f.deposit_returned||
   f.parking_included||f.parking_extra||f.extra_perks||
-  f.payment_frequency!=='monthly'
+  f.payment_frequency!=='monthly'||f.aade_lease_decl_ref
 );
 
 /**

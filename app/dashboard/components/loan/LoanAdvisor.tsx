@@ -18,6 +18,7 @@ import { InfoDot } from '../UIComponents'
 import { athensToday } from '@/lib/core/time'
 import { LensPanel, MiniSection, FindingRow } from './Bits'
 import type { LoanProps, LoanState } from './useLoan'
+import { roundHalfUp } from '@/lib/core/money';
 
 export function LoanAdvisor({
   LA, Y, BANKS, market, calcState, setAppliedLoan, handleSaveLoan, scrollToCalc, advType, advBorr,
@@ -489,7 +490,7 @@ export function LoanAdvisor({
           <MiniSection title="Ανάλυση προσφοράς ESIS" meta={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,whiteSpace:'nowrap' as const}}>Πραγματικό κόστος, ΣΕΠΠΕ</span>}>
             <EsisScanPanel
               defaultAmount={LA} defaultYears={Y}
-              benchmarkAprc={topRec?Math.round((topRec.effectiveRatePct+0.3)*100)/100:undefined}
+              benchmarkAprc={topRec?roundHalfUp((topRec.effectiveRatePct+0.3), 2):undefined}
               fmtEur={fmtEur}
             />
           </MiniSection>
@@ -513,7 +514,7 @@ export function LoanAdvisor({
               {t:'Φορολογική ασπίδα των τόκων', b: isCompany
                 ? `Οι τόκοι εκπίπτουν πλήρως. Με συντελεστή 22% το έμμεσο όφελος στη διάρκεια εκτιμάται περίπου ${fmtEur(taxShieldCompany)}, δηλαδή το πραγματικό κόστος δανεισμού είναι χαμηλότερο από το ονομαστικό επιτόκιο.`
                 : 'Οι τόκοι δανείου επαγγελματικού σκοπού εκπίπτουν από τα ακαθάριστα έσοδα. Το όφελος εξαρτάται από τον οριακό σου συντελεστή· επιβεβαίωσέ το με τον λογιστή σου.'},
-              {t:'Απόσβεση κτιρίου', b:'Το κτηριακό μέρος (όχι το οικόπεδο) αποσβένεται και μειώνει το φορολογητέο αποτέλεσμα κάθε χρόνο. Συνδυασμένο με τους τόκους, βελτιώνει ουσιαστικά την καθαρή απόδοση.'},
+              {t:'Απόσβεση κτιρίου', b:'Το κτιριακό μέρος (όχι το οικόπεδο) αποσβένεται και μειώνει το φορολογητέο αποτέλεσμα κάθε χρόνο. Συνδυασμένο με τους τόκους, βελτιώνει ουσιαστικά την καθαρή απόδοση.'},
               {t:'Χρηματοδότηση και εξασφαλίσεις', b:'Τυπικό δάνειο προς αξία 60–70%. Ζητούνται ισολογισμοί τριετίας, απόφαση διοίκησης και συνήθως προσωπική εγγύηση. Προετοίμασε ενημερότητες ΑΑΔΕ και ΕΦΚΑ έγκαιρα.'},
               {t:'Ανάπτυξη χαρτοφυλακίου με μόχλευση', b:'Η μόχλευση επιταχύνει την ανάπτυξη μόνο όταν η καθαρή απόδοση του ακινήτου υπερβαίνει το κόστος δανεισμού. Κράτα απόθεμα ρευστότητας για κενές περιόδους και συντήρηση.'},
             ] : [

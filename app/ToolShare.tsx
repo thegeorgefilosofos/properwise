@@ -19,11 +19,11 @@
 // πληκτρολόγηση θα άφηνε βήμα στο ιστορικό και το κουμπί «πίσω» του περιηγητή
 // θα χρειαζόταν σαράντα πατήματα για να βγει από τη σελίδα.
 //
-// ΚΑΝΕΝΑ ΔΕΔΟΜΕΝΟ ΔΕΝ ΦΕΥΓΕΙ, ΚΑΙ Η ΥΠΟΣΧΕΣΗ ΜΕΝΕΙ ΑΚΕΡΑΙΑ. Οι παράμετροι ζουν
+// ΚΑΝΕΝΑ ΔΕΔΟΜΕΝΟ ΔΕΝ ΦΕΥΓΕΙ ΚΑΙ Η ΥΠΟΣΧΕΣΗ ΜΕΝΕΙ ΑΚΕΡΑΙΑ. Οι παράμετροι ζουν
 // στη διεύθυνση του δικού του περιηγητή· ταξιδεύουν μόνο αν ο ίδιος στείλει τον
 // σύνδεσμο. Η σελίδα εξακολουθεί να μη στέλνει τίποτα πουθενά.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { readTool, toolQuery, toolLink, type ToolSpec, type ToolValues } from '@/lib/tools/permalink';
 import { SITE_HOST } from '@/lib/core/site';
@@ -92,7 +92,16 @@ const shareSheet = () => typeof navigator.share === 'function' && window.matchMe
  * «Εκτύπωση» τυπωμένο σε χαρτί είναι ο ορισμός του περιττού.
  */
 export function ToolActions<S extends ToolSpec>(
-  { path, spec, values }: { path: string; spec: S; values: Readonly<Record<string, string>> },
+  { path, spec, values, lead }: {
+    path: string; spec: S; values: Readonly<Record<string, string>>;
+    /**
+     * Ό,τι ρυθμίζει την εκτύπωση (το όνομα του ακινήτου στην απόδοση) κάθεται
+     * ΠΑΝΩ από τα κουμπιά, στη δεξιά τους άκρη: ανήκει στο «Εκτύπωση» και
+     * διαβάζεται πριν από αυτό. Ηταν κάτω από τα κουμπιά, δηλαδή μετά την ενέργεια
+     * που επηρεάζει.
+     */
+    lead?: ReactNode;
+  },
 ) {
   const [copied, setCopied] = useState(false);
   // ΟΤΑΝ ΤΟ ΠΡΟΧΕΙΡΟ ΕΙΝΑΙ ΚΛΕΙΣΤΟ, Ο ΣΥΝΔΕΣΜΟΣ ΦΑΙΝΕΤΑΙ. Σε ασφαλή περιβάλλοντα
@@ -133,8 +142,13 @@ export function ToolActions<S extends ToolSpec>(
 
   return (
     <>
+      {lead && (
+        <div className="po-noprint" style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ width: '100%', maxWidth: 340 }}>{lead}</div>
+        </div>
+      )}
       <div className="po-noprint" style={{
-        marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end',
+        marginTop: lead ? 10 : 14, display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end',
       }}>
         <Btn onClick={copy}>
           <IconLink/>

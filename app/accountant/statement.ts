@@ -15,7 +15,13 @@
 // ΕΔΩ ΔΕΝ ΥΠΑΡΧΕΙ REACT. Είναι αριθμητική, άρα δοκιμάζεται χωρίς οθόνη.
 // ═══════════════════════════════════════════════════════════════════════════
 import { declarableGrossOrTotal, needsAmountReview, amountBasis, AMOUNT_BASIS_LABELS, collectedLevy, platformFee } from '@/lib/clients/stayAmounts';
+import { yearShare, nightsSplit } from '@/lib/tax/shortTermTax';
+import { collectionModeFromCounts, type RentCollectionMode } from '@/lib/tax/rentCollectionMode';
+import { bankReceiptMatters, presumptiveDeductionRateForYear } from '@/lib/billing/consolidate';
+import { rentalIncomeTax, rentalBracketsForYear, bankReceiptPenaltyShare } from '@/lib/billing/greekTax';
+import { fpRate } from '@/lib/core/format';
 import type { XlsxSheet } from '@/app/dashboard/components/exportXlsx';
+import { roundHalfUp } from '@/lib/core/money';
 
 export interface PortalExpense { category: string; amount: number; date: string }
 
@@ -29,10 +35,22 @@ export interface PortalProperty {
   name: string; atak: string | null; address: string | null; prop_type: string | null;
   /** Εμβαδόν και ποσοστό συνιδιοκτησίας: τα ζητά η γραμμή του Ε2. */
   sqm?: number | null; ownership?: number | null;
-  /** Εισπραχθέν ενοίκιο ΤΟΥ ΕΤΟΥΣ, από rent_payments — ίδια πηγή με το Ε2. */
+  /**
+   * Ενοίκιο ΤΗΣ ΧΡΗΣΗΣ, όλες οι περίοδοι ανεξάρτητα από την είσπραξη: η βάση
+   * του Ε2. Λείπει όταν απαντά βάση πριν το 20261001100000· τότε το
+   * `rent_collected` είχε ακριβώς αυτή τη σημασία.
+   */
+  rent_due?: number | null;
+  /** Οσα ΕΙΣΠΡΑΧΘΗΚΑΝ από τις περιόδους της χρήσης (`paid = true`). */
   rent_collected: number | null;
-  /** Σε πόσες καταχωρημένες περιόδους βασίζεται. 0 = δεν καταχωρήθηκε τίποτα. */
+  /** Πόσους μήνες της χρήσης καλύπτουν οι περίοδοι. 0 = δεν καταχωρήθηκε τίποτα. */
   rent_months: number | null;
+  /** Πληρωμένες περίοδοι της χρήσης με καταγεγραμμένο τρόπο είσπραξης. */
+  rent_paid_with_method?: number | null;
+  /** Από αυτές, πόσες σε μετρητά. */
+  rent_paid_cash?: number | null;
+  /** Η πρόθεση της τρέχουσας μίσθωσης (`e_payment`). Κενό χωρίς μισθωτή. */
+  lease_via_bank?: boolean | null;
   /** Τι νοικιάζεται ΣΗΜΕΡΑ. Συμφραζόμενο, όχι έσοδο του έτους. */
   rent_monthly: number | null;
   expenses: PortalExpense[]; stays: PortalStay[];
@@ -43,8 +61,12 @@ export interface PortalData { owner: string | null; year: number; properties: Po
 /** Η γραμμή ενός ακινήτου για τη χρήση, όπως τη διαβάζει ΚΑΙ η οθόνη ΚΑΙ το αρχείο. */
 export interface PropertyLine {
   p: PortalProperty;
+  /** Ενοίκιο της χρήσης όπως στο Ε2 (δεδουλευμένο). Αυτό μπαίνει στα έσοδα. */
   rentAnnual: number;
+  /** Από αυτό, πόσο εισπράχθηκε. `null` όταν η βάση δεν το ξεχωρίζει ακόμη. */
+  rentCollected: number | null;
   rentMonths: number;
+  /** Δηλωτέο ακαθάριστο βραχυχρόνιας, με το μερίδιο νυχτών της χρήσης. */
   shortGross: number;
   /** Πόσες διαμονές μπήκαν με το ωμό ποσό τους, επειδή δεν δηλώνουν βάση. */
   staysUnresolved: number;
@@ -54,24 +76,51 @@ export interface PropertyLine {
 
 const sum = (a: number[]) => a.reduce((s, v) => s + (v || 0), 0);
 
+const cents = (n: number) => roundHalfUp(n, 2);
+
+// ══ Η ΠΥΛΗ ΕΛΕΓΕ «ΕΙΣΠΡΑΞΕΙΣ» ΓΙΑ ΤΟ ΔΕΔΟΥΛΕΥΜΕΝΟ ═══════════════════════════
+// ΤΟ ΣΦΑΛΜΑ. Το `rent_collected` της βάσης άθροιζε ΟΛΕΣ τις περιόδους της
+// χρήσης, πληρωμένες ή όχι κι η οθόνη το τύπωνε ως «Εισπράξεις». Το ποσό ήταν
+// σωστό για το Ε2 (δεδουλευμένα) αλλά λάθος για ό,τι έλεγε ότι είναι.
+//
+// Πλέον τα δύο έρχονται χωριστά: `rent_due` για το έντυπο και τα έσοδα,
+// `rent_collected` για την είσπραξη. Βάση που δεν έχει ακόμη το `rent_due`
+// στέλνει στο `rent_collected` το δεδουλευμένο, οπότε αυτό κρατιέται ως έχει
+// και η είσπραξη μένει άγνωστη αντί να μαντευτεί.
+//
+// ══ Η ΔΙΑΜΟΝΗ ΠΟΥ ΠΕΡΝΑ ΤΗΝ ΠΡΩΤΟΧΡΟΝΙΑ ΜΟΙΡΑΖΕΤΑΙ ΜΕ ΤΙΣ ΝΥΧΤΕΣ ═════════════
+// Ηταν κατά έτος άφιξης κι ολόκληρη. Το Ε2 τη μοιράζει με τις νύχτες
+// (`yearShare`, lib/tax/shortTermTax.ts): η πύλη έδινε στον λογιστή άλλο ποσό
+// από το έντυπο που θα υπέβαλλε. Ο κανόνας είναι πλέον ο ίδιος, από το ίδιο αρχείο.
+
 /** Το μοναδικό σημείο όπου το ακίνητο γίνεται γραμμή χρήσης. */
-export function propertyLines(props: readonly PortalProperty[]): PropertyLine[] {
+export function propertyLines(props: readonly PortalProperty[], year: number): PropertyLine[] {
   return props.map(p => {
-    const stays = p.stays || [];
+    const stays = (p.stays || []).filter(s => yearShare(s, year) > 0);
     // ΤΟ ΩΜΟ `total` ΔΕΝ ΑΘΡΟΙΖΕΤΑΙ. Είναι ακαθάριστο Η payout, ανάλογα με το
     // `amount_basis`· το Ε2 περνά από το δηλωτέο ακαθάριστο, δηλαδή τι πλήρωσε
     // ο επισκέπτης μείον το τέλος ανθεκτικότητας, που δεν είναι έσοδο.
-    const shortGross = sum(stays.map(declarableGrossOrTotal));
+    const shortGross = cents(sum(stays.map(s => declarableGrossOrTotal(s) * yearShare(s, year))));
+    const hasDue = p.rent_due != null;
+    const rentAnnual = Number(hasDue ? p.rent_due : p.rent_collected) || 0;
     return {
       p,
-      rentAnnual: p.rent_collected || 0,
+      rentAnnual,
+      rentCollected: hasDue ? (Number(p.rent_collected) || 0) : null,
       rentMonths: p.rent_months || 0,
       shortGross,
       staysUnresolved: stays.filter(needsAmountReview).length,
-      income: (p.rent_collected || 0) + shortGross,
+      income: rentAnnual + shortGross,
       expenses: sum((p.expenses || []).map(e => e.amount || 0)),
     };
   });
+}
+
+/** Οι διαμονές της γραμμής που μετρούν στη χρήση, με το μερίδιό τους. */
+export function staysOfYear(l: PropertyLine, year: number) {
+  return (l.p.stays || [])
+    .map(s => ({ s, share: yearShare(s, year), nights: nightsSplit(s, year).inYear }))
+    .filter(x => x.share > 0);
 }
 
 /** Πόσα δηλώνονται από αυτή τη γραμμή, με το ποσοστό συνιδιοκτησίας. */
@@ -118,6 +167,71 @@ export function statementTotals(lines: readonly PropertyLine[]): StatementTotals
     hasEntries: income > 0 || expenses > 0,
     staysUnresolved: sum(lines.map(l => l.staysUnresolved)),
   };
+}
+
+// ── Ο ΕΝΔΕΙΚΤΙΚΟΣ ΦΟΡΟΣ ΚΑΙ Η ΤΕΚΜΑΡΤΗ ΕΚΠΤΩΣΗ ────────────────────────────
+// ΤΟ ΣΦΑΛΜΑ. Η οθόνη εφάρμοζε ΠΑΝΤΑ την έκπτωση 5% (`presumptiveDeductionRate(true)`).
+// Από τη χρήση 2027 η έκπτωση θέλει είσπραξη μέσω τραπέζης (ν.5222/2025) και η
+// Λογιστική το κρίνει ανά ακίνητο από τις ίδιες τις εισπράξεις. Η πύλη έδινε
+// στον λογιστή μικρότερο φόρο από τη Λογιστική του ίδιου πελάτη.
+//
+// Ο ΚΑΝΟΝΑΣ ΕΙΝΑΙ Ο ΙΔΙΟΣ. Η βάση στέλνει πλήθη (πόσες εισπράξεις έχουν τρόπο,
+// πόσες σε μετρητά) και την πρόθεση της μίσθωσης· η κρίση γίνεται από την
+// `collectionModeFromCounts`, δίπλα στη `rentCollectionMode` της Λογιστικής.
+// Οπου η βάση δεν τα στέλνει, η έκπτωση δεν εφαρμόζεται και το λέμε.
+
+/** Ο τρόπος είσπραξης ενός ακινήτου, ή `null` όταν η βάση δεν τον στέλνει. */
+export function lineCollectionMode(p: PortalProperty): RentCollectionMode | null {
+  if (p.rent_paid_with_method == null) return null;
+  return collectionModeFromCounts(Number(p.rent_paid_with_method) || 0, Number(p.rent_paid_cash) || 0, p.lease_via_bank ?? null);
+}
+
+export interface IndicativeTax {
+  tax: number;
+  taxable: number;
+  /** Μετρά ο τρόπος είσπραξης σε αυτή τη χρήση; (από το 2027) */
+  bankMatters: boolean;
+  /** Ακίνητα με έσοδο που ΔΕΝ παίρνουν την έκπτωση, με τον λόγο. */
+  withoutDeduction: { name: string; why: string }[];
+}
+
+const NOT_VISIBLE = 'ο τρόπος είσπραξης δεν φαίνεται από αυτόν τον σύνδεσμο';
+
+const modeWhy = (m: RentCollectionMode | null): string => {
+  if (!m || m.basis === 'unknown') return NOT_VISIBLE;
+  if (m.basis === 'payments') return `${m.cash} από ${m.withMethod} εισπράξεις σε μετρητά`;
+  return 'η μίσθωση δεν δηλώνει είσπραξη μέσω τραπέζης';
+};
+
+/** Ο ενδεικτικός φόρος της χρήσης, στο μερίδιο του ιδιοκτήτη. */
+export function indicativeTax(lines: readonly PropertyLine[], year: number): IndicativeTax {
+  const bankMatters = bankReceiptMatters(year);
+  const withoutDeduction: IndicativeTax['withoutDeduction'] = [];
+  let taxable = 0;
+  for (const l of lines) {
+    const share = shareOf(l.income, l.p.ownership);
+    if (!(share > 0)) continue;
+    let viaBank = true;
+    if (bankMatters) {
+      const m = lineCollectionMode(l.p);
+      viaBank = !!m && m.basis !== 'unknown' && m.viaBank;
+      if (!viaBank) withoutDeduction.push({ name: l.p.name, why: modeWhy(m) });
+    }
+    taxable += share * (1 - presumptiveDeductionRateForYear(year, viaBank));
+  }
+  return { tax: rentalIncomeTax(taxable, rentalBracketsForYear(year)), taxable, bankMatters, withoutDeduction };
+}
+
+/** Η φράση για την έκπτωση κάτω από τον φόρο. Μία, δοκιμασμένη. */
+export function deductionNote(t: IndicativeTax, year: number): string {
+  const pct = fpRate(presumptiveDeductionRateForYear(year, true) * 100);
+  if (!t.bankMatters) return `Με τεκμαρτή έκπτωση ${pct}.`;
+  if (!t.withoutDeduction.length) return `Με τεκμαρτή έκπτωση ${pct}: οι εισπράξεις της χρήσης έγιναν μέσω τραπέζης.`;
+  // Η πρώτη χρονιά της κύρωσης μετρά από τον Ιούλιο (Α.1187/2026): λέγεται ρητά,
+  // αλλιώς η φράση υπόσχεται περισσότερο φόρο από όσο έβγαλε ο υπολογισμός.
+  const from = bankReceiptPenaltyShare(year) < 1 ? ` για τα ενοίκια από 1.7.${year}` : '';
+  return `Τεκμαρτή έκπτωση ${pct} μόνο όπου η είσπραξη έγινε μέσω τραπέζης. Χωρίς έκπτωση${from}: `
+    + t.withoutDeduction.map(w => `${w.name} (${w.why})`).join(', ') + '.';
 }
 
 // ── ΤΙ ΛΕΙΠΕΙ ──────────────────────────────────────────────────────────────
@@ -188,6 +302,7 @@ export function statementSheets(inp: StatementFileInput): XlsxSheet[] {
   const notes: string[] = [
     'Ποσά όπως τα καταχώρησε ο ιδιοκτήτης. Καμία ταυτότητα μισθωτή, επισκέπτη ή προμηθευτή: ο σύνδεσμος δεν τις μεταφέρει.',
     'Για τη γραμμή του Ε2 λείπει το ΑΦΜ του μισθωτή, που το έχει ο ιδιοκτήτης.',
+    'Τα ενοίκια χρήσης είναι δεδουλευμένα, όπως στο Ε2: όλες οι περίοδοι της χρήσης ανεξάρτητα από την είσπραξη. Η διπλανή στήλη δείχνει πόσα από αυτά εισπράχθηκαν.',
   ];
   // ΟΤΑΝ ΥΠΑΡΧΕΙ ΣΥΝΙΔΙΟΚΤΗΣΙΑ, ΛΕΓΕΤΑΙ. Δύο στήλες με το ίδιο ακίνητο και
   // διαφορετικό ποσό είναι ερώτηση, όχι πληροφορία, αν δεν εξηγηθεί.
@@ -211,8 +326,9 @@ export function statementSheets(inp: StatementFileInput): XlsxSheet[] {
       { header: 'Είδος', kind: 'text' },
       { header: 'Εμβαδόν (τ.μ.)', kind: 'num' },
       { header: 'Ποσοστό', kind: 'pct' },
-      { header: 'Ενοίκια χρήσης', kind: 'eur' },
-      { header: 'Καταχωρημένες περίοδοι', kind: 'int' },
+      { header: 'Ενοίκια χρήσης (δεδουλευμένα)', kind: 'eur' },
+      { header: 'Από αυτά εισπράχθηκαν', kind: 'eur' },
+      { header: 'Μήνες μίσθωσης', kind: 'int' },
       { header: 'Βραχυχρόνια, δηλωτέο ακαθάριστο', kind: 'eur' },
       { header: 'Σύνολο εσόδων', kind: 'eur' },
       { header: 'Αναλογία εσόδων ιδιοκτήτη', kind: 'eur' },
@@ -235,6 +351,7 @@ export function statementSheets(inp: StatementFileInput): XlsxSheet[] {
       Number(l.p.sqm) > 0 ? Number(l.p.sqm) : null,
       Number(l.p.ownership) > 0 ? Number(l.p.ownership) : null,
       l.rentAnnual,
+      l.rentCollected,
       l.rentMonths,
       l.shortGross,
       l.income,
@@ -242,7 +359,7 @@ export function statementSheets(inp: StatementFileInput): XlsxSheet[] {
       l.expenses,
       shareOf(l.expenses, l.p.ownership),
     ]),
-    totalCols: [6, 8, 9, 10, 11, 12],
+    totalCols: [6, 7, 9, 10, 11, 12, 13],
     notes,
   };
 
@@ -263,16 +380,19 @@ export function statementSheets(inp: StatementFileInput): XlsxSheet[] {
     notes: ['Χωρίς ΑΦΜ προμηθευτή και χωρίς παραστατικό: τα κρατά ο ιδιοκτήτης στον φάκελό του.'],
   };
 
-  const stayRows = lines.flatMap(l => (l.p.stays || []).map(s => [
+  // ΜΕ ΤΟ ΜΕΡΙΔΙΟ ΤΗΣ ΧΡΗΣΗΣ, ΟΠΩΣ ΣΤΟ Ε2. Η διαμονή που περνά την Πρωτοχρονιά
+  // γράφεται με τις νύχτες και τα ποσά που ανήκουν σε αυτή τη χρονιά.
+  const stayRows = lines.flatMap(l => staysOfYear(l, year).map(({ s, share, nights }) => [
     l.p.name,
     s.check_in ? new Date(s.check_in) : null,
     s.check_out ? new Date(s.check_out) : null,
-    s.nights ?? null,
-    declarableGrossOrTotal(s),
-    collectedLevy(s),
-    platformFee(s),
+    nights,
+    cents(declarableGrossOrTotal(s) * share),
+    cents(collectedLevy(s) * share),
+    cents(platformFee(s) * share),
     AMOUNT_BASIS_LABELS[amountBasis(s)],
   ]));
+  const crossing = lines.reduce((n, l) => n + staysOfYear(l, year).filter(x => x.share < 1).length, 0);
   const stays: XlsxSheet = {
     name: 'Διαμονές',
     title: `Βραχυχρόνιες διαμονές ${year}`,
@@ -281,7 +401,7 @@ export function statementSheets(inp: StatementFileInput): XlsxSheet[] {
       { header: 'Ακίνητο', kind: 'text' },
       { header: 'Άφιξη', kind: 'date' },
       { header: 'Αναχώρηση', kind: 'date' },
-      { header: 'Νύχτες', kind: 'int' },
+      { header: 'Νύχτες στη χρήση', kind: 'int' },
       { header: 'Δηλωτέο ακαθάριστο', kind: 'eur' },
       { header: 'Τέλος ανθεκτικότητας', kind: 'eur' },
       { header: 'Προμήθεια πλατφόρμας', kind: 'eur' },
@@ -289,7 +409,12 @@ export function statementSheets(inp: StatementFileInput): XlsxSheet[] {
     ],
     rows: stayRows,
     totalCols: [4, 5, 6],
-    notes: ['Το τέλος ανθεκτικότητας το εισπράττει ο ιδιοκτήτης για λογαριασμό του Δημοσίου: δεν είναι έσοδό του και δεν μπαίνει στο δηλωτέο ακαθάριστο.'],
+    notes: [
+      'Το τέλος ανθεκτικότητας το εισπράττει ο ιδιοκτήτης για λογαριασμό του Δημοσίου: δεν είναι έσοδό του και δεν μπαίνει στο δηλωτέο ακαθάριστο.',
+      ...(crossing > 0 ? [crossing === 1
+        ? 'Μία διαμονή περνά την αλλαγή του έτους: μπαίνει με τις νύχτες της χρήσης και το αντίστοιχο μέρος των ποσών, όπως στο Ε2.'
+        : `${crossing} διαμονές περνούν την αλλαγή του έτους: μπαίνουν με τις νύχτες της χρήσης και το αντίστοιχο μέρος των ποσών, όπως στο Ε2.`] : []),
+    ],
   };
 
   const missing: XlsxSheet = {

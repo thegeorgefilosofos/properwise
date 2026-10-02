@@ -77,7 +77,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     log('η αναζήτηση της συνδρομής απέτυχε:', error.message);
     return unavailable();
   }
-  // ΤΟ ΛΗΓΜΕΝΟ ΚΟΥΠΟΝΙ ΕΙΝΑΙ ΑΓΝΩΣΤΟ ΚΟΥΠΟΝΙ, ΚΑΙ ΑΠΑΝΤΑ ΤΟ ΙΔΙΟ. Μια
+  // ΤΟ ΛΗΓΜΕΝΟ ΚΟΥΠΟΝΙ ΕΙΝΑΙ ΑΓΝΩΣΤΟ ΚΟΥΠΟΝΙ ΚΑΙ ΑΠΑΝΤΑ ΤΟ ΙΔΙΟ. Μια
   // ξεχωριστή απάντηση «έληξε» θα έλεγε σε όποιον το βρήκε ότι κάποτε ίσχυε.
   if (!owner || feedStore.feedExpired(owner)) return notFound();
 

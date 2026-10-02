@@ -87,13 +87,21 @@ export const READING = 720;
 export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current?: 'paketa' }) {
   const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
-      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-xs" data-xs-elsewhere="/paketa" style={link}>Τιμές</Link>
+    <div className="lp-nav-row" style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
+      {/* Η ΣΕΛΙΔΑ ΠΟΥ ΔΙΑΒΑΖΕΙΣ ΦΑΙΝΕΤΑΙ ΣΤΗΝ ΚΕΦΑΛΙΔΑ (01.10.2026). Το
+          `aria-current` υπήρχε για τον αναγνώστη οθόνης και το μάτι δεν έβλεπε
+          τίποτα: στο /paketa το «Τιμές» ήταν ίδιο με το «Σύνδεση». Πρώτος τόνος
+          και μια γραμμή στο χρώμα της έμφασης από κάτω (globals.css). */}
+      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-xs" data-xs-elsewhere="/paketa"
+        style={current === 'paketa' ? { ...link, color: 'var(--text-primary)', textDecoration: undefined } : link}>Τιμές</Link>
       {!signedIn ? (<>
         <Link href="/login" className="lp-link lp-nav-link" style={link}>
           Σύνδεση
         </Link>
-        <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 16px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
+        {/* Το σχήμα του κοινού κουμπιού της δημόσιας πλευράς (`--btn-*` στο
+            globals.css): χάπι, 44, λεκτικό 15. Μένει `Link` για την πλοήγηση
+            χωρίς επαναφόρτωση· τη γεωμετρία την παίρνει από τις ίδιες τιμές. */}
+        <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 'var(--btn-h, 44px)', textDecoration: 'none', fontSize: 'var(--btn-fs, 15px)', fontWeight: 700, padding: '0 20px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
           <span className="lp-hide-xs">Ξεκίνα δωρεάν</span><span className="lp-only-xs">Ξεκίνα</span>
         </Link>
       </>) : signedIn}
@@ -106,7 +114,7 @@ export function PublicHeader({ current }: { current?: 'paketa' } = {}) {
     <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
       <div style={{ ...WRAP, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'var(--text-primary)' }}>
-          <BrandLogo size={24} />
+          <BrandLogo />
         </Link>
         <PublicNav current={current} />
       </div>
@@ -143,9 +151,9 @@ export function PublicFooter() {
         <div className="lp-foot">
           <div>
             <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textDecoration: 'none', color: 'var(--text-primary)', width: 'fit-content' }}>
-              <BrandLogo size={26} />
+              <BrandLogo />
             </Link>
-            {/* ΔΥΟ ΠΡΟΤΑΣΕΙΣ, ΔΥΟ ΓΡΑΜΜΕΣ, ΚΑΙ Η ΑΛΛΑΓΗ ΕΙΝΑΙ ΡΗΤΗ.
+            {/* ΔΥΟ ΠΡΟΤΑΣΕΙΣ, ΔΥΟ ΓΡΑΜΜΕΣ ΚΑΙ Η ΑΛΛΑΓΗ ΕΙΝΑΙ ΡΗΤΗ.
                 Ηταν μία συνεχόμενη φράση που άφηνε την αναδίπλωση στο πλάτος
                 της στήλης: έσπαγε σε τρεις γραμμές και το πού έσπαγε άλλαζε
                 με κάθε μέγεθος οθόνης — άλλοτε στη μέση της πρώτης πρότασης,
@@ -206,7 +214,12 @@ export function PublicFooter() {
               σελίδα, ενώ εκκρεμούν συμβάσεις επεξεργασίας που η ίδια η Πολιτική
               ομολογεί. Ο σύνδεσμος λέει το όνομα της σελίδας, τίποτα παραπάνω. */}
           <span className="po-foot-legal">
-            <span style={{ whiteSpace: 'nowrap' }}>Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)</span> ·{' '}
+            {/* Η ΤΕΛΕΙΑ ΔΕΝ ΚΡΕΜΕΤΑΙ (01.10.2026). Στα 360 η γραμμή αναδιπλωνόταν
+                και το «·» έμενε μόνο στο τέλος της πρώτης σειράς. Κάτω από τα 440
+                τα δύο στοιχεία μπαίνουν το ένα κάτω από το άλλο και το σημάδι
+                που τα χωρίζει φεύγει (`.po-foot-sep`, globals.css). */}
+            <span style={{ whiteSpace: 'nowrap' }}>Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)</span>
+            <span className="po-foot-sep" aria-hidden="true"> · </span>
             <Link href="/privacy" className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>
           </span>
           {/* ΤΟ ΣΗΜΑ ΣΤΟ ΤΕΛΟΣ ΤΗΣ ΤΕΛΕΥΤΑΙΑΣ ΓΡΑΜΜΗΣ, ΟΠΟΥ ΤΟ ΨΑΧΝΕΙ ΤΟ ΜΑΤΙ. Εκεί
@@ -358,7 +371,7 @@ export function ToolLede({ children }: { children: ReactNode }) {
           στα 390 άφηνε ορφανή σειρά· και το «μένει εκεί» δεν ίσχυε αυστηρά,
           αφού τα ποσά γράφονται στη διεύθυνση για να κοινοποιούνται. */}
       {hy(children)}{' '}
-      {hy('Ο υπολογισμός γίνεται στη συσκευή σου. Με τα δικά σου δεδομένα. Δωρεάν, χωρίς εγγραφή.')}
+      {hy('Ο υπολογισμός γίνεται στη συσκευή σου, με τα δικά σου δεδομένα, δωρεάν και χωρίς εγγραφή.')}
       {/* ΧΩΡΙΣ ΑΣΤΕΡΙΣΚΟ ΚΑΙ ΧΩΡΙΣ ΣΥΛΛΑΒΙΣΜΟ. Ο αστερίσκος δεν παρέπεμπε σε
           τίποτα από πάνω του και σε γραμμή 12 εικονοστοιχείων ο `hy` έκοβε
           «Ενδεικτι-κός» στα 390. Δύο κοντές προτάσεις σπάνε στα κενά τους. */}
@@ -381,7 +394,7 @@ const TOOL_SOURCES = {
   // Κάθε κανόνας που εφαρμόζει η σελίδα για τις δύο χρονιές του επιλογέα:
   // η κλίμακα (άρθρο 40, με τα νέα κλιμάκια από 2026), το 5% και η τράπεζα.
   rent: 'Κλίμακα ενοικίων: άρθρο 40 ΚΦΕ (ν.4172/2013), νέα κλιμάκια από 1/1/2026 με ν.5246/2025 · '
-    + 'τεκμαρτή έκπτωση 5%: άρθρο 39 §3 ΚΦΕ · είσπραξη μέσω τραπέζης: ν.5222/2025 άρθρο 210 (κύρωση από 1.7.2027)',
+    + 'τεκμαρτή έκπτωση 5%: άρθρο 39 §3 ΚΦΕ · είσπραξη μέσω τράπεζας: ν.5222/2025 άρθρο 210 (κύρωση από 1.7.2027)',
   short: 'Τέλος ανθεκτικότητας στην κλιματική κρίση: ν.5162/2024 · φορολογία ενοικίων: άρθρα 39-40 ΚΦΕ, '
     + 'κλίμακα ν.5246/2025 · μητρώο βραχυχρόνιας διαμονής (ΑΜΑ): ΑΑΔΕ',
   yield: 'Κλίμακα ενοικίων 2026: ν.5246/2025 · τεκμαρτή έκπτωση 5%: άρθρο 39 ΚΦΕ · ΕΝΦΙΑ: ν.4223/2013 όπως ισχύει',

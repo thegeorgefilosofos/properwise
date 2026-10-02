@@ -21,7 +21,10 @@ export interface ReportBranding {
   email: string;
 }
 
-export const DEFAULT_ACCENT = '#1a73e8';
+// ΤΟ ΓΑΛΑΖΙΟ ΤΟΥ BRAND, ΟΧΙ ΤΟΥ GOOGLE. Ηταν #1a73e8, δηλαδή η αναφορά με
+// προεπιλεγμένη επωνυμία τυπωνόταν σε άλλο μπλε από την εφαρμογή που την
+// έβγαλε. Το χαρτί είναι λευκό, άρα παίρνει το --accent του φωτεινού θέματος.
+export const DEFAULT_ACCENT = '#1356c2';
 
 /** HTML-escape για ασφαλή παρεμβολή σε markup αναφορών. */
 export function escHtml(s: unknown): string {

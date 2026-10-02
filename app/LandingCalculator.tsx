@@ -5,9 +5,10 @@ import { T } from '@/components/tokens'
 import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax'
 import { fe, fp, fn } from '@/lib/core/format'
 import { parseAmount } from '@/lib/core/greek'
-import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
 import LiveResult from '@/components/LiveResult'
 import { hy } from '@/components/Hyphen'
+import { roundHalfUp } from '@/lib/core/money';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ζωντανό εργαλείο απόδοσης μέσα στο landing. Τρέχει την ΙΔΙΑ ακριβή φορολογική
@@ -49,7 +50,7 @@ const statutory = (rate: number) => {
 // δίπλα στον υπολογισμό που έρχεται απο τη μία πηγή: με την πρώτη αλλαγή
 // κλίμακας, ο αριθμός θα άλλαζε και η ζωγραφισμένη κλίμακα από κάτω του όχι.
 //
-// ΤΟ ΤΑΒΑΝΙ ΕΙΝΑΙ ΣΧΕΔΙΑΣΤΙΚΟ, ΚΑΙ ΤΟ ΛΕΕΙ. Το τελευταίο κλιμάκιο πάει ως το
+// ΤΟ ΤΑΒΑΝΙ ΕΙΝΑΙ ΣΧΕΔΙΑΣΤΙΚΟ ΚΑΙ ΤΟ ΛΕΕΙ. Το τελευταίο κλιμάκιο πάει ως το
 // άπειρο· μια μπάρα δεν ζωγραφίζεται ως το άπειρο. Το `SCALE_MAX` δίνει στο
 // ανώτατο κλιμάκιο ΟΡΑΤΟ πλάτος και δεν είναι φορολογικό όριο — γι' αυτό
 // γράφεται χωριστά, με όνομα που το λέει, αντί να κρύβεται ως «to: 45000».
@@ -60,7 +61,7 @@ const BANDS = RENTAL_TAX_BRACKETS_2026.map(b => ({
   rate: statutory(b.rate),
 }))
 
-// ═══ Ο ΟΛΙΣΘΗΤΗΣ ΛΕΕΙ ΠΟΣΟ, ΚΑΙ ΤΟ ΠΟΣΟ ΓΡΑΦΕΤΑΙ ΚΑΙ ΜΕ ΤΟ ΧΕΡΙ ═══════════
+// ═══ Ο ΟΛΙΣΘΗΤΗΣ ΛΕΕΙ ΠΟΣΟ ΚΑΙ ΤΟ ΠΟΣΟ ΓΡΑΦΕΤΑΙ ΚΑΙ ΜΕ ΤΟ ΧΕΡΙ ═══════════
 // Ο αναγνώστης οθόνης άκουγε «650» και όχι «650,00€»: ο ολισθητής είχε μόνο
 // όνομα χωρίς `aria-valuetext` και η ετικέτα δεν ήταν δεμένη μαζί του. Και
 // ακριβής τιμή δεν έμπαινε: 1.000 βήμα σε εύρος ενός εκατομμυρίου. Το ποσό
@@ -76,7 +77,9 @@ function Control({ label, hint, value, set, min, max, step, format }: {
   const commit = () => {
     if (draft !== null) {
       const n = parseAmount(draft)
-      if (n !== null && Number.isFinite(n)) set(clamp(Math.round(n)))
+      // ΣΕ ΛΕΠΤΑ, ΟΧΙ ΣΕ ΕΥΡΩ. Το «1.250,50» γινόταν «1.251,00€»: ακέραιο ποσό
+      // που φαινόταν ακριβές επειδή η μορφή έχει δύο δεκαδικά.
+      if (n !== null && Number.isFinite(n)) set(clamp(roundHalfUp(n, 2)))
     }
     setDraft(null)
   }
@@ -169,9 +172,11 @@ export default function LandingCalculator() {
 
         {/* Πού πέφτεις στην κλίμακα ενοικίων 2026 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-tertiary)' }}>
+          {/* ΣΤΑ 360 Η ΣΕΙΡΑ ΣΤΡΙΜΩΧΝΟΤΑΝ: τίτλος και ποσό κολλούσαν χωρίς
+              αέρα ανάμεσα. Τυλίγεται και το ποσό μένει ακέραιο. */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '2px 12px', fontSize: 12, color: 'var(--text-tertiary)' }}>
             <span>Κλίμακα ενοικίων 2026</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>φορολογητέο {fe(taxable)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>φορολογητέο {fe(taxable)}</span>
           </div>
           <div className="calc-track">
             <div className="calc-band">
@@ -181,8 +186,11 @@ export default function LandingCalculator() {
             </div>
             <div className="calc-marker" style={{ left: `${markerPct}%` }} />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-            {BANDS.map((b, i) => <span key={i}>{b.rate}</span>)}
+          {/* Κάθε συντελεστής κάτω από τη ΔΙΚΗ του ζώνη, με το ίδιο φάρδος· με
+              `space-between` το «45%» καθόταν στη δεξιά άκρη, μακριά από τη
+              ζώνη του· και στα 360 οι τέσσερις ετικέτες στριμώχνονταν. */}
+          <div style={{ display: 'flex', fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+            {BANDS.map((b, i) => <span key={i} style={{ flex: (b.to - (BANDS[i - 1]?.to ?? 0)), minWidth: 0, whiteSpace: 'nowrap' }}>{b.rate}</span>)}
           </div>
         </div>
       </div>
@@ -212,7 +220,8 @@ export default function LandingCalculator() {
           {hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων 2026 (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
-          Ξεκίνα δωρεάν με το ακίνητό σου
+          {/* Στα 320 η πλήρης φράση έσπαγε σε δύο γραμμές με το «σου» μόνο του. */}
+          <span className="lp-hide-xxs">Ξεκίνα δωρεάν με το ακίνητό σου</span><span className="lp-only-xxs">Ξεκίνα δωρεάν</span>
         </Link>
       </div>
     </div>

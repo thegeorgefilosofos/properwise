@@ -14,7 +14,7 @@ import { MessageSquare } from 'lucide-react'
 import { getPri, priDotColor, priShowDot } from './calc'
 import type { Comment, SubTask } from './model'
 
-// ══ ΤΟ ΥΨΟΣ ΒΓΑΙΝΕ ΑΠΟ PADDING, ΚΑΙ ΓΙ' ΑΥΤΟ ΔΕΝ ΣΥΜΦΩΝΟΥΣΕ ΜΕ ΚΑΝΕΝΑ ══════
+// ══ ΤΟ ΥΨΟΣ ΒΓΑΙΝΕ ΑΠΟ PADDING ΚΑΙ ΓΙ' ΑΥΤΟ ΔΕΝ ΣΥΜΦΩΝΟΥΣΕ ΜΕ ΚΑΝΕΝΑ ══════
 // Μετρημένο στη γραμμή φίλτρων των Εκκρεμοτήτων, στην ίδια σειρά: πεδίο
 // αναζήτησης 38, δύο φίλτρα 35, ομάδα διάταξης 34. Τέσσερα χειριστήρια δίπλα
 // δίπλα, τέσσερα ύψη, κανένα τους γραμμένο ως ύψος. Με padding, κάθε αλλαγή
@@ -25,7 +25,7 @@ import type { Comment, SubTask } from './model'
 // 40: 32 το κουμπί, 3 το γέμισμα, 1 το περίγραμμα.
 export const iStyle: React.CSSProperties = {
   width: '100%', height: T.h.lg, padding: '0 14px', borderRadius: T.radius.inner,
-  border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
+  border: '1px solid var(--border-control)', background: 'var(--bg-surface)',
   // ΧΩΡΙΣ `outline: none`. Το ενσώματο στυλ πατούσε τον καθολικό κανόνα
   // `input:focus-visible` και η θέση της εστίασης χανόταν: μετρημένο με
   // πραγματικό Tab, το πεδίο αναζήτησης δεν άλλαζε ΚΑΜΙΑ ιδιότητα όψης.

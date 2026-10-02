@@ -101,7 +101,7 @@ const REDS = ENFIA_REDUCTIONS.map(r => r.key)
     const reductions: string[] = []
     if (rnd() < 0.3) reductions.push(REDS[Math.floor(rnd() * REDS.length)])
     if (rnd() < 0.15) reductions.push(REDS[Math.floor(rnd() * REDS.length)])
-    // ΤΟ ΕΤΟΣ ΜΠΑΙΝΕΙ ΣΤΟΝ ΚΛΗΡΟ ΜΑΖΙ ΜΕ ΤΑ ΥΠΟΛΟΙΠΑ, ΚΑΙ ΜΕΡΙΚΕΣ ΦΟΡΕΣ ΛΕΙΠΕΙ.
+    // ΤΟ ΕΤΟΣ ΜΠΑΙΝΕΙ ΣΤΟΝ ΚΛΗΡΟ ΜΑΖΙ ΜΕ ΤΑ ΥΠΟΛΟΙΠΑ ΚΑΙ ΜΕΡΙΚΕΣ ΦΟΡΕΣ ΛΕΙΠΕΙ.
     // Ετσι οι ίδιες χιλιάδες περιπτώσεις κρίνουν και τα τρία: μέσα στη χρονιά
     // του μέτρου, μετά από αυτήν, ή χωρίς χρονιά καθόλου.
     const yr = rnd() < 0.2 ? undefined : 2024 + Math.floor(rnd() * 5)

@@ -19,20 +19,19 @@
 // πια «αυτόματη έκπτωση» ούτε λάθος νόμο/ημερομηνία.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { rentalIncomeTax, marginalRate, FIRST_YEAR_BANK_RECEIPT, type TaxBracket } from './greekTax'
+import { rentalIncomeTax, marginalRate, type TaxBracket } from './greekTax'
+import { presumptiveDeductionRateForYear } from './presumptive'
 import {
   consolidateIndividual, PRESUMPTIVE_DEDUCTION_RATE,
   type StatementInput, type TaxRegime,
 } from '@/lib/accounting/statement'
-import { centsOr0 } from '@/lib/core/money'
+import { centsOr0 } from '../core/money'
+import { fpRate } from '@/lib/core/format'
 
-
-
-/** Τεκμαρτή έκπτωση φυσικού προσώπου: 5% (άρθρο 39 §3 ΚΦΕ). Η προϋπόθεση της
- *  τραπεζικής είσπραξης (ν.5222/2025) ξεκινά την 1.7.2027 — δες `bankReceiptMatters`. */
-export function presumptiveDeductionRate(rentsPaidViaBank = true): number {
-  return rentsPaidViaBank ? PRESUMPTIVE_DEDUCTION_RATE : 0
-}
+// Ο κανόνας ζει στο lib/billing/presumptive.ts ώστε οι δημόσιοι υπολογιστές να
+// τον παίρνουν χωρίς τη λογιστική κατάσταση· εδώ επανεξάγεται για όσους τον
+// διάβαζαν από αυτό το αρχείο.
+export { presumptiveDeductionRate, bankReceiptMatters, presumptiveDeductionRateForYear } from './presumptive'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΜΕΤΡΑΕΙ ΜΟΝΟ ΑΠΟ ΤΗ ΧΡΗΣΗ 2027 ΚΑΙ ΜΕΤΑ
@@ -43,30 +42,24 @@ export function presumptiveDeductionRate(rentsPaidViaBank = true): number {
 // 17.09.2026). Άρα ως και τη χρήση 2026 η τεκμαρτή έκπτωση 5% δίνεται
 // ΑΝΕΞΑΡΤΗΤΑ από το πώς εισπράχθηκε το ενοίκιο.
 //
-// ΓΙΑΤΙ ΕΙΝΑΙ ΣΥΝΑΡΤΗΣΗ. Η χρήση κρίνει αν η ερώτηση «μέσω τραπέζης;» αλλάζει
+// ΓΙΑΤΙ ΕΙΝΑΙ ΣΥΝΑΡΤΗΣΗ. Η χρήση κρίνει αν η ερώτηση «μέσω τράπεζας;» αλλάζει
 // καν τον φόρο. Χωρίς έτος (ή για χρήσεις πριν το 2027) η έκπτωση δίνεται
 // ολόκληρη: το να περάσει εκεί ένα «με μετρητά» θα αφαιρούσε έκπτωση που ο
 // νόμος ΔΙΝΕΙ ακόμη.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Μετράει ο τρόπος είσπραξης σε αυτή τη χρήση; (Κύρωση από 1.7.2027 · ν.5222/2025.) */
-export function bankReceiptMatters(year?: number | null): boolean {
-  return year != null && isFinite(year) && year >= FIRST_YEAR_BANK_RECEIPT
-}
-
-/**
- * Ο συντελεστής τεκμαρτής έκπτωσης ΤΗΣ ΧΡΗΣΗΣ.
- *
- * Οπου ο τρόπος είσπραξης δεν μετράει ακόμη, η έκπτωση δίνεται ολόκληρη: το να
- * περάσει εκεί ένα «με μετρητά» θα αφαιρούσε έκπτωση που ο νόμος έδινε.
- */
-export function presumptiveDeductionRateForYear(year: number | null | undefined, rentsPaidViaBank = true): number {
-  return presumptiveDeductionRate(bankReceiptMatters(year) ? rentsPaidViaBank : true)
-}
-
 /** Το κείμενο του κανόνα, ίδιο σε κάθε οθόνη. ΔΕΝ είναι «αυτόματη» έκπτωση. */
 export const PRESUMPTIVE_RULE =
-  'Τεκμαρτή έκπτωση 5% για επισκευές/συντήρηση, χωρίς παραστατικά. Από 1.7.2027 (ν.5222/2025) θα προϋποθέτει είσπραξη του ενοικίου μέσω τραπέζης· με μετρητά θα χάνεται και ο φόρος θα υπολογίζεται στο 100% του ενοικίου.'
+  'Τεκμαρτή έκπτωση 5% για επισκευές/συντήρηση, χωρίς παραστατικά. Από 1.7.2027 (ν.5222/2025) θα προϋποθέτει είσπραξη του ενοικίου μέσω τράπεζας· με μετρητά θα χάνεται και ο φόρος θα υπολογίζεται στο 100% του ενοικίου.'
+
+/**
+ * Η προμήθεια πλατφόρμας για ΙΔΙΩΤΗ. Η καρτέλα Πελατών και η εισαγωγή κρατήσεων
+ * την έλεγαν «δαπάνη που εκπίπτει». Για εισόδημα από ακίνητη περιουσία φυσικού
+ * προσώπου καμία δαπάνη δεν εκπίπτει αναλυτικά: ισχύει μόνο η τεκμαρτή έκπτωση
+ * του άρθρου 39 ΚΦΕ. Εκπίπτει μόνο σε επιχειρηματική δραστηριότητα.
+ */
+export const PLATFORM_FEE_NOTE =
+  `Δεν μειώνει το δηλωτέο ακαθάριστο. Για ιδιώτη δεν μειώνει ούτε τον φόρο: ισχύει μόνο η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}. Εκπίπτει μόνο σε επιχείρηση.`
 
 /** Γιατί ο φόρος δεν είναι «ανά ακίνητο» — το ίδιο λεκτικό σε κάθε οθόνη. */
 export const CONSOLIDATION_NOTE =
@@ -79,7 +72,7 @@ export interface RentSource {
   annualRent: number
   /** Βραχυχρόνια μίσθωση; (ίδια κλίμακα, διαφορετικά τέλη — δες statement.ts). */
   shortTerm?: boolean
-  /** Εισπράττεται μέσω τραπέζης; Default true. */
+  /** Εισπράττεται μέσω τράπεζας; Default true. */
   rentsPaidViaBank?: boolean
 }
 
@@ -123,8 +116,7 @@ const regimeOf = (s: RentSource): TaxRegime =>
 export function consolidateRentTax(items: RentSource[], brackets?: TaxBracket[], year?: number | null): ConsolidatedRentTax {
   // Ο τρόπος είσπραξης αλλάζει τον φόρο ΜΟΝΟ όταν η κύρωση ισχύει (χρήσεις από
   // το 2027). Ως τότε κάθε ακίνητο κρατά την τεκμαρτή έκπτωση, ό,τι κι αν
-  // δήλωσε ο χρήστης για την τράπεζα — δες `bankReceiptMatters`.
-  const bankMatters = bankReceiptMatters(year)
+  // δήλωσε ο χρήστης για την τράπεζα· δες `presumptiveDeductionRateForYear`.
   const earning = items.filter(i => (Number(i.annualRent) || 0) > 0)
   const empty: ConsolidatedRentTax = {
     count: 0, totalAnnualRent: 0, totalTaxable: 0, totalTax: 0,
@@ -140,7 +132,9 @@ export function consolidateRentTax(items: RentSource[], brackets?: TaxBracket[],
     input: {
       regime: regimeOf(i),
       grossIncome: Number(i.annualRent) || 0,
-      rentsPaidViaBank: bankMatters ? (i.rentsPaidViaBank !== false) : true,
+      // Ο συντελεστής της χρήσης, όχι ναι ή όχι: το 2027 η κύρωση πιάνει μόνο
+      // τους μήνες από τον Ιούλιο (δες `presumptiveDeductionRateForYear`).
+      presumptiveRate: presumptiveDeductionRateForYear(year, i.rentsPaidViaBank !== false),
     } satisfies StatementInput,
   })), brackets)
 

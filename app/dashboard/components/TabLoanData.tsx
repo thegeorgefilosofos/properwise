@@ -8,6 +8,8 @@ import { SPITI_MOU } from '@/lib/loans/recommend'
 import { programDateLabel } from '@/lib/loans/programStatus'
 import { EXOIKONOMO_2025, ANAVATHMIZO, openEnergyPrograms, joinGreek } from '@/lib/loans/energyPrograms'
 import { athensToday } from '@/lib/core/time'
+import { feWhole } from '@/lib/core/format'
+import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b'
 
 export type LoanType = 'purchase'|'first_home'|'renovation'|'energy'|'investment'|'auction'|'construction'|'commercial'|'land'|'refinance'
 export type RateType = 'fixed'|'variable'|'mixed'
@@ -25,7 +27,7 @@ export type BorrowerType = 'individual'|'professional'|'company'|'young'|'family
  * Data Portal, ρωτημένος με μπαλαντέρ στη συχνότητα, απαντά «A | M | Q» και οι
  * τέσσερις ημερήσιες υποψήφιες γύρισαν 404 στην πρώτη αληθινή εκτέλεση.
  *
- * ΓΙΑΤΙ ΕΓΙΝΕ, ΚΑΙ ΕΙΝΑΙ Η ΡΙΖΑ: το `TabLoan` περνούσε στον υπολογιστή τέσσερα
+ * ΓΙΑΤΙ ΕΓΙΝΕ ΚΑΙ ΕΙΝΑΙ Η ΡΙΖΑ: το `TabLoan` περνούσε στον υπολογιστή τέσσερα
  * σκέτα νούμερα και πετούσε την προέλευση. Ο υπολογιστής ΔΕΝ ΜΠΟΡΟΥΣΕ να πει
  * την αλήθεια — δεν την είχε. Οποιος γράψει λεζάντα χωρίς τα δεδομένα, θα
  * γράψει υπόσχεση.
@@ -92,17 +94,22 @@ export const MARKET_FALLBACK: MarketRates = {
 //   Εθνική    σελίδα στεγαστικών χωρίς ημερομηνία τιμολογίου, 3M· σταθερό
 //             «από 2,90» σε κάθε διάρκεια, «το Πρώτο μου Σπίτι» από 2,50
 //   Credia    ΚΑΜΙΑ επίσημη πηγή: οι τιμές μένουν ως είχαν και η σημείωση το λέει
+// ΤΑ ΧΡΩΜΑΤΑ ΣΗΜΑΤΟΣ ΤΩΝ ΤΡΑΠΕΖΩΝ ΕΦΥΓΑΝ. Εξι hex του Material (#1565C0,
+// #E53935, #FFB300 …) κουβαλιούνταν σε κάθε εγγραφή και περνούσαν στο
+// ComparisonBank, αλλά καμία οθόνη δεν τα διάβαζε: η σύγκριση δείχνει την
+// τράπεζα με το όνομά της. Νεκρό χρώμα που μοιάζει με κανόνα είναι το πρώτο
+// που θα αντιγράψει ο επόμενος.
 export const BANKS = [
-  { id:'eurobank', name:'Eurobank', color:'#1565C0', fixed3:'2.50-2.90', fixed5:'3.40-3.50', fixed10:'3.80-3.90', fixed15:'4.10-4.20', fixed20:'4.10-4.20', variable_spread_min:0.80, variable_spread_max:2.70, fixed_min:2.50, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:20000, green_discount:0.20, spiti_mou:true, features:['Χωρίς έξοδα έγκρισης','Νομικός και τεχνικός έλεγχος δωρεάν','Προέγκριση 48 ώρες','Υπογραφή μέσω gov.gr','Εκταμίευση 10 εργάσιμες'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ'], fees:'Χωρίς έξοδα εξέτασης', note:'Ανταγωνιστικοί όροι', url:'https://www.eurobank.gr/el/retail/proionta-upiresies/proionta/daneia/stegastika', verified_at:'2026-09-28', source_url:'https://www.eurobank.gr/-/media/eurobank/rates/epitokia-daneiakon-proionton.pdf', source_doc_date:'2026-07-27', rate_index:'3M' },
-  { id:'ethniki', name:'Εθνική Τράπεζα', color:'#26A69A', fixed3:'2.90', fixed5:'2.90', fixed10:'2.90', fixed15:'2.90', fixed20:'2.90', variable_spread_min:1.60, variable_spread_max:null, fixed_min:2.50, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:30000, green_discount:0.25, spiti_mou:true, features:['Έως 90% δάνειο προς αξία','Σταθερό 3–30 χρόνια','Χωρίς έξοδα αίτησης','ΕΣΤΙΑ Πράσινη: περιθώριο από 1,35% ή σταθερό από 2,80%','«το Πρώτο μου Σπίτι»: σταθερό από 2,50%, αιτήσεις έως 31/12/2026'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ 2025'], fees:'Χωρίς έξοδα εξέτασης', note:'Υψηλότερο δάνειο προς αξία 90%', url:'https://www.nbg.gr/el/idiwtes/daneia/stegastika-daneia', verified_at:'2026-09-28', source_url:'https://www.nbg.gr/el/idiwtes/daneia/stegastika-daneia', source_doc_date:'', rate_index:'3M' },
-  { id:'alpha', name:'Alpha Bank', color:'#E53935', fixed3:'2.50-2.90', fixed5:'3.50', fixed10:'3.90', fixed15:'4.20', fixed20:'4.30', variable_spread_min:1.80, variable_spread_max:2.20, fixed_min:2.50, max_ltv:90, max_years:35, max_amount:300000, max_age:75, min_amount:25000, green_discount:0.10, spiti_mou:true, features:['2.50% για νέους (3ετία)','90% δάνειο προς αξία','Χάρις 2 χρόνια','Χωρίς έξοδα','Estia Ανακαίνιση'], programs:['Σπίτι μου ΙΙ','Alpha Πρώτη Κατοικία','Estia Ανακαίνιση'], fees:'Χωρίς έξοδα εξέτασης', note:'Πρόγραμμα νέων 2,50%', url:'https://www.alpha.gr/el/idiotika/daneia/stegastika-daneia', verified_at:'2026-09-28', source_url:'https://www.alpha.gr/-/media/AlphaGr/pdf-files/diafora-sunodeutika-pdf/xrisima-eggrafa/oroi-sunallagon-epitokia-katatheseon-xorigiseon.pdf', source_doc_date:'2026-09-21', rate_index:'3M' },
-  { id:'piraeus', name:'Τράπεζα Πειραιώς', color:'#FFB300', fixed3:'2.40-4.70', fixed5:'2.40-4.70', fixed10:'2.40-4.70', fixed15:'2.40-4.70', fixed20:'2.40-4.70', variable_spread_min:1.40, variable_spread_max:2.45, fixed_min:2.40, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:20000, green_discount:0.15, spiti_mou:true, features:['Πράσινα spread 1.25%','Euribor 1M βάση','Online εκτίμηση','Ψηφιακή διαδικασία'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ'], fees:'Έξοδα φακέλου από 300€', note:'Σταθερό 3 έως 30 ετών σε ενιαίο εύρος, όπως το δημοσιεύει η τράπεζα', url:'https://www.piraeusbank.gr/el/idiwtes/proionta-upiresies/stegastika-daneia', verified_at:'2026-09-28', source_url:'https://www.piraeusbank.gr/el/support/epitokia-deltia-timwn/', source_doc_date:'2026-02-20', rate_index:'1M' },
-  { id:'optima', name:'Optima Bank', color:'#7B1FA2', fixed3:'', fixed5:'3.50-4.00', fixed10:'3.90-4.40', fixed15:'4.30-4.80', fixed20:'4.30-4.80', variable_spread_min:2.00, variable_spread_max:3.00, fixed_min:3.50, max_ltv:75, max_years:30, max_amount:300000, max_age:75, min_amount:20000, green_discount:0.10, spiti_mou:false, features:['Γρήγορη έγκριση','Προνομιακή εξυπηρέτηση','Σταθερό+κυμαινόμενο','Αναχρηματοδότηση'], programs:['Ανακαινίζω','Εξοικονομώ'], fees:'Τιμολόγιο κατά περίπτωση', note:'Προνομιακή εξυπηρέτηση', url:'https://www.optimabank.gr/individuals/daneia/stegastiko-daneio/', verified_at:'2026-09-28', source_url:'https://www.optimabank.gr/media/1kgfzcio/anx241_pinakas_epitokion_xorigitikon_proionton.pdf', source_doc_date:'2025-11-24', rate_index:'3M' },
-  { id:'credia', name:'CrediaBank', color:'#009688', fixed3:'3.00-3.30', fixed5:'3.00-3.30', fixed10:'3.60-3.90', fixed15:'3.60-3.90', fixed20:'4.00-4.40', variable_spread_min:1.60, variable_spread_max:2.50, fixed_min:3.00, max_ltv:80, max_years:30, max_amount:250000, max_age:70, min_amount:15000, green_discount:0.10, spiti_mou:true, features:['Μικρά ποσά','Ευέλικτοι όροι','Γρήγορη εξέταση'], programs:['Σπίτι μου ΙΙ','Εξοικονομώ'], fees:'Κατά περίπτωση', note:'Μη επαληθευμένο από επίσημη πηγή της τράπεζας', url:'https://www.crediabank.gr', verified_at:'2026-09-17', source_url:'', source_doc_date:'', rate_index:'' },]
+  { id:'eurobank', name:'Eurobank', fixed3:'2.50-2.90', fixed5:'3.40-3.50', fixed10:'3.80-3.90', fixed15:'4.10-4.20', fixed20:'4.10-4.20', variable_spread_min:0.80, variable_spread_max:2.70, fixed_min:2.50, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:20000, green_discount:0.20, spiti_mou:true, features:['Χωρίς έξοδα έγκρισης','Νομικός και τεχνικός έλεγχος δωρεάν','Προέγκριση 48 ώρες','Υπογραφή μέσω gov.gr','Εκταμίευση 10 εργάσιμες'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ'], fees:'Χωρίς έξοδα εξέτασης', note:'Ανταγωνιστικοί όροι', url:'https://www.eurobank.gr/el/retail/proionta-upiresies/proionta/daneia/stegastika', verified_at:'2026-09-28', source_url:'https://www.eurobank.gr/-/media/eurobank/rates/epitokia-daneiakon-proionton.pdf', source_doc_date:'2026-07-27', rate_index:'3M' },
+  { id:'ethniki', name:'Εθνική Τράπεζα', fixed3:'2.90', fixed5:'2.90', fixed10:'2.90', fixed15:'2.90', fixed20:'2.90', variable_spread_min:1.60, variable_spread_max:null, fixed_min:2.50, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:30000, green_discount:0.25, spiti_mou:true, features:['Έως 90% δάνειο προς αξία','Σταθερό 3–30 χρόνια','Χωρίς έξοδα αίτησης','ΕΣΤΙΑ Πράσινη: περιθώριο από 1,35% ή σταθερό από 2,80%','«το Πρώτο μου Σπίτι»: σταθερό από 2,50%, αιτήσεις έως 31/12/2026'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ 2025'], fees:'Χωρίς έξοδα εξέτασης', note:'Υψηλότερο δάνειο προς αξία 90%', url:'https://www.nbg.gr/el/idiwtes/daneia/stegastika-daneia', verified_at:'2026-09-28', source_url:'https://www.nbg.gr/el/idiwtes/daneia/stegastika-daneia', source_doc_date:'', rate_index:'3M' },
+  { id:'alpha', name:'Alpha Bank', fixed3:'2.50-2.90', fixed5:'3.50', fixed10:'3.90', fixed15:'4.20', fixed20:'4.30', variable_spread_min:1.80, variable_spread_max:2.20, fixed_min:2.50, max_ltv:90, max_years:35, max_amount:300000, max_age:75, min_amount:25000, green_discount:0.10, spiti_mou:true, features:['2.50% για νέους (3ετία)','90% δάνειο προς αξία','Χάρις 2 χρόνια','Χωρίς έξοδα','Estia Ανακαίνιση'], programs:['Σπίτι μου ΙΙ','Alpha Πρώτη Κατοικία','Estia Ανακαίνιση'], fees:'Χωρίς έξοδα εξέτασης', note:'Πρόγραμμα νέων 2,50%', url:'https://www.alpha.gr/el/idiotika/daneia/stegastika-daneia', verified_at:'2026-09-28', source_url:'https://www.alpha.gr/-/media/AlphaGr/pdf-files/diafora-sunodeutika-pdf/xrisima-eggrafa/oroi-sunallagon-epitokia-katatheseon-xorigiseon.pdf', source_doc_date:'2026-09-21', rate_index:'3M' },
+  { id:'piraeus', name:'Τράπεζα Πειραιώς', fixed3:'2.40-4.70', fixed5:'2.40-4.70', fixed10:'2.40-4.70', fixed15:'2.40-4.70', fixed20:'2.40-4.70', variable_spread_min:1.40, variable_spread_max:2.45, fixed_min:2.40, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:20000, green_discount:0.15, spiti_mou:true, features:['Πράσινα spread 1.25%','Euribor 1M βάση','Online εκτίμηση','Ψηφιακή διαδικασία'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ'], fees:'Έξοδα φακέλου από 300€', note:'Σταθερό 3 έως 30 ετών σε ενιαίο εύρος, όπως το δημοσιεύει η τράπεζα', url:'https://www.piraeusbank.gr/el/idiwtes/proionta-upiresies/stegastika-daneia', verified_at:'2026-09-28', source_url:'https://www.piraeusbank.gr/el/support/epitokia-deltia-timwn/', source_doc_date:'2026-02-20', rate_index:'1M' },
+  { id:'optima', name:'Optima Bank', fixed3:'', fixed5:'3.50-4.00', fixed10:'3.90-4.40', fixed15:'4.30-4.80', fixed20:'4.30-4.80', variable_spread_min:2.00, variable_spread_max:3.00, fixed_min:3.50, max_ltv:75, max_years:30, max_amount:300000, max_age:75, min_amount:20000, green_discount:0.10, spiti_mou:false, features:['Γρήγορη έγκριση','Προνομιακή εξυπηρέτηση','Σταθερό+κυμαινόμενο','Αναχρηματοδότηση'], programs:['Ανακαινίζω','Εξοικονομώ'], fees:'Τιμολόγιο κατά περίπτωση', note:'Προνομιακή εξυπηρέτηση', url:'https://www.optimabank.gr/individuals/daneia/stegastiko-daneio/', verified_at:'2026-09-28', source_url:'https://www.optimabank.gr/media/1kgfzcio/anx241_pinakas_epitokion_xorigitikon_proionton.pdf', source_doc_date:'2025-11-24', rate_index:'3M' },
+  { id:'credia', name:'CrediaBank', fixed3:'3.00-3.30', fixed5:'3.00-3.30', fixed10:'3.60-3.90', fixed15:'3.60-3.90', fixed20:'4.00-4.40', variable_spread_min:1.60, variable_spread_max:2.50, fixed_min:3.00, max_ltv:80, max_years:30, max_amount:250000, max_age:70, min_amount:15000, green_discount:0.10, spiti_mou:true, features:['Μικρά ποσά','Ευέλικτοι όροι','Γρήγορη εξέταση'], programs:['Σπίτι μου ΙΙ','Εξοικονομώ'], fees:'Κατά περίπτωση', note:'Μη επαληθευμένο από επίσημη πηγή της τράπεζας', url:'https://www.crediabank.gr', verified_at:'2026-09-17', source_url:'', source_doc_date:'', rate_index:'' },]
 
 // Ημερομηνία τελευταίας επιβεβαίωσης των στατικών επιτοκίων τραπεζών (ενδεικτικά·
 // επιβεβαίωσε τους ακριβείς όρους με την τράπεζα).
-// ── ΤΙ ΕΠΑΛΗΘΕΥΤΗΚΕ, ΠΟΤΕ, ΚΑΙ ΤΙ ΟΧΙ ──────────────────────────────────────
+// ── ΤΙ ΕΠΑΛΗΘΕΥΤΗΚΕ, ΠΟΤΕ ΚΑΙ ΤΙ ΟΧΙ ──────────────────────────────────────
 // 17 Σεπτεμβρίου 2026: ο πίνακας γράφτηκε από συγκριτικό ιστότοπο
 // (vresdaneio.gr), όχι από τις τράπεζες.
 // 28 Σεπτεμβρίου 2026: οι πέντε από τις έξι ξαναδιαβάστηκαν στο επίσημο δελτίο
@@ -126,7 +133,6 @@ export const RATES_DISCLAIMER = 'Ενδεικτικά επιτόκια, επιβ
 export interface ComparisonBank {
   id: string;
   name: string;
-  color: string;
   fixed_3yr: string; fixed_5yr: string; fixed_10yr: string; fixed_15yr: string; fixed_20yr: string;
   /** `null`: η τράπεζα δεν δημοσιεύει ανώτατο περιθώριο. Ποτέ μηδέν στη θέση του. */
   variable_spread_min: number; variable_spread_max: number | null; fixed_min: number;
@@ -144,7 +150,7 @@ export interface ComparisonBank {
 
 /** Ό,τι μπορεί να δώσει είτε ο στατικός πίνακας είτε η βάση. */
 export interface RawBank {
-  id?: string; bank_id?: string; name?: string; bank_name?: string; color?: string;
+  id?: string; bank_id?: string; name?: string; bank_name?: string;
   fixed3?: string; fixed5?: string; fixed10?: string; fixed15?: string; fixed20?: string;
   fixed_3yr?: string; fixed_5yr?: string; fixed_10yr?: string; fixed_15yr?: string; fixed_20yr?: string;
   variable_spread_min?: number; variable_spread_max?: number | null; fixed_min?: number;
@@ -159,7 +165,6 @@ export function normBank(b: RawBank): ComparisonBank {
   return {
     id:   b.id   ?? b.bank_id   ?? '',
     name: b.name ?? b.bank_name ?? '',
-    color: b.color ?? 'var(--accent)',
     fixed_3yr:  b.fixed_3yr  ?? b.fixed3  ?? '',
     fixed_5yr:  b.fixed_5yr  ?? b.fixed5  ?? '',
     fixed_10yr: b.fixed_10yr ?? b.fixed10 ?? '',
@@ -214,7 +219,7 @@ export const STATE_PROGRAMS = [
   { id:'exoikonomo_2025', name:'Εξοικονομώ 2025',  type:'Επιδότηση ενεργειακής αναβάθμισης', desc:'Η αρχική προθεσμία (30/06/2026) παρήλθε, εκκρεμεί ανακοίνωση παράτασης, επιβεβαίωσε στο exoikonomo2025.gov.gr', max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'Εφάπαξ', deadline:`Έληξε ${programDateLabel(EXOIKONOMO_2025.deadline)}, εκκρεμεί παράταση`,  verified_at:'2026-07-08', total_budget:'Ταμείο Ανάκαμψης ΕΕ', criteria:['Εξοικονόμηση >30%','Αναβάθμιση ≥3 κατηγορίες','ΠΕΑ πριν και μετά'], how_it_works:'Επιδότηση κουφωμάτων, μόνωσης, θέρμανσης, φωτοβολταϊκών', extra:'Ειδικά κίνητρα για ΑμεΑ, τρίτεκνους, πολύτεκνους, νέους', savings_example:'Μείωση λογαριασμών + επιδότηση κόστους', url:'https://exoikonomo2025.gov.gr/', banks:['Εθνική','Alpha','Eurobank','Πειραιώς'] },
   { id:'exoikonomo_2026', name:'Εξοικονομώ 2026', status:'upcoming', type:'Επερχόμενο, 2ο εξάμηνο 2026', desc:'Νέος κύκλος 1,2 δισ. €, επιδότηση έως 80%, 62.000 κατοικίες', max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'Αναμένεται', deadline:'2ο εξάμηνο 2026',  total_budget:'1,2 δισ. ευρώ', criteria:['Χωρίς εισοδηματικό κριτήριο','Ιδιοκτήτες / Ενοικιαστές ≥7 ετών'], how_it_works:'Επιδότηση έως 80%, λεπτομέρειες αναμένονται', extra:'Μη δεσμευτείς ακόμη, παρακολούθα exoikonomo2025.gov.gr', savings_example:'Επιδότηση έως 80% κόστους αναβάθμισης', url:'https://selectra.gr/energeia/energeia-epidomata/exoikonomo', banks:['Αναμένεται'] },
   { id:'anakainizo_noikazo', name:'Ανακαινίζω και Νοικιάζω',  type:'Επιδότηση ανακαίνισης + εγγυημένο ενοίκιο ΟΠΕΚΑ', desc:'40% επιδότηση + εγγυημένο ενοίκιο 5 χρόνια', max_amount:15000, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'5 χρόνια', deadline:'Τρέχον',  total_budget:'Τρέχον', criteria:['Κενό ακίνητο ≥3 χρόνια','€5.000–€40.000','Μίσθωση ΟΠΕΚΑ','Δέσμευση 5ετίας'], how_it_works:'40% επιδότηση ανακαίνισης + ενοίκιο αγοράς από ΟΠΕΚΑ για 5 χρόνια', extra:'Εγγυημένο εισόδημα, ιδανικό για επενδυτές', savings_example:'Κενό ακίνητο: ανακαίνιση + εγγυημένο εισόδημα', url:'https://www.opeka.gr', banks:['Εθνική','Πειραιώς','Eurobank'] },
-  { id:'gefyra_3', name:'Γέφυρα 3',  type:'Πρωτοβουλία τραπεζών, ευάλωτοι δανειολήπτες', desc:'Κάλυψη του 50% της αύξησης της δόσης που προήλθε από την άνοδο των επιτοκίων της ΕΚΤ. Δεν είναι κρατική επιδότηση: είναι εθελοντική πρωτοβουλία των τραπεζών-μελών της Ελληνικής Ενωσης Τραπεζών (ανακοίνωση 15/12/2022)', max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'12 μήνες', deadline:'Χωρίς ανακοινωμένη λήξη',  total_budget:'Χρηματοδοτείται από τις ίδιες τις τράπεζες', criteria:['Βεβαίωση ευάλωτου οφειλέτη','Κυμαινόμενο δάνειο','Εξασφάλιση πρώτης κατοικίας'], how_it_works:'Καλύπτει το 50% της αύξησης της μηνιαίας δόσης έναντι της 30/06/2022, για δώδεκα μήνες, σε δάνεια κυμαινόμενου επιτοκίου με εξασφάλιση σε πρώτη κατοικία', extra:'Για ανέργους, χαμηλά εισοδήματα, συνταξιούχους', savings_example:'Αύξηση 80€/μήνα, επιδότηση 40€ × 12 = 480€/χρόνο', url:'https://dovaluegreece.gr/programma-epidotisis-dosis-logo-ayxisis-epitokion-gefyra-3', banks:['Όλες οι τράπεζες'] },
+  { id:'gefyra_3', name:'Γέφυρα 3',  type:'Πρωτοβουλία τραπεζών, ευάλωτοι δανειολήπτες', desc:'Κάλυψη του 50% της αύξησης της δόσης που προήλθε από την άνοδο των επιτοκίων της ΕΚΤ. Δεν είναι κρατική επιδότηση: είναι εθελοντική πρωτοβουλία των τραπεζών-μελών της Ελληνικής Ένωσης Τραπεζών (ανακοίνωση 15/12/2022)', max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'12 μήνες', deadline:'Χωρίς ανακοινωμένη λήξη',  total_budget:'Χρηματοδοτείται από τις ίδιες τις τράπεζες', criteria:['Βεβαίωση ευάλωτου οφειλέτη','Κυμαινόμενο δάνειο','Εξασφάλιση πρώτης κατοικίας'], how_it_works:'Καλύπτει το 50% της αύξησης της μηνιαίας δόσης έναντι της 30/06/2022, για δώδεκα μήνες, σε δάνεια κυμαινόμενου επιτοκίου με εξασφάλιση σε πρώτη κατοικία', extra:'Για ανέργους, χαμηλά εισοδήματα, συνταξιούχους', savings_example:'Αύξηση 80€/μήνα, επιδότηση 40€ × 12 = 480€/χρόνο', url:'https://dovaluegreece.gr/programma-epidotisis-dosis-logo-ayxisis-epitokion-gefyra-3', banks:['Όλες οι τράπεζες'] },
 ]
 
 // ── ΕΝΑ ΣΧΗΜΑ ΠΡΟΓΡΑΜΜΑΤΟΣ, ΟΧΙ ΔΥΟ ──────────────────────────────────────
@@ -403,7 +408,7 @@ export const LOAN_TYPES: Record<LoanType,{label:string;desc:string;rate_from:num
     {name:'Τίτλος ιδιοκτησίας', where:'Συμβολαιογράφος, Κτηματολόγιο'},
     {name:'Προσφορές αναδόχων ή εργολάβων'},
     {name:'Οικοδομική άδεια, εφόσον απαιτείται', where:'Πολεοδομία'},
-  ], tax_note:'Δαπάνες ανακαίνισης με ηλεκτρονική πληρωμή μειώνουν τον φόρο κατά 40% της επιλέξιμης δαπάνης (άρθρο 39Β ΚΦΕ)'},
+  ], tax_note:`Δαπάνες ανακαίνισης με ηλεκτρονική πληρωμή μειώνουν τον φόρο κατά ίσο ποσό, έως ${feWhole(RENO_39B_CAP)} σε ${RENO_39B_YEARS} έτη (άρθρο 39Β ΚΦΕ, δαπάνες έως ${RENO_39B_TO})`},
   energy:       {label:'Ενεργειακή αναβάθμιση', desc:'Πράσινα δάνεια, περιθώριο από 1,25%',   rate_from:2.40, rate_to:3.50, typical_ltv:80, notes:'Έκπτωση περιθωρίου 0,15% έως 0,80% για κλάση Α+, Α ή Β+, ανάλογα με την τράπεζα', docs:[
     {name:'Πιστοποιητικό Ενεργειακής Απόδοσης (πριν την αναβάθμιση)', where:'Ενεργειακός επιθεωρητής'},
     {name:'Δελτίο ταυτότητας ή διαβατήριο'},
@@ -420,7 +425,7 @@ export const LOAN_TYPES: Record<LoanType,{label:string;desc:string;rate_from:num
     {name:'Τίτλοι ιδιοκτησίας', where:'Κτηματολόγιο'},
     // Η κλίμακα δεν γράφεται ξανά εδώ: έρχεται από τη μοναδική πηγή (greekTax).
     // Και η έκπτωση 5% ΔΕΝ είναι «αυτόματη» — από 1.7.2027 (ν.5222/2025) θέλει τραπεζική είσπραξη.
-  ], tax_note:`${RENTAL_TAX_SUMMARY_2026} Τεκμαρτή έκπτωση 5%· από 1.7.2027 (ν.5222/2025) θα προϋποθέτει είσπραξη μέσω τραπέζης. Οι τόκοι δανείου δεν εκπίπτουν για φυσικό πρόσωπο.`},
+  ], tax_note:`${RENTAL_TAX_SUMMARY_2026} Τεκμαρτή έκπτωση 5%· από 1.7.2027 (ν.5222/2025) θα προϋποθέτει είσπραξη μέσω τράπεζας. Οι τόκοι δανείου δεν εκπίπτουν για φυσικό πρόσωπο.`},
   auction:      {label:'Πλειστηριασμός',         desc:'Αγορά σε ηλεκτρονικό πλειστηριασμό',   rate_from:2.80, rate_to:4.00, typical_ltv:70, notes:'Έλεγξε βάρη, γρήγορη εκταμίευση', docs:[
     {name:'Δελτίο ταυτότητας ή διαβατήριο'},
     {name:'Φορολογικά στοιχεία εισοδήματος', where:'ΑΑΔΕ'},
@@ -542,7 +547,7 @@ export const SERVICERS_GUIDE = {
   ],
   redFlags: [
     'Πληρωμή «έναντι» χωρίς έγγραφη ρύθμιση: ζήτησε πάντα την πλήρη σύμβαση ρύθμισης πριν πληρώσεις.',
-    'Παραίτηση από ενστάσεις ή αναγνώριση οφειλής: μη υπογράφεις δήλωση που παραιτείται από παραγραφές ή δικαιώματα χωρίς νομικό έλεγχο.',
+    'Παραίτηση από ενστάσεις ή αναγνώριση οφειλής: μην υπογράφεις δήλωση που παραιτείται από παραγραφές ή δικαιώματα χωρίς νομικό έλεγχο.',
     'Ρύθμιση με χαμηλή αρχική δόση αλλά «μπαλόνι» στο τέλος (balloon): έλεγξε το συνολικό κόστος, όχι μόνο την πρώτη δόση.',
     'Πίεση για γρήγορη υπογραφή: έχεις δικαίωμα χρόνου μελέτης και εξωτερικής συμβουλής.',
   ],

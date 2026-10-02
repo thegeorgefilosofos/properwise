@@ -8,6 +8,7 @@ import { channelOptions } from './model'
 import type { ClientsProps, ClientsState } from './useClients'
 import { icalToStayDrafts } from '@/lib/clients/ical'
 import { statTile } from './Bits'
+import { PLATFORM_FEE_NOTE } from '@/lib/billing/consolidate'
 
 export function EmailStayModal({
   emailOpen, setEmailOpen, emailDraft, parseEmail, emailBusy, emailText, setEmailDraft,
@@ -48,7 +49,7 @@ export function EmailStayModal({
               διαβαζόταν αλλού ως ακαθάριστο και φορολογούνταν. */}
           <NumberInput label="Πλήρωσε ο επισκέπτης" labelInfo="Το σύνολο που πλήρωσε ο επισκέπτης, πριν την προμήθεια." value={emailDraft.gross} onChange={v => setEmailDraft(d => d && { ...d, gross: v })} suffix="€" />
           <NumberInput label="Τέλος ανθεκτικότητας" labelInfo="Δεν είναι έσοδό σου· αφαιρείται από το δηλωτέο ακαθάριστο." value={emailDraft.levy} onChange={v => setEmailDraft(d => d && { ...d, levy: v })} suffix="€" />
-          <NumberInput label="Προμήθεια πλατφόρμας" labelInfo="Δαπάνη που εκπίπτει· ΔΕΝ μειώνει το δηλωτέο ακαθάριστο." value={emailDraft.fee} onChange={v => setEmailDraft(d => d && { ...d, fee: v })} suffix="€" />
+          <NumberInput label="Προμήθεια πλατφόρμας" labelInfo={PLATFORM_FEE_NOTE} value={emailDraft.fee} onChange={v => setEmailDraft(d => d && { ...d, fee: v })} suffix="€" />
           <CustomSelect label="Κανάλι" value={emailDraft.channel} onChange={v => setEmailDraft(d => d && { ...d, channel: v })} options={channelOptions} />
         </div>
         {(parseFloat(emailDraft.gross) || 0) > 0 && (
@@ -117,7 +118,7 @@ export function IcalImportModal({
         {icalPropertyId && icalFeedsFailed && (
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
             Οι αποθηκευμένοι σύνδεσμοι δεν διαβάστηκαν. Δεν ξέρουμε αν υπάρχει ήδη σύνδεσμος για αυτό το ακίνητο ούτε αν πέτυχε ο τελευταίος συγχρονισμός.{' '}
-            <LinkBtn onClick={() => { void loadIcalFeeds(); }}>Δοκιμή ξανά</LinkBtn>
+            <LinkBtn onClick={() => { void loadIcalFeeds(); }}>Δοκίμασε ξανά</LinkBtn>
           </div>
         )}
         {/* Αποθηκευμένοι σύνδεσμοι (ανά επιλεγμένο ακίνητο) */}

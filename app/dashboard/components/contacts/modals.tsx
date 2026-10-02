@@ -31,7 +31,7 @@ export function FileUploader({ files, onChange, contactId }: { files: ContactFil
   const fileRef = useRef<HTMLInputElement>(null)
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return; setUploading(true)
-    // ΙΔΙΩΤΙΚΟΣ ΚΑΔΟΣ, ΚΑΙ ΑΠΟΘΗΚΕΥΕΤΑΙ ΤΟ ΜΟΝΟΠΑΤΙ ΑΝΤΙ ΓΙΑ ΤΗ ΔΙΕΥΘΥΝΣΗ. Ο
+    // ΙΔΙΩΤΙΚΟΣ ΚΑΔΟΣ ΚΑΙ ΑΠΟΘΗΚΕΥΕΤΑΙ ΤΟ ΜΟΝΟΠΑΤΙ ΑΝΤΙ ΓΙΑ ΤΗ ΔΙΕΥΘΥΝΣΗ. Ο
     // «avatars» είναι δηλωμένος δημόσιος: το μισθωτήριο και το τιμολόγιο με το
     // ΑΦΜ κατέβαιναν από οποιονδήποτε ήξερε τη διεύθυνση.
     // ΤΟ ΜΟΝΟΠΑΤΙ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗΝ ΙΔΙΑ ΣΥΝΑΡΤΗΣΗ ΜΕ ΤΑ ΑΛΛΑ ΔΥΟ ΣΗΜΕΙΑ. Ηταν
@@ -104,7 +104,7 @@ export function QRCodeModal({ contact, onClose }: { contact: Contact; onClose: (
     <Modal open onClose={onClose} title="QR Επαφής" subtitle="Σάρωσε για να αποθηκεύσεις τα στοιχεία"
       icon={<QrCode size={17} />} size="sm" footer={<Btn onClick={onClose}>Κλείσιμο</Btn>}>
       <div style={{ textAlign: 'center' }}>
-        {/* ΤΟ ΜΟΝΟ ΚΥΡΙΟΛΕΚΤΙΚΟ ΛΕΥΚΟ ΤΟΥ ΑΡΧΕΙΟΥ, ΚΑΙ ΜΕ ΛΟΓΟ: ο κώδικας QR
+        {/* ΤΟ ΜΟΝΟ ΚΥΡΙΟΛΕΚΤΙΚΟ ΛΕΥΚΟ ΤΟΥ ΑΡΧΕΙΟΥ ΚΑΙ ΜΕ ΛΟΓΟ: ο κώδικας QR
             διαβάζεται από τη ΔΙΑΦΟΡΑ φωτεινότητας. Με token επιφάνειας, στο
             σκούρο θέμα το πλαίσιο γίνεται σκούρο και η κάμερα δεν βρίσκει τα
             τρία τετράγωνα εντοπισμού — ο κώδικας παύει να σαρώνεται. */}

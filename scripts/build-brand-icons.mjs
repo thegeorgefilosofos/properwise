@@ -30,11 +30,14 @@ import { inflateSync, deflateSync } from 'node:zlib';
 import { chromium } from 'playwright-core';
 
 const CHROME = chromePath();
-const NAVY = '#0B192C';
 const WHITE = '#ffffff';
 
 // Η γεωμετρία διαβάζεται από την πηγή της, χωρίς εισαγωγή TypeScript.
 const src = readFileSync('components/BrandMark.tsx', 'utf8');
+// ΚΑΙ ΤΟ ΦΟΝΤΟ ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ. Ηταν γραμμένο εδώ δεύτερη φορά και θα έμενε
+// πίσω στην πρώτη αλλαγή του BRAND_DARK_BG.
+const NAVY = /BRAND_DARK_BG = '(#[0-9a-fA-F]{3,8})'/.exec(src)?.[1];
+if (!NAVY) throw new Error('Δεν βρέθηκε το BRAND_DARK_BG στο BrandMark.tsx');
 const block = /const SHAPE = \[([\s\S]*?)\n\];/.exec(src);
 if (!block) throw new Error('Δεν βρέθηκε ο κατάλογος SHAPE στο BrandMark.tsx');
 const SHAPE = [...block[1].matchAll(/'([^']+)'/g)].map(x => x[1]);
@@ -91,7 +94,7 @@ const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-san
 for (const t of TARGETS) {
   const p = await browser.newPage({ viewport: { width: t.px, height: t.px } });
   await p.setContent(page(t.px, t));
-  // ΠΑΝΤΑ `omitBackground`, ΚΑΙ ΟΧΙ ΓΙΑ ΤΗ ΔΙΑΦΑΝΕΙΑ. Το πλακίδιο είναι έτσι κι
+  // ΠΑΝΤΑ `omitBackground` ΚΑΙ ΟΧΙ ΓΙΑ ΤΗ ΔΙΑΦΑΝΕΙΑ. Το πλακίδιο είναι έτσι κι
   // αλλιώς αδιαφανές· αυτό που αλλάζει είναι ότι το PNG βγαίνει σε RGBA. Χωρίς
   // αυτό, το `next build` σταματούσε με «The PNG is not in RGBA format» όταν
   // διάβαζε το favicon.ico και ολόκληρο το build έπεφτε για ένα εικονίδιο.
@@ -191,7 +194,7 @@ function toRgba(png) {
   ]);
 }
 
-// ── ΤΟ .ico ΦΤΙΑΧΝΕΤΑΙ ΜΕ ΤΟ ΧΕΡΙ, ΚΑΙ ΕΙΝΑΙ ΑΠΛΟΥΣΤΕΡΟ ΑΠ' ΟΣΟ ΑΚΟΥΓΕΤΑΙ ──
+// ── ΤΟ .ico ΦΤΙΑΧΝΕΤΑΙ ΜΕ ΤΟ ΧΕΡΙ ΚΑΙ ΕΙΝΑΙ ΑΠΛΟΥΣΤΕΡΟ ΑΠ' ΟΣΟ ΑΚΟΥΓΕΤΑΙ ──
 // Από τα Windows Vista και μετά, το ICO δέχεται ΑΥΤΟΥΣΙΑ δεδομένα PNG μέσα
 // στις εγγραφές του. Δηλαδή δεν χρειάζεται μετατροπή σε bitmap: μόνο μια
 // κεφαλίδα έξι byte, μια εγγραφή δεκαέξι byte ανά μέγεθος και τα PNG από πίσω.

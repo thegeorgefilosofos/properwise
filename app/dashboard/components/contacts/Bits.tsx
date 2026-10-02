@@ -31,7 +31,7 @@ export const DossierSection = ({ title, children }: { title: string; children: R
 // ─── Design System ────────────────────────────────────────────────────────────
 export const iStyle: React.CSSProperties = {
   width: '100%', height: T.h.lg, padding: '10px 16px', borderRadius: T.radius.xs,
-  border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
+  border: '1px solid var(--border-control)', background: 'var(--bg-surface)',
   color: 'var(--text-primary)', fontSize: 14, letterSpacing: 0, outline: 'none',
   fontFamily: T.font.sans, boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
 }
@@ -42,7 +42,7 @@ export const iStyle: React.CSSProperties = {
 // δεν υπάρχει και το πεδίο δεν έχει λόγο να το δέχεται.
 // Ο τύπος ΔΕΝ δέχεται 'date': οι ημερομηνίες αυτής της οθόνης περνούν από τον
 // DatePicker, που τον χρησιμοποιεί ήδη τρεις φορές.
-// ΤΟ ΟΝΟΜΑ ΤΟΥ ΠΕΔΙΟΥ ΤΟ ΞΕΡΕΙ ΗΔΗ Ο ΓΟΝΕΑΣ, ΚΑΙ ΔΕΝ ΕΦΤΑΝΕ ΠΟΤΕ ΣΤΟ ΠΕΔΙΟ.
+// ΤΟ ΟΝΟΜΑ ΤΟΥ ΠΕΔΙΟΥ ΤΟ ΞΕΡΕΙ ΗΔΗ Ο ΓΟΝΕΑΣ ΚΑΙ ΔΕΝ ΕΦΤΑΝΕ ΠΟΤΕ ΣΤΟ ΠΕΔΙΟ.
 // Το `CField` γράφει την ετικέτα («ΟΝΟΜΑ», «ΤΗΛΕΦΩΝΟ», «ΑΦΜ») ως ΑΔΕΛΦΟ του
 // κουτιού, όχι συνδεδεμένη με αυτό. Ο βλέπων διαβάζει τη σειρά και καταλαβαίνει·
 // ο αναγνώστης οθόνης ακούει «πλαίσιο κειμένου» δεκατέσσερις φορές στη σειρά.

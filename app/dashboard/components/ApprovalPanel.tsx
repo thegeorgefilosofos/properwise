@@ -42,7 +42,7 @@ export default function ApprovalPanel({
   const [hm,setHm] = useState<number|null>(null)
   const [vh,setVh] = useState(false)
   const [age,setAge] = useState<string>('35')
-  // ── ΤΟ ΕΙΣΟΔΗΜΑ ΕΧΑΝΕ ΤΑ ΛΕΠΤΑ ΤΟΥ, ΚΑΙ ΤΑ ΕΧΑΝΕ ΣΕ ΚΑΘΕ ΑΠΟΔΟΣΗ ──────────
+  // ── ΤΟ ΕΙΣΟΔΗΜΑ ΕΧΑΝΕ ΤΑ ΛΕΠΤΑ ΤΟΥ ΚΑΙ ΤΑ ΕΧΑΝΕ ΣΕ ΚΑΘΕ ΑΠΟΔΟΣΗ ──────────
   //
   // Δύο σφάλματα στην ίδια γραμμή. Το `Math.round` πετούσε τα λεπτά: εισόδημα
   // 1.850,50€ γινόταν 1.851 και ο δείκτης δόσης υπολογιζόταν πάνω σε νούμερο

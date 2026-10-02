@@ -70,7 +70,7 @@ ok('χωρίς paid_date, προθεσμία στο μέλλον: έξω', !rent
 ok('χωρίς ημερομηνίες, μήνας περιόδου στο μέλλον: έξω', !rentReceivedByToday(noDate({ period_month: 12 }), 2026, TODAY))
 ok('χωρίς ημερομηνίες, μήνας που πέρασε: μέσα', rentReceivedByToday(noDate({ period_month: 9 }), 2026, TODAY))
 
-// ═══ ΕΚΤΙΜΗΣΗ ΜΟΝΟ ΧΩΡΙΣ ΚΑΜΙΑ ΚΑΤΑΓΡΑΦΗ, ΚΑΙ ΣΗΜΑΙΝΕΤΑΙ ═══════════════════
+// ═══ ΕΚΤΙΜΗΣΗ ΜΟΝΟ ΧΩΡΙΣ ΚΑΜΙΑ ΚΑΤΑΓΡΑΦΗ ΚΑΙ ΣΗΜΑΙΝΕΤΑΙ ═══════════════════
 const est = propertyIncome({ rents: [], stays: [], year: 2026, today: TODAY, estimateMonthly: 500 })
 eq('εκτίμηση: ενοίκιο × 9 μήνες', [est.source, est.receivedToDate, est.annualized, est.estimated], ['estimate', 4500, 6000, true])
 eq('τίποτα: μηδέν, χωρίς απόδοση', [propertyIncome({ rents: [], stays: [], year: 2026, today: TODAY }).source, propertyIncome({ rents: [], stays: [], year: 2026, today: TODAY }).grossYield], ['none', null])

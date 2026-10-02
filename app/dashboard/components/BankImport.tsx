@@ -102,13 +102,13 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
       }
       if(rows.length){ const { error } = await supabase.from('bank_transactions').upsert(rows,{ onConflict:'user_id,dedup_hash', ignoreDuplicates:true }); if(error) throw error }
       const nR = rentMatches.filter(m=>m.confirm).length
-      setSavedMsg(`Καταχωρήθηκαν ${nR} ${nR===1?'ενοίκιο':'ενοίκια'} και ${toAdd.length} ${toAdd.length===1?'έξοδο':'έξοδα'}.`)
+      setSavedMsg(`Καταχωρήθηκαν ${nR} ${nR===1?'ενοίκιο':'ενοίκια'} και ${toAdd.length} ${toAdd.length===1?'δαπάνη':'δαπάνες'}.`)
       onDone()
       setTimeout(onClose, 1400)
-    }catch(_){ setError('Σφάλμα κατά την καταχώρηση. Δοκίμασε ξανά.'); setStep('review') }
+    }catch(e){ setError(failed('Οι κινήσεις δεν καταχωρήθηκαν', e)); setStep('review') }
   }
 
-  const field:React.CSSProperties = { width:'100%', minHeight:104, padding:'11px 14px', borderRadius:T.radius.inner, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-primary)', fontSize: 'var(--fs-base)', fontFamily:T.font.mono, lineHeight:'19px', resize:'vertical', outline:'none', transition:'border-color 0.14s' }
+  const field:React.CSSProperties = { width:'100%', minHeight:104, padding:'11px 14px', borderRadius:T.radius.inner, border:'1px solid var(--border-control)', background:'var(--bg-surface)', color:'var(--text-primary)', fontSize: 'var(--fs-base)', fontFamily:T.font.mono, lineHeight:'19px', resize:'vertical', outline:'none', transition:'border-color 0.14s' }
   const row:React.CSSProperties = { display:'flex', alignItems:'center', gap:12, padding:'10px 12px', borderRadius:T.radius.inner, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)' }
 
   function Box({ checked, onClick }:{ checked:boolean; onClick:()=>void }){
@@ -143,7 +143,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
     <Modal open onClose={requestClose} size="md"
       icon={<Landmark size={19}/>}
       title="Εισαγωγή τραπεζικής κίνησης"
-      subtitle="Αντιστοίχισε αυτόματα τις κινήσεις σε ενοίκια και έξοδα, με τη δική σου έγκριση"
+      subtitle="Αντιστοίχισε αυτόματα τις κινήσεις σε ενοίκια και δαπάνες, με τη δική σου έγκριση"
       footerInfo={step==='input' ? filePicker : undefined}
       footer={
         step==='input' ? (
@@ -185,7 +185,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
             </div>
           </>)}
           {expenses.length>0&&(<>
-            <p style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-secondary)', margin:'0 0 8px', fontFamily: T.font.sans }}>Πιθανά έξοδα</p>
+            <p style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-secondary)', margin:'0 0 8px', fontFamily: T.font.sans }}>Πιθανές δαπάνες</p>
             <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
               {expenses.map((e,i)=>(
                 <div key={i} style={row}>

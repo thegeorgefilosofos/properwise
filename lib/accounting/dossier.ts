@@ -123,13 +123,54 @@ export interface Requirement {
   forProperties?: string[];
 }
 
+/**
+ * Ενα ακίνητο του φακέλου. Το `status` είναι το ΣΗΜΕΡΑ· το `yearStatuses` όσα
+ * έγινε μέσα στη χρήση (δες `statusesForYear`). Χωρίς αυτό ισχύει μόνο το σήμερα.
+ */
+export interface DossierProperty {
+  /** Το ακίνητο της εφαρμογής: ο φάκελος ανά ΑΦΜ κρατά μόνο τα δικά του. */
+  id?: string;
+  name: string;
+  status: PropertyStatus;
+  yearStatuses?: readonly PropertyStatus[];
+}
+
+// ══ Ο ΚΑΤΑΛΟΓΟΣ ΑΚΟΛΟΥΘΟΥΣΕ ΤΟ ΣΗΜΕΡΑ, ΟΧΙ ΤΗ ΧΡΗΣΗ ════════════════════════
+// ΤΟ ΣΦΑΛΜΑ. Οι απαιτήσεις έβγαιναν από τη ΣΗΜΕΡΙΝΗ κατάσταση του ακινήτου.
+// Διαμέρισμα νοικιασμένο Ιανουάριο ως Ιούνιο κι άδειο σήμερα έπαιρνε τον
+// κατάλογο του «κενού»: χωρίς Ε2 εκμίσθωσης, χωρίς δήλωση μίσθωσης, χωρίς
+// αποδείξεις είσπραξης. Ο λογιστής έκλεινε χρήση με έξι μήνες ενοικίων και
+// κανένα χαρτί που τα στηρίζει.
+//
+// Ο ΚΑΝΟΝΑΣ. Η κατάσταση του σήμερα μένει και προστίθεται ό,τι δείχνει η ίδια η
+// χρήση: περίοδοι ενοικίου σημαίνουν εκμίσθωση, διαμονές σημαίνουν βραχυχρόνια.
+
+/** Τι καταγράφηκε μέσα στη χρήση για ένα ακίνητο. */
+export interface YearActivity {
+  /** Περίοδοι ενοικίου της χρήσης (`rent_payments.period_year`). */
+  rentPeriods?: number;
+  /** Διαμονές με έστω μία νύχτα μέσα στη χρήση. */
+  stays?: number;
+}
+
+/** Οι καταστάσεις που κρίνουν τον κατάλογο μιας χρήσης. Η σημερινή πρώτη. */
+export function statusesForYear(current: PropertyStatus, activity: YearActivity = {}): PropertyStatus[] {
+  const out: PropertyStatus[] = [current];
+  if ((activity.rentPeriods ?? 0) > 0 && !out.includes('rent_long')) out.push('rent_long');
+  if ((activity.stays ?? 0) > 0 && !out.includes('rent_short')) out.push('rent_short');
+  return out;
+}
+
+const yearStatusesOf = (p: DossierProperty): readonly PropertyStatus[] =>
+  p.yearStatuses && p.yearStatuses.length ? p.yearStatuses : [p.status];
+
 export interface DossierContext {
   form: LegalForm;
   books: BookKeeping;
   /** Οι καταστάσεις όλων των ακινήτων του χρήστη. */
   statuses: readonly PropertyStatus[];
   /** Τα ίδια ακίνητα με το όνομά τους, για να λέει κάθε γραμμή από πού ήρθε. */
-  properties?: readonly { name: string; status: PropertyStatus }[];
+  properties?: readonly DossierProperty[];
   /** Έγιναν δαπάνες ανακαίνισης ή βελτίωσης μέσα στο έτος; */
   hasRenovation?: boolean;
   /** Υπάρχει δάνειο; */
@@ -420,7 +461,7 @@ const SINGLE_ENTRY: Requirement[] = [
 ];
 
 /**
- * ΤΑ ΔΙΠΛΟΓΡΑΦΙΚΑ, ΚΑΙ ΜΟΝΟ ΤΑ ΔΙΠΛΟΓΡΑΦΙΚΑ.
+ * ΤΑ ΔΙΠΛΟΓΡΑΦΙΚΑ ΚΑΙ ΜΟΝΟ ΤΑ ΔΙΠΛΟΓΡΑΦΙΚΑ.
  *
  * Ο ισολογισμός εμφανίζεται ΕΔΩ και πουθενά αλλού. Ένας ιδιώτης με ένα
  * διαμέρισμα δεν πρέπει να δει ποτέ τη λέξη· μια ΙΚΕ πρέπει να τη δει με
@@ -515,7 +556,7 @@ export function requirementsFor(ctx: DossierContext): Requirement[] {
   // Ε2) μπορεί να έρχεται και από μακροχρόνιο και από βραχυχρόνιο ακίνητο.
   const origin = new Map<string, string[]>();
   for (const p of ctx.properties ?? []) {
-    for (const r of BY_STATUS[p.status] ?? []) {
+    for (const r of yearStatusesOf(p).flatMap(st => BY_STATUS[st] ?? [])) {
       const names = origin.get(r.id) ?? [];
       if (!names.includes(p.name)) names.push(p.name);
       origin.set(r.id, names);
@@ -527,7 +568,8 @@ export function requirementsFor(ctx: DossierContext): Requirement[] {
   };
 
   COMMON.forEach(push);
-  for (const s of new Set(ctx.statuses)) BY_STATUS[s]?.forEach(r => push(withOrigin(r)));
+  const all = new Set<PropertyStatus>([...ctx.statuses, ...(ctx.properties ?? []).flatMap(yearStatusesOf)]);
+  for (const s of all) BY_STATUS[s]?.forEach(r => push(withOrigin(r)));
 
   if (ctx.hasRenovation) BY_STATUS.renovation.forEach(push);
   if (ctx.hasLoan) push(EXTRAS.find(r => r.id === 'loan_interest')!);
@@ -633,6 +675,13 @@ export const statusForAccountant = (s: PropertyStatus): string => ({
   disputed: 'Νομική εκκρεμότητα',
 }[s]);
 
+/** Η κατάσταση ενός ακινήτου για τον φάκελο: το σήμερα κι ό,τι άλλο έγινε μέσα στη χρήση. */
+export function yearStatusLabel(p: DossierProperty): string {
+  const now = statusForAccountant(p.status);
+  const extra = yearStatusesOf(p).filter(s => s !== p.status).map(statusForAccountant);
+  return extra.length ? `${now} σήμερα · μέσα στη χρήση: ${extra.join(' και ')}` : now;
+}
+
 /** Οι καταστάσεις των ακινήτων, από γραμμές βάσης. */
 export const statusesOf = (rows: readonly StatusRow[]): PropertyStatus[] =>
   rows.map(readStatus);
@@ -694,7 +743,7 @@ export function missingAfmGroups(
 // τα σαρωμένα τιμολόγια, οι αποδείξεις, τα συμβόλαια— έμενε στην εφαρμογή και
 // ο λογιστής τα ζητούσε με δεύτερο μήνυμα, ένα ένα.
 //
-// Ο ΑΡΙΘΜΟΣ ΤΟΥ ΠΑΡΑΣΤΑΤΙΚΟΥ ΕΙΝΑΙ ΤΟ ΚΛΕΙΔΙ, ΚΑΙ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΣΕ ΚΑΘΕ
+// Ο ΑΡΙΘΜΟΣ ΤΟΥ ΠΑΡΑΣΤΑΤΙΚΟΥ ΕΙΝΑΙ ΤΟ ΚΛΕΙΔΙ ΚΑΙ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΣΕ ΚΑΘΕ
 // ΚΑΤΕΥΘΥΝΣΗ. Το φύλλο «Κινήσεις» γράφει δίπλα στη γραμμή «07»· ο φάκελος έχει
 // ένα αρχείο που αρχίζει από «07»· και το ευρετήριο λέει σε ποια γραμμή ανήκει
 // το 07. Τρεις όψεις, ένας αριθμός, καμία επανάληψη.

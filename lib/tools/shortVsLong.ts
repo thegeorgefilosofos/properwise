@@ -31,7 +31,8 @@
 import {
   rentalIncomeTax, climateLevyForNights, municipalAccommodationTax,
 } from '@/lib/billing/greekTax';
-import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { roundHalfUp } from '../core/money';
 
 /** Οι νύχτες του χρόνου. Δίσεκτα έτη δεν αλλάζουν συμπέρασμα σε εκτίμηση. */
 export const NIGHTS_PER_YEAR = 365;
@@ -92,13 +93,19 @@ export interface ShortVsLong {
    * `null` όταν η βραχυχρόνια δεν φτάνει τη μακροχρόνια ΟΥΤΕ με 100% πληρότητα.
    */
   breakEvenPct: number | null;
+  /**
+   * Οι διανυκτερεύσεις του κατωφλιού, ακέραιες προς τα πάνω, από την ΑΣΤΡΟΓΓΥΛΗ
+   * πληρότητα. Η οθόνη τις έβγαζε από το ήδη στρογγυλεμένο ποσοστό (52,45% →
+   * 53% → 194 νύχτες), δηλαδή στρογγύλευε δύο φορές και έλεγε 194 αντί για 192.
+   */
+  breakEvenNights: number | null;
 }
 
-const cents = (n: number) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+const cents = (n: number) => roundHalfUp((Number.isFinite(n) ? n : 0), 2);
 const pos = (n: number) => Math.max(0, Number.isFinite(n) ? n : 0);
 
 /**
- * ΠΩΣ ΜΟΙΡΑΖΟΝΤΑΙ ΟΙ ΝΥΧΤΕΣ ΣΤΟΥΣ ΜΗΝΕΣ, ΚΑΙ ΓΙΑΤΙ ΤΟ ΡΩΤΑΜΕ.
+ * ΠΩΣ ΜΟΙΡΑΖΟΝΤΑΙ ΟΙ ΝΥΧΤΕΣ ΣΤΟΥΣ ΜΗΝΕΣ ΚΑΙ ΓΙΑΤΙ ΤΟ ΡΩΤΑΜΕ.
  *
  * Το τέλος ανθεκτικότητας είναι ΤΕΤΡΑΠΛΑΣΙΟ στην υψηλή περίοδο (Απρίλιος ως
  * Οκτώβριος): 8,00€ έναντι 2,00€ για διαμέρισμα. Η κατανομή δηλαδή δεν είναι
@@ -227,9 +234,11 @@ export function netByOccupancy(i: ShortVsLongInput, steps: number[]): { pct: num
 export function compareShortVsLong(i: ShortVsLongInput): ShortVsLong {
   const long = longTermSide(i.monthlyRent);
   const short = shortTermSide(i);
+  const breakEvenPct = breakEvenOccupancy(i, long.net);
   return {
     long, short,
     difference: cents(short.net - long.net),
-    breakEvenPct: breakEvenOccupancy(i, long.net),
+    breakEvenPct,
+    breakEvenNights: breakEvenPct === null ? null : Math.ceil(breakEvenPct / 100 * NIGHTS_PER_YEAR),
   };
 }

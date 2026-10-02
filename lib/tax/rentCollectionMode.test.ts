@@ -1,4 +1,4 @@
-import { rentCollectionMode, collectionModeReason, collectionViaBankOf } from './rentCollectionMode';
+import { rentCollectionMode, collectionModeReason, collectionViaBankOf, collectionModeFromCounts } from './rentCollectionMode';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗', name) } };
@@ -67,6 +67,17 @@ ok('εισπράξεις άλλης χρήσης δεν μετρούν',
   collectionViaBankOf([p(2025, 'Μετρητά')], 2026, true) === true);
 ok('μία μόνο είσπραξη σε μετρητά αρκεί',
   collectionViaBankOf([p(2026, 'Κάρτα'), p(2026, 'Μετρητά')], 2026, true) === false);
+
+// ── ΤΑ ΠΛΗΘΗ ΤΗΣ ΠΥΛΗΣ ΛΟΓΙΣΤΗ ΚΡΙΝΟΝΤΑΙ ΜΕ ΤΟΝ ΙΔΙΟ ΚΑΝΟΝΑ ──────────────────
+{
+  const rows = [p(2027, 'Τραπεζική κατάθεση'), p(2027, 'Μετρητά'), p(2027, null)];
+  const a = rentCollectionMode(rows, 2027, true);
+  const b = collectionModeFromCounts(2, 1, true);
+  ok('γραμμές και πλήθη δίνουν την ίδια απάντηση', JSON.stringify(a) === JSON.stringify(b));
+  ok('χωρίς τρόπο μιλά η μίσθωση', collectionModeFromCounts(0, 0, false).basis === 'lease');
+  ok('χωρίς τίποτα, καμία έκπτωση', collectionModeFromCounts(0, 0, null).viaBank === false);
+  ok('περισσότερα μετρητά από εισπράξεις δεν σπάνε το πλήθος', collectionModeFromCounts(1, 5, null).cash === 1);
+}
 
 console.log(`rentCollectionMode: ✓ ${pass} · ✗ ${fail}`);
 if (fail) process.exit(1);

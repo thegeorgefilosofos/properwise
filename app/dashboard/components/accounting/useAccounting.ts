@@ -13,6 +13,7 @@ import * as loanStore from '@/lib/data/loans'
 import * as stayStore from '@/lib/data/stays'
 import * as rentStore from '@/lib/data/rent'
 import * as tenantStore from '@/lib/data/tenants'
+import { rentIncomeOf } from '@/lib/rent/split'
 import { rentCollectionMode, collectionViaBankOf } from '@/lib/tax/rentCollectionMode'
 import * as expenseStore from '@/lib/data/expenses'
 import { ownerShareOf, ownerShareOfAmount } from '@/lib/expenses/sharing'
@@ -44,15 +45,15 @@ import {
 } from '@/lib/accounting/statement'
 import {
   shortTermYearSummary, derivedPlatformFees, monthsWithOwnPlatformFee, staysMissingPlatformFee,
-  isHouseType,
+  isHouseType, yearShare,
 } from '@/lib/tax/shortTermTax'
-import { bankReceiptMatters } from '@/lib/billing/consolidate'
+import { bankReceiptMatters, presumptiveDeductionRateForYear } from '@/lib/billing/consolidate'
 import { resolveEnfia } from '@/lib/billing/propertyFacts'
 import { enfiaTypeBlock, ENFIA_TYPE_BLOCK_NOTE } from '@/lib/billing/enfia'
 import { enfiaForYear, useEnfiaSettings, type EnfiaState } from '../useEnfia'
 import * as billStore from '@/lib/data/bills'
 import { billsWithoutExpense, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger'
-import { annuityMonthly, interestForYear } from '@/lib/loans/recommend'
+import { loanCalendarYear } from '@/lib/loans/progress'
 import { isGroupDeductible } from '@/lib/expenses/groups'
 import {
   rentalRowsForYear, BUSINESS_INCOME_ROWS_2026, BUILDING_DEPRECIATION_RATE,
@@ -73,7 +74,7 @@ import { CAPITALISABLE } from '@/lib/tax/elpAccounts'
 import { CATEGORIES, isDeductible, resolveCategory } from '@/lib/expenses/taxonomy'
 import { useAccountantDossier } from '../AccountantDossier'
 import { fetchDossierPapers } from '../dossierPapers'
-import { defaultBookkeeping, type LegalForm } from '@/lib/accounting/dossier'
+import { defaultBookkeeping, statusesForYear, type LegalForm, type DossierProperty } from '@/lib/accounting/dossier'
 import { readStatus, type PropertyStatus, type StatusRow } from '@/lib/property/status'
 import { printRentCertificate, downloadOfficialRentCertificate } from '../rentCertificate'
 import { notifyError } from '@/components/Toast'
@@ -81,6 +82,15 @@ import { MONTHS_NOM, MONTHS_SHORT } from '@/lib/core/months'
 import { failed, MSG } from '@/lib/core/dbError'
 import { useRemembered, useRememberedFlag } from '@/components/useRememberedFlag'
 import { eur, athensNow, athensYear, todayAthens, readElp, writeElp, readNum, writeNum } from './model'
+
+// Τα μισθώματα της χρήσης ανά μήνα (Ιανουάριος πρώτος). Τα χρειάζεται η κύρωση
+// της τραπεζικής είσπραξης, που το 2027 πιάνει μόνο τους μήνες από τον Ιούλιο
+// (Α.1187/2026): η τεκμαρτή έκπτωση χάνεται για το μερίδιο αυτών των μηνών.
+const rentByMonth = (rows:{ period_year?:number|null; period_month?:number|null; amount?:number|null }[], year:number):number[] => {
+  const w = new Array(12).fill(0)
+  for(const r of rows){ const m=Number(r.period_month); if(r.period_year===year && m>=1 && m<=12) w[m-1]+=Number(r.amount)||0 }
+  return w
+}
 
 export type AccountingProps = { propertyId:string; userId:string; profileType?:'individual'|'professional'; legalForm?:DossierLegalForm; plan?:PlanId; status?:PropertyStatus; onNavigate?:(tab:string)=>void }
 
@@ -113,7 +123,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   //
   // Το `legal_form` ξέρει ήδη και τα δύο: αν υπάρχει επιχείρηση και αν είναι
   // ατομική ή νομικό πρόσωπο. Αν κάτι είναι λάθος, διορθώνεται εκεί που δηλώθηκε.
-  // ── ΤΟ «ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ Ή ΕΠΙΧΕΙΡΗΣΗ» ΜΕΝΕΙ ΕΡΩΤΗΣΗ, ΚΑΙ ΝΑ ΓΙΑΤΙ ────────
+  // ── ΤΟ «ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ Ή ΕΠΙΧΕΙΡΗΣΗ» ΜΕΝΕΙ ΕΡΩΤΗΣΗ ΚΑΙ ΝΑ ΓΙΑΤΙ ────────
   // Το είχα παραγάγει από τη νομική μορφή: «έχει επιχείρηση, άρα επιχείρηση».
   // Είναι λάθος και το γράφει η ίδια η εφαρμογή σε τρία σημεία: το ενοίκιο
   // φυσικού προσώπου φορολογείται με το ΑΡΘΡΟ 40 (δική του κλίμακα, τεκμαρτή
@@ -271,7 +281,9 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // Το `id`, το `bill_id` και το `paid` ζητούνται για ΕΝΑ λόγο: να ξέρει η
   // συγχώνευση με τους λογαριασμούς ποιος λογαριασμός έχει ήδη γίνει δαπάνη.
   type ExpenseRow  = Pick<ExpensesRow, 'id'|'bill_id'|'paid'|'date'|'amount'|'category'|'expense_group'|'description'|'supplier_country'|'supply'|'supplier_afm'|'paid_by'|'share_percent'>
-  type RentRow     = Pick<RentPaymentsRow, 'period_year'|'period_month'|'amount'|'paid'|'paid_date'|'due_date'|'method'>
+  // Το `base_rent` χωρίζει το μίσθωμα από τις υπηρεσίες της ίδιας δόσης: ο φόρος
+  // μετρά μόνο το πρώτο (lib/rent/split.ts).
+  type RentRow     = Pick<RentPaymentsRow, 'period_year'|'period_month'|'amount'|'base_rent'|'services_charge'|'paid'|'paid_date'|'due_date'|'method'>
   type PortfolioRentRow = RentRow & Pick<RentPaymentsRow, 'property_id'>
   type StayRow     = TaxStay & Pick<ClientStaysRow, 'id'|'channel'|'declared_at'>
   type PortfolioStayRow = StayRow & Pick<ClientStaysRow, 'property_id'>
@@ -325,12 +337,12 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
         expenseStore.ledgerWithError<ExpenseRow>(supabase,propertyId,{ columns:'id,bill_id,paid,date,amount,category,expense_group,description,supplier_country,supply,supplier_afm,paid_by,share_percent' }),
         // Ο ΤΡΟΠΟΣ ΠΛΗΡΩΜΗΣ ΕΙΝΑΙ ΦΟΡΟΛΟΓΙΚΟ ΣΤΟΙΧΕΙΟ, ΟΧΙ ΔΙΑΚΟΣΜΗΤΙΚΟ: από
         // αυτόν κρίνεται η τεκμαρτή έκπτωση 5%. Μία στήλη παραπάνω στο ίδιο ερώτημα.
-        rentStore.ofPropertyWithError<RentRow>(supabase,propertyId,`${rentStore.LEDGER_COLUMNS},method`,userId),
+        rentStore.ofPropertyWithError<RentRow>(supabase,propertyId,`${rentStore.LEDGER_COLUMNS},base_rent,services_charge,method`,userId),
         stayStore.ofPropertyWithError<StayRow>(supabase,propertyId,`id,${stayStore.ACCOUNTING_COLUMNS}`,userId),
         loanStore.ofPropertyWithError(supabase,propertyId,userId),
         properties.oneWithError<PropRow>(supabase, propertyId, 'id,name,address,rental_mode,enfia,sqm,value,year_built,floor,purchase_price,purchase_date,prop_type,ownership,postal_code', userId),
         properties.listWithError<PropListRow>(supabase, userId, { columns: 'id,name,rental_mode,status_detail,enfia,sqm,ownership,prop_type,client_id' }),
-        rentStore.ofUserWithError<PortfolioRentRow>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS}`),
+        rentStore.ofUserWithError<PortfolioRentRow>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS},base_rent,services_charge`),
         stayStore.ofUserWithError<PortfolioStayRow>(supabase,userId,`property_id,${stayStore.ACCOUNTING_COLUMNS}`),
         inventoryStore.ofPropertyWithError<InventoryRow>(supabase,propertyId,'name,purchase_value,category,purchase_date',userId),
         // Η ΠΡΟΘΕΣΗ ΤΗΣ ΜΙΣΘΩΣΗΣ, όταν δεν υπάρχει απόδειξη απο τις εισπράξεις.
@@ -432,7 +444,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const enfiaSource = enfiaNow.inUse.source
   const enfiaEstimated = enfiaSource==='estimate'
   const enfiaState:EnfiaState = useMemo(()=>({ settings:enfiaSettings, update:updateEnfia, loading:enfiaLoading, now:enfiaNow }),[enfiaSettings,updateEnfia,enfiaLoading,enfiaNow])
-  // Οικόπεδο ή βοηθητικός χώρος χωρίς κανένα ποσό: ο ΕΝΦΙΑ λείπει από τα
+  // Οικόπεδο ή επαγγελματική αποθήκη χωρίς κανένα ποσό: ο ΕΝΦΙΑ λείπει από τα
   // βιβλία και η οθόνη το λέει, αντί να δείχνει εκτίμηση κατοικίας.
   const enfiaBlock = useMemo(()=>{
     if(enfiaSource!=='none') return null
@@ -440,18 +452,28 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     return b ? ENFIA_TYPE_BLOCK_NOTE[b] : null
   },[prop,enfiaSource])
 
-  // Ενεργό δάνειο στη χρήση Y; (μεταξύ έτους έναρξης και λήξης).
+  // Δόσεις, τόκος και κεφάλαιο ΤΗΣ ΗΜΕΡΟΛΟΓΙΑΚΗΣ ΧΡΗΣΗΣ. Ηταν ο αριθμός έτους
+  // του δανείου (`year − έτος έναρξης + 1`): δάνειο με έναρξη τον Σεπτέμβριο
+  // έγραφε στη χρήση της έναρξης δώδεκα δόσεις και τον τόκο δώδεκα μηνών αντί
+  // για τρεις. Σε 150.000€ με 4% ο τόκος έβγαινε 5.935,10€ αντί για 1.497,08€
+  // και σε επιχειρηματικό καθεστώς εξέπιπτε ολόκληρος. Ο κανόνας ζει στο
+  // lib/loans/progress.ts (`loanCalendarYear`), με τη σύμβαση του `loanProgress`.
+  const loanYear = useCallback((l:LoanView)=>loanCalendarYear({ amount:Number(l.amount)||0, annualRatePct:Number(l.rate)||0, years:Number(l.years)||0, startDate:l.start_date }, year), [year])
+  // Ενεργό δάνειο στη χρήση Y; Οταν πέφτει μέσα της έστω μία δόση.
   // ΣΕ useCallback ΓΙΑ ΤΟΝ ΙΔΙΟ ΛΟΓΟ ΜΕ ΤΟ tariffKwh: κλείνει πάνω στο `year`,
   // και τέσσερα useMemo το καλούσαν χωρίς να μπορεί ο έλεγχος να το δει. Το
   // `year` ήταν ήδη στις εξαρτήσεις τους, άρα το αποτέλεσμα έβγαινε σωστό —
   // αλλά από σύμπτωση, όχι από κανόνα. Εδώ γίνεται κανόνας.
-  const loanActiveInYear = useCallback((l:LoanView)=>{ const yrs=Number(l.years)||0; if(yrs<=0)return false; const startY=l.start_date?Number(String(l.start_date).slice(0,4)):year; return year>=startY && year<startY+yrs }, [year])
+  const loanActiveInYear = useCallback((l:LoanView)=>loanYear(l).payments>0, [loanYear])
 
   // Ετήσια στοιχεία τρέχοντος ακινήτου. Φόρος επί ΔΕΔΟΥΛΕΥΜΕΝΟΥ (accrued) ενοικίου
   //, φορολογείται ό,τι οφείλεται, ανεξάρτητα είσπραξης· τα ανείσπρακτα μειώνουν
   // μόνο το ταμείο. (Μακροχρόνια.)
-  const rentAccruedYear = useMemo(()=>mine(rent.filter(p=>p.period_year===year).reduce((s,p)=>s+(p.amount||0),0)),[rent,year,mine])
-  const rentCollectedYear = useMemo(()=>mine(rent.filter(p=>p.paid&&p.period_year===year).reduce((s,p)=>s+(p.amount||0),0)),[rent,year,mine])
+  // ΤΟ ΜΙΣΘΩΜΑ, ΟΧΙ Η ΔΟΣΗ: το `amount` περιέχει και τις υπηρεσίες που
+  // χρεώνονται στον μισθωτή (ίντερνετ, συνδρομές, καθαρισμός, στάθμευση) και
+  // ο φόρος τις μετρούσε ως ενοίκιο. Το ίδιο μέτρο με το Ε2.
+  const rentAccruedYear = useMemo(()=>mine(rent.filter(p=>p.period_year===year).reduce((s,p)=>s+rentIncomeOf(p),0)),[rent,year,mine])
+  const rentCollectedYear = useMemo(()=>mine(rent.filter(p=>p.paid&&p.period_year===year).reduce((s,p)=>s+rentIncomeOf(p),0)),[rent,year,mine])
   // Τι λένε τα δεδομένα και τι ισχύει τελικά (η παράκαμψη του χρήστη νικά).
   const collection = useMemo(() => rentCollectionMode(rent, year, leaseViaBank), [rent, year, leaseViaBank])
   // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΜΕΤΡΑΕΙ ΜΟΝΟ ΑΠΟ ΤΗ ΧΡΗΣΗ 2026. Ο δημόσιος υπολογιστής
@@ -475,7 +497,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const individualPerson = !(mode==='professional' && elp==='business' && elpForm==='company')
   const shortSummary = useMemo(()=>shortTermYearSummary(stays, year, { sqm: prop?.sqm, isHouse: isHouseType(prop?.prop_type), propertyCount:propCount, individual:individualPerson, rentsPaidViaBank:rentsBank }),[stays,year,prop,propCount,individualPerson,rentsBank])
   const expensesYear = useMemo(()=>expenses.filter(e=>(e.date||'').slice(0,4)===String(year)&&(e.amount||0)>0),[expenses,year])
-  // ── Η ΠΡΟΜΗΘΕΙΑ ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ ΕΙΝΑΙ ΔΑΠΑΝΗ, ΚΑΙ ΜΠΑΙΝΕΙ ΣΤΑ ΒΙΒΛΙΑ ──────
+  // ── Η ΠΡΟΜΗΘΕΙΑ ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ ΕΙΝΑΙ ΔΑΠΑΝΗ ΚΑΙ ΜΠΑΙΝΕΙ ΣΤΑ ΒΙΒΛΙΑ ──────
   // Καταγραφόταν ανά κράτηση, φαινόταν σε τέσσερις οθόνες ως «δαπάνη που
   // εκπίπτει» και δεν έφτανε ΠΟΤΕ στο ημερολόγιο, στο ισοζύγιο ή στον φάκελο
   // του λογιστή. Ο κανόνας και η αιτιολογία ζουν στο lib/tax/shortTermTax.ts.
@@ -516,12 +538,12 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const expensesTotal = useMemo(()=>expensesYear.filter(e=>e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear)+billsTotal,[expensesYear,platformFeesYear,ownPct,mine,billsTotal])
   const deductibleTotal = useMemo(()=>expensesYear.filter(e=>isGroupDeductible(e.expense_group)&&e.category!=='ΕΝΦΙΑ').reduce((s,e)=>s+ownerShareOf(e,ownPct),0)+mine(platformFeesYear)+billsDeductible,[expensesYear,platformFeesYear,ownPct,mine,billsDeductible])
   // Δόσεις δανείων ΜΟΝΟ όσο το δάνειο είναι ενεργό στη χρήση (όχι φαντάσματα).
-  const loanAnnual = useMemo(()=>loans.reduce((s,l)=>{ if(!loanActiveInYear(l))return s; const m=annuityMonthly(Number(l.amount)||0,Number(l.rate)||0,Number(l.years)||0); return s+m*12 },0),[loans,loanActiveInYear])
-  const loanInterestYear = useMemo(()=>loans.reduce((s,l)=>{ const amount=Number(l.amount)||0, rate=Number(l.rate)||0, yrs=Number(l.years)||0; const startY=l.start_date?Number(String(l.start_date).slice(0,4)):year; const idx=year-startY+1; return s+interestForYear(amount,rate,yrs,idx) },0),[loans,year])
+  const loanAnnual = useMemo(()=>loans.reduce((s,l)=>s+loanYear(l).paid,0),[loans,loanYear])
+  const loanInterestYear = useMemo(()=>loans.reduce((s,l)=>s+loanYear(l).interest,0),[loans,loanYear])
 
   const businessMode = mode==='professional' && elp==='business'
 
-  // ── ΤΟ ΜΗΤΡΩΟ ΠΑΓΙΩΝ, ΚΑΙ ΓΙΑΤΙ ΕΙΝΑΙ ΑΥΤΟ ΠΟΥ ΔΙΝΕΙ ΤΗΝ ΑΠΟΣΒΕΣΗ ──────────
+  // ── ΤΟ ΜΗΤΡΩΟ ΠΑΓΙΩΝ ΚΑΙ ΓΙΑΤΙ ΕΙΝΑΙ ΑΥΤΟ ΠΟΥ ΔΙΝΕΙ ΤΗΝ ΑΠΟΣΒΕΣΗ ──────────
   // Η απόσβεση κτιρίου υπολογιζόταν εδώ με μια γραμμή: αξία × 60% × 4%, ίδια
   // κάθε χρόνο, από την πρώτη μέρα ως το άπειρο. Δύο λάθη μέσα σε μία γραμμή:
   // η πρώτη χρήση αποσβένεται ΚΑΤΑ ΜΗΝΑ (άρθρο 24 §2) και μετά την πλήρη
@@ -558,7 +580,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // περιμένει τον συντελεστή του λογιστή και δίνει μηδέν ως τότε.
   const buildingDepr = useMemo(()=>
     Math.round(assets.filter(a=>a.elp!==EQUIPMENT_ACCOUNT).reduce((s,a)=>s+chargeForYear(a,year),0)),[assets,year])
-  // ══ Η ΑΠΟΣΒΕΣΗ ΕΞΟΠΛΙΣΜΟΥ ΗΤΑΝ ΕΚΤΙΜΗΣΗ ΠΡΟΪΟΝΤΟΣ, ΚΑΙ ΕΚΠΙΠΤΟΤΑΝ ΩΣ ΦΟΡΟΣ ══
+  // ══ Η ΑΠΟΣΒΕΣΗ ΕΞΟΠΛΙΣΜΟΥ ΗΤΑΝ ΕΚΤΙΜΗΣΗ ΠΡΟΪΟΝΤΟΣ ΚΑΙ ΕΚΠΙΠΤΟΤΑΝ ΩΣ ΦΟΡΟΣ ══
   //
   // Υπολογιζόταν εδώ με το `usefulLifeYears` — «τυπική διάρκεια ζωής» ανά
   // κατηγορία, που το ίδιο του το αρχείο (lib/inventory/depreciation.ts)
@@ -601,7 +623,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const consolidation = useMemo(()=>{
     const items = (taxpayerProps.length?taxpayerProps:[{id:propertyId,name:prop?.name,rental_mode:prop?.rental_mode,enfia:prop?.enfia,sqm:prop?.sqm,prop_type:prop?.prop_type}]).map(p=>{
       const rmode:TaxRegime = readStatus(p as StatusRow) === 'rent_short' ? 'individual_shortterm' : 'individual_longterm'
-      const pRentAccrued = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).reduce((s,r)=>s+(r.amount||0),0)
+      const pRentAccrued = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).reduce((s,r)=>s+rentIncomeOf(r),0)
       // ══ Ο ΦΟΡΟΣ ΑΓΝΟΟΥΣΕ ΤΗΝ ΑΠΑΛΛΑΓΗ ΠΟΥ Η ΙΔΙΑ ΚΑΡΤΑ ΕΔΕΙΧΝΕ ══════════════
       // Το `incomeStatement` κατεβάζει το ΦΟΡΟΛΟΓΗΤΕΟ κατά τα διεκδικημένα
       // ανείσπρακτα, αλλά ο ΦΟΡΟΣ δεν βγαίνει από εκεί: για φυσικό πρόσωπο
@@ -610,7 +632,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
       // απαλλαγή. Η κάρτα έγραφε «φόρος 3.550€ σε φορολογητέο 7.600€», δηλαδή
       // 46,7% εκεί που ο ανώτατος συντελεστής της κλίμακας είναι 45%.
       // Το αδύνατο ποσοστό ήταν το μόνο ορατό ίχνος.
-      const pUncollected = allRent.filter(r=>r.property_id===p.id&&r.period_year===year&&!r.paid).reduce((s,r)=>s+(r.amount||0),0)
+      const pUncollected = allRent.filter(r=>r.property_id===p.id&&r.period_year===year&&!r.paid).reduce((s,r)=>s+rentIncomeOf(r),0)
       // Μόνο για ΤΟ ακίνητο του τσεκ: η απαλλαγή είναι ανά μίσθωση.
       const pRelief = claimedUncollected && p.id===propertyId ? pUncollected : 0
       // ══ Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΕΙΝΑΙ ΤΟΥ ΑΚΙΝΗΤΟΥ, ΟΧΙ ΤΗΣ ΑΝΟΙΧΤΗΣ ΚΑΡΤΕΛΑΣ ══
@@ -629,7 +651,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
       // Για το ανοιχτό ακίνητο, ο ΕΝΦΙΑ της Κατάστασης: αλλιώς η ενοποίηση θα
       // μετρούσε άλλο ποσό από τη γραμμή που βλέπει ο χρήστης δίπλα της.
       const pEnfia = p.id===propertyId ? enfia : ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct)
-      const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: pEnfia, rentsPaidViaBank: pViaBank,
+      const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: pEnfia, presumptiveRate: presumptiveDeductionRateForYear(year, pViaBank, rmode==='individual_shortterm' ? pShort.nightsByMonth : rentByMonth(allRent.filter(r=>r.property_id===p.id), year)),
         // Ο ίδιος κανόνας του μεριδίου με τα ακαθάριστα κι τον ΕΝΦΙΑ από πάνω:
         // τέλος υπολογισμένο στο 100% δίπλα σε έσοδα 33% δεν ισοσκελίζει.
         climateLevy: rmode==='individual_shortterm'?ownerShareOfAmount(pShort.levyShortfall, pPct):0,
@@ -664,7 +686,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
           presumptiveMinIncome: elpForm==='sole'&&grossIncome>0 ? Math.round(minNetIncome.amount*(firstYears?0.5:1)) : undefined, enfia:0,
           climateLevy: shortLevy, municipalTax: shortMunicipal,
           otherCashExpenses: Math.max(0,expensesTotal-deductibleTotal), loanPrincipal: Math.max(0,loanAnnual-loanInterestYear), uncollectedIncome:uncollectedRent, brackets: rentalBracketsForYear(year) }
-      : { regime, grossIncome, enfia, enfiaBasis: enfiaSource==='none' ? undefined : enfiaSource, overrideIncomeTax: myTaxShare, rentsPaidViaBank: rentsBank,
+      : { regime, grossIncome, enfia, enfiaBasis: enfiaSource==='none' ? undefined : enfiaSource, overrideIncomeTax: myTaxShare, presumptiveRate: presumptiveDeductionRateForYear(year, rentsBank, regime==='individual_shortterm' ? shortSummary.nightsByMonth : rentByMonth(rent, year)),
         // ΤΟ ΤΕΛΟΣ ΑΝΘΕΚΤΙΚΟΤΗΤΑΣ ΕΦΕΥΓΕ ΔΥΟ ΦΟΡΕΣ ΑΠΟ ΤΟ ΤΑΜΕΙΟ.
         // Το `grossIncome` εδώ είναι το `grossRevenue` της shortTermYearSummary,
         // που έχει ΗΔΗ αφαιρέσει το εισπραγμένο τέλος (gross_guest_paid −
@@ -678,7 +700,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
           climateLevy: shortLevy, municipalTax: shortMunicipal,
           otherCashExpenses: expensesTotal, loanPrincipal: loanAnnual, uncollectedIncome:uncollectedRent,
           legallyClaimedUncollected: claimedUncollected, brackets: rentalBracketsForYear(year) }
-  ),[businessMode,year,elpForm,age,firstYears,distribution,ekfa,buildingDepr,claimedUncollected,rentsBank,regime,grossIncome,enfia,enfiaSource,myTaxShare,expensesTotal,deductibleTotal,inventoryDepr,loanInterestYear,loanAnnual,uncollectedRent,shortLevy,shortMunicipal,minNetIncome.amount])
+  ),[businessMode,year,elpForm,age,firstYears,distribution,ekfa,buildingDepr,claimedUncollected,rentsBank,rent,shortSummary,regime,grossIncome,enfia,enfiaSource,myTaxShare,expensesTotal,deductibleTotal,inventoryDepr,loanInterestYear,loanAnnual,uncollectedRent,shortLevy,shortMunicipal,minNetIncome.amount])
 
   // Συμβουλευτική, προτάσεις με αξία από τα πραγματικά δεδομένα (καθαρές, όχι θόρυβος).
   const advisory = useMemo(()=>buildAdvisory({
@@ -753,9 +775,9 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     for(const e of expenses){ if((e.amount||0)>0&&e.date&&String(e.date).slice(0,4)===String(year)){ exp.push({ date:e.date, amount:e.amount, category:e.category, description:e.description }) } }
     for(const f of platformFeeRows){ exp.push({ date:f.date, amount:f.amount, category:f.category, description:f.description }) }
     const loanPayments:LoanPaymentRec[] = []
-    for(const l of loans){ if(!loanActiveInYear(l))continue; const amount=Number(l.amount)||0, rate=Number(l.rate)||0, yrs=Number(l.years)||0; const startY=l.start_date?Number(String(l.start_date).slice(0,4)):year; const idx=year-startY+1; const annual=Math.round(annuityMonthly(amount,rate,yrs)*12); const interest=Math.round(interestForYear(amount,rate,yrs,idx)); if(annual>0) loanPayments.push({ date:`${year}-06-30`, amount:annual, interest, description:`Δόσεις δανείου${l.bank?` · ${l.bank}`:''}` }) }
+    for(const l of loans){ const ly=loanYear(l); const annual=Math.round(ly.paid); const interest=Math.round(ly.interest); if(annual>0) loanPayments.push({ date:`${year}-06-30`, amount:annual, interest, description:`Δόσεις δανείου${l.bank?` · ${l.bank}`:''}` }) }
     return buildJournal({ incomes, expenses:exp, loanPayments })
-  },[rent,stays,expenses,loans,year,loanActiveInYear,platformFeeRows])
+  },[rent,stays,expenses,loans,year,loanYear,platformFeeRows])
   const trial = useMemo(()=>trialBalance(journalLines),[journalLines])
   const jTotals = useMemo(()=>journalTotals(journalLines),[journalLines])
 
@@ -773,10 +795,20 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // Η κατάσταση κάθε ακινήτου (εκμίσθωση, κενό, ιδιοχρησία…) ορίζει ΤΙ ζητάει ο
   // λογιστής. Ο κανόνας ζει μία φορά, στο lib/accounting/dossier.ts· εδώ απλώς
   // του δίνουμε τα δεδομένα και δείχνουμε την απάντησή του.
-  const dossierProps = useMemo(()=>{
-    const rows:{ name?:string|null; status_detail?:string|null; rental_mode?:string|null }[] = allProps.length ? allProps : (prop?[prop]:[])
-    return rows.map(p=>({ name: p.name || 'Ακίνητο', status: readStatus(p) as PropertyStatus }))
-  },[allProps,prop])
+  //
+  // ΚΑΙ ΜΕ ΤΗ ΧΡΗΣΗ, ΟΧΙ ΜΟΝΟ ΜΕ ΤΟ ΣΗΜΕΡΑ. Ακίνητο νοικιασμένο τον Μάρτιο κι
+  // άδειο σήμερα έπαιρνε τον κατάλογο του κενού, χωρίς τη δήλωση μίσθωσης. Οι
+  // περίοδοι ενοικίου και οι διαμονές της χρήσης προσθέτουν τις καταστάσεις τους
+  // (`statusesForYear`).
+  const dossierProps = useMemo(():DossierProperty[]=>{
+    const rows:{ id?:string|null; name?:string|null; status_detail?:string|null; rental_mode?:string|null }[] = allProps.length ? allProps : (prop?[prop]:[])
+    return rows.map(p=>{
+      const status = readStatus(p) as PropertyStatus
+      const rentPeriods = allRent.filter(r=>r.property_id===p.id&&r.period_year===year).length
+      const stayCount = allStays.filter(st=>st.property_id===p.id&&yearShare(st,year)>0).length
+      return { id: p.id || undefined, name: p.name || 'Ακίνητο', status, yearStatuses: statusesForYear(status, { rentPeriods, stays: stayCount }) }
+    })
+  },[allProps,prop,allRent,allStays,year])
   // Αφετηρία, μόνο για χρήστη που δεν έχει δηλώσει ακόμη τίποτα: ό,τι ήδη ξέρουμε.
   // Η μορφή έρχεται από τη δήλωση της υποδοχής, όχι από τη δυαδική περίληψη:
   // μια ΟΕ δεν είναι ΑΕ και τα βιβλία τους διαφέρουν.
@@ -798,8 +830,11 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     } else if(rentRows.length===0){ g.push(`Κανένα καταχωρημένο μίσθωμα για το ${year}.`) }
     // Η προμήθεια δεν μαντεύεται. Κράτηση Airbnb ή Booking.com έχει πάντα
     // προμήθεια· όταν λείπει, λείπει δαπάνη από τα βιβλία και το λέμε.
+    // ΤΟ «ΕΚΠΙΠΤΕΙ» ΕΙΝΑΙ ΜΟΝΟ ΤΗΣ ΕΠΙΧΕΙΡΗΣΗΣ. Ο ιδιώτης δεν εκπίπτει καμία
+    // δαπάνη αναλυτικά (άρθρο 39 ΚΦΕ, μόνο η τεκμαρτή έκπτωση): εκεί η προμήθεια
+    // λείπει από το ταμείο, όχι από τη φορολογική βάση.
     const noFee = staysMissingPlatformFee(stays, year)
-    if(noFee>0) g.push(`${noFee} κρατήσεις από πλατφόρμα χωρίς καταγεγραμμένη προμήθεια: λείπει δαπάνη που εκπίπτει.`)
+    if(noFee>0) g.push(`${noFee} κρατήσεις από πλατφόρμα χωρίς καταγεγραμμένη προμήθεια: ${businessMode ? 'λείπει δαπάνη που εκπίπτει' : 'λείπει έξοδο από το ταμείο, που για ιδιώτη δεν μειώνει τον φόρο'}.`)
     // Η σημείωση λέει πλέον ΠΟΣΟΥΣ μήνες αφορά, γιατί ο κανόνας δεν είναι πια
     // ετήσιος: ο λογιστής πρέπει να ξέρει ποια κομμάτια της χρήσης βγαίνουν από
     // παραστατικό και ποια από υπολογισμό.
@@ -813,9 +848,9 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     const noCat = expensesYear.filter(e=>!e.category).length
     if(noCat>0) g.push(`${noCat} δαπάνες χωρίς κατηγορία.`)
     return g
-  },[rent,stays,expensesYear,year,regime,uncollectedRent,tenant,enfiaEstimated,enfiaSource,enfiaBlock,ownFeeMonths])
+  },[rent,stays,expensesYear,year,regime,uncollectedRent,tenant,enfiaEstimated,enfiaSource,enfiaBlock,ownFeeMonths,businessMode])
 
-  // ── ΠΟΙΟΣ ΚΑΝΕΙ myDATA, ΚΑΙ ΜΕ ΠΟΙΟ ΔΙΚΑΙΩΜΑ ΕΚΠΤΩΣΗΣ ────────────────────
+  // ── ΠΟΙΟΣ ΚΑΝΕΙ myDATA ΚΑΙ ΜΕ ΠΟΙΟ ΔΙΚΑΙΩΜΑ ΕΚΠΤΩΣΗΣ ────────────────────
   // Ο ιδιοκτήτης που εκμισθώνει ως φυσικό πρόσωπο δεν χαρακτηρίζει έξοδα: δεν
   // τηρεί βιβλία, δεν διαβιβάζει. Για εκείνον η στήλη δεν υπάρχει καθόλου.
   //
@@ -831,6 +866,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
 
   const dossierExport = useMemo(()=>({
     propName: prop?.name || 'Ακίνητο',
+    propertyId,
     ownerName: owner?.owner_name || undefined,
     ownerAfm: owner?.owner_afm || undefined,
     statementLines: statement.lines.map(l=>({ label:l.label, amount:l.amount, kind:l.kind, negative:l.negative })),

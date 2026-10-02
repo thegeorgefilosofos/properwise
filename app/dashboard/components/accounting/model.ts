@@ -10,6 +10,7 @@ import { fe, fp } from '@/components/Theme'
 import type { AdvisoryTone } from '@/lib/accounting/advisory'
 import type { ReconStatus } from '@/lib/accounting/ledger'
 import { INK, INK_MUTED } from '@/lib/print/ink'
+import { STATUS_LABEL, STATUS_TONE, tonePill, type StatusTone } from '@/lib/core/status'
 
 // ΔΥΟ ΟΝΟΜΑΤΑ ΓΙΑ ΤΗΝ ΙΔΙΑ ΣΥΝΑΡΤΗΣΗ. Ήταν `eur = fe(n,0)` και `eur2 = fe(n)`,
 // δηλαδή «στρογγυλό» και «ακριβές» — αλλά το δεύτερο όρισμα του `fe` αγνοούνταν,
@@ -27,16 +28,14 @@ export function todayAthens(){ const d=athensNow(); return `${d.getFullYear()}-$
 // πληρώθηκε να φωτίζει λίγο, να είναι πιο ζωντανό». Απαλό φόντο και περίγραμμα
 // του ίδιου ρόλου, όπως στα σήματα της υπόλοιπης εφαρμογής· το «Εκκρεμεί»
 // μένει ουδέτερο, γιατί δεν έχει ακόμη συμβεί τίποτα.
-type Tone = 'positive' | 'warning' | 'negative' | null
-export const STATUS_META:Record<ReconStatus,{label:string;color:string;strong:boolean;tone:Tone}> = {
-  paid:     { label:'Πληρώθηκε',  color:'var(--text-tertiary)',  strong:false, tone:'positive' },
-  partial:  { label:'Μερικώς',    color:'var(--text-primary)',   strong:true,  tone:'warning'  },
-  unpaid:   { label:'Εκκρεμεί',   color:'var(--text-secondary)', strong:false, tone:null       },
-  overdue:  { label:'Εκπρόθεσμο', color:'var(--text-primary)',   strong:true,  tone:'negative' },
+// Λέξη και τόνος από το κοινό λεξιλόγιο (lib/core/status.ts).
+export const STATUS_META:Record<ReconStatus,{label:string;color:string;strong:boolean;tone:StatusTone}> = {
+  paid:     { label:STATUS_LABEL.paid,    color:'var(--text-tertiary)',  strong:false, tone:STATUS_TONE.paid    },
+  partial:  { label:STATUS_LABEL.partial, color:'var(--text-primary)',   strong:true,  tone:STATUS_TONE.partial },
+  unpaid:   { label:STATUS_LABEL.pending, color:'var(--text-secondary)', strong:false, tone:STATUS_TONE.pending },
+  overdue:  { label:STATUS_LABEL.overdue, color:'var(--text-primary)',   strong:true,  tone:STATUS_TONE.overdue },
 }
-export const toneStyle = (t: Tone): React.CSSProperties => t
-  ? { color: `var(--${t}-on-container)`, background: `var(--${t}-soft)`, border: `1px solid var(--${t}-border)` }
-  : { color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }
+export const toneStyle = (t: StatusTone): React.CSSProperties => tonePill(t)
 
 // Οι ίδιοι τόνοι για το τυπωμένο χαρτί, όπου δεν υπάρχουν μεταβλητές θέματος.
 //

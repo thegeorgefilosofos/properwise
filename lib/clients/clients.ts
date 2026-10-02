@@ -5,6 +5,7 @@
 
 import { isValidAfm, nightsBetween, normalizePhone } from '../core/greek';
 import { athensToday } from '../core/time'
+import { roundHalfUp } from '../core/money';
 
 export type ClientType = 'owner' | 'lead' | 'client';
 export const CLIENT_TYPES: ClientType[] = ['owner', 'lead', 'client'];
@@ -135,10 +136,10 @@ export function clientStats(stays: StayLike[], today: string = athensToday()): C
     // «119,00€» στην οθόνη, με το βομβίδιο δίπλα να λέει «δηλωτέο ακαθάριστο
     // διά τις νύχτες». Ο ιδιοκτήτης κάνει τη διαίρεση και δεν βγαίνει.
     //
-    // ΤΟ ΑΚΕΡΑΙΟ ΕΙΝΑΙ ΣΩΣΤΟ ΑΛΛΟΥ, ΚΑΙ ΜΕΝΕΙ ΕΚΕΙ: το `suggestBase` της
+    // ΤΟ ΑΚΕΡΑΙΟ ΕΙΝΑΙ ΣΩΣΤΟ ΑΛΛΟΥ ΚΑΙ ΜΕΝΕΙ ΕΚΕΙ: το `suggestBase` της
     // τιμολόγησης στρογγυλεύει επίτηδες, γιατί προτείνει ΤΙΜΗ και κανείς δεν
     // βάζει το δωμάτιό του 118,75. Εδώ δεν προτείνεται τίποτα· μετριέται.
-    adr: nights > 0 ? Math.round((revenue / nights) * 100) / 100 : 0,
+    adr: nights > 0 ? roundHalfUp((revenue / nights), 2) : 0,
   };
 }
 

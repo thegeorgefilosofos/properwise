@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { PLANS, PLAN_ORDER, annualPerMonth, type PlanId } from '@/lib/billing/plans';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { T, TT, Card, SecHdr, Btn, ChipToggle, Chip, feAuto, fixedCols } from '@/components/Theme';
+import { roundHalfUp } from '@/lib/core/money';
 
 // ── Ποια πλάνα συγκρίνονται εδώ ─────────────────────────────────────────────
 // ΟΧΙ όλα. Το «Γραφείο» είναι πλάνο για χαρτοφυλάκια άνω των 40 ακινήτων και δεν
@@ -123,11 +124,10 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
             // Κάθε στήλη έχει τιμή, οπότε δεν υπάρχει «χωρίς χρέωση» να
             // ξεχωρίσει. Το ποσό περνά πάντα από τον μορφοποιητή.
             const priceMain = cycle === 'annual' ? feAuto(annualPerMonth(id)) : feAuto(p.priceMonthly);
-            // ΤΟ ΚΕΡΔΟΣ ΛΕΓΕΤΑΙ ΩΣ ΚΕΡΔΟΣ, ΜΕ ΤΑ ΙΔΙΑ ΛΟΓΙΑ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Το
-            // «12 μήνες στην τιμή των 11» ζητά από τον αναγνώστη να κάνει την
-            // αφαίρεση για να καταλάβει τι παίρνει — και η αρχική σελίδα, δύο
-            // κλικ πιο πριν, του έλεγε ήδη «1 μήνας δωρεάν». Δύο διατυπώσεις για
-            // την ίδια έκπτωση, στην ίδια αγορά.
+            // ΤΟ ΚΕΡΔΟΣ ΛΕΓΕΤΑΙ ΜΕ ΤΑ ΙΔΙΑ ΛΟΓΙΑ ΜΕ ΤΗΝ ΑΡΧΙΚΗ: η ετήσια συνδρομή
+            // δεν χαρίζει μήνες, χρεώνει λιγότερους (app/landingContent.ts,
+            // «ΚΑΙ ΔΕΝ ΛΕΓΕΤΑΙ ΔΩΡΕΑΝ»). Γι' αυτό «11 μήνες αντί για 12», όχι
+            // «1 μήνας δωρεάν».
             const paidMonths = p.priceAnnual > 0 && p.priceMonthly > 0 ? Math.round(p.priceAnnual / p.priceMonthly) : 0;
             const freeMonths = paidMonths > 0 ? 12 - paidMonths : 0;
 
@@ -140,7 +140,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
             // «Το πλάνο σου» με ζωντανή τελεία και εκατόν πενήντα εικονοστοιχεία
             // πιο κάτω ένα ανενεργό κουμπί «Το τρέχον πλάνο σου». Η κονκάρδα το
             // λέει καλύτερα, γιατί είναι κατάσταση και όχι ενέργεια.
-            // ═══ ΕΝΑ ΚΟΥΜΠΙ, ΚΑΙ ΜΟΝΟ ΠΡΟΣ ΤΑ ΠΑΝΩ ═══════════════════════════
+            // ═══ ΕΝΑ ΚΟΥΜΠΙ ΚΑΙ ΜΟΝΟ ΠΡΟΣ ΤΑ ΠΑΝΩ ═══════════════════════════
             //
             // Υπήρχαν τρία λεκτικά: «Αναβάθμιση», «Υποβάθμιση» και «Διακοπή
             // συνδρομής». Τα δύο τελευταία έφυγαν, για διαφορετικό λόγο το
@@ -178,7 +178,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
               <div key={id} className="acc-choice"
                 style={{ position: 'relative', display: 'flex', flexDirection: 'column', background: heroBg, border: `1.5px solid ${borderColor}`, borderRadius: T.radius.card, boxShadow, padding: T.sp.lg }}>
 
-                {/* ══ Η ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΣΤΗΛΗΣ ΕΧΕΙ ΜΙΑ ΘΕΣΗ, ΚΑΙ ΕΙΝΑΙ ΑΥΤΗ ══════
+                {/* ══ Η ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΣΤΗΛΗΣ ΕΧΕΙ ΜΙΑ ΘΕΣΗ ΚΑΙ ΕΙΝΑΙ ΑΥΤΗ ══════
                     Το «Πιο δημοφιλές» καθόταν ως κορδέλα πάνω από την κάρτα και
                     το «Το πακέτο σου» ως κονκάρδα ΜΕΣΑ στη σειρά του τίτλου. Δύο
                     γλώσσες για το ίδιο πράγμα — και η δεύτερη δεν χωρούσε:
@@ -192,7 +192,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
                 {(popular || isCurrent || inTrial) && (
                   <span style={{ position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: 6, background: isCurrent || inTrial ? 'var(--bg-surface)' : 'var(--accent)', color: isCurrent || inTrial ? 'var(--accent)' : 'var(--accent-text)', border: isCurrent || inTrial ? '1px solid var(--accent-border)' : 'none', borderRadius: T.radius.pill, padding: '2px 10px', fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.sans, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
                     {(isCurrent || inTrial) && <span className="acc-live-dot accent" style={{ width: 6, height: 6, background: 'var(--accent)' }} />}
-                    {isCurrent ? 'Το πακέτο σου' : inTrial ? 'Σε δοκιμή' : 'Πιο δημοφιλές'}
+                    {isCurrent ? 'Το πακέτο σου' : inTrial ? 'Σε δοκιμή' : 'Προτεινόμενο'}
                   </span>
                 )}
 
@@ -218,7 +218,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                     <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feAuto(p.priceAnnual)}/χρόνο</span>
                     {freeMonths > 0 && (
-                      <Chip>{freeMonths === 1 ? '1 μήνας δωρεάν' : `${freeMonths} μήνες δωρεάν`}</Chip>
+                      <Chip>{`${12 - freeMonths} μήνες αντί για 12`}</Chip>
                     )}
                   </div>
                 )}
@@ -233,7 +233,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
                     διαιρούνται μεταξύ τους, στην ίδια κάρτα. */}
                 {Number.isFinite(p.maxProperties) && p.maxProperties > 1 && (
                   <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, marginTop: 8 }}>
-                    {p.maxProperties} ακίνητα, {feAuto(Math.round(((cycle === 'annual' ? annualPerMonth(id) : p.priceMonthly) / p.maxProperties) * 100) / 100)} το καθένα τον μήνα.
+                    {p.maxProperties} ακίνητα, {feAuto(roundHalfUp(((cycle === 'annual' ? annualPerMonth(id) : p.priceMonthly) / p.maxProperties), 2))} το καθένα τον μήνα.
                   </div>
                 )}
 

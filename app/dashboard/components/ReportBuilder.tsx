@@ -36,7 +36,7 @@ interface ExpRow { property_id: string | null; date: string | null; amount: numb
 const SECTIONS = [
   { key: 'summary', label: 'Σύνοψη (δείκτες)', hint: 'Έσοδα, εισπράξεις, δαπάνες, καθαρό' },
   { key: 'byProperty', label: 'Ανά ακίνητο', hint: 'Εισπράξεις / δαπάνες / καθαρό ανά ακίνητο' },
-  { key: 'charts', label: 'Γραφήματα (B&W)', hint: 'Εισπράξεις ανά μήνα και καθαρό ανά ακίνητο' },
+  { key: 'charts', label: 'Γραφήματα (ασπρόμαυρα)', hint: 'Εισπράξεις ανά μήνα και καθαρό ανά ακίνητο' },
   { key: 'rent', label: 'Συμφωνία ενοικίων', hint: 'Αναμενόμενα / εισπραχθέντα ανά μήνα' },
   { key: 'expenses', label: 'Δαπάνες ανά κατηγορία', hint: 'Σύνολα δαπανών ανά κατηγορία' },
 ] as const;
@@ -132,7 +132,7 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
       const exps = expData as unknown as ExpRow[];
 
       // ── Συγκεντρωτικά ─────────────────────────────────────────────────────
-      // ── ΔΕΔΟΥΛΕΥΜΕΝΗ ΒΑΣΗ, ΚΑΙ ΤΟ ΛΕΜΕ ────────────────────────────────────
+      // ── ΔΕΔΟΥΛΕΥΜΕΝΗ ΒΑΣΗ ΚΑΙ ΤΟ ΛΕΜΕ ────────────────────────────────────
       // Αυτή η αναφορά είναι ΚΑΤΑΣΤΑΣΗ ΠΕΡΙΟΔΟΥ: «από τα δώδεκα μισθώματα του
       // 2025, τα έντεκα εξοφλήθηκαν, το ένα εκκρεμεί». Η ταυτότητα
       // αναμενόμενα − εξοφλημένα = ανείσπρακτα στέκει ΜΟΝΟ σε δεδουλευμένη
@@ -394,7 +394,7 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
           <div>
             <div style={{ ...TT.label, marginBottom: 8 }}>ΑΠΟΘΗΚΕΥΣΗ ΩΣ ΠΡΟΦΙΛ (ΠΡΟΑΙΡΕΤΙΚΟ)</div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <input aria-label="Ονομα προεπιλογής" value={presetName} onChange={e => setPresetName(e.target.value)} placeholder="Μηνιαία σύνοψη" style={{ ...field, flex: 1 }} />
+              <input aria-label="Όνομα προεπιλογής" value={presetName} onChange={e => setPresetName(e.target.value)} placeholder="Μηνιαία σύνοψη" style={{ ...field, flex: 1 }} />
               <Btn variant="secondary" onClick={addPreset} disabled={!presetName.trim()}>Αποθήκευση</Btn>
             </div>
           </div>

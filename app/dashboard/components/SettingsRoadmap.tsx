@@ -194,7 +194,7 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
             {installed ? (
               <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
                 <strong style={{ color: 'var(--text-primary)' }}>Το έχεις ήδη στην αρχική σου οθόνη.</strong>{' '}
-                Οι ειδοποιήσεις συσκευής ανάβουν από τις Ρυθμίσεις · Ειδοποιήσεις.
+                Οι ειδοποιήσεις συσκευής ανάβουν από τον «Λογαριασμό», ενότητα «Ειδοποιήσεις».
               </div>
             ) : (
               <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 10 }}>

@@ -1,6 +1,6 @@
 'use client'
 // ═══════════════════════════════════════════════════════════════════════════
-// Η ΚΑΡΤΕΛΑ ΕΝΟΣ ΑΝΤΙΚΕΙΜΕΝΟΥ: ΦΩΤΟΓΡΑΦΙΑ, ΕΤΙΚΕΤΑ, ΚΑΙ ΜΕΤΑ ΤΑ ΠΕΔΙΑ
+// Η ΚΑΡΤΕΛΑ ΕΝΟΣ ΑΝΤΙΚΕΙΜΕΝΟΥ: ΦΩΤΟΓΡΑΦΙΑ, ΕΤΙΚΕΤΑ ΚΑΙ ΜΕΤΑ ΤΑ ΠΕΔΙΑ
 // ─────────────────────────────────────────────────────────────────────────
 // Η μεγαλύτερη οθόνη της απογραφής και η μόνη με τρεις αυτόματους δρόμους
 // συμπλήρωσης: τη φωτογραφία που τη διαβάζει ο βοηθός, τον κωδικό της
@@ -18,7 +18,7 @@ import { notifyError } from '@/components/Toast'
 import { failed, MSG } from '@/lib/core/dbError'
 import { uploadPath } from '@/lib/core/uploadPath'
 import { uploadUserScoped } from '@/lib/storage/scopedUpload'
-import { INVENTORY_CATEGORIES, CONDITIONS, ENERGY_CLASSES, inventoryLabel, type InventoryItem } from './model'
+import { INVENTORY_CATEGORIES, CONDITIONS, ENERGY_CLASSES, inventoryLabel, conditionLabel, type InventoryItem } from './model'
 import { blankIfZero, calcCurrentValue, calcDepreciationPct, calcYearsLeft } from './calc'
 import { DOCS_BUCKET, openInventoryDoc } from './storage'
 import { Field, RoomInput, SectionLabel, labelStyle } from './Bits'
@@ -227,8 +227,8 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
               :<svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.2"/></svg>}
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:14,fontWeight:600,color:'var(--accent)'}}>{scanning?'Ανάγνωση φωτογραφίας…':photoBusy?'Μεταφόρτωση…':'Προσθήκη φωτογραφίας'}</div>
-            <div style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.45,marginTop:2}}>Ανεβάστε φωτογραφία του αντικειμένου, της ετικέτας ή της απόδειξης και συμπληρώνουμε αυτόματα μάρκα, μοντέλο, αξία, εγγύηση και ενεργειακή κλάση.</div>
+            <div style={{fontSize:14,fontWeight:600,color:'var(--accent)'}}>{scanning?'Ανάγνωση φωτογραφίας…':photoBusy?'Ανέβασμα…':'Προσθήκη φωτογραφίας'}</div>
+            <div style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.45,marginTop:2}}>Ανέβασε φωτογραφία του αντικειμένου, της ετικέτας ή της απόδειξης και συμπληρώνονται αυτόματα μάρκα, μοντέλο, αξία, εγγύηση και ενεργειακή κλάση.</div>
           </div>
         </button>
       ) : (
@@ -241,7 +241,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
                     την όψη «πάνω σε φωτογραφία», όμως το κουτί του είναι 32 και 44 σε δάχτυλο:
                     πάνω σε μικρογραφία 84×84 που είναι η ίδια στόχος αφής («Ορισμός ως κύρια»),
                     το «×» θα έτρωγε τη γωνία που πατά ο χρήστης για να διαλέξει την κύρια. */}
-                <button onClick={e=>{e.stopPropagation();removePhoto(url)}} aria-label="Αφαίρεση" style={{position:'absolute',top:5,right:5,width:20,height:20,borderRadius:'50%',background:'rgba(0,0,0,0.55)',border:'none',color:'var(--on-media)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}><svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+                <button onClick={e=>{e.stopPropagation();removePhoto(url)}} aria-label="Αφαίρεση" style={{position:'absolute',top:5,right:5,width:20,height:20,borderRadius:'50%',background:'var(--scrim-media)',border:'none',color:'var(--on-media)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}><svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
                 {url===form.photo_url&&<div style={{position:'absolute',inset:'auto 0 0 0',background:'var(--accent)',fontSize: 'var(--fs-xs)',color:'var(--accent-text)',textAlign:'center',fontWeight:700,fontFamily:T.font.sans,padding:'2px',letterSpacing:'0.5px'}}>ΚΥΡΙΑ</div>}
               </div>
             ))}
@@ -265,7 +265,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
       </>)}
       <div style={{...formGrid(200, 270),gap:12}}>
         <Field d={f('inv.condition')}>
-          <CustomSelect ariaLabel="Κατάσταση" value={form.condition||'Καλή'} onChange={v=>set('condition',v)} options={CONDITIONS.map(c=>({value:c,label:c}))}/>
+          <CustomSelect ariaLabel="Κατάσταση" value={form.condition||'Καλή'} onChange={v=>set('condition',v)} options={CONDITIONS.map(c=>({value:c,label:conditionLabel(c)}))}/>
         </Field>
         <Field d={f('inv.room')}><RoomInput value={form.room||''} onChange={v=>set('room',v)}/></Field>
       </div>
@@ -335,7 +335,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
         </button>
       )}
       {revealed&&showMore&&(<>
-        {/* ═══ ΤΡΙΑ ΠΕΔΙΑ ΣΕ ΔΥΟ ΣΤΗΛΕΣ, ΚΑΙ ΤΟ ΕΝΑ ΚΟΒΟΤΑΝ ══════════════════════
+        {/* ═══ ΤΡΙΑ ΠΕΔΙΑ ΣΕ ΔΥΟ ΣΤΗΛΕΣ ΚΑΙ ΤΟ ΕΝΑ ΚΟΒΟΤΑΝ ══════════════════════
             Η «Μάρκα και μοντέλο» είναι ΔΥΟ κουτιά μέσα σε ΕΝΑ κελί πλέγματος,
             με τον «Σειριακό» δίπλα στο δεύτερο κελί. Το κελί φτάνει τα 270
             εικονοστοιχεία, οπότε τα δύο κουτιά έμεναν με 130 το καθένα: το

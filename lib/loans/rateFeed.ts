@@ -21,6 +21,17 @@
 // διαδρομή — όπως κάνει ήδη το `lib/market/ecb.ts` για την τροφοδοσία της ΕΚΤ.
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ΤΟ ΜΙΣΟ ΛΕΠΤΟ ΠΡΟΣ ΤΑ ΠΑΝΩ, ΑΝΤΙΓΡΑΦΟ ΤΟΥ lib/core/money `roundHalfUp`. Το
+// αρχείο το φορτώνει και η edge function bank-rates-updater (Deno), που δεν
+// λύνει το «@/» και θέλει κατάληξη «.ts», ενώ το tsc της εφαρμογής δεν τη
+// δέχεται. Ίδιος κώδικας, ίδιο τεστ (rateFeed.test.ts).
+function roundHalfUp(n: number, dp = 2): number {
+  if (!Number.isFinite(n)) return n;
+  const f = 10 ** dp;
+  const r = Math.round(Number((Math.abs(n) * f).toPrecision(15))) / f;
+  return n < 0 && r !== 0 ? -r : r;
+}
+
 /** Τα πεδία που ελέγχονται, με το κατώφλι ΚΡΑΤΗΣΗΣ του καθενός (ποσοστιαίες μονάδες). */
 export const RATE_FIELDS = ['fixed_3yr', 'fixed_5yr', 'fixed_10yr', 'fixed_15yr', 'fixed_20yr'] as const;
 export const SPREAD_FIELDS = ['variable_spread_min', 'variable_spread_max'] as const;
@@ -66,7 +77,7 @@ export function fromRate(text: string | number | null | undefined): number | nul
   const m = String(text).replace(',', '.').match(/-?\d+(\.\d+)?/);
   if (!m) return null;
   const v = parseFloat(m[0]);
-  return Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
+  return Number.isFinite(v) ? roundHalfUp(v, 2) : null;
 }
 
 /**
@@ -102,9 +113,9 @@ export function diffBank(current: CurrentBank, proposed: ProposedBank): Change[]
     const raw = current[f];
     const range = rangeOf(raw as string | number | null | undefined);
     if (range && range.some(end => Math.abs(end - next) < 0.005)) continue;
-    const old = typeof raw === 'number' ? Math.round(raw * 100) / 100 : fromRate(raw);
+    const old = typeof raw === 'number' ? roundHalfUp(raw, 2) : fromRate(raw);
     if (old != null && Math.abs(old - next) < 0.005) continue;
-    out.push({ bank_id: current.bank_id, field: f, old, next, delta: old == null ? null : Math.round((next - old) * 100) / 100 });
+    out.push({ bank_id: current.bank_id, field: f, old, next, delta: old == null ? null : roundHalfUp((next - old), 2) });
   }
   return out;
 }

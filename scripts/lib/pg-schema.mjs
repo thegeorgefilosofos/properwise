@@ -82,7 +82,7 @@ export function readSchema() {
         if (col) col.notNull = false;
       }
       for (const c of stmt[2].matchAll(/drop\s+column\s+(?:if\s+exists\s+)?"?(\w+)"?/gi)) cols.delete(c[1]);
-      // ── Η ΜΕΤΟΝΟΜΑΣΙΑ ΗΤΑΝ ΤΥΦΛΟ ΣΗΜΕΙΟ, ΚΑΙ ΠΡΟΣ ΤΙΣ ΔΥΟ ΚΑΤΕΥΘΥΝΣΕΙΣ ──
+      // ── Η ΜΕΤΟΝΟΜΑΣΙΑ ΗΤΑΝ ΤΥΦΛΟ ΣΗΜΕΙΟ ΚΑΙ ΠΡΟΣ ΤΙΣ ΔΥΟ ΚΑΤΕΥΘΥΝΣΕΙΣ ──
       // Ο αναγνώστης ήξερε `add`, `drop` και `set not null`, αλλά όχι
       // `rename column`. Οταν οι στήλες του εμπόρου μετονομάστηκαν από
       // `stripe_*` σε `mor_*`, ο χάρτης έμεινε με τα ΠΑΛΙΑ ονόματα:

@@ -9,6 +9,16 @@
 // Το υποσέλιδο κρατά τη δική του λίστα επίτηδες: εκεί η σειρά ακολουθεί τη
 // στήλη των υπολογισμών και το guard-public-routes διαβάζει τις διαδρομές του.
 // ═══════════════════════════════════════════════════════════════════════════
+import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b';
+
+import { RENTAL_TAX_BRACKETS_2026, MUNICIPAL_ACCOM_TAX_RATE } from '@/lib/billing/greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { feWhole, fpRate } from '@/lib/core/format';
+
+// Η κλίμακα της περιγραφής βγαίνει από την κλίμακα που υπολογίζει: «15 / 25 /
+// 35 / 45%», το όριο του τελευταίου κλιμακίου και η τεκμαρτή έκπτωση.
+const RENT_SCALE = RENTAL_TAX_BRACKETS_2026.map(b => Math.round(b.rate * 100)).join(' / ') + '%';
+const RENT_TOP_FROM = RENTAL_TAX_BRACKETS_2026[RENTAL_TAX_BRACKETS_2026.length - 1].from;
 
 export type Guide = {
   href: string;
@@ -26,7 +36,7 @@ export const GUIDES: readonly Guide[] = [
     href: '/odigos/forologia-enoikion-2026',
     kicker: 'Ενοίκια',
     title: 'Φορολογία ενοικίων 2026',
-    desc: 'Η κλίμακα 15 / 25 / 35 / 45% (όριο 36.000€), η τεκμαρτή έκπτωση 5% και η '
+    desc: `Η κλίμακα ${RENT_SCALE} (όριο ${feWhole(RENT_TOP_FROM)}), η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} και η `
         + 'προϋπόθεση της τραπεζικής είσπραξης, με παραδείγματα σε ευρώ.',
     published: '2026-09-21',
     updated: '2026-09-24',
@@ -36,7 +46,7 @@ export const GUIDES: readonly Guide[] = [
     kicker: 'Βραχυχρόνια',
     title: 'Airbnb και ΤΑΚΚ 2026',
     desc: 'Τι πληρώνεις για βραχυχρόνια μίσθωση: το ΤΑΚΚ ανά διανυκτέρευση, το τέλος '
-        + 'παρεπιδημούντων 0,5% και ο φόρος εισοδήματος.',
+        + `παρεπιδημούντων ${fpRate(MUNICIPAL_ACCOM_TAX_RATE * 100)} και ο φόρος εισοδήματος.`,
     published: '2026-09-21',
     updated: '2026-09-24',
   },
@@ -92,10 +102,10 @@ export const GUIDES: readonly Guide[] = [
     href: '/odigos/ekptosi-forou-anakainisis',
     kicker: 'Ανακαίνιση',
     title: 'Έκπτωση φόρου για ανακαίνιση',
-    desc: 'Το όριο των 16.000€ αφορά τη δαπάνη, όχι την έκπτωση: μέγιστο όφελος 6.400€. '
-        + 'Προϋποθέσεις, πληρωμή, υλικά και τι να επιβεβαιώσεις.',
+    desc: `Η μείωση φόρου ισούται με τη δαπάνη, έως ${feWhole(RENO_39B_CAP)} σε ${RENO_39B_YEARS} έτη, `
+        + `για δαπάνες έως ${RENO_39B_TO}. Προϋποθέσεις, πληρωμή, υλικά και παράδειγμα.`,
     published: '2026-09-27',
-    updated: '2026-09-27',
+    updated: '2026-10-01',
   },
   {
     href: '/odigos/vraxyxronia-ama-prodiagrafes-2026',

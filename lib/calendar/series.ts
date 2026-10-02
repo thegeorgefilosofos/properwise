@@ -1,3 +1,4 @@
+import { roundHalfUp } from '../core/money';
 // ═══════════════════════════════════════════════════════════════════════════
 // ΕΚΑΤΟΝ ΔΕΚΑΕΝΝΕΑ ΦΟΡΕΣ Η ΙΔΙΑ ΓΡΑΜΜΗ
 // ─────────────────────────────────────────────────────────────────────────
@@ -154,7 +155,7 @@ export function groupSeries<E extends SeriesLike>(events: E[], minSize: number =
       lead: list[0], rest: list.slice(1), count: list.length,
       cadence,
       lastDate: dates[dates.length - 1] || list[0].event_date,
-      totalAmount: amounts.length ? Math.round(amounts.reduce((s, a) => s + a, 0) * 100) / 100 : null,
+      totalAmount: amounts.length ? roundHalfUp(amounts.reduce((s, a) => s + a, 0), 2) : null,
     });
   }
 

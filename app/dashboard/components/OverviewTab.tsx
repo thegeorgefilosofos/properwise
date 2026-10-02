@@ -47,7 +47,7 @@ import AgendaPanel from './AgendaPanel'
 import AssistantStrip from './AssistantStrip'
 import { cashPosition } from '@/lib/home/cash'
 import { buildAgenda, type SetupLike as SetupStep } from '@/lib/home/agenda'
-import { computeObligations, type OblMaint } from './obligations'
+import { computeObligations, type OblMaint, type OblTenant } from './obligations'
 import { taxProfileOf } from '@/lib/tax/greekTaxCalendar'
 import PortalShare from './PortalShare'
 import OccupancyPanel from './OccupancyPanel'
@@ -57,12 +57,13 @@ import { staysOfYearToDate } from '@/lib/clients/reports'
 import { propertyIncome, type IncomeRent } from '@/lib/income/propertyIncome'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 import { useLoad } from '@/app/hooks/useLoad'
+import { readCoOwners } from '@/lib/property/coOwners'
 import type { Property, Expense, Bill, Task, Tenant, TenRow, TenantFull } from './shell/model'
 
 /** Οι στήλες του `stayStore.DECLARABLE_COLUMNS`: ό,τι χρειάζεται το δηλωτέο ακαθάριστο. */
 type HostStay = Pick<ClientStaysRow, 'check_in'|'check_out'|'nights'|'nightly_rate'|'total'|'channel'|'gross_guest_paid'|'platform_fee'|'climate_levy'|'amount_basis'>
 
-// ═══ ΔΥΟ ΤΥΠΟΙ ΠΟΣΟΥ ΣΤΗΝ ΙΔΙΑ ΕΦΑΡΜΟΓΗ, ΚΑΙ Ο ΕΝΑΣ ΕΒΓΑΖΕ ΠΑΥΛΑ ══════════
+// ═══ ΔΥΟ ΤΥΠΟΙ ΠΟΣΟΥ ΣΤΗΝ ΙΔΙΑ ΕΦΑΡΜΟΓΗ ΚΑΙ Ο ΕΝΑΣ ΕΒΓΑΖΕ ΠΑΥΛΑ ══════════
 // Ο τοπικός `fmtEur` έγραφε ακέραια ευρώ («1.234€») ενώ ο κοινός `fe` γράφει
 // πάντα δύο δεκαδικά («1.234,50€»): στην ΙΔΙΑ οθόνη, το πλακίδιο «Δαπάνες»
 // στοιχιζόταν αλλού από το «Καθαρό αποτέλεσμα». Και για `null` επέστρεφε «—»,
@@ -154,11 +155,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   /** Πότε καταγράφηκε η υποβολή της δήλωσης μίσθωσης· κλείνει την υποχρέωση. */
   const [leaseDeclaredAt, setLeaseDeclaredAt] = useState<string|null>(null);
   const [tenantFull, setTenantFull] = useState<TenantFull | null>(null);
+  /** Οι μισθωτές αυτού του ακινήτου που έφυγαν: η πρόωρη λύση δηλώνεται στην ΑΑΔΕ. */
+  const [leavers, setLeavers] = useState<OblTenant[]>([]);
   // Ενοίκια ΟΛΩΝ των ακινήτων (μισθωτήρια + ρυθμίσεις ενοικίου), για τον
   // προοδευτικό φόρο σε επίπεδο φορολογούμενου.
   // Ο ΤΡΟΠΟΣ ΕΙΣΠΡΑΞΗΣ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΟ ΕΝΟΙΚΙΟ.
   // Από 1.7.2027 (ν.5222/2025, άρθρο 210) η τεκμαρτή έκπτωση 5% θα προϋποθέτει
-  // είσπραξη μέσω τραπέζης· με μετρητά ο φόρος στο 100% του ενοικίου. Ο χρήστης
+  // είσπραξη μέσω τράπεζας· με μετρητά ο φόρος στο 100% του ενοικίου. Ο χρήστης
   // το δηλώνει ήδη στην καρτέλα Ενοικιαστή (`tenants.e_payment`)· η κύρωση
   // περνά στον φόρο μόνο για χρήσεις από το 2027 (bankReceiptMatters(year)).
   const [portfolioRents, setPortfolioRents] = useState<{ property_id:string; monthly:number; viaBank:boolean }[]>([]);
@@ -203,7 +206,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // ΟΛΟ το χαρτοφυλάκιο: ο φόρος ενοικίων είναι προοδευτικός στο ΣΥΝΟΛΟ (Ε1),
       // οπότε δεν αρκούν τα δεδομένα του επιλεγμένου ακινήτου. Ίδια σειρά
       // προτεραιότητας με το resolveRent: μισθωτήριο → actual → target → ακίνητο.
-      tenantStore.ofUser<TenRow & tenantStore.TenantStatus>(supabase,userId,'monthly_rent,property_id,e_payment,status,move_out_date'),
+      tenantStore.ofUser<TenRow & tenantStore.TenantStatus & OblTenant>(supabase,userId,'id,monthly_rent,property_id,e_payment,status,move_out_date,lease_start,lease_end'),
       supabase.from('rent_config').select('property_id,actual_rent,target_rent').in('property_id',propIds).eq('user_id',userId),
       // ΤΟ ΤΑΜΕΙΟ. Μόνο οι ΑΠΛΗΡΩΤΕΣ περίοδοι — οι πληρωμένες είναι ιστορικό και
       // ζουν στον Ενοικιαστή. Ό,τι δεν εμφανίζεται, δεν κατεβαίνει.
@@ -247,6 +250,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     // ΚΑΙ ΜΟΝΟ ΟΣΟΙ ΜΕΝΟΥΝ ΑΚΟΜΗ. Εδώ δεν υπήρχε κανένα φίλτρο κατάστασης: το
     // ενοίκιο μισθωτή που έφυγε πέρσι έμπαινε στη φορολογική ενοποίηση όλου του
     // χαρτοφυλακίου και μαζί του ο τρόπος είσπραξής του.
+    setLeavers(allTen.filter(t=>t.property_id===prop.id && !!t.move_out_date));
     const tenById = new Map<string,{ monthly:number; viaBank:boolean }>();
     allTen.filter(t=>!tenantStore.hasLeft(t)).forEach(t=>{
       const v = Number(t.monthly_rent)||0;
@@ -486,7 +490,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Η στρογγυλοποίηση ανήκει στην εμφάνιση, που ήδη γράφει δύο δεκαδικά.
   const estTax = taxShareOf(portfolioTax, prop.id);
   const taxNote = consolidationSummary(portfolioTax, fmtEur);
-  // Εισπράττεται το ενοίκιο ΑΥΤΟΥ του ακινήτου μέσω τραπέζης; Κρίνει το κείμενο
+  // Εισπράττεται το ενοίκιο ΑΥΤΟΥ του ακινήτου μέσω τράπεζας; Κρίνει το κείμενο
   // δίπλα στον φόρο, όπως ο ίδιος έλεγχος κρίνει και το ποσό.
   const rentViaBank = tenantFull?.e_payment !== false;
 
@@ -593,9 +597,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // φορές, η ασφάλεια δύο, τα ελλιπή στοιχεία δύο. Τώρα οι πηγές συγχωνεύονται
   // ανά ΘΕΜΑ (lib/home/agenda.ts) και βγαίνει μία σειρά προτεραιότητας.
   const obligations = useMemo(
-    () => computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt }),
+    () => computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt }, leavers),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [prop, tenantFull, maint, todayIso, leaseDeclaredAt],
+    [prop, tenantFull, maint, todayIso, leaseDeclaredAt, leavers],
   );
   // ═══ ΔΥΟ ΛΙΣΤΕΣ «ΤΙ ΕΡΧΕΤΑΙ», Η ΜΙΑ ΚΑΤΩ ΑΠΟ ΤΗΝ ΑΛΛΗ ═══════════════════
   // Η ατζέντα στην κορυφή έλεγε «τι χρειάζεται τώρα». Τρεις ζώνες πιο κάτω, μια
@@ -616,7 +620,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     })),
     [tasks],
   );
-  // ΧΩΡΙΣ useMemo, ΚΑΙ ΟΧΙ ΑΠΟ ΑΜΕΛΕΙΑ. Το `insights` παράγεται με απευθείας κλήση
+  // ΧΩΡΙΣ useMemo ΚΑΙ ΟΧΙ ΑΠΟ ΑΜΕΛΕΙΑ. Το `insights` παράγεται με απευθείας κλήση
   // σε κάθε απόδοση, άρα είναι ΠΑΝΤΑ νέος πίνακας: η χειροκίνητη απομνημόνευση
   // εδώ δεν γλίτωνε ποτέ ούτε μία εκτέλεση, κρατούσε μια σιωπηλή παράκαμψη του
   // κανόνα εξαρτήσεων και εμπόδιζε τον μεταγλωττιστή του React να απομνημονεύσει
@@ -670,7 +674,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
 
   return (
     <div>
-      {/* ── Η ΟΘΟΝΗ ΧΡΕΙΑΖΕΤΑΙ ΟΝΟΜΑ, ΚΑΙ ΑΣ ΜΗΝ ΤΟ ΔΕΙΧΝΕΙ ──────────────────
+      {/* ── Η ΟΘΟΝΗ ΧΡΕΙΑΖΕΤΑΙ ΟΝΟΜΑ ΚΑΙ ΑΣ ΜΗΝ ΤΟ ΔΕΙΧΝΕΙ ──────────────────
           Δώδεκα καρτέλες έχουν ορατό τίτλο μέσω `PageTitle`, δηλαδή `h1`. Η
           Επισκόπηση —η ΠΡΩΤΗ οθόνη που βλέπει ο χρήστης— δεν είχε κανένα: ο
           αναγνώστης οθόνης την ανακοίνωνε χωρίς όνομα και η πλοήγηση ανά
@@ -692,7 +696,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16,flexWrap:'wrap',marginBottom:20}}>
         <div style={{minWidth:0}}>
           <AthensNow style={{fontFamily:T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--text-tertiary)',letterSpacing:'0.02em',marginBottom:4,minHeight:15}}/>
-          {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
+          {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
               Εδώ γραφόταν ξανά, εξήντα εικονοστοιχεία κάτω από την ίδια
               πρόταση: όνομα, τύπος, κατάσταση, διεύθυνση — τα ίδια τέσσερα
               πεδία, με δεύτερη μορφοποίηση και τρίτη φορά στην κάρτα
@@ -712,7 +716,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           floor: prop.floor!=null?prop.floor:undefined, yearBuilt: prop.year_built!=null?prop.year_built:undefined,
           energyClass: prop.pea_class||undefined, atak: prop.atak||undefined,
           ownership: prop.ownership!=null?Number(prop.ownership):undefined,
-          coOwners: Array.isArray(prop.co_owners)?prop.co_owners:undefined,
+          coOwners: readCoOwners(prop.co_owners).map(c=>c.name),
           shortTerm: isShortTerm(prop),
           monthlyRent: rent, rentIsEstimate: incomeIsEstimate, annualRent, grossYield, netYield,
           expensesYTD: totalExpYear, categories: catEntries, branding,
@@ -804,7 +808,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             {([['Τύπος',propertyTypeLabel(prop.prop_type)],['Εμβαδόν',prop.sqm?`${prop.sqm} τ.μ.`:null],['Υπνοδωμάτια',prop.bedrooms?String(prop.bedrooms):null],['Διεύθυνση',prop.address],['ΑΤΑΚ',prop.atak],['Έτος κατασκευής',prop.year_built?String(prop.year_built):null],['Όροφος',prop.floor!=null?String(prop.floor):null],['Θέρμανση',heatingLabel(prop.heating)||null],['Ενεργειακή κλάση',prop.pea_class],['Θέσεις στάθμευσης',prop.parking_spaces?String(prop.parking_spaces):null],['Αποθήκη',prop.storage_sqm?`${prop.storage_sqm} τ.μ.`:null],['Αντικειμενική αξία',prop.obj_value?fmtEur(prop.obj_value):null],['Εκτιμώμενος ΕΝΦΙΑ',prop.enfia?fmtEur(prop.enfia):null]] as [string,string|null][]).filter(([,v])=>v).map(([k,v]) => (
               <div key={k} title={k==='ΑΤΑΚ'?'Αριθμός Ταυτότητας Ακινήτου, από το έντυπο Ε9':k==='Εκτιμώμενος ΕΝΦΙΑ'?'Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων: ο ετήσιος φόρος περιουσίας':undefined}
                 style={{padding:'9px 0',borderBottom:'1px solid var(--border-subtle)',minWidth:0}}>
-                {/* ══ Η ΤΙΜΗ ΚΟΒΟΤΑΝ, ΚΑΙ ΜΑΖΙ ΤΗΣ ΚΟΒΟΤΑΝ ΚΑΙ ΤΟ ΠΟΣΟ ══════════
+                {/* ══ Η ΤΙΜΗ ΚΟΒΟΤΑΝ ΚΑΙ ΜΑΖΙ ΤΗΣ ΚΟΒΟΤΑΝ ΚΑΙ ΤΟ ΠΟΣΟ ══════════
                     Ετικέτα και τιμή κάθονταν στην ΙΔΙΑ γραμμή, η μία απέναντι
                     στην άλλη, με τρεις τελείες όταν δεν χωρούσαν. Σε τρεις
                     στήλες η τιμή παίρνει ό,τι περισσεύει από την ετικέτα, που
@@ -882,7 +886,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           { label:'Δαπάνες', value:fmtEur(projectedExpYear),
             sub: [`${fmtEur(totalExpToDate)} ως σήμερα`, recurringCount>0 ? `${recurringCount} πάγιες` : null].filter(Boolean).join(' · '),
             title:`Οι δαπάνες που έχεις καταχωρήσει για το ${year}, μετρημένες όσες φορές πραγματικά συμβαίνουν: οι εφάπαξ (π.χ. ΕΝΦΙΑ, συμβόλαιο) μία φορά, οι πάγιες όσες φορές επαναλαμβάνονται. Δεν πολλαπλασιάζεται το σύνολο του έτους ×12.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
-          // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ, ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
+          // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
           // «Μερίδιο φόρου ενοικίου» είναι 22 χαρακτήρες δίπλα σε τρεις
           // ετικέτες των 7 ως 17: έσπαγε σε δεύτερη γραμμή και ΜΟΝΟ αυτή,
           // οπότε η τιμή της ξεκινούσε χαμηλότερα από τις άλλες τρεις. Τέσσερα
@@ -902,7 +906,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               // το κείμενο δεν μιλά για απώλεια που δεν συμβαίνει ακόμη.
               : (!bankReceiptMatters(year) || rentViaBank)
                 ? `Προοδευτική κλίμακα ενοικίων ${year} με την τεκμαρτή έκπτωση 5%. Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου.`
-                : `Προοδευτική κλίμακα ενοικίων ${year} ΧΩΡΙΣ την τεκμαρτή έκπτωση 5%: το ενοίκιο εισπράττεται με μετρητά και από 1.7.2027 η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.` },
+                : `Προοδευτική κλίμακα ενοικίων ${year} χωρίς την τεκμαρτή έκπτωση 5%: το ενοίκιο εισπράττεται με μετρητά και από 1.7.2027 η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.` },
           // ΧΩΡΙΣ ΧΡΩΜΑΤΙΚΗ ΕΤΥΜΗΓΟΡΙΑ. Το πρόσημο το λέει ήδη το ίδιο το ποσό·
           // το πράσινο/κόκκινο απλώς το ξαναέλεγε και σε μια χρονιά με ΕΝΦΙΑ
           // έβαφε κόκκινο ένα ακίνητο που δουλεύει κανονικά.
@@ -929,7 +933,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           // με τα λεπτά της· εδώ έβγαινε «922,00€» δίπλα σε «922,30€».
           label:'Δόση δανείου / μήνα', value:fmtEur(monthlyDebt),
           sub: debtLtv>0 ? `${debtKnownAge ? 'υπόλοιπο' : 'αρχικό δάνειο'} προς αξία ${fp(debtLtv)}` : undefined,
-          title:'Εκτιμώμενη τοκοχρεολυτική δόση. ΔΕΝ αφαιρείται από το καθαρό αποτέλεσμα παραπάνω· το κεφάλαιο δεν είναι δαπάνη.' });
+          title:'Εκτιμώμενη τοκοχρεολυτική δόση. Δεν αφαιρείται από το καθαρό αποτέλεσμα παραπάνω· το κεφάλαιο δεν είναι δαπάνη.' });
         // ── ΕΙΣΠΡΑΞΕΙΣ, ΟΧΙ ΕΣΟΔΑ. ΔΥΟ ΣΩΣΤΑ ΝΟΥΜΕΡΑ ΓΙΑ ΤΗΝ ΙΔΙΑ ΔΙΑΜΟΝΗ ──────
         // Ο επισκέπτης πληρώνει 1.000,00€, η πλατφόρμα κρατά 150,00€ προμήθεια
         // και εισπράττει 50,00€ τέλος ανθεκτικότητας. Στον λογαριασμό μπαίνουν
@@ -944,7 +948,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         if (hostStays.length > 0) extra.push({
           label:`Εισπράξεις φιλοξενίας ${year}`, value:fmtEur(hostingYTD),
           sub: [hostingNights>0?`${hostingNights} διανυκτερεύσεις`:null, nextArrival?`επόμενη άφιξη ${fd(nextArrival)}`:null].filter(Boolean).join(' · ') || undefined,
-          title:`Ό,τι μπήκε στον λογαριασμό σου από διαμονές, από την καρτέλα «${navLabel('clients')}». Το ΔΗΛΩΤΕΟ ποσό είναι μεγαλύτερο, γιατί περιλαμβάνει την προμήθεια της πλατφόρμας: το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».` });
+          title:`Ό,τι μπήκε στον λογαριασμό σου από διαμονές, από την καρτέλα «${navLabel('clients')}». Το δηλωτέο ποσό είναι μεγαλύτερο, γιατί περιλαμβάνει την προμήθεια της πλατφόρμας: το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».` });
         // ΟΙ «ΕΚΚΡΕΜΕΙΣ ΔΑΠΑΝΕΣ» ΕΦΥΓΑΝ ΑΠΟ ΕΔΩ. Είναι ακριβώς το «Χρωστάω» του
         // Ταμείου, στην κορυφή της ίδιας οθόνης — το ίδιο ποσό δύο φορές, με
         // διαφορετικό όνομα και σε απόσταση ενός scroll.

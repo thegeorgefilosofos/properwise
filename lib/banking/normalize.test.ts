@@ -37,7 +37,7 @@ const dupes = normalizeTxns([txn({ providerTxnId: 'A' }), txn({ providerTxnId: '
 ok('η διπλή κίνηση της ίδιας απάντησης κόβεται', dupes.rows.length === 1);
 ok('η διπλή δεν μετριέται ως απόρριψη', dupes.rejected.length === 0);
 
-// ── ΤΙ ΑΠΟΡΡΙΠΤΕΤΑΙ, ΚΑΙ ΓΙΑΤΙ ΤΟ ΛΕΜΕ ────────────────────────────────────
+// ── ΤΙ ΑΠΟΡΡΙΠΤΕΤΑΙ ΚΑΙ ΓΙΑΤΙ ΤΟ ΛΕΜΕ ────────────────────────────────────
 const foreign = normalizeTxns([txn({ currency: 'GBP' })], 'gocardless', 'c1');
 ok('ξένο νόμισμα δεν περνά', foreign.rows.length === 0);
 ok('ξένο νόμισμα δεν μετατρέπεται σιωπηλά', foreign.rejected[0].reason === 'currency' && foreign.rejected[0].count === 1);

@@ -24,6 +24,7 @@ import {
   isDeclared, awaitsDeclaration, type StayAmountLike,
 } from './stayAmounts';
 import { athensToday } from '../core/time';
+import { roundHalfUp } from '../core/money';
 
 export interface ReportStay extends StayAmountLike {
   property_id?: string | null;
@@ -60,7 +61,7 @@ export function revenueByChannel(stays: ReportStay[]): ChannelRow[] {
 /**
  * Έσοδα ανά μήνα άφιξης.
  *
- * ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΔΙΟΡΘΩΘΗΚΕ, ΚΑΙ ΓΙΑΤΙ ΔΕΝ ΤΟ ΕΙΔΕ ΚΑΝΕΙΣ. Εδώ γραφόταν
+ * ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΔΙΟΡΘΩΘΗΚΕ ΚΑΙ ΓΙΑΤΙ ΔΕΝ ΤΟ ΕΙΔΕ ΚΑΝΕΙΣ. Εδώ γραφόταν
  * `new Date(d)` και μετά `dt.getFullYear()` / `dt.getMonth()` — δηλαδή η
  * ημερομηνία διαβαζόταν σε UTC και ρωτιόταν σε ΤΟΠΙΚΗ ώρα. Το «2026-01-01»
  * είναι μεσάνυχτα UTC· σε ζώνη με ΑΡΝΗΤΙΚΗ απόκλιση (Νέα Υόρκη, UTC−5) γίνεται
@@ -136,9 +137,9 @@ export function trailingStays(stays: ReportStay[], today: string, days = 365): T
   }
   return {
     nights,
-    revenue: Math.round(revenue * 100) / 100,
+    revenue: roundHalfUp(revenue, 2),
     occupancyPct: days > 0 ? Math.round((nights / days) * 1000) / 10 : 0,
-    adr: nights > 0 ? Math.round((revenue / nights) * 100) / 100 : 0,
+    adr: nights > 0 ? roundHalfUp((revenue / nights), 2) : 0,
   };
 }
 
@@ -170,7 +171,7 @@ export interface YearOccupancy {
   /** ΔΙΑΘΕΣΙΜΕΣ ημέρες — ο παρονομαστής. 0 όταν δεν υπάρχει καμία κράτηση. */
   availableDays: number;
   // ═══════════════════════════════════════════════════════════════════════
-  // ΕΝΑ ΠΟΣΟΣΤΟ, ΚΑΙ ΕΙΝΑΙ Η ΑΛΗΘΕΙΑ.
+  // ΕΝΑ ΠΟΣΟΣΤΟ ΚΑΙ ΕΙΝΑΙ Η ΑΛΗΘΕΙΑ.
   // ─────────────────────────────────────────────────────────────────────
   // Εδώ ζούσαν ΔΥΟ: το `pct`, κομμένο στο 100 «για τις οθόνες που το
   // ζωγραφίζουν ως μπάρα» και το `rawPct` με την πραγματική αναλογία.
@@ -283,7 +284,7 @@ export function totals(stays: (ReportStay & { declared_at?: string | null })[], 
   }, { revenue: 0, nights: 0, count: 0, unresolved: 0, unresolvedAmount: 0, platformFees: 0, climateLevy: 0, undeclared: 0, upcoming: 0 });
 }
 
-// ═══ «ΩΣ ΣΗΜΕΡΑ» ΣΗΜΑΙΝΕΙ ΩΣ ΣΗΜΕΡΑ, ΚΑΙ ΣΤΙΣ ΔΙΑΜΟΝΕΣ ══════════════════════
+// ═══ «ΩΣ ΣΗΜΕΡΑ» ΣΗΜΑΙΝΕΙ ΩΣ ΣΗΜΕΡΑ ΚΑΙ ΣΤΙΣ ΔΙΑΜΟΝΕΣ ══════════════════════
 // Το Χαρτοφυλάκιο («Έσοδα 2026 ως σήμερα») και η Επισκόπηση («Εισπράξεις
 // φιλοξενίας») κρατούσαν τις διαμονές του ΕΤΟΥΣ: μαζί και την κράτηση του
 // Δεκεμβρίου που δεν έχει ξεκινήσει. Στον λογαριασμό δεν έχει μπει τίποτα από

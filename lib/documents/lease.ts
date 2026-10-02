@@ -13,6 +13,7 @@
 import { declarationDeadline as taxDeclarationDeadline } from '../tax/leaseDeclaration';
 import { fe, fp } from '../core/format';
 import { grDate } from '@/lib/core/format';
+import { roundHalfUp } from '../core/money';
 
 export type LeaseUse = 'residence' | 'professional';
 
@@ -43,7 +44,7 @@ export interface LeaseResult {
 
 export const LEGAL_MIN_YEARS_RESIDENCE = 3;
 
-const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
+const r2 = (n: number) => roundHalfUp((Number(n) || 0), 2);
 const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const parseIso = (s: string): Date | null => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
@@ -96,7 +97,7 @@ export function computeLease(i: LeaseInput): LeaseResult {
     monthlyRent: rent,
     deposit: r2(i.deposit ?? 0),
     start, end, months,
-    years: Math.round(effYears * 100) / 100,
+    years: roundHalfUp(effYears, 2),
     belowLegalMinimum: use === 'residence' && effYears > 0 && effYears < LEGAL_MIN_YEARS_RESIDENCE - 0.02,
     declarationDeadline: declarationDeadline(start),
     firstYearTotal: r2(rent * Math.min(12, months || 12)),

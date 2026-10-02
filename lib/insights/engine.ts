@@ -137,7 +137,7 @@ export function computeInsights(input: InsightInput): Insight[] {
   if (tasksOverdue.length) out.push({ id: 'tasks-overdue', kind: 'attention', title: `${tasksOverdue.length} ${tasksOverdue.length === 1 ? 'εργασία συντήρησης' : 'εργασίες συντήρησης'} σε καθυστέρηση`, detail: 'Η έγκαιρη συντήρηση κοστίζει πολύ λιγότερο από μια βλάβη. Δες τι εκκρεμεί.', action: { label: navLabel('calendar'), tab: 'calendar' } });
   // Ίδια λέξη με την καρτέλα που ανοίγει το κουμπί («Εκκρεμότητες»). Η «λίστα
   // υποχρεώσεων» δεν υπάρχει πουθενά στην εφαρμογή.
-  if (chkOverdue.length) out.push({ id: 'chk-overdue', kind: 'attention', title: `${chkOverdue.length} ${chkOverdue.length === 1 ? 'εκπρόθεσμη εκκρεμότητα' : 'εκπρόθεσμες εκκρεμότητες'}`, detail: chkOverdue.length === 1 ? 'Η προθεσμία της έχει περάσει.' : 'Η προθεσμία τους έχει περάσει.', action: { label: navLabel('checklist'), tab: 'checklist' } });
+  if (chkOverdue.length) out.push({ id: 'chk-overdue', kind: 'attention', title: `${chkOverdue.length} ${chkOverdue.length === 1 ? 'ληξιπρόθεσμη εκκρεμότητα' : 'ληξιπρόθεσμες εκκρεμότητες'}`, detail: chkOverdue.length === 1 ? 'Η προθεσμία της έχει περάσει.' : 'Η προθεσμία τους έχει περάσει.', action: { label: navLabel('checklist'), tab: 'checklist' } });
 
   // ── 5. Εγγυήσεις που λήγουν (ευκαιρία να καλυφθεί η επισκευή) ────────────
   const warrantySoon = inventory.filter(i => { const x = daysUntil(i.warranty_expiry, now); return x !== null && x >= 0 && x <= 60; });
@@ -184,7 +184,7 @@ export function computeInsights(input: InsightInput): Insight[] {
   // κάνει τον χρήστη να ανοίξει την εφαρμογή χωρίς να του το ζητήσει κανείς,
   // και τα δεδομένα υπήρχαν από την πρώτη μέρα.
   //
-  // ΜΟΝΟ ΤΟ ΠΡΩΤΟ, ΚΑΙ ΕΙΝΑΙ ΑΠΟΦΑΣΗ. Ο ανιχνευτής μπορεί να επιστρέψει τρεις
+  // ΜΟΝΟ ΤΟ ΠΡΩΤΟ ΚΑΙ ΕΙΝΑΙ ΑΠΟΦΑΣΗ. Ο ανιχνευτής μπορεί να επιστρέψει τρεις
   // κατηγορίες· τρεις γραμμές για το ίδιο πράγμα στην ίδια οθόνη είναι ακριβώς
   // τα «διπλά και τριπλά σημεία» που δεν θέλουμε. Λέγεται η ακριβότερη, με το
   // πλήθος των υπολοίπων δίπλα· η οθόνη των Οικονομικών τα δείχνει όλα.

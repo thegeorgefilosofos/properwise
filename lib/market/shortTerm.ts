@@ -4,11 +4,12 @@
 // για ΤΑΚΚ και τέλος παρεπιδημούντων (lib/billing/greekTax).
 // ═══════════════════════════════════════════════════════════════════════════
 import { climateLevyRates, municipalAccommodationTax } from '@/lib/billing/greekTax'
+import { roundHalfUp } from '../core/money';
 
 const num = (n: number): number => (Number.isFinite(n) ? n : 0)
 const max0 = (n: number): number => Math.max(0, num(n))
 const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, num(n)))
-const round2 = (n: number): number => Math.round(num(n) * 100) / 100
+const round2 = (n: number): number => roundHalfUp(num(n), 2)
 
 export interface ShortTermInput {
   occupancyPct: number       // ετήσια πληρότητα (0–100)
@@ -24,7 +25,7 @@ export interface ShortTermInput {
   /**
    * Χρεώνει ο ιδιοκτήτης το ΤΑΚΚ στον επισκέπτη, επιπλέον της τιμής;
    *
-   * ΠΡΟΕΠΙΛΟΓΗ ΟΧΙ, ΚΑΙ ΕΙΝΑΙ Η ΣΥΝΤΗΡΗΤΙΚΗ. Ο νόμος λέει ότι το τέλος
+   * ΠΡΟΕΠΙΛΟΓΗ ΟΧΙ ΚΑΙ ΕΙΝΑΙ Η ΣΥΝΤΗΡΗΤΙΚΗ. Ο νόμος λέει ότι το τέλος
    * βαραίνει τον επισκέπτη, αλλά οι πλατφόρμες δεν έχουν πεδίο γι' αυτό στην
    * Ελλάδα: όποιος δεν το ζητά ρητά, το πληρώνει από την τσέπη του. Οταν ο
    * ιδιοκτήτης δηλώσει ότι το χρεώνει, παύει να είναι δικό του κόστος.
@@ -85,7 +86,7 @@ export function shortTermEstimate(i: ShortTermInput): ShortTermResult {
   // την τσέπη του οικοδεσπότη.
   //
   // ΑΡΑ ΕΙΝΑΙ ΠΑΡΑΔΟΧΗ ΤΟΥ ΧΡΗΣΤΗ, ΟΧΙ ΣΤΑΘΕΡΑ ΤΟΥ ΚΩΔΙΚΑ. Ιδιο ιδίωμα με
-  // την είσπραξη μέσω τραπέζης, που ζει κι εκείνη ως διακόπτης στην οθόνη.
+  // την είσπραξη μέσω τράπεζας, που ζει κι εκείνη ως διακόπτης στην οθόνη.
   //
   // Η ΠΡΟΕΠΙΛΟΓΗ ΜΕΝΕΙ Η ΣΥΝΤΗΡΗΤΙΚΗ: «δεν το χρεώνω». Μια προβολή εσόδων
   // πάνω στην οποία κάποιος αγοράζει ακίνητο δεν επιτρέπεται να γίνει πιο

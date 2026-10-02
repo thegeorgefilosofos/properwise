@@ -12,10 +12,18 @@
 // μεταγλωττιστής πετά τα σχόλια της JavaScript· ό,τι μένει μέσα σε
 // ανάστροφα εισαγωγικά δεν το αγγίζει. Κάθε νέο σχόλιο εδώ γράφεται με
 // τον ίδιο τρόπο και ο scripts/guard-style-comments το επιβάλλει.
+// ΤΟ «ΔΙΑΣΤΗΜΑ» ΤΗΣ ΑΡΧΙΚΗΣ, ΓΡΑΜΜΕΝΟ ΜΙΑ ΦΟΡΑ. Το ζωγραφίζουν η σελίδα και η
+// καρφωμένη μπάρα της ιστορίας στο τηλέφωνο (`.story-stick`), που χρειάζεται
+// ΤΟ ΙΔΙΟ φόντο από πάνω της για να μη διαβάζεται ως σκούρα λωρίδα.
+const SPACE = `radial-gradient(1100px 760px at 50% -2%, var(--accent-border), transparent 60%),
+            radial-gradient(900px 720px at 92% 20%, var(--accent-soft), transparent 55%),
+            radial-gradient(820px 640px at 6% 74%, color-mix(in srgb, var(--mkt-accent) 6%, transparent), transparent 60%),
+            linear-gradient(180deg, var(--mkt-space-top) 0%, var(--mkt-space-mid) 52%, var(--mkt-space-bottom) 100%)`;
+
 export function LandingStyles() {
   return (
     <style>{`
-        ${/* Η ΒΙΤΡΙΝΑ ΕΙΝΑΙ ΞΕΧΩΡΙΣΤΟ ΘΕΜΑ, ΚΑΙ ΠΛΕΟΝ ΤΟ ΛΕΕΙ.
+        ${/* Η ΒΙΤΡΙΝΑ ΕΙΝΑΙ ΞΕΧΩΡΙΣΤΟ ΘΕΜΑ ΚΑΙ ΠΛΕΟΝ ΤΟ ΛΕΕΙ.
            Εδώ δεν ορίζεται κανένα χρώμα: γίνεται ΑΝΤΙΣΤΟΙΧΙΣΗ των tokens της
            εφαρμογής στην παλέτα --mkt-*, που ζει δηλωμένη στο app/globals.css
            δίπλα στα θέματα του προϊόντος. Πριν, αυτό το μπλοκ ξανάγραφε τα ίδια
@@ -41,16 +49,20 @@ export function LandingStyles() {
              κάτω. Οι απαλές γαλάζιες κηλίδες μένουν καρφωμένες στην οθόνη
              (background-attachment: fixed), οπότε καθώς κυλάς νιώθεις ότι
              ταξιδεύεις μέσα σε έναν χώρο, όχι ότι σκρολάρεις μια σελίδα. */''}
-          background:
-            radial-gradient(1100px 760px at 50% -2%, var(--accent-border), transparent 60%),
-            radial-gradient(900px 720px at 92% 20%, var(--accent-soft), transparent 55%),
-            radial-gradient(820px 640px at 6% 74%, color-mix(in srgb, var(--mkt-accent) 6%, transparent), transparent 60%),
-            linear-gradient(180deg, var(--mkt-space-top) 0%, var(--mkt-space-mid) 52%, var(--mkt-space-bottom) 100%);
+          background: ${SPACE};
           background-attachment: fixed;
           background-repeat: no-repeat;
         }
+        ${/* Η καρφωμένη μπάρα της ιστορίας στο τηλέφωνο (ScrollStory): ίδιο φόντο
+           με τη σελίδα, στερεωμένο στην οθόνη όπως εκείνης· και το σβήσιμό της. */''}
+        @media (max-width: 900px) {
+          .lp-root .story-stick, .lp-root .story-stick::after {
+            background: ${SPACE};
+            background-attachment: fixed; background-repeat: no-repeat;
+          }
+        }
         .lp-card { position: relative; transition: transform .22s cubic-bezier(.2,0,0,1), box-shadow .22s cubic-bezier(.2,0,0,1), border-color .22s; }
-        .lp-card:hover { transform: translateY(-3px); box-shadow: 0 20px 44px -20px rgba(0,0,0,.6); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+        .lp-card:hover { transform: translateY(-3px); box-shadow: 0 20px 44px -20px color-mix(in srgb, var(--shadow-ink) 60%, transparent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 
         ${/* Ο φωτισμός που ακολουθεί τον δείκτη. Οι συντεταγμένες γράφονται από το
            app/Spotlight.tsx, μία φορά ανά καρέ. Η αρχική τιμή είναι το πάνω μέσο
@@ -79,6 +91,10 @@ export function LandingStyles() {
         .lp-hero { background: transparent; color: var(--text-primary); border-bottom: none; }
         .lp-hero .lp-aurora::before { opacity: .22; }
         .lp-hero .lp-aurora::after { opacity: .15; }
+        .lp-final .lp-aurora {
+          -webkit-mask-image: linear-gradient(transparent 0%, transparent 12%, var(--text-primary) 42%);
+          mask-image: linear-gradient(transparent 0%, transparent 12%, var(--text-primary) 42%);
+        }
         ${/* Ticker: αδιάκοπη οριζόντια ροή δυνατοτήτων, παύση στο πέρασμα του κέρσορα. */''}
         ${/* ═══ ΑΤΜΟΣΦΑΙΡΑ ═══════════════════════════════════════════════════════
            ΓΙΑΤΙ ΑΛΛΑΞΕ: το φόντο ήταν δύο θολές κηλίδες πάνω σε επίπεδο σκούρο
@@ -101,8 +117,8 @@ export function LandingStyles() {
         .lp-atmos::before {
           content: ''; position: absolute; inset: 0;
           background-image:
-            linear-gradient(rgba(138,180,248,.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(138,180,248,.06) 1px, transparent 1px);
+            linear-gradient(color-mix(in srgb, var(--mkt-accent) 6%, transparent) 1px, transparent 1px),
+            linear-gradient(90deg, color-mix(in srgb, var(--mkt-accent) 6%, transparent) 1px, transparent 1px);
           background-size: 72px 72px;
           -webkit-mask-image: radial-gradient(ellipse 76% 52% at 50% 0%, #000 0%, transparent 72%);
           mask-image: radial-gradient(ellipse 76% 52% at 50% 0%, #000 0%, transparent 72%);
@@ -329,7 +345,7 @@ export function LandingStyles() {
            αφήνει τόνο πίσω του. */''}
         .lp-stats {
           display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-          grid-template-rows: auto auto 1fr; gap: 1px;
+          grid-template-rows: auto auto 1fr;
         }
         .lp-stats > .lp-stat {
           grid-row: span 3; display: grid; grid-template-rows: subgrid; gap: 0;
@@ -387,7 +403,7 @@ export function LandingStyles() {
           border-top: 1px solid var(--border-subtle);
           font-size: 13px; line-height: 1.6; color: var(--text-tertiary);
         }
-        ${/* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ ΟΙ ΤΕΣΣΕΡΙΣ ΜΠΑΙΝΟΥΝ ΣΕ ΜΙΑ ΣΤΗΛΗ, ΚΑΙ Η ΣΕΙΡΑ ΤΟΥΣ
+        ${/* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ ΟΙ ΤΕΣΣΕΡΙΣ ΜΠΑΙΝΟΥΝ ΣΕ ΜΙΑ ΣΤΗΛΗ ΚΑΙ Η ΣΕΙΡΑ ΤΟΥΣ
            ΓΙΝΕΤΑΙ ΞΑΝΑ Η ΣΕΙΡΑ ΤΟΥ ΕΓΓΡΑΦΟΥ. Με ροή κατά στήλη σε μία στήλη το
            «grid-auto-flow: column» θα έφτιαχνε τέσσερις ΣΤΗΛΕΣ και θα έβγαζε
            οριζόντια κύλιση: η δήλωση επαναφέρεται ρητά. */''}
@@ -417,12 +433,12 @@ export function LandingStyles() {
            ως δύο θραύσματα, όχι ως δήλωση.
            Η πρόζα σε δύο στοιχισμένες στήλες κρατά τη δύναμη της πρότασης και
            κλείνει ίσια και από τις δύο πλευρές. */''}
-        ${/* ═══ Η ΣΤΟΙΧΙΣΗ «ΠΕΡΑ ΠΕΡΑ» ΕΦΥΓΕ, ΚΑΙ ΕΙΝΑΙ Η ΣΩΣΤΗ ΑΠΟΦΑΣΗ ═══════════
+        ${/* ═══ Η ΣΤΟΙΧΙΣΗ «ΠΕΡΑ ΠΕΡΑ» ΕΦΥΓΕ ΚΑΙ ΕΙΝΑΙ Η ΣΩΣΤΗ ΑΠΟΦΑΣΗ ═══════════
            ΤΙ ΕΒΛΕΠΕ ΚΑΝΕΙΣ. Τεράστια κενά ανάμεσα στις λέξεις, άλλο πλάτος σε
            κάθε γραμμή και συλλαβισμοί τύπου «φωτο-γραφία». Το κείμενο έμοιαζε
            στοιχισμένο από μηχανή, όχι σχεδιασμένο.
 
-           ΓΙΑΤΙ ΣΥΜΒΑΙΝΕΙ, ΚΑΙ ΓΙΑΤΙ ΔΕΝ ΔΙΟΡΘΩΝΕΤΑΙ ΜΕ ΡΥΘΜΙΣΕΙΣ. Η στοίχιση
+           ΓΙΑΤΙ ΣΥΜΒΑΙΝΕΙ ΚΑΙ ΓΙΑΤΙ ΔΕΝ ΔΙΟΡΘΩΝΕΤΑΙ ΜΕ ΡΥΘΜΙΣΕΙΣ. Η στοίχιση
            και στις δύο άκρες δουλεύει στο βιβλίο, όπου η γραμμή έχει εξήντα με
            ογδόντα χαρακτήρες και ο συλλαβισμός γίνεται από μηχανή που ζυγίζει
            ολόκληρη την παράγραφο. Ο περιηγητής στοιχίζει ΓΡΑΜΜΗ ΓΡΑΜΜΗ: όταν σε
@@ -482,7 +498,7 @@ export function LandingStyles() {
            Ο κανόνας για την κλάση lp-plan-item έφυγε: τέτοια κλάση δεν υπήρχε
            σε κανένα στοιχείο της σελίδας. */''}
         .lp-feat h3, .lp-duo h3 { text-wrap: balance; }
-        ${/* ΤΟ «BALANCE» ΕΙΝΑΙ ΓΙΑ ΤΙΤΛΟΥΣ, ΚΑΙ ΤΟ ΕΙΧΕ ΚΑΙ Η ΓΡΑΜΜΗ ΤΗΣ ΛΙΣΤΑΣ.
+        ${/* ΤΟ «BALANCE» ΕΙΝΑΙ ΓΙΑ ΤΙΤΛΟΥΣ ΚΑΙ ΤΟ ΕΙΧΕ ΚΑΙ Η ΓΡΑΜΜΗ ΤΗΣ ΛΙΣΤΑΣ.
            Ισομοιράζει τους χαρακτήρες στις γραμμές, που σε δίστιχο τίτλο είναι
            ακριβώς το ζητούμενο. Σε γραμμή λίστας κάνει το αντίθετο από αυτό που
            θέλει η σελίδα: το «Εσύ κερδίζεις μία επιπλέον θέση ακινήτου για έναν
@@ -530,13 +546,17 @@ export function LandingStyles() {
         }
 
         ${/* ── ΚΙΝΗΤΟ ΚΑΙ ΜΙΚΡΗ ΤΑΜΠΛΕΤΑ ──────────────────────────────────── */''}
-        @media (max-width: 860px) {
+        ${/* 01.10.2026: ΤΟ ΚΑΡΟΥΖΕΛ ΜΟΝΟ ΣΤΟ ΤΗΛΕΦΩΝΟ. Στην ταμπλέτα (601–860) οι
+           τέσσερις κάρτες των 320 έβγαιναν ως την άκρη της οθόνης και η τρίτη
+           κοβόταν στη μέση του κειμένου της· εκεί χωρούν 2×2 (globals.css,
+           «.lp-plans» ως τα 1.279) και η σύγκριση γίνεται με μια ματιά. */''}
+        @media (max-width: 600px) {
           ${/* ΠΛΑΝΑ ΣΕ ΚΑΡΟΥΖΕΛ. Τρεις κάρτες τιμολόγησης στοιβαγμένες είναι
              1.950px — το 16% ολόκληρης της σελίδας για κάτι που ο επισκέπτης
              θέλει να ΣΥΓΚΡΙΝΕΙ και η σύγκριση είναι αδύνατη όταν δεν βλέπεις
              δύο μαζί. Οριζόντια, με snap, βλέπει τη μία και μισή και σέρνει. */''}
           .lp-plans {
-            gap: 12px;
+            gap: 16px;
             overflow-x: auto; overflow-y: hidden;
             scroll-snap-type: x mandatory;
             scroll-padding-inline: var(--pub-gutter);
@@ -551,7 +571,7 @@ export function LandingStyles() {
             scrollbar-width: none;
           }
           .lp-plans::-webkit-scrollbar { display: none; }
-          ${/* ══ ΤΟ ΚΑΡΟΥΖΕΛ ΤΩΝ ΠΑΚΕΤΩΝ ΜΕΝΕΙ ΠΛΕΓΜΑ, ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΟΛΗ Η ΔΙΑΦΟΡΑ
+          ${/* ══ ΤΟ ΚΑΡΟΥΖΕΛ ΤΩΝ ΠΑΚΕΤΩΝ ΜΕΝΕΙ ΠΛΕΓΜΑ ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΟΛΗ Η ΔΙΑΦΟΡΑ
              Ηταν κι αυτό «display: flex», όπως τα άλλα δύο. Οι κάρτες έβγαιναν
              ισοϋψείς (το flex τις τεντώνει) και ΜΕΣΑ τους τίποτα δεν στοίχιζε:
              η υπότιτλη φράση σπάει σε δύο σειρές σε άλλο πακέτο απ' ό,τι σε
@@ -574,7 +594,7 @@ export function LandingStyles() {
             grid-auto-columns: min(84vw, 320px);
           }
           .lp-plans > * { scroll-snap-align: center; }
-          ${/* ΤΟ ΣΗΜΑ «ΠΡΟΤΕΙΝΟΜΕΝΟ» ΚΟΒΟΤΑΝ ΣΤΗ ΜΕΣΗ, ΚΑΙ ΜΟΝΟ ΕΔΩ.
+          ${/* ΤΟ ΣΗΜΑ «ΠΡΟΤΕΙΝΟΜΕΝΟ» ΚΟΒΟΤΑΝ ΣΤΗ ΜΕΣΗ ΚΑΙ ΜΟΝΟ ΕΔΩ.
              Κάθεται στο «top: -9px» της κάρτας, δηλαδή προεξέχει εννέα
              εικονοστοιχεία πάνω από αυτήν, όπως κάθε κορδέλα που κάθεται στο
              περίγραμμα. Στον υπολογιστή το «.lp-plans» έχει «overflow: visible»
@@ -588,12 +608,17 @@ export function LandingStyles() {
              στα πακέτα: τα άλλα δύο καρουζέλ δεν έχουν σήμα και δεν χρειάζονται
              κενό από πάνω τους. */''}
           .lp-plans { padding-top: 14px; }
+        }
+        @media (max-width: 860px) {
 
           ${/* ΔΥΝΑΤΟΤΗΤΕΣ ΣΕ ΛΙΣΤΑ. Επτά κάρτες με εικονίδιο ΠΑΝΩ από τον τίτλο
              είναι 1.652px. Το ίδιο περιεχόμενο σε σειρές — εικονίδιο αριστερά,
              κείμενο δεξιά — είναι κάτω από τις μισές και διαβάζεται πιο γρήγορα
              γιατί το μάτι σαρώνει κάθετα μια στήλη τίτλων αντί να πηδά. */''}
-          .lp-feat { grid-template-columns: 1fr !important; gap: 10px !important; }
+          ${/* ΔΥΟ ΣΤΗΛΕΣ ΣΤΗΝ ΤΑΜΠΛΕΤΑ, ΜΙΑ ΣΤΟ ΤΗΛΕΦΩΝΟ. Στα 768 η μία στήλη
+             έδινε γραμμές των 690 εικονοστοιχείων για τρεις λέξεις τίτλου και
+             μία πρόταση: λίστα με το δεξί της μισό άδειο. */''}
+          .lp-feat { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 16px !important; }
           .lp-feat > .lp-card {
             display: grid; grid-template-columns: 40px 1fr; column-gap: 14px;
             align-items: start; padding: 16px 18px !important;
@@ -614,6 +639,9 @@ export function LandingStyles() {
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
             overflow: hidden;
           }
+        }
+        @media (max-width: 600px) {
+          .lp-feat { grid-template-columns: 1fr !important; }
         }
 
         ${/* Οι .lp-hide-xs και .lp-only-xs ΕΦΥΓΑΝ ΣΤΟ globals.css. Ζούσαν εδώ,

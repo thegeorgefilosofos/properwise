@@ -74,6 +74,13 @@ const base: AdvisoryInput = {
   ok('referLabel(undefined) = undefined', referLabel(undefined) === undefined)
 }
 
+// ── Έκπτωση ανακαίνισης: ο κανόνας του ν.5073/2023, όχι το 40% του 2020 ───────
+{
+  const reno = buildAdvisory(base, 12).find(i => i.id === 'renovation-credit')
+  ok('ανακαίνιση: χωρίς 40%', !!reno && !/40%/.test(reno.title + reno.body))
+  ok('ανακαίνιση: 16.000€ σε πέντε έτη', !!reno && /16\.000€/.test(reno.body) && /3\.200€/.test(reno.body))
+}
+
 console.log(`advisory.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed > 0) { process.exit(1) }
 console.log('όλα πέρασαν')

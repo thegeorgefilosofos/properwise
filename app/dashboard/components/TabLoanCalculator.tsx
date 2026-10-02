@@ -605,7 +605,7 @@ interface Props {
 // βγαίνει από το πεδίο που ήδη λέει ποιο είναι. Χωρίς αυτό, ο αναγνώστης οθόνης
 // άκουγε τέσσερα «πλαίσιο κειμένου» ανά σενάριο και έξι σενάρια είναι εικοσιτέσσερα.
 const SCEN_NAME: Record<'label' | 'amount' | 'rate' | 'years', string> = {
-  label: 'Ονομα σεναρίου', amount: 'Ποσό δανείου', rate: 'Επιτόκιο', years: 'Διάρκεια σε έτη',
+  label: 'Όνομα σεναρίου', amount: 'Ποσό δανείου', rate: 'Επιτόκιο', years: 'Διάρκεια σε έτη',
 }
 
 const NATURAL_BORROWERS:BorrowerType[] = ['individual','young','family','senior','military','abroad']
@@ -644,7 +644,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   const [actualRent, setActualRent] = useState(0)         // πραγματικό μηνιαίο ενοίκιο, από τη βάση
   const [monthlyRent, setMonthlyRent] = useState('')      // κενό = ακολουθεί το ενοίκιο-αναφορά
   const [rentTouched, setRentTouched] = useState(false)
-  // Είσπραξη μέσω τραπέζης: προϋπόθεση της τεκμαρτής έκπτωσης 5% από 1.7.2027 (ν.5222/2025).
+  // Είσπραξη μέσω τράπεζας: προϋπόθεση της τεκμαρτής έκπτωσης 5% από 1.7.2027 (ν.5222/2025).
   const [rentsBank, setRentsBank] = useState(true)
   const [marital,     setMarital]     = useState<'single'|'married'>('single')
   const [children,    setChildren]    = useState('0')
@@ -1409,7 +1409,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         return (
       <Section title="Δανειοληπτική ικανότητα" sub="Μέγιστο δάνειο βάσει εισοδήματος και ορίων Τράπεζας Ελλάδος" defaultOpen>
         <div style={{marginBottom:16}}><NumberInput label="Μηνιαίο καθαρό εισόδημα" value={income} onChange={setIncome} suffix="€"/></div>
-        {/* ═══ ΠΕΜΠΤΗ ΓΡΑΦΗ ΤΟΥ ΠΛΑΚΙΔΙΟΥ, ΚΑΙ Η ΠΙΟ ΑΚΡΙΒΗ ═══════════════════════
+        {/* ═══ ΠΕΜΠΤΗ ΓΡΑΦΗ ΤΟΥ ΠΛΑΚΙΔΙΟΥ ΚΑΙ Η ΠΙΟ ΑΚΡΙΒΗ ═══════════════════════
             Ζωγράφιζε δικό της κουτί, δική της ανύψωση με κατάσταση React και
             τέσσερις ακροατές, ετικέτα 700 με 0,06em αντί για την 600 με 0,08em
             του βιβλίου· και νούμερο ΣΤΑΘΕΡΟ στα 28. Ο χρήστης το φωτογράφισε σε
@@ -1564,7 +1564,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                     επιλογή του χρήστη με μετρήσιμη συνέπεια στον φόρο του. */}
                 <label style={{display:'inline-flex',alignItems:'center',gap:8,cursor:'pointer',fontSize: 'var(--fs-base)',fontFamily: T.font.sans,color:'var(--text-primary)',fontWeight:600}}>
                   <input type="checkbox" checked={rentsBank} onChange={e=>setRentsBank(e.target.checked)} style={{width:15,height:15,accentColor:'var(--accent)',cursor:'pointer'}}/>
-                  Τα ενοίκια θα εισπράττονται μέσω τραπέζης
+                  Τα ενοίκια θα εισπράττονται μέσω τράπεζας
                 </label>
                 <p className="po-prose po-just" style={{margin:'4px 0 0 23px',fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{hy(<>{PRESUMPTIVE_RULE}</>)}</p>
                 <p style={{margin:'10px 0 0',fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.6}}>
@@ -1770,7 +1770,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
 
       <div style={cardStyle}>
         <SectionLabel label="Πλήρης ανάλυση κόστους απόκτησης" right={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{propTypeLabel}{SQM>0?` · ${SQM}τ.μ.`:''} · {areaLabel}</span>}/>
-        {/* ΟΚΤΩ ΚΟΣΤΗ, ΤΕΣΣΕΡΑ ΚΑΙ ΤΕΣΣΕΡΑ, ΚΑΙ ΟΛΑ ΜΕ ΤΗΝ ΙΔΙΑ ΓΕΩΜΕΤΡΙΑ.
+        {/* ΟΚΤΩ ΚΟΣΤΗ, ΤΕΣΣΕΡΑ ΚΑΙ ΤΕΣΣΕΡΑ ΚΑΙ ΟΛΑ ΜΕ ΤΗΝ ΙΔΙΑ ΓΕΩΜΕΤΡΙΑ.
             Ήταν σειρές «ετικέτα αριστερά, ποσό δεξιά» με `space-between`: όταν η
             ετικέτα τύλιγε σε δεύτερη γραμμή, το ποσό κολλούσε πάνω της χωρίς
             κενό («Συμβολαιογραφικά2.128,00€») και κάθε πλακίδιο έβγαινε άλλο

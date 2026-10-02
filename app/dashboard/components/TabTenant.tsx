@@ -127,6 +127,7 @@ import { useLoad } from '@/app/hooks/useLoad';
 import { plural } from '@/lib/core/greek';
 import { ActionMenu } from '@/components/ActionMenu';
 import { navLabel } from '@/lib/nav/labels';
+import { cleanDigits } from '@/lib/property/powerSupply';
 
 // ─── Design tokens, shared source of truth (components/Theme) ────────────────
 
@@ -355,6 +356,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       parking_included:t.parking_included||false,parking_extra:t.parking_extra||false,parking_extra_price:n(t.parking_extra_price),
       extra_perks:t.extra_perks||'',
       lease_doc_external_url:t.lease_doc_external_url||'',
+      aade_lease_decl_ref:t.aade_lease_decl_ref||'',
     };
     // «Περισσότερα» ανοίγει μόνο αν ο χρήστης έχει όντως δεδομένα εκεί μέσα.
     setForm(f); setFormDocs([]); setMoreOpen(hasMoreData(f));
@@ -390,6 +392,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   const save=async()=>{
     if(!form.full_name.trim()){setError('Το ονοματεπώνυμο είναι υποχρεωτικό');return;}
     if(!form.lease_category){setError('Ο τύπος μίσθωσης (κατοικία ή επαγγελματική) είναι υποχρεωτικός');return;}
+    const declRef=cleanDigits(form.aade_lease_decl_ref);
+    if(declRef.error){setError(`Αριθμός δήλωσης μίσθωσης: ${declRef.error}`);setMoreOpen(true);return;}
     setSaving(true);setError(null);
     const n=(v:string)=>v?Math.max(0,parseFloat(v)):null;
     const dueDay=Math.min(Math.max(1,parseInt(form.rent_due_day)||1),28);
@@ -409,6 +413,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       e_payment:form.e_payment,streaming:svcLines,cleaning:null,extra_perks:form.extra_perks||null,
       parking_included:form.parking_included,parking_extra:form.parking_extra,parking_extra_price:n(form.parking_extra_price),
       lease_doc_external_url:form.lease_doc_external_url||null,
+      aade_lease_decl_ref:declRef.value,
       // ΤΟ ΧΕΡΙ ΥΠΕΡΙΣΧΥΕΙ ΤΟΥ ΡΑΝΤΕΒΟΥ. Με εκκρεμή αναπροσαρμογή και χειροκίνητη
       // αλλαγή του ενοικίου, οι δύο τιμές συγκρούονται: αφημένο το ραντεβού θα
       // επανέγραφε τη νέα τιμή μια νύχτα, χωρίς να το έχει ζητήσει κανείς. Το
@@ -519,8 +524,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   // Το ενοίκιο και η εγγύηση περνούσαν από τη `csvEur()` και έφταναν ως κείμενο:
   // το μητρώο δεν αθροιζόταν σε καμία στήλη.
   const exportRoster=()=>{
-    downloadTableXlsx(`Μητρώο μισθωτών ${todayISO()}`, {
-      title: 'Μητρώο μισθωτών',
+    downloadTableXlsx(`Μητρώο ενοικιαστών ${todayISO()}`, {
+      title: 'Μητρώο ενοικιαστών',
       headers: ['Ονοματεπώνυμο','Κατάσταση','ΑΦΜ','Τηλέφωνο','Ηλεκτρονικό ταχυδρομείο','Είδος μίσθωσης','Έναρξη','Λήξη','Αποχώρηση','Ημέρα πληρωμής','Μηνιαίο ενοίκιο (€)','Εγγύηση (€)','Τρόπος εγγύησης','Ημερομηνία καταβολής εγγύησης','Επεστράφη'],
       rows: [...tenants].map(t=>[
         t.full_name, isPastTenant(t)?'Προηγούμενος':'Τρέχων', t.afm||'', t.phone||'', t.email||'',
@@ -617,7 +622,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
             αναγνώστη οθόνης, όπου ανήκει. */}
         <input value={search} onChange={e=>setSearch(e.target.value)}
           className="po-field field-wide" aria-label="Αναζήτηση ενοικιαστή" placeholder="Όνομα, ΑΦΜ ή τηλέφωνο"
-          style={{ background:'var(--bg-base)', border:'1px solid var(--border-default)', borderRadius:10, padding:'10px 14px', color:'var(--text-primary)', fontSize:14, height:T.h.lg, maxWidth:280, flex:'1 1 220px', outline:'none', boxSizing:'border-box', fontFamily:T.font.sans }}/>
+          style={{ background:'var(--bg-base)', border:'1px solid var(--border-control)', borderRadius:10, padding:'10px 14px', color:'var(--text-primary)', fontSize:14, height:T.h.lg, maxWidth:280, flex:'1 1 220px', outline:'none', boxSizing:'border-box', fontFamily:T.font.sans }}/>
         <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
           {/* «Όλοι», «Τρέχων», «Προηγούμενοι»: δύο πληθυντικοί και ένας ενικός, σε
               τρία διπλανά κουμπιά που φιλτράρουν ΛΙΣΤΑ. Το «Τρέχων» είναι σωστό
@@ -895,7 +900,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                 Η ΛΕΠΤΗ ΓΡΑΜΜΗ ΕΙΝΑΙ Η `cl-split`, που υπάρχει ήδη: περίγραμμα
                 αριστερά σε κάθε κελί εκτός του πρώτου· φεύγει κάτω από τα 600
                 όπου τα κελιά στοιβάζονται. */}
-            {/* ΤΟ ΔΕΥΤΕΡΟ ΣΤΥΛ ΣΒΗΝΕΙ ΤΟ ΠΡΩΤΟ, ΚΑΙ ΤΟ ΕΚΑΝΕ ΕΔΩ. Ο βοηθός
+            {/* ΤΟ ΔΕΥΤΕΡΟ ΣΤΥΛ ΣΒΗΝΕΙ ΤΟ ΠΡΩΤΟ ΚΑΙ ΤΟ ΕΚΑΝΕ ΕΔΩ. Ο βοηθός
                 διάταξης επιστρέφει className ΚΑΙ στυλ με τις μεταβλητές των
                 στηλών. Χωρίς άπλωμα, το δικό μας στυλ τις αντικαθιστούσε όλες και
                 η σειρά έβγαινε ΤΡΕΙΣ στήλες με την προεπιλογή του CSS αντί για
@@ -952,7 +957,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
             <div className="form-row form-row-4">
               {show('tenant.rent')&&<NumberInput label={labelOf('tenant.rent')} labelInfo={whyOf('tenant.rent')} value={form.monthly_rent} onChange={v=>sf('monthly_rent',v)} suffix="€"/>}
               {show('tenant.rent_due_day')&&<SelectField label={labelOf('tenant.rent_due_day')} labelInfo={whyOf('tenant.rent_due_day')} value={form.rent_due_day} onChange={v=>sf('rent_due_day',v)} options={Array.from({length:28},(_,i)=>({value:String(i+1),label:`${i+1}η`}))}/>}
-              {/* Ο ΔΙΑΚΟΠΤΗΣ ΗΤΑΝ ΑΛΛΟΥ, ΚΑΙ ΜΕ ΑΛΛΗ ΕΤΙΚΕΤΑ. Καθόταν δίπλα στο
+              {/* Ο ΔΙΑΚΟΠΤΗΣ ΗΤΑΝ ΑΛΛΟΥ ΚΑΙ ΜΕ ΑΛΛΗ ΕΤΙΚΕΤΑ. Καθόταν δίπλα στο
                   IBAN με ΚΕΦΑΛΑΙΑ ετικέτα, στημένος με το χέρι, ανάμεσα σε πεδία
                   με πεζή. Εδώ είναι το τρίτο πεδίο της σειράς του ενοικίου, με
                   το ίδιο `ToggleField` που χρησιμοποιεί η υπόλοιπη εφαρμογή. */}
@@ -1033,7 +1038,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
             {moreFields.length>0&&(
               <>
                 <div style={s.divider}/>
-                {/* ΤΟ ΑΝΟΙΓΜΑ ΕΙΧΕ ΔΙΚΟ ΤΟΥ ΣΧΗΜΑ, ΚΑΙ ΗΤΑΝ ΤΟ ΜΟΝΑΔΙΚΟ ΤΗΣ ΕΦΑΡΜΟΓΗΣ.
+                {/* ΤΟ ΑΝΟΙΓΜΑ ΕΙΧΕ ΔΙΚΟ ΤΟΥ ΣΧΗΜΑ ΚΑΙ ΗΤΑΝ ΤΟ ΜΟΝΑΔΙΚΟ ΤΗΣ ΕΦΑΡΜΟΓΗΣ.
                     Κουμπί σε όλο το πλάτος, με περίγραμμα σαν πεδίο· δεξιά
                     ένα «+» ή «−» αντί για το βελάκι που ανοίγει κάθε άλλη λίστα
                     σε δώδεκα οθόνες. Και από κάτω μια πρόταση που εξηγούσε τι
@@ -1079,11 +1084,19 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                       {more('tenant.id_doc')&&<TextInput label="Αριθμός εγγράφου" value={form.id_doc_number} onChange={v=>sf('id_doc_number',v)}/>}
                     </div>
 
+                    {/* Ε2 στήλη 19. Ψηφία μόνο· τον γράφει και η Δήλωση μίσθωσης
+                        όταν σημειωθεί ότι υποβλήθηκε. */}
+                    {more('tenant.aade_lease_decl_ref')&&(
+                      <div className="form-row form-row-3" style={{ marginBottom:14 }}>
+                        <TextInput label={labelOf('tenant.aade_lease_decl_ref')} labelInfo={whyOf('tenant.aade_lease_decl_ref')} value={form.aade_lease_decl_ref} onChange={v=>sf('aade_lease_decl_ref',v)}/>
+                      </div>
+                    )}
+
                     {more('tenant.id_doc')&&(
                       <FilePickRow label="Σαρωμένη ταυτότητα ή διαβατήριο" hint="PDF ή εικόνα" busy={docBusy} onPick={f=>uploadFormDoc(f,'id')} docs={formDocs.filter(d=>d.tag==='id')}/>
                     )}
 
-                    {/* Η ΕΠΙΣΤΡΟΦΗ ΕΙΝΑΙ ΤΕΤΑΡΤΟ ΠΕΔΙΟ, ΚΑΙ ΓΙ᾽ ΑΥΤΟ ΠΑΙΡΝΕΙ ΔΙΚΗ
+                    {/* Η ΕΠΙΣΤΡΟΦΗ ΕΙΝΑΙ ΤΕΤΑΡΤΟ ΠΕΔΙΟ ΚΑΙ ΓΙ᾽ ΑΥΤΟ ΠΑΙΡΝΕΙ ΔΙΚΗ
                         ΤΗΣ ΣΕΙΡΑ. Μέσα στην τριάδα της καταβολής έκανε «3+1» μόλις
                         άναβε ο διακόπτης: μία ημερομηνία μόνη της κάτω από τρία
                         πεδία, με δύο τρύπες δεξιά της. */}
@@ -1098,7 +1111,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                       </div>
                     )}
 
-                    {/* ══ ΔΥΟ ΓΡΑΜΜΕΣ ΓΙΑ ΜΙΑ ΕΡΩΤΗΣΗ, ΚΑΙ ΔΥΟ ΑΠΑΝΤΗΣΕΙΣ ΠΟΥ ΔΕΝ
+                    {/* ══ ΔΥΟ ΓΡΑΜΜΕΣ ΓΙΑ ΜΙΑ ΕΡΩΤΗΣΗ ΚΑΙ ΔΥΟ ΑΠΑΝΤΗΣΕΙΣ ΠΟΥ ΔΕΝ
                             ΜΠΟΡΟΥΝ ΝΑ ΙΣΧΥΟΥΝ ΜΑΖΙ ═══════════════════════════════
                         Η ετικέτα «Χώρος στάθμευσης» έπιανε ολόκληρη τη δική της
                         γραμμή και οι δύο διακόπτες την επόμενη: δύο γραμμές για

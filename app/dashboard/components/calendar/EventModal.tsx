@@ -73,7 +73,7 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
   const titleRef=useRef<HTMLInputElement>(null)
   useEffect(()=>{ titleRef.current?.focus() },[])
   // Ενιαία, καθαρά πεδία — ίδιο ύψος/καμπύλη/χρώμα παντού (Google λογική).
-  const fld: React.CSSProperties = { width:'100%', boxSizing:'border-box', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-default)', borderRadius: T.radius.xs, padding:'0 16px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none', transition:'border-color 0.15s' }
+  const fld: React.CSSProperties = { width:'100%', boxSizing:'border-box', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-control)', borderRadius: T.radius.xs, padding:'0 16px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none', transition:'border-color 0.15s' }
   const focus=(e:React.FocusEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>)=>e.currentTarget.style.borderColor='var(--accent)'
   const blur=(e:React.FocusEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>)=>e.currentTarget.style.borderColor='var(--border-default)'
   // Το βέλος-εικόνα και το στυλ του ντόπιου <select> έφυγαν μαζί με τα ίδια τα
@@ -141,7 +141,7 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
       </button>
 
       {showDetails&&(<>
-        {/* ── ΜΙΑ ΣΕΙΡΑ, ΟΧΙ ΔΥΟ, ΚΑΙ ΜΙΑ ΕΤΙΚΕΤΑ, ΟΧΙ ΔΥΟ ──────────────────────
+        {/* ── ΜΙΑ ΣΕΙΡΑ, ΟΧΙ ΔΥΟ ΚΑΙ ΜΙΑ ΕΤΙΚΕΤΑ, ΟΧΙ ΔΥΟ ──────────────────────
             Ηταν δύο πλέγματα των δύο στηλών, οπότε το «Ποσό» έπεφτε μόνο του σε
             δεύτερη σειρά ενώ δίπλα του έμενε κενό. Και οι ετικέτες ήταν σε δύο
             ιδιώματα, κολλητά η μία στην άλλη: «Κατηγορία» πεζά από το

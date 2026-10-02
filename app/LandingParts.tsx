@@ -79,7 +79,7 @@ export function NoaFeature() {
   const noa = PLANS.solo, ai = aiLimitsFor('solo');
   const does = [
     { t: 'Ρωτάς όπως μιλάς', d: 'Γραπτά ή με τη φωνή σου, στα ελληνικά.' },
-    { t: 'Απαντά με τα δικά σου', d: 'Διαβάζει τις καταχωρήσεις σου, όχι γενικές συμβουλές.' },
+    { t: 'Απαντά με τα δικά σου', d: 'Βασίζεται στις καταχωρήσεις σου, όχι σε γενικές συμβουλές.' },
     { t: 'Σε πάει εκεί που πρέπει', d: 'Ανοίγει την οθόνη που χρειάζεσαι για το επόμενο βήμα.' },
   ];
   return (
@@ -131,6 +131,13 @@ export function NoaFeature() {
   );
 }
 
+/**
+ * ΑΡΙΘΜΟΣ ΚΑΙ ΜΟΝΑΔΑ ΔΕΝ ΧΩΡΙΖΟΝΤΑΙ ΣΕ ΑΛΛΑΓΗ ΓΡΑΜΜΗΣ. Στις στήλες των 210
+ * εικονοστοιχείων το «15» έμενε στο τέλος της μιας σειράς και τα «ακίνητα» στην
+ * αρχή της επόμενης· η κάρτα ψήλωνε κατά μία σειρά για ένα κενό.
+ */
+const glue = (t: string) => t.replace(/(\d+)\s+(?=\S)/g, '$1\u00A0');
+
 export function SectionHead({ over, title, sub }: { over: string; title: string; sub?: string }) {
   return (
     <div style={{ marginBottom: 'clamp(24px, 3.4vw, 40px)' }}>
@@ -139,8 +146,14 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
       <h2 style={{ fontSize: 'clamp(25px, 3.4vw, 40px)', fontWeight: 680, letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0, textWrap: 'balance' }}>{title}</h2>
       {/* Ο υπότιτλος παίρνει όλο το πλάτος της στήλης και ΚΑΘΕ κείμενο κόπηκε ώστε
           να χωρά σε μία γραμμή. Δύο γραμμές υπότιτλου κάτω από μονόγραμμο τίτλο
-          δίνουν βαρύ, ασύμμετρο μπλοκ· μία και μία διαβάζονται ως ζευγάρι. */}
-      {sub && <p className="po-just" style={{ fontSize: 16, color: MUTED, lineHeight: 1.55, margin: '13px 0 0' }}>{hy(sub)}</p>}
+          δίνουν βαρύ, ασύμμετρο μπλοκ· μία και μία διαβάζονται ως ζευγάρι.
+
+          ΣΤΟ ΚΙΝΗΤΟ ΓΙΝΕΤΑΙ ΔΙΣΤΙΧΟ ΚΑΙ ΤΟ ΔΙΣΤΙΧΟ ΔΕΝ ΣΤΟΙΧΙΖΕΤΑΙ (01.10.2026).
+          Με πλήρη στοίχιση και συλλαβισμό, η πρώτη από δύο γραμμές τεντωνόταν
+          και η λέξη κοβόταν ακριβώς κάτω από τον τίτλο. Είναι κείμενο οθόνης,
+          όχι παράγραφος: αριστερά, χωρίς ενωτικά, με `pretty` για να μη μείνει
+          μία λέξη μόνη στη δεύτερη γραμμή. */}
+      {sub && <p data-nohy="" style={{ fontSize: 16, color: MUTED, lineHeight: 1.55, margin: '13px 0 0', textWrap: 'pretty' }}>{sub}</p>}
     </div>
   );
 }
@@ -159,7 +172,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
   const ai = aiLimitsFor('solo');
   const paidMonths = Math.round(noa.priceAnnual / noa.priceMonthly);
   const line = (t: string, k: number) => (
-    <div key={k} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{t}</span></div>
+    <div key={k} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(t)}</span></div>
   );
   // Οι γραμμές του δωρεάν, με τη σάρωση στη θέση της· στη «Νόα» η ίδια θέση
   // λέει «χωρίς όριο», ώστε το μάτι να βλέπει τι αλλάζει στο ίδιο σημείο.
@@ -217,7 +230,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
         <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>ή <strong style={{ color: TEXT }}>{fe(noa.priceAnnual)} τον χρόνο</strong></div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', margin: '14px 0 16px' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: ACCENT }}>{bubble}<span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{ai.perMonth} ερωτήσεις τον μήνα, έως {ai.perDay} την ημέρα</span></div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: ACCENT }}>{bubble}<span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(`${ai.perMonth} ερωτήσεις τον μήνα, έως ${ai.perDay} την ημέρα`)}</span></div>
           {[...shared, noaScan].map(line)}
         </div>
         {cta(`/signup?plan=solo&cycle=monthly`, 'Ξεκίνα τη δοκιμή')}
@@ -266,13 +279,13 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
           {/* ΚΑΙ ΤΟ ΗΜΕΡΗΣΙΟ, ΠΡΙΝ ΤΗΝ ΑΓΟΡΑ. Μέσα σε ένα απόγευμα δεσμεύει αυτό
               και όχι το μηνιαίο· το να το μάθει κανείς τη στιγμή που το χτυπά
               είναι η έκπληξη που ακυρώνει συνδρομές. */}
-          <span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{ai} ερωτήσεις τον μήνα, έως {aiDay} την ημέρα</span>
+          <span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(`${ai} ερωτήσεις τον μήνα, έως ${aiDay} την ημέρα`)}</span>
         </div>
         {items.map((t, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13.5, color: TEXT, lineHeight: 1.45 }}>{t}</span></div>
+          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(t)}</span></div>
         ))}
       </div>
-      {/* ══ Η ΕΠΙΛΟΓΗ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΟ ΚΛΙΚ, ΚΑΙ ΟΙ ΕΠΙΛΟΓΕΣ ΕΙΝΑΙ ΔΥΟ ══
+      {/* ══ Η ΕΠΙΛΟΓΗ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΜΕ ΤΟ ΚΛΙΚ ΚΑΙ ΟΙ ΕΠΙΛΟΓΕΣ ΕΙΝΑΙ ΔΥΟ ══
           Και οι τέσσερις κάρτες οδηγούσαν στο ίδιο γυμνό «/signup», οπότε η
           επιλογή πακέτου —η μόνη απόφαση που παίρνει ο επισκέπτης σε αυτή τη
           σελίδα— χανόταν στη μετάβαση.

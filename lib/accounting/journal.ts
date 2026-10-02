@@ -2,6 +2,7 @@ import { ELP_ALL, elpAccount, elpAccountFor, type ElpAccount } from '../tax/elpA
 import { resolveCategory } from '../expenses/taxonomy';
 import { fe } from '../core/format';
 import { csvCell } from '../core/csv';
+import { roundHalfUp } from '../core/money';
 // ═══════════════════════════════════════════════════════════════════════════
 // journal — Καθαρή double-entry (διπλογραφική) μηχανή για το λογιστικό handoff.
 //
@@ -10,7 +11,7 @@ import { csvCell } from '../core/csv';
 // εξαγωγή journal CSV (Soft1/Epsilon/QuickBooks/Xero) ΚΑΙ το ισοζύγιο για
 // audit-grade tie-out.
 //
-// ΤΟ ΣΧΕΔΙΟ ΛΟΓΑΡΙΑΣΜΩΝ ΕΙΝΑΙ ΕΝΑ, ΚΑΙ ΕΙΝΑΙ ΤΟΥ ΝΟΜΟΥ: τα ΕΛΠ του ν. 4308/2014
+// ΤΟ ΣΧΕΔΙΟ ΛΟΓΑΡΙΑΣΜΩΝ ΕΙΝΑΙ ΕΝΑ ΚΑΙ ΕΙΝΑΙ ΤΟΥ ΝΟΜΟΥ: τα ΕΛΠ του ν. 4308/2014
 // (lib/tax/elpAccounts.ts), αντιγραμμένα από το Παράρτημα Γ. Δεν γράφεται εδώ
 // ούτε ένας κωδικός: όποιος γράφεται δεύτερη φορά, αποκλίνει.
 //
@@ -85,7 +86,7 @@ const KEY_SERVICE = words('αμοιβ|καθαρ|κήπ|απεντ|συναγε�
 /**
  * Ο λογαριασμός μιας δαπάνης.
  *
- * Η ΑΝΤΙΣΤΟΙΧΙΣΗ ΖΕΙ ΣΤΟ elpAccounts.ts, ΜΙΑ ΦΟΡΑ, ΚΑΙ ΕΙΝΑΙ ΑΝΑ ΚΑΤΗΓΟΡΙΑ.
+ * Η ΑΝΤΙΣΤΟΙΧΙΣΗ ΖΕΙ ΣΤΟ elpAccounts.ts, ΜΙΑ ΦΟΡΑ ΚΑΙ ΕΙΝΑΙ ΑΝΑ ΚΑΤΗΓΟΡΙΑ.
  *
  * ΤΟ ΛΑΘΟΣ ΠΟΥ ΔΙΟΡΘΩΘΗΚΕ ΕΔΩ, ΓΡΑΜΜΕΝΟ ΓΙΑ ΝΑ ΜΗΝ ΞΑΝΑΓΙΝΕΙ. Ο πίνακας είναι
  * κλειδωμένος στο slug («renovation»), αλλά η βάση αποθηκεύει την ΕΤΙΚΕΤΑ που
@@ -116,7 +117,7 @@ export function expenseAccount(category?: string | null): ElpAccount {
   return acct('64.12');
 }
 
-const round2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
+const round2 = (n: number) => roundHalfUp((Number(n) || 0), 2);
 const short = (s?: string) => (s || '').replace(/\s+/g, ' ').trim();
 
 /** Χτίζει ισοσκελισμένο ημερολόγιο — ένα άρθρο (voucher) ανά εγγραφή, ταξινομημένο
@@ -215,8 +216,8 @@ export function trialBalance(lines: JournalLine[]): TrialRow[] {
 // ── CSV formatters ───────────────────────────────────────────────────────────
 // Ο έλεγχος ζει στο lib/core/csv: ο ίδιος για κάθε αρχείο που ανοίγει σε φύλλο.
 const csvField = (v: unknown, sep: string) => csvCell(v, sep);
-const n2 = (n: number) => (Number(n) || 0).toFixed(2);                 // dot decimal
-const n2gr = (n: number) => (Number(n) || 0).toFixed(2).replace('.', ','); // comma decimal
+const n2 = (n: number) => roundHalfUp(Number(n) || 0, 2).toFixed(2);                 // dot decimal
+const n2gr = (n: number) => roundHalfUp(Number(n) || 0, 2).toFixed(2).replace('.', ','); // comma decimal
 const dmy = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso || ''); }; // DD/MM/YYYY (EU / Xero / Ελλάδα)
 const mdy = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? `${m[2]}/${m[3]}/${m[1]}` : (iso || ''); }; // MM/DD/YYYY (QuickBooks US default)
 

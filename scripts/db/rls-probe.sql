@@ -65,6 +65,16 @@ begin
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο Α έσβησε % γραμμές του Β', n; end if;
 
+  -- Οι στήλες του Ε2 (20261001130000): ίδια απομόνωση με τη γραμμή τους. Ο Α
+  -- γράφει παροχή ρεύματος και συνιδιοκτήτες στο δικό του, όχι στου Β.
+  update public.user_properties set power_supply_no = '123456789', co_owners = '[{"name":"Συνιδιοκτήτης"}]'::jsonb
+   where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'ΑΠΟΜΟΝΩΣΗ: ο Α δεν έγραψε την παροχή ρεύματος του δικού του (% γραμμές)', n; end if;
+  update public.user_properties set power_supply_no = '999999999' where id = 'bbbbbbbb-0000-0000-0000-000000000001';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο Α έγραψε την παροχή ρεύματος του Β'; end if;
+
   -- Και δεν μπορεί να φυτέψει γραμμή ΓΙΑ τον Β (WITH CHECK).
   begin
     insert into public.user_properties(user_id, name)
@@ -903,7 +913,7 @@ begin
   select updated_at into t0 from public.tenants where user_id = v_uid;
   if t0 is null then raise exception 'Το updated_at δεν πήρε τιμή στην εισαγωγή'; end if;
 
-  -- ΔΕΝ ΣΥΓΚΡΙΝΟΥΜΕ ΧΡΟΝΟΥΣ, ΚΑΙ ΓΙ' ΑΥΤΟ Ο ΕΛΕΓΧΟΣ ΔΕΝ ΕΙΝΑΙ ΚΕΝΟΣ. Η
+  -- ΔΕΝ ΣΥΓΚΡΙΝΟΥΜΕ ΧΡΟΝΟΥΣ ΚΑΙ ΓΙ' ΑΥΤΟ Ο ΕΛΕΓΧΟΣ ΔΕΝ ΕΙΝΑΙ ΚΕΝΟΣ. Η
   -- συνάρτηση γράφει `now()`, που μέσα στην ίδια συναλλαγή είναι ΣΤΑΘΕΡΟ: δύο
   -- διαδοχικές ενημερώσεις δίνουν την ίδια σφραγίδα και η σύγκριση «άλλαξε;»
   -- αποτυγχάνει ακόμη κι όταν η σκανδάλη δουλεύει.
@@ -938,7 +948,7 @@ begin
 end $probe$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- ΚΑΘΕ ΞΕΝΟ ΚΛΕΙΔΙ ΕΧΕΙ ΕΥΡΕΤΗΡΙΟ, ΚΑΙ ΚΑΘΕ user_id ΔΕΙΧΝΕΙ ΣΕ ΧΡΗΣΤΗ
+-- ΚΑΘΕ ΞΕΝΟ ΚΛΕΙΔΙ ΕΧΕΙ ΕΥΡΕΤΗΡΙΟ ΚΑΙ ΚΑΘΕ user_id ΔΕΙΧΝΕΙ ΣΕ ΧΡΗΣΤΗ
 -- ─────────────────────────────────────────────────────────────────────────
 -- Το Postgres ευρετηριάζει το πρωτεύον κλειδί, όχι το ξένο: χωρίς ευρετήριο,
 -- η διαγραφή μιας γονικής γραμμής σαρώνει ολόκληρο τον πίνακα-παιδί. Και η RLS
@@ -1164,7 +1174,7 @@ begin
 end $probe$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- Η ΥΠΟΒΑΘΜΙΣΗ ΠΕΡΙΜΕΝΕΙ ΤΗΝ ΑΝΑΝΕΩΣΗ, ΚΑΙ ΔΕΝ ΑΝΑΣΤΑΙΝΕΙ ΝΕΚΡΗ ΣΥΝΔΡΟΜΗ
+-- Η ΥΠΟΒΑΘΜΙΣΗ ΠΕΡΙΜΕΝΕΙ ΤΗΝ ΑΝΑΝΕΩΣΗ ΚΑΙ ΔΕΝ ΑΝΑΣΤΑΙΝΕΙ ΝΕΚΡΗ ΣΥΝΔΡΟΜΗ
 -- ─────────────────────────────────────────────────────────────────────────
 -- Ο ΕΜΠΟΡΟΣ ΔΕΝ ΞΕΡΕΙ ΝΑ ΑΝΑΒΑΛΕΙ. Η παραλλαγή αλλάζει τη στιγμή του
 -- αιτήματος, άρα ο webhook γράφει αμέσως το χαμηλότερο πακέτο· ο πελάτης όμως
@@ -1224,7 +1234,7 @@ begin
 end $probe$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- ΚΑΜΙΑ ΧΡΕΩΣΗ ΧΩΡΙΣ ΠΡΟΕΙΔΟΠΟΙΗΣΗ, ΚΑΙ ΚΑΜΙΑ ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΓΙΑ ΧΡΕΩΣΗ ΠΟΥ
+-- ΚΑΜΙΑ ΧΡΕΩΣΗ ΧΩΡΙΣ ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΚΑΙ ΚΑΜΙΑ ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΓΙΑ ΧΡΕΩΣΗ ΠΟΥ
 -- ΔΕΝ ΘΑ ΓΙΝΕΙ
 -- ─────────────────────────────────────────────────────────────────────────
 -- Οι Οροι δεσμεύονται σε ειδοποίηση πριν από κάθε ανανέωση. Η συνάρτηση που
@@ -1710,7 +1720,7 @@ begin
      set lapsed_at = now() - ((public.account_grace_days() + 1) || ' days')::interval
    where user_id = v_uid;
 
-  -- ── ΦΡΕΝΟ 1, ΚΑΙ ΣΤΗΝ ΙΔΙΑ ΤΗ ΔΙΑΓΡΑΦΗ ────────────────────────────────
+  -- ── ΦΡΕΝΟ 1 ΚΑΙ ΣΤΗΝ ΙΔΙΑ ΤΗ ΔΙΑΓΡΑΦΗ ────────────────────────────────
   res := public.purge_lapsed_account(v_uid, false);
   if res->>'skipped' <> 'billing_not_live' then
     raise exception 'ΦΡΕΝΟ 1 ΣΠΑΣΕ: η διαγραφή προχώρησε με τη χρέωση ανενεργή: %', res;
@@ -1868,7 +1878,7 @@ begin
 end $probe$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
---  ΠΟΙΟΣ ΕΣΒΗΣΕ ΤΟ ΑΚΙΝΗΤΟ, ΚΑΙ ΣΕ ΠΟΙΟΥ ΤΟ ΗΜΕΡΟΛΟΓΙΟ ΓΡΑΦΕΤΑΙ
+--  ΠΟΙΟΣ ΕΣΒΗΣΕ ΤΟ ΑΚΙΝΗΤΟ ΚΑΙ ΣΕ ΠΟΙΟΥ ΤΟ ΗΜΕΡΟΛΟΓΙΟ ΓΡΑΦΕΤΑΙ
 -- ─────────────────────────────────────────────────────────────────────────
 --  Ενα μέλος με `can_edit` σβήνει ακίνητο του ιδιοκτήτη και καταρρέουν τριάντα
 --  ένα πίνακες. Η `log_activity` έγραφε `user_id = auth.uid()`, δηλαδή τον
@@ -2099,7 +2109,7 @@ begin
     on conflict (user_id) do update set plan = 'office', tester_since = now(), trial_used_at = now();
   perform set_config('probe.uid', t::text, true);
 
-  -- Η ΠΡΩΤΗ ΕΡΩΤΗΣΗ ΠΕΡΝΑΕΙ, ΚΑΙ ΤΟ ΟΡΙΟ ΠΟΥ ΕΠΙΣΤΡΕΦΕΙ ΕΙΝΑΙ ΤΟ ΔΙΚΟ ΤΟΥ.
+  -- Η ΠΡΩΤΗ ΕΡΩΤΗΣΗ ΠΕΡΝΑΕΙ ΚΑΙ ΤΟ ΟΡΙΟ ΠΟΥ ΕΠΙΣΤΡΕΦΕΙ ΕΙΝΑΙ ΤΟ ΔΙΚΟ ΤΟΥ.
   -- Χωρίς αυτόν τον έλεγχο, μια συνάρτηση που κόβει τους ΠΑΝΤΕΣ θα περνούσε.
   res := public.bump_ai_usage(200, day, mon, 1000, 7, 20, 30, 30);
   if (res->>'allowed')::boolean is not true then
@@ -2120,7 +2130,7 @@ begin
     end if;
   end loop;
 
-  -- Η ΤΡΙΑΝΤΑ ΠΡΩΤΗ ΚΟΒΕΤΑΙ, ΚΑΙ ΓΙΑ ΤΟΝ ΣΩΣΤΟ ΛΟΓΟ.
+  -- Η ΤΡΙΑΝΤΑ ΠΡΩΤΗ ΚΟΒΕΤΑΙ ΚΑΙ ΓΙΑ ΤΟΝ ΣΩΣΤΟ ΛΟΓΟ.
   res := public.bump_ai_usage(200, day, mon, 1000, 7, 20, 30, 30);
   if (res->>'allowed')::boolean is not false then
     raise exception 'Η 31η ερώτηση του δοκιμαστή ΠΕΡΑΣΕ: %', res;
@@ -2278,7 +2288,7 @@ begin
    where copy_id = 'connect_calendar' and to_email = 'adranis@properwise.gr';
   if n <> 1 then raise exception 'Η σύνδεση ημερολογίου δεν μπήκε στην ουρά: % γραμμές', n; end if;
 
-  -- ΠΑΕΙ ΣΤΟΝ ΕΝΟΙΚΙΑΣΤΗ, ΚΑΙ ΕΙΝΑΙ ΛΕΙΤΟΥΡΓΙΚΟ. Αν έφευγε ως εμπορικό, θα
+  -- ΠΑΕΙ ΣΤΟΝ ΕΝΟΙΚΙΑΣΤΗ ΚΑΙ ΕΙΝΑΙ ΛΕΙΤΟΥΡΓΙΚΟ. Αν έφευγε ως εμπορικό, θα
   -- ήταν μήνυμα μάρκετινγκ σε άνθρωπο που δεν έδωσε ποτέ συγκατάθεση.
   select count(*) into n from public.email_outbox
    where copy_id = 'tenant_welcome' and to_email = 'enoikiastis@properwise.gr'
@@ -2360,3 +2370,274 @@ begin
   raise notice '✓ ο μετρητής αποστολών κρατά το δικό του παράθυρο';
 end
 $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ ΛΕΕΙ «ΕΙΣΠΡΑΞΕΙΣ» ΜΟΝΟ ΓΙΑ ΟΣΑ ΕΙΣΠΡΑΧΘΗΚΑΝ
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20261001100000_i_pyli_logisti_xorizei_eispraxi_apo_dedoulevmeno.sql. Πριν, το
+-- `rent_collected` άθροιζε και τις απλήρωτες περιόδους, το `rent_months`
+-- μετρούσε γραμμές (τριμηνιαίο μίσθωμα: «4» για ολόκληρη χρονιά) και η
+-- διαμονή που περνά την Πρωτοχρονιά έλειπε από τη δεύτερη χρονιά.
+--
+-- Μικρό σενάριο: τριμηνιαίο μίσθωμα 1.500€ τη δόση. Δόση Νοεμβρίου 2025 ως
+-- Ιανουαρίου 2026, τέσσερις δόσεις του 2026 (τρεις πληρωμένες, μία σε
+-- μετρητά, μία απλήρωτη) και μία διαμονή 28/12/2025 έως 05/01/2026. Ο
+-- λογιστής ρωτά ως `anon`, όπως ανοίγει τον σύνδεσμο.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+
+do $probe$
+declare
+  own uuid := 'eeeeeeee-0000-0000-0000-000000000001';
+  pid uuid := 'eeeeeeee-0000-0000-0000-0000000000f1';
+  tid uuid := 'eeeeeeee-0000-0000-0000-0000000000a1';
+  cid uuid := 'eeeeeeee-0000-0000-0000-0000000000c1';
+begin
+  insert into auth.users(id, email) values (own, 'logistis-poso@probe.test');
+  insert into public.user_properties(id, user_id, name) values (pid, own, 'Τριμηνιαίο');
+  insert into public.tenants(id, property_id, user_id, full_name, monthly_rent, lease_start, lease_end,
+                             payment_frequency, e_payment)
+    values (tid, pid, own, 'Μισθωτής τριμήνου', 500, '2025-11-01', current_date + 365, 'quarterly', true);
+  insert into public.rent_payments(user_id, property_id, tenant_id, period_year, period_month, amount, paid, method)
+    values (own, pid, tid, 2025, 11, 1500, true,  'Τραπεζική κατάθεση'),
+           (own, pid, tid, 2026,  1, 1500, true,  'Τραπεζική κατάθεση'),
+           (own, pid, tid, 2026,  4, 1500, true,  'Μετρητά'),
+           (own, pid, tid, 2026,  7, 1500, true,  'Τραπεζική κατάθεση'),
+           (own, pid, tid, 2026, 10, 1500, false, null);
+  insert into public.clients(id, user_id, type, full_name) values (cid, own, 'client', 'Επισκέπτης');
+  insert into public.client_stays(user_id, client_id, property_id, check_in, check_out, nights, total,
+                                  gross_guest_paid, climate_levy, platform_fee, amount_basis)
+    values (own, cid, pid, '2025-12-28', '2026-01-05', 8, 800, 800, 16, 120, 'gross'),
+           (own, cid, pid, '2024-07-01', '2024-07-03', 2, 200, 200, 0, 0, 'gross');
+  insert into public.accountant_links(user_id, token, active) values (own, 'probe-token-poso', true);
+end $probe$;
+
+set role anon;
+do $probe$
+declare
+  p26 json := (public.get_accountant_data('probe-token-poso', 2026) -> 'properties') -> 0;
+  p25 json := (public.get_accountant_data('probe-token-poso', 2025) -> 'properties') -> 0;
+begin
+  if (p26->>'rent_due')::numeric is distinct from 6000 then
+    raise exception 'rent_due 2026: % αντί για 6000 (όλες οι περίοδοι της χρήσης)', p26->>'rent_due';
+  end if;
+  if (p26->>'rent_collected')::numeric is distinct from 4500 then
+    raise exception 'rent_collected 2026: % αντί για 4500. Η απλήρωτη δόση μετρά ως είσπραξη', p26->>'rent_collected';
+  end if;
+  if (p26->>'rent_months')::int is distinct from 12 then
+    raise exception 'rent_months 2026: % αντί για 12. Μετρά γραμμές, όχι μήνες', p26->>'rent_months';
+  end if;
+  if (p25->>'rent_months')::int is distinct from 2 then
+    raise exception 'rent_months 2025: % αντί για 2 (Νοέμβριος και Δεκέμβριος)', p25->>'rent_months';
+  end if;
+  if (p26->>'rent_paid_with_method')::int is distinct from 3 or (p26->>'rent_paid_cash')::int is distinct from 1 then
+    raise exception 'πλήθη τρόπου είσπραξης 2026: % με τρόπο, % μετρητά', p26->>'rent_paid_with_method', p26->>'rent_paid_cash';
+  end if;
+  if (p26->>'lease_via_bank')::boolean is not true then
+    raise exception 'lease_via_bank: % αντί για true', p26->>'lease_via_bank';
+  end if;
+  if json_array_length(p26->'stays') <> 1 or json_array_length(p25->'stays') <> 1 then
+    raise exception 'η διαμονή της Πρωτοχρονιάς πρέπει να φτάνει και στις δύο χρήσεις: 2025=%, 2026=%',
+      json_array_length(p25->'stays'), json_array_length(p26->'stays');
+  end if;
+  raise notice 'probe: η πύλη του λογιστή χωρίζει είσπραξη από δεδουλευμένο και μετρά μήνες, όχι γραμμές';
+end $probe$;
+reset role;
+
+do $probe$
+declare own uuid := 'eeeeeeee-0000-0000-0000-000000000001';
+begin
+  delete from public.accountant_links where user_id = own;
+  delete from public.client_stays where user_id = own;
+  delete from public.clients where user_id = own;
+  delete from public.rent_payments where user_id = own;
+  delete from public.tenants where user_id = own;
+  delete from public.user_properties where user_id = own;
+  delete from auth.users where id = own;
+end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ΤΟ ΠΡΟΣΥΜΠΛΗΡΩΜΕΝΟ Ε2 ΚΑΙ Ο ΦΑΚΕΛΟΣ ΤΟΥ ΛΟΓΙΣΤΗ
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20261001120000_to_prosympliromeno_e2_menei.sql. Ο ιδιοκτήτης ανεβάζει τις
+-- γραμμές της ΑΑΔΕ· ο συνδεδεμένος λογιστής τις διαβάζει και ανεβάζει κι αυτός·
+-- ο ξένος και ο ανώνυμος δεν βλέπουν τίποτα. Η περιστροφή του συνδέσμου κόβει
+-- τον λογιστή από τις γραμμές και από τα αρχεία. Και κανείς δεν γράφει
+-- `uploaded_by` για λογαριασμό άλλου.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+
+do $probe$
+declare
+  own uuid := 'e2e2e2e2-0000-0000-0000-000000000001';
+  acc uuid := 'e2e2e2e2-0000-0000-0000-0000000000ac';
+  str uuid := 'e2e2e2e2-0000-0000-0000-0000000000ff';
+  res json;
+begin
+  insert into auth.users(id, email) values (own, 'e2-own@probe.test'), (acc, 'e2-acc@probe.test'), (str, 'e2-str@probe.test');
+  insert into public.accountant_links(user_id, token, active) values (own, 'probe-token-e2', true);
+  perform set_config('probe.uid', acc::text, true);
+  res := public.accountant_claim('probe-token-e2');
+  if (res->>'ok')::boolean is not true then raise exception 'Η αξίωση του συνδέσμου απέτυχε: %', res; end if;
+  -- Η σκαλωσιά δεν έχει RLS ούτε δικαιώματα στα αρχεία: τα παίρνει εδώ, για να
+  -- ελεγχθούν οι ΠΡΑΓΜΑΤΙΚΕΣ πολιτικές και όχι η απουσία τους.
+  alter table storage.objects enable row level security;
+  grant select, insert on storage.objects to authenticated;
+end $probe$;
+
+-- ── Ο ιδιοκτήτης ανεβάζει ─────────────────────────────────────────────────
+set role authenticated;
+set session "probe.uid" = 'e2e2e2e2-0000-0000-0000-000000000001';
+do $probe$
+declare n int; who text;
+begin
+  n := public.e2_prefilled_replace('e2e2e2e2-0000-0000-0000-000000000001', 2025, '094014201', 'manual', null,
+    '[{"atak":"01234567890","tenant_afm":"123456783","months":12,"monthly_rent":600,"ownership_pct":100,"gross":7200,"income_column":13}]'::jsonb);
+  if n <> 1 then raise exception 'Ο ιδιοκτήτης ανέβασε % γραμμές αντί για 1', n; end if;
+  select uploaded_by into who from public.e2_prefilled;
+  if who <> 'owner' then raise exception 'uploaded_by: % αντί για owner', who; end if;
+  insert into public.accountant_packs(user_id, tax_year, owner_afm, aade_differences, missing_count, missing_top, file_path)
+    values ('e2e2e2e2-0000-0000-0000-000000000001', 2025, '094014201', 0, 1, array['Βεβαίωση τόκων'],
+            'e2e2e2e2-0000-0000-0000-000000000001/accountant-pack/2025/fakelos.zip');
+  raise notice 'probe: ο ιδιοκτήτης ανεβάζει το προσυμπληρωμένο και γράφεται «owner»';
+end $probe$;
+
+-- ── Ο ξένος δεν βλέπει, δεν γράφει, δεν αντικαθιστά ───────────────────────
+set session "probe.uid" = 'e2e2e2e2-0000-0000-0000-0000000000ff';
+do $probe$
+declare n int;
+begin
+  select count(*) into n from public.e2_prefilled;
+  if n <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο ξένος βλέπει % γραμμές προσυμπληρωμένου', n; end if;
+  select count(*) into n from public.accountant_packs;
+  if n <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο ξένος βλέπει % φακέλους', n; end if;
+  update public.e2_prefilled set gross = 1 where user_id = 'e2e2e2e2-0000-0000-0000-000000000001';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο ξένος άλλαξε % γραμμές', n; end if;
+  begin
+    perform public.e2_prefilled_replace('e2e2e2e2-0000-0000-0000-000000000001', 2025, '094014201', 'manual', null, '[]'::jsonb);
+    raise exception 'ΔΙΑΡΡΟΗ: ο ξένος άδειασε το προσυμπληρωμένο του ιδιοκτήτη';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.e2_prefilled(user_id, tax_year, owner_afm, gross, source)
+      values ('e2e2e2e2-0000-0000-0000-000000000001', 2025, '094014201', 1, 'manual');
+    raise exception 'ΔΙΑΡΡΟΗ: ο ξένος φύτεψε γραμμή στον ιδιοκτήτη';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into storage.objects(bucket_id, name) values ('property-files', 'e2e2e2e2-0000-0000-0000-000000000001/aade-e2/2025/xenos.pdf');
+    raise exception 'ΔΙΑΡΡΟΗ: ο ξένος ανέβασε αρχείο στον φάκελο του ιδιοκτήτη';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: ο ξένος δεν βλέπει ούτε αγγίζει το προσυμπληρωμένο';
+end $probe$;
+
+-- ── Ο συνδεδεμένος λογιστής διαβάζει και ανεβάζει ─────────────────────────
+set session "probe.uid" = 'e2e2e2e2-0000-0000-0000-0000000000ac';
+do $probe$
+declare n int; who text; by_user uuid; res json; e2 json;
+begin
+  select count(*) into n from public.e2_prefilled;
+  if n <> 1 then raise exception 'Ο συνδεδεμένος λογιστής βλέπει % γραμμές αντί για 1', n; end if;
+  n := public.e2_prefilled_replace('e2e2e2e2-0000-0000-0000-000000000001', 2025, '094014201', 'paste', null,
+    '[{"atak":"01234567890","gross":7200},{"atak":"01234567891","gross":2400,"months":6}]'::jsonb);
+  if n <> 2 then raise exception 'Ο λογιστής ανέβασε % γραμμές αντί για 2', n; end if;
+  select min(uploaded_by), min(uploaded_by_user::text)::uuid into who, by_user from public.e2_prefilled;
+  if who <> 'accountant' or by_user <> 'e2e2e2e2-0000-0000-0000-0000000000ac' then
+    raise exception 'uploaded_by: % / % αντί για accountant / λογιστής', who, by_user;
+  end if;
+  -- Τον φάκελο τον βλέπει ΜΟΝΟ μέσα από τη λίστα του, όχι ως πίνακα.
+  select count(*) into n from public.accountant_packs;
+  if n <> 0 then raise exception 'Ο λογιστής διαβάζει τον πίνακα των φακέλων απευθείας (% γραμμές)', n; end if;
+  res := public.accountant_clients_overview(2025);
+  e2 := (res -> 0) -> 'e2';
+  if (e2->>'aadeRows')::int <> 2 or json_array_length(e2->'packs') <> 1
+     or (e2->'packs'->0->>'filePath') not like '%/accountant-pack/2025/fakelos.zip' then
+    raise exception 'Η λίστα του λογιστή δεν δείχνει προσυμπληρωμένο και φάκελο: %', e2;
+  end if;
+  -- Αρχεία: ανεβάζει το PDF της ΑΑΔΕ, διαβάζει τον φάκελο, τίποτα άλλο.
+  insert into storage.objects(bucket_id, name) values ('property-files', 'e2e2e2e2-0000-0000-0000-000000000001/aade-e2/2025/e2.pdf');
+  begin
+    insert into storage.objects(bucket_id, name) values ('property-files', 'e2e2e2e2-0000-0000-0000-000000000001/documents/misthotirio.pdf');
+    raise exception 'ΔΙΑΡΡΟΗ: ο λογιστής ανέβασε αρχείο έξω από τον φάκελο του προσυμπληρωμένου';
+  exception when insufficient_privilege then null;
+  end;
+  if not private.accountant_sees_file('e2e2e2e2-0000-0000-0000-000000000001/accountant-pack/2025/fakelos.zip', false) then
+    raise exception 'Ο λογιστής δεν διαβάζει τον φάκελο που του έστειλε ο ιδιοκτήτης';
+  end if;
+  if private.accountant_sees_file('e2e2e2e2-0000-0000-0000-000000000001/documents/taftotita.pdf', false) then
+    raise exception 'ΔΙΑΡΡΟΗ: ο λογιστής διαβάζει τα υπόλοιπα έγγραφα του ιδιοκτήτη';
+  end if;
+  raise notice 'probe: ο συνδεδεμένος λογιστής διαβάζει και ανεβάζει, γράφεται «accountant»';
+end $probe$;
+
+-- ── Ο ιδιοκτήτης περιστρέφει τον σύνδεσμο: ο λογιστής κόβεται ──────────────
+reset role;
+update public.accountant_links set token = 'probe-token-e2-neo' where user_id = 'e2e2e2e2-0000-0000-0000-000000000001';
+set role authenticated;
+set session "probe.uid" = 'e2e2e2e2-0000-0000-0000-0000000000ac';
+do $probe$
+declare n int;
+begin
+  select count(*) into n from public.e2_prefilled;
+  if n <> 0 then raise exception 'Η ΑΝΑΚΛΗΣΗ ΔΕΝ ΑΝΑΚΑΛΕΣΕ: ο λογιστής βλέπει ακόμη % γραμμές', n; end if;
+  begin
+    perform public.e2_prefilled_replace('e2e2e2e2-0000-0000-0000-000000000001', 2025, '094014201', 'manual', null, '[]'::jsonb);
+    raise exception 'Η ΑΝΑΚΛΗΣΗ ΔΕΝ ΑΝΑΚΑΛΕΣΕ: ο λογιστής αντικατέστησε γραμμές';
+  exception when insufficient_privilege then null;
+  end;
+  if private.accountant_sees_file('e2e2e2e2-0000-0000-0000-000000000001/accountant-pack/2025/fakelos.zip', false) then
+    raise exception 'Η ΑΝΑΚΛΗΣΗ ΔΕΝ ΑΝΑΚΑΛΕΣΕ: ο λογιστής διαβάζει ακόμη τον φάκελο';
+  end if;
+  raise notice 'probe: η περιστροφή του συνδέσμου κόβει τον λογιστή από το προσυμπληρωμένο και τον φάκελο';
+end $probe$;
+
+-- ── Ο ανώνυμος: τίποτα ────────────────────────────────────────────────────
+set role anon;
+set session "probe.uid" = '';
+do $probe$
+declare n int;
+begin
+  -- Η σκαλωσιά δίνει στον ανώνυμο δικαιώματα πίνακα, όπως το Supabase στους
+  -- νέους πίνακες· ό,τι τον κόβει είναι οι πολιτικές, που είναι `to authenticated`.
+  begin
+    select count(*) into n from public.e2_prefilled;
+    if n <> 0 then raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος διαβάζει % γραμμές προσυμπληρωμένου', n; end if;
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    select count(*) into n from public.accountant_packs;
+    if n <> 0 then raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος διαβάζει % φακέλους', n; end if;
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.e2_prefilled(user_id, tax_year, owner_afm, gross, source)
+      values ('e2e2e2e2-0000-0000-0000-000000000001', 2025, '094014201', 1, 'manual');
+    raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος φύτεψε γραμμή προσυμπληρωμένου';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.e2_prefilled_replace('e2e2e2e2-0000-0000-0000-000000000001', 2025, '094014201', 'manual', null, '[]'::jsonb);
+    raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος καλεί την αντικατάσταση';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: ο ανώνυμος δεν φτάνει ούτε στον πίνακα ούτε στη συνάρτηση';
+end $probe$;
+
+reset role;
+set session "probe.uid" = '';
+do $probe$
+declare own uuid := 'e2e2e2e2-0000-0000-0000-000000000001';
+begin
+  delete from storage.objects where name like own::text || '/%';
+  revoke select, insert on storage.objects from authenticated;
+  alter table storage.objects disable row level security;
+  delete from public.accountant_packs where user_id = own;
+  delete from public.e2_prefilled where user_id = own;
+  delete from public.accountant_clients where owner_id = own;
+  delete from public.accountant_links where user_id = own;
+  delete from auth.users where id in (own, 'e2e2e2e2-0000-0000-0000-0000000000ac', 'e2e2e2e2-0000-0000-0000-0000000000ff');
+end $probe$;

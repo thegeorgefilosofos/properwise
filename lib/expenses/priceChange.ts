@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// ΑΚΡΙΒΥΝΕ ΚΑΤΙ ΠΟΥ ΠΛΗΡΩΝΩ, ΚΑΙ ΔΕΝ ΤΟ ΠΗΡΑ ΕΙΔΗΣΗ
+// ΑΚΡΙΒΥΝΕ ΚΑΤΙ ΠΟΥ ΠΛΗΡΩΝΩ ΚΑΙ ΔΕΝ ΤΟ ΠΗΡΑ ΕΙΔΗΣΗ
 // ─────────────────────────────────────────────────────────────────────────
 // ΤΟ ΕΡΩΤΗΜΑ ΠΟΥ ΖΗΤΗΘΗΚΕ: «μία φορά τον μήνα να ελέγχουμε Netflix, Spotify,
 // Disney+ και ό,τι άλλο, για αλλαγές τιμών».
@@ -30,6 +30,7 @@
 import { expectedSeries } from './expected';
 import { entryName, type LedgerEntry } from './ledger';
 import { fe, fpSigned } from '../core/format';
+import { roundHalfUp } from '../core/money';
 
 /**
  * Κατηγορίες όπου το ποσό ΔΕΝ εξαρτάται από κατανάλωση.
@@ -106,7 +107,7 @@ export function priceChanges(
     const previous = median(prior);
     if (previous <= 0) continue;
 
-    const deltaEur = Math.round((current - previous) * 100) / 100;
+    const deltaEur = roundHalfUp((current - previous), 2);
     // ΔΥΟ ΤΙΜΕΣ, ΜΙΑ ΑΛΗΘΕΙΑ. Το `deltaPct` είναι στρογγυλεμένο ακέραιο και το
     // χρησιμοποιεί το κατώφλι: «άλλαξε τουλάχιστον τόσο τοις εκατό» είναι
     // ερώτηση που δεν χρειάζεται δεκαδικά. Η ΠΡΟΤΑΣΗ όμως γράφεται δίπλα σε δύο
@@ -136,7 +137,7 @@ export function priceChanges(
 
     out.push({
       key: s.key, title: s.title, category: s.category, vendor: s.vendor,
-      previous: Math.round(previous * 100) / 100, current: Math.round(current * 100) / 100,
+      previous: roundHalfUp(previous, 2), current: roundHalfUp(current, 2),
       deltaEur, deltaPct, month: lastMonth, flatRate, message,
     });
   }

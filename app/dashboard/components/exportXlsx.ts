@@ -36,6 +36,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { XLSX, setCell, downloadWorkbook, workbookBytes, printTitles, sheetFinish } from './xlsxStyle';
 import { FMT, S, ROW, sheetName, MARGINS, type Cell } from './sheetFormat';
+import { roundHalfUp } from '@/lib/core/money';
 
 export type XlsxKind = 'text' | 'date' | 'eur' | 'int' | 'year' | 'pct' | 'num';
 export type XlsxCol = { header: string; width?: number; kind?: XlsxKind };
@@ -181,7 +182,7 @@ export function sheetsWorkbook(sheets: XlsxSheet[]): XLSX.WorkBook {
           const k = (sh.columns[c]?.kind || 'eur') as XlsxKind;
           const col = XLSX.utils.encode_col(c);
           setCell(ws, totalR, c, {
-            t: 'n', v: Math.round(sum * 100) / 100,
+            t: 'n', v: roundHalfUp(sum, 2),
             f: `SUM(${col}${firstDataRow1}:${col}${lastDataRow1})`,
             z: FORMAT[k] || FMT.eur, s: totRight,
           });

@@ -7,7 +7,7 @@ import { OBJECTIVE_VALUES } from '@/lib/tax/aade';
 // στο lib/billing/enfia.ts, με νομική παραπομπή ανά συντελεστή. Εδώ απλώς
 // γίνεται προσβάσιμη χωρίς εγγραφή.
 //
-// ΤΙ ΖΗΤΑΜΕ, ΚΑΙ ΓΙΑΤΙ ΤΟΣΟ ΛΙΓΑ
+// ΤΙ ΖΗΤΑΜΕ ΚΑΙ ΓΙΑΤΙ ΤΟΣΟ ΛΙΓΑ
 // Ο πλήρης ΕΝΦΙΑ θέλει δεκάδες πεδία. Ο επισκέπτης όμως δεν έχει λόγο να μας
 // αφιερώσει δέκα λεπτά πριν μας ξέρει και τα τέσσερα πεδία εδώ καλύπτουν τη
 // συντριπτική πλειονότητα των διαμερισμάτων: τετραγωνικά, τιμή ζώνης, όροφος,
@@ -22,24 +22,24 @@ import { OBJECTIVE_VALUES } from '@/lib/tax/aade';
 // ακίνητο θα δει διαφορετικό ποσό στο εκκαθαριστικό.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId, useState } from 'react';
-import { T, feAuto, fixedCols } from '@/components/tokens';
-import { fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
+import { T, feAuto } from '@/components/tokens';
+import { fe, fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
-import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS } from '@/lib/billing/enfia';
+import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
 import { enfiaInstalments, ENFIA_INSTALMENTS } from '@/lib/tools/enfiaSchedule';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
 import { enfiaLedger, enfiaWealthBracketLimit } from '@/lib/tools/enfiaLedger';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
-import { ToolNumField, ToolSelect, ToolFigure, ToolLedger } from '@/app/ToolParts';
+import { ToolNumField, ToolSelect, ToolFields, ToolHero, ToolLedger } from '@/app/ToolParts';
 import { Btn } from '@/components/Theme';
 
 import LiveResult from '@/components/LiveResult';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
-const SPEC = { tm: '85', zoni: '1400', orofos: 'second', palaiotita: 'y26_plus', pososto: '100' } as const;
+const SPEC = { tm: '85', zoni: '1400', orofos: 'second', palaiotita: 'y26_plus', pososto: '100', voith: '' } as const;
 const PATH = '/ypologismos-enfia';
 
 // Οι ετικέτες αντλούνται από τα ΚΛΕΙΔΙΑ του lib, ώστε αν προστεθεί συντελεστής
@@ -54,8 +54,8 @@ const AGES = ENFIA_AGE_BANDS;
 
 export function EnfiaCalculator({ year, today }: { year: number; today: string }) {
   const [v, set] = useToolState(SPEC, PATH);
-  const sqm = v.tm, zonePrice = v.zoni, floor = v.orofos, age = v.palaiotita, ownership = v.pososto;
-  const ids = { sqm: useId(), zone: useId(), floor: useId(), age: useId(), own: useId() };
+  const sqm = v.tm, zonePrice = v.zoni, floor = v.orofos, age = v.palaiotita, ownership = v.pososto, auxSqm = v.voith;
+  const ids = { sqm: useId(), zone: useId(), floor: useId(), age: useId(), own: useId(), aux: useId() };
 
   // Ο ΚΑΝΟΝΑΣ ΤΟΥ ΠΟΣΟΣΤΟΥ ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ: τον διαβάζουν ο υπολογισμός, το
   // χαρτί και η σημείωση που λέει ότι η τιμή του πεδίου δεν πέρασε ως έχει.
@@ -94,16 +94,21 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
     // συντριπτική πλειοψηφία όσων ανοίγουν τη σελίδα.
     const value = m * price;
     const share = value * (own / 100);
+    // ΟΙ ΒΟΗΘΗΤΙΚΟΙ ΧΩΡΟΙ ΜΠΑΙΝΟΥΝ ΣΤΟΝ ΦΟΡΟ, ΟΧΙ ΣΤΗΝ ΑΞΙΑ. Η αξία εδώ είναι
+    // προσέγγιση τ.μ. του κτίσματος × τιμή ζώνης και δεν μετρούσε ποτέ αποθήκη
+    // ή θέση στάθμευσης· για να μένει ίδια η βάση της μείωσης και της
+    // προσαύξησης, ο βοηθητικός χώρος δεν προστίθεται ούτε τώρα. Ο φόρος του
+    // είναι χωριστή γραμμή (lib/billing/enfia.ts, συντελεστής 0,10 χωρίς όροφο).
+    const aux = amount(auxSqm);
     const res = estimateENFIA({
-      sqm: m, zone, floor, age, ownership: own,
+      sqm: m, auxSqm: aux, zone, floor, age, ownership: own,
       totalValue: share, propertyValue: value,
     });
-    return res ? { ...res, value, share, own, zone } : null;
-  }, [sqm, zonePrice, floor, age, own]);
+    return res ? { ...res, value, share, own, zone, aux } : null;
+  }, [sqm, zonePrice, floor, age, own, auxSqm]);
 
   // Ο ΚΥΡΙΟΣ ΦΟΡΟΣ, Η ΜΕΙΩΣΗ ΚΑΙ ΤΟ ΕΤΗΣΙΟ ΑΘΡΟΙΖΟΥΝ ΣΤΟ ΛΕΠΤΟ (lib/tools/enfiaLedger.ts).
   const ledger = r ? enfiaLedger(r) : null;
-  const controls = fixedCols(5, 14, 'end', 'po-tool-controls fc-5-even fc-xs-2 fc-xxs-1', 6);
   const bracket = r ? enfiaWealthBracketLimit(r.share) : null;
 
   return (
@@ -124,7 +129,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
           1044 βγαίνουν 199 το καθένα. Πιο κάτω τα σπασίματα του `fixed-cols`
           κάνουν τη δουλειά τους — 3+2 στην ταμπλέτα, μία στήλη στο τηλέφωνο.
 
-          Η ΣΤΟΙΧΙΣΗ ΕΙΝΑΙ ΣΤΟ ΚΑΤΩ ΑΚΡΟ, ΚΑΙ ΕΧΕΙ ΛΟΓΟ. Στη στενή ζώνη
+          Η ΣΤΟΙΧΙΣΗ ΕΙΝΑΙ ΣΤΟ ΚΑΤΩ ΑΚΡΟ ΚΑΙ ΕΧΕΙ ΛΟΓΟ. Στη στενή ζώνη
           821–845 το πεδίο πέφτει στα 137 και η ετικέτα «Ποσοστό ιδιοκτησίας»
           τυλίγεται σε δεύτερη γραμμή. Με στοίχιση στην ΑΡΧΗ, αυτό κατέβαζε το
           κουτί του κατά μία γραμμή και τα πέντε κουτιά κάθονταν σε δύο
@@ -137,27 +142,33 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
           δίπλα δίπλα και οι επιλογείς με το ποσοστό παίρνουν όλο το πλάτος,
           γιατί στη μισή στήλη το «26 έτη και άνω» κοβόταν (`.fc-5-even` στο
           globals.css). Κάτω από τα 340 όλα γίνονται μία στήλη. */}
-      <div {...controls} style={{ ...controls.style, '--fc-sm': 2 } as React.CSSProperties}>
-        <ToolNumField id={ids.sqm} label="Τετραγωνικά" value={sqm} onChange={x => set('tm', x)}/>
+      {/* ΣΤΟ ΚΟΙΝΟ ΠΛΕΓΜΑ ΤΩΝ ΤΕΣΣΑΡΩΝ (`ToolFields`). Ηταν έξι λωρίδες με
+          κλάση μόνο γι' αυτόν (`fc-5-even`): στα 768 τα τρία πάνω έπιαναν δύο
+          λωρίδες και τα δύο κάτω τρεις, οπότε καμία κάθετη δεν συνέχιζε από
+          σειρά σε σειρά. Τώρα τέσσερα πεδία σε μία σειρά και το ποσοστό στην
+          επόμενη, στην ίδια στήλη με τα τετραγωνικά· στην ταμπλέτα δύο και δύο.
+          Η βοήθεια ζει κάτω από το πεδίο που εξηγεί. */}
+      <ToolFields>
+        <ToolNumField id={ids.sqm} label="Τετραγωνικά" value={sqm} onChange={x => set('tm', x)}
+          unit="τ.μ." unitPad={44}/>
         <ToolNumField id={ids.zone} label="Τιμή ζώνης" value={zonePrice} onChange={x => set('zoni', x)}
-          unit="€/τ.μ." unitPad={52}/>
+          unit="€/τ.μ." unitPad={52}
+          hint={<>Στο συμβόλαιο, στο Ε9 ή στον{' '}
+            <a href={OBJECTIVE_VALUES} target="_blank" rel="noopener noreferrer"
+              style={{ color: 'var(--accent)' }}>χάρτη αντικειμενικών αξιών</a>.</>}/>
         <ToolSelect label="Όροφος" value={floor} onChange={x => set('orofos', x)}
           options={FLOORS.map(f => ({ value: f.key, label: f.label }))}/>
         <ToolSelect label="Παλαιότητα" value={age} onChange={x => set('palaiotita', x)}
           options={AGES.map(a => ({ value: a.key, label: a.label }))}/>
         <ToolNumField id={ids.own} label="Ποσοστό ιδιοκτησίας" value={ownership} onChange={x => set('pososto', x)}
-          unit="%" mode="numeric"/>
-      </div>
+          unit="%" mode="numeric" hint="Αν το ακίνητο είναι μοιρασμένο."/>
+        <ToolNumField id={ids.aux} label="Βοηθητικοί χώροι" value={auxSqm} onChange={x => set('voith', x)}
+          unit="τ.μ." unitPad={44} hint="Αποθήκη ή θέση στάθμευσης. Προαιρετικό."/>
+      </ToolFields>
 
       <ToolClampNote notes={[
         own !== amount(ownership) && `Το ποσοστό ιδιοκτησίας μετρά από 1% έως 100%· υπολογίστηκε με ${fpRate(own)}.`,
       ]}/>
-
-      <p className="po-tool-controls" style={{ margin: '10px 0 0', fontSize: 12, lineHeight: 1.7, color: 'var(--text-tertiary)' }}>
-        Την τιμή ζώνης τη βρίσκεις στο συμβόλαιο, στο Ε9 ή στον{' '}
-        <a href={OBJECTIVE_VALUES} target="_blank" rel="noopener noreferrer"
-          style={{ color: 'var(--accent)' }}>χάρτη αντικειμενικών αξιών (valuemaps.gov.gr)</a>.
-      </p>
 
       {/* ── Η κεφαλίδα του χαρτιού, πάνω από το αποτέλεσμα ─────────────── */}
       {r && <ToolPaper title={`Εκτίμηση ΕΝΦΙΑ ${year}`} on={today} inputs={[
@@ -167,6 +178,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
         { k: 'Όροφος', v: FLOORS.find(f => f.key === floor)?.label ?? floor },
         { k: 'Παλαιότητα', v: AGES.find(a => a.key === age)?.label ?? age },
         { k: 'Ποσοστό ιδιοκτησίας', v: fpRate(own) },
+        ...(r.aux > 0 ? [{ k: 'Βοηθητικοί χώροι', v: `${fn(r.aux, Number.isInteger(r.aux) ? 0 : 2)} τ.μ.` }] : []),
       ]}/>}
 
       {/* ── Το αποτέλεσμα ──────────────────────────────────────────────── */}
@@ -191,12 +203,10 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
                 όσα μόλις πληκτρολόγησε ο χρήστης· κατεβαίνει στην ανάλυση, όπου
                 ανήκει. Μένουν το ετήσιο και ο μήνας: αυτό που χρωστάς και αυτό
                 που πρέπει να βρίσκεις κάθε μήνα. */}
-            <div {...fixedCols(2, 24, 'start')}>
-              <ToolFigure label="ΕΝΦΙΑ ετησίως" value={feAuto(r.annual)}/>
-              {/* Το «σε 12 δόσεις» έφυγε από την ετικέτα: το λέει πλέον ο
-                  πίνακας των δόσεων από κάτω, με ημερομηνίες. */}
-              <ToolFigure label="Ανά μήνα" value={feAuto(r.annual / ENFIA_INSTALMENTS)}/>
-            </div>
+            {/* ΤΟ ΕΤΗΣΙΟ ΟΔΗΓΕΙ, Ο ΜΗΝΑΣ ΤΟ ΠΛΑΙΣΙΩΝΕΙ. Ακέραια ευρώ στην κορυφή·
+                τα λεπτά τα κρατούν η ανάλυση και ο πίνακας των δόσεων. */}
+            <ToolHero primary={{ label: 'ΕΝΦΙΑ ετησίως', value: fe(r.annual) }}
+              secondary={[{ label: 'Ανά μήνα', value: fe(r.annual / ENFIA_INSTALMENTS) }]}/>
               <LiveResult say={`ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, ${feAuto(r.annual / ENFIA_INSTALMENTS)} τον μήνα.`} />
 
             <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
@@ -219,7 +229,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
                 16 κάνει 192: ο επισκέπτης διάβαζε δύο νούμερα που δεν βγαίνουν
                 μεταξύ τους. Σε σελίδα που ρωτά «πόσο θα πληρώσεις», η διαίρεση
                 γίνεται ακριβής. */}
-            {/* ΜΙΑ ΣΤΗΛΗ, ΜΕ ΤΗ ΣΕΙΡΑ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ, ΚΑΙ ΚΛΕΙΝΕΙ ΜΕ ΤΟ ΕΤΗΣΙΟ.
+            {/* ΜΙΑ ΣΤΗΛΗ, ΜΕ ΤΗ ΣΕΙΡΑ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ ΚΑΙ ΚΛΕΙΝΕΙ ΜΕ ΤΟ ΕΤΗΣΙΟ.
                 Σε πλέγμα δύο στηλών η αλυσίδα διαβαζόταν ζιγκ-ζαγκ και καμία
                 γραμμή δεν έλεγε «άρα». Πρώτα όσα μπαίνουν στον τύπο, με το
                 γκρι των παραμέτρων· μετά τα ποσά, που αθροίζουν στο λεπτό
@@ -234,12 +244,13 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
                 ζώνης· τα λεπτά της θα υπόσχονταν ακρίβεια που δεν έχει. Λεπτά
                 κρατούν μόνο τα ποσά του φόρου. */}
             <ToolLedger rows={[
-              { k: 'Αντικειμενική αξία ακινήτου (εκτίμηση)', v: feWhole(r.value), kind: 'param' },
-              r.own < 100 && { k: `Το μερίδιό σου (${fpRate(r.own)})`, v: feWhole(r.share), kind: 'param' },
+              { k: 'Αντικειμενική αξία ακινήτου (εκτίμηση)', v: feAuto(r.value) },
+              r.own < 100 && { k: `Το μερίδιό σου (${fpRate(r.own)})`, v: feAuto(r.share) },
               { k: 'Βασικός φόρος ζώνης', v: `${feRate(ENFIA_ZONE_TAX[r.zone] ?? 0)}/τ.μ.`, kind: 'param' },
               { k: 'Συντελεστής ορόφου', v: fn(enfiaFloorCoef(floor), 2), kind: 'param' },
               { k: 'Συντελεστής παλαιότητας', v: fn(enfiaAgeCoef(age), 2), kind: 'param' },
               { k: 'Κύριος φόρος κτίσματος', v: feAuto(ledger.basic) },
+              r.aux > 0 && { k: `Βοηθητικοί χώροι (συντελεστής ${fn(ENFIA_AUX_COEF, 2)}, χωρίς όροφο)`, v: feAuto(ledger.auxiliary) },
               ledger.extra > 0 && { k: 'Πρόσθετος φόρος (αξία πάνω από 400.000€)', v: feAuto(ledger.extra) },
               ledger.supplementary > 0 && { k: 'Προσαύξηση (περιουσία πάνω από 500.000€)', v: feAuto(ledger.supplementary) },
               r.reductionPct > 0 && {
@@ -252,9 +263,10 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
         )}
       </div>
 
-      {r && <Instalments annual={r.annual} year={year} today={today}/>}
-
+      {/* Οι δύο έξοδοι στην ΙΔΙΑ θέση και στους τέσσερις: αμέσως μετά την κάρτα. */}
       <ToolActions path={PATH} spec={SPEC} values={v}/>
+
+      {r && <Instalments annual={r.annual} year={year} today={today}/>}
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ──────────────────────────────────────────── */}
       <div className="po-tool-note" style={{
@@ -317,14 +329,20 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
     <div style={{ marginTop: T.sp.xxl }}>
       <div className="po-table-box">
        <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-        <table className="po-table" style={{ '--tbl-min': '300px' }}>
-          {/* Ίδια τυπογραφία λεζάντας με τον πίνακα κλιμακίων του αδελφού
-              υπολογιστή: οι δύο σελίδες διαβάζονται ως ένα εργαλείο. */}
-          <caption>Οι {ENFIA_INSTALMENTS} δόσεις του {year}</caption>
+        <table className="po-table po-tool-table" style={{ '--tbl-min': '280px' }}>
+          {/* ΚΛΕΙΣΤΟΣ, Ο ΠΙΝΑΚΑΣ ΛΕΕΙ ΟΤΙ ΔΕΙΧΝΕΙ ΤΙΣ ΕΠΟΜΕΝΕΣ. Η λεζάντα έγραφε
+              «Οι 12 δόσεις» πάνω από τρεις γραμμές. Στο χαρτί τυπώνονται και οι
+              δώδεκα, οπότε εκεί μένει ο πλήρης τίτλος. */}
+          <caption>
+            {all ? `Οι ${ENFIA_INSTALMENTS} δόσεις του ${year}` : <>
+              <span className="po-noprint">Επόμενες δόσεις</span>
+              <span className="po-printonly">Οι {ENFIA_INSTALMENTS} δόσεις του {year}</span>
+            </>}
+          </caption>
           <thead>
             <tr>
               <th scope="col">Δόση</th>
-              <th scope="col">Καταληκτική ημερομηνία</th>
+              <th scope="col">Λήξη</th>
               <th scope="col" className="num">Ποσό</th>
             </tr>
           </thead>
@@ -335,14 +353,13 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
               return (
                 <tr key={row.no} className={[isNext ? 'is-on' : '', shown(i) ? '' : 'po-row-more'].filter(Boolean).join(' ') || undefined}>
                   <td style={{ fontVariantNumeric: 'tabular-nums', width: '1%', whiteSpace: 'nowrap', color: ink }}>{row.no}</td>
-                  <td style={{ whiteSpace: 'nowrap', color: ink }}>
+                  {/* Η ημερομηνία σε ψηφία σταθερού πλάτους, ώστε οι μέρες να
+                      στοιχίζονται κάθετα. Η «επόμενη» είναι σήμα δίπλα της, όχι
+                      δεύτερη σειρά που ψήλωνε μόνο εκείνη τη γραμμή. */}
+                  <td style={{ whiteSpace: 'nowrap', color: ink, fontVariantNumeric: 'tabular-nums' }}>
                     {row.label}
-                    {(past || isNext) && (
-                      <span style={{ display: 'block', fontSize: 12, fontWeight: isNext ? 600 : 400,
-                        color: isNext ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>
-                        {past ? 'έληξε' : 'επόμενη'}
-                      </span>
-                    )}
+                    {isNext && <span className="po-tool-tag">επόμενη</span>}
+                    {past && <span style={{ marginLeft: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>έληξε</span>}
                   </td>
                   <td className="num" style={{ color: ink, fontWeight: past ? 400 : 600 }}>{feAuto(row.amount)}</td>
                 </tr>

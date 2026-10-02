@@ -25,13 +25,14 @@
 //      ενδιαφέρει κανέναν. Το κατώφλι των ευρώ κρατά έξω τις μικροδιαφορές που
 //      είναι ποσοστιαία τεράστιες και πρακτικά μηδέν.
 //
-//   4. ΜΟΝΟ Ο ΤΡΕΧΩΝ ΜΗΝΑΣ, ΚΑΙ ΟΧΙ Ο ΜΙΣΟΣ. Ενας μήνας που τρέχει ακόμη έχει
+//   4. ΜΟΝΟ Ο ΤΡΕΧΩΝ ΜΗΝΑΣ ΚΑΙ ΟΧΙ Ο ΜΙΣΟΣ. Ενας μήνας που τρέχει ακόμη έχει
 //      λιγότερες δαπάνες επειδή δεν τελείωσε, όχι επειδή ξοδεύεις λιγότερα. Ο
 //      έλεγχος κοιτάζει τον ΤΕΛΕΥΤΑΙΟ ΚΛΕΙΣΜΕΝΟ μήνα, όπου η σύγκριση είναι
 //      μήλα με μήλα.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { athensParts } from '../core/time';
+import { roundHalfUp } from '../core/money';
 
 export interface SpendRow {
   category?: string;
@@ -130,7 +131,7 @@ export function findAnomalies(rows: readonly SpendRow[], now: number): Anomaly[]
 
     out.push({
       category, month, amount, usual,
-      excess: Math.round(excess * 100) / 100,
+      excess: roundHalfUp(excess, 2),
       overPct: Math.round(overPct),
       basedOn: priors.length,
     });

@@ -23,7 +23,8 @@ import { assertFontApplied } from './lib/font-ready.mjs';
 
 const CHROME = chromePath();
 const OUT = 'docs/marketing/plan-images';
-const NAVY = '#0B192C';
+// Το φόντο του brand από την πηγή του (components/BrandMark.tsx · BRAND_DARK_BG).
+const NAVY = /BRAND_DARK_BG = '(#[0-9a-fA-F]{3,8})'/.exec(readFileSync('components/BrandMark.tsx', 'utf8'))?.[1] || '#070b12';
 const WHITE = '#ffffff';
 const MUTED = '#9fb0c4';
 const PX = 1024;
@@ -39,10 +40,17 @@ const VIEWBOX = /const BRAND_VIEWBOX = '([^']+)'/.exec(brand)[1];
 const plans = readFileSync('lib/billing/plans.ts', 'utf8');
 const PAID = ['solo', 'owner', 'agency', 'office'];
 const read = (id) => {
-  const re = new RegExp(`id: '${id}', name: '([^']+)'[\\s\\S]{0,400}?tagline: '([^']+)'`);
+  const re = new RegExp(`id: '${id}', name: '([^']+)'[\\s\\S]{0,400}?tagline: ['\`]([^'\`]+)['\`]`);
   const m = re.exec(plans);
   if (!m) throw new Error(`Δεν βρέθηκε το πακέτο «${id}» στο lib/billing/plans.ts`);
-  return { id, name: m[1], tagline: m[2] };
+  // Η ταμπέλα μπορεί να γράφει το όριο από σταθερά («Έως ${OWNER_MAX_PROPERTIES}
+  // ακίνητα»): η σταθερά λύνεται από το ίδιο αρχείο, όπως θα την έλυνε η εφαρμογή.
+  const tagline = m[2].replace(/\$\{(\w+)\}/g, (_, k) => {
+    const v = new RegExp(`const ${k} = (\\d+);`).exec(plans)?.[1];
+    if (v == null) throw new Error(`Η σταθερά «${k}» της ταμπέλας δεν βρέθηκε στο lib/billing/plans.ts`);
+    return v;
+  });
+  return { id, name: m[1], tagline };
 };
 
 // Η ΙΔΙΑ ΓΡΑΜΜΑΤΟΣΕΙΡΑ ΜΕ ΤΗΝ ΕΦΑΡΜΟΓΗ, ΑΠΟ ΤΟΝ ΔΙΣΚΟ

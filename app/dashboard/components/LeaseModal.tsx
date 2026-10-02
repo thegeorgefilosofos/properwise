@@ -93,7 +93,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
       // εφαρμογή — η καρτέλα Ενοικιαστή, το πλακίδιο «Εγγύηση σε κατοχή», η
       // εξαγωγή, η σάρωση μισθωτηρίου και η πύλη του ενοικιαστή.
       //
-      // Αυτή η οθόνη ήταν η μόνη που χρησιμοποιούσε την παλιά, ΚΑΙ ΣΤΙΣ ΔΥΟ
+      // Αυτή η οθόνη ήταν η μόνη που χρησιμοποιούσε την παλιά ΚΑΙ ΣΤΙΣ ΔΥΟ
       // ΚΑΤΕΥΘΥΝΣΕΙΣ. Άρα: το πεδίο «Εγγύηση» εμφανιζόταν πάντα κενό, παρότι ο
       // χρήστης το είχε ήδη καταχωρήσει· και ό,τι έγραφε εδώ εξαφανιζόταν από
       // παντού αλλού μόλις έκλεινε το παράθυρο. Χωρίς κανένα σφάλμα: η στήλη
@@ -211,7 +211,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   // (globals.css, `@media (pointer: coarse)`) και το πεδίο έμενε στα 40. Ο
   // τμηματικός επιλογέας «Χρήση» δεν έχει πια δικό του αντικείμενο στυλ: το
   // ύψος και η όψη του βγαίνουν από το ChipToggle.
-  const field: React.CSSProperties = { height: T.h.lg, padding: '0 13px', borderRadius: T.radius.inner, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box', width: '100%', transition: 'border-color 0.14s' };
+  const field: React.CSSProperties = { height: T.h.lg, padding: '0 13px', borderRadius: T.radius.inner, border: '1px solid var(--border-control)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box', width: '100%', transition: 'border-color 0.14s' };
   const lbl = { ...TT.label, marginBottom: 6 } as React.CSSProperties;
   const onF = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--accent)'; };
   const onB = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)'; };
@@ -224,7 +224,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   // «Διάρκεια», «Αναπροσαρμογή», «Ημέρα πληρωμής») και η ετικέτα κάθεται σε
   // διπλανό <div>. Χωρίς αυτό, ο αναγνώστης οθόνης άκουγε πέντε φορές
   // «πλαίσιο κειμένου» σε συμφωνητικό που υπογράφουν δύο μέρη.
-  // ═══ Η ΜΟΝΑΔΑ ΗΤΑΝ ΚΡΕΜΑΣΜΕΝΗ ΠΑΝΩ ΑΠΟ ΤΟ ΠΕΔΙΟ, ΚΑΙ Η ΤΙΜΗ ΤΗΝ ΠΑΤΟΥΣΕ ══════
+  // ═══ Η ΜΟΝΑΔΑ ΗΤΑΝ ΚΡΕΜΑΣΜΕΝΗ ΠΑΝΩ ΑΠΟ ΤΟ ΠΕΔΙΟ ΚΑΙ Η ΤΙΜΗ ΤΗΝ ΠΑΤΟΥΣΕ ══════
   // ΜΕΤΡΗΜΕΝΟ, ΔΕΝ ΕΙΚΑΖΕΤΑΙ: το πεδίο «Διάρκεια» έγραφε «3έτη». Η μονάδα ήταν
   // `position: absolute` στα 13 από το δεξί άκρο και το κουτί κρατούσε 32
   // δεξιό περιθώριο για να μην την ακουμπήσει η τιμή. Τα 32 δούλευαν για το «€»

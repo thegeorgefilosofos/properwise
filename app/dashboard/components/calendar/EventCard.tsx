@@ -204,7 +204,7 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
         {/* ΤΟ ΕΚΠΡΟΘΕΣΜΟ ΛΕΓΕΤΑΙ ΜΕ ΤΗ ΛΕΞΗ ΤΟΥ. Εγραφε μόνο «πριν 7 ημέρες»,
             που διαβάζεται και ως απλή ημερομηνία. Η λέξη πάνω, η απόσταση από
             κάτω: σε μία σειρά έκοβε τον τίτλο του γεγονότος στα 390. */}
-        {overdue && <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>Εκπρόθεσμο</span>}
+        {overdue && <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>Ληξιπρόθεσμο</span>}
         <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:due===0?600:400, color:due===0?'var(--text-primary)':'var(--text-secondary)' }}>
           {overdue?`πριν ${relLbl(due)}`:due===0?'Σήμερα':due===1?'Αύριο':(sameMonth?fmtShort:fmt)(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
         </span>

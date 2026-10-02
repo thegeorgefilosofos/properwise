@@ -36,7 +36,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
 
   useEffect(() => {
     (async () => {
-      // ΤΟ ΠΑΚΕΤΟ ΔΙΑΒΑΖΟΤΑΝ ΞΑΝΑ, ΚΑΙ ΑΛΛΙΩΣ. Η οθόνη ρωτούσε μόνη της το
+      // ΤΟ ΠΑΚΕΤΟ ΔΙΑΒΑΖΟΤΑΝ ΞΑΝΑ ΚΑΙ ΑΛΛΙΩΣ. Η οθόνη ρωτούσε μόνη της το
       // `billing_profiles.plan` — το ΒΑΣΙΚΟ πακέτο, χωρίς τη δοκιμή, χωρίς τους
       // δωρεάν μήνες της πρόσκλησης, χωρίς την ιδιότητα του συνεργάτη. Δηλαδή
       // ο δοκιμαστής, ο προσκεκλημένος και ο συνεργάτης έβλεπαν κλειδωμένη μια
@@ -199,7 +199,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
                     οθόνης ανακοίνωνε «πεδίο κειμένου» χωρίς να λέει ποιου πράγματος.
                     Η ετικέτα μένει κενή επίτηδες (το λέει ο τίτλος από πάνω), οπότε
                     το όνομα δίνεται με `ariaLabel` — που το `TextInput` δέχεται ήδη. */}
-                <TextInput label="" ariaLabel="Κωδικός χρώματος επωνυμίας" value={accent} onChange={v => setAccent(v)} placeholder="#1a73e8" />
+                <TextInput label="" ariaLabel="Κωδικός χρώματος επωνυμίας" value={accent} onChange={v => setAccent(v)} placeholder={DEFAULT_ACCENT} />
               </div>
             </div>
           </div>

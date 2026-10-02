@@ -14,7 +14,7 @@ import type { ClientStaysRow } from '@/lib/supabase/tables'
 // κρατήσεων (χωρίς nights/guests). Δηλώνονται ξεχωριστά, ακριβώς όσες λέει το
 // select(), ώστε στήλη που δεν ζητήθηκε να μη διαβάζεται κατά λάθος ως υπαρκτή.
 //
-// ΤΟ `clients(full_name)` ΜΕΝΕΙ `unknown`, ΚΑΙ ΟΧΙ ΑΠΟ ΤΕΜΠΕΛΙΑ. Το σχήμα του
+// ΤΟ `clients(full_name)` ΜΕΝΕΙ `unknown` ΚΑΙ ΟΧΙ ΑΠΟ ΤΕΜΠΕΛΙΑ. Το σχήμα του
 // συνδεδεμένου πίνακα δεν είναι στήλη: το `client_stays.client_id` δείχνει σε ΕΝΑΝ
 // πελάτη, άρα το PostgREST επιστρέφει αντικείμενο — αλλά ο τύπος που συμπεραίνει το
 // postgrest-js χωρίς γεννημένους τύπους βάσης υποθέτει ΠΙΝΑΚΑ (`{full_name}[]`).
@@ -161,7 +161,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   }
   useEffect(()=>{ if(!showMenu)return; positionMenu(); const h=(ev:MouseEvent)=>{ const t=ev.target as Node; if((menuRef.current?.contains(t))||(menuPopRef.current?.contains(t)))return; setShowMenu(false) }; const rp=()=>positionMenu(); document.addEventListener('mousedown',h); window.addEventListener('scroll',rp,true); window.addEventListener('resize',rp); return ()=>{document.removeEventListener('mousedown',h); window.removeEventListener('scroll',rp,true); window.removeEventListener('resize',rp)} },[showMenu])
 
-  // ΟΙ ΕΙΔΟΠΟΙΗΣΕΙΣ ΣΥΣΚΕΥΗΣ ΕΧΟΥΝ ΕΝΑΝ ΔΙΑΚΟΠΤΗ, ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΕΔΩ. Ζει στις
+  // ΟΙ ΕΙΔΟΠΟΙΗΣΕΙΣ ΣΥΣΚΕΥΗΣ ΕΧΟΥΝ ΕΝΑΝ ΔΙΑΚΟΠΤΗ ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΕΔΩ. Ζει στις
   // Ρυθμίσεις → Ειδοποιήσεις (DeviceNotifications.tsx) και ανάβει ΚΑΙ την πρωινή
   // ειδοποίηση με την εφαρμογή κλειστή ΚΑΙ αυτή εδώ την τοπική, ~10' πριν από
   // κάθε ραντεβού, όσο η εφαρμογή είναι ανοιχτή. Το ημερολόγιο ΑΚΟΥΕΙ: όποιος
@@ -289,7 +289,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     // Η ΟΜΑΔΑ ΠΑΡΑΓΟΤΑΝ ΑΠΟ ΤΗΝ ΚΑΤΗΓΟΡΙΑ ΤΟΥ ΓΕΓΟΝΟΤΟΣ, ΟΧΙ ΤΗΣ ΔΑΠΑΝΗΣ και
     // η τιμή 'general' δεν υπάρχει καν στην ταξινομία: ασφάλιστρο καταχωρημένο
     // από εδώ έπαυε να εκπίπτει. Την παράγει πλέον το στρώμα, από την κατηγορία.
-    await saved('Η δαπάνη δεν καταχωρήθηκε στα έξοδα',
+    await saved('Η δαπάνη δεν καταχωρήθηκε στις δαπάνες',
       expenses.insert(supabase,[expenses.row({propertyId,userId},{amount:amt,description:form.title,date:form.event_date,category:catMap[form.category]||'Λοιπά έξοδα',paid:form.status==='paid'})]))
   }
   // Μετακίνηση με σύρσιμο (drag): αλλάζει ημερομηνία (και ώρα σε προβολή ωρών). Οι
@@ -412,7 +412,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       const d=e.event_date.replace(/-/g,''); const cat=CATEGORIES[e.category]
       const descParts=[e.notes||'', e.amount?`Ποσό: ${fe(e.amount)}`:''].filter(Boolean)
       lines.push('BEGIN:VEVENT',
-        // ΤΟ ΕΠΙΘΕΜΑ ΤΟΥ UID ΕΙΝΑΙ ΑΝΑΓΝΩΡΙΣΤΙΚΟ, ΟΧΙ ΕΠΩΝΥΜΙΑ, ΚΑΙ ΜΕΝΕΙ.
+        // ΤΟ ΕΠΙΘΕΜΑ ΤΟΥ UID ΕΙΝΑΙ ΑΝΑΓΝΩΡΙΣΤΙΚΟ, ΟΧΙ ΕΠΩΝΥΜΙΑ ΚΑΙ ΜΕΝΕΙ.
         // Το Google και το Apple ταυτίζουν τα γεγονότα του ημερολογίου με το
         // UID. Αν αλλάξει, κάθε ήδη κατεβασμένο γεγονός γίνεται ΞΕΝΟ: μένει ως
         // φάντασμα και δίπλα του εμφανίζεται διπλότυπο. Η μετονομασία δεν
@@ -532,7 +532,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
             style={{ '--acc-pad': '12px 16px', borderBottom: showOverdue ? '1px solid var(--border-subtle)' : 'none' }}>
             <AlertTriangle size={14} color="var(--negative)"/>
             <p style={{ fontSize:14, color:'var(--text-secondary)', fontFamily: T.font.sans, letterSpacing:'0.1px', margin:0, flex:1 }}>
-              {overdue.length===1?'1 εκπρόθεσμο':`${overdue.length} εκπρόθεσμα`} · <span style={{ color:'var(--text-primary)' }}>{showOverdue?'Απόκρυψη':'Εμφάνιση'}</span>
+              {overdue.length===1?'1 ληξιπρόθεσμο':`${overdue.length} ληξιπρόθεσμα`} · <span style={{ color:'var(--text-primary)' }}>{showOverdue?'Απόκρυψη':'Εμφάνιση'}</span>
             </p>
             <ChevronDown size={15} style={{ color:'var(--text-tertiary)', transform:showOverdue?'rotate(180deg)':'none', transition:'transform 0.15s' }}/>
           </button>
@@ -579,12 +579,12 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
         </div>
 
         {viewMode!=='agenda'&&(
-          <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+          <div className="cal-nav" style={{ display:'flex', alignItems:'center', gap:4 }}>
             <IconBtn label="Προηγούμενο" title="Προηγούμενο" size="md" round onClick={prevPeriod}><ChevronLeft size={18}/></IconBtn>
-            <span aria-live="polite" style={{ fontSize:15, fontWeight:600, fontFamily: T.font.sans, color:'var(--text-primary)', minWidth:150, textAlign:'center', letterSpacing:'0.1px' }}>{periodLabel()}</span>
+            <span aria-live="polite" className="cal-period" style={{ fontSize:15, fontWeight:600, fontFamily: T.font.sans, color:'var(--text-primary)', minWidth:150, textAlign:'center', letterSpacing:'0.1px', whiteSpace:'nowrap' }}>{periodLabel()}</span>
             <IconBtn label="Επόμενο" title="Επόμενο" size="md" round onClick={nextPeriod}><ChevronRight size={18}/></IconBtn>
             {/* size="lg" γιατί η γραμμή εργαλείων είναι όλη στα 40, μαζί με το πεδίο αναζήτησης δίπλα. */}
-            <Btn size="lg" onClick={()=>setCurrentDate(athensNow())}>Σήμερα</Btn>
+            <Btn size="lg" className="cal-today" onClick={()=>setCurrentDate(athensNow())}>Σήμερα</Btn>
           </div>
         )}
 
@@ -598,8 +598,8 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
               και η «Αναζήτηση» θέλει 89. */}
           <Search size={15} aria-hidden="true" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'var(--text-tertiary)', pointerEvents:'none' }}/>
           <input className="po-field" aria-label="Αναζήτηση γεγονότος με τον τίτλο του" placeholder="Εύρεση" value={searchQ} onChange={e=>setSearchQ(e.target.value)}
-            style={{ width:'100%', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.modal, padding:'0 10px 0 34px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none' }}
-            onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-subtle)'}/>
+            style={{ width:'100%', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-control)', borderRadius: T.radius.modal, padding:'0 10px 0 34px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none' }}
+            onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-control)'}/>
         </div>
 
         <Btn variant="primary" size="lg" onClick={()=>openNew()} title="Νέο γεγονός">
@@ -622,7 +622,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                   // Καθαρός, φιλτραρίσιμος πίνακας: κάθε πεδίο σε δικό του κελί, αριθμοί
                   // ως αριθμοί (2 δεκαδικά), στήλες Έτος/Μήνας/Προθεσμία για φιλτράρισμα,
                   // και ξεχωριστά φύλλα «Εκπρόθεσμα»/«Επερχόμενα».
-                  const prothesmia=(e:CalEvent)=> (e.status==='paid'||e.status==='cancelled')?'Ολοκληρωμένο':isOverdue(e)?'Εκπρόθεσμο':'Εντός προθεσμίας'
+                  const prothesmia=(e:CalEvent)=> (e.status==='paid'||e.status==='cancelled')?'Ολοκληρωμένο':isOverdue(e)?'Ληξιπρόθεσμο':'Εντός προθεσμίας'
                   const cols:XlsxCol[]=[
                     {header:'Ημερομηνία',kind:'date',width:13},
                     {header:'Ημέρα',width:11},
@@ -643,7 +643,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                   const all=[...filtered].sort((a,b)=> a.event_date.localeCompare(b.event_date) || catRank(a)-catRank(b))
                   const curYear=athensNow().getFullYear()
                   const cur=all.filter(e=>new Date(e.event_date+'T00:00:00').getFullYear()===curYear)
-                  const overdue=all.filter(e=>prothesmia(e)==='Εκπρόθεσμο'), upcoming=all.filter(e=>prothesmia(e)==='Εντός προθεσμίας')
+                  const overdue=all.filter(e=>prothesmia(e)==='Ληξιπρόθεσμο'), upcoming=all.filter(e=>prothesmia(e)==='Εντός προθεσμίας')
                   // Πρώτο (προεπιλεγμένο) φύλλο: μόνο το τρέχον έτος. Ακολουθεί το πλήρες
                   // αρχείο και τα φύλλα εκπρόθεσμων/επερχόμενων.
                   const issued=athensNow().toLocaleDateString('el-GR')
@@ -651,7 +651,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                   const TOT=[6] // στήλη «Ποσό» → γραμμή ΣΥΝΟΛΟ
                   const sheets:XlsxSheet[]=[{name:`Ατζέντα ${curYear}`,title:`ΑΤΖΕΝΤΑ ΥΠΟΧΡΕΩΣΕΩΝ ${curYear}`,subtitle:subFor(`Έτος ${curYear}`),columns:cols,rows:cur.map(toRow),totalCols:TOT}]
                   if(all.length>cur.length) sheets.push({name:'Όλα τα έτη',title:'ΑΤΖΕΝΤΑ ΥΠΟΧΡΕΩΣΕΩΝ · ΟΛΑ ΤΑ ΕΤΗ',subtitle:subFor('Όλα τα έτη'),columns:cols,rows:all.map(toRow),totalCols:TOT})
-                  if(overdue.length) sheets.push({name:'Εκπρόθεσμα',title:'ΕΚΠΡΟΘΕΣΜΕΣ ΥΠΟΧΡΕΩΣΕΙΣ',subtitle:subFor('Εκπρόθεσμες υποχρεώσεις'),columns:cols,rows:overdue.map(toRow),totalCols:TOT})
+                  if(overdue.length) sheets.push({name:'Ληξιπρόθεσμα',title:'ΛΗΞΙΠΡΟΘΕΣΜΕΣ ΥΠΟΧΡΕΩΣΕΙΣ',subtitle:subFor('Ληξιπρόθεσμες υποχρεώσεις'),columns:cols,rows:overdue.map(toRow),totalCols:TOT})
                   if(upcoming.length) sheets.push({name:'Επερχόμενα',title:'ΕΠΕΡΧΟΜΕΝΕΣ ΥΠΟΧΡΕΩΣΕΙΣ',subtitle:subFor('Επερχόμενες υποχρεώσεις'),columns:cols,rows:upcoming.map(toRow),totalCols:TOT})
                   downloadXlsx(`Ατζέντα υποχρεώσεων ${curYear}`,sheets)
                   setShowMenu(false)
@@ -800,7 +800,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
 
       {!loading&&viewMode==='agenda'&&(
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-          {overdue.length>0&&<Section title="Εκπρόθεσμα" color="var(--negative)" events={overdue} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
+          {overdue.length>0&&<Section title="Ληξιπρόθεσμα" color="var(--negative)" events={overdue} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {thisWeek.length>0&&<Section title="Επόμενες 7 ημέρες" color="var(--accent)" events={thisWeek} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {thisMonth.length>0&&<Section title="Σε 8 ως 30 ημέρες" color="var(--text-secondary)" events={thisMonth} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {later.length>0&&<Section title="Αργότερα" color="var(--text-secondary)" events={later} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}

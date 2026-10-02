@@ -11,7 +11,8 @@
 
 import { marginalRate, RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax'
 import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026'
-import { fe } from '../core/format';
+import { fe, feWhole } from '../core/format';
+import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_TO } from './renovation39b';
 import { MYAADE } from '@/lib/tax/aade';
 import { athensToday } from '@/lib/core/time';
 import { spitiMouOpen, spitiMouClosedSentence } from '@/lib/loans/recommend';
@@ -116,11 +117,13 @@ export function buildAdvisory(input: AdvisoryInput, limit = 6): AdvisoryItem[] {
     })
   }
 
-  // 3) Έκπτωση φόρου δαπανών ανακαίνισης/ενεργειακής αναβάθμισης (40%).
+  // 3) Έκπτωση φόρου δαπανών ανακαίνισης/αναβάθμισης (άρθρο 39Β ΚΦΕ).
+  // Έλεγε «κατά 40%», τον κανόνα του 2020. Από 1.1.2024 (ν.5073/2023, ΚΥΑ
+  // Α.1153/2025) η μείωση ισούται με τη δαπάνη, έως το όριο, σε πέντε έτη.
   items.push({
     id: 'renovation-credit', tone: 'action',
-    title: 'Ανακαίνιση και αναβάθμιση, έκπτωση φόρου 40%',
-    body: `Δαπάνες ενεργειακής, λειτουργικής και αισθητικής αναβάθμισης κτιρίων εκπίπτουν από τον φόρο εισοδήματος κατά 40%, ισόποσα σε βάθος ετών, με ανώτατο όριο και με προϋπόθεση ηλεκτρονικής πληρωμής και παραστατικών. Κράτα τιμολόγια και εξοφλήσεις μέσω τραπέζης/κάρτας, εδώ μπορείς να τα καταχωρείς ως έξοδα ανά ακίνητο.`,
+    title: `Ανακαίνιση και αναβάθμιση, έκπτωση φόρου έως ${feWhole(RENO_39B_CAP)}`,
+    body: `Δαπάνες ενεργειακής, λειτουργικής και αισθητικής αναβάθμισης κτιρίων μειώνουν τον φόρο εισοδήματος κατά ποσό ίσο με τη δαπάνη, έως ${feWhole(RENO_39B_CAP)} συνολικά, ισόποσα σε ${RENO_39B_YEARS} έτη (το πολύ ${feWhole(RENO_39B_PER_YEAR)} τον χρόνο, όχι πάνω από τον φόρο του έτους). Ισχύει για δαπάνες έως ${RENO_39B_TO}, με ηλεκτρονική πληρωμή και τιμολόγια στο ΑΦΜ σου. Κράτα τιμολόγια και εξοφλήσεις μέσω τράπεζας ή κάρτας· εδώ τα καταχωρείς ως δαπάνες ανά ακίνητο.`,
     refer: 'accountant', linkLabel: 'Φορολογία εισοδήματος (ΑΑΔΕ)', linkHref: SRC.aadeIncome,
   })
 

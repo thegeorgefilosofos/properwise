@@ -31,6 +31,7 @@ import { notifyError } from '@/components/Toast'
 import {
   type EventCategory, type EventPriority, type EventStatus, cleanBank, loanEventTitle, todayStr,
 } from './model'
+import { roundHalfUp } from '@/lib/core/money';
 
 // Ό,τι διαβάζει ο συγχρονισμός από κάθε πίνακα, γραμμένο εδώ και μόνο εδώ.
 type TenantScheduleRow = TenantScheduleInput & { rent_due_day?: number | null }
@@ -142,7 +143,7 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
         return{title:b.name||b.type||'Λογαριασμός',category:'bills' as EventCategory,event_date:dueDate,amount:b.amount||null,status:(b.paid?'paid':'pending') as EventStatus,recurring:true,recurring_interval:'monthly',notes:b.category?`Κατηγορία: ${b.category}`:null}
       })
       await must(calendar.replaceSource(supabase,scope,{source:'bills'},rows))
-      // ΤΟ ΣΚΑΝΑΡΙΣΜΕΝΟ ΔΙΑΓΡΑΦΕΤΑΙ ΜΕΤΑ, ΚΑΙ ΜΟΝΟ ΑΝ ΠΕΤΥΧΕ Η ΕΓΓΡΑΦΗ.
+      // ΤΟ ΣΚΑΝΑΡΙΣΜΕΝΟ ΔΙΑΓΡΑΦΕΤΑΙ ΜΕΤΑ ΚΑΙ ΜΟΝΟ ΑΝ ΠΕΤΥΧΕ Η ΕΓΓΡΑΦΗ.
       //
       // Αυτή η γραμμή ήταν πριν από την εισαγωγή. Τα υπόλοιπα γεγονότα εδώ είναι
       // ΠΑΡΑΓΩΓΑ — ξαναφτιάχνονται από τον πίνακα λογαριασμών σε κάθε συγχρονισμό,
@@ -213,7 +214,7 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
     }
     // ── Δόσεις δανείου: ίδιο source με το κουμπί των Δανείων → idempotent, χωρίς διπλά ──
     if(k==='loans'){
-      // ΤΟ ΠΟΣΟ ΤΟΥ ΔΑΝΕΙΟΥ ΔΕΝ ΛΕΓΕΤΑΙ `amount`, ΚΑΙ ΤΟ ΕΠΙΤΟΚΙΟ ΔΕΝ ΕΙΝΑΙ ΣΤΗΛΗ.
+      // ΤΟ ΠΟΣΟ ΤΟΥ ΔΑΝΕΙΟΥ ΔΕΝ ΛΕΓΕΤΑΙ `amount` ΚΑΙ ΤΟ ΕΠΙΤΟΚΙΟ ΔΕΝ ΕΙΝΑΙ ΣΤΗΛΗ.
       // Εδώ διαβαζόταν `(l as any).amount` και `(l as any).rate`. Η στήλη λέγεται
       // `loan_amount` και το επιτόκιο προκύπτει από `fixed_rate` ή από
       // `euribor + spread` ανάλογα με τον τύπο. Δηλαδή και τα δύο έβγαιναν
@@ -235,7 +236,7 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
                 // ΤΟ ΠΟΣΟ ΚΡΑΤΑΕΙ ΤΑ ΛΕΠΤΑ ΤΟΥ. Ήταν `Math.round(monthly)`: μια δόση
         // 751,43€ αποθηκευόταν ως 751 και το ημερολόγιο διαφωνούσε με την
         // τράπεζα κατά 43 λεπτά τον μήνα, δηλαδή πάνω από πέντε ευρώ τον χρόνο.
-        const monthlyExact=Math.round(monthly*100)/100
+        const monthlyExact=roundHalfUp(monthly, 2)
         // Τοπικά μεσάνυχτα σε UTC = χθες: οι δόσεις έμπαιναν μία μέρα νωρίτερα.
         for(let i=0;i<cnt2;i++){ const ev=new Date(d.getFullYear(),d.getMonth()+i+1,d.getDate()); rows.push({title:loanEventTitle(bank),category:'financial',event_date:isoDate(ev),amount:monthlyExact,priority:'high',notes:`${fe(monthlyExact)} ανά μήνα`}) }
         await must(calendar.replaceSource(supabase,scope,{source:src},rows))

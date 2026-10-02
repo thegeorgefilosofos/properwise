@@ -8,6 +8,7 @@
 import { TASK_CATEGORIES, TASK_PRIORITIES, TASK_STATUSES } from '@/lib/checklist/taxonomy'
 import type { FieldContext } from '@/lib/property/fields'
 import type { Who } from '@/lib/accounting/dossier'
+import { statusPill, type StatusKind } from '@/lib/core/status'
 
 export type Priority = 'critical' | 'high' | 'normal' | 'low'
 export type Status   = 'pending' | 'in_progress' | 'done' | 'skipped'
@@ -78,11 +79,17 @@ export const PRI_TONE: Record<string, { color: string; bg: string }> = {
   normal:   { color: 'var(--text-secondary)', bg: 'var(--bg-elevated)'   },
   low:      { color: 'var(--text-tertiary)',  bg: 'var(--bg-elevated)'   },
 }
+// ΟΙ ΚΑΤΑΣΤΑΣΕΙΣ ΑΠΟ ΤΟ ΚΟΙΝΟ ΛΕΞΙΛΟΓΙΟ (lib/core/status.ts). Η ολοκλήρωση
+// ήταν γαλάζια εδώ και πράσινη σε κάθε άλλη οθόνη· το «Εκκρεμεί» σβηστό εδώ
+// και ουδέτερο αλλού. Το ολοκληρωμένο παίρνει το απαλό θετικό σήμα (μελάνι
+// on-container πάνω σε -soft), όχι γέμισμα: δεκαοκτώ ολοκληρωμένα δεν γίνονται
+// το πιο δυνατό χρώμα της οθόνης.
+const statusTone = (k: StatusKind) => { const p = statusPill(k); return { color: p.color, bg: p.background } }
 export const STATUS_TONE: Record<string, { color: string; bg: string }> = {
-  pending:     { color: 'var(--text-tertiary)',  bg: 'var(--bg-elevated)' },
-  in_progress: { color: 'var(--text-secondary)', bg: 'var(--bg-elevated)' },
-  done:        { color: 'var(--accent)',         bg: 'var(--accent-soft)' },
-  skipped:     { color: 'var(--text-tertiary)',  bg: 'var(--bg-elevated)' },
+  pending:     statusTone('pending'),
+  in_progress: statusTone('active'),
+  done:        statusTone('done'),
+  skipped:     statusTone('cancelled'),
 }
 export const NEUTRAL_TONE = { color: 'var(--text-tertiary)', bg: 'var(--bg-elevated)' }
 export const PRIORITIES = TASK_PRIORITIES.map(p => ({ ...p, ...(PRI_TONE[p.value] ?? NEUTRAL_TONE) }))
@@ -118,7 +125,7 @@ export interface TemplateItem { description: string; category: string; priority:
 export interface Template { label: string; items: TemplateItem[]; when?: (c: FieldContext) => boolean; why?: string }
 
 export const TEMPLATES: Record<string, Template> = {
-  checkin: { label: 'Νέος Ενοικιαστής', when: c => c.status === 'rent_long' || c.status === 'vacant', why: 'Μακροχρόνια μίσθωση', items: [
+  checkin: { label: 'Νέος ενοικιαστής', when: c => c.status === 'rent_long' || c.status === 'vacant', why: 'Μακροχρόνια μίσθωση', items: [
     { description: 'Φωτογράφηση κάθε δωματίου (before)', category: 'checkin', priority: 'critical' },
     { description: 'Παράδοση κλειδιών, καταγραφή αριθμού σετ', category: 'checkin', priority: 'critical' },
     { description: 'Καταγραφή μετρητή ΔΕΗ', category: 'checkin', priority: 'critical' },
@@ -132,7 +139,7 @@ export const TEMPLATES: Record<string, Template> = {
     { description: 'Αλλαγή κωδικών WiFi', category: 'checkin', priority: 'normal' },
     { description: 'Μεταβίβαση λογαριασμών ΔΕΗ / ΕΥΔΑΠ', category: 'checkin', priority: 'normal' },
   ]},
-  checkout: { label: 'Αποχώρηση Ενοικιαστή', when: c => c.status === 'rent_long', why: 'Υπάρχει ενοικιαστής', items: [
+  checkout: { label: 'Αποχώρηση ενοικιαστή', when: c => c.status === 'rent_long', why: 'Υπάρχει ενοικιαστής', items: [
     { description: 'Επιστροφή κλειδιών, έλεγχος αριθμού', category: 'checkout', priority: 'critical' },
     { description: 'Τελική ανάγνωση μετρητή ΔΕΗ', category: 'checkout', priority: 'critical' },
     { description: 'Τελική ανάγνωση μετρητή ΕΥΔΑΠ', category: 'checkout', priority: 'critical' },
@@ -145,7 +152,7 @@ export const TEMPLATES: Record<string, Template> = {
     { description: 'Αλλαγή κλειδαριάς', category: 'checkout', priority: 'normal' },
     { description: 'Ενημέρωση ΔΟΥ για λήξη μίσθωσης', category: 'legal', priority: 'normal' },
   ]},
-  maintenance: { label: 'Ετήσια Συντήρηση', items: [
+  maintenance: { label: 'Ετήσια συντήρηση', items: [
     { description: 'Service καλοριφέρ / λέβητα', category: 'maintenance', priority: 'critical', recurring: 'yearly' },
     { description: 'Έλεγχος πυροσβεστήρων', category: 'maintenance', priority: 'critical', recurring: 'yearly' },
     { description: 'Τσεκ ηλεκτρολογικού πίνακα', category: 'maintenance', priority: 'high', recurring: 'yearly' },
@@ -190,7 +197,7 @@ export const TEMPLATES: Record<string, Template> = {
     { description: 'Ανεφοδιασμός (σαπούνια, χαρτί και άλλα)', category: 'airbnb', priority: 'normal', recurring: 'monthly' },
     { description: 'Τσεκ κλιματισμού πριν κάθε σεζόν', category: 'airbnb', priority: 'high', recurring: 'quarterly' },
   ]},
-  purchase: { label: 'Αγορά Ακινήτου', when: c => c.propertyCount >= 3 || c.status === 'for_sale', why: 'Χαρτοφυλάκιο σε κίνηση', items: [
+  purchase: { label: 'Αγορά ακινήτου', when: c => c.propertyCount >= 3 || c.status === 'for_sale', why: 'Χαρτοφυλάκιο σε κίνηση', items: [
     { description: 'Νομικός έλεγχος τίτλων ιδιοκτησίας', category: 'purchase', priority: 'critical' },
     { description: 'Τεχνικός έλεγχος ακινήτου από μηχανικό', category: 'purchase', priority: 'critical' },
     { description: 'Έλεγχος βαρών / υποθηκών κτηματολόγιο', category: 'purchase', priority: 'critical' },

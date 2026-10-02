@@ -8,7 +8,7 @@
 // με μια προθεσμιακή κατάθεση —όπου το 2% είναι 2% καθαρά— και παίρνει
 // απόφαση δεκαετίας πάνω σε δύο νούμερα που δεν συγκρίνονται.
 //
-// ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ ΜΠΑΙΝΟΥΝ ΔΙΠΛΑ ΔΙΠΛΑ, ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΟΛΗ Η ΣΕΛΙΔΑ. Δεν
+// ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ ΜΠΑΙΝΟΥΝ ΔΙΠΛΑ ΔΙΠΛΑ ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΟΛΗ Η ΣΕΛΙΔΑ. Δεν
 // γράφεται πουθενά «προσοχή, η μεικτή παραπλανά»: φαίνεται.
 //
 // ΤΙΠΟΤΑ ΔΕΝ ΜΑΝΤΕΥΕΤΑΙ ΓΙΑ ΛΟΓΑΡΙΑΣΜΟ ΤΟΥ ΧΡΗΣΤΗ. Ο ΕΝΦΙΑ και οι δαπάνες
@@ -21,14 +21,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId, useState } from 'react';
 import Link from 'next/link';
-import { T, feAuto, fixedCols } from '@/components/tokens';
-import { fn, fp, fpRate, feSigned, fpSigned } from '@/lib/core/format';
+import { T, feAuto } from '@/components/tokens';
+import { fe, fn, fp, fpRate, feSigned, fpSigned } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { propertyYield } from '@/lib/tools/apodosi';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
-import { ToolNumField, ToolFigure, ToolLedger, ToolStats, TOOL_LABEL, TOOL_FIELD } from '@/app/ToolParts';
+import { ToolNumField, ToolFields, ToolHero, ToolLedger, ToolStats, TOOL_LABEL, TOOL_FIELD } from '@/app/ToolParts';
 
 import LiveResult from '@/components/LiveResult';
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
@@ -40,9 +40,8 @@ const PATH = '/kathari-apodosi';
 
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
-const HINT: React.CSSProperties = {
-  margin: '7px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)', textWrap: 'pretty',
-};
+/** Ακέραια ευρώ με τυπογραφικό μείον, όπως στη σύγκριση βραχυχρόνιας. */
+const wholeSigned = (n: number) => (Math.round(n * 100) < 0 ? `−${fe(-n)}` : fe(n));
 
 /**
  * ΟΜΑΔΑ ΠΕΔΙΩΝ ΜΕ ΤΙΤΛΟ ΠΟΥ ΞΕΧΩΡΙΖΕΙ ΑΠΟ ΤΙΣ ΕΤΙΚΕΤΕΣ.
@@ -109,12 +108,14 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           Αξία, ενοίκιο, μήνες. Ό,τι άλλο θελήσουμε να ρωτήσουμε πρώτο είναι
           μια αφορμή να φύγει κάποιος που μόλις μας βρήκε. */}
       <Group title="Το ακίνητο" first>
-        <div {...fixedCols(3, 14, 'start')}>
+        {/* ΣΤΟ ΚΟΙΝΟ ΠΛΕΓΜΑ ΤΩΝ ΤΕΣΣΑΡΩΝ (`ToolFields`): ίδια πλάτη πεδίων με τους
+            άλλους τρεις υπολογιστές, όχι τρίτα της κάρτας. */}
+        <ToolFields>
           <ToolNumField id={ids.axia} label="Αξία ακινήτου" value={v.axia} onChange={x => set('axia', x)} unit="€"/>
           <ToolNumField id={ids.enoikio} label="Μηνιαίο ενοίκιο" value={v.enoikio} onChange={x => set('enoikio', x)} unit="€"/>
-          <ToolNumField id={ids.mines} label="Μήνες που νοικιάζεται" value={v.mines}
-            onChange={x => set('mines', x)} mode="numeric"/>
-        </div>
+          <ToolNumField id={ids.mines} label="Μήνες ενοικίασης" value={v.mines}
+            onChange={x => set('mines', x)} mode="numeric" unit="μήνες" unitPad={64}/>
+        </ToolFields>
         <ToolClampNote notes={[
           Math.round(amount(v.mines)) > 12 && 'Μέγιστο 12 μήνες· υπολογίστηκαν 12.',
         ]}/>
@@ -125,39 +126,23 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           μηδέν δεν κρύβεται: το αποτέλεσμα λέει ρητά τι δεν περιλαμβάνει όσο
           μένουν άδεια. */}
       <Group title="Τι το βαραίνει">
-        <div {...fixedCols(3, 14, 'start')}>
-          <div>
-            <ToolNumField id={ids.enfia} label="ΕΝΦΙΑ τον χρόνο" value={v.enfia} onChange={x => set('enfia', x)} unit="€"/>
-            {/* ΜΙΑ ΓΡΑΜΜΗ Η ΚΑΘΕ ΥΠΟΔΕΙΞΗ, ΚΑΙ Η ΦΡΑΣΗ-ΣΥΝΔΕΣΜΟΣ ΔΕΝ ΣΠΑΕΙ. Στα 820
-                η στήλη στενεύει και το «Υπολόγισέ τον» έμενε μισό στη δεύτερη
-                γραμμή. Το γεγονός που κουβαλά: ο ΕΝΦΙΑ πληρώνεται και σε άδειο
-                ακίνητο. */}
-            <p style={HINT}>
-              Τον πληρώνεις κι άδειο.{' '}
+        <ToolFields>
+          {/* ΜΙΑ ΓΡΑΜΜΗ Η ΚΑΘΕ ΥΠΟΔΕΙΞΗ ΚΑΙ Η ΦΡΑΣΗ-ΣΥΝΔΕΣΜΟΣ ΔΕΝ ΣΠΑΕΙ. Το γεγονός
+              που κουβαλά: ο ΕΝΦΙΑ πληρώνεται και σε άδειο ακίνητο. */}
+          <ToolNumField id={ids.enfia} label="ΕΝΦΙΑ τον χρόνο" value={v.enfia} onChange={x => set('enfia', x)} unit="€"
+            hint={<>Τον πληρώνεις κι άδειο.{' '}
               <Link href="/ypologismos-enfia" className="lp-link"
-                style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                style={{ color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 Υπολόγισέ τον
-              </Link>.
-            </p>
-          </div>
-          <div>
-            <ToolNumField id={ids.dapanes} label="Δαπάνες τον χρόνο" value={v.dapanes} onChange={x => set('dapanes', x)} unit="€"/>
-            {/* ΤΟ 5% ΔΕΝ ΣΥΜΠΛΗΡΩΝΕΤΑΙ ΠΙΑ ΕΔΩ. Υπήρχε κουμπί που έγραφε στο πεδίο
-                το 5% του ενοικίου, με την υπόδειξη «Συντήρηση, ασφάλιση,
-                κοινόχρηστα». Το 5% όμως είναι η τεκμαρτή ΕΚΠΤΩΣΗ του φόρου, όχι
-                εκτίμηση του τι ξοδεύεις: παρουσιασμένο ως δαπάνη υποτιμούσε τα
-                έξοδα και φούσκωνε την καθαρή απόδοση, δηλαδή έκανε το λάθος που η
-                σελίδα υπάρχει για να διορθώσει. Η έκπτωση μπαίνει ήδη στον φόρο. */}
-            <p style={HINT}>Συντήρηση, ασφάλιση, κοινόχρηστα που πληρώνεις εσύ.</p>
-          </div>
-          <div>
-            <ToolNumField id={ids.alla} label="Άλλα ενοίκια που δηλώνεις" value={v.alla} onChange={x => set('alla', x)} unit="€"/>
-            {/* Το «από τα υπόλοιπα ακίνητά σου» το λέει ήδη η ετικέτα «Άλλα
-                ενοίκια που δηλώνεις». Μένουν τα δύο που ΔΕΝ λέει: ότι θέλουμε
-                ακαθάριστα και ότι ανεβάζουν το κλιμάκιο ΑΥΤΟΥ του ακινήτου. */}
-            <p style={HINT}>Ακαθάριστα. Ανεβάζουν το κλιμάκιο αυτού εδώ.</p>
-          </div>
-        </div>
+              </Link>.</>}/>
+          {/* ΤΟ 5% ΔΕΝ ΣΥΜΠΛΗΡΩΝΕΤΑΙ ΕΔΩ: είναι η τεκμαρτή ΕΚΠΤΩΣΗ του φόρου, όχι
+              εκτίμηση του τι ξοδεύεις. Η έκπτωση μπαίνει ήδη στον φόρο. */}
+          <ToolNumField id={ids.dapanes} label="Δαπάνες τον χρόνο" value={v.dapanes} onChange={x => set('dapanes', x)} unit="€"
+            hint="Συντήρηση, ασφάλιση, κοινόχρηστα που πληρώνεις εσύ."/>
+          {/* Ακαθάριστα· και ανεβάζουν το κλιμάκιο ΑΥΤΟΥ του ακινήτου. */}
+          <ToolNumField id={ids.alla} label="Άλλα ενοίκια" value={v.alla} onChange={x => set('alla', x)} unit="€"
+            hint="Ακαθάριστα, από τα υπόλοιπα ακίνητά σου. Ανεβάζουν το κλιμάκιο αυτού εδώ."/>
+        </ToolFields>
       </Group>
 
       <ToolPaper title={name.trim() ? `Καθαρή απόδοση · ${name.trim()}` : 'Καθαρή απόδοση ακινήτου'} on={today} inputs={[
@@ -175,28 +160,31 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
         background: 'var(--surface-raised)', border: '1px solid var(--border-raised)',
         boxShadow: 'var(--well-inset)',
       }}>
-        {/* ΤΟ ΜΗΔΕΝ ΠΟΥ ΔΕΝ ΔΗΛΩΘΗΚΕ ΛΕΓΕΤΑΙ ΠΡΙΝ ΑΠΟ ΤΟ ΝΟΥΜΕΡΟ, ΚΑΙ ΤΟ ΝΟΥΜΕΡΟ ΔΕΝ
+        {/* ΤΟ ΜΗΔΕΝ ΠΟΥ ΔΕΝ ΔΗΛΩΘΗΚΕ ΛΕΓΕΤΑΙ ΠΡΙΝ ΑΠΟ ΤΟ ΝΟΥΜΕΡΟ ΚΑΙ ΤΟ ΝΟΥΜΕΡΟ ΔΕΝ
             ΛΕΓΕΤΑΙ «ΚΑΘΑΡΗ». Με ΕΝΦΙΑ και δαπάνες στο μηδέν (η προεπιλογή), το
             πρώτο νούμερο της οθόνης είναι η μεικτή μείον τον φόρο. Γραμμένο
             «Καθαρή απόδοση», με μια γκρίζα υποσημείωση στο τέλος της κάρτας,
             ήταν ακριβώς το λάθος που η σελίδα υπάρχει για να διορθώσει. Η
             ετικέτα λέει τι είναι και γίνεται «Καθαρή» μόλις μπει ένα από τα δύο. */}
-        {hasValue && noCosts && (
-          <p style={{ margin: '0 0 14px', fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-            Δεν δηλώθηκε ΕΝΦΙΑ ούτε δαπάνες, οπότε η απόδοση κρατά μόνο τον φόρο. Με τα
-            δύο πεδία συμπληρωμένα βγαίνει η καθαρή.
-          </p>
-        )}
-        {/* ΔΥΟ ΝΟΥΜΕΡΑ, ΚΑΙ Η ΚΑΘΑΡΗ ΠΡΩΤΗ. Είναι η απάντηση στην ερώτηση που
-            έφερε εδώ τον επισκέπτη· η μεικτή είναι το νούμερο που ήξερε πριν
-            έρθει και υπάρχει μόνο για τη σύγκριση. Ίδιο μέγεθος, ώστε η
-            σύγκριση να είναι σύγκριση και όχι υπόδειξη. */}
+        {/* Η ΚΑΘΑΡΗ ΟΔΗΓΕΙ, Η ΜΕΙΚΤΗ ΤΗΝ ΠΛΑΙΣΙΩΝΕΙ. Η μεικτή είναι το νούμερο που
+            ήξερε ο επισκέπτης πριν έρθει· υπάρχει για τη σύγκριση, όχι ως
+            δεύτερη απάντηση στο ίδιο μέγεθος. */}
         {hasValue ? (
-          <div {...fixedCols(2, 24, 'start')}>
-            <ToolFigure label={netLabel} value={fpSigned((r.netYield ?? 0) * 100)}/>
-            <ToolFigure label="Μεικτή απόδοση" value={fp((r.grossYield ?? 0) * 100)}/>
+          <>
+            <ToolHero primary={{ label: netLabel, value: fpSigned((r.netYield ?? 0) * 100) }}
+              secondary={[{ label: 'Μεικτή απόδοση', value: fp((r.grossYield ?? 0) * 100) }]}/>
             <LiveResult say={`${netLabel} ${fpSigned((r.netYield ?? 0) * 100)}. Μεικτή ${fp((r.grossYield ?? 0) * 100)}.`} />
-          </div>
+            {/* ΤΟ ΜΗΔΕΝ ΠΟΥ ΔΕΝ ΔΗΛΩΘΗΚΕ ΛΕΓΕΤΑΙ ΚΑΤΩ ΑΠΟ ΤΟ ΝΟΥΜΕΡΟ, ΩΣ ΣΗΜΕΙΩΣΗ. Ηταν
+                παράγραφος ΠΑΝΩ από τα νούμερα και η κάρτα άνοιγε με επιφύλαξη αντί
+                για απάντηση. Η ετικέτα ήδη λέει «μετά τον φόρο» όσο λείπουν· η
+                σημείωση εξηγεί γιατί, εκεί που το μάτι πάει μετά τον αριθμό. */}
+            {noCosts && (
+              <p style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)', textWrap: 'pretty' }}>
+                Δεν δηλώθηκε ΕΝΦΙΑ ούτε δαπάνες, οπότε η απόδοση κρατά μόνο τον φόρο. Με τα δύο
+                πεδία συμπληρωμένα βγαίνει η καθαρή.
+              </p>
+            )}
+          </>
         ) : (
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
             Η απόδοση χρειάζεται αξία. Με το ποσό που αξίζει ή που θα δώσεις για το
@@ -245,33 +233,33 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
         <ToolLedger rows={[
           { k: 'Ετήσιο ενοίκιο', v: feAuto(r.gross) },
           { k: 'Φόρος εισοδήματος', v: feSigned(-r.tax) },
-          { k: 'ΕΝΦΙΑ', v: feSigned(-r.enfia) },
-          { k: 'Δαπάνες', v: feSigned(-r.expenses) },
+          // ΟΣΑ ΔΕΝ ΔΗΛΩΘΗΚΑΝ ΔΕΝ ΓΡΑΦΟΝΤΑΙ «0,00€»: το μηδέν εκεί διαβαζόταν ως
+          // ΕΝΦΙΑ που μετρήθηκε μηδέν. Η λέξη λέει ότι το πεδίο έμεινε κενό.
+          r.enfia > 0 ? { k: 'ΕΝΦΙΑ', v: feSigned(-r.enfia) } : { k: 'ΕΝΦΙΑ', v: 'δεν δηλώθηκε', kind: 'param' },
+          r.expenses > 0 ? { k: 'Δαπάνες', v: feSigned(-r.expenses) } : { k: 'Δαπάνες', v: 'δεν δηλώθηκε', kind: 'param' },
           { k: 'Σου μένουν τον χρόνο', v: feSigned(r.net), kind: 'total' },
         ]}/>
         {/* ΟΤΑΝ ΤΟ ΑΚΙΝΗΤΟ ΔΕΝ ΕΠΙΣΤΡΕΦΕΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ ΑΡΙΘΜΟΣ. Η διαίρεση με
             αρνητικά καθαρά δίνει αρνητικά χρόνια, που τυπώνονται μια χαρά και
             διαβάζονται ως απάντηση. Χωρίς αξία όμως δεν υπάρχει τι να
             επιστρέψει: το `null` σημαίνει και τα δύο και η σειρά τα ξεχωρίζει. */}
+        {/* Ετικέτες μιας γραμμής και στα 768, ακέραια ευρώ όπως στην κορυφή. */}
         <ToolStats items={[
-          { k: 'Καθαρά ανά μισθωμένο μήνα', v: feSigned(r.netMonthly) },
-          { k: 'Χρόνια να επιστρέψει η αξία', v: !hasValue ? 'Χρειάζεται αξία'
+          { k: 'Καθαρά τον μήνα', v: wholeSigned(r.netMonthly) },
+          { k: 'Χρόνια απόσβεσης', v: !hasValue ? 'Χρειάζεται αξία'
             : r.paybackYears === null ? 'Δεν επιστρέφει' : fn(r.paybackYears, 1) },
-          { k: 'Συντελεστής στο επόμενο ευρώ', v: fpRate(r.marginal * 100) },
+          { k: 'Οριακός συντελεστής', v: fpRate(r.marginal * 100) },
         ]}/>
       </div>
 
-      <ToolActions path={PATH} spec={SPEC} values={v}/>
-
-      {/* ── ΤΟ ΟΝΟΜΑ ΤΟΥ ΑΚΙΝΗΤΟΥ, ΜΟΝΟ ΓΙΑ ΤΟ ΧΑΡΤΙ ──────────────────────
-          Οποιος συγκρίνει τρία ακίνητα τυπώνει τρεις σελίδες που μοιάζουν
-          ίδιες. Το πεδίο γράφει τον τίτλο της εκτύπωσης και τίποτε άλλο. */}
-      <div className="po-noprint" style={{ marginTop: 16 }}>
+      {/* ΤΟ ΟΝΟΜΑ ΤΟΥ ΑΚΙΝΗΤΟΥ, ΜΟΝΟ ΓΙΑ ΤΟ ΧΑΡΤΙ, ΠΑΝΩ ΑΠΟ ΤΟ «Εκτύπωση». Ηταν
+          κάτω από τα κουμπιά, δηλαδή μετά την ενέργεια που επηρεάζει. */}
+      <ToolActions path={PATH} spec={SPEC} values={v} lead={<>
         <label htmlFor={ids.name} style={{ ...TOOL_LABEL, marginBottom: 6 }}>Όνομα για την εκτύπωση</label>
         <input id={ids.name} value={name} onChange={e => setName(e.target.value)}
           placeholder="π.χ. Διαμέρισμα κέντρου, 3ος"
-          style={{ ...TOOL_FIELD, fontFamily: T.font.sans, maxWidth: 340 }}/>
-      </div>
+          style={{ ...TOOL_FIELD, fontFamily: T.font.sans }}/>
+      </>}/>
 
       {/* ── Τι ΔΕΝ περιλαμβάνει ───────────────────────────────────────── */}
       <div className="po-tool-note" style={{
@@ -285,7 +273,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Ο φόρος βγαίνει με την κλίμακα ενοικίων {year}
           {year >= FIRST_YEAR_NEW_BRACKETS ? ' (15 / 25 / 35 / 45%)' : ' (15 / 35 / 45%)'} και
-          την τεκμαρτή έκπτωση 5%, που από 1.7.2027 θα θέλει είσπραξη μέσω τραπέζης
+          την τεκμαρτή έκπτωση 5%, που από 1.7.2027 θα θέλει είσπραξη μέσω τράπεζας
           (ν.5222/2025)· εδώ θεωρείται δεδομένη. Δεν περιλαμβάνει: μεταβολή της
           αξίας, δάνειο και τόκους, έξοδα αγοράς ή πώλησης, ανακαίνιση,
           ανείσπρακτα, βραχυχρόνια, νομικό πρόσωπο ούτε τα άλλα σου

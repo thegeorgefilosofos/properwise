@@ -119,6 +119,14 @@ export const STARTER_PACK:{name:string;category:string;room:string}[] = [
   {name:'Θερμοσίφωνας',category:'Θέρμανση & Ψύξη',room:'Μπάνιο'},
 ]
 export const CONDITIONS = ['Άριστη','Καλή','Μέτρια','Κακή','Εκτός Λειτουργίας']
+/**
+ * ΤΙΜΗ ΣΤΗ ΒΑΣΗ ΚΑΙ ΕΤΙΚΕΤΑ ΣΤΗΝ ΟΘΟΝΗ ΔΕΝ ΕΙΝΑΙ ΤΟ ΙΔΙΟ. Το «Εκτός Λειτουργίας»
+ * είναι γραμμένο σε κάθε `inventory_items.condition` και `condition_at_handover`
+ * που υπάρχει ήδη· αν άλλαζε εδώ, κάθε παλιό αντικείμενο θα έχανε το χρώμα και
+ * την κατάστασή του. Η οθόνη το γράφει σε πεζά, η τιμή μένει όπως είναι.
+ */
+const CONDITION_LABEL: Record<string,string> = { 'Εκτός Λειτουργίας':'Εκτός λειτουργίας' }
+export const conditionLabel = (c?: string | null): string => (c ? CONDITION_LABEL[c] ?? c : '')
 export const ENERGY_CLASSES = ['A+++','A++','A+','A','B','C','D','E','F','G']
 export const CONDITION_COLOR: Record<string,string> = {
   'Άριστη':'var(--positive)','Καλή':'var(--info)','Μέτρια':'var(--warning)',

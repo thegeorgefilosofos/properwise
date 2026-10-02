@@ -359,7 +359,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
             σάρωση της καρτέλας το έπιασε κομμένο στα 430 και στα 1024: το πεδίο
             έπεφτε στα 158 και το «Αντικείμενο ή μάρκα» έχανε το τέλος του. */}
         <div style={{flex:1,minWidth:210}}><TextInput ariaLabel="Αναζήτηση αντικειμένου" value={search} onChange={setSearch} placeholder="Αντικείμενο ή μάρκα" aria-label="Αναζήτηση απογραφής"/></div>
-        {/* ΤΑ ΠΛΑΤΗ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΟ ΚΕΙΜΕΝΟ, ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟ.
+        {/* ΤΑ ΠΛΑΤΗ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΟ ΚΕΙΜΕΝΟ ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟ.
             Το «Όλες οι κατηγορίες» και το «Όλα τα δωμάτια» είναι οι ΠΡΟΕΠΙΛΟΓΕΣ,
             δηλαδή αυτό που βλέπει ο χρήστης πριν αγγίξει τίποτα — και δεν
             χωρούσαν στα 150 και στα 140. Η ταξινόμηση έγραφε το πρόθεμα
@@ -426,7 +426,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
       {filtered.length===0?(
         <EmptyState
           icon={items.length===0?<PackageOpen size={20}/>:<SearchX size={20}/>}
-          title={items.length===0?'Δεν έχεις καταχωρήσει αντικείμενα':'Δεν βρέθηκαν αποτελέσματα'}
+          title={items.length===0?'Κανένα αντικείμενο ακόμη':'Δεν βρέθηκαν αποτελέσματα'}
           hint={items.length===0?'Πρόσθεσε το πρώτο αντικείμενο για να ξεκινήσεις.':'Δοκίμασε διαφορετικά φίλτρα ή αναζήτηση.'}
           action={items.length===0?<Btn variant="primary" onClick={onAdd}>Νέο αντικείμενο</Btn>:undefined}
         />
@@ -460,7 +460,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                     </div>
                   }
                   {selectMode
-                    ?<div style={{position:'absolute',top:8,left:8,background:'rgba(0,0,0,0.35)',borderRadius: T.radius.chip,padding: 4,backdropFilter:'blur(4px)'}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
+                    ?<div style={{position:'absolute',top:8,left:8,background:'var(--scrim-media)',borderRadius: T.radius.chip,padding: 4,backdropFilter:'blur(4px)'}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
                     :<>
                       <div style={{position:'absolute',top:8,left:8}} onClick={e=>e.stopPropagation()}>
                         <InlineConditionEdit item={item} onUpdate={onUpdateCondition}/>
@@ -471,7 +471,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                     </>}
                   {(item.energy_class||photos.length>1)&&<div style={{position:'absolute',bottom:8,left:8,display:'flex',gap:4,alignItems:'center'}}>
                     {item.energy_class&&<EnergyBadge cls={item.energy_class}/>}
-                    {photos.length>1&&<span style={{padding:'2px 6px',borderRadius: T.radius.xs,background:'rgba(0,0,0,0.6)',color:'var(--on-media)',fontSize: 'var(--fs-xs)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums'}}>+{photos.length-1}</span>}
+                    {photos.length>1&&<span style={{padding:'2px 6px',borderRadius: T.radius.xs,background:'var(--scrim-media)',color:'var(--on-media)',fontSize: 'var(--fs-xs)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums'}}>+{photos.length-1}</span>}
                   </div>}
                 </div>
                 <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:8,flex:1}}>
@@ -894,7 +894,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
            Μένουν τα τέσσερα πράγματα που ΚΡΑΤΑ η καρτέλα και δεν φαίνονται
            από το όνομά της. */
         sub="Αξία, εγγυήσεις, κατανάλωση και παράδοση"
-        /* ΕΝΑ ΚΟΥΜΠΙ, ΚΑΙ ΕΝΑ ΜΕΝΟΥ. Ήταν τρία κουμπιά στην κεφαλίδα και άλλες
+        /* ΕΝΑ ΚΟΥΜΠΙ ΚΑΙ ΕΝΑ ΜΕΝΟΥ. Ήταν τρία κουμπιά στην κεφαλίδα και άλλες
            τρεις εξαγωγές σε δική τους κάρτα στο τέλος της σελίδας — έξι ενέργειες
            για μια οθόνη που έχει ΜΙΑ κύρια: πρόσθεσε αντικείμενο. */
         right={<>
@@ -948,7 +948,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
              αφορά. Ο τίτλος λέει ΤΙ συμβαίνει· η υπόδειξη λέει ΤΙ ΝΑ ΚΑΝΕΙ,
              σε μία γραμμή. Ο,τι έμενε ήταν ήδη γραμμένο δύο φορές. */
           hint={status==='rent_long'
-            ? 'Δήλωσε την επίπλωση στην καρτέλα «Ενοικιαστής» και η απογραφή ανοίγει εδώ.'
+            ? 'Δήλωσε την επίπλωση στην καρτέλα «Ενοικιαστές» και η απογραφή ανοίγει εδώ.'
             : `Το ακίνητο είναι σε κατάσταση «${statusLabel(propRow)}». Η απογραφή ανοίγει μόλις μπει σε μίσθωση.`}
           /* Η ΚΕΝΗ ΚΑΤΑΣΤΑΣΗ ΕΣΤΕΛΝΕ ΑΛΛΟΥ ΚΑΙ ΤΕΛΕΙΩΝΕ ΕΚΕΙ. Οποιος έχει έναν
              λέβητα ή ένα κλιματιστικό να καταγράψει τώρα δεν έχει λόγο να
@@ -975,7 +975,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
               <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d="M21 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2"/><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M10 12h4"/></svg>
             </div>
             <p style={{fontSize:20,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',letterSpacing:'-0.01em',marginBottom:8}}>{handoverSeed?'Πρόσθεσε εξοπλισμό πρώτα':'Ξεκίνησε την καταγραφή'}</p>
-            {/* ═══ ΔΥΟ ΔΡΟΜΟΙ, ΚΑΙ Ο ΔΕΥΤΕΡΟΣ ΕΙΝΑΙ ΤΟ ΧΕΡΙ ══════════════════════
+            {/* ═══ ΔΥΟ ΔΡΟΜΟΙ ΚΑΙ Ο ΔΕΥΤΕΡΟΣ ΕΙΝΑΙ ΤΟ ΧΕΡΙ ══════════════════════
                 ΤΙ ΕΛΕΙΠΕ. Το μόνο κύριο κουμπί έλεγε «Φωτογράφισε αντικείμενο»
                 και όποιος δεν είχε τι να φωτογραφήσει —παλιό έπιπλο, καναπές,
                 τραπέζι— δεν έβλεπε πουθενά δρόμο. Η χειροκίνητη συμπλήρωση

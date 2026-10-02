@@ -23,7 +23,7 @@ import { ASSISTANT_NAME } from '@/lib/assistant/identity'
 //
 // Το μήκος κάθε παραγράφου είναι ΜΕΤΡΗΜΕΝΟ στη στήλη των 460 εικονοστοιχείων
 // ώστε να γεμίζει δύο ολόκληρες γραμμές. Όποιος τις ξαναγράψει, να ξαναμετρήσει.
-// ΟΙ ΤΡΕΙΣ ΠΕΡΙΓΡΑΦΕΣ ΧΩΡΑΝΕ ΣΕ ΔΥΟ ΓΡΑΜΜΕΣ, ΚΑΙ ΟΙ ΤΡΕΙΣ. Ήταν 110, 120 και 117
+// ΟΙ ΤΡΕΙΣ ΠΕΡΙΓΡΑΦΕΣ ΧΩΡΑΝΕ ΣΕ ΔΥΟ ΓΡΑΜΜΕΣ ΚΑΙ ΟΙ ΤΡΕΙΣ. Ήταν 110, 120 και 117
 // χαρακτήρες σε στήλη που αφήνει περίπου πενήντα επτά: η καθεμία κατέβαινε τρίτη
 // γραμμή με τρεις ή οκτώ χαρακτήρες πάνω της. Μια σειρά που κρέμεται μισή είναι
 // ορατή ως ατέλεια πριν καν διαβαστεί. Το όριο για δύο γεμάτες γραμμές είναι 108.
@@ -42,7 +42,7 @@ const ACTS = [
     key: 'scan',
     over: '01 · Σάρωση',
     nav: 'φωτογραφίζεις λογαριασμό ή μισθωτήριο και συμπληρώνεται μόνο του',
-    h: 'Δεν πληκτρολογείς. Φωτογραφίζεις.',
+    h: 'Φωτογραφίζεις, δεν πληκτρολογείς.',
     p: 'Λογαριασμός, μισθωτήριο ή ασφαλιστήριο, σε φωτογραφία ή PDF: συμπληρώνεται ό,τι θα πληκτρολογούσες.',
     b: ['Το ποσό καταλήγει εκεί που ανήκει, στις δαπάνες ή στο ενοίκιο', 'Η λήξη μπαίνει αυτόματα στις υπενθυμίσεις', 'Το έγγραφο αρχειοθετείται στο σωστό ακίνητο'],
     Panel: PanelLease,
@@ -54,7 +54,7 @@ const ACTS = [
     // ΕΔΩ ΣΥΣΤΗΝΕΤΑΙ ΤΟ ΟΝΟΜΑ. Η σύγκριση πακέτων και η συνομιλία δίπλα
     // λένε «Νόα» και η αρχική δεν το έλεγε πουθενά. Χωρίς άρθρο στην
     // ονομαστική, όπως ορίζει το lib/assistant/identity.ts.
-    h: `${ASSISTANT_NAME} μιλάει και σκέφτεται ελληνικά.`,
+    h: `${ASSISTANT_NAME} μιλάει ελληνικά.`,
     p: 'Ρωτάς όπως θα ρωτούσες έναν σύμβουλο και η απάντηση βγαίνει από τα δικά σου δεδομένα, όχι από εγχειρίδια.',
     b: ['Καταλαβαίνει ΕΝΦΙΑ, κοινόχρηστα και τιμολόγια ρεύματος', 'Σε πάει κατευθείαν στην οθόνη που χρειάζεσαι', 'Σε παραπέμπει σε επαγγελματία όταν χρειάζεται'],
     Panel: PanelAssistant,
@@ -126,6 +126,19 @@ export default function ScrollStory() {
   // μαζί με τα τρία κουμπιά πιάνει 492, που σε παράθυρο 560 ύψους μένει ακόμη
   // ολόκληρο μέσα στην οθόνη — όσο και πριν.
   //
+  // 01.10.2026: ΤΟ ΠΛΑΙΣΙΟ ΠΑΙΡΝΕΙ ΤΟ ΥΨΟΣ ΤΟΥ ΨΗΛΟΤΕΡΟΥ ΠΑΝΕΛ, ΟΧΙ ΑΡΙΘΜΟ.
+  // Με σταθερό ύψος και κεντραρισμένα πάνελ, το «Σάρωση» και η «Νόα»
+  // αιωρούνταν σε ένα κουτί φτιαγμένο για τον «Πίνακα», με νεκρή ζώνη από
+  // πάνω και από κάτω. Τα τρία πάνελ μοιράζονται πλέον το ΙΔΙΟ κελί πλέγματος:
+  // το πλαίσιο μετρά το ψηλότερο, τίποτα δεν κόβεται εξ ορισμού και κάθε πάνελ
+  // κρέμεται από την κορυφή, στο ίδιο ύψος με τα άλλα δύο.
+  //
+  // ΣΤΟ ΤΗΛΕΦΩΝΟ Η ΚΑΡΦΩΜΕΝΗ ΜΠΑΡΑ ΦΟΡΑΕΙ ΤΟ ΙΔΙΟ ΦΟΝΤΟ ΜΕ ΤΗ ΣΕΛΙΔΑ. Ηταν
+  // `--bg-base`, πιο σκούρο από το «διάστημα» της αρχικής, με σβήσιμο 12
+  // εικονοστοιχείων από κάτω που άφηνε κομμάτια γραμμάτων να φαίνονται. Τώρα
+  // ζωγραφίζει την ίδια στοίβα διαβαθμίσεων με τη σελίδα (LandingStyles,
+  // `SPACE`), στερεωμένη στην οθόνη όπως εκείνης· και σβήνει σε 36 με μάσκα.
+  //
   // ΚΑΙ ΓΡΑΦΕΤΑΙ ΕΔΩ, ΟΧΙ ΜΕΣΑ ΣΤΟ <style>. Οσο ζούσε μέσα στο template
   // literal ταξίδευε στον περιηγητή με κάθε επίσκεψη: 1.286 bytes ελληνικής
   // πρόζας στο κρίσιμο μονοπάτι της αρχικής, που έβγαλαν τον προϋπολογισμό
@@ -137,10 +150,10 @@ export default function ScrollStory() {
       <style>{`
         .story-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(28px, 4vw, 64px); align-items: start; }
         .story-stick { position: sticky; top: clamp(72px, 12vh, 120px); }
-        .story-frame { position: relative; height: clamp(430px, 59vh, 530px); border-radius: 18px; background: var(--bg-surface); border: 1px solid var(--border-default); overflow: hidden; box-shadow: 0 24px 70px -32px rgba(0,0,0,.35), 0 0 120px -50px color-mix(in srgb, var(--accent) 55%, transparent); container-type: inline-size; }
+        .story-frame { position: relative; display: grid; border-radius: 18px; background: var(--bg-surface); border: 1px solid var(--border-default); overflow: hidden; box-shadow: 0 24px 70px -32px rgba(0,0,0,.35), 0 0 120px -50px color-mix(in srgb, var(--accent) 55%, transparent); container-type: inline-size; }
         ${/* Σε στενό πλαίσιο (όχι στενή οθόνη), το πλευρικό μενού του πίνακα δεν χωρά. */''}
         @container (max-width: 470px) { .lp-rail { display: none; } }
-        .story-panel { position: absolute; inset: 0; padding: clamp(18px, 2.4vw, 30px); display: flex; align-items: center; justify-content: center; opacity: 0; transform: translateY(14px) scale(.985); transition: opacity .5s cubic-bezier(.2,0,0,1), transform .5s cubic-bezier(.2,0,0,1); pointer-events: none; }
+        .story-panel { grid-area: 1 / 1; padding: clamp(18px, 2.4vw, 30px); display: flex; align-items: flex-start; justify-content: center; opacity: 0; transform: translateY(14px) scale(.985); transition: opacity .5s cubic-bezier(.2,0,0,1), transform .5s cubic-bezier(.2,0,0,1); pointer-events: none; }
         .story-panel.on { opacity: 1; transform: none; pointer-events: auto; }
         .story-panel > * { width: 100%; max-width: 480px; }
         .story-rail { display: flex; gap: 8px; margin-top: 18px; }
@@ -179,7 +192,7 @@ export default function ScrollStory() {
         @media (max-width: 900px) {
           .story-grid { grid-template-columns: 1fr; gap: 20px; }
           .story-h { font-size: 20px; }
-          .story-stick { top: 64px; z-index: 1; padding-bottom: 8px; background: var(--bg-base); }
+          .story-stick { top: 64px; z-index: 1; padding-bottom: 8px; }
           ${/* ΤΟ ΥΨΟΣ ΤΟ ΔΙΝΕΙ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ, ΟΧΙ ΕΝΑΣ ΑΡΙΘΜΟΣ. Πρώτη προσπάθεια
              ήταν σταθερό «clamp(240px, 38vh, 330px)» και ο σαρωτής βρήκε αμέσως
              έξι κομμένα: τα πάνελ σχεδιάστηκαν για πλαίσιο 400-500 και στα 330
@@ -209,8 +222,9 @@ export default function ScrollStory() {
             content: '';
             position: absolute;
             left: 0; right: 0; top: 100%;
-            height: 12px;
-            background: linear-gradient(var(--bg-base), transparent);
+            height: 36px;
+            -webkit-mask-image: linear-gradient(var(--text-primary) 0%, color-mix(in srgb, var(--text-primary) 85%, transparent) 30%, transparent 100%);
+            mask-image: linear-gradient(var(--text-primary) 0%, color-mix(in srgb, var(--text-primary) 85%, transparent) 30%, transparent 100%);
             pointer-events: none;
           }
           .story-stick { position: sticky; }
@@ -253,7 +267,7 @@ export default function ScrollStory() {
             «01 · Σάρωση» που χωράει στο ένα τρίτο του ραγιού, ενώ το aria-label
             λέει ολόκληρη την πράξη.
 
-            ΤΟ ΟΝΟΜΑ ΞΕΚΙΝΑ ΜΕ ΤΟ ΟΡΑΤΟ ΚΕΙΜΕΝΟ, ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΛΕΠΤΟΜΕΡΕΙΑ. Ένα
+            ΤΟ ΟΝΟΜΑ ΞΕΚΙΝΑ ΜΕ ΤΟ ΟΡΑΤΟ ΚΕΙΜΕΝΟ ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΛΕΠΤΟΜΕΡΕΙΑ. Ένα
             aria-label που πετά το ορατό «01 · Σάρωση» σπάει τον χειρισμό με
             φωνή: ο χρήστης λέει ό,τι ΔΙΑΒΑΖΕΙ και το κουμπί δεν αποκρίνεται σε
             όνομα που δεν φαίνεται πουθενά. Το ορατό μπαίνει πρώτο αυτούσιο, η
@@ -285,8 +299,8 @@ export default function ScrollStory() {
           <div key={a.key} data-idx={i} className={`story-step${i === active ? ' on' : ''}`}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)', margin: '0 0 14px' }}>{a.over}</p>
             {/* ═══ Ο ΤΙΤΛΟΣ ΔΕΝ ΣΠΑΕΙ ΣΤΑ ΔΥΟ ══════════════════════════════════
-                «Δεν πληκτρολογείς. Φωτογραφίζεις.» είναι ΜΙΑ αντίθεση: κομμένη
-                στη μέση, το «Φωτογραφίζεις.» πέφτει μόνο του σε δεύτερη σειρά και
+                «Φωτογραφίζεις, δεν πληκτρολογείς.» είναι ΜΙΑ αντίθεση: κομμένη
+                στη μέση, το δεύτερο μισό πέφτει μόνο του σε δεύτερη σειρά και
                 χάνει τη σύγκριση που κάνει τη φράση να δουλεύει.
                 Το μέγεθος ήταν δεμένο στο πλάτος ΟΘΟΝΗΣ (2.6vw) ενώ ο τίτλος ζει
                 σε στήλη 460 εικονοστοιχείων: στα 30 δεν χωράει και σε καμία

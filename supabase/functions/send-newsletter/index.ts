@@ -15,6 +15,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { APP_URL } from '../_shared/site.ts'
 import { senderFrom } from '../_shared/sender.mjs'
+import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -45,9 +46,9 @@ function layout(inner: string, unsubUrl: string): string {
 
 function updateBlock(u: Update): string {
   const cta = u.cta_url ? linkLine(u.cta_label || 'Δες περισσότερα', u.cta_url) : ''
-  return `<div class="rule-t" style="padding:20px 0 4px;border-top:1px solid #e8e8ed;">
-    <h2 class="ink" style="margin:0 0 7px;font-size:17px;color:#1d1d1f;font-weight:600;letter-spacing:-0.2px;mso-line-height-rule:exactly;line-height:24px;">${esc(u.title)}</h2>
-    <div class="tx" style="font-size:15px;color:#4a4f55;mso-line-height-rule:exactly;line-height:25px;">${u.body_html || ''}</div>${cta}
+  return `<div class="rule-t" style="padding:20px 0 4px;border-top:1px solid ${C.rule};">
+    <h2 class="ink" style="margin:0 0 7px;font-size:17px;color:${C.ink};font-weight:600;letter-spacing:-0.2px;mso-line-height-rule:exactly;line-height:24px;">${esc(u.title)}</h2>
+    <div class="tx" style="font-size:15px;color:${C.text};mso-line-height-rule:exactly;line-height:25px;">${u.body_html || ''}</div>${cta}
   </div>`
 }
 

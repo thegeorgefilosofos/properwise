@@ -53,6 +53,62 @@ export interface ClientCounts {
   stays: number;
   staysNoFee: number;
   openRequests: number;
+  /**
+   * Το προσυμπληρωμένο Ε2 και ο φάκελος ανά ΑΦΜ (20261001120000). Πλήθη,
+   * ημερομηνίες και η διαδρομή του φακέλου που έστειλε ο ίδιος ο ιδιοκτήτης.
+   * Λείπει σε απάντηση παλιότερης γραφής της συνάρτησης.
+   */
+  e2?: ClientE2;
+}
+
+export interface ClientPack {
+  ownerAfm: string;
+  /** Διαφορές με το προσυμπληρωμένο· null όταν δεν έχει γίνει σύγκριση. */
+  differences: number | null;
+  checkedAt: string | null;
+  missingCount: number;
+  missingTop: string[];
+  filePath: string | null;
+  sizeBytes: number | null;
+  sharedAt: string | null;
+}
+
+export interface ClientE2 {
+  aadeRows: number;
+  aadeChangedAt: string | null;
+  packs: ClientPack[];
+}
+
+/** Η σύγκριση με το προσυμπληρωμένο, σε μία κατάσταση για τη λίστα του λογιστή. */
+export type AadeState =
+  | { kind: 'not_uploaded' }
+  | { kind: 'pending' }
+  | { kind: 'matches' }
+  | { kind: 'differences'; count: number };
+
+/**
+ * ΤΙ ΞΕΡΕΙ Ο ΛΟΓΙΣΤΗΣ ΓΙΑ ΤΗ ΣΥΓΚΡΙΣΗ, ΧΩΡΙΣ ΝΑ ΔΕΙ ΤΑ ΔΕΔΟΜΕΝΑ. Η σύγκριση
+ * τρέχει στη συσκευή του ιδιοκτήτη, με τα δικά του δεδομένα. Γράφει μόνο
+ * το πλήθος των διαφορών. Αν οι γραμμές της ΑΑΔΕ άλλαξαν ΜΕΤΑ (π.χ. τις ανέβασε
+ * ο λογιστής), το παλιό πλήθος δεν ισχύει: λέγεται «εκκρεμεί», όχι «συμφωνεί».
+ */
+export function aadeStateOf(e2: ClientE2 | undefined): AadeState {
+  if (!e2 || e2.aadeRows === 0) return { kind: 'not_uploaded' };
+  const checked = e2.packs.filter(p => p.checkedAt && p.differences != null);
+  if (!checked.length) return { kind: 'pending' };
+  if (e2.aadeChangedAt && checked.some(p => (p.checkedAt as string) < (e2.aadeChangedAt as string))) return { kind: 'pending' };
+  const count = checked.reduce((s, p) => s + (p.differences ?? 0), 0);
+  return count === 0 ? { kind: 'matches' } : { kind: 'differences', count };
+}
+
+/** Η φράση της κατάστασης, ίδια σε κάθε σημείο του χώρου του λογιστή. */
+export function aadeStateLabel(st: AadeState): string {
+  switch (st.kind) {
+    case 'not_uploaded': return 'Το προσυμπληρωμένο Ε2 δεν έχει ανέβει';
+    case 'pending': return 'Το προσυμπληρωμένο ανέβηκε· η σύγκριση γίνεται όταν το ανοίξει ο πελάτης';
+    case 'matches': return 'Συμφωνεί με το προσυμπληρωμένο Ε2';
+    case 'differences': return `${st.count === 1 ? 'Μία διαφορά' : `${st.count} διαφορές`} με το προσυμπληρωμένο Ε2`;
+  }
 }
 
 /** Ενα αίτημα που έχει ήδη σταλεί, όπως το βλέπει ο λογιστής στη λίστα του. */
@@ -123,6 +179,14 @@ export function gapsOf(c: ClientCounts): Gap[] {
   if (!c.afm) {
     out.push({ key: 'owner_afm', item: 'Δεν έχει συμπληρώσει ΑΦΜ', blocking: false });
   }
+  // Ο ΠΕΛΑΤΗΣ ΠΟΥ ΕΡΧΕΤΑΙ ΕΤΟΙΜΟΣ: προσυμπληρωμένο που συμφωνεί και φάκελος.
+  // Λείπουν από απάντηση παλιότερης γραφής της βάσης: τότε δεν λέγεται τίποτα.
+  if (c.e2) {
+    const st = aadeStateOf(c.e2);
+    if (st.kind === 'not_uploaded') out.push({ key: 'aade_e2', item: 'Δεν έχει ανέβει το προσυμπληρωμένο Ε2', blocking: false });
+    if (st.kind === 'differences') out.push({ key: 'aade_diff', item: aadeStateLabel(st), blocking: true });
+    if (!c.e2.packs.some(p => p.filePath)) out.push({ key: 'pack', item: 'Δεν έχει στείλει τον φάκελο για τον λογιστή', blocking: false });
+  }
   return out;
 }
 
@@ -146,7 +210,7 @@ export async function claim(db: Db, token: string): Promise<{ ok: boolean; owner
 /**
  * Ολοι οι πελάτες που τον εξουσιοδότησαν, με τους αριθμούς της χρήσης.
  *
- * ΤΟ ΣΦΑΛΜΑ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ, ΚΑΙ ΟΧΙ ΓΙΑ ΤΥΠΙΚΟΤΗΤΑ. Εδώ γραφόταν
+ * ΤΟ ΣΦΑΛΜΑ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΚΑΙ ΟΧΙ ΓΙΑ ΤΥΠΙΚΟΤΗΤΑ. Εδώ γραφόταν
  * `if (error || !Array.isArray(data)) return []`: η αποτυχία της ανάγνωσης
  * γινόταν άδεια λίστα, δηλαδή η ΙΔΙΑ απάντηση με «δεν σε εξουσιοδότησε κανείς».
  * Λογιστής με ογδόντα πελάτες, με ληγμένη συνεδρία ή στιγμιαία πτώση δικτύου,

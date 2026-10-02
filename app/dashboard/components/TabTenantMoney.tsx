@@ -76,6 +76,7 @@ import {
   type PayMethod,
 } from './TabTenantTypes';
 import { days } from '@/lib/core/greek';
+import { STATUS_LABEL, statusPill, type StatusKind } from '@/lib/core/status';
 import {
   SectionTitle,
   KpiCard,
@@ -130,7 +131,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
 
   // 42 ήταν off-scale: κάθε άλλο πεδίο του app (UIComponents.FIELD_HEIGHT, settingsField)
   // είναι 40, οπότε αυτό το select καθόταν 2px ψηλότερα από τα διπλανά του.
-  const selectStyle:React.CSSProperties={width:'100%',height:T.h.lg,background:'var(--bg-elevated)',border:'1px solid var(--border-default)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',cursor:'pointer'};
+  const selectStyle:React.CSSProperties={width:'100%',height:T.h.lg,background:'var(--bg-elevated)',border:'1px solid var(--border-control)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',cursor:'pointer'};
 
   const genLetter=()=>{
     if(!hasPct) return;   // δεν παράγεται έγγραφο χωρίς ποσοστό με προέλευση
@@ -195,7 +196,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
 
       {(isExpired||isExpiring)&&(
         <AlertBar
-          text={isExpired?`Το μισθωτήριο έληξε στις ${fmtDate(tenant.lease_end)}, ανανέωσε άμεσα πριν οποιαδήποτε αναπροσαρμογή`:`Λήγει σε ${daysExp} ημέρες (${fmtDate(tenant.lease_end)}), προετοίμασε ανανέωση εγκαίρως`}
+          text={isExpired?`Το μισθωτήριο έληξε στις ${fmtDate(tenant.lease_end)}. Ανανέωσέ το πριν από οποιαδήποτε αναπροσαρμογή.`:`Το μισθωτήριο λήγει ${daysExp===0?'σήμερα':daysExp===1?'αύριο':`σε ${daysExp} ημέρες`} (${fmtDate(tenant.lease_end)}).`}
           level={isExpired?'critical':'warning'}
         />
       )}
@@ -325,7 +326,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
 
           <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg }}>
             <SectionTitle>Υποχρεώσεις και Σύνδεσμοι</SectionTitle>
-            {/* ΤΕΣΣΕΡΑ ΛΑΘΗ ΣΕ ΤΡΕΙΣ ΓΡΑΜΜΕΣ, ΚΑΙ ΤΑ ΤΕΣΣΕΡΑ ΟΡΑΤΑ ΣΤΗΝ ΟΘΟΝΗ:
+            {/* ΤΕΣΣΕΡΑ ΛΑΘΗ ΣΕ ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΚΑΙ ΤΑ ΤΕΣΣΕΡΑ ΟΡΑΤΑ ΣΤΗΝ ΟΘΟΝΗ:
              *
              * 1. «ΑΑΑΔΕ» με τρία άλφα. Δύο φορές.
              * 2. «Έως 30 Ιουνίου κάθε έτους» για το Ε2 — ΛΑΘΟΣ και τρίτη
@@ -612,14 +613,14 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       ? lines.map(l=>reportRow(l.label, rEur(l.amount))).join('')
       : `<tr><td colspan="2" class="empty">Καμία επιπλέον υπηρεσία</td></tr>`;
     const tenantLine=`${tenant.full_name||ABSENT}${tenant.afm?` · ΑΦΜ ${tenant.afm}`:''}`;
-    const html=reportHead(`Μηνιαία Κατάσταση ${num}`)
+    const html=reportHead(`Μηνιαία κατάσταση ${num}`)
       + `<body><div class="page">`
       + reportHeader(branding, 'Μηνιαία κατάσταση', { rightLabel:'Περίοδος', rightValue:monthLabel(p), rightNote:`Έκδοση ${rDate()}` })
       + `<h1>Μηνιαία κατάσταση ενοικίου</h1>`
       + `<div class="sub">${rEsc(landlord)}</div>`
-      + reportSection('Στοιχεία μισθωτή')
+      + reportSection('Στοιχεία ενοικιαστή')
       + `<table><tbody>`
-        + reportRow('Μισθωτής', tenantLine)
+        + reportRow('Ενοικιαστής', tenantLine)
         + (propLabel()?reportRow('Ακίνητο', propLabel()):'')
         + (p.due_date?reportRow('Ημερομηνία λήξης', rDate(p.due_date)):'')
       + `</tbody></table>`
@@ -704,9 +705,12 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
 
 
   const StatusPill=({p}:{p:RentPayment})=>{
+    // Λέξη και τόνος από το κοινό λεξιλόγιο (lib/core/status.ts): ίδιο σήμα με
+    // τη λογιστική, το ημερολόγιο και τη μηνιαία κατάσταση του email.
     const st=payStatus(p);
-    const cfg=st==='paid'?{c:'var(--positive)',bg:'var(--positive-dim)',l:'Πληρώθηκε'}:st==='overdue'?{c:'var(--negative)',bg:'var(--negative-dim)',l:'Ληξιπρόθεσμο'}:{c:'var(--text-secondary)',bg:'var(--bg-overlay)',l:'Εκκρεμεί'};
-    return <span style={{ ...s.badge(cfg.c,cfg.bg), border:`1px solid color-mix(in srgb, ${cfg.c} 26%, transparent)`, fontFamily:T.font.sans }}>{cfg.l}</span>;
+    const k:StatusKind=st==='paid'?'paid':st==='overdue'?'overdue':'pending';
+    const pill=statusPill(k);
+    return <span style={{ ...s.badge(pill.color,pill.background), border:pill.border, fontFamily:T.font.sans }}>{STATUS_LABEL[k]}</span>;
   };
 
   return (
@@ -715,7 +719,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap:10, marginBottom:16 }}>
         <KpiCard label="Εισπραχθέντα" value={fmt(received)} color="var(--text-primary)"/>
         <KpiCard label="Ληξιπρόθεσμα" value={fmt(arrearsTotal)} sub={`${overdue.length} δόσεις`} color={arrearsTotal>0?'var(--negative)':'var(--text-primary)'}/>
-        <KpiCard label="Εκκρεμείς" value={String(open.length)} color={open.length>0?'var(--warning)':'var(--positive)'}/>
+        <KpiCard label="Εκκρεμείς" value={String(open.length)} color="var(--text-primary)"/>
         <KpiCard label="Δόσεις" value={`${payments.filter(p=>p.paid).length}/${payments.length}`} color="var(--text-primary)"/>
       </div>
 
@@ -745,10 +749,10 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
         {declaredPending.length>0&&(
           <div style={{ background:'var(--accent-soft)', border:'1px solid var(--accent-border)', borderRadius:T.radius.inner, padding:'14px 16px', margin:'4px 0 8px' }}>
             <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans, marginBottom:2 }}>
-              {fn(declaredPending.length)} {declaredPending.length===1?'πληρωμή δηλώθηκε':'πληρωμές δηλώθηκαν'} από τον μισθωτή
+              {fn(declaredPending.length)} {declaredPending.length===1?'πληρωμή δηλώθηκε':'πληρωμές δηλώθηκαν'} από τον ενοικιαστή
             </div>
             <div style={{ fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:12, lineHeight:1.5 }}>
-              Ο μισθωτής δήλωσε πληρωμή μέσω της πύλης. Επιβεβαίωσε την είσπραξη για να καταχωρηθεί ως πληρωμένη.
+              Ο ενοικιαστής δήλωσε πληρωμή μέσω της πύλης. Επιβεβαίωσε την είσπραξη για να καταχωρηθεί ως πληρωμένη.
             </div>
             <div style={{ display:'flex', flexDirection:'column' as const, gap:8 }}>
               {declaredPending.map(p=>(
@@ -818,7 +822,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                   <td className="num" style={{ fontWeight:600, color:'var(--text-primary)' }}>{fmt(p.amount)}
                     {p.services_charge&&p.services_charge>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', fontWeight:400, color:'var(--text-tertiary)', fontFamily:T.font.sans }}>ενοίκιο {fmt(p.base_rent)} + υπηρεσίες {fmt(p.services_charge)}</span>:null}
                   </td>
-                  <td><StatusPill p={p}/>{p.tenant_declared&&!p.paid?<span style={{ display:'block', marginTop:4, fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans, fontWeight:600 }}>Δηλώθηκε από μισθωτή</span>:null}</td>
+                  <td><StatusPill p={p}/>{p.tenant_declared&&!p.paid?<span style={{ display:'block', marginTop:4, fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans, fontWeight:600 }}>Δηλώθηκε από τον ενοικιαστή</span>:null}</td>
                   <td>{p.method||ABSENT}</td>
                   <td>{fmtD(p.paid_date)}</td>
                   <td>{fmtD(p.due_date)}{p.days_late&&p.days_late>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', color:p.days_late>14?'var(--negative)':'var(--warning)' }}>+{days(p.days_late)}</span>:null}</td>
@@ -837,7 +841,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                       {p.paid&&<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} onClick={()=>printReceipt(p)}>Απόδειξη</button>}
                       {tenant.phone&&(p.paid||canCollect)&&<a href={p.paid?whatsappLink(msgDigits(tenant.phone),receiptText(p)):whatsappLink(msgDigits(tenant.phone),reminderText(p))} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>WhatsApp</a>}
                       {tenant.phone&&(p.paid||canCollect)&&<a href={viberLink(p.paid?receiptText(p):reminderText(p))} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>Viber</a>}
-                      {/* ΤΟ ΤΑΧΥΔΡΟΜΕΙΟ ΕΛΕΙΠΕ, ΚΑΙ ΜΕ ΑΥΤΟ ΟΛΟΚΛΗΡΗ Η ΥΠΕΝΘΥΜΙΣΗ.
+                      {/* ΤΟ ΤΑΧΥΔΡΟΜΕΙΟ ΕΛΕΙΠΕ ΚΑΙ ΜΕ ΑΥΤΟ ΟΛΟΚΛΗΡΗ Η ΥΠΕΝΘΥΜΙΣΗ.
                           Η γραμμή έδινε WhatsApp και Viber και τα δύο δεμένα στο
                           ΤΗΛΕΦΩΝΟ. Οποιος ιδιοκτήτης είχε μόνο το email του μισθωτή
                           του δεν είχε ΚΑΝΕΝΑΝ τρόπο να στείλει υπενθύμιση από εδώ. */}
@@ -899,7 +903,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
               </div>
             </>
           ):(
-            <InfoBanner tone="info">Πρόσθεσε IBAN πληρωμής στα στοιχεία του μισθωτή για δημιουργία QR και προσυμπλήρωση της μεταφοράς.</InfoBanner>
+            <InfoBanner tone="info">Πρόσθεσε IBAN πληρωμής στα στοιχεία του ενοικιαστή για δημιουργία QR και προσυμπλήρωση της μεταφοράς.</InfoBanner>
           )}
 
           <div>

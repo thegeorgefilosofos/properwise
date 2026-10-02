@@ -259,7 +259,7 @@ export function useOverlayShell(open: boolean, onClose: () => void) {
     };
   }, [open, onClose, id]);
 
-  // ── ΕΣΤΙΑΣΗ ΜΕΣΑ, ΚΑΙ ΕΠΙΣΤΡΟΦΗ ΜΕΤΑ ───────────────────────────────────
+  // ── ΕΣΤΙΑΣΗ ΜΕΣΑ ΚΑΙ ΕΠΙΣΤΡΟΦΗ ΜΕΤΑ ───────────────────────────────────
   // Το ίδιο το πλαίσιο, όχι το πρώτο κουμπί: το πρώτο κουμπί κάθε παραθύρου
   // είναι το «×» και μια εστίαση που ξεκινά από το κλείσιμο διαβάζεται σαν
   // πρόταση να φύγεις. Με tabIndex -1 ο αναγνώστης οθόνης διαβάζει τον τίτλο
@@ -565,7 +565,7 @@ export function PageTitle({ over, title, sub, lede, right, titleHint }: { over?:
             δεκαεπτά ακόμη· ζει πλέον στην `.po-prose`, μία φορά. */}
         {lede && <p className="po-prose po-just" style={{ ...TT.body, lineHeight: undefined, color: 'var(--text-secondary)', margin: '10px 0 0' }}>{hy(lede)}</p>}
       </div>
-      {/* ΙΣΑ ΥΨΗ, ΚΑΙ ΟΤΑΝ Η ΜΙΑ ΕΤΙΚΕΤΑ ΤΥΛΙΓΕΙ. Σε Galaxy A το «Καταστάσεις
+      {/* ΙΣΑ ΥΨΗ ΚΑΙ ΟΤΑΝ Η ΜΙΑ ΕΤΙΚΕΤΑ ΤΥΛΙΓΕΙ. Σε Galaxy A το «Καταστάσεις
           ιδιοκτήτη» έσπαγε στα δύο και γινόταν 62 εικονοστοιχεία ψηλό, δίπλα
           στο «Εξαγωγή Excel» των 44: δύο κουμπιά της ίδιας σειράς, με άλλο
           μέγεθος. Το `stretch` δίνει και στα δύο το ύψος του ψηλότερου, οπότε
@@ -677,7 +677,7 @@ export function KpiValue({ value, tone, chars, half }: { value: string; tone?: T
 //    Αξιοποίηση σταθερά 24, που κοβόταν σε στενή στήλη.
 //  · Η ΣΗΜΕΙΩΣΗ. Αλλού από κάτω, αλλού δίπλα στην τιμή.
 //
-// ── Η ΣΗΜΕΙΩΣΗ ΠΑΕΙ ΠΑΝΤΑ ΑΠΟ ΚΑΤΩ, ΚΑΙ ΤΟ ΕΜΑΘΑ ΑΠΟ ΛΑΘΟΣ ────────────────
+// ── Η ΣΗΜΕΙΩΣΗ ΠΑΕΙ ΠΑΝΤΑ ΑΠΟ ΚΑΤΩ ΚΑΙ ΤΟ ΕΜΑΘΑ ΑΠΟ ΛΑΘΟΣ ────────────────
 // ΠΡΩΤΗ ΓΡΑΦΗ ΤΗΝ ΑΦΗΝΕ ΣΤΗ ΔΙΑΤΑΞΗ: στη γραμμή βάσης της τιμής, με τύλιγμα,
 // ώστε η σύντομη («σε 5 έτη») να κάθεται δίπλα και η μακριά να πέφτει από κάτω.
 // Στα χαρτιά ήταν κομψό. Στην οθόνη, μια σειρά τεσσάρων πλακιδίων έβγαζε δύο
@@ -794,7 +794,7 @@ export type StatCell = {
   /** Το μέγεθος που κουβαλά την απάντηση: γράφεται με το κύριο χρώμα κειμένου. */
   strong?: boolean;
   /**
-   * ΕΔΩ Ο ΤΟΝΟΣ ΦΑΙΝΕΤΑΙ ΠΑΝΤΑ, ΚΑΙ ΔΙΑΦΕΡΕΙ ΑΠΟ ΤΟ ΠΛΑΚΙΔΙΟ ΕΠΙΤΗΔΕΣ. Στο
+   * ΕΔΩ Ο ΤΟΝΟΣ ΦΑΙΝΕΤΑΙ ΠΑΝΤΑ ΚΑΙ ΔΙΑΦΕΡΕΙ ΑΠΟ ΤΟ ΠΛΑΚΙΔΙΟ ΕΠΙΤΗΔΕΣ. Στο
    * `Tile` ο τόνος αποκαλύπτεται στο hover, για ήσυχη οθόνη γεμάτη δείκτες.
    * Στην κάρτα εγγραφής το κόκκινο ΕΙΝΑΙ το μήνυμα — «ληξιπρόθεσμη οφειλή»
    * σε κάρτα ενοικιαστή που ο χρήστης σαρώνει με το μάτι, χωρίς να ακουμπήσει
@@ -830,7 +830,7 @@ export function StatStrip({ items }: { items: StatCell[] }) {
         '--sc-2': Math.min(n, 2), '--sc-3': balancedCols(n, 3), '--sc-4': balancedCols(n, 4),
       } as CSSProperties}>
         {items.map((m, i) => (
-          // ΧΩΡΙΣ `.kpi-plain`, ΚΑΙ ΕΧΕΙ ΛΟΓΟ. Το κελί είναι subgrid (globals.css,
+          // ΧΩΡΙΣ `.kpi-plain` ΚΑΙ ΕΧΕΙ ΛΟΓΟ. Το κελί είναι subgrid (globals.css,
           // `.stat-cells > *`) και ο περιορισμός μεγέθους του `container-type`
           // ακυρώνει το subgrid: μετρημένο, τα κελιά έστηναν δικές τους γραμμές
           // και οι αριθμοί μιας σειράς έπεφταν σε δύο ύψη. Το `cqi` του αριθμού
@@ -998,7 +998,7 @@ export function KPIGrid({ items, columns, nested }: { items: KPIItem[]; columns?
   // `KpiValue`. Μετριέται σε χαρακτήρες, γιατί ο αριθμός γράφεται με
   // `tabular-nums` και εκεί κάθε χαρακτήρας πιάνει το ίδιο πλάτος.
   const widest = items.reduce((m, k) => Math.max(m, k.value.length), 0);
-  // ΤΟ `auto-fit` ΕΦΥΓΕ ΑΠΟ ΤΟ INLINE, ΚΑΙ ΜΑΖΙ ΤΟΥ Η ΤΥΦΛΗ ΖΩΝΗ. Οσο το πλήθος
+  // ΤΟ `auto-fit` ΕΦΥΓΕ ΑΠΟ ΤΟ INLINE ΚΑΙ ΜΑΖΙ ΤΟΥ Η ΤΥΦΛΗ ΖΩΝΗ. Οσο το πλήθος
   // στηλών γραφόταν εδώ ως «όσες χωράνε», ο κανόνας των διαιρετών ίσχυε μόνο
   // κάτω από τα 1.023, δηλαδή παντού ΕΚΤΟΣ από την οθόνη του φορητού. Πλέον το
   // πλήθος το ορίζουν και στα τέσσερα σκαλιά οι μεταβλητές, το φύλλο στυλ τις
@@ -1255,7 +1255,7 @@ export function pressable<E extends { key: string; preventDefault: () => void }>
 export function Btn({ children, onClick, variant = 'secondary', disabled, type, href, newTab, field, size, title, className, ref, expanded, haspopup, controls, describedBy, dimmed }: {
   children: ReactNode; onClick?: () => void; variant?: 'primary' | 'secondary' | 'ghost'; disabled?: boolean; type?: 'button' | 'submit';
   /**
-   * ΤΡΕΙΣ ΙΚΑΝΟΤΗΤΕΣ ΠΟΥ ΕΛΕΙΠΑΝ, ΚΑΙ ΚΡΑΤΟΥΣΑΝ 26 ΚΟΥΜΠΙΑ ΧΕΙΡΟΠΟΙΗΤΑ
+   * ΤΡΕΙΣ ΙΚΑΝΟΤΗΤΕΣ ΠΟΥ ΕΛΕΙΠΑΝ ΚΑΙ ΚΡΑΤΟΥΣΑΝ 26 ΚΟΥΜΠΙΑ ΧΕΙΡΟΠΟΙΗΤΑ
    * ─────────────────────────────────────────────────────────────────────
    * Η σημείωση της καστάνιας `hand-buttons` τις ονόμασε μία προς μία, αφού
    * δοκιμάστηκε μετανάστευση σε 93 κουμπιά και ΜΕΤΑΝΑΣΤΕΥΣΑΝ ΜΗΔΕΝ: δεκατέσσερα
@@ -1325,7 +1325,7 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
    */
   size?: 'md' | 'lg';
   /**
-   * ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΔΕΙΧΝΕΙ ΣΒΗΣΜΕΝΟ ΑΛΛΑ ΜΕΝΕΙ ΠΑΤΗΣΙΜΟ, ΚΑΙ ΛΕΕΙ ΓΙΑΤΙ.
+   * ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΔΕΙΧΝΕΙ ΣΒΗΣΜΕΝΟ ΑΛΛΑ ΜΕΝΕΙ ΠΑΤΗΣΙΜΟ ΚΑΙ ΛΕΕΙ ΓΙΑΤΙ.
    *
    * Η υποβολή της εγγραφής δεν γίνεται `disabled`: θα έβγαινε από τη σειρά Tab
    * και ο χρήστης πληκτρολογίου δεν θα τη συναντούσε ποτέ. Μένει κανονική, με
@@ -1340,10 +1340,19 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
     // Το padding έδινε ύψος ~38: κάτω από το ελάχιστο μέγεθος αφής, σε 148
     // σημεία. Το `minHeight` από την κοινή κλίμακα το ανεβάζει στα 44 όταν ο
     // δείκτης είναι δάχτυλο, χωρίς να αλλάξει τίποτα στο ποντίκι.
-    minHeight: (field || size === 'lg') ? T.h.lg : T.h.md,
+    //
+    // ── Η ΔΗΜΟΣΙΑ ΠΛΕΥΡΑ ΔΗΛΩΝΕΙ ΤΗ ΔΙΚΗ ΤΗΣ ΚΛΙΜΑΚΑ, ΜΙΑ ΦΟΡΑ ────────────────
+    // Στη βιτρίνα μετρήθηκαν πέντε σχήματα κουμπιού (01.10.2026): χάπι 44 με
+    // 15px στην κεφαλίδα, γωνία 10 και 40 με 13px στην εγγραφή, 36 στον πίνακα
+    // των πακέτων, 37 στη σελίδα 404, 36 δίπλα σε πεδίο 40 στην επαλήθευση. Οι
+    // τέσσερις μεταβλητές `--btn-*` ορίζονται ΜΟΝΟ στα περιτυλίγματα της
+    // δημόσιας πλευράς (globals.css) και δίνουν σε κάθε `Btn` εκεί το σχήμα της
+    // αρχικής. Μέσα στην εφαρμογή δεν ορίζονται και ισχύουν οι εφεδρικές, δηλαδή
+    // ακριβώς ό,τι ίσχυε ως τώρα.
+    minHeight: `var(--btn-h, ${(field || size === 'lg') ? T.h.lg : T.h.md})`,
     ...(field ? { display: 'flex', width: '100%' } : null),
-    padding: '9px 18px', borderRadius: T.radius.btn,
-    fontSize: 12, fontWeight: 700, fontFamily: T.font.sans,
+    padding: 'var(--btn-pad, 9px 18px)', borderRadius: `var(--btn-radius, ${T.radius.btn}px)`,
+    fontSize: 'var(--btn-fs, 12px)', fontWeight: 700, fontFamily: T.font.sans,
     cursor: (disabled || dimmed) ? 'not-allowed' : 'pointer', opacity: (disabled || dimmed) ? 0.5 : 1,
     transition: 'background-color 0.15s cubic-bezier(0.2,0,0,1), border-color 0.15s cubic-bezier(0.2,0,0,1), color 0.15s cubic-bezier(0.2,0,0,1), box-shadow 0.15s cubic-bezier(0.2,0,0,1), transform 0.15s cubic-bezier(0.2,0,0,1), opacity 0.15s cubic-bezier(0.2,0,0,1)',
     // ΠΑΧΟΣ ΚΑΙ ΕΙΔΟΣ ΕΙΝΑΙ ΓΕΩΜΕΤΡΙΑ: κρατούν το ύψος ίδιο και στις τρεις
@@ -1353,7 +1362,7 @@ export function Btn({ children, onClick, variant = 'secondary', disabled, type, 
     // μετρήθηκε ότι το δευτερεύον κουμπί ΔΕΝ είχε καθόλου ορατό περίγραμμα.
     borderWidth: 1, borderStyle: 'solid',
   };
-  // ── ΤΟ ΧΡΩΜΑ ΕΦΥΓΕ ΑΠΟ ΕΔΩ, ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΟΛΟ ΤΟ ΝΟΗΜΑ ────────────────
+  // ── ΤΟ ΧΡΩΜΑ ΕΦΥΓΕ ΑΠΟ ΕΔΩ ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΟΛΟ ΤΟ ΝΟΗΜΑ ────────────────
   //
   // Οι τρεις παραλλαγές ζωγράφιζαν τον εαυτό τους σε `style`, δηλαδή ΜΕΣΑ στο
   // στοιχείο. Το ενσωματωμένο style κερδίζει κάθε κανόνα κλάσης: όσο το χρώμα
@@ -1512,7 +1521,7 @@ export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, ti
   /**
    * ΤΟ ΥΨΟΣ ΟΤΑΝ ΤΟ ΠΛΑΚΙΔΙΟ ΚΑΘΕΤΑΙ ΣΕ ΣΕΙΡΑ ΜΕ ΠΕΔΙΟ.
    *
-   * ΤΙ ΜΕΤΡΗΘΗΚΕ, ΚΑΙ ΓΙΑΤΙ ΑΞΙΖΕΙ ΝΑ ΓΡΑΦΤΕΙ. Το `Btn` έχει ήδη αυτή την
+   * ΤΙ ΜΕΤΡΗΘΗΚΕ ΚΑΙ ΓΙΑΤΙ ΑΞΙΖΕΙ ΝΑ ΓΡΑΦΤΕΙ. Το `Btn` έχει ήδη αυτή την
    * επιλογή, με ολόκληρο κείμενο από πάνω του: «κάθε γραμμή εργαλείων που έχει
    * και τα δύο είναι εξ ορισμού αστοίχιστη». Το πλακίδιο δεν την πήρε ποτέ,
    * γιατί όσο τα φίλτρα γράφονταν στο χέρι ο καθένας έβαζε το ύψος που
@@ -1634,7 +1643,7 @@ export function SelectBox({ checked, indeterminate, onChange, label }: {
       style={{
         width: 18, height: 18, flexShrink: 0, padding: 0, borderRadius: T.radius.xs,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`,
+        border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-control)'}`,
         background: on ? 'var(--accent)' : 'var(--bg-elevated)',
         color: 'var(--accent-text)', cursor: 'pointer',
         transition: `background 0.14s ${T.ease.standard}, border-color 0.14s ${T.ease.standard}`,
@@ -1777,7 +1786,7 @@ export const pageShell = (measure: number): CSSProperties => ({
 // `po-field` (globals.css), χωρίς ανά-input JS handlers.
 export const settingsField: CSSProperties = {
   width: '100%', height: T.h.lg, padding: '0 14px', borderRadius: T.radius.inner,
-  border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
+  border: '1px solid var(--border-control)', background: 'var(--bg-surface)',
   color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none', boxSizing: 'border-box',
 };
 

@@ -21,14 +21,16 @@ import {
   DIVIDEND_WITHHOLDING_RATE, type TaxBracket,
 } from '@/lib/billing/greekTax'
 import { fp } from '@/lib/core/format'
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
+import { roundHalfUp } from '../core/money';
 
-const cents = (n: number): number => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100
+const cents = (n: number): number => roundHalfUp((Number.isFinite(n) ? n : 0), 2)
 const pos = (n: number): number => Math.max(0, cents(n))
 
 export type TaxRegime = 'individual_longterm' | 'individual_shortterm' | 'business'
 
-/** Τεκμαρτή έκπτωση φυσικού προσώπου για επισκευές/συντήρηση (5%). */
-export const PRESUMPTIVE_DEDUCTION_RATE = 0.05
+/** Τεκμαρτή έκπτωση φυσικού προσώπου για επισκευές/συντήρηση (5%). Μία πηγή: lib/billing/presumptive.ts. */
+export { PRESUMPTIVE_DEDUCTION_RATE }
 
 export interface StatementInput {
   regime: TaxRegime

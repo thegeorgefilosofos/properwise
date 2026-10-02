@@ -1,3 +1,4 @@
+import { roundHalfUp } from '../core/money';
 // ═══════════════════════════════════════════════════════════════════════════
 // ownerSplit — Κατανομή εσόδων/εξόδων σε συνιδιοκτήτες + διαχειριστική αμοιβή.
 //
@@ -31,7 +32,7 @@ export interface SplitResult {
   pctSum: number; valid: boolean; warning?: string;
 }
 
-const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
+const r2 = (n: number) => roundHalfUp((Number(n) || 0), 2);
 
 export function computeSplit(input: SplitInput): SplitResult {
   const gross = r2(input.grossIncome);

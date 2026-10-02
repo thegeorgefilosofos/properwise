@@ -6,7 +6,7 @@
 // Read-only, χωρίς λογαριασμό. Διαβάζει μέσω `get_accountant_data` την εικόνα
 // εσόδων και δαπανών ανά ακίνητο για μία χρήση.
 //
-// ΤΡΙΑ ΠΡΑΓΜΑΤΑ ΑΛΛΑΞΑΝ ΕΔΩ, ΚΑΙ ΤΑ ΤΡΙΑ ΕΙΝΑΙ ΟΥΣΙΑ:
+// ΤΡΙΑ ΠΡΑΓΜΑΤΑ ΑΛΛΑΞΑΝ ΕΔΩ ΚΑΙ ΤΑ ΤΡΙΑ ΕΙΝΑΙ ΟΥΣΙΑ:
 //
 // 1. Η ΟΘΟΝΗ ΔΕΝ ΚΑΤΕΒΑΖΕ ΤΙΠΟΤΑ. Ο λογιστής διάβαζε νούμερα και τα
 //    ξαναπληκτρολογούσε στο πρόγραμμά του. Τώρα φεύγει .xlsx με ζωντανά
@@ -22,8 +22,9 @@
 //
 // 3. Ο ΦΟΡΟΣ ΚΑΤΕΒΗΚΕ ΑΠΟ ΤΗΝ ΚΟΡΥΦΗ. Ηταν σε ίδια οπτική τάξη με τα
 //    πραγματικά ποσά, με έντονη γραφή, δίπλα σε δύο μετρημένα μεγέθη. Είναι
-//    το μόνο νούμερο της σελίδας που μπορεί να ΜΗΝ ισχύει: η τεκμαρτή έκπτωση
-//    προϋποθέτει τραπεζική είσπραξη, που από εδώ δεν φαίνεται. Μένει, γιατί
+//    το μόνο νούμερο της σελίδας που μπορεί να ΜΗΝ ισχύει: από τη χρήση 2027
+//    η τεκμαρτή έκπτωση προϋποθέτει τραπεζική είσπραξη, που ο σύνδεσμος
+//    βλέπει μόνο ως πλήθη εισπράξεων και πρόθεση μίσθωσης. Μένει, γιατί
 //    είναι χρήσιμη διασταύρωση, αλλά κάτω από τη γραμμή και με το όνομά του:
 //    ενδεικτικός. Τον φόρο τον βγάζει ο λογιστής, όχι εμείς.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -32,16 +33,17 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { rentalIncomeTax, rentalBracketsForYear, bracketsLabelForYear } from '@/lib/billing/greekTax';
-import { presumptiveDeductionRate, PRESUMPTIVE_RULE } from '@/lib/billing/consolidate';
+import { bracketsLabelForYear } from '@/lib/billing/greekTax';
+import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate';
 import { T, feAuto, Card, Btn } from '@/components/Theme';
-// Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ ΕΙΝΑΙ ΔΙΚΗ ΤΗΣ ΔΙΑΔΡΟΜΗ, ΚΑΙ ΚΟΥΒΑΛΟΥΣΕ ΚΙ ΕΚΕΙΝΗ ΤΑ
+// Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ ΕΙΝΑΙ ΔΙΚΗ ΤΗΣ ΔΙΑΔΡΟΜΗ ΚΑΙ ΚΟΥΒΑΛΟΥΣΕ ΚΙ ΕΚΕΙΝΗ ΤΑ
 // 2,5 MB: ο λογιστής ανοίγει έναν σύνδεσμο, κοιτάζει και συνήθως δεν κατεβάζει
 // τίποτα. Η πρόσοψη φορτώνει τη βιβλιοθήκη με το πάτημα.
 import { downloadXlsx } from '@/app/dashboard/components/sheets';
 import { PortalBar, PortalTitle, portalWrap, portalYears } from '../Chrome';
 import {
-  propertyLines, statementTotals, statementGaps, statementSheets, type PortalData,
+  propertyLines, statementTotals, statementGaps, statementSheets, indicativeTax, deductionNote,
+  type PortalData,
 } from '../statement';
 
 const dateEl = (d: Date) => d.toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -92,7 +94,7 @@ export default function AccountantPortal() {
     (async () => {
       const { data: u, error: authFailed } = await supabase.auth.getUser();
       if (!alive) return;
-      // ΑΓΝΩΣΤΟΣ ΕΠΙΣΚΕΠΤΗΣ ΔΕΝ ΕΧΕΙ ΠΟΥ ΝΑ ΓΥΡΙΣΕΙ, ΚΑΙ ΔΕΝ ΤΟΥ ΤΟ ΛΕΜΕ. Ο
+      // ΑΓΝΩΣΤΟΣ ΕΠΙΣΚΕΠΤΗΣ ΔΕΝ ΕΧΕΙ ΠΟΥ ΝΑ ΓΥΡΙΣΕΙ ΚΑΙ ΔΕΝ ΤΟΥ ΤΟ ΛΕΜΕ. Ο
       // λογιστής που άνοιξε τον σύνδεσμο χωρίς λογαριασμό είναι η συνηθισμένη
       // περίπτωση: μια έξοδος προς οθόνη σύνδεσης θα ήταν πόρτα, όχι έξοδος.
       if (authFailed || !u.user) { setBack(undefined); return; }
@@ -118,13 +120,15 @@ export default function AccountantPortal() {
   const data = fresh?.data ?? null;
 
   const props = useMemo(() => data?.properties || [], [data]);
-  const lines = useMemo(() => propertyLines(props), [props]);
+  const lines = useMemo(() => propertyLines(props, year), [props, year]);
   const totals = useMemo(() => statementTotals(lines), [lines]);
   const gaps = useMemo(() => statementGaps(lines), [lines]);
 
-  // Η ΕΚΠΤΩΣΗ ΤΟΥ ΑΡΘΡΟΥ 39 §3 ΚΦΕ ΕΦΑΡΜΟΖΕΤΑΙ ΚΑΙ ΔΗΛΩΝΕΤΑΙ. Η προϋπόθεση της
-  // τραπεζικής είσπραξης (ν.5222/2025, κύρωση από 1.7.2027) δεν φαίνεται από
-  // αυτόν τον σύνδεσμο: γι' αυτό ο αριθμός λέγεται ενδεικτικός και όχι φόρος.
+  // Η ΕΚΠΤΩΣΗ ΤΟΥ ΑΡΘΡΟΥ 39 §3 ΚΦΕ ΑΚΟΛΟΥΘΕΙ ΤΟΝ ΤΡΟΠΟ ΕΙΣΠΡΑΞΗΣ. Εδώ ήταν
+  // `presumptiveDeductionRate(true)`, δηλαδή 5% πάντα. Από τη χρήση 2027 η
+  // προϋπόθεση της τραπεζικής είσπραξης (ν.5222/2025) κρίνεται ανά ακίνητο με
+  // τον κανόνα της Λογιστικής· όπου ο σύνδεσμος δεν τη βλέπει, η έκπτωση δεν
+  // εφαρμόζεται και η σημείωση το λέει (`indicativeTax`, ../statement.ts).
   // ══ Ο ΦΟΡΟΣ ΕΙΝΑΙ ΠΡΟΣΩΠΙΚΟΣ, ΑΡΑ ΠΑΝΩ ΣΤΟ ΜΕΡΙΔΙΟ ═══════════════════════
   // Εδώ έγραφε `totals.income`, δηλαδή το εισόδημα ΟΛΟΚΛΗΡΟΥ του ακινήτου. Το
   // αρχείο .xlsx που κατεβαίνει από ΤΗΝ ΙΔΙΑ σελίδα κόβει τα ποσά στο ποσοστό
@@ -140,7 +144,8 @@ export default function AccountantPortal() {
   // Τρία αδέλφια σε κληρονομημένο διαμέρισμα έβλεπαν 3.360€ φόρου παραπάνω.
   //
   // Η οθόνη μάλιστα τύπωνε ήδη «συνιδιοκτησία 50%» δίπλα στο νούμερο του 100%.
-  const estTax = rentalIncomeTax(totals.incomeShare * (1 - presumptiveDeductionRate(true)), rentalBracketsForYear(year));
+  const est = useMemo(() => indicativeTax(lines, year), [lines, year]);
+  const estTax = est.tax;
 
   const owner = data?.owner || 'Ιδιοκτήτης';
   const issued = dateEl(new Date());
@@ -257,7 +262,7 @@ export default function AccountantPortal() {
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.mono, whiteSpace: 'nowrap' }}>{feAuto(estTax)}</span>
                   </div>
                   <p style={{ ...meta, margin: '10px 0 0' }}>
-                    Εισπράξεις της χρήσης, όχι συμβατικό μίσθωμα επί δώδεκα. {bracketsLabelForYear(year)}, με τεκμαρτή έκπτωση {Math.round(presumptiveDeductionRate(true) * 100)}%. {totals.hasShare ? 'Υπολογίζεται στην αναλογία του ιδιοκτήτη, όχι στο σύνολο του ακινήτου. ' : ''}{PRESUMPTIVE_RULE}
+                    Ενοίκια της χρήσης όπως στο Ε2, δηλαδή όσα οφείλονται ανεξάρτητα από την είσπραξη, όχι συμβατικό μίσθωμα επί δώδεκα. {bracketsLabelForYear(year)}. {deductionNote(est, year)} {totals.hasShare ? 'Υπολογίζεται στην αναλογία του ιδιοκτήτη, όχι στο σύνολο του ακινήτου. ' : ''}{est.bankMatters ? '' : PRESUMPTIVE_RULE}
                   </p>
                 </div>
               ) : (
@@ -305,7 +310,14 @@ export default function AccountantPortal() {
                     </p>
                   ) : (
                     <div style={{ marginTop: 12 }}>
-                      {x.rentAnnual > 0 && row(`Ενοίκια ${year} · ${x.rentMonths} ${x.rentMonths === 1 ? 'καταχωρημένη περίοδος' : 'καταχωρημένες περίοδοι'}`, feAuto(x.rentAnnual))}
+                      {x.rentAnnual > 0 && row(`Ενοίκια ${year}${x.rentMonths > 0 ? ` · ${x.rentMonths} ${x.rentMonths === 1 ? 'μήνας' : 'μήνες'}` : ''}`, feAuto(x.rentAnnual))}
+                      {/* ΤΟ ΔΕΔΟΥΛΕΥΜΕΝΟ ΔΕΝ ΕΙΝΑΙ ΕΙΣΠΡΑΞΗ. Το ποσό από πάνω είναι η
+                          βάση του Ε2· εδώ λέγεται πόσο από αυτό μπήκε στ' αλήθεια. */}
+                      {x.rentAnnual > 0 && x.rentCollected !== null && row(
+                        x.rentCollected < x.rentAnnual
+                          ? `Εισπράχθηκαν · ανείσπρακτα ${feAuto(x.rentAnnual - x.rentCollected)}`
+                          : 'Εισπράχθηκαν όλα',
+                        feAuto(x.rentCollected))}
                       {x.income === 0 && x.p.rent_monthly ? (
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '9px 0', borderBottom: '1px solid var(--border-subtle)', lineHeight: 1.6 }}>
                           Σήμερα νοικιάζεται {feAuto(x.p.rent_monthly)} τον μήνα, χωρίς καταχωρημένη είσπραξη στη χρήση {year}.
@@ -363,7 +375,10 @@ export default function AccountantPortal() {
             <div className="po-noprint" style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)', marginTop: T.sp.xxl, lineHeight: 1.8 }}>
               Έχεις κι άλλους πελάτες με PROPERWISE;{' '}
               <Link href="/accountant/workspace" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Δες τους όλους μαζί</Link>, με ό,τι λείπει από τον καθένα.
-              <div style={{ ...meta, marginTop: 4 }}>Χρειάζεται δικός σου λογαριασμός, μία φορά.</div>
+              {/* Ο ΦΑΚΕΛΟΣ ΔΕΝ ΚΑΤΕΒΑΙΝΕΙ ΑΠΟ ΕΔΩ ΚΑΙ ΕΧΕΙ ΛΟΓΟ. Ο σύνδεσμος ανοίγει
+                  χωρίς λογαριασμό και ο φάκελος έχει μισθωτές, ΑΦΜ και παραστατικά.
+                  Τον κατεβάζει μόνο συνδεδεμένος λογιστής, όσο ισχύει η σύνδεση. */}
+              <div style={{ ...meta, marginTop: 4 }}>Χρειάζεται δικός σου λογαριασμός, μία φορά. Εκεί κατεβάζεις και τον φάκελο που σου στέλνει ο πελάτης, με τη σύγκριση του Ε2 με την ΑΑΔΕ.</div>
             </div>
 
             <div style={{ ...meta, textAlign: 'center', marginTop: 16 }}>

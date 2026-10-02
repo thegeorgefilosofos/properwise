@@ -22,10 +22,12 @@ import { IDENTITY, identityLabels, POLICY_UPDATED, POLICY_VERSION } from '@/lib/
 import { DISCLOSURE } from '@/lib/legal/disclosure';
 import { subprocessors, TRANSFER_SAFEGUARDS, ANTHROPIC_CONTRACT } from '@/lib/legal/subprocessors';
 import { ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/identity';
-import { hyphenate } from '@/lib/core/hyphenate';
+import { hyphenate, bindRefs } from '@/lib/core/hyphenate';
 import { billingWords } from '@/lib/legal/billingWords';
 import { LegalLayout, MailLink, type LegalBlock } from '../legal-shell';
+import Link from 'next/link';
 import { siteUrl } from '@/lib/core/site';
+import { LINK_STYLE } from '../linkStyle';
 import { publicMetadata } from '../publicMetadata';
 
 export const metadata: Metadata = publicMetadata({
@@ -85,7 +87,7 @@ const placeShort = (where: string) => where.replace(/Ευρωπαϊκή Ένωσ
 const placeOf = (where: string) => where.replace(/Ευρωπαϊκή Ένωση/g, 'Ευρωπαϊκή\u00A0Ένωση');
 
 /**
- * ΤΑ ΣΤΟΙΧΕΙΑ ΤΗΣ ΕΤΑΙΡΕΙΑΣ ΕΙΝΑΙ ΠΙΝΑΚΑΣ, ΚΑΙ ΓΡΑΦΕΤΑΙ ΩΣ ΠΙΝΑΚΑΣ.
+ * ΤΑ ΣΤΟΙΧΕΙΑ ΤΗΣ ΕΤΑΙΡΕΙΑΣ ΕΙΝΑΙ ΠΙΝΑΚΑΣ ΚΑΙ ΓΡΑΦΕΤΑΙ ΩΣ ΠΙΝΑΚΑΣ.
  *
  * Ηταν σειρές `<div>` με ενσωματωμένη γραμμή από κάτω, χωρίς επιφάνεια και
  * χωρίς περίγραμμα — και ακριβώς από κάτω τους καθόταν σημείωση ΜΕΣΑ σε κουτί.
@@ -100,7 +102,7 @@ const MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function DataTable({ caption, rows }: { caption: string; rows: { label: string; value: string }[] }) {
   return (
     <div className="po-table-box" style={{ marginTop: 14 }}>
-      <table className="po-table" style={{ '--tbl-fs': '14px' }}>
+      <table className="po-table lg-kv" style={{ '--tbl-fs': '14px' }}>
         <caption>{caption}</caption>
         <tbody>
           {rows.map(r => (
@@ -121,11 +123,12 @@ function DataTable({ caption, rows }: { caption: string; rows: { label: string; 
                   στόχος μεγαλώνει, η σειρά μένει όπου ήταν. */}
               <td className="po-kv-val" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                 {MAIL.test(r.value)
-                  // ΤΟ EMAIL ΔΕΝ ΣΠΑΕΙ ΣΤΗ ΜΕΣΗ ΤΟΥ ΤΟΜΕΑ. Το κελί κληρονομεί
+                  // ΤΟ EMAIL ΔΕΝ ΣΠΑΕΙ, ΟΥΤΕ ΣΤΟ @. Το κελί κληρονομεί
                   // `overflow-wrap: anywhere` από το .po-table, οπότε το
                   // «support@properwise.gr» έβγαινε «support@proper / wise.gr».
-                  // Ο `MailLink` βάζει <wbr> μετά το @ και `break-word`, τον ίδιο
-                  // σύνδεσμο που παίρνουν και τα email της Πολιτικής και των Ορων.
+                  // Ο `MailLink` το κρατά μία λέξη· κάτω από τα 400 η ετικέτα
+                  // πάει πάνω από την τιμή (`.lg-kv`, globals.css) ώστε η
+                  // διεύθυνση να έχει όλο το πλάτος του πίνακα.
                   ? <MailLink to={r.value} />
                   : r.value}
               </td>
@@ -143,8 +146,8 @@ function Point({ title, children }: { title: string; children: React.ReactNode }
     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
       <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 4 }} aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
       <div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{title}</div>
-        <div className="lg-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.65 }}>{children}</div>
+        <div className="lg-point-t" style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{title}</div>
+        <div className="lg-just">{children}</div>
       </div>
     </div>
   );
@@ -155,7 +158,7 @@ function Never({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
       <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 4 }} aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-      <div className="lg-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.65 }}>{children}</div>
+      <div className="lg-just">{children}</div>
     </div>
   );
 }
@@ -171,7 +174,7 @@ function SubprocessorCard({ s }: { s: SubprocessorRow }) {
       <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</div>
       {s.entity && <div className="lg-sp-entity">{s.entity}</div>}
       <dl>
-        <dt>Τι κάνει</dt><dd>{hyphenate(s.what)}</dd>
+        <dt>Τι κάνει</dt><dd>{hyphenate(bindRefs(s.what), { keepLast: true })}</dd>
         <dt>Πού</dt><dd>{placeOf(s.where)}</dd>
       </dl>
     </li>
@@ -302,13 +305,13 @@ export default function TrustPage() {
             επιβεβαιώνει καθημερινά ότι το αντίγραφο όντως έγινε και όντως είναι κρυπτογραφημένο, γιατί ένα
             αντίγραφο που σταμάτησε σιωπηλά είναι σαν να μην υπήρχε.
           </Point>
-          <Point title="Δεύτερος παράγοντας ταυτοποίησης">
-            Μπορείς να ενεργοποιήσεις σύνδεση δύο βημάτων (TOTP) από τον Λογαριασμό σου, με οποιαδήποτε εφαρμογή
-            αυθεντικοποίησης.
+          <Point title="Επαλήθευση δύο βημάτων">
+            Μπορείς να ενεργοποιήσεις την επαλήθευση δύο βημάτων (TOTP) από τον Λογαριασμό σου, με οποιαδήποτε
+            εφαρμογή επαλήθευσης.
           </Point>
           <Point title="Ιστορικό ενεργειών ασφαλείας">
             Οι ενέργειες που αφορούν την ασφάλεια του λογαριασμού (αλλαγή κωδικού, ενεργοποίηση ή απενεργοποίηση
-            δύο βημάτων, αποσύνδεση από όλες τις συσκευές, μεταβολές μελών σε ομάδα) καταγράφονται και
+            της επαλήθευσης δύο βημάτων, αποσύνδεση από όλες τις συσκευές, μεταβολές μελών σε ομάδα) καταγράφονται και
             μπορείς να τις δεις ο ίδιος στον Λογαριασμό.
           </Point>
         </div>
@@ -325,7 +328,7 @@ export default function TrustPage() {
           <p className="lg-p">
             Αυτοί επεξεργάζονται δεδομένα μαζί μας. Όσοι είναι «εκτελούντες» ενεργούν για λογαριασμό μας· οι
             «αυτοτελείς υπεύθυνοι» αποφασίζουν οι ίδιοι για τα δεδομένα που λαμβάνουν. Ο ρόλος του
-            καθενός γράφεται στην <a href="/privacy">Πολιτική απορρήτου</a>.
+            καθενός γράφεται στην <Link href="/privacy" className="lp-link" style={LINK_STYLE}>Πολιτική απορρήτου</Link>.
           </p>
           <p className="lg-note">{TRANSFER_SAFEGUARDS}</p>
           <p className="lg-p" style={{ marginTop: 12 }}>Πριν προσθέσουμε νέο πάροχο, σε ενημερώνουμε με email.</p>
@@ -368,7 +371,7 @@ export default function TrustPage() {
                       </th>
                       {/* Η ΠΕΡΙΓΡΑΦΗ ΕΙΝΑΙ ΠΡΟΖΑ: πέρα πέρα, με συλλαβισμό, σε μέτρο
                           ~58 χαρακτήρων που έχει αρκετά κενά να μοιράσει. */}
-                      <td className="lg-cell-prose">{hyphenate(s.what)}</td>
+                      <td className="lg-cell-prose">{hyphenate(bindRefs(s.what), { keepLast: true })}</td>
                       <td className="lg-place">{placeOf(placeShort(s.where))}</td>
                     </tr>
                   ))}
@@ -437,7 +440,8 @@ export default function TrustPage() {
             <li><strong>Εναντίωση και περιορισμός:</strong> γράψε μας και απαντάμε το αργότερο μέσα σε έναν μήνα.</li>
           </ul>
           <p className="lg-p">
-            Έχεις επίσης δικαίωμα καταγγελίας στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα (dpa.gr).
+            Έχεις επίσης δικαίωμα καταγγελίας στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα (
+            <a href="https://www.dpa.gr" target="_blank" rel="noopener noreferrer" className="lp-link" style={LINK_STYLE}>dpa.gr</a>).
           </p>
         </>
       ),
@@ -472,7 +476,7 @@ export default function TrustPage() {
             ανοιχτό και σε αναφέρουμε ονομαστικά όταν διορθωθεί, αν το θέλεις.
             Δεσμευόμαστε να μη στραφούμε νομικά εναντίον ερευνητή που ενεργεί καλόπιστα και δεν αποκτά πρόσβαση σε
             δεδομένα τρίτων. Οι πλήρεις όροι, μαζί με το τι είναι εντός και εκτός εμβέλειας, βρίσκονται στην{' '}
-            <a href="/.well-known/security.txt" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none' }}>πολιτική γνωστοποίησης ευπαθειών</a>.
+            <a href="/.well-known/security.txt" className="lp-link" style={LINK_STYLE}>πολιτική γνωστοποίησης ευπαθειών</a>.
           </p>
         </>
       ),
@@ -481,6 +485,7 @@ export default function TrustPage() {
 
   return (
     <LegalLayout
+      guideHeads
       self="/trust"
       eyebrow="Εμπιστοσύνη"
       title="Ποιοι είμαστε"

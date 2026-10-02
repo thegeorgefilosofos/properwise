@@ -24,7 +24,7 @@ import { plural } from '@/lib/core/greek'
 import { openReport, rEsc } from '../reportPdf'
 import { INK, RULE } from '@/lib/print/ink'
 import type { FieldDecision } from '@/lib/property/fields'
-import { CONDITIONS, CONDITION_COLOR, ENERGY_TONE, ROOM_PRESETS, inventoryLabel, type InventoryItem } from './model'
+import { CONDITIONS, CONDITION_COLOR, ENERGY_TONE, ROOM_PRESETS, inventoryLabel, conditionLabel, type InventoryItem } from './model'
 
 // ── Η ΚΑΡΤΑ ΤΗΣ ΑΠΟΓΡΑΦΗΣ ΕΙΝΑΙ Η ΚΑΡΤΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ ─────────────────────
 // ΜΙΑ ΚΑΡΤΕΛΑ ΕΙΧΕ ΔΙΚΟ ΤΗΣ ΟΡΙΣΜΟ ΚΑΡΤΑΣ. Η συνταγή εδώ ήταν bg-surface με
@@ -232,7 +232,7 @@ export function InlineConditionEdit({item,onUpdate}:{item:InventoryItem;onUpdate
   return (
     <div style={{display:'inline-block'}}>
       <button ref={btnRef} onClick={e=>{e.stopPropagation();setOpen(v=>!v)}} style={{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 10px',borderRadius:T.radius.pill,fontSize: 'var(--fs-xs)',fontWeight:500,fontFamily:T.font.sans,color:CONDITION_COLOR[item.condition],background:CONDITION_COLOR[item.condition]+'18',border:`1px solid ${CONDITION_COLOR[item.condition]}40`,cursor:'pointer'}}>
-        {item.condition}
+        {conditionLabel(item.condition)}
         <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" style={{transform:open?'rotate(180deg)':'none',transition:'transform 0.15s'}}><path d="M2 4l3 3 3-3"/></svg>
       </button>
       {open&&rect&&typeof document!=='undefined'&&createPortal(
@@ -243,7 +243,7 @@ export function InlineConditionEdit({item,onUpdate}:{item:InventoryItem;onUpdate
               style={{padding:'8px 12px',cursor:'pointer',borderRadius: T.radius.chip,fontSize:12,fontFamily:T.font.sans,color:CONDITION_COLOR[c],background:item.condition===c?CONDITION_COLOR[c]+'15':'transparent',fontWeight:item.condition===c?600:400,transition:'background 0.1s'}}
               onMouseEnter={e=>(e.currentTarget.style.background=CONDITION_COLOR[c]+'10')}
               onMouseLeave={e=>(e.currentTarget.style.background=item.condition===c?CONDITION_COLOR[c]+'15':'transparent')}
-            >{c}</div>
+            >{conditionLabel(c)}</div>
           ))}
         </div>,
         document.body
@@ -292,9 +292,9 @@ export function OverflowMenu({actions,align='right',dark}:{actions:OverflowActio
           σχήμα του: το ίδιο ιδίωμα που κρατά τα τετράγωνα σημάδια στα 18. */}
       <button ref={btnRef} className="po-box" title="Ενέργειες" aria-label="Ενέργειες" onClick={()=>setOpen(v=>!v)}
         style={{width:28,height:28,borderRadius:T.radius.pill,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-          border:`1px solid ${dark?'rgba(255,255,255,0.25)':'var(--border-subtle)'}`,
-          background:dark?'rgba(0,0,0,0.45)':(open?'var(--bg-hover)':'var(--bg-surface)'),
-          color:dark?'#fff':'var(--text-secondary)',backdropFilter:dark?'blur(4px)':undefined}}>
+          border:`1px solid ${dark?'color-mix(in srgb, var(--on-media) 25%, transparent)':'var(--border-subtle)'}`,
+          background:dark?'var(--scrim-media)':(open?'var(--bg-hover)':'var(--bg-surface)'),
+          color:dark?'var(--on-media)':'var(--text-secondary)',backdropFilter:dark?'blur(4px)':undefined}}>
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
       </button>
       {open&&rect&&typeof document!=='undefined'&&createPortal(
@@ -332,7 +332,7 @@ export function RoomInput({value,onChange}:{value:string;onChange:(v:string)=>vo
   ]
   return (
     <div style={{display:'flex',flexDirection:'column',gap:8}}>
-      <CustomSelect ariaLabel="Χώρος" value={custom?'__custom__':value} placeholder="Επιλέξτε χώρο"
+      <CustomSelect ariaLabel="Χώρος" value={custom?'__custom__':value} placeholder="Διάλεξε χώρο"
         onChange={v=>{ if(v==='__custom__'){setCustom(true);onChange('')} else {setCustom(false);onChange(v)} }}
         options={options}/>
       {custom&&(

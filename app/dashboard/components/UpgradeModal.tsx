@@ -53,8 +53,10 @@ export default function UpgradeModal({ currentCount, planId, onClose, onManage }
               στο στοιχείο που κρατά το κείμενο, τα σημεία τομής στο ίδιο το
               κείμενο· η διεύθυνση αλληλογραφίας είναι λατινική, ο συλλαβισμός δεν την αγγίζει. */}
           <p className="po-just" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 0 20px', lineHeight: 1.6 }}>
-            {hy(<>Το πακέτο Επαγγελματίας καλύπτει έως {PLANS.agency.maxProperties} ακίνητα και τα έχεις ήδη συμπληρώσει.
-            Για περισσότερα, στήνουμε πακέτο στα μέτρα σου. Γράψε μας στο <strong style={{ color: 'var(--text-primary)' }}>{IDENTITY.supportEmail}</strong> και απαντάμε την ίδια ημέρα.</>)}
+            {/* Χωρίς «στήνουμε πακέτο στα μέτρα σου» και «απαντάμε την ίδια ημέρα»:
+                κανένα από τα δύο δεν το εγγυάται κάτι πίσω από την οθόνη. */}
+            {hy(<>Το πακέτο «{PLANS[paidPlanForProfile('professional')].name}» καλύπτει έως {PLANS[paidPlanForProfile('professional')].maxProperties} ακίνητα και τα έχεις ήδη συμπληρώσει.
+            Για περισσότερα, γράψε μας στο <strong style={{ color: 'var(--text-primary)' }}>{IDENTITY.supportEmail}</strong>.</>)}
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             <Btn size="lg" onClick={onClose}>Κλείσιμο</Btn>
@@ -93,14 +95,14 @@ export default function UpgradeModal({ currentCount, planId, onClose, onManage }
                 <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: isRec ? 'var(--accent)' : 'var(--text-primary)', marginBottom: 6 }}>{p.name}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
                   <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{feAuto(p.priceMonthly)}</span>
-                  {p.priceMonthly > 0 && <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>/μήνα</span>}
+                  {p.priceMonthly > 0 && <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>τον μήνα</span>}
                 </div>
                 {/* ΚΑΤΩ ΑΠΟ ΤΟ 0,00€ ΤΟ TAGLINE, ΟΧΙ «ΓΙΑ ΠΑΝΤΑ». Από 25.09.2026 ο
                     «Ιδιοκτήτης» είναι δωρεάν πακέτο για ένα ακίνητο, χωρίς τη Νόα·
                     υπόσχεση αιωνιότητας δίπλα σε τιμή δεν γράφεται πουθενά. Η
                     γραμμή παίρνει το tagline του ίδιου του πακέτου. */}
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', minHeight: 16 }}>
-                  {p.priceAnnual > 0 ? `ή ${feAuto(p.priceAnnual)}/χρόνο (${feAuto(annualPerMonth(id as PlanId))}/μήνα)` : p.tagline}
+                  {p.priceAnnual > 0 ? `ή ${feAuto(p.priceAnnual)} τον χρόνο (${feAuto(annualPerMonth(id as PlanId))} τον μήνα)` : p.tagline}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '10px 0 0', lineHeight: 1.5 }}>
                   {p.maxProperties === Infinity ? 'Απεριόριστα ακίνητα' : `Έως ${p.maxProperties} ${p.maxProperties === 1 ? 'ακίνητο' : 'ακίνητα'}`}

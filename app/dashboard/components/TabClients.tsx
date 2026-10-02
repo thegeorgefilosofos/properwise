@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // ΕΠΙΣΚΕΠΤΕΣ ΒΡΑΧΥΧΡΟΝΙΑΣ ΜΙΣΘΩΣΗΣ — όχι CRM επαγγελματία σε ιδιώτη με ένα εξοχικό.
 //
-// ΤΙ ΕΦΥΓΕ, ΚΑΙ ΓΙΑΤΙ
+// ΤΙ ΕΦΥΓΕ ΚΑΙ ΓΙΑΤΙ
 //
 // 1. Η «ΜΑΥΡΗ ΛΙΣΤΑ» (`do_not_rent`) με ονοματεπώνυμο, ΑΦΜ και αριθμό
 //    ταυτότητας. Είναι κατηγοριοποίηση προσώπου με νομικό βάρος (GDPR) για
@@ -60,6 +60,7 @@ import {
 import { MSG_TEMPLATES, buildMessage, whatsappLink, viberLink as viberTextLink } from '@/lib/clients/messages';
 import { revenueByChannel, revenueByMonth, occupancyFromMonths, totals } from '@/lib/clients/reports';
 import { nightsByMonthForYear } from '@/lib/tax/shortTermTax';
+import { PLATFORM_FEE_NOTE } from '@/lib/billing/consolidate';
 import { navLabel } from '@/lib/nav/labels';
 import { isoYear } from '@/lib/core/time';
 import { MONTHS_NOM } from '@/lib/core/months';
@@ -93,7 +94,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
   } = useClients({ userId, onSelectProperty })
 
   // ── Κοινά inline styles ────────────────────────────────────────────────────
-  const inp: React.CSSProperties = { background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, height: T.h.lg, width: '100%', outline: 'none', boxSizing: 'border-box', fontFamily: T.font.sans };
+  const inp: React.CSSProperties = { background: 'var(--bg-base)', border: '1px solid var(--border-control)', borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, height: T.h.lg, width: '100%', outline: 'none', boxSizing: 'border-box', fontFamily: T.font.sans };
   const lbl: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', display: 'block', marginBottom: 8, fontFamily: T.font.sans };
   const msgLink: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: T.h.sm, fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', padding: '3px 9px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', background: 'var(--accent-soft)', whiteSpace: 'nowrap' };
   // Chip επικοινωνίας (ίδιο ύφος με msgLink, με inline εικονίδιο).
@@ -618,7 +619,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
             {dcStats.stayCount > 0 && (
               <div {...fixedCols(4, 10, 'stretch')}>
                 {statTile('Ακαθάριστα', fe(dcTotals.revenue), { title: 'Δηλωτέο ακαθάριστο: τι πλήρωσε ο επισκέπτης μείον το τέλος ανθεκτικότητας. Η προμήθεια ΔΕΝ αφαιρείται.' })}
-                {dcTotals.platformFees > 0 && statTile('Προμήθειες', fe(dcTotals.platformFees), { title: 'Δαπάνη που εκπίπτει, όχι μείωση εσόδου' })}
+                {dcTotals.platformFees > 0 && statTile('Προμήθειες', fe(dcTotals.platformFees), { title: PLATFORM_FEE_NOTE })}
                 {dcTotals.climateLevy > 0 && statTile('Τέλος ανθεκτικότητας', fe(dcTotals.climateLevy), { title: 'Εισπράχθηκε για λογαριασμό του κράτους. Δεν είναι έσοδό σου.' })}
                 {statTile('Νύχτες', String(dcStats.nights))}
                 {statTile('Διαμονές', String(dcStats.stayCount))}
@@ -942,7 +943,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
               {docsFailed ? (
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '8px 0', lineHeight: 1.6 }}>
                   Τα έγγραφα δεν διαβάστηκαν. Δεν σημαίνει ότι δεν υπάρχουν: δεν πήραμε απάντηση.{' '}
-                  <LinkBtn onClick={() => { if (openId) loadDocs(openId); }}>Δοκιμή ξανά</LinkBtn>
+                  <LinkBtn onClick={() => { if (openId) loadDocs(openId); }}>Δοκίμασε ξανά</LinkBtn>
                 </div>
               ) : docs.length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '8px 0' }}>Δεν έχουν αποθηκευτεί έγγραφα.</div>
@@ -988,7 +989,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
               {notesFailed ? (
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '4px 0', lineHeight: 1.6 }}>
                   Τα σχόλια δεν διαβάστηκαν. Δεν σημαίνει ότι δεν υπάρχουν: δεν πήραμε απάντηση.{' '}
-                  <LinkBtn onClick={() => { if (openId) loadNotes(openId); }}>Δοκιμή ξανά</LinkBtn>
+                  <LinkBtn onClick={() => { if (openId) loadNotes(openId); }}>Δοκίμασε ξανά</LinkBtn>
                 </div>
               ) : notes.length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '4px 0' }}>Κανένα σχόλιο ακόμη</div>

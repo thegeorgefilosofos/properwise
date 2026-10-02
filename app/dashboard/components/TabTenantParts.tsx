@@ -10,7 +10,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import React from 'react';
 import { T, EmptyState, fn, ChipToggle } from '@/components/Theme';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Check, Clock, X } from 'lucide-react';
+import { statusColor } from '@/lib/core/status';
 import { daysLeft, s as sty } from './TabTenantHelpers';
 import { MONTHS_SHORT } from '@/lib/core/months';
 import { fieldDecision, type FieldContext, type FieldDecision } from '@/lib/property/fields';
@@ -34,7 +35,7 @@ export const InfoBlock = ({ title, children, tone }: { title: string; children: 
   </div>
 );
 
-// ΤΑ 10 ΗΤΑΝ ΚΑΤΩ ΑΠΟ ΤΟ ΔΑΠΕΔΟ ΤΟΥ ΕΡΓΟΥ, ΚΑΙ ΚΑΝΕΙΣ ΔΕΝ ΤΟ ΕΙΧΕ ΔΕΙ. Οι έξι
+// ΤΑ 10 ΗΤΑΝ ΚΑΤΩ ΑΠΟ ΤΟ ΔΑΠΕΔΟ ΤΟΥ ΕΡΓΟΥ ΚΑΙ ΚΑΝΕΙΣ ΔΕΝ ΤΟ ΕΙΧΕ ΔΕΙ. Οι έξι
 // επικεφαλίδες της φόρμας ενοικιαστή («Ποιος είναι ο ενοικιαστής», «Το ενοίκιο»,
 // «Εγγύηση», «Κατάσταση επίπλωσης», «Μισθωτήριο και λοιπά έγγραφα») γράφονταν σε
 // δέκα στιγμές, κεφαλαία και με αραίωση, δηλαδή στο πιο δυσανάγνωστο συνδυασμό
@@ -124,7 +125,7 @@ export const whyOf = (id:string):string|undefined => fieldDecision(id, tenantFie
 /**
  * ΤΟ ΟΝΟΜΑ ΤΟΥ ΠΕΔΙΟΥ, ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ ΜΕ ΤΟ «ΓΙΑΤΙ».
  *
- * ΕΝΑ ΠΡΑΓΜΑ ΕΙΧΕ ΔΥΟ ΟΝΟΜΑΤΑ, ΚΑΙ ΤΑ ΔΥΟ ΣΤΗΝ ΙΔΙΑ ΟΘΟΝΗ. Το μητρώο έλεγε
+ * ΕΝΑ ΠΡΑΓΜΑ ΕΙΧΕ ΔΥΟ ΟΝΟΜΑΤΑ ΚΑΙ ΤΑ ΔΥΟ ΣΤΗΝ ΙΔΙΑ ΟΘΟΝΗ. Το μητρώο έλεγε
  * «Μηνιαίο μίσθωμα», η φόρμα έγραφε «Μηνιαίο ενοίκιο»· το μητρώο «IBAN
  * είσπραξης», η φόρμα «IBAN Είσπραξης Ενοικίου»· το μητρώο «Τηλέφωνο», η φόρμα
  * «Κινητό τηλέφωνο»· το μητρώο «Εγγύηση», η φόρμα «Ποσό εγγύησης». Και η μπάρα
@@ -180,7 +181,7 @@ export function AlertBar({ text, level='warning' }: { text:string; level?:'criti
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ΤΟ «ΣΚΟΡ ΕΝΟΙΚΙΑΣΤΗ» ΕΦΥΓΕ, ΚΑΙ Η ΕΤΙΚΕΤΑ ΜΑΖΙ ΤΟΥ
+// ΤΟ «ΣΚΟΡ ΕΝΟΙΚΙΑΣΤΗ» ΕΦΥΓΕ ΚΑΙ Η ΕΤΙΚΕΤΑ ΜΑΖΙ ΤΟΥ
 //
 // Ήταν: 100 − απλήρωτες×8 − καθυστερήσεις×4 − min(μέση×0,5 · 15) + προφίλ×10,
 // με κατώφλια 85/70/50 και ετικέτες «Άριστος / Καλός / Μέτριος / Προβληματικός».
@@ -207,12 +208,15 @@ export function leaseAlerts(payments:RentPayment[], tenant:Tenant|null):{text:st
   const d=daysLeft(tenant.lease_end);
   if(d!==null){
     if(d<0) alerts.push({text:'Το μισθωτήριο έχει λήξει, ανανέωσε ή ξεκίνα διαδικασία αποχώρησης',level:'critical'});
-    else if(d<=30) alerts.push({text:`Κρίσιμο: Λήξη μισθωτηρίου σε ${d} ημέρες, απαιτείται άμεση ενέργεια`,level:'critical'});
-    else if(d<=60) alerts.push({text:`Λήξη μισθωτηρίου σε ${d} ημέρες, ξεκίνα διαπραγματεύσεις ανανέωσης`,level:'warning'});
-    else if(d<=90) alerts.push({text:`Λήξη μισθωτηρίου σε ${d} ημέρες`,level:'info'});
+    // Το «Κρίσιμο:» και το «απαιτείται άμεση ενέργεια» τα έλεγε ήδη το χρώμα·
+    // η πρόταση λέει μόνο το γεγονός. Και το «σε 1 ημέρες» δεν γράφεται.
+    else if(d<=30) alerts.push({text:`Το μισθωτήριο λήγει ${d===0?'σήμερα':d===1?'αύριο':`σε ${d} ημέρες`}`,level:'critical'});
+    else if(d<=60) alerts.push({text:`Το μισθωτήριο λήγει σε ${d} ημέρες: ξεκίνα τη συζήτηση για ανανέωση`,level:'warning'});
+    else if(d<=90) alerts.push({text:`Το μισθωτήριο λήγει σε ${d} ημέρες`,level:'info'});
   }
   const unpaid=payments.filter(p=>!p.paid);
-  if(unpaid.length>=2) alerts.push({text:`${unpaid.length} εκκρεμείς πληρωμές, απαιτείται άμεση ενέργεια`,level:'critical'});
+  // Μόνο από δύο και πάνω, οπότε ο πληθυντικός είναι πάντα σωστός.
+  if(unpaid.length>=2) alerts.push({text:`${unpaid.length} απλήρωτα ενοίκια.`,level:'critical'});
   return alerts;
 }
 
@@ -260,7 +264,7 @@ export function MissingCriticalBar({ missing }:{ missing:FieldDecision[] }) {
  * διαφορετική διάταξη (κουμπί κάτω από το κείμενο, κουμπί δίπλα στο κείμενο) και
  * διαφορετική σειρά κειμένου. Δύο σχήματα για την ίδια πράξη, στην ίδια οθόνη.
  *
- * Η ΚΟΥΚΚΙΔΑ ΗΤΑΝ ΠΡΑΣΙΝΗ, ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΝΕΑ. Το όνομα ενός αρχείου που
+ * Η ΚΟΥΚΚΙΔΑ ΗΤΑΝ ΠΡΑΣΙΝΗ ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΝΕΑ. Το όνομα ενός αρχείου που
  * ανέβηκε δεν είναι «καλά νέα» — είναι κατάσταση. Παίρνει το χρώμα του
  * κειμένου, όπως κάθε άλλη κατάσταση της εφαρμογής.
  */
@@ -309,6 +313,20 @@ export const filledTenantIds = (t:{full_name?:string|null;afm?:string|null;lease
 };
 
 // ─── Payment Bar Chart ────────────────────────────────────────────────────────
+// ── Η ΚΑΘΥΣΤΕΡΗΣΗ ΣΕ ΤΡΙΑ ΣΚΑΛΙΑ, ΜΕ ΣΧΗΜΑ ΚΑΙ ΛΕΞΗ ─────────────────────────────
+// Ηταν τέσσερα χρώματα: πράσινο → ΜΠΛΕ → κίτρινο → κόκκινο. Το μπλε σε αυτή
+// την εφαρμογή σημαίνει «πάτησέ με» και η «μικρή καθυστέρηση» το φορούσε σαν
+// σύνδεσμο· και τα τέσσερα ξεχώριζαν ΜΟΝΟ με απόχρωση, άρα όχι για όποιον δεν
+// βλέπει χρώματα. Τρία σκαλιά από το κοινό λεξιλόγιο (lib/core/status.ts),
+// το καθένα με δικό του εικονίδιο μέσα στη μπάρα και λέξη στο υπόμνημα.
+type Lateness = 'ontime' | 'late' | 'unpaid'
+const LATENESS: Record<Lateness, { color: string; label: string; Icon: typeof Check }> = {
+  ontime: { color: statusColor('paid'),    label: 'Εμπρόθεσμη',      Icon: Check },
+  late:   { color: statusColor('partial'), label: 'Με καθυστέρηση',  Icon: Clock },
+  unpaid: { color: statusColor('overdue'), label: 'Απλήρωτη',        Icon: X },
+}
+const latenessOf = (p: RentPayment): Lateness => !p.paid ? 'unpaid' : (p.days_late || 0) > 0 ? 'late' : 'ontime'
+
 export function PaymentBars({ payments }:{payments:RentPayment[]}) {
   if(!payments.length) return (
     <EmptyState icon={<BarChart3 size={20}/>} title="Καμία πληρωμή ακόμη" hint="Μόλις καταγραφεί η πρώτη είσπραξη, το γράφημα 12 μηνών γεμίζει αυτόματα." />
@@ -319,11 +337,13 @@ export function PaymentBars({ payments }:{payments:RentPayment[]}) {
       <div style={{ display:'flex', alignItems:'flex-end', gap: 4, height:72, marginBottom:6 }}>
         {last12.map((p)=>{
           const late=p.days_late||0;
-          const color=!p.paid?'var(--negative)':late>14?'var(--warning)':late>0?'var(--info)':'var(--positive)';
+          const L=LATENESS[latenessOf(p)];
           return (
             <div key={p.id} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}
-              title={`${MONTHS_SHORT[p.period_month-1]} ${p.period_year}: ${p.paid?'Εξοφλήθη':'Εκκρεμεί'}${late>0?` (καθυστέρηση ${days(late)})`:''}`}>
-              <div style={{ width:'100%', height:p.paid?72:36, background:color, borderRadius:'3px 3px 0 0', opacity:0.8, transition:'height 0.4s ease' }}/>
+              title={`${MONTHS_SHORT[p.period_month-1]} ${p.period_year}: ${p.paid?'Εξοφλήθη':'Απλήρωτη'}${late>0?` (καθυστέρηση ${days(late)})`:''}`}>
+              <div style={{ width:'100%', height:p.paid?72:36, background:L.color, borderRadius:'3px 3px 0 0', transition:'height 0.4s ease', display:'flex', justifyContent:'center', paddingTop:4, color:'var(--on-tone)' }}>
+                <L.Icon size={10} strokeWidth={3} aria-hidden="true" />
+              </div>
             </div>
           );
         })}
@@ -336,10 +356,12 @@ export function PaymentBars({ payments }:{payments:RentPayment[]}) {
         ))}
       </div>
       <div style={{ display:'flex', flexWrap:'wrap' as const, gap:'10px 16px', marginTop:12 }}>
-        {[['var(--positive)','Εμπρόθεσμη'],['var(--info)','Μικρή καθυστέρηση'],['var(--warning)','Μεγάλη καθυστέρηση'],['var(--negative)','Εκκρεμεί']].map(([c,l])=>(
-          <div key={l} style={{ display:'flex', alignItems:'center', gap: 4 }}>
-            <div style={{ width:8, height:8, borderRadius:3, background:c, flexShrink:0 }}/>
-            <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans }}>{l}</span>
+        {Object.values(LATENESS).map(({color,label,Icon})=>(
+          <div key={label} style={{ display:'flex', alignItems:'center', gap: 4 }}>
+            <span style={{ width:14, height:14, borderRadius:3, background:color, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--on-tone)' }}>
+              <Icon size={9} strokeWidth={3} aria-hidden="true" />
+            </span>
+            <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans }}>{label}</span>
           </div>
         ))}
       </div>

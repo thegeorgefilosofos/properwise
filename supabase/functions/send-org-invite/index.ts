@@ -18,6 +18,7 @@ import { emailShell, eyebrow, h, p, button } from '../_shared/emailTemplates.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL } from '../_shared/site.ts'
 import { senderFrom } from '../_shared/sender.mjs'
+import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -46,7 +47,7 @@ function inviteEmail(orgName: string, inviter: string, role: string): { subject:
     footerNote: 'Ελαβες αυτό το email επειδή προστέθηκες σε ομάδα. Αν δεν το περίμενες, αγνόησέ το. · properwise.gr',
     bodyHtml: eyebrow('Πρόσκληση σε ομάδα')
       + h(`Προσκλήθηκες στο ${org}`)
-      + p(`${who} σε προσκάλεσε να συνεργαστείς στο PROPERWISE με ρόλο <strong class="ink" style="color:#1d1d1f;">${roleLabel(role)}</strong>. Δημιούργησε λογαριασμό με αυτό το email και θα βρεις την ομάδα να σε περιμένει.`)
+      + p(`${who} σε προσκάλεσε να συνεργαστείς στο PROPERWISE με ρόλο <strong class="ink" style="color:${C.ink};">${roleLabel(role)}</strong>. Δημιούργησε λογαριασμό με αυτό το email και θα βρεις την ομάδα να σε περιμένει.`)
       + button('Δημιουργία λογαριασμού', SIGNUP_URL),
   })
   return { subject, html }

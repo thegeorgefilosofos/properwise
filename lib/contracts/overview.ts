@@ -10,7 +10,7 @@
 // μελετήσει την αγορά· ανοίγει για να θυμηθεί τι έχει και πόσο του κοστίζει.
 // Η αγορά είναι η ΔΕΥΤΕΡΗ ερώτηση και μόνο για όποιον τη ρωτήσει.
 //
-// ΑΠΟ ΠΟΥ ΒΓΑΙΝΕΙ Η ΑΠΑΝΤΗΣΗ, ΚΑΙ ΓΙΑΤΙ ΟΧΙ ΑΠΟ ΦΟΡΜΑ
+// ΑΠΟ ΠΟΥ ΒΓΑΙΝΕΙ Η ΑΠΑΝΤΗΣΗ ΚΑΙ ΓΙΑΤΙ ΟΧΙ ΑΠΟ ΦΟΡΜΑ
 // Από τους λογαριασμούς που ο χρήστης ΗΔΗ έχει — τους περισσότερους τους έχει
 // σαρώσει από φωτογραφία, οπότε φέρουν πάροχο, ποσό και περίοδο. Καμία νέα
 // φόρμα, κανένα «συμπλήρωσε τα στοιχεία του συμβολαίου σου»: ό,τι μπορεί να
@@ -24,6 +24,7 @@
 
 import { expectedSeries, type ExpectedSeries } from '../expenses/expected';
 import type { LedgerEntry } from '../expenses/ledger';
+import { roundHalfUp } from '../core/money';
 
 /**
  * Οι κατηγορίες που έχουν πάροχο και συμβόλαιο. Η σειρά είναι η σειρά οθόνης.
@@ -40,7 +41,7 @@ export const CONTRACT_KINDS = [
 export type ContractKind = (typeof CONTRACT_KINDS)[number];
 
 /**
- * Τι ζητά η κάθε κενή κάρτα. ΔΙΑΦΟΡΕΤΙΚΟ ΑΝΑ ΚΑΤΗΓΟΡΙΑ, ΚΑΙ ΕΙΝΑΙ ΤΟ ΘΕΜΑ.
+ * Τι ζητά η κάθε κενή κάρτα. ΔΙΑΦΟΡΕΤΙΚΟ ΑΝΑ ΚΑΤΗΓΟΡΙΑ ΚΑΙ ΕΙΝΑΙ ΤΟ ΘΕΜΑ.
  *
  * Και οι επτά κάρτες έγραφαν την ίδια πρόταση: «Ανέβασε τον τελευταίο
  * λογαριασμό και συμπληρώνεται μόνο του». Επτά φορές το ίδιο κείμενο δεν είναι
@@ -140,7 +141,7 @@ export interface ContractCard {
 
 /** Το άθροισμα των μηνιαίων, για την κεφαλίδα. Μόνο ό,τι γνωρίζουμε. */
 export function totalMonthly(cards: readonly ContractCard[]): number {
-  return Math.round(cards.reduce((s, c) => s + (c.monthly ?? 0), 0) * 100) / 100;
+  return roundHalfUp(cards.reduce((s, c) => s + (c.monthly ?? 0), 0), 2);
 }
 
 /**
@@ -182,7 +183,7 @@ export function contractOverview(
       // Πολλοί πάροχοι στην ίδια κατηγορία (ρεύμα σπιτιού και γκαράζ): δείχνεται
       // ο μεγαλύτερος και το πλήθος το λέει η οθόνη.
       provider: (main.vendor || '').trim(),
-      monthly: Math.round(monthly * 100) / 100,
+      monthly: roundHalfUp(monthly, 2),
       everyMonths: main.everyMonths,
       occurrences: list.reduce((s, x) => s + x.occurrences, 0),
       lastMonth: list.map(x => x.lastMonth).sort().pop() || '',

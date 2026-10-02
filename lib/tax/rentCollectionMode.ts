@@ -67,9 +67,25 @@ export function rentCollectionMode(
   const ofYear = rows.filter(r => r.paid === true && r.period_year === year);
   const withMethod = ofYear.filter(r => !!(r.method || '').trim());
   const cash = withMethod.filter(r => (r.method || '').trim() === CASH);
+  return collectionModeFromCounts(withMethod.length, cash.length, leaseViaBank);
+}
 
-  if (withMethod.length > 0) {
-    return { viaBank: cash.length === 0, basis: 'payments', withMethod: withMethod.length, cash: cash.length };
+/**
+ * Ο ΙΔΙΟΣ ΚΑΝΟΝΑΣ, ΑΠΟ ΠΛΗΘΗ ΑΝΤΙ ΓΙΑ ΓΡΑΜΜΕΣ.
+ *
+ * Η πύλη του λογιστή δεν βλέπει τις εισπράξεις μία μία: η βάση της στέλνει
+ * μόνο πόσες έχουν τρόπο και πόσες από αυτές είναι μετρητά. Ο κανόνας μένει
+ * ένας, εδώ, ώστε η πύλη και η Λογιστική να μη διαφωνήσουν για την έκπτωση.
+ */
+export function collectionModeFromCounts(
+  withMethod: number,
+  cash: number,
+  leaseViaBank: boolean | null,
+): RentCollectionMode {
+  const w = Math.max(0, Math.floor(Number(withMethod) || 0));
+  const c = Math.min(w, Math.max(0, Math.floor(Number(cash) || 0)));
+  if (w > 0) {
+    return { viaBank: c === 0, basis: 'payments', withMethod: w, cash: c };
   }
   if (leaseViaBank !== null) {
     return { viaBank: leaseViaBank, basis: 'lease', withMethod: 0, cash: 0 };

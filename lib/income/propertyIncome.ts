@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// ΤΑ ΕΣΟΔΑ ΕΝΟΣ ΑΚΙΝΗΤΟΥ ΩΣ ΣΗΜΕΡΑ, ΚΑΙ Η ΑΠΟΔΟΣΗ ΤΟΥΣ, ΜΙΑ ΦΟΡΑ
+// ΤΑ ΕΣΟΔΑ ΕΝΟΣ ΑΚΙΝΗΤΟΥ ΩΣ ΣΗΜΕΡΑ ΚΑΙ Η ΑΠΟΔΟΣΗ ΤΟΥΣ, ΜΙΑ ΦΟΡΑ
 // ─────────────────────────────────────────────────────────────────────────
 // ΤΟ ΣΦΑΛΜΑ. Το ίδιο βραχυχρόνιο ακίνητο έβγαινε 0,00% στην Επισκόπηση, 6,60%
 // στο Χαρτοφυλάκιο και 14,70% στις Αποδόσεις. Τρεις οθόνες, τρεις ορισμοί:
@@ -30,6 +30,7 @@
 import { declarableGross, declarableGrossOrTotal, type StayAmountLike } from '@/lib/clients/stayAmounts'
 import { staysOfYearToDate } from '@/lib/clients/reports'
 import { daysBetweenIso } from '@/lib/core/time'
+import { roundHalfUp } from '../core/money';
 
 export interface IncomeRent {
   amount: number | null
@@ -122,7 +123,7 @@ export function propertyIncome(input: PropertyIncomeInput): PropertyIncome {
     source = 'none'
   }
 
-  const cents = (x: number) => Math.round(x * 100) / 100
+  const cents = (x: number) => roundHalfUp(x, 2)
   const value = Number(input.value) || 0
   const annual = cents(annualized)
   return {

@@ -6,7 +6,7 @@ import { leaveDevice } from '@/lib/localPrivacy'
 import Link from 'next/link'
 import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import PasswordEye from '../PasswordEye'
-import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password'
+import { checkPassword, PASSWORD_MIN_HINT, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
 import { failed } from '@/lib/core/dbError';
 import { BackLink } from '../BackLink'
@@ -171,7 +171,7 @@ export default function ResetPasswordPage() {
   )
 
   return (
-    <div className="auth-split" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
+    <div data-mode="dark" className="auth-split" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
 
       <a href="#main" className="skip-link">Μετάβαση στη φόρμα</a>
 
@@ -248,7 +248,7 @@ export default function ResetPasswordPage() {
             <>
               {/* ΤΟ ΤΕΤΑΡΤΟ ΑΔΙΕΞΟΔΟ ΤΗΣ ΙΔΙΑΣ ΟΙΚΟΓΕΝΕΙΑΣ. Οι δύο πρώτες οθόνες
                   της επαναφοράς προσφέρουν «Επιστροφή στη σύνδεση» και η
-                  τελευταία «Μετάβαση στον πίνακα». Αυτή εδώ, όπου ο χρήστης
+                  τελευταία «Συνέχεια στην εφαρμογή». Αυτή εδώ, όπου ο χρήστης
                   φτάνει από σύνδεσμο σε email, δεν είχε τίποτα: ούτε πίσω,
                   ούτε αρχική. Οποιος άνοιξε τον σύνδεσμο κατά λάθος έμενε
                   μπροστά σε μια φόρμα που δεν ζήτησε. */}
@@ -259,7 +259,7 @@ export default function ResetPasswordPage() {
                 <div>
                   <label htmlFor="rp-password" style={label}>Νέος κωδικός</label>
                   <div style={{ position: 'relative' }}>
-                    <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_LABEL} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
+                    <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_HINT} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
                       onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                     {eye}
                   </div>
@@ -285,10 +285,10 @@ export default function ResetPasswordPage() {
               <h1 style={h2s}>Ο κωδικός άλλαξε</h1>
               <p style={subs}>{othersOut
                 ? 'Αποσυνδέσαμε κάθε άλλη συσκευή όπου ήταν ανοιχτός ο λογαριασμός σου.'
-                : 'Ο νέος κωδικός ισχύει, αλλά οι άλλες συσκευές δεν αποσυνδέθηκαν. Κλείσ’ τες με την «Αποσύνδεση από όλες τις συσκευές», στην ενότητα Ασφάλεια.'}</p>
+                : 'Ο νέος κωδικός ισχύει, αλλά οι άλλες συσκευές δεν αποσυνδέθηκαν. Κλείσ’ τες με την «Αποσύνδεση από όλες τις συσκευές», στον «Λογαριασμό», ενότητα «Ασφάλεια».'}</p>
               {/* Προορισμός και όχι ενέργεια: με `href` γίνεται σύνδεσμος που ανοίγει
                   και σε νέα καρτέλα, με την ίδια ακριβώς όψη. */}
-              <Btn variant="primary" href="/dashboard" field>Μετάβαση στον πίνακα</Btn>
+              <Btn variant="primary" href="/dashboard" field>Συνέχεια στην εφαρμογή</Btn>
             </div>
           )}
         </div>

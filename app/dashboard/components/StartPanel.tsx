@@ -66,7 +66,7 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
     <div style={{ ...shell, padding: '18px 20px 16px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: T.sp.lg, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ ...TT.label, color: 'var(--accent)' }}>ΔΟΚΙΜΑΣΤΙΚΗ ΠΕΡΙΟΔΟΣ</div>
+          <div style={{ ...TT.label, color: 'var(--accent)' }}>ΔΟΚΙΜΗ</div>
           <div style={{ ...TT.h2, marginTop: 6 }}>Από πού ξεκινάς</div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -127,7 +127,7 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
         <div style={{ marginLeft: 'auto' }}><Btn variant="ghost" onClick={() => onToggle(true)}>Σύμπτυξη</Btn></div>
       </div>
       <div style={{ ...TT.caption, marginTop: 10 }}>
-        Το παράδειγμα αποτελείται από ένα ακίνητο που χρησιμοποίησε το PROPERWISE μια ολόκληρη χρονιά, ώστε να διαπιστώσεις εύκολα και γρήγορα τις δυνατότητές του.
+        Το παράδειγμα είναι ένα ακίνητο με μία ολόκληρη χρονιά στο PROPERWISE, για να δεις τι κάνει η εφαρμογή.
       </div>
     </div>
   );

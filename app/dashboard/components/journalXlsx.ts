@@ -14,6 +14,7 @@ import {
   trialBalance, journalTotals, auditJournal,
   type JournalLine,
 } from '@/lib/accounting/journal';
+import { roundHalfUp } from '@/lib/core/money';
 
 const A1 = (r: number, c: number) => XLSX.utils.encode_cell({ r, c });
 const toDate = (s: string): Date | string => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : (s || ''); };
@@ -140,7 +141,7 @@ export function downloadJournalWorkbook(opts: {
     for (const c of [2, 3, 4, 5]) {
       const range = `${A1(HR + 1, c)}:${A1(lastData, c)}`;
       const sum = tb.reduce((s, r) => s + (c === 2 ? r.debit : c === 3 ? r.credit : c === 4 ? (r.balance > 0 ? r.balance : 0) : (r.balance < 0 ? -r.balance : 0)), 0);
-      setCell(ws, totalR, c, { t: 'n', f: `SUM(${range})`, v: Math.round(sum * 100) / 100, z: FMT.eur, s: S.totNum });
+      setCell(ws, totalR, c, { t: 'n', f: `SUM(${range})`, v: roundHalfUp(sum, 2), z: FMT.eur, s: S.totNum });
     }
     ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: HR, c: 0 }, e: { r: lastData, c: NC - 1 } }) };
     sheetFinish(ws, { brandMark: true });

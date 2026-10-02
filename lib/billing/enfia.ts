@@ -6,7 +6,7 @@
 // ποσό εκκαθαρίζεται από την ΑΑΔΕ.
 // ═══════════════════════════════════════════════════════════════════════════
 import { athensToday } from '@/lib/core/time'
-import { cents } from '@/lib/core/money'
+import { cents } from '../core/money'
 
 // Πίνακας Συντελεστή Βασικού Φόρου (ΣΒΦ) κτισμάτων ανά Τιμή Ζώνης (€/τ.μ.).
 // Άρθρο 43 ν.4916/2022 (Ενότητα Α΄, παρ. 2, περ. α΄).
@@ -14,6 +14,19 @@ export const ENFIA_ZONE_TAX: Record<string, number> = {
   '0_750': 2.00, '751_1500': 2.80, '1501_2500': 3.70, '2501_3000': 4.50,
   '3001_3500': 7.60, '3501_4000': 9.20, '4001_4500': 11.10, '4501_5000': 13.40, 'over_5000': 16.20,
 }
+// ═══ ΒΟΗΘΗΤΙΚΟΙ ΧΩΡΟΙ (ΑΠΟΘΗΚΗ, ΘΕΣΗ ΣΤΑΘΜΕΥΣΗΣ) ══════════════════════════════
+// Πηγές: ν.4223/2013 άρθρο 4 (κύριος φόρος κτισμάτων, συντελεστής βοηθητικών
+// χώρων 0,10· ο συντελεστής ορόφου και ο συντελεστής πρόσοψης δεν εφαρμόζονται
+// στους βοηθητικούς χώρους)· taxheaven «ΕΝΦΙΑ: Ο υπολογισμός του κυρίου φόρου
+// στα κτίσματα», https://www.taxheaven.gr/news/42443/enfia-o-ypologismos-toy-kyrioy-foroy-sta-ktismata·
+// οι πίνακες ΣΒΦ και παλαιότητας του ν.4916/2022 που ήδη εφαρμόζονται εδώ.
+//
+//   φόρος βοηθητικού = τ.μ. × βασικός φόρος ζώνης × συντελεστής παλαιότητας × 0,10
+//
+// Η μηχανή έλεγε μέχρι τώρα «δεν βγαίνει αυτόματη εκτίμηση» για αποθήκη και
+// θέση στάθμευσης, επειδή ο συντελεστής δεν υπήρχε στο αρχείο.
+export const ENFIA_AUX_COEF = 0.10
+
 // Συντελεστής ορόφου (άρθρο 4, δεν τροποποιήθηκε από τον ν.4916/2022):
 // υπόγειο 0,98· ισόγειο & 1ος 1,00· 2ος-3ος 1,01· 4ος-5ος 1,02· 6ος+ 1,03.
 export const ENFIA_FLOOR_COEF: Record<string, number> = {
@@ -395,6 +408,11 @@ export function wealthReductionPct(totalValue: number): number {
 
 export interface ENFIAInput {
   sqm: number
+  /**
+   * Βοηθητικοί χώροι (αποθήκη, θέση στάθμευσης) σε τ.μ. Ίδια ζώνη και ίδια
+   * παλαιότητα με το κτίσμα, χωρίς όροφο, επί `ENFIA_AUX_COEF`.
+   */
+  auxSqm?: number
   zone: string
   floor?: string
   age?: string
@@ -415,6 +433,8 @@ export interface ENFIAInput {
 }
 export interface ENFIAResult {
   basic: number
+  /** Κύριος φόρος βοηθητικών χώρων, χωριστή γραμμή (0 όταν δεν υπάρχουν). */
+  auxiliary: number
   extra: number          // πρόσθετος φόρος Ενότητας Γ (αξία ακινήτου >400.000€)
   supplementary: number  // προσαύξηση κύριου φόρου (συνολική αξία >500.000€)
   subtotal: number
@@ -425,8 +445,9 @@ export interface ENFIAResult {
 
 /** Εκτίμηση ΕΝΦΙΑ. Επιστρέφει null αν λείπουν τα βασικά (τ.μ./ζώνη). */
 export function estimateENFIA(input: ENFIAInput): ENFIAResult | null {
-  const sqm = Number(input.sqm) || 0
-  if (sqm <= 0 || !input.zone || !(input.zone in ENFIA_ZONE_TAX)) return null
+  const sqm = Math.max(0, Number(input.sqm) || 0)
+  const aux = Math.max(0, Number(input.auxSqm) || 0)
+  if ((sqm <= 0 && aux <= 0) || !input.zone || !(input.zone in ENFIA_ZONE_TAX)) return null
   const ownership = input.ownership == null ? 100 : Math.max(0, Math.min(100, input.ownership))
   // ΟΤΑΝ ΛΕΙΠΕΙ ΟΡΟΦΟΣ Ή ΠΑΛΑΙΟΤΗΤΑ, Ο ΣΥΝΤΕΛΕΣΤΗΣ ΕΙΝΑΙ 1,00 — ΟΧΙ ΜΑΝΤΕΨΙΑ.
   //
@@ -439,26 +460,37 @@ export function estimateENFIA(input: ENFIAInput): ENFIAResult | null {
   // βάζει στην άκρη λάθος ποσό και δεν έχει τρόπο να το δει.
   const basic = sqm * ENFIA_ZONE_TAX[input.zone] *
     enfiaFloorCoef(input.floor) * enfiaAgeCoef(input.age) * (ownership / 100)
+  // Βοηθητικοί χώροι: ΧΩΡΙΣ συντελεστή ορόφου (ν.4223/2013 άρθρο 4). Η σειρά
+  // των πράξεων είναι αυτή του τύπου· 10 × 3,70 × 1,05 × 0,10 = 3,885 → 3,89€.
+  const auxiliary = aux * ENFIA_ZONE_TAX[input.zone] * enfiaAgeCoef(input.age) * ENFIA_AUX_COEF * (ownership / 100)
   const totalVal = Number(input.totalValue) || 0
   // Ενότητα Γ: πρόσθετος φόρος ακινήτου >400.000€, εφόσον συνολική περιουσία >300.000€.
   const propVal = Number(input.propertyValue) || 0
   const extra = totalVal > ENFIA_EXTRA_WEALTH_THRESHOLD ? enfiaExtraPropertyTax(propVal, ownership) : 0
-  // Κύριος φόρος (Ενότητα Δ) = κτίσματα (Α) + πρόσθετος (Γ).
-  const kyrios = basic + extra
+  // Κύριος φόρος (Ενότητα Δ) = κτίσματα (Α, μαζί οι βοηθητικοί χώροι) + πρόσθετος (Γ).
+  // ΚΑΘΕ ΓΡΑΜΜΗ ΣΤΡΟΓΓΥΛΕΥΕΤΑΙ ΠΡΩΤΗ, ΤΟ ΣΥΝΟΛΟ ΕΙΝΑΙ ΤΟ ΑΘΡΟΙΣΜΑ ΤΟΥΣ
+  // (απόφαση ιδιοκτήτη, 02.10.2026: το μισό λεπτό πάει στο αμέσως μεγαλύτερο).
+  // Όπως σε κάθε εκκαθαριστικό: ό,τι γράφεται σε γραμμή είναι το ποσό που
+  // μετρά παρακάτω, οπότε η ανάλυση ξαναβγαίνει με κομπιουτεράκι. Με ακατέργαστα
+  // ενδιάμεσα, 333,525 + 3,885 γράφονταν 333,53 + 3,89 = 337,42 αλλά η μείωση
+  // μετρούσε πάνω σε 337,41. Και η μείωση 25% του 240,38 (60,095) γραφόταν
+  // 60,10 δίπλα σε ετήσιο που έβγαινε από τα 60,095.
+  const basicR = cents(basic), auxR = cents(auxiliary), extraR = cents(extra)
+  const kyrios = cents(basicR + auxR + extraR)
   // Προσαύξηση κύριου φόρου για συνολική αξία >500.000€ (Ενότητα Ε).
   let suppl = 0
   if (totalVal > ENFIA_SURCHARGE_THRESHOLD) {
     const bracket = ENFIA_SURCHARGE_BRACKETS.find(b => totalVal <= b.limit)
-    if (bracket) suppl = kyrios * (bracket.pct / 100)
+    if (bracket) suppl = cents(kyrios * (bracket.pct / 100))
   }
-  const subtotal = kyrios + suppl
+  const subtotal = cents(kyrios + suppl)
   // Μειώσεις: αυτόματη ανά συνολική αξία (§2Α) ΚΑΙ η μεγαλύτερη χειροκίνητη, πολλαπλασιαστικά.
   const wealthPct = wealthReductionPct(totalVal)
   // Η ΑΞΙΑ ΠΟΥ ΚΡΙΝΕΙ ΤΟ ΚΑΤΩΦΛΙ ΕΙΝΑΙ ΤΗΣ ΚΑΤΟΙΚΙΑΣ. Δες `enfiaReductionPct`.
   const homeVal = propVal || totalVal
   const manualPct = Math.max(0, ...(input.reductions ?? []).map(r => enfiaReductionPct(r, homeVal, input.year, input.atticaMainland)))
   const combinedFrac = 1 - (1 - wealthPct / 100) * (1 - manualPct / 100)
-  const reductionAmount = subtotal * combinedFrac
+  const reductionAmount = cents(subtotal * combinedFrac)
   // ΚΑΜΙΑ ΔΟΣΗ ΔΕΝ ΒΓΑΙΝΕΙ ΑΠΟ ΕΔΩ. Η μηχανή επέστρεφε `installment` ίσο με
   // ceil(ετήσιο/12), δηλαδή δήλωνε δώδεκα δόσεις ως γεγονός — ενώ η οθόνη του
   // ΕΝΦΙΑ και ο δημόσιος υπολογιστής αρνούνται και οι δύο ρητά να το πουν,
@@ -466,8 +498,8 @@ export function estimateENFIA(input: ENFIAInput): ENFIAResult | null {
   // επιβίωνε μόνο μέσα σε τεστ. Στρογγυλοποιούμε ΜΙΑ φορά, στο ετήσιο.
   const annual = cents(Math.max(0, subtotal - reductionAmount))
   return {
-    basic: cents(basic), extra: cents(extra), supplementary: cents(suppl), subtotal: cents(subtotal),
-    reductionPct: Math.round(combinedFrac * 100), reductionAmount: cents(reductionAmount), annual,
+    basic: basicR, auxiliary: auxR, extra: extraR, supplementary: suppl, subtotal,
+    reductionPct: Math.round(combinedFrac * 100), reductionAmount, annual,
   }
 }
 
@@ -508,8 +540,11 @@ export function zoneKeyFromPricePerSqm(pricePerSqm: number): string | null {
 // και δεν επινοείται εδώ. Οταν ο πίνακας δεν ταιριάζει στο ακίνητο, η σωστή
 // απάντηση είναι «δεν ξέρουμε» — όχι ένα νούμερο που μοιάζει με φόρο.
 
-/** Γιατί δεν βγαίνει εκτίμηση: γήπεδο, βοηθητικός χώρος ή επαγγελματική αποθήκη. */
-export type EnfiaTypeBlock = 'land' | 'auxiliary' | 'warehouse'
+/**
+ * Γιατί δεν βγαίνει εκτίμηση: γήπεδο ή επαγγελματική αποθήκη. Ο βοηθητικός
+ * χώρος έφυγε από εδώ: υπολογίζεται πλέον με `ENFIA_AUX_COEF`.
+ */
+export type EnfiaTypeBlock = 'land' | 'warehouse'
 
 /**
  * Τι λέει η οθόνη για κάθε περίπτωση. Χωρίς ποσό, με τον λόγο.
@@ -521,7 +556,6 @@ export type EnfiaTypeBlock = 'land' | 'auxiliary' | 'warehouse'
  */
 export const ENFIA_TYPE_BLOCK_NOTE: Record<EnfiaTypeBlock, string> = {
   land: 'Ο ΕΝΦΙΑ των γηπέδων και των οικοπέδων υπολογίζεται με άλλον πίνακα του νόμου, που δεν υπάρχει στην εφαρμογή. Δεν βγαίνει αυτόματη εκτίμηση.',
-  auxiliary: 'Οι βοηθητικοί χώροι (αποθήκη πολυκατοικίας, θέση στάθμευσης) έχουν δικό τους συντελεστή, που δεν υπάρχει στην εφαρμογή. Δεν βγαίνει αυτόματη εκτίμηση.',
   warehouse: 'Για την επαγγελματική αποθήκη δεν υπάρχει στην εφαρμογή ο συντελεστής που αναλογεί στη χρήση της. Δεν βγαίνει αυτόματη εκτίμηση.',
 }
 
@@ -543,9 +577,17 @@ export function enfiaTypeBlock(propType: string | null | undefined): EnfiaTypeBl
   if (!t) return null
   if (t === 'land' || t.includes('οικοπεδ') || t.includes('γηπεδ') || t.includes('αγροτεμαχ')) return 'land'
   if (t === 'warehouse' || t.includes('επαγγελματικη αποθηκ')) return 'warehouse'
-  if (t === 'parking' || t === 'storage') return 'auxiliary'
-  if (t.includes('αποθηκ') || t.includes('σταθμευσ') || t.includes('γκαραζ')) return 'auxiliary'
   return null
+}
+
+/**
+ * Είναι ο τύπος βοηθητικός χώρος (αποθήκη πολυκατοικίας, θέση στάθμευσης);
+ * Τότε ολόκληρο το εμβαδόν φορολογείται με τον συντελεστή βοηθητικών χώρων.
+ */
+export function enfiaIsAuxiliary(propType: string | null | undefined): boolean {
+  const t = flat(String(propType ?? ''))
+  if (!t || enfiaTypeBlock(propType)) return false
+  return t === 'parking' || t === 'storage' || t.includes('αποθηκ') || t.includes('σταθμευσ') || t.includes('γκαραζ')
 }
 
 /**
@@ -597,6 +639,7 @@ export function estimateENFIAFromFacts(facts: {
 }): ENFIAResult | null {
   // Πρώτα ο τύπος: αν ο πίνακας των κτισμάτων δεν ισχύει, δεν υπάρχει εκτίμηση.
   if (enfiaTypeBlock(facts.propType)) return null
+  const auxOnly = enfiaIsAuxiliary(facts.propType)
   const sqm = Number(facts.sqm) || 0
   const value = Number(facts.value) || 0
   if (sqm <= 0 || value <= 0) return null
@@ -612,8 +655,12 @@ export function estimateENFIAFromFacts(facts: {
   // (το κάνει η enfiaExtraPropertyTax). Η μείωση και η προσαύξηση κοιτούν τη
   // ΣΥΝΟΛΙΚΗ ΠΕΡΙΟΥΣΙΑ του ανθρώπου, που είναι το μερίδιό του. Μονο-ακίνητη
   // εκτίμηση: άλλο ακίνητο δεν ξέρουμε.
+  // ΑΠΟΘΗΚΗ Ή ΘΕΣΗ ΣΤΑΘΜΕΥΣΗΣ ΩΣ ΧΩΡΙΣΤΟ ΑΚΙΝΗΤΟ: ολόκληρο το εμβαδόν είναι
+  // βοηθητικός χώρος (ν.4223/2013 άρθρο 4, συντελεστής 0,10, χωρίς όροφο). Η
+  // τιμή ζώνης βγαίνει με την ίδια προσέγγιση αξία ÷ τ.μ. όπως σε κάθε άλλο
+  // τύπο· η αξία του ακινήτου μετρά στη μείωση, γιατί είναι η αξία του.
   return estimateENFIA({
-    sqm, zone, floor, age, ownership: pct,
+    sqm: auxOnly ? 0 : sqm, auxSqm: auxOnly ? sqm : 0, zone, floor, age, ownership: pct,
     totalValue: value * pct / 100, propertyValue: value, reductions: [],
   })
 }

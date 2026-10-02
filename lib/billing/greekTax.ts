@@ -79,6 +79,33 @@ export const FIRST_YEAR_NEW_BRACKETS = 2026;
 export const FIRST_YEAR_BANK_RECEIPT = 2027;
 
 /**
+ * Ο πρώτος μήνας της `FIRST_YEAR_BANK_RECEIPT` που πιάνει η κύρωση: Ιούλιος.
+ *
+ * ΠΗΓΗ: απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026), όπως τη γράφει και ο
+ * οδηγός app/odigos/enoikio-meso-trapezas: «Για το 2027 η κύρωση αφορά
+ * μισθώματα που εισπράττονται μετρητά από 1.7.2027». Ο κώδικας εφάρμοζε την
+ * κύρωση σε ΟΛΗ τη χρήση 2027: σε 20.000€ ενοίκια μετρητοίς φορολογούσε
+ * 20.000€ αντί για 19.500€, γιατί αφαιρούσε την έκπτωση και από τους έξι μήνες
+ * πριν από την έναρξη.
+ */
+export const FIRST_MONTH_BANK_RECEIPT = 7;
+
+/**
+ * Τι μέρος του ενοικίου της χρήσης πέφτει μέσα στην περίοδο της κύρωσης: 0 ως
+ * το 2026, 1 από το 2028. Το 2027 μετρούν οι μήνες από τον Ιούλιο: με βάρη ανά
+ * μήνα (ποσό ή νύχτες, Ιανουάριος πρώτος) το μερίδιό τους, αλλιώς ισόποσα 6/12.
+ * Χωρίς έτος: 0, όπως το `bankReceiptMatters`.
+ */
+export function bankReceiptPenaltyShare(year?: number | null, monthWeights?: readonly number[]): number {
+  if (year == null || !isFinite(year) || year < FIRST_YEAR_BANK_RECEIPT) return 0;
+  if (year > FIRST_YEAR_BANK_RECEIPT) return 1;
+  const w = monthWeights?.length === 12 ? monthWeights.map(x => (Number.isFinite(x) && x > 0 ? x : 0)) : null;
+  const total = w ? w.reduce((a, b) => a + b, 0) : 0;
+  if (!w || total <= 0) return (12 - FIRST_MONTH_BANK_RECEIPT + 1) / 12;
+  return w.slice(FIRST_MONTH_BANK_RECEIPT - 1).reduce((a, b) => a + b, 0) / total;
+}
+
+/**
  * Η κλίμακα ΤΟΥ ΕΤΟΥΣ ΠΟΥ ΑΠΟΚΤΗΘΗΚΕ ΤΟ ΕΙΣΟΔΗΜΑ — όχι του έτους υποβολής.
  *
  * Χωρίς έτος επιστρέφει τη νέα: κάθε καλών που δεν ξέρει για ποια χρονιά μιλά,
@@ -144,6 +171,7 @@ export function effectiveRentalRate(taxable: number, brackets: TaxBracket[] = RE
  * άλλο ποσοστό σε κάθε άλλη οθόνη.
  */
 import { fp, fn, fe } from '@/lib/core/format';
+import { roundHalfUp } from '../core/money';
 
 export const taxRateLabel = (rate: number): string => fp(rate * 100);
 
@@ -414,7 +442,7 @@ export function isMunicipalTaxExempt(opts: { sqm?: number | null; isHouse?: bool
 /** Τέλος παρεπιδημούντων: 0,5% επί των μεικτών, ή 0€ αν ισχύει η εξαίρεση. */
 export function municipalAccommodationTax(gross: number, opts: { sqm?: number | null; isHouse?: boolean; propertyCount?: number; individual?: boolean } = {}): number {
   if (isMunicipalTaxExempt(opts)) return 0;
-  return Math.round(Math.max(0, gross) * MUNICIPAL_ACCOM_TAX_RATE * 100) / 100;
+  return roundHalfUp(Math.max(0, gross) * MUNICIPAL_ACCOM_TAX_RATE, 2);
 }
 
 export const MUNICIPAL_ACCOM_SUMMARY =

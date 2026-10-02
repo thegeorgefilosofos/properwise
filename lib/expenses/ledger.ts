@@ -25,6 +25,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { resolveCategory, BY_SLUG } from './taxonomy';
+import { roundHalfUp } from '../core/money';
 
 /**
  * Ο ΤΙΤΛΟΣ ΟΤΑΝ ΔΕΝ ΥΠΑΡΧΕΙ ΤΙΤΛΟΣ.
@@ -394,5 +395,5 @@ export function monthlyAverage(entries: LedgerEntry[], minMonths = 2): Recurring
              + (+last.slice(5, 7) - +first.slice(5, 7)) + 1;
 
   if (span < minMonths) return { perMonth: null, months: span, total };
-  return { perMonth: Math.round((total / span) * 100) / 100, months: span, total };
+  return { perMonth: roundHalfUp((total / span), 2), months: span, total };
 }
