@@ -2,12 +2,12 @@
 // Sources: δελτία επιτοκίων κάθε τράπεζας (source_url ανά γραμμή), greece20.gov.gr, ypen.gov.gr, ΑΑΔΕ, bankofgreece.gr, ECB
 
 import { rentalIncomeTax, RENTAL_TAX_SUMMARY_2026 } from '@/lib/billing/greekTax'
-import { presumptiveDeductionRate } from '@/lib/billing/consolidate'
+import { presumptiveDeductionRateForYear } from '@/lib/billing/consolidate'
 import { fe, fp } from '@/components/tokens';
 import { SPITI_MOU } from '@/lib/loans/recommend'
 import { programDateLabel } from '@/lib/loans/programStatus'
 import { EXOIKONOMO_2025, ANAVATHMIZO, openEnergyPrograms, joinGreek } from '@/lib/loans/energyPrograms'
-import { athensToday } from '@/lib/core/time'
+import { athensToday, athensParts } from '@/lib/core/time'
 import { feWhole } from '@/lib/core/format'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b'
 
@@ -367,7 +367,7 @@ export const mergeBanks = (live: RawBank[]): ComparisonBank[] =>
 // ΥΠΟΛΟΓΙΣΜΟΣ έρχεται από το lib/billing/greekTax. Με την πρώτη αλλαγή του νόμου,
 // ο πίνακας θα έδειχνε τα παλιά κλιμάκια και το ποσό δίπλα του τα νέα — σιωπηλά,
 // χωρίς κανένα σφάλμα. Η κλίμακα για εμφάνιση ζει στο RENTAL_TAX_ROWS_2026 και η
-// έκπτωση στο presumptiveDeductionRate (lib/billing/consolidate).
+// έκπτωση στο presumptiveDeductionRateForYear (lib/billing/consolidate).
 // ΚΑΙ ΤΟ `fma_rate:0.03` ΕΦΥΓΕ, ΓΙΑΤΙ ΗΤΑΝ ΔΕΥΤΕΡΟ ΚΑΙ ΛΑΘΟΣ ΑΝΤΙΓΡΑΦΟ.
 // Ο φόρος μεταβίβασης είναι 3,09% (3% συν 3% υπέρ ΟΤΑ επί του φόρου) και ζει
 // στο `TRANSFER_TAX_RATE` του lib/accounting/transfer.ts, που τον υπολογίζει
@@ -592,9 +592,14 @@ export function calcRentalTax(annualRental:number):number {
   return rentalIncomeTax(annualRental)
 }
 
-/** Φορολογητέο ενοίκιο μετά την τεκμαρτή έκπτωση — ΜΙΑ πηγή για το 5% και τον όρο του. */
-export function taxableRental(annualRental:number, rentsPaidViaBank=true):number {
-  return Math.max(0, annualRental) * (1 - presumptiveDeductionRate(rentsPaidViaBank))
+/** Φορολογητέο ενοίκιο μετά την τεκμαρτή έκπτωση — ΜΙΑ πηγή για το 5% και τον όρο του.
+ *
+ *  02.10.2026: ο συντελεστής ήταν τυφλός στη χρονιά (`presumptiveDeductionRate`)
+ *  και έκοβε την έκπτωση για μετρητά ήδη από το 2026. Η προϋπόθεση της
+ *  τραπεζικής είσπραξης ισχύει για μισθώματα από 1.7.2027, οπότε μετράει η
+ *  χρήση: προεπιλογή η τρέχουσα. */
+export function taxableRental(annualRental:number, rentsPaidViaBank=true, taxYear:number=athensParts().year):number {
+  return Math.max(0, annualRental) * (1 - presumptiveDeductionRateForYear(taxYear, rentsPaidViaBank))
 }
 
 export const fmtEur=(n:number)=>fe(n)

@@ -38,6 +38,7 @@ import { roleLabel } from '@/lib/contacts/roles';
 import { rentalIncomeTax, rentalRowsForYear, rentalBracketsForYear } from '@/lib/billing/greekTax';
 import { athensParts } from '@/lib/core/time';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
+import { presumptiveDeductionRateForYear, bankReceiptMatters } from '@/lib/billing/presumptive';
 import {
   TENANT_FIELDS,
   missingCritical,
@@ -369,13 +370,19 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
   // υπολογιζόταν πριν πάντα στο 100%, οπότε το app έδειχνε μεγαλύτερο φόρο από
   // τα Λογιστικά για το ίδιο ενοίκιο.
   const viaBank=tenant.e_payment!==false;
-  const deductionRate=viaBank?PRESUMPTIVE_DEDUCTION_RATE:0;
-  const taxable=annualRent*(1-deductionRate);
   // Η ΚΛΙΜΑΚΑ ΠΟΥ ΔΕΙΧΝΕΙ Η ΟΘΟΝΗ ΕΙΝΑΙ Η ΚΛΙΜΑΚΑ ΠΟΥ ΥΠΟΛΟΓΙΖΕΙ ΚΑΙ Η ΧΡΟΝΙΑ
   // ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ. Η προβολή αφορά το ΤΡΕΧΟΝ μίσθωμα, όχι περασμένη χρήση,
   // οπότε η χρονιά είναι η σημερινή — και όχι ένα «2026» καρφωμένο σε τρία
   // σημεία, που θα έμενε στην οθόνη ολόκληρο το 2027.
   const taxYear=athensParts().year;
+  // 02.10.2026: ήταν `viaBank ? 5% : 0` χωρίς χρονιά. Για τη χρήση 2026 το
+  // ενοίκιο με μετρητά έχανε την έκπτωση που ο νόμος δίνει ακόμη: η
+  // προϋπόθεση της τράπεζας ισχύει για μισθώματα από 1.7.2027. Ο συντελεστής
+  // βγαίνει πλέον από τη χρήση (2027: μισή χρονιά, 2028 και μετά: ολόκληρη).
+  const cashMatters=bankReceiptMatters(taxYear);
+  const deductionRate=presumptiveDeductionRateForYear(taxYear,viaBank);
+  const taxable=annualRent*(1-deductionRate);
+  const ratePct=fp(deductionRate*100);
   const tax=taxable>0?rentalIncomeTax(taxable,rentalBracketsForYear(taxYear)):0;
   const effRate=annualRent>0?tax/annualRent:0;
   const isCommercial=tenant.lease_category==='commercial';
@@ -409,8 +416,12 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
           : 'Αν αποκτήσεις δεύτερο ακίνητο που αποδίδει, το άθροισμα μπορεί να ανεβάσει κλιμάκιο και ο φόρος να μην είναι το άθροισμα των δύο εκτιμήσεων.'}{' '}
         Ενοίκιο {fe(tenant.monthly_rent||0)}/μήνα, τύπος μίσθωσης «{tenant.lease_category?LEASE_CATEGORY_LABELS[tenant.lease_category]:ABSENT}»
         {viaBank
-          ? `, με τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} (φορολογητέο ${fe(taxable)}) επειδή το ενοίκιο εισπράττεται μέσω τράπεζας.`
-          : `. Επειδή το ενοίκιο δεν δηλώνεται ως ηλεκτρονική είσπραξη, η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} δεν εφαρμόζεται και φορολογούνται ολόκληρα τα ακαθάριστα.`}
+          ? `, με τεκμαρτή έκπτωση ${ratePct} (φορολογητέο ${fe(taxable)})${cashMatters?' επειδή το ενοίκιο εισπράττεται μέσω τράπεζας':''}.`
+          : !cashMatters
+            ? `, με τεκμαρτή έκπτωση ${ratePct} (φορολογητέο ${fe(taxable)}). Για τη χρήση ${taxYear} η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης· η προϋπόθεση της τράπεζας ισχύει για μισθώματα από 1.7.2027.`
+            : deductionRate>0
+              ? `, με τεκμαρτή έκπτωση ${ratePct} αντί ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} (φορολογητέο ${fe(taxable)}): για τα μισθώματα που εισπράττονται μετρητά από 1.7.2027 η έκπτωση δεν δίνεται.`
+              : `. Επειδή το ενοίκιο δεν δηλώνεται ως ηλεκτρονική είσπραξη, η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} δεν εφαρμόζεται και φορολογούνται ολόκληρα τα ακαθάριστα.`}
       </InfoBanner>
 
       {/* ΤΟ ΔΥΟ-ΑΝΑ-ΣΕΙΡΑ ΞΕΚΙΝΑΕΙ ΜΟΝΟ ΟΤΑΝ Η ΣΤΗΛΗ ΠΑΙΡΝΕΙ ΟΣΟ ΤΟ ΤΗΛΕΦΩΝΟ.
@@ -460,7 +471,7 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
               δεξιά άκρη ριγμένη κάτω από έναν πίνακα που κλείνει ίσια. Παίρνει
               πλήρη στοίχιση ΜΑΖΙ με συλλαβισμό: σκέτη η στοίχιση θα τέντωνε τα
               κενά, αφού τα τρία ποσά της πρότασης δεν σπάνε πουθενά. */}
-          <div className="po-just" style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{hy(<>Ο φόρος υπολογίζεται προοδευτικά ανά κλιμάκιο επί του φορολογητέου ({fe(taxable)} = ακαθάριστα {fe(annualRent)}{viaBank?` μείον τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))}`:''}), σύνολο {fe(tax)} για αυτό το ακίνητο. Επιβεβαίωσε την τελική δήλωση με λογιστή ή την ΑΑΔΕ.</>)}</div>
+          <div className="po-just" style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{hy(<>Ο φόρος υπολογίζεται προοδευτικά ανά κλιμάκιο επί του φορολογητέου ({fe(taxable)} = ακαθάριστα {fe(annualRent)}{deductionRate>0?` μείον τεκμαρτή έκπτωση ${ratePct}`:''}), σύνολο {fe(tax)} για αυτό το ακίνητο. Επιβεβαίωσε την τελική δήλωση με λογιστή ή την ΑΑΔΕ.</>)}</div>
         </div>
 
         {/* Νομικές υποχρεώσεις */}
