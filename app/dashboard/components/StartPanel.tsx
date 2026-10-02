@@ -18,6 +18,7 @@
 
 import { T, TT, Btn } from '@/components/Theme';
 import { daysLabel, stepsLabel, type StartPanelState } from '@/lib/home/start';
+import { askCta } from '@/lib/assistant/identity';
 
 const Tick = ({ state }: { state: 'done' | 'now' | 'todo' }) => {
   if (state === 'done') return (
@@ -120,7 +121,7 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
 
       <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
         <Btn variant="secondary" onClick={onPreview}>Δες ένα παράδειγμα</Btn>
-        <Btn variant="secondary" onClick={onAsk}>Ρώτησε τη Νόα</Btn>
+        <Btn variant="secondary" onClick={onAsk}>{askCta()}</Btn>
         {/* Ghost και όχι secondary: η σύμπτυξη κλείνει το πάνελ και δεν διεκδικεί
             το βλέμμα μαζί με τις δύο πόρτες δίπλα της. Το `marginLeft` είναι θέση
             μέσα στη σειρά — μένει στο δοχείο, έξω από την όψη του κουμπιού. */}

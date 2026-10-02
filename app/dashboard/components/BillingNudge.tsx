@@ -18,6 +18,7 @@ import * as properties from '@/lib/data/properties';
 import * as billing from '@/lib/data/billing';
 import { T, Btn, IconBtn } from '@/components/Theme';
 import { missingInvoiceFields, type InvoiceProfile } from '@/lib/billing/invoiceProfile';
+import { isPayingPlan } from '@/lib/billing/plans';
 
 const monthKey = () => { const n = new Date(); return `po_billing_nudge_${n.getFullYear()}-${n.getMonth() + 1}`; };
 
@@ -39,7 +40,9 @@ export default function BillingNudge({ userId, onNavigate }: { userId: string; o
         const p = prof || {};
         const plan = p.plan || 'free';
         const compActive = !!p.comp_until && new Date(p.comp_until) > new Date();
-        const paymentRelevant = plan === 'owner' || plan === 'agency' || compActive || (count || 0) > 1;
+        // Κάθε πακέτο με τιμή, όχι δύο ονόματα: το «με Νόα» και το
+        // «Επαγγελματίας+» πληρώνουν κι αυτά και έμεναν χωρίς υπενθύμιση.
+        const paymentRelevant = isPayingPlan(plan) || compActive || (count || 0) > 1;
         if (!paymentRelevant) return;
 
         const invoice: InvoiceProfile = {

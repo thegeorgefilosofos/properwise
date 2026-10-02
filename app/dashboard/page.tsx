@@ -45,7 +45,7 @@ import { planBriefing } from './components/assistantPersona';
 import UpgradeModal from './components/UpgradeModal';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
-import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature } from '@/lib/billing/entitlements';
+import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature } from '@/lib/billing/entitlements';
 import { hasAssistant } from '@/lib/billing/aiLimits';
 import { isTabVisible, hiddenTabCount } from '@/lib/nav/disclosure';
 import { askAssistant } from './components/AssistantStrip';
@@ -213,7 +213,7 @@ export default function Dashboard() {
     // Η ΝΟΑ ΕΛΕΙΠΕ ΑΠΟ ΤΗΝ ΠΑΛΕΤΑ ΕΝΤΟΛΩΝ. Ο μόνος δρόμος ήταν το πλωτό κουμπί,
     // δηλαδή το ποντίκι — και μπαίνει πρώτη, γιατί είναι ο συντομότερος δρόμος
     // προς οτιδήποτε άλλο στη λίστα.
-    { id: 'act-ask', label: `Ρώτα τη ${ASSISTANT_NAME}`, hint: 'Βοηθός', keywords: 'noa βοηθός assistant ρώτα σάρωσε',
+    { id: 'act-ask', label: `Ρώτα τη ${ASSISTANT_NAME}`, hint: 'Ενέργεια', keywords: 'noa βοηθός assistant ρώτα σάρωσε',
       action: () => askAssistant() },
     { id: 'act-add', label: 'Προσθήκη ακινήτου', hint: 'Ενέργεια', keywords: 'new property add', action: () => tryAddProperty() },
     { id: 'act-signout', label: 'Αποσύνδεση', hint: 'Ενέργεια', keywords: 'logout sign out exit', action: () => signOut() },
@@ -615,7 +615,13 @@ export default function Dashboard() {
                       {canCompare(properties)
                         ? <TabComparison properties={properties} userId={user.id} onNavigate={(t)=>setNav(t)}/>
                         : <p style={{fontSize:'var(--fs-sm)',color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.55}}>Δεν υπάρχουν δύο ακίνητα ίδιου τύπου για σύγκριση. Η σύγκριση βάζει δίπλα δίπλα ακίνητα της ίδιας αγοράς.</p>}
-                      <p style={{marginTop:T.sp.section,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,lineHeight:1.55}}>{`Η συγκεντρωτική εικόνα, με έσοδα και εκκρεμότητες όλων των ακινήτων σε μία λίστα, είναι στο πακέτο ${PLANS.agency.name}.`}</p>
+                      {/* Η ΠΡΟΣΚΛΗΣΗ ΜΟΝΟ ΣΕ ΟΠΟΙΟΝ ΜΠΟΡΕΙ ΝΑ ΤΗ ΔΕΧΤΕΙ. Ο ιδιώτης
+                          δεν αγοράζει το πακέτο της συγκεντρωτικής εικόνας με
+                          κανένα πλάνο του προφίλ του· γι' αυτόν η γραμμή ήταν
+                          υπόσχεση χωρίς δρόμο. */}
+                      {planAtLeast(paidPlanForProfile(effProfileType), requiredPlanForFeature('portfolio')) && (
+                        <p style={{marginTop:T.sp.section,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,lineHeight:1.55}}>{`Η συγκεντρωτική εικόνα, με έσοδα και εκκρεμότητες όλων των ακινήτων σε μία λίστα, είναι στο πακέτο ${PLANS[requiredPlanForFeature('portfolio')].name}.`}</p>
+                      )}
                     </div>
                   : <FeatureLock title="Σύγκρινε τα ακίνητά σου δίπλα-δίπλα" benefit={`Απόδοση, δαπάνες και πάροχοι όλων των ακινήτων σου σε έναν πίνακα. Ξεκλειδώνει με το πακέτο ${PLANS.owner.name}.`} requiredPlan="owner" currentPlanName={PLANS[effPlan].name} onManage={()=>setNav('settings')} />)}
               {/* ═══ Ο ΠΙΝΑΚΑΣ ΤΗΣ ΔΟΚΙΜΗΣ, ΠΑΝΩ ΑΠΟ ΤΑ ΠΑΝΤΑ ═══════════════
