@@ -87,8 +87,12 @@ export default function MonthlyFeedbackNudge() {
         {/* `size="lg"` και όχι `field`: κρατά το ύψος πεδίου χωρίς να διεκδικήσει πλάτος. */}
         <Btn variant="secondary" onClick={close} size="lg">Άλλη φορά</Btn>
       </div>
-      <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
-        <a href="/terms#klirosi" target="_blank" rel="noreferrer" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>Όροι κλήρωσης</a>
+      <div style={{ marginTop: 12, paddingTop: 2, borderTop: '1px solid var(--border-subtle)' }}>
+        {/* Σύνδεσμος μόνος του σε γραμμή, άρα χειριστήριο: 44 ύψος αφής. Οσο ήταν
+            πλωτή κάρτα, ο σαρωτής της Επισκόπησης δεν την έβλεπε· στη ροή τη βλέπει. */}
+        <a href="/terms#klirosi" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+          <span style={{ borderBottom: '1px solid var(--border-default)' }}>Όροι κλήρωσης</span>
+        </a>
       </div>
     </section>
   );
