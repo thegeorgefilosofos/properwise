@@ -766,8 +766,15 @@ export default async function Landing() {
         <div className="lp-aurora" aria-hidden="true" />
         <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
-          {/* Κεντραρισμένη, δύο γραμμές: ζυγισμένη, χωρίς ενωτικά (όπως ο υπότιτλος του hero). */}
-          <p data-nohy="" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 620, margin: '0 auto 30px', textWrap: 'balance' }}>Φωτογράφισε το πρώτο σου έγγραφο. Δωρεάν για ένα ακίνητο, με {ASSISTANT_ACC} τις πρώτες {TRIAL_DAYS} ημέρες.</p>
+          {/* ΤΟ ΚΛΕΙΣΙΜΟ ΛΕΕΙ ΤΙ ΚΕΡΔΙΖΕΙΣ, ΟΧΙ ΤΙ ΚΟΣΤΙΖΕΙ (02.10.2026, απόφαση
+              ιδιοκτήτη). Ίδια λογική και ίδια διάταξη με τον υπότιτλο του hero
+              (.lp-lede): δύο προτάσεις ίσου μήκους, μία ανά γραμμή από τα 720
+              και πάνω, με πλήρη στοίχιση. Η τιμή και η δοκιμή ζουν στα ✓ του
+              hero και στον τιμοκατάλογο. */}
+          <p className="lp-lede" data-nohy="" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 30px' }}>
+            <span className="lp-lede-line">Κάθε έγγραφο στη θέση του, κάθε προθεσμία στην ώρα της.</span>{' '}
+            <span className="lp-lede-line">Και η επόμενη δήλωση θα σε βρει με τον φάκελο ήδη έτοιμο.</span>
+          </p>
           <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : 'Ξεκίνα δωρεάν'}</Link>
         </div>
       </section>
