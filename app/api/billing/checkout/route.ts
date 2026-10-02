@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
   // δεν στήνεται ταμείο για δωρεάν πακέτο. Χωρίς αυτόν τον ρητό αποκλεισμό, το
   // `plan in PLANS` θα το άφηνε να περάσει και ο πάροχος θα ζητούσε προϊόν που
   // δεν υπάρχει.
-  if (!(plan in PLANS) || plan === 'free' || (cycle !== 'monthly' && cycle !== 'annual')) {
+  if (!Object.hasOwn(PLANS, plan) || plan === 'free' || (cycle !== 'monthly' && cycle !== 'annual')) {
     return NextResponse.json({ error: 'Αγνωστο πακέτο ή κύκλος.' }, { status: 400 });
   }
 

@@ -59,7 +59,9 @@ export async function POST(request: Request) {
   try { body = (await request.json()) as typeof body; } catch { /* άκυρο σώμα */ }
   const plan = typeof body.plan === 'string' ? body.plan.trim() : '';
   const cycle = cycleFromParam(typeof body.cycle === 'string' ? body.cycle : null);
-  if (!(plan in PLANS)) {
+  // `Object.hasOwn`, όχι `in` (02.10.2026): το `in` δέχεται και κλειδιά του
+  // προτύπου, π.χ. 'constructor', που θα γράφονταν ως πακέτο.
+  if (!Object.hasOwn(PLANS, plan)) {
     return NextResponse.json({ error: 'Αγνωστο πακέτο.' }, { status: 400 });
   }
   const target = plan as PlanId;

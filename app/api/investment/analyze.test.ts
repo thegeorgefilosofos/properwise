@@ -65,5 +65,12 @@ const VALID: DealInput = {
   eq('null σώμα: 422', analyzeInvestment(null).status, 422);
 }
 
+// ── ΕΤΗ ΜΕ ΟΡΙΟ (02.10.2026): holdYears 1e9 εξαντλούσε τη συνάρτηση ─────────
+{
+  eq('holdYears 1e9: 422', analyzeInvestment({ ...VALID, holdYears: 1e9 }).status, 422);
+  eq('loanYears 500: 422', analyzeInvestment({ ...VALID, loanYears: 500 }).status, 422);
+  eq('holdYears 50: 200', analyzeInvestment({ ...VALID, holdYears: 50 }).status, 200);
+}
+
 console.log(`\nanalyzeInvestment: ${pass} πέρασαν, ${fail} απέτυχαν`);
 if (fail > 0) process.exit(1);
