@@ -17,7 +17,7 @@ import FaqMore from './FaqMore';
 import { PublicFooter, PublicNav, JsonLd } from './PublicChrome';
 import { T } from '@/components/tokens';
 import { hy } from '@/components/Hyphen';
-import { ASSISTANT_ACC, ASSISTANT_NAME } from '@/lib/assistant/identity';
+import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, CARD_GAP, wrap, ic, check } from './landingKit'
 import {
   FEATURES, FAQ_VISIBLE, FAQ, WORKS_WITH, SECURITY, REFERRAL, LANDING_PLANS, FEATURED_PLAN,
@@ -253,19 +253,21 @@ export default async function Landing() {
               ΚΑΙ ΧΩΡΙΣ ΣΥΛΛΑΒΙΣΜΟ. Τα μαλακά ενωτικά έκοβαν το «απα-ντά» στο
               κινητό, στο πρώτο κείμενο που διαβάζει ο επισκέπτης: `data-nohy`.
 
-              ΔΥΟ ΓΡΑΜΜΕΣ ΠΕΡΑ ΠΕΡΑ (02.10.2026). Με την πρόταση για τη Νόα ο
-              υπότιτλος έγινε τρεις γραμμές. Τώρα είναι δύο προτάσεις, μία ανά
+              ΤΙ ΚΑΝΕΙ, ΟΧΙ ΤΙ ΚΟΣΤΙΖΕΙ (02.10.2026, απόφαση ιδιοκτήτη). Ο
+              υπότιτλος έλεγε δωρεάν, δοκιμή και 4,99€ και είχε γίνει τρεις
+              γραμμές. Τώρα λέει μόνο τι κάνει το εργαλείο· τιμή και δοκιμή ζουν
+              στα ✓ κάτω από τα κουμπιά και στον τιμοκατάλογο.
+
+              ΔΥΟ ΓΡΑΜΜΕΣ ΠΕΡΑ ΠΕΡΑ. Δύο προτάσεις, μία ανά
               γραμμή, σχεδόν ίσου μήκους. Από τα 720 και πάνω κάθε πρόταση είναι
               γραμμή που δεν σπάει, με πλήρη στοίχιση και το πλάτος ακολουθεί τη
               μεγαλύτερη (`fit-content`), οπότε η μικρότερη ανοίγει ελάχιστα ανά
               κενό. Στο κινητό οι προτάσεις ρέουν κεντραρισμένες (.lp-lede). */}
           <p className="lp-rise-2 lp-lede" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px' }}>
-            {/* Η ΝΟΑ ΔΕΝ ΤΗΝ ΕΧΟΥΝ ΟΛΟΙ. Το κείμενο έλεγε «Ρωτάς τη Νόα» σε κάθε
-                επισκέπτη, ενώ στο δωρεάν πακέτο είναι πρόσθετο 4,99€ τον μήνα και
-                η διευκρίνιση ήταν ψιλά πιο κάτω. Τώρα το λέει η ίδια πρόταση. */}
-            <span className="lp-lede-line">Ενοίκια, λογαριασμοί, δάνεια και φόροι για όλα σου τα ακίνητα, δωρεάν για το ένα.</span>{' '}
-            <span className="lp-lede-line">Η{'\u00a0'}{ASSISTANT_NAME} απαντά με{' '}
-            <em style={{ fontStyle: 'normal', color: 'var(--text-primary)', fontWeight: 600 }}>τα δικά σου</em> δεδομένα: στη δοκιμή, μετά ως πρόσθετο {fe(PLANS.solo.priceMonthly)} τον μήνα.</span>
+            {/* Η ΝΟΑ ΔΕΝ ΤΗΝ ΕΧΟΥΝ ΟΛΟΙ: γι' αυτό ο υπότιτλος δεν την υπόσχεται.
+                Η δοκιμή της λέγεται στα ✓ από κάτω, η τιμή της στον τιμοκατάλογο. */}
+            <span className="lp-lede-line">Φωτογράφισε λογαριασμό ή μισθωτήριο και η καταχώρηση γίνεται μόνη της.</span>{' '}
+            <span className="lp-lede-line">Ενοίκια, δαπάνες, φόρος, Ε2 και ΕΝΦΙΑ, έτοιμα για σένα και τον λογιστή σου.</span>
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {loggedIn ? (
