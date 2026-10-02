@@ -76,28 +76,32 @@
       "μας είναι λάθος· δεν το έκρινα χωρίς δεύτερη πηγή."
     ],
     "_partialUpdate": [
-      "ΤΡΙΑ ΤΙΜΟΛΟΓΙΑ ΤΗΣ ΔΕΗ ΕΛΕΓΧΘΗΚΑΝ ΣΤΟ ΤΙΜΟΛΟΓΙΟ ΣΕΠΤΕΜΒΡΙΟΥ, Ο ΥΠΟΛΟΙΠΟΣ ΚΑΤΑΛΟΓΟΣ ΟΧΙ.",
+      "ΟΡΙΣΜΕΝΑ ΤΙΜΟΛΟΓΙΑ ΕΛΕΓΧΘΗΚΑΝ ΣΕ ΝΕΩΤΕΡΟ ΕΓΓΡΑΦΟ, Ο ΥΠΟΛΟΙΠΟΣ ΚΑΤΑΛΟΓΟΣ ΟΧΙ.",
       "Γι' αυτό το checkedAt και το label της ενότητας μένουν στον Αύγουστο: η οθόνη",
-      "τα διαβάζει ως ημερομηνία ΟΛΟΥ του καταλόγου και ο Σεπτέμβριος θα δήλωνε έλεγχο",
-      "που δεν έγινε. Τα τρία γράφονται χωριστά στο `tariffChecks`, με το έγγραφο και",
-      "την ημερομηνία τους. Πηγή: ops.handoffs a41bd5b2 (ομάδα Grok, P1-6)."
+      "τα διαβάζει ως ημερομηνία ΟΛΟΥ του καταλόγου και ένας νεότερος μήνας θα δήλωνε",
+      "έλεγχο που δεν έγινε. Τα ελεγμένα γράφονται χωριστά στο `tariffChecks`, με το",
+      "έγγραφο και την ημερομηνία τους. Ο μήνας τους φαίνεται στην οθόνη από το",
+      "`priceMonth` του καταλόγου. Πηγές: ops.handoffs a41bd5b2 (Σεπτέμβριος) και",
+      "οδηγία ιδιοκτήτη 02/10/2026 (Οκτώβριος: ΔΕΗ Γ1/Γ1Ν, nrg ειδικό, Protergia",
+      "Value Special). Ο Ηρων και το φυσικό αέριο δεν άλλαξαν: ο Οκτώβριος τους δεν",
+      "είχε δημοσιευτεί."
     ],
     "tariffChecks": [
       {
         "id": "dei_prasino",
         "name": "ΔΕΗ Γ1",
-        "checkedAt": "2026-09-28",
-        "label": "Σεπτέμβριος 2026",
-        "url": "https://www.dei.gr/media/gvskkpxa/g1_g1n_sept26.pdf",
-        "docDate": "2026-09"
+        "checkedAt": "2026-10-02",
+        "label": "Οκτώβριος 2026",
+        "url": "https://www.dei.gr/media/xjictous/g1_g1n_oct26.pdf",
+        "docDate": "2026-10"
       },
       {
         "id": "dei_prasino_n",
         "name": "ΔΕΗ Γ1Ν",
-        "checkedAt": "2026-09-28",
-        "label": "Σεπτέμβριος 2026",
-        "url": "https://www.dei.gr/media/gvskkpxa/g1_g1n_sept26.pdf",
-        "docDate": "2026-09"
+        "checkedAt": "2026-10-02",
+        "label": "Οκτώβριος 2026",
+        "url": "https://www.dei.gr/media/xjictous/g1_g1n_oct26.pdf",
+        "docDate": "2026-10"
       },
       {
         "id": "dei_online",
@@ -106,6 +110,22 @@
         "label": "Σεπτέμβριος 2026",
         "url": "https://www.dei.gr/media/fbqfayfk/myhome-online-0826.pdf",
         "docDate": "2026-08"
+      },
+      {
+        "id": "nrg_special",
+        "name": "nrg Ειδικό Τιμολόγιο",
+        "checkedAt": "2026-10-02",
+        "label": "Οκτώβριος 2026",
+        "url": "https://www.nrg.gr/el/idiotes/revma/eidiko-timologio-nrg",
+        "docDate": "2026-10"
+      },
+      {
+        "id": "prot_value_special",
+        "name": "Protergia Value Special",
+        "checkedAt": "2026-10-02",
+        "label": "Οκτώβριος 2026",
+        "url": "https://www.protergia.gr/spiti/oikiako-reuma-proionta/protergia-oikiako-value-special/",
+        "docDate": "2026-10"
       }
     ]
   },

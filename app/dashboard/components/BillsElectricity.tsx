@@ -519,7 +519,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
               )}
               {tariff.priceStatus === 'verified' && (
                 <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', fontFamily: T.font.sans }}>
-                  Διασταυρωμένη τιμή
+                  {tariff.priceMonth ? `Τιμή ${tariff.priceMonth}` : 'Διασταυρωμένη τιμή'}
                 </span>
               )}
               {tariff.no_fixed && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, fontFamily: T.font.sans }}>Χωρίς πάγιο</span>}
@@ -531,6 +531,13 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             {tariff.promo_kwh_day != null && (
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, fontFamily: T.font.sans, marginTop: 4 }}>
                 Προωθητική τιμή {fk(tariff.promo_kwh_day)} ανά κιλοβατώρα, όπως τη γράφει το τιμολόγιο του παρόχου. Ο υπολογισμός γίνεται με τη βασική τιμή {fk(tariff.kwh_day)}.
+              </div>
+            )}
+            {/* Η τιμή χωρίς την προϋπόθεση: όποιος δεν την πληροί πληρώνει
+                αυτήν. Γράφεται από τα πεδία, όχι από την περιγραφή. */}
+            {tariff.undiscounted && (
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, fontFamily: T.font.sans, marginTop: 4 }}>
+                Χωρίς την προϋπόθεση: {fk(tariff.undiscounted.day)}{tariff.undiscounted.tier2 != null && tariff.tier2_threshold != null ? ` έως τις ${fn(tariff.tier2_threshold)} kWh, ${fk(tariff.undiscounted.tier2)} πάνω από αυτές` : ' ανά κιλοβατώρα'}{tariff.undiscounted.night != null ? ` και ${fk(tariff.undiscounted.night)} τη νύχτα` : ''}. Η σύγκριση τρέχει με την τιμή της προϋπόθεσης.
               </div>
             )}
             {tariff.desc.includes('ΜΔΚΑ') && (
@@ -762,6 +769,10 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                 facts.push(t.priceStatus !== 'retro' ? `${fk(t.kwh_day)} ανά κιλοβατώρα`
                   : t.kwh_day > 0 ? `${fk(t.kwh_day)} βασική τιμή, κλείνει αναδρομικά`
                   : 'Η τιμή του μήνα ανακοινώνεται τον επόμενο');
+                // Τα «πράσινα» αλλάζουν κάθε 1η του μήνα: η τιμή λέει και για
+                // ποιον μήνα ισχύει, αλλιώς η σωστή τιμή του Οκτωβρίου διαβάζεται
+                // ως σωστή και τον Νοέμβριο.
+                if (t.priceMonth) facts.push(`Τιμή ${t.priceMonth}`);
                 facts.push(t.no_fixed ? 'Χωρίς πάγιο' : `Πάγιο ${fe(fixedNow)}`);
               }
               facts.push(t.contract_months ? `Δέσμευση ${t.contract_months} μήνες` : 'Χωρίς δέσμευση');
