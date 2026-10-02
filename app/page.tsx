@@ -266,8 +266,8 @@ export default async function Landing() {
           <p className="lp-rise-2 lp-lede" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px' }}>
             {/* Η ΝΟΑ ΔΕΝ ΤΗΝ ΕΧΟΥΝ ΟΛΟΙ: γι' αυτό ο υπότιτλος δεν την υπόσχεται.
                 Η δοκιμή της λέγεται στα ✓ από κάτω, η τιμή της στον τιμοκατάλογο. */}
-            <span className="lp-lede-line">Φωτογράφισε λογαριασμό ή μισθωτήριο και η καταχώρηση γίνεται μόνη της.</span>{' '}
-            <span className="lp-lede-line">Ενοίκια, δαπάνες, φόρος, Ε2 και ΕΝΦΙΑ, έτοιμα για σένα και τον λογιστή σου.</span>
+            <span className="lp-lede-line">Φωτογραφίζεις το έγγραφο, η εφαρμογή το διαβάζει και το περνά εκεί που ανήκει.</span>{' '}
+            <span className="lp-lede-line">Ενοίκια, δαπάνες, φόρος, Ε2 και ΕΝΦΙΑ, έτοιμα πριν σου τα ζητήσει ο λογιστής.</span>
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {loggedIn ? (
