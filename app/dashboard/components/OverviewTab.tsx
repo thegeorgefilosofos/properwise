@@ -327,14 +327,19 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Οι λογαριασμοί που ΔΕΝ έχουν ακόμη δαπάνη από πίσω τους (απλήρωτοι): είναι
   // πραγματικό κόστος του έτους και λείπουν από τον πίνακα `expenses`.
   const unbilledOfYear = ledgerTotal(entriesOfYear.filter(e => !e.expenseId));
-  // Οι πέντε μεγαλύτερες κατηγορίες του έτους, για την αναφορά PDF. Παράγονται
+  // Οι πέντε μεγαλύτερες κατηγορίες του έτους για την αναφορά PDF και οι
+  // υπόλοιπες μαζί ως «Λοιπές» (02.10.2026): με σκέτες τις πέντε, το «Σύνολο
+  // δαπανών» του πίνακα δεν έβγαινε ίσο με τις «Συνολικές δαπάνες» από πάνω. Παράγονται
   // από το ΙΔΙΟ ημερολόγιο με το ποσό που τυπώνεται δίπλα τους — πριν έβγαιναν
   // από τον σκέτο πίνακα δαπανών, οπότε το άθροισμα των γραμμών δεν έβγαζε το
   // σύνολο που έγραφε η ίδια η αναφορά από πάνω.
   const catEntries = useMemo(() => {
     const m: Record<string, number> = {};
     entriesOfYear.forEach(e => { m[e.category] = (m[e.category] || 0) + e.amount; });
-    return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const all = Object.entries(m).sort((a, b) => b[1] - a[1]);
+    if (all.length <= 6) return all;
+    const rest = all.slice(5).reduce((s, [, v]) => s + v, 0);
+    return [...all.slice(0, 5), ['Λοιπές', rest] as [string, number]];
   }, [entriesOfYear]);
   // ΤΑΣΗ ΔΑΠΑΝΩΝ: ΙΔΙΟ ΔΙΑΣΤΗΜΑ, ΟΧΙ ΟΛΟΚΛΗΡΟ ΤΟ ΠΡΟΗΓΟΥΜΕΝΟ ΕΤΟΣ.
   // Πριν, το YTD (π.χ. δύο μήνες) συγκρινόταν με τους δώδεκα μήνες της περσινής
@@ -749,8 +754,11 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           ownership: prop.ownership!=null?Number(prop.ownership):undefined,
           coOwners: readCoOwners(prop.co_owners).map(c=>c.name),
           shortTerm: isShortTerm(prop),
-          monthlyRent: rent, rentIsEstimate: incomeIsEstimate, annualRent, grossYield, netYield,
+          // Στη βραχυχρόνια το «μηνιαίο έσοδο» είναι το έσοδο της χρονιάς ανά μήνα,
+          // όχι ο στόχος ενοικίου.
+          monthlyRent: isShortTerm(prop) && annualRent > 0 ? annualRent / 12 : rent, rentIsEstimate: incomeIsEstimate, annualRent, grossYield, netYield,
           expensesYTD: totalExpYear, categories: catEntries, branding,
+          taxShare: { tax: estTax, ofPortfolio: portfolioTax.count > 1 },
         })}>
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
           Αναφορά σε PDF
