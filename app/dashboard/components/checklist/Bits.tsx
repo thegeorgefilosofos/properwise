@@ -150,11 +150,11 @@ export function SubTaskEditor({ subtasks, onChange }: { subtasks: SubTask[]; onC
             {/* ΤΟ ΤΕΤΡΑΓΩΝΑΚΙ ΗΤΑΝ 18×18 ΧΩΡΙΣ ΟΝΟΜΑ ΚΑΙ ΧΩΡΙΣ ΚΑΤΑΣΤΑΣΗ. Ο αναγνώστης
                 οθόνης άκουγε «κουμπί» και τίποτα άλλο· το δάχτυλο έπρεπε να
                 πετύχει στόχο μισού εκατοστού. Τώρα είναι πλαίσιο ελέγχου με το
-                βήμα για όνομα και περιοχή 44×44· τα αρνητικά περιθώρια κρατούν
+                βήμα για όνομα και περιοχή στο ύψος χειριστηρίου (44 στο δάχτυλο)· τα αρνητικά περιθώρια κρατούν
                 τη γραμμή στο ύψος που είχε. */}
             <button type="button" role="checkbox" aria-checked={st.done} aria-label={st.text}
               onClick={() => onChange(subtasks.map(s => s.id === st.id ? { ...s, done: !s.done } : s))}
-              style={{ width: 44, height: 44, margin: -13, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              style={{ width: T.h.lg, height: T.h.lg, margin: `calc((18px - ${T.h.lg}) / 2)`, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <span aria-hidden="true" style={{ width: 18, height: 18, boxSizing: 'border-box', borderRadius: T.radius.xs, border: '2px solid ' + (st.done ? 'var(--accent)' : 'var(--border-default)'), background: st.done ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
                 {st.done && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" fill="none" stroke="var(--text-inverse)" strokeWidth="2" strokeLinecap="round"/></svg>}
               </span>
