@@ -17,7 +17,7 @@ import * as expenseStore from '@/lib/data/expenses'
 import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
 import { taxpayerRentSources, ownershipPctOf, wholePropertyTax } from '@/lib/accounting/taxpayerIncome'
-import type { StayAmountLike } from '@/lib/clients/stayAmounts'
+import { hostPayout, type StayAmountLike } from '@/lib/clients/stayAmounts'
 import MonthlyFeedbackNudge from './MonthlyFeedbackNudge'
 import type { LegalForm } from '@/lib/accounting/dossier'
 import type { OpenerContext } from '@/lib/assistant/openers'
@@ -402,7 +402,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // συνάρτηση μπορεί να αλλάξει τον πίνακα και εγκατέλειπε όλο το component
   // (react-hooks/preserve-manual-memoization, δύο σφάλματα στο `cash`).
   const hostStaysToDate = useMemo(() => staysOfYearToDate(hostStays, year, todayIso), [hostStays, year, todayIso]);
-  const hostingYTD = hostStaysToDate.reduce((sum,s)=>sum+stayTotal(s),0);
+  // ΤΟ PAYOUT, ΟΧΙ ΤΟ ΔΗΛΩΤΕΟ. Το πλακίδιο λέει «ό,τι μπήκε στον λογαριασμό
+  // σου» και άθροιζε το `total`, που σε διαμονή με ανάλυση είναι ακαθάριστο
+  // μείον τέλος: 1.000€ ο επισκέπτης, 150€ προμήθεια, 50€ τέλος έγραφε 950€
+  // εκεί που μπήκαν 800€. Χωρίς ανάλυση και χωρίς δηλωμένη βάση μένει το ποσό
+  // όπως καταχωρήθηκε.
+  const hostingYTD = hostStaysToDate.reduce((sum,s)=>sum+(hostPayout(s) ?? stayTotal(s)),0);
   const hostingNights = hostStaysToDate.reduce((sum,s)=>sum+(s.nights ?? 0),0);
   const nextArrival = hostStays.map(s=>s.check_in).filter((d): d is string => !!d && d>=todayIso).sort()[0] || null;
   // Ο ΥΠΟΛΟΓΙΣΜΟΣ ΤΟΥ ΓΡΑΦΗΜΑΤΟΣ ΕΦΥΓΕ ΜΑΖΙ ΜΕ ΤΟ ΓΡΑΦΗΜΑ: δύο κατάλογοι μηνών,
