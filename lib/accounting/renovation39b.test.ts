@@ -2,7 +2,7 @@
 // Ο κανόνας του ν.5073/2023 και της ΚΥΑ Α.1153/2025: μείωση ίση με τη δαπάνη,
 // έως 16.000€ συνολικά, ισόποσα σε πέντε έτη. ΟΧΙ 40% με μέγιστο 6.400€.
 import {
-  renovationCredit, RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO,
+  renovationCredit, renovationYearReduction, RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO,
 } from './renovation39b'
 import { REGULATORY_UPDATES_2026 } from './updates2026'
 import { YIELD_LEVERS } from '@/lib/market/greekMarket'
@@ -34,6 +34,16 @@ ok('25.000 επιλέξιμη: η μείωση κόβεται στα 16.000', c.
 
 const z = renovationCredit({ services: NaN, materials: -5 })
 ok('άκυρη είσοδος δίνει μηδέν', z.total === 0 && z.perYear === 0)
+
+// ── Η μείωση του έτους κόβεται στον φόρο του έτους ────────────────────────
+ok('φόρος 1.500: μείωση 1.500, όχι 3.200', renovationYearReduction(3200, 1500) === 1500)
+ok('φόρος 0: μείωση 0', renovationYearReduction(3200, 0) === 0)
+ok('φόρος πάνω από το μερίδιο: όλο το μερίδιο', renovationYearReduction(3200, 9000) === 3200)
+ok('αρνητικός ή άκυρος φόρος: μηδέν', renovationYearReduction(3200, -10) === 0 && renovationYearReduction(3200, NaN) === 0)
+const t = renovationCredit({ services: 12000, materials: 4000, yearTaxes: [5000, 1500, 0, 3200, 2000] })
+ok('ανά έτος: 3.200, 1.500, 0, 3.200, 2.000', JSON.stringify(t.byYear) === JSON.stringify([3200, 1500, 0, 3200, 2000]))
+ok('σύνολο που δίνεται: 9.900, όχι 16.000', t.applied === 9900 && t.total === 16000)
+ok('χωρίς φόρους δεν επινοείται byYear', a.byYear === undefined && a.applied === undefined)
 
 // ── Κανένα κείμενο δεν λέει πια τον κανόνα του 2020 ──────────────────────────
 const OLD = /6\.400|40%/

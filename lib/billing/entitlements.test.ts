@@ -109,7 +109,8 @@ ok(hasFeature(compOwner, 'clients') === false, 'comp owner ΔΕΝ ξεκλειδ
 
 // ── Καρτέλες ──
 ok(TAB_MIN_PLAN.comparison === 'owner', 'tab comparison ≥ owner');
-ok(TAB_MIN_PLAN.portfolio === 'agency', 'tab portfolio ≥ agency');
+ok(TAB_MIN_PLAN.portfolio === 'owner', 'tab portfolio ≥ owner: εκεί ζει η σύγκριση που δίνει ο πίνακας στο Ιδιοκτήτης+');
+ok(FEATURE_MIN_PLAN.portfolio === 'agency', 'η συγκεντρωτική εικόνα μένει στο Επαγγελματίας');
 ok(TAB_MIN_PLAN.clients === 'agency', 'tab clients ≥ agency');
 ok(isTabAllowed(free, 'overview') === true, 'free βλέπει overview');
 ok(isTabAllowed(free, 'finances') === true, 'free βλέπει δαπάνες');
@@ -127,20 +128,20 @@ ok(requiredPlanForTab('overview') === 'free', 'required tab overview = free (def
 ok(requiredPlanForFeature('clients') === 'agency', 'required feature clients = agency');
 
 // ── Σχετικότητα καρτέλας ανά προφίλ (portfolio/clients μόνο σε επαγγελματίες) ──
-ok(PROFESSIONAL_ONLY_TABS.has('portfolio') === true, 'portfolio professional-only');
+ok(PROFESSIONAL_ONLY_TABS.has('portfolio') === false, 'portfolio: φτάνει και ο ιδιώτης με Ιδιοκτήτης+');
 ok(PROFESSIONAL_ONLY_TABS.has('clients') === true, 'clients professional-only');
-ok(isTabPurchasable('individual', 'portfolio') === false, 'ιδιώτης δεν βλέπει χαρτοφυλάκιο καθόλου');
+ok(isTabPurchasable('individual', 'portfolio') === true, 'ιδιώτης με Ιδιοκτήτης+: η καρτέλα με τη σύγκριση');
 ok(isTabPurchasable('individual', 'clients') === false, 'ιδιώτης δεν βλέπει πελατολόγιο καθόλου');
 ok(isTabPurchasable('professional', 'portfolio') === true, 'επαγγελματίας βλέπει χαρτοφυλάκιο (έστω κλειδωμένο)');
 ok(isTabPurchasable('individual', 'comparison') === true, 'ιδιώτης βλέπει σύγκριση (μπορεί να πάρει owner)');
 ok(isTabPurchasable('individual', 'overview') === true, 'ιδιώτης βλέπει overview');
 // Το νέο, ρητό όνομα: «θα το φτάσει ποτέ αυτό το προφίλ;» — τίποτα άλλο.
-ok(isTabPurchasable('individual', 'portfolio') === false, 'ο ιδιώτης δεν αγοράζει ποτέ χαρτοφυλάκιο');
+ok(isTabPurchasable('individual', 'clients') === false, 'ο ιδιώτης δεν αγοράζει ποτέ πελατολόγιο');
 ok(isTabPurchasable('individual', 'comparison') === true, 'ο ιδιώτης φτάνει τη σύγκριση με το πλάνο Ιδιοκτήτης');
 ok(isTabPurchasable('professional', 'overview') === true, 'ο επαγγελματίας βλέπει και τις δωρεάν καρτέλες');
 ok(isTabPurchasable('professional', 'clients') === true, 'ο επαγγελματίας φτάνει το πελατολόγιο');
 // Η λίστα παράγεται από το TAB_MIN_PLAN — καμία δεύτερη πηγή αλήθειας.
-ok([...PROFESSIONAL_ONLY_TABS].sort().join(',') === 'clients,portfolio', 'παράγεται ακριβώς από τα πλάνα των καρτελών');
+ok([...PROFESSIONAL_ONLY_TABS].sort().join(',') === 'clients', 'παράγεται ακριβώς από τα πλάνα των καρτελών');
 
 // ── Όριο ακινήτων ──
 ok(propertyLimit(free) === 1, 'free → 1 ακίνητο');

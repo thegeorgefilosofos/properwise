@@ -82,6 +82,13 @@ function rentDate(r: IncomeRent, year: number): string {
   return m >= 1 && m <= 12 ? `${r.period_year ?? year}-${pad2(m)}-01` : ''
 }
 
+/** Πότε λήγει η δόση: η προθεσμία της, αλλιώς η 1η του μήνα της περιόδου. */
+function rentDueDate(r: IncomeRent, year: number): string {
+  if (iso(r.due_date)) return iso(r.due_date)
+  const m = Number(r.period_month) || 0
+  return m >= 1 && m <= 12 ? `${r.period_year ?? year}-${pad2(m)}-01` : ''
+}
+
 /** Πληρωμένη δόση του έτους, εισπραγμένη ως και σήμερα. */
 export function rentReceivedByToday(r: IncomeRent, year: number, today: string): boolean {
   if (!r.paid) return false
@@ -112,8 +119,19 @@ export function propertyIncome(input: PropertyIncomeInput): PropertyIncome {
     annualized = daysElapsed > 0 ? receivedToDate * (yearDays / daysElapsed) : 0
   } else if (rentsOfYear.length > 0) {
     source = 'rent'
-    receivedToDate = rentsOfYear.filter(r => rentReceivedByToday(r, year, today)).reduce((s, r) => s + (Number(r.amount) || 0), 0)
-    annualized = monthsElapsed > 0 ? receivedToDate * (12 / monthsElapsed) : 0
+    const received = rentsOfYear.filter(r => rentReceivedByToday(r, year, today))
+    receivedToDate = received.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+    // ΜΗΝΕΣ ΠΟΥ ΕΧΟΥΝ ΔΟΣΗ ΩΣ ΣΗΜΕΡΑ, ΟΧΙ ΜΗΝΕΣ ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ. Στις 2/10 ο
+    // Οκτώβριος μετρούσε ως μήνας που πέρασε ενώ η δόση του λήγει στις 5/10:
+    // εννέα δόσεις των 650€ διαιρούνταν με δέκα μήνες και το έτος έβγαινε
+    // 7.020€ αντί για 7.800€. Μετρούν οι μήνες περιόδου που είτε έχουν λήξει
+    // είτε έχουν ήδη εισπραχθεί. Χωρίς μήνα περιόδου, το ημερολόγιο.
+    const monthOfRent = (r: IncomeRent) => Number(r.period_month) || 0
+    const covered = new Set(rentsOfYear
+      .filter(r => monthOfRent(r) >= 1 && (rentReceivedByToday(r, year, today) || (rentDueDate(r, year) || '9999') <= today))
+      .map(monthOfRent))
+    const months = rentsOfYear.every(r => monthOfRent(r) >= 1) ? covered.size : monthsElapsed
+    annualized = year < todayYear ? receivedToDate : months > 0 ? receivedToDate * (12 / months) : 0
   } else if ((Number(input.estimateMonthly) || 0) > 0) {
     source = 'estimate'
     const m = Number(input.estimateMonthly)

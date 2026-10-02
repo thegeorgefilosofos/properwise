@@ -708,6 +708,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     grossIncome, taxableIncome: statement.taxableIncome,
     rentalMode: prop?.rental_mode, propertyCount: propCount,
     hasLoan: loans.some(l=>loanActiveInYear(l)), loanInterestYear,
+    incomeTax: statement.incomeTax,
   }),[businessMode,regime,elpForm,age,grossIncome,statement,prop,propCount,loans,loanInterestYear,loanActiveInYear])
 
   // «Τι άλλαξε»: επίκαιροι κανόνες 2026 σχετικοί με το προφίλ (καθεστώς + δάνειο).

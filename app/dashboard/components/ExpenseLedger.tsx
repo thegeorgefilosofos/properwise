@@ -343,8 +343,15 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   // παύει να είναι λογαριασμός που δεν πληρώθηκε. Η εξαίρεση λέει «μη μου τη
   // μετράς στα στατιστικά», όχι «δεν την οφείλω» — και ένα ποσό που λείπει από
   // τα ανεξόφλητα είναι λογαριασμός που ξεχνιέται.
+  // ═══ ΤΑ ΣΥΝΟΛΑ ΕΙΝΑΙ ΧΡΗΜΑΤΑ, Ο ΔΙΑΚΟΠΤΗΣ ΕΙΝΑΙ ΓΙΑ ΤΑ ΣΤΑΤΙΣΤΙΚΑ ══════════
+  // Το «Δαπάνες 2026» έβγαζε 10.128,50€ ενώ η Επισκόπηση, οι Αποδόσεις και η
+  // Λογιστική έγραφαν 10.159,70€ για το ίδιο ακίνητο: ένας λογαριασμός νερού
+  // 31,20€ είχε σημανθεί «εκτός στατιστικών» και έλειπε ΜΟΝΟ από εδώ. Η εξαίρεση
+  // λέει «μη μου τη μετράς στις συγκρίσεις», όχι «δεν την πλήρωσα». Τα σύνολα
+  // μετρούν κάθε κίνηση· η σύγκριση μηνών και οι μέσοι όροι σέβονται τον
+  // διακόπτη. Και το πόσο έμεινε εκτός γράφεται κάτω από το σύνολο.
   const monthTotal = useMemo(
-    () => ledgerTotal(entries.filter(e => e.date.startsWith(thisMonth) && countsIn(excl, e))), [entries, thisMonth, excl]);
+    () => ledgerTotal(entries.filter(e => e.date.startsWith(thisMonth))), [entries, thisMonth]);
   const unpaid = useMemo(() => entries.filter(e => !e.paid), [entries]);
   const monthUnpaid = useMemo(() => unpaid.filter(e => e.date.startsWith(thisMonth)).length, [unpaid, thisMonth]);
   const unpaidTotal = useMemo(() => ledgerTotal(unpaid), [unpaid]);
@@ -355,7 +362,9 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   // πρώτα ψηφία της: ίδια πηγή, μία αλήθεια. Και υπολογίζεται μία φορά αντί για
   // κάθε απόδοση, όπως ήδη γίνεται με τα άλλα δύο.
   const yearTotal = useMemo(
-    () => ledgerTotal(entries.filter(e => e.date.startsWith(thisMonth.slice(0, 4)) && countsIn(excl, e))), [entries, thisMonth, excl]);
+    () => ledgerTotal(entries.filter(e => e.date.startsWith(thisMonth.slice(0, 4)))), [entries, thisMonth]);
+  const yearExcluded = useMemo(
+    () => ledgerTotal(entries.filter(e => e.date.startsWith(thisMonth.slice(0, 4)) && !countsIn(excl, e))), [entries, thisMonth, excl]);
 
   // ── ΤΙ ΣΥΝΗΘΩΣ ΘΑ ΕΙΧΕ ΕΡΘΕΙ ΚΑΙ ΛΕΙΠΕΙ ──────────────────────────────────
   // Ο πυρήνας το έγραφε ρητά: «καμία αυτόματη ανανέωση δεν υπάρχει». Ο
@@ -635,7 +644,8 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           sub={monthUnpaid ? unpaidBillsLabel(monthUnpaid) : undefined} />
         <Stat label={'Ανεξόφλητες δαπάνες'} value={loading ? null : fe(unpaidTotal)}
           sub={unpaid.length ? unpaidBillsLabel(unpaid.length) : undefined} />
-        <Stat label={`Δαπάνες ${thisMonth.slice(0, 4)}`} value={loading ? null : fe(yearTotal)} />
+        <Stat label={`Δαπάνες ${thisMonth.slice(0, 4)}`} value={loading ? null : fe(yearTotal)}
+          sub={yearExcluded > 0 ? `${fe(yearExcluded)} εκτός στατιστικών` : undefined} />
       </div>
 
       {inbox}
@@ -1297,7 +1307,7 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
         <span style={{ minWidth: 0 }}>
           <span style={{ ...TT.body, display: 'block' }}>Μετρά στα στατιστικά</span>
           <span style={{ ...TT.caption, display: 'block', marginTop: 2 }}>
-            Οσα δεν μετρούν μένουν στη λίστα, έξω από τα σύνολα.
+            Μετρά στο σύνολο της χρονιάς, μένει έξω από τη σύγκριση μηνών και τους μέσους όρους.
           </span>
         </span>
         <Toggle on={countsDraft} onChange={setCountsDraft} ariaLabel="Μετρά στα στατιστικά" />

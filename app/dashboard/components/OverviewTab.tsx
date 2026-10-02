@@ -13,11 +13,12 @@ import * as rentStore from '@/lib/data/rent'
 import * as checklist from '@/lib/data/checklist'
 import * as tenantStore from '@/lib/data/tenants'
 import * as expenseStore from '@/lib/data/expenses'
-import * as settings from '@/lib/data/settings'
-import { parseExclusions, countsIn } from '@/lib/expenses/exclusions'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
+import { taxpayerRentSources } from '@/lib/accounting/taxpayerIncome'
+import type { StayAmountLike } from '@/lib/clients/stayAmounts'
+import MonthlyFeedbackNudge from './MonthlyFeedbackNudge'
 import type { LegalForm } from '@/lib/accounting/dossier'
 import type { OpenerContext } from '@/lib/assistant/openers'
 import { navLabel } from '@/lib/nav/labels'
@@ -165,6 +166,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // το δηλώνει ήδη στην καρτέλα Ενοικιαστή (`tenants.e_payment`)· η κύρωση
   // περνά στον φόρο μόνο για χρήσεις από το 2027 (bankReceiptMatters(year)).
   const [portfolioRents, setPortfolioRents] = useState<{ property_id:string; monthly:number; viaBank:boolean }[]>([]);
+  // Οι δόσεις και οι διαμονές ΟΛΩΝ των ακινήτων του έτους και οι καρτέλες
+  // «Ιδιοκτήτης»: ο φόρος βγαίνει ανά φορολογούμενο, με τα έσοδα του κοινού
+  // υπολογισμού (lib/accounting/taxpayerIncome.ts), όχι με το μηνιαίο × 12.
+  const [portfolioIncome, setPortfolioIncome] = useState<{ rents: (IncomeRent & { property_id: string })[]; stays: (StayAmountLike & { property_id: string })[]; owners: Set<string> | null }>({ rents: [], stays: [], owners: null });
   // Ο ΔΕΙΚΤΗΣ ΦΟΡΤΩΣΗΣ ΔΕΝ ΕΙΝΑΙ ΞΕΧΩΡΙΣΤΗ ΚΑΤΑΣΤΑΣΗ, ΕΙΝΑΙ ΕΡΩΤΗΣΗ. Ηταν
   // `setLoading(true)` στην πρώτη γραμμή της φόρτωσης: σύγχρονη γραφή μέσα σε
   // effect, δηλαδή δεύτερη απόδοση πριν καν φύγει το αίτημα. Η ερώτηση που ΟΝΤΩΣ
@@ -177,18 +182,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const [receivingRent, setReceivingRent] = useState(false);
 
   const propIds = useMemo(() => properties.map(p => p.id), [properties]);
-  // ═══ Ο ΔΙΑΚΟΠΤΗΣ «ΜΕΤΡΑ ΣΤΑ ΣΤΑΤΙΣΤΙΚΑ» ΦΤΑΝΕΙ ΚΑΙ ΕΔΩ ══════════════════════
-  // Ο διακόπτης ζει στις Δαπάνες και η λεζάντα του υπόσχεται ρητά: «Οσα δεν
-  // μετρούν μένουν στη λίστα, έξω από τα σύνολα». Το «Ετήσιες δαπάνες» της
-  // Επισκόπησης — η ΠΡΩΤΗ οθόνη κάθε συνεδρίας — τα μετρούσε κανονικά, μαζί με
-  // την ανάλυση κατηγοριών και την αναφορά PDF που βγαίνουν από το ίδιο σύνολο.
-  // Δηλαδή ο χρήστης έβγαζε μια δαπάνη από τα στατιστικά, γύριζε στην αρχή και
-  // την έβρισκε μέσα. Ο κανόνας διαβάζεται από την ΙΔΙΑ ρύθμιση που τον γράφει.
-  const [exclRaw, setExclRaw] = useState<unknown>(undefined);
-  const excl = useMemo(() => parseExclusions(exclRaw), [exclRaw]);
 
   const load = useCallback(async () => {
-    const [exp,bil,{ data:tsk },ten,ci,iv,ln,hs,allExp,allTen,{ data:allRc },rp,{ data:mnt },{ data:decl },budgetsRow,yr] = await Promise.all([
+    const [exp,bil,{ data:tsk },ten,ci,iv,ln,hs,allExp,allTen,{ data:allRc },rp,{ data:mnt },{ data:decl },yr,allYearRents,allStays,{ data:ownerRows }] = await Promise.all([
       expenseStore.ledger(supabase,prop.id,{ userId, from:`${year}-01-01`, columns:'*' }),
       billStore.ofProperty<Bill>(supabase,prop.id,'*',userId),
       // Δεν είναι πια πέντε για μια χωριστή κάρτα: τροφοδοτούν την ΕΝΙΑΙΑ
@@ -220,15 +216,16 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       supabase.from('activity_log').select('created_at')
         .eq('user_id',userId).eq('action','lease_declaration_submitted').eq('entity_id',prop.id)
         .order('created_at',{ascending:false}).limit(1),
-      // Ο χάρτης των εξαιρέσεων ζει στη ρύθμιση «budgets» του ακινήτου, εκεί
-      // όπου τον γράφουν οι Δαπάνες και ο Προϋπολογισμός. Μία ανάγνωση.
-      settings.section<Record<string,unknown>>(supabase,prop.id,'budgets',userId),
       rentStore.ofProperty<IncomeRent>(supabase,prop.id,'amount,paid,paid_date,due_date,period_year,period_month',userId,{ year }),
+      rentStore.ofUser<IncomeRent & { property_id: string }>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS}`,{ year }),
+      stayStore.ofUser<StayAmountLike & { property_id: string }>(supabase,userId,stayStore.PORTFOLIO_COLUMNS),
+      profileType === 'professional'
+        ? supabase.from('clients').select('id').eq('user_id',userId).eq('type','owner')
+        : Promise.resolve({ data: null }),
     ]);
     setExpenses((exp||[]) as Expense[]); setBills(bil); setTasks(tsk||[]); setTenant(ten?.[0]||null);
     setRentPeriods(rp); setMaint((mnt||[]) as OblMaint[]); setTenantFull(ten?.[0]||null);
     setLeaseDeclaredAt((decl?.[0]?.created_at as string|undefined) ?? null);
-    setExclRaw((budgetsRow as { __excluded?: unknown } | null)?.__excluded);
     setChk(ci); setInv(iv); setLoans(ln); setHostStays(hs); setYearRents(yr); setAllExpenses((allExp||[]) as { amount:number; date:string; category:string; is_recurring?:boolean; recurring_frequency?:string|null }[]);
     // ΑΚΡΙΒΩΣ οι στήλες του select('property_id,actual_rent,target_rent') — όχι
     // ολόκληρη η γραμμή του rent_config. Με `any` το `r.property_id` δεν
@@ -264,9 +261,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // είναι στόχος, όχι πραγματική είσπραξη και η προεπιλογή είναι τράπεζα.
       return { property_id: p.id, monthly, viaBank: fromTenant?.viaBank ?? true };
     }));
+    setPortfolioIncome({
+      rents: allYearRents, stays: allStays,
+      owners: ownerRows ? new Set((ownerRows as { id: string }[]).map(r => r.id)) : null,
+    });
     setLoadedFor(`${prop.id}|${year}`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prop.id, userId, year, propIds]);
+  }, [prop.id, userId, year, propIds, profileType]);
 
   // Η ΣΗΜΑΙΑ ΦΟΡΤΩΣΗΣ ΜΠΑΙΝΕΙ ΜΕΣΑ ΣΤΗΝ ΑΛΥΣΙΔΑ, ΟΧΙ ΠΡΙΝ ΑΠΟ ΑΥΤΗΝ. Γραμμένη
   // στο σώμα του effect, προκαλεί δεύτερη απόδοση ΠΡΙΝ καν ξεκινήσει το αίτημα.
@@ -309,9 +310,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // χρησιμοποιεί ΤΗΝ ΙΔΙΑ ημερομηνία που μετρά το ίδιο το ημερολόγιο — ο
   // λογαριασμός χωρίς προθεσμία παίρνει την ημερομηνία δημιουργίας, κάτι που
   // ένα `gte('due_date')` στον διακομιστή θα το πετούσε σιωπηλά έξω.
+  // ΚΑΙ ΧΩΡΙΣ ΤΟΝ ΔΙΑΚΟΠΤΗ «ΜΕΤΡΑ ΣΤΑ ΣΤΑΤΙΣΤΙΚΑ». Τα σύνολα του έτους είναι
+  // χρήματα που πληρώθηκαν ή οφείλονται: Επισκόπηση, Δαπάνες, Αποδόσεις και
+  // Λογιστική τα λένε ίδια (10.159,70€ στο demo, όχι 10.128,50€ στη μία από
+  // τις τέσσερις). Ο διακόπτης κρίνει τις συγκρίσεις μηνών στις Δαπάνες.
   const entriesOfYear = useMemo(
-    () => ledger.entries.filter(e => e.date.startsWith(`${year}-`) && countsIn(excl, e)),
-    [ledger.entries, year, excl]);
+    () => ledger.entries.filter(e => e.date.startsWith(`${year}-`)),
+    [ledger.entries, year]);
   const totalExpYear = ledgerTotal(entriesOfYear);
   // ── «ΩΣ ΣΗΜΕΡΑ» ΣΗΜΑΙΝΕΙ ΩΣ ΣΗΜΕΡΑ ──────────────────────────────────────
   // Το φίλτρο κρατούσε μόνο το έτος, οπότε ο λογαριασμός ρεύματος που λήγει σε
@@ -475,20 +480,37 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // βελτιστοποίηση ΟΛΟΚΛΗΡΟΥ του component. Δηλαδή μια χειροκίνητη απομνημόνευση
   // που υποτίθεται ότι κερδίζει χρόνο κόστιζε τη βελτιστοποίηση των πάντων γύρω
   // της. Ο υπολογισμός είναι καθαρός και ο μεταγλωττιστής τον απομνημονεύει μόνος.
+  // ΑΝΑ ΦΟΡΟΛΟΓΟΥΜΕΝΟ ΚΑΙ ΜΕ ΤΑ ΕΣΟΔΑ ΤΟΥ ΚΟΙΝΟΥ ΥΠΟΛΟΓΙΣΜΟΥ. Τα άλλα ακίνητα
+  // μετρούσαν το μηνιαίο του μισθωτηρίου ή του στόχου × 12 και σε λογαριασμό
+  // επαγγελματία ανακατεύονταν ιδιοκτήτες. Τώρα: ίδιος φορολογούμενος
+  // (client_id), έσοδα από δόσεις και διαμονές, όπως και οι Αποδόσεις.
   const portfolioTax = consolidateRentTax(
-    properties.map(p => {
-      const row = portfolioRents.find(r => r.property_id === p.id);
-      const monthly = p.id === prop.id ? incomeMonthly : (row?.monthly ?? 0);
-      // Για το ΤΡΕΧΟΝ ακίνητο η πηγή είναι ο φορτωμένος ενοικιαστής, που είναι
-      // πιο πρόσφατος από τη λίστα χαρτοφυλακίου· για τα υπόλοιπα, η λίστα.
-      const viaBank = p.id === prop.id ? (tenantFull?.e_payment !== false) : (row?.viaBank ?? true);
-      return { id: p.id, annualRent: monthly * 12, shortTerm: isShortTerm(p), rentsPaidViaBank: viaBank };
+    taxpayerRentSources({
+      props: properties,
+      current: { id: prop.id, annualRent: incomeMonthly * 12, shortTerm: isShortTerm(prop), rentsPaidViaBank: tenantFull?.e_payment !== false },
+      ownerClientIds: portfolioIncome.owners,
+      income: new Map(properties.map(p => {
+        const row = portfolioRents.find(r => r.property_id === p.id);
+        return [p.id, {
+          rents: portfolioIncome.rents.filter(r => r.property_id === p.id),
+          stays: portfolioIncome.stays.filter(st => st.property_id === p.id),
+          estimateMonthly: row?.monthly ?? 0,
+          viaBank: row?.viaBank ?? true,
+        }];
+      })),
+      year, today: todayAthens,
     }),
     undefined, year,
   );
   // Χωρίς `Math.round`: 1.060,20€ γραφόταν «1.060,00€», λεπτά που δεν υπάρχουν.
   // Η στρογγυλοποίηση ανήκει στην εμφάνιση, που ήδη γράφει δύο δεκαδικά.
   const estTax = taxShareOf(portfolioTax, prop.id);
+  // ΕΝΑ ΝΟΥΜΕΡΟ ΠΡΩΤΟ (02.10.2026). Η Επισκόπηση άνοιγε με ημερομηνία και
+  // κουμπί PDF· ο πρώτος αριθμός ήταν κάτω από τη Νόα. Ο ίδιος υπολογισμός με
+  // το πλακίδιο «Καθαρό αποτέλεσμα»: σε ακίνητο με έσοδα το καθαρό, αλλιώς οι
+  // δαπάνες της χρονιάς.
+  const heroIsNet = isLet(prop);
+  const heroValue = heroIsNet ? annualRent - projectedExpYear - estTax : projectedExpYear;
   const taxNote = consolidationSummary(portfolioTax, fmtEur);
   // Εισπράττεται το ενοίκιο ΑΥΤΟΥ του ακινήτου μέσω τράπεζας; Κρίνει το κείμενο
   // δίπλα στον φόρο, όπως ο ίδιος έλεγχος κρίνει και το ποσό.
@@ -696,6 +718,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16,flexWrap:'wrap',marginBottom:20}}>
         <div style={{minWidth:0}}>
           <AthensNow style={{fontFamily:T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--text-tertiary)',letterSpacing:'0.02em',marginBottom:4,minHeight:15}}/>
+          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)'}}>{heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
+          <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,7vw,38px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{fmtEur(heroValue)}</div>
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
               Εδώ γραφόταν ξανά, εξήντα εικονοστοιχεία κάτω από την ίδια
               πρόταση: όνομα, τύπος, κατάσταση, διεύθυνση — τα ίδια τέσσερα
@@ -707,6 +731,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               Μένει η ώρα Ελλάδας, που δεν τη λέει κανείς άλλος και που δίνει
               νόημα στο «ως σήμερα» κάθε ποσού από κάτω. */}
         </div>
+        {/* «ΣΑΡΩΣΕ ΕΓΓΡΑΦΟ» ΣΤΗΝ ΠΡΩΤΗ ΟΘΟΝΗ ΚΑΙ ΣΤΟ ΚΙΝΗΤΟ. Στα 390 εικονοστοιχεία
+            η σάρωση ήθελε κύλιση· είναι η πιο συχνή πράξη του ιδιοκτήτη. */}
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+        <Btn variant="primary" onClick={()=>onNavigate('scan')}>
+          <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+          Σάρωσε έγγραφο
+        </Btn>
         <Btn onClick={()=>printPropertyStatement({
           propName: prop.name, address: prop.address||undefined, postalCode: prop.postal_code||undefined,
           propType: propertyTypeLabel(prop.prop_type)||'Ακίνητο',
@@ -724,6 +755,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
           Αναφορά σε PDF
         </Btn>
+        </div>
       </div>
 
 
@@ -1004,6 +1036,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           τίτλος «Διαχείριση και εργαλεία» ονομάτιζε ομάδα που δεν υπάρχει. */}
       {readStatus(prop) === 'rent_long' && <PortalShare propertyId={prop.id} userId={userId} />}
       <OccupancyPanel propertyId={prop.id} userId={userId} profileType={profileType} legalForm={legalForm} />
+      {/* Η μηνιαία γνώμη, στη ροή και στο τέλος: δεν σκεπάζει τίποτα (02.10.2026). */}
+      <MonthlyFeedbackNudge />
 
     </div>
   );

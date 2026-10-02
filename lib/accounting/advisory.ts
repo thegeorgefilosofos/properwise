@@ -12,7 +12,20 @@
 import { marginalRate, RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax'
 import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026'
 import { fe, feWhole } from '../core/format';
-import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_TO } from './renovation39b';
+import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_TO, renovationYearReduction } from './renovation39b';
+
+/**
+ * Η μείωση 39Β του έτους με τον ΔΙΚΟ ΤΟΥ φόρο, όταν τον ξέρουμε. Με φόρο κάτω
+ * από 3.200€ ο ιδιοκτήτης δεν παίρνει 3.200€ τον χρόνο: παίρνει τον φόρο του.
+ */
+function renoYearLine(incomeTax: number | undefined): string {
+  if (incomeTax == null || !Number.isFinite(incomeTax)) return ''
+  const r = renovationYearReduction(RENO_39B_PER_YEAR, incomeTax)
+  if (r >= RENO_39B_PER_YEAR) return ''
+  return r <= 0
+    ? ' Με μηδενικό φόρο φέτος, η μείωση του έτους είναι μηδέν.'
+    : ` Με φόρο ${fe(incomeTax)} φέτος, η μείωση του έτους είναι το πολύ ${fe(r)}.`
+}
 import { MYAADE } from '@/lib/tax/aade';
 import { athensToday } from '@/lib/core/time';
 import { spitiMouOpen, spitiMouClosedSentence } from '@/lib/loans/recommend';
@@ -37,6 +50,8 @@ export interface AdvisoryInput {
   loanInterestYear?: number
   /** Η σημερινή μέρα («ΕΕΕΕ-ΜΜ-ΗΗ»), για ό,τι έχει προθεσμία. Λείπει: σήμερα στην Αθήνα. */
   today?: string
+  /** Ο φόρος εισοδήματος του έτους, όπως τον υπολογίζει η Λογιστική. Κόβει τη μείωση 39Β. */
+  incomeTax?: number
 }
 
 export interface AdvisoryItem {
@@ -123,7 +138,7 @@ export function buildAdvisory(input: AdvisoryInput, limit = 6): AdvisoryItem[] {
   items.push({
     id: 'renovation-credit', tone: 'action',
     title: `Ανακαίνιση και αναβάθμιση, έκπτωση φόρου έως ${feWhole(RENO_39B_CAP)}`,
-    body: `Δαπάνες ενεργειακής, λειτουργικής και αισθητικής αναβάθμισης κτιρίων μειώνουν τον φόρο εισοδήματος κατά ποσό ίσο με τη δαπάνη, έως ${feWhole(RENO_39B_CAP)} συνολικά, ισόποσα σε ${RENO_39B_YEARS} έτη (το πολύ ${feWhole(RENO_39B_PER_YEAR)} τον χρόνο, όχι πάνω από τον φόρο του έτους). Ισχύει για δαπάνες έως ${RENO_39B_TO}, με ηλεκτρονική πληρωμή και τιμολόγια στο ΑΦΜ σου. Κράτα τιμολόγια και εξοφλήσεις μέσω τράπεζας ή κάρτας· εδώ τα καταχωρείς ως δαπάνες ανά ακίνητο.`,
+    body: `Δαπάνες ενεργειακής, λειτουργικής και αισθητικής αναβάθμισης κτιρίων μειώνουν τον φόρο εισοδήματος κατά ποσό ίσο με τη δαπάνη, έως ${feWhole(RENO_39B_CAP)} συνολικά, ισόποσα σε ${RENO_39B_YEARS} έτη (το πολύ ${feWhole(RENO_39B_PER_YEAR)} τον χρόνο, όχι πάνω από τον φόρο του έτους).${renoYearLine(input.incomeTax)} Ισχύει για δαπάνες έως ${RENO_39B_TO}, με ηλεκτρονική πληρωμή και τιμολόγια στο ΑΦΜ σου. Κράτα τιμολόγια και εξοφλήσεις μέσω τράπεζας ή κάρτας· εδώ τα καταχωρείς ως δαπάνες ανά ακίνητο.`,
     refer: 'accountant', linkLabel: 'Φορολογία εισοδήματος (ΑΑΔΕ)', linkHref: SRC.aadeIncome,
   })
 

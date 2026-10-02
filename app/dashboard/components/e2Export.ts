@@ -12,6 +12,8 @@ import { E2_OFFICIAL_HEADERS, E2_COLUMNS, E2_COLUMN_GROUPS, E2_SUPPL_I_COLUMNS, 
 import { fe } from '@/lib/core/format';
 import { afmGroups } from './e2Compare';
 import { myAccountants } from '@/lib/data/accountant';
+import { declRefsByProperty } from '@/lib/data/e2Prefilled';
+import { readCoOwners } from '@/lib/property/coOwners';
 
 const NCOLS = E2_OFFICIAL_HEADERS.length; // 19
 /** Η κεφαλίδα του φύλλου που μαζεύει τα ακίνητα χωρίς ΑΦΜ ιδιοκτήτη. */
@@ -201,7 +203,7 @@ export async function loadE2Rows(
 ): Promise<{ properties: E2Property[]; rows: E2RowDetail[];
             leasesByProp: Map<string, E2Tenant[]>; paymentsByProp: Map<string, E2Payment[]>;
             afmByProp: Map<string, string>; staysByProp: Map<string, E2Stay[]>;
-            nameByAfm: Map<string, string>; accountant: string }> {
+            nameByAfm: Map<string, string>; accountant: string; leaseHistory?: Set<string> }> {
   const properties = await propertyStore.list<E2Property>(supabase, userId, {
     columns: 'id, name, ama, atak, address, postal_code, ownership, prop_type, status_detail, rental_mode, target_rent, sqm, floor, power_supply_no, co_owners, purchase_date',
     orderBy: 'created_at',
@@ -252,7 +254,19 @@ export async function loadE2Rows(
   const rows = properties.map(p => buildE2Row(
     p, leasesByProp.get(p.id) || [], paymentsByProp.get(p.id) || [], afmByProp.get(p.id) || '', year,
     staysByProp.get(p.id) || [], { hasLeaseHistory: tenants.known.has(p.id) }));
-  return { properties, rows, leasesByProp, paymentsByProp, afmByProp, staysByProp, nameByAfm, accountant };
+  // ΑΡΙΘΜΟΣ ΔΗΛΩΣΗΣ ΣΤΗ ΣΤΗΛΗ 19 (02.10.2026). Ο αριθμός που κατέγραψε ο
+  // ιδιοκτήτης στη «Δήλωση μίσθωσης» ζούσε μόνο στο ιστορικό ενεργειών και η
+  // στήλη έμενε κενή όταν το μισθωτήριο δεν τον είχε. Μπαίνει στην πιο πρόσφατη
+  // γραμμή με μισθωτή που δεν έχει ήδη δικό της.
+  const declRefs = await declRefsByProperty(supabase, userId).catch(() => new Map<string, string>());
+  properties.forEach((p, i) => {
+    const ref = declRefs.get(p.id);
+    if (!ref) return;
+    const withTenant = rows[i].lines.filter(l => l.tenantName);
+    const last = withTenant[withTenant.length - 1];
+    if (last && !last.declRef) last.declRef = ref.replace(/\D/g, '');
+  });
+  return { properties, rows, leasesByProp, paymentsByProp, afmByProp, staysByProp, nameByAfm, accountant, leaseHistory: tenants.known };
 }
 
 /** ΑΦΜ χωρίς κενά, για να μη γίνουν δύο ομάδες ο ίδιος άνθρωπος. */
@@ -328,15 +342,49 @@ function buildE1Sheet(e1: E1Summary, ownerAfm: string): XLSX.WorkSheet {
 export function buildE2Workbook(
   loaded: Awaited<ReturnType<typeof loadE2Rows>>, year: number,
 ): XLSX.WorkBook | null {
-  const { properties, rows: e2rows, afmByProp } = loaded;
+  const { properties: baseProps, rows: baseRows, afmByProp } = loaded;
   const whoOf = (afm: string): E2Declarant => ({ afm, name: loaded.nameByAfm?.get(afm) ?? '', accountant: loaded.accountant ?? '' });
   const supplements: { afm: string; idx: number[] }[] = [];
-  if (!properties.length) return null;
+  if (!baseProps.length) return null;
 
   const wb = XLSX.utils.book_new();
   const taken = new Set<string>();
   // Η ΟΜΑΔΟΠΟΙΗΣΗ ΕΙΝΑΙ ΚΟΙΝΗ ΜΕ ΤΗ ΣΥΓΚΡΙΣΗ: ίδιο ΑΦΜ, ίδια ακίνητα, ίδια σειρά.
-  const groups = afmGroups({ properties, afmByProp });
+  const groups = afmGroups({ properties: baseProps, afmByProp });
+
+  // ═══ ΕΝΑ ΦΥΛΛΟ ΑΝΑ ΑΦΜ ΚΑΙ ΓΙΑ ΤΟΝ ΣΥΝΙΔΙΟΚΤΗΤΗ (02.10.2026) ═══════════════
+  // Το Ε2 υποβάλλεται από κάθε υπόχρεο για το δικό του ποσοστό. Ο συνιδιοκτήτης
+  // με ΑΦΜ εμφανιζόταν μόνο στα Συμπληρωματικά Ι του ιδιοκτήτη και το δικό του
+  // μερίδιο δεν είχε φύλλο. Τώρα παίρνει γραμμές με το ποσοστό του, στο φύλλο
+  // του ΑΦΜ του, με τον ίδιο υπολογισμό.
+  const properties: E2Property[] = [...baseProps];
+  const e2rows: E2RowDetail[] = [...baseRows];
+  const coGroups = new Map<string, number[]>();
+  baseProps.forEach(p => {
+    const own = afmByProp.get(p.id) || '';
+    for (const c of readCoOwners(p.co_owners)) {
+      const afm = normAfm(c.afm);
+      const pct = Number(c.pct ?? 0);
+      if (!afm || afm === own || !(pct > 0)) continue;
+      // Στα Συμπληρωματικά Ι του δικού του φύλλου, οι «άλλοι» είναι ο ιδιοκτήτης
+      // και οι υπόλοιποι συνιδιοκτήτες, όχι ο ίδιος.
+      const others = [
+        ...(own ? [{ name: loaded.nameByAfm?.get(own) ?? '', afm: own, pct: Number(p.ownership ?? 100), address: null }] : []),
+        ...readCoOwners(p.co_owners).filter(o => o !== c),
+      ];
+      const q = { ...p, ownership: pct, co_owners: others } as E2Property;
+      properties.push(q);
+      e2rows.push(buildE2Row(q, loaded.leasesByProp.get(p.id) || [], loaded.paymentsByProp.get(p.id) || [], afm, year,
+        loaded.staysByProp.get(p.id) || [], { hasLeaseHistory: loaded.leaseHistory?.has(p.id) ?? false }));
+      const idx = coGroups.get(afm) || [];
+      idx.push(properties.length - 1);
+      coGroups.set(afm, idx);
+    }
+  });
+  for (const [afm, idx] of coGroups) {
+    const g = groups.find(x => x.afm === afm);
+    if (g) g.idx.push(...idx); else groups.push({ afm, idx });
+  }
   const single = groups.length === 1;
   const label = (afm: string) => (afm ? `ΑΦΜ ${afm}` : 'χωρίς ΑΦΜ');
   /** Για το φύλλο ελέγχου: σε ποιο φύλλο και σε ποιο α/α βρίσκεται κάθε ακίνητο. */
@@ -403,13 +451,16 @@ export function buildE2Workbook(
       flags: e2rows[i].flags,
     }))
     .filter(x => x.flags.length > 0 || !x.atak);
-  const services = e2rows.reduce((s, r) => s + r.servicesExcluded, 0);
+  // Από τις γραμμές των ιδιοκτητών μόνο: του συνιδιοκτήτη είναι το ίδιο ποσό ξανά.
+  const services = baseRows.reduce((s, r) => s + r.servicesExcluded, 0);
   const notes: string[] = [
     E1_CODES_NOTE,
     'Στήλη 16 (ανείσπρακτα): η εφαρμογή δεν καταγράφει αν για τα ανείσπρακτα έχει εκδοθεί διαταγή πληρωμής ή ασκηθεί αγωγή, οπότε τα αφήνει στη στ. 13. Όπου υπάρχει τέτοια ενέργεια, τα μεταφέρει ο λογιστής στη στ. 16.',
     ...(services > 0 ? [`Υπηρεσίες ${fe(services)} που χρεώθηκαν στους μισθωτές μαζί με το ενοίκιο δεν μπήκαν στο ακαθάριστο: δεν είναι μίσθωμα.`] : []),
     ...(groups.length > 1 ? [`Το βιβλίο έχει ${groups.length} φύλλα Ε2: ένα ανά ΑΦΜ ιδιοκτήτη${groups.some(g => !g.afm) ? ' και ένα για τα ακίνητα χωρίς ΑΦΜ' : ''}. Κάθε φύλλο υποβάλλεται στη δήλωση του δικού του υπόχρεου.`] : []),
     ...(groups.some(g => !g.afm) ? ['Ακίνητα χωρίς ΑΦΜ ιδιοκτήτη μπήκαν σε χωριστό φύλλο. Όρισε το ΑΦΜ στις ρυθμίσεις κάθε ακινήτου πριν την υποβολή.'] : []),
+    ...(coGroups.size ? ['Οι συνιδιοκτήτες με ΑΦΜ έχουν δικό τους φύλλο Ε2, με το ποσοστό τους και τις ίδιες μισθώσεις.'] : []),
+    'Στήλη 17 (είδος μίσθωσης και χρήση): γράφεται περιγραφικά, όπως η οδηγία 7. Στο myAADE διαλέγεται η αντίστοιχη τιμή από τη λίστα του εντύπου, μαζί με τις νέες επιλογές του 2026 (π.χ. κενή κατοικία, Μητρώο Βραχυχρόνιας Διαμονής).',
   ];
   const fAoa: (string | number)[][] = [
     ['ΕΛΕΓΧΟΣ ΠΡΙΝ ΤΗΝ ΥΠΟΒΟΛΗ'],

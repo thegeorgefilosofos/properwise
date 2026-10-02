@@ -23,7 +23,8 @@ import {
   fmtEur, fmtPct, fmtPct1, type ComparisonBank, loanTaxNote,
   LoanType, RateType, BorrowerType, LoanScenario, MarketRates, SavedLoan, rateTypeLabel
 } from './TabLoanData'
-import { greekWhen } from '@/lib/market/ecb'
+import { greekWhen, greekDay, MONTH_MEAN } from '@/lib/market/ecb'
+import { monthGen } from '@/lib/core/months'
 import { rentalRowsForYear } from '@/lib/billing/greekTax'
 import { athensParts } from '@/lib/core/time'
 import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate'
@@ -471,6 +472,11 @@ function calcNotaryFees(propValue:number):{notary:number;landReg:number;agent:nu
 
 const LOAN_TYPE_OPTIONS = Object.entries(LOAN_TYPES).map(([k,v])=>({value:k,label:v.label,description:`${rateRange(v)} · Δάνειο προς αξία έως ${fp(v.typical_ltv)}`}))
 const BORROWER_OPTIONS  = Object.entries(BORROWER_PROFILES).map(([k,v])=>({value:k,label:v.label,description:v.notes}))
+/** «μέσος όρος Σεπτεμβρίου 2026» για μέσο όρο μήνα, αλλιώς η ημερομηνία της τιμής. */
+const euriborPeriod = (asOf: string, basis: string): string => {
+  const m = /^(\d{4})-(\d{2})-\d{2}$/.exec(asOf || '')
+  return m && basis === MONTH_MEAN ? `μέσος όρος ${monthGen(Number(m[2]) - 1)} ${m[1]}` : `${basis}, ${greekWhen(asOf, basis)}`
+}
 const RATE_TYPE_OPTIONS = [{value:'fixed',label:'Σταθερό',description:'Σταθερό για την επιλεγμένη περίοδο'},{value:'variable',label:'Κυμαινόμενο',description:'Euribor συν περιθώριο τράπεζας'},{value:'mixed',label:'Μεικτό',description:'Σταθερό αρχικά, μετά κυμαινόμενο'}]
 const FIXED_PERIOD_OPTIONS = ['3','5','10','15','20'].map(v=>({value:v,label:`${v} χρόνια`,description:v==='5'?'Πιο συνηθισμένο':v==='10'?'Καλή ισορροπία':''}))
 const MARITAL_OPTIONS   = [{value:'single',label:'Άγαμος / Άγαμη',description:'Όριο ΦΜΑ: 200.000€'},{value:'married',label:'Έγγαμος / Έγγαμη',description:'Όριο ΦΜΑ: 250.000€'}]
@@ -1143,9 +1149,20 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
                       εφεδρική τιμή και το λέει. */}
                   <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>
                     {market.euribor_asOf && market.euribor_basis
-                      ? `${market.euribor_basis}, ${greekWhen(market.euribor_asOf, market.euribor_basis)}`
+                      ? `Euribor 3 μηνών, ${euriborPeriod(market.euribor_asOf, market.euribor_basis)}${market.euribor_source ? `. Πηγή: ${market.euribor_source}` : ''}${market.euribor_fetchedAt ? `, λήψη ${greekDay(market.euribor_fetchedAt.slice(0,10))}` : ''}`
                       : 'εφεδρική τιμή, χωρίς ημερομηνία παρατήρησης'}
                   </p>
+                  {/* Ο ΜΕΣΟΣ ΟΡΟΣ ΔΕΝ ΕΙΝΑΙ Η ΤΙΜΗ ΤΗΣ ΤΡΑΠΕΖΑΣ. Η τράπεζα εφαρμόζει
+                      το Euribor μιας συγκεκριμένης ημέρας, της αναπροσαρμογής. Στον
+                      Σεπτέμβριο 2026 ο μέσος όρος του εξαμήνου ήταν 2,922% και το
+                      fixing της 30/09 3,074%: σε άνοδο, ο μέσος όρος βγάζει δόση
+                      χαμηλότερη από αυτή που θα χρεωθεί ο ιδιοκτήτης. Δεν το κρύβουμε
+                      πίσω από τη λέξη «σήμερα». */}
+                  {market.euribor_basis === MONTH_MEAN && (
+                    <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans,lineHeight:1.5}}>
+                      Η τράπεζα εφαρμόζει το Euribor της ημέρας αναπροσαρμογής, όχι τον μέσο όρο του μήνα. Όταν το Euribor ανεβαίνει, η δόση εδώ βγαίνει χαμηλότερη από αυτή που θα χρεωθείς. Για την ακριβή δόση, δες την τιμή στο ενημερωτικό της τράπεζας.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

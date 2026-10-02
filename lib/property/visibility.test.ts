@@ -119,6 +119,7 @@ for (const [status, mode] of [['vacant', null], ['disputed', null], ['for_sale',
 {
   const two = [flat({ id: 'a' }), flat({ id: 'b' })];
   ok('δύο όμοια: σύγκριση ναι', visibleTabs(ALL, ctxOf(two), two[0]).includes('comparison'));
+  ok('δύο ακίνητα: χαρτοφυλάκιο ναι, εκεί ζει η σύγκριση', visibleTabs(ALL, ctxOf(two), two[0]).includes('portfolio'));
 }
 {
   const three = [flat({ id: 'a' }), flat({ id: 'b' }), flat({ id: 'c' })];

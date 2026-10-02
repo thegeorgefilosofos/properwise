@@ -62,6 +62,19 @@ eq('μακροχρόνια: από τις δόσεις', r.source, 'rent')
 eq('η πληρωμένη δόση του Οκτωβρίου (3.10) μένει έξω', r.receivedToDate, 5400)
 eq('η απλήρωτη μένει έξω', rentReceivedByToday(rents[10], 2026, TODAY), false)
 eq('ρυθμός: 5.400 × 12 / 9', r.annualized, 7200)
+
+// ═══ Ο ΜΗΝΑΣ ΠΟΥ ΞΕΚΙΝΗΣΕ ΔΕΝ ΕΙΝΑΙ ΜΗΝΑΣ ΜΕ ΔΟΣΗ ═══════════════════════════
+// Demo 2/10/2026: εννέα δόσεις των 650€ πληρωμένες, η δόση Οκτωβρίου λήγει
+// στις 5/10. Ο ρυθμός ήταν 5.850 × 12 / 10 = 7.020€ ενώ το συμβόλαιο δίνει 7.800€.
+const demo = Array.from({ length: 12 }, (_, i) => ({
+  amount: 650, paid: i < 9, paid_date: i < 9 ? `2026-${String(i + 1).padStart(2, '0')}-05` : null,
+  due_date: `2026-${String(i + 1).padStart(2, '0')}-05`, period_year: 2026, period_month: i + 1,
+}))
+const d2 = propertyIncome({ rents: demo, stays: [], year: 2026, today: '2026-10-02' })
+eq('demo 2/10: εισπράχθηκαν 5.850', d2.receivedToDate, 5850)
+eq('demo 2/10: ρυθμός 7.800, όχι 7.020', d2.annualized, 7800)
+eq('demo 6/10 με τη δόση Οκτωβρίου πληρωμένη: ρυθμός 7.800', propertyIncome({ rents: demo.map((x, i) => i === 9 ? { ...x, paid: true, paid_date: '2026-10-05' } : x), stays: [], year: 2026, today: '2026-10-06' }).annualized, 7800)
+eq('demo 6/10 με τη δόση Οκτωβρίου απλήρωτη: ρυθμός πέφτει, 5.850 × 12 / 10', propertyIncome({ rents: demo, stays: [], year: 2026, today: '2026-10-06' }).annualized, 7020)
 eq('απόδοση 7.200 / 150.000', r.grossYield, 4.8)
 ok('δεν είναι εκτίμηση', !r.estimated)
 // Χωρίς ημερομηνία πληρωμής κρίνει η προθεσμία και μετά ο μήνας της περιόδου.

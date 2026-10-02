@@ -183,7 +183,7 @@ export const NAV_GROUPS: { label: string; ids: string[] }[] = [
 // ιδιοκτήτης με Airbnb δεν έβλεπε ΠΟΤΕ τη Βραχυχρόνια. Τα δύο εργαλεία που τους
 // αφορούν περισσότερο από κάθε άλλο, γραμμένα και απρόσιτα — ακριβώς το σφάλμα
 // που περιγράφει το σχόλιο τριάντα γραμμές πιο πάνω, ξαναζωντανό.
-export const SELF_DISCLOSING = new Set(['roi', 'pricing', 'plan']);
+export const SELF_DISCLOSING = new Set(['roi', 'pricing', 'plan', 'portfolio']);
 
 export const ic = (d: string) => <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d.split('|').map((p,i)=><path key={i} d={p}/>)}</svg>;
 

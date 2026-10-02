@@ -19,6 +19,7 @@
 // 100% δοκιμασμένη. Εδώ μένουν μόνο οι κλήσεις δικτύου/βάσης.
 // ═══════════════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client';
+import { ensureDpa } from '@/lib/legal/dpa';
 import * as properties from '@/lib/data/properties';
 import * as billStore from '@/lib/data/bills';
 import * as tenantStore from '@/lib/data/tenants';
@@ -627,7 +628,12 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
       // μισθωτήριο με έναρξη και ενοίκιο περιέχει όλα όσα χρειάζονται οι δόσεις·
       // χωρίς αυτές, η σάρωση έλεγε «Ενοικιαστής ✓» και η ταμειακή θέση έμενε
       // στο μηδέν μέχρι να ανοίξει κάποιος την καρτέλα των εισπράξεων.
-      const { data: tRow, error: tErr } = await (sameTenant
+      // Νέος ενοικιαστής: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts).
+      // Χωρίς αποδοχή ο ενοικιαστής δεν γράφεται· τα υπόλοιπα της σάρωσης ναι.
+      const dpaOk = sameTenant || await ensureDpa(supabase);
+      const { data: tRow, error: tErr } = await (!dpaOk
+        ? Promise.resolve({ data: null, error: { message: 'dpa' } })
+        : sameTenant
         ? tenantStore.updateReturning(supabase, cur!.id, stripEmpty(plan.tenant))
         : tenantStore.addReturning(supabase, propertyId, userId, stripEmpty(plan.tenant)));
       if (!tErr) {
