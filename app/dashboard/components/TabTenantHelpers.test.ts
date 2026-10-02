@@ -21,7 +21,8 @@
 //
 // Τρέξε: npx tsx app/dashboard/components/TabTenantHelpers.test.ts
 // ═══════════════════════════════════════════════════════════════════════════
-import { calcEnd, LEASE_MONTHS, type LeaseType } from './TabTenantHelpers'
+import { calcEnd, LEASE_MONTHS, tenantScheduleRows, type LeaseType } from './TabTenantHelpers'
+import { expandRecurring } from '@/lib/calendar/recurrence'
 
 let passed = 0, failed = 0
 const fails: string[] = []
@@ -80,6 +81,20 @@ ok('άκυρη αρχή → κενό', calcEnd('όχι-ημερομηνία', 'a
   }
   ok(`${n} συνδυασμοί: κανένας δεν ξεχειλίζει σε άλλον μήνα`, wrongMonth === 0)
   ok(`${n} συνδυασμοί: η ημέρα κρατιέται ή κόβεται στην τελευταία του μήνα`, wrongDay === 0)
+}
+
+// ── 02.10.2026: η επέτειος ΔΤΚ γράφεται με το λεξιλόγιο του ημερολογίου ─────
+// Πριν: `recurring_interval: 'yearly'`, που η ανάπτυξη δεν ήξερε.
+{
+  const { events } = tenantScheduleRows(
+    { id: 't1', full_name: 'Μαρία', lease_start: '2025-03-01', lease_end: '2028-02-29', monthly_rent: 600 } as Parameters<typeof tenantScheduleRows>[0],
+    'p1', 'u1',
+  )
+  const adj = events.find(e => e.source === 'tenant:t1:rent_adjust')
+  ok('η επέτειος ΔΤΚ υπάρχει', !!adj)
+  ok('η επέτειος ΔΤΚ γράφεται ως annual', adj?.recurring_interval === 'annual')
+  const series = adj ? expandRecurring([{ id: 'x', event_date: adj.event_date, recurring: true, recurring_interval: adj.recurring_interval }], adj.event_date, '2031-12-31') : []
+  ok('η επέτειος ΔΤΚ αναπτύσσεται σε σειρά', series.length >= 3)
 }
 
 console.log(`TabTenantHelpers.test.ts: ${passed} passed, ${failed} failed`)
