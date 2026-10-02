@@ -232,7 +232,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="auth-split" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
+    <div data-mode="dark" className="auth-split" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
 
       <a href="#main" className="skip-link">Μετάβαση στη φόρμα</a>
 

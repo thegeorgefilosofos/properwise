@@ -24,6 +24,7 @@
 
 import { expectedSeries, type ExpectedSeries } from '../expenses/expected';
 import type { LedgerEntry } from '../expenses/ledger';
+import { roundHalfUp } from '@/lib/core/money';
 
 /**
  * Οι κατηγορίες που έχουν πάροχο και συμβόλαιο. Η σειρά είναι η σειρά οθόνης.
@@ -140,7 +141,7 @@ export interface ContractCard {
 
 /** Το άθροισμα των μηνιαίων, για την κεφαλίδα. Μόνο ό,τι γνωρίζουμε. */
 export function totalMonthly(cards: readonly ContractCard[]): number {
-  return Math.round(cards.reduce((s, c) => s + (c.monthly ?? 0), 0) * 100) / 100;
+  return roundHalfUp(cards.reduce((s, c) => s + (c.monthly ?? 0), 0), 2);
 }
 
 /**
@@ -182,7 +183,7 @@ export function contractOverview(
       // Πολλοί πάροχοι στην ίδια κατηγορία (ρεύμα σπιτιού και γκαράζ): δείχνεται
       // ο μεγαλύτερος και το πλήθος το λέει η οθόνη.
       provider: (main.vendor || '').trim(),
-      monthly: Math.round(monthly * 100) / 100,
+      monthly: roundHalfUp(monthly, 2),
       everyMonths: main.everyMonths,
       occurrences: list.reduce((s, x) => s + x.occurrences, 0),
       lastMonth: list.map(x => x.lastMonth).sort().pop() || '',

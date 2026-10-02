@@ -32,6 +32,7 @@ import {
   rentalIncomeTax, climateLevyForNights, municipalAccommodationTax,
 } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { roundHalfUp } from '@/lib/core/money';
 
 /** Οι νύχτες του χρόνου. Δίσεκτα έτη δεν αλλάζουν συμπέρασμα σε εκτίμηση. */
 export const NIGHTS_PER_YEAR = 365;
@@ -100,7 +101,7 @@ export interface ShortVsLong {
   breakEvenNights: number | null;
 }
 
-const cents = (n: number) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+const cents = (n: number) => roundHalfUp((Number.isFinite(n) ? n : 0), 2);
 const pos = (n: number) => Math.max(0, Number.isFinite(n) ? n : 0);
 
 /**

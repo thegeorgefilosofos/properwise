@@ -32,6 +32,7 @@ import type { AadeE2Row, E2IncomeColumn } from '@/lib/tax/aadeE2';
 import { isValidAfm } from '@/lib/core/greek';
 import { fe, fp } from '../core/format';
 import { e2PowerSupply } from '@/lib/property/powerSupply';
+import { roundHalfUp } from '@/lib/core/money';
 
 /**
  * Ανοχή στρογγυλοποίησης, σε ευρώ. Το `buildE2Row` στρογγυλοποιεί το μερίδιο
@@ -258,7 +259,7 @@ function compare(app: AppLeaseLine, aade: AadeE2Row): Finding[] {
       action: `${FIX_LABEL.check}: το είδος της χρήσης κρίνει τη στήλη και τον φόρο.`,
     });
   }
-  const diff = Math.round((app.gross - aade.gross) * 100) / 100;
+  const diff = roundHalfUp((app.gross - aade.gross), 2);
   if (!near(app.gross, aade.gross)) {
     const reasons = explainGross(app, aade, diff);
     const explained = reasons.reduce((s, r) => s + (r.amount ?? 0), 0);
@@ -299,7 +300,7 @@ function compare(app: AppLeaseLine, aade: AadeE2Row): Finding[] {
     out.push({
       kind: 'share',
       text: `Ποσοστό: η εφαρμογή ${fp(app.ownershipPct)}, η ΑΑΔΕ ${fp(aade.ownershipPct)}.`,
-      ours: fp(app.ownershipPct), theirs: fp(aade.ownershipPct), diff: Math.round((app.ownershipPct - aade.ownershipPct) * 100) / 100,
+      ours: fp(app.ownershipPct), theirs: fp(aade.ownershipPct), diff: roundHalfUp((app.ownershipPct - aade.ownershipPct), 2),
       fixIn: 'app',
       action: `${FIX_LABEL.app}: το ποσοστό της ΑΑΔΕ έρχεται από το Ε9. Αν το Ε9 είναι σωστό, γράψε ${fp(aade.ownershipPct)} στο ακίνητο.`,
     });
@@ -449,9 +450,9 @@ export function reconcilePrefilled(app: readonly AppLeaseLine[], aade: readonly 
     });
   }
 
-  const totalOurs = Math.round(app.reduce((s, x) => s + x.gross, 0) * 100) / 100;
-  const totalTheirs = Math.round(aade.reduce((s, y) => s + y.gross, 0) * 100) / 100;
-  const totalDiff = Math.round((totalOurs - totalTheirs) * 100) / 100;
+  const totalOurs = roundHalfUp(app.reduce((s, x) => s + x.gross, 0), 2);
+  const totalTheirs = roundHalfUp(aade.reduce((s, y) => s + y.gross, 0), 2);
+  const totalDiff = roundHalfUp((totalOurs - totalTheirs), 2);
   const differences = lines.filter(l => l.status === 'differs' || l.status === 'missing_in_aade' || l.status === 'missing_in_app').length;
   const matched = lines.filter(l => l.status === 'match').length;
   // Πρώτα όσα θέλουν διόρθωση, μετά τα σύμφωνα· μέσα σε κάθε ομάδα κατά ακίνητο.

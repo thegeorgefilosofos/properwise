@@ -20,6 +20,7 @@
 import { SUB_GROUPS, subShare, type SubscriptionEntry, type SubService } from './subscriptions';
 import { supplyOf, reverseChargeVat, type Supply } from '../tax/placeOfSupply';
 import { fn, fe } from '../core/format';
+import { roundHalfUp } from '@/lib/core/money';
 
 /** Η κατηγορία δαπάνης των συνδρομών — μία και οδηγεί στον κουβά «Συνδρομές». */
 export const SUBSCRIPTION_CATEGORY = 'subscription';
@@ -181,7 +182,7 @@ export function toExpenses(
     .filter(c => c.amount > 0 && !recorded.has(c.service))
     .map(c => ({
       description: c.plan ? `${c.label}, ${c.plan}` : c.label,
-      amount: Math.round(c.amount * 100) / 100,
+      amount: roundHalfUp(c.amount, 2),
       category: SUBSCRIPTION_CATEGORY,
       date: chargeDate(opts.month, c.renewalDate),
       paid: true as const,

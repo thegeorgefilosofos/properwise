@@ -19,13 +19,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { fe } from '@/lib/core/format';
+import { roundHalfUp } from '@/lib/core/money';
 
 /** Οσο χρειάζεται από μια γραμμή για να αθροιστεί και να ονομαστεί. */
 export interface ReceiptLine { id: string; amount: number }
 
 /** Το άθροισμα των επιλεγμένων, στρογγυλεμένο στο λεπτό. */
 export function receiptTotal(lines: readonly ReceiptLine[]): number {
-  return Math.round(lines.reduce((s, l) => s + (Number(l.amount) || 0), 0) * 100) / 100;
+  return roundHalfUp(lines.reduce((s, l) => s + (Number(l.amount) || 0), 0), 2);
 }
 
 /** Οι γραμμές που είναι επιλεγμένες, με τη σειρά που εμφανίζονται. */

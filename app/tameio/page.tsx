@@ -21,7 +21,7 @@ export default function Page() {
   const w = billingWords();
   if (w.live) return <CheckoutLanding firstCharge={w.firstCharge} moneyBack={w.moneyBack} securedBy={w.securedBy} securedHref={merchant().site} securedLead={w.securedByLead} securedLogo={merchant().logo}/>;
   return (
-    <StandaloneCard themed>
+    <StandaloneCard>
       <h1 style={CARD_TITLE}>Δεν χρειάζεται πληρωμή</h1>
       <p style={CARD_BODY}>
         {w.firstCharge} Όταν ενεργοποιηθεί, το πακέτο το διαλέγεις από τον «Λογαριασμό».

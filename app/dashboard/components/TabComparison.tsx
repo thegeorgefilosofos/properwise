@@ -22,6 +22,7 @@ import { loanInstalment } from '@/lib/loans/shape';
 import { athensToday } from '@/lib/core/time';
 import type { BillsRow } from '@/lib/supabase/tables';
 import { useLoad } from '@/app/hooks/useLoad';
+import { roundHalfUp } from '@/lib/core/money';
 
 interface Property {
   id: string; name: string; prop_type: string | null; address: string | null;
@@ -358,7 +359,7 @@ export default function TabComparison({ properties, userId, onNavigate }: Props)
   // από μέγεθος είναι το ΚΟΣΤΟΣ ΑΝΑ ΕΥΡΩ ΕΣΟΔΟΥ: πόσα ξοδεύεις για να μπει ένα
   // ευρώ. Αυτό είναι συμπέρασμα· το «751 έναντι 324» δεν είναι.
   const perSqmOf = (v: number | null, sqm: number): number | null =>
-    v == null || !(sqm > 0) ? null : Math.round((v / sqm) * 100) / 100;
+    v == null || !(sqm > 0) ? null : roundHalfUp((v / sqm), 2);
 
   const allMetrics: { label: string; tip?: string; get: (r: typeof rowsData[number]) => number | null; fmt: (n: number) => string; dir: Dir;
     /**
@@ -410,7 +411,7 @@ export default function TabComparison({ properties, userId, onNavigate }: Props)
     // υπάρχουν δύο μήνες ιστορικού, ο μέσος μήνας δεν βγαίνει καθόλου, οπότε η
     // γραμμή σωπαίνει αντί να επαινέσει ακίνητο για δαπάνες που δεν μετρήθηκαν.
     { label: 'Κόστος ανά ευρώ εσόδου', perSize: true,
-      get: r => (r.rent == null || r.rent <= 0 || r.expensesMonthly == null ? null : Math.round((r.expensesMonthly / r.rent) * 100) / 100),
+      get: r => (r.rent == null || r.rent <= 0 || r.expensesMonthly == null ? null : roundHalfUp((r.expensesMonthly / r.rent), 2)),
       fmt: n => fe(n), dir: 'low',
       tip: 'Πόσα ξοδεύεις για να μπει ένα ευρώ: ο μέσος μήνας δαπανών διά το μηνιαίο ενοίκιο. Δεν εξαρτάται ούτε από μέγεθος ούτε από αξία, άρα συγκρίνει ό,τι δεν συγκρίνουν τα υπόλοιπα. Εδώ το χαμηλότερο ΕΙΝΑΙ καλύτερο, γιατί το κλάσμα προϋποθέτει ότι υπάρχει έσοδο.' },
   ];

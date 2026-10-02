@@ -1,3 +1,4 @@
+import { roundHalfUp } from '@/lib/core/money';
 // ═══════════════════════════════════════════════════════════════════════════
 // ΜΗΧΑΝΗ ΑΠΟΔΟΣΕΩΝ — καθαρές, δοκιμάσιμες συναρτήσεις (χωρίς I/O/DOM).
 // Μία πηγή αλήθειας για: μεικτή/καθαρή απόδοση, απόδοση μετά φόρου, μόχλευση
@@ -9,7 +10,7 @@
 
 const pos = (n: number): number => (Number.isFinite(n) && n > 0 ? n : 0)
 const num = (n: number): number => (Number.isFinite(n) ? n : 0)
-export const round2 = (n: number): number => Math.round(num(n) * 100) / 100
+export const round2 = (n: number): number => roundHalfUp(num(n), 2)
 export const round1 = (n: number): number => Math.round(num(n) * 10) / 10
 
 // ── Βασικές αποδόσεις ──────────────────────────────────────────────────────

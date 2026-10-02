@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { PLANS, PLAN_ORDER, annualPerMonth, type PlanId } from '@/lib/billing/plans';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { T, TT, Card, SecHdr, Btn, ChipToggle, Chip, feAuto, fixedCols } from '@/components/Theme';
+import { roundHalfUp } from '@/lib/core/money';
 
 // ── Ποια πλάνα συγκρίνονται εδώ ─────────────────────────────────────────────
 // ΟΧΙ όλα. Το «Γραφείο» είναι πλάνο για χαρτοφυλάκια άνω των 40 ακινήτων και δεν
@@ -232,7 +233,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
                     διαιρούνται μεταξύ τους, στην ίδια κάρτα. */}
                 {Number.isFinite(p.maxProperties) && p.maxProperties > 1 && (
                   <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, marginTop: 8 }}>
-                    {p.maxProperties} ακίνητα, {feAuto(Math.round(((cycle === 'annual' ? annualPerMonth(id) : p.priceMonthly) / p.maxProperties) * 100) / 100)} το καθένα τον μήνα.
+                    {p.maxProperties} ακίνητα, {feAuto(roundHalfUp(((cycle === 'annual' ? annualPerMonth(id) : p.priceMonthly) / p.maxProperties), 2))} το καθένα τον μήνα.
                   </div>
                 )}
 

@@ -7,6 +7,7 @@
 // αποδίδει: τα διαβάζουν η οθόνη της ασφάλειας και η ειδοποίηση εξόδων.
 // ═══════════════════════════════════════════════════════════════════════════
 import { normalizeEnfiaAgeKey } from '@/lib/billing/enfia'
+import { roundHalfUp } from '@/lib/core/money';
 
 // ═══ Ο ΚΙΝΔΥΝΟΣ ΠΑΛΑΙΟΤΗΤΑΣ ΠΟΥ ΗΤΑΝ ΠΑΝΤΑ 1,00 ═══════════════════════════
 // Η παλαιότητα διαβάζεται από τη ρύθμιση `enfiaAge`, της οποίας τα κλειδιά
@@ -320,8 +321,8 @@ export function computeLiveQuotes(sqm: number, propValue: number, contentValue: 
         companyLabel:  c.label,
         plan:          p.id,
         planLabel:     p.name,
-        monthlyEstimate: Math.round(estimate * 100) / 100,
-        annualEstimate:  Math.round(estimate * 12 * annualRatio * 100) / 100,
+        monthlyEstimate: roundHalfUp(estimate, 2),
+        annualEstimate:  roundHalfUp(estimate * 12 * annualRatio, 2),
         earthquake:    !!p.earthquake,
         flood:         !!p.flood,
         natural:       !!p.natural,

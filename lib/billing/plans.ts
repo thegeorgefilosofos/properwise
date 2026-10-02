@@ -1,3 +1,4 @@
+import { roundHalfUp } from '@/lib/core/money';
 // ═══════════════════════════════════════════════════════════════════════════
 // Πλάνα συνδρομής — ΜΙΑ πηγή αλήθειας (τιμές, όρια, δυνατότητες).
 // Χρησιμοποιείται από: landing pricing, Ρυθμίσεις/Χρέωση, όριο ακινήτων,
@@ -347,7 +348,7 @@ export function planForCount(count: number): PlanId {
 
 /** Μηνιαίο ισοδύναμο ετήσιας τιμής (για εμφάνιση «X/μήνα με ετήσια»). */
 export function annualPerMonth(id: PlanId): number {
-  return Math.round((PLANS[id].priceAnnual / 12) * 100) / 100;
+  return roundHalfUp((PLANS[id].priceAnnual / 12), 2);
 }
 
 // ── Το όριο ακινήτων ───────────────────────────────────────────────────────

@@ -942,7 +942,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
 
       <CollapsibleSection title="Εμφάνιση και γλώσσα" hint="Θέμα, κείμενο, προθεσμίες" delay="170ms">
         <SetList>
-          <SetRow title="Θέμα" desc="Εναλλαγή ανάμεσα σε φωτεινό και σκοτεινό." control={<ThemeToggle />} />
+          <SetRow title="Θέμα" desc="Σκοτεινό ή φωτεινό, για την εφαρμογή. Το site, η σύνδεση και το ταμείο μένουν σκοτεινά." control={<ThemeToggle />} />
           {/* Η ΡΥΘΜΙΣΗ «ΔΕΚΑΔΙΚΑ ΣΤΑ ΠΟΣΑ» ΕΦΥΓΕ ΚΑΙ ΔΕΝ ΕΛΕΙΨΕ ΣΕ ΚΑΝΕΝΑΝ.
               Δεν τη διάβαζε ΟΥΤΕ ΕΝΑ σημείο της εφαρμογής: ο χρήστης άλλαζε την
               επιλογή, η οθόνη έδειχνε ότι αποθηκεύτηκε και δεν συνέβαινε τίποτα.

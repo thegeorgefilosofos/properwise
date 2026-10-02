@@ -9,6 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { annuityMonthly } from './recommend'
 import { fe } from '../core/format'
+import { roundHalfUp } from '@/lib/core/money';
 
 export interface EsisFee { label: string; amount: number }
 
@@ -55,7 +56,7 @@ function estimateAprc(amount: number, years: number, nominal: number, totalFees:
   if (amount <= 0 || years <= 0) return nominal
   const feePctPerYear = (totalFees / amount) / years * 100
   const insPctPerYear = (insuranceMonthly * 12 / amount) * 100
-  return Math.round((nominal + feePctPerYear + insPctPerYear) * 100) / 100
+  return roundHalfUp((nominal + feePctPerYear + insPctPerYear), 2)
 }
 
 /** Πλήρης ανάλυση προσφοράς ESIS με ετυμηγορία και επισημάνσεις. */
@@ -85,12 +86,12 @@ export function analyzeEsis(input: EsisInput, opts?: { benchmarkAprc?: number })
   const totalCost = totalInterest + totalFees + totalInsurance
 
   const aprc = input.aprcPct && input.aprcPct > 0
-    ? Math.round(input.aprcPct * 100) / 100
+    ? roundHalfUp(input.aprcPct, 2)
     : estimateAprc(amount, years, nominal, totalFees, insMonthly)
-  const aprcGapPct = Math.round((aprc - nominal) * 100) / 100
+  const aprcGapPct = roundHalfUp((aprc - nominal), 2)
 
   const benchmark = opts?.benchmarkAprc
-  const vsMarketPct = benchmark != null ? Math.round((aprc - benchmark) * 100) / 100 : null
+  const vsMarketPct = benchmark != null ? roundHalfUp((aprc - benchmark), 2) : null
 
   const flags: EsisFlag[] = []
   let score = 100

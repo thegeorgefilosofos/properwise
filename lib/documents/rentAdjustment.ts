@@ -1,4 +1,5 @@
 import { fe, fp } from '../core/format';
+import { roundHalfUp } from '@/lib/core/money';
 // ═══════════════════════════════════════════════════════════════════════════
 // rentAdjustment — Καθαρός υπολογισμός αναπροσαρμογής μισθώματος (νομικό έγγραφο).
 // Μέθοδοι: ποσοστό (συμφωνημένο), ΔΤΚ/πληθωρισμός (ΕΛΣΤΑΤ), ή χειροκίνητο νέο ποσό.
@@ -56,7 +57,7 @@ export function rentCapPct(o: { leaseCategory?: string | null; leaseStart?: stri
   return pct;
 }
 
-const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
+const r2 = (n: number) => roundHalfUp((Number(n) || 0), 2);
 
 export function computeRentAdjustment(i: AdjInput): AdjResult {
   const cur = r2(i.currentRent);

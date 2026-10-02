@@ -28,6 +28,7 @@ import {
   rentalIncomeTax, rentalBracketsForYear, municipalAccommodationTax,
   currentLevyRegime,
 } from '@/lib/billing/greekTax';
+import { roundHalfUp } from '@/lib/core/money';
 
 export interface PropertyTaxMeta { sqm?: number | null; isHouse?: boolean; propertyCount?: number; individual?: boolean; rentsPaidViaBank?: boolean }
 
@@ -168,7 +169,7 @@ export function channelBreakdownForYear(stays: TaxStay[], year: number): TaxChan
     if (y4(s.check_in) === String(year)) row.stays += 1;
     m.set(ch, row);
   }
-  for (const row of m.values()) row.revenue = Math.round(row.revenue * 100) / 100;
+  for (const row of m.values()) row.revenue = roundHalfUp(row.revenue, 2);
   return [...m.values()].sort((a, b) => b.revenue - a.revenue);
 }
 
@@ -238,7 +239,7 @@ export function shortTermYearSummary(stays: TaxStay[], year: number, meta?: Prop
   const inYear = stays.filter(s => y4(s.check_in) === String(year));
   const nightsByMonth = nightsByMonthForYear(stays, year);
   const totalNights = nightsByMonth.reduce((a, b) => a + b, 0);
-  const cents2 = (n: number) => Math.round(n * 100) / 100;
+  const cents2 = (n: number) => roundHalfUp(n, 2);
   const grossRevenue = cents2(stays.reduce((sum, s) => sum + declarableGrossOrTotal(s) * yearShare(s, year), 0));
   const unresolved = inYear.filter(s => declarableGross(s) == null && declarableGrossOrTotal(s) > 0);
   const platformFees = cents2(stays.reduce((sum, s) => sum + platformFee(s) * yearShare(s, year), 0));
@@ -461,7 +462,7 @@ export function guestPriceBreakdown(
   const price = Math.max(0, guestPrice);
   const gross = Math.max(0, price - levy);
   const rate = opts?.platformFeeRate != null && opts.platformFeeRate > 0 ? opts.platformFeeRate : null;
-  const fee = rate != null ? Math.round(price * rate * 100) / 100 : null;
+  const fee = rate != null ? roundHalfUp(price * rate, 2) : null;
   return {
     guestPrice: price,
     climateLevy: levy,

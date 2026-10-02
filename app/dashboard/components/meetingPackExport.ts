@@ -33,6 +33,7 @@ import { shortTermYearSummary, staysMissingPlatformFee, isHouseType } from '@/li
 import { reportPdfBlob } from '@/lib/pdf/pdfReport';
 import { issueDocument } from '@/lib/documents/issue';
 import { grDate } from '@/lib/core/format';
+import { roundHalfUp } from '@/lib/core/money';
 
 /** Το βιβλίο «02 Έλεγχος φακέλου»: σύνοψη, σύγκριση, ακίνητα, βραχυχρόνια, τι λείπει. */
 export function buildReviewWorkbook(input: MeetingPackInput, issuedAt: Date = new Date()): XLSX.WorkBook {
@@ -80,7 +81,7 @@ export function buildReviewWorkbook(input: MeetingPackInput, issuedAt: Date = ne
     const rows: (string | number)[][] = r.lines.map(l => [
       l.propertyName, l.atak || '', l.tenant || '',
       l.app ? l.app.gross : '', l.aade ? l.aade.gross : '',
-      Math.round(((l.app?.gross ?? 0) - (l.aade?.gross ?? 0)) * 100) / 100,
+      roundHalfUp(((l.app?.gross ?? 0) - (l.aade?.gross ?? 0)), 2),
       l.app?.months ?? '', l.aade?.months ?? '',
       l.status === 'match' ? 'Συμφωνεί' : l.status === 'vacant' ? 'Κενό' : l.status === 'missing_in_aade' ? 'Λείπει από την ΑΑΔΕ' : l.status === 'missing_in_app' ? 'Λείπει από την εφαρμογή' : 'Διαφέρει',
       l.findings.map(f => f.text).join(' '),
@@ -130,7 +131,7 @@ export function buildReviewWorkbook(input: MeetingPackInput, issuedAt: Date = ne
   if (shortTerm.length) {
     const rows: (string | number)[][] = shortTerm.map(p => {
       const s = p.shortTerm!;
-      return [p.name, s.ama || 'Λείπει', s.stays, s.nights, s.gross, s.platformFees, s.levyDue, s.levyCollected, Math.round((s.levyDue - s.levyCollected) * 100) / 100];
+      return [p.name, s.ama || 'Λείπει', s.stays, s.nights, s.gross, s.platformFees, s.levyDue, s.levyCollected, roundHalfUp((s.levyDue - s.levyCollected), 2)];
     });
     const sumOf = (k: keyof NonNullable<PackProperty['shortTerm']>) => shortTerm.reduce((a, p) => a + (Number(p.shortTerm![k]) || 0), 0);
     const { ws } = sectionSheet({
@@ -139,7 +140,7 @@ export function buildReviewWorkbook(input: MeetingPackInput, issuedAt: Date = ne
         head: ['Ακίνητο', 'ΑΜΑ', 'Διαμονές', 'Νύχτες στο έτος', 'Ακαθάριστο', 'Προμήθεια πλατφόρμας', 'ΤΑΚΚ οφειλόμενο', 'ΤΑΚΚ εισπραγμένο', 'ΤΑΚΚ που λείπει'],
         numeric: [2, 3, 4, 5, 6, 7, 8],
         formats: { 2: FMT.int, 3: FMT.int, 4: FMT.eur, 5: FMT.eur, 6: FMT.eur, 7: FMT.eur, 8: FMT.eur },
-        rows: [...rows, ['Σύνολο', '', sumOf('stays'), sumOf('nights'), t.shortTermGross, sumOf('platformFees'), t.levyDue, t.levyCollected, Math.round((t.levyDue - t.levyCollected) * 100) / 100]],
+        rows: [...rows, ['Σύνολο', '', sumOf('stays'), sumOf('nights'), t.shortTermGross, sumOf('platformFees'), t.levyDue, t.levyCollected, roundHalfUp((t.levyDue - t.levyCollected), 2)]],
         totals: [rows.length],
         sum: [2, 3, 4, 5, 6, 7, 8],
         notes: ['Ακαθάριστο: ό,τι πλήρωσε ο επισκέπτης μείον το τέλος ανθεκτικότητας, με τις διαμονές που περνούν την αλλαγή του χρόνου μοιρασμένες με τις νύχτες. Η προμήθεια της πλατφόρμας δεν μειώνει το ακαθάριστο.'],

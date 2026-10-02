@@ -28,6 +28,7 @@ import { expenseAccount } from '@/lib/accounting/journal';
 import { categoryLabel, isDeductible } from '@/lib/expenses/taxonomy';
 import { rentalBracketsForYear, bracketsLabelForYear } from '@/lib/billing/greekTax';
 import { greekPropertyTaxObligations } from '@/lib/tax/greekTaxCalendar';
+import { roundHalfUp } from '@/lib/core/money';
 
 /** Το ακίνητο του παραδείγματος. Ένα, μακροχρόνια μισθωμένο, με πλήρη στοιχεία. */
 export const DEMO_PROPERTY = {
@@ -133,7 +134,7 @@ export function demoLedger(year: number): DemoLedgerRow[] {
       return {
         category,
         label: categoryLabel(category),
-        amount: Math.round(amount * 100) / 100,
+        amount: roundHalfUp(amount, 2),
         account: a.code,
         accountName: a.name,
         deductible: isDeductible(category),
@@ -188,11 +189,11 @@ export function demoSummary(today: string): DemoSummary {
 
   return {
     year,
-    collected: Math.round(collected * 100) / 100,
-    carriedOver: Math.round(carriedOver * 100) / 100,
-    expenses: Math.round((enfia + otherCash) * 100) / 100,
-    enfia: Math.round(enfia * 100) / 100,
-    otherCash: Math.round(otherCash * 100) / 100,
+    collected: roundHalfUp(collected, 2),
+    carriedOver: roundHalfUp(carriedOver, 2),
+    expenses: roundHalfUp((enfia + otherCash), 2),
+    enfia: roundHalfUp(enfia, 2),
+    otherCash: roundHalfUp(otherCash, 2),
     statement,
     bracketsLabel: bracketsLabelForYear(year),
   };

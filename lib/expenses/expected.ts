@@ -36,6 +36,7 @@
 
 import type { LedgerEntry } from './ledger';
 import { daysUntil } from '@/lib/core/time';
+import { roundHalfUp } from '@/lib/core/money';
 
 /**
  * Πόσοι διαφορετικοί μήνες χρειάζονται για να πούμε ότι κάτι «επαναλαμβάνεται».
@@ -232,7 +233,7 @@ export function expectedSeries(entries: readonly LedgerEntry[], today: Date): Ex
     out.push({
       key, title: last.title, category: last.category, vendor: last.vendor,
       everyMonths,
-      typicalAmount: Math.round(median(amounts) * 100) / 100,
+      typicalAmount: roundHalfUp(median(amounts), 2),
       typicalDay: Math.min(28, Math.max(1, Math.round(median(days)))),
       lastMonth, occurrences: months.length,
     });

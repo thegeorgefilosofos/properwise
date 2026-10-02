@@ -1,3 +1,4 @@
+import { roundHalfUp } from '@/lib/core/money';
 // ═══════════════════════════════════════════════════════════════════════════
 // ΣΥΓΚΕΝΤΡΩΤΙΚΗ ΑΠΟΔΟΣΗ ΧΑΡΤΟΦΥΛΑΚΙΟΥ — καθαρή συνάρτηση (χωρίς I/O).
 // Σταθμισμένη μεικτή/καθαρή απόδοση, συνολική αξία & ετήσιο καθαρό, μόνο από
@@ -6,7 +7,7 @@
 const pos = (n: number): number => (Number.isFinite(n) && n > 0 ? n : 0)
 const max0 = (n: number): number => Math.max(0, Number.isFinite(n) ? n : 0)
 const round1 = (n: number): number => Math.round(n * 10) / 10
-const round2 = (n: number): number => Math.round(n * 100) / 100
+const round2 = (n: number): number => roundHalfUp(n, 2)
 
 export interface PortfolioItem {
   value: number          // αξία ακινήτου

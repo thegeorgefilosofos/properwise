@@ -33,6 +33,7 @@ import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39
 import { SPITI_MOU, spitiMouOpen, spitiMouClosedLine, spitiMouClosedSentence } from '@/lib/loans/recommend';
 import { programDateLabel } from '@/lib/loans/programStatus';
 import { energyProgramStates } from '@/lib/loans/energyPrograms';
+import { roundHalfUp } from '@/lib/core/money';
 
 // Οι τιμές και τα όρια στο prompt ΔΕΝ γράφονται με το χέρι: διαβάζονται από τα
 // PLANS. Αλλιώς η απάντηση λέει στον χρήστη λάθος τιμή όποτε αλλάξει η τιμολόγηση.
@@ -845,7 +846,7 @@ export function parseAction(text: string): { clean: string; action?: AssistantAc
     // Ημερομηνία ΜΟΝΟ αν είναι ξεχωριστό, έγκυρο πεδίο (χωρίς «κύλισμα» π.χ. 2026-02-31).
     const dRaw = parts.find(p => /^\d{4}-\d{2}-\d{2}$/.test(p));
     const date = dRaw && !isNaN(new Date(dRaw).getTime()) && new Date(dRaw).toISOString().slice(0, 10) === dRaw ? dRaw : undefined;
-    if (description && amount > 0 && isFinite(amount)) expense = { type: 'expense', description, amount: Math.round(amount * 100) / 100, ...(date ? { date } : {}) };
+    if (description && amount > 0 && isFinite(amount)) expense = { type: 'expense', description, amount: roundHalfUp(amount, 2), ...(date ? { date } : {}) };
   }
   // Σύνδεσμος pre-check-in για πελάτη: [[checkin: όνομα ή τηλέφωνο ή ΑΦΜ]].
   const ck = text.match(/\[\[checkin:\s*([^\]]+?)\s*\]\]/i);
@@ -896,7 +897,7 @@ export function parseAction(text: string): { clean: string; action?: AssistantAc
     // περιγραφή που τυχαίνει να έχει ψηφία (π.χ. «ΔΕΗ Q3», «ενοίκιο Μαρτίου 2024»).
     const numRaw = parts.find(p => /^[\d.,\s€]+$/.test(p)) || [...parts].reverse().find(p => /\d/.test(p)) || '';
     const amount = numRaw ? parseFloat(numRaw.replace(/[^\d.,]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.')) : NaN;
-    if (description) paid = { type: 'paid', description, amount: isFinite(amount) && amount > 0 ? Math.round(amount * 100) / 100 : undefined };
+    if (description) paid = { type: 'paid', description, amount: isFinite(amount) && amount > 0 ? roundHalfUp(amount, 2) : undefined };
   }
   // Καταχώρηση πελάτη: [[client: Όνομα | τηλέφωνο | ΑΦΜ | τύπος]] (μόνο το όνομα υποχρεωτικό).
   const cl = text.match(/\[\[client:\s*([^\]]+?)\s*\]\]/i);

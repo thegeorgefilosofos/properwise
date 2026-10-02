@@ -11,6 +11,7 @@ import { athensToday } from '@/lib/core/time';
 import { normalizePhone } from '@/lib/clients/clients';
 import { instalmentPeriods, type InstalmentPeriod } from '@/lib/rent/frequency';
 import { ABSENT_DATE } from '@/components/Theme';
+import { roundHalfUp } from '@/lib/core/money';
 // ΟΙ ΔΥΟ ΣΥΝΑΡΤΗΣΕΙΣ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΟ lib/, ΟΧΙ ΑΠΟ ΤΟ ΑΡΧΕΙΟ ΤΩΝ ΟΘΟΝΩΝ.
 // Το TabTenantHelpers ξεκινά με 'use client'· αυτό εδώ είναι σχήματα και
 // κανόνες, που πρέπει να διαβάζονται και από τον διακομιστή. Τιμή που έρχεται
@@ -139,7 +140,7 @@ export function tenantServiceLines(t:SvcInput):{label:string;amount:number}[]{
 // όποια κι αν είναι η συχνότητα, ο χρόνος κλείνει με δώδεκα μισθώματα.
 // Δύο δεκαδικά, ΠΑΝΤΑ: ο πολλαπλασιασμός επί τρεις μήνες πάνω σε ενοίκιο με
 // λεπτά (π.χ. 833,33) βγάζει 2499,9900000000002 σε κινητή υποδιαστολή.
-export const r2=(n:number)=>Math.round(n*100)/100;
+export const r2=(n:number)=>roundHalfUp(n, 2);
 
 export function expectedPeriods(tenant:Tenant, rentDueDay:number):InstalmentPeriod[] {
   if(!tenant.lease_start||!tenant.monthly_rent||tenant.monthly_rent<=0) return [];

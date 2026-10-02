@@ -17,8 +17,13 @@
 // που είναι ο άλλος τρόπος να διαφωνήσουν δύο οθόνες.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { roundHalfUp } from './money';
 const LOCALE = 'el-GR';
 const finite = (n: unknown): number => (typeof n === 'number' && Number.isFinite(n) ? n : 0);
+/** Ο αριθμός στρογγυλεμένος όπως θα γραφτεί: το μισό προς τα πάνω (lib/core/money).
+ *  Το `toLocaleString` στρογγυλεύει την ΑΚΡΙΒΗ τιμή του double, δηλαδή το
+ *  563,925 (563,92499…) σε «563,92». Περνώντας πρώτα από εδώ γράφεται «563,93». */
+const rd = (n: unknown, d: number): number => roundHalfUp(finite(n), d);
 
 // ── ΔΥΟ ΨΗΦΙΑ. ΠΑΝΤΑ. ─────────────────────────────────────────────────────
 // Οι στήλες μιας οικονομικής κατάστασης στοιχίζονται στην υποδιαστολή. Όταν η
@@ -53,7 +58,7 @@ const MONEY = { minimumFractionDigits: 2, maximumFractionDigits: 2 } as const;
  * `fe(1234.5)` → «1.234,50€». Πάντα δύο δεκαδικά.
  */
 export const fe = (n: number) =>
-  `${finite(n).toLocaleString(LOCALE, MONEY)}€`;
+  `${rd(n, 2).toLocaleString(LOCALE, MONEY)}€`;
 
 /**
  * Ήταν τα «έξυπνα» δεκαδικά — ακέραιο χωρίς υποδιαστολή, αλλιώς δύο ψηφία.
@@ -64,7 +69,7 @@ export const feAuto = fe;
 
 /** Ποσοστό: `fp(4.25)` → «4,25%». Πάντα δύο δεκαδικά, για τον ίδιο λόγο. */
 export const fp = (n: number) =>
-  `${finite(n).toLocaleString(LOCALE, MONEY)}%`;
+  `${rd(n, 2).toLocaleString(LOCALE, MONEY)}%`;
 
 /**
  * ΣΥΝΤΕΛΕΣΤΗΣ ΤΟΥ ΝΟΜΟΥ Ή ΤΙΜΗ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΗΘΗΚΕ, ΟΧΙ ΑΠΟΤΕΛΕΣΜΑ ΔΙΑΙΡΕΣΗΣ.
@@ -77,7 +82,7 @@ export const fp = (n: number) =>
  * `fpRate(25)` → «25%», `fpRate(12.5)` → «12,5%».
  */
 export const fpRate = (n: number) =>
-  `${finite(n).toLocaleString(LOCALE, { maximumFractionDigits: 2 })}%`;
+  `${rd(n, 2).toLocaleString(LOCALE, { maximumFractionDigits: 2 })}%`;
 
 // ── ΤΟ ΛΟΓΙΣΤΙΚΟ ΠΡΟΣΗΜΟ ───────────────────────────────────────────────────
 // Σε κατάσταση αποτελεσμάτων το αρνητικό γράφεται με ΤΥΠΟΓΡΑΦΙΚΟ μείον (U+2212),
@@ -125,7 +130,7 @@ export const fpSigned = (n: number | null | undefined): string => {
 // κανόνας αφορά ποσά και αυτό δεν είναι ποσό.
 /** Μοναδιαία τιμή: `feRate(0.115)` → «0,115€». Δύο έως τέσσερα δεκαδικά. */
 export const feRate = (n: number) =>
-  `${finite(n).toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}€`;
+  `${rd(n, 4).toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}€`;
 
 /**
  * ΣΥΜΠΑΓΕΣ ΠΟΣΟ ΓΙΑ ΣΤΕΝΟ ΧΩΡΟ — ετικέτες ράβδων, tooltips, άξονες γραφημάτων.
@@ -167,11 +172,11 @@ export const feCompact = (n: number): string => {
  * `feWhole(205)` → «205€».
  */
 export const feWhole = (n: number) =>
-  `${Math.round(finite(n)).toLocaleString(LOCALE, { maximumFractionDigits: 0 })}€`;
+  `${rd(n, 0).toLocaleString(LOCALE, { maximumFractionDigits: 0 })}€`;
 
 /** Αριθμός χωρίς μονάδα: `fn(1234.5, 1)` → «1.234,5». */
 export const fn = (n: number, d = 0) =>
-  finite(n).toLocaleString(LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d });
+  rd(n, d).toLocaleString(LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d });
 
 // ── ΚΑΜΙΑ ΠΑΥΛΑ ΜΕΣΑ ΣΕ ΣΤΗΛΗ ΑΡΙΘΜΩΝ ─────────────────────────────────────
 // Η παύλα είναι τυπογραφικά ένα ΣΥΜΒΟΛΟ, όχι αριθμός: δεν έχει υποδιαστολή, δεν

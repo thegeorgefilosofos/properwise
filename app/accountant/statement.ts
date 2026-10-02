@@ -21,6 +21,7 @@ import { bankReceiptMatters, presumptiveDeductionRateForYear } from '@/lib/billi
 import { rentalIncomeTax, rentalBracketsForYear, bankReceiptPenaltyShare } from '@/lib/billing/greekTax';
 import { fpRate } from '@/lib/core/format';
 import type { XlsxSheet } from '@/app/dashboard/components/exportXlsx';
+import { roundHalfUp } from '@/lib/core/money';
 
 export interface PortalExpense { category: string; amount: number; date: string }
 
@@ -75,7 +76,7 @@ export interface PropertyLine {
 
 const sum = (a: number[]) => a.reduce((s, v) => s + (v || 0), 0);
 
-const cents = (n: number) => Math.round(n * 100) / 100;
+const cents = (n: number) => roundHalfUp(n, 2);
 
 // ══ Η ΠΥΛΗ ΕΛΕΓΕ «ΕΙΣΠΡΑΞΕΙΣ» ΓΙΑ ΤΟ ΔΕΔΟΥΛΕΥΜΕΝΟ ═══════════════════════════
 // ΤΟ ΣΦΑΛΜΑ. Το `rent_collected` της βάσης άθροιζε ΟΛΕΣ τις περιόδους της

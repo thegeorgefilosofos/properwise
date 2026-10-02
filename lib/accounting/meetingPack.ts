@@ -28,6 +28,7 @@ import type { PrefilledReconciliation, FixIn } from '@/lib/billing/e2Reconcile';
 import type { PdfReportModel, PdfSection } from '@/lib/pdf/pdfReport';
 import type { ZipFile } from './zip';
 import { fe, fp, grDate } from '@/lib/core/format';
+import { roundHalfUp } from '@/lib/core/money';
 
 /** Ενα ακίνητο του ΑΦΜ, όπως το χρειάζεται ο φάκελος. */
 export interface PackProperty {
@@ -152,7 +153,7 @@ export interface PackTotals {
 }
 
 export function packTotals(props: readonly PackProperty[]): PackTotals {
-  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const r2 = (n: number) => roundHalfUp(n, 2);
   return {
     properties: props.length,
     gross: r2(props.reduce((s, p) => s + p.gross, 0)),

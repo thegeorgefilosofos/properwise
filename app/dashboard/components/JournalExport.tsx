@@ -32,6 +32,7 @@ import { MONTHS_NOM } from '@/lib/core/months';
 import { downloadCsv } from '@/lib/core/download';
 import { failed } from '@/lib/core/dbError';
 import { monthEndIso } from '@/lib/core/time';
+import { roundHalfUp } from '@/lib/core/money';
 
 // Δόση δανείου (από περιγραφή/κατηγορία εξόδου) — ελληνικά & αγγλικά.
 const LOAN_RE = /δάνει|δόσ\w*\s*δάν|τοκοχρε|χρεολ|loan|installment|mortgage|στεγαστ/i;
@@ -50,7 +51,7 @@ function loanInterestForPayment(l: LoanRow, isoDate: string, payment: number): n
   t = Math.min(t, Math.max(0, n - 1));
   const g = Math.pow(1 + r, t);
   const balBefore = principal * g - pay * ((g - 1) / r); // υπόλοιπο πριν τη δόση t+1
-  return Math.max(0, Math.min(payment, Math.round(balBefore * r * 100) / 100));
+  return Math.max(0, Math.min(payment, roundHalfUp(balBefore * r, 2)));
 }
 
 type ExportFormat = JournalFormat | 'excel';

@@ -37,6 +37,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { lastWorkingDayOfMonth } from '@/lib/tax/greekTaxCalendar'
 import { monthGen } from '@/lib/core/months'
+import { roundHalfUp } from '@/lib/core/money';
 
 /** Πόσες δόσεις: Μάρτιος έως Φεβρουάριο του επόμενου έτους. */
 export const ENFIA_INSTALMENTS = 12
@@ -53,7 +54,7 @@ export interface EnfiaInstalment {
   amount: number
 }
 
-const cents = (n: number) => Math.round(n * 100) / 100
+const cents = (n: number) => roundHalfUp(n, 2)
 /** Προς τα κάτω στο λεπτό. Το `+1e-9` σβήνει το σφάλμα του δυαδικού δεκαδικού
  *  (85,5 × 100 δίνει 8549,999… και το κόψιμο θα έβγαζε 85,49). */
 const centsDown = (n: number) => Math.floor(n * 100 + 1e-9) / 100

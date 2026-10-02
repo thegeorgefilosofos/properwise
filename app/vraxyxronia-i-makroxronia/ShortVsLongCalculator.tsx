@@ -31,6 +31,7 @@ import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
 import { ToolNumField, ToolSelect, ToolFields, ToolSeg, ToolHint, ToolHero } from '@/app/ToolParts';
 
 import LiveResult from '@/components/LiveResult';
+import { roundHalfUp } from '@/lib/core/money';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
@@ -63,7 +64,7 @@ const wholeSigned = (n: number) => (Math.round(n * 100) < 0 ? `−${fe(-n)}` : f
  * κέρδος δεν διαβαζόταν ως κέρδος.
  */
 const delta = (n: number) => {
-  const c = Math.round(n * 100) / 100;
+  const c = roundHalfUp(n, 2);
   return c > 0 ? `+${fe(c)}` : c < 0 ? `−${fe(-c)}` : fe(0);
 };
 

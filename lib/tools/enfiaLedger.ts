@@ -14,8 +14,9 @@
 // στο στρογγυλό ποσό, οπότε δεν είναι τέχνασμα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { ENFIA_WEALTH_REDUCTION, type ENFIAResult } from '@/lib/billing/enfia';
+import { roundHalfUp } from '@/lib/core/money';
 
-const cents = (n: number) => Math.round(n * 100) / 100;
+const cents = (n: number) => roundHalfUp(n, 2);
 
 /** Τα ποσά της ανάλυσης όπως τυπώνονται, με το ετήσιο της μηχανής ως σύνολο. */
 interface EnfiaLedger { basic: number; auxiliary: number; extra: number; supplementary: number; reduction: number }

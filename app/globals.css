@@ -6732,7 +6732,8 @@ tr.po-row-more { display: none; }
    `color-scheme` το σύστημα ζωγραφίζει το άδειο κουτάκι στο σκούρο, με
    περίγραμμα, όπως τα πεδία από πάνω του. Στο φωτεινό θέμα ισχύει το φωτεινό. */
 .auth-split { color-scheme: dark; }
-:root[data-mode="light"] .auth-split { color-scheme: light; }
+/* Σύνδεση, εγγραφή και επαναφορά είναι πλέον πάντα σκούρες (`data-mode="dark"`
+   στο περιτύλιγμα): το φωτεινό των Ρυθμίσεων ισχύει μέσα στην εφαρμογή. */
 .po-check { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 
 /* ΤΟ «ΣΗΜΕΡΑ» ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ ΚΟΒΟΤΑΝ ΣΤΑ 320 (01.10.2026). ‹ μήνας › Σήμερα
@@ -6752,3 +6753,11 @@ tr.po-row-more { display: none; }
    τους· όπου ένα σημείο έχει γράψει δικό του `text-wrap`, νικά εκείνο. Το
    κόστος μετρήθηκε αμελητέο (βλ. «ΤΙ ΔΟΚΙΜΑΣΤΗΚΕ ΚΑΙ ΑΠΟΡΡΙΦΘΗΚΕ» πιο πάνω). */
 h1, h2, h3, h4, details > summary, th, dt { text-wrap: balance; }
+
+/* ΤΟ ΦΟΝΤΟ ΠΙΣΩ ΑΠΟ ΤΙΣ ΣΚΟΥΡΕΣ ΣΕΛΙΔΕΣ ΕΙΝΑΙ ΚΙ ΑΥΤΟ ΣΚΟΥΡΟ (02.10.2026). Με
+   φωτεινό θέμα στις Ρυθμίσεις, το <html> και το <body> έπαιρναν το φωτεινό
+   φόντο και στο «ελατήριο» της κύλισης στο iPhone φαινόταν λευκή λωρίδα κάτω
+   από σκούρο site. Η αποθηκευμένη επιλογή δεν αλλάζει· αλλάζει μόνο ο καμβάς
+   όσο στη σελίδα υπάρχει περιτύλιγμα της δημόσιας πλευράς. */
+:root:has(.lp-root, .pub-root, .auth-split[data-mode="dark"]) { background: var(--mkt-bg-base); color-scheme: dark; }
+:root:has(.lp-root, .pub-root, .auth-split[data-mode="dark"]) body { background: var(--mkt-bg-base); }

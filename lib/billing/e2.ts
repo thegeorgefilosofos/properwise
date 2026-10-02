@@ -15,6 +15,7 @@ import { e2PowerSupply } from '@/lib/property/powerSupply';
 import { e1CodeFor, e1PropertyClass, E1_CLASS_LABEL, E1_4D2_SOURCE, E1_UNKNOWN_TYPE } from '@/lib/accounting/e1Codes';
 import { readCoOwners } from '@/lib/property/coOwners';
 import { E2_POWER_SUPPLY_DIGITS } from '@/lib/property/powerSupply';
+import { roundHalfUp } from '@/lib/core/money';
 
 // Το `rental_mode` ΔΕΝ υπήρχε εδώ και γι' αυτό το έντυπο δεν μπορούσε να
 // ξεχωρίσει βραχυχρόνια από μακροχρόνια όταν η κατάσταση ήταν «rented».
@@ -466,7 +467,7 @@ export function buildE2Row(
 }
 
 export function e2RowToCells(r: E2Row, index: number): (string | number)[] {
-  const dec = (n: number) => n.toFixed(2).replace('.', ',');
+  const dec = (n: number) => roundHalfUp(n, 2).toFixed(2).replace('.', ',');
   return [index, r.atak, r.address, r.ownerAfm, dec(r.ownershipPct), r.leaseKind, r.months, r.incomeCategory, String(Math.round(r.grossIncome))];
 }
 
@@ -672,7 +673,7 @@ export function e2SupplementaryRows(p: E2Property, row: E2RowDetail): (string | 
   const co = readCoOwners(p.co_owners);
   const loc = [p.address, p.postal_code].filter(Boolean).join(', ');
   const use = [...new Set(row.lines.map(l => l.use).filter(Boolean))].join(', ');
-  const rest = Math.round((100 - row.ownershipPct) * 100) / 100;
+  const rest = roundHalfUp((100 - row.ownershipPct), 2);
   return co.map(c => [
     '', loc, p.floor != null && p.floor !== '' ? String(p.floor) : '', e2CategoryLabel(p.prop_type),
     p.sqm != null ? p.sqm : '', use, e2PowerSupply(p.power_supply_no),

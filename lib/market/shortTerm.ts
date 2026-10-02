@@ -4,11 +4,12 @@
 // για ΤΑΚΚ και τέλος παρεπιδημούντων (lib/billing/greekTax).
 // ═══════════════════════════════════════════════════════════════════════════
 import { climateLevyRates, municipalAccommodationTax } from '@/lib/billing/greekTax'
+import { roundHalfUp } from '@/lib/core/money';
 
 const num = (n: number): number => (Number.isFinite(n) ? n : 0)
 const max0 = (n: number): number => Math.max(0, num(n))
 const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, num(n)))
-const round2 = (n: number): number => Math.round(num(n) * 100) / 100
+const round2 = (n: number): number => roundHalfUp(num(n), 2)
 
 export interface ShortTermInput {
   occupancyPct: number       // ετήσια πληρότητα (0–100)

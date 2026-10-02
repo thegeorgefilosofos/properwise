@@ -24,6 +24,7 @@ import {
   isDeclared, awaitsDeclaration, type StayAmountLike,
 } from './stayAmounts';
 import { athensToday } from '../core/time';
+import { roundHalfUp } from '@/lib/core/money';
 
 export interface ReportStay extends StayAmountLike {
   property_id?: string | null;
@@ -136,9 +137,9 @@ export function trailingStays(stays: ReportStay[], today: string, days = 365): T
   }
   return {
     nights,
-    revenue: Math.round(revenue * 100) / 100,
+    revenue: roundHalfUp(revenue, 2),
     occupancyPct: days > 0 ? Math.round((nights / days) * 1000) / 10 : 0,
-    adr: nights > 0 ? Math.round((revenue / nights) * 100) / 100 : 0,
+    adr: nights > 0 ? roundHalfUp((revenue / nights), 2) : 0,
   };
 }
 

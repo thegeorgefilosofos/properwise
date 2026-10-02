@@ -47,6 +47,7 @@ import {
 } from '@/lib/accounting/dossier';
 import { downloadFile } from '@/lib/core/download';
 import { grDate } from '@/lib/core/format';
+import { roundHalfUp } from '@/lib/core/money';
 
 export interface AccountantBundleInput {
   year: number;
@@ -283,7 +284,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
         kind: (l.kind === 'result' ? 'result' : l.kind === 'subtotal' ? 'subtotal' : 'line') as Kind,
       })),
       { label: '', amount: null, kind: 'spacer' },
-      { label: 'Πρόβλεψη φόρου / μήνα (εκτίμηση)', amount: Math.round(provisionMonthly * 100) / 100, kind: 'memo' },
+      { label: 'Πρόβλεψη φόρου / μήνα (εκτίμηση)', amount: roundHalfUp(provisionMonthly, 2), kind: 'memo' },
     ];
     const aoa: (string | number)[][] = [
       [`ΚΑΤΑΣΤΑΣΗ ΑΠΟΤΕΛΕΣΜΑΤΩΝ ΧΡΗΣΗΣ ${year}`],
@@ -394,7 +395,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
       ...(sorted.length ? [] : [[...Array(C_LABEL).fill(''), `Καμία καταγεγραμμένη κίνηση για το ${year}`]]),
       ...dataRows as (string | number | Date)[][],
       totalsRow('ΣΥΝΟΛΑ', sumIn, sumEx),
-      totalsRow('Καθαρό αποτέλεσμα (Έσοδα − Έξοδα)', Math.round((sumIn - sumEx) * 100) / 100, ''),
+      totalsRow('Καθαρό αποτέλεσμα (Έσοδα − Έξοδα)', roundHalfUp((sumIn - sumEx), 2), ''),
     ];
     const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
     // ΤΟ ΠΛΑΤΟΣ ΚΑΘΕ ΣΤΗΛΗΣ ΕΙΝΑΙ ΤΟ ΜΑΚΡΥΤΕΡΟ ΚΕΙΜΕΝΟ ΤΗΣ, ΜΕΤΡΗΜΕΝΟ. Το Excel
@@ -447,7 +448,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
     // διαβαζόταν ως έσοδο· απλώνεται στις δύο στήλες των ποσών, γιατί είναι η
     // διαφορά τους και δεν ανήκει σε καμία.
     for (let c = 0; c < NC; c++) setCell(ws, netR, c, { s: c === C_IN || c === C_EX ? S.totNum : S.totTxt });
-    setCell(ws, netR, C_IN, { v: moneySigned(Math.round((sumIn - sumEx) * 100) / 100), t: 's' });
+    setCell(ws, netR, C_IN, { v: moneySigned(roundHalfUp((sumIn - sumEx), 2)), t: 's' });
     (ws['!merges'] ||= []).push({ s: { r: netR, c: C_IN }, e: { r: netR, c: C_EX } });
     {
       const { cols, wrap } = autoWidths(ws, { headRow: HR, max: 56 });

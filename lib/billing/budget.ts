@@ -1,3 +1,4 @@
+import { roundHalfUp } from '@/lib/core/money';
 // lib/billing/budget.ts
 // Καθαρός υπολογιστικός πυρήνας προϋπολογισμού — πρόβλεψη τέλους μήνα, ετήσια
 // εικόνα (YTD) και σύγκριση περιόδων. Χωρίς I/O, πλήρως ελεγχόμενος με tests.
@@ -13,7 +14,7 @@ export type CatStatus = 'ok' | 'warn' | 'over' | 'projected_over'
 // ΣΤΡΟΓΓΥΛΕΥΣΗ ΣΤΑ ΛΕΠΤΑ, ΟΧΙ ΣΤΟ ΕΥΡΩ. Με ακέραιο ευρώ, 70,08€ ξοδεμένα
 // έβγαζαν πρόβλεψη 70,00€: η πρόβλεψη έπεφτε κάτω από τα ήδη ξοδεμένα, δίπλα
 // δίπλα στην ίδια οθόνη.
-const cents = (n: number): number => Math.round(n * 100) / 100
+const cents = (n: number): number => roundHalfUp(n, 2)
 export function forecastMonthEnd(
   fixedToDate: number,
   variableToDate: number,
@@ -203,8 +204,8 @@ export function detectRecurring(
     if (cadence === 'irregular' && months < 3) continue
 
     const perMonthAmts = Array.from(byMonth.values())
-    const avgAmount = Math.round((perMonthAmts.reduce((s, v) => s + v, 0) / months) * 100) / 100
-    const monthlyEquivalent = Math.round((avgAmount / per) * 100) / 100
+    const avgAmount = roundHalfUp((perMonthAmts.reduce((s, v) => s + v, 0) / months), 2)
+    const monthlyEquivalent = roundHalfUp((avgAmount / per), 2)
     const annualCost = Math.round(monthlyEquivalent * 12)
     const lastDate = items.reduce((mx, it) => (it.date > mx ? it.date : mx), items[0].date)
     const nextExpected = addMonthsISO(lastDate, Math.round(per))

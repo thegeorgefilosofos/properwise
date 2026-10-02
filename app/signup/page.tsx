@@ -494,7 +494,7 @@ export default function SignupPage() {
     // ξεκινούσε στα 150 και το σώμα του πάνελ στα 265. Στη σύνδεση, με φόρμα
     // κοντή, έπεφταν και οι δύο στα 247 κατά τύχη. Εδώ ξεκινούν από την ίδια
     // ευθεία, επίτηδες.
-    <div className="auth-split auth-top" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
+    <div data-mode="dark" className="auth-split auth-top" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
 
       <a href="#main" className="skip-link">Μετάβαση στη φόρμα</a>
 

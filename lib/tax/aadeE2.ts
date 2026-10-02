@@ -36,6 +36,7 @@
 import { parseAmount, parseDate, isValidAfm, afmDigits } from '@/lib/core/greek';
 import { ATAK_DIGITS } from '@/lib/property/atak';
 import { fe, fp } from '@/lib/core/format';
+import { roundHalfUp } from '@/lib/core/money';
 
 /** Σε ποια στήλη ακαθαρίστου του εντύπου είναι το ποσό της γραμμής. */
 export type E2IncomeColumn = 13 | 14 | 15 | 16;
@@ -154,7 +155,7 @@ const FLOOR_TEXT = /^(ΙΣΟΓΕΙΟ|ΥΠΟΓΕΙΟ|ΗΜΙΥΠΟΓΕΙΟ|ΗΜΙ�
 const cleanDigits = (s: string): string => s.replace(/[\s.]/g, '');
 const money = (s: string): number | null => {
   const v = parseAmount(s.replace(/€/g, ''));
-  return v == null || !Number.isFinite(v) ? null : Math.round(v * 100) / 100;
+  return v == null || !Number.isFinite(v) ? null : roundHalfUp(v, 2);
 };
 const pctOf = (s: string): number | null => money(s.replace('%', ''));
 

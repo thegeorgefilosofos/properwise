@@ -28,6 +28,7 @@ import { monthEndIso } from '@/lib/core/time';
 import { useRemembered } from '@/components/useRememberedFlag';
 import { splitRowsFromRecord, recordFromSplitRows, writeCoOwners, withSelfRow, mergeScannedRows, type SplitRow } from '@/lib/property/coOwners';
 import { notifyError } from '@/components/Toast';
+import { roundHalfUp } from '@/lib/core/money';
 
 interface Prop { id: string; name: string; address: string | null; ownership: number | string | null; co_owners: unknown }
 interface Owner { property_id: string; owner_name: string | null; owner_afm: string | null }
@@ -227,8 +228,8 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
     const netSum = result.owners.reduce((s, o) => s + o.net, 0);
     return {
       label: result.pctSum > 100 ? 'Δόθηκε δύο φορές' : 'Χωρίς ιδιοκτήτη',
-      pct: Math.round((100 - result.pctSum) * 100) / 100,
-      amount: Math.round((result.distributable - netSum) * 100) / 100,
+      pct: roundHalfUp((100 - result.pctSum), 2),
+      amount: roundHalfUp((result.distributable - netSum), 2),
     };
   }, [result]);
 

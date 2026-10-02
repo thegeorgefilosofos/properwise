@@ -43,6 +43,7 @@ import { feWhole } from '@/lib/core/format';
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO, RENO_39B_KYA } from '@/lib/accounting/renovation39b';
 import { transferCosts } from '@/lib/accounting/transfer';
 import type { PropertyStatus } from './status';
+import { roundHalfUp } from '@/lib/core/money';
 
 // ── ΤΟ ΠΕΔΙΟ ΕΦΑΡΜΟΓΗΣ ─────────────────────────────────────────────────────
 
@@ -1074,7 +1075,7 @@ export interface VacancyCost {
 }
 
 const num = (n: unknown): number => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : 0);
-const cents = (n: number): number => Math.round(n * 100) / 100;
+const cents = (n: number): number => roundHalfUp(n, 2);
 
 /**
  * Τι κοστίζει ένας μήνας που το ακίνητο μένει κενό.

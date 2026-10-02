@@ -7,6 +7,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { XLSX, setCell, downloadWorkbook, printTitles, sheetFinish } from './xlsxStyle';
 import { FMT, S, ROW, MARGINS, type Cell } from './sheetFormat';
+import { roundHalfUp } from '@/lib/core/money';
 
 export interface PortfolioRow {
   name: string;
@@ -78,7 +79,7 @@ export function downloadPortfolioComparison(opts: {
       const outstanding = Math.max(0, r.expected - r.collected), net = r.collected - r.expenses;
       return s + (c === 1 ? r.expected : c === 2 ? r.collected : c === 3 ? outstanding : c === 4 ? r.expenses : net);
     }, 0);
-    setCell(ws, totalR, c, { t: 'n', f: `SUM(${range})`, v: Math.round(sum * 100) / 100, z: FMT.eur, s: S.totNum });
+    setCell(ws, totalR, c, { t: 'n', f: `SUM(${range})`, v: roundHalfUp(sum, 2), z: FMT.eur, s: S.totNum });
   }
   // Συνολικό ποσοστό είσπραξης = Σ εισπραχθέντα / Σ αναμενόμενα (φόρμουλα, ασφαλής στο /0).
   setCell(ws, totalR, 6, {

@@ -468,21 +468,29 @@ export function estimateENFIA(input: ENFIAInput): ENFIAResult | null {
   const propVal = Number(input.propertyValue) || 0
   const extra = totalVal > ENFIA_EXTRA_WEALTH_THRESHOLD ? enfiaExtraPropertyTax(propVal, ownership) : 0
   // Κύριος φόρος (Ενότητα Δ) = κτίσματα (Α, μαζί οι βοηθητικοί χώροι) + πρόσθετος (Γ).
-  const kyrios = basic + auxiliary + extra
+  // ΚΑΘΕ ΓΡΑΜΜΗ ΣΤΡΟΓΓΥΛΕΥΕΤΑΙ ΠΡΩΤΗ, ΤΟ ΣΥΝΟΛΟ ΕΙΝΑΙ ΤΟ ΑΘΡΟΙΣΜΑ ΤΟΥΣ
+  // (απόφαση ιδιοκτήτη, 02.10.2026: το μισό λεπτό πάει στο αμέσως μεγαλύτερο).
+  // Όπως σε κάθε εκκαθαριστικό: ό,τι γράφεται σε γραμμή είναι το ποσό που
+  // μετρά παρακάτω, οπότε η ανάλυση ξαναβγαίνει με κομπιουτεράκι. Με ακατέργαστα
+  // ενδιάμεσα, 333,525 + 3,885 γράφονταν 333,53 + 3,89 = 337,42 αλλά η μείωση
+  // μετρούσε πάνω σε 337,41. Και η μείωση 25% του 240,38 (60,095) γραφόταν
+  // 60,10 δίπλα σε ετήσιο που έβγαινε από τα 60,095.
+  const basicR = cents(basic), auxR = cents(auxiliary), extraR = cents(extra)
+  const kyrios = cents(basicR + auxR + extraR)
   // Προσαύξηση κύριου φόρου για συνολική αξία >500.000€ (Ενότητα Ε).
   let suppl = 0
   if (totalVal > ENFIA_SURCHARGE_THRESHOLD) {
     const bracket = ENFIA_SURCHARGE_BRACKETS.find(b => totalVal <= b.limit)
-    if (bracket) suppl = kyrios * (bracket.pct / 100)
+    if (bracket) suppl = cents(kyrios * (bracket.pct / 100))
   }
-  const subtotal = kyrios + suppl
+  const subtotal = cents(kyrios + suppl)
   // Μειώσεις: αυτόματη ανά συνολική αξία (§2Α) ΚΑΙ η μεγαλύτερη χειροκίνητη, πολλαπλασιαστικά.
   const wealthPct = wealthReductionPct(totalVal)
   // Η ΑΞΙΑ ΠΟΥ ΚΡΙΝΕΙ ΤΟ ΚΑΤΩΦΛΙ ΕΙΝΑΙ ΤΗΣ ΚΑΤΟΙΚΙΑΣ. Δες `enfiaReductionPct`.
   const homeVal = propVal || totalVal
   const manualPct = Math.max(0, ...(input.reductions ?? []).map(r => enfiaReductionPct(r, homeVal, input.year, input.atticaMainland)))
   const combinedFrac = 1 - (1 - wealthPct / 100) * (1 - manualPct / 100)
-  const reductionAmount = subtotal * combinedFrac
+  const reductionAmount = cents(subtotal * combinedFrac)
   // ΚΑΜΙΑ ΔΟΣΗ ΔΕΝ ΒΓΑΙΝΕΙ ΑΠΟ ΕΔΩ. Η μηχανή επέστρεφε `installment` ίσο με
   // ceil(ετήσιο/12), δηλαδή δήλωνε δώδεκα δόσεις ως γεγονός — ενώ η οθόνη του
   // ΕΝΦΙΑ και ο δημόσιος υπολογιστής αρνούνται και οι δύο ρητά να το πουν,
@@ -490,8 +498,8 @@ export function estimateENFIA(input: ENFIAInput): ENFIAResult | null {
   // επιβίωνε μόνο μέσα σε τεστ. Στρογγυλοποιούμε ΜΙΑ φορά, στο ετήσιο.
   const annual = cents(Math.max(0, subtotal - reductionAmount))
   return {
-    basic: cents(basic), auxiliary: cents(auxiliary), extra: cents(extra), supplementary: cents(suppl), subtotal: cents(subtotal),
-    reductionPct: Math.round(combinedFrac * 100), reductionAmount: cents(reductionAmount), annual,
+    basic: basicR, auxiliary: auxR, extra: extraR, supplementary: suppl, subtotal,
+    reductionPct: Math.round(combinedFrac * 100), reductionAmount, annual,
   }
 }
 

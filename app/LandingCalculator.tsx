@@ -8,6 +8,7 @@ import { parseAmount } from '@/lib/core/greek'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
 import LiveResult from '@/components/LiveResult'
 import { hy } from '@/components/Hyphen'
+import { roundHalfUp } from '@/lib/core/money';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ζωντανό εργαλείο απόδοσης μέσα στο landing. Τρέχει την ΙΔΙΑ ακριβή φορολογική
@@ -78,7 +79,7 @@ function Control({ label, hint, value, set, min, max, step, format }: {
       const n = parseAmount(draft)
       // ΣΕ ΛΕΠΤΑ, ΟΧΙ ΣΕ ΕΥΡΩ. Το «1.250,50» γινόταν «1.251,00€»: ακέραιο ποσό
       // που φαινόταν ακριβές επειδή η μορφή έχει δύο δεκαδικά.
-      if (n !== null && Number.isFinite(n)) set(clamp(Math.round(n * 100) / 100))
+      if (n !== null && Number.isFinite(n)) set(clamp(roundHalfUp(n, 2)))
     }
     setDraft(null)
   }

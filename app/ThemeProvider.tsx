@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { THEME_COLOR } from '@/lib/core/themeColor';
 
 type Mode  = 'dark' | 'light';
@@ -46,11 +47,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // `viewport`· αν λείπει (σελίδα σφάλματος), το φτιάχνουμε. ΟΛΑ, όχι το
     // πρώτο: μετρημένο στον dev server, η σελίδα κρατούσε δύο meta theme-color
     // (#f5f7fa και #070b12) και ποιο διαβάζει ο περιηγητής δεν είναι εγγυημένο.
-    const bars = [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')];
-    if (!bars.length) { const m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); bars.push(m); }
-    for (const b of bars) b.content = THEME_COLOR[mode];
     localStorage.setItem('pos_mode',  mode);
   }, [mode]);
+
+  // Η ΜΠΑΡΑ ΑΚΟΛΟΥΘΕΙ ΤΗ ΣΕΛΙΔΑ, ΟΧΙ ΜΟΝΟ ΤΟ ΘΕΜΑ (02.10.2026). Η δημόσια πλευρά
+  // (site, σύνδεση, εγγραφή, ταμείο) είναι πάντα σκούρα· με φωτεινό θέμα η
+  // μπάρα του κινητού έμενε φωτεινή πάνω από σκούρη σελίδα. Ξανακοιτάζεται σε
+  // κάθε αλλαγή διαδρομής, γιατί η πλοήγηση δεν ξαναφορτώνει τη σελίδα.
+  const pathname = usePathname();
+  useEffect(() => {
+    const forcedDark = !!document.querySelector('.lp-root, .pub-root, .auth-split[data-mode="dark"]');
+    const bars = [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')];
+    if (!bars.length) { const m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); bars.push(m); }
+    for (const b of bars) b.content = THEME_COLOR[forcedDark ? 'dark' : mode];
+  }, [mode, pathname]);
 
   const toggleMode = () => setMode(m => m === 'dark' ? 'light' : 'dark');
 

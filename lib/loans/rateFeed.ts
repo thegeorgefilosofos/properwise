@@ -1,3 +1,4 @@
+import { roundHalfUp } from '@/lib/core/money';
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΔΙΑΣΤΑΥΡΩΣΗ ΤΩΝ ΕΠΙΤΟΚΙΩΝ, ΧΩΡΙΣ ΔΙΚΤΥΟ ΚΑΙ ΧΩΡΙΣ ΒΑΣΗ
 // ─────────────────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ export function fromRate(text: string | number | null | undefined): number | nul
   const m = String(text).replace(',', '.').match(/-?\d+(\.\d+)?/);
   if (!m) return null;
   const v = parseFloat(m[0]);
-  return Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
+  return Number.isFinite(v) ? roundHalfUp(v, 2) : null;
 }
 
 /**
@@ -102,9 +103,9 @@ export function diffBank(current: CurrentBank, proposed: ProposedBank): Change[]
     const raw = current[f];
     const range = rangeOf(raw as string | number | null | undefined);
     if (range && range.some(end => Math.abs(end - next) < 0.005)) continue;
-    const old = typeof raw === 'number' ? Math.round(raw * 100) / 100 : fromRate(raw);
+    const old = typeof raw === 'number' ? roundHalfUp(raw, 2) : fromRate(raw);
     if (old != null && Math.abs(old - next) < 0.005) continue;
-    out.push({ bank_id: current.bank_id, field: f, old, next, delta: old == null ? null : Math.round((next - old) * 100) / 100 });
+    out.push({ bank_id: current.bank_id, field: f, old, next, delta: old == null ? null : roundHalfUp((next - old), 2) });
   }
   return out;
 }

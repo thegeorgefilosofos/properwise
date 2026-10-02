@@ -171,6 +171,7 @@ export function effectiveRentalRate(taxable: number, brackets: TaxBracket[] = RE
  * άλλο ποσοστό σε κάθε άλλη οθόνη.
  */
 import { fp, fn, fe } from '@/lib/core/format';
+import { roundHalfUp } from '@/lib/core/money';
 
 export const taxRateLabel = (rate: number): string => fp(rate * 100);
 
@@ -441,7 +442,7 @@ export function isMunicipalTaxExempt(opts: { sqm?: number | null; isHouse?: bool
 /** Τέλος παρεπιδημούντων: 0,5% επί των μεικτών, ή 0€ αν ισχύει η εξαίρεση. */
 export function municipalAccommodationTax(gross: number, opts: { sqm?: number | null; isHouse?: boolean; propertyCount?: number; individual?: boolean } = {}): number {
   if (isMunicipalTaxExempt(opts)) return 0;
-  return Math.round(Math.max(0, gross) * MUNICIPAL_ACCOM_TAX_RATE * 100) / 100;
+  return roundHalfUp(Math.max(0, gross) * MUNICIPAL_ACCOM_TAX_RATE, 2);
 }
 
 export const MUNICIPAL_ACCOM_SUMMARY =

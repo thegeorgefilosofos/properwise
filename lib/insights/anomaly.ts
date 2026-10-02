@@ -32,6 +32,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { athensParts } from '../core/time';
+import { roundHalfUp } from '@/lib/core/money';
 
 export interface SpendRow {
   category?: string;
@@ -130,7 +131,7 @@ export function findAnomalies(rows: readonly SpendRow[], now: number): Anomaly[]
 
     out.push({
       category, month, amount, usual,
-      excess: Math.round(excess * 100) / 100,
+      excess: roundHalfUp(excess, 2),
       overPct: Math.round(overPct),
       basedOn: priors.length,
     });

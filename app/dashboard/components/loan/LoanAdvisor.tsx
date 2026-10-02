@@ -18,6 +18,7 @@ import { InfoDot } from '../UIComponents'
 import { athensToday } from '@/lib/core/time'
 import { LensPanel, MiniSection, FindingRow } from './Bits'
 import type { LoanProps, LoanState } from './useLoan'
+import { roundHalfUp } from '@/lib/core/money';
 
 export function LoanAdvisor({
   LA, Y, BANKS, market, calcState, setAppliedLoan, handleSaveLoan, scrollToCalc, advType, advBorr,
@@ -489,7 +490,7 @@ export function LoanAdvisor({
           <MiniSection title="Ανάλυση προσφοράς ESIS" meta={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,whiteSpace:'nowrap' as const}}>Πραγματικό κόστος, ΣΕΠΠΕ</span>}>
             <EsisScanPanel
               defaultAmount={LA} defaultYears={Y}
-              benchmarkAprc={topRec?Math.round((topRec.effectiveRatePct+0.3)*100)/100:undefined}
+              benchmarkAprc={topRec?roundHalfUp((topRec.effectiveRatePct+0.3), 2):undefined}
               fmtEur={fmtEur}
             />
           </MiniSection>
