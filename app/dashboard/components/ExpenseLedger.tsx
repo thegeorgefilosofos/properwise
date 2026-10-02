@@ -70,6 +70,13 @@ interface Props {
    */
   openAddNonce?: number;
   /**
+   * Το τελευταίο αίτημα που άνοιξε ήδη φόρμα, κρατημένο από τη σελίδα. Χωρίς
+   * αυτό, η πρώτη τιμή του μετρητή θεωρείται πάντα ιδωμένη.
+   */
+  handledAddNonce?: number;
+  /** Το καθολικό λέει στη σελίδα ότι το αίτημα άνοιξε φόρμα. */
+  onAddHandled?: (nonce: number) => void;
+  /**
    * Η ουρά των εισερχομένων, κάτω από τα τρία νούμερα. Ερχόταν ΠΡΙΝ από τον
    * τίτλο της οθόνης: ο τίτλος «Δαπάνες» έπεφτε τρίτος, εφτακόσια
    * εικονοστοιχεία κάτω, κάτω από μια κάρτα email και μια γραμμή τράπεζας.
@@ -134,7 +141,7 @@ async function fetchLedger(
 const unpaidBillsLabel = (n: number): string =>
   `${n} ${n === 1 ? 'απλήρωτος λογαριασμός' : 'απλήρωτοι λογαριασμοί'}`;
 
-export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce, inbox }: Props) {
+export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce, handledAddNonce, onAddHandled, inbox }: Props) {
   // Ένα instance ανά component. Χωρίς useMemo, κάθε render έφτιαχνε νέο client
   // και το κανάλι realtime ξαναδενόταν χωρίς λόγο.
   const supabase = useMemo(() => createClient(), []);
@@ -144,8 +151,12 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   const [q, setQ] = useState('');
   const [adding, setAdding] = useState(false);
   // ── ΤΟ ΤΕΤΑΡΤΟ ΠΛΑΚΙΔΙΟ ΤΗΣ ΣΑΡΩΣΗΣ («ΧΕΙΡΟΚΙΝΗΤΑ») ΦΤΑΝΕΙ ΩΣ ΕΔΩ ────────
-  // Η πρώτη τιμή του μετρητή κρατιέται ως «ήδη ιδωμένη», ώστε η φόρμα να μην
-  // ανοίγει μόνη της κάθε φορά που φορτώνει η καρτέλα.
+  // Ιδωμένο είναι το τελευταίο αίτημα που άνοιξε ήδη φόρμα, ώστε η φόρμα να
+  // μην ανοίγει μόνη της κάθε φορά που φορτώνει η καρτέλα.
+  //
+  // ΓΙΑΤΙ ΟΧΙ Η ΠΡΩΤΗ ΤΙΜΗ. Ετσι ήταν και το «Γράψε το χειροκίνητα» δεν άνοιγε
+  // τίποτα όταν ο χρήστης ερχόταν από άλλη καρτέλα: οι Δαπάνες στήνονταν μαζί
+  // με το νέο αίτημα, το έπαιρναν ως ήδη ιδωμένο και έδειχναν τη λίστα.
   //
   // ΓΙΑΤΙ ΟΧΙ ΣΕ useEffect. Ήταν ένα effect που καλούσε `setAdding` και ένα
   // ref για να αγνοηθεί η πρώτη εκτέλεση. Ο κανόνας `set-state-in-effect` το
@@ -153,11 +164,16 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   // οπότε ο χρήστης έβλεπε μια απόδοση χωρίς τη φόρμα και μετά τη φόρμα να
   // εμφανίζεται. Η προσαρμογή κατάστασης όταν αλλάζει μια ιδιότητα γίνεται
   // στην απόδοση: το React ξαναποδίδει αμέσως, πριν βγει τίποτα στην οθόνη.
-  const [seenNonce, setSeenNonce] = useState(openAddNonce);
+  const [seenNonce, setSeenNonce] = useState(handledAddNonce ?? openAddNonce);
   if (openAddNonce !== seenNonce) {
     setSeenNonce(openAddNonce);
     setAdding(true);
   }
+  // Η σελίδα μαθαίνει μετά τη ζωγραφική ότι το αίτημα εξυπηρετήθηκε· στην
+  // απόδοση θα ήταν ενημέρωση άλλου component και το React το απαγορεύει.
+  useEffect(() => {
+    if (seenNonce !== undefined && seenNonce !== handledAddNonce) onAddHandled?.(seenNonce);
+  }, [seenNonce, handledAddNonce, onAddHandled]);
   // Ο σπόρος της φόρμας, όταν η καταχώρηση ξεκινά από γραμμή που «λείπει».
   const [seed, setSeed] = useState<AddSeed | undefined>(undefined);
   const [busy, setBusy] = useState<string | null>(null);

@@ -53,13 +53,16 @@ interface Props {
   /** Ανοίγει το παράθυρο σάρωσης της εφαρμογής. */
   onScan?: () => void;
   openAddNonce?: number;
+  /** Το τελευταίο αίτημα που άνοιξε ήδη φόρμα. Δες το ExpenseLedger. */
+  handledAddNonce?: number;
+  onAddHandled?: (nonce: number) => void;
 }
 
 type View = 'expenses' | 'budget';
 
 export default function TabFinances({
   propertyId, userId, propertyName, properties,
-  profileType = 'individual', legalForm = 'individual', onScan, openAddNonce,
+  profileType = 'individual', legalForm = 'individual', onScan, openAddNonce, handledAddNonce, onAddHandled,
 }: Props) {
   const [view, setView] = useState<View>('expenses');
   const [contracts, setContracts] = useState(false);
@@ -162,7 +165,7 @@ export default function TabFinances({
           // Η ΣΕΙΡΑ ΕΙΝΑΙ Η ΙΕΡΑΡΧΙΑ: τίτλος, τα τρία νούμερα, μετά τα
           // εισερχόμενα. Η γραμμή της τράπεζας εμφανίζεται μόνο όταν η σύνδεση
           // είναι ανοιχτή· ως τότε θα ήταν υπόσχεση στην πιο ακριβή θέση.
-          ? <ExpenseLedger key={ledgerKey} propertyId={propertyId} userId={userId} onScan={onScan} openAddNonce={openAddNonce}
+          ? <ExpenseLedger key={ledgerKey} propertyId={propertyId} userId={userId} onScan={onScan} openAddNonce={openAddNonce} handledAddNonce={handledAddNonce} onAddHandled={onAddHandled}
               inbox={<>
                 <InboundInbox propertyId={propertyId} userId={userId} propertyName={propertyName} properties={properties}
                   onFiled={() => setLedgerKey(k => k + 1)} />

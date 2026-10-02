@@ -11,7 +11,7 @@ import E2ReconcileCard from './E2ReconcileCard'
 import { Landmark, Lock, Unlock } from 'lucide-react'
 import { bracketsLabelForYear, BUSINESS_INCOME_BRACKETS_2026, CORPORATE_TAX_RATE_2026, ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, DIVIDEND_WITHHOLDING_RATE } from '@/lib/billing/greekTax'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
-import { FEATURE_MIN_PLAN } from '@/lib/billing/entitlements'
+import { FEATURE_MIN_PLAN, isTabPurchasable, planAtLeast, requiredPlanForTab } from '@/lib/billing/entitlements'
 import { PLANS } from '@/lib/billing/plans'
 import EnfiaPanel from './EnfiaPanel';
 import AccountantDossier from './AccountantDossier'
@@ -39,7 +39,10 @@ import {
   TrialBalanceFold,
 } from './accounting/AdvancedTools'
 
-export default function TabAccounting({ propertyId, userId, profileType='individual', legalForm='individual', plan='free', status='rent_long', onNavigate }: AccountingProps) {
+export default function TabAccounting({ propertyId, userId, profileType='individual', legalForm='individual', plan='free', status='rent_long', onNavigate, onAddExpense }: AccountingProps & {
+  /** Ανοίγει τη φόρμα νέας δαπάνης στις Δαπάνες, όχι μόνο την καρτέλα. */
+  onAddExpense?: () => void
+}) {
   const {
     supabase, branding, reportBuilderOpen, setReportBuilderOpen, journalOpen, setJournalOpen,
     splitOpen, setSplitOpen, adjustOpen, setAdjustOpen, genOfficial, setGenOfficial,
@@ -131,7 +134,11 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // Πού γράφεται το έσοδο αυτού του ακινήτου, από τη ΜΙΑ πηγή που ξέρει και την
   // ορατότητα των καρτελών. Δοκιμή τα σταυρώνει: ό,τι προτείνεται εδώ είναι
   // ορατό· όπου δεν υπάρχει έσοδο δεν προτείνεται καρτέλα εσόδου.
-  const income = incomeEntry(status)
+  // Ο ιδιώτης δεν φτάνει τους «Επισκέπτες» με κανένα πακέτο του: εκεί η
+  // πρόταση δείχνει τη «Βραχυχρόνια», που τη φτάνει.
+  const income = incomeEntry(status, {
+    guestsReachable: isTabPurchasable(profileType, 'clients') || planAtLeast(plan, requiredPlanForTab('clients')),
+  })
   // Η περίληψη των προχωρημένων λέει ΤΙ κρύβει, ώστε κανείς να μη χρειαστεί να
   // το ανοίξει «μήπως». Το ισοζύγιο αναφέρεται μόνο σε όποιον όντως το έχει.
   const advancedSummary = [
@@ -361,7 +368,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                   <Btn variant="primary" onClick={()=>onNavigate?.(income.tab)}>{income.label}</Btn>
                 )}
                 {/* Το έξοδο γίνεται κύρια ενέργεια μόνο όταν δεν υπάρχει έσοδο δίπλα του. */}
-                <Btn variant={income?'secondary':'primary'} onClick={()=>onNavigate?.('finances')}>Προσθήκη εξόδου</Btn>
+                {/* Ανοίγει τη φόρμα και όχι μόνο την καρτέλα· λέγεται όπως το
+                    κουμπί των Δαπανών. */}
+                <Btn variant={income?'secondary':'primary'} onClick={()=>onAddExpense ? onAddExpense() : onNavigate?.('finances')}>Νέα δαπάνη</Btn>
               </div>
             </div>
           </div>

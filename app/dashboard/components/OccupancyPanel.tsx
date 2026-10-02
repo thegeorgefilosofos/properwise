@@ -60,6 +60,8 @@ import { isIndividualTaxpayer } from '@/lib/accounting/taxProfile';
 import type { LegalForm } from '@/lib/accounting/dossier';
 import { FIRST_YEAR_CURRENT_LEVY } from '@/lib/billing/greekTax';
 import { MONTHS_SHORT, MONTHS_ACC } from '@/lib/core/months';
+import { isTabPurchasable } from '@/lib/billing/entitlements';
+import { navLabel } from '@/lib/nav/labels';
 
 interface StayRow extends ReportStay { declared_at?: string | null }
 interface PropInfo extends StatusRow { prop_type?: string | null; sqm?: number | null }
@@ -71,6 +73,10 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
   legalForm?: LegalForm;
 }) {
   const supabase = useMemo(() => createClient(), []);
+  // Οι «Επισκέπτες» θέλουν πακέτο που ο ιδιώτης δεν αγοράζει. Σε αυτόν η
+  // κάρτα δεν τον στέλνει εκεί: θα έβρισκε λουκέτο που δεν ανοίγει ποτέ.
+  const guestsReachable = isTabPurchasable(profileType, 'clients');
+  const guests = `«${navLabel('clients')}»`;
   const [prop, setProp] = useState<PropInfo | null>(null);
   const [stays, setStays] = useState<StayRow[]>([]);
   // ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΕΞΑΡΤΑΤΑΙ ΑΠΟ ΤΟ ΠΛΗΘΟΣ ΤΩΝ ΒΡΑΧΥΧΡΟΝΙΩΝ. Χωρίς
@@ -161,8 +167,10 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
             // δεδομένα που το app μπορεί να φέρει μόνο του — λέει πώς να τα φέρεις.
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, fontFamily: T.font.sans }}>
               Δεν υπάρχουν καταγεγραμμένες κρατήσεις για αυτό το ακίνητο, οπότε δεν υπάρχει πληρότητα να μετρηθεί.
-              Με σύνδεση του ημερολογίου Airbnb ή Booking (εισαγωγή iCal) στους «Επισκέπτες», οι κρατήσεις έρχονται
-              μόνες τους, με ημερομηνίες και ποσά.
+              {guestsReachable && <>
+                {' '}Με σύνδεση του ημερολογίου Airbnb ή Booking (εισαγωγή iCal) στους {guests}, οι κρατήσεις έρχονται
+                μόνες τους, με ημερομηνίες και ποσά.
+              </>}
             </div>
           ) : (
             <>
@@ -170,7 +178,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
               {occ.availableDays === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, fontFamily: T.font.sans }}>
                   {tax.stayCount === 0
-                    ? `Καμία κράτηση στη χρήση ${year}. Οι κρατήσεις άλλων ετών μένουν στους «Επισκέπτες».`
+                    ? `Καμία κράτηση στη χρήση ${year}.${guestsReachable ? ` Οι κρατήσεις άλλων ετών μένουν στους ${guests}.` : ''}`
                     : `Οι κρατήσεις του ${year} δεν έχουν ημερομηνίες που να ορίζουν περίοδο λειτουργίας, οπότε η πληρότητα δεν μετριέται. Με άφιξη και αναχώρηση σε κάθε διαμονή, εμφανίζεται εδώ.`}
                 </div>
               ) : (
@@ -224,7 +232,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
                   {occ.overbooked && (
                     <div style={{ ...note, marginTop: 10, color: 'var(--text-secondary)' }}>
                       Οι καταγεγραμμένες νύχτες ξεπερνούν τις διαθέσιμες ημέρες: κάπου υπάρχουν επικαλυπτόμενες ή
-                      διπλοκαταχωρημένες κρατήσεις. Ο έλεγχος γίνεται στους «Επισκέπτες».
+                      διπλοκαταχωρημένες κρατήσεις.{guestsReachable && <> Ο έλεγχος γίνεται στους {guests}.</>}
                     </div>
                   )}
                 </>
@@ -275,14 +283,14 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
                   )}
                   {tax.grossRevenue === 0 && tax.totalNights > 0 && (
                     <div style={{ ...note, marginTop: tax.levy > 0 ? 8 : 12 }}>
-                      Οι {tax.totalNights} νύχτες της χρήσης δεν έχουν καταγεγραμμένο ποσό. Τα ποσά συμπληρώνονται ανά
-                      κράτηση στους «Επισκέπτες»: η εισαγωγή iCal φέρνει ημερομηνίες, όχι εισπράξεις.
+                      Οι {tax.totalNights} νύχτες της χρήσης δεν έχουν καταγεγραμμένο ποσό.
+                      {guestsReachable && <>{' '}Τα ποσά συμπληρώνονται ανά κράτηση στους {guests}: η εισαγωγή iCal φέρνει ημερομηνίες, όχι εισπράξεις.</>}
                     </div>
                   )}
                   {/* Η ΜΟΝΗ ΑΝΑΦΟΡΑ ΣΕ ΧΡΗΜΑΤΑ ΕΔΩ ΕΙΝΑΙ ΜΙΑ ΠΑΡΑΠΟΜΠΗ. Οχι
                       δεύτερο σύνολο, όχι δεύτερος τίτλος: ένα σημείο. */}
                   <div style={{ ...note, marginTop: 10 }}>
-                    Τι μένει τελικά από τη βραχυχρόνια, μετά από έξοδα, τέλη και φόρο, το δείχνει η Τιμολόγηση.
+                    Τι μένει τελικά από τη βραχυχρόνια, μετά από έξοδα, τέλη και φόρο, το δείχνει η καρτέλα «{navLabel('pricing')}».
                   </div>
                 </div>
               )}
@@ -295,7 +303,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
                   {tax.undeclaredCount > 0 && (
                     <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                       <strong style={{ color: 'var(--text-primary)' }}>{tax.undeclaredCount} {tax.undeclaredCount === 1 ? 'αδήλωτη διαμονή' : 'αδήλωτες διαμονές'}.</strong>{' '}
-                      Η Δήλωση Βραχυχρόνιας Διαμονής υποβάλλεται στο myAADE μία ανά κράτηση και σημειώνεται στους «Επισκέπτες».
+                      Η Δήλωση Βραχυχρόνιας Διαμονής υποβάλλεται στο myAADE μία ανά κράτηση{guestsReachable ? <> και σημειώνεται στους {guests}.</> : '.'}
                     </div>
                   )}
                   {tax.unresolvedCount > 0 && (
@@ -314,7 +322,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
                   φαίνεται πουθενά αλλού στην οθόνη: το μητρώο και ο ΑΜΑ. */}
               <div style={{ ...note, marginTop: 16 }}>
                 Η νόμιμη βραχυχρόνια μίσθωση απαιτεί εγγραφή στο Μητρώο Ακινήτων Βραχυχρόνιας Διαμονής της ΑΑΔΕ και
-                αναγραφή του ΑΜΑ σε κάθε ανάρτηση· ο έλεγχος βρίσκεται στην κορυφή των «Επισκέπτες» και της «Τιμολόγησης».
+                αναγραφή του ΑΜΑ σε κάθε ανάρτηση· ο έλεγχος βρίσκεται στην κορυφή {guestsReachable ? <>των καρτελών «{navLabel('pricing')}» και {guests}</> : <>της καρτέλας «{navLabel('pricing')}»</>}.
               </div>
             </>
           )}

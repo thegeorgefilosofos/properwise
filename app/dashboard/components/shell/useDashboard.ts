@@ -112,6 +112,10 @@ export function useDashboard() {
   const [quickAddOpen, setQuickAddOpen] = useState(LAUNCH.scan);// γρήγορη προσθήκη με φωτογραφία/σάρωση
   // Ανοίγει τη χειροκίνητη φόρμα δαπάνης από το τέταρτο πλακίδιο της σάρωσης.
   const [manualExpense, setManualExpense] = useState(0);
+  // Ποιο αίτημα του μετρητή έχει ήδη ανοίξει φόρμα. Οι Δαπάνες στήνονται μόλις
+  // ανοίξει η καρτέλα, οπότε το καθολικό χρειάζεται να ξέρει αν ο αριθμός που
+  // βρίσκει στην πρώτη του απόδοση είναι εκκρεμές αίτημα ή παλιό.
+  const [handledExpense, setHandledExpense] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);// καλωσόρισμα πρώτης χρήσης
 
   // ── Ο ΠΙΝΑΚΑΣ «ΑΠΟ ΠΟΥ ΞΕΚΙΝΑΣ» ─────────────────────────────────────────
@@ -565,7 +569,7 @@ export function useDashboard() {
     setHandoverIntent, navShowAll, loading, loadError, showAddModal, setShowAddModal,
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
-    setManualExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
+    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
     scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,

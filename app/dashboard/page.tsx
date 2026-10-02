@@ -65,7 +65,7 @@ export default function Dashboard() {
     setHandoverIntent, navShowAll, loading, loadError, showAddModal, setShowAddModal,
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
-    setManualExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
+    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
     scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
@@ -643,7 +643,7 @@ export default function Dashboard() {
                   component που δεν υπάρχει πια και η React το αγνοεί. Το ίδιο
                   ισχύει για κάθε καρτέλα που φορτώνει δικά της δεδομένα. */}
               {navSafe==='overview'  && <OverviewTab key={selected.id} prop={selected} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : setNav(t)} tabVisible={navVisible} profileType={effProfileType} legalForm={taxForm}/>}
-              {nav==='finances'  && <TabFinances key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} properties={financeProperties} profileType={effProfileType} legalForm={taxForm} onScan={()=>setQuickAddOpen(true)}openAddNonce={manualExpense} />}
+              {nav==='finances'  && <TabFinances key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} properties={financeProperties} profileType={effProfileType} legalForm={taxForm} onScan={()=>setQuickAddOpen(true)} openAddNonce={manualExpense} handledAddNonce={handledExpense} onAddHandled={setHandledExpense} />}
               {nav==='calendar'  && <TabCalendar key={selected.id} propertyId={selected.id} userId={user.id} openTasks={checklistAlerts} onOpenTasks={()=>setNav('checklist')}/>}
               {/* ═══ Η ΒΡΑΧΥΧΡΟΝΙΑ ΣΤΕΚΕΤΑΙ ΜΟΝΗ ΤΗΣ ═══════════════════════════
                   Ζούσε μέσα στην καρτέλα «Πελάτης», που απαιτεί πακέτο
@@ -703,7 +703,7 @@ export default function Dashboard() {
                 </>
               )}
               {nav==='loan'      && <TabLoan key={selected.id} propertyId={selected.id} userId={user.id} propertyValue={selected.value??undefined} propertySqm={selected.sqm??undefined} propertyYearBuilt={selected.year_built??undefined} profileType={effProfileType}/>}
-              {nav==='accounting'&& <TabAccounting key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} legalForm={taxForm} plan={effPlan} status={readStatus(selected)} onNavigate={(t)=>setNav(t)}/>}
+              {nav==='accounting'&& <TabAccounting key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} legalForm={taxForm} plan={effPlan} status={readStatus(selected)} onNavigate={(t)=>setNav(t)} onAddExpense={()=>{ setNav('finances'); setManualExpense(n=>n+1); }}/>}
               {navSafe==='inventory' && <TabInventory key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} handoverIntent={handoverIntent} onIntentConsumed={()=>setHandoverIntent(null)} properties={properties}/>}
               {nav==='checklist' && <TabChecklist key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType}/>}
               {/* Ο ΕΛΕΓΧΟΣ ΤΟΥ ΑΜΑ ΕΙΝΑΙ ΕΞΩ ΑΠΟ ΤΟ FeatureLock, ΣΚΟΠΙΜΑ.
