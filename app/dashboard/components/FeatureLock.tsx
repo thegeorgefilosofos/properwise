@@ -25,10 +25,15 @@ const Check = () => (
 );
 
 // Μικρό λουκέτο για τα στοιχεία της μπάρας πλοήγησης.
+//
+// Το «Κλειδωμένο» ήταν `aria-label` σε σκέτο span, χωρίς ρόλο: οι αναγνώστες
+// οθόνης αγνοούν όνομα σε στοιχείο που δεν είναι τίποτα, οπότε η καρτέλα
+// ακουγόταν ανοιχτή. Ως κρυφό κείμενο γίνεται μέρος του ονόματος του κουμπιού.
 export function LockBadge() {
   return (
-    <span aria-label="Κλειδωμένο" title="Διαθέσιμο σε ανώτερο πακέτο"
+    <span title="Διαθέσιμο σε ανώτερο πακέτο"
       style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+      <span className="sr-only">, κλειδωμένο</span>
       <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
       </svg>

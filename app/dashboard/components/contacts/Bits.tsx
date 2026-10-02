@@ -151,8 +151,10 @@ export function TagEditor({ tags, onChange }: { tags: string[]; onChange: (t: st
             <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 11px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', fontSize: 12, color: 'var(--accent)', fontWeight: 500 }}>
               {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ ΓΙΑ ΤΗ ΓΕΩΜΕΤΡΙΑ ΤΟΥ ΠΛΑΚΙΔΙΟΥ. Το πλακίδιο είναι ~24
                   ψηλό (12px, γέμισμα 4×11): ένα κουτί T.h.sm των 32 μέσα του θα το
-                  φούσκωνε στα 40 σε κάθε ετικέτα. */}
-              {t}<button type="button" onClick={() => onChange(tags.filter(x => x !== t))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', padding: 0 }}><X size={12} /></button>
+                  φούσκωνε στα 40 σε κάθε ετικέτα. Η περιοχή πατήματος είναι όμως 44×44:
+                  τα αρνητικά περιθώρια την απλώνουν γύρω από το Χ χωρίς να μεγαλώνει
+                  το πλακίδιο. Και το κουμπί λέει τι σβήνει, όχι σκέτο «κουμπί». */}
+              {t}<button type="button" aria-label={`Αφαίρεση ετικέτας ${t}`} onClick={() => onChange(tags.filter(x => x !== t))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, width: 44, height: 44, margin: -16, flexShrink: 0 }}><X size={12} aria-hidden /></button>
             </span>
           ))}
         </div>
