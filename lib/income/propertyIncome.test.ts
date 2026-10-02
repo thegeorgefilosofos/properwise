@@ -3,7 +3,7 @@
 // ΓΙΑΤΙ ΓΡΑΦΤΗΚΕ. Το ίδιο ακίνητο έβγαινε 0,00% στην Επισκόπηση, 6,60% στο
 // Χαρτοφυλάκιο και 14,70% στις Αποδόσεις. Το «Έσοδα ως σήμερα» μετρούσε και
 // ό,τι δεν είχε έρθει ακόμη. Εδώ ελέγχεται ο ΕΝΑΣ υπολογισμός.
-import { propertyIncome, rentReceivedByToday, type IncomeRent } from './propertyIncome'
+import { propertyIncome, instalmentStep, rentReceivedByToday, type IncomeRent } from './propertyIncome'
 import { assumesMarket, MARKET_ESTIMATE_LABEL } from '../market/shortTerm'
 import type { ClientStaysRow, RentPaymentsRow } from '../supabase/tables'
 
@@ -105,6 +105,16 @@ eq('η ετικέτα', MARKET_ESTIMATE_LABEL, 'εκτίμηση αγοράς')
   const split = Array.from({ length: 9 }, (_, i) => ({ amount: 700, base_rent: 650, services_charge: 50, paid: true, paid_date: `2026-${String(i + 1).padStart(2, '0')}-05`, period_year: 2026, period_month: i + 1 }))
   const r = propertyIncome({ rents: split, stays: [], year: 2026, today: TODAY })
   eq('υπηρεσίες έξω από το έσοδο', [r.receivedToDate, r.annualized], [5850, 7800])
+}
+
+// ═══ ΔΟΣΕΙΣ ΑΝΑ ΤΡΙΜΗΝΟ ΚΑΙ ΔΙΜΗΝΟ (02.10.2026) ═══════════════════════════
+// 650€ τον μήνα. Πριν: τρίμηνες δόσεις 1.950€ έβγαιναν 23.400€ τον χρόνο.
+{
+  const q = [1, 4, 7, 10].map(m => ({ amount: 1950, paid: m < 10, paid_date: m < 10 ? `2026-${String(m).padStart(2, '0')}-05` : null, due_date: `2026-${String(m).padStart(2, '0')}-05`, period_year: 2026, period_month: m }))
+  eq('τρίμηνες δόσεις: 7.800€ τον χρόνο', propertyIncome({ rents: q, stays: [], year: 2026, today: TODAY }).annualized, 7800)
+  const b = [1, 3, 5, 7, 9, 11].map(m => ({ amount: 1300, paid: m < 11, paid_date: m < 11 ? `2026-${String(m).padStart(2, '0')}-05` : null, due_date: `2026-${String(m).padStart(2, '0')}-05`, period_year: 2026, period_month: m }))
+  eq('δίμηνες δόσεις: 7.800€ τον χρόνο', propertyIncome({ rents: b, stays: [], year: 2026, today: TODAY }).annualized, 7800)
+  eq('βήμα: μηνιαίες, ανομοιόμορφες, μία', [instalmentStep([1, 2, 3]), instalmentStep([1, 4, 6]), instalmentStep([5])], [1, 1, 1])
 }
 
 console.log(fail === 0 ? `✓ propertyIncome: ${pass} έλεγχοι πέρασαν` : `✗ propertyIncome: ${fail} απέτυχαν από ${pass + fail}`)

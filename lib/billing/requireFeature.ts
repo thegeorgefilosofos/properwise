@@ -55,7 +55,11 @@ export async function requireFeature(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, status: 401, error: SIGN_IN_REQUIRED, plan: null };
 
-  const { data, error } = await supabase.rpc('user_plan_rank', { p_uid: user.id });
+  // `my_plan_rank()`, ΟΧΙ `user_plan_rank(uuid)` (02.10.2026). Η δεύτερη εκτελείται
+  // μόνο από τον service role: ως συνδεδεμένος χρήστης η κλήση αποτύγχανε πάντα
+  // και κάθε πύλη εδώ (εξαγωγή Ε2, ανάλυση επένδυσης) απαντούσε 500 σε όλους.
+  // Η `my_plan_rank` είναι η ίδια κρίση για τον `auth.uid()` της συνεδρίας.
+  const { data, error } = await supabase.rpc('my_plan_rank');
   if (error) return { ok: false, status: 500, error: PLAN_CHECK_FAILED, plan: null };
 
   // Ο δείκτης έρχεται από τη βάση (0 = δωρεάν). Ο,τιδήποτε εκτός ορίων πέφτει σε

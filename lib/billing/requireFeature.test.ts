@@ -30,9 +30,10 @@ const fake = (
   rpcError = false,
 ) => ({
   auth: { getUser: async () => ({ data: { user } }) },
-  rpc: async (name: string, args: { p_uid: string }) => {
+  rpc: async (name: string, args?: Record<string, unknown>) => {
     // Επιβεβαιώνει ότι ρωτάμε τη σωστή συνάρτηση, με το uid του χρήστη.
-    ok('ρωτά την user_plan_rank με το uid', name === 'user_plan_rank' && args.p_uid === UID);
+    // Ο authenticated δεν εκτελεί την user_plan_rank(uuid)· μόνο τη my_plan_rank().
+    ok('ρωτά τη my_plan_rank χωρίς ορίσματα', name === 'my_plan_rank' && args === undefined);
     return rpcError ? { data: null, error: { message: 'db down' } } : { data: rank, error: null };
   },
 } as unknown as SupabaseClient);

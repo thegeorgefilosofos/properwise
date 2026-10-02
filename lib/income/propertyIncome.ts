@@ -102,6 +102,18 @@ export function rentReceivedByToday(r: IncomeRent, year: number, today: string):
   return !d || d <= iso(today)
 }
 
+/**
+ * Πόσους μήνες καλύπτει κάθε δόση: το σταθερό βήμα ανάμεσα στους μήνες
+ * περιόδου (2, 3, 6 ή 12). Ανομοιόμορφο βήμα ή μία μόνο δόση: ένας μήνας.
+ */
+export function instalmentStep(months: readonly number[]): number {
+  const ms = [...new Set(months.filter(m => m >= 1 && m <= 12))].sort((a, b) => a - b)
+  if (ms.length < 2) return 1
+  const gaps = ms.slice(1).map((m, i) => m - ms[i])
+  const g = gaps[0]
+  return [2, 3, 6].includes(g) && gaps.every(x => x === g) ? g : 1
+}
+
 export function propertyIncome(input: PropertyIncomeInput): PropertyIncome {
   const { year } = input
   const today = iso(input.today)
@@ -135,9 +147,16 @@ export function propertyIncome(input: PropertyIncomeInput): PropertyIncome {
     // 7.020€ αντί για 7.800€. Μετρούν οι μήνες περιόδου που είτε έχουν λήξει
     // είτε έχουν ήδη εισπραχθεί. Χωρίς μήνα περιόδου, το ημερολόγιο.
     const monthOfRent = (r: IncomeRent) => Number(r.period_month) || 0
-    const covered = new Set(rentsOfYear
+    // ΚΑΘΕ ΔΟΣΗ ΚΑΛΥΠΤΕΙ ΤΟΥΣ ΜΗΝΕΣ ΤΗΣ (02.10.2026). Μια τριμηνιαία δόση είναι
+    // τρία μισθώματα κάτω από έναν μήνα περιόδου (rentInstalments.ts). Μετρώντας
+    // έναν μήνα ανά δόση, τρεις πληρωμένες δόσεις των 1.950€ έβγαιναν 23.400€ τον
+    // χρόνο αντί για 7.800€. Η γραμμή δεν γράφει τη συχνότητα· τη δείχνει το
+    // σταθερό βήμα ανάμεσα στους μήνες των δόσεων (1, 4, 7, 10 = ανά τρίμηνο).
+    const step = instalmentStep(rentsOfYear.map(monthOfRent))
+    const covered = new Set<number>()
+    rentsOfYear
       .filter(r => monthOfRent(r) >= 1 && (rentReceivedByToday(r, year, today) || (rentDueDate(r, year) || '9999') <= today))
-      .map(monthOfRent))
+      .forEach(r => { for (let m = monthOfRent(r); m < monthOfRent(r) + step && m <= 12; m++) covered.add(m) })
     const months = rentsOfYear.every(r => monthOfRent(r) >= 1) ? covered.size : monthsElapsed
     annualized = year < todayYear ? receivedToDate : months > 0 ? receivedToDate * (12 / months) : 0
   } else if ((Number(input.estimateMonthly) || 0) > 0) {
