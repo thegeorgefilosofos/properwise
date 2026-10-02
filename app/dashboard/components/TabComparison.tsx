@@ -16,6 +16,7 @@ import * as settings from '@/lib/data/settings';
 import { T, fe, fn, fp, ABSENT, ABSENT_SHORT, Skeleton, ExportButton, EmptyState, InfoBanner, PageTitle, ChipToggle, Btn } from '@/components/Theme';
 import { Building2 } from 'lucide-react';
 import { comparableGroups, incomeEntry } from '@/lib/property/visibility';
+import { isTabPurchasable } from '@/lib/billing/entitlements';
 import { propertyTypePlural } from '@/lib/property/types';
 import { statusLabel, readStatus, type StatusRow } from '@/lib/property/status';
 import { downloadTableXlsx } from './exportCsv';
@@ -43,7 +44,7 @@ interface Property {
   // Για τον φόρο ανά φορολογούμενο και στο ποσοστό του, όπως η Επισκόπηση.
   client_id?: string | null; ownership?: string | null;
 }
-interface Props { properties: Property[]; userId: string; onNavigate?: (tab: string) => void; }
+interface Props { properties: Property[]; userId: string; onNavigate?: (tab: string) => void; profileType?: 'individual' | 'professional'; }
 
 interface Agg {
   /** Δαπάνες του έτους, κάθε ευρώ ΜΙΑ φορά (από τον κοινό πυρήνα). */
@@ -128,7 +129,7 @@ const greekList = (parts: readonly string[]): string =>
   parts.length <= 1 ? (parts[0] || '')
   : `${parts.slice(0, -1).join(', ')} και ${parts[parts.length - 1]}`;
 
-export default function TabComparison({ properties, userId, onNavigate }: Props) {
+export default function TabComparison({ properties, userId, onNavigate, profileType }: Props) {
   const supabase = createClient();
   // Ο ΔΕΙΚΤΗΣ ΦΟΡΤΩΣΗΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΠΟΙΩΝ ΑΚΙΝΗΤΩΝ ΕΙΝΑΙ ΤΑ ΣΥΓΚΕΝΤΡΩΤΙΚΑ.
   // Ηταν `setLoading(true)` στην πρώτη γραμμή της φόρτωσης, δηλαδή σύγχρονη
@@ -489,7 +490,10 @@ export default function TabComparison({ properties, userId, onNavigate }: Props)
   // στην ίδια καρτέλα (ενοίκιο ή διαμονή), εκείνη είναι ορατή. Σε μικτό
   // χαρτοφυλάκιο θα μπορούσε να στείλει σε κρυφή καρτέλα, οπότε μένει μόνο η
   // δαπάνη, που υπάρχει σε κάθε κατάσταση.
-  const entries = properties.map(p => incomeEntry(readStatus(p as StatusRow)));
+  // Ο ιδιώτης δεν αγοράζει ποτέ την καρτέλα διαμονών: το κουμπί πάει στην τιμή
+  // ανά νύχτα, όπως στη Λογιστική, όχι σε λουκέτο.
+  const guestsReachable = profileType === undefined ? undefined : isTabPurchasable(profileType, 'clients');
+  const entries = properties.map(p => incomeEntry(readStatus(p as StatusRow), { guestsReachable }));
   const commonIncome = entries.length > 0 && entries.every(e => e && e.tab === entries[0]?.tab) ? entries[0] : null;
   // ═══ Η ΛΕΖΑΝΤΑ ΛΕΕΙ ΟΣΑ ΔΕΙΧΝΕΙ Ο ΠΙΝΑΚΑΣ, ΟΧΙ ΟΣΑ ΘΑ ΜΠΟΡΟΥΣΕ ══════════
   // Και οι δύο προτάσεις της λεζάντας ήταν καρφωμένες: «το υψηλότερο ενοίκιο,

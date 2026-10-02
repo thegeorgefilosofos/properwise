@@ -613,7 +613,7 @@ export default function Dashboard() {
                   ? <div>
                       <SecHdr label="Σύγκριση ακινήτων"/>
                       {canCompare(properties)
-                        ? <TabComparison properties={properties} userId={user.id} onNavigate={(t)=>setNav(t)}/>
+                        ? <TabComparison properties={properties} userId={user.id} onNavigate={(t)=>setNav(t)} profileType={effProfileType}/>
                         : <p style={{fontSize:'var(--fs-sm)',color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.55}}>Δεν υπάρχουν δύο ακίνητα ίδιου τύπου για σύγκριση. Η σύγκριση βάζει δίπλα δίπλα ακίνητα της ίδιας αγοράς.</p>}
                       {/* Η ΠΡΟΣΚΛΗΣΗ ΜΟΝΟ ΣΕ ΟΠΟΙΟΝ ΜΠΟΡΕΙ ΝΑ ΤΗ ΔΕΧΤΕΙ. Ο ιδιώτης
                           δεν αγοράζει το πακέτο της συγκεντρωτικής εικόνας με
@@ -702,7 +702,7 @@ export default function Dashboard() {
                     <div style={{marginTop:T.sp.section}}>
                       <SecHdr label="Σε σχέση με τα υπόλοιπα ακίνητά σου"/>
                       {isTabAllowed(ent,'comparison')
-                        ? <TabComparison properties={properties} userId={user.id} onNavigate={(t)=>setNav(t)}/>
+                        ? <TabComparison properties={properties} userId={user.id} onNavigate={(t)=>setNav(t)} profileType={effProfileType}/>
                         : <FeatureLock title="Σύγκρινε τα ακίνητά σου δίπλα-δίπλα" benefit={`Απόδοση, δαπάνες και πάροχοι όλων των ακινήτων σου σε έναν πίνακα, για να δεις καθαρά πού κερδίζεις και πού χρειάζεται να λάβεις αποφάσεις. Ξεκλειδώνει με το πακέτο ${PLANS.owner.name}.`} requiredPlan="owner" currentPlanName={PLANS[effPlan].name} onManage={()=>setNav('settings')} />}
                     </div>
                   )}
