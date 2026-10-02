@@ -216,8 +216,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       supabase.from('activity_log').select('created_at')
         .eq('user_id',userId).eq('action','lease_declaration_submitted').eq('entity_id',prop.id)
         .order('created_at',{ascending:false}).limit(1),
-      rentStore.ofProperty<IncomeRent>(supabase,prop.id,'amount,paid,paid_date,due_date,period_year,period_month',userId,{ year }),
-      rentStore.ofUser<IncomeRent & { property_id: string }>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS}`,{ year }),
+      rentStore.ofProperty<IncomeRent>(supabase,prop.id,rentStore.INCOME_COLUMNS,userId,{ year }),
+      rentStore.ofUser<IncomeRent & { property_id: string }>(supabase,userId,`property_id,${rentStore.INCOME_COLUMNS}`,{ year }),
       stayStore.ofUser<StayAmountLike & { property_id: string }>(supabase,userId,stayStore.PORTFOLIO_COLUMNS),
       profileType === 'professional'
         ? supabase.from('clients').select('id').eq('user_id',userId).eq('type','owner')

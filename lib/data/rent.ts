@@ -42,6 +42,9 @@ export const PERIOD_COLUMNS = 'period_year,period_month,amount,paid';
 /** Το ίδιο, με τις ημερομηνίες που κρίνουν καθυστέρηση και ταμειακή θέση. */
 export const LEDGER_COLUMNS = 'period_year,period_month,amount,paid,paid_date,due_date';
 
+/** Για το έσοδο (lib/income/propertyIncome.ts): το μίσθωμα χωρίς τις υπηρεσίες. */
+export const INCOME_COLUMNS = `${LEDGER_COLUMNS},base_rent,services_charge`;
+
 /**
  * Το κλειδί μοναδικότητας μιας δόσης.
  *

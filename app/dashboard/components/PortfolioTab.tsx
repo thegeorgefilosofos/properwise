@@ -47,7 +47,7 @@ import { toggleIn } from '@/lib/core/toggleSet';
 
 interface PropLite { id: string; name: string; prop_type: string | null; address: string | null; target_rent: number | null; value: number | null; }
 /** Δόση ενοικίου όπως την καταχωρεί ο ιδιοκτήτης — `paid` = εισπράχθηκε. */
-type RentPay = Pick<RentPaymentsRow, 'property_id' | 'amount' | 'paid' | 'paid_date' | 'due_date' | 'period_year' | 'period_month'>;
+type RentPay = Pick<RentPaymentsRow, 'property_id' | 'amount' | 'base_rent' | 'services_charge' | 'paid' | 'paid_date' | 'due_date' | 'period_year' | 'period_month'>;
 /** Η μίσθωση, όσο χρειάζεται για να ξέρουμε τι συμφωνήθηκε ως τρόπος είσπραξης. */
 type LeasePay = { id: string; e_payment: boolean | null };
 interface Props { properties: PropLite[]; userId: string; onSelectProperty: (id: string) => void; }
@@ -185,7 +185,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       supabase.from('clients').select('id,full_name').eq('user_id', userId),
       // Οι ΚΑΤΑΓΕΓΡΑΜΜΕΝΕΣ δόσεις ενοικίου της χρήσης — από εδώ βγαίνει το έσοδο
       // της μακροχρόνιας, ίδια πηγή με ReportBuilder/OwnerSplit/Λογιστική.
-      rentStore.ofUser<RentPay>(supabase, userId, 'property_id,amount,paid,paid_date,due_date,period_year,period_month', { year }),
+      rentStore.ofUser<RentPay>(supabase, userId, `property_id,${rentStore.INCOME_COLUMNS}`, { year }),
       rentStore.ofUser<CollectableRent>(supabase, userId,
         'id,property_id,tenant_id,amount,due_date,paid,period_year,period_month',
         { unpaid: true, dueTo: athensToday() }),

@@ -784,8 +784,8 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           // Οι κρατήσεις, για να βγει η πληρότητα και η τιμή νύχτας από τα
           // πραγματικά του ακινήτου και όχι από τον μέσο όρο της περιοχής.
           stayStore.ofProperty<ReportStay>(supabase, propertyId, stayStore.DECLARABLE_COLUMNS, userId),
-          rentStore.ofProperty<IncomeRent>(supabase, propertyId, rentStore.LEDGER_COLUMNS, userId, { year: yearNow }),
-          rentStore.ofUser<IncomeRent & { property_id: string }>(supabase, userId, `property_id,${rentStore.LEDGER_COLUMNS}`, { year: yearNow }),
+          rentStore.ofProperty<IncomeRent>(supabase, propertyId, rentStore.INCOME_COLUMNS, userId, { year: yearNow }),
+          rentStore.ofUser<IncomeRent & { property_id: string }>(supabase, userId, `property_id,${rentStore.INCOME_COLUMNS}`, { year: yearNow }),
           stayStore.ofUser<StayAmountLike & { property_id: string }>(supabase, userId, stayStore.PORTFOLIO_COLUMNS),
           pro ? supabase.from('clients').select('id').eq('user_id', userId).eq('type', 'owner') : Promise.resolve({ data: null }),
         ]);

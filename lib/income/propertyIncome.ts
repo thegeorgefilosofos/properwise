@@ -31,9 +31,13 @@ import { declarableGross, declarableGrossOrTotal, type StayAmountLike } from '@/
 import { staysOfYearToDate } from '@/lib/clients/reports'
 import { daysBetweenIso } from '@/lib/core/time'
 import { roundHalfUp } from '../core/money';
+import { rentIncomeOf } from '@/lib/rent/split'
 
 export interface IncomeRent {
   amount: number | null
+  /** Το μίσθωμα χωρίς υπηρεσίες (lib/rent/split.ts). Χωρίς αυτό, όλο το ποσό. */
+  base_rent?: number | null
+  services_charge?: number | null
   paid: boolean | null
   paid_date?: string | null
   due_date?: string | null
@@ -120,7 +124,11 @@ export function propertyIncome(input: PropertyIncomeInput): PropertyIncome {
   } else if (rentsOfYear.length > 0) {
     source = 'rent'
     const received = rentsOfYear.filter(r => rentReceivedByToday(r, year, today))
-    receivedToDate = received.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+    // ΜΟΝΟ ΤΟ ΜΙΣΘΩΜΑ, ΟΧΙ ΟΙ ΥΠΗΡΕΣΙΕΣ (02.10.2026). Το `amount` περιλαμβάνει
+    // ό,τι χρεώνεται στον ενοικιαστή μαζί με το ενοίκιο (ίντερνετ, καθαριότητα).
+    // Λογιστική και Ε2 μετρούσαν μόνο το μίσθωμα (`rentIncomeOf`), η Επισκόπηση
+    // και οι Αποδόσεις όλο το ποσό: ίδιο ακίνητο, άλλο έσοδο, άλλος φόρος.
+    receivedToDate = received.reduce((s, r) => s + rentIncomeOf(r), 0)
     // ΜΗΝΕΣ ΠΟΥ ΕΧΟΥΝ ΔΟΣΗ ΩΣ ΣΗΜΕΡΑ, ΟΧΙ ΜΗΝΕΣ ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ. Στις 2/10 ο
     // Οκτώβριος μετρούσε ως μήνας που πέρασε ενώ η δόση του λήγει στις 5/10:
     // εννέα δόσεις των 650€ διαιρούνταν με δέκα μήνες και το έτος έβγαινε

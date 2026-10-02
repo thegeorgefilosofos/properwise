@@ -98,5 +98,14 @@ ok('κρατήσεις που συμπίπτουν με την περιοχή: �
 ok('δικά του νούμερα: όχι', !assumesMarket({ occupancy: '40', adr: '110', area, booked: null }))
 eq('η ετικέτα', MARKET_ESTIMATE_LABEL, 'εκτίμηση αγοράς')
 
+// ═══ ΜΟΝΟ ΤΟ ΜΙΣΘΩΜΑ, ΟΧΙ ΟΙ ΥΠΗΡΕΣΙΕΣ (02.10.2026) ═══════════════════════
+// Εννέα δόσεις των 700€: 650€ μίσθωμα και 50€ υπηρεσίες. Πριν: 6.300€ ως σήμερα
+// και 8.400€ τον χρόνο, ενώ Λογιστική και Ε2 έλεγαν 5.850€ και 7.800€.
+{
+  const split = Array.from({ length: 9 }, (_, i) => ({ amount: 700, base_rent: 650, services_charge: 50, paid: true, paid_date: `2026-${String(i + 1).padStart(2, '0')}-05`, period_year: 2026, period_month: i + 1 }))
+  const r = propertyIncome({ rents: split, stays: [], year: 2026, today: TODAY })
+  eq('υπηρεσίες έξω από το έσοδο', [r.receivedToDate, r.annualized], [5850, 7800])
+}
+
 console.log(fail === 0 ? `✓ propertyIncome: ${pass} έλεγχοι πέρασαν` : `✗ propertyIncome: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)
