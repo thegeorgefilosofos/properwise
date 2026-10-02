@@ -87,7 +87,7 @@ export function NoaFeature() {
       <hr className="lp-hair" />
       <div className="nf-band">
         <div className="nf-copy">
-          <div className="lp-eyebrow">Ψηφιακός βοηθός</div>
+          <div className="lp-eyebrow">Στα ελληνικά</div>
           <h2 id="noa-title" className="nf-title">
             <span className="nf-mono" aria-hidden="true">N</span>
             Γνώρισε {ASSISTANT_ACC}.

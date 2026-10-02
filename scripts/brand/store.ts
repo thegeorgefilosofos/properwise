@@ -354,8 +354,8 @@ const STORE_WORDS: Record<string, string> = {
 function storeList(id: PlanId, ai: number): string[] {
   const m = PLANS[id].maxProperties;
   const cap = m === Infinity ? 'Ακίνητα χωρίς όριο' : m === 1 ? '1 ακίνητο' : `Έως ${m} ακίνητα`;
-  const noa = `Ψηφιακός βοηθός Νόα: ${ai} ερωτήσεις τον μήνα`;
-  const rest = listFor(id).slice(1).filter(f => f !== 'Ψηφιακός βοηθός Νόα').map(f => STORE_WORDS[f] ?? f);
+  const noa = `Νόα στα ελληνικά: ${ai} ερωτήσεις τον μήνα`;
+  const rest = listFor(id).slice(1).filter(f => f !== 'Νόα στα ελληνικά').map(f => STORE_WORDS[f] ?? f);
   return [cap, ...rest, noa];
 }
 
