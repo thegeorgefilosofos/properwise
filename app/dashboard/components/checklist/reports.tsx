@@ -541,11 +541,11 @@ ${sectionHtml(6, 'Συσκευές και Έπιπλα', `
   </table>
 `)}
 
-${sectionHtml(7, 'Parking και Αποθήκη', `
+${sectionHtml(7, 'Θέση στάθμευσης και αποθήκη', `
   <div class="field-grid">
-    ${fieldRow('Parking, Θέση Νο', '')}
-    ${fieldRow('Parking, Τύπος', '')}
-    ${fieldRow('Αποθήκη, Νο', '')}
+    ${fieldRow('Θέση στάθμευσης, αρ. θέσης', '')}
+    ${fieldRow('Θέση στάθμευσης, τύπος', '')}
+    ${fieldRow('Αποθήκη, αρ.', '')}
     ${fieldRow('Αποθήκη, Όροφος', '')}
   </div>
   <div class="field-area"></div>

@@ -43,7 +43,7 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
         <Btn variant="secondary" onClick={onClose}>Ακύρωση</Btn>
         <Btn variant="primary" disabled={!canSave} onClick={() => { if (canSave) onSave(form) }}>{item ? 'Αποθήκευση' : 'Προσθήκη εκκρεμότητας'}</Btn>
       </>}>
-      <div><FL>Περιγραφή *</FL><Inp ariaLabel="Περιγραφή" value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} placeholder="Service καλοριφέρ" /></div>
+      <div><FL>Περιγραφή *</FL><Inp ariaLabel="Περιγραφή" value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} placeholder="Συντήρηση καλοριφέρ" /></div>
       {/* ═══ ΔΥΟ ΣΕΙΡΕΣ ΤΩΝ ΤΡΙΩΝ, ΟΧΙ ΤΕΣΣΕΡΙΣ ΤΩΝ ΔΥΟ ══════════════════════
           Τα επτά πεδία κάθονταν σε τέσσερα ξεχωριστά πλέγματα των δύο, οπότε η
           φόρμα έβγαινε 2-2-2-1: τέσσερις σειρές, με την τελευταία μισή άδεια

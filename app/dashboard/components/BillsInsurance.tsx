@@ -35,6 +35,7 @@ import {
   deriveCoverages,
 } from './insurance/catalog'
 import { SubscriptionSection } from './insurance/SubscriptionSection'
+import { navLabel } from '@/lib/nav/labels'
 
 /**
  * Η ασφάλεια κατοικίας και οι συνδρομές streaming δεν είναι ίδιο πράγμα και
@@ -665,7 +666,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
             <span style={{ fontWeight: 700, color: checklistRenewal.daysLeft <= 7 ? 'var(--negative)' : 'var(--warning)' }}>Ανανέωση ασφαλιστηρίου </span>
             <span style={{ color: 'var(--text-secondary)' }}>{checklistRenewal.daysLeft <= 0 ? 'έχει λήξει' : `σε ${checklistRenewal.daysLeft} ημέρες`}</span>
           </div>
-          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, fontFamily: T.font.sans }}>Checklist</span>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, fontFamily: T.font.sans }}>{navLabel('checklist')}</span>
         </div>
       )}
 

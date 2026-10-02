@@ -8,6 +8,7 @@ import * as settings from '@/lib/data/settings';
 import { NumberInput, CustomSelect, ToggleField, DatePicker } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
 import { T, fe, fn, feRate, Skeleton, histInputStyle, ABSENT_SHORT, fixedCols, Btn, ChipToggle } from '@/components/Theme';
+import { CONTRACT_LABEL } from '@/lib/contracts/overview';
 import { monthlyCost, compareTariffs, estimateUsage, type Tariff, type Usage } from '@/lib/energy/tariff';
 import { PROVIDERS, COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE } from '@/lib/energy/catalogue';
 import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
@@ -958,7 +959,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
         // ── Insurance gap, only if VNM/solar is relevant (cross-tab context) ──
         if (insData && kwhNum > 200) {
           if (!insData.eq) {
-            hints.push({ text: 'Η ασφάλειά σου δεν καλύπτει σεισμό. Δες τις καλύψεις σου.', severity: 'warning', action: 'Ασφάλεια και συνδρομές', tab: 'insurance' });
+            hints.push({ text: 'Η ασφάλειά σου δεν καλύπτει σεισμό. Δες τις καλύψεις σου.', severity: 'warning', action: CONTRACT_LABEL.insurance, tab: 'insurance' });
           }
         }
 
