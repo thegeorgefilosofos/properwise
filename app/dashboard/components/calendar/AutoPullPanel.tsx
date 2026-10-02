@@ -3,8 +3,9 @@
 // Ο ΣΥΓΧΡΟΝΙΣΜΟΣ: ΤΙ ΤΡΑΒΑΕΙ ΤΟ ΗΜΕΡΟΛΟΓΙΟ ΑΠΟ ΤΙΣ ΑΛΛΕΣ ΚΑΡΤΕΛΕΣ
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useMemo } from 'react'
-import { isoDate, athensToday } from '@/lib/core/time'
+import { athensToday } from '@/lib/core/time'
 import { addMonths } from '@/lib/loans/progress'
+import { instalmentDates } from '@/lib/core/monthStep'
 import { createClient } from '@/lib/supabase/client'
 import * as properties from '@/lib/data/properties'
 import * as stayStore from '@/lib/data/stays'
@@ -232,13 +233,15 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
         if(!amount||!years)continue
         const monthly=annuityMonthly(amount,rate,years); if(!monthly)continue
         const src='loan_schedule:'+(bank||'γενικό').toLowerCase().replace(/\s+/g,'_').slice(0,40)
-        const d=new Date(start); const cnt2=Math.min(years*12,60); const rows:calendar.EventDraft[]=[]
+        const cnt2=Math.min(years*12,60); const rows:calendar.EventDraft[]=[]
                 // ΤΟ ΠΟΣΟ ΚΡΑΤΑΕΙ ΤΑ ΛΕΠΤΑ ΤΟΥ. Ήταν `Math.round(monthly)`: μια δόση
         // 751,43€ αποθηκευόταν ως 751 και το ημερολόγιο διαφωνούσε με την
         // τράπεζα κατά 43 λεπτά τον μήνα, δηλαδή πάνω από πέντε ευρώ τον χρόνο.
         const monthlyExact=roundHalfUp(monthly, 2)
         // Τοπικά μεσάνυχτα σε UTC = χθες: οι δόσεις έμπαιναν μία μέρα νωρίτερα.
-        for(let i=0;i<cnt2;i++){ const ev=new Date(d.getFullYear(),d.getMonth()+i+1,d.getDate()); rows.push({title:loanEventTitle(bank),category:'financial',event_date:isoDate(ev),amount:monthlyExact,priority:'high',notes:`${fe(monthlyExact)} ανά μήνα`}) }
+        // 02.10.2026: και η 31η του μήνα υπερχείλιζε (31.9 γινόταν 1.10). Οι
+        // ημερομηνίες βγαίνουν πλέον από την έναρξη με κλείδωμα στο τέλος του μήνα.
+        for(const ev of instalmentDates(start,cnt2)){ rows.push({title:loanEventTitle(bank),category:'financial',event_date:ev,amount:monthlyExact,priority:'high',notes:`${fe(monthlyExact)} ανά μήνα`}) }
         await must(calendar.replaceSource(supabase,scope,{source:src},rows))
         n+=rows.length
       }

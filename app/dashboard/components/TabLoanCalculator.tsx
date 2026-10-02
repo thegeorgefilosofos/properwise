@@ -29,7 +29,8 @@ import { rentalRowsForYear } from '@/lib/billing/greekTax'
 import { athensParts } from '@/lib/core/time'
 import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate'
 import { regionByKey, GREECE_AVG_GROSS_YIELD, MARKET_DATA_ASOF } from '@/lib/market/greekMarket'
-import { athensToday } from '@/lib/core/time';
+import { athensToday, localDay } from '@/lib/core/time';
+import { instalmentDate } from '@/lib/core/monthStep';
 import { SPITI_MOU, spitiMouEstimate, spitiMouClosedLine } from '@/lib/loans/recommend'
 import { TRANSFER_TAX_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL } from '@/lib/accounting/transfer'
 import { failed, MSG } from '@/lib/core/dbError';
@@ -898,10 +899,12 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   async function handleSave(){setSaving(true);await onSaveLoan({bank:bankName.trim(),loan_type:loanType,amount:LA,property_value:PV,rate:effRate,rate_type:rateType,years:Y,start_date:startDate,status:'active',notes:`${propTypeLabel} ${SQM} τ.μ., ${areaLabel}`});setSaving(false);notifyOk('Το δάνειο αποθηκεύτηκε')}
 
   // ── Ημερομηνία δόσης i (1..n) με βάση την έναρξη ──────────────────────────────
+  // 02.10.2026: ήταν `new Date(έτος, μήνας + i, μέρα)`, που για έναρξη 31.8
+  // έδινε 1.10 για τη δόση του Σεπτεμβρίου. Πλέον από την έναρξη με κλείδωμα
+  // στο τέλος του μήνα, όπως οι δόσεις του Ημερολογίου.
   function installmentDate(i:number){
-    const base=startDate?new Date(startDate):new Date()
-    const d=new Date(base.getFullYear(),base.getMonth()+i,base.getDate())
-    return d
+    const base=startDate||athensToday()
+    return localDay(instalmentDate(base,i)??base)
   }
   const amortFileBase = ()=>`Τοκοχρεολύσιο ${bankName?bankName.slice(0,24)+' ':''}${Math.round(LA/1000)} χιλιάδες ${Y} έτη`
 

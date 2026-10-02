@@ -29,7 +29,8 @@ import {
   MARKET_FALLBACK, rateTypeLabel,
 } from '../TabLoanData'
 import type { AppliedLoan } from '../LoanDocScan'
-import { athensToday, isoDate, daysUntil } from '@/lib/core/time'
+import { athensToday, daysUntil } from '@/lib/core/time'
+import { instalmentDates } from '@/lib/core/monthStep'
 import { grDate } from '@/lib/core/format'
 import { failed } from '@/lib/core/dbError'
 import type { CalcState } from './model'
@@ -171,7 +172,7 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
     }
   }
   async function handleSaveCal(monthly:number,years:number,startDate:string,bankName:string,loanAmount?:number,silent=false){
-    const d=new Date(startDate),events:calendar.EventDraft[]=[]
+    const events:calendar.EventDraft[]=[]
     const n=Math.min(years*12,60)
     // Ξεχωριστή, ιδιότυπη πηγή ανά τράπεζα → idempotent (δεν διπλογράφεται στο
     // ξαναπάτημα, ούτε μπερδεύεται με χειροκίνητα γεγονότα). Ρητές δόσεις, όχι
@@ -182,11 +183,12 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
     const title=loanEventTitle(bankName)
     // Οι σημειώσεις κρατούν ποιο δάνειο και τι ποσό, για συμψηφισμό/αναγνώριση.
     const note=`Δόση ${fmtEur(monthly)} τον μήνα${loanAmount?` · Δάνειο ${fmtEur(loanAmount)}`:''}${bankName?` · ${bankName}`:''}`
-    for(let i=0;i<n;i++){
-      // Ίδιο σφάλμα με τις προτάσεις: τοπικά μεσάνυχτα σε UTC = χθες. Οι δόσεις
-      // έμπαιναν στο ημερολόγιο μία μέρα ΝΩΡΙΤΕΡΑ από την πραγματική τους.
-      const ev=new Date(d.getFullYear(),d.getMonth()+i+1,d.getDate())
-      events.push({title,category:'financial',event_date:isoDate(ev),amount:Math.round(monthly),priority:'high',notes:note})
+    // Ίδιο σφάλμα με τις προτάσεις: τοπικά μεσάνυχτα σε UTC = χθες. Οι δόσεις
+    // έμπαιναν στο ημερολόγιο μία μέρα ΝΩΡΙΤΕΡΑ από την πραγματική τους.
+    // 02.10.2026: και έναρξη στις 29 ως 31 υπερχείλιζε στον επόμενο μήνα (31.9
+    // γινόταν 1.10). Οι ημερομηνίες βγαίνουν από την έναρξη με κλείδωμα.
+    for(const ev of instalmentDates(startDate,n)){
+      events.push({title,category:'financial',event_date:ev,amount:Math.round(monthly),priority:'high',notes:note})
     }
     // Οι δόσεις γράφονται πρώτα και οι παλιές σβήνονται μετά: αν σπάσει κάτι στη
     // μέση, το ημερολόγιο δείχνει διπλά, όχι μισό δάνειο.
