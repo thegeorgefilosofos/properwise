@@ -12,6 +12,11 @@ import * as loanStore from '@/lib/data/loans';
 import * as expenses from '@/lib/data/expenses';
 import * as billStore from '@/lib/data/bills';
 import * as stayStore from '@/lib/data/stays';
+import * as rentStore from '@/lib/data/rent';
+import { roundHalfUp } from '@/lib/core/money';
+import { propertyIncome, type IncomeRent, type PropertyIncome } from '@/lib/income/propertyIncome';
+import { taxpayerRentSources, type TaxpayerPropInput, type OtherPropertyIncome } from '@/lib/accounting/taxpayerIncome';
+import type { StayAmountLike } from '@/lib/clients/stayAmounts';
 import { ledgerYearTotal, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
 import { trailingStays, type ReportStay, type TrailingStays } from '@/lib/clients/reports';
 import { athensToday } from '@/lib/core/time';
@@ -734,7 +739,17 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   const [discountRate, setDiscountRate] = useState('8');
   const [sellCosts, setSellCosts] = useState(DEFAULT_SELL_COSTS_PCT);
   // Ενοίκια των ΑΛΛΩΝ ακινήτων του χρήστη — για τον προοδευτικό φόρο στο σύνολο.
-  const [otherRents, setOtherRents] = useState<{ id: string; annualRent: number; shortTerm: boolean }[]>([]);
+  // ΤΑ ΑΛΛΑ ΑΚΙΝΗΤΑ ΤΟΥ ΙΔΙΟΥ ΦΟΡΟΛΟΓΟΥΜΕΝΟΥ, με τις δόσεις και τις διαμονές
+  // του έτους (lib/accounting/taxpayerIncome.ts): ίδιος υπολογισμός με την
+  // Επισκόπηση, ώστε ο φόρος του ίδιου ακινήτου να βγαίνει ίδιος και στις δύο.
+  const [taxBase, setTaxBase] = useState<{ props: TaxpayerPropInput[]; income: Map<string, OtherPropertyIncome>; owners: Set<string> | null }>({ props: [], income: new Map(), owners: null });
+  // ΤΑ ΕΣΟΔΑ ΠΟΥ ΚΑΤΑΓΡΑΦΗΚΑΝ, ΜΕ ΤΟΝ ΟΡΙΣΜΟ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ. Οι Αποδόσεις
+  // έγραφαν 22.048€ τον χρόνο για το Παγκράτι (πληρότητα × τιμή νύχτας της
+  // περιοχής) ενώ η Επισκόπηση 7.020€ από τις δόσεις του. Τώρα, όπου υπάρχουν
+  // δόσεις ή διαμονές, μετρούν αυτές· το μοντέλο αγοράς μένει για σενάριο, όταν
+  // ο χρήστης αλλάξει ενοίκιο ή παραμέτρους· τότε λέγεται εκτίμηση.
+  const [recorded, setRecorded] = useState<PropertyIncome | null>(null);
+  const [scenario, setScenario] = useState(false);
 
   const K = useCallback((s: string) => `roi_${propertyId}_${s}`, [propertyId]);
   // ΑΚΥΡΩΣΗ ΑΝΑ ΑΚΙΝΗΤΟ. Έξι παράλληλα ερωτήματα γεμίζουν δώδεκα πεδία. Με αλλαγή
@@ -747,7 +762,8 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
     (async () => {
       setLoading(true);
       try {
-        const [pr, rc, exp, ln, allPr, allRc, bil, sts] = await Promise.all([
+        const yearNow = Number(athensToday().slice(0, 4));
+        const [pr, rc, exp, ln, allPr, allRc, bil, sts, yrRents, allYrRents, allSts, ownerRes] = await Promise.all([
           properties.one(supabase, propertyId, 'value,target_rent,rental_mode,sqm,prop_type,name,postal_code', userId),
           supabase.from('rent_config').select('actual_rent,target_rent').eq('property_id', propertyId).maybeSingle(),
           // ΓΙΑΤΙ ΜΕ ΗΜΕΡΟΜΗΝΙΑ. Το ερώτημα ήταν χωρίς φίλτρο έτους και το άθροισμα
@@ -762,12 +778,16 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           // χρήστες με 2+ ακίνητα — δηλαδή ακριβώς εκεί όπου ο ανά-ακίνητο φόρος
           // είναι λάθος. Χωρίς τα υπόλοιπα ενοίκια δεν υπάρχει τρόπος να βγει ο
           // σωστός φόρος: η κλίμακα είναι προοδευτική στο σύνολο του Ε1.
-          properties.list<{ id: string; target_rent: number | null; rental_mode: string | null }>(supabase, userId, { columns: 'id,target_rent,rental_mode' }),
+          properties.list<{ id: string; target_rent: number | null; rental_mode: string | null; status_detail: string | null; client_id: string | null }>(supabase, userId, { columns: 'id,target_rent,rental_mode,status_detail,client_id' }),
           supabase.from('rent_config').select('property_id,actual_rent,target_rent').eq('user_id', userId),
           billStore.ofProperty<LedgerBill>(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
           // Οι κρατήσεις, για να βγει η πληρότητα και η τιμή νύχτας από τα
           // πραγματικά του ακινήτου και όχι από τον μέσο όρο της περιοχής.
           stayStore.ofProperty<ReportStay>(supabase, propertyId, stayStore.DECLARABLE_COLUMNS, userId),
+          rentStore.ofProperty<IncomeRent>(supabase, propertyId, rentStore.LEDGER_COLUMNS, userId, { year: yearNow }),
+          rentStore.ofUser<IncomeRent & { property_id: string }>(supabase, userId, `property_id,${rentStore.LEDGER_COLUMNS}`, { year: yearNow }),
+          stayStore.ofUser<StayAmountLike & { property_id: string }>(supabase, userId, stayStore.PORTFOLIO_COLUMNS),
+          pro ? supabase.from('clients').select('id').eq('user_id', userId).eq('type', 'owner') : Promise.resolve({ data: null }),
         ]);
         // ΤΑ ΔΥΟ ΣΧΗΜΑΤΑ, ΟΠΩΣ ΤΑ ΖΗΤΑ ΤΟ ΕΡΩΤΗΜΑ. Ήταν `any`, δηλαδή κάθε πεδίο
         // παρακάτω («p.sqm», «p.postal_code») ήταν αδιαφανές: ένα λάθος όνομα θα
@@ -783,11 +803,20 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         const rcRows = (allRc.data || []) as { property_id: string; actual_rent: number | null; target_rent: number | null }[];
         const prRows = allPr;
         const rcMap = new Map(rcRows.map(r => [r.property_id, r]));
-        setOtherRents(prRows.filter(x => x.id !== propertyId).map(x => {
-          const cfg = rcMap.get(x.id);
-          const monthly = Number(cfg?.actual_rent) || Number(cfg?.target_rent) || Number(x.target_rent) || 0;
-          return { id: x.id, annualRent: monthly * 12, shortTerm: readStatus(x as StatusRow) === 'rent_short' };
-        }));
+        setTaxBase({
+          props: prRows,
+          owners: ownerRes.data ? new Set((ownerRes.data as { id: string }[]).map(r => r.id)) : null,
+          income: new Map(prRows.map(x => {
+            const cfg = rcMap.get(x.id);
+            return [x.id, {
+              rents: allYrRents.filter(r => r.property_id === x.id),
+              stays: allSts.filter(st => st.property_id === x.id),
+              estimateMonthly: Number(cfg?.actual_rent) || Number(cfg?.target_rent) || Number(x.target_rent) || 0,
+            }];
+          })),
+        });
+        setRecorded(propertyIncome({ rents: yrRents, stays: sts as StayAmountLike[], year: yearNow, today: athensToday(), estimateMonthly: c.actual_rent }));
+        setScenario(false);
         // Το `amount`/`rate` δεν είναι στήλες: υπολογίζονται από το loan_amount
         // και το rate_type/fixed_rate/euribor/spread (lib/loans/shape.ts).
         const activeLoan = ln.find(l => isActiveLoan(l));
@@ -795,7 +824,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         setValue(String(propertyValue || p.value || localStorage.getItem(K('value')) || ''));
         setRent(String(c.actual_rent || c.target_rent || p.target_rent || localStorage.getItem(K('rent')) || ''));
         const thisYear = Number(athensToday().slice(0, 4));
-        const expSum = Math.round(ledgerYearTotal(bil, exp as LedgerExpense[], thisYear));
+        // ΣΤΑ ΛΕΠΤΑ, ΟΧΙ ΣΤΟ ΕΥΡΩ. Το `Math.round` έγραφε «Έξοδα 10.160,00€» δύο
+        // γραμμές πάνω από «Δαπάνες έτους 10.159,70€», στην ίδια οθόνη.
+        const expSum = roundHalfUp(ledgerYearTotal(bil, exp as LedgerExpense[], thisYear), 2);
         setOpex(String(expSum || localStorage.getItem(K('opex')) || ''));
         setOpexYear(expSum > 0 ? thisYear : null);
         setBooked(trailingStays(sts, athensToday()));
@@ -827,7 +858,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       finally { if (alive) setLoading(false); }
     })();
     return () => { alive = false };
-  }, [propertyId, propertyValue, supabase, userId, K]);
+  }, [propertyId, propertyValue, supabase, userId, K, pro]);
 
   // Persist ελαφριά (τοπικά) — δεν χρειάζεται νέος πίνακας.
   useEffect(() => { try { localStorage.setItem(K('value'), value); localStorage.setItem(K('rent'), rent); localStorage.setItem(K('opex'), opex); localStorage.setItem(K('region'), region); } catch { } }, [value, rent, opex, region, K]);
@@ -864,7 +895,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
     : 'own';
   // Τα μεγάλα πλακίδια λένε «εκτίμηση αγοράς» όταν έστω ένα από τα δύο
   // (πληρότητα, τιμή νύχτας) είναι της περιοχής — όχι μόνο όταν είναι και τα δύο.
-  const marketEstimate = term === 'short' && assumesMarket({
+  const marketEstimate = term === 'short' && (scenario || !recorded || !(recorded.source === 'rent' || recorded.source === 'stays')) && assumesMarket({
     occupancy: stOcc, adr: stAdr,
     area: { occupancy: String(stRef.occupancy), adr: areaAdr },
     booked: fromBookings ? { occupancy: bookedOcc, adr: bookedAdr } : null,
@@ -909,11 +940,19 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   }), [occEff, adrEff, stClean, stFee, pSqm, isHouse, highSeasonShare, individualPerson, levyToGuest]);
 
   // Ενοποιημένα μεγέθη: το toggle μακροχρόνια/βραχυχρόνια αλλάζει πραγματικά τα έσοδα & κόστη.
-  const grossAnnual = term === 'short' ? st.grossRevenue : nRent * 12;
+  const useRecorded = !scenario && !!recorded && (recorded.source === 'rent' || recorded.source === 'stays');
+  const grossAnnual = useRecorded ? recorded!.annualized : term === 'short' ? st.grossRevenue : nRent * 12;
   // ΤΟ `levyBorne` ΚΑΙ ΟΧΙ ΤΟ `climateLevy`: κόστος του ιδιοκτήτη είναι μόνο
   // όσο από το τέλος δεν το εισέπραξε από τον επισκέπτη. Ιδιο ιδίωμα με το
   // `levyShortfall` της Λογιστικής, ώστε οι δύο οθόνες να λένε το ίδιο.
-  const stCosts = term === 'short' ? (st.platformFees + st.cleaning + st.levyBorne + st.municipalTax) : 0;
+  // Με καταγεγραμμένα έσοδα από ΔΟΣΕΙΣ το ακίνητο νοικιάζεται με μισθωτήριο: δεν
+  // υπάρχουν προμήθειες πλατφόρμας ούτε καθαρισμοί. Από ΔΙΑΜΟΝΕΣ, τα κόστη της
+  // βραχυχρόνιας ακολουθούν τα έσοδα που καταγράφηκαν, όχι τα έσοδα του μοντέλου.
+  const stCostsModel = st.platformFees + st.cleaning + st.levyBorne + st.municipalTax;
+  const stCosts = term !== 'short' ? 0
+    : !useRecorded ? stCostsModel
+    : recorded!.source === 'rent' ? 0
+    : st.grossRevenue > 0 ? stCostsModel * (grossAnnual / st.grossRevenue) : 0;
   const effOpex = nOpex + stCosts;                 // λειτουργικά έξοδα ακινήτου + κόστη βραχυχρόνιας
   const monthlyEquiv = grossAnnual / 12;           // ισοδύναμο «μηνιαίο ενοίκιο» για τη μηχανή
 
@@ -926,10 +965,14 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   // (ν.5222/2025). Τώρα ενοποιούμε το χαρτοφυλάκιο (με το ΕΠΕΞΕΡΓΑΣΜΕΝΟ εδώ ενοίκιο
   // για το τρέχον ακίνητο, ώστε τα «τι θα γινόταν αν» να παραμένουν αληθινά) και
   // δείχνουμε το μερίδιο. Νομικό πρόσωπο: δεν ισχύει ενοποίηση φυσικού προσώπου.
-  const portfolioTax = useMemo(() => consolidateRentTax([
-    { id: propertyId, annualRent: grossAnnual, shortTerm: term === 'short', rentsPaidViaBank: rentsBank },
-    ...otherRents.map(o => ({ ...o, rentsPaidViaBank: rentsBank })),
-  ]), [propertyId, grossAnnual, term, rentsBank, otherRents]);
+  const taxYear = Number(athensToday().slice(0, 4));
+  const portfolioTax = useMemo(() => consolidateRentTax(taxpayerRentSources({
+    props: taxBase.props.some(p => p.id === propertyId) ? taxBase.props : [{ id: propertyId }, ...taxBase.props],
+    current: { id: propertyId, annualRent: grossAnnual, shortTerm: term === 'short', rentsPaidViaBank: rentsBank },
+    ownerClientIds: pro ? taxBase.owners : null,
+    income: taxBase.income,
+    year: taxYear, today: athensToday(),
+  }), undefined, taxYear), [propertyId, grossAnnual, term, rentsBank, taxBase, pro, taxYear]);
 
   const annualTax = useMemo(() => {
     if (grossAnnual <= 0) return 0;
@@ -1439,7 +1482,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               χωρίς, ενώ το ποσό είναι μηνιαίο και πολλαπλασιάζεται επί δώδεκα. */}
           {/* Στη βραχυχρόνια η μονάδα πάει στο επίθεμα: το «Μηνιαίο ενοίκιο
               μακροχρόνιας» έπιανε δύο γραμμές δίπλα σε τρεις ετικέτες μίας. */}
-          <NumberInput label={term === 'short' ? 'Ενοίκιο μακροχρόνιας' : 'Μηνιαίο ενοίκιο'} value={rent} onChange={setRent} suffix={term === 'short' ? '€/μήνα' : '€'} />
+          <NumberInput label={term === 'short' ? 'Ενοίκιο μακροχρόνιας' : 'Μηνιαίο ενοίκιο'} value={rent} onChange={v => { setRent(v); setScenario(true); }} suffix={term === 'short' ? '€/μήνα' : '€'} />
           <NumberInput label="Ετήσια έξοδα" value={opex} onChange={v => { setOpex(v); setOpexYear(null); }} suffix="€" />
           <CustomSelect label="Περιοχή" value={region} onChange={setRegion} options={REGIONS.map((r, i) => ({ value: r.key, label: r.label, header: r.region !== REGIONS[i - 1]?.region ? r.region : undefined }))} />
         </div>
@@ -1469,8 +1512,8 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               </span>
             </div>
             <div {...g4}>
-              <NumberInput label="Ετήσια πληρότητα" value={stOcc} onChange={setStOcc} suffix="%" max={100} labelInfo={<TermInfo term="Ετήσια πληρότητα" text={G.occupancy} />} />
-              <NumberInput label="Μέση τιμή ανά νύχτα" value={stAdr} onChange={setStAdr} suffix="€" labelInfo={<TermInfo term="Μέση τιμή ανά νύχτα" text={G.adr} />} />
+              <NumberInput label="Ετήσια πληρότητα" value={stOcc} onChange={v => { setStOcc(v); setScenario(true); }} suffix="%" max={100} labelInfo={<TermInfo term="Ετήσια πληρότητα" text={G.occupancy} />} />
+              <NumberInput label="Μέση τιμή ανά νύχτα" value={stAdr} onChange={v => { setStAdr(v); setScenario(true); }} suffix="€" labelInfo={<TermInfo term="Μέση τιμή ανά νύχτα" text={G.adr} />} />
               <NumberInput label="Καθαρισμός ανά διαμονή" value={stClean} onChange={setStClean} suffix="€" />
               <NumberInput label="Προμήθεια πλατφόρμας" value={stFee} onChange={setStFee} suffix="%" max={100} labelInfo={<TermInfo term="Προμήθεια πλατφόρμας" text={G.platform_fee} />} />
             </div>
@@ -1491,7 +1534,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       {!empty && (<>
         {/* KPIs */}
         <div {...g4box}>
-          <Tile label="Μεικτή απόδοση" value={fp(y.grossYield)} sub={mkt(`${fe(y.annualRent)} έσοδα τον χρόνο`)} info={<TermInfo term="Μεικτή απόδοση" text={G.gross_yield} />} />
+          <Tile label="Μεικτή απόδοση" value={fp(y.grossYield)} sub={useRecorded ? `${fe(y.annualRent)} τον χρόνο, από ${fe(recorded!.receivedToDate)} ως σήμερα` : mkt(`${fe(y.annualRent)} έσοδα τον χρόνο`)} info={<TermInfo term="Μεικτή απόδοση" text={G.gross_yield} />} />
           <Tile label="Καθαρή απόδοση" value={fp(y.netYield)}
             sub={mkt(term === 'short' ? `μετά από ${fe(effOpex)} έξοδα, προμήθειες και τέλη` : `μετά από ${fe(effOpex)} έξοδα`)}
             info={<TermInfo term="Καθαρή απόδοση" text={G.net_yield} />} />
@@ -1508,6 +1551,18 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               ? <Tile label="Τυπική περιοχής" value={fp(stRef.grossYield)} sub={`βραχυχρόνια, ${reg?.region || 'Ελλάδα'}`} info={<TermInfo term="Τυπική βραχυχρόνια της περιοχής" text={G.region_short_ref} />} />
               : <Tile label="Μέσος όρος περιοχής" value={fp(reg?.grossYield || GREECE_AVG_GROSS_YIELD)} sub={reg?.label || 'Ελλάδα'} info={<TermInfo term="Μέσος όρος περιοχής" text={G.region_ref} />} />}
         </div>
+        {/* ΑΠΟ ΠΟΥ ΕΙΝΑΙ ΤΑ ΕΣΟΔΑ. Με καταγραφές, ο ίδιος αριθμός με την Επισκόπηση·
+            με αλλαγμένο ενοίκιο ή παραμέτρους, σενάριο, με δρόμο επιστροφής. */}
+        {recorded && (recorded.source === 'rent' || recorded.source === 'stays') && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '10px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.55 }}>
+            {useRecorded
+              ? <span>{`Έσοδα από ${recorded.source === 'stays' ? 'τις διαμονές' : 'τις δόσεις'} που καταγράφηκαν φέτος, σε ετήσιο ρυθμό: ο ίδιος αριθμός με την Επισκόπηση. Άλλαξε ενοίκιο ή πληρότητα για σενάριο.`}</span>
+              : <>
+                  <span>Σενάριο με τα νούμερα που έγραψες, όχι τα έσοδα που καταγράφηκαν.</span>
+                  <Btn variant="secondary" onClick={() => setScenario(false)}>Πίσω στα καταγεγραμμένα</Btn>
+                </>}
+          </div>
+        )}
 
         {/* Βαθμός απόδοσης A–F */}
         <GradeCard grade={grade} note={term === 'short'

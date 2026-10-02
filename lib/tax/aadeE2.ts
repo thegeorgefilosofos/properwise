@@ -389,7 +389,19 @@ function textRow(line: string, year: number | null): ParsedE2Row | null {
   const lettersBetween = (a: number, b: number) => toks.some(t => t.i > a && t.i < b && /\p{L}{2,}/u.test(t.t));
   const noTenantUse = KIND_COLUMN.some(([re]) => re.test(f));
   let afmTok: Tok | undefined, powerTok: Tok | undefined, declTok: Tok | undefined;
-  if (pre.length >= 3) [powerTok, afmTok, declTok] = pre;
+  if (pre.length >= 3) {
+    [powerTok, afmTok, declTok] = pre;
+    // Το μεσαίο που δεν περνά τον έλεγχο ΑΦΜ δεν γράφεται ως ΑΦΜ (02.10.2026):
+    // διαλέγεται το έγκυρο από τα τρία και η γραμμή σημαδεύεται.
+    if (!isValidAfm(afmTok.t)) {
+      const valid = pre.find(x => isValidAfm(x.t));
+      if (valid) {
+        const rest = pre.filter(x => x !== valid);
+        afmTok = valid; powerTok = rest[0]; declTok = rest[1];
+      }
+      guessed = true;
+    }
+  }
   else if (pre.length === 2) {
     const [x, y] = pre;
     if (lettersBetween(x.i, y.i)) { powerTok = x; afmTok = y; }
@@ -399,7 +411,13 @@ function textRow(line: string, year: number | null): ParsedE2Row | null {
   } else if (pre.length === 1) {
     const x = pre[0];
     const before = Math.min(firstDate, ...moneyToks.filter(m => m.i > x.i).map(m => m.i));
-    if (noTenantUse || lettersBetween(x.i, before)) powerTok = x; else afmTok = x;
+    if (noTenantUse || lettersBetween(x.i, before)) powerTok = x;
+    else if (!isValidAfm(x.t)) {
+      // ΜΟΝΟ ΕΝΑ ΕΝΝΙΑΨΗΦΙΟ ΠΟΥ ΔΕΝ ΕΙΝΑΙ ΑΦΜ (02.10.2026). Γραφόταν ως ΑΦΜ
+      // μισθωτή, ενώ ήταν η παροχή ρεύματος. Πάει στη στήλη της και λέγεται.
+      powerTok = x; guessed = true;
+      extra.push(`Το εννιαψήφιο «${x.t}» δεν περνά τον έλεγχο ΑΦΜ και γράφτηκε ως αριθμός παροχής ρεύματος. Αν είναι ΑΦΜ μισθωτή με λάθος ψηφίο, διόρθωσέ το.`);
+    } else afmTok = x;
   }
   if (afmTok) row.tenantAfm = afmTok.t;
   if (powerTok) row.powerSupplyNo = powerTok.t;

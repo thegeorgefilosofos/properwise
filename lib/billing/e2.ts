@@ -42,12 +42,15 @@ export interface E2Payment { property_id: string; amount: number | null; period_
 /** Διαμονή βραχυχρόνιας (client_stays) — τα ΠΡΑΓΜΑΤΙΚΑ έσοδα ενός `seasonal` ακινήτου. */
 export interface E2Stay extends TaxStay { property_id?: string | null }
 
-// Είδος μίσθωσης (κωδικοί Ε2). Επιβεβαίωσε με το έντυπο του τρέχοντος έτους.
+// ΕΣΩΤΕΡΙΚΑ ΚΛΕΙΔΙΑ ΚΑΤΑΤΑΞΗΣ, ΔΕΝ είναι οι κωδικοί του TAXISnet (02.10.2026).
+// Η στήλη 17 του Ε2 είναι περιγραφική (οδηγία 7): στο φύλλο γράφεται το κείμενο
+// του `E2_USE`, όχι αυτοί οι αριθμοί. Χρησιμεύουν μόνο για τη σύγκριση μέσα στον
+// κώδικα και στη σύνοψη για τον λογιστή.
 export const E2_LEASE_KIND: Record<string, { code: string; label: string }> = {
   rented: { code: '1', label: 'Εκμίσθωση' },
-  seasonal: { code: '60', label: 'Βραχυχρόνια μίσθωση' },  // στήλη 17 Ε2: επιβεβαιωμένος
+  seasonal: { code: '60', label: 'Βραχυχρόνια μίσθωση' },
   own_use: { code: '17', label: 'Ιδιοχρησιμοποίηση' },
-  vacant: { code: '39', label: 'Κενό (μη μισθωμένο)' },   // στήλη 17 Ε2: επιβεβαιωμένος
+  vacant: { code: '39', label: 'Κενό (μη μισθωμένο)' },
 };
 export function e2LeaseKind(status: string | null, rentalMode?: string | null): { code: string; label: string } {
   // Το `rental_mode` κρίνει ΠΡΩΤΟ, όπως και στο `readStatus`. Χωρίς αυτό, ακίνητο
@@ -275,7 +278,8 @@ export function buildE2Row(
   const flag = (f: string) => { if (!flags.includes(f)) flags.push(f); };
   const on = typeof p.ownership === 'string' ? parseFloat(p.ownership) : p.ownership;
   const ownershipPct = (on == null || isNaN(on as number)) ? 100 : (on as number);
-  const share = (n: number) => Math.round(n * ownershipPct / 100); // μερίδιο συνιδιοκτήτη
+  // Μερίδιο συνιδιοκτήτη σε λεπτά, όχι στρογγυλεμένο στο ευρώ (02.10.2026).
+  const share = (n: number) => roundHalfUp(n * ownershipPct / 100, 2);
   const statusKind = e2LeaseKind(p.status_detail, p.rental_mode);
   const leases: readonly E2Tenant[] = tenants == null ? [] : Array.isArray(tenants) ? tenants as readonly E2Tenant[] : [tenants as E2Tenant];
   const yearRows = payments.filter(x => x.period_year === year);
@@ -401,7 +405,8 @@ export function buildE2Row(
         const unlet = !statusKind.code && !(g > 0);
         if (unlet) flag(`Η κατάσταση «${BY_KEY[status].label}» χωρίς μίσθωση στο ${year}: η γραμμή δηλώνεται ΚΕΝΟ (οδηγία 2 του εντύπου).`);
         lines.push(line({
-          from: win.from, to: win.to, months: mm.months || '', monthly: p.target_rent ? Number(p.target_rent) : '',
+          // Γραμμή ΚΕΝΟ: χωρίς μίσθωμα. Ο στόχος ενοικίου δεν είναι μίσθωμα που εισπράχθηκε.
+          from: win.from, to: win.to, months: mm.months || '', monthly: !unlet && g > 0 && p.target_rent ? Number(p.target_rent) : '',
           estimated: g > 0, monthsEstimated: mm.estimated,
           kind: unlet ? E2_LEASE_KIND.vacant : statusKind, gross: share(g),
           // ΤΟ ΧΡΗΜΑ ΠΟΥ ΕΙΣΠΡΑΧΘΗΚΕ ΕΙΝΑΙ ΠΑΝΤΑ ΜΙΣΘΩΜΑ. Μόνο μια εκτίμηση πάνω

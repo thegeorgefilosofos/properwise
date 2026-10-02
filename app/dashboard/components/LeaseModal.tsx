@@ -13,6 +13,7 @@
 import { LEASE_DECLARATION_NAME } from '@/lib/tax/leaseDeclaration';
 import { useEffect, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { ensureDpa } from '@/lib/legal/dpa';
 import * as properties from '@/lib/data/properties';
 import * as tenantStore from '@/lib/data/tenants';
 // ΟΙ ΔΟΣΕΙΣ ΓΕΝΝΙΟΥΝΤΑΙ ΜΕ ΤΗ ΜΙΣΘΩΣΗ, ΟΧΙ ΟΤΑΝ ΤΙΣ ΚΟΙΤΑΞΕΙ ΚΑΝΕΙΣ.
@@ -188,6 +189,8 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
       // Ενημέρωση/δημιουργία ενοικιαστή από το υπογεγραμμένο συμφωνητικό.
       const payload = { full_name: tenant.trim(), afm: tenantAfm.trim() || null, monthly_rent: res.monthlyRent, deposit_amount: res.deposit || null, lease_start: res.start, lease_end: res.end };
       const cur = await tenantStore.current<{ id: string }>(supabase, prop.id, 'id', userId);
+      // Νέος ενοικιαστής: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts).
+      if (!cur?.id && !(await ensureDpa(supabase))) { setErr('Το μισθωτήριο αρχειοθετήθηκε, ο ενοικιαστής όχι: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.'); return; }
       // Το try/catch από πάνω δεν καλύπτει αυτό: το Supabase δεν πετά. Χωρίς τον
       // έλεγχο, το συμφωνητικό αρχειοθετούνταν και ο ενοικιαστής δεν υπήρχε πουθενά.
       //

@@ -38,13 +38,14 @@ import { CommandPalette, type CommandItem } from './components/CommandPalette';
 import { T, Btn, Modal, Spinner, SecHdr } from '@/components/Theme';
 import PropertyAssistant from './components/PropertyAssistant';
 import PropertySwitcher from './components/PropertySwitcher';
-import MonthlyFeedbackNudge from './components/MonthlyFeedbackNudge';
+import DpaModal from './components/DpaModal';
+import CookieConsent from '@/app/CookieConsent';
 import UpdateWatcher from './components/UpdateWatcher';
 import { planBriefing } from './components/assistantPersona';
 import UpgradeModal from './components/UpgradeModal';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
-import { isTabAllowed, isTabPurchasable, canAddProperty } from '@/lib/billing/entitlements';
+import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature } from '@/lib/billing/entitlements';
 import { hasAssistant } from '@/lib/billing/aiLimits';
 import { isTabVisible, hiddenTabCount } from '@/lib/nav/disclosure';
 import { askAssistant } from './components/AssistantStrip';
@@ -95,7 +96,15 @@ export default function Dashboard() {
     </div>
   );
 
-  const userInitials = user?.email?.substring(0,2).toUpperCase() || 'GF';
+  // ΟΝΟΜΑ, ΟΧΙ ΚΟΜΜΑΤΙ ΤΟΥ EMAIL (02.10.2026). Το μενού έγραφε «DE demo»: τα δύο
+  // πρώτα γράμματα και το τοπικό μέρος της διεύθυνσης. Αρχικά από το όνομα που
+  // δήλωσε ο χρήστης· χωρίς όνομα, ένα γράμμα και η λέξη «Λογαριασμός».
+  const fullName = String(user?.user_metadata?.full_name ?? '').trim();
+  const nameWords = fullName.split(/\s+/).filter(Boolean);
+  const userInitials = nameWords.length
+    ? (nameWords[0][0] + (nameWords.length > 1 ? nameWords[nameWords.length - 1][0] : '')).toUpperCase()
+    : (user?.email?.[0] ?? '·').toUpperCase();
+  const userLabel = fullName || 'Λογαριασμός';
   const statusColor = selected ? STATUS_COLORS[readStatus(selected)] : 'var(--text-secondary)';
   const statusLabel = selected ? statusLabelOf(selected) : '';
   // Η `getBadge` έφυγε: απαντούσε μόνο για `inventory` και `checklist`, που δεν
@@ -361,7 +370,7 @@ export default function Dashboard() {
         <div className="sidebar-footer">
           <button className="user-row" onClick={()=>{setNav('settings');setSidebarOpen(false);}} title="Λογαριασμός και ρυθμίσεις">
             <span className="user-avatar" aria-hidden>{userInitials}</span>
-            <span className="user-name po-elide">{user?.email?.split('@')[0]}</span>
+            <span className="user-name po-elide">{userLabel}</span>
           </button>
           <button className="sign-out-btn" onClick={signOut} aria-label="Αποσύνδεση" title="Αποσύνδεση">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
@@ -572,6 +581,7 @@ export default function Dashboard() {
             <div className="app-content">
               {/* Πέρα πέρα, με ενωτικό, σε κάθε παράγραφο της καρτέλας (26.09.2026). */}
               <Typesetter />
+              <CookieConsent inline />
               {/* Ο κανόνας ήταν ήδη γραμμένη αρχή — «η έξοδος είναι πάντα ένα
                   επίπεδο πάνω, δηλαδή η Επισκόπηση» — αλλά εφαρμοζόταν σε πέντε
                   καρτέλες από τις είκοσι δύο, γραμμένες με το χέρι. Δηλαδή στην
@@ -593,9 +603,21 @@ export default function Dashboard() {
                   {backLabel}
                 </button>
               )}
-              {navSafe==='portfolio' && (isTabAllowed(ent,'portfolio')
+              {/* ΤΟ ΚΛΕΙΔΩΜΑ ΑΚΟΛΟΥΘΕΙ ΤΟΝ ΠΙΝΑΚΑ ΤΟΥ /paketa. Επαγγελματίας: η
+                  συγκεντρωτική εικόνα. Ιδιοκτήτης+: η σύγκριση ακινήτων, που ο
+                  πίνακας του δίνει, όποια κι αν είναι η κατάσταση του επιλεγμένου.
+                  Κάτω από αυτό: λουκέτο στη σύγκριση, με το πακέτο που την ανοίγει. */}
+              {navSafe==='portfolio' && (hasFeature(ent,'portfolio')
                 ? <PortfolioTab properties={properties} userId={user.id} onSelectProperty={(id)=>{ const p=properties.find(x=>x.id===id); if(p){ setSelected(p); setNav('overview'); } }}/>
-                : <FeatureLock title="Το χαρτοφυλάκιό σου με μια ματιά" benefit={`Συγκεντρωτική εικόνα του χαρτοφυλακίου, με έσοδα, αποδόσεις και εκκρεμότητες σε ένα σημείο. Ξεκλειδώνει με το πακέτο ${PLANS.agency.name}.`} requiredPlan="agency" currentPlanName={PLANS[effPlan].name} onManage={()=>setNav('settings')} />)}
+                : isTabAllowed(ent,'comparison')
+                  ? <div>
+                      <SecHdr label="Σύγκριση ακινήτων"/>
+                      {canCompare(properties)
+                        ? <TabComparison properties={properties} userId={user.id} onNavigate={(t)=>setNav(t)}/>
+                        : <p style={{fontSize:'var(--fs-sm)',color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.55}}>Δεν υπάρχουν δύο ακίνητα ίδιου τύπου για σύγκριση. Η σύγκριση βάζει δίπλα δίπλα ακίνητα της ίδιας αγοράς.</p>}
+                      <p style={{marginTop:T.sp.section,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,lineHeight:1.55}}>{`Η συγκεντρωτική εικόνα, με έσοδα και εκκρεμότητες όλων των ακινήτων σε μία λίστα, είναι στο πακέτο ${PLANS.agency.name}.`}</p>
+                    </div>
+                  : <FeatureLock title="Σύγκρινε τα ακίνητά σου δίπλα-δίπλα" benefit={`Απόδοση, δαπάνες και πάροχοι όλων των ακινήτων σου σε έναν πίνακα. Ξεκλειδώνει με το πακέτο ${PLANS.owner.name}.`} requiredPlan="owner" currentPlanName={PLANS[effPlan].name} onManage={()=>setNav('settings')} />)}
               {/* ═══ Ο ΠΙΝΑΚΑΣ ΤΗΣ ΔΟΚΙΜΗΣ, ΠΑΝΩ ΑΠΟ ΤΑ ΠΑΝΤΑ ═══════════════
                   Ζει ΕΔΩ και όχι μέσα στην Επισκόπηση για δύο λόγους: είναι
                   πλαίσιο του λογαριασμού, όχι του ακινήτου (τα βήματά του
@@ -776,13 +798,8 @@ export default function Dashboard() {
         </nav>
       )}
 
-      {/* Ήπια μηνιαία παρότρυνση για feedback (πρώτες μέρες του μήνα).
-          ΓΙΑΤΙ ΖΗΤΑΕΙ ΚΑΙ `selected`: το κουμπί «Πες τη γνώμη σου» στέλνει το
-          συμβάν `pos:open-feedback` και το ακούει ΜΟΝΟ ο βοηθός — ο οποίος
-          αποδίδεται μόνο όταν υπάρχει επιλεγμένο ακίνητο. Χωρίς ακίνητο, ο
-          χρήστης έβλεπε παρότρυνση, πατούσε το κύριο κουμπί της και δεν
-          συνέβαινε απολύτως τίποτα. */}
-      {user&&selected&&<MonthlyFeedbackNudge/>}
+      {/* Η μηνιαία παρότρυνση για γνώμη δεν αιωρείται πια εδώ πάνω από το
+          περιεχόμενο· αποδίδεται στη ροή, στο τέλος της Επισκόπησης (02.10.2026). */}
       <UpdateWatcher/>
 
       {/* Βοηθός ακινήτου, ορατός σε ΚΑΘΕ καρτέλα, πλωτό κουμπί κάτω δεξιά */}
@@ -866,6 +883,7 @@ export default function Dashboard() {
       }}/>}
       {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} onClose={()=>setEditProperty(null)} onSaved={async()=>{setEditProperty(null);await fetchProperties(user.id);}}/>}
       {showUpgrade&&<UpgradeModal currentCount={properties.length} planId={effPlan} onClose={()=>setShowUpgrade(false)} onManage={()=>{setShowUpgrade(false);setNav('settings');}}/>}
+      <DpaModal />
     </div>
   );
 }

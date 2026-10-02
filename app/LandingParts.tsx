@@ -102,6 +102,7 @@ export function NoaFeature() {
             <div className="nf-price">
               <span className="nf-amount">{fe(noa.priceMonthly)}</span>
               <span className="nf-per">τον μήνα</span>
+              <span className="nf-per">{`ή ${fe(noa.priceAnnual)} τον χρόνο`}</span>
             </div>
             <div className="nf-terms">{ai.perMonth} ερωτήσεις τον μήνα · σάρωση χωρίς όριο · δοκιμή {TRIAL_DAYS} ημερών</div>
           </div>

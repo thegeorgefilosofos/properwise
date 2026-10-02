@@ -50,8 +50,15 @@ export interface RenovationCredit {
   eligible: number;
   /** Συνολική μείωση φόρου: ίση με την επιλέξιμη δαπάνη, έως 16.000€. */
   total: number;
-  /** Μείωση ανά έτος, στα πέντε έτη. Πάνω από τον φόρο του έτους δεν δίνεται. */
+  /** Μείωση ανά έτος, στα πέντε έτη, ΠΡΙΝ το όριο του φόρου κάθε έτους. */
   perYear: number;
+  /**
+   * Η μείωση που πράγματι δίνεται κάθε έτος: `perYear`, κομμένη στον φόρο του
+   * έτους. Υπάρχει μόνο όταν δόθηκαν οι φόροι των ετών (`yearTaxes`).
+   */
+  byYear?: number[];
+  /** Το άθροισμα του `byYear`: όσο πράγματι μειώνεται ο φόρος στα πέντε έτη. */
+  applied?: number;
 }
 
 const pos = (n: number | null | undefined) => Math.max(0, Number.isFinite(n as number) ? (n as number) : 0);
@@ -63,10 +70,28 @@ const pos = (n: number | null | undefined) => Math.max(0, Number.isFinite(n as n
  * `renovationCredit({ services: 9000, materials: 5000 })` → υλικά 3.000,
  * επιλέξιμη 12.000, μείωση 12.000, 2.400 τον χρόνο.
  */
-export function renovationCredit(i: { services: number; materials: number }): RenovationCredit {
+export function renovationCredit(i: { services: number; materials: number; yearTaxes?: readonly number[] }): RenovationCredit {
   const services = pos(i.services);
   const materialsCounted = cents(Math.min(pos(i.materials), services * RENO_39B_MATERIALS_SHARE));
   const eligible = cents(services + materialsCounted);
   const total = Math.min(eligible, RENO_39B_CAP);
-  return { materialsCounted, eligible, total, perYear: cents(total / RENO_39B_YEARS) };
+  const perYear = cents(total / RENO_39B_YEARS);
+  if (!i.yearTaxes) return { materialsCounted, eligible, total, perYear };
+  const byYear = i.yearTaxes.slice(0, RENO_39B_YEARS).map(t => renovationYearReduction(perYear, t));
+  return { materialsCounted, eligible, total, perYear, byYear, applied: cents(byYear.reduce((a, b) => a + b, 0)) };
+}
+
+/**
+ * Η μείωση ΕΝΟΣ έτους: το ετήσιο μερίδιο, όχι πάνω από τον φόρο του έτους.
+ *
+ * ΤΟ ΣΦΑΛΜΑ. Ο οδηγός έγραφε «όχι πάνω από τον φόρο του έτους» και η
+ * συνάρτηση δεν δεχόταν καν τον φόρο: έβγαζε δαπάνη διά πέντε, το πολύ 3.200€,
+ * και ο ιδιοκτήτης με φόρο 1.500€ διάβαζε μείωση 3.200€. Ο κανόνας ήταν
+ * κείμενο, όχι αριθμός που κόβεται. Φόρος μηδέν σημαίνει μείωση μηδέν· ό,τι
+ * περισσεύει δεν επιστρέφεται.
+ *
+ * `renovationYearReduction(3200, 1500)` → 1.500.
+ */
+export function renovationYearReduction(perYear: number, yearTax: number | null | undefined): number {
+  return cents(Math.min(pos(perYear), pos(yearTax)));
 }

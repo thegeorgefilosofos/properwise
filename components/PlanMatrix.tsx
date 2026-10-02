@@ -93,19 +93,21 @@ const MATRIX: FeatureRow[] = [
   { label: 'Ακίνητα', values: Object.fromEntries(COMPARED.map(p => [p, limitLabel(p)])) as Record<ComparedPlan, CellValue> },
   { label: `Ερωτήσεις ${ASSISTANT_TO} τον μήνα`,
     values: { ...Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perMonth)])) as Record<ComparedPlan, CellValue>,
-      solo: `${fn(aiLimitsFor('solo').perMonth)} ${WITH_NOA}` } },
+      // «30 με Νόα» μόνο του διαβαζόταν σαν 30 ερωτήσεις στο δωρεάν. Πρώτα το
+      // «Όχι» του δωρεάν, από κάτω όσα δίνει η Νόα, όπως και στη φωνή.
+      solo: both('Όχι', fn(aiLimitsFor('solo').perMonth)) } },
   // ΤΟ ΗΜΕΡΗΣΙΟ ΟΡΙΟ ΛΕΓΕΤΑΙ ΠΡΙΝ ΤΗΝ ΑΓΟΡΑ. Μέσα σε ένα απόγευμα δεσμεύει
   // σχεδόν πάντα αυτό και όχι το μηνιαίο (βλ. `remainingLine` στο aiLimits).
   { label: `Ερωτήσεις ${ASSISTANT_TO} την ημέρα`,
     values: { ...Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perDay)])) as Record<ComparedPlan, CellValue>,
-      solo: `${fn(aiLimitsFor('solo').perDay)} ${WITH_NOA}` } },
+      solo: both('Όχι', fn(aiLimitsFor('solo').perDay)) } },
   // Η ΣΑΡΩΣΗ ΜΕΤΡΑΕΙ ΧΩΡΙΣΤΑ (SCAN_LIMITS): πέντε τον μήνα στο δωρεάν, χωρίς
   // όριο σε όλα τα πληρωμένα.
   { label: 'Σάρωση εγγράφων τον μήνα',
     values: { ...Object.fromEntries(COMPARED.map(p => [p, 'Χωρίς όριο'])) as Record<ComparedPlan, CellValue>,
       solo: both(fn(SCAN_LIMITS.free ?? 0), 'χωρίς όριο') } },
   // Η ΦΩΝΗ ΖΕΙ ΜΕΣΑ ΣΤΗ ΝΟΑ (PropertyAssistant): στο δωρεάν πακέτο δεν υπάρχει.
-  withSolo(forAll('Φωνητική καταχώρηση'), `Όχι · ναι ${WITH_NOA}`),
+  withSolo(forAll('Φωνητική καταχώρηση'), both('Όχι', 'Ναι')),
   forAll('Αποδόσεις, δαπάνες, ενέργεια και φόρος 2026'),
   forAll('Ειδοποιήσεις και υπενθυμίσεις'),
   gated('e2_export'),
@@ -205,8 +207,10 @@ function PlanPrice({ id }: { id: ComparedPlan }) {
       <span className="plan-price-num">{fe(free ? 0 : PLANS[id].priceMonthly)}</span>
       <span className="plan-price-per">/μήνα</span>
       <span className="plan-price-alt">
+        {/* ΤΟ ΙΔΙΟ ΖΕΥΓΑΡΙ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Η αρχική έγραφε για τη Νόα 4,99€ τον
+            μήνα ή 54,90€ τον χρόνο· εδώ φαινόταν μόνο το μηνιαίο. */}
         {free
-          ? `ή ${fe(PLANS.solo.priceMonthly)}/μήνα ${WITH_NOA}`
+          ? <>{`ή ${fe(PLANS.solo.priceMonthly)}/μήνα ${WITH_NOA}`}<br />{`ή ${fe(PLANS.solo.priceAnnual)} τον χρόνο`}</>
           : `ή ${fe(PLANS[id].priceAnnual)} τον χρόνο`}
       </span>
     </div>

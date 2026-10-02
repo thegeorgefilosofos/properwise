@@ -110,7 +110,9 @@ for (const { key: status } of STATUSES) {
       for (const t of UNCONDITIONAL) ok(`${label}: μένει «${t}»`, v.includes(t));
       ok(`${label}: καμία άγνωστη καρτέλα`, v.every(id => NAV_IDS.includes(id)));
 
-      ok(`${label}: το Χαρτοφυλάκιο θέλει τρία`, v.includes('portfolio') === (n >= 3));
+      // Από δύο ακίνητα (02.10.2026): εκεί ζει και η σύγκριση του Ιδιοκτήτης+
+      // (lib/property/visibility.ts, MIN_PROPERTIES).
+      ok(`${label}: το Χαρτοφυλάκιο θέλει δύο`, v.includes('portfolio') === (n >= 2));
       // Οι συγχωνευμένες δεν επανεμφανίζονται από πίσω πόρτα.
       for (const [id] of MERGED) ok(`${label}: καμία «${id}» στο μενού`, !v.includes(id));
 

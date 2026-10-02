@@ -41,6 +41,9 @@ export interface MarketRates {
   euribor_asOf?:string
   /** Τι μετρά η τιμή: «μέσος όρος μήνα» και τα λοιπά. Ιδιο λεξιλόγιο με το ecb.ts. */
   euribor_basis?:string
+  /** Ποιος τη δημοσιεύει και πότε τη φέραμε, ISO. Για τη γραμμή «Πηγή». */
+  euribor_source?:string
+  euribor_fetchedAt?:string
 }
 export interface SavedLoan { id:string; property_id:string; user_id:string; bank:string; loan_type:LoanType; amount:number; property_value:number; rate:number; rate_type:RateType; years:number; start_date:string; status:string; notes:string }
 export interface LoanScenario { id:string; label:string; amount:number; rate:number; years:number; rateType:RateType }

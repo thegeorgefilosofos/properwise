@@ -175,12 +175,24 @@ async function main() {
   shared.property_settings = [{ property_id: PID, owner_afm: '987654321', owner_name: 'Ελένη Παπά' }]
   const withRpc = { ...clientWith(shared) as object, rpc: async () => ({ data: [{ accountantId: 'x', name: 'Λογιστικό Γραφείο Α', linkedAt: '2025-01-01' }], error: null }) } as never
   const wb5 = buildE2Workbook(await loadE2Rows(withRpc, 'user-1', YEAR), YEAR)!
-  const main5 = (XLSX.utils.sheet_to_json(wb5.Sheets[`Ε2 ${YEAR}`], { header: 1, defval: '' }) as unknown[][])
+  const main5 = (XLSX.utils.sheet_to_json(wb5.Sheets[`Ε2 ${YEAR} ΑΦΜ 987654321`], { header: 1, defval: '' }) as unknown[][])
   ok('κεφαλίδα: ΑΦΜ / ονοματεπώνυμο', main5.some(r => r[2] === '987654321 / Ελένη Παπά'))
   ok('κεφαλίδα: στοιχεία λογιστή', main5.some(r => r[0] === 'Στοιχεία λογιστή' && r[2] === 'Λογιστικό Γραφείο Α'))
   ok('στ. 18: 9 πρώτα ψηφία', main5.flat().includes('123456789'))
-  const sup5 = (XLSX.utils.sheet_to_json(wb5.Sheets['Συμπληρωματικά Ι'], { header: 1, defval: '' }) as unknown[][]).flat()
+  const sup5 = (XLSX.utils.sheet_to_json(wb5.Sheets['Συμπληρωματικά Ι ΑΦΜ 987654321'], { header: 1, defval: '' }) as unknown[][]).flat()
   ok('Συμπληρωματικά Ι: ο συνιδιοκτήτης με ΑΦΜ, διεύθυνση, ποσοστό', sup5.includes('Νίκος Παπάς') && sup5.includes('111111118') && sup5.includes('Πατησίων 5, Αθήνα') && sup5.includes(50))
+
+  // ── Ο ΣΥΝΙΔΙΟΚΤΗΤΗΣ ΜΕ ΑΦΜ ΕΧΕΙ ΔΙΚΟ ΤΟΥ ΦΥΛΛΟ Ε2 (02.10.2026) ───────────
+  // Πριν: μόνο γραμμή στα Συμπληρωματικά Ι του ιδιοκτήτη· το μερίδιό του δεν
+  // είχε φύλλο για τη δική του δήλωση.
+  const coSheet = wb5.Sheets[`Ε2 ${YEAR} ΑΦΜ 111111118`]
+  ok('συνιδιοκτήτης: δικό του φύλλο Ε2', !!coSheet)
+  if (coSheet) {
+    const co5 = XLSX.utils.sheet_to_json(coSheet, { header: 1, defval: '' }) as unknown[][]
+    ok('συνιδιοκτήτης: η κεφαλίδα με το δικό του ΑΦΜ', co5.some(r => String(r[2]).startsWith('111111118')))
+    const flat = co5.flat()
+    ok('συνιδιοκτήτης: το μερίδιό του, 4.800 στο 50%', flat.includes(4800) && flat.includes(50))
+  }
 
   console.log(fail === 0 ? `✓ e2Export: ${pass} έλεγχοι πέρασαν` : `✗ e2Export: ${fail} απέτυχαν από ${pass + fail}`)
   if (fail > 0) process.exit(1)

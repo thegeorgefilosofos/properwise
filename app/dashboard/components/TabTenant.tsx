@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { ensureDpa } from '@/lib/legal/dpa';
 import * as properties from '@/lib/data/properties';
 import * as tenantStore from '@/lib/data/tenants';
 import * as rentStore from '@/lib/data/rent';
@@ -394,6 +395,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     if(!form.lease_category){setError('Ο τύπος μίσθωσης (κατοικία ή επαγγελματική) είναι υποχρεωτικός');return;}
     const declRef=cleanDigits(form.aade_lease_decl_ref);
     if(declRef.error){setError(`Αριθμός δήλωσης μίσθωσης: ${declRef.error}`);setMoreOpen(true);return;}
+    // Νέος ενοικιαστής: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts).
+    if(!editId && !(await ensureDpa(supabase))){setError('Τα στοιχεία δεν αποθηκεύτηκαν: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.');return;}
     setSaving(true);setError(null);
     const n=(v:string)=>v?Math.max(0,parseFloat(v)):null;
     const dueDay=Math.min(Math.max(1,parseInt(form.rent_due_day)||1),28);

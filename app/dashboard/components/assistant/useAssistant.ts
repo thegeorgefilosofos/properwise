@@ -24,6 +24,7 @@ import type {
   RentPaymentsRow, UserPropertiesRow,
 } from '@/lib/supabase/tables'
 import { fp } from '@/components/Theme'
+import { greekWhen, MONTH_MEAN } from '@/lib/market/ecb'
 import { resolveRent, resolveValue, computeYields } from '@/lib/billing/propertyFacts'
 import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger'
 import { computeInsights, type Insight } from '@/lib/insights/engine'
@@ -49,7 +50,7 @@ import type { ReconcileQuestion } from '../scanDoc'
 import type { ScannedDoc } from '@/lib/billing/documents'
 import type { QuotaSnapshot } from '@/lib/billing/aiLimits'
 import { athensToday, daysUntil } from '@/lib/core/time'
-import { MONTHS_SHORT, MONTHS_GEN } from '@/lib/core/months'
+import { MONTHS_SHORT, MONTHS_GEN, monthGen } from '@/lib/core/months'
 import { useRemembered } from '@/components/useRememberedFlag'
 import { useLoad } from '@/app/hooks/useLoad'
 import { type Props, type Msg, type ClientLite, type ContactLite, eur, navLabel, NO_MEMORIES } from './model'
@@ -325,7 +326,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       // ολόκληρο, οπότε ο βοηθός δεν ήξερε ΠΟΤΕ για ασφάλιση.
       properties.one<{ insurance_company: string | null; insurance_expiry: string | null; insurance_amount: number | null }>(supabase, propertyId, 'insurance_company,insurance_expiry,insurance_amount', userId),
       calendar.upcoming(supabase, { propertyId, userId }, athensToday(), 10),
-      supabase.from('market_rates').select('euribor_3m,bog_housing_new,updated_at').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('market_rates').select('euribor_3m,bog_housing_new,updated_at,provenance').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
       loanStore.ofProperty(supabase, propertyId, userId),
       supabase.from('clients').select('id,type,full_name,afm,phone,email,rating,do_not_rent,tags,budget,needs').eq('user_id', userId).order('created_at', { ascending: false }).limit(80),
       stayStore.ofUser<ClientStaysRow>(supabase, userId, `client_id,rating,damages,damage_cost,notes,${stayStore.PORTFOLIO_COLUMNS}`),
@@ -588,7 +589,14 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
 
     // ── Αγορά: πραγματικά τρέχοντα νούμερα (επιτόκια, ρεύμα) + σταθερή φορο-κλίμακα 2026.
     const mLines: string[] = [];
-    if (rates?.euribor_3m != null) mLines.push(`Euribor 3 μηνών: ${fp(Number(rates.euribor_3m))} (ο δείκτης πάνω στον οποίο πατούν τα κυμαινόμενα επιτόκια στεγαστικών).`);
+    // Ο ΜΗΝΑΣ ΚΑΙ Η ΠΗΓΗ ΜΑΖΙ ΜΕ ΤΟ ΝΟΥΜΕΡΟ. Χωρίς αυτά η Νόα έλεγε το Euribor
+    // σαν σημερινή τιμή ενώ είναι μέσος όρος του προηγούμενου μήνα.
+    const eur3 = (rates as { provenance?: Record<string, { asOf?: string; basis?: string; source?: string }> } | null)?.provenance?.euribor_3m;
+    const eurM = /^(\d{4})-(\d{2})-\d{2}$/.exec(eur3?.asOf ?? '');
+    const eurWhen = eur3?.asOf && eur3?.basis
+      ? `, ${eurM && eur3.basis === MONTH_MEAN ? `μέσος όρος ${monthGen(Number(eurM[2]) - 1)} ${eurM[1]}` : `${eur3.basis} ${greekWhen(eur3.asOf, eur3.basis)}`}, πηγή ${eur3.source ?? 'ΕΚΤ'}`
+      : '';
+    if (rates?.euribor_3m != null) mLines.push(`Euribor 3 μηνών: ${fp(Number(rates.euribor_3m))}${eurWhen} (ο δείκτης πάνω στον οποίο πατούν τα κυμαινόμενα επιτόκια στεγαστικών· η τράπεζα εφαρμόζει την τιμή της ημέρας αναπροσαρμογής, όχι τον μέσο όρο του μήνα).`);
     if (rates?.bog_housing_new != null) mLines.push(`Μέσο επιτόκιο νέου στεγαστικού δανείου (στοιχεία Τράπεζας της Ελλάδος): περίπου ${fp(Number(rates.bog_housing_new))}.`);
     // ΤΟ ΕΥΡΟΣ ΤΙΜΩΝ ΡΕΥΜΑΤΟΣ ΕΦΥΓΕ ΚΑΙ ΕΙΝΑΙ ΚΕΡΔΟΣ.
     //

@@ -38,19 +38,18 @@ export default function MonthlyFeedbackNudge() {
   const give = () => { window.dispatchEvent(new Event('pos:open-feedback')); close(); };
 
   return (
-    <div
-      role="dialog"
+    // ΣΤΗ ΡΟΗ, ΟΧΙ ΠΑΝΩ ΣΤΗ ΣΕΛΙΔΑ (02.10.2026). Ηταν `position: fixed` κάτω
+    // αριστερά και στο κινητό σκέπαζε κουμπιά και νούμερα της Επισκόπησης. Τώρα
+    // είναι ενότητα στο τέλος της, με τη δική της θέση.
+    <section
       aria-label="Μηνιαία γνώμη"
       style={{
-        position: 'fixed', left: 20, bottom: 'var(--float-bottom)', zIndex: 'var(--float-z)',
-        width: 'min(380px, calc(100vw - 40px))',
+        position: 'relative', marginTop: T.sp.section, maxWidth: 520,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-        borderRadius: T.radius.card, boxShadow: 'var(--shadow-xl)', padding: '15px 18px 15px',
-        fontFamily: T.font.sans, animation: 'posNudgeIn .28s ease both',
+        borderRadius: T.radius.card, padding: '15px 18px 15px',
+        fontFamily: T.font.sans,
       }}
     >
-      <style>{`@keyframes posNudgeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}`}</style>
-
       {/* ══ ΤΟ ΚΛΕΙΣΙΜΟ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΡΟΗ ΤΟΥ ΚΕΙΜΕΝΟΥ ══════════════════════
           Καθόταν ως δεύτερο κελί ενός flex δίπλα στο κείμενο, δηλαδή έκοβε 44
           εικονοστοιχεία από ΚΑΘΕ γραμμή της παραγράφου — και από τις τρεις,
@@ -88,9 +87,13 @@ export default function MonthlyFeedbackNudge() {
         {/* `size="lg"` και όχι `field`: κρατά το ύψος πεδίου χωρίς να διεκδικήσει πλάτος. */}
         <Btn variant="secondary" onClick={close} size="lg">Άλλη φορά</Btn>
       </div>
-      <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
-        <a href="/terms#klirosi" target="_blank" rel="noreferrer" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>Όροι κλήρωσης</a>
+      <div style={{ marginTop: 12, paddingTop: 2, borderTop: '1px solid var(--border-subtle)' }}>
+        {/* Σύνδεσμος μόνος του σε γραμμή, άρα χειριστήριο: 44 ύψος αφής. Οσο ήταν
+            πλωτή κάρτα, ο σαρωτής της Επισκόπησης δεν την έβλεπε· στη ροή τη βλέπει. */}
+        <a href="/terms#klirosi" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+          <span style={{ borderBottom: '1px solid var(--border-default)' }}>Όροι κλήρωσης</span>
+        </a>
       </div>
-    </div>
+    </section>
   );
 }

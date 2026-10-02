@@ -11,7 +11,7 @@ import { T, fe, fn, feRate, Skeleton, histInputStyle, ABSENT_SHORT, fixedCols, B
 import { monthlyCost, compareTariffs, estimateUsage, type Tariff, type Usage } from '@/lib/energy/tariff';
 import { PROVIDERS, COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE } from '@/lib/energy/catalogue';
 import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
-import { MONTHS_SHORT } from '@/lib/core/months';
+import { MONTHS_SHORT, MONTHS_NOM, MONTHS_GEN } from '@/lib/core/months';
 
 /**
  * Η ΤΙΜΗ ΤΗΣ ΚΙΛΟΒΑΤΩΡΑΣ ΣΤΡΟΓΓΥΛΟΠΟΙΟΥΝΤΑΝ ΣΕ ΔΥΟ ΔΕΚΑΔΙΚΑ ΚΑΙ ΕΞΑΦΑΝΙΖΕ ΤΗ
@@ -41,6 +41,21 @@ const fk = feRate;
 // Η συνέπεια με το data/price-sources.json, που είναι η πηγή αλήθειας για το
 // workflow φρεσκάδας, φυλάσσεται από test: αν αποκλίνουν, κοκκινίζει το CI.
 const LAST_UPDATED = 'Αύγουστος 2026';
+
+/**
+ * Ο ΜΗΝΑΣ ΤΗΣ ΤΙΜΗΣ, ΑΝΑ ΤΙΜΟΛΟΓΙΟ, ΣΕ ΓΕΝΙΚΗ: «Οκτωβρίου 2026».
+ *
+ * Ο κατάλογος δεν είναι ενός μήνα. Τα περισσότερα τιμολόγια ελέγχθηκαν στον
+ * Αύγουστο, τέσσερα στο έγγραφο του Οκτωβρίου. Η κεφαλίδα έγραφε «Τιμολόγια
+ * Αύγουστος 2026» πάνω από τιμή Οκτωβρίου: η ετικέτα και ο αριθμός έλεγαν
+ * άλλον μήνα. Τώρα κάθε τιμή λέει τον δικό της.
+ */
+const CATALOGUE_MONTH_GEN = (() => {
+  const [m, y] = LAST_UPDATED.split(' ');
+  const i = (MONTHS_NOM as readonly string[]).indexOf(m);
+  return i >= 0 ? `${MONTHS_GEN[i]} ${y}` : LAST_UPDATED;
+})();
+const priceMonthOf = (t: { priceMonth?: string }) => t.priceMonth ?? CATALOGUE_MONTH_GEN;
 // ΤΟ ΣΧΟΛΙΟ ΕΛΕΓΕ ΤΟ energycost.gr «ΙΔΙΩΤΙΚΟ SITE». ΔΕΝ ΕΙΝΑΙ. Είναι το ΕΠΙΣΗΜΟ
 // εργαλείο σύγκρισης τιμών ρεύματος και φυσικού αερίου της ΡΑΑΕΥ, ανακοινωμένο
 // από την ίδια την Αρχή· το ίδιο λέει και το data/price-sources.json, που το
@@ -379,6 +394,13 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
   // πάνω σε τιμές που μπορεί να είναι περασμένου μήνα. Η πιο ήσυχη διαδρομή
   // ήταν αυστηρότερη από την πιο ορατή.
   const fresh = freshness(TARIFFS_VERIFIED, new Date(), TARIFFS_MAX_AGE_DAYS);
+  // Ποια τιμολόγια έχουν νεότερο μήνα από τον κατάλογο, ώστε η κεφαλίδα να
+  // λέει και τους δύο μήνες αντί να δηλώνει έναν για όλα.
+  const newer = PROVIDERS.flatMap(p => p.tariffs.filter(t => t.priceMonth).map(t => ({ month: t.priceMonth as string, provider: p.label })));
+  const newerMonths = [...new Set(newer.map(n => n.month))];
+  const catalogueLine = newer.length === 0
+    ? `Τιμές ${CATALOGUE_MONTH_GEN}, διασταυρωμένες με το energycost.gr της ΡΑΑΕΥ`
+    : `Τιμές ${CATALOGUE_MONTH_GEN} από το energycost.gr της ΡΑΑΕΥ. ${newer.length} τιμολόγια ${[...new Set(newer.map(n => n.provider))].join(', ')} έχουν τιμή ${newerMonths.join(', ')} από το έγγραφο του παρόχου`;
   const canRank = canRecommend(fresh, usageEst.reliable);
 
   const secHdr = (label: string, sub?: string) => (
@@ -410,7 +432,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>Ρεύμα</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Τιμολόγια {LAST_UPDATED}, διασταυρωμένα με το energycost.gr της ΡΑΑΕΥ</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{catalogueLine}</div>
         </div>
         <a href={RAAEY_COMPARE} target="_blank" rel="noopener noreferrer" title={RAAEY_NAME} className="tap-link"
           style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.pill, padding: '6px 16px', cursor: 'pointer', textDecoration: 'none', fontFamily: T.font.sans, fontWeight: 600 }}>
@@ -517,9 +539,9 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                   Τιμή που κλείνει αναδρομικά
                 </span>
               )}
-              {tariff.priceStatus === 'verified' && (
+              {tariff.priceStatus !== 'retro' && tariff.type !== 'dynamic' && (
                 <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', fontFamily: T.font.sans }}>
-                  {tariff.priceMonth ? `Τιμή ${tariff.priceMonth}` : 'Διασταυρωμένη τιμή'}
+                  {`Τιμή ${priceMonthOf(tariff)}`}
                 </span>
               )}
               {tariff.no_fixed && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, fontFamily: T.font.sans }}>Χωρίς πάγιο</span>}
@@ -560,7 +582,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             {tariff.type !== 'dynamic' && tariff.type !== 'fixed_monthly' && (
               <div style={{ display: 'flex', gap: 20, marginTop: 10, flexWrap: 'wrap' as const, alignItems: 'center' }}>
                 <span style={FACT}>
-                  Χρέωση ημέρας:{' '}<strong style={{ color: tariffBc.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fk(tariff.kwh_day)} / kWh</strong>
+                  {tariff.kwh_tier2 != null && tariff.tier2_threshold != null ? `Έως ${tariff.tier2_threshold} kWh:` : 'Χρέωση ημέρας:'}{' '}<strong style={{ color: tariffBc.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fk(tariff.kwh_day)} / kWh</strong>
                 </span>
                 {tariff.kwh_night != null && (
                   <span style={FACT}>
@@ -696,7 +718,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                 γραμμές από τις εκατό. Τώρα ο υπότιτλος λέει τον πραγματικό
                 αριθμό και η κατάταξη έχει κουμπί για τα υπόλοιπα. */}
             {secHdr('Κατάταξη Τιμολογίων',
-              `${allTariffs.length} τιμολόγια για ${kwh} κιλοβατώρες τον μήνα, τιμές ${LAST_UPDATED}`)}
+              `${allTariffs.length} τιμολόγια για ${kwh} κιλοβατώρες τον μήνα, τιμές ${CATALOGUE_MONTH_GEN} εκτός όπου γράφεται άλλος μήνας`)}
             <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: T.radius.pill, padding: 4, border: '1px solid var(--border-default)' }}>
               {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της
                   περίγραμμα, οπότε δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */}
@@ -871,7 +893,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             Συγκρίνεται η <strong style={{ color: 'var(--text-secondary)' }}>χρέωση προμήθειας</strong>, δηλαδή πάγιο και ενέργεια, μαζί με τα ρυθμιζόμενα τέλη και τον ΦΠΑ.
             Δεν περιλαμβάνονται χρεώσεις δικτύου ΔΕΔΔΗΕ, δημοτικά τέλη και τέλος ΕΡΤ, επειδή είναι ίδια όποιον πάροχο κι αν διαλέξεις και δεν αλλάζουν τη σειρά.
             <br />
-            Τιμές όπως δημοσιεύονται από τους παρόχους. Τελευταίος έλεγχος: {LAST_UPDATED}.
+            Τιμές όπως δημοσιεύονται από τους παρόχους. Τελευταίος έλεγχος καταλόγου: {LAST_UPDATED}{newer.length > 0 ? `· ${newer.length} τιμολόγια με τιμή ${newerMonths.join(', ')}` : ''}.
             {' '}<a href={RAAEY_COMPARE} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Διασταύρωσε στη ΡΑΑΕΥ</a>.
             Πριν υπογράψεις, επιβεβαίωσε την τιμή στη σελίδα του παρόχου: το κυμαινόμενο ανακοινώνεται κάθε μήνα.
           </div>

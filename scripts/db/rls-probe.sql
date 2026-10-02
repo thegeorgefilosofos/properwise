@@ -2122,8 +2122,12 @@ begin
     raise exception 'Η συνάρτηση δεν αναγνωρίζει τον δοκιμαστή: %', res;
   end if;
 
-  -- Ερωτήσεις 2 ώς 30: όλες περνούν.
+  -- Ερωτήσεις 2 ώς 30: όλες περνούν. Ο δοκιμαστής ρωτά μέσα στον μήνα, όχι
+  -- μέσα σε ένα λεπτό: από τις 02.10.2026 το όριο λεπτού το κρατά ο
+  -- διακομιστής (20), όποιο κι αν στείλει ο πελάτης, οπότε ο κάδος του λεπτού
+  -- αδειάζει πριν από κάθε ερώτηση. Το όριο λεπτού κρίνεται πιο κάτω, χωριστά.
   for i in 2..30 loop
+    update public.ai_usage set minute_count = 0 where user_id = t;
     res := public.bump_ai_usage(200, day, mon, 1000, 7, 20, 30, 30);
     if (res->>'allowed')::boolean is not true then
       raise exception 'Ο δοκιμαστής κόπηκε στην ερώτηση % από 30: %', i, res;
@@ -2131,6 +2135,7 @@ begin
   end loop;
 
   -- Η ΤΡΙΑΝΤΑ ΠΡΩΤΗ ΚΟΒΕΤΑΙ ΚΑΙ ΓΙΑ ΤΟΝ ΣΩΣΤΟ ΛΟΓΟ.
+  update public.ai_usage set minute_count = 0 where user_id = t;
   res := public.bump_ai_usage(200, day, mon, 1000, 7, 20, 30, 30);
   if (res->>'allowed')::boolean is not false then
     raise exception 'Η 31η ερώτηση του δοκιμαστή ΠΕΡΑΣΕ: %', res;
@@ -2169,6 +2174,35 @@ begin
 
   perform set_config('probe.uid', '', true);
   raise notice 'probe: ο συνδρομητής που πληρώνει κρατά τις 483 ερωτήσεις του';
+end $probe$;
+
+-- ── ΤΟ ΟΡΙΟ ΛΕΠΤΟΥ ΤΟ ΞΕΡΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ (02.10.2026) ─────────────────────
+-- Ο πελάτης στέλνει 200 ανά λεπτό, ο διακομιστής κρατά 20: η εικοστή πρώτη
+-- ερώτηση του ίδιου λεπτού κόβεται με λόγο 'minute'. Πριν από τη μετάβαση
+-- 20261002100000 περνούσε, γιατί το όριο ερχόταν από τον πελάτη. Ο ίδιος
+-- συνδρομητής με το προηγούμενο μπλοκ: το staging-demo δέχεται ώς 20 χρήστες.
+do $probe$
+declare
+  s uuid := '33333333-3333-3333-3333-333333333333';
+  day   int[] := array[10, 23, 59, 150, 483];
+  mon   int[] := array[10, 23, 59, 150, 483];
+  res   json;
+  i     int;
+begin
+  perform set_config('probe.uid', s::text, true);
+  update public.ai_usage set minute_count = 0 where user_id = s;
+  for i in 1..20 loop
+    res := public.bump_ai_usage(200, day, mon, 1000, 7, 20, 30, 30);
+    if (res->>'allowed')::boolean is not true then
+      raise exception 'Η ερώτηση % από 20 του λεπτού κόπηκε: %', i, res;
+    end if;
+  end loop;
+  res := public.bump_ai_usage(200, day, mon, 1000, 7, 20, 30, 30);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'minute' then
+    raise exception 'Η 21η ερώτηση του λεπτού ΠΕΡΑΣΕ με όριο 200 από τον πελάτη: %', res;
+  end if;
+  perform set_config('probe.uid', '', true);
+  raise notice 'probe: ο πελάτης ζητά 200 το λεπτό, ο διακομιστής δίνει 20';
 end $probe$;
 
 -- ── ΔΩΡΕΑΝ «ΙΔΙΟΚΤΗΤΗΣ»: ΧΩΡΙΣ ΝΟΑ, ΠΕΝΤΕ ΣΑΡΩΣΕΙΣ ─────────────────────────
