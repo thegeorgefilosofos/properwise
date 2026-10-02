@@ -255,17 +255,16 @@ export default async function Landing() {
 
               ΔΥΟ ΓΡΑΜΜΕΣ ΠΕΡΑ ΠΕΡΑ (02.10.2026). Με την πρόταση για τη Νόα ο
               υπότιτλος έγινε τρεις γραμμές. Τώρα είναι δύο προτάσεις, μία ανά
-              γραμμή, μετρημένες στα 1440 με τη γραμματοσειρά της σελίδας: 559 και
-              588 εικονοστοιχεία. Από τα 720 και πάνω κάθε πρόταση είναι γραμμή
-              με πλήρη στοίχιση και το πλάτος ακολουθεί τη μεγαλύτερη
-              (`fit-content`), οπότε η μικρότερη ανοίγει κατά 2 εικονοστοιχεία
-              ανά κενό. Στο κινητό οι προτάσεις ρέουν κεντραρισμένες (.lp-lede). */}
-          <p className="lp-rise-2 lp-lede" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 680, margin: '0 auto 28px' }}>
+              γραμμή, σχεδόν ίσου μήκους. Από τα 720 και πάνω κάθε πρόταση είναι
+              γραμμή που δεν σπάει, με πλήρη στοίχιση και το πλάτος ακολουθεί τη
+              μεγαλύτερη (`fit-content`), οπότε η μικρότερη ανοίγει ελάχιστα ανά
+              κενό. Στο κινητό οι προτάσεις ρέουν κεντραρισμένες (.lp-lede). */}
+          <p className="lp-rise-2 lp-lede" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px' }}>
             {/* Η ΝΟΑ ΔΕΝ ΤΗΝ ΕΧΟΥΝ ΟΛΟΙ. Το κείμενο έλεγε «Ρωτάς τη Νόα» σε κάθε
                 επισκέπτη, ενώ στο δωρεάν πακέτο είναι πρόσθετο 4,99€ τον μήνα και
                 η διευκρίνιση ήταν ψιλά πιο κάτω. Τώρα το λέει η ίδια πρόταση. */}
             <span className="lp-lede-line">Ενοίκια, λογαριασμοί, δάνεια και φόροι για όλα σου τα ακίνητα, δωρεάν για το ένα.</span>{' '}
-            <span className="lp-lede-line">Η {ASSISTANT_NAME} απαντά με{' '}
+            <span className="lp-lede-line">Η{'\u00a0'}{ASSISTANT_NAME} απαντά με{' '}
             <em style={{ fontStyle: 'normal', color: 'var(--text-primary)', fontWeight: 600 }}>τα δικά σου</em> δεδομένα: στη δοκιμή, μετά ως πρόσθετο {fe(PLANS.solo.priceMonthly)} τον μήνα.</span>
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>

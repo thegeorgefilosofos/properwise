@@ -4708,10 +4708,10 @@ body:has(.po-tool-page) .po-cookie {
 /* Ο ΥΠΟΤΙΤΛΟΣ ΤΗΣ ΑΡΧΙΚΗΣ: ΔΥΟ ΓΡΑΜΜΕΣ ΠΕΡΑ ΠΕΡΑ (02.10.2026). Κάθε
    πρόταση είναι μία γραμμή με πλήρη στοίχιση και το πλάτος ακολουθεί τη
    μεγαλύτερη. Κάτω από τα 720 ρέουν μαζί, κεντραρισμένες (βλ. app/page.tsx). */
-.lp-lede { text-align: center; text-wrap: balance; }
+.lp-lede { max-width: 680px; text-align: center; text-wrap: balance; }
 @media (min-width: 720px) {
-  .lp-lede { width: fit-content; text-align: justify; text-wrap: wrap; }
-  .lp-lede-line { display: block; text-align-last: justify; }
+  .lp-lede { width: fit-content; max-width: none; text-align: justify; text-wrap: wrap; }
+  .lp-lede-line { display: block; white-space: nowrap; text-align-last: justify; }
 }
 
 /* Κουμπί: ανύψωση και λάμψη, ίδια σε κάθε δημόσια σελίδα. */
