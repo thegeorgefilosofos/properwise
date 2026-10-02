@@ -33,6 +33,7 @@ import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
 import { ToolNumField, ToolFields, ToolSeg, ToolHero, ToolLedger, ToolStats } from '@/app/ToolParts';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { toolQuery } from '@/lib/tools/permalink';
+import { offeredIncomeYears, incomeYearFor, FILING_CLOSED_FROM_MONTH } from '@/lib/core/declarationYear';
 
 import LiveResult from '@/components/LiveResult';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -78,8 +79,14 @@ const PATH = '/ypologismos-forou-enoikion';
 // Τα εισοδήματα μιας χρονιάς δηλώνονται την επόμενη και η προθεσμία κλείνει τον
 // Ιούλιο (lib/tax/greekTaxCalendar.ts). Από τον Αύγουστο η ερώτηση που μετρά
 // είναι τα εισοδήματα της τρέχουσας χρονιάς.
-const YEARS = ['2025', '2026'] as const;
-const FILING_CLOSED_FROM_MONTH = 8;
+//
+// 02.10.2026: τα έτη ήταν καρφωμένα ['2025', '2026'] και το `etos` διαβαζόταν
+// «2026 ή αλλιώς 2025»: ένας σύνδεσμος με `etos=2027` έπεφτε σιωπηλά στην
+// κλίμακα του 2025. Τα έτη βγαίνουν πλέον από τη σημερινή ημερομηνία (περσινή
+// και τρέχουσα, όχι πριν από την πρώτη τεκμηριωμένη κλίμακα) και το `etos`
+// κλειδώνεται μέσα σε αυτά. Ο κανόνας του Αυγούστου ζει στο
+// lib/core/declarationYear.ts, κοινός με τη Λογιστική.
+const FIRST_DOCUMENTED_YEAR = FIRST_YEAR_NEW_BRACKETS - 1;
 // Οι σύνδεσμοι που μοιράστηκαν πριν γραφτεί πάντα το έτος δεν το έγραφαν όταν
 // ήταν 2025, γιατί τότε ήταν η προεπιλογή. Με άλλα πεδία και χωρίς έτος, ένας
 // σύνδεσμος εννοεί 2025.
@@ -89,10 +96,7 @@ const todayParts = (today: string) => ({ y: Number(today.slice(0, 4)), m: Number
 
 /** Η χρονιά εισοδήματος που ανοίγει η σελίδα σήμερα, μέσα στις διαθέσιμες. */
 function openingYear(today: string): string {
-  const { y, m } = todayParts(today);
-  const want = m >= FILING_CLOSED_FROM_MONTH ? y : y - 1;
-  const first = Number(YEARS[0]), last = Number(YEARS[YEARS.length - 1]);
-  return String(Math.min(last, Math.max(first, want)));
+  return String(incomeYearFor('', today, FIRST_DOCUMENTED_YEAR));
 }
 
 /** Πότε δηλώνεται το εισόδημα μιας χρονιάς, ειπωμένο από σήμερα. */
@@ -115,7 +119,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
   const [v, set] = useToolState(SPEC, PATH, x => x.etos ? x
     : { ...x, etos: toolQuery(SPEC, x) ? LEGACY_YEAR : openingYear(today) });
   const monthly = v.enoikio, months = v.mines, viaBank = v.trapeza !== '0';
-  const year = v.etos === '2026' ? 2026 : 2025;
+  const year = incomeYearFor(v.etos, today, FIRST_DOCUMENTED_YEAR);
   const brackets = rentalBracketsForYear(year);
   // Η ΚΥΡΩΣΗ ΤΗΣ ΤΡΑΠΕΖΙΚΗΣ ΕΙΣΠΡΑΞΗΣ ΞΕΚΙΝΑ ΤΗΝ 1.7.2027 (ν.5222/2025). Για
   // εισοδήματα 2025 και 2026 η τεκμαρτή έκπτωση 5% δίνεται ανεξάρτητα από τον
@@ -179,8 +183,8 @@ export function RentTaxCalculator({ today }: { today: string }) {
             σημερινή ημερομηνία (`openingYear`, `filingNote`). Το «πότε
             δηλώνεται» ζούσε σε δεύτερη σειρά μέσα σε κάθε κουμπί και έκανε τη
             ράγα ψηλότερη από τα πεδία δίπλα της· μένει στη βοήθεια από κάτω. */}
-        <ToolSeg label="Εισόδημα ποιας χρονιάς" value={v.etos} onChange={x => set('etos', x)}
-          options={YEARS.map(y => ({ value: y, label: y }))}
+        <ToolSeg label="Εισόδημα ποιας χρονιάς" value={String(year)} onChange={x => set('etos', x)}
+          options={offeredIncomeYears(today, FIRST_DOCUMENTED_YEAR).map(y => ({ value: String(y), label: String(y) }))}
           hint={<>Του {year}, {filingNote(year, today)}. {year >= FIRST_YEAR_NEW_BRACKETS
             ? 'Κλίμακα 15 / 25 / 35 / 45% (ν.5246/2025).'
             : 'Κλίμακα 15 / 35 / 45%, χωρίς το ενδιάμεσο κλιμάκιο.'}</>}/>
