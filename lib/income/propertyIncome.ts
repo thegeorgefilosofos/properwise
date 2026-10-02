@@ -28,7 +28,7 @@
 // αν είναι η δηλωμένη κατάσταση· χωρίς διαμονές, από τις δόσεις του.
 // ═══════════════════════════════════════════════════════════════════════════
 import { declarableGross, declarableGrossOrTotal, type StayAmountLike } from '@/lib/clients/stayAmounts'
-import { staysOfYearToDate } from '@/lib/clients/reports'
+import { nightsSplit, type TaxStay } from '@/lib/tax/shortTermTax'
 import { daysBetweenIso } from '@/lib/core/time'
 import { roundHalfUp } from '../core/money';
 import { rentIncomeOf } from '@/lib/rent/split'
@@ -123,14 +123,24 @@ export function propertyIncome(input: PropertyIncomeInput): PropertyIncome {
   const daysElapsed = year < todayYear ? yearDays : year > todayYear ? 0 : daysBetweenIso(`${year}-01-01`, today) + 1
   const monthsElapsed = year < todayYear ? 12 : year > todayYear ? 0 : Number(today.slice(5, 7))
 
-  const staysOfYear = input.stays.filter(s => iso(s.check_in || s.check_out).slice(0, 4) === String(year))
+  // ΔΙΑΜΟΝΕΣ ΠΟΥ ΠΕΡΝΟΥΝ ΤΗΝ ΠΡΩΤΟΧΡΟΝΙΑ ΜΟΙΡΑΖΟΝΤΑΙ ΑΝΑ ΝΥΧΤΕΣ (02.10.2026), όπως
+  // στο Ε2 και στη Λογιστική (shortTermYearSummary, yearShare). Πριν, μια διαμονή
+  // 28/12 με 5/1 έδινε όλο το ποσό στο πρώτο έτος και μηδέν στο δεύτερο, ενώ το
+  // έντυπο τη μοιράζει μισή μισή. Χωρίς στοιχεία νυχτών, το έτος της άφιξης.
+  const shareOf = (s: StayAmountLike): number => {
+    const { inYear, total } = nightsSplit(s as unknown as TaxStay, year)
+    if (total > 0) return inYear / total
+    return iso(s.check_in || s.check_out).slice(0, 4) === String(year) ? 1 : 0
+  }
+  const staysOfYear = input.stays.filter(s => shareOf(s) > 0)
   const rentsOfYear = input.rents.filter(r => (r.period_year ?? year) === year)
 
   let source: IncomeSource, receivedToDate = 0, annualized = 0, unresolvedStays = 0
   if (staysOfYear.length > 0) {
     source = 'stays'
-    const toDate = staysOfYearToDate(staysOfYear, year, today)
-    receivedToDate = toDate.reduce((s, x) => s + declarableGrossOrTotal(x), 0)
+    // Ως σήμερα: όσες έχουν αφιχθεί, με το μερίδιο του έτους.
+    const toDate = staysOfYear.filter(x => iso(x.check_in || x.check_out) <= today)
+    receivedToDate = toDate.reduce((s, x) => s + declarableGrossOrTotal(x) * shareOf(x), 0)
     unresolvedStays = toDate.filter(x => declarableGross(x) == null && declarableGrossOrTotal(x) > 0).length
     annualized = daysElapsed > 0 ? receivedToDate * (yearDays / daysElapsed) : 0
   } else if (rentsOfYear.length > 0) {

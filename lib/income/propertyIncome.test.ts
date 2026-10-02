@@ -117,5 +117,14 @@ eq('η ετικέτα', MARKET_ESTIMATE_LABEL, 'εκτίμηση αγοράς')
   eq('βήμα: μηνιαίες, ανομοιόμορφες, μία', [instalmentStep([1, 2, 3]), instalmentStep([1, 4, 6]), instalmentStep([5])], [1, 1, 1])
 }
 
+// ═══ ΔΙΑΜΟΝΗ ΠΟΥ ΠΕΡΝΑ ΤΗΝ ΠΡΩΤΟΧΡΟΝΙΑ: ΑΝΑ ΝΥΧΤΕΣ, ΟΠΩΣ ΤΟ Ε2 (02.10.2026) ═
+// 800€ από 28/12/2025 ως 5/1/2026: τέσσερις νύχτες σε κάθε έτος. Πριν: 800 / 0.
+{
+  const cross = [{ ...baseStay, check_in: '2025-12-28', check_out: '2026-01-05', nights: 8, total: 800 }]
+  const y25 = propertyIncome({ rents: [], stays: cross, year: 2025, today: TODAY })
+  const y26 = propertyIncome({ rents: [], stays: cross, year: 2026, today: TODAY })
+  eq('μισή στο 2025, μισή στο 2026', [y25.receivedToDate, y26.receivedToDate, y26.source], [400, 400, 'stays'])
+}
+
 console.log(fail === 0 ? `✓ propertyIncome: ${pass} έλεγχοι πέρασαν` : `✗ propertyIncome: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)
