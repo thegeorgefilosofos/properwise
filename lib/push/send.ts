@@ -75,9 +75,28 @@ export const TTL_SECONDS = 86_400;
  * @param msg  Τι θα δει η κλειδωμένη οθόνη.
  * @param keys Τα κλειδιά VAPID αυτής της εγκατάστασης.
  */
+/**
+ * Οι υπηρεσίες push των περιηγητών. Η διεύθυνση της συνδρομής τη γράφει ο
+ * χρήστης στη βάση (RLS) και ο server κάνει POST σε αυτήν: χωρίς λίστα, κάθε
+ * διεύθυνση (εσωτερική ή τρίτου) δεχόταν αίτημα από τη Vercel (02.10.2026).
+ */
+const PUSH_HOSTS = ['fcm.googleapis.com', 'updates.push.services.mozilla.com', 'push.services.mozilla.com', 'push.apple.com', 'notify.windows.com'];
+
+/** Είναι η διεύθυνση συνδρομής HTTPS προς γνωστή υπηρεσία push; */
+export function isPushEndpointAllowed(endpoint: string): boolean {
+  try {
+    const u = new URL(endpoint);
+    if (u.protocol !== 'https:' || u.port) return false;
+    const host = u.hostname.toLowerCase();
+    return PUSH_HOSTS.some(h => host === h || host.endsWith('.' + h));
+  } catch { return false; }
+}
+
 export async function sendPush(
   sub: DeviceSubscription, msg: PushMessage, keys: VapidKeys,
 ): Promise<SendOutcome> {
+  // Άγνωστη υπηρεσία: η συνδρομή δεν είναι έγκυρη και καθαρίζεται όπως μια ληγμένη.
+  if (!isPushEndpointAllowed(sub.endpoint)) return { sent: false, gone: true, status: 0, reason: 'endpoint not allowed' };
   try {
     await webpush.sendNotification(
       { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },

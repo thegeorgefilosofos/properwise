@@ -1,5 +1,5 @@
 // npx tsx lib/push/send.test.ts
-import { vapidKeys, TTL_SECONDS, VAPID_PUBLIC_ENV, VAPID_PRIVATE_ENV, VAPID_SUBJECT_ENV, type PushEnv } from './send';
+import { vapidKeys, TTL_SECONDS, isPushEndpointAllowed, VAPID_PUBLIC_ENV, VAPID_PRIVATE_ENV, VAPID_SUBJECT_ENV, type PushEnv } from './send';
 
 let p = 0, f = 0;
 const ok = (c: boolean, m: string) => { if (c) p++; else { f++; console.error('✗', m); } };
@@ -40,6 +40,16 @@ ok(!VAPID_SUBJECT_ENV.startsWith('NEXT_PUBLIC_'), 'ούτε το θέμα χρε
 // Πιο πολύ δεν έχει νόημα: την επόμενη μέρα φεύγει νέα ειδοποίηση με τα
 // σημερινά δεδομένα και η χθεσινή θα μιλούσε για προθεσμίες που πέρασαν.
 eq(TTL_SECONDS, 86_400, 'το μήνυμα ζει μία ημέρα στην υπηρεσία push');
+
+// ── ΜΟΝΟ ΥΠΗΡΕΣΙΕΣ PUSH (02.10.2026) ──────────────────────────────────────
+ok(isPushEndpointAllowed('https://fcm.googleapis.com/fcm/send/abc'), 'Chrome/Android');
+ok(isPushEndpointAllowed('https://updates.push.services.mozilla.com/wpush/v2/x'), 'Firefox');
+ok(isPushEndpointAllowed('https://web.push.apple.com/QAbc'), 'Safari');
+ok(!isPushEndpointAllowed('https://169.254.169.254/latest/meta-data'), 'όχι εσωτερική διεύθυνση');
+ok(!isPushEndpointAllowed('https://evil.example.com/fcm.googleapis.com'), 'όχι άλλος host με το όνομα στο μονοπάτι');
+ok(!isPushEndpointAllowed('https://fcm.googleapis.com.evil.com/x'), 'όχι host που απλώς ξεκινά με το όνομα');
+ok(!isPushEndpointAllowed('http://fcm.googleapis.com/x'), 'μόνο https');
+ok(!isPushEndpointAllowed('https://fcm.googleapis.com:8443/x'), 'χωρίς άλλη θύρα');
 
 console.log(`\npush/send.ts — ${p} passed, ${f} failed`);
 if (f > 0) process.exit(1);
