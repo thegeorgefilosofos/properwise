@@ -200,9 +200,9 @@ export const PLANS: Record<PlanId, Plan> = {
   // την τιμή ο ετήσιος συνδρομητής κρατά κι αυτός τις 30 ερωτήσεις.
   solo: {
     id: 'solo', name: 'Ιδιοκτήτης με Νόα', nameGen: 'Ιδιοκτήτη με Νόα', priceMonthly: 4.99, priceAnnual: 54.9, maxProperties: 1, trialDays: TRIAL_DAYS,
-    tagline: 'Με τον ψηφιακό βοηθό',
+    tagline: 'Ρωτάς τη Νόα στα ελληνικά',
     features: [
-      'Ψηφιακός βοηθός Νόα',
+      'Νόα στα ελληνικά',
       'Σάρωση χωρίς όριο',
     ],
   },
