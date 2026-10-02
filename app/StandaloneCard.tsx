@@ -49,7 +49,7 @@ export function StandaloneCard({ children, themed = false }: {
   /** Ακολουθεί το θέμα του χρήστη, όπως η σύνδεση και η εγγραφή (το ταμείο). */
   themed?: boolean;
 }) {
-  const shell: CSSProperties = { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 24px)', fontFamily: T.font.sans };
+  const shell: CSSProperties = { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 24px)', fontFamily: T.font.sans, color: 'var(--text-primary)' };
   return (
     <main
       className={themed ? 'auth-split po-standalone' : 'pub-root po-standalone'}
