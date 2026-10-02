@@ -66,6 +66,26 @@ export interface LocalTariff extends Tariff {
    * μην πάρει. Δείχνεται δίπλα, με το όνομά της.
    */
   promo_kwh_day?: number;
+
+  /**
+   * ΓΙΑ ΠΟΙΟΝ ΜΗΝΑ ΙΣΧΥΕΙ Η ΤΙΜΗ, ΣΕ ΓΕΝΙΚΗ: «Οκτωβρίου 2026».
+   *
+   * Τα «πράσινα» αλλάζουν κάθε 1η του μήνα. Χωρίς μήνα δίπλα της, μια τιμή που
+   * ήταν σωστή τον Οκτώβριο διαβάζεται ως σωστή και τον Νοέμβριο. Η οθόνη το
+   * γράφει ως «Τιμή Οκτωβρίου 2026». Μπαίνει μόνο όπου ο μήνας ελέγχθηκε στο
+   * έγγραφο του παρόχου.
+   */
+  priceMonth?: string;
+
+  /**
+   * Η ΤΙΜΗ ΧΩΡΙΣ ΤΗΝ ΠΡΟΫΠΟΘΕΣΗ ΤΗΣ ΠΕΡΙΓΡΑΦΗΣ (συνέπεια, myΔΕΗ). Μόνο για την οθόνη.
+   *
+   * Η σύγκριση τρέχει με την τιμή της προϋπόθεσης, όπως σε κάθε τιμολόγιο με
+   * έκπτωση συνέπειας. Οποιος όμως πληρώνει αργά πληρώνει αυτήν εδώ. Η
+   * διαφορά φτάνει τα 8 λεπτά ανά κιλοβατώρα. Ζει σε πεδίο και όχι μέσα στην
+   * περιγραφή, ώστε ο έλεγχος του καταλόγου να ξέρει κάθε ευρώ που τυπώνεται.
+   */
+  undiscounted?: { day: number; tier2?: number; night?: number };
 }
 
 export interface ProviderGroup { value: string; label: string; url: string; tariffs: LocalTariff[] }
@@ -156,17 +176,21 @@ export const PROVIDERS: ProviderGroup[] = [
       { id: 'dei_4all',         name: 'myHome 4All',            badge: 'ΚΙΤΡΙΝΟ', type: 'variable',      kwh_day: 0.15135, kwh_night: null,   kwh_tier2: 0.19482, tier2_threshold: 500, fixed: 4.90, fixed_ebill: 3.50, contract_months: 12, vat: 6, segment: 'residential', desc: 'Κυμαινόμενο κλιμακωτό: χαμηλότερη τιμή έως τις 500 kWh τον μήνα, υψηλότερη πάνω από αυτές. Χωρίς δέσμευση.' },
       { id: 'dei_4students', studentOnly: true,    name: 'myHome 4Students',       badge: 'ΚΙΤΡΙΝΟ', type: 'variable',      kwh_day: 0.11155, kwh_night: null,   kwh_tier2: 0.1850, tier2_threshold: 150, fixed: 2.91, fixed_ebill: 0, contract_months: 12, vat: 6, segment: 'residential', desc: 'Φοιτητικό κλιμακωτό, με όριο τις 150 kWh τον μήνα. Bonus καλοκαίρι. Απαιτείται φοιτητική ιδιότητα.' },
       // ══ Γ1 ΚΑΙ Γ1Ν: ΚΛΙΜΑΚΩΤΑ, ΟΧΙ ΜΙΑ ΤΙΜΗ ═════════════════════════════════
-      // Πηγή: https://www.dei.gr/media/gvskkpxa/g1_g1n_sept26.pdf (Σεπτέμβριος
-      // 2026, λήψη 28/09/2026, ops.handoffs a41bd5b2 P1-6). Τελική τιμή με
-      // εμπρόθεσμη εξόφληση και ενεργό myΔΕΗ, μαζί με τον μηχανισμό διακύμανσης
-      // 0,05575. Πάγιο 5,00€ τον μήνα, αμετάβλητο.
-      //   Γ1   kwh_day 0,1440 χωρίς κλιμάκιο → 0,14913 έως 200 kWh, 0,18544 πάνω
-      //   Γ1Ν  ίδια ημερήσια κλιμάκια· νυχτερινή 0,1160 → 0,14605
       // Ο κατάλογος έγραφε μία τιμή για όλη την κατανάλωση: πάνω από τις 200
-      // κιλοβατώρες η ΔΕΗ χρεώνει κάθε επιπλέον κιλοβατώρα 29% ακριβότερα απ'
-      // όσο υπολόγιζε ο κατάλογος.
-      { id: 'dei_prasino',      name: 'Γ1 Πράσινο',            badge: 'ΠΡΑΣΙΝΟ', type: 'variable',      kwh_day: 0.14913, kwh_night: null,   kwh_tier2: 0.18544, tier2_threshold: 200, fixed: 5.00, fixed_ebill: 3.50, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ειδικό Οικιακό (Γ1), κυμαινόμενο και κλιμακωτό: ακριβότερη κιλοβατώρα πάνω από τις 200 kWh τον μήνα. Ανακοινώνεται κάθε 1η του μήνα.' },
-      { id: 'dei_prasino_n',    name: 'Γ1Ν Πράσινο Νυχτερινό', badge: 'ΠΡΑΣΙΝΟ', type: 'variable',      kwh_day: 0.14913, kwh_night: 0.14605, kwh_tier2: 0.18544, tier2_threshold: 200, fixed: 5.00, fixed_ebill: 3.50, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ειδικό με νυχτερινή ζώνη. Η ημερήσια κατανάλωση χρεώνεται κλιμακωτά, ακριβότερα πάνω από τις 200 kWh τον μήνα. Ανακοινώνεται κάθε 1η του μήνα.' },
+      // κιλοβατώρες η ΔΕΗ χρεώνει κάθε επιπλέον κιλοβατώρα ακριβότερα απ' όσο
+      // υπολόγιζε ο κατάλογος.
+      //
+      // Πηγή: https://www.dei.gr/media/xjictous/g1_g1n_oct26.pdf (Οκτώβριος
+      // 2026). Στήλη «με εμπρόθεσμη εξόφληση και ενεργό myΔΕΗ», μαζί με τον
+      // μηχανισμό διακύμανσης. Πάγιο 5,00€ τον μήνα, αμετάβλητο.
+      //   Γ1   0,14913 → 0,15913 έως 200 kWh, 0,18544 → 0,21997 πάνω
+      //   Γ1Ν  ίδια ημερήσια κλιμάκια· νυχτερινή 0,14605 → 0,15590
+      // Χωρίς τις δύο προϋποθέσεις: 0,17363 / 0,23717 / 0,16880, στο
+      // `undiscounted`. ΔΕΝ μπαίνουν στον υπολογισμό: η σύγκριση τρέχει με την
+      // τιμή που πληρώνει όποιος εξοφλεί εμπρόθεσμα, όπως σε κάθε άλλο τιμολόγιο
+      // του καταλόγου με «έκπτωση συνέπειας».
+      { id: 'dei_prasino', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', name: 'Γ1 Πράσινο',            badge: 'ΠΡΑΣΙΝΟ', type: 'variable',      kwh_day: 0.15913, kwh_night: null,   kwh_tier2: 0.21997, tier2_threshold: 200, fixed: 5.00, fixed_ebill: 3.50, undiscounted: { day: 0.17363, tier2: 0.23717 }, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ειδικό Οικιακό (Γ1), κυμαινόμενο και κλιμακωτό: ακριβότερη κιλοβατώρα πάνω από τις 200 kWh τον μήνα. Η τιμή ισχύει με εμπρόθεσμη εξόφληση και ενεργό myΔΕΗ. Ανακοινώνεται κάθε 1η του μήνα.' },
+      { id: 'dei_prasino_n', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', name: 'Γ1Ν Πράσινο Νυχτερινό', badge: 'ΠΡΑΣΙΝΟ', type: 'variable',      kwh_day: 0.15913, kwh_night: 0.15590, kwh_tier2: 0.21997, tier2_threshold: 200, fixed: 5.00, fixed_ebill: 3.50, undiscounted: { day: 0.17363, tier2: 0.23717, night: 0.16880 }, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ειδικό με νυχτερινή ζώνη. Η ημερήσια κατανάλωση χρεώνεται κλιμακωτά, ακριβότερα πάνω από τις 200 kWh τον μήνα. Οι τιμές ισχύουν με εμπρόθεσμη εξόφληση και ενεργό myΔΕΗ. Ανακοινώνεται κάθε 1η του μήνα.' },
       { id: 'dei_dynamic',      name: 'myHome Dynamic',         badge: 'ΔΥΝΑΜΙΚΟ',type: 'dynamic',       kwh_day: 0, kwh_night: null, fixed: 5.00, smart_meter: true, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ωριαία τιμολόγηση βάσει χονδρεμπορικής (HEnEx). Απαιτεί έξυπνο μετρητή ΔΕΔΔΗΕ.' },
       // ── Επαγγελματικά (Γ21/Γ22) ────────────────────────────────────────
       { id: 'dei_biz_4all', priceStatus: 'verified', name: 'MyBussiness4ALL', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.16863, kwh_night: null, flat_monthly: null, fixed: 4.9, fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'business', desc: 'Η τιμή και το πάγιο ισχύουν με πάγια εντολή πληρωμής.' },
@@ -206,6 +230,10 @@ export const PROVIDERS: ProviderGroup[] = [
       { id: 'prot_sure_18',     name: 'Value Sure 18M 2.0',     badge: 'ΜΠΛΕ',    type: 'fixed',    kwh_day: 0.1450, kwh_night: null,  fixed: 5.00, contract_months: 18, vat: 6, segment: 'residential', desc: 'Σταθερό 18 μήνες. Κλειδωμένη τιμή μακροπρόθεσμα.' },
       { id: 'prot_sure_12',     name: 'Value Sure 12M',         badge: 'ΜΠΛΕ',    type: 'fixed',    kwh_day: 0.1520, kwh_night: null,  fixed: 5.00, contract_months: 12, vat: 6, segment: 'residential', desc: 'Σταθερό 12 μήνες.' },
       { id: 'prot_standard',    name: 'Value Standard',         badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.1590, kwh_night: null,  fixed: 5.00, contract_months: 0,  vat: 6, segment: 'residential', desc: 'Κυμαινόμενο ειδικό. Ανακοινώνεται κάθε 1η μήνα.' },
+      // Πηγή: https://www.protergia.gr/spiti/oikiako-reuma-proionta/protergia-oikiako-value-special/
+      // γραμμή 2026/ΟΚΤΩΒΡΙΟΣ, χωρίς ΦΠΑ, όπως όλος ο κατάλογος (ο ΦΠΑ 6% μπαίνει
+      // από το `vat`). 0,184 μετά την έκπτωση συνέπειας, 0,267 πριν.
+      { id: 'prot_value_special', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', name: 'Value Special', badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.184, kwh_night: null, fixed: 5.00, undiscounted: { day: 0.267 }, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ειδικό κυμαινόμενο, ίδια τιμή σε όλη την κατανάλωση. Η τιμή ισχύει με την έκπτωση συνέπειας, από τον πρώτο λογαριασμό. Ανακοινώνεται κάθε 1η του μήνα.' },
       { id: 'prot_lite2',       name: 'Value Lite 2.0',         badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.16267, kwh_night: null, fixed: 0,    no_fixed: true, contract_months: 0, vat: 6, segment: 'residential', desc: 'Χωρίς πάγιο. Ιδανικό για σπάνια χρήση ή εξοχικά.' },
       { id: 'prot_dynamic',     name: 'Dynamic One Home',       badge: 'ΔΥΝΑΜΙΚΟ',type: 'dynamic',  kwh_day: 0,      kwh_night: null, fixed: 0,    smart_meter: true, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ωριαία δυναμική τιμολόγηση. Ενεργοποιήθηκε Ιούνιο 2026.' },
       // ── Picasso 2.0, ΟΛΑ τα 9 πακέτα + Φοιτητικό ────────────────────────
@@ -234,6 +262,9 @@ export const PROVIDERS: ProviderGroup[] = [
     value: 'nrg', label: 'NRG', url: 'https://www.nrg.gr',
     tariffs: [
       { id: 'nrg_now',          name: 'NRG Now Οικιακό',        badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.1595, kwh_night: null, fixed: 6.90, contract_months: 0,  vat: 6, segment: 'residential', desc: 'Κυμαινόμενο. Χωρίς δέσμευση.' },
+      // Πηγή: https://www.nrg.gr/el/idiotes/revma/eidiko-timologio-nrg
+      // (Οκτώβριος 2026). 0,259 με την έκπτωση συνέπειας, 0,299 χωρίς.
+      { id: 'nrg_special', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', name: 'Ειδικό Τιμολόγιο nrg', badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.259, kwh_night: null, fixed: 5.00, undiscounted: { day: 0.299 }, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ειδικό κυμαινόμενο, χωρίς δέσμευση. Η τιμή ισχύει με την έκπτωση συνέπειας. Ανακοινώνεται κάθε 1η του μήνα.' },
       { id: 'nrg_adjust',       name: 'NRG adjust 1.0',         badge: 'ΜΠΛΕ',    type: 'fixed',    kwh_day: 0.1580, kwh_night: null, fixed: 9.90, contract_months: 12, vat: 6, segment: 'residential', desc: 'Σταθερό 12 μήνες. Τελευταία γνωστή τιμή, η NRG έχει ανανεώσει τη γκάμα προγραμμάτων, χρειάζεται νέα επιβεβαίωση.' },
       // ── Επαγγελματικά ──────────────────────────────────────────────────
       { id: 'nrg_adjust_biz', priceStatus: 'verified', name: 'nrg adjust 1.0 BUSINESS promo', badge: 'ΜΠΛΕ', type: 'fixed', kwh_day: 0.149, kwh_night: null, flat_monthly: null, fixed: 7.95, fixed_ebill: null, fixed_tier2: 15.9, fixed_tier2_threshold: 150, contract_months: 12, no_fixed: false, vat: 6, segment: 'business', desc: 'Πάγιο 7,95€ έως τις 150 kWh τον μήνα, 15,90€ πάνω από αυτές. Η τιμή ισχύει με εμπρόθεσμη πληρωμή.' },
