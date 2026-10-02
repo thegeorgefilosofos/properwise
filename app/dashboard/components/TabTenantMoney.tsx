@@ -27,6 +27,7 @@ import {
   DatePicker,
 } from './UIComponents';
 import { T, InfoBanner, Badge, Btn, EmptyState, Modal, fe, fdLong, fn, fp, Spinner, ExportButton, ABSENT, ABSENT_DATE, TT, pressable, RuntimeImg } from '@/components/Theme';
+import { navLabel } from '@/lib/nav/labels';
 import {
   Banknote,
 } from 'lucide-react';
@@ -675,7 +676,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       try{
         const safe=file.name.replace(/[^\w.\-]+/g,'_'); const path=`${userId}/${propertyId}/document/${Date.now()}_${safe}`;
         const{error:upErr}=await supabase.storage.from('property-files').upload(path,file,{upsert:false,contentType:file.type||undefined});
-        if(!upErr){ const ins=await documents.add(supabase,propertyId,userId,{kind:'document',category:'tenant',title:(doc.title||file.name).slice(0,200),doc_date:doc.issue_date||todayISO(),file_path:path,file_name:file.name,mime:file.type||null,size_bytes:file.size}); if(ins.error)notifyError(failed('Το έγγραφο δεν μπήκε στο Αρχείο',ins.error)); docId=ins.id; }
+        if(!upErr){ const ins=await documents.add(supabase,propertyId,userId,{kind:'document',category:'tenant',title:(doc.title||file.name).slice(0,200),doc_date:doc.issue_date||todayISO(),file_path:path,file_name:file.name,mime:file.type||null,size_bytes:file.size}); if(ins.error)notifyError(failed(`Το έγγραφο δεν μπήκε στην καρτέλα «${navLabel('documents')}»`,ins.error)); docId=ins.id; }
       }catch{ /* archive optional */ }
       const amount=typeof doc.amount==='number'?doc.amount:0;
       const dateISO=doc.issue_date||doc.due_date||todayISO();

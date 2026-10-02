@@ -19,6 +19,7 @@
 import * as documents from '@/lib/data/documents'
 import type { Db } from '@/lib/data/documents'
 import { fmtBytes } from '@/lib/core/bytes'
+import { navLabel } from '@/lib/nav/labels'
 import type { DossierAttachment } from './accountantExport'
 
 const BUCKET = 'property-files'
@@ -93,7 +94,7 @@ export async function fetchDossierPapers(
   // Ό,τι ξέρουμε ήδη ότι είναι πολύ μεγάλο δεν χρειάζεται καν να κατέβει.
   const tooBig = wanted.filter(r => (r.size_bytes || 0) > MAX_FILE)
   for (const r of tooBig) {
-    notes.push(`Το παραστατικό «${nameOf(r)}» (${fmtBytes(r.size_bytes || 0)}) δεν χώρεσε στον φάκελο· βρίσκεται στο Αρχείο της εφαρμογής.`)
+    notes.push(`Το παραστατικό «${nameOf(r)}» (${fmtBytes(r.size_bytes || 0)}) δεν χώρεσε στον φάκελο· βρίσκεται στην καρτέλα «${navLabel('documents')}».`)
   }
   const candidates = wanted.filter(r => (r.size_bytes || 0) <= MAX_FILE)
 
@@ -107,7 +108,7 @@ export async function fetchDossierPapers(
   const { data, error: signErr } = await db.storage.from(BUCKET).createSignedUrls(paths, 60 * 10)
   if (signErr) {
     console.error('[dossierPapers] οι σύνδεσμοι δεν υπογράφηκαν:', signErr)
-    notes.push(`Τα ${candidates.length} παραστατικά δεν συνοδεύουν αυτόν τον φάκελο: δεν ήταν δυνατή η πρόσβαση στο Αρχείο. Δοκίμασε ξανά σε λίγο· βρίσκονται όλα στο Αρχείο της εφαρμογής.`)
+    notes.push(`Τα ${candidates.length} παραστατικά δεν συνοδεύουν αυτόν τον φάκελο: δεν ήταν δυνατή η πρόσβαση στα αποθηκευμένα αρχεία. Δοκίμασε ξανά σε λίγο· βρίσκονται όλα στην καρτέλα «${navLabel('documents')}».`)
     return { files: [], notes }
   }
   data?.forEach((s, i) => { if (s?.signedUrl) signed[paths[i]] = s.signedUrl })
@@ -132,7 +133,7 @@ export async function fetchDossierPapers(
       if (!bytes) { notes.push(`Το παραστατικό «${nameOf(r)}» δεν κατέβηκε και δεν συνοδεύει αυτόν τον φάκελο.`); return }
       // Το πραγματικό μέγεθος μετράει, όχι το δηλωμένο: η `size_bytes` μπορεί
       // να λείπει και τότε το όριο θα ήταν γραμμένο χωρίς να ισχύει.
-      if (bytes.length > MAX_FILE) { notes.push(`Το παραστατικό «${nameOf(r)}» (${fmtBytes(bytes.length)}) δεν χώρεσε στον φάκελο· βρίσκεται στο Αρχείο της εφαρμογής.`); return }
+      if (bytes.length > MAX_FILE) { notes.push(`Το παραστατικό «${nameOf(r)}» (${fmtBytes(bytes.length)}) δεν χώρεσε στον φάκελο· βρίσκεται στην καρτέλα «${navLabel('documents')}».`); return }
       if (total + bytes.length > MAX_TOTAL) { dropped++; return }
       total += bytes.length
       files.push({
@@ -150,8 +151,8 @@ export async function fetchDossierPapers(
 
   if (dropped > 0) {
     notes.push(dropped === 1
-      ? `Ένα ακόμη παραστατικό δεν χώρεσε στον φάκελο, που σταματά στα ${fmtBytes(MAX_TOTAL)}. Βρίσκεται στο Αρχείο της εφαρμογής.`
-      : `${dropped} ακόμη παραστατικά δεν χώρεσαν στον φάκελο, που σταματά στα ${fmtBytes(MAX_TOTAL)}. Βρίσκονται στο Αρχείο της εφαρμογής.`)
+      ? `Ένα ακόμη παραστατικό δεν χώρεσε στον φάκελο, που σταματά στα ${fmtBytes(MAX_TOTAL)}. Βρίσκεται στην καρτέλα «${navLabel('documents')}».`
+      : `${dropped} ακόμη παραστατικά δεν χώρεσαν στον φάκελο, που σταματά στα ${fmtBytes(MAX_TOTAL)}. Βρίσκονται στην καρτέλα «${navLabel('documents')}».`)
   }
   return { files, notes }
 }

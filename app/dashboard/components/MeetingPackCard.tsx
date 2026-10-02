@@ -94,7 +94,7 @@ export default function MeetingPackCard({ userId, year, ownerName, dossier }: {
         <p role="alert" style={{ ...TT.caption, color: 'var(--negative)', margin: '12px 0 0' }}>Τα ΑΦΜ των ακινήτων δεν διαβάστηκαν. Άνοιξε ξανά τη Λογιστική σε λίγο.</p>
       ) : owners === null ? null : owners.length === 0 ? (
         <p style={{ ...TT.caption, margin: '12px 0 0' }}>
-          Ο φάκελος βγαίνει ανά ΑΦΜ υπόχρεου. Όρισε το ΑΦΜ του ιδιοκτήτη στις ρυθμίσεις κάθε ακινήτου.
+          Ο φάκελος βγαίνει ανά ΑΦΜ υπόχρεου. Όρισε το ΑΦΜ του ιδιοκτήτη στην «Επεξεργασία στοιχείων» από το μενού κάθε ακινήτου.
         </p>
       ) : (
         <div style={{ marginTop: 6 }}>

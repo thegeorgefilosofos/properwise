@@ -218,7 +218,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
         </div>
       ) : !current ? (
         <p style={{ ...TT.bodySm, margin: 0 }}>
-          Το Ε2 υποβάλλεται ανά ΑΦΜ. Όρισε το ΑΦΜ του ιδιοκτήτη στις ρυθμίσεις του ακινήτου και η σύγκριση ανοίγει εδώ.
+          Το Ε2 υποβάλλεται ανά ΑΦΜ. Όρισε το ΑΦΜ του ιδιοκτήτη στην «Επεξεργασία στοιχείων» από το μενού του ακινήτου και η σύγκριση ανοίγει εδώ.
         </p>
       ) : !result || result.status === 'not_uploaded' ? (
         <div style={{ padding: '14px 16px', background: 'var(--bg-elevated)', borderRadius: T.radius.inner }}>
@@ -292,7 +292,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
 
       {noAfmGroup && current && (
         <p style={{ ...TT.caption, margin: '12px 0 0' }}>
-          {noAfmGroup.idx.length === 1 ? 'Ένα ακίνητο δεν έχει' : `${noAfmGroup.idx.length} ακίνητα δεν έχουν`} ΑΦΜ ιδιοκτήτη και μένουν εκτός σύγκρισης. Όρισέ το στις ρυθμίσεις του ακινήτου.
+          {noAfmGroup.idx.length === 1 ? 'Ένα ακίνητο δεν έχει' : `${noAfmGroup.idx.length} ακίνητα δεν έχουν`} ΑΦΜ ιδιοκτήτη και μένουν εκτός σύγκρισης. Όρισέ το στην «Επεξεργασία στοιχείων» από το μενού του ακινήτου.
         </p>
       )}
 
