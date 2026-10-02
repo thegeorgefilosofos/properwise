@@ -257,6 +257,24 @@ ok('η καστάνια σαρώνει πραγματικά αρχεία', files
   ok('μίσθωση σε εξέλιξη: καμία λύση', term(obls).length === 0)
 }
 
+// ── ΠΡΟΤΙΜΑΤΑΙ Η ΕΠΟΜΕΝΗ, ΟΧΙ Η ΠΡΩΤΗ ΜΕΤΑ ΤΟ ΟΡΙΟ (02.10.2026) ──────────────
+// Πριν: στις 2.10.2026 η βραχυχρόνια έβλεπε «Δήλωση διαμονής 20.8» ως εκπρόθεσμη
+// και δεν έβλεπε ούτε την 20.10 ούτε το τέλος της 30.10.
+{
+  const oct = computeObligations({ ...prop, rental_mode: 'short_term', status_detail: 'seasonal' }, null, [], new Date(2026, 9, 2), 'short_term')
+  const byKind = (k: string) => oct.find(o => taxKindOfEventSource(o.source) === k)
+  ok('2.10: η δήλωση διαμονής είναι η 20.10', byKind('str-registry')?.date === nextWorkingDay('2026-10-20'))
+  ok('2.10: το τέλος κλιματικής είναι το 30.10', byKind('str-climate-fee')?.date === lastWorkingDayOfMonth(2026, 9))
+  ok('2.10: καμία θεσμική εκπρόθεσμη όταν υπάρχει επόμενη', oct.filter(o => o.category === 'tax').every(o => o.daysUntil >= 0))
+  // Χωρίς επόμενη στο ίδιο είδος, η περασμένη μένει (Ε1 της 15.7 στις 30.7).
+  ok('30.7: η Ε1 που πέρασε μένει όταν δεν υπάρχει επόμενη', income?.date === nextWorkingDay('2026-07-15'))
+  // 1η Ιανουαρίου: μία γραμμή ανά είδος και καμία περσινή όταν υπάρχει νεότερη.
+  const jan = computeObligations({ ...prop, rental_mode: 'short_term', status_detail: 'seasonal' }, null, [], new Date(2027, 0, 1), 'short_term')
+  const janKinds = jan.filter(o => o.category === 'tax').map(o => taxKindOfEventSource(o.source))
+  ok('1.1: μία γραμμή ανά είδος', new Set(janKinds).size === janKinds.length)
+  ok('1.1: η δήλωση διαμονής είναι η 20.1', jan.find(o => taxKindOfEventSource(o.source) === 'str-registry')?.date === nextWorkingDay('2027-01-20'))
+}
+
 console.log(`\nobligations.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed) { console.log('FAILED:\n' + fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1) }
 console.log('όλα πέρασαν')
