@@ -58,10 +58,12 @@ export default function PolicyNotice() {
         <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>
           Ενημερώσαμε τους Όρους
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, marginTop: 2 }}>
+        {/* Παράγραφος, όχι div: ο σύνδεσμος είναι λέξη της πρότασης, όπως στο
+            πλαίσιο των cookies, άρα δεν μετρά ως χωριστό χειριστήριο αφής. */}
+        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: '2px 0 0' }}>
           {POLICY_CHANGE_SUMMARY}{' '}
           <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2 }}>Δες τους Όρους</a>
-        </div>
+        </p>
       </div>
       <IconBtn label="Το κατάλαβα" onClick={dismiss}>
         <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
