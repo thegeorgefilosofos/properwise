@@ -19,6 +19,7 @@ import { publicMetadata } from './publicMetadata';
 import { SHARE_IMAGE } from '@/lib/core/site';
 import { GUIDES, guideSlug } from './odigos/guides';
 import { SHARE_CARDS, shareImage } from './og/share';
+import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 import sitemap from './sitemap';
 import { SITE } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
@@ -72,9 +73,12 @@ for (const g of GUIDES) {
 // ξεπερνά τη σημερινή: μια μελλοντική ημερομηνία η μηχανή αναζήτησης τη
 // διαβάζει ως λάθος και αγνοεί τη φρεσκάδα ολόκληρου του χάρτη.
 const TODAY = athensToday();
-const toolPaths = [...readFileSync('app/PublicChrome.tsx', 'utf8')
-  .matchAll(/\['(\/(?:ypologismos-[^']+|kathari-apodosi|vraxyxronia-i-makroxronia))',/g)].map(x => x[1]);
-ok('ο σαρωτής βλέπει τους υπολογιστές του υποσέλιδου', toolPaths.length >= 5 && toolPaths.includes('/ypologismos-stegastikou-daneiou'));
+// Τα εργαλεία του υποσέλιδου ζουν πλέον στο lib/core/publicTools, που διαβάζει
+// και το υποσέλιδο και το /llms.txt. Ελέγχεται και ότι το υποσέλιδο τα παίρνει
+// από εκεί: αλλιώς μια λίστα γραμμένη ξανά με το χέρι θα ξέφευγε από τον έλεγχο.
+const toolPaths = PUBLIC_TOOLS.map(t => t.href);
+ok('το υποσέλιδο διαβάζει τα εργαλεία από το PUBLIC_TOOLS', readFileSync('app/PublicChrome.tsx', 'utf8').includes('PUBLIC_TOOLS.map('));
+ok('ο σαρωτής βλέπει τους υπολογιστές του υποσέλιδου', toolPaths.length >= 6 && toolPaths.includes('/ypologismos-stegastikou-daneiou') && toolPaths.includes('/sygkrisi-timologion-revmatos'));
 for (const path of toolPaths) {
   const row = map.find(r => r.url === SITE + path);
   const lm = typeof row?.lastModified === 'string' ? row.lastModified : '';
