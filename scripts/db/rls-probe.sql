@@ -2817,3 +2817,273 @@ begin
   delete from public.accountant_links where user_id = own;
   delete from auth.users where id in (own, 'e2e2e2e2-0000-0000-0000-0000000000ac', 'e2e2e2e2-0000-0000-0000-0000000000ff');
 end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ΟΙ ΕΓΓΡΑΦΕΣ ΤΗΣ ΠΥΛΗΣ ΖΗΤΟΥΝ ΤΟΝ ΚΩΔΙΚΟ ΟΠΩΣ Η ΑΝΑΓΝΩΣΗ
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20261003110000_oi_eggrafes_tis_pylis_zitoun_ton_kodiko.sql. Με κωδικό στον
+-- σύνδεσμο, ο ανώνυμος που κρατά μόνο το κουπόνι δεν δηλώνει πληρωμή, δεν
+-- στέλνει αίτημα και δεν παίρνει άδεια φωτογραφίας. Ο λάθος κωδικός μετρά στο
+-- ΙΔΙΟ κλείδωμα με την ανάγνωση. Χωρίς κωδικό όλα δουλεύουν όπως πριν. Και
+-- στο bucket των φωτογραφιών δεν γράφει πια κανείς απευθείας.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+
+do $probe$
+declare
+  own uuid := 'cdcdcdcd-0000-0000-0000-000000000001';
+  pid uuid := 'cdcdcdcd-0000-0000-0000-0000000000f1';
+  tid uuid := 'cdcdcdcd-0000-0000-0000-0000000000a1';
+  -- Ένας σύνδεσμος ανά ακίνητο: το δεύτερο ακίνητο έχει σύνδεσμο χωρίς κωδικό.
+  pid2 uuid := 'cdcdcdcd-0000-0000-0000-0000000000f2';
+  tid2 uuid := 'cdcdcdcd-0000-0000-0000-0000000000a2';
+begin
+  insert into auth.users(id, email) values (own, 'pyli-kodikos@probe.test');
+  insert into public.user_properties(id, user_id, name)
+    values (pid, own, 'Πύλη με κωδικό'), (pid2, own, 'Πύλη χωρίς κωδικό');
+  insert into public.tenants(id, property_id, user_id, full_name, monthly_rent, lease_start)
+    values (tid, pid, own, 'Ενοικιαστής με κωδικό', 500, current_date - 30),
+           (tid2, pid2, own, 'Ενοικιαστής χωρίς κωδικό', 400, current_date - 30);
+  insert into public.rent_payments(id, user_id, property_id, tenant_id, period_year, period_month, amount, paid)
+    values ('cdcdcdcd-0000-0000-0000-0000000000b1', own, pid, tid, 2026, 9, 500, false),
+           ('cdcdcdcd-0000-0000-0000-0000000000b2', own, pid2, tid2, 2026, 10, 400, false);
+  insert into public.portal_links(property_id, user_id, token, tenant_id, pin_hash)
+    values (pid, own, 'probepinlink00000000000000000000', tid, crypt('4321', gen_salt('bf'))),
+           (pid2, own, 'probeopenlink0000000000000000000', tid2, null);
+end $probe$;
+
+-- ── Ο ανώνυμος με το κουπόνι αλλά χωρίς τον κωδικό ────────────────────────
+set role anon;
+do $probe$
+declare r boolean;
+begin
+  r := public.declare_rent_payment('probepinlink00000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b1', '', null);
+  if r is not null then raise exception 'ΕΚΘΕΣΗ: δήλωση πληρωμής χωρίς κωδικό απάντησε %', r; end if;
+  r := public.declare_rent_payment('probepinlink00000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b1', '', '0000');
+  if r is not null then raise exception 'ΕΚΘΕΣΗ: δήλωση πληρωμής με λάθος κωδικό απάντησε %', r; end if;
+  r := public.submit_maintenance_request('probepinlink00000000000000000000', 'Διαρροή', '', '', '[]'::jsonb, null);
+  if r is not null then raise exception 'ΕΚΘΕΣΗ: αίτημα βλάβης χωρίς κωδικό απάντησε %', r; end if;
+  r := public.submit_maintenance_request('probepinlink00000000000000000000', 'Διαρροή', '', '', '[]'::jsonb, '1111');
+  if r is not null then raise exception 'ΕΚΘΕΣΗ: αίτημα βλάβης με λάθος κωδικό απάντησε %', r; end if;
+end $probe$;
+reset role;
+
+do $probe$
+declare n int;
+begin
+  select count(*) into n from public.rent_payments
+   where id = 'cdcdcdcd-0000-0000-0000-0000000000b1' and tenant_declared;
+  if n <> 0 then raise exception 'ΕΚΘΕΣΗ: η δόση δηλώθηκε χωρίς τον κωδικό'; end if;
+  select count(*) into n from public.maintenance_requests where token = 'probepinlink00000000000000000000';
+  if n <> 0 then raise exception 'ΕΚΘΕΣΗ: γράφτηκαν % αιτήματα χωρίς τον κωδικό', n; end if;
+  -- Δύο λάθος κωδικοί καταγράφηκαν· οι δύο κενοί όχι, όπως και στην ανάγνωση.
+  select count(*) into n from public.portal_pin_attempts
+   where token = 'probepinlink00000000000000000000' and not success;
+  if n <> 2 then raise exception 'Οι λάθος κωδικοί των εγγραφών καταγράφηκαν % φορές αντί για 2', n; end if;
+  raise notice 'probe: με κωδικό στον σύνδεσμο, δήλωση και αίτημα χωρίς τον κωδικό ή με λάθος δεν γράφουν τίποτα';
+end $probe$;
+
+-- ── Με τον σωστό κωδικό γράφουν και σβήνουν τις αποτυχίες ──────────────────
+set role anon;
+do $probe$
+declare r boolean;
+begin
+  r := public.declare_rent_payment('probepinlink00000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b1', 'έμβασμα', '4321');
+  if r is not true then raise exception 'Η δήλωση με τον σωστό κωδικό απάντησε %', r; end if;
+  r := public.submit_maintenance_request('probepinlink00000000000000000000', 'Διαρροή', 'Στο μπάνιο', '',
+    '["probepinlink00000000000000000000/a.jpg","probeopenlink0000000000000000000/xeno.jpg","probepinlink00000000000000000000/../x.jpg",7]'::jsonb,
+    '4321');
+  if r is not true then raise exception 'Το αίτημα με τον σωστό κωδικό απάντησε %', r; end if;
+end $probe$;
+reset role;
+
+do $probe$
+declare n int; ph jsonb;
+begin
+  select count(*) into n from public.rent_payments
+   where id = 'cdcdcdcd-0000-0000-0000-0000000000b1' and tenant_declared;
+  if n <> 1 then raise exception 'Η δήλωση με τον σωστό κωδικό δεν γράφτηκε'; end if;
+  select photos into ph from public.maintenance_requests where token = 'probepinlink00000000000000000000';
+  if ph is distinct from '["probepinlink00000000000000000000/a.jpg"]'::jsonb then
+    raise exception 'ΕΚΘΕΣΗ: το αίτημα κράτησε διαδρομές έξω από τον φάκελο του κουπονιού: %', ph;
+  end if;
+  select count(*) into n from public.portal_pin_attempts
+   where token = 'probepinlink00000000000000000000' and not success;
+  if n <> 0 then raise exception 'Ο σωστός κωδικός δεν έσβησε τις % αποτυχίες', n; end if;
+  raise notice 'probe: με τον σωστό κωδικό η δήλωση και το αίτημα γράφουν· ξένες διαδρομές φωτογραφιών πετιούνται';
+end $probe$;
+
+-- ── Χωρίς κωδικό στον σύνδεσμο, όλα όπως πριν ─────────────────────────────
+set role anon;
+do $probe$
+declare r boolean;
+begin
+  r := public.declare_rent_payment('probeopenlink0000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b2', '', null);
+  if r is not true then raise exception 'Ο σύνδεσμος χωρίς κωδικό δεν δηλώνει πια πληρωμή: %', r; end if;
+  r := public.submit_maintenance_request('probeopenlink0000000000000000000', 'Βρύση', '', '', '[]'::jsonb);
+  if r is not true then raise exception 'Ο σύνδεσμος χωρίς κωδικό δεν στέλνει πια αίτημα: %', r; end if;
+  raise notice 'probe: ο σύνδεσμος χωρίς κωδικό δηλώνει και στέλνει όπως πριν';
+end $probe$;
+
+-- ── Ένα κλείδωμα για ανάγνωση και εγγραφές ────────────────────────────────
+do $probe$
+declare r boolean; d json;
+begin
+  for i in 1..3 loop
+    r := public.declare_rent_payment('probepinlink00000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b2', '', '000' || i);
+  end loop;
+  for i in 1..2 loop
+    r := public.submit_maintenance_request('probepinlink00000000000000000000', 'Δοκιμή', '', '', '[]'::jsonb, '999' || i);
+  end loop;
+  begin
+    r := public.declare_rent_payment('probepinlink00000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b2', '', '4321');
+    raise exception 'ΕΚΘΕΣΗ: μετά από πέντε λάθος κωδικούς η δήλωση πέρασε (%)', r;
+  exception when others then
+    if sqlerrm <> 'portal_locked' then raise; end if;
+  end;
+  begin
+    r := public.submit_maintenance_request('probepinlink00000000000000000000', 'Δοκιμή', '', '', '[]'::jsonb, '4321');
+    raise exception 'ΕΚΘΕΣΗ: μετά από πέντε λάθος κωδικούς το αίτημα πέρασε (%)', r;
+  exception when others then
+    if sqlerrm <> 'portal_locked' then raise; end if;
+  end;
+  -- Οι αποτυχίες των εγγραφών κλειδώνουν και την ανάγνωση: ένα κλείδωμα.
+  d := public.get_portal_data('probepinlink00000000000000000000', '4321');
+  if coalesce((d->>'rate_limited')::boolean, false) is not true then
+    raise exception 'ΕΚΘΕΣΗ: οι λάθος κωδικοί των εγγραφών δεν κλείδωσαν την ανάγνωση: %', d;
+  end if;
+  raise notice 'probe: πέντε λάθος κωδικοί σε εγγραφές κλειδώνουν εγγραφές και ανάγνωση μαζί';
+end $probe$;
+reset role;
+
+-- ── Η άδεια φωτογραφίας: κωδικός και είκοσι ανά ώρα ───────────────────────
+-- Την καλεί ο ρόλος υπηρεσίας· εδώ ο ιδιοκτήτης της βάσης, που κάνει το ίδιο.
+delete from public.portal_pin_attempts where token like '%probepinlink00000000000000000000';
+do $probe$
+declare j json;
+begin
+  j := public.portal_upload_slot('probepinlink00000000000000000000', null);
+  if j->>'reason' is distinct from 'pin' then raise exception 'ΕΚΘΕΣΗ: άδεια φωτογραφίας χωρίς κωδικό: %', j; end if;
+  j := public.portal_upload_slot('probepinlink00000000000000000000', '0000');
+  if j->>'reason' is distinct from 'pin' then raise exception 'ΕΚΘΕΣΗ: άδεια φωτογραφίας με λάθος κωδικό: %', j; end if;
+  if (select count(*) from public.portal_pin_attempts
+       where token = 'probepinlink00000000000000000000' and not success) <> 1 then
+    raise exception 'Ο λάθος κωδικός της φωτογραφίας δεν μέτρησε στο κλείδωμα';
+  end if;
+  j := public.portal_upload_slot('kanena-tetoio-kouponi', null);
+  if j->>'reason' is distinct from 'notfound' then raise exception 'Άγνωστο κουπόνι πήρε απάντηση %', j; end if;
+  for i in 1..20 loop
+    j := public.portal_upload_slot('probepinlink00000000000000000000', '4321');
+    if (j->>'ok')::boolean is not true then raise exception 'Η φωτογραφία % από 20 αρνήθηκε: %', i, j; end if;
+  end loop;
+  j := public.portal_upload_slot('probepinlink00000000000000000000', '4321');
+  if j->>'reason' is distinct from 'rate_limited' then
+    raise exception 'ΕΚΘΕΣΗ: η εικοστή πρώτη φωτογραφία της ώρας πήρε άδεια: %', j;
+  end if;
+  raise notice 'probe: η άδεια φωτογραφίας ζητά τον κωδικό και σταματά στις 20 την ώρα';
+end $probe$;
+
+-- ── Η δήλωση έχει ταβάνι: δέκα την ώρα ────────────────────────────────────
+set role anon;
+do $probe$
+declare r boolean;
+begin
+  -- Μία ήδη από πάνω, από τον σύνδεσμο χωρίς κωδικό.
+  for i in 2..10 loop
+    r := public.declare_rent_payment('probeopenlink0000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b2', '', null);
+  end loop;
+  begin
+    r := public.declare_rent_payment('probeopenlink0000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b2', '', null);
+    raise exception 'ΕΚΘΕΣΗ: η ενδέκατη δήλωση της ώρας πέρασε (%)', r;
+  exception when others then
+    if sqlerrm <> 'portal_rate_limited' then raise; end if;
+  end;
+  raise notice 'probe: η δήλωση πληρωμής σταματά στις 10 την ώρα';
+end $probe$;
+
+-- ── Καμία υπογραφή χωρίς κωδικό και κανένας βοηθός στον πελάτη ────────────
+do $probe$
+declare n int;
+begin
+  begin
+    perform public.portal_upload_slot('probeopenlink0000000000000000000', null);
+    raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος παίρνει μόνος του άδεια φωτογραφίας';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.portal_pin_gate('probepinlink00000000000000000000', '4321');
+    raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος ρωτά απευθείας τον έλεγχο κωδικού';
+  exception when insufficient_privilege then null;
+  end;
+  select count(*) into n
+    from pg_proc p join pg_namespace s on s.oid = p.pronamespace
+   where s.nspname = 'public'
+     and p.proname in ('declare_rent_payment', 'submit_maintenance_request')
+     and has_function_privilege('anon', p.oid, 'execute')
+     and not ('p_pin' = any(coalesce(p.proargnames, '{}'::text[])));
+  if n <> 0 then raise exception 'ΕΚΘΕΣΗ: % υπογραφές εγγραφής της πύλης χωρίς p_pin μένουν καλέσιμες', n; end if;
+  if to_regprocedure('public.declare_rent_payment(text,uuid,text)') is not null
+     or to_regprocedure('public.submit_maintenance_request(text,text,text,text,jsonb)') is not null then
+    raise exception 'ΕΚΘΕΣΗ: οι παλιές υπογραφές χωρίς κωδικό υπάρχουν ακόμη';
+  end if;
+  raise notice 'probe: καμία εγγραφή της πύλης δεν καλείται χωρίς p_pin και οι βοηθοί μένουν στον διακομιστή';
+end $probe$;
+reset role;
+
+-- ── Το bucket των φωτογραφιών δεν δέχεται απευθείας εγγραφή ───────────────
+do $probe$
+begin
+  alter table storage.objects enable row level security;
+  grant select, insert on storage.objects to anon, authenticated;
+  if exists (select 1 from pg_policy where polrelid = 'storage.objects'::regclass and polname = 'maint_photos_insert') then
+    raise exception 'ΕΚΘΕΣΗ: η πολιτική maint_photos_insert υπάρχει ακόμη';
+  end if;
+  if (select count(*) from pg_policy where polrelid = 'storage.objects'::regclass
+        and polname in ('maint_photos_read_owner', 'maint_photos_delete_owner')) <> 2 then
+    raise exception 'Χάθηκε η ανάγνωση ή η διαγραφή του ιδιοκτήτη στις φωτογραφίες βλάβης';
+  end if;
+  if not exists (select 1 from storage.buckets where id = 'maintenance-photos'
+                  and file_size_limit = 10485760 and 'image/jpeg' = any(allowed_mime_types)
+                  and not ('application/pdf' = any(allowed_mime_types))) then
+    raise exception 'Το bucket maintenance-photos έχασε το όριο των 10 MB ή τον περιορισμό σε εικόνες';
+  end if;
+end $probe$;
+
+set role anon;
+do $probe$
+begin
+  begin
+    insert into storage.objects(bucket_id, name) values ('maintenance-photos', 'probeopenlink0000000000000000000/anonymo.jpg');
+    raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος ανεβάζει απευθείας στο maintenance-photos';
+  exception when insufficient_privilege then null;
+  end;
+end $probe$;
+set role authenticated;
+set session "probe.uid" = 'cdcdcdcd-0000-0000-0000-000000000001';
+do $probe$
+begin
+  begin
+    insert into storage.objects(bucket_id, name) values ('maintenance-photos', 'probeopenlink0000000000000000000/syndedemenos.jpg');
+    raise exception 'ΕΚΘΕΣΗ: συνδεδεμένος λογαριασμός ανεβάζει απευθείας στο maintenance-photos';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: στο maintenance-photos γράφει μόνο η υπογεγραμμένη διεύθυνση του διακομιστή';
+end $probe$;
+
+reset role;
+set session "probe.uid" = '';
+do $probe$
+declare own uuid := 'cdcdcdcd-0000-0000-0000-000000000001';
+begin
+  revoke select, insert on storage.objects from anon, authenticated;
+  alter table storage.objects disable row level security;
+  delete from public.portal_pin_attempts where token like '%probepinlink00000000000000000000'
+                                            or token like '%probeopenlink0000000000000000000';
+  delete from public.maintenance_requests where user_id = own;
+  delete from public.portal_links where user_id = own;
+  delete from public.rent_payments where user_id = own;
+  delete from public.tenants where user_id = own;
+  delete from public.user_properties where user_id = own;
+  delete from auth.users where id = own;
+end $probe$;

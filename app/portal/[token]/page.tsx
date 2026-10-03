@@ -4,6 +4,11 @@
 // Tenant Portal, δημόσια σελίδα ενοικιαστή (χωρίς login). Διαβάζει δεδομένα
 // μέσω ασφαλούς RPC (get_portal_data) και δέχεται αίτημα βλάβης. Theme-aware,
 // responsive. Καμία πρόσβαση σε δεδομένα ιδιοκτήτη πέραν των απαραίτητων.
+//
+// Ο ΚΩΔΙΚΟΣ ΙΣΧΥΕΙ ΚΑΙ ΓΙΑ ΤΙΣ ΕΓΓΡΑΦΕΣ. Οταν ο σύνδεσμος έχει κωδικό, η
+// δήλωση πληρωμής, το αίτημα και κάθε φωτογραφία τον ξαναστέλνουν και η βάση
+// τον ξαναελέγχει (20261003110000). Κρατιέται μόνο στη μνήμη της σελίδας, όσο
+// είναι ανοιχτή: ούτε σε αποθήκευση του περιηγητή ούτε στη διεύθυνση.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import BrandMark from '@/components/BrandMark';
@@ -12,6 +17,7 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { T, Btn, feAuto, feOr, fdLong, ABSENT_DATE } from '@/components/Theme';
 import { MONTHS_NOM } from '@/lib/core/months';
+import { callPortalWrite, portalWriteMessage, portalWriteOutcome, PORTAL_SAY, type RpcCall } from '@/lib/portal/writes';
 
 interface DueItem { id: string; year: number; month: number; amount: number; due_date: string | null; declared: boolean }
 
@@ -47,6 +53,8 @@ export default function TenantPortal() {
   const [pin, setPin] = useState('');
   const [pinErr, setPinErr] = useState('');
   const [pinChecking, setPinChecking] = useState(false);
+  /** Ο κωδικός που δέχτηκε η βάση· null όταν ο σύνδεσμος δεν έχει κωδικό. */
+  const [okPin, setOkPin] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
@@ -55,6 +63,8 @@ export default function TenantPortal() {
   const [sent, setSent] = useState(false);
   /** Πόσες φωτογραφίες δεν έφτασαν. Μηδέν σημαίνει ότι έφτασαν όλες. */
   const [lostPhotos, setLostPhotos] = useState(0);
+  /** Κάποια φωτογραφία έμεινε έξω από το ταβάνι της ώρας, όχι από το σήμα. */
+  const [photoLimitHit, setPhotoLimitHit] = useState(false);
   const [err, setErr] = useState('');
 
   const [declareBusyId, setDeclareBusyId] = useState<string | null>(null);
@@ -112,14 +122,21 @@ export default function TenantPortal() {
       return;
     }
     applyData(d);
+    setOkPin(pin);
     setState('ok');
   };
 
+  const rpc: RpcCall = (fn, args) => supabase.rpc(fn, args);
+
   const declarePayment = async (id: string) => {
     setDeclareErr(''); setDeclareBusyId(id);
-    const { data: ok, error } = await supabase.rpc('declare_rent_payment', { p_token: token, p_payment_id: id, p_note: '' });
+    const res = await callPortalWrite(rpc, 'declare_rent_payment', { p_token: token, p_payment_id: id, p_note: '' }, okPin);
     setDeclareBusyId(null);
-    if (error || !ok) { setDeclareErr('Δεν ήταν δυνατή η δήλωση. Δοκίμασε ξανά.'); return; }
+    const outcome = portalWriteOutcome(res);
+    if (outcome !== 'ok') {
+      setDeclareErr(portalWriteMessage(outcome, 'Δεν ήταν δυνατή η δήλωση. Δοκίμασε ξανά.', PORTAL_SAY.declareLimit));
+      return;
+    }
     // Οπτιμιστική ενημέρωση, μαρκάρουμε ΜΟΝΟ ως δηλωμένο (όχι εξοφλημένο).
     setData(prev => prev ? { ...prev, due: prev.due.map(it => it.id === id ? { ...it, declared: true } : it) } : prev);
   };
@@ -161,6 +178,28 @@ export default function TenantPortal() {
     setPhotoNote('');
   };
 
+  /**
+   * Μία φωτογραφία: άδεια από τον διακομιστή, μετά ανέβασμα στη διεύθυνση που
+   * υπέγραψε. Το `stop` σημαίνει ότι ο κωδικός δεν περνά: κάθε επόμενη
+   * προσπάθεια θα μετρούσε ως αποτυχία στο κλείδωμα, άρα σταματάμε αμέσως.
+   */
+  const uploadPhoto = async (f: File): Promise<{ path: string } | { stop: 'pin' | 'locked' } | { lost: 'limit' | 'net' }> => {
+    let res: Response;
+    try {
+      res = await fetch('/api/portal/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, pin: okPin, name: f.name, type: f.type, size: f.size }),
+      });
+    } catch { return { lost: 'net' }; }
+    const body = await res.json().catch(() => ({})) as { path?: string; uploadToken?: string; reason?: string };
+    if (body.reason === 'pin' || body.reason === 'locked') return { stop: body.reason };
+    if (body.reason === 'rate_limited') return { lost: 'limit' };
+    if (!res.ok || !body.path || !body.uploadToken) return { lost: 'net' };
+    const up = await supabase.storage.from('maintenance-photos').uploadToSignedUrl(body.path, body.uploadToken, f, { contentType: f.type });
+    return up.error ? { lost: 'net' } : { path: body.path };
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setErr(''); setSending(true);
     // ═════════════════════════════════════════════════════════════════════
@@ -179,36 +218,42 @@ export default function TenantPortal() {
     // ΔΥΟ ΠΡΟΣΠΑΘΕΙΕΣ, ΜΕΤΑ ΑΛΗΘΕΙΑ. Το αίτημα ΦΕΥΓΕΙ ούτως ή άλλως, γιατί
     // αυτό είναι το σημαντικό· αλλά η επιβεβαίωση λέει πόσες φωτογραφίες
     // δεν έφτασαν, ώστε ο ενοικιαστής να ξέρει ότι πρέπει να ξαναστείλει.
+    //
+    // Η ΔΙΑΔΡΟΜΗ ΤΗ ΔΙΑΛΕΓΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ. Η σελίδα δεν γράφει πια μόνη της
+    // στο bucket: ζητά άδεια ανά φωτογραφία από το /api/portal/upload-url
+    // (κουπόνι, κωδικός, είκοσι την ώρα) και ανεβάζει στη διεύθυνση που της
+    // υπογράφεται. Η δεύτερη προσπάθεια παίρνει ΝΕΑ άδεια και άρα νέα
+    // διαδρομή: αν η πρώτη πρόλαβε να γράψει μερικώς, η ίδια θα έσκαγε ως
+    // «υπάρχει ήδη».
     const urls: string[] = [];
     let lost = 0;
-    for (let i = 0; i < photos.length; i++) {
-      const f = photos[i].file;
-      const safeName = f.name.replace(/[^\w.\-]+/g, '_');
-      const path = `${token}/${Date.now()}_${i}_${safeName}`;
-      const first = await supabase.storage.from('maintenance-photos').upload(path, f, { contentType: f.type });
-      if (!first.error) {
-        // Το bucket είναι ιδιωτικό: αποθηκεύουμε το PATH, όχι public URL. Ο
-        // ιδιοκτήτης το υπογράφει (signed URL) όταν το βλέπει.
-        urls.push(path);
-        continue;
+    let limitHit = false;
+    for (const { file } of photos) {
+      let r = await uploadPhoto(file);
+      if ('lost' in r && r.lost === 'net') r = await uploadPhoto(file);
+      if ('stop' in r) {
+        setSending(false);
+        setErr(portalWriteMessage(r.stop, '', ''));
+        return;
       }
-      // Δεύτερη προσπάθεια με ΝΕΑ διαδρομή: αν η πρώτη πρόλαβε να γράψει
-      // μερικώς, η ίδια διαδρομή θα έσκαγε ως «υπάρχει ήδη». Η διαδρομή
-      // υπολογίζεται ΜΙΑ φορά σε μεταβλητή: δύο κλήσεις `Date.now()` δίνουν
-      // δύο διαφορετικά ονόματα και θα αποθηκευόταν διαδρομή που δεν υπάρχει.
-      const retryPath = `${token}/${Date.now()}_${i}r_${safeName}`;
-      const again = await supabase.storage.from('maintenance-photos').upload(retryPath, f, { contentType: f.type });
-      if (again.error) { lost++; continue; }
-      urls.push(retryPath);
+      if ('lost' in r) { lost++; if (r.lost === 'limit') limitHit = true; continue; }
+      // Το bucket είναι ιδιωτικό: αποθηκεύουμε το PATH, όχι public URL. Ο
+      // ιδιοκτήτης το υπογράφει (signed URL) όταν το βλέπει.
+      urls.push(r.path);
     }
-    const { data: ok, error } = await supabase.rpc('submit_maintenance_request', {
+    const res = await callPortalWrite(rpc, 'submit_maintenance_request', {
       p_token: token, p_title: title.trim(), p_description: desc.trim(), p_contact: contact.trim(), p_photos: urls,
-    });
+    }, okPin);
     setSending(false);
-    if (error || !ok) { setErr('Δεν ήταν δυνατή η αποστολή. Δοκίμασε ξανά.'); return; }
+    const outcome = portalWriteOutcome(res);
+    if (outcome !== 'ok') {
+      setErr(portalWriteMessage(outcome, 'Δεν ήταν δυνατή η αποστολή. Δοκίμασε ξανά.', PORTAL_SAY.requestLimit));
+      return;
+    }
     photos.forEach(p => URL.revokeObjectURL(p.url));
     setPhotos([]); setPhotoNote('');
     setLostPhotos(lost);
+    setPhotoLimitHit(limitHit);
     setSent(true); setTitle(''); setDesc(''); setContact('');
   };
 
@@ -443,10 +488,14 @@ export default function TenantPortal() {
                       σφάλμα: ο ενοικιαστής φεύγει ήσυχος. */}
                   {lostPhotos > 0 && (
                     <div style={{ marginTop: 8, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                      {lostPhotos === 1
-                        ? 'Μία φωτογραφία δεν ανέβηκε, μάλλον λόγω σύνδεσης.'
-                        : `${lostPhotos} φωτογραφίες δεν ανέβηκαν, μάλλον λόγω σύνδεσης.`}{' '}
-                      Στείλε δεύτερο αίτημα με τις φωτογραφίες όταν έχεις καλύτερο σήμα.
+                      {photoLimitHit
+                        ? `${lostPhotos === 1 ? 'Μία φωτογραφία δεν ανέβηκε' : `${lostPhotos} φωτογραφίες δεν ανέβηκαν`}. ${PORTAL_SAY.photoLimit}`
+                        : <>
+                            {lostPhotos === 1
+                              ? 'Μία φωτογραφία δεν ανέβηκε, μάλλον λόγω σύνδεσης.'
+                              : `${lostPhotos} φωτογραφίες δεν ανέβηκαν, μάλλον λόγω σύνδεσης.`}{' '}
+                            Στείλε δεύτερο αίτημα με τις φωτογραφίες όταν έχεις καλύτερο σήμα.
+                          </>}
                     </div>
                   )}
                 </div>
