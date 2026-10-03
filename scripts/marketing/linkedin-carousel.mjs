@@ -8,12 +8,27 @@
 //   3. Μία φωτογραφία, στη θέση της.   4. Φάκελος για τον λογιστή, όχι άγχος.
 // Κεφαλαία χωρίς τόνους (lang="el" και text-transform). Κανένα ποσό.
 //
-// Τρέξε: node scripts/marketing/linkedin-carousel.mjs
+// Τρέξε: npx tsx scripts/marketing/linkedin-carousel.mjs
+// (με tsx, γιατί η δοκιμή και το δωρεάν πακέτο διαβάζονται από το lib/billing/plans.ts)
+//
+// ΔΙΟΡΘΩΣΕΙΣ ΠΡΙΝ ΑΠΟ ΤΗΝ ΠΡΩΤΗ ΑΝΑΡΤΗΣΗ ΣΤΟ INSTAGRAM (03.10.2026):
+//   · Η κάρτα του εξωφύλλου έγραφε «Σε τάξη» και «Δήλωση Ε2 έτοιμη» ενώ η Νόα
+//     δίπλα έλεγε «λείπει το ΑΦΜ»: η ίδια εικόνα αντέλεγε στον εαυτό της.
+//   · Το «Δωρεάν για ένα ακίνητο» στεκόταν κάτω από τη Νόα, που το δωρεάν
+//     πακέτο δεν έχει. Η Νόα λέγεται με τη δοκιμή της.
+//   · «Σας συστήνουμε» στον πληθυντικό, ενώ όλο το υπόλοιπο μιλά στον ενικό.
 // ═══════════════════════════════════════════════════════════════════════════
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import { join } from 'node:path';
 import { chromePath } from '../lib/chrome.mjs';
+import { PLANS } from '../../lib/billing/plans.ts';
+// «ΞΕΚΙΝΑΣ ΔΩΡΕΑΝ, ΧΩΡΙΣ ΚΡΥΦΕΣ ΧΡΕΩΣΕΙΣ» (03.10.2026, απόφαση ιδιοκτήτη).
+// Μία γραμμή αντί για δύο προσφορές. Στέκει όσο ισχύουν δύο πράγματα: το
+// δωρεάν πακέτο δεν ζητά ποτέ μέσο πληρωμής και οι τιμές των συνδρομών
+// περιλαμβάνουν ΦΠΑ και φαίνονται στο ταμείο πριν από την επιβεβαίωση
+// (app/terms, app/paketa). Αν αλλάξει το πρώτο, η μηχανή σταματά εδώ.
+if (PLANS.free.priceMonthly !== 0) throw new Error('Το «Ξεκινάς δωρεάν» θέλει δωρεάν πακέτο.');
 const ROOT = process.cwd();
 const R = join(ROOT, 'public');
 const OUT = join(ROOT, 'docs/marketing/profil/carousel');
@@ -71,7 +86,7 @@ const frame = (n, eyebrow, h1, sub, stage, foot) => `<!doctype html><html lang="
 
 const slides = [
 // 1 · Το εξώφυλλο: το ακίνητο, τακτοποιημένο
-frame(1, 'Σας συστηνουμε το PROPERWISE',
+frame(1, 'Γνωρισε το PROPERWISE',
  'Βάλε το ακίνητό σου<br><span class="a">σε τάξη.</span>',
  'Φόροι, έξοδα και έγγραφα σε ένα σημείο. <b>Έτοιμα όταν τα ζητήσει ο λογιστής σου.</b>', `
  <div class="card" style="left:70px;right:0;top:0;padding:34px 40px 36px">
@@ -90,7 +105,7 @@ frame(1, 'Σας συστηνουμε το PROPERWISE',
  </div>
  <div class="card" style="right:0;top:292px;width:480px;display:flex;gap:18px;align-items:flex-start;padding:28px 30px">
   <div class="noa">Ν</div>
-  <div style="font-size:23px;line-height:1.42;color:#e3eaf5"><div style="color:#9ec0ff;font-weight:700;margin-bottom:4px">Νόα</div>Λείπει μόνο το ΑΦΜ του ενοικιαστή. Τα υπόλοιπα είναι έτοιμα.</div>
+  <div style="font-size:23px;line-height:1.42;color:#e3eaf5"><div style="color:#9ec0ff;font-weight:700;margin-bottom:4px">Νόα</div>Η επόμενη δόση του ΕΝΦΙΑ λήγει στο τέλος του μήνα. Θα σου το θυμίσω πριν.</div>
  </div>`),
 
 // 2 · Το Excel που σταματά τον Μάρτιο
@@ -100,7 +115,7 @@ frame(2, 'Το ακουμε συνεχεια',
  <div class="card" style="left:0;right:0;top:10px;padding:0;overflow:hidden;background:linear-gradient(180deg,rgba(22,34,56,.96),rgba(12,20,36,.97))">
   <div style="display:flex;align-items:center;gap:18px;padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)">
    <div style="display:flex;gap:9px">${['#ff5f57','#febc2e','#28c840'].map(c=>`<i style="width:14px;height:14px;border-radius:50%;background:${c};opacity:.85"></i>`).join('')}</div>
-   <div style="font-family:Mono,monospace;font-size:18px;color:#7d8da6">ακίνητο_ΤΕΛΙΚΟ_ΤΕΛΙΚΟ.xlsx</div>
+   <div style="font-family:Mono,monospace;font-size:18px;color:#7d8da6">ακίνητο_ΤΕΛΙΚΟ_v3.xlsx</div>
   </div>
   <div style="display:flex;align-items:center;gap:16px;padding:14px 24px;border-bottom:1px solid rgba(255,255,255,.08);font-family:Mono,monospace;font-size:18px">
    <span style="color:#7d8da6;font-style:italic">fx</span><span style="color:#aebbd0">=ΑΘΡΟΙΣΜΑ(B2:B4)</span></div>
@@ -149,7 +164,7 @@ frame(3, 'Πως δουλευει',
 // 4 · Φάκελος, όχι άγχος
 frame(4, 'Για τον λογιστη σου',
  'Φάκελος,<br><span class="a">όχι άγχος.</span>',
- 'Φτάνεις στο ραντεβού με τα χαρτιά σου οργανωμένα. Το τελικό ποσό μένει δουλειά του λογιστή.<br><b>Δώσε τέλος στο χάος.</b>', `
+ 'Φτάνεις στο ραντεβού με τα χαρτιά σου οργανωμένα. <b>Το τελικό ποσό μένει δουλειά του λογιστή.</b>', `
  <div style="position:absolute;left:0;top:30px;width:560px;height:520px;transform:rotate(-2deg)">
   <div style="position:absolute;left:0;top:0;width:220px;height:60px;border-radius:22px 22px 0 0;background:linear-gradient(180deg,#2a62c9,#1d4fae)"></div>
   <div style="position:absolute;left:44px;right:44px;top:22px;height:120px;border-radius:14px;background:#e9eef6;transform:rotate(2.5deg);box-shadow:0 10px 30px rgba(0,0,0,.35)"></div>
@@ -168,7 +183,7 @@ frame(4, 'Για τον λογιστη σου',
   <div style="display:flex;gap:14px;align-items:flex-start"><div class="noa" style="width:46px;height:46px;font-size:20px">Ν</div>
    <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:6px 22px 22px 22px;padding:16px 20px;font-size:23px;line-height:1.4;color:#e3eaf5">Μόνο το ΑΦΜ του ενοικιαστή. Τα υπόλοιπα είναι στον φάκελο.</div></div>
  </div>`,
- `<div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:30px;font-weight:800;letter-spacing:-.02em">Βάλε το ακίνητό σου σε τάξη.</div><div style="font-size:22px;color:#aebbd0">Δωρεάν για ένα ακίνητο</div></div>
+ `<div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:30px;font-weight:800;letter-spacing:-.02em">Βάλε το ακίνητό σου σε τάξη.</div><div style="font-size:22px;line-height:1.35;color:#aebbd0">Ξεκινάς δωρεάν, χωρίς κρυφές χρεώσεις.</div></div>
   <div style="padding:20px 30px;border-radius:99px;background:linear-gradient(180deg,#3d7ef0,#1560d4);box-shadow:0 14px 34px rgba(21,96,212,.55),inset 0 1px 0 rgba(255,255,255,.3);font-size:24px;font-weight:700;display:flex;align-items:center;gap:14px">properwise.gr <span>→</span></div>`),
 ];
 
