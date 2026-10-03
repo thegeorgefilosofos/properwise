@@ -11,11 +11,25 @@ import { GUIDES, GUIDES_UPDATED } from './odigos/guides'
 // (κλίμακα, κανόνες ή πίνακες) και αλλάζει με το χέρι μαζί της, όπως το
 // `updated` των οδηγών.
 const TOOLS_UPDATED = '2026-09-25'
+// ΚΑΙ ΟΙ ΥΠΟΛΟΙΠΕΣ ΣΕΛΙΔΕΣ. Αρχική, πακέτα, εγγραφή, εμπιστοσύνη και νομικά
+// κείμενα ήταν χωρίς ημερομηνία: η μηχανή αναζήτησης δεν είχε τρόπο να ξέρει
+// πότε άλλαξαν. Ίδιος κανόνας με τα παραπάνω: η μέρα που η ουσιαστική αλλαγή
+// βγήκε στον αέρα, γραμμένη με το χέρι μαζί της. Όχι η σημερινή σε κάθε
+// χτίσιμο: μια ημερομηνία που αλλάζει χωρίς να αλλάξει η σελίδα μαθαίνει στη
+// μηχανή να την αγνοεί.
+const PAGES_UPDATED = {
+  home: '2026-10-03',
+  paketa: '2026-10-03',
+  signup: '2026-10-03',
+  trust: '2026-10-03',
+  privacy: '2026-10-02',
+  terms: '2026-10-03',
+} as const
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE
   return [
-    { url: base, changeFrequency: 'weekly', priority: 1 },
+    { url: base, lastModified: PAGES_UPDATED.home, changeFrequency: 'weekly', priority: 1 },
     // Δωρεάν εργαλείο χωρίς εγγραφή. Υψηλή προτεραιότητα επειδή είναι η μόνη
     // σελίδα που απαντά σε ερώτηση που ο ιδιοκτήτης ψάχνει ΠΡΙΝ μας ξέρει.
     { url: `${base}/ypologismos-forou-enoikion`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
@@ -34,14 +48,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...GUIDES.map(g => ({ url: base + g.href, lastModified: g.updated, changeFrequency: 'monthly' as const, priority: 0.8 })),
     // Τι περιλαμβάνει κάθε πακέτο: η ερώτηση που κάνει ο επισκέπτης ΠΡΙΝ
     // εγγραφεί, οπότε η απάντηση δεν ζει πίσω από τη σύνδεση.
-    { url: `${base}/paketa`, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${base}/signup`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${base}/paketa`, lastModified: PAGES_UPDATED.paketa, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${base}/signup`, lastModified: PAGES_UPDATED.signup, changeFrequency: 'monthly', priority: 0.8 },
     // Η ΣΥΝΔΕΣΗ ΒΓΗΚΕ. Ο χάρτης λέει «ευρετηρίασε αυτό» και η ίδια η σελίδα
     // λέει πλέον `noindex`: δύο αντικρουόμενα σήματα για το ίδιο πράγμα. Η
     // φόρμα εισόδου δεν είναι απάντηση σε καμία αναζήτηση — όποιος ψάχνει το
     // όνομα πρέπει να φτάνει στην αρχική.
-    { url: `${base}/trust`, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${base}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${base}/terms`, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${base}/trust`, lastModified: PAGES_UPDATED.trust, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${base}/privacy`, lastModified: PAGES_UPDATED.privacy, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${base}/terms`, lastModified: PAGES_UPDATED.terms, changeFrequency: 'yearly', priority: 0.3 },
   ]
 }

@@ -67,6 +67,16 @@ const hub = map.find(r => r.url === `${SITE}/odigos`);
 ok('ο κόμβος των οδηγών έχει ημερομηνία στον χάρτη, την πιο πρόσφατη των οδηγών',
   hub?.lastModified === GUIDES.map(g => g.updated).sort().at(-1));
 
+// ΚΑΘΕ ΓΡΑΜΜΗ ΤΟΥ ΧΑΡΤΗ ΜΕ ΗΜΕΡΟΜΗΝΙΑ. Η αρχική, τα πακέτα, η εγγραφή, η
+// εμπιστοσύνη και τα νομικά ήταν χωρίς. Και καμία στο μέλλον: η μηχανή
+// αναζήτησης τη διαβάζει ως ψεύτικη και παύει να εμπιστεύεται τον χάρτη.
+const today = new Date().toISOString().slice(0, 10);
+for (const r of map) {
+  const d = String(r.lastModified ?? '');
+  ok(`${r.url}: ημερομηνία ISO στον χάρτη`, ISO.test(d));
+  ok(`${r.url}: η ημερομηνία δεν είναι στο μέλλον`, d <= today);
+}
+
 // Με δική της εικόνα η σελίδα δεν γράφει τη γενική, ούτε στην κάρτα X.
 const own = publicMetadata({ title: 'Τ', description: 'Π', url: `${SITE}/dokimi`, image: shareImage('odigos') });
 ok('με δική της εικόνα δεν μπαίνει η γενική στο openGraph',
