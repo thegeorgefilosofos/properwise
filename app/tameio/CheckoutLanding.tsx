@@ -31,6 +31,7 @@ import { authClient } from '@/lib/supabase/lazy';
 import { PLANS, PLAN_ORDER, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 import { planFromParam, cycleFromParam } from '@/lib/billing/entitlements';
 import { fe } from '@/lib/core/format';
+import { MFA_REQUIRED } from '@/lib/auth/mfa';
 
 /** Το πακέτο και το ποσό του, όπως γράφονται πάνω από κάθε κατάληξη. */
 function describe(plan: PlanId, cyc: BillingCycle): string {
@@ -85,8 +86,14 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
     setWhat(describe(plan, cyc));
     try {
       const res = await fetch(`/api/billing/checkout?plan=${plan}&cycle=${cyc}`);
-      const body = await res.json() as { url?: string | null; tester?: boolean; note?: string };
+      const body = await res.json() as { url?: string | null; tester?: boolean; note?: string; error?: string };
       if (body.url) { window.location.replace(body.url); return; }
+      // ── Η ΣΥΝΕΔΡΙΑ ΧΡΩΣΤΑ ΤΟΝ ΕΞΑΨΗΦΙΟ ──────────────────────────────────
+      // Το ταμείο είναι δημόσια σελίδα, οπότε ο διαμεσολαβητής δεν γυρίζει
+      // εδώ πίσω τη μισή συνεδρία. Η διαδρομή όμως την κόβει (403). Χωρίς
+      // αυτή τη γραμμή η οθόνη θα έλεγε «δεν άνοιξε» για κάτι που λύνεται με
+      // έναν κωδικό: η σύνδεση τον ζητά και γυρίζει εδώ με το ίδιο πακέτο.
+      if (body.error === MFA_REQUIRED) { window.location.replace(`/login?plan=${plan}&cycle=${cyc}`); return; }
       // Ο δοκιμαστής δεν έχει τι να αγοράσει: το προϊόν του δίνεται ολόκληρο.
       if (body.tester) { window.location.replace('/dashboard'); return; }
       setNote(body.note || '');

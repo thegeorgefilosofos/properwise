@@ -45,6 +45,19 @@ const GATES = [
   { needle: 'grantPortalUpload(', what: 'κουπόνι πύλης και κωδικός' },
 ];
 
+// ══════════════════════════════════════════════════════════════════════════
+// ΚΑΙ Η ΣΥΝΕΔΡΙΑ ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΟΛΟΚΛΗΡΗ
+//
+// Το `auth.getUser()` λέει ΠΟΙΟΣ ρωτά, όχι αν πέρασε το δεύτερο βήμα. Ο
+// διαμεσολαβητής γυρίζει στη σύνδεση τη μισή συνεδρία (συσκευή TOTP δηλωμένη,
+// διακριτικό «aal1») μόνο για σελίδες· το /api/** το εξαιρεί. Ως τις
+// 03.10.2026 μόνο η διαγραφή λογαριασμού ρωτούσε: ένας κωδικός που διέρρευσε
+// άνοιγε ταμείο, άλλαζε πακέτο, ρωτούσε τη Νόα. Κάθε διαδρομή με συνεδρία
+// καλεί λοιπόν μία από τις δύο πύλες. Η `requireFeature` την καλεί από μέσα
+// της, οπότε οι διαδρομές της δεν έχουν δικό τους `auth.getUser(`.
+const SESSION = 'auth.getUser(';
+const SECOND_STEP = ['requireSecondStep(', 'sessionNeedsSecondStep('];
+
 const problems = [];
 
 const proxy = readFileSync(PROXY, 'utf8');
@@ -84,6 +97,9 @@ for (const file of routes) {
   if (!GATES.some(g => src.includes(g.needle))) {
     problems.push(`${file}: δεν ζητά ούτε συνεδρία ούτε υπογραφή. Ο διαμεσολαβητής ΔΕΝ την προστατεύει.`);
   }
+  if (src.includes(SESSION) && !SECOND_STEP.some(n => src.includes(n))) {
+    problems.push(`${file}: ζητά συνεδρία αλλά όχι το δεύτερο βήμα. Μια συνεδρία «aal1» με δηλωμένη συσκευή περνά· βάλε \`requireSecondStep(supabase, user)\` (lib/auth/secondStep.ts) αμέσως μετά το 401.`);
+  }
 }
 
 if (problems.length) {
@@ -93,4 +109,4 @@ if (problems.length) {
   process.exit(1);
 }
 
-console.log(`✓ διεπαφή: και οι ${routes.length} διαδρομές ζητούν ταυτότητα μόνες τους`);
+console.log(`✓ διεπαφή: και οι ${routes.length} διαδρομές ζητούν ταυτότητα μόνες τους, όσες έχουν συνεδρία και το δεύτερο βήμα`);

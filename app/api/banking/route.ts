@@ -12,6 +12,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireSecondStep } from '@/lib/auth/secondStep';
 import { available } from '@/lib/billing/addons';
 import { aisConfigError } from '@/lib/banking/provider';
 import * as connections from '@/lib/data/bankConnections';
@@ -20,6 +21,10 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
+  // Η μισή συνεδρία (συσκευή δηλωμένη, εξαψήφιος όχι) δεν περνά:
+  // lib/auth/secondStep.ts.
+  const denied = await requireSecondStep(supabase, user);
+  if (denied) return denied;
 
   // ΔΥΟ ΑΝΕΞΑΡΤΗΤΟΙ ΟΡΟΙ ΚΑΙ ΟΙ ΔΥΟ ΑΠΑΡΑΙΤΗΤΟΙ. Τιμή για το πρόσθετο και
   // πάροχος που δουλεύει. Χωρίς τιμή θα χρεώναμε άγνωστο ποσό· χωρίς πάροχο θα

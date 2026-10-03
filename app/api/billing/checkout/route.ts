@@ -26,6 +26,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireSecondStep } from '@/lib/auth/secondStep';
 import { PLANS, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 import { merchant } from '@/lib/billing/merchant';
 import { isEntitled, isMorStatus } from '@/lib/billing/subscription';
@@ -43,6 +44,10 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
+  // Η μισή συνεδρία (συσκευή δηλωμένη, εξαψήφιος όχι) δεν περνά:
+  // lib/auth/secondStep.ts.
+  const denied = await requireSecondStep(supabase, user);
+  if (denied) return denied;
 
   const plan = (request.nextUrl.searchParams.get('plan') || '').trim();
   const cycle = (request.nextUrl.searchParams.get('cycle') || '').trim();

@@ -32,6 +32,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireSecondStep } from '@/lib/auth/secondStep';
 import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import { createServiceClient } from '@/lib/supabase/service';
 import { PLANS, PLAN_ORDER, normalizePlan, type PlanId, type BillingCycle } from '@/lib/billing/plans';
@@ -54,6 +55,10 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
+  // Η μισή συνεδρία (συσκευή δηλωμένη, εξαψήφιος όχι) δεν περνά, ΠΡΙΝ από
+  // τον ρόλο υπηρεσίας παρακάτω: εκεί η RLS δεν φυλάει τίποτα.
+  const denied = await requireSecondStep(supabase, user);
+  if (denied) return denied;
 
   let body: { plan?: unknown; cycle?: unknown } = {};
   try { body = (await request.json()) as typeof body; } catch { /* άκυρο σώμα */ }

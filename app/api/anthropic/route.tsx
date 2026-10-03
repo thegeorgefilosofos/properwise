@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
+import { requireSecondStep } from '@/lib/auth/secondStep';
 import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import {
   MAX_PER_MINUTE, PLAN_RANK_ORDER,
@@ -138,6 +139,10 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
   }
+  // Η μισή συνεδρία (συσκευή δηλωμένη, εξαψήφιος όχι) δεν περνά:
+  // lib/auth/secondStep.ts.
+  const denied = await requireSecondStep(supabase, user);
+  if (denied) return denied;
 
   // ── Rate limiting (ανά χρήστη) ───────────────────────────────
   const ip = user.id;

@@ -20,10 +20,12 @@ import {
   type Feature,
 } from '@/lib/billing/entitlements';
 import type { PlanId } from '@/lib/billing/plans';
+import { MFA_REQUIRED } from '@/lib/auth/mfa';
+import { secondStepMissing } from '@/lib/auth/secondStep';
 
 /** Η πύλη άνοιξε: ο χρήστης είναι συνδεδεμένος και το πακέτο του φτάνει. */
 export type FeatureGrant = { ok: true; plan: PlanId; userId: string };
-/** Η πύλη έκλεισε: 401 (χωρίς σύνδεση), 403 (χαμηλό πακέτο) ή 500 (αποτυχία ελέγχου). */
+/** Η πύλη έκλεισε: 401 (χωρίς σύνδεση), 403 (χαμηλό πακέτο ή χωρίς δεύτερο βήμα) ή 500 (αποτυχία ελέγχου). */
 export type FeatureDenial = { ok: false; status: 401 | 403 | 500; error: string; plan: PlanId | null };
 export type FeatureGate = FeatureGrant | FeatureDenial;
 
@@ -54,6 +56,14 @@ export async function requireFeature(
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, status: 401, error: SIGN_IN_REQUIRED, plan: null };
+
+  // ── ΠΡΙΝ ΑΠΟ ΤΟ ΠΑΚΕΤΟ, ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ─────────────────────────────────
+  // Η πύλη αυτή είναι ο ΜΟΝΟΣ έλεγχος ταυτότητας των διαδρομών που την
+  // καλούν (εξαγωγή Ε2, ανάλυση επένδυσης). Χωρίς αυτή τη γραμμή, μια
+  // συνεδρία «aal1» με δηλωμένη συσκευή κατέβαζε το Ε2 του θύματος.
+  if (await secondStepMissing(supabase, user)) {
+    return { ok: false, status: 403, error: MFA_REQUIRED, plan: null };
+  }
 
   // `my_plan_rank()`, ΟΧΙ `user_plan_rank(uuid)` (02.10.2026). Η δεύτερη εκτελείται
   // μόνο από τον service role: ως συνδεδεμένος χρήστης η κλήση αποτύγχανε πάντα

@@ -14,6 +14,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireSecondStep } from '@/lib/auth/secondStep';
 import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import * as devices from '@/lib/data/pushSubscriptions';
 import { sendPush, vapidKeys } from '@/lib/push/send';
@@ -27,6 +28,10 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
+  // Η μισή συνεδρία (συσκευή δηλωμένη, εξαψήφιος όχι) δεν περνά:
+  // lib/auth/secondStep.ts.
+  const denied = await requireSecondStep(supabase, user);
+  if (denied) return denied;
 
   const keys = vapidKeys(process.env);
   if ('missing' in keys) {

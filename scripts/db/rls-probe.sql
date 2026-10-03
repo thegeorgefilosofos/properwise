@@ -3117,3 +3117,251 @@ begin
   delete from public.user_properties where user_id = own;
   delete from auth.users where id = own;
 end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Η ΜΙΣΗ ΣΥΝΕΔΡΙΑ ΔΕΝ ΔΙΑΒΑΖΕΙ ΤΙΠΟΤΑ ΑΠΟ ΤΗ ΒΑΣΗ
+-- ─────────────────────────────────────────────────────────────────────────
+-- ΤΟ ΣΦΑΛΜΑ (20261003120000). Ο χρήστης με δηλωμένη συσκευή TOTP και διακριτικό
+-- «aal1» γύριζε στη σύνδεση μόνο όταν ζητούσε σελίδα. Το ίδιο διακριτικό
+-- μιλούσε κατευθείαν στο PostgREST και διάβαζε ή έγραφε τα πάντα: καμία
+-- πολιτική δεν κοίταζε το «aal». Εδώ ρωτιέται η ίδια η βάση, με τρεις
+-- συνεδρίες του ίδιου σεναρίου:
+--
+--   · Μ με επαληθευμένη συσκευή και «aal1»: μηδέν γραμμές, καμία εγγραφή,
+--     καμία RPC που αγγίζει δεδομένα, κανένα αρχείο·
+--   · ο ίδιος Μ με «aal2»: όλα κανονικά·
+--   · Ν με μόνο μισοτελειωμένη συσκευή και «aal1»: όλα κανονικά. Ο χρήστης
+--     χωρίς 2FA δεν πρέπει να καταλάβει τίποτα.
+--
+-- Ο ΚΑΤΑΛΟΓΟΣ ΕΛΕΓΧΕΤΑΙ ΚΙ ΑΥΤΟΣ. Ένας νέος πίνακας με permissive πολιτική
+-- χωρίς την restrictive, ή μια νέα SECURITY DEFINER χωρίς την πύλη, είναι η
+-- ίδια τρύπα ξαναγεννημένη. Κοκκινίζει εδώ, με το όνομά της.
+--
+-- ΤΟ `auth.jwt()` ΔΙΑΒΑΖΕΙ ΤΙΣ ΑΞΙΩΣΕΙΣ ΟΠΩΣ ΣΤΟ SUPABASE. Η σκαλωσιά γύριζε
+-- πάντα κενό αντικείμενο, δηλαδή καμία συνεδρία δεν θα έφτανε ποτέ «aal2» και
+-- ο έλεγχος θα περνούσε για λάθος λόγο.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+create or replace function auth.jwt() returns jsonb language sql stable as
+$$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+
+do $probe$
+declare
+  m uuid := 'f2f2f2f2-0000-4000-8000-0000000000a1';
+  n uuid := 'f2f2f2f2-0000-4000-8000-0000000000b1';
+begin
+  insert into auth.users(id, email) values (m, 'mfa@probe.test'), (n, 'nomfa@probe.test')
+    on conflict (id) do nothing;
+  insert into public.user_properties(id, user_id, name) values
+    ('f2f2f2f2-0000-4000-8000-0000000000a2', m, 'Του Μ'),
+    ('f2f2f2f2-0000-4000-8000-0000000000b2', n, 'Του Ν');
+  insert into public.activity_log(user_id, actor_id, action) values (m, m, 'probe'), (n, n, 'probe');
+  -- Ο Μ πέρασε την εγγραφή της συσκευής. Ο Ν την άνοιξε και την εγκατέλειψε:
+  -- ο μισοτελειωμένος παράγοντας δεν μετρά (lib/auth/mfa.ts, `hasVerifiedFactor`).
+  insert into auth.mfa_factors(user_id, factor_type, status) values (m, 'totp', 'verified'), (n, 'totp', 'unverified');
+  -- Ένα αρχείο του καθενός στον ιδιωτικό κάδο, για την ίδια ερώτηση στο storage.
+  insert into storage.objects(bucket_id, name, owner) values
+    ('property-files', m::text || '/mfa-probe.pdf', m),
+    ('property-files', n::text || '/mfa-probe.pdf', n);
+  alter table storage.objects enable row level security;
+  grant select on storage.objects to authenticated;
+  raise notice 'probe: δύο χρήστες, ο ένας με επαληθευμένη συσκευή';
+end $probe$;
+
+-- ── Ο Μ, ΜΕ ΤΟΝ ΚΩΔΙΚΟ ΜΟΝΟ ────────────────────────────────────────────────
+set role authenticated;
+set session "probe.uid" = 'f2f2f2f2-0000-4000-8000-0000000000a1';
+set session "request.jwt.claims" = '{"aal":"aal1"}';
+
+do $probe$
+declare
+  m uuid := 'f2f2f2f2-0000-4000-8000-0000000000a1';
+  k int;
+begin
+  select count(*) into k from public.user_properties;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 με συσκευή βλέπει % ακίνητα', k; end if;
+  select count(*) into k from public.activity_log;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 με συσκευή βλέπει % γραμμές ιστορικού', k; end if;
+
+  update public.user_properties set name = 'Αλλαγμένο' where user_id = m;
+  get diagnostics k = row_count;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 ενημέρωσε % ακίνητα', k; end if;
+  delete from public.user_properties where user_id = m;
+  get diagnostics k = row_count;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 έσβησε % ακίνητα', k; end if;
+
+  begin
+    insert into public.category_hints(user_id, vendor_key, category) values (m, 'mfa-probe', 'Λοιπά');
+    raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 έγραψε γραμμή';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- Οι SECURITY DEFINER παρακάμπτουν την RLS: η πύλη ζει μέσα τους.
+  begin
+    perform public.export_my_data();
+    raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 εξήγαγε τα δεδομένα του λογαριασμού';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'mfa_required' then raise; end if;
+  end;
+  begin
+    perform public.rotate_calendar_feed();
+    raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 έβγαλε διεύθυνση ημερολογίου';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'mfa_required' then raise; end if;
+  end;
+  select count(*) into k from public.my_activity(30);
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: η my_activity έδωσε % γραμμές σε aal1', k; end if;
+
+  select count(*) into k from storage.objects;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 βλέπει % αρχεία', k; end if;
+
+  raise notice 'probe: με κωδικό μόνο, ο χρήστης με συσκευή δεν διαβάζει, δεν γράφει, δεν εξάγει';
+end $probe$;
+
+-- ΤΟ ΑΓΝΩΣΤΟ ΚΛΕΙΝΕΙ. Διακριτικό χωρίς αξίωση «aal» δεν είναι «aal2».
+set session "request.jwt.claims" = '{}';
+do $probe$
+declare k int;
+begin
+  select count(*) into k from public.user_properties;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: διακριτικό χωρίς aal βλέπει % ακίνητα', k; end if;
+  raise notice 'probe: διακριτικό χωρίς aal δεν περνά όποιον έχει συσκευή';
+end $probe$;
+
+-- ── Ο ΙΔΙΟΣ, ΜΕΤΑ ΤΟΝ ΕΞΑΨΗΦΙΟ ──────────────────────────────────────────────
+set session "request.jwt.claims" = '{"aal":"aal2"}';
+do $probe$
+declare
+  m uuid := 'f2f2f2f2-0000-4000-8000-0000000000a1';
+  k int;
+  dump jsonb;
+begin
+  select count(*) into k from public.user_properties;
+  if k <> 1 then raise exception 'Ο έλεγχος θα ήταν κενός: σε aal2 ο Μ βλέπει % ακίνητα αντί για 1', k; end if;
+  update public.user_properties set name = 'Του Μ' where user_id = m;
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Σε aal2 ο Μ δεν ενημέρωσε το ακίνητό του (% γραμμές)', k; end if;
+  insert into public.category_hints(user_id, vendor_key, category) values (m, 'mfa-probe', 'Λοιπά');
+
+  dump := public.export_my_data();
+  if not (dump -> 'data') ? 'user_properties' then
+    raise exception 'Σε aal2 η εξαγωγή δεν έφερε τα ακίνητα του Μ';
+  end if;
+  if public.rotate_calendar_feed() is null then raise exception 'Σε aal2 δεν βγήκε διεύθυνση ημερολογίου'; end if;
+  select count(*) into k from public.my_activity(30);
+  if k < 1 then raise exception 'Σε aal2 η my_activity δεν έδωσε το ιστορικό του Μ'; end if;
+  select count(*) into k from storage.objects;
+  if k <> 1 then raise exception 'Σε aal2 ο Μ βλέπει % αρχεία αντί για 1', k; end if;
+
+  raise notice 'probe: μετά τον εξαψήφιο, ο ίδιος χρήστης δουλεύει κανονικά';
+end $probe$;
+
+-- ── Ο Ν, ΧΩΡΙΣ ΣΥΣΚΕΥΗ, ΜΕ ΤΟΝ ΚΩΔΙΚΟ ΜΟΝΟ ──────────────────────────────────
+set session "probe.uid" = 'f2f2f2f2-0000-4000-8000-0000000000b1';
+set session "request.jwt.claims" = '{"aal":"aal1"}';
+do $probe$
+declare
+  n uuid := 'f2f2f2f2-0000-4000-8000-0000000000b1';
+  k int;
+  dump jsonb;
+begin
+  select count(*) into k from public.user_properties;
+  if k <> 1 then raise exception 'Ο χρήστης χωρίς 2FA κόπηκε: βλέπει % ακίνητα αντί για 1', k; end if;
+  update public.user_properties set name = 'Του Ν' where user_id = n;
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Ο χρήστης χωρίς 2FA δεν ενημέρωσε το ακίνητό του'; end if;
+  insert into public.category_hints(user_id, vendor_key, category) values (n, 'mfa-probe', 'Λοιπά');
+  dump := public.export_my_data();
+  if not (dump -> 'data') ? 'user_properties' then raise exception 'Ο χρήστης χωρίς 2FA δεν εξήγαγε'; end if;
+  if public.rotate_calendar_feed() is null then raise exception 'Ο χρήστης χωρίς 2FA δεν πήρε διεύθυνση ημερολογίου'; end if;
+  select count(*) into k from storage.objects;
+  if k <> 1 then raise exception 'Ο χρήστης χωρίς 2FA βλέπει % αρχεία αντί για 1', k; end if;
+  raise notice 'probe: ο χρήστης χωρίς 2FA (με μισοτελειωμένη συσκευή) δεν καταλαβαίνει τίποτα';
+end $probe$;
+
+reset role;
+set session "probe.uid" = '';
+set session "request.jwt.claims" = '';
+
+-- ── Ο ΚΑΤΑΛΟΓΟΣ: ΚΑΘΕ ΠΟΡΤΑ ΠΡΟΣ ΔΕΔΟΜΕΝΑ ΕΧΕΙ ΤΗΝ ΠΥΛΗ ──────────────────────
+-- Οι εξαιρέσεις γράφονται ΟΝΟΜΑΣΤΙΚΑ με τον λόγο τους. Γραμμή που περισσεύει
+-- κοκκινίζει κι αυτή: ένας κατάλογος με φαντάσματα δεν τον διαβάζει κανείς.
+create temporary table mfa_open_tables (name text primary key, why text);
+insert into mfa_open_tables values
+  ('bank_rates',      'Επιτόκια τραπεζών, δημόσια. Οι εγγραφές διαχειριστή ρωτούν το app_admins, που έχει την πύλη.'),
+  ('energy_tariffs',  'Τιμολόγια ρεύματος, δημόσια. Γράφει μόνο ο ρόλος υπηρεσίας.'),
+  ('loan_programs',   'Προγράμματα δανείων, δημόσια, μόνο ανάγνωση.'),
+  ('market_rates',    'Δείκτες αγοράς, δημόσιοι, μόνο ανάγνωση.'),
+  ('product_updates', 'Ανακοινώσεις προϊόντος, δημόσιες, μόνο ανάγνωση.');
+
+create temporary table mfa_open_functions (name text primary key, why text);
+insert into mfa_open_functions values
+  ('delete_my_account', 'Έχει δική της πύλη 2FA από το 20260917120000.'),
+  ('bump_ai_usage',     'Μετρητής: μόνο ανεβάζει το όριο του καλούντα, μετά τον έλεγχο της /api/anthropic.'),
+  ('bump_scan_usage',   'Μετρητής σαρώσεων, ίδιος λόγος.'),
+  ('refund_ai_usage',   'Επιστροφή μονάδας στον μετρητή της Νόας, μόνο του καλούντα.'),
+  ('refund_scan_usage', 'Επιστροφή μονάδας στον μετρητή σαρώσεων, μόνο του καλούντα.'),
+  ('bump_send_quota',   'Μετρητής αποστολών: τον καλούν διαδρομή και συναρτήσεις άκρου μετά τον δικό τους έλεγχο.'),
+  ('my_plan_rank',      'Ένας ακέραιος, ο βαθμός πακέτου. Κανένα προσωπικό δεδομένο.');
+
+do $audit$
+declare bad text;
+begin
+  select string_agg(c.relname, ', ' order by c.relname) into bad
+    from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
+   where ns.nspname = 'public' and c.relkind in ('r', 'p') and c.relrowsecurity
+     and exists (select 1 from pg_policy p where p.polrelid = c.oid and p.polpermissive)
+     and c.relname not in (select name from mfa_open_tables)
+     and not exists (
+       select 1 from pg_policies p
+        where p.schemaname = 'public' and p.tablename = c.relname
+          and p.permissive = 'RESTRICTIVE' and p.cmd = 'ALL'
+          and 'authenticated' = any(p.roles)
+          and p.qual like '%mfa_satisfied%' and p.with_check like '%mfa_satisfied%');
+  if bad is not null then
+    raise exception E'ΔΙΑΡΡΟΗ 2FA: πίνακες χωρίς την restrictive πολιτική του δεύτερου βήματος: %\n  Πρόσθεσε `create policy mfa_<πίνακας> ... as restrictive for all to authenticated`\n  με `(select private.mfa_satisfied())`, όπως στο 20261003120000.', bad;
+  end if;
+
+  if not exists (
+    select 1 from pg_policies p
+     where p.schemaname = 'storage' and p.tablename = 'objects'
+       and p.permissive = 'RESTRICTIVE' and p.qual like '%mfa_satisfied%'
+  ) then
+    raise exception 'ΔΙΑΡΡΟΗ 2FA: το storage.objects έχασε την restrictive πολιτική του δεύτερου βήματος';
+  end if;
+
+  select string_agg(p.proname, ', ' order by p.proname) into bad
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+   where ns.nspname = 'public' and p.prosecdef
+     and has_function_privilege('authenticated', p.oid, 'execute')
+     and p.prosrc ~ 'auth\.uid\(\)'
+     and p.prosrc !~ 'mfa_satisfied'
+     and p.proname not in (select name from mfa_open_functions);
+  if bad is not null then
+    raise exception E'ΔΙΑΡΡΟΗ 2FA: SECURITY DEFINER χωρίς την πύλη του δεύτερου βήματος: %\n  Πρώτη εντολή μετά το begin: if not private.mfa_satisfied() then raise exception ''mfa_required'' using errcode = ''42501''; end if;', bad;
+  end if;
+
+  select string_agg(name, ', ') into bad from mfa_open_tables o
+   where not exists (select 1 from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
+                      where ns.nspname = 'public' and c.relname = o.name);
+  if bad is not null then raise exception 'Ο κατάλογος mfa_open_tables κρατά πίνακες που δεν υπάρχουν: %', bad; end if;
+  select string_agg(name, ', ') into bad from mfa_open_functions o
+   where not exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+                      where ns.nspname = 'public' and p.proname = o.name and p.prosrc !~ 'mfa_satisfied');
+  if bad is not null then raise exception 'Ο κατάλογος mfa_open_functions κρατά συναρτήσεις που λείπουν ή έχουν ήδη την πύλη: %', bad; end if;
+
+  raise notice 'probe: κάθε πίνακας με πολιτική και κάθε SECURITY DEFINER του χρήστη ρωτούν το δεύτερο βήμα';
+end $audit$;
+
+do $probe$
+begin
+  delete from storage.objects where name like 'f2f2f2f2-%/mfa-probe.pdf';
+  revoke select on storage.objects from authenticated;
+  alter table storage.objects disable row level security;
+  delete from auth.mfa_factors where user_id in ('f2f2f2f2-0000-4000-8000-0000000000a1', 'f2f2f2f2-0000-4000-8000-0000000000b1');
+  -- Οι δύο λογαριασμοί φεύγουν από τον ίδιο δρόμο με κάθε διαγραφή: το
+  -- σενάριο του staging που ακολουθεί αρνείται βάση με πάνω από είκοσι χρήστες.
+  perform public.erase_account('f2f2f2f2-0000-4000-8000-0000000000a1');
+  perform public.erase_account('f2f2f2f2-0000-4000-8000-0000000000b1');
+end $probe$;
