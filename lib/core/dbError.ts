@@ -88,10 +88,24 @@ const BY_TEXT: [RegExp, string][] = [
 ];
 
 /**
+ * Η ΑΡΝΗΣΗ ΤΟΥ ΠΑΚΕΤΟΥ ΕΧΕΙ ΟΝΟΜΑ. Οι συναρτήσεις της ομάδας (20261003140000)
+ * σηκώνουν `plan_required` με κωδικό 42501, τον ίδιο κωδικό με κάθε άρνηση
+ * πολιτικής RLS. Αν κρινόταν μόνο ο κωδικός, ο ιδιοκτήτης που έχασε το πακέτο
+ * θα διάβαζε «Δεν έχεις δικαίωμα σε αυτή την εγγραφή» για δική του εγγραφή και
+ * δεν θα μάθαινε ποτέ ότι λείπει η συνδρομή, όχι το δικαίωμα.
+ */
+export function isPlanRequired(e: unknown): boolean {
+  const d = asDb(e);
+  return /\bplan_required\b/.test(`${d.message ?? ''} ${d.details ?? ''}`);
+}
+export const PLAN_REQUIRED = 'Αυτή η ενέργεια ανοίγει σε ανώτερο πακέτο.';
+
+/**
  * Ο λόγος σε ελληνικά, ή `null` όταν δεν αναγνωρίζεται.
  * Ποτέ δεν επιστρέφει το αγγλικό κείμενο του σφάλματος.
  */
 export function dbReason(e: unknown): string | null {
+  if (isPlanRequired(e)) return PLAN_REQUIRED;
   const d = asDb(e);
   const code = (d.code ?? '').toString().trim();
   if (code && BY_CODE[code]) return BY_CODE[code];

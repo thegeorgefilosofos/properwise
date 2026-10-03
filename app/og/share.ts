@@ -15,9 +15,12 @@ import { SHARE_IMAGE, HOME_TITLE_LINES } from '@/lib/core/site';
 import { GUIDES, guideSlug } from '../odigos/guides';
 import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { fpRate } from '@/lib/core/format';
+import { DSTI_LIMIT } from '@/lib/loans/affordability';
+import { TARIFFS_VERIFIED } from '@/lib/energy/catalogue';
 
 export type ShareCard = {
-  kind: 'guide' | 'calc';
+  /** Οδηγός, υπολογιστής ή σελίδα που μιλά σε ένα κοινό (π.χ. /logistes). */
+  kind: 'guide' | 'calc' | 'page';
   over: string;
   title: string;
   /** Συνέχεια του τίτλου στο μπλε της μάρκας (μόνο η αρχική). */
@@ -51,8 +54,22 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
     chips: ['Μεικτή και καθαρή', 'Φόρος στο κλιμάκιό σου', 'ΕΝΦΙΑ και δαπάνες'], path: '/kathari-apodosi' },
   'vraxyxronia-i-makroxronia': { kind: 'calc', over: 'Υπολογιστής', title: 'Βραχυχρόνια ή μακροχρόνια;',
     chips: ['Πληρότητα', 'ΤΑΚΚ', 'Προμήθεια', 'Φόρος'], path: '/vraxyxronia-i-makroxronia' },
+  // Το όριο δόσης από τον κανόνα που εφαρμόζει ο υπολογιστής (DSTI_LIMIT), όχι
+  // γραμμένο εδώ. Κανένα επιτόκιο στην κάρτα: η πλατφόρμα την κρατά εβδομάδες.
+  'ypologismos-stegastikou-daneiou': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόση δόση και πόσο στεγαστικό δάνειο',
+    chips: ['Σταθερό ή κυμαινόμενο', 'Τόκοι ανά έτος', `Όριο δόσης ${fpRate(DSTI_LIMIT.firstTimeBuyer * 100)} ή ${fpRate(DSTI_LIMIT.other * 100)}`],
+    path: '/ypologismos-stegastikou-daneiou' },
+  // Η ΗΜΕΡΟΜΗΝΙΑ ΕΛΕΓΧΟΥ ΚΑΙ ΟΧΙ ΤΙΜΗ: η πλατφόρμα κρατά την εικόνα εβδομάδες
+  // και μια τιμή θα έμενε πίσω από τον κατάλογο. Η μέρα του ελέγχου μένει αληθής.
+  'sygkrisi-timologion-revmatos': { kind: 'calc', over: 'Σύγκριση', title: 'Τι θα πλήρωνες με κάθε τιμολόγιο ρεύματος',
+    chips: ['Σταθερά, κυμαινόμενα, πράσινα', 'Με τις κιλοβατώρες σου', `Τιμές ελεγμένες ${dotted(TARIFFS_VERIFIED)}`],
+    path: '/sygkrisi-timologion-revmatos' },
   'odigos': { kind: 'guide', over: 'Οδηγοί', title: 'Οδηγοί φορολογίας ακινήτων',
     chips: GUIDES.map(g => g.kicker), path: '/odigos' },
+  // Η ΣΕΛΙΔΑ ΤΩΝ ΛΟΓΙΣΤΩΝ. Τη μοιράζεται λογιστής σε λογιστή, οπότε η κάρτα λέει
+  // τι παίρνει εκείνος, όχι τι κάνει ο ιδιοκτήτης.
+  'logistes': { kind: 'page', over: 'Για λογιστές', title: 'Ενοίκια και Ε2 των πελατών σου σε Excel',
+    chips: ['Σύνδεσμος μόνο για ανάγνωση', 'Ε2 ανά ΑΦΜ', 'Τι λείπει, πρώτο', 'Όλοι οι πελάτες σε μία λίστα'], path: '/logistes' },
   ...Object.fromEntries(GUIDES.map(g => [guideSlug(g), {
     kind: 'guide' as const, over: 'Οδηγός', title: g.title,
     chips: [g.kicker, `Ενημερώθηκε ${dotted(g.updated)}`, 'Με τις πηγές του νόμου'], path: g.href,

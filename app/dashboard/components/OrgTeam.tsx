@@ -21,6 +21,9 @@ import * as properties from '@/lib/data/properties';
 import { T, Btn, ChipToggle, Chip, EmptyState, Skeleton, settingsField, ABSENT } from '@/components/Theme';
 import { Users } from 'lucide-react';
 import { logActivity } from '@/lib/activity';
+import { isPlanRequired } from '@/lib/core/dbError';
+import { PLANS } from '@/lib/billing/plans';
+import { PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ο «ΔΙΑΧΕΙΡΙΣΤΗΣ» ΔΕΝ ΜΠΟΡΟΥΣΕ ΝΑ ΚΑΝΕΙ ΤΙΠΟΤΑ ΠΕΡΙΣΣΟΤΕΡΟ ΑΠΟ ΤΟ «ΜΕΛΟΣ»
@@ -112,7 +115,12 @@ export default function OrgTeam({ userId }: { userId: string }) {
   const [openPerms, setOpenPerms] = useState<string | null>(null);   // email γραμμής με ανοιχτά δικαιώματα
   const [loading, setLoading] = useState(true);
   // Η τρίτη κατάσταση της φόρτωσης: «δεν ξέρουμε» (η ανάγνωση δεν έγινε).
-  const [loadError, setLoadError] = useState(false);
+  // ΚΑΙ Η ΤΕΤΑΡΤΗ: «ξέρουμε, δεν φτάνει το πακέτο». Από το 20261003140000 η
+  // `ensure_organization` αρνείται με `plan_required` σε ιδιοκτήτη που έχασε
+  // το πακέτο του επαγγελματία. Ως εδώ η άρνηση έπεφτε σιωπηλά στην όψη του
+  // ιδιοκτήτη χωρίς οργανισμό: πεδία με προεπιλογές και κουμπιά που δεν
+  // έκαναν τίποτα. Ο λόγος λέγεται και η οθόνη δεν υπόσχεται ενέργεια.
+  const [loadError, setLoadError] = useState<null | 'read' | 'plan'>(null);
 
   // Όψη: ιδιοκτήτης (διαχείριση) ή μέλος (προβολή + αιτήματα)
   const [mode, setMode] = useState<'owner' | 'member' | null>(null);
@@ -196,7 +204,7 @@ export default function OrgTeam({ userId }: { userId: string }) {
       // ιδιοκτήτη τον ίδιο τον χρήστη, με ενεργά «Πρόσκληση» και «Αλλαγή»
       // ονόματος, ενώ ο άνθρωπος ήταν ήδη μέλος της ομάδας κάποιου άλλου.
       // Τώρα η άγνωστη κατάσταση λέγεται καθαρά και δεν εμφανίζεται κουμπί.
-      if (mineError) { setLoadError(true); setLoading(false); return; }
+      if (mineError) { setLoadError('read'); setLoading(false); return; }
 
       const memberRow = (mine as MyRow[] | null)?.find(r => r.role !== 'owner');
       if (memberRow) {
@@ -222,7 +230,7 @@ export default function OrgTeam({ userId }: { userId: string }) {
       // 2) ── ΟΨΗ ΙΔΙΟΚΤΗΤΗ
       const { data, error } = await supabase.rpc('ensure_organization');
       if (!active) return;
-      if (error || !data) { setLoading(false); return; }
+      if (error || !data) { setLoadError(isPlanRequired(error) ? 'plan' : 'read'); setLoading(false); return; }
       const o = (Array.isArray(data) ? data[0] : data) as Org;
       setOrg(o);
       setNameDraft(o?.name ?? '');
@@ -329,8 +337,21 @@ export default function OrgTeam({ userId }: { userId: string }) {
     );
   }
 
+  // Χωρίς οργανισμό και χωρίς το πακέτο: η `ensure_organization` δεν φτιάχνει
+  // νέο. Όποιος ΕΧΕΙ ήδη οργανισμό τον βλέπει κανονικά και βγάζει μέλη χωρίς
+  // πακέτο· προσκλήσεις και όνομα αρνούνται με το μήνυμα του dbReason.
+  if (loadError === 'plan') {
+    return (
+      <EmptyState
+        icon={<Users size={20} />}
+        title={`Η ομάδα ανοίγει με το πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}»`}
+        hint="Η συνδρομή σου δεν το καλύπτει. Με το πακέτο από τη Συνδρομή πιο πάνω φτιάχνεις γραφείο και προσκαλείς συνεργάτες."
+      />
+    );
+  }
+
   // Ούτε όψη ιδιοκτήτη ούτε όψη μέλους: δεν διαβάστηκε η ιδιότητα του χρήστη.
-  if (loadError) {
+  if (loadError === 'read') {
     return (
       <EmptyState
         icon={<Users size={20} />}

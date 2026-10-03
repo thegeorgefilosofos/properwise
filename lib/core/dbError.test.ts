@@ -8,7 +8,7 @@
 // αρκεί ένα «duplicate key value violates unique constraint» για να καταλάβει
 // ο ιδιοκτήτης ότι κοιτάζει μηχανή.
 // ═══════════════════════════════════════════════════════════════════════════
-import { dbReason, failed, RETRY } from './dbError';
+import { dbReason, failed, RETRY, isPlanRequired, PLAN_REQUIRED } from './dbError';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean) => { if (cond) pass++; else { fail++; console.error(`✗ ${name}`); } };
@@ -18,6 +18,13 @@ ok('μοναδικότητα', dbReason({ code: '23505' })=== 'Υπάρχει ή
 ok('ξένο κλειδί', (dbReason({ code: '23503' }) || '').startsWith('Η εγγραφή συνδέεται'));
 ok('υποχρεωτικό πεδίο', dbReason({ code: '23502' }) === 'Λείπει ένα υποχρεωτικό στοιχείο.');
 ok('δικαιώματα', dbReason({ code: '42501' }) === 'Δεν έχεις δικαίωμα σε αυτή την εγγραφή.');
+// Η άρνηση του πακέτου έρχεται με τον ΙΔΙΟ κωδικό 42501 (20261003140000): το
+// όνομα του σφάλματος κερδίζει τον κωδικό, αλλιώς ο χρήστης μαθαίνει «δικαίωμα»
+// εκεί που λείπει συνδρομή.
+ok('πακέτο πριν τον κωδικό', dbReason({ code: '42501', message: 'plan_required' }) === PLAN_REQUIRED);
+ok('πακέτο, αναγνώριση', isPlanRequired({ code: '42501', message: 'plan_required' }));
+ok('πακέτο, όχι σε άλλη άρνηση', !isPlanRequired({ code: '42501', message: 'permission denied for table clients' }));
+ok('πακέτο, όχι σε mfa', !isPlanRequired({ code: '42501', message: 'mfa_required' }));
 ok('έληξε η συνεδρία', dbReason({ code: 'PGRST301' }) === 'Η σύνδεσή σου έληξε. Μπες ξανά.');
 
 // Ο κωδικός ΝΙΚΑΕΙ το κείμενο: το κείμενο αλλάζει με την έκδοση της βάσης.

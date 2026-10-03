@@ -193,8 +193,137 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   await ctx.close()
 }
 
+// ── ΔΟΣΗ ΣΤΕΓΑΣΤΙΚΟΥ, σαν χρήστης ────────────────────────────────────────
+// Το επιτόκιο δίνεται ΣΤΗ ΔΙΕΥΘΥΝΣΗ: η προεπιλογή του είναι το μέσο επιτόκιο
+// της αγοράς όταν η βάση απαντά και κενό όταν δεν απαντά (τοπικό build). Τα
+// αναμενόμενα δεν επιτρέπεται να εξαρτώνται από το τι έγραψε η ΕΚΤ τον μήνα.
+//   150.000€, 3,5%, 25 έτη · r = 0,035/12 · (1+r)^300 ≈ 2,39588
+//   δόση = 150.000 × r × 2,39588 / 1,39588 ≈ 750,94€ · τόκοι ≈ 75.280,61€
+//   καθαρό 2.000€, πρώτη φορά: δόση έως 1.000€ · δάνειο έως ≈ 199.751€
+{
+  const ctx = await b.newContext({ viewport:{width:1280,height:1100}, locale:'el-GR' })
+  const p = await page(ctx,'/ypologismos-stegastikou-daneiou?epitokio=3%2C5')
+  const eur = async label => {
+    const txt = await p.locator('body').innerText().then(plain)
+    const m = txt.match(new RegExp(label + '\\s*\\n\\s*([\\d.,]+)\\s*€'))
+    return m ? num(m[1]) : null
+  }
+  ok('δόση 150.000 € στο 3,5% για 25 έτη → 750,94 €', Math.abs((await eur('ΜΗΝΙΑΙΑ ΔΟΣΗ')) - 750.94) < 0.02)
+  ok('…και τόκοι 75.280,61 €', Math.abs((await eur('ΣΥΝΟΛΟ ΤΟΚΩΝ')) - 75280.61) < 0.02)
+  ok('καθαρό 2.000 € την πρώτη φορά → δάνειο έως 199.751 €', Math.abs((await eur('ΔΑΝΕΙΟ ΕΩΣ')) - 199751) < 0.02)
+  ok('…με δόση έως 1.000 €', Math.abs((await eur('ΔΟΣΗ ΕΩΣ')) - 1000) < 0.02)
+
+  // ── ΟΧΙ ΠΡΩΤΗ ΦΟΡΑ: ΤΟ ΟΡΙΟ ΠΕΦΤΕΙ ΣΤΟ 40% ─────────────────────────────
+  await p.getByRole('button', { name: /^Όχι$/ }).click(); await p.waitForTimeout(250)
+  ok('όχι πρώτη φορά → δόση έως 800 €', Math.abs((await eur('ΔΟΣΗ ΕΩΣ')) - 800) < 0.02)
+
+  // ── ΚΥΜΑΙΝΟΜΕΝΟ: EURIBOR ΣΥΝ ΠΕΡΙΘΩΡΙΟ ──────────────────────────────────
+  // 2,5 + 1 = 3,5%: η ίδια δόση με το σταθερό από πάνω.
+  await p.getByRole('button', { name: /^Κυμαινόμενο$/ }).click(); await p.waitForTimeout(250)
+  await p.getByLabel('Euribor', { exact: true }).fill('2,5')
+  await p.getByLabel('Περιθώριο τράπεζας').fill('1'); await p.waitForTimeout(300)
+  ok('κυμαινόμενο 2,5% + 1% → η ίδια δόση 750,94 €', Math.abs((await eur('ΜΗΝΙΑΙΑ ΔΟΣΗ')) - 750.94) < 0.02)
+  const floating = await p.locator('body').innerText().then(plain)
+  ok('…και λέει τι γίνεται αν ανέβει το Euribor', floating.includes('Αν ανέβει μία μονάδα'))
+
+  // ── ΧΩΡΙΣ ΕΠΙΤΟΚΙΟ ΔΕΝ ΒΓΑΙΝΕΙ ΔΟΣΗ ΜΕ ΜΗΔΕΝ ────────────────────────────
+  await p.getByLabel('Περιθώριο τράπεζας').fill(''); await p.waitForTimeout(300)
+  const noRate = await p.locator('body').innerText().then(plain)
+  ok('χωρίς περιθώριο δεν εμφανίζεται δόση', !noRate.includes('ΜΗΝΙΑΙΑ ΔΟΣΗ') && noRate.includes('Γράψε το Euribor'))
+  await p.getByRole('button', { name: /^Σταθερό$/ }).click(); await p.waitForTimeout(250)
+
+  // ── ΣΚΟΥΠΙΔΙΑ ───────────────────────────────────────────────────────────
+  await p.getByLabel('Ποσό δανείου').fill('δεν ξέρω'); await p.waitForTimeout(300)
+  const junk = await p.locator('body').innerText().then(plain)
+  ok('σκουπίδια στο ποσό δεν σπάνε τη σελίδα', !/Infinity|NaN/.test(junk))
+  ok('…και ζητούν ποσό', junk.includes('Η δόση χρειάζεται ποσό'))
+
+  ok('η τιμή αγοράς ή η απουσία της λέγεται πάνω από τη φόρμα', junk.includes('ΜΕΣΟ ΕΠΙΤΟΚΙΟ ΑΓΟΡΑΣ') || junk.includes('Μέσο επιτόκιο αγοράς'))
+  ok('υπάρχει σύνδεσμος εγγραφής', await p.locator('a[href="/signup"]').count() > 0)
+  await ctx.close()
+}
+
+// ── ΣΥΓΚΡΙΣΗ ΤΙΜΟΛΟΓΙΩΝ ΡΕΥΜΑΤΟΣ, σαν χρήστης ─────────────────────────────
+// Τα ποσά αλλάζουν με κάθε έλεγχο του καταλόγου, οπότε εδώ ΔΕΝ γράφονται
+// καρφωτά: ελέγχεται ότι η οθόνη συμφωνεί με τον εαυτό της (η κορυφή με την
+// πρώτη γραμμή, ο χρόνος με δώδεκα μήνες, το ετήσιο με το μηνιαίο). Τα ποσά τα
+// φυλάει στο χέρι το lib/tools/revma.test.ts. Και, το κρισιμότερο, ότι με παλιό
+// κατάλογο η σελίδα ΔΕΝ ονομάζει φθηνότερο, με το ρολόι του περιηγητή μετά το
+// κατώφλι: η απόφαση κρίνεται στη συσκευή, όχι στο build.
+{
+  const POWER = '/sygkrisi-timologion-revmatos'
+  const HERO = /ΦΘΗΝΟΤΕΡΟ ΤΟΝ ΜΗΝΑ\s*\n\s*([\d.,]+)\s*€/
+  const YEAR = /ΤΟΝ ΧΡΟΝΟ\s*\n\s*([\d.,]+)\s*€/
+  const STALE = 'Οι τιμές μπορεί να έχουν αλλάξει'
+  const text = async p => p.locator('body').innerText().then(plain)
+  const rowAmounts = async p => (await p.locator('li.tariff-row').allInnerTexts())
+    .map(t => { const m = plain(t).match(/([\d.,]+)€\s*\n\s*([\d.,]+)€ τον χρόνο/); return m ? [num(m[1]), num(m[2])] : null })
+    .filter(Boolean)
+
+  const ctx = await b.newContext({ viewport:{width:1280,height:1100}, locale:'el-GR' })
+  const p = await page(ctx, POWER)
+  const t0 = await text(p)
+  ok('ρεύμα: λέει πότε ελέγχθηκαν οι τιμές', /Τιμές όπως ελέγχθηκαν στις \d{1,2} \S+ \d{4}/.test(t0))
+  ok('ρεύμα: λέει τον μήνα των τιμών', /Τιμές \S+ \d{4}, εκτός όπου γράφεται άλλος μήνας/.test(t0))
+  const stale = t0.includes(STALE)
+  if (stale) {
+    // Ο κατάλογος έχει ήδη παλιώσει τη μέρα που τρέχει ο έλεγχος: ισχύει η
+    // ενδεικτική εκδοχή και αυτή ελέγχεται.
+    ok('ρεύμα (παλιός κατάλογος): κανένα φθηνότερο', !HERO.test(t0))
+  } else {
+    const hero = Number(t0.match(HERO)?.[1] ? num(t0.match(HERO)[1]) : NaN)
+    const year = Number(t0.match(YEAR)?.[1] ? num(t0.match(YEAR)[1]) : NaN)
+    const rows = await rowAmounts(p)
+    ok('ρεύμα: η κορυφή δείχνει φθηνότερο τον μήνα', Number.isFinite(hero) && hero > 0)
+    ok('ρεύμα: και είναι το ποσό της πρώτης γραμμής', rows.length > 0 && Math.abs(rows[0][0] - hero) < 0.005)
+    ok('ρεύμα: ο χρόνος είναι δώδεκα μήνες', Math.abs(year - Math.round(hero * 12 * 100) / 100) < 0.011)
+    ok('ρεύμα: κάθε γραμμή, ετήσιο = 12 × μηνιαίο', rows.every(([m, y]) => Math.abs(y - Math.round(m * 1200) / 100) < 0.011))
+    ok('ρεύμα: σε αύξουσα σειρά', rows.every(([m], i) => i === 0 || m >= rows[i - 1][0]))
+
+    // 3.600 τον χρόνο είναι 300 τον μήνα: ίδια κορυφή.
+    await p.getByRole('button', { name: 'Τον χρόνο' }).click()
+    await p.locator('input').first().fill('3600'); await p.waitForTimeout(300)
+    const t1 = await text(p)
+    ok('ρεύμα: 3.600 τον χρόνο δίνουν την ίδια κορυφή με 300 τον μήνα', num(t1.match(HERO)?.[1] ?? 'x') === hero)
+    await p.getByRole('button', { name: 'Τον μήνα' }).click()
+    await p.locator('input').first().fill('300'); await p.waitForTimeout(250)
+
+    // Το χρώμα φιλτράρει: στα σταθερά, μόνο ΜΠΛΕ.
+    await p.locator('[role="combobox"]').first().click()
+    await p.locator('[role="option"]', { hasText: 'Σταθερά (μπλε)' }).first().click()
+    await p.waitForTimeout(250)
+    const badges = await p.locator('li.tariff-row span[title]').allInnerTexts()
+    ok('ρεύμα: τα σταθερά δείχνουν μόνο μπλε', badges.length > 0 && badges.every(x => x.trim() === 'ΜΠΛΕ'))
+  }
+
+  await p.locator('input').first().fill('0'); await p.waitForTimeout(300)
+  const tz = await text(p)
+  ok('ρεύμα: χωρίς κατανάλωση ζητά τον αριθμό', tz.includes('Γράψε την κατανάλωσή σου'))
+  await p.locator('input').first().fill('δεν ξέρω'); await p.waitForTimeout(300)
+  ok('ρεύμα: σκουπίδια χωρίς NaN ή Infinity', !/NaN|Infinity/.test(await text(p)))
+  ok('ρεύμα: υπάρχει σύνδεσμος εγγραφής', await p.locator('a[href="/signup"]').count() > 0)
+  await ctx.close()
+
+  // ── ΤΟ ΡΟΛΟΙ ΜΕΤΑ ΤΟ ΚΑΤΩΦΛΙ: ΚΑΝΕΝΑ ΟΝΟΜΑ, ΚΑΜΙΑ ΣΕΙΡΑ ───────────────────
+  // Ενα έτος μετά τον έλεγχο του καταλόγου ο κατάλογος είναι παλιός, όποια κι αν
+  // είναι η μέρα του build. Η κορυφή δεν ονομάζει φθηνότερο, καμία γραμμή δεν
+  // έχει αριθμό θέσης και ο σύνδεσμος της ΡΑΑΕΥ είναι εκεί.
+  const late = await b.newContext({ viewport:{width:1280,height:1100}, locale:'el-GR' })
+  const lp = await late.newPage()
+  await lp.clock.setFixedTime(new Date('2027-10-01T10:00:00'))
+  await lp.goto(B + POWER, { waitUntil: 'networkidle' })
+  await lp.getByRole('button',{name:/κατάλαβα/i}).click().catch(()=>{}); await lp.waitForTimeout(400)
+  const ts = await text(lp)
+  ok('ρεύμα, παλιός κατάλογος: λέει ότι οι τιμές μπορεί να άλλαξαν', ts.includes(STALE))
+  ok('ρεύμα, παλιός κατάλογος: δεν ονομάζει φθηνότερο', !HERO.test(ts) && !ts.includes('από το φθηνότερο'))
+  const ranks = await lp.locator('li.tariff-row > span:first-child').allInnerTexts()
+  ok('ρεύμα, παλιός κατάλογος: καμία γραμμή με θέση', ranks.length > 0 && ranks.every(x => x.trim() === ''))
+  ok('ρεύμα, παλιός κατάλογος: σύνδεσμος προς τη ΡΑΑΕΥ', await lp.locator('a[href*="gov.gr"]').count() > 0)
+  await late.close()
+}
+
 // ── Προσβασιμότητα & responsive και στα δύο ───────────────────────────────
-for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia']) {
+for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia','/ypologismos-stegastikou-daneiou','/sygkrisi-timologion-revmatos']) {
   for (const w of [360, 390, 768, 1440]) {
     const ctx = await b.newContext({ viewport:{width:w,height:900}, locale:'el-GR', isMobile:w<700 })
     const p = await page(ctx, path)
@@ -217,7 +346,7 @@ for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari
 }
 
 // ── Το middleware δεν ζητά σύνδεση ────────────────────────────────────────
-for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia']) {
+for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia','/ypologismos-stegastikou-daneiou','/sygkrisi-timologion-revmatos']) {
   const res = await fetch(B+path, { redirect:'manual' })
   ok(`${path}: δημόσιο (HTTP ${res.status})`, res.status === 200)
 }

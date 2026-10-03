@@ -9,7 +9,9 @@
 //
 // Ο έλεγχος: (α) ο βοηθός βάζει πάντα την εικόνα, (β) καμία σελίδα δεν γράφει
 // `openGraph` με το χέρι, (γ) κάθε οδηγός έχει σελίδα, έγκυρες ημερομηνίες και
-// ημερομηνία τροποποίησης στον χάρτη ιστότοπου.
+// ημερομηνία τροποποίησης στον χάρτη ιστότοπου, (δ) κάθε υπολογιστής του
+// υποσέλιδου έχει σελίδα, κάρτα και ημερομηνία ISO στον χάρτη, όχι μελλοντική, (ε) η σύγκριση ρεύματος έχει
+// δική της ημερομηνία, όχι παλαιότερη από τον έλεγχο του καταλόγου.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -17,8 +19,11 @@ import { publicMetadata } from './publicMetadata';
 import { SHARE_IMAGE } from '@/lib/core/site';
 import { GUIDES, guideSlug } from './odigos/guides';
 import { SHARE_CARDS, shareImage } from './og/share';
+import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 import sitemap from './sitemap';
 import { SITE } from '@/lib/core/site';
+import { athensToday } from '@/lib/core/time';
+import { TARIFFS_VERIFIED } from '@/lib/energy/catalogue';
 
 let passed = 0, failed = 0;
 const fails: string[] = [];
@@ -63,6 +68,27 @@ for (const g of GUIDES) {
   // Η δική του κάρτα κοινοποίησης: αλλιώς ο σύνδεσμος φτάνει με τη γενική εικόνα.
   ok(`${g.href}: έχει δική του εικόνα κοινοποίησης`, !!SHARE_CARDS[guideSlug(g)]);
 }
+// ── (δ) ΟΙ ΥΠΟΛΟΓΙΣΤΕΣ ──────────────────────────────────────────────────────
+// Κάθε υπολογιστής του υποσέλιδου είναι στον χάρτη, με ημερομηνία ISO που δεν
+// ξεπερνά τη σημερινή: μια μελλοντική ημερομηνία η μηχανή αναζήτησης τη
+// διαβάζει ως λάθος και αγνοεί τη φρεσκάδα ολόκληρου του χάρτη.
+const TODAY = athensToday();
+// Τα εργαλεία του υποσέλιδου ζουν πλέον στο lib/core/publicTools, που διαβάζει
+// και το υποσέλιδο και το /llms.txt. Ελέγχεται και ότι το υποσέλιδο τα παίρνει
+// από εκεί: αλλιώς μια λίστα γραμμένη ξανά με το χέρι θα ξέφευγε από τον έλεγχο.
+const toolPaths = PUBLIC_TOOLS.map(t => t.href);
+ok('το υποσέλιδο διαβάζει τα εργαλεία από το PUBLIC_TOOLS', readFileSync('app/PublicChrome.tsx', 'utf8').includes('PUBLIC_TOOLS.map('));
+ok('ο σαρωτής βλέπει τους υπολογιστές του υποσέλιδου', toolPaths.length >= 6 && toolPaths.includes('/ypologismos-stegastikou-daneiou') && toolPaths.includes('/sygkrisi-timologion-revmatos'));
+for (const path of toolPaths) {
+  const row = map.find(r => r.url === SITE + path);
+  const lm = typeof row?.lastModified === 'string' ? row.lastModified : '';
+  ok(`${path}: είναι στον χάρτη`, !!row);
+  ok(`${path}: ημερομηνία ISO στον χάρτη`, ISO.test(lm));
+  ok(`${path}: η ημερομηνία δεν είναι στο μέλλον (${lm} έναντι ${TODAY})`, lm <= TODAY);
+  ok(`${path}: η σελίδα υπάρχει`, existsSync(join('app', path, 'page.tsx')));
+  ok(`${path}: έχει δική του εικόνα κοινοποίησης`, !!SHARE_CARDS[path.slice(1)]);
+}
+
 const hub = map.find(r => r.url === `${SITE}/odigos`);
 ok('ο κόμβος των οδηγών έχει ημερομηνία στον χάρτη, την πιο πρόσφατη των οδηγών',
   hub?.lastModified === GUIDES.map(g => g.updated).sort().at(-1));
@@ -76,6 +102,31 @@ for (const r of map) {
   ok(`${r.url}: ημερομηνία ISO στον χάρτη`, ISO.test(d));
   ok(`${r.url}: η ημερομηνία δεν είναι στο μέλλον`, d <= today);
 }
+
+// ── (δ) Η ΣΥΓΚΡΙΣΗ ΡΕΥΜΑΤΟΣ ─────────────────────────────────────────────────
+// Η μόνη σελίδα του χάρτη με ημερομηνία που ακολουθεί κατάλογο τιμών και όχι
+// νόμο. Μελλοντική ημερομηνία θα δήλωνε αλλαγή που δεν έγινε· παλαιότερη από
+// τον έλεγχο του καταλόγου θα έκρυβε ότι οι τιμές της σελίδας άλλαξαν.
+{
+  const row = map.find(r => r.url === `${SITE}/sygkrisi-timologion-revmatos`);
+  const d = typeof row?.lastModified === 'string' ? row.lastModified : '';
+  ok('η σύγκριση ρεύματος είναι στον χάρτη', !!row);
+  ok('με ημερομηνία ISO', ISO.test(d));
+  ok('όχι μελλοντική', d <= new Date().toISOString().slice(0, 10));
+  ok('και όχι παλαιότερη από τον έλεγχο του καταλόγου', d >= TARIFFS_VERIFIED);
+  ok('η σελίδα υπάρχει', existsSync('app/sygkrisi-timologion-revmatos/page.tsx'));
+  ok('έχει δική της εικόνα κοινοποίησης', !!SHARE_CARDS['sygkrisi-timologion-revmatos']);
+}
+
+// ── (στ) Η ΣΕΛΙΔΑ ΤΩΝ ΛΟΓΙΣΤΩΝ ──────────────────────────────────────────────
+// Η ημερομηνία της γράφεται με το χέρι στον χάρτη. Μια μελλοντική ημερομηνία
+// λέει στη μηχανή ότι η σελίδα άλλαξε όταν δεν άλλαξε ακόμη.
+const acct = map.find(r => r.url === `${SITE}/logistes`);
+const acctDate = typeof acct?.lastModified === 'string' ? acct.lastModified : '';
+ok('/logistes: είναι στον χάρτη με ημερομηνία ISO', ISO.test(acctDate));
+ok('/logistes: η ημερομηνία δεν είναι μελλοντική', acctDate <= new Date().toISOString().slice(0, 10));
+ok('/logistes: η σελίδα υπάρχει', existsSync('app/logistes/page.tsx'));
+ok('/logistes: έχει δική της εικόνα κοινοποίησης', !!SHARE_CARDS['logistes'] && SHARE_CARDS['logistes'].path === '/logistes');
 
 // Με δική της εικόνα η σελίδα δεν γράφει τη γενική, ούτε στην κάρτα X.
 const own = publicMetadata({ title: 'Τ', description: 'Π', url: `${SITE}/dokimi`, image: shareImage('odigos') });

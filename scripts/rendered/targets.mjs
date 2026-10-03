@@ -13,10 +13,12 @@
 // Το `/paketa` είναι ο τιμοκατάλογος: η σελίδα όπου ο επισκέπτης αποφασίζει
 // αν θα πληρώσει. Μένουν έξω μόνο το `/offline` (εφεδρικό PWA, χωρίς δίκτυο)
 // και το `/tameio` (ανακατεύθυνση προς τον έμπορο, χωρίς δική της οθόνη).
+// Το `/logistes` μπήκε μαζί με τη σελίδα (03.10.2026): δημόσια, στον χάρτη και
+// στο υποσέλιδο, με λίστα αρχείων και κάρτα παραδείγματος που θέλουν μέτρημα.
 export const PUBLIC = [
   '/', '/signup', '/login', '/reset-password', '/trust', '/privacy', '/terms',
   '/paketa', '/ypologismos-enfia', '/ypologismos-forou-enoikion',
-  '/kathari-apodosi', '/vraxyxronia-i-makroxronia',
+  '/kathari-apodosi', '/vraxyxronia-i-makroxronia', '/sygkrisi-timologion-revmatos', '/logistes',
 ];
 
 // ΟΙ ΟΚΤΩ ΕΓΙΝΑΝ ΕΙΚΟΣΙ ΜΙΑ, ΟΣΕΣ ΚΑΙ ΤΟΥ ΣΑΡΩΤΗ ΔΙΑΤΑΞΗΣ. Οι δύο σαρωτές

@@ -82,7 +82,7 @@ const ALL = Object.keys(AADE_DESTINATIONS) as AadeAction[]
   eq('καμία υποχρέωση δεν καταλήγει στο γενικό ημερολόγιο', generic, '')
   eq('η αυτόματη οριστικοποίηση πάει στη δήλωση εισοδήματος', destinationForKind('income-autofile'), 'income')
   eq('ο ΕΝΦΙΑ σε κάθε φάση πάει στον ΕΝΦΙΑ',
-    ['enfia-issue', 'enfia-first', 'enfia-last'].map(destinationForKind), ['enfia', 'enfia', 'enfia'])
+    ['enfia-issue', 'enfia-first', 'enfia-instalment', 'enfia-last'].map(destinationForKind), ['enfia', 'enfia', 'enfia', 'enfia'])
   eq('άγνωστο είδος πέφτει στο ημερολόγιο, όχι σε λάθος εφαρμογή', destinationForKind('κάτι-άλλο'), 'calendar')
 }
 
@@ -113,6 +113,18 @@ const ALL = Object.keys(AADE_DESTINATIONS) as AadeAction[]
   let bad = ''
   for (const a of ALL) if (!aadePath(a).includes(' · ')) bad += a + ' '
   eq('κάθε διαδρομή έχει τουλάχιστον ένα βήμα μετά την πύλη', bad, '')
+}
+
+// ═══ Ο ΕΝΦΙΑ ΖΕΙ ΜΕΣΑ ΣΤΟ Ε9 (03.10.2026) ═════════════════════════════════
+// Το μητρώο έγραφε «Εφαρμογές, ΕΝΦΙΑ», επιλογή που δεν υπάρχει στο μενού της
+// πύλης, ενώ ο οδηγός πληρωμής κρατούσε δική του διαδρομή για να μην την
+// αντιγράψει. Η σωστή είναι των Δελτίων Τύπου της ΑΑΔΕ 15/03/2026 και
+// 08/05/2026: Εφαρμογές, Δημοφιλείς Εφαρμογές, Δήλωση Ε9/ΕΝΦΙΑ.
+{
+  eq('ο ΕΝΦΙΑ ανοίγει από τις Δημοφιλείς Εφαρμογές και τη Δήλωση Ε9/ΕΝΦΙΑ',
+    AADE_DESTINATIONS.enfia.steps.slice(0, 3), ['Εφαρμογές', 'Δημοφιλείς Εφαρμογές', 'Δήλωση Ε9/ΕΝΦΙΑ'])
+  ok('κανένα σκέτο βήμα «ΕΝΦΙΑ», που δεν υπάρχει στο μενού', !AADE_DESTINATIONS.enfia.steps.includes('ΕΝΦΙΑ'))
+  ok('το τελευταίο βήμα λέει τι βρίσκεις εκεί', /Εκκαθαριστικό/.test(AADE_DESTINATIONS.enfia.steps.at(-1) ?? ''))
 }
 
 // ═══ ΚΑΜΙΑ ΠΡΟΘΕΣΜΙΑ ΕΔΩ ══════════════════════════════════════════════════

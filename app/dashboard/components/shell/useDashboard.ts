@@ -26,7 +26,7 @@ import { notifyError } from '@/components/Toast'
 import { clearHistory as clearAssistantHistory } from '../assistantPersona'
 import { leaveDevice } from '@/lib/localPrivacy'
 import {
-  effectivePlan, livePlan, canAddProperty, planAtLeast, trialState, type EntitlementInput,
+  effectivePlan, livePlan, canAddProperty, planAtLeast, trialState, PROFESSIONAL_MIN_PLAN, type EntitlementInput,
 } from '@/lib/billing/entitlements'
 import { reveal, sanitizeRevealed, coreTabs, type DisclosureSignals } from '@/lib/nav/disclosure'
 import { startPanel } from '@/lib/home/start'
@@ -247,7 +247,7 @@ export function useDashboard() {
   // Ο τρόπος «Επαγγελματίας» απαιτεί το πλάνο Επαγγελματίας (agency). Χωρίς αυτό, ο
   // χρήστης βλέπει ΜΟΝΟ την εμπειρία «Ιδιώτη» — δεν εμφανίζονται καθόλου οι
   // επαγγελματικές καρτέλες (η αλλαγή τρόπου στις Ρυθμίσεις παραπέμπει σε αναβάθμιση).
-  const proEligible = planAtLeast(effPlan, 'agency');
+  const proEligible = planAtLeast(effPlan, PROFESSIONAL_MIN_PLAN);
   const effProfileType: 'individual' | 'professional' = proEligible ? profileType : 'individual';
 
   // ── ΤΙ ΑΦΟΡΑ ΑΥΤΟΝ ΤΟΝ ΧΡΗΣΤΗ ────────────────────────────────────────────

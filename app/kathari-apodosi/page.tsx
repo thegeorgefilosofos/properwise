@@ -199,7 +199,11 @@ export default function Page() {
             βραχυχρόνια, η{' '}
             <Link href="/vraxyxronia-i-makroxronia" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               σύγκριση βραχυχρόνιας και μακροχρόνιας
-            </Link>{' '}δείχνει από ποια πληρότητα και πάνω συμφέρει.
+            </Link>{' '}δείχνει από ποια πληρότητα και πάνω συμφέρει. Η απόδοση εδώ δεν
+            αφαιρεί δάνειο· αν θα το αγοράσεις με στεγαστικό, ο{' '}
+            <Link href="/ypologismos-stegastikou-daneiou" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+              υπολογισμός δόσης
+            </Link>{' '}δείχνει τι θα πληρώνεις τον μήνα.
           </>)}</p>
         </section>
       </main>

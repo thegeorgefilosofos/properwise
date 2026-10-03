@@ -42,6 +42,10 @@ const PAGES = [
   { path: '/ypologismos-enfia',          what: 'ΕΝΦΙΑ' },
   { path: '/vraxyxronia-i-makroxronia',  what: 'βραχυχρόνια ή μακροχρόνια' },
   { path: '/kathari-apodosi',            what: 'καθαρή απόδοση' },
+  // Με επιτόκιο στη διεύθυνση: χωρίς τιμή αγοράς (τοπικό build) το πεδίο
+  // ξεκινά κενό και δεν θα υπήρχε δόση να ακουστεί.
+  { path: '/ypologismos-stegastikou-daneiou?epitokio=3%2C5', what: 'δόση στεγαστικού' },
+  { path: '/sygkrisi-timologion-revmatos', what: 'σύγκριση ρεύματος' },
 ]
 
 /** Ολα τα ποσά και ποσοστά ενός κειμένου, ώστε να συγκριθούν οθόνη και φωνή. */

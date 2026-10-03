@@ -824,7 +824,7 @@ const OPENERS = { tenant: ['Νέος ενοικιαστής'] }
 // σύνδεση) και πυκνές σε πίνακες/κείμενο — ακριβώς εκεί που κρύβεται το κόψιμο
 // σε στενή οθόνη. Το /tameio ΔΕΝ μπαίνει: είναι σύνδεσμος μιας χρήσης μετά την
 // επιβεβαίωση email, γυρίζει 307 σε επισκέπτη — σωστά, δεν είναι δημόσιο.
-const PAGES = ['/', '/login', '/signup', '/paketa', '/ypologismos-forou-enoikion', '/ypologismos-enfia', '/vraxyxronia-i-makroxronia', '/kathari-apodosi', '/imerologio', '/privacy', '/terms', '/trust']
+const PAGES = ['/', '/login', '/signup', '/paketa', '/ypologismos-forou-enoikion', '/ypologismos-enfia', '/vraxyxronia-i-makroxronia', '/kathari-apodosi', '/imerologio', '/privacy', '/terms', '/trust', '/logistes']
 const BASE = process.env.E2E_BASE || 'http://localhost:3100'
 // Για να δουλεύεται μία σκηνή χωρίς να τρέχουν και οι 120: E2E_ONLY=roi
 const ONLY = process.env.E2E_ONLY ? process.env.E2E_ONLY.split(',') : null

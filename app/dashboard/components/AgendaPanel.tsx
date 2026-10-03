@@ -205,8 +205,13 @@ export default function AgendaPanel({ items, total, onNavigate }: {
           display: flex; flex-direction: column; align-items: flex-end;
           text-align: right; padding-top: 1px;
         }
+        /* 18, ΟΧΙ 19 (03.10.2026). Το 19 ήταν το μόνο μέγεθος εκτός κλίμακας μέσα
+           στην εφαρμογή και ζούσε μόνο εδώ. Δεν φαινόταν στη μέτρηση επειδή
+           καμία γραμμή της ατζέντας δεν έδειχνε αριθμό ημερών· η 8η δόση του
+           ΕΝΦΙΑ «σε 27 ημέρες» ήταν η πρώτη. Το 18 είναι η βαθμίδα της κλίμακας
+           ακριβώς από κάτω, οπότε η γραμμή δεν ψηλώνει. */
         .agenda-num {
-          font-family: ${T.font.sans}; font-size: 19px; font-weight: 600;
+          font-family: ${T.font.sans}; font-size: 18px; font-weight: 600;
           line-height: 1.05; letter-spacing: -0.02em;
           font-variant-numeric: tabular-nums; color: var(--text-secondary);
         }

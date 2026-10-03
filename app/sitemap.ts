@@ -25,6 +25,21 @@ const PAGES_UPDATED = {
   privacy: '2026-10-02',
   terms: '2026-10-03',
 } as const
+// Ο υπολογιστής δόσης στεγαστικού δεν ακολουθεί τους φόρους: αλλάζει όταν
+// αλλάξει ο ίδιος, όχι όταν αλλάξει κλίμακα. Δική του ημερομηνία, με το χέρι.
+// Το μέσο επιτόκιο που δείχνει έχει δική του ημερομηνία πάνω στη σελίδα.
+const MORTGAGE_TOOL_UPDATED = '2026-10-03'
+// Η ΣΥΓΚΡΙΣΗ ΡΕΥΜΑΤΟΣ ΕΧΕΙ ΔΙΚΗ ΤΗΣ. Αλλάζει με τον κατάλογο τιμολογίων, όχι με
+// τον νόμο, οπότε η κοινή ημερομηνία των τεσσάρων θα έλεγε άλλη μέρα από την
+// πραγματική. Είναι η μέρα της τελευταίας αλλαγής της σελίδας ή του καταλόγου
+// που δείχνει (όποια είναι νεότερη), ISO, ποτέ μελλοντική· αλλάζει με το χέρι
+// μαζί τους. Το app/publicMetadata.test.ts φυλάει και τα δύο.
+const POWER_UPDATED = '2026-10-03'
+
+// Η ΣΕΛΙΔΑ ΤΩΝ ΛΟΓΙΣΤΩΝ ΕΧΕΙ ΤΗ ΔΙΚΗ ΤΗΣ ΗΜΕΡΟΜΗΝΙΑ. Περιγράφει την πύλη, τη
+// λίστα των πελατών και τον φάκελο ανά ΑΦΜ· όταν αλλάξει ουσιαστικά κάποιο
+// από αυτά, αλλάζει με το χέρι μαζί τους. Ποτέ μελλοντική (publicMetadata.test.ts).
+const ACCOUNTANTS_UPDATED = '2026-10-03'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE
@@ -36,6 +51,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/ypologismos-enfia`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/vraxyxronia-i-makroxronia`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/kathari-apodosi`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/ypologismos-stegastikou-daneiou`, lastModified: MORTGAGE_TOOL_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/sygkrisi-timologion-revmatos`, lastModified: POWER_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     // Κόμβος οδηγών: η μία σελίδα που μαζεύει όλους τους οδηγούς, συνδεδεμένη
     // από το υποσέλιδο κάθε δημόσιας σελίδας. Η ημερομηνία του είναι η πιο
     // πρόσφατη των οδηγών του, αφού αυτούς δείχνει.
@@ -49,6 +66,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Τι περιλαμβάνει κάθε πακέτο: η ερώτηση που κάνει ο επισκέπτης ΠΡΙΝ
     // εγγραφεί, οπότε η απάντηση δεν ζει πίσω από τη σύνδεση.
     { url: `${base}/paketa`, lastModified: PAGES_UPDATED.paketa, changeFrequency: 'monthly', priority: 0.8 },
+    // Για λογιστές: ο άλλος άνθρωπος του φακέλου. Απαντά σε αναζήτηση που κάνει
+    // ο λογιστής, όχι ο ιδιοκτήτης, οπότε ζει ανοιχτή όπως τα πακέτα.
+    { url: `${base}/logistes`, lastModified: ACCOUNTANTS_UPDATED, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${base}/signup`, lastModified: PAGES_UPDATED.signup, changeFrequency: 'monthly', priority: 0.8 },
     // Η ΣΥΝΔΕΣΗ ΒΓΗΚΕ. Ο χάρτης λέει «ευρετηρίασε αυτό» και η ίδια η σελίδα
     // λέει πλέον `noindex`: δύο αντικρουόμενα σήματα για το ίδιο πράγμα. Η

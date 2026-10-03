@@ -178,7 +178,7 @@ export default function Page() {
           <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 }}>{hy(<>
             Η σύγκριση δείχνει ποιο συμφέρει· ο οδηγός{' '}
             <Link href="/odigos/airbnb-takk-2026" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
-              Airbnb και ΤΑΚΚ 2026
+              Φορολογία Airbnb 2026
             </Link>{' '}εξηγεί το τέλος ανά διανυκτέρευση, τον φόρο της βραχυχρόνιας μίσθωσης και το τέλος παρεπιδημούντων, με παραδείγματα σε ευρώ.
           </>)}</p>
         </section>

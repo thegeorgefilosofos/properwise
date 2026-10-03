@@ -9,7 +9,7 @@
 // Τρέξε: npx tsx app/odigos/forologikes-prothesmies-idioktiton/next.test.ts
 // ═══════════════════════════════════════════════════════════════════════════
 import { upcomingRows, nextOfKind } from './next'
-import { greekPropertyTaxObligations, type TaxObligation } from '@/lib/tax/greekTaxCalendar'
+import { greekPropertyTaxObligations, lastWorkingDayOfMonth, type TaxObligation } from '@/lib/tax/greekTaxCalendar'
 
 let passed = 0, failed = 0
 const fails: string[] = []
@@ -18,7 +18,7 @@ const ok = (name: string, cond: boolean) => { if (cond) passed++; else { failed+
 const KINDS: TaxObligation['kind'][] = ['enfia-issue', 'enfia-first', 'enfia-last', 'e9', 'income-autofile', 'income-decl']
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10)
 
-let days = 0, missingInRows = 0, threw = 0, tripled = 0
+let days = 0, missingInRows = 0, threw = 0, tripled = 0, manyInstalments = 0, wrongInstalment = 0
 for (let t = Date.UTC(2026, 0, 1); t <= Date.UTC(2031, 11, 31); t += 86400000) {
   const today = iso(t)
   days++
@@ -36,6 +36,13 @@ for (let t = Date.UTC(2026, 0, 1); t <= Date.UTC(2031, 11, 31); t += 86400000) {
     const seen = new Map<string, number>()
     for (const r of rows) seen.set(r.kind, (seen.get(r.kind) ?? 0) + 1)
     if ([...seen.values()].some(n => n > 2)) tripled++
+    // Οι ενδιάμεσες δόσεις: το πολύ μία γραμμή και είναι η πρώτη επερχόμενη.
+    if ((seen.get('enfia-instalment') ?? 0) > 1) manyInstalments++
+    const shown = rows.find(r => r.kind === 'enfia-instalment')
+    const year = Number(today.slice(0, 4))
+    const nextReal = [year - 1, year].flatMap(y => greekPropertyTaxObligations(y, 'owner'))
+      .filter(o => o.kind === 'enfia-instalment' && o.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0]
+    if ((shown?.id ?? null) !== (nextReal?.id ?? null)) wrongInstalment++
   } catch (e) {
     threw++
     ok(`${today}: πέταξε ${(e as Error).message}`, false)
@@ -45,6 +52,22 @@ ok(`έλεγχος ${days} ημερών`, days > 2000)
 ok('καμία μέρα δεν πετάει', threw === 0)
 ok(`κάθε είδος βρίσκεται μέσα στον πίνακα (λείπει ${missingInRows})`, missingInRows === 0)
 ok('κανένα είδος τρεις φορές', tripled === 0)
+ok(`ποτέ πάνω από μία ενδιάμεση δόση (${manyInstalments} μέρες)`, manyInstalments === 0)
+ok(`η ενδιάμεση δόση του πίνακα είναι πάντα η επόμενη της μηχανής (${wrongInstalment} μέρες)`, wrongInstalment === 0)
+
+// ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΕΚΔΟΘΕΝΤΟΣ 2026 (03.10.2026): μία γραμμή, η επόμενη, όχι δέκα.
+{
+  const inst = (d: string) => upcomingRows(d).filter(r => r.kind === 'enfia-instalment')
+  ok('2.10.2026: μία ενδιάμεση δόση', inst('2026-10-02').length === 1)
+  ok('2.10.2026: είναι η όγδοη, στο τέλος Οκτωβρίου', inst('2026-10-02')[0]?.id === 'enfia-instalment-2026-8' && inst('2026-10-02')[0]?.date === lastWorkingDayOfMonth(2026, 9))
+  ok('15.11.2026: η ένατη, στο τέλος Νοεμβρίου', inst('2026-11-15')[0]?.id === 'enfia-instalment-2026-9' && inst('2026-11-15')[0]?.date === lastWorkingDayOfMonth(2026, 10))
+  ok('1.3.2027: το 2027 δεν έχει εκδοθεί, καμία ενδιάμεση', inst('2027-03-01').length === 0)
+  // Η πρώτη και η τελευταία δόση μένουν δικές τους γραμμές, όπως πριν.
+  const rows = upcomingRows('2026-10-02')
+  ok('2.10.2026: η τελευταία δόση του 2026 μένει γραμμή', rows.some(r => r.id === 'enfia-last-2026'))
+  ok('2.10.2026: η πρώτη δόση του 2027 μένει γραμμή', rows.some(r => r.id === 'enfia-first-2027'))
+  ok('2.10.2026: ο πίνακας μένει σύντομος', rows.length <= 8)
+}
 
 // Οι συγκεκριμένες μέρες που έριχναν τη σελίδα.
 for (const d of ['2027-02-27', '2027-02-28', '2027-07-16', '2027-07-17', '2030-03-16', '2030-03-17', '2030-03-30', '2030-03-31']) {
