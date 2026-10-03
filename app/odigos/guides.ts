@@ -44,11 +44,11 @@ export const GUIDES: readonly Guide[] = [
   {
     href: '/odigos/airbnb-takk-2026',
     kicker: 'Βραχυχρόνια',
-    title: 'Airbnb και ΤΑΚΚ 2026',
+    title: 'Φορολογία Airbnb 2026',
     desc: 'Τι πληρώνεις για βραχυχρόνια μίσθωση: το ΤΑΚΚ ανά διανυκτέρευση, το τέλος '
         + `παρεπιδημούντων ${fpRate(MUNICIPAL_ACCOM_TAX_RATE * 100)} και ο φόρος εισοδήματος.`,
     published: '2026-09-21',
-    updated: '2026-09-24',
+    updated: '2026-10-03',
   },
   {
     href: '/odigos/pos-ypologizetai-o-enfia',
