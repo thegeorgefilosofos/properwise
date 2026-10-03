@@ -32,7 +32,7 @@ const mixed = indexNowPayload([
 ], S, K);
 ok('οι διπλές μένουν μία', mixed.urlList.filter(u => u === `${S}/odigos`).length === 1);
 ok('τα κενά γύρω κόβονται', mixed.urlList.includes(`${S}/terms`));
-ok('ξένος τομέας φεύγει', !mixed.urlList.some(u => u.includes('example.com')));
+ok('ξένος τομέας φεύγει: κάθε διεύθυνση έχει την προέλευση του site', mixed.urlList.every(u => new URL(u).origin === new URL(S).origin));
 ok('http στον ίδιο τομέα φεύγει: άλλη προέλευση', !mixed.urlList.some(u => u.startsWith('http://')));
 ok('η ρίζα με και χωρίς κάθετο είναι μία', mixed.urlList.filter(u => u === S || u === `${S}/`).length === 1);
 ok('ό,τι δεν είναι διεύθυνση αγνοείται', mixed.urlList.length === 3);
