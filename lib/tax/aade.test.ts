@@ -82,7 +82,7 @@ const ALL = Object.keys(AADE_DESTINATIONS) as AadeAction[]
   eq('καμία υποχρέωση δεν καταλήγει στο γενικό ημερολόγιο', generic, '')
   eq('η αυτόματη οριστικοποίηση πάει στη δήλωση εισοδήματος', destinationForKind('income-autofile'), 'income')
   eq('ο ΕΝΦΙΑ σε κάθε φάση πάει στον ΕΝΦΙΑ',
-    ['enfia-issue', 'enfia-first', 'enfia-last'].map(destinationForKind), ['enfia', 'enfia', 'enfia'])
+    ['enfia-issue', 'enfia-first', 'enfia-instalment', 'enfia-last'].map(destinationForKind), ['enfia', 'enfia', 'enfia', 'enfia'])
   eq('άγνωστο είδος πέφτει στο ημερολόγιο, όχι σε λάθος εφαρμογή', destinationForKind('κάτι-άλλο'), 'calendar')
 }
 

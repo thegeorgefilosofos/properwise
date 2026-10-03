@@ -31,6 +31,13 @@ function addDaysISO(iso: string, n: number): string {
  *
  * Το περιθώριο δέχεται ΜΟΝΟ είδος που δεν υπάρχει ήδη στο δωδεκάμηνο, ώστε ο
  * πίνακας να μη δείχνει το ίδιο Ε9 δύο φορές.
+ *
+ * ΟΙ ΕΝΔΙΑΜΕΣΕΣ ΔΟΣΕΙΣ ΤΟΥ ΕΝΦΙΑ, ΜΙΑ ΓΡΑΜΜΗ (03.10.2026). Το ημερολόγιο
+ * βγάζει πλέον και τις δόσεις 2 ως 11 του εκδοθέντος εκκαθαριστικού. Δέκα
+ * γραμμές «ΕΝΦΙΑ, νη δόση» θα έκαναν τον πίνακα των σταθμών κατάλογο δόσεων,
+ * ενώ η σελίδα λέει ρητά ότι οι μηνιαίες δεν γράφονται μία μία. Μένει μόνο η
+ * ΕΠΟΜΕΝΗ ενδιάμεση δόση, δίπλα στην πρώτη και την τελευταία που είχε ήδη:
+ * αυτή είναι η προθεσμία που ψάχνει όποιος ανοίγει τη σελίδα τον Οκτώβριο.
  */
 export function upcomingRows(today: string): TaxObligation[] {
   const year = Number(today.slice(0, 4))
@@ -41,7 +48,14 @@ export function upcomingRows(today: string): TaxObligation[] {
     ...greekPropertyTaxObligations(year, 'owner'),
     ...greekPropertyTaxObligations(year + 1, 'owner'),
   ].sort((a, b) => a.date.localeCompare(b.date))
-  const base = all.filter(o => o.date >= today && o.date < yearOn)
+  let seenInstalment = false
+  const base = all.filter(o => {
+    if (o.date < today || o.date >= yearOn) return false
+    if (o.kind !== 'enfia-instalment') return true
+    if (seenInstalment) return false
+    seenInstalment = true
+    return true
+  })
   const have = new Set(base.map(o => o.kind))
   const extra = all.filter(o => o.date >= yearOn && o.date <= until && !have.has(o.kind))
   return [...base, ...extra]

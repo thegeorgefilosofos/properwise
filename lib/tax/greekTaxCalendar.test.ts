@@ -65,6 +65,40 @@ const e27 = (k: string) => greekPropertyTaxObligations(2027, 'owner').find(o => 
 ok('ΕΝΦΙΑ 2027 χωρίς έκδοση μένει announced', e27('enfia-first').confidence === 'announced' && e27('enfia-last').confidence === 'announced')
 ok('ΕΝΦΙΑ 2027 τελευταία δόση τέλος Φεβ 2028', e27('enfia-last').date === lastWorkingDayOfMonth(2028, 1))
 
+// ── ΟΙ ΔΕΚΑ ΕΝΔΙΑΜΕΣΕΣ ΔΟΣΕΙΣ ΤΟΥ ΕΚΔΟΘΕΝΤΟΣ ΕΝΦΙΑ (03.10.2026) ──────────────
+// Πριν, το ημερολόγιο ήξερε μόνο την 1η και τη 12η δόση και τον Οκτώβριο η
+// «επόμενη προθεσμία ΕΝΦΙΑ» ήταν ο Φεβρουάριος, όχι η 30ή Οκτωβρίου.
+{
+  const mid = owner.filter(o => o.kind === 'enfia-instalment')
+  ok('2026: δέκα ενδιάμεσες δόσεις', mid.length === 10)
+  ok('2026: κλειδιά enfia-instalment-2026-2 ως -11', mid.map(o => o.id).join(',') === Array.from({ length: 10 }, (_, i) => `enfia-instalment-2026-${i + 2}`).join(','))
+  ok('2026: τίτλοι «ΕΝΦΙΑ, νη δόση»', mid.every((o, i) => o.title === `ΕΝΦΙΑ, ${i + 2}η δόση`))
+  // Απρίλιος 2026 ως Ιανουάριος 2027, τελευταία εργάσιμη του καθενός.
+  ok('2026: κάθε δόση την τελευταία εργάσιμη του μήνα της', mid.every((o, i) => {
+    const t = 2 + i + 1
+    return o.date === lastWorkingDayOfMonth(2026 + Math.floor(t / 12), t % 12)
+  }))
+  ok('2026: 8η δόση 30/10/2026', mid.find(o => o.id === 'enfia-instalment-2026-8')?.date === '2026-10-30')
+  ok('2026: 11η δόση τέλος Ιανουαρίου 2027', mid.find(o => o.id === 'enfia-instalment-2026-11')?.date === lastWorkingDayOfMonth(2027, 0))
+  ok('2026: του νόμου, με την πηγή', mid.every(o => o.confidence === 'statutory' && o.notes.includes('Α.1061/13-03-2026') && o.notes.includes('4223/2013')))
+  ok('2026: ο ιδιοκτήτης, φάκελος enfia', mid.every(o => o.who === 'owner' && o.dossier === 'enfia'))
+  ok('2026: και τα τρία προφίλ', mid.every(o => o.profiles.length === 3))
+  // Δώδεκα πληρωμές συνολικά, μία ανά μήνα, από τον Μάρτιο ως τον Φεβρουάριο.
+  const pays = owner.filter(o => o.kind === 'enfia-first' || o.kind === 'enfia-instalment' || o.kind === 'enfia-last')
+  ok('2026: δώδεκα πληρωμές συνολικά', pays.length === 12)
+  ok('2026: μία ανά μήνα, με τη σειρά', pays.every((o, i) => i === 0 || o.date.slice(0, 7) > pays[i - 1].date.slice(0, 7)))
+  ok('2026: η πρώτη και η τελευταία άθικτες', pays[0].id === 'enfia-first-2026' && pays[11].id === 'enfia-last-2026')
+  // Έτος χωρίς έκδοση: καμία ενδιάμεση, καμία εικασία.
+  ok('2027: χωρίς έκδοση, καμία ενδιάμεση δόση', !greekPropertyTaxObligations(2027, 'owner').some(o => o.kind === 'enfia-instalment'))
+  // Το κλειδί γεγονότος γυρίζει στο είδος και στο έτος του.
+  ok('kind από κλειδί δόσης', taxKindOfEventSource('tax:enfia-instalment-2026-7') === 'enfia-instalment')
+  ok('η 7η δόση από το κλειδί της', taxObligationOfEventSource('tax:enfia-instalment-2026-7')?.date === lastWorkingDayOfMonth(2026, 8))
+  // Το meta του είδους υπάρχει και σε έτος χωρίς έκδοση (η κάρτα του Ημερολογίου
+  // δείχνει τη δόση του 2026 μέσα στο 2027).
+  ok('meta ενδιάμεσης δόσης σε έτος χωρίς έκδοση', taxKindMeta(2027)['enfia-instalment']?.who === 'owner')
+  ok('ο προορισμός της δόσης είναι ο ΕΝΦΙΑ', mid.every(o => o.official_url === AADE_DESTINATIONS.enfia.url))
+}
+
 // ── long_term ────────────────────────────────────────────────────────────────
 const lt = greekPropertyTaxObligations(2026, 'long_term')
 ok('long_term έχει owner-υποχρεώσεις', lt.some(o => o.id.startsWith('enfia-first')) && lt.some(o => o.id.startsWith('income-decl')))
@@ -157,6 +191,7 @@ ok('ορίζοντας: μοναδικά ids', new Set(hz.map(o => o.id)).size =
 // Ο χρήστης του Δεκεμβρίου ΠΡΕΠΕΙ να βλέπει την τελευταία δόση του Φεβρουαρίου.
 ok('ορίζοντας φτάνει στον Φεβρουάριο 2027', hz.some(o => o.kind === 'enfia-last' && o.date.startsWith('2027-02')))
 ok('ορίζοντας φτάνει στη 1η δόση 2027', hz.some(o => o.kind === 'enfia-first' && o.date.startsWith('2027-03')))
+ok('ορίζοντας Δεκεμβρίου έχει την 11η δόση του Ιανουαρίου', hz.some(o => o.id === 'enfia-instalment-2026-11' && o.date.startsWith('2027-01')))
 ok('ορίζοντας ΔΕΝ φτάνει στο 2028', hz.every(o => o.date < '2027-04-01'))
 ok('ορίζοντας ΔΕΝ γυρίζει πριν την 1η Ιανουαρίου', hz.every(o => o.date >= '2026-01-01'))
 // Ο χρήστης του Ιανουαρίου: η τελευταία δόση της ΠΕΡΣΙΝΗΣ εκκαθάρισης πέφτει μέσα

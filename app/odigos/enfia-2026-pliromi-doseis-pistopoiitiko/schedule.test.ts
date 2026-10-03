@@ -1,15 +1,18 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΟΔΗΓΟΥ ΠΛΗΡΩΜΗΣ ΣΥΜΦΩΝΟΥΝ ΜΕ ΤΟ ΗΜΕΡΟΛΟΓΙΟ
 //
-// Ο οδηγός δείχνει δώδεκα ημερομηνίες που δεν είναι γραμμένες πουθενά: τις
-// χτίζει από την πρώτη και την τελευταία δόση του greekTaxCalendar.ts. Εδώ
+// Ο οδηγός δείχνει δώδεκα ημερομηνίες που δεν είναι γραμμένες πουθενά: για
+// εκδοθέν έτος τις διαβάζει όλες από το greekTaxCalendar.ts, για έτος χωρίς
+// έκδοση συμπληρώνει τις ενδιάμεσες ανάμεσα στην πρώτη και την τελευταία. Εδώ
 // ελέγχεται ότι οι άκρες είναι ακριβώς εκείνες, ότι κάθε δόση πέφτει σε
-// εργάσιμη στον δικό της μήνα και ότι η πηγή του εκκαθαριστικού διαβάζεται.
+// εργάσιμη στον δικό της μήνα, ότι οι ενδιάμεσες του 2026 είναι οι ίδιες με
+// τις υπενθυμίσεις της εφαρμογής και ότι η πηγή του εκκαθαριστικού διαβάζεται.
 //
 // Τρέξε: npx tsx app/odigos/enfia-2026-pliromi-doseis-pistopoiitiko/schedule.test.ts
 // ═══════════════════════════════════════════════════════════════════════════
 import { enfiaInstalments, enfiaIssueBasis, instalmentStatus, obligationOf } from './schedule'
 import { isNonWorkingDay } from '@/lib/calendar/greekHolidays'
+import { greekPropertyTaxObligations } from '@/lib/tax/greekTaxCalendar'
 
 let passed = 0, failed = 0
 const fails: string[] = []
@@ -34,6 +37,16 @@ ok('2026: τελευταία δόση 26.2.2027', enfiaInstalments(2026).at(-1) 
 
 // Το επόμενο έτος δεν έχει εκδοθεί: καμία πηγή, καμία εφεύρεση.
 ok('2027: χωρίς πηγή πριν από την έκδοση', enfiaIssueBasis(2027) === null)
+
+// ΟΙ ΕΝΔΙΑΜΕΣΕΣ ΤΟΥ 2026 ΕΙΝΑΙ ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ (03.10.2026). Ο οδηγός και η
+// υπενθύμιση της εφαρμογής δεν μπορούν να διαφωνήσουν σε καμία από τις δέκα.
+{
+  const engine = greekPropertyTaxObligations(2026, 'owner').filter(o => o.kind === 'enfia-instalment')
+  ok('2026: η μηχανή έχει δέκα ενδιάμεσες', engine.length === 10)
+  ok('2026: ο οδηγός δείχνει ακριβώς αυτές', JSON.stringify(enfiaInstalments(2026).slice(1, -1)) === JSON.stringify(engine.map(o => o.date)))
+  ok('2026: με τη σειρά των αριθμών τους', engine.every((o, i) => o.id === `enfia-instalment-2026-${i + 2}`))
+  ok('2027: χωρίς έκδοση, η μηχανή δεν έχει ενδιάμεσες', !greekPropertyTaxObligations(2027, 'owner').some(o => o.kind === 'enfia-instalment'))
+}
 
 // Πού βρίσκεται ο αναγνώστης.
 const d26 = enfiaInstalments(2026)

@@ -29,7 +29,7 @@ export type PropertyTaxProfile = 'owner' | 'long_term' | 'short_term'
  *  `${kind}-${έτος}` (ή `-${μήνας}` για τις μηνιαίες). Χρησιμεύει σε κάθε οθόνη
  *  που θέλει «μία γραμμή ανά υποχρέωση» και όχι δώδεκα ίδιες. */
 export type TaxObligationKind =
-  | 'enfia-issue' | 'enfia-first' | 'enfia-last'
+  | 'enfia-issue' | 'enfia-first' | 'enfia-instalment' | 'enfia-last'
   | 'e9' | 'income-decl' | 'income-autofile'
   | 'str-registry' | 'str-climate-fee'
 
@@ -68,7 +68,7 @@ export const isTaxEventSource = (source?: string | null): boolean =>
   !!source && source.startsWith(TAX_SOURCE_PREFIX)
 
 export const TAX_KINDS: readonly TaxObligationKind[] = [
-  'enfia-issue', 'enfia-first', 'enfia-last', 'e9', 'income-autofile', 'income-decl',
+  'enfia-issue', 'enfia-first', 'enfia-instalment', 'enfia-last', 'e9', 'income-autofile', 'income-decl',
   'str-registry', 'str-climate-fee',
 ]
 
@@ -87,10 +87,21 @@ export function taxKindOfEventSource(source?: string | null): TaxObligationKind 
 
 /** Μία αντιπροσωπευτική υποχρέωση ανά είδος. Το `who` και το `official_url` δεν
  *  εξαρτώνται από το έτος. Το `confidence` του ΕΝΦΙΑ εξαρτάται (βλ. ENFIA_ISSUED):
- *  για συγκεκριμένο γεγονός διάβασε την `taxObligationOfEventSource`. */
+ *  για συγκεκριμένο γεγονός διάβασε την `taxObligationOfEventSource`.
+ *
+ *  ΟΙ ΕΝΔΙΑΜΕΣΕΣ ΔΟΣΕΙΣ ΤΟΥ ΕΝΦΙΑ ΥΠΑΡΧΟΥΝ ΜΟΝΟ ΣΕ ΕΤΟΣ ΜΕ ΕΚΔΟΘΕΝ ΕΚΚΑΘΑΡΙΣΤΙΚΟ.
+ *  Σε έτος χωρίς έκδοση το είδος `enfia-instalment` δεν βγαίνει από τη μηχανή και ο
+ *  πίνακας θα έμενε με κενό: η κάρτα του Ημερολογίου που δείχνει τη δόση του 2026
+ *  μέσα στο 2027 θα διάβαζε `undefined.who`. Το κενό γεμίζει από το πιο πρόσφατο
+ *  εκδοθέν έτος, που έχει το ίδιο `who` και τον ίδιο προορισμό. */
 export function taxKindMeta(year: number): Record<TaxObligationKind, TaxObligation> {
   const m = {} as Record<TaxObligationKind, TaxObligation>
   for (const o of greekPropertyTaxObligations(year, 'short_term')) if (!m[o.kind]) m[o.kind] = o
+  const issuedYears = Object.keys(ENFIA_ISSUED).map(Number).sort((a, b) => b - a)
+  for (const y of issuedYears) {
+    if (TAX_KINDS.every(k => !!m[k])) break
+    for (const o of greekPropertyTaxObligations(y, 'short_term')) if (!m[o.kind]) m[o.kind] = o
+  }
   return m
 }
 
@@ -191,6 +202,37 @@ function ownerObligations(year: number): Draft[] {
     category: 'tax', confidence: enfiaConfidence, profiles: ['owner', 'long_term', 'short_term'],
     who: 'owner', dossier: 'enfia',
   })
+  // ── ΟΙ ΔΟΣΕΙΣ 2 ΩΣ 11, ΜΟΝΟ ΟΤΑΝ ΤΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΕΧΕΙ ΕΚΔΟΘΕΙ ─────────────
+  //
+  // ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΚΛΕΙΝΕΙ (03.10.2026). Το ημερολόγιο έβγαζε μόνο την πρώτη και
+  // τη δωδέκατη δόση. Η Επισκόπηση, οι Εκκρεμότητες και οι υπενθυμίσεις
+  // έλεγαν τον Οκτώβριο του 2026 ότι «η επόμενη προθεσμία ΕΝΦΙΑ» είναι ο
+  // Φεβρουάριος του 2027, ενώ η όγδοη δόση έληγε στις 30 Οκτωβρίου. Ο χρήστης
+  // που πληρώνει σε δόσεις έμενε χωρίς υπενθύμιση για δέκα από τις δώδεκα.
+  //
+  // Ο κανόνας είναι του ίδιου νόμου με τις δύο άκρες (ν. 4223/2013, άρθρο 6):
+  // κάθε επόμενη δόση ως την τελευταία εργάσιμη κάθε επόμενου μήνα. Ο μήνας
+  // έκδοσης και το πλήθος των δόσεων έρχονται από την απόφαση του έτους
+  // (ENFIA_ISSUED), γι' αυτό οι ενδιάμεσες βγαίνουν ΜΟΝΟ για εκδοθέν έτος: σε
+  // έτος χωρίς απόφαση ούτε ο μήνας ούτε το πλήθος είναι γνωστά και δέκα
+  // «περυσινές» ημερομηνίες θα γέμιζαν το ημερολόγιο με εικασίες. Εκεί
+  // μένουν η πρώτη και η τελευταία, όπως πριν, σημειωμένες «περυσινές».
+  //
+  // Τα `enfia-first` και `enfia-last` κρατούν τα κλειδιά και τα είδη τους: ο
+  // οδηγός προθεσμιών, η επίδειξη και το reel τα διαβάζουν ήδη.
+  if (issued) {
+    for (let n = 2; n <= 11; n++) {
+      const t = issueMonth + n - 1
+      out.push({
+        kind: 'enfia-instalment', id: `enfia-instalment-${year}-${n}`,
+        date: lastWorkingDayOfMonth(year + Math.floor(t / 12), t % 12),
+        title: `ΕΝΦΙΑ, ${n}η δόση`,
+        notes: `Καταληκτική ${n}ης δόσης ΕΝΦΙΑ, την τελευταία εργάσιμη του μήνα της.${enfiaBasis} ${CONFIRM}`,
+        category: 'tax', confidence: enfiaConfidence, profiles: ['owner', 'long_term', 'short_term'],
+        who: 'owner', dossier: 'enfia',
+      })
+    }
+  }
   out.push({
     // Η δωδέκατη δόση: έντεκα μήνες μετά τον μήνα της πρώτης.
     kind: 'enfia-last', id: `enfia-last-${year}`, date: lastWorkingDayOfMonth(year + Math.floor((issueMonth + 11) / 12), (issueMonth + 11) % 12), // τέλος Φεβρουαρίου επόμενου έτους

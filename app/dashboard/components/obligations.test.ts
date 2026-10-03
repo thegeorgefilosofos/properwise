@@ -275,6 +275,42 @@ ok('η καστάνια σαρώνει πραγματικά αρχεία', files
   ok('1.1: η δήλωση διαμονής είναι η 20.1', jan.find(o => taxKindOfEventSource(o.source) === 'str-registry')?.date === nextWorkingDay('2027-01-20'))
 }
 
+// ── ΟΙ ΔΩΔΕΚΑ ΔΟΣΕΙΣ ΤΟΥ ΕΝΦΙΑ: ΜΙΑ ΓΡΑΜΜΗ, Η ΕΠΟΜΕΝΗ (03.10.2026) ────────────
+// Πριν: το ημερολόγιο είχε μόνο την πρώτη και τη δωδέκατη δόση, οπότε στις
+// 2.10.2026 η κάρτα έλεγε «ΕΝΦΙΑ, τελευταία δόση 26.2.2027» ως επόμενη
+// πληρωμή ΕΝΦΙΑ, ενώ η όγδοη δόση έληγε στις 30.10. Τώρα οι δέκα ενδιάμεσες
+// βγαίνουν από τη μηχανή και μαζεύονται σε ΜΙΑ γραμμή, όχι δέκα.
+{
+  const isPay = (o: Obligation) => ['enfia-first', 'enfia-instalment', 'enfia-last'].includes(taxKindOfEventSource(o.source) ?? '')
+  const isMid = (o: Obligation) => taxKindOfEventSource(o.source) === 'enfia-instalment'
+  const at = (d: Date) => computeObligations(prop, null, [], d, 'long_term')
+
+  const oct = at(new Date(2026, 9, 2))
+  const octPay = oct.filter(isPay)
+  ok('2.10: η επόμενη πληρωμή ΕΝΦΙΑ είναι η δόση του Οκτωβρίου', octPay[0]?.date === lastWorkingDayOfMonth(2026, 9))
+  ok('2.10: και είναι η όγδοη', octPay[0]?.title === 'ΕΝΦΙΑ, 8η δόση')
+  ok('2.10: με το κλειδί της μηχανής', octPay[0]?.source === taxEventSource('enfia-instalment-2026-8'))
+  ok('2.10: μία μόνο ενδιάμεση δόση, όχι δέκα', oct.filter(isMid).length === 1)
+  ok('2.10: του νόμου, υψηλής προτεραιότητας', octPay[0]?.confidence === 'statutory' && octPay[0]?.priority === 'high')
+  ok('2.10: ο ΕΝΦΙΑ του χρήστη και στη δόση', octPay[0]?.note.includes('480') === true)
+  ok('2.10: η τελευταία δόση μένει δική της γραμμή', oct.some(o => o.source === taxEventSource('enfia-last-2026')))
+
+  const nov = at(new Date(2026, 10, 15)).filter(isPay)
+  ok('15.11: η επόμενη πληρωμή ΕΝΦΙΑ είναι η δόση του Νοεμβρίου', nov[0]?.date === lastWorkingDayOfMonth(2026, 10))
+  ok('15.11: και είναι η ένατη', nov[0]?.title === 'ΕΝΦΙΑ, 9η δόση')
+
+  // Περασμένη ενδιάμεση δεν μένει «εκπρόθεσμη»: τη διαδέχεται η δωδέκατη.
+  const feb = at(new Date(2027, 1, 10))
+  ok('10.2.2027: καμία περασμένη ενδιάμεση δόση', !feb.some(isMid))
+  ok('10.2.2027: η επόμενη πληρωμή είναι η τελευταία δόση του 2026', feb.filter(isPay)[0]?.source === taxEventSource('enfia-last-2026'))
+  // Το 2027 δεν έχει εκδοθεί: τον Απρίλιο δεν υπάρχει ενδιάμεση, μόνο οι άκρες.
+  ok('10.4.2027: χωρίς έκδοση, καμία ενδιάμεση', !at(new Date(2027, 3, 10)).some(isMid))
+  // Το ίδιο κλειδί γράφει και το Ημερολόγιο, με την ίδια ημερομηνία.
+  const calOct = taxObligationsHorizon('2026-10-02', 'long_term').map(taxObligationToEvent)
+  ok('2.10: η δόση υπάρχει στο Ημερολόγιο με το ίδιο κλειδί και ημερομηνία',
+    calOct.some(r => r.source === octPay[0]?.source && r.event_date === octPay[0]?.date))
+}
+
 console.log(`\nobligations.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed) { console.log('FAILED:\n' + fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1) }
 console.log('όλα πέρασαν')

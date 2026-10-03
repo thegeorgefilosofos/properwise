@@ -82,6 +82,8 @@ export interface ChecklistTaskDraft {
 const TAX_CATEGORY: Record<TaxObligationKind, string> = {
   'enfia-issue': 'legal',
   'enfia-first': 'financial',
+  // Οι ενδιάμεσες δόσεις (2η ως 11η) είναι πληρωμές όπως η πρώτη και η τελευταία.
+  'enfia-instalment': 'financial',
   'enfia-last': 'financial',
   e9: 'legal',
   'income-decl': 'legal',
