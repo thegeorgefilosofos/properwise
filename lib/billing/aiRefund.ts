@@ -90,8 +90,15 @@ export async function refundAiUsage(userId: string, pool = true): Promise<boolea
  */
 export async function refundScanUsage(userId: string, pool = false): Promise<boolean> {
   try {
-    return refundOutcome(await createServiceClient()
-      .rpc('refund_scan_usage', { p_uid: userId, p_pool: pool }));
+    const db = createServiceClient();
+    const res = await db.rpc('refund_scan_usage', { p_uid: userId, p_pool: pool });
+    // ΜΕΤΑΒΑΤΙΚΟ. Αν η εφαρμογή ανέβει πριν από τη βάση, η συνάρτηση δεν ξέρει
+    // ακόμη το `p_pool` (PGRST202). Τότε γυρίζει τουλάχιστον τον μήνα, με την
+    // παλιά κλήση. Φεύγει όταν η 20261003130000 είναι παντού.
+    if (res.error && (res.error as { code?: string }).code === 'PGRST202') {
+      return refundOutcome(await db.rpc('refund_scan_usage', { p_uid: userId }));
+    }
+    return refundOutcome(res);
   } catch (err) {
     console.error(REFUND_LOG, err instanceof Error ? err.message : err);
     return false;
