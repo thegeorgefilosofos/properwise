@@ -319,6 +319,12 @@ export const config = {
     // αναφέρει ευπάθεια έβρισκε φόρμα εισόδου και ο σύνδεσμος «πολιτική
     // γνωστοποίησης ευπαθειών» της σελίδας εμπιστοσύνης ήταν νεκρός. Ο φύλακας
     // guard-security-txt ελέγχει πλέον ότι η διαδρομή μένει έξω από εδώ.
-    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|(?:.*/)?opengraph-image|og/|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    //
+    // ── ΚΑΙ ΤΟ ΚΛΕΙΔΙ ΤΟΥ IndexNow ──────────────────────────────────────────
+    // Το `/<κλειδί>.txt` (public/, INDEXNOW_KEY στο lib/core/site.ts) το ζητούν
+    // ανώνυμα οι μηχανές για να επαληθεύσουν τον τομέα, όπως το αρχείο του
+    // Search Console. Στατικό αρχείο για μηχανές: δεν θέλει ούτε συνεδρία ούτε
+    // κεφαλίδες. Το lib/seo/indexnow.test.ts ελέγχει ότι μένει έξω από εδώ.
+    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|(?:.*/)?opengraph-image|og/|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|[0-9a-f]+\\.txt$|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
