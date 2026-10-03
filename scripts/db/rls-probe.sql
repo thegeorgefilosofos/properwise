@@ -2291,6 +2291,148 @@ begin
   raise notice 'probe: ο δωρεάν «Ιδιοκτήτης» δεν ρωτά τη Νόα και κόβεται στην έκτη σάρωση· ο «Ιδιοκτήτης με Νόα» σαρώνει ελεύθερα';
 end $probe$;
 
+-- ── Η ΣΑΡΩΣΗ ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ ΜΕΤΡΙΕΤΑΙ (20261003100000) ────────────────────
+-- ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΚΛΕΙΝΕΙ. Η `bump_scan_usage` έκοβε μόνο τον βαθμό 0. Η τοπική
+-- δοκιμή ανεβάζει τον λογαριασμό στο «Ιδιοκτήτης+», οι δωρεάν μήνες σε ό,τι
+-- γράφει το `comp_plan`: όλοι αυτοί σάρωναν χωρίς όριο και χωρίς να αγγίζουν
+-- την κοινή δεξαμενή. Κρίνονται εδώ, με την ΑΛΗΘΙΝΗ συνάρτηση:
+--   1. Η δοκιμή περνά ακριβώς `trial_scan` σαρώσεις, η καθεμία χρεώνει μία
+--      μονάδα της δεξαμενής και η επόμενη κόβεται με 'scan_month' χωρίς να
+--      χρεώσει τίποτα.
+--   2. Η άρνηση του λεπτού δεν τρώει σάρωση του μήνα ούτε δεξαμενή.
+--   3. Με γεμάτη δεξαμενή η σάρωση κόβεται με 'pool' και δεν μετρά πουθενά.
+--   4. Οι δωρεάν μήνες κόβονται το ίδιο· ο δωρεάν βαθμός 0 και ο συνδρομητής
+--      δεν αγγίζουν τη δεξαμενή.
+-- ΤΟ ΦΡΑΓΜΑ ΑΝΑ ΛΕΠΤΟ αδειάζει πριν από κάθε σάρωση του βρόχου, όπως στον
+-- δοκιμαστή πιο πάνω: αλλιώς η 21η θα κοβόταν για ΑΛΛΟ λόγο.
+do $probe$
+declare
+  t     uuid := '33333333-3333-3333-3333-333333333336';
+  scans int[] := array[5, null, null, null, null];
+  cap   int  := (public.ai_plan_limits()->>'trial_scan')::int;
+  lpool int  := (public.ai_plan_limits()->>'pool')::int;
+  mon   date := date_trunc('month', (now() at time zone 'Europe/Athens'))::date;
+  saved int;
+  pool0 int;
+  pool1 int;
+  res   json;
+  i     int;
+begin
+  if cap is null or cap <= (scans[1]) then
+    raise exception 'Ο έλεγχος θα ήταν κενός: η ai_plan_limits() δεν έχει trial_scan πάνω από το δωρεάν (%)', cap;
+  end if;
+  insert into auth.users (id, email) values (t, 'dokimi-sarosi@probe.test');
+  insert into public.billing_profiles (user_id, plan, trial_used_at, tester_since, comp_plan, comp_until)
+    values (t, 'free', null, null, null, null)
+    on conflict (user_id) do update
+      set plan = 'free', trial_used_at = null, tester_since = null, comp_plan = null, comp_until = null;
+  if public.user_plan_rank(t) <> 2 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: ο λογαριασμός σε δοκιμή έχει βαθμό %', public.user_plan_rank(t);
+  end if;
+  perform set_config('probe.uid', t::text, true);
+
+  -- Η δεξαμενή ξεκινά από γνωστό σημείο και επιστρέφει εκεί στο τέλος.
+  select free_count into saved from public.ai_budget where month = mon;
+  insert into public.ai_budget (month, free_count, updated_at) values (mon, 0, now())
+    on conflict (month) do update set free_count = 0;
+
+  -- 1. ΤΟ ΤΑΒΑΝΙ ΤΗΣ ΔΟΚΙΜΗΣ ΚΑΙ Η ΧΡΕΩΣΗ ΣΤΗ ΔΕΞΑΜΕΝΗ.
+  for i in 1..cap loop
+    update public.scan_usage set minute_count = 0 where user_id = t;
+    res := public.bump_scan_usage(100, scans);
+    if (res->>'allowed')::boolean is not true then
+      raise exception 'Η σάρωση % από % της δοκιμής κόπηκε: %', i, cap, res;
+    end if;
+  end loop;
+  if (res->>'month_limit')::int <> cap or (res->>'pool')::boolean is not true then
+    raise exception 'Η δοκιμή δεν σαρώνει με το ταβάνι της ή εκτός δεξαμενής: %', res;
+  end if;
+  select free_count into pool1 from public.ai_budget where month = mon;
+  if pool1 <> cap then
+    raise exception 'ΣΑΡΩΣΗ ΕΚΤΟΣ ΔΕΞΑΜΕΝΗΣ: % σαρώσεις της δοκιμής χρέωσαν % μονάδες', cap, pool1;
+  end if;
+  update public.scan_usage set minute_count = 0 where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'scan_month' then
+    raise exception 'Η σάρωση % της δοκιμής ΠΕΡΑΣΕ ή κόπηκε για λάθος λόγο: %', cap + 1, res;
+  end if;
+  if (res->>'month')::int <> cap or (select month_count from public.scan_usage where user_id = t) <> cap then
+    raise exception 'Η άρνηση του μήνα μέτρησε ως σάρωση: %', res;
+  end if;
+  if (select free_count from public.ai_budget where month = mon) <> cap then
+    raise exception 'Η άρνηση του μήνα χρέωσε τη δεξαμενή';
+  end if;
+
+  -- 2. Η ΑΡΝΗΣΗ ΤΟΥ ΛΕΠΤΟΥ ΔΕΝ ΤΡΩΕΙ ΣΑΡΩΣΗ ΤΟΥ ΜΗΝΑ.
+  update public.scan_usage
+     set month_count = 0, minute_count = 20, minute_bucket = date_trunc('minute', now())
+   where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'minute' then
+    raise exception 'Η 21η σάρωση του λεπτού ΠΕΡΑΣΕ με όριο 100 από τον πελάτη: %', res;
+  end if;
+  if (select month_count from public.scan_usage where user_id = t) <> 0 then
+    raise exception 'Η άρνηση του λεπτού έφαγε σάρωση του μήνα';
+  end if;
+  if (select free_count from public.ai_budget where month = mon) <> cap then
+    raise exception 'Η άρνηση του λεπτού χρέωσε τη δεξαμενή';
+  end if;
+
+  -- 3. ΓΕΜΑΤΗ ΔΕΞΑΜΕΝΗ: ΑΡΝΗΣΗ 'pool' ΧΩΡΙΣ ΙΧΝΟΣ.
+  update public.scan_usage set minute_count = 0 where user_id = t;
+  update public.ai_budget set free_count = lpool where month = mon;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'pool' then
+    raise exception 'Με γεμάτη δεξαμενή η σάρωση της δοκιμής ΠΕΡΑΣΕ ή κόπηκε για λάθος λόγο: %', res;
+  end if;
+  if (select month_count from public.scan_usage where user_id = t) <> 0
+     or (select free_count from public.ai_budget where month = mon) <> lpool then
+    raise exception 'Η άρνηση της δεξαμενής άφησε ίχνος στους μετρητές';
+  end if;
+  update public.ai_budget set free_count = 0 where month = mon;
+
+  -- 4α. ΔΩΡΕΑΝ ΜΗΝΕΣ: ΙΔΙΟ ΤΑΒΑΝΙ, ΙΔΙΑ ΔΕΞΑΜΕΝΗ.
+  update public.billing_profiles
+     set trial_used_at = now(), comp_plan = 'agency', comp_until = now() + interval '20 days'
+   where user_id = t;
+  if public.user_plan_rank(t) <> 3 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: οι δωρεάν μήνες δίνουν βαθμό %', public.user_plan_rank(t);
+  end if;
+  update public.scan_usage set minute_count = 0 where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not true or (res->>'month_limit')::int <> cap
+     or (select free_count from public.ai_budget where month = mon) <> 1 then
+    raise exception 'Οι δωρεάν μήνες σαρώνουν χωρίς το ταβάνι της δοκιμής ή εκτός δεξαμενής: %', res;
+  end if;
+
+  -- 4β. ΔΩΡΕΑΝ ΒΑΘΜΟΣ 0: ΠΕΝΤΕ, ΕΚΤΟΣ ΔΕΞΑΜΕΝΗΣ.
+  update public.billing_profiles set comp_plan = null, comp_until = null where user_id = t;
+  update public.scan_usage set minute_count = 0, month_count = 0 where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not true or (res->>'month_limit')::int <> scans[1]
+     or (select free_count from public.ai_budget where month = mon) <> 1 then
+    raise exception 'Ο δωρεάν βαθμός 0 άλλαξε όριο ή χρέωσε τη δεξαμενή: %', res;
+  end if;
+
+  -- 4γ. ΣΥΝΔΡΟΜΗΤΗΣ: ΧΩΡΙΣ ΜΗΝΙΑΙΟ ΟΡΙΟ, ΕΚΤΟΣ ΔΕΞΑΜΕΝΗΣ.
+  update public.billing_profiles set plan = 'owner' where user_id = t;
+  update public.scan_usage set minute_count = 0, month_count = cap where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not true or res->>'month_limit' is not null
+     or (select free_count from public.ai_budget where month = mon) <> 1 then
+    raise exception 'Ο συνδρομητής κόπηκε στη σάρωση ή χρέωσε τη δεξαμενή: %', res;
+  end if;
+
+  perform set_config('probe.uid', '', true);
+  if saved is null then
+    delete from public.ai_budget where month = mon;
+  else
+    update public.ai_budget set free_count = saved where month = mon;
+  end if;
+  delete from auth.users where id = t;
+  raise notice 'probe: η δοκιμή και οι δωρεάν μήνες σαρώνουν ως % τον μήνα από την κοινή δεξαμενή· ο δωρεάν και ο συνδρομητής όπως πριν', cap;
+end $probe$;
+
 -- ── ΤΑ ΕΞΙ ΚΕΙΜΕΝΑ ΦΕΥΓΟΥΝ ΠΡΑΓΜΑΤΙΚΑ ────────────────────────────────────
 -- Δεν αρκεί να υπάρχει το SQL: ελέγχεται ότι μετά την `lifecycle_enqueue()`
 -- υπάρχει γραμμή στην ουρά. Τα `year_end` και `quarterly_review` εξαρτώνται

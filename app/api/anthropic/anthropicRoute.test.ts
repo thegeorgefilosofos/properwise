@@ -147,5 +147,13 @@ ok('το ίχνος γράφεται μόνο μετά από επιτυχή χ�
 ok('η επανάχρηση δεν επιστρέφει σάρωση που δεν χρεώθηκε',
   SRC.indexOf('if (reuse) return;') >= 0 && SRC.indexOf('if (reuse) return;') < SRC.indexOf('await refundScanUsage('))
 
+// ── 10. Η ΣΑΡΩΣΗ ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ ΜΕΤΡΙΕΤΑΙ (20261003100000) ─────────────────
+// Η δοκιμή και οι δωρεάν μήνες σαρώνουν με ταβάνι και από την κοινή δεξαμενή.
+// Η άρνηση 'pool' της σάρωσης θέλει δικό της μήνυμα αντί για «πολλές
+// σαρώσεις μαζί». Το μήνυμα του μήνα λέει το όριο που έστειλε η βάση.
+const scanGate = SRC.slice(iScanBump, SRC.indexOf("'bump_ai_usage'"))
+ok('η σάρωση χειρίζεται την άρνηση της δεξαμενής', /u\.reason === 'pool'\s*\?\s*scanPoolExhaustedMessage\(/.test(scanGate))
+ok('το μήνυμα του μήνα παίρνει το όριο της βάσης', /scansExhaustedMessage\(canBuy, [^)]*u\.month_limit/.test(scanGate))
+
 console.log(fail === 0 ? `✓ anthropic route: ${pass} έλεγχοι πέρασαν` : `✗ anthropic route: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

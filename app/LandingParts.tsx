@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from 'next/link'
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans'
-import { aiLimitsFor, TRIAL_LIMITS, SCAN_LIMITS } from '@/lib/billing/aiLimits'
+import { aiLimitsFor, TRIAL_LIMITS, SCAN_LIMITS, TRIAL_SCANS_PER_MONTH } from '@/lib/billing/aiLimits'
 import { fe, feWhole } from '@/lib/core/format'
 import { T } from '@/components/tokens'
 import { hy } from '@/components/Hyphen'
@@ -73,9 +73,13 @@ export function FaqList({ list }: { list: { q: string; a: string }[] }) {
 /** Η σάρωση από το SCAN_LIMITS: `null` σημαίνει χωρίς μηνιαίο όριο. */
 const scanLine = (n: number | null): string => n === null ? 'σάρωση χωρίς όριο' : `${n} σαρώσεις τον μήνα`;
 
-/** Η δοκιμή με τα δικά της όρια (TRIAL_LIMITS), όχι με του πακέτου. */
+/**
+ * Η δοκιμή με τα δικά της όρια (TRIAL_LIMITS, TRIAL_SCANS_PER_MONTH), όχι με
+ * του πακέτου. Κάθεται κάτω από το «σάρωση χωρίς όριο» του πληρωμένου: χωρίς
+ * το ταβάνι της σάρωσης θα διαβαζόταν ότι και η δοκιμή σαρώνει απεριόριστα.
+ */
 const trialLine = (): string =>
-  `Δοκιμή ${TRIAL_DAYS} ημερών: ${TRIAL_LIMITS.perMonth} ερωτήσεις, έως ${TRIAL_LIMITS.perDay} την ημέρα`;
+  `Δοκιμή ${TRIAL_DAYS} ημερών: ${TRIAL_LIMITS.perMonth} ερωτήσεις, έως ${TRIAL_LIMITS.perDay} την ημέρα · ${scanLine(TRIAL_SCANS_PER_MONTH)}`;
 
 /** Το όριο ακινήτων από τα PLANS, σε λέξεις για το ένα. */
 const propertiesLine = (n: number): string => n === 1 ? 'Ένα ακίνητο' : `Έως ${n} ακίνητα`;

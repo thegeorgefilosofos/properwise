@@ -16,6 +16,7 @@ import {
   FREE_POOL_PER_MONTH, FREE_TESTERS_PER_MONTH, dailyLimitsByRank, monthlyLimitsByRank, PLAN_RANK_ORDER,
   MAX_PER_MINUTE, AI_SHARE, monthlyQuestionBudget, roundQuestions, limitFromBudget, TRIAL_LIMITS, effectiveAiLimits,
   hasAssistant, assistantLockedMessage, scanLimitsByRank, scansExhaustedMessage,
+  TRIAL_SCANS_PER_MONTH, scanPoolExhaustedMessage,
 } from './aiLimits'
 import { PLANS, PLAN_ORDER, type PlanId } from './plans'
 
@@ -161,6 +162,16 @@ const FREE_USERS_TARGET = 10
   ok('σαρώσεις: 5 στο δωρεάν, χωρίς όριο στα άλλα',
     JSON.stringify(scanLimitsByRank()) === JSON.stringify([5, null, null, null, null]))
   ok('το μήνυμα των σαρώσεων λέει το όριο', scansExhaustedMessage(true).includes('5 σαρώσεις'))
+  // Η ΔΟΚΙΜΗ ΣΑΡΩΝΕΙ ΜΕ ΤΑΒΑΝΙ (03.10.2026): πάνω από το δωρεάν, όχι απεριόριστα.
+  ok('η δοκιμή έχει ταβάνι σαρώσεων πάνω από το δωρεάν',
+    Number.isInteger(TRIAL_SCANS_PER_MONTH) && TRIAL_SCANS_PER_MONTH > (scanLimitsByRank()[0] ?? 0))
+  ok('το μήνυμα λέει το όριο που έστειλε η βάση',
+    scansExhaustedMessage(false, TRIAL_SCANS_PER_MONTH).includes(`${TRIAL_SCANS_PER_MONTH} σαρώσεις`))
+  const sp = scanPoolExhaustedMessage()
+  ok('η δεξαμενή των σαρώσεων λέει πότε ξανανοίγει', /1η του επόμενου μήνα/.test(sp))
+  ok('η δεξαμενή των σαρώσεων δεν κατηγορεί', !/υπέρβασ|ξεπέρασ|κατάχρησ/i.test(sp))
+  ok('και δεν προτείνει αγορά όταν η χρέωση δεν τρέχει',
+    !/συνδρομή συνεχίζεις/.test(sp) && /συνδρομή συνεχίζεις/.test(scanPoolExhaustedMessage(true)))
   const free = aiLimitsFor('free')
   for (const bad of [null, undefined, '', 'enterprise', 'ΑΓΝΩΣΤΟ']) {
     const l = aiLimitsFor(bad as never)
