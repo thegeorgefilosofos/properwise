@@ -26,7 +26,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
-import { PLANS } from '../../lib/billing/plans';
+import { PLANS, TRIAL_DAYS } from '../../lib/billing/plans';
 import { ASSISTANT_ACC, ASSISTANT_INITIAL } from '../../lib/assistant/identity';
 import { C, FACES, esc, ico, mark, GRAIN } from './igKit';
 import { DEMO_PROPERTY, demoExpenses, demoSummary } from '../../lib/demo/sample';
@@ -60,7 +60,6 @@ const line = (key: string) => S.statement.lines.find(l => l.key === key);
 const TAX = S.statement.incomeTax;
 const NET = S.statement.netCash;
 const FREE = PLANS.free;
-const FREE_WORDS = FREE.maxProperties === 1 ? 'για ένα ακίνητο' : `έως ${FREE.maxProperties} ακίνητα`;
 if (FREE.priceMonthly !== 0) throw new Error('Το «Ξεκίνα δωρεάν» θέλει δωρεάν πακέτο· το PLANS.free έχει τιμή.');
 if (!line('gross')) throw new Error('Η κατάσταση αποτελεσμάτων δεν έχει γραμμή μεικτών εσόδων.');
 
@@ -203,7 +202,9 @@ function noa(): string {
   const minus = (n: number) => `−${fe(n)}`;
   const led = (k: string, v: string, strong = false) =>
     `<div class="led${strong ? ' strong' : ''}"><span>${esc(k)}</span><b class="num">${esc(v)}</b></div>`;
-  return frame('ΨΗΦΙΑΚΟΣ ΒΟΗΘΟΣ', `
+  // ΧΩΡΙΣ «ΒΟΗΘΟ» (03.10.2026). Η Νόα δεν έχει φύλο και δεν λέγεται «βοηθός»
+  // πουθενά (lib/assistant/identity.ts)· το «ΨΗΦΙΑΚΟΣ ΒΟΗΘΟΣ» ήταν και τα δύο.
+  return frame('ΕΡΩΤΗΣΗ ΣΤΑ ΕΛΛΗΝΙΚΑ', `
     <h1 style="font-size:120px;margin-top:84px">Ρώτα<br><span style="color:${C.accent}">${esc(ASSISTANT_ACC)}.</span></h1>
     <p class="sub" style="margin-top:34px;max-width:880px">Στα ελληνικά. Απαντά με τα νούμερα<br>του δικού σου ακινήτου.</p>
     <div class="chat">
@@ -223,7 +224,11 @@ function noa(): string {
         </div>
       </div>
     </div>
-    <div class="cta"><span><b>Ξεκίνα δωρεάν</b>, ${esc(FREE_WORDS)}.</span>${ico.down(C.accent, 34)}</div>
+    <!-- ΔΟΚΙΜΗ, ΟΧΙ «ΔΩΡΕΑΝ» (03.10.2026). Το δωρεάν πακέτο δεν έχει τη Νόα
+         (lib/billing/aiLimits.ts)· ένα «Ξεκίνα δωρεάν» κάτω από την απάντησή της
+         υπόσχεται κάτι που ο λογαριασμός δεν δίνει. Η δοκιμή τη δίνει, χωρίς κάρτα
+         (lib/legal/billingWords.ts). -->
+    <div class="cta"><span><b>Δοκίμασε ${TRIAL_DAYS} ημέρες</b>, χωρίς κάρτα.</span>${ico.down(C.accent, 34)}</div>
     <div class="sticker" aria-hidden="true"></div>`, `
     .chat{margin-top:44px;display:flex;flex-direction:column}
     .ask{align-self:flex-end;max-width:84%;padding:24px 32px;border-radius:36px 36px 10px 36px;background:${C.accent};color:${C.onAccent};
@@ -372,8 +377,8 @@ const STORIES = [
     alt: `Τρεις κάρτες της εφαρμογής PROPERWISE για το ακίνητο επίδειξης «${PROP}»: ενοίκιο που εισπράχθηκε, λογαριασμός νερού που καταχωρήθηκε, φάκελος για τον λογιστή έτοιμος.` },
   { key: '2-sarosi', build: sarosi, what: 'Σάρωση εγγράφου',
     alt: 'Λογαριασμός ύδρευσης μέσα σε σκόπευτρο κάμερας και δίπλα τα στοιχεία που διάβασε η εφαρμογή: κατηγορία, ποσό, ακίνητο, λογαριασμός, με την ένδειξη «Καταχωρήθηκε».' },
-  { key: '3-noa', build: noa, what: 'Ο ψηφιακός βοηθός και το «Ξεκίνα δωρεάν»',
-    alt: 'Ερώτηση «Πόσα μου έμειναν καθαρά πέρσι;» και απάντηση του ψηφιακού βοηθού με ανάλυση: ενοίκια, φόρος εισοδήματος, ΕΝΦΙΑ, δαπάνες, καθαρά. Κάτω, «Ξεκίνα δωρεάν» με βέλος προς τον σύνδεσμο.' },
+  { key: '3-noa', build: noa, what: 'Η Νόα: ερώτηση στα ελληνικά',
+    alt: 'Ερώτηση «Πόσα μου έμειναν καθαρά πέρσι;» και απάντηση με ανάλυση: ενοίκια, φόρος εισοδήματος, ΕΝΦΙΑ, δαπάνες, καθαρά. Κάτω, πρόσκληση για δοκιμή με βέλος προς τον σύνδεσμο.' },
   { key: '4-ypenthymisi', build: ypenthymisi, what: 'Υπενθυμίσεις: η πρωινή ειδοποίηση', day: 2,
     alt: 'Οθόνη κλειδώματος κινητού με ειδοποίηση του PROPERWISE για δύο προθεσμίες: ενοίκιο σήμερα και δημοτικά τέλη αύριο.' },
   { key: '5-fakelos', build: fakelos, what: 'Ο φάκελος για τον λογιστή', day: 2,
@@ -427,8 +432,8 @@ async function main() {
     ...STORIES.filter(st => dayOf(st) === 1).map(st => `- \`${st.key}.png\`: ${st.what}`),
     '',
     'Στο `3-noa.png`, το αυτοκόλλητο συνδέσμου (Link) προς `https://properwise.gr/signup`',
-    'μπαίνει στην άδεια λωρίδα κάτω από το «Ξεκίνα δωρεάν» και το βέλος, πάνω από το',
-    'σήμα. Κείμενο αυτοκόλλητου: «Ξεκίνα δωρεάν».',
+    'μπαίνει στην άδεια λωρίδα κάτω από την πρόσκληση και το βέλος, πάνω από το',
+    'σήμα. Κείμενο αυτοκόλλητου: «Ρώτα κάτι».',
     '',
     '### Δεύτερη μέρα (την επόμενη ή τη μεθεπόμενη)',
     '',
