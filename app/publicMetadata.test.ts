@@ -114,6 +114,16 @@ for (const r of map) {
   ok('έχει δική της εικόνα κοινοποίησης', !!SHARE_CARDS['sygkrisi-timologion-revmatos']);
 }
 
+// ── (στ) Η ΣΕΛΙΔΑ ΤΩΝ ΛΟΓΙΣΤΩΝ ──────────────────────────────────────────────
+// Η ημερομηνία της γράφεται με το χέρι στον χάρτη. Μια μελλοντική ημερομηνία
+// λέει στη μηχανή ότι η σελίδα άλλαξε όταν δεν άλλαξε ακόμη.
+const acct = map.find(r => r.url === `${SITE}/logistes`);
+const acctDate = typeof acct?.lastModified === 'string' ? acct.lastModified : '';
+ok('/logistes: είναι στον χάρτη με ημερομηνία ISO', ISO.test(acctDate));
+ok('/logistes: η ημερομηνία δεν είναι μελλοντική', acctDate <= new Date().toISOString().slice(0, 10));
+ok('/logistes: η σελίδα υπάρχει', existsSync('app/logistes/page.tsx'));
+ok('/logistes: έχει δική της εικόνα κοινοποίησης', !!SHARE_CARDS['logistes'] && SHARE_CARDS['logistes'].path === '/logistes');
+
 // Με δική της εικόνα η σελίδα δεν γράφει τη γενική, ούτε στην κάρτα X.
 const own = publicMetadata({ title: 'Τ', description: 'Π', url: `${SITE}/dokimi`, image: shareImage('odigos') });
 ok('με δική της εικόνα δεν μπαίνει η γενική στο openGraph',
