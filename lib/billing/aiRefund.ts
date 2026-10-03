@@ -83,11 +83,15 @@ export async function refundAiUsage(userId: string, pool = true): Promise<boolea
  *
  * Ιδιοι λόγοι με την `refundAiUsage`: η `refund_scan_usage` ΜΕΙΩΝΕΙ, άρα
  * εκτελείται μόνο με κλειδί υπηρεσίας και με ρητό χρήστη. Δεν πετά ποτέ.
+ *
+ * @param pool αν επιστρέφεται και η μονάδα της κοινής δεξαμενής. Η βάση την
+ *   πιστώνει μόνο όπου χρεώθηκε (δοκιμή, δωρεάν μήνες, Συνεργάτης), με τον
+ *   ίδιο όρο με τη χρέωση (20261003130000).
  */
-export async function refundScanUsage(userId: string): Promise<boolean> {
+export async function refundScanUsage(userId: string, pool = false): Promise<boolean> {
   try {
     return refundOutcome(await createServiceClient()
-      .rpc('refund_scan_usage', { p_uid: userId }));
+      .rpc('refund_scan_usage', { p_uid: userId, p_pool: pool }));
   } catch (err) {
     console.error(REFUND_LOG, err instanceof Error ? err.message : err);
     return false;

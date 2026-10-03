@@ -2267,7 +2267,7 @@ begin
     raise exception 'Η επιστροφή σάρωσης δεν ελευθέρωσε θέση: %', res;
   end if;
   -- Και ο χρήστης δεν την καλεί μόνος του: αλλιώς θα μηδένιζε το όριο.
-  if has_function_privilege('authenticated', 'public.refund_scan_usage(uuid)', 'execute') then
+  if has_function_privilege('authenticated', 'public.refund_scan_usage(uuid, boolean)', 'execute') then
     raise exception 'Ο authenticated μπορεί να καλέσει την refund_scan_usage: το όριο σαρώσεων ανοίγει';
   end if;
 
@@ -2421,6 +2421,36 @@ begin
   if (res->>'allowed')::boolean is not true or res->>'month_limit' is not null
      or (select free_count from public.ai_budget where month = mon) <> 1 then
     raise exception 'Ο συνδρομητής κόπηκε στη σάρωση ή χρέωσε τη δεξαμενή: %', res;
+  end if;
+
+  -- 4δ. ΔΟΚΙΜΑΣΤΗΣ ΣΕ ΠΛΗΡΩΜΕΝΟ ΠΑΚΕΤΟ: ΤΟ ΤΑΒΑΝΙ, ΧΩΡΙΣ ΔΕΞΑΜΕΝΗ (20261003130000).
+  update public.billing_profiles set tester_since = now() where user_id = t;
+  update public.scan_usage set minute_count = 0, month_count = cap where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'scan_month'
+     or (select free_count from public.ai_budget where month = mon) <> 1 then
+    raise exception 'Ο δοκιμαστής σε πληρωμένο πακέτο σάρωσε πέρα από το ταβάνι ή χρέωσε τη δεξαμενή: %', res;
+  end if;
+
+  -- 5. Η ΕΠΙΣΤΡΟΦΗ ΓΥΡΙΖΕΙ ΚΑΙ ΤΗ ΔΕΞΑΜΕΝΗ, ΜΟΝΟ ΟΠΟΥ ΧΡΕΩΘΗΚΕ.
+  update public.billing_profiles
+     set plan = 'free', tester_since = null, trial_used_at = null, comp_plan = null, comp_until = null
+   where user_id = t;
+  update public.scan_usage set month_count = 3 where user_id = t;
+  update public.ai_budget set free_count = 5 where month = mon;
+  res := public.refund_scan_usage(t, true);
+  if (res->>'refunded')::boolean is not true or (res->>'month')::int <> 2
+     or (select free_count from public.ai_budget where month = mon) <> 4 then
+    raise exception 'Η αποτυχημένη σάρωση της δοκιμής δεν γύρισε τη μονάδα της δεξαμενής: %', res;
+  end if;
+  res := public.refund_scan_usage(t);
+  if (select free_count from public.ai_budget where month = mon) <> 4 then
+    raise exception 'Η επιστροφή χωρίς p_pool πίστωσε τη δεξαμενή';
+  end if;
+  update public.billing_profiles set plan = 'owner' where user_id = t;
+  res := public.refund_scan_usage(t, true);
+  if (select free_count from public.ai_budget where month = mon) <> 4 then
+    raise exception 'Η επιστροφή σάρωσης συνδρομητή πίστωσε δεξαμενή που δεν χρεώθηκε';
   end if;
 
   perform set_config('probe.uid', '', true);
