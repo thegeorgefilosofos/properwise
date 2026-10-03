@@ -15,6 +15,7 @@ import { SHARE_IMAGE, HOME_TITLE_LINES } from '@/lib/core/site';
 import { GUIDES, guideSlug } from '../odigos/guides';
 import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { fpRate } from '@/lib/core/format';
+import { DSTI_LIMIT } from '@/lib/loans/affordability';
 
 export type ShareCard = {
   kind: 'guide' | 'calc';
@@ -51,6 +52,11 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
     chips: ['Μεικτή και καθαρή', 'Φόρος στο κλιμάκιό σου', 'ΕΝΦΙΑ και δαπάνες'], path: '/kathari-apodosi' },
   'vraxyxronia-i-makroxronia': { kind: 'calc', over: 'Υπολογιστής', title: 'Βραχυχρόνια ή μακροχρόνια;',
     chips: ['Πληρότητα', 'ΤΑΚΚ', 'Προμήθεια', 'Φόρος'], path: '/vraxyxronia-i-makroxronia' },
+  // Το όριο δόσης από τον κανόνα που εφαρμόζει ο υπολογιστής (DSTI_LIMIT), όχι
+  // γραμμένο εδώ. Κανένα επιτόκιο στην κάρτα: η πλατφόρμα την κρατά εβδομάδες.
+  'ypologismos-stegastikou-daneiou': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόση δόση και πόσο στεγαστικό δάνειο',
+    chips: ['Σταθερό ή κυμαινόμενο', 'Τόκοι ανά έτος', `Όριο δόσης ${fpRate(DSTI_LIMIT.firstTimeBuyer * 100)} ή ${fpRate(DSTI_LIMIT.other * 100)}`],
+    path: '/ypologismos-stegastikou-daneiou' },
   'odigos': { kind: 'guide', over: 'Οδηγοί', title: 'Οδηγοί φορολογίας ακινήτων',
     chips: GUIDES.map(g => g.kicker), path: '/odigos' },
   ...Object.fromEntries(GUIDES.map(g => [guideSlug(g), {

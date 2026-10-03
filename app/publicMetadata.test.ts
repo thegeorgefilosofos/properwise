@@ -9,7 +9,8 @@
 //
 // Ο έλεγχος: (α) ο βοηθός βάζει πάντα την εικόνα, (β) καμία σελίδα δεν γράφει
 // `openGraph` με το χέρι, (γ) κάθε οδηγός έχει σελίδα, έγκυρες ημερομηνίες και
-// ημερομηνία τροποποίησης στον χάρτη ιστότοπου.
+// ημερομηνία τροποποίησης στον χάρτη ιστότοπου, (δ) κάθε υπολογιστής του
+// υποσέλιδου έχει σελίδα, κάρτα και ημερομηνία ISO στον χάρτη, όχι μελλοντική.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -19,6 +20,7 @@ import { GUIDES, guideSlug } from './odigos/guides';
 import { SHARE_CARDS, shareImage } from './og/share';
 import sitemap from './sitemap';
 import { SITE } from '@/lib/core/site';
+import { athensToday } from '@/lib/core/time';
 
 let passed = 0, failed = 0;
 const fails: string[] = [];
@@ -63,6 +65,24 @@ for (const g of GUIDES) {
   // Η δική του κάρτα κοινοποίησης: αλλιώς ο σύνδεσμος φτάνει με τη γενική εικόνα.
   ok(`${g.href}: έχει δική του εικόνα κοινοποίησης`, !!SHARE_CARDS[guideSlug(g)]);
 }
+// ── (δ) ΟΙ ΥΠΟΛΟΓΙΣΤΕΣ ──────────────────────────────────────────────────────
+// Κάθε υπολογιστής του υποσέλιδου είναι στον χάρτη, με ημερομηνία ISO που δεν
+// ξεπερνά τη σημερινή: μια μελλοντική ημερομηνία η μηχανή αναζήτησης τη
+// διαβάζει ως λάθος και αγνοεί τη φρεσκάδα ολόκληρου του χάρτη.
+const TODAY = athensToday();
+const toolPaths = [...readFileSync('app/PublicChrome.tsx', 'utf8')
+  .matchAll(/\['(\/(?:ypologismos-[^']+|kathari-apodosi|vraxyxronia-i-makroxronia))',/g)].map(x => x[1]);
+ok('ο σαρωτής βλέπει τους υπολογιστές του υποσέλιδου', toolPaths.length >= 5 && toolPaths.includes('/ypologismos-stegastikou-daneiou'));
+for (const path of toolPaths) {
+  const row = map.find(r => r.url === SITE + path);
+  const lm = typeof row?.lastModified === 'string' ? row.lastModified : '';
+  ok(`${path}: είναι στον χάρτη`, !!row);
+  ok(`${path}: ημερομηνία ISO στον χάρτη`, ISO.test(lm));
+  ok(`${path}: η ημερομηνία δεν είναι στο μέλλον (${lm} έναντι ${TODAY})`, lm <= TODAY);
+  ok(`${path}: η σελίδα υπάρχει`, existsSync(join('app', path, 'page.tsx')));
+  ok(`${path}: έχει δική του εικόνα κοινοποίησης`, !!SHARE_CARDS[path.slice(1)]);
+}
+
 const hub = map.find(r => r.url === `${SITE}/odigos`);
 ok('ο κόμβος των οδηγών έχει ημερομηνία στον χάρτη, την πιο πρόσφατη των οδηγών',
   hub?.lastModified === GUIDES.map(g => g.updated).sort().at(-1));

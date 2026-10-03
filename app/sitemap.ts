@@ -25,6 +25,10 @@ const PAGES_UPDATED = {
   privacy: '2026-10-02',
   terms: '2026-10-03',
 } as const
+// Ο υπολογιστής δόσης στεγαστικού δεν ακολουθεί τους φόρους: αλλάζει όταν
+// αλλάξει ο ίδιος, όχι όταν αλλάξει κλίμακα. Δική του ημερομηνία, με το χέρι.
+// Το μέσο επιτόκιο που δείχνει έχει δική του ημερομηνία πάνω στη σελίδα.
+const MORTGAGE_TOOL_UPDATED = '2026-10-03'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE
@@ -36,6 +40,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/ypologismos-enfia`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/vraxyxronia-i-makroxronia`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/kathari-apodosi`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/ypologismos-stegastikou-daneiou`, lastModified: MORTGAGE_TOOL_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     // Κόμβος οδηγών: η μία σελίδα που μαζεύει όλους τους οδηγούς, συνδεδεμένη
     // από το υποσέλιδο κάθε δημόσιας σελίδας. Η ημερομηνία του είναι η πιο
     // πρόσφατη των οδηγών του, αφού αυτούς δείχνει.

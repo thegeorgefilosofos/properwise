@@ -193,8 +193,58 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   await ctx.close()
 }
 
+// ── ΔΟΣΗ ΣΤΕΓΑΣΤΙΚΟΥ, σαν χρήστης ────────────────────────────────────────
+// Το επιτόκιο δίνεται ΣΤΗ ΔΙΕΥΘΥΝΣΗ: η προεπιλογή του είναι το μέσο επιτόκιο
+// της αγοράς όταν η βάση απαντά και κενό όταν δεν απαντά (τοπικό build). Τα
+// αναμενόμενα δεν επιτρέπεται να εξαρτώνται από το τι έγραψε η ΕΚΤ τον μήνα.
+//   150.000€, 3,5%, 25 έτη · r = 0,035/12 · (1+r)^300 ≈ 2,39588
+//   δόση = 150.000 × r × 2,39588 / 1,39588 ≈ 750,94€ · τόκοι ≈ 75.280,61€
+//   καθαρό 2.000€, πρώτη φορά: δόση έως 1.000€ · δάνειο έως ≈ 199.751€
+{
+  const ctx = await b.newContext({ viewport:{width:1280,height:1100}, locale:'el-GR' })
+  const p = await page(ctx,'/ypologismos-stegastikou-daneiou?epitokio=3%2C5')
+  const eur = async label => {
+    const txt = await p.locator('body').innerText().then(plain)
+    const m = txt.match(new RegExp(label + '\\s*\\n\\s*([\\d.,]+)\\s*€'))
+    return m ? num(m[1]) : null
+  }
+  ok('δόση 150.000 € στο 3,5% για 25 έτη → 750,94 €', Math.abs((await eur('ΜΗΝΙΑΙΑ ΔΟΣΗ')) - 750.94) < 0.02)
+  ok('…και τόκοι 75.280,61 €', Math.abs((await eur('ΣΥΝΟΛΟ ΤΟΚΩΝ')) - 75280.61) < 0.02)
+  ok('καθαρό 2.000 € την πρώτη φορά → δάνειο έως 199.751 €', Math.abs((await eur('ΔΑΝΕΙΟ ΕΩΣ')) - 199751) < 0.02)
+  ok('…με δόση έως 1.000 €', Math.abs((await eur('ΔΟΣΗ ΕΩΣ')) - 1000) < 0.02)
+
+  // ── ΟΧΙ ΠΡΩΤΗ ΦΟΡΑ: ΤΟ ΟΡΙΟ ΠΕΦΤΕΙ ΣΤΟ 40% ─────────────────────────────
+  await p.getByRole('button', { name: /^Όχι$/ }).click(); await p.waitForTimeout(250)
+  ok('όχι πρώτη φορά → δόση έως 800 €', Math.abs((await eur('ΔΟΣΗ ΕΩΣ')) - 800) < 0.02)
+
+  // ── ΚΥΜΑΙΝΟΜΕΝΟ: EURIBOR ΣΥΝ ΠΕΡΙΘΩΡΙΟ ──────────────────────────────────
+  // 2,5 + 1 = 3,5%: η ίδια δόση με το σταθερό από πάνω.
+  await p.getByRole('button', { name: /^Κυμαινόμενο$/ }).click(); await p.waitForTimeout(250)
+  await p.getByLabel('Euribor', { exact: true }).fill('2,5')
+  await p.getByLabel('Περιθώριο τράπεζας').fill('1'); await p.waitForTimeout(300)
+  ok('κυμαινόμενο 2,5% + 1% → η ίδια δόση 750,94 €', Math.abs((await eur('ΜΗΝΙΑΙΑ ΔΟΣΗ')) - 750.94) < 0.02)
+  const floating = await p.locator('body').innerText().then(plain)
+  ok('…και λέει τι γίνεται αν ανέβει το Euribor', floating.includes('Αν ανέβει μία μονάδα'))
+
+  // ── ΧΩΡΙΣ ΕΠΙΤΟΚΙΟ ΔΕΝ ΒΓΑΙΝΕΙ ΔΟΣΗ ΜΕ ΜΗΔΕΝ ────────────────────────────
+  await p.getByLabel('Περιθώριο τράπεζας').fill(''); await p.waitForTimeout(300)
+  const noRate = await p.locator('body').innerText().then(plain)
+  ok('χωρίς περιθώριο δεν εμφανίζεται δόση', !noRate.includes('ΜΗΝΙΑΙΑ ΔΟΣΗ') && noRate.includes('Γράψε το Euribor'))
+  await p.getByRole('button', { name: /^Σταθερό$/ }).click(); await p.waitForTimeout(250)
+
+  // ── ΣΚΟΥΠΙΔΙΑ ───────────────────────────────────────────────────────────
+  await p.getByLabel('Ποσό δανείου').fill('δεν ξέρω'); await p.waitForTimeout(300)
+  const junk = await p.locator('body').innerText().then(plain)
+  ok('σκουπίδια στο ποσό δεν σπάνε τη σελίδα', !/Infinity|NaN/.test(junk))
+  ok('…και ζητούν ποσό', junk.includes('Η δόση χρειάζεται ποσό'))
+
+  ok('η τιμή αγοράς ή η απουσία της λέγεται πάνω από τη φόρμα', junk.includes('ΜΕΣΟ ΕΠΙΤΟΚΙΟ ΑΓΟΡΑΣ') || junk.includes('Μέσο επιτόκιο αγοράς'))
+  ok('υπάρχει σύνδεσμος εγγραφής', await p.locator('a[href="/signup"]').count() > 0)
+  await ctx.close()
+}
+
 // ── Προσβασιμότητα & responsive και στα δύο ───────────────────────────────
-for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia']) {
+for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia','/ypologismos-stegastikou-daneiou']) {
   for (const w of [360, 390, 768, 1440]) {
     const ctx = await b.newContext({ viewport:{width:w,height:900}, locale:'el-GR', isMobile:w<700 })
     const p = await page(ctx, path)
@@ -217,7 +267,7 @@ for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari
 }
 
 // ── Το middleware δεν ζητά σύνδεση ────────────────────────────────────────
-for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia']) {
+for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia','/ypologismos-stegastikou-daneiou']) {
   const res = await fetch(B+path, { redirect:'manual' })
   ok(`${path}: δημόσιο (HTTP ${res.status})`, res.status === 200)
 }
