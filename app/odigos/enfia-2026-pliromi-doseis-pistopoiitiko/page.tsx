@@ -1,0 +1,318 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ΟΔΗΓΟΣ: ΕΝΦΙΑ 2026, ΠΛΗΡΩΜΗ, ΔΟΣΕΙΣ, ΠΙΣΤΟΠΟΙΗΤΙΚΟ ΚΑΙ ΟΡΙΣΤΙΚΟΠΟΙΗΣΗ
+// ─────────────────────────────────────────────────────────────────────────
+// ΓΙΑΤΙ ΥΠΑΡΧΕΙ. Οι αναζητήσεις για τον ΕΝΦΙΑ ρωτούν τι ΚΑΝΩ, όχι πώς
+// υπολογίζεται: «πληρωμή ενφια», «πιστοποιητικό ενφια», «οριστικοποίηση ενφια».
+// Οι επίσημες σελίδες λένε πού να πατήσεις και τίποτα παραπάνω. Εδώ είναι οι
+// ημερομηνίες των δόσεων, η διαδρομή στο myAADE, τι βεβαιώνει το πιστοποιητικό
+// και ποιος κάνει την οριστικοποίηση.
+//
+// ΚΑΜΙΑ ΗΜΕΡΟΜΗΝΙΑ ΔΕΝ ΓΡΑΦΕΤΑΙ ΕΔΩ. Οι δόσεις βγαίνουν από το
+// lib/tax/greekTaxCalendar.ts μέσα από το ./schedule.ts, η πηγή του
+// εκκαθαριστικού από τις σημειώσεις της ίδιας μηχανής, η πύλη από το
+// lib/tax/aade.ts. Ό,τι δεν ζει στον κώδικα (το πιστοποιητικό και η
+// οριστικοποίησή του) γράφεται μόνο όσο το λένε οι επίσημες σελίδες της ΑΑΔΕ
+// και του gov.gr που παρατίθενται στις πηγές.
+//
+// Η ΔΙΑΔΡΟΜΗ ΣΤΟ myAADE είναι αυτή του Δελτίου Τύπου της ΑΑΔΕ της 15.03.2026
+// («Εφαρμογές, Δημοφιλείς Εφαρμογές, Δήλωση Ε9/ΕΝΦΙΑ»), όχι τα βήματα του
+// AADE_DESTINATIONS.enfia, που δεν συμφωνούν με αυτήν. Από το μητρώο έρχονται
+// μόνο η ρίζα της πύλης και το όνομά της.
+//
+// Ο πίνακας ξαναχτίζεται μία φορά την ημέρα (`revalidate`), ώστε το «μένουν
+// τόσες δόσεις» να μην παλιώνει ανάμεσα σε δύο εκδόσεις.
+//
+// Server Component για SEO/ταχύτητα. Καμία εξάρτηση από 'use client'.
+// ═══════════════════════════════════════════════════════════════════════════
+import Link from 'next/link';
+import type { Metadata } from 'next';
+import { T } from '@/components/tokens';
+import { siteUrl } from '@/lib/core/site';
+import { monthGen, monthShort } from '@/lib/core/months';
+import { athensToday } from '@/lib/core/time';
+import { AADE_DESTINATIONS } from '@/lib/tax/aade';
+import { AADE_CALENDAR_URL, CONFIDENCE_LABEL } from '@/lib/tax/greekTaxCalendar';
+import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
+import { shareImage } from '../../og/share';
+import { publicMetadata } from '../../publicMetadata';
+import { guideAt } from '../guides';
+import { enfiaInstalments, enfiaIssueBasis, instalmentStatus, obligationOf } from './schedule';
+import {
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
+  RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
+} from '../GuideParts';
+
+export const revalidate = 86400;
+
+const GUIDE = guideAt('/odigos/enfia-2026-pliromi-doseis-pistopoiitiko');
+const H1 = GUIDE.title;
+const TITLE = H1;
+// Κάτω από 160 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
+const DESC =
+  'Πότε λήγει κάθε δόση του ΕΝΦΙΑ 2026, πού πατάς στο myAADE για να πληρώσεις, '
+  + 'πώς βγάζεις πιστοποιητικό ΕΝΦΙΑ και τι είναι η οριστικοποίησή του.';
+const URL = siteUrl(GUIDE.href);
+
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-enfia-2026-pliromi-doseis-pistopoiitiko') });
+
+// ── ΤΟ ΕΤΟΣ ΚΑΙ ΟΙ ΔΟΣΕΙΣ ΤΟΥ, ΑΠΟ ΤΗ ΜΗΧΑΝΗ ─────────────────────────────────
+/** Ο οδηγός αφορά το εκκαθαριστικό αυτού του έτους, όπως λέει ο τίτλος του. */
+const YEAR = 2026;
+const DATES = enfiaInstalments(YEAR);
+const N = DATES.length;
+const FIRST = DATES[0];
+const LAST = DATES[N - 1];
+const FIRST_OBL = obligationOf(YEAR, 'enfia-first');
+/** Εκδόθηκε το εκκαθαριστικό; Τότε οι ημερομηνίες είναι του νόμου, όχι περυσινές. */
+const ISSUED = FIRST_OBL.confidence === 'statutory';
+const BASIS = enfiaIssueBasis(YEAR);
+const AUTOFILE = obligationOf(YEAR, 'income-autofile').date;
+const PORTAL = AADE_DESTINATIONS.enfia;
+/** Η διαδρομή του Δελτίου Τύπου ΑΑΔΕ 15.03.2026, βήμα βήμα. */
+const ENFIA_PATH = ['Εφαρμογές', 'Δημοφιλείς Εφαρμογές', 'Δήλωση Ε9/ΕΝΦΙΑ'] as const;
+const PATH_TEXT = ENFIA_PATH.map(s => `«${s}»`).join(', ');
+
+/** «31 Μαρτίου 2026» από ISO ημερομηνία. */
+function longDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${monthGen(m - 1)} ${y}`;
+}
+/** «15 Απριλίου» για κανόνα που επαναλαμβάνεται κάθε χρόνο. */
+function dayMonth(iso: string): string {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${d} ${monthGen(m - 1)}`;
+}
+/** Ημέρα, μήνας, έτος σε τρεις κάθετες, όπως στον οδηγό προθεσμιών. */
+function dateCells(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return <>
+    <span>{String(d).padStart(2, ' ')}</span>{' '}
+    <span className="gd-date-m">{monthShort(m - 1)}</span>{' '}
+    <span>{y}</span>
+  </>;
+}
+
+// Οι ερωτήσεις τροφοδοτούν ΚΑΙ την ορατή λίστα ΚΑΙ το δομημένο σχήμα. Δεν
+// εξαρτώνται από τη σημερινή μέρα: το σχήμα λέει το πρόγραμμα, όχι πόσο έμεινε.
+const FAQ: GuideFaqItem[] = [
+  {
+    q: `Πότε πληρώνεται ο ΕΝΦΙΑ ${YEAR};`,
+    a: `Σε ${N} μηνιαίες δόσεις, από ${longDate(FIRST)} έως ${longDate(LAST)}. Κάθε δόση λήγει `
+     + 'την τελευταία εργάσιμη του μήνα της. Αν η τελευταία μέρα του μήνα είναι Σαββατοκύριακο '
+     + 'ή αργία, η δόση λήγει την προηγούμενη εργάσιμη.',
+  },
+  {
+    q: 'Σε πόσες δόσεις πληρώνεται ο ΕΝΦΙΑ;',
+    a: `Εφάπαξ ή σε ${N} ισόποσες μηνιαίες δόσεις. Για τον ΕΝΦΙΑ ${YEAR} η πρώτη δόση λήγει `
+     + `${longDate(FIRST)} και η τελευταία ${longDate(LAST)}.`,
+  },
+  {
+    q: 'Πώς πληρώνω τον ΕΝΦΙΑ;',
+    a: `Μπαίνεις στο ${PORTAL.portal} με τους κωδικούς TAXISnet και πηγαίνεις ${PATH_TEXT}. `
+     + 'Στο εκκαθαριστικό γράφεται η Ταυτότητα Οφειλής. Με αυτήν πληρώνεις από το web banking '
+     + 'της τράπεζάς σου.',
+  },
+  {
+    q: 'Πώς βγάζω πιστοποιητικό ΕΝΦΙΑ;',
+    a: `Ηλεκτρονικά, χωρίς κόστος, από το ${PORTAL.portal}: ${PATH_TEXT}, μετά «Πιστοποιητικά» `
+     + 'και ο ΑΤΑΚ του ακινήτου. Σε πώληση το πιστοποιητικό βεβαιώνει μόνο ότι το ακίνητο '
+     + 'περιλαμβάνεται στο Ε9 των πέντε προηγούμενων ετών. Δεν χρειάζεται να έχεις εξοφλήσει '
+     + 'ληξιπρόθεσμες οφειλές ΕΝΦΙΑ για να το εκδώσεις.',
+  },
+  {
+    q: 'Τι είναι η οριστικοποίηση του πιστοποιητικού ΕΝΦΙΑ;',
+    a: 'Την κάνει ο συμβολαιογράφος, όχι ο ιδιοκτήτης. Ελέγχει ότι το πιστοποιητικό ισχύει και '
+     + 'το οριστικοποιεί όταν το επισυνάπτει στο συμβόλαιο. Από εκεί και πέρα δεν χρησιμοποιείται '
+     + 'ξανά: για δεύτερο συμβόλαιο χρειάζεται νέο πιστοποιητικό.',
+  },
+];
+
+// ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΓΙΝΟΝΤΑΙ ΣΥΝΔΕΣΜΟΙ ΜΕ ΟΝΟΜΑ, όπως στον οδηγό προθεσμιών. Οι
+// σελίδες του gov.gr δεν είναι ρίζες του lib/tax/aade.ts (ο φύλακας
+// guard-official-links φυλάει μόνο τις διευθύνσεις της ΑΑΔΕ, της πύλης και του
+// χάρτη αξιών).
+//
+// ΧΩΡΙΣ ΑΡΙΘΜΟΥΣ ΝΟΜΩΝ ΓΙΑ ΤΟ ΠΙΣΤΟΠΟΙΗΤΙΚΟ. Κάθε παραπομπή σε νόμο ή απόφαση
+// θέλει εγγραφή στο data/accounting-sources.json (guard-accounting-sources) και
+// αυτό το μητρώο δεν το αλλάζει ένας οδηγός. Ως τότε η πηγή είναι το Δελτίο
+// Τύπου της ΑΑΔΕ και οι σελίδες του gov.gr, που παραπέμπουν στη νομική βάση.
+const EXT = { target: '_blank', rel: 'noopener noreferrer', className: 'lp-link', style: LINK_STYLE } as const;
+const MITOS_CERT = 'https://mitos.gov.gr/index.php/%CE%94%CE%94:%CE%A0%CE%B9%CF%83%CF%84%CE%BF%CF%80%CE%BF%CE%B9%CE%B7%CF%84%CE%B9%CE%BA%CF%8C_%CE%95%CE%9D.%CE%A6.%CE%99.%CE%91.';
+const GOV_FINALIZE = 'https://www.gov.gr/arxes/anexartete-arkhe-demosion-esodon-aade/anexartete-arkhe-demosion-esodon-aade/egkuroteta-oristikopoiese-pistopoietikou-enphia';
+
+const SOURCES: React.ReactNode[] = [
+  BASIS
+    ? `Εκκαθαριστικό ΕΝΦΙΑ ${YEAR}: ${BASIS.decision}. Δόσεις και προθεσμίες: ${BASIS.law}, όπως κωδικοποιήθηκε στον ν.5219/2025 (κάθε δόση ως την τελευταία εργάσιμη του μήνα της).`
+    : `Δόσεις και προθεσμίες ΕΝΦΙΑ: ν.4223/2013, άρθρο 6, όπως κωδικοποιήθηκε στον ν.5219/2025. Η έκδοση του εκκαθαριστικού ${YEAR} ανακοινώνεται από την ΑΑΔΕ.`,
+  `Πρόσβαση στο εκκαθαριστικό (${ENFIA_PATH.join(', ')}) και πληρωμή με την Ταυτότητα Οφειλής μέσω web banking: Δελτίο Τύπου ΑΑΔΕ «Αναρτήθηκαν τα εκκαθαριστικά ΕΝΦΙΑ ${YEAR}».`,
+  <>
+    {'Πιστοποιητικό ΕΝΦΙΑ: Δελτίο Τύπου ΑΑΔΕ 31.05.2023 «Από 1/6 τα νέα πιστοποιητικά ΕΝΦΙΑ», με τη νομική βάση και την απόφαση της ΑΑΔΕ που ορίζει τύπο, περιεχόμενο και διαδικασία έκδοσης · '}
+    <a href={MITOS_CERT} {...EXT}>Πιστοποιητικό ΕΝΦΙΑ στο Εθνικό Μητρώο Διοικητικών Διαδικασιών</a>.
+  </>,
+  <>
+    {'Οριστικοποίηση από τον συμβολαιογράφο: '}
+    <a href={GOV_FINALIZE} {...EXT}>Εγκυρότητα και οριστικοποίηση πιστοποιητικού ΕΝΦΙΑ στο gov.gr</a>.
+  </>,
+  <>
+    {'Αυτόματη οριστικοποίηση της δήλωσης εισοδήματος και κάθε άλλη προθεσμία: '}
+    <a href={AADE_CALENDAR_URL} {...EXT}>Φορολογικό ημερολόγιο ΑΑΔΕ</a>.
+  </>,
+];
+
+const S = {
+  when: { id: 'doseis', over: '1. Δόσεις', title: `Πότε λήγει κάθε δόση του ${YEAR}` },
+  pay: { id: 'pliromi', over: '2. Πληρωμή', title: 'Πού πατάς για να πληρώσεις' },
+  check: { id: 'elegxos', over: '3. Πριν πληρώσεις', title: 'Δες αν το ποσό είναι σωστό' },
+  cert: { id: 'pistopoiitiko', over: '4. Πιστοποιητικό', title: 'Πιστοποιητικό ΕΝΦΙΑ για πώληση' },
+  final: { id: 'oristikopoiisi', over: '5. Οριστικοποίηση', title: 'Την κάνει ο συμβολαιογράφος' },
+} as const;
+
+export default function Page() {
+  const today = athensToday();
+  const { left, next } = instalmentStatus(DATES, today);
+  const jsonLd = guideJsonLd({
+    guide: GUIDE, headline: H1, description: DESC, faq: FAQ,
+    about: `ΕΝΦΙΑ ${YEAR}: πληρωμή, δόσεις, πιστοποιητικό ΕΝΦΙΑ και οριστικοποίησή του`,
+  });
+
+  return (
+    <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
+      <JsonLd data={jsonLd} />
+      <PublicHeader />
+
+      <GuideMain rail={{ sections: Object.values(S), cta: { href: '/ypologismos-enfia', action: 'Έλεγξε το ποσό σου' } }}>
+        <div className="lp-eyebrow">Οδηγός</div>
+        <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
+          lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
+          {H1}
+        </h1>
+        <GuideUpdated guide={GUIDE} />
+        <GuideToc sections={Object.values(S)} />
+
+        <p className="lg-p">
+          {ISSUED
+            ? `Τα εκκαθαριστικά του ΕΝΦΙΑ ${YEAR} έχουν αναρτηθεί στο ${PORTAL.portal}. Ο φόρος πληρώνεται εφάπαξ ή σε ${N} μηνιαίες δόσεις, από ${longDate(FIRST)} έως ${longDate(LAST)}.`
+            : `Το εκκαθαριστικό του ΕΝΦΙΑ ${YEAR} δεν έχει εκδοθεί ακόμη. Οι ημερομηνίες αυτής της σελίδας ακολουθούν το περσινό πρόγραμμα και θα επιβεβαιωθούν με την έκδοση.`}
+        </p>
+        <p className="lg-p">
+          {'Ο οδηγός απαντά σε όσα ψάχνει κανείς όταν έρθει η ώρα να κινηθεί: πότε λήγει κάθε δόση, πού πατάς για να πληρώσεις, πώς βγάζεις πιστοποιητικό ΕΝΦΙΑ για πώληση και τι σημαίνει η οριστικοποίησή του.'}
+        </p>
+
+        {/* 1. Οι δόσεις. Ίδιος πίνακας δύο στηλών με τον οδηγό προθεσμιών: η
+            κατάσταση κάθε δόσης πάει κάτω από τον τίτλο, στο ίδιο κελί. */}
+        <H2 {...S.when} />
+        <p className="lg-p">
+          {`Κάθε δόση λήγει την τελευταία εργάσιμη του μήνα της. Αν η τελευταία μέρα του μήνα είναι Σαββατοκύριακο ή αργία, η δόση λήγει την προηγούμενη εργάσιμη: οι ημερομηνίες του πίνακα το έχουν ήδη υπολογίσει.`}
+        </p>
+        <p className="lg-p">
+          {next
+            ? `Σήμερα, ${longDate(today)}, μένουν ${left} από τις ${N} δόσεις. Η επόμενη λήγει στις ${longDate(next)}.`
+            : `Όλες οι δόσεις του ΕΝΦΙΑ ${YEAR} έχουν λήξει. Το επόμενο εκκαθαριστικό και η πρώτη του δόση είναι στον οδηγό για τις φορολογικές προθεσμίες.`}
+        </p>
+        <div className="po-table-box gd-table gd-table-wide" style={{ marginTop: 14 }}>
+          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
+            <table className="po-table" style={{ '--tbl-min': '300px' } as React.CSSProperties}>
+              <caption>{`Δόσεις ΕΝΦΙΑ ${YEAR}`}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Δόση</th>
+                  <th scope="col">Έως</th>
+                </tr>
+              </thead>
+              <tbody>
+                {DATES.map((d, i) => (
+                  <tr key={d}>
+                    <th scope="row">
+                      <span style={{ display: 'block', fontWeight: 600, color: 'var(--text-primary)' }}>{`${i + 1}η δόση`}</span>
+                      <span style={{ display: 'block', marginTop: 2, fontSize: 13, color: 'var(--text-tertiary)' }}>
+                        {d < today ? 'Έληξε' : d === next ? 'Η επόμενη' : CONFIDENCE_LABEL[FIRST_OBL.confidence]}
+                      </span>
+                    </th>
+                    <td className="gd-date"><time dateTime={d}>{dateCells(d)}</time></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 2. Πληρωμή */}
+        <H2 {...S.pay} />
+        <ol className="lg-ul">
+          <li>
+            {'Μπαίνεις στο '}
+            <a href={PORTAL.url} {...EXT}>{PORTAL.portal}</a>
+            {' με τους κωδικούς TAXISnet.'}
+          </li>
+          <li>{`Πηγαίνεις ${PATH_TEXT}. Εκεί βλέπεις και αποθηκεύεις το εκκαθαριστικό σου.`}</li>
+          <li>{'Στο εκκαθαριστικό γράφεται η Ταυτότητα Οφειλής.'}</li>
+          <li>{'Πληρώνεις από το web banking της τράπεζάς σου, με αυτή την Ταυτότητα Οφειλής.'}</li>
+        </ol>
+        <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>
+          {'Αν πληρώνεις σε δόσεις, η προθεσμία κάθε δόσης είναι η ημερομηνία του πίνακα πιο πάνω. Όταν το τέλος του μήνα πέφτει Σαββατοκύριακο ή αργία, η δόση λήγει νωρίτερα, όχι αργότερα.'}
+        </div>
+
+        {/* 3. Έλεγχος ποσού */}
+        <H2 {...S.check} />
+        <p className="lg-p">
+          {'Το εκκαθαριστικό βγαίνει από όσα έχεις δηλώσει στο Ε9. Αν μια αγορά, πώληση ή κληρονομιά δεν δηλώθηκε, το εκκαθαριστικό δεν την ξέρει. Γι’ αυτό, πριν πληρώσεις, αξίζει μια σύγκριση με μια ανεξάρτητη εκτίμηση.'}
+        </p>
+        <p className="lg-p">
+          {'Στον '}
+          <Link href="/ypologismos-enfia" className="lp-link" style={LINK_STYLE}>υπολογισμό ΕΝΦΙΑ</Link>
+          {' βάζεις τετραγωνικά, τιμή ζώνης, παλαιότητα και όροφο και βλέπεις μια ενδεικτική εκτίμηση. Αν απέχει πολύ από το εκκαθαριστικό, έλεγξε το Ε9 ή ρώτα τον λογιστή σου. Ο τρόπος υπολογισμού εξηγείται στον οδηγό '}
+          <Link href="/odigos/pos-ypologizetai-o-enfia" className="lp-link" style={LINK_STYLE}>Πώς υπολογίζεται ο ΕΝΦΙΑ</Link>
+          {'.'}
+        </p>
+
+        {/* 4. Πιστοποιητικό */}
+        <H2 {...S.cert} />
+        <p className="lg-p">
+          {'Το πιστοποιητικό ΕΝΦΙΑ το ζητά ο συμβολαιογράφος όταν μεταβιβάζεται ακίνητο ή συστήνεται δικαίωμα πάνω του, όπως υποθήκη ή προσημείωση. Το εκδίδει ο ίδιος ο ιδιοκτήτης, ηλεκτρονικά και χωρίς κόστος, με τους κωδικούς TAXISnet.'}
+        </p>
+        <p className="lg-p">
+          {'Σε πώληση το πιστοποιητικό βεβαιώνει μόνο ότι το συγκεκριμένο ακίνητο περιλαμβάνεται στη δήλωση ΕΝΦΙΑ (Ε9) των πέντε προηγούμενων ετών. Για να το εκδώσεις δεν χρειάζεται να έχεις εξοφλήσει ληξιπρόθεσμες οφειλές ΕΝΦΙΑ.'}
+        </p>
+        <ol className="lg-ul">
+          <li>
+            {'Μπαίνεις στο '}
+            <a href={PORTAL.url} {...EXT}>{PORTAL.portal}</a>
+            {` και πηγαίνεις ${PATH_TEXT}.`}
+          </li>
+          <li>{'Από τις διαθέσιμες ενέργειες επιλέγεις «Πιστοποιητικά».'}</li>
+          <li>{'Δίνεις τον ΑΤΑΚ (αριθμό ταυτότητας ακινήτου) του ακινήτου για το οποίο το ζητάς. Βοηθά να τον έχεις σημειώσει από πριν.'}</li>
+        </ol>
+        <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>
+          {'Ο περιορισμός στο Ε9 των πέντε ετών αφορά την πώληση. Για άλλες μεταβιβάσεις, όπως γονική παροχή ή δωρεά, έλεγξε με τον συμβολαιογράφο τι ακριβώς χρειάζεται.'}
+        </div>
+
+        {/* 5. Οριστικοποίηση */}
+        <H2 {...S.final} />
+        <p className="lg-p">
+          {'Η «οριστικοποίηση ΕΝΦΙΑ» αφορά το πιστοποιητικό, όχι τον φόρο. Ο συμβολαιογράφος ελέγχει στο TAXISnet ότι το πιστοποιητικό που του έδωσες ισχύει και το οριστικοποιεί όταν το επισυνάπτει στο συμβόλαιο. Από εκεί και πέρα το ίδιο πιστοποιητικό δεν χρησιμοποιείται ξανά: για δεύτερο συμβόλαιο χρειάζεται νέο.'}
+        </p>
+        <p className="lg-p">
+          {`Δεν έχει σχέση με την αυτόματη οριστικοποίηση της δήλωσης φορολογίας εισοδήματος: όσες προσυμπληρωμένες δηλώσεις δεν πειραχτούν ως τις ${dayMonth(AUTOFILE)} οριστικοποιούνται από την ΑΑΔΕ. Εκείνη εξηγείται στον οδηγό για τις `}
+          <Link href="/odigos/forologikes-prothesmies-idioktiton" className="lp-link" style={LINK_STYLE}>φορολογικές προθεσμίες ιδιοκτήτη</Link>
+          {'.'}
+        </p>
+
+        <GuideSources over="6. Τεκμηρίωση" sources={SOURCES} />
+
+        <GuideCta title="Πριν πληρώσεις, δες αν το ποσό σου είναι σωστό" href="/ypologismos-enfia" action="Έλεγξε το ποσό σου">
+          {'Βάζεις τετραγωνικά, τιμή ζώνης, παλαιότητα και όροφο και συγκρίνεις την εκτίμηση με το εκκαθαριστικό. Ο υπολογισμός γίνεται στη συσκευή σου.'}
+        </GuideCta>
+
+        <GuideFaq title="Ό,τι ρωτούν για την πληρωμή του ΕΝΦΙΑ" faq={FAQ} />
+
+        <RelatedGuides current={GUIDE} />
+
+        <div className="lg-note lg-note-fine" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
+          {'Ο παρών οδηγός είναι ενημερωτικός. Οι διαδρομές στο myAADE και οι όροι του πιστοποιητικού ορίζονται από την ΑΑΔΕ και μπορεί να αλλάξουν. Επιβεβαίωσέ τα στο myAADE, με τον συμβολαιογράφο ή με τον λογιστή σου πριν από κάθε ενέργεια.'}
+        </div>
+      </GuideMain>
+
+      <PublicFooter />
+    </div>
+  );
+}
