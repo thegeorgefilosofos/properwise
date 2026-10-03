@@ -371,11 +371,16 @@ export function tenantScheduleRows(
   }
 
   // 4) Επέτειος αναπροσαρμογής ΔΤΚ (ετήσια, από lease_start).
+  //
+  // 02.10.2026: γραφόταν `'yearly'`, που η ανάπτυξη του ημερολογίου
+  // (lib/calendar/recurrence) δεν ήξερε· η σειρά έδειχνε μόνο την πρώτη
+  // επέτειο. Το λεξιλόγιο του ημερολογίου λέει `'annual'`. Οι παλιές γραμμές
+  // διαβάζονται χάρη στο συνώνυμο εκεί.
   if (t.lease_start && t.monthly_rent && t.monthly_rent > 0) {
     events.push({
       source: key('rent_adjust'), category: 'contract',
       title: `Αναπροσαρμογή ενοικίου (ΔΤΚ), ${name}`, event_date: nextAnniversaryISO(t.lease_start),
-      priority: 'low', recurring: true, recurring_interval: 'yearly',
+      priority: 'low', recurring: true, recurring_interval: 'annual',
       notes: 'Ετήσια αναπροσαρμογή μισθώματος βάσει ΔΤΚ (ΕΛΣΤΑΤ). Δες «Αναπροσαρμογή Ενοικίου».',
     });
   }

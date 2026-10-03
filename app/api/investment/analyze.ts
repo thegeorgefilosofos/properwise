@@ -32,6 +32,9 @@ function coerceDealInput(body: unknown): DealInput | null {
     const n = numOrNull(src[k]);
     if (n !== null) out[k] = n;
   }
+  // ΕΤΗ ΜΕ ΟΡΙΟ (02.10.2026). Η μηχανή φτιάχνει μία ταμειακή ροή ανά έτος και τρέχει
+  // IRR πάνω της: `holdYears: 1e9` εξαντλούσε μνήμη και χρόνο της συνάρτησης.
+  if (out.holdYears < 1 || out.holdYears > 50 || out.loanYears < 1 || out.loanYears > 50) return null;
   return out as unknown as DealInput;
 }
 

@@ -29,6 +29,7 @@ import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
+import { upcomingRows, nextOfKind } from './next';
 import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
   RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
@@ -83,27 +84,11 @@ const WHO: Record<TaxObligation['who'], string> = { owner: 'Εσύ', app: 'Εσ�
  * «τέλος Μαρτίου», «15 Ιουλίου» με το χέρι: δεύτερη πηγή προθεσμιών δίπλα στον
  * πίνακα, ακριβώς ό,τι απαγορεύει το obligations.test.ts. Κάθε ημερομηνία του
  * κειμένου είναι η πρώτη επερχόμενη του ίδιου είδους στον πίνακα.
+ *
+ * 02.10.2026: ο ορίζοντας και η αναζήτηση ζουν στο `./next.ts`. Εδώ η
+ * αναζήτηση πετούσε σφάλμα όταν ένα είδος έπεφτε λίγες μέρες έξω από το
+ * δωδεκάμηνο και η σελίδα δεν χτιζόταν (βλ. το σχόλιο εκεί).
  */
-function nextOf(rows: TaxObligation[], kind: TaxObligation['kind']): TaxObligation {
-  const o = rows.find(r => r.kind === kind);
-  if (!o) throw new Error(`Λείπει από τον ορίζοντα: ${kind}`);
-  return o;
-}
-
-/**
- * ΟΙ ΕΠΟΜΕΝΟΙ ΔΩΔΕΚΑ ΜΗΝΕΣ, ΑΠΟ ΣΗΜΕΡΑ. Οι ετήσιες υποχρεώσεις του ιδιοκτήτη
- * (προφίλ `owner`, κοινές σε ιδιοκατοίκηση, μακροχρόνια και βραχυχρόνια) του
- * τρέχοντος και του επόμενου έτους. Οι μηνιαίες της βραχυχρόνιας δεν μπαίνουν
- * εδώ ως 24 γραμμές: περιγράφονται μία φορά, στη δική τους ενότητα.
- */
-function upcoming(): TaxObligation[] {
-  const today = athensToday();
-  const year = Number(today.slice(0, 4));
-  const until = `${year + 1}${today.slice(4)}`;
-  return [...greekPropertyTaxObligations(year - 1, 'owner'), ...greekPropertyTaxObligations(year, 'owner'), ...greekPropertyTaxObligations(year + 1, 'owner')]
-    .filter(o => o.date >= today && o.date < until)
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
 
 const FAQ: GuideFaqItem[] = [
   {
@@ -143,8 +128,8 @@ const FAQ: GuideFaqItem[] = [
 // κοπής, που στο κινητό άνοιγε τρύπα στη γραμμή από πάνω και δεν πατιόταν.
 const EXT = { target: '_blank', rel: 'noopener noreferrer', className: 'lp-link', style: LINK_STYLE } as const;
 const SOURCES: React.ReactNode[] = [
-  'ΕΝΦΙΑ: ν.4223/2013, όπως ισχύει. Έκδοση εκκαθαριστικού και αριθμός δόσεων ανακοινώνονται κάθε χρόνο από την ΑΑΔΕ.',
-  'Ε9: προθεσμία 30 ημερών από κάθε μεταβολή, άρθρο 6 παρ. 3 ν.4223/2013.',
+  'ΕΝΦΙΑ: ν.4223/2013, όπως ισχύει, όπως κωδικοποιήθηκε στον ν.5219/2025. Έκδοση εκκαθαριστικού και αριθμός δόσεων ανακοινώνονται κάθε χρόνο από την ΑΑΔΕ.',
+  'Ε9: προθεσμία 30 ημερών από κάθε μεταβολή, άρθρο 6 παρ. 3 ν.4223/2013, όπως κωδικοποιήθηκε στον ν.5219/2025.',
   'Δήλωση φορολογίας εισοδήματος (Ε1, Ε2): προθεσμίες και αυτόματη οριστικοποίηση των προσυμπληρωμένων δηλώσεων όπως τις ανακοινώνει η ΑΑΔΕ για κάθε φορολογικό έτος.',
   'Βραχυχρόνια: δήλωση βραχυχρόνιας διαμονής στο Μητρώο Ακινήτων Βραχυχρόνιας Διαμονής της ΑΑΔΕ · τέλος ανθεκτικότητας στην κλιματική κρίση, ν.5073/2023 όπως ισχύει.',
   <>
@@ -163,14 +148,16 @@ const S = {
 } as const;
 
 export default function Page() {
-  const rows = upcoming();
-  const first = nextOf(rows, 'enfia-first');
+  const today = athensToday();
+  const rows = upcomingRows(today);
+  const nextOf = (kind: TaxObligation['kind']) => nextOfKind(rows, kind, today);
+  const first = nextOf('enfia-first');
   const at = {
-    issue: nextOf(rows, 'enfia-issue'), first, e9: nextOf(rows, 'e9'),
-    autofile: nextOf(rows, 'income-autofile'), decl: nextOf(rows, 'income-decl'),
+    issue: nextOf('enfia-issue'), first, e9: nextOf('e9'),
+    autofile: nextOf('income-autofile'), decl: nextOf('income-decl'),
     // Η τελευταία δόση του ΙΔΙΟΥ εκκαθαριστικού με την πρώτη, όχι η πρώτη
     // τελευταία δόση που βρίσκεται μπροστά μας (που μπορεί να είναι της περσινής).
-    last: nextOf(greekPropertyTaxObligations(Number(first.date.slice(0, 4)), 'owner'), 'enfia-last'),
+    last: nextOfKind(greekPropertyTaxObligations(Number(first.date.slice(0, 4)), 'owner'), 'enfia-last', first.date),
   };
   const jsonLd = guideJsonLd({
     guide: GUIDE, headline: H1, description: DESC, faq: FAQ,

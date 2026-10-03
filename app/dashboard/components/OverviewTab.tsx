@@ -16,8 +16,8 @@ import * as expenseStore from '@/lib/data/expenses'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
-import { taxpayerRentSources } from '@/lib/accounting/taxpayerIncome'
-import type { StayAmountLike } from '@/lib/clients/stayAmounts'
+import { taxpayerRentSources, ownershipPctOf, wholePropertyTax } from '@/lib/accounting/taxpayerIncome'
+import { hostPayout, type StayAmountLike } from '@/lib/clients/stayAmounts'
 import MonthlyFeedbackNudge from './MonthlyFeedbackNudge'
 import type { LegalForm } from '@/lib/accounting/dossier'
 import type { OpenerContext } from '@/lib/assistant/openers'
@@ -216,8 +216,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       supabase.from('activity_log').select('created_at')
         .eq('user_id',userId).eq('action','lease_declaration_submitted').eq('entity_id',prop.id)
         .order('created_at',{ascending:false}).limit(1),
-      rentStore.ofProperty<IncomeRent>(supabase,prop.id,'amount,paid,paid_date,due_date,period_year,period_month',userId,{ year }),
-      rentStore.ofUser<IncomeRent & { property_id: string }>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS}`,{ year }),
+      rentStore.ofProperty<IncomeRent>(supabase,prop.id,rentStore.INCOME_COLUMNS,userId,{ year }),
+      rentStore.ofUser<IncomeRent & { property_id: string }>(supabase,userId,`property_id,${rentStore.INCOME_COLUMNS}`,{ year }),
       stayStore.ofUser<StayAmountLike & { property_id: string }>(supabase,userId,stayStore.PORTFOLIO_COLUMNS),
       profileType === 'professional'
         ? supabase.from('clients').select('id').eq('user_id',userId).eq('type','owner')
@@ -327,14 +327,19 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Οι λογαριασμοί που ΔΕΝ έχουν ακόμη δαπάνη από πίσω τους (απλήρωτοι): είναι
   // πραγματικό κόστος του έτους και λείπουν από τον πίνακα `expenses`.
   const unbilledOfYear = ledgerTotal(entriesOfYear.filter(e => !e.expenseId));
-  // Οι πέντε μεγαλύτερες κατηγορίες του έτους, για την αναφορά PDF. Παράγονται
+  // Οι πέντε μεγαλύτερες κατηγορίες του έτους για την αναφορά PDF και οι
+  // υπόλοιπες μαζί ως «Λοιπές» (02.10.2026): με σκέτες τις πέντε, το «Σύνολο
+  // δαπανών» του πίνακα δεν έβγαινε ίσο με τις «Συνολικές δαπάνες» από πάνω. Παράγονται
   // από το ΙΔΙΟ ημερολόγιο με το ποσό που τυπώνεται δίπλα τους — πριν έβγαιναν
   // από τον σκέτο πίνακα δαπανών, οπότε το άθροισμα των γραμμών δεν έβγαζε το
   // σύνολο που έγραφε η ίδια η αναφορά από πάνω.
   const catEntries = useMemo(() => {
     const m: Record<string, number> = {};
     entriesOfYear.forEach(e => { m[e.category] = (m[e.category] || 0) + e.amount; });
-    return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const all = Object.entries(m).sort((a, b) => b[1] - a[1]);
+    if (all.length <= 6) return all;
+    const rest = all.slice(5).reduce((s, [, v]) => s + v, 0);
+    return [...all.slice(0, 5), ['Λοιπές', rest] as [string, number]];
   }, [entriesOfYear]);
   // ΤΑΣΗ ΔΑΠΑΝΩΝ: ΙΔΙΟ ΔΙΑΣΤΗΜΑ, ΟΧΙ ΟΛΟΚΛΗΡΟ ΤΟ ΠΡΟΗΓΟΥΜΕΝΟ ΕΤΟΣ.
   // Πριν, το YTD (π.χ. δύο μήνες) συγκρινόταν με τους δώδεκα μήνες της περσινής
@@ -397,7 +402,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // συνάρτηση μπορεί να αλλάξει τον πίνακα και εγκατέλειπε όλο το component
   // (react-hooks/preserve-manual-memoization, δύο σφάλματα στο `cash`).
   const hostStaysToDate = useMemo(() => staysOfYearToDate(hostStays, year, todayIso), [hostStays, year, todayIso]);
-  const hostingYTD = hostStaysToDate.reduce((sum,s)=>sum+stayTotal(s),0);
+  // ΤΟ PAYOUT, ΟΧΙ ΤΟ ΔΗΛΩΤΕΟ. Το πλακίδιο λέει «ό,τι μπήκε στον λογαριασμό
+  // σου» και άθροιζε το `total`, που σε διαμονή με ανάλυση είναι ακαθάριστο
+  // μείον τέλος: 1.000€ ο επισκέπτης, 150€ προμήθεια, 50€ τέλος έγραφε 950€
+  // εκεί που μπήκαν 800€. Χωρίς ανάλυση και χωρίς δηλωμένη βάση μένει το ποσό
+  // όπως καταχωρήθηκε.
+  const hostingYTD = hostStaysToDate.reduce((sum,s)=>sum+(hostPayout(s) ?? stayTotal(s)),0);
   const hostingNights = hostStaysToDate.reduce((sum,s)=>sum+(s.nights ?? 0),0);
   const nextArrival = hostStays.map(s=>s.check_in).filter((d): d is string => !!d && d>=todayIso).sort()[0] || null;
   // Ο ΥΠΟΛΟΓΙΣΜΟΣ ΤΟΥ ΓΡΑΦΗΜΑΤΟΣ ΕΦΥΓΕ ΜΑΖΙ ΜΕ ΤΟ ΓΡΑΦΗΜΑ: δύο κατάλογοι μηνών,
@@ -504,7 +514,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   );
   // Χωρίς `Math.round`: 1.060,20€ γραφόταν «1.060,00€», λεπτά που δεν υπάρχουν.
   // Η στρογγυλοποίηση ανήκει στην εμφάνιση, που ήδη γράφει δύο δεκαδικά.
-  const estTax = taxShareOf(portfolioTax, prop.id);
+  // Ο φόρος βγαίνει στο ποσοστό συνιδιοκτησίας· τα πλακίδια δείχνουν όλο το
+  // ακίνητο, οπότε ο αριθμός ανάγεται στο ακίνητο με τον ίδιο συντελεστή.
+  const estTax = wholePropertyTax(taxShareOf(portfolioTax, prop.id), ownershipPctOf(prop));
   // ΕΝΑ ΝΟΥΜΕΡΟ ΠΡΩΤΟ (02.10.2026). Η Επισκόπηση άνοιγε με ημερομηνία και
   // κουμπί PDF· ο πρώτος αριθμός ήταν κάτω από τη Νόα. Ο ίδιος υπολογισμός με
   // το πλακίδιο «Καθαρό αποτέλεσμα»: σε ακίνητο με έσοδα το καθαρό, αλλιώς οι
@@ -749,8 +761,11 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           ownership: prop.ownership!=null?Number(prop.ownership):undefined,
           coOwners: readCoOwners(prop.co_owners).map(c=>c.name),
           shortTerm: isShortTerm(prop),
-          monthlyRent: rent, rentIsEstimate: incomeIsEstimate, annualRent, grossYield, netYield,
+          // Στη βραχυχρόνια το «μηνιαίο έσοδο» είναι το έσοδο της χρονιάς ανά μήνα,
+          // όχι ο στόχος ενοικίου.
+          monthlyRent: isShortTerm(prop) && annualRent > 0 ? annualRent / 12 : rent, rentIsEstimate: incomeIsEstimate, annualRent, grossYield, netYield,
           expensesYTD: totalExpYear, categories: catEntries, branding,
+          taxShare: { tax: estTax, ofPortfolio: portfolioTax.count > 1 },
         })}>
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
           Αναφορά σε PDF

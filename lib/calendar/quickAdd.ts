@@ -13,6 +13,8 @@
 // (το `now` στα τεστ φτιάχνεται με Date.UTC).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { athensParts } from '@/lib/core/time'
+
 export interface QuickAddResult {
   title: string
   date: string | null // 'YYYY-MM-DD' ή null
@@ -70,8 +72,15 @@ function fmt(ms: number): string {
 }
 
 // Το date-part (UTC μεσάνυχτα) που αντιπροσωπεύει το «σήμερα».
+//
+// 02.10.2026: το «σήμερα» έβγαινε από τα UTC μέρη του `now`. Από τα μεσάνυχτα
+// ως τις 02:00 ή 03:00 ώρα Ελλάδας το UTC είναι ακόμη χθες: στις 01:30 της
+// 3.10.2026 το «σήμερα» έδινε 2.10 και το «αύριο» την ίδια τη μέρα. Η μέρα
+// είναι πλέον η ημερολογιακή μέρα της Αθήνας (athensParts) και μόνο η
+// αριθμητική μένει σε UTC.
 function midnightMs(now: Date): number {
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const { year, month, day } = athensParts(now)
+  return Date.UTC(year, month - 1, day)
 }
 
 // Επόμενη εμφάνιση της ημέρας-εβδομάδας, αυστηρά μετά το σήμερα.

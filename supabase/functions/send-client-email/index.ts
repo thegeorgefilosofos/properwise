@@ -69,10 +69,23 @@ Deno.serve(async (req) => {
   const { data: userData, error: userErr } = await supabase.auth.getUser()
   if (userErr) {
     console.error('[send-client-email] η ταυτότητα δεν διαβάστηκε:', userErr)
-    return json({ error: 'identity_unavailable', detail: userErr.message }, 503)
+    return json({ error: 'identity_unavailable', detail: 'Η ταυτοποίηση δεν απάντησε. Δοκίμασε ξανά σε λίγο.' }, 503)
   }
   const user = userData?.user
   if (!user) return json({ error: 'unauthorized' }, 401)
+
+  // ── ΤΟ ΠΑΚΕΤΟ ΚΡΙΝΕΤΑΙ ΕΔΩ, ΟΧΙ ΜΟΝΟ ΣΤΗΝ ΟΘΟΝΗ (02.10.2026) ────────────────
+  // Το CRM και η αποστολή σε πελάτες είναι του «Επαγγελματία» (rank 3), αλλά η
+  // συνάρτηση δεν το ρωτούσε: ένας δωρεάν λογαριασμός έγραφε «πελάτες» μέσω της
+  // βάσης και έστελνε δικό του HTML από το domain μας, έως 3.000 την ημέρα.
+  const { data: rank, error: rankErr } = await supabase.rpc('my_plan_rank')
+  if (rankErr) {
+    console.error('[send-client-email] το πακέτο δεν διαβάστηκε:', rankErr)
+    return json({ error: 'plan_unavailable', detail: 'Ο έλεγχος πακέτου απέτυχε. Δοκίμασε ξανά σε λίγο.' }, 503)
+  }
+  if (!(Number(rank) >= 3)) {
+    return json({ error: 'plan_required', detail: 'Η αποστολή email σε πελάτες είναι στο πακέτο «Επαγγελματίας».' }, 403)
+  }
   const replyTo = user.email || undefined
 
   // ── Anti-relay: recipients MUST be the caller's own CRM clients ──────────────
@@ -129,7 +142,7 @@ Deno.serve(async (req) => {
   const { data: camp, error: cErr } = await supabase.from('email_campaigns')
     .insert({ user_id: user.id, subject, body_html: bodyHtml, kind, recipient_count: recipients.length, status: 'sending' })
     .select('id').single()
-  if (cErr || !camp) return json({ error: 'campaign_insert_failed', detail: cErr?.message }, 500)
+  if (cErr || !camp) return json({ error: 'campaign_insert_failed', detail: 'Η υπηρεσία δεν απάντησε. Δοκίμασε ξανά σε λίγο.' }, 500)
   const campaignId = camp.id as string
 
   const recRows = recipients.map(r => ({ campaign_id: campaignId, user_id: user.id, client_id: r.clientId || null, email: r.email, name: r.name || null, status: 'pending' }))

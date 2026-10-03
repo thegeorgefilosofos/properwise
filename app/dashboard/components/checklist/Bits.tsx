@@ -147,9 +147,17 @@ export function SubTaskEditor({ subtasks, onChange }: { subtasks: SubTask[]; onC
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
         {subtasks.map(st => (
           <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg-surface)', borderRadius: T.radius.inner, border: '1px solid var(--border-subtle)' }}>
-            <button type="button" onClick={() => onChange(subtasks.map(s => s.id === st.id ? { ...s, done: !s.done } : s))}
-              style={{ width: 18, height: 18, borderRadius: T.radius.xs, border: '2px solid ' + (st.done ? 'var(--accent)' : 'var(--border-default)'), background: st.done ? 'var(--accent)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
-              {st.done && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" fill="none" stroke="var(--text-inverse)" strokeWidth="2" strokeLinecap="round"/></svg>}
+            {/* ΤΟ ΤΕΤΡΑΓΩΝΑΚΙ ΗΤΑΝ 18×18 ΧΩΡΙΣ ΟΝΟΜΑ ΚΑΙ ΧΩΡΙΣ ΚΑΤΑΣΤΑΣΗ. Ο αναγνώστης
+                οθόνης άκουγε «κουμπί» και τίποτα άλλο· το δάχτυλο έπρεπε να
+                πετύχει στόχο μισού εκατοστού. Τώρα είναι πλαίσιο ελέγχου με το
+                βήμα για όνομα και περιοχή στο ύψος χειριστηρίου (44 στο δάχτυλο)· τα αρνητικά περιθώρια κρατούν
+                τη γραμμή στο ύψος που είχε. */}
+            <button type="button" role="checkbox" aria-checked={st.done} aria-label={st.text}
+              onClick={() => onChange(subtasks.map(s => s.id === st.id ? { ...s, done: !s.done } : s))}
+              style={{ width: T.h.lg, height: T.h.lg, margin: `calc((18px - ${T.h.lg}) / 2)`, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span aria-hidden="true" style={{ width: 18, height: 18, boxSizing: 'border-box', borderRadius: T.radius.xs, border: '2px solid ' + (st.done ? 'var(--accent)' : 'var(--border-default)'), background: st.done ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
+                {st.done && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" fill="none" stroke="var(--text-inverse)" strokeWidth="2" strokeLinecap="round"/></svg>}
+              </span>
             </button>
             <span style={{ flex: 1, fontSize: 'var(--fs-base)', color: st.done ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: st.done ? 'line-through' : 'none' }}>{st.text}</span>
             <IconBtn label={`Διαγραφή βήματος: ${st.text}`} onClick={() => onChange(subtasks.filter(s => s.id !== st.id))}><svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></IconBtn>

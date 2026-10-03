@@ -1,5 +1,5 @@
 // Τεστ για την επέκταση επαναλαμβανόμενων (recurrence.ts). Τρέξε: npx tsx lib/calendar/recurrence.test.ts
-import { nextOccurrence, expandRecurring } from './recurrence'
+import { nextOccurrence, occurrenceAt, expandRecurring } from './recurrence'
 
 let passed = 0, failed = 0
 const fails: string[] = []
@@ -60,6 +60,23 @@ ok('exdate skipped', expandRecurring(exCase, '2026-01-01', '2026-04-30').map(o =
 const exCount = [{ id: 'ec', event_date: '2026-01-10', recurring: true, recurring_interval: 'monthly', recurrence_count: 3, recurrence_exdates: ['2026-02-10'] }]
 ok('exdate counts toward count (iCal)', expandRecurring(exCount, '2026-01-01', '2026-12-31').map(o => o.event_date).join(',') === '2026-01-10,2026-03-10')
 ok('base exdate removes base too', expandRecurring([{ id: 'b', event_date: '2026-01-10', recurring: true, recurring_interval: 'monthly', recurrence_count: 2, recurrence_exdates: ['2026-01-10'] }], '2026-01-01', '2026-12-31').map(o => o.event_date).join(',') === '2026-02-10')
+
+// ── 02.10.2026: κάθε εμφάνιση από τη βάση, όχι από την προηγούμενη ─────────
+// Πριν: μηνιαία από 31.1 έδινε 28.2, 28.3, 28.4 (η κλειδωμένη μέρα κολλούσε).
+const endOfMonth = [{ id: 'm31', event_date: '2026-01-31', recurring: true, recurring_interval: 'monthly' }]
+ok('μηνιαία από 31.1: η 31η επιστρέφει', expandRecurring(endOfMonth, '2026-01-01', '2026-06-30').map(o => o.event_date).join(',')
+  === '2026-01-31,2026-02-28,2026-03-31,2026-04-30,2026-05-31,2026-06-30')
+ok('τριμηνιαία από 30.11: 28.2 και μετά 30.5', expandRecurring([{ id: 'q', event_date: '2025-11-30', recurring: true, recurring_interval: 'quarterly' }], '2025-11-01', '2026-08-31').map(o => o.event_date).join(',')
+  === '2025-11-30,2026-02-28,2026-05-30,2026-08-30')
+ok('ετήσια από 29.2.2028: 28.2 και ξανά 29.2 το 2032', expandRecurring([{ id: 'l', event_date: '2028-02-29', recurring: true, recurring_interval: 'annual' }], '2028-01-01', '2032-12-31').map(o => o.event_date).join(',')
+  === '2028-02-29,2029-02-28,2030-02-28,2031-02-28,2032-02-29')
+ok('occurrenceAt n=0 είναι η βάση', occurrenceAt('2026-01-31', 'monthly', 0) === '2026-01-31')
+ok('occurrenceAt εβδομαδιαία', occurrenceAt('2026-07-01', 'weekly', 4) === '2026-07-29')
+
+// ── 02.10.2026: το «yearly» που έγραφε η Φροντίδα μισθωτή ───────────────────
+// Πριν: άγνωστο interval, η σειρά έδειχνε μόνο την πρώτη εμφάνιση.
+ok('yearly = annual', nextOccurrence('2026-05-20', 'yearly') === '2027-05-20')
+ok('yearly αναπτύσσεται', expandRecurring([{ id: 'y', event_date: '2026-03-01', recurring: true, recurring_interval: 'yearly' }], '2026-01-01', '2028-12-31').length === 3)
 
 console.log(`recurrence.ts, ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed) { console.log('Απέτυχαν:\n - ' + fails.join('\n - ')); process.exit(1) }

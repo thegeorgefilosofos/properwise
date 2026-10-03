@@ -532,7 +532,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               {scanning && (
                 <div style={{ marginTop: 12, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}><strong style={{ color: 'var(--accent)' }}>Claude AI</strong> αναγνωρίζει το έγγραφο…</div>
+                  <div role="status" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Διαβάζω το έγγραφο…</div>
                 </div>
               )}
               {/* Το περιθώριο ζει στο περιτύλιγμα: το Btn κρατά μόνο τη γεωμετρία του κουμπιού. */}

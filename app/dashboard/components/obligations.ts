@@ -1,7 +1,7 @@
 import { fe } from '@/lib/core/format';
 import { declarationDeadline } from '@/lib/tax/leaseDeclaration';
 import {
-  taxObligationsHorizon, taxEventSource, taxObligationNotes,
+  taxObligationsHorizon, greekPropertyTaxObligations, taxEventSource, taxObligationNotes,
   TAX_EVENT_CATEGORY, type PropertyTaxProfile, type TaxObligation,
 } from '@/lib/tax/greekTaxCalendar';
 import type { Who } from '@/lib/accounting/dossier';
@@ -139,13 +139,37 @@ export function computeObligations(
   // ορίζεται ΕΚΕΙ, όχι εδώ, ώστε να μη ξαναδιαφωνήσουν οι δύο οθόνες.
   const todayISO = iso(now);
   const cutoff = iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - LOOKBACK_DAYS));
-  const seenKind = new Set<string>();
-  for (const t of taxObligationsHorizon(todayISO, profile)) {
-    if (t.date < cutoff) continue;
-    // Μία γραμμή ανά ΕΙΔΟΣ υποχρέωσης: η αμέσως επόμενη εμφάνιση. Αλλιώς οι
-    // δώδεκα μηνιαίες δηλώσεις της βραχυχρόνιας θα έσπρωχναν έξω τα υπόλοιπα.
-    if (seenKind.has(t.kind)) continue;
-    seenKind.add(t.kind);
+  // Μία γραμμή ανά ΕΙΔΟΣ υποχρέωσης: η αμέσως επόμενη εμφάνιση. Αλλιώς οι
+  // δώδεκα μηνιαίες δηλώσεις της βραχυχρόνιας θα έσπρωχναν έξω τα υπόλοιπα.
+  //
+  // ΔΙΟΡΘΩΣΗ 02.10.2026. Κρατούσαμε την ΠΡΩΤΗ εμφάνιση μετά το όριο των 45
+  // ημερών πίσω, που είναι ήδη περασμένη. Στις 2.10.2026 η βραχυχρόνια έβλεπε
+  // «Δήλωση διαμονής 20.8.2026» ως εκπρόθεσμη ενώ η 20.10 που έρχεται έμενε
+  // κρυφή. Τώρα προτιμάται η πρώτη με ημερομηνία από σήμερα και μετά· περασμένη
+  // μένει μόνο όταν δεν υπάρχει επόμενη του ίδιου είδους (η πιο πρόσφατη).
+  //
+  // ΚΑΙ ΤΗΝ 1η ΙΑΝΟΥΑΡΙΟΥ. Ο ορίζοντας ξεκινά από την 1.1 του τρέχοντος έτους,
+  // οπότε μια προθεσμία του Δεκεμβρίου που μόλις πέρασε χανόταν μαζί με την
+  // αλλαγή του χρόνου. Τις περσινές μέσα στο ίδιο παράθυρο των 45 ημερών τις
+  // παίρνουμε από την ίδια μηχανή (greekPropertyTaxObligations), όχι από
+  // δεύτερο αντίγραφο.
+  const horizon = taxObligationsHorizon(todayISO, profile);
+  const horizonFrom = `${now.getFullYear()}-01-01`;
+  const seenId = new Set(horizon.map(t => t.id));
+  const pool = [
+    ...greekPropertyTaxObligations(now.getFullYear() - 1, profile)
+      .filter(t => t.date >= cutoff && t.date < horizonFrom && !seenId.has(t.id)),
+    ...horizon,
+  ].filter(t => t.date >= cutoff).sort((a, b) => a.date.localeCompare(b.date));
+  const pick = new Map<string, TaxObligation>();
+  for (const t of pool) {
+    const cur = pick.get(t.kind);
+    // Πρώτη μελλοντική κερδίζει και δεν αντικαθίσταται. Όσο δεν έχει βρεθεί
+    // μελλοντική, κρατάμε την πιο πρόσφατη περασμένη.
+    if (cur && cur.date >= todayISO) continue;
+    pick.set(t.kind, t);
+  }
+  for (const t of pick.values()) {
     // Το μόνο που προσθέτουμε στο κείμενο είναι ΔΙΚΟ ΤΟΥ δεδομένο: ο ΕΝΦΙΑ που
     // έχει καταχωρήσει ο ίδιος. Καμία εκτίμηση, κανένα δικό μας νούμερο.
     const own = (t.kind.startsWith('enfia') && prop.enfia)

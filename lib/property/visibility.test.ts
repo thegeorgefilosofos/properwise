@@ -273,6 +273,12 @@ const known = (id: string) =>
     const p = flat(writeStatus(st.key));
     const ctx = ctxOf([p]);
     const e = incomeEntry(st.key);
+    // Και ο ιδιώτης, που δεν φτάνει τους «Επισκέπτες»: η πρότασή του δεν
+    // δείχνει ποτέ εκεί και η καρτέλα της είναι κι αυτή ορατή.
+    const solo = incomeEntry(st.key, { guestsReachable: false });
+    ok(`${st.key}: χωρίς «Επισκέπτες» η πρόταση δεν τους δείχνει`, solo?.tab !== 'clients');
+    ok(`${st.key}: η πρόταση υπάρχει ή λείπει και για τους δύο`, !e === !solo);
+    if (solo) ok(`${st.key}: η προτεινόμενη του ιδιώτη «${solo.tab}» είναι ορατή`, tabDecision(solo.tab, ctx, p).visible);
     if (e) {
       ok(`${st.key}: η προτεινόμενη «${e.tab}» είναι ορατή`, tabDecision(e.tab, ctx, p).visible);
       ok(`${st.key}: το κουμπί έχει λόγια`, e.label.length > 4 && e.noun.length > 3);

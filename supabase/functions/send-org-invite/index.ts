@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
   const { data: userData, error: userErr } = await supabase.auth.getUser()
   if (userErr) {
     console.error('[send-org-invite] η ταυτότητα δεν διαβάστηκε:', userErr)
-    return json({ error: 'identity_unavailable', detail: userErr.message }, 503)
+    return json({ error: 'identity_unavailable', detail: 'Η υπηρεσία δεν απάντησε. Δοκίμασε ξανά σε λίγο.' }, 503)
   }
   const inviter = userData?.user?.email || ''
   if (!userData?.user) return json({ error: 'unauthorized' }, 401)
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     .from('organizations').select('id, name').eq('owner_user_id', userData.user.id).maybeSingle()
   if (orgErr) {
     console.error('[send-org-invite] ο οργανισμός δεν διαβάστηκε:', orgErr)
-    return json({ error: 'org_unreadable', detail: orgErr.message }, 503)
+    return json({ error: 'org_unreadable', detail: 'Η υπηρεσία δεν απάντησε. Δοκίμασε ξανά σε λίγο.' }, 503)
   }
   if (!orgRow) return json({ error: 'not_owner' }, 403)
 
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     .from('organization_members').select('role, status').eq('org_id', orgRow.id).eq('email', email).maybeSingle()
   if (memberErr) {
     console.error('[send-org-invite] το μέλος δεν διαβάστηκε:', memberErr)
-    return json({ error: 'membership_unreadable', detail: memberErr.message }, 503)
+    return json({ error: 'membership_unreadable', detail: 'Η υπηρεσία δεν απάντησε. Δοκίμασε ξανά σε λίγο.' }, 503)
   }
   if (!member) return json({ error: 'not_a_member' }, 404)
 

@@ -415,7 +415,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                   const plan = (INTERNET_PLANS[s.internetProvider] || []).find(p => p.id === v);
                   upd({ internetPlanId: v, internetPlan: plan?.name || '', internetSpeed: plan?.speed || '', internetPrice: plan ? String(plan.price) : '', internetPhone: plan?.hasPhone || false });
                 }}
-                options={[{ value: '', label: '— Επιλογή προγράμματος —' }, ...planOptions]}/>
+                options={[{ value: '', label: 'Διάλεξε πρόγραμμα' }, ...planOptions]}/>
             ) : (
               <TextInput label="Ονομασία προγράμματος" value={s.internetPlan} onChange={v => upd({ internetPlan: v })} placeholder="Fiber 500"/>
             )}
@@ -571,7 +571,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                         // σημαίνει ότι ο χρήστης δεν έχει ξεχωριστή συνδρομή.
                       });
                     }}
-                    options={[{ value: '', label: '— Επιλογή πακέτου —' }, ...tvPackOptions]}/>
+                    options={[{ value: '', label: 'Διάλεξε πακέτο' }, ...tvPackOptions]}/>
                 ) : (
                   <TextInput label="Πακέτο" value={s.tvPlan} onChange={v => upd({ tvPlan: v })} placeholder="Ονομασία πακέτου"/>
                 )}

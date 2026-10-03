@@ -26,6 +26,7 @@ import { FEATURE_LABEL, FEATURE_MIN_PLAN, planAtLeast, type Feature } from '@/li
 import { fn } from '@/components/tokens';
 import { fe } from '@/lib/core/format';
 import { Btn } from '@/components/Theme';
+import { trialCta, trialCovers } from '@/lib/billing/trialOffer';
 
 export type ComparedPlan = Extract<PlanId, 'solo' | 'owner' | 'agency' | 'office'>;
 export const COMPARED: ComparedPlan[] = ['solo', 'owner', 'agency', 'office'];
@@ -87,6 +88,11 @@ const fromPlanLine = (label: string, line: string): FeatureRow => {
 const WITH_NOA = `με ${ASSISTANT_NAME}`;
 const both = (free: string, noa: string) => `${free} · ${noa} ${WITH_NOA}`;
 export const columnName = (id: ComparedPlan): string => id === 'solo' ? PLANS.free.name : PLANS[id].name;
+// Η ΣΤΗΛΗ ΛΕΓΕΤΑΙ ΟΠΩΣ Ο ΔΙΑΚΟΠΤΗΣ ΤΗΣ ΑΡΧΙΚΗΣ. Η κάρτα εκεί γράφει «Χωρίς Νόα»
+// και «Με Νόα»· εδώ ο αναγνώστης οθόνης άκουγε σκέτο «Ιδιοκτήτης» για στήλη
+// που περιέχει και το πληρωμένο πακέτο.
+const columnLabel = (id: ComparedPlan): string =>
+  id === 'solo' ? `${PLANS.free.name}, δωρεάν ή ${WITH_NOA}` : PLANS[id].name;
 const withSolo = (row: FeatureRow, solo: string): FeatureRow => ({ ...row, values: { ...row.values, solo } });
 
 const MATRIX: FeatureRow[] = [
@@ -186,7 +192,9 @@ const TrialCta = ({ id, recommended }: { id: ComparedPlan; recommended?: PlanId 
         Ξεκίνα δωρεάν<span className="sr-only"> με το πακέτο «{PLANS.free.name}»</span>
       </Btn>
     : <Btn variant={id === recommended ? 'primary' : 'secondary'} field href={`/signup?plan=${id}&cycle=monthly`}>
-        Ξεκίνα τη δοκιμή<span className="sr-only"> με το πακέτο «{PLANS[id].name}»</span>
+        {/* Το «Ξεκίνα δωρεάν με το πακέτο …» θα υποσχόταν δωρεάν το ίδιο το
+            πακέτο. Η δοκιμή δίνει μόνο όσα έχει το TRIAL_PLAN (trialOffer.ts). */}
+        {trialCta(id)}<span className="sr-only">{trialCovers(id) ? ` με το πακέτο «${PLANS[id].name}»` : `: πακέτο «${PLANS[id].name}»`}</span>
       </Btn>
 );
 
@@ -204,7 +212,7 @@ function PlanPrice({ id }: { id: ComparedPlan }) {
   const free = id === 'solo';
   return (
     <div className="plan-price">
-      <span className="plan-price-num">{fe(free ? 0 : PLANS[id].priceMonthly)}</span>
+      <span className="plan-price-num">{fe(free ? PLANS.free.priceMonthly : PLANS[id].priceMonthly)}</span>
       <span className="plan-price-per">/μήνα</span>
       <span className="plan-price-alt">
         {/* ΤΟ ΙΔΙΟ ΖΕΥΓΑΡΙ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Η αρχική έγραφε για τη Νόα 4,99€ τον
@@ -280,7 +288,7 @@ export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highl
         const has = FEATURES.filter(row => row.values[id] === true);
         const rec = id === recommended;
         return (
-          <section key={id} className={rec ? 'plan-card plan-card-plan is-rec' : 'plan-card plan-card-plan'} aria-label={columnName(id)}
+          <section key={id} className={rec ? 'plan-card plan-card-plan is-rec' : 'plan-card plan-card-plan'} aria-label={columnLabel(id)}
             style={{ ['--plan-limits' as string]: LIMITS.length }}>
             <div className="plan-card-head">
               <H className="plan-card-name" style={{ color: id === highlight ? 'var(--accent)' : undefined }}>{columnName(id)}</H>

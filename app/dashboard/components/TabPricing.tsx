@@ -37,6 +37,7 @@ import * as calendar from '@/lib/data/calendar'
 import { AadePill } from '@/components/AadeLink';
 import { T, PageTitle, KPIGrid, InfoBanner, Btn, ChipToggle, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar, ABSENT_SHORT } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
+import { isTabPurchasable } from '@/lib/billing/entitlements';
 import { shortTermYearSummary, isHouseType } from '@/lib/tax/shortTermTax';
 import { isIndividualTaxpayer, businessFormOf } from '@/lib/accounting/taxProfile';
 import { incomeStatement } from '@/lib/accounting/statement';
@@ -170,6 +171,9 @@ const MoneySteps = ({ steps, scale = 'lead' }: { steps: MoneyStep[]; scale?: 'le
 };
 
 export default function TabPricing({ propertyId, userId, propertyName, propertySqm, profileType = 'individual', legalForm = 'individual', onNavigate }: Props) {
+  // Φτάνει ποτέ τους «Επισκέπτες»; Ο ιδιώτης όχι, με κανένα πακέτο του, οπότε
+  // ούτε παραπομπή ούτε κουμπί προς τα εκεί.
+  const guestsReachable = isTabPurchasable(profileType, 'clients');
   const supabase = createClient();
   const [stays, setStays] = useState<PriceStay[]>([]);
   const [isHouse, setIsHouse] = useState(false);
@@ -766,7 +770,11 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           /* Η υπόδειξη έστελνε σε «εισαγωγή iCal». Το χειριστήριο λέγεται
              «Σύνδεση ημερολογίου» και ζει στους Επισκέπτες — και το «Όρισε τιμή
              ανά νύχτα» δεν έλεγε ΠΟΥ, ενώ το πεδίο είναι δύο εκατοστά πιο πάνω. */
-          hint={`Συμπλήρωσε τη «Βασική τιμή ανά νύχτα» πιο πάνω. Εναλλακτικά καταχώρησε διαμονές στους ${navLabel('clients')}, χειροκίνητα ή με τη «Σύνδεση ημερολογίου» και η τιμή θα υπολογιστεί από το ιστορικό σου.`}
+          /* Οι «Επισκέπτες» προτείνονται μόνο σε όποιον τους φτάνει. Στον
+             ιδιώτη ήταν λουκέτο που δεν ανοίγει με κανένα πακέτο του. */
+          hint={guestsReachable
+            ? `Συμπλήρωσε τη «Βασική τιμή ανά νύχτα» πιο πάνω. Εναλλακτικά καταχώρησε διαμονές στους ${navLabel('clients')}, χειροκίνητα ή με τη «Σύνδεση ημερολογίου» και η τιμή θα υπολογιστεί από το ιστορικό σου.`
+            : 'Συμπλήρωσε τη «Βασική τιμή ανά νύχτα» πιο πάνω. Από αυτή βγαίνουν οι τιμές κάθε ημέρας.'}
         />
       ) : (
         <>
@@ -811,9 +819,9 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
               {taxSummary.undeclaredCount > 0 && (
                 <div style={{ marginTop: 14 }}>
                   <InfoBanner tone="warning">
-                    {taxSummary.undeclaredCount === 1 ? 'Μία διαμονή δεν έχει' : `${fn(taxSummary.undeclaredCount)} διαμονές δεν έχουν`} Δήλωση Βραχυχρόνιας Διαμονής. Υποβάλλεται μία ανά διαμονή στο myAADE· στους {navLabel('clients')} φαίνονται σημειωμένες.
+                    {taxSummary.undeclaredCount === 1 ? 'Μία διαμονή δεν έχει' : `${fn(taxSummary.undeclaredCount)} διαμονές δεν έχουν`} Δήλωση Βραχυχρόνιας Διαμονής. Υποβάλλεται μία ανά διαμονή στο myAADE{guestsReachable ? <>· στους {navLabel('clients')} φαίνονται σημειωμένες.</> : '.'}
                     <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                      {onNavigate && <Btn variant="secondary" onClick={() => onNavigate('clients')}>Δες ποιες</Btn>}
+                      {onNavigate && guestsReachable && <Btn variant="secondary" onClick={() => onNavigate('clients')}>Δες ποιες</Btn>}
                       <AadePill action="str-declaration" label="Άνοιξε στο myAADE" />
                     </span>
                   </InfoBanner>

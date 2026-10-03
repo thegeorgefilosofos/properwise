@@ -16,6 +16,7 @@ import {
 } from '@/lib/assistant/upstream';
 import { refundAiUsage, refundScanUsage } from '@/lib/billing/aiRefund';
 import { alertOutOfCredit } from '@/lib/assistant/creditAlert';
+import { scanShapeError, SCAN_SHAPE } from '@/lib/assistant/scanShape';
 
 /**
  * Είναι αυτό το αίτημα σάρωση; Το δηλώνει ο πελάτης (`kind: 'scan'`), αλλά
@@ -197,6 +198,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Λείπουν μηνύματα.' }, { status: 400 });
   }
   const scan = isScanRequest(body);
+  // ΜΙΑ ΣΑΡΩΣΗ ΕΧΕΙ ΤΟ ΣΧΗΜΑ ΤΗΣ ΣΑΡΩΣΗΣ (02.10.2026, lib/assistant/scanShape.ts).
+  // Ως εδώ αρκούσε ένα οποιοδήποτε αρχείο για να μετρήσει μια συνομιλία ως σάρωση,
+  // δηλαδή έξω από τα όρια της Νόας και έξω από την κοινή δεξαμενή της δοκιμής.
+  if (scan) {
+    const why = scanShapeError(body);
+    if (why) {
+      console.warn('[anthropic] απορρίφθηκε σάρωση εκτός σχήματος:', why);
+      return NextResponse.json({ error: 'Το αίτημα σάρωσης δεν είναι έγκυρο.' }, { status: 400 });
+    }
+  }
 
   // ── Durable, cross-instance cap (authoritative) ──────────────
   // Οι χάρτες στη μνήμη από πάνω ζουν ΑΝΑ ΣΤΙΓΜΙΟΤΥΠΟ: σε serverless, κάθε νέα
@@ -359,7 +370,7 @@ export async function POST(req: NextRequest) {
   if (!apiKey) {
     await giveBack(true);
     return NextResponse.json(
-      { error: 'ANTHROPIC_API_KEY δεν έχει οριστεί στο .env.local' },
+      { error: 'Η υπηρεσία δεν είναι διαθέσιμη αυτή τη στιγμή.' },
       { status: 500, headers: quotaHeaders(quota) }
     );
   }
@@ -387,7 +398,7 @@ export async function POST(req: NextRequest) {
     }
     const safeBody: Record<string, unknown> = {
       model:      ALLOWED.has(body.model) ? body.model : 'claude-sonnet-5', // ποτέ opus
-      max_tokens: Math.min(Number(body.max_tokens) || 1000, 2000),
+      max_tokens: Math.min(Number(body.max_tokens) || 1000, scan ? SCAN_SHAPE.maxTokens : 2000),
       messages:   body.messages,
     };
     // ── PROMPT CACHING: η μεγαλύτερη μείωση κόστους που υπάρχει εδώ ──────────

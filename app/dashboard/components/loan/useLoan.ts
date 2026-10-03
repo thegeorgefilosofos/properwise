@@ -29,7 +29,9 @@ import {
   MARKET_FALLBACK, rateTypeLabel,
 } from '../TabLoanData'
 import type { AppliedLoan } from '../LoanDocScan'
-import { athensToday, isoDate, daysUntil } from '@/lib/core/time'
+import { athensToday, daysUntil } from '@/lib/core/time'
+import { instalmentDates } from '@/lib/core/monthStep'
+import { saveLoanFlow, loanSaveSuccessText, SCHEDULE_FAILED_AFTER_SAVE } from './saveFlow'
 import { grDate } from '@/lib/core/format'
 import { failed } from '@/lib/core/dbError'
 import type { CalcState } from './model'
@@ -144,34 +146,36 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
 
   useEffect(()=>{loadSaved()},[loadSaved])
 
-  async function handleSaveLoan(loan:Partial<SavedLoan>){
+  async function handleSaveLoan(loan:Partial<SavedLoan>):Promise<void>{
     // ΤΟ ΜΗΝΥΜΑ ΕΠΙΤΥΧΙΑΣ ΗΤΑΝ ΨΕΜΑ. Το insert έγραφε `amount`, `rate`,
     // `loan_type`, `status`, `property_value` — πέντε στήλες που δεν υπήρχαν —
     // και το αποτέλεσμα δεν ελεγχόταν ποτέ. Ο χρήστης καταχωρούσε δάνειο,
     // έβλεπε «Το δάνειο αποθηκεύτηκε» και δεν αποθηκευόταν τίποτα.
     // Τώρα: μετάφραση στις πραγματικές στήλες (toLoanRow) και `must`, ώστε η
     // αποτυχία να φτάνει στο catch που ήδη περιβάλλει την κλήση.
-    try {
-      await must(loanStore.add(supabase,propertyId,userId,toLoanRow(loan)))
-    } catch (e) {
-      notifyError(failed('Το δάνειο δεν αποθηκεύτηκε', e))
-      return
-    }
-    await loadSaved()
+    //
+    // 02.10.2026: και το «…και οι δόσεις προστέθηκαν στο Ημερολόγιο» έβγαινε
+    // ενώ οι δόσεις είχαν αποτύχει. Η ροή (./saveFlow) λέει τι έγινε και βγαίνει
+    // ΕΝΑ μήνυμα, εδώ. Οι καλούντες (Υπολογιστής, σάρωση εγγράφων) δεν
+    // προσθέτουν δικό τους. Η επιστροφή μένει `void` γιατί η σάρωση
+    // (LoanDocScan) τη δηλώνει έτσι.
     // Αυτόματη προσυμπλήρωση των δόσεων στο Ημερολόγιο, ανά ημέρα πληρωμής,
     // εφόσον το δάνειο είναι ενεργό — ώστε να συμψηφίζεται με το υπόλοιπο app.
     const active = (loan.status ?? 'active') === 'active'
-    if(active && loan.amount && loan.rate && loan.years){
-      const monthly = calcMonthly(loan.amount, loan.rate, loan.years)
-      const start = loan.start_date || athensToday()
-      await handleSaveCal(monthly, loan.years, start, loan.bank || '', loan.amount, true)
-      notifyOk('Το δάνειο αποθηκεύτηκε και οι δόσεις προστέθηκαν στο Ημερολόγιο')
-    } else {
-      notifyOk('Το δάνειο αποθηκεύτηκε')
-    }
+    const { amount, rate, years } = loan
+    const r = await saveLoanFlow({
+      add: () => must(loanStore.add(supabase,propertyId,userId,toLoanRow(loan))),
+      reload: loadSaved,
+      schedule: active && amount && rate && years
+        ? () => handleSaveCal(calcMonthly(amount, rate, years), years, loan.start_date || athensToday(), loan.bank || '', amount, true)
+        : null,
+    })
+    if (r.outcome === 'loan_failed') { notifyError(failed('Το δάνειο δεν αποθηκεύτηκε', r.error)); return }
+    const text = loanSaveSuccessText(r.outcome)
+    if (text) notifyOk(text)
   }
-  async function handleSaveCal(monthly:number,years:number,startDate:string,bankName:string,loanAmount?:number,silent=false){
-    const d=new Date(startDate),events:calendar.EventDraft[]=[]
+  async function handleSaveCal(monthly:number,years:number,startDate:string,bankName:string,loanAmount?:number,silent=false):Promise<boolean>{
+    const events:calendar.EventDraft[]=[]
     const n=Math.min(years*12,60)
     // Ξεχωριστή, ιδιότυπη πηγή ανά τράπεζα → idempotent (δεν διπλογράφεται στο
     // ξαναπάτημα, ούτε μπερδεύεται με χειροκίνητα γεγονότα). Ρητές δόσεις, όχι
@@ -182,20 +186,29 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
     const title=loanEventTitle(bankName)
     // Οι σημειώσεις κρατούν ποιο δάνειο και τι ποσό, για συμψηφισμό/αναγνώριση.
     const note=`Δόση ${fmtEur(monthly)} τον μήνα${loanAmount?` · Δάνειο ${fmtEur(loanAmount)}`:''}${bankName?` · ${bankName}`:''}`
-    for(let i=0;i<n;i++){
-      // Ίδιο σφάλμα με τις προτάσεις: τοπικά μεσάνυχτα σε UTC = χθες. Οι δόσεις
-      // έμπαιναν στο ημερολόγιο μία μέρα ΝΩΡΙΤΕΡΑ από την πραγματική τους.
-      const ev=new Date(d.getFullYear(),d.getMonth()+i+1,d.getDate())
-      events.push({title,category:'financial',event_date:isoDate(ev),amount:Math.round(monthly),priority:'high',notes:note})
+    // Ίδιο σφάλμα με τις προτάσεις: τοπικά μεσάνυχτα σε UTC = χθες. Οι δόσεις
+    // έμπαιναν στο ημερολόγιο μία μέρα ΝΩΡΙΤΕΡΑ από την πραγματική τους.
+    // 02.10.2026: και έναρξη στις 29 ως 31 υπερχείλιζε στον επόμενο μήνα (31.9
+    // γινόταν 1.10). Οι ημερομηνίες βγαίνουν από την έναρξη με κλείδωμα.
+    for(const ev of instalmentDates(startDate,n)){
+      events.push({title,category:'financial',event_date:ev,amount:Math.round(monthly),priority:'high',notes:note})
     }
     // Οι δόσεις γράφονται πρώτα και οι παλιές σβήνονται μετά: αν σπάσει κάτι στη
     // μέση, το ημερολόγιο δείχνει διπλά, όχι μισό δάνειο.
-    if(!await saved('Οι δόσεις δεν αποθηκεύτηκαν στο ημερολόγιο',calendar.replaceSource(supabase,{propertyId,userId},{source:src},events))) return
+    // 02.10.2026: επιστρέφει αν γράφτηκαν, ώστε ο καλών να μη δείξει επιτυχία
+    // πάνω σε αποτυχία. Σιωπηλή είναι μόνο η επιτυχία· το σφάλμα λέγεται πάντα.
+    // Όταν η κλήση έρχεται από την αποθήκευση δανείου, λέει ότι το δάνειο
+    // γράφτηκε.
+    if(!await saved(silent?SCHEDULE_FAILED_AFTER_SAVE:'Οι δόσεις δεν αποθηκεύτηκαν στο ημερολόγιο',calendar.replaceSource(supabase,{propertyId,userId},{source:src},events))) return false
     if(!silent) notifyOk(`${n} δόσεις αποθηκεύτηκαν στο «Ημερολόγιο»`)
+    return true
   }
-  async function handleSaveExp(monthly:number,bankName:string){
-    if(!await saved('Η δόση δεν καταχωρήθηκε στις δαπάνες',expenses.insert(supabase,[expenses.row({propertyId,userId},{description:`Δόση δανείου${bankName?`, ${bankName}`:''}`,amount:Math.round(monthly),category:'Δόση Δανείου',date:athensToday()})]))) return
+  // 02.10.2026: επιστρέφει αν γράφτηκε. Ο υπολογιστής έβγαζε δεύτερο «Η δόση
+  // προστέθηκε» μετά από αυτό εδώ ακόμη και πάνω στο μήνυμα αποτυχίας.
+  async function handleSaveExp(monthly:number,bankName:string):Promise<boolean>{
+    if(!await saved('Η δόση δεν καταχωρήθηκε στις δαπάνες',expenses.insert(supabase,[expenses.row({propertyId,userId},{description:`Δόση δανείου${bankName?`, ${bankName}`:''}`,amount:Math.round(monthly),category:'Δόση Δανείου',date:athensToday()})]))) return false
     notifyOk('Η δόση καταχωρήθηκε στις «Δαπάνες»')
+    return true
   }
   async function deleteLoan(id:string){
     if(!(await confirmDialog('Διαγραφή δανείου;',{tone:'negative'})))return

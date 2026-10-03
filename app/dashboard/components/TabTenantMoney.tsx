@@ -27,6 +27,14 @@ import {
   DatePicker,
 } from './UIComponents';
 import { T, InfoBanner, Badge, Btn, EmptyState, Modal, fe, fdLong, fn, fp, Spinner, ExportButton, ABSENT, ABSENT_DATE, TT, pressable, RuntimeImg } from '@/components/Theme';
+import { navLabel } from '@/lib/nav/labels';
+
+// ΤΟ «ΑΝΤΙΓΡΑΦΗΚΕ» ΕΡΧΕΤΑΙ ΜΕΤΑ ΤΗΝ ΑΝΤΙΓΡΑΦΗ, ΟΧΙ ΠΡΙΝ. Το `writeText` είναι
+// υπόσχεση: χωρίς αναμονή, το try δεν έπιανε ποτέ την άρνηση του φυλλομετρητή
+// και η οθόνη έλεγε «Αντιγράφηκε» ενώ το πρόχειρο έμενε άδειο.
+async function copyText(text: string): Promise<boolean> {
+  try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
+}
 import {
   Banknote,
 } from 'lucide-react';
@@ -675,7 +683,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       try{
         const safe=file.name.replace(/[^\w.\-]+/g,'_'); const path=`${userId}/${propertyId}/document/${Date.now()}_${safe}`;
         const{error:upErr}=await supabase.storage.from('property-files').upload(path,file,{upsert:false,contentType:file.type||undefined});
-        if(!upErr){ const ins=await documents.add(supabase,propertyId,userId,{kind:'document',category:'tenant',title:(doc.title||file.name).slice(0,200),doc_date:doc.issue_date||todayISO(),file_path:path,file_name:file.name,mime:file.type||null,size_bytes:file.size}); if(ins.error)notifyError(failed('Το έγγραφο δεν μπήκε στο Αρχείο',ins.error)); docId=ins.id; }
+        if(!upErr){ const ins=await documents.add(supabase,propertyId,userId,{kind:'document',category:'tenant',title:(doc.title||file.name).slice(0,200),doc_date:doc.issue_date||todayISO(),file_path:path,file_name:file.name,mime:file.type||null,size_bytes:file.size}); if(ins.error)notifyError(failed(`Το έγγραφο δεν μπήκε στην καρτέλα «${navLabel('documents')}»`,ins.error)); docId=ins.id; }
       }catch{ /* archive optional */ }
       const amount=typeof doc.amount==='number'?doc.amount:0;
       const dateISO=doc.issue_date||doc.due_date||todayISO();
@@ -898,7 +906,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <div style={{ flex:1, fontFamily:T.font.mono, fontSize: 'var(--fs-base)', color:'var(--text-primary)', background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius:T.radius.inner, padding:'10px 12px', wordBreak:'break-all' as const }}>{tenant.rent_iban}</div>
                   {/* size lg γιατί κάθεται δίπλα στο κουτί του IBAN, που έχει ύψος πεδίου. */}
-                  <Btn variant="secondary" size="lg" onClick={()=>{ try{ navigator.clipboard.writeText(tenant.rent_iban||''); setCopied(true); }catch{} }}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</Btn>
+                  <Btn variant="secondary" size="lg" onClick={async()=>{ const ok=await copyText(tenant.rent_iban||''); setCopied(ok); if(!ok) notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το IBAN χειροκίνητα.'); }}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</Btn>
                 </div>
               </div>
             </>
@@ -916,7 +924,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
               {tenant.email&&<Btn variant="secondary" href={`mailto:${tenant.email}?subject=${encodeURIComponent(requestSubject(periodGen(req)))}&body=${encodeURIComponent(paymentRequestText(req))}`}>Ηλεκτρονικό ταχυδρομείο</Btn>}
               {/* Το catch ήταν κενό: αν η αντιγραφή αποτύγχανε (άρνηση δικαιώματος, μη ασφαλές
                   context), ο χρήστης νόμιζε ότι το κείμενο ήταν στο πρόχειρο και το επικολλούσε στο κενό. */}
-              <Btn variant="secondary" onClick={()=>{ try{ navigator.clipboard.writeText(paymentRequestText(req)); notifyOk('Το κείμενο αντιγράφηκε'); }catch{ notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); } }}>Αντιγραφή κειμένου</Btn>
+              <Btn variant="secondary" onClick={async()=>{ if(await copyText(paymentRequestText(req))) notifyOk('Το κείμενο αντιγράφηκε'); else notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); }}>Αντιγραφή κειμένου</Btn>
             </div>
           </div>
         </Modal>
@@ -1148,7 +1156,7 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
                   ώστε να μη μείνουν χαμηλότεροι από το κουμπί της αντιγραφής. */}
               {tenant.phone&&<Btn variant="secondary" href={whatsappLink(phoneDigits,proposalText)} newTab>WhatsApp</Btn>}
               {tenant.phone&&<Btn variant="secondary" href={viberLink(proposalText)} newTab>Viber</Btn>}
-              <Btn variant="secondary" onClick={()=>navigator.clipboard?.writeText(proposalText)}>Αντιγραφή</Btn>
+              <Btn variant="secondary" onClick={async()=>{ if(await copyText(proposalText)) notifyOk('Το κείμενο αντιγράφηκε'); else notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); }}>Αντιγραφή</Btn>
               {tenant.email&&<Btn variant="secondary" href={`mailto:${tenant.email}?subject=${encodeURIComponent('Πρόταση ανανέωσης μίσθωσης')}&body=${encodeURIComponent(proposalText)}`}>Ηλεκτρονικό ταχυδρομείο</Btn>}
             </div>
           </>

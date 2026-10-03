@@ -425,8 +425,14 @@ function reasonForStatus(tabId: string, s: PropertyStatus): string {
 // ορατό· όταν επιστρέφει `null`, καμία καρτέλα εσόδου δεν πρέπει να είναι.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Οι δύο καρτέλες που δέχονται έσοδο. Καμία τους δεν είναι πάντα ορατή. */
-export const INCOME_TABS = ['tenant', 'clients'] as const;
+/**
+ * Οι καρτέλες όπου οδηγεί η πρόταση εσόδου. Καμία τους δεν είναι πάντα ορατή.
+ *
+ * Η «Βραχυχρόνια» μπήκε για τον ιδιώτη: οι «Επισκέπτες» θέλουν πακέτο που το
+ * προφίλ του δεν αγοράζει, οπότε το κουμπί προς τα εκεί ήταν λουκέτο που δεν
+ * ανοίγει ποτέ. Η «Βραχυχρόνια» φαίνεται ακριβώς στις ίδιες καταστάσεις.
+ */
+export const INCOME_TABS = ['tenant', 'clients', 'pricing'] as const;
 
 export interface IncomeEntry {
   /** Η καρτέλα που δέχεται την καταχώρηση. */
@@ -444,9 +450,23 @@ export interface IncomeEntry {
  * νομική εκκρεμότητα δεν αποφέρουν μίσθωμα. Εκεί η οθόνη προτείνει το έξοδο,
  * που είναι και η μόνη καρτέλα ορατή σε κάθε κατάσταση.
  */
-export function incomeEntry(status: PropertyStatus): IncomeEntry | null {
+export interface IncomeEntryOptions {
+  /**
+   * Φτάνει ο χρήστης τους «Επισκέπτες»; Το κρίνει ο καλών από το πακέτο και το
+   * προφίλ (`isTabPurchasable`), γιατί εδώ δεν υπάρχουν δικαιώματα. Χωρίς
+   * απάντηση ισχύει το παλιό: οι «Επισκέπτες».
+   */
+  guestsReachable?: boolean;
+}
+
+export function incomeEntry(status: PropertyStatus, opts: IncomeEntryOptions = {}): IncomeEntry | null {
   if (status === 'rent_long') return { tab: 'tenant', label: 'Καταχώρηση ενοικίου', noun: 'ενοίκια' };
-  if (status === 'rent_short') return { tab: 'clients', label: 'Καταχώρηση διαμονής', noun: 'διαμονές' };
+  if (status === 'rent_short') {
+    // Ο ιδιώτης δεν έχει καρτέλα διαμονών. Η οθόνη της βραχυχρόνιας που φτάνει
+    // είναι η τιμή ανά νύχτα και από εκεί βγαίνει η εικόνα του εσόδου του.
+    if (opts.guestsReachable === false) return { tab: 'pricing', label: 'Τιμή ανά νύχτα', noun: 'την τιμή ανά νύχτα' };
+    return { tab: 'clients', label: 'Καταχώρηση διαμονής', noun: 'διαμονές' };
+  }
   return null;
 }
 

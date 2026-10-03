@@ -29,7 +29,8 @@ import { rentalRowsForYear } from '@/lib/billing/greekTax'
 import { athensParts } from '@/lib/core/time'
 import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate'
 import { regionByKey, GREECE_AVG_GROSS_YIELD, MARKET_DATA_ASOF } from '@/lib/market/greekMarket'
-import { athensToday } from '@/lib/core/time';
+import { athensToday, localDay } from '@/lib/core/time';
+import { instalmentDate } from '@/lib/core/monthStep';
 import { SPITI_MOU, spitiMouEstimate, spitiMouClosedLine } from '@/lib/loans/recommend'
 import { TRANSFER_TAX_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL } from '@/lib/accounting/transfer'
 import { failed, MSG } from '@/lib/core/dbError';
@@ -584,9 +585,12 @@ export interface LoanCalcState {
 
 interface Props {
   propertyId:string;userId:string;market:MarketRates
+  /** Λέει μόνη της το αποτέλεσμα, με ΕΝΑ μήνυμα. */
   onSaveLoan:(loan:Partial<SavedLoan>)=>Promise<void>
-  onSaveToCalendar:(monthly:number,years:number,startDate:string,bankName:string)=>Promise<void>
-  onSaveToExpenses:(monthly:number,bankName:string)=>Promise<void>
+  /** Λέει μόνη της το αποτέλεσμα· όπου μπορεί, επιστρέφει αν γράφτηκαν οι δόσεις. */
+  onSaveToCalendar:(monthly:number,years:number,startDate:string,bankName:string)=>Promise<boolean|void>
+  /** Λέει μόνη της το αποτέλεσμα, όπως οι δύο παραπάνω. */
+  onSaveToExpenses:(monthly:number,bankName:string)=>Promise<boolean|void>
   onStateChange?:(s:LoanCalcState)=>void
   // Προφίλ χρήστη: «ιδιώτης» ή «επιχείρηση». Καθορίζει ποιοι τύποι δανειολήπτη
   // είναι σχετικοί, ώστε να μην κουράζουμε τον χρήστη με άσχετες επιλογές.
@@ -895,13 +899,20 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   // το όνομα, γινόταν το ίδιο δεδομένο. Από εκεί βγήκε στο ημερολόγιο ως «Δόση
   // δανείου, Μη καθορισμένη» σε εξήντα δόσεις και σε κάθε αναφορά από κάτω.
   // Η απουσία λέγεται στην οθόνη, με τη λέξη της οθόνης.
-  async function handleSave(){setSaving(true);await onSaveLoan({bank:bankName.trim(),loan_type:loanType,amount:LA,property_value:PV,rate:effRate,rate_type:rateType,years:Y,start_date:startDate,status:'active',notes:`${propTypeLabel} ${SQM} τ.μ., ${areaLabel}`});setSaving(false);notifyOk('Το δάνειο αποθηκεύτηκε')}
+  //
+  // 02.10.2026: έδειχνε «Το δάνειο αποθηκεύτηκε» μετά από ΚΑΘΕ κλήση ακόμη και πάνω
+  // στο μήνυμα αποτυχίας. Το μήνυμα το λέει πλέον μόνο το `onSaveLoan`, που
+  // ξέρει τι έγινε (loan/saveFlow.ts). Το `finally` ξεκλειδώνει το κουμπί και
+  // όταν η κλήση πετάξει.
+  async function handleSave(){setSaving(true);try{await onSaveLoan({bank:bankName.trim(),loan_type:loanType,amount:LA,property_value:PV,rate:effRate,rate_type:rateType,years:Y,start_date:startDate,status:'active',notes:`${propTypeLabel} ${SQM} τ.μ., ${areaLabel}`})}finally{setSaving(false)}}
 
   // ── Ημερομηνία δόσης i (1..n) με βάση την έναρξη ──────────────────────────────
+  // 02.10.2026: ήταν `new Date(έτος, μήνας + i, μέρα)`, που για έναρξη 31.8
+  // έδινε 1.10 για τη δόση του Σεπτεμβρίου. Πλέον από την έναρξη με κλείδωμα
+  // στο τέλος του μήνα, όπως οι δόσεις του Ημερολογίου.
   function installmentDate(i:number){
-    const base=startDate?new Date(startDate):new Date()
-    const d=new Date(base.getFullYear(),base.getMonth()+i,base.getDate())
-    return d
+    const base=startDate||athensToday()
+    return localDay(instalmentDate(base,i)??base)
   }
   const amortFileBase = ()=>`Τοκοχρεολύσιο ${bankName?bankName.slice(0,24)+' ':''}${Math.round(LA/1000)} χιλιάδες ${Y} έτη`
 
@@ -1187,8 +1198,8 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         <Btn variant="primary" onClick={handleSave} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση δανείου'}</Btn>
         <Btn variant="secondary" onClick={addScen}>+ Προσθήκη σεναρίου</Btn>
         <ActionMenu label="Περισσότερα" align="left" items={[
-          { key:'calendar', label:'Δόσεις στο ημερολόγιο', description:'Μία υπενθύμιση για κάθε δόση, από την ημερομηνία έναρξης', onClick:async()=>{await onSaveToCalendar(monthly,Y,startDate,bankName);notifyOk('Οι δόσεις προστέθηκαν στο ημερολόγιο')} },
-          { key:'expenses', label:'Δόση στις δαπάνες', description:'Η μηνιαία δόση ως επαναλαμβανόμενη δαπάνη του ακινήτου', onClick:async()=>{await onSaveToExpenses(monthly,bankName);notifyOk('Η δόση προστέθηκε στις δαπάνες')} },
+          { key:'calendar', label:'Δόσεις στο ημερολόγιο', description:'Μία υπενθύμιση για κάθε δόση, από την ημερομηνία έναρξης', onClick:async()=>{await onSaveToCalendar(monthly,Y,startDate,bankName)} },
+          { key:'expenses', label:'Δόση στις δαπάνες', description:'Η μηνιαία δόση ως επαναλαμβανόμενη δαπάνη του ακινήτου', onClick:async()=>{await onSaveToExpenses(monthly,bankName)} },
           { key:'reset', label:'Επαναφορά', description:'Όλα τα πεδία στις αρχικές τιμές', onClick:resetAll },
         ]}/>
       </div>

@@ -28,12 +28,16 @@
 // αν είναι η δηλωμένη κατάσταση· χωρίς διαμονές, από τις δόσεις του.
 // ═══════════════════════════════════════════════════════════════════════════
 import { declarableGross, declarableGrossOrTotal, type StayAmountLike } from '@/lib/clients/stayAmounts'
-import { staysOfYearToDate } from '@/lib/clients/reports'
+import { nightsSplit, type TaxStay } from '@/lib/tax/shortTermTax'
 import { daysBetweenIso } from '@/lib/core/time'
 import { roundHalfUp } from '../core/money';
+import { rentIncomeOf } from '@/lib/rent/split'
 
 export interface IncomeRent {
   amount: number | null
+  /** Το μίσθωμα χωρίς υπηρεσίες (lib/rent/split.ts). Χωρίς αυτό, όλο το ποσό. */
+  base_rent?: number | null
+  services_charge?: number | null
   paid: boolean | null
   paid_date?: string | null
   due_date?: string | null
@@ -98,6 +102,18 @@ export function rentReceivedByToday(r: IncomeRent, year: number, today: string):
   return !d || d <= iso(today)
 }
 
+/**
+ * Πόσους μήνες καλύπτει κάθε δόση: το σταθερό βήμα ανάμεσα στους μήνες
+ * περιόδου (2, 3, 6 ή 12). Ανομοιόμορφο βήμα ή μία μόνο δόση: ένας μήνας.
+ */
+export function instalmentStep(months: readonly number[]): number {
+  const ms = [...new Set(months.filter(m => m >= 1 && m <= 12))].sort((a, b) => a - b)
+  if (ms.length < 2) return 1
+  const gaps = ms.slice(1).map((m, i) => m - ms[i])
+  const g = gaps[0]
+  return [2, 3, 6].includes(g) && gaps.every(x => x === g) ? g : 1
+}
+
 export function propertyIncome(input: PropertyIncomeInput): PropertyIncome {
   const { year } = input
   const today = iso(input.today)
@@ -107,29 +123,50 @@ export function propertyIncome(input: PropertyIncomeInput): PropertyIncome {
   const daysElapsed = year < todayYear ? yearDays : year > todayYear ? 0 : daysBetweenIso(`${year}-01-01`, today) + 1
   const monthsElapsed = year < todayYear ? 12 : year > todayYear ? 0 : Number(today.slice(5, 7))
 
-  const staysOfYear = input.stays.filter(s => iso(s.check_in || s.check_out).slice(0, 4) === String(year))
+  // ΔΙΑΜΟΝΕΣ ΠΟΥ ΠΕΡΝΟΥΝ ΤΗΝ ΠΡΩΤΟΧΡΟΝΙΑ ΜΟΙΡΑΖΟΝΤΑΙ ΑΝΑ ΝΥΧΤΕΣ (02.10.2026), όπως
+  // στο Ε2 και στη Λογιστική (shortTermYearSummary, yearShare). Πριν, μια διαμονή
+  // 28/12 με 5/1 έδινε όλο το ποσό στο πρώτο έτος και μηδέν στο δεύτερο, ενώ το
+  // έντυπο τη μοιράζει μισή μισή. Χωρίς στοιχεία νυχτών, το έτος της άφιξης.
+  const shareOf = (s: StayAmountLike): number => {
+    const { inYear, total } = nightsSplit(s as unknown as TaxStay, year)
+    if (total > 0) return inYear / total
+    return iso(s.check_in || s.check_out).slice(0, 4) === String(year) ? 1 : 0
+  }
+  const staysOfYear = input.stays.filter(s => shareOf(s) > 0)
   const rentsOfYear = input.rents.filter(r => (r.period_year ?? year) === year)
 
   let source: IncomeSource, receivedToDate = 0, annualized = 0, unresolvedStays = 0
   if (staysOfYear.length > 0) {
     source = 'stays'
-    const toDate = staysOfYearToDate(staysOfYear, year, today)
-    receivedToDate = toDate.reduce((s, x) => s + declarableGrossOrTotal(x), 0)
+    // Ως σήμερα: όσες έχουν αφιχθεί, με το μερίδιο του έτους.
+    const toDate = staysOfYear.filter(x => iso(x.check_in || x.check_out) <= today)
+    receivedToDate = toDate.reduce((s, x) => s + declarableGrossOrTotal(x) * shareOf(x), 0)
     unresolvedStays = toDate.filter(x => declarableGross(x) == null && declarableGrossOrTotal(x) > 0).length
     annualized = daysElapsed > 0 ? receivedToDate * (yearDays / daysElapsed) : 0
   } else if (rentsOfYear.length > 0) {
     source = 'rent'
     const received = rentsOfYear.filter(r => rentReceivedByToday(r, year, today))
-    receivedToDate = received.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+    // ΜΟΝΟ ΤΟ ΜΙΣΘΩΜΑ, ΟΧΙ ΟΙ ΥΠΗΡΕΣΙΕΣ (02.10.2026). Το `amount` περιλαμβάνει
+    // ό,τι χρεώνεται στον ενοικιαστή μαζί με το ενοίκιο (ίντερνετ, καθαριότητα).
+    // Λογιστική και Ε2 μετρούσαν μόνο το μίσθωμα (`rentIncomeOf`), η Επισκόπηση
+    // και οι Αποδόσεις όλο το ποσό: ίδιο ακίνητο, άλλο έσοδο, άλλος φόρος.
+    receivedToDate = received.reduce((s, r) => s + rentIncomeOf(r), 0)
     // ΜΗΝΕΣ ΠΟΥ ΕΧΟΥΝ ΔΟΣΗ ΩΣ ΣΗΜΕΡΑ, ΟΧΙ ΜΗΝΕΣ ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ. Στις 2/10 ο
     // Οκτώβριος μετρούσε ως μήνας που πέρασε ενώ η δόση του λήγει στις 5/10:
     // εννέα δόσεις των 650€ διαιρούνταν με δέκα μήνες και το έτος έβγαινε
     // 7.020€ αντί για 7.800€. Μετρούν οι μήνες περιόδου που είτε έχουν λήξει
     // είτε έχουν ήδη εισπραχθεί. Χωρίς μήνα περιόδου, το ημερολόγιο.
     const monthOfRent = (r: IncomeRent) => Number(r.period_month) || 0
-    const covered = new Set(rentsOfYear
+    // ΚΑΘΕ ΔΟΣΗ ΚΑΛΥΠΤΕΙ ΤΟΥΣ ΜΗΝΕΣ ΤΗΣ (02.10.2026). Μια τριμηνιαία δόση είναι
+    // τρία μισθώματα κάτω από έναν μήνα περιόδου (rentInstalments.ts). Μετρώντας
+    // έναν μήνα ανά δόση, τρεις πληρωμένες δόσεις των 1.950€ έβγαιναν 23.400€ τον
+    // χρόνο αντί για 7.800€. Η γραμμή δεν γράφει τη συχνότητα· τη δείχνει το
+    // σταθερό βήμα ανάμεσα στους μήνες των δόσεων (1, 4, 7, 10 = ανά τρίμηνο).
+    const step = instalmentStep(rentsOfYear.map(monthOfRent))
+    const covered = new Set<number>()
+    rentsOfYear
       .filter(r => monthOfRent(r) >= 1 && (rentReceivedByToday(r, year, today) || (rentDueDate(r, year) || '9999') <= today))
-      .map(monthOfRent))
+      .forEach(r => { for (let m = monthOfRent(r); m < monthOfRent(r) + step && m <= 12; m++) covered.add(m) })
     const months = rentsOfYear.every(r => monthOfRent(r) >= 1) ? covered.size : monthsElapsed
     annualized = year < todayYear ? receivedToDate : months > 0 ? receivedToDate * (12 / months) : 0
   } else if ((Number(input.estimateMonthly) || 0) > 0) {

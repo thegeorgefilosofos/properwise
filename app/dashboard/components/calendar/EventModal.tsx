@@ -2,7 +2,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΦΟΡΜΑ ΤΟΥ ΓΕΓΟΝΟΤΟΣ ΚΑΙ Η ΕΡΩΤΗΣΗ ΕΜΒΕΛΕΙΑΣ ΓΙΑ ΤΙΣ ΣΕΙΡΕΣ
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { T, Btn, ChipToggle, Modal, fe, localDay, pressable } from '@/components/Theme'
 import { fixedCols } from '@/components/tokens'
@@ -19,7 +19,7 @@ import {
 
 // Καθαρός επιλογέας ώρας — αντικαθιστά το άσχημο native <input type="time">.
 // Κουμπί με ώρα → portal λίστα ανά 15΄ (κλιπ-άτρωτη, ίδια αισθητική με το app).
-function TimeField({ value, onChange }: { value:string; onChange:(v:string)=>void }) {
+function TimeField({ value, onChange, ariaLabel }: { value:string; onChange:(v:string)=>void; ariaLabel?:string }) {
   const [open,setOpen]=useState(false)
   const [rect,setRect]=useState<{left:number;top:number;width:number}|null>(null)
   const ref=useRef<HTMLButtonElement>(null)
@@ -30,7 +30,7 @@ function TimeField({ value, onChange }: { value:string; onChange:(v:string)=>voi
   useEffect(()=>{ if(open&&listRef.current){ let idx=times.indexOf(value); if(idx<0)idx=36; const el=listRef.current.children[idx+1] as HTMLElement; el?.scrollIntoView({block:'center'}) } },[open,value,times])
   return (
     <>
-      <button ref={ref} type="button" onClick={openMenu} style={{ width:'100%', boxSizing:'border-box', height: T.h.lg, background:'var(--bg-surface)', border:'1px solid '+(open?'var(--accent)':'var(--border-subtle)'), borderRadius: T.radius.popup, padding:'0 12px', color:value?'var(--text-primary)':'var(--text-tertiary)', fontSize:14, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', outline:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, transition:'border-color 0.15s' }}>
+      <button ref={ref} type="button" onClick={openMenu} aria-label={ariaLabel ? `${ariaLabel}: ${value||'χωρίς ώρα'}` : undefined} aria-haspopup="listbox" aria-expanded={open} style={{ width:'100%', boxSizing:'border-box', height: T.h.lg, background:'var(--bg-surface)', border:'1px solid '+(open?'var(--accent)':'var(--border-subtle)'), borderRadius: T.radius.popup, padding:'0 12px', color:value?'var(--text-primary)':'var(--text-tertiary)', fontSize:14, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', outline:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, transition:'border-color 0.15s' }}>
         <span>{value||'--:--'}</span><Clock size={15} style={{ color:'var(--text-tertiary)', flexShrink:0 }}/>
       </button>
       {open&&rect&&createPortal(
@@ -72,6 +72,11 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
   // role="dialog" + aria-label, άρα ο αναγνώστης οθόνης ανακοινώνει και τα δύο.
   const titleRef=useRef<HTMLInputElement>(null)
   useEffect(()=>{ titleRef.current?.focus() },[])
+  // Κάθε ετικέτα δεμένη στο πεδίο της. Ηταν <label> χωρίς `htmlFor`: φαινόταν
+  // σωστό, αλλά ο αναγνώστης οθόνης άκουγε «πεδίο κειμένου» χωρίς όνομα και
+  // το πάτημα στην ετικέτα δεν έφερνε τον δρομέα στο πεδίο.
+  const uid=useId()
+  const fid=(k:string)=>`${uid}-${k}`
   // Ενιαία, καθαρά πεδία — ίδιο ύψος/καμπύλη/χρώμα παντού (Google λογική).
   const fld: React.CSSProperties = { width:'100%', boxSizing:'border-box', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-control)', borderRadius: T.radius.xs, padding:'0 16px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none', transition:'border-color 0.15s' }
   const focus=(e:React.FocusEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>)=>e.currentTarget.style.borderColor='var(--accent)'
@@ -96,12 +101,12 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
             κείμενο-υπόδειγμα, που εξαφανίζεται με το πρώτο γράμμα. Και το
             υπόδειγμα έγραφε «Service λέβητα Παρασκευή 10πμ»: μία αγγλική
             λέξη και μία συντομογραφία ώρας, σε ελληνική εφαρμογή. */}
-        <label style={lbl}>Τίτλος</label>
+        <label htmlFor={fid('title')} style={lbl}>Τίτλος</label>
         {/* Η εστίαση με το άνοιγμα δίνεται από το effect του `titleRef` πιο πάνω,
             όχι με `autoFocus` (το <Modal> την έπαιρνε πίσω). Το ύψος 48 έγινε
             T.h.lg — ήταν το μοναδικό χειριστήριο του παραθύρου εκτός κλίμακας·
             η έμφαση του τίτλου μένει στα 16/500, δηλαδή σε μέγεθος και βάρος. */}
-        <input ref={titleRef} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} onFocus={focus} onBlur={blur} placeholder="Συντήρηση λέβητα, Παρασκευή 10:00" style={{...fld, fontSize:16, fontWeight:500}}/>
+        <input ref={titleRef} id={fid('title')} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} onFocus={focus} onBlur={blur} placeholder="Συντήρηση λέβητα, Παρασκευή 10:00" style={{...fld, fontSize:16, fontWeight:500}}/>
         {(()=>{ if(editing)return null; const qa=parseQuickAdd(form.title, new Date()); const hasExtra=!!(qa.date||qa.time)&&(qa.date!==form.event_date||qa.time!==(form.event_time||null)||qa.title!==form.title); if(!hasExtra)return null
           const dLbl=qa.date?localDay(qa.date).toLocaleDateString('el-GR',{weekday:'short',day:'numeric',month:'short'}):''
           return (
@@ -115,12 +120,12 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
       {/* Ημερομηνία + Ώρα */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 130px', gap:10 }}>
         <div>
-          <label style={lbl}>Ημερομηνία</label>
-          <DatePicker value={form.event_date} onChange={v=>setForm(f=>({...f,event_date:v}))}/>
+          <span aria-hidden style={lbl}>Ημερομηνία</span>
+          <DatePicker ariaLabel="Ημερομηνία" value={form.event_date} onChange={v=>setForm(f=>({...f,event_date:v}))}/>
         </div>
         <div>
-          <label style={lbl}>Ώρα</label>
-          <TimeField value={form.event_time} onChange={v=>setForm(f=>({...f,event_time:v}))}/>
+          <span aria-hidden style={lbl}>Ώρα</span>
+          <TimeField ariaLabel="Ώρα" value={form.event_time} onChange={v=>setForm(f=>({...f,event_time:v}))}/>
         </div>
       </div>
 
@@ -173,12 +178,12 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
         {/* Επικοινωνία */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
           <div>
-            <label style={lbl}>Τηλέφωνο</label>
-            <input type="tel" style={fld} placeholder="6912345678" value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} onFocus={focus} onBlur={blur}/>
+            <label htmlFor={fid('phone')} style={lbl}>Τηλέφωνο</label>
+            <input id={fid('phone')} type="tel" style={fld} placeholder="6912345678" value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} onFocus={focus} onBlur={blur}/>
           </div>
           <div>
-            <label style={lbl}>Ηλεκτρονική διεύθυνση</label>
-            <input type="email" style={fld} placeholder="onoma@etaireia.gr" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} onFocus={focus} onBlur={blur}/>
+            <label htmlFor={fid('email')} style={lbl}>Ηλεκτρονική διεύθυνση</label>
+            <input id={fid('email')} type="email" style={fld} placeholder="onoma@etaireia.gr" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} onFocus={focus} onBlur={blur}/>
           </div>
         </div>
         {/* Πρόσκληση συμμετέχοντα — στέλνει invite (.ics/mailto/WhatsApp/Viber) στην επαφή */}
@@ -187,9 +192,9 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
           const cap=canInvite(inv); if(!cap.email&&!cap.phone)return null
           return (
             <div>
-              <label style={lbl}>Πρόσκληση</label>
+              <span id={fid('invite')} style={lbl}>Πρόσκληση</span>
               {/* Τα τρία πρώτα είναι προορισμοί, άρα `href` και όχι onClick: το Btn τα κάνει <a> με την ίδια όψη. */}
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <div role="group" aria-labelledby={fid('invite')} style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                 {cap.email&&<Btn href={inviteMailto(inv)}><FileText size={13}/>Με μήνυμα</Btn>}
                 {cap.phone&&<Btn href={inviteWhatsApp(inv)} newTab>WhatsApp</Btn>}
                 {cap.phone&&<Btn href={inviteViber(inv)}>Viber</Btn>}
@@ -199,17 +204,17 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
           )
         })()}
         <div>
-          <label style={lbl}>Σύνδεσμος τιμολογίου ή σύμβασης</label>
-          <input style={fld} placeholder="https://…" value={form.attachment_url} onChange={e=>setForm(f=>({...f,attachment_url:e.target.value}))} onFocus={focus} onBlur={blur}/>
+          <label htmlFor={fid('attachment')} style={lbl}>Σύνδεσμος τιμολογίου ή σύμβασης</label>
+          <input id={fid('attachment')} inputMode="url" style={fld} placeholder="https://…" value={form.attachment_url} onChange={e=>setForm(f=>({...f,attachment_url:e.target.value}))} onFocus={focus} onBlur={blur}/>
         </div>
         {/* Κατάσταση */}
         <div>
-          <label style={lbl}>Κατάσταση</label>
+          <span id={fid('status')} style={lbl}>Κατάσταση</span>
           {/* ΤΕΣΣΕΡΑ ΤΣΙΠΑΚΙΑ ΠΟΥ ΕΒΓΑΙΝΑΝ 3+1. Το «Ακυρώθηκε» έπεφτε μόνο του σε
               δεύτερη γραμμή με τρύπα δεξιά, σε ταμπλέτα και σε κινητό. Η σειρά
               απλώνεται τώρα ολόκληρη — μία επιλογή δεν διαβάζεται ως υποσύνολο
               άλλης επειδή έτυχε να τυλιχτεί. */}
-          <div className="po-ctlrow ctl-2up">
+          <div role="group" aria-labelledby={fid('status')} className="po-ctlrow ctl-2up">
             {/* Η επιλεγμένη κατάσταση βαφόταν με το ΣΗΜΑΣΙΟΛΟΓΙΚΟ χρώμα της:
                 πορτοκαλί το «Εκκρεμεί», πράσινο το «Πληρώθηκε», κόκκινο το
                 «Ακυρώθηκε». Δηλαδή η φόρμα έβγαζε ετυμηγορία για μια επιλογή
@@ -224,8 +229,8 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
         {/* Επανάληψη */}
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:'12px 14px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <span style={{ fontFamily: T.font.sans, fontSize:14, fontWeight:500, color:'var(--text-primary)' }}>Επαναλαμβανόμενο</span>
-            <div {...pressable(()=>setForm(f=>({...f,recurring:!f.recurring})))} style={{ width:46, height:28, borderRadius: T.radius.card, background:form.recurring?'var(--accent)':'var(--border-default)', position:'relative', transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s', cursor:'pointer', flexShrink:0 }}>
+            <span id={fid('recurring')} style={{ fontFamily: T.font.sans, fontSize:14, fontWeight:500, color:'var(--text-primary)' }}>Επαναλαμβανόμενο</span>
+            <div {...pressable(()=>setForm(f=>({...f,recurring:!f.recurring})))} role="switch" aria-checked={form.recurring} aria-labelledby={fid('recurring')} style={{ width:46, height:28, borderRadius: T.radius.card, background:form.recurring?'var(--accent)':'var(--border-default)', position:'relative', transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s', cursor:'pointer', flexShrink:0 }}>
               <span style={{ position:'absolute', top:2, left:form.recurring?'calc(100% - 26px)':2, width:24, height:24, borderRadius:'50%', background:'var(--bg-surface)', transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s', boxShadow:'var(--elev-1)' }}/>
             </div>
           </div>
@@ -234,15 +239,15 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
               <CustomSelect ariaLabel="Συχνότητα επανάληψης" value={form.recurring_interval} onChange={v=>setForm(f=>({...f,recurring_interval:v}))} options={RECURRING_OPTIONS.map(o=>({ value:o.value, label:o.label }))}/>
               <CustomSelect ariaLabel="Λήξη επανάληψης" value={form.recurrence_end_mode} onChange={v=>setForm(f=>({...f,recurrence_end_mode:v as FormState['recurrence_end_mode']}))}
                 options={[{value:'none',label:'Χωρίς λήξη'},{value:'until',label:'Μέχρι ημερομηνία'},{value:'count',label:'Για πλήθος φορών'}]}/>
-              {form.recurrence_end_mode==='until'&&<div style={{ gridColumn:'1 / -1' }}><DatePicker value={form.recurrence_until} onChange={v=>setForm(f=>({...f,recurrence_until:v}))}/></div>}
-              {form.recurrence_end_mode==='count'&&<div style={{ gridColumn:'1 / -1' }}><input type="number" min="1" style={fld} placeholder="12 φορές" value={form.recurrence_count} onChange={e=>setForm(f=>({...f,recurrence_count:e.target.value}))} onFocus={focus} onBlur={blur}/></div>}
+              {form.recurrence_end_mode==='until'&&<div style={{ gridColumn:'1 / -1' }}><DatePicker ariaLabel="Επανάληψη μέχρι" value={form.recurrence_until} onChange={v=>setForm(f=>({...f,recurrence_until:v}))}/></div>}
+              {form.recurrence_end_mode==='count'&&<div style={{ gridColumn:'1 / -1' }}><input type="number" min="1" aria-label="Πλήθος επαναλήψεων" style={fld} placeholder="12 φορές" value={form.recurrence_count} onChange={e=>setForm(f=>({...f,recurrence_count:e.target.value}))} onFocus={focus} onBlur={blur}/></div>}
             </div>
           )}
         </div>
         {/* Σημειώσεις */}
         <div>
-          <label style={lbl}>Σημειώσεις</label>
-          <textarea style={{...fld, height:'auto', minHeight:60, padding:'10px 14px', resize:'vertical'}} placeholder="Οδηγίες, αριθμός λογαριασμού…" value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} onFocus={focus} onBlur={blur}/>
+          <label htmlFor={fid('notes')} style={lbl}>Σημειώσεις</label>
+          <textarea id={fid('notes')} style={{...fld, height:'auto', minHeight:60, padding:'10px 14px', resize:'vertical'}} placeholder="Οδηγίες, αριθμός λογαριασμού…" value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} onFocus={focus} onBlur={blur}/>
         </div>
       </>)}
     </Modal>

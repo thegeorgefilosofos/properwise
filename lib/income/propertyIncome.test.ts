@@ -3,7 +3,7 @@
 // ΓΙΑΤΙ ΓΡΑΦΤΗΚΕ. Το ίδιο ακίνητο έβγαινε 0,00% στην Επισκόπηση, 6,60% στο
 // Χαρτοφυλάκιο και 14,70% στις Αποδόσεις. Το «Έσοδα ως σήμερα» μετρούσε και
 // ό,τι δεν είχε έρθει ακόμη. Εδώ ελέγχεται ο ΕΝΑΣ υπολογισμός.
-import { propertyIncome, rentReceivedByToday, type IncomeRent } from './propertyIncome'
+import { propertyIncome, instalmentStep, rentReceivedByToday, type IncomeRent } from './propertyIncome'
 import { assumesMarket, MARKET_ESTIMATE_LABEL } from '../market/shortTerm'
 import type { ClientStaysRow, RentPaymentsRow } from '../supabase/tables'
 
@@ -97,6 +97,34 @@ ok('από τις κρατήσεις: όχι', !assumesMarket({ occupancy: '48.5
 ok('κρατήσεις που συμπίπτουν με την περιοχή: όχι', !assumesMarket({ occupancy: '62', adr: '85', area, booked: { occupancy: '62', adr: '85' } }))
 ok('δικά του νούμερα: όχι', !assumesMarket({ occupancy: '40', adr: '110', area, booked: null }))
 eq('η ετικέτα', MARKET_ESTIMATE_LABEL, 'εκτίμηση αγοράς')
+
+// ═══ ΜΟΝΟ ΤΟ ΜΙΣΘΩΜΑ, ΟΧΙ ΟΙ ΥΠΗΡΕΣΙΕΣ (02.10.2026) ═══════════════════════
+// Εννέα δόσεις των 700€: 650€ μίσθωμα και 50€ υπηρεσίες. Πριν: 6.300€ ως σήμερα
+// και 8.400€ τον χρόνο, ενώ Λογιστική και Ε2 έλεγαν 5.850€ και 7.800€.
+{
+  const split = Array.from({ length: 9 }, (_, i) => ({ amount: 700, base_rent: 650, services_charge: 50, paid: true, paid_date: `2026-${String(i + 1).padStart(2, '0')}-05`, period_year: 2026, period_month: i + 1 }))
+  const r = propertyIncome({ rents: split, stays: [], year: 2026, today: TODAY })
+  eq('υπηρεσίες έξω από το έσοδο', [r.receivedToDate, r.annualized], [5850, 7800])
+}
+
+// ═══ ΔΟΣΕΙΣ ΑΝΑ ΤΡΙΜΗΝΟ ΚΑΙ ΔΙΜΗΝΟ (02.10.2026) ═══════════════════════════
+// 650€ τον μήνα. Πριν: τρίμηνες δόσεις 1.950€ έβγαιναν 23.400€ τον χρόνο.
+{
+  const q = [1, 4, 7, 10].map(m => ({ amount: 1950, paid: m < 10, paid_date: m < 10 ? `2026-${String(m).padStart(2, '0')}-05` : null, due_date: `2026-${String(m).padStart(2, '0')}-05`, period_year: 2026, period_month: m }))
+  eq('τρίμηνες δόσεις: 7.800€ τον χρόνο', propertyIncome({ rents: q, stays: [], year: 2026, today: TODAY }).annualized, 7800)
+  const b = [1, 3, 5, 7, 9, 11].map(m => ({ amount: 1300, paid: m < 11, paid_date: m < 11 ? `2026-${String(m).padStart(2, '0')}-05` : null, due_date: `2026-${String(m).padStart(2, '0')}-05`, period_year: 2026, period_month: m }))
+  eq('δίμηνες δόσεις: 7.800€ τον χρόνο', propertyIncome({ rents: b, stays: [], year: 2026, today: TODAY }).annualized, 7800)
+  eq('βήμα: μηνιαίες, ανομοιόμορφες, μία', [instalmentStep([1, 2, 3]), instalmentStep([1, 4, 6]), instalmentStep([5])], [1, 1, 1])
+}
+
+// ═══ ΔΙΑΜΟΝΗ ΠΟΥ ΠΕΡΝΑ ΤΗΝ ΠΡΩΤΟΧΡΟΝΙΑ: ΑΝΑ ΝΥΧΤΕΣ, ΟΠΩΣ ΤΟ Ε2 (02.10.2026) ═
+// 800€ από 28/12/2025 ως 5/1/2026: τέσσερις νύχτες σε κάθε έτος. Πριν: 800 / 0.
+{
+  const cross = [{ ...baseStay, check_in: '2025-12-28', check_out: '2026-01-05', nights: 8, total: 800 }]
+  const y25 = propertyIncome({ rents: [], stays: cross, year: 2025, today: TODAY })
+  const y26 = propertyIncome({ rents: [], stays: cross, year: 2026, today: TODAY })
+  eq('μισή στο 2025, μισή στο 2026', [y25.receivedToDate, y26.receivedToDate, y26.source], [400, 400, 'stays'])
+}
 
 console.log(fail === 0 ? `✓ propertyIncome: ${pass} έλεγχοι πέρασαν` : `✗ propertyIncome: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

@@ -49,6 +49,12 @@ export interface StatementCtx {
   netYield: number;
   expensesYTD: number;
   categories: [string, number][];
+  /**
+   * Ο φόρος όπως τον δείχνει η οθόνη: το μερίδιο του ακινήτου στον φόρο του
+   * φορολογούμενου (lib/accounting/taxpayerIncome.ts). Χωρίς αυτό, ο φόρος του
+   * ακινήτου σαν να ήταν μόνο του.
+   */
+  taxShare?: { tax: number; ofPortfolio: boolean };
   branding?: ReportBranding | null;
 }
 
@@ -74,9 +80,17 @@ export function printPropertyStatement(c: StatementCtx): void {
     regime: 'individual_longterm', grossIncome: c.annualRent,
     brackets: rentalBracketsForYear(c.year),
   });
-  const tax = st.incomeTax;
+  // ΙΔΙΟΣ ΦΟΡΟΣ ΜΕ ΤΗΝ ΟΘΟΝΗ (02.10.2026). Το PDF υπολόγιζε τον φόρο σαν να ήταν
+  // το ακίνητο το μόνο του φορολογούμενου, ενώ το πλακίδιο της Επισκόπησης δείχνει
+  // το μερίδιό του στον συνολικό φόρο: με δύο ακίνητα, δύο διαφορετικοί αριθμοί.
+  const tax = c.taxShare ? c.taxShare.tax : st.incomeTax;
   const net = c.annualRent - c.expensesYTD - tax;
   const preTax = c.annualRent - c.expensesYTD;
+  // Η ΚΑΘΑΡΗ ΑΠΟΔΟΣΗ ΒΓΑΙΝΕΙ ΑΠΟ ΤΑ ΠΟΣΑ ΠΟΥ ΤΥΠΩΝΟΝΤΑΙ ΔΙΠΛΑ ΤΗΣ. Ερχόταν έτοιμη από
+  // την οθόνη, με άλλη βάση δαπανών (προβολή χρονιάς) από τις «Συνολικές δαπάνες»
+  // της ίδιας σελίδας: 12.000€ έσοδα, 2.200€ δαπάνες, αξία 200.000€ έγραφε 4,50%
+  // δίπλα σε καθαρό 9.800€, δηλαδή 4,90%.
+  const netYield = c.propValue && c.propValue > 0 ? (preTax / c.propValue) * 100 : c.netYield;
   const effRate = c.annualRent > 0 ? (tax / c.annualRent) * 100 : 0;
   const own = c.ownership != null && c.ownership > 0 && c.ownership <= 100 ? c.ownership : null;
   const totalCat = c.categories.reduce((sum, [, v]) => sum + v, 0);
@@ -133,7 +147,7 @@ export function printPropertyStatement(c: StatementCtx): void {
   <div class="kpis">
     ${reportKpi(rentLabel, rEur(c.monthlyRent))}
     ${reportKpi('Μεικτή απόδοση', rPct(c.grossYield))}
-    ${reportKpi('Καθαρή απόδοση προ φόρου', rPct(c.netYield))}
+    ${reportKpi('Καθαρή απόδοση προ φόρου', rPct(netYield))}
     ${reportKpi('Αξία ακινήτου', c.propValue ? rEur(c.propValue) : ABSENT)}
   </div>
 
@@ -152,7 +166,7 @@ export function printPropertyStatement(c: StatementCtx): void {
     ${reportRow('Ακαθάριστο εισόδημα ενοικίων', rEur(st.grossIncome))}
     ${reportRow('Τεκμαρτή έκπτωση δαπανών (5%)', `−${rEur(st.presumptiveDeduction)}`)}
     ${reportRow('Φορολογητέο εισόδημα', rEur(st.taxableIncome), 'sub')}
-    ${reportRow(`Φόρος εισοδήματος (κλίμακα ${c.year})`, rEur(tax))}
+    ${reportRow(c.taxShare?.ofPortfolio ? `Φόρος εισοδήματος, μερίδιο ακινήτου (κλίμακα ${c.year})` : `Φόρος εισοδήματος (κλίμακα ${c.year})`, rEur(tax))}
     ${reportRow('Πραγματικός συντελεστής φόρου', rPct(effRate))}
   </tbody></table>
 

@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
   const { data: userData, error: userErr } = await supabase.auth.getUser()
   if (userErr) {
     console.error('[send-test-notification] η ταυτότητα δεν διαβάστηκε:', userErr)
-    return json({ error: 'identity_unavailable', detail: userErr.message }, 503)
+    return json({ error: 'identity_unavailable', detail: 'Η υπηρεσία δεν απάντησε. Δοκίμασε ξανά σε λίγο.' }, 503)
   }
   if (!userData?.user) return json({ error: 'unauthorized' }, 401)
 
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
   const { data: issued, error: issuedErr } = await supabase.rpc('issue_reminder_email_token')
   if (issuedErr) {
     console.error('[send-test-notification] το διακριτικό δεν εκδόθηκε:', issuedErr)
-    return json({ error: 'token_not_issued', detail: issuedErr.message }, 503)
+    return json({ error: 'token_not_issued', detail: 'Η υπηρεσία δεν απάντησε. Δοκίμασε ξανά σε λίγο.' }, 503)
   }
   const row = (Array.isArray(issued) ? issued[0] : issued) as { email?: string; token?: string } | null
   const saved = String(row?.email || '').trim()

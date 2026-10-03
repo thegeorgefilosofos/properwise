@@ -95,8 +95,13 @@ export function freshness(verifiedAt: string, today: Date, maxAgeDays = STALE_AF
     return { ageDays: Infinity, stale: true, canRank: false,
       note: 'Οι τιμές δεν φέρουν ημερομηνία επαλήθευσης, οπότε δεν προτείνεται καλύτερη επιλογή.' };
   }
-  const t = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const ageDays = Math.floor((t.getTime() - v.getTime()) / DAY_MS);
+  // 02.10.2026: η διαφορά μετριόταν σε ΤΟΠΙΚΑ μεσάνυχτα. Πάνω από την αλλαγή
+  // θερινής ώρας μία μέρα έχει 23 ώρες και το `floor` έχανε μία ολόκληρη μέρα:
+  // από 1.3.2027 ως 15.4.2027 έβγαιναν 44 αντί για 45. Τώρα μετράμε ημερολογιακές
+  // μέρες σε UTC, από τα τοπικά μέρη της ημερομηνίας.
+  const tU = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  const vU = Date.UTC(v.getFullYear(), v.getMonth(), v.getDate());
+  const ageDays = Math.round((tU - vU) / DAY_MS);
   const stale = ageDays > maxAgeDays;
   return {
     ageDays, stale, canRank: !stale,

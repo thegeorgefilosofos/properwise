@@ -11,6 +11,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import * as properties from '@/lib/data/properties';
 import * as rentStore from '@/lib/data/rent';
 import * as expenses from '@/lib/data/expenses';
+import * as stayStore from '@/lib/data/stays';
+import { hostPayout, type StayAmountLike } from '@/lib/clients/stayAmounts';
+import { stayTotal } from '@/lib/clients/clients';
 import { T, TT, Btn, IconBtn, Badge, EmptyState, Modal, Spinner, ABSENT } from '@/components/Theme';
 import { acceptNumeric, PCT_MAX } from '@/lib/core/numInput';
 import { Building2 } from 'lucide-react';
@@ -24,7 +27,7 @@ import { generateReportPdf, pEur, pSigned, pPct, type PdfReportModel } from '@/l
 import type { ReportBranding } from '@/lib/reportBranding';
 import { MONTHS_NOM } from '@/lib/core/months';
 import { failed } from '@/lib/core/dbError';
-import { monthEndIso } from '@/lib/core/time';
+import { monthEndIso, athensToday } from '@/lib/core/time';
 import { useRemembered } from '@/components/useRememberedFlag';
 import { splitRowsFromRecord, recordFromSplitRows, writeCoOwners, withSelfRow, mergeScannedRows, type SplitRow } from '@/lib/property/coOwners';
 import { notifyError } from '@/components/Toast';
@@ -181,7 +184,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
         // Το ερώτημα δεν φιλτράρει πια περίοδο: μια δόση που εισπράχθηκε φέτος
         // μπορεί να ανήκει σε περσινό μήνα και θα έλειπε. Το φιλτράρισμα το
         // κάνει η `collectedIn` πάνω στην ημερομηνία βιβλίου.
-        const [rAll, e] = await Promise.all([
+        const [rAll, e, sts] = await Promise.all([
           rentStore.ofProperties<rentStore.BookableRent>(
             supabase, [propId], rentStore.LEDGER_COLUMNS, userId, { paid: true }),
           // ── ΤΟ `paid_by` ΖΗΤΕΙΤΑΙ ΡΗΤΑ, ΓΙΑΤΙ ΧΩΡΙΣ ΑΥΤΟ Η ΣΤΗΛΗ ΔΕΝ ΥΠΑΡΧΕΙ ────
@@ -189,6 +192,12 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
           // `paid_by` κάθε γραμμή έμοιαζε πληρωμένη από τον ιδιοκτήτη κι ο
           // κανόνας του `ownersExpenseTotal` δεν είχε τι να κρίνει.
           expenses.inRangeOfProperty(supabase, propId, from, to, 'amount,paid_by'),
+          // ── ΚΑΙ ΟΙ ΔΙΑΜΟΝΕΣ ───────────────────────────────────────────────
+          // Το βραχυχρόνιο ακίνητο δεν έχει δόσεις: η κατάσταση έβγαινε με
+          // έσοδα 0,00€ και καθαρό ίσο με μείον τις δαπάνες, με αριθμό εγγράφου
+          // και QR. Μετρά ό,τι μπήκε στον λογαριασμό (payout) από διαμονές που
+          // ξεκίνησαν μέσα στην περίοδο και ως σήμερα.
+          stayStore.ofPropertyWithError<StayAmountLike & { check_in: string | null }>(supabase, propId, stayStore.DECLARABLE_COLUMNS, userId),
         ]);
         const r = rentStore.collectedIn((rAll || []) as rentStore.BookableRent[], year, month);
         // Και τα δύο ερωτήματα ζητούν `amount`: αυτό είναι ό,τι χρειάζεται εδώ και
@@ -198,7 +207,14 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
         if (!alive) return;
         // Τα έσοδα αθροίζονται σκέτα· οι δαπάνες περνούν από τον κανόνα «ποιος
         // πλήρωσε», που είναι γραμμένος κι δοκιμασμένος στο lib/accounting.
-        setFigures({ key: figuresKey, gross: sumAmount(r), expenses: ownersExpenseTotal(e) });
+        // Αποτυχημένη ανάγνωση διαμονών = έσοδα που λείπουν από επίσημο χαρτί:
+        // πέφτει στο ίδιο `catch` με τα άλλα ερωτήματα.
+        if (sts.error) throw sts.error;
+        const today = athensToday();
+        const stayCash = (sts.rows as (StayAmountLike & { check_in: string | null })[])
+          .filter(st => { const d = (st.check_in || '').slice(0, 10); return d >= from && d <= to && d <= today; })
+          .reduce((sum, st) => sum + (hostPayout(st) ?? stayTotal(st)), 0);
+        setFigures({ key: figuresKey, gross: sumAmount(r) + stayCash, expenses: ownersExpenseTotal(e) });
         // Η επιτυχία σβήνει ΚΑΘΕ παλιά αποτυχία: εδώ φτάνει μόνο η τρέχουσα
         // περίοδος (το `alive` κόβει τις άλλες), οπότε δεν χρειάζεται σύγκριση.
         setFiguresFailed('');

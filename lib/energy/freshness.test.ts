@@ -88,5 +88,21 @@ const day = (s: string) => new Date(`${s}T12:00:00`)
   eq('ίδια ηλικία πρωί και βράδυ', early.ageDays, late.ageDays)
 }
 
+// ═══ ΠΑΝΩ ΑΠΟ ΤΗΝ ΑΛΛΑΓΗ ΘΕΡΙΝΗΣ ΩΡΑΣ (02.10.2026) ═══════════════════════
+// Πριν: σε ώρα Ελλάδας το 1.3.2027 ως 15.4.2027 μετρούσε 44 μέρες, γιατί η
+// 28.3.2027 έχει 23 ώρες. Ο έλεγχος τρέχει ρητά σε Europe/Athens, γιατί σε UTC
+// το σφάλμα δεν φαίνεται.
+{
+  const prevTz = process.env.TZ
+  process.env.TZ = 'Europe/Athens'
+  try {
+    eq('Αθήνα: 1.3.2027 ως 15.4.2027', freshness('2027-03-01', day('2027-04-15')).ageDays, 45)
+    eq('Αθήνα: πάνω από τη χειμερινή ώρα', freshness('2026-10-01', day('2026-11-15')).ageDays, 45)
+    eq('Αθήνα: μεσάνυχτα και ένα λεπτό', freshness('2027-03-01', new Date(2027, 3, 15, 0, 1)).ageDays, 45)
+  } finally {
+    if (prevTz === undefined) delete process.env.TZ; else process.env.TZ = prevTz
+  }
+}
+
 console.log(fail === 0 ? `✓ freshness: ${pass} έλεγχοι πέρασαν` : `✗ freshness: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

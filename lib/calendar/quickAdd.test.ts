@@ -106,6 +106,17 @@ ok('ποτέ κενός τίτλος (μόνο σύνδεσμος)', p('με').t
 // ανθεκτικότητα σε null είσοδο (δεν πρέπει να πετάξει)
 ok('null input δεν πετάει', (() => { try { const r = parseQuickAdd(null as never, NOW); return r.title === 'Γεγονός' } catch { return false } })())
 
+// ── 02.10.2026: το «σήμερα» είναι η μέρα της Αθήνας, όχι του UTC ──────────────
+// Στις 01:30 ώρα Ελλάδας της 3.10.2026 το UTC είναι ακόμη 2.10 (22:30).
+{
+  const night = new Date(Date.UTC(2026, 9, 2, 22, 30))
+  ok('01:30 Αθήνα: σήμερα = 3.10', parseQuickAdd('Κάτι σήμερα', night).date === '2026-10-03')
+  ok('01:30 Αθήνα: αύριο = 4.10', parseQuickAdd('Κάτι αύριο', night).date === '2026-10-04')
+  ok('01:30 Αθήνα: Σάββατο = 10.10 (σήμερα είναι Σάββατο)', parseQuickAdd('Κάτι Σάββατο', night).date === '2026-10-10')
+  // Χειμώνας (UTC+2): στις 01:30 της 15.1.2027 το UTC είναι 14.1, 23:30.
+  ok('χειμώνας 01:30 Αθήνα: σήμερα = 15.1', parseQuickAdd('Κάτι σήμερα', new Date(Date.UTC(2027, 0, 14, 23, 30))).date === '2027-01-15')
+}
+
 // ── report ───────────────────────────────────────────────────────────────────
 console.log(`\nquickAdd.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed) { console.log('FAILED:\n' + fails.map((f) => '  ✗ ' + f).join('\n')); process.exit(1) }

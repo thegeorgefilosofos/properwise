@@ -437,7 +437,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                           : m.action.type === 'book' ? `Κλείσε ραντεβού: ${new Date(m.action.date).toLocaleDateString('el-GR')}`
                           : m.action.type === 'client' ? `Καταχώρησε: ${m.action.name}`
                           : m.action.type === 'expense' ? `Κατέγραψε δαπάνη: ${eur(m.action.amount)}`
-                          : m.action.type === 'checkin' ? `Σύνδεσμος check-in: ${m.action.who}`
+                          : m.action.type === 'checkin' ? `Σύνδεσμος άφιξης: ${m.action.who}`
                           : m.action.type === 'contact' ? `Πρόσθεσε επαφή: ${m.action.name}`
                           : m.action.type === 'paid' ? `Σήμανση πληρωμένο: ${m.action.description}`
                           : m.action.type === 'task' ? `Νέα εκκρεμότητα`

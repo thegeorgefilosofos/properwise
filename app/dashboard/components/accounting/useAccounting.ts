@@ -82,6 +82,8 @@ import { MONTHS_NOM, MONTHS_SHORT } from '@/lib/core/months'
 import { failed, MSG } from '@/lib/core/dbError'
 import { useRemembered, useRememberedFlag } from '@/components/useRememberedFlag'
 import { eur, athensNow, athensYear, todayAthens, readElp, writeElp, readNum, writeNum } from './model'
+import { relockYear } from './bookLock'
+import { declarationYear } from '@/lib/core/declarationYear'
 
 // Τα μισθώματα της χρήσης ανά μήνα (Ιανουάριος πρώτος). Τα χρειάζεται η κύρωση
 // της τραπεζικής είσπραξης, που το 2027 πιάνει μόνο τους μήνες από τον Ιούλιο
@@ -111,7 +113,11 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // από εδώ βγαίνουν Ε2, βεβαίωση ενοικίου και φάκελος λογιστή, με αριθμό
   // εγγράφου και κωδικό επαλήθευσης.
   const [readFailed,setReadFailed] = useState(false)
-  const [year,setYear] = useState(athensYear())
+  // 02.10.2026: άνοιγε πάντα στο τρέχον έτος. Από τον Ιανουάριο ως τον Ιούλιο
+  // ο ιδιοκτήτης δηλώνει την ΠΕΡΣΙΝΗ χρήση και την έβρισκε μόνο αλλάζοντας
+  // χρονιά. Ο κανόνας είναι ο ίδιος με τον δημόσιο υπολογιστή φόρου ενοικίων
+  // (lib/core/declarationYear.ts).
+  const [year,setYear] = useState(()=>declarationYear(todayAthens()))
   // Η καρτέλα ακολουθεί το προφίλ (Ρυθμίσεις): ο ιδιώτης βλέπει απλή εικόνα, ο
   // επαγγελματίας τη διάκριση Φυσικό πρόσωπο / Επιχείρηση (ΕΛΠ). Χωρίς περιττό toggle.
   const mode:'individual'|'professional' = profileType
@@ -952,19 +958,30 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   async function lockYear(){
     const snapshot = { sig:bookSig, taxableIncome:statement.taxableIncome, incomeTax:statement.incomeTax, netProfit:statement.netProfit, netCash:statement.netCash, provisionMonthly:provision.monthly, collectedTotal:rs.collectedTotal, expectedTotal:rs.expectedTotal }
     const locked_at = new Date().toISOString()
+    const prev = closing
     // Ενημέρωση κατάστασης ΑΜΕΣΩΣ (ΑΝΟΙΧΤΟ → ΚΛΕΙΣΜΕΝΟ) και ΜΟΝΙΜΗ αποθήκευση στη βάση.
     setLockErr(null); setClosing({ snapshot, locked_at })
     // delete-then-insert αντί για upsert(onConflict): δουλεύει ΜΟΝΟ με τα policies
     // insert+delete (που υπάρχουν ήδη), χωρίς να απαιτεί policy UPDATE ή unique constraint
     // για το onConflict — άρα κλειδώνει αξιόπιστα ανεξάρτητα από την κατάσταση του schema.
-    await supabase.from('book_closings').delete().eq('property_id',propertyId).eq('user_id',userId).eq('year',year)
-    const { error } = await supabase.from('book_closings').insert({ user_id:userId, property_id:propertyId, year, snapshot, locked_at })
+    //
+    // 02.10.2026: το σφάλμα της διαγραφής αγνοούνταν και μια εισαγωγή που
+    // αποτύγχανε μετά από επιτυχή διαγραφή έσβηνε το ΠΑΛΙΟ κλείδωμα. Η σειρά ζει
+    // πλέον στο `relockYear` (./bookLock), που ξαναγράφει το προηγούμενο.
+    const r = await relockYear<BookSnapshot>({
+      remove: () => supabase.from('book_closings').delete().eq('property_id',propertyId).eq('user_id',userId).eq('year',year),
+      insert: (l) => supabase.from('book_closings').insert({ user_id:userId, property_id:propertyId, year, snapshot:l.snapshot, locked_at:l.locked_at }),
+    }, { snapshot, locked_at }, prev)
     // Αν η αποθήκευση αποτύχει, ΔΕΝ κρύβουμε το πρόβλημα: επαναφέρουμε την κατάσταση και
     // λέμε τον λόγο. «Τον πραγματικό λόγο» σήμαινε ως τώρα το αγγλικό κείμενο της
     // Postgres — που δεν είναι εμπιστοσύνη, είναι θόρυβος. Ο λόγος λέγεται στα
     // ελληνικά όταν αναγνωρίζεται και το πρωτότυπο μένει στην κονσόλα από κάτω,
     // για όποιον το ψάχνει.
-    if(error){ setClosing(null); setLockErr(failed('Το κλείδωμα της χρήσης δεν αποθηκεύτηκε', error)); console.warn('Αποτυχία αποθήκευσης κλειδώματος:', error) }
+    if(r.error){
+      setClosing(r.closing)
+      setLockErr(failed(r.lost ? 'Το κλείδωμα της χρήσης δεν αποθηκεύτηκε και το προηγούμενο χάθηκε' : 'Το κλείδωμα της χρήσης δεν αποθηκεύτηκε', r.error))
+      console.warn('Αποτυχία αποθήκευσης κλειδώματος:', r.error)
+    }
   }
   async function unlockYear(){
     // Η ΧΡΗΣΗ ΕΜΦΑΝΙΖΕΤΑΙ ΞΕΚΛΕΙΔΩΤΗ ΜΟΝΟ ΑΝ ΞΕΚΛΕΙΔΩΣΕ. Το `setClosing(null)`

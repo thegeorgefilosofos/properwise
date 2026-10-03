@@ -21,6 +21,7 @@ import { scanDocument } from '../scanDoc'
 import { normalizeScannedDoc, planDocSave, type ScannedDoc } from '@/lib/billing/documents'
 import { expenseFromReceipt, type ReceiptEntry, type ReceiptEvidence } from '@/lib/checklist/obligationTasks'
 import { athensToday } from '@/lib/core/time'
+import { navLabel } from '@/lib/nav/labels'
 import { serializeNote, carryOver } from './calc'
 import type { ChecklistItem, ItemReceipt } from './model'
 
@@ -159,10 +160,10 @@ export function ReceiptScanModal({ item, propertyId, userId, onClose, onSaved }:
       calendar.update(supabase, item.calendar_event_id, { status: 'paid', amount: amountNum }))
     // Το αρχείο ανέβηκε ΠΑΝΤΑ (χωρίς αυτό δεν φτάναμε ως εδώ). Αν δεν γράφτηκε η
     // γραμμή του Αρχείου, το λέμε: το παραστατικό υπάρχει αλλά δεν θα φαίνεται
-    // στην καρτέλα Αρχείο και ο χρήστης πρέπει να το ξέρει, όχι να το ανακαλύψει.
+    // στην καρτέλα των εγγράφων και ο χρήστης πρέπει να το ξέρει, όχι να το ανακαλύψει.
     onSaved(docId
-      ? `Καταχωρήθηκε ${fe(amountNum)} με παραστατικό στο Αρχείο`
-      : `Καταχωρήθηκε ${fe(amountNum)}. Το αρχείο αποθηκεύτηκε, αλλά δεν μπήκε στο Αρχείο.`)
+      ? `Καταχωρήθηκε ${fe(amountNum)} με παραστατικό στην καρτέλα «${navLabel('documents')}»`
+      : `Καταχωρήθηκε ${fe(amountNum)}. Το αρχείο αποθηκεύτηκε, αλλά δεν μπήκε στην καρτέλα «${navLabel('documents')}».`)
     onClose()
   }
 
@@ -200,7 +201,7 @@ export function ReceiptScanModal({ item, propertyId, userId, onClose, onSaved }:
           {/* Το περιθώριο 12 έγινε 0: το σώμα του <Modal> έχει ήδη δικό του gap
               ανάμεσα στα παιδιά και τα δύο μαζί έδιναν διπλό κενό. */}
           <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0, lineHeight: 1.5 }}>
-            Το αρχείο μπαίνει στο Αρχείο του ακινήτου και η δαπάνη καταχωρείται πληρωμένη. Χωρίς αρχείο δεν γράφεται ποσό πουθενά.
+            Το αρχείο μπαίνει στην καρτέλα «{navLabel('documents')}» και η δαπάνη καταχωρείται πληρωμένη. Χωρίς αρχείο δεν γράφεται ποσό πουθενά.
           </p>
         </>
       )}
@@ -234,7 +235,7 @@ export function ReceiptScanModal({ item, propertyId, userId, onClose, onSaved }:
           <div><FL>Πάροχος</FL><Inp ariaLabel="Πάροχος" value={provider} onChange={setProvider} placeholder="Παράδειγμα: Υδραυλικές Εργασίες ΕΠΕ" /></div>
           <div><FL>Περιγραφή δαπάνης</FL><Inp ariaLabel="Περιγραφή δαπάνης" value={desc} onChange={setDesc} placeholder="Περιγραφή" /></div>
           <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0, lineHeight: 1.5 }}>
-            Καταχωρείται ως <strong style={{ color: 'var(--text-secondary)' }}>{expenseCategoryFor(item.category).cat}</strong>, πληρωμένη, με το αρχείο συνημμένο στο Αρχείο.
+            Καταχωρείται ως <strong style={{ color: 'var(--text-secondary)' }}>{expenseCategoryFor(item.category).cat}</strong>, πληρωμένη, με το αρχείο συνημμένο στην καρτέλα «{navLabel('documents')}».
           </p>
         </div>
       )}

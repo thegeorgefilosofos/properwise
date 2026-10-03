@@ -1,5 +1,5 @@
 // npx tsx lib/accounting/taxpayerIncome.test.ts
-import { taxpayerRentSources } from './taxpayerIncome'
+import { taxpayerRentSources, ownershipPctOf, wholePropertyTax } from './taxpayerIncome'
 import { consolidateRentTax, taxShareOf } from '../billing/consolidate'
 
 let pass = 0, fail = 0
@@ -42,6 +42,17 @@ const st = taxpayerRentSources({
   ownerClientIds: null, income: new Map([['y', { stays: [{ check_in: '2026-03-01', check_out: '2026-03-05', gross_guest_paid: 400 }] }]]), year: 2026, today: TODAY,
 })
 eq('βραχυχρόνιο με διαμονές: μπαίνει στον φόρο ως βραχυχρόνιο', [st[1].shortTerm, st[1].annualRent > 0], [true, true])
+
+// ═══ ΣΥΝΙΔΙΟΚΤΗΣΙΑ: Ο ΦΟΡΟΣ ΣΤΟ ΜΕΡΙΔΙΟ ════════════════════════════════════
+// 50% σε ακίνητο 24.000€: δηλώνει 12.000€, 11.400 στο 15% = 1.710€.
+const half = taxpayerRentSources({ props: [{ id: 'h', ownership: '50' }], current: { id: 'h', annualRent: 24000, shortTerm: false }, ownerClientIds: null, income: new Map(), year: 2026, today: TODAY })
+eq('50%: στον φόρο μπαίνουν τα 12.000€', half[0].annualRent, 12000)
+eq('50%: 1.710€ για το μερίδιο', taxShareOf(consolidateRentTax(half, undefined, 2026), 'h'), 1710)
+eq('50%: όλο το ακίνητο με τον ίδιο συντελεστή, 3.420€', wholePropertyTax(1710, ownershipPctOf({ ownership: '50' })), 3420)
+// Τα άλλα ακίνητα στο δικό τους ποσοστό: 9 × 1.000 × 12 / 9 × 25% = 3.000€.
+const mixed = taxpayerRentSources({ props: [{ id: 'm' }, { id: 'q', ownership: 25 }], current: { id: 'm', annualRent: 12000, shortTerm: false }, ownerClientIds: null, income: new Map([['q', { rents: nine(1000) }]]), year: 2026, today: TODAY })
+eq('άλλο ακίνητο 25%: 3.000€', mixed[1].annualRent, 3000)
+eq('χωρίς τιμή ή άκυρο: 100', [ownershipPctOf({}), ownershipPctOf({ ownership: 'x' }), ownershipPctOf({ ownership: 0 }), ownershipPctOf(undefined)], [100, 100, 100, 100])
 
 console.log(fail ? `✗ taxpayerIncome: ${fail} απέτυχαν από ${pass + fail}` : `✓ taxpayerIncome: ${pass} έλεγχοι πέρασαν`)
 if (fail) process.exit(1)
