@@ -16,7 +16,7 @@
 export const PUBLIC = [
   '/', '/signup', '/login', '/reset-password', '/trust', '/privacy', '/terms',
   '/paketa', '/ypologismos-enfia', '/ypologismos-forou-enoikion',
-  '/kathari-apodosi', '/vraxyxronia-i-makroxronia',
+  '/kathari-apodosi', '/vraxyxronia-i-makroxronia', '/sygkrisi-timologion-revmatos',
 ];
 
 // ΟΙ ΟΚΤΩ ΕΓΙΝΑΝ ΕΙΚΟΣΙ ΜΙΑ, ΟΣΕΣ ΚΑΙ ΤΟΥ ΣΑΡΩΤΗ ΔΙΑΤΑΞΗΣ. Οι δύο σαρωτές

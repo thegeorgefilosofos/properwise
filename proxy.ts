@@ -137,6 +137,8 @@ export async function proxy(request: NextRequest) {
     // για να απαντά ΠΡΙΝ μας ξέρει κανείς και δεν απαντούσε σε κανέναν.
     "/ypologismos-forou-enoikion", "/ypologismos-enfia", "/vraxyxronia-i-makroxronia",
     "/kathari-apodosi", "/ypologismos-stegastikou-daneiou",
+    // Η σύγκριση τιμολογίων ρεύματος: έκτο δωρεάν εργαλείο, ίδιος κανόνας.
+    "/sygkrisi-timologion-revmatos",
     // ΟΔΗΓΟΣ-ΠΥΛΩΝΑΣ. Δωρεάν περιεχόμενο που εξηγεί τη φορολογία ενοικίων 2026
     // και δένει με τον υπολογιστή· απαντά ΠΡΙΝ την εγγραφή, όπως τα εργαλεία.
     // Οι ίδιοι οι οδηγοί περνούν με πρόθεμα, πιο κάτω.

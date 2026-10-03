@@ -10,7 +10,8 @@
 // Ο έλεγχος: (α) ο βοηθός βάζει πάντα την εικόνα, (β) καμία σελίδα δεν γράφει
 // `openGraph` με το χέρι, (γ) κάθε οδηγός έχει σελίδα, έγκυρες ημερομηνίες και
 // ημερομηνία τροποποίησης στον χάρτη ιστότοπου, (δ) κάθε υπολογιστής του
-// υποσέλιδου έχει σελίδα, κάρτα και ημερομηνία ISO στον χάρτη, όχι μελλοντική.
+// υποσέλιδου έχει σελίδα, κάρτα και ημερομηνία ISO στον χάρτη, όχι μελλοντική, (ε) η σύγκριση ρεύματος έχει
+// δική της ημερομηνία, όχι παλαιότερη από τον έλεγχο του καταλόγου.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -21,6 +22,7 @@ import { SHARE_CARDS, shareImage } from './og/share';
 import sitemap from './sitemap';
 import { SITE } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
+import { TARIFFS_VERIFIED } from '@/lib/energy/catalogue';
 
 let passed = 0, failed = 0;
 const fails: string[] = [];
@@ -95,6 +97,21 @@ for (const r of map) {
   const d = String(r.lastModified ?? '');
   ok(`${r.url}: ημερομηνία ISO στον χάρτη`, ISO.test(d));
   ok(`${r.url}: η ημερομηνία δεν είναι στο μέλλον`, d <= today);
+}
+
+// ── (δ) Η ΣΥΓΚΡΙΣΗ ΡΕΥΜΑΤΟΣ ─────────────────────────────────────────────────
+// Η μόνη σελίδα του χάρτη με ημερομηνία που ακολουθεί κατάλογο τιμών και όχι
+// νόμο. Μελλοντική ημερομηνία θα δήλωνε αλλαγή που δεν έγινε· παλαιότερη από
+// τον έλεγχο του καταλόγου θα έκρυβε ότι οι τιμές της σελίδας άλλαξαν.
+{
+  const row = map.find(r => r.url === `${SITE}/sygkrisi-timologion-revmatos`);
+  const d = typeof row?.lastModified === 'string' ? row.lastModified : '';
+  ok('η σύγκριση ρεύματος είναι στον χάρτη', !!row);
+  ok('με ημερομηνία ISO', ISO.test(d));
+  ok('όχι μελλοντική', d <= new Date().toISOString().slice(0, 10));
+  ok('και όχι παλαιότερη από τον έλεγχο του καταλόγου', d >= TARIFFS_VERIFIED);
+  ok('η σελίδα υπάρχει', existsSync('app/sygkrisi-timologion-revmatos/page.tsx'));
+  ok('έχει δική της εικόνα κοινοποίησης', !!SHARE_CARDS['sygkrisi-timologion-revmatos']);
 }
 
 // Με δική της εικόνα η σελίδα δεν γράφει τη γενική, ούτε στην κάρτα X.

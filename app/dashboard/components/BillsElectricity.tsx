@@ -9,10 +9,10 @@ import { NumberInput, CustomSelect, ToggleField, DatePicker } from './UIComponen
 import { useBillsSettings } from './BillsSettings';
 import { T, fe, fn, feRate, Skeleton, histInputStyle, ABSENT_SHORT, fixedCols, Btn, ChipToggle } from '@/components/Theme';
 import { CONTRACT_LABEL } from '@/lib/contracts/overview';
-import { monthlyCost, compareTariffs, estimateUsage, type Tariff, type Usage } from '@/lib/energy/tariff';
-import { PROVIDERS, COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE } from '@/lib/energy/catalogue';
+import { monthlyCost, compareTariffs, estimateUsage, exceedsFlatAllowance, type Tariff, type Usage } from '@/lib/energy/tariff';
+import { PROVIDERS, COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE, BADGE_MEANING, TARIFFS_VERIFIED, TARIFFS_LABEL, TARIFFS_MAX_AGE_DAYS, CATALOGUE_MONTH_GEN } from '@/lib/energy/catalogue';
 import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
-import { MONTHS_SHORT, MONTHS_NOM, MONTHS_GEN } from '@/lib/core/months';
+import { MONTHS_SHORT } from '@/lib/core/months';
 
 /**
  * Η ΤΙΜΗ ΤΗΣ ΚΙΛΟΒΑΤΩΡΑΣ ΣΤΡΟΓΓΥΛΟΠΟΙΟΥΝΤΑΝ ΣΕ ΔΥΟ ΔΕΚΑΔΙΚΑ ΚΑΙ ΕΞΑΦΑΝΙΖΕ ΤΗ
@@ -30,32 +30,18 @@ import { MONTHS_SHORT, MONTHS_NOM, MONTHS_GEN } from '@/lib/core/months';
  * πολλαπλασιάζεται με κατανάλωση. Δύο έως τέσσερα δεκαδικά.
  */
 const fk = feRate;
-// Η ημερομηνία τελευταίου ελέγχου των τιμών.
+// Η ΗΜΕΡΟΜΗΝΙΑ, Η ΕΤΙΚΕΤΑ ΚΑΙ Ο ΜΗΝΑΣ ΤΟΥ ΚΑΤΑΛΟΓΟΥ ΖΟΥΝ ΣΤΟ lib/energy/catalogue.ts.
+// Ηταν σταθερές αυτού του αρχείου· τις χρειάστηκε και η δημόσια σύγκριση
+// τιμολογίων και ένα δεύτερο αντίγραφο θα ήταν δεύτερη ημερομηνία για τον ίδιο
+// έλεγχο. Γιατί δεν διαβάζονται από το JSON: ένα `import ... from '.json'` σε
+// module scope είναι εξάρτηση από το interop του bundler και αν αστοχήσει δεν
+// φορτώνει ΟΛΗ η εφαρμογή. Η συνέπεια με το data/price-sources.json φυλάσσεται
+// από το `lib/energy/label.test.ts`.
 //
-// ΓΙΑΤΙ ΓΡΑΜΜΕΝΗ ΕΔΩ ΚΑΙ ΟΧΙ ΜΕ import ΤΟΥ JSON: ένα `import ... from '.json'`
-// σε module scope, μέσα σε αρχείο που φορτώνεται σε ΚΑΘΕ άνοιγμα του πίνακα
-// ελέγχου, είναι εξάρτηση από τον τρόπο που ο bundler κάνει interop τα JSON. Αν
-// αστοχήσει, δεν σκάει μια οθόνη: δεν φορτώνει ΟΛΗ η εφαρμογή, επειδή το
-// σφάλμα συμβαίνει πριν καν αποδοθεί τίποτα. Δεν αξίζει τέτοιο ρίσκο για μια
-// ετικέτα ημερομηνίας.
-//
-// Η συνέπεια με το data/price-sources.json, που είναι η πηγή αλήθειας για το
-// workflow φρεσκάδας, φυλάσσεται από test: αν αποκλίνουν, κοκκινίζει το CI.
-const LAST_UPDATED = 'Αύγουστος 2026';
-
-/**
- * Ο ΜΗΝΑΣ ΤΗΣ ΤΙΜΗΣ, ΑΝΑ ΤΙΜΟΛΟΓΙΟ, ΣΕ ΓΕΝΙΚΗ: «Οκτωβρίου 2026».
- *
- * Ο κατάλογος δεν είναι ενός μήνα. Τα περισσότερα τιμολόγια ελέγχθηκαν στον
- * Αύγουστο, τέσσερα στο έγγραφο του Οκτωβρίου. Η κεφαλίδα έγραφε «Τιμολόγια
- * Αύγουστος 2026» πάνω από τιμή Οκτωβρίου: η ετικέτα και ο αριθμός έλεγαν
- * άλλον μήνα. Τώρα κάθε τιμή λέει τον δικό της.
- */
-const CATALOGUE_MONTH_GEN = (() => {
-  const [m, y] = LAST_UPDATED.split(' ');
-  const i = (MONTHS_NOM as readonly string[]).indexOf(m);
-  return i >= 0 ? `${MONTHS_GEN[i]} ${y}` : LAST_UPDATED;
-})();
+// Ο ΜΗΝΑΣ ΤΗΣ ΤΙΜΗΣ, ΑΝΑ ΤΙΜΟΛΟΓΙΟ, ΣΕ ΓΕΝΙΚΗ: «Οκτωβρίου 2026». Ο κατάλογος
+// δεν είναι ενός μήνα. Η κεφαλίδα έγραφε «Τιμολόγια Αύγουστος 2026» πάνω από
+// τιμή Οκτωβρίου: η ετικέτα και ο αριθμός έλεγαν άλλον μήνα. Τώρα κάθε τιμή λέει
+// τον δικό της.
 const priceMonthOf = (t: { priceMonth?: string }) => t.priceMonth ?? CATALOGUE_MONTH_GEN;
 // ΤΟ ΣΧΟΛΙΟ ΕΛΕΓΕ ΤΟ energycost.gr «ΙΔΙΩΤΙΚΟ SITE». ΔΕΝ ΕΙΝΑΙ. Είναι το ΕΠΙΣΗΜΟ
 // εργαλείο σύγκρισης τιμών ρεύματος και φυσικού αερίου της ΡΑΑΕΥ, ανακοινωμένο
@@ -97,30 +83,6 @@ const DURATION_OPTIONS = [
   { value: '36',  label: '36 μήνες'        },
 ];
 
-/**
- * ΠΟΤΕ ΕΠΑΛΗΘΕΥΤΗΚΑΝ ΟΙ ΤΙΜΕΣ ΤΟΥ ΚΑΤΑΛΟΓΟΥ.
- *
- * ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΚΛΕΙΝΕΙ: ο κατάλογος αερίου (`BillsGas.tsx`) είχε ΚΑΙ
- * ημερομηνία επαλήθευσης ΚΑΙ σήμανση ανά τιμή («επιβεβαιωμένη / ενδεικτική /
- * τύπος»). Ο κατάλογος ρεύματος, με 100 τιμολόγια από έντεκα παρόχους, δεν
- * είχε ούτε το ένα ούτε το άλλο — και πάνω του έτρεχε αυτόκλητη ειδοποίηση
- * «άλλαξε πάροχο και κέρδισε». Δύο οθόνες, δύο πρότυπα ειλικρίνειας.
- *
- * Τα τιμολόγια ανακοινώνονται την 1η κάθε μήνα. Μετά το κατώφλι παλαιότητας η
- * σύγκριση ΠΑΥΕΙ να ονομάζει νικητή — δεν σβήνει, σταματά να αποφαίνεται.
- *
- * ΗΤΑΝ ΔΕΥΤΕΡΗ ΠΗΓΗ ΚΑΙ ΤΟ ΕΓΡΑΨΑ ΕΓΩ. Μπήκε ως '2026-07-08' ενώ το
- * `data/price-sources.json` — που δηλώνει τον εαυτό του «μία πηγή αλήθειας για
- * το πότε ελέγχθηκαν οι τιμές» και έχει δικό του workflow φρεσκάδας — έλεγε
- * '2026-07-29'. Απόκλιση είκοσι μιας ημερών, χωρίς τίποτα να την ελέγχει: το
- * υπάρχον test φύλαγε μόνο το `LAST_UPDATED`. Συγχρονίστηκε και φυλάσσεται
- * πλέον από το ίδιο test — αλλιώς η επόμενη απόκλιση θα ήταν εξίσου αθόρυβη.
- */
-export const TARIFFS_VERIFIED = '2026-08-31';
-/** Το κατώφλι του ρεύματος, από το `maxAgeDays` του data/price-sources.json. */
-export const TARIFFS_MAX_AGE_DAYS = 40;
-
-
 // ΗΤΑΝ ΠΙΝΑΚΑΣ ΕΞΙ ΕΓΓΡΑΦΩΝ ΜΕ ΠΑΝΟΜΟΙΟΤΥΠΕΣ ΤΙΜΕΣ ΚΑΙ ΕΝΑ ΨΕΥΔΕΣ ΣΧΟΛΙΟ.
 // Το σχόλιο έλεγε «Τώρα distinct teal» για το FLAT· το FLAT είχε ακριβώς το ίδιο
 // γκρι με τα υπόλοιπα πέντε και με το fallback. Δηλαδή ένας πίνακας
@@ -130,27 +92,8 @@ export const TARIFFS_MAX_AGE_DAYS = 40;
 // της εφαρμογής και ο τύπος του τιμολογίου λέγεται με λέξεις.
 const bc = () => ({ bg: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: 'var(--border-subtle)' });
 
-/**
- * ΤΙ ΣΗΜΑΙΝΕΙ ΤΟ ΧΡΩΜΑ. Η ΡΑΑΕΥ κατατάσσει τα τιμολόγια σε χρώματα και όλοι οι
- * πάροχοι τα γράφουν έτσι — είναι το λεξιλόγιο της αγοράς και μένει. Αυτό που
- * έλειπε ήταν η μετάφρασή του: ο ιδιοκτήτης έβλεπε «ΚΙΤΡΙΝΟ» σε πλακίδιο και
- * καμία γραμμή της οθόνης δεν του έλεγε ότι σημαίνει τιμή που αλλάζει μέσα στη
- * σύμβαση. Δηλαδή η πιο κρίσιμη πληροφορία για το αν θα πληρώσει το ίδιο τον
- * Ιανουάριο ήταν γραμμένη σε κώδικα που έπρεπε να ξέρει από πριν.
- *
- * ΓΙΑΤΙ ΣΕ title ΚΑΙ ΟΧΙ ΣΕ ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ: ο τύπος του τιμολογίου («σταθερό»,
- * «κυμαινόμενο») ΕΙΝΑΙ το χρώμα — τα δεδομένα δείχνουν ένα προς ένα αντιστοιχία
- * ανάμεσα σε `badge` και `type`. Γραμμένα και τα δύο, θα ήταν το ίδιο πράγμα
- * δύο φορές στην ίδια γραμμή.
- */
-const BADGE_MEANING: Record<string, string> = {
-  'ΜΠΛΕ':     'Σταθερή τιμή για όλη τη διάρκεια της σύμβασης',
-  'ΠΡΑΣΙΝΟ':  'Ειδικό τιμολόγιο. Η τιμή ανακοινώνεται την πρώτη κάθε μήνα',
-  'ΚΙΤΡΙΝΟ':  'Κυμαινόμενη τιμή. Αλλάζει κατά τη διάρκεια της σύμβασης',
-  'FLAT':     'Σταθερό ποσό κάθε μήνα, με ετήσιο όριο κιλοβατωρών',
-  'VNM':      'Εικονική καθαρή μέτρηση, με φωτοβολταϊκό',
-  'ΔΥΝΑΜΙΚΟ': 'Ωριαία τιμή χρηματιστηρίου ενέργειας',
-};
+// Τι σημαίνει το χρώμα της ΡΑΑΕΥ ζει δίπλα στον κατάλογο (`BADGE_MEANING`),
+// γιατί το διαβάζει και η δημόσια σύγκριση.
 
 /** Πόσα τιμολόγια δείχνει η κατάταξη πριν ζητηθούν τα υπόλοιπα. */
 const RANK_VISIBLE = 12;
@@ -894,7 +837,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             Συγκρίνεται η <strong style={{ color: 'var(--text-secondary)' }}>χρέωση προμήθειας</strong>, δηλαδή πάγιο και ενέργεια, μαζί με τα ρυθμιζόμενα τέλη και τον ΦΠΑ.
             Δεν περιλαμβάνονται χρεώσεις δικτύου ΔΕΔΔΗΕ, δημοτικά τέλη και τέλος ΕΡΤ, επειδή είναι ίδια όποιον πάροχο κι αν διαλέξεις και δεν αλλάζουν τη σειρά.
             <br />
-            Τιμές όπως δημοσιεύονται από τους παρόχους. Τελευταίος έλεγχος καταλόγου: {LAST_UPDATED}{newer.length > 0 ? `· ${newer.length} τιμολόγια με τιμή ${newerMonths.join(', ')}` : ''}.
+            Τιμές όπως δημοσιεύονται από τους παρόχους. Τελευταίος έλεγχος καταλόγου: {TARIFFS_LABEL}{newer.length > 0 ? `· ${newer.length} τιμολόγια με τιμή ${newerMonths.join(', ')}` : ''}.
             {' '}<a href={RAAEY_COMPARE} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Διασταύρωσε στη ΡΑΑΕΥ</a>.
             Πριν υπογράψεις, επιβεβαίωσε την τιμή στη σελίδα του παρόχου: το κυμαινόμενο ανακοινώνεται κάθε μήνα.
           </div>
@@ -928,8 +871,8 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
         if (tariff.type === 'fixed_monthly') {
           const projectedAnnual = kwhNum * 12;
           if (tariff.flat_annual_kwh) {
-            const allowance = tariff.flat_annual_kwh * 1.05;
-            if (projectedAnnual > allowance) {
+            // Η ανοχή ζει σε ένα σημείο, μαζί με τη χρέωση υπέρβασης.
+            if (exceedsFlatAllowance(tariff, kwhNum)) {
               const overageKwh = Math.round(projectedAnnual - tariff.flat_annual_kwh);
               const cost = tariff.flat_overage_rate
                 ? ` Με ${fk(tariff.flat_overage_rate)} ανά κιλοβατώρα, περίπου ${fe(overageKwh * tariff.flat_overage_rate)} τον χρόνο.`

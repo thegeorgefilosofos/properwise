@@ -151,16 +151,30 @@ export interface CostBreakdown {
 
 
 /**
+ * Η ανοχή πάνω από το ετήσιο όριο των πακέτων «όλα μέσα». Το 5% είναι η
+ * συνήθης πρακτική της αγοράς και δηλώνεται ρητά εδώ αντί να κρύβεται μέσα σε
+ * έναν πολλαπλασιασμό.
+ */
+const FLAT_TOLERANCE = 1.05;
+
+/**
+ * Ξεπερνά η κατανάλωση το ετήσιο όριο του πακέτου, μαζί με την ανοχή;
+ *
+ * Η ΙΔΙΑ ΣΥΓΚΡΙΣΗ ΧΡΕΙΑΖΕΤΑΙ ΚΑΙ ΕΞΩ ΑΠΟ ΕΔΩ. Η δημόσια σύγκριση τιμολογίων
+ * πρέπει να ξέρει πότε ένα πακέτο χωρίς καταγεγραμμένη τιμή υπέρβασης έχει
+ * ποσό που δεν κλείνει: ένα δεύτερο «× 1,05» εκεί θα ήταν δεύτερος κανόνας.
+ */
+export const exceedsFlatAllowance = (t: Tariff, kwhMonthly: number): boolean =>
+  !!t.flat_annual_kwh && kwhMonthly * 12 > t.flat_annual_kwh * FLAT_TOLERANCE;
+
+/**
  * Χρέωση υπέρβασης για πακέτα «όλα μέσα» με ετήσιο όριο κιλοβατωρών.
  * Ισομοιράζεται στους δώδεκα μήνες, ώστε να μπαίνει κατευθείαν σε μηνιαίο ποσό.
- * Η ανοχή 5% είναι η συνήθης πρακτική της αγοράς και δηλώνεται ρητά εδώ αντί να
- * κρύβεται μέσα σε έναν πολλαπλασιασμό.
  */
 const overageMonthly = (t: Tariff, kwhMonthly: number): number => {
-  if (!t.flat_annual_kwh || !t.flat_overage_rate) return 0;
+  if (!t.flat_overage_rate || !exceedsFlatAllowance(t, kwhMonthly)) return 0;
   const projectedAnnual = kwhMonthly * 12;
-  const allowance = t.flat_annual_kwh * 1.05;
-  if (projectedAnnual <= allowance) return 0;
+  const allowance = (t.flat_annual_kwh ?? 0) * FLAT_TOLERANCE;
   return ((projectedAnnual - allowance) * t.flat_overage_rate) / 12;
 };
 

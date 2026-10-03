@@ -1,7 +1,7 @@
 // npx tsx lib/energy/label.test.ts
 //
-// Η ετικέτα ημερομηνίας που βλέπει ο χρήστης στη σύγκριση παρόχων ζει μέσα στο
-// component, ως σκέτη σταθερά. Η πηγή αλήθειας για το πότε ελέγχθηκαν πραγματικά
+// Η ετικέτα ημερομηνίας που βλέπει ο χρήστης στη σύγκριση παρόχων ζει στον
+// κατάλογο (lib/energy/catalogue.ts), ως σκέτη σταθερά. Η πηγή αλήθειας για το πότε ελέγχθηκαν πραγματικά
 // οι τιμές ζει στο data/price-sources.json, που το διαβάζει το προγραμματισμένο
 // workflow. Δύο σημεία, μία αλήθεια: αν αποκλίνουν, ο χρήστης βλέπει ημερομηνία
 // που δεν αντιστοιχεί σε κανέναν έλεγχο.
@@ -27,10 +27,15 @@ const sources = JSON.parse(readFileSync('data/price-sources.json', 'utf8')) as {
   insurance: { label: string; checkedAt: string; maxAgeDays: number; registryVerifiedAt: string | null };
 };
 
-const component = readFileSync('app/dashboard/components/BillsElectricity.tsx', 'utf8');
-const m = /const LAST_UPDATED = '([^']+)'/.exec(component);
+// ΟΙ ΣΤΑΘΕΡΕΣ ΖΟΥΝ ΠΛΕΟΝ ΣΤΟΝ ΚΑΤΑΛΟΓΟ (lib/energy/catalogue.ts), ΟΧΙ ΣΤΟ
+// COMPONENT. Τις διαβάζουν δύο οθόνες, ο πίνακας ελέγχου και η δημόσια
+// σύγκριση τιμολογίων· ένα αντίγραφο ανά οθόνη θα ήταν δύο ημερομηνίες για τον
+// ίδιο έλεγχο. Ο έλεγχος κοιτά εκεί που ζουν ΚΑΙ ότι κανένα αρχείο του app/ δεν
+// ξαναγράφει δική του.
+const catalogue = readFileSync('lib/energy/catalogue.ts', 'utf8');
+const m = /export const TARIFFS_LABEL = '([^']+)'/.exec(catalogue);
 
-ok('η ετικέτα υπάρχει στο component', m !== null);
+ok('η ετικέτα υπάρχει στον κατάλογο', m !== null);
 eq('η ετικέτα συμφωνεί με το data/price-sources.json', m?.[1], sources.electricity.label);
 
 // ── Η ΔΕΥΤΕΡΗ ΗΜΕΡΟΜΗΝΙΑ, ΠΟΥ ΔΕΝ ΤΗΝ ΦΥΛΑΓΕ ΤΙΠΟΤΑ ──────────────────────
@@ -39,14 +44,23 @@ eq('η ετικέτα συμφωνεί με το data/price-sources.json', m?.[1
 // μιας ημερών, σιωπηλή, γιατί ο έλεγχος εδώ κοίταζε ΜΟΝΟ την ετικέτα. Δύο
 // ημερομηνίες για το ίδιο γεγονός και η μία κρίνει αν η οθόνη ανακηρύσσει
 // νικητή τιμολογίου.
-const v = /const TARIFFS_VERIFIED = '([^']+)'/.exec(component);
-ok('η ημερομηνία επαλήθευσης υπάρχει στο component', v !== null);
+const v = /export const TARIFFS_VERIFIED = '([^']+)'/.exec(catalogue);
+ok('η ημερομηνία επαλήθευσης υπάρχει στον κατάλογο', v !== null);
 eq('και συμφωνεί με το checkedAt του data/price-sources.json', v?.[1], sources.electricity.checkedAt);
 
 // Και το ΚΑΤΩΦΛΙ: το JSON το ορίζει ανά κατηγορία με γραμμένη αιτιολογία, οπότε
-// ένας αριθμός καρφωμένος στο component που δεν συμφωνεί ακυρώνει την αιτιολογία.
-const ma = /const TARIFFS_MAX_AGE_DAYS = (\d+)/.exec(component);
+// ένας αριθμός καρφωμένος στον κώδικα που δεν συμφωνεί ακυρώνει την αιτιολογία.
+const ma = /export const TARIFFS_MAX_AGE_DAYS = (\d+)/.exec(catalogue);
 eq('το κατώφλι παλαιότητας συμφωνεί με το maxAgeDays', Number(ma?.[1]), sources.electricity.maxAgeDays);
+
+// ΚΑΝΕΝΑ ΔΕΥΤΕΡΟ ΑΝΤΙΓΡΑΦΟ. Αν μια οθόνη ξαναγράψει δική της ημερομηνία, ο
+// έλεγχος από πάνω θα συνέχιζε να περνά πάνω στον κατάλογο ενώ η οθόνη θα έλεγε
+// άλλη μέρα.
+for (const f of ['app/dashboard/components/BillsElectricity.tsx', 'app/sygkrisi-timologion-revmatos/PowerCompare.tsx', 'lib/tools/revma.ts']) {
+  const src = readFileSync(f, 'utf8');
+  ok(`${f}: δεν γράφει δική του ημερομηνία καταλόγου`,
+    !/const (TARIFFS_VERIFIED|TARIFFS_LABEL|TARIFFS_MAX_AGE_DAYS|LAST_UPDATED)\s*=/.test(src));
+}
 
 // ── ΤΟ ΙΔΙΟ ΓΙΑ ΤΗΝ ΑΣΦΑΛΕΙΑ ────────────────────────────────────────────
 // Σαράντα οκτώ ασφάλιστρα παρουσιάζονταν χωρίς καμία ημερομηνία, ενώ η οθόνη

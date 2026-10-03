@@ -29,6 +29,12 @@ const PAGES_UPDATED = {
 // αλλάξει ο ίδιος, όχι όταν αλλάξει κλίμακα. Δική του ημερομηνία, με το χέρι.
 // Το μέσο επιτόκιο που δείχνει έχει δική του ημερομηνία πάνω στη σελίδα.
 const MORTGAGE_TOOL_UPDATED = '2026-10-03'
+// Η ΣΥΓΚΡΙΣΗ ΡΕΥΜΑΤΟΣ ΕΧΕΙ ΔΙΚΗ ΤΗΣ. Αλλάζει με τον κατάλογο τιμολογίων, όχι με
+// τον νόμο, οπότε η κοινή ημερομηνία των τεσσάρων θα έλεγε άλλη μέρα από την
+// πραγματική. Είναι η μέρα της τελευταίας αλλαγής της σελίδας ή του καταλόγου
+// που δείχνει (όποια είναι νεότερη), ISO, ποτέ μελλοντική· αλλάζει με το χέρι
+// μαζί τους. Το app/publicMetadata.test.ts φυλάει και τα δύο.
+const POWER_UPDATED = '2026-10-03'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE
@@ -41,6 +47,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/vraxyxronia-i-makroxronia`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/kathari-apodosi`, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/ypologismos-stegastikou-daneiou`, lastModified: MORTGAGE_TOOL_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/sygkrisi-timologion-revmatos`, lastModified: POWER_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     // Κόμβος οδηγών: η μία σελίδα που μαζεύει όλους τους οδηγούς, συνδεδεμένη
     // από το υποσέλιδο κάθε δημόσιας σελίδας. Η ημερομηνία του είναι η πιο
     // πρόσφατη των οδηγών του, αφού αυτούς δείχνει.
