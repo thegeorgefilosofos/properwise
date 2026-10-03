@@ -21,6 +21,12 @@ create table if not exists auth.users (
 create or replace function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
 create or replace function auth.role() returns text language sql stable as $$ select 'authenticated'::text $$;
 create or replace function auth.jwt() returns jsonb language sql stable as $$ select '{}'::jsonb $$;
+-- Η διεύθυνση του συνδεδεμένου, όπως τη δίνει το Supabase από το διακριτικό.
+-- Εδώ βγαίνει από τη γραμμή του χρήστη, ώστε να ακολουθεί όποιο `auth.uid()`
+-- ορίσει το σενάριο: η `ensure_organization` τη γράφει στο μέλος-ιδιοκτήτη και
+-- το scripts/db/rls-probe.sql την καλεί πλέον ως αληθινός χρήστης.
+create or replace function auth.email() returns text language sql stable as
+$$ select u.email from auth.users u where u.id = auth.uid() $$;
 -- Ο κατάλογος των δεύτερων παραγόντων, όσο χρειάζεται για να ρωτηθεί «έχει ο
 -- χρήστης επαληθευμένη συσκευή;». Η `delete_my_account` τον διαβάζει για την
 -- πύλη 2FA, οπότε το ομοίωμα ΠΡΕΠΕΙ να τον έχει ή η κλήση σκάει στο db-replay.

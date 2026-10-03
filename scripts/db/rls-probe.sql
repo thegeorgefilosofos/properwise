@@ -3365,3 +3365,330 @@ begin
   perform public.erase_account('f2f2f2f2-0000-4000-8000-0000000000a1');
   perform public.erase_account('f2f2f2f2-0000-4000-8000-0000000000b1');
 end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ΤΟ ΠΕΛΑΤΟΛΟΓΙΟ ΚΑΙ Η ΟΜΑΔΑ ΘΕΛΟΥΝ ΤΟ ΠΑΚΕΤΟ ΚΑΙ ΣΤΗ ΒΑΣΗ (20261003140000)
+-- ─────────────────────────────────────────────────────────────────────────
+-- ΤΟ ΣΦΑΛΜΑ. Το λουκέτο του «Πελατολογίου» και της ομάδας ζούσε μόνο στη
+-- React: με το διακριτικό της συνεδρίας του, ο δωρεάν χρήστης έγραφε πελάτες
+-- και προσκαλούσε μέλη κατευθείαν στο PostgREST. Εδώ ρωτιέται η ίδια η βάση,
+-- με πέντε λογαριασμούς:
+--
+--   · δωρεάν, χωρίς δοκιμή: διαβάζει και σβήνει τα παλιά του, δεν γράφει
+--     ούτε αλλάζει τίποτα, οι συναρτήσεις της ομάδας αρνούνται με plan_required·
+--   · «Επαγγελματίας»: όλα κανονικά, πίνακες και συναρτήσεις·
+--   · δοκιμή (νέος λογαριασμός): βαθμός 2, δεν γράφει, όπως δεν βλέπει και
+--     την καρτέλα στην οθόνη·
+--   · δωρεάν μήνες στο «Επαγγελματίας» (comp_plan): γράφει·
+--   · συνεργάτης (referral_partners): γράφει.
+--
+-- Οι τρεις συναρτήσεις του ΜΕΛΟΥΣ μένουν ανοιχτές και για τον δωρεάν: το δικό
+-- του πακέτο δεν κρίνει την ομάδα κάποιου άλλου.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+set session "request.jwt.claims" = '';
+
+do $probe$
+declare
+  f uuid := 'f3f3f3f3-0000-4000-8000-0000000000f1';
+  a uuid := 'f3f3f3f3-0000-4000-8000-0000000000a1';
+  t uuid := 'f3f3f3f3-0000-4000-8000-0000000000d1';
+  c uuid := 'f3f3f3f3-0000-4000-8000-0000000000c1';
+  p uuid := 'f3f3f3f3-0000-4000-8000-0000000000e1';
+begin
+  insert into auth.users(id, email, created_at) values
+    (f, 'plan-free@probe.test',    now() - interval '400 days'),
+    (a, 'plan-agency@probe.test',  now() - interval '400 days'),
+    (t, 'plan-trial@probe.test',   now()),
+    (c, 'plan-comp@probe.test',    now() - interval '400 days'),
+    (p, 'plan-partner@probe.test', now() - interval '400 days')
+    on conflict (id) do nothing;
+  insert into public.billing_profiles(user_id, plan, trial_used_at) values
+    (f, 'free', now()), (a, 'agency', now()), (c, 'free', now()), (p, 'free', now())
+    on conflict (user_id) do update set plan = excluded.plan, trial_used_at = excluded.trial_used_at;
+  update public.billing_profiles
+     set comp_plan = 'agency', comp_until = now() + interval '20 days'
+   where user_id = c;
+  insert into public.referral_partners(user_id) values (p) on conflict do nothing;
+  -- Ο δωρεάν είχε πακέτο κάποτε: ένας πελάτης με μία διαμονή και ένα γραφείο.
+  -- Αυτά είναι δικά του και μένουν δικά του.
+  insert into public.clients(id, user_id, type, full_name)
+    values ('f3f3f3f3-0000-4000-8000-00000000c0f1', f, 'client', 'Παλιός επισκέπτης');
+  insert into public.client_stays(user_id, client_id, check_in, check_out, nights)
+    values (f, 'f3f3f3f3-0000-4000-8000-00000000c0f1', date '2026-06-01', date '2026-06-04', 3);
+  insert into public.organizations(id, owner_user_id, name)
+    values ('f3f3f3f3-0000-4000-8000-00000000a0f1', f, 'Παλιό γραφείο');
+  insert into public.organization_members(org_id, email, role, status, can_edit)
+    values ('f3f3f3f3-0000-4000-8000-00000000a0f1', 'palios@probe.test', 'member', 'active', true);
+  raise notice 'probe: πέντε λογαριασμοί, ένας με παλιό πελατολόγιο και γραφείο χωρίς πακέτο';
+end $probe$;
+
+-- ── Ο ΔΩΡΕΑΝ: ΔΙΑΒΑΖΕΙ ΚΑΙ ΣΒΗΝΕΙ, ΔΕΝ ΓΡΑΦΕΙ ──────────────────────────────
+set role authenticated;
+set session "probe.uid" = 'f3f3f3f3-0000-4000-8000-0000000000f1';
+
+do $probe$
+declare
+  f uuid := 'f3f3f3f3-0000-4000-8000-0000000000f1';
+  cid uuid := 'f3f3f3f3-0000-4000-8000-00000000c0f1';
+  oid uuid := 'f3f3f3f3-0000-4000-8000-00000000a0f1';
+  k int;
+  v text;
+begin
+  if public.my_plan_rank() <> 0 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: ο δωρεάν έχει βαθμό % αντί για 0', public.my_plan_rank();
+  end if;
+
+  -- Διαβάζει ό,τι έχει.
+  select count(*) into k from public.clients;
+  if k <> 1 then raise exception 'Ο δωρεάν δεν βλέπει τον παλιό του πελάτη (% γραμμές)', k; end if;
+  select count(*) into k from public.client_stays;
+  if k <> 1 then raise exception 'Ο δωρεάν δεν βλέπει την παλιά του διαμονή (% γραμμές)', k; end if;
+  select count(*) into k from public.organizations;
+  if k <> 1 then raise exception 'Ο δωρεάν δεν βλέπει το παλιό του γραφείο (% γραμμές)', k; end if;
+
+  -- Δεν γράφει νέο.
+  begin
+    insert into public.clients(user_id, type, full_name) values (f, 'client', 'Νέος επισκέπτης');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν έγραψε πελάτη';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.client_notes(user_id, client_id, body) values (f, cid, 'σχόλιο');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν έγραψε σχόλιο πελάτη';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.client_documents(user_id, client_id, name, file_path)
+      values (f, cid, 'id.pdf', f::text || '/clients/' || cid::text || '/id.pdf');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν έγραψε έγγραφο πελάτη';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.client_stays(user_id, client_id, check_in, check_out, nights)
+      values (f, cid, date '2026-07-01', date '2026-07-03', 2);
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν έγραψε διαμονή';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.organizations(owner_user_id, name) values (f, 'Δεύτερο γραφείο');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν έστησε οργανισμό';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.organization_members(org_id, email, role, status) values (oid, 'melos@probe.test', 'member', 'invited');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν πρόσθεσε μέλος απευθείας';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- Δεν αλλάζει το παλιό: η ενημέρωση δεν βρίσκει γραμμή.
+  update public.clients set full_name = 'Αλλαγμένο' where id = cid;
+  get diagnostics k = row_count;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν ενημέρωσε % πελάτες', k; end if;
+  select full_name into v from public.clients where id = cid;
+  if v <> 'Παλιός επισκέπτης' then raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: το όνομα του πελάτη άλλαξε σε «%»', v; end if;
+  update public.client_stays set nights = 9 where client_id = cid;
+  get diagnostics k = row_count;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν ενημέρωσε % διαμονές', k; end if;
+  update public.organizations set name = 'Αλλαγμένο' where id = oid;
+  get diagnostics k = row_count;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν μετονόμασε % οργανισμούς', k; end if;
+
+  -- Οι συναρτήσεις της ομάδας που γράφουν για τον ιδιοκτήτη αρνούνται με όνομα.
+  -- Ο υπάρχων οργανισμός επιστρέφεται χωρίς πακέτο: από αυτόν φορτώνει η
+  -- οθόνη της ομάδας, που πρέπει να μπορεί να βγάλει μέλη.
+  if (public.ensure_organization()).id is distinct from oid then
+    raise exception 'Η ensure_organization δεν επέστρεψε στον δωρεάν τον οργανισμό που ήδη έχει';
+  end if;
+  begin
+    perform public.invite_org_member('melos@probe.test');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: η invite_org_member δούλεψε για τον δωρεάν';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'plan_required' then raise; end if;
+  end;
+  begin
+    perform public.rename_organization('Νέο όνομα');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: η rename_organization δούλεψε για τον δωρεάν';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'plan_required' then raise; end if;
+  end;
+  begin
+    perform public.set_member_edit('melos@probe.test', true);
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: η set_member_edit δούλεψε για τον δωρεάν';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'plan_required' then raise; end if;
+  end;
+  begin
+    perform public.clear_org_upgrade_request();
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: η clear_org_upgrade_request δούλεψε για τον δωρεάν';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'plan_required' then raise; end if;
+  end;
+  select count(*) into k from public.organization_members where org_id = oid and email <> 'palios@probe.test';
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: % μέλη γράφτηκαν στο γραφείο του δωρεάν', k; end if;
+
+  -- Η ΑΦΑΙΡΕΣΗ ΠΡΟΣΒΑΣΗΣ ΔΕΝ ΘΕΛΕΙ ΠΑΚΕΤΟ. Ο πρώην συνεργάτης του παλιού
+  -- γραφείου χάνει πρώτα το δικαίωμα επεξεργασίας και μετά τη θέση του, χωρίς
+  -- συνδρομή: αλλιώς θα έβλεπε τα ακίνητα όποιου σταμάτησε να πληρώνει.
+  perform public.set_member_edit('palios@probe.test', false);
+  select count(*) into k from public.organization_members where org_id = oid and email = 'palios@probe.test' and can_edit;
+  if k <> 0 then raise exception 'Ο δωρεάν δεν μπόρεσε να αφαιρέσει δικαίωμα επεξεργασίας από μέλος του'; end if;
+  perform public.revoke_org_member('palios@probe.test');
+  select count(*) into k from public.organization_members where org_id = oid and email = 'palios@probe.test';
+  if k <> 0 then raise exception 'Ο δωρεάν δεν μπόρεσε να βγάλει μέλος από την ομάδα του (% γραμμές)', k; end if;
+
+  -- Οι συναρτήσεις του ΜΕΛΟΥΣ δεν ρωτούν πακέτο.
+  perform public.accept_org_invites_for_me();
+  perform public.request_member_edit();
+  perform public.request_org_upgrade();
+
+  -- Σβήνει ό,τι θέλει: πρώτα τη διαμονή, μετά τον πελάτη, μετά το γραφείο.
+  delete from public.client_stays where client_id = cid;
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Ο δωρεάν δεν μπόρεσε να σβήσει τη διαμονή του (% γραμμές)', k; end if;
+  delete from public.clients where id = cid;
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Ο δωρεάν δεν μπόρεσε να σβήσει τον πελάτη του (% γραμμές)', k; end if;
+  delete from public.organizations where id = oid;
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Ο δωρεάν δεν μπόρεσε να σβήσει το γραφείο του (% γραμμές)', k; end if;
+
+  raise notice 'probe: ο δωρεάν διαβάζει και σβήνει το πελατολόγιό του, δεν γράφει ούτε αλλάζει τίποτα';
+end $probe$;
+
+-- ── Ο «ΕΠΑΓΓΕΛΜΑΤΙΑΣ»: ΟΛΑ ΚΑΝΟΝΙΚΑ ────────────────────────────────────────
+set session "probe.uid" = 'f3f3f3f3-0000-4000-8000-0000000000a1';
+
+do $probe$
+declare
+  a uuid := 'f3f3f3f3-0000-4000-8000-0000000000a1';
+  cid uuid;
+  org public.organizations;
+  k int;
+  v text;
+begin
+  if public.my_plan_rank() <> 3 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: ο «Επαγγελματίας» έχει βαθμό % αντί για 3', public.my_plan_rank();
+  end if;
+
+  insert into public.clients(user_id, type, full_name) values (a, 'client', 'Επισκέπτης Α') returning id into cid;
+  update public.clients set full_name = 'Επισκέπτης Α2' where id = cid;
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Ο «Επαγγελματίας» δεν ενημέρωσε τον πελάτη του (% γραμμές)', k; end if;
+  insert into public.client_notes(user_id, client_id, body) values (a, cid, 'σχόλιο');
+  insert into public.client_documents(user_id, client_id, name, file_path)
+    values (a, cid, 'id.pdf', a::text || '/clients/' || cid::text || '/id.pdf');
+  insert into public.client_stays(user_id, client_id, check_in, check_out, nights)
+    values (a, cid, date '2026-07-01', date '2026-07-03', 2);
+  update public.client_stays set nights = 3 where client_id = cid;
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Ο «Επαγγελματίας» δεν ενημέρωσε τη διαμονή του (% γραμμές)', k; end if;
+
+  org := public.ensure_organization();
+  if org.id is null then raise exception 'Η ensure_organization δεν έδωσε οργανισμό στον «Επαγγελματία»'; end if;
+  perform public.rename_organization('Γραφείο Α');
+  select name into v from public.organizations where id = org.id;
+  if v <> 'Γραφείο Α' then raise exception 'Η rename_organization δεν έγραψε το όνομα («%»)', v; end if;
+  perform public.invite_org_member('melos@probe.test');
+  perform public.set_member_edit('melos@probe.test', true);
+  select count(*) into k from public.organization_members where org_id = org.id and email = 'melos@probe.test' and can_edit;
+  if k <> 1 then raise exception 'Το μέλος του «Επαγγελματία» δεν πήρε δικαίωμα επεξεργασίας'; end if;
+  -- Το εύρος ακινήτων το αλλάζει απευθείας η οθόνη (OrgTeam, setMemberScope).
+  update public.organization_members set can_view_financials = false where org_id = org.id and email = 'melos@probe.test';
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Ο «Επαγγελματίας» δεν άλλαξε τα δικαιώματα του μέλους του (% γραμμές)', k; end if;
+  perform public.revoke_org_member('melos@probe.test');
+  perform public.clear_org_upgrade_request();
+
+  raise notice 'probe: ο «Επαγγελματίας» γράφει πελατολόγιο και διαχειρίζεται ομάδα κανονικά';
+end $probe$;
+
+-- ── Η ΔΟΚΙΜΗ ΔΙΝΕΙ «ΙΔΙΟΚΤΗΤΗΣ+»: ΟΥΤΕ ΣΤΗΝ ΟΘΟΝΗ ΟΥΤΕ ΕΔΩ ─────────────────
+set session "probe.uid" = 'f3f3f3f3-0000-4000-8000-0000000000d1';
+
+do $probe$
+declare t uuid := 'f3f3f3f3-0000-4000-8000-0000000000d1';
+begin
+  if public.my_plan_rank() <> 2 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: η δοκιμή έχει βαθμό % αντί για 2', public.my_plan_rank();
+  end if;
+  begin
+    insert into public.clients(user_id, type, full_name) values (t, 'client', 'Επισκέπτης δοκιμής');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: η δοκιμή έγραψε πελάτη ενώ η οθόνη της κρύβει την καρτέλα';
+  exception when insufficient_privilege then null;
+  end;
+  -- Χωρίς οργανισμό και χωρίς το πακέτο: νέος οργανισμός δεν φτιάχνεται.
+  begin
+    perform public.ensure_organization();
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: η ensure_organization έφτιαξε οργανισμό για τη δοκιμή';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'plan_required' then raise; end if;
+  end;
+  raise notice 'probe: η δοκιμή μένει στο «Ιδιοκτήτης+» και δεν γράφει πελατολόγιο, όπως και στην οθόνη';
+end $probe$;
+
+-- ── ΔΩΡΕΑΝ ΜΗΝΕΣ ΚΑΙ ΣΥΝΕΡΓΑΤΗΣ: ΑΝΕΒΑΖΟΥΝ ΤΟΝ ΒΑΘΜΟ ΚΑΙ ΓΡΑΦΟΥΝ ──────────
+set session "probe.uid" = 'f3f3f3f3-0000-4000-8000-0000000000c1';
+
+do $probe$
+declare c uuid := 'f3f3f3f3-0000-4000-8000-0000000000c1';
+begin
+  if public.my_plan_rank() <> 3 then
+    raise exception 'Οι δωρεάν μήνες στο «Επαγγελματίας» δίνουν βαθμό % αντί για 3', public.my_plan_rank();
+  end if;
+  insert into public.clients(user_id, type, full_name) values (c, 'client', 'Επισκέπτης με δωρεάν μήνες');
+  raise notice 'probe: οι δωρεάν μήνες στο «Επαγγελματίας» ανοίγουν το πελατολόγιο';
+end $probe$;
+
+set session "probe.uid" = 'f3f3f3f3-0000-4000-8000-0000000000e1';
+
+do $probe$
+declare p uuid := 'f3f3f3f3-0000-4000-8000-0000000000e1';
+begin
+  if public.my_plan_rank() < 3 then
+    raise exception 'Ο συνεργάτης έχει βαθμό % αντί για τουλάχιστον 3', public.my_plan_rank();
+  end if;
+  insert into public.clients(user_id, type, full_name) values (p, 'client', 'Επισκέπτης συνεργάτη');
+  raise notice 'probe: ο συνεργάτης γράφει πελατολόγιο';
+end $probe$;
+
+reset role;
+set session "probe.uid" = '';
+
+-- ── Ο ΚΑΤΑΛΟΓΟΣ: ΚΑΘΕ ΠΙΝΑΚΑΣ ΤΟΥ ΠΕΛΑΤΟΛΟΓΙΟΥ ΚΑΙ ΤΗΣ ΟΜΑΔΑΣ ΕΧΕΙ ΤΙΣ ΔΥΟ ──
+-- Ονομαστικά, ώστε ένας πίνακας που θα χάσει την πολιτική σε επόμενη
+-- μετανάστευση να κοκκινίσει με το όνομά του.
+do $audit$
+declare bad text;
+begin
+  select string_agg(t, ', ' order by t) into bad
+    from unnest(array['clients', 'client_notes', 'client_documents', 'client_stays',
+                      'organizations', 'organization_members']) as u(t)
+   where not exists (
+       select 1 from pg_policies p
+        where p.schemaname = 'public' and p.tablename = u.t
+          and p.policyname = 'plan_ins_' || u.t and p.permissive = 'RESTRICTIVE' and p.cmd = 'INSERT'
+          and 'authenticated' = any(p.roles) and p.with_check like '%my_plan_rank%')
+      or not exists (
+       select 1 from pg_policies p
+        where p.schemaname = 'public' and p.tablename = u.t
+          and p.policyname = 'plan_upd_' || u.t and p.permissive = 'RESTRICTIVE' and p.cmd = 'UPDATE'
+          and 'authenticated' = any(p.roles)
+          and p.qual like '%my_plan_rank%' and p.with_check like '%my_plan_rank%');
+  if bad is not null then
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: πίνακες του πελατολογίου ή της ομάδας χωρίς τις πολιτικές plan_ins_/plan_upd_: %', bad;
+  end if;
+  raise notice 'probe: έξι πίνακες του πελατολογίου και της ομάδας ρωτούν το πακέτο σε εισαγωγή και ενημέρωση';
+end $audit$;
+
+do $probe$
+begin
+  -- Οι πέντε λογαριασμοί φεύγουν από τον ίδιο δρόμο με κάθε διαγραφή: το
+  -- σενάριο του staging που ακολουθεί αρνείται βάση με πάνω από είκοσι χρήστες.
+  perform public.erase_account('f3f3f3f3-0000-4000-8000-0000000000f1');
+  perform public.erase_account('f3f3f3f3-0000-4000-8000-0000000000a1');
+  perform public.erase_account('f3f3f3f3-0000-4000-8000-0000000000d1');
+  perform public.erase_account('f3f3f3f3-0000-4000-8000-0000000000c1');
+  perform public.erase_account('f3f3f3f3-0000-4000-8000-0000000000e1');
+end $probe$;
