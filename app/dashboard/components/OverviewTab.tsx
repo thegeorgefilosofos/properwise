@@ -53,6 +53,7 @@ import { taxProfileOf } from '@/lib/tax/greekTaxCalendar'
 import PortalShare from './PortalShare'
 import OccupancyPanel from './OccupancyPanel'
 import BillingNudge from './BillingNudge'
+import PolicyNotice from './PolicyNotice'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
 import { staysOfYearToDate } from '@/lib/clients/reports'
 import { propertyIncome, type IncomeRent } from '@/lib/income/propertyIncome'
@@ -718,6 +719,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           ακίνητο και η οθόνη δεν αλλάζει ούτε ένα εικονοστοιχείο. */}
       <h1 className="sr-only">{navLabel('overview')}</h1>
       {/* Διακριτική υπενθύμιση: συμπλήρωσε στοιχεία τιμολόγησης πριν την επόμενη χρέωση. */}
+      {/* Τι άλλαξε στους Όρους, μία φορά ανά έκδοση (lib/legal/policyNotice.ts). */}
+      <PolicyNotice />
       <BillingNudge userId={userId} onNavigate={onNavigate} />
 
       {/* ═══ Η ΚΕΦΑΛΙΔΑ ΠΟΥ ΕΛΕΙΠΕ ══════════════════════════════════════════
