@@ -302,7 +302,12 @@ export const MUTATIONS = {
   'service-role': { add: 'components/__mut__.ts', content: "export const key = process.env.SUPABASE_SERVICE_ROLE_KEY\n" },
   'csv-injection': { add: 'lib/core/__mut__.ts', content: "export const row = (cells: string[]) => cells.join(';')\n" },
   'password-leak': { add: 'components/__mut__.tsx', content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
-  'api-auth': { add: 'app/api/__mut__/route.ts', content: "export async function GET() {\n  return new Response('ok')\n}\n" },
+  // Δύο κανόνες, δύο αποδείξεις: διαδρομή χωρίς καμία ταυτότητα και
+  // διαδρομή με συνεδρία που δεν ζητά το δεύτερο βήμα (03.10.2026).
+  'api-auth': { every: [
+    { add: 'app/api/__mut__/route.ts', content: "export async function GET() {\n  return new Response('ok')\n}\n" },
+    { add: 'app/api/__mut__/route.ts', content: "export async function GET() {\n  const db = { auth: { getUser: async () => ({ data: { user: null } }) } }\n  const { data: { user } } = await db.auth.getUser()\n  return new Response(user ? 'ok' : 'no')\n}\n" },
+  ] },
 
   // ── ΟΙ ΔΥΟ ΚΑΙΝΟΥΡΙΟΙ ΤΗΣ ΑΣΦΑΛΕΙΑΣ ───────────────────────────────────
   // ΓΙΑΤΙ «every» ΚΑΙ ΟΧΙ ΠΙΝΑΚΑΣ. Ο πίνακας είναι εφεδρική αλυσίδα: αρκεί μία

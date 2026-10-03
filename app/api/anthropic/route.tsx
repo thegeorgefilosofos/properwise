@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
+import { requireSecondStep } from '@/lib/auth/secondStep';
 import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import {
   MAX_PER_MINUTE, PLAN_RANK_ORDER,
   dailyLimitsByRank, monthlyLimitsByRank, FREE_POOL_PER_MONTH, TRIAL_LIMITS, TESTER_LIMITS,
   dailyExhaustedMessage, monthlyExhaustedMessage, poolExhaustedMessage,
-  scanLimitsByRank, scansExhaustedMessage, assistantLockedMessage,
+  scanLimitsByRank, scansExhaustedMessage, scanPoolExhaustedMessage, assistantLockedMessage,
 } from '@/lib/billing/aiLimits';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { billingWords } from '@/lib/legal/billingWords';
@@ -138,6 +139,10 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
   }
+  // Η μισή συνεδρία (συσκευή δηλωμένη, εξαψήφιος όχι) δεν περνά:
+  // lib/auth/secondStep.ts.
+  const denied = await requireSecondStep(supabase, user);
+  if (denied) return denied;
 
   // ── Rate limiting (ανά χρήστη) ───────────────────────────────
   const ip = user.id;
@@ -222,7 +227,9 @@ export async function POST(req: NextRequest) {
   let quota: { month: number; monthLimit: number; day: number; dayLimit: number } | null = null;
   // ── Η ΣΑΡΩΣΗ ΜΕΤΡΑΕΙ ΣΤΟΝ ΔΙΚΟ ΤΗΣ ΜΕΤΡΗΤΗ ────────────────────
   // Δεν τρώει ερωτήσεις της Νόας. Πέντε τον μήνα στο δωρεάν «Ιδιοκτήτης»,
-  // χωρίς μηνιαίο όριο στα πληρωμένα· το φράγμα ανά λεπτό ισχύει για όλους.
+  // χωρίς μηνιαίο όριο στα πληρωμένα· στη δοκιμή, στους δωρεάν μήνες και στους
+  // Συνεργάτες ταβάνι TRIAL_SCANS_PER_MONTH με χρέωση στην κοινή δεξαμενή. Το
+  // φράγμα ανά λεπτό ισχύει για όλους.
   const fileKey = scan ? scanKey(user.id, body.messages) : null;
   const seen = fileKey ? scanSeen.get(fileKey) : undefined;
   const reuse = !!seen && Date.now() - seen.at < SCAN_REUSE_MS && seen.uses < SCAN_REUSE_MAX;
@@ -240,11 +247,17 @@ export async function POST(req: NextRequest) {
           { status: 503 },
         );
       }
-      const u = su as { allowed?: boolean; reason?: string };
+      const u = su as { allowed?: boolean; reason?: string; month_limit?: number | null };
       if (u.allowed === false) {
+        // ΤΟ ΟΡΙΟ ΤΟ ΛΕΕΙ Η ΒΑΣΗ. Από 03.10.2026 η δοκιμή, οι δωρεάν μήνες και οι
+        // Συνεργάτες έχουν δικό τους ταβάνι (TRIAL_SCANS_PER_MONTH) και μετρούν
+        // στην κοινή δεξαμενή· το «5 σαρώσεις» του δωρεάν θα ήταν λάθος νούμερο.
+        const canBuy = billingWords().live;
         const error = u.reason === 'scan_month'
-          ? scansExhaustedMessage(billingWords().live)
-          : 'Πολλές σαρώσεις μαζί. Δοκίμασε ξανά σε ένα λεπτό.';
+          ? scansExhaustedMessage(canBuy, typeof u.month_limit === 'number' ? u.month_limit : undefined)
+          : u.reason === 'pool'
+            ? scanPoolExhaustedMessage(canBuy)
+            : 'Πολλές σαρώσεις μαζί. Δοκίμασε ξανά σε ένα λεπτό.';
         return NextResponse.json({ error, reason: u.reason }, { status: 429 });
       }
       if (fileKey) {
@@ -348,13 +361,15 @@ export async function POST(req: NextRequest) {
     if (refunded) return;
     refunded = true;
     if (scan) {
-      // Η σάρωση επιστρέφεται στον δικό της μετρητή· δεν έχει δεξαμενή ούτε
-      // κεφαλίδες υπολοίπου της Νόας. Μια επανάχρηση δεν χρεώθηκε, άρα δεν
-      // επιστρέφει τίποτα· η πρώτη κλήση που απέτυχε σβήνει και το ίχνος της,
-      // ώστε η επόμενη προσπάθεια να χρεωθεί κανονικά.
+      // Η σάρωση επιστρέφεται στον δικό της μετρητή· δεν έχει κεφαλίδες
+      // υπολοίπου της Νόας. Η μονάδα της κοινής δεξαμενής επιστρέφεται με τον
+      // ίδιο κανόνα με τις ερωτήσεις (`pool`) και η βάση την πιστώνει μόνο
+      // όπου χρεώθηκε: δοκιμή, δωρεάν μήνες, Συνεργάτης. Μια επανάχρηση δεν
+      // χρεώθηκε, άρα δεν επιστρέφει τίποτα· η πρώτη κλήση που απέτυχε σβήνει
+      // και το ίχνος της, ώστε η επόμενη προσπάθεια να χρεωθεί κανονικά.
       if (reuse) return;
       if (fileKey) scanSeen.delete(fileKey);
-      await refundScanUsage(user.id);
+      await refundScanUsage(user.id, pool);
       return;
     }
     if (!(await refundAiUsage(user.id, pool))) return;

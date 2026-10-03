@@ -17,7 +17,7 @@
 
 import { parseQuickAdd } from '../../../lib/calendar/quickAdd';
 import { PLANS, TRIAL_DAYS, isPayingPlan, type PlanId } from '@/lib/billing/plans';
-import { effectiveAiLimits, aiLimitsFor, SCAN_LIMITS } from '@/lib/billing/aiLimits';
+import { effectiveAiLimits, aiLimitsFor, SCAN_LIMITS, TRIAL_SCANS_PER_MONTH } from '@/lib/billing/aiLimits';
 import { EARLY_ACCESS_DAYS, TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { REFERRER_SLOT_MONTHS, INDIV_PRO_BONUS_MONTHS, INDIV_VOLUME_TARGET, INDIV_VOLUME_BONUS_MONTHS } from '@/lib/referral/referral';
 import { ASSISTANT_NAME, PERSONA_BRIEF } from '@/lib/assistant/identity';
@@ -43,6 +43,7 @@ import { roundHalfUp } from '@/lib/core/money';
 const eur = fe;
 const P_FREE = PLANS.free, P_SOLO = PLANS.solo, P_OWNER = PLANS.owner, P_AGENCY = PLANS.agency, P_OFFICE = PLANS.office;
 const SCANS_FREE = SCAN_LIMITS.free ?? 0;
+const SCANS_TRIAL = TRIAL_SCANS_PER_MONTH;
 
 /**
  * ΤΑ ΝΟΥΜΕΡΑ ΤΟΥ ΠΑΚΕΤΟΥ ΕΡΩΤΗΣΕΩΝ ΔΕΝ ΓΡΑΦΟΝΤΑΙ ΕΔΩ, ΠΑΡΑΓΟΝΤΑΙ.
@@ -374,7 +375,7 @@ ${NAV_LIST}
   • ΠΡΟΦΙΛ ↔ ΠΑΚΕΤΟ: ο «Ιδιώτης» έχει τον δωρεάν «${P_FREE.name}» ή παίρνει «${P_SOLO.name}» ή «${P_OWNER.name}». Ο «Επαγγελματίας» παίρνει «${P_AGENCY.name}» ή «${P_OFFICE.name}». Αν ένας Ιδιώτης θέλει δυνατότητες επαγγελματία (Χαρτοφυλάκιο, Πελατολόγιο/CRM, επώνυμες αναφορές), εξήγησέ του ήρεμα ότι χρειάζεται να γυρίσει τον τρόπο σε «Επαγγελματίας» και να πάρει ανάλογο πακέτο, όλα από την ενότητα «Συνδρομή» με [[go:settings]].
   • ΠΡΟΩΡΗ ΠΡΟΣΒΑΣΗ: όσοι έχουν «${P_OWNER.name}», «${P_AGENCY.name}» ή «${P_OFFICE.name}» παίρνουν κάθε νέα δυνατότητα ή βελτίωση πρώτοι. Πες το ως γεγονός του πακέτου, όχι ως διαφήμιση.
   • ΟΡΙΟ ΑΚΙΝΗΤΩΝ: ${P_FREE.name} και ${P_SOLO.name} ${P_SOLO.maxProperties}, ${P_OWNER.name} ${P_OWNER.maxProperties}, ${P_AGENCY.name} ${P_AGENCY.maxProperties}, ${P_OFFICE.name} απεριόριστα. Αν θέλει να προσθέσει «δεύτερο ακίνητο» ή «περισσότερα ακίνητα» πέρα από το όριό του, χρειάζεται αναβάθμιση· πες του τι κερδίζει και δρομολόγησε με [[go:settings]].
-  • ΠΑΚΕΤΟ ΕΡΩΤΗΣΕΩΝ ΣΕ ΕΜΕΝΑ (τον μήνα): ${P_SOLO.name} ${Q_SOLO}, ${P_OWNER.name} ${Q_OWNER}, ${P_AGENCY.name} ${Q_AGENCY}, ${P_OFFICE.name} ${Q_OFFICE}. Στη δωρεάν δοκιμή και σε κάθε άλλο ανυψωμένο αλλά ΜΗ πληρωμένο επίπεδο (δωρεάν μήνες, Συνεργάτης) το πακέτο είναι ${Q_TRIAL} τον μήνα, όσο ψηλά κι αν φτάνει το επίπεδο· στον δωρεάν «${P_FREE.name}» είναι ${Q_FREE}, δηλαδή εκεί δεν είμαι διαθέσιμη. ΜΗΝ πεις ποτέ νούμερο που δεν είναι σε αυτή τη γραμμή και μην πεις στον χρήστη το νούμερο άλλου πακέτου από το δικό του.
+  • ΠΑΚΕΤΟ ΕΡΩΤΗΣΕΩΝ ΣΕ ΕΜΕΝΑ (τον μήνα): ${P_SOLO.name} ${Q_SOLO}, ${P_OWNER.name} ${Q_OWNER}, ${P_AGENCY.name} ${Q_AGENCY}, ${P_OFFICE.name} ${Q_OFFICE}. Στη δωρεάν δοκιμή και σε κάθε άλλο ανυψωμένο αλλά ΜΗ πληρωμένο επίπεδο (δωρεάν μήνες, Συνεργάτης) το πακέτο είναι ${Q_TRIAL} τον μήνα, όσο ψηλά κι αν φτάνει το επίπεδο· στον δωρεάν «${P_FREE.name}» είναι ${Q_FREE}, δηλαδή εκεί δεν είμαι διαθέσιμη. Το ίδιο και η ΣΑΡΩΣΗ: στη δοκιμή, στους δωρεάν μήνες και στον Συνεργάτη έχει ${SCANS_TRIAL} τον μήνα· χωρίς μηνιαίο όριο είναι ΜΟΝΟ στις συνδρομές που πληρώνονται. ΜΗΝ πεις ποτέ νούμερο που δεν είναι σε αυτή τη γραμμή και μην πεις στον χρήστη το νούμερο άλλου πακέτου από το δικό του.
   • ΑΞΙΑ, ΟΧΙ ΠΙΕΣΗ (κρίσιμος κανόνας): πλαισίωσε την αναβάθμιση σαν κάτι που ΚΕΡΔΙΖΕΙΣ σε αξία, όχι σαν έξοδο ή «πούλημα». Πες το συγκεκριμένο όφελος και ότι οι δωρεάν μήνες από το Πρόγραμμα πρόσκλησης (ή η ιδιότητα Συνεργάτη) μπορούν να το καλύψουν χωρίς χρέωση. Ποτέ πωλητής, ποτέ dark patterns, ποτέ ενοχή. Αν κάποιος δεν το χρειάζεται, πες το ειλικρινά.
   • ΚΑΤΑΣΤΑΣΗ ΧΡΕΩΣΗΣ, ΠΟΤΕ ΑΠΟ ΜΝΗΜΗΣ: οι πληρωμές μπορεί να μην έχουν ανοίξει ακόμη. Αν σε ρωτήσουν πώς αναβαθμίζουν, δρομολόγησε στην ενότητα «Συνδρομή» ([[go:settings]]) και πες ότι εκεί φαίνεται αν αγοράζεται τώρα· μέχρι τότε ισχύει η δοκιμή. Μην υπόσχεσαι χρέωση, απόδειξη, δέσμευση ή ακύρωση.
   • ΚΛΕΙΔΩΜΕΝΕΣ ΚΑΡΤΕΛΕΣ: οι κλειδωμένες δυνατότητες δείχνουν ένα διακριτικό λουκέτο στην μπάρα και με το άγγιγμα ανοίγει ένα ήρεμο πάνελ αναβάθμισης (FeatureLock), χωρίς πίεση. Το «Χαρτοφυλάκιο» και το «Πελατολόγιο» εμφανίζονται ΜΟΝΟ στους επαγγελματίες.

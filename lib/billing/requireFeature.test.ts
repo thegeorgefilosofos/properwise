@@ -12,6 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { PLAN_RANK_ORDER } from '@/lib/billing/aiLimits';
 import { FEATURE_LABEL } from '@/lib/billing/entitlements';
 import { requireFeature, SIGN_IN_REQUIRED, PLAN_CHECK_FAILED } from './requireFeature';
+import { MFA_REQUIRED } from '@/lib/auth/mfa';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗ ' + name) } };
@@ -91,6 +92,37 @@ async function main() {
     if (!owner.ok) eq('owner: 403', owner.status, 403);
     const agency = await requireFeature('investment_analysis', fake({ id: UID }, rankOf('agency')));
     ok('agency vs investment: ανοιχτή', agency.ok === true);
+  }
+
+  // ── Η ΜΙΣΗ ΣΥΝΕΔΡΙΑ ΚΟΒΕΤΑΙ ΠΡΙΝ ΡΩΤΗΘΕΙ ΤΟ ΠΑΚΕΤΟ ───────────────────────
+  // Η πύλη είναι ο μόνος έλεγχος ταυτότητας της εξαγωγής Ε2 και της ανάλυσης
+  // επένδυσης. Χρήστης με επαληθευμένη συσκευή και διακριτικό «aal1» παίρνει
+  // 403 «mfa_required» όσο ψηλό κι αν είναι το πακέτο του. Η βάση δεν
+  // ρωτιέται καν.
+  {
+    const claims = (aal: string) => {
+      const b64 = btoa(JSON.stringify({ aal })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      return `h.${b64}.s`;
+    };
+    const withFactor = (aal: string) => {
+      let asked = false;
+      const db = {
+        auth: {
+          getUser: async () => ({ data: { user: { id: UID, factors: [{ status: 'verified' }] } } }),
+          getSession: async () => ({ data: { session: { access_token: claims(aal) } }, error: null }),
+        },
+        rpc: async () => { asked = true; return { data: rankOf('office'), error: null }; },
+      };
+      return { db: db as unknown as SupabaseClient, asked: () => asked };
+    };
+    const half = withFactor('aal1');
+    const r = await requireFeature('e2_export', half.db);
+    ok('συσκευή με aal1: κλειστή', r.ok === false);
+    if (!r.ok) { eq('συσκευή με aal1: 403', r.status, 403); eq('συσκευή με aal1: mfa_required', r.error, MFA_REQUIRED); }
+    ok('συσκευή με aal1: το πακέτο δεν ρωτήθηκε', !half.asked());
+
+    const full = withFactor('aal2');
+    ok('συσκευή με aal2: ανοιχτή', (await requireFeature('e2_export', full.db)).ok === true);
   }
 
   // ── ΔΕΙΚΤΗΣ ΕΚΤΟΣ ΟΡΙΩΝ → ΠΕΦΤΕΙ ΣΕ free (ΑΣΦΑΛΗΣ ΑΡΝΗΣΗ) ──────────────

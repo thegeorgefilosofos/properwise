@@ -50,7 +50,7 @@
  */
 export const MAIL_DOMAIN = 'properwise.gr';
 
-export const POLICY_VERSION = '2026-10';
+export const POLICY_VERSION = '2026-10-03';
 
 /** Ο ίδιος μήνας, όπως τον διαβάζει άνθρωπος στο υποσέλιδο των νομικών σελίδων. */
 export const POLICY_UPDATED = 'Οκτώβριος 2026';

@@ -15,6 +15,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireSecondStep } from '@/lib/auth/secondStep';
 import { parseEprelRef, readEprel, eprelApiUrl, eprelPageUrl } from '@/lib/property/eprel';
 
 /** Το μητρώο απαντά σε κλάσματα του δευτερολέπτου· πάνω από αυτό κάτι τρέχει. */
@@ -24,6 +25,10 @@ export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
+  // Η μισή συνεδρία (συσκευή δηλωμένη, εξαψήφιος όχι) δεν περνά:
+  // lib/auth/secondStep.ts.
+  const denied = await requireSecondStep(supabase, user);
+  if (denied) return denied;
 
   const ref = parseEprelRef(req.nextUrl.searchParams.get('ref') ?? '');
   if (!ref) {

@@ -2267,7 +2267,7 @@ begin
     raise exception 'Η επιστροφή σάρωσης δεν ελευθέρωσε θέση: %', res;
   end if;
   -- Και ο χρήστης δεν την καλεί μόνος του: αλλιώς θα μηδένιζε το όριο.
-  if has_function_privilege('authenticated', 'public.refund_scan_usage(uuid)', 'execute') then
+  if has_function_privilege('authenticated', 'public.refund_scan_usage(uuid, boolean)', 'execute') then
     raise exception 'Ο authenticated μπορεί να καλέσει την refund_scan_usage: το όριο σαρώσεων ανοίγει';
   end if;
 
@@ -2289,6 +2289,178 @@ begin
 
   perform set_config('probe.uid', '', true);
   raise notice 'probe: ο δωρεάν «Ιδιοκτήτης» δεν ρωτά τη Νόα και κόβεται στην έκτη σάρωση· ο «Ιδιοκτήτης με Νόα» σαρώνει ελεύθερα';
+end $probe$;
+
+-- ── Η ΣΑΡΩΣΗ ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ ΜΕΤΡΙΕΤΑΙ (20261003100000) ────────────────────
+-- ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΚΛΕΙΝΕΙ. Η `bump_scan_usage` έκοβε μόνο τον βαθμό 0. Η τοπική
+-- δοκιμή ανεβάζει τον λογαριασμό στο «Ιδιοκτήτης+», οι δωρεάν μήνες σε ό,τι
+-- γράφει το `comp_plan`: όλοι αυτοί σάρωναν χωρίς όριο και χωρίς να αγγίζουν
+-- την κοινή δεξαμενή. Κρίνονται εδώ, με την ΑΛΗΘΙΝΗ συνάρτηση:
+--   1. Η δοκιμή περνά ακριβώς `trial_scan` σαρώσεις, η καθεμία χρεώνει μία
+--      μονάδα της δεξαμενής και η επόμενη κόβεται με 'scan_month' χωρίς να
+--      χρεώσει τίποτα.
+--   2. Η άρνηση του λεπτού δεν τρώει σάρωση του μήνα ούτε δεξαμενή.
+--   3. Με γεμάτη δεξαμενή η σάρωση κόβεται με 'pool' και δεν μετρά πουθενά.
+--   4. Οι δωρεάν μήνες κόβονται το ίδιο· ο δωρεάν βαθμός 0 και ο συνδρομητής
+--      δεν αγγίζουν τη δεξαμενή.
+-- ΤΟ ΦΡΑΓΜΑ ΑΝΑ ΛΕΠΤΟ αδειάζει πριν από κάθε σάρωση του βρόχου, όπως στον
+-- δοκιμαστή πιο πάνω: αλλιώς η 21η θα κοβόταν για ΑΛΛΟ λόγο.
+do $probe$
+declare
+  t     uuid := '33333333-3333-3333-3333-333333333336';
+  scans int[] := array[5, null, null, null, null];
+  cap   int  := (public.ai_plan_limits()->>'trial_scan')::int;
+  lpool int  := (public.ai_plan_limits()->>'pool')::int;
+  mon   date := date_trunc('month', (now() at time zone 'Europe/Athens'))::date;
+  saved int;
+  pool0 int;
+  pool1 int;
+  res   json;
+  i     int;
+begin
+  if cap is null or cap <= (scans[1]) then
+    raise exception 'Ο έλεγχος θα ήταν κενός: η ai_plan_limits() δεν έχει trial_scan πάνω από το δωρεάν (%)', cap;
+  end if;
+  insert into auth.users (id, email) values (t, 'dokimi-sarosi@probe.test');
+  insert into public.billing_profiles (user_id, plan, trial_used_at, tester_since, comp_plan, comp_until)
+    values (t, 'free', null, null, null, null)
+    on conflict (user_id) do update
+      set plan = 'free', trial_used_at = null, tester_since = null, comp_plan = null, comp_until = null;
+  if public.user_plan_rank(t) <> 2 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: ο λογαριασμός σε δοκιμή έχει βαθμό %', public.user_plan_rank(t);
+  end if;
+  perform set_config('probe.uid', t::text, true);
+
+  -- Η δεξαμενή ξεκινά από γνωστό σημείο και επιστρέφει εκεί στο τέλος.
+  select free_count into saved from public.ai_budget where month = mon;
+  insert into public.ai_budget (month, free_count, updated_at) values (mon, 0, now())
+    on conflict (month) do update set free_count = 0;
+
+  -- 1. ΤΟ ΤΑΒΑΝΙ ΤΗΣ ΔΟΚΙΜΗΣ ΚΑΙ Η ΧΡΕΩΣΗ ΣΤΗ ΔΕΞΑΜΕΝΗ.
+  for i in 1..cap loop
+    update public.scan_usage set minute_count = 0 where user_id = t;
+    res := public.bump_scan_usage(100, scans);
+    if (res->>'allowed')::boolean is not true then
+      raise exception 'Η σάρωση % από % της δοκιμής κόπηκε: %', i, cap, res;
+    end if;
+  end loop;
+  if (res->>'month_limit')::int <> cap or (res->>'pool')::boolean is not true then
+    raise exception 'Η δοκιμή δεν σαρώνει με το ταβάνι της ή εκτός δεξαμενής: %', res;
+  end if;
+  select free_count into pool1 from public.ai_budget where month = mon;
+  if pool1 <> cap then
+    raise exception 'ΣΑΡΩΣΗ ΕΚΤΟΣ ΔΕΞΑΜΕΝΗΣ: % σαρώσεις της δοκιμής χρέωσαν % μονάδες', cap, pool1;
+  end if;
+  update public.scan_usage set minute_count = 0 where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'scan_month' then
+    raise exception 'Η σάρωση % της δοκιμής ΠΕΡΑΣΕ ή κόπηκε για λάθος λόγο: %', cap + 1, res;
+  end if;
+  if (res->>'month')::int <> cap or (select month_count from public.scan_usage where user_id = t) <> cap then
+    raise exception 'Η άρνηση του μήνα μέτρησε ως σάρωση: %', res;
+  end if;
+  if (select free_count from public.ai_budget where month = mon) <> cap then
+    raise exception 'Η άρνηση του μήνα χρέωσε τη δεξαμενή';
+  end if;
+
+  -- 2. Η ΑΡΝΗΣΗ ΤΟΥ ΛΕΠΤΟΥ ΔΕΝ ΤΡΩΕΙ ΣΑΡΩΣΗ ΤΟΥ ΜΗΝΑ.
+  update public.scan_usage
+     set month_count = 0, minute_count = 20, minute_bucket = date_trunc('minute', now())
+   where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'minute' then
+    raise exception 'Η 21η σάρωση του λεπτού ΠΕΡΑΣΕ με όριο 100 από τον πελάτη: %', res;
+  end if;
+  if (select month_count from public.scan_usage where user_id = t) <> 0 then
+    raise exception 'Η άρνηση του λεπτού έφαγε σάρωση του μήνα';
+  end if;
+  if (select free_count from public.ai_budget where month = mon) <> cap then
+    raise exception 'Η άρνηση του λεπτού χρέωσε τη δεξαμενή';
+  end if;
+
+  -- 3. ΓΕΜΑΤΗ ΔΕΞΑΜΕΝΗ: ΑΡΝΗΣΗ 'pool' ΧΩΡΙΣ ΙΧΝΟΣ.
+  update public.scan_usage set minute_count = 0 where user_id = t;
+  update public.ai_budget set free_count = lpool where month = mon;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'pool' then
+    raise exception 'Με γεμάτη δεξαμενή η σάρωση της δοκιμής ΠΕΡΑΣΕ ή κόπηκε για λάθος λόγο: %', res;
+  end if;
+  if (select month_count from public.scan_usage where user_id = t) <> 0
+     or (select free_count from public.ai_budget where month = mon) <> lpool then
+    raise exception 'Η άρνηση της δεξαμενής άφησε ίχνος στους μετρητές';
+  end if;
+  update public.ai_budget set free_count = 0 where month = mon;
+
+  -- 4α. ΔΩΡΕΑΝ ΜΗΝΕΣ: ΙΔΙΟ ΤΑΒΑΝΙ, ΙΔΙΑ ΔΕΞΑΜΕΝΗ.
+  update public.billing_profiles
+     set trial_used_at = now(), comp_plan = 'agency', comp_until = now() + interval '20 days'
+   where user_id = t;
+  if public.user_plan_rank(t) <> 3 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: οι δωρεάν μήνες δίνουν βαθμό %', public.user_plan_rank(t);
+  end if;
+  update public.scan_usage set minute_count = 0 where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not true or (res->>'month_limit')::int <> cap
+     or (select free_count from public.ai_budget where month = mon) <> 1 then
+    raise exception 'Οι δωρεάν μήνες σαρώνουν χωρίς το ταβάνι της δοκιμής ή εκτός δεξαμενής: %', res;
+  end if;
+
+  -- 4β. ΔΩΡΕΑΝ ΒΑΘΜΟΣ 0: ΠΕΝΤΕ, ΕΚΤΟΣ ΔΕΞΑΜΕΝΗΣ.
+  update public.billing_profiles set comp_plan = null, comp_until = null where user_id = t;
+  update public.scan_usage set minute_count = 0, month_count = 0 where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not true or (res->>'month_limit')::int <> scans[1]
+     or (select free_count from public.ai_budget where month = mon) <> 1 then
+    raise exception 'Ο δωρεάν βαθμός 0 άλλαξε όριο ή χρέωσε τη δεξαμενή: %', res;
+  end if;
+
+  -- 4γ. ΣΥΝΔΡΟΜΗΤΗΣ: ΧΩΡΙΣ ΜΗΝΙΑΙΟ ΟΡΙΟ, ΕΚΤΟΣ ΔΕΞΑΜΕΝΗΣ.
+  update public.billing_profiles set plan = 'owner' where user_id = t;
+  update public.scan_usage set minute_count = 0, month_count = cap where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not true or res->>'month_limit' is not null
+     or (select free_count from public.ai_budget where month = mon) <> 1 then
+    raise exception 'Ο συνδρομητής κόπηκε στη σάρωση ή χρέωσε τη δεξαμενή: %', res;
+  end if;
+
+  -- 4δ. ΔΟΚΙΜΑΣΤΗΣ ΣΕ ΠΛΗΡΩΜΕΝΟ ΠΑΚΕΤΟ: ΤΟ ΤΑΒΑΝΙ, ΧΩΡΙΣ ΔΕΞΑΜΕΝΗ (20261003130000).
+  update public.billing_profiles set tester_since = now() where user_id = t;
+  update public.scan_usage set minute_count = 0, month_count = cap where user_id = t;
+  res := public.bump_scan_usage(100, scans);
+  if (res->>'allowed')::boolean is not false or res->>'reason' <> 'scan_month'
+     or (select free_count from public.ai_budget where month = mon) <> 1 then
+    raise exception 'Ο δοκιμαστής σε πληρωμένο πακέτο σάρωσε πέρα από το ταβάνι ή χρέωσε τη δεξαμενή: %', res;
+  end if;
+
+  -- 5. Η ΕΠΙΣΤΡΟΦΗ ΓΥΡΙΖΕΙ ΚΑΙ ΤΗ ΔΕΞΑΜΕΝΗ, ΜΟΝΟ ΟΠΟΥ ΧΡΕΩΘΗΚΕ.
+  update public.billing_profiles
+     set plan = 'free', tester_since = null, trial_used_at = null, comp_plan = null, comp_until = null
+   where user_id = t;
+  update public.scan_usage set month_count = 3 where user_id = t;
+  update public.ai_budget set free_count = 5 where month = mon;
+  res := public.refund_scan_usage(t, true);
+  if (res->>'refunded')::boolean is not true or (res->>'month')::int <> 2
+     or (select free_count from public.ai_budget where month = mon) <> 4 then
+    raise exception 'Η αποτυχημένη σάρωση της δοκιμής δεν γύρισε τη μονάδα της δεξαμενής: %', res;
+  end if;
+  res := public.refund_scan_usage(t);
+  if (select free_count from public.ai_budget where month = mon) <> 4 then
+    raise exception 'Η επιστροφή χωρίς p_pool πίστωσε τη δεξαμενή';
+  end if;
+  update public.billing_profiles set plan = 'owner' where user_id = t;
+  res := public.refund_scan_usage(t, true);
+  if (select free_count from public.ai_budget where month = mon) <> 4 then
+    raise exception 'Η επιστροφή σάρωσης συνδρομητή πίστωσε δεξαμενή που δεν χρεώθηκε';
+  end if;
+
+  perform set_config('probe.uid', '', true);
+  if saved is null then
+    delete from public.ai_budget where month = mon;
+  else
+    update public.ai_budget set free_count = saved where month = mon;
+  end if;
+  delete from auth.users where id = t;
+  raise notice 'probe: η δοκιμή και οι δωρεάν μήνες σαρώνουν ως % τον μήνα από την κοινή δεξαμενή· ο δωρεάν και ο συνδρομητής όπως πριν', cap;
 end $probe$;
 
 -- ── ΤΑ ΕΞΙ ΚΕΙΜΕΝΑ ΦΕΥΓΟΥΝ ΠΡΑΓΜΑΤΙΚΑ ────────────────────────────────────
@@ -2674,4 +2846,522 @@ begin
   delete from public.accountant_clients where owner_id = own;
   delete from public.accountant_links where user_id = own;
   delete from auth.users where id in (own, 'e2e2e2e2-0000-0000-0000-0000000000ac', 'e2e2e2e2-0000-0000-0000-0000000000ff');
+end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ΟΙ ΕΓΓΡΑΦΕΣ ΤΗΣ ΠΥΛΗΣ ΖΗΤΟΥΝ ΤΟΝ ΚΩΔΙΚΟ ΟΠΩΣ Η ΑΝΑΓΝΩΣΗ
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20261003110000_oi_eggrafes_tis_pylis_zitoun_ton_kodiko.sql. Με κωδικό στον
+-- σύνδεσμο, ο ανώνυμος που κρατά μόνο το κουπόνι δεν δηλώνει πληρωμή, δεν
+-- στέλνει αίτημα και δεν παίρνει άδεια φωτογραφίας. Ο λάθος κωδικός μετρά στο
+-- ΙΔΙΟ κλείδωμα με την ανάγνωση. Χωρίς κωδικό όλα δουλεύουν όπως πριν. Και
+-- στο bucket των φωτογραφιών δεν γράφει πια κανείς απευθείας.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+
+do $probe$
+declare
+  own uuid := 'cdcdcdcd-0000-0000-0000-000000000001';
+  pid uuid := 'cdcdcdcd-0000-0000-0000-0000000000f1';
+  tid uuid := 'cdcdcdcd-0000-0000-0000-0000000000a1';
+  -- Ένας σύνδεσμος ανά ακίνητο: το δεύτερο ακίνητο έχει σύνδεσμο χωρίς κωδικό.
+  pid2 uuid := 'cdcdcdcd-0000-0000-0000-0000000000f2';
+  tid2 uuid := 'cdcdcdcd-0000-0000-0000-0000000000a2';
+begin
+  insert into auth.users(id, email) values (own, 'pyli-kodikos@probe.test');
+  insert into public.user_properties(id, user_id, name)
+    values (pid, own, 'Πύλη με κωδικό'), (pid2, own, 'Πύλη χωρίς κωδικό');
+  insert into public.tenants(id, property_id, user_id, full_name, monthly_rent, lease_start)
+    values (tid, pid, own, 'Ενοικιαστής με κωδικό', 500, current_date - 30),
+           (tid2, pid2, own, 'Ενοικιαστής χωρίς κωδικό', 400, current_date - 30);
+  insert into public.rent_payments(id, user_id, property_id, tenant_id, period_year, period_month, amount, paid)
+    values ('cdcdcdcd-0000-0000-0000-0000000000b1', own, pid, tid, 2026, 9, 500, false),
+           ('cdcdcdcd-0000-0000-0000-0000000000b2', own, pid2, tid2, 2026, 10, 400, false);
+  insert into public.portal_links(property_id, user_id, token, tenant_id, pin_hash)
+    values (pid, own, 'probepinlink00000000000000000000', tid, crypt('4321', gen_salt('bf'))),
+           (pid2, own, 'probeopenlink0000000000000000000', tid2, null);
+end $probe$;
+
+-- ── Ο ανώνυμος με το κουπόνι αλλά χωρίς τον κωδικό ────────────────────────
+set role anon;
+do $probe$
+declare r boolean;
+begin
+  r := public.declare_rent_payment('probepinlink00000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b1', '', null);
+  if r is not null then raise exception 'ΕΚΘΕΣΗ: δήλωση πληρωμής χωρίς κωδικό απάντησε %', r; end if;
+  r := public.declare_rent_payment('probepinlink00000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b1', '', '0000');
+  if r is not null then raise exception 'ΕΚΘΕΣΗ: δήλωση πληρωμής με λάθος κωδικό απάντησε %', r; end if;
+  r := public.submit_maintenance_request('probepinlink00000000000000000000', 'Διαρροή', '', '', '[]'::jsonb, null);
+  if r is not null then raise exception 'ΕΚΘΕΣΗ: αίτημα βλάβης χωρίς κωδικό απάντησε %', r; end if;
+  r := public.submit_maintenance_request('probepinlink00000000000000000000', 'Διαρροή', '', '', '[]'::jsonb, '1111');
+  if r is not null then raise exception 'ΕΚΘΕΣΗ: αίτημα βλάβης με λάθος κωδικό απάντησε %', r; end if;
+end $probe$;
+reset role;
+
+do $probe$
+declare n int;
+begin
+  select count(*) into n from public.rent_payments
+   where id = 'cdcdcdcd-0000-0000-0000-0000000000b1' and tenant_declared;
+  if n <> 0 then raise exception 'ΕΚΘΕΣΗ: η δόση δηλώθηκε χωρίς τον κωδικό'; end if;
+  select count(*) into n from public.maintenance_requests where token = 'probepinlink00000000000000000000';
+  if n <> 0 then raise exception 'ΕΚΘΕΣΗ: γράφτηκαν % αιτήματα χωρίς τον κωδικό', n; end if;
+  -- Δύο λάθος κωδικοί καταγράφηκαν· οι δύο κενοί όχι, όπως και στην ανάγνωση.
+  select count(*) into n from public.portal_pin_attempts
+   where token = 'probepinlink00000000000000000000' and not success;
+  if n <> 2 then raise exception 'Οι λάθος κωδικοί των εγγραφών καταγράφηκαν % φορές αντί για 2', n; end if;
+  raise notice 'probe: με κωδικό στον σύνδεσμο, δήλωση και αίτημα χωρίς τον κωδικό ή με λάθος δεν γράφουν τίποτα';
+end $probe$;
+
+-- ── Με τον σωστό κωδικό γράφουν και σβήνουν τις αποτυχίες ──────────────────
+set role anon;
+do $probe$
+declare r boolean;
+begin
+  r := public.declare_rent_payment('probepinlink00000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b1', 'έμβασμα', '4321');
+  if r is not true then raise exception 'Η δήλωση με τον σωστό κωδικό απάντησε %', r; end if;
+  r := public.submit_maintenance_request('probepinlink00000000000000000000', 'Διαρροή', 'Στο μπάνιο', '',
+    '["probepinlink00000000000000000000/a.jpg","probeopenlink0000000000000000000/xeno.jpg","probepinlink00000000000000000000/../x.jpg",7]'::jsonb,
+    '4321');
+  if r is not true then raise exception 'Το αίτημα με τον σωστό κωδικό απάντησε %', r; end if;
+end $probe$;
+reset role;
+
+do $probe$
+declare n int; ph jsonb;
+begin
+  select count(*) into n from public.rent_payments
+   where id = 'cdcdcdcd-0000-0000-0000-0000000000b1' and tenant_declared;
+  if n <> 1 then raise exception 'Η δήλωση με τον σωστό κωδικό δεν γράφτηκε'; end if;
+  select photos into ph from public.maintenance_requests where token = 'probepinlink00000000000000000000';
+  if ph is distinct from '["probepinlink00000000000000000000/a.jpg"]'::jsonb then
+    raise exception 'ΕΚΘΕΣΗ: το αίτημα κράτησε διαδρομές έξω από τον φάκελο του κουπονιού: %', ph;
+  end if;
+  select count(*) into n from public.portal_pin_attempts
+   where token = 'probepinlink00000000000000000000' and not success;
+  if n <> 0 then raise exception 'Ο σωστός κωδικός δεν έσβησε τις % αποτυχίες', n; end if;
+  raise notice 'probe: με τον σωστό κωδικό η δήλωση και το αίτημα γράφουν· ξένες διαδρομές φωτογραφιών πετιούνται';
+end $probe$;
+
+-- ── Χωρίς κωδικό στον σύνδεσμο, όλα όπως πριν ─────────────────────────────
+set role anon;
+do $probe$
+declare r boolean;
+begin
+  r := public.declare_rent_payment('probeopenlink0000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b2', '', null);
+  if r is not true then raise exception 'Ο σύνδεσμος χωρίς κωδικό δεν δηλώνει πια πληρωμή: %', r; end if;
+  r := public.submit_maintenance_request('probeopenlink0000000000000000000', 'Βρύση', '', '', '[]'::jsonb);
+  if r is not true then raise exception 'Ο σύνδεσμος χωρίς κωδικό δεν στέλνει πια αίτημα: %', r; end if;
+  raise notice 'probe: ο σύνδεσμος χωρίς κωδικό δηλώνει και στέλνει όπως πριν';
+end $probe$;
+
+-- ── Ένα κλείδωμα για ανάγνωση και εγγραφές ────────────────────────────────
+do $probe$
+declare r boolean; d json;
+begin
+  for i in 1..3 loop
+    r := public.declare_rent_payment('probepinlink00000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b2', '', '000' || i);
+  end loop;
+  for i in 1..2 loop
+    r := public.submit_maintenance_request('probepinlink00000000000000000000', 'Δοκιμή', '', '', '[]'::jsonb, '999' || i);
+  end loop;
+  begin
+    r := public.declare_rent_payment('probepinlink00000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b2', '', '4321');
+    raise exception 'ΕΚΘΕΣΗ: μετά από πέντε λάθος κωδικούς η δήλωση πέρασε (%)', r;
+  exception when others then
+    if sqlerrm <> 'portal_locked' then raise; end if;
+  end;
+  begin
+    r := public.submit_maintenance_request('probepinlink00000000000000000000', 'Δοκιμή', '', '', '[]'::jsonb, '4321');
+    raise exception 'ΕΚΘΕΣΗ: μετά από πέντε λάθος κωδικούς το αίτημα πέρασε (%)', r;
+  exception when others then
+    if sqlerrm <> 'portal_locked' then raise; end if;
+  end;
+  -- Οι αποτυχίες των εγγραφών κλειδώνουν και την ανάγνωση: ένα κλείδωμα.
+  d := public.get_portal_data('probepinlink00000000000000000000', '4321');
+  if coalesce((d->>'rate_limited')::boolean, false) is not true then
+    raise exception 'ΕΚΘΕΣΗ: οι λάθος κωδικοί των εγγραφών δεν κλείδωσαν την ανάγνωση: %', d;
+  end if;
+  raise notice 'probe: πέντε λάθος κωδικοί σε εγγραφές κλειδώνουν εγγραφές και ανάγνωση μαζί';
+end $probe$;
+reset role;
+
+-- ── Η άδεια φωτογραφίας: κωδικός και είκοσι ανά ώρα ───────────────────────
+-- Την καλεί ο ρόλος υπηρεσίας· εδώ ο ιδιοκτήτης της βάσης, που κάνει το ίδιο.
+delete from public.portal_pin_attempts where token like '%probepinlink00000000000000000000';
+do $probe$
+declare j json;
+begin
+  j := public.portal_upload_slot('probepinlink00000000000000000000', null);
+  if j->>'reason' is distinct from 'pin' then raise exception 'ΕΚΘΕΣΗ: άδεια φωτογραφίας χωρίς κωδικό: %', j; end if;
+  j := public.portal_upload_slot('probepinlink00000000000000000000', '0000');
+  if j->>'reason' is distinct from 'pin' then raise exception 'ΕΚΘΕΣΗ: άδεια φωτογραφίας με λάθος κωδικό: %', j; end if;
+  if (select count(*) from public.portal_pin_attempts
+       where token = 'probepinlink00000000000000000000' and not success) <> 1 then
+    raise exception 'Ο λάθος κωδικός της φωτογραφίας δεν μέτρησε στο κλείδωμα';
+  end if;
+  j := public.portal_upload_slot('kanena-tetoio-kouponi', null);
+  if j->>'reason' is distinct from 'notfound' then raise exception 'Άγνωστο κουπόνι πήρε απάντηση %', j; end if;
+  for i in 1..20 loop
+    j := public.portal_upload_slot('probepinlink00000000000000000000', '4321');
+    if (j->>'ok')::boolean is not true then raise exception 'Η φωτογραφία % από 20 αρνήθηκε: %', i, j; end if;
+  end loop;
+  j := public.portal_upload_slot('probepinlink00000000000000000000', '4321');
+  if j->>'reason' is distinct from 'rate_limited' then
+    raise exception 'ΕΚΘΕΣΗ: η εικοστή πρώτη φωτογραφία της ώρας πήρε άδεια: %', j;
+  end if;
+  raise notice 'probe: η άδεια φωτογραφίας ζητά τον κωδικό και σταματά στις 20 την ώρα';
+end $probe$;
+
+-- ── Η δήλωση έχει ταβάνι: δέκα την ώρα ────────────────────────────────────
+set role anon;
+do $probe$
+declare r boolean;
+begin
+  -- Μία ήδη από πάνω, από τον σύνδεσμο χωρίς κωδικό.
+  for i in 2..10 loop
+    r := public.declare_rent_payment('probeopenlink0000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b2', '', null);
+  end loop;
+  begin
+    r := public.declare_rent_payment('probeopenlink0000000000000000000', 'cdcdcdcd-0000-0000-0000-0000000000b2', '', null);
+    raise exception 'ΕΚΘΕΣΗ: η ενδέκατη δήλωση της ώρας πέρασε (%)', r;
+  exception when others then
+    if sqlerrm <> 'portal_rate_limited' then raise; end if;
+  end;
+  raise notice 'probe: η δήλωση πληρωμής σταματά στις 10 την ώρα';
+end $probe$;
+
+-- ── Καμία υπογραφή χωρίς κωδικό και κανένας βοηθός στον πελάτη ────────────
+do $probe$
+declare n int;
+begin
+  begin
+    perform public.portal_upload_slot('probeopenlink0000000000000000000', null);
+    raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος παίρνει μόνος του άδεια φωτογραφίας';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.portal_pin_gate('probepinlink00000000000000000000', '4321');
+    raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος ρωτά απευθείας τον έλεγχο κωδικού';
+  exception when insufficient_privilege then null;
+  end;
+  select count(*) into n
+    from pg_proc p join pg_namespace s on s.oid = p.pronamespace
+   where s.nspname = 'public'
+     and p.proname in ('declare_rent_payment', 'submit_maintenance_request')
+     and has_function_privilege('anon', p.oid, 'execute')
+     and not ('p_pin' = any(coalesce(p.proargnames, '{}'::text[])));
+  if n <> 0 then raise exception 'ΕΚΘΕΣΗ: % υπογραφές εγγραφής της πύλης χωρίς p_pin μένουν καλέσιμες', n; end if;
+  if to_regprocedure('public.declare_rent_payment(text,uuid,text)') is not null
+     or to_regprocedure('public.submit_maintenance_request(text,text,text,text,jsonb)') is not null then
+    raise exception 'ΕΚΘΕΣΗ: οι παλιές υπογραφές χωρίς κωδικό υπάρχουν ακόμη';
+  end if;
+  raise notice 'probe: καμία εγγραφή της πύλης δεν καλείται χωρίς p_pin και οι βοηθοί μένουν στον διακομιστή';
+end $probe$;
+reset role;
+
+-- ── Το bucket των φωτογραφιών δεν δέχεται απευθείας εγγραφή ───────────────
+do $probe$
+begin
+  alter table storage.objects enable row level security;
+  grant select, insert on storage.objects to anon, authenticated;
+  if exists (select 1 from pg_policy where polrelid = 'storage.objects'::regclass and polname = 'maint_photos_insert') then
+    raise exception 'ΕΚΘΕΣΗ: η πολιτική maint_photos_insert υπάρχει ακόμη';
+  end if;
+  if (select count(*) from pg_policy where polrelid = 'storage.objects'::regclass
+        and polname in ('maint_photos_read_owner', 'maint_photos_delete_owner')) <> 2 then
+    raise exception 'Χάθηκε η ανάγνωση ή η διαγραφή του ιδιοκτήτη στις φωτογραφίες βλάβης';
+  end if;
+  if not exists (select 1 from storage.buckets where id = 'maintenance-photos'
+                  and file_size_limit = 10485760 and 'image/jpeg' = any(allowed_mime_types)
+                  and not ('application/pdf' = any(allowed_mime_types))) then
+    raise exception 'Το bucket maintenance-photos έχασε το όριο των 10 MB ή τον περιορισμό σε εικόνες';
+  end if;
+end $probe$;
+
+set role anon;
+do $probe$
+begin
+  begin
+    insert into storage.objects(bucket_id, name) values ('maintenance-photos', 'probeopenlink0000000000000000000/anonymo.jpg');
+    raise exception 'ΕΚΘΕΣΗ: ο ανώνυμος ανεβάζει απευθείας στο maintenance-photos';
+  exception when insufficient_privilege then null;
+  end;
+end $probe$;
+set role authenticated;
+set session "probe.uid" = 'cdcdcdcd-0000-0000-0000-000000000001';
+do $probe$
+begin
+  begin
+    insert into storage.objects(bucket_id, name) values ('maintenance-photos', 'probeopenlink0000000000000000000/syndedemenos.jpg');
+    raise exception 'ΕΚΘΕΣΗ: συνδεδεμένος λογαριασμός ανεβάζει απευθείας στο maintenance-photos';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: στο maintenance-photos γράφει μόνο η υπογεγραμμένη διεύθυνση του διακομιστή';
+end $probe$;
+
+reset role;
+set session "probe.uid" = '';
+do $probe$
+declare own uuid := 'cdcdcdcd-0000-0000-0000-000000000001';
+begin
+  revoke select, insert on storage.objects from anon, authenticated;
+  alter table storage.objects disable row level security;
+  delete from public.portal_pin_attempts where token like '%probepinlink00000000000000000000'
+                                            or token like '%probeopenlink0000000000000000000';
+  delete from public.maintenance_requests where user_id = own;
+  delete from public.portal_links where user_id = own;
+  delete from public.rent_payments where user_id = own;
+  delete from public.tenants where user_id = own;
+  delete from public.user_properties where user_id = own;
+  delete from auth.users where id = own;
+end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Η ΜΙΣΗ ΣΥΝΕΔΡΙΑ ΔΕΝ ΔΙΑΒΑΖΕΙ ΤΙΠΟΤΑ ΑΠΟ ΤΗ ΒΑΣΗ
+-- ─────────────────────────────────────────────────────────────────────────
+-- ΤΟ ΣΦΑΛΜΑ (20261003120000). Ο χρήστης με δηλωμένη συσκευή TOTP και διακριτικό
+-- «aal1» γύριζε στη σύνδεση μόνο όταν ζητούσε σελίδα. Το ίδιο διακριτικό
+-- μιλούσε κατευθείαν στο PostgREST και διάβαζε ή έγραφε τα πάντα: καμία
+-- πολιτική δεν κοίταζε το «aal». Εδώ ρωτιέται η ίδια η βάση, με τρεις
+-- συνεδρίες του ίδιου σεναρίου:
+--
+--   · Μ με επαληθευμένη συσκευή και «aal1»: μηδέν γραμμές, καμία εγγραφή,
+--     καμία RPC που αγγίζει δεδομένα, κανένα αρχείο·
+--   · ο ίδιος Μ με «aal2»: όλα κανονικά·
+--   · Ν με μόνο μισοτελειωμένη συσκευή και «aal1»: όλα κανονικά. Ο χρήστης
+--     χωρίς 2FA δεν πρέπει να καταλάβει τίποτα.
+--
+-- Ο ΚΑΤΑΛΟΓΟΣ ΕΛΕΓΧΕΤΑΙ ΚΙ ΑΥΤΟΣ. Ένας νέος πίνακας με permissive πολιτική
+-- χωρίς την restrictive, ή μια νέα SECURITY DEFINER χωρίς την πύλη, είναι η
+-- ίδια τρύπα ξαναγεννημένη. Κοκκινίζει εδώ, με το όνομά της.
+--
+-- ΤΟ `auth.jwt()` ΔΙΑΒΑΖΕΙ ΤΙΣ ΑΞΙΩΣΕΙΣ ΟΠΩΣ ΣΤΟ SUPABASE. Η σκαλωσιά γύριζε
+-- πάντα κενό αντικείμενο, δηλαδή καμία συνεδρία δεν θα έφτανε ποτέ «aal2» και
+-- ο έλεγχος θα περνούσε για λάθος λόγο.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+create or replace function auth.jwt() returns jsonb language sql stable as
+$$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+
+do $probe$
+declare
+  m uuid := 'f2f2f2f2-0000-4000-8000-0000000000a1';
+  n uuid := 'f2f2f2f2-0000-4000-8000-0000000000b1';
+begin
+  insert into auth.users(id, email) values (m, 'mfa@probe.test'), (n, 'nomfa@probe.test')
+    on conflict (id) do nothing;
+  insert into public.user_properties(id, user_id, name) values
+    ('f2f2f2f2-0000-4000-8000-0000000000a2', m, 'Του Μ'),
+    ('f2f2f2f2-0000-4000-8000-0000000000b2', n, 'Του Ν');
+  insert into public.activity_log(user_id, actor_id, action) values (m, m, 'probe'), (n, n, 'probe');
+  -- Ο Μ πέρασε την εγγραφή της συσκευής. Ο Ν την άνοιξε και την εγκατέλειψε:
+  -- ο μισοτελειωμένος παράγοντας δεν μετρά (lib/auth/mfa.ts, `hasVerifiedFactor`).
+  insert into auth.mfa_factors(user_id, factor_type, status) values (m, 'totp', 'verified'), (n, 'totp', 'unverified');
+  -- Ένα αρχείο του καθενός στον ιδιωτικό κάδο, για την ίδια ερώτηση στο storage.
+  insert into storage.objects(bucket_id, name, owner) values
+    ('property-files', m::text || '/mfa-probe.pdf', m),
+    ('property-files', n::text || '/mfa-probe.pdf', n);
+  alter table storage.objects enable row level security;
+  grant select on storage.objects to authenticated;
+  raise notice 'probe: δύο χρήστες, ο ένας με επαληθευμένη συσκευή';
+end $probe$;
+
+-- ── Ο Μ, ΜΕ ΤΟΝ ΚΩΔΙΚΟ ΜΟΝΟ ────────────────────────────────────────────────
+set role authenticated;
+set session "probe.uid" = 'f2f2f2f2-0000-4000-8000-0000000000a1';
+set session "request.jwt.claims" = '{"aal":"aal1"}';
+
+do $probe$
+declare
+  m uuid := 'f2f2f2f2-0000-4000-8000-0000000000a1';
+  k int;
+begin
+  select count(*) into k from public.user_properties;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 με συσκευή βλέπει % ακίνητα', k; end if;
+  select count(*) into k from public.activity_log;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 με συσκευή βλέπει % γραμμές ιστορικού', k; end if;
+
+  update public.user_properties set name = 'Αλλαγμένο' where user_id = m;
+  get diagnostics k = row_count;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 ενημέρωσε % ακίνητα', k; end if;
+  delete from public.user_properties where user_id = m;
+  get diagnostics k = row_count;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 έσβησε % ακίνητα', k; end if;
+
+  begin
+    insert into public.category_hints(user_id, vendor_key, category) values (m, 'mfa-probe', 'Λοιπά');
+    raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 έγραψε γραμμή';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- Οι SECURITY DEFINER παρακάμπτουν την RLS: η πύλη ζει μέσα τους.
+  begin
+    perform public.export_my_data();
+    raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 εξήγαγε τα δεδομένα του λογαριασμού';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'mfa_required' then raise; end if;
+  end;
+  begin
+    perform public.rotate_calendar_feed();
+    raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 έβγαλε διεύθυνση ημερολογίου';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'mfa_required' then raise; end if;
+  end;
+  select count(*) into k from public.my_activity(30);
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: η my_activity έδωσε % γραμμές σε aal1', k; end if;
+
+  select count(*) into k from storage.objects;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 βλέπει % αρχεία', k; end if;
+
+  raise notice 'probe: με κωδικό μόνο, ο χρήστης με συσκευή δεν διαβάζει, δεν γράφει, δεν εξάγει';
+end $probe$;
+
+-- ΤΟ ΑΓΝΩΣΤΟ ΚΛΕΙΝΕΙ. Διακριτικό χωρίς αξίωση «aal» δεν είναι «aal2».
+set session "request.jwt.claims" = '{}';
+do $probe$
+declare k int;
+begin
+  select count(*) into k from public.user_properties;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ 2FA: διακριτικό χωρίς aal βλέπει % ακίνητα', k; end if;
+  raise notice 'probe: διακριτικό χωρίς aal δεν περνά όποιον έχει συσκευή';
+end $probe$;
+
+-- ── Ο ΙΔΙΟΣ, ΜΕΤΑ ΤΟΝ ΕΞΑΨΗΦΙΟ ──────────────────────────────────────────────
+set session "request.jwt.claims" = '{"aal":"aal2"}';
+do $probe$
+declare
+  m uuid := 'f2f2f2f2-0000-4000-8000-0000000000a1';
+  k int;
+  dump jsonb;
+begin
+  select count(*) into k from public.user_properties;
+  if k <> 1 then raise exception 'Ο έλεγχος θα ήταν κενός: σε aal2 ο Μ βλέπει % ακίνητα αντί για 1', k; end if;
+  update public.user_properties set name = 'Του Μ' where user_id = m;
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Σε aal2 ο Μ δεν ενημέρωσε το ακίνητό του (% γραμμές)', k; end if;
+  insert into public.category_hints(user_id, vendor_key, category) values (m, 'mfa-probe', 'Λοιπά');
+
+  dump := public.export_my_data();
+  if not (dump -> 'data') ? 'user_properties' then
+    raise exception 'Σε aal2 η εξαγωγή δεν έφερε τα ακίνητα του Μ';
+  end if;
+  if public.rotate_calendar_feed() is null then raise exception 'Σε aal2 δεν βγήκε διεύθυνση ημερολογίου'; end if;
+  select count(*) into k from public.my_activity(30);
+  if k < 1 then raise exception 'Σε aal2 η my_activity δεν έδωσε το ιστορικό του Μ'; end if;
+  select count(*) into k from storage.objects;
+  if k <> 1 then raise exception 'Σε aal2 ο Μ βλέπει % αρχεία αντί για 1', k; end if;
+
+  raise notice 'probe: μετά τον εξαψήφιο, ο ίδιος χρήστης δουλεύει κανονικά';
+end $probe$;
+
+-- ── Ο Ν, ΧΩΡΙΣ ΣΥΣΚΕΥΗ, ΜΕ ΤΟΝ ΚΩΔΙΚΟ ΜΟΝΟ ──────────────────────────────────
+set session "probe.uid" = 'f2f2f2f2-0000-4000-8000-0000000000b1';
+set session "request.jwt.claims" = '{"aal":"aal1"}';
+do $probe$
+declare
+  n uuid := 'f2f2f2f2-0000-4000-8000-0000000000b1';
+  k int;
+  dump jsonb;
+begin
+  select count(*) into k from public.user_properties;
+  if k <> 1 then raise exception 'Ο χρήστης χωρίς 2FA κόπηκε: βλέπει % ακίνητα αντί για 1', k; end if;
+  update public.user_properties set name = 'Του Ν' where user_id = n;
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Ο χρήστης χωρίς 2FA δεν ενημέρωσε το ακίνητό του'; end if;
+  insert into public.category_hints(user_id, vendor_key, category) values (n, 'mfa-probe', 'Λοιπά');
+  dump := public.export_my_data();
+  if not (dump -> 'data') ? 'user_properties' then raise exception 'Ο χρήστης χωρίς 2FA δεν εξήγαγε'; end if;
+  if public.rotate_calendar_feed() is null then raise exception 'Ο χρήστης χωρίς 2FA δεν πήρε διεύθυνση ημερολογίου'; end if;
+  select count(*) into k from storage.objects;
+  if k <> 1 then raise exception 'Ο χρήστης χωρίς 2FA βλέπει % αρχεία αντί για 1', k; end if;
+  raise notice 'probe: ο χρήστης χωρίς 2FA (με μισοτελειωμένη συσκευή) δεν καταλαβαίνει τίποτα';
+end $probe$;
+
+reset role;
+set session "probe.uid" = '';
+set session "request.jwt.claims" = '';
+
+-- ── Ο ΚΑΤΑΛΟΓΟΣ: ΚΑΘΕ ΠΟΡΤΑ ΠΡΟΣ ΔΕΔΟΜΕΝΑ ΕΧΕΙ ΤΗΝ ΠΥΛΗ ──────────────────────
+-- Οι εξαιρέσεις γράφονται ΟΝΟΜΑΣΤΙΚΑ με τον λόγο τους. Γραμμή που περισσεύει
+-- κοκκινίζει κι αυτή: ένας κατάλογος με φαντάσματα δεν τον διαβάζει κανείς.
+create temporary table mfa_open_tables (name text primary key, why text);
+insert into mfa_open_tables values
+  ('bank_rates',      'Επιτόκια τραπεζών, δημόσια. Οι εγγραφές διαχειριστή ρωτούν το app_admins, που έχει την πύλη.'),
+  ('energy_tariffs',  'Τιμολόγια ρεύματος, δημόσια. Γράφει μόνο ο ρόλος υπηρεσίας.'),
+  ('loan_programs',   'Προγράμματα δανείων, δημόσια, μόνο ανάγνωση.'),
+  ('market_rates',    'Δείκτες αγοράς, δημόσιοι, μόνο ανάγνωση.'),
+  ('product_updates', 'Ανακοινώσεις προϊόντος, δημόσιες, μόνο ανάγνωση.');
+
+create temporary table mfa_open_functions (name text primary key, why text);
+insert into mfa_open_functions values
+  ('delete_my_account', 'Έχει δική της πύλη 2FA από το 20260917120000.'),
+  ('bump_ai_usage',     'Μετρητής: μόνο ανεβάζει το όριο του καλούντα, μετά τον έλεγχο της /api/anthropic.'),
+  ('bump_scan_usage',   'Μετρητής σαρώσεων, ίδιος λόγος.'),
+  ('refund_ai_usage',   'Επιστροφή μονάδας στον μετρητή της Νόας, μόνο του καλούντα.'),
+  ('refund_scan_usage', 'Επιστροφή μονάδας στον μετρητή σαρώσεων, μόνο του καλούντα.'),
+  ('bump_send_quota',   'Μετρητής αποστολών: τον καλούν διαδρομή και συναρτήσεις άκρου μετά τον δικό τους έλεγχο.'),
+  ('my_plan_rank',      'Ένας ακέραιος, ο βαθμός πακέτου. Κανένα προσωπικό δεδομένο.');
+
+do $audit$
+declare bad text;
+begin
+  select string_agg(c.relname, ', ' order by c.relname) into bad
+    from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
+   where ns.nspname = 'public' and c.relkind in ('r', 'p') and c.relrowsecurity
+     and exists (select 1 from pg_policy p where p.polrelid = c.oid and p.polpermissive)
+     and c.relname not in (select name from mfa_open_tables)
+     and not exists (
+       select 1 from pg_policies p
+        where p.schemaname = 'public' and p.tablename = c.relname
+          and p.permissive = 'RESTRICTIVE' and p.cmd = 'ALL'
+          and 'authenticated' = any(p.roles)
+          and p.qual like '%mfa_satisfied%' and p.with_check like '%mfa_satisfied%');
+  if bad is not null then
+    raise exception E'ΔΙΑΡΡΟΗ 2FA: πίνακες χωρίς την restrictive πολιτική του δεύτερου βήματος: %\n  Πρόσθεσε `create policy mfa_<πίνακας> ... as restrictive for all to authenticated`\n  με `(select private.mfa_satisfied())`, όπως στο 20261003120000.', bad;
+  end if;
+
+  if not exists (
+    select 1 from pg_policies p
+     where p.schemaname = 'storage' and p.tablename = 'objects'
+       and p.permissive = 'RESTRICTIVE' and p.qual like '%mfa_satisfied%'
+  ) then
+    raise exception 'ΔΙΑΡΡΟΗ 2FA: το storage.objects έχασε την restrictive πολιτική του δεύτερου βήματος';
+  end if;
+
+  select string_agg(p.proname, ', ' order by p.proname) into bad
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+   where ns.nspname = 'public' and p.prosecdef
+     and has_function_privilege('authenticated', p.oid, 'execute')
+     and p.prosrc ~ 'auth\.uid\(\)'
+     and p.prosrc !~ 'mfa_satisfied'
+     and p.proname not in (select name from mfa_open_functions);
+  if bad is not null then
+    raise exception E'ΔΙΑΡΡΟΗ 2FA: SECURITY DEFINER χωρίς την πύλη του δεύτερου βήματος: %\n  Πρώτη εντολή μετά το begin: if not private.mfa_satisfied() then raise exception ''mfa_required'' using errcode = ''42501''; end if;', bad;
+  end if;
+
+  select string_agg(name, ', ') into bad from mfa_open_tables o
+   where not exists (select 1 from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
+                      where ns.nspname = 'public' and c.relname = o.name);
+  if bad is not null then raise exception 'Ο κατάλογος mfa_open_tables κρατά πίνακες που δεν υπάρχουν: %', bad; end if;
+  select string_agg(name, ', ') into bad from mfa_open_functions o
+   where not exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+                      where ns.nspname = 'public' and p.proname = o.name and p.prosrc !~ 'mfa_satisfied');
+  if bad is not null then raise exception 'Ο κατάλογος mfa_open_functions κρατά συναρτήσεις που λείπουν ή έχουν ήδη την πύλη: %', bad; end if;
+
+  raise notice 'probe: κάθε πίνακας με πολιτική και κάθε SECURITY DEFINER του χρήστη ρωτούν το δεύτερο βήμα';
+end $audit$;
+
+do $probe$
+begin
+  delete from storage.objects where name like 'f2f2f2f2-%/mfa-probe.pdf';
+  revoke select on storage.objects from authenticated;
+  alter table storage.objects disable row level security;
+  delete from auth.mfa_factors where user_id in ('f2f2f2f2-0000-4000-8000-0000000000a1', 'f2f2f2f2-0000-4000-8000-0000000000b1');
+  -- Οι δύο λογαριασμοί φεύγουν από τον ίδιο δρόμο με κάθε διαγραφή: το
+  -- σενάριο του staging που ακολουθεί αρνείται βάση με πάνω από είκοσι χρήστες.
+  perform public.erase_account('f2f2f2f2-0000-4000-8000-0000000000a1');
+  perform public.erase_account('f2f2f2f2-0000-4000-8000-0000000000b1');
 end $probe$;

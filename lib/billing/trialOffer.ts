@@ -9,13 +9,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { PLANS, TRIAL_DAYS, type PlanId } from './plans';
 import { TRIAL_PLAN, planAtLeast } from './entitlements';
-import { TRIAL_LIMITS } from './aiLimits';
+import { TRIAL_LIMITS, TRIAL_SCANS_PER_MONTH } from './aiLimits';
 import { ASSISTANT_TO } from '@/lib/assistant/identity';
 
 // Το διπλό «με … με» («ξεκινά με … δοκιμής με τις δυνατότητες») έγινε άνω
 // τελεία και απαρίθμηση: πρώτα η δοκιμή και μετά τι περιέχει.
+// ΚΑΙ Η ΣΑΡΩΣΗ ΜΕ ΤΟ ΟΡΙΟ ΤΗΣ (03.10.2026): το «όσα έχει ο Ιδιοκτήτης+»
+// υπόσχεται σιωπηρά σάρωση χωρίς όριο, ενώ η δοκιμή έχει δικό της ταβάνι.
 export const TRIAL_OFFER =
-  `Κάθε νέος λογαριασμός ξεκινά με δοκιμή ${TRIAL_DAYS} ημερών: όσα έχει ο «${PLANS[TRIAL_PLAN].name}» και ${TRIAL_LIMITS.perMonth} ερωτήσεις ${ASSISTANT_TO}.`;
+  `Κάθε νέος λογαριασμός ξεκινά με δοκιμή ${TRIAL_DAYS} ημερών: όσα έχει ο «${PLANS[TRIAL_PLAN].name}», ${TRIAL_LIMITS.perMonth} ερωτήσεις ${ASSISTANT_TO} και ${TRIAL_SCANS_PER_MONTH} σαρώσεις τον μήνα.`;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΔΟΚΙΜΗ ΔΕΝ ΕΙΝΑΙ ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΔΙΑΛΕΞΕΣ

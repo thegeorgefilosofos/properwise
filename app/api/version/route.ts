@@ -17,6 +17,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireSecondStep } from '@/lib/auth/secondStep';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,10 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
+  // Η μισή συνεδρία (συσκευή δηλωμένη, εξαψήφιος όχι) δεν περνά:
+  // lib/auth/secondStep.ts.
+  const denied = await requireSecondStep(supabase, user);
+  if (denied) return denied;
   return NextResponse.json(
     { build: process.env.NEXT_PUBLIC_BUILD_SHA ?? 'dev' },
     { headers: { 'Cache-Control': 'no-store' } },
