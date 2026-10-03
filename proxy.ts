@@ -139,6 +139,9 @@ export async function proxy(request: NextRequest) {
     "/kathari-apodosi", "/ypologismos-stegastikou-daneiou",
     // Η σύγκριση τιμολογίων ρεύματος: έκτο δωρεάν εργαλείο, ίδιος κανόνας.
     "/sygkrisi-timologion-revmatos",
+    // Η περιγραφή του site για τα εργαλεία AI (lib/seo/llms.ts). Το matcher
+    // την προσπερνά ήδη· εδώ δηλώνεται για τον φύλακα των δημόσιων διαδρομών.
+    "/llms.txt",
     // ΟΔΗΓΟΣ-ΠΥΛΩΝΑΣ. Δωρεάν περιεχόμενο που εξηγεί τη φορολογία ενοικίων 2026
     // και δένει με τον υπολογιστή· απαντά ΠΡΙΝ την εγγραφή, όπως τα εργαλεία.
     // Οι ίδιοι οι οδηγοί περνούν με πρόθεμα, πιο κάτω.
@@ -325,6 +328,6 @@ export const config = {
     // ανώνυμα οι μηχανές για να επαληθεύσουν τον τομέα, όπως το αρχείο του
     // Search Console. Στατικό αρχείο για μηχανές: δεν θέλει ούτε συνεδρία ούτε
     // κεφαλίδες. Το lib/seo/indexnow.test.ts ελέγχει ότι μένει έξω από εδώ.
-    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|(?:.*/)?opengraph-image|og/|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|[0-9a-f]+\\.txt$|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|llms\\.txt|(?:.*/)?opengraph-image|og/|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|[0-9a-f]+\\.txt$|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -21,6 +21,7 @@
 // ΤΙ ΔΕΝ ΚΑΝΕΙ. Η κεφαλίδα της αρχικής μένει δική της (κολλητή, ημιδιαφανής,
 // με θόλωμα). Οι ΣΥΝΔΕΣΜΟΙ της όμως είναι οι ίδιοι παντού, μέσω του `PublicNav`.
 // ═══════════════════════════════════════════════════════════════════════════
+import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 import { PRODUCT_NAME, LINKEDIN_URL } from '@/lib/core/site';
 import { jsonLdScript } from '@/lib/core/jsonLd';
 import { BrandLogo } from '@/components/BrandMark';
@@ -185,7 +186,7 @@ export function PublicFooter() {
           {/* Ο ΠΕΜΠΤΟΣ ΚΑΙ Ο ΕΚΤΟΣ ΜΠΑΙΝΟΥΝ ΤΕΛΕΥΤΑΙΟΙ. Η δόση στεγαστικού και η σύγκριση
               ρεύματος δεν έχουν ακόμη οδηγό στη διπλανή στήλη, οπότε στέκουν κάτω από τα τέσσερα
               ζευγάρια και δεν σπάνε τη στοίχιση «πόσο / γιατί» από πάνω. */}
-          <FootCol label="Υπολογισμοί" links={[['/ypologismos-enfia', 'ΕΝΦΙΑ'], ['/ypologismos-forou-enoikion', 'Φορολογία ενοικίων'], ['/kathari-apodosi', 'Καθαρή απόδοση'], ['/vraxyxronia-i-makroxronia', 'Βραχυχρόνια ή μακροχρόνια'], ['/ypologismos-stegastikou-daneiou', 'Δόση στεγαστικού'], ['/sygkrisi-timologion-revmatos', 'Σύγκριση τιμολογίων ρεύματος']]} />
+          <FootCol label="Υπολογισμοί" links={PUBLIC_TOOLS.map(t => [t.href, t.label] as [string, string])} />
           {/* ΟΙ ΟΔΗΓΟΙ ΘΕΛΟΥΝ ΔΙΚΗ ΤΟΥΣ ΣΤΗΛΗ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΚΑΘΕΝΟΣ. Ενας
               σύνδεσμος «Οδηγοί» κρυμμένος στο τέλος των εργαλείων διαβαζόταν ως
               πάρεργο. Ξεχωριστή στήλη απαντά στο «γιατί» δίπλα στο «πόσο» και
@@ -194,7 +195,7 @@ export function PublicFooter() {
               στην ίδια γραμμή με το εργαλείο του (ΕΝΦΙΑ δίπλα σε ΕΝΦΙΑ, καθαρή
               απόδοση δίπλα σε καθαρή απόδοση), ώστε το ζευγάρι «πόσο / γιατί»
               να διαβάζεται οριζόντια. */}
-          <FootCol label="Οδηγοί" links={[['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'], ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'], ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'], ['/odigos/airbnb-takk-2026', 'Airbnb και ΤΑΚΚ 2026']]} />
+          <FootCol label="Οδηγοί" links={[['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'], ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'], ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'], ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026']]} />
           {/* ΚΑΜΙΑ ΔΗΜΟΣΙΑ ΣΕΛΙΔΑ ΔΕΝ ΕΔΙΝΕ ΤΡΟΠΟ ΝΑ ΜΑΣ ΜΙΛΗΣΕΙ ΚΑΝΕΙΣ. Η
               διεύθυνση υποστήριξης υπήρχε στο μητρώο νομικής ταυτότητας και
               δεν την τύπωνε καμία σελίδα εκτός από το «Ποιοι είμαστε». Ο
