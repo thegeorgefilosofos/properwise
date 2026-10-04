@@ -95,6 +95,20 @@ export const PRODUCT_TAGLINE =
 export const LINKEDIN_URL = 'https://www.linkedin.com/company/properwisegr';
 
 /**
+ * Ο λογαριασμός στο Instagram, ζωντανός από 04.10.2026. Χωρίς την παράμετρο
+ * `stkn` που βάζει η εφαρμογή στον σύνδεσμο κοινοποίησης: είναι αναγνωριστικό
+ * του ανθρώπου που τον αντέγραψε, όχι μέρος της διεύθυνσης.
+ */
+export const INSTAGRAM_URL = 'https://www.instagram.com/properwisegr';
+
+/**
+ * Οι λογαριασμοί της μάρκας, με τη σειρά του υποσέλιδου. Το `sameAs` της
+ * Organization τους διαβάζει από εδώ, ώστε ένας νέος λογαριασμός να μπαίνει
+ * σε ένα σημείο και να τον βλέπουν μαζί ο άνθρωπος και η Google.
+ */
+export const SOCIAL_PROFILES = [LINKEDIN_URL, INSTAGRAM_URL] as const;
+
+/**
  * ΤΟ ΚΛΕΙΔΙ ΤΟΥ IndexNow, ΓΡΑΜΜΕΝΟ ΜΙΑ ΦΟΡΑ.
  *
  * Το IndexNow (Bing, Yandex, Seznam, Naver· από το Bing τρέφονται το Edge, το
