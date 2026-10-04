@@ -15,7 +15,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { pct } from '../_shared/format.ts'
-import { senderFrom } from '../_shared/sender.mjs'
+import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
     const chunk = recipients.slice(i, i + 100)
     const payload = chunk.map(u => {
       const unsubUrl = `${APP_URL}/unsubscribe/${prefMap.get(u.id)?.unsubscribe_token}`
-      return { from: FROM_EMAIL, to: u.email, subject, html: layout(inner, unsubUrl), headers: listUnsubscribeHeaders(unsubUrl) }
+      return { from: FROM_EMAIL, reply_to: REPLY_TO, to: u.email, subject, html: layout(inner, unsubUrl), headers: listUnsubscribeHeaders(unsubUrl) }
     })
     try {
       const res = await fetch('https://api.resend.com/emails/batch', {

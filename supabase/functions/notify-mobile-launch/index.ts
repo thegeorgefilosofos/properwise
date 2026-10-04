@@ -21,7 +21,7 @@ import { emailShell, eyebrow, h, p, buttonPair, linkLine } from '../_shared/emai
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL as SITE } from '../_shared/site.ts'
 import { timingSafeEqual } from '../_shared/auth.ts'
-import { senderFrom } from '../_shared/sender.mjs'
+import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -60,7 +60,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+      body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to, subject, html }),
     })
     return res.ok
   } catch { return false }

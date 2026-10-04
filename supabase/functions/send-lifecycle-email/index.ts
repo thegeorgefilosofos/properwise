@@ -24,7 +24,7 @@ import {
 import { CATALOG, DIGESTS } from '../_shared/emailCopy.ts'
 import { guessGender } from '../_shared/gender.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
-import { senderFrom } from '../_shared/sender.mjs'
+import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       // Στο εμπορικό μπαίνουν και οι κεφαλίδες απεγγραφής ενός πατήματος (RFC 8058).
-      body: JSON.stringify({ from: FROM_EMAIL, to: email, subject: tpl.subject, html: tpl.html, headers: commercial ? listUnsubscribeHeaders(prefs?.unsubUrl) : undefined }),
+      body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to: email, subject: tpl.subject, html: tpl.html, headers: commercial ? listUnsubscribeHeaders(prefs?.unsubUrl) : undefined }),
     })
     if (!res.ok) { const detail = await res.text().catch(() => ''); return json({ error: 'send_failed', detail: detail.slice(0, 300) }, 502) }
     return json({ sent: true, event })

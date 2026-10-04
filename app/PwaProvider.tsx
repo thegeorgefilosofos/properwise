@@ -6,7 +6,9 @@
 // ΔΥΟ ΚΑΝΟΝΕΣ ΕΥΓΕΝΕΙΑΣ:
 //  1. Δεν ζητάμε εγκατάσταση σε κάποιον που μόλις μπήκε. Η πρόσκληση εμφανίζεται
 //     μόνο αφού ο χρήστης έχει ήδη περάσει λίγη ώρα μέσα (δεύτερη επίσκεψη+),
-//     και μόνο στην εφαρμογή — ποτέ στη landing.
+//     και μόνο στην εφαρμογή — ποτέ στη landing. ΕΞΑΙΡΕΣΗ ΤΟ iPhone (04.10.2026):
+//     εκεί οι ειδοποιήσεις φτάνουν ΜΟΝΟ από την αρχική οθόνη, οπότε η οδηγία
+//     έρχεται από την πρώτη είσοδο στον πίνακα, τέσσερα δευτερόλεπτα μετά.
 //  2. Ένα «όχι» σημαίνει όχι. Το απορριφθέν banner δεν ξαναεμφανίζεται για 60
 //     ημέρες. Κανένα dark pattern, καμία επανάληψη.
 //
@@ -26,12 +28,34 @@ import { holdPrompt, runPrompt, isInstalled, needsManualInstall, markAdded, type
 // Το μήνυμα φορτώνεται μόνο όταν πρόκειται να φανεί (δες InstallBanner.tsx).
 // Με σκέτο `import()` και όχι `next/dynamic`: ο φορτωτής του δεύτερου θα
 // έμπαινε κι αυτός στην πρώτη φόρτωση κάθε σελίδας, για ένα μήνυμα.
-type BannerProps = { mode: 'prompt' | 'ios'; onInstall: () => void; onDismiss: () => void };
+type BannerMode = 'prompt' | 'ios' | 'notify';
+type BannerProps = { mode: BannerMode; onInstall: () => void; onDismiss: () => void; note?: string; busy?: boolean };
 
 const DISMISS_KEY = 'po_pwa_dismissed_at';
 const VISITS_KEY = 'po_pwa_visits';
 const DISMISS_DAYS = 60;
 const MIN_VISITS = 2;
+/** Στο iPhone η αρχική οθόνη είναι η μόνη πόρτα για τις ειδοποιήσεις: από την πρώτη επίσκεψη. */
+const MIN_VISITS_IOS = 1;
+/** «Όχι τώρα» στις ειδοποιήσεις μετά την εγκατάσταση: ξεχωριστό από το «όχι» στην εγκατάσταση. */
+const NOTIFY_DISMISS_KEY = 'po_push_ask_dismissed_at';
+
+/**
+ * Τρέχει από την αρχική οθόνη, στέλνει ειδοποιήσεις και δεν έχει ερωτηθεί ακόμη.
+ * Ο,τι χρειάζεται γράφεται εδώ και όχι από το lib/push/client: το layout το
+ * κατεβάζει κάθε σελίδα και ένα ολόκληρο κομμάτι για τρεις ελέγχους δεν αξίζει.
+ */
+function shouldAskNotify(): boolean {
+  if (!isInstalled()) return false;
+  if (typeof Notification === 'undefined' || !('PushManager' in window) || !('serviceWorker' in navigator)) return false;
+  if (!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '').trim()) return false;
+  if (Notification.permission !== 'default') return false;
+  try {
+    const at = Number(localStorage.getItem(NOTIFY_DISMISS_KEY) || '0');
+    if (at && Date.now() - at < DISMISS_DAYS * 86400000) return false;
+  } catch { /* private mode */ }
+  return true;
+}
 
 /** Είπε «όχι» τις τελευταίες 60 ημέρες; */
 function dismissedRecently(): boolean {
@@ -43,7 +67,9 @@ function dismissedRecently(): boolean {
 
 export default function PwaProvider() {
   const pathname = usePathname();
-  const [mode, setMode] = useState<'prompt' | 'ios' | null>(null);
+  const [mode, setMode] = useState<BannerMode | null>(null);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
   const [Banner, setBanner] = useState<ComponentType<BannerProps> | null>(null);
   // Το layout είναι ΕΝΑ για όλο το site, οπότε χωρίς αυτόν τον έλεγχο το banner
   // εμφανιζόταν και στη landing και — χειρότερα — στις σελίδες ενοικιαστή/λογιστή
@@ -64,13 +90,26 @@ export default function PwaProvider() {
       visits = Number(localStorage.getItem(VISITS_KEY) || '0') + 1;
       localStorage.setItem(VISITS_KEY, String(visits));
     } catch { /* private mode */ }
-    const eligible = () => !isInstalled() && visits >= MIN_VISITS && !dismissedRecently();
+    const eligible = (min: number) => !isInstalled() && visits >= min && !dismissedRecently();
 
     // iPhone/iPad: κανένα γεγονός δεν θα έρθει, η απόφαση παίρνεται εδώ. Με
     // λίγη καθυστέρηση: ένα μήνυμα πάνω στην πρώτη ζωγραφιά της οθόνης
     // σκεπάζει ό,τι ήρθε να δει ο χρήστης πριν προλάβει να το δει.
-    const iosTimer = needsManualInstall() && eligible()
-      ? window.setTimeout(() => setMode('ios'), 4000) : 0;
+    // ΜΕΣΑ ΣΕ INSTAGRAM, FACEBOOK Κ.Α. ΔΕΝ ΥΠΑΡΧΕΙ «ΠΡΟΣΘΗΚΗ ΣΤΗΝ ΑΡΧΙΚΗ ΟΘΟΝΗ»:
+    // η οδηγία θα έστελνε τον χρήστη να ψάχνει κουμπί που δεν υπάρχει. Ο
+    // έλεγχος φορτώνεται μόνο στο iPhone, ώστε να μη βαραίνει κάθε σελίδα.
+    let iosTimer = 0;
+    let alive = true;
+    if (needsManualInstall() && eligible(MIN_VISITS_IOS)) {
+      import('@/lib/core/inAppBrowser').then(({ inAppBrowser }) => {
+        if (alive && inAppBrowser(navigator.userAgent) === null) iosTimer = window.setTimeout(() => setMode('ios'), 4000);
+      }).catch(() => { /* χωρίς δίκτυο: χωρίς μήνυμα */ });
+    } else if (shouldAskNotify()) {
+      // ΠΡΩΤΗ ΦΟΡΑ ΑΠΟ ΤΗΝ ΑΡΧΙΚΗ ΟΘΟΝΗ: το τελευταίο βήμα. Χωρίς αυτό ο χρήστης
+      // έβαζε το εικονίδιο και οι ειδοποιήσεις έμεναν κλειστές, γιατί ο διακόπτης
+      // ζούσε μόνο μέσα στις Ρυθμίσεις.
+      iosTimer = window.setTimeout(() => setMode('notify'), 2500);
+    }
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
@@ -81,7 +120,7 @@ export default function PwaProvider() {
       // έγγραφο, συνήθως όσο ο χρήστης είναι ακόμη στη landing. Αν κόβαμε εδώ,
       // το banner δεν θα εμφανιζόταν ΠΟΤΕ στη φυσιολογική ροή landing → login →
       // dashboard, που είναι client-side πλοήγηση μέσα στο ίδιο έγγραφο.
-      if (eligible()) setMode('prompt');
+      if (eligible(MIN_VISITS)) setMode('prompt');
     };
     // Εγκαταστάθηκε (από εδώ ή από το μενού του περιηγητή): τίποτα να προτείνει.
     const onInstalled = () => { holdPrompt(null); markAdded(); setMode(null); };
@@ -89,6 +128,7 @@ export default function PwaProvider() {
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
+      alive = false;
       window.clearTimeout(iosTimer);
       window.removeEventListener('beforeinstallprompt', onPrompt);
       window.removeEventListener('appinstalled', onInstalled);
@@ -100,13 +140,32 @@ export default function PwaProvider() {
   };
 
   const install = async () => {
+    if (mode === 'notify') {
+      // Η άδεια ζητιέται ΜΕΣΑ στο πάτημα: το Safari αρνείται όποια ζήτηση δεν
+      // ξεκινά από χειρονομία. Ο κώδικας φορτώνεται μόνο τώρα.
+      setBusy(true); setNote('');
+      const [{ enableDevicePush, ENABLE_REASONS }, { authClient }] = await Promise.all([
+        import('@/lib/push/enable'), import('@/lib/supabase/lazy'),
+      ]);
+      const outcome = await enableDevicePush(await authClient());
+      setBusy(false);
+      if (outcome.ok) { setMode(null); return; }
+      setNote(ENABLE_REASONS[outcome.reason]);
+      return;
+    }
     setMode(null);
     // Άκυρο στο native παράθυρο = «όχι». Χωρίς αυτό, το banner ξαναεμφανιζόταν
     // στην επόμενη φόρτωση — ακριβώς η επανάληψη που υποσχεθήκαμε να μην κάνουμε.
     if (await runPrompt() === 'dismissed') remember();
   };
 
-  const dismiss = () => { setMode(null); remember(); };
+  const dismiss = () => {
+    if (mode === 'notify') {
+      try { localStorage.setItem(NOTIFY_DISMISS_KEY, String(Date.now())); } catch { /* private mode */ }
+      setMode(null); return;
+    }
+    setMode(null); remember();
+  };
 
   // Το κομμάτι κατεβαίνει τη στιγμή που χρειάζεται, όχι πριν.
   useEffect(() => {
@@ -117,5 +176,5 @@ export default function PwaProvider() {
   }, [mode, inApp, Banner]);
 
   if (!mode || !inApp || !Banner) return null;
-  return <Banner mode={mode} onInstall={install} onDismiss={dismiss} />;
+  return <Banner mode={mode} onInstall={install} onDismiss={dismiss} note={note} busy={busy} />;
 }

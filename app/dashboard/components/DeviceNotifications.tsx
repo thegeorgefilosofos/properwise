@@ -24,21 +24,15 @@ import { TT, Btn } from '@/components/Theme'
 import { Toggle } from './UIComponents'
 import { SetRow, SetGroup } from './SettingsKit'
 import * as devices from '@/lib/data/pushSubscriptions'
-import { readSubscription, type RawSubscription } from '@/lib/push/subscription'
 import {
-  pushSupported, pushConfigured, subscribeDevice, unsubscribeDevice,
+  pushSupported, pushConfigured, unsubscribeDevice,
   currentSubscription, setDeviceNotify,
 } from '@/lib/push/client'
 import { needsManualInstall } from '@/lib/pwa/install'
+import { enableDevicePush, ENABLE_REASONS } from '@/lib/push/enable'
 
 /** Τι λέει η οθόνη όταν η απόπειρα δεν πέτυχε. Κάθε λόγος, η δική του κίνηση. */
-const REASONS: Record<string, string> = {
-  denied: 'Ο περιηγητής δεν έδωσε άδεια. Δίνεται από τις ρυθμίσεις του για αυτή τη σελίδα.',
-  failed: 'Η εγγραφή δεν ολοκληρώθηκε. Σε iPhone χρειάζεται πρώτα προσθήκη στην αρχική οθόνη.',
-  unsupported: 'Αυτός ο περιηγητής δεν στέλνει ειδοποιήσεις με την εφαρμογή κλειστή.',
-  unconfigured: 'Οι ειδοποιήσεις συσκευής δεν είναι ρυθμισμένες σε αυτή την εγκατάσταση.',
-  stored: 'Η συνδρομή δεν αποθηκεύτηκε. Δοκίμασε ξανά σε λίγο.',
-}
+const REASONS = ENABLE_REASONS
 
 export default function DeviceNotifications({ userId }: { userId: string }) {
   const supabase = createClient()
@@ -87,14 +81,9 @@ export default function DeviceNotifications({ userId }: { userId: string }) {
 
   async function turnOn() {
     setBusy(true); setNote('')
-    const outcome = await subscribeDevice()
-    if (!outcome.ok) { setBusy(false); setNote(REASONS[outcome.reason]); return }
-    const checked = readSubscription(outcome.subscription.toJSON() as RawSubscription)
-    if (!checked) { setBusy(false); setNote(REASONS.failed); return }
-    const { error } = await devices.save(supabase, userId, checked, navigator.userAgent)
+    const outcome = await enableDevicePush(supabase, userId)
     setBusy(false)
-    if (error) { setNote(REASONS.stored); return }
-    setDeviceNotify(true)
+    if (!outcome.ok) { setNote(REASONS[outcome.reason]); return }
     setOn(true)
   }
 

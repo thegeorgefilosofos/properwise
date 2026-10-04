@@ -17,7 +17,7 @@
 import { emailShell, eyebrow, h, p, button } from '../_shared/emailTemplates.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { APP_URL } from '../_shared/site.ts'
-import { senderFrom } from '../_shared/sender.mjs'
+import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM_EMAIL, to: email, subject, html }),
+      body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to: email, subject, html }),
     })
     if (!res.ok) return json({ error: 'send_failed' }, 502)
   } catch (err) {
