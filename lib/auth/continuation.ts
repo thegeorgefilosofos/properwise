@@ -19,6 +19,10 @@
 //   αποκωδικοποιήσει ξανά κάτω από εμάς βρίσκει «//kako.gr».
 // · Οι σελίδες εισόδου δεν είναι προορισμός: «next=/login» θα ξανάνοιγε τη
 //   φόρμα πάνω από ήδη συνδεδεμένο χρήστη.
+// · Η διαδρομή κρίνεται ΑΦΟΥ λυθούν τα «.» και «..». Το «/.//kako.gr» περνά
+//   το `safeNext` (δεύτερος χαρακτήρας τελεία) και ο περιηγητής το κάνει
+//   «//kako.gr». Το «/dashboard/../login» είναι στην ουσία σελίδα εισόδου.
+//   Επιστρέφεται η ΛΥΜΕΝΗ μορφή, ώστε κανείς παρακάτω να μην τη λύσει αλλιώς.
 //
 // ΚΑΙ ΤΙ ΤΑΞΙΔΕΥΕΙ. Οι σύνδεσμοι ανάμεσα σε σύνδεση και εγγραφή και η
 // επιστροφή από την Google κουβαλούν ΜΟΝΟ τη συνέχεια (`carried`): ποτέ
@@ -34,16 +38,28 @@ const params = (src: Source) => (typeof src === 'string' ? new URLSearchParams(s
 /** Οι σελίδες της εισόδου. Προορισμός εκεί θα ξανάνοιγε τη φόρμα. */
 const AUTH_PAGES = ['/login', '/signup', '/auth']
 
+/** Ψεύτικη αφετηρία μόνο για να λυθεί η διαδρομή· δεν βγαίνει ποτέ προς τα έξω. */
+const BASE = 'http://n'
+
+/** Η διαδρομή λυμένη όπως θα τη λύσει ο περιηγητής, ή κενό αν φεύγει από εμάς. */
+function resolved(v: string): string {
+  if (safeNext(v, '') !== v.trim()) return ''
+  let u: URL
+  try { u = new URL(v, BASE) } catch { return '' }
+  if (u.origin !== BASE || u.pathname.startsWith('//')) return ''
+  if (AUTH_PAGES.some(p => u.pathname === p || u.pathname.startsWith(p + '/'))) return ''
+  return u.pathname + u.search + u.hash
+}
+
 /** Το «next» αν είναι δικό μας και όχι σελίδα εισόδου, αλλιώς κενό. */
 function ownNext(raw: string | null): string {
   const v = safeNext(raw, '')
   if (!v) return ''
+  // Και η μορφή μετά από ΜΙΑ ακόμη αποκωδικοποίηση περνά τους ίδιους ελέγχους.
   let once: string
   try { once = decodeURIComponent(v) } catch { return '' }
-  if (safeNext(once, '') !== once.trim()) return ''
-  const path = v.split(/[?#]/)[0]
-  if (AUTH_PAGES.some(p => path === p || path.startsWith(p + '/'))) return ''
-  return v
+  if (!resolved(once)) return ''
+  return resolved(v)
 }
 
 /** Πού πηγαίνει ο χρήστης μόλις ολοκληρωθεί η είσοδος (και το δεύτερο βήμα). */
@@ -73,8 +89,16 @@ export function carried(src: Source): string {
   return s ? `?${s}` : ''
 }
 
-/** Παράμετροι που δεν ταξιδεύουν ποτέ μέσα σε «next»: διακριτικά και σφάλματα του παρόχου. */
-const NEVER_CARRIED = /code|token|secret|password|^error/i
+/**
+ * ΟΙ ΜΟΝΕΣ ΠΑΡΑΜΕΤΡΟΙ ΠΟΥ ΤΑΞΙΔΕΥΟΥΝ ΜΕΣΑ ΣΕ «next». Επιτρεπτές, όχι
+ * απαγορευμένες: ένας κατάλογος απαγορεύσεων ξεχνά πάντα το επόμενο όνομα
+ * διακριτικού («state», «session_id», «jwt», «sig»…). Ο πίνακας διαβάζει από
+ * τη διεύθυνση μόνο «tab» και «action» (lib/nav/history.ts readLaunchShortcut)
+ * και αυτές είναι οι παράμετροι των πραγματικών συνδέσμων: το ημερολόγιο, ο
+ * χώρος του λογιστή και οι συντομεύσεις του manifest. Το «checkout=ok» μένει
+ * έξω: δεν το διαβάζει κανείς και μια πληρωμή δεν «ξαναγίνεται» μετά τη σύνδεση.
+ */
+const CARRIED_KEYS = ['tab', 'action']
 
 /**
  * Η ΔΙΕΥΘΥΝΣΗ ΤΗΣ ΣΥΝΔΕΣΗΣ ΟΤΑΝ Ο ΔΙΑΜΕΣΟΛΑΒΗΤΗΣ ΚΛΕΙΝΕΙ ΤΗΝ ΠΟΡΤΑ.
@@ -83,18 +107,18 @@ const NEVER_CARRIED = /code|token|secret|password|^error/i
  * την αναζήτηση όπως ήταν: η σελίδα που ζητήθηκε χανόταν και ό,τι έτυχε να
  * είναι στη διεύθυνση («code» μαζί) περνούσε στη σύνδεση. Τώρα η αναζήτηση
  * γράφεται από την αρχή: πακέτο και κύκλος αν είναι έγκυρα, αλλιώς «next» με
- * τη διαδρομή που ζητήθηκε, χωρίς διακριτικά και με τους ίδιους ελέγχους.
- * Ο σκέτος πίνακας δεν χρειάζεται «next»: είναι ήδη ο προορισμός.
+ * τη διαδρομή που ζητήθηκε και ΜΟΝΟ τις παραμέτρους του `CARRIED_KEYS`, με
+ * τους ίδιους ελέγχους. Ο πίνακας χωρίς καμία από αυτές δεν χρειάζεται «next»:
+ * είναι ήδη ο προορισμός. Με «?tab=calendar» όμως χρειάζεται, αλλιώς ο
+ * σύνδεσμος του ημερολογίου άνοιγε την αρχική καρτέλα.
  */
 export function loginSearch(pathname: string, search: string): string {
   const original = new URLSearchParams(search)
   const kept = new URLSearchParams()
-  original.forEach((v, k) => { if (!NEVER_CARRIED.test(k)) kept.append(k, v) })
+  for (const k of CARRIED_KEYS) { const v = original.get(k); if (v !== null) kept.set(k, v) }
+  const rest = kept.toString()
   const q = new URLSearchParams()
   for (const k of ['plan', 'cycle']) { const v = original.get(k); if (v) q.set(k, v) }
-  if (pathname !== HOME) {
-    const rest = kept.toString()
-    q.set('next', rest ? `${pathname}?${rest}` : pathname)
-  }
+  if (pathname !== HOME || rest) q.set('next', rest ? `${pathname}?${rest}` : pathname)
   return carried(q)
 }

@@ -38,6 +38,20 @@ test('κωδικοποιημένες μορφές δεν περνούν', () => 
   assert.equal(continuation('next=%2F%25E0%25A4%25A'), HOME);
 });
 
+test('οι τελείες λύνονται πριν από τον έλεγχο', () => {
+  for (const bad of [
+    '/.//kako.gr', '/..//kako.gr', '/%2e%2e//kako.gr', '/%2E//kako.gr', '/./\\kako.gr', '/.\\/kako.gr',
+    '/dashboard/../login', '/dashboard/../auth/callback?token_hash=X', '/dashboard/%2e%2e/signup',
+    '/a/../../..//kako.gr',
+  ]) {
+    assert.equal(continuation(q(`next=${encodeURIComponent(bad)}`)), HOME, bad);
+    assert.equal(carried(q(`next=${encodeURIComponent(bad)}`)), '', bad);
+  }
+  // Επιστρέφεται η λυμένη μορφή.
+  assert.equal(continuation(q('next=/dashboard/../accountant/./workspace')), '/accountant/workspace');
+  assert.equal(continuation(q('next=/dashboard?tab=calendar#x')), '/dashboard?tab=calendar#x');
+});
+
 test('οι σελίδες εισόδου δεν είναι προορισμός', () => {
   assert.equal(continuation(q('next=/login')), HOME);
   assert.equal(continuation(q('next=/signup?oauth=login')), HOME);
@@ -85,6 +99,18 @@ test('ο διαμεσολαβητής στέλνει στη σύνδεση με 
   // Ο σκέτος πίνακας είναι ήδη ο προορισμός.
   assert.equal(loginSearch('/dashboard', ''), '');
   assert.equal(loginSearch('/dashboard', '?x=1'), '');
+  // Με γνωστή παράμετρο όμως χρειάζεται: ο σύνδεσμος του ημερολογίου, του
+  // λογιστή και οι συντομεύσεις του manifest.
+  assert.equal(loginSearch('/dashboard', '?tab=calendar'), '?next=%2Fdashboard%3Ftab%3Dcalendar');
+  assert.equal(loginSearch('/dashboard', '?action=scan&x=1'), '?next=%2Fdashboard%3Faction%3Dscan');
+  assert.equal(continuation(loginSearch('/dashboard', '?tab=accounting')), '/dashboard?tab=accounting');
+  // Το «checkout=ok» δεν ξαναπαίζεται μετά τη σύνδεση.
+  assert.equal(loginSearch('/dashboard', '?checkout=ok'), '');
+  // Ό,τι δεν είναι στον κατάλογο φεύγει, όποιο κι αν είναι το όνομά του.
+  assert.equal(
+    loginSearch('/dashboard/x', '?state=s&session_id=i&t=1&s=2&jwt=j&key=k&sig=g&otp=o&nonce=n&tab=a'),
+    '?next=%2Fdashboard%2Fx%3Ftab%3Da',
+  );
   // Διακριτικά δεν μπαίνουν στο «next».
   assert.equal(
     loginSearch('/dashboard/x', '?code=SECRET&access_token=a&token_hash=b&refresh_token=c&error_description=d&tab=a'),
@@ -96,7 +122,10 @@ test('ο διαμεσολαβητής στέλνει στη σύνδεση με 
   assert.equal(loginSearch('/auth/callback', '?code=x'), '');
   // Το πακέτο κρατιέται όπως πριν και προηγείται.
   assert.equal(loginSearch('/dashboard', '?plan=owner&cycle=annual'), '?plan=owner&cycle=annual');
-  assert.equal(loginSearch('/dashboard/x', '?plan=kako'), '?next=%2Fdashboard%2Fx%3Fplan%3Dkako');
+  assert.equal(loginSearch('/dashboard/x', '?plan=kako'), '?next=%2Fdashboard%2Fx');
+  // Και η διαδρομή του αιτήματος λύνεται: τελείες προς σελίδα εισόδου ή ξένο τόπο.
+  assert.equal(loginSearch('/dashboard/../login', ''), '');
+  assert.equal(loginSearch('/.//kako.gr', ''), '');
   // Ξένη μορφή διαδρομής δεν περνά.
   assert.equal(loginSearch('//kako.gr', ''), '');
   // Ο γύρος κλείνει: η σύνδεση διαβάζει ακριβώς τη σελίδα που ζητήθηκε.
