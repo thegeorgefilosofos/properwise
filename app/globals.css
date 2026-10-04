@@ -4871,18 +4871,25 @@ body:has(.po-tool-page) .po-cookie {
      θέλει ολόκληρο στόχο αφής 44px, όπως κάθε άλλος του υποσέλιδου. */
   .po-foot-legal > a { display: flex; align-items: center; min-height: 44px; margin-top: 0; }
 }
-.po-social { grid-area: social; }
+/* ΔΥΟ ΣΗΜΑΤΑ, ΕΝΑ ΚΕΛΙ (04.10.2026). Το LinkedIn και το Instagram μοιράζονται τη
+   ζώνη `social` ως ομάδα. Τα αρνητικά περιθώρια ζουν στην ομάδα, όχι σε κάθε
+   σήμα: αλλιώς το −9 δεξιά του πρώτου θα έφερνε τον στόχο του πάνω στον
+   στόχο του δεύτερου. */
+.po-socials { grid-area: social; display: inline-flex; align-items: center; gap: 4px; margin: -9px -9px -9px 0; }
 @media (max-width: 720px) {
   .po-foot-bar { grid-template-columns: 1fr auto; grid-template-areas: "copy social" "legal legal"; }
 }
 .po-social {
   display: inline-grid; place-items: center; flex: none;
-  width: 36px; height: 36px; margin: -9px -9px -9px 0; border-radius: 10px;
+  width: 36px; height: 36px; border-radius: 10px;
   color: var(--text-tertiary);
   transition: color .15s ease, background-color .15s ease;
 }
 .po-social:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; color: var(--text-primary); }
-@media (hover: none) { .po-social { width: 44px; height: 44px; margin: -13px -13px -13px 0; } }
+@media (hover: none) {
+  .po-social { width: 44px; height: 44px; }
+  .po-socials { margin: -13px -13px -13px 0; }
+}
 /* ΣΤΗ ΔΙΠΛΗ ΣΕΙΡΑ Η ΖΩΝΗ ΔΕΝ ΒΓΑΙΝΕΙ ΚΑΘΕΤΑ ΑΠΟ ΤΗ ΣΕΙΡΑ ΤΗΣ. Με −13 πάνω
    και κάτω, το τετράγωνο των 44 κρεμόταν 13 pixel κάτω από την πρώτη σειρά και
    με κενό 8 έπεφτε πάνω στο «Πολιτική απορρήτου» της δεύτερης (σαρωτής
@@ -4891,7 +4898,7 @@ body:has(.po-tool-page) .po-cookie {
    6 και το κενό 12 αφήνει 6 καθαρά ανάμεσα. */
 @media (max-width: 720px) {
   .po-foot-bar { row-gap: 12px; }
-  .po-social { margin-block: -6px; }
+  .po-socials { margin-block: -6px; }
 }
 /* ΔΥΟ ΕΠΙ ΔΥΟ ΑΠΟ ΤΑ 1024 ΚΑΙ ΚΑΤΩ ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ (01.10.2026). Στα 768 οι
    τέσσερις στήλες έπαιρναν από 180 και τύλιγαν τα μισά λεκτικά σε δύο
