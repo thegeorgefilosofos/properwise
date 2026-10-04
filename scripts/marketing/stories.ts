@@ -275,6 +275,7 @@ function ypenthymisi(): string {
   return frame('ΥΠΕΝΘΥΜΙΣΕΙΣ', `
     <h1 style="font-size:112px;margin-top:92px">Ποτέ ξανά<br><span style="color:${C.accent}">«το ξέχασα».</span></h1>
     <p class="sub" style="margin-top:40px;max-width:880px">Μία ειδοποίηση το πρωί, μόνο όταν κάτι λήγει σήμερα ή αύριο.</p>
+    <div class="poll" aria-hidden="true"></div>
     <div class="lock">
       <div class="clock num">${esc(time)}</div>
       <div class="note glass">
@@ -284,11 +285,14 @@ function ypenthymisi(): string {
       </div>
       <div class="tag" style="margin-top:26px">ΠΑΡΑΔΕΙΓΜΑ</div>
     </div>`, `
-    .lock{margin-top:auto;margin-bottom:390px;border-radius:64px;padding:70px 46px 54px;display:flex;flex-direction:column;align-items:center;
+    /* ΛΩΡΙΔΑ ΓΙΑ ΤΗ ΔΗΜΟΣΚΟΠΗΣΗ. Το αυτοκόλλητο μπαίνει από την εφαρμογή του
+       Instagram· χωρίς δικό του χώρο έπεφτε πάνω στο ρολόι ή στην ειδοποίηση. */
+    .poll{flex:none;height:200px;margin-top:24px}
+    .lock{margin-top:auto;margin-bottom:390px;border-radius:64px;padding:52px 46px 44px;display:flex;flex-direction:column;align-items:center;
       background:radial-gradient(700px 520px at 30% 10%, #2b4a7a, transparent 70%), radial-gradient(600px 500px at 90% 90%, #1d3358, transparent 70%), #0b1424;
       border:1.5px solid ${C.rule};box-shadow:0 60px 140px -50px #000}
-    .clock{font-size:168px;font-weight:300;letter-spacing:-.04em;line-height:1;color:${C.ink};opacity:.94}
-    .note{margin-top:56px;width:100%;border-radius:40px;padding:30px 34px;background:linear-gradient(180deg,#1b2638ee,#141d2dee)}
+    .clock{font-size:150px;font-weight:300;letter-spacing:-.04em;line-height:1;color:${C.ink};opacity:.94}
+    .note{margin-top:44px;width:100%;border-radius:40px;padding:30px 34px;background:linear-gradient(180deg,#1b2638ee,#141d2dee)}
     .n-head{display:flex;align-items:center;gap:14px;font-size:22px;color:${C.faint};letter-spacing:.04em}
     .n-ic{width:52px;height:52px;border-radius:14px;background:${C.ground};border:1.5px solid ${C.rule};display:flex;align-items:center;justify-content:center}
     .n-head b{font-weight:700;color:${C.muted}}
@@ -310,8 +314,8 @@ function fakelos(): string {
     return `<div class="xr${strong ? ' strong' : ''}${l.kind === 'result' ? ' result' : ''}"><span>${esc(l.label)}</span><b class="num">${esc(v)}</b></div>`;
   }).join('');
   return frame('ΦΑΚΕΛΟΣ ΓΙΑ ΤΟΝ ΛΟΓΙΣΤΗ', `
-    <h1 style="font-size:112px;margin-top:92px">Ο φάκελος<br><span style="color:${C.accent}">του λογιστή.</span></h1>
-    <p class="sub" style="margin-top:40px;max-width:880px">Όλη η χρονιά σε ένα Excel. Ό,τι λείπει, γραμμένο σε δικό του φύλλο.</p>
+    <h1 style="font-size:112px;margin-top:92px">Ένα αρχείο.<br><span style="color:${C.accent}">Όλη η χρονιά.</span></h1>
+    <p class="sub" style="margin-top:40px;max-width:880px">Το Excel που παίρνει ο λογιστής. Ό,τι λείπει, γραμμένο σε δικό του φύλλο.</p>
     <div class="xl glass">
       <div class="x-bar"><i></i><i></i><i></i><span>Φάκελος ${esc(String(S.year))} · ${esc(PROP)}.xlsx</span></div>
       <div class="x-title"><b>Κατάσταση αποτελεσμάτων</b><span class="tag">ΠΑΡΑΔΕΙΓΜΑ</span></div>
@@ -439,9 +443,17 @@ async function main() {
     '',
     ...STORIES.filter(st => dayOf(st) === 2).map(st => `- \`${st.key}.png\`: ${st.what}`),
     '',
+    'Στο `4-ypenthymisi.png`, αυτοκόλλητο δημοσκόπησης (Poll) στην άδεια λωρίδα',
+    'ανάμεσα στον υπότιτλο και στην οθόνη κλειδώματος: «Σου έχει ξεφύγει ποτέ',
+    'προθεσμία;», με απαντήσεις «Ναι» και «Όχι ακόμα».',
+    '',
     'Στο `6-ypologistes.png`, το αυτοκόλλητο συνδέσμου προς `https://properwise.gr`',
     'μπαίνει στην άδεια λωρίδα κάτω από το «Υπολόγισε τώρα». Κείμενο αυτοκόλλητου:',
     '«Υπολόγισε δωρεάν».',
+    '',
+    'Η ώρα της ειδοποίησης βγαίνει από το χρονοδιάγραμμα (05:00 UTC) σε ώρα Ελλάδας:',
+    '08:00 ώς τις 25 Οκτωβρίου, 07:00 μετά την αλλαγή της ώρας. Ξαναπαράγεται',
+    'την ημέρα της δημοσίευσης.',
     '',
     '## Εναλλακτικό κείμενο',
     '',
