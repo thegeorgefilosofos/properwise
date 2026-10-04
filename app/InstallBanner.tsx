@@ -27,16 +27,20 @@ function ShareGlyph() {
   );
 }
 
-export default function InstallBanner({ mode, onInstall, onDismiss }: {
-  mode: 'prompt' | 'ios';
+export default function InstallBanner({ mode, onInstall, onDismiss, note = '', busy = false }: {
+  mode: 'prompt' | 'ios' | 'notify';
   onInstall: () => void;
   onDismiss: () => void;
+  /** Γιατί δεν άνοιξαν οι ειδοποιήσεις, όταν δεν άνοιξαν. */
+  note?: string;
+  busy?: boolean;
 }) {
+  const asks = mode !== 'ios';
   // Κάθεται εκεί που κάθεται κάθε πλωτό στοιχείο (Toast, MonthlyFeedbackNudge).
   // Με 16px από το κάτω άκρο και z-index 900, στο κινητό έπεφτε πάνω στην κάτω
   // πλοήγηση, που έχει κι αυτή 900: σκέπαζε τα εικονίδιά της.
   return (
-    <div role="dialog" aria-label="Εγκατάσταση εφαρμογής"
+    <div role="dialog" aria-label={mode === 'notify' ? 'Ειδοποιήσεις' : 'Εγκατάσταση εφαρμογής'}
       style={{ position: 'fixed', left: 16, right: 16, bottom: 'var(--float-bottom)', zIndex: 'var(--float-z)', maxWidth: 420, margin: '0 auto', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, boxShadow: 'var(--shadow-xl)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12, fontFamily: T.font.sans }}>
       {/* ── ΤΟ `next/image` ΕΔΩ ΚΟΣΤΙΖΕΙ ΠΕΡΙΣΣΟΤΕΡΟ ΑΠ' ΟΣΟ ΓΛΙΤΩΝΕΙ ──────────
           Δοκιμάστηκε όταν το μήνυμα ζούσε στο ριζικό layout: 161,9 KB →
@@ -45,11 +49,16 @@ export default function InstallBanner({ mode, onInstall, onDismiss }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <RuntimeImg src="/icons/icon-192.png" alt="" width={40} height={40} style={{ borderRadius: 10, flexShrink: 0 }} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>Βάλ’ το στην αρχική οθόνη</div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.4, marginTop: 2 }}>PROPERWISE, σαν εφαρμογή</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>{mode === 'notify' ? 'Άνοιξε τις ειδοποιήσεις' : 'Βάλ’ το στην αρχική οθόνη'}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.4, marginTop: 2 }}>{mode === 'notify' ? 'Ένα τελευταίο βήμα' : 'PROPERWISE, σαν εφαρμογή'}</div>
         </div>
       </div>
-      {mode === 'prompt' ? (
+      {mode === 'notify' ? (
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          Για ό,τι λήγει: ΕΝΦΙΑ, ενοίκια που δεν μπήκαν, συμβόλαια και λογαριασμοί.
+          Τις κλείνεις όποτε θέλεις από τις Ρυθμίσεις.
+        </p>
+      ) : mode === 'prompt' ? (
         <p className="po-just" style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
           Ανοίγει με ένα πάτημα, σε πλήρη οθόνη και χωρίς μπάρα διεύθυνσης. Βολικό όταν φωτογραφίζεις έναν λογαριασμό εκεί που βρίσκεσαι.
         </p>
@@ -60,9 +69,14 @@ export default function InstallBanner({ mode, onInstall, onDismiss }: {
           Στο iPhone μόνο έτσι φτάνουν οι ειδοποιήσεις για ό,τι λήγει.
         </p>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: mode === 'prompt' ? '1fr 1fr' : '1fr', gap: 8 }}>
-        {mode === 'prompt' && <Btn variant="primary" onClick={onInstall}>Εγκατάσταση</Btn>}
-        <Btn onClick={onDismiss}>{mode === 'prompt' ? 'Όχι τώρα' : 'Εντάξει'}</Btn>
+      {note && <p role="status" style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{note}</p>}
+      <div style={{ display: 'grid', gridTemplateColumns: asks ? '1fr 1fr' : '1fr', gap: 8 }}>
+        {asks && (
+          <Btn variant="primary" onClick={onInstall} disabled={busy}>
+            {mode === 'notify' ? (busy ? 'Άνοιγμα…' : 'Άνοιγμα') : 'Εγκατάσταση'}
+          </Btn>
+        )}
+        <Btn onClick={onDismiss}>{asks ? 'Όχι τώρα' : 'Εντάξει'}</Btn>
       </div>
     </div>
   );

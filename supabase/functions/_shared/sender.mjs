@@ -19,6 +19,15 @@
 /** Ο επαληθευμένος αποστολέας του τομέα. */
 export const DEFAULT_FROM = 'PROPERWISE <no-reply@properwise.gr>'
 
+/**
+ * ΟΠΟΙΟΣ ΑΠΑΝΤΑ ΦΤΑΝΕΙ ΣΕ ΑΝΘΡΩΠΟ (04.10.2026). Τα email φεύγουν από το
+ * no-reply· χωρίς Reply-To, μια απάντηση σε υπενθύμιση ή σε πρόσκληση χανόταν
+ * και ο πάροχος έβλεπε μηνύματα στα οποία κανείς δεν μπορεί να απαντήσει, που
+ * μετρά αρνητικά στη φήμη του αποστολέα. Η ίδια διεύθυνση υποστήριξης με το
+ * `IDENTITY.supportEmail` (lib/legal/identity.ts).
+ */
+export const REPLY_TO = 'PROPERWISE <support@properwise.gr>'
+
 const ADDR = '[^\\s@<>",]+@[^\\s@<>",]+\\.[A-Za-z]{2,}'
 const VALID = new RegExp(`^(?:[^<>@]+<${ADDR}>|${ADDR})$`)
 

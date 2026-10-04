@@ -7,7 +7,7 @@ import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 // Η εισαγωγή είναι μόνο τύπων: σβήνεται στη μεταγλώττιση και δεν φτάνει στο Deno.
 import type { CalendarEventsRow, NotificationLogRow, RentPaymentsRow, TenantsRow, UserPropertiesRow } from '../../../lib/supabase/tables.ts'
 import { eur } from '../_shared/format.ts'
-import { senderFrom } from '../_shared/sender.mjs'
+import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -158,7 +158,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+    body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to, subject, html }),
   })
   return res.ok
 }
