@@ -206,7 +206,10 @@ export function shell(f: Format, s: Palette, ep: { no: number }, i: number, n: n
   .acc{color:${s.accent}}
   h1 .acc,h2 .acc,.big .acc{text-shadow:0 18px 90px ${s.accent}55}
   .ok{color:${s.ok}}
-  .lead{color:${s.muted};font-size:${story ? 40 : 36}px;line-height:1.36;letter-spacing:-.012em;text-wrap:balance;max-width:900px}
+  /* ΠΛΗΡΕΣ ΠΛΑΤΟΣ, ΟΧΙ ΖΥΓΙΣΜΕΝΟ. Με text-wrap: balance ο υπότιτλος στένευε σε
+     στήλη πιο κοντή από τον τίτλο και τις κάρτες. Πιάνει όλο το πλάτος και το
+     pretty φυλά μόνο την τελευταία γραμμή από μοναχική λέξη. */
+  .lead{color:${s.muted};font-size:${story ? 40 : 36}px;line-height:1.36;letter-spacing:-.012em;text-wrap:pretty}
   .mono{font-family:'Roboto Mono',monospace;letter-spacing:.08em}
   .num{font-variant-numeric:tabular-nums;letter-spacing:-.025em}
   .src{font-family:'Roboto Mono',monospace;font-size:${story ? 21 : 19}px;letter-spacing:.04em;color:${s.faint};line-height:1.5}

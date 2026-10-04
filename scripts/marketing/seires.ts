@@ -501,7 +501,7 @@ function foroi01(): Episode {
       sticker: `Σύνδεσμος προς ${utm(link.url.slice(SITE.length), camp)} · κείμενο «Υπολόγισε τον ΕΝΦΙΑ»`,
       body: f => `<div class="act" style="display:flex;flex-direction:column;flex:1">
         <h2 style="margin-top:${f === 'story' ? 80 : 70}px">Πόσος είναι<br><span class="acc">ο δικός σου;</span></h2>
-        <p class="lead" style="margin-top:28px">Βάλε τα στοιχεία του ακινήτου σου. Ο&nbsp;υπολογιστής εφαρμόζει και τις μειώσεις του νόμου.</p>
+        <p class="lead" style="margin-top:28px">Ο υπολογιστής βγάζει τον ΕΝΦΙΑ με τα στοιχεία του ακινήτου σου και τις μειώσεις του νόμου.</p>
         ${calcCard(s, '/ypologismos-enfia', [
           ['Τετραγωνικά', `${ENFIA.tm} τ.μ.`], ['Τιμή ζώνης', `${feWhole(Number(ENFIA.zoni))}/τ.μ.`],
           ['Όροφος', ENFIA_FLOOR_LABEL[ENFIA.orofos]], ['Παλαιότητα', ENFIA_AGE_BANDS.find(b => b.key === ENFIA.palaiotita)!.label],
