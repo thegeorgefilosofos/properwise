@@ -74,6 +74,8 @@ export interface Slide {
   sticker?: string;
   /** Μόνο σε μία από τις δύο μορφές. */
   only?: Format;
+  /** Διάρκεια του βίντεο του story, σε δευτερόλεπτα. Προεπιλογή 7. */
+  seconds?: number;
 }
 
 export interface Episode {
@@ -89,6 +91,79 @@ export interface Episode {
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
+
+// ═══ Η ΚΙΝΗΣΗ ════════════════════════════════════════════════════════
+// Κάθε story βγαίνει και ως βίντεο. Οι κινήσεις είναι CSS και ο χρόνος τους
+// δεν τρέχει μόνος του: η μηχανή τον ορίζει καρέ καρέ με το `__seek(t)`, άρα
+// το βίντεο βγαίνει ίδιο σε κάθε εκτέλεση. Η εικόνα PNG είναι το τελευταίο
+// καρέ, όταν όλα έχουν κάτσει.
+//
+// Μία ιεραρχία για όλα: πρώτα ο τίτλος, μετά το κείμενο, μετά η κάρτα και
+// μέσα της τα νούμερα. Τίποτα δεν αναπηδά για να αναπηδήσει· κάθε κίνηση
+// δείχνει πού να κοιτάξει το μάτι μετά.
+const EASE = 'cubic-bezier(.16,.84,.3,1)';
+const stagger = (sel: string, from: number, step: number, n = 12) =>
+  Array.from({ length: n }, (_, k) => `${sel}:nth-child(${k + 1}){animation-delay:${(from + k * step).toFixed(2)}s}`).join('\n');
+const MOTION = `
+  @keyframes rise{from{opacity:0;transform:translateY(48px)}to{opacity:1;transform:none}}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes pop{0%{opacity:0;transform:scale(.55)}70%{opacity:1;transform:scale(1.07)}100%{opacity:1;transform:scale(1)}}
+  @keyframes thump{0%{opacity:0;transform:rotate(-4deg) scale(1.7)}55%{opacity:1;transform:rotate(-4deg) scale(.94)}100%{opacity:1;transform:rotate(-4deg) scale(1)}}
+  @keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+  @keyframes typing{0%{opacity:0}12%{opacity:1}85%{opacity:1}100%{opacity:0}}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-10px)}}
+  .stamp{animation:fade .6s ease both}
+  .wrap > *:not(.stamp), .act > *{animation:rise .9s ${EASE} both}
+  ${stagger('.wrap > *', 0.15, 0.16)}
+  ${stagger('.act > *', 0.15, 0.18)}
+  .wt i,.bt i,.sb i{transform-origin:left center;animation:grow 1s ${EASE} both}
+  ${Array.from({ length: 8 }, (_, k) => `.wf .wr:nth-child(${k + 1}) .wt i{animation-delay:${(1.1 + k * 0.32).toFixed(2)}s}`).join('\n')}
+  ${Array.from({ length: 12 }, (_, k) => `.br:nth-child(${k + 2}) .bt i{animation-delay:${(1.1 + k * 0.12).toFixed(2)}s}`).join('\n')}
+  ${Array.from({ length: 6 }, (_, k) => `.sc:nth-child(${k + 1}) .sb i{animation-delay:${(1.2 + k * 0.5).toFixed(2)}s}`).join('\n')}
+  .grid .t,.cc-f,.mo{animation:pop .55s ${EASE} both}
+  ${Array.from({ length: 12 }, (_, k) => `.grid .t:nth-child(${k + 1}),.mos .mo:nth-child(${k + 1}){animation-delay:${(1.0 + k * 0.09).toFixed(2)}s}`).join('\n')}
+  ${Array.from({ length: 4 }, (_, k) => `.cc-f:nth-child(${k + 1}){animation-delay:${(1.0 + k * 0.12).toFixed(2)}s}`).join('\n')}
+  .wrap > .stampbox{animation:thump .8s ${EASE} .35s both}
+  .draw{stroke-dasharray:1;animation:draw 1.8s ${EASE} 1.2s both}
+  .area{animation:fade 1s ease 2.4s both}
+  .dot{transform-box:fill-box;transform-origin:center;animation:pop .5s ${EASE} both}
+  .typing{animation:typing 1.3s linear 1.1s both}
+  .typing i{animation:bounce .9s ease infinite}
+  .typing i:nth-child(2){animation-delay:.15s}
+  .typing i:nth-child(3){animation-delay:.3s}
+  .ans{animation:rise .7s ${EASE} 2.4s both}`;
+
+/**
+ * Ο χρόνος του βίντεο. Παγώνει κάθε κίνηση στη στιγμή `t` και μετρά τα ποσά
+ * (`.cnt`) από το μηδέν ώς την τιμή τους. Η τελική τιμή είναι το ίδιο κείμενο
+ * που έγραψε η μηχανή, γιατί ο μετρητής τη γράφει με τον ίδιο κανόνα (ακέραια
+ * ευρώ, ελληνική τελεία χιλιάδων) και στο τέλος σταματά ακριβώς πάνω της.
+ */
+const CNT_SECONDS = 1.5;
+const CNT_STEPS = 45;
+const SEEK = `var CNT_SECONDS=${CNT_SECONDS};window.__seek=function(t){
+  document.getAnimations().forEach(function(a){a.pause();a.currentTime=t*1000;});
+  document.querySelectorAll('.cnt').forEach(function(e){
+    var st=e.dataset.steps.split('|'),p=Math.min(1,Math.max(0,(t-(+e.dataset.s))/CNT_SECONDS));
+    e.textContent=st[Math.round(p*(st.length-1))];
+  });
+};`;
+
+/**
+ * Ένα ποσό που μετρά στο βίντεο, από το μηδέν ώς την τιμή του. Τα ενδιάμεσα
+ * κείμενα τα γράφει ΕΔΩ ο μορφοποιητής της εφαρμογής (`fmt`, π.χ. feWhole),
+ * ένα για κάθε βήμα· η σελίδα μόνο διαλέγει. Έτσι κανένα ψηφίο δεν
+ * μορφοποιείται στον περιηγητή και το τελευταίο βήμα είναι ακριβώς το `text`.
+ */
+export const cnt = (value: number, text: string, start = 0.8, fmt: (n: number) => string = n => String(Math.round(n))) => {
+  const steps = Array.from({ length: CNT_STEPS + 1 }, (_, k) => {
+    if (k === CNT_STEPS) return text;
+    const q = 1 - Math.pow(1 - k / CNT_STEPS, 3);
+    return fmt(Math.round(value * q));
+  });
+  return `<span class="cnt" data-s="${start}" data-steps="${esc(steps.join('|'))}">${esc(text)}</span>`;
+};
 
 /**
  * Το κοινό κάδρο. Πάνω η σφραγίδα της σειράς και ο αριθμός επεισοδίου,
@@ -118,11 +193,9 @@ export function shell(f: Format, s: Palette, ep: { no: number }, i: number, n: n
   .stamp b{display:flex;align-items:center;gap:14px;font-weight:600;color:${s.ink}}
   .stamp b i{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:14px;background:${s.accent}1f;border:1.5px solid ${s.accent}55}
   .stamp span{color:${s.faint}}
-  .dots{display:flex;gap:8px}
-  .dots i{width:30px;height:5px;border-radius:5px;background:${s.rule}}
-  .dots i.on{background:${s.accent}}
   h1,h2{font-weight:800;letter-spacing:-.045em;line-height:.96;text-wrap:balance}
   .acc{color:${s.accent}}
+  h1 .acc,h2 .acc,.big .acc{text-shadow:0 18px 90px ${s.accent}55}
   .ok{color:${s.ok}}
   .lead{color:${s.muted};font-size:${story ? 40 : 36}px;line-height:1.36;letter-spacing:-.012em;text-wrap:pretty}
   .mono{font-family:'Roboto Mono',monospace;letter-spacing:.08em}
@@ -141,18 +214,20 @@ export function shell(f: Format, s: Palette, ep: { no: number }, i: number, n: n
   .brand b{font-size:${story ? 27 : 25}px;font-weight:800;letter-spacing:.02em}
   .brand small{display:block;font-size:${story ? 20 : 19}px;color:${s.faint};margin-top:2px}
   .swipe{display:flex;align-items:center;gap:10px;font-family:'Roboto Mono',monospace;font-size:21px;letter-spacing:.12em;color:${s.faint}}
+  ${MOTION}
   ${css}
   </style></head><body>
   <div class="bg"></div><div class="grain"></div>
   <div class="ghost">${mark(story ? 760 : 640, s.ink)}</div>
   <div class="wrap">
-    <div class="stamp"><b><i>${glyph(s.glyph, s.accent, 26, 2)}</i>${esc(s.name.toLocaleUpperCase('el').normalize('NFD').replace(/[́̈]/g, '').normalize('NFC'))}</b><span>ΕΠΕΙΣΟΔΙΟ ${pad2(ep.no)}</span></div>
+    <div class="stamp"><b><i>${glyph(s.glyph, s.accent, 26, 2)}</i>${esc(s.name.toLocaleUpperCase('el').normalize('NFD').replace(/[́̈]/g, '').normalize('NFC'))}</b><span>#${pad2(ep.no)}</span></div>
     ${body}
   </div>
   <div class="foot">
     <div class="brand">${mark(40, s.ink)}<div><b>PROPERWISE</b><small>properwise.gr</small></div></div>
-    ${story ? `<div class="dots">${Array.from({ length: n }, (_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>` : (i < n - 1 ? `<div class="swipe">ΣΥΡΕ ${ico.arrow(s.faint, 24)}</div>` : `<div class="swipe">${i + 1} / ${n}</div>`)}
+    ${story ? '' : (i < n - 1 ? `<div class="swipe">ΣΥΡΕ ${ico.arrow(s.faint, 24)}</div>` : `<div class="swipe">${i + 1} / ${n}</div>`)}
   </div>
+  <script>${SEEK}</script>
   </body></html>`;
 }
 

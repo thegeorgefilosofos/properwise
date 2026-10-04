@@ -27,8 +27,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
+import { spawn } from 'node:child_process';
 import { esc } from './igKit';
-import { SERIES, SIZE, STORY_SAFE, shell, highlight, type Episode, type Format, type Palette, type SeriesKey, type Slide } from './seiresKit';
+import { SERIES, SIZE, STORY_SAFE, cnt, shell, highlight, type Episode, type Format, type Palette, type SeriesKey, type Slide } from './seiresKit';
 import { fe, feWhole } from '../../lib/core/format';
 import { athensToday } from '../../lib/core/time';
 import { compareShortVsLong, netByOccupancy, type ShortVsLongInput } from '../../lib/tools/shortVsLong';
@@ -53,6 +54,18 @@ const { chromium } = require('playwright-core');
 const { chromePath } = require('../lib/chrome.mjs');
 
 const ROOT = process.cwd();
+
+// ── ΤΟ ΒΙΝΤΕΟ ────────────────────────────────────────────────────────────
+// Με `--video` κάθε καρέ story βγαίνει και ως MP4 (H.264, 30 καρέ/δ.), όπως το
+// δέχεται το Instagram από το τηλέφωνο. Θέλει ffmpeg: από το FFMPEG, αλλιώς
+// από το `ffmpeg-static` αν είναι εγκατεστημένο (npm i --no-save ffmpeg-static),
+// αλλιώς από το PATH. Τα MP4 δεν μπαίνουν στο αποθετήριο (.gitignore).
+const VIDEO = process.argv.includes('--video');
+const FPS = 30;
+const ffmpegPath = (): string => {
+  if (process.env.FFMPEG) return process.env.FFMPEG;
+  try { return require('ffmpeg-static') as string; } catch { return 'ffmpeg'; }
+};
 const OUT = join(ROOT, 'docs/marketing/instagram/seires');
 const SITE = 'https://properwise.gr';
 
@@ -105,7 +118,7 @@ const slot = (f: Format, h: number, label: string) =>
 function waterfall(s: Palette, rows: { label: string; amount: number; kind: 'in' | 'out' | 'net' }[]): string {
   const top = Math.max(...rows.map(r => r.amount));
   let level = 0;
-  return `<div class="wf">${rows.map(r => {
+  return `<div class="wf">${rows.map((r, k) => {
     const w = r.amount / top * 100;
     let left = 0;
     if (r.kind === 'in') { left = 0; level = r.amount; }
@@ -114,7 +127,7 @@ function waterfall(s: Palette, rows: { label: string; amount: number; kind: 'in'
     const color = r.kind === 'out' ? s.neg : r.kind === 'net' ? s.accent : s.muted;
     const sign = r.kind === 'out' ? '−' : '';
     return `<div class="wr ${r.kind}">
-      <div class="wl"><span>${esc(r.label)}</span><b class="num" style="color:${r.kind === 'in' ? s.ink : color}">${sign}${esc(feWhole(r.amount))}</b></div>
+      <div class="wl"><span>${esc(r.label)}</span><b class="num" style="color:${r.kind === 'in' ? s.ink : color}">${cnt(r.amount, `${sign}${feWhole(r.amount)}`, 1.1 + k * 0.32, n => `${sign}${feWhole(n)}`)}</b></div>
       <div class="wt"><i style="left:${pc(left)};width:${pc(Math.max(w, 0.8))};background:${color}${r.kind === 'in' ? '66' : ''}"></i></div>
     </div>`;
   }).join('')}</div>`;
@@ -141,20 +154,23 @@ function enfiaRun(after: string) {
   throw new Error(`Το ημερολόγιο δεν έχει εκκαθαριστικό ΕΝΦΙΑ με δώδεκα δόσεις μετά τις ${after}.`);
 }
 
-/** Η κάρτα «Επόμενο επεισόδιο»: αυτό που φέρνει τον θεατή πίσω. */
+/**
+ * Η κάρτα «Την επόμενη Τετάρτη»: αυτό που φέρνει τον θεατή πίσω. Χωρίς τη λέξη
+ * «επεισόδιο», που στο story ακούγεται τηλεόραση· η μέρα λέει το ραντεβού.
+ */
 const nextCard = (s: Palette, day: string, title: string) => `
-  <div class="next card"><small class="mono">ΕΠΟΜΕΝΟ ΕΠΕΙΣΟΔΙΟ · ${esc(day.toLocaleUpperCase('el').normalize('NFD').replace(/[́]/g, '').normalize('NFC'))}</small><b>${esc(title)}</b></div>`;
+  <div class="next card"><small class="mono">ΤΗΝ ΕΠΟΜΕΝΗ ${esc(day.toLocaleUpperCase('el').normalize('NFD').replace(/[\u0301]/g, '').normalize('NFC'))}</small><b>${esc(title)}</b></div>`;
 /**
  * Ο&nbsp;υπολογιστής όπως ανοίγει: τα πεδία με τις προεπιλογές του (spec.ts) και,
  * όπου το επεισόδιο τον έχει ήδη δείξει, το αποτέλεσμα. Στο κλικ ο θεατής
  * βλέπει ακριβώς αυτή την οθόνη και αλλάζει τα δικά του.
  */
-function calcCard(s: Palette, path: string, fields: [string, string][], result: [string, string] | null): string {
+function calcCard(s: Palette, path: string, fields: [string, string][], result: [string, string] | null, value?: number): string {
   return `<div class="calc card">
     <div class="cc-top"><span class="mono">properwise.gr${esc(path)}</span><span class="ex">ΧΩΡΙΣ ΕΓΓΡΑΦΗ</span></div>
     <div class="cc-grid">${fields.map(([l, v]) => `<div class="cc-f"><small>${esc(l)}</small><b class="num">${esc(v)}</b></div>`).join('')}</div>
     ${result
-      ? `<div class="cc-res"><span>${esc(result[0])}</span><b class="num">${esc(result[1])}</b></div>`
+      ? `<div class="cc-res"><span>${esc(result[0])}</span><b class="num">${value == null ? esc(result[1]) : cnt(value, result[1], 1.6, n => `${result[1].startsWith('+') ? '+' : ''}${feWhole(n)}`)}</b></div>`
       : `<div class="cc-res"><span>Το αποτέλεσμα</span><b class="go">στον υπολογιστή ${ico.arrow(s.accent, 30)}</b></div>`}
   </div>`;
 }
@@ -185,6 +201,9 @@ const ACTION_CSS = (s: Palette) => `
   .ch-top .ex{margin-left:auto}
   .ask{align-self:flex-end;max-width:86%;padding:18px 24px;border-radius:26px 26px 8px 26px;background:${s.accent};color:${s.onAccent};font-size:calc(var(--body) + 2px);font-weight:650;line-height:1.3}
   .ans{align-self:flex-start;max-width:94%;padding:20px 24px;border-radius:26px 26px 26px 8px;background:#0a111d;border:1.5px solid ${s.rule};font-size:var(--body);line-height:1.42;color:${s.ink}}
+  .ans-w{position:relative}
+  .typing{position:absolute;left:0;top:0;display:flex;gap:9px;padding:24px 26px;border-radius:26px 26px 26px 8px;background:#0a111d;border:1.5px solid ${s.rule}}
+  .typing i{width:13px;height:13px;border-radius:50%;background:${s.faint}}
   .trial{margin-top:30px;font-size:calc(var(--body) + 2px);color:${s.muted}}
   .trial b{color:${s.accent};font-weight:800}`;
 
@@ -195,14 +214,15 @@ const ACTION_CSS = (s: Palette) => `
 // «βοηθός» (lib/assistant/identity.ts)· μιλά σε πρώτο πρόσωπο χωρίς επίθετα.
 function noaSlide(s: Palette, campaign: string, q: string, a: string, next: { day: string; title: string }): Slide {
   return {
-    alt: `${ASSISTANT_NAME}: ερώτηση «${q}» και απάντηση με τα νούμερα του επεισοδίου. Κάτω, πρόσκληση για δοκιμή και το επόμενο επεισόδιο: ${next.title}.`,
+    seconds: 9,
+    alt: `${ASSISTANT_NAME}: ερώτηση «${q}» και απάντηση με τα ίδια νούμερα. Κάτω, πρόσκληση για δοκιμή και το επόμενο θέμα: ${next.title}.`,
     sticker: `Σύνδεσμος προς ${utm('/signup', campaign)} · κείμενο «Ρώτα ${ASSISTANT_ACC}»`,
     body: f => `<div class="act" style="display:flex;flex-direction:column;flex:1">
       <h2 style="margin-top:${f === 'story' ? 70 : 60}px">Για το δικό σου,<br><span class="acc">ρώτα ${esc(ASSISTANT_ACC)}.</span></h2>
       <div class="chat card" style="margin-top:${f === 'story' ? 44 : 36}px">
         <div class="ch-top"><span class="noa-av" style="width:58px;height:58px;font-size:30px">${esc(ASSISTANT_INITIAL)}</span><div><b>${esc(ASSISTANT_NAME)}</b><small>Για τα ακίνητά σου</small></div><span class="ex">ΠΑΡΑΔΕΙΓΜΑ</span></div>
         <div class="ask">${esc(q)}</div>
-        <div class="ans">${esc(a)}</div>
+        <div class="ans-w"><div class="typing"><i></i><i></i><i></i></div><div class="ans">${esc(a)}</div></div>
       </div>
       <div class="trial"><b>${esc(TRIAL)}</b>, στο properwise.gr.</div>
       ${f === 'story' ? slot(f, 130, 'LINK') : ''}
@@ -252,14 +272,14 @@ function vraxy01(): Episode {
     return `<svg width="${W}" height="${Hh}" viewBox="0 0 ${W} ${Hh}" style="display:block;overflow:visible">
       <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.accent}" stop-opacity=".32"/><stop offset="1" stop-color="${s.accent}" stop-opacity="0"/></linearGradient></defs>
       ${[0.25, 0.5, 0.75].map(t => `<line x1="0" x2="${W}" y1="${(padT + t * (Hh - padB - padT)).toFixed(1)}" y2="${(padT + t * (Hh - padB - padT)).toFixed(1)}" stroke="${s.rule}" stroke-width="1.5"/>`).join('')}
-      <path d="${area}" fill="url(#g)"/>
+      <path class="area" d="${area}" fill="url(#g)"/>
       <line x1="0" x2="${W}" y1="${by.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${s.ok}" stroke-width="4" stroke-dasharray="14 10"/>
       <text x="${W}" y="${(by - 16).toFixed(1)}" text-anchor="end" fill="${s.ok}" font-family="Inter" font-size="24" font-weight="700">Μακροχρόνια ${esc(feWhole(r.long.net))}</text>
-      <path d="${path}" fill="none" stroke="${s.accent}" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
-      ${curve.map(c => `<circle cx="${xs(c.pct).toFixed(1)}" cy="${ys(c.net).toFixed(1)}" r="7" fill="${s.ground}" stroke="${s.accent}" stroke-width="4"/>`).join('')}
+      <path class="draw" pathLength="1" d="${path}" fill="none" stroke="${s.accent}" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+      ${curve.map((c, k) => `<circle class="dot" style="animation-delay:${(1.25 + k * 0.22).toFixed(2)}s" cx="${xs(c.pct).toFixed(1)}" cy="${ys(c.net).toFixed(1)}" r="7" fill="${s.ground}" stroke="${s.accent}" stroke-width="4"/>`).join('')}
       <line x1="${bx.toFixed(1)}" x2="${bx.toFixed(1)}" y1="${by.toFixed(1)}" y2="${ys(0).toFixed(1)}" stroke="${s.ink}" stroke-opacity=".5" stroke-width="2"/>
-      <circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="16" fill="${s.ink}"/>
-      <circle cx="${xs(mine.pct).toFixed(1)}" cy="${ys(mine.net).toFixed(1)}" r="13" fill="${s.accent}"/>
+      <circle class="dot" style="animation-delay:3.1s" cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="16" fill="${s.ink}"/>
+      <circle class="dot" style="animation-delay:2.9s" cx="${xs(mine.pct).toFixed(1)}" cy="${ys(mine.net).toFixed(1)}" r="13" fill="${s.accent}"/>
       ${curve.map(c => `<text x="${xs(c.pct).toFixed(1)}" y="${Hh - 12}" text-anchor="middle" fill="${s.faint}" font-family="Roboto Mono" font-size="21">${c.pct}%</text>`).join('')}
     </svg>`;
   };
@@ -281,8 +301,9 @@ function vraxy01(): Episode {
     {
       alt: `Μακροχρόνια: ενοίκια ${feWhole(r.long.gross)} τον χρόνο, φόρος ${feWhole(r.long.tax)}, καθαρά ${feWhole(r.long.net)}.`,
       body: f => `
-        <h2 style="font-size:var(--h2);margin-top:${f === 'story' ? 80 : 70}px">Μακροχρόνια:<br><span class="ok num">${esc(feWhole(r.long.net))}</span> καθαρά.</h2>
+        <h2 style="font-size:var(--h2);margin-top:${f === 'story' ? 80 : 70}px">Μακροχρόνια:<br><span class="ok num">${cnt(r.long.net, feWhole(r.long.net), 0.5, feWhole)}</span> καθαρά.</h2>
         <p class="lead" style="margin-top:32px">Ένας ενοικιαστής, ${esc(feWhole(svlInput.monthlyRent))} τον μήνα, δώδεκα μήνες. Αφαιρείς μόνο τον φόρο.</p>
+        <div class="mos">${Array.from({ length: 12 }, (_, k) => `<div class="mo"><small>${esc(elDate(`2026-${String(k + 1).padStart(2, '0')}-15`, { month: 'short' }).replace('.', ''))}</small><b class="num">${esc(feWhole(svlInput.monthlyRent))}</b></div>`).join('')}</div>
         <div class="card box" style="margin-top:auto">
           <div class="bx-h"><b>Η χρονιά σε αριθμούς</b><span class="ex">ΠΑΡΑΔΕΙΓΜΑ</span></div>
           ${waterfall(s, [
@@ -296,7 +317,7 @@ function vraxy01(): Episode {
       alt: `Βραχυχρόνια με πληρότητα ${svlInput.occupancyPct}%: ${r.short.nights} βράδια, έσοδα ${feWhole(r.short.gross)}, προμήθεια ${feWhole(r.short.platformFee)}, λειτουργία ${feWhole(r.short.running)}, φόρος ${feWhole(r.short.tax)}, καθαρά ${feWhole(r.short.net)}.`,
       sticker: 'Δημοσκόπηση: «Η προμήθεια της πλατφόρμας σε ξάφνιασε;» · Ναι / Την ήξερα',
       body: f => `
-        <h2 style="font-size:var(--h2);margin-top:${f === 'story' ? 80 : 70}px">Βραχυχρόνια:<br><span class="acc num">${esc(feWhole(r.short.net))}</span> καθαρά.</h2>
+        <h2 style="font-size:var(--h2);margin-top:${f === 'story' ? 80 : 70}px">Βραχυχρόνια:<br><span class="acc num">${cnt(r.short.net, feWhole(r.short.net), 0.5, feWhole)}</span> καθαρά.</h2>
         <p class="lead" style="margin-top:32px">${r.short.nights} βράδια, πληρότητα ${svlInput.occupancyPct}%. Τα έσοδα ${grossWord}, αλλά τα μισά φεύγουν σε τρία σημεία.</p>
         ${slot(f, 140, 'POLL')}
         <div class="card box" style="margin-top:auto">
@@ -324,7 +345,7 @@ function vraxy01(): Episode {
         </div>`,
     },
     {
-      alt: `Τελευταίο καρέ: «Βάλε τα δικά σου νούμερα» στον δωρεάν υπολογιστή, πρόσκληση να σταλεί σε όποιον σκέφτεται βραχυχρόνια και το επόμενο επεισόδιο: ΤΑΚΚ, τι αλλάζει την 1η Νοεμβρίου.`,
+      alt: `Τελευταίο καρέ: «Βάλε τα δικά σου νούμερα» στον δωρεάν υπολογιστή, πρόσκληση να σταλεί σε όποιον σκέφτεται βραχυχρόνια και το επόμενο θέμα: ΤΑΚΚ, τι αλλάζει την 1η Νοεμβρίου.`,
       sticker: `Σύνδεσμος προς ${utm(link.url.slice(SITE.length), camp)} · κείμενο «Κάνε τον λογαριασμό»`,
       body: f => `<div class="act" style="display:flex;flex-direction:column;flex:1">
         <h2 style="margin-top:${f === 'story' ? 80 : 70}px">Βάλε τα<br><span class="acc">δικά σου νούμερα.</span></h2>
@@ -332,7 +353,7 @@ function vraxy01(): Episode {
         ${calcCard(s, '/vraxyxronia-i-makroxronia', [
           ['Ενοίκιο τον μήνα', feWhole(svlInput.monthlyRent)], ['Τιμή το βράδυ', feWhole(svlInput.nightlyPrice)],
           ['Πληρότητα', `${svlInput.occupancyPct}%`], ['Προμήθεια', `${svlInput.platformFeePct}%`],
-        ], ['Η βραχυχρόνια αφήνει', `+${feWhole(r.difference)}`])}
+        ], ['Η βραχυχρόνια αφήνει', `+${feWhole(r.difference)}`], r.difference)}
         ${slot(f, 130, 'LINK')}
         <div style="margin-top:auto;display:flex;flex-direction:column;gap:18px">
           <div class="send">${ICON.send(s.onAccent, 40)}<span>Στείλ' το σε όποιον σκέφτεται να το δώσει σε Airbnb.</span></div>
@@ -340,7 +361,7 @@ function vraxy01(): Episode {
     },
     noaSlide(s, camp, 'Μου συμφέρει να το δώσω σε Airbnb;',
       `Με ${feWhole(svlInput.nightlyPrice)} το βράδυ και πληρότητα ${svlInput.occupancyPct}%, σου μένουν ${feWhole(r.short.net)} τον χρόνο: ${feWhole(r.difference)} περισσότερα από τη μακροχρόνια. Κάτω από ${bePct}% συμφέρει η μακροχρόνια.`,
-      { day: s.day, title: 'Ε02 · ΤΑΚΚ: τι αλλάζει την 1η Νοεμβρίου' }),
+      { day: s.day, title: 'ΤΑΚΚ: τι αλλάζει την 1η Νοεμβρίου' }),
   ];
   return {
     series: 'vraxy', no: 1, title: 'Βραχυχρόνια ή μακροχρόνια;', link, slides,
@@ -362,6 +383,10 @@ function vraxy01(): Episode {
   };
 }
 const VRAXY_CSS = (s: Palette) => `
+  .mos{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:44px}
+  .mo{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 0;border-radius:18px;background:${s.ok}14;border:1.5px solid ${s.ok}40}
+  .mo small{font-size:19px;color:${s.faint}}
+  .mo b{font-size:23px;font-weight:750;color:${s.ok}}
   .duo{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:22px}
   .d{padding:34px 34px 30px;display:flex;flex-direction:column;gap:6px}
   .d small{font-size:19px;color:${s.faint};letter-spacing:.14em}
@@ -439,7 +464,7 @@ function foroi01(): Episode {
         </div>`,
     },
     {
-      alt: 'Τελευταίο καρέ: «Υπολόγισε τον δικό σου ΕΝΦΙΑ» στον δωρεάν υπολογιστή, πρόσκληση να σταλεί σε όποιον πληρώνει σε δόσεις και το επόμενο επεισόδιο: η έκπτωση φόρου ανακαίνισης.',
+      alt: 'Τελευταίο καρέ: «Υπολόγισε τον δικό σου ΕΝΦΙΑ» στον δωρεάν υπολογιστή, πρόσκληση να σταλεί σε όποιον πληρώνει σε δόσεις και το επόμενο θέμα: η έκπτωση φόρου ανακαίνισης.',
       sticker: `Σύνδεσμος προς ${utm(link.url.slice(SITE.length), camp)} · κείμενο «Υπολόγισε τον ΕΝΦΙΑ»`,
       body: f => `<div class="act" style="display:flex;flex-direction:column;flex:1">
         <h2 style="margin-top:${f === 'story' ? 80 : 70}px">Πόσος είναι<br><span class="acc">ο δικός σου;</span></h2>
@@ -455,7 +480,7 @@ function foroi01(): Episode {
     },
     noaSlide(s, camp, 'Πότε λήγει η επόμενη δόση του ΕΝΦΙΑ;',
       `${weekday} ${elDate(due.date, { day: 'numeric', month: 'long' })}. Είναι η ${next + 1}η από τις ${run.length}· μετά μένουν ${run.length - next - 1}, ως τις ${elDate(run[run.length - 1].date, { day: 'numeric', month: 'long', year: 'numeric' })}.`,
-      { day: s.day, title: `Ε02 · Ανακαίνιση: η έκπτωση φόρου για δαπάνες ως ${RENO_39B_TO}` }),
+      { day: s.day, title: `Ανακαίνιση: η έκπτωση φόρου για δαπάνες ως ${RENO_39B_TO}` }),
   ];
   return {
     series: 'foroi', no: 1, title: `Η ${next + 1}η δόση του ΕΝΦΙΑ`, link, slides,
@@ -491,7 +516,7 @@ const FOROI_CSS = (s: Palette) => `
   .t small{font-size:18px;color:${s.faint};font-weight:600}
   .t b{font-size:30px;font-weight:800;letter-spacing:-.01em}
   .t span{font-size:22px;color:${s.muted}}
-  .t.past{opacity:.4}
+  .t.past > *{opacity:.4}
   .t.now{background:${s.warm};border-color:${s.warm};color:${s.onAccent};box-shadow:0 0 0 5px ${s.warm}33}
   .t.now small,.t.now span{color:${s.onAccent}}
   .br{display:grid;grid-template-columns:230px 1fr 112px;align-items:center;gap:18px;padding:7px 0}
@@ -552,7 +577,7 @@ function makro01(): Episode {
         <h1 style="font-size:var(--h1);margin-top:${f === 'story' ? 80 : 70}px">Νέα κλίμακα<br><span class="acc">στα ενοίκια.</span></h1>
         <p class="lead" style="margin-top:36px;max-width:900px">Για ενοίκια από 1/1/${Y}. Φαίνεται στη δήλωση του ${Y + 1}.</p>
         ${slot(f, 300, 'QUIZ')}
-        <div class="big" style="margin-top:auto"><small class="mono">ΕΩΣ</small><b class="num acc">${esc(feWhole(maxSave))}</b><span>λιγότερος φόρος τον χρόνο</span></div>`,
+        <div class="big" style="margin-top:auto"><small class="mono">ΕΩΣ</small><b class="num acc">${cnt(maxSave, feWhole(maxSave), 0.9, feWhole)}</b><span>λιγότερος φόρος τον χρόνο</span></div>`,
     },
     {
       alt: `Οι δύο κλίμακες στην ίδια ευθεία: έως ${Y - 1} ${RENTAL_TAX_BRACKETS_2025.map(b => pctR(b.rate)).join(', ')}· από ${Y} ${RENTAL_TAX_BRACKETS_2026.map(b => pctR(b.rate)).join(', ')}. Νέο ενδιάμεσο κλιμάκιο ${pctR(RENTAL_TAX_BRACKETS_2026[1].rate)}.`,
@@ -584,7 +609,7 @@ function makro01(): Episode {
         </div>`,
     },
     {
-      alt: 'Τελευταίο καρέ: «Βάλε το δικό σου ενοίκιο» στον δωρεάν υπολογιστή, πρόσκληση να σταλεί σε όποιον νοικιάζει σπίτι και το επόμενο επεισόδιο: ενοίκιο μέσω τράπεζας.',
+      alt: 'Τελευταίο καρέ: «Βάλε το δικό σου ενοίκιο» στον δωρεάν υπολογιστή, πρόσκληση να σταλεί σε όποιον νοικιάζει σπίτι και το επόμενο θέμα: ενοίκιο μέσω τράπεζας.',
       sticker: `Σύνδεσμος προς ${utm(link.url.slice(SITE.length), camp)} · κείμενο «Πόσος είναι ο φόρος μου;»`,
       body: f => `<div class="act" style="display:flex;flex-direction:column;flex:1">
         <h2 style="margin-top:${f === 'story' ? 80 : 70}px">Βάλε το<br><span class="acc">δικό σου ενοίκιο.</span></h2>
@@ -592,7 +617,7 @@ function makro01(): Episode {
         ${calcCard(s, '/ypologismos-forou-enoikion', [
           ['Ενοίκιο τον μήνα', feWhole(m)], ['Μήνες', String(n)],
           ['Χρονιά εισοδήματος', String(Y)], ['Μέσω τράπεζας', RENT.trapeza === '1' ? 'Ναι' : 'Όχι'],
-        ], ['Φόρος τον χρόνο', feWhole(tax26)])}
+        ], ['Φόρος τον χρόνο', feWhole(tax26)], tax26)}
         ${slot(f, 130, 'LINK')}
         <div style="margin-top:auto;display:flex;flex-direction:column;gap:18px">
           <div class="send">${ICON.send(s.onAccent, 40)}<span>Στείλ' το σε όποιον νοικιάζει σπίτι.</span></div>
@@ -600,7 +625,7 @@ function makro01(): Episode {
     },
     noaSlide(s, camp, 'Πόσο φόρο θα πληρώσω για το ενοίκιο;',
       `Για ${feWhole(m)} τον μήνα, ${feWhole(tax26)} τον χρόνο: το ${pct(tax26 / gross)} του ενοικίου. Η νέα κλίμακα δεν το αλλάζει, γιατί όλο το ποσό μένει στο ${pctR(rate0)}.`,
-      { day: s.day, title: `Ε02 · Ενοίκιο μέσω τράπεζας: τι αλλάζει από 1/${FIRST_MONTH_BANK_RECEIPT}/${FIRST_YEAR_BANK_RECEIPT}` }),
+      { day: s.day, title: `Ενοίκιο μέσω τράπεζας: τι αλλάζει από 1/${FIRST_MONTH_BANK_RECEIPT}/${FIRST_YEAR_BANK_RECEIPT}` }),
   ];
   return {
     series: 'makro', no: 1, title: 'Η νέα κλίμακα στα ενοίκια', link, slides,
@@ -658,10 +683,13 @@ const EPISODES: { ep: Episode; css: string }[] = [
 async function main() {
   mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch({ executablePath: chromePath(), args: ['--no-sandbox'] });
-  const shot = async (html: string, w: number, h: number, path: string, f: Format | null) => {
+  const shot = async (html: string, w: number, h: number, path: string, f: Format | null, video?: { path: string; seconds: number }) => {
     const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
     await page.setContent(html, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready);
+    // Η εικόνα είναι το τελευταίο καρέ του βίντεο: όλα έχουν κάτσει.
+    const seek = (t: number) => page.evaluate((x: number) => (window as unknown as { __seek?: (t: number) => void }).__seek?.(x), t);
+    await seek(60);
     if (f) {
       // ΤΙΠΟΤΑ ΕΞΩ ΑΠΟ ΤΟ ΚΑΔΡΟ ΚΑΙ, ΣΤΟ STORY, ΤΙΠΟΤΑ ΣΤΙΣ ΖΩΝΕΣ ΤΟΥ INSTAGRAM.
       const lim = f === 'story' ? [STORY_SAFE.top, STORY_SAFE.bottom, STORY_SAFE.side] : [40, h - 40, 40];
@@ -680,6 +708,19 @@ async function main() {
       if (bad.length) throw new Error(`${path}: εκτός ζώνης: ${bad.slice(0, 4).join(' | ')}`);
     }
     await page.screenshot({ path });
+    if (video) {
+      const ff = spawn(ffmpegPath(), ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
+        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-crf', '18', '-preset', 'medium', '-movflags', '+faststart', video.path],
+        { stdio: ['pipe', 'inherit', 'inherit'] });
+      const done = new Promise<void>((ok, fail) => { ff.on('error', fail); ff.on('close', c => (c === 0 ? ok() : fail(new Error(`ffmpeg: ${c}`)))); });
+      for (let k = 0; k < video.seconds * FPS; k++) {
+        await seek(k / FPS);
+        const buf = await page.screenshot({ type: 'jpeg', quality: 92 });
+        if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
+      }
+      ff.stdin.end();
+      await done;
+    }
     await page.close();
   };
   try {
@@ -692,7 +733,8 @@ async function main() {
         const slides = ep.slides.filter(sl => !sl.only || sl.only === f);
         for (const [i, sl] of slides.entries()) {
           const { w, h } = SIZE[f];
-          await shot(shell(f, s, ep, i, slides.length, sl.body(f), css), w, h, join(dir, f === 'story' ? 'story' : 'carousel', `${i + 1}.png`), f);
+          const video = VIDEO && f === 'story' ? { path: join(dir, 'story', `${i + 1}.mp4`), seconds: sl.seconds ?? 7 } : undefined;
+          await shot(shell(f, s, ep, i, slides.length, sl.body(f), css), w, h, join(dir, f === 'story' ? 'story' : 'carousel', `${i + 1}.png`), f, video);
         }
       }
       console.log(`  ✓ ${ep.series}-e${String(ep.no).padStart(2, '0')}  (${PUBLISH[ep.series]})`);
@@ -717,6 +759,8 @@ function readme(): string {
     'είναι στο `docs/marketing/instagram/SEIRES.md`.',
     '',
     'Ξαναπαράγεται το πρωί κάθε δημοσίευσης: οι ημερομηνίες μετρούν από τη μέρα που τρέχει.',
+    'Τα βίντεο βγαίνουν με `--video` και θέλουν ffmpeg (`npm i --no-save ffmpeg-static`).',
+    'Δεν μπαίνουν στο αποθετήριο.',
     '',
     ...order.flatMap(({ ep }) => {
       const s = SERIES[ep.series];
@@ -731,7 +775,9 @@ function readme(): string {
         '',
         '### Story, καρέ καρέ',
         '',
-        ...ep.slides.filter(sl => sl.only !== 'feed').map((sl, i) => `${i + 1}. \`${dir}/story/${i + 1}.png\`${sl.sticker ? `. **Αυτοκόλλητο:** ${sl.sticker}. Μπαίνει στην άδεια λωρίδα.` : ''}`),
+        'Ανεβαίνει το βίντεο (`.mp4`, με κίνηση) όπου υπάρχει· η εικόνα (`.png`) είναι το τελευταίο του καρέ.',
+        '',
+        ...ep.slides.filter(sl => sl.only !== 'feed').map((sl, i) => `${i + 1}. \`${dir}/story/${i + 1}.mp4\` (${sl.seconds ?? 7} δ.) ή \`.png\`${sl.sticker ? `. **Αυτοκόλλητο:** ${sl.sticker}. Μπαίνει στην άδεια λωρίδα.` : ''}`),
         '',
         '### Carousel (1080×1440)',
         '',
