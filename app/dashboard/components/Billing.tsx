@@ -52,6 +52,9 @@ interface BillingData {
   /** Υποβάθμιση που περιμένει την ανανέωση: τι κρατιέται και ως πότε. */
   hold_plan: string; hold_until: string;
 }
+/** Πεδία που δεν ζητούνται πια: σε κάθε αποθήκευση γράφονται κενά. */
+const RETIRED_FIELDS = { doy: null, profession: null, address: null, city: null, postal_code: null } as const;
+
 const INIT: BillingData = {
   doc_type: 'receipt', full_name: '', company_name: '', afm: '', doy: '', profession: '',
   address: '', city: '', postal_code: '', country: 'GR', vat_number: '', phone: '', plan: 'free', billing_cycle: 'monthly',
@@ -136,7 +139,13 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
     setSaving(true); setSaved(false); setSaveErr(false);
     // Το πλάνο και ο κύκλος χρέωσης ορίζονται ΜΟΝΟ από τη χρέωση, όχι από τον
     // πελάτη· το στρώμα τα αφαιρεί από κάθε εγγραφή, για όλες τις οθόνες.
-    const { error } = await billing.save(supabase, userId, d as billing.BillingPatch);
+    //
+    // ΤΑ ΠΕΔΙΑ ΠΟΥ ΕΦΥΓΑΝ ΑΠΟ ΤΗ ΦΟΡΜΑ ΔΕΝ ΞΑΝΑΓΡΑΦΟΝΤΑΙ ΚΡΥΦΑ. Η φόρμα στέλνει
+    // ολόκληρο το προφίλ που διάβασε· χωρίς αυτή τη γραμμή, ΔΟΥ, δραστηριότητα
+    // και διεύθυνση που ο χρήστης δεν βλέπει πια θα ξαναγράφονταν σε κάθε
+    // αποθήκευση. Τώρα σβήνουν την επόμενη φορά που αποθηκεύει (ελαχιστοποίηση,
+    // άρθρο 5§1 στοιχείο γ΄ GDPR). Οι στήλες μένουν· κανείς άλλος δεν τις διαβάζει.
+    const { error } = await billing.save(supabase, userId, { ...d, ...RETIRED_FIELDS } as billing.BillingPatch);
     setSaving(false);
     if (!error) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
     else setSaveErr(true);

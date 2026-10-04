@@ -108,7 +108,7 @@ merchant of record· δεν περνούν ποτέ από τους δικούς
 
 | Υπεργολάβος | Σκοπός | Τοποθεσία | Διαβίβαση |
 |---|---|---|---|
-| **Supabase Pte. Ltd** (Σιγκαπούρη) | Βάση/auth/αποθήκευση/edge functions | **ΕΕ — Frankfurt** | Εντός ΕΕ |
+| **Supabase Pte. Ltd** (Σιγκαπούρη) | Βάση/auth/αποθήκευση/edge functions | **ΕΕ — Frankfurt** | Δεδομένα στην ΕΕ· **SCCs** (Module 2/3) με τον αντισυμβαλλόμενο στη Σιγκαπούρη |
 | **Plus Five Five, Inc.** (Resend) | Email | ΗΠΑ | **SCCs** |
 | **Vercel Inc.** | Φιλοξενία και παράδοση της εφαρμογής, μέτρηση επισκεψιμότητας χωρίς cookies | ΗΠΑ, παγκόσμιο δίκτυο | Σύμβαση επεξεργασίας: εκκρεμεί |
 | **Google LLC** | Σύνδεση με Google, εφόσον την επιλέξετε | ΗΠΑ | Αυτοτελής υπεύθυνος επεξεργασίας |
@@ -212,7 +212,7 @@ third-party phone/ΑΦΜ, not used for training. (7) Billing — card data held 
 **4. Your role as customer** for tenant data: you are the controller under the DPA
 (`docs/legal/dpa.md`).
 
-**5. Subprocessors/transfers.** Supabase Pte. Ltd (EU/Frankfurt), Resend (Plus Five
+**5. Subprocessors/transfers.** Supabase Pte. Ltd (data in EU/Frankfurt; SCCs with the Singapore counterparty), Resend (Plus Five
 Five, Inc.)/Anthropic/GitHub/Creem (US/SCCs), Vercel (hosting, US; DPA pending), Google
 (sign-in, independent controller). System of record in the EU. We do not sell personal
 data.
