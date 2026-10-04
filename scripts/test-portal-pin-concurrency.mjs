@@ -52,16 +52,20 @@ const PORT = String(20000 + Math.floor(Math.random() * 20000))
 const asRoot = process.getuid && process.getuid() === 0 &&
   spawnSync('id', ['postgres'], { stdio: 'ignore' }).status === 0
 
-function runPg(cmd) {
-  const r = asRoot
-    ? spawnSync('su', ['postgres', '-s', '/bin/bash', '-c', cmd], { encoding: 'utf8' })
-    : spawnSync('bash', ['-c', cmd], { encoding: 'utf8' })
-  if (r.status !== 0) throw new Error(`${cmd}\n${r.stdout}\n${r.stderr}`)
+// Χωρίς κέλυφος: το πρόγραμμα και τα ορίσματα περνούν ως λίστα, οπότε μια
+// διαδρομή με κενό ή ειδικό χαρακτήρα δεν γίνεται ποτέ εντολή. Ως root το
+// postgres τρέχει με το uid/gid του χρήστη postgres αντί για `su -c`.
+const PG_IDS = asRoot
+  ? { uid: Number(spawnSync('id', ['-u', 'postgres'], { encoding: 'utf8' }).stdout), gid: Number(spawnSync('id', ['-g', 'postgres'], { encoding: 'utf8' }).stdout) }
+  : {}
+function runPg(bin, args) {
+  const r = spawnSync(join(BIN, bin), args, { encoding: 'utf8', ...PG_IDS })
+  if (r.status !== 0) throw new Error(`${bin} ${args.join(' ')}\n${r.stdout}\n${r.stderr}`)
   return r.stdout
 }
 function stop() {
   if (KEEP) { console.log(`  --keep: ο διακομιστής μένει· σβήνει με pg_ctl -D ${PGDATA} stop`); return }
-  try { runPg(`${BIN}/pg_ctl -D ${PGDATA} stop -m immediate`) } catch { /* ήδη σταματημένος */ }
+  try { runPg('pg_ctl', ['-D', PGDATA, 'stop', '-m', 'immediate']) } catch { /* ήδη σταματημένος */ }
   if (!KEEP) rmSync(WORK, { recursive: true, force: true })
 }
 process.on('exit', stop)
@@ -69,8 +73,8 @@ process.on('SIGINT', () => process.exit(130))
 process.on('SIGTERM', () => process.exit(143))
 
 if (asRoot) spawnSync('chown', ['-R', 'postgres:postgres', WORK])
-runPg(`${BIN}/initdb -D ${PGDATA} -U postgres --auth=trust >/dev/null`)
-runPg(`${BIN}/pg_ctl -D ${PGDATA} -l ${PGDATA}/log -o "-p ${PORT} -k ${WORK} -c listen_addresses='' -c max_connections=120 -c deadlock_timeout=100ms" start >/dev/null`)
+runPg('initdb', ['-D', PGDATA, '-U', 'postgres', '--auth=trust'])
+runPg('pg_ctl', ['-D', PGDATA, '-l', join(PGDATA, 'log'), '-o', `-p ${PORT} -k ${WORK} -c listen_addresses='' -c max_connections=120 -c deadlock_timeout=100ms`, 'start'])
 
 const CONN = ['-h', WORK, '-p', PORT, '-U', 'postgres', '-X']
 const env = { ...process.env, PGOPTIONS: '' }
@@ -509,7 +513,8 @@ commit;
   // ── 7. ΤΟ ΧΡΟΝΟΜΕΤΡΟ ──────────────────────────────────────────────────────
   console.log('\n▶ Χρονόμετρο')
   {
-    const again = spawnSync('bash', ['-c', `cat ${join(MIG, FIRST)} ${join(MIG, NEW)} | ${BIN}/psql -h ${WORK} -p ${PORT} -U postgres -X -d after -v ON_ERROR_STOP=1 -q`], { encoding: 'utf8' })
+    const again = spawnSync(join(BIN, 'psql'), ['-h', WORK, '-p', PORT, '-U', 'postgres', '-X', '-d', 'after', '-v', 'ON_ERROR_STOP=1', '-q'],
+      { encoding: 'utf8', input: readFileSync(join(MIG, FIRST), 'utf8') + readFileSync(join(MIG, NEW), 'utf8') })
     check(again.status === 0 && (again.stderr.match(/pg_cron δεν είναι ενεργό/g) || []).length === 2, 'χωρίς pg_cron: η μετανάστευση ξανατρέχει, λέει ότι δεν προγραμματίζει και δεν γράφει εργασία')
     check(q('after', `select count(*) from cron.job where jobname = 'portal-pin-attempts-prune'`) === '0', 'χωρίς pg_cron: καμία εργασία')
     // Με pg_cron «παρόν»: μια ψεύτικη γραμμή στο pg_extension, σε αντίγραφο
