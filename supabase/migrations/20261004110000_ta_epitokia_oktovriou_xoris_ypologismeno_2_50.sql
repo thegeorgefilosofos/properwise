@@ -29,8 +29,8 @@
 update public.bank_rates set
   fixed_3yr  = '2.90',
   fixed_min  = 2.90,
-  features   = array_append(array_remove(features, 'Πρώτη κατοικία: επιπλέον έκπτωση 0,40% στο σταθερό 3 ετών'),
-                            'Πρώτη κατοικία: επιπλέον έκπτωση 0,40% στο σταθερό 3 ετών'),
+  features   = array_append(array_remove(features, 'Δικαιούχοι πρώτης κατοικίας: επιπλέον έκπτωση 0,40% για 3 έτη'),
+                            'Δικαιούχοι πρώτης κατοικίας: επιπλέον έκπτωση 0,40% για 3 έτη'),
   verified_at = date '2026-10-04'
 where bank_id = 'eurobank';
 
@@ -55,10 +55,19 @@ where bank_id = 'alpha';
 -- Χωρίς ημερομηνία δελτίου. First Home: σταθερό από 2,15%, περιθώριο από
 -- 1,60%, Euribor 3M, εισφορά ν.128/75 0,12%. Το Euribor 2,293% του
 -- παραδείγματος (29/06/2026) ΔΕΝ αποθηκεύεται. Τα ανά διάρκεια εύρη δεν τα
--- γράφει η σελίδα· μένουν όπως ήταν και το λέει η σημείωση.
+-- γράφει η σελίδα: γίνονται null, όπως το 3ετές της Optima στη 20260928150000.
+-- Αν έμεναν, η οθόνη θα έδειχνε «από 2,15%» δίπλα σε «3.00-3.30» του
+-- συγκριτικού ιστότοπου, με την ίδια ημερομηνία επιβεβαίωσης.
 --     fixed_min   3.00   → 2.15
+--     fixed_3yr…fixed_20yr, variable_spread_max → null (δεν δημοσιεύονται)
 --     rate_index  null   → '3M'
 update public.bank_rates set
+  fixed_3yr  = null,
+  fixed_5yr  = null,
+  fixed_10yr = null,
+  fixed_15yr = null,
+  fixed_20yr = null,
+  variable_spread_max = null,
   fixed_min  = 2.15,
   variable_spread_min = 1.60,
   rate_index = '3M',
