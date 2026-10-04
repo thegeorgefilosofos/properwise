@@ -3,11 +3,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // ΣΥΝΔΡΟΜΗ ΚΑΙ ΣΤΟΙΧΕΙΑ ΤΙΜΟΛΟΓΗΣΗΣ
 // ─────────────────────────────────────────────────────────────────────────
-// ΠΟΙΟΣ ΠΟΥΛΑΕΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ ΕΔΩ. Η οθόνη έλεγε με το χέρι ότι ο πάροχος
-// «είναι ο έμπορος της συναλλαγής και αποδίδει τον ΦΠΑ». Δεν είναι: πωλητής
-// είναι ο φορέας λειτουργίας, που εκδίδει το παραστατικό και αποδίδει τον
-// ΦΠΑ και ο πάροχος μόνο διεκπεραιώνει την πληρωμή. Η πρόταση έρχεται πλέον
-// από τον διακομιστή, ίδια με εκείνη των Ορων και της Πολιτικής απορρήτου.
+// ΠΟΙΟΣ ΠΟΥΛΑΕΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ ΕΔΩ. Ο έμπορος είναι merchant of record: πουλά
+// τη συνδρομή στο δικό του όνομα, εκδίδει το παραστατικό και αποδίδει τον ΦΠΑ
+// (lib/billing/invoicing.ts). Εμείς παρέχουμε την Υπηρεσία. Η πρόταση έρχεται
+// από τον διακομιστή (`billingWords().chargingToday`), ίδια με εκείνη των
+// Ορων και της Πολιτικής απορρήτου, ώστε να μην αποκλίνει από το ταμείο.
 //
 // ΤΙ ΚΑΝΕΙ Η ΟΘΟΝΗ ΚΑΙ ΤΙ ΔΕΝ ΚΑΝΕΙ. Κρατά τα στοιχεία τιμολόγησης, δείχνει
 // την κατάσταση της συνδρομής όπως την ξέρει ο πάροχος και ανοίγει δύο πόρτες
@@ -33,7 +33,7 @@ import { subPhase, cardState } from '@/lib/billing/subscription';
 import { ALLOWED_PLANS, planFromParam, cycleFromParam, type ProfileType } from '@/lib/billing/entitlements';
 import { SegmentControl } from './UIComponents';
 import { notifyError, notifyOk } from '@/components/Toast';
-import { ALL_COUNTRIES, isEuCountry, isReverseCharge, missingInvoiceFields, type InvoiceProfile } from '@/lib/billing/invoiceProfile';
+import { ALL_COUNTRIES, isEuCountry, isReverseCharge } from '@/lib/billing/invoiceProfile';
 import { determineVat, vatTreatmentLabel } from '@/lib/billing/invoicing';
 import { isReferralCode } from '@/lib/referral/referral';
 
@@ -52,6 +52,9 @@ interface BillingData {
   /** Υποβάθμιση που περιμένει την ανανέωση: τι κρατιέται και ως πότε. */
   hold_plan: string; hold_until: string;
 }
+/** Πεδία που δεν ζητούνται πια: σε κάθε αποθήκευση γράφονται κενά. */
+const RETIRED_FIELDS = { doy: null, profession: null, address: null, city: null, postal_code: null } as const;
+
 const INIT: BillingData = {
   doc_type: 'receipt', full_name: '', company_name: '', afm: '', doy: '', profession: '',
   address: '', city: '', postal_code: '', country: 'GR', vat_number: '', phone: '', plan: 'free', billing_cycle: 'monthly',
@@ -110,8 +113,8 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
         if (!String(base[k] || '').trim() && v && String(v).trim()) { base[k] = String(v).trim(); did = true; }
       };
       try {
-        const prop = (await properties.list<{ id: string; address: string | null; postal_code: string | null }>(
-          supabase, userId, { columns: 'id, address, postal_code', orderBy: 'created_at' }))[0] || null;
+        const prop = (await properties.list<{ id: string }>(
+          supabase, userId, { columns: 'id', orderBy: 'created_at' }))[0] || null;
         let ps: { owner_name?: string; owner_afm?: string; owner_phone?: string } | null = null;
         if (prop?.id) {
           const { data: s } = await supabase
@@ -122,8 +125,6 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
         fill('full_name', meta.full_name || ps?.owner_name);
         fill('afm', ps?.owner_afm);
         fill('phone', ps?.owner_phone);
-        fill('address', prop?.address);
-        fill('postal_code', prop?.postal_code);
       } catch { /* σιωπηλά: η προσυμπλήρωση είναι bonus, δεν μπλοκάρει */ }
       fill('full_name', meta.full_name);
 
@@ -138,7 +139,13 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
     setSaving(true); setSaved(false); setSaveErr(false);
     // Το πλάνο και ο κύκλος χρέωσης ορίζονται ΜΟΝΟ από τη χρέωση, όχι από τον
     // πελάτη· το στρώμα τα αφαιρεί από κάθε εγγραφή, για όλες τις οθόνες.
-    const { error } = await billing.save(supabase, userId, d as billing.BillingPatch);
+    //
+    // ΤΑ ΠΕΔΙΑ ΠΟΥ ΕΦΥΓΑΝ ΑΠΟ ΤΗ ΦΟΡΜΑ ΔΕΝ ΞΑΝΑΓΡΑΦΟΝΤΑΙ ΚΡΥΦΑ. Η φόρμα στέλνει
+    // ολόκληρο το προφίλ που διάβασε· χωρίς αυτή τη γραμμή, ΔΟΥ, δραστηριότητα
+    // και διεύθυνση που ο χρήστης δεν βλέπει πια θα ξαναγράφονταν σε κάθε
+    // αποθήκευση. Τώρα σβήνουν την επόμενη φορά που αποθηκεύει (ελαχιστοποίηση,
+    // άρθρο 5§1 στοιχείο γ΄ GDPR). Οι στήλες μένουν· κανείς άλλος δεν τις διαβάζει.
+    const { error } = await billing.save(supabase, userId, { ...d, ...RETIRED_FIELDS } as billing.BillingPatch);
     setSaving(false);
     if (!error) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
     else setSaveErr(true);
@@ -149,7 +156,6 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
   const country = (d.country || 'GR').toUpperCase();
   const isGr = country === 'GR';
   const reverseCharge = isReverseCharge(d);
-  const missing = missingInvoiceFields(d as InvoiceProfile);
   const vatLabel = isEuCountry(country) ? 'VAT (VIES)' : 'Φορολογικό μητρώο';
   const vatSummary = vatTreatmentLabel(determineVat(d));
 
@@ -174,20 +180,28 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
           ταμείο δεν τα διαβάζει και το παραστατικό το εκδίδει ο έμπορος.
           Δεδομένα που μαζεύονται χωρίς χρήση παραβιάζουν την ελαχιστοποίηση
           του άρθρου 5§1 στοιχείο γ΄ GDPR. Η φόρμα εμφανίζεται μόνο με ζωντανή
-          χρέωση. */}
+          χρέωση.
+
+          ΚΑΙ ΜΕ ΖΩΝΤΑΝΗ ΧΡΕΩΣΗ ΤΟ ΤΑΜΕΙΟ ΔΕΝ ΤΗ ΔΙΑΒΑΖΕΙ. Στον έμπορο φεύγει
+          μόνο το email (lib/billing/merchant/creem.ts) και τα στοιχεία του
+          παραστατικού τα δίνει ο πελάτης στο ταμείο του. Η κάρτα έλεγε «για
+          σωστό τιμολόγιο, συμπλήρωσε ακόμη…» και ζητούσε ΔΟΥ, δραστηριότητα,
+          διεύθυνση, πόλη και κώδικα, που δεν διαβάζει κανείς. Μένουν τα πεδία
+          που χρησιμοποιούνται: τύπος, χώρα και VAT για το καθεστώς ΦΠΑ από
+          κάτω και όνομα, επωνυμία, ΑΦΜ και τηλέφωνο για την προσυμπλήρωση των
+          στοιχείων ιδιοκτήτη σε νέο ακίνητο (AddPropertyWizard). Οι στήλες
+          μένουν στη βάση· απλώς δεν ζητούνται. */}
       {billingLive === true && <Card>
         <SecHdr label="Στοιχεία τιμολόγησης" />
-        {prefilled && (
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, marginTop: -6, marginBottom: 14 }}>
-            Προσυμπληρωμένα από το ακίνητό σου.
-          </div>
-        )}
+        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, marginTop: -6, marginBottom: 14 }}>
+          Τα στοιχεία του παραστατικού τα δίνεις στο ταμείο, όταν πληρώνεις. Εδώ κρατάμε μόνο όσα δείχνουν το καθεστώς ΦΠΑ και συμπληρώνουν τα στοιχεία ιδιοκτήτη σε νέο ακίνητο.{prefilled ? ' Προσυμπληρωμένα από το ακίνητό σου.' : ''}
+        </div>
         {/* ΤΕΣΣΕΡΙΣ ΣΤΗΛΕΣ, ΓΡΑΜΜΕΝΕΣ ΩΣ ΑΠΟΦΑΣΗ. Το `formGrid` κόβει κάθε στήλη
             σε σταθερό μέγιστο, οπότε στην κάρτα των ρυθμίσεων έβγαζε δύο πεδία
             ανά σειρά και μισή κάρτα άδεια δεξιά: έντεκα πεδία σε έξι σειρές.
-            Με τρεις στήλες έγιναν τέσσερις σειρές· με τέσσερις, ο ιδιώτης
-            τελειώνει σε ΔΥΟ (τύπος, χώρα, όνομα, διεύθυνση · πόλη, κώδικας,
-            τηλέφωνο) και η επιχείρηση σε τρεις.
+            Με τέσσερις στήλες και χωρίς τα πεδία που δεν διαβάζει κανείς, ο
+            ιδιώτης γεμίζει μία σειρά (τύπος, χώρα, όνομα, τηλέφωνο) και η
+            επιχείρηση δύο, μαζί με την αποθήκευση.
 
             Κανένα πεδίο δεν μένει μόνο του σε μισή σειρά: το τέσσερα σπάει σε
             δύο και μετά σε ένα, ποτέ σε τρία.
@@ -201,16 +215,11 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
             options={ALL_COUNTRIES.map(c => ({ value: c.code, label: c.name }))} />
           <TextInput label="Ονοματεπώνυμο" value={d.full_name} onChange={v => set('full_name', v)} placeholder="Όνομα και επώνυμο" />
           {isInvoice && <TextInput label="Επωνυμία εταιρείας" value={d.company_name} onChange={v => set('company_name', v)} placeholder="Παράδειγμα Ε.Ε." />}
-          {isInvoice && <TextInput label="Δραστηριότητα" value={d.profession} onChange={v => set('profession', v)} placeholder="Διαχείριση ακινήτων" />}
-          {/* Φορολογικό αναγνωριστικό: ΑΦΜ/ΔΟΥ για Ελλάδα, κοινοτικό VAT (VIES) για ΕΕ, μητρώο για εκτός ΕΕ */}
+          {/* Φορολογικό αναγνωριστικό: ΑΦΜ για Ελλάδα, κοινοτικό VAT (VIES) για ΕΕ, μητρώο για εκτός ΕΕ */}
           {isInvoice && isGr && <TextInput label="ΑΦΜ" value={d.afm} onChange={v => set('afm', v)} placeholder="123456789" />}
-          {isInvoice && isGr && <TextInput label="ΔΟΥ" value={d.doy} onChange={v => set('doy', v)} placeholder="ΔΟΥ Α΄ Αθηνών" />}
           {isInvoice && !isGr && <TextInput label={vatLabel} value={d.vat_number} onChange={v => set('vat_number', v)} placeholder={isEuCountry(country) ? `${country}XXXXXXXXX` : 'Αριθμός μητρώου'} />}
-          <TextInput label="Διεύθυνση" value={d.address} onChange={v => set('address', v)} placeholder="Οδός και αριθμός" />
-          <TextInput label="Πόλη" value={d.city} onChange={v => set('city', v)} placeholder="Αθήνα" />
-          <TextInput label="Ταχ. Κώδικας" value={d.postal_code} onChange={v => set('postal_code', v)} placeholder="11527" />
           <TextInput label="Τηλέφωνο" value={d.phone} onChange={v => set('phone', v)} placeholder="69XXXXXXXX" />
-          {/* ═══ Η ΑΠΟΘΗΚΕΥΣΗ ΕΙΝΑΙ ΤΟ ΟΓΔΟΟ ΚΟΥΤΙ ΤΗΣ ΦΟΡΜΑΣ ═══════════════════
+          {/* ═══ Η ΑΠΟΘΗΚΕΥΣΗ ΕΙΝΑΙ ΤΟ ΤΕΛΕΥΤΑΙΟ ΚΟΥΤΙ ΤΗΣ ΦΟΡΜΑΣ ═══════════════════
               Καθόταν σε δική της σειρά από κάτω, δηλαδή μια ολόκληρη γραμμή για
               ένα κουμπί, ενώ η σειρά ακριβώς από πάνω τελείωνε με άδειο κελί.
               Το κουμπί είναι το τέλος της φόρμας και το άδειο κελί είναι το
@@ -219,7 +228,7 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
               ΚΑΙ ΠΑΙΡΝΕΙ ΤΟ ΜΕΓΕΘΟΣ ΤΟΥ ΠΕΔΙΟΥ, ΟΧΙ ΤΟΥ ΛΕΚΤΙΚΟΥ ΤΟΥ. Μετρημένο
               στο κελί δίπλα στο «Τηλέφωνο»: 152 × 36 δίπλα σε πεδίο 296 × 40,
               δηλαδή μισό κουτί σε λάθος ύψος. Με `field` γίνεται ακριβώς 296 × 40
-              και η φόρμα διαβάζεται ως δύο πλήρεις σειρές των τεσσάρων.
+              και στέκεται στη σειρά σαν πεδίο.
 
               Το κενό από πάνω είναι η ΕΤΙΚΕΤΑ που δεν έχει: χωρίς αυτό το κουμπί
               θα ξεκινούσε ψηλότερα από τα πεδία της σειράς του.
@@ -244,11 +253,6 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
           <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>Καθεστώς ΦΠΑ</span>
           <span>{vatSummary}{reverseCharge ? '. Χρειάζεται έγκυρος κοινοτικός VAT (VIES).' : ''}</span>
         </div>
-        {isInvoice && missing.length > 0 && (
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55, marginTop: 10 }}>
-            Για σωστό τιμολόγιο, συμπλήρωσε ακόμη: {missing.map(f => f.label).join(', ')}.
-          </div>
-        )}
       </Card>}
     </div>
   );

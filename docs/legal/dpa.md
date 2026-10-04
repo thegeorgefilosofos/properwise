@@ -1,5 +1,15 @@
 # Σύμβαση Επεξεργασίας Δεδομένων (DPA) — PROPERWISE · Data Processing Agreement
 
+> **ΑΡΧΙΚΟ ΣΧΕΔΙΟ, ΑΝΤΙΚΑΤΕΣΤΗΜΕΝΟ (σημείωση 04.10.2026).** Το κείμενο αυτό είναι
+> το αρχικό σχέδιο v0.1 και δεν ισχύει. Ισχύουν οι σελίδες `/privacy`, `/terms` και
+> `/trust` και τα μητρώα στο `lib/legal/*.ts` (ταυτότητα, υπεργολάβοι, λόγια της
+> χρέωσης), από τα οποία διαβάζουν οι σελίδες. Όπου διαφέρουν, υπερισχύουν εκείνα.
+> Στις 04.10.2026 διορθώθηκαν μόνο όσα ήταν συγκεκριμένα ανακριβή· τα πεδία
+> `[ΣΥΜΠΛΗΡΩΣΤΕ ...]` μένουν ως έχουν.
+> **Original draft, superseded (note of 04.10.2026).** Not in force. The live pages
+> `/privacy`, `/terms` and `/trust` and the registries in `lib/legal/*.ts` prevail
+> wherever they differ. Only concretely inaccurate statements were corrected.
+
 > **ΣΧΕΔΙΟ / DRAFT — v0.1 (2026-07-22). Δεν έχει τεθεί σε ισχύ. Απαιτεί υπογραφή
 > δικηγόρου.** **DRAFT — not in force; requires counsel sign-off.**
 
@@ -42,8 +52,10 @@ service-role **μόνο** server-side· εξουσιοδότηση κάθε πρ
 ασφαλείας (penetration test 2026-07).
 
 ## 8. Υπεργολαβία (28(2),(3)(δ),(4))
-**Γενική εξουσιοδότηση.** Τρέχοντες υπεργολάβοι: **Supabase** (ΕΕ/Frankfurt), **Resend,
-Anthropic** (χωρίς εκπαίδευση μοντέλων), **GitHub, Creem** (ΗΠΑ/SCCs). **Προηγούμενη ειδοποίηση**
+**Γενική εξουσιοδότηση.** Τρέχοντες υπεργολάβοι: **Supabase Pte. Ltd** (δεδομένα στην ΕΕ/Frankfurt· SCCs με τον αντισυμβαλλόμενο στη Σιγκαπούρη),
+**Resend (Plus Five Five, Inc.), Anthropic** (χωρίς εκπαίδευση μοντέλων), **GitHub, Creem**
+(ΗΠΑ/SCCs), **Vercel** (φιλοξενία, ΗΠΑ· η σύμβαση επεξεργασίας εκκρεμεί). Η Google (σύνδεση
+με Google) ενεργεί ως αυτοτελής υπεύθυνος και όχι ως υπεργολάβος. **Προηγούμενη ειδοποίηση**
 για προσθήκη/αντικατάσταση, με **δικαίωμα εναντίωσης** εντός **[ΣΥΜΠΛΗΡΩΣΤΕ: 30] ημερών**·
 κάθε υπεργολάβος δεσμεύεται με **ισοδύναμες** υποχρεώσεις· παραμένουμε πλήρως υπεύθυνοι.
 
@@ -68,7 +80,8 @@ Anthropic** (χωρίς εκπαίδευση μοντέλων), **GitHub, Creem*
 ασφαλείας)· επιτόπιοι έλεγχοι κατόπιν εύλογης προειδοποίησης **[ΣΥΜΠΛΗΡΩΣΤΕ: συχνότητα/κόστος]**.
 
 ## 13. Διεθνείς διαβιβάσεις (44–49)
-Σύστημα καταγραφής στην **ΕΕ**· υπεργολάβοι ΗΠΑ υπό **SCCs** (Απόφ. 2021/914) + TIA. Σε
+Σύστημα καταγραφής στην **ΕΕ**· υπεργολάβοι ΗΠΑ υπό **SCCs** (Απόφ. 2021/914) + TIA, εκτός
+από τη Vercel, όπου η σύμβαση επεξεργασίας εκκρεμεί. Σε
 σύγκρουση, υπερισχύουν οι SCCs ως προς τη διαβίβαση.
 
 ## 14. Ευθύνη & 15. Εφαρμοστέο δίκαιο
@@ -94,10 +107,11 @@ special categories. **5. Instructions (28(3)(a)):** documented only; we flag GDP
 breaching instructions. **6. Confidentiality (b).** **7. Security (c,32):** per-tenant
 RLS, pinned search_path, **expiring token-gated RPCs**, server-side-only service key,
 EU residency, encrypted backups, MFA, audited pentest. **8. Sub-processing:** general
-authorisation; Supabase (EU), Resend/Anthropic/GitHub/Creem (US/SCCs); prior notice +
+authorisation; Supabase Pte. Ltd (data in EU; SCCs with the Singapore counterparty), Resend/Anthropic/GitHub/Creem (US/SCCs), Vercel
+(hosting, US; DPA pending); Google is an independent controller; prior notice +
 right to object; equivalent obligations; we stay liable. **9. DSAR assistance (e):**
 export/delete/rectify tools; forward direct requests. **10. Breach (f,32–36):** notify
 without undue delay; **72h HDPA + subject notice = Customer's duty**, we assist. **11.
 Deletion/return (g):** delete or return; backups age out in 30 days. **12. Audits (h):**
 documentation-based; on-site on reasonable notice. **13. Transfers:** EU system of
-record; US under EU SCCs + TIA. **14. Liability** per Terms. **15. Greek law + GDPR.**
+record; US under EU SCCs + TIA, except Vercel (DPA pending). **14. Liability** per Terms. **15. Greek law + GDPR.**

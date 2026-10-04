@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { SITE } from '@/lib/core/site'
 import { GUIDES, GUIDES_UPDATED } from './odigos/guides'
+import { POLICY_VERSION } from '@/lib/legal/identity'
 
 // Χάρτης της δημόσιας σελίδας για τις μηχανές αναζήτησης. Μόνο δημόσιες
 // διαδρομές: το dashboard, τα portals και οι σελίδες με token μένουν εκτός.
@@ -22,8 +23,10 @@ const PAGES_UPDATED = {
   paketa: '2026-10-03',
   signup: '2026-10-03',
   trust: '2026-10-03',
-  privacy: '2026-10-02',
-  terms: '2026-10-03',
+  // ΤΑ ΝΟΜΙΚΑ ΚΕΙΜΕΝΑ ΕΧΟΥΝ ΗΔΗ ΗΜΕΡΟΜΗΝΙΑ: την έκδοσή τους. Η Πολιτική
+  // απορρήτου έγραφε εδώ άλλη μέρα από την έκδοση που δείχνει η ίδια.
+  privacy: POLICY_VERSION,
+  terms: POLICY_VERSION,
 } as const
 // Ο υπολογιστής δόσης στεγαστικού δεν ακολουθεί τους φόρους: αλλάζει όταν
 // αλλάξει ο ίδιος, όχι όταν αλλάξει κλίμακα. Δική του ημερομηνία, με το χέρι.

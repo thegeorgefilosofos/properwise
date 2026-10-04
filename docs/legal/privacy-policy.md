@@ -1,5 +1,15 @@
 # Πολιτική Απορρήτου — PROPERWISE · Privacy Policy — PROPERWISE
 
+> **ΑΡΧΙΚΟ ΣΧΕΔΙΟ, ΑΝΤΙΚΑΤΕΣΤΗΜΕΝΟ (σημείωση 04.10.2026).** Το κείμενο αυτό είναι
+> το αρχικό σχέδιο v0.1 και δεν ισχύει. Ισχύουν οι σελίδες `/privacy`, `/terms` και
+> `/trust` και τα μητρώα στο `lib/legal/*.ts` (ταυτότητα, υπεργολάβοι, λόγια της
+> χρέωσης), από τα οποία διαβάζουν οι σελίδες. Όπου διαφέρουν, υπερισχύουν εκείνα.
+> Στις 04.10.2026 διορθώθηκαν μόνο όσα ήταν συγκεκριμένα ανακριβή· τα πεδία
+> `[ΣΥΜΠΛΗΡΩΣΤΕ ...]` μένουν ως έχουν.
+> **Original draft, superseded (note of 04.10.2026).** Not in force. The live pages
+> `/privacy`, `/terms` and `/trust` and the registries in `lib/legal/*.ts` prevail
+> wherever they differ. Only concretely inaccurate statements were corrected.
+
 > **ΣΧΕΔΙΟ / DRAFT — v0.1 (2026-07-22).** Κείμενο εργασίας που ΔΕΝ έχει τεθεί σε
 > ισχύ. Απαιτεί τελικό έλεγχο και υπογραφή από δικηγόρο πριν τη δημοσίευση.
 > Τα πεδία σε αγκύλες `[ΣΥΜΠΛΗΡΩΣΤΕ ...]` συμπληρώνονται από την εταιρεία.
@@ -98,8 +108,10 @@ merchant of record· δεν περνούν ποτέ από τους δικούς
 
 | Υπεργολάβος | Σκοπός | Τοποθεσία | Διαβίβαση |
 |---|---|---|---|
-| **Supabase Inc.** | Βάση/auth/αποθήκευση/edge functions | **ΕΕ — Frankfurt** | Εντός ΕΕ |
-| **Resend, Inc.** | Email | ΗΠΑ | **SCCs** |
+| **Supabase Pte. Ltd** (Σιγκαπούρη) | Βάση/auth/αποθήκευση/edge functions | **ΕΕ — Frankfurt** | Δεδομένα στην ΕΕ· **SCCs** (Module 2/3) με τον αντισυμβαλλόμενο στη Σιγκαπούρη |
+| **Plus Five Five, Inc.** (Resend) | Email | ΗΠΑ | **SCCs** |
+| **Vercel Inc.** | Φιλοξενία και παράδοση της εφαρμογής, μέτρηση επισκεψιμότητας χωρίς cookies | ΗΠΑ, παγκόσμιο δίκτυο | Σύμβαση επεξεργασίας: εκκρεμεί |
+| **Google LLC** | Σύνδεση με Google, εφόσον την επιλέξετε | ΗΠΑ | Αυτοτελής υπεύθυνος επεξεργασίας |
 | **Anthropic Ireland, Ltd** (για πελάτες ΕΟΧ) | Βοηθός AI (χωρίς εκπαίδευση μοντέλων) | ΗΠΑ | **SCCs** |
 | **GitHub, Inc.** | Κώδικας/CI/κρυπτογραφημένα backups | ΗΠΑ | **SCCs** |
 | **Creem** | Χρέωση συνδρομών (merchant of record) | ΗΠΑ/ΕΕ | **SCCs** |
@@ -115,8 +127,8 @@ merchant of record· δεν περνούν ποτέ από τους δικούς
 
 | Δεδομένα | Διατήρηση |
 |---|---|
-| Λογαριασμός | Διάρκεια + **30 ημέρες** χάριτος μετά τη διαγραφή |
-| Λογαριασμός χωρίς ενεργή συνδρομή | **30 ημέρες** από τη στιγμή που παύει η συνδρομή, με δύο ειδοποιήσεις (επτά ημέρες και μία ημέρα πριν) και έπειτα αυτόματη οριστική διαγραφή μαζί με όλα τα δεδομένα |
+| Λογαριασμός | Διάρκεια λογαριασμού· με τη διαγραφή σβήνεται αμέσως από τη βάση και τα αντίγραφα ασφαλείας λήγουν μέσα σε **30 ημέρες** |
+| Λογαριασμός χωρίς ενεργή συνδρομή | Δεν διαγράφεται αυτόματα: συνεχίζει στο δωρεάν πακέτο ώσπου να τον διαγράψετε εσείς (βλ. `/privacy`) |
 | Ακίνητα / οικονομικές εγγραφές | Διάρκεια λογαριασμού |
 | Φορολογικά | Κατά τις προθεσμίες της ελληνικής νομοθεσίας |
 | Ενοικιαστές/φιλοξενούμενοι | Ελέγχονται από τον πελάτη |
@@ -150,9 +162,11 @@ merchant of record· δεν περνούν ποτέ από τους δικούς
 
 ## 9. Cookies
 
-Χρησιμοποιούμε **απολύτως απαραίτητα cookies** (ταυτοποίηση/συνεδρία — χωρίς συγκατάθεση).
-Cookies στατιστικών/marketing απαιτούν προηγούμενη συγκατάθεση μέσω banner (άρθρο 4 παρ.
-5 ν. 3471/2006). **[ΣΥΜΠΛΗΡΩΣΤΕ: κατάλογος cookies αν χρησιμοποιούνται μη-απαραίτητα.]**
+Χρησιμοποιούμε μόνο **απολύτως απαραίτητα cookies** (ταυτοποίηση/συνεδρία), χωρίς
+συγκατάθεση. Την επισκεψιμότητα τη μετράμε με το Vercel Web Analytics, που λειτουργεί
+**χωρίς cookies** και δεν αποθηκεύει ούτε διαβάζει τίποτα στη συσκευή, οπότε δεν απαιτεί
+συγκατάθεση (άρθρο 4 παρ. 5 ν. 3471/2006)· νομική βάση το έννομο συμφέρον, 6(1)(στ). Cookies
+marketing δεν χρησιμοποιούμε.
 
 ---
 
@@ -198,10 +212,14 @@ third-party phone/ΑΦΜ, not used for training. (7) Billing — card data held 
 **4. Your role as customer** for tenant data: you are the controller under the DPA
 (`docs/legal/dpa.md`).
 
-**5. Subprocessors/transfers.** Supabase (EU/Frankfurt), Resend/Anthropic/GitHub/
-Creem (US/SCCs). System of record in the EU. We do not sell personal data.
+**5. Subprocessors/transfers.** Supabase Pte. Ltd (data in EU/Frankfurt; SCCs with the Singapore counterparty), Resend (Plus Five
+Five, Inc.)/Anthropic/GitHub/Creem (US/SCCs), Vercel (hosting, US; DPA pending), Google
+(sign-in, independent controller). System of record in the EU. We do not sell personal
+data.
 
-**6. Retention.** Account: life + 30-day grace. Tax: Greek statutory. Backups: 30-day
+**6. Retention.** Account: its life; deleted from the database immediately on
+deletion. No automatic deletion for lack of a subscription (the account continues on
+the free plan). Tax: Greek statutory. Backups: 30-day
 encrypted. Deletion effective across the estate within 30 days.
 
 **7. Rights (15–22).** Export (`export_my_data`), Delete (`delete_my_account`), in-app
@@ -210,6 +228,7 @@ rectification, per-message opt-out, restriction, withdraw consent. Via Settings 
 
 **8. HDPA complaint.** ΑΠΔΠΧ, 1–3 Kifisias Ave., 11523 Athens; www.dpa.gr.
 
-**9. Cookies.** Essential only; analytics/marketing require consent. **10. Security.**
+**9. Cookies.** Essential only; visit measurement is cookie-free (Vercel Web
+Analytics), so no consent is needed; no marketing cookies. **10. Security.**
 Per-tenant RLS, pinned search_path, server-side service key, MFA, encrypted backups,
 72-hour breach notice. **11. Changes.** Version/effective date: [COMPLETE].
