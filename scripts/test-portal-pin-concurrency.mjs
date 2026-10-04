@@ -32,7 +32,10 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const NEW = '20261004090000_to_kleidoma_tis_pylis_metra_ena_ena.sql'
+// Οι δύο μεταναστεύσεις της διόρθωσης. `before` = καμία, `mid` = μόνο η
+// πρώτη (η 401a917, που έτρεξε ήδη στο staging), `after` = όλες.
+const FIRST = '20261004090000_to_kleidoma_tis_pylis_metra_ena_ena.sql'
+const NEW = '20261004100000_to_kleidoma_akolouthei_to_kouponi_kai_ta_tavania.sql'
 const KEEP = process.argv.includes('--keep')
 const QUICK = process.argv.includes('--quick')
 const TRIALS = QUICK ? 2 : 5
@@ -92,7 +95,7 @@ function qTry(db, sql) {
 const MIG = join(WORK, 'mig')
 mkdirSync(MIG)
 const migrations = readdirSync(join(ROOT, 'supabase/migrations')).filter(f => f.endsWith('.sql')).sort()
-if (!migrations.includes(NEW)) { console.error(`✗ Λείπει η ${NEW}`); process.exit(1) }
+for (const f of [FIRST, NEW]) if (!migrations.includes(f)) { console.error(`✗ Λείπει η ${f}`); process.exit(1) }
 for (const f of migrations) {
   // Ίδια αντικατάσταση με το sed του db-replay.sh: οι τέσσερις επεκτάσεις της
   // πλατφόρμας δεν υπάρχουν εδώ ως .so· τα σχήματά τους τα στήνει η σκαλωσιά.
@@ -113,9 +116,10 @@ function replay(db, list) {
 }
 
 const t0 = Date.now()
-replay('before', migrations.filter(f => f !== NEW))
+replay('before', migrations.filter(f => f !== FIRST && f !== NEW))
+replay('mid', migrations.filter(f => f !== NEW))
 replay('after', migrations)
-console.log(`✓ ${migrations.length - 1} μεταναστεύσεις στη before, ${migrations.length} στην after (${((Date.now() - t0) / 1000).toFixed(1)} s)`)
+console.log(`✓ ${migrations.length - 2} μεταναστεύσεις στη before, ${migrations.length - 1} στη mid, ${migrations.length} στην after (${((Date.now() - t0) / 1000).toFixed(1)} s)`)
 if (KEEP) console.log(`  psql -h ${WORK} -p ${PORT} -U postgres -d after`)
 
 // ── ΑΠΟΤΕΛΕΣΜΑΤΑ ───────────────────────────────────────────────────────────
@@ -183,6 +187,7 @@ function classify(kind, { out, err }) {
   if (/40P01/.test(err)) return 'deadlock'
   if (/40001/.test(err)) return 'serialization'
   if (/portal_locked/.test(err)) return 'locked'
+  if (/portal_rate_limited/.test(err)) return 'capped'
   if (!line) return 'other'
   const v = line.slice(2)
   if (kind === 'read') {
@@ -222,7 +227,7 @@ commit;
   await holder.done
   const res = await Promise.all(workers.map(async w => classify(w.kind, await w.run.done)))
   const ms = Date.now() - started
-  const tally = { checked: 0, locked: 0, serialization: 0, deadlock: 0, ok: 0, notfound: 0, other: 0 }
+  const tally = { checked: 0, locked: 0, capped: 0, serialization: 0, deadlock: 0, ok: 0, notfound: 0, other: 0 }
   for (const r of res) tally[r]++
   return { tally, res, ms }
 }
@@ -333,6 +338,58 @@ async function main() {
     check(!onD.ok && /57014/.test(onD.err), 'ο ΙΔΙΟΣ σύνδεσμος περιμένει όσο κρατιέται (λήξη χρόνου 57014)')
   }
 
+  // ── 3στ. Νέο κουπόνι ενώ περιμένουν ───────────────────────────────────────
+  // Ο ιδιοκτήτης αλλάζει μισθωτή: η εφαρμογή γράφει νέο κουπόνι στην ΙΔΙΑ
+  // γραμμή (lib/data/portal.ts, reissue). Η συναλλαγή του κρατά τη γραμμή·
+  // τέσσερις λάθος και ένας σωστός με το ΠΑΛΙΟ κουπόνι περιμένουν από πίσω.
+  console.log('\n▶ Νέο κουπόνι στη μέση του αγώνα: τέσσερις λάθος και ένας σωστός με το παλιό')
+  for (const db of ['mid', 'after']) {
+    for (const iso of ISO) {
+      const t = link(db), fresh = `${t}new`
+      const holder = psqlAsync(db, '')
+      holder.p.stdin.write(`begin; update portal_links set token = '${fresh}' where token = '${t}';\n`)
+      await waitFor(db, `select count(*) from pg_stat_activity where state = 'idle in transaction' and datname = '${db}'`, 1, 'αλλαγή κουπονιού')
+      const calls = [...Array.from({ length: 4 }, () => ({ kind: 'read', token: t, pin: '0000' })), { kind: 'read', token: t, pin: PIN }]
+      const workers = calls.map(({ kind, token, pin }) => ({
+        kind,
+        run: psqlAsync(db, `begin isolation level ${iso};
+set local role anon;
+select 'R|' || coalesce((${CALL[kind](token, pin)})::text, 'null');
+commit;
+`),
+      }))
+      await waitFor(db, `select count(*) from pg_stat_activity where datname = '${db}' and wait_event_type = 'Lock'`, calls.length, 'αναμονή στη γραμμή')
+      holder.p.stdin.end('commit;\n')
+      await holder.done
+      const res = await Promise.all(workers.map(async w => classify(w.kind, await w.run.done)))
+      const rows = Number(q(db, `select count(*) from portal_pin_attempts where token in ('${t}', '${fresh}')`))
+      const leaked = res.filter(r => r === 'checked' || r === 'ok').length
+      console.log(`  ${db.padEnd(7)} ${iso.padEnd(16)} ${res.join(' ')} · γραμμές ${rows}`)
+      if (db === 'after') check(leaked === 0 && rows === 0, `ΜΕΤΑ, ${iso}: το παλιό κουπόνι δεν μαθαίνει τίποτα για τον κωδικό και δεν γράφει`, `${res.join(' ')} · ${rows}`)
+      if (db === 'mid' && iso === 'read committed') check(leaked > 0, 'MID, read committed: το κενό αναπαράγεται (ο κωδικός ελέγχεται με το παλιό κουπόνι)', res.join(' '))
+    }
+  }
+
+  // ── 3ζ. Ταβάνι υποβολών ───────────────────────────────────────────────────
+  console.log('\n▶ Είκοσι δηλώσεις μαζί (ταβάνι δέκα την ώρα)')
+  console.log('  βάση    σύνδεσμος     επίπεδο          γραμμένες  δεκτές  ταβάνι  40001  άλλο')
+  for (const [label, pin] of [['χωρίς κωδικό', null], ['με κωδικό', PIN]]) {
+    for (const db of ['before', 'mid', 'after']) {
+      for (const iso of ISO) {
+        const t = link(db, { pin })
+        seed(db, t, 0)
+        const r = await race(db, iso, Array.from({ length: 20 }, () => ({ kind: 'declare', token: t, pin: pin === null ? null : PIN })))
+        const n = Number(q(db, `select count(*) from portal_pin_attempts where token = 'declare:${t}'`))
+        console.log(`  ${db.padEnd(7)} ${label.padEnd(13)} ${iso.padEnd(16)} ${String(n).padStart(9)}  ${String(r.tally.ok).padStart(6)}  ${String(r.tally.capped).padStart(6)}  ${String(r.tally.serialization).padStart(5)}  ${r.tally.other + r.tally.deadlock + r.tally.checked + r.tally.locked}`)
+        if (db === 'before' && pin === null && iso === 'read committed') check(n > 10, 'ΠΡΙΝ, χωρίς κωδικό: το ταβάνι ξεπερνιέται', String(n))
+        if (db === 'after') {
+          const exact = iso === 'read committed' ? n === 10 && r.tally.ok === 10 && r.tally.capped === 10 : n <= 10 && r.tally.ok === n
+          check(exact && r.tally.other + r.tally.deadlock === 0, `ΜΕΤΑ, ${label}, ${iso}: ${iso === 'read committed' ? 'ακριβώς δέκα' : 'όχι πάνω από δέκα'}`, `${n} / ${r.tally.ok}`)
+        }
+      }
+    }
+  }
+
   // ── 4. ΣΥΜΠΕΡΙΦΟΡΑ ΧΩΡΙΣ ΑΓΩΝΑ: ΙΔΙΑ ΠΡΙΝ ΚΑΙ ΜΕΤΑ ─────────────────────────
   console.log('\n▶ Συμπεριφορά ένας ένας (ίδια πριν και μετά)')
   const transcript = {}
@@ -423,11 +480,18 @@ async function main() {
         ('maint:${y}', now() - interval '23 hours', true)`)
     const oldBefore = Number(q('after', `select count(*) from portal_pin_attempts where attempted_at < now() - interval '1 day'`))
     const recentBefore = Number(q('after', `select count(*) from portal_pin_attempts where attempted_at >= now() - interval '1 day'`))
-    const n = Number(q('after', 'select public.prune_portal_pin_attempts(2)'))
+    // Μία δόση ανά κλήση: δύο γραμμές τη φορά, ώσπου να μη μείνει τίποτα.
+    const per = []
+    for (let i = 0; i < 20; i++) {
+      const k = Number(q('after', 'select public.prune_portal_pin_attempts(2)'))
+      per.push(k)
+      if (k === 0) break
+    }
+    const n = per.reduce((a, b) => a + b, 0)
     const oldAfter = Number(q('after', `select count(*) from portal_pin_attempts where attempted_at < now() - interval '1 day'`))
     const recentAfter = Number(q('after', `select count(*) from portal_pin_attempts where attempted_at >= now() - interval '1 day'`))
-    check(n === oldBefore && oldAfter === 0 && recentAfter === recentBefore,
-      `prune σε δόσεις των δύο: σβήνει ${n} παλιές (σύνδεσμοι που έληξαν, σβήστηκαν, μετρητές), κρατά ${recentAfter} πρόσφατες`, `${n}/${oldBefore}, ${oldAfter}, ${recentAfter}/${recentBefore}`)
+    check(per.every(k => k <= 2) && per[0] === 2 && n === oldBefore && oldAfter === 0 && recentAfter === recentBefore,
+      `prune μία δόση των δύο ανά κλήση (${per.join(', ')}): σβήνει ${n} παλιές (σύνδεσμοι που έληξαν, σβήστηκαν, μετρητές), κρατά ${recentAfter} πρόσφατες`, `${n}/${oldBefore}, ${oldAfter}, ${recentAfter}/${recentBefore}`)
 
     q('after', `insert into portal_pin_attempts(token, attempted_at, success) values ('${y}', now() - interval '2 days', false), ('gone-link', now() - interval '2 days', false)`)
     const holder = psqlAsync('after', '')
@@ -445,8 +509,8 @@ async function main() {
   // ── 7. ΤΟ ΧΡΟΝΟΜΕΤΡΟ ──────────────────────────────────────────────────────
   console.log('\n▶ Χρονόμετρο')
   {
-    const again = spawnSync(`${BIN}/psql`, [...CONN, '-d', 'after', '-v', 'ON_ERROR_STOP=1', '-q', '-f', join(MIG, NEW)], { encoding: 'utf8' })
-    check(again.status === 0 && /pg_cron δεν είναι ενεργό/.test(again.stderr), 'χωρίς pg_cron: η μετανάστευση ξανατρέχει, λέει ότι δεν προγραμματίζει και δεν γράφει εργασία')
+    const again = spawnSync('bash', ['-c', `cat ${join(MIG, FIRST)} ${join(MIG, NEW)} | ${BIN}/psql -h ${WORK} -p ${PORT} -U postgres -X -d after -v ON_ERROR_STOP=1 -q`], { encoding: 'utf8' })
+    check(again.status === 0 && (again.stderr.match(/pg_cron δεν είναι ενεργό/g) || []).length === 2, 'χωρίς pg_cron: η μετανάστευση ξανατρέχει, λέει ότι δεν προγραμματίζει και δεν γράφει εργασία')
     check(q('after', `select count(*) from cron.job where jobname = 'portal-pin-attempts-prune'`) === '0', 'χωρίς pg_cron: καμία εργασία')
     // Με pg_cron «παρόν»: μια ψεύτικη γραμμή στο pg_extension, σε αντίγραφο
     // που πετιέται. Ελέγχει το ΙΔΙΟ το μπλοκ της μετανάστευσης πάνω στη
@@ -455,12 +519,12 @@ async function main() {
     q('cronprobe', `set allow_system_table_mods = on;
       insert into pg_extension(oid, extname, extowner, extnamespace, extrelocatable, extversion)
       values (999999, 'pg_cron', 10, 'cron'::regnamespace, false, '1.6')`)
-    for (let i = 0; i < 2; i++) {
-      const r = spawnSync(`${BIN}/psql`, [...CONN, '-d', 'cronprobe', '-v', 'ON_ERROR_STOP=1', '-q', '-f', join(MIG, NEW)], { encoding: 'utf8' })
+    for (const f of [FIRST, NEW, FIRST, NEW]) {
+      const r = spawnSync(`${BIN}/psql`, [...CONN, '-d', 'cronprobe', '-v', 'ON_ERROR_STOP=1', '-q', '-f', join(MIG, f)], { encoding: 'utf8' })
       if (r.status !== 0) { check(false, 'cronprobe: η μετανάστευση τρέχει', r.stderr); break }
     }
     const job = q('cronprobe', `select count(*), min(schedule), min(command) from cron.job where jobname = 'portal-pin-attempts-prune'`)
-    check(job === '1|17 * * * *|select public.prune_portal_pin_attempts()', 'με pg_cron (σκαλωσιά): μία εργασία ωριαία στο 17ο λεπτό, ακόμη και μετά από δεύτερη εκτέλεση', job)
+    check(job === '1|7,17,27,37,47,57 * * * *|select public.prune_portal_pin_attempts()', 'με pg_cron (σκαλωσιά): μία εργασία κάθε δέκα λεπτά, ακόμη και μετά από δεύτερη εκτέλεση των δύο', job)
     const cmd = qTry('cronprobe', 'select public.prune_portal_pin_attempts()')
     check(cmd.ok, 'η εντολή της εργασίας τρέχει ως postgres', cmd.err)
     q('postgres', 'drop database cronprobe')
@@ -474,6 +538,7 @@ async function main() {
   for (const db of ['before', 'after']) {
     for (let i = 1; i <= 4; i++) link(db, { token: `dl${i}` })
     for (let i = 1; i <= 64; i++) link(db, { token: `lat${i}` })
+    for (let i = 1; i <= 64; i++) link(db, { token: `np${i}`, pin: null })
   }
   const fPrune = file('prune.sql', `begin;
 insert into portal_pin_attempts(token, attempted_at, success) select 'dl' || (1 + g % 4), now() - interval '2 days', false from generate_series(1, 20) g;
@@ -505,6 +570,8 @@ select public.get_portal_data('dl' || :t, '${PIN}');
       lat: num(/latency average = ([\d.]+) ms/),
       tps: num(/tps = ([\d.]+)/),
       err: r.stderr.split('\n').filter(l => /ERROR|aborted/.test(l)).slice(0, 2).join(' | '),
+      // Καθυστέρηση ανά σενάριο, όταν τρέχουν πολλά μαζί.
+      perScript: r.stdout.split(/^SQL script \d+: /m).slice(1).map(b => Number((/latency average = ([\d.]+) ms/.exec(b) || [, 'NaN'])[1])),
     }
   }
 
@@ -544,6 +611,34 @@ commit;
     ['σωστός κωδικός, 64 σύνδεσμοι', fLatRight, 1], ['σωστός κωδικός, 64 σύνδεσμοι', fLatRight, 8], ['λάθος κωδικός, ΕΝΑΣ σύνδεσμος', fLatOne, 8]]) {
     const b = bench('before', [f], { clients: c }), a = bench('after', [f], { clients: c })
     console.log(`  ${label.padEnd(36)} ${String(c).padStart(7)}  ${`${b.lat} (${Math.round(b.tps)})`.padEnd(17)}  ${a.lat} (${Math.round(a.tps)})${a.err || b.err ? `  ${a.err || b.err}` : ''}`)
+  }
+
+  console.log(`\n▶ Υποβολές σε συνδέσμους χωρίς κωδικό (pgbench ${T} s, read committed)`)
+  const fNpDeclare = file('np-declare.sql', `\\set t random(1, 64)
+begin;
+delete from portal_pin_attempts where token = 'declare:np' || :t;
+select public.declare_rent_payment('np' || :t, '${PAY}', 'x', null);
+commit;
+`)
+  const fNpRead = file('np-read.sql', `select public.get_portal_data('np1', null);
+`)
+  const fNpDeclareOne = file('np-declare-one.sql', `begin;
+delete from portal_pin_attempts where token = 'declare:np1';
+select public.declare_rent_payment('np1', '${PAY}', 'x', null);
+commit;
+`)
+  console.log('  σενάριο                               πελάτες  before ms (tps)    after ms (tps)')
+  for (const [label, f, c] of [['δήλωση, 64 σύνδεσμοι', fNpDeclare, 1], ['δήλωση, 64 σύνδεσμοι', fNpDeclare, 8],
+    ['δήλωση, ΕΝΑΣ σύνδεσμος', fNpDeclareOne, 8], ['ανάγνωση, ΕΝΑΣ σύνδεσμος', fNpRead, 8]]) {
+    const b = bench('before', [f], { clients: c }), a = bench('after', [f], { clients: c })
+    console.log(`  ${label.padEnd(36)} ${String(c).padStart(7)}  ${`${b.lat} (${Math.round(b.tps)})`.padEnd(17)}  ${a.lat} (${Math.round(a.tps)})${a.err || b.err ? `  ${a.err || b.err}` : ''}`)
+  }
+  {
+    // Αναγνώσεις και δηλώσεις στον ΙΔΙΟ σύνδεσμο: η ανάγνωση δεν περιμένει.
+    const b = bench('before', [`${fNpRead}@5`, `${fNpDeclareOne}@1`], { clients: 8 })
+    const a = bench('after', [`${fNpRead}@5`, `${fNpDeclareOne}@1`], { clients: 8 })
+    console.log(`  ίδιος σύνδεσμος, 5 αναγνώσεις : 1 δήλωση, 8 πελάτες: ανάγνωση ${b.perScript[0]} → ${a.perScript[0]} ms, δήλωση ${b.perScript[1]} → ${a.perScript[1]} ms, 40P01 ${a.deadlocks}`)
+    check(a.deadlocks === 0 && !a.aborted && a.tx > 0, 'ΜΕΤΑ: αναγνώσεις και δηλώσεις στον ίδιο σύνδεσμο χωρίς αδιέξοδο ή διακοπή', a.err)
   }
   await sleep(1200)
   const st = q('after', `select n_tup_upd, n_tup_hot_upd, n_dead_tup from pg_stat_user_tables where relname = 'portal_links'`)
