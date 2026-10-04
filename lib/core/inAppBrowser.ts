@@ -26,6 +26,8 @@ export interface InAppBrowser {
    * εκεί μένει μόνο η οδηγία με τις τρεις τελείες.
    */
   safari: boolean;
+  /** iPhone ή iPad: η οδηγία με τις τρεις τελείες μιλά για Safari μόνο εδώ. */
+  ios: boolean;
 }
 
 /** Η κύρια έκδοση του iOS από το «iPhone OS 18_0» ή το «CPU OS 17_5» του iPad. */
@@ -53,10 +55,11 @@ const APPS: [RegExp, string][] = [
 export function inAppBrowser(ua: string | null | undefined): InAppBrowser | null {
   if (!ua) return null;
   const android = /Android/i.test(ua);
-  const safari = !android && (iosMajor(ua) ?? 0) >= 17;
-  for (const [re, app] of APPS) if (re.test(ua)) return { app, where: `το ${app}`, android, safari };
+  const ios = !android && /iPhone|iPad|iPod/.test(ua);
+  const safari = ios && (iosMajor(ua) ?? 0) >= 17;
+  for (const [re, app] of APPS) if (re.test(ua)) return { app, where: `το ${app}`, android, safari, ios };
   // Γενικό webview του Android: το σημάδι «; wv)» το βάζει το ίδιο το σύστημα.
-  if (android && /;\s*wv\)/.test(ua)) return { app: null, where: 'την εφαρμογή', android, safari: false };
+  if (android && /;\s*wv\)/.test(ua)) return { app: null, where: 'την εφαρμογή', android, safari: false, ios: false };
   return null;
 }
 

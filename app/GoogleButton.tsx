@@ -69,12 +69,21 @@ export default function GoogleButton({ onClick, funnel = false }: { onClick: () 
           Άνοιγμα στον Chrome
         </Btn>
       ) : iab.safari ? (
-        <Btn variant="secondary" field href={safariLink(window.location.href)}>
-          Άνοιγμα στο Safari
-        </Btn>
+        <>
+          <Btn variant="secondary" field href={safariLink(window.location.href)}>
+            Άνοιγμα στο Safari
+          </Btn>
+          {/* Κάθε εφαρμογή αποφασίζει μόνη της αν θα περάσει τον σύνδεσμο στο
+              σύστημα. Αν τον κρατήσει, μένει ο δρόμος με το χέρι. */}
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--text-tertiary)' }}>
+            Αν δεν ανοίξει, πάτα τις τρεις τελείες πάνω δεξιά και διάλεξε το άνοιγμα στο Safari.
+          </p>
+        </>
       ) : (
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--text-tertiary)' }}>
-          Πάτα τις τρεις τελείες πάνω δεξιά και διάλεξε το άνοιγμα στο Safari.
+          {iab.ios
+            ? 'Πάτα τις τρεις τελείες πάνω δεξιά και διάλεξε το άνοιγμα στο Safari.'
+            : 'Άνοιξε το μενού της εφαρμογής και διάλεξε το άνοιγμα στον περιηγητή.'}
         </p>
       )}
     </div>
