@@ -9,7 +9,7 @@ import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
 import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import PasswordEye from '../PasswordEye'
-import GoogleButton from '../GoogleButton'
+import GoogleButton, { useEmailFirst } from '../GoogleButton'
 import { BackLink } from '../BackLink'
 import { failed } from '@/lib/core/dbError';
 import { IDENTITY } from '@/lib/legal/identity';
@@ -35,9 +35,22 @@ const failedConfirm = () => {
   catch { return false }
 }
 
+function OrDivider() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+      <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>ή</span>
+      <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+    </div>
+  )
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
+  // Μέσα σε Instagram, Facebook ή TikTok χωρίς κουμπί προς Safari ή Chrome η
+  // φόρμα του email έρχεται πρώτη και η σημείωση για τη Google από κάτω.
+  const emailFirst = useEmailFirst()
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -277,17 +290,12 @@ export default function LoginPage() {
           {/* Ο πάροχος ταυτότητας ΞΕΚΙΝΑΕΙ σύνδεση. Στο δεύτερο βήμα η σύνδεση
               έχει ήδη ξεκινήσει: ένα κουμπί που την ξαναρχίζει θα ήταν δρόμος
               γύρω από την πρόκληση, όχι επιλογή. */}
-          {!factorId && (<>
+          {!factorId && !emailFirst && (<>
           {/* `field` γιατί ο πάροχος κρατά όλο το πλάτος της στήλης, όπως πριν.
               Το `.auth-hov` έφυγε μαζί με το στυλ: την αιώρηση τη δίνει πλέον το
               `.po-btn[data-variant=secondary]`, που ξέρει και εστίαση με πληκτρολόγιο. */}
           <GoogleButton onClick={signInWithGoogle} />
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
-            <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>ή</span>
-            <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-          </div>
+          <OrDivider />
           </>)}
 
           <form onSubmit={factorId ? verifySecondStep : handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -359,6 +367,11 @@ export default function LoginPage() {
                 : (loading ? 'Σύνδεση…' : 'Σύνδεση')}
             </Btn>
           </form>
+
+          {!factorId && emailFirst && (<>
+            <OrDivider />
+            <GoogleButton onClick={signInWithGoogle} />
+          </>)}
 
           {/* ── Ο ΔΡΟΜΟΣ ΓΙΑ ΟΠΟΙΟΝ ΕΧΑΣΕ ΤΟ ΤΗΛΕΦΩΝΟ ΤΟΥ ────────────────────
               ΧΩΡΙΣ ΑΥΤΟ, Η ΟΘΟΝΗ ΕΙΝΑΙ ΑΔΙΕΞΟΔΟ: η συνεδρία «aal1» ζει, ο

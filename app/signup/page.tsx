@@ -7,7 +7,7 @@ import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
 import AuthAside, { AuthMobileBrand } from '../AuthAside'
 import PasswordEye from '../PasswordEye'
-import GoogleButton from '../GoogleButton'
+import GoogleButton, { useEmailFirst } from '../GoogleButton'
 import { countSignupStep } from '@/lib/analytics/signupFunnel'
 import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
@@ -102,11 +102,24 @@ async function newsOffNow(supabase: Awaited<ReturnType<typeof authClient>>, user
   return error
 }
 
+function OrDivider() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+      <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>ή</span>
+      <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+    </div>
+  )
+}
+
 export default function SignupPage() {
   // Από το billingWords, στον διακομιστή (layout.tsx): `null` όσο το ταμείο χρεώνει.
   const planTerms = usePlanTerms()
   const trialBadge = useTrialBadge()
   const [fullName, setFullName] = useState('')
+  // Μέσα σε Instagram, Facebook ή TikTok χωρίς κουμπί προς Safari ή Chrome η
+  // φόρμα του email έρχεται πρώτη και η σημείωση για τη Google από κάτω.
+  const emailFirst = useEmailFirst()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -755,12 +768,10 @@ export default function SignupPage() {
               )}
 
               {/* Η αιώρηση ερχόταν από την `.auth-hov`· τώρα τη δίνει το `.po-btn`. */}
-              <GoogleButton onClick={signInWithGoogle} funnel />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
-                <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>ή</span>
-                <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-              </div>
+              {!emailFirst && <>
+                <GoogleButton onClick={signInWithGoogle} funnel />
+                <OrDivider />
+              </>}
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
@@ -891,6 +902,10 @@ export default function SignupPage() {
                   {loading ? 'Δημιουργία…' : 'Ξεκίνα τη δοκιμή'}
                 </Btn>
               </form>
+              {emailFirst && <>
+                <OrDivider />
+                <GoogleButton onClick={signInWithGoogle} funnel />
+              </>}
             </>
           )}
         </div>
