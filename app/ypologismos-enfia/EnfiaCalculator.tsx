@@ -38,8 +38,7 @@ import { Btn } from '@/components/Theme';
 import LiveResult from '@/components/LiveResult';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
-/** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
-const SPEC = { tm: '85', zoni: '1400', orofos: 'second', palaiotita: 'y26_plus', pososto: '100', voith: '' } as const;
+import { SPEC } from './spec';
 const PATH = '/ypologismos-enfia';
 
 // Οι ετικέτες αντλούνται από τα ΚΛΕΙΔΙΑ του lib, ώστε αν προστεθεί συντελεστής

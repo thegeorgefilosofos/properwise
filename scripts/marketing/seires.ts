@@ -34,14 +34,19 @@ import { athensToday } from '../../lib/core/time';
 import { compareShortVsLong, netByOccupancy, type ShortVsLongInput } from '../../lib/tools/shortVsLong';
 import { SPEC as SVL } from '../../app/vraxyxronia-i-makroxronia/spec';
 import { SPEC as RENT } from '../../app/ypologismos-forou-enoikion/spec';
+import { SPEC as ENFIA } from '../../app/ypologismos-enfia/spec';
+import { ENFIA_FLOOR_LABEL } from '../../lib/billing/enfiaFloors';
+import { ico } from './igKit';
 import {
   rentalIncomeTax, RENTAL_TAX_BRACKETS_2025, RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS,
   FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, isHighSeasonMonth, type TaxBracket,
 } from '../../lib/billing/greekTax';
 import { presumptiveDeductionRateForYear } from '../../lib/billing/presumptive';
-import { ENFIA_ZONE_TAX } from '../../lib/billing/enfia';
+import { ENFIA_AGE_BANDS, ENFIA_ZONE_TAX } from '../../lib/billing/enfia';
 import { greekPropertyTaxObligations } from '../../lib/tax/greekTaxCalendar';
 import { RENO_39B_TO } from '../../lib/accounting/renovation39b';
+import { ASSISTANT_ACC, ASSISTANT_INITIAL, ASSISTANT_NAME } from '../../lib/assistant/identity';
+import { billingWords } from '../../lib/legal/billingWords';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
@@ -50,6 +55,16 @@ const { chromePath } = require('../lib/chrome.mjs');
 const ROOT = process.cwd();
 const OUT = join(ROOT, 'docs/marketing/instagram/seires');
 const SITE = 'https://properwise.gr';
+
+// ── Ο ΣΤΟΧΟΣ ΕΙΝΑΙ ΤΟ ΚΛΙΚ ───────────────────────────────────────────────
+// Κάθε επεισόδιο στέλνει σε υπολογιστή ή οδηγό (επίσκεψη) και κλείνει με τη
+// Νόα και την εγγραφή. Οι σύνδεσμοι κουβαλούν utm, ώστε η επίσκεψη και η
+// εγγραφή να γράφονται στο Instagram (lib/analytics/signupFunnel.ts) και να
+// φαίνεται ποιο επεισόδιο τις έφερε.
+const utm = (path: string, campaign: string, medium: 'story' | 'carousel' = 'story') =>
+  `${SITE}${path}?utm_source=instagram&utm_medium=${medium}&utm_campaign=${campaign}`;
+/** Η δοκιμή, με τα λόγια του billingWords: η Νόα δεν είναι στο δωρεάν πακέτο. */
+const TRIAL = billingWords().trialBadge;
 
 // ── ΠΟΤΕ ΒΓΑΙΝΕΙ ΚΑΘΕ ΣΕΙΡΑ ─────────────────────────────────────────────
 // Η πρώτη Τετάρτη από σήμερα ανοίγει τις σειρές. Η Παρασκευή και η Δευτέρα
@@ -110,7 +125,7 @@ const WF_CSS = (s: Palette) => `
   .wl b{font-weight:700;font-size:calc(var(--body) + 2px)}
   .wr.net .wl{color:${s.ink};font-weight:700}
   .wr.net .wl b{font-size:calc(var(--body) + 16px);font-weight:800}
-  .wt{position:relative;height:22px;border-radius:8px;background:${s.light ? s.ground2 : '#ffffff0a'}}
+  .wt{position:relative;height:22px;border-radius:8px;background:#ffffff0a}
   .wt i{position:absolute;top:0;bottom:0;border-radius:8px}
   .wr.net .wt{height:30px}`;
 
@@ -129,6 +144,20 @@ function enfiaRun(after: string) {
 /** Η κάρτα «Επόμενο επεισόδιο»: αυτό που φέρνει τον θεατή πίσω. */
 const nextCard = (s: Palette, day: string, title: string) => `
   <div class="next card"><small class="mono">ΕΠΟΜΕΝΟ ΕΠΕΙΣΟΔΙΟ · ${esc(day.toLocaleUpperCase('el').normalize('NFD').replace(/[́]/g, '').normalize('NFC'))}</small><b>${esc(title)}</b></div>`;
+/**
+ * Ο&nbsp;υπολογιστής όπως ανοίγει: τα πεδία με τις προεπιλογές του (spec.ts) και,
+ * όπου το επεισόδιο τον έχει ήδη δείξει, το αποτέλεσμα. Στο κλικ ο θεατής
+ * βλέπει ακριβώς αυτή την οθόνη και αλλάζει τα δικά του.
+ */
+function calcCard(s: Palette, path: string, fields: [string, string][], result: [string, string] | null): string {
+  return `<div class="calc card">
+    <div class="cc-top"><span class="mono">properwise.gr${esc(path)}</span><span class="ex">ΧΩΡΙΣ ΕΓΓΡΑΦΗ</span></div>
+    <div class="cc-grid">${fields.map(([l, v]) => `<div class="cc-f"><small>${esc(l)}</small><b class="num">${esc(v)}</b></div>`).join('')}</div>
+    ${result
+      ? `<div class="cc-res"><span>${esc(result[0])}</span><b class="num">${esc(result[1])}</b></div>`
+      : `<div class="cc-res"><span>Το αποτέλεσμα</span><b class="go">στον υπολογιστή ${ico.arrow(s.accent, 30)}</b></div>`}
+  </div>`;
+}
 const ACTION_CSS = (s: Palette) => `
   .act h2{font-size:var(--h2)}
   .send{display:flex;align-items:center;gap:22px;padding:28px 32px;border-radius:30px;background:${s.accent};color:${s.onAccent};font-size:calc(var(--body) + 4px);font-weight:750;letter-spacing:-.01em;line-height:1.25}
@@ -137,7 +166,50 @@ const ACTION_CSS = (s: Palette) => `
   .next small{font-size:19px;color:${s.faint};letter-spacing:.14em}
   .next b{font-size:calc(var(--body) + 6px);font-weight:750;letter-spacing:-.015em;line-height:1.2}
   .linkline{display:flex;align-items:center;gap:14px;font-size:var(--body);color:${s.muted}}
-  .linkline b{color:${s.ink}}`;
+  .linkline b{color:${s.ink}}
+  .calc{padding:24px 28px 26px;margin-top:40px}
+  .cc-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;margin-bottom:18px;border-bottom:1.5px solid ${s.rule}}
+  .cc-top .mono{font-size:19px;color:${s.muted};letter-spacing:.02em}
+  .cc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .cc-f{padding:14px 18px;border-radius:18px;background:#0a111d;border:1.5px solid ${s.rule}}
+  .cc-f small{display:block;font-size:19px;color:${s.faint}}
+  .cc-f b{display:block;font-size:31px;font-weight:750;margin-top:4px}
+  .cc-res{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:20px 22px;border-radius:20px;background:${s.accent}1a;border:1.5px solid ${s.accent}55}
+  .cc-res span{font-size:var(--body);color:${s.muted}}
+  .cc-res b{font-size:44px;font-weight:850;color:${s.accent};letter-spacing:-.03em}
+  .cc-res b.go{display:flex;align-items:center;gap:10px;font-size:30px;font-weight:750;letter-spacing:-.01em}
+  .chat{padding:26px 30px 30px;display:flex;flex-direction:column;gap:16px}
+  .ch-top{display:flex;align-items:center;gap:16px;padding-bottom:16px;border-bottom:1.5px solid ${s.rule}}
+  .ch-top b{display:block;font-size:28px;font-weight:750}
+  .ch-top small{display:block;font-size:21px;color:${s.faint};margin-top:2px}
+  .ch-top .ex{margin-left:auto}
+  .ask{align-self:flex-end;max-width:86%;padding:18px 24px;border-radius:26px 26px 8px 26px;background:${s.accent};color:${s.onAccent};font-size:calc(var(--body) + 2px);font-weight:650;line-height:1.3}
+  .ans{align-self:flex-start;max-width:94%;padding:20px 24px;border-radius:26px 26px 26px 8px;background:#0a111d;border:1.5px solid ${s.rule};font-size:var(--body);line-height:1.42;color:${s.ink}}
+  .trial{margin-top:30px;font-size:calc(var(--body) + 2px);color:${s.muted}}
+  .trial b{color:${s.accent};font-weight:800}`;
+
+// ═══ Η ΝΟΑ, ΣΕ ΚΑΘΕ ΕΠΕΙΣΟΔΙΟ ═══════════════════════════════════════════
+// Το τελευταίο καρέ: η ίδια ερώτηση του επεισοδίου, όπως θα την έκανε κάποιος
+// για το δικό του ακίνητο και η απάντηση με τα ίδια νούμερα. Από κάτω η
+// δοκιμή και το επόμενο επεισόδιο. Η Νόα δεν έχει φύλο και δεν λέγεται
+// «βοηθός» (lib/assistant/identity.ts)· μιλά σε πρώτο πρόσωπο χωρίς επίθετα.
+function noaSlide(s: Palette, campaign: string, q: string, a: string, next: { day: string; title: string }): Slide {
+  return {
+    alt: `${ASSISTANT_NAME}: ερώτηση «${q}» και απάντηση με τα νούμερα του επεισοδίου. Κάτω, πρόσκληση για δοκιμή και το επόμενο επεισόδιο: ${next.title}.`,
+    sticker: `Σύνδεσμος προς ${utm('/signup', campaign)} · κείμενο «Ρώτα ${ASSISTANT_ACC}»`,
+    body: f => `<div class="act" style="display:flex;flex-direction:column;flex:1">
+      <h2 style="margin-top:${f === 'story' ? 70 : 60}px">Για το δικό σου,<br><span class="acc">ρώτα ${esc(ASSISTANT_ACC)}.</span></h2>
+      <div class="chat card" style="margin-top:${f === 'story' ? 44 : 36}px">
+        <div class="ch-top"><span class="noa-av" style="width:58px;height:58px;font-size:30px">${esc(ASSISTANT_INITIAL)}</span><div><b>${esc(ASSISTANT_NAME)}</b><small>Για τα ακίνητά σου</small></div><span class="ex">ΠΑΡΑΔΕΙΓΜΑ</span></div>
+        <div class="ask">${esc(q)}</div>
+        <div class="ans">${esc(a)}</div>
+      </div>
+      <div class="trial"><b>${esc(TRIAL)}</b>, στο properwise.gr.</div>
+      ${f === 'story' ? slot(f, 130, 'LINK') : ''}
+      <div style="margin-top:auto">${nextCard(s, next.day, next.title)}</div>
+    </div>`,
+  };
+}
 
 // ═══ ΒΡΑΧΥΧΡΟΝΙΑ · Ε01 · ΒΡΑΧΥΧΡΟΝΙΑ Η ΜΑΚΡΟΧΡΟΝΙΑ; ════════════════════════
 // Η γωνία: η απάντηση δεν είναι «η βραχυχρόνια βγάζει περισσότερα». Είναι ότι
@@ -150,6 +222,7 @@ const svlInput: ShortVsLongInput = {
 };
 function vraxy01(): Episode {
   const s = SERIES.vraxy;
+  const camp = 'vraxy-e01';
   const r = compareShortVsLong(svlInput);
   if (r.breakEvenPct == null || r.breakEvenNights == null) throw new Error('Η σύγκριση δεν έχει σημείο ισορροπίας.');
   const bePct = Math.floor(r.breakEvenPct);
@@ -180,8 +253,8 @@ function vraxy01(): Episode {
       <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.accent}" stop-opacity=".32"/><stop offset="1" stop-color="${s.accent}" stop-opacity="0"/></linearGradient></defs>
       ${[0.25, 0.5, 0.75].map(t => `<line x1="0" x2="${W}" y1="${(padT + t * (Hh - padB - padT)).toFixed(1)}" y2="${(padT + t * (Hh - padB - padT)).toFixed(1)}" stroke="${s.rule}" stroke-width="1.5"/>`).join('')}
       <path d="${area}" fill="url(#g)"/>
-      <line x1="0" x2="${W}" y1="${by.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${s.accent2}" stroke-width="4" stroke-dasharray="14 10"/>
-      <text x="${W}" y="${(by - 16).toFixed(1)}" text-anchor="end" fill="${s.accent2}" font-family="Inter" font-size="24" font-weight="700">Μακροχρόνια ${esc(feWhole(r.long.net))}</text>
+      <line x1="0" x2="${W}" y1="${by.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${s.ok}" stroke-width="4" stroke-dasharray="14 10"/>
+      <text x="${W}" y="${(by - 16).toFixed(1)}" text-anchor="end" fill="${s.ok}" font-family="Inter" font-size="24" font-weight="700">Μακροχρόνια ${esc(feWhole(r.long.net))}</text>
       <path d="${path}" fill="none" stroke="${s.accent}" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
       ${curve.map(c => `<circle cx="${xs(c.pct).toFixed(1)}" cy="${ys(c.net).toFixed(1)}" r="7" fill="${s.ground}" stroke="${s.accent}" stroke-width="4"/>`).join('')}
       <line x1="${bx.toFixed(1)}" x2="${bx.toFixed(1)}" y1="${by.toFixed(1)}" y2="${ys(0).toFixed(1)}" stroke="${s.ink}" stroke-opacity=".5" stroke-width="2"/>
@@ -208,7 +281,7 @@ function vraxy01(): Episode {
     {
       alt: `Μακροχρόνια: ενοίκια ${feWhole(r.long.gross)} τον χρόνο, φόρος ${feWhole(r.long.tax)}, καθαρά ${feWhole(r.long.net)}.`,
       body: f => `
-        <h2 style="font-size:var(--h2);margin-top:${f === 'story' ? 80 : 70}px">Μακροχρόνια:<br><span class="acc2 num">${esc(feWhole(r.long.net))}</span> καθαρά.</h2>
+        <h2 style="font-size:var(--h2);margin-top:${f === 'story' ? 80 : 70}px">Μακροχρόνια:<br><span class="ok num">${esc(feWhole(r.long.net))}</span> καθαρά.</h2>
         <p class="lead" style="margin-top:32px">Ένας ενοικιαστής, ${esc(feWhole(svlInput.monthlyRent))} τον μήνα, δώδεκα μήνες. Αφαιρείς μόνο τον φόρο.</p>
         <div class="card box" style="margin-top:auto">
           <div class="bx-h"><b>Η χρονιά σε αριθμούς</b><span class="ex">ΠΑΡΑΔΕΙΓΜΑ</span></div>
@@ -225,7 +298,7 @@ function vraxy01(): Episode {
       body: f => `
         <h2 style="font-size:var(--h2);margin-top:${f === 'story' ? 80 : 70}px">Βραχυχρόνια:<br><span class="acc num">${esc(feWhole(r.short.net))}</span> καθαρά.</h2>
         <p class="lead" style="margin-top:32px">${r.short.nights} βράδια, πληρότητα ${svlInput.occupancyPct}%. Τα έσοδα ${grossWord}, αλλά τα μισά φεύγουν σε τρία σημεία.</p>
-        ${slot(f, 160, 'POLL')}
+        ${slot(f, 140, 'POLL')}
         <div class="card box" style="margin-top:auto">
           <div class="bx-h"><b>Η χρονιά σε αριθμούς</b><span class="ex">ΠΑΡΑΔΕΙΓΜΑ</span></div>
           ${waterfall(s, [
@@ -252,16 +325,22 @@ function vraxy01(): Episode {
     },
     {
       alt: `Τελευταίο καρέ: «Βάλε τα δικά σου νούμερα» στον δωρεάν υπολογιστή, πρόσκληση να σταλεί σε όποιον σκέφτεται βραχυχρόνια και το επόμενο επεισόδιο: ΤΑΚΚ, τι αλλάζει την 1η Νοεμβρίου.`,
-      sticker: `Σύνδεσμος προς ${link.url} · κείμενο «Κάνε τον λογαριασμό»`,
+      sticker: `Σύνδεσμος προς ${utm(link.url.slice(SITE.length), camp)} · κείμενο «Κάνε τον λογαριασμό»`,
       body: f => `<div class="act" style="display:flex;flex-direction:column;flex:1">
         <h2 style="margin-top:${f === 'story' ? 80 : 70}px">Βάλε τα<br><span class="acc">δικά σου νούμερα.</span></h2>
-        <p class="lead" style="margin-top:32px">Τιμή, πληρότητα, προμήθεια. Ο υπολογιστής δείχνει ποια σου αφήνει περισσότερα. Χωρίς εγγραφή.</p>
-        ${f === 'story' ? slot(f, 150, 'LINK') : `<div class="linkline" style="margin-top:40px">${ICON.link(s.accent, 34)}<span><b>properwise.gr</b>/vraxyxronia-i-makroxronia</span></div>`}
+        <p class="lead" style="margin-top:28px">Άλλαξε τιμή, πληρότητα, προμήθεια. Ο&nbsp;υπολογιστής δείχνει ποια σου αφήνει περισσότερα.</p>
+        ${calcCard(s, '/vraxyxronia-i-makroxronia', [
+          ['Ενοίκιο τον μήνα', feWhole(svlInput.monthlyRent)], ['Τιμή το βράδυ', feWhole(svlInput.nightlyPrice)],
+          ['Πληρότητα', `${svlInput.occupancyPct}%`], ['Προμήθεια', `${svlInput.platformFeePct}%`],
+        ], ['Η βραχυχρόνια αφήνει', `+${feWhole(r.difference)}`])}
+        ${slot(f, 130, 'LINK')}
         <div style="margin-top:auto;display:flex;flex-direction:column;gap:18px">
           <div class="send">${ICON.send(s.onAccent, 40)}<span>Στείλ' το σε όποιον σκέφτεται να το δώσει σε Airbnb.</span></div>
-          ${nextCard(s, SERIES.vraxy.day, 'Ε02 · ΤΑΚΚ: τι αλλάζει την 1η Νοεμβρίου')}
         </div></div>`,
     },
+    noaSlide(s, camp, 'Μου συμφέρει να το δώσω σε Airbnb;',
+      `Με ${feWhole(svlInput.nightlyPrice)} το βράδυ και πληρότητα ${svlInput.occupancyPct}%, σου μένουν ${feWhole(r.short.net)} τον χρόνο: ${feWhole(r.difference)} περισσότερα από τη μακροχρόνια. Κάτω από ${bePct}% συμφέρει η μακροχρόνια.`,
+      { day: s.day, title: 'Ε02 · ΤΑΚΚ: τι αλλάζει την 1η Νοεμβρίου' }),
   ];
   return {
     series: 'vraxy', no: 1, title: 'Βραχυχρόνια ή μακροχρόνια;', link, slides,
@@ -273,6 +352,10 @@ function vraxy01(): Episode {
       `Κάτω από ${bePct}% πληρότητα (${r.breakEvenNights} βράδια) κερδίζει η μακροχρόνια. Και ο χρόνος που θέλει η βραχυχρόνια δεν μπαίνει στον λογαριασμό.`,
       '',
       'Βάλε τα δικά σου νούμερα στον δωρεάν υπολογιστή, στο properwise.gr, χωρίς εγγραφή. Στείλ\' το σε όποιον σκέφτεται να δώσει το σπίτι σε Airbnb.',
+      '',
+      'Γράψε «ΥΠΟΛΟΓΙΣΤΗΣ» στα σχόλια και σου στέλνουμε τον σύνδεσμο σε μήνυμα. Είναι και στο βιογραφικό.',
+      '',
+      `Για το δικό σου ακίνητο, ρώτα ${ASSISTANT_ACC} μέσα στην εφαρμογή. Τη δοκιμάζεις από το properwise.gr.`,
       '',
       '#βραχυχρόνιαμίσθωση #airbnbgreece #ακίνητα #ενοίκιο #ιδιοκτήτες',
     ].join('\n'),
@@ -299,6 +382,7 @@ const VRAXY_CSS = (s: Palette) => `
 // μου είναι τόσος»: ο φόρος ανά τ.μ. ανά ζώνη, από τον πίνακα του νόμου.
 function foroi01(): Episode {
   const s = SERIES.foroi;
+  const camp = 'foroi-e01';
   const { year, run, next } = enfiaRun(PUBLISH.foroi);
   const due = run[next];
   const law = due.notes.match(/ν\. \d+\/\d{4}, άρθρο \d+/)?.[0];
@@ -356,16 +440,22 @@ function foroi01(): Episode {
     },
     {
       alt: 'Τελευταίο καρέ: «Υπολόγισε τον δικό σου ΕΝΦΙΑ» στον δωρεάν υπολογιστή, πρόσκληση να σταλεί σε όποιον πληρώνει σε δόσεις και το επόμενο επεισόδιο: η έκπτωση φόρου ανακαίνισης.',
-      sticker: `Σύνδεσμος προς ${link.url} · κείμενο «Υπολόγισε τον ΕΝΦΙΑ»`,
+      sticker: `Σύνδεσμος προς ${utm(link.url.slice(SITE.length), camp)} · κείμενο «Υπολόγισε τον ΕΝΦΙΑ»`,
       body: f => `<div class="act" style="display:flex;flex-direction:column;flex:1">
         <h2 style="margin-top:${f === 'story' ? 80 : 70}px">Πόσος είναι<br><span class="acc">ο δικός σου;</span></h2>
-        <p class="lead" style="margin-top:32px">Τετραγωνικά, ζώνη, όροφος, παλαιότητα. Ο υπολογιστής βγάζει τον ΕΝΦΙΑ με τις μειώσεις του νόμου. Χωρίς εγγραφή.</p>
-        ${f === 'story' ? slot(f, 150, 'LINK') : `<div class="linkline" style="margin-top:40px">${ICON.link(s.accent, 34)}<span><b>properwise.gr</b>/ypologismos-enfia</span></div>`}
+        <p class="lead" style="margin-top:28px">Βάλε τα στοιχεία του σπιτιού σου. Ο&nbsp;υπολογιστής βγάζει τον ΕΝΦΙΑ με τις μειώσεις του νόμου.</p>
+        ${calcCard(s, '/ypologismos-enfia', [
+          ['Τετραγωνικά', `${ENFIA.tm} τ.μ.`], ['Τιμή ζώνης', `${feWhole(Number(ENFIA.zoni))}/τ.μ.`],
+          ['Όροφος', ENFIA_FLOOR_LABEL[ENFIA.orofos]], ['Παλαιότητα', ENFIA_AGE_BANDS.find(b => b.key === ENFIA.palaiotita)!.label],
+        ], null)}
+        ${slot(f, 130, 'LINK')}
         <div style="margin-top:auto;display:flex;flex-direction:column;gap:18px">
           <div class="send">${ICON.send(s.onAccent, 40)}<span>Στείλ' το σε όποιον πληρώνει τον ΕΝΦΙΑ σε δόσεις.</span></div>
-          ${nextCard(s, SERIES.foroi.day, `Ε02 · Ανακαίνιση: η έκπτωση φόρου για δαπάνες ως ${RENO_39B_TO}`)}
         </div></div>`,
     },
+    noaSlide(s, camp, 'Πότε λήγει η επόμενη δόση του ΕΝΦΙΑ;',
+      `${weekday} ${elDate(due.date, { day: 'numeric', month: 'long' })}. Είναι η ${next + 1}η από τις ${run.length}· μετά μένουν ${run.length - next - 1}, ως τις ${elDate(run[run.length - 1].date, { day: 'numeric', month: 'long', year: 'numeric' })}.`,
+      { day: s.day, title: `Ε02 · Ανακαίνιση: η έκπτωση φόρου για δαπάνες ως ${RENO_39B_TO}` }),
   ];
   return {
     series: 'foroi', no: 1, title: `Η ${next + 1}η δόση του ΕΝΦΙΑ`, link, slides,
@@ -378,13 +468,17 @@ function foroi01(): Episode {
       '',
       'Υπολόγισε τον δικό σου στο properwise.gr, χωρίς εγγραφή. Αποθήκευσε το ημερολόγιο για τις επόμενες δόσεις.',
       '',
+      'Γράψε «ΥΠΟΛΟΓΙΣΤΗΣ» στα σχόλια και σου στέλνουμε τον σύνδεσμο σε μήνυμα. Είναι και στο βιογραφικό.',
+      '',
+      `Για το δικό σου ακίνητο, ρώτα ${ASSISTANT_ACC} μέσα στην εφαρμογή. Τη δοκιμάζεις από το properwise.gr.`,
+      '',
       '#ΕΝΦΙΑ #ακίνητα #φόροι #ιδιοκτήτες #ΑΑΔΕ',
     ].join('\n'),
   };
 }
 const FOROI_CSS = (s: Palette) => `
-  .stampbox{align-self:flex-start;display:flex;flex-direction:column;align-items:center;padding:30px 54px 34px;border:7px solid ${s.accent};border-radius:28px;
-    color:${s.accent};transform:rotate(-4deg);background:${s.accent}0d}
+  .stampbox{align-self:flex-start;display:flex;flex-direction:column;align-items:center;padding:30px 54px 34px;border:7px solid ${s.warm};border-radius:28px;
+    color:${s.warm};transform:rotate(-4deg);background:${s.warm}12;box-shadow:0 0 120px -20px ${s.warm}55}
   .stampbox small{font-size:30px;letter-spacing:.4em;font-weight:700;margin-left:.4em}
   .stampbox b{font-size:240px;font-weight:900;letter-spacing:-.06em;line-height:.9;margin-top:6px}
   .stampbox span{font-size:34px;font-weight:700;letter-spacing:.02em;margin-top:6px}
@@ -393,18 +487,18 @@ const FOROI_CSS = (s: Palette) => `
   .c-head b{font-size:calc(var(--body) + 2px);font-weight:800}
   .c-head span{font-size:18px;color:${s.faint};letter-spacing:.12em}
   .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  .t{display:flex;flex-direction:column;align-items:center;padding:14px 0 12px;border-radius:20px;background:${s.ground};border:1.5px solid ${s.rule}}
+  .t{display:flex;flex-direction:column;align-items:center;padding:14px 0 12px;border-radius:20px;background:#0a111d;border:1.5px solid ${s.rule}}
   .t small{font-size:18px;color:${s.faint};font-weight:600}
   .t b{font-size:30px;font-weight:800;letter-spacing:-.01em}
   .t span{font-size:22px;color:${s.muted}}
   .t.past{opacity:.4}
-  .t.now{background:${s.accent};border-color:${s.accent};color:${s.onAccent}}
+  .t.now{background:${s.warm};border-color:${s.warm};color:${s.onAccent};box-shadow:0 0 0 5px ${s.warm}33}
   .t.now small,.t.now span{color:${s.onAccent}}
   .br{display:grid;grid-template-columns:230px 1fr 112px;align-items:center;gap:18px;padding:7px 0}
   .br span{font-size:19px;color:${s.faint};letter-spacing:.02em}
-  .bt{height:20px;border-radius:6px;background:${s.ground2}}
-  .bt i{display:block;height:100%;border-radius:6px;background:${s.accent2}}
-  .br:last-child .bt i{background:${s.accent}}
+  .bt{height:20px;border-radius:6px;background:#ffffff0a}
+  .bt i{display:block;height:100%;border-radius:6px;background:${s.warm}}
+  .br:last-child .bt i{background:${s.neg}}
   .br b{text-align:right;font-size:25px;font-weight:750}
   ${ACTION_CSS(s)}`;
 
@@ -414,6 +508,7 @@ const FOROI_CSS = (s: Palette) => `
 // κερδίζει και από ποιο ενοίκιο και πάνω. Αυτό δεν το λέει η είδηση.
 function makro01(): Episode {
   const s = SERIES.makro;
+  const camp = 'makro-e01';
   const Y = FIRST_YEAR_NEW_BRACKETS;
   const ded = presumptiveDeductionRateForYear(Y, true);
   const save = (taxable: number) => rentalIncomeTax(taxable, RENTAL_TAX_BRACKETS_2025) - rentalIncomeTax(taxable, RENTAL_TAX_BRACKETS_2026);
@@ -439,7 +534,7 @@ function makro01(): Episode {
   // Δύο κλίμακες στην ίδια ευθεία: το ίδιο εισόδημα, άλλα χρώματα ανά συντελεστή.
   const scale = (f: Format) => {
     const end = lastEdge * 4 / 3;
-    const tone = (rate: number) => ({ 0.15: s.accent2 + '99', 0.25: s.accent, 0.35: s.neg + 'aa', 0.45: s.neg }[rate as 0.15] ?? s.muted);
+    const tone = (rate: number) => ({ 0.15: s.ok, 0.25: s.accent, 0.35: s.warm, 0.45: s.neg }[rate as 0.15] ?? s.muted);
     const row = (label: string, br: TaxBracket[]) => `<div class="sc"><small class="mono">${label}</small><div class="sb">${br.map(b => {
       const a = b.from / end * 100, w = (Math.min(b.to, end) - b.from) / end * 100;
       return `<i style="left:${pc(a)};width:${pc(w)};background:${tone(b.rate)}"><em>${pctR(b.rate)}</em></i>`;
@@ -490,16 +585,22 @@ function makro01(): Episode {
     },
     {
       alt: 'Τελευταίο καρέ: «Βάλε το δικό σου ενοίκιο» στον δωρεάν υπολογιστή, πρόσκληση να σταλεί σε όποιον νοικιάζει σπίτι και το επόμενο επεισόδιο: ενοίκιο μέσω τράπεζας.',
-      sticker: `Σύνδεσμος προς ${link.url} · κείμενο «Πόσος είναι ο φόρος μου;»`,
+      sticker: `Σύνδεσμος προς ${utm(link.url.slice(SITE.length), camp)} · κείμενο «Πόσος είναι ο φόρος μου;»`,
       body: f => `<div class="act" style="display:flex;flex-direction:column;flex:1">
         <h2 style="margin-top:${f === 'story' ? 80 : 70}px">Βάλε το<br><span class="acc">δικό σου ενοίκιο.</span></h2>
-        <p class="lead" style="margin-top:32px">Ποσό, μήνες, χρονιά. Ο υπολογιστής βγάζει τον φόρο με τη σωστή κλίμακα για κάθε δήλωση. Χωρίς εγγραφή.</p>
-        ${f === 'story' ? slot(f, 150, 'LINK') : `<div class="linkline" style="margin-top:40px">${ICON.link(s.accent, 34)}<span><b>properwise.gr</b>/ypologismos-forou-enoikion</span></div>`}
+        <p class="lead" style="margin-top:28px">Ο υπολογιστής βγάζει τον φόρο με τη σωστή κλίμακα για κάθε δήλωση.</p>
+        ${calcCard(s, '/ypologismos-forou-enoikion', [
+          ['Ενοίκιο τον μήνα', feWhole(m)], ['Μήνες', String(n)],
+          ['Χρονιά εισοδήματος', String(Y)], ['Μέσω τράπεζας', RENT.trapeza === '1' ? 'Ναι' : 'Όχι'],
+        ], ['Φόρος τον χρόνο', feWhole(tax26)])}
+        ${slot(f, 130, 'LINK')}
         <div style="margin-top:auto;display:flex;flex-direction:column;gap:18px">
           <div class="send">${ICON.send(s.onAccent, 40)}<span>Στείλ' το σε όποιον νοικιάζει σπίτι.</span></div>
-          ${nextCard(s, SERIES.makro.day, `Ε02 · Ενοίκιο μέσω τράπεζας: τι αλλάζει από 1/${FIRST_MONTH_BANK_RECEIPT}/${FIRST_YEAR_BANK_RECEIPT}`)}
         </div></div>`,
     },
+    noaSlide(s, camp, 'Πόσο φόρο θα πληρώσω για το ενοίκιο;',
+      `Για ${feWhole(m)} τον μήνα, ${feWhole(tax26)} τον χρόνο: το ${pct(tax26 / gross)} του ενοικίου. Η νέα κλίμακα δεν το αλλάζει, γιατί όλο το ποσό μένει στο ${pctR(rate0)}.`,
+      { day: s.day, title: `Ε02 · Ενοίκιο μέσω τράπεζας: τι αλλάζει από 1/${FIRST_MONTH_BANK_RECEIPT}/${FIRST_YEAR_BANK_RECEIPT}` }),
   ];
   return {
     series: 'makro', no: 1, title: 'Η νέα κλίμακα στα ενοίκια', link, slides,
@@ -511,6 +612,10 @@ function makro01(): Episode {
       `Με ${feWhole(m)} τον μήνα ο φόρος είναι ${feWhole(tax26)} τον χρόνο και με τις δύο κλίμακες. Κερδίζει όποιος εισπράττει πάνω από ${feWhole(fromMonthly)} τον μήνα. Η αλλαγή φαίνεται στη δήλωση του ${Y + 1}.`,
       '',
       'Βάλε το δικό σου ενοίκιο στον δωρεάν υπολογιστή, στο properwise.gr. Στείλ\' το σε όποιον νοικιάζει σπίτι.',
+      '',
+      'Γράψε «ΥΠΟΛΟΓΙΣΤΗΣ» στα σχόλια και σου στέλνουμε τον σύνδεσμο σε μήνυμα. Είναι και στο βιογραφικό.',
+      '',
+      `Για το δικό σου ακίνητο, ρώτα ${ASSISTANT_ACC} μέσα στην εφαρμογή. Τη δοκιμάζεις από το properwise.gr.`,
       '',
       '#ενοίκιο #φορολογίαενοικίων #ακίνητα #ιδιοκτήτες #φόροι',
     ].join('\n'),
@@ -527,21 +632,21 @@ const MAKRO_CSS = (s: Palette) => `
   .sc{margin-bottom:22px}
   .sc small{display:block;font-size:19px;color:${s.faint};letter-spacing:.14em;margin-bottom:10px}
   .sb{position:relative;height:70px;border-radius:14px;overflow:hidden;background:#ffffff08}
-  .sb i{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;border-right:3px solid ${s.card}}
+  .sb i{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;border-right:3px solid ${s.panel}}
   .sb em{font-style:normal;font-weight:800;font-size:26px;color:${s.onAccent}}
   .ticks{position:relative;height:28px}
   .ticks span{position:absolute;transform:translateX(-50%);font-family:'Roboto Mono',monospace;font-size:19px;color:${s.faint}}
   ${WF_CSS(s)}${ACTION_CSS(s)}`;
 
 // ═══ HIGHLIGHTS ════════════════════════════════════════════════════════
-// Ένα σύμβολο ανά σειρά, στο χρώμα της. Χωρίς λέξεις: το όνομα του Highlight
-// γράφεται από κάτω από το ίδιο το Instagram.
-const G = (c: string, d: string) => `<svg width="520" height="520" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
-const HIGHLIGHTS: { key: string; name: string; s: Palette; glyph: string }[] = [
-  { key: 'makroxronia', name: 'Μακροχρόνια', s: SERIES.makro, glyph: G(SERIES.makro.accent, '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>') },
-  { key: 'vraxyxronia', name: 'Βραχυχρόνια', s: SERIES.vraxy, glyph: G(SERIES.vraxy.accent, '<rect x="5" y="7" width="14" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M5 12h14"/>') },
-  { key: 'foroi', name: 'Φόροι', s: { ...SERIES.foroi }, glyph: G(SERIES.foroi.accent, '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M16 3v4M8 3v4M4 10h16"/><path d="M9 15l2 2 4-4"/>') },
-  { key: 'ypologistes', name: 'Υπολογιστές', s: SERIES.vraxy, glyph: G(SERIES.vraxy.accent2, '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>') },
+// Ένα σύμβολο ανά σειρά, στο γαλάζιο της μάρκας. Χωρίς λέξεις: το όνομα του
+// Highlight το γράφει από κάτω το ίδιο το Instagram. Η Νόα έχει δικό της.
+const HIGHLIGHTS: { key: string; name: string; glyph: string }[] = [
+  { key: 'makroxronia', name: SERIES.makro.name, glyph: SERIES.makro.glyph },
+  { key: 'vraxyxronia', name: SERIES.vraxy.name, glyph: SERIES.vraxy.glyph },
+  { key: 'foroi', name: 'Φόροι', glyph: SERIES.foroi.glyph },
+  { key: 'ypologistes', name: 'Υπολογιστές', glyph: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>' },
+  { key: 'noa', name: ASSISTANT_NAME, glyph: `<rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><text x="12" y="16.6" text-anchor="middle" font-family="Inter" font-size="11" font-weight="800" fill="currentColor" stroke="none">${ASSISTANT_INITIAL}</text>` },
 ];
 
 const EPISODES: { ep: Episode; css: string }[] = [
@@ -593,7 +698,7 @@ async function main() {
       console.log(`  ✓ ${ep.series}-e${String(ep.no).padStart(2, '0')}  (${PUBLISH[ep.series]})`);
     }
     mkdirSync(join(OUT, 'highlights'), { recursive: true });
-    for (const hl of HIGHLIGHTS) await shot(highlight(hl.s, hl.glyph), 1080, 1920, join(OUT, 'highlights', `${hl.key}.png`), null);
+    for (const hl of HIGHLIGHTS) await shot(highlight(hl.glyph), 1080, 1920, join(OUT, 'highlights', `${hl.key}.png`), null);
     console.log('  ✓ highlights');
   } finally {
     await browser.close();
@@ -621,7 +726,8 @@ function readme(): string {
         `## ${s.name} · Ε${String(ep.no).padStart(2, '0')} · ${ep.title}`,
         '',
         `**Πότε:** ${day}. Story το μεσημέρι (13:00-14:00), carousel το βράδυ (19:00-21:00).`,
-        `**Καταλήγει:** ${ep.link.url}`,
+        `**Καταλήγει:** ${ep.link.url}. Στο story με σήμανση: ${utm(ep.link.url.slice(SITE.length), dir)}`,
+        `**Εγγραφή (καρέ της Νόας):** ${utm('/signup', dir)}`,
         '',
         '### Story, καρέ καρέ',
         '',

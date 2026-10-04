@@ -8,15 +8,15 @@
 // Γραμμένες δύο φορές, οι δύο μορφές θα έλεγαν διαφορετικά πράγματα στην
 // πρώτη διόρθωση.
 //
-// ΚΑΘΕ ΣΕΙΡΑ ΕΧΕΙ ΤΟ ΔΙΚΟ ΤΗΣ ΕΔΑΦΟΣ. Ο θεατής πρέπει να ξέρει από το χρώμα,
-// πριν διαβάσει λέξη, ποια σειρά βλέπει: αυτό κάνει τη σειρά ραντεβού.
-//   · Μακροχρόνια: σκούρα ελιά, το σπίτι που μένει
-//   · Βραχυχρόνια: βαθύ Αιγαίο με ήλιο, η σεζόν
-//   · Φόροι και προθεσμίες: χαρτί και σφραγίδα, το έντυπο της εφορίας. Η
-//     μόνη φωτεινή σειρά, ώστε το προφίλ να μη μοιάζει με έναν σκούρο τοίχο.
-// Γραμματοσειρές μόνο οι δικές μας (Inter, Roboto Mono), από το public/fonts.
+// ΤΑ ΧΡΩΜΑΤΑ ΕΙΝΑΙ ΤΗΣ ΜΑΡΚΑΣ, ΣΕ ΚΑΘΕ ΣΕΙΡΑ. Η πρώτη εκδοχή έδινε σε κάθε
+// σειρά δικό της έδαφος (ελιά, Αιγαίο, χαρτί) και ο ιδιοκτήτης την απέρριψε:
+// «δεν είναι στα χρώματά μας». Το προφίλ πρέπει να μοιάζει με μία μάρκα, ίδια
+// με τα stories και το carousel που έχουν ήδη ανέβει (igKit, rentFacts.SEG).
+// Η σειρά ξεχωρίζει από το σύμβολο και το όνομά της στη σφραγίδα, όχι από
+// το χρώμα. Γραμματοσειρές μόνο οι δικές μας (Inter, Roboto Mono).
 // ═══════════════════════════════════════════════════════════════════════════
-import { FACES, MONO_FACES, GRAIN, esc, ico, mark } from './igKit';
+import { C, FACES, MONO_FACES, GRAIN, esc, ico, mark } from './igKit';
+import { SEG } from './rentFacts';
 
 export type SeriesKey = 'makro' | 'vraxy' | 'foroi';
 export type Format = 'story' | 'feed';
@@ -25,34 +25,37 @@ export interface Palette {
   name: string;
   /** Η μέρα της εβδομάδας που βγαίνει η σειρά. */
   day: string;
-  light: boolean;
-  ground: string; ground2: string; card: string; rule: string;
+  /** Το σύμβολο της σειράς (σώμα SVG σε κουτί 24×24), στη σφραγίδα και στο Highlight. */
+  glyph: string;
+  ground: string; panel: string; lift: string; card: string; rule: string;
   ink: string; muted: string; faint: string;
-  accent: string; onAccent: string; accent2: string;
-  /** Το χρώμα του «φεύγει»: φόρος, προμήθεια, κόστος. */
+  accent: string; onAccent: string;
+  /** Το «μένει» και το «έγινε»: καθαρά, μακροχρόνια. */
+  ok: string;
+  /** Το «φεύγει»: φόρος, προμήθεια, κόστος. Το ίδιο σομόν με το carousel. */
   neg: string;
+  /** Ο ΕΝΦΙΑ και ό,τι είναι προθεσμία: το κεχριμπαρένιο του carousel. */
+  warm: string;
 }
 
-export const SERIES: Record<SeriesKey, Palette> = {
-  makro: {
-    name: 'Μακροχρόνια', day: 'Δευτέρα', light: false,
-    ground: '#0d1a15', ground2: '#16291f', card: '#132219', rule: '#27392f',
-    ink: '#eef3ec', muted: '#bccabf', faint: '#8a9c90',
-    accent: '#c9e36b', onAccent: '#13200f', accent2: '#8fd3a7', neg: '#ff9d86',
-  },
-  vraxy: {
-    name: 'Βραχυχρόνια', day: 'Τετάρτη', light: false,
-    ground: '#061a2e', ground2: '#0b2d4f', card: '#0b2540', rule: '#1d3b5a',
-    ink: '#eef5fb', muted: '#b6cadc', faint: '#8199b0',
-    accent: '#ffc94a', onAccent: '#241703', accent2: '#5fd0c5', neg: '#ff8f7a',
-  },
-  foroi: {
-    name: 'Φόροι και προθεσμίες', day: 'Παρασκευή', light: true,
-    ground: '#eef1f5', ground2: '#e2e7ee', card: '#ffffff', rule: '#cfd6e0',
-    ink: '#0f1a2a', muted: '#3a485c', faint: '#66748a',
-    accent: '#d33f29', onAccent: '#ffffff', accent2: '#2456c9', neg: '#c2391f',
-  },
+const BRAND = {
+  ground: C.ground, panel: C.panel, lift: C.lift, card: C.panel, rule: C.rule,
+  ink: C.ink, muted: C.muted, faint: C.faint, accent: C.accent, onAccent: C.onAccent,
+  ok: C.ok, neg: SEG.tax, warm: SEG.enfia,
 };
+
+export const SERIES: Record<SeriesKey, Palette> = {
+  makro: { ...BRAND, name: 'Μακροχρόνια', day: 'Δευτέρα',
+    glyph: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>' },
+  vraxy: { ...BRAND, name: 'Βραχυχρόνια', day: 'Τετάρτη',
+    glyph: '<rect x="5" y="7" width="14" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M5 12h14"/>' },
+  foroi: { ...BRAND, name: 'Φόροι και προθεσμίες', day: 'Παρασκευή',
+    glyph: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M16 3v4M8 3v4M4 10h16"/><path d="M9 15l2 2 4-4"/>' },
+};
+
+/** Το σύμβολο ως SVG, σε όποιο μέγεθος και χρώμα. */
+export const glyph = (g: string, c: string, px: number, sw = 1.8) =>
+  `<svg width="${px}" height="${px}" viewBox="0 0 24 24" style="color:${c}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${g}</svg>`;
 
 export const SIZE: Record<Format, { w: number; h: number }> = {
   story: { w: 1080, h: 1920 },
@@ -97,40 +100,42 @@ export function shell(f: Format, s: Palette, ep: { no: number }, i: number, n: n
   const story = f === 'story';
   const top = story ? 236 : 88;
   const foot = story ? 1560 : h - 128;
-  const glow = s.light
-    ? `radial-gradient(1100px 800px at 100% 0%, ${s.accent2}14, transparent 70%), linear-gradient(180deg, ${s.ground} 0%, ${s.ground2} 100%)`
-    : `radial-gradient(1000px 760px at 90% 6%, ${s.accent}24, transparent 68%), radial-gradient(1100px 900px at 0% 100%, ${s.accent2}1c, transparent 70%), linear-gradient(180deg, ${s.ground2} 0%, ${s.ground} 62%)`;
   return `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${FACES}${MONO_FACES}
   *{box-sizing:border-box;margin:0;padding:0}
   :root{--h1:${story ? 132 : 112}px;--h2:${story ? 96 : 84}px;--h3:${story ? 64 : 56}px;--body:${story ? 30 : 28}px}
   html,body{width:${w}px;height:${h}px;overflow:hidden}
   body{font-family:Inter,system-ui,sans-serif;color:${s.ink};background:${s.ground};position:relative;
     -webkit-font-smoothing:antialiased;font-feature-settings:"cv11","ss01"}
-  .bg{position:absolute;inset:0;background:${glow}}
-  .grain{position:absolute;inset:0;background-image:${GRAIN};opacity:${s.light ? '.035' : '.05'};mix-blend-mode:${s.light ? 'multiply' : 'overlay'}}
-  .epno{position:absolute;right:-60px;bottom:${story ? 260 : 60}px;font-size:${story ? 820 : 640}px;font-weight:900;line-height:.8;letter-spacing:-.07em;
-    color:transparent;-webkit-text-stroke:3px ${s.light ? s.ink + '10' : s.ink + '0d'};font-variant-numeric:tabular-nums}
+  /* Το έδαφος των stories που έχουν ήδη ανέβει (stories.ts, frame). */
+  .bg{position:absolute;inset:0;background:
+    radial-gradient(900px 700px at 85% 10%, ${s.accent}2e, transparent 70%),
+    radial-gradient(1000px 800px at 0% 92%, #3d5fa033, transparent 72%),
+    linear-gradient(180deg, #0a1120 0%, ${s.ground} 55%)}
+  .grain{position:absolute;inset:0;background-image:${GRAIN};opacity:.05;mix-blend-mode:overlay}
+  .ghost{position:absolute;right:-170px;bottom:${story ? 120 : -40}px;opacity:.035}
   .wrap{position:absolute;left:0;right:0;top:${top}px;height:${foot - top - 24}px;padding:0 ${story ? 84 : 88}px;display:flex;flex-direction:column}
   .stamp{display:flex;align-items:center;justify-content:space-between;font-family:'Roboto Mono',monospace;font-size:${story ? 23 : 21}px;letter-spacing:.14em;font-weight:500}
   .stamp b{display:flex;align-items:center;gap:14px;font-weight:600;color:${s.ink}}
-  .stamp b i{width:16px;height:16px;border-radius:50%;background:${s.accent};box-shadow:0 0 0 6px ${s.accent}2e}
+  .stamp b i{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:14px;background:${s.accent}1f;border:1.5px solid ${s.accent}55}
   .stamp span{color:${s.faint}}
   .dots{display:flex;gap:8px}
   .dots i{width:30px;height:5px;border-radius:5px;background:${s.rule}}
   .dots i.on{background:${s.accent}}
   h1,h2{font-weight:800;letter-spacing:-.045em;line-height:.96;text-wrap:balance}
   .acc{color:${s.accent}}
-  .acc2{color:${s.accent2}}
+  .ok{color:${s.ok}}
   .lead{color:${s.muted};font-size:${story ? 40 : 36}px;line-height:1.36;letter-spacing:-.012em;text-wrap:pretty}
   .mono{font-family:'Roboto Mono',monospace;letter-spacing:.08em}
   .num{font-variant-numeric:tabular-nums;letter-spacing:-.025em}
   .src{font-family:'Roboto Mono',monospace;font-size:${story ? 21 : 19}px;letter-spacing:.04em;color:${s.faint};line-height:1.5}
   .ex{display:inline-flex;align-items:center;gap:10px;font-family:'Roboto Mono',monospace;font-size:${story ? 19 : 18}px;letter-spacing:.14em;color:${s.faint}}
   .ex::before{content:"";width:9px;height:9px;border-radius:50%;background:${s.faint}}
-  .card{background:${s.card};border:1.5px solid ${s.rule};border-radius:36px;
-    box-shadow:${s.light ? `0 30px 80px -40px ${s.ink}40` : '0 1px 0 #ffffff0d inset, 0 50px 120px -40px #000000c0'}}
+  .card{background:linear-gradient(180deg, ${s.lift}f2, ${s.panel}f2);border:1.5px solid ${s.rule};border-radius:36px;
+    box-shadow:0 1px 0 #ffffff0d inset, 0 50px 120px -40px #000000cc}
   /* Η λωρίδα του αυτοκόλλητου: άδεια και αόρατη, αλλιώς φαίνεται κάτω από αυτό. */
   .slot{flex:none}
+  /* Η Νόα: το ίδιο τετράγωνο με το αρχικό της, όπως στην καμπάνια. */
+  .noa-av{flex:none;display:flex;align-items:center;justify-content:center;border-radius:22%;background:${s.accent};color:${s.onAccent};font-weight:800;letter-spacing:-.04em}
   .foot{position:absolute;left:${story ? 84 : 88}px;right:${story ? 84 : 88}px;top:${foot}px;display:flex;align-items:center;justify-content:space-between}
   .brand{display:flex;align-items:center;gap:14px}
   .brand b{font-size:${story ? 27 : 25}px;font-weight:800;letter-spacing:.02em}
@@ -139,9 +144,9 @@ export function shell(f: Format, s: Palette, ep: { no: number }, i: number, n: n
   ${css}
   </style></head><body>
   <div class="bg"></div><div class="grain"></div>
-  <div class="epno">${pad2(ep.no)}</div>
+  <div class="ghost">${mark(story ? 760 : 640, s.ink)}</div>
   <div class="wrap">
-    <div class="stamp"><b><i></i>${esc(s.name.toLocaleUpperCase('el').normalize('NFD').replace(/[́̈]/g, '').normalize('NFC'))}</b><span>ΕΠΕΙΣΟΔΙΟ ${pad2(ep.no)}</span></div>
+    <div class="stamp"><b><i>${glyph(s.glyph, s.accent, 26, 2)}</i>${esc(s.name.toLocaleUpperCase('el').normalize('NFD').replace(/[́̈]/g, '').normalize('NFC'))}</b><span>ΕΠΕΙΣΟΔΙΟ ${pad2(ep.no)}</span></div>
     ${body}
   </div>
   <div class="foot">
@@ -151,15 +156,15 @@ export function shell(f: Format, s: Palette, ep: { no: number }, i: number, n: n
   </body></html>`;
 }
 
-/** Το εξώφυλλο του Highlight: ένα σύμβολο στο κέντρο, μέσα στον κύκλο που κόβει το Instagram. */
-export function highlight(s: Palette, glyph: string): string {
+/** Το εξώφυλλο του Highlight: το σύμβολο στο κέντρο, μέσα στον κύκλο που κόβει το Instagram. */
+export function highlight(g: string): string {
   return `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${FACES}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{width:1080px;height:1920px;overflow:hidden}
-  body{background:${s.ground};display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif}
+  body{background:${C.ground};display:flex;align-items:center;justify-content:center}
   /* Το Instagram κόβει κύκλο στο κέντρο και βάζει δικό του δαχτυλίδι: το σύμβολο
      γεμίζει τον κύκλο, χωρίς δικό μας περίγραμμα που θα διπλασίαζε το δικό του. */
   .c{width:1080px;height:1080px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    background:radial-gradient(circle at 35% 30%, ${s.ground2}, ${s.ground} 70%)}
-  </style></head><body><div class="c">${glyph}</div></body></html>`;
+    background:radial-gradient(circle at 35% 30%, ${C.accent}33, ${C.ground} 68%)}
+  </style></head><body><div class="c">${glyph(g, C.accent, 520, 1.6)}</div></body></html>`;
 }
