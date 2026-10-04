@@ -17,6 +17,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { C, FACES, MONO_FACES, GRAIN, esc, ico, mark } from './igKit';
 import { SEG } from './rentFacts';
+import { BRAND_DARK_BG, BRAND_MARK_ON_DARK } from '../../components/BrandMark';
 
 export type SeriesKey = 'makro' | 'vraxy' | 'foroi';
 export type Format = 'story' | 'feed';
@@ -243,15 +244,16 @@ export function shell(f: Format, s: Palette, ep: { no: number }, i: number, n: n
   </body></html>`;
 }
 
-/** Το εξώφυλλο του Highlight: το σύμβολο στο κέντρο, μέσα στον κύκλο που κόβει το Instagram. */
-export function highlight(g: string): string {
-  return `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${FACES}
+/**
+ * Το εξώφυλλο του Highlight: το σκούρο λογότυπο της PROPERWISE, ίδιο σε κάθε
+ * Highlight, όπως το ζήτησε ο ιδιοκτήτης. Το λευκό κτίριο στο σκούρο έδαφος της
+ * μάρκας (BrandMark: BRAND_DARK_BG, BRAND_MARK_ON_DARK), στο κέντρο του κύκλου
+ * που κόβει το Instagram. Η σειρά διαβάζεται από το όνομα του Highlight.
+ */
+export function highlight(): string {
+  return `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{width:1080px;height:1920px;overflow:hidden}
-  body{background:${C.ground};display:flex;align-items:center;justify-content:center}
-  /* Το Instagram κόβει κύκλο στο κέντρο και βάζει δικό του δαχτυλίδι: το σύμβολο
-     γεμίζει τον κύκλο, χωρίς δικό μας περίγραμμα που θα διπλασίαζε το δικό του. */
-  .c{width:1080px;height:1080px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    background:radial-gradient(circle at 35% 30%, ${C.accent}33, ${C.ground} 68%)}
-  </style></head><body><div class="c">${glyph(g, C.accent, 520, 1.6)}</div></body></html>`;
+  body{background:${BRAND_DARK_BG};display:flex;align-items:center;justify-content:center}
+  </style></head><body>${mark(500, BRAND_MARK_ON_DARK)}</body></html>`;
 }
