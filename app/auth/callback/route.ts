@@ -21,12 +21,14 @@
 // Το «next» έρχεται από τη διεύθυνση, δηλαδή το γράφει ο καθένας. Οτιδήποτε
 // δεν είναι σχετική διαδρομή αγνοείται: αλλιώς ένας σύνδεσμος επιβεβαίωσης θα
 // προσγείωνε τον χρήστη σε ξένο τόπο, με τη δική μας υπογραφή από πάνω.
+// Ο έλεγχος είναι ο ίδιος με της σύνδεσης και της εγγραφής
+// (lib/auth/continuation.ts): ένας κανόνας, όχι τρεις που αποκλίνουν.
 // ═══════════════════════════════════════════════════════════════════════════
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
-import { safeNext } from '@/lib/auth/redirect';
+import { continuation } from '@/lib/auth/continuation';
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
 
 /** Οι μορφές διακριτικού που στέλνει το ταχυδρομείο του παρόχου. */
@@ -34,7 +36,7 @@ const OTP_TYPES = ['signup', 'email', 'invite', 'magiclink', 'recovery', 'email_
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
-  const next = safeNext(url.searchParams.get('next'));
+  const next = continuation(url.searchParams);
   const code = (url.searchParams.get('code') || '').trim();
   const tokenHash = (url.searchParams.get('token_hash') || '').trim();
   const type = (url.searchParams.get('type') || '').trim();

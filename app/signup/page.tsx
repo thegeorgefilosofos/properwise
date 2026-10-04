@@ -17,7 +17,9 @@ import { hy } from '@/components/Hyphen'
 import { SAY, failed } from '@/lib/core/dbError';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 // Καθαρή λογική, χωρίς React/Supabase: ασφαλής σε 'use client'.
-import { planFromParam, cycleFromParam, checkoutLanding, planAtLeast, TRIAL_PLAN } from '@/lib/billing/entitlements';
+import { planFromParam, cycleFromParam, planAtLeast, TRIAL_PLAN } from '@/lib/billing/entitlements';
+import { continuation, carried } from '@/lib/auth/continuation';
+import { secondStepPending } from '@/lib/auth/mfa';
 import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
 import { isReferralCode } from '@/lib/referral/referral';
@@ -62,8 +64,26 @@ const readSearch = () => window.location.search
 // σύνδεσμος που ξαναστελνόταν άνοιγε στη γενική διεύθυνση του έργου: καμία
 // συνεδρία, κανένα πακέτο και ο άνθρωπος κοιτούσε πάλι τη «Σύνδεση». Και οι
 // δύο αποστολές περνούν πλέον από εδώ.
-const confirmRedirect = (plan: ReturnType<typeof planFromParam>, cycle: ReturnType<typeof cycleFromParam>) =>
-  `${window.location.origin}/auth/callback?next=${encodeURIComponent(checkoutLanding(plan, cycle))}`
+// ΚΑΙ ΚΟΥΒΑΛΑ ΤΟ «next». Γραφόταν μόνο το ταμείο ή ο πίνακας, οπότε ο λογιστής
+// που ερχόταν από τον χώρο του και επιβεβαίωνε το email του κατέληγε στον
+// πίνακα. Ο προορισμός βγαίνει από το lib/auth/continuation.ts.
+const confirmRedirect = (query: string) =>
+  `${window.location.origin}/auth/callback?next=${encodeURIComponent(continuation(query))}`
+
+/**
+ * Η ΕΠΙΣΤΡΟΦΗ ΑΠΟ ΤΗΝ GOOGLE ΠΡΟΣΓΕΙΩΝΕΤΑΙ ΧΩΡΙΣ ΝΑ ΠΗΔΑ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ.
+ *
+ * Με δηλωμένη συσκευή, η συνεδρία που φέρνει η Google είναι «aal1». Ο
+ * διαμεσολαβητής τη γύριζε στη σύνδεση για τον εξαψήφιο, αλλά ΧΩΡΙΣ το «next»:
+ * μετά τον κωδικό ο λογιστής κατέληγε στον πίνακα. Εδώ η εκκρεμότητα στέλνει
+ * κατευθείαν στη σύνδεση, με τη συνέχεια στη διεύθυνση. Αγνωστο επίπεδο
+ * σημαίνει κι αυτό σύνδεση: εκεί η ίδια οθόνη το λέει και δεν ανοίγει τίποτα.
+ */
+async function land(supabase: Awaited<ReturnType<typeof authClient>>, query: string) {
+  const { data: levels, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (error || secondStepPending(levels)) { window.location.replace(`/login${carried(query)}`); return }
+  window.location.replace(continuation(query))
+}
 
 /** Ως πότε ένας λογαριασμός της Google μετρά ως «μόλις δημιουργήθηκε». */
 const FRESH_MS = 15 * 60 * 1000
@@ -215,9 +235,9 @@ export default function SignupPage() {
       // ΤΟ ΠΑΚΕΤΟ ΤΑΞΙΔΕΥΕΙ ΚΑΙ ΑΠΟ ΤΗ ΣΥΝΔΕΣΗ. Η επιστροφή «oauth=login»
       // πήγαινε πάντα στον πίνακα, οπότε όποιος ερχόταν από τον τιμοκατάλογο
       // με πακέτο και διάλεγε Google δεν έφτανε ποτέ στο ταμείο.
-      const landing = checkoutLanding(planFromParam(q.get('plan')), cycleFromParam(q.get('cycle')))
+      // ΚΑΙ ΤΟ «next», με την ίδια σειρά που ισχύει παντού (continuation).
       if (oauth === 'login') {
-        if (meta.consent_terms_accepted_at) { window.location.replace(landing); return }
+        if (meta.consent_terms_accepted_at) { await land(supabase, window.location.search); return }
         setFreshAccount(!!u.created_at && Date.now() - Date.parse(u.created_at) < FRESH_MS)
         setNeedsConsent(u.email ?? '')
         return
@@ -246,7 +266,7 @@ export default function SignupPage() {
           setNeedsConsent(u.email ?? '')
           return
         }
-        window.location.replace(landing)
+        await land(supabase, window.location.search)
         return
       }
       setSessionEmail(u.email ?? null)
@@ -278,7 +298,7 @@ export default function SignupPage() {
     if (error) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', error)); return }
     const newsError = patch.marketing_opt_out && data.user ? await newsOffNow(supabase, data.user.id) : null
     if (newsError) { setError(failed('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', newsError)); return }
-    window.location.replace(checkoutLanding(chosenPlan, chosenCycle))
+    await land(supabase, window.location.search)
   }
 
   // ═══ Η «ΑΚΥΡΩΣΗ» ΔΕΝ ΑΦΗΝΕΙ ΠΙΣΩ ΛΟΓΑΡΙΑΣΜΟ ΠΟΥ ΚΑΝΕΙΣ ΔΕΝ ΘΕΛΗΣΕ ═══════════
@@ -348,10 +368,12 @@ export default function SignupPage() {
     }
     setError('')
     const supabase = await authClient()
-    const back = new URLSearchParams({ oauth: '1' })
+    // Η ΣΥΝΕΧΕΙΑ (πακέτο ή «next») ΕΡΧΕΤΑΙ ΕΛΕΓΜΕΝΗ ΑΠΟ ΤΟ `carried`: στη
+    // διεύθυνση επιστροφής δεν γράφεται ποτέ τίποτα που δεν πέρασε τον έλεγχο.
+    const back = new URLSearchParams(carried(query))
+    back.set('oauth', '1')
     if (refCode) back.set('ref', refCode)
     if (!news) back.set('news', '0')
-    if (chosenPlan) { back.set('plan', chosenPlan); back.set('cycle', chosenCycle) }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/signup?${back.toString()}` },
@@ -376,7 +398,7 @@ export default function SignupPage() {
     const supabase = await authClient()
     const { error } = await supabase.auth.resend({
       type: 'signup', email: email.trim(),
-      options: { emailRedirectTo: confirmRedirect(chosenPlan, chosenCycle) },
+      options: { emailRedirectTo: confirmRedirect(query) },
     })
     if (error) { setResendErr(failed('Το email δεν ξαναστάλθηκε', error)); return }
     setResent(true)
@@ -425,7 +447,7 @@ export default function SignupPage() {
         // διαμεσολαβητής έστελνε τον νέο χρήστη στη φόρμα εισόδου, κρατώντας το
         // διακριτικό στη διεύθυνση: ο λογαριασμός άνοιγε, αλλά ο άνθρωπος
         // κατέληγε να κοιτά «Σύνδεση» αντί για την εφαρμογή του.
-        emailRedirectTo: confirmRedirect(chosenPlan, chosenCycle),
+        emailRedirectTo: confirmRedirect(query),
         data: {
           full_name: fullName.trim(),
           consent_terms_accepted_at: new Date().toISOString(),
@@ -588,7 +610,7 @@ export default function SignupPage() {
               )}
             </div>
           ) : sessionEmail ? (
-            <AlreadySignedIn email={sessionEmail} onSignOut={signOut} signingOut={signingOut} mode="signup" />
+            <AlreadySignedIn email={sessionEmail} onSignOut={signOut} signingOut={signingOut} mode="signup" next={continuation(query)} />
           ) : done ? (
             <>
               {/* ΤΟ ΑΔΙΕΞΟΔΟ. Η οθόνη «Ανοιξε το email σου» είχε ΕΝΑ κουμπί, το
@@ -606,7 +628,7 @@ export default function SignupPage() {
               <MailSent
                 title="Άνοιξε το email σου"
                 email={email.trim()}
-                body={<>Αν δεν υπάρχει ήδη λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει ήδη, <Link href="/login" className="lp-link" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
+                body={<>Αν δεν υπάρχει ήδη λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει ήδη, <Link href={`/login${carried(query)}`} className="lp-link" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
                 action={
                   /* Η σβηστή όψη μετά την αποστολή είναι το disabled του .po-btn. */
                   <>
@@ -624,7 +646,7 @@ export default function SignupPage() {
                   Λάθος διεύθυνση;{' '}
                   <LinkBtn onClick={() => { setDone(false); setResent(false); setResendErr(''); }}>Γράψε άλλη</LinkBtn>
                   {' · '}
-                  <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
+                  <Link href={`/login${carried(query)}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
                 </>}
               />
             </>
@@ -646,7 +668,7 @@ export default function SignupPage() {
               <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 8px' }}>Δημιουργία λογαριασμού</h1>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px' }}>
                 Έχεις ήδη λογαριασμό;{' '}
-                <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
+                <Link href={`/login${carried(query)}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
               </p>
 
               {/* ══ Η ΠΡΟΣΚΛΗΣΗ ΛΕΓΕΤΑΙ ΚΑΙ ΛΕΓΕΤΑΙ ΜΟΝΟ ΟΣΟ ΕΙΝΑΙ ΑΛΗΘΕΙΑ ══
