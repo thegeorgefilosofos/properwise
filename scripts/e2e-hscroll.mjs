@@ -45,6 +45,7 @@ const browser = await chromium.launch({ executablePath: chromePath(), args: ['--
 console.log(`  ${PUBLIC.length} σελίδες × ${WIDTHS.length} πλάτη · θέμα ${MODE === 'light' ? 'φωτεινό' : 'σκούρο'} · ΧΩΡΙΣ προσομοίωση κινητού`);
 
 const findings = [];
+const overlaps = [];
 let checked = 0;
 
 for (const w of WIDTHS) {
@@ -68,6 +69,27 @@ for (const w of WIDTHS) {
         return sx;
       });
       if (x > 0) findings.push({ w, path, x });
+      // ΚΑΙ ΚΑΝΕΝΑΣ ΑΡΙΘΜΟΣ ΔΕΝ ΠΑΤΑ ΠΑΝΩ ΣΕ ΑΛΛΟΝ (04.10.2026). Στα 601 ως 900
+      // το «+1.020,00€» της βραχυχρόνιας ξεχείλιζε από τη στήλη του πάνω στο
+      // «Μακροχρόνια, καθαρά» χωρίς να κυλά τίποτα: η σελίδα έμενε στη θέση της
+      // και κανένας σαρωτής δεν το έβλεπε. Μετριέται το ίδιο το κείμενο (Range),
+      // όχι το κουτί του, που μένει πάντα μέσα στη στήλη.
+      const clash = await page.evaluate(() => {
+        const box = el => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect(); };
+        const out = [];
+        for (const grid of document.querySelectorAll('.po-tool-grid3')) {
+          const items = [...grid.children].flatMap(cell => [...cell.children].map(el => ({ cell, el, b: box(el) })))
+            .filter(i => i.b.width > 0);
+          for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+            const a = items[i], c = items[j];
+            if (a.cell === c.cell) continue;
+            if (a.b.left < c.b.right - 1 && c.b.left < a.b.right - 1 && a.b.top < c.b.bottom - 1 && c.b.top < a.b.bottom - 1)
+              out.push(`«${a.el.textContent.trim().slice(0, 24)}» πάνω στο «${c.el.textContent.trim().slice(0, 24)}»`);
+          }
+        }
+        return out;
+      });
+      for (const c of clash) overlaps.push({ w, path, c });
     } catch (e) {
       console.log(`  ! ${w}px ${path}: ${e.message.slice(0, 60)}`);
     }
@@ -76,6 +98,13 @@ for (const w of WIDTHS) {
 }
 await browser.close();
 
+if (overlaps.length) {
+  console.error(`\n✗ ${overlaps.length} επικαλύψεις αριθμών στις κάρτες των υπολογιστών:\n`);
+  for (const o of overlaps) console.error(`  ${String(o.w).padStart(5)}px ${o.path}: ${o.c}`);
+  console.error(`
+  Ο κύριος αριθμός (ToolHero) πρέπει να παίρνει όλη τη σειρά όταν δεν χωρά στο
+  ένα τρίτο της κάρτας: \`.po-tool-hero\` στο globals.css.`);
+}
 if (findings.length) {
   console.error(`\n✗ ${findings.length} από ${checked} συνδυασμοί σέρνονται οριζόντια:\n`);
   const byPath = new Map();
@@ -93,4 +122,5 @@ if (findings.length) {
   ΔΕΥΤΕΡΟΣ: σταθερό πλάτος ή \`min-width\` σε στοιχείο εκτός κυλιόμενου κουτιού.`);
   process.exit(1);
 }
-console.log(`\n✅ Καμία από τις ${checked} σελίδες δεν σέρνεται οριζόντια.`);
+if (overlaps.length) process.exit(1);
+console.log(`\n✅ Καμία από τις ${checked} σελίδες δεν σέρνεται οριζόντια και κανένας αριθμός δεν πατά πάνω σε άλλον.`);
