@@ -188,14 +188,14 @@ const ACTION_CSS = (s: Palette) => `
 // Η διαφάνεια που κρατά κανείς: τα τέσσερα νούμερα του επεισοδίου σε έναν
 // πίνακα και ρητό «Αποθήκευσέ το». Οι αποθηκεύσεις και οι αποστολές είναι τα
 // σήματα που μετρά το Instagram για το carousel· το story δεν τη χρειάζεται.
-function summarySlide(s: Palette, title: string, facts: [string, string, string?][], save: string): Slide {
+function summarySlide(s: Palette, title: string, facts: [string, string, string?][], save: string, example = true): Slide {
   return {
     only: 'feed',
     alt: `Σε μία ματιά: ${facts.map(([l, v]) => `${l} ${v}`).join(', ')}. ${save}`,
     body: () => `<div class="act" style="display:flex;flex-direction:column;flex:1">
       <h2 style="margin-top:60px">Σε μία<br><span class="acc">ματιά.</span></h2>
       <div class="card sum" style="margin-top:40px">
-        <div class="bx-h"><b>${esc(title)}</b><span class="ex">ΠΑΡΑΔΕΙΓΜΑ</span></div>
+        <div class="bx-h"><b>${esc(title)}</b>${example ? '<span class="ex">ΠΑΡΑΔΕΙΓΜΑ</span>' : ''}</div>
         ${facts.map(([l, v, note]) => `<div class="sm-r"><span>${esc(l)}${note ? `<em>${esc(note)}</em>` : ''}</span><b class="num">${esc(v)}</b></div>`).join('')}
       </div>
       <div class="savebar" style="margin-top:auto">${ICON.save(s.onAccent, 52)}<span>${esc(save)}</span></div>
@@ -204,6 +204,8 @@ function summarySlide(s: Palette, title: string, facts: [string, string, string?
 }
 const SUM_CSS = (s: Palette) => `
   .sum{padding:30px 34px 14px}
+  .sum .bx-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .sum .bx-h b{font-size:calc(var(--body) + 2px);font-weight:750}
   .sm-r{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:22px 0;border-top:1.5px solid ${s.rule}99;font-size:30px;color:${s.muted}}
   .sm-r em{display:block;font-style:normal;font-size:22px;color:${s.faint};margin-top:4px}
   .sm-r b{color:${s.ink};font-size:44px;font-weight:850;letter-spacing:-.03em;white-space:nowrap}
@@ -510,7 +512,7 @@ function foroi01(): Episode {
       ['Η επόμενη δόση', `${dd}/${mm}`, `${weekday}, η ${next + 1}η από τις ${run.length}`],
       ['Κάθε δόση λήγει', 'τέλος μήνα', `την τελευταία εργάσιμη (${law})`],
       ['Φόρος ανά τ.μ.', `${fe(zMin)}–${fe(zMax)}`, 'ανάλογα με την τιμή ζώνης'],
-    ], 'Αποθήκευσέ το για τις επόμενες δόσεις.'),
+    ], 'Αποθήκευσέ το για τις επόμενες δόσεις.', false),
     noaSlide(s, camp, 'Πότε λήγει η επόμενη δόση του ΕΝΦΙΑ;',
       `${weekday} ${elDate(due.date, { day: 'numeric', month: 'long' })}. Είναι η ${next + 1}η από τις ${run.length}· μετά μένουν ${run.length - next - 1}, ως τις ${elDate(run[run.length - 1].date, { day: 'numeric', month: 'long', year: 'numeric' })}.`,
       { day: s.day, title: `Ανακαίνιση: η έκπτωση φόρου για δαπάνες ως ${RENO_39B_TO}` }),

@@ -229,6 +229,9 @@ export function shell(f: Format, s: Palette, ep: { no: number }, i: number, n: n
   .swipe{display:flex;align-items:center;gap:10px;font-family:'Roboto Mono',monospace;font-size:21px;letter-spacing:.12em;color:${s.faint}}
   ${MOTION}
   ${css}
+  ${story ? '' : `/* ΣΤΟ CAROUSEL ΔΕΝ ΜΠΑΙΝΟΥΝ ΑΥΤΟΚΟΛΛΗΤΑ: η κάρτα κάθεται στο κέντρο του χώρου
+     που περισσεύει, όχι κολλημένη κάτω με κενό από πάνω της. */
+  .wrap > .card, .wrap > .duo, .wrap > .big{margin-bottom:auto !important}`}
   </style></head><body>
   <div class="bg"></div><div class="grain"></div>
   <div class="ghost">${mark(story ? 760 : 640, s.ink)}</div>
