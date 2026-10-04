@@ -5383,6 +5383,18 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px 24px; align-items: end;
 }
+/* Ο ΚΥΡΙΟΣ ΑΡΙΘΜΟΣ ΔΕΝ ΠΑΤΑ ΠΑΝΩ ΣΤΟΥΣ ΔΕΥΤΕΡΕΥΟΝΤΕΣ (04.10.2026). Το μέγεθός
+   του ακολουθεί την οθόνη (6vw ως 44px) ενώ η στήλη του την κάρτα: από 601 ως
+   900 περίπου το «+1.020,00€» της βραχυχρόνιας και το «202.125,00€» του
+   στεγαστικού ξεχείλιζαν ως 50px πάνω στο «Μακροχρόνια» και στη «Δόση έως»,
+   στο tablet μέσα από το Instagram. Η κάρτα κρίνει από το δικό της πλάτος
+   (container query): κάτω από 880 ο κύριος αριθμός παίρνει όλη τη σειρά. Ο
+   πολύ μακρύς (`.po-tool-hero-wide`, ToolHero) την παίρνει πάντα. */
+.po-tool-hero { container-type: inline-size; }
+.po-tool-hero-wide > .po-tool-fig-primary { grid-column: 1 / -1; }
+@container (max-width: 879px) {
+  .po-tool-hero > .po-tool-fig-primary { grid-column: 1 / -1; }
+}
 /* ΟΙ ΠΙΝΑΚΕΣ ΤΩΝ ΥΠΟΛΟΓΙΣΤΩΝ ΣΤΟ ΤΗΛΕΦΩΝΟ. Με γέμισμα 14 δεξιά κι αριστερά, μια
    στήλη 32% στα 360 άφηνε 70 εικονοστοιχεία για το «Μακροχρόνια» και το
    «−1.204,50€»: η κεφαλίδα κοβόταν με ενωτικό και η ετικέτα έπιανε τρεις

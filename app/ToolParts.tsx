@@ -228,8 +228,11 @@ export function ToolHero({ primary, secondary = [] }: {
   primary: { label: string; value: string };
   secondary?: readonly { label: string; value: string }[];
 }) {
+  // ΜΑΚΡΥΣ ΑΡΙΘΜΟΣ, ΔΙΚΗ ΤΟΥ ΣΕΙΡΑ. Στο ένα τρίτο της κάρτας χωρούν ως δέκα
+  // χαρακτήρες στα 44px· το «1.202.125,00€» του στεγαστικού δεν χωρά ποτέ.
+  const wide = primary.value.length > 10;
   return (
-    <div className="po-tool-grid3 po-tool-hero">
+    <div className={`po-tool-grid3 po-tool-hero${wide ? ' po-tool-hero-wide' : ''}`}>
       <ToolFigure {...primary}/>
       {secondary.map(s => <ToolFigure key={s.label} {...s} variant="secondary"/>)}
     </div>

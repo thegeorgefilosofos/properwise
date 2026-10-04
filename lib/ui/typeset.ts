@@ -50,10 +50,23 @@ const SKIP_TEXT = SKIP + ',a';
 const BOLD = 'strong,b';
 const BOLD_MIN_WORD = 8;
 
+/**
+ * ΓΡΑΜΜΗ ΣΤΟΙΧΕΙΩΝ, ΟΧΙ ΠΑΡΑΓΡΑΦΟΣ (04.10.2026). «ΠΡΑΣΙΝΟ · 0,129€ ανά
+ * κιλοβατώρα · Χωρίς πάγιο · Τιμή Αυγούστου 2026» είναι κομμάτια που ο
+ * αναγνώστης σαρώνει ένα ένα. Σε tablet μέσα από το Instagram το πλάτος
+ * περνούσε το όριο της παραγράφου και η στοίχιση πέρα πέρα άνοιγε τα κενά
+ * ανάμεσα στα κομμάτια σε τρύπες. Δύο τελείες στο μέσο αρκούν: μια πρόταση
+ * δεν χωρίζεται έτσι.
+ */
+export function isFactsLine(text: string): boolean {
+  return (text.match(/ · /g) || []).length >= 2;
+}
+
 function isProse(el: HTMLElement): boolean {
   // Δομικά στοιχεία δεν είναι ποτέ παράγραφος, ό,τι κι αν περιέχουν.
   if (/^(MAIN|SECTION|ARTICLE|BODY|HEADER|FOOTER|NAV|ASIDE)$/.test(el.tagName)) return false;
   if (el.closest(SKIP_BLOCK)) return false;
+  if (isFactsLine(el.textContent || '')) return false;
   const cs = getComputedStyle(el);
   // ΚΕΦΑΛΑΙΑ ΑΠΟ ΤΟ CSS: ΕΤΙΚΕΤΑ, ΟΧΙ ΠΑΡΑΓΡΑΦΟΣ. Το «ΡΕΥΜΑ-ΤΟΣ» της ζώνης
   // μετρήσεων ήταν πεζά στην πηγή, άρα ο συλλαβιστής δεν το αναγνώριζε ως
