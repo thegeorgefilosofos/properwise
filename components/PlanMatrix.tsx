@@ -19,7 +19,7 @@
 // πίνακας δεν μπορεί να διαφωνήσει με τον κώδικα, γιατί τον διαβάζει.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { PLANS, TEAM_LINE, DIRECT_CONTACT_LINE, firstPlanWith, type PlanId } from '@/lib/billing/plans';
+import { PLANS, TEAM_LINE, PRIORITY_SUPPORT_LINE, firstPlanWith, type PlanId } from '@/lib/billing/plans';
 import { aiLimitsFor, SCAN_LIMITS } from '@/lib/billing/aiLimits';
 import { ASSISTANT_TO, ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { FEATURE_LABEL, FEATURE_MIN_PLAN, planAtLeast, type Feature } from '@/lib/billing/entitlements';
@@ -62,7 +62,7 @@ const forAll = (label: string): FeatureRow => ({
 });
 
 // ΟΣΑ ΠΟΥΛΑΕΙ Η ΚΑΡΤΑ ΤΗΣ ΑΡΧΙΚΗΣ, Ο ΠΙΝΑΚΑΣ ΤΑ ΛΕΕΙ ΚΙ ΑΥΤΟΣ. Η ομάδα με
-// ρόλους και η άμεση επικοινωνία δεν έχουν κλείδωμα στο `FEATURE_MIN_PLAN`·
+// ρόλους και η υποστήριξη με προτεραιότητα δεν έχουν κλείδωμα στο `FEATURE_MIN_PLAN`·
 // είναι γραμμές του `PLANS[…].features`. Η γραμμή ισχύει από το πρώτο πακέτο
 // που τη γράφει και πάνω, όπως λέει και το «Όλα του … και:» της κάρτας. Αν
 // λείψει από το plans.ts, το `firstPlanWith` πετά και η σελίδα δεν χτίζεται,
@@ -129,7 +129,7 @@ const MATRIX: FeatureRow[] = [
   gated('report_branding'),
   gated('investment_analysis'),
   fromPlanLine('Ομάδα με ρόλους', TEAM_LINE),
-  fromPlanLine(DIRECT_CONTACT_LINE, DIRECT_CONTACT_LINE),
+  fromPlanLine(PRIORITY_SUPPORT_LINE, PRIORITY_SUPPORT_LINE),
 ];
 
 // ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΑ ΚΟΙΝΑ ΛΕΓΟΝΤΑΙ ΜΙΑ ΦΟΡΑ. Τέσσερις κάρτες με όλες τις

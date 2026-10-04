@@ -1,5 +1,16 @@
 # Όροι Χρήσης — PROPERWISE · Terms of Service — PROPERWISE
 
+> **ΑΡΧΙΚΟ ΣΧΕΔΙΟ, ΑΝΤΙΚΑΤΕΣΤΗΜΕΝΟ (σημείωση 04.10.2026).** Το κείμενο αυτό είναι
+> το αρχικό σχέδιο v0.1 και δεν ισχύει. Ισχύουν οι σελίδες `/privacy`, `/terms` και
+> `/trust` και τα μητρώα στο `lib/legal/*.ts` (ταυτότητα, υπεργολάβοι, λόγια της
+> χρέωσης), από τα οποία διαβάζουν οι σελίδες. Όπου διαφέρουν, υπερισχύουν εκείνα.
+> Για παράδειγμα, οι ισχύοντες Όροι δεν επικαλούνται ρήτρα «ως έχει» (§2 και §8 εδώ).
+> Στις 04.10.2026 διορθώθηκαν μόνο όσα ήταν συγκεκριμένα ανακριβή· τα πεδία
+> `[ΣΥΜΠΛΗΡΩΣΤΕ ...]` μένουν ως έχουν.
+> **Original draft, superseded (note of 04.10.2026).** Not in force. The live pages
+> `/privacy`, `/terms` and `/trust` and the registries in `lib/legal/*.ts` prevail
+> wherever they differ. Only concretely inaccurate statements were corrected.
+
 > **ΣΧΕΔΙΟ / DRAFT — v0.1 (2026-07-22). Δεν έχει τεθεί σε ισχύ. Απαιτεί τελικό
 > έλεγχο/υπογραφή δικηγόρου.** Πεδία `[ΣΥΜΠΛΗΡΩΣΤΕ ...]` από την εταιρεία.
 > **DRAFT — not in force; requires counsel sign-off.**
@@ -63,18 +74,17 @@
 περιορισμοί **δεν** ισχύουν όπου ο νόμος δεν το επιτρέπει (δόλος, βαριά αμέλεια, σωματική
 βλάβη, μη παραιτητά δικαιώματα καταναλωτή).
 
-## 10. Πληρωμές (όταν ενεργοποιηθεί)
-Συνδρομές/τιμές/κύκλοι κατά την εγγραφή· πληρωμές μέσω **Creem**, που ενεργεί ως
-**merchant of record** (πουλά στο δικό της όνομα, εκδίδει το παραστατικό, αποδίδει τον ΦΠΑ)·
-δοκιμή 30 ημερών με κάρτα από την αρχή και πρώτη χρέωση την 31η ημέρα· εγγύηση επιστροφής
-14 ημερών από την πρώτη χρέωση· πέραν αυτής μη επιστρεπτέα εκτός αν ο νόμος (δικαιώματα
-καταναλωτή) ορίζει άλλως. **[ΣΥΜΠΛΗΡΩΣΤΕ: τιμολόγηση/ΦΠΑ/ανανέωση/
-ακύρωση.]**
+## 10. Πληρωμές
+Πληρωμές μέσω **Creem**, που ενεργεί ως **merchant of record** (πουλά στο δικό της όνομα,
+εκδίδει το παραστατικό, αποδίδει τον ΦΠΑ)· εγγύηση επιστροφής 14 ημερών από την πρώτη
+χρέωση. Η δοκιμή, η στιγμή της πρώτης χρέωσης, το μέσο πληρωμής, η ανανέωση, η ακύρωση
+και η υπαναχώρηση ορίζονται στους ισχύοντες Όρους (`/terms`), από το
+`lib/legal/billingWords.ts`.
 
 ## 11. Αναστολή & καταγγελία
 Αναστολή/τερματισμός σε παράβαση, κίνδυνο ασφαλείας ή νομική υποχρέωση. Τερματίζετε ανά
 πάσα στιγμή κλείνοντας τον λογαριασμό· ισχύουν οι κανόνες διατήρησης/διαγραφής (εξαγωγή
-πριν τη διαγραφή· διαγραφή εντός **30 ημερών**).
+πριν τη διαγραφή· διαγραφή από τη βάση αμέσως, από τα αντίγραφα ασφαλείας εντός **30 ημερών**).
 
 ## 12. Τροποποιήσεις
 Δυνατότητα τροποποίησης· ουσιώδεις αλλαγές με εύλογη προειδοποίηση· η συνέχιση χρήσης =
@@ -82,7 +92,8 @@
 
 ## 13. Εφαρμοστέο δίκαιο & δικαιοδοσία
 **Ελληνικό δίκαιο**· δικαστήρια **[ΣΥΜΠΛΗΡΩΣΤΕ: π.χ. Αθηνών]**, με επιφύλαξη αναγκαστικού
-δικαίου προστασίας καταναλωτή (δικαστήρια κατοικίας). Πλατφόρμα ΗΕΔ/ODR της ΕΕ διαθέσιμη.
+δικαίου προστασίας καταναλωτή (δικαστήρια κατοικίας). Η πλατφόρμα ΗΕΔ/ODR της ΕΕ έπαψε να
+λειτουργεί στις 20.07.2025 (Καν. (ΕΕ) 2024/3228).
 
 ## 14. Λοιποί όροι
 Ρήτρα διαιρετότητας· καμία εκχώρηση από εσάς χωρίς συναίνεση· εμείς μπορούμε να εκχωρήσουμε
@@ -116,10 +127,10 @@ with a licensed professional first. Reliance is at your own risk.
 **8. Disclaimers.** "As is"/"as available", no warranties. **9. Liability.** No
 indirect/consequential damages or **tax/administrative penalties/fines**; aggregate
 cap = amounts paid in prior **12 months** **[COMPLETE: alt cap]**; limits don't apply
-where law forbids. **10. Payments** via Creem as merchant of record; 30-day
-trial with card up front, first charge on day 31; 14-day money-back guarantee from the
-first charge; otherwise non-refundable unless law requires. **11. Suspension/termination** for breach; you may close anytime; retention
-rules apply (deletion within 30 days). **12. Changes** notified in advance. **13.
+where law forbids. **10. Payments** via Creem as merchant of record; 14-day
+money-back guarantee from the first charge. Trial, first charge, payment method,
+renewal, cancellation and withdrawal: see the live `/terms`. **11. Suspension/termination** for breach; you may close anytime; retention
+rules apply (immediate deletion from the database; backups within 30 days). **12. Changes** notified in advance. **13.
 Governing law:** Greek law; courts of **[COMPLETE: Athens]**, subject to consumer
-rules; EU ODR available. **14. Miscellaneous:** severability; no assignment by you; we
+rules; the EU ODR platform closed on 20.07.2025 (Reg. (EU) 2024/3228). **14. Miscellaneous:** severability; no assignment by you; we
 may assign on reorganisation. Contact **[COMPLETE]**.
