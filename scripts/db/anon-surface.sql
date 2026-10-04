@@ -137,7 +137,10 @@ begin
   foreach s in array array[
     'public.portal_pin_gate(text,text)',
     'public.portal_upload_slot(text,text)',
-    'public.allow_public_submit(text,text,integer,interval)'
+    'public.allow_public_submit(text,text,integer,interval)',
+    -- 20261004090000: το ωριαίο σκούπισμα των προσπαθειών. Το καλεί μόνο το
+    -- pg_cron· από τον περιηγητή θα έσβηνε μετρητές άλλων κουπονιών.
+    'public.prune_portal_pin_attempts(integer)'
   ] loop
     f := to_regprocedure(s);
     if f is null then
