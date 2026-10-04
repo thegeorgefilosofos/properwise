@@ -184,7 +184,9 @@ const ZERO_CSS = `
 // Ενα σημείο έντασης: οι ερωτήσεις. Είναι αυτό που ο αναγνώστης αναγνωρίζει
 // ως δικό του. Απαντήσεις δεν μπαίνουν: θα έπρεπε να γράφουν ποσά.
 function noa(s: Size): string {
-  const label = 'Ψηφιακός βοηθός';
+  // ΧΩΡΙΣ «ΒΟΗΘΟ»: η Νόα δεν έχει φύλο και δεν λέγεται «βοηθός» πουθενά
+  // (lib/assistant/identity.ts). Ίδια ετικέτα με το story της (stories.ts).
+  const label = 'Ερώτηση στα ελληνικά';
   const title = `Γνώρισε ${ASSISTANT_ACC}.`;
   const sub = 'Ρωτάς για το ακίνητό σου στα ελληνικά. Απαντά με τα δικά σου νούμερα.';
   // Τρία στοιχεία που δεν σπάνε στη μέση· το «τον μήνα» το λέει ήδη η τιμή από πάνω.
@@ -288,7 +290,7 @@ function sygkrisi(s: Size): string {
 
 const CONCEPTS = [
   { key: 'dorean', what: `Ο «${FREE.name}» δωρεάν`, build: dorean, sizes: SIZES },
-  { key: 'noa', what: `${ASSISTANT_NAME}, ο ψηφιακός βοηθός`, build: noa, sizes: SIZES },
+  { key: 'noa', what: `${ASSISTANT_NAME}: ερώτηση στα ελληνικά`, build: noa, sizes: SIZES },
   { key: 'sygkrisi', what: 'Με ή χωρίς βοηθό', build: sygkrisi, sizes: SIZES.filter(s => s.key !== 'wide') },
 ] as const;
 

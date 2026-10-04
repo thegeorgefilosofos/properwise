@@ -12,7 +12,7 @@
 - `dorean-square.png`: LinkedIn, X, Facebook (1:1), 1080×1080
 - `dorean-wide.png`: Διαφήμιση συνδέσμου LinkedIn και Facebook (1,91:1), 2400×1256
 
-## Νόα, ο ψηφιακός βοηθός
+## Νόα: ερώτηση στα ελληνικά
 
 - `noa-feed.png`: Instagram και Facebook, ανάρτηση στη ροή (4:5), 1080×1350
 - `noa-story.png`: Stories, Reels, TikTok (9:16), 1080×1920

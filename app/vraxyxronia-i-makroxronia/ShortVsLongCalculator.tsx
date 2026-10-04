@@ -31,14 +31,10 @@ import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
 import { ToolNumField, ToolSelect, ToolFields, ToolSeg, ToolHint, ToolHero } from '@/app/ToolParts';
 
 import LiveResult from '@/components/LiveResult';
+import { SPEC } from './spec';
 import { roundHalfUp } from '@/lib/core/money';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
-/** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
-const SPEC = {
-  enoikio: '700', timi: '80', plirotita: '60', tm: '75', typos: 'flat',
-  promitheia: '15', kostos: '12', pagia: '90', sezon: 'even',
-} as const;
 
 /** Ο κανόνας των «κόκκινων ζωνών», από τη μία πηγή κανόνων της εφαρμογής. */
 const AMA_RULE = REGULATORY_UPDATES_2026.find(u => u.id === 'ama-red-zones');
