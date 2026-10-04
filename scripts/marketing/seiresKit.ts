@@ -36,12 +36,14 @@ export interface Palette {
   neg: string;
   /** Ο ΕΝΦΙΑ και ό,τι είναι προθεσμία: το κεχριμπαρένιο του carousel. */
   warm: string;
+  /** Τα λοιπά κόστη: το λιλά του carousel. */
+  other: string;
 }
 
 const BRAND = {
   ground: C.ground, panel: C.panel, lift: C.lift, card: C.panel, rule: C.rule,
   ink: C.ink, muted: C.muted, faint: C.faint, accent: C.accent, onAccent: C.onAccent,
-  ok: C.ok, neg: SEG.tax, warm: SEG.enfia,
+  ok: C.ok, neg: SEG.tax, warm: SEG.enfia, other: SEG.other,
 };
 
 export const SERIES: Record<SeriesKey, Palette> = {
@@ -132,7 +134,13 @@ const MOTION = `
   .typing i{animation:bounce .9s ease infinite}
   .typing i:nth-child(2){animation-delay:.15s}
   .typing i:nth-child(3){animation-delay:.3s}
-  .ans{animation:rise .7s ${EASE} 2.4s both}`;
+  .ans{animation:rise .7s ${EASE} 2.4s both}
+  @keyframes reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+  .sp-bar{animation:reveal 1.5s ${EASE} 1.0s both}
+  .sp-r{animation:rise .7s ${EASE} both}
+  ${Array.from({ length: 6 }, (_, k) => `.sp-r:nth-child(${k + 1}){animation-delay:${(1.6 + k * 0.28).toFixed(2)}s}`).join('\n')}
+  .band{animation:fade .8s ease 2.4s both}
+  .callout{animation:fade .6s ease 3.2s both}`;
 
 /**
  * Ο χρόνος του βίντεο. Παγώνει κάθε κίνηση στη στιγμή `t` και μετρά τα ποσά
@@ -194,10 +202,11 @@ export function shell(f: Format, s: Palette, ep: { no: number }, i: number, n: n
   .stamp b i{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:14px;background:${s.accent}1f;border:1.5px solid ${s.accent}55}
   .stamp span{color:${s.faint}}
   h1,h2{font-weight:800;letter-spacing:-.045em;line-height:.96;text-wrap:balance}
+  h2{font-size:var(--h2)}
   .acc{color:${s.accent}}
   h1 .acc,h2 .acc,.big .acc{text-shadow:0 18px 90px ${s.accent}55}
   .ok{color:${s.ok}}
-  .lead{color:${s.muted};font-size:${story ? 40 : 36}px;line-height:1.36;letter-spacing:-.012em;text-wrap:pretty}
+  .lead{color:${s.muted};font-size:${story ? 40 : 36}px;line-height:1.36;letter-spacing:-.012em;text-wrap:balance;max-width:900px}
   .mono{font-family:'Roboto Mono',monospace;letter-spacing:.08em}
   .num{font-variant-numeric:tabular-nums;letter-spacing:-.025em}
   .src{font-family:'Roboto Mono',monospace;font-size:${story ? 21 : 19}px;letter-spacing:.04em;color:${s.faint};line-height:1.5}
