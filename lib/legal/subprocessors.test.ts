@@ -42,6 +42,16 @@ eq(rowOf({ NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'BLc4xhmTsoFEGSRhL4YRLFCbfIxjkK5' }, PU
 ok(/Δεν έχουν ενεργοποιηθεί/.test(rowOf({}, PUSH_SERVICES).purpose), 'χωρίς κλειδί η γραμμή λέει ότι δεν έχουν ενεργοποιηθεί');
 ok(!/Δεν έχουν ενεργοποιηθεί/.test(rowOf({ NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'BLc4' }, PUSH_SERVICES).purpose), 'με κλειδί δεν το λέει');
 
+// ── Η ΚΑΤΑΓΡΑΦΗ ΣΦΑΛΜΑΤΩΝ ΚΑΙ Η ΠΑΡΑΛΑΒΗ EMAIL ΑΚΟΛΟΥΘΟΥΝ ΤΟ ΠΕΡΙΒΑΛΛΟΝ ────
+eq(rowOf({}, 'Sentry').active, false, 'χωρίς DSN η καταγραφή σφαλμάτων δεν είναι ενεργή');
+ok(/δεν έχει οριστεί/.test(rowOf({}, 'Sentry').purpose), 'και η γραμμή το λέει');
+eq(rowOf({ SENTRY_DSN: 'https://k@o1.ingest.sentry.io/1' }, 'Sentry').active, true, 'με DSN διακομιστή δηλώνεται ενεργή');
+eq(rowOf({ NEXT_PUBLIC_SENTRY_DSN: '', SENTRY_DSN: 'https://k@o1.ingest.sentry.io/1' }, 'Sentry').active, true, 'κενό δημόσιο DSN δεν κρύβει το DSN διακομιστή');
+ok(!/δεν έχει οριστεί/.test(rowOf({ NEXT_PUBLIC_SENTRY_DSN: 'https://k@o1.ingest.sentry.io/1' }, 'Sentry').purpose), 'με DSN η γραμμή δεν λέει ότι λείπει');
+ok(!/Παραλαβή/.test(rowOf({}, 'Resend').purpose), 'χωρίς τομέα παραλαβής δεν δηλώνεται παραλαβή email');
+ok(/Παραλαβή/.test(rowOf({ NEXT_PUBLIC_INBOUND_DOMAIN: 'in.example.gr' }, 'Resend').purpose), 'με τομέα παραλαβής δηλώνεται');
+ok(/Microsoft/.test(PUSH_SERVICES), 'οι υπηρεσίες push περιλαμβάνουν τη Microsoft, όπως η αποστολή');
+
 // ── Ο ΡΟΛΟΣ ΑΚΟΛΟΥΘΕΙ ΤΟ ΜΗΤΡΩΟ ΤΟΥ ΑΡΘΡΟΥ 28 ─────────────────────────────
 // docs/compliance/subprocessors.md: η Google αυτοτελής υπεύθυνος, οι υπόλοιποι
 // ενεργοί εκτελούντες, ο έμπορος υπεύθυνος για το ταμείο και εκτελών για τα άλλα.

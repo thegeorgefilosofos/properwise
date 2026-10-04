@@ -7,7 +7,7 @@ import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
 import { SITE, ORG_ID, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES, SOCIAL_PROFILES } from '@/lib/core/site';
 import { IDENTITY } from '@/lib/legal/identity';
-import { billingWords } from '@/lib/legal/billingWords';
+import { billingWords, PRICES_VAT } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
 import LandingShowcase from './LandingShowcase';
 import ScrollStory from './ScrollStory';
@@ -650,7 +650,7 @@ export default async function Landing() {
             προτάσεις (η δοκιμή με το όριό της, ο ΦΠΑ, η εγγύηση), στη σειρά. */}
         <p className="fineprint po-just" style={{ fontSize: 13, lineHeight: 1.6, color: FAINT, margin: '22px 0 0' }}>
           {TRIAL_OFFER}{billingLive && <> {billingWords().firstCharge}</>}
-          {' '}Οι τιμές αφορούν καταναλωτές στην Ελλάδα και περιλαμβάνουν ΦΠΑ. Χωρίς δέσμευση ή ποινή αποχώρησης.
+          {' '}{PRICES_VAT} Χωρίς δέσμευση ή ποινή αποχώρησης.
           {' '}{billingWords().moneyBack}
         </p>
         {/* Η ΣΕΛΙΔΑ ΤΩΝ ΠΑΚΕΤΩΝ ΔΕΝ ΕΙΧΕ ΚΑΜΙΑ ΕΙΣΟΔΟ ΑΠΟ ΤΗΝ ΑΡΙΘΜΗΤΙΚΗ ΤΟΥΣ.

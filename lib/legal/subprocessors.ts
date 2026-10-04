@@ -77,6 +77,24 @@ export const ROLE_LABEL: Record<SubprocessorRole, string> = {
 
 import { merchant, type BillingEnv } from '@/lib/billing/merchant';
 import { billingWords } from './billingWords';
+import { inboundDomain } from '@/lib/inbound/address';
+
+/** Το εμπορικό όνομα των υπηρεσιών push, όπως γράφεται στο μητρώο. */
+export const PUSH_SERVICES = 'Ειδοποιήσεις περιηγητή (Google / Apple / Mozilla / Microsoft)';
+
+/** Το όνομα της καταγραφής σφαλμάτων, για να τη βρίσκει ο κανόνας του περιβάλλοντος. */
+const ERROR_REPORTING = 'Sentry';
+
+/** Το όνομα της αποστολής email, για να της προστεθεί η παραλαβή όταν λειτουργεί. */
+const MAIL_SERVICE = 'Resend';
+
+/**
+ * Η ΠΑΡΑΛΑΒΗ, ΟΤΑΝ ΛΕΙΤΟΥΡΓΕΙ. Ο ίδιος πάροχος παραλαμβάνει τα μηνύματα της
+ * διεύθυνσης παραλαβής και των δημόσιων διευθύνσεών μας (app/api/inbound) και
+ * η εφαρμογή ζητά από αυτόν το κείμενό τους (lib/inbound/fetchBody.ts).
+ */
+const INBOUND_PURPOSE =
+  'Παραλαβή email: όσα προωθείς στη διεύθυνση παραλαβής του λογαριασμού σου, για να προταθούν ως δαπάνες· και όσα στέλνεις στις διευθύνσεις επικοινωνίας μας.';
 
 // ── ΓΙΑΤΙ ΣΥΝΑΡΤΗΣΗ ΚΑΙ ΟΧΙ ΠΙΝΑΚΑΣ ──────────────────────────────────────
 // Ο κώδικας απέκτησε ΔΕΥΤΕΡΟ έμπορο και μια μεταβλητή που διαλέγει ποιος
@@ -105,7 +123,7 @@ const base = (mor: string): readonly Subprocessor[] => [
     entity: 'Vercel Inc.',
   },
   {
-    name: 'Resend',
+    name: MAIL_SERVICE,
     short: 'αποστολή email',
     purpose: 'Αποστολή όλων των μηνυμάτων ηλεκτρονικού ταχυδρομείου: λειτουργικά, υπενθυμίσεις υποχρεώσεων, μηνιαίες καταστάσεις που περιέχουν ονόματα ενοικιαστών και ποσά, ενημερωτικά.',
     where: 'ΗΠΑ',
@@ -145,10 +163,11 @@ const base = (mor: string): readonly Subprocessor[] => [
     entity: 'Google LLC',
   },
   {
-    name: 'Sentry',
+    name: ERROR_REPORTING,
     short: 'καταγραφή σφαλμάτων',
-    purpose: 'Καταγραφή σφαλμάτων της εφαρμογής. Ενεργοποιείται μόνο αν οριστεί κλειδί και σήμερα δεν έχει οριστεί.',
+    purpose: 'Καταγραφή σφαλμάτων της εφαρμογής.',
     where: 'ΗΠΑ ή Ευρωπαϊκή Ένωση',
+    // Συμπληρώνεται από το περιβάλλον, παρακάτω. Η τιμή εδώ δεν διαβάζεται ποτέ.
     active: false,
     role: 'processor',
     entity: null,
@@ -189,11 +208,14 @@ const base = (mor: string): readonly Subprocessor[] => [
     entity: null,
   },
   {
-    // ΤΡΙΑ ΟΝΟΜΑΤΑ ΓΙΑ ΕΝΑΝ ΡΟΛΟ, ΚΑΙ ΤΟΝ ΔΙΑΛΕΓΕΙ Ο ΠΕΡΙΗΓΗΤΗΣ. Το Chrome
-    // παραδίδει μέσω Google, το Safari μέσω Apple, ο Firefox μέσω Mozilla. Ο
-    // χρήστης δεν επιλέγει υπηρεσία· επιλέγει περιηγητή και η υπηρεσία έρχεται
-    // μαζί. Γι' αυτό γράφονται και οι τρεις σε μία γραμμή.
-    name: 'Ειδοποιήσεις περιηγητή (Google / Apple / Mozilla)',
+    // ΤΕΣΣΕΡΑ ΟΝΟΜΑΤΑ ΓΙΑ ΕΝΑΝ ΡΟΛΟ, ΚΑΙ ΤΟΝ ΔΙΑΛΕΓΕΙ Ο ΠΕΡΙΗΓΗΤΗΣ. Το Chrome
+    // παραδίδει μέσω Google, το Safari μέσω Apple, ο Firefox μέσω Mozilla και
+    // ο Edge μέσω Microsoft. Ο χρήστης δεν επιλέγει υπηρεσία· επιλέγει
+    // περιηγητή και η υπηρεσία έρχεται μαζί. Γι' αυτό γράφονται όλες σε μία
+    // γραμμή. Ο κατάλογος ακολουθεί τις διευθύνσεις που δέχεται η αποστολή
+    // (`PUSH_HOSTS` στο lib/push/send.ts): η Microsoft έλειπε από εδώ ενώ η
+    // αποστολή παρέδιδε ήδη στο notify.windows.com.
+    name: PUSH_SERVICES,
     short: 'ειδοποιήσεις στον περιηγητή',
     purpose: 'Οι υπηρεσίες ειδοποιήσεων των περιηγητών. Παραδίδουν την ειδοποίηση στη συσκευή σου, μόνο εφόσον την έχεις ζητήσει. Το κείμενο ταξιδεύει κρυπτογραφημένο με κλειδιά που παράγει ο ίδιος ο περιηγητής σου: παραδίδουν κλειστό φάκελο και δεν διαβάζουν το περιεχόμενο.',
     where: 'ΗΠΑ και Ευρωπαϊκή Ένωση',
@@ -202,9 +224,6 @@ const base = (mor: string): readonly Subprocessor[] => [
     entity: null,
   },
 ];
-
-/** Το εμπορικό όνομα των υπηρεσιών push, όπως γράφεται στο μητρώο. */
-export const PUSH_SERVICES = 'Ειδοποιήσεις περιηγητή (Google / Apple / Mozilla)';
 
 /**
  * Ο κατάλογος όπως ισχύει ΤΩΡΑ. Ο πάροχος πληρωμών παίρνει την κατάστασή του
@@ -219,7 +238,21 @@ export function subprocessors(env: BillingEnv = process.env): readonly Subproces
   // επεξεργασία που δεν συμβαίνει· ένα καρφωμένο `false` θα την έκρυβε την
   // ημέρα που θα ξεκινούσε.
   const pushLive = String(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '').trim() !== '';
+  // Ο ΙΔΙΟΣ ΚΑΝΟΝΑΣ ΓΙΑ ΤΗΝ ΚΑΤΑΓΡΑΦΗ ΣΦΑΛΜΑΤΩΝ. Η γραμμή έλεγε καρφωτά «σήμερα
+  // δεν έχει οριστεί» και `active: false`: την ημέρα που θα έμπαινε το DSN, το
+  // μητρώο θα έκρυβε επεξεργασία που συμβαίνει. Οι δύο μεταβλητές είναι αυτές
+  // που διαβάζει η αναφορά σφαλμάτων (lib/observability/report.ts).
+  const sentryLive = String(env.NEXT_PUBLIC_SENTRY_DSN || env.SENTRY_DSN || '').trim() !== '';
+  // ΚΑΙ ΓΙΑ ΤΗΝ ΠΑΡΑΛΑΒΗ EMAIL. Χωρίς τομέα παραλαβής καμία διεύθυνση δεν
+  // εμφανίζεται και η διαδρομή αρνείται κάθε μήνυμα (lib/inbound/address.ts).
+  const inboundLive = inboundDomain(env.NEXT_PUBLIC_INBOUND_DOMAIN) !== '';
   return base(port.name).map(s => {
+    if (s.name === ERROR_REPORTING) return sentryLive
+      ? { ...s, active: true }
+      : { ...s, active: false, purpose: `${s.purpose} Ενεργοποιείται μόνο αν οριστεί κλειδί και σήμερα δεν έχει οριστεί.` };
+    if (s.name === MAIL_SERVICE) return inboundLive
+      ? { ...s, purpose: `${s.purpose} ${INBOUND_PURPOSE}` }
+      : s;
     // Η ΓΡΑΜΜΗ ΔΙΑΒΑΖΟΤΑΝ ΣΑΝ ΕΝΕΡΓΗ. Οι δύο άλλοι ανενεργοί το γράφουν στο
     // κείμενό τους· εδώ η κατάσταση εξαρτάται από το κλειδί, οπότε και η φράση.
     if (s.name === PUSH_SERVICES) return pushLive
