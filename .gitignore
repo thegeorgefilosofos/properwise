@@ -81,3 +81,6 @@ docs/marketing/reels/*
 # `git status` και στο `git add -A`. Οι δύο φάκελοι από πάνω δεν το έπιαναν:
 # τα πρόχειρα δεν κάθονται πάντα σε φάκελο.
 scripts/.tmp-*
+
+# Τα βίντεο των σειρών ξαναβγαίνουν από το scripts/marketing/seires.ts --video
+docs/marketing/instagram/seires/**/*.mp4
