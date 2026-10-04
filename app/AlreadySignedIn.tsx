@@ -4,6 +4,7 @@ import { T } from '@/components/tokens'
 import { Btn } from '@/components/Theme'
 import { hy } from '@/components/Hyphen'
 import { BackLink } from './BackLink'
+import { HOME } from '@/lib/auth/redirect'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AlreadySignedIn, ευγενική κατάσταση όταν ο επισκέπτης είναι ήδη συνδεδεμένος
@@ -17,13 +18,21 @@ import { BackLink } from './BackLink'
 // είναι σύνδεσμος. Ιδιο αδιέξοδο με την οθόνη «Ανοιξε το email σου», που
 // διορθώθηκε ήδη με τον ίδιο σύνδεσμο. Μπαίνει ΕΔΩ και όχι στις δύο σελίδες
 // που το καλούν: μία κατάσταση, ένας δρόμος πίσω.
+//
+// ── ΚΑΙ ΤΟ ΚΥΡΙΟ ΚΟΥΜΠΙ ΠΑΕΙ ΕΚΕΙ ΠΟΥ ΠΗΓΑΙΝΕ Ο ΑΝΘΡΩΠΟΣ ────────────────
+// Ηταν πάντα «/dashboard»: ο συνδεδεμένος που ερχόταν με πακέτο ή με «next»
+// (π.χ. από τον χώρο του λογιστή) έχανε τον προορισμό του ακριβώς εδώ. Τον
+// υπολογίζει η σελίδα που καλεί (lib/auth/continuation.ts)· εδώ μόνο δείχνεται.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function AlreadySignedIn({
-  email, onSignOut, signingOut, mode,
+  email, onSignOut, signingOut, mode, next = HOME,
 }: {
   email: string; onSignOut: () => void; signingOut: boolean; mode: 'login' | 'signup'
+  /** Ο προορισμός του κύριου κουμπιού, ήδη ελεγμένος από το `continuation`. */
+  next?: string
 }) {
+  const home = next === HOME
   return (
     <div>
       <BackLink home />
@@ -37,13 +46,13 @@ export default function AlreadySignedIn({
           ο συλλαβισμός κρατά τα κενά στο φυσικό τους πλάτος αντί να τα τεντώσει.
           Η διεύθυνση μέσα στο `<strong>` είναι λατινική, μένει ακέραιη. */}
       <p className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 28px' }}>
-        {hy(<>Ο λογαριασμός <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> είναι ενεργός σε αυτή τη συσκευή. Μπορείς να συνεχίσεις στον πίνακά σου{mode === 'signup'
+        {hy(<>Ο λογαριασμός <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> είναι ενεργός σε αυτή τη συσκευή. Μπορείς να συνεχίσεις {home ? 'στον πίνακά σου' : 'εκεί που πήγαινες'}{mode === 'signup'
           ? ' ή, αν θέλεις, να αποσυνδεθείς για να δημιουργήσεις νέο λογαριασμό'
           : ' ή να αποσυνδεθείς για να συνδεθείς με άλλον λογαριασμό'}.</>)}
       </p>
 
-      <Link href="/dashboard" className="auth-cta" style={{ display: 'block', textAlign: 'center', padding: '12px', background: 'var(--accent)', borderRadius: T.radius.pill, color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, textDecoration: 'none', letterSpacing: '-0.01em' }}>
-        Άνοιξε τον πίνακά σου
+      <Link href={next} className="auth-cta" style={{ display: 'block', textAlign: 'center', padding: '12px', background: 'var(--accent)', borderRadius: T.radius.pill, color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, textDecoration: 'none', letterSpacing: '-0.01em' }}>
+        {home ? 'Άνοιξε τον πίνακά σου' : 'Συνέχισε'}
       </Link>
 
       {/* `field` γιατί η ενέργεια κρατά όλο το πλάτος κάτω από το κύριο κουμπί, όπως πριν.

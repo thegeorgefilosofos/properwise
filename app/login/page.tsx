@@ -1,6 +1,6 @@
 'use client'
 import { T, Btn } from '@/components/Theme'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/supabase/lazy';
@@ -13,16 +13,20 @@ import GoogleButton, { useEmailFirst } from '../GoogleButton'
 import { BackLink } from '../BackLink'
 import { failed } from '@/lib/core/dbError';
 import { IDENTITY } from '@/lib/legal/identity';
-import { planFromParam, cycleFromParam, checkoutLanding } from '@/lib/billing/entitlements';
+import { continuation, carried } from '@/lib/auth/continuation';
 
 // ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΤΑΞΙΔΕΨΕ ΩΣ ΕΔΩ ΔΕΝ ΧΑΝΕΤΑΙ ΣΤΗΝ ΠΟΡΤΑ. Ο διαμεσολαβητής στέλνει
 // το ανώνυμο «/tameio?plan=…&cycle=…» στη σύνδεση κρατώντας τη διεύθυνση· η
 // σύνδεση όμως πήγαινε ΠΑΝΤΑ στον πίνακα. Τώρα γυρίζει στο ταμείο με το ίδιο
 // πακέτο, όπως και η εγγραφή.
-const afterSignIn = () => {
-  const q = new URLSearchParams(window.location.search)
-  return checkoutLanding(planFromParam(q.get('plan')), cycleFromParam(q.get('cycle')))
-}
+// ΚΑΙ ΤΟ «next» (04.10.2026). Ο χώρος του λογιστή στέλνει εδώ με
+// «?next=/accountant/workspace» και η σύνδεση το αγνοούσε: ο λογιστής
+// κατέληγε στον πίνακα. Η σειρά και οι έλεγχοι ζουν στο lib/auth/continuation.ts.
+const afterSignIn = () => continuation(window.location.search)
+
+// Η διεύθυνση δεν αλλάζει χωρίς πλοήγηση· στον διακομιστή είναι κενή.
+const SEARCH_NEVER_CHANGES = () => () => {}
+const readSearch = () => window.location.search
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Σύνδεση, στα χρώματα του app (design tokens, theme-aware light/dark).
@@ -57,6 +61,11 @@ export default function LoginPage() {
   const [show, setShow] = useState(false)
   const [sessionEmail, setSessionEmail] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
+  // Ο ΠΡΟΟΡΙΣΜΟΣ ΤΑΞΙΔΕΥΕΙ ΣΤΗΝ ΕΓΓΡΑΦΗ. Ο σύνδεσμος «Δημιούργησε λογαριασμό»
+  // ήταν σκέτο «/signup»: όποιος ερχόταν με πακέτο ή με «next» και δεν είχε
+  // λογαριασμό τα άφηνε στην πόρτα.
+  const query = useSyncExternalStore(SEARCH_NEVER_CHANGES, readSearch, () => '')
+  const carry = carried(query)
 
   // ── ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ─────────────────────────────────────────────────────
   // Το `factorId` ΕΙΝΑΙ ΚΑΙ Η ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΟΘΟΝΗΣ: όσο κρατά αναγνωριστικό
@@ -206,10 +215,11 @@ export default function LoginPage() {
   // ΚΑΙ ΤΟ ΠΑΚΕΤΟ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ. Η σύνδεση με κωδικό γυρίζει στο ταμείο με το
   // πακέτο και τον κύκλο (`afterSignIn`)· η Google τα έχανε στην επιστροφή και
   // όποιος ερχόταν από τον τιμοκατάλογο κατέληγε στον πίνακα.
+  // Το ίδιο και το «next». Η επιστροφή κουβαλά ΜΟΝΟ τη συνέχεια που πέρασε τον
+  // έλεγχο (`carried`), ποτέ ό,τι άλλο έτυχε να βρίσκεται στη διεύθυνση.
   async function signInWithGoogle() {
-    const q = new URLSearchParams(window.location.search)
-    const back = new URLSearchParams({ oauth: 'login' })
-    for (const k of ['plan', 'cycle']) { const v = q.get(k); if (v) back.set(k, v) }
+    const back = new URLSearchParams(carried(window.location.search))
+    back.set('oauth', 'login')
     const supabase = await authClient()
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/signup?${back.toString()}` } })
     if (error) setError(failed('Η σύνδεση δεν έγινε', error))
@@ -271,7 +281,7 @@ export default function LoginPage() {
               όποιον στέλνει εδώ ο διαμεσολαβητής θα έβλεπε «μετάβαση στον
               πίνακα» και θα γύριζε αμέσως πίσω. Κλειστός βρόχος. */}
           {sessionEmail && !factorId ? (
-            <AlreadySignedIn email={sessionEmail} onSignOut={signOut} signingOut={signingOut} mode="login" />
+            <AlreadySignedIn email={sessionEmail} onSignOut={signOut} signingOut={signingOut} mode="login" next={continuation(query)} />
           ) : (<>
           {/* ΣΕ ΚΙΝΗΤΟ ΔΕΝ ΥΠΗΡΧΕ ΚΑΝΕΝΑΣ ΔΡΟΜΟΣ ΠΙΣΩ. Το λογότυπο ζει στο
               αριστερό πάνελ, που κρύβεται κάτω από τις 900 και δεν ήταν καν
@@ -283,7 +293,7 @@ export default function LoginPage() {
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.5 }}>
             {factorId ? MFA_SAY.ask : (<>
               Δεν έχεις λογαριασμό;{' '}
-              <Link href="/signup" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Δημιούργησε λογαριασμό</Link>
+              <Link href={`/signup${carry}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Δημιούργησε λογαριασμό</Link>
             </>)}
           </p>
 
