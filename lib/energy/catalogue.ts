@@ -272,7 +272,10 @@ export const PROVIDERS: ProviderGroup[] = [
       { id: 'heron_protect', priceStatus: 'retro',        name: 'Protect Home',               badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.0825,  kwh_night: null, flat_monthly: null, fixed: 5.50,  fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Νέο τιμολόγιο. Τιμή 0,0825€ συν ΜΔΚΑ. Πάγιο 5,50€.' },
       { id: 'heron_happy_hour', priceStatus: 'retro',     name: 'Happy Hour Home',            badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.0825,  kwh_night: null, flat_monthly: null, fixed: 5.50,  fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Νέο. 3 ώρες δωρεάν ρεύμα ημερησίως. Πάγιο 7€.' },
       // ── Πράσινο (Γ1 Ειδικό) ───────────────────────────────────────────────
-      { id: 'heron_basic',          name: 'Basic Home (Γ1 Πράσινο)',    badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.1476,  kwh_night: null, flat_monthly: null, fixed: 5.00,  fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Ειδικό τιμολόγιο Γ1. Ανακοινώνεται κάθε 1η μήνα. Έκπτωση συνέπειας 7 λεπτά ανά kWh.' },
+      // Πηγή: https://heron.gr/energy/electricity/gia-to-spiti/basic-home/ (Οκτώβριος
+      // 2026). Η τελική προμήθεια 0,14760 δεν άλλαξε· αλλάζει μόνο ο μήνας.
+      // Ανάγνωση της ομάδας Grok στις 04/10/2026, οδηγία ιδιοκτήτη 04/10/2026.
+      { id: 'heron_basic', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', name: 'Basic Home (Γ1 Πράσινο)',    badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.1476,  kwh_night: null, flat_monthly: null, fixed: 5.00,  fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Ειδικό τιμολόγιο Γ1. Ανακοινώνεται κάθε 1η μήνα. Έκπτωση συνέπειας 7 λεπτά ανά kWh.' },
       { id: 'heron_ena',            name: 'Ε.ΝΑ (Virtual Net Metering)', badge: 'VNM',   type: 'vnm',      kwh_day: 0.1290,  kwh_night: null, flat_monthly: null, fixed: 7.00,  fixed_ebill: null, contract_months: 0, no_fixed: false, vat: 6, segment: 'residential', desc: 'Εικονική Καθαρή Μέτρηση. Συμμετοχή σε κοινό φωτοβολταϊκό. Χωρίς δέσμευση.' },
       // ── Επαγγελματικά ──────────────────────────────────────────────────
       { id: 'heron_blue_smart_biz', priceStatus: 'verified', name: 'Blue Smart BUSINESS 2', badge: 'ΜΠΛΕ', type: 'fixed', kwh_day: 0.158, kwh_night: null, flat_monthly: null, fixed: 7.95, fixed_ebill: null, fixed_tier2: 15.9, fixed_tier2_threshold: 150, contract_months: 12, no_fixed: false, vat: 6, segment: 'business', desc: 'Πάγιο 7,95€ έως τις 150 kWh τον μήνα, 15,90€ πάνω από αυτές. Η τιμή ισχύει με συνέπεια στην πληρωμή.' },
@@ -344,7 +347,12 @@ export const PROVIDERS: ProviderGroup[] = [
       { id: 'zen_light',     name: 'Power Home Light',        badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.1560, kwh_night: null, flat_monthly: null, fixed: 0,     fixed_ebill: null, contract_months: 0,  no_fixed: true,  vat: 6, segment: 'residential', desc: 'Χαμηλό πάγιο. Ιδανικό χαμηλή κατανάλωση.' },
       // FIX: τιμή αναπροσαρμόστηκε 0.1450 → 0.095 (επιβεβαιωμένο, Ιούνιος 2026), ισχύει για τις πρώτες 200 kWh/μήνα
       { id: 'zen_student', studentOnly: true,   name: 'Power Home Student',      badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.0950, kwh_night: null, flat_monthly: null, fixed: 0,     fixed_ebill: null, contract_months: 0,  no_fixed: true,  vat: 6, segment: 'residential', desc: 'Φοιτητικό. Τιμή 0,095€ ανά kWh για τις πρώτες 200 kWh τον μήνα, πάνω από αυτό ισχύει διαφορετική τιμή, επιβεβαίωσε στο zenith.gr πριν την ένταξη. Απαιτείται φοιτητική ταυτότητα.' },
-      { id: 'zen_start',     name: 'Power Home Start (Ειδικό)', badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.1988, kwh_night: null, flat_monthly: null, fixed: 6.80, fixed_ebill: null, contract_months: 0, no_fixed: false, vat: 6, segment: 'residential', desc: 'Ειδικό Γ1. Ανακοινώνεται κάθε 1η του μήνα.' },
+      // Πηγή: https://zenith.gr/el/for-the-home/electricity/power-home-start/
+      // (Οκτώβριος 2026). Πρώτες 100 kWh 0,225 (το 0,347 διαγραμμένο), από την
+      // 101η 0,347, πάγιο 5€. Πριν: 0,1988 ενιαία, πάγιο 6,80€ (Αύγουστος). Η
+      // σελίδα δεν γράφει αν η τιμή έχει ΦΠΑ· ο κατάλογος κρατά τον κοινό κανόνα.
+      // Ανάγνωση της ομάδας Grok στις 04/10/2026, οδηγία ιδιοκτήτη 04/10/2026.
+      { id: 'zen_start', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', name: 'Power Home Start (Ειδικό)', badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.225, kwh_night: null, kwh_tier2: 0.347, tier2_threshold: 100, flat_monthly: null, fixed: 5.00, fixed_ebill: null, contract_months: 0, no_fixed: false, vat: 6, segment: 'residential', desc: 'Ειδικό Γ1, κλιμακωτό: ακριβότερη κιλοβατώρα από την 101η τον μήνα. Η σελίδα του παρόχου δεν γράφει αν η τιμή περιλαμβάνει ΦΠΑ. Ανακοινώνεται κάθε 1η του μήνα.' },
       // ── ZeΝergy, all-in πακέτα, ΟΛΑ τα 5 μεγέθη ─────────────────────────
       // FIX: πριν υπήρχε μόνο 1 πακέτο (49€). Επιβεβαιωμένο 5μελές σύστημα.
       // Ακριβή όρια kWh επιβεβαιωμένα μόνο για XS και XL, για S/M/L δες zenith.gr.
@@ -361,7 +369,11 @@ export const PROVIDERS: ProviderGroup[] = [
     value: 'elin', label: 'Elin', url: 'https://energy.elin.gr',
     tariffs: [
       // ── Οικιακά ────────────────────────────────────────────────────────
-      { id: 'elin_power_green', name: 'Power On! Home Green',  badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.1640, kwh_night: null, flat_monthly: null, fixed: 7.10, fixed_ebill: null, contract_months: 0, no_fixed: false, vat: 6, segment: 'residential', desc: 'Ειδικό Γ1. Δημοσιεύεται την 1η κάθε μήνα.' },
+      // Πηγή: https://energy.elin.gr/media/oo5iuudf/anartisi_timon_power_on-home_green.pdf
+      // Η γραμμή του Οκτωβρίου είναι κενή· τελευταίος γεμάτος μήνας ο Σεπτέμβριος
+      // 2026, τελική 0,22536 ημέρα και νύχτα, πάγιο 5€. Πριν: 0,1640, πάγιο 7,10€.
+      // Ανάγνωση της ομάδας Grok στις 04/10/2026, οδηγία ιδιοκτήτη 04/10/2026.
+      { id: 'elin_power_green', priceStatus: 'verified', priceMonth: 'Σεπτεμβρίου 2026', name: 'Power On! Home Green',  badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.22536, kwh_night: null, flat_monthly: null, fixed: 5.00, fixed_ebill: null, contract_months: 0, no_fixed: false, vat: 6, segment: 'residential', desc: 'Ειδικό Γ1. Δημοσιεύεται την 1η κάθε μήνα· ο Οκτώβριος δεν έχει δημοσιευτεί ακόμη.' },
       { id: 'elin_blue',        name: 'Home Blue Fixed',       badge: 'ΜΠΛΕ',    type: 'fixed',    kwh_day: 0.1480, kwh_night: null, flat_monthly: null, fixed: 9.90, fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Σταθερό 12μηνο.' },
       // ── Επαγγελματικά ──────────────────────────────────────────────────
     ],
@@ -370,7 +382,14 @@ export const PROVIDERS: ProviderGroup[] = [
     value: 'volton', label: 'Volton', url: 'https://volton.gr',
     tariffs: [
       // ── Οικιακά ────────────────────────────────────────────────────────
-      { id: 'volton_green',    name: 'Volton Green Ειδικό',   badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.1861, kwh_night: null, flat_monthly: null, fixed: 0,    fixed_ebill: null, contract_months: 0,  no_fixed: true,  vat: 6, segment: 'residential', desc: 'Ειδικό Γ1. Μηδενική εγγύηση. Ανακοινώνεται 1η μήνα.' },
+      // Πηγή: https://volton.gr/gia-to-spiti/revma/volton-green-eidiko/ (Οκτώβριος
+      // 2026). Χρέωση προμήθειας: βάση 0,1550, με 33% 0,1039, με 33% και 24%
+      // συνέπεια 0,0789, πάγιο 4,90€. Οι «τελικές» 0,2986 και 0,2737 της σελίδας
+      // περιέχουν και ρυθμιζόμενες χρεώσεις: δεν μπαίνουν στο πεδίο προμήθειας.
+      // Η βάση 0,1550 δεν έχει πεδίο στον κατάλογο (δύο τιμές ανά τιμολόγιο).
+      // Πριν: 0,1861 χωρίς πάγιο (Αύγουστος).
+      // Ανάγνωση της ομάδας Grok στις 04/10/2026, οδηγία ιδιοκτήτη 04/10/2026.
+      { id: 'volton_green', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', name: 'Volton Green Ειδικό',   badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.0789, kwh_night: null, flat_monthly: null, fixed: 4.90, fixed_ebill: null, undiscounted: { day: 0.1039 }, contract_months: 0,  no_fixed: false,  vat: 6, segment: 'residential', desc: 'Ειδικό Γ1. Η τιμή ισχύει με την έκπτωση 33% και την έκπτωση συνέπειας 24%. Μηδενική εγγύηση. Ανακοινώνεται 1η μήνα.' },
       { id: 'volton_blue',     name: 'Volton Blue Flat 18M',  badge: 'ΜΠΛΕ',    type: 'fixed',    kwh_day: 0.1520, kwh_night: null, flat_monthly: null, fixed: 9.90, fixed_ebill: null, contract_months: 18, no_fixed: false, vat: 6, segment: 'residential', desc: 'Σταθερό 18 μηνών με έκπτωση συνέπειας. Καλοκαιρινή προσφορά από Ιούνιο έως Αύγουστο, με έκπτωση 15% πάνω στην τιμή. Επιβεβαίωσε την τρέχουσα εποχιακή τιμή στο volton.gr.' },
       // ── Επαγγελματικά ──────────────────────────────────────────────────
       { id: 'volton_yellow_biz', priceStatus: 'retro', name: 'Volton Yellow Simple Business 21 v3', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0, kwh_night: null, flat_monthly: null, fixed: 6.9, fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'business', desc: 'Η ΡΑΑΕΥ γράφει ότι η τελική τιμή του Αυγούστου 2026 ανακοινώνεται τον Σεπτέμβριο. Γράψε τον λογαριασμό σου για να μπει στη σύγκριση.' },
@@ -389,7 +408,12 @@ export const PROVIDERS: ProviderGroup[] = [
       { id: 'enrw_smart',       name: 'Smart',                  badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.14504, kwh_night: null, flat_monthly: null, fixed: 5.00, fixed_ebill: null, contract_months: 0,  no_fixed: false, vat: 6, segment: 'residential', desc: 'Κυμαινόμενο smart πρόγραμμα.' },
       { id: 'enrw_smart_zero',  name: 'Smart Zero',             badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.15914, kwh_night: null, flat_monthly: null, fixed: 0,    fixed_ebill: null, contract_months: 0,  no_fixed: true,  vat: 6, segment: 'residential', desc: 'Κυμαινόμενο χωρίς πάγιο.' },
       { id: 'enrw_night',       name: 'Reward Night Saver',     badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.1400, kwh_night: 0.0650, flat_monthly: null, fixed: 5.00, fixed_ebill: null, contract_months: 0, no_fixed: false, vat: 6, segment: 'residential', desc: 'Νέο διζωνικό κυμαινόμενο. Ιδανικό θερμοσίφωνα/πλυντήρια το βράδυ.' },
-      { id: 'enrw_special',     name: 'Ειδικό Οικιακό',         badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.1590, kwh_night: null, flat_monthly: null, fixed: 5.00, fixed_ebill: null, contract_months: 0,  no_fixed: false, vat: 6, segment: 'residential', kwh_tier2: 0.21550, tier2_threshold: 100, desc: 'Ειδικό Γ1. 0,159€ πρώτες 100 kWh, 0,2155€ άνω.' },
+      // Πηγή: https://www.enerwave.gr/el/gia-to-spiti/revma/eidiko-timologio-oikiako_133075/
+      // (Οκτώβριος 2026, χωρίς ΦΠΑ). 0,179 οι πρώτες 100 kWh, 0,339 από την 101η,
+      // πάγιο 5€. Υποσημείωση της σελίδας: έκπτωση βάσης 0,16697 στις πρώτες 100
+      // και 0,00697 στις υπόλοιπες, ήδη μέσα στις δύο τιμές. Πριν: 0,159 / 0,2155.
+      // Ανάγνωση της ομάδας Grok στις 04/10/2026, οδηγία ιδιοκτήτη 04/10/2026.
+      { id: 'enrw_special', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', name: 'Ειδικό Οικιακό',         badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.179, kwh_night: null, flat_monthly: null, fixed: 5.00, fixed_ebill: null, contract_months: 0,  no_fixed: false, vat: 6, segment: 'residential', kwh_tier2: 0.339, tier2_threshold: 100, desc: 'Ειδικό Γ1. 0,179€ οι πρώτες 100 kWh, 0,339€ από την 101η. Οι τιμές περιλαμβάνουν την έκπτωση βάσης του παρόχου.' },
       // ── Επαγγελματικά ──────────────────────────────────────────────────
       { id: 'enrw_saver_biz', priceStatus: 'verified', name: 'Reward Saver for Business', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.179, kwh_night: null, flat_monthly: null, fixed: 0, fixed_ebill: null, contract_months: 12, no_fixed: true, vat: 6, segment: 'business', desc: 'Χωρίς πάγιο. Περιλαμβάνει έκπτωση χωρίς προϋποθέσεις για τις καταναλώσεις του μήνα, καθώς και έκπτωση συνέπειας.' },
       { id: 'enrw_stable_biz', priceStatus: 'verified', name: 'Reward Stable 2.0 for Business Γ21', badge: 'ΜΠΛΕ', type: 'fixed', kwh_day: 0.149, kwh_night: null, flat_monthly: null, fixed: 14.9, fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'business', desc: 'Η τιμή περιλαμβάνει έκπτωση συνέπειας, που ισχύει σε όλη τη διάρκεια της σύμβασης.' },
