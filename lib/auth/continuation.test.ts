@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { continuation, carried } from './continuation';
+import { continuation, carried, loginSearch } from './continuation';
 import { HOME } from './redirect';
 
 const q = (s: string) => new URLSearchParams(s);
@@ -77,4 +77,28 @@ test('οι σύνδεσμοι ανάμεσα σε σύνδεση και εγγρ
   for (const s of ['next=/accountant/workspace', 'plan=owner&cycle=annual', 'next=/dashboard?x=1&y=2']) {
     assert.equal(continuation(carried(q(s))), continuation(q(s)), s);
   }
+});
+
+test('ο διαμεσολαβητής στέλνει στη σύνδεση με τη σελίδα που ζητήθηκε', () => {
+  assert.equal(loginSearch('/accountant/workspace', ''), '?next=%2Faccountant%2Fworkspace');
+  assert.equal(loginSearch('/dashboard/properties', '?tab=a'), '?next=%2Fdashboard%2Fproperties%3Ftab%3Da');
+  // Ο σκέτος πίνακας είναι ήδη ο προορισμός.
+  assert.equal(loginSearch('/dashboard', ''), '');
+  assert.equal(loginSearch('/dashboard', '?x=1'), '');
+  // Διακριτικά δεν μπαίνουν στο «next».
+  assert.equal(
+    loginSearch('/dashboard/x', '?code=SECRET&access_token=a&token_hash=b&refresh_token=c&error_description=d&tab=a'),
+    '?next=%2Fdashboard%2Fx%3Ftab%3Da',
+  );
+  assert.equal(loginSearch('/dashboard', '?code=SECRET'), '');
+  // Σελίδες εισόδου δεν γίνονται προορισμός.
+  assert.equal(loginSearch('/login', ''), '');
+  assert.equal(loginSearch('/auth/callback', '?code=x'), '');
+  // Το πακέτο κρατιέται όπως πριν και προηγείται.
+  assert.equal(loginSearch('/dashboard', '?plan=owner&cycle=annual'), '?plan=owner&cycle=annual');
+  assert.equal(loginSearch('/dashboard/x', '?plan=kako'), '?next=%2Fdashboard%2Fx%3Fplan%3Dkako');
+  // Ξένη μορφή διαδρομής δεν περνά.
+  assert.equal(loginSearch('//kako.gr', ''), '');
+  // Ο γύρος κλείνει: η σύνδεση διαβάζει ακριβώς τη σελίδα που ζητήθηκε.
+  assert.equal(continuation(loginSearch('/accountant/workspace', '')), '/accountant/workspace');
 });

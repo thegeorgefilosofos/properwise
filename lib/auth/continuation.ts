@@ -72,3 +72,29 @@ export function carried(src: Source): string {
   const s = out.toString()
   return s ? `?${s}` : ''
 }
+
+/** Παράμετροι που δεν ταξιδεύουν ποτέ μέσα σε «next»: διακριτικά και σφάλματα του παρόχου. */
+const NEVER_CARRIED = /code|token|secret|password|^error/i
+
+/**
+ * Η ΔΙΕΥΘΥΝΣΗ ΤΗΣ ΣΥΝΔΕΣΗΣ ΟΤΑΝ Ο ΔΙΑΜΕΣΟΛΑΒΗΤΗΣ ΚΛΕΙΝΕΙ ΤΗΝ ΠΟΡΤΑ.
+ *
+ * Ο διαμεσολαβητής (proxy.ts) άλλαζε μόνο τη διαδρομή σε «/login» και κρατούσε
+ * την αναζήτηση όπως ήταν: η σελίδα που ζητήθηκε χανόταν και ό,τι έτυχε να
+ * είναι στη διεύθυνση («code» μαζί) περνούσε στη σύνδεση. Τώρα η αναζήτηση
+ * γράφεται από την αρχή: πακέτο και κύκλος αν είναι έγκυρα, αλλιώς «next» με
+ * τη διαδρομή που ζητήθηκε, χωρίς διακριτικά και με τους ίδιους ελέγχους.
+ * Ο σκέτος πίνακας δεν χρειάζεται «next»: είναι ήδη ο προορισμός.
+ */
+export function loginSearch(pathname: string, search: string): string {
+  const original = new URLSearchParams(search)
+  const kept = new URLSearchParams()
+  original.forEach((v, k) => { if (!NEVER_CARRIED.test(k)) kept.append(k, v) })
+  const q = new URLSearchParams()
+  for (const k of ['plan', 'cycle']) { const v = original.get(k); if (v) q.set(k, v) }
+  if (pathname !== HOME) {
+    const rest = kept.toString()
+    q.set('next', rest ? `${pathname}?${rest}` : pathname)
+  }
+  return carried(q)
+}

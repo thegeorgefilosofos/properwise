@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { sessionNeedsSecondStep } from "@/lib/auth/mfa";
+import { loginSearch } from "@/lib/auth/continuation";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -238,9 +239,14 @@ export async function proxy(request: NextRequest) {
   const PRIVATE_PREFIXES = ["/dashboard"];
   const isPrivate = PRIVATE_PREFIXES.some(p => pathname === p || pathname.startsWith(p + "/"));
 
+  // ── Η ΣΥΝΔΕΣΗ ΜΑΘΑΙΝΕΙ ΠΟΙΑ ΣΕΛΙΔΑ ΖΗΤΗΘΗΚΕ ─────────────────────────────
+  // Αλλαζε μόνο η διαδρομή: η σελίδα που ζητήθηκε χανόταν και μετά τη σύνδεση
+  // ο χρήστης έβλεπε τον σκέτο πίνακα. Τώρα πηγαίνει ως «next», με τους
+  // ελέγχους του lib/auth/continuation.ts και χωρίς κανένα διακριτικό.
   if (!user && !isPublic && isPrivate) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = loginSearch(pathname, request.nextUrl.search);
     return NextResponse.redirect(url);
   }
 
@@ -266,6 +272,8 @@ export async function proxy(request: NextRequest) {
   if (needsSecondStep && (!isPublic || SECOND_STEP_TOO.includes(pathname))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    // Μετά τον εξαψήφιο ο χρήστης γυρίζει εδώ, όχι στον πίνακα.
+    url.search = loginSearch(pathname, request.nextUrl.search);
     return NextResponse.redirect(url);
   }
 
