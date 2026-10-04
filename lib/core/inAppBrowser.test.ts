@@ -3,7 +3,7 @@
 // Ο ΕΝΣΩΜΑΤΩΜΕΝΟΣ ΠΕΡΙΗΓΗΤΗΣ ΚΡΥΒΕΙ ΤΟ ΚΟΥΜΠΙ ΤΗΣ GOOGLE. Αν ο εντοπισμός
 // χάσει το Instagram, ο επισκέπτης του bio ξαναβλέπει «403: disallowed_useragent».
 // Αν πιάσει τον κανονικό Safari ή Chrome, χάνεται η πιο γρήγορη εγγραφή.
-import { inAppBrowser, chromeIntent } from './inAppBrowser'
+import { inAppBrowser, chromeIntent, safariLink } from './inAppBrowser'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -43,6 +43,25 @@ const intent = chromeIntent('https://properwise.gr/signup?plan=owner&cycle=annua
 ok('ο σύνδεσμος ανοίγει την ίδια διαδρομή με τα ίδια ερωτήματα', intent.startsWith('intent://properwise.gr/signup?plan=owner&cycle=annual#Intent;'));
 ok('στον Chrome, με https', intent.includes('scheme=https;') && intent.includes('package=com.android.chrome;'));
 ok('χωρίς Chrome γυρίζει στην ίδια διεύθυνση', intent.includes(`S.browser_fallback_url=${encodeURIComponent('https://properwise.gr/signup?plan=owner&cycle=annual')};`));
+
+// ΤΟ SAFARI ΑΝΟΙΓΕΙ ΜΟΝΟ ΑΠΟ ΤΟ iOS 17. Σε παλαιότερο το κουμπί θα ήταν νεκρό.
+const IG_IOS_16 = IG_IOS.replace('iPhone OS 18_0', 'iPhone OS 16_7');
+const IPAD_17 = 'Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 350.0.0.30.94';
+ok('Instagram σε iOS 18: ανοίγει στο Safari', inAppBrowser(IG_IOS)?.safari === true);
+ok('Facebook σε iOS 17: ανοίγει στο Safari', inAppBrowser(FB_IOS)?.safari === true);
+ok('iPad με iOS 17: ανοίγει στο Safari', inAppBrowser(IPAD_17)?.safari === true);
+ok('Instagram σε iOS 16: μόνο η οδηγία', inAppBrowser(IG_IOS_16)?.safari === false);
+ok('Android: ποτέ Safari', inAppBrowser(IG_ANDROID)?.safari === false && inAppBrowser(WEBVIEW)?.safari === false);
+const sl = safariLink('https://properwise.gr/signup?plan=owner&cycle=annual');
+ok('ο σύνδεσμος Safari κρατά διαδρομή και ερωτήματα', sl === 'x-safari-https://properwise.gr/signup?plan=owner&cycle=annual');
+ok('ο σύνδεσμος Safari κρατά τη θύρα και αφήνει το #', safariLink('http://localhost:3100/login?next=%2Fa#x') === 'x-safari-http://localhost:3100/login?next=%2Fa');
+// Το Instagram γράφει στο τέλος και δικό του «iOS 18_1»· μετρά το «iPhone OS» του συστήματος.
+const IG_OLD_OS = IG_IOS_16.replace(/iOS \d+_\d+/, 'iOS 18_1');
+ok('το «iOS 18_1» του Instagram δεν ξεγελά το iOS 16', IG_OLD_OS.includes('iOS 18_1') && inAppBrowser(IG_OLD_OS)?.safari === false);
+// Το iPad σε προβολή υπολογιστή λέει «Macintosh»: χωρίς Safari, με τη φόρμα πρώτη.
+const IPAD_DESKTOP = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 350.0.0.0';
+ok('iPad σε προβολή υπολογιστή: χωρίς Safari', inAppBrowser(IPAD_DESKTOP)?.safari === false && inAppBrowser(IPAD_DESKTOP)?.ios === false);
+ok('η οδηγία μιλά για Safari μόνο σε iPhone ή iPad', inAppBrowser(IG_IOS)?.ios === true && inAppBrowser(IG_ANDROID)?.ios === false);
 
 console.log(`${fail ? '✗' : '✓'} ενσωματωμένος περιηγητής: ${pass} περνούν${fail ? `, ${fail} αποτυγχάνουν` : ''}`);
 if (fail) process.exit(1);

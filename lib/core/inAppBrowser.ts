@@ -20,6 +20,21 @@ export interface InAppBrowser {
   where: string;
   /** Στο Android υπάρχει σύνδεσμος που ανοίγει τη σελίδα στον Chrome. */
   android: boolean;
+  /**
+   * Στο iPhone με iOS 17 ή νεότερο υπάρχει σύνδεσμος που ανοίγει τη σελίδα στο
+   * Safari (`safariLink`). Σε παλαιότερο iOS ο σύνδεσμος δεν κάνει τίποτα, οπότε
+   * εκεί μένει μόνο η οδηγία με τις τρεις τελείες.
+   */
+  safari: boolean;
+  /** iPhone ή iPad: η οδηγία με τις τρεις τελείες μιλά για Safari μόνο εδώ. */
+  ios: boolean;
+}
+
+/** Η κύρια έκδοση του iOS από το «iPhone OS 18_0» ή το «CPU OS 17_5» του iPad. */
+function iosMajor(ua: string): number | null {
+  if (!/iPhone|iPad|iPod/.test(ua)) return null;
+  const m = ua.match(/\bOS (\d+)_/);
+  return m ? Number(m[1]) : null;
 }
 
 // Η σειρά μετρά: το Messenger γράφει και FBAN, το Threads και Instagram.
@@ -40,9 +55,11 @@ const APPS: [RegExp, string][] = [
 export function inAppBrowser(ua: string | null | undefined): InAppBrowser | null {
   if (!ua) return null;
   const android = /Android/i.test(ua);
-  for (const [re, app] of APPS) if (re.test(ua)) return { app, where: `το ${app}`, android };
+  const ios = !android && /iPhone|iPad|iPod/.test(ua);
+  const safari = ios && (iosMajor(ua) ?? 0) >= 17;
+  for (const [re, app] of APPS) if (re.test(ua)) return { app, where: `το ${app}`, android, safari, ios };
   // Γενικό webview του Android: το σημάδι «; wv)» το βάζει το ίδιο το σύστημα.
-  if (android && /;\s*wv\)/.test(ua)) return { app: null, where: 'την εφαρμογή', android };
+  if (android && /;\s*wv\)/.test(ua)) return { app: null, where: 'την εφαρμογή', android, safari: false, ios: false };
   return null;
 }
 
@@ -54,4 +71,15 @@ export function inAppBrowser(ua: string | null | undefined): InAppBrowser | null
 export function chromeIntent(href: string): string {
   const u = new URL(href);
   return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(href)};end`;
+}
+
+/**
+ * Σύνδεσμος που ανοίγει την ίδια σελίδα στο Safari, από μέσα από τον
+ * ενσωματωμένο περιηγητή του Instagram, του Facebook κ.ά. Το σχήμα
+ * `x-safari-https` το αναγνωρίζει το iOS από την έκδοση 17. Σε παλαιότερο iOS
+ * δεν κάνει τίποτα· γι' αυτό το κουμπί εμφανίζεται μόνο όταν `safari` ισχύει.
+ */
+export function safariLink(href: string): string {
+  const u = new URL(href);
+  return `x-safari-${u.protocol.replace(':', '')}://${u.host}${u.pathname}${u.search}`;
 }
