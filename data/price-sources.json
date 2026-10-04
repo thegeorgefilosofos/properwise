@@ -84,7 +84,12 @@
       "`priceMonth` του καταλόγου. Πηγές: ops.handoffs a41bd5b2 (Σεπτέμβριος) και",
       "οδηγία ιδιοκτήτη 02/10/2026 (Οκτώβριος: ΔΕΗ Γ1/Γ1Ν, nrg ειδικό, Protergia",
       "Value Special). Ο Ηρων και το φυσικό αέριο δεν άλλαξαν: ο Οκτώβριος τους δεν",
-      "είχε δημοσιευτεί."
+      "είχε δημοσιευτεί.",
+      "04/10/2026: Zenith Power Home Start, Volton Green Ειδικό, Enerwave Ειδικό",
+      "Οικιακό και Ηρων Basic Home (Οκτώβριος), ελίν Power On! Home Green",
+      "(Σεπτέμβριος, ο Οκτώβριος κενός στο έγγραφο). Ανάγνωση της ομάδας Grok στις",
+      "04/10/2026, οδηγία ιδιοκτήτη την ίδια μέρα. Το δίκτυο του περιβάλλοντος δεν",
+      "άνοιγε τις σελίδες των παρόχων· οι αριθμοί δεν ξαναδιαβάστηκαν από εδώ."
     ],
     "tariffChecks": [
       {
@@ -126,6 +131,46 @@
         "label": "Οκτώβριος 2026",
         "url": "https://www.protergia.gr/spiti/oikiako-reuma-proionta/protergia-oikiako-value-special/",
         "docDate": "2026-10"
+      },
+      {
+        "id": "zen_start",
+        "name": "Zenith Power Home Start",
+        "checkedAt": "2026-10-04",
+        "label": "Οκτώβριος 2026",
+        "url": "https://zenith.gr/el/for-the-home/electricity/power-home-start/",
+        "docDate": "2026-10"
+      },
+      {
+        "id": "volton_green",
+        "name": "Volton Green Ειδικό",
+        "checkedAt": "2026-10-04",
+        "label": "Οκτώβριος 2026",
+        "url": "https://volton.gr/gia-to-spiti/revma/volton-green-eidiko/",
+        "docDate": "2026-10"
+      },
+      {
+        "id": "enrw_special",
+        "name": "Enerwave Ειδικό Οικιακό",
+        "checkedAt": "2026-10-04",
+        "label": "Οκτώβριος 2026",
+        "url": "https://www.enerwave.gr/el/gia-to-spiti/revma/eidiko-timologio-oikiako_133075/",
+        "docDate": "2026-10"
+      },
+      {
+        "id": "heron_basic",
+        "name": "Ηρων Basic Home",
+        "checkedAt": "2026-10-04",
+        "label": "Οκτώβριος 2026",
+        "url": "https://heron.gr/energy/electricity/gia-to-spiti/basic-home/",
+        "docDate": "2026-10"
+      },
+      {
+        "id": "elin_power_green",
+        "name": "ελίν Power On! Home Green",
+        "checkedAt": "2026-10-04",
+        "label": "Σεπτέμβριος 2026",
+        "url": "https://energy.elin.gr/media/oo5iuudf/anartisi_timon_power_on-home_green.pdf",
+        "docDate": "2026-09"
       }
     ]
   },
@@ -154,6 +199,12 @@
         "url": "https://nova.gr/statheri-tilefonia/programmata/stathero-internet",
         "checkedAt": "2026-09-28",
         "_note": "Fiber 100 21€, 300 23€ (προσφορά), 500 26€, 1 Giga 31€, 3 Giga 54€. Δεν υπάρχει Fiber 600. Τα πακέτα με τηλεόραση ΔΕΝ ελέγχθηκαν. Πηγή: ops.handoffs a41bd5b2 (P1-11)."
+      },
+      {
+        "name": "Vodafone",
+        "url": "https://www.vodafone.gr/statheri-internet-programmata/fiber-to-the-home",
+        "checkedAt": "2026-10-04",
+        "_note": "Μόνο τα τρία χωρίς τηλεόραση: Full Fiber 300 Plus 24,22€ (22,80€ με κινητή Vodafone), 500 Plus 28,35€ (26,90€), 1 Gbps Plus 31,33€ (29,90€), ΦΠΑ 24% μέσα. Τα πακέτα με τηλεόραση, τα Vodafone 24/50 και το TV Start ΔΕΝ ξαναδιαβάστηκαν. Ανάγνωση της ομάδας Grok στις 04/10/2026, οδηγία ιδιοκτήτη."
       }
     ]
   },

@@ -182,9 +182,14 @@ const INTERNET_PLANS: Record<string, {
     // ── Double Play (Σταθερή + Internet) ─────────────────────────────────
     { id:'v_24',       name: 'Vodafone 24',                 speed: '24 Mbps',   price: 21.00, hasPhone: true,  note: 'ADSL. Απεριόριστα σταθερά, 300 λεπτά κινητά.', networkType: 'ADSL', contract: '24 μήνες' },
     { id:'v_50',       name: 'Vodafone 50',                 speed: '50 Mbps',   price: 24.00, hasPhone: true,  note: 'VDSL. Απεριόριστα σταθερά, 300 λεπτά κινητά.', networkType: 'VDSL', contract: '24 μήνες' },
-    { id:'v_ff300',    name: 'Full Fiber 300',              speed: '300 Mbps',  price: 35.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff500',    name: 'Full Fiber 500',              speed: '500 Mbps',  price: 42.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff1g',     name: 'Full Fiber 1 Gbps',           speed: '1 Gbps',    price: 49.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
+    // Πηγή: https://www.vodafone.gr/statheri-internet-programmata/fiber-to-the-home
+    // (04/10/2026, ανάγνωση της ομάδας Grok, οδηγία ιδιοκτήτη). Τιμή χωρίς
+    // κινητή Vodafone στο `price` (χωρίς όρο), με κινητή στη σημείωση. Πριν:
+    // 35,00 / 42,00 / 49,00. ΟΧΙ ο τιμοκατάλογος Μαρτίου 2026 (52,38 / 57,14 /
+    // 66,67): εκείνα είναι άλλα προϊόντα (Homedouble play FTTH Pro).
+    { id:'v_ff300',    name: 'Full Fiber 300 Plus',         speed: '300 Mbps',  price: 24.22, hasPhone: true,  note: 'Οπτική ίνα FTTH. Με συμβόλαιο κινητής Vodafone 22,80€/μήνα. ΦΠΑ 24% μέσα. Η σελίδα γράφει ότι οι προσφορές ισχύουν για νέους πελάτες με 24μηνο συμβόλαιο και ότι για αιτήσεις από 01/05/26 η τιμή προσφοράς ισχύει τους 12 πρώτους μήνες, με αναπροσαρμογή του παγίου έως 3€ από τον 13ο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff500',    name: 'Full Fiber 500 Plus',         speed: '500 Mbps',  price: 28.35, hasPhone: true,  note: 'Οπτική ίνα FTTH. Με συμβόλαιο κινητής Vodafone 26,90€/μήνα. ΦΠΑ 24% μέσα. Η σελίδα γράφει ότι οι προσφορές ισχύουν για νέους πελάτες με 24μηνο συμβόλαιο και ότι για αιτήσεις από 01/05/26 η τιμή προσφοράς ισχύει τους 12 πρώτους μήνες, με αναπροσαρμογή του παγίου έως 3€ από τον 13ο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff1g',     name: 'Full Fiber 1 Gbps Plus',      speed: '1 Gbps',    price: 31.33, hasPhone: true,  note: 'Οπτική ίνα FTTH. Με συμβόλαιο κινητής Vodafone 29,90€/μήνα. ΦΠΑ 24% μέσα. Η σελίδα γράφει ότι οι προσφορές ισχύουν για νέους πελάτες με 24μηνο συμβόλαιο και ότι για αιτήσεις από 01/05/26 η τιμή προσφοράς ισχύει τους 12 πρώτους μήνες, με αναπροσαρμογή του παγίου έως 3€ από τον 13ο.', networkType: 'Fiber', contract: '24 μήνες' },
     // ── Triple Play (+ Vodafone TV) ───────────────────────────────────────
     // ΤΑ ΔΥΟ ΠΡΩΤΑ ΕΙΝΑΙ ΟΣΑ ΔΕΙΧΝΕΙ ΣΗΜΕΡΑ Η ΣΕΛΙΔΑ vodafone.gr/tv, δίπλα στο
     // σκέτο Vodafone TV Start. Γράφονται με την τιμή εκκίνησης που δηλώνει η
