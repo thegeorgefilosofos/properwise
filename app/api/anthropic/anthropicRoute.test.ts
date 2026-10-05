@@ -162,9 +162,8 @@ const UNITS = readFileSync(
   join(HERE, '..', '..', '..', 'supabase', 'migrations',
        '20261005150000_i_monada_xreonetai_prin_ton_paroxo_kai_to_checkin_kleidonei.sql'), 'utf8')
 for (const sig of ['take_ai_unit(uuid, uuid)', 'take_scan_unit(uuid, uuid, text)', 'refund_ai_unit(uuid, uuid, boolean)']) {
-  const esc = sig.replace(/[()]/g, '\\$&')
-  ok(`${sig}: μόνο service_role`, new RegExp(`grant execute on function public\\.${esc} to service_role;`).test(UNITS)
-    && new RegExp(`revoke all on function public\\.${esc} from public, anon, authenticated;`).test(UNITS))
+  ok(`${sig}: μόνο service_role`, UNITS.includes(`grant execute on function public.${sig} to service_role;`)
+    && UNITS.includes(`revoke all on function public.${sig} from public, anon, authenticated;`))
 }
 ok('οι νέες συναρτήσεις δεν παίρνουν όρια ως ορίσματα',
   /function public\.take_ai_unit\(p_uid uuid, p_request_id uuid\)/.test(UNITS)
