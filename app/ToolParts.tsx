@@ -125,7 +125,9 @@ export function ToolHint({ id, children, span, flush }: {
   flush?: boolean;
 }) {
   return (
-    <p id={id} className={spanClass(span)} style={{ margin: flush ? 0 : '8px 0 0', fontSize: 13, lineHeight: 1.55,
+    // 1,6 και όχι 1,55: στα 768 ένα κελί δύο στηλών βγάζει γραμμές 96 χαρακτήρων
+    // (σαρωτής διάταξης, /vraxyxronia-i-makroxronia) και θέλουν τον αέρα του.
+    <p id={id} className={spanClass(span)} style={{ margin: flush ? 0 : '8px 0 0', fontSize: 13, lineHeight: 1.6,
       color: 'var(--text-tertiary)', textWrap: 'pretty' }}>{children}</p>
   );
 }

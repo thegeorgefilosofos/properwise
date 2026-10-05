@@ -5360,7 +5360,14 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 }
 .po-tool-fields > .po-tf-span2 { grid-column: span 2; }
 .po-tool-fields > .po-tf-row { grid-column: 1 / -1; }
-@media (max-width: 820px) { .po-tool-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 820px) {
+  .po-tool-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Τρία πεδία σε δύο στήλες άφηναν το τρίτο μόνο του (σαρωτής διάταξης,
+     /kathari-apodosi στα 768): ο τελευταίος μονός πιάνει όλη τη σειρά. Μόνο
+     σε πλέγμα χωρίς πεδία που ζητούν χώρο, γιατί εκεί η μέτρηση των θέσεων
+     δεν είναι πια ένα προς ένα. */
+  .po-tool-fields:not(:has(> .po-tf-span2, > .po-tf-row)) > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 @media (max-width: 480px) {
   .po-tool-fields:not(.po-tf-xs2) { grid-template-columns: minmax(0, 1fr); }
   .po-tool-fields:not(.po-tf-xs2) > .po-tf-span2 { grid-column: auto; }
