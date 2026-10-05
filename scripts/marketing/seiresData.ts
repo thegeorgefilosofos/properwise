@@ -12,7 +12,10 @@ import { SPEC as SVL } from '../../app/vraxyxronia-i-makroxronia/spec';
 import { SPEC as RENT } from '../../app/ypologismos-forou-enoikion/spec';
 import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2025, RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS } from '../../lib/billing/greekTax';
 import { presumptiveDeductionRateForYear } from '../../lib/billing/presumptive';
-import { ENFIA_ZONE_TAX } from '../../lib/billing/enfia';
+import { ENFIA_ZONE_TAX, ENFIA_AGE_BANDS, estimateENFIA, enfiaAgeCoef, enfiaFloorCoef, zoneKeyFromPricePerSqm } from '../../lib/billing/enfia';
+import { ENFIA_FLOOR_LABEL } from '../../lib/billing/enfiaFloors';
+import { enfiaWealthBracketLimit } from '../../lib/tools/enfiaLedger';
+import { SPEC as ENFIA } from '../../app/ypologismos-enfia/spec';
 import { greekPropertyTaxObligations } from '../../lib/tax/greekTaxCalendar';
 import type { SeriesKey } from './seiresKit';
 
@@ -103,4 +106,31 @@ export function foroiFacts(after: string) {
   const zMax = Math.max(...zones.map(([, v]) => v)), zMin = Math.min(...zones.map(([, v]) => v));
   const [, mm, dd] = due.date.split('-').map(Number);
   return { year, run, next, due, law, daysLeft, zones, zMax, zMin, mm, dd };
+}
+
+/**
+ * Ο ΕΝΦΙΑ του παραδείγματος, όπως τον βγάζει ο δημόσιος υπολογιστής με τις
+ * προεπιλογές του (ίδια κλήση με το EnfiaCalculator). Το reel δείχνει τον τύπο
+ * παράγοντα προς παράγοντα, οπότε η μηχανή ελέγχει ότι το γινόμενο που θα
+ * γραφτεί στην οθόνη δίνει ακριβώς τον κύριο φόρο της εφαρμογής και ότι δεν
+ * υπάρχει γραμμή (βοηθητικοί χώροι, πρόσθετος φόρος) που ο τύπος δεν δείχνει.
+ */
+export function enfiaExample() {
+  const sqm = Number(ENFIA.tm), price = Number(ENFIA.zoni), own = Number(ENFIA.pososto);
+  if (own !== 100) throw new Error('Το παράδειγμα του ΕΝΦΙΑ δεν είναι πλήρης κυριότητα· ο τύπος θέλει και το ποσοστό.');
+  const zone = zoneKeyFromPricePerSqm(price);
+  if (!zone) throw new Error('Η τιμή ζώνης του παραδείγματος δεν αντιστοιχεί σε ζώνη.');
+  const value = sqm * price, share = value * own / 100;
+  const r = estimateENFIA({ sqm, auxSqm: 0, zone, floor: ENFIA.orofos, age: ENFIA.palaiotita, ownership: own, totalValue: share, propertyValue: value });
+  if (!r) throw new Error('Ο ΕΝΦΙΑ του παραδείγματος δεν βγαίνει.');
+  if (r.auxiliary || r.extra || r.supplementary) throw new Error('Ο ΕΝΦΙΑ του παραδείγματος έχει γραμμή που ο τύπος του reel δεν δείχνει.');
+  const zt = ENFIA_ZONE_TAX[zone], fc = enfiaFloorCoef(ENFIA.orofos), ac = enfiaAgeCoef(ENFIA.palaiotita);
+  if (Math.abs(Math.round(sqm * zt * fc * ac * 100) / 100 - r.basic) > 0.001) throw new Error('Το γινόμενο του τύπου δεν δίνει τον κύριο φόρο της εφαρμογής.');
+  if (Math.abs(r.basic - r.reductionAmount - r.annual) > 0.001) throw new Error('Κύριος φόρος, μείωση και ετήσιο δεν κλείνουν.');
+  const age = ENFIA_AGE_BANDS.find(b => b.key === ENFIA.palaiotita);
+  if (!age) throw new Error('Άγνωστη παλαιότητα στο παράδειγμα.');
+  return {
+    sqm, price, zone, zt, fc, ac, r, limit: enfiaWealthBracketLimit(share),
+    floorLabel: ENFIA_FLOOR_LABEL[ENFIA.orofos as keyof typeof ENFIA_FLOOR_LABEL], ageLabel: age.label,
+  };
 }
