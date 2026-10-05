@@ -42,9 +42,17 @@ import { netByOccupancy, spreadNights } from '../../lib/tools/shortVsLong';
 import { rentalIncomeTax, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, isHighSeasonMonth, type TaxBracket } from '../../lib/billing/greekTax';
 import { RENO_39B_TO } from '../../lib/accounting/renovation39b';
 import { SPEC as RENT } from '../../app/ypologismos-forou-enoikion/spec';
-import { feWhole, fe, fn, fpRate } from '../../lib/core/format';
+import { feWhole, fe, fn, fpRate, feRate } from '../../lib/core/format';
 import { ASSISTANT_ACC, ASSISTANT_INITIAL, ASSISTANT_NAME } from '../../lib/assistant/identity';
 import { billingWords } from '../../lib/legal/billingWords';
+import { DOC_TYPES } from '../../lib/billing/documents';
+import { PROVIDERS, CATALOGUE_MONTH_GEN, TARIFFS_LABEL } from '../../lib/energy/catalogue';
+import { INSURANCE_COMPANIES } from '../../app/dashboard/components/insurance/catalog';
+import { greekPropertyTaxObligations, type TaxObligationKind } from '../../lib/tax/greekTaxCalendar';
+import { WHO_LABEL } from '../../lib/accounting/dossier';
+import { DEMO_PROPERTY, demoExpenses } from '../../lib/demo/sample';
+import { athensToday } from '../../lib/core/time';
+import { S as DEMO, eur, RATE, yearAhead } from './rentFacts';
 
 const ROOT = process.cwd();
 const BEAT = 0.5;
@@ -145,6 +153,8 @@ const ENGINE_JS = `
       else if (type === 'fly') { tr += 'translate(' + -(1 - e) * 420 + 'px,' + (1 - e) * 260 + 'px) rotate(' + (1 - e) * -25 + 'deg)'; o *= cl(k * 2.5); }
       else if (type === 'wipe') clip = 'inset(0 ' + (1 - e) * 100 + '% 0 0)';
       else if (type === 'float') tr += 'translateY(' + Math.sin(t * 6.283 / d) * t0 + 'px)';
+      // Η δέσμη της σάρωσης: κατεβαίνει ομαλά ως το κάτω άκρο του εγγράφου.
+      else if (type === 'scan') tr += 'translateY(' + eio(k) * 100 + '%)';
     }
     el.style.opacity = o; if (tr) el.style.transform = tr; if (usesFx) el.style.filter = fx || 'none'; if (clip) el.style.clipPath = clip;
   };
@@ -286,7 +296,39 @@ const PAGE_CSS = `${BASE_CSS}
   .sum .r{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:22px 0;border-top:1.5px solid ${S.rule}99;font-size:30px;color:${S.muted}}
   .sum .r em{display:block;font-style:normal;font-size:22px;color:${S.faint};margin-top:4px}
   .sum .r b{color:${S.ink};font-size:46px;font-weight:850;letter-spacing:-.03em;white-space:nowrap}
-  .savebar{display:flex;align-items:center;gap:22px;padding:24px 30px;border-radius:30px;background:${S.accent};color:${S.onAccent};font-size:31px;font-weight:750;line-height:1.25}`;
+  .savebar{display:flex;align-items:center;gap:22px;padding:24px 30px;border-radius:30px;background:${S.accent};color:${S.onAccent};font-size:31px;font-weight:750;line-height:1.25}
+  /* Το πρώτο reel: χαρτιά, σάρωση, φάκελος */
+  .dchip{display:flex;align-items:center;gap:16px;padding:20px 26px;border-radius:22px;background:linear-gradient(180deg,#ffffff,#e9eef5);color:#1a2332;
+    font-size:30px;font-weight:750;letter-spacing:-.01em;white-space:nowrap;box-shadow:0 40px 80px -30px #000c,0 10px 20px -10px #0008}
+  .paper{border-radius:22px;background:linear-gradient(165deg,#ffffff,#eef2f7 60%,#e4e9f1);color:#1a2332;overflow:hidden;box-shadow:0 70px 140px -40px #000,0 14px 30px -14px #0009}
+  .paper .band{background:#1a2c48;color:#e9eef6;font-family:'Roboto Mono',monospace;font-size:21px;letter-spacing:.16em;padding:22px 34px}
+  .paper .kv{display:flex;justify-content:space-between;font-size:26px;color:#566274;padding:0 34px;margin-top:16px}
+  .paper .kv b{color:#1a2332}
+  .paper i{display:block;height:13px;border-radius:7px;background:#d3dae4;margin:18px 34px 0}
+  .paper .due{display:flex;justify-content:space-between;align-items:flex-end;margin:30px 34px 0;padding-top:20px;border-top:3px solid #1a2332}
+  .paper .due span{font-family:'Roboto Mono',monospace;font-size:19px;color:#566274;letter-spacing:.1em}
+  .paper .due b{font-size:62px;font-weight:900;letter-spacing:-.04em}
+  .paper .code{height:62px;margin:26px 34px 34px;background:repeating-linear-gradient(90deg,#1a2332 0 4px,transparent 4px 7px,#1a2332 7px 9px,transparent 9px 14px,#1a2332 14px 19px,transparent 19px 22px)}
+  .hl{position:absolute;border:3px solid ${S.accent};border-radius:12px;background:${S.accent}22;box-shadow:0 0 0 6px ${S.accent}1c,0 0 30px ${S.accent}66}
+  .hl span{position:absolute;left:-3px;bottom:100%;margin-bottom:6px;padding:4px 10px;border-radius:7px;background:${S.accent};color:${S.onAccent};font-family:'Roboto Mono',monospace;font-size:15px;font-weight:700;letter-spacing:.12em;white-space:nowrap}
+  .vf{position:absolute;width:80px;height:80px;border-color:${S.accent};border-style:solid;border-width:0}
+  .beamw{position:absolute;height:100%;pointer-events:none}
+  .beam{position:absolute;left:-24px;right:-24px;top:0;height:6px;border-radius:3px;background:linear-gradient(90deg,transparent,${S.accent} 12%,#e6f0ff 50%,${S.accent} 88%,transparent);box-shadow:0 0 40px 12px ${S.accent}80}
+  .beam::after{content:'';position:absolute;left:24px;right:24px;bottom:100%;height:150px;background:linear-gradient(0deg,${S.accent}30,transparent)}
+  .dd{width:128px;height:128px;border-radius:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;background:linear-gradient(180deg,${S.lift},${S.panel});border:1.5px solid ${S.rule};box-shadow:0 24px 50px -24px #000}
+  .dd b{font-size:56px;font-weight:900;line-height:1;letter-spacing:-.03em}
+  .dd span{font-family:'Roboto Mono',monospace;font-size:18px;color:${S.accent};margin-top:8px;letter-spacing:.12em}
+  .toast{display:flex;gap:22px;align-items:flex-start;padding:26px 30px;border-radius:40px;background:#2a3650d8;border:1px solid #ffffff22;box-shadow:0 50px 100px -30px #000}
+  .toast .ti{width:66px;height:66px;border-radius:17px;background:linear-gradient(160deg,#1f3150,${S.ground});border:1px solid #ffffff22;display:flex;align-items:center;justify-content:center;flex:none}
+  .bars{display:flex;align-items:flex-end;gap:12px;width:850px;height:170px}
+  .bars i{display:block;flex:1;border-radius:12px 12px 4px 4px;background:#26344b;transform-origin:bottom center}
+  .bars i.lo{background:linear-gradient(180deg,#b9d2fb,${S.accent});box-shadow:0 0 30px ${S.accent}66}
+  .shd{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:${S.accent}1c;border:1.5px solid ${S.accent}55}
+  .fbk{position:absolute;border-radius:34px;background:linear-gradient(180deg,#24406b,#1a2c48)}
+  .ffr{position:absolute;border-radius:34px;background:linear-gradient(180deg,#5d8ee6,#3f6fc9 60%,#3461bb);box-shadow:0 -1px 0 #ffffff55 inset,0 -24px 50px -24px #0009;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+  .fdoc{position:absolute;border-radius:18px;background:linear-gradient(170deg,#fff,#eef2f7);color:#1a2332;padding:20px 28px;box-shadow:0 -12px 34px -14px #0008}
+  .fdoc .hd{display:flex;align-items:center;gap:14px;font-size:26px;font-weight:850;letter-spacing:.05em}
+  .fdoc .hd em{margin-left:auto;font-style:normal;font-family:'Roboto Mono',monospace;font-size:16px;color:#566274;letter-spacing:.12em;font-weight:600}`;
 
 // ═══ ΣΚΗΝΕΣ ═══════════════════════════════════════════════════════════════
 type Tr = 'cut' | 'whip' | 'zoom' | 'fade' | 'wipe' | 'iris';
@@ -303,10 +345,11 @@ interface Scene {
 }
 
 /** Τα κεφάλαια ως μπάρα προόδου, πάνω από όλες τις σκηνές, με το όνομα του τρέχοντος. */
-function header(k: SeriesKey, chapters: { a: number; b: number; label: string }[]): string {
+function header(k: SeriesKey, chapters: { a: number; b: number; label: string }[], brand?: { name: string; glyph: string }): string {
+  const b = brand ?? SERIES[k];
   return `<div class="hdr">
     <div class="prog">${chapters.map(c => `<i style="flex-grow:${(c.b - c.a).toFixed(2)}"><b data-fill="${c.a},${c.b}"></b></i>`).join('')}</div>
-    <div class="hrow"><span class="ser"><i>${glyph(SERIES[k].glyph, S.accent, 28, 2)}</i>${esc(up(SERIES[k].name))}</span><span class="chl"><em id="chn" style="display:none"></em><span id="chl"></span></span></div>
+    <div class="hrow"><span class="ser"><i>${glyph(b.glyph, S.accent, 28, 2)}</i>${esc(up(b.name))}</span><span class="chl"><em id="chn" style="display:none"></em><span id="chl"></span></span></div>
   </div>`;
 }
 
@@ -321,12 +364,12 @@ const chapterCard = (no: number, total: number, title: string): Scene => ({
 });
 
 /** Η Νόα στο κινητό: η ερώτηση πληκτρολογείται, οι τελείες, η απάντηση. */
-function noaScene(ch: number, q: string, a: string): Scene {
+function noaScene(ch: number, q: string, a: string, h1 = 'Και το δικό σου;', h2 = `Ρώτα ${ASSISTANT_ACC}.`): Scene {
   return {
     dur: 5, ch, tin: 'whip', tout: 'whip',
     html: t => `
-      <div class="L h3" style="top:390px" ${A('mask', t + .05, .6)}>Και το δικό σου;</div>
-      <div class="L h3 acc" style="top:466px" ${A('mask', t + .2, .6)}>Ρώτα ${esc(ASSISTANT_ACC)}.</div>
+      <div class="L h3" style="top:390px" ${A('mask', t + .05, .6)}>${esc(h1)}</div>
+      <div class="L h3 acc" style="top:466px" ${A('mask', t + .2, .6)}>${esc(h2)}</div>
       <div class="phone" style="top:580px;height:910px" ${A('rise', t + .1, .8)}><div class="scr">
         <div class="ch-top"><span class="av" style="width:58px;height:58px;font-size:30px">${esc(ASSISTANT_INITIAL)}</span><div><b>${esc(ASSISTANT_NAME)}</b><small>Για τα ακίνητά σου</small></div><span class="ex" style="margin-left:auto">ΠΑΡΑΔΕΙΓΜΑ</span></div>
         <div class="ask" ${A('pop', t + .7, .45)}>${tw(q, t + .8, 40)}</div>
@@ -431,6 +474,8 @@ function score(m: Mix, o: { chords: number[][]; dur: number; groove: number; car
 interface Reel {
   key: string; series: SeriesKey; scenes: Scene[]; chapters: string[];
   chords: number[][]; cover: number; caption: string; title: string; campaign: string; link: string;
+  /** Reel εκτός σειράς (το πρώτο του λογαριασμού): δική του κεφαλίδα, φάκελοι, μέρα. */
+  own?: { brand: { name: string; glyph: string }; video: string; doc: string; file: string; when: string };
 }
 
 /** Στήνει τη σελίδα από τις σκηνές: χρόνοι, κεφάλαια, έλεγχοι ζωνών, ήχος. */
@@ -450,7 +495,7 @@ function build(r: Reel) {
   const html = `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${PAGE_CSS}</style></head><body>
     <div id="bg"></div><div id="pts" class="deco">${Array.from({ length: 26 }, () => '<i></i>').join('')}</div><div id="fl"></div>
     ${sections}
-    ${header(r.series, chapters)}
+    ${header(r.series, chapters, r.own?.brand)}
     <div class="grain"></div><div class="vig"></div>
     <script>const CHAPTERS = ${JSON.stringify(chapters)}; const FLASH = ${JSON.stringify(cards)};${ENGINE_JS}</script></body></html>`;
   const sound = (m: Mix) => {
@@ -1101,17 +1146,201 @@ function makroReel(): Reel {
   };
 }
 
+// ═══ ΤΟ ΠΡΩΤΟ REEL ΤΟΥ ΛΟΓΑΡΙΑΣΜΟΥ: ΤΙ ΚΑΝΕΙ ΤΟ PROPERWISE ═════════════════
+// Η σύσταση, στη γλώσσα των σειρών: κεφαλίδα, κάρτες κεφαλαίων, μετρητές, το
+// κινητό. Τα σκόρπια χαρτιά του ιδιοκτήτη μπαίνουν σε μία λίστα και μετά πέντε
+// κεφάλαια, ένα για κάθε δουλειά. Κανένα ψηφίο γραμμένο εδώ: τα έγγραφα από τη
+// σάρωση, οι προθεσμίες από το φορολογικό ημερολόγιο, οι πάροχοι από τον
+// κατάλογο (μόνο τιμές του μήνα της ΡΑΑΕΥ), το καθαρό από την incomeStatement.
+// Το παλιό reelTaxi.ts έβγαζε το ίδιο θέμα με ανάμειξη καρέ που τρεμόπαιζε στη
+// σάρωση· εδώ κάθε καρέ είναι καθαρό (blend: false).
+const BUILDING = '<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/><path d="M11 21v-3h2v3"/>';
+const CHECK = '<path d="M5 12.5l4.5 4.5L19 7.5"/>';
+const SHIELD = '<path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/>';
+const BANK = '<path d="M3 21h18"/><path d="M5 21V10M19 21V10M9 21v-7M15 21v-7"/><path d="M12 3l9 5H3z"/>';
+const DOCI = '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>';
+
+function protoReel(): Reel {
+  const DOCS = DOC_TYPES.filter(d => d.id !== 'other').map(d => d.label);
+  if (DOCS.length !== 7) throw new Error(`Η σάρωση ξέρει ${DOCS.length} είδη εγγράφων, όχι 7.`);
+  const Y = yearAhead();
+  const today = athensToday();
+  const SHORT: Partial<Record<TaxObligationKind, string>> = { e9: 'Ε9, μεταβολές ακινήτων', 'enfia-first': 'ΕΝΦΙΑ, πρώτη δόση', 'income-decl': 'Δήλωση εισοδήματος, Ε1 και Ε2' };
+  const ahead = [0, 1].flatMap(d => greekPropertyTaxObligations(Number(today.slice(0, 4)) + d, 'long_term')).filter(o => o.date >= today);
+  const DL = (Object.keys(SHORT) as TaxObligationKind[]).map(k => ahead.filter(o => o.kind === k).sort((a, b) => a.date.localeCompare(b.date))[0])
+    .filter(o => o !== undefined).sort((a, b) => a.date.localeCompare(b.date));
+  if (DL.length < 3) throw new Error('Το ημερολόγιο δεν έχει τις τρεις προθεσμίες του επόμενου δωδεκαμήνου.');
+  const enfiaFirst = DL.find(o => o.kind === 'enfia-first');
+  if (!enfiaFirst) throw new Error('Λείπει η πρώτη δόση του ΕΝΦΙΑ.');
+  // Η πρώτη υπενθύμιση φεύγει επτά μέρες πριν (reminder_7days στο supabase/functions/send-reminders).
+  const REMIND = 7;
+  const MON = ['ΙΑΝ', 'ΦΕΒ', 'ΜΑΡ', 'ΑΠΡ', 'ΜΑΪ', 'ΙΟΥΝ', 'ΙΟΥΛ', 'ΑΥΓ', 'ΣΕΠ', 'ΟΚΤ', 'ΝΟΕ', 'ΔΕΚ'];
+  const bill = demoExpenses(DEMO.year).find(e => e.category === 'electricity');
+  if (!bill) throw new Error('Το ακίνητο επίδειξης δεν έχει λογαριασμό ρεύματος.');
+  const billDate = bill.date.split('-').reverse().join('.');
+  // Η χαμηλότερη τιμή kWh κάθε παρόχου για κατοικία, ΜΟΝΟ με τιμή του μήνα του
+  // πίνακα της ΡΑΑΕΥ, με τον κανόνα που βγάζει τον νικητή στην εφαρμογή.
+  const TARIFFS = PROVIDERS.map(g => Math.min(...g.tariffs
+    .filter(x => x.segment === 'residential' && !x.studentOnly && !x.notAvailable && x.priceMonth === CATALOGUE_MONTH_GEN
+      && x.type !== 'dynamic' && x.type !== 'fixed_monthly' && (x.kwh_day ?? 0) > 0)
+    .map(x => x.kwh_day as number))).filter(Number.isFinite).sort((a, b) => a - b);
+  const NPROV = TARIFFS.length;
+  if (NPROV < 5) throw new Error(`Μόνο ${NPROV} πάροχοι με τιμή ${CATALOGUE_MONTH_GEN}.`);
+  const NINS = INSURANCE_COMPANIES.filter(i => /^https:\/\//.test(i.url || '')).length;
+  const TAG = 'Βάλε το ακίνητό σου σε τάξη.';
+  // Τα χαρτιά του αγκιστριού: θέση, γωνία. Σκόρπια, αλλά κανένα δεν κρύβει άλλο.
+  const SCAT: [number, number, number][] = [[90, 800, -7], [500, 850, 6], [130, 960, 4], [460, 1040, -5], [90, 1140, 8], [420, 1220, -3], [170, 1320, -8]];
+
+  const scenes: Scene[] = [
+    { // Το αγκίστρι: πού είναι τα χαρτιά
+      dur: 4.5, ch: 0, tin: 'cut', tout: 'zoom',
+      html: t => `
+        <div class="L lbl" style="top:400px;color:${S.accent};font-size:26px" ${A('fade', t, .25)}>ΙΔΙΟΚΤΗΤΗΣ ΑΚΙΝΗΤΟΥ;</div>
+        <div class="L h1" style="top:450px;font-size:128px;white-space:nowrap" ${A('slam', t, .5)}>Πού είναι</div>
+        <div class="L h1 acc" style="top:575px;font-size:128px;white-space:nowrap" ${A('slam', t + BEAT, .5)}>τα χαρτιά;</div>
+        ${DOCS.map((d, i) => `<div style="position:absolute;left:${SCAT[i][0]}px;top:${SCAT[i][1]}px" ${A('pop', t + 1.1 + i * .2, .45, 'float', 6 + (i % 3) * 3, 2.6 + (i % 2))}><div class="dchip" style="transform:rotate(${SCAT[i][2]}deg)">${glyph(DOCI, '#3f6fc9', 34, 2)}${esc(d)}</div></div>`).join('')}`,
+      sfx: (m, t) => { m.boom(t + BEAT, .35); DOCS.forEach((_, i) => { m.click(t + 1.1 + i * .2, 2400 + i * 140, .08, i % 2 ? .3 : -.3); }); m.whoosh(t + 3.8, .7, .12); },
+    },
+    { // Τάξη: όλα σε ένα μέρος
+      dur: 4, ch: 0, tin: 'zoom', tout: 'whip',
+      html: t => `
+        <div class="L h1" style="top:390px;font-size:128px;white-space:nowrap" ${A('slam', t + .05, .5)}>Ένα μέρος</div>
+        <div class="L h1 acc" style="top:515px;font-size:128px;white-space:nowrap" ${A('slam', t + .35, .5)}>για όλα.</div>
+        <div class="L card" style="top:720px;width:850px;padding:14px 30px" ${A('up', t + .5, .55)}>
+          ${DOCS.map((d, i) => `<div class="row" style="padding:16px 0;font-size:32px;${i ? `border-top:1.5px solid ${S.rule}99` : ''}" ${A('right', t + .6 + i * .1, .5)}><span><span class="chip" style="width:48px;height:48px;border-radius:14px;background:${S.accent}1c">${glyph(DOCI, S.accent, 26, 2)}</span><b style="color:${S.ink};font-weight:700">${esc(d)}</b></span><span ${A('pop', t + 1.2 + i * .1, .4)}>${glyph(CHECK, S.ok, 36, 3)}</span></div>`).join('')}
+        </div>`,
+      sfx: (m, t) => { m.boom(t + .05, .4); DOCS.forEach((_, i) => m.pluck(t + 1.2 + i * .1, n('C5') + [0, 2, 4, 7, 9, 12, 14][i], .05, (i - 3) * .12)); },
+    },
+    chapterCard(1, 5, 'Σάρωση'),
+    { // Η σάρωση: ο λογαριασμός, η δέσμη, τα πεδία, η καταχώρηση
+      dur: 5, ch: 1, tin: 'iris', tout: 'whip',
+      html: t => `
+        <div class="L h3" style="top:390px" ${A('mask', t + .05, .6)}>Φωτογράφισε.</div>
+        <div class="L h3 acc" style="top:466px" ${A('mask', t + .2, .6)}>Καταχωρείται.</div>
+        <div style="position:absolute;left:220px;top:610px;width:640px" ${A('tilt', t + .1, .8, 'dim', t + 2.3, .6)}>
+          <div class="paper" style="position:relative">
+            <div class="band"><span style="position:relative">ΛΟΓΑΡΙΑΣΜΟΣ ΡΕΥΜΑΤΟΣ<span class="hl" style="inset:-10px -14px" ${A('pop', t + 1.15, .35)}><span>ΕΙΔΟΣ</span></span></span></div>
+            <div class="kv" style="margin-top:26px"><span>Έκδοση</span><b style="position:relative">${esc(billDate)}<span class="hl" style="inset:-8px -12px" ${A('pop', t + 1.4, .35)}><span>ΗΜΕΡΟΜΗΝΙΑ</span></span></b></div>
+            <div class="kv"><span>Περίοδος</span><b>2 μήνες</b></div>
+            <i style="width:80%"></i><i style="width:62%"></i>
+            <div class="due"><span>ΠΟΣΟ ΠΛΗΡΩΜΗΣ</span><b style="position:relative">${esc(eur(bill.amount))}<span class="hl" style="inset:-6px -12px" ${A('pop', t + 1.7, .35)}><span>ΠΟΣΟ</span></span></b></div>
+            <div class="code"></div>
+          </div>
+          <div class="beamw" style="left:0;right:0;top:0;height:100%" ${A('fade', t + .65, .2, 'scan', t + .65, 1.2, 'out', t + 1.8, .3)}><div class="beam"></div></div>
+          ${[['top', 'left'], ['top', 'right'], ['bottom', 'left'], ['bottom', 'right']].map(([v, h]) => `<div class="vf" style="${v}:-30px;${h}:-30px;border-${v}-width:7px;border-${h}-width:7px;border-${v}-${h}-radius:26px" ${A('pop', t + .4, .4, 'out', t + 2.2, .4)}></div>`).join('')}
+        </div>
+        <div class="L card" style="top:1120px;width:850px;padding:24px 34px 10px" ${A('up', t + 2.2, .55)}>
+          <div style="display:flex;align-items:center;gap:16px;font-size:34px;font-weight:800"><span class="chip" style="width:52px;height:52px;border-radius:50%;background:${S.ok}26">${glyph(CHECK, S.ok, 30, 3)}</span>Καταχωρήθηκε<span class="ex" style="margin-left:auto">ΠΑΡΑΔΕΙΓΜΑ</span></div>
+          ${[['ΕΙΔΟΣ', bill.description], ['ΗΜΕΡΟΜΗΝΙΑ', billDate], ['ΠΟΣΟ', eur(bill.amount)]].map(([l, v], i) => `<div class="row" style="padding:14px 0;border-top:1.5px solid ${S.rule}99;margin-top:${i ? 0 : 14}px;font-size:30px"><span class="lbl" style="font-size:19px">${l}</span><b style="color:${i === 2 ? S.accent : S.ink}">${tw(v, t + 2.6 + i * .3, 40)}</b></div>`).join('')}
+        </div>`,
+      sfx: (m, t) => { m.whoosh(t, .6, .12); m.sweep(t + .65, 1.2, 600, 2600, .03); [1.15, 1.4, 1.7].forEach((s0, i) => m.pluck(t + s0, n('E5') + [0, 4, 7][i], .05, (i - 1) * .3)); m.bell(t + 2.25, n('A5'), .07); m.bell(t + 2.32, n('E6'), .05); },
+    },
+    chapterCard(2, 5, ASSISTANT_NAME),
+    noaScene(2, 'Πόσα θα μου μείνουν καθαρά;',
+      `Από ${eur(Y.gross)} ενοίκια μένουν ${eur(Y.net)} καθαρά. Φόρος ${eur(Y.tax)}, ΕΝΦΙΑ ${eur(Y.enfia)}, έξοδα ${eur(Y.other)}.`,
+      `Ρώτα ${ASSISTANT_ACC}.`, 'Στα ελληνικά.'),
+    chapterCard(3, 5, 'Προθεσμίες'),
+    { // Οι προθεσμίες του επόμενου δωδεκαμήνου και η ειδοποίηση
+      dur: 4.5, ch: 3, tin: 'iris', tout: 'whip',
+      html: t => `
+        <div class="L h3" style="top:390px" ${A('mask', t + .05, .6)}>Κάθε προθεσμία,</div>
+        <div class="L h3 acc" style="top:466px" ${A('mask', t + .2, .6)}>πριν λήξει.</div>
+        ${DL.map((o, i) => { const [, mo, d] = o.date.split('-'); return `<div class="L" style="top:${620 + i * 160}px;width:850px;display:flex;align-items:center;gap:30px" ${A('right', t + .4 + i * .18, .5)}>
+          <div class="dd"><b>${Number(d)}</b><span>${MON[Number(mo) - 1]}</span></div>
+          <div><div style="font-size:36px;font-weight:750;letter-spacing:-.015em">${esc(SHORT[o.kind] ?? o.title)}</div><div class="lbl" style="font-size:20px;color:${S.accent};margin-top:10px">${esc(up(WHO_LABEL[o.who]))}</div></div></div>`; }).join('')}
+        <div class="L toast" style="top:1130px;width:850px" ${A('down', t + 1.6, .5)}><span class="ti">${mark(36, S.ink)}</span><div style="flex:1">
+          <div style="display:flex;justify-content:space-between;font-size:21px;color:#c3cedd"><b style="font-family:'Roboto Mono',monospace;letter-spacing:.14em;color:${S.ink}">PROPERWISE</b><span>τώρα</span></div>
+          <div style="font-size:32px;font-weight:800;margin-top:8px">Υπενθύμιση προθεσμίας</div>
+          <div style="font-size:27px;color:#c3cedd;margin-top:6px">${esc(SHORT[enfiaFirst.kind] ?? enfiaFirst.title)}: λήγει σε ${REMIND} ημέρες.</div></div></div>`,
+      sfx: (m, t) => { m.whoosh(t, .6, .12); DL.forEach((_, i) => m.pluck(t + .4 + i * .18, n('A4') + [0, 4, 7][i], .05, (i - 1) * .3)); m.bell(t + 1.6, n('E6'), .07, -.2); m.bell(t + 1.76, n('C6'), .06, .2); },
+    },
+    chapterCard(4, 5, 'Σύγκριση'),
+    { // Οι πάροχοι, οι ασφαλιστικές, το δάνειο
+      dur: 5, ch: 4, tin: 'iris', tout: 'whip',
+      html: t => `
+        <div class="L h3" style="top:390px" ${A('mask', t + .05, .6)}>Σύγκρινε.</div>
+        <div class="L h3 acc" style="top:466px" ${A('mask', t + .2, .6)}>Κράτα το καλύτερο.</div>
+        <div class="L" style="top:610px;display:flex;align-items:flex-end;gap:26px" ${A('up', t + .3, .5)}><span class="big acc glow num" style="font-size:170px">${counter([seg(t + .4, t + 1.3, 0, NPROV, x => String(x))])}</span><div style="padding-bottom:18px"><div style="font-size:44px;font-weight:800;letter-spacing:-.02em">πάροχοι ρεύματος</div><div class="lbl" style="font-size:18px;margin-top:10px">ΧΑΜΗΛΟΤΕΡΗ kWh ΑΝΑ ΠΑΡΟΧΟ · ΡΑΑΕΥ, ${esc(up(TARIFFS_LABEL))}</div></div></div>
+        <div class="L bars" style="top:800px">${TARIFFS.map((v, k) => `<i class="${k ? '' : 'lo'}" style="height:${Math.round(35 + 65 * (v - TARIFFS[0]) / (TARIFFS[TARIFFS.length - 1] - TARIFFS[0] || 1))}%" ${A('growy', t + .5 + k * .06, .45)}></i>`).join('')}</div>
+        <div class="L" style="top:985px;width:850px;display:flex;justify-content:space-between;font-family:'Roboto Mono',monospace;font-size:20px;color:${S.faint}" ${A('fade', t + 1.3, .4)}><span style="color:${S.accent}">${esc(feRate(TARIFFS[0]))}/kWh</span><span>${esc(feRate(TARIFFS[TARIFFS.length - 1]))}/kWh</span></div>
+        <div class="L" style="top:1060px;display:flex;align-items:flex-end;gap:26px" ${A('up', t + 1.5, .5)}><span class="big num" style="font-size:130px">${counter([seg(t + 1.6, t + 2.4, 0, NINS, x => String(x))])}</span><div style="padding-bottom:12px;font-size:40px;font-weight:800;letter-spacing:-.02em">ασφαλιστικές</div></div>
+        <div class="L" style="top:1210px;width:850px;display:flex;justify-content:space-between">${Array.from({ length: NINS }, (_, k) => `<span class="shd" ${A('pop', t + 1.7 + k * .04, .35)}>${glyph(SHIELD, S.accent, 22, 2)}</span>`).join('')}</div>
+        <div class="L" style="top:1300px;width:850px;display:flex;align-items:center;gap:24px;padding-top:24px;border-top:1.5px solid ${S.rule}" ${A('up', t + 2.6, .5)}><span class="chip" style="width:78px;height:78px;border-radius:22px;background:${S.accent}1c">${glyph(BANK, S.accent, 42, 1.8)}</span><div><div style="font-size:36px;font-weight:800">Στεγαστικά δάνεια</div><div class="lbl" style="font-size:18px;margin-top:8px">ΔΟΣΗ, ΕΠΙΤΟΚΙΟ, ΤΡΑΠΕΖΕΣ</div></div></div>`,
+      sfx: (m, t) => { m.whoosh(t, .6, .12); for (let k = 0; k < 16; k++) m.click(t + .4 + k * .055, 2200 + k * 50, .05); for (let k = 0; k < 14; k++) m.click(t + 1.6 + k * .055, 2600 + k * 40, .045, .25); m.bell(t + 2.6, n('A5'), .06); },
+    },
+    chapterCard(5, 5, 'Λογιστής'),
+    { // Ο φάκελος του λογιστή
+      dur: 4, ch: 5, tin: 'iris', tout: 'whip',
+      html: t => `
+        <div class="L h3" style="top:390px" ${A('mask', t + .05, .6)}>Έτοιμο για</div>
+        <div class="L h3 acc" style="top:466px" ${A('mask', t + .2, .6)}>τον λογιστή.</div>
+        <div class="fbk" style="left:170px;top:700px;width:740px;height:560px" ${A('up', t + .15, .5)}></div>
+        <div style="position:absolute;left:170px;top:650px;padding:16px 28px;border-radius:24px 24px 0 0;background:#24406b;color:#cfe0ff;font-family:'Roboto Mono',monospace;font-size:19px;letter-spacing:.14em" ${A('up', t + .15, .5)}>ΦΑΚΕΛΟΣ ΛΟΓΙΣΤΗ · ${DEMO.year}</div>
+        ${[['ΕΝΤΥΠΟ Ε2', 'ΜΙΣΘΩΜΑΤΑ'], ['ΔΗΛΩΣΗ ΜΙΣΘΩΣΗΣ', 'myAADE'], ['ΕΞΑΓΩΓΗ', 'EXCEL']].map(([a, b], k) => `<div class="fdoc" style="left:230px;top:${760 + k * 64}px;width:620px;height:300px" ${A('fly', t + .5 + k * .3, .6)}><div class="hd">${glyph(DOCI, '#3f6fc9', 30, 2)}${esc(a)}<em>${esc(b)}</em></div></div>`).join('')}
+        <div class="ffr" style="left:170px;top:980px;width:740px;height:280px" ${A('up', t + .15, .5)}>${mark(60, '#ffffffd8')}<span style="font-size:26px;letter-spacing:.2em;color:#ffffffd0;font-weight:800">PROPERWISE</span></div>
+        <div class="L" style="top:1310px;width:850px;display:flex;justify-content:center" ${A('pop', t + 1.7, .45)}><span style="display:flex;align-items:center;gap:14px;padding:18px 28px;border-radius:999px;background:${S.ok}1f;border:1.5px solid ${S.ok}55;font-size:29px;font-weight:750">${glyph(CHECK, S.ok, 30, 3)}Ό,τι ζητά ο λογιστής, σε έναν φάκελο.</span></div>`,
+      sfx: (m, t) => { m.whoosh(t, .6, .12); [0, 1, 2].forEach(k => { m.click(t + 1.0 + k * .3, 900, .1); m.boom(t + 1.0 + k * .3, .1); }); m.bell(t + 1.7, n('C6'), .06); },
+    },
+    sumScene(5, `${DEMO_PROPERTY.name} · 12 μήνες`, [
+      ['Καθαρά στην τσέπη', eur(Y.net), `από ${eur(Y.gross)} ενοίκια`],
+      [`Φόρος εισοδήματος ${RATE}`, `−${eur(Y.tax)}`, 'πρώτο κλιμάκιο'],
+      ['ΕΝΦΙΑ', `−${eur(Y.enfia)}`, 'του ακινήτου'],
+      ['Επόμενη προθεσμία', `${Number(DL[0].date.slice(8))} ${MON[Number(DL[0].date.slice(5, 7)) - 1]}`, SHORT[DL[0].kind] ?? DL[0].title],
+    ], 'Αποθήκευσέ το για την επόμενη προθεσμία.'),
+    { // Η μάρκα: δένει με την αρχή
+      dur: 4, ch: 6, tin: 'whip', tout: 'fade',
+      html: t => `
+        <div class="L" style="top:520px;width:850px;display:flex;justify-content:center" ${A('pop', t + .05, .6)}>${mark(170, S.ink)}</div>
+        <div class="L h1" style="top:760px;width:850px;text-align:center;font-size:110px;letter-spacing:.01em;font-weight:850" ${A('slam', t + .3, .5)}>PROPERWISE</div>
+        <div class="L" style="top:905px;width:850px;display:flex;justify-content:center" ${A('grow', t + .6, .4)}><i style="display:block;width:80px;height:5px;border-radius:5px;background:${S.accent}"></i></div>
+        <div class="L h3" style="top:950px;width:850px;text-align:center;font-size:58px" ${A('up', t + .7, .5)}>${esc(TAG)}</div>
+        <div class="L lbl" style="top:1060px;width:850px;text-align:center;font-size:20px" ${A('fade', t + 1.0, .4)}>ΓΙΑ ΚΑΘΕ ΙΔΙΟΚΤΗΤΗ ΑΚΙΝΗΤΟΥ ΣΤΗΝ ΕΛΛΑΔΑ</div>
+        <div class="L" style="top:1150px;width:850px;display:flex;justify-content:center" ${A('up', t + 1.2, .5)}><span class="url">${glyph('<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>', S.accent, 30, 2.4)}<span>properwise.gr<em> · σύνδεσμος στο bio</em></span></span></div>`,
+      sfx: (m, t) => { m.whoosh(t, .8, .18); m.boom(t + .3, .4); ['C5', 'E5', 'G5', 'B5', 'E6'].forEach((x, i) => m.bell(t + .32 + i * .07, n(x), .05, (i - 2) * .22)); },
+    },
+  ];
+  const caption = [
+    'Λογαριασμοί, μισθωτήρια, ΕΝΦΙΑ, προθεσμίες. Όλα σε ένα μέρος.',
+    '',
+    'Τι κάνει το PROPERWISE:',
+    '',
+    `Σάρωση. Φωτογραφίζεις λογαριασμό, απόδειξη ή μισθωτήριο και καταχωρείται μόνο του. ${DOCS.length} είδη εγγράφων.`,
+    `${ASSISTANT_NAME}. Ρωτάς στα ελληνικά «πόσα θα μου μείνουν καθαρά;» και παίρνεις απάντηση με τα δικά σου νούμερα.`,
+    `Προθεσμίες. ΕΝΦΙΑ, Ε9, δήλωση εισοδήματος. Υπενθύμιση ${REMIND} ημέρες πριν λήξουν.`,
+    `Σύγκριση. ${NPROV} πάροχοι ρεύματος με τιμές ${CATALOGUE_MONTH_GEN} από τη ΡΑΑΕΥ, ${NINS} ασφαλιστικές, στεγαστικά δάνεια τραπεζών.`,
+    'Λογιστής. Ε2, δήλωση μίσθωσης και Excel σε έναν φάκελο.',
+    '',
+    `Στο παράδειγμα του βίντεο, από ${eur(Y.gross)} ενοίκια τον χρόνο μένουν ${eur(Y.net)} καθαρά στην τσέπη.`,
+    '',
+    'Αποθήκευσέ το για την επόμενη προθεσμία. Στείλ\' το σε κάποιον που νοικιάζει σπίτι.',
+    '',
+    'Εσύ πού κρατάς σήμερα τα χαρτιά του ακινήτου σου; Πες μας στα σχόλια.',
+    '',
+    `${TAG} Σύνδεσμος στο bio.`,
+    '',
+    '#ακίνητα #ιδιοκτήτες #ενοίκια #ΕΝΦΙΑ #PROPERWISE',
+  ].join('\n');
+  return {
+    key: 'proto', series: 'makro', scenes,
+    chapters: ['Η αρχή', 'Σάρωση', ASSISTANT_NAME, 'Προθεσμίες', 'Σύγκριση', 'Λογιστής', 'PROPERWISE'],
+    chords: [ch('A2', 'E3', 'G3', 'C4'), ch('F2', 'C3', 'E3', 'A3'), ch('C3', 'G3', 'B3', 'E4'), ch('G2', 'D3', 'E3', 'B3')],
+    cover: 4.5 + 2.6, caption, title: 'Βάλε το ακίνητό σου σε τάξη', campaign: 'proto', link: utm('/', 'proto'),
+    own: { brand: { name: 'PROPERWISE', glyph: BUILDING }, video: 'docs/marketing/reels/reel-2', doc: 'docs/marketing/instagram/reel-2', file: 'PROPERWISE-reel-2.mp4', when: 'Το πρώτο reel του λογαριασμού: ανεβαίνει πρώτο, πριν από τις σειρές.' },
+  };
+}
+
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 async function main() {
   const only = process.argv[2];
-  const reels = [vraxyReel(), foroiReel(), makroReel()].filter(r => !only || r.series === only);
+  // Χωρίς όρισμα: οι τρεις σειρές. «proto»: το πρώτο reel του λογαριασμού.
+  const reels = only === 'proto' ? [protoReel()] : [vraxyReel(), foroiReel(), makroReel()].filter(r => !only || r.series === only);
   for (const r of reels) {
     const b = build(r);
-    const outDir = join(ROOT, 'docs/marketing/reels', `seires-${r.key}`);
-    const docDir = join(ROOT, 'docs/marketing/instagram/seires', r.key, 'reel');
+    const outDir = join(ROOT, r.own ? r.own.video : join('docs/marketing/reels', `seires-${r.key}`));
+    const docDir = join(ROOT, r.own ? r.own.doc : join('docs/marketing/instagram/seires', r.key, 'reel'));
     mkdirSync(docDir, { recursive: true });
-    await shoot({ html: b.html, dur: b.dur, outDir, file: 'silent.mp4', checkAt: b.checkAt, cover: { t: r.cover, path: join(docDir, 'cover.jpg') } });
+    await shoot({ html: b.html, dur: b.dur, outDir, file: 'silent.mp4', checkAt: b.checkAt, cover: { t: r.cover, path: join(docDir, 'cover.jpg') }, blend: r.own ? false : undefined });
     if (process.env.REEL_PREVIEW) continue;
     const m = new Mix(b.dur);
     const ks = b.sound(m);
@@ -1119,14 +1348,16 @@ async function main() {
     m.reverb(.5);
     const wav = join(outDir, 'sound.wav');
     m.write(wav, 1.2);
-    mux(join(outDir, 'silent.mp4'), wav, join(outDir, `${r.key}.mp4`));
+    const final = r.own ? r.own.file : `${r.key}.mp4`;
+    mux(join(outDir, 'silent.mp4'), wav, join(outDir, final));
+    if (r.own) writeFileSync(join(docDir, 'caption.md'), r.caption + '\n');
     writeFileSync(join(docDir, 'README.md'), [
-      `# Reel: ${SERIES[r.series].name} · ${r.title}`,
+      `# Reel: ${r.own ? r.own.brand.name : SERIES[r.series].name} · ${r.title}`,
       '',
-      'Παράγεται από το `npx tsx scripts/marketing/reelSeires.ts`. Το βίντεο είναι στο',
-      `\`docs/marketing/reels/seires-${r.key}/${r.key}.mp4\` (έξω από το git) και το εξώφυλλο εδώ, \`cover.jpg\`.`,
+      `Παράγεται από το \`npx tsx scripts/marketing/reelSeires.ts${r.own ? ' proto' : ''}\`. Το βίντεο είναι στο`,
+      `\`${r.own ? r.own.video : `docs/marketing/reels/seires-${r.key}`}/${final}\` (έξω από το git) και το εξώφυλλο εδώ, \`cover.jpg\`.`,
       '',
-      `**Πότε:** ${elDate(PUBLISH[r.series], { weekday: 'long', day: 'numeric', month: 'long' })}, το βράδυ (19:00-21:00), μαζί με το carousel της ίδιας μέρας.`,
+      r.own ? `**Πότε:** ${r.own.when}` : `**Πότε:** ${elDate(PUBLISH[r.series], { weekday: 'long', day: 'numeric', month: 'long' })}, το βράδυ (19:00-21:00), μαζί με το carousel της ίδιας μέρας.`,
       `**Διάρκεια:** ${mmss(b.dur)}, με πρωτότυπη μουσική. Ανεβαίνει με τον ήχο του.`,
       `**Σύνδεσμος (βιογραφικό ή μήνυμα):** ${r.link}`,
       '',
@@ -1151,7 +1382,7 @@ async function main() {
       '```',
       '',
     ].join('\n'));
-    console.log(`✓ ${r.key}: docs/marketing/reels/seires-${r.key}/${r.key}.mp4 (${mmss(b.dur)})`);
+    console.log(`✓ ${r.key}: ${join(outDir, final)} (${mmss(b.dur)})`);
   }
 }
 
