@@ -21,7 +21,7 @@ import { fe, feRate, fn } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { athensToday } from '@/lib/core/time';
 import { comparePower, POWER_COLOURS, UNRANKED_WHY, type PowerColour, type PowerRow } from '@/lib/tools/revma';
-import { PROVIDERS, TARIFFS_VERIFIED, CATALOGUE_MONTH_GEN, BADGE_MEANING } from '@/lib/energy/catalogue';
+import { PROVIDERS, TARIFFS_VERIFIED, CATALOGUE_MONTH_GEN, BADGE_MEANING, PRICES_SOURCE, PRICES_UPDATED_LINE, priceMonthNote, conditionNote } from '@/lib/energy/catalogue';
 import { ETMEAR } from '@/lib/energy/tariff';
 import { RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
@@ -46,14 +46,17 @@ function facts(t: PowerRow['t'], ebill: boolean): string[] {
     out.push(t.flat_annual_kwh ? `Πακέτο ${fn(t.flat_annual_kwh)} κιλοβατώρες τον χρόνο` : 'Χωρίς δημοσιευμένο όριο κιλοβατωρών');
   } else {
     // Στα αναδρομικά ο αριθμός του καταλόγου είναι η ΒΑΣΙΚΗ τιμή, όχι η τελική.
-    out.push(t.priceStatus !== 'retro' ? `${feRate(t.kwh_day)} ανά κιλοβατώρα`
+    out.push(t.kwh_day == null ? (t.priceUnsupported ? 'Κλιμακωτό σε περισσότερες από δύο κλίμακες' : 'Χωρίς γνωστή τιμή')
+      : t.priceStatus !== 'retro' ? `${feRate(t.kwh_day)} ανά κιλοβατώρα${t.kwh_tier2 != null && t.tier2_threshold != null ? (t.tier2_scope === 'all' ? `, ${feRate(t.kwh_tier2)} για όλες πάνω από ${fn(t.tier2_threshold)} kWh` : `, ${feRate(t.kwh_tier2)} από την ${fn(t.tier2_threshold + 1)}η`) : ''}`
       : t.kwh_day > 0 ? `${feRate(t.kwh_day)} βασική τιμή, κλείνει αναδρομικά`
       : 'Η τιμή του μήνα ανακοινώνεται τον επόμενο');
     if (t.kwh_night) out.push(`Νυχτερινή ${feRate(t.kwh_night)}`);
     out.push(t.no_fixed ? 'Χωρίς πάγιο' : `Πάγιο ${fe(ebill && t.fixed_ebill != null ? t.fixed_ebill : t.fixed)}`);
   }
   // Κάθε τιμή λέει τον μήνα της: τα «πράσινα» αλλάζουν την πρώτη κάθε μήνα.
-  out.push(`Τιμή ${t.priceMonth ?? CATALOGUE_MONTH_GEN}`);
+  out.push(priceMonthNote(t));
+  const cond = conditionNote(t);
+  if (cond) out.push(cond);
   out.push(t.contract_months ? `Δέσμευση ${t.contract_months} μήνες` : 'Χωρίς δέσμευση');
   return out;
 }
@@ -126,8 +129,8 @@ export function PowerCompare({ serverToday }: { serverToday: string }) {
         {/* ΜΙΑ ΗΜΕΡΟΜΗΝΙΑ ΠΑΝΩ ΑΠΟ ΚΑΘΕ ΑΡΙΘΜΟ. Χωρίς αυτήν, μια τιμή που ήταν
             σωστή τον Αύγουστο διαβάζεται ως σωστή και τον Δεκέμβριο. */}
         <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
-          Τιμές όπως ελέγχθηκαν στις <strong style={{ color: 'var(--text-primary)' }}>{fdLong(TARIFFS_VERIFIED)}</strong>.
-          Τιμές {CATALOGUE_MONTH_GEN}, εκτός όπου γράφεται άλλος μήνας.
+          <strong style={{ color: 'var(--text-primary)' }}>{PRICES_UPDATED_LINE}</strong>. Πηγή: {PRICES_SOURCE}.
+          Τιμές {CATALOGUE_MONTH_GEN}, εκτός όπου γράφεται άλλος μήνας· μόνο αυτές μπαίνουν στη σειρά.
           {r.recommend && <> Η σειρά ισχύει έως τις {fdLong(r.rankUntil)}· μετά, αν δεν ξαναελεγχθούν οι τιμές, ο πίνακας μένει ενδεικτικός.</>}
         </p>
 

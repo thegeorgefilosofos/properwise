@@ -77,10 +77,27 @@ export interface Tariff {
   badge: string;
   /** fixed | variable | fixed_monthly | dynamic | vnm */
   type: string;
-  kwh_day: number;
+  /**
+   * Η τιμή ανά κιλοβατώρα, ή της πρώτης κλίμακας. `null`: η ΡΑΑΕΥ γράφει «Η
+   * τιμή δεν είναι ακόμα γνωστή». Τότε το τιμολόγιο δεν υπολογίζεται και δεν
+   * κατατάσσεται: φαίνεται, χωρίς ποσό.
+   */
+  kwh_day: number | null;
   kwh_night?: number | null;
   kwh_tier2?: number;
   tier2_threshold?: number;
+  /**
+   * ΠΟΙΕΣ ΚΙΛΟΒΑΤΩΡΕΣ ΠΛΗΡΩΝΟΥΝ ΤΗ ΔΕΥΤΕΡΗ ΤΙΜΗ.
+   *
+   * Χωρίς τιμή (προεπιλογή): όσες ξεπερνούν το όριο, από την 201η και μετά.
+   * `all`: μόλις η κατανάλωση ξεπεράσει το όριο, η δεύτερη τιμή ισχύει για
+   * ΟΛΕΣ, από την 1η. Έτσι γράφει η ΡΑΑΕΥ το Ειδικό της ΔΕΗ («η τιμή
+   * διαμορφώνεται σε 0,21997 από την 1η KWh») και το MAXI Home Safe. Ο
+   * υπολογισμός χρέωνε μόνο τις 100 από τις 300 με την ακριβή τιμή: σε 300 kWh
+   * έβγαζε 200 × 0,15913 + 100 × 0,21997 = 53,82€ αντί για 300 × 0,21997 =
+   * 65,99€, δώδεκα ευρώ λιγότερα τον μήνα πριν από ρυθμιζόμενα και ΦΠΑ.
+   */
+  tier2_scope?: 'all';
   flat_monthly?: number | null;
   flat_annual_kwh?: number;
   flat_overage_rate?: number;
@@ -114,6 +131,15 @@ export interface Tariff {
    * απουσία σημαίνει «δεν το έχουμε κρίνει», όχι «επιβεβαιωμένο».
    */
   priceStatus?: PriceStatus;
+
+  /**
+   * Η ΤΙΜΗ ΕΙΝΑΙ ΤΟΥ ΤΡΕΧΟΝΤΟΣ ΜΗΝΑ; `false`: είναι προηγούμενου μήνα, γιατί η
+   * ΡΑΑΕΥ δεν έχει ακόμη τη νέα ή γιατί το τιμολόγιο δεν βρέθηκε στον πίνακά
+   * της. Υπολογίζεται και φαίνεται με τον μήνα του, αλλά δεν κατατάσσεται: ο
+   * «νικητής» βγαίνει μόνο ανάμεσα σε τιμές του ίδιου μήνα. Η απουσία σημαίνει
+   * τρέχων, για τιμολόγια εκτός καταλόγου (π.χ. των δοκιμών).
+   */
+  current?: boolean;
 }
 
 /**
@@ -198,15 +224,19 @@ function energyCharge(t: Tariff, u: Usage): number {
   const nightPct = Math.min(100, Math.max(0, u.nightPct));
   const nightKwh = t.kwh_night ? kwh * (nightPct / 100) : 0;
   const dayKwh = kwh - nightKwh;
-  const night = nightKwh * (t.kwh_night ?? t.kwh_day);
+  const night = nightKwh * (t.kwh_night ?? t.kwh_day ?? 0);
 
+  const day = t.kwh_day ?? 0;
   if (t.kwh_tier2 && t.tier2_threshold) {
+    // «Από την 1η kWh»: πάνω από το όριο, όλες οι ημερήσιες στη δεύτερη τιμή.
+    // Το όριο μετρά τις ημερήσιες, όπως και στην κλίμακα από πάνω (βλ. Γ1Ν).
+    if (t.tier2_scope === 'all') return dayKwh * (dayKwh > t.tier2_threshold ? t.kwh_tier2 : day) + night;
     const tier1 = Math.min(dayKwh, t.tier2_threshold);
     const tier2 = Math.max(0, dayKwh - t.tier2_threshold);
-    return tier1 * t.kwh_day + tier2 * t.kwh_tier2 + night;
+    return tier1 * day + tier2 * t.kwh_tier2 + night;
   }
 
-  return dayKwh * t.kwh_day + night;
+  return dayKwh * day + night;
 }
 
 /**
@@ -245,6 +275,13 @@ export function monthlyCost(t: Tariff, u: Usage): CostBreakdown {
     return { ...zero, supply: m, total: m, manual: true };
   }
 
+  // Η ΤΙΜΗ ΔΕΝ ΕΙΝΑΙ ΑΚΟΜΑ ΓΝΩΣΤΗ. Ο ίδιος κανόνας: κανένα νούμερο από τιμή
+  // που δεν υπάρχει. Μετρά ό,τι δηλώσει ο χρήστης από τον λογαριασμό του.
+  if (t.kwh_day == null && t.type !== 'fixed_monthly') {
+    const m = u.manualMonthly ?? 0;
+    return { ...zero, supply: m, total: m, manual: true };
+  }
+
   if (t.type === 'fixed_monthly') {
     const over = overageMonthly(t, u.kwhMonthly);
     const supply = (t.flat_monthly || 0) + over;
@@ -274,6 +311,11 @@ export interface Ranked<T extends Tariff> {
   tariff: T;
   cost: CostBreakdown;
   isCurrent: boolean;
+  /**
+   * Η τιμή είναι του τρέχοντος μήνα (`Tariff.current`). Μόνο αυτές οι γραμμές
+   * μπαίνουν στη σειρά· οι υπόλοιπες ακολουθούν, με ποσό και με τον μήνα τους.
+   */
+  thisMonth: boolean;
   /** Διαφορά από το τρέχον τιμολόγιο. Αρνητικό σημαίνει φθηνότερο. */
   diff: number;
   /**
@@ -301,7 +343,7 @@ export function compareTariffs<T extends Tariff>(
       // δήλωσε ο χρήστης· όταν δεν έχει δηλώσει, το ποσό είναι μηδέν και ΔΕΝ
       // είναι τιμή. Χωρίς αυτή τη γραμμή τα μηδενικά κάθονταν στην κορυφή.
       const priced = !(cost.manual && cost.total <= 0);
-      return { tariff: t, cost, isCurrent, diff: isCurrent ? 0 : cents(cost.total - currentCost), priced };
+      return { tariff: t, cost, isCurrent, thisMonth: t.current !== false, diff: isCurrent ? 0 : cents(cost.total - currentCost), priced };
     });
 
   // ══ ΤΟ ΜΗΔΕΝ ΕΒΓΑΙΝΕ ΠΡΩΤΟ ΚΑΙ ΗΤΑΝ ΟΙ ΠΕΝΤΕ ΠΡΩΤΕΣ ΘΕΣΕΙΣ ═══════════════
@@ -323,9 +365,18 @@ export function compareTariffs<T extends Tariff>(
   // προϊόντα του καταλόγου της ΡΑΑΕΥ, ο ιδιοκτήτης μπορεί να έχει ένα από αυτά,
   // απλώς δεν μπαίνουν σε σειρά με όσα έχουν τιμή. Πάνε στο τέλος, με τη δική
   // τους εξήγηση.
-  const priced = rows.filter(r => r.priced).sort((a, b) => a.cost.total - b.cost.total);
+  //
+  // ΚΑΙ Ο ΝΙΚΗΤΗΣ ΒΓΑΙΝΕΙ ΜΟΝΟ ΑΠΟ ΤΙΜΕΣ ΤΟΥ ΙΔΙΟΥ ΜΗΝΑ. Μια τιμή Αυγούστου
+  // δίπλα σε τιμές Οκτωβρίου δεν είναι σύγκριση: το Reward Saver έβγαινε πρώτο
+  // στα 0,129€ χωρίς πάγιο, τιμή που έληγε στις 10/10/2026· τον Οκτώβριο η
+  // ΡΑΑΕΥ το γράφει 0,219€ με πάγιο 7,90€. Οσα δεν έχουν τιμή του μήνα πάνε
+  // μετά από όσα έχουν, με το ποσό τους, ώστε η πρώτη γραμμή να είναι πάντα
+  // τιμή του τρέχοντος μήνα.
+  const byCost = (a: Ranked<T>, b: Ranked<T>) => a.cost.total - b.cost.total;
+  const priced = rows.filter(r => r.priced && r.thisMonth).sort(byCost);
+  const older = rows.filter(r => r.priced && !r.thisMonth).sort(byCost);
   const unpriced = rows.filter(r => !r.priced).sort((a, b) => a.tariff.name.localeCompare(b.tariff.name, 'el'));
-  return [...priced, ...unpriced];
+  return [...priced, ...older, ...unpriced];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

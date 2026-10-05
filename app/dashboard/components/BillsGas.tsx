@@ -14,7 +14,8 @@ import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy
 // Ο κατάλογος είναι δεδομένα και ζει στο lib, όπως και του ρεύματος. Η οθόνη
 // τον διαβάζει, δεν τον φιλοξενεί: 130 γραμμές τιμών μέσα σε React component
 // σήμαιναν ότι κάθε διόρθωση τιμής έδειχνε αλλαγή σε οθόνη.
-import { GAS_PROVIDERS, NETWORK_OPERATORS, GAS_LABEL, GAS_VERIFIED, GAS_MAX_AGE_DAYS } from '@/lib/energy/gas';
+import { GAS_PROVIDERS, NETWORK_OPERATORS, GAS_LABEL, GAS_VERIFIED, GAS_MAX_AGE_DAYS, GAS_MONTH_GEN } from '@/lib/energy/gas';
+import { PRICES_SOURCE, PRICES_UPDATED_LINE, conditionNote } from '@/lib/energy/catalogue';
 import { saved } from '@/components/dbWrite';
 import { athensToday } from '@/lib/core/time';
 
@@ -72,7 +73,8 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
 
   const provider    = GAS_PROVIDERS.find(p => p.value === s.gasProvider);
   const tariff      = provider?.tariffs.find(t => t.id === s.gasTariffId) || provider?.tariffs[0];
-  const calcMonthly = tariff ? kwh * tariff.kwh + tariff.fixed : 0;
+  // Χωρίς γνωστή τιμή δεν υπάρχει ποσό: μηδέν εδώ σημαίνει «δεν υπολογίζεται».
+  const calcMonthly = tariff && tariff.kwh != null ? kwh * tariff.kwh + tariff.fixed : 0;
 
   // ══ Η ΠΥΛΗ ΦΡΕΣΚΑΔΑΣ, ΟΠΩΣ ΚΑΙ ΣΤΟ ΡΕΥΜΑ ══════════════════════════════
   // Η οθόνη του ρεύματος σιωπά όταν ο κατάλογος έχει παλιώσει: δεν ανακηρύσσει
@@ -155,14 +157,23 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
     })();
   }, [propertyId, userId, supabase, s.gasContractStart, s.gasContractMonths, calendarSynced, effective, provider?.label, tariff?.name]);
 
+  // ΠΡΩΤΑ ΟΙ ΤΙΜΕΣ ΤΟΥ ΜΗΝΑ ΤΟΥ ΠΙΝΑΚΑ, ΜΕΤΑ ΟΙ ΠΑΛΙΟΤΕΡΕΣ, ΤΕΛΟΣ ΟΙ ΑΓΝΩΣΤΕΣ.
+  // Ο «φθηνότερος» βγαίνει μόνο από τις πρώτες και μόνο από όσα διατίθενται:
+  // μια τιμή Αυγούστου ή ένα τιμολόγιο που η ΡΑΑΕΥ γράφει «μη εμπορικά
+  // διαθέσιμο» δεν προτείνεται.
   const allTariffs = useMemo(() => {
-    return GAS_PROVIDERS.flatMap(p => p.tariffs
+    const rows = GAS_PROVIDERS.flatMap(p => p.tariffs
       .filter(t => t.segment === segmentFilter)
-      .map(t => ({ ...t, providerLabel: p.label, providerUrl: p.url, monthly: kwh * t.kwh + t.fixed, isCurrent: t.id === s.gasTariffId })))
-      .sort((a, b) => a.monthly - b.monthly);
+      .map(t => ({ ...t, providerLabel: p.label, providerUrl: p.url,
+        monthly: t.kwh != null ? kwh * t.kwh + t.fixed : null,
+        thisMonth: t.priceMonth === GAS_MONTH_GEN && !t.notAvailable,
+        isCurrent: t.id === s.gasTariffId })));
+    const group = (t: typeof rows[number]) => (t.monthly == null ? 2 : t.thisMonth ? 0 : 1);
+    return rows.sort((a, b) => group(a) - group(b) || (a.monthly ?? 0) - (b.monthly ?? 0) || a.name.localeCompare(b.name, 'el'));
   }, [kwh, s.gasTariffId, segmentFilter]);
 
-  const bestMonthly = allTariffs[0]?.monthly || 0;
+  const bestRow     = allTariffs.find(t => t.monthly != null && t.thisMonth);
+  const bestMonthly = bestRow?.monthly ?? 0;
   // ═══ ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ ΔΕΝ ΕΙΝΑΙ ΤΟΥ ΙΔΙΟΥ ΕΙΔΟΥΣ ══════════════════════════
   // Η εξοικονόμηση υπολογιζόταν ως `effective − bestMonthly`. Το `effective`
   // είναι το ΠΡΑΓΜΑΤΙΚΟ ποσό του λογαριασμού όταν ο χρήστης το έχει γράψει:
@@ -175,11 +186,11 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
   //
   // Η σύγκριση γίνεται τώρα προμήθεια προς προμήθεια: το τρέχον πρόγραμμα με
   // τη ΔΙΚΗ ΤΟΥ κατανάλωση, απέναντι στο φθηνότερο με την ίδια κατανάλωση.
-  const savings     = calcMonthly - bestMonthly;
+  const savings     = bestRow && calcMonthly > 0 ? calcMonthly - bestMonthly : 0;
 
   const providerOptions = GAS_PROVIDERS.map(p => ({ value: p.value, label: p.label }));
   const tariffOptions   = (provider?.tariffs ?? []).filter(t => t.segment === segmentFilter)
-    .map(t => ({ value: t.id, label: `${t.name}, ${t.badge}, ${fk(t.kwh)}/kWh` }));
+    .map(t => ({ value: t.id, label: `${t.name}, ${t.badge}, ${t.kwh != null ? `${fk(t.kwh)}/kWh` : 'χωρίς γνωστή τιμή'}` }));
   const networkOptions  = NETWORK_OPERATORS.map(n => ({ value: n.value, label: `${n.label} (${n.region})` }));
 
   if (loading) return <Spinner label="Φόρτωση…" />;
@@ -189,13 +200,13 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
 
       {/* ── Διαφάνεια τιμών, τι ακριβώς βλέπεις ── */}
       <div style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px', marginBottom: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.6 }}>
-        <strong style={{ color: 'var(--text-primary)' }}>Διαφάνεια τιμών:</strong> Και τα {TARIFF_COUNT} τιμολόγια είναι όπως τα δημοσιεύει το εργαλείο σύγκρισης της <span title={RAAEY_NAME}>ΡΑΑΕΥ</span>, κατάσταση {GAS_LABEL}.
+        <strong style={{ color: 'var(--text-primary)' }}>Διαφάνεια τιμών:</strong> {PRICES_UPDATED_LINE}. Πηγή: <span title={RAAEY_NAME}>{PRICES_SOURCE}</span>. Και τα {TARIFF_COUNT} τιμολόγια είναι όπως τα δημοσιεύει η ΡΑΑΕΥ· κάθε τιμή γράφει τον μήνα της και μόνο οι τιμές {GAS_MONTH_GEN} μπαίνουν στη σειρά.
         Αφορούν μόνο τη <strong>χρέωση προμήθειας</strong> (ανταγωνιστικό σκέλος): χωρίς ρυθμιζόμενες χρεώσεις δικτύου, χωρίς <span title="Ειδικός Φόρος Κατανάλωσης">ΕΦΚ</span> και χωρίς <span title="Φόρος Προστιθέμενης Αξίας">ΦΠΑ</span> 6%, οπότε ο λογαριασμός σου βγαίνει υψηλότερος. Τα κυμαινόμενα (ΚΙΤΡΙΝΟ) αναθεωρούνται κάθε μήνα.
       </div>
 
       {/* ── Επισκόπηση κόστους ── */}
       <div style={card}>
-        {secHdr('Τρέχον κόστος', `Τιμές ΡΑΑΕΥ, ${GAS_LABEL}`)}
+        {secHdr('Τρέχον κόστος', `${PRICES_UPDATED_LINE}. Πηγή: ${PRICES_SOURCE}, ${GAS_LABEL}`)}
         {/* Τρία πλακίδια: το ρευστό πλέγμα έβγαζε 2+1 στα 430. Ιδια κλάση και
             ίδιοι κανόνες με τους δείκτες του KPIGrid. */}
         <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 12, '--kpi-lg': 3, '--kpi-md': 3, '--kpi-sm': 1 } as React.CSSProperties}>
@@ -285,8 +296,14 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
               </a>
             </div>
             {tariff.desc && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{tariff.desc}</div>}
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: 4 }}>
+              {tariff.kwh == null ? `Η τιμή ${GAS_MONTH_GEN} δεν είναι ακόμη γνωστή.` : tariff.raaeyUnknown ? `Τιμή ${tariff.priceMonth}. Η ΡΑΑΕΥ δεν έχει ακόμη τιμή ${GAS_MONTH_GEN}.` : `Τιμή ${tariff.priceMonth}.`}
+              {tariff.notAvailable && ' Η ΡΑΑΕΥ το γράφει μη εμπορικά διαθέσιμο.'}
+              {conditionNote(tariff) && ` ${conditionNote(tariff)}, όπως τη γράφει η ΡΑΑΕΥ.`}
+              {tariff.undiscounted && tariff.undiscounted.kwh != null && (tariff.undiscounted.kwh !== tariff.kwh || tariff.undiscounted.fixed !== tariff.fixed) && ` Χωρίς την προϋπόθεση: ${fk(tariff.undiscounted.kwh)} / kWh, πάγιο ${fe(tariff.undiscounted.fixed)}.`}
+            </div>
             <div style={{ display: 'flex', gap: 20, marginTop: 10, flexWrap: 'wrap' as const }}>
-              <span title="Κιλοβατώρα, μονάδα μέτρησης κατανάλωσης ενέργειας" style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Χρέωση kWh:{'  '}<strong style={{ color: 'var(--text-primary)' }}>{fk(tariff.kwh)} / kWh</strong></span>
+              <span title="Κιλοβατώρα, μονάδα μέτρησης κατανάλωσης ενέργειας" style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Χρέωση kWh:{'  '}<strong style={{ color: 'var(--text-primary)' }}>{tariff.kwh != null ? `${fk(tariff.kwh)} / kWh` : 'χωρίς γνωστή τιμή'}</strong></span>
               <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Πάγιο:{'  '}<strong>{fe(tariff.fixed)} / μήνα</strong></span>
               {tariff.contract_months != null && (
                 <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Δέσμευση:{'  '}<strong>{tariff.contract_months} μήνες</strong></span>
@@ -344,14 +361,14 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
                     που λένε το ίδιο πράγμα και η μία λέει ψέματα. Στη θέση της
                     μπαίνει η δέσμευση, που ο ιδιοκτήτης πρέπει να ξέρει πριν
                     αλλάξει πάροχο. */}
-                <tr>{['Πάροχος', 'Τιμολόγιο', 'Τύπος', 'Δέσμευση', 'kWh', 'Πάγιο', 'Μήνας', 'Έτος', 'Διαφορά'].map(h => (
+                <tr>{['Πάροχος', 'Τιμολόγιο', 'Τύπος', 'Δέσμευση', 'kWh', 'Πάγιο', 'Τιμή μήνα', 'Μήνας', 'Έτος', 'Διαφορά'].map(h => (
                   <th key={h} scope="col" style={{ whiteSpace: 'nowrap' as const, background: 'var(--bg-elevated)' }}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
-                {allTariffs.map((t, i) => {
-                  const isBest = i === 0;
-                  const diff   = t.monthly - bestMonthly;
+                {allTariffs.map(t => {
+                  const isBest = t === bestRow;
+                  const diff   = t.monthly != null && t.thisMonth && bestRow ? t.monthly - bestMonthly : null;
                   return (
                     <tr key={t.id} className={t.isCurrent ? 'is-on' : undefined}
                       style={{ '--row-bg': t.isCurrent ? 'var(--accent-soft)' : isBest ? 'var(--bg-elevated)' : 'var(--bg-surface)',
@@ -365,16 +382,17 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
                         <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, padding: '2px 8px', borderRadius: T.radius.badge, ...badgeStyle }}>{t.badge}</span>
                       </td>
                       <td className="num">{t.contract_months != null ? `${t.contract_months} μήνες` : 'Χωρίς'}</td>
-                      <td className="num">{fk(t.kwh)}</td>
+                      <td className="num">{t.kwh != null ? fk(t.kwh) : 'άγνωστη'}</td>
                       <td className="num">{fe(t.fixed)}</td>
-                      <td className="num" style={{ fontWeight: 700, color: 'var(--accent)' }}>{fe(t.monthly)}</td>
-                      <td className="num" style={{ color: 'var(--text-tertiary)' }}>{fe(t.monthly * 12)}</td>
+                      <td style={{ whiteSpace: 'nowrap' as const, color: t.thisMonth ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{t.kwh == null ? 'άγνωστη' : t.notAvailable ? 'εκτός αγοράς' : t.priceMonth}</td>
+                      <td className="num" style={{ fontWeight: 700, color: 'var(--accent)' }}>{t.monthly != null ? fe(t.monthly) : 'Χωρίς τιμή'}</td>
+                      <td className="num" style={{ color: 'var(--text-tertiary)' }}>{t.monthly != null ? fe(t.monthly * 12) : ''}</td>
                       {/* Ο πίνακας είναι ήδη ταξινομημένος από το φθηνότερο: η
                           κατεύθυνση της διαφοράς φαίνεται από τη θέση, δεν
                           χρειάζεται φανάρι. Και το μηδέν λέγεται με μηδέν, όχι
                           με παύλα που διαβάζεται ως «λείπει». */}
                       <td className="num">
-                        {diff > 0 ? `+${fe(diff)}` : fe(diff)}
+                        {diff == null ? 'εκτός σειράς' : diff > 0 ? `+${fe(diff)}` : fe(diff)}
                       </td>
                     </tr>
                   );
@@ -384,7 +402,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
            </div>
           </div>
           <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, background: 'var(--bg-elevated)', padding: '6px 12px', borderRadius: T.radius.badge, lineHeight: 1.5 }}>
-            * Χρέωση προμήθειας χωρίς δίκτυο, ΕΦΚ και ΦΠΑ. Πηγή: εργαλείο σύγκρισης της ΡΑΑΕΥ, {GAS_LABEL}. Οι εκπτώσεις συνέπειας και συνδυασμού που περιγράφονται είναι ήδη μέσα στην τιμή· χάνονται με μία εκπρόθεσμη πληρωμή.
+            * Χρέωση προμήθειας χωρίς δίκτυο, ΕΦΚ και ΦΠΑ. {PRICES_UPDATED_LINE}. Πηγή: {PRICES_SOURCE}. Μόνο τιμές {GAS_MONTH_GEN} μπαίνουν στη σειρά. Οι εκπτώσεις συνέπειας και συνδυασμού που περιγράφονται είναι ήδη μέσα στην τιμή· χάνονται με μία εκπρόθεσμη πληρωμή.
           </div>
         </div>
       )}

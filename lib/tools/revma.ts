@@ -24,7 +24,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { compareTariffs, estimateUsage, exceedsFlatAllowance, type Usage } from '@/lib/energy/tariff'
 import {
-  COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE, TARIFFS_VERIFIED, TARIFFS_MAX_AGE_DAYS,
+  COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE, TARIFFS_VERIFIED, TARIFFS_MAX_AGE_DAYS, CATALOGUE_MONTH_GEN,
   type LocalTariff,
 } from '@/lib/energy/catalogue'
 import { freshness, canRecommend, type Freshness } from '@/lib/energy/freshness'
@@ -45,11 +45,15 @@ export const POWER_COLOURS = [
 export type PowerColour = typeof POWER_COLOURS[number]['value']
 
 /** Γιατί ένα τιμολόγιο φαίνεται χωρίς θέση στη σειρά. */
-export type Unranked = 'retro' | 'conditional' | 'no-allowance' | 'over-allowance'
+export type Unranked = 'retro' | 'unknown' | 'other-month' | 'conditional' | 'no-allowance' | 'over-allowance'
 
 /** Ο λόγος, όπως τον διαβάζει ο επισκέπτης, δίπλα στο τιμολόγιο. */
 export const UNRANKED_WHY: Record<Unranked, string> = {
   'retro': 'Η τελική τιμή ανακοινώνεται μετά τον μήνα, οπότε δεν υπολογίζεται εκ των προτέρων',
+  'unknown': `Η ΡΑΑΕΥ δεν έχει ακόμη τιμή ${CATALOGUE_MONTH_GEN} ή τη γράφει σε κλίμακες που δεν υπολογίζονται εδώ`,
+  // Ο νικητής βγαίνει μόνο από τιμές του ίδιου μήνα: μια τιμή Αυγούστου δίπλα
+  // σε τιμές Οκτωβρίου δεν είναι σύγκριση.
+  'other-month': `Η τιμή δεν είναι ${CATALOGUE_MONTH_GEN}, οπότε φαίνεται χωρίς θέση στη σειρά`,
   'conditional': 'Προϋποθέτει συμμετοχή σε φωτοβολταϊκό, οπότε δεν μπαίνει στη σειρά',
   'no-allowance': 'Το όριο κιλοβατωρών του πακέτου δεν δημοσιεύεται σε αριθμό',
   'over-allowance': 'Η κατανάλωσή σου ξεπερνά το όριο του πακέτου και η χρέωση υπέρβασης δεν είναι καταγεγραμμένη',
@@ -104,12 +108,14 @@ export function rankUntil(verifiedAt = TARIFFS_VERIFIED, maxAgeDays = TARIFFS_MA
 
 /** Γιατί το τιμολόγιο δεν μπαίνει σε σειρά, ή `null` όταν μπαίνει. */
 function whyUnranked(t: PowerTariff, kwhMonthly: number, priced: boolean): Unranked | null {
-  if (!priced) return 'retro'
+  if (!priced) return t.priceStatus === 'retro' ? 'retro' : 'unknown'
   if (t.type === 'vnm') return 'conditional'
   if (t.type === 'fixed_monthly') {
     if (FLAT_WITHOUT_ALLOWANCE.has(t.id)) return 'no-allowance'
     if (!t.flat_overage_rate && exceedsFlatAllowance(t, kwhMonthly)) return 'over-allowance'
   }
+  // Τελευταίο: το τιμολόγιο μετριέται, αλλά η τιμή του είναι άλλου μήνα.
+  if (t.current === false) return 'other-month'
   return null
 }
 
@@ -139,7 +145,7 @@ export function comparePower(input: PowerInput, today: Date): PowerResult {
 
   const all = compareTariffs(pool, usage, null, 0).map(r => {
     const unranked = whyUnranked(r.tariff, kwhMonthly, r.priced)
-    const known = unranked !== 'retro' && unranked !== 'no-allowance' && unranked !== 'over-allowance'
+    const known = unranked !== 'retro' && unranked !== 'unknown' && unranked !== 'no-allowance' && unranked !== 'over-allowance'
     return {
       t: r.tariff,
       monthly: known ? r.cost.total : null,
