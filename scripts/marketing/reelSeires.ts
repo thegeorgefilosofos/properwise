@@ -53,6 +53,7 @@ import { WHO_LABEL } from '../../lib/accounting/dossier';
 import { DEMO_PROPERTY, demoExpenses } from '../../lib/demo/sample';
 import { athensToday } from '../../lib/core/time';
 import { S as DEMO, eur, RATE, yearAhead } from './rentFacts';
+import { chaosParts, CHAOS_T } from './chaosKit';
 
 const ROOT = process.cwd();
 const BEAT = 0.5;
@@ -229,6 +230,7 @@ const ENGINE_JS = `
     }
     for (const x of clips) if (on(x)) x.el.setAttribute('width', String(lerp(x.v[2], x.v[3], eio(p(t, x.v[0], x.v[1])))));
     dots.forEach((d, i) => tf(d, 'translateY(' + (-12 * Math.max(0, Math.sin((t * 7) - (i % 3) * .8))) + 'px)'));
+    for (const f of EXTRA) f(t);
   };`;
 
 const PAGE_CSS = `${BASE_CSS}
@@ -342,6 +344,9 @@ interface Scene {
   card?: boolean;
   html: (t: number) => string;
   sfx?: (m: Mix, t: number) => void;
+  /** Δικό της CSS και δικό της βήμα ανά καρέ (από την αρχή ώς το τέλος της), για ό,τι δεν λέγεται με data-a. */
+  css?: string;
+  js?: (a: number, b: number) => string;
 }
 
 /** Τα κεφάλαια ως μπάρα προόδου, πάνω από όλες τις σκηνές, με το όνομα του τρέχοντος. */
@@ -492,12 +497,14 @@ function build(r: Reel) {
   });
   const cards = r.scenes.map((s, k) => (s.card ? at[k] : -1)).filter(x => x >= 0);
   const sections = r.scenes.map((s, k) => `<section data-in="${at[k]}" data-out="${at[k] + s.dur}" data-tin="${s.tin ?? 'cut'}" data-tout="${s.tout ?? 'cut'}">${s.html(at[k])}</section>`).join('\n');
-  const html = `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${PAGE_CSS}</style></head><body>
+  const extra = r.scenes.map((s, k) => (s.js ? s.js(at[k], at[k] + s.dur) : '')).filter(Boolean);
+  const html = `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${PAGE_CSS}${r.scenes.map(s => s.css ?? '').join('')}</style></head><body>
     <div id="bg"></div><div id="pts" class="deco">${Array.from({ length: 26 }, () => '<i></i>').join('')}</div><div id="fl"></div>
     ${sections}
     ${header(r.series, chapters, r.own?.brand)}
     <div class="grain"></div><div class="vig"></div>
-    <script>const CHAPTERS = ${JSON.stringify(chapters)}; const FLASH = ${JSON.stringify(cards)};${ENGINE_JS}</script></body></html>`;
+    <script>const CHAPTERS = ${JSON.stringify(chapters)}; const FLASH = ${JSON.stringify(cards)};${ENGINE_JS}
+    const EXTRA = [${extra.join(',\n')}];</script></body></html>`;
   const sound = (m: Mix) => {
     const ks = score(m, { chords: r.chords, dur, groove: at[1], cards, arpFrom: chapters[Math.min(2, chapters.length - 1)].a, outro: at[at.length - 1] });
     m.boom(0, .5); m.kick(0, 1); m.kick(BEAT, .9); m.boom(BEAT, .3);
@@ -1188,28 +1195,26 @@ function protoReel(): Reel {
   if (NPROV < 5) throw new Error(`Μόνο ${NPROV} πάροχοι με τιμή ${CATALOGUE_MONTH_GEN}.`);
   const NINS = INSURANCE_COMPANIES.filter(i => /^https:\/\//.test(i.url || '')).length;
   const TAG = 'Βάλε το ακίνητό σου σε τάξη.';
+  // Η αρχή: τα επτά έγγραφα της σάρωσης, σκόρπια σε τρεις διαστάσεις, κουμπώνουν σε λίστα.
+  const CHAOS = chaosParts(['Λογαριασμοί.', 'Μισθωτήρια.', 'ΕΝΦΙΑ.', 'Προθεσμίες.', 'Σκόρπια παντού.'], 'ΙΔΙΟΚΤΗΤΗΣ ΑΚΙΝΗΤΟΥ;');
   // Τα χαρτιά του αγκιστριού: θέση, γωνία. Σκόρπια, αλλά κανένα δεν κρύβει άλλο.
-  const SCAT: [number, number, number][] = [[90, 800, -7], [500, 850, 6], [130, 960, 4], [460, 1040, -5], [90, 1140, 8], [420, 1220, -3], [170, 1320, -8]];
 
   const scenes: Scene[] = [
-    { // Το αγκίστρι: πού είναι τα χαρτιά
-      dur: 4.5, ch: 0, tin: 'cut', tout: 'zoom',
-      html: t => `
-        <div class="L lbl" style="top:400px;color:${S.accent};font-size:26px" ${A('fade', t, .25)}>ΙΔΙΟΚΤΗΤΗΣ ΑΚΙΝΗΤΟΥ;</div>
-        <div class="L h1" style="top:450px;font-size:128px;white-space:nowrap" ${A('slam', t, .5)}>Πού είναι</div>
-        <div class="L h1 acc" style="top:575px;font-size:128px;white-space:nowrap" ${A('slam', t + BEAT, .5)}>τα χαρτιά;</div>
-        ${DOCS.map((d, i) => `<div style="position:absolute;left:${SCAT[i][0]}px;top:${SCAT[i][1]}px" ${A('pop', t + 1.1 + i * .2, .45, 'float', 6 + (i % 3) * 3, 2.6 + (i % 2))}><div class="dchip" style="transform:rotate(${SCAT[i][2]}deg)">${glyph(DOCI, '#3f6fc9', 34, 2)}${esc(d)}</div></div>`).join('')}`,
-      sfx: (m, t) => { m.boom(t + BEAT, .35); DOCS.forEach((_, i) => { m.click(t + 1.1 + i * .2, 2400 + i * 140, .08, i % 2 ? .3 : -.3); }); m.whoosh(t + 3.8, .7, .12); },
-    },
-    { // Τάξη: όλα σε ένα μέρος
-      dur: 4, ch: 0, tin: 'zoom', tout: 'whip',
-      html: t => `
-        <div class="L h1" style="top:390px;font-size:128px;white-space:nowrap" ${A('slam', t + .05, .5)}>Ένα μέρος</div>
-        <div class="L h1 acc" style="top:515px;font-size:128px;white-space:nowrap" ${A('slam', t + .35, .5)}>για όλα.</div>
-        <div class="L card" style="top:720px;width:850px;padding:14px 30px" ${A('up', t + .5, .55)}>
-          ${DOCS.map((d, i) => `<div class="row" style="padding:16px 0;font-size:32px;${i ? `border-top:1.5px solid ${S.rule}99` : ''}" ${A('right', t + .6 + i * .1, .5)}><span><span class="chip" style="width:48px;height:48px;border-radius:14px;background:${S.accent}1c">${glyph(DOCI, S.accent, 26, 2)}</span><b style="color:${S.ink};font-weight:700">${esc(d)}</b></span><span ${A('pop', t + 1.2 + i * .1, .4)}>${glyph(CHECK, S.ok, 36, 3)}</span></div>`).join('')}
-        </div>`,
-      sfx: (m, t) => { m.boom(t + .05, .4); DOCS.forEach((_, i) => m.pluck(t + 1.2 + i * .1, n('C5') + [0, 2, 4, 7, 9, 12, 14][i], .05, (i - 3) * .12)); },
+    { // Το αγκίστρι: τα σκόρπια χαρτιά του ιδιοκτήτη κουμπώνουν σε μία λίστα
+      dur: 5.6, ch: 0, tin: 'cut', tout: 'whip',
+      css: CHAOS.css, js: CHAOS.js,
+      html: () => CHAOS.html(),
+      sfx: (m, t) => {
+        // Βουητό που ανεβαίνει ως το κούμπωμα, ένα ξερό χτύπημα σε κάθε λέξη.
+        const snap = t + CHAOS_T.snap;
+        m.add(t, CHAOS_T.snap, 0, .2, x => { const k = x / CHAOS_T.snap, f = 55 * (1 + .5 * k); return (Math.sin(2 * Math.PI * f * x) + .4 * Math.sin(2 * Math.PI * f * 2.01 * x) + .2 * Math.sin(2 * Math.PI * f * 3.02 * x)) * (.04 + .06 * k) * Math.min(1, x / .05); });
+        CHAOS_T.words.forEach((w, i) => { m.click(t + w, 2600 + i * 200, .09, i % 2 ? .3 : -.3); m.kick(t + w, .55); });
+        m.click(t + CHAOS_T.scatter, 3000, .08); m.kick(t + CHAOS_T.scatter, .55);
+        m.whoosh(t + CHAOS_T.scatter, CHAOS_T.snap - CHAOS_T.scatter, .14, true);
+        m.boom(snap, .3);
+        ['C4', 'G4', 'E5'].forEach((x, i) => m.pluck(snap + i * .01, n(x), .07, (i - 1) * .4, .6));
+        ['C5', 'D5', 'E5', 'G5', 'A5', 'C6', 'D6'].forEach((x, i) => m.pluck(snap + .55 + i * .06, n(x), .045, (i - 3) * .12, .5));
+      },
     },
     chapterCard(1, 5, 'Σάρωση'),
     { // Η σάρωση: ο λογαριασμός, η δέσμη, τα πεδία, η καταχώρηση
@@ -1324,7 +1329,7 @@ function protoReel(): Reel {
     key: 'proto', series: 'makro', scenes,
     chapters: ['Η αρχή', 'Σάρωση', ASSISTANT_NAME, 'Προθεσμίες', 'Σύγκριση', 'Λογιστής', 'PROPERWISE'],
     chords: [ch('A2', 'E3', 'G3', 'C4'), ch('F2', 'C3', 'E3', 'A3'), ch('C3', 'G3', 'B3', 'E4'), ch('G2', 'D3', 'E3', 'B3')],
-    cover: 4.5 + 2.6, caption, title: 'Βάλε το ακίνητό σου σε τάξη', campaign: 'proto', link: utm('/', 'proto'),
+    cover: CHAOS_T.snap + 1.9, caption, title: 'Βάλε το ακίνητό σου σε τάξη', campaign: 'proto', link: utm('/', 'proto'),
     own: { brand: { name: 'PROPERWISE', glyph: BUILDING }, video: 'docs/marketing/reels/reel-2', doc: 'docs/marketing/instagram/reel-2', file: 'PROPERWISE-reel-2.mp4', when: 'Το πρώτο reel του λογαριασμού: ανεβαίνει πρώτο, πριν από τις σειρές.' },
   };
 }
@@ -1340,7 +1345,7 @@ async function main() {
     const outDir = join(ROOT, r.own ? r.own.video : join('docs/marketing/reels', `seires-${r.key}`));
     const docDir = join(ROOT, r.own ? r.own.doc : join('docs/marketing/instagram/seires', r.key, 'reel'));
     mkdirSync(docDir, { recursive: true });
-    await shoot({ html: b.html, dur: b.dur, outDir, file: 'silent.mp4', checkAt: b.checkAt, cover: { t: r.cover, path: join(docDir, 'cover.jpg') }, blend: r.own ? false : undefined });
+    await shoot({ html: b.html, dur: b.dur, outDir, file: 'silent.mp4', checkAt: b.checkAt, cover: { t: r.cover, path: join(docDir, 'cover.jpg') } });
     if (process.env.REEL_PREVIEW) continue;
     const m = new Mix(b.dur);
     const ks = b.sound(m);
