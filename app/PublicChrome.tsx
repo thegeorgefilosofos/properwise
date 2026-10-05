@@ -22,7 +22,7 @@
 // με θόλωμα). Οι ΣΥΝΔΕΣΜΟΙ της όμως είναι οι ίδιοι παντού, μέσω του `PublicNav`.
 // ═══════════════════════════════════════════════════════════════════════════
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
-import { PRODUCT_NAME, LINKEDIN_URL, INSTAGRAM_URL } from '@/lib/core/site';
+import { PRODUCT_NAME, LINKEDIN_URL, INSTAGRAM_URL, YOUTUBE_URL } from '@/lib/core/site';
 import { jsonLdScript } from '@/lib/core/jsonLd';
 import { BrandLogo } from '@/components/BrandMark';
 import Link from 'next/link';
@@ -260,6 +260,15 @@ export function PublicFooter() {
                   <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4" />
                   <circle cx="12" cy="12" r="4.4" />
                   <circle cx="17.6" cy="6.4" r="1.3" fill="currentColor" stroke="none" />
+                </svg>
+              </a>
+              {/* ΤΟ YOUTUBE (05.10.2026), όπου ανεβαίνουν τα reels ως Shorts. Το ίδιο
+                  μονόχρωμο γεμάτο σχήμα με το LinkedIn, το «play» κομμένο μέσα του,
+                  χωρίς το κόκκινο της πλατφόρμας. */}
+              <a href={YOUTUBE_URL} target="_blank" rel="noopener noreferrer me" className="po-social"
+                aria-label="Το PROPERWISE στο YouTube (ανοίγει σε νέα καρτέλα)" title="Το PROPERWISE στο YouTube">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden focusable="false">
+                  <path fill="currentColor" fillRule="evenodd" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1c.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" />
                 </svg>
               </a>
             </span>
