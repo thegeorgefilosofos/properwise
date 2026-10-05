@@ -88,6 +88,8 @@ m.whoosh(R.end - .6, .6, .1, true);
 m.boom(R.end, .24);
 ch('C5', 'E5', 'G5', 'B5', 'E6').forEach((x, i) => m.bell(R.end + .05 + i * .07, x, .05, (i - 2) * .22));
 m.bell(R.end + .8, 84, .035);
+// Η επανάληψη: ένα πέρασμα που ανεβαίνει και δένει με το πρώτο χτύπημα του χάους.
+m.whoosh(R.loop, R.dur - R.loop, .09, true);
 
 m.reverb();
 const wav = join(DIR, 'sound.wav');

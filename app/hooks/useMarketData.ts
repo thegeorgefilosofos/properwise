@@ -123,11 +123,17 @@ export interface LiveProgram {
 // 2,50 αποδοχής καταθέσεων από 16/09/2026 (απόφαση 10/09/2026,
 // https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp260910~314e508016.en.html).
 // Εγραφαν 2,40 και 2,25, τις τιμές πριν από την απόφαση.
-const FALLBACK_AS_OF = '2026-08-01T00:00:00Z';
+//
+// 05/10/2026: ο μέσος όρος ΣΕΠΤΕΜΒΡΙΟΥ για το Euribor (1M 2,4143636, 3M
+// 2,6350455, 6M 2,9215909, 12M 3,247) και ο ΑΥΓΟΥΣΤΟΣ για τα ελληνικά επιτόκια
+// (νέα στεγαστικά 3,39, MIR.M.GR.B.A2C.F.R.A.2250.EUR.N· υπόλοιπα 2,90), ίδια
+// με τη βάση. Εγραφαν τον Αύγουστο για το Euribor και τα νέα στεγαστικά 3,56
+// του Ιουνίου. Μηνιαίοι μέσοι, όχι τιμή ημέρας.
+const FALLBACK_AS_OF = '2026-09-01T00:00:00Z';
 
 const RATES_FALLBACK: LiveMarketRates = {
-  euribor_3m: 2.513, euribor_1m: 2.221, euribor_6m: 2.713, euribor_12m: 2.954,
-  ecb_rate: 2.65, ecb_dfl: 2.50, bog_housing_new: 3.56, bog_housing_stock: 3.01,
+  euribor_3m: 2.635, euribor_1m: 2.414, euribor_6m: 2.922, euribor_12m: 3.247,
+  ecb_rate: 2.65, ecb_dfl: 2.50, bog_housing_new: 3.39, bog_housing_stock: 2.90,
   updated_at: FALLBACK_AS_OF, source_euribor: 'fallback', source_bog: 'fallback',
   rate_changed: false, isLoading: true, provenance: {}, stale: [], isStale: false,
 }

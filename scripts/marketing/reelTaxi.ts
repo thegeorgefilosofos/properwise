@@ -20,7 +20,7 @@ import { join } from 'node:path';
 import { ASSISTANT_ACC, ASSISTANT_NAME, ASSISTANT_INITIAL } from '../../lib/assistant/identity';
 import { DEMO_PROPERTY, demoExpenses } from '../../lib/demo/sample';
 import { DOC_TYPES } from '../../lib/billing/documents';
-import { PROVIDERS } from '../../lib/energy/catalogue';
+import { PROVIDERS, CATALOGUE_MONTH_GEN, TARIFFS_LABEL } from '../../lib/energy/catalogue';
 import { INSURANCE_COMPANIES } from '../../app/dashboard/components/insurance/catalog';
 import { greekPropertyTaxObligations, type TaxObligationKind } from '../../lib/tax/greekTaxCalendar';
 import { WHO_LABEL } from '../../lib/accounting/dossier';
@@ -38,7 +38,6 @@ const TAGLINE = 'Βάλε το ακίνητό σου σε τάξη.';
 // ── Τα γεγονότα ──────────────────────────────────────────────────────────
 const DOCS = DOC_TYPES.filter(d => d.id !== 'other').map(d => d.label);
 if (DOCS.length !== 7) throw new Error(`Το χάος έχει επτά χαρτιά· η σάρωση ξέρει ${DOCS.length} είδη.`);
-const N_PROVIDERS = PROVIDERS.length;
 const N_INSURERS = INSURANCE_COMPANIES.filter(i => /^https:\/\//.test(i.url || '')).length;
 const today = athensToday();
 // Τρεις προθεσμίες του επόμενου δωδεκαμήνου, τρία διαφορετικά είδη και τρεις
@@ -65,10 +64,18 @@ const billDate = BILL.date.split('-').reverse().join('.');
 const Y = yearAhead();
 // Η σύγκριση δείχνει τα ίδια τα τιμολόγια του καταλόγου: η χαμηλότερη τιμή
 // kWh κάθε παρόχου για κατοικία, από τη φθηνότερη στην ακριβότερη. Χωρίς ονόματα.
-// Εξω τα τιμολόγια χωρίς σταθερή τιμή kWh (δυναμικό, πάγιο μηνιαίο) και τα φοιτητικά.
-const TARIFFS = PROVIDERS.map(g => Math.min(...g.tariffs.filter(t => t.segment === 'residential' && !('studentOnly' in t && t.studentOnly) && (t.kwh_day ?? 0) > 0).map(t => t.kwh_day as number)))
+// ΜΟΝΟ ΤΙΜΕΣ ΤΟΥ ΜΗΝΑ ΤΟΥ ΠΙΝΑΚΑ, με τον ίδιο κανόνα που βγάζει τον νικητή
+// στην εφαρμογή: μια τιμή Αυγούστου δίπλα σε τιμές Οκτωβρίου δεν είναι
+// σύγκριση. Εξω τα μη εμπορικά διαθέσιμα, τα φοιτητικά και όσα δεν έχουν
+// σταθερή τιμή kWh (δυναμικό, πάγιο μηνιαίο). Ο αριθμός στην οθόνη είναι οι
+// πάροχοι με τέτοια τιμή, όχι όλος ο κατάλογος.
+const TARIFFS = PROVIDERS.map(g => Math.min(...g.tariffs
+  .filter(t => t.segment === 'residential' && !t.studentOnly && !t.notAvailable && t.priceMonth === CATALOGUE_MONTH_GEN
+    && t.type !== 'dynamic' && t.type !== 'fixed_monthly' && (t.kwh_day ?? 0) > 0)
+  .map(t => t.kwh_day as number)))
   .filter(Number.isFinite).sort((a, b) => a - b);
-if (TARIFFS.length !== N_PROVIDERS) throw new Error('Κάποιος πάροχος δεν έχει οικιακό τιμολόγιο με τιμή kWh.');
+const N_PROVIDERS = TARIFFS.length;
+if (N_PROVIDERS < 5) throw new Error(`Μόνο ${N_PROVIDERS} πάροχοι με τιμή ${CATALOGUE_MONTH_GEN}: η σύγκριση δεν στέκει.`);
 // Η σάρωση: ο λογαριασμός σε μεγέθυνση, στο κέντρο της σκηνής.
 // Στη σάρωση το έγγραφο έχει το ύψος του περιεχομένου του: χωρίς άδειο χαρτί κάτω.
 const SCAN = { k: 1.5, h: 392, x: Math.round((1080 - 380 * 1.5) / 2), y: 640 };
@@ -382,7 +389,7 @@ function html(): string {
     </div>`).join('')}
     </div></div>
     <div id="sweep" class="deco"><i id="swi"></i></div>
-    <div class="L mono kick0" id="k0" style="top:296px"><i></i>ΕΝΑ ΑΚΙΝΗΤΟ, ΚΑΘΕ ΧΡΟΝΙΑ</div>
+    <div class="L mono kick0" id="k0" style="top:296px"><i></i>ΙΔΙΟΚΤΗΤΗΣ ΑΚΙΝΗΤΟΥ;</div>
     <div class="stack">
       ${[...HOOK, 'Σκόρπια παντού.'].map((w, i) => `<div class="hk wd" id="w${i}">${esc(w)}</div>`).join('')}
       ${mask('o1', 'Ένα μέρος', 'hk')}
@@ -446,7 +453,7 @@ function html(): string {
   <!-- 04 · Σύγκριση -->
   <section id="ch3">
     ${chapterHead(3)}
-    <div class="sh" id="s0" style="top:650px"><b id="n0">0</b><div><div class="lb">πάροχοι ρεύματος</div><div class="sm mono">ΧΑΜΗΛΟΤΕΡΗ ΤΙΜΗ kWh ΑΝΑ ΠΑΡΟΧΟ</div></div></div>
+    <div class="sh" id="s0" style="top:650px"><b id="n0">0</b><div><div class="lb">πάροχοι ρεύματος</div><div class="sm mono">ΧΑΜΗΛΟΤΕΡΗ kWh ΑΝΑ ΠΑΡΟΧΟ · ΡΑΑΕΥ, ${esc(UP(TARIFFS_LABEL))}</div></div></div>
     <div class="bars deco" id="bars" style="top:810px">${TARIFFS.map((v, k) => `<i id="bt${k}" class="${k === 0 ? 'lo' : ''}" style="height:${Math.round(40 + 60 * (v - TARIFFS[0]) / (TARIFFS[TARIFFS.length - 1] - TARIFFS[0] || 1))}%"></i>`).join('')}</div>
     <div class="axis mono" id="ax" style="top:952px"><span>${esc(feRate(TARIFFS[0]))}/kWh</span><span>${esc(feRate(TARIFFS[TARIFFS.length - 1]))}/kWh</span></div>
     <div class="sep" style="top:1010px"></div>
@@ -503,7 +510,7 @@ function html(): string {
     <div class="ctr" id="e2" style="top:945px"><span class="rule"></span></div>
     <div class="ctr" style="top:988px">${mask('e3', esc(TAGLINE), 'tag')}</div>
     <div class="ctr mono url" id="e5" style="top:1082px;color:${C.muted}">ΓΙΑ ΚΑΘΕ ΙΔΙΟΚΤΗΤΗ ΑΚΙΝΗΤΟΥ ΣΤΗΝ ΕΛΛΑΔΑ</div>
-    <div class="ctr mono url" id="e4" style="top:1170px">PROPERWISE.GR</div>
+    <div class="ctr mono url" id="e4" style="top:1170px">PROPERWISE.GR · ΣΥΝΔΕΣΜΟΣ ΣΤΟ BIO</div>
   </section>
 
   <div class="vig"></div><div class="grain"></div>
@@ -519,7 +526,11 @@ function html(): string {
     const inn = eo(p(T, c - .3, c + .3)), out = ei(p(T, n - .3, n + .02));
     const el = $('ch' + i);
     op(el, T >= c - .3 && T < n + .05 ? 1 : 0);
-    tf(el, 'translateX(' + (W * (1 - inn) - W * out) + 'px)');
+    // Η σκηνή δεν στέκει ποτέ ακίνητη: ένα αργό πλησίασμα σε όλο το κεφάλαιο,
+    // γύρω από το κέντρο, όσο χωρά χωρίς να βγει κείμενο από τις ζώνες.
+    const push = eio(p(T, c, n));
+    el.style.transformOrigin = '540px 960px';
+    tf(el, 'translateX(' + (W * (1 - inn) - W * out) + 'px) translateY(' + (-10 * push) + 'px) scale(' + (1 + .015 * push) + ')');
     rev('t' + i + 'a', c + .05, null, .55); rev('t' + i + 'b', c + .17, null, .55);
     return T - c;
   };
@@ -531,8 +542,13 @@ function html(): string {
     bgPaint(t);
 
     // ── 0 · Χάος και τάξη ───────────────────────────────────────────────
+    // ΤΟ ΤΕΛΟΣ ΔΕΝΕΙ ΜΕ ΤΗΝ ΑΡΧΗ. Μετά το R.loop η σκηνή του χάους ξαναμπαίνει
+    // όπως στο καρέ 0, ώστε η επανάληψη του Instagram να μη φαίνεται.
+    const lp = eio(p(t, R.loop, R.dur - .04));
+    const tt = t;
+    if (t >= R.loop) { t = 0; T = 0; }
     const outH = ei(p(t, CH[0] - .3, CH[0] + .02));
-    op($('H'), t < CH[0] + .05 ? 1 : 0);
+    op($('H'), tt >= R.loop ? lp : t < CH[0] + .05 ? 1 : 0);
     tf($('H'), 'translateX(' + (-W * outH) + 'px)');
     // Οι λέξεις του χάους: μπαίνουν από θολό σε καθαρό και φεύγουν ολόκληρες
     // πριν μπει η επόμενη· δύο λέξεις μαζί στο ίδιο σημείο δεν διαβάζονται.
@@ -572,6 +588,7 @@ function html(): string {
     const sw = eio(p(t, R.snap + 1.05, R.snap + 1.65));
     op($('sweep'), t > R.snap + 1 && t < R.snap + 1.7 ? 1 : 0);
     $('swi').style.left = (-300 + 1300 * sw) + 'px';
+    t = tt; T = tt;
 
     // ── Η γραμμή προόδου των κεφαλαίων ──────────────────────────────────
     op($('prog'), eo(p(t, CH[0] - .2, CH[0] + .2)) * (1 - eo(p(t, R.recap - .3, R.recap))));
@@ -663,14 +680,14 @@ function html(): string {
     }
 
     // ── Η μάρκα ─────────────────────────────────────────────────────────
-    op($('EN'), eo(p(t, R.end - .1, R.end + .25)));
+    op($('EN'), eo(p(t, R.end - .1, R.end + .25)) * (1 - lp));
     const m0 = spring(p(t, R.end, R.end + 1.1));
     op($('e0'), cl(m0 * 1.5)); tf($('e0'), 'scale(' + (.5 + .5 * m0) + ')');
     op($('bloom'), .9 * eo(p(t, R.end, R.end + 1.4)));
     rev('e1', R.end + .3, null, .7); rev('e3', R.end + .8, null, .8);
     const q = eo(p(t, R.end + .55, R.end + 1.2)); op($('e2'), q); tf($('e2'), 'scaleX(' + q + ')');
-    op($('e5'), eo(p(t, R.end + 1.2, R.end + 1.7)));
-    op($('e4'), eo(p(t, R.end + 1.5, R.end + 2.1)));
+    op($('e5'), eo(p(t, R.end + .9, R.end + 1.3)));
+    op($('e4'), eo(p(t, R.end + 1.1, R.end + 1.5)));
   };
   </script>
   </body></html>`;
@@ -685,7 +702,7 @@ const CAPTION = [
   `Σάρωση. Φωτογραφίζεις λογαριασμό, απόδειξη ή μισθωτήριο και καταχωρείται μόνο του. ${DOCS.length} είδη εγγράφων.`,
   `${ASSISTANT_NAME}. Ρωτάς στα ελληνικά «πόσα θα μου μείνουν καθαρά;» και παίρνεις απάντηση με τα δικά σου νούμερα.`,
   `Προθεσμίες. ΕΝΦΙΑ, Ε9, δήλωση εισοδήματος. Υπενθύμιση ${REMIND_DAYS} ημέρες πριν λήξουν.`,
-  `Σύγκριση. ${N_PROVIDERS} πάροχοι ρεύματος, ${N_INSURERS} ασφαλιστικές, στεγαστικά δάνεια τραπεζών.`,
+  `Σύγκριση. ${N_PROVIDERS} πάροχοι ρεύματος με τιμές ${CATALOGUE_MONTH_GEN} από τη ΡΑΑΕΥ, ${N_INSURERS} ασφαλιστικές, στεγαστικά δάνεια τραπεζών.`,
   'Λογιστής. Ε2, δήλωση μίσθωσης και Excel σε έναν φάκελο.',
   'Ταμπλό. Όλα με μια ματιά, σε κινητό και υπολογιστή.',
   '',
@@ -704,7 +721,7 @@ async function main() {
   mkdirSync(OUT_DOC, { recursive: true });
   await shoot({
     html: html(), dur: TAXI.dur, outDir: OUT_VIDEO, file: 'reel.mp4',
-    checkAt: [1.0, 4.2, 6.9, 9.9, 12.9, 15.9, 18.9, 21.9, 24.3, 28],
+    checkAt: [1.0, 4.2, 7.5, 11.1, 14.7, 18.3, 21.9, 25.5, 27.9, 30.6, 31.7],
     // Το εξώφυλλο: η λίστα σε τάξη, χωρίς τη λάμψη που περνά, κεντραρισμένη στο
     // 3:4 του πλέγματος του προφίλ (y 240 ως 1680) με την υπογραφή από κάτω.
     cover: {

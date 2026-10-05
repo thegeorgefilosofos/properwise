@@ -16,23 +16,25 @@ function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed+
 const near = (a: number | null | undefined, b: number, tol = 0.005) => a != null && Math.abs(a - b) <= tol
 
 const day = (s: string) => new Date(`${s}T12:00:00`)
-const FRESH = day('2026-09-15')
-const STALE = day('2026-10-11')
+const FRESH = day('2026-10-15')
+const STALE = day('2026-11-15')
 const BASE: PowerInput = { kwh: 300, period: 'month', nightPct: 0, ebill: true, colour: 'ola' }
 
 // ═══ Α. ΤΟ ΠΟΣΟ ΤΟΥ myHome Enter, ΣΤΟ ΧΕΡΙ ══════════════════════════════════
-// 300 kWh × 0,1421 = 42,63 · πάγιο με e-bill 3,50 · προμήθεια 46,13
-// ΕΤΜΕΑΡ 300 × 0,017 = 5,10 · ΦΠΑ 6% × 51,23 = 3,0738 · σύνολο 54,3038, στρογγυλεμένο 54,30
-// Ετήσιο: 54,30 × 12 = 651,60
+// ΡΑΑΕΥ, Οκτώβριος 2026, «My Home Enter»: 0,1421 με πάγια εντολή, πάγιο 4,90.
+// 300 kWh × 0,1421 = 42,63 · πάγιο 4,90 · προμήθεια 47,53
+// ΕΤΜΕΑΡ 300 × 0,017 = 5,10 · ΦΠΑ 6% × 52,63 = 3,1578 · σύνολο 55,7878, στρογγυλεμένο 55,79
+// Ετήσιο: 55,79 × 12 = 669,48
 {
   const r = comparePower(BASE, FRESH)
   const enter = r.rows.find(x => x.t.id === 'dei_enter')
-  ok('Α. το myHome Enter βγαίνει 54,30€ τον μήνα', near(enter?.monthly, 54.30))
-  ok('Α. και 651,60€ τον χρόνο', near(enter?.annual, 651.60))
+  ok('Α. το myHome Enter βγαίνει 55,79€ τον μήνα', near(enter?.monthly, 55.79))
+  ok('Α. και 669,48€ τον χρόνο', near(enter?.annual, 669.48))
   ok('Α. ο πάροχος έρχεται από τον κατάλογο', enter?.t.providerLabel === 'ΔΕΗ')
-  // Χωρίς e-bill το πάγιο είναι 7,35: προμήθεια 49,98 · +5,10 · ×1,06 = 58,3848, στρογγυλεμένο 58,38
+  // Το πάγιο της ΡΑΑΕΥ είναι ήδη αυτό της προϋπόθεσης (πάγια εντολή) και δεν
+  // υπάρχει δεύτερο πάγιο e-bill: χωρίς e-bill το ποσό δεν αλλάζει.
   const noBill = comparePower({ ...BASE, ebill: false }, FRESH).rows.find(x => x.t.id === 'dei_enter')
-  ok('Α. χωρίς e-bill το πάγιο ανεβαίνει και το ποσό γίνεται 58,38€', near(noBill?.monthly, 58.38))
+  ok('Α. χωρίς e-bill το ποσό μένει 55,79€', near(noBill?.monthly, 55.79))
 }
 
 // ═══ Β. ΕΤΗΣΙΑ ΚΑΤΑΝΑΛΩΣΗ = ΔΩΔΕΚΑ ΙΣΟΙ ΜΗΝΕΣ ═════════════════════════════
@@ -58,14 +60,14 @@ const BASE: PowerInput = { kwh: 300, period: 'month', nightPct: 0, ebill: true, 
 }
 
 // ═══ Δ. ΠΑΛΙΟΣ ΚΑΤΑΛΟΓΟΣ: ΚΑΝΕΝΑΣ ΝΙΚΗΤΗΣ, ΚΑΜΙΑ ΣΕΙΡΑ ═══════════════════
-// Ο κατάλογος ελέγχθηκε 31.08.2026 με κατώφλι 40 ημερών: στις 10.10 είναι
-// ακόμη φρέσκος, στις 11.10 όχι. Και σε ΚΑΘΕ συνδυασμό εισόδων, με παλιό
+// Οι τιμές ενημερώθηκαν 05.10.2026 με κατώφλι 40 ημερών: στις 14.11 είναι
+// ακόμη φρέσκες, στις 15.11 όχι. Και σε ΚΑΘΕ συνδυασμό εισόδων, με παλιό
 // κατάλογο το «φθηνότερο» μένει κενό και καμία γραμμή δεν έχει θέση.
 {
-  ok('Δ. η κατάταξη ισχύει έως 10.10.2026', rankUntil() === '2026-10-10')
-  ok('Δ. την 10.10 ο κατάλογος είναι φρέσκος', !freshness(TARIFFS_VERIFIED, day(rankUntil()), TARIFFS_MAX_AGE_DAYS).stale)
-  ok('Δ. και την 11.10 όχι', freshness(TARIFFS_VERIFIED, STALE, TARIFFS_MAX_AGE_DAYS).stale)
-  ok('Δ. την 10.10 η σελίδα ακόμη κατατάσσει', comparePower(BASE, day('2026-10-10')).recommend)
+  ok('Δ. η κατάταξη ισχύει έως 14.11.2026', rankUntil() === '2026-11-14')
+  ok('Δ. την 14.11 ο κατάλογος είναι φρέσκος', !freshness(TARIFFS_VERIFIED, day(rankUntil()), TARIFFS_MAX_AGE_DAYS).stale)
+  ok('Δ. και την 15.11 όχι', freshness(TARIFFS_VERIFIED, STALE, TARIFFS_MAX_AGE_DAYS).stale)
+  ok('Δ. την 14.11 η σελίδα ακόμη κατατάσσει', comparePower(BASE, day('2026-11-14')).recommend)
 
   const r = comparePower(BASE, STALE)
   ok('Δ. με παλιό κατάλογο δεν κατατάσσει', !r.recommend)
@@ -119,11 +121,18 @@ const BASE: PowerInput = { kwh: 300, period: 'month', nightPct: 0, ebill: true, 
   ok('ΣΤ. το ZeΝergy S δεν έχει δημοσιευμένο όριο', by('zen_zenergy_s')?.unranked === 'no-allowance' && by('zen_zenergy_s')?.monthly === null)
   // ZeΝergy XS: όριο 2.000 kWh τον χρόνο, χωρίς τιμή υπέρβασης. 300 × 12 = 3.600 > 2.100.
   ok('ΣΤ. το ZeΝergy XS ξεπερνιέται στις 300 τον μήνα', by('zen_zenergy_xs')?.unranked === 'over-allowance' && by('zen_zenergy_xs')?.monthly === null)
-  // 150 × 12 = 1.800 < 2.100: μέσα στο όριο, μπαίνει κανονικά. 49,00 × 1,06 = 51,94.
+  // 150 × 12 = 1.800 < 2.100: μέσα στο όριο, το ποσό βγαίνει. 49,00 × 1,06 = 51,94.
+  // Η τιμή του όμως είναι Αυγούστου (δεν υπάρχει στον πίνακα της ΡΑΑΕΥ του
+  // Οκτωβρίου), οπότε μένει χωρίς θέση με το ποσό του.
   const low = comparePower({ ...BASE, kwh: 150 }, FRESH).rows.find(x => x.t.id === 'zen_zenergy_xs')
-  ok('ΣΤ. και μπαίνει στη σειρά στις 150, με 51,94€', low?.unranked === null && low?.rank !== null && near(low?.monthly, 51.94))
-  // Picasso έχει τιμή υπέρβασης, οπότε μένει στη σειρά ακόμη κι όταν ξεπερνιέται.
-  ok('ΣΤ. πακέτο με καταγεγραμμένη υπέρβαση μένει στη σειρά', by('prot_picasso_s1')?.unranked === null && by('prot_picasso_s1')?.rank !== null)
+  ok('ΣΤ. στις 150 βγάζει 51,94€, χωρίς θέση γιατί η τιμή είναι Αυγούστου', low?.unranked === 'other-month' && low?.rank === null && near(low?.monthly, 51.94))
+  // Picasso έχει τιμή υπέρβασης, οπότε έχει ποσό και όταν ξεπερνιέται· τιμή Αυγούστου, χωρίς θέση.
+  ok('ΣΤ. πακέτο με καταγεγραμμένη υπέρβαση έχει ποσό, με τον μήνα του', by('prot_picasso_s1')?.unranked === 'other-month' && by('prot_picasso_s1')?.monthly !== null)
+  // ΜΟΝΟ ΤΙΜΕΣ ΟΚΤΩΒΡΙΟΥ ΣΤΗ ΣΕΙΡΑ. Κάθε γραμμή με θέση έχει τιμή του μήνα του πίνακα.
+  ok('ΣΤ. κάθε θέση είναι τιμή Οκτωβρίου 2026', r.rows.filter(x => x.rank !== null).every(x => x.t.priceMonth === 'Οκτωβρίου 2026'))
+  ok('ΣΤ. και το φθηνότερο επίσης', r.cheapest?.t.priceMonth === 'Οκτωβρίου 2026')
+  // Η ΡΑΑΕΥ γράφει «μη εμπορικά διαθέσιμο»: δεν φαίνεται ως επιλογή.
+  ok('ΣΤ. κανένα μη εμπορικά διαθέσιμο', r.rows.every(x => !x.t.notAvailable) && !by('prot_flow'))
   // Ο κατάλογος ήδη κρατά έξω φοιτητικά, εκκαθάριση και δυναμικά.
   ok('ΣΤ. κανένα φοιτητικό', r.rows.every(x => !x.t.studentOnly))
   ok('ΣΤ. κανένα με εκκαθάριση', r.rows.every(x => !x.t.settled) && !by('dei_plan'))
@@ -144,13 +153,26 @@ const BASE: PowerInput = { kwh: 300, period: 'month', nightPct: 0, ebill: true, 
 }
 
 // ═══ Η. Η ΝΥΧΤΕΡΙΝΗ ΖΩΝΗ ΜΕΤΡΑ ΜΟΝΟ ΟΠΟΥ ΥΠΑΡΧΕΙ ═══════════════════════════
-// myHome EnterTwo: ημέρα 0,1421, νύχτα 0,1029, πάγιο με e-bill 3,50.
-// 300 kWh, 30% νύχτα: 210 × 0,1421 + 90 × 0,1029 = 29,841 + 9,261 = 39,102
-// + 3,50 = 42,602 · + 5,10 = 47,702 · × 1,06 = 50,5641, στρογγυλεμένο 50,56
+// ΡΑΑΕΥ, Οκτώβριος 2026, «myHomeEnterTwo»: ημέρα 0,145, νύχτα 0,095, πάγιο 8,00.
+// 300 kWh, 30% νύχτα: 210 × 0,145 + 90 × 0,095 = 30,45 + 8,55 = 39,00
+// + 8,00 = 47,00 · + 5,10 = 52,10 · × 1,06 = 55,226, στρογγυλεμένο 55,23
 {
   const r = comparePower({ ...BASE, nightPct: 30 }, FRESH)
-  ok('Η. το EnterTwo με 30% νύχτα βγαίνει 50,56€', near(r.rows.find(x => x.t.id === 'dei_entertwo')?.monthly, 50.56))
-  ok('Η. το Enter, χωρίς νυχτερινή, δεν αλλάζει', near(r.rows.find(x => x.t.id === 'dei_enter')?.monthly, 54.30))
+  ok('Η. το EnterTwo με 30% νύχτα βγαίνει 55,23€', near(r.rows.find(x => x.t.id === 'dei_entertwo')?.monthly, 55.23))
+  ok('Η. το Enter, χωρίς νυχτερινή, δεν αλλάζει', near(r.rows.find(x => x.t.id === 'dei_enter')?.monthly, 55.79))
+}
+
+// ═══ Θ. ΚΛΙΜΑΚΙΟ «ΑΠΟ ΤΗΝ 1η kWh» ═════════════════════════════════════════
+// ΡΑΑΕΥ, Οκτώβριος 2026, ΔΕΗ Ειδικό (Γ1): 0,15913 έως 200 kWh· πάνω από τις
+// 200 «η τιμή διαμορφώνεται σε 0,21997 από την 1η KWh». Πάγιο 5,00.
+//   200 kWh: 200 × 0,15913 = 31,826 + 5 = 36,826 · + 3,40 = 40,226 · × 1,06 = 42,63956 → 42,64
+//   300 kWh: 300 × 0,21997 = 65,991 + 5 = 70,991 · + 5,10 = 76,091 · × 1,06 = 80,65646 → 80,66
+// Με κλίμακα μόνο για όσες ξεπερνούν το όριο θα έβγαινε 200 × 0,15913 + 100 ×
+// 0,21997 = 53,823 και σύνολο 68,08: δώδεκα ευρώ κάτω από την πραγματικότητα.
+{
+  const at = (kwh: number) => comparePower({ ...BASE, kwh }, FRESH).rows.find(x => x.t.id === 'dei_prasino')?.monthly
+  ok('Θ. στις 200 kWh μετρά η πρώτη τιμή: 42,64€', near(at(200), 42.64))
+  ok('Θ. στις 300 kWh η δεύτερη τιμή για όλες: 80,66€', near(at(300), 80.66))
 }
 
 console.log(`revma: ✓ ${passed} · ✗ ${failed}`)

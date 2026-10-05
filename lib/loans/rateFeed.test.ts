@@ -1,5 +1,5 @@
 // Η διασταύρωση των επιτοκίων, με τους αριθμούς της παραγωγής (bank_rates, 02/09/2026).
-import { fromRate, rangeOf, diffBank, decide, changeKey, HOLD_ABOVE, isOfficialSource, BANK_HOSTS, type CurrentBank } from './rateFeed';
+import { fromRate, rangeOf, diffBank, decide, changeKey, HOLD_ABOVE, isOfficialSource, BANK_HOSTS, recomputeFixedMin, type CurrentBank } from './rateFeed';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -86,6 +86,16 @@ ok('σελίδα συχνών ερωτήσεων της ίδιας τράπεζ�
   && !isOfficialSource('alpha', 'https://www.alpha.gr/el/faq/stegastika'));
 ok('το δελτίο της ίδιας τράπεζας μένει επίσημο',
   isOfficialSource('eurobank', 'https://www.eurobank.gr/-/media/eurobank/rates/epitokia-daneiakon-proionton.pdf'));
+
+// ── Το fixed_min του δελτίου δεν σβήνει σε πέρασμα χωρίς αλλαγή ─────────
+// 05/10/2026: το πέρασμα της Δευτέρας έγραψε 2,90 πάνω στο 2,70 της Alpha (σταθερό
+// 1 έτους, χωρίς στήλη), ενώ δεν είχε αλλάξει καμία στήλη.
+const alphaCols = { fixed_3yr: '2.90', fixed_5yr: '3.50', fixed_10yr: '3.90', fixed_15yr: '4.20', fixed_20yr: '4.30' };
+ok('πέρασμα χωρίς αλλαγή: το fixed_min μένει', recomputeFixedMin([], alphaCols) === null);
+ok('αλλαγή μόνο σε περιθώριο: το fixed_min μένει', recomputeFixedMin([{ field: 'variable_spread_min' }], alphaCols) === null);
+ok('αλλαγή σε στήλη σταθερού: ξαναϋπολογίζεται', recomputeFixedMin([{ field: 'fixed_3yr' }], { ...alphaCols, fixed_3yr: '2.80' }) === 2.8);
+ok('εύρος: μετρά το «από»', recomputeFixedMin([{ field: 'fixed_5yr' }], { fixed_5yr: '2.40-4.70' }) === 2.4);
+ok('χωρίς καμία στήλη: καμία τιμή', recomputeFixedMin([{ field: 'fixed_3yr' }], {}) === null);
 
 console.log(fail ? `✗ rateFeed: ${fail} απέτυχαν, ${pass} πέρασαν` : `✓ rateFeed: ${pass} έλεγχοι πέρασαν`);
 if (fail) process.exit(1);

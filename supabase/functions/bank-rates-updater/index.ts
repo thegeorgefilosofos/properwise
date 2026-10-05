@@ -27,7 +27,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { authorizeCron, cronDenial, type CronAuth, type MinimalSupabaseClient } from '../_shared/auth.ts'
 import {
-  diffBank, decide, changeKey, MIN_BANKS, isOfficialSource, BANK_HOSTS,
+  diffBank, decide, changeKey, MIN_BANKS, isOfficialSource, BANK_HOSTS, recomputeFixedMin, RATE_FIELDS,
   type CurrentBank, type ProposedBank, type Change, type CheckedField,
 } from '../../../lib/loans/rateFeed.ts'
 
@@ -317,10 +317,10 @@ async function runUpdate(): Promise<void> {
       // ημερομηνία του: η ημερομηνία εγγράφου σβήνει, για να μη δείχνει η οθόνη
       // «δελτίο της τάδε» δίπλα σε τιμή που δεν γράφει εκείνο το δελτίο.
       if (apply.length) patch.source_doc_date = null
-      const fixed = ['fixed_3yr', 'fixed_5yr', 'fixed_10yr', 'fixed_15yr', 'fixed_20yr']
-        .map(k => parseFloat(String(patch[k] ?? cur[k as keyof CurrentBank] ?? '')))
-        .filter(x => Number.isFinite(x))
-      if (fixed.length) patch.fixed_min = Math.min(...fixed)
+      // Το fixed_min αλλάζει ΜΟΝΟ όταν άλλαξε στήλη σταθερού (recomputeFixedMin):
+      // αλλιώς έσβηνε το σταθερό 1 έτους της Alpha, που δεν έχει στήλη.
+      const fixedMin = recomputeFixedMin(apply, Object.fromEntries(RATE_FIELDS.map(k => [k, patch[k] ?? cur[k]])))
+      if (fixedMin != null) patch.fixed_min = fixedMin
 
       const { error } = await supabase.from('bank_rates').update(patch).eq('bank_id', f.id)
       if (error) { perBank[f.id] = `σφάλμα εγγραφής: ${error.message}`; continue }

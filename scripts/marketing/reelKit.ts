@@ -107,6 +107,13 @@ export interface Shoot {
   checkAt: number[];
   /** Εξώφυλλο: στιγμή, διαδρομή και προαιρετικό JS που στήνει το καρέ για το πλέγμα. */
   cover?: { t: number; path: string; prep?: string };
+  /**
+   * Ανάμειξη δύο διαδοχικών καρέ των 60 σε ένα των 30. Δίνει θόλωμα κίνησης,
+   * αλλά σε γρήγορη κίνηση βγάζει ΔΙΠΛΟ είδωλο, που στο κινητό διαβάζεται ως
+   * τρεμόπαιγμα (05/10/2026, στη σάρωση του πρώτου reel). `false`: ένα καθαρό
+   * καρέ στα δύο.
+   */
+  blend?: boolean;
 }
 
 /**
@@ -167,7 +174,7 @@ export async function shoot(s: Shoot): Promise<void> {
       }
     }));
     const ff = spawn(FFMPEG, ['-y', '-loglevel', 'error', '-framerate', String(CAPTURE), '-i', join(dir, '%05d.png'),
-      '-vf', "tmix=frames=2:weights='1 1',fps=30",
+      '-vf', s.blend === false ? 'fps=30' : "tmix=frames=2:weights='1 1',fps=30",
       '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', '-profile:v', 'high',
       '-movflags', '+faststart', join(s.outDir, s.file)], { stdio: 'inherit' });
     if ((await new Promise<number>(r => ff.on('close', r))) !== 0) throw new Error('Το ffmpeg απέτυχε.');

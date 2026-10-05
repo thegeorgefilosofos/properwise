@@ -263,7 +263,10 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   const ctx = await b.newContext({ viewport:{width:1280,height:1100}, locale:'el-GR' })
   const p = await page(ctx, POWER)
   const t0 = await text(p)
-  ok('ρεύμα: λέει πότε ελέγχθηκαν οι τιμές', /Τιμές όπως ελέγχθηκαν στις \d{1,2} \S+ \d{4}/.test(t0))
+  // Από 05/10/2026 η σελίδα γράφει την ημέρα και την πηγή όπως σε όλη την
+  // εφαρμογή: «Τελευταία ενημέρωση: 05.10.2026. Πηγή: ΡΑΑΕΥ, energycost.gr».
+  ok('ρεύμα: λέει πότε ελέγχθηκαν οι τιμές', /Τελευταία ενημέρωση: \d{2}\.\d{2}\.\d{4}/.test(t0))
+  ok('ρεύμα: λέει την πηγή των τιμών', /Πηγή: ΡΑΑΕΥ, energycost\.gr/.test(t0))
   ok('ρεύμα: λέει τον μήνα των τιμών', /Τιμές \S+ \d{4}, εκτός όπου γράφεται άλλος μήνας/.test(t0))
   const stale = t0.includes(STALE)
   if (stale) {
