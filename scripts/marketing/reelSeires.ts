@@ -1231,9 +1231,9 @@ function protoReel(): Reel {
         </div>
         <div class="L card" style="top:1120px;width:850px;padding:24px 34px 10px" ${A('up', t + 2.2, .55)}>
           <div style="display:flex;align-items:center;gap:16px;font-size:34px;font-weight:800"><span class="chip" style="width:52px;height:52px;border-radius:50%;background:${S.ok}26">${glyph(CHECK, S.ok, 30, 3)}</span>Καταχωρήθηκε<span class="ex" style="margin-left:auto">ΠΑΡΑΔΕΙΓΜΑ</span></div>
-          ${[['ΕΙΔΟΣ', bill.description], ['ΗΜΕΡΟΜΗΝΙΑ', billDate], ['ΠΟΣΟ', eur(bill.amount)]].map(([l, v], i) => `<div class="row" style="padding:14px 0;border-top:1.5px solid ${S.rule}99;margin-top:${i ? 0 : 14}px;font-size:30px"><span class="lbl" style="font-size:19px">${l}</span><b style="color:${i === 2 ? S.accent : S.ink}">${tw(v, t + 2.6 + i * .3, 40)}</b></div>`).join('')}
+          ${[['ΕΙΔΟΣ', bill.description], ['ΗΜΕΡΟΜΗΝΙΑ', billDate], ['ΠΟΣΟ', eur(bill.amount)]].map(([l, v], i) => `<div class="row" style="padding:14px 0;border-top:1.5px solid ${S.rule}99;margin-top:${i ? 0 : 14}px;font-size:30px"><span class="lbl" style="font-size:19px">${l}</span><b style="color:${i === 2 ? S.accent : S.ink}" ${A('right', t + 2.55 + i * .18, .45)}>${esc(v)}</b></div>`).join('')}
         </div>`,
-      sfx: (m, t) => { m.whoosh(t, .6, .12); m.sweep(t + .65, 1.2, 600, 2600, .03); [1.15, 1.4, 1.7].forEach((s0, i) => m.pluck(t + s0, n('E5') + [0, 4, 7][i], .05, (i - 1) * .3)); m.bell(t + 2.25, n('A5'), .07); m.bell(t + 2.32, n('E6'), .05); },
+      sfx: (m, t) => { m.whoosh(t, .6, .12); m.sweep(t + .65, 1.2, 600, 2600, .03); [1.15, 1.4, 1.7].forEach((s0, i) => m.pluck(t + s0, n('E5') + [0, 4, 7][i], .05, (i - 1) * .3)); m.bell(t + 2.25, n('A5'), .07); m.bell(t + 2.32, n('E6'), .05); [0, 1, 2].forEach(i => m.click(t + 2.55 + i * .18, 2600, .05, .2)); },
     },
     chapterCard(2, 5, ASSISTANT_NAME),
     noaScene(2, 'Πόσα θα μου μείνουν καθαρά;',
@@ -1288,7 +1288,7 @@ function protoReel(): Reel {
       ['Επόμενη προθεσμία', `${Number(DL[0].date.slice(8))} ${MON[Number(DL[0].date.slice(5, 7)) - 1]}`, SHORT[DL[0].kind] ?? DL[0].title],
     ], 'Αποθήκευσέ το για την επόμενη προθεσμία.'),
     { // Η μάρκα: δένει με την αρχή
-      dur: 4, ch: 6, tin: 'whip', tout: 'fade',
+      dur: 3.2, ch: 6, tin: 'whip', tout: 'fade',
       html: t => `
         <div class="L" style="top:520px;width:850px;display:flex;justify-content:center" ${A('pop', t + .05, .6)}>${mark(170, S.ink)}</div>
         <div class="L h1" style="top:760px;width:850px;text-align:center;font-size:110px;letter-spacing:.01em;font-weight:850" ${A('slam', t + .3, .5)}>PROPERWISE</div>
