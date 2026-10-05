@@ -186,6 +186,6 @@ export class Mix {
 /** Εικόνα και ήχος σε ένα αρχείο, έτοιμο για ανέβασμα. */
 export function mux(video: string, wav: string, out: string) {
   const r = spawnSync(process.env.FFMPEG || 'ffmpeg', ['-y', '-loglevel', 'error', '-i', video, '-i', wav,
-    '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', '-ar', String(SR), '-shortest', '-movflags', '+faststart', out], { stdio: 'inherit' });
+    '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ac', '2', '-ar', String(SR), '-shortest', '-movflags', '+faststart', out], { stdio: 'inherit' });
   if (r.status !== 0) throw new Error('Το ffmpeg απέτυχε.');
 }
