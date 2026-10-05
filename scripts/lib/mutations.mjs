@@ -22,6 +22,11 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Νέα οθόνη που αθροίζει μόνη της τις δαπάνες του έτους, αντί να τις πάρει
+  // από το lib/facts: ακριβώς ο τρόπος που το ίδιο ακίνητο είχε τέσσερα ποσά
+  // σε τέσσερις οθόνες (05.10.2026).
+  'facts-sums': { add: 'app/dashboard/components/__mut_sums__.tsx', content: "export default function MutationProbe({ rows }: { rows: { amount: number }[] }) {\n  const total = rows.reduce((s, r) => s + r.amount, 0)\n  return <span>{total}</span>\n}\n" },
+
   // Η ΜΕΤΑΛΛΑΞΗ ΓΡΑΦΕΙ ΤΟ ΔΟΛΩΜΑ, ΟΧΙ ΤΗ ΔΙΕΥΘΥΝΣΗ. Ο φύλακας κρατά και το
   // αποτύπωμα μιας λέξης χωρίς νόημα που δεν γράφεται πουθενά αλλού· αν
   // κοκκινίζει για αυτήν, η ανάγνωση, η κανονικοποίηση και η σύγκριση

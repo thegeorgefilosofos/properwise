@@ -1,4 +1,5 @@
 import { roundHalfUp } from '../core/money';
+import { propertyYield } from '../facts/yield'
 // ═══════════════════════════════════════════════════════════════════════════
 // ΣΥΓΚΕΝΤΡΩΤΙΚΗ ΑΠΟΔΟΣΗ ΧΑΡΤΟΦΥΛΑΚΙΟΥ — καθαρή συνάρτηση (χωρίς I/O).
 // Σταθμισμένη μεικτή/καθαρή απόδοση, συνολική αξία & ετήσιο καθαρό, μόνο από
@@ -39,7 +40,8 @@ export function portfolioReturns(items: PortfolioItem[]): PortfolioReturns {
     count: items.length, valuedCount,
     totalValue: round2(totalValue), totalRevenue: round2(totalRevenue),
     totalExpenses: round2(totalExpenses), totalNet: round2(totalRevenue - totalExpenses),
-    grossYield: vValue > 0 ? round1((vRevenue / vValue) * 100) : 0,
-    netYield: vValue > 0 ? round1((vNet / vValue) * 100) : 0,
+    // Ο τύπος του lib/facts/yield.ts, με τις σταθμισμένες τιμές. Καθαρή = προ φόρου.
+    grossYield: round1(propertyYield({ annualIncome: vRevenue, value: vValue, annualExpenses: 0 }).gross),
+    netYield: round1(propertyYield({ annualIncome: vRevenue, value: vValue, annualExpenses: vRevenue - vNet }).net_pre_tax),
   }
 }

@@ -818,6 +818,11 @@ export default function Dashboard() {
             address: selected.address||undefined, value: selected.value||undefined,
             sqm: selected.sqm||undefined, status: statusLabelOf(selected),
             targetRent: selected.target_rent||undefined,
+            statusKey: readStatus(selected),
+            enfia: selected.enfia!=null ? Number(selected.enfia) : undefined,
+            yearBuilt: selected.year_built||undefined, floor: selected.floor??undefined,
+            ownership: selected.ownership!=null ? Number(selected.ownership) : undefined,
+            postalCode: selected.postal_code||undefined,
           }}
           allProperties={properties.map(p=>({
             name: p.name, propType: propertyTypeLabel(p.prop_type)||undefined,

@@ -44,6 +44,7 @@ import { isHouseType } from '@/lib/tax/shortTermTax'
 import { useLoad } from '@/app/hooks/useLoad'
 import { useRemembered } from '@/components/useRememberedFlag'
 import { toggleIn } from '@/lib/core/toggleSet'
+import { propertyStatus, type StatusRow } from '@/lib/facts/status';
 import {
   FIXED_CATS, ymOf, CATS, type MonthItem, type ExclRule, type CustomCatRaw, type Props,
   COLLAPSED_BY_DEFAULT, COLLAPSED_SERVER,
@@ -190,14 +191,17 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
 
       // ── Έσοδα + δεσμευμένες εκροές (για το «Ασφαλές διαθέσιμο») ──
       const [propRes, loansRes, tenantsRes, staysRes] = await Promise.all([
-        properties.one(supabase, propertyId, 'rental_mode,target_rent,value,year_built,enfia,purchase_price,sqm,prop_type,postal_code'),
+        properties.one(supabase, propertyId, 'rental_mode,status_detail,target_rent,value,year_built,enfia,purchase_price,sqm,prop_type,postal_code'),
         loanStore.ofProperty(supabase, propertyId, userId),
         tenantStore.currentAll<{ monthly_rent: number | null }>(supabase, propertyId, 'monthly_rent'),
         // Καταλύματα από την αρχή του έτους: το τρέχον μήνα για έσοδα μήνα, το σύνολο YTD
         // για ετησιοποίηση (πρόβλεψη φόρου βραχυχρόνιας χωρίς εποχική στρέβλωση).
         stayStore.ofProperty<StayRow>(supabase, propertyId, 'total,nights,nightly_rate,check_in', userId, { from: `${y}-01-01`, to: dateEnd }),
       ]);
-      const rMode = (propRes?.rental_mode as 'long_term' | 'short_term' | undefined) ?? '';
+      // ΑΠΟ ΤΗΝ ΚΑΤΑΣΤΑΣΗ, ΟΧΙ ΑΠΟ ΤΟ ΩΜΟ `rental_mode` (lib/facts/status.ts). Το
+      // παλιό βραχυχρόνιο («seasonal» χωρίς mode) έβγαινε εδώ μακροχρόνιο.
+      const st = propertyStatus(propRes as StatusRow | null);
+      const rMode: 'long_term' | 'short_term' | '' = st === 'rent_short' ? 'short_term' : st === 'rent_long' ? 'long_term' : '';
       setRentalMode(rMode);
       setPropSqm(Number(propRes?.sqm) || null);
       // ΤΟ ΕΡΩΤΗΜΑ ΤΟ ΑΠΑΝΤΑ Η `isHouseType`, ΟΧΙ ΕΚΦΡΑΣΗ ΕΔΩ. Η έκφραση που

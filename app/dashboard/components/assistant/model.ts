@@ -8,8 +8,15 @@
 import { feAuto, feOr } from '@/components/Theme'
 import { type Memory, type AssistantAction, NAV_MAP } from '../assistantPersona'
 import { RECONCILE_NONE_LABEL } from '../scanDoc'
+import type { PropertyStatus } from '@/lib/facts/status';
 
-interface PropContext { name: string; propType?: string; address?: string; value?: number; sqm?: number; status?: string; targetRent?: number; }
+interface PropContext {
+  name: string; propType?: string; address?: string; value?: number; sqm?: number; status?: string; targetRent?: number;
+  /** Η κατάσταση ως κλειδί (lib/facts/status.ts): κρίνει αν υπάρχουν έσοδα ενοικίου και απόδοση. */
+  statusKey?: PropertyStatus;
+  /** Για τον ΕΝΦΙΑ του έτους (lib/facts/enfia.ts), ο ίδιος με την Επισκόπηση και τη Λογιστική. */
+  enfia?: number; yearBuilt?: number; floor?: string | number; ownership?: number; postalCode?: string;
+}
 interface PropSummary { name: string; propType?: string; value?: number; targetRent?: number; sqm?: number; status?: string; }
 export interface Props {
   propertyId: string; userId: string; propContext: PropContext; allProperties?: PropSummary[];

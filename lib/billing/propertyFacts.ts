@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { fp } from '../core/format';
+import { propertyYield } from '../facts/yield';
 
 export type Source = 'tenant' | 'actual' | 'target' | 'settings' | 'property' | 'services' | 'none';
 
@@ -59,19 +60,17 @@ export function resolveInsurance(i: InsuranceInputs): { company: string | null; 
   };
 }
 
-// ── Αποδόσεις (ΕΝΑΣ τρόπος υπολογισμού για όλα τα tabs) ──────────────────────
-// Μεικτή = ετήσιο ενοίκιο / αξία. Καθαρή = (ετήσιο ενοίκιο − ετήσιες δαπάνες) / αξία.
-// Επιστρέφει 0 όταν λείπει η αξία (αντί για NaN/Infinity).
+// ── Αποδόσεις ────────────────────────────────────────────────────────────────
+// Ο τύπος ζει στο lib/facts/yield.ts (ΕΝΑΣ για Επισκόπηση, Σύγκριση και
+// Αποδόσεις). Μεικτή = ετήσιο ενοίκιο / αξία. Καθαρή = ΠΡΟ ΦΟΡΟΥ:
+// (ετήσιο ενοίκιο − ετήσιες δαπάνες) / αξία. Η οθόνη τη γράφει με την ετικέτα
+// `YIELD_LABELS.net_pre_tax`. Επιστρέφει 0 όταν λείπει η αξία.
 export function computeYields(monthlyRent: number, propertyValue: number, annualExpenses: number): {
   annualRent: number; grossYield: number; netYield: number;
 } {
-  const rent = pos(monthlyRent) || 0;
-  const value = pos(propertyValue) || 0;
-  const exp = Math.max(0, typeof annualExpenses === 'number' && isFinite(annualExpenses) ? annualExpenses : 0);
-  const annualRent = rent * 12;
-  const grossYield = value > 0 ? (annualRent / value) * 100 : 0;
-  const netYield = value > 0 ? ((annualRent - exp) / value) * 100 : 0;
-  return { annualRent, grossYield, netYield };
+  const annualRent = (pos(monthlyRent) || 0) * 12;
+  const y = propertyYield({ annualIncome: annualRent, value: propertyValue, annualExpenses });
+  return { annualRent, grossYield: y.gross, netYield: y.net_pre_tax };
 }
 
 // Στρογγυλοποίηση ποσοστού απόδοσης (ενιαία μορφή παντού: 1 δεκαδικό).

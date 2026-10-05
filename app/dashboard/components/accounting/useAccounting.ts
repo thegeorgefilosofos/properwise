@@ -23,6 +23,8 @@ import { transferCosts } from '@/lib/accounting/transfer'
 import type { LegalForm as DossierLegalForm } from '@/lib/accounting/dossier'
 import { businessFormOf } from '@/lib/accounting/taxProfile'
 import { sameTaxpayer } from '@/lib/accounting/taxpayer'
+import { taxpayerScope } from '@/lib/facts/taxpayer'
+import { propertyStatus } from '@/lib/facts/status'
 import type {
   ClientStaysRow, ExpensesRow, InventoryItemsRow, RentPaymentsRow, UserPropertiesRow,
 } from '@/lib/supabase/tables'
@@ -298,7 +300,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // (2ος όροφος, 10-20 ετών) και έβγαινε 16,15% ψηλότερα από την ουδέτερη βάση.
   // Και ο `prop_type`: χωρίς αυτόν η εκτίμηση χρέωνε αποθήκη 20 τ.μ. με τον
   // πίνακα των κατοικιών (39,20€ τον χρόνο) και οικόπεδο 400 τ.μ. με 600,00€.
-  type PropRow     = Pick<UserPropertiesRow, 'id'|'name'|'address'|'rental_mode'|'enfia'|'sqm'|'value'|'year_built'|'floor'|'purchase_price'|'purchase_date'|'prop_type'|'ownership'|'postal_code'>
+  type PropRow     = Pick<UserPropertiesRow, 'id'|'name'|'address'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'value'|'year_built'|'floor'|'purchase_price'|'purchase_date'|'prop_type'|'ownership'|'postal_code'>
   type PropListRow = Pick<UserPropertiesRow, 'id'|'name'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'ownership'|'prop_type'|'client_id'>
   type InventoryRow = Pick<InventoryItemsRow, 'name'|'purchase_value'|'category'|'purchase_date'>
 
@@ -346,7 +348,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
         rentStore.ofPropertyWithError<RentRow>(supabase,propertyId,`${rentStore.LEDGER_COLUMNS},base_rent,services_charge,method`,userId),
         stayStore.ofPropertyWithError<StayRow>(supabase,propertyId,`id,${stayStore.ACCOUNTING_COLUMNS}`,userId),
         loanStore.ofPropertyWithError(supabase,propertyId,userId),
-        properties.oneWithError<PropRow>(supabase, propertyId, 'id,name,address,rental_mode,enfia,sqm,value,year_built,floor,purchase_price,purchase_date,prop_type,ownership,postal_code', userId),
+        properties.oneWithError<PropRow>(supabase, propertyId, 'id,name,address,rental_mode,status_detail,enfia,sqm,value,year_built,floor,purchase_price,purchase_date,prop_type,ownership,postal_code', userId),
         properties.listWithError<PropListRow>(supabase, userId, { columns: 'id,name,rental_mode,status_detail,enfia,sqm,ownership,prop_type,client_id' }),
         rentStore.ofUserWithError<PortfolioRentRow>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS},base_rent,services_charge`),
         stayStore.ofUserWithError<PortfolioStayRow>(supabase,userId,`property_id,${stayStore.ACCOUNTING_COLUMNS}`),
@@ -389,7 +391,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // Ο επαγγελματίας διαχειριστής κρατά ακίνητα πολλών ιδιοκτητών. Η κλίμακα
   // και η εξαίρεση των δύο βραχυχρόνιων μετρούν ΑΝΑ ιδιοκτήτη, όχι ανά
   // λογαριασμό. Ο ιδιώτης μένει ένας φορολογούμενος, όπως ήταν.
-  const taxpayerProps = useMemo(()=>sameTaxpayer(allProps, propertyId, mode==='professional' ? ownerClientIds : null),
+  const taxpayerProps = useMemo(()=>sameTaxpayer(allProps, propertyId, taxpayerScope(mode, ownerClientIds)),
     [allProps, propertyId, mode, ownerClientIds])
   // ══ ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΜΕΤΡΑΕΙ ΒΡΑΧΥΧΡΟΝΙΑ ΑΚΙΝΗΤΑ, ΟΧΙ ΑΚΙΝΗΤΑ ══════
   // Ο νόμος (ν.5073/2023) εξαιρεί τα φυσικά πρόσωπα που εκμισθώνουν ΒΡΑΧΥΧΡΟΝΙΑ
@@ -568,7 +570,11 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
       name: prop.name,
       purchasePrice: prop.purchase_price,
       purchaseDate: prop.purchase_date,
-      rented: prop.rental_mode!=='own_use',
+      // ΗΤΑΝ `rental_mode !== 'own_use'`: το `rental_mode` δεν παίρνει ποτέ αυτή
+      // την τιμή (long_term, short_term ή κενό), οπότε η ιδιοχρησία αποσβενόταν
+      // σαν εκμίσθωση. Η κατάσταση διαβάζεται από το lib/facts. Το κενό ακίνητο
+      // ανάμεσα σε δύο μισθώσεις μένει στοιχείο εκμετάλλευσης, όπως ήταν.
+      rented: propertyStatus(prop as StatusRow) !== 'own_use',
     } : null,
     buildingFraction: BUILDING_VALUE_FRACTION,
     buildingRate: BUILDING_DEPRECIATION_RATE,

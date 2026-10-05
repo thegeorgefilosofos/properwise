@@ -61,6 +61,7 @@ import { ReceiptScanModal } from './checklist/ReceiptScanModal'
 import { exportChecklistExcel, exportChecklistPDF, exportHandoverProtocol } from './checklist/reports'
 import { useLoad } from '@/app/hooks/useLoad'
 import { toggleIn } from '@/lib/core/toggleSet'
+import { propertyStatus } from '@/lib/facts/status';
 
 const supabase = createSupabaseClient()
 
@@ -257,12 +258,12 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   // ερμηνεία του `rental_mode` εδώ μέσα.
   const taxProfile: PropertyTaxProfile = useMemo(() => taxProfileOf(statusRow), [statusRow])
   const fieldCtx: FieldContext = useMemo(() => ({
-    status: statusRow ? (taxProfile === 'short_term' ? 'rent_short' : taxProfile === 'long_term' ? 'rent_long' : (statusRow.status_detail === 'own_use' ? 'own_use' : statusRow.status_detail === 'renovation' ? 'renovation' : statusRow.status_detail === 'for_sale' ? 'for_sale' : statusRow.status_detail === 'disputed' ? 'disputed' : 'vacant')) : 'vacant',
+    status: propertyStatus(statusRow),
     business: HAS_BUSINESS.has(legalForm),
     doubleEntry: bookkeeping === 'double_entry',
     propertyCount,
     hasLoan: loanPayment > 0,
-  }), [statusRow, taxProfile, legalForm, bookkeeping, propertyCount, loanPayment])
+  }), [statusRow, legalForm, bookkeeping, propertyCount, loanPayment])
 
   // Όσες υποχρεώσεις ΔΕΝ υπάρχουν ήδη στη λίστα. Το κλειδί είναι το `ref`, ώστε
   // δεύτερο πάτημα να μην γράφει διπλότυπα ούτε όταν αλλάξει η διατύπωση.
