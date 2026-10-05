@@ -16,7 +16,7 @@ import * as rentStore from '@/lib/data/rent';
 import { propertyIncome, type IncomeRent, type PropertyIncome } from '@/lib/income/propertyIncome';
 import { taxpayerRentSources, ownershipPctOf, wholePropertyTax, type TaxpayerPropInput, type OtherPropertyIncome } from '@/lib/accounting/taxpayerIncome';
 import { taxpayerScope } from '@/lib/facts/taxpayer';
-import { propertyStatus, propertyStatusLabel, isLease, NOT_LET_NOTE, YIELD_LABELS, YIELD_SHORT_LABELS, yearExpenses, type PropertyStatus } from '@/lib/facts';
+import { propertyStatus, propertyStatusLabel, isLease, NOT_LET_NOTE, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_PRE_TAX_SUB, yearExpenses, type PropertyStatus } from '@/lib/facts';
 import type { StayAmountLike } from '@/lib/clients/stayAmounts';
 import { type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
 import { trailingStays, type ReportStay, type TrailingStays } from '@/lib/clients/reports';
@@ -1558,7 +1558,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         <div {...g4box}>
           <Tile label="Μεικτή απόδοση" value={fp(y.grossYield)} sub={useRecorded ? `${fe(y.annualRent)} τον χρόνο, από ${fe(recorded!.receivedToDate)} ως σήμερα` : mkt(`${fe(y.annualRent)} έσοδα τον χρόνο`)} info={<TermInfo term="Μεικτή απόδοση" text={G.gross_yield} />} />
           <Tile label={YIELD_SHORT_LABELS.net_pre_tax} value={fp(y.netYield)}
-            sub={mkt(term === 'short' ? `μετά από ${fe(effOpex)} έξοδα, προμήθειες και τέλη` : `μετά από ${fe(effOpex)} έξοδα`)}
+            sub={mkt(term === 'short' ? `μετά από ${fe(effOpex)} έξοδα, προμήθειες και τέλη, ${YIELD_PRE_TAX_SUB}` : `μετά από ${fe(effOpex)} έξοδα, ${YIELD_PRE_TAX_SUB}`)}
             info={<TermInfo term={YIELD_LABELS.net_pre_tax} text={G.net_yield} />} />
           {/* «Μετά τον φόρο» και όχι «Απόδοση μετά τον φόρο»: δίπλα στη μεικτή και
               την καθαρή η λέξη «απόδοση» εννοείται· στα 390 η ετικέτα
