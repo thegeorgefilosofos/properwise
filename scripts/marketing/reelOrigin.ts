@@ -108,7 +108,12 @@ const DUES: [string, string, string, string, number][] = [
   ['rd', 'Φορολογική δήλωση', '«Μάλλον σωστή είναι.»', 'Χωρίς έλεγχο', -1.2],
   ['wa', 'Κοινόχρηστα', '«Κάπου πιο πάνω στο Viber.»', 'Χαμένα', 2],
 ];
+// Στο όραμα οι ίδιες τέσσερις υποχρεώσεις μπαίνουν σε τάξη: η δικαιολογία
+// σβήνεται και η ετικέτα λέει τι κάνει γι' αυτήν το PROPERWISE (υπενθύμιση,
+// ημερολόγιο, σύγκριση με την προσυμπληρωμένη, καταχώρηση).
+const VISION_TO = ['Με υπενθύμιση', 'Στο ημερολόγιο', 'Συγκρίθηκε', 'Καταχωρημένα'];
 const TONE = { wa: '#f0c97d', rd: '#ff8f8f', ok: '#5fd4a8', bl: '#9ec0ff' } as const;
+const VISION = DUES.map(([k, t, q, st], i) => [k, t, q, st, VISION_TO[i]] as const);
 const CONDS: [boolean, string][] = [
   [true, 'Τιμολόγιο στο ΑΦΜ σου'], [true, 'Ηλεκτρονική πληρωμή'],
   [true, `Υλικά έως ${SHARE} της εργασίας`], [false, 'Η δουλειά που κάνεις μόνος'],
@@ -212,8 +217,8 @@ function html(T: Record<string, string>): string {
   /* 4 · Οι υποχρεώσεις */
   .due{width:790px;height:132px;padding:0 30px}
   .due .ic{flex:none;width:60px;height:60px;border-radius:16px;display:grid;place-items:center}
-  .due .doc{width:25px;height:31px;border-radius:4px;border:3px solid currentColor;position:relative}
-  .due .doc:after{content:'';position:absolute;left:4px;right:4px;top:6px;height:3px;background:currentColor;box-shadow:0 7px 0 currentColor}
+  .due .doc,.vc .doc{width:25px;height:31px;border-radius:4px;border:3px solid currentColor;position:relative}
+  .due .doc:after,.vc .doc:after{content:'';position:absolute;left:4px;right:4px;top:6px;height:3px;background:currentColor;box-shadow:0 7px 0 currentColor}
   .due .t{font-size:30px;font-weight:700;letter-spacing:-.018em}
   .due .q{margin-top:6px;font-size:25px;color:#9aa8bd;font-style:italic;letter-spacing:-.01em}
 
@@ -258,8 +263,21 @@ function html(T: Record<string, string>): string {
   .ln .v{font-size:21px;font-weight:650;letter-spacing:-.02em;line-height:1.25}
 
   /* 7 · Το όραμα και η μάρκα */
-  .vw{display:inline-block;margin-right:.24em;will-change:transform,filter,opacity}
-  #vis .a{background-size:200% 100%}
+  .vlead{font-size:50px;font-weight:700;letter-spacing:-.025em;line-height:1.1;color:${C.ink}}
+  .vhero{font-size:168px;font-weight:850;letter-spacing:-.055em;line-height:1;white-space:nowrap}
+  /* Τρία μήκη: το πρώτο και το τελευταίο τρίτο είναι η κλίση του .a, στη μέση η λάμψη.
+     Ξεκινά στο πρώτο, τελειώνει στο τελευταίο: πριν και μετά το χρώμα είναι το ίδιο. */
+  .vhero .a{background-size:300% 100%;background-position:0 0;background-image:linear-gradient(95deg,
+    #a9c8ff 0%,#5f9bff 20%,#3d7ef0 33.33%,#6fa3ff 45%,#f0f5ff 50%,#8ab4f8 55%,#a9c8ff 66.67%,#5f9bff 86.67%,#3d7ef0 100%)}
+  .vtail{font-size:50px;font-weight:700;letter-spacing:-.025em;line-height:1.1;color:#aebbd0}
+  .vc{left:90px;width:850px;height:122px;padding:0 28px}
+  .vc .ic{flex:none;width:58px;height:58px;border-radius:16px;display:grid;place-items:center;position:relative}
+  .vc .ic>*{position:absolute}
+  .vc .t{font-size:29px;font-weight:700;letter-spacing:-.018em}
+  .vc .q{margin-top:5px;font-size:23px;color:#9aa8bd;font-style:italic;letter-spacing:-.01em;position:relative;display:inline-block}
+  .vc .q i{position:absolute;left:-4px;right:-4px;top:54%;height:3px;border-radius:2px;background:${TONE.ok};transform-origin:left center}
+  .vc .pw{position:relative;flex:none;display:grid;justify-items:end}
+  .vc .pw>span{grid-area:1/1}
   .ctr{position:absolute;left:150px;right:150px;display:flex;justify-content:center;text-align:center}
   .word{font-size:96px;font-weight:800;letter-spacing:.02em}
   .tag{font-size:54px;font-weight:700;letter-spacing:-.03em}
@@ -379,11 +397,17 @@ function html(T: Record<string, string>): string {
   <!-- 7 · Το όραμα -->
   <section id="s6">
     <div id="bloom" class="deco"></div>
-    <div class="L eb mono" id="e6" style="top:560px"><i></i>ΤΟ ΟΡΑΜΑ</div>
-    <div class="L hd" id="vis" style="top:620px;font-size:84px;line-height:1.06">
-      ${[['Κάθε', 'ιδιοκτήτης'], ['να', 'έχει'], ['τον', 'πλήρη', 'έλεγχο'], ['της', 'περιουσίας', 'του.']]
-        .map((ws, li) => `<div>${ws.map((w, k) => `<span class="vw${li >= 2 ? ' a' : ''}" id="v${li}_${k}">${esc(w)}</span>`).join('')}</div>`).join('')}
-    </div>
+    <div class="L eb mono" id="e6" style="top:330px"><i></i>ΤΟ ΟΡΑΜΑ</div>
+    <div class="L" style="top:376px">${mask('v0', 'Κάθε ιδιοκτήτης να έχει', 'vlead')}</div>
+    <div class="L" style="top:444px">${mask('v1', A('τον πλήρη'), 'vhero')}${mask('v2', A('έλεγχο'), 'vhero')}</div>
+    <div class="L" style="top:792px">${mask('v3', 'της περιουσίας του.', 'vtail')}</div>
+    ${VISION.map(([, t, q, from, to], i) => `<div class="card vc row" id="vc${i}" style="top:${880 + i * 140}px">
+      <div style="display:flex;align-items:center;gap:22px">
+        <div class="ic" id="vi${i}" style="background:${DUES[i][0] === 'rd' ? 'rgba(240,110,110,.14)' : 'rgba(229,192,123,.14)'};color:${TONE[DUES[i][0] as 'wa' | 'rd']}"><div class="doc" id="vd${i}"></div><span id="vk${i}" style="opacity:0">${ico.check(TONE.ok, 30)}</span></div>
+        <div><div class="t">${esc(t)}</div><div class="q">${esc(q)}<i id="vs${i}"></i></div></div>
+      </div>
+      <div class="pw"><span class="pill p-${DUES[i][0]}" id="vo${i}">${esc(from)}</span><span class="pill p-ok" id="vn${i}" style="opacity:0">${esc(to)}</span></div>
+    </div>`).join('')}
   </section>
 
   <!-- Η μάρκα -->
@@ -554,16 +578,27 @@ function html(T: Record<string, string>): string {
     for (let k = 0; k < 3; k++) { const v = eo(p(u, 3.1 + k * .17, 3.45 + k * .17)); op($('fl' + k), v); tf($('fl' + k), 'translateX(' + (24 * (1 - v)) + 'px)'); }
     { const v = spring(p(u, 3.7, 4.3)); tf($('rdy'), 'scale(' + (.4 + .6 * v) + ')'); op($('rdy'), cl(v * 2)); }
 
-    // ── 7 · Το όραμα: λέξη λέξη, από θολό σε καθαρό ─────────────────────
+    // ── 7 · Το όραμα: οι υποχρεώσεις της σκηνής 4 μπαίνουν σε τάξη ──────
     u = scene('s6', S[6], O.end);
     { const e = $('e6'), v = eo(p(u, .05, .5)); op(e, v); tf(e, 'translateX(' + (-24 * (1 - v)) + 'px)'); }
-    const W8 = [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1], [2, 2], [3, 0], [3, 1], [3, 2]];
-    W8.forEach(([l, k], j) => {
-      const el = $('v' + l + '_' + k), s = .2 + j * .16, v = eo(p(u, s, s + .55));
-      op(el, v); el.style.filter = v < .99 ? 'blur(' + ((1 - v) * 14).toFixed(2) + 'px)' : 'none';
-      tf(el, 'translateY(' + (30 * (1 - v)) + 'px)');
-      if (l >= 2) el.style.backgroundPosition = (100 - 100 * eio(p(u, 1.6, 3.2))) + '% 0';
-    });
+    rev('v0', S[6] + .1, null, .55); rev('v1', S[6] + .3, null, .65); rev('v2', S[6] + .45, null, .65); rev('v3', S[6] + .7, null, .55);
+    // Μια λάμψη περνά πάνω από το «πλήρη έλεγχο» μόλις μπουν όλα σε τάξη.
+    ['v1', 'v2'].forEach(id => { $(id).firstElementChild.style.backgroundPosition = (100 * eio(p(u, 3.0, 4.0))) + '% 0'; });
+    for (let k = 0; k < D.nDues; k++) {
+      // Μπαίνουν στραβά όπως στη σκηνή 4 και ισιώνουν σε μία στήλη.
+      const s = .55 + k * .12, v = spring(p(u, s, s + .85)), el = $('vc' + k);
+      op(el, cl(v * 2.2));
+      tf(el, 'translate(' + ((k % 2 ? 50 : 0) * (1 - v)) + 'px,' + (140 * (1 - v)) + 'px) rotate(' + ([-2.2, 1.6, -1.2, 2][k] * 3 * (1 - v)) + 'deg)');
+      const f = 1.55 + k * .32;
+      tf($('vs' + k), 'scaleX(' + eio(p(u, f, f + .28)) + ')');
+      const a = p(u, f + .2, f + .32), b = spring(p(u, f + .32, f + .8));
+      op($('vo' + k), a < 1 ? 1 : 0); tf($('vo' + k), 'scaleY(' + (1 - ei(a)) + ')');
+      op($('vn' + k), a >= 1 ? cl(b * 2) : 0); tf($('vn' + k), 'scale(' + (.6 + .4 * b) + ')');
+      op($('vd' + k), 1 - eo(p(u, f + .2, f + .35)));
+      op($('vk' + k), eo(p(u, f + .3, f + .5))); tf($('vk' + k), 'scale(' + (.4 + .6 * spring(p(u, f + .3, f + .9))) + ')');
+      $('vi' + k).style.background = a >= 1 ? 'rgba(82,199,158,.16)' : '';
+      el.style.borderColor = 'rgba(95,212,168,' + (.12 + .3 * b * (1 - eo(p(u, f + .8, f + 1.6)))) + ')';
+    }
     op($('bloom'), .9 * eo(p(t, O.vision, O.vision + 1.6)) * (1 - .4 * eo(p(t, O.end, O.end + 1))));
     tf($('bloom'), 'scale(' + (.8 + .3 * eo(p(t, O.vision, O.end + 1))) + ')');
 
@@ -613,7 +648,7 @@ async function main() {
   const O = ORIGIN;
   await shoot({
     html: html(T), dur: O.dur, outDir: OUT_VIDEO, file: 'reel.mp4', shutter: 2,
-    checkAt: [3.9, O.receipt + 4.9, O.wall + 3.2, O.dues + 4.4, O.irony + 5.0, O.product + 4.5, O.vision + 3.2, O.dur - .2],
+    checkAt: [3.9, O.receipt + 4.9, O.wall + 3.2, O.dues + 4.4, O.irony + 5.0, O.product + 4.5, O.vision + 4.6, O.dur - .2],
     // Το εξώφυλλο: η φράση, η απάντηση και η ταινία, όλα στη θέση τους.
     cover: { t: O.receipt - .45, path: join(OUT_DOC, 'cover.jpg') },
   });
