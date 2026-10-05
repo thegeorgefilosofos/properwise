@@ -32,6 +32,17 @@ export function policyChangeSummary(inboundDomain: string = INBOUND_DOMAIN): str
 
 export const POLICY_CHANGE_SUMMARY = policyChangeSummary()
 
+/**
+ * Η ΓΡΑΜΜΗ ΠΟΥ ΦΑΙΝΕΤΑΙ (05.10.2026). Η πλήρης περίληψη έπιανε πέντε σειρές
+ * νομικού κειμένου πάνω από την Επισκόπηση και δεν τη διάβαζε κανείς. Η
+ * ειδοποίηση λέει πλέον σε μία γραμμή τι έγινε και τι ΔΕΝ άλλαξε· η περίληψη
+ * ανοίγει με το «Τι άλλαξε». Το «τιμές και πακέτα δεν αλλάζουν» ισχύει για
+ * την έκδοση 2026-10-04 (βλ. την κεφαλή του `policyChangeSummary`)· σε νέα
+ * έκδοση που αλλάζει τιμή, η πρόταση αλλάζει μαζί με το POLICY_VERSION.
+ */
+export const POLICY_NOTICE_HEADLINE = 'Ενημερώσαμε τους Όρους και την Πολιτική απορρήτου.'
+export const POLICY_NOTICE_LEDE = 'Τιμές και πακέτα δεν αλλάζουν.'
+
 /** Το κλειδί του τοπικού αντιγράφου, για όσο η εγγραφή στον λογαριασμό δεν έχει φτάσει. */
 export const POLICY_NOTICE_KEY = 'po_policy_notice_seen'
 
