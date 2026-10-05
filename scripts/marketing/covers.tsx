@@ -84,8 +84,11 @@ function ogBanner({ width, height, lines, sub, lift = 0, safe }: OgBanner) {
           ].join(', '),
         }}
       >
-        <div style={{ position: 'absolute', right: Math.round(bx - bh * 0.2), bottom: Math.round(by - bh * 0.35), display: 'flex', opacity: 0.07 }}>
-          {mark(Math.round(bh * 1.4), BRAND_MARK_ON_DARK)}
+        {/* Στα στενά εξώφυλλα το σήμα κάθεται δεξιά από το κείμενο. Στη ζώνη του
+            YouTube (πιο κοντή σε σχέση με τον τίτλο) θα έπεφτε πίσω από το τέλος
+            του· εκεί μικραίνει και βγαίνει πέρα από τη δεξιά άκρη της ζώνης. */}
+        <div style={{ position: 'absolute', right: Math.round(bx - bh * (safe ? 0.86 : 0.2)), bottom: Math.round(by - bh * (safe ? 0.3 : 0.35)), display: 'flex', opacity: 0.07 }}>
+          {mark(Math.round(bh * (safe ? 1.15 : 1.4)), BRAND_MARK_ON_DARK)}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: size, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.12 }}>
           {lines.map(l => (
@@ -95,7 +98,7 @@ function ogBanner({ width, height, lines, sub, lift = 0, safe }: OgBanner) {
             </div>
           ))}
         </div>
-        {sub && <div style={{ display: 'flex', fontSize: Math.round(size * (safe ? 0.44 : 0.4)), fontWeight: 600, color: c.muted }}>{sub}</div>}
+        {sub && <div style={{ display: 'flex', fontSize: Math.round(size * (safe ? 0.5 : 0.4)), fontWeight: 600, color: c.muted }}>{sub}</div>}
       </div>
     ),
     { width, height, fonts },
