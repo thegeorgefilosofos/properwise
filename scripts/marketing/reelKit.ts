@@ -188,7 +188,7 @@ export async function shoot(s: Shoot): Promise<void> {
       ...(N > 1 ? ['-vf', `tmix=frames=${N},select=eq(mod(n\\,${N})\\,${N - 1}),setpts=N/(30*TB)`, '-r', '30']
         : s.blend ? ['-vf', "tmix=frames=2:weights='1 1',fps=30"] : ['-r', '30']),
       // ΟΠΩΣ ΤΟ ΘΕΛΕΙ ΤΟ INSTAGRAM (05/10/2026: το πρώτο reel κολλούσε στο
-      // ανέβασμα με πλήρες καρέ κάθε ~8″ και χωρίς δηλωμένο επίπεδο, και ανέβηκε
+      // ανέβασμα με πλήρες καρέ κάθε ~8″ και χωρίς δηλωμένο επίπεδο· ανέβηκε
       // με αυτά): πλήρες καρέ κάθε 2″, H.264 High 4.1, χρώματα BT.709, 5 Mbps.
       '-c:v', 'libx264', '-preset', 'slow', '-profile:v', 'high', '-level:v', '4.1', '-pix_fmt', 'yuv420p',
       '-g', '60', '-keyint_min', '60', '-sc_threshold', '0', '-b:v', '5M', '-maxrate', '6M', '-bufsize', '12M',
