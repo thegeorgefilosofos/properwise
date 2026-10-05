@@ -267,8 +267,12 @@ export function GuideFaq({ title, faq }: { title: string; faq: GuideFaqItem[] })
  * θέματος, μετά κυκλικά· ο κόμβος /odigos κρατά ολόκληρη τη λίστα.
  */
 const RELATED_MAX = 4;
-export function RelatedGuides({ current }: { current: Guide }) {
-  const related = relatedGuides(current, RELATED_MAX);
+/**
+ * Το `exclude` κρατά έξω οδηγούς που η σελίδα δεν πρέπει να προτείνει, π.χ.
+ * οδηγό με ανοιχτό σφάλμα (δες `relatedGuides`). Η σελίδα γράφει δίπλα του γιατί.
+ */
+export function RelatedGuides({ current, exclude }: { current: Guide; exclude?: readonly string[] }) {
+  const related = relatedGuides(current, RELATED_MAX, exclude);
   return (
     <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
       <SectionHead over="Σχετικοί οδηγοί" title="Διάβασε ακόμη" />
