@@ -546,8 +546,14 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                     <p style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>{e.title}</p>
                     <p style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'2px 0 0' }}>{fmt(e.event_date)}{e.event_time?` · ${e.event_time}`:''}</p>
                   </div>
-                  {e.amount!=null&&<span style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-secondary)' }}>{fe(e.amount)}</span>}
-                  <span style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)', flexShrink:0 }}>{dueTextStart(-late)}</span>
+                  {/* ΠΟΣΟ ΚΑΙ ΑΠΟΣΤΑΣΗ ΣΕ ΜΙΑ ΣΤΗΛΗ (05.10.2026). Δίπλα δίπλα, με την
+                      ενιαία διατύπωση «Πριν από 36 ημέρες», στα 320 έσφιγγαν τη στήλη
+                      του τίτλου κάτω από το πλάτος της ημερομηνίας και αυτή έπεφτε
+                      πάνω στο ποσό. */}
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0, textAlign:'right' }}>
+                    {e.amount!=null&&<span style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-secondary)' }}>{fe(e.amount)}</span>}
+                    <span style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)' }}>{dueTextStart(-late)}</span>
+                  </div>
                 </button>
               )})}
             </div>
