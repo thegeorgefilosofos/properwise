@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b';
 
-import { RENTAL_TAX_BRACKETS_2026, MUNICIPAL_ACCOM_TAX_RATE } from '@/lib/billing/greekTax';
+import { RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { feWhole, fpRate } from '@/lib/core/format';
 
@@ -53,10 +53,12 @@ export const GUIDES: readonly Guide[] = [
     href: '/odigos/airbnb-takk-2026',
     kicker: 'Βραχυχρόνια',
     title: 'Φορολογία Airbnb 2026',
-    desc: 'Τι πληρώνεις για βραχυχρόνια μίσθωση: το ΤΑΚΚ ανά διανυκτέρευση, το τέλος '
-        + `παρεπιδημούντων ${fpRate(MUNICIPAL_ACCOM_TAX_RATE * 100)} και ο φόρος εισοδήματος.`,
+    // Η ΠΕΡΙΓΡΑΦΗ ΤΗΣ ΣΕΛΙΔΑΣ, ΙΔΙΑ ΚΑΙ ΣΤΗΝ ΚΑΡΤΑ (05.10.2026): το κείμενο v2
+    // ανοίγει με το τέλος ανθεκτικότητας και την αλλαγή της 1ης Νοεμβρίου.
+    desc: 'Πόσο είναι το τέλος ανθεκτικότητας ανά διανυκτέρευση το 2026, τι αλλάζει από 1η Νοεμβρίου, '
+        + 'πώς δηλώνεται στο myAADE και πώς φορολογείται το Airbnb.',
     published: '2026-09-21',
-    updated: '2026-10-03',
+    updated: '2026-10-05',
     tools: ['/vraxyxronia-i-makroxronia'],
   },
   {
@@ -160,10 +162,17 @@ export function guidesForTool(tool: string): Guide[] {
  * ΟΙ «ΣΧΕΤΙΚΟΙ ΟΔΗΓΟΙ» ΤΟΥ ΚΑΘΕΝΟΣ. Πρώτα έως δύο που μοιράζονται εργαλείο
  * ή θέμα (`kicker`) και ό,τι μένει κυκλικά από τον επόμενο στον κατάλογο. Η κυκλική σειρά μοιράζει τους συνδέσμους: με «οι πρώτοι του
  * καταλόγου» οι τελευταίοι οδηγοί δεν τους έπαιρνε σχεδόν κανείς.
+ *
+ * ΤΟ `exclude` ΚΡΑΤΑ ΕΞΩ ΟΔΗΓΟ ΠΟΥ ΔΕΝ ΠΡΕΠΕΙ ΝΑ ΠΡΟΤΑΘΕΙ ΑΠΟ ΑΥΤΗ ΤΗ ΣΕΛΙΔΑ
+ * (05.10.2026). Ο οδηγός Airbnb έδειχνε τον οδηγό ΑΜΑ και προδιαγραφών, που
+ * έχει ανοιχτό P0· η σελίδα δεν στέλνει τον αναγνώστη εκεί ώσπου να
+ * διορθωθεί. Η θέση που αδειάζει γεμίζει από τον επόμενο του κύκλου, οπότε η
+ * κάρτα δεν λείπει. Η σελίδα που εξαιρεί το γράφει με την αιτία της.
  */
-export function relatedGuides(current: Guide, max: number): Guide[] {
+export function relatedGuides(current: Guide, max: number, exclude: readonly string[] = []): Guide[] {
   const i = GUIDES.findIndex(g => g.href === current.href);
-  const ring = [...GUIDES.slice(i + 1), ...GUIDES.slice(0, Math.max(0, i))].filter(g => g.href !== current.href);
+  const ring = [...GUIDES.slice(i + 1), ...GUIDES.slice(0, Math.max(0, i))]
+    .filter(g => g.href !== current.href && !exclude.includes(g.href));
   // Δύο το πολύ από το ίδιο εργαλείο: με όλους, ο οδηγός με τρία εργαλεία
   // έπαιρνε οκτώ συνδέσμους και δύο άλλοι από δύο.
   const near = ring.filter(g => g.tools.some(t => current.tools.includes(t)) || g.kicker === current.kicker).slice(0, 2);
