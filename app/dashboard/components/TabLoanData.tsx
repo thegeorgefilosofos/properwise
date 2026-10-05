@@ -60,14 +60,19 @@ export const EURIBOR_HISTORY = [
   // Επαληθευμένα από τη σειρά FM.M.U2.EUR.RT.MM.EURIBOR3MD_.HSTA την 01/09/2026.
   // Η ανοδική στροφή δεν φαινόταν καθόλου: ο πίνακας σταματούσε στον Ιούνιο.
   {date:'2026-07',val:2.425},{date:'2026-08',val:2.513},
+  // Ο μέσος όρος Σεπτεμβρίου από την ίδια σειρά (2,6350455), όπως τον έχει η
+  // βάση από τις 03/10/2026. Μηνιαίος μέσος, όχι τιμή ημέρας.
+  {date:'2026-09',val:2.635},
 ]
 
 // Εφεδρικές τιμές όταν ο πίνακας market_rates είναι κενός. Δείχνονται ΠΑΝΤΑ με
 // ημερομηνία παρατήρησης, ποτέ ως «σημερινές».
 //
-// ΠΗΓΗ: το Data Portal της ΕΚΤ, ρωτημένο απευθείας την 01/09/2026 — οι ίδιες
-// σειρές που τροφοδοτούν πλέον τη βάση, όχι δευτερογενής ιστότοπος. Ο μηνιαίος
-// μέσος όρος Αυγούστου 2026 για το Euribor.
+// ΠΗΓΗ: οι σειρές του Data Portal της ΕΚΤ που τροφοδοτούν τη βάση, όχι
+// δευτερογενής ιστότοπος. Ο μηνιαίος μέσος όρος ΣΕΠΤΕΜΒΡΙΟΥ 2026 για το
+// Euribor: τριμήνου 2,6350455 (FM.M.U2.EUR.RT.MM.EURIBOR3MD_.HSTA), μηνός
+// 2,4143636 (…EURIBOR1MD_.HSTA). Ο Οκτώβριος δεν έχει δημοσιευτεί. Εγραφε τον
+// Αύγουστο (2,513 και 2,221). Η τιμή ημέρας (fixing) ΔΕΝ μπαίνει εδώ.
 //
 // ΤΟ ΕΠΙΤΟΚΙΟ ΤΗΣ ΕΚΤ ΕΙΝΑΙ ΤΟ ΤΡΕΧΟΝ, ΟΧΙ ΤΟΥ ΑΥΓΟΥΣΤΟΥ. Εγραφε 2,40, την τιμή
 // πριν από την απόφαση της 10/09/2026. Το επιτόκιο πράξεων κύριας
@@ -75,8 +80,8 @@ export const EURIBOR_HISTORY = [
 // https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp260910~314e508016.en.html
 // (ops.handoffs a41bd5b2, στοιχείο P2-1). Η βάση το έχει ήδη σωστό.
 export const MARKET_FALLBACK: MarketRates = {
-  euribor_3m:2.513, euribor_1m:2.221, ecb_rate:2.65,
-  updated_at:'2026-08-01T00:00:00Z',
+  euribor_3m:2.635, euribor_1m:2.414, ecb_rate:2.65,
+  updated_at:'2026-09-01T00:00:00Z',
 }
 
 // ══ ΚΑΘΕ ΤΡΑΠΕΖΑ ΜΕ ΤΟ ΔΙΚΟ ΤΗΣ ΔΕΛΤΙΟ ═════════════════════════════════════
@@ -103,11 +108,11 @@ export const MARKET_FALLBACK: MarketRates = {
 // τράπεζα με το όνομά της. Νεκρό χρώμα που μοιάζει με κανόνα είναι το πρώτο
 // που θα αντιγράψει ο επόμενος.
 export const BANKS = [
-  { id:'eurobank', name:'Eurobank', fixed3:'2.90', fixed5:'3.40-3.50', fixed10:'3.80-3.90', fixed15:'4.10-4.20', fixed20:'4.10-4.20', variable_spread_min:0.80, variable_spread_max:2.70, fixed_min:2.90, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:20000, green_discount:0.20, spiti_mou:true, features:['Χωρίς έξοδα έγκρισης','Νομικός και τεχνικός έλεγχος δωρεάν','Προέγκριση 48 ώρες','Υπογραφή μέσω gov.gr','Εκταμίευση 10 εργάσιμες','Δικαιούχοι πρώτης κατοικίας: επιπλέον έκπτωση 0,40% για 3 έτη'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ'], fees:'Χωρίς έξοδα εξέτασης', note:'Ανταγωνιστικοί όροι', url:'https://www.eurobank.gr/el/retail/proionta-upiresies/proionta/daneia/stegastika', verified_at:'2026-10-04', source_url:'https://www.eurobank.gr/-/media/eurobank/rates/epitokia-daneiakon-proionton.pdf', source_doc_date:'2026-07-27', rate_index:'3M' },
-  { id:'ethniki', name:'Εθνική Τράπεζα', fixed3:'2.90', fixed5:'2.90', fixed10:'2.90', fixed15:'2.90', fixed20:'2.90', variable_spread_min:1.60, variable_spread_max:null, fixed_min:2.50, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:30000, green_discount:0.25, spiti_mou:true, features:['Έως 90% δάνειο προς αξία','Σταθερό 3–30 χρόνια','Χωρίς έξοδα αίτησης','ΕΣΤΙΑ Πράσινη: περιθώριο από 1,35% ή σταθερό από 2,80%','Χωριστή γραμμή στη σελίδα της τράπεζας: σταθερό από 2,50%'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ 2025'], fees:'Χωρίς έξοδα εξέτασης', note:'Υψηλότερο δάνειο προς αξία 90%', url:'https://www.nbg.gr/el/idiwtes/daneia/stegastika-daneia', verified_at:'2026-10-04', source_url:'https://www.nbg.gr/el/idiwtes/daneia/stegastika-daneia', source_doc_date:'', rate_index:'3M' },
-  { id:'alpha', name:'Alpha Bank', fixed3:'2.90', fixed5:'3.50', fixed10:'3.90', fixed15:'4.20', fixed20:'4.30', variable_spread_min:1.80, variable_spread_max:2.20, fixed_min:2.70, max_ltv:90, max_years:35, max_amount:300000, max_age:75, min_amount:25000, green_discount:0.10, spiti_mou:true, features:['90% δάνειο προς αξία','Χάρις 2 χρόνια','Χωρίς έξοδα','Estia Ανακαίνιση'], programs:['Σπίτι μου ΙΙ','Alpha Πρώτη Κατοικία','Estia Ανακαίνιση'], fees:'Χωρίς έξοδα εξέτασης', note:'Alpha Κατοικία: σταθερό 1 έτους 2,70% και 3 ετών 2,90%', url:'https://www.alpha.gr/el/idiotika/daneia/stegastika-daneia', verified_at:'2026-10-04', source_url:'https://www.alpha.gr/-/media/AlphaGr/pdf-files/diafora-sunodeutika-pdf/xrisima-eggrafa/oroi-sunallagon-epitokia-katatheseon-xorigiseon.pdf', source_doc_date:'2026-09-21', rate_index:'3M' },
-  { id:'piraeus', name:'Τράπεζα Πειραιώς', fixed3:'2.40-4.70', fixed5:'2.40-4.70', fixed10:'2.40-4.70', fixed15:'2.40-4.70', fixed20:'2.40-4.70', variable_spread_min:1.40, variable_spread_max:2.45, fixed_min:2.40, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:20000, green_discount:0.15, spiti_mou:true, features:['Πράσινα spread 1.25%','Euribor 1M βάση','Online εκτίμηση','Ψηφιακή διαδικασία'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ'], fees:'Έξοδα φακέλου από 300€', note:'Σταθερό 3 έως 30 ετών σε ενιαίο εύρος, όπως το δημοσιεύει η τράπεζα', url:'https://www.piraeusbank.gr/el/idiwtes/proionta-upiresies/stegastika-daneia', verified_at:'2026-09-28', source_url:'https://www.piraeusbank.gr/el/support/epitokia-deltia-timwn/', source_doc_date:'2026-02-20', rate_index:'1M' },
-  { id:'optima', name:'Optima Bank', fixed3:'', fixed5:'3.50-4.00', fixed10:'3.90-4.40', fixed15:'4.30-4.80', fixed20:'4.30-4.80', variable_spread_min:2.00, variable_spread_max:3.00, fixed_min:3.50, max_ltv:75, max_years:30, max_amount:300000, max_age:75, min_amount:20000, green_discount:0.10, spiti_mou:false, features:['Γρήγορη έγκριση','Προνομιακή εξυπηρέτηση','Σταθερό+κυμαινόμενο','Αναχρηματοδότηση'], programs:['Ανακαινίζω','Εξοικονομώ'], fees:'Τιμολόγιο κατά περίπτωση', note:'Προνομιακή εξυπηρέτηση', url:'https://www.optimabank.gr/individuals/daneia/stegastiko-daneio/', verified_at:'2026-09-28', source_url:'https://www.optimabank.gr/media/1kgfzcio/anx241_pinakas_epitokion_xorigitikon_proionton.pdf', source_doc_date:'2025-11-24', rate_index:'3M' },
+  { id:'eurobank', name:'Eurobank', fixed3:'2.90', fixed5:'3.40-3.50', fixed10:'3.80-3.90', fixed15:'4.10-4.20', fixed20:'4.10-4.20', variable_spread_min:0.80, variable_spread_max:2.70, fixed_min:2.90, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:20000, green_discount:0.20, spiti_mou:true, features:['Χωρίς έξοδα έγκρισης','Νομικός και τεχνικός έλεγχος δωρεάν','Προέγκριση 48 ώρες','Υπογραφή μέσω gov.gr','Εκταμίευση 10 εργάσιμες','Δικαιούχοι πρώτης κατοικίας: επιπλέον έκπτωση 0,40% για 3 έτη'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ'], fees:'Χωρίς έξοδα εξέτασης', note:'Δικαιούχοι πρώτης κατοικίας: επιπλέον έκπτωση 0,40% για 3 έτη, χωριστά από το σταθερό 3 ετών 2,90%', url:'https://www.eurobank.gr/el/retail/proionta-upiresies/proionta/daneia/stegastika', verified_at:'2026-10-04', source_url:'https://www.eurobank.gr/-/media/eurobank/rates/epitokia-daneiakon-proionton.pdf', source_doc_date:'2026-07-27', rate_index:'3M' },
+  { id:'ethniki', name:'Εθνική Τράπεζα', fixed3:'2.90', fixed5:'2.90', fixed10:'2.90', fixed15:'2.90', fixed20:'2.90', variable_spread_min:1.60, variable_spread_max:null, fixed_min:2.50, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:30000, green_discount:0.25, spiti_mou:true, features:['Έως 90% δάνειο προς αξία','Σταθερό 3–30 χρόνια','Χωρίς έξοδα αίτησης','ΕΣΤΙΑ Πράσινη: περιθώριο από 1,35% ή σταθερό από 2,80%','Χωριστή γραμμή στη σελίδα της τράπεζας: σταθερό από 2,50%'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ 2025'], fees:'Χωρίς έξοδα εξέτασης', note:'ΕΣΤΙΑ: σταθερό από 2,90% και μετά Euribor 3M με περιθώριο από 1,75%. Κυμαινόμενο με περιθώριο από 1,60%. ΕΣΤΙΑ Πράσινη: περιθώριο από 1,35% ή σταθερό από 2,80%', url:'https://www.nbg.gr/el/idiwtes/daneia/stegastika-daneia', verified_at:'2026-10-05', source_url:'https://www.nbg.gr/el/idiwtes/daneia/stegastika-daneia', source_doc_date:'', rate_index:'3M' },
+  { id:'alpha', name:'Alpha Bank', fixed3:'2.90', fixed5:'3.50', fixed10:'3.90', fixed15:'4.20', fixed20:'4.30', variable_spread_min:1.80, variable_spread_max:2.20, fixed_min:2.70, max_ltv:90, max_years:35, max_amount:300000, max_age:75, min_amount:25000, green_discount:0.10, spiti_mou:true, features:['90% δάνειο προς αξία','Χάρις 2 χρόνια','Χωρίς έξοδα','Estia Ανακαίνιση','Εισφορά ν.128/75: 0,12% (0,60% για μη οικιστικά)'], programs:['Σπίτι μου ΙΙ','Alpha Πρώτη Κατοικία','Estia Ανακαίνιση'], fees:'Χωρίς έξοδα εξέτασης', note:'Alpha Κατοικία: Euribor 3M + 1,80% για δάνεια άνω των 300.000€ έως 60% της αξίας, σταθερό 1 έτους 2,70% και 3 ετών 2,90%. Alpha Δέσμευση, χωριστό προϊόν: Euribor 3M + 1,00% ή σταθερό 5 ετών 2,90%. Για νέες αιτήσεις από 1.6.2026', url:'https://www.alpha.gr/el/idiotika/daneia/stegastika-daneia', verified_at:'2026-10-05', source_url:'https://www.alpha.gr/-/media/AlphaGr/pdf-files/diafora-sunodeutika-pdf/xrisima-eggrafa/oroi-sunallagon-epitokia-katatheseon-xorigiseon.pdf', source_doc_date:'2026-09-21', rate_index:'3M' },
+  { id:'piraeus', name:'Τράπεζα Πειραιώς', fixed3:'2.40-4.70', fixed5:'2.40-4.70', fixed10:'2.40-4.70', fixed15:'2.40-4.70', fixed20:'2.40-4.70', variable_spread_min:1.40, variable_spread_max:2.45, fixed_min:2.40, max_ltv:90, max_years:35, max_amount:500000, max_age:75, min_amount:20000, green_discount:0.15, spiti_mou:true, features:['Πράσινα spread 1.25%','Euribor 1M βάση','Online εκτίμηση','Ψηφιακή διαδικασία'], programs:['Σπίτι μου ΙΙ','Αναβαθμίζω','Εξοικονομώ'], fees:'Έξοδα φακέλου από 300€', note:'Σταθερό 3 έως 30 ετών σε ενιαίο εύρος 2,40% έως 4,70%, όπως το δημοσιεύει η τράπεζα. Σπίτι 25: 2,20% έως 2,75% τα 4 πρώτα έτη, 2,90% έως 3,70% το 5ο. Με εξασφάλιση καταθέσεων (cash collateral): Euribor 1M + 1,00% για αιτήσεις έως 31/12/2026, με ενέχυρο μετρητών 105%', url:'https://www.piraeusbank.gr/el/idiwtes/proionta-upiresies/stegastika-daneia', verified_at:'2026-10-05', source_url:'https://www.piraeusbank.gr/el/support/epitokia-deltia-timwn/', source_doc_date:'2026-02-20', rate_index:'1M' },
+  { id:'optima', name:'Optima Bank', fixed3:'', fixed5:'3.50-4.00', fixed10:'3.90-4.40', fixed15:'4.30-4.80', fixed20:'4.30-4.80', variable_spread_min:2.00, variable_spread_max:3.00, fixed_min:3.50, max_ltv:75, max_years:30, max_amount:300000, max_age:75, min_amount:20000, green_discount:0.10, spiti_mou:false, features:['Γρήγορη έγκριση','Προνομιακή εξυπηρέτηση','Σταθερό+κυμαινόμενο','Αναχρηματοδότηση'], programs:['Ανακαινίζω','Εξοικονομώ'], fees:'Τιμολόγιο κατά περίπτωση', note:'Σταθερό 5 ετών 3,50% έως 4,00%. Το δελτίο δεν έχει σταθερό 3 ετών', url:'https://www.optimabank.gr/individuals/daneia/stegastiko-daneio/', verified_at:'2026-09-28', source_url:'https://www.optimabank.gr/media/1kgfzcio/anx241_pinakas_epitokion_xorigitikon_proionton.pdf', source_doc_date:'2025-11-24', rate_index:'3M' },
   { id:'credia', name:'CrediaBank', fixed3:'', fixed5:'', fixed10:'', fixed15:'', fixed20:'', variable_spread_min:1.60, variable_spread_max:null, fixed_min:2.15, max_ltv:80, max_years:30, max_amount:250000, max_age:70, min_amount:15000, green_discount:0.10, spiti_mou:true, features:['Μικρά ποσά','Ευέλικτοι όροι','Γρήγορη εξέταση','Εισφορά ν.128/75: 0,12%'], programs:['Σπίτι μου ΙΙ','Εξοικονομώ'], fees:'Κατά περίπτωση', note:'First Home: σταθερό από 2,15%. Τα εύρη ανά διάρκεια δεν δημοσιεύονται στη σελίδα της τράπεζας', url:'https://www.crediabank.gr', verified_at:'2026-10-04', source_url:'https://www.crediabank.com/idiotes/daneia/stegastika/stegastiko-daneio-crediabank-first-home/', source_doc_date:'', rate_index:'3M' },]
 
 // Ημερομηνία τελευταίας επιβεβαίωσης των στατικών επιτοκίων τραπεζών (ενδεικτικά·
@@ -126,7 +131,14 @@ export const BANKS = [
 //
 // Η Attica ΑΦΑΙΡΕΘΗΚΕ: εξαγοράστηκε από την Credia και δεν υπάρχει πλέον ως
 // ξεχωριστό ίδρυμα. Ο πίνακας μένει στις έξι τράπεζες που όντως δανείζουν σήμερα.
-export const BANKS_VERIFIED = '2026-09-17'
+// 5 Οκτωβρίου 2026: οδηγία ιδιοκτήτη με την πηγή κάθε τιμής. Η βάση ΔΕΝ το
+// έχει ακόμη: η μετανάστευση για το `bank_rates` εκκρεμεί, οπότε ώς τότε η
+// οθόνη δείχνει το `note` της βάσης. Και οι έξι έχουν πλέον επίσημη πηγή, οπότε η κοινή
+// ημερομηνία είναι η παλαιότερη από τις δικές τους: της Optima, 28/09/2026.
+// Τα προϊόντα που δεν χωρούν στις στήλες (Alpha Δέσμευση, Σπίτι 25, cash
+// collateral, ΕΣΤΙΑ) γράφονται στο `note`, που φαίνεται στην κάρτα της
+// τράπεζας, χωρίς να αλλάζουν τους αριθμούς του βασικού προϊόντος.
+export const BANKS_VERIFIED = '2026-09-28'
 export const RATES_DISCLAIMER = 'Ενδεικτικά επιτόκια, επιβεβαίωσε τους ακριβείς όρους με την τράπεζα.'
 
 // ── ΕΝΑ ΣΧΗΜΑ ΤΡΑΠΕΖΑΣ, ΟΧΙ ΔΥΟ ──────────────────────────────────────────
