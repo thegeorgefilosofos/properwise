@@ -36,7 +36,16 @@ const mark = (size: number, fill: string) => (
 // Ο τίτλος της αρχικής σελίδας (app/page.tsx), σε δύο γραμμές όπως εκεί: το
 // εξώφυλλο λέει το ίδιο με το site, όχι δεύτερη ατάκα που δεν υπάρχει πουθενά.
 type Line = { text: string; accent?: string };
-type OgBanner = { width: number; height: number; lines: Line[]; sub?: string; lift?: number };
+type OgBanner = {
+  width: number; height: number; lines: Line[]; sub?: string; lift?: number;
+  /**
+   * Η ζώνη που φαίνεται παντού, όταν η πλατφόρμα κόβει το εξώφυλλο ανά
+   * συσκευή (YouTube: 1546×423 στο κέντρο των 2560×1440). Τότε γράμματα,
+   * λάμψεις και σήμα μετριούνται από τη ζώνη και όχι από ολόκληρο το καρέ:
+   * στο κινητό φαίνεται μόνο αυτή, άρα πρέπει να μοιάζει με τα άλλα εξώφυλλα.
+   */
+  safe?: { width: number; height: number };
+};
 
 /**
  * Το εξώφυλλο προφίλ (LinkedIn, Facebook, X, Creem): ίδιο φόντο και ίδια γραφή
@@ -44,13 +53,20 @@ type OgBanner = { width: number; height: number; lines: Line[]; sub?: string; li
  * προφίλ, που κάθε πλατφόρμα κολλά πάνω στο εξώφυλλο· γι' αυτό το κείμενο
  * κάθεται στο κέντρο, εκεί που καμία πλατφόρμα δεν το κόβει στο κινητό.
  */
-function ogBanner({ width, height, lines, sub, lift = 0 }: OgBanner) {
+function ogBanner({ width, height, lines, sub, lift = 0, safe }: OgBanner) {
   const { fonts, c } = assets();
   const alpha = (hex: string, a: string) => `${hex}${a}`;
+  // Το πλαίσιο που μετρά: ολόκληρο το καρέ, ή η ζώνη που φαίνεται παντού.
+  const bw = safe?.width ?? width, bh = safe?.height ?? height;
+  const bx = (width - bw) / 2, by = (height - bh) / 2;
   // Η μακρύτερη γραμμή πιάνει περίπου το 70% του πλάτους (0,039 του πλάτους ανά
   // στιγμή γραμμάτων για ~33 χαρακτήρες) και οι δύο γραμμές μαζί με τον
   // υπότιτλο χωρούν στο ύψος, όσο στενό κι αν είναι το πλαίσιο.
-  const size = Math.round(Math.min(height * 0.15, width * 0.039));
+  // Στη ζώνη του YouTube τα γράμματα μεγαλώνουν ώσπου η μακρύτερη γραμμή να πιάνει
+  // ~90% του πλάτους της: στο κινητό η ζώνη γίνεται περίπου το ένα τέταρτο.
+  const size = safe
+    ? Math.round(Math.min(bh * 0.19, bw * 0.05))
+    : Math.round(Math.min(height * 0.15, width * 0.039));
   return new ImageResponse(
     (
       <div
@@ -62,14 +78,17 @@ function ogBanner({ width, height, lines, sub, lift = 0 }: OgBanner) {
           paddingBottom: Math.round(height * lift),
           fontFamily: 'Inter', color: c.text, backgroundColor: c.bg,
           backgroundImage: [
-            `radial-gradient(${Math.round(width * 0.6)}px ${Math.round(height * 1.2)}px at 30% -20%, ${alpha(c.accent, '38')}, transparent 72%)`,
-            `radial-gradient(${Math.round(width * 0.5)}px ${Math.round(height)}px at 100% 120%, ${alpha(c.accent, '22')}, transparent 70%)`,
+            `radial-gradient(${Math.round(bw * 0.6)}px ${Math.round(bh * 1.2)}px at ${Math.round(bx + bw * 0.3)}px ${Math.round(by - bh * 0.2)}px, ${alpha(c.accent, '38')}, transparent 72%)`,
+            `radial-gradient(${Math.round(bw * 0.5)}px ${Math.round(bh)}px at ${Math.round(bx + bw)}px ${Math.round(by + bh * 1.2)}px, ${alpha(c.accent, '22')}, transparent 70%)`,
             `linear-gradient(165deg, ${c.mid} 0%, ${c.bg} 100%)`,
           ].join(', '),
         }}
       >
-        <div style={{ position: 'absolute', right: -Math.round(height * 0.2), bottom: -Math.round(height * 0.35), display: 'flex', opacity: 0.07 }}>
-          {mark(Math.round(height * 1.4), BRAND_MARK_ON_DARK)}
+        {/* Στα στενά εξώφυλλα το σήμα κάθεται δεξιά από το κείμενο. Στη ζώνη του
+            YouTube (πιο κοντή σε σχέση με τον τίτλο) θα έπεφτε πίσω από το τέλος
+            του· εκεί μικραίνει και βγαίνει πέρα από τη δεξιά άκρη της ζώνης. */}
+        <div style={{ position: 'absolute', right: Math.round(bx - bh * (safe ? 0.86 : 0.2)), bottom: Math.round(by - bh * (safe ? 0.3 : 0.35)), display: 'flex', opacity: 0.07 }}>
+          {mark(Math.round(bh * (safe ? 1.15 : 1.4)), BRAND_MARK_ON_DARK)}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: size, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.12 }}>
           {lines.map(l => (
@@ -79,7 +98,7 @@ function ogBanner({ width, height, lines, sub, lift = 0 }: OgBanner) {
             </div>
           ))}
         </div>
-        {sub && <div style={{ display: 'flex', fontSize: Math.round(size * 0.4), fontWeight: 600, color: c.muted }}>{sub}</div>}
+        {sub && <div style={{ display: 'flex', fontSize: Math.round(size * (safe ? 0.5 : 0.4)), fontWeight: 600, color: c.muted }}>{sub}</div>}
       </div>
     ),
     { width, height, fonts },
@@ -141,6 +160,17 @@ const HEADLINE: Line[] = [
   { text: 'Το PROPERWISE κάνει τα υπόλοιπα.' },
 ];
 
+// Η ΜΙΑ ΕΞΑΙΡΕΣΗ ΣΤΟΝ ΤΙΤΛΟ ΤΗΣ ΑΡΧΙΚΗΣ: ΤΟ YOUTUBE (05.10.2026). Τα άλλα
+// εξώφυλλα είναι σελίδες της εταιρείας και λένε ό,τι το site. Το κανάλι είναι
+// σειρά βίντεο: ο επισκέπτης ρωτά «τι θα δω εδώ;», όχι «τι κάνει το προϊόν;».
+// Ο τίτλος λέει λοιπόν τα θέματα και την υπόσχεση της περιγραφής του καναλιού
+// («με αριθμούς που βγαίνουν από τον νόμο»)· σχεδίαση, χρώματα και σήμα μένουν
+// της μάρκας και το properwise.gr μένει στον υπότιτλο.
+const HEADLINE_YT: Line[] = [
+  { text: 'Φόρος ενοικίων, ΕΝΦΙΑ, Airbnb.' },
+  { text: 'Με αριθμούς', accent: 'από τον νόμο.' },
+];
+
 // ΤΟ ΑΓΓΛΙΚΟ ΕΞΩΦΥΛΛΟ ΤΟΥ LINKEDIN (28.09.2026). Η σελίδα της εταιρείας εκεί
 // διαβάζεται και εκτός Ελλάδας: η ίδια φράση με την αρχική, στα αγγλικά και ο
 // υπότιτλος λέει πού ισχύει, γιατί ο ξένος αναγνώστης δεν το μαντεύει.
@@ -190,6 +220,16 @@ const COVERS = [
     writeFileSync(join(OUT, c.file), Buffer.from(await img.arrayBuffer()));
     console.log(`✓ ${c.file} ${c.width}×${c.height}`);
   }
+  // ΤΟ ΕΞΩΦΥΛΛΟ ΤΟΥ YOUTUBE (05.10.2026). Ίδια σχεδίαση με τα υπόλοιπα· ο
+  // τίτλος του καναλιού (HEADLINE_YT) και ο υπότιτλος με τη φράση που κράτησε
+  // ο ιδιοκτήτης. 2560×1440 όσο ζητά το YouTube και όλο το κείμενο
+  // στη ζώνη 1546×423 που φαίνεται σε κάθε συσκευή.
+  const yt = ogBanner({
+    width: 2560, height: 1440, safe: { width: 1546, height: 423 }, lines: HEADLINE_YT,
+    sub: 'Σύντομα βίντεο για ιδιοκτήτες ακινήτων · properwise.gr',
+  });
+  writeFileSync(join(OUT, 'youtube-exofyllo.png'), Buffer.from(await yt.arrayBuffer()));
+  console.log('✓ youtube-exofyllo.png 2560×1440');
   const en = ogBanner({ width: 2256, height: 382, lines: HEADLINE_EN, sub: 'Property finances, taxes and paperwork in Greece · properwise.gr' });
   writeFileSync(join(OUT, 'linkedin-cover-en.png'), Buffer.from(await en.arrayBuffer()));
   console.log('✓ linkedin-cover-en.png 2256×382');

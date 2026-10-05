@@ -12,13 +12,14 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, IconBtn } from '@/components/Theme';
+import { T, IconBtn, LinkBtn } from '@/components/Theme';
 import { POLICY_VERSION } from '@/lib/legal/identity';
-import { POLICY_CHANGE_SUMMARY, POLICY_NOTICE_KEY, policyNoticeDue, type PolicyMeta } from '@/lib/legal/policyNotice';
+import { POLICY_CHANGE_SUMMARY, POLICY_NOTICE_HEADLINE, POLICY_NOTICE_LEDE, POLICY_NOTICE_KEY, policyNoticeDue, type PolicyMeta } from '@/lib/legal/policyNotice';
 
 export default function PolicyNotice() {
   const supabase = createClient();
   const [show, setShow] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -54,16 +55,22 @@ export default function PolicyNotice() {
       borderRadius: T.radius.card, padding: '12px 16px', marginBottom: 16,
     }}>
       <span aria-hidden style={{ width: 6, height: 6, borderRadius: T.radius.pill, background: 'var(--text-tertiary)', flexShrink: 0 }} />
+      {/* ΜΙΑ ΓΡΑΜΜΗ, Η ΠΕΡΙΛΗΨΗ ΜΕ ΕΝΑ ΠΑΤΗΜΑ (05.10.2026). Η πλήρης περίληψη
+          έπιανε πέντε σειρές πάνω από την Επισκόπηση· τώρα ανοίγει με το
+          «Τι άλλαξε». Το κείμενο ζει στο lib/legal/policyNotice.ts. */}
       <div style={{ flex: 1, minWidth: 200 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>
-          Ενημερώσαμε τους Όρους
-        </div>
-        {/* Παράγραφος, όχι div: ο σύνδεσμος είναι λέξη της πρότασης, όπως στο
-            πλαίσιο των cookies, άρα δεν μετρά ως χωριστό χειριστήριο αφής. */}
-        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: '2px 0 0' }}>
-          {POLICY_CHANGE_SUMMARY}{' '}
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: 0 }}>
+          <strong style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{POLICY_NOTICE_HEADLINE}</strong>{' '}
+          {POLICY_NOTICE_LEDE}{' '}
+          <LinkBtn onClick={() => setOpen(o => !o)}>{open ? 'Απόκρυψη' : 'Τι άλλαξε'}</LinkBtn>
+          {' · '}
           <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2 }}>Δες τους Όρους</a>
         </p>
+        {open && (
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.6, margin: '8px 0 0', maxWidth: '78ch' }}>
+            {POLICY_CHANGE_SUMMARY}
+          </p>
+        )}
       </div>
       <IconBtn label="Το κατάλαβα" onClick={dismiss}>
         <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>

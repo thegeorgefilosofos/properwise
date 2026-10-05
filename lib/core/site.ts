@@ -102,11 +102,18 @@ export const LINKEDIN_URL = 'https://www.linkedin.com/company/properwisegr';
 export const INSTAGRAM_URL = 'https://www.instagram.com/properwisegr';
 
 /**
+ * Το κανάλι στο YouTube, ζωντανό από 05.10.2026: εκεί ανεβαίνουν τα reels ως
+ * Shorts. Χωρίς την παράμετρο `si` του συνδέσμου κοινοποίησης, για τον ίδιο
+ * λόγο με το `stkn` του Instagram.
+ */
+export const YOUTUBE_URL = 'https://www.youtube.com/@properwisegr';
+
+/**
  * Οι λογαριασμοί της μάρκας, με τη σειρά του υποσέλιδου. Το `sameAs` της
  * Organization τους διαβάζει από εδώ, ώστε ένας νέος λογαριασμός να μπαίνει
  * σε ένα σημείο και να τον βλέπουν μαζί ο άνθρωπος και η Google.
  */
-export const SOCIAL_PROFILES = [LINKEDIN_URL, INSTAGRAM_URL] as const;
+export const SOCIAL_PROFILES = [LINKEDIN_URL, INSTAGRAM_URL, YOUTUBE_URL] as const;
 
 /**
  * ΤΟ ΚΛΕΙΔΙ ΤΟΥ IndexNow, ΓΡΑΜΜΕΝΟ ΜΙΑ ΦΟΡΑ.
