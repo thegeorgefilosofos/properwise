@@ -136,7 +136,7 @@ export default function Page() {
   return (
     <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       <JsonLd data={jsonLd} />
-      <PublicHeader />
+      <PublicHeader current="odigos" />
 
       <GuideMain rail={{ sections: Object.values(S), cta: { href: '/vraxyxronia-i-makroxronia', action: 'Σύγκρινε τις δύο μισθώσεις' } }}>
         <div className="lp-eyebrow">Οδηγός</div>

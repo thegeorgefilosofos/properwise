@@ -28,6 +28,7 @@ import { spitiMouOpen, spitiMouClosedSentence, SPITI_MOU } from '@/lib/loans/rec
 import { programDateLabel } from '@/lib/loans/programStatus';
 import { mortgagePlan, borrowingCapacity, type MarketFact, type MortgageMarket } from '@/lib/tools/stegastiko';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
+import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
@@ -230,6 +231,7 @@ export default async function Page() {
             {' '}εξηγεί γιατί η μεικτή απόδοση των αγγελιών δείχνει πάντα περισσότερα.
           </>)}</p>
         </section>
+        <ToolGuides tool="/ypologismos-stegastikou-daneiou" />
       </main>
 
       <PublicFooter />

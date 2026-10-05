@@ -29,6 +29,13 @@ export type Guide = {
   published: string;
   /** Ημέρα τελευταίας ουσιαστικής αλλαγής περιεχομένου (ISO). */
   updated: string;
+  /**
+   * Τα δημόσια εργαλεία (lib/core/publicTools) στα οποία ανήκει ο οδηγός. Από
+   * εδώ βγαίνουν ΚΑΙ οι δύο κατευθύνσεις: το εργαλείο δείχνει τους οδηγούς του
+   * (`guidesForTool`) και οι «Σχετικοί οδηγοί» προτιμούν όσους μοιράζονται
+   * εργαλείο. Το guides.test.ts ελέγχει ότι κάθε εργαλείο έχει οδηγό.
+   */
+  tools: readonly string[];
 };
 
 export const GUIDES: readonly Guide[] = [
@@ -40,6 +47,7 @@ export const GUIDES: readonly Guide[] = [
         + 'προϋπόθεση της τραπεζικής είσπραξης, με παραδείγματα σε ευρώ.',
     published: '2026-09-21',
     updated: '2026-09-24',
+    tools: ['/ypologismos-forou-enoikion', '/kathari-apodosi'],
   },
   {
     href: '/odigos/airbnb-takk-2026',
@@ -49,6 +57,7 @@ export const GUIDES: readonly Guide[] = [
         + `παρεπιδημούντων ${fpRate(MUNICIPAL_ACCOM_TAX_RATE * 100)} και ο φόρος εισοδήματος.`,
     published: '2026-09-21',
     updated: '2026-10-03',
+    tools: ['/vraxyxronia-i-makroxronia'],
   },
   {
     href: '/odigos/pos-ypologizetai-o-enfia',
@@ -58,6 +67,7 @@ export const GUIDES: readonly Guide[] = [
         + 'και ορόφου, η αυτόματη μείωση ανά αξία και οι απαλλαγές.',
     published: '2026-09-21',
     updated: '2026-09-24',
+    tools: ['/ypologismos-enfia'],
   },
   {
     href: '/odigos/kathari-apodosi-akinitou',
@@ -67,6 +77,7 @@ export const GUIDES: readonly Guide[] = [
         + 'και οι δαπάνες. Τι μένει καθαρό, με παράδειγμα σε ευρώ.',
     published: '2026-09-21',
     updated: '2026-09-24',
+    tools: ['/kathari-apodosi', '/ypologismos-stegastikou-daneiou', '/sygkrisi-timologion-revmatos'],
   },
   // ── Δεύτερο κύμα (27.09.2026). Κάθε οδηγός γράφεται από δεδομένα που ήδη
   // τρέχουν στην εφαρμογή, με τη νομική βάση τους: lib/tax/greekTaxCalendar.ts
@@ -79,6 +90,7 @@ export const GUIDES: readonly Guide[] = [
         + 'της βραχυχρόνιας, με ημερομηνία, υπεύθυνο και επίσημη πηγή.',
     published: '2026-09-27',
     updated: '2026-09-27',
+    tools: ['/ypologismos-enfia', '/ypologismos-forou-enoikion', '/vraxyxronia-i-makroxronia'],
   },
   {
     href: '/odigos/enoikio-meso-trapezas',
@@ -88,6 +100,7 @@ export const GUIDES: readonly Guide[] = [
         + 'η έκπτωση 5%. Τι ισχύει για τα εισοδήματα 2025 και 2026.',
     published: '2026-09-27',
     updated: '2026-09-27',
+    tools: ['/ypologismos-forou-enoikion'],
   },
   {
     href: '/odigos/plafon-3-emporikes-misthoseis-2026',
@@ -97,6 +110,7 @@ export const GUIDES: readonly Guide[] = [
         + 'συμβάσεις και ποιοι εκμισθωτές εξαιρούνται.',
     published: '2026-09-27',
     updated: '2026-09-27',
+    tools: ['/kathari-apodosi'],
   },
   {
     href: '/odigos/ekptosi-forou-anakainisis',
@@ -106,6 +120,7 @@ export const GUIDES: readonly Guide[] = [
         + `για δαπάνες έως ${RENO_39B_TO}. Προϋποθέσεις, πληρωμή, υλικά και παράδειγμα.`,
     published: '2026-09-27',
     updated: '2026-10-01',
+    tools: ['/ypologismos-forou-enoikion', '/kathari-apodosi'],
   },
   {
     href: '/odigos/vraxyxronia-ama-prodiagrafes-2026',
@@ -115,6 +130,7 @@ export const GUIDES: readonly Guide[] = [
         + 'οι προδιαγραφές ασφαλείας και τα πρόστιμα.',
     published: '2026-09-27',
     updated: '2026-09-27',
+    tools: ['/vraxyxronia-i-makroxronia'],
   },
   // ── Τρίτο κύμα (03.10.2026). Από τα ερωτήματα αναζήτησης: ο κόσμος ψάχνει τι
   // ΚΑΝΕΙ με τον ΕΝΦΙΑ (πληρωμή, πιστοποιητικό, οριστικοποίηση), όχι πώς
@@ -127,8 +143,32 @@ export const GUIDES: readonly Guide[] = [
         + 'πιστοποιητικό ΕΝΦΙΑ για πώληση και ποιος κάνει την οριστικοποίηση.',
     published: '2026-10-03',
     updated: '2026-10-03',
+    tools: ['/ypologismos-enfia'],
   },
 ];
+
+/**
+ * ΟΙ ΟΔΗΓΟΙ ΕΝΟΣ ΕΡΓΑΛΕΙΟΥ, με τη σειρά του καταλόγου. Μέχρι τις 05/10/2026
+ * κάθε εργαλείο έγραφε με το χέρι έναν σύνδεσμο το πολύ και δύο κανέναν· οι
+ * έξι από τους δέκα οδηγούς είχαν ένα ως τρία εσωτερικά λινκ.
+ */
+export function guidesForTool(tool: string): Guide[] {
+  return GUIDES.filter(g => g.tools.includes(tool));
+}
+
+/**
+ * ΟΙ «ΣΧΕΤΙΚΟΙ ΟΔΗΓΟΙ» ΤΟΥ ΚΑΘΕΝΟΣ. Πρώτα έως δύο που μοιράζονται εργαλείο
+ * ή θέμα (`kicker`) και ό,τι μένει κυκλικά από τον επόμενο στον κατάλογο. Η κυκλική σειρά μοιράζει τους συνδέσμους: με «οι πρώτοι του
+ * καταλόγου» οι τελευταίοι οδηγοί δεν τους έπαιρνε σχεδόν κανείς.
+ */
+export function relatedGuides(current: Guide, max: number): Guide[] {
+  const i = GUIDES.findIndex(g => g.href === current.href);
+  const ring = [...GUIDES.slice(i + 1), ...GUIDES.slice(0, Math.max(0, i))].filter(g => g.href !== current.href);
+  // Δύο το πολύ από το ίδιο εργαλείο: με όλους, ο οδηγός με τρία εργαλεία
+  // έπαιρνε οκτώ συνδέσμους και δύο άλλοι από δύο.
+  const near = ring.filter(g => g.tools.some(t => current.tools.includes(t)) || g.kicker === current.kicker).slice(0, 2);
+  return [...near, ...ring.filter(g => !near.includes(g))].slice(0, max);
+}
 
 /** Ο οδηγός μιας διαδρομής. Άγνωστη διαδρομή είναι σφάλμα γραφής, όχι κενό. */
 export function guideAt(href: string): Guide {

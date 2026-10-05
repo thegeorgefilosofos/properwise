@@ -37,6 +37,8 @@ import { readFileSync } from 'node:fs'
 import { projectFiles } from './lib/git-files.mjs'
 
 const HIDE = 'lp-hide-xs'
+// Το ίδιο ισχύει και για όσα κρύβονται νωρίτερα, κάτω από τα 640 (lp-hide-sm).
+const HIDES = [HIDE, 'lp-hide-sm']
 const PAIR = 'lp-only-xs'
 
 /** Πόσοι χαρακτήρες μετά το `className` μετρούν ως «δίπλα». Το ζευγάρι είναι
@@ -51,7 +53,7 @@ for (const file of projectFiles("'app/**/*.tsx' 'components/**/*.tsx'")) {
   // ΜΟΝΟ ΜΕΣΑ ΣΕ `className`. Ετσι ο κανόνας δεν πιάνει ούτε τον ορισμό της
   // κλάσης στο <style>, ούτε τις αναφορές μέσα σε σχόλια.
   for (const m of src.matchAll(/className="([^"]*)"/g)) {
-    if (!m[1].split(/\s+/).includes(HIDE)) continue
+    if (!m[1].split(/\s+/).some(c => HIDES.includes(c))) continue
     if (src.slice(m.index, m.index + NEAR).includes(PAIR)) continue
     const tag = src.slice(src.lastIndexOf('<', m.index), src.indexOf('>', m.index))
     const elsewhere = /data-xs-elsewhere="([^"]+)"/.exec(tag)?.[1]
