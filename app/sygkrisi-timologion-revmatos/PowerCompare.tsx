@@ -131,7 +131,7 @@ export function PowerCompare({ serverToday }: { serverToday: string }) {
         <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
           <strong style={{ color: 'var(--text-primary)' }}>{PRICES_UPDATED_LINE}</strong>. Πηγή: {PRICES_SOURCE}.
           Τιμές {CATALOGUE_MONTH_GEN}, εκτός όπου γράφεται άλλος μήνας· μόνο αυτές μπαίνουν στη σειρά.
-          {r.recommend && <> Η σειρά ισχύει έως τις {fdLong(r.rankUntil)}· μετά, αν δεν ξαναελεγχθούν οι τιμές, ο πίνακας μένει ενδεικτικός.</>}
+          {r.recommend && <> Η σειρά ισχύει έως τις {fdLong(r.rankUntil)}· μετά, αν δεν ενημερωθούν οι τιμές, ο πίνακας μένει ενδεικτικός.</>}
         </p>
 
         {!hasUsage ? (
