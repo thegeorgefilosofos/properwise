@@ -37,6 +37,8 @@ import {
 import { SubscriptionSection } from './insurance/SubscriptionSection'
 import { navLabel } from '@/lib/nav/labels'
 import { propertyStatus, isLease, type StatusRow } from '@/lib/facts/status';
+import { AsOfNote } from '@/components/AsOfNote';
+import { PRICE_FACTS } from '@/lib/facts/prices';
 
 /**
  * Η ασφάλεια κατοικίας και οι συνδρομές streaming δεν είναι ίδιο πράγμα και
@@ -915,6 +917,9 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                   </ChipToggle>
                 </div>
               </div>
+              {/* ΚΑΙ ΠΟΤΕ, ΑΠΟ ΠΟΥ (lib/facts/prices). Η ημερομηνία ζούσε μόνο στην
+                  πύλη φρεσκάδας και δεν τη διάβαζε κανείς. */}
+              <AsOfNote fact={PRICE_FACTS.insurance} style={{ margin: '-6px 0 12px' }} />
 
               {/* ── ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΑΥΤΟ ΤΟ ΑΚΙΝΗΤΟ ────────────────────────────
                   Πριν από κάθε τιμή. Η κατάταξη βγαίνει από εδώ και ο χρήστης

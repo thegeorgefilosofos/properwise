@@ -29,6 +29,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { navLabel } from '../nav/labels';
+import { dueText } from '../facts/deadlines';
 
 export type AgendaOrigin = 'obligation' | 'insight' | 'setup';
 
@@ -337,12 +338,11 @@ export function overdueCount(items: AgendaItem[]): number {
 }
 
 /** Η προθεσμία σε λέξεις. Ποτέ «σε -3 ημέρες». */
+// Η ΦΡΑΣΗ ΕΙΝΑΙ Η ΜΙΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ (lib/facts/deadlines, `dueText`): η ίδια
+// προθεσμία έγραφε «3 ημέρες πίσω» εδώ, «πριν 3 ημέρες» στο Ημερολόγιο, «3 ημέρες
+// πριν» στην εκτύπωση και «έληξε πριν από 3 ημέρες» στις Εκκρεμότητες.
 export function dueLabel(daysLeft: number | null): string | null {
-  if (daysLeft == null) return null;
-  if (daysLeft < 0) { const n = Math.abs(daysLeft); return `${n} ${n === 1 ? 'ημέρα' : 'ημέρες'} πίσω`; }
-  if (daysLeft === 0) return 'σήμερα';
-  if (daysLeft === 1) return 'αύριο';
-  return `σε ${daysLeft} ημέρες`;
+  return dueText(daysLeft);
 }
 
 // ── Η ΠΡΟΘΕΣΜΙΑ ΩΣ ΣΤΗΛΗ, ΟΧΙ ΩΣ ΦΡΑΣΗ ────────────────────────────────────

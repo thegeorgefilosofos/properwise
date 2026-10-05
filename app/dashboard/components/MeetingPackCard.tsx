@@ -19,7 +19,8 @@ import { notify, notifyError } from '@/components/Toast';
 import { downloadFile } from '@/lib/core/download';
 import { fmtBytes } from '@/lib/core/bytes';
 import { packStatuses, sharePack, ownerAfms, type PackStatus } from '@/lib/data/e2Prefilled';
-import type { DossierContext, DossierProperty } from '@/lib/accounting/dossier';
+import type { DossierContext } from '@/lib/accounting/dossier';
+import type { CompletenessProperty, YearData } from '@/lib/facts/completeness';
 
 const card: React.CSSProperties = { background: 'var(--surface-raised)', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--elev-1)' };
 const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 };
@@ -28,7 +29,7 @@ export default function MeetingPackCard({ userId, year, ownerName, dossier }: {
   userId: string;
   year: number;
   ownerName: string | null;
-  dossier: Omit<DossierContext, 'statuses' | 'properties'> & { have: readonly string[]; properties: readonly DossierProperty[] };
+  dossier: Omit<DossierContext, 'statuses' | 'properties'> & { have: readonly string[]; properties: readonly CompletenessProperty[]; data?: YearData };
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [status, setStatus] = useState<PackStatus[]>([]);

@@ -25,7 +25,8 @@ import {
   missingItems, packTotals, aadeStatusLine, packEntries, coverModel, PACK_FILES,
   type MeetingPackInput, type PackProperty, type PackPaper, type PackRequirement,
 } from '@/lib/accounting/meetingPack';
-import { requirementsFor, filePapers, WHO_LABEL, type DossierContext, type DossierProperty } from '@/lib/accounting/dossier';
+import { filePapers, WHO_LABEL, type DossierContext } from '@/lib/accounting/dossier';
+import { dossierCompleteness, type CompletenessProperty, type YearData } from '@/lib/facts/completeness';
 import { FIX_LABEL } from '@/lib/billing/e2Reconcile';
 import { e2CategoryLabel } from '@/lib/billing/e2';
 import { readStatus } from '@/lib/property/status';
@@ -171,7 +172,11 @@ export interface MeetingPackRequest {
   ownerAfm: string;
   ownerName: string | null;
   /** Οι παραδοχές του καταλόγου και ό,τι έχει ήδη σημειώσει ο χρήστης. */
-  dossier: Omit<DossierContext, 'statuses' | 'properties'> & { have: readonly string[]; properties: readonly DossierProperty[] };
+  dossier: Omit<DossierContext, 'statuses' | 'properties'> & {
+    have: readonly string[]; properties: readonly CompletenessProperty[];
+    /** Τι κατέγραψε η χρήση (ίδιο με την οθόνη του φακέλου). */
+    data?: YearData;
+  };
 }
 
 export interface MeetingPack {
@@ -250,11 +255,24 @@ export async function buildMeetingPack(db: SupabaseClient, req: MeetingPackReque
   // ΤΟ «ΤΙ ΛΕΙΠΕΙ» ΕΙΝΑΙ ΤΟΥ ΑΦΜ, ΟΧΙ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ. Ο κατάλογος βγαίνει
   // από τα ακίνητα ΑΥΤΟΥ του υπόχρεου· η δήλωση μίσθωσης του διαμερίσματος της
   // συζύγου δεν ανήκει στον φάκελο του συζύγου.
-  const own = req.dossier.properties.filter(p => p.id && ids.has(p.id));
-  const reqs = requirementsFor({ ...req.dossier, statuses: own.map(p => p.status), properties: own });
-  const have = new Set(req.dossier.have);
-  const requirements: PackRequirement[] = reqs.filter(q => !have.has(q.id) && q.who !== 'app').map(q => ({
-    title: q.title, who: WHO_LABEL[q.who], source: q.source, blocking: !!q.blocking, forProperties: q.forProperties,
+  //
+  // ΚΑΙ Ο ΜΕΤΡΗΤΗΣ ΕΙΝΑΙ Ο ΙΔΙΟΣ ΜΕ ΤΗΣ ΟΘΟΝΗΣ (lib/facts/completeness). Το ΑΤΑΚ,
+  // ο ΑΜΑ και το προσυμπληρωμένο Ε2 μετρούσαν εδώ ΔΥΟ φορές: μία από τα στοιχεία
+  // (γραμμή ανά ακίνητο) και μία από τον κατάλογο, όσο δεν ήταν τσεκαρισμένα.
+  // Τώρα τα κρίνουν τα στοιχεία, μία φορά, με τα ακίνητα που λείπουν στο «Για».
+  // Και οι γραμμές που βγάζει η εφαρμογή δεν πετιούνται: μετρούν όπως στην οθόνη.
+  const byId = new Map(loaded.properties.map(p => [p.id, p]));
+  const own: CompletenessProperty[] = req.dossier.properties
+    .filter(p => p.id && ids.has(p.id))
+    .map(p => ({ ...p, atak: byId.get(p.id!)?.atak ?? null, ama: byId.get(p.id!)?.ama ?? null }));
+  const comp = dossierCompleteness({
+    ...req.dossier, properties: own, ticked: req.dossier.have,
+    data: req.dossier.data ?? { rent: false, stays: false, costs: false },
+    prefilled: reconciliation.status === 'not_uploaded' ? 'not_uploaded' : 'uploaded',
+  });
+  const requirements: PackRequirement[] = comp.items.filter(q => !q.done).map(q => ({
+    title: q.title, who: WHO_LABEL[q.who], source: q.source, blocking: !!q.blocking,
+    forProperties: q.missingFor && q.missingFor[0] !== 'όλο το ΑΦΜ' ? q.missingFor : q.forProperties,
   }));
 
   const mine = prefilled.rows.filter(x => x.ownerAfm === ownerAfm);

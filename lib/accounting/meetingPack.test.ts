@@ -65,14 +65,16 @@ const input = (o: Partial<MeetingPackInput> = {}): MeetingPackInput => ({
   const blockingFirst = m.findIndex(x => !x.blocking);
   ok('τα απαραίτητα πρώτα', m.slice(0, blockingFirst).every(x => x.blocking) && m.slice(blockingFirst).every(x => !x.blocking));
   ok('οι διαφορές με την ΑΑΔΕ λέγονται με το πλήθος', m.some(x => /διαφορ/.test(x.what) && x.blocking));
-  ok('ΑΤΑΚ που λείπει, για το σωστό ακίνητο', m.some(x => x.what === 'ΑΤΑΚ του ακινήτου' && x.scope === 'Χανιά'));
-  ok('ΑΜΑ που λείπει στη βραχυχρόνια', m.some(x => /ΑΜΑ/.test(x.what) && x.scope === 'Χανιά'));
+  // ΤΟ ΑΤΑΚ ΚΑΙ Ο ΑΜΑ ΜΕΤΡΟΥΝ ΜΙΑ ΦΟΡΑ: έρχονται από τον κατάλογο, κριμένα από
+  // τα στοιχεία (lib/facts/completeness), όχι και δεύτερη φορά από εδώ.
+  ok('το ΑΤΑΚ δεν γράφεται δεύτερη φορά ανά ακίνητο', !m.some(x => x.what === 'ΑΤΑΚ του ακινήτου'));
+  ok('ο ΑΜΑ δεν γράφεται δεύτερη φορά ανά ακίνητο', !m.some(x => /^ΑΜΑ \(/.test(x.what)));
   ok('προμήθεια που λείπει, με το πλήθος', m.some(x => /3 κρατήσεις/.test(x.what)));
   ok('ανείσπρακτα με το ποσό', m.some(x => /600,00€/.test(x.what) && x.scope === 'Πατησίων'));
   ok('ο κατάλογος του λογιστή μπαίνει', m.some(x => x.what === 'Εκκαθαριστικό ΕΝΦΙΑ' && x.blocking));
   ok('και τα χαρτιά που δεν χώρεσαν', m.some(x => /δεν χώρεσε/.test(x.what)));
   const none = missingItems(input({ reconciliation: reconcilePrefilled([app()], []), properties: [prop()], requirements: [], paperNotes: [] }));
-  eq('χωρίς προσυμπληρωμένο: λείπει μόνο αυτό', none.map(x => x.what), ['Το προσυμπληρωμένο Ε2 του 2025']);
+  eq('χωρίς προσυμπληρωμένο και χωρίς κατάλογο: τίποτα δεύτερο', none.map(x => x.what), []);
 }
 
 // ═══ ΣΥΝΟΛΑ ΚΑΙ ΚΑΤΑΣΤΑΣΗ ══════════════════════════════════════════════════

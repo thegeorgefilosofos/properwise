@@ -102,7 +102,7 @@ export async function POST(request: Request) {
 
     const [props, events, tasks, unpaidBills, dues] = await Promise.all([
       properties.list<DeadlineProperty>(db, userId, { columns: 'id,name' }),
-      calendar.ofUserInRange<DeadlineEvent>(db, userId, from, to, 'id,property_id,title,event_date,amount,notes,status'),
+      calendar.ofUserInRange<DeadlineEvent>(db, userId, from, to, 'id,property_id,title,event_date,amount,notes,status,source'),
       checklist.openOfUser<DeadlineTask>(db, userId, 'id,property_id,description,due_date,note'),
       bills.ofUser<DeadlineBill>(db, userId, 'id,property_id,name,type,amount,due_date,paid',
         { unpaid: true, dueFrom: from, dueTo: to }),

@@ -35,6 +35,7 @@ import { ApodosiCalculator } from './ApodosiCalculator';
 import { rentalIncomeTax } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { feWhole } from '@/lib/core/format';
+import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 
 // ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΤΗΣ ΑΠΑΝΤΗΣΗΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΜΗΧΑΝΗ, ΟΧΙ ΑΠΟ ΤΟ ΧΕΡΙ. Τα 1.197€,
 // 2.293€ και 1.096€ ήταν γραμμένα στο κείμενο: την επόμενη αλλαγή κλίμακας ή
@@ -158,7 +159,7 @@ export default function Page() {
           <ApodosiCalculator year={year} today={athensToday()}/>
         </Suspense>
 
-        <ToolSources kind="yield" />
+        <ToolSources kind="yield" checked={taxLimitAsOf('yield').checkedAt} />
 
         <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
           <SectionHead over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν πριν αγοράσουν" />

@@ -14,3 +14,5 @@ export * from './hosting';
 export * from './yield';
 export * from './enfia';
 export * from './taxpayer';
+export * from './deadlines';
+export * from './completeness';

@@ -17,6 +17,8 @@ import { hy } from '@/components/Hyphen'
 import { referLabel } from '@/lib/accounting/advisory'
 import type { RegulatoryUpdate } from '@/lib/accounting/updates2026'
 import { MONTHS_NOM } from '@/lib/core/months'
+import { AsOfNote } from '@/components/AsOfNote'
+import { taxLimitAsOf } from '@/lib/facts/taxLimits'
 
 export function TaxScaleCard({ businessMode, taxRows, statement, hoverBracket, setHoverBracket }: Pick<AccountingProps & AccountingState,
   'businessMode' | 'taxRows' | 'statement' | 'hoverBracket' | 'setHoverBracket'
@@ -51,6 +53,9 @@ export function TaxScaleCard({ businessMode, taxRows, statement, hoverBracket, s
           </div>
         )})}
       </div>
+      {/* ΠΟΤΕ ΕΛΕΓΧΘΗΚΕ Η ΚΛΙΜΑΚΑ ΚΑΙ ΑΠΟ ΠΟΥ. Η κάρτα έδειχνε όρια και συντελεστές
+          χωρίς ούτε ημερομηνία ούτε πηγή (lib/facts/taxLimits). */}
+      <AsOfNote fact={taxLimitAsOf(businessMode ? 'business' : 'rent')} style={{ margin: '10px 0 0' }} />
     </div>
   )
 }

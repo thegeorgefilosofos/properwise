@@ -30,6 +30,7 @@ import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger'
 import {
   yearExpensesOf, expenseParts, EXPENSE_LABELS, isLease, NOT_LET_NOTE, YIELD_LABELS,
   hostingReceipts, HOSTING_LABELS, enfiaYear,
+  isClosedStatus, closedTaxRefs, nextEnfiaDue, nextTaxObligations, taxProfileOfStatus, dueText, daysFrom, isOverdue,
 } from '@/lib/facts'
 import { useEnfiaSettings } from '../useEnfia'
 import { computeInsights, type Insight } from '@/lib/insights/engine'
@@ -320,10 +321,12 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   // Φόρτωση δεδομένων ακινήτου (μία φορά όταν ανοίξει), για συγκεκριμένες απαντήσεις.
   const loadContext = useCallback(async () => {
     const now = new Date();
-    const year = now.getFullYear();
     // Το «σήμερα» της εφαρμογής είναι ώρα Ελλάδας, όχι UTC: αλλιώς για δύο ως
-    // τρεις ώρες κάθε νύχτα η Νόα νόμιζε ότι είναι χθες.
+    // τρεις ώρες κάθε νύχτα η Νόα νόμιζε ότι είναι χθες. Και το ΕΤΟΣ βγαίνει από
+    // το ίδιο σήμερα: την παραμονή Πρωτοχρονιάς, μετά τις 22:00, το ρολόι του
+    // περιηγητή στο UTC έλεγε ακόμη την παλιά χρονιά.
     const todayStr = athensToday(now);
+    const year = Number(todayStr.slice(0, 4));
     const [exp, bil, ten, st, cal, { data: rates }, loans, { data: clientRows }, stayRows, contactRows, chk] = await Promise.all([
       expenseStore.ledger(supabase, propertyId, { userId, from: `${year}-01-01`, columns: `${expenseStore.LEDGER_COLUMNS},payment_method` }),
       billStore.ofProperty<BillsRow>(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
@@ -333,7 +336,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       // μόνο company/policy/expiry και καθόλου ποσό. Το ερώτημα απορριπτόταν
       // ολόκληρο, οπότε ο βοηθός δεν ήξερε ΠΟΤΕ για ασφάλιση.
       properties.one<{ insurance_company: string | null; insurance_expiry: string | null; insurance_amount: number | null }>(supabase, propertyId, 'insurance_company,insurance_expiry,insurance_amount', userId),
-      calendar.upcoming(supabase, { propertyId, userId }, athensToday(), 10),
+      calendar.upcoming(supabase, { propertyId, userId }, todayStr, 10, 'title,event_date,amount,status,source'),
       supabase.from('market_rates').select('euribor_3m,bog_housing_new,updated_at,provenance').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
       loanStore.ofProperty(supabase, propertyId, userId),
       supabase.from('clients').select('id,type,full_name,afm,phone,email,rating,do_not_rent,tags,budget,needs').eq('user_id', userId).order('created_at', { ascending: false }).limit(80),
@@ -443,9 +446,25 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       stored: propContext.enfia, value: propContext.value, sqm: propContext.sqm, yearBuilt: propContext.yearBuilt,
       floor: propContext.floor, ownershipPct: propContext.ownership ?? null, postalCode: propContext.postalCode,
     });
-    const nextEnfia = ef.instalments.find(i => i.date >= todayStr);
+    // Η ΕΠΟΜΕΝΗ ΔΟΣΗ ΑΠΟ ΤΟ ΦΟΡΟΛΟΓΙΚΟ ΗΜΕΡΟΛΟΓΙΟ, όχι από το έτος του ρολογιού:
+    // τον Ιανουάριο είναι η 11η του περσινού εκκαθαριστικού (lib/facts/deadlines).
+    // Το ποσό της είναι του εκκαθαριστικού στο οποίο ανήκει.
+    const calOpen = (cal || []).filter(c => !isClosedStatus(c.status));
+    const closedTax = closedTaxRefs(cal || [], []);
+    const due = nextEnfiaDue(todayStr, closedTax);
+    const dueEf = due && due.year !== year ? enfiaYear(enfiaSettings, due.year, {
+      stored: propContext.enfia, value: propContext.value, sqm: propContext.sqm, yearBuilt: propContext.yearBuilt,
+      floor: propContext.floor, ownershipPct: propContext.ownership ?? null, postalCode: propContext.postalCode,
+    }) : ef;
+    const dueAmount = due ? dueEf.instalments.find(i => i.no === due.no)?.amount ?? 0 : 0;
     const enfiaLine = ef.annual > 0
-      ? `${ef.label}: ${eur(ef.annual)}, σε ${ef.instalments.length} δόσεις${nextEnfia ? `· επόμενη η ${nextEnfia.no}η, ${eur(nextEnfia.amount)}, στις ${nextEnfia.date}` : ''}.`
+      ? `${ef.label}: ${eur(ef.annual)}, σε ${ef.instalments.length} δόσεις${due && dueAmount > 0 ? `· επόμενη η ${due.no}η${due.year !== year ? ` του ${due.year}` : ''}, ${eur(dueAmount)}, στις ${due.date} (${dueText(daysFrom(todayStr, due.date))})` : ''}.`
+      : '';
+    // ΟΙ ΘΕΣΜΙΚΕΣ ΠΡΟΘΕΣΜΙΕΣ, ΟΙ ΙΔΙΕΣ ΜΕ ΤΗΝ ΕΠΙΣΚΟΠΗΣΗ. Η Νόα τις ήξερε μόνο αν
+    // είχαν ήδη γραφτεί στο Ημερολόγιο ή στις Εκκρεμότητες.
+    const taxDue = nextTaxObligations(todayStr, taxProfileOfStatus(propContext.statusKey), closedTax).slice(0, 6);
+    const taxLine = taxDue.length
+      ? `Θεσμικές προθεσμίες (ίδιες με την Επισκόπηση): ${taxDue.map(o => `${o.title} ${o.date} (${dueText(daysFrom(todayStr, o.date))})`).join('; ')}`
       : '';
 
     // ── Λογιστική εικόνα (ΙΔΙΑ μηχανή με την καρτέλα Λογιστική) ώστε Νόα να
@@ -496,10 +515,10 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     // ── Εκκρεμότητες: πραγματικές ανοιχτές εργασίες (καρτέλα Εκκρεμότητες) ώστε Νόα
     // να απαντά «τι εκκρεμεί;» με στοιχεία, όχι υποθέσεις και να ξεχωρίζει τις ληξιπρόθεσμες.
     const openTasks = chk;
-    const overdueTasks = openTasks.filter(i => i.due_date && i.due_date < todayStr);
+    const overdueTasks = openTasks.filter(i => isOverdue(i.due_date, todayStr, i.status));
     const taskCostSum = openTasks.reduce((s, i) => s + (Number(i.estimated_cost) || 0), 0);
     const checklistLine = openTasks.length
-      ? `Ανοιχτές εκκρεμότητες (${openTasks.length}${overdueTasks.length ? `, εκ των οποίων ${overdueTasks.length} ληξιπρόθεσμες` : ''}${taskCostSum > 0 ? `, εκτιμώμενο κόστος ${eur(Math.round(taskCostSum))}` : ''}): ${openTasks.slice(0, 15).map(i => `${i.description}${i.due_date ? ` [προθεσμία ${i.due_date}${i.due_date < todayStr ? ', ΛΗΞΙΠΡΟΘΕΣΜΗ' : ''}]` : ''}${i.estimated_cost ? ` ~${eur(i.estimated_cost)}` : ''}${i.assigned_contact_name ? ` (ανάθεση: ${i.assigned_contact_name})` : ''}`).join('; ')}${openTasks.length > 15 ? ` (και ${openTasks.length - 15} ακόμη)` : ''}`
+      ? `Ανοιχτές εκκρεμότητες (${openTasks.length}${overdueTasks.length ? `, εκ των οποίων ${overdueTasks.length} ληξιπρόθεσμες` : ''}${taskCostSum > 0 ? `, εκτιμώμενο κόστος ${eur(Math.round(taskCostSum))}` : ''}): ${openTasks.slice(0, 15).map(i => `${i.description}${i.due_date ? ` [προθεσμία ${i.due_date}${isOverdue(i.due_date, todayStr, i.status) ? ', ΛΗΞΙΠΡΟΘΕΣΜΗ' : ''}]` : ''}${i.estimated_cost ? ` ~${eur(i.estimated_cost)}` : ''}${i.assigned_contact_name ? ` (ανάθεση: ${i.assigned_contact_name})` : ''}`).join('; ')}${openTasks.length > 15 ? ` (και ${openTasks.length - 15} ακόμη)` : ''}`
       : 'Δεν υπάρχουν ανοιχτές εκκρεμότητες.';
 
     // Τα νούμερα που τροφοδοτούν τις προτάσεις εκκίνησης. Ό,τι δεν υπάρχει
@@ -582,13 +601,14 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       unpaid.length ? `Απλήρωτοι λογαριασμοί (${unpaid.length}): ${unpaid.slice(0, 12).map(b => `${b.name || 'λογαριασμός'} ${eur(b.amount)}${b.due_date ? ` λήξη ${b.due_date}` : ''}`).join('; ')}` : 'Δεν υπάρχουν απλήρωτοι λογαριασμοί.',
       openRentNow.length ? `Ανεξόφλητες δόσεις ενοικίου (${openRentNow.length}): ${openRentNow.slice(0, 12).map(r => `${r.label} ${eur(r.amount)}`).join('; ')}` : '',
       t ? `Ενοικιαστής: ${t.full_name || 'καταχωρημένος'}${t.deposit_amount ? `, εγγύηση ${eur(t.deposit_amount)}` : ''}` : 'Δεν έχει καταχωρηθεί ενοικιαστής.',
-      leaseEnd ? `Λήξη μίσθωσης: ${leaseEnd}${daysLease != null ? ` (σε ${daysLease} ημέρες)` : ''}` : '',
+      leaseEnd ? `Λήξη μίσθωσης: ${leaseEnd}${daysLease != null ? ` (${dueText(daysLease)})` : ''}` : '',
       insurance?.insurance_company || insurance?.insurance_expiry ? `Ασφάλεια: ${insurance?.insurance_company || 'εταιρεία άγνωστη'}${insurance?.insurance_expiry ? `, λήξη ${insurance.insurance_expiry}` : ''}` : 'Ασφάλεια: δεν έχει καταχωρηθεί.',
       loanLine,
       hostingLine,
       accountingLine,
       budgetLine,
-      (cal || []).length ? `Επόμενα στο ημερολόγιο: ${(cal || []).map(c => `${c.event_date} ${c.title}${c.amount ? ` ${eur(c.amount)}` : ''}`).join('; ')}` : '',
+      taxLine,
+      calOpen.length ? `Επόμενα στο ημερολόγιο: ${calOpen.map(c => `${c.event_date} ${c.title}${c.amount ? ` ${eur(c.amount)}` : ''}`).join('; ')}` : '',
       checklistLine,
       `Σήμερα είναι ${new Date(todayStr).toLocaleDateString('el-GR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}${isWeekend(todayStr) ? ' (Σαββατοκύριακο)' : ''}${holidayName(todayStr) ? `, αργία: ${holidayName(todayStr)}` : ''}.`,
       `Επόμενες επίσημες αργίες Ελλάδας: ${upcomingHolidays(todayStr, 5).map(h => `${h.name} (${new Date(h.date).toLocaleDateString('el-GR', { day: 'numeric', month: 'short' })})`).join(', ')}. Όταν προτείνεις ημερομηνία/ώρα ραντεβού, απόφυγε Σαββατοκύριακα και αργίες εκτός αν το ζητήσει ο χρήστης και ανάφερέ το αν η ημέρα που διαλέγει πέφτει σε αργία/Σαββατοκύριακο.`,

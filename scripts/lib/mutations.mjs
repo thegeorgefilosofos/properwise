@@ -25,6 +25,8 @@ export const MUTATIONS = {
   // Νέα οθόνη που αθροίζει μόνη της τις δαπάνες του έτους, αντί να τις πάρει
   // από το lib/facts: ακριβώς ο τρόπος που το ίδιο ακίνητο είχε τέσσερα ποσά
   // σε τέσσερις οθόνες (05.10.2026).
+  // Ο πίνακας τιμών internet χάνει ξανά τη γραμμή «Τελευταία ενημέρωση · Πηγή».
+  'price-asof': { file: 'app/dashboard/components/BillsProviders.tsx', from: '<AsOfNote fact={telecomAsOf(s.internetProvider, provData?.label)} />', to: '' },
   'facts-sums': { add: 'app/dashboard/components/__mut_sums__.tsx', content: "export default function MutationProbe({ rows }: { rows: { amount: number }[] }) {\n  const total = rows.reduce((s, r) => s + r.amount, 0)\n  return <span>{total}</span>\n}\n" },
 
   // Η ΜΕΤΑΛΛΑΞΗ ΓΡΑΦΕΙ ΤΟ ΔΟΛΩΜΑ, ΟΧΙ ΤΗ ΔΙΕΥΘΥΝΣΗ. Ο φύλακας κρατά και το

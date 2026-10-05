@@ -54,16 +54,17 @@
 // μεταγραφή του ελέγχεται κελί προς κελί από το raaey.test.ts.
 
 import { addRaaeyGas, RAAEY_MONTH_GEN } from './raaeyCatalogue';
+import { PRICE_FACTS } from '@/lib/facts/prices';
 
 /** Ο μήνας του πίνακα της ΡΑΑΕΥ σε γενική. Μόνο τιμές αυτού του μήνα κατατάσσονται. */
 export const GAS_MONTH_GEN = RAAEY_MONTH_GEN;
 
-/** Ημέρα της τελευταίας ενημέρωσης τιμών. Ζευγάρι με το data/price-sources.json. */
-export const GAS_VERIFIED = '2026-10-05';
+/** Ημέρα της τελευταίας ενημέρωσης τιμών, από τον κατάλογο τιμών (lib/facts/prices.ts). */
+export const GAS_VERIFIED = PRICE_FACTS.gas.checkedAt;
 /** Ο μήνας των τιμών του πίνακα. */
-export const GAS_LABEL = 'Οκτώβριος 2026';
+export const GAS_LABEL = PRICE_FACTS.gas.period;
 /** Κατώφλι παλαιότητας: τα τιμολόγια αερίου ανακοινώνονται μηνιαία. */
-export const GAS_MAX_AGE_DAYS = 40;
+export const GAS_MAX_AGE_DAYS = PRICE_FACTS.gas.maxAgeDays;
 
 export interface GasTariff {
   id: string;

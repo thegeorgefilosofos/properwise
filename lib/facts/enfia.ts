@@ -18,7 +18,8 @@ import {
   type ENFIAResult, type EnfiaInUse,
 } from '@/lib/billing/enfia';
 import { resolveEnfia } from '@/lib/billing/propertyFacts';
-import { enfiaInstalments, type EnfiaInstalment } from '@/lib/tools/enfiaSchedule';
+import { enfiaInstalments, grDateLong, type EnfiaInstalment } from '@/lib/tools/enfiaSchedule';
+import { enfiaDueDates } from './deadlines';
 import { ENFIA_LABELS } from './labels';
 
 // Το «Δεν γνωρίζω» ΔΕΝ είναι απουσία επιλογής: είναι η ουδέτερη επιλογή, με
@@ -130,6 +131,11 @@ export interface EnfiaYear extends EnfiaNow {
   label: string;
   /** Οι δώδεκα δόσεις του έτους, με ημερομηνία· κενό χωρίς ποσό. */
   instalments: EnfiaInstalment[];
+  /**
+   * `true` όταν και οι δώδεκα ημερομηνίες είναι του νόμου, για εκκαθαριστικό
+   * που έχει εκδοθεί. Αλλιώς οι ενδιάμεσες είναι προβολή του περσινού μοτίβου.
+   */
+  datesConfirmed: boolean;
 }
 
 /** Ο ΕΝΦΙΑ του έτους με την ετικέτα και τις δόσεις του. Η μία απάντηση για κάθε οθόνη. */
@@ -138,5 +144,17 @@ export function enfiaYear(s: EnfiaSettings, year: number, facts: EnfiaFacts = {}
   const annual = now.inUse.annual;
   const src = now.inUse.source;
   const label = ENFIA_LABELS[src];
-  return { ...now, year, annual, label, instalments: enfiaInstalments(annual, year) };
+  // ΟΙ ΗΜΕΡΟΜΗΝΙΕΣ ΕΙΝΑΙ ΤΟΥ ΦΟΡΟΛΟΓΙΚΟΥ ΗΜΕΡΟΛΟΓΙΟΥ, τα ποσά του προγράμματος
+  // δόσεων. Το πρόγραμμα έβγαζε πάντα Μάρτιο ως Φεβρουάριο· το ημερολόγιο ξέρει
+  // τον μήνα έκδοσης κάθε εκκαθαριστικού. Όπου το ημερολόγιο δεν έχει ημερομηνία
+  // (έτος χωρίς απόφαση), μένει η προβολή και το `datesConfirmed` το λέει.
+  const due = enfiaDueDates(year);
+  const byNo = new Map(due.map(d => [d.no, d]));
+  const instalments = enfiaInstalments(annual, year).map(i => {
+    const d = byNo.get(i.no);
+    return d ? { ...i, date: d.date, label: grDateLong(d.date) } : i;
+  });
+  const datesConfirmed = instalments.length > 0
+    && instalments.every(i => byNo.get(i.no)?.confidence === 'statutory');
+  return { ...now, year, annual, label, instalments, datesConfirmed };
 }

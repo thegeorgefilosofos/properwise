@@ -25,10 +25,11 @@ import { createClient } from '@/lib/supabase/client'
 import { T, TT, Badge, SelectBox, Bar, Btn, ChipToggle } from '@/components/Theme'
 import { ChevronRight, Download } from 'lucide-react'
 import {
-  requirementsFor, readiness, groupByWho, traps, defaultBookkeeping,
+  groupByWho, traps, defaultBookkeeping,
   yearStatusLabel, LEGAL_FORM_LABEL,
-  type LegalForm, type BookKeeping, type Requirement, type DossierProperty,
+  type LegalForm, type BookKeeping, type Requirement,
 } from '@/lib/accounting/dossier'
+import { dossierCompleteness, type CompletenessProperty, type YearData } from '@/lib/facts/completeness'
 import type { DossierAttachment } from './accountantExport';
 import type { AccountantStatementLine, AccountantMovement } from './accountantTypes';
 import { exportAccountantDossier } from './sheets';
@@ -195,10 +196,22 @@ const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFamil
 // για τη μία ομάδα που ετοίμαζε το ίδιο το εργαλείο, όπου το τετραγωνάκι ήταν
 // σφραγίδα και όχι επιλογή. Εκείνη η ομάδα δεν αποδίδεται πλέον ως κάρτα, οπότε
 // οι δύο κλάδοι έγιναν ένας.
-function Row({ r, checked, onToggle, attribute }: { r: Requirement; checked: boolean; onToggle: () => void; attribute: boolean }) {
+// ΟΤΑΝ ΚΡΙΝΟΥΝ ΤΑ ΣΤΟΙΧΕΙΑ, ΤΟ ΚΟΥΤΑΚΙ ΔΕΝ ΠΑΤΙΕΤΑΙ ΚΑΙ ΤΟ ΛΕΕΙ. Το ΑΤΑΚ και ο ΑΜΑ
+// είναι γραμμένα (ή όχι) στα στοιχεία κάθε ακινήτου· ένα τσεκ εδώ θα έλεγε
+// «το έχω» ενώ ο λογιστής θα έβλεπε «Λείπει» στον πίνακα των ακινήτων.
+function Row({ r, checked, onToggle, attribute, fromData }: {
+  r: Requirement; checked: boolean; onToggle: () => void; attribute: boolean
+  fromData?: { missingFor?: string[] }
+}) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 0', borderTop: '1px solid var(--border-subtle)' }}>
-      <SelectBox checked={checked} onChange={onToggle} label={r.title} />
+      {fromData
+        ? <span role="img" aria-label={checked ? 'Υπάρχει στα στοιχεία' : 'Λείπει από τα στοιχεία'}
+            style={{ width: 18, height: 18, flexShrink: 0, borderRadius: T.radius.xs, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              border: `1.5px dashed ${checked ? 'var(--accent)' : 'var(--border-control)'}`, background: checked ? 'var(--accent)' : 'transparent', color: 'var(--accent-text)' }}>
+            {checked && <svg width={11} height={11} viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 6.3l2.2 2.2L9.5 3.6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+          </span>
+        : <SelectBox checked={checked} onChange={onToggle} label={r.title} />}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 14, fontWeight: 600, fontFamily: T.font.sans, lineHeight: 1.35, color: checked ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{r.title}</span>
@@ -208,6 +221,13 @@ function Row({ r, checked, onToggle, attribute }: { r: Requirement; checked: boo
         {/* ΑΠΟ ΠΟΙΟ ΑΚΙΝΗΤΟ. Ο φάκελος είναι ένας για όλο το χαρτοφυλάκιο και ζει
             στη σελίδα ενός ακινήτου· χωρίς το όνομα, η δήλωση μίσθωσης ενός
             άλλου διαμερίσματος διαβαζόταν ως δική του. */}
+        {fromData && (
+          <p style={{ fontSize: 12, color: checked ? 'var(--text-tertiary)' : 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>
+            {checked
+              ? 'Από τα στοιχεία των ακινήτων σου.'
+              : `Λείπει από τα στοιχεία: ${(fromData.missingFor ?? []).join(', ')}. Συμπλήρωσέ το στα στοιχεία του ακινήτου.`}
+          </p>
+        )}
         {attribute && r.forProperties && r.forProperties.length > 0 && (
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>Για: {r.forProperties.join(', ')}</p>
         )}
@@ -262,13 +282,13 @@ export interface DossierExportSource {
 }
 
 export default function AccountantDossier({
-  state, year, properties, exportSource, actions, compact = false, appReady, userId,
+  state, year, properties, exportSource, actions, compact = false, yearData, userId,
 }: {
   /** Ο ιδιοκτήτης: ο φάκελος ανά ΑΦΜ φορτώνεται με το δικό του αναγνωριστικό. */
   userId?: string
   state: DossierState
   year: number
-  properties: readonly DossierProperty[]
+  properties: readonly CompletenessProperty[]
   exportSource: DossierExportSource
   /**
    * ΟΣΑ ΑΛΛΑ ΦΕΥΓΟΥΝ ΠΡΟΣ ΤΟΝ ΛΟΓΙΣΤΗ, ΣΤΟ ΙΔΙΟ ΣΗΜΕΙΟ.
@@ -281,28 +301,30 @@ export default function AccountantDossier({
   actions?: React.ReactNode
   /** Χωρίς καμία κίνηση στη χρονιά: μόνο η κάρτα, ο κατάλογος πίσω από ένα πάτημα. */
   compact?: boolean
-  /** Υπάρχουν τα δεδομένα από τα οποία βγαίνει αυτή η γραμμή της εφαρμογής; */
-  appReady?: (id: string) => boolean
+  /** Τι κατέγραψε η χρήση: από αυτό κρίνονται οι γραμμές που βγάζει η εφαρμογή. */
+  yearData?: YearData
 }) {
   const { profile, setProfile, have, toggle, error, retry } = state
   const [assumptionsOpen, setAssumptionsOpen] = useState(false)
   const [listOpen, setListOpen] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
 
-  const statuses = useMemo(() => properties.map(p => p.status), [properties])
-  const reqs = useMemo(() => requirementsFor({
-    form: profile.form, books: profile.books, statuses, properties,
+  // ══ ΕΝΑΣ ΜΕΤΡΗΤΗΣ, ΙΔΙΟΣ ΜΕ ΤΟ ΑΡΧΕΙΟ ΚΑΙ ΤΗ ΣΥΝΑΝΤΗΣΗ (lib/facts/completeness) ══
+  // Το ΑΤΑΚ και ο ΑΜΑ κρίνονται από τα στοιχεία των ακινήτων, όχι από το κουτάκι·
+  // ό,τι φτιάχνει η εφαρμογή μετράει έτοιμο ΜΟΝΟ όταν υπάρχουν τα δεδομένα του.
+  // Πριν, χωρίς κανόνα δεδομένων, μετρούσε «έτοιμο» εξ ορισμού.
+  const data = useMemo<YearData>(() => yearData ?? { rent: false, stays: false, costs: false }, [yearData])
+  const comp = useMemo(() => dossierCompleteness({
+    form: profile.form, books: profile.books, properties,
     hasRenovation: profile.hasRenovation, hasLoan: profile.hasLoan, ownershipChanged: profile.ownershipChanged,
-  }), [profile, statuses, properties])
-
-  // Ό,τι φτιάχνει η εφαρμογή μετριέται ως έτοιμο ΜΟΝΟ όταν υπάρχουν τα δεδομένα
-  // του: τότε βγαίνει όντως μέσα στον φάκελο. Χωρίς αυτά, ένα «έτοιμο» πάνω από
-  // το «Ξεκίνα τη λογιστική σου» ήταν παρηγοριά, όχι αλήθεια.
-  const appIds = useMemo(() => reqs.filter(r => r.who === 'app').map(r => r.id), [reqs])
-  const appDone = useMemo(() => appIds.filter(id => appReady?.(id) ?? true), [appIds, appReady])
+    ticked: have, data, gaps: exportSource.gaps,
+  }), [profile, properties, have, data, exportSource.gaps])
+  const reqs = comp.items
+  const ready = comp
+  const byId = useMemo(() => new Map(comp.items.map(i => [i.id, i])), [comp])
+  const appIds = useMemo(() => comp.items.filter(i => i.by === 'app').map(i => i.id), [comp])
+  const appDone = useMemo(() => comp.items.filter(i => i.by === 'app' && i.done).map(i => i.id), [comp])
   const appWaiting = appIds.length - appDone.length
-  const haveAll = useMemo(() => [...new Set([...appDone, ...have])], [appDone, have])
-  const ready = useMemo(() => readiness(reqs, haveAll), [reqs, haveAll])
   const groups = useMemo(() => groupByWho(reqs), [reqs])
   const warnings = useMemo(() => traps(reqs), [reqs])
 
@@ -333,11 +355,15 @@ export default function AccountantDossier({
     // πλέον ο φάκελος της συνάντησης (MeetingPackCard).
     const own = properties.filter(p => exportSource.propertyId && p.id === exportSource.propertyId)
     const ownProps = own.length ? own : properties.slice(0, 1)
-    const ownReqs = requirementsFor({
-      form: profile.form, books: profile.books, statuses: ownProps.map(p => p.status), properties: ownProps,
+    // Ο ΙΔΙΟΣ ΜΕΤΡΗΤΗΣ, για ένα ακίνητο και με τα κενά που βρήκε το κατέβασμα.
+    // Η κεφαλίδα του αρχείου δεν λέει πια «πλήρης» πάνω από κενά δεδομένων.
+    const ownComp = dossierCompleteness({
+      form: profile.form, books: profile.books, properties: ownProps,
       hasRenovation: profile.hasRenovation, hasLoan: profile.hasLoan, ownershipChanged: profile.ownershipChanged,
+      ticked: have, data, gaps: [...(exportSource.gaps || []), ...notes],
     })
-    const ownReady = readiness(ownReqs, haveAll.filter(id => ownReqs.some(r => r.id === id)))
+    const ownReqs = ownComp.items
+    const ownReady = ownComp
     exportAccountantDossier({
       year,
       propName: exportSource.propName,
@@ -351,7 +377,7 @@ export default function AccountantDossier({
       buildingFraction: exportSource.buildingFraction,
       dossier: {
         requirements: ownReqs,
-        haveIds: haveAll,
+        haveIds: ownComp.doneIds,
         readinessMessage: ownReady.message,
         properties: ownProps.map(p => ({ name: p.name, status: yearStatusLabel(p) })),
         formLabel: LEGAL_FORM_LABEL[profile.form],
@@ -487,7 +513,7 @@ export default function AccountantDossier({
         <MeetingPackCard userId={userId} year={year} ownerName={exportSource.ownerName ?? null}
           dossier={{
             form: profile.form, books: profile.books, hasRenovation: profile.hasRenovation,
-            hasLoan: profile.hasLoan, ownershipChanged: profile.ownershipChanged, have: haveAll, properties,
+            hasLoan: profile.hasLoan, ownershipChanged: profile.ownershipChanged, have, properties, data,
           }} />
       )}
 
@@ -495,7 +521,7 @@ export default function AccountantDossier({
 
       {/* ── Οι ομάδες: πρώτα τα δικά σου ──────────────────────────────────── */}
       {groups.filter(g => g.who !== 'app').map(g => {
-        const done = g.items.filter(r => haveAll.includes(r.id)).length
+        const done = g.items.filter(r => byId.get(r.id)?.done).length
         return (
           <div key={g.who} style={card}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingBottom: 4 }}>
@@ -511,7 +537,8 @@ export default function AccountantDossier({
             </div>
             <div style={{ marginTop: 10 }}>
               {g.items.map(r => (
-                <Row key={r.id} r={r} checked={haveAll.includes(r.id)} onToggle={() => toggle(r.id)} attribute={properties.length > 1} />
+                <Row key={r.id} r={r} checked={!!byId.get(r.id)?.done} onToggle={() => toggle(r.id)} attribute={properties.length > 1}
+                  fromData={byId.get(r.id)?.by === 'data' ? { missingFor: byId.get(r.id)?.missingFor } : undefined} />
               ))}
             </div>
           </div>

@@ -11,6 +11,10 @@
 // ΟΛΗ η εφαρμογή. Η συνέπεια φυλάσσεται εδώ αντί να αγοραστεί με τέτοιο ρίσκο.
 
 import { readFileSync } from 'node:fs';
+import { TARIFFS_LABEL, TARIFFS_VERIFIED, TARIFFS_MAX_AGE_DAYS } from './catalogue';
+import { GAS_VERIFIED, GAS_LABEL, GAS_MAX_AGE_DAYS } from './gas';
+import { INSURANCE_VERIFIED, INSURANCE_MAX_AGE_DAYS } from '@/app/dashboard/components/insurance/catalog';
+import { PRICE_FACTS, TELECOM_FACTS } from '@/lib/facts/prices';
 
 let pass = 0, fail = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -25,65 +29,48 @@ const sources = JSON.parse(readFileSync('data/price-sources.json', 'utf8')) as {
   electricity: { label: string; checkedAt: string; maxAgeDays: number; sources: { name: string; url: string }[] };
   gas: { label: string; checkedAt: string; maxAgeDays: number; sources: { name: string; url: string }[] };
   insurance: { label: string; checkedAt: string; maxAgeDays: number; registryVerifiedAt: string | null };
+  telecom: { providers: { name: string; url: string; checkedAt: string }[] };
 };
 
-// ΟΙ ΣΤΑΘΕΡΕΣ ΖΟΥΝ ΠΛΕΟΝ ΣΤΟΝ ΚΑΤΑΛΟΓΟ (lib/energy/catalogue.ts), ΟΧΙ ΣΤΟ
-// COMPONENT. Τις διαβάζουν δύο οθόνες, ο πίνακας ελέγχου και η δημόσια
-// σύγκριση τιμολογίων· ένα αντίγραφο ανά οθόνη θα ήταν δύο ημερομηνίες για τον
-// ίδιο έλεγχο. Ο έλεγχος κοιτά εκεί που ζουν ΚΑΙ ότι κανένα αρχείο του app/ δεν
-// ξαναγράφει δική του.
-const catalogue = readFileSync('lib/energy/catalogue.ts', 'utf8');
-const m = /export const TARIFFS_LABEL = '([^']+)'/.exec(catalogue);
+// ΟΙ ΗΜΕΡΟΜΗΝΙΕΣ ΖΟΥΝ ΣΤΟΝ ΚΑΤΑΛΟΓΟ ΤΙΜΩΝ (lib/facts/prices.ts, 05.10.2026) ΚΑΙ ΟΙ
+// ΣΤΑΘΕΡΕΣ ΤΟΥ lib/energy ΚΑΙ ΤΗΣ ΑΣΦΑΛΕΙΑΣ ΤΙΣ ΔΙΑΒΑΖΟΥΝ ΑΠΟ ΕΚΕΙ. Ο έλεγχος
+// κοιτά τις ΤΙΜΕΣ που βλέπει ο χρήστης, όχι το κείμενο των αρχείων: η σταθερά
+// δεν είναι πια γραμμένη ως συμβολοσειρά, άρα μια κανονική έκφραση δεν θα έβρισκε
+// τίποτα και θα περνούσε για λάθος λόγο.
+//
+// Η ΔΕΥΤΕΡΗ ΗΜΕΡΟΜΗΝΙΑ, ΠΟΥ ΔΕΝ ΤΗΝ ΦΥΛΑΓΕ ΤΙΠΟΤΑ. Το `TARIFFS_VERIFIED` είχε μπει
+// ως '2026-07-08' ενώ το `checkedAt` έλεγε '2026-07-29': απόκλιση είκοσι μιας
+// ημερών, σιωπηλή, ενώ κρίνει αν η οθόνη ανακηρύσσει νικητή τιμολογίου.
+eq('ρεύμα: η ετικέτα συμφωνεί με το data/price-sources.json', TARIFFS_LABEL, sources.electricity.label);
+eq('ρεύμα: η ημερομηνία με το checkedAt', TARIFFS_VERIFIED, sources.electricity.checkedAt);
+eq('ρεύμα: το κατώφλι με το maxAgeDays', TARIFFS_MAX_AGE_DAYS, sources.electricity.maxAgeDays);
+eq('ασφάλεια: η ημερομηνία με το checkedAt', INSURANCE_VERIFIED, sources.insurance.checkedAt);
+eq('ασφάλεια: το κατώφλι με το maxAgeDays', INSURANCE_MAX_AGE_DAYS, sources.insurance.maxAgeDays);
+eq('ασφάλεια: η περίοδος με το label', PRICE_FACTS.insurance.period, sources.insurance.label);
+eq('αέριο: η ημερομηνία με το checkedAt', GAS_VERIFIED, sources.gas.checkedAt);
+eq('αέριο: η ετικέτα με το label', GAS_LABEL, sources.gas.label);
+eq('αέριο: το κατώφλι με το maxAgeDays', GAS_MAX_AGE_DAYS, sources.gas.maxAgeDays);
 
-ok('η ετικέτα υπάρχει στον κατάλογο', m !== null);
-eq('η ετικέτα συμφωνεί με το data/price-sources.json', m?.[1], sources.electricity.label);
+// ΤΟ INTERNET ΕΛΕΓΧΕΤΑΙ ΑΝΑ ΠΑΡΟΧΟ: ίδιοι πάροχοι, ίδιες ημέρες, ίδιες σελίδες.
+const telecom = sources.telecom.providers;
+eq('internet: ίδιοι πάροχοι με ημερομηνία', Object.keys(TELECOM_FACTS).sort(), telecom.map(p => p.name.toLowerCase()).sort());
+for (const p of telecom) {
+  const f = TELECOM_FACTS[p.name.toLowerCase()];
+  eq(`internet ${p.name}: ημερομηνία`, f?.checkedAt, p.checkedAt);
+  eq(`internet ${p.name}: σελίδα`, f?.url, p.url);
+}
 
-// ── Η ΔΕΥΤΕΡΗ ΗΜΕΡΟΜΗΝΙΑ, ΠΟΥ ΔΕΝ ΤΗΝ ΦΥΛΑΓΕ ΤΙΠΟΤΑ ──────────────────────
-// Το `TARIFFS_VERIFIED` προστέθηκε στο component για την πύλη φρεσκάδας και
-// μπήκε ως '2026-07-08' ενώ το `checkedAt` έλεγε '2026-07-29': απόκλιση είκοσι
-// μιας ημερών, σιωπηλή, γιατί ο έλεγχος εδώ κοίταζε ΜΟΝΟ την ετικέτα. Δύο
-// ημερομηνίες για το ίδιο γεγονός και η μία κρίνει αν η οθόνη ανακηρύσσει
-// νικητή τιμολογίου.
-const v = /export const TARIFFS_VERIFIED = '([^']+)'/.exec(catalogue);
-ok('η ημερομηνία επαλήθευσης υπάρχει στον κατάλογο', v !== null);
-eq('και συμφωνεί με το checkedAt του data/price-sources.json', v?.[1], sources.electricity.checkedAt);
-
-// Και το ΚΑΤΩΦΛΙ: το JSON το ορίζει ανά κατηγορία με γραμμένη αιτιολογία, οπότε
-// ένας αριθμός καρφωμένος στον κώδικα που δεν συμφωνεί ακυρώνει την αιτιολογία.
-const ma = /export const TARIFFS_MAX_AGE_DAYS = (\d+)/.exec(catalogue);
-eq('το κατώφλι παλαιότητας συμφωνεί με το maxAgeDays', Number(ma?.[1]), sources.electricity.maxAgeDays);
-
-// ΚΑΝΕΝΑ ΔΕΥΤΕΡΟ ΑΝΤΙΓΡΑΦΟ. Αν μια οθόνη ξαναγράψει δική της ημερομηνία, ο
-// έλεγχος από πάνω θα συνέχιζε να περνά πάνω στον κατάλογο ενώ η οθόνη θα έλεγε
-// άλλη μέρα.
+// ΚΑΝΕΝΑ ΔΕΥΤΕΡΟ ΑΝΤΙΓΡΑΦΟ. Αν ένα αρχείο ξαναγράψει δική του ημερομηνία, ο
+// έλεγχος από πάνω θα συνέχιζε να περνά ενώ η οθόνη θα έλεγε άλλη μέρα.
+for (const f of ['lib/energy/catalogue.ts', 'lib/energy/gas.ts', 'app/dashboard/components/insurance/catalog.ts']) {
+  ok(`${f}: δεν γράφει ημερομηνία με το χέρι`,
+    !/export const (TARIFFS_VERIFIED|TARIFFS_LABEL|GAS_VERIFIED|GAS_LABEL|INSURANCE_VERIFIED) = '/.test(readFileSync(f, 'utf8')));
+}
 for (const f of ['app/dashboard/components/BillsElectricity.tsx', 'app/sygkrisi-timologion-revmatos/PowerCompare.tsx', 'lib/tools/revma.ts']) {
   const src = readFileSync(f, 'utf8');
   ok(`${f}: δεν γράφει δική του ημερομηνία καταλόγου`,
     !/const (TARIFFS_VERIFIED|TARIFFS_LABEL|TARIFFS_MAX_AGE_DAYS|LAST_UPDATED)\s*=/.test(src));
 }
-
-// ── ΤΟ ΙΔΙΟ ΓΙΑ ΤΗΝ ΑΣΦΑΛΕΙΑ ────────────────────────────────────────────
-// Σαράντα οκτώ ασφάλιστρα παρουσιάζονταν χωρίς καμία ημερομηνία, ενώ η οθόνη
-// ανακήρυσσε «ΠΡΟΤΕΙΝΟΜΕΝΟ ΓΙΑ ΕΣΕΝΑ». Τρεις κατάλογοι, τρία πρότυπα.
-const ins = readFileSync('app/dashboard/components/insurance/catalog.ts', 'utf8');
-const iv = /const INSURANCE_VERIFIED = '([^']+)'/.exec(ins);
-const im = /const INSURANCE_MAX_AGE_DAYS = (\d+)/.exec(ins);
-eq('η ημερομηνία της ασφάλειας συμφωνεί με το checkedAt', iv?.[1], sources.insurance.checkedAt);
-eq('και το κατώφλι της με το maxAgeDays', Number(im?.[1]), sources.insurance.maxAgeDays);
-
-// ── ΤΟ ΑΕΡΙΟ, ΠΟΥ ΔΕΝ ΤΟ ΦΥΛΑΓΕ ΤΙΠΟΤΑ ─────────────────────────────────────
-// Το `gas` υπήρχε στο price-sources.json και καμία γραμμή δεν το διάβαζε: οι δύο
-// ημερομηνίες του καταλόγου αερίου ζούσαν ανεξάρτητα από τη δηλωμένη πηγή και
-// έμειναν στον Ιούλιο ενώ ο κατάλογος ξαναγράφτηκε από τα στοιχεία Αυγούστου.
-// Τώρα η κεφαλίδα της οθόνης, η πύλη φρεσκάδας και η καταγραφή της πηγής
-// δείχνουν την ίδια ημέρα ή ο έλεγχος πέφτει.
-const gasCat = readFileSync('lib/energy/gas.ts', 'utf8');
-const gv = /export const GAS_VERIFIED = '([^']+)'/.exec(gasCat);
-const gl = /export const GAS_LABEL = '([^']+)'/.exec(gasCat);
-const gm = /export const GAS_MAX_AGE_DAYS = (\d+)/.exec(gasCat);
-eq('η ημερομηνία του αερίου συμφωνεί με το checkedAt', gv?.[1], sources.gas.checkedAt);
-eq('και η ετικέτα του με το label', gl?.[1], sources.gas.label);
-eq('και το κατώφλι του με το maxAgeDays', Number(gm?.[1]), sources.gas.maxAgeDays);
 
 // Η ημερομηνία ελέγχου πρέπει να είναι πραγματική ημερομηνία, όχι κείμενο.
 for (const key of ['electricity', 'gas', 'insurance'] as const) {

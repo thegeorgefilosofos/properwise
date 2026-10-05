@@ -53,6 +53,9 @@ import { INK_FAINT, INK_MUTED } from '@/lib/print/ink';
 import { failed, MSG } from '@/lib/core/dbError';
 import { InfoHint } from './InfoHint';
 import { fpSigned } from '@/lib/core/format';
+import { rentalBracketsForYear } from '@/lib/billing/greekTax';
+import { bracketsSentence, taxLimitAsOf } from '@/lib/facts/taxLimits';
+import { asOfLine } from '@/lib/facts/prices';
 
 // Αντιστοίχιση περιοχής → πλησιέστερη αναφορά βραχυχρόνιας (τα δεδομένα ST είναι ανά
 // ευρύτερη ζώνη, όχι ανά προάστιο). Δίνει ρεαλιστικά defaults (πληρότητα/τιμή) ανά περιοχή.
@@ -2274,8 +2277,11 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                        απόφασης. Η κλίμακα είναι πίνακας αναφοράς: τη βλέπεις
                        μία φορά και μετά σε ενδιαφέρει μόνο πού πέφτεις. */}
                     Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου. Οριακός συντελεστής <strong style={{ color: 'var(--text-primary)' }}>{fp(portfolioTax.marginalRate * 100)}</strong>.{' '}
-                    <InfoHint label="Η κλίμακα ενοικίων 2026">
-                      <span style={{ display: 'block' }}>Ο φόρος υπολογίζεται με την προοδευτική κλίμακα ενοικίων 2026, στο σύνολο των ενοικίων σου: 15% έως 12.000€, 25% έως 24.000€, 35% έως 36.000€ και 45% πάνω από αυτά.</span>
+                    {/* Η ΚΛΙΜΑΚΑ ΑΠΟ ΤΑ ΚΛΙΜΑΚΙΑ ΠΟΥ ΥΠΟΛΟΓΙΖΟΥΝ ΤΟΝ ΦΟΡΟ ΚΑΙ ΟΧΙ ΑΠΟ ΤΟ
+                        ΧΕΡΙ, με το πότε ελέγχθηκε (lib/facts/taxLimits). */}
+                    <InfoHint label={`Η κλίμακα ενοικίων ${taxYear}`}>
+                      <span style={{ display: 'block' }}>Ο φόρος υπολογίζεται με την προοδευτική κλίμακα ενοικίων {taxYear}, στο σύνολο των ενοικίων σου: {bracketsSentence(rentalBracketsForYear(taxYear))}.</span>
+                      <span style={{ display: 'block', marginTop: 6, color: 'var(--text-tertiary)' }}>{asOfLine(taxLimitAsOf('rent'))}</span>
                     </InfoHint></>}</>)}
             </p>
           </div>

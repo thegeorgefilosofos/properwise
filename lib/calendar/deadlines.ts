@@ -26,6 +26,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { fe } from '@/lib/core/format';
+import { isClosedStatus, taskNoteOf } from '@/lib/facts/deadlines';
 import type { FeedItem } from './feed';
 
 export interface DeadlineProperty { id: string; name?: string | null }
@@ -34,6 +35,8 @@ export interface DeadlineEvent {
   id: string; property_id?: string | null;
   title?: string | null; event_date?: string | null;
   amount?: number | null; notes?: string | null; status?: string | null;
+  /** Ποιος το έγραψε (`tax:<id>`, `bills`, `tenant:<id>:rent_due`…). */
+  source?: string | null;
 }
 
 export interface DeadlineTask {
@@ -64,8 +67,22 @@ export interface DeadlineSources {
   to: string;
 }
 
-/** Το γεγονός θεωρείται κλεισμένο και δεν ταξιδεύει. */
-const DONE_EVENT = new Set(['done', 'completed', 'cancelled', 'canceled']);
+// ── ΤΙ ΔΕΝ ΤΑΞΙΔΕΥΕΙ (05.10.2026) ─────────────────────────────────────────
+// · ΤΟ ΚΛΕΙΣΤΟ, με τον ΕΝΑΝ κανόνα της εφαρμογής (lib/facts/deadlines). Εδώ
+//   ζούσε δικό του σύνολο χωρίς το `paid`, που είναι ακριβώς η κατάσταση με την
+//   οποία κλείνει το Ημερολόγιο: πληρωμένοι φόροι, λογαριασμοί και δόσεις
+//   δανείου ταξίδευαν στη συνδρομή και στις ειδοποιήσεις.
+// · ΤΟ ΑΝΤΙΓΡΑΦΟ. Η ίδια θεσμική προθεσμία ως γεγονός (`tax:<id>`) και ως
+//   εκκρεμότητα με την ίδια ταυτότητα έβγαινε δύο φορές· μένει το γεγονός. Τα
+//   γεγονότα που ο συγχρονισμός παράγει από τον πίνακα λογαριασμών (`bills`)
+//   είναι αντίγραφα των γραμμών που διαβάζουμε ήδη εδώ, με ημερομηνία
+//   μετακινημένη στον τρέχοντα μήνα· δεν ταξιδεύουν. Η υπενθύμιση ενοικίου
+//   (`tenant:<id>:rent_due`) δεν ταξιδεύει όταν το ακίνητο έχει δικές του
+//   γραμμές ενοικίου στο παράθυρο, που λένε το ίδιο με ακριβές ποσό.
+// · Η ΣΗΜΕΙΩΣΗ ΩΣ JSON. Οι εκκρεμότητες κρατούν τη σημείωσή τους μέσα σε
+//   `{"__cv":2,…}` και αυτό το κείμενο έφτανε αυτούσιο στην περιγραφή του
+//   γεγονότος. Τώρα διαβάζεται μόνο η σημείωση.
+const RENT_DUE = /^tenant:[^:]+:rent_due$/;
 
 const day = (v: string | null | undefined): string => {
   const s = String(v || '').slice(0, 10);
@@ -105,8 +122,20 @@ export function deadlineItems(s: DeadlineSources): FeedItem[] {
     out.push({ uid, date, title, note: note || null });
   };
 
+  const eventTax = new Set<string>();
+  const closedTax = new Set<string>();
   for (const e of s.events) {
-    if (DONE_EVENT.has(String(e.status || '').toLowerCase())) continue;
+    const src = text(e.source);
+    if (!src.startsWith('tax:')) continue;
+    (isClosedStatus(e.status) ? closedTax : eventTax).add(src);
+  }
+  const rentProps = new Set(s.rent.filter(r => !r.paid && inWindow(day(r.due_date))).map(r => String(r.property_id || '')));
+
+  for (const e of s.events) {
+    if (isClosedStatus(e.status)) continue;
+    const src = text(e.source);
+    if (src === 'bills') continue;
+    if (RENT_DUE.test(src) && rentProps.has(String(e.property_id || ''))) continue;
   // ΤΑ ΕΠΙΘΕΜΑΤΑ ΤΩΝ UID ΜΕΝΟΥΝ ΜΕ ΤΟ ΠΑΛΙΟ ΟΝΟΜΑ ΚΑΙ ΕΙΝΑΙ ΣΩΣΤΟ.
   // Το UID ταυτίζει το γεγονός στο ημερολόγιο του χρήστη. Μια αλλαγή εδώ δεν
   // μετονομάζει τίποτα: δημιουργεί διπλότυπα σε κάθε συνδρομητή, γιατί το
@@ -117,8 +146,10 @@ export function deadlineItems(s: DeadlineSources): FeedItem[] {
   }
 
   for (const t of s.tasks) {
+    const { note, ref } = taskNoteOf(t.note);
+    if (ref && (eventTax.has(ref) || closedTax.has(ref))) continue;
     push(`task-${t.id}@properwise`, day(t.due_date),
-      text(t.description) + at(t.property_id), text(t.note));
+      text(t.description) + at(t.property_id), note);
   }
 
   for (const b of s.bills) {

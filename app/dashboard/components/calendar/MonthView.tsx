@@ -12,6 +12,7 @@ import { staysOnDay, weekSegments, channelColor, type StaySpan } from '@/lib/cal
 import { MONTHS_NOM, mondayFirst, monthGen } from '@/lib/core/months'
 import { type CalEvent, CATEGORIES, DAY_NAMES_GR, daysUntil, isOverdue, todayStr } from './model'
 import { Tooltip } from './Bits'
+import { dueTextStart } from '@/lib/facts/deadlines'
 
 // Ενιαίο drag με pointer events — δουλεύει σε ΠΟΝΤΙΚΙ ΚΑΙ ΑΦΗ (κινητό/tablet).
 // Στόχοι drop φέρουν data-drop-date (και προαιρετικά data-drop-time: «HH:00» για ώρα,
@@ -520,7 +521,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
             {upcomingRows.map(row=>{
               const ev=row.kind==='series'?row.lead:row.event
               const d=daysUntil(ev.event_date); const cat=CATEGORIES[ev.category]
-              const when=d===0?'Σήμερα':d===1?'Αύριο':`σε ${d} ημέρες`
+              const when=dueTextStart(d)
               const soon=d<=1
               const more=row.kind==='series'?row.count-1:0
               return (

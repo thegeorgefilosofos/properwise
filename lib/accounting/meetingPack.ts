@@ -108,17 +108,17 @@ const FIX_WHO: Record<FixIn, string> = { aade: 'Ο ιδιοκτήτης στο m
  */
 export function missingItems(input: MeetingPackInput): MissingItem[] {
   const out: MissingItem[] = [];
+  // ΤΟ ΑΤΑΚ, Ο ΑΜΑ ΚΑΙ ΤΟ ΠΡΟΣΥΜΠΛΗΡΩΜΕΝΟ Ε2 ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΟΝ ΚΑΤΑΛΟΓΟ (`requirements`),
+  // κριμένα από τα στοιχεία από τον ίδιο μετρητή με την οθόνη (lib/facts/completeness).
+  // Εδώ γράφονταν και δεύτερη φορά, γραμμή ανά ακίνητο: το ίδιο ΑΤΑΚ μετρούσε δύο.
   const r = input.reconciliation;
-  if (r.status === 'not_uploaded') {
-    out.push({ what: `Το προσυμπληρωμένο Ε2 του ${input.year}`, scope: ALL, who: 'Ο ιδιοκτήτης ή ο λογιστής', where: 'myAADE, εφαρμογή Ε1 και Ε2', blocking: true });
-  } else if (r.differences > 0) {
+  if (r.status !== 'not_uploaded' && r.differences > 0) {
     out.push({
       what: `${r.differences === 1 ? 'Μία διαφορά' : `${r.differences} διαφορές`} με το προσυμπληρωμένο Ε2 (φύλλο «Σύγκριση με ΑΑΔΕ»)`,
       scope: ALL, who: 'Ο ιδιοκτήτης με τον λογιστή', where: 'myAADE ή εφαρμογή, όπως λέει κάθε γραμμή', blocking: true,
     });
   }
   for (const p of input.properties) {
-    if (!p.atak) out.push({ what: 'ΑΤΑΚ του ακινήτου', scope: p.name, who: 'Ο ιδιοκτήτης', where: 'Ε9 (περιουσιολόγιο) στο myAADE', blocking: true });
     if (p.tenantWithoutAfm) out.push({ what: 'ΑΦΜ μισθωτή', scope: p.name, who: 'Ο ιδιοκτήτης', where: 'Μισθωτήριο ή δήλωση μίσθωσης', blocking: true });
     if (p.flags.some(f => /^Ακαθάριστο[^:]*: εκτίμηση/.test(f))) {
       out.push({ what: 'Καταχωρημένα μισθώματα ή διαμονές του έτους (το ποσό του Ε2 είναι εκτίμηση)', scope: p.name, who: 'Ο ιδιοκτήτης', where: 'Εφαρμογή, Ενοίκια ή Διαμονές', blocking: true });
@@ -129,7 +129,6 @@ export function missingItems(input: MeetingPackInput): MissingItem[] {
     if (p.unpaid > 0) {
       out.push({ what: `Τεκμηρίωση για τα ανείσπρακτα ${fe(p.unpaid)} (διαταγή πληρωμής ή αγωγή)`, scope: p.name, who: 'Ο ιδιοκτήτης', where: 'Δικηγόρος ή δικαστήριο', blocking: false });
     }
-    if (p.shortTerm && !p.shortTerm.ama) out.push({ what: 'ΑΜΑ (Αριθμός Μητρώου Ακινήτου βραχυχρόνιας)', scope: p.name, who: 'Ο ιδιοκτήτης', where: 'Μητρώο βραχυχρόνιας στο myAADE', blocking: true });
     if (p.shortTerm && p.shortTerm.staysWithoutFee > 0) {
       out.push({ what: `Προμήθεια πλατφόρμας σε ${p.shortTerm.staysWithoutFee === 1 ? 'μία κράτηση' : `${p.shortTerm.staysWithoutFee} κρατήσεις`}`, scope: p.name, who: 'Ο ιδιοκτήτης', where: 'Τιμολόγια της πλατφόρμας', blocking: false });
     }

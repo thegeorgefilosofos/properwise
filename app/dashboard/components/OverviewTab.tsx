@@ -11,6 +11,7 @@ import * as stayStore from '@/lib/data/stays'
 import * as billStore from '@/lib/data/bills'
 import * as rentStore from '@/lib/data/rent'
 import * as checklist from '@/lib/data/checklist'
+import * as calendar from '@/lib/data/calendar'
 import * as tenantStore from '@/lib/data/tenants'
 import * as expenseStore from '@/lib/data/expenses'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
@@ -55,7 +56,7 @@ import OccupancyPanel from './OccupancyPanel'
 import PolicyNotice from './PolicyNotice'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
 import { type IncomeRent } from '@/lib/income/propertyIncome'
-import { yearExpensesOf, expenseParts, EXPENSE_LABELS, INCOME_LABELS, rentIncome, propertyStatus, hostingReceipts, HOSTING_LABELS, YIELD_LABELS, enfiaYear } from '@/lib/facts'
+import { yearExpensesOf, expenseParts, EXPENSE_LABELS, INCOME_LABELS, rentIncome, propertyStatus, hostingReceipts, HOSTING_LABELS, YIELD_LABELS, enfiaYear, closedTaxRefs } from '@/lib/facts'
 import { useEnfiaSettings } from './useEnfia'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 import { useLoad } from '@/app/hooks/useLoad'
@@ -156,6 +157,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const [maint, setMaint] = useState<OblMaint[]>([]);
   /** Πότε καταγράφηκε η υποβολή της δήλωσης μίσθωσης· κλείνει την υποχρέωση. */
   const [leaseDeclaredAt, setLeaseDeclaredAt] = useState<string|null>(null);
+  const [closedTax, setClosedTax] = useState<ReadonlySet<string>>(() => new Set());
   const [tenantFull, setTenantFull] = useState<TenantFull | null>(null);
   /** Οι μισθωτές αυτού του ακινήτου που έφυγαν: η πρόωρη λύση δηλώνεται στην ΑΑΔΕ. */
   const [leavers, setLeavers] = useState<OblTenant[]>([]);
@@ -185,7 +187,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const propIds = useMemo(() => properties.map(p => p.id), [properties]);
 
   const load = useCallback(async () => {
-    const [exp,bil,{ data:tsk },ten,ci,iv,ln,hs,allExp,allTen,{ data:allRc },rp,{ data:mnt },{ data:decl },yr,allYearRents,allStays,{ data:ownerRows }] = await Promise.all([
+    const [exp,bil,{ data:tsk },ten,ci,iv,ln,hs,allExp,allTen,{ data:allRc },rp,{ data:mnt },{ data:decl },yr,allYearRents,allStays,{ data:ownerRows },taxEvents,doneTasks] = await Promise.all([
       expenseStore.ledger(supabase,prop.id,{ userId, from:`${year}-01-01`, columns:'*' }),
       billStore.ofProperty<Bill>(supabase,prop.id,'*',userId),
       // Δεν είναι πια πέντε για μια χωριστή κάρτα: τροφοδοτούν την ΕΝΙΑΙΑ
@@ -223,7 +225,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       profileType === 'professional'
         ? supabase.from('clients').select('id').eq('user_id',userId).eq('type','owner')
         : Promise.resolve({ data: null }),
+      // ΤΙ ΕΚΛΕΙΣΕ ΑΛΛΟΥ. Η δόση ΕΝΦΙΑ που σημειώθηκε πληρωμένη στο Ημερολόγιο ή
+      // στις Εκκρεμότητες δεν ξαναεμφανίζεται εδώ (lib/facts/deadlines).
+      calendar.sourceStates(supabase,prop.id,{ prefix:'tax:' }),
+      checklist.closed<{ note:string|null; status:string|null }>(supabase,prop.id,'note,status',userId),
     ]);
+    setClosedTax(closedTaxRefs(taxEvents, doneTasks));
     setExpenses((exp||[]) as Expense[]); setBills(bil); setTasks(tsk||[]); setTenant(ten?.[0]||null);
     setRentPeriods(rp); setMaint((mnt||[]) as OblMaint[]); setTenantFull(ten?.[0]||null);
     setLeaseDeclaredAt((decl?.[0]?.created_at as string|undefined) ?? null);
@@ -615,9 +622,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // φορές, η ασφάλεια δύο, τα ελλιπή στοιχεία δύο. Τώρα οι πηγές συγχωνεύονται
   // ανά ΘΕΜΑ (lib/home/agenda.ts) και βγαίνει μία σειρά προτεραιότητας.
   const obligations = useMemo(
-    () => computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt }, leavers),
+    () => computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt, closedTaxRefs: closedTax }, leavers),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [prop, tenantFull, maint, todayIso, leaseDeclaredAt, leavers],
+    [prop, tenantFull, maint, todayIso, leaseDeclaredAt, closedTax, leavers],
   );
   // ═══ ΔΥΟ ΛΙΣΤΕΣ «ΤΙ ΕΡΧΕΤΑΙ», Η ΜΙΑ ΚΑΤΩ ΑΠΟ ΤΗΝ ΑΛΛΗ ═══════════════════
   // Η ατζέντα στην κορυφή έλεγε «τι χρειάζεται τώρα». Τρεις ζώνες πιο κάτω, μια

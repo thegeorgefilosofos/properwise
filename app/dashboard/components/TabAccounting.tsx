@@ -19,6 +19,8 @@ import { UNCOLLECTED_RENT_RULE as UNCOLLECTED_RULE } from '@/lib/accounting/doss
 import { readStatus, statusLabel, type StatusRow } from '@/lib/property/status'
 // Το λογιστικό πρόσημο: τυπογραφικό μείον, όχι ενωτικό και ποτέ «−0,00€».
 import { feSigned, fpRate } from '@/lib/core/format'
+import { AsOfNote } from '@/components/AsOfNote'
+import { taxLimitAsOf } from '@/lib/facts/taxLimits'
 import { incomeEntry } from '@/lib/property/visibility'
 import { printAccountingReport, downloadOfficialAccountingReport, type ReconLite } from './accountingReport'
 import ReportBuilder from './ReportBuilder'
@@ -125,11 +127,9 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   const rentThisYear = allRent.some(r=>r.period_year===year) || rent.some(r=>r.period_year===year)
   const staysThisYear = allStays.some(st=>String(st.check_in||'').slice(0,4)===yearKey) || stays.some(st=>String(st.check_in||'').slice(0,4)===yearKey)
   const costsThisYear = expensesYear.length>0 || billsYear.length>0
-  const appReady = (id:string):boolean =>
-    id==='expenses' ? costsThisYear
-    : id==='e2' || id==='lease_contract' ? rentThisYear
-    : id==='e2_short' ? staysThisYear
-    : rentThisYear || staysThisYear || costsThisYear
+  // Ο κανόνας «έτοιμο όταν υπάρχουν τα δεδομένα» ζει στο lib/facts/completeness
+  // (`appItemReady`)· εδώ μόνο του δίνουμε τι έχει η χρήση.
+  const yearData = { rent: rentThisYear, stays: staysThisYear, costs: costsThisYear }
 
   // Πού γράφεται το έσοδο αυτού του ακινήτου, από τη ΜΙΑ πηγή που ξέρει και την
   // ορατότητα των καρτελών. Δοκιμή τα σταυρώνει: ό,τι προτείνεται εδώ είναι
@@ -386,7 +386,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           ξεκινήσει. Τώρα ξεκινά από το «ξεκίνα» και ο κατάλογος ανοίγει με ένα
           πάτημα. */}
       <AccountantDossier userId={userId} state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions}
-        compact={!hasActivity} appReady={appReady} />
+        compact={!hasActivity} yearData={yearData} />
 
       {hasActivity && (<>
       {/* ═══════════════════════════════════════════════════════════════════
@@ -514,15 +514,15 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.6 }}>
             {hy(<>
             {businessMode
-              ? (elpForm==='company' ? <>Σταθερός συντελεστής <strong style={{ color:'var(--text-primary)' }}>22%</strong> στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, αποσβέσεις και τόκους.</> : <>Κλίμακα άρθρου 15 στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, εισφορές ΕΦΚΑ, αποσβέσεις και τόκους.</>)
+              ? (elpForm==='company' ? <>Σταθερός συντελεστής <strong style={{ color:'var(--text-primary)' }}>{fpRate(CORPORATE_TAX_RATE_2026*100)}</strong> στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, αποσβέσεις και τόκους.</> : <>Κλίμακα άρθρου 15 στα καθαρά κέρδη, μετά από εκπιπτόμενα έξοδα, εισφορές ΕΦΚΑ, αποσβέσεις και τόκους.</>)
               : (regime==='individual_longterm'
-                  ? <>Τεκμαρτή έκπτωση 5% και προοδευτική {bracketsLabelForYear(year)}{!businessMode&&myTaxShare!=null&&(consolidation?.count??0)>1?<>, στο σύνολο των ενοικίων σου όπως στο Ε1: ο φόρος εδώ είναι <strong style={{ color:'var(--text-primary)' }}>το μερίδιο αυτού του ακινήτου</strong></>:''}.</>
+                  ? <>Τεκμαρτή έκπτωση {fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} και προοδευτική {bracketsLabelForYear(year)}{!businessMode&&myTaxShare!=null&&(consolidation?.count??0)>1?<>, στο σύνολο των ενοικίων σου όπως στο Ε1: ο φόρος εδώ είναι <strong style={{ color:'var(--text-primary)' }}>το μερίδιο αυτού του ακινήτου</strong></>:''}.</>
                   // ΤΟ ΜΕΡΙΔΙΟ ΛΕΓΕΤΑΙ ΚΑΙ ΕΔΩ. Ο φόρος της βραχυχρόνιας είναι κι
                   // αυτός κομμάτι του ενός φόρου στο σύνολο των ενοικίων: χωρίς
                   // τη φράση, όποιος έκανε 15% επί του φορολογητέου έβρισκε άλλο
                   // ποσό και συμπέραινε ότι ο φόρος είναι λάθος. Τα τέλη έφυγαν
                   // από την πρόταση: δεν είναι μέρος αυτού του φόρου.
-                  : <>Τεκμαρτή έκπτωση 5% και προοδευτική {bracketsLabelForYear(year)} στα μεικτά{myTaxShare!=null&&(consolidation?.count??0)>1?<>, στο σύνολο των ενοικίων σου όπως στο Ε1: ο φόρος εδώ είναι <strong style={{ color:'var(--text-primary)' }}>το μερίδιο αυτού του ακινήτου</strong></>:''}. Οι πραγματικές δαπάνες δεν εκπίπτουν.</>)}
+                  : <>Τεκμαρτή έκπτωση {fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} και προοδευτική {bracketsLabelForYear(year)} στα μεικτά{myTaxShare!=null&&(consolidation?.count??0)>1?<>, στο σύνολο των ενοικίων σου όπως στο Ε1: ο φόρος εδώ είναι <strong style={{ color:'var(--text-primary)' }}>το μερίδιο αυτού του ακινήτου</strong></>:''}. Οι πραγματικές δαπάνες δεν εκπίπτουν.</>)}
             {/* Ο «μέσος συντελεστής» του statement.ts είναι φόρος ΠΡΟΣ ΜΕΙΚΤΑ
                 (effRate = incomeTax / gross), όχι προς το φορολογητέο. Γραμμένα
                 στην ίδια πρόταση, τα δύο μεγέθη διαβάζονταν ως πολλαπλασιασμός
@@ -536,6 +536,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             {provision.advanceTax>0?<> Συν προκαταβολή {eur(provision.advanceTax)}, που πιστώνεται τον επόμενο χρόνο: σύνολο πρώτου έτους {eur(provision.firstYearTotal)}.</>:''}
             </>)}
           </p>
+          {/* Η ΚΛΙΜΑΚΑ ΚΑΙ ΤΟ 5% ΜΕ ΤΟ ΠΟΤΕ ΤΑ ΕΙΔΕ ΑΝΘΡΩΠΟΣ (lib/facts/taxLimits). */}
+          <AsOfNote fact={taxLimitAsOf(businessMode ? 'business' : 'rent')} />
           <div style={{ flex:1 }}/>
           <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'14px 0 0', paddingTop:12, borderTop:'1px solid var(--border-subtle)', fontFamily: T.font.sans, lineHeight:1.55 }}>
             Ενδεικτικά ποσά. Το τελικό ποσό το επιβεβαιώνει ο λογιστής σου ή το εκκαθαριστικό στο <a href={AADE_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color:'var(--accent)', textDecoration:'none' }}>myAADE</a>.

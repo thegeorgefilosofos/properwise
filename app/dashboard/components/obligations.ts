@@ -1,9 +1,11 @@
 import { fe } from '@/lib/core/format';
 import { declarationDeadline } from '@/lib/tax/leaseDeclaration';
 import {
-  taxObligationsHorizon, greekPropertyTaxObligations, taxEventSource, taxObligationNotes,
+  taxEventSource, taxObligationNotes,
   TAX_EVENT_CATEGORY, type PropertyTaxProfile, type TaxObligation,
 } from '@/lib/tax/greekTaxCalendar';
+import { athensToday } from '@/lib/core/time';
+import { nextTaxObligations, daysFrom, DEADLINE_LOOKBACK_DAYS } from '@/lib/facts/deadlines';
 import type { Who } from '@/lib/accounting/dossier';
 import type { StatusRow } from '@/lib/property/status';
 
@@ -80,13 +82,15 @@ export interface OblMaint {
   est_cost?: number | null;
 }
 
-const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const fromISO = (s: string) => new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
-// ΣΤΡΟΓΓΥΛΟΠΟΙΕΙ ΠΡΟΣ ΤΑ ΠΑΝΩ ΚΑΙ ΕΧΕΙ ΛΟΓΟ: μια προθεσμία που λήγει σε
-// δεκαοκτώ ώρες είναι «σε 1 ημέρα», όχι «σε 0». Το γενικό όνομα `daysBetween`
-// έκρυβε ακριβώς αυτό — και δίπλα του, σε άλλο αρχείο, ζούσε ομώνυμη που
-// στρογγυλοποιεί στο πλησιέστερο και θα έδινε άλλη ημέρα.
-const daysUntilDate = (target: Date, from: Date) => Math.ceil((target.getTime() - from.getTime()) / 86400000);
+// ΗΜΕΡΕΣ ΣΤΗΝ ΕΛΛΑΔΑ, ΟΧΙ ΩΡΕΣ ΤΟΥ ΠΕΡΙΗΓΗΤΗ. Εδώ ζούσαν δύο αναγνώσεις
+// ημερομηνίας στην ίδια συνάρτηση: οι θεσμικές ως τοπικά μεσάνυχτα, η ασφάλιση,
+// η μίσθωση και οι συντηρήσεις ως μεσάνυχτα UTC και η απόσταση με `ceil` πάνω
+// σε ώρες. Ασφάλιση που έληγε σήμερα, ιδωμένη στη 01:00, έγραφε «αύριο». Τώρα
+// το σήμερα είναι το `athensToday` και οι ημέρες ημερολογιακές (lib/facts/deadlines).
+const dayOf = (v: string | null | undefined): string => {
+  const s = String(v ?? '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+};
 
 function tone(days: number): OblTone {
   if (days < 0) return 'negative';
@@ -95,10 +99,8 @@ function tone(days: number): OblTone {
   return 'positive';
 }
 
-/** Πόσο πίσω κοιτάμε: μια προθεσμία που μόλις πέρασε πρέπει να φαίνεται, γιατί
- *  συνήθως προλαβαίνεις ακόμη (με πρόστιμο). Ο ίδιος αριθμός κόβει και το τελικό
- *  φιλτράρισμα, ώστε να μη λέει η μία γραμμή άλλα από την άλλη. */
-const LOOKBACK_DAYS = 45;
+/** Πόσο πίσω κοιτάμε: ο ίδιος αριθμός με τη Νόα (lib/facts/deadlines). */
+const LOOKBACK_DAYS = DEADLINE_LOOKBACK_DAYS;
 
 /**
  * Σήματα «έγινε ήδη», για υποχρεώσεις που ΚΛΕΙΝΟΥΝ.
@@ -116,6 +118,12 @@ export interface OblDone {
    * Πηγή: το `activity_log`, action `lease_declaration_submitted`.
    */
   leaseDeclaredAt?: string | null;
+  /**
+   * Οι θεσμικές προθεσμίες (`tax:<id>`) που έκλεισαν στο Ημερολόγιο ή στις
+   * Εκκρεμότητες (`closedTaxRefs`). Η δόση που σημείωσες πληρωμένη εκεί δεν
+   * ξαναεμφανίζεται εδώ· στη θέση της έρχεται η επόμενη.
+   */
+  closedTaxRefs?: ReadonlySet<string>;
 }
 
 export function computeObligations(
@@ -129,65 +137,25 @@ export function computeObligations(
   leavers: readonly OblTenant[] = [],
 ): Obligation[] {
   const out: Obligation[] = [];
-  const push = (o: Omit<Obligation, 'daysUntil' | 'tone' | 'date'> & { date: Date }) => {
-    const du = daysUntilDate(o.date, now);
-    out.push({ ...o, date: iso(o.date), daysUntil: du, tone: tone(du) });
+  const todayISO = athensToday(now);
+  const push = (o: Omit<Obligation, 'daysUntil' | 'tone'>) => {
+    const du = daysFrom(todayISO, o.date);
+    if (du == null) return;
+    out.push({ ...o, daysUntil: du, tone: tone(du) });
   };
 
   // ── ΘΕΣΜΙΚΕΣ: ΜΙΑ ΠΗΓΗ, ΤΟ greekTaxCalendar ──────────────────────────────
-  // Ο ορίζοντας (τρέχον έτος + οι προθεσμίες του επόμενου πριν τον νέο ΕΝΦΙΑ)
-  // ορίζεται ΕΚΕΙ, όχι εδώ, ώστε να μη ξαναδιαφωνήσουν οι δύο οθόνες.
-  const todayISO = iso(now);
-  const cutoff = iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - LOOKBACK_DAYS));
-  // Μία γραμμή ανά ΕΙΔΟΣ υποχρέωσης: η αμέσως επόμενη εμφάνιση. Αλλιώς οι
-  // δώδεκα μηνιαίες δηλώσεις της βραχυχρόνιας θα έσπρωχναν έξω τα υπόλοιπα.
-  //
-  // ΔΙΟΡΘΩΣΗ 02.10.2026. Κρατούσαμε την ΠΡΩΤΗ εμφάνιση μετά το όριο των 45
-  // ημερών πίσω, που είναι ήδη περασμένη. Στις 2.10.2026 η βραχυχρόνια έβλεπε
-  // «Δήλωση διαμονής 20.8.2026» ως εκπρόθεσμη ενώ η 20.10 που έρχεται έμενε
-  // κρυφή. Τώρα προτιμάται η πρώτη με ημερομηνία από σήμερα και μετά· περασμένη
-  // μένει μόνο όταν δεν υπάρχει επόμενη του ίδιου είδους (η πιο πρόσφατη).
-  //
-  // ΚΑΙ ΤΗΝ 1η ΙΑΝΟΥΑΡΙΟΥ. Ο ορίζοντας ξεκινά από την 1.1 του τρέχοντος έτους,
-  // οπότε μια προθεσμία του Δεκεμβρίου που μόλις πέρασε χανόταν μαζί με την
-  // αλλαγή του χρόνου. Τις περσινές μέσα στο ίδιο παράθυρο των 45 ημερών τις
-  // παίρνουμε από την ίδια μηχανή (greekPropertyTaxObligations), όχι από
-  // δεύτερο αντίγραφο.
-  const horizon = taxObligationsHorizon(todayISO, profile);
-  const horizonFrom = `${now.getFullYear()}-01-01`;
-  const seenId = new Set(horizon.map(t => t.id));
-  const pool = [
-    ...greekPropertyTaxObligations(now.getFullYear() - 1, profile)
-      .filter(t => t.date >= cutoff && t.date < horizonFrom && !seenId.has(t.id)),
-    ...horizon,
-  ].filter(t => t.date >= cutoff).sort((a, b) => a.date.localeCompare(b.date));
-  //
-  // ΚΑΙ ΟΙ ΔΕΚΑ ΕΝΔΙΑΜΕΣΕΣ ΔΟΣΕΙΣ ΤΟΥ ΕΝΦΙΑ (03.10.2026). Το ημερολόγιο βγάζει
-  // πλέον τις δόσεις 2 ως 11 ως ένα είδος (`enfia-instalment`), οπότε ο ίδιος
-  // κανόνας «μία γραμμή ανά είδος» τις μαζεύει σε ΜΙΑ γραμμή: την επόμενη
-  // δόση. Στις 2.10.2026 η κάρτα λέει «ΕΝΦΙΑ, 8η δόση, 30.10», όχι «τελευταία
-  // δόση, 26.2.2027» ως πρώτη προθεσμία ΕΝΦΙΑ. Μια ΠΕΡΑΣΜΕΝΗ ενδιάμεση δόση
-  // δεν μένει στη λίστα όπως οι άλλες περασμένες: τη διαδέχεται πάντα η
-  // επόμενη πληρωμή της ίδιας σειράς (η δωδέκατη ή η πρώτη του επόμενου
-  // εκκαθαριστικού), που έχει δική της γραμμή. Αλλιώς τον Φεβρουάριο η 11η
-  // δόση θα έδειχνε «εκπρόθεσμη» για 45 ημέρες δίπλα στη 12η που έρχεται.
-  const pick = new Map<string, TaxObligation>();
-  for (const t of pool) {
-    if (t.kind === 'enfia-instalment' && t.date < todayISO) continue;
-    const cur = pick.get(t.kind);
-    // Πρώτη μελλοντική κερδίζει και δεν αντικαθίσταται. Όσο δεν έχει βρεθεί
-    // μελλοντική, κρατάμε την πιο πρόσφατη περασμένη.
-    if (cur && cur.date >= todayISO) continue;
-    pick.set(t.kind, t);
-  }
-  for (const t of pick.values()) {
+  // Ποια προθεσμία κάθε είδους φαίνεται (η επόμενη ανοιχτή, περασμένη μόνο όταν
+  // δεν έχει επόμενη, οι ενδιάμεσες δόσεις ΕΝΦΙΑ ποτέ περασμένες, οι κλειστές
+  // ποτέ) το αποφασίζει το `nextTaxObligations`, το ίδιο που διαβάζει η Νόα.
+  for (const t of nextTaxObligations(todayISO, profile, done.closedTaxRefs, LOOKBACK_DAYS)) {
     // Το μόνο που προσθέτουμε στο κείμενο είναι ΔΙΚΟ ΤΟΥ δεδομένο: ο ΕΝΦΙΑ που
     // έχει καταχωρήσει ο ίδιος. Καμία εκτίμηση, κανένα δικό μας νούμερο.
     const own = (t.kind.startsWith('enfia') && prop.enfia)
       ? ` Ο ΕΝΦΙΑ που έχεις καταχωρήσει: ${fe(prop.enfia)} τον χρόνο.`
       : '';
     push({
-      id: t.id, source: taxEventSource(t.id), title: t.title, date: fromISO(t.date),
+      id: t.id, source: taxEventSource(t.id), title: t.title, date: t.date,
       category: 'tax', note: taxObligationNotes(t) + own,
       priority: t.confidence === 'statutory' ? 'high' : 'medium',
       who: t.who, confidence: t.confidence, officialUrl: t.official_url,
@@ -197,9 +165,9 @@ export function computeObligations(
   // ── CROSS-TAB: Ασφάλιση (από Ρυθμίσεις) ───────────────────────────────
   // `source: null` — το γεγονός το γράφει η καρτέλα Ασφάλισης, από το ίδιο πεδίο
   // `insurance_expiry`. Δεύτερη εγγραφή εδώ θα ήταν διπλότυπο, όχι πληροφορία.
-  if (prop.insurance_expiry) {
-    const d = new Date(prop.insurance_expiry);
-    if (!isNaN(d.getTime())) push({
+  if (dayOf(prop.insurance_expiry)) {
+    const d = dayOf(prop.insurance_expiry);
+    push({
       id: 'insurance', source: null, date: d, category: 'contract', priority: 'medium', who: 'owner',
       title: `Λήξη ασφάλισης${prop.insurance_company ? `, ${prop.insurance_company}` : ''}`,
       note: 'Ανανέωσε το ασφαλιστήριο πριν τη λήξη για να μη μείνει ακάλυπτο το ακίνητο.',
@@ -209,10 +177,10 @@ export function computeObligations(
   // ── CROSS-TAB: Μίσθωση (από Ενοικιαστή) ───────────────────────────────
   // Το κλειδί είναι ΤΟ ΙΔΙΟ που χρησιμοποιεί ο συγχρονισμός της μίσθωσης
   // (`tenant:<id>:lease_end`, TabTenantHelpers). Ίδια ημερομηνία, ένα γεγονός.
-  if (tenant?.lease_end) {
-    const d = new Date(tenant.lease_end);
-    if (!isNaN(d.getTime())) push({
-      id: 'lease_end', source: tenant.id ? `tenant:${tenant.id}:lease_end` : null,
+  if (dayOf(tenant?.lease_end)) {
+    const d = dayOf(tenant?.lease_end);
+    push({
+      id: 'lease_end', source: tenant?.id ? `tenant:${tenant.id}:lease_end` : null,
       date: d, category: 'contract', priority: 'high', who: 'owner',
       title: 'Λήξη σύμβασης μίσθωσης',
       note: 'Ξεκίνα συζήτηση ανανέωσης ή αναπροσαρμογής ενοικίου ~2 μήνες πριν.',
@@ -227,14 +195,12 @@ export function computeObligations(
   const declaredForThisLease = !!(tenant?.lease_start && done.leaseDeclaredAt
     && done.leaseDeclaredAt.slice(0, 10) >= tenant.lease_start.slice(0, 10));
   if (tenant?.lease_start && !declaredForThisLease) {
-    const start = new Date(tenant.lease_start);
-    if (!isNaN(start.getTime())) {
+    if (dayOf(tenant.lease_start)) {
       // ΜΙΑ πηγή αλήθειας με τη μηχανή της δήλωσης (lib/tax/leaseDeclaration):
       // τέλος του ΕΠΟΜΕΝΟΥ μήνα από την έναρξη — όχι «ίδια μέρα επόμενου μήνα»,
       // που έδειχνε προθεσμία έως και δύο εβδομάδες νωρίτερα από την πραγματική.
-      const dISO = declarationDeadline(tenant.lease_start.slice(0, 10));
-      const deadline = fromISO(dISO);
-      const du = daysUntilDate(deadline, now);
+      const deadline = declarationDeadline(tenant.lease_start.slice(0, 10));
+      const du = daysFrom(todayISO, deadline) ?? 0;
       // Δείξ' το μόνο αν είναι πρόσφατη έναρξη ή επικείμενη προθεσμία.
       if (du >= -30 && du <= 60) push({
         id: 'lease_decl', source: 'obligations:lease_decl', date: deadline,
@@ -263,8 +229,8 @@ export function computeObligations(
     const key = t.id || `${moveOut}:${end}`;
     if (seenLeaver.has(key)) continue;
     seenLeaver.add(key);
-    const deadline = fromISO(declarationDeadline(moveOut));
-    const du = daysUntilDate(deadline, now);
+    const deadline = declarationDeadline(moveOut);
+    const du = daysFrom(todayISO, deadline) ?? 0;
     if (du < -30 || du > 60) continue;
     push({
       id: t.id ? `lease_termination:${t.id}` : 'lease_termination',
@@ -279,9 +245,9 @@ export function computeObligations(
   // Μόνο ό,τι είναι σε καθυστέρηση ή επίκειται (≤60 ημ.) — για να μη γεμίζει το
   // panel. `source: null`: η Απογραφή γράφει η ίδια τις συντηρήσεις στο ημερολόγιο.
   maint.forEach((m, idx) => {
-    const d = new Date(m.next_due);
-    if (isNaN(d.getTime())) return;
-    const du = daysUntilDate(d, now);
+    const d = dayOf(m.next_due);
+    if (!d) return;
+    const du = daysFrom(todayISO, d) ?? 0;
     if (du > 60) return;
     push({
       id: `maint_${idx}`, source: null, date: d, category: 'maintenance', who: 'owner',

@@ -52,7 +52,6 @@ export function Sel({ value, onChange, options, ariaLabel }: { value: string; on
   return <CustomSelect ariaLabel={ariaLabel} value={value} onChange={onChange} options={options} />
 }
 // Σαφής, μη-διφορούμενη ένδειξη χρόνου: ολογράφως «ημέρες» (ποτέ «μ» που μπερδεύεται με μήνες).
-export function relDays(n: number) { const a = Math.abs(n); return a === 0 ? 'σήμερα' : `${a} ${a === 1 ? 'ημέρα' : 'ημέρες'}` }
 
 // Premium, καθαρό φίλτρο-dropdown: portal (δεν κόβεται από overflow), σαφής επιλεγμένη
 // κατάσταση, ήρεμα χρώματα. Αντικαθιστά τα «φθηνά» native selects.

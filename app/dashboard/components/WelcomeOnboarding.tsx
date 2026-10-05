@@ -40,14 +40,14 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, TT, fe, Btn, ChipToggle, useOverlayShell } from '@/components/Theme';
-import { isoDate } from '@/lib/core/time';
+import { athensToday } from '@/lib/core/time';
 import { saved } from '@/components/dbWrite';
 import * as billing from '@/lib/data/billing';
 import { defaultBookkeeping, type LegalForm, type BookKeeping } from '@/lib/accounting/dossier';
 import { demoSummary, demoLedger, demoExpenses } from '@/lib/demo/sample';
 import { expenseAccount } from '@/lib/accounting/journal';
 import { categoryLabel } from '@/lib/expenses/taxonomy';
-import { taxObligationsHorizon } from '@/lib/tax/greekTaxCalendar';
+import { upcomingTaxObligations } from '@/lib/facts/deadlines';
 
 interface Props {
   userId: string;
@@ -83,7 +83,10 @@ function buildCards(today: string): WelcomeCard[] {
   const s = demoSummary(today);
   const ledger = demoLedger(s.year);
   const power = demoExpenses(s.year).find(e => e.category === 'electricity')!;
-  const deadlines = taxObligationsHorizon(today, 'long_term').slice(0, 2);
+  // ΟΙ ΕΠΟΜΕΝΕΣ, ΟΧΙ ΟΙ ΠΡΩΤΕΣ ΤΟΥ ΕΤΟΥΣ. Ο ορίζοντας ξεκινά την 1η Ιανουαρίου:
+  // τον Οκτώβριο η κάρτα έγραφε «οι επόμενες προθεσμίες» πάνω από την τελευταία
+  // δόση ΕΝΦΙΑ του Φεβρουαρίου και το Ε9, που είχαν περάσει.
+  const deadlines = upcomingTaxObligations(today, 'long_term').slice(0, 2);
   const monthlyTax = s.statement.incomeTax / 12;
 
   return [
@@ -141,7 +144,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
   // το προφίλ δεν είχε.
   const [profile, setProfile] = useState<'individual' | 'professional' | null>(null);
   const { panelRef } = useOverlayShell(true, KEEP_OPEN);
-  const [cards] = useState(() => buildCards(isoDate(new Date())));
+  const [cards] = useState(() => buildCards(athensToday()));
 
   const chooseProfile = (v: 'individual' | 'professional') => {
     setProfile(v); onProfile?.(v);

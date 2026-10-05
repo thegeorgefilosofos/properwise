@@ -80,6 +80,18 @@ export async function upcoming<T = Partial<ChecklistItemsRow>>(
   ).order('due_date', { ascending: true, nullsFirst: false }).limit(limit));
 }
 
+/**
+ * Οι κλειστές εκκρεμότητες ενός ακινήτου. Η θεσμική προθεσμία που έκλεισε εδώ
+ * δεν ξαναπροτείνεται ούτε εμφανίζεται στις άλλες οθόνες (`closedTaxRefs`).
+ */
+export async function closed<T = Partial<ChecklistItemsRow>>(
+  db: Db, propertyId: string, columns: string, userId?: string,
+): Promise<T[]> {
+  let q = db.from(TABLE).select(columns).eq('property_id', propertyId).in('status', [...CLOSED_STATUSES]);
+  if (userId) q = q.eq('user_id', userId);
+  return readRows<T>(q);
+}
+
 /** Οι ανοιχτές εκκρεμότητες όλου του χαρτοφυλακίου. */
 export async function openOfUser<T = Partial<ChecklistItemsRow>>(
   db: Db, userId: string, columns: string,
