@@ -22,7 +22,6 @@
 // με θόλωμα). Οι ΣΥΝΔΕΣΜΟΙ της όμως είναι οι ίδιοι παντού, μέσω του `PublicNav`.
 // ═══════════════════════════════════════════════════════════════════════════
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
-import { GUIDES } from './odigos/guides';
 import { PRODUCT_NAME, LINKEDIN_URL, INSTAGRAM_URL } from '@/lib/core/site';
 import { jsonLdScript } from '@/lib/core/jsonLd';
 import { BrandLogo } from '@/components/BrandMark';
@@ -204,7 +203,7 @@ export function PublicFooter() {
               να διαβάζεται οριζόντια. */}
           {/* ΚΑΙ Ο ΚΟΜΒΟΣ ΕΧΕΙ ΣΥΝΔΕΣΜΟ (05/10/2026): τέσσερις από τους δέκα
               φαίνονταν εδώ και κανένας δρόμος προς τους άλλους έξι. */}
-          <FootCol label="Οδηγοί" links={[['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'], ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'], ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'], ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026'], ['/odigos', `Όλοι οι οδηγοί (${GUIDES.length})`]]} />
+          <FootCol label="Οδηγοί" links={[['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'], ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'], ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'], ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026'], ['/odigos', 'Όλοι οι οδηγοί']]} />
           {/* ΚΑΜΙΑ ΔΗΜΟΣΙΑ ΣΕΛΙΔΑ ΔΕΝ ΕΔΙΝΕ ΤΡΟΠΟ ΝΑ ΜΑΣ ΜΙΛΗΣΕΙ ΚΑΝΕΙΣ. Η
               διεύθυνση υποστήριξης υπήρχε στο μητρώο νομικής ταυτότητας και
               δεν την τύπωνε καμία σελίδα εκτός από το «Ποιοι είμαστε». Ο
