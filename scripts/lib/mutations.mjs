@@ -516,7 +516,7 @@ export const MUTATIONS = {
 
   // ── Οι τελευταίοι: μητρώα, CI και δημόσιες διαδρομές ──────────────────
   'single-source': { add: 'lib/core/__mut__.ts', content: 'export const parseAmount = (v: string) => Number(v.replace(",", "."))\n' },
-  'landing-stats': { file: 'app/page.tsx', from: "{ n: '11', u: 'πάροχοι ρεύματος'", to: "{ n: '12', u: 'πάροχοι ρεύματος'" },
+  'landing-stats': { file: 'app/page.tsx', from: "{ n: '13', u: 'πάροχοι ρεύματος'", to: "{ n: '14', u: 'πάροχοι ρεύματος'" },
   'public-routes': { file: 'proxy.ts', from: '"/kathari-apodosi",', to: '' },
   // Μια συνάρτηση cron που κρίνει μόνη της το μυστικό, όπως το ical-sync που
   // γύριζε 401 σε κάθε εκτέλεση επί μήνες.
