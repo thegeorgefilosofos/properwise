@@ -29,9 +29,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import {
-  taxObligationsHorizon, taxObligationNotes,
+  taxObligationNotes,
   type PropertyTaxProfile, type TaxObligation, type TaxObligationKind,
 } from '@/lib/tax/greekTaxCalendar'
+import { nextTaxObligations } from '@/lib/facts/deadlines'
 import { actionableUpdatesFor, type UpdateAudience } from '@/lib/accounting/updates2026'
 import { WHO_LABEL, type Who } from '@/lib/accounting/dossier'
 import type { FieldContext } from '@/lib/property/fields'
@@ -116,19 +117,20 @@ function draftOfTaxObligation(o: TaxObligation): ChecklistTaskDraft {
  * ΓΙΑΤΙ ΜΟΝΟ Η ΕΠΟΜΕΝΗ ΚΑΘΕ ΕΙΔΟΥΣ: ο κυλιόμενος ορίζοντας του ημερολογίου
  * περιέχει, για βραχυχρόνια, δώδεκα δηλώσεις διαμονής και δώδεκα αποδόσεις
  * τέλους ανά έτος. Γραμμένες όλες μαζί, η λίστα του χρήστη γίνεται τριάντα
- * γραμμές που δεν διαβάζει κανείς. Μπαίνει η ΕΠΟΜΕΝΗ κάθε είδους· όταν
- * ολοκληρωθεί, το ημερολόγιο δίνει την επόμενη.
+ * γραμμές που δεν διαβάζει κανείς. Μπαίνει η ΕΠΟΜΕΝΗ ΑΝΟΙΧΤΗ κάθε είδους.
+ *
+ * Ο ΚΑΝΟΝΑΣ ΕΙΝΑΙ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ, ΟΧΙ ΔΕΥΤΕΡΟ ΑΝΤΙΓΡΑΦΟ (lib/facts/deadlines,
+ * `nextTaxObligations`), χωρίς τις περασμένες: περασμένη προθεσμία δεν είναι
+ * νέα εκκρεμότητα. Η κλειστή (`closed`) αφήνει να προταθεί αμέσως η επόμενη
+ * του ίδιου είδους: πριν, με πληρωμένη την 8η δόση ΕΝΦΙΑ, η 9η δεν
+ * προτεινόταν ως τη λήξη της 8ης.
  */
-export function taxTaskDrafts(today: string, profile: PropertyTaxProfile): ChecklistTaskDraft[] {
-  const seen = new Set<TaxObligationKind>()
-  const out: ChecklistTaskDraft[] = []
-  for (const o of taxObligationsHorizon(today, profile)) {
-    if (o.date < today) continue          // περασμένη προθεσμία δεν είναι εκκρεμότητα
-    if (seen.has(o.kind)) continue        // ήδη ταξινομημένες κατά ημερομηνία → η πρώτη είναι η επόμενη
-    seen.add(o.kind)
-    out.push(draftOfTaxObligation(o))
-  }
-  return out
+export function taxTaskDrafts(
+  today: string, profile: PropertyTaxProfile, closed: ReadonlySet<string> = new Set(),
+): ChecklistTaskDraft[] {
+  return nextTaxObligations(today, profile, closed)
+    .filter(o => o.date >= today)
+    .map(draftOfTaxObligation)
 }
 
 // ── Αλλαγές νομοθεσίας ─────────────────────────────────────────────────────
@@ -184,8 +186,10 @@ export function lawTaskDrafts(ctx: FieldContext): ChecklistTaskDraft[] {
 }
 
 /** Όλες οι παραγόμενες υποχρεώσεις: θεσμικές προθεσμίες + αλλαγές νομοθεσίας. */
-export function obligationDrafts(today: string, profile: PropertyTaxProfile, ctx: FieldContext): ChecklistTaskDraft[] {
-  return [...taxTaskDrafts(today, profile), ...lawTaskDrafts(ctx)]
+export function obligationDrafts(
+  today: string, profile: PropertyTaxProfile, ctx: FieldContext, closed: ReadonlySet<string> = new Set(),
+): ChecklistTaskDraft[] {
+  return [...taxTaskDrafts(today, profile, closed), ...lawTaskDrafts(ctx)]
 }
 
 /** Όσες δεν υπάρχουν ήδη. Το κλειδί είναι το `ref`, όχι η περιγραφή: αν αλλάξει

@@ -4931,6 +4931,11 @@ body:has(.po-tool-page) .po-cookie {
    τον κόμβο (`.og-card`), δύο στη σειρά, μία στο τηλέφωνο. */
 .gd-related { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 640px) { .gd-related { grid-template-columns: minmax(0, 1fr); } }
+/* ΤΡΕΙΣ ΟΔΗΓΟΙ ΣΕ ΔΥΟ ΣΤΗΛΕΣ ΑΦΗΝΑΝ ΤΟΝ ΤΡΙΤΟ ΜΟΝΟ ΤΟΥ (05.10.2026), με κενό
+   όσο μία κάρτα δεξιά του: σαρωτής διάταξης, /ypologismos-enfia και
+   /vraxyxronia-i-makroxronia στα 768 και 1440. Ο τελευταίος μονός πιάνει όλη
+   τη σειρά, όπως στα άλλα πλέγματα της εφαρμογής. */
+@media (min-width: 641px) { .gd-related > li:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 .gd-related > li { display: flex; }
 .gd-related-card {
   flex: 1; padding: 14px 16px; border-radius: 14px; text-decoration: none;
@@ -5355,7 +5360,14 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 }
 .po-tool-fields > .po-tf-span2 { grid-column: span 2; }
 .po-tool-fields > .po-tf-row { grid-column: 1 / -1; }
-@media (max-width: 820px) { .po-tool-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 820px) {
+  .po-tool-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Τρία πεδία σε δύο στήλες άφηναν το τρίτο μόνο του (σαρωτής διάταξης,
+     /kathari-apodosi στα 768): ο τελευταίος μονός πιάνει όλη τη σειρά. Μόνο
+     σε πλέγμα χωρίς πεδία που ζητούν χώρο, γιατί εκεί η μέτρηση των θέσεων
+     δεν είναι πια ένα προς ένα. */
+  .po-tool-fields:not(:has(> .po-tf-span2, > .po-tf-row)) > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 @media (max-width: 480px) {
   .po-tool-fields:not(.po-tf-xs2) { grid-template-columns: minmax(0, 1fr); }
   .po-tool-fields:not(.po-tf-xs2) > .po-tf-span2 { grid-column: auto; }

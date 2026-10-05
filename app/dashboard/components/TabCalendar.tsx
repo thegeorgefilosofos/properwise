@@ -68,6 +68,7 @@ import { usePointerDrag, DaySheet, MonthView } from './calendar/MonthView'
 import { AutoPullPanel } from './calendar/AutoPullPanel'
 import { EventModal, ScopeModal } from './calendar/EventModal'
 import { SubscribeModal } from './calendar/SubscribeModal'
+import { dueTextStart } from '@/lib/facts/deadlines'
 
 // Οποιος αλλάξει τον διακόπτη σε ΑΛΛΗ καρτέλα ή σε άλλη οθόνη, φτάνει εδώ.
 function subscribeNotify(onChange: () => void): () => void {
@@ -458,7 +459,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   function printCalendar(){
     const up=[...filtered].filter(e=>e.status!=='paid').sort((a,b)=>a.event_date.localeCompare(b.event_date))
     const fmtD=(s:string)=>localDay(s).toLocaleDateString('el-GR',{weekday:'short',day:'2-digit',month:'long',year:'numeric'})
-    const whenText=(d:number)=>d<0?`${Math.abs(d)} ${Math.abs(d)===1?'ημέρα':'ημέρες'} πριν`:d===0?'Σήμερα':`σε ${d} ${d===1?'ημέρα':'ημέρες'}`
+    const whenText=(d:number)=>dueTextStart(d)??''
     const rows=up.length?up.map(e=>{
       const cat=CATEGORIES[e.category]; const d=daysUntil(e.event_date)
       // Ληξιπρόθεσμο και σημερινό: έντονα. Τα υπόλοιπα: κανονικό βάρος.
@@ -545,8 +546,14 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                     <p style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>{e.title}</p>
                     <p style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'2px 0 0' }}>{fmt(e.event_date)}{e.event_time?` · ${e.event_time}`:''}</p>
                   </div>
-                  {e.amount!=null&&<span style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-secondary)' }}>{fe(e.amount)}</span>}
-                  <span style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)', flexShrink:0 }}>πριν {late===1?'1 ημέρα':`${late} ημέρες`}</span>
+                  {/* ΠΟΣΟ ΚΑΙ ΑΠΟΣΤΑΣΗ ΣΕ ΜΙΑ ΣΤΗΛΗ (05.10.2026). Δίπλα δίπλα, με την
+                      ενιαία διατύπωση «Πριν από 36 ημέρες», στα 320 έσφιγγαν τη στήλη
+                      του τίτλου κάτω από το πλάτος της ημερομηνίας και αυτή έπεφτε
+                      πάνω στο ποσό. */}
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0, textAlign:'right' }}>
+                    {e.amount!=null&&<span style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-secondary)' }}>{fe(e.amount)}</span>}
+                    <span style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)' }}>{dueTextStart(-late)}</span>
+                  </div>
                 </button>
               )})}
             </div>

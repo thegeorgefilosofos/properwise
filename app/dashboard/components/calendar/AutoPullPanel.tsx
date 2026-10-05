@@ -23,9 +23,9 @@ import { T, fe, CloseButton } from '@/components/Theme'
 import { Check, FileText, User, Receipt, Euro, Wrench, RefreshCw, TrendingUp, Info } from 'lucide-react'
 import { buildBookingEvents } from '@/lib/calendar/bookingEvents'
 import {
-  taxObligationsHorizon, taxObligationToEvent, taxProfileOf, AADE_CALENDAR_URL,
-  TAXHEAVEN_CALENDAR_URL,
+  taxProfileOf, AADE_CALENDAR_URL, TAXHEAVEN_CALENDAR_URL,
 } from '@/lib/tax/greekTaxCalendar'
+import { taxEventsToWrite, upcomingTaxObligations } from '@/lib/facts/deadlines'
 import { annuityMonthly } from '@/lib/loans/recommend'
 import { syncTenantSchedule } from '../TabTenantHelpers'
 import { notifyError } from '@/components/Toast'
@@ -70,7 +70,8 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
       ])
       const prof=taxProfileOf(prop)
       const m=prof==='short_term'?'short_term':prof==='long_term'?'long_term':null
-      const tax=taxObligationsHorizon(todayStr(),prof).length
+      // Όσες θα γραφτούν: από σήμερα και μετά, όπως ο ίδιος ο συγχρονισμός.
+      const tax=upcomingTaxObligations(todayStr(),prof).length
       setMode(m); setCounts({bills,maintenance,leases,bookings,tax,loans})
       try{ const ls=localStorage.getItem(`cal_sync_${propertyId}`); if(ls)setLastSync(ls) }catch{}
     })()
@@ -207,9 +208,11 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
     // Ο ορίζοντας και οι ημερομηνίες ορίζονται ΜΟΝΟ στο greekTaxCalendar. Το κλειδί
     // `tax:<id>` είναι το ίδιο που γράφει και η κάρτα «Υποχρεώσεις & Προθεσμίες»
     // της Επισκόπησης, άρα το δεύτερο πάτημα αντικαθιστά — δεν διπλογράφει.
+    // ΚΑΙ ΚΡΑΤΑ ΟΣΑ ΕΧΕΙΣ ΣΗΜΕΙΩΣΕΙ. Περασμένες δεν γεννιούνται ως εκκρεμείς και
+    // ό,τι σημείωσες πληρωμένο μένει πληρωμένο (lib/facts/deadlines, `taxEventsToWrite`).
     if(k==='tax'){
-      const obs=taxObligationsHorizon(todayStr(),taxProfile)
-      const rows=obs.map(o=>taxObligationToEvent(o))
+      const had=await calendar.sourceStates(supabase,propertyId,{prefix:'tax:'})
+      const rows=taxEventsToWrite(todayStr(),taxProfile,had)
       await must(calendar.replaceSource(supabase,scope,{prefix:'tax:'},rows))
       return rows.length
     }
@@ -323,7 +326,7 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
       {hasTax&&(
         <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginTop:12, fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans }}>
           <Info size={13} style={{ color:'var(--accent)' }}/>
-          Οι φορολογικές προθεσμίες βασίζονται στο πλαίσιο της ΑΑΔΕ (έκδοση, πρώτη και τελευταία δόση). Διπλός έλεγχος:
+          Οι φορολογικές προθεσμίες βασίζονται στο πλαίσιο της ΑΑΔΕ (έκδοση και δόσεις ΕΝΦΙΑ, δηλώσεις). Διπλός έλεγχος:
           <a href={AADE_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color:'var(--accent)', textDecoration:'none' }}>myAADE</a>·
           <a href={TAXHEAVEN_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color:'var(--accent)', textDecoration:'none' }}>taxheaven</a>
         </div>

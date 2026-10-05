@@ -10,6 +10,7 @@ import * as rentStore from '@/lib/data/rent';
 import * as stayStore from '@/lib/data/stays';
 import { propertyIncome, type IncomeRent } from '@/lib/income/propertyIncome';
 import { taxpayerRentSources, ownershipPctOf, wholePropertyTax, type OtherPropertyIncome } from '@/lib/accounting/taxpayerIncome';
+import { taxpayerScope } from '@/lib/facts/taxpayer';
 import type { StayAmountLike } from '@/lib/clients/stayAmounts';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
@@ -304,15 +305,15 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
       const res = consolidateRentTax(taxpayerRentSources({
         props: properties,
         current: { id: p.id, annualRent: rentOf(p) * 12, shortTerm: readStatus(p) === 'rent_short', rentsPaidViaBank: agg[p.id]?.viaBank ?? true },
-        ownerClientIds: taxIn.owners, income: taxIn.income, year: taxYear, today: athensToday(),
+        ownerClientIds: taxpayerScope(profileType, taxIn.owners), income: taxIn.income, year: taxYear, today: athensToday(),
       }), undefined, taxYear);
       out.set(p.id, wholePropertyTax(taxShareOf(res, p.id), ownershipPctOf(p)));
     }
     return out;
-  }, [properties, rentOf, agg, taxIn, taxYear]);
+  }, [properties, rentOf, agg, taxIn, taxYear, profileType]);
   // Το σύνολο του λογαριασμού, για τη σημείωση της εξαγωγής. Με ιδιοκτήτες
   // πελάτες δεν υπάρχει ένα σύνολο: η σημείωση το λέει χωρίς ποσό.
-  const oneTaxpayer = taxIn.owners.size === 0;
+  const oneTaxpayer = taxpayerScope(profileType, taxIn.owners) === null;
   const portfolioTax = useMemo(() => consolidateRentTax(properties.map(p => ({
     id: p.id,
     annualRent: rentOf(p) * 12 * ownershipPctOf(p) / 100,

@@ -61,6 +61,8 @@ import { ReceiptScanModal } from './checklist/ReceiptScanModal'
 import { exportChecklistExcel, exportChecklistPDF, exportHandoverProtocol } from './checklist/reports'
 import { useLoad } from '@/app/hooks/useLoad'
 import { toggleIn } from '@/lib/core/toggleSet'
+import { propertyStatus } from '@/lib/facts/status';
+import { closedTaxRefs } from '@/lib/facts/deadlines';
 
 const supabase = createSupabaseClient()
 
@@ -257,12 +259,12 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   // ερμηνεία του `rental_mode` εδώ μέσα.
   const taxProfile: PropertyTaxProfile = useMemo(() => taxProfileOf(statusRow), [statusRow])
   const fieldCtx: FieldContext = useMemo(() => ({
-    status: statusRow ? (taxProfile === 'short_term' ? 'rent_short' : taxProfile === 'long_term' ? 'rent_long' : (statusRow.status_detail === 'own_use' ? 'own_use' : statusRow.status_detail === 'renovation' ? 'renovation' : statusRow.status_detail === 'for_sale' ? 'for_sale' : statusRow.status_detail === 'disputed' ? 'disputed' : 'vacant')) : 'vacant',
+    status: propertyStatus(statusRow),
     business: HAS_BUSINESS.has(legalForm),
     doubleEntry: bookkeeping === 'double_entry',
     propertyCount,
     hasLoan: loanPayment > 0,
-  }), [statusRow, taxProfile, legalForm, bookkeeping, propertyCount, loanPayment])
+  }), [statusRow, legalForm, bookkeeping, propertyCount, loanPayment])
 
   // Όσες υποχρεώσεις ΔΕΝ υπάρχουν ήδη στη λίστα. Το κλειδί είναι το `ref`, ώστε
   // δεύτερο πάτημα να μην γράφει διπλότυπα ούτε όταν αλλάξει η διατύπωση.
@@ -277,15 +279,16 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   // Η λύση δεν είναι να διαγραφεί το ένα: και οι δύο οθόνες έχουν λόγο να τις
   // δείχνουν. Είναι να μη ΠΡΟΤΕΙΝΕΤΑΙ ξανά ό,τι υπάρχει ήδη αλλού. Το «Λείπουν
   // Ν υποχρεώσεις» μετρά πλέον μόνο όσες δεν έχει ούτε το ημερολόγιο.
-  const [calendarTaxRefs, setCalendarTaxRefs] = useState<string[]>([])
+  const [calendarTax, setCalendarTax] = useState<{ source: string; status: string | null }[]>([])
   useEffect(() => {
     if (!propertyId) return
     let alive = true
     ;(async () => {
       // Το κλειδί είναι ΤΟ ΙΔΙΟ και στους δύο πίνακες: `tax:<id>`. Το `source`
       // του γεγονότος μπαίνει αυτούσιο· κόβοντας το πρόθεμα δεν θα ταίριαζε ποτέ.
-      const refs = await calendar.sources(supabase, propertyId, { prefix: 'tax:' })
-      if (alive) setCalendarTaxRefs(refs)
+      // Και η ΚΑΤΑΣΤΑΣΗ: δόση πληρωμένη στο Ημερολόγιο είναι κλειστή και εδώ.
+      const rows = await calendar.sourceStates(supabase, propertyId, { prefix: 'tax:' })
+      if (alive) setCalendarTax(rows)
     })()
     return () => { alive = false }
   }, [propertyId])
@@ -294,10 +297,11 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
     const today = athensToday()
     const have = [
       ...items.map(i => i._ref).filter((r): r is string => !!r),
-      ...calendarTaxRefs,
+      ...calendarTax.map(e => e.source),
     ]
-    return pendingDrafts(obligationDrafts(today, taxProfile, fieldCtx), have)
-  }, [items, taxProfile, fieldCtx, calendarTaxRefs])
+    const closed = closedTaxRefs(calendarTax, items.map(i => ({ ref: i._ref, status: i.status, completed: i.completed })))
+    return pendingDrafts(obligationDrafts(today, taxProfile, fieldCtx, closed), have)
+  }, [items, taxProfile, fieldCtx, calendarTax])
   /** Η πρώτη προθεσμία που λείπει. Ένα όνομα και μια ημερομηνία πείθουν· ένα
    *  σκέτο πλήθος δεν λέει τίποτα σε κανέναν. */
   const nextObligation = useMemo(

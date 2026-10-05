@@ -13,6 +13,8 @@
 import { fd } from '@/components/tokens'
 import { addMonths as addCalendarMonths } from '@/lib/loans/progress'
 import type { ChecklistItemsRow } from '@/lib/supabase/tables'
+import { athensToday } from '@/lib/core/time'
+import { isOverdue as overdueOn } from '@/lib/facts/deadlines'
 import {
   CATEGORIES, PRIORITIES, STATUSES,
   type ChecklistItem, type Comment, type ItemReceipt, type Priority, type Recurring, type Status, type SubTask,
@@ -20,9 +22,12 @@ import {
 import type { Who } from '@/lib/accounting/dossier'
 
 export const fmtDate = (d: string | null) => (d ? fd(d) : '')
-export function isOverdue(due: string | null, status: string) {
-  if (!due || status === 'done' || status === 'skipped') return false
-  return new Date(due) < new Date()
+// ΛΗΞΙΠΡΟΘΕΣΜΗ ΣΤΗΝ ΕΛΛΑΔΑ, ΟΧΙ ΣΤΟ UTC. Εδώ γινόταν `new Date(due) < new Date()`:
+// μεσάνυχτα UTC απέναντι στο τώρα. Εργασία με προθεσμία σήμερα γινόταν
+// «ληξιπρόθεσμη» από τις 03:00 και η γραμμή έγραφε «έληξε πριν από σήμερα». Ο
+// κανόνας είναι πλέον ο ένας της εφαρμογής (lib/facts/deadlines).
+export function isOverdue(due: string | null, status: string, today: string = athensToday()) {
+  return overdueOn(due, today, status)
 }
 export { daysUntilOrNull as daysUntil } from '@/lib/core/time'
 

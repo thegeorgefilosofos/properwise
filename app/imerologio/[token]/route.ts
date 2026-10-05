@@ -87,7 +87,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 
   const [props, events, tasks, unpaidBills, dues] = await Promise.all([
     properties.listWithError<DeadlineProperty>(db, userId, { columns: 'id,name' }),
-    calendar.ofUserInRangeWithError<DeadlineEvent>(db, userId, from, to, 'id,property_id,title,event_date,amount,notes,status'),
+    calendar.ofUserInRangeWithError<DeadlineEvent>(db, userId, from, to, 'id,property_id,title,event_date,amount,notes,status,source'),
     checklist.openOfUserWithError<DeadlineTask>(db, userId, 'id,property_id,description,due_date,note'),
     // ΤΟ ΑΠΛΗΡΩΤΟ ΚΑΙ ΜΕΣΑ ΣΤΟ ΠΑΡΑΘΥΡΟ ΤΟ ΚΡΙΝΕΙ Η ΒΑΣΗ. Ο χάρτης παρακάτω
     // ξαναελέγχει τα ίδια — και σωστά, γιατί είναι καθαρή συνάρτηση και δεν

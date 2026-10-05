@@ -6,7 +6,8 @@
 // λίστα απαντά στο «τι υπάρχει».
 // ═══════════════════════════════════════════════════════════════════════════
 import { T, pressable } from '@/components/Theme'
-import { relDays, PriorityCue } from './Bits'
+import { PriorityCue } from './Bits'
+import { dueText } from '@/lib/facts/deadlines'
 import { fmtDate, isOverdue, daysUntil, getCat } from './calc'
 import type { ChecklistItem } from './model'
 
@@ -38,8 +39,8 @@ export function TimelineView({ items, onEdit }: { items: ChecklistItem[]; onEdit
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: overdue ? 'var(--negative)' : due !== null && due <= 3 && due >= 0 ? 'var(--warning)' : 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fmtDate(item.due_date)}</div>
-                    {overdue && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--negative)' }}>πριν {relDays(due || 0)}</div>}
-                    {!overdue && due !== null && due <= 7 && due >= 0 && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)' }}>{due === 0 ? 'σήμερα' : 'σε ' + relDays(due)}</div>}
+                    {overdue && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--negative)' }}>{dueText(due ?? 0)}</div>}
+                    {!overdue && due !== null && due <= 7 && due >= 0 && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)' }}>{dueText(due)}</div>}
                   </div>
                 </div>
               </div>

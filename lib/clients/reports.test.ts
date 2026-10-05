@@ -11,7 +11,7 @@
 import { execFileSync } from 'node:child_process'
 import {
   revenueByChannel, revenueByMonth, nightsInRange, nightsByMonth,
-  yearOccupancy, occupancyFromMonths, totals, trailingStays, staysOfYearToDate, type ReportStay,
+  yearOccupancy, occupancyFromMonths, totals, trailingStays, type ReportStay,
 } from './reports'
 import { nightsByMonthForYear } from '../tax/shortTermTax'
 
@@ -242,20 +242,8 @@ if (!process.env.PO_TZ_CHILD) {
 }
 
 // ═══ «ΩΣ ΣΗΜΕΡΑ»: Η ΚΡΑΤΗΣΗ ΠΟΥ ΔΕΝ ΞΕΚΙΝΗΣΕ ΔΕΝ ΕΙΝΑΙ ΕΣΟΔΟ ═════════════════
-// Το «Έσοδα 2026 ως σήμερα» του Χαρτοφυλακίου μετρούσε και την κράτηση του
-// Δεκεμβρίου στις 28 Σεπτεμβρίου.
-{
-  const ys = [
-    stay({ check_in: '2026-06-01', check_out: '2026-06-08', total: 700 }),
-    stay({ check_in: '2026-09-28', check_out: '2026-10-02', total: 400 }),
-    stay({ check_in: '2026-12-20', check_out: '2026-12-27', total: 900 }),
-    stay({ check_in: '2025-12-30', check_out: '2026-01-03', total: 300 }),
-  ]
-  const td = staysOfYearToDate(ys, 2026, '2026-09-28')
-  eq('ως σήμερα: η μελλοντική κράτηση μένει έξω, η σημερινή άφιξη μετρά', td.map(s => s.total), [700, 400])
-  eq('ως σήμερα: άλλο έτος μένει έξω', staysOfYearToDate(ys, 2025, '2026-09-28').map(s => s.total), [300])
-  eq('ως σήμερα: τα έσοδα δεν περιέχουν τα 900€ του Δεκεμβρίου', totals(td, '2026-09-28').revenue, 1100)
-}
+// Ο κανόνας «ως σήμερα» των διαμονών ζει πλέον στο lib/facts/hosting.ts
+// (hostingReceipts) και ελέγχεται στο lib/facts/facts.test.ts.
 
 console.log(fail === 0 ? `✓ reports: ${pass} έλεγχοι πέρασαν` : `✗ reports: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

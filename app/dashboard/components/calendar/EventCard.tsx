@@ -19,6 +19,7 @@ import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { downloadFile } from '@/lib/core/download'
 import { type CalEvent, CATEGORIES, TAX_META, fmt, fmtShort, daysUntil, isOverdue } from './model'
 import { Tooltip, StatusDot } from './Bits'
+import { dueTextStart } from '@/lib/facts/deadlines'
 
 // Μετατροπή γεγονότος σε είσοδο για τους συνδέσμους εξωτερικών ημερολογίων.
 function toCalInput(e: CalEvent) {
@@ -116,7 +117,6 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
   // Το έτος του γεγονότος, όχι το τρέχον: η δόση ενός εκδοθέντος ΕΝΦΙΑ είναι «του νόμου».
   const taxInfo = taxKind ? (taxObligationOfEventSource(event.source) ?? TAX_META[taxKind]) : null
   const due     = daysUntil(event.event_date)
-  const relLbl = (n:number) => { const a=Math.abs(n); return a===1?'1 ημέρα':`${a} ημέρες` }
   const [menuOpen,setMenuOpen]=useState(false)
   // ═══ ΤΟ ΕΚΠΡΟΘΕΣΜΟ ΔΕΝ ΧΡΕΙΑΖΕΤΑΙ ΚΟΚΚΙΝΟ ══════════════════════════════════
   // Η κάρτα βαφόταν κόκκινη σε περίγραμμα και σε λωρίδα. Με τέσσερα εκπρόθεσμα
@@ -206,7 +206,7 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
             κάτω: σε μία σειρά έκοβε τον τίτλο του γεγονότος στα 390. */}
         {overdue && <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>Ληξιπρόθεσμο</span>}
         <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:due===0?600:400, color:due===0?'var(--text-primary)':'var(--text-secondary)' }}>
-          {overdue?`πριν ${relLbl(due)}`:due===0?'Σήμερα':due===1?'Αύριο':(sameMonth?fmtShort:fmt)(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
+          {overdue||due===0||due===1?dueTextStart(due):(sameMonth?fmtShort:fmt)(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
         </span>
         {!bulkMode&&(
           /* ΚΡΥΒΕΤΑΙ Η ΟΨΗ, ΟΧΙ Η ΕΝΕΡΓΕΙΑ. Με `opacity: 0` από αιώρηση σε

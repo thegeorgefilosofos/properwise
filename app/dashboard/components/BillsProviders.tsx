@@ -7,6 +7,8 @@ import { usePropertyHeating } from './usePropertyHeating';
 import { HEATING_TYPES, isCentralHeating } from '@/lib/property/heating';
 import { T, fe, feRate, fieldRow, fixedCols, fp, Spinner, pressable } from '@/components/Theme';
 import { waterMonthly, waterMonthlyText } from '@/lib/energy/tariff';
+import { AsOfNote } from '@/components/AsOfNote';
+import { telecomAsOf } from '@/lib/facts/prices';
 
 const INTERNET_PROVIDERS = [
   { value: 'cosmote',   label: 'Telekom',   url: 'https://www.telekom.gr',    color: '#e20074' },
@@ -241,11 +243,15 @@ const SECURITY_COMPANIES = [
   { value: 'other',     label: 'Άλλη',      url: '',                              color: '#64748b' },
 ];
 
+// ΟΙ ΜΕΣΟΙ ΟΡΟΙ ΔΕΝ ΕΧΟΥΝ ΔΗΜΟΣΙΕΥΜΕΝΗ ΠΗΓΗ ΚΑΙ ΤΟ ΛΕΝΕ. Έγραφαν «Μέσος Όρος
+// Ελλάδας» σαν στατιστική υπηρεσίας· είναι εκτίμηση της εφαρμογής, χωρίς
+// ημερομηνία ελέγχου στον κατάλογο τιμών (lib/facts/prices). Η λέξη «εκτίμηση»
+// μένει μέχρι να μπει πηγή με ημερομηνία.
 const BENCHMARKS = {
-  internet: { avg: 22.50, label: 'Μέσος Όρος Ελλάδας'              },
-  water:    { avg: 12.00, label: 'Μέσος Όρος Αττικής, ~24€ / 2 μήνες' },
-  heating:  { avg: 70.00, label: 'Μέσος Όρος χειμώνα'               },
-  security: { avg: 18.00, label: 'Μέσος Όρος αγοράς'                },
+  internet: { avg: 22.50, label: 'Μέσος όρος Ελλάδας, εκτίμηση'              },
+  water:    { avg: 12.00, label: 'Μέσος όρος Αττικής, ~24€ / 2 μήνες, εκτίμηση' },
+  heating:  { avg: 70.00, label: 'Μέσος όρος χειμώνα, εκτίμηση'               },
+  security: { avg: 18.00, label: 'Μέσος όρος αγοράς, εκτίμηση'                },
 };
 
 const DEFAULTS = {
@@ -545,6 +551,10 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                 </table>
                </div>
               </div>
+              {/* ΠΟΤΕ ΚΑΙ ΑΠΟ ΠΟΥ, ΑΝΑ ΠΑΡΟΧΟ (lib/facts/prices). Οι τιμές του πίνακα
+                  δεν είχαν ούτε ημερομηνία ούτε πηγή στην οθόνη. Ο πάροχος που δεν
+                  έχει ελεγχθεί με ημερομηνία το λέει, δεν δανείζεται άλλου. */}
+              <AsOfNote fact={telecomAsOf(s.internetProvider, provData?.label)} />
             </div>
           )}
           {benchmarkBar(internetCost, BENCHMARKS.internet.avg, BENCHMARKS.internet.label)}

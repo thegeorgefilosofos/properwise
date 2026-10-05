@@ -13,6 +13,7 @@ import { navLabel } from '../nav/labels';
 import { findAnomalies } from './anomaly';
 import { categoryLabel, resolveCategory } from '../expenses/taxonomy';
 import { athensParts, daysUntil as athensDaysUntil } from '../core/time';
+import { dueText } from '../facts/deadlines';
 
 export type InsightKind = 'urgent' | 'attention' | 'opportunity' | 'positive';
 
@@ -113,14 +114,14 @@ export function computeInsights(input: InsightInput): Insight[] {
   // ── 1. Ασφάλεια ακινήτου ──────────────────────────────────────────────────
   const insD = daysUntil(p.insurance_expiry, now);
   if (insD !== null) {
-    if (insD < 0) out.push({ id: 'insurance-expired', kind: 'urgent', title: 'Η ασφάλεια του ακινήτου έχει λήξει', detail: `Έληξε πριν ${Math.abs(insD)} ${Math.abs(insD) === 1 ? 'ημέρα' : 'ημέρες'}. Ανανέωσέ το: καλύπτει πυρκαγιά, σεισμό και ζημιές.`, action: { label: navLabel('finances'), tab: 'finances' } });
+    if (insD < 0) out.push({ id: 'insurance-expired', kind: 'urgent', title: 'Η ασφάλεια του ακινήτου έχει λήξει', detail: `Έληξε ${dueText(insD)}. Ανανέωσέ το: καλύπτει πυρκαγιά, σεισμό και ζημιές.`, action: { label: navLabel('finances'), tab: 'finances' } });
     else if (insD <= 45) out.push({ id: 'insurance-soon', kind: 'attention', title: 'Λήγει σύντομα η ασφάλεια', detail: `Σε ${insD} ${insD === 1 ? 'ημέρα' : 'ημέρες'}. Ανανέωσέ την έγκαιρα για να μη μείνει το ακίνητο ακάλυπτο.`, action: { label: navLabel('finances'), tab: 'finances' } });
   }
 
   // ── 2. Λήξη μίσθωσης ───────────────────────────────────────────────────────
   const leaseD = daysUntil(tenant?.lease_end, now);
   if (leaseD !== null) {
-    if (leaseD < 0) out.push({ id: 'lease-expired', kind: 'urgent', title: 'Έχει λήξει η σύμβαση ενοικίασης', detail: `Έληξε πριν ${Math.abs(leaseD)} ${Math.abs(leaseD) === 1 ? 'ημέρα' : 'ημέρες'}. Ανανέωσε ή σύναψε νέο μισθωτήριο.`, action: { label: navLabel('tenant'), tab: 'tenant' } });
+    if (leaseD < 0) out.push({ id: 'lease-expired', kind: 'urgent', title: 'Έχει λήξει η σύμβαση ενοικίασης', detail: `Έληξε ${dueText(leaseD)}. Ανανέωσε ή σύναψε νέο μισθωτήριο.`, action: { label: navLabel('tenant'), tab: 'tenant' } });
     else if (leaseD <= 60) out.push({ id: 'lease-soon', kind: 'attention', title: 'Πλησιάζει η λήξη της μίσθωσης', detail: `Σε ${leaseD} ${leaseD === 1 ? 'ημέρα' : 'ημέρες'}. Καλή στιγμή να συζητήσεις ανανέωση ή αναπροσαρμογή ενοικίου με τον ενοικιαστή.`, action: { label: navLabel('tenant'), tab: 'tenant' } });
   }
 

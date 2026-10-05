@@ -20,6 +20,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { Tariff } from './tariff';
 import { addRaaeyPower, RAAEY_MONTH_GEN, RAAEY_READ_AT } from './raaeyCatalogue';
+import { PRICE_FACTS } from '@/lib/facts/prices';
 
 export type { PriceStatus } from './tariff';
 
@@ -44,14 +45,16 @@ export type { PriceStatus } from './tariff';
 // κατατάσσονται. Τα τιμολόγια του πίνακα που έλειπαν προστίθενται από το
 // lib/energy/raaeyCatalogue.ts.
 
+// Η ΗΜΕΡΟΜΗΝΙΑ, Ο ΜΗΝΑΣ, ΤΟ ΚΑΤΩΦΛΙ ΚΑΙ Η ΠΗΓΗ ΖΟΥΝ ΣΤΟΝ ΚΑΤΑΛΟΓΟ ΤΙΜΩΝ
+// (lib/facts/prices.ts), ζευγάρι με το data/price-sources.json. Εδώ μόνο τα ονόματα.
 /** Ημέρα της τελευταίας ενημέρωσης τιμών. Ζευγάρι με το `checkedAt`. */
-export const TARIFFS_VERIFIED = '2026-10-05';
+export const TARIFFS_VERIFIED = PRICE_FACTS.electricity.checkedAt;
 /** Ο μήνας των τιμών του πίνακα. Ζευγάρι με το `label`. */
-export const TARIFFS_LABEL = 'Οκτώβριος 2026';
+export const TARIFFS_LABEL = PRICE_FACTS.electricity.period;
 /** Το κατώφλι παλαιότητας του ρεύματος, από το `maxAgeDays`. */
-export const TARIFFS_MAX_AGE_DAYS = 40;
+export const TARIFFS_MAX_AGE_DAYS = PRICE_FACTS.electricity.maxAgeDays;
 /** Η πηγή των τιμών, όπως γράφεται στην οθόνη. */
-export const PRICES_SOURCE = 'ΡΑΑΕΥ, energycost.gr';
+export const PRICES_SOURCE = PRICE_FACTS.electricity.source;
 /** «Τελευταία ενημέρωση: 05.10.2026», μία φορά για κάθε οθόνη που δείχνει τιμές. */
 export const PRICES_UPDATED_LINE = `Τελευταία ενημέρωση: ${RAAEY_READ_AT.split('-').reverse().join('.')}`;
 

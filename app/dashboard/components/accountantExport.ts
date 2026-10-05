@@ -1101,7 +1101,13 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
       // φέρνει, από πού. Το «γιατί χρειάζεται» είναι αναφορά, όχι ενέργεια.
       const reqRows = (rs: readonly Requirement[]) => rs.map(r => [r.title, WHO_LABEL[r.who], r.source || '']);
       const reqHead = ['Παραστατικό', 'Ποιος το φέρνει', 'Πού βρίσκεται'];
-      const clean = missing.length === 0 && gaps.length === 0 && mdPending.length === 0 && afmGroups.length === 0;
+      // ΠΛΗΡΗΣ ΜΕ ΤΟΝ ΟΡΙΣΜΟ ΤΟΥ lib/facts/completeness: τίποτα από τον κατάλογο
+      // και κανένα κενό στα δεδομένα. Η κεφαλίδα (`readinessMessage`) βγαίνει από
+      // τον ίδιο μετρητή, οπότε δεν λέει πια «πλήρης» πάνω από κενά. Οι δαπάνες
+      // που θέλουν απόφαση myDATA ή ΑΦΜ εκδότη είναι δουλειά του λογιστή, όχι
+      // έλλειψη του φακέλου· λέγονται, χωρίς να ακυρώνουν το «πλήρης».
+      const clean = missing.length === 0 && gaps.length === 0;
+      const forAccountant = mdPending.length > 0 || afmGroups.length > 0;
       const { ws } = sectionSheet({
         title: `ΤΙ ΛΕΙΠΕΙ ΑΠΟ ΑΥΤΟΝ ΤΟΝ ΦΑΚΕΛΟ · ${year}`,
         sub: `${idLine} · ${d.readinessMessage}`,
@@ -1135,7 +1141,7 @@ export function buildWorkbook(inp: AccountantBundleInput, papers: readonly Filed
           }] : []),
           {
             notes: [clean
-              ? 'Ο φάκελος είναι πλήρης.'
+              ? (forAccountant ? 'Ο φάκελος είναι πλήρης. Οι δαπάνες παραπάνω θέλουν απόφαση του λογιστή ή το ΑΦΜ του εκδότη.' : 'Ο φάκελος είναι πλήρης.')
               : 'Τα παραπάνω δεν βρέθηκαν στην εφαρμογή. Δεν σημαίνει ότι δεν υπάρχουν: σημαίνει ότι δεν συνοδεύουν αυτόν τον φάκελο.'],
           },
         ]),

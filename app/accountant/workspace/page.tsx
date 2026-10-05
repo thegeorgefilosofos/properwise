@@ -30,6 +30,8 @@ import { fileBytes } from '@/lib/data/e2Prefilled';
 import { PACK_FILES } from '@/lib/accounting/meetingPack';
 import { downloadFile } from '@/lib/core/download';
 import { fmtBytes } from '@/lib/core/bytes';
+import { declarationYear } from '@/lib/core/declarationYear';
+import { athensToday } from '@/lib/core/time';
 import E2PrefilledImport, { type KnownProperty } from '@/app/dashboard/components/E2PrefilledImport';
 import { loadStatements, downloadAll, lastMove, type BulkClient, type ClientStatement } from '../bulk';
 import { foldName } from '@/lib/contacts/alpha';
@@ -44,8 +46,13 @@ const MONEY_KEY = 'properwise.accountant.money';
 /** Από πόσους πελάτες και πάνω εμφανίζεται η αναζήτηση: ένα κατέβασμα οθόνης. */
 const SEARCH_FROM = 8;
 
-/** Το τελευταίο κλεισμένο έτος: εκεί δουλεύει ο λογιστής τον περισσότερο χρόνο. */
-const defaultYear = () => new Date().getFullYear() - 1;
+/**
+ * Η ΙΔΙΑ ΧΡΗΣΗ ΜΕ ΤΟΝ ΦΑΚΕΛΟ ΤΟΥ ΙΔΙΟΚΤΗΤΗ (`declarationYear`): η περσινή ως τον
+ * Ιούλιο, όσο κλείνει η δήλωση, η τρέχουσα από τον Αύγουστο. Εδώ ήταν πάντα
+ * «πέρυσι»: τον Οκτώβριο ο ιδιοκτήτης έβλεπε «λείπουν 3» για το 2026 και ο
+ * λογιστής του «Έτοιμος» για το 2025, για τον ίδιο φάκελο.
+ */
+const defaultYear = () => declarationYear(athensToday());
 
 export default function AccountantWorkspace() {
   const supabase = useMemo(() => createClient(), []);

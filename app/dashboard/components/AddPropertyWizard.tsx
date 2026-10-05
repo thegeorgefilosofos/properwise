@@ -307,10 +307,19 @@ function StepBody({ rows, place, after }: {
   );
 }
 
-export default function AddPropertyWizard({ userId, onClose, onSaved, existing }: { userId: string; onClose: () => void; onSaved: (propertyId: string | null) => void; existing?: ExistingProperty | null }) {
+export default function AddPropertyWizard({ userId, onClose, onSaved, existing, focus }: {
+  userId: string; onClose: () => void; onSaved: (propertyId: string | null) => void; existing?: ExistingProperty | null;
+  /**
+   * ΑΠΟ ΠΟΥ ΑΝΟΙΓΕΙ Ο ΟΔΗΓΟΣ. Η Λογιστική ζητά το ΑΦΜ του ιδιοκτήτη· με
+   * `owner_afm` ο οδηγός ανοίγει στο βήμα «Επαφές» με τον κέρσορα εκεί, αντί
+   * ο χρήστης να περάσει τρία βήματα για να το βρει.
+   */
+  focus?: 'owner_afm' | null;
+}) {
   const supabase = createClient();
   const isEdit = !!existing?.id;
-  const [step, setStep] = useState(0); // 0..3
+  const focusAfm = isEdit && focus === 'owner_afm';
+  const [step, setStep] = useState(focusAfm ? STEPS.indexOf('Επαφές') : 0); // 0..3
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   // Αλλαγή βήματος = νέα προσπάθεια· το παλιό σφάλμα δεν αφορά πια την οθόνη.
@@ -987,7 +996,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing }
               <input style={inputStyle} value={settings.owner_name} onChange={setSf('owner_name')} onFocus={onFocus} onBlur={onBlur} />
             </>, 'Ονοματεπώνυμο'),
             row('prop.owner_afm', 'auto',
-              <input style={monoInputStyle} value={settings.owner_afm} onChange={setSf('owner_afm')} inputMode="numeric" onFocus={onFocus} onBlur={onBlur} />, 'ΑΦΜ'),
+              <input style={monoInputStyle} value={settings.owner_afm} onChange={setSf('owner_afm')} inputMode="numeric" autoFocus={focusAfm} onFocus={onFocus} onBlur={onBlur} />, 'ΑΦΜ'),
             row('prop.owner_phone', 'auto',
               <input style={inputStyle} value={settings.owner_phone} onChange={setSf('owner_phone')} inputMode="tel" onFocus={onFocus} onBlur={onBlur} />, 'Τηλέφωνο'),
             row('prop.owner_email', 'full',

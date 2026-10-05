@@ -31,6 +31,7 @@ import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { RentTaxCalculator } from './RentTaxCalculator';
+import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 
 const TITLE = 'Υπολογισμός φόρου ενοικίων 2026 με τα δικά σου δεδομένα';
 const DESC =
@@ -157,7 +158,7 @@ export default function Page() {
           <RentTaxCalculator today={athensToday()}/>
         </Suspense>
 
-        <ToolSources kind="rent" />
+        <ToolSources kind="rent" checked={taxLimitAsOf('rent').checkedAt} />
 
         {/* ── Συχνές ερωτήσεις ──────────────────────────────────────────────
                ΗΤΑΝ ΠΕΝΤΕ ΚΟΥΤΙΑ ΜΕ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΒΕΛΑΚΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ. Η

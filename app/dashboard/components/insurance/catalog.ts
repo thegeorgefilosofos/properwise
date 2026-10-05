@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { normalizeEnfiaAgeKey } from '@/lib/billing/enfia'
 import { roundHalfUp } from '@/lib/core/money';
+import { PRICE_FACTS } from '@/lib/facts/prices';
 
 // ═══ Ο ΚΙΝΔΥΝΟΣ ΠΑΛΑΙΟΤΗΤΑΣ ΠΟΥ ΗΤΑΝ ΠΑΝΤΑ 1,00 ═══════════════════════════
 // Η παλαιότητα διαβάζεται από τη ρύθμιση `enfiaAge`, της οποίας τα κλειδιά
@@ -32,8 +33,8 @@ import { roundHalfUp } from '@/lib/core/money';
  * Το κατώφλι είναι 120 ημέρες και όχι 40 όπως στο ρεύμα, με τη δική του
  * αιτιολογία γραμμένη εκεί: τα προγράμματα κατοικίας δεν αλλάζουν μηνιαία.
  */
-export const INSURANCE_VERIFIED = '2026-07-29';
-export const INSURANCE_MAX_AGE_DAYS = 120;
+export const INSURANCE_VERIFIED = PRICE_FACTS.insurance.checkedAt;
+export const INSURANCE_MAX_AGE_DAYS = PRICE_FACTS.insurance.maxAgeDays;
 
 const AGE_RISK: Record<string, number> = {
   y0_4: 0.90, y5_9: 0.95, y10_14: 1.00, y15_19: 1.05, y20_25: 1.10, y26_plus: 1.20,

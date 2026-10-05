@@ -34,6 +34,8 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { bracketsLabelForYear } from '@/lib/billing/greekTax';
+import { asOfLine } from '@/lib/facts/prices';
+import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate';
 import { T, feAuto, Card, Btn } from '@/components/Theme';
 // Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ ΕΙΝΑΙ ΔΙΚΗ ΤΗΣ ΔΙΑΔΡΟΜΗ ΚΑΙ ΚΟΥΒΑΛΟΥΣΕ ΚΙ ΕΚΕΙΝΗ ΤΑ
@@ -41,6 +43,8 @@ import { T, feAuto, Card, Btn } from '@/components/Theme';
 // τίποτα. Η πρόσοψη φορτώνει τη βιβλιοθήκη με το πάτημα.
 import { downloadXlsx } from '@/app/dashboard/components/sheets';
 import { PortalBar, PortalTitle, portalWrap, portalYears } from '../Chrome';
+import { declarationYear } from '@/lib/core/declarationYear';
+import { athensToday } from '@/lib/core/time';
 import {
   propertyLines, statementTotals, statementGaps, statementSheets, indicativeTax, deductionNote,
   type PortalData,
@@ -62,7 +66,8 @@ export default function AccountantPortal() {
   const search = useSearchParams();
   const [year, setYear] = useState(() => {
     const asked = parseInt(search?.get('year') ?? '', 10);
-    return portalYears().includes(asked) ? asked : new Date().getFullYear() - 1;
+    // Η ίδια προεπιλογή με τον χώρο του λογιστή και τον φάκελο του ιδιοκτήτη.
+    return portalYears().includes(asked) ? asked : declarationYear(athensToday());
   });
   // Η ΑΠΑΝΤΗΣΗ ΚΡΑΤΑΕΙ ΤΗ ΧΡΗΣΗ ΤΗΣ. Χωρίς αυτό χρειαζόταν ένα `setState('loading')`
   // μέσα στο effect — δηλαδή δεύτερη απόδοση σε κάθε αλλαγή έτους — και υπήρχε
@@ -263,6 +268,7 @@ export default function AccountantPortal() {
                   </div>
                   <p style={{ ...meta, margin: '10px 0 0' }}>
                     Ενοίκια της χρήσης όπως στο Ε2, δηλαδή όσα οφείλονται ανεξάρτητα από την είσπραξη, όχι συμβατικό μίσθωμα επί δώδεκα. {bracketsLabelForYear(year)}. {deductionNote(est, year)} {totals.hasShare ? 'Υπολογίζεται στην αναλογία του ιδιοκτήτη, όχι στο σύνολο του ακινήτου. ' : ''}{est.bankMatters ? '' : PRESUMPTIVE_RULE}
+                    {' '}{asOfLine(taxLimitAsOf('rent'))}.
                   </p>
                 </div>
               ) : (

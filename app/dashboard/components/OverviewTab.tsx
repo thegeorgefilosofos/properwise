@@ -11,18 +11,20 @@ import * as stayStore from '@/lib/data/stays'
 import * as billStore from '@/lib/data/bills'
 import * as rentStore from '@/lib/data/rent'
 import * as checklist from '@/lib/data/checklist'
+import * as calendar from '@/lib/data/calendar'
 import * as tenantStore from '@/lib/data/tenants'
 import * as expenseStore from '@/lib/data/expenses'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
 import { taxpayerRentSources, ownershipPctOf, wholePropertyTax } from '@/lib/accounting/taxpayerIncome'
-import { hostPayout, type StayAmountLike } from '@/lib/clients/stayAmounts'
+import { taxpayerScope } from '@/lib/facts/taxpayer'
+import { type StayAmountLike } from '@/lib/clients/stayAmounts'
 import MonthlyFeedbackNudge from './MonthlyFeedbackNudge'
 import type { LegalForm } from '@/lib/accounting/dossier'
 import type { OpenerContext } from '@/lib/assistant/openers'
 import { navLabel } from '@/lib/nav/labels'
-import { mergeLedger, ledgerTotal } from '@/lib/expenses/ledger'
+import { mergeLedger } from '@/lib/expenses/ledger'
 import { contractOverview } from '@/lib/contracts/overview'
 import { useAppPreferences } from './useAppPreferences'
 import {
@@ -37,7 +39,6 @@ import { useReportBranding } from '@/lib/reportBranding'
 import { computeInsights } from '@/lib/insights/engine'
 import { remainingBalance } from '@/lib/market/returns'
 import { type LoanView, isActiveLoan, loansInstalmentTotal } from '@/lib/loans/shape'
-import { stayTotal } from '@/lib/clients/clients'
 import {
   consolidateRentTax, taxShareOf, consolidationSummary, CONSOLIDATION_NOTE, bankReceiptMatters,
 } from '@/lib/billing/consolidate'
@@ -54,8 +55,9 @@ import PortalShare from './PortalShare'
 import OccupancyPanel from './OccupancyPanel'
 import PolicyNotice from './PolicyNotice'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
-import { staysOfYearToDate } from '@/lib/clients/reports'
-import { propertyIncome, type IncomeRent } from '@/lib/income/propertyIncome'
+import { type IncomeRent } from '@/lib/income/propertyIncome'
+import { yearExpensesOf, expenseParts, EXPENSE_LABELS, INCOME_LABELS, rentIncome, propertyStatus, hostingReceipts, HOSTING_LABELS, YIELD_LABELS, enfiaYear, closedTaxRefs } from '@/lib/facts'
+import { useEnfiaSettings } from './useEnfia'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 import { useLoad } from '@/app/hooks/useLoad'
 import { readCoOwners } from '@/lib/property/coOwners'
@@ -155,6 +157,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const [maint, setMaint] = useState<OblMaint[]>([]);
   /** Πότε καταγράφηκε η υποβολή της δήλωσης μίσθωσης· κλείνει την υποχρέωση. */
   const [leaseDeclaredAt, setLeaseDeclaredAt] = useState<string|null>(null);
+  const [closedTax, setClosedTax] = useState<ReadonlySet<string>>(() => new Set());
   const [tenantFull, setTenantFull] = useState<TenantFull | null>(null);
   /** Οι μισθωτές αυτού του ακινήτου που έφυγαν: η πρόωρη λύση δηλώνεται στην ΑΑΔΕ. */
   const [leavers, setLeavers] = useState<OblTenant[]>([]);
@@ -184,7 +187,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const propIds = useMemo(() => properties.map(p => p.id), [properties]);
 
   const load = useCallback(async () => {
-    const [exp,bil,{ data:tsk },ten,ci,iv,ln,hs,allExp,allTen,{ data:allRc },rp,{ data:mnt },{ data:decl },yr,allYearRents,allStays,{ data:ownerRows }] = await Promise.all([
+    const [exp,bil,{ data:tsk },ten,ci,iv,ln,hs,allExp,allTen,{ data:allRc },rp,{ data:mnt },{ data:decl },yr,allYearRents,allStays,{ data:ownerRows },taxEvents,doneTasks] = await Promise.all([
       expenseStore.ledger(supabase,prop.id,{ userId, from:`${year}-01-01`, columns:'*' }),
       billStore.ofProperty<Bill>(supabase,prop.id,'*',userId),
       // Δεν είναι πια πέντε για μια χωριστή κάρτα: τροφοδοτούν την ΕΝΙΑΙΑ
@@ -222,7 +225,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       profileType === 'professional'
         ? supabase.from('clients').select('id').eq('user_id',userId).eq('type','owner')
         : Promise.resolve({ data: null }),
+      // ΤΙ ΕΚΛΕΙΣΕ ΑΛΛΟΥ. Η δόση ΕΝΦΙΑ που σημειώθηκε πληρωμένη στο Ημερολόγιο ή
+      // στις Εκκρεμότητες δεν ξαναεμφανίζεται εδώ (lib/facts/deadlines).
+      calendar.sourceStates(supabase,prop.id,{ prefix:'tax:' }),
+      checklist.closed<{ note:string|null; status:string|null }>(supabase,prop.id,'note,status',userId),
     ]);
+    setClosedTax(closedTaxRefs(taxEvents, doneTasks));
     setExpenses((exp||[]) as Expense[]); setBills(bil); setTasks(tsk||[]); setTenant(ten?.[0]||null);
     setRentPeriods(rp); setMaint((mnt||[]) as OblMaint[]); setTenantFull(ten?.[0]||null);
     setLeaseDeclaredAt((decl?.[0]?.created_at as string|undefined) ?? null);
@@ -317,16 +325,26 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const entriesOfYear = useMemo(
     () => ledger.entries.filter(e => e.date.startsWith(`${year}-`)),
     [ledger.entries, year]);
-  const totalExpYear = ledgerTotal(entriesOfYear);
+  // ── ΟΙ ΔΑΠΑΝΕΣ ΤΟΥ ΕΤΟΥΣ ΑΠΟ ΤΟ lib/facts (05.10.2026) ────────────────────
+  // Πληρωμένες ως σήμερα + προγραμματισμένες έως 31/12 (+ ληξιπρόθεσμες): ο ίδιος
+  // ορισμός με το Χαρτοφυλάκιο, τις Αποδόσεις, τη Λογιστική και τη Νόα.
+  const yExp = yearExpensesOf(ledger.entries, year, todayAthens);
+  // Ο ΕΝΦΙΑ ΤΟΥ ΕΤΟΥΣ ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ ΜΕ ΤΗ ΛΟΓΙΣΤΙΚΗ. Τα στοιχεία του ακινήτου
+  // έγραφαν «Εκτιμώμενος ΕΝΦΙΑ» με το ωμό `enfia` της καρτέλας: άλλο ποσό από
+  // την Κατάσταση όταν ο πίνακας ΕΝΦΙΑ είχε φετινό ή περσινό και λάθος όνομα όταν
+  // το ποσό ήταν του εκκαθαριστικού. Η ετικέτα λέει πλέον από πού βγήκε.
+  const [enfiaSettings] = useEnfiaSettings(prop.id, userId);
+  const enfiaNow = enfiaYear(enfiaSettings, year, {
+    stored: prop.enfia, value: prop.value, sqm: prop.sqm, yearBuilt: prop.year_built, floor: prop.floor,
+    propType: prop.prop_type, ownershipPct: prop.ownership == null ? null : Number(prop.ownership), postalCode: prop.postal_code,
+  });
+  const totalExpYear = yExp.total;
   // ── «ΩΣ ΣΗΜΕΡΑ» ΣΗΜΑΙΝΕΙ ΩΣ ΣΗΜΕΡΑ ──────────────────────────────────────
   // Το φίλτρο κρατούσε μόνο το έτος, οπότε ο λογαριασμός ρεύματος που λήγει σε
   // έναν μήνα μετρούσε στο «1.890,00€ ως σήμερα» ενώ ως σήμερα ήταν 1.821,00€.
   // Δύο σύνολα με δύο ονόματα: το έτος (για προβολή και αναφορά) και το ως
   // σήμερα (για τον υπότιτλο, τη Νόα και τα ευρήματα που διαιρούν με μήνες).
-  const totalExpToDate = ledgerTotal(entriesOfYear.filter(e => e.date <= todayAthens));
-  // Οι λογαριασμοί που ΔΕΝ έχουν ακόμη δαπάνη από πίσω τους (απλήρωτοι): είναι
-  // πραγματικό κόστος του έτους και λείπουν από τον πίνακα `expenses`.
-  const unbilledOfYear = ledgerTotal(entriesOfYear.filter(e => !e.expenseId));
+  const totalExpToDate = yExp.paid + yExp.overdue;
   // Οι πέντε μεγαλύτερες κατηγορίες του έτους για την αναφορά PDF και οι
   // υπόλοιπες μαζί ως «Λοιπές» (02.10.2026): με σκέτες τις πέντε, το «Σύνολο
   // δαπανών» του πίνακα δεν έβγαινε ίσο με τις «Συνολικές δαπάνες» από πάνω. Παράγονται
@@ -370,11 +388,16 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Τώρα, όπου υπάρχουν διαμονές ή δόσεις, μετρά ο ΚΟΙΝΟΣ υπολογισμός με το
   // Χαρτοφυλάκιο (lib/income/propertyIncome.ts) σε ετήσιο ρυθμό. Χωρίς καμία
   // καταγραφή μένει το ενοίκιο × 12, με την ίδια σήμανση εκτίμησης όπως πριν.
-  const inc = propertyIncome({ rents: yearRents, stays: hostStays, year, today: todayAthens,
+  // ΤΑ ΕΣΟΔΑ ΑΠΟ ΤΟ lib/facts. Χωρίς μίσθωση δεν υπάρχει εκτίμηση από ξεχασμένο
+  // μίσθωμα· με μίσθωση η βάση είναι το συμφωνημένο μίσθωμα × 12 και ο ετήσιος
+  // ρυθμός των διαμονών λέγεται «εκτίμηση», γιατί είναι προβολή.
+  const fi = rentIncome({ status: propertyStatus(prop), rents: yearRents, stays: hostStays, year, today: todayAthens,
     value: propValue, estimateMonthly: tenant?.monthly_rent });
-  const incomeRecorded = inc.source === 'stays' || inc.source === 'rent';
-  const incomeMonthly = incomeRecorded ? inc.annualized / 12 : rent;
-  const incomeIsEstimate = incomeRecorded ? inc.estimated : rentIsTarget;
+  const inc = { source: fi.source, receivedToDate: fi.received, estimated: fi.estimated };
+  const incomeRecorded = fi.source === 'stays' || fi.source === 'rent';
+  const fromLease = fi.source === 'rent' && fi.expected > 0;
+  const incomeMonthly = incomeRecorded ? (fromLease ? fi.expected : fi.annualized) / 12 : rent;
+  const incomeIsEstimate = incomeRecorded ? (fi.estimated || (fi.projected && !fromLease)) : rentIsTarget;
   // Δάνεια: εκτιμώμενη μηνιαία δόση και δείκτης δανείου προς αξία (η Επισκόπηση «ξέρει» πλέον τα δάνεια).
   // ΜΙΑ ΓΡΑΦΗ ΓΙΑ ΤΗ ΔΟΣΗ: η ίδια συνάρτηση με τον Προϋπολογισμό, με το ίδιο
   // φίλτρο ενεργών. Εδώ αθροιζόταν `annuityMonthly` σε ΟΛΑ τα δάνεια· το
@@ -396,53 +419,21 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Έσοδα φιλοξενίας από το Πελατολόγιο (διαμονές συνδεδεμένες σε αυτό το ακίνητο): η
   // Επισκόπηση «ξέρει» πλέον τα πραγματικά έσοδα βραχυχρόνιας, όχι μόνο τον στόχο ενοικίου.
   const todayIso = athensToday();
-  // «Εισπράξεις» είναι ό,τι μπήκε: η κράτηση που δεν έχει ξεκινήσει μένει έξω
-  // (lib/clients/reports.ts, staysOfYearToDate). Η επόμενη άφιξη τη δείχνει ήδη.
-  // Σε `useMemo`: ως γυμνή κλήση ο μεταγλωττιστής της React υπέθετε ότι η
-  // συνάρτηση μπορεί να αλλάξει τον πίνακα και εγκατέλειπε όλο το component
-  // (react-hooks/preserve-manual-memoization, δύο σφάλματα στο `cash`).
-  const hostStaysToDate = useMemo(() => staysOfYearToDate(hostStays, year, todayIso), [hostStays, year, todayIso]);
-  // ΤΟ PAYOUT, ΟΧΙ ΤΟ ΔΗΛΩΤΕΟ. Το πλακίδιο λέει «ό,τι μπήκε στον λογαριασμό
-  // σου» και άθροιζε το `total`, που σε διαμονή με ανάλυση είναι ακαθάριστο
-  // μείον τέλος: 1.000€ ο επισκέπτης, 150€ προμήθεια, 50€ τέλος έγραφε 950€
-  // εκεί που μπήκαν 800€. Χωρίς ανάλυση και χωρίς δηλωμένη βάση μένει το ποσό
-  // όπως καταχωρήθηκε.
-  const hostingYTD = hostStaysToDate.reduce((sum,s)=>sum+(hostPayout(s) ?? stayTotal(s)),0);
-  const hostingNights = hostStaysToDate.reduce((sum,s)=>sum+(s.nights ?? 0),0);
+  // ΕΙΣΠΡΑΞΕΙΣ ΦΙΛΟΞΕΝΙΑΣ ΑΠΟ ΤΟ lib/facts (05.10.2026). Το payout (ό,τι μπήκε
+  // στον λογαριασμό) και το δηλωτέο βγαίνουν από τις ΙΔΙΕΣ διαμονές με το ΙΔΙΟ
+  // κλάσμα νυχτών του έτους. Πριν, το πλακίδιο μετρούσε τις διαμονές με άφιξη
+  // μέσα στο έτος και τα έσοδα τις νύχτες του έτους: η κράτηση της Πρωτοχρονιάς
+  // έπεφτε αλλού σε κάθε αριθμό.
+  const hosting = hostingReceipts(hostStays, year, todayAthens);
+  const hostingYTD = hosting.payout;
+  const hostingNights = hosting.nights;
   const nextArrival = hostStays.map(s=>s.check_in).filter((d): d is string => !!d && d>=todayIso).sort()[0] || null;
-  // Ο ΥΠΟΛΟΓΙΣΜΟΣ ΤΟΥ ΓΡΑΦΗΜΑΤΟΣ ΕΦΥΓΕ ΜΑΖΙ ΜΕ ΤΟ ΓΡΑΦΗΜΑ: δύο κατάλογοι μηνών,
-  // δώδεκα αθροίσματα, κατηγορίες επιλεγμένου μήνα και κατάλογος ετών — σαράντα
-  // γραμμές που τροφοδοτούσαν δύο κάρτες οι οποίες έλεγαν ό,τι λέει ήδη ο
-  // Προϋπολογισμός. Το `occMonths` μένει: το χρειάζεται η ετήσια προβολή πιο κάτω.
-  // μετρούν στον μήνα της ημερομηνίας τους· οι επαναλαμβανόμενες (πάγιες, μόνο
-  // εφόσον ο χρήστης τις έχει σημάνει) προβάλλονται από την έναρξή τους και μετά,
-  // ανάλογα με τη συχνότητα. Καμία εφεύρεση, μόνο ό,τι έχει καταχωρήσει ο χρήστης.
-  const occMonths = (e: { date:string; is_recurring?:boolean; recurring_frequency?:string|null }, y: number): number[] => {
-    const d = new Date(e.date); const sy = d.getFullYear(); const sm = d.getMonth();
-    if (!e.is_recurring) return sy === y ? [sm] : [];
-    if (y < sy) return [];
-    const step = e.recurring_frequency === 'annual' ? 12 : e.recurring_frequency === 'biannual' ? 6 : e.recurring_frequency === 'quarterly' ? 3 : 1;
-    const out: number[] = [];
-    for (let m = 0; m < 12; m++) { const abs = (y - sy) * 12 + m - sm; if (abs >= 0 && abs % step === 0) out.push(m); }
-    return out;
-  };
-
-  // ── ΕΤΗΣΙΑ ΠΡΟΒΟΛΗ ΔΑΠΑΝΩΝ: ΧΩΡΙΣ ΕΤΗΣΙΟΠΟΙΗΣΗ ΤΩΝ ΕΦΑΠΑΞ ─────────────────
-  // Πριν: `totalExpYTD / μήνας × 12`. Ο ΕΝΦΙΑ ή το συμβόλαιο που πληρώθηκε τον
-  // Ιανουάριο πολλαπλασιαζόταν ×12, οπότε το «Καθαρό Αποτέλεσμα» έβγαινε βαθιά
-  // αρνητικό έντεκα από τους δώδεκα μήνες — και ο χρήστης το διάβασε ως ζημιά.
-  // Τώρα: κάθε δαπάνη μετριέται όσες φορές πραγματικά συμβαίνει μέσα στο έτος.
-  // Οι εφάπαξ μία φορά, οι πάγιες (όπως τις σήμανε ο χρήστης) όσες φορές
-  // επαναλαμβάνονται. Ίδια συνάρτηση occMonths με το γράφημα, ώστε το πλακίδιο
-  // και οι μπάρες να λένε το ίδιο πράγμα.
-  // ΤΟ ΠΛΑΚΙΔΙΟ ΕΛΕΓΕ ΔΥΟ ΝΟΥΜΕΡΑ ΑΠΟ ΔΥΟ ΠΗΓΕΣ.
-  // Η τιμή έβγαινε ΜΟΝΟ από τον πίνακα `expenses`, ενώ ο υπότιτλος «X ως
-  // σήμερα» από το ενιαίο ημερολόγιο (λογαριασμοί + δαπάνες). Αρκούσε ένας
-  // απλήρωτος λογαριασμός για να γράφει το πλακίδιο «Δαπάνες 1.200,00€ ·
-  // 1.800,00€ ως σήμερα»: το σύνολο του έτους μικρότερο από το μέχρι σήμερα.
-  // Δηλαδή στη συνηθισμένη περίπτωση. Τώρα και τα δύο πατούν στο ημερολόγιο.
-  const projectedExpYear = allExpenses.reduce((s,e) => s + e.amount * occMonths(e, year).length, 0) + unbilledOfYear;
-  const recurringCount = allExpenses.filter(e => e.is_recurring && occMonths(e, year).length > 0).length;
+  // ── ΟΙ ΔΑΠΑΝΕΣ ΤΗΣ ΧΡΟΝΙΑΣ, ΧΩΡΙΣ ΠΡΟΒΟΛΗ (05.10.2026) ────────────────────
+  // Εδώ ζούσε μια «ετήσια προβολή»: πάγιες × επαναλήψεις + απλήρωτοι. Ήταν
+  // άλλο νούμερο από το πλακίδιο και από κάθε άλλη οθόνη και η καθαρή απόδοση
+  // στηριζόταν σε αυτό. Τώρα η χρονιά είναι ό,τι έχει καταχωρηθεί γι' αυτήν:
+  // πληρωμένες ως σήμερα + προγραμματισμένες έως 31/12 (lib/facts/expenses.ts).
+  const projectedExpYear = yExp.total;
   // ── ΤΑ ΔΥΟ «ΚΑΘΑΡΑ» ΜΕ ΤΗΝ ΙΔΙΑ ΒΑΣΗ ΔΑΠΑΝΩΝ ───────────────────────────
   // Η καθαρή απόδοση αφαιρούσε από το ετήσιο ενοίκιο τις δαπάνες ΩΣ ΣΗΜΕΡΑ,
   // ενώ το «Καθαρό αποτέλεσμα» ακριβώς από πάνω τις δαπάνες ΟΛΟΥ του έτους:
@@ -498,7 +489,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     taxpayerRentSources({
       props: properties,
       current: { id: prop.id, annualRent: incomeMonthly * 12, shortTerm: isShortTerm(prop), rentsPaidViaBank: tenantFull?.e_payment !== false },
-      ownerClientIds: portfolioIncome.owners,
+      ownerClientIds: taxpayerScope(profileType, portfolioIncome.owners),
       income: new Map(properties.map(p => {
         const row = portfolioRents.find(r => r.property_id === p.id);
         return [p.id, {
@@ -631,9 +622,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // φορές, η ασφάλεια δύο, τα ελλιπή στοιχεία δύο. Τώρα οι πηγές συγχωνεύονται
   // ανά ΘΕΜΑ (lib/home/agenda.ts) και βγαίνει μία σειρά προτεραιότητας.
   const obligations = useMemo(
-    () => computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt }, leavers),
+    () => computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt, closedTaxRefs: closedTax }, leavers),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [prop, tenantFull, maint, todayIso, leaseDeclaredAt, leavers],
+    [prop, tenantFull, maint, todayIso, leaseDeclaredAt, closedTax, leavers],
   );
   // ═══ ΔΥΟ ΛΙΣΤΕΣ «ΤΙ ΕΡΧΕΤΑΙ», Η ΜΙΑ ΚΑΤΩ ΑΠΟ ΤΗΝ ΑΛΛΗ ═══════════════════
   // Η ατζέντα στην κορυφή έλεγε «τι χρειάζεται τώρα». Τρεις ζώνες πιο κάτω, μια
@@ -852,7 +843,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               ακριβώς πλάτη που έβγαζε το `auto-fit`: μία ως τα 700, δύο ως τα
               900, τρεις από εκεί και πάνω. */}
           <div className="prop-facts">
-            {([['Τύπος',propertyTypeLabel(prop.prop_type)],['Εμβαδόν',prop.sqm?`${prop.sqm} τ.μ.`:null],['Υπνοδωμάτια',prop.bedrooms?String(prop.bedrooms):null],['Διεύθυνση',prop.address],['ΑΤΑΚ',prop.atak],['Έτος κατασκευής',prop.year_built?String(prop.year_built):null],['Όροφος',prop.floor!=null?String(prop.floor):null],['Θέρμανση',heatingLabel(prop.heating)||null],['Ενεργειακή κλάση',prop.pea_class],['Θέσεις στάθμευσης',prop.parking_spaces?String(prop.parking_spaces):null],['Αποθήκη',prop.storage_sqm?`${prop.storage_sqm} τ.μ.`:null],['Αντικειμενική αξία',prop.obj_value?fmtEur(prop.obj_value):null],['Εκτιμώμενος ΕΝΦΙΑ',prop.enfia?fmtEur(prop.enfia):null]] as [string,string|null][]).filter(([,v])=>v).map(([k,v]) => (
+            {([['Τύπος',propertyTypeLabel(prop.prop_type)],['Εμβαδόν',prop.sqm?`${prop.sqm} τ.μ.`:null],['Υπνοδωμάτια',prop.bedrooms?String(prop.bedrooms):null],['Διεύθυνση',prop.address],['ΑΤΑΚ',prop.atak],['Έτος κατασκευής',prop.year_built?String(prop.year_built):null],['Όροφος',prop.floor!=null?String(prop.floor):null],['Θέρμανση',heatingLabel(prop.heating)||null],['Ενεργειακή κλάση',prop.pea_class],['Θέσεις στάθμευσης',prop.parking_spaces?String(prop.parking_spaces):null],['Αποθήκη',prop.storage_sqm?`${prop.storage_sqm} τ.μ.`:null],['Αντικειμενική αξία',prop.obj_value?fmtEur(prop.obj_value):null],[enfiaNow.label,enfiaNow.annual>0?fmtEur(enfiaNow.annual):null]] as [string,string|null][]).filter(([,v])=>v).map(([k,v]) => (
               <div key={k} title={k==='ΑΤΑΚ'?'Αριθμός Ταυτότητας Ακινήτου, από το έντυπο Ε9':k==='Εκτιμώμενος ΕΝΦΙΑ'?'Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων: ο ετήσιος φόρος περιουσίας':undefined}
                 style={{padding:'9px 0',borderBottom:'1px solid var(--border-subtle)',minWidth:0}}>
                 {/* ══ Η ΤΙΜΗ ΚΟΒΟΤΑΝ ΚΑΙ ΜΑΖΙ ΤΗΣ ΚΟΒΟΤΑΝ ΚΑΙ ΤΟ ΠΟΣΟ ══════════
@@ -922,17 +913,19 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         const income = isLet(prop);
         const items: KPIItem[] = income ? [
           incomeRecorded ? {
-            label: `${inc.source === 'stays' ? 'Έσοδα φιλοξενίας' : 'Έσοδα από ενοίκια'}${inc.estimated ? ', εκτίμηση' : ''}`, value:fmtEur(annualRent),
-            sub: `${fmtEur(inc.receivedToDate)} ως σήμερα`,
-            title: `Όσα εισπράχθηκαν το ${year} ως σήμερα (${fmtEur(inc.receivedToDate)}), σε ετήσιο ρυθμό. ${inc.source === 'stays' ? 'Δηλωτέο ακαθάριστο των διαμονών με άφιξη ως σήμερα.' : 'Πληρωμένες δόσεις με ημερομηνία ως σήμερα.'} Ίδιος υπολογισμός με το Χαρτοφυλάκιο.` }
+            label: `${inc.source === 'stays' ? 'Έσοδα φιλοξενίας' : 'Έσοδα από ενοίκια'}${incomeIsEstimate ? `, ${INCOME_LABELS.estimate}` : ''}`, value:fmtEur(annualRent),
+            sub: `${fmtEur(inc.receivedToDate)} ${INCOME_LABELS.received}`,
+            title: fromLease
+              ? `Το μίσθωμα της μίσθωσης × 12 (${INCOME_LABELS.expected}). ${fmtEur(inc.receivedToDate)} ${INCOME_LABELS.received}. Ίδιος υπολογισμός με το Χαρτοφυλάκιο.`
+              : `Όσα εισπράχθηκαν το ${year} ως σήμερα (${fmtEur(inc.receivedToDate)}), σε ετήσιο ρυθμό: ${INCOME_LABELS.estimate}, όχι είσπραξη. ${inc.source === 'stays' ? 'Δηλωτέο ακαθάριστο των διαμονών με άφιξη ως σήμερα.' : 'Πληρωμένες δόσεις με ημερομηνία ως σήμερα.'} Ίδιος υπολογισμός με το Χαρτοφυλάκιο.` }
           : { label: rentIsTarget ? 'Έσοδα από ενοίκια, εκτίμηση' : 'Έσοδα από ενοίκια', value:fmtEur(annualRent),
             sub: rentIsTarget ? `στόχος ${fmtEur(rent)} τον μήνα, χωρίς ενοικιαστή` : `${fmtEur(rent)} τον μήνα`,
             title: rentIsTarget
               ? `Στόχος ενοικίου ${fmtEur(rent)} × 12. Δεν υπάρχει ενοικιαστής με ενοίκιο, οπότε το ποσό είναι εκτίμηση.`
               : `Μηνιαίο ενοίκιο ${fmtEur(rent)} × 12.` },
-          { label:'Δαπάνες', value:fmtEur(projectedExpYear),
-            sub: [`${fmtEur(totalExpToDate)} ως σήμερα`, recurringCount>0 ? `${recurringCount} πάγιες` : null].filter(Boolean).join(' · '),
-            title:`Οι δαπάνες που έχεις καταχωρήσει για το ${year}, μετρημένες όσες φορές πραγματικά συμβαίνουν: οι εφάπαξ (π.χ. ΕΝΦΙΑ, συμβόλαιο) μία φορά, οι πάγιες όσες φορές επαναλαμβάνονται. Δεν πολλαπλασιάζεται το σύνολο του έτους ×12.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
+          { label:EXPENSE_LABELS.total, value:fmtEur(yExp.total),
+            sub: expenseParts(yExp, fmtEur),
+            title:`Οι δαπάνες του ${year} όπως είναι καταχωρημένες: ${expenseParts(yExp, fmtEur)}. Λογαριασμοί και δαπάνες μαζί, κάθε ευρώ μία φορά, χωρίς προβολή. Ίδιο ποσό με τις Δαπάνες, το Χαρτοφυλάκιο, τις Αποδόσεις και τη Λογιστική.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
           // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
           // «Μερίδιο φόρου ενοικίου» είναι 22 χαρακτήρες δίπλα σε τρεις
           // ετικέτες των 7 ως 17: έσπαγε σε δεύτερη γραμμή και ΜΟΝΟ αυτή,
@@ -960,9 +953,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           { label:'Καθαρό αποτέλεσμα', value:fmtEur(net),
             title:'Ακαθάριστα έσοδα μείον δαπάνες μείον το μερίδιο φόρου. Δεν περιλαμβάνει δόσεις δανείου.' },
         ] : [
-          { label:'Δαπάνες', value:fmtEur(projectedExpYear),
-            sub: [`${fmtEur(totalExpToDate)} ως σήμερα`, recurringCount>0 ? `${recurringCount} πάγιες` : null].filter(Boolean).join(' · '),
-            title:`Οι δαπάνες που έχεις καταχωρήσει για το ${year}, μετρημένες όσες φορές πραγματικά συμβαίνουν.` },
+          { label:EXPENSE_LABELS.total, value:fmtEur(yExp.total),
+            sub: expenseParts(yExp, fmtEur),
+            title:`Οι δαπάνες του ${year} όπως είναι καταχωρημένες: ${expenseParts(yExp, fmtEur)}.` },
           // Χωρίς εμπορική ΚΑΙ χωρίς αντικειμενική αξία, το πλακίδιο έγραφε
           // «0,00€»: όχι μέτρηση, αλλά απουσία μέτρησης ντυμένη σαν μέτρηση.
           ...(propValue>0 ? [{ label:'Αξία ακινήτου', value: fmtEur(propValue),
@@ -994,8 +987,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         // λέξη, καμία επιπλέον γραμμή και η αμφισημία φεύγει.
         if (hostStays.length > 0) extra.push({
           label:`Εισπράξεις φιλοξενίας ${year}`, value:fmtEur(hostingYTD),
-          sub: [hostingNights>0?`${hostingNights} διανυκτερεύσεις`:null, nextArrival?`επόμενη άφιξη ${fd(nextArrival)}`:null].filter(Boolean).join(' · ') || undefined,
-          title:`Ό,τι μπήκε στον λογαριασμό σου από διαμονές, από την καρτέλα «${navLabel('clients')}». Το δηλωτέο ποσό είναι μεγαλύτερο, γιατί περιλαμβάνει την προμήθεια της πλατφόρμας: το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».` });
+          sub: [`δηλωτέο ${fmtEur(hosting.declarable)}`, hostingNights>0?`${hostingNights} διανυκτερεύσεις`:null, nextArrival?`επόμενη άφιξη ${fd(nextArrival)}`:null].filter(Boolean).join(' · '),
+          title:`${HOSTING_LABELS.payout}: ${fmtEur(hosting.payout)}, από την καρτέλα «${navLabel('clients')}». ${HOSTING_LABELS.declarable}: ${fmtEur(hosting.declarable)}, μεγαλύτερο γιατί περιλαμβάνει την προμήθεια της πλατφόρμας· το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».` });
         // ΟΙ «ΕΚΚΡΕΜΕΙΣ ΔΑΠΑΝΕΣ» ΕΦΥΓΑΝ ΑΠΟ ΕΔΩ. Είναι ακριβώς το «Χρωστάω» του
         // Ταμείου, στην κορυφή της ίδιας οθόνης — το ίδιο ποσό δύο φορές, με
         // διαφορετικό όνομα και σε απόσταση ενός scroll.
@@ -1014,9 +1007,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                   <strong style={{color:'var(--text-primary)',fontWeight:600}}>Απόδοση.</strong>{' '}
                   {/* Κάθε σκέλος δεν σπάει μέσα του: στο τηλέφωνο το «185.000,00€»
                       έπεφτε μόνο του στη δεύτερη γραμμή, χωρισμένο από το «αξία». */}
-                  <span style={{whiteSpace:'nowrap'}} title="Ετήσιο ενοίκιο ως ποσοστό της αξίας του ακινήτου, προ δαπανών">μεικτή {fp(grossYield)}</span>
+                  <span style={{whiteSpace:'nowrap'}} title="Ετήσιο ενοίκιο ως ποσοστό της αξίας του ακινήτου, προ δαπανών">{YIELD_LABELS.gross.toLowerCase()} {fp(grossYield)}</span>
                   {' · '}
-                  <span style={{whiteSpace:'nowrap'}} title="Ετήσιο ενοίκιο μείον τις δαπάνες του έτους, προ φόρου, ως ποσοστό της αξίας">καθαρή προ φόρου {fp(netYield)}</span>
+                  <span style={{whiteSpace:'nowrap'}} title="Ετήσιο ενοίκιο μείον τις δαπάνες του έτους, προ φόρου, ως ποσοστό της αξίας">{YIELD_LABELS.net_pre_tax.toLowerCase()} {fp(netYield)}</span>
                   {' · '}
                   <span style={{whiteSpace:'nowrap'}}>αξία {fmtEur(propValue)}</span>
                 </div>

@@ -27,6 +27,12 @@ import { fp } from '@/components/Theme'
 import { greekWhen, MONTH_MEAN } from '@/lib/market/ecb'
 import { resolveRent, resolveValue, computeYields } from '@/lib/billing/propertyFacts'
 import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger'
+import {
+  yearExpensesOf, expenseParts, EXPENSE_LABELS, isLease, NOT_LET_NOTE, YIELD_LABELS,
+  hostingReceipts, HOSTING_LABELS, enfiaYear,
+  isClosedStatus, closedTaxRefs, nextEnfiaDue, nextTaxObligations, taxProfileOfStatus, dueText, daysFrom, isOverdue,
+} from '@/lib/facts'
+import { useEnfiaSettings } from '../useEnfia'
 import { computeInsights, type Insight } from '@/lib/insights/engine'
 import {
   RENTAL_TAX_SUMMARY_2026, CLIMATE_LEVY_SUMMARY_2025, MUNICIPAL_ACCOM_SUMMARY,
@@ -34,7 +40,7 @@ import {
 import { annuityMonthly } from '@/lib/loans/recommend'
 import { loanCalendarYear } from '@/lib/loans/progress'
 import { incomeStatement, taxProvision } from '@/lib/accounting/statement'
-import { clientStats, stayTotal, CLIENT_TYPE_LABELS, type ClientType } from '@/lib/clients/clients'
+import { clientStats, CLIENT_TYPE_LABELS, type ClientType } from '@/lib/clients/clients'
 import { suggestBase, realizedAdr, indicativeMonthly } from '@/lib/pricing/dynamicPricing'
 import {
   type AssistantPrefs, type Memory, DEFAULT_PREFS, loadPrefs, PREFS_KEY, readPrefs, memKey,
@@ -309,13 +315,18 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       }).join('\n')
     : undefined;
 
+  // Ο ΕΝΦΙΑ του έτους, από τις ίδιες ρυθμίσεις με την Επισκόπηση και τη Λογιστική.
+  const [enfiaSettings] = useEnfiaSettings(propertyId, userId);
+
   // Φόρτωση δεδομένων ακινήτου (μία φορά όταν ανοίξει), για συγκεκριμένες απαντήσεις.
   const loadContext = useCallback(async () => {
     const now = new Date();
-    const year = now.getFullYear();
     // Το «σήμερα» της εφαρμογής είναι ώρα Ελλάδας, όχι UTC: αλλιώς για δύο ως
-    // τρεις ώρες κάθε νύχτα η Νόα νόμιζε ότι είναι χθες.
+    // τρεις ώρες κάθε νύχτα η Νόα νόμιζε ότι είναι χθες. Και το ΕΤΟΣ βγαίνει από
+    // το ίδιο σήμερα: την παραμονή Πρωτοχρονιάς, μετά τις 22:00, το ρολόι του
+    // περιηγητή στο UTC έλεγε ακόμη την παλιά χρονιά.
     const todayStr = athensToday(now);
+    const year = Number(todayStr.slice(0, 4));
     const [exp, bil, ten, st, cal, { data: rates }, loans, { data: clientRows }, stayRows, contactRows, chk] = await Promise.all([
       expenseStore.ledger(supabase, propertyId, { userId, from: `${year}-01-01`, columns: `${expenseStore.LEDGER_COLUMNS},payment_method` }),
       billStore.ofProperty<BillsRow>(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
@@ -325,7 +336,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       // μόνο company/policy/expiry και καθόλου ποσό. Το ερώτημα απορριπτόταν
       // ολόκληρο, οπότε ο βοηθός δεν ήξερε ΠΟΤΕ για ασφάλιση.
       properties.one<{ insurance_company: string | null; insurance_expiry: string | null; insurance_amount: number | null }>(supabase, propertyId, 'insurance_company,insurance_expiry,insurance_amount', userId),
-      calendar.upcoming(supabase, { propertyId, userId }, athensToday(), 10),
+      calendar.upcoming(supabase, { propertyId, userId }, todayStr, 10, 'title,event_date,amount,status,source'),
       supabase.from('market_rates').select('euribor_3m,bog_housing_new,updated_at,provenance').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
       loanStore.ofProperty(supabase, propertyId, userId),
       supabase.from('clients').select('id,type,full_name,afm,phone,email,rating,do_not_rent,tags,budget,needs').eq('user_id', userId).order('created_at', { ascending: false }).limit(80),
@@ -357,10 +368,14 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     // για το ίδιο ακίνητο την ίδια στιγμή. Σε βοηθό που δίνει συμβουλή με λόγια,
     // αυτό δεν διαβάζεται ως διαφορά πίνακα — διαβάζεται ως λάθος συμβουλή.
     const ledger = mergeLedger((bil || []) as never[], expenses as never[]);
-    const ofYear = ledger.entries.filter(e => e.date >= `${year}-01-01` && e.date <= `${year}-12-31`);
-    const total = ledgerTotal(ofYear);
-    // Ταμειακή βάση για τη φορολογική εικόνα: ό,τι ΟΝΤΩΣ πληρώθηκε.
-    const paid = ledgerTotal(ofYear.filter(e => e.paid));
+    // ΟΙ ΔΑΠΑΝΕΣ ΑΠΟ ΤΟ lib/facts (05.10.2026): ίδια ποσά, ίδιες λέξεις με την
+    // Επισκόπηση. Το «πληρωμένες» μετρούσε εδώ και όσες έχουν ημερομηνία στο
+    // μέλλον (το `paid` της δαπάνης είναι αληθές εξ ορισμού).
+    const yExp = yearExpensesOf(ledger.entries, year, todayStr);
+    const ofYear = yExp.entries;
+    const total = yExp.total;
+    // Ταμειακή βάση για τη φορολογική εικόνα: ό,τι ΟΝΤΩΣ πληρώθηκε ως σήμερα.
+    const paid = yExp.paid;
     const owed = ledgerTotal(ledgerUnpaid(ofYear));
 
     const catMap: Record<string, number> = {};
@@ -387,7 +402,12 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     const openRentNow = rentAll.filter(r => !r.paid).map(r => ({ id: r.id, label: `Ενοίκιο ${MONTHS_GEN[(r.period_month || 1) - 1]} ${r.period_year}`, amount: r.amount || 0, due: r.due_date }));
     setOpenRent(openRentNow);
     const t = ten?.[0];
-    const rent = resolveRent({ tenantRent: t?.monthly_rent, targetRent: propContext.targetRent }).value;
+    // ΧΩΡΙΣ ΜΙΣΘΩΣΗ, ΚΑΝΕΝΑ ΕΣΟΔΟ ΕΝΟΙΚΙΟΥ (lib/facts/income.ts). Η Νόα έλεγε
+    // «ενοίκιο 650€/μήνα, μεικτή 5,2%» για ακίνητο σε ιδιοχρησία με παλιό στόχο.
+    const let_ = propContext.statusKey ? isLease(propContext.statusKey) : true;
+    const rentRes = resolveRent({ tenantRent: t?.monthly_rent, targetRent: propContext.targetRent });
+    const rent = let_ ? rentRes.value : 0;
+    const rentIsTarget = rentRes.source === 'target';
     const value = resolveValue(propContext.value).value;
     const { grossYield: grossY, netYield: netY } = computeYields(rent, value, total);
     const leaseEnd = t?.lease_end || null;
@@ -414,15 +434,42 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
 
     // Έσοδα φιλοξενίας (διαμονές επισκεπτών από το Πελατολόγιο συνδεδεμένες σε αυτό το ακίνητο).
     const propStays = stays.filter(s => s.property_id === propertyId);
-    const propHostRevenue = propStays.reduce((sum, s) => sum + stayTotal(s), 0);
-    const hostingLine = propStays.length
-      ? `Έσοδα φιλοξενίας από διαμονές επισκεπτών σε αυτό το ακίνητο: ${eur(Math.round(propHostRevenue))} από ${propStays.length} διαμονές (πηγή: ${navLabel('clients')}).`
+    // ΤΟ ΕΤΟΣ ΚΑΙ ΤΑ ΔΥΟ ΠΟΣΑ (lib/facts/hosting.ts). Εδώ αθροιζόταν το `total`
+    // ΟΛΩΝ των διαμονών όλων των ετών, με το όνομα «έσοδα»: ούτε το payout ούτε
+    // το δηλωτέο ούτε του έτους που ρωτά ο χρήστης.
+    const host = hostingReceipts(propStays, year, todayStr);
+    const hostingLine = host.stays
+      ? `${HOSTING_LABELS.payout} ${year} ως σήμερα: ${eur(host.payout)}. ${HOSTING_LABELS.declarable}: ${eur(host.declarable)}. Από ${host.stays} διαμονές, ${host.nights} διανυκτερεύσεις (πηγή: ${navLabel('clients')}).`
+      : '';
+    // Ο ΕΝΦΙΑ ΤΟΥ ΕΤΟΥΣ: η Νόα δεν τον ήξερε καθόλου.
+    const ef = enfiaYear(enfiaSettings, year, {
+      stored: propContext.enfia, value: propContext.value, sqm: propContext.sqm, yearBuilt: propContext.yearBuilt,
+      floor: propContext.floor, ownershipPct: propContext.ownership ?? null, postalCode: propContext.postalCode,
+    });
+    // Η ΕΠΟΜΕΝΗ ΔΟΣΗ ΑΠΟ ΤΟ ΦΟΡΟΛΟΓΙΚΟ ΗΜΕΡΟΛΟΓΙΟ, όχι από το έτος του ρολογιού:
+    // τον Ιανουάριο είναι η 11η του περσινού εκκαθαριστικού (lib/facts/deadlines).
+    // Το ποσό της είναι του εκκαθαριστικού στο οποίο ανήκει.
+    const calOpen = (cal || []).filter(c => !isClosedStatus(c.status));
+    const closedTax = closedTaxRefs(cal || [], []);
+    const due = nextEnfiaDue(todayStr, closedTax);
+    const dueEf = due && due.year !== year ? enfiaYear(enfiaSettings, due.year, {
+      stored: propContext.enfia, value: propContext.value, sqm: propContext.sqm, yearBuilt: propContext.yearBuilt,
+      floor: propContext.floor, ownershipPct: propContext.ownership ?? null, postalCode: propContext.postalCode,
+    }) : ef;
+    const dueAmount = due ? dueEf.instalments.find(i => i.no === due.no)?.amount ?? 0 : 0;
+    const enfiaLine = ef.annual > 0
+      ? `${ef.label}: ${eur(ef.annual)}, σε ${ef.instalments.length} δόσεις${due && dueAmount > 0 ? `· επόμενη η ${due.no}η${due.year !== year ? ` του ${due.year}` : ''}, ${eur(dueAmount)}, στις ${due.date} (${dueText(daysFrom(todayStr, due.date))})` : ''}.`
+      : '';
+    // ΟΙ ΘΕΣΜΙΚΕΣ ΠΡΟΘΕΣΜΙΕΣ, ΟΙ ΙΔΙΕΣ ΜΕ ΤΗΝ ΕΠΙΣΚΟΠΗΣΗ. Η Νόα τις ήξερε μόνο αν
+    // είχαν ήδη γραφτεί στο Ημερολόγιο ή στις Εκκρεμότητες.
+    const taxDue = nextTaxObligations(todayStr, taxProfileOfStatus(propContext.statusKey), closedTax).slice(0, 6);
+    const taxLine = taxDue.length
+      ? `Θεσμικές προθεσμίες (ίδιες με την Επισκόπηση): ${taxDue.map(o => `${o.title} ${o.date} (${dueText(daysFrom(todayStr, o.date))})`).join('; ')}`
       : '';
 
     // ── Λογιστική εικόνα (ΙΔΙΑ μηχανή με την καρτέλα Λογιστική) ώστε Νόα να
     // συμβουλεύει με τον σωστό φόρο/καθαρό, όχι με πρόχειρες εκτιμήσεις. ──────────
     const isShortAcct = propStays.length > 0;
-    const yearStays = propStays.filter(s => (s.check_in || '').slice(0, 4) === String(year));
 
     // ── ΤΟ ΜΕΙΚΤΟ ΕΙΣΟΔΗΜΑ ΕΙΝΑΙ ΤΙ ΟΦΕΙΛΕΤΑΙ ΚΑΙ ΤΟ ΤΑΜΕΙΟ ΕΙΝΑΙ ΤΙ ΜΠΗΚΕ ──
     // Εδώ γραφόταν `rent * 12`, όπου το `rent` μπορεί να προέρχεται από τον
@@ -440,7 +487,9 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     const collectedRent = yearRent.filter(r => r.period_year === year && r.paid).reduce((s, r) => s + (r.amount || 0), 0);
     const rentFromTarget = accruedRent <= 0;
     const longGross = rentFromTarget ? rent * 12 : accruedRent;
-    const acctGross = isShortAcct ? yearStays.reduce((sum, s) => sum + stayTotal(s), 0) : longGross;
+    // Το δηλωτέο ακαθάριστο ΟΛΩΝ των διαμονών του έτους (lib/facts/hosting.ts), όχι
+    // το `total`, που σε διαμονή χωρίς ανάλυση μπορεί να είναι το payout.
+    const acctGross = isShortAcct ? hostingReceipts(propStays, year, `${year}-12-31`).declarable : longGross;
     const acctStmt = incomeStatement({
       regime: isShortAcct ? 'individual_shortterm' : 'individual_longterm',
       grossIncome: acctGross, otherCashExpenses: paid,
@@ -466,10 +515,10 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     // ── Εκκρεμότητες: πραγματικές ανοιχτές εργασίες (καρτέλα Εκκρεμότητες) ώστε Νόα
     // να απαντά «τι εκκρεμεί;» με στοιχεία, όχι υποθέσεις και να ξεχωρίζει τις ληξιπρόθεσμες.
     const openTasks = chk;
-    const overdueTasks = openTasks.filter(i => i.due_date && i.due_date < todayStr);
+    const overdueTasks = openTasks.filter(i => isOverdue(i.due_date, todayStr, i.status));
     const taskCostSum = openTasks.reduce((s, i) => s + (Number(i.estimated_cost) || 0), 0);
     const checklistLine = openTasks.length
-      ? `Ανοιχτές εκκρεμότητες (${openTasks.length}${overdueTasks.length ? `, εκ των οποίων ${overdueTasks.length} ληξιπρόθεσμες` : ''}${taskCostSum > 0 ? `, εκτιμώμενο κόστος ${eur(Math.round(taskCostSum))}` : ''}): ${openTasks.slice(0, 15).map(i => `${i.description}${i.due_date ? ` [προθεσμία ${i.due_date}${i.due_date < todayStr ? ', ΛΗΞΙΠΡΟΘΕΣΜΗ' : ''}]` : ''}${i.estimated_cost ? ` ~${eur(i.estimated_cost)}` : ''}${i.assigned_contact_name ? ` (ανάθεση: ${i.assigned_contact_name})` : ''}`).join('; ')}${openTasks.length > 15 ? ` (και ${openTasks.length - 15} ακόμη)` : ''}`
+      ? `Ανοιχτές εκκρεμότητες (${openTasks.length}${overdueTasks.length ? `, εκ των οποίων ${overdueTasks.length} ληξιπρόθεσμες` : ''}${taskCostSum > 0 ? `, εκτιμώμενο κόστος ${eur(Math.round(taskCostSum))}` : ''}): ${openTasks.slice(0, 15).map(i => `${i.description}${i.due_date ? ` [προθεσμία ${i.due_date}${isOverdue(i.due_date, todayStr, i.status) ? ', ΛΗΞΙΠΡΟΘΕΣΜΗ' : ''}]` : ''}${i.estimated_cost ? ` ~${eur(i.estimated_cost)}` : ''}${i.assigned_contact_name ? ` (ανάθεση: ${i.assigned_contact_name})` : ''}`).join('; ')}${openTasks.length > 15 ? ` (και ${openTasks.length - 15} ακόμη)` : ''}`
       : 'Δεν υπάρχουν ανοιχτές εκκρεμότητες.';
 
     // Τα νούμερα που τροφοδοτούν τις προτάσεις εκκίνησης. Ό,τι δεν υπάρχει
@@ -544,20 +593,22 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       propContext.sqm ? `Εμβαδόν: ${propContext.sqm} τ.μ.` : '',
       value ? `Εμπορική αξία: ${eur(value)}` : 'Εμπορική αξία: δεν έχει καταχωρηθεί',
       propContext.status ? `Κατάσταση: ${propContext.status}` : '',
-      `Ενοίκιο: ${eur(rent)}/μήνα (ετήσιο ${eur(rent * 12)})`,
-      value ? `Απόδοση: μεικτή ${fp(grossY)}, καθαρή ${fp(netY)}` : '',
-      `Δαπάνες ${year}: σύνολο ${eur(total)} (πληρωμένες ${eur(paid)}, εκκρεμείς ${eur(owed)}). Κάθε ευρώ μετρημένο μία φορά· οι απλήρωτοι λογαριασμοί μετρούν στην ημερομηνία που λήγουν· ίδιος υπολογισμός με τις Δαπάνες και τη Σύγκριση.`,
+      let_ ? `Ενοίκιο: ${eur(rent)}/μήνα (ετήσιο ${eur(rent * 12)})${rentIsTarget ? ', στόχος χωρίς ενοικιαστή: εκτίμηση' : ''}` : NOT_LET_NOTE,
+      let_ && value ? `Απόδοση: ${YIELD_LABELS.gross.toLowerCase()} ${fp(grossY)}, ${YIELD_LABELS.net_pre_tax.toLowerCase()} ${fp(netY)}` : '',
+      `${EXPENSE_LABELS.total} ${year}: ${eur(total)} = ${expenseParts(yExp, eur)}. Απλήρωτες ${eur(owed)}. Κάθε ευρώ μετρημένο μία φορά· ίδιο ποσό με την Επισκόπηση, το Χαρτοφυλάκιο και τις Αποδόσεις.`,
+      enfiaLine,
       topCats.length ? `Μεγαλύτερες κατηγορίες: ${topCats.map(([c, a]) => `${c} ${eur(a)}`).join(', ')}` : '',
       unpaid.length ? `Απλήρωτοι λογαριασμοί (${unpaid.length}): ${unpaid.slice(0, 12).map(b => `${b.name || 'λογαριασμός'} ${eur(b.amount)}${b.due_date ? ` λήξη ${b.due_date}` : ''}`).join('; ')}` : 'Δεν υπάρχουν απλήρωτοι λογαριασμοί.',
       openRentNow.length ? `Ανεξόφλητες δόσεις ενοικίου (${openRentNow.length}): ${openRentNow.slice(0, 12).map(r => `${r.label} ${eur(r.amount)}`).join('; ')}` : '',
       t ? `Ενοικιαστής: ${t.full_name || 'καταχωρημένος'}${t.deposit_amount ? `, εγγύηση ${eur(t.deposit_amount)}` : ''}` : 'Δεν έχει καταχωρηθεί ενοικιαστής.',
-      leaseEnd ? `Λήξη μίσθωσης: ${leaseEnd}${daysLease != null ? ` (σε ${daysLease} ημέρες)` : ''}` : '',
+      leaseEnd ? `Λήξη μίσθωσης: ${leaseEnd}${daysLease != null ? ` (${dueText(daysLease)})` : ''}` : '',
       insurance?.insurance_company || insurance?.insurance_expiry ? `Ασφάλεια: ${insurance?.insurance_company || 'εταιρεία άγνωστη'}${insurance?.insurance_expiry ? `, λήξη ${insurance.insurance_expiry}` : ''}` : 'Ασφάλεια: δεν έχει καταχωρηθεί.',
       loanLine,
       hostingLine,
       accountingLine,
       budgetLine,
-      (cal || []).length ? `Επόμενα στο ημερολόγιο: ${(cal || []).map(c => `${c.event_date} ${c.title}${c.amount ? ` ${eur(c.amount)}` : ''}`).join('; ')}` : '',
+      taxLine,
+      calOpen.length ? `Επόμενα στο ημερολόγιο: ${calOpen.map(c => `${c.event_date} ${c.title}${c.amount ? ` ${eur(c.amount)}` : ''}`).join('; ')}` : '',
       checklistLine,
       `Σήμερα είναι ${new Date(todayStr).toLocaleDateString('el-GR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}${isWeekend(todayStr) ? ' (Σαββατοκύριακο)' : ''}${holidayName(todayStr) ? `, αργία: ${holidayName(todayStr)}` : ''}.`,
       `Επόμενες επίσημες αργίες Ελλάδας: ${upcomingHolidays(todayStr, 5).map(h => `${h.name} (${new Date(h.date).toLocaleDateString('el-GR', { day: 'numeric', month: 'short' })})`).join(', ')}. Όταν προτείνεις ημερομηνία/ώρα ραντεβού, απόφυγε Σαββατοκύριακα και αργίες εκτός αν το ζητήσει ο χρήστης και ανάφερέ το αν η ημέρα που διαλέγει πέφτει σε αργία/Σαββατοκύριακο.`,
@@ -662,7 +713,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       });
       setTechStr(`Σύνολο επαφών: ${techRoster.length}\n${tLines.join('\n')}`);
     } else setTechStr('');
-  }, [propertyId, userId, propContext, supabase, allProperties.length]);
+  }, [propertyId, userId, propContext, supabase, allProperties.length, enfiaSettings]);
 
   // Τα συμφραζόμενα φορτώνονται ΜΙΑ φορά, όταν ανοίξει το πάνελ. Μέσα από το
   // κοινό `useLoad`, γιατί είναι ασύγχρονη φόρτωση όπως κάθε άλλη.

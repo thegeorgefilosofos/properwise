@@ -21,7 +21,7 @@ import { T, PageTitle, KPIGrid, Badge, Btn, ExportButton, EmptyState, InfoBanner
 import { statusLabel, type StatusRow } from '@/lib/property/status';
 import { propertyTypeLabel } from '@/lib/property/types';
 import { yearOccupancy } from '@/lib/clients/reports';
-import { propertyIncome } from '@/lib/income/propertyIncome';
+import { rentIncome, propertyStatus, yearExpensesOf, YIELD_LABELS } from '@/lib/facts';
 import { athensToday } from '@/lib/core/time';
 import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger';
 import { portfolioReturns } from '@/lib/market/portfolio';
@@ -62,7 +62,10 @@ interface Row {
   id: string; name: string; typeLabel: string; mode: Mode;
   /** Η κατάσταση ΟΠΩΣ ΤΗ ΔΗΛΩΣΕ ο ιδιοκτήτης, όχι όπως τη μαντεύουν τα δεδομένα. */
   statusLabel: string;
+  /** Έσοδα, δαπάνες και καθαρό ΩΣ ΣΗΜΕΡΑ (lib/facts). */
   revenue: number; expenses: number; net: number;
+  /** Δαπάνες έτους (πληρωμένες + προγραμματισμένες), ίδιο ποσό με την Επισκόπηση. */
+  expensesYear: number;
   /** Το `revenue` δεν είναι βεβαιότητα: ενοίκιο × μήνες (μακροχρόνια) ή
    *  διαμονές με απροσδιόριστη βάση ποσού (βραχυχρόνια). */
   revenueEstimated: boolean;
@@ -248,8 +251,11 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       // σήμερα, αλλιώς πληρωμένες δόσεις με ημερομηνία ως σήμερα, αλλιώς
       // εκτίμηση από το ενοίκιο του ενοικιαστή. Πριν μετρούσαν κι οι κρατήσεις
       // του Δεκεμβρίου κι οι δόσεις με ημερομηνία στο μέλλον.
-      const inc = propertyIncome({ rents: rentsByProp.get(p.id) || [], stays: propStays, year, today,
+      // Και ο κανόνας της κατάστασης (lib/facts/income.ts): χωρίς μίσθωση δεν
+      // υπάρχει εκτίμηση από ξεχασμένο μίσθωμα, μένει μόνο ό,τι εισπράχθηκε.
+      const fi = rentIncome({ status: propertyStatus(p as StatusRow), rents: rentsByProp.get(p.id) || [], stays: propStays, year, today,
         value: p.value, estimateMonthly: rentByProp.get(p.id) });
+      const inc = { source: fi.source, receivedToDate: fi.received, annualized: fi.annualized, estimated: fi.estimated, unresolvedStays: fi.unresolvedStays };
       const staysUnresolved = inc.unresolvedStays;
       const pay = payByProp.get(p.id);
       // ΔΥΟ ΔΙΑΦΟΡΕΤΙΚΑ ΠΡΑΓΜΑΤΑ ΜΕ ΕΝΑ ΟΝΟΜΑ. Το `mode` κρίνει ΠΩΣ υπολογίζονται
@@ -294,8 +300,13 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
         bills.filter(b => b.property_id === p.id),
         exp.filter(e => e.property_id === p.id),
       );
-      const ofYear = entries.filter(e => e.date >= `${year}-01-01` && e.date <= `${year}-12-31`);
-      const expenses = ledgerTotal(ofYear);
+      // ΟΙ ΔΑΠΑΝΕΣ ΑΠΟ ΤΟ lib/facts (05.10.2026). Η στήλη και το «Καθαρό» είναι
+      // ΩΣ ΣΗΜΕΡΑ, όπως τα έσοδα δίπλα τους: πριν αφαιρούνταν από τα έσοδα ως
+      // σήμερα οι δαπάνες ως τις 31/12. Η απόδοση παίρνει τις δαπάνες ΕΤΟΥΣ
+      // (πληρωμένες + προγραμματισμένες), ίδιο ποσό με την Επισκόπηση.
+      const yExp = yearExpensesOf(entries, year, today);
+      const ofYear = yExp.entries;
+      const expenses = Math.round((yExp.paid + yExp.overdue) * 100) / 100;
       // ΔΥΟ ΟΡΙΣΜΟΙ ΠΛΗΡΟΤΗΤΑΣ ΓΙΑ ΤΟ ΙΔΙΟ ΑΚΙΝΗΤΟ. Εδώ διαιρούσαμε με τις
       // ημέρες που πέρασαν φέτος· η καρτέλα «Πληρότητα» διαιρεί με τις
       // ΔΙΑΘΕΣΙΜΕΣ ημέρες. Το εποχιακό εξοχικό έβγαινε στο χαρτοφυλάκιο ένα
@@ -329,10 +340,14 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       // χωρίς καμία δόση, όπου δεν υπάρχει τίποτα άλλο — και εκείνο σημαίνεται
       // ήδη ως εκτίμηση από το `revenueEstimated`.
       const annualRevenue = Math.round(inc.annualized);
-      const annualExpenses = Math.round(expenses * (12 / monthsElapsed));
+      // ΧΩΡΙΣ ×12/ΜΗΝΕΣ (05.10.2026). Εδώ γραφόταν `expenses × 12 / μήνες`, όπου
+      // το `expenses` ήταν ΗΔΗ όλο το έτος μαζί με τα προγραμματισμένα: στο demo
+      // 10.159,70€ γίνονταν ≈12.192€. Οι δαπάνες έτους είναι ό,τι καταχωρήθηκε.
+      const annualExpenses = Math.round(yExp.total);
+      const expensesYear = yExp.total;
       return {
         id: p.id, name: p.name, typeLabel: propertyTypeLabel(p.prop_type) || 'Ακίνητο', mode, statusLabel: declaredStatus,
-        revenue, expenses, net: revenue - expenses, revenueEstimated, staysUnresolved, rentExpected,
+        revenue, expenses, expensesYear, net: revenue - expenses, revenueEstimated, staysUnresolved, rentExpected,
         occupancy, overbooked, nights, availableDays: occ.availableDays, pending: unpaid + chkAtt, owed,
         value: p.value || 0, annualRevenue, annualExpenses,
       };
@@ -462,7 +477,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
 
   const exportStatement = () => {
     if (!stmt) return;
-    const head = ['Ακίνητο', 'Έσοδα έτους', 'Βάση εσόδων', 'Δαπάνες έτους', 'Καθαρό'];
+    const head = ['Ακίνητο', 'Έσοδα ως σήμερα', 'Βάση εσόδων', 'Δαπάνες ως σήμερα', 'Καθαρό ως σήμερα'];
     // Η γραμμή ΣΥΝΟΛΟ δεν γράφεται εδώ — ο κοινός exporter τη βάζει ως ζωντανό
     // SUM. Γραμμένη και στα δύο σημεία, θα μετριόταν δύο φορές.
     const lines: (string | number)[][] = stmt.rows.map(r => [r.name, r.revenue, revenueBasis(r), r.expenses, r.net]);
@@ -490,7 +505,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       const sections: PdfSection[] = [
         {
           type: 'table', title: 'Ανάλυση ανά ακίνητο',
-          head: ['Ακίνητο', 'Έσοδα', 'Δαπάνες', 'Καθαρό'], align: ['l', 'r', 'r', 'r'],
+          head: ['Ακίνητο', 'Έσοδα ως σήμερα', 'Δαπάνες ως σήμερα', 'Καθαρό ως σήμερα'], align: ['l', 'r', 'r', 'r'],
           rows: stmt.rows.map(r => [r.name, pEur(r.revenue) + (r.revenueEstimated ? ' (εκτίμηση)' : ''), pEur(r.expenses), pSigned(r.net)]),
           result: ['Σύνολο', pEur(stmt.revenue), pEur(stmt.expenses), pSigned(stmt.net)],
         },
@@ -520,7 +535,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
   const fieldStyle: CSSProperties = { width: '100%', padding: '10px 16px', borderRadius: T.radius.xs, border: '1px solid var(--border-control)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 14, outline: 'none' };
 
   const exportCsv = () => {
-    const head = ['Ακίνητο', 'Τύπος', 'Κατάσταση', 'Έσοδα έτους', 'Βάση εσόδων', 'Δαπάνες έτους', 'Καθαρό', 'Πληρότητα %', 'Διαθέσιμες ημέρες', 'Νύχτες', 'Εκκρεμότητες', 'Οφειλές (€)'];
+    const head = ['Ακίνητο', 'Τύπος', 'Κατάσταση', 'Έσοδα ως σήμερα', 'Βάση εσόδων', 'Δαπάνες ως σήμερα', 'Καθαρό ως σήμερα', 'Πληρότητα %', 'Διαθέσιμες ημέρες', 'Νύχτες', 'Εκκρεμότητες', 'Οφειλές (€)'];
     const lines: (string | number)[][] = sorted.map(r => [r.name, r.typeLabel, r.statusLabel, r.revenue, revenueBasis(r), r.expenses, r.net, r.occupancy ?? '', r.occupancy != null ? r.availableDays : '', r.nights, r.pending, r.owed]);
     downloadTableXlsx(`Χαρτοφυλάκιο ${year}`, {
       title: 'Χαρτοφυλάκιο', subject: String(year), headers: head, rows: lines,
@@ -598,7 +613,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
         // την ίδια λέξη και η διαφορά μόνο σε ψιλό υπότιτλο.
         { label: `Έσοδα ${year} ως σήμερα`, value: eur(totalRevenue),
           sub: estimatedRows.length ? `${estimatedRows.length} ${estimatedRows.length === 1 ? 'ακίνητο' : 'ακίνητα'} με εκτίμηση` : undefined },
-        { label: `Καθαρό ${year} ως σήμερα`, value: eur(totalRevenue - totalExpenses), sub: `δαπάνες ${eur(totalExpenses)}` },
+        { label: `Καθαρό ${year} ως σήμερα`, value: eur(totalRevenue - totalExpenses), sub: `δαπάνες ως σήμερα ${eur(totalExpenses)}` },
         // Πληρότητα χωρίς καμία βραχυχρόνια δεν είναι μηδέν, είναι ερώτημα χωρίς
         // αντικείμενο. Το πλακίδιο δεν εμφανίζεται καθόλου.
         ...(avgOcc != null ? [{ label: 'Μέση πληρότητα', value: fp(avgOcc),
@@ -648,7 +663,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                 είδος μεγέθους: ο αναγνώστης δεν ξέρει ποια από τις δύο είναι
                 στρογγυλεμένη. Το fp() δίνει πάντα δύο. */}
             <Stat label="Μεικτή απόδοση" value={fp(agg.grossYield)} chars={aggWidest} />
-            <Stat label="Καθαρή απόδοση" value={fp(agg.netYield)} chars={aggWidest} />
+            <Stat label={YIELD_LABELS.net_pre_tax} value={fp(agg.netYield)} chars={aggWidest} />
           </div>
         </div>
       );

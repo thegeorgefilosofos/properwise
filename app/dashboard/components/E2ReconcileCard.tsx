@@ -18,6 +18,7 @@
 // στοιχεία δεν το λένε. Τότε η ενέργεια είναι «Έλεγξε με τον λογιστή».
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { EditDetailsLink } from './EditDetailsLink';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FileUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -48,7 +49,9 @@ const STATUS: Record<ReconLine['status'], { color: string; label: string }> = {
 
 const SOURCE_LABEL: Record<StoredE2Row['source'], string> = { pdf: 'από PDF', paste: 'με επικόλληση', manual: 'με το χέρι' };
 
-export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade }: {
+export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade, onEditProperty }: {
+  /** Ανοίγει τον οδηγό του ακινήτου στο ΑΦΜ του ιδιοκτήτη (EditDetailsLink). */
+  onEditProperty?: (propertyId: string) => void;
   userId: string; year: number; plan?: PlanId; onUpgrade?: () => void;
 }) {
   // Η εξαγωγή ξεκλειδώνει από το «Ένα ακίνητο» και πάνω. Η σύγκριση μένει
@@ -218,7 +221,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
         </div>
       ) : !current ? (
         <p style={{ ...TT.bodySm, margin: 0 }}>
-          Το Ε2 υποβάλλεται ανά ΑΦΜ. Όρισε το ΑΦΜ του ιδιοκτήτη στην «Επεξεργασία στοιχείων» από το μενού του ακινήτου και η σύγκριση ανοίγει εδώ.
+          Το Ε2 υποβάλλεται ανά ΑΦΜ και η σύγκριση ανοίγει εδώ μόλις οριστεί. Όρισε το ΑΦΜ του ιδιοκτήτη στην <EditDetailsLink properties={loaded?.properties ?? []} onEdit={onEditProperty} />.
         </p>
       ) : !result || result.status === 'not_uploaded' ? (
         <div style={{ padding: '14px 16px', background: 'var(--bg-elevated)', borderRadius: T.radius.inner }}>
@@ -292,7 +295,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
 
       {noAfmGroup && current && (
         <p style={{ ...TT.caption, margin: '12px 0 0' }}>
-          {noAfmGroup.idx.length === 1 ? 'Ένα ακίνητο δεν έχει' : `${noAfmGroup.idx.length} ακίνητα δεν έχουν`} ΑΦΜ ιδιοκτήτη και μένουν εκτός σύγκρισης. Όρισέ το στην «Επεξεργασία στοιχείων» από το μενού του ακινήτου.
+          {noAfmGroup.idx.length === 1 ? 'Ένα ακίνητο δεν έχει' : `${noAfmGroup.idx.length} ακίνητα δεν έχουν`} ΑΦΜ ιδιοκτήτη και μένουν εκτός σύγκρισης. Όρισέ το στην <EditDetailsLink properties={noAfmGroup.idx.map(i => loaded?.properties[i] ?? {})} onEdit={onEditProperty} />.
         </p>
       )}
 

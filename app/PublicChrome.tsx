@@ -31,6 +31,7 @@ import { T } from '@/components/tokens';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
+import { asOfDate } from '@/lib/facts/prices';
 
 /**
  * ΕΝΑ ΜΕΤΡΟ ΓΙΑ ΟΛΕΣ ΤΙΣ ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΑΡΧΙΚΗΣ.
@@ -443,11 +444,22 @@ const TOOL_SOURCES = {
 } as const;
 /** Η ετικέτα του πλαισίου: «Νομική βάση» όπου εφαρμόζεται νόμος, «Πηγές» όπου τιμοκατάλογος. */
 const SOURCE_BADGE: Partial<Record<keyof typeof TOOL_SOURCES, string>> = { power: 'Πηγές' };
-export function ToolSources({ kind }: { kind: keyof typeof TOOL_SOURCES }) {
+// ΚΑΙ ΠΟΤΕ ΕΛΕΓΧΘΗΚΕ (05.10.2026). Το πλαίσιο έγραφε τον νόμο χωρίς ημερομηνία:
+// ο αναγνώστης δεν ήξερε αν η κλίμακα που βλέπει είναι του μήνα ή περσινή. Την
+// ημερομηνία τη δίνει η σελίδα (`checked`), από το μητρώο ισχύος για τα
+// φορολογικά όρια (lib/facts/taxLimits) ή από τον κατάλογο τιμών για το ρεύμα.
+// Δεν υπολογίζεται εδώ επίτηδες: το αρχείο το φορτώνουν και εργαλεία του
+// περιηγητή και το μητρώο θα έμπαινε στο πακέτο τους. Υποχρεωτικό πεδίο: κάθε
+// σελίδα αποφασίζει. Το δάνειο δίνει ρητά `null`, γιατί οι τιμές αγοράς του
+// γράφουν δική τους ημερομηνία δίπλα στο πεδίο.
+export function ToolSources({ kind, checked }: { kind: keyof typeof TOOL_SOURCES; checked: string | null }) {
   return (
     <aside className="po-tool-sources po-noprint" aria-label="Νομική βάση και πηγές">
       <span className="po-src-badge">{SOURCE_BADGE[kind] ?? 'Νομική βάση'}</span>
-      <span className="po-src-txt po-just">{hy(TOOL_SOURCES[kind])}</span>
+      <span className="po-src-txt po-just">
+        {hy(TOOL_SOURCES[kind])}
+        {checked && <> · Τελευταία ενημέρωση {asOfDate(checked)}</>}
+      </span>
     </aside>
   );
 }

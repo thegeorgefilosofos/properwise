@@ -36,6 +36,9 @@ import {
 } from './insurance/catalog'
 import { SubscriptionSection } from './insurance/SubscriptionSection'
 import { navLabel } from '@/lib/nav/labels'
+import { propertyStatus, isLease, type StatusRow } from '@/lib/facts/status';
+import { AsOfNote } from '@/components/AsOfNote';
+import { PRICE_FACTS } from '@/lib/facts/prices';
 
 /**
  * Η ασφάλεια κατοικίας και οι συνδρομές streaming δεν είναι ίδιο πράγμα και
@@ -162,9 +165,10 @@ export default function BillsInsurance({ propertyId, userId = '', only, legalFor
             age:          d.enfiaAge       || 'y10_14',
             city:         p.address        || '',
             propertyType: p.prop_type      || '',
-            isRented:     p.status_detail === 'rented',
+            // Η κατάσταση από το lib/facts: το «seasonal» και το rental_mode μετρούν κι αυτά.
+            isRented:     isLease(propertyStatus(p as StatusRow)),
             yearBuilt:    Number(p.year_built) || null,
-            rentalMode:   p.rental_mode === 'long_term' || p.rental_mode === 'short_term' ? p.rental_mode : '',
+            rentalMode:   propertyStatus(p as StatusRow) === 'rent_short' ? 'short_term' : propertyStatus(p as StatusRow) === 'rent_long' ? 'long_term' : '',
             furnished:    isFurnished,
             hasLoan:      activeLoan,
             monthlyRent:  activeRent || Number(p.target_rent) || null,
@@ -913,6 +917,9 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                   </ChipToggle>
                 </div>
               </div>
+              {/* ΚΑΙ ΠΟΤΕ, ΑΠΟ ΠΟΥ (lib/facts/prices). Η ημερομηνία ζούσε μόνο στην
+                  πύλη φρεσκάδας και δεν τη διάβαζε κανείς. */}
+              <AsOfNote fact={PRICE_FACTS.insurance} style={{ margin: '-6px 0 12px' }} />
 
               {/* ── ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΑΥΤΟ ΤΟ ΑΚΙΝΗΤΟ ────────────────────────────
                   Πριν από κάθε τιμή. Η κατάταξη βγαίνει από εδώ και ο χρήστης

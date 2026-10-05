@@ -193,7 +193,7 @@ export default async function Page() {
           <MortgageCalculator market={market} today={today}/>
         </Suspense>
 
-        <ToolSources kind="loan" />
+        <ToolSources kind="loan" checked={null} />
 
         <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
           <SectionHead over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν πριν ζητήσουν δάνειο" />

@@ -13,11 +13,12 @@ import * as expenses from '@/lib/data/expenses';
 import * as billStore from '@/lib/data/bills';
 import * as stayStore from '@/lib/data/stays';
 import * as rentStore from '@/lib/data/rent';
-import { roundHalfUp } from '@/lib/core/money';
 import { propertyIncome, type IncomeRent, type PropertyIncome } from '@/lib/income/propertyIncome';
 import { taxpayerRentSources, ownershipPctOf, wholePropertyTax, type TaxpayerPropInput, type OtherPropertyIncome } from '@/lib/accounting/taxpayerIncome';
+import { taxpayerScope } from '@/lib/facts/taxpayer';
+import { propertyStatus, propertyStatusLabel, isLease, NOT_LET_NOTE, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_PRE_TAX_SUB, yearExpenses, type PropertyStatus } from '@/lib/facts';
 import type { StayAmountLike } from '@/lib/clients/stayAmounts';
-import { ledgerYearTotal, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
+import { type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
 import { trailingStays, type ReportStay, type TrailingStays } from '@/lib/clients/reports';
 import { athensToday } from '@/lib/core/time';
 import { isActiveLoan } from '@/lib/loans/shape'
@@ -25,7 +26,7 @@ import { readStatus, type StatusRow } from '@/lib/property/status'
 import { useChartWidth } from '@/app/hooks/useChartWidth'
 import { businessFormOf } from '@/lib/accounting/taxProfile'
 import type { LegalForm as DossierLegalForm } from '@/lib/accounting/dossier'
-import { Skeleton, SkeletonKPIs, PageTitle, fe, feCompact, fp, fn, ABSENT, ABSENT_SHORT, T, fixedCols, Bar, Tile, widestOf, Stat, Btn } from '@/components/Theme';
+import { Skeleton, SkeletonKPIs, PageTitle, EmptyState, fe, feCompact, fp, fn, ABSENT, ABSENT_SHORT, T, fixedCols, Bar, Tile, widestOf, Stat, Btn } from '@/components/Theme';
 import { NumberInput, CustomSelect, fieldLabelStyle, SegmentControl, Toggle as Switch, TOGGLE } from './UIComponents';
 import { ChevronRight, TrendingUp, Landmark, Percent, Wallet, Layers, ArrowUpRight, Info, ShieldCheck } from 'lucide-react';
 import { yields, compound, leverage, compareInvestments, propertyTotalReturn, projectLine, yieldGrade, dealAnalysis, type LeverageResult, type YieldGrade } from '@/lib/market/returns';
@@ -52,6 +53,9 @@ import { INK_FAINT, INK_MUTED } from '@/lib/print/ink';
 import { failed, MSG } from '@/lib/core/dbError';
 import { InfoHint } from './InfoHint';
 import { fpSigned } from '@/lib/core/format';
+import { rentalBracketsForYear } from '@/lib/billing/greekTax';
+import { bracketsSentence, taxLimitAsOf } from '@/lib/facts/taxLimits';
+import { asOfLine } from '@/lib/facts/prices';
 
 // Αντιστοίχιση περιοχής → πλησιέστερη αναφορά βραχυχρόνιας (τα δεδομένα ST είναι ανά
 // ευρύτερη ζώνη, όχι ανά προάστιο). Δίνει ρεαλιστικά defaults (πληρότητα/τιμή) ανά περιοχή.
@@ -674,6 +678,8 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   // αντί 34.300 και στα μικρά εισοδήματα υπερδιπλάσιος.
   const entity = businessFormOf(legalForm);
   const [term, setTerm] = useState<'long' | 'short'>('long');
+  /** Η κατάσταση του ακινήτου (lib/facts). Χωρίς μίσθωση η καρτέλα εξηγεί, δεν υπολογίζει. */
+  const [statusNow, setStatusNow] = useState<PropertyStatus | null>(null);
 
   // Στοιχεία (prefill από τα δεδομένα του ακινήτου, με δυνατότητα διόρθωσης).
   const [value, setValue] = useState('');
@@ -764,7 +770,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       try {
         const yearNow = Number(athensToday().slice(0, 4));
         const [pr, rc, exp, ln, allPr, allRc, bil, sts, yrRents, allYrRents, allSts, ownerRes] = await Promise.all([
-          properties.one(supabase, propertyId, 'value,target_rent,rental_mode,sqm,prop_type,name,postal_code', userId),
+          properties.one(supabase, propertyId, 'value,target_rent,rental_mode,status_detail,sqm,prop_type,name,postal_code', userId),
           supabase.from('rent_config').select('actual_rent,target_rent').eq('property_id', propertyId).maybeSingle(),
           // ΓΙΑΤΙ ΜΕ ΗΜΕΡΟΜΗΝΙΑ. Το ερώτημα ήταν χωρίς φίλτρο έτους και το άθροισμα
           // έμπαινε στο πεδίο με ετικέτα «Ετήσια έξοδα». Δηλαδή στον δεύτερο χρόνο
@@ -826,7 +832,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         const thisYear = Number(athensToday().slice(0, 4));
         // ΣΤΑ ΛΕΠΤΑ, ΟΧΙ ΣΤΟ ΕΥΡΩ. Το `Math.round` έγραφε «Έξοδα 10.160,00€» δύο
         // γραμμές πάνω από «Δαπάνες έτους 10.159,70€», στην ίδια οθόνη.
-        const expSum = roundHalfUp(ledgerYearTotal(bil, exp as LedgerExpense[], thisYear), 2);
+        // Οι δαπάνες έτους του lib/facts: πληρωμένες ως σήμερα + προγραμματισμένες
+        // έως 31/12, το ίδιο ποσό με την Επισκόπηση και το Χαρτοφυλάκιο.
+        const expSum = yearExpenses(bil, exp as LedgerExpense[], thisYear, athensToday()).total;
         setOpex(String(expSum || localStorage.getItem(K('opex')) || ''));
         setOpexYear(expSum > 0 ? thisYear : null);
         setBooked(trailingStays(sts, athensToday()));
@@ -837,6 +845,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         // μετάβαση κρατούν `status_detail: 'seasonal'`, που σημαίνει ακριβώς το
         // ίδιο. Το readStatus είναι η μία ανάγνωση που ξέρει και τα δύο.
         setTerm(readStatus(p as StatusRow) === 'rent_short' ? 'short' : 'long');
+        setStatusNow(propertyStatus(p as StatusRow));
         const savedR = localStorage.getItem(K('region'));
         if (savedR) setRegion(savedR === 'mykonos_santorini' ? 'mykonos' : savedR); // συμβατότητα με παλαιό κλειδί
         // Δεδομένα κοινότητας για τον ΤΚ του ακινήτου (ανώνυμα· μόνο με ≥5 ακίνητα).
@@ -969,10 +978,10 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   const portfolioTax = useMemo(() => consolidateRentTax(taxpayerRentSources({
     props: taxBase.props.some(p => p.id === propertyId) ? taxBase.props : [{ id: propertyId }, ...taxBase.props],
     current: { id: propertyId, annualRent: grossAnnual, shortTerm: term === 'short', rentsPaidViaBank: rentsBank },
-    ownerClientIds: pro ? taxBase.owners : null,
+    ownerClientIds: taxpayerScope(profileType, taxBase.owners),
     income: taxBase.income,
     year: taxYear, today: athensToday(),
-  }), undefined, taxYear), [propertyId, grossAnnual, term, rentsBank, taxBase, pro, taxYear]);
+  }), undefined, taxYear), [propertyId, grossAnnual, term, rentsBank, taxBase, profileType, taxYear]);
 
   const annualTax = useMemo(() => {
     if (grossAnnual <= 0) return 0;
@@ -1164,8 +1173,8 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
     // Δείκτες απόδοσης.
     const yieldRows = [
       R('Μεικτή απόδοση', rPct(y.grossYield)),
-      R('Καθαρή απόδοση', rPct(y.netYield)),
-      R('Απόδοση μετά τον φόρο', rPct(y.netYieldAfterTax)),
+      R(YIELD_LABELS.net_pre_tax, rPct(y.netYield)),
+      R(YIELD_LABELS.net_after_tax, rPct(y.netYieldAfterTax)),
       R('Εκτιμώμενη ετήσια ανατίμηση', rPct(nAppr)),
       R('Ενδεικτική συνολική απόδοση (καθαρή + ανατίμηση)', rPct(totalReturn), 'sub'),
       R('Βαθμός απόδοσης', `${grade.grade} · ${grade.score}/100`, 'sub'),
@@ -1229,7 +1238,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       + `<div class="kpis">`
         + reportKpi('Αξία ακινήτου', rEur(nVal))
         + reportKpi(term === 'short' ? 'Ετήσια έσοδα' : 'Μηνιαίο ενοίκιο', rEur(term === 'short' ? grossAnnual : nRent))
-        + reportKpi('Καθαρή απόδοση', rPct(y.netYield))
+        + reportKpi(YIELD_LABELS.net_pre_tax, rPct(y.netYield))
         + reportKpi('Βαθμός απόδοσης', `${grade.grade} · ${grade.score}/100`)
       + `</div>`
       + reportSection('Ανάλυση εσόδων και εξόδων (ετήσια)') + `<table><tbody>${incRows}</tbody></table>`
@@ -1304,7 +1313,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         { type: 'kpis', title: 'Σύνοψη', items: [
           { label: 'Αξία ακινήτου', value: pEur(nVal) },
           { label: term === 'short' ? 'Ετήσια έσοδα' : 'Μηνιαίο ενοίκιο', value: pEur(term === 'short' ? grossAnnual : nRent) },
-          { label: 'Καθαρή απόδοση', value: pPct(y.netYield) },
+          { label: YIELD_LABELS.net_pre_tax, value: pPct(y.netYield) },
           { label: 'Βαθμός απόδοσης', value: `${grade.grade} · ${grade.score}/100` },
         ] },
         { type: 'rows', title: 'Ανάλυση εσόδων και εξόδων (ετήσια)', rows: [
@@ -1317,8 +1326,8 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         ] },
         { type: 'rows', title: 'Δείκτες απόδοσης', rows: [
           { label: 'Μεικτή απόδοση', value: pPct(y.grossYield) },
-          { label: 'Καθαρή απόδοση', value: pPct(y.netYield) },
-          { label: 'Απόδοση μετά τον φόρο', value: pPct(y.netYieldAfterTax) },
+          { label: YIELD_LABELS.net_pre_tax, value: pPct(y.netYield) },
+          { label: YIELD_LABELS.net_after_tax, value: pPct(y.netYieldAfterTax) },
           { label: 'Εκτιμώμενη ετήσια ανατίμηση', value: pPct(nAppr) },
           { label: 'Ενδεικτική συνολική απόδοση (καθαρή + ανατίμηση)', value: pPct(totalReturn), kind: 'sub' },
           { label: 'Βαθμός απόδοσης', value: `${grade.grade} · ${grade.score}/100`, kind: 'sub' },
@@ -1383,6 +1392,18 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       <h1 className="sr-only">{navLabel('roi')}</h1>
       <SkeletonKPIs n={4} />
       <div {...fixedCols(2, 12, 'stretch')}>{[0, 1].map(i => <Skeleton key={i} h={140} r={14} />)}</div>
+    </div>
+  );
+
+  // ── ΧΩΡΙΣ ΜΙΣΘΩΣΗ: ΕΞΗΓΗΣΗ, ΟΧΙ ΝΟΥΜΕΡΑ (05.10.2026) ────────────────────
+  // Σε κενό, αμφισβητούμενο ή προς πώληση ακίνητο η καρτέλα υπάρχει
+  // (lib/property/visibility.ts) αλλά δεν δείχνει ποσοστό: θα ήταν υπόθεση
+  // ντυμένη σαν μέτρηση. Λέει γιατί και πού απαντιέται το «τι να το κάνω».
+  if (statusNow && !isLease(statusNow)) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageTitle title={navLabel('roi')} sub={`${propertyStatusLabel({ status_detail: statusNow })} · ${NOT_LET_NOTE}`} />
+      <EmptyState page title="Γιατί δεν υπάρχει απόδοση"
+        hint={`Η απόδοση μετρά ό,τι αποδίδει το ακίνητο από μίσθωση. Όσο η κατάσταση είναι «${propertyStatusLabel({ status_detail: statusNow })}», ένα ποσοστό εδώ θα ήταν υπόθεση. Όταν δηλώσεις μίσθωση, η καρτέλα υπολογίζει με τα πραγματικά έσοδα και τις δαπάνες του έτους. Τις επιλογές για το ακίνητο τις συγκρίνει η καρτέλα «${navLabel('plan')}».`} />
     </div>
   );
 
@@ -1536,14 +1557,14 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         {/* KPIs */}
         <div {...g4box}>
           <Tile label="Μεικτή απόδοση" value={fp(y.grossYield)} sub={useRecorded ? `${fe(y.annualRent)} τον χρόνο, από ${fe(recorded!.receivedToDate)} ως σήμερα` : mkt(`${fe(y.annualRent)} έσοδα τον χρόνο`)} info={<TermInfo term="Μεικτή απόδοση" text={G.gross_yield} />} />
-          <Tile label="Καθαρή απόδοση" value={fp(y.netYield)}
-            sub={mkt(term === 'short' ? `μετά από ${fe(effOpex)} έξοδα, προμήθειες και τέλη` : `μετά από ${fe(effOpex)} έξοδα`)}
-            info={<TermInfo term="Καθαρή απόδοση" text={G.net_yield} />} />
+          <Tile label={YIELD_SHORT_LABELS.net_pre_tax} value={fp(y.netYield)}
+            sub={mkt(term === 'short' ? `μετά από ${fe(effOpex)} έξοδα, προμήθειες και τέλη, ${YIELD_PRE_TAX_SUB}` : `μετά από ${fe(effOpex)} έξοδα, ${YIELD_PRE_TAX_SUB}`)}
+            info={<TermInfo term={YIELD_LABELS.net_pre_tax} text={G.net_yield} />} />
           {/* «Μετά τον φόρο» και όχι «Απόδοση μετά τον φόρο»: δίπλα στη μεικτή και
               την καθαρή η λέξη «απόδοση» εννοείται· στα 390 η ετικέτα
               έσπαγε σε δύο γραμμές. Η εταιρεία πληρώνει φόρο μερίσματος μόνο
               στη διανομή· ο υπολογισμός υποθέτει πλήρη διανομή και το λέει. */}
-          <Tile label="Μετά τον φόρο" value={fp(y.netYieldAfterTax)}
+          <Tile label={YIELD_SHORT_LABELS.net_after_tax} value={fp(y.netYieldAfterTax)}
             sub={mkt(consolidated ? `μερίδιο φόρου ${fe(annualTax)} τον χρόνο` : pro && entity === 'company' ? `φόρος ${fe(annualTax)} τον χρόνο, με πλήρη διανομή κερδών` : `φόρος ${fe(annualTax)} τον χρόνο`)}
             tone="accent" info={<TermInfo term="Απόδοση μετά τον φόρο" text={consolidated ? `${G.after_tax_yield} ${CONSOLIDATION_NOTE}` : G.after_tax_yield} />} />
           {canInvest
@@ -2256,8 +2277,11 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                        απόφασης. Η κλίμακα είναι πίνακας αναφοράς: τη βλέπεις
                        μία φορά και μετά σε ενδιαφέρει μόνο πού πέφτεις. */}
                     Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου. Οριακός συντελεστής <strong style={{ color: 'var(--text-primary)' }}>{fp(portfolioTax.marginalRate * 100)}</strong>.{' '}
-                    <InfoHint label="Η κλίμακα ενοικίων 2026">
-                      <span style={{ display: 'block' }}>Ο φόρος υπολογίζεται με την προοδευτική κλίμακα ενοικίων 2026, στο σύνολο των ενοικίων σου: 15% έως 12.000€, 25% έως 24.000€, 35% έως 36.000€ και 45% πάνω από αυτά.</span>
+                    {/* Η ΚΛΙΜΑΚΑ ΑΠΟ ΤΑ ΚΛΙΜΑΚΙΑ ΠΟΥ ΥΠΟΛΟΓΙΖΟΥΝ ΤΟΝ ΦΟΡΟ ΚΑΙ ΟΧΙ ΑΠΟ ΤΟ
+                        ΧΕΡΙ, με το πότε ελέγχθηκε (lib/facts/taxLimits). */}
+                    <InfoHint label={`Η κλίμακα ενοικίων ${taxYear}`}>
+                      <span style={{ display: 'block' }}>Ο φόρος υπολογίζεται με την προοδευτική κλίμακα ενοικίων {taxYear}, στο σύνολο των ενοικίων σου: {bracketsSentence(rentalBracketsForYear(taxYear))}.</span>
+                      <span style={{ display: 'block', marginTop: 6, color: 'var(--text-tertiary)' }}>{asOfLine(taxLimitAsOf('rent'))}</span>
                     </InfoHint></>}</>)}
             </p>
           </div>

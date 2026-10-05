@@ -26,6 +26,7 @@ import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { EnfiaCalculator } from './EnfiaCalculator';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
+import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 
 // ΤΟ ΕΤΟΣ ΤΟΥ ΤΙΤΛΟΥ ΕΙΝΑΙ ΤΟ ΕΤΟΣ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ. Ήταν γραμμένο «2026» με το
 // χέρι, ενώ ο υπολογιστής και ο πίνακας των δόσεων ακολουθούν το τρέχον έτος:
@@ -157,7 +158,7 @@ export default function Page() {
           <EnfiaCalculator year={year} today={athensToday()}/>
         </Suspense>
 
-        <ToolSources kind="enfia" />
+        <ToolSources kind="enfia" checked={taxLimitAsOf('enfia').checkedAt} />
 
         {/* ── Συχνές ερωτήσεις ──────────────────────────────────────────────
                ΗΤΑΝ ΠΕΝΤΕ ΚΟΥΤΙΑ ΜΕ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΒΕΛΑΚΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ, ενώ ο

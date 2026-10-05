@@ -1,6 +1,7 @@
 'use client';
 
 import { daysUntil } from '@/lib/core/time';
+import { declarationDeadline } from '@/lib/tax/leaseDeclaration';
 import {
   NumberInput, CustomSelect, DatePicker as UIDatePicker,
   Toggle, TextInput, Textarea, ServiceBySelect as UIServiceBySelect,
@@ -392,10 +393,14 @@ export function tenantScheduleRows(
   //    γράφει τη δική του συσκευή αντί να διαλέγει από κατάλογο ξένων μηχανημάτων.
 
   // 6) ΑΑΔΕ «Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης» (μία εκκρεμότητα).
+  //    Η ΠΡΟΘΕΣΜΙΑ ΤΗΣ ΜΗΧΑΝΗΣ ΤΗΣ ΔΗΛΩΣΗΣ, όχι «έναρξη + 30 ημέρες»: τέλος του
+  //    επόμενου μήνα από την έναρξη, όπως τη δείχνει η Επισκόπηση. Η εκκρεμότητα
+  //    έγραφε έως και τέσσερις εβδομάδες νωρίτερη ημερομηνία και την έστελνε στο
+  //    ημερολόγιο του τηλεφώνου και στις ειδοποιήσεις.
   if (t.lease_start) {
     tasks.push({
       ...ckBase, template_id: key('aade_lease_decl'), category: 'legal', priority: 'high',
-      recurring: 'none', due_date: shiftISO(t.lease_start, 30),
+      recurring: 'none', due_date: declarationDeadline(t.lease_start.slice(0, 10)),
       description: `ΑΑΔΕ, Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης για ${name}`,
     });
   }

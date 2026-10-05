@@ -1,4 +1,5 @@
 import { roundHalfUp } from '../core/money';
+import { propertyYield } from '../facts/yield';
 // ═══════════════════════════════════════════════════════════════════════════
 // ΜΗΧΑΝΗ ΑΠΟΔΟΣΕΩΝ — καθαρές, δοκιμάσιμες συναρτήσεις (χωρίς I/O/DOM).
 // Μία πηγή αλήθειας για: μεικτή/καθαρή απόδοση, απόδοση μετά φόρου, μόχλευση
@@ -24,25 +25,19 @@ export interface YieldBreakdown {
 
 /** Μεικτή/καθαρή/μετά-φόρου απόδοση. Ο φόρος δίνεται έτοιμος (από τη φορολογική μηχανή). */
 export function yields(monthlyRent: number, propertyValue: number, annualOpex: number, annualIncomeTax = 0): YieldBreakdown {
-  const rent = pos(monthlyRent)
-  const value = pos(propertyValue)
-  const opex = Math.max(0, num(annualOpex))
-  const tax = Math.max(0, num(annualIncomeTax))
-  const annualRent = rent * 12
-  const gross = value > 0 ? (annualRent / value) * 100 : 0
-  const net = value > 0 ? ((annualRent - opex) / value) * 100 : 0
-  const afterTax = value > 0 ? ((annualRent - opex - tax) / value) * 100 : 0
-  // ΔΥΟ ΔΕΚΑΔΙΚΑ, ΟΣΑ ΤΥΠΩΝΕΙ Η ΟΘΟΝΗ (fp). Με ένα, το 1,972% έβγαινε «2,00%».
+  // Ο τύπος ζει στο lib/facts/yield.ts, ο ίδιος με την Επισκόπηση. Εδώ μένει η
+  // στρογγυλοποίηση της οθόνης των Αποδόσεων.
+  const annualRent = pos(monthlyRent) * 12
+  const y = propertyYield({ annualIncome: annualRent, value: propertyValue, annualExpenses: annualOpex, annualTax: Math.max(0, num(annualIncomeTax)) })
   return {
     annualRent: round2(annualRent),
-    grossYield: round2(gross),
-    netYield: round2(net),
-    netYieldAfterTax: round2(afterTax),
-    capRate: round2(net),
+    grossYield: round2(y.gross),
+    netYield: round2(y.net_pre_tax),
+    netYieldAfterTax: round2(y.net_after_tax ?? y.net_pre_tax),
+    capRate: round2(y.net_pre_tax),
   }
 }
 
-// ── Ανατοκισμός επανεπένδυσης (compound) ───────────────────────────────────
 export interface CompoundResult {
   futureValue: number       // τελική αξία
   totalContributions: number// σύνολο εισφορών (αρχικό + ετήσιες)

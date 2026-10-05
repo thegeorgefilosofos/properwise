@@ -30,14 +30,21 @@ export function taxpayerOf(p: TaxpayerProperty, ownerClientIds: ReadonlySet<stri
 /**
  * Τα ακίνητα του ΙΔΙΟΥ φορολογούμενου με το `propertyId`.
  *
- * `ownerClientIds === null` σημαίνει «ένας φορολογούμενος»: ο ιδιώτης, ή
- * λογαριασμός που δεν διαβάστηκε το Πελατολόγιό του. Τότε επιστρέφονται όλα,
- * όπως πριν.
+ * `ownerClientIds === null` σημαίνει «ένας φορολογούμενος»: ο ιδιώτης. Τότε
+ * επιστρέφονται όλα. Το εύρος το δίνει η `taxpayerScope` (lib/facts/taxpayer.ts),
+ * όχι κάθε οθόνη μόνη της.
+ *
+ * ΚΕΝΗ ΛΙΣΤΑ ΙΔΙΟΚΤΗΤΩΝ ΔΕΝ ΣΗΜΑΙΝΕΙ «ΕΝΑΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ» (05.10.2026). Ως
+ * τότε ο επαγγελματίας χωρίς καρτέλες «Ιδιοκτήτης» (ή με Πελατολόγιο που δεν
+ * διαβάστηκε) έπαιρνε την ένωση ΟΛΩΝ των ακινήτων που διαχειρίζεται: ξένα
+ * ενοίκια στην κλίμακα του καθενός, φόρος μεγαλύτερος από της ΑΑΔΕ. Χωρίς
+ * γνωστό ιδιοκτήτη δεν ενώνεται τίποτα: μετρά μόνο το ίδιο το ακίνητο.
  */
 export function sameTaxpayer<T extends TaxpayerProperty>(
   props: readonly T[], propertyId: string, ownerClientIds: ReadonlySet<string> | null,
 ): T[] {
-  if (!ownerClientIds || ownerClientIds.size === 0) return [...props]
+  if (!ownerClientIds) return [...props]
+  if (ownerClientIds.size === 0) return props.filter(p => p.id === propertyId)
   const current = props.find(p => p.id === propertyId)
   const key = current ? taxpayerOf(current, ownerClientIds) : ACCOUNT_HOLDER
   return props.filter(p => taxpayerOf(p, ownerClientIds) === key)

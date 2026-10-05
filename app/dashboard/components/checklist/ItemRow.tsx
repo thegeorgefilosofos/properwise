@@ -12,8 +12,8 @@ import { T, fe } from '@/components/Theme'
 import { isTaxTaskRef } from '@/lib/checklist/obligationTasks'
 import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { fmtDate, isOverdue, daysUntil, getPri, priShowDot, priDotColor } from './calc'
-import { relDays } from './Bits'
 import type { ChecklistItem } from './model'
+import { dueText } from '@/lib/facts/deadlines'
 
 
 // ─── ItemRow ──────────────────────────────────────────────────────────────────
@@ -129,7 +129,7 @@ export function ItemRow({ item, allItems, onToggle, onEdit, onDelete, onAddToCal
         </span>
         {item.due_date && (
           <span style={{ flexShrink: 0, maxWidth: '100%', fontSize: 'var(--fs-sm)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: overdue && !done ? 'var(--negative)' : due !== null && due <= 3 && due >= 0 && !done ? 'var(--warning)' : 'var(--text-tertiary)', fontWeight: (overdue || (due !== null && due <= 3)) && !done ? 700 : 400 }}>
-            {fmtDate(item.due_date)}{overdue && !done && due !== null ? ` · έληξε πριν από ${relDays(due)}` : ''}{!overdue && due !== null && due <= 3 && due >= 0 && !done ? ` · ${due === 0 ? 'σήμερα' : 'σε ' + relDays(due)}` : ''}
+            {fmtDate(item.due_date)}{overdue && !done && due !== null ? ` · έληξε ${dueText(due)}` : ''}{!overdue && due !== null && due <= 3 && due >= 0 && !done ? ` · ${dueText(due)}` : ''}
           </span>
         )}
         {item.assigned_contact_name && (

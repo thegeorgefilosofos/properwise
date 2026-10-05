@@ -257,6 +257,19 @@ export async function sources(db: Db, propertyId: string, match: EventMatch): Pr
     .map(r => String(r.source || ''));
 }
 
+/**
+ * Πηγή και κατάσταση όσων γεγονότων ταιριάζουν. Μια θεσμική προθεσμία που
+ * σημειώθηκε πληρωμένη στο Ημερολόγιο κλείνει και στις άλλες οθόνες
+ * (lib/facts/deadlines, `closedTaxRefs`)· γι' αυτό χρειάζεται και η κατάσταση.
+ */
+export async function sourceStates(
+  db: Db, propertyId: string, match: EventMatch,
+): Promise<{ source: string; status: string | null }[]> {
+  return (await readRows<{ source: string | null; status: string | null }>(
+    applyMatch(scoped(db, propertyId, 'source,status'), match)))
+    .map(r => ({ source: String(r.source || ''), status: r.status ?? null }));
+}
+
 /** Οι τίτλοι όσων γεγονότων ταιριάζουν. */
 export async function titles(db: Db, propertyId: string, match: EventMatch): Promise<string[]> {
   return (await readRows<{ title: string }>(applyMatch(scoped(db, propertyId, 'title'), match)))

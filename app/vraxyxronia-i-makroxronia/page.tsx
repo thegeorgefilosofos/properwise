@@ -29,6 +29,7 @@ import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { ShortVsLongCalculator } from './ShortVsLongCalculator';
+import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 
 // Τίτλος ≤60 και περιγραφή ≤160 χαρακτήρες: ό,τι περισσεύει κόβεται στα
 // αποτελέσματα αναζήτησης (ήταν 63 και 263).
@@ -149,7 +150,7 @@ export default function Page() {
           <ShortVsLongCalculator today={athensToday()}/>
         </Suspense>
 
-        <ToolSources kind="short" />
+        <ToolSources kind="short" checked={taxLimitAsOf('short').checkedAt} />
 
         <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
           <SectionHead over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν πριν αποφασίσουν" />
