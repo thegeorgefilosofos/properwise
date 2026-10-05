@@ -19,7 +19,7 @@ import { LINK_STYLE } from '../linkStyle';
 import { BackLink } from '../BackLink';
 import { TocSpy } from '../TocSpy';
 import { hy } from '@/components/Hyphen';
-import { GUIDES, guideShareImageUrl, type Guide } from './guides';
+import { GUIDES, guideShareImageUrl, relatedGuides, type Guide } from './guides';
 
 const HUB = { href: '/odigos', label: 'Οδηγοί' } as const;
 
@@ -262,14 +262,13 @@ export function GuideFaq({ title, faq }: { title: string; faq: GuideFaqItem[] })
  * Οι άλλοι οδηγοί, ώστε κανένας να μη μένει αδιέξοδο.
  *
  * ΤΕΣΣΕΡΙΣ, ΟΧΙ ΟΛΟΙ. Με τέσσερις οδηγούς η λίστα «όλοι οι άλλοι» ήταν τρεις
- * γραμμές· με εννέα έγινε οκτώ παράγραφοι στο τέλος κάθε σελίδας. Πρώτα όσοι
- * μοιράζονται το θέμα (ίδιο `kicker`), μετά οι υπόλοιποι με τη σειρά του
- * καταλόγου· ο κόμβος /odigos κρατά ολόκληρη τη λίστα.
+ * γραμμές· με εννέα έγινε οκτώ παράγραφοι στο τέλος κάθε σελίδας. Η σειρά
+ * ζει στο `relatedGuides` (guides.ts): πρώτα έως δύο του ίδιου εργαλείου ή
+ * θέματος, μετά κυκλικά· ο κόμβος /odigos κρατά ολόκληρη τη λίστα.
  */
 const RELATED_MAX = 4;
 export function RelatedGuides({ current }: { current: Guide }) {
-  const others = GUIDES.filter(g => g.href !== current.href);
-  const related = [...others.filter(g => g.kicker === current.kicker), ...others.filter(g => g.kicker !== current.kicker)].slice(0, RELATED_MAX);
+  const related = relatedGuides(current, RELATED_MAX);
   return (
     <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
       <SectionHead over="Σχετικοί οδηγοί" title="Διάβασε ακόμη" />

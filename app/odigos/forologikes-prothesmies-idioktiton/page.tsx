@@ -177,7 +177,7 @@ export default function Page() {
   return (
     <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       <JsonLd data={jsonLd} />
-      <PublicHeader />
+      <PublicHeader current="odigos" />
 
       {/* Η ΔΕΞΙΑ ΣΤΗΛΗ ΔΕΝ ΕΠΑΝΑΛΑΜΒΑΝΕΙ ΤΟ ΚΟΥΜΠΙ ΤΟΥ ΣΩΜΑΤΟΣ. Ελεγε κι αυτή
           «Υπολόγισε τον ΕΝΦΙΑ σου», σε οδηγό για ΗΜΕΡΟΜΗΝΙΕΣ: η ενέργεια που

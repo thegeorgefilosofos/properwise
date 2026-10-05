@@ -23,6 +23,7 @@ import { feRate } from '@/lib/core/format';
 import { TARIFFS_VERIFIED, TARIFFS_MAX_AGE_DAYS, CATALOGUE_MONTH_GEN } from '@/lib/energy/catalogue';
 import { ETMEAR } from '@/lib/energy/tariff';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
+import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
@@ -164,6 +165,7 @@ export default function Page() {
             </Link>{' '}λέει τι μένει από το ενοίκιο μετά τον φόρο, τον ΕΝΦΙΑ και τις δαπάνες.
           </>)}</p>
         </section>
+        <ToolGuides tool="/sygkrisi-timologion-revmatos" />
       </main>
 
       <PublicFooter />

@@ -25,6 +25,7 @@ import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
+import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
@@ -217,6 +218,7 @@ export default function Page() {
             </Link>.
           </>)}</p>
         </section>
+        <ToolGuides tool="/ypologismos-forou-enoikion" />
       </main>
 
       <PublicFooter />

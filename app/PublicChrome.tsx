@@ -85,7 +85,7 @@ export const READING = 720;
  * αυτό το αρχείο το ελέγχει ο guard-public-routes ως δημόσια διαδρομή· ο
  * σύνδεσμος προς τον πίνακα ζει στη σελίδα που ξέρει ότι υπάρχει συνεδρία.
  */
-export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current?: 'paketa' }) {
+export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current?: 'paketa' | 'odigos' }) {
   const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
   return (
     <div className="lp-nav-row" style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
@@ -93,6 +93,12 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
           `aria-current` υπήρχε για τον αναγνώστη οθόνης και το μάτι δεν έβλεπε
           τίποτα: στο /paketa το «Τιμές» ήταν ίδιο με το «Σύνδεση». Πρώτος τόνος
           και μια γραμμή στο χρώμα της έμφασης από κάτω (globals.css). */}
+      {/* ΟΙ ΟΔΗΓΟΙ ΣΤΗΝ ΚΕΦΑΛΙΔΑ (05/10/2026). Δέκα οδηγοί ζούσαν μόνο στο
+          υποσέλιδο και στον κόμβο /odigos, που δεν τον έδειχνε καμία κεφαλίδα:
+          όποιος προσγειωνόταν σε έναν υπολογιστή δεν μάθαινε ότι υπάρχουν. Στο
+          τηλέφωνο δεν χωρά (βλ. πιο πάνω) και ζει στο υποσέλιδο. */}
+      <Link href="/odigos" aria-current={current === 'odigos' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-sm" data-xs-elsewhere="/odigos"
+        style={current === 'odigos' ? { ...link, color: 'var(--text-primary)', textDecoration: undefined } : link}>Οδηγοί</Link>
       <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-xs" data-xs-elsewhere="/paketa"
         style={current === 'paketa' ? { ...link, color: 'var(--text-primary)', textDecoration: undefined } : link}>Τιμές</Link>
       {!signedIn ? (<>
@@ -110,7 +116,7 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
   );
 }
 
-export function PublicHeader({ current }: { current?: 'paketa' } = {}) {
+export function PublicHeader({ current }: { current?: 'paketa' | 'odigos' } = {}) {
   return (
     <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
       <div style={{ ...WRAP, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
@@ -195,7 +201,9 @@ export function PublicFooter() {
               στην ίδια γραμμή με το εργαλείο του (ΕΝΦΙΑ δίπλα σε ΕΝΦΙΑ, καθαρή
               απόδοση δίπλα σε καθαρή απόδοση), ώστε το ζευγάρι «πόσο / γιατί»
               να διαβάζεται οριζόντια. */}
-          <FootCol label="Οδηγοί" links={[['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'], ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'], ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'], ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026']]} />
+          {/* ΚΑΙ Ο ΚΟΜΒΟΣ ΕΧΕΙ ΣΥΝΔΕΣΜΟ (05/10/2026): τέσσερις από τους δέκα
+              φαίνονταν εδώ και κανένας δρόμος προς τους άλλους έξι. */}
+          <FootCol label="Οδηγοί" links={[['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'], ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'], ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'], ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026'], ['/odigos', 'Όλοι οι οδηγοί']]} />
           {/* ΚΑΜΙΑ ΔΗΜΟΣΙΑ ΣΕΛΙΔΑ ΔΕΝ ΕΔΙΝΕ ΤΡΟΠΟ ΝΑ ΜΑΣ ΜΙΛΗΣΕΙ ΚΑΝΕΙΣ. Η
               διεύθυνση υποστήριξης υπήρχε στο μητρώο νομικής ταυτότητας και
               δεν την τύπωνε καμία σελίδα εκτός από το «Ποιοι είμαστε». Ο

@@ -5008,6 +5008,13 @@ body:has(.po-tool-page) .po-cookie {
   .lp-hide-xs { display: none !important; }
   .lp-only-xs { display: inline !important; }
 }
+/* ΟΙ «ΟΔΗΓΟΙ» ΤΗΣ ΚΕΦΑΛΙΔΑΣ ΦΕΥΓΟΥΝ ΝΩΡΙΤΕΡΑ (05/10/2026). Με τέσσερα
+   στοιχεία η κεφαλίδα δεν χωρούσε κάτω από τα ~580: στα 540 η σελίδα σερνόταν
+   37 εικονοστοιχεία δεξιά (e2e:hscroll). Ο σύνδεσμος ζει και στο υποσέλιδο,
+   όπως ελέγχει ο guard-hidden-on-small. */
+@media (max-width: 640px) {
+  .lp-hide-sm { display: none !important; }
+}
 /* Το ίδιο, για κουμπιά μέσα σε κάρτα που στενεύουν μόνο κάτω από τα 360: στα
    320 το «Ξεκίνα δωρεάν με το ακίνητό σου» άφηνε το «σου» μόνο του. */
 .lp-only-xxs { display: none; }

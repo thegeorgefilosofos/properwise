@@ -1345,7 +1345,7 @@ async function main() {
     const outDir = join(ROOT, r.own ? r.own.video : join('docs/marketing/reels', `seires-${r.key}`));
     const docDir = join(ROOT, r.own ? r.own.doc : join('docs/marketing/instagram/seires', r.key, 'reel'));
     mkdirSync(docDir, { recursive: true });
-    await shoot({ html: b.html, dur: b.dur, outDir, file: 'silent.mp4', checkAt: b.checkAt, cover: { t: r.cover, path: join(docDir, 'cover.jpg') } });
+    await shoot({ html: b.html, dur: b.dur, outDir, file: 'silent.mp4', checkAt: b.checkAt, cover: { t: r.cover, path: join(docDir, 'cover.jpg') }, shutter: r.own ? 4 : undefined });
     if (process.env.REEL_PREVIEW) continue;
     const m = new Mix(b.dur);
     const ks = b.sound(m);
