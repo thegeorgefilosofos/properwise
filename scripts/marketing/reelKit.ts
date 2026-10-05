@@ -114,6 +114,14 @@ export interface Shoot {
    * κλειστή εξ ορισμού: κάθε καρέ φωτογραφίζεται καθαρό, στα 30 το δευτερόλεπτο.
    */
   blend?: boolean;
+  /**
+   * ΘΟΛΩΜΑ ΚΙΝΗΣΗΣ ΟΠΩΣ ΤΗΣ ΚΑΜΕΡΑΣ, ΟΧΙ ΔΙΠΛΟ ΕΙΔΩΛΟ. Κάθε καρέ των 30 βγαίνει
+   * από `shutter` υποκαρέ μέσα στο ΜΙΣΟ διάστημα του καρέ (κλείστρο 180°), σε
+   * ίσες αποστάσεις. Τα αντίγραφα απέχουν λίγα εικονοστοιχεία μεταξύ τους και
+   * διαβάζονται ως ομαλό θόλωμα, όχι ως δύο είδωλα όπως το `blend`. Κοστίζει
+   * `shutter` φορές τον χρόνο φωτογράφισης.
+   */
+  shutter?: number;
 }
 
 /**
@@ -159,7 +167,10 @@ export async function shoot(s: Shoot): Promise<void> {
       if (s.cover.prep) { await page.setContent(s.html, { waitUntil: 'load' }); await page.evaluate(() => document.fonts.ready); }
     }
 
-    const CAPTURE = s.blend ? 60 : 30, frames = Math.round(s.dur * CAPTURE);
+    const N = s.shutter && s.shutter > 1 ? Math.round(s.shutter) : 1;
+    const CAPTURE = s.blend ? 60 : 30, frames = Math.round(s.dur * CAPTURE) * N;
+    // Η στιγμή του υποκαρέ i: καρέ f, βήμα k μέσα στο μισό καρέ.
+    const when = (i: number) => N > 1 ? (Math.floor(i / N) + (i % N) / (2 * N)) / CAPTURE : i / CAPTURE;
     const dir = join(s.outDir, 'frames');
     rmSync(dir, { recursive: true, force: true });
     mkdirSync(dir, { recursive: true });
@@ -168,13 +179,14 @@ export async function shoot(s: Shoot): Promise<void> {
     await Promise.all(Array.from({ length: WORKERS }, async (_, w) => {
       const pg = w === 0 ? page : await open();
       for (let f = w; f < frames; f += WORKERS) {
-        await at(pg, f / CAPTURE);
+        await at(pg, when(f));
         await pg.screenshot({ path: join(dir, `${String(f).padStart(5, '0')}.png`) });
         if (++done % 200 === 0) console.log(`  καρέ ${done}/${frames}`);
       }
     }));
-    const ff = spawn(FFMPEG, ['-y', '-loglevel', 'error', '-framerate', String(CAPTURE), '-i', join(dir, '%05d.png'),
-      ...(s.blend ? ['-vf', "tmix=frames=2:weights='1 1',fps=30"] : ['-r', '30']),
+    const ff = spawn(FFMPEG, ['-y', '-loglevel', 'error', '-framerate', String(CAPTURE * N), '-i', join(dir, '%05d.png'),
+      ...(N > 1 ? ['-vf', `tmix=frames=${N},select=eq(mod(n\\,${N})\\,${N - 1}),setpts=N/(30*TB)`, '-r', '30']
+        : s.blend ? ['-vf', "tmix=frames=2:weights='1 1',fps=30"] : ['-r', '30']),
       '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', '-profile:v', 'high',
       '-movflags', '+faststart', join(s.outDir, s.file)], { stdio: 'inherit' });
     if ((await new Promise<number>(r => ff.on('close', r))) !== 0) throw new Error('Το ffmpeg απέτυχε.');
