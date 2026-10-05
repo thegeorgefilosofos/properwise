@@ -10,9 +10,11 @@ import { useBillsSettings } from './BillsSettings';
 import { T, fe, fn, feRate, Skeleton, histInputStyle, ABSENT_SHORT, fixedCols, Btn, ChipToggle } from '@/components/Theme';
 import { CONTRACT_LABEL } from '@/lib/contracts/overview';
 import { monthlyCost, compareTariffs, estimateUsage, exceedsFlatAllowance, type Tariff, type Usage } from '@/lib/energy/tariff';
-import { PROVIDERS, COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE, BADGE_MEANING, TARIFFS_VERIFIED, TARIFFS_LABEL, TARIFFS_MAX_AGE_DAYS, CATALOGUE_MONTH_GEN, PRICES_SOURCE, PRICES_UPDATED_LINE, priceMonthNote, conditionNote } from '@/lib/energy/catalogue';
+import { PROVIDERS, COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE, BADGE_MEANING, TARIFFS_VERIFIED, TARIFFS_MAX_AGE_DAYS, CATALOGUE_MONTH_GEN, PRICES_SOURCE, PRICES_UPDATED_LINE, priceMonthNote, conditionNote } from '@/lib/energy/catalogue';
 import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
 import { MONTHS_SHORT } from '@/lib/core/months';
+import { AsOfNote } from '@/components/AsOfNote';
+import { PRICE_FACTS } from '@/lib/facts/prices';
 
 /**
  * Η ΤΙΜΗ ΤΗΣ ΚΙΛΟΒΑΤΩΡΑΣ ΣΤΡΟΓΓΥΛΟΠΟΙΟΥΝΤΑΝ ΣΕ ΔΥΟ ΔΕΚΑΔΙΚΑ ΚΑΙ ΕΞΑΦΑΝΙΖΕ ΤΗ
@@ -343,8 +345,11 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
   // Πόσα τιμολόγια κρατούν τιμή άλλου μήνα: η κεφαλίδα το λέει, αντί να
   // δηλώνει έναν μήνα για όλα.
   const older = PROVIDERS.flatMap(p => p.tariffs).filter(t => t.priceMonth && t.priceMonth !== CATALOGUE_MONTH_GEN).length;
-  const catalogueLine = `${PRICES_UPDATED_LINE}. Πηγή: ${PRICES_SOURCE}, ${TARIFFS_LABEL}`
-    + (older > 0 ? `· ${older} τιμολόγια κρατούν τιμή προηγούμενου μήνα και δεν μπαίνουν στη σειρά` : '');
+  // Η ΗΜΕΡΟΜΗΝΙΑ ΚΑΙ Η ΠΗΓΗ ΓΡΑΦΟΝΤΑΙ ΜΕ ΤΟ <AsOfNote>, ΟΠΩΣ ΣΤΙΣ ΑΛΛΕΣ ΟΘΟΝΕΣ.
+  // Εδώ μόνο ο μήνας των τιμών και πόσα τιμολόγια μένουν εκτός σειράς: πριν
+  // κολλούσαν όλα σε μία πρόταση («…Οκτώβριος 2026· 50 τιμολόγια…»).
+  const catalogueLine = `Τιμές ${CATALOGUE_MONTH_GEN}.`
+    + (older > 0 ? ` ${older} τιμολόγια κρατούν τιμή προηγούμενου μήνα και δεν μπαίνουν στη σειρά.` : '');
   const canRank = canRecommend(fresh, usageEst.reliable);
 
   const secHdr = (label: string, sub?: string) => (
@@ -373,13 +378,15 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
     <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>Ρεύμα</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{catalogueLine}</div>
+      {/* Ο τίτλος «Ρεύμα» τον γράφει ήδη η κεφαλίδα του πάνελ (TabBills): εδώ
+          δεύτερη φορά ήταν διπλός. Το κουμπί δεν σπάει σε δύο γραμμές. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 16 }}>
+        <div style={{ minWidth: 0 }}>
+          <AsOfNote fact={PRICE_FACTS.electricity} style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }} />
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 2 }}>{catalogueLine}</div>
         </div>
         <a href={RAAEY_COMPARE} target="_blank" rel="noopener noreferrer" title={RAAEY_NAME} className="tap-link"
-          style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.pill, padding: '6px 16px', cursor: 'pointer', textDecoration: 'none', fontFamily: T.font.sans, fontWeight: 600 }}>
+          style={{ flexShrink: 0, whiteSpace: 'nowrap', fontSize: 'var(--fs-xs)', color: 'var(--accent)', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.pill, padding: '6px 16px', cursor: 'pointer', textDecoration: 'none', fontFamily: T.font.sans, fontWeight: 600 }}>
           Σύγκριση ΡΑΑΕΥ
         </a>
       </div>

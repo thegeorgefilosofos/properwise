@@ -11,6 +11,7 @@
 // στη λίστα του. Ο λογιστής δεν φτιάχνει ποτέ φάκελο από τα δεδομένα του
 // ιδιοκτήτη· βλέπει ΜΟΝΟ ό,τι του έστειλε ο ίδιος, όσο ισχύει η σύνδεση.
 // ═══════════════════════════════════════════════════════════════════════════
+import { EditDetailsLink } from './EditDetailsLink';
 import { useEffect, useMemo, useState } from 'react';
 import { Download, Send } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -25,8 +26,10 @@ import type { CompletenessProperty, YearData } from '@/lib/facts/completeness';
 const card: React.CSSProperties = { background: 'var(--surface-raised)', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--elev-1)' };
 const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 };
 
-export default function MeetingPackCard({ userId, year, ownerName, dossier }: {
+export default function MeetingPackCard({ userId, year, ownerName, dossier, onEditProperty }: {
   userId: string;
+  /** Ανοίγει τον οδηγό του ακινήτου στο ΑΦΜ του ιδιοκτήτη (EditDetailsLink). */
+  onEditProperty?: (propertyId: string) => void;
   year: number;
   ownerName: string | null;
   dossier: Omit<DossierContext, 'statuses' | 'properties'> & { have: readonly string[]; properties: readonly CompletenessProperty[]; data?: YearData };
@@ -95,7 +98,7 @@ export default function MeetingPackCard({ userId, year, ownerName, dossier }: {
         <p role="alert" style={{ ...TT.caption, color: 'var(--negative)', margin: '12px 0 0' }}>Τα ΑΦΜ των ακινήτων δεν διαβάστηκαν. Άνοιξε ξανά τη Λογιστική σε λίγο.</p>
       ) : owners === null ? null : owners.length === 0 ? (
         <p style={{ ...TT.caption, margin: '12px 0 0' }}>
-          Ο φάκελος βγαίνει ανά ΑΦΜ υπόχρεου. Όρισε το ΑΦΜ του ιδιοκτήτη στην «Επεξεργασία στοιχείων» από το μενού κάθε ακινήτου.
+          Ο φάκελος βγαίνει ανά ΑΦΜ υπόχρεου. Όρισε το ΑΦΜ του ιδιοκτήτη στην <EditDetailsLink properties={dossier.properties} onEdit={onEditProperty} />.
         </p>
       ) : (
         <div style={{ marginTop: 6 }}>

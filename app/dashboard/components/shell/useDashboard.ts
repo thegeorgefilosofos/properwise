@@ -99,6 +99,8 @@ export function useDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [statusDropdown, setStatusDropdown] = useState(false);
   const [editProperty, setEditProperty] = useState<Property | null>(null);
+  // Από πού άνοιξε ο οδηγός: η Λογιστική τον ανοίγει στο ΑΦΜ του ιδιοκτήτη.
+  const [editFocus, setEditFocus] = useState<'owner_afm' | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);  // συρόμενο μενού σε κινητό/tablet
   // Η ΑΛΛΑΓΗ ΑΚΙΝΗΤΟΥ ΑΛΛΑΖΕΙ ΟΛΗ ΤΗΝ ΟΘΟΝΗ ΚΑΙ ΔΕΝ ΑΝΑΚΟΙΝΩΝΟΤΑΝ. Οποιος
   // διαβάζει με αναγνώστη οθόνης άκουγε σιωπή: τα δεδομένα κάτω από τα δάχτυλά
@@ -567,7 +569,7 @@ export function useDashboard() {
   return {
     user, properties, financeProperties, selected, setSelected, nav, setNav, handoverIntent,
     setHandoverIntent, navShowAll, loading, loadError, showAddModal, setShowAddModal,
-    statusDropdown, setStatusDropdown, editProperty, setEditProperty, sidebarOpen, setSidebarOpen,
+    statusDropdown, setStatusDropdown, editProperty, setEditProperty, editFocus, setEditFocus, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
     setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
     scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,

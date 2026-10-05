@@ -4931,6 +4931,11 @@ body:has(.po-tool-page) .po-cookie {
    τον κόμβο (`.og-card`), δύο στη σειρά, μία στο τηλέφωνο. */
 .gd-related { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 640px) { .gd-related { grid-template-columns: minmax(0, 1fr); } }
+/* ΤΡΕΙΣ ΟΔΗΓΟΙ ΣΕ ΔΥΟ ΣΤΗΛΕΣ ΑΦΗΝΑΝ ΤΟΝ ΤΡΙΤΟ ΜΟΝΟ ΤΟΥ (05.10.2026), με κενό
+   όσο μία κάρτα δεξιά του: σαρωτής διάταξης, /ypologismos-enfia και
+   /vraxyxronia-i-makroxronia στα 768 και 1440. Ο τελευταίος μονός πιάνει όλη
+   τη σειρά, όπως στα άλλα πλέγματα της εφαρμογής. */
+@media (min-width: 641px) { .gd-related > li:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 .gd-related > li { display: flex; }
 .gd-related-card {
   flex: 1; padding: 14px 16px; border-radius: 14px; text-decoration: none;

@@ -508,33 +508,31 @@ export default function OrgTeam({ userId }: { userId: string }) {
              πλέγμα χώριζε τις στήλες με κενά 16 ενώ ο πίνακας τις χωρίζει με το
              γέμισμα των κελιών (14 εκατέρωθεν): 882 περιεχόμενο + 112 στα τέσσερα
              εσωτερικά όρια + 28 στις δύο άκρες = 1.022, στη θέση των 960. */
-          <div className="po-table-box" style={{ marginTop: 12 }}>
+          <div className="po-table-box" style={{ marginTop: 12, maxWidth: 760 }}>
             {/* ΧΩΡΙΣ ΟΡΑΤΗ ΜΠΑΡΑ ΚΥΛΙΣΗΣ. Ο πίνακας κρατά `--tbl-min: 1022px`
                 γιατί οι στήλες το χρειάζονται· κάτω από αυτό κυλά. Η μπάρα όμως
                 δεν πρόσθετε τίποτα σε έναν πίνακα με λίγες γραμμές — το γλίστρημα
                 με το δάχτυλο αρκεί. `no-sbar`: κυλά κανονικά, δείχνει καθαρός. */}
             <div className="po-scroll-x no-sbar">
-              <table className="po-table tbl-fixed" style={{ ['--tbl-min' as string]: '1022px' } as CSSProperties}>
+              {/* ΣΤΑΘΕΡΟΣ ΠΙΝΑΚΑΣ ΤΡΙΩΝ ΣΤΗΛΩΝ (05.10.2026). Ήταν πέντε στήλες με
+                  ελάχιστο 1.022 και πλάτος όλης της οθόνης: στον ιδιοκτήτη οι δύο
+                  τελευταίες έμεναν άδειες, το email κοβόταν και τα πλακάκια
+                  απλώνονταν μακριά το ένα από το άλλο. Πρόσβαση, δικαιώματα και
+                  αφαίρεση κάθονται στη σειρά κάτω από το μέλος τους, εκεί που ήταν
+                  ήδη τα δικαιώματα. Κάτω από 460 ο πίνακας κυλά μέσα στο πλαίσιο. */}
+              <table className="po-table tbl-fixed" style={{ ['--tbl-min' as string]: '460px' } as CSSProperties}>
                 <caption>Μέλη του οργανισμού</caption>
-                {/* Τα πλάτη του παλιού gridTemplateColumns, με το γέμισμα του κελιού
-                    μέσα τους. Η πρώτη στήλη μένει αδήλωτη: παίρνει ό,τι περισσεύει,
-                    όπως έκανε το minmax(180px, 1fr). */}
+                {/* Η πρώτη στήλη μένει αδήλωτη: παίρνει ό,τι περισσεύει. */}
                 <colgroup>
                   <col />
-                  <col style={{ width: 132 }} />
-                  <col style={{ width: 144 }} />
-                  <col style={{ width: 278 }} />
-                  <col style={{ width: 260 }} />
+                  <col style={{ width: 136 }} />
+                  <col style={{ width: 136 }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th scope="col">Μέλος</th>
                     <th scope="col">Ρόλος</th>
                     <th scope="col">Κατάσταση</th>
-                    <th scope="col">Πρόσβαση</th>
-                    {/* Η στήλη των ενεργειών ήταν κενό div: για το μάτι μένει κενή,
-                        ο αναγνώστης οθόνης όμως χρειάζεται όνομα στη στήλη. */}
-                    <th scope="col"><span className="sr-only">Ενέργειες</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -584,42 +582,33 @@ export default function OrgTeam({ userId }: { userId: string }) {
                         {/* Κατάσταση */}
                         <td style={cell}><StatusChip status={m.status} /></td>
 
-                        {/* Πρόσβαση: έγκριση αιτήματος ή τμηματικός έλεγχος Ανάγνωση/Επεξεργασία */}
-                        <td style={cell}>
-                          {canAct && (
-                            m.edit_requested_at && !m.can_edit ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                <Chip tone="accent">Ζητά επεξεργασία</Chip>
-                                <Btn variant="primary" onClick={() => setMemberEdit(m.email, true)} disabled={busy}>Έγκριση</Btn>
-                                <Btn variant="secondary" onClick={() => setMemberEdit(m.email, false)} disabled={busy}>Όχι</Btn>
-                              </div>
-                            ) : (
-                              // seg επειδή η ράγα έχει ήδη δικό της περίγραμμα με ακτίνα: το ενεργό ξεχωρίζει με επιφάνεια αντί για δεύτερη γραμμή
-                              <div style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
-                                <ChipToggle on={!m.can_edit} disabled={busy} shape="seg" onClick={() => { if (m.can_edit) void setMemberEdit(m.email, false); }}>Ανάγνωση</ChipToggle>
-                                <ChipToggle on={m.can_edit} disabled={busy} shape="seg" onClick={() => { if (!m.can_edit) void setMemberEdit(m.email, true); }}>Επεξεργασία</ChipToggle>
-                              </div>
-                            )
-                          )}
-                        </td>
-
-                        {/* Ενέργειες */}
-                        <td style={cell}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {canAct && (
-                              <Btn variant="secondary" onClick={() => revoke(m.email)} disabled={busy}>Αφαίρεση</Btn>
-                            )}
-                          </div>
-                        </td>
                       </tr>
 
                       {/* Δικαιώματα ανά μέλος: εύρος ακινήτων και ορατότητα οικονομικών.
                           Μαζεμένα by default — η γραμμή μένει καθαρή, οι λεπτομέρειες on demand.
                           Δεύτερη σειρά με colSpan: το πλαίσιο κάθεται κάτω από το μέλος του,
-                          μέσα στον ίδιο πίνακα, χωρίς να σπάει τις πέντε στήλες. */}
+                          μέσα στον ίδιο πίνακα, χωρίς να σπάει τις τρεις στήλες. Στην
+                          ίδια σειρά, πρώτα, η πρόσβαση και η αφαίρεση του μέλους. */}
                       {canAct && (
                         <tr>
-                          <td colSpan={5} style={{ paddingTop: 0, paddingBottom: 12 }}>
+                          <td colSpan={3} style={{ paddingTop: 0, paddingBottom: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                              {m.edit_requested_at && !m.can_edit ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <Chip tone="accent">Ζητά επεξεργασία</Chip>
+                                  <Btn variant="primary" onClick={() => setMemberEdit(m.email, true)} disabled={busy}>Έγκριση</Btn>
+                                  <Btn variant="secondary" onClick={() => setMemberEdit(m.email, false)} disabled={busy}>Όχι</Btn>
+                                </div>
+                              ) : (
+                                // seg επειδή η ράγα έχει ήδη δικό της περίγραμμα με ακτίνα: το ενεργό ξεχωρίζει με επιφάνεια αντί για δεύτερη γραμμή
+                                <div role="group" aria-label="Πρόσβαση" style={{ display: 'inline-flex', border: '1px solid var(--border-default)', borderRadius: T.radius.chip, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}>
+                                  <ChipToggle on={!m.can_edit} disabled={busy} shape="seg" onClick={() => { if (m.can_edit) void setMemberEdit(m.email, false); }}>Ανάγνωση</ChipToggle>
+                                  <ChipToggle on={m.can_edit} disabled={busy} shape="seg" onClick={() => { if (!m.can_edit) void setMemberEdit(m.email, true); }}>Επεξεργασία</ChipToggle>
+                                </div>
+                              )}
+                              <span style={{ flex: 1 }} />
+                              <Btn variant="secondary" onClick={() => revoke(m.email)} disabled={busy}>Αφαίρεση</Btn>
+                            </div>
                             <button onClick={() => setOpenPerms(permsOpen ? null : m.email)} aria-expanded={!!permsOpen}
                               style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: T.font.sans }}>
                               <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', transform: permsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}><path d="M9 6l6 6-6 6" /></svg>

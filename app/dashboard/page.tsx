@@ -63,7 +63,7 @@ export default function Dashboard() {
   const {
     user, properties, financeProperties, selected, setSelected, nav, setNav, handoverIntent,
     setHandoverIntent, navShowAll, loading, loadError, showAddModal, setShowAddModal,
-    statusDropdown, setStatusDropdown, editProperty, setEditProperty, sidebarOpen, setSidebarOpen,
+    statusDropdown, setStatusDropdown, editProperty, setEditProperty, editFocus, setEditFocus, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
     setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
     scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
@@ -709,7 +709,7 @@ export default function Dashboard() {
                 </>
               )}
               {nav==='loan'      && <TabLoan key={selected.id} propertyId={selected.id} userId={user.id} propertyValue={selected.value??undefined} propertySqm={selected.sqm??undefined} propertyYearBuilt={selected.year_built??undefined} profileType={effProfileType}/>}
-              {nav==='accounting'&& <TabAccounting key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} legalForm={taxForm} plan={effPlan} status={readStatus(selected)} onNavigate={(t)=>setNav(t)} onAddExpense={()=>{ setNav('finances'); setManualExpense(n=>n+1); }}/>}
+              {nav==='accounting'&& <TabAccounting key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} legalForm={taxForm} plan={effPlan} status={readStatus(selected)} onNavigate={(t)=>setNav(t)} onAddExpense={()=>{ setNav('finances'); setManualExpense(n=>n+1); }} onEditProperty={(id)=>{ const p=properties.find(x=>x.id===id); if(p){ setEditFocus('owner_afm'); setEditProperty(p); } }}/>}
               {navSafe==='inventory' && <TabInventory key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} handoverIntent={handoverIntent} onIntentConsumed={()=>setHandoverIntent(null)} properties={properties}/>}
               {nav==='checklist' && <TabChecklist key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType}/>}
               {/* Ο ΕΛΕΓΧΟΣ ΤΟΥ ΑΜΑ ΕΙΝΑΙ ΕΞΩ ΑΠΟ ΤΟ FeatureLock, ΣΚΟΠΙΜΑ.
@@ -892,7 +892,7 @@ export default function Dashboard() {
         setScanAfterAdd(false);
         if (added) { setSelected(added); setNav('overview'); setQuickAddOpen(true); }
       }}/>}
-      {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} onClose={()=>setEditProperty(null)} onSaved={async()=>{setEditProperty(null);await fetchProperties(user.id);}}/>}
+      {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} focus={editFocus} onClose={()=>{setEditProperty(null);setEditFocus(null);}} onSaved={async()=>{setEditProperty(null);setEditFocus(null);await fetchProperties(user.id);}}/>}
       {showUpgrade&&<UpgradeModal currentCount={properties.length} planId={effPlan} onClose={()=>setShowUpgrade(false)} onManage={()=>{setShowUpgrade(false);setNav('settings');}}/>}
       <DpaModal />
     </div>

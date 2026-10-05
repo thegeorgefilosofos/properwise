@@ -41,9 +41,11 @@ import {
   TrialBalanceFold,
 } from './accounting/AdvancedTools'
 
-export default function TabAccounting({ propertyId, userId, profileType='individual', legalForm='individual', plan='free', status='rent_long', onNavigate, onAddExpense }: AccountingProps & {
+export default function TabAccounting({ propertyId, userId, profileType='individual', legalForm='individual', plan='free', status='rent_long', onNavigate, onAddExpense, onEditProperty }: AccountingProps & {
   /** Ανοίγει τη φόρμα νέας δαπάνης στις Δαπάνες, όχι μόνο την καρτέλα. */
   onAddExpense?: () => void
+  /** Ανοίγει τον οδηγό του ακινήτου στο ΑΦΜ του ιδιοκτήτη, από όπου το ζητούν οι κάρτες. */
+  onEditProperty?: (propertyId: string) => void
 }) {
   const {
     supabase, branding, reportBuilderOpen, setReportBuilderOpen, journalOpen, setJournalOpen,
@@ -385,7 +387,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           ακόμη τίποτα έβλεπε πρώτα τι θα ζητήσει ο λογιστής και μετά πώς να
           ξεκινήσει. Τώρα ξεκινά από το «ξεκίνα» και ο κατάλογος ανοίγει με ένα
           πάτημα. */}
-      <AccountantDossier userId={userId} state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions}
+      <AccountantDossier userId={userId} onEditProperty={onEditProperty} state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions}
         compact={!hasActivity} yearData={yearData} />
 
       {hasActivity && (<>
@@ -728,7 +730,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           πάνω του. Μπαίνουν μαζί, μετά την εικόνα της χρήσης: πρώτα «πόσα
           βγάζω και τι φόρο», μετά «τι λέει το κάθε έντυπο». */}
       <EnfiaPanel propertyId={propertyId} userId={userId} year={year} enfia={enfiaState} />
-      <E2ReconcileCard userId={userId} year={year} plan={plan} onUpgrade={()=>onNavigate?.('settings')} />
+      <E2ReconcileCard userId={userId} year={year} plan={plan} onUpgrade={()=>onNavigate?.('settings')} onEditProperty={onEditProperty} />
 
       {/* ── ΠΡΟΧΩΡΗΜΕΝΑ ───────────────────────────────────────────────────────
           Ο απλός ιδιοκτήτης θέλει τέσσερα πράγματα: έσοδα, έξοδα, φόρους και τι

@@ -282,8 +282,10 @@ export interface DossierExportSource {
 }
 
 export default function AccountantDossier({
-  state, year, properties, exportSource, actions, compact = false, yearData, userId,
+  state, year, properties, exportSource, actions, compact = false, yearData, userId, onEditProperty,
 }: {
+  /** Ανοίγει τον οδηγό του ακινήτου στο ΑΦΜ του ιδιοκτήτη. */
+  onEditProperty?: (propertyId: string) => void
   /** Ο ιδιοκτήτης: ο φάκελος ανά ΑΦΜ φορτώνεται με το δικό του αναγνωριστικό. */
   userId?: string
   state: DossierState
@@ -510,7 +512,7 @@ export default function AccountantDossier({
 
       {/* Ο ΦΑΚΕΛΟΣ ΤΗΣ ΣΥΝΑΝΤΗΣΗΣ, ΑΝΑ ΑΦΜ: αυτό που πάει στον λογιστή. */}
       {userId && (
-        <MeetingPackCard userId={userId} year={year} ownerName={exportSource.ownerName ?? null}
+        <MeetingPackCard userId={userId} year={year} ownerName={exportSource.ownerName ?? null} onEditProperty={onEditProperty}
           dossier={{
             form: profile.form, books: profile.books, hasRenovation: profile.hasRenovation,
             hasLoan: profile.hasLoan, ownershipChanged: profile.ownershipChanged, have, properties, data,
