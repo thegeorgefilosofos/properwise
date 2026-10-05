@@ -68,6 +68,24 @@ export type Change = {
 };
 
 /**
+ * ΤΟ ΝΕΟ fixed_min, Ή null ΟΤΑΝ ΔΕΝ ΠΡΕΠΕΙ ΝΑ ΑΛΛΑΞΕΙ.
+ *
+ * Ξαναϋπολογιζόταν σε ΚΑΘΕ πέρασμα από τις στήλες 3 έως 20 ετών. Στις
+ * 05/10/2026 έγραψε 2,90 πάνω στο 2,70 της Alpha: το σταθερό 1 έτους της Alpha
+ * Κατοικία, γραμμένο από το δελτίο, που δεν έχει στήλη. Ο ίδιος κανόνας θα
+ * έσβηνε και το 2,50 της Εθνικής. Τώρα αλλάζει μόνο όταν το πέρασμα ΕΦΑΡΜΟΣΕ
+ * αλλαγή σε στήλη σταθερού· αλλιώς η τιμή του δελτίου μένει.
+ *
+ * @param applied οι αλλαγές που εφαρμόζονται σε αυτό το πέρασμα
+ * @param next    οι στήλες σταθερού όπως θα είναι μετά το πέρασμα
+ */
+export function recomputeFixedMin(applied: Pick<Change, 'field'>[], next: Partial<Record<RateField, unknown>>): number | null {
+  if (!applied.some(c => (RATE_FIELDS as readonly string[]).includes(c.field))) return null;
+  const vals = RATE_FIELDS.map(k => parseFloat(String(next[k] ?? ''))).filter(x => Number.isFinite(x));
+  return vals.length ? Math.min(...vals) : null;
+}
+
+/**
  * Το «από» ενός επιτοκίου, όπως γράφεται στον πίνακα: «2.40-4.70» → 2,40,
  * «3,40» → 3,40. Το εύρος κρατά το ΧΑΜΗΛΟΤΕΡΟ, γιατί αυτό δείχνει η οθόνη
  * («από 2,40%») και αυτό συγκρίνεται με ό,τι επιστρέφει η αναζήτηση.
