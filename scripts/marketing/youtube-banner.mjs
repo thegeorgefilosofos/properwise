@@ -37,6 +37,15 @@ let GRAIN = 'none';
 // λογότυπο και μία γραμμή με τα θέματα του καναλιού. Ό,τι άλλο (κουμπί,
 // ψευδώνυμο, τίτλος) το δείχνει ήδη η σελίδα του καναλιού από κάτω.
 const TOPICS = ['Φόρος ενοικίων', 'ΕΝΦΙΑ', 'Airbnb', 'Προθεσμίες'];
+/**
+ * Η φράση που κράτησε ο ιδιοκτήτης από την πρώτη εκδοχή. ΤΑ ΜΕΓΕΘΗ ΕΙΝΑΙ ΓΙΑ ΤΟ
+ * ΚΙΝΗΤΟ: εκεί η ζώνη των 1546 εικονοστοιχείων γίνεται περίπου 390, δηλαδή ένα
+ * τέταρτο. Γραμμή 40 βγαίνει 10 και θέματα 31 βγαίνουν 8· ό,τι μικρότερο δεν
+ * διαβάζεται.
+ */
+const LINE = 'Σύντομα βίντεο για ιδιοκτήτες ακινήτων';
+/** Κεφαλαία χωρίς τόνους και διαλυτικά, όπως γράφονται στα ελληνικά. */
+const caps = t => t.toLocaleUpperCase('el').normalize('NFD').replace(/[\u0301\u0308]/g, '').normalize('NFC');
 
 const html = guides => `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>
 @font-face{font-family:Inter;font-weight:100 900;src:url(${f('inter-greek.woff2')})}
@@ -52,18 +61,23 @@ body{font-family:Inter,sans-serif;color:#f1f5fc;-webkit-font-smoothing:antialias
   linear-gradient(180deg,#0a1324 0%,#060b16 60%,#050912 100%)}
 .grain{position:absolute;inset:0;background-image:${GRAIN};background-size:260px;opacity:.06;mix-blend-mode:overlay}
 .safe{position:absolute;left:${SAFE_X}px;top:${SAFE_Y}px;width:${SAFE.w}px;height:${SAFE.h}px;
- display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px}
-.logo{height:92px;width:auto;display:block}
-.rule{width:64px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,#8ab4f8,transparent)}
-.topics{font-family:Mono,monospace;font-size:25px;font-weight:500;letter-spacing:.28em;color:#93a6c4;display:flex;gap:30px;align-items:center}
-.topics i{width:5px;height:5px;border-radius:50%;background:#4f7fd6;display:inline-block}
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px}
+.logo{height:124px;width:auto;display:block}
+.rule{width:88px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,#8ab4f8,transparent)}
+.words{display:flex;flex-direction:column;align-items:center;gap:20px}
+.line{font-family:Mono,monospace;font-size:40px;font-weight:500;letter-spacing:.22em;color:#8ab4f8}
+.topics{font-family:Mono,monospace;font-size:31px;font-weight:500;letter-spacing:.2em;color:#7b8daa;display:flex;gap:26px;align-items:center}
+.topics i{width:6px;height:6px;border-radius:50%;background:#3f6bbd;display:inline-block}
 .guide{position:absolute;left:${SAFE_X}px;top:${SAFE_Y}px;width:${SAFE.w}px;height:${SAFE.h}px;outline:3px dashed #ff6b6b;pointer-events:none}
 </style></head><body>
 <div class="bg"></div><div class="grain"></div>
 <div class="safe">
  <img class="logo" src="${LOGO}" alt="">
  <div class="rule"></div>
- <div class="topics">${TOPICS.map(t => `<span>${t.toLocaleUpperCase('el').normalize('NFD').replace(/[\u0301\u0308]/g, '').normalize('NFC')}</span>`).join('<i></i>')}</div>
+ <div class="words">
+  <div class="line">${caps(LINE)}</div>
+  <div class="topics">${TOPICS.map(t => `<span>${caps(t)}</span>`).join('<i></i>')}</div>
+ </div>
 </div>
 ${guides ? '<div class="guide"></div>' : ''}
 </body></html>`;
