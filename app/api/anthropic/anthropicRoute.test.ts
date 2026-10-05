@@ -51,10 +51,11 @@ function statementAt(src: string, i: number): string {
 // ── 1. Η χρέωση προηγείται της κλήσης ──────────────────────────────────────
 // Ο μόνος έλεγχος που περνούσε και πριν. Μένει: αν κάποιος μετακινήσει τη
 // χρέωση μετά την κλήση, η επιστροφή από κάτω γίνεται λάθος απάντηση σε λάθος
-// ερώτημα.
-const iBump  = SRC.indexOf("'bump_ai_usage'")
+// ερώτημα. Από 05.10.2026 η χρέωση είναι η `takeUnit` (lib/billing/aiUnits.ts,
+// take_ai_unit / take_scan_unit με τον ρόλο υπηρεσίας).
+const iBump  = SRC.indexOf('await takeUnit(')
 const iModel = SRC.indexOf('api.anthropic.com')
-ok('η διαδρομή χρεώνει με bump_ai_usage', iBump >= 0)
+ok('η διαδρομή χρεώνει με takeUnit', iBump >= 0)
 ok('η χρέωση προηγείται της κλήσης στον πάροχο', iBump >= 0 && iModel > iBump)
 
 // ── 2. ΚΑΘΕ ΕΞΟΔΟΣ ΣΦΑΛΜΑΤΟΣ ΜΕΤΑ ΤΗ ΧΡΕΩΣΗ ΕΠΙΣΤΡΕΦΕΙ ΤΗ ΜΟΝΑΔΑ ──────────
@@ -89,12 +90,16 @@ eq('καμία έξοδος σφάλματος χωρίς επιστροφή τ�
 eq('καμία έξοδος χωρίς τις κεφαλίδες υπολοίπου', headerless, [])
 
 // ── 3. ΜΙΑ ΦΟΡΑ, ΟΧΙ ΔΥΟ ───────────────────────────────────────────────────
-// Η επιστροφή είναι αφαίρεση: δεύτερη κλήση για την ίδια αποτυχία χαρίζει
-// ερώτηση. Ενα σημείο κλήσης προς τη βάση, μία σημαία που το φυλάει.
-eq('ένα και μόνο σημείο κλήσης προς τη βάση', SRC.split('refundAiUsage(').length - 1, 1)
+// Η επιστροφή γίνεται με το κλειδί του αιτήματος και η βάση τη δέχεται μία
+// φορά. Ενα σημείο κλήσης, μία σημαία που γλιτώνει και τη δεύτερη κλήση.
+eq('ένα και μόνο σημείο κλήσης προς τη βάση', SRC.split('refundUnit(').length - 1, 1)
+ok('η επιστροφή στέλνει το κλειδί αυτού του αιτήματος', /await refundUnit\(user\.id, requestId, pool\)/.test(SRC))
+ok('το κλειδί το φτιάχνει ο διακομιστής', /const requestId = newRequestId\(\);/.test(SRC))
+ok('η χρέωση στέλνει το ίδιο κλειδί', /await takeUnit\([^)]*requestId/.test(SRC))
 ok('η σημαία εμποδίζει τη δεύτερη επιστροφή', /if \(refunded\) return;/.test(SRC))
 ok('η σημαία μπαίνει ΠΡΙΝ την κλήση, όχι μετά',
-  SRC.indexOf('refunded = true;') < SRC.indexOf('await refundAiUsage('))
+  SRC.indexOf('refunded = true;') < SRC.indexOf('await refundUnit('))
+ok('καμία παλιά επιστροφή «μίας» χωρίς κλειδί', !/refundAiUsage\(|refundScanUsage\(/.test(SRC))
 
 // ── 4. ΧΡΟΝΙΚΟ ΟΡΙΟ ────────────────────────────────────────────────────────
 ok('η κλήση στον πάροχο έχει χρονικό όριο', /signal:\s*AbortSignal\.timeout\(UPSTREAM_TIMEOUT_MS\)/.test(SRC))
@@ -114,7 +119,8 @@ ok('η ωμή αιτία πάει στα αρχεία καταγραφής', /co
 
 // ── 7. Η ΜΕΤΑΝΑΣΤΕΥΣΗ: ΠΟΙΟΣ ΜΠΟΡΕΙ ΝΑ ΜΕΙΩΣΕΙ ΜΕΤΡΗΤΗ ────────────────────
 // Με δικαίωμα στον `authenticated`, ο καθένας θα καλούσε το RPC μετά από κάθε
-// απάντηση και ο βοηθός θα ήταν δωρεάν χωρίς όριο.
+// απάντηση και ο βοηθός θα ήταν δωρεάν χωρίς όριο. Η παλιά `refund_ai_usage`
+// μένει όσο ζει η μεταβατική `bump_ai_usage` (20261005150000).
 ok('η συνάρτηση επιστροφής υπάρχει', /create or replace function public\.refund_ai_usage/.test(MIGRATION))
 ok('το δικαίωμα δίνεται μόνο στον service_role',
   /grant execute on function public\.refund_ai_usage\(uuid, boolean\) to service_role;/.test(MIGRATION))
@@ -132,28 +138,37 @@ ok('κανένας μετρητής δεν πέφτει κάτω από το μ�
   (body.match(/greatest\([^)]*- 1, 0\)/g) || []).length === 3)
 ok('η συνάρτηση κλειδώνει το search_path', /set search_path to 'public'/.test(body))
 
-// ── 9. ΕΝΑ ΑΡΧΕΙΟ, ΜΙΑ ΣΑΡΩΣΗ ─────────────────────────────────────────────
-// Η οθόνη διαβάζει μια φωτογραφία σε έως τρία βήματα. Στο δωρεάν πακέτο αυτό
-// έτρωγε τρεις από τις πέντε σαρώσεις του μήνα για ένα χαρτί.
-const iReuse = SRC.indexOf('if (scan && reuse && seen)')
-const iScanBump = SRC.indexOf("'bump_scan_usage'")
-ok('το ίδιο αρχείο αναγνωρίζεται με αποτύπωμα περιεχομένου', /createHash\('sha256'\)\.update\(data\)/.test(SRC))
-ok('η επανάχρηση ελέγχεται ΠΡΙΝ τη χρέωση της σάρωσης', iReuse >= 0 && iScanBump > iReuse)
-ok('οι επαναχρήσεις έχουν όριο, αλλιώς ένα αρχείο γίνεται δωρεάν συνομιλία',
-  /seen\.uses < SCAN_REUSE_MAX/.test(SRC) && /const SCAN_REUSE_MAX = [1-5];/.test(SRC))
-ok('και όριο χρόνου', /Date\.now\(\) - seen\.at < SCAN_REUSE_MS/.test(SRC))
-ok('το ίχνος γράφεται μόνο μετά από επιτυχή χρέωση',
-  SRC.indexOf('scanSeen.set(fileKey') > SRC.indexOf("u.reason === 'scan_month'"))
-ok('η επανάχρηση δεν επιστρέφει σάρωση που δεν χρεώθηκε',
-  SRC.indexOf('if (reuse) return;') >= 0 && SRC.indexOf('if (reuse) return;') < SRC.indexOf('await refundScanUsage('))
+// ── 9. ΠΟΙΟΣ ΜΕΤΡΗΤΗΣ ΚΑΙ ΠΟΙΑ ΟΡΙΑ: ΜΟΝΟ Ο ΔΙΑΚΟΜΙΣΤΗΣ (05.10.2026) ────────
+// Το `kind` του σώματος διάλεγε τον μετρητή και τα όρια ταξίδευαν ως
+// ορίσματα. Τώρα ο μετρητής βγαίνει από το ίδιο το σώμα (`meterKind`: αρχείο
+// στο σχήμα της σάρωσης → σάρωση, αλλιώς Νόα) και τα όρια τα ξέρει η βάση.
+const CODE = SRC.split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n')
+ok('ο μετρητής βγαίνει από το σώμα με meterKind', /const scan = meterKind\(body\) === 'scan';/.test(SRC))
+ok('το `kind` του πελάτη δεν διαβάζεται', !/body\??\.kind/.test(CODE))
+ok('κανένα όριο δεν στέλνεται στη βάση', !/p_(day|month|pool|max_min|trial_|tester_)/.test(CODE))
+ok('καμία κλήση στις παλιές bump_*', !/bump_(ai|scan)_usage/.test(CODE))
+ok('η επανάχρηση αρχείου δεν ζει πια στη μνήμη', !/scanSeen|SCAN_REUSE_MAX/.test(CODE))
+ok('η σάρωση στέλνει το αποτύπωμα του αρχείου', /scan \? fileHash\(body\) : null/.test(SRC))
+ok('η βάση που δεν απαντά κλείνει (503), δεν ανοίγει', /if \(u == null\) \{[\s\S]{0,300}?status: 503/.test(SRC))
+ok('μόνο ρητό `allowed === true` περνά', !/allowed === false/.test(CODE) && /u\.allowed !== true/.test(SRC))
 
-// ── 10. Η ΣΑΡΩΣΗ ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ ΜΕΤΡΙΕΤΑΙ (20261003100000) ─────────────────
-// Η δοκιμή και οι δωρεάν μήνες σαρώνουν με ταβάνι και από την κοινή δεξαμενή.
-// Η άρνηση 'pool' της σάρωσης θέλει δικό της μήνυμα αντί για «πολλές
-// σαρώσεις μαζί». Το μήνυμα του μήνα λέει το όριο που έστειλε η βάση.
-const scanGate = SRC.slice(iScanBump, SRC.indexOf("'bump_ai_usage'"))
+// ── 10. ΤΑ ΜΗΝΥΜΑΤΑ ΤΗΣ ΑΡΝΗΣΗΣ ΣΑΡΩΣΗΣ ───────────────────────────────────
+const scanGate = SRC.slice(SRC.indexOf('if (scan && u.allowed !== true)'), SRC.indexOf('if (!scan) {'))
 ok('η σάρωση χειρίζεται την άρνηση της δεξαμενής', /u\.reason === 'pool'\s*\?\s*scanPoolExhaustedMessage\(/.test(scanGate))
 ok('το μήνυμα του μήνα παίρνει το όριο της βάσης', /scansExhaustedMessage\(canBuy, [^)]*u\.month_limit/.test(scanGate))
+
+// ── 11. Η ΜΕΤΑΝΑΣΤΕΥΣΗ ΤΗΣ ΧΡΕΩΣΗΣ ─────────────────────────────────────────
+const UNITS = readFileSync(
+  join(HERE, '..', '..', '..', 'supabase', 'migrations',
+       '20261005150000_i_monada_xreonetai_prin_ton_paroxo_kai_to_checkin_kleidonei.sql'), 'utf8')
+for (const sig of ['take_ai_unit(uuid, uuid)', 'take_scan_unit(uuid, uuid, text)', 'refund_ai_unit(uuid, uuid, boolean)']) {
+  const esc = sig.replace(/[()]/g, '\\$&')
+  ok(`${sig}: μόνο service_role`, new RegExp(`grant execute on function public\\.${esc} to service_role;`).test(UNITS)
+    && new RegExp(`revoke all on function public\\.${esc} from public, anon, authenticated;`).test(UNITS))
+}
+ok('οι νέες συναρτήσεις δεν παίρνουν όρια ως ορίσματα',
+  /function public\.take_ai_unit\(p_uid uuid, p_request_id uuid\)/.test(UNITS)
+  && /function public\.take_scan_unit\(p_uid uuid, p_request_id uuid, p_file_hash text\)/.test(UNITS))
 
 console.log(fail === 0 ? `✓ anthropic route: ${pass} έλεγχοι πέρασαν` : `✗ anthropic route: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

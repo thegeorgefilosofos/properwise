@@ -12,13 +12,18 @@
 
 import {
   aiLimitsFor, remainingLine, dailyExhaustedMessage, monthlyExhaustedMessage,
-  poolExhaustedMessage, COST_PER_REQUEST_USD, COST_PER_REQUEST_EUR, FREE_BUDGET_USD, TESTER_LIMITS,
-  FREE_POOL_PER_MONTH, FREE_TESTERS_PER_MONTH, dailyLimitsByRank, monthlyLimitsByRank, PLAN_RANK_ORDER,
+  poolExhaustedMessage, COST_PER_REQUEST_USD, COST_PER_REQUEST_EUR, FREE_BUDGET_USD,
+  FREE_POOL_PER_MONTH, FREE_TESTERS_PER_MONTH, dailyLimitsByRank, PLAN_RANK_ORDER, SCAN_LIMITS,
   MAX_PER_MINUTE, AI_SHARE, monthlyQuestionBudget, roundQuestions, limitFromBudget, TRIAL_LIMITS, effectiveAiLimits,
-  hasAssistant, assistantLockedMessage, scanLimitsByRank, scansExhaustedMessage,
+  hasAssistant, assistantLockedMessage, scansExhaustedMessage,
   TRIAL_SCANS_PER_MONTH, scanPoolExhaustedMessage,
 } from './aiLimits'
 import { PLANS, PLAN_ORDER, type PlanId } from './plans'
+
+// Ο δοκιμαστής στο ακριβότερο πληρωμένο πακέτο: εκεί φαίνεται μόνο το δικό του ταβάνι.
+const TESTER_LIMITS = effectiveAiLimits('office', true, true)
+const monthlyLimitsByRank = () => PLAN_RANK_ORDER.map(p => aiLimitsFor(p).perMonth)
+const scanLimitsByRank = () => PLAN_RANK_ORDER.map(p => SCAN_LIMITS[p])
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }

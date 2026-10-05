@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHash } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { requireSecondStep } from '@/lib/auth/secondStep';
 import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import {
-  MAX_PER_MINUTE, PLAN_RANK_ORDER,
-  dailyLimitsByRank, monthlyLimitsByRank, FREE_POOL_PER_MONTH, TRIAL_LIMITS, TESTER_LIMITS,
+  MAX_PER_MINUTE, PLAN_RANK_ORDER, dailyLimitsByRank,
   dailyExhaustedMessage, monthlyExhaustedMessage, poolExhaustedMessage,
-  scanLimitsByRank, scansExhaustedMessage, scanPoolExhaustedMessage, assistantLockedMessage,
+  scansExhaustedMessage, scanPoolExhaustedMessage, assistantLockedMessage,
 } from '@/lib/billing/aiLimits';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { billingWords } from '@/lib/legal/billingWords';
@@ -15,54 +13,9 @@ import {
   UPSTREAM_TIMEOUT_MS, upstreamFailure, CREDIT_FAILURE,
   TIMEOUT_FAILURE, NETWORK_FAILURE, UNREADABLE_FAILURE,
 } from '@/lib/assistant/upstream';
-import { refundAiUsage, refundScanUsage } from '@/lib/billing/aiRefund';
+import { meterKind, fileHash, newRequestId, takeUnit, refundUnit } from '@/lib/billing/aiUnits';
 import { alertOutOfCredit } from '@/lib/assistant/creditAlert';
-import { scanShapeError, SCAN_SHAPE } from '@/lib/assistant/scanShape';
-
-/**
- * Είναι αυτό το αίτημα σάρωση; Το δηλώνει ο πελάτης (`kind: 'scan'`), αλλά
- * δεν αρκεί: η σάρωση έχει ΔΙΚΟ της μετρητή (χωρίς όριο στα πληρωμένα), άρα
- * μια ερώτηση προς τη Νόα που θα δήλωνε «σάρωση» θα περνούσε χωρίς μέτρημα.
- * Γι' αυτό ζητάμε και ΑΡΧΕΙΟ μέσα στο μήνυμα: εικόνα ή έγγραφο.
- */
-function isScanRequest(body: { kind?: unknown; messages?: unknown }): boolean {
-  if (body?.kind !== 'scan' || !Array.isArray(body.messages)) return false;
-  return body.messages.some(m =>
-    Array.isArray((m as { content?: unknown })?.content) &&
-    ((m as { content: unknown[] }).content).some(c => {
-      const t = (c as { type?: unknown })?.type;
-      return t === 'image' || t === 'document';
-    }));
-}
-
-/**
- * ΕΝΑ ΑΡΧΕΙΟ, ΜΙΑ ΣΑΡΩΣΗ. Η οθόνη διαβάζει μια φωτογραφία σε έως τρία βήματα
- * (παραστατικό, δεύτερη ματιά αν ήταν θολή, ταξινόμηση ως φωτογραφία χώρου:
- * scanDoc.ts `scanFile`). Για τον χρήστη είναι μία σάρωση· χωρίς αυτό, στο
- * δωρεάν πακέτο μία φωτογραφία έτρωγε ως τρεις από τις πέντε του μήνα.
- *
- * Το ίδιο αρχείο από τον ίδιο χρήστη, μέσα σε λίγα λεπτά, μετρά μία φορά. Το
- * όριο στις επαναχρήσεις κλείνει την κατάχρηση: ένα αρχείο με αλλαγμένο prompt
- * δεν γίνεται δωρεάν συνομιλία, γιατί περνά το πολύ SCAN_REUSE_MAX φορές.
- * Ζει ανά στιγμιότυπο· αν η επόμενη κλήση πέσει αλλού, απλώς μετρά ξανά, όπως
- * πριν. Ποτέ δεν μετρά λιγότερο από μία φορά ανά αρχείο.
- */
-const SCAN_REUSE_MS = 5 * 60_000;
-const SCAN_REUSE_MAX = 3;
-const scanSeen = new Map<string, { at: number; uses: number }>();
-function scanKey(userId: string, messages: unknown[]): string | null {
-  for (const m of messages) {
-    const content = (m as { content?: unknown })?.content;
-    if (!Array.isArray(content)) continue;
-    for (const c of content) {
-      const data = (c as { source?: { data?: unknown } })?.source?.data;
-      if (typeof data === 'string' && data.length) {
-        return userId + ':' + createHash('sha256').update(data).digest('hex');
-      }
-    }
-  }
-  return null;
-}
+import { SCAN_SHAPE } from '@/lib/assistant/scanShape';
 
 // Rate limiting: simple in-memory store (για production χρησιμοποίησε Redis)
 // ΣΗΜ.: σε serverless/πολλαπλά instances αυτό είναι ανά-instance. Είναι φράγμα
@@ -91,7 +44,7 @@ function quotaHeaders(q: { month: number; monthLimit: number; day: number; dayLi
 // Το in-memory ημερήσιο φράγμα ΔΕΝ ξέρει το πλάνο του χρήστη (θα χρειαζόταν
 // ερώτημα στη βάση πριν καν το φράγμα). Κρατά λοιπόν το ΜΕΓΑΛΥΤΕΡΟ όριο όλων
 // των πλάνων: κόβει την προφανή κατάχρηση χωρίς ποτέ να κόψει άδικα συνδρομητή.
-// Το πραγματικό, ανά-πλάνο όριο το επιβάλλει η bump_ai_usage παρακάτω, που
+// Το πραγματικό, ανά-πλάνο όριο το επιβάλλει η take_ai_unit παρακάτω, που
 // είναι και η μόνη αυθεντική πηγή (ατομική, διαμοιραζόμενη, race-free).
 const MAX_REQUESTS_PER_DAY = Math.max(...dailyLimitsByRank());
 
@@ -124,7 +77,7 @@ function sweepRateLimit(now: number) {
 export async function POST(req: NextRequest) {
   // ── ΑΠΟ ΠΟΥ ΗΡΘΕ ────────────────────────────────────────────
   // ΑΥΤΗ Η ΔΙΑΔΡΟΜΗ ΞΟΔΕΥΕΙ ΧΡΗΜΑΤΑ ΣΕ ΚΑΘΕ ΚΛΗΣΗ. Το φράγμα κόστους μετρά
-  // ανά χρήστη (`bump_ai_usage`), οπότε χωρίς έλεγχο προέλευσης μια ξένη
+  // ανά χρήστη (`take_ai_unit`), οπότε χωρίς έλεγχο προέλευσης μια ξένη
   // σελίδα άδειαζε το μηνιαίο υπόλοιπο κάθε συνδεδεμένου επισκέπτη της με το
   // cookie του — και ο λογαριασμός του παρόχου AI τον πληρώνει ο ιδιοκτήτης.
   if (!sameOrigin(req.headers)) {
@@ -202,131 +155,68 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(body?.messages) || body.messages.length === 0) {
     return NextResponse.json({ error: 'Λείπουν μηνύματα.' }, { status: 400 });
   }
-  const scan = isScanRequest(body);
-  // ΜΙΑ ΣΑΡΩΣΗ ΕΧΕΙ ΤΟ ΣΧΗΜΑ ΤΗΣ ΣΑΡΩΣΗΣ (02.10.2026, lib/assistant/scanShape.ts).
-  // Ως εδώ αρκούσε ένα οποιοδήποτε αρχείο για να μετρήσει μια συνομιλία ως σάρωση,
-  // δηλαδή έξω από τα όρια της Νόας και έξω από την κοινή δεξαμενή της δοκιμής.
-  if (scan) {
-    const why = scanShapeError(body);
-    if (why) {
-      console.warn('[anthropic] απορρίφθηκε σάρωση εκτός σχήματος:', why);
-      return NextResponse.json({ error: 'Το αίτημα σάρωσης δεν είναι έγκυρο.' }, { status: 400 });
-    }
-  }
+  // ── ΠΟΙΟΣ ΜΕΤΡΗΤΗΣ: ΤΟ ΚΡΙΝΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ ΑΠΟ ΤΟ ΣΩΜΑ ───────
+  // Απόφαση CEO 05.10.2026 (lib/billing/aiUnits.ts `meterKind`). Σάρωση μόνο
+  // όταν υπάρχει πραγματικό αρχείο στο σχήμα της σάρωσης· αλλιώς ερώτηση. Το
+  // `kind` του πελάτη δεν διαβάζεται: ως εδώ μια ερώτηση με `kind: 'scan'` και
+  // ένα αρχείο έπεφτε στον μετρητή σαρώσεων, που στα πληρωμένα δεν έχει όριο.
+  const scan = meterKind(body) === 'scan';
 
-  // ── Durable, cross-instance cap (authoritative) ──────────────
-  // Οι χάρτες στη μνήμη από πάνω ζουν ΑΝΑ ΣΤΙΓΜΙΟΤΥΠΟ: σε serverless, κάθε νέα
-  // εκτέλεση ξεκινά με άδειους. Ο ατομικός μετρητής στο Supabase είναι το
-  // πραγματικό φράγμα — αυτό που δεν παρακάμπτεται χτυπώντας άλλο στιγμιότυπο.
-  // Ανοίγει μόνο αν σφάλει η ΙΔΙΑ η κλήση (ο φρουρός της μνήμης μένει σε ισχύ).
+  // ── Η ΜΟΝΑΔΑ ΧΡΕΩΝΕΤΑΙ ΠΡΙΝ ΤΟΝ ΠΑΡΟΧΟ, ΑΠΟ ΤΗ ΒΑΣΗ ──────────
+  // Οι χάρτες στη μνήμη από πάνω ζουν ΑΝΑ ΣΤΙΓΜΙΟΤΥΠΟ. Το πραγματικό φράγμα
+  // είναι η `take_ai_unit` / `take_scan_unit` (20261005150000): όρια ΜΟΝΟ από
+  // τη βάση (πακέτο, δοκιμή, δοκιμαστής, δεξαμενή), ατομικά· η άρνηση δεν
+  // γράφει τίποτα. Καλούνται με τον ρόλο υπηρεσίας και το `user.id` της
+  // συνεδρίας· κανένα όριο και κανένας μετρητής δεν έρχεται από τον πελάτη.
   //
-  // Τα όρια περνούν ως πίνακες [δωρεάν, ιδιοκτήτης, επαγγελματίας]. Η ΑΝΑΓΝΩΡΙΣΗ
-  // του πλάνου γίνεται μέσα στη βάση (public.user_plan_rank), ώστε να μη χρειάζεται
-  // δεύτερο ερώτημα εδώ και να μην μπορεί να δηλωθεί πλάνο από τον client.
+  // Η σάρωση έχει δικό της μετρητή: πέντε τον μήνα στο δωρεάν «Ιδιοκτήτης»,
+  // χωρίς μηνιαίο όριο στα πληρωμένα, ταβάνι TRIAL_SCANS_PER_MONTH με χρέωση
+  // στην κοινή δεξαμενή στη δοκιμή, στους δωρεάν μήνες και στους Συνεργάτες.
+  // Το ίδιο αρχείο μέσα σε λίγα λεπτά μετρά μία φορά· ο κανόνας ζει στη βάση.
   /** Πόσες ερωτήσεις έχει κάνει και πόσες δικαιούται. Μπαίνει σε κεφαλίδες. */
   let quota: { month: number; monthLimit: number; day: number; dayLimit: number } | null = null;
-  // ── Η ΣΑΡΩΣΗ ΜΕΤΡΑΕΙ ΣΤΟΝ ΔΙΚΟ ΤΗΣ ΜΕΤΡΗΤΗ ────────────────────
-  // Δεν τρώει ερωτήσεις της Νόας. Πέντε τον μήνα στο δωρεάν «Ιδιοκτήτης»,
-  // χωρίς μηνιαίο όριο στα πληρωμένα· στη δοκιμή, στους δωρεάν μήνες και στους
-  // Συνεργάτες ταβάνι TRIAL_SCANS_PER_MONTH με χρέωση στην κοινή δεξαμενή. Το
-  // φράγμα ανά λεπτό ισχύει για όλους.
-  const fileKey = scan ? scanKey(user.id, body.messages) : null;
-  const seen = fileKey ? scanSeen.get(fileKey) : undefined;
-  const reuse = !!seen && Date.now() - seen.at < SCAN_REUSE_MS && seen.uses < SCAN_REUSE_MAX;
-  if (scan && reuse && seen) {
-    seen.uses++;
-  } else if (scan) {
-    try {
-      const { data: su, error: suError } = await supabase.rpc('bump_scan_usage', {
-        p_max_min: MAX_REQUESTS_PER_MINUTE,
-        p_month:   scanLimitsByRank(),
-      });
-      if (suError || su == null) {
-        return NextResponse.json(
-          { error: 'Η σάρωση δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.' },
-          { status: 503 },
-        );
-      }
-      const u = su as { allowed?: boolean; reason?: string; month_limit?: number | null };
-      if (u.allowed === false) {
-        // ΤΟ ΟΡΙΟ ΤΟ ΛΕΕΙ Η ΒΑΣΗ. Από 03.10.2026 η δοκιμή, οι δωρεάν μήνες και οι
-        // Συνεργάτες έχουν δικό τους ταβάνι (TRIAL_SCANS_PER_MONTH) και μετρούν
-        // στην κοινή δεξαμενή· το «5 σαρώσεις» του δωρεάν θα ήταν λάθος νούμερο.
-        const canBuy = billingWords().live;
-        const error = u.reason === 'scan_month'
-          ? scansExhaustedMessage(canBuy, typeof u.month_limit === 'number' ? u.month_limit : undefined)
-          : u.reason === 'pool'
-            ? scanPoolExhaustedMessage(canBuy)
-            : 'Πολλές σαρώσεις μαζί. Δοκίμασε ξανά σε ένα λεπτό.';
-        return NextResponse.json({ error, reason: u.reason }, { status: 429 });
-      }
-      if (fileKey) {
-        const now = Date.now();
-        for (const [k, v] of scanSeen) if (now - v.at >= SCAN_REUSE_MS) scanSeen.delete(k);
-        scanSeen.set(fileKey, { at: now, uses: 1 });
-      }
-    } catch {
-      return NextResponse.json(
-        { error: 'Η σάρωση δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.' },
-        { status: 503 },
-      );
-    }
-  } else try {
-    const { data: usage, error: usageError } = await supabase.rpc('bump_ai_usage', {
-      p_max_min: MAX_REQUESTS_PER_MINUTE,
-      p_day:     dailyLimitsByRank(),
-      p_month:   monthlyLimitsByRank(),
-      p_pool:    FREE_POOL_PER_MONTH,
-      // ΤΟ ΠΑΚΕΤΟ ΤΗΣ ΔΟΚΙΜΗΣ. Χωρίς αυτό, κάθε ανυψωμένο αλλά μη πληρωμένο
-      // επίπεδο (δοκιμή, δωρεάν μήνες, Συνεργάτης) έπαιρνε τα όρια του πακέτου
-      // στο οποίο ανυψώθηκε — δυόμισι φορές περισσότερα από όσα δικαιούται ο
-      // συνδρομητής που πληρώνει το φθηνότερο.
-      p_trial_day:   TRIAL_LIMITS.perDay,
-      p_trial_month: TRIAL_LIMITS.perMonth,
-      // ΚΑΙ ΤΟ ΠΑΚΕΤΟ ΤΟΥ ΔΟΚΙΜΑΣΤΗ. Η ιδιότητα δοκιμαστή δίνει οποιοδήποτε
-      // πακέτο δωρεάν, οπότε ο λογαριασμός περνούσε ως πληρωμένος συνδρομητής
-      // και έπαιρνε 483 ερωτήσεις τον μήνα: 16,76 $ που δεν πληρώνει κανείς.
-      p_tester_day:   TESTER_LIMITS.perDay,
-      p_tester_month: TESTER_LIMITS.perMonth,
-    });
-    // ΤΟ supabase-js ΔΕΝ ΠΕΤΑΕΙ ΣΕ ΣΦΑΛΜΑ RPC — ΤΟ ΕΠΙΣΤΡΕΦΕΙ. Το `catch` από
-    // κάτω δεν έπιανε ποτέ τίποτα, άρα ένα σφάλμα δικαιωμάτων, ένα timeout ή
-    // μια στιγμή ασυμφωνίας υπογραφής κατά το deploy έβγαζε `usage = null`, το
-    // `u.allowed === false` ήταν ψευδές και το αίτημα ΠΡΟΧΩΡΟΥΣΕ στον πάροχο
-    // χωρίς κανένα ανθεκτικό φράγμα. Ο μοναδικός φρουρός που έμενε ήταν ο
-    // χάρτης στη μνήμη, που το ίδιο το migration περιγράφει ως παρακάμψιμο.
-    //
-    // Ένας μετρητής κόστους που ανοίγει όταν χαλάσει δεν είναι μετρητής.
-    if (usageError || usage == null) {
-      return NextResponse.json(
-        { error: `${ASSISTANT_NAME} δεν απαντά αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.` },
-        { status: 503 },
-      );
-    }
-    const u = usage as {
-      allowed?: boolean; reason?: string; rank?: number;
-      month?: number; month_limit?: number; day?: number; day_limit?: number;
-    } | null;
-    // ΤΑ ΝΟΥΜΕΡΑ ΤΟΥ ΥΠΟΛΟΙΠΟΥ ΤΑ ΕΠΕΣΤΡΕΦΕ ΗΔΗ Η ΒΑΣΗ ΚΑΙ ΤΑ ΠΕΤΑΓΑΜΕ. Ο χρήστης
-    // μάθαινε ότι υπάρχει όριο μόνο τη στιγμή που το χτυπούσε — δηλαδή πάντα ως
-    // έκπληξη και συνήθως στη μέση μιας δουλειάς. Ταξιδεύουν ως κεφαλίδες και
-    // όχι μέσα στο σώμα, γιατί το σώμα είναι αυτούσια η απάντηση του παρόχου και
-    // δεν επιτρέπεται να του προσθέσουμε πεδία που δεν του ανήκουν.
-    if (u && typeof u.month === 'number' && typeof u.month_limit === 'number') {
+  const requestId = newRequestId();
+  const u = await takeUnit(scan ? 'scan' : 'ai', user.id, requestId, scan ? fileHash(body) : null);
+  // Ένας μετρητής κόστους που ανοίγει όταν χαλάσει δεν είναι μετρητής.
+  if (u == null) {
+    return NextResponse.json(
+      { error: scan
+          ? 'Η σάρωση δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.'
+          : `${ASSISTANT_NAME} δεν απαντά αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.` },
+      { status: 503 },
+    );
+  }
+  if (scan && u.allowed !== true) {
+    // ΤΟ ΟΡΙΟ ΤΟ ΛΕΕΙ Η ΒΑΣΗ. Η δοκιμή, οι δωρεάν μήνες και οι Συνεργάτες έχουν
+    // δικό τους ταβάνι (TRIAL_SCANS_PER_MONTH)· το «5 σαρώσεις» του δωρεάν θα
+    // ήταν λάθος νούμερο.
+    const canBuy = billingWords().live;
+    const error = u.reason === 'scan_month'
+      ? scansExhaustedMessage(canBuy, typeof u.month_limit === 'number' ? u.month_limit : undefined)
+      : u.reason === 'pool'
+        ? scanPoolExhaustedMessage(canBuy)
+        : 'Πολλές σαρώσεις μαζί. Δοκίμασε ξανά σε ένα λεπτό.';
+    return NextResponse.json({ error, reason: u.reason }, { status: 429 });
+  }
+  if (!scan) {
+    // ΤΑ ΝΟΥΜΕΡΑ ΤΟΥ ΥΠΟΛΟΙΠΟΥ ΤΑ ΕΠΙΣΤΡΕΦΕΙ Η ΒΑΣΗ. Ταξιδεύουν ως κεφαλίδες
+    // και όχι μέσα στο σώμα, γιατί το σώμα είναι αυτούσια η απάντηση του
+    // παρόχου και δεν επιτρέπεται να του προσθέσουμε πεδία που δεν του ανήκουν.
+    if (u.allowed === true && typeof u.month === 'number' && typeof u.month_limit === 'number') {
       quota = { month: u.month, monthLimit: u.month_limit, day: u.day ?? 0, dayLimit: u.day_limit ?? 0 };
     }
     // ΤΟ ΠΑΚΕΤΟ ΧΩΡΙΣ ΝΟΑ. Ο δωρεάν «Ιδιοκτήτης» δεν έχει ερωτήσεις· η βάση
-    // αρνείται πριν μετρήσει (20260925190000) και εδώ λέμε πού υπάρχει ο βοηθός.
-    if (u && u.allowed === false && u.reason === 'plan') {
+    // αρνείται πριν γράψει οτιδήποτε και εδώ λέμε πού υπάρχει.
+    if (u.allowed !== true && u.reason === 'plan') {
       return NextResponse.json(
         { error: assistantLockedMessage(billingWords().live), reason: 'plan', plan: 'free' },
         { status: 403 },
       );
     }
-    if (u && u.allowed === false) {
+    if (u.allowed !== true) {
       // Το μήνυμα λέει το ΠΡΑΓΜΑΤΙΚΟ νούμερο του πλάνου του χρήστη. Ένα γενικό
       // «έφτασες το όριο» αφήνει τον χρήστη να μαντεύει πόσο είναι το όριο και
-      // πότε επιστρέφει — και αυτό είναι που τον κάνει να νομίζει ότι χάλασε κάτι.
+      // πότε επιστρέφει.
       const plan = PLAN_RANK_ORDER[u.rank ?? 0] ?? 'free';
       const canBuy = billingWords().live;
       const error =
@@ -336,23 +226,18 @@ export async function POST(req: NextRequest) {
         : 'Πολλές ερωτήσεις μαζί. Δοκίμασε ξανά σε ένα λεπτό.';
       return NextResponse.json({ error, reason: u.reason, plan }, { status: 429 });
     }
-  } catch {
-    // Δικτυακή αποτυχία προς τη βάση: η ίδια απόφαση με το παραπάνω. Κλειστά.
-    return NextResponse.json(
-      { error: `${ASSISTANT_NAME} δεν απαντά αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.` },
-      { status: 503 },
-    );
   }
 
   // ── Η ΜΟΝΑΔΑ ΕΧΕΙ ΗΔΗ ΧΡΕΩΘΕΙ ────────────────────────────────
-  // Η bump_ai_usage χρέωσε παραπάνω. Από εδώ και κάτω, κάθε έξοδος που ΔΕΝ
-  // είναι απάντηση του μοντέλου οφείλει να τη γυρίσει πίσω: αλλιώς ο
-  // συνδρομητής πληρώνει ερώτηση που δεν πήρε, ενώ η οθόνη τον καλεί να
-  // ξαναδοκιμάσει — δηλαδή να χάσει άλλη μία.
+  // Από εδώ και κάτω, κάθε έξοδος που ΔΕΝ είναι απάντηση του μοντέλου οφείλει
+  // να τη γυρίσει πίσω: αλλιώς ο συνδρομητής πληρώνει ερώτηση που δεν πήρε,
+  // ενώ η οθόνη τον καλεί να ξαναδοκιμάσει — δηλαδή να χάσει άλλη μία.
   //
-  // ΜΙΑ ΦΟΡΑ ΚΑΙ ΜΟΝΟ ΜΙΑ. Η refund_ai_usage είναι αφαίρεση, όχι idempotent
-  // εγγραφή: δύο κλήσεις για την ίδια αποτυχία θα χάριζαν δεύτερη ερώτηση. Η
-  // εγγύηση ζει εδώ, σε μία σημαία και σε ΕΝΑ σημείο κλήσης.
+  // ΜΙΑ ΦΟΡΑ ΚΑΙ ΜΟΝΟ ΜΙΑ. Η επιστροφή γίνεται με το κλειδί του αιτήματος και
+  // η βάση τη δέχεται μία φορά (`refund_ai_unit`). Η σημαία εδώ γλιτώνει τη
+  // δεύτερη κλήση· η εγγύηση είναι στη βάση. Μια επανάχρηση αρχείου δεν
+  // χρεώθηκε, οπότε η βάση δεν επιστρέφει τίποτα· η σάρωση που απέτυχε δεν
+  // δίνει πια επαναχρήσεις και η επόμενη προσπάθεια χρεώνεται κανονικά.
   //
   // ΔΕΝ ΠΕΤΑΕΙ. Καλείται πάντα μέσα σε χειρισμό σφάλματος· μια εξαίρεση εδώ θα
   // σκέπαζε την αρχική αιτία και ο χρήστης θα διάβαζε λάθος εξήγηση.
@@ -360,23 +245,9 @@ export async function POST(req: NextRequest) {
   const giveBack = async (pool: boolean) => {
     if (refunded) return;
     refunded = true;
-    if (scan) {
-      // Η σάρωση επιστρέφεται στον δικό της μετρητή· δεν έχει κεφαλίδες
-      // υπολοίπου της Νόας. Η μονάδα της κοινής δεξαμενής επιστρέφεται με τον
-      // ίδιο κανόνα με τις ερωτήσεις (`pool`) και η βάση την πιστώνει μόνο
-      // όπου χρεώθηκε: δοκιμή, δωρεάν μήνες, Συνεργάτης. Μια επανάχρηση δεν
-      // χρεώθηκε, άρα δεν επιστρέφει τίποτα· η πρώτη κλήση που απέτυχε σβήνει
-      // και το ίχνος της, ώστε η επόμενη προσπάθεια να χρεωθεί κανονικά.
-      if (reuse) return;
-      if (fileKey) scanSeen.delete(fileKey);
-      await refundScanUsage(user.id, pool);
-      return;
-    }
-    if (!(await refundAiUsage(user.id, pool))) return;
+    if (!(await refundUnit(user.id, requestId, pool))) return;
     // ΚΑΙ ΟΙ ΚΕΦΑΛΙΔΕΣ ΛΕΝΕ ΤΟ ΥΠΟΛΟΙΠΟ ΜΕΤΑ ΤΗΝ ΕΠΙΣΤΡΟΦΗ. Ο πελάτης διαβάζει
-    // τις x-ai-* ΚΑΙ στις αποτυχημένες απαντήσεις (PropertyAssistant.readQuota):
-    // αν έμεναν όπως τις έγραψε η χρέωση, η μπάρα θα έδειχνε μία ερώτηση
-    // λιγότερη από όσες πράγματι έχει ο χρήστης.
+    // τις x-ai-* ΚΑΙ στις αποτυχημένες απαντήσεις (PropertyAssistant.readQuota).
     if (quota) quota = { ...quota, month: Math.max(quota.month - 1, 0), day: Math.max(quota.day - 1, 0) };
   };
 
