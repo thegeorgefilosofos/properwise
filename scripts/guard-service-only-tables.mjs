@@ -32,6 +32,9 @@ const SERVICE_ONLY = [
   'account_deletion_incidents',
   'ai_budget',
   'ai_usage',
+  // Ενα αίτημα AI ή σάρωσης ανά γραμμή (20261005150000). Το γράφουν μόνο οι
+  // take_ai_unit, take_scan_unit και refund_ai_unit, με τον ρόλο υπηρεσίας.
+  'ai_usage_requests',
   'bank_connection_refs',
   'cron_secrets',
   'email_outbox',

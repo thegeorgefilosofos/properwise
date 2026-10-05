@@ -2164,8 +2164,10 @@ begin
     on conflict (user_id) do update set plan = 'office', tester_since = null, trial_used_at = now();
   perform set_config('probe.uid', s::text, true);
 
+  -- Από 05.10.2026 (20261005150000) κανένα όρισμα δεν διαβάζεται: ο πελάτης
+  -- στέλνει 483, το όριο είναι του πακέτου όπως το λέει η ai_plan_limits().
   res := public.bump_ai_usage(200, day, mon, 1000, 7, 20, 30, 30);
-  if (res->>'month_limit')::int <> 483 then
+  if (res->>'month_limit')::int <> (public.ai_plan_limits()->'month'->>4)::int then
     raise exception 'ΤΟ ΤΑΒΑΝΙ ΤΟΥ ΔΟΚΙΜΑΣΤΗ ΕΠΕΣΕ ΚΑΙ ΠΑΝΩ ΣΤΟΝ ΣΥΝΔΡΟΜΗΤΗ: όριο %', res->>'month_limit';
   end if;
   if (res->>'paying')::boolean is not true then
@@ -2173,7 +2175,7 @@ begin
   end if;
 
   perform set_config('probe.uid', '', true);
-  raise notice 'probe: ο συνδρομητής που πληρώνει κρατά τις 483 ερωτήσεις του';
+  raise notice 'probe: ο συνδρομητής που πληρώνει κρατά το όριο του πακέτου του, όχι του πελάτη';
 end $probe$;
 
 -- ── ΤΟ ΟΡΙΟ ΛΕΠΤΟΥ ΤΟ ΞΕΡΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ (02.10.2026) ─────────────────────
@@ -2461,6 +2463,167 @@ begin
   end if;
   delete from auth.users where id = t;
   raise notice 'probe: η δοκιμή και οι δωρεάν μήνες σαρώνουν ως % τον μήνα από την κοινή δεξαμενή· ο δωρεάν και ο συνδρομητής όπως πριν', cap;
+end $probe$;
+
+-- ── Η ΜΟΝΑΔΑ ΧΡΕΩΝΕΤΑΙ ΑΠΟ ΤΟΝ ΔΙΑΚΟΜΙΣΤΗ, ΜΙΑ ΦΟΡΑ (20261005150000) ───────
+-- ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΚΛΕΙΝΕΙ. Η `bump_ai_usage` έγραφε μετρητή και δεξαμενή πριν
+-- από τον έλεγχο και δεν τα γύριζε πίσω στην άρνηση: ένας λογαριασμός σε
+-- δοκιμή γέμιζε την κοινή δεξαμενή με κλήσεις που αρνούνταν. Κρίνονται εδώ,
+-- σειριακά, με τις ΑΛΗΘΙΝΕΣ συναρτήσεις (ο ταυτοχρονισμός στο
+-- scripts/test-ai-units-concurrency.mjs):
+--   1. Γεμάτη δεξαμενή: άρνηση 'pool' χωρίς ίχνος σε ai_usage, ai_budget,
+--      ai_usage_requests. Το ίδιο από την παλιά `bump_ai_usage`.
+--   2. Η επιστροφή ανά κλειδί γίνεται μία φορά· η δεύτερη λέει 'already'.
+--   3. Το ίδιο αρχείο περνά τρεις φορές με μία χρέωση· η τέταρτη χρεώνεται.
+--   4. Κανένας ρόλος πελάτη δεν εκτελεί τις νέες συναρτήσεις.
+do $probe$
+declare
+  t     uuid := '33333333-3333-3333-3333-33333333333a';
+  p     uuid := '33333333-3333-3333-3333-33333333333b';
+  lpool int  := (public.ai_plan_limits()->>'pool')::int;
+  mon   date := date_trunc('month', (now() at time zone 'Europe/Athens'))::date;
+  saved int;
+  r1    uuid := gen_random_uuid();
+  res   json;
+  n     int;
+  i     int;
+  f     text;
+begin
+  insert into auth.users (id, email) values (t, 'monada-dokimi@probe.test'), (p, 'monada-syndromitis@probe.test');
+  insert into public.billing_profiles (user_id, plan, trial_used_at, tester_since, comp_plan, comp_until)
+    values (t, 'free', null, null, null, null), (p, 'owner', now(), null, null, null)
+    on conflict (user_id) do update
+      set plan = excluded.plan, trial_used_at = excluded.trial_used_at, tester_since = null, comp_plan = null, comp_until = null;
+  if public.user_plan_rank(t) < 1 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: ο λογαριασμός σε δοκιμή έχει βαθμό %', public.user_plan_rank(t);
+  end if;
+  select free_count into saved from public.ai_budget where month = mon;
+
+  -- 1. ΓΕΜΑΤΗ ΔΕΞΑΜΕΝΗ: ΑΡΝΗΣΗ ΧΩΡΙΣ ΕΓΓΡΑΦΗ.
+  insert into public.ai_budget (month, free_count, updated_at) values (mon, lpool, now())
+    on conflict (month) do update set free_count = lpool;
+  for i in 1..5 loop
+    res := public.take_ai_unit(t, gen_random_uuid());
+    if (res->>'allowed')::boolean is not false or res->>'reason' <> 'pool' then
+      raise exception 'Με γεμάτη δεξαμενή η ερώτηση της δοκιμής ΠΕΡΑΣΕ ή κόπηκε για λάθος λόγο: %', res;
+    end if;
+  end loop;
+  perform set_config('probe.uid', t::text, true);
+  res := public.bump_ai_usage(200, array[0,10,20,50,150], array[0,30,60,150,500], 2000, 7, 20, 30, 30);
+  perform set_config('probe.uid', '', true);
+  if res->>'reason' <> 'pool' then
+    raise exception 'Η παλιά bump_ai_usage δεν αρνείται με γεμάτη δεξαμενή: %', res;
+  end if;
+  if exists (select 1 from public.ai_usage where user_id = t and (month_count > 0 or day_count > 0 or minute_count > 0))
+     or exists (select 1 from public.ai_usage_requests where user_id = t)
+     or (select free_count from public.ai_budget where month = mon) <> lpool then
+    raise exception 'ΑΡΝΗΣΗ ΜΕ ΙΧΝΟΣ: η άρνηση της δεξαμενής έγραψε μετρητή, δεξαμενή ή αίτημα';
+  end if;
+
+  -- 2. ΜΙΑ ΕΠΙΣΤΡΟΦΗ ΑΝΑ ΚΛΕΙΔΙ.
+  update public.ai_budget set free_count = 0 where month = mon;
+  res := public.take_ai_unit(t, r1);
+  if (res->>'allowed')::boolean is not true or (select free_count from public.ai_budget where month = mon) <> 1 then
+    raise exception 'Η ερώτηση της δοκιμής δεν χρεώθηκε σωστά: %', res;
+  end if;
+  res := public.take_ai_unit(t, r1);
+  if res->>'reason' <> 'duplicate' or (select month_count from public.ai_usage where user_id = t) <> 1 then
+    raise exception 'Το ίδιο κλειδί χρεώθηκε δεύτερη φορά: %', res;
+  end if;
+  res := public.refund_ai_unit(t, r1, true);
+  if (res->>'refunded')::boolean is not true
+     or (select month_count from public.ai_usage where user_id = t) <> 0
+     or (select free_count from public.ai_budget where month = mon) <> 0 then
+    raise exception 'Η επιστροφή δεν γύρισε ερώτηση και δεξαμενή: %', res;
+  end if;
+  res := public.refund_ai_unit(t, r1, true);
+  if res->>'reason' <> 'already' or (select month_count from public.ai_usage where user_id = t) <> 0 then
+    raise exception 'Η δεύτερη επιστροφή για το ίδιο κλειδί έκανε κάτι: %', res;
+  end if;
+  res := public.refund_ai_unit(p, r1, true);
+  if (res->>'refunded')::boolean is not false then
+    raise exception 'Ξένος χρήστης επέστρεψε μονάδα άλλου: %', res;
+  end if;
+
+  -- 3. ΕΝΑ ΑΡΧΕΙΟ, ΜΙΑ ΣΑΡΩΣΗ, ΤΡΕΙΣ ΧΡΗΣΕΙΣ.
+  f := repeat('ab', 32);
+  for i in 1..3 loop
+    res := public.take_scan_unit(p, gen_random_uuid(), f);
+    if (res->>'allowed')::boolean is not true then
+      raise exception 'Η χρήση % του ίδιου αρχείου κόπηκε: %', i, res;
+    end if;
+  end loop;
+  if (select month_count from public.scan_usage where user_id = p) <> 1 then
+    raise exception 'Τρεις χρήσεις του ίδιου αρχείου χρέωσαν % σαρώσεις', (select month_count from public.scan_usage where user_id = p);
+  end if;
+  res := public.take_scan_unit(p, gen_random_uuid(), f);
+  if (res->>'reuse')::boolean is not false or (select month_count from public.scan_usage where user_id = p) <> 2 then
+    raise exception 'Η τέταρτη χρήση του ίδιου αρχείου πέρασε χωρίς χρέωση: %', res;
+  end if;
+  -- Και η ερώτηση στον συνδρομητή δεν αγγίζει τον μετρητή σαρώσεων.
+  res := public.take_ai_unit(p, gen_random_uuid());
+  if (res->>'allowed')::boolean is not true or (select month_count from public.scan_usage where user_id = p) <> 2
+     or (select free_count from public.ai_budget where month = mon) <> 0 then
+    raise exception 'Η ερώτηση του συνδρομητή χρέωσε σάρωση ή δεξαμενή: %', res;
+  end if;
+
+  -- 4. ΚΑΝΕΝΑΣ ΠΕΛΑΤΗΣ.
+  foreach f in array array['public.take_ai_unit(uuid,uuid)', 'public.take_scan_unit(uuid,uuid,text)',
+                           'public.refund_ai_unit(uuid,uuid,boolean)', 'public.prune_ai_usage_requests(integer)'] loop
+    if has_function_privilege('anon', f::regprocedure, 'execute')
+       or has_function_privilege('authenticated', f::regprocedure, 'execute') then
+      raise exception 'Ο πελάτης εκτελεί την %: όριο και επιστροφή ανοίγουν', f;
+    end if;
+  end loop;
+  -- Τα δικαιώματα πίνακα τα ανοίγει η κορυφή αυτού του αρχείου για όλους·
+  -- εδώ κρίνεται η RLS: ενεργή και χωρίς καμία πολιτική.
+  if not (select relrowsecurity from pg_class where oid = 'public.ai_usage_requests'::regclass)
+     or exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'ai_usage_requests') then
+    raise exception 'Το ai_usage_requests έχει πολιτική ή χωρίς RLS: ο πελάτης θα έβλεπε αιτήματα';
+  end if;
+
+  if saved is null then delete from public.ai_budget where month = mon;
+  else update public.ai_budget set free_count = saved where month = mon; end if;
+  delete from auth.users where id in (t, p);
+  raise notice 'probe: η άρνηση δεν γράφει τίποτα, η επιστροφή γίνεται μία φορά, το ίδιο αρχείο τρεις φορές με μία σάρωση';
+end $probe$;
+
+-- ── ΤΟ CHECK-IN ΜΕΤΡΑ ΤΡΕΙΣ ΤΗΝ ΩΡΑ ΜΟΝΟ ΣΕ ΖΩΝΤΑΝΟ ΣΥΝΔΕΣΜΟ ─────────
+-- Σειριακά εδώ· οι είκοσι ταυτόχρονες στο scripts/test-ai-units-concurrency.mjs.
+do $probe$
+declare
+  o   uuid := '33333333-3333-3333-3333-33333333333c';
+  tok text := 'probe-checkin-live';
+  ok_ int := 0;
+  i   int;
+begin
+  insert into auth.users (id, email) values (o, 'checkin-probe@probe.test');
+  insert into public.checkin_links (token, user_id, active, expires_at) values
+    (tok, o, true, now() + interval '7 days'),
+    ('probe-checkin-off', o, false, null),
+    ('probe-checkin-old', o, true, now() - interval '1 minute');
+  for i in 1..5 loop
+    if public.submit_checkin(tok, 'Επισκέπτης ' || i, 'AB123', 'GR', '1990-01-01', '69', 'g@x.gr', '2026-10-10', 2, true, true) then
+      ok_ := ok_ + 1;
+    end if;
+  end loop;
+  if ok_ <> 3 or (select count(*) from public.guest_checkins where token = tok) <> 3 then
+    raise exception 'Το check-in πέρασε % φορές την ώρα αντί για 3', ok_;
+  end if;
+  if public.submit_checkin('probe-checkin-off', 'Χ', 'Χ', 'GR', '', '', '', '', 1, true, true)
+     or public.submit_checkin('probe-checkin-old', 'Χ', 'Χ', 'GR', '', '', '', '', 1, true, true)
+     or public.submit_checkin('probe-checkin-none', 'Χ', 'Χ', 'GR', '', '', '', '', 1, true, true) then
+    raise exception 'Το check-in δέχτηκε ανενεργό, ληγμένο ή άγνωστο σύνδεσμο';
+  end if;
+  if exists (select 1 from public.guest_checkins where token in ('probe-checkin-off', 'probe-checkin-old', 'probe-checkin-none'))
+     or exists (select 1 from public.portal_pin_attempts where token in ('checkin:probe-checkin-off', 'checkin:probe-checkin-old', 'checkin:probe-checkin-none')) then
+    raise exception 'Το check-in σε νεκρό σύνδεσμο άφησε εγγραφή';
+  end if;
+  delete from public.guest_checkins where token = tok;
+  delete from public.portal_pin_attempts where token = 'checkin:' || tok;
+  delete from public.checkin_links where user_id = o;
+  delete from auth.users where id = o;
+  raise notice 'probe: το check-in δέχεται τρεις την ώρα και τίποτα σε νεκρό σύνδεσμο';
 end $probe$;
 
 -- ── ΤΑ ΕΞΙ ΚΕΙΜΕΝΑ ΦΕΥΓΟΥΝ ΠΡΑΓΜΑΤΙΚΑ ────────────────────────────────────

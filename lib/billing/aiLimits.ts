@@ -200,7 +200,7 @@ export const TRIAL_LIMITS: AiLimits = { perMinute: PER_MINUTE, perDay: 7, perMon
 // δοκιμαστών δεν περιορίζεται πουθενά: η διαδρομή εξαργύρωσης μετρά πέντε
 // ΠΡΟΣΠΑΘΕΙΕΣ το εικοσιτετράωρο ανά λογαριασμό, όχι πόσοι πέτυχαν. Οποιος
 // θέλει ταβάνι στο άθροισμα το βάζει εκεί, συνειδητά.
-export const TESTER_LIMITS: AiLimits = { perMinute: PER_MINUTE, perDay: 30, perMonth: 30 };
+const TESTER_LIMITS: AiLimits = { perMinute: PER_MINUTE, perDay: 30, perMonth: 30 };
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -297,14 +297,13 @@ export function aiLimitsFor(plan: PlanId | string | null | undefined): AiLimits 
   return LIMITS[key] ?? LIMITS.free;
 }
 
-/** Τα ημερήσια όρια με τη σειρά των rank, όπως τα θέλει το RPC. */
+/**
+ * Τα ημερήσια όρια με τη σειρά των rank. Από 05.10.2026 (20261005150000) δεν
+ * ταξιδεύουν στη βάση· η διαδρομή κρατά μόνο το μεγαλύτερο για το φράγμα της
+ * μνήμης.
+ */
 export function dailyLimitsByRank(): number[] {
   return PLAN_RANK_ORDER.map(p => LIMITS[p].perDay);
-}
-
-/** Τα μηνιαία όρια με τη σειρά των rank, όπως τα θέλει το RPC. */
-export function monthlyLimitsByRank(): number[] {
-  return PLAN_RANK_ORDER.map(p => LIMITS[p].perMonth);
 }
 
 export const MAX_PER_MINUTE = PER_MINUTE;
@@ -329,11 +328,6 @@ export function hasAssistant(plan: PlanId | string | null | undefined): boolean 
 export const SCAN_LIMITS: Record<PlanId, number | null> = {
   free: FREE_SCANS_PER_MONTH, solo: null, owner: null, agency: null, office: null,
 };
-
-/** Τα μηνιαία όρια σάρωσης με τη σειρά των rank, όπως τα θέλει το RPC. */
-export function scanLimitsByRank(): (number | null)[] {
-  return PLAN_RANK_ORDER.map(p => SCAN_LIMITS[p]);
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΣΑΡΩΣΗ ΤΗΣ ΔΟΚΙΜΗΣ ΕΧΕΙ ΤΑΒΑΝΙ
@@ -445,14 +439,21 @@ export function poolExhaustedMessage(canBuy = false): string {
  * @param plan   το ενεργό επίπεδο (`effectivePlan`), δηλαδή τι ΒΛΕΠΕΙ ο χρήστης.
  * @param paying αν υπάρχει πραγματική συνδρομή που χρεώνεται — ΟΧΙ αν το επίπεδο
  *               είναι ανυψωμένο. Δοκιμή, δωρεάν μήνες και Συνεργάτης: `false`.
+ * @param tester λογαριασμός δοκιμαστή (`tester_since`). Κόβεται ΤΕΛΕΥΤΑΙΟΣ,
+ *               ώστε να κόβει και τον «πληρωμένο», όπως η `take_ai_unit`.
  */
-export function effectiveAiLimits(plan: PlanId | string | null | undefined, paying: boolean): AiLimits {
+export function effectiveAiLimits(plan: PlanId | string | null | undefined, paying: boolean, tester = false): AiLimits {
   const l = aiLimitsFor(plan);
-  if (paying) return l;
-  return {
+  const base = paying ? l : {
     perMinute: l.perMinute,
     perDay: Math.min(l.perDay, TRIAL_LIMITS.perDay),
     perMonth: Math.min(l.perMonth, TRIAL_LIMITS.perMonth),
+  };
+  if (!tester) return base;
+  return {
+    perMinute: base.perMinute,
+    perDay: Math.min(base.perDay, TESTER_LIMITS.perDay),
+    perMonth: Math.min(base.perMonth, TESTER_LIMITS.perMonth),
   };
 }
 

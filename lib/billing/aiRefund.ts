@@ -16,13 +16,17 @@
 // `service_role` και γι' αυτό η συνάρτηση δέχεται ρητό αναγνωριστικό χρήστη
 // αντί να διαβάζει `auth.uid()`.
 //
+// ΑΠΟ 05.10.2026 Η ΕΠΙΣΤΡΟΦΗ ΓΙΝΕΤΑΙ ΑΝΑ ΚΛΕΙΔΙ ΑΙΤΗΜΑΤΟΣ (`refund_ai_unit`,
+// lib/billing/aiUnits.ts `refundUnit`), μία φορά. Οι `refund_ai_usage` και
+// `refund_scan_usage` που αφαιρούσαν «μία» μένουν στη βάση μόνο για όσο ζει η
+// μεταβατική `bump_*` (20261005150000)· η εφαρμογή δεν τις καλεί. Εδώ μένει η
+// κρίση της απάντησης, κοινή και για τις δύο εποχές.
+//
 // ΔΕΝ ΠΕΤΑΕΙ ΠΟΤΕ ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ Η ΠΡΟΔΙΑΓΡΑΦΗ ΤΗΣ. Καλείται πάντα ΜΕΣΑ σε
 // χειρισμό σφάλματος: μια εξαίρεση εδώ θα σκέπαζε το αρχικό σφάλμα και ο
 // χρήστης θα διάβαζε λάθος αιτία για λάθος πρόβλημα. Οταν αποτύχει, το λέει
 // με `false` και το γράφει στα αρχεία καταγραφής.
 // ═══════════════════════════════════════════════════════════════════════════
-
-import { createServiceClient } from '@/lib/supabase/service';
 
 /**
  * Το πρόθεμα καταγραφής όταν η επιστροφή δεν έγινε.
@@ -32,16 +36,6 @@ import { createServiceClient } from '@/lib/supabase/service';
  */
 export const REFUND_LOG = 'η επιστροφή μονάδας AI δεν έγινε:';
 
-/**
- * Γυρίζει πίσω μία ερώτηση στο ημερήσιο και στο μηνιαίο πακέτο του χρήστη.
- *
- * @param userId ποιανού είναι η μονάδα. Το `auth.uid()` δεν υπάρχει εδώ: ο
- *   πελάτης υπηρεσίας δεν έχει συνεδρία, γι' αυτό το όνομα ταξιδεύει ρητά.
- * @param pool αν επιστρέφεται και η μονάδα της κοινής δεξαμενής. Η δεξαμενή
- *   μετράει ΧΡΗΜΑ: μένει χρεωμένη όταν ο πάροχος πιθανότατα παρήγαγε tokens
- *   (χρονικό όριο, σώμα που δεν διαβάζεται).
- * @returns `true` μόνο αν η βάση όντως μείωσε τους μετρητές.
- */
 /**
  * Η ΑΠΟΦΑΣΗ, ΧΩΡΙΣΤΑ ΑΠΟ ΤΗ ΜΕΤΑΦΟΡΑ.
  *
@@ -66,41 +60,4 @@ export function refundOutcome(res: { data: unknown; error: { message: string } |
     return false;
   }
   return (res.data as { refunded?: boolean } | null)?.refunded === true;
-}
-
-export async function refundAiUsage(userId: string, pool = true): Promise<boolean> {
-  try {
-    return refundOutcome(await createServiceClient()
-      .rpc('refund_ai_usage', { p_uid: userId, p_pool: pool }));
-  } catch (err) {
-    console.error(REFUND_LOG, err instanceof Error ? err.message : err);
-    return false;
-  }
-}
-
-/**
- * Γυρίζει πίσω μία σάρωση στον μηνιαίο μετρητή του χρήστη.
- *
- * Ιδιοι λόγοι με την `refundAiUsage`: η `refund_scan_usage` ΜΕΙΩΝΕΙ, άρα
- * εκτελείται μόνο με κλειδί υπηρεσίας και με ρητό χρήστη. Δεν πετά ποτέ.
- *
- * @param pool αν επιστρέφεται και η μονάδα της κοινής δεξαμενής. Η βάση την
- *   πιστώνει μόνο όπου χρεώθηκε (δοκιμή, δωρεάν μήνες, Συνεργάτης), με τον
- *   ίδιο όρο με τη χρέωση (20261003130000).
- */
-export async function refundScanUsage(userId: string, pool = false): Promise<boolean> {
-  try {
-    const db = createServiceClient();
-    const res = await db.rpc('refund_scan_usage', { p_uid: userId, p_pool: pool });
-    // ΜΕΤΑΒΑΤΙΚΟ. Αν η εφαρμογή ανέβει πριν από τη βάση, η συνάρτηση δεν ξέρει
-    // ακόμη το `p_pool` (PGRST202). Τότε γυρίζει τουλάχιστον τον μήνα, με την
-    // παλιά κλήση. Φεύγει όταν η 20261003130000 είναι παντού.
-    if (res.error && (res.error as { code?: string }).code === 'PGRST202') {
-      return refundOutcome(await db.rpc('refund_scan_usage', { p_uid: userId }));
-    }
-    return refundOutcome(res);
-  } catch (err) {
-    console.error(REFUND_LOG, err instanceof Error ? err.message : err);
-    return false;
-  }
 }

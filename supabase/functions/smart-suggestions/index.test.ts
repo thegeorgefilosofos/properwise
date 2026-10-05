@@ -2,19 +2,18 @@
 // Η edge function των προτάσεων περνά από το ΙΔΙΟ ταβάνι κόστους AI.
 // ─────────────────────────────────────────────────────────────────────────
 // ΓΙΑΤΙ ΥΠΑΡΧΕΙ: η smart-suggestions καλούσε το Anthropic κατευθείαν, χωρίς
-// bump_ai_usage. Δεύτερος δρόμος προς το ίδιο κλειδί, χωρίς ταβάνι — το μηνιαίο
-// όριο και η κοινή δεξαμενή απλώς παρακάμπτονταν. Δεν έσκαγε τίποτα· φαινόταν
-// μόνο στον λογαριασμό στο τέλος του μήνα.
+// μετρητή. Δεύτερος δρόμος προς το ίδιο κλειδί, χωρίς ταβάνι — το μηνιαίο
+// όριο και η κοινή δεξαμενή απλώς παρακάμπτονταν.
+//
+// ΑΠΟ 05.10.2026 (20261005150000) η χρέωση γίνεται με την `take_ai_unit`, μόνο
+// με τον ρόλο υπηρεσίας και ρητό χρήστη από το JWT. Τα όρια ΔΕΝ ζουν πια εδώ:
+// το αντίγραφο του lib/billing/aiLimits.ts που ταξίδευε ως ορίσματα έφυγε και
+// αυτός ο έλεγχος κρατά ότι δεν ξαναγυρίζει.
 //
 // ΓΙΑΤΙ ΕΛΕΓΧΕΙ ΚΕΙΜΕΝΟ ΚΑΙ ΟΧΙ ΣΥΜΠΕΡΙΦΟΡΑ: η index.ts είναι Deno (Deno.env
-// στο module scope, Deno.serve) — δεν φορτώνεται σε Node. Αυτό όμως που πρέπει
-// να φυλαχτεί είναι δομικό και φαίνεται στην πηγή: ότι ο έλεγχος υπάρχει, ότι
-// τρέχει ΠΡΙΝ την κλήση του μοντέλου και ότι τα νούμερα δεν έχουν αποκλίνει
-// από το lib/billing/aiLimits.ts.
-//
-// Ο ΚΑΘΡΕΦΤΗΣ: το Deno δεν φτάνει στο lib/ και το supabase-deploy.yml ανεβάζει
-// functions μόνο σε αλλαγή του supabase/**. Άρα τα νούμερα αντιγράφονται στην
-// edge function — και ΑΥΤΟ το τεστ είναι που τα κρατά ίδια με την πηγή.
+// στο module scope, Deno.serve) — δεν φορτώνεται σε Node. Η συμπεριφορά της
+// `take_ai_unit` ελέγχεται στη βάση (scripts/db/rls-probe.sql,
+// scripts/test-ai-units-concurrency.mjs).
 //
 // Τρέξε: npx tsx supabase/functions/smart-suggestions/index.test.ts
 // ═══════════════════════════════════════════════════════════════════════════
@@ -22,10 +21,6 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import {
-  MAX_PER_MINUTE, FREE_POOL_PER_MONTH, TRIAL_LIMITS, TESTER_LIMITS,
-  dailyLimitsByRank, monthlyLimitsByRank, PLAN_RANK_ORDER,
-} from '../../../lib/billing/aiLimits.ts'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) {
@@ -33,89 +28,57 @@ function ok(name: string, cond: boolean) {
 }
 
 const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'index.ts'), 'utf8')
+const CODE = SRC.split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
 
-// ── 1. Ο έλεγχος υπάρχει και τρέχει ΠΡΙΝ πληρώσουμε το μοντέλο ─────────────
-// Αυτά τα δύο έπεφταν πριν τη διόρθωση: η λέξη «bump_ai_usage» δεν υπήρχε
-// πουθενά στο αρχείο, άρα το πρώτο σκάει και το δεύτερο δεν έχει καν δείκτη.
-const iBump  = SRC.indexOf("'bump_ai_usage'")
+// ── 1. Η χρέωση υπάρχει και τρέχει ΠΡΙΝ πληρώσουμε το μοντέλο ─────────────
+const iTake  = SRC.indexOf("'take_ai_unit'")
 const iModel = SRC.indexOf('api.anthropic.com')
-
-ok('η function καλεί την bump_ai_usage', iBump >= 0)
+const iUser  = SRC.indexOf('const userId = userData.user.id')
+ok('η function καλεί την take_ai_unit', iTake >= 0)
 ok('υπάρχει κλήση στο Anthropic για να φυλαχθεί', iModel >= 0)
-ok('ο έλεγχος ορίου προηγείται της κλήσης του μοντέλου', iBump >= 0 && iModel >= 0 && iBump < iModel)
+ok('η χρέωση προηγείται της κλήσης του μοντέλου', iTake >= 0 && iModel >= 0 && iTake < iModel)
+ok('ο χρήστης βγαίνει από το JWT πριν τη χρέωση', iUser >= 0 && iUser < iTake)
 
-// ── 2. Με ποιον client καλείται ─────────────────────────────────────────────
-// Η bump_ai_usage διαβάζει auth.uid(). Με service_role αυτό είναι null και το
-// RPC γυρίζει πάντα reason 'auth' — δηλαδή θα έκοβε ΟΛΟΥΣ τους χρήστες και ο
-// «έλεγχος» θα ήταν στην πραγματικότητα σπασμένη λειτουργία.
-const rpcCaller = SRC.match(/(\w+)\.rpc\(\s*'bump_ai_usage'/)?.[1]
-ok('το RPC καλείται με τον client του χρήστη (authClient), όχι με το service',
-  rpcCaller === 'authClient')
+// ── 2. Με ποιον client και με ποια ορίσματα ───────────────────────────────
+// Η take_ai_unit εκτελείται μόνο από service_role. Με τον client του χρήστη
+// θα έπαιρνε 42501 και θα έκοβε ΟΛΟΥΣ.
+const rpcCaller = SRC.match(/(\w+)\.rpc\(\s*'take_ai_unit'/)?.[1]
+ok('το RPC καλείται με το service, μετά τον έλεγχο του JWT', rpcCaller === 'service')
+const args = SRC.match(/\.rpc\(\s*'take_ai_unit',\s*\{([^}]*)\}/)?.[1] ?? ''
+const keys = [...args.matchAll(/(\w+)\s*:/g)].map(m => m[1]).sort()
+ok('η κλήση στέλνει μόνο χρήστη και κλειδί αιτήματος', JSON.stringify(keys) === JSON.stringify(['p_request_id', 'p_uid']))
+ok('ο χρήστης είναι αυτός του token', /p_uid:\s*userId/.test(args))
+ok('το κλειδί το φτιάχνει η function', /const requestId = crypto\.randomUUID\(\)/.test(SRC))
 
-// ── 3. Το { error } του γραψίματος ελέγχεται και κλείνει ───────────────────
-// Ο μετρητής είναι upsert. Αν αποτύχει και συνεχίσουμε, γυρίσαμε ακριβώς στο
-// πρόβλημα: κλήση στο μοντέλο χωρίς να ξέρουμε πόσα έχει ξοδέψει ο χρήστης.
+// ── 3. Κανένα όριο δεν ζει ή ταξιδεύει από εδώ ────────────────────────────
+ok('κανένα αντίγραφο ορίων στον κώδικα', !/perDayByRank|perMonthByRank|freePoolPerMonth|trialPerDay|testerPerMonth|AI_LIMITS/.test(CODE))
+ok('κανένα p_day, p_month, p_max_min, p_trial_*, p_tester_*', !/p_(day|month|max_min|trial_|tester_)/.test(CODE))
+ok('καμία κλήση στην παλιά bump_ai_usage', !/bump_ai_usage/.test(CODE))
+
+// ── 4. Το { error } ελέγχεται και κλείνει ─────────────────────────────────
 const errBinding = SRC.match(
-  /const\s*\{[^}]*\berror:\s*(\w+)[^}]*\}\s*=\s*await\s+authClient\.rpc\(\s*'bump_ai_usage'/,
+  /const\s*\{[^}]*\berror:\s*(\w+)[^}]*\}\s*=\s*await\s+service\.rpc\(\s*'take_ai_unit'/,
 )?.[1]
 ok('το σφάλμα του RPC δεσμεύεται σε μεταβλητή', !!errBinding)
 if (errBinding) {
-  const iErrGuard = SRC.indexOf(`if (${errBinding})`)
-  ok('σε σφάλμα RPC η function σταματά πριν το μοντέλο',
-    iErrGuard > iBump && iErrGuard < iModel)
+  const iErrGuard = SRC.indexOf(`if (${errBinding}`)
+  ok('σε σφάλμα RPC η function σταματά πριν το μοντέλο', iErrGuard > iTake && iErrGuard < iModel)
 }
 
-// ── 4. Σε υπέρβαση επιστρέφεται καθαρό σφάλμα, όχι κλήση στο μοντέλο ────────
-const iDenied = SRC.indexOf('allowed === false')
-ok('η απάντηση «δεν επιτρέπεται» του RPC ελέγχεται', iDenied >= 0)
-ok('η υπέρβαση κόβει πριν το μοντέλο', iDenied > iBump && iDenied < iModel)
-ok('η υπέρβαση γυρίζει 429', /allowed === false[\s\S]{0,700}?\}, 429\)/.test(SRC))
+// ── 5. Σε υπέρβαση επιστρέφεται καθαρό σφάλμα, όχι κλήση στο μοντέλο ──────
+// Ό,τι δεν είναι ρητό `allowed === true` είναι άρνηση.
+const iDenied = SRC.indexOf('allowed !== true')
+ok('η απάντηση «δεν επιτρέπεται» του RPC ελέγχεται αυστηρά', iDenied >= 0)
+ok('η υπέρβαση κόβει πριν το μοντέλο', iDenied > iTake && iDenied < iModel)
+ok('η υπέρβαση γυρίζει 429', /allowed !== true[\s\S]{0,700}?\}, 429\)/.test(SRC))
+ok('κανένα `allowed === false` που θα άφηνε το `null` να περάσει', !/allowed === false/.test(CODE))
 
-// ── 5. Ο καθρέφτης συμφωνεί με το lib/billing/aiLimits.ts ───────────────────
-// ΥΠΟΛΟΓΙΣΜΟΣ ΣΤΟ ΧΕΡΙ, με τη σειρά PLAN_RANK_ORDER = [free, owner, agency, office]
-// (δείκτης = user_plan_rank, όπως τη θέλει το RPC):
-//   perMinute        = PER_MINUTE                     = 20
-//   perDayByRank     = [15, 30, 60, 120]   (free 15 · owner 30 · agency 60 · office 120)
-//   perMonthByRank   = [60, 120, 300, 600] (free 60 · owner 120 · agency 300 · office 600)
-//   freePoolPerMonth = FREE_TESTERS_PER_MONTH × TRIAL_LIMITS.perMonth = 100 × 20
-// Η σύγκριση γίνεται με την ΠΗΓΗ, όχι με αυτά τα νούμερα: αν αύριο αλλάξει το
-// πλάνο, το τεστ πρέπει να απαιτήσει την αλλαγή και εδώ — όχι να την επαναλάβει.
-const num = (field: string): number | null => {
-  const m = SRC.match(new RegExp(`${field}:\\s*(\\d+)`))
-  return m ? Number(m[1]) : null
-}
-const arr = (field: string): number[] | null => {
-  const m = SRC.match(new RegExp(`${field}:\\s*\\[([^\\]]*)\\]`))
-  return m ? m[1].split(',').map(s => Number(s.trim())) : null
-}
-const same = (a: number[] | null, b: number[]) =>
-  !!a && a.length === b.length && a.every((v, i) => v === b[i])
-
-const day   = arr('perDayByRank')
-const month = arr('perMonthByRank')
-
-ok('perMinute ίδιο με το MAX_PER_MINUTE', num('perMinute') === MAX_PER_MINUTE)
-ok('perDayByRank ίδιο με το dailyLimitsByRank()', same(day, dailyLimitsByRank()))
-ok('perMonthByRank ίδιο με το monthlyLimitsByRank()', same(month, monthlyLimitsByRank()))
-ok('freePoolPerMonth ίδιο με το FREE_POOL_PER_MONTH', num('freePoolPerMonth') === FREE_POOL_PER_MONTH)
-
-// ΤΟ ΠΑΚΕΤΟ ΤΗΣ ΔΟΚΙΜΗΣ ΚΑΙ ΤΟΥ ΔΟΚΙΜΑΣΤΗ ΤΑΞΙΔΕΥΟΥΝ ΚΙ ΑΥΤΑ ΣΤΟ RPC, ΑΡΑ
-// ΟΦΕΙΛΟΥΝ ΝΑ ΣΥΓΚΡΙΝΟΝΤΑΙ. Χωρίς αυτούς τους τέσσερις ελέγχους, η συνάρτηση
-// άκρου θα έδινε στον ίδιο δοκιμαστή άλλο πακέτο από την εφαρμογή: η μία οθόνη
-// θα τον έκοβε στις τριάντα και η άλλη θα συνέχιζε.
-ok('trialPerDay ίδιο με το TRIAL_LIMITS.perDay', num('trialPerDay') === TRIAL_LIMITS.perDay)
-ok('trialPerMonth ίδιο με το TRIAL_LIMITS.perMonth', num('trialPerMonth') === TRIAL_LIMITS.perMonth)
-ok('testerPerDay ίδιο με το TESTER_LIMITS.perDay', num('testerPerDay') === TESTER_LIMITS.perDay)
-ok('testerPerMonth ίδιο με το TESTER_LIMITS.perMonth', num('testerPerMonth') === TESTER_LIMITS.perMonth)
-
-// ΚΑΙ ΤΑ ΔΥΟ ΠΕΡΝΟΥΝ ΟΝΤΩΣ ΣΤΗΝ ΚΛΗΣΗ. Ενα σωστό νούμερο σε σταθερά που δεν
-// στέλνεται πουθενά είναι ακριβώς το είδος του πράσινου που δεν σημαίνει τίποτα.
-ok('η κλήση στέλνει το πακέτο του δοκιμαστή', SRC.includes('p_tester_month:'))
-
-// Αν προστεθεί πλάνο στο PLAN_RANK_ORDER και δεν ενημερωθούν οι πίνακες εδώ, το
-// RPC θα έπεφτε σιωπηλά πίσω στο p_day[1] — δηλαδή στο ΔΩΡΕΑΝ όριο για όλους.
-ok('οι πίνακες καλύπτουν κάθε πλάνο του PLAN_RANK_ORDER',
-  day?.length === PLAN_RANK_ORDER.length && month?.length === PLAN_RANK_ORDER.length)
+// ── 6. Η αποτυχία του παρόχου επιστρέφει τη μονάδα, με το ίδιο κλειδί ─────
+const iRefund = SRC.indexOf("'refund_ai_unit'")
+ok('η επιστροφή γίνεται με refund_ai_unit και το ίδιο κλειδί',
+  iRefund > iTake && /'refund_ai_unit',\s*\{\s*p_uid:\s*userId,\s*p_request_id:\s*requestId/.test(SRC))
+ok('μη επιτυχής απάντηση του παρόχου → επιστροφή', /if \(!aiRes\.ok\) \{\s*await giveBack\(\)/.test(SRC))
+ok('πτώση του αιτήματος → επιστροφή', /\} catch \(err\) \{[\s\S]{0,200}?await giveBack\(\)/.test(SRC))
 
 console.log(`\nsmart-suggestions: ✓ ${passed} · ✗ ${failed}`)
 if (failed) process.exit(1)

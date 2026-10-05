@@ -160,6 +160,40 @@ begin
 end $portal_server_only$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
+--  Η ΧΡΕΩΣΗ ΚΑΙ Η ΕΠΙΣΤΡΟΦΗ ΜΟΝΑΔΑΣ AI ΔΕΝ ΚΑΛΟΥΝΤΑΙ ΑΠΟ ΠΕΛΑΤΗ
+-- ─────────────────────────────────────────────────────────────────────────
+--  20261005150000_i_monada_xreonetai_prin_ton_paroxo_kai_to_checkin_kleidonei.sql.
+--  Δέχονται ρητό χρήστη, όχι `auth.uid()`: από τον περιηγητή η πρώτη θα
+--  χρέωνε όποιον ήθελε ο καλών και η δεύτερη θα του χάριζε ερωτήσεις. Τις
+--  καλούν μόνο η /api/anthropic και η smart-suggestions με τον ρόλο υπηρεσίας.
+-- ═══════════════════════════════════════════════════════════════════════════
+do $ai_units_server_only$
+declare
+  s text;
+  f regprocedure;
+  open_ text;
+begin
+  foreach s in array array[
+    'public.take_ai_unit(uuid,uuid)',
+    'public.take_scan_unit(uuid,uuid,text)',
+    'public.refund_ai_unit(uuid,uuid,boolean)',
+    'public.prune_ai_usage_requests(integer)'
+  ] loop
+    f := to_regprocedure(s);
+    if f is null then
+      raise exception 'Λείπει η %: η χρέωση της Νόας δεν περνά πια από τον διακομιστή.', s;
+    end if;
+    if has_function_privilege('anon', f, 'execute') or has_function_privilege('authenticated', f, 'execute') then
+      open_ := concat_ws(', ', open_, f::text);
+    end if;
+  end loop;
+  if open_ is not null then
+    raise exception E'ΧΡΕΩΣΗ AI ΑΝΟΙΧΤΗ ΣΕ ΡΟΛΟ ΠΕΛΑΤΗ: %\n  revoke execute on function … from public, anon, authenticated;', open_;
+  end if;
+  raise notice 'probe: η χρέωση και η επιστροφή μονάδας AI μένουν στον ρόλο υπηρεσίας';
+end $ai_units_server_only$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
 --  ΤΟ ΧΩΝΙ ΤΗΣ ΕΓΓΡΑΦΗΣ: Ο ΑΝΩΝΥΜΟΣ ΠΡΟΣΘΕΤΕΙ +1 ΚΑΙ ΤΙΠΟΤΑ ΑΛΛΟ
 -- ─────────────────────────────────────────────────────────────────────────
 --  Η `count_signup_step` είναι η μόνη γραφή που επιτρέπεται χωρίς λογαριασμό.

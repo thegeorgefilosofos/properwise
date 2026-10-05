@@ -11,38 +11,11 @@ const ANON_KEY      = Deno.env.get('SUPABASE_ANON_KEY')!
 // never from the request body (which an attacker controls).
 const service = createClient(SUPABASE_URL, SERVICE_KEY)
 
-// ── Τα όρια AI, όπως τα περιμένει η bump_ai_usage ────────────────────────────
-// ΚΑΘΡΕΦΤΗΣ του lib/billing/aiLimits.ts — ΟΧΙ δεύτερη απόφαση. Οι σειρές είναι
-// [δωρεάν, ιδιοκτήτης, επαγγελματίας, γραφείο], δηλαδή δείκτης = user_plan_rank.
-//
-// Γιατί αντιγράφονται αντί να εισαχθούν: το Deno δεν φτάνει στο lib/ (καμία
-// edge function δεν το κάνει — βλ. _shared/report.ts, καθρέφτης κι αυτός) και
-// το supabase-deploy.yml ξανα-ανεβάζει functions ΜΟΝΟ σε αλλαγή του supabase/**.
-// Ένα import θα έδειχνε ενιαία πηγή αλλά το ανεβασμένο bundle θα κρατούσε σιωπηλά
-// τα παλιά νούμερα σε κάθε αλλαγή του aiLimits.ts — χειρότερο από φανερή αντιγραφή.
-// Την απόκλιση την πιάνει το index.test.ts, που συγκρίνει αυτά εδώ με την πηγή.
-const AI_LIMITS = {
-  perMinute: 20,
-  // Σειρά = user_plan_rank: 0 Ιδιοκτήτης (δωρεάν, χωρίς Νόα), 1 Ιδιοκτήτης με
-  // Νόα, 2 Ιδιοκτήτης+, 3 Επαγγελματίας, 4 Επαγγελματίας+.
-  //
-  // ΤΑ ΝΟΥΜΕΡΑ ΔΕΝ ΕΠΙΛΕΓΟΝΤΑΙ ΕΔΩ. Παράγονται στο lib/billing/aiLimits.ts από
-  // τον κανόνα «ο βοηθός δεν τρώει πάνω από το 20% της συνδρομής» και το
-  // index.test.ts τα συγκρίνει γραμμή προς γραμμή: αν αποκλίνουν, η συνάρτηση
-  // άκρου θα έδινε άλλα όρια από την εφαρμογή, στον ίδιο χρήστη.
-  perDayByRank: [0, 10, 20, 50, 150],
-  perMonthByRank: [0, 30, 60, 150, 500],
-  freePoolPerMonth: 2000,
-  // Το πακέτο κάθε ανυψωμένου αλλά ΜΗ πληρωμένου λογαριασμού (δοκιμή, δωρεάν
-  // μήνες, Συνεργάτης). Το `least` της bump_ai_usage δεν το αφήνει να ξεπεραστεί.
-  trialPerDay: 7,
-  trialPerMonth: 20,
-  // Το πακέτο του ΔΟΚΙΜΑΣΤΗ. Δεν είναι ανυψωμένο επίπεδο: είναι λογαριασμός
-  // που κρατά αληθινό πακέτο χωρίς να το πληρώνει, οπότε το `least` πρέπει να
-  // κόψει και πάνω από πληρωμένο επίπεδο.
-  testerPerDay: 30,
-  testerPerMonth: 30,
-}
+// ── Τα όρια AI ΔΕΝ ζουν εδώ ──────────────────────────────────────────────────
+// Ως τις 05.10.2026 εδώ υπήρχε αντίγραφο του lib/billing/aiLimits.ts, που
+// ταξίδευε ως ορίσματα στη bump_ai_usage. Από την 20261005150000 τα όρια τα
+// ξέρει μόνο η βάση (`take_ai_unit`): η function στέλνει ποιος ρωτά και ένα
+// κλειδί αιτήματος, τίποτα άλλο. Ένα αντίγραφο λιγότερο που μπορεί να αποκλίνει.
 
 // ── Το «σήμερα» της Ελλάδας, μέσα σε Deno ───────────────────────────────────
 // ΚΑΘΡΕΦΤΗΣ του lib/core/time.ts, για τον ίδιο λόγο με τα όρια AI: το Deno δεν
@@ -103,56 +76,46 @@ Deno.serve(async (req) => {
     if (!owned) return json({ error: 'forbidden' }, 403)
 
     // ── 3. Το ΙΔΙΟ ταβάνι κόστους AI με την κύρια διαδρομή ────────────────────
-    // ΤΙ ΕΚΑΝΕ ΛΑΘΟΣ ΠΡΙΝ: αυτή η function καλούσε το Anthropic κατευθείαν, χωρίς
-    // να περάσει ποτέ από την bump_ai_usage. Ήταν δεύτερος δρόμος προς το ΙΔΙΟ
-    // κλειδί, χωρίς κανένα ταβάνι: ένας χρήστης που είχε εξαντλήσει το μηνιαίο
-    // του πακέτο στη συνομιλία συνέχιζε να παράγει προτάσεις απεριόριστα και η
-    // κοινή δεξαμενή των 340 αιτημάτων — η ΜΟΝΗ σκληρή εγγύηση ότι οι δωρεάν
-    // χρήστες δεν ξεπερνούν τα ~18 $/μήνα — δεν μετρούσε τίποτα από εδώ. Το
-    // ταβάνι που υπόσχεται το lib/billing/aiLimits.ts απλώς δεν ίσχυε.
-    //
     // Ο μετρητής είναι ΚΟΙΝΟΣ επίτηδες: μια πρόταση χρεώνεται στο ίδιο κλειδί με
     // μια ερώτηση στη Νόα, άρα μετράει στο ίδιο πακέτο. Ένα ταβάνι, ένας μετρητής.
     //
-    // Καλείται με το authClient, ΟΧΙ με το service: η bump_ai_usage διαβάζει
-    // auth.uid(), που με service_role είναι null — θα γύριζε πάντα reason 'auth'
-    // και θα έκοβε τους πάντες.
-    const { data: usage, error: usageErr } = await authClient.rpc('bump_ai_usage', {
-      p_max_min: AI_LIMITS.perMinute,
-      p_day:     AI_LIMITS.perDayByRank,
-      p_month:   AI_LIMITS.perMonthByRank,
-      p_pool:    AI_LIMITS.freePoolPerMonth,
-      p_trial_day:   AI_LIMITS.trialPerDay,
-      p_trial_month: AI_LIMITS.trialPerMonth,
-      p_tester_day:   AI_LIMITS.testerPerDay,
-      p_tester_month: AI_LIMITS.testerPerMonth,
+    // ΜΕ ΤΟ service, ΜΕΤΑ ΤΟ JWT. Η `take_ai_unit` (20261005150000) εκτελείται
+    // μόνο από τον ρόλο υπηρεσίας και δέχεται ρητό χρήστη: το `userId` βγήκε
+    // από το token στο βήμα 1, ποτέ από το σώμα. Όρια δεν στέλνονται· τα ξέρει
+    // η βάση. Η άρνηση δεν γράφει τίποτα και η χρέωση γίνεται ΠΡΙΝ το μοντέλο.
+    const requestId = crypto.randomUUID()
+    const { data: usage, error: usageErr } = await service.rpc('take_ai_unit', {
+      p_uid: userId,
+      p_request_id: requestId,
     })
-    // Ο μετρητής είναι ΓΡΑΨΙΜΟ: αν δεν αυξήθηκε, δεν ξέρουμε πόσα έχει ξοδέψει ο
-    // χρήστης. Το app/api/anthropic αφήνει να περάσει σε σφάλμα RPC, αλλά μόνο
-    // επειδή από πίσω του υπάρχει και το in-memory φράγμα του route. Εδώ δεν
-    // υπάρχει τίποτα άλλο· «άσ' το να περάσει» σημαίνει ξανά απεριόριστη χρέωση.
-    if (usageErr) {
+    // Ο μετρητής είναι ΓΡΑΨΙΜΟ: αν δεν απάντησε, δεν ξέρουμε πόσα έχει ξοδέψει ο
+    // χρήστης. «Άσ' το να περάσει» σημαίνει ξανά απεριόριστη χρέωση.
+    if (usageErr || usage == null) {
       return json({ error: 'Ο έλεγχος ορίου AI δεν είναι διαθέσιμος αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.' }, 503)
     }
     const u = usage as { allowed?: boolean; reason?: string } | null
-    // Το δωρεάν πακέτο δεν έχει τη Νόα· οι προτάσεις της είναι μέρος της. Η
-    // βάση αρνείται πριν μετρήσει, οπότε εδώ δεν υπάρχει «πότε ανοίγει ξανά».
-    if (u?.allowed === false && u.reason === 'plan') {
-      return json({ error: 'Οι προτάσεις για το ακίνητο υπάρχουν από το πακέτο «Ιδιοκτήτης με Νόα».', reason: 'plan' }, 403)
-    }
-    if (u?.allowed === false) {
-      // Το ακριβές νούμερο του πλάνου το λένε τα μηνύματα του aiLimits.ts. Εδώ
-      // λέμε μόνο ΠΟΤΕ ανοίγει ξανά. Δεν στέλνουμε τον χρήστη να ρωτήσει τη Νόα:
-      // μετρά στο ίδιο όριο, που μόλις τελείωσε.
-      const when = u.reason === 'day' ? 'Το όριο ανανεώνεται τα μεσάνυχτα.'
-        : u.reason === 'month' || u.reason === 'pool' ? 'Ανοίγει ξανά την 1η του επόμενου μήνα.'
-        : u.reason === 'minute' ? 'Δοκίμασε ξανά σε ένα λεπτό.'
+    // Κάθε απάντηση που δεν είναι ρητό «ναι» είναι άρνηση.
+    if (u?.allowed !== true && u?.reason !== 'plan') {
+      const when = u?.reason === 'day' ? 'Το όριο ανανεώνεται τα μεσάνυχτα.'
+        : u?.reason === 'month' || u?.reason === 'pool' ? 'Ανοίγει ξανά την 1η του επόμενου μήνα.'
+        : u?.reason === 'minute' ? 'Δοκίμασε ξανά σε ένα λεπτό.'
         : 'Δοκίμασε ξανά σε λίγο.'
       return json({
         error: `Οι προτάσεις μετρούν στο ίδιο όριο με τις ερωτήσεις προς τη Νόα, που τελείωσε για τώρα. ${when}`,
-        reason: u.reason,
+        reason: u?.reason,
       }, 429)
     }
+    // Το δωρεάν πακέτο δεν έχει τη Νόα· οι προτάσεις της είναι μέρος της. Η
+    // βάση αρνείται πριν μετρήσει, οπότε εδώ δεν υπάρχει «πότε ανοίγει ξανά».
+    if (u?.allowed !== true) {
+      return json({ error: 'Οι προτάσεις για το ακίνητο υπάρχουν από το πακέτο «Ιδιοκτήτης με Νόα».', reason: 'plan' }, 403)
+    }
+
+    // Η ΜΟΝΑΔΑ ΧΡΕΩΘΗΚΕ. Αν ο πάροχος δεν απαντήσει, γυρίζει πίσω με το ίδιο
+    // κλειδί, μία φορά (η βάση δεν δέχεται δεύτερη επιστροφή).
+    const giveBack = () => service.rpc('refund_ai_unit', { p_uid: userId, p_request_id: requestId, p_pool: true })
+      .then(({ error }) => { if (error) console.error('[smart-suggestions] η επιστροφή μονάδας AI δεν έγινε:', error.message) },
+            (err) => console.error('[smart-suggestions] η επιστροφή μονάδας AI δεν έγινε:', err))
 
     // ── 4. Read only this user's data for this property ───────────────────────
     const [eventsRes, billsRes, expensesRes] = await Promise.all([
@@ -208,25 +171,33 @@ ${JSON.stringify(expenses, null, 2)}
   }
 ]`
 
-    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        // 1024 ήταν σφιχτό ήδη με έξι προτάσεις. Η ημερομηνία προσθέτει ~10
-        // tokens σε καθεμία: με κομμένη απάντηση το `JSON.parse` αποτυγχάνει,
-        // το `catch` γυρίζει άδειο array και ο χρήστης διαβάζει «δεν κατάφερα
-        // να διαβάσω το ακίνητο» για ένα όριο, όχι για σφάλμα.
-        max_tokens: 1536,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
+    let aiRes: Response
+    try {
+      aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          // 1024 ήταν σφιχτό ήδη με έξι προτάσεις. Η ημερομηνία προσθέτει ~10
+          // tokens σε καθεμία: με κομμένη απάντηση το `JSON.parse` αποτυγχάνει,
+          // το `catch` γυρίζει άδειο array και ο χρήστης διαβάζει «δεν κατάφερα
+          // να διαβάσω το ακίνητο» για ένα όριο, όχι για σφάλμα.
+          max_tokens: 1536,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+    } catch (err) {
+      // Το αίτημα δεν έφτασε ή δεν γύρισε: ο πάροχος δεν παρήγαγε τίποτα.
+      await giveBack()
+      throw err
+    }
 
     if (!aiRes.ok) {
+      await giveBack()
       const err = await aiRes.text()
       // ΤΟ ΓΙΑΤΙ ΣΤΟ LOG, ΟΧΙ ΜΟΝΟ Ο ΚΩΔΙΚΟΣ. Στις 25.09.2026 η παραγωγή έγραφε
       // μόνο «Claude API error status 400» και δεν φαινόταν αν έφταιγε το
