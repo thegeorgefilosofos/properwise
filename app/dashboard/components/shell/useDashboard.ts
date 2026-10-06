@@ -379,7 +379,7 @@ export function useDashboard() {
         // 'contacts' δεν ρωτήθηκε ποτέ. Οι Επαφές αποδίδονται ως ενότητα μέσα
         // στο Αρχείο και ο μόνος δρόμος στο nav==='contacts' (ο βοηθός) κρίνεται
         // από το tabDecision. Πέντε COUNT έγιναν τέσσερα, ίδια ακριβώς οθόνη.
-        const [{ data: ob, error: obErr }, { count }, { count: docCount }, loanRes, invRes, taxEvents] = await Promise.all([
+        const [{ data: ob, error: obErr }, { count, error: countErr }, { count: docCount }, loanRes, invRes, taxEvents] = await Promise.all([
           supabase.from('onboarding_progress').select('welcomed, revealed_tabs, nav_show_all, start_collapsed').eq('user_id', user.id).maybeSingle(),
           cnt('user_properties'),
           cnt('property_documents'),
@@ -392,7 +392,11 @@ export function useDashboard() {
           calendarStore.taxEventCount(supabase, user.id),
         ]);
         setStartSignals({ documents: docCount || 0, taxEvents: taxEvents });
-        if (!ob?.welcomed && (count || 0) === 0) setShowWelcome(true);
+        // ΑΓΝΩΣΤΟ ΔΕΝ ΣΗΜΑΙΝΕΙ ΜΗΔΕΝ. Αποτυχημένη μέτρηση γυρίζει `count: null`
+        // και το `|| 0` έδειχνε το καλωσόρισμα πρώτης χρήσης σε ιδιοκτήτη με
+        // ακίνητα. Ούτε το «δεν το έχει δει» το ξέρουμε όταν η πρόοδος δεν
+        // διαβάστηκε. Μόνο μετρημένο μηδέν το ανοίγει.
+        if (!obErr && !countErr && !ob?.welcomed && count === 0) setShowWelcome(true);
         // Σταδιακή αποκάλυψη: τι έχει ήδη ανοίξει + τι δικαιολογούν τα δεδομένα.
         //
         // ΚΡΙΣΙΜΟ: το supabase-js ΔΕΝ πετά εξαίρεση σε σφάλμα ερωτήματος — γυρίζει

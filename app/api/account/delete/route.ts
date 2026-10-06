@@ -18,6 +18,23 @@
 // είναι διαγραφή: είναι αφαίρεση κάθε τρόπου να τη σταματήσει ο άνθρωπος. Το
 // αίτημα απορρίπτεται με μήνυμα που λέει ΤΙ να κάνει και ξαναδοκιμάζεται
 // αμέσως — δεν χάνεται δικαίωμα, καθυστερεί λίγα λεπτά.
+//
+// ── ΤΑ ΑΡΧΕΙΑ ΦΕΥΓΟΥΝ ΜΟΝΟ ΑΦΟΥ ΦΥΓΕΙ Ο ΛΟΓΑΡΙΑΣΜΟΣ ─────────────────────
+// Ως τις 6/10/2026 η διαδρομή έσβηνε ΠΡΩΤΑ κάθε αρχείο με τη συνεδρία του
+// χρήστη και μετά καλούσε τη βάση. Αν η `delete_my_account` αποτύγχανε, ο
+// άνθρωπος έμενε με λογαριασμό χωρίς κανένα μισθωτήριο, ταυτότητα ή
+// παραστατικό — και με μήνυμα «δοκίμασε ξανά» για κάτι που δεν γυρίζει πίσω.
+//
+// Τώρα η διαδρομή δεν σβήνει αρχεία καθόλου. Η `erase_account` (20260824110000)
+// γράφει ΚΑΘΕ αρχείο του λογαριασμού στην `storage_purge_queue` μέσα στην ΙΔΙΑ
+// συναλλαγή με τη διαγραφή των γραμμών: αν η διαγραφή αποτύχει, η ουρά
+// αναιρείται μαζί της και τα αρχεία μένουν άθικτα· αν πετύχει, η
+// `purge-orphan-files` τα σβήνει μέσα σε δεκαπέντε λεπτά και η οθόνη το λέει
+// (`files_queued`). Ο ίδιος δρόμος που ήδη καθαρίζει τον αυτόματο καθαρισμό.
+//
+// Η ΣΥΝΔΡΟΜΗ ΜΕΝΕΙ ΠΡΙΝ ΤΗ ΒΑΣΗ, ΕΠΙΤΗΔΕΣ: το αναγνωριστικό της ζει μόνο στο
+// προφίλ χρέωσης που σβήνει η διαγραφή. Γι' αυτό, αν η βάση αποτύχει ΑΦΟΥ
+// ακυρώθηκε, το μήνυμα το λέει: η συνδρομή ακυρώθηκε, ο λογαριασμός όχι.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { NextResponse } from 'next/server';
@@ -25,7 +42,6 @@ import { createClient } from '@/lib/supabase/server';
 import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import { merchant } from '@/lib/billing/merchant';
 import * as billing from '@/lib/data/billing';
-import { sweepOwnFiles } from '@/lib/storage/accountSweep';
 import { SAY } from '@/lib/core/dbError';
 import { sessionNeedsSecondStep, MFA_SAY } from '@/lib/auth/mfa';
 
@@ -71,6 +87,7 @@ export async function POST(request: Request) {
 
   const subscriptionId = (state.subscriptionId || '').trim();
   const mor = merchant();
+  let cancelled = false;
   if (subscriptionId && mor.isLive(process.env)) {
     const { after, error } = await mor.subscriptionState(subscriptionId, process.env);
     if (error || !after) {
@@ -83,25 +100,16 @@ export async function POST(request: Request) {
         console.info('[delete] η ακύρωση της συνδρομής απέτυχε:', out.error);
         return NextResponse.json({ error: 'Η συνδρομή σου δεν ακυρώθηκε, οπότε δεν προχωρήσαμε στη διαγραφή: δεν θέλουμε να συνεχίσει να χρεώνεται η κάρτα σου. Ακύρωσε πρώτα τη συνδρομή από τη διαχείριση συνδρομής, ή δοκίμασε ξανά σε λίγο.' }, { status: 502 });
       }
+      cancelled = true;
       console.info(`[delete] η συνδρομή ${subscriptionId} ακυρώθηκε πριν τη διαγραφή`);
     } else {
       console.info(`[delete] η συνδρομή ${subscriptionId} ήταν ήδη «${after.status}»`);
     }
   }
 
-  // ── ΜΕΤΑ ΤΑ ΑΡΧΕΙΑ, ΟΣΟ Ο ΧΡΗΣΤΗΣ ΕΧΕΙ ΑΚΟΜΗ ΔΙΚΑΙΩΜΑ ΣΕ ΑΥΤΑ ────────
-  // Η βάση ΔΕΝ μπορεί να τα σβήσει: η Supabase απαγορεύει τη διαγραφή
-  // κατευθείαν από τους πίνακες αποθήκευσης (42501) και η προσπάθεια άφηνε
-  // ΚΑΘΕ αρχείο πίσω. Και η σειρά είναι υποχρεωτική: οι πολιτικές των κάδων
-  // `inventory-docs` και `maintenance-photos` ρωτούν τα `user_properties` και
-  // τα `portal_links`, που η διαγραφή παρακάτω αδειάζει.
-  //
-  // Μια αποτυχία εδώ ΔΕΝ σταματά τη διαγραφή: απέναντι στέκει το δικαίωμα
-  // διαγραφής. Οσα μείνουν τα μετρά η `delete_my_account` και τα λέει η οθόνη.
-  const sweep = await sweepOwnFiles(supabase);
-  if (sweep.error) console.info(`[delete] ${sweep.failed} αρχεία δεν σβήστηκαν:`, sweep.error);
-
-  // ── ΚΑΙ ΜΕΤΑ Ο ΛΟΓΑΡΙΑΣΜΟΣ ────────────────────────────────────────────
+  // ── ΚΑΙ ΜΕΤΑ Ο ΛΟΓΑΡΙΑΣΜΟΣ, ΜΑΖΙ ΜΕ ΤΗΝ ΟΥΡΑ ΤΩΝ ΑΡΧΕΙΩΝ ───────────────
+  // Κανένα αρχείο δεν σβήνεται πριν από εδώ: τα βάζει στην ουρά η ίδια η
+  // `erase_account`, στην ίδια συναλλαγή (δες την κεφαλίδα).
   // Με τη ΣΥΝΕΔΡΙΑ του χρήστη και όχι με ρόλο υπηρεσίας: η `delete_my_account`
   // διαβάζει το `auth.uid()` και σβήνει ΜΟΝΟ τον εαυτό του. Ο ρόλος υπηρεσίας
   // δεν έχει `auth.uid()`, οπότε δεν θα έσβηνε κανέναν — και θα έφτιαχνε μια
@@ -117,10 +125,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: MFA_SAY.ask }, { status: 403 });
     }
     console.info('[delete] η διαγραφή δεν ολοκληρώθηκε:', error.message);
-    return NextResponse.json({ error: SAY.accountNotDeleted }, { status: 502 });
+    // Η ακύρωση δεν γυρίζει πίσω· ο άνθρωπος πρέπει να ξέρει ότι έγινε.
+    const say = cancelled
+      ? 'Η συνδρομή σου ακυρώθηκε, αλλά ο λογαριασμός δεν διαγράφηκε. Τα δεδομένα και τα αρχεία σου είναι ακόμη εδώ. Δοκίμασε ξανά σε λίγο.'
+      : SAY.accountNotDeleted;
+    return NextResponse.json({ error: say }, { status: 502 });
   }
 
-  // Ο απολογισμός της βάσης λέει τι ΕΜΕΙΝΕ, γιατί μόνο εκείνη μπορεί να το
-  // μετρήσει· το πόσα έφυγαν το ξέρει μόνο ο σαρωτής εδώ.
-  return NextResponse.json({ ...(data ?? { ok: true }), files_deleted: sweep.deleted });
+  // Ο απολογισμός της βάσης: `files_queued` αρχεία φεύγουν με την ουρά.
+  return NextResponse.json(data ?? { ok: true });
 }

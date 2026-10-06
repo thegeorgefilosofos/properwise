@@ -180,7 +180,3 @@ export const BRAND_MARK_ON_DARK = '#ffffff';
  */
 export const BRAND_DARK_BG = '#070b12';
 
-export const brandMarkHtml = (size = 34) =>
-  `<span style="display:inline-block;font-weight:800;letter-spacing:0.06em;`
-  + `font-size:${Math.round(size * 0.5)}px;line-height:1;color:${BRAND_MARK_INK};`
-  + `font-family:-apple-system,'Inter',Arial,sans-serif">PROPERWISE</span>`;

@@ -268,6 +268,13 @@ export const creemPort: MerchantPort = {
     const productId = productFor(env, order.plan, order.cycle);
     if (!productId) return { url: null, error: `κανένα προϊόν για «${order.plan}:${order.cycle}»` };
     const customer = order.buyer.email ? { email: order.buyer.email } : undefined;
+    // ΤΟ `skipTrial` ΚΑΙ ΤΟ `expiresAt` ΔΕΝ ΣΤΕΛΝΟΝΤΑΙ, ΕΠΙΤΗΔΕΣ. Τα πεδία του
+    // ταμείου εδώ είναι όσα επαληθεύτηκαν στην προδιαγραφή του παρόχου (κεφαλίδα
+    // του αρχείου)· πεδίο «χωρίς δοκιμή» ή λήξης συνδέσμου δεν βρέθηκε και δεν
+    // επινοείται. Η δοκιμή δεν ζει στον Creem: τα προϊόντα στήνονται χωρίς
+    // trial (docs/ops/creem-vercel-odigos.md, «Χωρίς δοκιμή στο προϊόν») και η
+    // δοκιμή τρέχει στην εφαρμογή (`trialState`). Προϊόν με trial στον πίνακα
+    // του Creem θα την ξανάδινε σε όποιον την έχει ήδη ξοδέψει.
     const { data, error } = await call(env, 'POST', '/v1/checkouts', {
       product_id: productId,
       success_url: order.redirectUrl,
