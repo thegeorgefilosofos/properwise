@@ -35,6 +35,8 @@ if (!(CUT > 0)) throw new Error('Στο παράδειγμα τα υλικά δ�
 if (R.total !== R.eligible) throw new Error('Το παράδειγμα πιάνει το ανώτατο όριο· η γωνία θέλει άλλο ποσό.');
 const [dd, mm, yy] = RENO_39B_TO.split('.').map(Number);
 const OLD_YEARS = '2020–2022';
+// Η στιγμή που η σφραγίδα ακουμπά: εικόνα, κάμερα και ήχος χτυπούν μαζί.
+const STAMP = 0.96;
 
 
 // ── Ο χρόνος ─────────────────────────────────────────────────────────────
@@ -178,8 +180,8 @@ const JS = `
     { const e = $('e0'), v = eo(p(t, -.3, .2)); op(e, v); tf(e, 'translateX(' + (-24 * (1 - v)) + 'px)'); }
     [-.8, -.7, -.6].forEach((s, k) => rev('q' + k, s, null, .55));
     $('sk').style.strokeDashoffset = 1 - eio(p(t, .4, .7));
-    { const sp = p(t, .75, .95), sv = ei(sp); op($('stp'), sp > 0 ? 1 : 0);
-      const sh = t > .95 ? Math.exp(-(t - .95) * 12) * Math.sin((t - .95) * 70) * 8 : 0;
+    { const sp = p(t, D.stamp - .2, D.stamp), sv = ei(sp); op($('stp'), sp > 0 ? 1 : 0);
+      const sh = t > D.stamp ? Math.exp(-(t - D.stamp) * 12) * Math.sin((t - D.stamp) * 70) * 8 : 0;
       tf($('stp'), 'translate(' + sh + 'px,' + (sh * .4) + 'px) rotate(-7deg) scale(' + (2.2 - 1.2 * sv) + ')'); }
     { const v = eo(p(t, 1.4, 1.9)); op($('c0'), v); tf($('c0'), 'translateY(' + (24 * (1 - v)) + 'px)'); }
 
@@ -249,11 +251,11 @@ const CAPTION = [
 const X: Explainer = {
   slug: 'reel-39b', file: 'PROPERWISE-ekptosi-anakainisis.mp4',
   scenes: SC, end: END, dur: DUR, html: HTML, css: CSS, heads: [0, 2, 2, 2, 3, 2], js: JS,
-  data: { years: RENO_39B_YEARS, coins: COINS, steps: STEPS, ko: count(OLD_MAX), kn: count(RENO_39B_CAP), cal: { cl: calPages(DAYS) } },
+  data: { stamp: STAMP, years: RENO_39B_YEARS, coins: COINS, steps: STEPS, ko: count(OLD_MAX), kn: count(RENO_39B_CAP), cal: { cl: calPages(DAYS) } },
   sound: m => {
     m.whoosh(0, .6, .05, true);
     m.sweep(.4, .3, 1400, 2400, .02);
-    m.boom(.95, .26); m.clap(.95, .12); m.click(.95, 500, .2);
+    m.boom(STAMP, .26); m.clap(STAMP, .12); m.click(STAMP, 500, .2);
     m.whoosh(SC[1] - 1.1, 1.1, .1, true);
     for (let s = .8; s < 1.9; s += 1 / 18) m.click(SC[1] + s, 3400, .022, s < 1.5 ? -.25 : .25);
     m.pluck(SC[1] + 2.1, 81, .06, 0, .5); m.bell(SC[1] + 2.15, 88, .035);
@@ -270,7 +272,7 @@ const X: Explainer = {
   checkAt: [SC[1] - .3, SC[2] - .3, SC[3] - .3, SC[4] - .3, SC[5] - .3, END - .3, DUR - .2],
   cover: SC[1] - .45,
   spots: [[540, 980], [515, 940], [515, 900], [515, 950], [540, 880], [540, 850]],
-  hits: [.95],
+  hits: [STAMP],
   stills: [SC[1] - .35, SC[2] - .35, SC[3] - .35, SC[4] - .35, SC[5] - .35, END - .35],
   caption: CAPTION,
   readme: [
