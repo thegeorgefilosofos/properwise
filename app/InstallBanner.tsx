@@ -16,6 +16,7 @@
 
 import { T } from '@/components/tokens';
 import { Btn, RuntimeImg } from '@/components/Theme';
+import { navLabel } from '@/lib/nav/labels';
 
 /** Το εικονίδιο της «Κοινής χρήσης» του Safari: κουτί με βέλος προς τα πάνω. */
 function ShareGlyph() {
@@ -56,7 +57,7 @@ export default function InstallBanner({ mode, onInstall, onDismiss, note = '', b
       {mode === 'notify' ? (
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
           Για ό,τι λήγει: ΕΝΦΙΑ, ενοίκια που δεν μπήκαν, συμβόλαια και λογαριασμοί.
-          Τις κλείνεις όποτε θέλεις από τις Ρυθμίσεις.
+          {`Τις κλείνεις όποτε θέλεις από την καρτέλα «${navLabel('settings')}».`}
         </p>
       ) : mode === 'prompt' ? (
         <p className="po-just" style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>

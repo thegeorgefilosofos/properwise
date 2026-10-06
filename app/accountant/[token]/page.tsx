@@ -388,7 +388,7 @@ export default function AccountantPortal() {
             </div>
 
             <div style={{ ...meta, textAlign: 'center', marginTop: 16 }}>
-              Powered by PROPERWISE · μόνο για ανάγνωση · <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-secondary)' }}>Απόρρητο</a>
+              Με το PROPERWISE · μόνο για ανάγνωση · <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-secondary)' }}>Απόρρητο</a>
             </div>
           </>
         )}

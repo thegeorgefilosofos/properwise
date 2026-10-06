@@ -38,15 +38,16 @@ const roleLabel = (r: string) => (r === 'admin' ? 'Διαχειριστής' : '
 const esc = (s: string) => s.replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c] as string))
 
 function inviteEmail(orgName: string, inviter: string, role: string): { subject: string; html: string } {
-  const org = orgName ? esc(orgName) : 'μια ομάδα στο PROPERWISE'
+  // «στο Χ» με όνομα, «σε μια ομάδα στο PROPERWISE» χωρίς: το άρθρο αλλάζει με το ουσιαστικό.
+  const org = orgName ? `στο ${esc(orgName)}` : 'σε μια ομάδα στο PROPERWISE'
   const who = inviter ? esc(inviter) : 'Ο διαχειριστής της ομάδας'
   // Το θέμα είναι απλό κείμενο: το esc() εκεί θα έγραφε «&amp;» αυτούσιο.
   const subject = orgName ? `Πρόσκληση στην ομάδα «${orgName}»` : 'Πρόσκληση στο PROPERWISE'
   const html = emailShell({
-    preheader: `${who} σε προσκάλεσε στο ${org}.`,
-    footerNote: 'Ελαβες αυτό το email επειδή προστέθηκες σε ομάδα. Αν δεν το περίμενες, αγνόησέ το. · properwise.gr',
+    preheader: `${who} σε προσκάλεσε ${org}.`,
+    footerNote: 'Έλαβες αυτό το email επειδή προστέθηκες σε ομάδα. Αν δεν το περίμενες, αγνόησέ το. · properwise.gr',
     bodyHtml: eyebrow('Πρόσκληση σε ομάδα')
-      + h(`Προσκλήθηκες στο ${org}`)
+      + h(`Προσκλήθηκες ${org}`)
       + p(`${who} σε προσκάλεσε να συνεργαστείς στο PROPERWISE με ρόλο <strong class="ink" style="color:${C.ink};">${roleLabel(role)}</strong>. Δημιούργησε λογαριασμό με αυτό το email και θα βρεις την ομάδα να σε περιμένει.`)
       + button('Δημιουργία λογαριασμού', SIGNUP_URL),
   })

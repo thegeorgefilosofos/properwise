@@ -428,14 +428,14 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                           <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>{fd(r.created_at)}{r.contact ? ` · ${r.contact}` : ''}</div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                          {r.status === 'new' && <Btn variant="secondary" onClick={() => setStatus(r.id, 'in_progress')}>Ξεκίνησε</Btn>}
+                          {r.status === 'new' && <Btn variant="secondary" onClick={() => setStatus(r.id, 'in_progress')}>Έναρξη</Btn>}
                           {r.status === 'in_progress' && <Btn variant="secondary" onClick={() => setStatus(r.id, 'done')}>Ολοκλήρωση</Btn>}
                           {!done && <Btn variant="secondary" onClick={() => toCalendar(r)} disabled={synced.has(r.id)}>{synced.has(r.id) ? 'Στο Ημερολόγιο' : 'Ημερολόγιο'}</Btn>}
-                          {done && costFor !== r.id && <Btn variant="secondary" onClick={() => { setCostFor(r.id); setCost(''); }}>ως Δαπάνη</Btn>}
+                          {done && costFor !== r.id && <Btn variant="secondary" onClick={() => { setCostFor(r.id); setCost(''); }}>Ως δαπάνη</Btn>}
                           {done && costFor === r.id && (
                             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                               <input aria-label="Ποσό δαπάνης σε ευρώ" autoFocus value={cost} onChange={e => setCost(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') toExpense(r); if (e.key === 'Escape') setCostFor(null); }} placeholder="€" inputMode="decimal" style={{ width: 56, height: T.h.sm, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '0 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-primary)', fontFamily: T.font.mono, outline: 'none', textAlign: 'right' }} />
-                              <Btn variant="primary" onClick={() => toExpense(r)}>OK</Btn>
+                              <Btn variant="primary" onClick={() => toExpense(r)}>Καταχώρηση</Btn>
                             </div>
                           )}
                           {done && <Btn variant="secondary" onClick={() => setStatus(r.id, 'new')}>Επαναφορά</Btn>}

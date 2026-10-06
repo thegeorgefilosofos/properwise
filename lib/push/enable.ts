@@ -14,6 +14,7 @@ import type { createClient } from '@/lib/supabase/client';
 import * as devices from '@/lib/data/pushSubscriptions';
 import { readSubscription, type RawSubscription } from './subscription';
 import { subscribeDevice, setDeviceNotify } from './client';
+import { navLabel } from '@/lib/nav/labels';
 
 type Db = ReturnType<typeof createClient>;
 
@@ -27,7 +28,7 @@ export const ENABLE_REASONS: Record<EnableReason, string> = {
   unsupported: 'Αυτός ο περιηγητής δεν στέλνει ειδοποιήσεις με την εφαρμογή κλειστή.',
   unconfigured: 'Οι ειδοποιήσεις συσκευής δεν είναι ρυθμισμένες σε αυτή την εγκατάσταση.',
   stored: 'Η συνδρομή δεν αποθηκεύτηκε. Δοκίμασε ξανά σε λίγο.',
-  signedOut: 'Συνδέσου ξανά και άνοιξε τις ειδοποιήσεις από τις Ρυθμίσεις.',
+  signedOut: `Συνδέσου ξανά και άνοιξε τις ειδοποιήσεις από την καρτέλα «${navLabel('settings')}».`,
 };
 
 /**

@@ -8,6 +8,7 @@ import {
   SegmentControl, FREQ_OPTIONS,
 } from './UIComponents';
 import { T, feAuto, feOr, Btn, localDay, ABSENT_DATE } from '@/components/Theme';
+import { navLabel } from '@/lib/nav/labels';
 import { createClient } from '@/lib/supabase/client';
 import * as calendar from '@/lib/data/calendar';
 import * as checklist from '@/lib/data/checklist';
@@ -382,7 +383,7 @@ export function tenantScheduleRows(
       source: key('rent_adjust'), category: 'contract',
       title: `Αναπροσαρμογή ενοικίου (ΔΤΚ), ${name}`, event_date: nextAnniversaryISO(t.lease_start),
       priority: 'low', recurring: true, recurring_interval: 'annual',
-      notes: 'Ετήσια αναπροσαρμογή μισθώματος βάσει ΔΤΚ (ΕΛΣΤΑΤ). Δες «Αναπροσαρμογή Ενοικίου».',
+      notes: `Ετήσια αναπροσαρμογή μισθώματος βάσει ΔΤΚ (ΕΛΣΤΑΤ). Δες την ενέργεια «Αναπροσαρμογή ενοικίου» στην καρτέλα «${navLabel('accounting')}».`,
     });
   }
 

@@ -26,6 +26,7 @@ import { logActivity } from '@/lib/activity';
 import { INK } from '@/lib/print/ink';
 import { aadePath } from '@/lib/tax/aade';
 import { failed } from '@/lib/core/dbError';
+import { navLabel } from '@/lib/nav/labels';
 import { cleanDigits } from '@/lib/property/powerSupply';
 import {
   buildLeaseDeclaration, declarationSheet, RULES,
@@ -33,7 +34,7 @@ import {
 } from '@/lib/tax/leaseDeclaration';
 
 const TAB_LABEL: Record<NonNullable<DeclField['fixIn']>, string> = {
-  property: 'Ακίνητο', tenant: 'Ενοικιαστής', settings: 'Ρυθμίσεις',
+  property: 'Ακίνητο', tenant: navLabel('tenant'), settings: navLabel('settings'),
 };
 
 // Ενα κλειδί, τρεις χρήσεις: γράψιμο, ανάγνωση πίσω, περιγραφή στο ιστορικό

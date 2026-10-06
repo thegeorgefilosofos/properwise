@@ -37,7 +37,7 @@ import {
   GREECE_AVG_GROSS_YIELD, ATHENS_AVG_GROSS_YIELD, MARKET_DISCLAIMER, MARKET_DATA_ASOF, MARKET_SOURCES,
   yieldVerdict, regionByKey, estimatePropertyValue, historyPriceCagr, type ShortTermStat, type YieldLever,
 } from '@/lib/market/greekMarket';
-import { incomeStatement } from '@/lib/accounting/statement';
+import { incomeStatement, PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { consolidateRentTax, taxShareOf, CONSOLIDATION_NOTE, PRESUMPTIVE_RULE } from '@/lib/billing/consolidate';
 import { hasFeature } from '@/lib/billing/entitlements';
 import { hy } from '@/components/Hyphen';
@@ -52,8 +52,8 @@ import { notifyError } from '@/components/Toast';
 import { INK_FAINT, INK_MUTED } from '@/lib/print/ink';
 import { failed, MSG } from '@/lib/core/dbError';
 import { InfoHint } from './InfoHint';
-import { fpSigned } from '@/lib/core/format';
-import { rentalBracketsForYear } from '@/lib/billing/greekTax';
+import { fpSigned, fpRate } from '@/lib/core/format';
+import { rentalBracketsForYear, FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { bracketsSentence, taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { asOfLine } from '@/lib/facts/prices';
 
@@ -1216,7 +1216,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         ? `Ετήσια ανατίμηση: ${rPct(nAppr)}· υπόθεση του χρήστη (η τεκμηριωμένη τιμή είναι ${rPct(apprRef.pct)})`
         : `Ετήσια ανατίμηση: ${rPct(nAppr)}· δείκτης τιμών κατοικιών Τράπεζας της Ελλάδος, ${apprRef.fromYear} ως ${apprRef.toYear}`,
       `Φορολογικό καθεστώς: ${regimeLabel}`,
-      `Είσπραξη ενοικίων μέσω τράπεζας: ${rentsBank ? 'ναι' : 'όχι (η τεκμαρτή έκπτωση 5% ισχύει· η προϋπόθεση τραπεζικής είσπραξης αρχίζει 1.7.2027, ν.5222/2025)'}`,
+      `Είσπραξη ενοικίων μέσω τράπεζας: ${rentsBank ? 'ναι' : `όχι (η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} ισχύει· η προϋπόθεση τραπεζικής είσπραξης αρχίζει 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}, ν.5222/2025)`}`,
       // Η ΔΕΥΤΕΡΗ ΠΑΡΑΔΟΧΗ ΤΑΞΙΔΕΥΕΙ ΚΙ ΑΥΤΗ. Οποιος διαβάσει την αναφορά χωρίς
       // να έχει την οθόνη μπροστά του πρέπει να ξέρει ποιο σενάριο διαβάζει.
       ...(term === 'short'
@@ -1295,7 +1295,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           ? `Ετήσια ανατίμηση: ${pPct(nAppr)}· υπόθεση του χρήστη (η τεκμηριωμένη τιμή είναι ${pPct(apprRef.pct)})`
           : `Ετήσια ανατίμηση: ${pPct(nAppr)}· δείκτης τιμών κατοικιών Τράπεζας της Ελλάδος, ${apprRef.fromYear} ως ${apprRef.toYear}`,
         `Φορολογικό καθεστώς: ${regimeLabel}`,
-        `Είσπραξη ενοικίων μέσω τράπεζας: ${rentsBank ? 'ναι' : 'όχι (η τεκμαρτή έκπτωση 5% ισχύει· η προϋπόθεση τραπεζικής είσπραξης αρχίζει 1.7.2027, ν.5222/2025)'}`,
+        `Είσπραξη ενοικίων μέσω τράπεζας: ${rentsBank ? 'ναι' : `όχι (η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} ισχύει· η προϋπόθεση τραπεζικής είσπραξης αρχίζει 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}, ν.5222/2025)`}`,
       // Η ΔΕΥΤΕΡΗ ΠΑΡΑΔΟΧΗ ΤΑΞΙΔΕΥΕΙ ΚΙ ΑΥΤΗ. Οποιος διαβάσει την αναφορά χωρίς
       // να έχει την οθόνη μπροστά του πρέπει να ξέρει ποιο σενάριο διαβάζει.
       ...(term === 'short'

@@ -183,7 +183,7 @@ export default function GuestCheckin() {
                 </form>
               </div>
             )}
-            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>Powered by PROPERWISE</div>
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>Με το PROPERWISE</div>
           </>
         )}
       </div>

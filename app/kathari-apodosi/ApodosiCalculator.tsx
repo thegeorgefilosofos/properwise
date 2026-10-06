@@ -25,7 +25,8 @@ import { T, feAuto } from '@/components/tokens';
 import { fe, fn, fp, fpRate, feSigned, fpSigned } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { propertyYield } from '@/lib/tools/apodosi';
-import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
+import { FIRST_YEAR_NEW_BRACKETS, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
 import { ToolNumField, ToolFields, ToolHero, ToolLedger, ToolStats, TOOL_LABEL, TOOL_FIELD } from '@/app/ToolParts';
@@ -37,6 +38,8 @@ const SPEC = {
   enfia: '0', dapanes: '0', alla: '0',
 } as const;
 const PATH = '/kathari-apodosi';
+// Η έναρξη της τραπεζικής είσπραξης, από τις σταθερές που υπολογίζουν.
+const BANK_FROM = `1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}`;
 
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
@@ -273,7 +276,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Ο φόρος βγαίνει με την κλίμακα ενοικίων {year}
           {year >= FIRST_YEAR_NEW_BRACKETS ? ' (15 / 25 / 35 / 45%)' : ' (15 / 35 / 45%)'} και
-          την τεκμαρτή έκπτωση 5%, που από 1.7.2027 θα θέλει είσπραξη μέσω τράπεζας
+          την τεκμαρτή έκπτωση {fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}, που από {BANK_FROM} θα θέλει είσπραξη μέσω τράπεζας
           (ν.5222/2025)· εδώ θεωρείται δεδομένη. Δεν περιλαμβάνει: μεταβολή της
           αξίας, δάνειο και τόκους, έξοδα αγοράς ή πώλησης, ανακαίνιση,
           ανείσπρακτα, βραχυχρόνια, νομικό πρόσωπο ούτε τα άλλα σου

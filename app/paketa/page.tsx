@@ -21,7 +21,7 @@ import type { Metadata } from 'next';
 import { siteUrl } from '@/lib/core/site';
 import { RECOMMENDED_PLAN } from '@/lib/billing/plans';
 import { TRIAL_OFFER } from '@/lib/billing/trialOffer';
-import { billingWords, PRICES_VAT } from '@/lib/legal/billingWords';
+import { billingWords, PRICES_VAT, CANCEL_ANYTIME } from '@/lib/legal/billingWords';
 import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
 import { publicMetadata } from '../publicMetadata';
@@ -91,7 +91,7 @@ export default function Page() {
             συλλαβισμός: πλήρης στοίχιση χωρίς αυτόν τεντώνει τα κενά
             (guard-justify-hyphen). */}
         <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>{hy(<>
-          {TRIAL_OFFER} {billingWords().firstCharge} {PRICES_VAT} Ακυρώνεις όποτε θέλεις. {billingWords().moneyBack}
+          {TRIAL_OFFER} {billingWords().firstCharge} {PRICES_VAT} {CANCEL_ANYTIME} {billingWords().moneyBack}
         </>)}</p>
         {/* Η ΙΔΙΑ ΠΡΟΤΑΣΗ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Χωρίς προτεινόμενη στήλη ο πίνακας έδειχνε
             τέσσερα ίδια κύρια κουμπιά, ενώ η αρχική προτείνει ρητά ένα πακέτο.

@@ -153,7 +153,7 @@ export function rentReceipt(m: RentMessage): string {
   // κεφαλαίο («Τραπεζική κατάθεση») επειδή στην οθόνη στέκει μόνος του σε
   // στήλη. Το «, Τραπεζική κατάθεση.» στη μέση πρότασης διαβάζεται σαν λάθος.
   const way = how ? `, με ${how.charAt(0).toLocaleLowerCase('el-GR')}${how.slice(1)}` : '';
-  return `Ελαβα το ενοίκιο ${m.period}${where(m)}: ${fe(m.amount)}${way}.`
+  return `Έλαβα το ενοίκιο ${m.period}${where(m)}: ${fe(m.amount)}${way}.`
     + portalPart(m, 'plain');
 }
 
