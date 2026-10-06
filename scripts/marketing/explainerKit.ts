@@ -61,6 +61,32 @@ export const KIT_CSS = `
   .tag{font-size:54px;font-weight:700;letter-spacing:-.03em}
   .rule{width:64px;height:3px;border-radius:3px;background:${C.accent}}
   .url{font-size:24px;color:${C.faint}}
+  .ftg{position:absolute;left:90px;width:850px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .ft{position:relative;height:250px;border-radius:28px;padding:26px 26px 22px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;
+    background:radial-gradient(120% 90% at 0% 0%, rgba(138,180,248,.16), transparent 60%),linear-gradient(180deg,rgba(28,44,72,.96),rgba(14,24,42,.97));
+    border:1px solid rgba(138,180,248,.22);box-shadow:0 40px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.14)}
+  .ft.no{background:radial-gradient(120% 90% at 0% 0%, rgba(240,110,110,.16), transparent 60%),linear-gradient(180deg,rgba(44,24,30,.96),rgba(24,14,20,.97));border-color:rgba(240,110,110,.3)}
+  .ft .fi{position:absolute;left:24px;top:24px;width:84px;height:84px;border-radius:24px;display:grid;place-items:center;background:rgba(138,180,248,.14);border:1px solid rgba(138,180,248,.28)}
+  .ft.no .fi{background:rgba(240,110,110,.12);border-color:rgba(240,110,110,.3)}
+  .ft .fb{position:absolute;right:22px;top:22px;width:50px;height:50px;border-radius:50%;display:grid;place-items:center;font-size:28px;font-weight:850;
+    background:${TONE.ok};color:#06251a;box-shadow:0 0 24px ${TONE.ok}88}
+  .ft.no .fb{background:${TONE.rd};color:#2a0808;box-shadow:0 0 24px ${TONE.rd}88}
+  .ft b{font-size:31px;font-weight:750;letter-spacing:-.02em;line-height:1.15}
+  .ft small{font-size:20px;color:#9aa8bd;line-height:1.3}
+  .wcal{position:absolute;width:500px;height:430px;perspective:1600px}
+  .wcal .stackp{position:absolute;left:8px;right:8px;top:10px;bottom:-14px;border-radius:28px;background:#c3cad5;
+    box-shadow:0 6px 0 #aab3c0,0 12px 0 #939dac,0 60px 110px rgba(0,0,0,.65)}
+  .wcal .pg{position:absolute;inset:0;border-radius:28px;overflow:hidden;color:#1a2332;transform-origin:50% 0;backface-visibility:hidden;
+    background:linear-gradient(180deg,#fdfdfe 0%,#eef1f5 70%,#e2e7ee 100%);box-shadow:inset 0 -2px 0 rgba(0,0,0,.06)}
+  .wcal .pg .h{display:flex;justify-content:space-between;padding:26px 34px 22px;background:linear-gradient(180deg,#24406b,#1a2c48);color:#e9eef6;
+    font-family:'Roboto Mono',monospace;font-size:26px;letter-spacing:.16em}
+  .wcal .pg .d{font-size:220px;font-weight:850;letter-spacing:-.06em;text-align:center;line-height:1.05;margin-top:6px}
+  .wcal .pg .w{font-family:'Roboto Mono',monospace;font-size:20px;letter-spacing:.3em;color:#6b7788;text-align:center}
+  .wcal .pg .perf{position:absolute;left:0;right:0;top:78px;height:10px;background:radial-gradient(circle,#c8d0db 2.5px,transparent 3px) 0 0/18px 10px}
+  .wcal .mark{position:absolute;left:30px;top:84px;width:440px;height:300px;overflow:visible;pointer-events:none}
+  .wcal .mark path{fill:none;stroke:${TONE.rd};stroke-width:8;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 2px 0 rgba(0,0,0,.15))}
+  .wcal .rings{position:absolute;left:0;right:0;top:-18px;display:flex;justify-content:space-around;z-index:5}
+  .wcal .rings i{width:20px;height:48px;border-radius:10px;background:linear-gradient(90deg,#1e2634,#6b7688 45%,#2a3344);box-shadow:0 6px 10px rgba(0,0,0,.5)}
   #bloom{position:absolute;left:50%;top:860px;width:1300px;height:1300px;margin:-650px 0 0 -650px;border-radius:50%;
     background:radial-gradient(closest-side, ${C.accent}44, transparent);opacity:0}`;
 
@@ -70,6 +96,47 @@ export const check = (id: string, ok: boolean, text: string, small = '') =>
     ? `<i style="display:block;width:12px;height:22px;margin-bottom:6px;border:solid ${TONE.ok};border-width:0 4px 4px 0;transform:rotate(45deg)"></i>`
     : `<span style="color:${TONE.rd};font-size:30px;font-weight:800;line-height:1">×</span>`}</div>
     <div class="tx" style="color:${ok ? C.ink : '#ffb3b3'}">${esc(text)}${small ? `<small>${esc(small)}</small>` : ''}</div></div>`;
+
+// ── Εικονίδια γραμμής, ίδιο πάχος παντού (κουτί 24×24) ─────────────────────
+export const ICON = {
+  bank: 'M3 21h18|M5 21V10|M19 21V10|M9 21v-7|M15 21v-7|M12 3l9 5H3z',
+  transfer: 'M4 8h13|M13 4l4 4-4 4|M20 16H7|M11 12l-4 4 4 4',
+  bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
+  cash: 'M2 7h20v10H2z|M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6|M6 10v4|M18 10v4',
+  card: 'M2 6h20v12H2z|M2 10h20|M6 15h4',
+  invoice: 'M6 2h9l5 5v15H6z|M15 2v5h5|M9 12h7|M9 16h7|M9 8h3',
+  pin: 'M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12|M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5',
+  pie: 'M12 3a9 9 0 1 0 9 9h-9z|M15 2.5A9 9 0 0 1 21.5 9H15z',
+  iban: 'M3 5h18v14H3z|M7 10h4|M7 14h10|M15 9.5h2',
+  shield: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z|M8.5 12l2.5 2.5 4.5-5',
+  receipt: 'M5 2h14v20l-3-2-2 2-2-2-2 2-2-2-3 2z|M9 7h6|M9 11h6|M9 15h4',
+};
+export const icon = (d: string, c: string, px: number, sw = 1.8) =>
+  `<svg width="${px}" height="${px}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${d.split('|').map(x => `<path d="${x}"/>`).join('')}</svg>`;
+
+/** Πλακίδιο δυνατότητας: εικονίδιο, σήμα ✓ ή ×, τίτλος και μικρή γραμμή. */
+export const tile = (id: string, ok: boolean, ic: string, title: string, small = '') => `
+  <div class="ft${ok ? '' : ' no'}" id="${id}">
+    <span class="fi">${icon(ic, ok ? '#cfe0ff' : '#ffb3b3', 46, 1.7)}</span>
+    <span class="fb" id="${id}b">${ok ? '✓' : '×'}</span>
+    <b>${esc(title)}</b>${small ? `<small>${esc(small)}</small>` : ''}
+  </div>`;
+
+/** Ημερολόγιο τοίχου που ξεσκίζεται σελίδα σελίδα· οι σελίδες στο D.cal[id]. */
+export const calendar = (id: string, left: number, top: number) => `
+  <div class="wcal deco" id="${id}" style="left:${left}px;top:${top}px">
+    <div class="stackp"></div>
+    <div class="pg" id="${id}b"></div><div class="pg" id="${id}a"></div>
+    <svg class="mark" viewBox="0 0 440 300"><path id="${id}m" pathLength="1" d="M96 52 C 190 -6, 420 18, 424 146 C 428 268, 150 296, 44 214 C -14 168, 18 76, 150 34"/></svg>
+    <div class="rings"><i></i><i></i></div>
+  </div>`;
+const WEEK = ['ΚΥΡΙΑΚΗ', 'ΔΕΥΤΕΡΑ', 'ΤΡΙΤΗ', 'ΤΕΤΑΡΤΗ', 'ΠΕΜΠΤΗ', 'ΠΑΡΑΣΚΕΥΗ', 'ΣΑΒΒΑΤΟ'];
+const MONTH = ['ΙΑΝΟΥΑΡΙΟΣ', 'ΦΕΒΡΟΥΑΡΙΟΣ', 'ΜΑΡΤΙΟΣ', 'ΑΠΡΙΛΙΟΣ', 'ΜΑΪΟΣ', 'ΙΟΥΝΙΟΣ', 'ΙΟΥΛΙΟΣ', 'ΑΥΓΟΥΣΤΟΣ', 'ΣΕΠΤΕΜΒΡΙΟΣ', 'ΟΚΤΩΒΡΙΟΣ', 'ΝΟΕΜΒΡΙΟΣ', 'ΔΕΚΕΜΒΡΙΟΣ'];
+/** Οι σελίδες για τις ημερομηνίες ISO που δίνονται: μήνας, έτος, μέρα, ημέρα εβδομάδας. */
+export const calPages = (isos: string[]) => isos.map(iso => {
+  const d = new Date(`${iso}T12:00:00Z`);
+  return { m: MONTH[d.getUTCMonth()], y: String(d.getUTCFullYear()), d: String(d.getUTCDate()), w: WEEK[d.getUTCDay()] };
+});
 
 export interface Explainer {
   /** Φάκελος και όνομα: docs/marketing/reels/<slug>/ και docs/marketing/instagram/<slug>/. */
@@ -147,6 +214,19 @@ function page(x: Explainer): string {
   const slide = (id, u, s, d) => { const v = eo(p(u, s, s + (d || .45))); op($(id), v); tf($(id), 'translateX(' + (30 * (1 - v)) + 'px)'); return v; };
   /** Σκάει με ελατήριο (σφραγίδα, ετικέτα). */
   const pop = (id, u, s, d) => { const v = spring(p(u, s, s + (d || .6))); op($(id), cl(v * 2)); tf($(id), 'scale(' + (.4 + .6 * v) + ')'); return v; };
+
+  /** Το ημερολόγιο: ξεσκίζει σελίδες από s ως e, σημαδεύει την τελευταία από το mk. */
+  const calSet = (el, pg) => { const k = pg.m + pg.y + pg.d; if (el.dataset.k === k) return; el.dataset.k = k;
+    el.innerHTML = '<div class="h"><span>' + pg.m + '</span><span>' + pg.y + '</span></div><div class="perf"></div><div class="d">' + pg.d + '</div><div class="w">' + pg.w + '</div>'; };
+  const cal = (id, u, s, e, mk) => {
+    const P = D.cal[id], N = P.length, g = N > 1 ? eio(p(u, s, e)) * (N - 1) : 0;
+    const k = Math.min(N - 1, Math.floor(g + 1e-6)), f = k >= N - 1 ? 0 : eio(cl((g - k) * 1.3));
+    calSet($(id + 'a'), P[k]); calSet($(id + 'b'), P[Math.min(N - 1, k + 1)]);
+    tf($(id + 'a'), 'rotateX(' + (f * 118) + 'deg) translateY(' + (-f * 30) + 'px)');
+    op($(id + 'a'), 1 - cl((f - .55) / .45));
+    const m = eio(p(u, mk, mk + .7)); const path = $(id + 'm'); path.style.strokeDashoffset = 1 - m; op(path, m > 0 ? 1 : 0);
+    return k;
+  };
 
   window.render = t => {
     T = t;
