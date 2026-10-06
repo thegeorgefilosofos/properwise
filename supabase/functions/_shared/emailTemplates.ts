@@ -603,6 +603,9 @@ export function seasonalCampaignEmail(c: Ctx & { season: Season; toPlan?: Plan |
 // παραλήπτης να μη διαβάζει μήνυμα τρίτου ως μήνυμα του PROPERWISE.
 // ═══════════════════════════════════════════════════════════════════════════
 
+/** Διαφυγή για τιμή ιδιότητας: και τα εισαγωγικά, όχι μόνο τα `&<>`. */
+const escAttr = (v: unknown): string => esc(v).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 /** Σύνδεσμος μόνο `https://`· τα εισαγωγικά κόβουν, ώστε να μη σπάει το `href`. */
 const HTTPS_URL = /https:\/\/[^\s<>"']+/g;
 
@@ -615,7 +618,7 @@ function linkify(text: string): string {
     const url = m[0].replace(/[.,;:!?)\]]+$/, '');
     const at = m.index ?? 0;
     out += esc(text.slice(last, at))
-      + `<a class="lnk" href="${esc(url)}" target="_blank" rel="noopener noreferrer nofollow" style="color:${ACCENT};text-decoration:underline;">${esc(url)}</a>`;
+      + `<a class="lnk" href="${escAttr(url)}" target="_blank" rel="noopener noreferrer nofollow" style="color:${ACCENT};text-decoration:underline;">${esc(url)}</a>`;
     last = at + url.length;
   }
   return out + esc(text.slice(last));
@@ -641,7 +644,12 @@ export function clientTextFromLegacyHtml(html: string): string {
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<[^>]*>/g, '')
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&'))
+    .replace(/&amp;/g, '&')
+    // Καμία γωνιακή αγκύλη δεν επιζεί. Η αποκωδικοποίηση του `&lt;` μπορεί να
+    // ξαναφτιάξει ετικέτα (`&lt;script&gt;` → `<script>`)· εδώ κόβεται, ώστε η
+    // έξοδος να είναι κείμενο χωρίς σήμανση πριν ακόμη τη διαφύγει το
+    // `clientMessageBody` (CodeQL: incomplete multi-character sanitization).
+    .replace(/[<>]/g, ''))
     .join('\n\n');
 }
 
@@ -658,6 +666,5 @@ export function clientMessageEmail(opts: { text: string; senderEmail?: string | 
  * Τα {{name}} / {{email}} μέσα σε HTML: η τιμή έρχεται από το αίτημα, άρα
  * διαφεύγεται. Και τα εισαγωγικά: ένα {{name}} μπορεί να βρεθεί μέσα σε `href`.
  */
-const escAttr = (v: unknown): string => esc(v).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 export const fillClientHtml = (html: string, r: { name?: string; email: string }): string =>
   html.replace(/\{\{\s*name\s*\}\}/g, escAttr(r.name || '')).replace(/\{\{\s*email\s*\}\}/g, escAttr(r.email));

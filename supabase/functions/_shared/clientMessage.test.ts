@@ -49,7 +49,7 @@ const legacy = '<div><span>PROPERWISE</span>'
   + '<p style="margin:0 0 14px;font-size:14px;">Δεύτερη <img src=x onerror=alert(1)></p></div>'
   + '<p style="text-align:center;font-size:11px;">Στάλθηκε μέσω PROPERWISE</p></div>'
 const text = clientTextFromLegacyHtml(legacy)
-ok('κρατά τις παραγράφους του σώματος', text === 'Γεια & χαρά\n<b>\n\nΔεύτερη ')
+ok('κρατά τις παραγράφους του σώματος, χωρίς γωνιακές αγκύλες', text === 'Γεια & χαρά\nb\n\nΔεύτερη ')
 ok('ξαναδιαφεύγεται στην απόδοση', !clientMessageBody(text).includes('<b>') && !clientMessageBody(text).includes('<img'))
 ok('χωρίς παραγράφους, κενό', clientTextFromLegacyHtml('<script>x</script>') === '')
 
