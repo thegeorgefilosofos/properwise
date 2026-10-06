@@ -22,6 +22,9 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Νέο module που διαβάζει το κλειδί της βάσης απευθείας: ακριβώς ο δρόμος
+  // από τον οποίο ένα κρυφό «\n» έριξε όλο το Realtime (06.10.2026).
+  'supabase-env': { add: 'lib/__mut_env__.ts', content: "export const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY\n" },
   // Νέα οθόνη που αθροίζει μόνη της τις δαπάνες του έτους, αντί να τις πάρει
   // από το lib/facts: ακριβώς ο τρόπος που το ίδιο ακίνητο είχε τέσσερα ποσά
   // σε τέσσερις οθόνες (05.10.2026).

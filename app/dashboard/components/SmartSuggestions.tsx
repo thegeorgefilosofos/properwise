@@ -26,6 +26,7 @@ import { T, TT, fe, EmptyState, Btn, IconBtn, LinkBtn } from '@/components/Theme
 import { saved } from '@/components/dbWrite';
 import { ASSISTANT_ACC, suggestionsTitle, suggestionsSub, suggestionsTeaser } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
+import { SUPABASE_URL } from '@/lib/supabase/env'
 
 interface Suggestion {
   title: string;
@@ -112,7 +113,7 @@ export default function SmartSuggestions({ userId, propertyId }: { userId: strin
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error('no session');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/smart-suggestions`,
+        `${SUPABASE_URL}/functions/v1/smart-suggestions`,
         {
           method: 'POST',
           headers: {

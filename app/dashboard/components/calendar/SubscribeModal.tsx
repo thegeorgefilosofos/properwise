@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { feedUrl } from '@/lib/data/calendarFeed'
 import { T, Btn, Modal, Spinner } from '@/components/Theme'
 import { Calendar, CalendarDays, Info, CalendarPlus } from 'lucide-react'
+import { SUPABASE_URL } from '@/lib/supabase/env'
 
 // ══ ΕΝΑ ΙΔΙΩΜΑ ΓΙΑ ΤΟΝ ΣΥΝΔΕΣΜΟ ΚΑΙ ΦΑΙΝΕΤΑΙ ΟΛΟΚΛΗΡΟΣ ══════════════════════
 // ΤΙ ΔΕΝ ΠΗΓΑΙΝΕ. Οι δύο σύνδεσμοι ζούσαν μέσα σε <input readOnly> πλάτους 280
@@ -53,7 +54,7 @@ function FeedLink({ label, hint, url, onCopy, copied }: {
 export function SubscribeModal({ token, propertyId, onClose }: { token:string|null; propertyId:string; onClose:()=>void }) {
   const [copied,setCopied]=useState(false)
   const [copiedBusy,setCopiedBusy]=useState(false)
-  const base=(process.env.NEXT_PUBLIC_SUPABASE_URL||'').replace(/\/$/,'')
+  const base=SUPABASE_URL.replace(/\/$/,'')
   const httpsUrl=feedUrl(token)
   const busyUrl=token?`${base}/functions/v1/bookings-feed?token=${token}&property=${propertyId}`:''
   const copyBusy=async()=>{ try{ await navigator.clipboard.writeText(busyUrl); setCopiedBusy(true); setTimeout(()=>setCopiedBusy(false),1800) }catch{} }
