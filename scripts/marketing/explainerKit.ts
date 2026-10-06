@@ -32,7 +32,7 @@ export const KIT_CSS = `
   .eb{font-size:22px;color:${C.accent};display:flex;align-items:center;gap:16px;letter-spacing:.22em}
   .eb i{display:block;width:40px;height:2px;background:${C.accent}}
   .hd{font-weight:800;letter-spacing:-.045em;line-height:1.0;white-space:nowrap}
-  .a{background:linear-gradient(95deg,#a9c8ff 0%,#5f9bff 60%,#3d7ef0 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .a{background-image:linear-gradient(95deg,#a9c8ff 0%,#5f9bff 20%,#3d7ef0 33.33%,#6fa3ff 45%,#f4f8ff 50%,#8ab4f8 55%,#a9c8ff 66.67%,#5f9bff 86.67%,#3d7ef0 100%);background-size:300% 100%;background-position:0 0;-webkit-background-clip:text;background-clip:text;color:transparent}
   .sub{font-size:40px;font-weight:700;letter-spacing:-.02em;line-height:1.25}
   .sub2{font-size:34px;font-weight:500;letter-spacing:-.015em;line-height:1.35;color:#aebbd0}
   .sub2 b{color:${C.ink};font-weight:700}
@@ -87,6 +87,16 @@ export const KIT_CSS = `
   .wcal .mark path{fill:none;stroke:${TONE.rd};stroke-width:8;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 2px 0 rgba(0,0,0,.15))}
   .wcal .rings{position:absolute;left:0;right:0;top:-18px;display:flex;justify-content:space-around;z-index:5}
   .wcal .rings i{width:20px;height:48px;border-radius:10px;background:linear-gradient(90deg,#1e2634,#6b7688 45%,#2a3344);box-shadow:0 6px 10px rgba(0,0,0,.5)}
+  section{perspective:1600px}
+  #cam{position:absolute;inset:0}
+  #amb i{position:absolute;border-radius:50%;filter:blur(60px)}
+  #spot{position:absolute;left:0;top:0;width:1100px;height:1100px;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(138,180,248,.24),rgba(138,180,248,.07) 55%,transparent)}
+  #streak{position:absolute;top:-300px;left:0;width:150px;height:2600px;opacity:0;mix-blend-mode:screen;
+    background:linear-gradient(90deg,transparent,rgba(190,215,255,.5) 45%,rgba(255,255,255,.75) 50%,rgba(190,215,255,.5) 55%,transparent)}
+  .ctas{display:flex;gap:18px;justify-content:center}
+  .cta{display:inline-flex;align-items:center;gap:12px;padding:16px 28px 16px 22px;border-radius:99px;font-size:28px;font-weight:700;letter-spacing:-.01em;
+    background:rgba(138,180,248,.14);border:1.5px solid rgba(138,180,248,.45);box-shadow:0 20px 40px rgba(0,0,0,.4)}
   #bloom{position:absolute;left:50%;top:860px;width:1300px;height:1300px;margin:-650px 0 0 -650px;border-radius:50%;
     background:radial-gradient(closest-side, ${C.accent}44, transparent);opacity:0}`;
 
@@ -110,6 +120,8 @@ export const ICON = {
   iban: 'M3 5h18v14H3z|M7 10h4|M7 14h10|M15 9.5h2',
   shield: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z|M8.5 12l2.5 2.5 4.5-5',
   receipt: 'M5 2h14v20l-3-2-2 2-2-2-2 2-2-2-3 2z|M9 7h6|M9 11h6|M9 15h4',
+  bookmark: 'M6 3h12v18l-6-4-6 4z',
+  send: 'M22 2L11 13|M22 2l-7 20-4-9-9-4z',
 };
 export const icon = (d: string, c: string, px: number, sw = 1.8) =>
   `<svg width="${px}" height="${px}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${d.split('|').map(x => `<path d="${x}"/>`).join('')}</svg>`;
@@ -161,16 +173,23 @@ export interface Explainer {
   cover: number;
   /** Στιγμές για τα stories: το τέλος κάθε σκηνής, όταν όλα έχουν μπει. */
   stills: number[];
+  /** Πού πέφτει ο προβολέας σε κάθε σκηνή: το κέντρο του κεντρικού γραφικού. */
+  spots: [number, number][];
+  /** Στιγμές κρούσης: η κάμερα τινάζεται (σφραγίδα, τίτλος που προσγειώνεται). */
+  hits: number[];
   caption: string;
   readme: string;
 }
 
 function page(x: Explainer): string {
-  const D = { S: x.scenes, END: x.end, heads: x.heads, ...(x.data ?? {}) };
+  const D = { S: x.scenes, END: x.end, heads: x.heads, spots: x.spots, hits: x.hits, ...(x.data ?? {}) };
   return `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${BASE_CSS}${KIT_CSS}${x.css}</style></head><body>
   <div id="bg"></div>
+  <div id="amb" class="deco">${['#3d7ef0', '#5b6cff', '#2f8fe0', '#3d7ef0', '#4f7fd8'].map((c, k) => `<i id="a${k}" style="width:${[420, 360, 300, 260, 220][k]}px;height:${[420, 360, 300, 260, 220][k]}px;background:${c}"></i>`).join('')}</div>
+  <div id="spot" class="deco"></div>
   <div id="dust" class="deco">${Array.from({ length: 22 }, (_, k) => `<i id="d${k}"></i>`).join('')}</div>
   <div id="top"><div class="br">${mark(34, C.ink)}<span>PROPERWISE</span></div><div id="prog">${x.scenes.map((_, k) => `<i><b id="pb${k}"></b></i>`).join('')}</div></div>
+  <div id="cam">
   ${x.html}
   <section id="EN">
     <div id="bloom" class="deco"></div>
@@ -180,7 +199,12 @@ function page(x: Explainer): string {
     <div class="ctr" style="top:988px">${mask('m3', esc(TAGLINE), 'tag')}</div>
     <div class="ctr mono url" id="m4" style="top:1082px;color:${C.muted}">ΓΙΑ ΚΑΘΕ ΙΔΙΟΚΤΗΤΗ ΑΚΙΝΗΤΟΥ ΣΤΗΝ ΕΛΛΑΔΑ</div>
     <div class="ctr mono url" id="m5" style="top:1170px">PROPERWISE.GR</div>
+    <div class="ctr" id="m6" style="top:1270px"><div class="ctas">
+      <span class="cta" id="m7"><span id="m7i">${icon(ICON.bookmark, '#cfe0ff', 30, 2)}</span>Αποθήκευσέ το</span>
+      <span class="cta" id="m8"><span id="m8i">${icon(ICON.send, '#cfe0ff', 30, 2)}</span>Στείλ' το</span></div></div>
   </section>
+  </div>
+  <div id="streak" class="deco"></div>
   <div class="vig"></div><div class="grain"></div>
   <script>
   const D = ${JSON.stringify(D)};
@@ -196,20 +220,22 @@ function page(x: Explainer): string {
     const on = T >= a - .12 && T < b + .02;
     op(el, on ? i * (1 - o) : 0);
     if (!on) return T - S[k];
-    const push = p(T, a, b);
+    const push = p(T, a, b), dir = k % 2 ? -1 : 1;
     el.style.transformOrigin = '540px 900px';
-    tf(el, 'scale(' + ((1.05 - .05 * i) * (1 - .04 * o) * (1 + .012 * push)) + ')');
-    const bl = (1 - i) * 10 + o * 8;
+    tf(el, 'translateX(' + (dir * 170 * (1 - i) - dir * 170 * o) + 'px) skewX(' + (-dir * 5 * (1 - i) + dir * 5 * o) + 'deg) scale(' + ((1.05 - .05 * i) * (1 - .04 * o) * (1 + .012 * push)) + ')');
+    const bl = (1 - i) * 9 + o * 7;
     el.style.filter = bl > .05 ? 'blur(' + bl.toFixed(2) + 'px)' : 'none';
     return T - S[k];
   };
   const heads = (k) => {
     const a = S[k], e = $('e' + k), v = eo(p(T, a + .02, a + .45));
     if (e) { op(e, v); tf(e, 'translateX(' + (-24 * (1 - v)) + 'px)'); }
-    for (let j = 0; j < D.heads[k]; j++) rev('h' + k + '_' + j, a + .1 + j * .11, null, .6);
+    for (let j = 0; j < D.heads[k]; j++) { rev('h' + k + '_' + j, a + .1 + j * .11, null, .6); shine($('h' + k + '_' + j), a + .75 + j * .1); }
   };
+  /** Μια λάμψη περνά πάνω από τις μπλε λέξεις και τις αφήνει στο χρώμα της μάρκας. */
+  const shine = (el, s) => { const g = el && el.querySelector('.a'); if (g) g.style.backgroundPosition = (100 * eio(p(T, s, s + .8))) + '% 0'; };
   /** Μπαίνει από κάτω με ελατήριο. */
-  const rise = (id, u, s, d, dy) => { const v = spring(p(u, s, s + (d || .7))); op($(id), cl(v * 1.8)); tf($(id), 'translateY(' + ((dy == null ? 60 : dy) * (1 - v)) + 'px)'); return v; };
+  const rise = (id, u, s, d, dy) => { const v = spring(p(u, s, s + (d || .7))); op($(id), cl(v * 1.8)); tf($(id), 'translateY(' + ((dy == null ? 60 : dy) * (1 - v)) + 'px) rotateX(' + (14 * (1 - cl(v))) + 'deg)'); return v; };
   /** Μπαίνει από αριστερά, ήπια. */
   const slide = (id, u, s, d) => { const v = eo(p(u, s, s + (d || .45))); op($(id), v); tf($(id), 'translateX(' + (30 * (1 - v)) + 'px)'); return v; };
   /** Σκάει με ελατήριο (σφραγίδα, ετικέτα). */
@@ -239,7 +265,21 @@ function page(x: Explainer): string {
       tf(d, 'translate(' + x + 'px,' + y + 'px)');
       op(d, (.10 + .22 * z) * (.6 + .4 * Math.sin(t * 1.3 + k * 2)));
     }
-    op($('top'), eo(p(t, .1, .6)) * (1 - eo(p(t, D.END - .3, D.END + .2))));
+    // Φως studio: φωτεινά σημεία στο βάθος και ένας προβολέας που πάει στο γραφικό κάθε σκηνής.
+    for (let k = 0; k < 5; k++) {
+      const a = t * (.07 + k * .015) + k * 1.3;
+      tf($('a' + k), 'translate(' + (540 + Math.cos(a) * (260 + k * 40) - 200) + 'px,' + (900 + Math.sin(a * .8) * (420 + k * 50) - 200) + 'px)');
+      op($('a' + k), .07 + .03 * Math.sin(t * .5 + k));
+    }
+    { let k = 0; while (k < S.length - 1 && t >= S[k + 1] - .2) k++;
+      const nx = k + 1 < S.length ? S[k + 1] : D.END, w = eio(p(t, nx - .2, nx + .3)), A2 = D.spots[k], B2 = D.spots[Math.min(S.length - 1, k + 1)];
+      const sx = lerp(A2[0], B2[0], w), sy = lerp(A2[1], B2[1], w), pul = 1 + .08 * Math.exp(-(t - S[k]) * 2.2);
+      tf($('spot'), 'translate(' + (sx - 550) + 'px,' + (sy - 550) + 'px) scale(' + pul + ')'); op($('spot'), (1 - eo(p(t, D.END - .3, D.END + .3)))); }
+    { let w = 0; for (const b of [...S.slice(1), D.END]) { const q = p(t, b - .25, b + .22); if (q > 0 && q < 1) w = q; }
+      op($('streak'), Math.sin(Math.PI * w) * .32); tf($('streak'), 'translateX(' + (-400 + 1800 * eio(w)) + 'px) rotate(14deg)'); }
+    { let sx = 0; for (const h of D.hits) if (t > h && t < h + .8) sx += Math.exp(-(t - h) * 9) * Math.sin((t - h) * 58) * 10;
+      tf($('cam'), 'translate(' + sx + 'px,' + (sx * .45) + 'px)'); }
+    op($('top'), eo(p(t, 0, .3)) * (1 - eo(p(t, D.END - .3, D.END + .2))));
     S.forEach((s, k) => tf($('pb' + k), 'scaleX(' + p(t, s, ends[k]) + ')'));
     let u = 0;
     ${x.js}
@@ -251,6 +291,8 @@ function page(x: Explainer): string {
     const q2 = eo(p(t, D.END + .55, D.END + 1.2)); op($('m2'), q2); tf($('m2'), 'scaleX(' + q2 + ')');
     op($('m4'), eo(p(t, D.END + .9, D.END + 1.3)));
     op($('m5'), eo(p(t, D.END + 1.1, D.END + 1.5)));
+    rise('m7', t, D.END + 1.4, .7, 40); rise('m8', t, D.END + 1.55, .7, 40);
+    { const b = t > D.END + 2.2 ? Math.abs(Math.sin((t - D.END - 2.2) * 4.2)) * Math.exp(-((t - D.END - 2.2) % 1.5) * 2) : 0; tf($('m7i'), 'translateY(' + (-8 * b) + 'px)'); tf($('m8i'), 'translate(' + (6 * b) + 'px,' + (-6 * b) + 'px)'); }
   };
   </script></body></html>`;
 }
@@ -270,11 +312,13 @@ function score(x: Explainer): Mix {
   kicks.forEach(k => m.kick(k, .85));
   m.duck(kicks, .3);
   S.slice(1).forEach((s, i) => { m.whoosh(s - .35, .5, .06, true); m.pluck(s + .05, [81, 77, 84, 79, 81, 86, 84][i % 7], .045, 0, .5); });
+  x.hits.forEach(h => { m.boom(h, .14); m.click(h, 600, .1); });
   x.sound(m);
   m.whoosh(x.end - .7, .7, .1, true);
   m.boom(x.end, .24);
   ch('F5', 'A5', 'C6', 'E6', 'A6').forEach((n, i) => m.bell(x.end + .05 + i * .07, n, .05, (i - 2) * .22));
   m.bell(x.end + .8, 77, .035);
+  m.pluck(x.end + 1.45, 84, .05, -.2, .5); m.pluck(x.end + 1.6, 88, .05, .2, .5);
   m.reverb();
   return m;
 }

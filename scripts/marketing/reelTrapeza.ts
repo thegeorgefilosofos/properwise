@@ -110,7 +110,7 @@ const HTML = `
   <!-- 1 · Η ερώτηση -->
   <section id="s0">
     <div class="L eb mono" id="e0" style="top:320px"><i></i>ΕΝΟΙΚΙΟ ΜΕΣΩ ΤΡΑΠΕΖΑΣ</div>
-    <div class="L hd" style="top:370px;font-size:112px">${['Σου δίνει', 'το ενοίκιο', A('σε μετρητά;')].map((l, k) => `<div class="mk"><div class="mi" id="q${k}">${l}</div></div>`).join('')}</div>
+    <div class="L hd" id="hd0" style="top:370px;font-size:112px;transform-origin:0 0">${['Σου δίνει', 'το ενοίκιο', A('σε μετρητά;')].map((l, k) => `<div class="mk"><div class="mi" id="q${k}">${l}</div></div>`).join('')}</div>
     <div class="L sub" id="c0" style="top:730px">Από ${esc(START_DAY)} σου κοστίζει.</div>
     <div id="env" class="deco">
       <div class="shadow"></div>
@@ -285,12 +285,13 @@ const CSS = `
 const JS = `
     // ── 1 · Ο φάκελος: τα χαρτονομίσματα βγαίνουν ένα ένα ─────────────────
     u = scene(0);
-    { const e = $('e0'), v = eo(p(t, .05, .5)); op(e, v); tf(e, 'translateX(' + (-24 * (1 - v)) + 'px)'); }
-    [.12, .26, .42].forEach((s, k) => rev('q' + k, s, null, .55));
-    { const v = eo(p(t, 1.15, 1.7)); op($('c0'), v); tf($('c0'), 'translateY(' + (26 * (1 - v)) + 'px)'); }
-    { const v = spring(p(t, .15, 1.05)); op($('env'), cl(v * 1.6)); tf($('env'), 'translateY(' + (260 * (1 - v)) + 'px) rotate(' + (-2 * (1 - v) + Math.sin(t * 1.3) * .5) + 'deg)'); }
+    { const e = $('e0'), v = eo(p(t, -.3, .2)); op(e, v); tf(e, 'translateX(' + (-24 * (1 - v)) + 'px)'); }
+    [-.8, -.7, -.6].forEach((s, k) => rev('q' + k, s, null, .55)); shine($('q2'), .5);
+    { const z = eo(p(t, 0, .6)); tf($('hd0'), 'scale(' + (1.04 - .04 * z) + ')'); }
+    { const v = eo(p(t, .35, .9)); op($('c0'), v); tf($('c0'), 'translateY(' + (26 * (1 - v)) + 'px)'); }
+    { const v = spring(p(t, -.6, .5)); op($('env'), cl(v * 1.6)); tf($('env'), 'translateY(' + (260 * (1 - v)) + 'px) rotate(' + (-2 * (1 - v) + Math.sin(t * 1.3) * .5) + 'deg)'); }
     for (let k = 0; k < 3; k++) {
-      const el = $('n' + k), r = Number(el.dataset.r), v = spring(p(t, .75 + k * .2, 1.7 + k * .2));
+      const el = $('n' + k), r = Number(el.dataset.r), v = spring(p(t, .45 + k * .2, 1.4 + k * .2));
       tf(el, 'translate(' + ((k - 1) * 120 * v) + 'px,' + (-(150 + k * 50) * v) + 'px) rotate(' + ((r * 1.6) * (.3 + .7 * v) + Math.sin(t * 1.1 + k) * .8 * v) + 'deg)');
       $('n' + k + 'h').style.backgroundPosition = '0 ' + ((t * 22 + k * 30) % 100) + '%';
     }
@@ -384,9 +385,8 @@ const X: Explainer = {
   data: { nb: BR.length, cv: CV, steps: STEPS, tiles: TILES, outN: OUT_N, pcts: PCTS, cal: { cl: calPages(DAYS) } },
   sound: m => {
     // 1 · Ο φάκελος και τα τρία χαρτονομίσματα.
-    [.12, .26, .42].forEach((s, k) => m.click(s, 2400 + k * 200, .07, (k - 1) * .2));
-    m.whoosh(.15, .8, .06, true);
-    for (let k = 0; k < 3; k++) { const s = .75 + k * .2 + .25; m.whoosh(s - .1, .35, .04, true); m.click(s, 2200 + k * 250, .05, (k - 1) * .3); m.pluck(s + .02, [74, 77, 81][k], .035, (k - 1) * .3, .4); }
+    m.whoosh(0, .6, .05, true);
+    for (let k = 0; k < 3; k++) { const s = .45 + k * .2 + .25; m.whoosh(s - .1, .35, .04, true); m.click(s, 2200 + k * 250, .05, (k - 1) * .3); m.pluck(s + .02, [74, 77, 81][k], .035, (k - 1) * .3, .4); }
     m.whoosh(SC[1] - 1.1, 1.1, .1, true);
     // 2 · Τα πλέγματα γεμίζουν κύμα κύμα, το 5% πρασινίζει, το κόκκινο τρέμει.
     for (let d = 0; d < 19; d++) m.click(SC[1] + .55 + d * .045 + .15, 3000 + d * 40, .018, (d % 2 ? .3 : -.3));
@@ -409,6 +409,8 @@ const X: Explainer = {
   },
   checkAt: [SC[1] - .3, SC[2] - .3, SC[3] - .3, SC[4] - .3, SC[5] - .3, SC[6] - .3, END - .3, DUR - .2],
   cover: SC[1] - .45,
+  spots: [[540, 1160], [540, 930], [540, 860], [515, 950], [515, 940], [540, 1080], [515, 940]],
+  hits: [.7],
   stills: [SC[1] - .35, SC[2] - .35, SC[3] - .35, SC[4] - .35, SC[5] - .35, SC[6] - .35, END - .35],
   caption: CAPTION,
   readme: [
