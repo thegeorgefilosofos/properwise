@@ -34,7 +34,7 @@ export const KIT_CSS = `
   .hd{font-weight:800;letter-spacing:-.045em;line-height:1.0;white-space:nowrap}
   .a{background-image:linear-gradient(95deg,#a9c8ff 0%,#5f9bff 20%,#3d7ef0 33.33%,#6fa3ff 45%,#f4f8ff 50%,#8ab4f8 55%,#a9c8ff 66.67%,#5f9bff 86.67%,#3d7ef0 100%);background-size:300% 100%;background-position:0 0;-webkit-background-clip:text;background-clip:text;color:transparent}
   .sub{font-size:40px;font-weight:700;letter-spacing:-.02em;line-height:1.25}
-  .sub2{font-size:34px;font-weight:500;letter-spacing:-.015em;line-height:1.35;color:#aebbd0}
+  .sub2{font-size:34px;font-weight:500;letter-spacing:-.015em;line-height:1.35;color:#aebbd0;text-wrap:pretty}
   .sub2 b{color:${C.ink};font-weight:700}
   .lbl{font-family:'Roboto Mono',monospace;font-size:17px;letter-spacing:.16em;color:#7d8da6}
   .card{position:absolute;border-radius:28px;background:linear-gradient(180deg,rgba(28,44,72,.96),rgba(14,24,42,.97));border:1px solid rgba(255,255,255,.12);
@@ -81,7 +81,7 @@ export const KIT_CSS = `
   .wcal .pg .h{display:flex;justify-content:space-between;padding:26px 34px 22px;background:linear-gradient(180deg,#24406b,#1a2c48);color:#e9eef6;
     font-family:'Roboto Mono',monospace;font-size:26px;letter-spacing:.16em}
   .wcal .pg .d{font-size:220px;font-weight:850;letter-spacing:-.06em;text-align:center;line-height:1.05;margin-top:6px}
-  .wcal .pg .w{font-family:'Roboto Mono',monospace;font-size:20px;letter-spacing:.3em;color:#6b7788;text-align:center}
+  .wcal .pg .w{position:absolute;left:0;right:0;bottom:20px;font-family:'Roboto Mono',monospace;font-size:20px;letter-spacing:.3em;color:#6b7788;text-align:center}
   .wcal .pg .perf{position:absolute;left:0;right:0;top:78px;height:10px;background:radial-gradient(circle,#c8d0db 2.5px,transparent 3px) 0 0/18px 10px}
   .wcal .mark{position:absolute;left:30px;top:84px;width:440px;height:300px;overflow:visible;pointer-events:none}
   .wcal .mark path{fill:none;stroke:${TONE.rd};stroke-width:8;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 2px 0 rgba(0,0,0,.15))}

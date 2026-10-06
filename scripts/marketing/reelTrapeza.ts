@@ -104,6 +104,11 @@ const RATE_TONE: Record<string, string> = { '0.15': '#5f9bff', '0.25': TONE.wa, 
 const BR = BARS.map(b => ({ ...b, m: marginal(year(b.r).gross) }));
 const STEPS = 24;
 const CV = BR.map(b => Array.from({ length: STEPS + 1 }, (_, s) => `+${feWhole(Math.round(b.d * s / STEPS))}`));
+// Το ύψος κάθε στήλης· η τιμή κάθεται πάνω της, ώστε να διαβάζεται στη θέση της.
+// Τα ενοίκια του κινητού: τρεις μήνες μέσω τραπέζης, ένας με μετρητά.
+const PHONE_ROWS: [string, string][] = [['ΙΟΥΛ', PAY_METHODS[1]], ['ΑΥΓ', PAY_METHODS[2]], ['ΣΕΠ', PAY_METHODS[1]], ['ΟΚΤ', CASH]];
+const PHONE_BANK = PHONE_ROWS.filter(([, me]) => me !== CASH).length;
+const BAR_H = BR.map(b => Math.round(10 + 70 * b.d / BR[BR.length - 1].d));
 const LEGEND = [...new Set(BR.map(b => b.m))].sort();
 
 const HTML = `
@@ -132,13 +137,13 @@ const HTML = `
       ${grid(k)}
       <div class="gt" id="gt${k}">${k === 'b' ? `✓ ${PCT} έκπτωση` : `× καμία έκπτωση`}</div>
     </div>`).join('')}
-    <div class="L src" id="src1" style="top:1300px">Πηγή: ${esc(SRC)} · τεκμαρτή έκπτωση: άρθρο 39 παρ. 3 ΚΦΕ</div>
+    <div class="L src" id="src1" style="top:1290px">Πηγή: ${esc(SRC)}<br>Τεκμαρτή έκπτωση: άρθρο 39 παρ. 3 ΚΦΕ</div>
   </section>
 
   <!-- 3 · Από πότε -->
   <section id="s2">
     ${head(2, 'ΑΠΟ ΠΟΤΕ', [`Από ${esc(START_TEXT.replace(` ${FIRST_YEAR_BANK_RECEIPT}`, ''))}`, A(`${FIRST_YEAR_BANK_RECEIPT}.`)], 100)}
-    ${calendar('cl', 290, 630)}
+    ${calendar('cl', 265, 630)}
     <div class="card" id="safe" style="left:90px;top:1120px;width:850px;padding:10px 34px">
       ${SAFE_YEARS.map((y, k) => `<div class="ck" id="sy${k}"><div class="dt" style="background:rgba(82,199,158,.16)"><i style="display:block;width:12px;height:22px;margin-bottom:6px;border:solid ${TONE.ok};border-width:0 4px 4px 0;transform:rotate(45deg)"></i></div>
         <div class="tx">Εισοδήματα ${y}: η έκπτωση δίνεται<small>Δήλωση ${y + 1}, όπως κι αν εισπράττεις</small></div></div>`).join('')}
@@ -152,8 +157,7 @@ const HTML = `
       <div class="row"><div class="lbl">ΕΠΙΠΛΕΟΝ ΦΟΡΟΣ ΤΟΝ ΧΡΟΝΟ ΜΕ ΜΕΤΡΗΤΑ</div><span class="pill p-bl">${esc(bracketsLabelForYear(FULL).replace(/ \(.*$/, ''))}</span></div>
       <div class="plot"><div class="gridl"><i></i><i></i><i></i><i></i></div>
         ${BR.map((b, k) => `<div class="cb${b.r === EX ? ' hi' : ''}${b.r === BIG ? ' hi2' : ''}">
-          <span class="cv" id="cv${k}">${CV[k][0]}</span>
-          <div class="cc"><i id="cf${k}" style="height:${Math.round(14 + 86 * b.d / BR[BR.length - 1].d)}%;--c:${RATE_TONE[String(b.m)]}"></i></div>
+          <div class="cc"><i id="cf${k}" style="height:${BAR_H[k]}%;--c:${RATE_TONE[String(b.m)]}"></i><span class="cv" id="cv${k}">${CV[k][0]}</span></div>
           <span class="cx">${feWhole(b.r)}</span></div>`).join('')}</div>
       <div class="leg">${LEGEND.map(m => `<span><i style="background:${RATE_TONE[String(m)]}"></i>κλιμάκιο ${fpRate(m * 100)}</span>`).join('')}<em>ΕΝΟΙΚΙΟ ΤΟΝ ΜΗΝΑ</em></div>
     </div>
@@ -162,14 +166,14 @@ const HTML = `
 
   <!-- 5 · Τι μετρά ως τράπεζα -->
   <section id="s4">
-    ${head(4, 'ΤΙ ΜΕΤΡΑ ΩΣ ΤΡΑΠΕΖΑ', ['Μετράει ό,τι', A('φτάνει σε'), A('λογαριασμό σου.')], 88)}
+    ${head(4, 'ΤΙ ΜΕΤΡΑ ΩΣ ΤΡΑΠΕΖΑ', ['Μετράει ό,τι', A('φτάνει στον'), A('λογαριασμό σου.')], 88)}
     <div class="ftg" style="top:680px">
       ${tile('w0', true, ICON.bank, 'Κατάθεση', 'στον λογαριασμό σου')}
       ${tile('w1', true, ICON.transfer, 'Έμβασμα', 'από τον λογαριασμό του ενοικιαστή')}
       ${tile('w2', true, ICON.bolt, 'IRIS', 'άμεση πληρωμή')}
       ${tile('w3', false, ICON.cash, 'Μετρητά', 'στο χέρι, δεν μετράνε')}
     </div>
-    <div class="L sub2" id="c4" style="top:1240px;width:820px">Ο λογαριασμός πρέπει να είναι <b>γνωστοποιημένος στην ΑΑΔΕ</b>.</div>
+    <div class="L sub2" id="c4" style="top:1240px;width:820px">Ο λογαριασμός πρέπει να είναι<br><b>γνωστοποιημένος στην ΑΑΔΕ</b>.</div>
   </section>
 
   <!-- 6 · Στο PROPERWISE -->
@@ -180,10 +184,11 @@ const HTML = `
       <div class="isl"></div>
       <div class="ap">
         <div class="ah"><span class="m">${mark(22, C.ink)}</span><span>Ενοίκια</span><span class="y mono">ΠΑΡΑΔΕΙΓΜΑ</span></div>
-        ${[['ΙΟΥΛ', PAY_METHODS[1]], ['ΑΥΓ', PAY_METHODS[2]], ['ΣΕΠ', PAY_METHODS[1]], ['ΟΚΤ', CASH]].map(([mo, me], k) => `
+        ${PHONE_ROWS.map(([mo, me], k) => `
         <div class="pr" id="pr${k}"><span class="pm mono">${mo}</span><div class="pt"><b>${feWhole(EX)}</b><span class="${me === CASH ? 'warn' : ''}">${esc(me)}</span></div>
           <span class="pd" style="background:${me === CASH ? 'rgba(229,192,123,.18)' : 'rgba(82,199,158,.16)'};color:${me === CASH ? TONE.wa : TONE.ok}">${me === CASH ? '!' : '✓'}</span></div>`).join('')}
         <div class="wb" id="wb"><span class="wi">!</span><span>${esc(APP_WARN)}</span></div>
+        <div class="sm" id="smr"><span>Μέσω τραπέζης</span><b>${PHONE_BANK} από ${PHONE_ROWS.length} μήνες</b></div>
       </div>
     </div></div></div>
   </section>
@@ -191,7 +196,7 @@ const HTML = `
   <!-- 7 · Τι κάνεις από τώρα -->
   <section id="s6">
     ${head(6, 'ΤΙ ΚΑΝΕΙΣ ΑΠΟ ΤΩΡΑ', ['Τρία βήματα', A('πριν από την'), A(`${START_TEXT}.`)], 88)}
-    ${[[ICON.iban, 'Δώσε το IBAN σου στον ενοικιαστή', 'για κατάθεση, έμβασμα ή IRIS'], [ICON.shield, 'Βεβαιώσου ότι ο λογαριασμός είναι στην ΑΑΔΕ', 'γνωστοποιημένος, όπως ζητά ο νόμος'], [ICON.receipt, 'Κράτα αποδεικτικό για κάθε μίσθωμα', 'κίνηση λογαριασμού ή απόδειξη κατάθεσης']]
+    ${[[ICON.iban, 'Δώσε το IBAN σου στον ενοικιαστή', 'για κατάθεση, έμβασμα ή IRIS'], [ICON.shield, 'Γνωστοποίησε τον λογαριασμό στην ΑΑΔΕ', 'αν δεν είναι ήδη, όπως ζητά ο νόμος'], [ICON.receipt, 'Κράτα αποδεικτικό για κάθε μίσθωμα', 'κίνηση λογαριασμού ή απόδειξη κατάθεσης']]
       .map(([ic, t, s], k) => `<div class="card stp" id="k${k}" style="top:${690 + k * 168}px"><span class="sn mono">${k + 1}</span><span class="si">${icon(ic, '#cfe0ff', 42, 1.7)}</span><div><b>${esc(t)}</b><small>${esc(s)}</small></div></div>`).join('')}
     <div class="L sub2" id="c6" style="top:1220px;width:820px">Ο οδηγός και ο υπολογιστής του φόρου: <b>properwise.gr</b></div>
   </section>`;
@@ -231,8 +236,8 @@ const CSS = `
   /* 2 · Πλέγματα */
   .gp{top:650px;width:410px;padding:24px 24px 22px}
   .gp .gh{display:flex;justify-content:space-between;align-items:baseline}
-  .gp .gh span{font-size:30px;font-weight:750;letter-spacing:-.02em}
-  .gp .gh b{font-size:62px;font-weight:850;letter-spacing:-.045em}
+  .gp .gh span{font-size:28px;font-weight:750;letter-spacing:-.02em}
+  .gp .gh b{font-size:56px;font-weight:850;letter-spacing:-.045em}
   .grid{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin-top:16px}
   .grid i{display:block;aspect-ratio:1;border-radius:6px;background:linear-gradient(160deg,#6fa3ff,#2f6fe0);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
   .gt{display:inline-block;margin-top:18px;font-size:23px;font-weight:650;padding:8px 16px;border-radius:99px}
@@ -243,11 +248,11 @@ const CSS = `
   .gridl{position:absolute;left:0;right:0;top:40px;bottom:34px;display:flex;flex-direction:column;justify-content:space-between}
   .gridl i{display:block;height:1px;background:rgba(255,255,255,.07)}
   .cb{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:10px;height:100%}
-  .cc{flex:1;width:100%;display:flex;align-items:flex-end}
+  .cc{position:relative;flex:1;width:100%;display:flex;align-items:flex-end}
   .cc i{display:block;width:100%;border-radius:12px 12px 4px 4px;transform-origin:bottom center;
     background:linear-gradient(180deg,var(--c),color-mix(in srgb,var(--c) 55%,#0a1220));box-shadow:0 10px 26px color-mix(in srgb,var(--c) 35%,transparent),inset 0 1px 0 rgba(255,255,255,.3)}
   .cb:not(.hi):not(.hi2) .cc i{filter:saturate(.55) brightness(.8)}
-  .cv{font-size:22px;font-weight:750;white-space:nowrap}
+  .cv{position:absolute;left:50%;bottom:0;font-size:22px;font-weight:750;white-space:nowrap;line-height:1}
   .cb.hi .cv,.cb.hi2 .cv{font-size:26px;padding:6px 12px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18)}
   .cx{font-family:'Roboto Mono',monospace;font-size:17px;color:#9aa8bd;white-space:nowrap}
   .leg{display:flex;gap:22px;align-items:center;margin-top:12px;font-size:18px;color:#aebbd0}
@@ -255,9 +260,9 @@ const CSS = `
   .leg em{margin-left:auto;font-style:normal;font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.14em;color:#7d8da6}
 
   /* 6 · Κινητό */
-  #spot{position:absolute;left:140px;top:560px;width:800px;height:1000px;background:radial-gradient(closest-side,rgba(138,180,248,.18),transparent)}
+  #spot{position:absolute;left:115px;top:560px;width:800px;height:1000px;background:radial-gradient(closest-side,rgba(138,180,248,.18),transparent)}
   #stage3d{position:absolute;left:0;top:0;width:1080px;height:1920px;perspective:2200px;perspective-origin:50% 50%}
-  #phone{position:absolute;left:250px;top:660px;width:580px;height:840px;border-radius:72px;padding:15px;
+  #phone{position:absolute;left:225px;top:660px;width:580px;height:770px;border-radius:72px;padding:15px;
     background:linear-gradient(145deg,#3a4558,#141b27 40%,#2b3446);box-shadow:0 70px 130px rgba(0,0,0,.7),inset 0 0 0 2px rgba(255,255,255,.08)}
   .scr{position:relative;width:100%;height:100%;border-radius:58px;overflow:hidden;background:linear-gradient(180deg,#0d1422,#070b12 60%)}
   .isl{position:absolute;left:50%;top:16px;width:130px;height:36px;margin-left:-65px;border-radius:20px;background:#000}
@@ -270,6 +275,8 @@ const CSS = `
   .pr .pt{flex:1;display:flex;flex-direction:column;gap:4px}
   .pr .pt b{font-size:25px;font-weight:750}
   .pr .pt span{font-size:19px;color:#9aa8bd}
+  .sm{display:flex;justify-content:space-between;align-items:baseline;margin-top:22px;padding:18px 4px 0;border-top:1.5px solid ${C.rule};font-size:20px;color:#9aa8bd}
+  .sm b{font-size:24px;font-weight:750;color:${TONE.ok}}
   .pr .pt span.warn{color:${TONE.wa};font-weight:650}
   .pr .pd{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:21px;font-weight:800}
   .wb{display:flex;gap:12px;margin-top:16px;padding:16px 16px;border-radius:18px;background:rgba(229,192,123,.12);border:1.5px solid rgba(229,192,123,.45);font-size:17px;line-height:1.4;color:#f1e3c4}
@@ -306,8 +313,12 @@ const JS = `
         const el = $('g' + k + i); filled += v >= .99 ? 1 : 0;
         const out = i >= D.tiles - D.outN;
         let c0 = '', y = 0, sc = .6 + .4 * v;
-        if (out && k === 'b') { const g = spring(p(u, 2.0 + (i - (D.tiles - D.outN)) * .06, 2.7 + (i - (D.tiles - D.outN)) * .06)); y = -26 * g; sc *= 1 + .12 * g;
-          if (g > .02) c0 = 'linear-gradient(160deg,#9af0c8,${TONE.ok})'; el.style.boxShadow = g > .02 ? '0 0 ' + (18 * g) + 'px ${TONE.ok}' : ''; }
+        // Το 5% δεν σηκώνεται έξω από το πλέγμα: αδειάζει στη θέση του, ένα ένα,
+        // και μένει περίγραμμα. Οι γραμμές και οι στήλες μένουν ακέραιες.
+        if (out && k === 'b') { const j = i - (D.tiles - D.outN), g = eo(p(u, 2.0 + j * .07, 2.3 + j * .07));
+          if (g > .02) { c0 = 'rgba(82,199,158,' + (.14 * g) + ')'; el.style.boxShadow = 'inset 0 0 0 ' + (2.5 * g) + 'px ${TONE.ok}'; }
+          else el.style.boxShadow = '';
+          sc *= 1 - .14 * Math.sin(Math.PI * g); }
         if (out && k === 'c') { const g = eo(p(u, 2.5, 2.8)); if (g > .02) c0 = 'linear-gradient(160deg,#ffb1a8,${TONE.rd})';
           const sh = u > 2.8 ? Math.exp(-(u - 2.8) * 8) * Math.sin((u - 2.8) * 50) * 4 : 0; y = sh; }
         el.style.background = c0; op(el, v); tf(el, 'translateY(' + y + 'px) scale(' + sc + ')');
@@ -331,6 +342,7 @@ const JS = `
     for (let k = 0; k < D.nb; k++) {
       const s = .5 + k * .14, v = spring(p(u, s, s + .8)); tf($('cf' + k), 'scaleY(' + v + ')');
       $('cv' + k).textContent = D.cv[k][Math.round(cl(eio(p(u, s, s + .7))) * D.steps)]; op($('cv' + k), eo(p(u, s, s + .3)));
+      $('cv' + k).style.bottom = (D.barH[k] * v) + '%'; tf($('cv' + k), 'translate(-50%,-12px)');
     }
     { const v = eo(p(u, 2.8, 3.3)); op($('c3'), v); tf($('c3'), 'translateY(' + (24 * (1 - v)) + 'px)'); }
 
@@ -351,6 +363,7 @@ const JS = `
     { const ph = eo(p(u, .1, 1.0)); tf($('phone'), 'translateY(' + (760 * (1 - ph) + Math.sin(u * 1.4) * 6) + 'px) rotateX(' + (24 - 20 * ph) + 'deg) rotateZ(' + (-3 + 3 * ph) + 'deg)'); }
     for (let k = 0; k < 4; k++) slide('pr' + k, u, .9 + k * .22);
     rise('wb', u, 2.1, .7, 30);
+    rise('smr', u, 2.5, .6, 24);
 
     // ── 7 · Τι κάνεις από τώρα ───────────────────────────────────────────
     u = scene(6); heads(6);
@@ -382,7 +395,7 @@ const CAPTION = [
 const X: Explainer = {
   slug: 'reel-trapeza', file: 'PROPERWISE-enoikio-meso-trapezas.mp4',
   scenes: SC, end: END, dur: DUR, html: HTML, css: CSS, heads: [0, 2, 2, 3, 3, 3, 3], js: JS,
-  data: { nb: BR.length, cv: CV, steps: STEPS, tiles: TILES, outN: OUT_N, pcts: PCTS, cal: { cl: calPages(DAYS) } },
+  data: { nb: BR.length, cv: CV, barH: BAR_H, steps: STEPS, tiles: TILES, outN: OUT_N, pcts: PCTS, cal: { cl: calPages(DAYS) } },
   sound: m => {
     // 1 · Ο φάκελος και τα τρία χαρτονομίσματα.
     m.whoosh(0, .6, .05, true);

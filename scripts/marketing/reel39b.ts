@@ -77,7 +77,7 @@ const HTML = `
         <div class="cap"><span>το πολύ</span><b id="ko">${feWhole(0)}</b></div><div class="col"><i id="co"></i></div></div>
       <div class="card vc new" id="vn"><div class="lbl" style="color:#9ec0ff">ΑΠΟ ${esc(RENO_39B_FROM)}</div><div class="big a">${fpRate(100)}</div><div class="lb">της δαπάνης</div>
         <div class="cap"><span>το πολύ</span><b class="ac" id="kn">${feWhole(0)}</b></div><div class="col"><i id="cn"></i></div></div>
-      <div class="times mono" id="tm">×${TIMES}</div>
+      <div class="times" id="tm">×${TIMES}</div>
     </div>
     <div class="L src" id="src1" style="top:1300px">Πηγή: ${esc(RENO_39B_LAW)} · ${esc(RENO_39B_KYA)}</div>
   </section>
@@ -98,7 +98,7 @@ const HTML = `
     ${head(3, 'ΟΙ ΟΡΟΙ', ['Τέσσερις όροι,', A('αλλιώς τίποτα.')], 96)}
     <div class="ftg" style="top:610px">
       ${tile('w0', true, ICON.card, 'Ηλεκτρονική πληρωμή', 'κάρτα, έμβασμα ή άμεση πληρωμή')}
-      ${tile('w1', true, ICON.invoice, 'Τιμολόγιο στο ΑΦΜ σου', 'για εργασία και υλικά')}
+      ${tile('w1', true, ICON.invoice, 'Τιμολόγιο', 'στο ΑΦΜ σου, για εργασία και υλικά')}
       ${tile('w2', true, ICON.pin, 'Πάροχος στην Ελλάδα', 'με έδρα ή μόνιμη εγκατάσταση')}
       ${tile('w3', true, ICON.pie, `Υλικά έως ${SHARE}`, 'της αξίας της εργασίας')}
       <div class="wide">${tile('w4', false, ICON.cash, 'Πληρωμή με μετρητά', 'καμία έκπτωση, όσο σωστό κι αν είναι το παραστατικό')}</div>
@@ -124,8 +124,8 @@ const HTML = `
   <!-- 6 · Η προθεσμία -->
   <section id="s5">
     ${head(5, 'Η ΠΡΟΘΕΣΜΙΑ', ['Για δαπάνες', A(`ως τις ${esc(RENO_39B_TO)}.`)], 100)}
-    ${calendar('cl', 290, 620)}
-    <div class="L sub2" id="c5" style="top:1110px;width:820px">Κράτα <b>τιμολόγια και αποδεικτικά πληρωμής</b> ανά ακίνητο. Αυτά θα ζητήσει ο λογιστής.</div>
+    ${calendar('cl', 265, 620)}
+    <div class="L sub2" id="c5" style="top:1110px;width:820px">Κράτα <b>τιμολόγια και αποδεικτικά πληρωμής</b><br>ανά ακίνητο. Αυτά θα ζητήσει ο λογιστής.</div>
     <div class="L sub2" id="c5b" style="top:1250px;width:820px">Στο PROPERWISE τα φωτογραφίζεις και μπαίνουν στο σωστό ακίνητο.</div>
   </section>`;
 
@@ -149,7 +149,7 @@ const CSS = `
   .vc .col i{display:block;width:100%;border-radius:14px 14px 6px 6px;transform-origin:bottom center}
   #co{height:${Math.round(100 * OLD_MAX / RENO_39B_CAP)}%;background:repeating-linear-gradient(135deg,#2b3d5c 0 12px,#243450 12px 24px)}
   #cn{height:100%;background:linear-gradient(180deg,#8ab4f8,#3d7ef0);box-shadow:0 10px 30px rgba(21,96,212,.45)}
-  .times{position:absolute;left:350px;top:330px;width:150px;height:150px;border-radius:50%;display:grid;place-items:center;font-size:40px;font-weight:700;
+  .times{position:absolute;left:350px;top:330px;width:150px;height:150px;border-radius:50%;display:grid;place-items:center;font-size:46px;font-weight:850;letter-spacing:-.03em;
     color:#08111f;background:radial-gradient(circle at 35% 30%,#d6e6ff,${C.accent} 60%,#3d7ef0);box-shadow:0 0 0 8px rgba(138,180,248,.18),0 20px 50px rgba(0,0,0,.5),0 0 60px ${C.accent}66}
   .stk5{position:absolute;left:90px;top:640px;width:850px;height:480px;display:flex;justify-content:space-between;align-items:flex-end}
   .yc{width:150px;display:flex;flex-direction:column;align-items:center}
