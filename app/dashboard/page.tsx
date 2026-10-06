@@ -401,7 +401,7 @@ export default function Dashboard() {
           </button>
           {selected ? (
             <>
-              <div style={{flex:1,minWidth:0}}>
+              <div className="topbar-main">
                 {/* ΤΟ ΚΟΥΜΠΙ ΚΑΤΑΣΤΑΣΗΣ ΕΠΕΦΤΕ ΠΑΝΩ ΣΤΟΝ ΦΑΚΟ ΣΕ ΚΙΝΗΤΟ.
                     Η γραμμή δεν τύλιγε και κανένα από τα δύο παιδιά της δεν
                     μπορούσε να συρρικνωθεί: ο επιλογέας ακινήτου φτάνει τα
@@ -415,7 +415,7 @@ export default function Dashboard() {
                     εμφανίζονται, οπότε ένα «Βραχυχρόνια μίσ…» θα ήταν χειρότερο
                     από μια γραμμή παραπάνω. Σε πλάτος που χωρά, τίποτα δεν
                     αλλάζει: το wrap ενεργοποιείται μόνο όταν δεν χωρά. */}
-                <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:10,rowGap:8,minWidth:0}}>
+                <div className="topbar-row">
                   {/* Ο ΤΙΤΛΟΣ ΗΤΑΝ ΝΕΚΡΟ <span>. Δίπλα του καθόταν ήδη ένα κουμπί
                       που ανοίγει μενού και 250 εικονοστοιχεία αριστερότερα η
                       πλαϊνή μπάρα ξανάλεγε το ίδιο όνομα με άλλη τελεία και άλλο
@@ -433,7 +433,7 @@ export default function Dashboard() {
                       θέλει `aria-haspopup` και `aria-expanded` που το ChipToggle δεν
                       δέχεται — και την κλάση `topbar-status`, που κάνει το ψαλίδισμα
                       της ετικέτας σε στενή οθόνη. */}
-                  <div style={{position:'relative',minWidth:0}}>
+                  <div className="topbar-status-wrap" style={{position:'relative',minWidth:0}}>
                     <button onClick={()=>setStatusDropdown(v=>!v)} className="topbar-status" title="Κατάσταση ακινήτου και εργαλεία (επεξεργασία, διαγραφή)" aria-haspopup="menu" aria-expanded={statusDropdown} style={{display:'flex',alignItems:'center',gap: 8,minHeight:T.h.sm,padding:'0 10px 0 12px',borderRadius: T.radius.chip,border:'1px solid var(--border-default)',background:statusDropdown?'var(--bg-hover)':'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:12,fontWeight:500,color:'var(--text-primary)',transition:'background 0.15s'}} onMouseEnter={e=>{if(!statusDropdown)e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{if(!statusDropdown)e.currentTarget.style.background='transparent'}}>
                       <div style={{width:6,height:6,borderRadius:'50%',background:statusColor,flexShrink:0}}/>
                       {/* ΤΟ ΨΑΛΙΔΙ ΘΕΛΕΙ ΣΤΟΙΧΕΙΟ ΓΙΑ ΝΑ ΠΙΑΣΕΙ. Η ετικέτα ήταν
@@ -515,7 +515,7 @@ export default function Dashboard() {
                   `topbar-search` είναι που το κάνει 44 κεντραρισμένο στο κινητό·
                   σε υπολογιστή δείχνει και το πλακίδιο του ⌘K, άρα δεν είναι
                   ούτε καθαρό εικονοκούμπι. */}
-              <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',marginRight:4,flexShrink:0}} >
+              <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',flexShrink:0}} >
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
                 <span className="desktop-only" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.mono,color:'var(--text-tertiary)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.xs,padding:'1px 5px'}}>{kbdHint}</span>
               </button>

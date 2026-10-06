@@ -9,7 +9,7 @@ import { InfoHint } from './InfoHint'
 import BankImport from './BankImport'
 import E2ReconcileCard from './E2ReconcileCard'
 import { Landmark, Lock, Unlock } from 'lucide-react'
-import { bracketsLabelForYear, BUSINESS_INCOME_BRACKETS_2026, CORPORATE_TAX_RATE_2026, ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, DIVIDEND_WITHHOLDING_RATE } from '@/lib/billing/greekTax'
+import { bracketsLabelForYear, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, BUSINESS_INCOME_BRACKETS_2026, CORPORATE_TAX_RATE_2026, ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, DIVIDEND_WITHHOLDING_RATE } from '@/lib/billing/greekTax'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
 import { FEATURE_MIN_PLAN, isTabPurchasable, planAtLeast, requiredPlanForTab } from '@/lib/billing/entitlements'
 import { PLANS } from '@/lib/billing/plans'
@@ -18,7 +18,7 @@ import AccountantDossier from './AccountantDossier'
 import { UNCOLLECTED_RENT_RULE as UNCOLLECTED_RULE } from '@/lib/accounting/dossier'
 import { readStatus, statusLabel, type StatusRow } from '@/lib/property/status'
 // Το λογιστικό πρόσημο: τυπογραφικό μείον, όχι ενωτικό και ποτέ «−0,00€».
-import { feSigned, fpRate } from '@/lib/core/format'
+import { feSigned, fpRate, grDateOf } from '@/lib/core/format'
 import { AsOfNote } from '@/components/AsOfNote'
 import { taxLimitAsOf } from '@/lib/facts/taxLimits'
 import { incomeEntry } from '@/lib/property/visibility'
@@ -476,7 +476,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap: 8, flexWrap:'wrap' }}>
                     <Check checked={rentsBank} onChange={v=>setRentsBankOverride(v===collection.viaBank?null:v)} label={<span style={{ fontSize:12, color:'var(--text-secondary)' }}>Τα ενοίκια εισπράττονται <strong style={{ color:'var(--text-primary)' }}>μέσω τράπεζας</strong>.</span>}/>
-                    <InfoHint>Από 1.7.2027 (ν.5222/2025, άρθρο 210· έναρξη με την απόφαση ΑΑΔΕ Α.1187/2026) τα μισθώματα κατοικίας θα πρέπει να εισπράττονται με τραπεζικό ή ηλεκτρονικό μέσο (κατάθεση, IRIS, έμβασμα). Με μετρητά θα χάνεται η τεκμαρτή έκπτωση 5% και θα φορολογείσαι στο 100% του ενοικίου. Για τις χρήσεις 2025-2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης.</InfoHint>
+                    <InfoHint>Από {grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025, άρθρο 210· έναρξη με την απόφαση ΑΑΔΕ Α.1187/2026) τα μισθώματα κατοικίας θα πρέπει να εισπράττονται με τραπεζικό ή ηλεκτρονικό μέσο (κατάθεση, IRIS, έμβασμα). Με μετρητά θα χάνεται η τεκμαρτή έκπτωση 5% και θα φορολογείσαι στο 100% του ενοικίου. Για τις χρήσεις 2025-2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης.</InfoHint>
                   </div>
                   {/* ΑΠΟ ΠΟΥ ΤΟ ΞΕΡΕΙ. Χωρίς αυτή τη γραμμή, ο χρήστης βλέπει ένα
                       τσεκαρισμένο κουτάκι και δεν έχει λόγο να το ελέγξει — που

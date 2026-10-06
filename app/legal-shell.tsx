@@ -6,6 +6,7 @@ import { PublicHeader, PublicFooter, SectionHead, WRAP, WRAP_PAD } from './Publi
 import { LINK_STYLE } from './linkStyle';
 import { BackLink } from './BackLink';
 import { transliterate } from '@/lib/core/uploadPath';
+import { grDate } from '@/lib/core/format';
 import { LegalForm } from './LegalForm';
 import { TocSpy } from './TocSpy';
 
@@ -434,7 +435,7 @@ export function LegalShell({ title, updated, version, intro, sections, disclaime
       title={title}
       intro={intro}
       meta={`Τελευταία ενημέρωση: ${updated}`}
-      version={version ? `Έκδοση ${version} · Τελευταία ενημέρωση: ${updated}` : undefined}
+      version={version ? `Έκδοση ${grDate(version)} · Τελευταία ενημέρωση: ${updated}` : undefined}
       blocks={sections.map(s => ({
         id: s.id,
         h: s.h,

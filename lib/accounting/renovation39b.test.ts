@@ -14,7 +14,7 @@ function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed+
 ok('όριο 16.000', RENO_39B_CAP === 16000)
 ok('πέντε έτη', RENO_39B_YEARS === 5)
 ok('3.200 τον χρόνο', RENO_39B_PER_YEAR === 3200)
-ok('παράθυρο 01.01.2024 έως 31.12.2026', RENO_39B_FROM === '01.01.2024' && RENO_39B_TO === '31.12.2026')
+ok('παράθυρο 01/01/2024 έως 31/12/2026', RENO_39B_FROM === '01/01/2024' && RENO_39B_TO === '31/12/2026')
 
 // ── Τα παραδείγματα του οδηγού ─────────────────────────────────────────────
 const a = renovationCredit({ services: 12000, materials: 4000 })

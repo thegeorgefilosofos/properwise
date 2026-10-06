@@ -42,11 +42,11 @@
 import type { PropertyStatus } from './status';
 import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '../billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '../billing/presumptive';
-import { fpRate } from '../core/format';
+import { fpRate, grDateOf } from '../core/format';
 
 // Η ημερομηνία και το ποσοστό του κανόνα της τραπεζικής είσπραξης, από τον
 // κώδικα που υπολογίζει τον φόρο, όχι γραμμένα στο χέρι.
-const BANK_FROM = `1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}`;
+const BANK_FROM = grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT);
 const DEDUCTION = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100);
 
 /** Πού ζει το πεδίο στη φόρμα. */

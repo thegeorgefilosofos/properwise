@@ -27,6 +27,7 @@ import { billingWords } from '@/lib/legal/billingWords';
 import { LegalLayout, MailLink, type LegalBlock } from '../legal-shell';
 import Link from 'next/link';
 import { siteUrl } from '@/lib/core/site';
+import { grDate } from '@/lib/core/format';
 import { LINK_STYLE } from '../linkStyle';
 import { publicMetadata } from '../publicMetadata';
 
@@ -495,7 +496,7 @@ export default function TrustPage() {
       eyebrow="Εμπιστοσύνη"
       title="Ποιοι είμαστε"
       meta={`Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
-      version={`Έκδοση ${POLICY_VERSION} · Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
+      version={`Έκδοση ${grDate(POLICY_VERSION)} · Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
       intro="Σου ζητάμε το ΑΦΜ σου, τα μισθωτήριά σου και τα έσοδά σου. Δεν υπάρχει λόγος να μας τα εμπιστευτείς αν δεν ξέρεις ποιοι είμαστε, πού πάνε και τι δεν κάνουμε μ’ αυτά. Εδώ τα λέμε όσο πιο ανοιχτά μπορούμε, χωρίς μικρά γράμματα, μαζί με τις εξαιρέσεις που δεν μας βολεύουν."
       blocks={blocks}
     />

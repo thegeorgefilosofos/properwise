@@ -184,6 +184,12 @@ export const MUTATIONS = {
   'number-fields': { add: 'components/__mut__.tsx', content: tsx('    <input type="number" placeholder="1500" />') },
   'empty-states': { add: 'components/__mut__.tsx', content: tsx('    <EmptyState title="Καμιά καταχώρηση / εγγραφή" />') },
   'month-end': { add: 'lib/core/__mut__.ts', content: 'export const d = (y: number) => `${y}-02-31`\n' },
+  // Η κεφαλίδα των νομικών σελίδων ξανατυπώνει ISO μέσα σε πρόταση, και ένα
+  // κείμενο ξαναφτιάχνει με το χέρι την έναρξη της τράπεζας με τελείες (06/10/2026).
+  'date-style': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <p>Έκδοση 2026-10-04 · Τελευταία ενημέρωση</p>') },
+    { add: 'lib/core/__mut__.ts', content: "const FIRST_YEAR_BANK_RECEIPT = 2027\nexport const s = `Από 1.7.${FIRST_YEAR_BANK_RECEIPT} με τράπεζα`\n" },
+  ] },
   'month-case': { add: 'lib/core/__mut__.ts', content: "import { monthNom } from '@/lib/core/months'\nexport const d = (i: number) => `Μεταφορά από ${monthNom(i)}`\n" },
   'raw-errors': { add: 'components/__mut__.tsx', content: 'export function P({ setError, err }: { setError: (s: string) => void; err: Error }) {\n  return <button onClick={() => setError(err.message)}>Δοκιμή</button>\n}\n' },
   'rendered-zero': { add: 'components/__mut__.tsx', content: 'export function P({ n }: { n: number }) {\n  return <div>{n && <span>{n}</span>}</div>\n}\n' },

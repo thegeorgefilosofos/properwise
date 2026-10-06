@@ -34,7 +34,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
-import { fpRate } from '@/lib/core/format';
+import { fpRate, grDateOf } from '@/lib/core/format';
 import { monthGen } from '@/lib/core/months';
 import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
@@ -48,7 +48,7 @@ import {
 } from '../GuideParts';
 
 // Η έναρξη και το ποσοστό από τις σταθερές που υπολογίζουν, όπως στον οδηγό Airbnb.
-const BANK_FROM = `1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}`;
+const BANK_FROM = grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT);
 const BANK_FROM_LONG = `1η ${monthGen(FIRST_MONTH_BANK_RECEIPT - 1)} ${FIRST_YEAR_BANK_RECEIPT}`;
 const DEDUCTION = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100);
 const TAXED_SHARE = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100);
@@ -103,7 +103,7 @@ const FAQ: GuideFaqItem[] = [
 // τον οδηγό φορολογίας ενοικίων 2026.
 const SOURCES: string[] = [
   'Τραπεζική είσπραξη μισθωμάτων: άρθρο 210 ν.5222/2025 (ΦΕΚ Α΄ 134/28.07.2025), που προσθέτει παρ. 5 στο άρθρο 39 ΚΦΕ.',
-  `Έναρξη: ορίστηκε στην 1.4.2026 με το άρθρο 129 παρ. 1 ν.5264/2025 (ΦΕΚ Α΄ 239/19.12.2025), μετατέθηκε στην 1.10.2026 με το άρθρο 48 ν.5294/2026 (ΦΕΚ Α΄ 58/08.04.2026) και στην ${BANK_FROM} με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026).`,
+  `Έναρξη: ορίστηκε στην 01/04/2026 με το άρθρο 129 παρ. 1 ν.5264/2025 (ΦΕΚ Α΄ 239/19.12.2025), μετατέθηκε στην 01/10/2026 με το άρθρο 48 ν.5294/2026 (ΦΕΚ Α΄ 58/08.04.2026) και στην ${BANK_FROM} με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026).`,
   `Τεκμαρτή έκπτωση ${DEDUCTION}: άρθρο 39 παρ. 3 περ. α΄ ν.4172/2013 (ΚΦΕ).`,
   'Κλίμακα ενοικίων 2026 (15 / 25 / 35 / 45%, όριο 36.000€): άρθρο 8 ν.5246/2025 (ΦΕΚ Α΄ 198/11.11.2025).',
 ];
@@ -170,8 +170,8 @@ export default function Page() {
           {`Η κύρωση ξεκινά την ${BANK_FROM_LONG}, με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026). Είναι η τρίτη ημερομηνία έναρξης που ορίστηκε:`}
         </p>
         <ul className="lg-ul">
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'1.4.2026:'}</strong>{' η αρχική έναρξη, με το άρθρο 129 παρ. 1 του ν.5264/2025.'}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'1.10.2026:'}</strong>{' η πρώτη μετάθεση, με το άρθρο 48 του ν.5294/2026.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'01/04/2026:'}</strong>{' η αρχική έναρξη, με το άρθρο 129 παρ. 1 του ν.5264/2025.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'01/10/2026:'}</strong>{' η πρώτη μετάθεση, με το άρθρο 48 του ν.5294/2026.'}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`${BANK_FROM}:`}</strong>{' η ισχύουσα έναρξη, με την απόφαση Α.1187/2026.'}</li>
         </ul>
         <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>

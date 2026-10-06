@@ -1867,6 +1867,12 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    εικονοστοιχεία πριν από τον φακό. Το όνομα πήγε από 124 σε 192. */
 @media (max-width: 640px) { .topbar-switch { max-width: calc(100vw - 126px); } }
 
+/* Οι δύο τυλιχτές της μπάρας, σε υπολογιστή όπως ήταν ενσωματωμένοι. Ζουν
+   ως κλάσεις ώστε στο κινητό να γίνονται `display: contents` (δες ≤640). */
+.topbar-main { flex: 1; min-width: 0; }
+.topbar-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; row-gap: 8px; min-width: 0; }
+.topbar-search { margin-right: 4px; }
+
 /* Ο ΦΑΚΟΣ ΕΙΝΑΙ ΚΥΚΛΟΣ, ΟΧΙ ΟΒΑΛ. Το κουμπί έχει γέμισμα για τη συντόμευση
    πληκτρολογίου που το συνοδεύει σε υπολογιστή· σε τηλέφωνο η συντόμευση δεν
    γράφεται και μένει μόνο το εικονίδιο των 16, δηλαδή κουτί 40 × 44 με
@@ -3346,8 +3352,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
      Ο κανόνας `.app-topbar-sub` έσβησε μαζί με το στοιχείο του: κανένα στοιχείο
      δεν φοράει πλέον την κλάση, οπότε ήταν νεκρό βάρος. */
-  .app-topbar { height: auto; min-height: 56px; padding: 8px 12px; gap: 8px; align-items: center; }
-  .app-content { padding: 14px 12px 28px; }
+  /* ═══ ΕΝΑ ΠΛΑΓΙΟ ΠΕΡΙΘΩΡΙΟ ΓΙΑ ΜΠΑΡΑ, ΠΕΡΙΕΧΟΜΕΝΟ ΚΑΙ ΠΑΡΑΘΥΡΑ ════════════
+     ΜΕΤΡΗΜΕΝΟ ΣΤΑ 390: οι τίτλοι και οι κάρτες ξεκινούσαν στο 12, τα παράθυρα
+     στο 16. Το μάτι διαβάζει την κάθετη γραμμή του αριστερού άκρου ως μία·
+     τέσσερα εικονοστοιχεία διαφορά τη σπάνε σε δύο. Τώρα 16 παντού.
+
+     ΤΙΣ ΔΥΟ ΣΕΙΡΕΣ ΤΙΣ ΟΡΙΖΕΙ ΠΛΕΓΜΑ, ΟΧΙ ΤΥΛΙΓΜΑ. Πριν, το μενού καθόταν
+     κάθετα στο κέντρο των δύο σειρών: το όνομα μόνο του πάνω στο 56, το μενού
+     κάτω δίπλα στην κατάσταση. Τώρα μενού και όνομα μοιράζονται την πρώτη
+     σειρά· κατάσταση και φακός τη δεύτερη, στο ίδιο περιθώριο των 16. Οι δύο
+     ενδιάμεσοι τυλιχτές γίνονται `display: contents` ώστε τα παιδιά τους να
+     μπαίνουν απευθείας στο πλέγμα. Σε υπολογιστή δεν αλλάζει τίποτα. */
+  .app-topbar {
+    height: auto; min-height: 56px; padding: 8px 16px;
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 10px; row-gap: 8px; align-items: center;
+  }
+  .app-topbar .topbar-main, .app-topbar .topbar-row { display: contents; }
+  /* Το εικονίδιο σχεδιάζει από το 3 των 24: με −12 η πρώτη γραμμή του πέφτει
+     στο 16, μαζί με την κατάσταση από κάτω. */
+  .app-topbar .nav-toggle { grid-column: 1; grid-row: 1; margin-left: -12px; }
+  .app-topbar .topbar-switch-root { grid-column: 2 / 4; grid-row: 1; min-width: 0; }
+  .app-topbar .topbar-switch { width: fit-content; max-width: calc(100% + 10px); }
+  .app-topbar .topbar-status-wrap { grid-column: 1 / 3; grid-row: 2; justify-self: start; max-width: 100%; }
+  .app-topbar .topbar-search { grid-column: 3; grid-row: 2; margin-right: 0; }
+  .app-content { padding: 14px 16px 28px; }
 
   /* ═══ Η ΠΡΩΤΗ ΟΘΟΝΗ ΕΙΝΑΙ ΓΙΑ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ, ΟΧΙ ΓΙΑ ΤΗΝ ΤΑΜΠΕΛΑ ═══════
      ΜΕΤΡΗΜΕΝΟ ΣΕ Galaxy A, 360×800, σε τρεις καρτέλες:
@@ -3690,17 +3719,50 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    σφιχτές γραμμές διαβάζεται· τέσσερις γραμμές με κενά 26 δεν διαβάζονται.
    Οπου το κείμενο ΔΕΝ στοιχίζεται πλήρως, το `pretty` μένει όπου ήταν: εκεί
    δεν έχει τίποτα να ακυρώσει. */
-.po-just { text-align: justify; }
-/* ΚΕΝΤΡΑΡΙΣΜΕΝΗ ΠΑΡΑΓΡΑΦΟΣ ΜΕ ΙΣΙΕΣ ΑΚΡΕΣ: κάθε γραμμή πέρα πέρα, η τελευταία
-   στο κέντρο (υπότιτλος του hero, κάλεσμα στο τέλος της αρχικής). Χωρίς αυτό
-   το κείμενο κάτω από κεντραρισμένο τίτλο έβγαινε γραμμές άνισου μήκους. */
-.po-just-c { text-align: justify; text-align-last: center; }
-/* ΑΡΧΙΚΗ: ΠΕΡΑ ΠΕΡΑ. Οι παράγραφοι του «Γιατί υπάρχει» και οι λεζάντες της
-   ζώνης μετρήσεων στοιχίζονται εδώ και όχι στο φύλλο της σελίδας, που έχει
-   κεφαλίδες με `balance` στο ίδιο μπλοκ (guard-justify-hyphen). */
-/* Οι λεζάντες της ζώνης μετρήσεων ΜΕΝΟΥΝ ζυγισμένες (φύλλο της σελίδας): είναι
-   δύο κοντές γραμμές σε κελί ~150px· πέρα πέρα άνοιγαν κενά 41px (μετρημένο). */
-.lp-why p { text-align: justify; }
+/* ═══ 06.10.2026: ΠΕΡΑ ΠΕΡΑ ΜΟΝΟ ΣΤΙΣ ΣΤΗΛΕΣ ΑΝΑΓΝΩΣΗΣ, ΠΟΤΕ ΣΤΟ ΚΙΝΗΤΟ ═══════
+   ΤΙ ΒΡΗΚΕ Ο ΟΠΤΙΚΟΣ ΕΛΕΓΧΟΣ ΣΤΑ 390 (06.10.2026). Παράγραφοι πέρα πέρα με
+   ποτάμια λευκού και λέξεις κομμένες μέσα στη συλλαβή: «δη-μοσιευμένα»,
+   «μεταβίβα-σης», «δε-δομένα», «ακι-νήτου». Στην αρχική, στο /logistes, στις
+   τρεις νομικές σελίδες, στους οδηγούς, στους υπολογιστές και σε παραγράφους
+   της εφαρμογής: υπότιτλος της λογιστικής, προϋπολογισμός, λίστα ελέγχου,
+   δάνειο, σύμβουλος δανείου, χαιρετισμός της Νόας, σημείωση στο παράθυρο του
+   ενοικίου, εισαγωγή της σάρωσης, λωρίδα των όρων στην επισκόπηση. Και στον
+   υπολογιστή: φούσκα της Νόας, κάρτα κλήσης του /logistes, κάρτα ταμείου,
+   σύμβουλος δανείου. Ο ιδιοκτήτης ζήτησε να φύγει η εικόνα «πέρα πέρα με
+   ενωτικά στο κινητό». Αυτό αναιρεί την απόφαση της 26.09.2026 (βλ.
+   lib/ui/typeset.ts) για ό,τι δεν είναι νομικό ή εκδοτικό κείμενο.
+
+   ΓΙΑΤΙ ΔΕΝ ΑΡΚΕΙ ΤΟ `hyphens: manual`. Τα μαλακά ενωτικά (U+00AD) τα
+   εμφυτεύουν το `hy()` και ο στοιχειοθέτης σχεδόν σε κάθε παράγραφο. Το
+   `manual` τα τιμά, άρα η λέξη κόβεται και σε κείμενο ριγμένο δεξιά, όποτε
+   δεν χωρά ολόκληρη στη γραμμή. Μόνο το `none` τα σβήνει (βλ. «ΤΟ ΚΕΛΙ ΔΕΝ
+   ΣΥΛΛΑΒΙΖΕΤΑΙ»). Ο συλλαβισμός υπάρχει για να κλείνει τα κενά της πλήρους
+   στοίχισης· χωρίς αυτήν το μόνο που αφήνει είναι τα κοψίματα.
+
+   Ο ΚΑΝΟΝΑΣ: Η ΣΤΟΙΧΙΣΗ ΚΑΙ Ο ΣΥΛΛΑΒΙΣΜΟΣ ΠΑΝΕ ΜΑΖΙ Ή ΚΑΘΟΛΟΥ. Η σελίδα
+   ξεκινά με `hyphens: none` και όποιος κανόνας στοιχίζει πέρα πέρα γράφει ΣΤΟ
+   ΙΔΙΟ μπλοκ `hyphens: manual` (`.lg-p`, `.lg-ul li`, `.lg-note`, `.lg-just`,
+   `.lg-lede`, `td.lg-cell-prose`). Κανόνας πέρα πέρα χωρίς αυτό κληρονομεί το
+   `none` και ανοίγει ακριβώς τα ποτάμια του guard-justify-hyphen.
+
+   ΤΟ `.po-just` ΜΕΝΕΙ ΩΣ ΟΝΟΜΑ, ΟΧΙ ΩΣ ΣΤΟΙΧΙΣΗ. Το φορούν εκατό σημεία:
+   κάρτες, φούσκες, λωρίδες, παράθυρα, εισαγωγές εργαλείων. Είναι σύντομο
+   κείμενο εφαρμογής και όχι στήλη ανάγνωσης· στοιχίζεται αριστερά σε κάθε
+   πλάτος. Η κλάση δεν σβήνεται από τα συστατικά: τη διαβάζουν ο λειαντής
+   (lib/ui/justifyPolish.ts) και το `.po-just-box` από κάτω. */
+body { hyphens: none; }
+.po-just { text-align: start; }
+/* ΚΕΝΤΡΑΡΙΣΜΕΝΗ ΠΑΡΑΓΡΑΦΟΣ (υπότιτλος κάτω από κεντραρισμένο τίτλο, η σελίδα
+   «σου στείλαμε μήνυμα»). Ως 06.10.2026 ήταν πέρα πέρα με την τελευταία
+   γραμμή στο κέντρο· είναι δύο με τρεις γραμμές, άρα στο κινητό τα κενά
+   άνοιγαν όπως παντού. Μένει απλώς κεντραρισμένη: η εικόνα κάτω από τον
+   τίτλο είναι η ίδια, χωρίς ποτάμια και χωρίς κοψίματα. */
+.po-just-c { text-align: center; }
+/* ΑΡΧΙΚΗ, «ΓΙΑΤΙ ΥΠΑΡΧΕΙ»: ΡΙΓΜΕΝΗ ΔΕΞΙΑ ΑΚΡΗ (06.10.2026). Ο κανόνας εδώ τις
+   στοίχιζε πέρα πέρα, ενώ το σχόλιο στο app/page.tsx λέει ήδη γιατί δεν
+   πρέπει: τέσσερις σύντομες παράγραφοι, «η δεξιά άκρη μένει ελεύθερη, ώστε
+   να μην ανοίγουν ποτάμια λευκού πουθενά». Ο κανόνας έφυγε. Οι λεζάντες της
+   ζώνης μετρήσεων μένουν ζυγισμένες στο φύλλο της σελίδας. */
 /* ΤΟ ΜΕΤΡΟ ΤΩΝ 68ch ΔΟΚΙΜΑΣΤΗΚΕ ΚΑΙ ΕΔΩ ΚΑΙ ΕΦΥΓΕ (01.10.2026). Στα 1440 τα
    ψιλά των πακέτων σταματούσαν στα δύο τρίτα της σειράς των καρτών από πάνω
    τους και διαβάζονταν κομμένα (φωτογραφία ιδιοκτήτη). Τρίτη φορά το ίδιο
@@ -3711,7 +3773,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    σπάνε («ν.5072/2023», «(ενσωμάτωση») η στοίχιση τέντωνε τα κενά σε τρύπες
    (φωτογραφημένο, 25.09.2026). Οποιο πλαίσιο δηλώσει `.po-just-box` γίνεται
    container: όσο είναι στενό, η παράγραφος μέσα του στοιχίζεται αριστερά και
-   ισορροπεί τις γραμμές της· όταν απλώσει, ξαναπαίρνει την πλήρη στοίχιση. */
+   ισορροπεί τις γραμμές της· όταν απλώσει, ξαναπαίρνει την πλήρη στοίχιση.
+   06.10.2026: το `.po-just` δεν στοιχίζεται πια πέρα πέρα σε κανένα πλάτος
+   (βλ. από πάνω)· εδώ μένει μόνο το `pretty` του στενού πλαισίου. */
 .po-just-box { container-type: inline-size; }
 @container (max-width: 240px) {
   .po-just { text-align: start; text-wrap: pretty; }
@@ -4525,7 +4589,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    το πλάτος της κάρτας και το μήκος του αριθμού, άρα ξέρει ήδη ό,τι ήξεραν
    αυτές οι δύο γραμμές· και το ξέρει ανά κάρτα αντί για ανά οθόνη. */
 @media (max-width: 360px) {
-  .app-content { padding-left: 10px; padding-right: 10px; }
+  /* Το στενότερο περιθώριο, ίδιο για μπάρα και περιεχόμενο: 12. Με 10 κάτω
+     και 12 πάνω η αριστερή άκρη έσπαγε σε δύο γραμμές. Το μενού μένει στο
+     −12, άρα το κουμπί αγγίζει το 0 και η γραμμή του εικονιδίου πέφτει στο 12. */
+  .app-content { padding-left: 12px; padding-right: 12px; }
+  .app-topbar  { padding-left: 12px; padding-right: 12px; }
   .card        { padding: 14px; }
   .cmdk-input  { font-size: 15px; }
   .bottom-nav-item { font-size: 11px; }
@@ -4707,7 +4775,10 @@ body:has(.po-tool-page) .po-cookie {
 
 /* Ο ΥΠΟΤΙΤΛΟΣ ΤΗΣ ΑΡΧΙΚΗΣ: ΔΥΟ ΓΡΑΜΜΕΣ ΠΕΡΑ ΠΕΡΑ (02.10.2026). Κάθε
    πρόταση είναι μία γραμμή με πλήρη στοίχιση και το πλάτος ακολουθεί τη
-   μεγαλύτερη. Κάτω από τα 720 ρέουν μαζί, κεντραρισμένες (βλ. app/page.tsx). */
+   μεγαλύτερη. Κάτω από τα 720 ρέουν μαζί, κεντραρισμένες (βλ. app/page.tsx).
+   06.10.2026: ΜΕΝΕΙ. Δεν είναι παράγραφος που τυλίγεται: κάθε γραμμή είναι
+   `nowrap`, άρα δεν κόβεται καμία λέξη και ο συλλαβισμός δεν παίζει ρόλο
+   (κληρονομεί το `none`). Στο κινητό δεν ισχύει καθόλου. */
 .lp-lede { max-width: 680px; text-align: center; text-wrap: balance; }
 @media (min-width: 720px) {
   .lp-lede { width: fit-content; max-width: none; text-align: justify; text-wrap: wrap; }
@@ -5020,6 +5091,42 @@ body:has(.po-tool-page) .po-cookie {
 @media (max-width: 640px) {
   .lp-hide-sm { display: none !important; }
 }
+/* ═══ ΤΟ ΜΕΝΟΥ ΤΗΣ ΔΗΜΟΣΙΑΣ ΚΕΦΑΛΙΔΑΣ (app/PublicMenu.tsx) ═════════════════
+   Εμφανίζεται ΜΟΝΟ εκεί που κρύβονται οι σύνδεσμοι κειμένου (≤640) ώστε ο
+   υπολογιστής να μη δει τίποτα καινούργιο. Το φύλλο κρέμεται από τη δεξιά
+   άκρη του κουμπιού, δηλαδή από το περιθώριο της σελίδας· δεν φτάνει ποτέ
+   πέρα από την οθόνη. */
+.lp-only-sm { display: none; }
+@media (max-width: 640px) {
+  .lp-only-sm { display: block !important; }
+}
+.pub-menu { position: relative; flex-shrink: 0; }
+.pub-menu-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; margin-right: -10px; padding: 0;
+  border: none; border-radius: 50%; background: transparent;
+  color: var(--text-primary); cursor: pointer;
+}
+.pub-menu-btn:hover, .pub-menu-btn[aria-expanded="true"] { background: var(--bg-hover); }
+.pub-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pub-menu-sheet {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 60;
+  min-width: 200px; max-width: calc(100vw - 2 * var(--pub-gutter));
+  margin: 0; padding: 6px; list-style: none;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-lg);
+}
+.pub-menu-link {
+  display: flex; align-items: center; min-height: 44px; padding: 0 14px;
+  border-radius: 8px; color: var(--text-primary); text-decoration: none;
+  font-size: 15px; font-weight: 600; white-space: nowrap;
+}
+.pub-menu-link:hover { background: var(--bg-hover); }
+.pub-menu-link[aria-current="page"] { color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .pub-menu-sheet { animation: pubMenuIn 0.14s ease-out; }
+}
+@keyframes pubMenuIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 /* Το ίδιο, για κουμπιά μέσα σε κάρτα που στενεύουν μόνο κάτω από τα 360: στα
    320 το «Ξεκίνα δωρεάν με το ακίνητό σου» άφηνε το «σου» μόνο του. */
 .lp-only-xxs { display: none; }
@@ -5124,7 +5231,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    στο κενό δεξιά της (βλ. `lg-siblings`)· εδώ μένει μόνο το μέτρο της
    εισαγωγής, ίδιο με το υπόλοιπο κείμενο. */
 .lg-lede { max-width: var(--lg-measure); }
-.lg-lede > p:first-child { text-align: justify; }
+.lg-lede > p:first-child { text-align: justify; hyphens: manual; }
 
 /* Η ΣΤΗΛΗ ΤΟΥ ΚΕΙΜΕΝΟΥ ΕΙΝΑΙ ΤΟ ΜΕΤΡΟ. 1044 μείον 260 του ευρετηρίου μείον 72
    του κενού αφήνουν 712 εικονοστοιχεία: γραμμές ογδόντα εννέα χαρακτήρων στα
@@ -5197,14 +5304,21 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 
    Μετρημένο στους «Ορους» στα 750, ΠΡΙΝ: κενά 15,4 · 13,3 · 11,2 σε τρία
    μπλοκ, εκεί που το φυσικό κενό της Inter είναι 4,2. Ο φύλακας
-   `guard-justify-hyphen` απαγορεύει πλέον τον συνδυασμό. */
-.lg-p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; text-align: justify; }
+   `guard-justify-hyphen` απαγορεύει πλέον τον συνδυασμό.
+
+   06.10.2026: Η ΠΡΟΕΠΙΛΟΓΗ ΤΗΣ ΣΕΛΙΔΑΣ ΕΙΝΑΙ ΠΙΑ `hyphens: none` (βλ. «ΠΕΡΑ
+   ΠΕΡΑ ΜΟΝΟ ΣΤΙΣ ΣΤΗΛΕΣ ΑΝΑΓΝΩΣΗΣ»), οπότε το `manual` γράφεται ρητά σε κάθε
+   κανόνα που στοιχίζει πέρα πέρα. Οι νομικές στήλες και οι οδηγοί είναι το
+   κείμενο που διαβάζεται από την αρχή ως το τέλος σε μέτρο 80 ως 90
+   χαρακτήρων· εκεί η στοίχιση μένει στον υπολογιστή. Στο κινητό γυρίζουν κι
+   αυτές αριστερά (βλ. «06.10.2026: ΣΤΟ ΚΙΝΗΤΟ» στους οδηγούς). */
+.lg-p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; text-align: justify; hyphens: manual; }
 .lg-p strong, .lg-ul strong { color: var(--text-primary); font-weight: 600; }
 .lg-p:last-child, .lg-ul:last-child { margin-bottom: 0; }
 .lg-ul { margin: 2px 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
-.lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-align: justify; }
+.lg-ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.65; text-align: justify; hyphens: manual; }
 .lg-note {
-  font-size: 14px; color: var(--text-secondary); line-height: 1.65; text-align: justify;
+  font-size: 14px; color: var(--text-secondary); line-height: 1.65; text-align: justify; hyphens: manual;
   margin: 12px 0 0; padding: 13px 16px;
   background: var(--bg-elevated); border: 1px solid var(--border-subtle);
   border-radius: 12px;
@@ -5259,7 +5373,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-part-first { margin-top: 0; padding-top: 0; border-top: 0; }
 /* Ίδια στοίχιση για τα κείμενα που δεν είναι παράγραφοι, π.χ. οι εγγυήσεις
    του «Ποιοι είμαστε»: αλλιώς η μισή σελίδα κλείνει ίσια και η άλλη μισή όχι. */
-.lg-just { text-align: justify; }
+.lg-just { text-align: justify; hyphens: manual; }
 
 /* ═══ ΠΕΡΙΕΧΟΜΕΝΑ, ΜΕΣΑ ΣΤΗ ΣΤΗΛΗ ═══════════════════════════════════════════
    Το πλαϊνό ευρετήριο έφυγε για το μέτρο (βλ. `.lg-grid`)· μαζί του έφυγαν και
@@ -5328,7 +5442,12 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-sp-card dt { margin-top: 8px; font-size: 13px; color: var(--text-tertiary); }
 .lg-sp-card dt:first-child { margin-top: 0; }
 .lg-sp-card dd { margin: 0; color: var(--text-secondary); line-height: 1.55; }
-.lg-sp-card dd:first-of-type { text-align: justify; hyphens: manual; }
+/* Η ΠΕΡΙΓΡΑΦΗ ΤΗΣ ΚΑΡΤΑΣ ΔΕΝ ΣΤΟΙΧΙΖΕΤΑΙ ΠΕΡΑ ΠΕΡΑ (06.10.2026). Οι κάρτες
+   των εκτελούντων φαίνονται ΜΟΝΟ ως τα 640 (`.lg-sp-cards`, πιο κάτω), δηλαδή
+   ο κανόνας `justify` + `manual` που ζούσε εδώ ήταν κανόνας του κινητού: στα
+   390 έκοβε «δε-δομένα» σε κουτί ~300. Η περιγραφή στοιχίζεται αριστερά και
+   κληρονομεί το `hyphens: none` της σελίδας· στον υπολογιστή η ίδια πρόζα
+   ζει στον πίνακα (`td.lg-cell-prose`), που μένει πέρα πέρα. */
 
 /* Ο ΟΔΗΓΟΣ ΤΗΣ ΑΝΑΛΥΣΗΣ (ToolLedger): η διάστικτη γραμμή ανάμεσα σε ετικέτα
    και ποσό. Κάθεται στη γραμμή βάσης της ΠΡΩΤΗΣ σειράς (ύψος μηδέν, στοίχιση
@@ -5602,6 +5721,21 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    οθόνη, με ενωτικό όπου η λέξη δεν χωρά. Στο κουτί των 272 ο πίνακας από
    πάνω μέτρησε ήδη το αποτέλεσμα: με ενωτικά και χωρίς `pretty`, κενό 4,8
    εκεί που το φυσικό είναι 4,2. */
+/* 06.10.2026: ΣΤΟ ΚΙΝΗΤΟ ΑΡΙΣΤΕΡΑ ΚΑΙ ΧΩΡΙΣ ΚΟΨΙΜΑΤΑ· ΑΚΟΜΗ ΚΑΙ ΣΤΑ ΝΟΜΙΚΑ. Ο οπτικός
+   έλεγχος στα 390 έβγαλε την εικόνα που περιγράφει το πρώτο σχόλιο από πάνω,
+   όχι τη μέτρηση του κουτιού των 272: στα /trust, /privacy, /terms και στους
+   οδηγούς οι γραμμές των 40 με 45 χαρακτήρων κόβονταν σχεδόν όλες σε ενωτικό
+   («δη-μοσιευμένα», «μεταβίβα-σης», «ακι-νήτου») και όσες δεν κόβονταν
+   άνοιγαν ποτάμια. Ο ιδιοκτήτης ζήτησε να φύγει. Ως τα 640 κάθε στήλη
+   ανάγνωσης στοιχίζεται αριστερά και ο συλλαβισμός σβήνει (`none`, όχι
+   `manual`: τα μαλακά ενωτικά του `hy()` τα τιμά το `manual`). Πάνω από τα
+   640 η στοίχιση μένει όπως τη γράφουν οι κανόνες της. Ο,τι άλλο στοιχιζόταν
+   πέρα πέρα (`.po-just`, ο στοιχειοθέτης) δεν στοιχίζεται πια σε κανένα
+   πλάτος· βλ. «ΠΕΡΑ ΠΕΡΑ ΜΟΝΟ ΣΤΙΣ ΣΤΗΛΕΣ ΑΝΑΓΝΩΣΗΣ». */
+@media (max-width: 640px) {
+  .lg-lede > p:first-child, .lg-p, .lg-ul li, .lg-note, .lg-just,
+  .gd .lg-p, .gd .lg-ul li, .gd .lg-note, .po-table td.lg-cell-prose { text-align: start; hyphens: none; }
+}
 
 @media (max-width: 900px) {
   /* ΣΕ ΚΙΝΗΤΟ ΤΟ ΕΥΡΕΤΗΡΙΟ ΚΥΛΑΕΙ ΜΕΣΑ ΤΟΥ. Είκοσι τέσσερις ενότητες η μία
@@ -6352,14 +6486,14 @@ tr.po-row-more { display: none; }
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 430px) {
   .cal-bleed {
-    margin-inline: -12px;
+    margin-inline: -16px;
     border-radius: 0;
     border-left: none;
     border-right: none;
   }
 }
 @media (max-width: 360px) {
-  .cal-bleed { margin-inline: -10px; }
+  .cal-bleed { margin-inline: -12px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -6416,14 +6550,20 @@ tr.po-row-more { display: none; }
    ΤΟ `min-width: 0` ΜΕΝΕΙ: ακυρώνει το `auto` των στοιχείων flex, ώστε ένα
    μοναδικό μακρύ κείμενο σε στενή οθόνη να τυλίγεται αντί να σπρώχνει τη σειρά
    έξω από την κάρτα. Το τύλιγμα των λέξεων από κάτω μένει δίχτυ για μεγάλο
-   μέγεθος κειμένου. */
+   μέγεθος κειμένου.
+
+   06.10.2026: `hyphens: manual` ΑΝΤΙ ΓΙΑ `auto`. Με `lang="el"` το `auto`
+   ζητά το λεξικό συλλαβισμού της συσκευής: στο Android υπάρχει και κόβει
+   («ταχυ- · δρομείο», το ίδιο το παράδειγμα από πάνω), αλλού όχι — λοταρία
+   ανά μηχανή (βλ. components/Hyphen.tsx). Ο ιδιοκτήτης ζήτησε καμία αυτόματη
+   τομή συλλαβής. Δίχτυ για τη λέξη που δεν χωρά μένει το `overflow-wrap`. */
 .po-ctlrow > * {
   flex: 1 1 auto;
   min-width: 0;
   height: auto;
   white-space: normal;
   text-wrap: balance;
-  hyphens: auto;
+  hyphens: manual;
   overflow-wrap: break-word;
   text-align: center;
   justify-content: center;
@@ -6512,7 +6652,12 @@ tr.po-row-more { display: none; }
    του πλαισίου, στοιχίζεται πέρα πέρα με συλλαβισμό. Οι παραπομπές νόμων
    μένουν ολόκληρες και η γραμμή σπάει ΠΡΙΝ από αυτές (bindRefs, 01.10.2026:
    το σπάσιμο μετά την κάθετο διαβαζόταν ως δύο αριθμοί). */
-.po-tool-sources .po-src-txt { line-height: 1.65; text-align: justify; hyphens: manual; }
+/* 06.10.2026: ΚΑΙ ΧΩΡΙΣ ΠΕΡΑ ΠΕΡΑ. Σημείωση δύο ή τριών γραμμών μέσα σε πλαίσιο
+   είναι σύντομο κείμενο, όχι στήλη ανάγνωσης: στα 390 οι παραπομπές που δεν
+   σπάνε («ν.5072/2023») άφηναν την υπόλοιπη γραμμή τεντωμένη. Το πλάτος ως
+   την άκρη του πλαισίου μένει· η στοίχιση γυρίζει αριστερά και ο συλλαβισμός
+   σβήνει μαζί της (κληρονομεί το `none` της σελίδας). */
+.po-tool-sources .po-src-txt { line-height: 1.65; }
 
 /* ── Η ΚΑΡΤΑ ΤΟΥ «ΙΔΙΟΚΤΗΤΗ»: ΔΙΑΚΟΠΤΗΣ ΝΟΑΣ ΧΩΡΙΣ JAVASCRIPT ─────────────────
    Δύο κουμπιά επιλογής, κρυμμένα οπτικά αλλά εστιάσιμα· και δύο σώματα που
@@ -6601,7 +6746,10 @@ tr.po-row-more { display: none; }
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .nf-does strong { font-size: 15.5px; font-weight: 680; color: var(--text-primary); letter-spacing: -0.01em; }
-.nf-does span { font-size: 14.5px; line-height: 1.5; color: var(--text-secondary); text-align: justify; }
+/* Η περιγραφή κάτω από κάθε δυνατότητα της Νόας είναι μία με δύο γραμμές
+   στη λίστα της ζώνης: σύντομο κείμενο, όχι στήλη ανάγνωσης. Ως 06.10.2026
+   στοιχιζόταν πέρα πέρα· τώρα αριστερά, όπως κάθε κάρτα. */
+.nf-does span { font-size: 14.5px; line-height: 1.5; color: var(--text-secondary); }
 .nf-offer {
   display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 18px; row-gap: 6px;
   margin-top: 28px; padding: 16px 20px; border-radius: 16px; background: var(--bg-surface);
@@ -6653,8 +6801,17 @@ tr.po-row-more { display: none; }
 /* ═══ Ο ΣΤΟΙΧΕΙΟΘΕΤΗΣ ΤΗΣ ΕΦΑΡΜΟΓΗΣ (components/Typesetter.tsx) ═════════════
    Ο,τι σημαδέψει ως παράγραφο στοιχίζεται πέρα πέρα, πάνω στα μαλακά ενωτικά
    που έβαλε ο ίδιος. Χωρίς `text-wrap: pretty`: αγνοεί τα ενωτικά
-   (guard-justify-hyphen). Ρητό `textAlign` στο στοιχείο νικά, όπως πρέπει. */
-[data-ts="j"] { text-align: justify; }
+   (guard-justify-hyphen). Ρητό `textAlign` στο στοιχείο νικά, όπως πρέπει.
+
+   06.10.2026: Ο ΣΤΟΙΧΕΙΟΘΕΤΗΣ ΔΕΝ ΣΤΟΙΧΙΖΕΙ ΠΙΑ ΠΕΡΑ ΠΕΡΑ. Το σημάδι του έπεφτε
+   σε ΚΑΘΕ παράγραφο 44 χαρακτήρων και πάνω: φούσκα της Νόας, κάρτα ταμείου,
+   σύμβουλος δανείου, η κάρτα κλήσης του /logistes, η σημείωση στο παράθυρο του
+   ενοικίου, η λωρίδα των όρων. Ολα σύντομο κείμενο εφαρμογής, που στον οπτικό
+   έλεγχο έβγαινε με ποτάμια λευκού και κομμένες συλλαβές (βλ. «ΠΕΡΑ ΠΕΡΑ ΜΟΝΟ
+   ΣΤΙΣ ΣΤΗΛΕΣ ΑΝΑΓΝΩΣΗΣ»). Ο κανόνας έφυγε· το σημάδι μένει (το διαβάζει το
+   διάστιχο από κάτω) και τα μαλακά ενωτικά του σβήνει το `hyphens: none` της
+   σελίδας. Οι νομικές στήλες και οι οδηγοί στοιχίζονται από τις δικές τους
+   κλάσεις (`.lg-p`, `.gd .lg-p`), όχι από το σημάδι. */
 /* ΚΑΙ ΤΕΛΕΙΩΝΕΙ ΕΚΕΙ ΠΟΥ ΤΕΛΕΙΩΝΕΙ ΤΟ ΚΟΥΤΙ ΤΟΥ. Δεκάδες παράγραφοι της
    εφαρμογής κουβαλούσαν όριο πλάτους (`maxWidth: '72ch'` και συγγενικά): στην
    κάρτα των 1.300 η παράγραφος σταματούσε στη μέση και το δεξί μισό έμενε
@@ -6694,8 +6851,16 @@ tr.po-row-more { display: none; }
    Ο guard-justify-hyphen πιάνει τις δύο ιδιότητες μόνο στον ΙΔΙΟ κανόνα· εδώ
    το `pretty` ερχόταν από άλλον (`details.lp-faq > p`, `.fineprint`) και
    περνούσε. Το `!important` είναι η δήλωση ότι αυτός ο κανόνας κρίνεται
-   τελευταίος: η στοίχιση και ο συλλαβισμός πάνε μαζί ή καθόλου. */
-.po-just, .po-just-c, [data-ts="j"], .lp-why p { text-wrap: wrap !important; }
+   τελευταίος: η στοίχιση και ο συλλαβισμός πάνε μαζί ή καθόλου.
+
+   06.10.2026: ΜΟΝΟ ΟΣΑ ΣΤΟΙΧΙΖΟΝΤΑΙ ΑΚΟΜΗ. Τα `.po-just`, `.po-just-c`, το
+   σημάδι του στοιχειοθέτη και το `.lp-why p` δεν στοιχίζονται πια πέρα πέρα,
+   οπότε το `!important` τους έσβηνε χωρίς λόγο το `pretty` που είχαν γράψει
+   τα ίδια τα σημεία (`.fineprint`, `details.lp-faq > p`, ενσωματωμένα στυλ).
+   Μένουν οι στήλες ανάγνωσης, μόνο πάνω από τα 640 όπου στοιχίζονται. */
+@media (min-width: 641px) {
+  .lg-lede > p:first-child, .lg-p, .lg-ul li, .lg-note, .lg-just, .po-table td.lg-cell-prose { text-wrap: wrap !important; }
+}
 
 /* ═══ Η ΣΕΛΙΔΑ 404: ΑΓΚΥΡΑ ΚΑΙ ΔΥΟ ΔΡΟΜΟΙ ══════════════════════════════════════
    Ο αριθμός είναι εικόνα, όχι κείμενο (`aria-hidden`): μεγάλος, με ψηφία ίσου

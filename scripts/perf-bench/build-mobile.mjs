@@ -3,7 +3,8 @@
 // ΟΛΟΚΛΗΡΟ το globals.css — αλλιώς λείπουν .card/.app-content και όλα τα
 // media queries, δηλαδή ό,τι ακριβώς κρίνεται σε στενή οθόνη.
 import { build } from 'esbuild';
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeBenchCss } from './bench-css.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -48,8 +49,8 @@ await build({
   },
 });
 
-const css = readFileSync(join(root, 'app/globals.css'), 'utf8');
-writeFileSync(join(out, 'globals.css'), css);
+// Οι γραμματοσειρές φορτώνουν από τον δίσκο: δες bench-css.mjs.
+writeBenchCss(root, out);
 // ═══ Ο ΠΑΓΚΟΣ ΕΒΛΕΠΕ ΕΝΑ ΑΠΟ ΤΑ ΕΞΙ ═══════════════════════════════════════
 // Η εφαρμογή έχει ΔΥΟ καταστάσεις (light, dark). Ο πάγκος έγραφε
 // `data-mode="dark"` καρφωτά, οπότε ΚΑΙ ΟΙ ΟΚΤΩ σαρωτές του ταμπλό — διάταξη,

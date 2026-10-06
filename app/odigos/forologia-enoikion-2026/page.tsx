@@ -19,7 +19,7 @@ import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
-import { fe, fp, fpRate, feWhole } from '@/lib/core/format';
+import { fe, fp, fpRate, feWhole, grDateOf } from '@/lib/core/format';
 import { fn } from '@/components/tokens';
 import {
   RENTAL_TAX_BRACKETS_2026, rentalIncomeTax, rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS,
@@ -40,7 +40,7 @@ import {
 // είσπραξης, από τις σταθερές που υπολογίζουν, όπως στον οδηγό Airbnb.
 const DEDUCTION = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100);
 const TAXED_SHARE = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100);
-const BANK_FROM = `1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}`;
+const BANK_FROM = grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT);
 const BANK_FROM_LONG = `1η ${monthGen(FIRST_MONTH_BANK_RECEIPT - 1)} ${FIRST_YEAR_BANK_RECEIPT}`;
 
 // ΟΛΗ Η ΚΛΙΜΑΚΑ ΚΑΘΕ ΧΡΟΝΙΑΣ, ΟΧΙ ΜΟΝΟ ΤΟ ΝΕΟ ΚΛΙΜΑΚΙΟ. Η πρόταση έλεγε «μπαίνει
@@ -129,16 +129,16 @@ const SCALE = RENTAL_TAX_BRACKETS_2026.map(b => [
 const SOURCES: string[] = [
   'Κλίμακα ενοικίων 2026 (15 / 25 / 35 / 45%, όριο 36.000€): άρθρο 8 ν.5246/2025 (ΦΕΚ Α΄ 198/11.11.2025) · έναρξη ισχύος άρθρο 47 παρ. 3.',
   `Τεκμαρτή έκπτωση ${DEDUCTION}: άρθρο 39 παρ. 3 περ. α΄ ν.4172/2013 (ΚΦΕ).`,
-  `Τραπεζική είσπραξη μισθωμάτων: άρθρο 210 ν.5222/2025 (ΦΕΚ Α΄ 134/28.07.2025), που προσθέτει παρ. 5 στο άρθρο 39 ΚΦΕ · η έναρξη ορίστηκε στην 1.4.2026 με το άρθρο 129 παρ. 1 ν.5264/2025 (ΦΕΚ Α΄ 239/19.12.2025), μετατέθηκε στην 1.10.2026 με το άρθρο 48 ν.5294/2026 (ΦΕΚ Α΄ 58/08.04.2026) και στην ${BANK_FROM} με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026).`,
+  `Τραπεζική είσπραξη μισθωμάτων: άρθρο 210 ν.5222/2025 (ΦΕΚ Α΄ 134/28.07.2025), που προσθέτει παρ. 5 στο άρθρο 39 ΚΦΕ · η έναρξη ορίστηκε στην 01/04/2026 με το άρθρο 129 παρ. 1 ν.5264/2025 (ΦΕΚ Α΄ 239/19.12.2025), μετατέθηκε στην 01/10/2026 με το άρθρο 48 ν.5294/2026 (ΦΕΚ Α΄ 58/08.04.2026) και στην ${BANK_FROM} με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026).`,
 ];
 
 // Η χρονική πορεία της τραπεζικής είσπραξης, από τη θέσπιση ως την ισχύουσα έναρξη.
 const TIMELINE: { step: string; what: string; source: string }[] = [
   { step: 'Θέσπιση', what: 'Προσθήκη παρ. 5 στο άρθρο 39 ΚΦΕ', source: 'ν.5222/2025, άρθρο 210' },
-  { step: 'Αρχική έναρξη', what: '1.4.2026', source: 'ν.5264/2025, άρθρο 129 παρ. 1' },
+  { step: 'Αρχική έναρξη', what: '01/04/2026', source: 'ν.5264/2025, άρθρο 129 παρ. 1' },
   // ΤΟ ΕΝΔΙΑΜΕΣΟ ΒΗΜΑ ΕΛΕΙΠΕ. Επιβεβαιώθηκε από την ομάδα Grok σε αναδημοσίευση
   // του πρωτογενούς και από δεύτερη ανεξάρτητη βάση (25.09.2026).
-  { step: 'Πρώτη μετάθεση', what: 'Έναρξη 1.10.2026', source: 'ν.5294/2026, άρθρο 48 · ΦΕΚ Α΄ 58/08.04.2026' },
+  { step: 'Πρώτη μετάθεση', what: 'Έναρξη 01/10/2026', source: 'ν.5294/2026, άρθρο 48 · ΦΕΚ Α΄ 58/08.04.2026' },
   { step: 'Δεύτερη μετάθεση · ισχύουσα έναρξη', what: BANK_FROM, source: 'Α.1187/2026 · ΦΕΚ Β΄ 5590/17.09.2026' },
 ];
 

@@ -21,10 +21,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId } from 'react';
 import { T, feAuto, fn, fp } from '@/components/tokens';
-import { fe, fpRate, feWhole, feSigned } from '@/lib/core/format';
+import { fe, fpRate, feWhole, feSigned, grDateOf } from '@/lib/core/format';
 import {
   rentalIncomeTax, marginalRate,
-  rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS,
+  rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT,
 } from '@/lib/billing/greekTax';
 import { parseAmount } from '@/lib/core/greek';
 import { bankReceiptMatters, presumptiveDeductionRateForYear, PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
@@ -196,7 +196,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
               στη θέση του κανόνα μπαίνει το ΠΟΣΟ που κοστίζει η επιλογή. */}
           <p style={{ margin: '3px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)' }}>
             {viaBank
-              ? 'Προϋπόθεση για την τεκμαρτή έκπτωση 5%, από 1.7.2027 (ν.5222/2025).'
+              ? `Προϋπόθεση για την τεκμαρτή έκπτωση 5%, από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025).`
               : `Με μετρητά φορολογείται το 100% του ενοικίου (ν.5222/2025). Η έκπτωση που χάνεται κοστίζει ${feAuto(r.cashCost)} τον χρόνο.`}
           </p>
         </div>

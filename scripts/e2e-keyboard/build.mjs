@@ -3,10 +3,11 @@
 // ελέγχου, με ολόκληρο το globals.css, χωρίς διακομιστή και χωρίς λογαριασμό.
 // Ίδιο ιδίωμα με τον πάγκο κινητού, ίδιο ψευδώνυμο για τον πελάτη της βάσης.
 import { build } from 'esbuild';
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BENCH_DEFINE, BENCH_INJECT } from '../lib/bench-env.mjs';
+import { writeBenchCss } from '../perf-bench/bench-css.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
@@ -30,7 +31,8 @@ await build({
   },
 });
 
-writeFileSync(join(out, 'globals.css'), readFileSync(join(root, 'app/globals.css'), 'utf8'));
+// Το φύλλο με σχετικές διαδρομές γραμματοσειρών: δες scripts/perf-bench/bench-css.mjs.
+writeBenchCss(root, out);
 writeFileSync(join(out, 'keyboard.html'), `<!doctype html><html lang="el" data-mode="dark"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Πάγκος πληκτρολογίου</title>

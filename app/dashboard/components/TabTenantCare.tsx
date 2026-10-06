@@ -33,6 +33,7 @@ import {
 } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { failed } from '@/lib/core/dbError';
+import { grDateOf } from '@/lib/core/format';
 import { navLabel } from '@/lib/nav/labels';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import { roleLabel } from '@/lib/contacts/roles';
@@ -419,9 +420,9 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
         {viaBank
           ? `, με τεκμαρτή έκπτωση ${ratePct} (φορολογητέο ${fe(taxable)})${cashMatters?' επειδή το ενοίκιο εισπράττεται μέσω τράπεζας':''}.`
           : !cashMatters
-            ? `, με τεκμαρτή έκπτωση ${ratePct} (φορολογητέο ${fe(taxable)}). Για τη χρήση ${taxYear} η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης· η προϋπόθεση της τράπεζας ισχύει για μισθώματα από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}.`
+            ? `, με τεκμαρτή έκπτωση ${ratePct} (φορολογητέο ${fe(taxable)}). Για τη χρήση ${taxYear} η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης· η προϋπόθεση της τράπεζας ισχύει για μισθώματα από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)}.`
             : deductionRate>0
-              ? `, με τεκμαρτή έκπτωση ${ratePct} αντί ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} (φορολογητέο ${fe(taxable)}): για τα μισθώματα που εισπράττονται μετρητά από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT} η έκπτωση δεν δίνεται.`
+              ? `, με τεκμαρτή έκπτωση ${ratePct} αντί ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} (φορολογητέο ${fe(taxable)}): για τα μισθώματα που εισπράττονται μετρητά από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} η έκπτωση δεν δίνεται.`
               : `. Επειδή το ενοίκιο δεν δηλώνεται ως ηλεκτρονική είσπραξη, η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} δεν εφαρμόζεται και φορολογούνται ολόκληρα τα ακαθάριστα.`}
       </InfoBanner>
 
@@ -484,7 +485,7 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
                 σε δικό μας φορέα κειμένου μέσα στο InfoBlock — το InfoBlock το
                 μοιράζονται κι άλλες καρτέλες. Ο συλλαβισμός πάει μαζί του:
                 χωρίς αυτόν εννιά γραμμές κλείνουν τεντώνοντας τα κενά. */}
-            <div className="po-just">{hy(<>Κάθε νέα μίσθωση, καθώς και κάθε τροποποίηση ή λύση, δηλώνεται ηλεκτρονικά στην ΑΑΔΕ έως το τέλος του επόμενου μήνα από την έναρξη ή τη μεταβολή.{tenant.lease_start?` Για έναρξη ${fmtD(tenant.lease_start)}, προθεσμία δήλωσης έως ${lastDayNextMonth(tenant.lease_start)}.`:''} Χωρίς τη δήλωση δεν αναγνωρίζεται φορολογικά η μίσθωση. Μετά την υποβολή, ο μισθωτής (και τυχόν συνιδιοκτήτες) ειδοποιείται μέσω myAADE/email και έχει 30 ημέρες να την αποδεχθεί ή να την απορρίψει — αλλιώς θεωρείται σιωπηρά αποδεκτή (ισχύς από 2/6/2025)· ενημέρωσέ τον εγκαίρως. Επιβεβαίωσε την ακριβή προθεσμία στην ΑΑΔΕ (σύνδεσμος πιο κάτω).</>)}</div>
+            <div className="po-just">{hy(<>Κάθε νέα μίσθωση, καθώς και κάθε τροποποίηση ή λύση, δηλώνεται ηλεκτρονικά στην ΑΑΔΕ έως το τέλος του επόμενου μήνα από την έναρξη ή τη μεταβολή.{tenant.lease_start?` Για έναρξη ${fmtD(tenant.lease_start)}, προθεσμία δήλωσης έως ${lastDayNextMonth(tenant.lease_start)}.`:''} Χωρίς τη δήλωση δεν αναγνωρίζεται φορολογικά η μίσθωση. Μετά την υποβολή, ο μισθωτής (και τυχόν συνιδιοκτήτες) ειδοποιείται μέσω myAADE/email και έχει 30 ημέρες να την αποδεχθεί ή να την απορρίψει — αλλιώς θεωρείται σιωπηρά αποδεκτή (ισχύς από 02/06/2025)· ενημέρωσέ τον εγκαίρως. Επιβεβαίωσε την ακριβή προθεσμία στην ΑΑΔΕ (σύνδεσμος πιο κάτω).</>)}</div>
           </InfoBlock>
           <InfoBlock title="Είσπραξη μέσω τράπεζας" tone={viaBank?'var(--positive)':'var(--negative)'}>
             {/* Ο αρνητικός κλάδος είναι 264 χαρακτήρες σε κουτί 398, τέσσερις
@@ -492,7 +493,7 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
                 πρώτη του, οπότε ο ίδιος φορέας καλύπτει τους δύο κλάδους. */}
             <div className="po-just">{hy(viaBank
               ? `Το ενοίκιο εισπράττεται μέσω τράπεζας, οπότε ισχύει η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} και φορολογείται το ${fe(taxable)} αντί του ${fe(annualRent)}.`
-              : `Το ενοίκιο δηλώνεται ως μη τραπεζική είσπραξη. Από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT} (ν.5222/2025) η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} θα προϋποθέτει είσπραξη μέσω τράπεζας· χωρίς αυτήν θα φορολογείται το 100% των ακαθάριστων, δηλαδή ${fe(annualRent)} αντί ${fe(annualRent*(1-PRESUMPTIVE_DEDUCTION_RATE))}. Για τις χρήσεις 2025-2026 η έκπτωση ισχύει κανονικά· συμπλήρωσε IBAN είσπραξης εγκαίρως στα στοιχεία της μίσθωσης.`)}</div>
+              : `Το ενοίκιο δηλώνεται ως μη τραπεζική είσπραξη. Από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025) η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} θα προϋποθέτει είσπραξη μέσω τράπεζας· χωρίς αυτήν θα φορολογείται το 100% των ακαθάριστων, δηλαδή ${fe(annualRent)} αντί ${fe(annualRent*(1-PRESUMPTIVE_DEDUCTION_RATE))}. Για τις χρήσεις 2025-2026 η έκπτωση ισχύει κανονικά· συμπλήρωσε IBAN είσπραξης εγκαίρως στα στοιχεία της μίσθωσης.`)}</div>
           </InfoBlock>
           <InfoBlock title="Αναπροσαρμογή ΔΤΚ">
             {/* Με τον προαιρετικό κλάδο του ν.1703/1987 το κείμενο φτάνει τους

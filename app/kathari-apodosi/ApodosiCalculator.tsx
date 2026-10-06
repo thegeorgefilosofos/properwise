@@ -22,7 +22,7 @@
 import { useMemo, useId, useState } from 'react';
 import Link from 'next/link';
 import { T, feAuto } from '@/components/tokens';
-import { fe, fn, fp, fpRate, feSigned, fpSigned } from '@/lib/core/format';
+import { fe, fn, fp, fpRate, feSigned, fpSigned, grDateOf } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { propertyYield } from '@/lib/tools/apodosi';
 import { FIRST_YEAR_NEW_BRACKETS, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
@@ -39,7 +39,7 @@ const SPEC = {
 } as const;
 const PATH = '/kathari-apodosi';
 // Η έναρξη της τραπεζικής είσπραξης, από τις σταθερές που υπολογίζουν.
-const BANK_FROM = `1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}`;
+const BANK_FROM = grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT);
 
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 

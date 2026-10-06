@@ -322,3 +322,15 @@ export const grDate = (iso: string | null | undefined): string => {
   const m = iso ? ISO_DATE_HEAD.exec(iso) : null;
   return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso ?? '');
 };
+
+/**
+ * Η ΙΔΙΑ ΓΡΑΦΗ, ΑΠΟ ΑΡΙΘΜΟΥΣ. Η έναρξη ενός μέτρου ζει στον κώδικα ως έτος και
+ * μήνας (`FIRST_YEAR_BANK_RECEIPT`, `FIRST_MONTH_BANK_RECEIPT`), όχι ως ISO.
+ * Επτά σημεία τη συναρμολογούσαν με το χέρι ως «1.7.2027», με τελείες και χωρίς
+ * μηδενικά, δίπλα σε οθόνες που γράφουν «01/07/2027» από το `grDate`: δύο
+ * γραφές της ίδιας μέρας στον ίδιο οδηγό.
+ *
+ * `grDateOf(2027, 7)` → «01/07/2027». Ο μήνας μετράει από το 1.
+ */
+export const grDateOf = (year: number, month: number, day = 1): string =>
+  `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;

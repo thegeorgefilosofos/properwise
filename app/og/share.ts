@@ -14,7 +14,7 @@
 import { SHARE_IMAGE, HOME_TITLE_LINES } from '@/lib/core/site';
 import { GUIDES, guideSlug } from '../odigos/guides';
 import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
-import { fpRate } from '@/lib/core/format';
+import { fpRate, grDate } from '@/lib/core/format';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import { TARIFFS_VERIFIED } from '@/lib/energy/catalogue';
 
@@ -35,7 +35,6 @@ export type ShareCard = {
 // κλίμακα του νόμου, η ημερομηνία από τον κατάλογο των οδηγών. Ποσά
 // αποτελέσματος δεν μπαίνουν: η πλατφόρμα κρατά την εικόνα εβδομάδες.
 const RENT_RATES = RENTAL_TAX_BRACKETS_2026.map(b => fpRate(b.rate * 100)).join(' · ');
-const dotted = (iso: string) => iso.split('-').reverse().join('.');
 
 export const SHARE_CARDS: Record<string, ShareCard> = {
   // Η αρχική και κάθε σελίδα χωρίς δική της κάρτα (SHARE_IMAGE, lib/core/site.ts).
@@ -62,7 +61,7 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
   // Η ΗΜΕΡΟΜΗΝΙΑ ΕΛΕΓΧΟΥ ΚΑΙ ΟΧΙ ΤΙΜΗ: η πλατφόρμα κρατά την εικόνα εβδομάδες
   // και μια τιμή θα έμενε πίσω από τον κατάλογο. Η μέρα του ελέγχου μένει αληθής.
   'sygkrisi-timologion-revmatos': { kind: 'calc', over: 'Σύγκριση', title: 'Τι θα πλήρωνες με κάθε τιμολόγιο ρεύματος',
-    chips: ['Σταθερά, κυμαινόμενα, πράσινα', 'Με τις κιλοβατώρες σου', `Τιμές ελεγμένες ${dotted(TARIFFS_VERIFIED)}`],
+    chips: ['Σταθερά, κυμαινόμενα, πράσινα', 'Με τις κιλοβατώρες σου', `Τιμές ελεγμένες ${grDate(TARIFFS_VERIFIED)}`],
     path: '/sygkrisi-timologion-revmatos' },
   'odigos': { kind: 'guide', over: 'Οδηγοί', title: 'Οδηγοί φορολογίας ακινήτων',
     chips: GUIDES.map(g => g.kicker), path: '/odigos' },
@@ -72,7 +71,7 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
     chips: ['Σύνδεσμος μόνο για ανάγνωση', 'Ε2 ανά ΑΦΜ', 'Τι λείπει, πρώτο', 'Όλοι οι πελάτες σε μία λίστα'], path: '/logistes' },
   ...Object.fromEntries(GUIDES.map(g => [guideSlug(g), {
     kind: 'guide' as const, over: 'Οδηγός', title: g.title,
-    chips: [g.kicker, `Ενημερώθηκε ${dotted(g.updated)}`, 'Με τις πηγές του νόμου'], path: g.href,
+    chips: [g.kicker, `Ενημερώθηκε ${grDate(g.updated)}`, 'Με τις πηγές του νόμου'], path: g.href,
   }])),
 };
 
