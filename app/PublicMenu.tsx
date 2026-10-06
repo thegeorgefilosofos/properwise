@@ -1,6 +1,4 @@
-'use client'
 import Link from 'next/link'
-import { useEffect, useId, useRef, useState } from 'react'
 import { T } from '@/components/tokens'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -16,60 +14,38 @@ import { T } from '@/components/tokens'
 // «Σύνδεση» χωρά από τα 320 ως τα 640· το «Σύνδεση» μπαίνει μέσα στο φύλλο,
 // με τη σειρά που έχει στον υπολογιστή.
 //
-// ΠΛΗΚΤΡΟΛΟΓΙΟ. `aria-expanded` στο κουμπί, Esc κλείνει και γυρίζει την
-// εστίαση στο κουμπί, το Tab έξω από το φύλλο το κλείνει, όπως και ένα
-// πάτημα οπουδήποτε αλλού. Η κίνηση ανοίγματος υπάρχει μόνο όταν ο χρήστης
-// δεν έχει ζητήσει λιγότερη κίνηση (globals.css, `.pub-menu-sheet`).
+// ΧΩΡΙΣ JAVASCRIPT, ΜΕ `<details>` (06/10/2026). Η πρώτη γραφή ήταν component
+// πελάτη με state και ακροατές: πρόσθετε 1,2 KB στο κρίσιμο μονοπάτι κάθε
+// δημόσιας σελίδας και η «Καθαρή απόδοση», που είχε μόλις 0,5 KB περιθώριο,
+// πέρασε το όριο του `docs/perf/budget.json`. Η καστάνια δεν ανεβαίνει για
+// ένα μενού που ο περιηγητής ξέρει να ανοιγοκλείνει μόνος του: το `<summary>`
+// είναι κουμπί για το πληκτρολόγιο (Enter, Space) και τον αναγνώστη οθόνης,
+// με κατάσταση ανοιχτό/κλειστό. Κάθε σελίδα φτιάχνει τη δική της κεφαλίδα,
+// οπότε μετά από πλοήγηση το μενού ξεκινά πάντα κλειστό.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function PublicMenu({ links, current }: {
   links: readonly (readonly [string, string])[]
   current?: string
 }) {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const id = useId()
-
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      setOpen(false)
-      btnRef.current?.focus()
-    }
-    document.addEventListener('pointerdown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('pointerdown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
   return (
-    <div ref={rootRef} className="pub-menu lp-only-sm"
-      onBlur={e => { if (open && !rootRef.current?.contains(e.relatedTarget as Node | null)) setOpen(false) }}>
-      <button ref={btnRef} type="button" className="pub-menu-btn"
-        aria-expanded={open} aria-controls={id} aria-label="Μενού"
-        onClick={() => setOpen(v => !v)}>
-        <svg aria-hidden="true" width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-          {open ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+    <details className="pub-menu lp-only-sm">
+      <summary className="pub-menu-btn" aria-label="Μενού">
+        <svg aria-hidden="true" className="pub-menu-ic-open" width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+          <path d="M4 7h16M4 12h16M4 17h16" />
         </svg>
-      </button>
-      {open && (
-        <ul id={id} className="pub-menu-sheet" style={{ borderRadius: T.radius.popup }}>
-          {links.map(([href, label]) => (
-            <li key={href}>
-              <Link href={href} className="lp-link pub-menu-link"
-                aria-current={current && href === `/${current}` ? 'page' : undefined}
-                onClick={() => setOpen(false)}>{label}</Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+        <svg aria-hidden="true" className="pub-menu-ic-close" width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </summary>
+      <ul className="pub-menu-sheet" style={{ borderRadius: T.radius.popup }}>
+        {links.map(([href, label]) => (
+          <li key={href}>
+            <Link href={href} className="lp-link pub-menu-link"
+              aria-current={current && href === `/${current}` ? 'page' : undefined}>{label}</Link>
+          </li>
+        ))}
+      </ul>
+    </details>
   )
 }
