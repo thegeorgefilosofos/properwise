@@ -58,6 +58,9 @@ import type { CashLine } from '@/lib/home/cash';
 import { pickedLines, recordLabel, receiptNote } from '@/lib/home/rentReceipt';
 import { hy } from '@/components/Hyphen';
 import { navLabel } from '@/lib/nav/labels';
+import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { fpRate } from '@/lib/core/format';
 
 /** Οι γραμμές που μπορούν να εισπραχθούν από εδώ: όσες ξέρουν τη δόση τους. */
 export function receivableLines(lines: readonly CashLine[]): CashLine[] {
@@ -280,8 +283,7 @@ export default function RentReceived({
           αντί να τα τεντώνει. */}
       {method === 'Μετρητά' && (
         <InfoBanner tone="warning" className="po-just">
-          {hy(<>Από 1.7.2027 (ν.5222/2025) η τεκμαρτή έκπτωση 5% θα προϋποθέτει είσπραξη μέσω
-          τραπεζικού ή ηλεκτρονικού μέσου· με μετρητά θα χάνεται. Για εισπράξεις έως τότε η έκπτωση ισχύει κανονικά.</>)}
+          {hy(<>{`Από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT} (ν.5222/2025) η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} θα προϋποθέτει είσπραξη μέσω τραπεζικού ή ηλεκτρονικού μέσου· με μετρητά θα χάνεται. Για εισπράξεις έως τότε η έκπτωση ισχύει κανονικά.`}</>)}
         </InfoBanner>
       )}
     </Modal>

@@ -15,13 +15,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { mortgageMarket, NO_MARKET, type MortgageMarket } from '@/lib/tools/stegastiko'
 import type { Provenance } from '@/lib/market/ecb'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase/env'
 
 /** Μία μέρα: όσο κρατά και η σελίδα. */
 const DAY = 86400
 
 export async function readMortgageMarket(today: string): Promise<MortgageMarket> {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const base = SUPABASE_URL
+  const key = SUPABASE_ANON_KEY
   if (!base || !key) return NO_MARKET
   try {
     const res = await fetch(

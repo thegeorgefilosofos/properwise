@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
   // `plan in PLANS` θα το άφηνε να περάσει και ο πάροχος θα ζητούσε προϊόν που
   // δεν υπάρχει.
   if (!Object.hasOwn(PLANS, plan) || plan === 'free' || (cycle !== 'monthly' && cycle !== 'annual')) {
-    return NextResponse.json({ error: 'Αγνωστο πακέτο ή κύκλος.' }, { status: 400 });
+    return NextResponse.json({ error: 'Άγνωστο πακέτο ή κύκλος.' }, { status: 400 });
   }
 
   const mor = merchant();

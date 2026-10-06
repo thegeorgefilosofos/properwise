@@ -4,17 +4,17 @@ import { dash, esc, type CopyFn } from './kit.ts'
 // ── Φάση 5: Συστάσεις (Referral) ─────────────────────────────────────────────
 export const REFERRAL: Record<string, CopyFn> = {
 
-  // 39. Πρόσκληση στο πρόγραμμα συστάσεων
+  // 39. Πρόσκληση στο πρόγραμμα πρόσκλησης
   referral_invite: (c) => {
     const code = c.referralCode ? p(`Ο προσωπικός σου κωδικός: <b>${esc(c.referralCode)}</b>. Μοιράσου τον με όποιον διαχειρίζεται ακίνητα.`) : '';
     const reward = c.rewardLabel ? esc(c.rewardLabel) : 'μια ανταμοιβή';
     return { subject: 'Σύστησε το PROPERWISE σε έναν ιδιοκτήτη', html: emailShell({
       preheader: 'Με κάθε ενεργή σύσταση κερδίζεις κι εσύ.',
       unsubUrl: c.unsubUrl,
-      bodyHtml: eyebrow('Συστάσεις') + h('Μοιράσου κάτι που σε βοηθά') + greeting(c.name)
+      bodyHtml: eyebrow('Πρόγραμμα πρόσκλησης') + h('Μοιράσου κάτι που σε βοηθά') + greeting(c.name)
         + p(`Ξέρεις κάποιον με ακίνητα που ακόμη παλεύει με σημειώσεις και αποδείξεις; Πρότεινέ του το PROPERWISE. Όταν ξεκινήσει, κερδίζεις ${reward}· εκείνος ξεκινά με τη δοκιμή, όπως κάθε νέος λογαριασμός.`)
         + code
-        + button('Δες το πρόγραμμα συστάσεων', dash(c))
+        + button('Δες το πρόγραμμα πρόσκλησης', dash(c))
         + note('Η ανταμοιβή κατοχυρώνεται μόλις ο νέος ιδιοκτήτης προσθέσει ακίνητο και σαρώσει το πρώτο του έγγραφο. Πιστώνεται στη συνδρομή σου.'),
     }) };
   },
@@ -25,7 +25,7 @@ export const REFERRAL: Record<string, CopyFn> = {
     return { subject: 'Ο σύνδεσμος πρόσκλησής σου περιμένει', html: emailShell({
       preheader: 'Με κάθε ενεργή σύσταση κερδίζεις κι εσύ.',
       unsubUrl: c.unsubUrl,
-      bodyHtml: eyebrow('Συστάσεις') + h('Κάποιος θα σε ευγνωμονεί') + greeting(c.name)
+      bodyHtml: eyebrow('Πρόγραμμα πρόσκλησης') + h('Κάποιος θα σε ευγνωμονεί') + greeting(c.name)
         + p('Οι καλύτερες συστάσεις έρχονται από ανθρώπους που εμπιστευόμαστε. Αν το PROPERWISE σου έκανε τη ζωή πιο εύκολη, ίσως κάνει το ίδιο και σε κάποιον δικό σου.')
         + code
         + button('Στείλε μια πρόσκληση', dash(c))
@@ -55,7 +55,7 @@ export const REFERRAL: Record<string, CopyFn> = {
     return { subject: 'Η σύστασή σου μόλις ενεργοποιήθηκε', html: emailShell({
       preheader: 'Καλά νέα από την πρόσκλησή σου.',
       unsubUrl: c.unsubUrl,
-      bodyHtml: eyebrow('Συστάσεις') + h('Μια καλή είδηση') + greeting(c.name)
+      bodyHtml: eyebrow('Πρόγραμμα πρόσκλησης') + h('Μια καλή είδηση') + greeting(c.name)
         + p(`${who} ξεκίνησε ενεργά με το PROPERWISE χάρη σε σένα.${reward}`)
         + p('Μια σύσταση σαν τη δική σου αξίζει πολλά για εμάς. Ευχαριστούμε που μοιράζεσαι κάτι που σε βοηθά.')
         + button('Δες τις συστάσεις σου', dash(c))

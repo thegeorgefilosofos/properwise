@@ -25,6 +25,7 @@ import { isValidAfm } from '../core/greek';
 import { athensToday } from '../core/time'
 import { MYAADE, aadePath } from './aade';
 import { fe } from '../core/format';
+import { navLabel } from '../nav/labels';
 import { daysBetweenIso } from '@/lib/core/time';
 
 // ── Κανόνες που αλλάζουν με τον νόμο — ΜΙΑ θέση για ενημέρωση ───────────────
@@ -167,9 +168,9 @@ export function buildLeaseDeclaration(input: LeaseDeclarationInput): LeaseDeclar
   };
 
   // ── Εκμισθωτής ────────────────────────────────────────────────────────────
-  req('owner_name', 'Ονοματεπώνυμο εκμισθωτή', o.name, 'settings', 'Συμπλήρωσέ το στις Ρυθμίσεις, στα Στοιχεία τιμολόγησης.');
+  req('owner_name', 'Ονοματεπώνυμο εκμισθωτή', o.name, 'settings', `Συμπλήρωσέ το στην καρτέλα «${navLabel('settings')}», στα Στοιχεία τιμολόγησης.`);
   reqValid('owner_afm', 'ΑΦΜ εκμισθωτή', o.afm, isValidAfm, 'settings',
-    'Συμπλήρωσέ το στις Ρυθμίσεις, στα Στοιχεία τιμολόγησης.',
+    `Συμπλήρωσέ το στην καρτέλα «${navLabel('settings')}», στα Στοιχεία τιμολόγησης.`,
     'Το ΑΦΜ δεν περνά τον έλεγχο εγκυρότητας της ΑΑΔΕ. Έλεγξε τα 9 ψηφία· με λάθος ΑΦΜ η δήλωση απορρίπτεται.');
 
   // ── Ακίνητο ───────────────────────────────────────────────────────────────

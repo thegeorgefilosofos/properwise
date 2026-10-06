@@ -5848,6 +5848,15 @@ tr.po-row-more { display: none; }
   background: linear-gradient(var(--row-bg, transparent), var(--row-bg, transparent)) var(--bg-surface);
   background-clip: padding-box;
 }
+/* ΚΑΙ ΤΑ ΥΠΟΛΟΙΠΑ ΚΕΛΙΑ ΤΗΣ ΕΠΙΣΗΜΑΣΜΕΝΗΣ ΓΡΑΜΜΗΣ ΣΤΡΩΝΟΝΤΑΙ ΣΤΗΝ ΙΔΙΑ ΒΑΣΗ.
+   Η καρφωμένη κεφαλίδα γραμμής έβαζε το ημιδιαφανές `--row-bg` πάνω στο
+   `--bg-surface`, τα διπλανά κελιά πάνω σε ό,τι βρισκόταν από κάτω. Στον
+   υπολογισμό βραχυχρόνιας ή μακροχρόνιας οι γραμμές 70–90% έβγαιναν δίτονες:
+   σκούρα η πρώτη στήλη, ανοιχτές οι άλλες δύο (έλεγχος 6/10, 1440px). */
+.po-scroll-x .po-table tbody tr.is-on > td {
+  background: linear-gradient(var(--row-bg), var(--row-bg)) var(--bg-surface);
+  background-clip: padding-box;
+}
 /* Ο πίνακας κυλά μέσα στο κουτί του· το κουτί κρατά τη στρογγυλή γωνία. */
 .plan-matrix { overflow-x: auto; }
 /* Η ΚΕΦΑΛΙΔΑ ΣΤΗΛΗΣ ΔΕΝ ΣΠΑΕΙ ΠΟΤΕ ΜΕΣΑ ΣΤΗ ΛΕΞΗ. Ο γενικός κανόνας του

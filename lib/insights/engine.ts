@@ -114,7 +114,7 @@ export function computeInsights(input: InsightInput): Insight[] {
   // ── 1. Ασφάλεια ακινήτου ──────────────────────────────────────────────────
   const insD = daysUntil(p.insurance_expiry, now);
   if (insD !== null) {
-    if (insD < 0) out.push({ id: 'insurance-expired', kind: 'urgent', title: 'Η ασφάλεια του ακινήτου έχει λήξει', detail: `Έληξε ${dueText(insD)}. Ανανέωσέ το: καλύπτει πυρκαγιά, σεισμό και ζημιές.`, action: { label: navLabel('finances'), tab: 'finances' } });
+    if (insD < 0) out.push({ id: 'insurance-expired', kind: 'urgent', title: 'Η ασφάλεια του ακινήτου έχει λήξει', detail: `Έληξε ${dueText(insD)}. Ανανέωσέ την για να μη μείνει το ακίνητο ακάλυπτο.`, action: { label: navLabel('finances'), tab: 'finances' } });
     else if (insD <= 45) out.push({ id: 'insurance-soon', kind: 'attention', title: 'Λήγει σύντομα η ασφάλεια', detail: `Σε ${insD} ${insD === 1 ? 'ημέρα' : 'ημέρες'}. Ανανέωσέ την έγκαιρα για να μη μείνει το ακίνητο ακάλυπτο.`, action: { label: navLabel('finances'), tab: 'finances' } });
   }
 
@@ -212,7 +212,7 @@ export function computeInsights(input: InsightInput): Insight[] {
   // ── 9. Πλαίσιο απόδοσης ───────────────────────────────────────────────────
   // ΚΑΜΙΑ ΣΥΓΚΡΙΣΗ ΜΕ ΤΗΝ ΑΓΟΡΑ ΕΔΩ. Έλεγε «πάνω από τον μέσο όρο της αγοράς» και
   // «μια τυπική απόδοση χρηματιστηρίου είναι γύρω στο 7%» — δύο ισχυρισμοί χωρίς
-  // πηγή, τη στιγμή που η καρτέλα Αποδόσεις κάνει την ίδια σύγκριση με μετρημένα
+  // πηγή, τη στιγμή που η καρτέλα «Απόδοση» κάνει την ίδια σύγκριση με μετρημένα
   // στοιχεία και αναγραφόμενες πηγές (lib/market/greekMarket.ts: BENCHMARKS,
   // MARKET_SOURCES, BENCHMARKS_ASOF). Δύο απαντήσεις για το ίδιο ερώτημα, η μία
   // ατεκμηρίωτη, είναι χειρότερο από μία. Εδώ μένει το δικό σου νούμερο και η
@@ -220,8 +220,8 @@ export function computeInsights(input: InsightInput): Insight[] {
   const YIELD_STRONG_PCT = 5;   // κατώφλι ΕΜΦΑΝΙΣΗΣ, όχι ισχυρισμός για την αγορά
   const YIELD_LOW_PCT = 3;
   if (netYield > 0 && propValue > 0) {
-    if (netYield >= YIELD_STRONG_PCT) out.push({ id: 'yield-strong', kind: 'positive', title: 'Δυνατή απόδοση', detail: `Με όσα έχεις καταχωρήσει, το ακίνητο αποδίδει καθαρά ${fp(netYield)} τον χρόνο. Η σύγκριση με την περιοχή είναι στις Αποδόσεις.`, metric: `${fp(netYield)}`, action: { label: navLabel('roi'), tab: 'roi' } });
-    else if (netYield < YIELD_LOW_PCT) out.push({ id: 'yield-low', kind: 'opportunity', title: 'Υπάρχει περιθώριο στην απόδοση', detail: `Η καθαρή απόδοση είναι ${fp(netYield)}. Δες στις Αποδόσεις τι πιάνει η περιοχή σου και ποιες δαπάνες τη μειώνουν.`, metric: `${fp(netYield)}`, action: { label: navLabel('roi'), tab: 'roi' } });
+    if (netYield >= YIELD_STRONG_PCT) out.push({ id: 'yield-strong', kind: 'positive', title: 'Δυνατή απόδοση', detail: `Με όσα έχεις καταχωρήσει, το ακίνητο αποδίδει καθαρά ${fp(netYield)} τον χρόνο. Η σύγκριση με την περιοχή είναι στην καρτέλα «${navLabel('roi')}».`, metric: `${fp(netYield)}`, action: { label: navLabel('roi'), tab: 'roi' } });
+    else if (netYield < YIELD_LOW_PCT) out.push({ id: 'yield-low', kind: 'opportunity', title: 'Υπάρχει περιθώριο στην απόδοση', detail: `Η καθαρή απόδοση είναι ${fp(netYield)}. Δες στην καρτέλα «${navLabel('roi')}» τι πιάνει η περιοχή σου και ποιες δαπάνες τη μειώνουν.`, metric: `${fp(netYield)}`, action: { label: navLabel('roi'), tab: 'roi' } });
   }
 
   // ── 9β. ΤΟ ΔΑΝΕΙΟ, ΠΟΥ Ο ΣΥΜΒΟΥΛΟΣ ΔΕΝ ΕΒΛΕΠΕ ────────────────────────────
@@ -287,7 +287,7 @@ export function computeInsights(input: InsightInput): Insight[] {
     .map(x => -x);
   const lastExpenseDays = daysAgo.length ? Math.min(...daysAgo) : null;
   if (expenses.length === 0) {
-    out.push({ id: 'no-expenses', kind: 'opportunity', title: 'Ξεκίνα με μία φωτογραφία', detail: 'Βγάλε φωτογραφία έναν λογαριασμό ή μια απόδειξη και μπαίνει μόνη της στη σωστή κατηγορία.', action: { label: 'Σάρωση', tab: 'scan' } });
+    out.push({ id: 'no-expenses', kind: 'opportunity', title: 'Ξεκίνα με μία φωτογραφία', detail: 'Φωτογράφισε έναν λογαριασμό ή μια απόδειξη· η δαπάνη μπαίνει μόνη της στη σωστή κατηγορία.', action: { label: 'Σάρωση', tab: 'scan' } });
   } else if (lastExpenseDays !== null && lastExpenseDays > 45) {
     out.push({ id: 'stale', kind: 'attention', title: 'Έχεις καιρό να καταχωρήσεις κάτι', detail: `${lastExpenseDays} ημέρες χωρίς νέα καταχώρηση. Μια φωτογραφία του επόμενου λογαριασμού κρατά την εικόνα ενημερωμένη.`, action: { label: 'Σάρωση', tab: 'scan' } });
   }

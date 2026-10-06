@@ -316,13 +316,17 @@ export default function Page() {
         </p>
         <div className="po-table-box" style={{ marginTop: 14 }}>
           <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-            <table className="po-table" style={{ '--tbl-min': '340px' } as CSSProperties}>
+            {/* Τέσσερις στήλες με γραμμές «4 × 1,50€ = 6,00€» δεν χωρούν στα 340px:
+                η πρώτη στήλη στενευόταν στα ~40px και τα ονόματα έσπαγαν σε
+                συλλαβές (έλεγχος 6/10, 390px). Ο πίνακας κυλά πλέον οριζόντια,
+                με καρφωμένη την πρώτη στήλη όπως κάθε .po-table. */}
+            <table className="po-table" style={{ '--tbl-min': '600px' } as CSSProperties}>
               <caption>{`Κράτηση ${dayMonth(SPLIT_STAY.arrival)}–${dayMonth(SPLIT_STAY.departure)}, ένα στοιχείο ανά μήνα`}</caption>
               <thead>
                 <tr>
                   <th scope="col">Τύπος</th>
-                  <th scope="col" className="num">{`${monthShort(OCT.month0)} (${OCT.nights} × …)`}</th>
-                  <th scope="col" className="num">{`${monthShort(NOV.month0)} (${NOV.nights} × …)`}</th>
+                  <th scope="col" className="num">{`${monthShort(OCT.month0)} · ${OCT.nights} ${OCT.nights === 1 ? 'νύχτα' : 'νύχτες'}`}</th>
+                  <th scope="col" className="num">{`${monthShort(NOV.month0)} · ${NOV.nights} ${NOV.nights === 1 ? 'νύχτα' : 'νύχτες'}`}</th>
                   <th scope="col" className="num">Σύνολο</th>
                 </tr>
               </thead>

@@ -31,7 +31,7 @@ const TEMPLATES: Record<string, { subject: string; preheader: string; body: stri
     body:
       h('Καλώς όρισες στο PROPERWISE')
       + p('Ένα πάτημα και ο λογαριασμός σου είναι έτοιμος.')
-      + button('Επιβεβαίωσε τη διεύθυνσή μου', '{{ .ConfirmationURL }}')
+      + button('Επιβεβαίωσε τη διεύθυνσή σου', '{{ .ConfirmationURL }}')
       + note('Αν δεν έκανες εσύ εγγραφή, αγνόησέ το. Χωρίς την επιβεβαίωση δεν δημιουργείται λογαριασμός.'),
   },
   'reset-password.html': {
@@ -59,7 +59,7 @@ const TEMPLATES: Record<string, { subject: string; preheader: string; body: stri
     body:
       h('Σε προσκάλεσαν στο PROPERWISE')
       + p('Κάποιος σε προσκάλεσε να δημιουργήσεις λογαριασμό στο PROPERWISE. Με ένα πάτημα ξεκινάς.')
-      + button('Δημιούργησε τον λογαριασμό μου', '{{ .ConfirmationURL }}')
+      + button('Δημιούργησε τον λογαριασμό σου', '{{ .ConfirmationURL }}')
       + note('Αν δεν περίμενες αυτή την πρόσκληση, αγνόησέ το: δεν δημιουργείται λογαριασμός χωρίς εσένα.'),
   },
   // Supabase → «Magic link or OTP»: σύνδεσμος σύνδεσης μιας χρήσης, χωρίς κωδικό.

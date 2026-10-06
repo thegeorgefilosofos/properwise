@@ -418,7 +418,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
     }));
     const { error } = await checklist.addMany(supabase, inserts);
     setBulkSaving(false);
-    if (error) { notifyError('Κάτι πήγε στραβά, δοκίμασε ξανά'); return; }
+    if (error) { notifyError(failed('Η εργασία δεν προστέθηκε', error)); return; }
     const n = inserts.length;
     setShowBulk(false); setBulkDesc(''); clearSelection();
     notifyOk(`Η εργασία προστέθηκε σε ${n} ${n === 1 ? 'ακίνητο' : 'ακίνητα'}`);

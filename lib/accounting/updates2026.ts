@@ -7,11 +7,18 @@
 
 import type { Who } from './dossier'
 import { MYAADE, GOV_SHORT_TERM } from '@/lib/tax/aade';
-import { feWhole } from '@/lib/core/format';
+import { feWhole, fpRate } from '@/lib/core/format';
+import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import {
   RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO, RENO_39B_LAW, RENO_39B_KYA,
 } from './renovation39b';
 
+
+// Η έναρξη της τραπεζικής είσπραξης και η τεκμαρτή έκπτωση, από τις σταθερές που υπολογίζουν.
+const BANK_FROM = `1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}`
+const DEDUCTION = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)
+const TAXED_SHARE = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100)
 
 export type UpdateArea =
   | 'rental_income' | 'short_term' | 'transfer' | 'loans_programs'
@@ -50,9 +57,9 @@ export const REGULATORY_UPDATES_2026: RegulatoryUpdate[] = [
   {
     id: 'rent-bank-payment',
     area: 'rental_income', audiences: ['long_term'],
-    title: 'Υποχρεωτική πληρωμή ενοικίων κατοικίας μέσω τράπεζας (από 1.7.2027)',
-    summary: 'Ο ν.5222/2025 (άρθρο 210) ζητά τα μισθώματα κατοικιών να εξοφλούνται με ηλεκτρονικό/τραπεζικό μέσο· αλλιώς χάνεται το δικαίωμα της τεκμαρτής έκπτωσης 5%, δηλαδή φορολογείσαι στο 100% του ενοικίου αντί για το 95%. Η έναρξη μετατέθηκε στην 1.7.2027 (απόφαση ΑΑΔΕ Α.1187/2026, ΦΕΚ Β΄5590/17.09.2026): για τα εισοδήματα 2025 και 2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης. Ετοιμάσου να ζητάς κατάθεση/IRIS και κράτα αποδεικτικά.',
-    effective: '1/7/2027', legalBasis: 'ν.5222/2025 άρθρο 210 · Α.1187/2026',
+    title: `Υποχρεωτική πληρωμή ενοικίων κατοικίας μέσω τράπεζας (από ${BANK_FROM})`,
+    summary: `Ο ν.5222/2025 (άρθρο 210) ζητά τα μισθώματα κατοικιών να εξοφλούνται με ηλεκτρονικό/τραπεζικό μέσο· αλλιώς χάνεται το δικαίωμα της τεκμαρτής έκπτωσης ${DEDUCTION}, δηλαδή φορολογείσαι στο 100% του ενοικίου αντί για το ${TAXED_SHARE}. Η έναρξη μετατέθηκε στην ${BANK_FROM} (απόφαση ΑΑΔΕ Α.1187/2026, ΦΕΚ Β΄5590/17.09.2026): για τα εισοδήματα 2025 και 2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης. Ετοιμάσου να ζητάς κατάθεση/IRIS και κράτα αποδεικτικά.`,
+    effective: `1/${FIRST_MONTH_BANK_RECEIPT}/${FIRST_YEAR_BANK_RECEIPT}`, legalBasis: 'ν.5222/2025 άρθρο 210 · Α.1187/2026',
     sourceLabel: 'Μισθώσεις ακινήτων (ΑΑΔΕ)', sourceHref: SRC.aadeRentals, severity: 'warning',
   },
   {

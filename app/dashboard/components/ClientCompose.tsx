@@ -10,12 +10,9 @@
 // Σχεδίαση: ίδιο design system με τα υπόλοιπα (Theme tokens, near-monochrome,
 // premium overlay + sticky header/footer). Καμία εξάρτηση από MCP.
 // ═══════════════════════════════════════════════════════════════════════════
-import { brandMarkHtml } from '@/components/BrandMark';
 import { useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { T, TT, Btn, Badge, Modal, ABSENT } from '@/components/Theme';
-import { escHtml as esc } from '@/lib/reportBranding';
-import { INK, INK_FAINT, INK_MUTED, PAPER, PAPER_ALT, RULE } from '@/lib/print/ink';
+import { T, TT, Btn, Badge, Modal } from '@/components/Theme';
 import { failed } from '@/lib/core/dbError';
 import { toggleIn } from '@/lib/core/toggleSet';
 
@@ -29,22 +26,12 @@ interface Result { email: string; name: string | null; status: string; error?: s
 
 const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 
-// Τυλίγει το κείμενο του χρήστη σε καθαρό, branded HTML (ίδια «κάρτα» με τα άλλα
-// emails). Τα {{name}} / {{email}} μένουν ανέπαφα για personalization από τη function.
-function wrapEmailHtml(bodyText: string): string {
-  const paras = esc(bodyText).trim().split(/\n{2,}/)
-    .map(p => `<p style="margin:0 0 14px;font-size:14px;color:${INK_MUTED};line-height:1.7;">${p.replace(/\n/g, '<br>')}</p>`)
-    .join('');
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:${PAPER_ALT};font-family:-apple-system,'Inter',Arial,sans-serif;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    <div style="display:flex;align-items:center;margin-bottom:22px;">
-      ${brandMarkHtml(34)}
-      <span style="font-size:16px;font-weight:700;color:${INK};margin-left:10px;">PROPERWISE</span>
-    </div>
-    <div style="background:${PAPER};border:1px solid ${RULE};border-radius:14px;padding:26px 24px;">${paras || `<p style="margin:0;color:${INK_FAINT};">${ABSENT}</p>`}</div>
-    <p style="text-align:center;font-size:11px;color:${INK_FAINT};margin:18px 0 4px;line-height:1.6;">Στάλθηκε μέσω PROPERWISE</p>
-  </div></body></html>`;
-}
+// ΤΟ HTML ΤΟ ΓΡΑΦΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ. Εδώ ζούσε το `wrapEmailHtml`, που έφτιαχνε
+// το μήνυμα στον περιηγητή· η send-client-email όμως έστελνε όποιο HTML της
+// ερχόταν, δηλαδή και ό,τι έγραφε κάποιος με ένα `fetch`. Φεύγει πλέον μόνο το
+// κείμενο (`bodyText`) και το κέλυφος, οι παράγραφοι και το υποσέλιδο με τον
+// αποστολέα γράφονται στο supabase/functions/_shared/emailTemplates.ts. Τα
+// {{name}} / {{email}} μένουν ανέπαφα για την εξατομίκευση της συνάρτησης.
 
 const initials = (name: string) =>
   (name.trim().split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('') || '?').toUpperCase();
@@ -129,7 +116,7 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
     setSending(true);
     try {
       const { data, error } = await supabase.functions.invoke('send-client-email', {
-        body: { subject: subject.trim(), bodyHtml: wrapEmailHtml(body), kind: 'broadcast', recipients: recips },
+        body: { subject: subject.trim(), bodyText: body, kind: 'broadcast', recipients: recips },
       });
       if (error) {
         let detail = '';
@@ -225,13 +212,13 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                 <div style={{ width: 34, height: 34, borderRadius: '50%', background: (summary?.failed ? 'var(--warning-soft)' : 'var(--positive-soft)'), border: `1px solid ${summary?.failed ? 'var(--warning-border)' : 'var(--positive-border)'}`, color: summary?.failed ? 'var(--warning)' : 'var(--positive)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>✓</div>
                 <div>
                   <div style={{ ...TT.h2 }}>Στάλθηκε</div>
-                  <div style={{ ...TT.bodySm }}>{summary?.sent || 0} επιτυχή{summary?.failed ? ` · ${summary.failed} απέτυχαν` : ''}</div>
+                  <div style={{ ...TT.bodySm }}>{summary?.sent || 0} στάλθηκαν{summary?.failed ? ` · ${summary.failed} απέτυχαν` : ''}</div>
                 </div>
               </div>
               <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup, overflow: 'hidden' }}>
                 {detailUnread && (
                   <div style={{ padding: '11px 14px', fontSize: 'var(--fs-xs)', color: 'var(--warning)', lineHeight: 1.55 }}>
-                    Η αναλυτική λίστα ανά παραλήπτη δεν διαβάστηκε. Τα μηνύματα στάλθηκαν κανονικά· αυτό που λείπει είναι μόνο η εικόνα του ποιος τα έλαβε. Ανοιξε ξανά το ιστορικό σε λίγο.
+                    Η αναλυτική λίστα ανά παραλήπτη δεν διαβάστηκε. Τα μηνύματα στάλθηκαν κανονικά· αυτό που λείπει είναι μόνο η εικόνα του ποιος τα έλαβε. Άνοιξε ξανά το ιστορικό σε λίγο.
                   </div>
                 )}
                 {(results || []).map((r, i) => (

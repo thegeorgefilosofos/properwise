@@ -67,7 +67,7 @@ export async function POST(request: Request) {
   // `Object.hasOwn`, όχι `in` (02.10.2026): το `in` δέχεται και κλειδιά του
   // προτύπου, π.χ. 'constructor', που θα γράφονταν ως πακέτο.
   if (!Object.hasOwn(PLANS, plan)) {
-    return NextResponse.json({ error: 'Αγνωστο πακέτο.' }, { status: 400 });
+    return NextResponse.json({ error: 'Άγνωστο πακέτο.' }, { status: 400 });
   }
   const target = plan as PlanId;
 

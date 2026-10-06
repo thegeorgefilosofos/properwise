@@ -40,6 +40,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { PropertyStatus } from './status';
+import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '../billing/greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '../billing/presumptive';
+import { fpRate } from '../core/format';
+
+// Η ημερομηνία και το ποσοστό του κανόνα της τραπεζικής είσπραξης, από τον
+// κώδικα που υπολογίζει τον φόρο, όχι γραμμένα στο χέρι.
+const BANK_FROM = `1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}`;
+const DEDUCTION = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100);
 
 /** Πού ζει το πεδίο στη φόρμα. */
 export type Placement = 'core' | 'more' | 'hidden';
@@ -172,7 +180,7 @@ export const TENANT_FIELDS: readonly FieldRule[] = [
 
   // ── Τι πληρώνει ─────────────────────────────────────────────────────────
   { id: 'tenant.rent', label: 'Μηνιαίο μίσθωμα', why: 'Η βάση για το Ε2 και για τον φόρο.', when: isLong, critical: true },
-  { id: 'tenant.rent_iban', label: 'IBAN είσπραξης', why: 'Από 1.7.2027 (ν.5222/2025) η είσπραξη μέσω τράπεζας κρίνει την τεκμαρτή έκπτωση 5%.', when: isLong, critical: true },
+  { id: 'tenant.rent_iban', label: 'IBAN είσπραξης', why: `Από ${BANK_FROM} (ν.5222/2025) η είσπραξη μέσω τράπεζας κρίνει την τεκμαρτή έκπτωση ${DEDUCTION}.`, when: isLong, critical: true },
   { id: 'tenant.rent_due_day', label: 'Ημέρα πληρωμής', why: 'Ορίζει πότε μια δόση γίνεται ληξιπρόθεσμη. Χωρίς αυτήν, η λέξη «καθυστέρηση» δεν σημαίνει τίποτα.', when: isLong },
   { id: 'tenant.payment_frequency', label: 'Συχνότητα εξόφλησης', why: 'Με αυτόν τον ρυθμό δημιουργούνται οι δόσεις. Σχεδόν πάντα μηνιαία.', when: isLong, rare: true },
 
@@ -287,7 +295,7 @@ export const CONTACT_FIELDS: readonly FieldRule[] = [
 
 /** Οικονομικά και λογιστικά πεδία της καρτέλας Λογιστικά. */
 export const ACCOUNTING_FIELDS: readonly FieldRule[] = [
-  { id: 'acc.rents_via_bank', label: 'Εισπράττω μέσω τράπεζας', why: 'Από 1.7.2027 (ν.5222/2025) χωρίς αυτό χάνεται η τεκμαρτή έκπτωση 5% και ο φόρος υπολογίζεται στο 100%.', when: isLong, critical: true },
+  { id: 'acc.rents_via_bank', label: 'Εισπράττω μέσω τράπεζας', why: `Από ${BANK_FROM} (ν.5222/2025) χωρίς αυτό χάνεται η τεκμαρτή έκπτωση ${DEDUCTION} και ο φόρος υπολογίζεται στο 100%.`, when: isLong, critical: true },
   { id: 'acc.efka', label: 'Εισφορές ΕΦΚΑ', why: 'Αφορά επιχειρηματική δραστηριότητα.', when: c => c.business },
   { id: 'acc.advance_tax', label: 'Προκαταβολή φόρου', why: 'Αφορά επιχειρηματικό εισόδημα, όχι ενοίκια φυσικού προσώπου.', when: c => c.business },
   { id: 'acc.building_depreciation', label: 'Απόσβεση κτιρίου', why: 'Μόνο όταν το ακίνητο είναι στα βιβλία επιχείρησης.', when: c => c.business },

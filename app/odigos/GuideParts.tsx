@@ -213,7 +213,12 @@ export function GuideCta({ title, href, action, children }: {
           {children}
         </p>
         <Link href={href} className="lp-cta lp-primary lp-press" style={{
-          display: 'inline-flex', alignItems: 'center', height: T.h.lg, padding: '0 24px',
+          // ΣΤΟ ΚΙΝΗΤΟ Η ΦΡΑΣΗ ΜΠΟΡΕΙ ΝΑ ΜΗ ΧΩΡΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ. Με σταθερό ύψος το
+          // «Υπολόγισε τον φόρο των ενοικίων σου» έσπαγε σε δύο γραμμές, το «σου»
+          // έμενε μόνο του και ακουμπούσε το κάτω χείλος (έλεγχος 6/10, 390px).
+          // Ελάχιστο ύψος αντί για σταθερό, ισορροπημένη αλλαγή γραμμής.
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: T.h.lg,
+          padding: '10px 24px', maxWidth: '100%', textAlign: 'center', lineHeight: 1.3, textWrap: 'balance',
           borderRadius: T.radius.pill, fontSize: 14, fontWeight: 700, textDecoration: 'none',
         }}>
           {action}

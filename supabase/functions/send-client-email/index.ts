@@ -1,9 +1,20 @@
 // ─────────────────────────────────────────────────────────────────────────
 // send-client-email — μαζική & αυτοματοποιημένη επικοινωνία με πελάτες μέσω
-// Resend. Δέχεται θέμα + HTML + λίστα παραληπτών, στέλνει σε παρτίδες (batch API,
+// Resend. Δέχεται θέμα + ΚΕΙΜΕΝΟ + λίστα παραληπτών, στέλνει σε παρτίδες (batch API,
 // έως 100/κλήση), κάνει personalization ({{name}}, {{email}}), βάζει reply-to τη
 // διεύθυνση του ιδιοκτήτη (οι απαντήσεις πελατών πάνε σ' αυτόν) και καταγράφει
 // αποτέλεσμα ανά παραλήπτη στους πίνακες email_campaigns / email_recipients.
+//
+// ΤΟ HTML ΤΟ ΓΡΑΦΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ (06.10.2026). Ως τώρα το `bodyHtml` του
+// αιτήματος έφευγε αυτούσιο από τη διεύθυνσή μας: όποιος είχε «Επαγγελματία»
+// έστελνε ό,τι HTML ήθελε στους «πελάτες» που ο ίδιος καταχώρησε. Τώρα φτάνει
+// `bodyText`, διαφεύγεται ολόκληρο και γίνεται παράγραφοι στο κοινό κέλυφος,
+// με τον λογαριασμό-αποστολέα γραμμένο στο υποσέλιδο (emailTemplates.ts,
+// `clientMessageEmail`). Το παλιό `bodyHtml` δεν γίνεται πια δεκτό καθόλου:
+// μια ανοιχτή καρτέλα με τον παλιό κώδικα παίρνει 409 και το μήνυμα να
+// ανανεώσει τη σελίδα. Η μετατροπή του παλιού HTML σε κείμενο ήταν ακριβώς το
+// είδος καθαρισμού με κανονικές εκφράσεις που δεν κλείνει ποτέ πλήρως
+// (CodeQL: incomplete multi-character sanitization).
 //
 // Ασφάλεια: εκτελείται με το JWT του καλούντος (RLS — γράφει μόνο δικές του
 // εγγραφές). Το κλειδί Resend μένει server-side (secret), ποτέ στον browser.
@@ -16,6 +27,7 @@
 import { NO_RESEND_KEY } from '../_shared/resendKey.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { senderFrom } from '../_shared/sender.mjs'
+import { clientMessageEmail, fillClientHtml } from '../_shared/emailTemplates.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -33,6 +45,8 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
 const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
+// Μόνο για το θέμα, που φεύγει ως απλό κείμενο. Το σώμα γεμίζει με το
+// `fillClientHtml`, που διαφεύγει την τιμή.
 const fill = (tpl: string, r: { name?: string; email: string }) =>
   tpl.replace(/\{\{\s*name\s*\}\}/g, r.name || '').replace(/\{\{\s*email\s*\}\}/g, r.email)
 
@@ -45,14 +59,17 @@ Deno.serve(async (req) => {
   if (!authHeader.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401)
   if (!RESEND_API_KEY) return json({ error: 'no_resend_key', detail: NO_RESEND_KEY }, 500)
 
-  let subject = '', bodyHtml = '', kind = 'broadcast', recipients: Recipient[] = []
+  let subject = '', bodyText = '', kind = 'broadcast', recipients: Recipient[] = [], legacy = false
   try {
     const b = await req.json()
     subject = String(b?.subject || '').trim()
-    bodyHtml = String(b?.bodyHtml || b?.html || '')
+    // Κείμενο, ποτέ HTML.
+    if (typeof b?.bodyText === 'string') bodyText = b.bodyText
+    else legacy = !!(b?.bodyHtml || b?.html)
     kind = String(b?.kind || 'broadcast')
     recipients = Array.isArray(b?.recipients) ? b.recipients : []
   } catch { return json({ error: 'bad_body' }, 400) }
+  if (legacy) return json({ error: 'client_outdated', detail: 'Η εφαρμογή ενημερώθηκε. Ανανέωσε τη σελίδα και στείλε ξανά το μήνυμα.' }, 409)
 
   // Καθάρισμα/έλεγχος παραληπτών (έγκυρο email, χωρίς διπλότυπα).
   const seen = new Set<string>()
@@ -87,6 +104,9 @@ Deno.serve(async (req) => {
     return json({ error: 'plan_required', detail: 'Η αποστολή email σε πελάτες είναι στο πακέτο «Επαγγελματίας».' }, 403)
   }
   const replyTo = user.email || undefined
+  // Ο αποστολέας ονομάζεται στο υποσέλιδο με τη ΔΙΕΥΘΥΝΣΗ του λογαριασμού, όχι
+  // με όνομα που γράφει ο ίδιος: «Εθνική Τράπεζα» ως όνομα προφίλ δεν περνά.
+  const bodyHtml = clientMessageEmail({ text: bodyText, senderEmail: user.email })
 
   // ── Anti-relay: recipients MUST be the caller's own CRM clients ──────────────
   // Without this, any authenticated account could send arbitrary HTML to an
@@ -153,7 +173,7 @@ Deno.serve(async (req) => {
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100)
     const payload = chunk.map(r => ({
-      from: FROM_EMAIL, to: r.email, subject: fill(subject, r), html: fill(bodyHtml, r),
+      from: FROM_EMAIL, to: r.email, subject: fill(subject, r), html: fillClientHtml(bodyHtml, r),
       ...(replyTo ? { reply_to: replyTo } : {}),
     }))
     try {

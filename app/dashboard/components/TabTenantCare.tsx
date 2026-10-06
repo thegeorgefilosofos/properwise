@@ -33,9 +33,10 @@ import {
 } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { failed } from '@/lib/core/dbError';
+import { navLabel } from '@/lib/nav/labels';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import { roleLabel } from '@/lib/contacts/roles';
-import { rentalIncomeTax, rentalRowsForYear, rentalBracketsForYear } from '@/lib/billing/greekTax';
+import { rentalIncomeTax, rentalRowsForYear, rentalBracketsForYear, FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { athensParts } from '@/lib/core/time';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { presumptiveDeductionRateForYear, bankReceiptMatters } from '@/lib/billing/presumptive';
@@ -418,9 +419,9 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
         {viaBank
           ? `, με τεκμαρτή έκπτωση ${ratePct} (φορολογητέο ${fe(taxable)})${cashMatters?' επειδή το ενοίκιο εισπράττεται μέσω τράπεζας':''}.`
           : !cashMatters
-            ? `, με τεκμαρτή έκπτωση ${ratePct} (φορολογητέο ${fe(taxable)}). Για τη χρήση ${taxYear} η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης· η προϋπόθεση της τράπεζας ισχύει για μισθώματα από 1.7.2027.`
+            ? `, με τεκμαρτή έκπτωση ${ratePct} (φορολογητέο ${fe(taxable)}). Για τη χρήση ${taxYear} η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης· η προϋπόθεση της τράπεζας ισχύει για μισθώματα από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT}.`
             : deductionRate>0
-              ? `, με τεκμαρτή έκπτωση ${ratePct} αντί ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} (φορολογητέο ${fe(taxable)}): για τα μισθώματα που εισπράττονται μετρητά από 1.7.2027 η έκπτωση δεν δίνεται.`
+              ? `, με τεκμαρτή έκπτωση ${ratePct} αντί ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} (φορολογητέο ${fe(taxable)}): για τα μισθώματα που εισπράττονται μετρητά από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT} η έκπτωση δεν δίνεται.`
               : `. Επειδή το ενοίκιο δεν δηλώνεται ως ηλεκτρονική είσπραξη, η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} δεν εφαρμόζεται και φορολογούνται ολόκληρα τα ακαθάριστα.`}
       </InfoBanner>
 
@@ -491,13 +492,13 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
                 πρώτη του, οπότε ο ίδιος φορέας καλύπτει τους δύο κλάδους. */}
             <div className="po-just">{hy(viaBank
               ? `Το ενοίκιο εισπράττεται μέσω τράπεζας, οπότε ισχύει η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} και φορολογείται το ${fe(taxable)} αντί του ${fe(annualRent)}.`
-              : `Το ενοίκιο δηλώνεται ως μη τραπεζική είσπραξη. Από 1.7.2027 (ν.5222/2025) η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} θα προϋποθέτει είσπραξη μέσω τράπεζας· χωρίς αυτήν θα φορολογείται το 100% των ακαθάριστων, δηλαδή ${fe(annualRent)} αντί ${fe(annualRent*(1-PRESUMPTIVE_DEDUCTION_RATE))}. Για τις χρήσεις 2025-2026 η έκπτωση ισχύει κανονικά· συμπλήρωσε IBAN είσπραξης εγκαίρως στα στοιχεία της μίσθωσης.`)}</div>
+              : `Το ενοίκιο δηλώνεται ως μη τραπεζική είσπραξη. Από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT} (ν.5222/2025) η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} θα προϋποθέτει είσπραξη μέσω τράπεζας· χωρίς αυτήν θα φορολογείται το 100% των ακαθάριστων, δηλαδή ${fe(annualRent)} αντί ${fe(annualRent*(1-PRESUMPTIVE_DEDUCTION_RATE))}. Για τις χρήσεις 2025-2026 η έκπτωση ισχύει κανονικά· συμπλήρωσε IBAN είσπραξης εγκαίρως στα στοιχεία της μίσθωσης.`)}</div>
           </InfoBlock>
           <InfoBlock title="Αναπροσαρμογή ΔΤΚ">
             {/* Με τον προαιρετικό κλάδο του ν.1703/1987 το κείμενο φτάνει τους
                 497 χαρακτήρες σε κουτί 398, δηλαδή οκτώ γραμμές. Χωρίς αυτόν
                 μένουν τρεις. Και στις δύο περιπτώσεις πάει πέρα πέρα. */}
-            <div className="po-just">{hy(<>Η αναπροσαρμογή μισθώματος γίνεται μία φορά τον χρόνο, βάσει Δείκτη Τιμών Καταναλωτή (ΕΛΣΤΑΤ), εφόσον προβλέπεται στη σύμβαση. Χρησιμοποίησε την καρτέλα «Αναπροσαρμογή Ενοικίου».{!isCommercial&&' Αν η κατοικία μισθώθηκε για διάρκεια μικρότερη της τριετίας χωρίς όρο αναπροσαρμογής, ο νόμος (άρθρο 2 ν.1703/1987) προβλέπει ετήσια αναπροσαρμογή ίση με το 75% της μεταβολής του ΔΤΚ έως τη συμπλήρωση της τριετίας· με χαμηλό ή αρνητικό ΔΤΚ το ενοίκιο ουσιαστικά μένει σταθερό. Επιβεβαίωσε την εφαρμογή στη σύμβασή σου.'}</>)}</div>
+            <div className="po-just">{hy(<>{`Η αναπροσαρμογή μισθώματος γίνεται μία φορά τον χρόνο, βάσει Δείκτη Τιμών Καταναλωτή (ΕΛΣΤΑΤ), εφόσον προβλέπεται στη σύμβαση. Χρησιμοποίησε την ενέργεια «Αναπροσαρμογή ενοικίου» στην καρτέλα «${navLabel('accounting')}», στις «Αναφορές και ενέργειες».`}{!isCommercial&&' Αν η κατοικία μισθώθηκε για διάρκεια μικρότερη της τριετίας χωρίς όρο αναπροσαρμογής, ο νόμος (άρθρο 2 ν.1703/1987) προβλέπει ετήσια αναπροσαρμογή ίση με το 75% της μεταβολής του ΔΤΚ έως τη συμπλήρωση της τριετίας· με χαμηλό ή αρνητικό ΔΤΚ το ενοίκιο ουσιαστικά μένει σταθερό. Επιβεβαίωσε την εφαρμογή στη σύμβασή σου.'}</>)}</div>
           </InfoBlock>
           <InfoBlock title="Νόμιμη αύξηση ενοικίου">
             {/* Οι δύο κλάδοι είναι 261 κι 375 χαρακτήρες σε κουτί 398: τέσσερις

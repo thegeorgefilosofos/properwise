@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { sessionNeedsSecondStep } from "@/lib/auth/mfa";
 import { loginSearch } from "@/lib/auth/continuation";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase/env";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -87,8 +88,8 @@ export async function proxy(request: NextRequest) {
   let needsSecondStep = false;
   if (hasAuthCookie) {
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
       {
         cookies: {
           getAll() {

@@ -1,4 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./env";
 
 // Σε build/prerender χωρίς .env.local (π.χ. CI) οι μεταβλητές λείπουν και
 // ο browser client θα πετούσε σφάλμα, ρίχνοντας το build. Δίνουμε ασφαλή
@@ -32,8 +33,8 @@ const KEY_FALLBACK = "public-anon-key-placeholder";
 // κάθε `{ data, error }` γίνεται `any`: ο μεταγλωττιστής σταματά να ελέγχει τα
 // ονόματα των πινάκων. Το βρήκε ο έλεγχος τύπων με τρία σφάλματα.
 const make = () => createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || URL_FALLBACK,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || KEY_FALLBACK
+  SUPABASE_URL || URL_FALLBACK,
+  SUPABASE_ANON_KEY || KEY_FALLBACK
 );
 
 let browserClient: ReturnType<typeof make> | null = null;

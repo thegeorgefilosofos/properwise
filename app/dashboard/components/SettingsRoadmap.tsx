@@ -17,6 +17,7 @@ import { T, Btn, Chip, fixedCols } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
 import { canPrompt, runPrompt, onHomeScreen, INSTALL_EVENT } from '@/lib/pwa/install';
 import { notify, notifyError } from '@/components/Toast';
+import { BANK_LINK_TITLE, BANK_LINK_TAGLINE } from '@/lib/bank/link';
 
 type ChipTone = 'accent' | 'neutral';
 
@@ -47,10 +48,12 @@ interface RoadItem { name: string; line: string; detail: string; chip: string; t
 // κανείς δεν ανέλαβε.
 const ITEMS: RoadItem[] = [
   {
-    name: 'Τραπεζικές ροές (open banking)',
-    line: 'Αυτόματη άντληση κινήσεων λογαριασμού, χωρίς χειρωνακτική καταχώρηση.',
-    detail: 'Συνδέεις τον λογαριασμό σου με ασφάλεια· οι κινήσεις αντιστοιχίζονται μόνες τους στα ακίνητα.',
-    chip: 'Σχεδιάζεται', tone: 'neutral',
+    // Όνομα και υπότιτλος από lib/bank/link.ts, ίδια με το πλακίδιο των Δαπανών.
+    // Καμία υπόσχεση αυτόματης αντιστοίχισης: κάθε κίνηση την επιβεβαιώνεις εσύ.
+    name: BANK_LINK_TITLE,
+    line: `${BANK_LINK_TAGLINE}.`,
+    detail: 'Συνδέεις τον λογαριασμό σου από τη σελίδα της τράπεζάς σου, μόνο για ανάγνωση. Κάθε κίνηση εμφανίζεται έτοιμη και την καταχωρείς εσύ με ένα πάτημα.',
+    chip: 'Σύντομα διαθέσιμο', tone: 'neutral',
   },
 ];
 

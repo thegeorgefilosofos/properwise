@@ -26,6 +26,12 @@
 //   7. Το όραμα και η σειρά
 //
 // Τρέξε: npx tsx scripts/marketing/linkedin-origin.mjs [αριθμός διαφάνειας]
+//
+// ΚΑΙ ΩΣ STORIES (STORY=1): οι ίδιες επτά διαφάνειες σε 9:16 (1080×1920) για το
+// Instagram, στο …/linkedin-pos-xekinise-story/, χωρίς PDF. Το πλαίσιο κρατά
+// 270 πάνω και 330 κάτω για το όνομα και το πεδίο απάντησης του Instagram,
+// κρύβει τη δική μας πρόοδο (το Instagram έχει δική του) και λέει «Πάτα»
+// αντί για «Σύρε». Η σκηνή κάθε διαφάνειας απλώς ψηλώνει.
 // ═══════════════════════════════════════════════════════════════════════════
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -43,7 +49,10 @@ const SHARE = `1/${Math.round(1 / RENO_39B_MATERIALS_SHARE)}`;
 
 const ROOT = process.cwd();
 const R = join(ROOT, 'public');
-const OUT = join(ROOT, 'docs/marketing/profil/linkedin-pos-xekinise');
+const STORY = process.env.STORY === '1';
+const H = STORY ? 1920 : 1350;
+const NEXT = STORY ? 'Πάτα' : 'Σύρε';
+const OUT = join(ROOT, `docs/marketing/profil/linkedin-pos-xekinise${STORY ? '-story' : ''}`);
 const only = process.argv[2] ? Number(process.argv[2]) : 0;
 if (!only) { fs.rmSync(OUT, { recursive: true, force: true }); }
 fs.mkdirSync(OUT, { recursive: true });
@@ -64,7 +73,7 @@ const TEXTURES = {
   GRAIN: [260, 260, noise('g', '.85', 2, 3, '0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1 0 0 0 -.3')],
 };
 const b = await chromium.launch({ executablePath: chromePath() });
-const p = await b.newPage({ viewport: { width: 1080, height: 1350 }, deviceScaleFactor: 2 });
+const p = await b.newPage({ viewport: { width: 1080, height: H }, deviceScaleFactor: STORY ? 1 : 2 });
 const T = {};
 for (const [k, [w, h, body]] of Object.entries(TEXTURES)) {
   await p.setContent(`<body style="margin:0;background:transparent"><svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" style="display:block">${body}</svg></body>`);
@@ -80,7 +89,7 @@ const css = `
 @font-face{font-family:Mono;font-weight:400 600;src:url(${f('robotomono-greek.woff2')})}
 @font-face{font-family:Mono;font-weight:400 600;src:url(${f('robotomono-latin.woff2')})}
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:1080px;height:1350px;overflow:hidden}
+html,body{width:1080px;height:${H}px;overflow:hidden}
 body{font-family:Inter,sans-serif;color:#f1f5fc;-webkit-font-smoothing:antialiased;position:relative;background:#060b14}
 .bg{position:absolute;inset:0;
  background:radial-gradient(900px 700px at 78% 82%, rgba(21,96,212,.40), transparent 62%),
@@ -90,10 +99,10 @@ body{font-family:Inter,sans-serif;color:#f1f5fc;-webkit-font-smoothing:antialias
  mask-image:radial-gradient(720px 600px at 62% 72%,#000 10%,transparent 76%)}
 .edge{position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(138,180,248,.6),transparent)}
 .grain{position:absolute;inset:0;background-image:${GRAIN};background-size:260px;opacity:.05;mix-blend-mode:overlay;pointer-events:none;z-index:50}
-.pad{position:absolute;inset:0;padding:76px 80px 66px;display:flex;flex-direction:column}
+.pad{position:absolute;inset:0;padding:${STORY ? '270px 80px 330px' : '76px 80px 66px'};display:flex;flex-direction:column}
 .head{display:flex;justify-content:space-between;align-items:center;position:relative;z-index:10}
 .head img{height:30px;display:block}
-.prog{display:flex;gap:7px}.prog b{width:26px;height:5px;border-radius:3px;background:rgba(255,255,255,.14)}.prog b.on{background:#8ab4f8;box-shadow:0 0 12px rgba(138,180,248,.7)}.prog b.done{background:rgba(138,180,248,.42)}
+.prog{display:flex;gap:7px}.prog b{width:26px;height:5px;border-radius:3px;background:rgba(255,255,255,.14)}.prog b.on{background:#8ab4f8;box-shadow:0 0 12px rgba(138,180,248,.7)}.prog b.done{background:rgba(138,180,248,.42)}${STORY ? '.prog{display:none}' : ''}
 .eyebrow{margin-top:70px;font-family:Mono,monospace;font-size:19px;font-weight:500;letter-spacing:.24em;color:#8ab4f8;text-transform:uppercase;display:flex;align-items:center;gap:16px;position:relative;z-index:10}
 .eyebrow:before{content:'';width:34px;height:2px;background:#8ab4f8}
 h1{margin-top:24px;font-size:96px;line-height:.98;font-weight:800;letter-spacing:-.045em;text-wrap:balance;position:relative;z-index:10}
@@ -127,7 +136,7 @@ const frame = (n, eyebrow, h1, sub, stage, foot, h1Size) => `<!doctype html><htm
 <div class="pad"><div class="head"><img src="${LOGO}" alt="PROPERWISE"><div class="prog">${Array.from({ length: N }, (_, k) => `<b class="${k + 1 === n ? 'on' : k + 1 < n ? 'done' : ''}"></b>`).join('')}</div></div>
 <div class="eyebrow">${eyebrow}</div><h1${h1Size ? ` style="font-size:${h1Size}px"` : ''}>${h1}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}
 <div class="stage">${stage}</div>
-<div class="foot">${foot ?? `<div class="url">properwise.gr</div><div class="swipe">Σύρε <i></i></div>`}</div></div></body></html>`;
+<div class="foot">${foot ?? `<div class="url">properwise.gr</div><div class="swipe">${NEXT} <i></i></div>`}</div></div></body></html>`;
 const line = (kind, label, value) => `<div class="line"><div class="dot ${kind}">${kind === 'ok' ? tick('#5fd4a8', .75) : kind === 'bl' ? tick('#9ec0ff', .75) : ''}</div>
   <div>${label ? `<div class="lbl" style="font-size:15px">${label}</div>` : ''}<div class="v" style="${label ? 'margin-top:6px' : ''}">${value}</div></div></div>`;
 
@@ -280,7 +289,7 @@ const s5 = `
   ${cond(true, 'Τιμολόγιο στο ΑΦΜ σου')}${cond(true, 'Ηλεκτρονική πληρωμή')}
   ${cond(true, `Υλικά έως ${SHARE} της εργασίας`)}${cond(false, 'Η δουλειά που κάνεις μόνος')}
  </div>`;
-const s5foot = `<div class="mono" style="font-size:15px;line-height:1.5;letter-spacing:.02em;color:#7d8da6;max-width:760px">Πηγή: ${RENO_39B_LAW} · ${RENO_39B_KYA}</div><div class="swipe">Σύρε <i></i></div>`;
+const s5foot = `<div class="mono" style="font-size:15px;line-height:1.5;letter-spacing:.02em;color:#7d8da6;max-width:760px">Πηγή: ${RENO_39B_LAW} · ${RENO_39B_KYA}</div><div class="swipe">${NEXT} <i></i></div>`;
 
 // ═══ 6 · ΦΑΚΕΛΟΣ, ΟΧΙ SCREENSHOTS ═══════════════════════════════════════════
 const bill = `<div style="position:absolute;left:52px;top:92px;width:250px;height:280px;background:#eef0f3;border-radius:6px;transform:rotate(-4deg);padding:20px 20px;box-shadow:0 14px 30px rgba(0,0,0,.45)">
@@ -381,11 +390,11 @@ for (const [i, html] of slides.entries()) {
     return [...document.querySelectorAll('.stage .card, .stage .t, .stage .v')].some(e => e.getBoundingClientRect().bottom > foot + 1);
   });
   if (spill) console.warn(`⚠ διαφάνεια ${i + 1}: η σκηνή περνά στο υποσέλιδο`);
-  const file = join(OUT, `properwise-pos-xekinise-${i + 1}.png`);
+  const file = join(OUT, `properwise-pos-xekinise${STORY ? '-story' : ''}-${i + 1}.png`);
   await p.screenshot({ path: file });
   files.push(file);
 }
-if (!only) {
+if (!only && !STORY) {
   // Το PDF σε JPEG υψηλής ποιότητας: το LinkedIn δέχεται έως 100 MB, αλλά ένα
   // ελαφρύ αρχείο ανεβαίνει και ανοίγει γρηγορότερα στο κινητό.
   const jp = await b.newPage({ viewport: { width: 1080, height: 1350 }, deviceScaleFactor: 2 });
@@ -400,4 +409,4 @@ if (!only) {
   await pdf.pdf({ path: join(OUT, 'properwise-pos-xekinise.pdf'), width: '1080px', height: '1350px', printBackground: true });
 }
 await b.close();
-console.log('✓', files.length, 'διαφάνειες', only ? '' : 'και PDF', 'στο', OUT);
+console.log('✓', files.length, 'διαφάνειες', only || STORY ? '' : 'και PDF', 'στο', OUT);

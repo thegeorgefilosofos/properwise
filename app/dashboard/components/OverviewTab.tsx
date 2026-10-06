@@ -42,6 +42,9 @@ import { type LoanView, isActiveLoan, loansInstalmentTotal } from '@/lib/loans/s
 import {
   consolidateRentTax, taxShareOf, consolidationSummary, CONSOLIDATION_NOTE, bankReceiptMatters,
 } from '@/lib/billing/consolidate'
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
+import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax'
+import { fpRate } from '@/lib/core/format'
 import AthensNow from './AthensNow'
 import CashHero from './CashHero'
 import RentReceived, { receivableLines } from './RentReceived'
@@ -916,7 +919,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             label: `${inc.source === 'stays' ? 'Έσοδα φιλοξενίας' : 'Έσοδα από ενοίκια'}${incomeIsEstimate ? `, ${INCOME_LABELS.estimate}` : ''}`, value:fmtEur(annualRent),
             sub: `${fmtEur(inc.receivedToDate)} ${INCOME_LABELS.received}`,
             title: fromLease
-              ? `Το μίσθωμα της μίσθωσης × 12 (${INCOME_LABELS.expected}). ${fmtEur(inc.receivedToDate)} ${INCOME_LABELS.received}. Ίδιος υπολογισμός με το Χαρτοφυλάκιο.`
+              ? `Το μηνιαίο μίσθωμα × 12 (${INCOME_LABELS.expected}). ${fmtEur(inc.receivedToDate)} ${INCOME_LABELS.received}. Ίδιος υπολογισμός με το Χαρτοφυλάκιο.`
               : `Όσα εισπράχθηκαν το ${year} ως σήμερα (${fmtEur(inc.receivedToDate)}), σε ετήσιο ρυθμό: ${INCOME_LABELS.estimate}, όχι είσπραξη. ${inc.source === 'stays' ? 'Δηλωτέο ακαθάριστο των διαμονών με άφιξη ως σήμερα.' : 'Πληρωμένες δόσεις με ημερομηνία ως σήμερα.'} Ίδιος υπολογισμός με το Χαρτοφυλάκιο.` }
           : { label: rentIsTarget ? 'Έσοδα από ενοίκια, εκτίμηση' : 'Έσοδα από ενοίκια', value:fmtEur(annualRent),
             sub: rentIsTarget ? `στόχος ${fmtEur(rent)} τον μήνα, χωρίς ενοικιαστή` : `${fmtEur(rent)} τον μήνα`,
@@ -925,7 +928,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               : `Μηνιαίο ενοίκιο ${fmtEur(rent)} × 12.` },
           { label:EXPENSE_LABELS.total, value:fmtEur(yExp.total),
             sub: expenseParts(yExp, fmtEur),
-            title:`Οι δαπάνες του ${year} όπως είναι καταχωρημένες: ${expenseParts(yExp, fmtEur)}. Λογαριασμοί και δαπάνες μαζί, κάθε ευρώ μία φορά, χωρίς προβολή. Ίδιο ποσό με τις Δαπάνες, το Χαρτοφυλάκιο, τις Αποδόσεις και τη Λογιστική.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
+            title:`Οι δαπάνες του ${year} όπως είναι καταχωρημένες: ${expenseParts(yExp, fmtEur)}. Λογαριασμοί και δαπάνες μαζί, κάθε ευρώ μία φορά, χωρίς προβολή. Ίδιο ποσό με τις ${navLabel('finances')}, το ${navLabel('portfolio')}, την ${navLabel('roi')} και τη ${navLabel('accounting')}.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
           // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
           // «Μερίδιο φόρου ενοικίου» είναι 22 χαρακτήρες δίπλα σε τρεις
           // ετικέτες των 7 ως 17: έσπαγε σε δεύτερη γραμμή και ΜΟΝΟ αυτή,
@@ -945,8 +948,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               // δίνεται ανεξάρτητα από τον τρόπο, οπότε ο φόρος κρατά το 95% και
               // το κείμενο δεν μιλά για απώλεια που δεν συμβαίνει ακόμη.
               : (!bankReceiptMatters(year) || rentViaBank)
-                ? `Προοδευτική κλίμακα ενοικίων ${year} με την τεκμαρτή έκπτωση 5%. Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου.`
-                : `Προοδευτική κλίμακα ενοικίων ${year} χωρίς την τεκμαρτή έκπτωση 5%: το ενοίκιο εισπράττεται με μετρητά και από 1.7.2027 η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.` },
+                ? `Προοδευτική κλίμακα ενοικίων ${year} με την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}. Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου.`
+                : `Προοδευτική κλίμακα ενοικίων ${year} χωρίς την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}: το ενοίκιο εισπράττεται με μετρητά και από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT} η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.` },
           // ΧΩΡΙΣ ΧΡΩΜΑΤΙΚΗ ΕΤΥΜΗΓΟΡΙΑ. Το πρόσημο το λέει ήδη το ίδιο το ποσό·
           // το πράσινο/κόκκινο απλώς το ξαναέλεγε και σε μια χρονιά με ΕΝΦΙΑ
           // έβαφε κόκκινο ένα ακίνητο που δουλεύει κανονικά.

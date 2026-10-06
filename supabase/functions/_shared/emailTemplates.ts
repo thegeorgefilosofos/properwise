@@ -585,3 +585,65 @@ export function seasonalCampaignEmail(c: Ctx & { season: Season; toPlan?: Plan |
   const s = SEASONS[c.season];
   return upsellEmail({ ...c, seasonLabel: s.label, toPlan: c.toPlan });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΤΟ ΜΗΝΥΜΑ ΤΟΥ ΙΔΙΟΚΤΗΤΗ ΠΡΟΣ ΤΟΥΣ ΠΕΛΑΤΕΣ ΤΟΥ ΤΟ ΓΡΑΦΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ
+// ─────────────────────────────────────────────────────────────────────────
+// ΤΟ ΑΝΟΙΓΜΑ (06.10.2026). Η send-client-email δεχόταν `bodyHtml` από τον
+// περιηγητή και το έστελνε αυτούσιο από τη διεύθυνση του PROPERWISE. Η οθόνη
+// (ClientCompose) έφτιαχνε καθαρό HTML από απλό κείμενο, αλλά η συνάρτηση δεν
+// το ήξερε: ένας λογαριασμός «Επαγγελματία» με ένα `fetch` έστελνε σε 3.000
+// διευθύνσεις την ημέρα ό,τι HTML ήθελε — φόρμα «επιβεβαίωσε την κάρτα σου»
+// με το δικό μας όνομα αποστολέα. Ο έλεγχος «μόνο πελάτες του CRM» δεν
+// βοηθά: τους πελάτες τους γράφει ο ίδιος.
+//
+// ΤΩΡΑ ΦΤΑΝΕΙ ΜΟΝΟ ΚΕΙΜΕΝΟ. Ο διακομιστής το διαφεύγει ολόκληρο και φτιάχνει
+// μόνος του παραγράφους, αλλαγές γραμμής και συνδέσμους `https://`. Τίποτα
+// άλλο δεν περνά. Και το υποσέλιδο λέει ΠΟΙΟΣ λογαριασμός το έστειλε, ώστε ο
+// παραλήπτης να μη διαβάζει μήνυμα τρίτου ως μήνυμα του PROPERWISE.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Διαφυγή για τιμή ιδιότητας: και τα εισαγωγικά, όχι μόνο τα `&<>`. */
+const escAttr = (v: unknown): string => esc(v).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+/** Σύνδεσμος μόνο `https://`· τα εισαγωγικά κόβουν, ώστε να μη σπάει το `href`. */
+const HTTPS_URL = /https:\/\/[^\s<>"']+/g;
+
+/** Το κείμενο, διαφυγμένο, με τους `https://` ως συνδέσμους. */
+function linkify(text: string): string {
+  let out = '';
+  let last = 0;
+  for (const m of text.matchAll(HTTPS_URL)) {
+    // Η τελεία ή το κόμμα στο τέλος είναι της πρότασης, όχι της διεύθυνσης.
+    const url = m[0].replace(/[.,;:!?)\]]+$/, '');
+    const at = m.index ?? 0;
+    out += esc(text.slice(last, at))
+      + `<a class="lnk" href="${escAttr(url)}" target="_blank" rel="noopener noreferrer nofollow" style="color:${ACCENT};text-decoration:underline;">${esc(url)}</a>`;
+    last = at + url.length;
+  }
+  return out + esc(text.slice(last));
+}
+
+/** Παράγραφοι από κενές γραμμές, αλλαγές γραμμής από μονές. Ό,τι άλλο, κείμενο. */
+export function clientMessageBody(text: string): string {
+  return String(text ?? '').replace(/\r\n?/g, '\n').trim().split(/\n{2,}/)
+    .map(par => par.trim()).filter(Boolean)
+    .map(par => p(par.split('\n').map(linkify).join('<br>')))
+    .join('');
+}
+
+/** Ολόκληρο το μήνυμα, στο κοινό κέλυφος, με τον αποστολέα στο υποσέλιδο. */
+export function clientMessageEmail(opts: { text: string; senderEmail?: string | null }): string {
+  const who = (opts.senderEmail || '').trim();
+  const footerNote = who
+    ? `Το μήνυμα το έστειλε ο λογαριασμός ${esc(who)} μέσω PROPERWISE. Αν απαντήσεις, η απάντηση πηγαίνει σε αυτόν.`
+    : 'Το μήνυμα το έστειλε χρήστης του PROPERWISE.';
+  return emailShell({ bodyHtml: clientMessageBody(opts.text), footerNote });
+}
+
+/**
+ * Τα {{name}} / {{email}} μέσα σε HTML: η τιμή έρχεται από το αίτημα, άρα
+ * διαφεύγεται. Και τα εισαγωγικά: ένα {{name}} μπορεί να βρεθεί μέσα σε `href`.
+ */
+export const fillClientHtml = (html: string, r: { name?: string; email: string }): string =>
+  html.replace(/\{\{\s*name\s*\}\}/g, escAttr(r.name || '')).replace(/\{\{\s*email\s*\}\}/g, escAttr(r.email));

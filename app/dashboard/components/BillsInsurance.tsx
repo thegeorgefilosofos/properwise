@@ -19,7 +19,7 @@ import { NumberInput, CustomSelect, TextInput, DatePicker } from './UIComponents
 import { useBillsSettings } from './BillsSettings';
 import { ReminderLinks } from './ReminderLinks';
 import { findDuplicates, type ExpenseLike } from '@/lib/expenses/duplicates';
-import { T, TT, fe, fieldRow, fixedCols, SecHdr, InfoBanner, Skeleton, SkeletonKPIs, localDay, pressable, Btn, IconBtn, ChipToggle } from '@/components/Theme';
+import { T, TT, fe, feWhole, fieldRow, fixedCols, SecHdr, InfoBanner, Skeleton, SkeletonKPIs, localDay, pressable, Btn, IconBtn, ChipToggle } from '@/components/Theme';
 // Ο κατάλογος συνδρομών ζει στο lib: τον διαβάζει και ο Προϋπολογισμός.
 import { SUB_GROUPS, entryPlanId,
          subShare, type SubKey} from '@/lib/expenses/subscriptions';
@@ -39,6 +39,8 @@ import { navLabel } from '@/lib/nav/labels'
 import { propertyStatus, isLease, type StatusRow } from '@/lib/facts/status';
 import { AsOfNote } from '@/components/AsOfNote';
 import { PRICE_FACTS } from '@/lib/facts/prices';
+import { ENFIA_REDUCTIONS } from '@/lib/billing/enfia';
+import { fpRate } from '@/lib/core/format';
 
 /**
  * Η ασφάλεια κατοικίας και οι συνδρομές streaming δεν είναι ίδιο πράγμα και
@@ -48,6 +50,12 @@ export type InsuranceScope = 'insurance' | 'subscriptions';
 
 // Σταθερή αναφορά για «καμία προσφορά».
 const NO_QUOTES: LiveQuote[] = [];
+
+// Η μείωση ΕΝΦΙΑ της ασφαλισμένης κατοικίας: ποσοστά και κατώφλι από τον πίνακα
+// του ΕΝΦΙΑ, όχι γραμμένα εδώ. «Μπορεί να», γιατί κρίνεται και από την αξία
+// της κατοικίας και από τη διάρκεια της ασφάλισης, που εδώ δεν ξέρουμε.
+const INS_REDUCTION = ENFIA_REDUCTIONS.find(r => r.key === 'insurance')!;
+const INS_REDUCTION_OVER = INS_REDUCTION.pctOver!;
 
 export default function BillsInsurance({ propertyId, userId = '', only, legalForm = 'individual' }: {
   propertyId: string; userId?: string; only?: InsuranceScope; legalForm?: LegalForm;
@@ -703,7 +711,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--warning)', flexShrink: 0 }}/>
               <span style={{ color: 'var(--text-secondary)' }}>
                 {!hasEq && !hasFl ? 'Το πρόγραμμά σου δεν καλύπτει σεισμό ούτε πλημμύρα.' : !hasEq ? 'Το πρόγραμμά σου δεν καλύπτει σεισμό.' : 'Το πρόγραμμά σου δεν καλύπτει πλημμύρα.'}
-                {' '}Εξετάστε αναβάθμιση κάλυψης.
+                {' '}Σκέψου αναβάθμιση της κάλυψης.
               </span>
             </div>
           );
@@ -852,7 +860,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                 )}
                 {effectiveEarthquake && effectiveFloodState && (
                   <div title="ΕΝΦΙΑ: Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων" style={{ marginTop: 10, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.badge, padding: '8px 14px', fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontFamily: T.font.sans }}>
-                    Δικαιούσαι μείωση ΕΝΦΙΑ από 10% έως 20%, βάσει Α.1005/2026. Δήλωσέ την στη Λογιστική, στον Υπολογισμό ΕΝΦΙΑ.
+                    {`Μπορεί να δικαιούσαι μείωση ΕΝΦΙΑ ${fpRate(INS_REDUCTION.pct)} για κατοικία αξίας έως ${feWhole(INS_REDUCTION_OVER.above)} ή ${fpRate(INS_REDUCTION_OVER.pct)} πάνω από αυτήν, βάσει Α.1005/2026. Δήλωσέ την στη ${navLabel('accounting')}, στον Υπολογισμό ΕΝΦΙΑ.`}
                   </div>
                 )}
               </div>

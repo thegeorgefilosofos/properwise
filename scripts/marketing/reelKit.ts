@@ -122,6 +122,11 @@ export interface Shoot {
    * `shutter` φορές τον χρόνο φωτογράφισης.
    */
   shutter?: number;
+  /**
+   * Μόνο ακίνητα καρέ, χωρίς βίντεο: ένα PNG ανά στιγμή, 1.png, 2.png, … στον
+   * φάκελο. Από αυτά βγαίνουν τα stories ενός reel: ίδια σελίδα, ίδιες ζώνες.
+   */
+  stills?: number[];
 }
 
 /**
@@ -141,6 +146,14 @@ export async function shoot(s: Shoot): Promise<void> {
     };
     const page = await open();
     const at = (pg: Page, t: number) => pg.evaluate((x: number) => (window as unknown as { render: (t: number) => void }).render(x), t);
+
+    if (s.stills) {
+      for (const [k, t] of s.stills.entries()) {
+        await at(page, t);
+        await page.screenshot({ path: join(s.outDir, `${k + 1}.png`) });
+      }
+      return;
+    }
 
     if (process.env.REEL_PREVIEW) {
       for (const t of process.env.REEL_PREVIEW.split(',').map(Number)) {

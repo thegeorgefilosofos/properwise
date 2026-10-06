@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b';
 
-import { RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax';
+import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { feWhole, fpRate } from '@/lib/core/format';
 
@@ -98,8 +98,8 @@ export const GUIDES: readonly Guide[] = [
     href: '/odigos/enoikio-meso-trapezas',
     kicker: 'Ενοίκια',
     title: 'Ενοίκιο μέσω τράπεζας',
-    desc: 'Από 1.7.2027 το ενοίκιο κατοικίας εισπράττεται ηλεκτρονικά, αλλιώς χάνεται '
-        + 'η έκπτωση 5%. Τι ισχύει για τα εισοδήματα 2025 και 2026.',
+    desc: `Από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT} το ενοίκιο κατοικίας εισπράττεται ηλεκτρονικά, αλλιώς χάνεται `
+        + `η έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}. Τι ισχύει για τα εισοδήματα 2025 και 2026.`,
     published: '2026-09-27',
     updated: '2026-09-27',
     tools: ['/ypologismos-forou-enoikion'],
