@@ -13,7 +13,7 @@ import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/reno
 
 import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
-import { feWhole, fpRate } from '@/lib/core/format';
+import { feWhole, fpRate, grDateOf } from '@/lib/core/format';
 
 // Η κλίμακα της περιγραφής βγαίνει από την κλίμακα που υπολογίζει: «15 / 25 /
 // 35 / 45%», το όριο του τελευταίου κλιμακίου και η τεκμαρτή έκπτωση.
@@ -98,7 +98,7 @@ export const GUIDES: readonly Guide[] = [
     href: '/odigos/enoikio-meso-trapezas',
     kicker: 'Ενοίκια',
     title: 'Ενοίκιο μέσω τράπεζας',
-    desc: `Από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT} το ενοίκιο κατοικίας εισπράττεται ηλεκτρονικά, αλλιώς χάνεται `
+    desc: `Από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} το ενοίκιο κατοικίας εισπράττεται ηλεκτρονικά, αλλιώς χάνεται `
         + `η έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}. Τι ισχύει για τα εισοδήματα 2025 και 2026.`,
     published: '2026-09-27',
     updated: '2026-09-27',

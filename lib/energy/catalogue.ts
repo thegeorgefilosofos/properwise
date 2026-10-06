@@ -20,7 +20,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { Tariff } from './tariff';
 import { addRaaeyPower, RAAEY_MONTH_GEN, RAAEY_READ_AT } from './raaeyCatalogue';
-import { PRICE_FACTS } from '@/lib/facts/prices';
+import { PRICE_FACTS, asOfDate } from '@/lib/facts/prices';
 
 export type { PriceStatus } from './tariff';
 
@@ -55,8 +55,8 @@ export const TARIFFS_LABEL = PRICE_FACTS.electricity.period;
 export const TARIFFS_MAX_AGE_DAYS = PRICE_FACTS.electricity.maxAgeDays;
 /** Η πηγή των τιμών, όπως γράφεται στην οθόνη. */
 export const PRICES_SOURCE = PRICE_FACTS.electricity.source;
-/** «Τελευταία ενημέρωση: 05.10.2026», μία φορά για κάθε οθόνη που δείχνει τιμές. */
-export const PRICES_UPDATED_LINE = `Τελευταία ενημέρωση: ${RAAEY_READ_AT.split('-').reverse().join('.')}`;
+/** «Τελευταία ενημέρωση: 05/10/2026», μία φορά για κάθε οθόνη που δείχνει τιμές. */
+export const PRICES_UPDATED_LINE = `Τελευταία ενημέρωση: ${asOfDate(RAAEY_READ_AT)}`;
 
 /**
  * Ο μήνας του καταλόγου σε γενική: «Οκτωβρίου 2026». Μόνο τιμές αυτού του

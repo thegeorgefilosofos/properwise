@@ -33,7 +33,7 @@ const R = renovationCredit(EX);
 const CUT = EX.materials - R.materialsCounted;
 if (!(CUT > 0)) throw new Error('Στο παράδειγμα τα υλικά δεν ξεπερνούν το όριο· η γωνία θέλει αλλαγή.');
 if (R.total !== R.eligible) throw new Error('Το παράδειγμα πιάνει το ανώτατο όριο· η γωνία θέλει άλλο ποσό.');
-const [dd, mm, yy] = RENO_39B_TO.split('.').map(Number);
+const [dd, mm, yy] = RENO_39B_TO.split('/').map(Number);
 const OLD_YEARS = '2020–2022';
 // Η στιγμή που η σφραγίδα ακουμπά: εικόνα, κάμερα και ήχος χτυπούν μαζί.
 const STAMP = 0.96;

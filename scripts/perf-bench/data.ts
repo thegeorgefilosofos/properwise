@@ -20,6 +20,16 @@ export const YEAR = 2026;
 
 const TYPES = ['apartment', 'maisonette', 'studio', 'shop', 'office'];
 
+// Οι τίτλοι των εκκρεμοτήτων, ένας ανά ακίνητο με εκκρεμότητες (βλ. `checklist`).
+// Ο πρώτος κάθε καταλόγου είναι αυτός που βλέπει η σκηνή του p0.
+const K_FIX = ['Ετήσιος έλεγχος λέβητα', 'Συντήρηση κλιματιστικού', 'Επισκευή διαρροής στο μπάνιο',
+  'Έλεγχος ηλεκτρολογικού πίνακα', 'Καθαρισμός καμινάδας', 'Αντικατάσταση θερμοσίφωνα',
+  'Στεγάνωση ταράτσας', 'Αλλαγή κλειδαριάς εισόδου'];
+const K_LEGAL = ['Ανανέωση ασφαλιστηρίου', 'Πιστοποιητικό ενεργειακής απόδοσης', 'Δήλωση μίσθωσης στην ΑΑΔΕ',
+  'Βεβαίωση κοινοχρήστων', 'Ανανέωση μισθωτηρίου', 'Ταυτότητα κτιρίου', 'Ενημέρωση Ε9'];
+const K_CLEAN = ['Καθαρισμός μετά την αποχώρηση', 'Γενικός καθαρισμός πριν την παράδοση', 'Καθαρισμός τζαμιών',
+  'Πλύσιμο κουρτινών', 'Καθαρισμός αποθήκης'];
+
 export interface Bench {
   properties: Array<{ id: string; name: string; prop_type: string; address: string; target_rent: number; value: number }>;
   rows: Record<string, unknown[]>;
@@ -149,19 +159,25 @@ export function portfolio(n: number): Bench {
     // κρίσιμη (η περίπτωση που διπλομετριόταν στο «χρειάζονται προσοχή»), μία
     // ανοιχτή κανονική με μελλοντική προθεσμία και μία ολοκληρωμένη.
     if (i % 3 === 0) {
+      // ΤΙΤΛΟΙ ΧΩΡΙΣ ΑΡΙΘΜΟ ΣΤΟ ΤΕΛΟΣ. Ηταν «Ετήσιος έλεγχος λέβητα ${i}», οπότε
+      // η σκηνή του p0 έγραφε «… λέβητα 0»: ένα μηδέν που ο χρήστης δεν θα
+      // έβλεπε ποτέ και που ο αναγνώστης του στιγμιότυπου διάβαζε ως σφάλμα.
+      // Τώρα κάθε ακίνητο παίρνει αληθινό τίτλο από κατάλογο· το πλήθος και οι
+      // τρεις καταστάσεις μένουν ίδια, τα `id` μένουν μοναδικά.
+      const v = (i / 3) % K_FIX.length;
       checklist.push({
         id: `${id}-k1`, property_id: id, user_id: 'u1', category: 'maintenance',
-        description: `Ετήσιος έλεγχος λέβητα ${i}`, status: 'pending', priority: 'critical',
+        description: K_FIX[v], status: 'pending', priority: 'critical',
         due_date: `${YEAR - 1}-11-20`, note: null, completed: false, sort_order: 1,
       });
       checklist.push({
         id: `${id}-k2`, property_id: id, user_id: 'u1', category: 'legal',
-        description: `Ανανέωση ασφαλιστηρίου ${i}`, status: 'in_progress', priority: 'normal',
+        description: K_LEGAL[v % K_LEGAL.length], status: 'in_progress', priority: 'normal',
         due_date: `${YEAR + 1}-03-10`, note: null, completed: false, sort_order: 2,
       });
       checklist.push({
         id: `${id}-k3`, property_id: id, user_id: 'u1', category: 'cleaning',
-        description: `Καθαρισμός μετά την αποχώρηση ${i}`, status: 'done', priority: 'low',
+        description: K_CLEAN[v % K_CLEAN.length], status: 'done', priority: 'low',
         due_date: `${YEAR}-02-01`, note: null, completed: true, sort_order: 3,
       });
     }
@@ -181,7 +197,7 @@ export function portfolio(n: number): Bench {
     { t: 'Συντήρηση καυστήρα', c: 'maintenance', d: 45 }, { t: 'Απεντόμωση', c: 'maintenance', d: 90 },
     { t: 'Λήξη μίσθωσης', c: 'contract', d: 58 }, { t: 'Ανανέωση ασφαλιστηρίου', c: 'contract', d: 120 },
     { t: 'Είσπραξη ενοικίου', c: 'financial', d: 1 }, { t: 'Δόση δανείου', c: 'financial', d: 6 },
-    { t: 'Παράδοση κλειδιών', c: 'tenant', d: 2 }, { t: 'Ελεγχος υγρασίας', c: 'reminder', d: 30 },
+    { t: 'Παράδοση κλειδιών', c: 'tenant', d: 2 }, { t: 'Έλεγχος υγρασίας', c: 'reminder', d: 30 },
   ];
   const dayOf = (offset: number): string => {
     const dt = new Date(Date.UTC(YEAR, 7, 27 + offset));

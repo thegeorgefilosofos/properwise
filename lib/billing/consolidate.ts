@@ -19,14 +19,14 @@
 // πια «αυτόματη έκπτωση» ούτε λάθος νόμο/ημερομηνία.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { rentalIncomeTax, marginalRate, type TaxBracket } from './greekTax'
+import { rentalIncomeTax, marginalRate, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, type TaxBracket } from './greekTax'
 import { presumptiveDeductionRateForYear } from './presumptive'
 import {
   consolidateIndividual, PRESUMPTIVE_DEDUCTION_RATE,
   type StatementInput, type TaxRegime,
 } from '@/lib/accounting/statement'
 import { centsOr0 } from '../core/money'
-import { fpRate } from '@/lib/core/format'
+import { fpRate, grDateOf } from '@/lib/core/format'
 
 // Ο κανόνας ζει στο lib/billing/presumptive.ts ώστε οι δημόσιοι υπολογιστές να
 // τον παίρνουν χωρίς τη λογιστική κατάσταση· εδώ επανεξάγεται για όσους τον
@@ -50,7 +50,7 @@ export { presumptiveDeductionRate, bankReceiptMatters, presumptiveDeductionRateF
 
 /** Το κείμενο του κανόνα, ίδιο σε κάθε οθόνη. ΔΕΝ είναι «αυτόματη» έκπτωση. */
 export const PRESUMPTIVE_RULE =
-  'Τεκμαρτή έκπτωση 5% για επισκευές/συντήρηση, χωρίς παραστατικά. Από 1.7.2027 (ν.5222/2025) θα προϋποθέτει είσπραξη του ενοικίου μέσω τράπεζας· με μετρητά θα χάνεται και ο φόρος θα υπολογίζεται στο 100% του ενοικίου.'
+  `Τεκμαρτή έκπτωση 5% για επισκευές/συντήρηση, χωρίς παραστατικά. Από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025) θα προϋποθέτει είσπραξη του ενοικίου μέσω τράπεζας· με μετρητά θα χάνεται και ο φόρος θα υπολογίζεται στο 100% του ενοικίου.`
 
 /**
  * Η προμήθεια πλατφόρμας για ΙΔΙΩΤΗ. Η καρτέλα Πελατών και η εισαγωγή κρατήσεων

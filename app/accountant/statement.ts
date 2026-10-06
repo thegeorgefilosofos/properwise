@@ -18,8 +18,8 @@ import { declarableGrossOrTotal, needsAmountReview, amountBasis, AMOUNT_BASIS_LA
 import { yearShare, nightsSplit } from '@/lib/tax/shortTermTax';
 import { collectionModeFromCounts, type RentCollectionMode } from '@/lib/tax/rentCollectionMode';
 import { bankReceiptMatters, presumptiveDeductionRateForYear } from '@/lib/billing/consolidate';
-import { rentalIncomeTax, rentalBracketsForYear, bankReceiptPenaltyShare } from '@/lib/billing/greekTax';
-import { fpRate } from '@/lib/core/format';
+import { rentalIncomeTax, rentalBracketsForYear, bankReceiptPenaltyShare, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
+import { fpRate, grDateOf } from '@/lib/core/format';
 import type { XlsxSheet } from '@/app/dashboard/components/exportXlsx';
 import { roundHalfUp } from '@/lib/core/money';
 
@@ -229,7 +229,7 @@ export function deductionNote(t: IndicativeTax, year: number): string {
   if (!t.withoutDeduction.length) return `Με τεκμαρτή έκπτωση ${pct}: οι εισπράξεις της χρήσης έγιναν μέσω τραπέζης.`;
   // Η πρώτη χρονιά της κύρωσης μετρά από τον Ιούλιο (Α.1187/2026): λέγεται ρητά,
   // αλλιώς η φράση υπόσχεται περισσότερο φόρο από όσο έβγαλε ο υπολογισμός.
-  const from = bankReceiptPenaltyShare(year) < 1 ? ` για τα ενοίκια από 1.7.${year}` : '';
+  const from = bankReceiptPenaltyShare(year) < 1 ? ` για τα ενοίκια από ${grDateOf(year, FIRST_MONTH_BANK_RECEIPT)}` : '';
   return `Τεκμαρτή έκπτωση ${pct} μόνο όπου η είσπραξη έγινε μέσω τραπέζης. Χωρίς έκπτωση${from}: `
     + t.withoutDeduction.map(w => `${w.name} (${w.why})`).join(', ') + '.';
 }

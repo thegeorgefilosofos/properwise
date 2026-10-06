@@ -7,6 +7,7 @@ import { Check, ArrowRight, Landmark, SearchX } from 'lucide-react'
 import { readBankCsv, matchTransactions, legacyKeyOf, type BankTxn, type ExpectedRent, type RentMatch, type ExpenseSuggestion } from '@/lib/accounting/bankImport'
 import { feAuto, T, ABSENT_DATE, Btn, EmptyState, Modal, Spinner } from '@/components/Theme'
 import { athensToday } from '@/lib/core/time';
+import { grDate } from '@/lib/core/format';
 import { MONTHS_NOM } from '@/lib/core/months';
 import type { RentPaymentsRow, BankTransactionsRow } from '@/lib/supabase/tables';
 import { notifyError } from '@/components/Toast';
@@ -177,7 +178,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
                   <Box checked={m.confirm} onClick={()=>setRentMatches(a=>a.map((x,j)=>j===i?{...x,confirm:!x.confirm}:x))}/>
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-primary)', margin:0, fontFamily: T.font.sans }}>{m.label}</p>
-                    <p style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', margin:'1px 0 0', fontFamily: T.font.sans, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.txn.date} · {m.txn.description}</p>
+                    <p style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', margin:'1px 0 0', fontFamily: T.font.sans, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{grDate(m.txn.date)} · {m.txn.description}</p>
                   </div>
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--positive)', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans }}>{feAuto(m.txn.amount)}</span>
                 </div>
@@ -192,7 +193,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
                   <Box checked={e.confirm} onClick={()=>setExpenses(a=>a.map((x,j)=>j===i?{...x,confirm:!x.confirm}:x))}/>
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-primary)', margin:0, fontFamily: T.font.sans, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.description}</p>
-                    <p style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', margin:'1px 0 0', fontFamily: T.font.sans }}>{e.txn.date}</p>
+                    <p style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', margin:'1px 0 0', fontFamily: T.font.sans }}>{grDate(e.txn.date)}</p>
                   </div>
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans }}>{feAuto(e.amount)}</span>
                 </div>

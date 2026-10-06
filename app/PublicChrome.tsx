@@ -31,6 +31,7 @@ import { T } from '@/components/tokens';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
+import PublicMenu from './PublicMenu';
 import { asOfDate } from '@/lib/facts/prices';
 
 /**
@@ -78,9 +79,12 @@ export const READING = 720;
  * κίνηση· από 28.09.2026 μία, ίδια με τη σελίδα που ανοίγει. Μετρημένο σε
  * Chromium με την Inter: σήμα, τρεις σύνδεσμοι και κουμπί τελειώνουν στα 424
  * εικονοστοιχεία με το κανονικό γέμισμα και στα 382 με γέμισμα τεσσάρων, ενώ
- * η οθόνη των 390 αφήνει 370. Δεν χωρούν με κανένα γέμισμα. Ο επιστρέφων
- * χρήστης δεν έχει άλλο δρόμο από την είσοδο· οι τιμές είναι στο υποσέλιδο
- * κάθε σελίδας («Πακέτα και τιμές») και ένα κύλισμα πιο κάτω στην αρχική.
+ * η οθόνη των 390 αφήνει 370. Δεν χωρούν με κανένα γέμισμα.
+ *
+ * ΑΠΟ 06.10.2026 ΚΟΥΜΠΙ ΜΕΝΟΥ ΣΤΗ ΘΕΣΗ ΤΟΥΣ. Κάτω από τα 640 η σειρά γίνεται
+ * «σήμα · Ξεκίνα · μενού» και το φύλλο του μενού κρατά Οδηγοί, Τιμές, Σύνδεση
+ * με τη σειρά του υπολογιστή. Ετσι ο επιστρέφων χρήστης έχει την είσοδο ένα
+ * πάτημα μακριά, ο νέος βλέπει τις τιμές χωρίς να κυλήσει ως το υποσέλιδο.
  *
  * Ο ΣΥΝΔΕΔΕΜΕΝΟΣ ΧΡΗΣΤΗΣ ΠΕΡΝΙΕΤΑΙ ΩΣ ΣΤΟΙΧΕΙΟ, ΟΧΙ ΩΣ ΣΗΜΑΙΑ. Ό,τι συνδέει
  * αυτό το αρχείο το ελέγχει ο guard-public-routes ως δημόσια διαδρομή· ο
@@ -88,6 +92,8 @@ export const READING = 720;
  */
 export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current?: 'paketa' | 'odigos' }) {
   const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
+  const menu: [string, string][] = [['/odigos', 'Οδηγοί'], ['/paketa', 'Τιμές']];
+  if (!signedIn) menu.push(['/login', 'Σύνδεση']);
   return (
     <div className="lp-nav-row" style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
       {/* Η ΣΕΛΙΔΑ ΠΟΥ ΔΙΑΒΑΖΕΙΣ ΦΑΙΝΕΤΑΙ ΣΤΗΝ ΚΕΦΑΛΙΔΑ (01.10.2026). Το
@@ -97,13 +103,13 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
       {/* ΟΙ ΟΔΗΓΟΙ ΣΤΗΝ ΚΕΦΑΛΙΔΑ (05/10/2026). Δέκα οδηγοί ζούσαν μόνο στο
           υποσέλιδο και στον κόμβο /odigos, που δεν τον έδειχνε καμία κεφαλίδα:
           όποιος προσγειωνόταν σε έναν υπολογιστή δεν μάθαινε ότι υπάρχουν. Στο
-          τηλέφωνο δεν χωρά (βλ. πιο πάνω) και ζει στο υποσέλιδο. */}
+          τηλέφωνο ζει στο μενού (βλ. πιο κάτω) και στο υποσέλιδο. */}
       <Link href="/odigos" aria-current={current === 'odigos' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-sm" data-xs-elsewhere="/odigos"
         style={current === 'odigos' ? { ...link, color: 'var(--text-primary)', textDecoration: undefined } : link}>Οδηγοί</Link>
-      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-xs" data-xs-elsewhere="/paketa"
+      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-sm" data-xs-elsewhere="/paketa"
         style={current === 'paketa' ? { ...link, color: 'var(--text-primary)', textDecoration: undefined } : link}>Τιμές</Link>
       {!signedIn ? (<>
-        <Link href="/login" className="lp-link lp-nav-link" style={link}>
+        <Link href="/login" className="lp-link lp-nav-link lp-hide-sm" data-xs-elsewhere="/login" style={link}>
           Σύνδεση
         </Link>
         {/* Το σχήμα του κοινού κουμπιού της δημόσιας πλευράς (`--btn-*` στο
@@ -113,6 +119,10 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
           <span className="lp-hide-xs">Ξεκίνα δωρεάν</span><span className="lp-only-xs">Ξεκίνα</span>
         </Link>
       </>) : signedIn}
+      {/* ΟΔΗΓΟΙ ΚΑΙ ΤΙΜΕΣ ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ (06/10/2026). Κάτω από τα 640 οι τρεις
+          σύνδεσμοι κείμενου φεύγουν από τη σειρά και μπαίνουν, ίδιοι και με την
+          ίδια σειρά, στο φύλλο ενός κουμπιού 44 (app/PublicMenu.tsx). */}
+      <PublicMenu current={current} links={menu} />
     </div>
   );
 }
@@ -435,15 +445,15 @@ const TOOL_SOURCES = {
   enfia: 'ΕΝΦΙΑ: άρθρο 4 ν.4223/2013 όπως ισχύει (ν.4916/2022), όπως κωδικοποιήθηκε στον ν.5219/2025 · αντικειμενικές αξίες ΑΑΔΕ',
   // Κάθε κανόνας που εφαρμόζει η σελίδα για τις δύο χρονιές του επιλογέα:
   // η κλίμακα (άρθρο 40, με τα νέα κλιμάκια από 2026), το 5% και η τράπεζα.
-  rent: 'Κλίμακα ενοικίων: άρθρο 40 ΚΦΕ (ν.4172/2013), νέα κλιμάκια από 1/1/2026 με ν.5246/2025 · '
-    + 'τεκμαρτή έκπτωση 5%: άρθρο 39 §3 ΚΦΕ · είσπραξη μέσω τράπεζας: ν.5222/2025 άρθρο 210 (κύρωση από 1.7.2027)',
+  rent: 'Κλίμακα ενοικίων: άρθρο 40 ΚΦΕ (ν.4172/2013), νέα κλιμάκια από 01/01/2026 με ν.5246/2025 · '
+    + 'τεκμαρτή έκπτωση 5%: άρθρο 39 §3 ΚΦΕ · είσπραξη μέσω τράπεζας: ν.5222/2025 άρθρο 210 (κύρωση από 01/07/2027)',
   short: 'Τέλος ανθεκτικότητας στην κλιματική κρίση: ν.5162/2024 · φορολογία ενοικίων: άρθρα 39-40 ΚΦΕ, '
     + 'κλίμακα ν.5246/2025 · μητρώο βραχυχρόνιας διαμονής (ΑΜΑ): ΑΑΔΕ',
   yield: 'Κλίμακα ενοικίων 2026: ν.5246/2025 · τεκμαρτή έκπτωση 5%: άρθρο 39 ΚΦΕ · ΕΝΦΙΑ: ν.4223/2013 όπως ισχύει, όπως κωδικοποιήθηκε στον ν.5219/2025',
   // Το όριο δόσης είναι μέτρο της Τράπεζας της Ελλάδος, όχι νόμος· γράφεται με
   // την πράξη του, όπως το κρατά το lib/loans/affordability.ts. Οι τιμές αγοράς
   // έχουν δική τους ημερομηνία δίπλα στο πεδίο.
-  loan: 'Όριο δόσης προς εισόδημα: Τράπεζα της Ελλάδος, ΠΕΕ 227/1/08.03.2024 (ισχύς από 1.1.2025) · '
+  loan: 'Όριο δόσης προς εισόδημα: Τράπεζα της Ελλάδος, ΠΕΕ 227/1/08.03.2024 (ισχύς από 01/01/2025) · '
     + 'μέσο επιτόκιο νέων στεγαστικών και Euribor: Ευρωπαϊκή Κεντρική Τράπεζα, με στοιχεία της Τράπεζας της Ελλάδος',
   // Η σύγκριση ρεύματος δεν εφαρμόζει νόμο αλλά τιμοκαταλόγους: οι πηγές της
   // είναι οι πάροχοι και η ΡΑΑΕΥ, όπως τις καταγράφει το data/price-sources.json.

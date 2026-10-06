@@ -179,7 +179,7 @@ const DAY_EVENTS: CalEvent[] = ([
   ['Δόση δανείου', 'financial', '09:00', 435, 'pending'],
   ['ΕΝΦΙΑ, δεύτερη δόση έτους', 'tax', null, 1284.5, 'pending'],
   ['Λογαριασμός ΕΥΔΑΠ, δίμηνο Ιουλίου Αυγούστου', 'bills', null, 87.3, 'paid'],
-  ['Ελεγχος υγρασίας στο υπόγειο, συνεργείο Παπαδόπουλος', 'maintenance', '11:30', null, 'pending'],
+  ['Έλεγχος υγρασίας στο υπόγειο, συνεργείο Παπαδόπουλος', 'maintenance', '11:30', null, 'pending'],
   ['Λήξη μίσθωσης', 'contract', null, null, 'pending'],
   ['Καθαρισμός μετά την αναχώρηση', 'maintenance', '14:00', 45, 'pending'],
   ['Ασφάλιστρα', 'financial', null, 312, 'pending'],
@@ -421,10 +421,10 @@ function BenchTopbar() {
       <button className="nav-toggle" aria-label="Μενού">
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
       </button>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, rowGap: 8, minWidth: 0 }}>
+      <div className="topbar-main">
+        <div className="topbar-row">
           <PropertySwitcher items={BENCH_PROPS} activeId={id} onSelect={setId} onAdd={() => {}} canAdd />
-          <div style={{ position: 'relative', minWidth: 0 }}>
+          <div className="topbar-status-wrap" style={{ position: 'relative', minWidth: 0 }}>
             <button className="topbar-status" style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: T.h.sm, padding: '0 10px 0 12px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'transparent', cursor: 'pointer', fontFamily: T.font.sans, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)' }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
               <span className="topbar-status-label">Βραχυχρόνια μίσθωση</span>
@@ -432,9 +432,10 @@ function BenchTopbar() {
             </button>
           </div>
         </div>
-        <div className="app-topbar-sub" style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, letterSpacing: '0.4px' }}>
-          Κατοικία · 42 τ.μ. · Οδός Παραδείγματος 12, Αθήνα · ΤΚ 10000
-        </div>
+        {/* Η ΔΕΥΤΕΡΗ ΣΕΙΡΑ («Κατοικία · 42 τ.μ. · διεύθυνση») ΕΦΥΓΕ ΚΑΙ ΑΠΟ ΕΔΩ.
+            Η σελίδα τη σβήνει εδώ και καιρό· ο πάγκος την κρατούσε, οπότε κάθε
+            μέτρηση έβλεπε μπάρα 151 αντί για 113 και μια διεύθυνση που έσπαγε
+            «Οδός Παραδείγματος / 12» σε στοιχείο που η εφαρμογή δεν έχει. */}
       </div>
       {/* ΑΝΤΙΓΡΑΦΟ ΤΟΥ ΠΡΑΓΜΑΤΙΚΟΥ ΚΟΥΜΠΙΟΥ, ΟΧΙ ΔΙΚΗ ΜΟΥ ΕΚΔΟΧΗ. Ηταν πλατιά
           πιλούλα με τη λέξη «Αναζήτηση» μέσα, δηλαδή 200 από τα 360 της μπάρας:
@@ -442,7 +443,7 @@ function BenchTopbar() {
           ΔΕΝ ΥΠΗΡΧΕ στην εφαρμογή, όπου η λέξη δεν γράφεται ποτέ και το κουμπί
           είναι φακός με τη συντόμευση δίπλα, κρυμμένη σε κινητό. Ενας πάγκος
           που γράφει δικό του σήμα μετράει τον εαυτό του. */}
-      <button aria-label="Αναζήτηση" className="topbar-search" style={{ display: 'flex', alignItems: 'center', gap: 8, height: T.h.md, padding: '0 10px 0 12px', borderRadius: T.radius.modal, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', marginRight: 4, flexShrink: 0 }}>
+      <button aria-label="Αναζήτηση" className="topbar-search" style={{ display: 'flex', alignItems: 'center', gap: 8, height: T.h.md, padding: '0 10px 0 12px', borderRadius: T.radius.modal, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0 }}>
         <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <span className="desktop-only" style={{ fontSize: 11, fontFamily: T.font.mono, color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '1px 5px' }}>Ctrl K</span>
       </button>

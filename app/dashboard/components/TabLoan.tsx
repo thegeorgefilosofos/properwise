@@ -415,7 +415,11 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   {BANKS.filter(b=>!(spitiOpen&&filterSpiti)||b.spiti_mou).map((bank,i)=>(
                     <tr key={bank.id||bank.name} onMouseEnter={()=>setHoverBankRow(i)} onMouseLeave={()=>setHoverBankRow(null)} onTouchStart={()=>setHoverBankRow(i)} onTouchEnd={()=>setHoverBankRow(null)} style={{'--row-bg':hoverBankRow===i?'var(--bg-hover)':'var(--surface-raised)',background:hoverBankRow===i?'var(--bg-hover)':'transparent',transition:'background 0.12s'}}>
                       <td>
-                        <span style={{fontSize: 'var(--fs-base)',fontWeight:500,color:'var(--text-primary)'}}>{bank.name}</span>
+                        {/* ΤΟ ΟΝΟΜΑ ΣΠΑΕΙ ΣΤΟ ΚΕΝΟ, ΟΧΙ ΜΕΣΑ ΣΤΗ ΛΕΞΗ. Το `.po-table` δίνει
+                            `overflow-wrap: anywhere` στα κελιά· με την Inter (ο πάγκος
+                            τη φορτώνει πια) η καρφωμένη στήλη των 77 έκοβε το «Τράπεζα
+                            Πειραιώς» σε τέσσερις σειρές. Με `normal` γίνονται δύο. */}
+                        <span style={{fontSize: 'var(--fs-base)',fontWeight:500,color:'var(--text-primary)',overflowWrap:'normal'}}>{bank.name}</span>
                       </td>
                       {FIXED_TERM_COLUMNS.map(k=>(
                         <td key={k} className="num" style={{fontSize: 'var(--fs-base)',color:bank[k]?(hoverBankRow===i?'var(--accent)':'var(--text-primary)'):'var(--text-tertiary)',fontWeight:500,transition:'color 0.12s'}}>{cellRate(bank[k])}</td>

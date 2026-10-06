@@ -36,9 +36,9 @@ export const RENO_39B_YEARS = 5;
 export const RENO_39B_PER_YEAR = RENO_39B_CAP / RENO_39B_YEARS;
 /** Τα υλικά μετρούν έως αυτό το κλάσμα της αξίας των υπηρεσιών. */
 export const RENO_39B_MATERIALS_SHARE = 1 / 3;
-/** Παράθυρο δαπανών: από… έως… (ΚΥΑ Α.1153/2025). */
-export const RENO_39B_FROM = '01.01.2024';
-export const RENO_39B_TO = '31.12.2026';
+/** Παράθυρο δαπανών: από… έως… (ΚΥΑ Α.1153/2025), στη γραφή της οθόνης (ηη/μμ/εεεε, όπως το `grDate`). */
+export const RENO_39B_FROM = '01/01/2024';
+export const RENO_39B_TO = '31/12/2026';
 /** Η νομική βάση, όπως γράφεται σε κάθε κείμενο που την επικαλείται. */
 export const RENO_39B_LAW = 'άρθρο 39Β ΚΦΕ (ν.4172/2013), όπως αντικαταστάθηκε με τον ν.5073/2023';
 export const RENO_39B_KYA = 'ΚΥΑ Α.1153/2025 (ΦΕΚ Β΄ 5933/05.11.2025)';

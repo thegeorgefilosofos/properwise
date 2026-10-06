@@ -12,7 +12,7 @@
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { SITE, siteUrl, PRODUCT_NAME, ORG_ID } from '@/lib/core/site';
-import { monthGen } from '@/lib/core/months';
+import { grDate } from '@/lib/core/format';
 import { T } from '@/components/tokens';
 import { SectionHead, WRAP, WRAP_PAD } from '../PublicChrome';
 import { LINK_STYLE } from '../linkStyle';
@@ -81,22 +81,19 @@ function GuideRail({ sections, cta }: GuideRailProps) {
   );
 }
 
-/** «23 Σεπτεμβρίου 2026» από ISO ημερομηνία, με αδιάσπαστα κενά: η χρονιά
- *  δεν κατεβαίνει μόνη της στη δεύτερη γραμμή. */
-function longDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return `${d}\u00a0${monthGen(m - 1)}\u00a0${y}`;
-}
-
 /**
  * Η ΑΚΡΙΒΗΣ ΗΜΕΡΟΜΗΝΙΑ ΚΑΙ ΤΟ ΠΟΥ ΣΤΗΡΙΖΕΤΑΙ Ο ΟΔΗΓΟΣ. Το «όπως ισχύει τον
  * Σεπτέμβριο» δεν έλεγε ποια μέρα και ο οδηγός απόδοσης δεν είχε καθόλου
  * ημερομηνία. Ο σύνδεσμος πάει στις πηγές του ίδιου του οδηγού.
+ *
+ * ΙΔΙΑ ΓΡΑΦΗ ΜΕ ΤΑ ΕΡΓΑΛΕΙΑ. Εγραφε «27 Σεπτεμβρίου 2026» ενώ η ίδια γραμμή
+ * στους υπολογιστές (`ToolSources`) και στις τιμές (`asOfLine`) γράφει
+ * «05/10/2026»: η «Τελευταία ενημέρωση» είχε δύο μορφές στον ίδιο ιστότοπο.
  */
 export function GuideUpdated({ guide }: { guide: Guide }) {
   return (
     <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 18px' }}>
-      Τελευταία ενημέρωση: <time dateTime={guide.updated}>{longDate(guide.updated)}</time>
+      Τελευταία ενημέρωση: <time dateTime={guide.updated}>{grDate(guide.updated)}</time>
       {/* Το «·» κολλά στην ημερομηνία: στο κινητό έμενε μόνο του στην αρχή της
           δεύτερης γραμμής, πριν από το «Πηγές». */}
       {'\u00a0· '}

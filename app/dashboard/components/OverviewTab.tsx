@@ -44,7 +44,7 @@ import {
 } from '@/lib/billing/consolidate'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
 import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax'
-import { fpRate } from '@/lib/core/format'
+import { fpRate, grDateOf } from '@/lib/core/format'
 import AthensNow from './AthensNow'
 import CashHero from './CashHero'
 import RentReceived, { receivableLines } from './RentReceived'
@@ -949,7 +949,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               // το κείμενο δεν μιλά για απώλεια που δεν συμβαίνει ακόμη.
               : (!bankReceiptMatters(year) || rentViaBank)
                 ? `Προοδευτική κλίμακα ενοικίων ${year} με την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}. Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου.`
-                : `Προοδευτική κλίμακα ενοικίων ${year} χωρίς την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}: το ενοίκιο εισπράττεται με μετρητά και από 1.${FIRST_MONTH_BANK_RECEIPT}.${FIRST_YEAR_BANK_RECEIPT} η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.` },
+                : `Προοδευτική κλίμακα ενοικίων ${year} χωρίς την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}: το ενοίκιο εισπράττεται με μετρητά και από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.` },
           // ΧΩΡΙΣ ΧΡΩΜΑΤΙΚΗ ΕΤΥΜΗΓΟΡΙΑ. Το πρόσημο το λέει ήδη το ίδιο το ποσό·
           // το πράσινο/κόκκινο απλώς το ξαναέλεγε και σε μια χρονιά με ΕΝΦΙΑ
           // έβαφε κόκκινο ένα ακίνητο που δουλεύει κανονικά.

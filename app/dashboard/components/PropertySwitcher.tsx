@@ -143,7 +143,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
   };
 
   return (
-    <div ref={rootRef} style={{ position: 'relative' }}>
+    <div ref={rootRef} className="topbar-switch-root" style={{ position: 'relative' }}>
       {/* ΜΕ ΕΝΑ ΑΚΙΝΗΤΟ ΚΑΙ ΓΕΜΑΤΟ ΠΑΚΕΤΟ ΔΕΝ ΕΙΝΑΙ ΚΟΥΜΠΙ, ΕΙΝΑΙ ΤΙΤΛΟΣ.
           Ο συνδρομητής «Ιδιοκτήτης» έχει όριο ένα ακίνητο: δεν υπάρχει τίποτα
           να εναλλάξει και τίποτα να προσθέσει. Ενα βελάκι που ανοίγει μενού με
