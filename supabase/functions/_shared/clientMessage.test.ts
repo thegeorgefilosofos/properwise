@@ -5,7 +5,7 @@
 // είναι μόνο https χωρίς τρόπο να σπάσει το href και ότι ο αποστολέας
 // ονομάζεται στο υποσέλιδο.
 import {
-  clientMessageBody, clientMessageEmail, clientTextFromLegacyHtml, fillClientHtml,
+  clientMessageBody, clientMessageEmail, fillClientHtml,
 } from './emailTemplates.ts'
 
 let pass = 0, fail = 0
@@ -42,16 +42,6 @@ ok('χωρίς διεύθυνση, γενικό υποσέλιδο',
 const filled = fillClientHtml('<p>{{name}}</p><a href="https://x.example/{{email}}">', { name: '<b>"Χ"</b>', email: 'a"b@c.d' })
 ok('το όνομα διαφεύγεται', filled.includes('&lt;b&gt;&quot;Χ&quot;&lt;/b&gt;'))
 ok('το email διαφεύγεται μέσα στο href', filled.includes('x.example/a&quot;b@c.d"'))
-
-// ── Το HTML της παλιάς οθόνης δίνει μόνο κείμενο ─────────────────────────
-const legacy = '<div><span>PROPERWISE</span>'
-  + '<div><p style="margin:0 0 14px;font-size:14px;color:#5f6368;line-height:1.7;">Γεια &amp; χαρά<br>&lt;b&gt;</p>'
-  + '<p style="margin:0 0 14px;font-size:14px;">Δεύτερη <img src=x onerror=alert(1)></p></div>'
-  + '<p style="text-align:center;font-size:11px;">Στάλθηκε μέσω PROPERWISE</p></div>'
-const text = clientTextFromLegacyHtml(legacy)
-ok('κρατά τις παραγράφους του σώματος, χωρίς γωνιακές αγκύλες', text === 'Γεια & χαρά\nb\n\nΔεύτερη ')
-ok('ξαναδιαφεύγεται στην απόδοση', !clientMessageBody(text).includes('<b>') && !clientMessageBody(text).includes('<img'))
-ok('χωρίς παραγράφους, κενό', clientTextFromLegacyHtml('<script>x</script>') === '')
 
 console.log(fail === 0 ? `✓ μήνυμα προς πελάτες: ${pass} έλεγχοι πέρασαν` : `✗ μήνυμα προς πελάτες: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

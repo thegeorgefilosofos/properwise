@@ -10,9 +10,11 @@
 // έστελνε ό,τι HTML ήθελε στους «πελάτες» που ο ίδιος καταχώρησε. Τώρα φτάνει
 // `bodyText`, διαφεύγεται ολόκληρο και γίνεται παράγραφοι στο κοινό κέλυφος,
 // με τον λογαριασμό-αποστολέα γραμμένο στο υποσέλιδο (emailTemplates.ts,
-// `clientMessageEmail`). Το παλιό `bodyHtml` γίνεται δεκτό μόνο ως πηγή
-// κειμένου για ανοιχτές καρτέλες με τον παλιό κώδικα: κρατιούνται οι
-// παράγραφοί του ως απλό κείμενο και ξαναγράφονται από εδώ.
+// `clientMessageEmail`). Το παλιό `bodyHtml` δεν γίνεται πια δεκτό καθόλου:
+// μια ανοιχτή καρτέλα με τον παλιό κώδικα παίρνει 409 και το μήνυμα να
+// ανανεώσει τη σελίδα. Η μετατροπή του παλιού HTML σε κείμενο ήταν ακριβώς το
+// είδος καθαρισμού με κανονικές εκφράσεις που δεν κλείνει ποτέ πλήρως
+// (CodeQL: incomplete multi-character sanitization).
 //
 // Ασφάλεια: εκτελείται με το JWT του καλούντος (RLS — γράφει μόνο δικές του
 // εγγραφές). Το κλειδί Resend μένει server-side (secret), ποτέ στον browser.
@@ -25,7 +27,7 @@
 import { NO_RESEND_KEY } from '../_shared/resendKey.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { senderFrom } from '../_shared/sender.mjs'
-import { clientMessageEmail, clientTextFromLegacyHtml, fillClientHtml } from '../_shared/emailTemplates.ts'
+import { clientMessageEmail, fillClientHtml } from '../_shared/emailTemplates.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -57,17 +59,17 @@ Deno.serve(async (req) => {
   if (!authHeader.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401)
   if (!RESEND_API_KEY) return json({ error: 'no_resend_key', detail: NO_RESEND_KEY }, 500)
 
-  let subject = '', bodyText = '', kind = 'broadcast', recipients: Recipient[] = []
+  let subject = '', bodyText = '', kind = 'broadcast', recipients: Recipient[] = [], legacy = false
   try {
     const b = await req.json()
     subject = String(b?.subject || '').trim()
-    // Κείμενο, ποτέ HTML. Το παλιό πεδίο δίνει μόνο τις παραγράφους του.
-    bodyText = typeof b?.bodyText === 'string'
-      ? b.bodyText
-      : clientTextFromLegacyHtml(String(b?.bodyHtml || b?.html || ''))
+    // Κείμενο, ποτέ HTML.
+    if (typeof b?.bodyText === 'string') bodyText = b.bodyText
+    else legacy = !!(b?.bodyHtml || b?.html)
     kind = String(b?.kind || 'broadcast')
     recipients = Array.isArray(b?.recipients) ? b.recipients : []
   } catch { return json({ error: 'bad_body' }, 400) }
+  if (legacy) return json({ error: 'client_outdated', detail: 'Η εφαρμογή ενημερώθηκε. Ανανέωσε τη σελίδα και στείλε ξανά το μήνυμα.' }, 409)
 
   // Καθάρισμα/έλεγχος παραληπτών (έγκυρο email, χωρίς διπλότυπα).
   const seen = new Set<string>()

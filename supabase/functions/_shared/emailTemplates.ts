@@ -632,27 +632,6 @@ export function clientMessageBody(text: string): string {
     .join('');
 }
 
-/**
- * Το κείμενο από το HTML που έστελνε η παλιά οθόνη, για όσο ζουν ανοιχτές
- * καρτέλες με τον παλιό κώδικα. Κρατά ΜΟΝΟ τις παραγράφους του σώματος (ίδιο
- * στυλ με το `wrapEmailHtml` εκείνης της έκδοσης) και τις γυρίζει σε απλό
- * κείμενο: ό,τι κι αν περιέχουν, θα διαφευχθεί ξανά από το `clientMessageBody`.
- */
-export function clientTextFromLegacyHtml(html: string): string {
-  const paras = [...String(html ?? '').matchAll(/<p style="margin:0 0 14px;[^"]*">([\s\S]*?)<\/p>/g)];
-  return paras.map(m => m[1]
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&')
-    // Καμία γωνιακή αγκύλη δεν επιζεί. Η αποκωδικοποίηση του `&lt;` μπορεί να
-    // ξαναφτιάξει ετικέτα (`&lt;script&gt;` → `<script>`)· εδώ κόβεται, ώστε η
-    // έξοδος να είναι κείμενο χωρίς σήμανση πριν ακόμη τη διαφύγει το
-    // `clientMessageBody` (CodeQL: incomplete multi-character sanitization).
-    .replace(/[<>]/g, ''))
-    .join('\n\n');
-}
-
 /** Ολόκληρο το μήνυμα, στο κοινό κέλυφος, με τον αποστολέα στο υποσέλιδο. */
 export function clientMessageEmail(opts: { text: string; senderEmail?: string | null }): string {
   const who = (opts.senderEmail || '').trim();
