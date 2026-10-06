@@ -37,7 +37,7 @@ import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
 import { feWhole } from '@/lib/core/format';
 import {
   renovationCredit, RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO,
-  RENO_39B_LAW, RENO_39B_KYA,
+  RENO_39B_LAW, RENO_39B_KYA, RENO_39B_OLD_RATE,
 } from '@/lib/accounting/renovation39b';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
@@ -64,7 +64,7 @@ const R2 = renovationCredit(EX2);
 const OVER = 25000;
 const R_OVER = renovationCredit({ services: OVER, materials: 0 });
 // Ο κανόνας του 2020, μόνο για τη σύγκριση που κάνει ο αναγνώστης.
-const OLD_RATE = 0.4;
+const OLD_RATE = RENO_39B_OLD_RATE;
 
 const H1 = `Έκπτωση φόρου για ανακαίνιση: έως ${CAP} σε ${RENO_39B_YEARS} έτη`;
 const TITLE = H1;
