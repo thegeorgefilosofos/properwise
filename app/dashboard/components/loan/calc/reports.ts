@@ -1,3 +1,4 @@
+'use client';
 // ═══════════════════════════════════════════════════════════════════════════
 // ΟΙ ΤΡΕΙΣ ΕΞΑΓΩΓΕΣ ΤΟΥ ΤΟΚΟΧΡΕΟΛΥΣΙΟΥ: EXCEL, PDF ΕΚΤΥΠΩΣΗΣ, ΕΠΙΣΗΜΟ PDF ΜΕ QR
 // ─────────────────────────────────────────────────────────────────────────
@@ -8,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { downloadTableXlsx } from '../../exportCsv'
 import { reportHead, reportHeader, reportSection, reportRow, reportKpi, reportDisclaimer, openReport, rEur, rPct, rEsc } from '../../reportPdf'
-import { ABSENT } from '@/components/Theme'
+import { ABSENT } from '@/components/tokens'
 import type { ReportBranding } from '@/lib/reportBranding'
 import { generateReportPdf, pEur, pPct, type PdfReportModel, type PdfSection } from '@/lib/pdf/pdfReport'
 import { issueDocument } from '@/lib/documents/issue'

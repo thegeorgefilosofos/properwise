@@ -6,7 +6,7 @@
 // σώμα τους είναι το ίδιο γράμμα προς γράμμα: ίδιες γραμμές, ίδια σειρά,
 // ίδιο HTML. Η καρτέλα κρατά μόνο το κουμπί και την κατάσταση «Δημιουργία…».
 // ═══════════════════════════════════════════════════════════════════════════
-import { fn, ABSENT } from '@/components/Theme';
+import { fn, ABSENT } from '@/components/tokens';
 import { YIELD_LABELS } from '@/lib/facts';
 import type { ReportBranding } from '@/lib/reportBranding';
 import type { YieldBreakdown, YieldGrade, DealResult, LeverageResult, ComparisonRow } from '@/lib/market/returns';
