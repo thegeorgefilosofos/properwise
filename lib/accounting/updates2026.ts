@@ -10,6 +10,7 @@ import { MYAADE, GOV_SHORT_TERM } from '@/lib/tax/aade';
 import { feWhole, fpRate, grDateOf } from '@/lib/core/format';
 import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { ANAK_NAME, ANAK_KYA, ANAK_KYA_AMEND, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_SCOPE_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from './anakainisi2026';
 import {
   RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO, RENO_39B_LAW, RENO_39B_KYA,
 } from './renovation39b';
@@ -47,7 +48,7 @@ export interface RegulatoryUpdate {
 const SRC = {
   aadeRentals: MYAADE,
   shortTerm: GOV_SHORT_TERM,
-  anakainizo: 'https://www.gov.gr/el/services/1001507/anakainizo-noikiazo',
+  anakainizo: ANAK_HREF,
   spitiMou: 'https://stegasi.gov.gr/programs/spiti-mou-ii/',
   tte: 'https://www.bankofgreece.gr/kyria-themata/epopteia/makroprolithiki-politiki',
   goldenVisa: 'https://www.gov.gr/ipiresies/polites-kai-kathemerinoteta/polites-allon-kraton/adeia-diamones-ependute-golden-visa',
@@ -119,10 +120,11 @@ export const REGULATORY_UPDATES_2026: RegulatoryUpdate[] = [
   {
     id: 'anakainizo-2026',
     area: 'loans_programs', audiences: ['long_term', 'buyer'],
-    title: 'Ανακαινίζω–Νοικιάζω / Ανακαινίζω 2026',
-    summary: 'Επιδότηση ανακαίνισης κενών κατοικιών που διατίθενται για μακροχρόνια μίσθωση. Στη νέα φάση 2026 η επιδότηση φτάνει σημαντικά ποσοστά των δαπανών (έως ~60% στο βασικό, με υψηλότερα ποσοστά σε ειδικές κατηγορίες), με ανώτατο επιλέξιμο προϋπολογισμό και προϋποθέσεις εμβαδού/παλαιότητας. Χρήσιμο αν έχεις κλειστό ακίνητο που θέλεις να νοικιάσεις.',
-    effective: '2026', legalBasis: 'Πρόγραμμα στέγασης (gov.gr)',
-    sourceLabel: 'Ανακαινίζω–Νοικιάζω (gov.gr)', sourceHref: SRC.anakainizo, severity: 'info',
+    // Τα ποσοστά, τα όρια και οι ημερομηνίες: lib/accounting/anakainisi2026.ts.
+    title: `Ανακαινίζω 2026: η δράση ${ANAK_NAME}`,
+    summary: `Επιχορήγηση ανακαίνισης ${ANAK_RATES_TEXT}. Επιλέξιμος προϋπολογισμός ${ANAK_CAP_TEXT}. Καλύπτει ${ANAK_SCOPE_TEXT}. ${ANAK_STATUS_TEXT}.`,
+    effective: '2026', legalBasis: `${ANAK_KYA} · ${ANAK_KYA_AMEND}`,
+    sourceLabel: 'Ανακαίνιση Κατοικίας (stegasi.gov.gr)', sourceHref: SRC.anakainizo, severity: 'info',
   },
   {
     id: 'dsti-ltv-limits',

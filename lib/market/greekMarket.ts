@@ -14,6 +14,7 @@
 import { MYAADE } from '../tax/aade'
 import { fe, grDate } from '../core/format'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO } from '../accounting/renovation39b'
+import { ANAK_CAP, ANAK_CAP_TEXT, ANAK_RATES_TEXT, ANAK_SCOPE_TEXT, ANAK_STATUS_TEXT, ANAK_YEARS, ANAK_HREF } from '../accounting/anakainisi2026'
 
 // ΟΙ ΠΗΓΕΣ ΟΝΟΜΑΖΟΝΤΑΝ ΔΥΟ ΦΟΡΕΣ, ΤΗ ΜΙΑ ΑΚΡΙΒΩΣ ΠΑΝΩ ΑΠΟ ΤΗΝ ΑΛΛΗ: μέσα σε
 // αυτή την παρένθεση και αμέσως από κάτω ως σύνδεσμοι. Η επανάληψη δεν ήταν
@@ -379,12 +380,14 @@ export const YIELD_LEVERS: YieldLever[] = [
     audience: 'all', href: 'https://www.forin.gr/articles/article/87571/',
   },
   {
-    key: 'anakainizo', title: 'Ανακαινίζω και Νοικιάζω, επιδότηση κενών κατοικιών',
-    gain: 'έως 8.100,00€',
-    impact: 'Επιδότηση 60% του κόστους ανακαίνισης, για κενή κατοικία που μπαίνει σε μακροχρόνια μίσθωση τουλάχιστον τριών ετών.',
-    detail: 'Προϋποθέσεις: το ακίνητο δηλωμένο κενό στο έντυπο Ε2, εμβαδόν έως 100 τ.μ., εισόδημα έως περίπου 40.000,00€ και συνολική ακίνητη περιουσία έως 300.000,00€. Μετατρέπει ένα ακίνητο που δεν αποδίδει σε εισόδημα, με τα έξι δέκατα του κόστους καλυμμένα.',
-    risk: 'Δεσμεύεσαι σε τριετή μίσθωση, υπάρχουν όρια εισοδήματος και μεγέθους και το πρόγραμμα κλείνει όταν εξαντληθεί ο προϋπολογισμός του.',
-    audience: 'all', href: 'https://www.gov.gr/el/services/1001507/anakainizo-noikiazo',
+    // Έγραφε «60%, έως 8.100,00€» για το παλιό «Ανακαινίζω–Νοικιάζω». Τα
+    // στοιχεία του κύκλου 2026: lib/accounting/anakainisi2026.ts.
+    key: 'anakainizo', title: 'Ανακαινίζω 2026, επιδότηση ανακαίνισης παλιών κατοικιών',
+    gain: `έως ${fe(ANAK_CAP)}`,
+    impact: `Επιχορήγηση ${ANAK_RATES_TEXT}, ${ANAK_CAP_TEXT}.`,
+    detail: `Καλύπτει ${ANAK_SCOPE_TEXT}. ${ANAK_STATUS_TEXT}.`,
+    risk: `Κλειστή κατοικία που ανακαινίζεται δεσμεύεται για ${ANAK_YEARS} έτη ως κύρια κατοικία, χωρίς βραχυχρόνια μίσθωση. Τα εισοδηματικά όρια ορίζουν την κατηγορία και άρα το ποσοστό.`,
+    audience: 'all', href: ANAK_HREF,
   },
   {
     key: 'enfia_insurance', title: 'Έκπτωση ΕΝΦΙΑ με ασφάλιση',

@@ -476,7 +476,10 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: active ? 600 : 400, display: 'block' }}>{r.label}</span>
-                    <span style={{ ...TT.caption, display: 'block', marginTop: 2 }}>{r.note}</span>
+                    {/* Η σημείωση της μείωσης 50% έφτασε τους 123 χαρακτήρες ανά γραμμή σε
+                        οθόνη 1440 όταν μπήκε η τρίτη βαθμίδα αξίας (150.000€). Ο μετρητής
+                        κρατά τη γραμμή κάτω από το όριο ανάγνωσης του e2e:layout. */}
+                    <span style={{ ...TT.caption, display: 'block', marginTop: 2, maxWidth: '68ch' }}>{r.note}</span>
                     {!inForce && (
                       <span style={{ ...TT.caption, display: 'block', marginTop: 2, color: 'var(--text-tertiary)' }}>
                         {lapsed
