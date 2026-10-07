@@ -21,7 +21,7 @@ import { T, PageTitle, KPIGrid, Badge, Btn, ExportButton, EmptyState, InfoBanner
 import { statusLabel, BY_KEY, type StatusRow } from '@/lib/property/status';
 import { propertyTypeLabel } from '@/lib/property/types';
 import { yearOccupancy } from '@/lib/clients/reports';
-import { rentIncome, propertyStatus, yearExpensesOf, YIELD_LABELS } from '@/lib/facts';
+import { rentIncome, propertyStatus, isLease, yearExpensesOf, YIELD_LABELS } from '@/lib/facts';
 import { athensToday } from '@/lib/core/time';
 import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger';
 import { portfolioReturns } from '@/lib/market/portfolio';
@@ -79,6 +79,8 @@ interface Row {
   /** Πόσα ΕΥΡΩ οφείλονται — το πλήθος μόνο του δεν λέει αν χρωστάς 60€ ή 1.800€. */
   owed: number;
   value: number; annualRevenue: number; annualExpenses: number;
+  /** Σε μίσθωση: μόνο αυτά μπαίνουν στην απόδοση χαρτοφυλακίου (lib/market/portfolio). */
+  leased: boolean;
 }
 
 type SortKey = 'name' | 'revenue' | 'net' | 'occupancy' | 'pending';
@@ -349,14 +351,18 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
         id: p.id, name: p.name, typeLabel: propertyTypeLabel(p.prop_type) || 'Ακίνητο', mode, statusLabel: declaredStatus,
         revenue, expenses, expensesYear, net: revenue - expenses, revenueEstimated, staysUnresolved, rentExpected,
         occupancy, overbooked, nights, availableDays: occ.availableDays, pending: unpaid + chkAtt, owed,
-        value: p.value || 0, annualRevenue, annualExpenses,
+        value: p.value || 0, annualRevenue, annualExpenses, leased: isLease(fi.status),
       };
     });
   }, [properties, stays, bills, exp, rentByTenant, rentPays, chk, year, today, monthsElapsed, nowMs]);
 
-  const agg = useMemo(() => portfolioReturns(rows.map(r => ({ value: r.value, annualRevenue: r.annualRevenue, annualExpenses: r.annualExpenses }))), [rows]);
+  // Ακίνητο εκτός μίσθωσης (κενό, ιδιοχρησία, προς πώληση) δεν έχει ρυθμό
+  // εσόδων: μέσα στον μέσο έριχνε την απόδοση με την αξία και τις δαπάνες του.
+  const agg = useMemo(() => portfolioReturns(rows.map(r => ({ value: r.value, annualRevenue: r.annualRevenue, annualExpenses: r.annualExpenses, leased: r.leased }))), [rows]);
   /** Πόσα από τα ακίνητα που μετρούν στην απόδοση μπαίνουν με εκτιμώμενα έσοδα. */
-  const estimatedValued = rows.filter(r => r.value > 0 && r.revenueEstimated).length;
+  const estimatedValued = rows.filter(r => r.value > 0 && r.leased && r.revenueEstimated).length;
+  /** Ακίνητα με αξία που ΔΕΝ μπαίνουν στην απόδοση επειδή δεν νοικιάζονται. */
+  const unleasedValued = rows.filter(r => r.value > 0 && !r.leased).length;
 
   const sorted = useMemo(() => {
     const dir = asc ? 1 : -1;
@@ -512,7 +518,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       ];
       if (note) sections.push({ type: 'note', title: 'Προέλευση των εσόδων', text: note });
       const issued = await issueDocument(supabase, {
-        userId, docType: 'Κατάσταση ιδιοκτήτη',
+        docType: 'Κατάσταση ιδιοκτήτη',
         subject: ownerLabel,
         period: `Χρήση ${year}`,
         // Το μητρώο κρατά ΚΑΙ πόσα ακίνητα βγήκαν με εκτίμηση: αν κάποιος
@@ -523,7 +529,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
         branding, docType: 'Κατάσταση ιδιοκτήτη',
         title: isOwner ? stmt.name : 'Κατάσταση ιδιοκτήτη',
         subtitle,
-        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, note: `Χρήση ${year}` },
+        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum, note: `Χρήση ${year}` },
         sections,
         disclaimer: 'Η παρούσα κατάσταση έχει ενημερωτικό χαρακτήρα. Δεν αποτελεί επίσημο φορολογικό ή λογιστικό έγγραφο. Επιβεβαίωσε τα ποσά με τον λογιστή σου.',
       };
@@ -634,7 +640,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       // Ολοι οι αριθμοί της κάρτας στο ίδιο μέγεθος, όσο χωράει ο μακρύτερος.
       // Ο λόγος είναι γραμμένος στο `KpiValue`: τέσσερα νούμερα σε τέσσερα
       // μεγέθη διαβάζονται ως τέσσερις βαθμίδες σημασίας, ενώ είναι ισότιμα.
-      const aggWidest = Math.max(eur(agg.totalValue).length, eur(agg.totalRevenue).length,
+      const aggWidest = Math.max(eur(agg.yieldValue).length, eur(agg.totalRevenue).length,
         fp(agg.grossYield).length, fp(agg.netYield).length);
       return (
         /* ΤΑ ΔΥΟ ΚΟΥΤΙΑ ΚΟΛΛΟΥΣΑΝ. Η κάρτα της απόδοσης κρατούσε κενό μόνο από
@@ -647,7 +653,10 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
               καταχωρημένη δόση μπαίνει με τον στόχο ενοικίου· η στήλη «Έσοδα
               έτους» το σημαίνει ήδη γραμμή-γραμμή και η σύνοψη δεν επιτρέπεται
               να το κρύψει πίσω από ένα δεκαδικό. */}
-          <SecHdr label="Απόδοση χαρτοφυλακίου" sub={`Σε ετήσια βάση (εκτίμηση ρυθμού) · ${agg.valuedCount} από ${agg.count} ${agg.count === 1 ? 'ακίνητο' : 'ακίνητα'} με καταχωρημένη αξία${estimatedValued > 0 ? ` · ${estimatedValued} με εκτιμώμενα έσοδα` : ''}`} />
+          {/* ΤΙ ΚΑΛΥΠΤΕΙ Ο ΑΡΙΘΜΟΣ, ΓΡΑΜΜΕΝΟ. Μόνο ακίνητα σε μίσθωση με
+              καταχωρημένη αξία· όσα είναι κενά ή σε ιδιοχρησία μετριούνται
+              χωριστά για να μη ψάχνει ο χρήστης γιατί λείπουν. */}
+          <SecHdr label="Απόδοση χαρτοφυλακίου" sub={`Σε ετήσια βάση (εκτίμηση ρυθμού) · ${agg.valuedCount} από ${agg.count} ${agg.count === 1 ? 'ακίνητο' : 'ακίνητα'} σε μίσθωση με καταχωρημένη αξία${unleasedValued > 0 ? ` · ${unleasedValued} εκτός μίσθωσης δεν μετρά${unleasedValued === 1 ? '' : 'ούν'}` : ''}${estimatedValued > 0 ? ` · ${estimatedValued} με εκτιμώμενα έσοδα` : ''}`} />
           {/* Τέσσερις δείκτες με `auto-fit` έβγαιναν 3+1 στα 768: ο τέταρτος
               μόνος του. Το `fixedCols` δίνει 2+2, γιατί διαλέγει διαιρέτη. */}
           {/* ΔΥΟ ΣΤΗΛΕΣ ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ. Το γενικό δίχτυ των 420 έριχνε τους
@@ -655,7 +664,9 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
               ανάμεσα στα πλακίδια και στον πίνακα των ακινήτων, μετρημένο σε
               Galaxy A. Είναι νούμερα, όχι πεδία φόρμας. */}
           <div {...fixedCols(4, 16, 'start', 'fc-xs-2')} style={{ ...fixedCols(4, 16, 'start').style, marginTop: 14 }}>
-            <Stat label="Αξία χαρτοφυλακίου" value={eur(agg.totalValue)} chars={aggWidest} />
+            {/* Η αξία που φαίνεται είναι η βάση των ποσοστών από κάτω: έσοδα ÷ αξία
+                πρέπει να βγάζει τη μεικτή που γράφει η κάρτα. */}
+            <Stat label={unleasedValued > 0 ? 'Αξία σε μίσθωση' : 'Αξία χαρτοφυλακίου'} value={eur(agg.yieldValue)} chars={aggWidest} />
             <Stat label="Ετήσια έσοδα, εκτίμηση ρυθμού" value={eur(agg.totalRevenue)} chars={aggWidest} />
             {/* ΔΥΟ ΔΕΚΑΔΙΚΑ, ΟΠΩΣ ΠΑΝΤΟΥ. Εγραφαν «6,7%» με ένα δεκαδικό, ενώ
                 τρία πλακίδια πιο πάνω η μέση πληρότητα γράφει «19,50%» από τον

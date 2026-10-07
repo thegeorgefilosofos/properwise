@@ -24,7 +24,7 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, ToolCta, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
@@ -32,11 +32,30 @@ import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { RentTaxCalculator } from './RentTaxCalculator';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
+import { fn, feWhole, fpRate, grDateOf } from '@/lib/core/format';
+import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { ratePct, rateScaleEach } from '../odigos/taxText';
+
+// ΟΙ ΑΡΙΘΜΟΙ ΤΟΥ ΚΕΙΜΕΝΟΥ ΑΠΟ ΤΙΣ ΣΤΑΘΕΡΕΣ ΠΟΥ ΥΠΟΛΟΓΙΖΟΥΝ (07/10/2026). Η κλίμακα,
+// το 5%, το 95% και η «01/07/2027» ήταν γραμμένα με το χέρι σε επτά σημεία, δίπλα
+// στον υπολογιστή που τα παίρνει από το lib/billing.
+const SCALE_2026 = RENTAL_TAX_BRACKETS_2026;
+const DEDUCTION = ratePct(PRESUMPTIVE_DEDUCTION_RATE);
+const TAXED_SHARE = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100);
+const BANK_FROM = grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT);
+/** «15% έως 12.000€, 25% από 12.000 έως 24.000€, … και 45% πάνω από 36.000€». */
+const SCALE_WORDS = (() => {
+  const parts = SCALE_2026.map(b => (b.from === 0 ? `${ratePct(b.rate)} έως ${feWhole(b.to)}`
+    : b.to === Infinity ? `${ratePct(b.rate)} πάνω από ${feWhole(b.from)}`
+    : `${ratePct(b.rate)} από ${fn(b.from)} έως ${feWhole(b.to)}`));
+  return `${parts.slice(0, -1).join(', ')} και ${parts[parts.length - 1]}`;
+})();
 
 const TITLE = 'Υπολογισμός φόρου ενοικίων 2026 με τα δικά σου δεδομένα';
 const DESC =
   'Υπολόγισε πόσο φόρο θα πληρώσεις για τα ενοίκιά σου με την κλίμακα του 2026 '
-  + '(15% / 25% / 35% / 45%) και την τεκμαρτή έκπτωση 5%. Δωρεάν, χωρίς εγγραφή.';
+  + `(${rateScaleEach(SCALE_2026)}) και την τεκμαρτή έκπτωση ${DEDUCTION}. Δωρεάν, χωρίς εγγραφή.`;
 const URL = siteUrl('/ypologismos-forou-enoikion');
 
 // Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
@@ -48,20 +67,19 @@ export const metadata: Metadata = publicMetadata({ title: TITLE, description: DE
 const FAQ: { q: string; a: string }[] = [
   {
     q: 'Πώς φορολογούνται τα ενοίκια το 2026;',
-    a: 'Με δική τους προοδευτική κλίμακα, ξεχωριστή από τους μισθούς: 15% έως 12.000€, '
-     + '25% από 12.000 έως 24.000€, 35% από 24.000 έως 36.000€ και 45% πάνω από 36.000€. '
+    a: `Με δική τους προοδευτική κλίμακα, ξεχωριστή από τους μισθούς: ${SCALE_WORDS}. `
      + 'Φορολογείται το πλάτος κάθε κλιμακίου, όχι όλο το εισόδημα με τον ανώτερο συντελεστή.',
   },
   {
-    q: 'Τι είναι η έκπτωση 5%;',
-    a: 'Ο νόμος αναγνωρίζει τεκμαρτή δαπάνη 5% επί του ακαθάριστου εισοδήματος από ακίνητα, '
-     + 'χωρίς να χρειάζεται να προσκομίσεις δικαιολογητικά. Ο φόρος υπολογίζεται στο υπόλοιπο 95%.',
+    q: `Τι είναι η έκπτωση ${DEDUCTION};`,
+    a: `Ο νόμος αναγνωρίζει τεκμαρτή δαπάνη ${DEDUCTION} επί του ακαθάριστου εισοδήματος από ακίνητα, `
+     + `χωρίς να χρειάζεται να προσκομίσεις δικαιολογητικά. Ο φόρος υπολογίζεται στο υπόλοιπο ${TAXED_SHARE}.`,
   },
   {
     q: 'Τι αλλάζει αν εισπράττω το ενοίκιο σε μετρητά;',
     a: 'Ο ν.5222/2025 (άρθρο 210) ζητά τα μισθώματα να εξοφλούνται με ηλεκτρονικό ή τραπεζικό '
-     + 'μέσο, αλλιώς χάνεται η τεκμαρτή έκπτωση 5% και ο φόρος υπολογίζεται στο 100% αντί για το 95%. '
-     + 'Η κύρωση αυτή ξεκινά την 01/07/2027 (απόφαση ΑΑΔΕ Α.1187/2026): για τα εισοδήματα του 2025 και '
+     + `μέσο, αλλιώς χάνεται η τεκμαρτή έκπτωση ${DEDUCTION} και ο φόρος υπολογίζεται στο 100% αντί για το ${TAXED_SHARE}. `
+     + `Η κύρωση αυτή ξεκινά την ${BANK_FROM} (απόφαση ΑΑΔΕ Α.1187/2026): για τα εισοδήματα του 2025 και `
      + 'του 2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης.',
   },
   {
@@ -76,7 +94,7 @@ const FAQ: { q: string; a: string }[] = [
     // η βραχυχρόνια φορολογείται ως εισόδημα από ακίνητα, με την ίδια κλίμακα
     // και την ίδια έκπτωση (lib/tax/shortTermTax.ts, lib/tools/shortVsLong.ts).
     a: 'Ναι, για φυσικό πρόσωπο με έως δύο ακίνητα: το εισόδημα φορολογείται με την ίδια '
-     + 'κλίμακα και την ίδια τεκμαρτή έκπτωση 5%. Η βραχυχρόνια έχει επιπλέον το τέλος '
+     + `κλίμακα και την ίδια τεκμαρτή έκπτωση ${DEDUCTION}. Η βραχυχρόνια έχει επιπλέον το τέλος `
      + 'ανθεκτικότητας ανά διανυκτέρευση. Από τρία ακίνητα και πάνω η δραστηριότητα γίνεται '
      + 'επιχειρηματική.',
   },
@@ -144,7 +162,7 @@ export default function Page() {
             το εισόδημα και εφαρμόζει την αντίστοιχη κλίμακα· ένας υπότιτλος που
             λέει «κλίμακα του 2026» θα διέψευδε τον ίδιο του τον επιλογέα όταν
             δείχνει το 2025. Η χρονιά λέγεται μία φορά, δίπλα στην επιλογή. */}
-        <ToolLede>Με την κλίμακα της χρονιάς που θα διαλέξεις και την τεκμαρτή έκπτωση 5%.</ToolLede>
+        <ToolLede>Με την κλίμακα της χρονιάς που θα διαλέξεις και την τεκμαρτή έκπτωση {DEDUCTION}.</ToolLede>
 
         {/* Ο ΥΠΟΛΟΓΙΣΤΗΣ ΔΙΑΒΑΖΕΙ ΤΗ ΔΙΕΥΘΥΝΣΗ, ΑΡΑ ΘΕΛΕΙ ΟΡΙΟ ΑΝΑΜΟΝΗΣ. Το
             `useSearchParams` σε προαποδοσμένη διαδρομή αναγκάζει απόδοση στον
@@ -155,7 +173,12 @@ export default function Page() {
             Η εφεδρεία έχει το ΙΔΙΟ ύψος με τη φόρμα, ώστε το κείμενο από κάτω
             να μην αναπηδήσει μόλις φορτώσει. */}
         <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-          <RentTaxCalculator today={athensToday()}/>
+          <RentTaxCalculator today={athensToday()} cta={
+            <ToolCta
+              title="Θέλεις να μη χρειάζεται να το ξαναϋπολογίσεις;"
+              body="Το PROPERWISE διατηρεί οργανωμένα ενοίκια, λογαριασμούς και δαπάνες όλη τη χρονιά και εξάγει με ένα κλικ όσα ζητά ο λογιστής σου."
+            />
+          }/>
         </Suspense>
 
         <ToolSources kind="rent" checked={taxLimitAsOf('rent').checkedAt} />
@@ -195,7 +218,7 @@ export default function Page() {
             Ο υπολογιστής δίνει τον φόρο· ο οδηγός{' '}
             <Link href="/odigos/forologia-enoikion-2026" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               φορολογία ενοικίων 2026
-            </Link>{' '}εξηγεί την κλίμακα, την τεκμαρτή έκπτωση 5%, τον κανόνα της τραπεζικής είσπραξης (από 01/07/2027) και τις εξαιρέσεις, με παραδείγματα σε ευρώ.
+            </Link>{' '}εξηγεί την κλίμακα, την τεκμαρτή έκπτωση {DEDUCTION}, τον κανόνα της τραπεζικής είσπραξης (από {BANK_FROM}) και τις εξαιρέσεις, με παραδείγματα σε ευρώ.
           </>)}</p>
         </section>
 

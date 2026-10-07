@@ -22,7 +22,7 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, ToolCta, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
@@ -147,7 +147,12 @@ export default function Page() {
             αυτό, ολόκληρη η σελίδα θα έβγαινε από τη στατική απόδοση και θα
             έχανε το SEO για το οποίο υπάρχει. */}
         <Suspense fallback={<div style={{ minHeight: 480 }} aria-hidden/>}>
-          <ShortVsLongCalculator today={athensToday()}/>
+          <ShortVsLongCalculator today={athensToday()} cta={
+            <ToolCta
+              title="Όποια κι αν διαλέξεις, τα έξοδα θέλουν τάξη."
+              body="Το PROPERWISE κρατά ενοίκια, λογαριασμούς και δαπάνες ανά ακίνητο και ετοιμάζει τα στοιχεία του Ε2 για τον λογιστή σου."
+            />
+          }/>
         </Suspense>
 
         <ToolSources kind="short" checked={taxLimitAsOf('short').checkedAt} />

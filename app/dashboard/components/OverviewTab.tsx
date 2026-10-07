@@ -59,10 +59,10 @@ import OccupancyPanel from './OccupancyPanel'
 import PolicyNotice from './PolicyNotice'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
 import { type IncomeRent } from '@/lib/income/propertyIncome'
-import { yearExpensesOf, expenseParts, EXPENSE_LABELS, INCOME_LABELS, rentIncome, propertyStatus, hostingReceipts, HOSTING_LABELS, YIELD_LABELS, enfiaYear, closedTaxRefs } from '@/lib/facts'
+import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, propertyStatus, hostingReceipts, HOSTING_LABELS, YIELD_LABELS, YIELD_INLINE_LABELS, enfiaYear, closedTaxRefs } from '@/lib/facts'
 import { useEnfiaSettings } from './useEnfia'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
-import { useLoad } from '@/app/hooks/useLoad'
+import { useLoad, type LoadTurn } from '@/app/hooks/useLoad'
 import { readCoOwners } from '@/lib/property/coOwners'
 import type { Property, Expense, Bill, Task, Tenant, TenRow, TenantFull } from './shell/model'
 
@@ -189,7 +189,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
 
   const propIds = useMemo(() => properties.map(p => p.id), [properties]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (turn: LoadTurn) => {
     const [exp,bil,{ data:tsk },ten,ci,iv,ln,hs,allExp,allTen,{ data:allRc },rp,{ data:mnt },{ data:decl },yr,allYearRents,allStays,{ data:ownerRows },taxEvents,doneTasks] = await Promise.all([
       expenseStore.ledger(supabase,prop.id,{ userId, from:`${year}-01-01`, columns:'*' }),
       billStore.ofProperty<Bill>(supabase,prop.id,'*',userId),
@@ -233,6 +233,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       calendar.sourceStates(supabase,prop.id,{ prefix:'tax:' }),
       checklist.closed<{ note:string|null; status:string|null }>(supabase,prop.id,'note,status',userId),
     ]);
+    // Νεότερη φόρτωση ξεκίνησε στο μεταξύ (ριπή ζωντανών συμβάντων, αλλαγή
+    // ακινήτου ή έτους): η παλιά απάντηση δεν γράφει πάνω στη νέα.
+    if (!turn.isLatest()) return;
     setClosedTax(closedTaxRefs(taxEvents, doneTasks));
     setExpenses((exp||[]) as Expense[]); setBills(bil); setTasks(tsk||[]); setTenant(ten?.[0]||null);
     setRentPeriods(rp); setMaint((mnt||[]) as OblMaint[]); setTenantFull(ten?.[0]||null);
@@ -285,26 +288,27 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Μέσα στην ασύγχρονη συνάρτηση κάνει την ίδια δουλειά, χωρίς την επιπλέον
   // απόδοση και σταματά να ενοχλεί τον κανόνα set-state-in-effect.
   // Η πρώτη φόρτωση δεν ανήκει στο effect του καναλιού: δύο δουλειές, δύο σώματα.
-  useLoad(load);
+  // Η `reload` συγχωνεύει τις ριπές των ζωντανών συνδρομών σε μία φόρτωση.
+  const reload = useLoad(load);
 
   useEffect(() => {
     // Real-time: κάθε αλλαγή σε άλλα tabs ενημερώνει ζωντανά την Επισκόπηση
     const ch = supabase.channel(`overview_${prop.id}`)
-      .on('postgres_changes', { event:'*', schema:'public', table:'bills',             filter:`property_id=eq.${prop.id}` }, () => load())
-      .on('postgres_changes', { event:'*', schema:'public', table:'expenses',          filter:`property_id=eq.${prop.id}` }, () => load())
-      .on('postgres_changes', { event:'*', schema:'public', table:'tenants',           filter:`property_id=eq.${prop.id}` }, () => load())
-      .on('postgres_changes', { event:'*', schema:'public', table:'maintenance_tasks', filter:`property_id=eq.${prop.id}` }, () => load())
-      .on('postgres_changes', { event:'*', schema:'public', table:'checklist_items',   filter:`property_id=eq.${prop.id}` }, () => load())
-      .on('postgres_changes', { event:'*', schema:'public', table:'loans',             filter:`property_id=eq.${prop.id}` }, () => load())
-      .on('postgres_changes', { event:'*', schema:'public', table:'client_stays',       filter:`property_id=eq.${prop.id}` }, () => load())
-      .on('postgres_changes', { event:'*', schema:'public', table:'inventory_items',     filter:`property_id=eq.${prop.id}` }, () => load())
-      .on('postgres_changes', { event:'*', schema:'public', table:'contacts',            filter:`property_id=eq.${prop.id}` }, () => load())
-      .on('postgres_changes', { event:'*', schema:'public', table:'property_documents',  filter:`property_id=eq.${prop.id}` }, () => load())
-      .on('postgres_changes', { event:'*', schema:'public', table:'rent_payments',        filter:`property_id=eq.${prop.id}` }, () => load())
+      .on('postgres_changes', { event:'*', schema:'public', table:'bills',             filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'expenses',          filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'tenants',           filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'maintenance_tasks', filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'checklist_items',   filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'loans',             filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'client_stays',       filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'inventory_items',     filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'contacts',            filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'property_documents',  filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'rent_payments',        filter:`property_id=eq.${prop.id}` }, () => { void reload(); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prop.id, load]);
+  }, [prop.id, reload]);
 
   // ── ΜΙΑ ΔΑΠΑΝΗ, ΕΝΑ ΣΥΝΟΛΟ, ΣΕ ΟΛΕΣ ΤΙΣ ΟΘΟΝΕΣ ──────────────────────────
   // Εδώ αθροίζονταν ΜΟΝΟ οι γραμμές του πίνακα `expenses`. Ο απλήρωτος
@@ -801,7 +805,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           tenantId={tenantFull?.id ?? null}
           leaseViaBank={rentViaBank}
           today={todayIso}
-          onSaved={() => { void load(); }}
+          onSaved={() => { void reload({ immediate: true }); }}
         />
       )}
 
@@ -927,7 +931,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               ? `Στόχος ενοικίου ${fmtEur(rent)} × 12. Δεν υπάρχει ενοικιαστής με ενοίκιο, οπότε το ποσό είναι εκτίμηση.`
               : `Μηνιαίο ενοίκιο ${fmtEur(rent)} × 12.` },
           { label:EXPENSE_LABELS.total, value:fmtEur(yExp.total),
-            sub: expenseParts(yExp, fmtEur),
+            sub: expensePartsShort(yExp, fmtEur),
             title:`Οι δαπάνες του ${year} όπως είναι καταχωρημένες: ${expenseParts(yExp, fmtEur)}. Λογαριασμοί και δαπάνες μαζί, κάθε ευρώ μία φορά, χωρίς προβολή. Ίδιο ποσό με τις ${navLabel('finances')}, το ${navLabel('portfolio')}, την ${navLabel('roi')} και τη ${navLabel('accounting')}.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
           // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
           // «Μερίδιο φόρου ενοικίου» είναι 22 χαρακτήρες δίπλα σε τρεις
@@ -957,7 +961,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             title:'Ακαθάριστα έσοδα μείον δαπάνες μείον το μερίδιο φόρου. Δεν περιλαμβάνει δόσεις δανείου.' },
         ] : [
           { label:EXPENSE_LABELS.total, value:fmtEur(yExp.total),
-            sub: expenseParts(yExp, fmtEur),
+            sub: expensePartsShort(yExp, fmtEur),
             title:`Οι δαπάνες του ${year} όπως είναι καταχωρημένες: ${expenseParts(yExp, fmtEur)}.` },
           // Χωρίς εμπορική ΚΑΙ χωρίς αντικειμενική αξία, το πλακίδιο έγραφε
           // «0,00€»: όχι μέτρηση, αλλά απουσία μέτρησης ντυμένη σαν μέτρηση.
@@ -1007,12 +1011,15 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             <div style={{marginTop:-4,marginBottom:16,fontFamily: T.font.sans,fontSize:12,color:'var(--text-secondary)',lineHeight:1.7}}>
               {isLet(prop) && propValue>0 && (
                 <div>
-                  <strong style={{color:'var(--text-primary)',fontWeight:600}}>Απόδοση.</strong>{' '}
+                  {/* «Απόδοση: μεικτή 4,03% · καθαρή προ φόρου 3,01%». Ηταν «Απόδοση.
+                      μεικτή απόδοση …», η λέξη τρεις φορές και τελεία πριν από
+                      πεζό. Οι λέξεις από το lib/facts (YIELD_INLINE_LABELS). */}
+                  <strong style={{color:'var(--text-primary)',fontWeight:600}}>{YIELD_INLINE_LABELS.title}:</strong>{' '}
                   {/* Κάθε σκέλος δεν σπάει μέσα του: στο τηλέφωνο το «185.000,00€»
                       έπεφτε μόνο του στη δεύτερη γραμμή, χωρισμένο από το «αξία». */}
-                  <span style={{whiteSpace:'nowrap'}} title="Ετήσιο ενοίκιο ως ποσοστό της αξίας του ακινήτου, προ δαπανών">{YIELD_LABELS.gross.toLowerCase()} {fp(grossYield)}</span>
+                  <span style={{whiteSpace:'nowrap'}} title={`${YIELD_LABELS.gross}: ετήσιο ενοίκιο ως ποσοστό της αξίας του ακινήτου, πριν από τις δαπάνες`}>{YIELD_INLINE_LABELS.gross} {fp(grossYield)}</span>
                   {' · '}
-                  <span style={{whiteSpace:'nowrap'}} title="Ετήσιο ενοίκιο μείον τις δαπάνες του έτους, προ φόρου, ως ποσοστό της αξίας">{YIELD_LABELS.net_pre_tax.toLowerCase()} {fp(netYield)}</span>
+                  <span style={{whiteSpace:'nowrap'}} title={`${YIELD_LABELS.net_pre_tax}: ετήσιο ενοίκιο μείον τις δαπάνες του έτους που έχεις καταγράψει, ως ποσοστό της αξίας`}>{YIELD_INLINE_LABELS.net_pre_tax} {fp(netYield)}</span>
                   {' · '}
                   <span style={{whiteSpace:'nowrap'}}>αξία {fmtEur(propValue)}</span>
                 </div>

@@ -220,7 +220,7 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
 
       const subject = selProps.length === 1 ? selProps[0].name : `${selProps.length} ακίνητα`;
       const issued = await issueDocument(supabase, {
-        userId, docType: 'Αναφορά χαρτοφυλακίου', subject, period: periodLabel,
+        docType: 'Αναφορά χαρτοφυλακίου', subject, period: periodLabel,
         summary: { properties: selProps.length, expected, collected, expenses: expTotal, net },
       });
 
@@ -228,7 +228,7 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
         branding: branding ?? null, docType: 'Αναφορά χαρτοφυλακίου',
         title: selProps.length === 1 ? selProps[0].name : 'Αναφορά χαρτοφυλακίου',
         subtitle: [periodLabel, selProps.length > 1 ? `${selProps.length} ακίνητα` : selProps[0].address].filter(Boolean).join(' · '),
-        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, note: periodLabel },
+        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum, note: periodLabel },
         sections: built,
         disclaimer: 'Ενημερωτικό έγγραφο από τα καταχωρημένα στοιχεία εσόδων και δαπανών της περιόδου.',
       };

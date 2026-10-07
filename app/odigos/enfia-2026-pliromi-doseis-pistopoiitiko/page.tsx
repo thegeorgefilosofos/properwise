@@ -34,7 +34,6 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
-import { monthGen, monthShort } from '@/lib/core/months';
 import { athensToday } from '@/lib/core/time';
 import { AADE_DESTINATIONS } from '@/lib/tax/aade';
 import { AADE_CALENDAR_URL, CONFIDENCE_LABEL } from '@/lib/tax/greekTaxCalendar';
@@ -45,7 +44,7 @@ import { guideAt } from '../guides';
 import { enfiaInstalments, enfiaIssueBasis, instalmentStatus, obligationOf } from './schedule';
 import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
-  RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
+  RelatedGuides, guideJsonLd, LINK_STYLE, longDate, dayMonth, dateCells, type GuideFaqItem,
 } from '../GuideParts';
 
 export const revalidate = 86400;
@@ -83,26 +82,6 @@ const PORTAL = AADE_DESTINATIONS.enfia;
  */
 const ENFIA_PATH = PORTAL.steps.slice(0, -1);
 const PATH_TEXT = ENFIA_PATH.map(s => `«${s}»`).join(', ');
-
-/** «31 Μαρτίου 2026» από ISO ημερομηνία. */
-function longDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return `${d} ${monthGen(m - 1)} ${y}`;
-}
-/** «15 Απριλίου» για κανόνα που επαναλαμβάνεται κάθε χρόνο. */
-function dayMonth(iso: string): string {
-  const [, m, d] = iso.split('-').map(Number);
-  return `${d} ${monthGen(m - 1)}`;
-}
-/** Ημέρα, μήνας, έτος σε τρεις κάθετες, όπως στον οδηγό προθεσμιών. */
-function dateCells(iso: string) {
-  const [y, m, d] = iso.split('-').map(Number);
-  return <>
-    <span>{String(d).padStart(2, ' ')}</span>{' '}
-    <span className="gd-date-m">{monthShort(m - 1)}</span>{' '}
-    <span>{y}</span>
-  </>;
-}
 
 // Οι ερωτήσεις τροφοδοτούν ΚΑΙ την ορατή λίστα ΚΑΙ το δομημένο σχήμα. Δεν
 // εξαρτώνται από τη σημερινή μέρα: το σχήμα λέει το πρόγραμμα, όχι πόσο έμεινε.

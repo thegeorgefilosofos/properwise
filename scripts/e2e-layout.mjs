@@ -824,7 +824,10 @@ const OPENERS = { tenant: ['Νέος ενοικιαστής'] }
 // σύνδεση) και πυκνές σε πίνακες/κείμενο — ακριβώς εκεί που κρύβεται το κόψιμο
 // σε στενή οθόνη. Το /tameio ΔΕΝ μπαίνει: είναι σύνδεσμος μιας χρήσης μετά την
 // επιβεβαίωση email, γυρίζει 307 σε επισκέπτη — σωστά, δεν είναι δημόσιο.
-const PAGES = ['/', '/login', '/signup', '/paketa', '/ypologismos-forou-enoikion', '/ypologismos-enfia', '/vraxyxronia-i-makroxronia', '/kathari-apodosi', '/imerologio', '/privacy', '/terms', '/trust', '/logistes']
+// Ούτε το /imerologio: δεν είναι σελίδα, είναι μόνο η ροή iCal κάτω από το
+// /imerologio/[token] (route.ts). Χωρίς κουπόνι δίνει 404 και η μέτρηση
+// ζύγιζε τη σελίδα «δεν βρέθηκε» με το όνομα ημερολογίου.
+const PAGES = ['/', '/login', '/signup', '/paketa', '/ypologismos-forou-enoikion', '/ypologismos-enfia', '/vraxyxronia-i-makroxronia', '/kathari-apodosi', '/privacy', '/terms', '/trust', '/logistes']
 const BASE = process.env.E2E_BASE || 'http://localhost:3100'
 // Για να δουλεύεται μία σκηνή χωρίς να τρέχουν και οι 120: E2E_ONLY=roi
 const ONLY = process.env.E2E_ONLY ? process.env.E2E_ONLY.split(',') : null

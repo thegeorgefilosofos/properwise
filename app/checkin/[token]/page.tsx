@@ -12,6 +12,7 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { T, Btn, formGrid } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
+import { linkLoad, LINK_SAY } from '@/lib/portal/linkLoad';
 
 interface CheckinContext { property: { name: string; address: string | null } }
 
@@ -42,10 +43,10 @@ export default function GuestCheckin() {
   useEffect(() => {
     (async () => {
       setState('loading');
-      const { data, error } = await supabase.rpc('get_checkin_context', { p_token: token });
-      if (error) { setState('offline'); return; }
-      if (!data) { setState('notfound'); return; }
-      setCtx(data as CheckinContext); setState('ok');
+      const res = await supabase.rpc('get_checkin_context', { p_token: token });
+      const next = linkLoad(res);
+      if (next === 'ok') setCtx(res.data as CheckinContext);
+      setState(next);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, tries]);
@@ -97,21 +98,23 @@ export default function GuestCheckin() {
 
         {state === 'notfound' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>Ο σύνδεσμος δεν είναι έγκυρος</div>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>{LINK_SAY.notFoundTitle}</div>
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>Ζήτησε από τον οικοδεσπότη έναν ενημερωμένο σύνδεσμο.</div>
           </div>
         )}
 
+        {/* Η βάση δεν απάντησε: για τον σύνδεσμο δεν ξέρουμε τίποτα, άρα
+            δεν βεβαιώνουμε τίποτα (lib/portal/linkLoad.ts). */}
         {state === 'offline' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>Δεν φτάσαμε ως τον διακομιστή</div>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>{LINK_SAY.offlineTitle}</div>
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: 16 }}>
-              Ο σύνδεσμός σου είναι εντάξει. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.
+              {LINK_SAY.offlineBody}
             </div>
             {/* Το κοινό κουμπί, όχι ζωγραφισμένο στο χέρι: ίδια όψη, ίδιες
                 καταστάσεις αιώρησης και εστίασης, ίδιο ύψος αφής με όλη την
                 εφαρμογή. */}
-            <Btn variant="primary" onClick={() => setTries(t => t + 1)}>Δοκίμασε ξανά</Btn>
+            <Btn variant="primary" onClick={() => setTries(t => t + 1)}>{LINK_SAY.retry}</Btn>
           </div>
         )}
 

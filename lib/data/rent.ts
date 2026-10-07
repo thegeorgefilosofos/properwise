@@ -270,10 +270,8 @@ export function remove(db: Db, id: string) {
   return db.from(TABLE).delete().eq('id', id);
 }
 
-/** Όλες οι δόσεις ενός μισθωτή. Καλείται μόνο κατά τη διαγραφή του. */
-export function removeOfTenant(db: Db, tenantId: string) {
-  return db.from(TABLE).delete().eq('tenant_id', tenantId);
-}
+// Οι δόσεις ενός μισθωτή ΔΕΝ σβήνονται από εδώ: φεύγουν μαζί του, στην ίδια
+// συναλλαγή, με τη `delete_tenant` της βάσης (20261007130000).
 
 // ── Βοηθητικά ──────────────────────────────────────────────────────────────
 

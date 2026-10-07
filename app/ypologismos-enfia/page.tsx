@@ -18,7 +18,7 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensParts, athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, ToolCta, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
@@ -155,7 +155,12 @@ export default function Page() {
             Η εφεδρεία έχει το ΙΔΙΟ ύψος με τη φόρμα, ώστε το κείμενο από κάτω
             να μην αναπηδήσει μόλις φορτώσει. */}
         <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-          <EnfiaCalculator year={year} today={athensToday()}/>
+          <EnfiaCalculator year={year} today={athensToday()} cta={
+            <ToolCta
+              title="Έχεις περισσότερα από ένα ακίνητα;"
+              body="Το PROPERWISE εκτιμά τον ΕΝΦΙΑ για όλα σου τα ακίνητα μαζί, με τη μείωση που αντιστοιχεί στη συνολική περιουσία και σου θυμίζει κάθε δόση πριν λήξει."
+            />
+          }/>
         </Suspense>
 
         <ToolSources kind="enfia" checked={taxLimitAsOf('enfia').checkedAt} />

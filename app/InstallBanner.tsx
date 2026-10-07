@@ -70,7 +70,7 @@ export default function InstallBanner({ mode, onInstall, onDismiss, note = '', b
           Στο iPhone μόνο έτσι φτάνουν οι ειδοποιήσεις για ό,τι λήγει.
         </p>
       )}
-      {note && <p role="status" style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{note}</p>}
+      {note && <p role="status" style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{note}</p>}
       <div style={{ display: 'grid', gridTemplateColumns: asks ? '1fr 1fr' : '1fr', gap: 8 }}>
         {asks && (
           <Btn variant="primary" onClick={onInstall} disabled={busy}>

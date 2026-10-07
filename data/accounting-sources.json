@@ -254,7 +254,8 @@
     "pinned": "χρήση 2026",
     "marker": "5255/2025",
     "uses": [
-      "lib/accounting/updates2026.ts"
+      "lib/accounting/updates2026.ts",
+      "lib/market/greekMarket.ts"
     ],
     "watch": "",
     "checkedAt": "2026-08-12",

@@ -14,7 +14,7 @@
 // κατάλογος έχει παλιώσει στο μεταξύ, η σειρά και το «φθηνότερο» φεύγουν μόλις
 // φορτώσει η σελίδα.
 // ═══════════════════════════════════════════════════════════════════════════
-import { Fragment, useId, useMemo, useState, useSyncExternalStore } from 'react';
+import { Fragment, useId, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { T, fdLong } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
 import { fe, feRate, fn } from '@/lib/core/format';
@@ -25,8 +25,8 @@ import { PROVIDERS, TARIFFS_VERIFIED, CATALOGUE_MONTH_GEN, BADGE_MEANING, PRICES
 import { ETMEAR } from '@/lib/energy/tariff';
 import { RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
-import { ToolCta } from '@/app/PublicChrome';
-import { ToolNumField, ToolFields, ToolHero, ToolSeg, ToolSelect } from '@/app/ToolParts';
+import { ToolNumField, ToolFields, ToolHero, ToolSeg } from '@/app/ToolParts';
+import { ToolSelect } from '@/app/ToolSelect';
 import LiveResult from '@/components/LiveResult';
 
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
@@ -61,7 +61,11 @@ function facts(t: PowerRow['t'], ebill: boolean): string[] {
   return out;
 }
 
-export function PowerCompare({ serverToday }: { serverToday: string }) {
+export function PowerCompare({ serverToday, cta }: {
+  serverToday: string;
+  /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
+  cta: ReactNode;
+}) {
   const [v, set] = useToolState(SPEC, PATH);
   const ids = { kwh: useId(), night: useId() };
   const [all, setAll] = useState(false);
@@ -295,10 +299,7 @@ export function PowerCompare({ serverToday }: { serverToday: string }) {
 
       <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
 
-      <ToolCta
-        title="Με τους δικούς σου λογαριασμούς, όχι με μια εκτίμηση;"
-        body="Στο PROPERWISE κρατάς τους λογαριασμούς ρεύματος κάθε ακινήτου και η ίδια σύγκριση τρέχει με τις δικές τους κιλοβατώρες."
-      />
+      {cta}
     </div>
   );
 }

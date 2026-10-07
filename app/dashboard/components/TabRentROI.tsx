@@ -16,7 +16,7 @@ import * as rentStore from '@/lib/data/rent';
 import { propertyIncome, type IncomeRent, type PropertyIncome } from '@/lib/income/propertyIncome';
 import { taxpayerRentSources, ownershipPctOf, wholePropertyTax, type TaxpayerPropInput, type OtherPropertyIncome } from '@/lib/accounting/taxpayerIncome';
 import { taxpayerScope } from '@/lib/facts/taxpayer';
-import { propertyStatus, propertyStatusLabel, isLease, NOT_LET_NOTE, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_PRE_TAX_SUB, yearExpenses, type PropertyStatus } from '@/lib/facts';
+import { propertyStatus, propertyStatusLabel, isLease, NOT_LET_NOTE, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_PRE_TAX_SUB, yearExpenses, yieldCosts, netPreTaxLabel, MODELLED_COST_LABELS, type PropertyStatus } from '@/lib/facts';
 import type { StayAmountLike } from '@/lib/clients/stayAmounts';
 import { type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
 import { trailingStays, type ReportStay, type TrailingStays } from '@/lib/clients/reports';
@@ -692,6 +692,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   // ότι είναι μερικός. `null` σημαίνει «το έγραψε ο χρήστης», οπότε δεν είναι
   // δική μας δουλειά να σχολιάσουμε τι περιλαμβάνει.
   const [opexYear, setOpexYear] = useState<number | null>(null);
+  // Οι κατηγορίες των δαπανών που έστησαν το προσυμπληρωμένο ποσό. Κρίνουν ποια
+  // κόστη βραχυχρόνιας έχουν ήδη καταγραφεί και δεν ξαναμπαίνουν ως εκτίμηση.
+  const [opexCats, setOpexCats] = useState<string[]>([]);
   const [region, setRegion] = useState('ath_center');
   // ── ΑΝΑΤΙΜΗΣΗ: ΜΕΤΡΗΜΕΝΗ, ΟΧΙ ΕΠΙΛΕΓΜΕΝΗ ────────────────────────────────
   // Ήταν σταθερά «3» χωρίς πηγή — και αυτή η σταθερά έκρινε μόνη της το
@@ -834,9 +837,11 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         // γραμμές πάνω από «Δαπάνες έτους 10.159,70€», στην ίδια οθόνη.
         // Οι δαπάνες έτους του lib/facts: πληρωμένες ως σήμερα + προγραμματισμένες
         // έως 31/12, το ίδιο ποσό με την Επισκόπηση και το Χαρτοφυλάκιο.
-        const expSum = yearExpenses(bil, exp as LedgerExpense[], thisYear, athensToday()).total;
+        const yExpNow = yearExpenses(bil, exp as LedgerExpense[], thisYear, athensToday());
+        const expSum = yExpNow.total;
         setOpex(String(expSum || localStorage.getItem(K('opex')) || ''));
         setOpexYear(expSum > 0 ? thisYear : null);
+        setOpexCats(expSum > 0 ? yExpNow.entries.map(e => e.category) : []);
         setBooked(trailingStays(sts, athensToday()));
         setPSqm(p.sqm && p.sqm > 0 ? p.sqm : null);
         setPType(p.prop_type || null);
@@ -957,12 +962,29 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   // Με καταγεγραμμένα έσοδα από ΔΟΣΕΙΣ το ακίνητο νοικιάζεται με μισθωτήριο: δεν
   // υπάρχουν προμήθειες πλατφόρμας ούτε καθαρισμοί. Από ΔΙΑΜΟΝΕΣ, τα κόστη της
   // βραχυχρόνιας ακολουθούν τα έσοδα που καταγράφηκαν, όχι τα έσοδα του μοντέλου.
-  const stCostsModel = st.platformFees + st.cleaning + st.levyBorne + st.municipalTax;
-  const stCosts = term !== 'short' ? 0
-    : !useRecorded ? stCostsModel
+  const stScale = term !== 'short' ? 0
+    : !useRecorded ? 1
     : recorded!.source === 'rent' ? 0
-    : st.grossRevenue > 0 ? stCostsModel * (grossAnnual / st.grossRevenue) : 0;
-  const effOpex = nOpex + stCosts;                 // λειτουργικά έξοδα ακινήτου + κόστη βραχυχρόνιας
+    : st.grossRevenue > 0 ? grossAnnual / st.grossRevenue : 0;
+  // ΚΑΜΙΑ ΔΑΠΑΝΗ ΔΥΟ ΦΟΡΕΣ (lib/facts/yield: `yieldCosts`). Τα κόστη του μοντέλου
+  // μπαίνουν ΜΟΝΟ για είδος που δεν έχει καταγραφεί φέτος: όποιος πέρασε τις
+  // προμήθειες της πλατφόρμας ή τον καθαρισμό ως δαπάνη δεν τα πληρώνει ξανά
+  // εδώ. Όταν μπαίνει εκτίμηση, η καθαρή λέγεται «Εκτιμώμενη» και δεν μοιάζει
+  // πια με την καθαρή της Επισκόπησης, που βγαίνει μόνο από καταγραφές.
+  const costs = yieldCosts({
+    recorded: nOpex,
+    recordedCategories: opexYear !== null ? opexCats : [],
+    modelled: {
+      platform_fee: st.platformFees * stScale,
+      cleaning: st.cleaning * stScale,
+      climate_levy: st.levyBorne * stScale,
+      accommodation_tax: st.municipalTax * stScale,
+    },
+  });
+  const stCosts = costs.modelled;                  // εκτιμώμενα κόστη βραχυχρόνιας που δεν καταγράφηκαν
+  const effOpex = costs.total;                     // καταγεγραμμένα έξοδα + όσα από αυτά λείπουν
+  const stCostsLabel = `Εκτίμηση κόστους βραχυχρόνιας (${costs.modelledKinds.map(k => MODELLED_COST_LABELS[k]).join(', ')})`;
+  const netLabel = netPreTaxLabel(costs);
   const monthlyEquiv = grossAnnual / 12;           // ισοδύναμο «μηνιαίο ενοίκιο» για τη μηχανή
 
   // ── ΦΟΡΟΣ: ΕΝΑΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ, ΟΧΙ ΕΝΑ ΑΚΙΝΗΤΟ ─────────────────────────────
@@ -1164,7 +1186,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
     const incRows = [
       R('Ακαθάριστα έσοδα (ετήσια)', rEur(grossAnnual)),
       R('Λειτουργικά έξοδα ακινήτου', rSigned(-nOpex)),
-      ...(term === 'short' && stCosts > 0 ? [R('Κόστη βραχυχρόνιας (πλατφόρμα, καθαρισμός, ΤΑΚΚ, τέλος παρεπιδημούντων)', rSigned(-stCosts))] : []),
+      ...(term === 'short' && stCosts > 0 ? [R(stCostsLabel, rSigned(-stCosts))] : []),
       R('Καθαρά λειτουργικά έσοδα (NOI)', rEur(noi), 'sub'),
       R(consolidated ? 'Μερίδιο φόρου εισοδήματος (προοδευτικός στο σύνολο των ακινήτων)' : 'Φόρος εισοδήματος', rSigned(-annualTax)),
       R('Καθαρό αποτέλεσμα μετά τον φόρο', rEur(afterTax), 'result'),
@@ -1173,7 +1195,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
     // Δείκτες απόδοσης.
     const yieldRows = [
       R('Μεικτή απόδοση', rPct(y.grossYield)),
-      R(YIELD_LABELS.net_pre_tax, rPct(y.netYield)),
+      R(netLabel, rPct(y.netYield)),
       R(YIELD_LABELS.net_after_tax, rPct(y.netYieldAfterTax)),
       R('Εκτιμώμενη ετήσια ανατίμηση', rPct(nAppr)),
       R('Ενδεικτική συνολική απόδοση (καθαρή + ανατίμηση)', rPct(totalReturn), 'sub'),
@@ -1238,7 +1260,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       + `<div class="kpis">`
         + reportKpi('Αξία ακινήτου', rEur(nVal))
         + reportKpi(term === 'short' ? 'Ετήσια έσοδα' : 'Μηνιαίο ενοίκιο', rEur(term === 'short' ? grossAnnual : nRent))
-        + reportKpi(YIELD_LABELS.net_pre_tax, rPct(y.netYield))
+        + reportKpi(netLabel, rPct(y.netYield))
         + reportKpi('Βαθμός απόδοσης', `${grade.grade} · ${grade.score}/100`)
       + `</div>`
       + reportSection('Ανάλυση εσόδων και εξόδων (ετήσια)') + `<table><tbody>${incRows}</tbody></table>`
@@ -1313,20 +1335,20 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         { type: 'kpis', title: 'Σύνοψη', items: [
           { label: 'Αξία ακινήτου', value: pEur(nVal) },
           { label: term === 'short' ? 'Ετήσια έσοδα' : 'Μηνιαίο ενοίκιο', value: pEur(term === 'short' ? grossAnnual : nRent) },
-          { label: YIELD_LABELS.net_pre_tax, value: pPct(y.netYield) },
+          { label: netLabel, value: pPct(y.netYield) },
           { label: 'Βαθμός απόδοσης', value: `${grade.grade} · ${grade.score}/100` },
         ] },
         { type: 'rows', title: 'Ανάλυση εσόδων και εξόδων (ετήσια)', rows: [
           { label: 'Ακαθάριστα έσοδα (ετήσια)', value: pEur(grossAnnual) },
           { label: 'Λειτουργικά έξοδα ακινήτου', value: pSigned(-nOpex) },
-          ...(term === 'short' && stCosts > 0 ? [{ label: 'Κόστη βραχυχρόνιας (πλατφόρμα, καθαρισμός, ΤΑΚΚ, τέλος παρεπιδημούντων)', value: pSigned(-stCosts) }] : []),
+          ...(term === 'short' && stCosts > 0 ? [{ label: stCostsLabel, value: pSigned(-stCosts) }] : []),
           { label: 'Καθαρά λειτουργικά έσοδα (NOI)', value: pEur(noi), kind: 'sub' },
           { label: consolidated ? 'Μερίδιο φόρου εισοδήματος (προοδευτικός στο σύνολο των ακινήτων)' : 'Φόρος εισοδήματος', value: pSigned(-annualTax) },
           { label: 'Καθαρό αποτέλεσμα μετά τον φόρο', value: pEur(afterTax), kind: 'result' },
         ] },
         { type: 'rows', title: 'Δείκτες απόδοσης', rows: [
           { label: 'Μεικτή απόδοση', value: pPct(y.grossYield) },
-          { label: YIELD_LABELS.net_pre_tax, value: pPct(y.netYield) },
+          { label: netLabel, value: pPct(y.netYield) },
           { label: YIELD_LABELS.net_after_tax, value: pPct(y.netYieldAfterTax) },
           { label: 'Εκτιμώμενη ετήσια ανατίμηση', value: pPct(nAppr) },
           { label: 'Ενδεικτική συνολική απόδοση (καθαρή + ανατίμηση)', value: pPct(totalReturn), kind: 'sub' },
@@ -1364,7 +1386,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       sections.push({ type: 'note', text: `Πηγές: ${MARKET_SOURCES.map(s => s.label).join(' · ')}` });
 
       const issued = await issueDocument(supabase, {
-        userId, docType: 'Αναφορά απόδοσης',
+        docType: 'Αναφορά απόδοσης',
         subject: name,
         period: term === 'short' ? 'Βραχυχρόνια μίσθωση' : 'Μακροχρόνια μίσθωση',
         summary: { value: nVal, grossYield: y.grossYield, netYield: y.netYield, grade: grade.grade },
@@ -1373,7 +1395,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       const model: PdfReportModel = {
         branding, docType: 'Αναφορά απόδοσης', title: 'Αναφορά απόδοσης ακινήτου',
         subtitle: identity,
-        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl },
+        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum },
         sections, disclaimer,
       };
       await generateReportPdf(model, `Αναφορά_απόδοσης_${pName.trim() || 'ακίνητο'}`);
@@ -1488,7 +1510,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
                       : `${fe(Number(rent) || 0)} τον μήνα`,
                     term === 'short' ? `${fe(Number(stAdr) || 0)} ανά νύχτα` : null,
                     `${fe(Number(opex) || 0)} έξοδα τον χρόνο`,
-                    term === 'short' && stCosts > 0 ? `κόστη βραχυχρόνιας ${fe(stCosts)}` : null,
+                    term === 'short' && stCosts > 0 ? `εκτίμηση κόστους βραχυχρόνιας ${fe(stCosts)}` : null,
                     reg?.label || null,
                   ].filter(Boolean).join(' · ')}
             </p>
@@ -1505,7 +1527,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           {/* Στη βραχυχρόνια η μονάδα πάει στο επίθεμα: το «Μηνιαίο ενοίκιο
               μακροχρόνιας» έπιανε δύο γραμμές δίπλα σε τρεις ετικέτες μίας. */}
           <NumberInput label={term === 'short' ? 'Ενοίκιο μακροχρόνιας' : 'Μηνιαίο ενοίκιο'} value={rent} onChange={v => { setRent(v); setScenario(true); }} suffix={term === 'short' ? '€/μήνα' : '€'} />
-          <NumberInput label="Ετήσια έξοδα" value={opex} onChange={v => { setOpex(v); setOpexYear(null); }} suffix="€" />
+          <NumberInput label="Ετήσια έξοδα" value={opex} onChange={v => { setOpex(v); setOpexYear(null); setOpexCats([]); }} suffix="€" />
           <CustomSelect label="Περιοχή" value={region} onChange={setRegion} options={REGIONS.map((r, i) => ({ value: r.key, label: r.label, header: r.region !== REGIONS[i - 1]?.region ? r.region : undefined }))} />
         </div>
         {opexYear !== null && (
@@ -1557,9 +1579,12 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         {/* KPIs */}
         <div {...g4box}>
           <Tile label="Μεικτή απόδοση" value={fp(y.grossYield)} sub={useRecorded ? `${fe(y.annualRent)} τον χρόνο, από ${fe(recorded!.receivedToDate)} ως σήμερα` : mkt(`${fe(y.annualRent)} έσοδα τον χρόνο`)} info={<TermInfo term="Μεικτή απόδοση" text={G.gross_yield} />} />
-          <Tile label={YIELD_SHORT_LABELS.net_pre_tax} value={fp(y.netYield)}
-            sub={mkt(term === 'short' ? `μετά από ${fe(effOpex)} έξοδα, προμήθειες και τέλη, ${YIELD_PRE_TAX_SUB}` : `μετά από ${fe(effOpex)} έξοδα, ${YIELD_PRE_TAX_SUB}`)}
-            info={<TermInfo term={YIELD_LABELS.net_pre_tax} text={G.net_yield} />} />
+          {/* Η ΚΑΘΑΡΗ ΛΕΕΙ ΑΝ ΜΕΣΑ ΤΗΣ ΥΠΑΡΧΕΙ ΕΚΤΙΜΗΣΗ. Μόνο με καταγραφές είναι ο
+              ίδιος αριθμός με την Επισκόπηση· με κόστη του μοντέλου που δεν έχουν
+              καταγραφεί είναι «Εκτιμώμενη» και το λέει ποια. */}
+          <Tile label={netPreTaxLabel(costs, true)} value={fp(y.netYield)}
+            sub={mkt(costs.basis === 'estimated' ? `${fe(costs.recorded)} έξοδα και ${fe(costs.modelled)} εκτίμηση κόστους, ${YIELD_PRE_TAX_SUB}` : `μετά από ${fe(effOpex)} έξοδα, ${YIELD_PRE_TAX_SUB}`)}
+            info={<TermInfo term={netLabel} text={costs.basis === 'estimated' ? `${G.net_yield} Εδώ αφαιρούνται και εκτιμήσεις για ό,τι δεν έχεις καταγράψει φέτος ως δαπάνη: ${costs.modelledKinds.map(k => MODELLED_COST_LABELS[k]).join(', ')}.` : G.net_yield} />} />
           {/* «Μετά τον φόρο» και όχι «Απόδοση μετά τον φόρο»: δίπλα στη μεικτή και
               την καθαρή η λέξη «απόδοση» εννοείται· στα 390 η ετικέτα
               έσπαγε σε δύο γραμμές. Η εταιρεία πληρώνει φόρο μερίσματος μόνο

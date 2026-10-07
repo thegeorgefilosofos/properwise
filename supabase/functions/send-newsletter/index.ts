@@ -11,7 +11,7 @@
 // επαλήθευση domain) & APP_URL (μία πηγή: _shared/site.ts).
 // ─────────────────────────────────────────────────────────────────────────
 import { emailShell, eyebrow, linkLine, listUnsubscribeHeaders } from '../_shared/emailTemplates.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
+import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { APP_URL } from '../_shared/site.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'

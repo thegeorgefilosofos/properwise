@@ -1011,14 +1011,14 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           }) },
       ]
       const issued = await issueDocument(supabase, {
-        userId, docType:'Πίνακας τοκοχρεολυσίου',
+        docType:'Πίνακας τοκοχρεολυσίου',
         subject: bankLabel||'Δάνειο', period: termLabel,
         summary:{ amount:LA, rate:effRate, totalInterest:totalInt },
       })
       const model: PdfReportModel = {
         branding, docType:'Πίνακας τοκοχρεολυσίου', title:'Πίνακας τοκοχρεολυσίου',
         subtitle:[bankLabel, termLabel].filter(Boolean).join(' · '),
-        meta:{ id:issued.id, issuedAt:issued.issuedAt, verifyUrl:issued.verifyUrl },
+        meta:{ id:issued.id, issuedAt:issued.issuedAt, verifyUrl:issued.verifyUrl, checksum:issued.checksum },
         sections,
         disclaimer:'Ενδεικτικός υπολογισμός με σταθερή τοκοχρεολυτική δόση. Οι πραγματικοί όροι εξαρτώνται από την τράπεζα και τυχόν έξοδα, ασφάλιστρα ή μεταβολές επιτοκίου.',
       }

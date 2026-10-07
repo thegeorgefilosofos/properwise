@@ -168,6 +168,21 @@ const near = (a: number, b: number, eps = 0.01) => Math.abs(a - b) <= eps
   ok('portfolio αγνοεί αξία 0 στη %', p2.valuedCount === 1 && p2.netYield === 4.5, p2.netYield, 4.5)
   ok('portfolio συνολικά έσοδα μετρούν όλα', p2.totalRevenue === 10000)
   ok('portfolio κενό → μηδενικά', portfolioReturns([]).totalValue === 0 && portfolioReturns([]).grossYield === 0)
+
+  // Ακίνητο ΕΚΤΟΣ μίσθωσης («Κενό, με έσοδα»): ρυθμός εσόδων 0, αξία 150.000,
+  // δαπάνες 2.550. Μέσα στον μέσο έβγαζε μεικτή 0% και καθαρή −1,7%
+  // (−2.550 / 150.000). Δεν μετρά στην απόδοση ούτε στο valuedCount.
+  const vacant = { value: 150000, annualRevenue: 0, annualExpenses: 2550, leased: false }
+  const alone = portfolioReturns([vacant])
+  ok('μόνο κενό → καμία απόδοση (valuedCount 0)', alone.valuedCount === 0, alone.valuedCount, 0)
+  ok('μόνο κενό → όχι αρνητική καθαρή', alone.netYield === 0 && alone.grossYield === 0, alone.netYield, 0)
+  // Με ένα νοικιασμένο δίπλα: 100.000, 6.000 έσοδα, 1.000 έξοδα → 6,0% / 5,0%,
+  // ακριβώς όσο αν το κενό δεν υπήρχε (με το κενό μέσα: 2,4% / 1,0%).
+  const mixed = portfolioReturns([vacant, { value: 100000, annualRevenue: 6000, annualExpenses: 1000, leased: true }])
+  ok('μικτό → μεικτή μόνο από τη μίσθωση = 6,0', mixed.grossYield === 6, mixed.grossYield, 6)
+  ok('μικτό → καθαρή μόνο από τη μίσθωση = 5,0', mixed.netYield === 5, mixed.netYield, 5)
+  ok('μικτό → valuedCount 1, yieldValue 100.000', mixed.valuedCount === 1 && mixed.yieldValue === 100000, `${mixed.valuedCount}/${mixed.yieldValue}`, '1/100000')
+  ok('μικτό → η αξία χαρτοφυλακίου μετρά όλα', mixed.totalValue === 250000, mixed.totalValue, 250000)
 }
 
 console.log(`returns.golden — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)

@@ -5689,11 +5689,20 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    «ΠΕΡΑ ΠΕΡΑ, ΜΕ ΑΛΗΘΙΝΟ ΣΥΛΛΑΒΙΣΜΟ» δείχνουν πού γεννιόνταν: στο
    `text-wrap: pretty`, που αγνοεί τα μαλακά ενωτικά. Με το σώμα συλλαβισμένο
    (GuideMain → hy) και χωρίς `pretty`, το κενό μένει στο φυσικό του. */
+/* 07.10.2026: ΟΙ ΟΔΗΓΟΙ ΣΤΟΙΧΙΖΟΝΤΑΙ ΑΡΙΣΤΕΡΑ ΚΑΙ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ. Ο έλεγχος
+   στα 1440 βρήκε ποτάμια λευκού σε παράγραφο οδηγού («Νομική βάση: άρθρο 8
+   ν.5246/2025…» στο /odigos/forologia-enoikion-2026). Οι οδηγοί είναι γεμάτοι
+   παραπομπές που δεν κόβονται («ν.5246/2025», «ΦΕΚ Α΄ 198/11.11.2025»,
+   ποσά): ο συλλαβιστής δεν έχει πού να σπάσει και η γραμμή κλείνει τεντώνοντας
+   τα κενά. Το `hyphens: auto` δεν είναι λύση για τα ελληνικά (βλ.
+   components/Hyphen.tsx: ίδια νούμερα με και χωρίς). Άρα ριγμένη δεξιά άκρη σε
+   κάθε πλάτος, χωρίς κοψίματα (`none`, ώστε να μην τιμώνται τα μαλακά
+   ενωτικά του `hy()`). Οι νομικές σελίδες (`.lg-body`) δεν αλλάζουν εδώ. */
 .gd .lg-p, .gd .lg-ul li {
-  font-size: 16px; line-height: 1.65; text-align: justify;
+  font-size: 16px; line-height: 1.65; text-align: start; hyphens: none;
   color: color-mix(in srgb, var(--text-primary) 90%, transparent);
 }
-.gd .lg-note { text-align: justify; }
+.gd .lg-note { text-align: start; hyphens: none; }
 /* Ο ΤΥΠΟΣ ΤΟΥ ΕΝΦΙΑ: ΑΡΙΣΤΕΡΑ, ΧΩΡΙΣ ΕΝΩΤΙΚΑ, ΣΠΑΕΙ ΜΟΝΟ ΠΡΙΝ ΑΠΟ ΤΟ «×».
    Οι όροι έχουν αδιάσπαστα κενά (app/odigos/pos-ypologizetai-o-enfia). Πέρα
    πέρα έκοβε το «συ-ντελεστής» και τέντωνε τα κενά γύρω από τα «×». */
@@ -6171,6 +6180,20 @@ tr.po-row-more { display: none; }
 .plan-card-num, .plan-card-alt { white-space: nowrap; }
 .plan-card-no { color: var(--text-tertiary); font-weight: 500; }
 
+/* ═══ ΣΥΝΔΡΟΜΗ: ΠΑΚΕΤΑ ΚΑΙ ΚΥΚΛΟΣ ΧΡΕΩΣΗΣ ΜΕ ΙΔΙΑ ΔΕΞΙΑ ΑΚΡΗ ═════════════════
+   Στην οθόνη Συνδρομής (Billing.tsx) τα πακέτα αναδιπλώνονται σε σειρές και
+   από κάτω κάθεται ο διακόπτης Μηνιαία/Ετήσια, δεμένος στα 260 ώστε να μη
+   βαραίνει περισσότερο από την τιμή. Στα 390 οι σειρές των πακέτων έφταναν
+   ως την άκρη της κάρτας και ο διακόπτης σταματούσε περίπου στα 290. Κάτω από
+   560 κάθε σειρά πακέτων μοιράζει το πλάτος της στα πλακίδιά της και ο
+   διακόπτης παίρνει όλο το πλάτος: μία δεξιά άκρη για όλη την απόφαση. */
+.bill-plans { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.bill-cycle { margin-top: 2px; max-width: 260px; }
+@media (max-width: 559px) {
+  .bill-plans > * { flex: 1 1 auto; }
+  .bill-cycle { max-width: none; }
+}
+
 /* ═══ Ο ΠΙΝΑΚΑΣ: ΚΕΦΑΛΗ ΠΑΚΕΤΟΥ, ΣΤΗΛΗ ΠΡΟΤΑΣΗΣ, ΣΗΜΑΔΙΑ ΣΤΗ ΜΕΣΗ ════════════
    ΤΡΙΑ ΠΟΥ ΦΑΙΝΟΝΤΑΝ ΣΤΑ 1440 (01.10.2026):
    1) Η κεφαλή των είκοσι τεσσάρων γραμμών έφευγε στο πρώτο κύλισμα και από τη
@@ -6193,12 +6216,18 @@ tr.po-row-more { display: none; }
     box-shadow: inset 0 -1px 0 var(--border-default);
   }
 }
+/* ΣΤΟΙΧΙΣΗ ΣΤΗΝ ΚΟΡΥΦΗ, ΟΧΙ ΣΤΗ ΒΑΣΗ (07.10.2026). Με `bottom` η στήλη του
+   «Ιδιοκτήτη», που έχει δύο γραμμές κάτω από την τιμή (μηνιαία και ετήσια με
+   Νόα) ενώ οι άλλες μία, ανέβαζε όνομα και τιμή κατά μία γραμμή, περίπου 16
+   εικονοστοιχεία στα 1440. Από την κορυφή, ετικέτα, όνομα και τιμή πέφτουν
+   στις ίδιες ευθείες σε κάθε στήλη· ό,τι περισσεύει μένει από κάτω. Η θέση της
+   ετικέτας έχει ΣΤΑΘΕΡΟ ύψος σε κάθε στήλη, με ή χωρίς ετικέτα. */
 .plan-matrix .po-table thead th.plan-th {
-  text-align: center; vertical-align: bottom; padding-top: 14px; padding-bottom: 14px;
+  text-align: center; vertical-align: top; padding-top: 14px; padding-bottom: 14px;
   text-transform: none; letter-spacing: normal; font-weight: 400;
 }
-.plan-th-flag { display: flex; justify-content: center; min-height: 22px; margin-bottom: 6px; }
-.plan-th-flag .plan-rec { margin: 0; }
+.plan-th-flag { display: flex; justify-content: center; align-items: center; height: 22px; margin-bottom: 6px; }
+.plan-th-flag .plan-rec { margin: 0; line-height: 16px; }
 .plan-th-name {
   display: block; font-size: 16px; font-weight: 680; letter-spacing: -0.02em; line-height: 1.25;
   color: var(--text-primary);

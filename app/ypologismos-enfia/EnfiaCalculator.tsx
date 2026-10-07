@@ -21,7 +21,7 @@ import { OBJECTIVE_VALUES } from '@/lib/tax/aade';
 // χρήστης δεν πει άλλο — και το γράφουμε καθαρά, γιατί όποιος έχει και δεύτερο
 // ακίνητο θα δει διαφορετικό ποσό στο εκκαθαριστικό.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useMemo, useId, useState } from 'react';
+import { useMemo, useId, useState, type ReactNode } from 'react';
 import { T, feAuto } from '@/components/tokens';
 import { fe, fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
@@ -31,8 +31,9 @@ import { enfiaInstalments, ENFIA_INSTALMENTS } from '@/lib/tools/enfiaSchedule';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
 import { enfiaLedger, enfiaWealthBracketLimit } from '@/lib/tools/enfiaLedger';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
-import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
-import { ToolNumField, ToolSelect, ToolFields, ToolHero, ToolLedger } from '@/app/ToolParts';
+import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
+import { ToolNumField, ToolFields, ToolHero, ToolLedger } from '@/app/ToolParts';
+import { ToolSelect } from '@/app/ToolSelect';
 import { Btn } from '@/components/Theme';
 
 import LiveResult from '@/components/LiveResult';
@@ -51,7 +52,11 @@ const FLOORS: { key: keyof typeof ENFIA_FLOOR_COEF; label: string }[] =
 // ίδιο κλειδί — και καμία δεν είχε το κλιμάκιο 15-19 ετών.
 const AGES = ENFIA_AGE_BANDS;
 
-export function EnfiaCalculator({ year, today }: { year: number; today: string }) {
+export function EnfiaCalculator({ year, today, cta }: {
+  year: number; today: string;
+  /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
+  cta: ReactNode;
+}) {
   const [v, set] = useToolState(SPEC, PATH);
   const sqm = v.tm, zonePrice = v.zoni, floor = v.orofos, age = v.palaiotita, ownership = v.pososto, auxSqm = v.voith;
   const ids = { sqm: useId(), zone: useId(), floor: useId(), age: useId(), own: useId(), aux: useId() };
@@ -287,10 +292,7 @@ export function EnfiaCalculator({ year, today }: { year: number; today: string }
 
       <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
 
-      <ToolCta
-        title="Έχεις περισσότερα από ένα ακίνητα;"
-        body="Το PROPERWISE εκτιμά τον ΕΝΦΙΑ για όλα σου τα ακίνητα μαζί, με τη μείωση που αντιστοιχεί στη συνολική περιουσία και σου θυμίζει κάθε δόση πριν λήξει."
-      />
+      {cta}
     </div>
   );
 }

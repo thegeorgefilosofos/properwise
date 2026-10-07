@@ -12,14 +12,14 @@ import { StandaloneCard, CARD_TITLE } from '../StandaloneCard';
 import { noindexPage } from '@/lib/seo/noindex';
 import VerifyLookup from './VerifyLookup';
 
-export const metadata = noindexPage('Επαλήθευση εγγράφου', 'Έλεγχος γνησιότητας εγγράφου που εκδόθηκε από το PROPERWISE, με τον κωδικό του.');
+export const metadata = noindexPage('Επαλήθευση εγγράφου', 'Έλεγχος ότι ένα έγγραφο είναι καταχωρημένο στο μητρώο του PROPERWISE, με τον αριθμό του.');
 
 export default function VerifyPage() {
   return (
     <StandaloneCard>
       {/* Η κοινή κάρτα του ταμείου (app/StandaloneCard.tsx): λογότυπο της
           κεφαλίδας και τίτλος 24, όπως στο /verify/<κωδικός>. */}
-      <h1 style={CARD_TITLE}>Επαλήθευση γνησιότητας εγγράφου</h1>
+      <h1 style={CARD_TITLE}>Επαλήθευση εγγράφου</h1>
       <VerifyLookup />
 
       <p style={{ fontSize: 13, lineHeight: 1.6, margin: '20px 0 0' }}>

@@ -133,7 +133,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
         propertyAddress: prop.address || prop.name, sqm: prop.sqm ?? undefined, atak: prop.atak ?? undefined,
       };
       const issued = await issueDocument(supabase, {
-        userId, docType: 'Ιδιωτικό συμφωνητικό μίσθωσης', // ΤΟ ΟΝΟΜΑ ΤΟΥ ΕΝΟΙΚΙΑΣΤΗ ΕΦΥΓΕ ΑΠΟ ΤΟ «ΑΝΤΙΚΕΙΜΕΝΟ».
+        docType: 'Ιδιωτικό συμφωνητικό μίσθωσης', // ΤΟ ΟΝΟΜΑ ΤΟΥ ΕΝΟΙΚΙΑΣΤΗ ΕΦΥΓΕ ΑΠΟ ΤΟ «ΑΝΤΙΚΕΙΜΕΝΟ».
         // Το πεδίο αυτό το επιστρέφει η ΔΗΜΟΣΙΑ σελίδα επαλήθευσης σε όποιον έχει
         // τον κωδικό του εγγράφου — και η ίδια σελίδα υπόσχεται ρητά ότι «δεν
         // εμφανίζονται ευαίσθητα στοιχεία». Για ένα μισθωτήριο, ονοματεπώνυμο
@@ -147,7 +147,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
         branding: branding ?? null, docType: 'Ιδιωτικό συμφωνητικό μίσθωσης',
         title: 'Ιδιωτικό συμφωνητικό μίσθωσης',
         subtitle: [prop.name, prop.address].filter(Boolean).join(' · '),
-        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, asOfLabel: 'Ημερομηνία', note: `Διάρκεια ${grDate(res.start)} έως ${grDate(res.end)}` },
+        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum, asOfLabel: 'Ημερομηνία', note: `Διάρκεια ${grDate(res.start)} έως ${grDate(res.end)}` },
         sections: [
           { type: 'note', text: leasePreamble(parties, res, use) },
           { type: 'rows', title: 'Βασικοί όροι', rows: [
@@ -373,7 +373,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 14 }}>
                 <div>
-                  <div style={{ ...lbl, display: 'flex', alignItems: 'center', gap: 4 }}>Υπογραφή εκμισθωτή<InfoHint>Η υπογραφή ενσωματώνεται στο PDF και, μαζί με το QR, το καθιστά επαληθεύσιμο.</InfoHint></div>
+                  <div style={{ ...lbl, display: 'flex', alignItems: 'center', gap: 4 }}>Υπογραφή εκμισθωτή<InfoHint>Η υπογραφή ενσωματώνεται στο PDF. Ο κωδικός QR οδηγεί στην καταχώρηση του εγγράφου στο μητρώο, όχι σε έλεγχο της υπογραφής.</InfoHint></div>
                   <SignaturePad onChange={setSigL} height={92} />
                 </div>
                 <div>

@@ -13,6 +13,7 @@ import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { SITE, siteUrl, PRODUCT_NAME, ORG_ID } from '@/lib/core/site';
 import { grDate } from '@/lib/core/format';
+import { monthGen, monthShort } from '@/lib/core/months';
 import { T } from '@/components/tokens';
 import { SectionHead, WRAP, WRAP_PAD } from '../PublicChrome';
 import { LINK_STYLE } from '../linkStyle';
@@ -43,10 +44,12 @@ export function GuideMain({ children, rail }: { children: ReactNode; rail?: Guid
         {rail && <GuideRail {...rail} />}
         <div className="gd">
           <BackLink parent={HUB} />
-          {/* ΟΛΟ ΤΟ ΣΩΜΑ ΣΥΛΛΑΒΙΖΕΤΑΙ ΕΔΩ, ΜΙΑ ΦΟΡΑ. Οι παράγραφοι του οδηγού
-              στοιχίζονται πέρα πέρα (globals.css, «ΟΔΗΓΟΙ») και αυτό στέκει
-              ΜΟΝΟ με μαλακά ενωτικά από κάτω. Επικεφαλίδες, κουμπιά και πίνακες
-              μένουν ακέραια (components/Hyphen.tsx, NO_HY). */}
+          {/* ΟΛΟ ΤΟ ΣΩΜΑ ΠΕΡΝΑ ΑΠΟ ΤΟ `hy()` ΕΔΩ, ΜΙΑ ΦΟΡΑ. Από 07.10.2026 οι
+              παράγραφοι του οδηγού στοιχίζονται αριστερά σε κάθε πλάτος με
+              `hyphens: none` (globals.css, «ΟΙ ΟΔΗΓΟΙ ΣΤΟΙΧΙΖΟΝΤΑΙ ΑΡΙΣΤΕΡΑ»),
+              οπότε τα μαλακά ενωτικά δεν κόβουν λέξη· το `hy()` μένει για τις
+              αδιάσπαστες παραπομπές (`bindRefs`). Επικεφαλίδες, κουμπιά και
+              πίνακες μένουν ακέραια (components/Hyphen.tsx, NO_HY). */}
           {hy(children)}
         </div>
       </div>
@@ -101,6 +104,38 @@ export function GuideUpdated({ guide }: { guide: Guide }) {
       <a href={`#${SOURCES_SECTION.id}`} className="lp-link" style={{ ...LINK_STYLE, whiteSpace: 'nowrap' }}>Πηγές</a>
     </p>
   );
+}
+
+// ── ΗΜΕΡΟΜΗΝΙΕΣ ΣΤΟ ΚΕΙΜΕΝΟ ΚΑΙ ΣΤΟΥΣ ΠΙΝΑΚΕΣ ΤΩΝ ΟΔΗΓΩΝ ─────────────────────
+// Ήταν γραμμένες δύο φορές, ίδιες, στον οδηγό ΕΝΦΙΑ 2026 και στον οδηγό
+// προθεσμιών (07/10/2026). Η πρώτη διόρθωση στη μία θα άφηνε την άλλη πίσω και
+// οι δύο σελίδες θα έγραφαν την ίδια δόση διαφορετικά.
+
+/** «31 Μαρτίου 2027» από ISO ημερομηνία. */
+export function longDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${monthGen(m - 1)} ${y}`;
+}
+
+/** «15 Απριλίου» από ISO ημερομηνία: για κανόνες που επαναλαμβάνονται κάθε χρόνο. */
+export function dayMonth(iso: string): string {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${d} ${monthGen(m - 1)}`;
+}
+
+/**
+ * Ημέρα, μήνας, έτος σε τρεις κάθετες για τη στήλη ημερομηνιών («26 Φεβ 2027»).
+ * Με ολόκληρο τον μήνα η στήλη έπιανε τα μισά 390 του κινητού και οι τίτλοι
+ * έσπαγαν σε τέσσερις σειρές. Η μέρα γεμίζει με διάστημα ψηφίου (U+2007), ώστε
+ * το «5» και το «30» να στοιχίζονται.
+ */
+export function dateCells(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return <>
+    <span>{String(d).padStart(2, '\u2007')}</span>{' '}
+    <span className="gd-date-m">{monthShort(m - 1)}</span>{' '}
+    <span>{y}</span>
+  </>;
 }
 
 /** Μια αριθμημένη ενότητα του οδηγού: η άγκυρα, το «πάνω» και ο τίτλος της. */

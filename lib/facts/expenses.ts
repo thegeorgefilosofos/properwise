@@ -24,7 +24,7 @@ import {
   type LedgerBill, type LedgerExpense, type LedgerEntry,
 } from '@/lib/expenses/ledger';
 import { roundHalfUp } from '@/lib/core/money';
-import { EXPENSE_LABELS } from './labels';
+import { EXPENSE_LABELS, EXPENSE_SHORT_LABELS } from './labels';
 
 export interface YearExpenses {
   year: number;
@@ -65,5 +65,15 @@ export function yearExpenses(bills: readonly LedgerBill[], expenses: readonly Le
 export function expenseParts(y: YearExpenses, fmt: (n: number) => string): string {
   const parts = [`${EXPENSE_LABELS.paid} ${fmt(y.paid)}`, `${EXPENSE_LABELS.scheduled} ${fmt(y.scheduled)}`];
   if (y.overdue > 0) parts.push(`${EXPENSE_LABELS.overdue} ${fmt(y.overdue)}`);
+  return parts.join(' + ');
+}
+
+/**
+ * Τα μέρη σε στενό πλακίδιο: πρώτα το ποσό, μετά η σύντομη λέξη. Ίδια ποσά και
+ * ίδια σειρά με το `expenseParts`· αλλάζει μόνο το μήκος.
+ */
+export function expensePartsShort(y: YearExpenses, fmt: (n: number) => string): string {
+  const parts = [`${fmt(y.paid)} ${EXPENSE_SHORT_LABELS.paid}`, `${fmt(y.scheduled)} ${EXPENSE_SHORT_LABELS.scheduled}`];
+  if (y.overdue > 0) parts.push(`${fmt(y.overdue)} ${EXPENSE_SHORT_LABELS.overdue}`);
   return parts.join(' + ');
 }

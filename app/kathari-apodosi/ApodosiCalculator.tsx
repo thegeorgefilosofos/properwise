@@ -19,7 +19,7 @@
 // ΜΙΑ ΠΗΓΗ: ο υπολογισμός ζει στο lib/tools/apodosi.ts, που καλεί την ίδια
 // φορολογική λογική με τον πίνακα ελέγχου. Η οθόνη δεν κάνει αριθμητική.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useMemo, useId, useState } from 'react';
+import { useMemo, useId, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { T, feAuto } from '@/components/tokens';
 import { fe, fn, fp, fpRate, feSigned, fpSigned, grDateOf } from '@/lib/core/format';
@@ -28,7 +28,7 @@ import { propertyYield } from '@/lib/tools/apodosi';
 import { FIRST_YEAR_NEW_BRACKETS, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
-import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
+import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
 import { ToolNumField, ToolFields, ToolHero, ToolLedger, ToolStats, TOOL_LABEL, TOOL_FIELD } from '@/app/ToolParts';
 
 import LiveResult from '@/components/LiveResult';
@@ -65,7 +65,11 @@ function Group({ title, children, first }: { title: string; children: React.Reac
   );
 }
 
-export function ApodosiCalculator({ year, today }: { year: number; today: string }) {
+export function ApodosiCalculator({ year, today, cta }: {
+  year: number; today: string;
+  /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
+  cta: ReactNode;
+}) {
   const [v, set] = useToolState(SPEC, PATH);
   const ids = {
     axia: useId(), enoikio: useId(), mines: useId(),
@@ -286,10 +290,7 @@ export function ApodosiCalculator({ year, today }: { year: number; today: string
 
       <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
 
-      <ToolCta
-        title="Για όλα σου τα ακίνητα, χωρίς να το ξαναϋπολογίσεις;"
-        body="Το PROPERWISE κρατά ενοίκια, ΕΝΦΙΑ και δαπάνες ανά ακίνητο και δείχνει ποιο αποδίδει, ποιο σε βαραίνει."
-      />
+      {cta}
     </div>
   );
 }

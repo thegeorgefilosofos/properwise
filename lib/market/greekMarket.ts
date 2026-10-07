@@ -12,7 +12,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { MYAADE } from '../tax/aade'
-import { fe } from '../core/format'
+import { fe, grDate } from '../core/format'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO } from '../accounting/renovation39b'
 
 // ΟΙ ΠΗΓΕΣ ΟΝΟΜΑΖΟΝΤΑΝ ΔΥΟ ΦΟΡΕΣ, ΤΗ ΜΙΑ ΑΚΡΙΒΩΣ ΠΑΝΩ ΑΠΟ ΤΗΝ ΑΛΛΗ: μέσα σε
@@ -24,6 +24,38 @@ export const MARKET_DISCLAIMER =
   'Ενδεικτικά στοιχεία αγοράς για σύγκριση, από δημόσιες πηγές. Οι τιμές διαφέρουν σημαντικά ανά ακίνητο, όροφο, κατάσταση και ακριβή θέση. Παρελθούσες αποδόσεις δεν εγγυώνται μελλοντικές. Δεν αποτελεί επενδυτική συμβουλή.'
 
 export const MARKET_DATA_ASOF = 'Ιούλιος 2026'
+
+// ── Η ΑΝΑΣΤΟΛΗ ΝΕΩΝ ΑΜΑ ΣΤΗ ΘΕΣΣΑΛΟΝΙΚΗ: ΜΙΑ ΠΗΓΗ ΓΙΑ ΕΦΑΡΜΟΓΗ ΚΑΙ ΟΔΗΓΟΥΣ ──────
+// ΠΗΓΗ: άρθρο 111 παρ. 2Β ν.4446/2016, όπως προστέθηκε με το άρθρο 5 παρ. 2
+// ν.5313/2026 (ΦΕΚ Α΄ 102/25.06.2026)· κοινοποίηση με την εγκύκλιο ΑΑΔΕ
+// Ο.3029/2026. Η ίδια διάταξη προσθέτει την παρ. 2Γ (διαγραφή σε μεταβίβαση εν
+// ζωή στις ζώνες της αναστολής). Επαληθεύτηκε 06/10/2026.
+//
+// ΤΟ ΕΥΡΟΣ ΑΥΤΟΥΣΙΟ ΑΠΟ ΤΟΥΣ ΟΔΗΓΟΥΣ: Α΄ Δημοτική Κοινότητα Θεσσαλονίκης, από
+// 01/07/2026 έως 31/12/2026. Οι οδηγοί (vraxyxronia-ama-prodiagrafes-2026,
+// airbnb-takk-2026) γράφουν το μέτρο από αυτή τη σταθερά και το
+// lib/market/redZones.test.ts ελέγχει ότι το updates2026.ts λέει το ίδιο.
+const THESS_LAW = 'ν.5313/2026'
+const THESS_ARTICLE = '5 παρ. 2'
+export const THESS_STR_FREEZE = {
+  /** Η περιοχή, στην αιτιατική: «στην …». */
+  area: 'Α΄ Δημοτική Κοινότητα Θεσσαλονίκης',
+  /** Η ίδια, στη γενική: «πάγωμα …». */
+  areaGen: 'Α΄ Δημοτικής Κοινότητας Θεσσαλονίκης',
+  from: '2026-07-01',
+  to: '2026-12-31',
+  provision: 'άρθρο 111 παρ. 2Β ν.4446/2016',
+  /** Το άρθρο του ν.5313/2026 που πρόσθεσε τις παρ. 2Β και 2Γ, χωρίς τη λέξη «άρθρο». */
+  article: THESS_ARTICLE,
+  law: THESS_LAW,
+  addedBy: `άρθρο ${THESS_ARTICLE} ${THESS_LAW}`,
+  fek: 'ΦΕΚ Α΄ 102/25.06.2026',
+  circular: 'Ο.3029/2026',
+} as const
+
+/** Η προειδοποίηση των δεδομένων αγοράς, από την ίδια σταθερά με τους οδηγούς. */
+const THESS_FREEZE_NOTE =
+  `Στην ${THESS_STR_FREEZE.area} δεν δίνεται νέος ΑΜΑ για βραχυχρόνια από ${grDate(THESS_STR_FREEZE.from)} έως ${grDate(THESS_STR_FREEZE.to)} (${THESS_STR_FREEZE.law}). Έλεγξε σε ποια ανήκει το ακίνητό σου.`
 
 // ── Απόδοση/τιμές ανά περιοχή (μακροχρόνια μίσθωση, μεικτή απόδοση) ──────────
 export type RegionTag = 'metro' | 'airport' | 'port' | 'island' | 'city' | 'suburb' | 'center' | 'tourist'
@@ -54,7 +86,7 @@ export const REGIONS: RegionYield[] = [
   { key: 'piraeus', label: 'Πειραιάς', region: 'Αττική', pricePerSqm: [1700, 2900], rentPerSqm: [9, 12], grossYield: 5.0, tags: ['port', 'metro', 'city'], note: 'Μεγαλύτερο λιμάνι + μετρό (Γρ. 3, 2022): +83,8% τιμές από το 2019 ως το 2024, η κορυφή της Αττικής. Απόδοση 4,8% έως 7,5%, ισχυρό ξένο ενδιαφέρον.' },
   { key: 'east_attica', label: 'Ανατολική Αττική', region: 'Αττική', pricePerSqm: [1800, 3200], rentPerSqm: [8, 12], grossYield: 4.8, tags: ['airport', 'suburb'], note: 'Παλλήνη, Ραφήνα, Αρτέμιδα: κοντά στο αεροδρόμιο (Ελ. Βενιζέλος, Γρ. 3), αναπτυσσόμενη ζήτηση.' },
   // ── Κεντρική Μακεδονία ──
-  { key: 'thess_center', label: 'Κέντρο Θεσσαλονίκης', region: 'Κεντρική Μακεδονία', pricePerSqm: [2000, 3000], rentPerSqm: [9, 11], grossYield: 4.4, tags: ['center', 'city', 'port'], note: 'Λαδάδικα, Άνω Πόλη: μεγάλη φοιτητική ζήτηση (ΑΠΘ), μετρό 2024. Πριν από βραχυχρόνια στο 1ο διαμέρισμα, έλεγξε αν ισχύει περιορισμός νέων ΑΜΑ.' },
+  { key: 'thess_center', label: 'Κέντρο Θεσσαλονίκης', region: 'Κεντρική Μακεδονία', pricePerSqm: [2000, 3000], rentPerSqm: [9, 11], grossYield: 4.4, tags: ['center', 'city', 'port'], note: `Λαδάδικα, Άνω Πόλη: μεγάλη φοιτητική ζήτηση (ΑΠΘ), μετρό 2024. ${THESS_FREEZE_NOTE}` },
   { key: 'thess_kalamaria', label: 'Καλαμαριά / Ανατολικά Θεσσαλονίκης', region: 'Κεντρική Μακεδονία', pricePerSqm: [2500, 4700], rentPerSqm: [8, 10], grossYield: 3.3, tags: ['suburb', 'city'], note: 'Καλαμαριά (ακριβότερη), Πανόραμα, Πυλαία: premium προαστιακή ζώνη· επέκταση μετρό περίπου 2026. Χαμηλή % απόδοση, υψηλές αξίες.' },
   { key: 'katerini', label: 'Κατερίνη / Πιερία', region: 'Κεντρική Μακεδονία', pricePerSqm: [1000, 1500], rentPerSqm: [5, 6], grossYield: 5.3, tags: ['city', 'tourist'], note: 'Κοντά στον Όλυμπο και την Παραλία Κατερίνης: παραθεριστική ζήτηση, εγγύτητα στη Θεσσαλονίκη.' },
   { key: 'halkidiki', label: 'Χαλκιδική', region: 'Κεντρική Μακεδονία', pricePerSqm: [1600, 2600], rentPerSqm: [7, 10], grossYield: 4.9, tags: ['tourist', 'suburb'], note: 'Κορυφαίος παραθεριστικός προορισμός Βορείου Ελλάδας (Κασσάνδρα/Σιθωνία), εγγύτητα Θεσσαλονίκης, ισχυρή βραχυχρόνια. Χαμηλότερη μακροχρόνια % απόδοση.' },
@@ -223,13 +255,16 @@ export interface ShortTermStat {
   key: string; label: string; occupancy: number; adr: number; annualRevenue: number
   grossYield: number; longTermYield: number; redZone?: boolean; note: string
 }
-// Η ΘΕΣΣΑΛΟΝΙΚΗ ΔΕΝ ΓΡΑΦΕΤΑΙ ΩΣ ΚΟΚΚΙΝΗ ΖΩΝΗ ΧΩΡΙΣ ΠΡΑΞΗ. Το «δεν δίνεται νέος
-// ΑΜΑ από 1/7/2026» δεν είχε πηγή και είχε ήδη βγει από το updates2026.ts για τον
-// ίδιο λόγο· εδώ είχε μείνει. Ο αναγνώστης καλείται να ελέγξει, δεν ενημερώνεται.
+// Η ΘΕΣΣΑΛΟΝΙΚΗ ΕΙΝΑΙ ΚΟΚΚΙΝΗ ΖΩΝΗ, ΜΕ ΤΗΝ ΠΡΑΞΗ ΠΟΥ ΤΗΝ ΟΡΙΖΕΙ (07/10/2026). Ως
+// τότε εδώ έλεγε ότι το «δεν δίνεται νέος ΑΜΑ από 1/7/2026» δεν είχε πηγή και
+// καλούσε τον αναγνώστη να ελέγξει, ενώ οι οδηγοί και το updates2026.ts το έγραφαν
+// ως νόμο. Η πηγή βρέθηκε: `THESS_STR_FREEZE`, στην αρχή του αρχείου. Η σημαία `redZone` αφορά
+// ΜΟΝΟ την Α΄ Δημοτική Κοινότητα· το προφίλ `thess` το δανείζονται και άλλες πόλεις
+// (ST_ALIAS στο TabRentROI.tsx), οπότε όποιος τη διαβάσει κρίνει με το ακριβές κλειδί.
 export const SHORT_TERM: ShortTermStat[] = [
   { key: 'ath_center', label: 'Κέντρο Αθήνας', occupancy: 58, adr: 76, annualRevenue: 16000, grossYield: 8, longTermYield: 5.0, redZone: true, note: 'Στο 1ο, 2ο και 3ο δημοτικό διαμέρισμα της Αθήνας δεν δίνεται νέος ΑΜΑ ως 31/12/2026. Έλεγξε σε ποιο ανήκει το ακίνητό σου.' },
   { key: 'ath_riviera', label: 'Αθηναϊκή Ριβιέρα', occupancy: 55, adr: 70, annualRevenue: 14000, grossYield: 6, longTermYield: 3.8, note: 'Εκτός κόκκινης ζώνης· επιτρέπονται νέα μητρώα ακινήτων· βασικός διαφοροποιητής έναντι του κέντρου.' },
-  { key: 'thess', label: 'Θεσσαλονίκη', occupancy: 62, adr: 62, annualRevenue: 14000, grossYield: 7, longTermYield: 4.4, note: 'Πριν επενδύσεις για βραχυχρόνια στο 1ο δημοτικό διαμέρισμα, έλεγξε στο Μητρώο της ΑΑΔΕ αν ισχύει περιορισμός νέων ΑΜΑ.' },
+  { key: 'thess', label: 'Θεσσαλονίκη', occupancy: 62, adr: 62, annualRevenue: 14000, grossYield: 7, longTermYield: 4.4, redZone: true, note: THESS_FREEZE_NOTE },
   { key: 'mykonos_santorini', label: 'Μύκονος / Σαντορίνη', occupancy: 62, adr: 221, annualRevenue: 50000, grossYield: 5, longTermYield: 3.5, note: 'Τεράστια έσοδα, με μέση τιμή Αυγούστου πάνω από 360,00€ τη νύχτα, αλλά πολύ υψηλή τιμή αγοράς, άρα η % απόδοση μέτρια. Ακραία εποχικότητα, πέντε με έξι μήνες.' },
   { key: 'paros_naxos', label: 'Πάρος / Νάξος', occupancy: 75, adr: 117, annualRevenue: 32000, grossYield: 7, longTermYield: 3.0, note: 'Υψηλή πληρότητα και ταχεία άνοδος ADR στη βραχυχρόνια· η μακροχρόνια απόδοση χαμηλή λόγω τιμών.' },
   { key: 'crete', label: 'Κρήτη (Χανιά/Ηράκλειο)', occupancy: 74, adr: 85, annualRevenue: 23000, grossYield: 6.5, longTermYield: 4.5, note: 'Μεγάλη σεζόν, υψηλότερο RevPAR πανελλαδικά· Ηράκλειο κορυφή μακροχρόνιας απόδοσης (περίπου 5,7%).' },

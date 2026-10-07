@@ -24,7 +24,7 @@
 // ήταν η μεγαλύτερη σταθερή δαπάνη στον πάροχο AI.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
+import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
 import { authorizeCron, cronDenial, type CronAuth, type MinimalSupabaseClient } from '../_shared/auth.ts'
 import {
   diffBank, decide, changeKey, MIN_BANKS, isOfficialSource, BANK_HOSTS, recomputeFixedMin, RATE_FIELDS,

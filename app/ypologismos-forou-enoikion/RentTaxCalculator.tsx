@@ -19,7 +19,7 @@
 // ελέγχου. Αν διαφωνούσε, ο επισκέπτης θα έβλεπε άλλο νούμερο εδώ και άλλο μετά
 // την εγγραφή — που είναι ο γρηγορότερος τρόπος να χάσεις την εμπιστοσύνη του.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useMemo, useId } from 'react';
+import { useMemo, useId, type ReactNode } from 'react';
 import { T, feAuto, fn, fp } from '@/components/tokens';
 import { fe, fpRate, feWhole, feSigned, grDateOf } from '@/lib/core/format';
 import {
@@ -29,10 +29,11 @@ import {
 import { parseAmount } from '@/lib/core/greek';
 import { bankReceiptMatters, presumptiveDeductionRateForYear, PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { Toggle } from '@/app/dashboard/components/UIComponents';
-import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
+import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
 import { ToolNumField, ToolFields, ToolSeg, ToolHero, ToolLedger, ToolStats } from '@/app/ToolParts';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { toolQuery } from '@/lib/tools/permalink';
+import { ratePct, rateScale } from '@/app/odigos/taxText';
 import { offeredIncomeYears, incomeYearFor, FILING_CLOSED_FROM_MONTH } from '@/lib/core/declarationYear';
 
 import LiveResult from '@/components/LiveResult';
@@ -103,7 +104,11 @@ function filingNote(year: number, today: string): string {
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 const MAX_MONTHS = 12;
 
-export function RentTaxCalculator({ today }: { today: string }) {
+export function RentTaxCalculator({ today, cta }: {
+  today: string;
+  /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
+  cta: ReactNode;
+}) {
   const [v, set] = useToolState(SPEC, PATH, x => x.etos ? x
     : { ...x, etos: toolQuery(SPEC, x) ? LEGACY_YEAR : openingYear(today) });
   const monthly = v.enoikio, months = v.mines, viaBank = v.trapeza !== '0';
@@ -174,8 +179,8 @@ export function RentTaxCalculator({ today }: { today: string }) {
         <ToolSeg label="Εισόδημα ποιας χρονιάς" value={String(year)} onChange={x => set('etos', x)}
           options={offeredIncomeYears(today, FIRST_DOCUMENTED_YEAR).map(y => ({ value: String(y), label: String(y) }))}
           hint={<>Του {year}, {filingNote(year, today)}. {year >= FIRST_YEAR_NEW_BRACKETS
-            ? 'Κλίμακα 15 / 25 / 35 / 45% (ν.5246/2025).'
-            : 'Κλίμακα 15 / 35 / 45%, χωρίς το ενδιάμεσο κλιμάκιο.'}</>}/>
+            ? `Κλίμακα ${rateScale(rentalBracketsForYear(year))} (ν.5246/2025).`
+            : `Κλίμακα ${rateScale(rentalBracketsForYear(year))}, χωρίς το ενδιάμεσο κλιμάκιο.`}</>}/>
       </ToolFields>
       <ToolClampNote notes={[
         Math.round(amount(months)) > MAX_MONTHS && `Μέγιστο ${MAX_MONTHS} μήνες· υπολογίστηκαν ${MAX_MONTHS}.`,
@@ -196,7 +201,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
               στη θέση του κανόνα μπαίνει το ΠΟΣΟ που κοστίζει η επιλογή. */}
           <p style={{ margin: '3px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)' }}>
             {viaBank
-              ? `Προϋπόθεση για την τεκμαρτή έκπτωση 5%, από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025).`
+              ? `Προϋπόθεση για την τεκμαρτή έκπτωση ${ratePct(PRESUMPTIVE_DEDUCTION_RATE)}, από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025).`
               : `Με μετρητά φορολογείται το 100% του ενοικίου (ν.5222/2025). Η έκπτωση που χάνεται κοστίζει ${feAuto(r.cashCost)} τον χρόνο.`}
           </p>
         </div>
@@ -388,7 +393,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-primary)' }}>Τι δεν περιλαμβάνει.</strong>{' '}
           Ο υπολογισμός αφορά <strong>μόνο</strong> το εισόδημα από ενοίκια, με την τεκμαρτή
-          έκπτωση 5% που δίνει ο νόμος χωρίς δικαιολογητικά. Δεν περιλαμβάνει άλλα
+          έκπτωση {ratePct(PRESUMPTIVE_DEDUCTION_RATE)} που δίνει ο νόμος χωρίς δικαιολογητικά. Δεν περιλαμβάνει άλλα
           εισοδήματά σου, τον ΕΝΦΙΑ, ούτε ειδικές περιπτώσεις (βραχυχρόνια μίσθωση,
           συνιδιοκτησία, νομικό πρόσωπο, κενά διαστήματα, ανείσπρακτα). <EstimateNote />
         </p>
@@ -396,10 +401,7 @@ export function RentTaxCalculator({ today }: { today: string }) {
 
       <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
 
-      <ToolCta
-        title="Θέλεις να μη χρειάζεται να το ξαναϋπολογίσεις;"
-        body="Το PROPERWISE διατηρεί οργανωμένα ενοίκια, λογαριασμούς και δαπάνες όλη τη χρονιά και εξάγει με ένα κλικ όσα ζητά ο λογιστής σου."
-      />
+      {cta}
     </div>
   );
 }

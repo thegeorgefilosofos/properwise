@@ -4,7 +4,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import {
   taxTaskDrafts, lawTaskDrafts, obligationDrafts, pendingDrafts, audiencesFor,
-  expenseFromReceipt, actualCostFromReceipt, costVariance,
+  expenseFromReceipt, actualCostFromReceipt, costVariance, enfiaTasksPaidByBills,
   isTaxTaskRef, isLawTaskRef, isGeneratedRef, taxTaskRef, TAX_REF_PREFIX,
   type ReceiptEntry,
 } from './obligationTasks'
@@ -215,6 +215,47 @@ eq('υπέρ του χρήστη', costVariance(200, 143), -57);
 
   // Το actual_cost δεν γράφεται πια σταθερά 0 από τη φόρμα.
   ok('το actual_cost δεν είναι σταθερό 0 στη φόρμα', !/actual_cost:\s*parseFloat\(form\.actual_cost\)/.test(src));
+}
+
+// ── Πληρωμένος λογαριασμός ΕΝΦΙΑ: κλείνει ΜΟΝΟ την ίδια δόση ──────────────────
+{
+  // Τρεις δόσεις στη λίστα, μία ανά μήνα, όπως τις γράφει το taxTaskDrafts.
+  // Η πρώτη στη σειρά της λίστας είναι η 7η δόση (Σεπτέμβριος 2026)· η
+  // πληρωμένη είναι η 8η (Οκτώβριος 2026). Η παλιά συμπεριφορά (πρώτη ανοιχτή
+  // με «ενφια», οποιοσδήποτε πληρωμένος λογαριασμός) έκλεινε την 7η.
+  const tasks = [
+    { id: 'sep', description: 'ΕΝΦΙΑ 2026 — 7η δόση', status: 'pending', due_date: '2026-09-30', ref: 'tax:enfia-instalment-2026-7' },
+    { id: 'oct', description: 'ΕΝΦΙΑ 2026 — 8η δόση', status: 'pending', due_date: '2026-10-30', ref: 'tax:enfia-instalment-2026-8' },
+    { id: 'nov', description: 'ΕΝΦΙΑ 2026 — 9η δόση', status: 'pending', due_date: '2026-11-30', ref: 'tax:enfia-instalment-2026-9' },
+    { id: 'issue', description: 'Ανάρτηση εκκαθαριστικού ΕΝΦΙΑ 2027', status: 'pending', due_date: '2027-03-15', ref: 'tax:enfia-issue-2027' },
+  ]
+  const oct = [{ paid: true, due_date: '2026-10-30' }]
+  eq('ο πληρωμένος Οκτωβρίου κλείνει ΜΟΝΟ τη δόση Οκτωβρίου', enfiaTasksPaidByBills(tasks, oct), ['oct'])
+  ok('η πρώτη ανοιχτή (Σεπτέμβριος) ΔΕΝ κλείνει από λογαριασμό άλλου μήνα',
+    !enfiaTasksPaidByBills(tasks, oct).includes('sep'))
+  // Ίδιος μήνας, άλλο έτος: η δόση του Οκτωβρίου 2025 δεν είναι του 2026.
+  eq('άλλο έτος, ίδιος μήνας → τίποτα', enfiaTasksPaidByBills(tasks, [{ paid: true, due_date: '2025-10-31' }]), [])
+  eq('απλήρωτος λογαριασμός → τίποτα', enfiaTasksPaidByBills(tasks, [{ paid: false, due_date: '2026-10-30' }]), [])
+  eq('λογαριασμός χωρίς ημερομηνία → τίποτα', enfiaTasksPaidByBills(tasks, [{ paid: true, due_date: null }]), [])
+  // Η ανάρτηση δεν είναι πληρωμή, ακόμη κι αν πέφτει στον ίδιο μήνα.
+  eq('η ανάρτηση του εκκαθαριστικού δεν κλείνει από λογαριασμό',
+    enfiaTasksPaidByBills(tasks, [{ paid: true, due_date: '2027-03-31' }]), [])
+  // Ήδη κλειστή δεν ξαναγράφεται.
+  eq('κλειστή δόση δεν ξανακλείνει',
+    enfiaTasksPaidByBills([{ ...tasks[1], status: 'done' }], oct), [])
+  // Χειρόγραφη εργασία χωρίς κλειδί: από τίτλο ΚΑΙ μήνα· χωρίς προθεσμία ποτέ.
+  eq('χειρόγραφη «Πληρωμή ΕΝΦΙΑ» με ίδιο μήνα κλείνει',
+    enfiaTasksPaidByBills([{ id: 'm', description: 'Πληρωμή ΕΝΦΊΑ', status: 'pending', due_date: '2026-10-15', ref: null }], oct), ['m'])
+  eq('χειρόγραφη χωρίς προθεσμία δεν κλείνει ποτέ',
+    enfiaTasksPaidByBills([{ id: 'm', description: 'Πληρωμή ΕΝΦΙΑ', status: 'pending', due_date: null, ref: null }], oct), [])
+  eq('άλλη υποχρέωση στον ίδιο μήνα δεν κλείνει',
+    enfiaTasksPaidByBills([{ id: 'e9', description: 'Ε9', status: 'pending', due_date: '2026-10-30', ref: 'tax:e9-2026' }], oct), [])
+
+  // Η καρτέλα δεν κρατά πια την παλιά λογική «πρώτη με ενφια».
+  const tab = readFileSync('app/dashboard/components/TabChecklist.tsx', 'utf8')
+  ok('η καρτέλα καλεί το enfiaTasksPaidByBills', /enfiaTasksPaidByBills\(/.test(tab))
+  ok('σβήστηκε το «πρώτος λογαριασμός ΕΝΦΙΑ»', !/enfiaBillData\[0\]/.test(tab))
+  ok("σβήστηκε το «πρώτη εργασία με 'ενφια'»", !/rows\.find\(.*'ενφια'/.test(tab))
 }
 
 console.log(`obligationTasks.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)

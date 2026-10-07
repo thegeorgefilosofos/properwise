@@ -199,6 +199,64 @@ export function pendingDrafts(drafts: readonly ChecklistTaskDraft[], existingRef
   return drafts.filter(d => !have.has(d.ref))
 }
 
+// ── Πληρωμένος λογαριασμός ΕΝΦΙΑ → η ΙΔΙΑ δόση στις εκκρεμότητες ──────────
+
+/** Οι δόσεις πληρωμής ΕΝΦΙΑ (όχι η ανάρτηση του εκκαθαριστικού). */
+const ENFIA_PAYMENT_REF = /^tax:enfia-(first|instalment|last)-/
+
+/** Τα πεδία μιας εκκρεμότητας που χρειάζεται το ταίριασμα. */
+export interface EnfiaTaskLike {
+  id: string
+  description: string | null
+  status: string | null
+  due_date: string | null
+  ref?: string | null
+}
+
+/** Τα πεδία ενός λογαριασμού που χρειάζεται το ταίριασμα. */
+export interface EnfiaBillLike {
+  paid: boolean | null
+  due_date: string | null
+}
+
+const monthOf = (d: string | null | undefined): string | null =>
+  d && /^\d{4}-\d{2}/.test(d) ? d.slice(0, 7) : null
+
+/**
+ * Ποιες ανοιχτές εκκρεμότητες ΕΝΦΙΑ κλείνουν οι πληρωμένοι λογαριασμοί ΕΝΦΙΑ.
+ *
+ * ΤΟ ΛΑΘΟΣ ΠΟΥ ΔΙΟΡΘΩΝΕΙ: η καρτέλα ρωτούσε «υπάρχει ΕΝΑΣ λογαριασμός ΕΝΦΙΑ;»
+ * (χωρίς σειρά, χωρίς έτος) και, αν ήταν πληρωμένος, έκλεινε την ΠΡΩΤΗ ανοιχτή
+ * εργασία με «ενφια» στον τίτλο. Οι εργασίες γράφονται μία ανά δόση, οπότε η
+ * πληρωμένη δόση του Σεπτεμβρίου έκλεινε τη δόση του Μαρτίου του επόμενου
+ * έτους — και, επειδή η φόρτωση τρέχει μετά από κάθε αλλαγή, την ξανάκλεινε
+ * όσες φορές την άνοιγε ο χρήστης.
+ *
+ * Ο ΚΑΝΟΝΑΣ: ένας πληρωμένος λογαριασμός κλείνει ΜΟΝΟ τη δόση με προθεσμία στον
+ * ίδιο μήνα του ίδιου έτους. Κάθε δόση ΕΝΦΙΑ λήγει σε διαφορετικό μήνα, άρα ο
+ * μήνας είναι η ταυτότητα της δόσης. Εργασία χωρίς προθεσμία δεν κλείνει ποτέ
+ * αυτόματα: δεν ξέρουμε ποια δόση είναι. Η ανάρτηση του εκκαθαριστικού
+ * (`enfia-issue`) δεν είναι πληρωμή και δεν την κλείνει λογαριασμός.
+ */
+export function enfiaTasksPaidByBills(
+  tasks: readonly EnfiaTaskLike[], bills: readonly EnfiaBillLike[],
+): string[] {
+  const paidMonths = new Set(
+    bills.filter(b => b.paid === true).map(b => monthOf(b.due_date)).filter((m): m is string => !!m),
+  )
+  if (paidMonths.size === 0) return []
+  return tasks.filter(t => {
+    if (t.status === 'done') return false
+    const ref = t.ref || null
+    const isPayment = ref
+      ? ENFIA_PAYMENT_REF.test(ref)
+      // Χειρόγραφη εργασία (χωρίς κλειδί υποχρέωσης): κρίνεται από τον τίτλο.
+      : (t.description || '').toLocaleLowerCase('el').normalize('NFD').replace(/\p{M}/gu, '').includes('ενφια')
+    const m = monthOf(t.due_date)
+    return isPayment && !!m && paidMonths.has(m)
+  }).map(t => t.id)
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Ο ΦΥΛΑΚΑΣ ΤΟΥ ΠΑΡΑΣΤΑΤΙΚΟΥ
 //

@@ -9,7 +9,23 @@
 //
 // Τώρα ο τύπος ζει εδώ και οι δύο παλιές συναρτήσεις τον καλούν. Η ετικέτα
 // βγαίνει από το `basis` (YIELD_LABELS): «προ φόρου» ή «μετά φόρου», πάντα.
+//
+// ΚΑΙ ΟΙ ΔΑΠΑΝΕΣ ΤΗΣ ΚΑΘΑΡΗΣ ΖΟΥΝ ΕΔΩ (`yieldCosts`). Η Επισκόπηση αφαιρούσε
+// μόνο τις καταγεγραμμένες δαπάνες· οι Αποδόσεις πρόσθεταν από πάνω προμήθεια
+// πλατφόρμας, καθαρισμό και τέλη από το μοντέλο της βραχυχρόνιας. Ίδια ετικέτα,
+// «Καθαρή απόδοση προ φόρου», 3,01% στη μία οθόνη και 1,70% στην άλλη. Και
+// όποιος είχε ήδη περάσει τις προμήθειες της Airbnb ως δαπάνη τις πλήρωνε δύο
+// φορές στον υπολογισμό.
+//
+// Ο ΚΑΝΟΝΑΣ, όπως τον κάνει ο λογιστής: η δαπάνη που καταγράφηκε μετρά όπως
+// καταγράφηκε. Ένα εκτιμώμενο κόστος μπαίνει ΜΟΝΟ για είδος που δεν έχει καμία
+// καταγεγραμμένη γραμμή στη χρονιά. Κι όταν μπει έστω ένα, ο αριθμός δεν είναι
+// πια «Καθαρή απόδοση προ φόρου» αλλά «Εκτιμώμενη καθαρή απόδοση προ φόρου».
+// Χωρίς εκτιμήσεις, κάθε οθόνη βγάζει τον ίδιο αριθμό από τα ίδια στοιχεία.
 // ═══════════════════════════════════════════════════════════════════════════
+import { resolveCategory } from '@/lib/expenses/taxonomy';
+import { YIELD_LABELS, YIELD_SHORT_LABELS } from './labels';
+
 export interface YieldInput {
   /** Ετήσια έσοδα (ενοίκια ή ακαθάριστο φιλοξενίας). */
   annualIncome: number;
@@ -42,4 +58,78 @@ export function propertyYield(i: YieldInput): PropertyYield {
     net_pre_tax: pct(income - exp),
     net_after_tax: i.annualTax == null ? null : pct(income - exp - pos(i.annualTax)),
   };
+}
+
+// ── ΟΙ ΔΑΠΑΝΕΣ ΤΗΣ ΚΑΘΑΡΗΣ ΑΠΟΔΟΣΗΣ ──────────────────────────────────────────
+
+/**
+ * Κόστη της βραχυχρόνιας που το μοντέλο εκτιμά όταν δεν έχουν καταγραφεί.
+ * Το όνομα είναι το `slug` της κατηγορίας δαπάνης (lib/expenses/taxonomy.ts):
+ * γραμμή αυτής της κατηγορίας μέσα στη χρονιά σημαίνει «καταγράφηκε».
+ */
+export type ModelledCostKind = 'platform_fee' | 'cleaning' | 'climate_levy' | 'accommodation_tax';
+
+export const MODELLED_COST_KINDS: readonly ModelledCostKind[] = ['platform_fee', 'cleaning', 'climate_levy', 'accommodation_tax'];
+
+export const MODELLED_COST_LABELS: Record<ModelledCostKind, string> = {
+  platform_fee: 'προμήθεια πλατφόρμας',
+  cleaning: 'καθαρισμός',
+  climate_levy: 'τέλος ανθεκτικότητας',
+  accommodation_tax: 'τέλος παρεπιδημούντων',
+};
+
+export interface YieldCostsInput {
+  /** Δαπάνες έτους όπως καταγράφηκαν (lib/facts/expenses: `total`). */
+  recorded: number;
+  /** Οι κατηγορίες των γραμμών του έτους, όπως είναι γραμμένες στη βάση. */
+  recordedCategories?: Iterable<string | null | undefined>;
+  /** Εκτιμήσεις του μοντέλου, ανά είδος. Όσες έχουν καταγραφεί δεν μετρούν. */
+  modelled?: Partial<Record<ModelledCostKind, number>>;
+}
+
+export interface YieldCosts {
+  /** recorded + modelled: ό,τι αφαιρείται στην καθαρή απόδοση. */
+  total: number;
+  recorded: number;
+  /** Το άθροισμα των εκτιμήσεων που μπήκαν. */
+  modelled: number;
+  /** Τα είδη που μπήκαν ως εκτίμηση (με ποσό > 0). */
+  modelledKinds: ModelledCostKind[];
+  /** Τα είδη που ΔΕΝ μπήκαν επειδή υπάρχουν ήδη στις δαπάνες. */
+  recordedKinds: ModelledCostKind[];
+  /** «recorded»: μόνο καταγραφές· «estimated»: με εκτίμηση από πάνω. */
+  basis: 'recorded' | 'estimated';
+}
+
+/**
+ * Οι δαπάνες που αφαιρούνται στην καθαρή απόδοση: οι καταγεγραμμένες, συν
+ * όσες εκτιμήσεις αφορούν είδος χωρίς καμία καταγεγραμμένη γραμμή.
+ */
+export function yieldCosts(i: YieldCostsInput): YieldCosts {
+  const recorded = pos(i.recorded);
+  const have = new Set<string>();
+  for (const c of i.recordedCategories ?? []) {
+    const slug = resolveCategory(c);
+    if (slug) have.add(slug);
+  }
+  let modelled = 0;
+  const modelledKinds: ModelledCostKind[] = [];
+  const recordedKinds: ModelledCostKind[] = [];
+  for (const k of MODELLED_COST_KINDS) {
+    const amount = pos(i.modelled?.[k]);
+    if (amount <= 0) continue;
+    if (have.has(k)) { recordedKinds.push(k); continue; }
+    modelled += amount;
+    modelledKinds.push(k);
+  }
+  return {
+    total: recorded + modelled, recorded, modelled, modelledKinds, recordedKinds,
+    basis: modelled > 0 ? 'estimated' : 'recorded',
+  };
+}
+
+/** Η ετικέτα της καθαρής προ φόρου για τη βάση των δαπανών της. */
+export function netPreTaxLabel(c: Pick<YieldCosts, 'basis'>, short = false): string {
+  if (c.basis === 'estimated') return short ? YIELD_SHORT_LABELS.net_pre_tax_estimated : YIELD_LABELS.net_pre_tax_estimated;
+  return short ? YIELD_SHORT_LABELS.net_pre_tax : YIELD_LABELS.net_pre_tax;
 }

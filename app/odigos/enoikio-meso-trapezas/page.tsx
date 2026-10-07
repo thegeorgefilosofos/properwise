@@ -17,16 +17,13 @@
 // Τα μέσα πληρωμής (κατάθεση, έμβασμα, IRIS) είναι όσα γράφει η Λογιστική
 // (TabAccounting.tsx) και η εκκρεμότητα UPDATE_ACTIONS['rent-bank-payment'].
 //
-// ΤΑ ΠΟΣΑ ΒΓΗΚΑΝ ΑΠΟ ΤΗ ΜΗΧΑΝΗ. Με `npx tsx` και rentalIncomeTax(·,
-// RENTAL_TAX_BRACKETS_2026) του lib/billing/greekTax.ts:
-//   700€ τον μήνα:   ακαθάριστα 8.400€ · 95% = 7.980€ · φόρος 1.197€
-//                    100% = 8.400€ · φόρος 1.260€ · διαφορά 63€
-//                    πραγματικός συντελεστής 14,25% και 15%
-//   1.800€ τον μήνα: ακαθάριστα 21.600€ · 95% = 20.520€ · φόρος 3.930€
-//                    100% = 21.600€ · φόρος 4.200€ · διαφορά 270€
-// Γραμμένα ως κείμενο και όχι υπολογισμένα στη σελίδα: το ποσοστό της
-// έκπτωσης έχει μία πηγή στον κώδικα (guard-presumptive-rate) και η σελίδα δεν
-// ανοίγει δεύτερη. Αν αλλάξει η κλίμακα, ξανατρέχει ο ίδιος υπολογισμός.
+// ΤΑ ΠΟΣΑ ΥΠΟΛΟΓΙΖΟΝΤΑΙ ΣΤΗ ΣΕΛΙΔΑ (07/10/2026). Ήταν γραμμένα ως κείμενο, από
+// μια εκτέλεση του rentalIncomeTax(·, RENTAL_TAX_BRACKETS_2026): 700€ τον μήνα
+// δίνουν φόρο 1.197€ με την έκπτωση και 1.260€ χωρίς, 1.800€ τον μήνα 3.930€ και
+// 4.200€. Ο κανόνας του αποθετηρίου θέλει τους αριθμούς φόρου από τον κώδικα:
+// τώρα τα βγάζει το `bankExample` από την ίδια κλίμακα και το ίδιο
+// `PRESUMPTIVE_DEDUCTION_RATE`. Η έκπτωση γράφεται μόνο ως `1 - …` της μίας πηγής,
+// όπως ζητά το guard-presumptive-rate.
 //
 // Server Component για SEO/ταχύτητα. Καμία εξάρτηση από 'use client'.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -34,10 +31,14 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
-import { fpRate, grDateOf } from '@/lib/core/format';
+import { fpRate, feWhole, grDateOf } from '@/lib/core/format';
 import { monthGen } from '@/lib/core/months';
-import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
+import {
+  FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_NEW_BRACKETS, RENTAL_TAX_BRACKETS_2026,
+  rentalBracketsForYear, rentalIncomeTax, marginalRate,
+} from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { ratePct, rateScale, rateSeries, topBracketFrom } from '../taxText';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
@@ -52,6 +53,38 @@ const BANK_FROM = grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT);
 const BANK_FROM_LONG = `1η ${monthGen(FIRST_MONTH_BANK_RECEIPT - 1)} ${FIRST_YEAR_BANK_RECEIPT}`;
 const DEDUCTION = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100);
 const TAXED_SHARE = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100);
+
+// Η κλίμακα από τα κλιμάκια που υπολογίζουν: της νέας χρονιάς και της προηγούμενης.
+const NEW = RENTAL_TAX_BRACKETS_2026;
+const OLD = rentalBracketsForYear(FIRST_YEAR_NEW_BRACKETS - 1);
+const NEW_SCALE = rateScale(NEW);
+const THRESHOLD = feWhole(topBracketFrom(NEW));
+const TOP_RATE = ratePct(NEW[NEW.length - 1].rate);
+
+/**
+ * Το κόστος των μετρητών για ένα ενοίκιο όλο τον χρόνο, με μόνο αυτό το
+ * εισόδημα από ακίνητα: φόρος με την έκπτωση, φόρος χωρίς αυτήν και ο
+ * συντελεστής στον οποίο φορολογείται η έκπτωση που χάνεται.
+ */
+function bankExample(monthly: number) {
+  const gross = monthly * 12;
+  const taxable = gross * (1 - PRESUMPTIVE_DEDUCTION_RATE);
+  const tax = rentalIncomeTax(taxable, NEW);
+  const taxCash = rentalIncomeTax(gross, NEW);
+  return {
+    monthly, gross, taxable, tax, taxCash,
+    deduction: gross - taxable,
+    diff: taxCash - tax,
+    rate: marginalRate(taxable, NEW),
+    rateCash: marginalRate(gross, NEW),
+    /** Ο φόρος ως ποσοστό των ακαθάριστων, με και χωρίς την έκπτωση. */
+    eff: (tax / gross) * 100,
+    effCash: (taxCash / gross) * 100,
+  };
+}
+// Οι υποθέσεις του παραδείγματος· τα ποσά τα βγάζει το `bankExample`.
+const EX = bankExample(700);
+const EX_HIGH = bankExample(1_800);
 
 const H1 = `Ενοίκιο μέσω τράπεζας: τι αλλάζει από ${BANK_FROM}`;
 const TITLE = H1;
@@ -75,8 +108,8 @@ const FAQ: GuideFaqItem[] = [
   {
     q: 'Πόσο περισσότερο φόρο πληρώνω με μετρητά;',
     a: `Όσο βγαίνει το ${DEDUCTION} των ακαθάριστων ενοικίων επί τον συντελεστή του κλιμακίου σου. Με `
-     + '700€ τον μήνα και κλίμακα 2026 ο φόρος ανεβαίνει από 1.197€ σε 1.260€, δηλαδή 63€ τον '
-     + 'χρόνο. Με 1.800€ τον μήνα η διαφορά φτάνει τα 270€.',
+     + `${feWhole(EX.monthly)} τον μήνα και κλίμακα ${FIRST_YEAR_NEW_BRACKETS} ο φόρος ανεβαίνει από ${feWhole(EX.tax)} σε ${feWhole(EX.taxCash)}, δηλαδή ${feWhole(EX.diff)} τον `
+     + `χρόνο. Με ${feWhole(EX_HIGH.monthly)} τον μήνα η διαφορά φτάνει τα ${feWhole(EX_HIGH.diff)}.`,
   },
   {
     q: 'Μετράει η πληρωμή με IRIS;',
@@ -92,8 +125,8 @@ const FAQ: GuideFaqItem[] = [
   },
   {
     q: 'Αλλάζει η κλίμακα φορολογίας των ενοικίων;',
-    a: 'Όχι με αυτή τη διάταξη. Η κλίμακα 15 / 25 / 35 / 45% ορίστηκε με τον ν.5246/2025 και '
-     + 'ισχύει για εισοδήματα από το 2026. Η τραπεζική είσπραξη είναι ξεχωριστή διάταξη, του '
+    a: `Όχι με αυτή τη διάταξη. Η κλίμακα ${NEW_SCALE} ορίστηκε με τον ν.5246/2025 και `
+     + `ισχύει για εισοδήματα από το ${FIRST_YEAR_NEW_BRACKETS}. Η τραπεζική είσπραξη είναι ξεχωριστή διάταξη, του `
      + 'ν.5222/2025, με δική της έναρξη.',
     link: { href: RENT_GUIDE, label: 'Ο οδηγός για τη φορολογία ενοικίων 2026' },
   },
@@ -105,7 +138,7 @@ const SOURCES: string[] = [
   'Τραπεζική είσπραξη μισθωμάτων: άρθρο 210 ν.5222/2025 (ΦΕΚ Α΄ 134/28.07.2025), που προσθέτει παρ. 5 στο άρθρο 39 ΚΦΕ.',
   `Έναρξη: ορίστηκε στην 01/04/2026 με το άρθρο 129 παρ. 1 ν.5264/2025 (ΦΕΚ Α΄ 239/19.12.2025), μετατέθηκε στην 01/10/2026 με το άρθρο 48 ν.5294/2026 (ΦΕΚ Α΄ 58/08.04.2026) και στην ${BANK_FROM} με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026).`,
   `Τεκμαρτή έκπτωση ${DEDUCTION}: άρθρο 39 παρ. 3 περ. α΄ ν.4172/2013 (ΚΦΕ).`,
-  'Κλίμακα ενοικίων 2026 (15 / 25 / 35 / 45%, όριο 36.000€): άρθρο 8 ν.5246/2025 (ΦΕΚ Α΄ 198/11.11.2025).',
+  `Κλίμακα ενοικίων ${FIRST_YEAR_NEW_BRACKETS} (${NEW_SCALE}, όριο ${THRESHOLD}): άρθρο 8 ν.5246/2025 (ΦΕΚ Α΄ 198/11.11.2025).`,
 ];
 
 // Οι ενότητες τροφοδοτούν ΚΑΙ τις κεφαλίδες ΚΑΙ τα περιεχόμενα, μία πηγή.
@@ -156,7 +189,7 @@ export default function Page() {
         <ul className="lg-ul">
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Με τραπεζική είσπραξη:'}</strong>{` φορολογητέο το ${TAXED_SHARE} των ακαθάριστων ενοικίων.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Με μετρητά, από ${BANK_FROM}:`}</strong>{' φορολογητέο το 100%.'}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Η κλίμακα μένει ίδια:'}</strong>{' 15%, 25%, 35% και 45%, με το 45% μόνο πάνω από τις 36.000€ (ν.5246/2025). Είναι ξεχωριστή διάταξη με άλλη έναρξη.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Η κλίμακα μένει ίδια:'}</strong>{` ${rateSeries(NEW)}, με το ${TOP_RATE} μόνο πάνω από τις ${THRESHOLD} (ν.5246/2025). Είναι ξεχωριστή διάταξη με άλλη έναρξη.`}</li>
         </ul>
         <p className="lg-p">
           {'Η κλίμακα και η έκπτωση εξηγούνται αναλυτικά στον οδηγό '}
@@ -198,8 +231,8 @@ export default function Page() {
           {`Για τα εισοδήματα του 2025 και του 2026 η τεκμαρτή έκπτωση ${DEDUCTION} δίνεται ανεξάρτητα από τον τρόπο είσπραξης. Αν ο ενοικιαστής πλήρωσε μετρητά σε αυτές τις χρονιές, το φορολογητέο μένει στο ${TAXED_SHARE} των ακαθάριστων.`}
         </p>
         <ul className="lg-ul">
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Εισοδήματα 2025, δήλωση 2026:'}</strong>{` κλίμακα 15 / 35 / 45% και έκπτωση ${DEDUCTION}.`}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Εισοδήματα 2026, δήλωση 2027:'}</strong>{` κλίμακα 15 / 25 / 35 / 45% και έκπτωση ${DEDUCTION}.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Εισοδήματα 2025, δήλωση 2026:'}</strong>{` κλίμακα ${rateScale(OLD)} και έκπτωση ${DEDUCTION}.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Εισοδήματα 2026, δήλωση 2027:'}</strong>{` κλίμακα ${NEW_SCALE} και έκπτωση ${DEDUCTION}.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Μισθώματα από ${BANK_FROM}:`}</strong>{` έκπτωση ${DEDUCTION} μόνο με τραπεζική είσπραξη.`}</li>
         </ul>
         <p className="lg-p">
@@ -209,19 +242,19 @@ export default function Page() {
         {/* 5. Παράδειγμα */}
         <H2 {...S.example} />
         <p className="lg-p">
-          {'Διαμέρισμα με μηνιαίο ενοίκιο 700€ όλο τον χρόνο, μοναδικό εισόδημα από ακίνητα, κλίμακα 2026:'}
+          {`Διαμέρισμα με μηνιαίο ενοίκιο ${feWhole(EX.monthly)} όλο τον χρόνο, μοναδικό εισόδημα από ακίνητα, κλίμακα ${FIRST_YEAR_NEW_BRACKETS}:`}
         </p>
         <ul className="lg-ul">
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Ακαθάριστα:'}</strong>{' 700€ × 12 = 8.400€.'}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Με τραπεζική είσπραξη:'}</strong>{` φορολογητέο το ${TAXED_SHARE}, δηλαδή 7.980€. Φόρος 7.980€ × 15% = 1.197€.`}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Με μετρητά:'}</strong>{' φορολογητέο το 100%, δηλαδή 8.400€. Φόρος 8.400€ × 15% = 1.260€.'}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Διαφορά: 63€ τον χρόνο.'}</strong>{' Είναι η έκπτωση των 420€ επί τον συντελεστή 15%. Ο φόρος ως ποσοστό των ακαθάριστων ανεβαίνει από 14,25% σε 15%.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Ακαθάριστα:'}</strong>{` ${feWhole(EX.monthly)} × 12 = ${feWhole(EX.gross)}.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Με τραπεζική είσπραξη:'}</strong>{` φορολογητέο το ${TAXED_SHARE}, δηλαδή ${feWhole(EX.taxable)}. Φόρος ${feWhole(EX.taxable)} × ${ratePct(EX.rate)} = ${feWhole(EX.tax)}.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Με μετρητά:'}</strong>{` φορολογητέο το 100%, δηλαδή ${feWhole(EX.gross)}. Φόρος ${feWhole(EX.gross)} × ${ratePct(EX.rateCash)} = ${feWhole(EX.taxCash)}.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{`Διαφορά: ${feWhole(EX.diff)} τον χρόνο.`}</strong>{` Είναι η έκπτωση των ${feWhole(EX.deduction)} επί τον συντελεστή ${ratePct(EX.rateCash)}. Ο φόρος ως ποσοστό των ακαθάριστων ανεβαίνει από ${fpRate(EX.eff)} σε ${fpRate(EX.effCash)}.`}</li>
         </ul>
         <p className="lg-p">
-          {'Το κόστος μεγαλώνει με το κλιμάκιο. Με μηνιαίο ενοίκιο 1.800€ (ακαθάριστα 21.600€) το φορολογητέο είναι 20.520€ με την έκπτωση και 21.600€ χωρίς αυτήν. Ο φόρος πηγαίνει από 3.930€ σε 4.200€, δηλαδή 270€ περισσότερα: τα 1.080€ της έκπτωσης φορολογούνται πλέον με 25%.'}
+          {`Το κόστος μεγαλώνει με το κλιμάκιο. Με μηνιαίο ενοίκιο ${feWhole(EX_HIGH.monthly)} (ακαθάριστα ${feWhole(EX_HIGH.gross)}) το φορολογητέο είναι ${feWhole(EX_HIGH.taxable)} με την έκπτωση και ${feWhole(EX_HIGH.gross)} χωρίς αυτήν. Ο φόρος πηγαίνει από ${feWhole(EX_HIGH.tax)} σε ${feWhole(EX_HIGH.taxCash)}, δηλαδή ${feWhole(EX_HIGH.diff)} περισσότερα: τα ${feWhole(EX_HIGH.deduction)} της έκπτωσης φορολογούνται πλέον με ${ratePct(EX_HIGH.rateCash)}.`}
         </p>
         <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>
-          {'Τα ποσά υπολογίζονται με την κλίμακα 2026. Αν η κλίμακα αλλάξει για τα εισοδήματα του 2027, αλλάζουν και τα ποσά. Αν έχεις κι άλλα ενοίκια, η έκπτωση που χάνεται φορολογείται στο δικό σου οριακό κλιμάκιο.'}
+          {`Τα ποσά υπολογίζονται με την κλίμακα ${FIRST_YEAR_NEW_BRACKETS}. Αν η κλίμακα αλλάξει για τα εισοδήματα του ${FIRST_YEAR_NEW_BRACKETS + 1}, αλλάζουν και τα ποσά. Αν έχεις κι άλλα ενοίκια, η έκπτωση που χάνεται φορολογείται στο δικό σου οριακό κλιμάκιο.`}
         </div>
 
         {/* 6. Βήματα */}

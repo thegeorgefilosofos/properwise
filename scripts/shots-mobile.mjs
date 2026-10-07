@@ -25,7 +25,9 @@ const OUT = process.argv[2] || '.shots'
 mkdirSync(OUT, { recursive: true })
 
 const SCENES = ['portfolio','cash','rent','inbox','ledger','checklist','modal','select','compare','loan','pricing','bills','contacts','wizard','roi','tenant','scan']
-const PAGES = ['/', '/login', '/signup', '/ypologismos-forou-enoikion', '/ypologismos-enfia', '/kathari-apodosi', '/imerologio', '/vraxyxronia-i-makroxronia']
+// Το /imerologio δεν είναι σελίδα (μόνο η ροή iCal του /imerologio/[token])
+// και έδινε 404· στη θέση του το /paketa, ο τιμοκατάλογος σε στενή οθόνη.
+const PAGES = ['/', '/login', '/signup', '/paketa', '/ypologismos-forou-enoikion', '/ypologismos-enfia', '/kathari-apodosi', '/vraxyxronia-i-makroxronia']
 const BASE = process.env.E2E_BASE || 'http://localhost:3100'
 
 const browser = await chromium.launch({ executablePath: chromePath() })

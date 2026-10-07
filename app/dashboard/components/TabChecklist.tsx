@@ -23,7 +23,7 @@ import { annuityMonthly } from '@/lib/loans/recommend'
 // θεσμικές ημερομηνίες έρχονται από το lib/tax/greekTaxCalendar.ts μέσω του
 // obligationTasks, με confidence, επίσημη πηγή και μετάθεση σε εργάσιμη.
 import {
-  obligationDrafts, pendingDrafts, isGeneratedRef, isTaxTaskRef,
+  obligationDrafts, pendingDrafts, isGeneratedRef, isTaxTaskRef, enfiaTasksPaidByBills,
 } from '@/lib/checklist/obligationTasks'
 import { taxProfileOf, type PropertyTaxProfile } from '@/lib/tax/greekTaxCalendar'
 import { HAS_BUSINESS } from '@/lib/accounting/dossier'
@@ -204,16 +204,24 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
       // ερώτημα απορριπτόταν ολόκληρο και ο ΕΝΦΙΑ ΔΕΝ σημειωνόταν ποτέ ως
       // πληρωμένος στις εκκρεμότητες — ο ιδιοκτήτης έβλεπε για πάντα ανοιχτή
       // υποχρέωση που είχε ήδη πληρώσει.
-      const enfiaBillData = await billStore.matchingText<{ id: string; paid: boolean | null }>(
-        supabase, propertyId, 'id,paid', 'name.ilike.%ΕΝΦΙΑ%,name.ilike.%enfia%,notes.ilike.%ΕΝΦΙΑ%', userId)
-      const isPaid = enfiaBillData[0]?.paid === true
+      // ΚΑΘΕ ΛΟΓΑΡΙΑΣΜΟΣ ΚΛΕΙΝΕΙ ΜΟΝΟ ΤΗ ΔΙΚΗ ΤΟΥ ΔΟΣΗ. Πριν, ερχόταν ΕΝΑΣ
+      // λογαριασμός ΕΝΦΙΑ χωρίς σειρά και, αν ήταν πληρωμένος, έκλεινε την
+      // πρώτη ανοιχτή εργασία με «ενφια»: η πληρωμένη δόση ενός μήνα έκλεινε τη
+      // δόση άλλου μήνα, ξανά και ξανά μετά από κάθε αλλαγή. Το ταίριασμα (ίδιος
+      // μήνας, ίδιο έτος) ζει στο obligationTasks, δοκιμασμένο.
+      const enfiaBills = await billStore.matchingText<{ id: string; paid: boolean | null; due_date: string | null }>(
+        supabase, propertyId, 'id,paid,due_date', 'name.ilike.%ΕΝΦΙΑ%,name.ilike.%enfia%,notes.ilike.%ΕΝΦΙΑ%', userId, 200)
       // Η ΓΡΑΦΗ ΕΙΝΑΙ ΤΟ ΣΟΒΑΡΟ: χωρίς αυτόν τον έλεγχο, η καθυστερημένη απάντηση
       // του προηγούμενου ακινήτου σημείωνε πληρωμένη εργασία άλλου ακινήτου.
-      if (isPaid && itemData && fresh()) {
-        const enfiaTask = rows.find(i => i.description?.toLowerCase().includes('ενφια') && i.status !== 'done')
-        if (enfiaTask) {
-          await saved('Ο ΕΝΦΙΑ δεν σημειώθηκε πληρωμένος',
-            checklist.markDone(supabase, enfiaTask.id))
+      const toClose = enfiaTasksPaidByBills(rows.map(parseItem).map(i => ({
+        id: i.id, description: i.description, status: i.status, due_date: i.due_date, ref: i._ref,
+      })), enfiaBills)
+      if (toClose.length && itemData && fresh()) {
+        const ok = await saved('Ο ΕΝΦΙΑ δεν σημειώθηκε πληρωμένος', checklist.markDoneMany(supabase, toClose))
+        // Η λίστα στην οθόνη δείχνει ό,τι μόλις γράφτηκε, όχι την προηγούμενη εικόνα.
+        if (ok && fresh()) {
+          const closed = new Set(toClose)
+          setItems(prev => prev.map(i => closed.has(i.id) ? { ...i, status: 'done', completed: true } : i))
         }
       }
     } catch (_) {}

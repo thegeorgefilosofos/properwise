@@ -7,7 +7,7 @@
 import {
   daysLate, dueDateOf, paidFields, unpaidFields, PERIOD_KEY, bookDate, collectedIn,
   ofProperty, chronological, ofProperties, ofUser, latestAmount,
-  markPaid, markUnpaid, upsertPeriod, removeOfTenant,
+  markPaid, markUnpaid, upsertPeriod,
 } from './rent';
 
 let pass = 0, fail = 0;
@@ -141,11 +141,6 @@ async function asyncChecks() {
     const { db, calls } = fakeDb();
     upsertPeriod(db, { amount: 700 });
     ok('το κλειδί σύγκρουσης έρχεται από το στρώμα', calls[0].conflict === PERIOD_KEY);
-  }
-  {
-    const { db, calls } = fakeDb();
-    removeOfTenant(db, 't1');
-    ok('η διαγραφή μισθωτή σβήνει τις δόσεις ΤΟΥ', calls[0].del === true && calls[0].eq[0][0] === 'tenant_id');
   }
 }
 

@@ -25,7 +25,7 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensParts, athensToday } from '@/lib/core/time';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, ToolCta, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
@@ -156,7 +156,12 @@ export default function Page() {
             SEO για το οποίο υπάρχει. Η εφεδρεία έχει το ίδιο ύψος με τη φόρμα,
             ώστε το κείμενο από κάτω να μην αναπηδήσει μόλις φορτώσει. */}
         <Suspense fallback={<div style={{ minHeight: 460 }} aria-hidden/>}>
-          <ApodosiCalculator year={year} today={athensToday()}/>
+          <ApodosiCalculator year={year} today={athensToday()} cta={
+            <ToolCta
+              title="Για όλα σου τα ακίνητα, χωρίς να το ξαναϋπολογίσεις;"
+              body="Το PROPERWISE κρατά ενοίκια, ΕΝΦΙΑ και δαπάνες ανά ακίνητο και δείχνει ποιο αποδίδει, ποιο σε βαραίνει."
+            />
+          }/>
         </Suspense>
 
         <ToolSources kind="yield" checked={taxLimitAsOf('yield').checkedAt} />

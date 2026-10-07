@@ -287,13 +287,13 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
       // έλεγε άλλα ποσοστά από όσα διαβάζει μετά το Ε2.
       if (!(await saveLayout())) return;
       const issued = await issueDocument(supabase, {
-        userId, docType: 'Κατάσταση κατανομής', subject: prop.name, period: periodLabel,
+        docType: 'Κατάσταση κατανομής', subject: prop.name, period: periodLabel,
         summary: { gross: result.gross, expenses: result.expenses, fee: result.managementFee, distributable: result.distributable, owners: result.owners.length },
       });
       const model: PdfReportModel = {
         branding: branding ?? null, docType: 'Κατάσταση κατανομής',
         title: prop.name, subtitle: [periodLabel, prop.address].filter(Boolean).join(' · '),
-        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, note: periodLabel },
+        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum, note: periodLabel },
         sections: [
           { type: 'kpis', title: 'Σύνοψη περιόδου', items: [
             { label: 'Εισπράχθηκαν', value: pEur(result.gross) },

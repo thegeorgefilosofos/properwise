@@ -556,7 +556,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
           τιμή από κάτω. Τότε η επιλογή είναι ό,τι πράγματι κάνει: διακόπτης
           που δείχνει την τιμή κάθε πακέτου. */}
       {running && (live === true ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 14 }}>
+        <div className="bill-plans">
           {choices.map(id => (
             <Btn key={id} variant={target === id ? 'primary' : 'secondary'}
               onClick={() => setPick(id)} disabled={busy}>
@@ -568,7 +568,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
         // ΠΛΑΚΙΔΙΑ ΠΟΥ ΑΝΑΔΙΠΛΩΝΟΝΤΑΙ, ΟΧΙ ΤΜΗΜΑΤΙΚΟΣ ΔΙΑΚΟΠΤΗΣ. Με τέσσερα πακέτα
         // ο διακόπτης δεν χωρούσε σε τηλέφωνο: στα 320-440 οι ετικέτες έπεφταν η
         // μία πάνω στην άλλη (σαρωτής διάταξης, 28.09.2026).
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 14 }}>
+        <div className="bill-plans">
           {choices.map(id => (
             <ChipToggle key={id} on={target === id} onClick={() => setPick(id)}>{PLANS[id].name}</ChipToggle>
           ))}
@@ -580,8 +580,14 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
           αυτός που τον αλλάζει. */}
       {/* Το πλάτος δένεται: ο διακόπτης απλώνεται στο 100% του γονέα και δύο
           επιλογές έπιαναν ολόκληρη την κάρτα, βαραίνοντας περισσότερο από την
-          τιμή που ρυθμίζουν. */}
-      <div style={{ marginTop: 2, maxWidth: 260 }}>
+          τιμή που ρυθμίζουν.
+          ΣΤΟ ΤΗΛΕΦΩΝΟ ΟΙ ΑΚΡΕΣ ΣΤΟΙΧΙΖΟΝΤΑΙ (07.10.2026). Στα 390 τα πακέτα
+          αναδιπλώνονταν ως τη δεξιά άκρη της κάρτας και ο διακόπτης σταματούσε
+          στα 260 του, περίπου 30 εικονοστοιχεία πιο μέσα: δύο χειριστήρια
+          της ίδιας απόφασης με διαφορετική δεξιά άκρη. Κάτω από 560 κάθε σειρά
+          πακέτων γεμίζει το πλάτος και ο διακόπτης το ίδιο (`.bill-plans`,
+          `.bill-cycle` στο globals.css). */}
+      <div className="bill-cycle">
         <SegmentControl value={cycle} onChange={v => setCycle(v as BillingCycle)} ariaLabel="Κύκλος χρέωσης"
           options={[{ value: 'monthly', label: 'Μηνιαία' }, { value: 'annual', label: 'Ετήσια' }]} />
       </div>

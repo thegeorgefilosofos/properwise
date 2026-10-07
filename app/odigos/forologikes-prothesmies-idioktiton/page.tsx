@@ -19,7 +19,6 @@
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl, PRODUCT_NAME } from '@/lib/core/site';
-import { monthGen, monthShort } from '@/lib/core/months';
 import { athensToday } from '@/lib/core/time';
 import {
   greekPropertyTaxObligations, CONFIDENCE_LABEL, TAXHEAVEN_CALENDAR_URL, AADE_CALENDAR_URL,
@@ -32,7 +31,7 @@ import { guideAt } from '../guides';
 import { upcomingRows, nextOfKind } from './next';
 import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
-  RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
+  RelatedGuides, guideJsonLd, LINK_STYLE, longDate, dayMonth, dateCells, type GuideFaqItem,
 } from '../GuideParts';
 
 export const revalidate = 86400;
@@ -47,30 +46,6 @@ const URL = siteUrl(GUIDE.href);
 
 export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-forologikes-prothesmies-idioktiton') });
 
-/** «31 Μαρτίου 2027» από ISO ημερομηνία. */
-function longDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return `${d} ${monthGen(m - 1)} ${y}`;
-}
-
-/**
- * «26 Φεβ 2027» για τη στήλη του πίνακα. Με ολόκληρο τον μήνα η στήλη έπιανε
- * τα μισά 390 του κινητού και οι τίτλοι έσπαγαν σε τέσσερις σειρές.
- */
-function dateCells(iso: string) {
-  const [y, m, d] = iso.split('-').map(Number);
-  return <>
-    <span>{String(d).padStart(2, '\u2007')}</span>{' '}
-    <span className="gd-date-m">{monthShort(m - 1)}</span>{' '}
-    <span>{y}</span>
-  </>;
-}
-
-/** «15 Απριλίου» από ISO ημερομηνία: για κανόνες που επαναλαμβάνονται κάθε χρόνο. */
-function dayMonth(iso: string): string {
-  const [, m, d] = iso.split('-').map(Number);
-  return `${d} ${monthGen(m - 1)}`;
-}
 function addDays(iso: string, n: number): string {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
@@ -90,7 +65,10 @@ const WHO: Record<TaxObligation['who'], string> = { owner: 'Εσύ', app: 'Εσ�
  * δωδεκάμηνο και η σελίδα δεν χτιζόταν (βλ. το σχόλιο εκεί).
  */
 
-const FAQ: GuideFaqItem[] = [
+// Η ΗΜΕΡΟΜΗΝΙΑ ΤΗΣ ΑΥΤΟΜΑΤΗΣ ΟΡΙΣΤΙΚΟΠΟΙΗΣΗΣ ΑΠΟ ΤΟ ΗΜΕΡΟΛΟΓΙΟ (07/10/2026). Η
+// απάντηση έγραφε «ως τις 15 Απριλίου» με το χέρι, παρά τον κανόνα από πάνω· οι
+// ερωτήσεις παίρνουν πλέον την ίδια επερχόμενη ημερομηνία με το κείμενο.
+const faqFor = (autofile: string): GuideFaqItem[] => [
   {
     q: 'Τι γίνεται αν η προθεσμία πέφτει Σαββατοκύριακο ή αργία;',
     a: 'Μετατίθεται στην επόμενη εργάσιμη. Οι δόσεις που λήγουν στο τέλος του μήνα λήγουν '
@@ -112,7 +90,7 @@ const FAQ: GuideFaqItem[] = [
     a: 'Η αυτόματη οριστικοποίηση αφορά κυρίως όσους έχουν μόνο προσυμπληρωμένα εισοδήματα, '
      + 'δηλαδή μισθωτούς και συνταξιούχους. Με έντυπο Ε2 συνήθως δεν είσαι σε αυτή την ομάδα, '
      + 'αλλά το Ε2 προσυμπληρώνεται πλέον από τις δηλώσεις μίσθωσης και τις πλατφόρμες. '
-     + 'Έλεγξε τη δήλωσή σου ως τις 15 Απριλίου.',
+     + `Έλεγξε τη δήλωσή σου ως τις ${dayMonth(autofile)}.`,
   },
   {
     q: 'Τι προθεσμίες έχει η βραχυχρόνια μίσθωση;',
@@ -169,6 +147,7 @@ export default function Page() {
   const runningLast = runningId
     ? greekPropertyTaxObligations(Number(runningId[1]), 'owner').find(o => o.kind === 'enfia-last')
     : undefined;
+  const FAQ = faqFor(at.autofile.date);
   const jsonLd = guideJsonLd({
     guide: GUIDE, headline: H1, description: DESC, faq: FAQ,
     about: 'Φορολογικές προθεσμίες ιδιοκτήτη ακινήτου: ΕΝΦΙΑ, Ε9, δήλωση εισοδήματος, βραχυχρόνια μίσθωση',
@@ -255,6 +234,9 @@ export default function Page() {
 
         {/* 4. Δήλωση εισοδήματος */}
         <H2 {...S.income} />
+        {/* «ΕΩΣ ΟΚΤΩ ΔΟΣΕΙΣ» ΜΕΝΕΙ ΚΕΙΜΕΝΟ: ο αριθμός ζει μόνο μέσα στις σημειώσεις
+            του `income-decl` (lib/tax/greekTaxCalendar.ts, προστατευμένο αρχείο),
+            όχι ως σταθερά. Θέλει σταθερά εκεί για να βγαίνει από τον κώδικα. */}
         <ul className="lg-ul">
           <li><strong style={{ color: 'var(--text-primary)' }}>{`${dayMonth(at.autofile.date)}:`}</strong>{` τελευταία μέρα για διόρθωση της προσυμπληρωμένης δήλωσης με αρχική δήλωση. Όσες δεν πειραχτούν οριστικοποιούνται αυτόματα από την ΑΑΔΕ την επόμενη μέρα. Αφορά κυρίως μισθωτούς και συνταξιούχους με μόνο προσυμπληρωμένα εισοδήματα.`}</li>
           <li>{`Από ${dayMonth(addDays(at.autofile.date, 2))} έως ${dayMonth(at.decl.date)}: η δήλωση που οριστικοποιήθηκε αυτόματα διορθώνεται με τροποποιητική, χωρίς κυρώσεις.`}</li>

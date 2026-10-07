@@ -111,6 +111,20 @@ export interface AiUsageRow {
   month_count: number | null;
 }
 
+export interface AiUsageRequestsRow {
+  request_id: string | null;
+  user_id: string;
+  kind: string;
+  period: string;
+  day: string;
+  file_hash: string | null;
+  pool: boolean;
+  reuse_of: string | null;
+  reuses: number;
+  created_at: string;
+  refunded_at: string | null;
+}
+
 export interface AirbnbBookingsRow {
   id: string;
   property_id: string;
@@ -864,6 +878,7 @@ export interface IssuedDocumentsRow {
   issued_at: string;
   summary: Json;
   checksum: string;
+  issuer: string;
 }
 
 export interface LoanProgramsRow {
@@ -1489,6 +1504,7 @@ export interface Tables {
   activity_log: ActivityLogRow;
   ai_budget: AiBudgetRow;
   ai_usage: AiUsageRow;
+  ai_usage_requests: AiUsageRequestsRow;
   airbnb_bookings: AirbnbBookingsRow;
   app_admins: AppAdminsRow;
   bank_connection_refs: BankConnectionRefsRow;

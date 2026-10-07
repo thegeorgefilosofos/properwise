@@ -27,6 +27,7 @@ import { fn } from '@/components/tokens';
 import { fe } from '@/lib/core/format';
 import { Btn } from '@/components/Theme';
 import { signupCta } from '@/lib/billing/trialOffer';
+import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 
 export type ComparedPlan = Extract<PlanId, 'solo' | 'owner' | 'agency' | 'office'>;
 export const COMPARED: ComparedPlan[] = ['solo', 'owner', 'agency', 'office'];
@@ -114,7 +115,11 @@ const MATRIX: FeatureRow[] = [
       solo: both(fn(SCAN_LIMITS.free ?? 0), 'χωρίς όριο') } },
   // Η ΦΩΝΗ ΖΕΙ ΜΕΣΑ ΣΤΗ ΝΟΑ (PropertyAssistant): στο δωρεάν πακέτο δεν υπάρχει.
   withSolo(forAll('Φωνητική καταχώρηση'), both('Όχι', 'Ναι')),
-  forAll('Αποδόσεις, δαπάνες, ενέργεια και φόρος 2026'),
+  // Η ΧΡΟΝΙΑ ΕΙΝΑΙ ΤΗΣ ΚΛΙΜΑΚΑΣ, ΟΧΙ ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ. Ηταν «φόρος 2026» με το
+  // χέρι και την 1η Ιανουαρίου 2027 θα διαβαζόταν σαν πέρσινο εργαλείο. Η
+  // κλίμακα του ν.5246/2025 ισχύει από το `FIRST_YEAR_NEW_BRACKETS` και η
+  // σελίδα είναι στατική: μια «τρέχουσα χρονιά» εδώ θα πάγωνε στο χτίσιμο.
+  forAll(`Αποδόσεις, δαπάνες, ενέργεια και φόρος με την κλίμακα ${FIRST_YEAR_NEW_BRACKETS}`),
   forAll('Ειδοποιήσεις και υπενθυμίσεις'),
   gated('e2_export'),
   gated('rent_collection'),
@@ -216,9 +221,12 @@ function PlanPrice({ id }: { id: ComparedPlan }) {
       <span className="plan-price-per">/μήνα</span>
       <span className="plan-price-alt">
         {/* ΤΟ ΙΔΙΟ ΖΕΥΓΑΡΙ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Η αρχική έγραφε για τη Νόα 4,99€ τον
-            μήνα ή 54,90€ τον χρόνο· εδώ φαινόταν μόνο το μηνιαίο. */}
+            μήνα ή 54,90€ τον χρόνο· εδώ φαινόταν μόνο το μηνιαίο.
+            ΚΑΙ ΟΙ ΔΥΟ ΓΡΑΜΜΕΣ ΛΕΝΕ «ΜΕ ΝΟΑ». Η δεύτερη έγραφε σκέτο «τον χρόνο»
+            κάτω από το μηδενικό του δωρεάν, οπότε η ετήσια διαβαζόταν σαν τιμή
+            του δωρεάν πακέτου. */}
         {free
-          ? <>{`ή ${fe(PLANS.solo.priceMonthly)}/μήνα ${WITH_NOA}`}<br />{`ή ${fe(PLANS.solo.priceAnnual)} τον χρόνο`}</>
+          ? <>{`ή ${fe(PLANS.solo.priceMonthly)}/μήνα ${WITH_NOA}`}<br />{`ή ${fe(PLANS.solo.priceAnnual)} τον χρόνο ${WITH_NOA}`}</>
           : `ή ${fe(PLANS[id].priceAnnual)} τον χρόνο`}
       </span>
     </div>

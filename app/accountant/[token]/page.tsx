@@ -44,6 +44,7 @@ import { T, feAuto, Card, Btn } from '@/components/Theme';
 import { downloadXlsx } from '@/app/dashboard/components/sheets';
 import { PortalBar, PortalTitle, portalWrap, portalYears } from '../Chrome';
 import { declarationYear } from '@/lib/core/declarationYear';
+import { linkLoad, LINK_SAY } from '@/lib/portal/linkLoad';
 import { athensToday } from '@/lib/core/time';
 import {
   propertyLines, statementTotals, statementGaps, statementSheets, indicativeTax, deductionNote,
@@ -73,20 +74,25 @@ export default function AccountantPortal() {
   // μέσα στο effect — δηλαδή δεύτερη απόδοση σε κάθε αλλαγή έτους — και υπήρχε
   // στιγμή όπου η οθόνη έδειχνε τα ποσά της ΠΡΟΗΓΟΥΜΕΝΗΣ χρήσης κάτω από τον
   // τίτλο της νέας. Σε έγγραφο που διαβάζει λογιστής, αυτό δεν είναι τρεμόπαιγμα.
-  const [result, setResult] = useState<{ year: number; data: PortalData | null; failed: boolean } | null>(null);
+  // Η ΑΠΑΝΤΗΣΗ ΚΡΑΤΑΕΙ ΚΑΙ ΤΗΝ ΠΡΟΣΠΑΘΕΙΑ ΤΗΣ: το «Δοκίμασε ξανά» αυξάνει το
+  // `tries` και η παλιά αποτυχία παύει να είναι φρέσκια, οπότε η οθόνη δείχνει
+  // «Φόρτωση…» ως την επόμενη απάντηση αντί να μένει στο ίδιο μήνυμα.
+  const [tries, setTries] = useState(0);
+  const [result, setResult] = useState<{ year: number; tries: number; data: PortalData | null; failed: boolean } | null>(null);
 
   useEffect(() => {
     let alive = true;
-    supabase.rpc('get_accountant_data', { p_token: token, p_year: year }).then(({ data: d, error }) => {
+    supabase.rpc('get_accountant_data', { p_token: token, p_year: year }).then(res => {
       if (!alive) return;
       // ΤΟ ΣΦΑΛΜΑ ΔΕΝ ΕΙΝΑΙ «ΑΚΥΡΟΣ ΣΥΝΔΕΣΜΟΣ». Και τα δύο κατέληγαν στην ίδια
       // κάρτα: μια στιγμή χωρίς δίκτυο ή μια βάση που δεν απάντησε έλεγε στον
       // λογιστή ότι ο σύνδεσμος ανακλήθηκε. Εκείνος τηλεφωνούσε στον ιδιοκτήτη,
       // ο ιδιοκτήτης περιέστρεφε τον σύνδεσμο και ο παλιός πέθαινε στ' αλήθεια.
-      setResult({ year, data: error ? null : ((d as PortalData) ?? null), failed: !!error });
+      const got = linkLoad(res);
+      setResult({ year, tries, data: got === 'ok' ? (res.data as PortalData) : null, failed: got === 'offline' });
     });
     return () => { alive = false; };
-  }, [supabase, token, year]);
+  }, [supabase, token, year, tries]);
 
   // ── ΠΟΥ ΓΥΡΝΑΕΙ Ο ΑΝΘΡΩΠΟΣ ΑΠΟ ΕΔΩ ──────────────────────────────────────
   // Η οθόνη δεν είχε ΚΑΜΙΑ έξοδο. Ο λογιστής που ερχόταν από τη λίστα των
@@ -119,7 +125,7 @@ export default function AccountantPortal() {
     return () => { alive = false; };
   }, [supabase, token]);
 
-  const fresh = result && result.year === year ? result : null;
+  const fresh = result && result.year === year && result.tries === tries ? result : null;
   const state: 'loading' | 'ok' | 'notfound' | 'failed' =
     !fresh ? 'loading' : fresh.failed ? 'failed' : fresh.data ? 'ok' : 'notfound';
   const data = fresh?.data ?? null;
@@ -179,7 +185,10 @@ export default function AccountantPortal() {
           τα χρώματα του χαρτιού: εδώ ζούσε δεύτερος, μικρότερος κανόνας που
           έκρυβε μεν αλλά άφηνε το σκούρο θέμα να τυπωθεί σε ολόκληρη σελίδα. */}
       <div className="po-noprint">
-        <PortalBar year={state === 'ok' ? year : undefined} onYear={setYear} back={back} />
+        {/* Η ΧΡΟΝΙΑ ΜΕΝΕΙ ΚΑΙ ΣΤΗΝ ΑΠΟΤΥΧΙΑ. Μπορεί να έφταιγε η χρήση που
+            ζητήθηκε· ο λογιστής αλλάζει χρονιά ή ξαναδοκιμάζει χωρίς να χάσει
+            τη μπάρα. Στο «δεν βρέθηκε» δεν έχει νόημα: ο σύνδεσμος δεν υπάρχει. */}
+        <PortalBar year={state === 'ok' || state === 'failed' ? year : undefined} onYear={setYear} back={back} />
       </div>
 
       <div style={portalWrap}>
@@ -188,21 +197,23 @@ export default function AccountantPortal() {
         )}
 
         {/* ΔΥΟ ΑΣΤΟΧΙΕΣ, ΔΥΟ ΜΗΝΥΜΑΤΑ. «Δεν βρέθηκε» σημαίνει ότι ο σύνδεσμος
-            όντως τελείωσε. «Δεν απάντησε» σημαίνει ότι φταίει η στιγμή και η
-            σωστή κίνηση είναι μια ανανέωση, όχι ένα τηλεφώνημα που θα σκοτώσει
-            έναν σύνδεσμο που ζούσε. */}
+            όντως τελείωσε. «Δεν απάντησε» σημαίνει ότι δεν ξέρουμε τίποτα για
+            τον σύνδεσμο (lib/portal/linkLoad.ts) και η σωστή κίνηση είναι μια
+            νέα προσπάθεια, όχι ένα τηλεφώνημα που θα σκοτώσει έναν σύνδεσμο
+            που ζούσε. Το κουμπί την κάνει χωρίς ανανέωση όλης της σελίδας. */}
         {state === 'failed' && (
           <Card style={{ marginTop: 32, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Η κατάσταση δεν φόρτωσε</div>
-            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.7, maxWidth: 460, margin: '0 auto' }}>
-              Κάτι δεν απάντησε τώρα. Ο σύνδεσμος δεν έχει πρόβλημα: ανανέωσε τη σελίδα σε λίγο.
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{LINK_SAY.offlineTitle}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.7, maxWidth: 460, margin: '0 auto 16px' }}>
+              {LINK_SAY.offlineBody}
             </div>
+            <Btn variant="primary" onClick={() => setTries(t => t + 1)}>{LINK_SAY.retry}</Btn>
           </Card>
         )}
 
         {state === 'notfound' && (
           <Card style={{ marginTop: 32, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Ο σύνδεσμος δεν είναι έγκυρος</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{LINK_SAY.notFoundTitle}</div>
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.7, maxWidth: 460, margin: '0 auto' }}>
               Έχει ανακληθεί ή έχει λήξει. Ένας ενημερωμένος σύνδεσμος βγαίνει από τη Λογιστική του ιδιοκτήτη.
             </div>
