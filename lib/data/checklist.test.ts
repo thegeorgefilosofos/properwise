@@ -42,6 +42,20 @@ ok('δύο κλειστές καταστάσεις, όχι μία', CLOSED_STATU
   ok('«pending» καθαρίζει τον χρόνο', statusFields('pending').completed_at === null);
 }
 
+// ── Το ξανα-άνοιγμα γράφεται (07.10.2026) ─────────────────────────────────
+// Χωρίς ίχνος, η ξανανοιγμένη δόση ΕΝΦΙΑ έμοιαζε με δόση που δεν έκλεισε ποτέ
+// και το αυτόματο κλείσιμο την ξανάκλεινε στην επόμενη φόρτωση.
+{
+  const at = (f: object) => (f as { reopened_at?: string }).reopened_at;
+  ok('το reopenFields γράφει την ώρα του ξανα-ανοίγματος', typeof at(reopenFields()) === 'string' && !Number.isNaN(Date.parse(at(reopenFields()) as string)));
+  ok('από «done» σε «pending» είναι ξανα-άνοιγμα', typeof at(statusFields('pending', 'done')) === 'string');
+  ok('από «skipped» σε «in_progress» είναι ξανα-άνοιγμα', typeof at(statusFields('in_progress', 'skipped')) === 'string');
+  ok('από «pending» σε «in_progress» ΔΕΝ είναι', at(statusFields('in_progress', 'pending')) === undefined);
+  ok('χωρίς προηγούμενη κατάσταση ΔΕΝ γράφεται', at(statusFields('pending')) === undefined);
+  ok('από «done» σε «skipped» ΔΕΝ είναι ξανα-άνοιγμα', at(statusFields('skipped', 'done')) === undefined);
+  ok('το κλείσιμο δεν σβήνει το ίχνος', !('reopened_at' in statusFields('done', 'pending')));
+}
+
 // ── Ψεύτικη βάση ──────────────────────────────────────────────────────────
 interface Call { columns: string; eq: [string, string][]; neq: [string, string][]; patch?: Record<string, unknown>; ins?: unknown; del?: boolean; inIds?: string[] }
 function fakeDb(rows: Record<string, unknown>[] = []) {
@@ -122,6 +136,12 @@ async function asyncChecks() {
     const { db, calls } = fakeDb();
     setStatus(db, 't1', 'pending');
     ok('η επαναφορά σβήνει τον χρόνο ολοκλήρωσης', calls[0].patch?.completed_at === null);
+  }
+  {
+    const { db, calls } = fakeDb();
+    setStatus(db, 't1', 'pending', 'done');
+    ok('το ξε-τσεκάρισμα γράφει reopened_at στο ίδιο ερώτημα',
+      calls.length === 1 && typeof calls[0].patch?.reopened_at === 'string' && calls[0].patch?.status === 'pending');
   }
   {
     const { db, calls } = fakeDb();

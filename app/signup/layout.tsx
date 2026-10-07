@@ -9,16 +9,20 @@
 // περιγραφή — ενώ η εγγραφή είναι στον χάρτη με προτεραιότητα 0,8.
 //
 // Το layout είναι component διακομιστή, άρα εδώ τα μεταδεδομένα επιτρέπονται.
-// Το μόνο περιτύλιγμα είναι ο πάροχος των όρων χρέωσης, χωρίς κανένα στοιχείο.
+// Περιτυλίγει τη φόρμα με τον πάροχο των όρων χρέωσης και με το περίγραμμα
+// των δύο στηλών (βλ. πιο κάτω).
 // ═══════════════════════════════════════════════════════════════════════════
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { siteUrl } from '@/lib/core/site';
 import { publicMetadata } from '../publicMetadata';
-import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
+import { PLANS, PLAN_ORDER, TRIAL_DAYS } from '@/lib/billing/plans';
 import { TRIAL_PLAN } from '@/lib/billing/entitlements';
+import { signupCta } from '@/lib/billing/trialOffer';
 import { billingWords } from '@/lib/legal/billingWords';
-import { PlanTermsProvider } from './PlanTerms';
+import { PlanTermsProvider, type SignupCtas } from './PlanTerms';
+import { T } from '@/components/tokens';
+import AuthAside from '../AuthAside';
 
 // ΤΟ «ΧΩΡΙΣ ΚΑΡΤΑ» ΕΦΥΓΕ ΓΙΑΤΙ ΕΠΑΨΕ ΝΑ ΙΣΧΥΕΙ. Μετά την επιβεβαίωση του email
 // ο νέος λογαριασμός προσγειώνεται στο ταμείο και δίνει κάρτα. Η περιγραφή
@@ -43,7 +47,51 @@ export function generateMetadata(): Metadata {
 
 // ΚΑΙ Η ΦΟΡΜΑ ΜΑΘΑΙΝΕΙ ΑΠΟ ΕΔΩ ΑΝ ΧΡΕΩΝΟΥΜΕ, για τον ίδιο λόγο (βλ. PlanTerms.tsx).
 // Χωρίς αυτό η περιγραφή έλεγε «καμία χρέωση» και η σελίδα «Ετήσια χρέωση».
+//
+// ΚΑΙ ΤΟ ΛΕΚΤΙΚΟ ΤΟΥ ΚΟΥΜΠΙΟΥ, για κάθε πακέτο που μπορεί να φέρει το `?plan=`:
+// το `signupCta` τρέχει εδώ ώστε το lib/billing/trialOffer.ts να μη φτάνει στον
+// περιηγητή (βλ. `useSignupCta` στο PlanTerms.tsx).
+const ctas = Object.fromEntries([
+  ['none', signupCta(null)],
+  ...PLAN_ORDER.map(id => [id, signupCta(id)]),
+]) as SignupCtas;
+
+// ═══ ΤΟ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΠΑΝΕΛ ΑΠΟΔΙΔΟΝΤΑΙ ΕΔΩ, ΣΤΟΝ ΔΙΑΚΟΜΙΣΤΗ ═══════════
+// ΜΕΤΡΗΜΕΝΟ (07.10.2026, scripts/perf-budget.mjs). Το αρχικό JS της εγγραφής
+// ήταν 182,5 KB με 1,7 KB περιθώριο ως το όριο. Η σελίδα είναι `'use client'`
+// και ζωγράφιζε μόνη της και το πάνελ αριστερά (AuthAside): κείμενο χωρίς
+// καμία κατάσταση, που κατέβαινε ως JS για να ξαναγίνει το HTML που είχε ήδη
+// στείλει ο διακομιστής. Εδώ αποδίδεται μία φορά· η σελίδα κρατά μόνο το
+// <main>, δηλαδή ό,τι έχει κατάσταση. Το DOM είναι το ίδιο με πριν.
 export default function SignupLayout({ children }: { children: ReactNode }) {
   const words = billingWords();
-  return <PlanTermsProvider value={{ planTerms: words.signupPlanTerms, trialBadge: words.trialBadge }}>{children}</PlanTermsProvider>;
+  return (
+    <PlanTermsProvider value={{ planTerms: words.signupPlanTerms, trialBadge: words.trialBadge, ctas }}>
+      {/* ΜΙΑ ΕΥΘΕΙΑ ΓΙΑ ΤΙΣ ΔΥΟ ΣΤΗΛΕΣ (01.10.2026, `auth-top` στο globals.css).
+          Κεντραρισμένες κάθετα, η φόρμα της εγγραφής (ψηλότερη από της
+          σύνδεσης) ξεκινούσε στα 150 και το σώμα του πάνελ στα 265. Στη
+          σύνδεση, με φόρμα κοντή, έπεφταν και οι δύο στα 247 κατά τύχη. Εδώ
+          ξεκινούν από την ίδια ευθεία, επίτηδες. */}
+      <div data-mode="dark" className="auth-split auth-top" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
+
+        <a href="#main" className="skip-link">Μετάβαση στη φόρμα</a>
+
+        {/* LEFT, κοινό marketing panel (AuthAside) */}
+        {/* «Λογαριασμός» ήταν και ο χρήστης και το χαρτί της ΔΕΗ, στην ίδια
+            πρόταση. Εδώ μένει μόνο το χαρτί.
+            ΟΧΙ «ΕΝΑ ΑΚΙΝΗΤΟ» (27.09.2026). Το «Ένα ακίνητο, για αρχή.» απέκλειε
+            όποιον έχει δύο και περισσότερα, δηλαδή τους πελάτες των πακέτων με
+            πολλά ακίνητα. Και σε μία γραμμή, όπως ζήτησε ο ιδιοκτήτης. */}
+        <AuthAside
+          headline="Τα ακίνητά σου,"
+          accent="σε τάξη."
+          oneLine
+          sub="Πρόσθεσε τα ακίνητά σου και φωτογράφισε τον πρώτο λογαριασμό ρεύματος ή νερού. Τα υπόλοιπα συμπληρώνονται στην πορεία."
+        />
+
+        {/* RIGHT, form: το <main> της σελίδας */}
+        {children}
+      </div>
+    </PlanTermsProvider>
+  );
 }

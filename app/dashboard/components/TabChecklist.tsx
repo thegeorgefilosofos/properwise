@@ -209,12 +209,14 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
       // πρώτη ανοιχτή εργασία με «ενφια»: η πληρωμένη δόση ενός μήνα έκλεινε τη
       // δόση άλλου μήνα, ξανά και ξανά μετά από κάθε αλλαγή. Το ταίριασμα (ίδιος
       // μήνας, ίδιο έτος) ζει στο obligationTasks, δοκιμασμένο.
-      const enfiaBills = await billStore.matchingText<{ id: string; paid: boolean | null; due_date: string | null }>(
-        supabase, propertyId, 'id,paid,due_date', 'name.ilike.%ΕΝΦΙΑ%,name.ilike.%enfia%,notes.ilike.%ΕΝΦΙΑ%', userId, 200)
+      // ΜΕ ΤΗΝ ΩΡΑ ΤΗΣ ΠΛΗΡΩΜΗΣ: η δόση που ξανάνοιξε ο χρήστης μετά από αυτήν
+      // (`reopened_at`) μένει ανοιχτή· την κλείνει μόνο νεότερη πληρωμή.
+      const enfiaBills = await billStore.matchingText<{ id: string; paid: boolean | null; due_date: string | null; paid_at: string | null; created_at: string | null }>(
+        supabase, propertyId, 'id,paid,due_date,paid_at,created_at', 'name.ilike.%ΕΝΦΙΑ%,name.ilike.%enfia%,notes.ilike.%ΕΝΦΙΑ%', userId, 200)
       // Η ΓΡΑΦΗ ΕΙΝΑΙ ΤΟ ΣΟΒΑΡΟ: χωρίς αυτόν τον έλεγχο, η καθυστερημένη απάντηση
       // του προηγούμενου ακινήτου σημείωνε πληρωμένη εργασία άλλου ακινήτου.
-      const toClose = enfiaTasksPaidByBills(rows.map(parseItem).map(i => ({
-        id: i.id, description: i.description, status: i.status, due_date: i.due_date, ref: i._ref,
+      const toClose = enfiaTasksPaidByBills(rows.map(r => ({ i: parseItem(r), reopened_at: r.reopened_at })).map(({ i, reopened_at }) => ({
+        id: i.id, description: i.description, status: i.status, due_date: i.due_date, ref: i._ref, reopened_at,
       })), enfiaBills)
       if (toClose.length && itemData && fresh()) {
         const ok = await saved('Ο ΕΝΦΙΑ δεν σημειώθηκε πληρωμένος', checklist.markDoneMany(supabase, toClose))
@@ -343,7 +345,6 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
       note: form.note, subtasks: form.subtasks, comments: form.comments, tags: form.tags,
       ...carryOver(editItem),
     })
-    const done = form.status === 'done'
     const payload = {
       property_id: propertyId, user_id: userId,
       description: form.description.trim(), category: form.category, note: noteJson,
@@ -354,8 +355,10 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
       // `parseFloat(form.actual_cost) || 0` από ένα πεδίο που δεν είχε input,
       // δηλαδή σταθερό 0 — και έφτιαχνε την «Απόκλιση» που πήγαινε στον λογιστή.
       estimated_cost: parseFloat(form.estimated_cost) || 0,
-      status: form.status, depends_on: form.depends_on || null,
-      completed: done, completed_at: done ? new Date().toISOString() : null,
+      depends_on: form.depends_on || null,
+      // Οι στήλες της κατάστασης από το ένα σημείο τους. Από κλειστή σε ανοιχτή
+      // μέσα από τη φόρμα είναι ξανα-άνοιγμα, όπως και το ξε-τσεκάρισμα.
+      ...checklist.statusFields(form.status, editItem?.status),
     }
     if (editItem) {
       // Η ΚΥΡΙΑ ΑΠΟΘΗΚΕΥΣΗ ΣΤΑΜΑΤΑ ΤΗ ΡΟΗ ΟΤΑΝ ΑΠΟΤΥΧΕΙ. Πριν, μια ενημέρωση που
@@ -408,7 +411,9 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
       if (!await optimistic('Η κατάσταση δεν αποθηκεύτηκε',
           () => setItems(list => list.map(i => i.id === item.id ? { ...i, status: newStatus } : i)),
           () => setItems(list => list.map(i => i.id === item.id ? { ...i, status: before } : i)),
-          checklist.setStatus(supabase, item.id, newStatus))) return
+          // Το `before` κάνει το ξε-τσεκάρισμα ξανα-άνοιγμα (`reopened_at`): το
+          // αυτόματο κλείσιμο του ΕΝΦΙΑ δεν το ακυρώνει στην επόμενη φόρτωση.
+          checklist.setStatus(supabase, item.id, newStatus, before))) return
       if (newStatus === 'done') {
         // ΤΟ ΠΑΡΑΣΤΑΤΙΚΟ ΔΕΝ ΞΕ-ΠΛΗΡΩΝΕΤΑΙ ΚΑΙ ΔΕΝ ΞΑΝΑ-ΠΛΗΡΩΝΕΤΑΙ. Εδώ η
         // ολοκλήρωση έκανε `expenses.paid = true` και η αναίρεση `paid = false`.

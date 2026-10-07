@@ -42,7 +42,7 @@ const UNRELATED = [
   'lib/pricing/dynamicPricing.ts',            // πολλαπλασιαστές ημέρας/ζήτησης
   'lib/market/greekMarket.ts',                // συντελεστής τύπου ακινήτου
   'app/dashboard/components/insurance/catalog.ts', // συντελεστής παλαιότητας
-  'app/dashboard/components/TabLoanCalculator.tsx', // stopOpacity σε SVG
+  'app/dashboard/components/loan/calc/charts.tsx', // stopOpacity σε SVG (το donut του υπολογιστή δανείου)
 ]
 
 const LITERAL = /(?<![\d.\w])0?\.95(?![\d])/

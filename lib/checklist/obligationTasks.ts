@@ -211,12 +211,18 @@ export interface EnfiaTaskLike {
   status: string | null
   due_date: string | null
   ref?: string | null
+  /** Πότε την ξανάνοιξε ο χρήστης (`checklist_items.reopened_at`). */
+  reopened_at?: string | null
 }
 
 /** Τα πεδία ενός λογαριασμού που χρειάζεται το ταίριασμα. */
 export interface EnfiaBillLike {
   paid: boolean | null
   due_date: string | null
+  /** Πότε σημειώθηκε πληρωμένος (`bills.paid_at`, lib/data/bills: `paidFields`). */
+  paid_at?: string | null
+  /** Χωρίς `paid_at` (λογαριασμός γραμμένος ήδη πληρωμένος), η ώρα καταχώρησης. */
+  created_at?: string | null
 }
 
 const monthOf = (d: string | null | undefined): string | null =>
@@ -237,13 +243,27 @@ const monthOf = (d: string | null | undefined): string | null =>
  * μήνας είναι η ταυτότητα της δόσης. Εργασία χωρίς προθεσμία δεν κλείνει ποτέ
  * αυτόματα: δεν ξέρουμε ποια δόση είναι. Η ανάρτηση του εκκαθαριστικού
  * (`enfia-issue`) δεν είναι πληρωμή και δεν την κλείνει λογαριασμός.
+ *
+ * Η ΞΑΝΑΝΟΙΓΜΕΝΗ ΜΕΝΕΙ ΑΝΟΙΧΤΗ (07.10.2026). Ο χρήστης που ξε-τσεκάρει μια
+ * πληρωμένη δόση την έβλεπε ξανά κλειστή στην επόμενη φόρτωση: τίποτα δεν
+ * θυμόταν το ξανα-άνοιγμα. Τώρα το `reopened_at` το θυμάται και η εργασία
+ * κλείνει αυτόματα ΜΟΝΟ από λογαριασμό που πληρώθηκε ΜΕΤΑ από αυτό, δηλαδή
+ * από νέα πληρωμή. Λογαριασμός χωρίς καμία ώρα πληρωμής δεν υπερισχύει ποτέ
+ * της ρητής κίνησης του χρήστη.
  */
 export function enfiaTasksPaidByBills(
   tasks: readonly EnfiaTaskLike[], bills: readonly EnfiaBillLike[],
 ): string[] {
-  const paidMonths = new Set(
-    bills.filter(b => b.paid === true).map(b => monthOf(b.due_date)).filter((m): m is string => !!m),
-  )
+  // Ανά μήνα, η πιο πρόσφατη ώρα πληρωμής σε ms (−∞ όταν δεν είναι γνωστή).
+  const paidMonths = new Map<string, number>()
+  for (const b of bills) {
+    if (b.paid !== true) continue
+    const m = monthOf(b.due_date)
+    if (!m) continue
+    const parsed = Date.parse(b.paid_at || b.created_at || '')
+    const at = Number.isFinite(parsed) ? parsed : -Infinity
+    paidMonths.set(m, Math.max(at, paidMonths.get(m) ?? -Infinity))
+  }
   if (paidMonths.size === 0) return []
   return tasks.filter(t => {
     if (t.status === 'done') return false
@@ -253,7 +273,10 @@ export function enfiaTasksPaidByBills(
       // Χειρόγραφη εργασία (χωρίς κλειδί υποχρέωσης): κρίνεται από τον τίτλο.
       : (t.description || '').toLocaleLowerCase('el').normalize('NFD').replace(/\p{M}/gu, '').includes('ενφια')
     const m = monthOf(t.due_date)
-    return isPayment && !!m && paidMonths.has(m)
+    if (!isPayment || !m || !paidMonths.has(m)) return false
+    // Ξανανοίχτηκε από τον χρήστη: κλείνει μόνο πληρωμή μεταγενέστερη του ξανα-ανοίγματος.
+    if (!t.reopened_at) return true
+    return (paidMonths.get(m) as number) > Date.parse(t.reopened_at)
   }).map(t => t.id)
 }
 

@@ -1,31 +1,29 @@
 'use client'
 import { T, Btn, LinkBtn } from '@/components/Theme'
-import { useState, useEffect, useSyncExternalStore } from 'react'
+import { useState, useEffect, useSyncExternalStore, type ReactNode } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { authClient } from '@/lib/supabase/lazy';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
-import AuthAside, { AuthMobileBrand } from '../AuthAside'
+import { AuthMobileBrand } from '../AuthMobileBrand'
 import PasswordEye from '../PasswordEye'
 import GoogleButton, { useEmailFirst } from '../GoogleButton'
 import { countSignupStep } from '@/lib/analytics/signupFunnel'
 import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
 import { checkPassword, PASSWORD_MIN_HINT, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
-import PasswordStrength from '@/components/PasswordStrength'
 import { hy } from '@/components/Hyphen'
 import { SAY, failed } from '@/lib/core/dbError';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
-import { signupCta } from '@/lib/billing/trialOffer';
 // Καθαρή λογική, χωρίς React/Supabase: ασφαλής σε 'use client'.
 import { planFromParam, cycleFromParam, planAtLeast, TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { continuation, carried } from '@/lib/auth/continuation';
 import { secondStepPending } from '@/lib/auth/mfa';
 import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
-import { isReferralCode } from '@/lib/referral/referral';
+import { isReferralCode } from '@/lib/referral/code';
 import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
-import { usePlanTerms, useTrialBadge } from './PlanTerms'
+import { usePlanTerms, useTrialBadge, useSignupCta } from './PlanTerms'
 
 // Η έκδοση των Όρων που δέχεται ο χρήστης. Ήταν καρφωτή εδώ ως «2026-07», ενώ
 // οι δύο σελίδες που υπογράφει γράφουν «Αύγουστος 2026»: η απόδειξη
@@ -85,6 +83,19 @@ async function land(supabase: Awaited<ReturnType<typeof authClient>>, query: str
   if (error || secondStepPending(levels)) { window.location.replace(`/login${carried(query)}`); return }
   window.location.replace(continuation(query))
 }
+
+// ═══ Ο ΜΕΤΡΗΤΗΣ ΙΣΧΥΟΣ ΚΑΤΕΒΑΙΝΕΙ ΜΕΤΑ ΤΗΝ ΕΝΥΔΑΤΩΣΗ, ΟΧΙ ΠΡΙΝ ═══════════════
+// Φαίνεται μόνο αφού γραφτεί ή αγγιχτεί ο κωδικός, άρα δεν έχει θέση στο JS που
+// κρατά την πρώτη απόδοση (μετρημένο 07.10.2026: ~0,9 KB gzip από το αρχικό
+// φορτίο της εγγραφής). Ζητείται αμέσως μετά την προσάρτηση, οπότε όταν
+// πληκτρολογηθεί ο πρώτος χαρακτήρας είναι ήδη εδώ και αποδίδεται ΣΥΓΧΡΟΝΑ,
+// όπως πριν: κρατιέται σε κατάσταση και όχι πίσω από `lazy`/`Suspense`, που
+// θα τον έβγαζε ένα καρέ αργότερα και θα μετακινούσε τη φόρμα κάτω από το
+// δάχτυλο. Η επαναφορά κωδικού και οι Ρυθμίσεις το εισάγουν όπως πριν.
+// Αν δεν κατέβει (δίκτυο), ο μετρητής απλώς λείπει: η υποβολή κρίνει τον
+// κωδικό μόνη της (`checkPassword`) και ο έλεγχος διαρροής αποτυγχάνει
+// ανοιχτά, όπως όταν πέφτει το δίκτυο.
+type Strength = (props: Parameters<typeof import('@/components/PasswordStrength').default>[0]) => ReactNode
 
 /** Ως πότε ένας λογαριασμός της Google μετρά ως «μόλις δημιουργήθηκε». */
 const FRESH_MS = 15 * 60 * 1000
@@ -176,6 +187,7 @@ export default function SignupPage() {
   // ακριβή— χανόταν στη μετάβαση: ο χρήστης κατέληγε στο ταμείο με μηνιαία
   // χρέωση, δηλαδή σε ΑΛΛΟ ποσό από εκείνο που πάτησε.
   const chosenCycle = cycleFromParam(new URLSearchParams(query).get('cycle'))
+  const cta = useSignupCta(chosenPlan)
   const [sessionEmail, setSessionEmail] = useState<string | null>(null)
   /** Ηρθε από τη σύνδεση με Google και δεν έχει δεχτεί ποτέ τους Ορους. */
   const [needsConsent, setNeedsConsent] = useState<string | null>(null)
@@ -202,8 +214,10 @@ export default function SignupPage() {
     : m
   // Η ΚΟΡΥΦΗ ΤΟΥ ΧΩΝΙΟΥ, ανώνυμα (lib/analytics/signupFunnel.ts). Οι επιστροφές
   // από την Google (`oauth=…`) δεν είναι νέα επίσκεψη και δεν μετρώνται.
+  const [PasswordStrength, setPasswordStrength] = useState<Strength | null>(null)
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has('oauth')) countSignupStep('view')
+    import('@/components/PasswordStrength').then(m => setPasswordStrength(() => m.default), () => {})
   }, [])
   useEffect(() => {
     // Ασύγχρονο ξετύλιγμα: το effect δεν επιστρέφει ποτέ υπόσχεση.
@@ -527,31 +541,10 @@ export default function SignupPage() {
     : ''
 
   return (
-    // ΜΙΑ ΕΥΘΕΙΑ ΓΙΑ ΤΙΣ ΔΥΟ ΣΤΗΛΕΣ (01.10.2026, `auth-top` στο globals.css).
-    // Κεντραρισμένες κάθετα, η φόρμα της εγγραφής (ψηλότερη από της σύνδεσης)
-    // ξεκινούσε στα 150 και το σώμα του πάνελ στα 265. Στη σύνδεση, με φόρμα
-    // κοντή, έπεφταν και οι δύο στα 247 κατά τύχη. Εδώ ξεκινούν από την ίδια
-    // ευθεία, επίτηδες.
-    <div data-mode="dark" className="auth-split auth-top" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
-
-      <a href="#main" className="skip-link">Μετάβαση στη φόρμα</a>
-
-      {/* LEFT, κοινό marketing panel (AuthAside) */}
-      {/* «Λογαριασμός» ήταν και ο χρήστης και το χαρτί της ΔΕΗ, στην ίδια
-          πρόταση. Εδώ μένει μόνο το χαρτί.
-          ΟΧΙ «ΕΝΑ ΑΚΙΝΗΤΟ» (27.09.2026). Το «Ένα ακίνητο, για αρχή.» απέκλειε
-          όποιον έχει δύο και περισσότερα, δηλαδή τους πελάτες των πακέτων με
-          πολλά ακίνητα. Και σε μία γραμμή, όπως ζήτησε ο ιδιοκτήτης. */}
-      <AuthAside
-        headline="Τα ακίνητά σου,"
-        accent="σε τάξη."
-        oneLine
-        sub="Πρόσθεσε τα ακίνητά σου και φωτογράφισε τον πρώτο λογαριασμό ρεύματος ή νερού. Τα υπόλοιπα συμπληρώνονται στην πορεία."
-      />
-
-      {/* RIGHT, form */}
-      {/* ── ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΕΙΝΑΙ <main> ΚΑΙ ΛΕΓΕΤΑΙ ─────────────────────────
-          Μετρημένο: καμία περιοχή στο προσβάσιμο δέντρο, ούτε ένα <main>. */}
+    // Το περίγραμμα των δύο στηλών και το πάνελ αριστερά αποδίδονται στον
+    // διακομιστή, στο layout.tsx: εδώ ζει μόνο ό,τι έχει κατάσταση.
+    // ── ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΕΙΝΑΙ <main> ΚΑΙ ΛΕΓΕΤΑΙ ─────────────────────────
+    // Μετρημένο: καμία περιοχή στο προσβάσιμο δέντρο, ούτε ένα <main>.
       <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'var(--auth-top) 40px 48px' }}>
         <div className="auth-form">
           <AuthMobileBrand />
@@ -822,7 +815,7 @@ export default function SignupPage() {
                       χρήστης αναγνώστη οθόνης εστίαζε το άδειο πεδίο και δεν
                       άκουγε ΚΑΝΕΝΑΝ κανόνα κωδικού. Μετρημένο με
                       Accessibility.getPartialAXTree: description=undefined. */}
-                  {(password || pwTouched) && <PasswordStrength password={password} id="su-pw-req" onLeaked={setLeakedPw} />}
+                  {(password || pwTouched) && PasswordStrength && <PasswordStrength password={password} id="su-pw-req" onLeaked={setLeakedPw} />}
                 </div>
 
                 {error && (
@@ -924,9 +917,9 @@ export default function SignupPage() {
                 {/* ΤΟ ΛΕΚΤΙΚΟ ΑΚΟΛΟΥΘΕΙ ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΗΡΘΕ ΑΠΟ ΤΗΝ ΚΑΡΤΑ. Ηταν σταθερό
                     «Ξεκίνα τη δοκιμή», οπότε όποιος πάτησε «Ξεκίνα δωρεάν» στην
                     αρχική διάβαζε εδώ ότι ξεκινά δοκιμή. Ο ίδιος κανόνας με την
-                    κάρτα που πάτησε (lib/billing/trialOffer.ts). */}
+                    κάρτα που πάτησε (lib/billing/trialOffer.ts), έτοιμος από το layout. */}
                 <Btn variant="primary" type="submit" field describedBy={why ? 'su-cta-why' : undefined}>
-                  {loading ? 'Δημιουργία…' : signupCta(chosenPlan)}
+                  {loading ? 'Δημιουργία…' : cta}
                 </Btn>
               </form>
               {emailFirst && <>
@@ -937,6 +930,5 @@ export default function SignupPage() {
           )}
         </div>
       </main>
-    </div>
   )
 }

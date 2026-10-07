@@ -536,6 +536,32 @@ ok('μηδέν έτη → νεόδμητο (κανονική περίπτωση)
   ok('…όσο χωρίς καμία χειροκίνητη μείωση', inAttica.annual === estimateENFIA({ ...base, reductions: [] })!.annual)
 }
 
+// ── ΚΑΙ ΤΑ ΕΙΣΟΔΗΜΑΤΙΚΑ ΟΡΙΑ ΚΑΙ ΤΑ ΤΕΤΡΑΓΩΝΙΚΑ ΤΗΣ ΣΗΜΕΙΩΣΗΣ ΕΧΟΥΝ ΠΕΔΙΟ ──────
+// Ο ίδιος δομικός κανόνας με το `maxHomeValue`: όποια σημείωση λέει εισοδηματικό
+// όριο ή όριο τετραγωνικών οφείλει να έχει δίπλα της το πεδίο με τον ίδιο
+// αριθμό. Και οι αριθμοί του νόμου (άρθρο 7 παρ. 1-2 ν.4223/2013, άρθρο 17
+// ν.5219/2025) γράφονται εδώ με τα δικά τους λόγια, όχι με κλήση στη μηχανή.
+{
+  const INCOME = /εισόδημα ≤([\d.]+)€ \(\+([\d.]+)€\/μέλος\)/
+  const SQM = /κτίσματα ≤(\d+) τ\.μ\./
+  const num = (s: string) => Number(s.replace(/\./g, ''))
+  for (const rd of ENFIA_REDUCTIONS) {
+    const m = INCOME.exec(rd.note)
+    if (m) ok(`η «${rd.key}» έχει πεδίο για το εισοδηματικό όριο της σημείωσης`,
+      rd.incomeLimit?.base === num(m[1]) && rd.incomeLimit?.perMember === num(m[2]))
+    const q = SQM.exec(rd.note)
+    if (q) ok(`η «${rd.key}» έχει πεδίο για τα τετραγωνικά της σημείωσης`, rd.maxBuildingSqm === Number(q[1]))
+  }
+  const low = ENFIA_REDUCTIONS.find(r => r.key === 'low_income')!
+  const large = ENFIA_REDUCTIONS.find(r => r.key === 'large_family')!
+  ok('50%: εισόδημα έως 9.000€ + 1.000€ ανά μέλος', low.incomeLimit?.base === 9000 && low.incomeLimit?.perMember === 1000)
+  ok('100%: εισόδημα έως 12.000€ + 1.000€ ανά μέλος', large.incomeLimit?.base === 12000 && large.incomeLimit?.perMember === 1000)
+  ok('και οι δύο: κτίσματα έως 150 τ.μ.', low.maxBuildingSqm === 150 && large.maxBuildingSqm === 150)
+  // Η ΣΗΜΕΙΩΣΗ ΕΜΕΙΝΕ ΛΕΞΗ ΠΡΟΣ ΛΕΞΗ ΙΔΙΑ όταν οι αριθμοί έγιναν πεδία.
+  ok('σημείωση χαμηλού εισοδήματος αμετάβλητη', low.note === 'Μείωση 50% με κριτήρια: εισόδημα ≤9.000€ (+1.000€/μέλος), κτίσματα ≤150 τ.μ., περιουσία ≤85.000€ (άγαμος) / 200.000€ (έγγαμος με 2 τέκνα)')
+  ok('σημείωση τριτέκνων/πολυτέκνων αμετάβλητη', large.note === '100% απαλλαγή με κριτήρια: εισόδημα ≤12.000€ (+1.000€/μέλος), κτίσματα ≤150 τ.μ.')
+}
+
 console.log(`enfia.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed > 0) { process.exit(1) }
 console.log('όλα πέρασαν')

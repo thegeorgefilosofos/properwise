@@ -258,5 +258,42 @@ eq('υπέρ του χρήστη', costVariance(200, 143), -57);
   ok("σβήστηκε το «πρώτη εργασία με 'ενφια'»", !/rows\.find\(.*'ενφια'/.test(tab))
 }
 
+// ── Η δόση που ξανάνοιξε ο χρήστης δεν ξανακλείνει μόνη της (07.10.2026) ──────
+// Αναπαραγωγή: πληρωμένος λογαριασμός Οκτωβρίου (paid_at 01/10 10:00), η δόση
+// Οκτωβρίου κλείνει αυτόματα, ο χρήστης την ξε-τσεκάρει στις 02/10. Πριν, η
+// επόμενη φόρτωση την ξανάκλεινε, γιατί τίποτα δεν θυμόταν το ξανα-άνοιγμα.
+{
+  const task = { id: 'oct', description: 'ΕΝΦΙΑ 2026 — 8η δόση', status: 'pending', due_date: '2026-10-30', ref: 'tax:enfia-instalment-2026-8' }
+  const bill = { paid: true, due_date: '2026-10-30', paid_at: '2026-10-01T10:00:00.000Z', created_at: '2026-09-20T08:00:00.000Z' }
+  eq('χωρίς ξανα-άνοιγμα, ο πληρωμένος την κλείνει', enfiaTasksPaidByBills([task], [bill]), ['oct'])
+  eq('ξανανοιγμένη ΜΕΤΑ την πληρωμή → μένει ανοιχτή',
+    enfiaTasksPaidByBills([{ ...task, reopened_at: '2026-10-02T09:00:00.000Z' }], [bill]), [])
+  eq('νέα πληρωμή ΜΕΤΑ το ξανα-άνοιγμα → κλείνει ξανά',
+    enfiaTasksPaidByBills([{ ...task, reopened_at: '2026-10-02T09:00:00.000Z' }],
+      [bill, { ...bill, paid_at: '2026-10-03T12:00:00.000Z' }]), ['oct'])
+  eq('ξανανοιγμένη ΠΡΙΝ την πληρωμή → κλείνει (η πληρωμή είναι νεότερη)',
+    enfiaTasksPaidByBills([{ ...task, reopened_at: '2026-09-25T09:00:00.000Z' }], [bill]), ['oct'])
+  eq('λογαριασμός χωρίς paid_at κρίνεται από την καταχώρησή του',
+    enfiaTasksPaidByBills([{ ...task, reopened_at: '2026-09-25T09:00:00.000Z' }], [{ ...bill, paid_at: null, created_at: '2026-09-26T09:00:00.000Z' }]), ['oct'])
+  eq('λογαριασμός χωρίς καμία ώρα δεν υπερισχύει του ξανα-ανοίγματος',
+    enfiaTasksPaidByBills([{ ...task, reopened_at: '2026-10-02T09:00:00.000Z' }], [{ ...bill, paid_at: null, created_at: null }]), [])
+  // Άλλη δόση, που δεν την άγγιξε ο χρήστης, κλείνει κανονικά δίπλα στην ξανανοιγμένη.
+  const sep = { ...task, id: 'sep', due_date: '2026-09-30', ref: 'tax:enfia-instalment-2026-7' }
+  eq('το ξανα-άνοιγμα μιας δόσης δεν κρατά ανοιχτή άλλη',
+    enfiaTasksPaidByBills([{ ...task, reopened_at: '2026-10-02T09:00:00.000Z' }, sep],
+      [bill, { ...bill, due_date: '2026-09-30' }]), ['sep'])
+
+  // Η καρτέλα γράφει το ίχνος και το διαβάζει.
+  const tab = readFileSync('app/dashboard/components/TabChecklist.tsx', 'utf8')
+  ok('το ξε-τσεκάρισμα περνά την προηγούμενη κατάσταση', /checklist\.setStatus\(supabase, item\.id, newStatus, before\)/.test(tab))
+  ok('η φόρμα γράφει την κατάσταση από το statusFields', /checklist\.statusFields\(form\.status, editItem\?\.status\)/.test(tab))
+  ok('το ταίριασμα παίρνει reopened_at', /reopened_at,\s*\}\)\), enfiaBills\)/.test(tab))
+  ok('ο λογαριασμός ζητείται με την ώρα πληρωμής', /'id,paid,due_date,paid_at,created_at'/.test(tab))
+  const mig = readdirSync('supabase/migrations').filter(f => f.endsWith('.sql'))
+    .map(f => readFileSync(`supabase/migrations/${f}`, 'utf8')).join('\n')
+  ok('η στήλη υπάρχει στη βάση, με if not exists',
+    /alter table public\.checklist_items\s+add column if not exists reopened_at timestamptz/.test(mig))
+}
+
 console.log(`obligationTasks.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed > 0) process.exit(1)

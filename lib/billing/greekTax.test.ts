@@ -7,6 +7,7 @@ import {
   bracketRows, BUSINESS_INCOME_ROWS_2026, BUSINESS_INCOME_BRACKETS_2026, taxRateLabel,
   selfEmployedMinNetIncome, SELF_EMPLOYED_MIN_NET_INCOME, LAST_KNOWN_MIN_INCOME_YEAR,
   climateLevyForNights, isHighSeasonMonth, shortTermNet, CLIMATE_LEVY_FROM_2025,
+  DEPOSIT_INTEREST_WITHHOLDING_RATE,
 } from './greekTax';
 
 let passed = 0, failed = 0;
@@ -157,6 +158,14 @@ ok('levy rates', CLIMATE_LEVY_FROM_2025.small.high === 8 && CLIMATE_LEVY_FROM_20
 {
   const r = shortTermNet({ nightsByMonth: Array(12).fill(0), nightlyRate: 0, platformFeePct: 0, cleaningPerStay: 0, avgNightsPerStay: 0 });
   ok('st zero net', r.net === 0 && r.stays === 0 && r.levy === 0);
+}
+
+// ── ΤΟΚΟΙ ΚΑΤΑΘΕΣΕΩΝ: 15% ΣΤΗΝ ΠΗΓΗ ────────────────────────────────────────
+// ΚΦΕ άρθρο 64 παρ. 1 περ. β΄ (άρθρο 25 ν.5193/2025): 15% στους τόκους· το 5%
+// αφορά μόνο εισηγμένα εταιρικά ομόλογα, όχι καταθέσεις.
+{
+  ok('παρακράτηση στους τόκους καταθέσεων 15%', DEPOSIT_INTEREST_WITHHOLDING_RATE === 0.15);
+  ok('2% μεικτό γίνεται 1,70% καθαρό', fp(0.02 * (1 - DEPOSIT_INTEREST_WITHHOLDING_RATE) * 100) === '1,70%');
 }
 
 // ── report ───────────────────────────────────────────────────────────────────

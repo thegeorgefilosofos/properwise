@@ -59,7 +59,7 @@ import OccupancyPanel from './OccupancyPanel'
 import PolicyNotice from './PolicyNotice'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
 import { type IncomeRent } from '@/lib/income/propertyIncome'
-import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, propertyStatus, hostingReceipts, HOSTING_LABELS, YIELD_LABELS, YIELD_INLINE_LABELS, enfiaYear, closedTaxRefs } from '@/lib/facts'
+import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, yieldIncome, propertyStatus, hostingReceipts, hostingParts, hostingPartsShort, HOSTING_LABELS, YIELD_LABELS, YIELD_INLINE_LABELS, yieldCosts, yieldPlatformFees, netPreTaxLabel, PLATFORM_FEE_LABELS, enfiaYear, closedTaxRefs } from '@/lib/facts'
 import { useEnfiaSettings } from './useEnfia'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 import { useLoad, type LoadTurn } from '@/app/hooks/useLoad'
@@ -398,13 +398,18 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // ΤΑ ΕΣΟΔΑ ΑΠΟ ΤΟ lib/facts. Χωρίς μίσθωση δεν υπάρχει εκτίμηση από ξεχασμένο
   // μίσθωμα· με μίσθωση η βάση είναι το συμφωνημένο μίσθωμα × 12 και ο ετήσιος
   // ρυθμός των διαμονών λέγεται «εκτίμηση», γιατί είναι προβολή.
+  // ΤΟ ΕΣΟΔΟ ΤΗΣ ΑΠΟΔΟΣΗΣ ΕΙΝΑΙ ΕΝΑ ΚΑΙ ΤΟ ΙΔΙΟ ΜΕ ΤΙΣ ΑΠΟΔΟΣΕΙΣ (07.10.2026,
+  // lib/facts/income: `yieldIncome`). Με μίσθωση, το μίσθωμα × 12 («αναμενόμενα
+  // με βάση τη μίσθωση»)· οι δόσεις ως σήμερα είναι το ταμείο, δίπλα. Πριν, οι
+  // Αποδόσεις έβγαζαν την απόδοση από τις δόσεις σε ετήσιο ρυθμό.
   const fi = rentIncome({ status: propertyStatus(prop), rents: yearRents, stays: hostStays, year, today: todayAthens,
     value: propValue, estimateMonthly: tenant?.monthly_rent });
+  const yi = yieldIncome(fi);
   const inc = { source: fi.source, receivedToDate: fi.received, estimated: fi.estimated };
-  const incomeRecorded = fi.source === 'stays' || fi.source === 'rent';
-  const fromLease = fi.source === 'rent' && fi.expected > 0;
-  const incomeMonthly = incomeRecorded ? (fromLease ? fi.expected : fi.annualized) / 12 : rent;
-  const incomeIsEstimate = incomeRecorded ? (fi.estimated || (fi.projected && !fromLease)) : rentIsTarget;
+  const incomeRecorded = yi.basis !== 'none';
+  const fromLease = yi.basis === 'lease';
+  const incomeMonthly = incomeRecorded ? yi.annual / 12 : rent;
+  const incomeIsEstimate = incomeRecorded ? yi.estimated : rentIsTarget;
   // Δάνεια: εκτιμώμενη μηνιαία δόση και δείκτης δανείου προς αξία (η Επισκόπηση «ξέρει» πλέον τα δάνεια).
   // ΜΙΑ ΓΡΑΦΗ ΓΙΑ ΤΗ ΔΟΣΗ: η ίδια συνάρτηση με τον Προϋπολογισμό, με το ίδιο
   // φίλτρο ενεργών. Εδώ αθροιζόταν `annuityMonthly` σε ΟΛΑ τα δάνεια· το
@@ -441,12 +446,22 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // στηριζόταν σε αυτό. Τώρα η χρονιά είναι ό,τι έχει καταχωρηθεί γι' αυτήν:
   // πληρωμένες ως σήμερα + προγραμματισμένες έως 31/12 (lib/facts/expenses.ts).
   const projectedExpYear = yExp.total;
+  // ── Η ΠΡΟΜΗΘΕΙΑ ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ, ΜΙΑ ΦΟΡΑ (07.10.2026) ─────────────────────
+  // Το `platform_fee` κάθε διαμονής δεν έμπαινε πουθενά εδώ: η καθαρή απόδοση και
+  // το «Καθαρό αποτέλεσμα» έβγαιναν σαν η πλατφόρμα να μην κράτησε τίποτα, ενώ οι
+  // Αποδόσεις αφαιρούσαν προμήθεια. Ο κανόνας ζει στο lib/facts/platformFees: οι
+  // μήνες με δική σου δαπάνη προμήθειας μετρούν από τη δαπάνη (είναι ήδη στις
+  // «Δαπάνες έτους»), οι υπόλοιποι από τις διαμονές, στον ρυθμό του εσόδου. Το
+  // πλακίδιο των δαπανών μένει ίδιο με τις άλλες οθόνες· η προμήθεια φαίνεται
+  // χωριστά. Το δηλωτέο και ο φόρος μένουν στο ακαθάριστο.
+  const stayFees = yieldPlatformFees(fi, hostStays, { year, today: todayAthens, expenses: yExp.entries });
+  const costs = yieldCosts({ recorded: yExp.total, recordedCategories: yExp.entries.map(e => e.category), stayFees: stayFees.annual });
   // ── ΤΑ ΔΥΟ «ΚΑΘΑΡΑ» ΜΕ ΤΗΝ ΙΔΙΑ ΒΑΣΗ ΔΑΠΑΝΩΝ ───────────────────────────
   // Η καθαρή απόδοση αφαιρούσε από το ετήσιο ενοίκιο τις δαπάνες ΩΣ ΣΗΜΕΡΑ,
   // ενώ το «Καθαρό αποτέλεσμα» ακριβώς από πάνω τις δαπάνες ΟΛΟΥ του έτους:
   // «καθαρή 3,00%» αντιστοιχούσε σε 5.550€, όχι στα 4.490€ του πλακιδίου.
   // Τώρα και τα δύο πατούν στην ίδια προβολή έτους· η απόδοση μένει προ φόρου.
-  const { annualRent, grossYield, netYield } = computeYields(incomeMonthly, propValue, projectedExpYear);
+  const { annualRent, grossYield, netYield } = computeYields(incomeMonthly, propValue, costs.total);
 
   // ΜΕΣΟΣ ΟΡΟΣ ΑΝΑ ΤΥΠΟ ΛΟΓΑΡΙΑΣΜΟΥ, ΥΠΟΛΟΓΙΣΜΕΝΟΣ. Η κάρτα λεγόταν «Μέσοι
   // λογαριασμοί» και έδειχνε το ποσό του τελευταίου. Ο μέσος όρος βγαίνει από
@@ -520,7 +535,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // το πλακίδιο «Καθαρό αποτέλεσμα»: σε ακίνητο με έσοδα το καθαρό, αλλιώς οι
   // δαπάνες της χρονιάς.
   const heroIsNet = isLet(prop);
-  const heroValue = heroIsNet ? annualRent - projectedExpYear - estTax : projectedExpYear;
+  const heroValue = heroIsNet ? annualRent - costs.total - estTax : projectedExpYear;
   const taxNote = consolidationSummary(portfolioTax, fmtEur);
   // Εισπράττεται το ενοίκιο ΑΥΤΟΥ του ακινήτου μέσω τράπεζας; Κρίνει το κείμενο
   // δίπλα στον φόρο, όπως ο ίδιος έλεγχος κρίνει και το ποσό.
@@ -906,7 +921,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           δείχνουν έτσι. */}
       <SecHdr label={`Η χρονιά ${year}`} sub="Πού καταλήγει με ό,τι ξέρουμε σήμερα" />
       {(() => {
-        const net = annualRent - projectedExpYear - estTax;   // μόνο για το σκέλος με έσοδα
+        const net = annualRent - costs.total - estTax;   // μόνο για το σκέλος με έσοδα
         // ΜΙΑ ΖΩΝΗ ΑΡΙΘΜΩΝ, ΟΧΙ ΔΥΟ. Πιο πάνω υπήρχε δεύτερο πλέγμα «Η εικόνα
         // σήμερα» με «Μηνιαίο ενοίκιο», «Δαπάνες ως σήμερα» και τις δύο
         // αποδόσεις. Το «Μηνιαίο ενοίκιο × 12» ΕΙΝΑΙ τα ακαθάριστα έσοδα και οι
@@ -919,12 +934,16 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         // άλλα δύο να λένε «δεν ξέρω» ντυμένα σαν μέτρηση. Μένει ό,τι ισχύει.
         const income = isLet(prop);
         const items: KPIItem[] = income ? [
+          // ΑΠΟΔΟΣΗ ΑΠΟ ΤΗ ΜΙΣΘΩΣΗ, ΤΑΜΕΙΟ ΑΠΟ ΤΙΣ ΔΟΣΕΙΣ. Το ποσό του πλακιδίου
+          // είναι το έσοδο της απόδοσης (`yieldIncome`), το ίδιο με την καρτέλα
+          // των αποδόσεων· τα εισπραγμένα γράφονται από κάτω μόνο όταν
+          // καταγράφηκαν, όχι η εκτίμηση «μίσθωμα × μήνες».
           incomeRecorded ? {
-            label: `${inc.source === 'stays' ? 'Έσοδα φιλοξενίας' : 'Έσοδα από ενοίκια'}${incomeIsEstimate ? `, ${INCOME_LABELS.estimate}` : ''}`, value:fmtEur(annualRent),
-            sub: `${fmtEur(inc.receivedToDate)} ${INCOME_LABELS.received}`,
+            label: `${yi.basis === 'stays' ? 'Έσοδα φιλοξενίας' : 'Έσοδα από ενοίκια'}${incomeIsEstimate ? `, ${INCOME_LABELS.estimate}` : ''}`, value:fmtEur(annualRent),
+            sub: yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}` : `${fmtEur(rent)} τον μήνα`,
             title: fromLease
-              ? `Το μηνιαίο μίσθωμα × 12 (${INCOME_LABELS.expected}). ${fmtEur(inc.receivedToDate)} ${INCOME_LABELS.received}. Ίδιος υπολογισμός με το Χαρτοφυλάκιο.`
-              : `Όσα εισπράχθηκαν το ${year} ως σήμερα (${fmtEur(inc.receivedToDate)}), σε ετήσιο ρυθμό: ${INCOME_LABELS.estimate}, όχι είσπραξη. ${inc.source === 'stays' ? 'Δηλωτέο ακαθάριστο των διαμονών με άφιξη ως σήμερα.' : 'Πληρωμένες δόσεις με ημερομηνία ως σήμερα.'} Ίδιος υπολογισμός με το Χαρτοφυλάκιο.` }
+              ? `Το μηνιαίο μίσθωμα × 12 (${INCOME_LABELS.expected}). ${yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}.` : 'Δεν έχει καταγραφεί δόση ακόμη.'} Ίδια βάση με το ${navLabel('portfolio')} και τις ${navLabel('roi')}.`
+              : `Όσα εισπράχθηκαν το ${year} ως σήμερα (${fmtEur(inc.receivedToDate)}), σε ετήσιο ρυθμό: ${INCOME_LABELS.estimate}, όχι είσπραξη. ${yi.basis === 'stays' ? 'Δηλωτέο ακαθάριστο των διαμονών με άφιξη ως σήμερα.' : 'Πληρωμένες δόσεις με ημερομηνία ως σήμερα.'} Ίδια βάση με το ${navLabel('portfolio')} και τις ${navLabel('roi')}.` }
           : { label: rentIsTarget ? 'Έσοδα από ενοίκια, εκτίμηση' : 'Έσοδα από ενοίκια', value:fmtEur(annualRent),
             sub: rentIsTarget ? `στόχος ${fmtEur(rent)} τον μήνα, χωρίς ενοικιαστή` : `${fmtEur(rent)} τον μήνα`,
             title: rentIsTarget
@@ -957,8 +976,14 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           // ΧΩΡΙΣ ΧΡΩΜΑΤΙΚΗ ΕΤΥΜΗΓΟΡΙΑ. Το πρόσημο το λέει ήδη το ίδιο το ποσό·
           // το πράσινο/κόκκινο απλώς το ξαναέλεγε και σε μια χρονιά με ΕΝΦΙΑ
           // έβαφε κόκκινο ένα ακίνητο που δουλεύει κανονικά.
+          // Η ΠΡΟΜΗΘΕΙΑ ΤΩΝ ΔΙΑΜΟΝΩΝ ΛΕΓΕΤΑΙ ΜΕ ΤΟ ΟΝΟΜΑ ΤΗΣ. Δεν είναι στις «Δαπάνες
+          // έτους» (εκείνες είναι ίδιες σε κάθε οθόνη), οπότε το αποτέλεσμα τη
+          // γράφει από κάτω ώστε η αφαίρεση να φαίνεται.
           { label:'Καθαρό αποτέλεσμα', value:fmtEur(net),
-            title:'Ακαθάριστα έσοδα μείον δαπάνες μείον το μερίδιο φόρου. Δεν περιλαμβάνει δόσεις δανείου.' },
+            sub: costs.stayFees > 0 ? `μετά από ${fmtEur(costs.stayFees)} ${PLATFORM_FEE_LABELS.short}` : undefined,
+            title: costs.stayFees > 0
+              ? `Ακαθάριστα έσοδα μείον δαπάνες μείον ${fmtEur(costs.stayFees)} ${PLATFORM_FEE_LABELS.fromStays} μείον το μερίδιο φόρου. ${PLATFORM_FEE_LABELS.note}${stayFees.ownMonths > 0 ? ` ${PLATFORM_FEE_LABELS.ownMonths}` : ''} Δεν περιλαμβάνει δόσεις δανείου.`
+              : 'Ακαθάριστα έσοδα μείον δαπάνες μείον το μερίδιο φόρου. Δεν περιλαμβάνει δόσεις δανείου.' },
         ] : [
           { label:EXPENSE_LABELS.total, value:fmtEur(yExp.total),
             sub: expensePartsShort(yExp, fmtEur),
@@ -993,9 +1018,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         // έσοδα» και εννοεί το δηλωτέο· εδώ είναι το ταμείο, άρα εισπράξεις. Μία
         // λέξη, καμία επιπλέον γραμμή και η αμφισημία φεύγει.
         if (hostStays.length > 0) extra.push({
+          // ΣΤΟ ΜΙΣΟ ΠΛΑΤΟΣ, ΤΟ ΣΥΝΤΟΜΟ. «δηλωτέο … · … διανυκτερεύσεις · επόμενη
+          // άφιξη …» έσπαγε σε τέσσερις γραμμές στα 390. Το πλακίδιο κρατά ποσό και
+          // νύχτες (`hostingPartsShort`)· οι πλήρεις λέξεις και η επόμενη άφιξη
+          // μένουν στην εξήγηση, όπως στις «Δαπάνες έτους».
           label:`Εισπράξεις φιλοξενίας ${year}`, value:fmtEur(hostingYTD),
-          sub: [`δηλωτέο ${fmtEur(hosting.declarable)}`, hostingNights>0?`${hostingNights} διανυκτερεύσεις`:null, nextArrival?`επόμενη άφιξη ${fd(nextArrival)}`:null].filter(Boolean).join(' · '),
-          title:`${HOSTING_LABELS.payout}: ${fmtEur(hosting.payout)}, από την καρτέλα «${navLabel('clients')}». ${HOSTING_LABELS.declarable}: ${fmtEur(hosting.declarable)}, μεγαλύτερο γιατί περιλαμβάνει την προμήθεια της πλατφόρμας· το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».` });
+          sub: hostingPartsShort(hosting, fmtEur),
+          title:`${HOSTING_LABELS.payout}: ${fmtEur(hosting.payout)}, από την καρτέλα «${navLabel('clients')}». ${hostingParts({ declarable: hosting.declarable, nights: hostingNights }, nextArrival, fmtEur, fd)}. Το δηλωτέο είναι μεγαλύτερο γιατί περιλαμβάνει την προμήθεια της πλατφόρμας· το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».` });
         // ΟΙ «ΕΚΚΡΕΜΕΙΣ ΔΑΠΑΝΕΣ» ΕΦΥΓΑΝ ΑΠΟ ΕΔΩ. Είναι ακριβώς το «Χρωστάω» του
         // Ταμείου, στην κορυφή της ίδιας οθόνης — το ίδιο ποσό δύο φορές, με
         // διαφορετικό όνομα και σε απόσταση ενός scroll.
@@ -1019,7 +1048,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                       έπεφτε μόνο του στη δεύτερη γραμμή, χωρισμένο από το «αξία». */}
                   <span style={{whiteSpace:'nowrap'}} title={`${YIELD_LABELS.gross}: ετήσιο ενοίκιο ως ποσοστό της αξίας του ακινήτου, πριν από τις δαπάνες`}>{YIELD_INLINE_LABELS.gross} {fp(grossYield)}</span>
                   {' · '}
-                  <span style={{whiteSpace:'nowrap'}} title={`${YIELD_LABELS.net_pre_tax}: ετήσιο ενοίκιο μείον τις δαπάνες του έτους που έχεις καταγράψει, ως ποσοστό της αξίας`}>{YIELD_INLINE_LABELS.net_pre_tax} {fp(netYield)}</span>
+                  <span style={{whiteSpace:'nowrap'}} title={costs.stayFees > 0
+                    ? `${netPreTaxLabel(costs)}: ετήσιο έσοδο μείον τις δαπάνες του έτους που έχεις καταγράψει και ${fmtEur(costs.stayFees)} ${PLATFORM_FEE_LABELS.fromStays}, ως ποσοστό της αξίας. ${PLATFORM_FEE_LABELS.note}`
+                    : `${netPreTaxLabel(costs)}: ετήσιο έσοδο μείον τις δαπάνες του έτους που έχεις καταγράψει, ως ποσοστό της αξίας`}>{YIELD_INLINE_LABELS.net_pre_tax} {fp(netYield)}</span>
                   {' · '}
                   <span style={{whiteSpace:'nowrap'}}>αξία {fmtEur(propValue)}</span>
                 </div>

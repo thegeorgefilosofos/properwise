@@ -16,6 +16,7 @@ import { declarableGross, hostPayout, type StayAmountLike } from '@/lib/clients/
 import { stayTotal } from '@/lib/clients/clients';
 import { nightsSplit, type TaxStay } from '@/lib/tax/shortTermTax';
 import { roundHalfUp } from '@/lib/core/money';
+import { HOSTING_LABELS, HOSTING_SHORT_LABELS } from './labels';
 
 export interface HostingReceipts {
   /** Μπήκαν στον λογαριασμό. */
@@ -58,4 +59,30 @@ export function hostingReceipts(stays: readonly StayAmountLike[], year: number, 
     payout: roundHalfUp(payout, 2), declarable: roundHalfUp(declarable, 2),
     nights, stays: count, unresolved,
   };
+}
+
+/**
+ * Τα μέρη του πλακιδίου «Εισπράξεις φιλοξενίας» ως κείμενο, με τις ίδιες λέξεις
+ * σε κάθε οθόνη. Τα ποσά και τις ημερομηνίες τα μορφοποιεί ο καλών.
+ */
+export function hostingParts(
+  h: Pick<HostingReceipts, 'declarable' | 'nights'>, nextArrival: string | null,
+  fmt: (n: number) => string, fmtDate: (d: string) => string,
+): string {
+  return [
+    `${HOSTING_LABELS.declarable}: ${fmt(h.declarable)}`,
+    h.nights > 0 ? `${h.nights} ${HOSTING_LABELS.nights}` : null,
+    nextArrival ? `${HOSTING_LABELS.next} ${fmtDate(nextArrival)}` : null,
+  ].filter(Boolean).join(' · ');
+}
+
+/**
+ * Τα ίδια σε μισό πλακίδιο: πρώτα το ποσό, μετά η σύντομη λέξη, χωρίς την
+ * επόμενη άφιξη. Το ίδιο μοτίβο με το `expensePartsShort` των δαπανών.
+ */
+export function hostingPartsShort(h: Pick<HostingReceipts, 'declarable' | 'nights'>, fmt: (n: number) => string): string {
+  return [
+    `${fmt(h.declarable)} ${HOSTING_SHORT_LABELS.declarable}`,
+    h.nights > 0 ? `${h.nights} ${HOSTING_SHORT_LABELS.nights}` : null,
+  ].filter(Boolean).join(' · ');
 }

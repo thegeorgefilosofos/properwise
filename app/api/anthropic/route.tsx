@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: scan
           ? 'Η σάρωση δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.'
-          : `${ASSISTANT_NAME} δεν απαντά αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.` },
+          : `Η ${ASSISTANT_NAME} δεν απαντά αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.` },
       { status: 503 },
     );
   }

@@ -260,7 +260,7 @@ export interface ShortTermStat {
 // καλούσε τον αναγνώστη να ελέγξει, ενώ οι οδηγοί και το updates2026.ts το έγραφαν
 // ως νόμο. Η πηγή βρέθηκε: `THESS_STR_FREEZE`, στην αρχή του αρχείου. Η σημαία `redZone` αφορά
 // ΜΟΝΟ την Α΄ Δημοτική Κοινότητα· το προφίλ `thess` το δανείζονται και άλλες πόλεις
-// (ST_ALIAS στο TabRentROI.tsx), οπότε όποιος τη διαβάσει κρίνει με το ακριβές κλειδί.
+// (ST_ALIAS στο app/dashboard/components/roi/model.ts), οπότε όποιος τη διαβάσει κρίνει με το ακριβές κλειδί.
 export const SHORT_TERM: ShortTermStat[] = [
   { key: 'ath_center', label: 'Κέντρο Αθήνας', occupancy: 58, adr: 76, annualRevenue: 16000, grossYield: 8, longTermYield: 5.0, redZone: true, note: 'Στο 1ο, 2ο και 3ο δημοτικό διαμέρισμα της Αθήνας δεν δίνεται νέος ΑΜΑ ως 31/12/2026. Έλεγξε σε ποιο ανήκει το ακίνητό σου.' },
   { key: 'ath_riviera', label: 'Αθηναϊκή Ριβιέρα', occupancy: 55, adr: 70, annualRevenue: 14000, grossYield: 6, longTermYield: 3.8, note: 'Εκτός κόκκινης ζώνης· επιτρέπονται νέα μητρώα ακινήτων· βασικός διαφοροποιητής έναντι του κέντρου.' },

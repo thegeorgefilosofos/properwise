@@ -24,7 +24,7 @@
 // Χωρίς εκτιμήσεις, κάθε οθόνη βγάζει τον ίδιο αριθμό από τα ίδια στοιχεία.
 // ═══════════════════════════════════════════════════════════════════════════
 import { resolveCategory } from '@/lib/expenses/taxonomy';
-import { YIELD_LABELS, YIELD_SHORT_LABELS } from './labels';
+import { YIELD_LABELS, YIELD_SHORT_LABELS, PLATFORM_FEE_LABELS } from './labels';
 
 export interface YieldInput {
   /** Ετήσια έσοδα (ενοίκια ή ακαθάριστο φιλοξενίας). */
@@ -85,17 +85,25 @@ export interface YieldCostsInput {
   recordedCategories?: Iterable<string | null | undefined>;
   /** Εκτιμήσεις του μοντέλου, ανά είδος. Όσες έχουν καταγραφεί δεν μετρούν. */
   modelled?: Partial<Record<ModelledCostKind, number>>;
+  /**
+   * Προμήθειες πλατφόρμας γραμμένες στις διαμονές, χωρίς τους μήνες που είναι
+   * ήδη δαπάνη (lib/facts/platformFees: `yieldPlatformFees(...).annual`).
+   * Καταγραφή, όχι εκτίμηση: όταν υπάρχουν, η εκτίμηση προμήθειας δεν μπαίνει.
+   */
+  stayFees?: number;
 }
 
 export interface YieldCosts {
-  /** recorded + modelled: ό,τι αφαιρείται στην καθαρή απόδοση. */
+  /** recorded + stayFees + modelled: ό,τι αφαιρείται στην καθαρή απόδοση. */
   total: number;
   recorded: number;
+  /** Οι προμήθειες των διαμονών που μπήκαν (καταγραφή, όχι εκτίμηση). */
+  stayFees: number;
   /** Το άθροισμα των εκτιμήσεων που μπήκαν. */
   modelled: number;
   /** Τα είδη που μπήκαν ως εκτίμηση (με ποσό > 0). */
   modelledKinds: ModelledCostKind[];
-  /** Τα είδη που ΔΕΝ μπήκαν επειδή υπάρχουν ήδη στις δαπάνες. */
+  /** Τα είδη που ΔΕΝ μπήκαν ως εκτίμηση επειδή υπάρχουν ήδη στις δαπάνες ή στις διαμονές. */
   recordedKinds: ModelledCostKind[];
   /** «recorded»: μόνο καταγραφές· «estimated»: με εκτίμηση από πάνω. */
   basis: 'recorded' | 'estimated';
@@ -107,11 +115,15 @@ export interface YieldCosts {
  */
 export function yieldCosts(i: YieldCostsInput): YieldCosts {
   const recorded = pos(i.recorded);
+  const stayFees = pos(i.stayFees);
   const have = new Set<string>();
   for (const c of i.recordedCategories ?? []) {
     const slug = resolveCategory(c);
     if (slug) have.add(slug);
   }
+  // Η προμήθεια της διαμονής είναι καταγραφή: με αυτήν, το ποσοστό του
+  // μοντέλου δεν μπαίνει από πάνω (lib/facts/platformFees.ts).
+  if (stayFees > 0) have.add('platform_fee');
   let modelled = 0;
   const modelledKinds: ModelledCostKind[] = [];
   const recordedKinds: ModelledCostKind[] = [];
@@ -123,7 +135,7 @@ export function yieldCosts(i: YieldCostsInput): YieldCosts {
     modelledKinds.push(k);
   }
   return {
-    total: recorded + modelled, recorded, modelled, modelledKinds, recordedKinds,
+    total: recorded + stayFees + modelled, recorded, stayFees, modelled, modelledKinds, recordedKinds,
     basis: modelled > 0 ? 'estimated' : 'recorded',
   };
 }
@@ -132,4 +144,17 @@ export function yieldCosts(i: YieldCostsInput): YieldCosts {
 export function netPreTaxLabel(c: Pick<YieldCosts, 'basis'>, short = false): string {
   if (c.basis === 'estimated') return short ? YIELD_SHORT_LABELS.net_pre_tax_estimated : YIELD_LABELS.net_pre_tax_estimated;
   return short ? YIELD_SHORT_LABELS.net_pre_tax : YIELD_LABELS.net_pre_tax;
+}
+
+/**
+ * Τι αφαιρέθηκε στην καθαρή, με λέξεις: «μετά από 3.980,00€ έξοδα και 1.140,00€
+ * προμήθειες πλατφόρμας». Κάθε μέρος του `yieldCosts` με το όνομά του, ώστε η
+ * προμήθεια των διαμονών και η εκτίμηση να μη χάνονται μέσα στα «έξοδα».
+ */
+export function yieldCostParts(c: Pick<YieldCosts, 'recorded' | 'stayFees' | 'modelled'>, fmt: (n: number) => string): string {
+  const parts = [`${fmt(c.recorded)} έξοδα`];
+  if (c.stayFees > 0) parts.push(`${fmt(c.stayFees)} ${PLATFORM_FEE_LABELS.short}`);
+  if (c.modelled > 0) parts.push(`${fmt(c.modelled)} εκτίμηση κόστους`);
+  const last = parts.pop() as string;
+  return `μετά από ${parts.length ? `${parts.join(', ')} και ${last}` : last}`;
 }

@@ -409,6 +409,7 @@ export interface ChecklistItemsRow {
   depends_on: string | null;
   calendar_event_id: string | null;
   expense_id: string | null;
+  reopened_at: string | null;
 }
 
 export interface ClientDocumentsRow {

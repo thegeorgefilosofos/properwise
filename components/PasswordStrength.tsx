@@ -15,7 +15,13 @@
 
 import { useEffect, useState } from 'react'
 import { checkPassword, PASSWORD_MSG } from '@/lib/auth/password'
-import { checkLeakedPassword, leakMessage, type LeakCheck } from '@/lib/auth/leakedPassword'
+// ΜΟΝΟ ΤΥΠΟΣ ΣΤΗΝ ΚΟΡΥΦΗ. Ο ίδιος ο έλεγχος (SHA-1, αίτημα k-anonymity,
+// ανάλυση απάντησης) φορτώνεται μέσα στο effect, την πρώτη φορά που ο κωδικός
+// πληροί την πολιτική: ως τότε δεν χρειάζεται. Στατική εισαγωγή σήμαινε 0,6 KB
+// gzip στο αρχικό JS της εγγραφής για κώδικα που τρέχει μόνο μετά από δέκα
+// χαρακτήρες (μετρημένο 07.10.2026). Αν η φόρτωση αποτύχει, ισχύει ό,τι και
+// όταν πέφτει το δίκτυο: ο έλεγχος αποτυγχάνει ανοιχτά.
+import type { LeakCheck } from '@/lib/auth/leakedPassword'
 
 /**
  * Η ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΗΤΑΝ ΜΟΝΟ ΣΥΜΒΟΥΛΕΥΤΙΚΗ ΚΑΙ ΑΥΤΟ ΑΚΥΡΩΝΕ ΤΟΝ ΣΚΟΠΟ ΤΗΣ.
@@ -59,7 +65,7 @@ export default function PasswordStrength({ password, id, onLeaked }: {
   // χρήστης πληκτρολογεί τον επόμενο — του λέει ότι ο ΝΕΟΣ διέρρευσε, που είναι
   // ψέμα. Με τη σύγκριση `for === password` η προειδοποίηση σβήνει μόνη της με
   // την πρώτη αλλαγή, χωρίς δεύτερη κατάσταση και χωρίς μηδενισμό μέσα σε effect.
-  const [leak, setLeak] = useState<{ for: string; result: LeakCheck | null } | null>(null)
+  const [leak, setLeak] = useState<{ for: string; message: string | null } | null>(null)
 
   // ΓΙΑΤΙ ΚΑΘΥΣΤΕΡΗΣΗ ΚΑΙ ΑΚΥΡΩΣΗ. Χωρίς αυτές, κάθε πλήκτρο θα έστελνε αίτημα:
   // δεκαοκτώ κλήσεις για έναν κωδικό και οι απαντήσεις θα έφταναν ανακατεμένες
@@ -70,21 +76,23 @@ export default function PasswordStrength({ password, id, onLeaked }: {
     if (!pw.ok) return
     const ctl = new AbortController()
     const t = setTimeout(() => {
-      checkLeakedPassword(password, ctl.signal)
-        .then(result => {
+      import('@/lib/auth/leakedPassword')
+        .then(async ({ checkLeakedPassword, leakMessage }) => {
+          const result: LeakCheck | null = await checkLeakedPassword(password, ctl.signal)
           if (ctl.signal.aborted) return
-          setLeak({ for: password, result })
+          setLeak({ for: password, message: leakMessage(result) })
           // Η ειδοποίηση φεύγει από ΕΔΩ, μέσα στην ασύγχρονη απάντηση και όχι
           // από effect που παρακολουθεί το αποτέλεσμα: το δεύτερο θα ήταν
           // setState μέσα σε effect, ακριβώς το μοτίβο που ο linter μετρά ήδη
           // εξήντα δύο φορές σε αυτό το έργο και δεν επιτρέπεται να μεγαλώσει.
           onLeaked?.(result?.leaked ? password : null)
         })
+        .catch(() => {})
     }, 450)
     return () => { clearTimeout(t); ctl.abort() }
   }, [password, pw.ok, onLeaked])
 
-  const leaked = leak?.for === password ? leakMessage(leak.result) : null
+  const leaked = leak?.for === password ? leak.message : null
   const barColor = pw.score <= 2 ? 'var(--negative)'
     : pw.score <= 4 ? 'var(--warning, #d0a000)'
     : 'var(--positive, var(--accent))'
