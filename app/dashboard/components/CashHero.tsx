@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΤΑΜΕΙΟ — η πρώτη ματιά στην αρχική οθόνη του ακινήτου.
 // ─────────────────────────────────────────────────────────────────────────
-// Δύο αριθμοί, ίδιο μέγεθος, δίπλα-δίπλα: «μου χρωστάνε» και «χρωστάω». Είναι ο
+// Δύο αριθμοί, ίδιο μέγεθος, δίπλα-δίπλα: «σου οφείλουν» και «οφείλεις». Είναι ο
 // λόγος που ο ιδιοκτήτης ανοίγει την εφαρμογή και μέχρι τώρα δεν υπήρχε πουθενά
 // — η οθόνη άνοιγε με «Μεικτή απόδοση 4,2%», νούμερο που δεν αλλάζει και δεν
 // ζητά τίποτα.
@@ -23,16 +23,14 @@
 import type { ReactNode } from 'react';
 import { T, fe, Btn } from '@/components/Theme';
 import { cashSideNote, type CashPosition, type CashSide } from '@/lib/home/cash';
+import { navLabel } from '@/lib/nav/labels';
 
-function Side({ label, side, kind, onOpen, actionLabel, action, compact, stacked }: {
+function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
   label: string; side: CashSide; kind: 'in' | 'out';
   onOpen: () => void; actionLabel: string;
   /**
-   * ΗΣΥΧΗ ΜΟΡΦΗ: ΕΤΙΚΕΤΑ ΚΑΙ ΛΕΞΕΙΣ, ΧΩΡΙΣ ΤΟΝ ΜΕΓΑΛΟ ΑΡΙΘΜΟ.
-   *
-   * Οταν δεν τρέχει τίποτα, ο αριθμός είναι μηδέν και το μηδέν δεν αξίζει τα
-   * σαράντα εικονοστοιχεία ύψους που παίρνει ένα ποσό. Το ίδιο κουμπί, ο ίδιος
-   * δρόμος προς την καρτέλα, μία σειρά.
+   * ΗΣΥΧΗ ΜΟΡΦΗ: ΕΤΙΚΕΤΑ ΚΑΙ ΛΕΞΕΙΣ ΣΕ ΜΙΑ ΣΕΙΡΑ. Μόνο όταν ΟΛΟ το ταμείο είναι
+   * ήσυχο (βλ. `quiet` πιο κάτω): τότε η κάρτα είναι μία γραμμή.
    */
   compact?: boolean;
   /**
@@ -42,12 +40,15 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact, stacked
    * δική του επιφάνεια, η ενέργεια παίρνει τη δική της από κάτω.
    */
   action?: ReactNode;
-  /** Σε δική του σειρά, σε όλο το πλάτος, ακόμη και σε φαρδιά οθόνη. */
-  stacked?: boolean;
 }) {
   const note = cashSideNote(side, kind);
+  // ΤΟ ΜΗΔΕΝ ΛΕΓΕΤΑΙ ΜΕ ΛΕΞΕΙΣ, ΣΤΗ ΘΕΣΗ ΤΟΥ ΠΟΣΟΥ. Ενα «0,00€» στα σαράντα
+  // εικονοστοιχεία, δίπλα στο ποσό της άλλης πλευράς, διεκδικεί την ίδια
+  // προσοχή για την απουσία είδησης. Η πλευρά κρατά την ίδια δομή με την
+  // απέναντι (ετικέτα από πάνω, απάντηση από κάτω)· απλώς η απάντηση είναι φράση.
+  const empty = side.count === 0;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: stacked ? '1 1 100%' : '1 1 220px', minWidth: 0 }}>
+    <div className="cash-side">
     <button
       type="button"
       onClick={onOpen}
@@ -78,7 +79,7 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact, stacked
           το στρογγυλεμένο ποσό τυπωνόταν σαν να ήταν ακριβές: 97,45€ γινόταν
           «97,00€», ενώ η γραμμή ακριβώς από κάτω έλεγε «84,55€ ληξιπρόθεσμα».
           Δύο ασυμβίβαστα νούμερα, στο ΠΡΩΤΟ πράγμα που βλέπει ο ιδιοκτήτης. */}
-      {!compact && (
+      {!compact && !empty && (
         <span className="cash-figure" style={{
           fontFamily: T.font.num, fontWeight: 700, color: 'var(--text-primary)',
           fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.05,
@@ -86,7 +87,8 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact, stacked
         }}>{fe(side.total)}</span>
       )}
       <span style={{
-        fontFamily: T.font.sans, fontSize: compact ? 13 : 12, color: 'var(--text-secondary)', lineHeight: 1.45,
+        fontFamily: T.font.sans, fontSize: compact || empty ? 'var(--fs-md)' : 12,
+        color: 'var(--text-secondary)', lineHeight: 1.45,
       }}>{note}</span>
     </button>
     {action && <div style={{ padding: '0 20px 18px' }}>{action}</div>}
@@ -97,10 +99,10 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact, stacked
 export default function CashHero({ cash, showIncome, onNavigate, onRecordRent }: {
   cash: CashPosition;
   /**
-   * Εκμισθώνεται το ακίνητο; ΣΕ ΚΕΝΟ Ή ΙΔΙΟΧΡΗΣΙΑ ΔΕΝ ΥΠΑΡΧΕΙ «ΜΟΥ ΧΡΩΣΤΑΝΕ».
+   * Εκμισθώνεται το ακίνητο; ΣΕ ΚΕΝΟ Ή ΙΔΙΟΧΡΗΣΙΑ ΔΕΝ ΥΠΑΡΧΕΙ «ΣΟΥ ΟΦΕΙΛΟΥΝ».
    * Το «0€ · τίποτα σε καθυστέρηση» δεν είναι πληροφορία εκεί: είναι μια
    * ερώτηση που δεν τίθεται, να καταλαμβάνει τη μισή κορυφή της οθόνης. Όταν
-   * λείπει, το «Χρωστάω» παίρνει όλο το πλάτος — που είναι και η αλήθεια:
+   * λείπει, το «Οφείλεις» παίρνει όλο το πλάτος — που είναι και η αλήθεια:
    * ένα ακίνητο χωρίς έσοδο έχει μόνο κόστη.
    */
   showIncome: boolean;
@@ -130,33 +132,41 @@ export default function CashHero({ cash, showIncome, onNavigate, onRecordRent }:
     return (
       <div className="card cash-hero" style={{ padding: 0, marginBottom: 20 }}>
         <Side compact label="Ταμείο" side={cash.owedByMe} kind="out"
-              actionLabel="Άνοιγμα στις Δαπάνες" onOpen={() => onNavigate('finances')} />
+              actionLabel={`Άνοιγμα στις ${navLabel('finances')}`} onOpen={() => onNavigate('finances')} />
       </div>
     );
   }
 
-  // Ο ΙΔΙΟΣ ΚΑΝΟΝΑΣ, ΑΝΑ ΠΛΕΥΡΑ. Η ήσυχη μορφή ίσχυε μόνο όταν ΚΑΙ οι δύο
-  // πλευρές ήταν μηδέν· με κίνηση μόνο στο «Χρωστάω», το «Μου χρωστάνε» έγραφε
-  // «0,00€» στα σαράντα εικονοστοιχεία. Η πλευρά χωρίς κίνηση γίνεται μία σειρά
-  // και τότε οι δύο στοιβάζονται σε κάθε πλάτος: δίπλα δίπλα, η ήσυχη σειρά θα
-  // άφηνε μισή κάρτα άδεια απέναντι από το ποσό.
-  const oneQuiet = showIncome && (cash.owedToMe.count === 0) !== (cash.owedByMe.count === 0);
+  // ═══ ΔΥΟ ΠΛΕΥΡΕΣ, ΙΔΙΑ ΔΟΜΗ, ΚΑΜΙΑ ΚΕΦΑΛΙΔΑ ═════════════════════════════
+  //
+  // ΤΙ ΔΙΑΒΑΖΟΤΑΝ ΛΑΘΟΣ. Οταν κινούνταν μόνο η μία πλευρά, η άλλη γινόταν μία
+  // σειρά («ΜΟΥ ΟΦΕΙΛΟΥΝ · Τίποτα σε καθυστέρηση») και καθόταν ΠΑΝΩ από το
+  // «ΟΦΕΙΛΩ 342,00€». Η σειρά διαβαζόταν ως κεφαλίδα της κάρτας και η κάρτα ως
+  // μία πρόταση που αντιφάσκει: «μου οφείλουν, τίποτα, οφείλω 342».
+  //
+  // ΤΩΡΑ οι δύο πλευρές έχουν πάντα την ίδια δομή (ετικέτα από πάνω, απάντηση
+  // από κάτω) και την ίδια θέση: δίπλα δίπλα όταν η κάρτα έχει πλάτος, η μία
+  // κάτω από την άλλη με διαχωριστή όταν δεν έχει. Ο κανόνας ζει στην
+  // `.cash-sides` του globals.css και μετρά το πλάτος της ΚΑΡΤΑΣ, όχι της
+  // οθόνης.
+  //
+  // ΚΑΙ ΜΙΛΑΝΕ ΣΤΟ «ΕΣΥ», όπως όλη η εφαρμογή. Ηταν «Μου οφείλουν» και
+  // «Οφείλω»: η μόνη ετικέτα της οθόνης σε πρώτο πρόσωπο, δίπλα σε κουμπιά που
+  // λένε «Σάρωσε» και «Πρόσθεσε».
   return (
     <div className="card cash-hero" style={{ padding: 0, marginBottom: 20 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch' }}>
+      <div className="cash-sides" data-pair={showIncome ? '' : undefined}>
         {showIncome && (
           <>
-            <Side label="Μου οφείλουν" side={cash.owedToMe} kind="in" compact={cash.owedToMe.count === 0} stacked={oneQuiet}
-                  actionLabel="Άνοιγμα στους Ενοικιαστές" onOpen={() => onNavigate('tenant')}
+            <Side label="Σου οφείλουν" side={cash.owedToMe} kind="in"
+                  actionLabel={`Άνοιγμα στους ${navLabel('tenant')}`} onOpen={() => onNavigate('tenant')}
                   action={onRecordRent && <Btn onClick={onRecordRent}>Μπήκε το ενοίκιο</Btn>} />
             {/* Ο διαχωριστής είναι η δήλωση ότι τα δύο ΔΕΝ αθροίζονται. */}
-            <div aria-hidden style={oneQuiet
-              ? { flex: '1 1 100%', height: 1, background: 'var(--border-subtle)', margin: '0 18px' }
-              : { width: 1, background: 'var(--border-subtle)', alignSelf: 'stretch', margin: '14px 0' }} />
+            <div aria-hidden className="cash-divider" />
           </>
         )}
-        <Side label="Οφείλω" side={cash.owedByMe} kind="out" compact={cash.owedByMe.count === 0} stacked={oneQuiet}
-              actionLabel="Άνοιγμα στις Δαπάνες" onOpen={() => onNavigate('finances')} />
+        <Side label="Οφείλεις" side={cash.owedByMe} kind="out"
+              actionLabel={`Άνοιγμα στις ${navLabel('finances')}`} onOpen={() => onNavigate('finances')} />
       </div>
     </div>
   );
