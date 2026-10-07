@@ -15,7 +15,15 @@
 // ΜΙΑ ΜΠΑΡΑ, ΣΤΗΝ ΙΔΙΑ ΘΕΣΗ ΣΕ ΚΑΘΕ ΚΑΡΤΑ. Είναι όλο το ενοίκιο της χρονιάς.
 // Σε κάθε σύρσιμο φωτίζεται το κομμάτι που φεύγει: φόρος, ΕΝΦΙΑ και έξοδα,
 // στο τέλος αυτό που μένει. Ο θεατής βλέπει το ενοίκιο να λιγοστεύει σαν
-// κίνηση, χωρίς βίντεο.
+// κίνηση, χωρίς βίντεο. Γι' αυτό η κεφαλή κάθε κάρτας έχει σταθερό ύψος
+// (HEAD) και η μπάρα πέφτει στο ίδιο ύψος στις κάρτες 1 ως 4· το ελέγχει το
+// main() και σταματά αν ξεφύγει έστω ένα pixel.
+//
+// ΧΩΡΙΣ «ΝΗΜΑ». Η πρώτη έκδοση τραβούσε μια γραμμή από την άκρη της μπάρας ως
+// την άκρη της εικόνας, για να δένουν οι κάρτες σε πανόραμα. Οι μπάρες όμως
+// έπεφταν σε άλλο ύψος σε κάθε κάρτα, οπότε το νήμα έσπαγε στο σύρσιμο και
+// στη μία κάρτα διαβαζόταν ως γραμμή που ξέφυγε. Τη δουλειά της συνέχειας την
+// κάνει πια η ίδια η μπάρα, στην ίδια θέση.
 //
 // ΚΑΝΕΝΑ ΝΟΥΜΕΡΟ ΔΕΝ ΓΡΑΦΕΤΑΙ ΕΔΩ. Όλα από το ακίνητο επίδειξης, μέσα από την
 // incomeStatement και την κλίμακα της χρονιάς του. Η τεκμαρτή έκπτωση από το
@@ -40,6 +48,12 @@ const { chromePath } = require('../lib/chrome.mjs');
 
 const OUT = join(process.cwd(), 'docs/marketing/instagram/carousel-1');
 const W = 1080, H = 1350, N = 5;
+// Το ύψος της κεφαλής (τίτλος ή μεγάλος αριθμός) πάνω από τη μπάρα.
+const HEAD = 520;
+
+// Ο αριθμός-τίτλος με το € μικρότερο, κολλητό. Στα 160px και πάνω το ολόσωμο
+// € πατούσε το τελευταίο ψηφίο και το ποσό διαβαζόταν σαν λογότυπο.
+const big = (v: string) => esc(v).replace(/€$/, '<span class="cur">€</span>');
 
 
 // ── Η μπάρα του ενοικίου ──────────────────────────────────────────────────
@@ -57,8 +71,8 @@ function chart(lit: Lit, capL: string, capR: string, capColor = C.muted): string
   </div>`;
 }
 
-function frame(n: number, label: string, stage: string, css: string, opts: { swipe?: boolean; lineIn?: boolean; lineOut?: boolean } = {}): string {
-  const { swipe = true, lineIn = n > 1, lineOut = n < N } = opts;
+function frame(n: number, label: string, stage: string, css: string, opts: { swipe?: boolean } = {}): string {
+  const { swipe = true } = opts;
   return `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${FACES}${MONO_FACES}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{width:${W}px;height:${H}px;overflow:hidden}
@@ -69,22 +83,21 @@ function frame(n: number, label: string, stage: string, css: string, opts: { swi
     radial-gradient(900px 700px at ${n % 2 ? '0% 100%' : '100% 100%'}, #3d5fa02a, transparent 72%),
     linear-gradient(180deg, #0a1120 0%, ${C.ground} 62%)}
   .grain{position:absolute;inset:0;background-image:${GRAIN};opacity:.05;mix-blend-mode:overlay}
-  /* ΤΟ ΝΗΜΑ: περνά από την άκρη της κάρτας στην επόμενη, στο ύψος της μπάρας.
-     Σε σύρσιμο οι πέντε κάρτες διαβάζονται ως ένα πανόραμα. */
-  .thread{position:absolute;top:var(--ty,0);height:2px;left:${lineIn ? 0 : 92}px;right:${lineOut ? 0 : 92}px;
-    background:linear-gradient(90deg, ${lineIn ? `${C.accent}55` : 'transparent'}, ${C.rule} 12%, ${C.rule} 88%, ${lineOut ? `${C.accent}55` : 'transparent'})}
   .wrap{position:absolute;inset:0;padding:88px 92px 0;display:flex;flex-direction:column}
   .top{display:flex;align-items:center;justify-content:space-between;font-family:'Roboto Mono',monospace;font-size:21px;letter-spacing:.12em}
   .eyebrow{display:flex;align-items:center;gap:18px;color:${C.muted};font-weight:500}
   .eyebrow i{display:block;width:44px;height:3px;border-radius:3px;background:${C.accent}}
   .count{color:${C.faint}}
-  h1{font-weight:800;letter-spacing:-.042em;line-height:.98;text-wrap:balance;margin-top:76px}
+  .head{height:${HEAD}px;flex:none;display:flex;flex-direction:column}
+  h1{font-weight:800;letter-spacing:-.036em;line-height:1;text-wrap:balance;margin-top:76px}
+  .cur{font-size:.72em;letter-spacing:0;margin-left:.04em}
   .acc{color:${C.accent}}
   .sub{color:${C.muted};font-size:32px;line-height:1.42;letter-spacing:-.008em;text-wrap:pretty;margin-top:30px;max-width:870px}
   .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
   .mono{font-family:'Roboto Mono',monospace;letter-spacing:.1em}
-  .chart{margin-top:64px}
-  .cap{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
+  .chart{margin-top:0}
+  .cap{display:flex;justify-content:space-between;align-items:baseline;height:40px;margin-bottom:14px;overflow:hidden}
+  .cap > *{line-height:40px}
   .cap span{font-family:'Roboto Mono',monospace;font-size:20px;letter-spacing:.1em;color:${C.faint};text-transform:uppercase}
   .cap b{font-size:30px;font-weight:700}
   .track{position:relative}
@@ -92,7 +105,7 @@ function frame(n: number, label: string, stage: string, css: string, opts: { swi
     box-shadow:0 30px 80px -40px #000}
   .seg{display:flex;align-items:center;justify-content:center;border-radius:7px;font-style:normal}
   .seg em{font-style:normal;font-family:'Roboto Mono',monospace;font-size:21px;font-weight:700;color:${C.onAccent};letter-spacing:.02em}
-  .scale{position:relative;height:30px;margin-top:12px;font-family:'Roboto Mono',monospace;font-size:17px;color:${C.faint}88}
+  .scale{position:relative;height:30px;margin-top:12px;font-family:'Roboto Mono',monospace;font-size:17px;color:${C.faint}}
   .scale span{position:absolute;top:0;transform:translateX(-50%)}
   .scale span:first-child{transform:none}
   .scale span:last-child{transform:translateX(-100%)}
@@ -107,7 +120,7 @@ function frame(n: number, label: string, stage: string, css: string, opts: { swi
     background:${C.accent}14;border:1.5px solid ${C.accent}33}
   ${css}
   </style></head><body>
-  <div class="bg"></div><div class="grain"></div><div class="thread"></div>
+  <div class="bg"></div><div class="grain"></div>
   <div class="wrap">
     <div class="top"><div class="eyebrow"><i></i>${esc(label)}</div><div class="count">${String(n).padStart(2, '0')} / ${String(N).padStart(2, '0')}</div></div>
     ${stage}
@@ -124,27 +137,31 @@ function frame(n: number, label: string, stage: string, css: string, opts: { swi
 // και η απόσταση ανάμεσά τους. Η ερώτηση έρχεται στο τέλος, ως λόγος να σύρει.
 function k1(): string {
   return frame(1, `ΠΑΡΑΔΕΙΓΜΑ · ${UP(PROP_SPOKEN)}`, `
-    <div class="pair">
-      <div><div class="mono pk">ΕΣΟΔΑ · ΕΝΟΙΚΙΑ ΤΗΣ ΧΡΟΝΙΑΣ</div><div class="pv num">${esc(eur(GROSS))}</div></div>
-      <div><div class="mono pk">ΚΑΘΑΡΑ · ΜΕΤΑ ΑΠΟ ΦΟΡΟΥΣ ΚΑΙ ΕΞΟΔΑ</div><div class="pv num acc">${esc(eur(NET))}</div></div>
-    </div>
+    <div class="head"><div class="pair">
+      <div><div class="mono pk">ΕΣΟΔΑ · ΕΝΟΙΚΙΑ ΤΗΣ ΧΡΟΝΙΑΣ</div><div class="pv num">${big(eur(GROSS))}</div></div>
+      <div><div class="mono pk">ΚΑΘΑΡΑ · ΜΕΤΑ ΑΠΟ ΦΟΡΟΥΣ ΚΑΙ ΕΞΟΔΑ</div><div class="pv num acc">${big(eur(NET))}</div></div>
+    </div></div>
     ${chart('keep', 'Το ενοίκιο της χρονιάς', `${P_NET}% ΚΑΘΑΡΑ`, C.accent)}
-    <p class="sub bridge">Πού πήγαν τα <b class="num">${esc(eur(LOST))}</b>;</p>`, `
-    .pair{display:flex;flex-direction:column;gap:48px;margin-top:112px}
+    <p class="sub bridge">Πού πήγαν τα <b class="num">${esc(eur(LOST))}</b>;</p>
+    <div class="rows tease">
+      ${PARTS.filter(x => x.k !== 'net').map(x => `<div class="row"><span><i class="dot" style="background:${x.c}"></i>${esc(x.label)}</span><em class="mono">${x.k === 'tax' ? '02' : '03'} →</em></div>`).join('')}
+    </div>`, `
+    .pair{display:flex;flex-direction:column;gap:34px;margin-top:70px}
     .pk{font-size:21px;color:${C.faint}}
-    .pv{font-size:172px;font-weight:850;letter-spacing:-.055em;line-height:.94;margin-top:12px}
+    .pv{font-size:150px;font-weight:850;letter-spacing:-.03em;line-height:.94;margin-top:14px}
     .pv.acc{text-shadow:0 30px 140px ${C.accent}59}
-    .chart{margin-top:76px}
     .cap b{font-family:'Roboto Mono',monospace;font-size:20px;letter-spacing:.1em;font-weight:500}
-    .bridge{margin-top:30px;font-size:38px;color:${C.ink}}
-    .bridge b{color:${SEG.tax};font-weight:750}`);
+    .bridge{margin-top:18px;font-size:40px;font-weight:650;letter-spacing:-.015em;color:${C.ink}}
+    .bridge b{color:${SEG.tax};font-weight:750}
+    .tease{margin-top:22px}
+    .tease .row em{font-style:normal;font-size:20px;color:${C.faint}}`);
 }
 
 // ═══ 2. Ο ΦΟΡΟΣ ═════════════════════════════════════════════════════════
 function k2(): string {
   return frame(2, 'Ο ΦΟΡΟΣ', `
-    <h1 style="font-size:96px">Φόρος στα έσοδα,<br><span class="acc">όχι στα καθαρά.</span></h1>
-    <p class="sub">Για έξοδα η εφορία αφαιρεί ένα σταθερό ${esc(PRES)} του ενοικίου, όσα κι αν ξόδεψες. Στο υπόλοιπο ${esc(TAXED_SHARE)} πληρώνεις φόρο ${esc(RATE)}.</p>
+    <div class="head"><h1 style="font-size:96px">Φόρος στα έσοδα,<br><span class="acc">όχι στα καθαρά.</span></h1>
+    <p class="sub">Για έξοδα η εφορία αφαιρεί ένα σταθερό ${esc(PRES)} του ενοικίου, όσα κι αν ξόδεψες. Στο υπόλοιπο ${esc(TAXED_SHARE)} πληρώνεις φόρο ${esc(RATE)}.</p></div>
     ${chart('tax', 'Φόρος εισοδήματος', `−${eur(TAX)}`, SEG.tax)}
     <div class="rows">
       <div class="row"><span>Έσοδα από ενοίκια</span><b class="num">${esc(eur(GROSS))}</b></div>
@@ -153,7 +170,6 @@ function k2(): string {
       <div class="row hi"><span><i class="dot" style="background:${SEG.tax}"></i>Φόρος εισοδήματος ${esc(RATE)}</span><b class="num" style="color:${SEG.tax}">−${esc(eur(TAX))}</b></div>
     </div>
     <div class="mono note">ΜΑΚΡΟΧΡΟΝΙΑ ΜΙΣΘΩΣΗ · ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ</div>`, `
-    .chart{margin-top:52px}
     .rows .row{padding:15px 0}
     .note{margin-top:30px;font-size:18px;color:${C.faint}}`);
 }
@@ -163,8 +179,8 @@ function k3(): string {
   const row = (label: string, v: number, color: string) =>
     `<div class="row"><span><i class="dot" style="background:${color}"></i>${esc(label)}</span><b class="num">−${esc(eur(v))}</b></div>`;
   return frame(3, 'ΤΑ ΕΞΟΔΑ', `
-    <h1 style="font-size:88px">Τα έξοδα δεν<br><span class="acc">μειώνουν τον φόρο.</span></h1>
-    <p class="sub">Επισκευές, ασφάλιση, ΕΝΦΙΑ: όσα κι αν πληρώσεις στην πράξη, ο φόρος μένει ίδιος.</p>
+    <div class="head"><h1 style="font-size:90px">Τα έξοδα δεν<br><span class="acc">μειώνουν τον φόρο.</span></h1>
+    <p class="sub">Επισκευές, ασφάλιση, ΕΝΦΙΑ: όσα κι αν πληρώσεις στην πράξη, ο φόρος μένει ίδιος.</p></div>
     ${chart('costs', 'ΕΝΦΙΑ και έξοδα', `−${eur(ENFIA + OTHER)}`, SEG.other)}
     <div class="rows">
       ${row('ΕΝΦΙΑ', ENFIA, SEG.enfia)}
@@ -172,26 +188,27 @@ function k3(): string {
       ${REST.length ? row(`Άλλες ${REST.length} δαπάνες`, REST_SUM, SEG.other) : ''}
     </div>
     <div class="mono note">ΚΑΝΕΝΑ ΔΕΝ ΜΕΙΩΝΕΙ ΤΟ ΦΟΡΟΛΟΓΗΤΕΟ ΕΙΣΟΔΗΜΑ</div>`, `
-    .chart{margin-top:76px}
-    .rows .row{padding:17px 0}
+    .rows .row{padding:15px 0}
     .note{margin-top:30px;font-size:18px;color:${C.faint}}`);
 }
 
 // ═══ 4. ΤΟ ΑΠΟΤΕΛΕΣΜΑ ═══════════════════════════════════════════════════
 function k4(): string {
   return frame(4, 'ΤΟ ΑΠΟΤΕΛΕΣΜΑ', `
-    <div class="mono res-k">ΑΠΟ ΚΑΘΕ 100€ ΕΝΟΙΚΙΟΥ</div>
-    <div class="res-line"><span class="res num">${P_NET}€</span><span class="res-t">μένουν<br>στην τσέπη.</span></div>
+    <div class="head"><div class="mono res-k">ΑΠΟ ΚΑΘΕ 100€ ΕΝΟΙΚΙΟΥ</div>
+    <div class="res-line"><span class="res num">${big(`${P_NET}€`)}</span><span class="res-t">μένουν<br>στην τσέπη.</span></div>
+    <p class="sub">Τα άλλα ${100 - P_NET}€ πάνε σε φόρο, ΕΝΦΙΑ και έξοδα.</p></div>
     ${chart('result', 'Όλο το ενοίκιο', eur(GROSS))}
     <div class="rows ledger">
       ${PARTS.map(x => `<div class="row${x.k === 'net' ? ' hi' : ''}"><span><i class="dot" style="background:${x.c}"></i>${esc(x.label)}</span><em class="mono">${x.p}%</em><b class="num"${x.k === 'net' ? ` style="color:${C.accent}"` : ''}>${x.k === 'net' ? '' : '−'}${esc(eur(x.v))}</b></div>`).join('')}
     </div>
     <div class="mono note">ΠΑΡΑΔΕΙΓΜΑ · ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ · ΧΡΟΝΙΑ ${S.year}</div>`, `
-    .res-k{margin-top:92px;font-size:22px;color:${C.muted}}
-    .res-line{display:flex;align-items:flex-end;gap:34px;margin-top:10px}
-    .res{font-size:250px;font-weight:850;letter-spacing:-.06em;line-height:.9;color:${C.accent};text-shadow:0 30px 140px ${C.accent}59}
+    .res-k{margin-top:76px;font-size:22px;color:${C.muted}}
+    .res-line{display:flex;align-items:flex-end;gap:34px;margin-top:14px}
+    .res{font-size:250px;font-weight:850;letter-spacing:-.035em;line-height:.9;color:${C.accent};text-shadow:0 30px 140px ${C.accent}59}
+    .res .cur{margin-left:.07em}
     .res-t{font-size:46px;font-weight:700;letter-spacing:-.02em;line-height:1.1;padding-bottom:26px}
-    .ledger{margin-top:14px}
+    .ledger{margin-top:30px}
     .ledger .row{display:grid;grid-template-columns:1fr 110px 250px;padding:15px 0}
     .ledger .row em{font-style:normal;font-size:21px;color:${C.faint};text-align:right}
     .ledger .row b{text-align:right}
@@ -218,11 +235,11 @@ function k5(): string {
         ${tile('ΣΟΥ ΜΕΝΟΥΝ', eur(NET), C.accent, true)}
       </div>
       <div class="app-bar">${PARTS.map(x => `<i style="flex:${x.v};background:${x.c}"></i>`).join('')}</div>
-      <div class="feats">${feats.map(f => `<span>${esc(f)}</span>`).join('')}</div>
+      <div class="feats">${feats.map(f => `<span>${ico.check(C.accent, 20)}${esc(f)}</span>`).join('')}</div>
     </div>
     <div class="cta">
       <div class="pill">Δωρεάν ${esc(FREE_WORDS)}</div>
-      <div class="mono cta-r">PROPERWISE.GR · ΣΥΝΔΕΣΜΟΣ ΣΤΟ BIO</div>
+      <div class="cta-r"><b>properwise.gr</b><span class="mono">ΣΥΝΔΕΣΜΟΣ ΣΤΟ BIO</span></div>
     </div>`, `
     .app{margin-top:48px;border-radius:36px;padding:30px 32px 28px;background:linear-gradient(180deg, ${C.lift}f5, ${C.panel}f5);
       border:1.5px solid ${C.rule};box-shadow:0 1px 0 #ffffff0d inset, 0 60px 140px -50px #000}
@@ -237,12 +254,14 @@ function k5(): string {
     .tile.big{border-color:${C.accent}55;background:${C.accent}12}
     .app-bar{display:flex;gap:4px;height:18px;border-radius:9px;overflow:hidden;margin-top:22px}
     .app-bar i{display:block;border-radius:4px}
-    .feats{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
-    .feats span{font-size:21px;color:${C.muted};padding:9px 16px;border-radius:999px;border:1.5px solid ${C.rule}}
+    .feats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+    .feats span{display:flex;align-items:center;gap:10px;font-size:21px;color:${C.muted};padding:11px 16px;border-radius:14px;border:1.5px solid ${C.rule}}
     .cta{margin-top:40px;display:flex;align-items:center;gap:26px}
     .pill{padding:22px 34px;border-radius:999px;background:${C.accent};color:${C.onAccent};font-size:30px;font-weight:800;letter-spacing:-.01em;
       box-shadow:0 30px 80px -26px ${C.accent}}
-    .cta-r{font-size:18px;color:${C.faint};line-height:1.5}`, { swipe: false });
+    .cta-r{display:flex;flex-direction:column;gap:6px}
+    .cta-r b{font-size:26px;font-weight:700;color:${C.ink};letter-spacing:-.01em}
+    .cta-r span{font-size:17px;color:${C.faint}}`, { swipe: false });
 }
 
 const CARDS = [
@@ -282,19 +301,26 @@ async function main() {
   mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch({ executablePath: chromePath(), args: ['--no-sandbox'] });
   try {
+    const barTops = new Set<number>();
     for (const [i, c] of CARDS.entries()) {
       const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
       await page.setContent(c.build(), { waitUntil: 'load' });
       await page.evaluate(() => document.fonts.ready);
-      // Το νήμα στο κέντρο της μπάρας, όπου κι αν βρεθεί αυτή σε κάθε κάρτα.
-      // Μετριέται μετά τις γραμματοσειρές: πριν από αυτές οι γραμμές είναι
-      // κοντύτερες και η μπάρα κάθεται ψηλότερα από εκεί που θα φωτογραφηθεί.
-      await page.evaluate(() => {
-        const t = document.querySelector('.track, .app-bar');
-        if (!t) { document.querySelector('.thread')?.remove(); return; }
-        const r = t.getBoundingClientRect();
-        document.documentElement.style.setProperty('--ty', `${r.top + r.height / 2 - 1}px`);
+      // Η ΜΠΑΡΑ ΣΤΟ ΙΔΙΟ ΥΨΟΣ. Μετριέται μετά τις γραμματοσειρές· η κεφαλή
+      // δεν επιτρέπεται να κρύβει κείμενο πίσω από το σταθερό της ύψος.
+      const geo = await page.evaluate(() => {
+        const head = document.querySelector('.head') as HTMLElement | null;
+        const track = document.querySelector('.track');
+        return {
+          headOver: head ? head.scrollHeight - head.clientHeight : 0,
+          barTop: track ? Math.round(track.getBoundingClientRect().top) : null,
+        };
       });
+      if (geo.headOver > 0) throw new Error(`κάρτα ${i + 1}: η κεφαλή ξεπερνά τα ${HEAD}px κατά ${geo.headOver}px`);
+      if (geo.barTop != null) {
+        barTops.add(geo.barTop);
+        if (barTops.size > 1) throw new Error(`κάρτα ${i + 1}: η μπάρα πέφτει σε άλλο ύψος (${[...barTops].join(', ')})`);
+      }
       // Το πλέγμα του προφίλ κόβει τα πλάγια (3:4). Τίποτα κοντά στις άκρες,
       // τίποτα έξω από το κάδρο, καμία επικάλυψη κειμένου με τη μπάρα.
       const bad = await page.evaluate(() => {
