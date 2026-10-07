@@ -4,38 +4,48 @@
 // ΧΡΗΣΗ:  npx tsx scripts/marketing/reelKathara.ts   (FFMPEG με libx264)
 //         REEL_PREVIEW=1,5,9  → μόνο στιγμιότυπα του reel.
 //         STORIES_ONLY=1      → μόνο τα επτά stories.
+//         AUDIT_ONLY=1        → μόνο ο έλεγχος στοίχισης.
 //
 // Το carousel «Πού πήγαν τα …;» (carousel.ts) ως reel ενός λεπτού: το
 // αγκίστρι με τα δύο ποσά, ο φόρος στα έσοδα, τα έξοδα που δεν εκπίπτουν, ο
-// καταρράκτης, τα 100€ που κόβονται στα τέσσερα, η εφαρμογή, η ερώτηση. Και
-// επτά stories σχεδιασμένα ως αφίσες, όχι καρέ του βίντεο.
+// καταρράκτης, τα 100€ που κόβονται στα τέσσερα, η εφαρμογή και ο δημόσιος
+// υπολογιστής με τα δικά σου νούμερα. Και επτά stories σχεδιασμένα ως αφίσες.
 //
-// ΕΝΑ ΣΥΣΤΗΜΑ. Τίτλοι 84–104 με διάστιχο −0,03em, ήρωας-αριθμός 156, τιμές
-// 34–48, ετικέτες 26 (ποτέ μικρότερες, ποτέ αραιότερες από .12em). Κάνναβος
-// 8px, γωνίες 12 / 20 / 28. Είσοδοι με εκθετική έξοδο στο μισό δευτερόλεπτο·
-// ελατήριο μόνο σε ό,τι έχει βάρος, βαρύτητα μόνο σε ό,τι πέφτει. Ένα φως
-// (ο προβολέας του κιτ) και κόκκος· η σκόνη και οι λάμψεις του κιτ σβήνουν
-// εδώ με CSS, χωρίς να αλλάξει το κιτ για τα άλλα reels.
+// ΕΝΑ ΣΥΣΤΗΜΑ ΚΑΙ ΕΝΑΣ ΕΛΕΓΧΟΣ ΠΟΥ ΤΟ ΦΥΛΑΕΙ.
+//   · Μία αριστερή ακμή (90) και μία δεξιά: 934 στο reel, γιατί κάτω από το
+//     y 1100 το Instagram βάζει τα κουμπιά του δεξιά (ο έλεγχος του κιτ, που
+//     μετρά και μέσα στο ζουμ του περάσματος), 990 στα stories.
+//   · Κάθε σκηνή είναι μία στήλη σε ροή, κεντραρισμένη οπτικά ανάμεσα στην
+//     κεφαλίδα και την υποσημείωση: μάτι, τίτλος, 48 ως το περιεχόμενο. Ρυθμός
+//     8px, γωνίες 12 / 20 / 28, ίδια εσωτερική απόσταση σε κάθε κάρτα.
+//   · Τίτλοι 88 με διάστιχο −0,03em, τιμές 34–48, ετικέτες 26 (ποτέ
+//     μικρότερες, ποτέ αραιότερες από .12em).
+//   · Ο έλεγχος στοίχισης (audit) μετρά κάθε τελική σκηνή και κάθε story και
+//     σταματά αν μια ακμή ξεφύγει πάνω από 1px ή ένα επαναλαμβανόμενο κενό
+//     πάνω από 2px.
 //
 // ΤΑ ΧΡΩΜΑΤΑ ΕΙΝΑΙ ΤΟΥ CAROUSEL: ενοίκιο σχιστόλιθος, φόρος σομόν, ΕΝΦΙΑ
 // κεχριμπάρι, έξοδα λιλά, καθαρά το μπλε της μάρκας (rentFacts.SEG).
 //
 // ΚΑΝΕΝΑ ΝΟΥΜΕΡΟ ΜΕ ΤΟ ΧΕΡΙ. Όλα από το ακίνητο επίδειξης μέσα από την
-// incomeStatement (rentFacts.ts), ίδια με το carousel. Ότι τα έξοδα δεν
-// αλλάζουν τον φόρο δεν το λέμε απλώς: το ξαναϋπολογίζουμε χωρίς αυτά.
+// incomeStatement (rentFacts.ts). Ότι τα έξοδα δεν αλλάζουν τον φόρο το
+// ξαναϋπολογίζουμε· ότι ο υπολογιστής του site βγάζει το ίδιο αποτέλεσμα το
+// ρωτάμε την ίδια `propertyYield` που τρέχει η σελίδα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { join } from 'node:path';
-import { statSync, rmSync, readdirSync } from 'node:fs';
+import { statSync, rmSync, readdirSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { PLANS } from '../../lib/billing/plans';
 import { ASSISTANT_ACC } from '../../lib/assistant/identity';
 import { DEMO_PROPERTY } from '../../lib/demo/sample';
 import { incomeStatement } from '../../lib/accounting/statement';
-import { fe, feWhole, fpRate } from '../../lib/core/format';
+import { propertyYield } from '../../lib/tools/apodosi';
+import { athensParts } from '../../lib/core/time';
+import { fe, feWhole, fpRate, fn } from '../../lib/core/format';
 import { C, esc, mark, GRAIN } from './igKit';
-import { BASE_CSS } from './reelKit';
-import { BEAT, A, head, make, KIT_CSS, TAGLINE, type Explainer } from './explainerKit';
+import { BASE_CSS, mask } from './reelKit';
+import { BEAT, A, make, page, icon, KIT_CSS, type Explainer } from './explainerKit';
 import {
   S, GROSS, PRESUMPTIVE, TAXABLE, TAX, ENFIA, OTHER, NET, RATE, PRES, TAXED_SHARE, PROP_SPOKEN, UP, LOST,
   eur, TOP, REST, REST_SUM, P_TAX, P_ENFIA, P_OTHER, P_NET, SEG, PARTS, BR,
@@ -44,6 +54,7 @@ import {
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
 const { chromePath } = require('../lib/chrome.mjs');
+const ROOT = process.cwd();
 
 // ── Τα γεγονότα ──────────────────────────────────────────────────────────
 const cents = (x: number) => Math.round(x * 100) / 100;
@@ -64,7 +75,6 @@ if (FREE.priceMonthly !== 0) throw new Error('Η κάρτα λέει «δωρε�
 const FREE_WORDS = FREE.maxProperties === 1 ? 'για ένα ακίνητο' : `έως ${FREE.maxProperties} ακίνητα`;
 const DEMO_1 = 'Παράδειγμα με δεδομένα επίδειξης';
 const DEMO_2 = `Φυσικό πρόσωπο · μακροχρόνια μίσθωση · ${S.year}`;
-// Η μονάδα της σκηνής 5. Τα μερίδια είναι ακέραια ευρώ μόνο γιατί αθροίζουν σε 100.
 const UNIT = 100;
 if (P_TAX + P_ENFIA + P_OTHER + P_NET !== UNIT) throw new Error('Τα μερίδια δεν αθροίζουν στα 100€.');
 if (PARTS.map(x => x.k).join() !== 'tax,enfia,other,net') throw new Error('Η σειρά των κομματιών άλλαξε.');
@@ -72,11 +82,36 @@ const PCT = (n: number) => fpRate(n);
 const NEG = (n: number) => `−${eur(n)}`;
 const PROP_CAP = PROP_SPOKEN.charAt(0).toLocaleUpperCase('el') + PROP_SPOKEN.slice(1);
 
-// ── Ο χρόνος ─────────────────────────────────────────────────────────────
-const SC = [0, 11, 26, 41, 53, 66, 79].map(b => b * BEAT);
-const END = 85 * BEAT, DUR = 90 * BEAT;
+// ── Ο υπολογιστής του site: ίδιες ετικέτες, ίδιος υπολογισμός ───────────
+// Τα πεδία διαβάζονται από το ίδιο το component· αν αλλάξει ετικέτα, το reel
+// σταματά αντί να δείχνει πεδίο που δεν υπάρχει.
+const CALC_PATH = '/kathari-apodosi';
+const CALC_URL = `properwise.gr${CALC_PATH}`;
+const CALC_SRC = readFileSync(join(ROOT, 'app/kathari-apodosi/ApodosiCalculator.tsx'), 'utf8');
+const CALC_FIELDS = ['Μηνιαίο ενοίκιο', 'Μήνες ενοικίασης', 'ΕΝΦΙΑ τον χρόνο', 'Δαπάνες τον χρόνο'];
+for (const f of CALC_FIELDS) if (!CALC_SRC.includes(`label="${f}"`)) throw new Error(`Ο υπολογιστής δεν έχει πια πεδίο «${f}».`);
+if (!CALC_SRC.includes('propertyYield(')) throw new Error('Ο υπολογιστής δεν υπολογίζει πια με την propertyYield.');
+// «Χωρίς εγγραφή» μόνο αν η διαδρομή είναι δημόσια και η σελίδα το λέει η ίδια.
+const PROXY = readFileSync(join(ROOT, 'proxy.ts'), 'utf8');
+const CALC_PAGE = readFileSync(join(ROOT, 'app/kathari-apodosi/page.tsx'), 'utf8');
+const NO_SIGNUP = /const PUBLIC = new Set\(\[[\s\S]*?"\/kathari-apodosi"[\s\S]*?\]\)/.test(PROXY) && CALC_PAGE.includes('Χωρίς εγγραφή');
+const MONTHS = 12;
+const MONTHLY = GROSS / MONTHS;
+if (Math.abs(MONTHLY - Math.round(MONTHLY * 100) / 100) > 1e-9) throw new Error('Το μηνιαίο ενοίκιο δεν είναι ακριβές ποσό.');
+const CALC = propertyYield({ value: 0, monthlyRent: MONTHLY, monthsRented: MONTHS, enfia: ENFIA, expenses: OTHER, otherRentalIncome: 0, year: athensParts().year, viaBank: true });
+// Το αποτέλεσμα μπαίνει δίπλα στα πεδία ΜΟΝΟ αν ο υπολογιστής βγάζει το ίδιο.
+// Αν κάποτε διαφέρει, το reel σταματά: κανένα νούμερο δίπλα σε πεδία που δεν το δίνουν.
+const CALC_MATCH = Math.abs(CALC.net - NET) < .005 && Math.round(CALC.net / CALC.gross * 100) === P_NET;
+if (!CALC_MATCH) throw new Error(`Ο υπολογιστής δίνει ${CALC.net} για τα ίδια πεδία, όχι ${NET}.`);
+const num = (n: number) => (Number.isInteger(n) ? fn(n) : fn(n, 2));
+const CALC_VALUES = [num(MONTHLY), fn(MONTHS), num(ENFIA), num(OTHER)];
+const CALC_UNITS = ['€', '', '€', '€'];
 
-// ── Μετρητές: κάθε ενδιάμεση τιμή μορφοποιείται εδώ, με τη μορφή της εφαρμογής ──
+// ── Ο χρόνος ─────────────────────────────────────────────────────────────
+const SC = [0, 11, 25, 39, 51, 63, 75].map(b => b * BEAT);
+const END = 88 * BEAT, DUR = 93 * BEAT;
+
+// ── Μετρητές ─────────────────────────────────────────────────────────────
 const STEPS = 24;
 const run = (a: number, b: number, fmt: (n: number) => string = eur) =>
   Array.from({ length: STEPS + 1 }, (_, s) => fmt(cents(a + (b - a) * s / STEPS)));
@@ -91,49 +126,75 @@ const RED = '#c23b3b';            // μελάνι σφραγίδας πάνω σ
 const R = { s: 12, m: 20, l: 28 };
 const NET_GRAD = `linear-gradient(180deg,#a9c8ff,${C.accent} 45%,#5f8fe0)`;
 const LABELS = { tax: 'Φόρος εισοδήματος', enfia: 'ΕΝΦΙΑ', other: 'Επισκευές και έξοδα', net: 'Σου μένουν' } as Record<string, string>;
+const SHORT = { tax: 'Φόρος', enfia: 'ΕΝΦΙΑ', other: 'Έξοδα', net: 'Σου μένουν' } as Record<string, string>;
+const GAP_HEAD = 48;              // από τον τίτλο ως το περιεχόμενο, σε κάθε σκηνή
+const OPTICAL = 24;               // η στήλη κάθεται λίγο πάνω από το γεωμετρικό κέντρο
 
-// ═══ Συστατικά: το ίδιο σχέδιο για το reel και για τα stories ═══════════
+/** Η επιφάνεια κάθε μορφής: στήλη, ζώνη περιεχομένου, υποσημείωση, θέση αυτοκόλλητου. */
+interface Frame { L: number; R: number; top: number; bottom: number }
+// 934, όχι 940: το πέρασμα του κιτ ζουμάρει τη σκηνή 1,2% και ο έλεγχος ζωνών του
+// μετρά και τότε. Η δεξιά ακμή μένει μέσα στο 940 ακόμη και στο ζουμ.
+const REEL: Frame = { L: 90, R: 934, top: 312, bottom: 1400 };
+const REEL_FOOT = 1432;
+const STORY_FOOT = 1604, ST_SLOT = { y: 1352, h: 220 };
+const STORY: Frame = { L: 90, R: 990, top: 312, bottom: STORY_FOOT - 32 };
+const STORY_S: Frame = { L: 90, R: 990, top: 312, bottom: ST_SLOT.y - 32 };
+const W = (f: Frame) => f.R - f.L;
+
+// ═══ Συστατικά, κοινά για reel και stories ═══════════════════════════════
 // Με `fin` το συστατικό γράφεται στην τελική του κατάσταση (story). Χωρίς
-// αυτό γράφεται στην αρχική του κατάσταση και η κίνηση του reel το στήνει καρέ καρέ.
+// αυτό γράφεται στην αρχική του κατάσταση και η κίνηση του reel το στήνει.
+const block = (f: Frame, inner: string) =>
+  `<div class="blk" style="left:${f.L}px;width:${W(f)}px;top:${f.top}px;height:${f.bottom - f.top}px;padding-bottom:${OPTICAL}px">${inner}</div>`;
+/** Μάτι και τίτλος σε ροή· με `i` παίρνουν τα id που κινεί το κιτ (e<i>, h<i>_<k>). */
+const fhead = (i: number | null, eb: string, lines: string[], size: number, end = true) => `
+  <div class="eb mono"${i == null ? '' : ` id="e${i}"`} data-col="L"><i></i>${esc(eb)}</div>
+  <div class="hd" style="font-size:${size}px;margin-top:16px" data-col="L"${end ? ' data-hend' : ''}>${lines.map((l, k) => i == null ? `<div>${l}</div>` : mask(`h${i}_${k}`, l)).join('')}</div>`;
+const sub = (id: string, html: string, f: Frame) =>
+  `<div class="sub2" id="${id}" style="margin-top:16px;width:${W(f)}px" data-col="L" data-hend>${html}</div>`;
+const foot = (y: number) => `<div class="foot" id="demo" style="top:${y}px" data-col="L"><i></i><span>${esc(DEMO_1)}<br>${esc(DEMO_2)}</span></div>`;
 
-// ── Τα εκατό τετράγωνα ───────────────────────────────────────────────────
+// ── Τα εκατό τετράγωνα και το καθολικό ───────────────────────────────────
 const TILES = 100;
 const EXEMPT = Math.round(PRESUMPTIVE / GROSS * TILES);
 if (Math.abs(EXEMPT - PRESUMPTIVE / GROSS * TILES) > 1e-9) throw new Error('Η σταθερή έκπτωση δεν είναι ακέραιο πλήθος τετραγώνων.');
-interface GridG { x: number; y: number; t: number; g: number; lx: number; lw: number }
 const tileKind = (i: number) => (i >= TILES - EXEMPT ? 'ex' : i < P_TAX ? 'tax' : 'base');
-const gridSide = (g: GridG) => 10 * g.t + 9 * g.g;
-const grid = (g: GridG, fin: boolean) => `
-  <div class="tg" id="tg" style="left:${g.x}px;top:${g.y}px;grid-template-columns:repeat(10,${g.t}px);gap:${g.g}px">${Array.from({ length: TILES }, (_, i) => {
-    const k = tileKind(i);
-    const st = !fin ? '' : k === 'ex' ? `background:${EXEMPT_FILL};box-shadow:inset 0 0 0 2px ${C.accent}` : `background:${k === 'tax' ? SEG.tax : LIGHT}`;
-    return `<i id="t${i}" style="width:${g.t}px;height:${g.t}px;${st}"></i>`;
-  }).join('')}</div>
-  ${[
-    { id: 'lg0', rows: [0, 1], sw: `background:${SEG.tax}`, n: PCT(P_TAX), t: 'Φόρος' },
-    { id: 'lg1', rows: [2, 8], sw: `background:${LIGHT}`, n: TAXED_SHARE, t: 'Φορολογητέο' },
-    { id: 'lg2', rows: [9, 9], sw: `background:${EXEMPT_FILL};box-shadow:inset 0 0 0 2px ${C.accent}`, n: PRES, t: 'Χωρίς φόρο' },
-  ].map(l => {
-    const cy = g.y + ((l.rows[0] + l.rows[1]) / 2) * (g.t + g.g) + g.t / 2;
-    return `<div class="lg" id="${l.id}" style="left:${g.lx}px;top:${cy - 28}px;width:${g.lw}px"><i class="sw" style="${l.sw}"></i><b>${esc(l.n)}</b><span class="lb">${esc(l.t)}</span></div>`;
-  }).join('')}`;
-
+const gridSide = (t: number, g: number) => 10 * t + 9 * g;
+const grid = (t: number, g: number, fin: boolean) => {
+  const side = gridSide(t, g), lx = side + 32;
+  return `<div class="lb" id="tl" style="margin-top:${GAP_HEAD}px" data-col="L">Κάθε τετράγωνο: ${PCT(UNIT / TILES)} του ενοικίου</div>
+  <div class="tgw" style="height:${side}px;margin-top:16px">
+    <div class="tg" id="tg" data-col="L" style="grid-template-columns:repeat(10,${t}px);gap:${g}px">${Array.from({ length: TILES }, (_, i) => {
+      const k = tileKind(i);
+      const st = !fin ? '' : k === 'ex' ? `background:${EXEMPT_FILL};box-shadow:inset 0 0 0 2px ${C.accent}` : `background:${k === 'tax' ? SEG.tax : LIGHT}`;
+      return `<i id="t${i}" style="width:${t}px;height:${t}px;${st}"></i>`;
+    }).join('')}</div>
+    ${[
+      { id: 'lg0', rows: [0, 1], sw: `background:${SEG.tax}`, n: PCT(P_TAX), t: 'Φόρος' },
+      { id: 'lg1', rows: [2, 8], sw: `background:${LIGHT}`, n: TAXED_SHARE, t: 'Φορολογητέο' },
+      { id: 'lg2', rows: [9, 9], sw: `background:${EXEMPT_FILL};box-shadow:inset 0 0 0 2px ${C.accent}`, n: PRES, t: 'Χωρίς φόρο' },
+    ].map(l => {
+      const cy = ((l.rows[0] + l.rows[1]) / 2) * (t + g) + t / 2;
+      return `<div class="lg" id="${l.id}" style="left:${lx}px;top:${cy - 28}px" data-lx="lg"><i class="sw" style="${l.sw}"></i><b>${esc(l.n)}</b><span class="lb">${esc(l.t)}</span></div>`;
+    }).join('')}
+  </div>`;
+};
 const LEDGER: [string, string, string][] = [
   ['Έσοδα από ενοίκια', eur(GROSS), ''],
   [`Σταθερή έκπτωση ${PRES} για επισκευές`, NEG(PRESUMPTIVE), ''],
   ['Φορολογητέο εισόδημα', eur(TAXABLE), ''],
   [`Φόρος εισοδήματος ${RATE}`, NEG(TAX), SEG.tax],
 ];
-const ledger = (x: number, y: number, w: number) => `
-  <div class="card ledger" id="ld" style="left:${x}px;top:${y}px;width:${w}px">
-    ${LEDGER.map(([k, v, c], i) => `<div class="lr" id="lr${i}"${c ? ` style="color:${C.ink}"` : ''}><span>${c ? `<i class="dot" style="background:${c}"></i>` : ''}${esc(k)}</span><b${i === 3 ? ' id="ltx"' : ''}${c ? ` style="color:${c}"` : ''}>${esc(v)}</b></div>`).join('')}
+const ledger = () => `
+  <div class="card ledger" id="ld" style="margin-top:24px" data-col="LR">
+    ${LEDGER.map(([k, v, c], i) => `<div class="lr" id="lr${i}"${c ? ` style="color:${C.ink}"` : ''}><span data-lx="ld">${c ? `<i class="dot" style="background:${c}"></i>` : ''}${esc(k)}</span><b data-rx="ld"${i === 3 ? ' id="ltx"' : ''}${c ? ` style="color:${c}"` : ''}>${esc(v)}</b></div>`).join('')}
   </div>`;
 
 // ── Η κάρτα του φόρου και οι τέσσερις αποδείξεις ─────────────────────────
-const taxCard = (x: number, y: number, w: number, fin: boolean) => `
-  <div class="card taxc" id="tc" style="left:${x}px;top:${y}px;width:${w}px">
-    <div class="tr"><span>Φόρος εισοδήματος<small>με τη σταθερή έκπτωση ${esc(PRES)}</small></span><b style="color:${SEG.tax}">${esc(eur(TAX))}</b></div>
-    <div class="tr" id="tz"${fin ? '' : ' style="opacity:0"'}><span>Μείωση φόρου από τις αποδείξεις:</span><b>${esc(feWhole(CUT))}</b></div>
+const taxCard = (fin: boolean) => `
+  <div class="card taxc" id="tc" style="margin-top:${GAP_HEAD}px" data-col="LR">
+    <div class="tr"><span data-lx="tc">Φόρος εισοδήματος<small>με τη σταθερή έκπτωση ${esc(PRES)}</small></span><b data-rx="tc" style="color:${SEG.tax}">${esc(eur(TAX))}</b></div>
+    <div class="tr" id="tz"${fin ? '' : ' style="opacity:0"'}><span data-lx="tc">Μείωση φόρου από τις αποδείξεις:</span><b data-rx="tc">${esc(feWhole(CUT))}</b></div>
     <i class="tline" id="tln"></i>
   </div>`;
 interface Receipt { head: string; lines: [string, number][]; total: number }
@@ -144,25 +205,22 @@ const RC: Receipt[] = [
   { head: `ΑΛΛΕΣ ${REST.length} ΔΑΠΑΝΕΣ`, lines: REST.map(r => [r.label, r.amount] as [string, number]), total: REST_SUM },
 ];
 if (Math.abs(RC.reduce((s, r) => s + r.total, 0) - ENFIA - OTHER) > .01) throw new Error('Οι αποδείξεις δεν αθροίζουν στα έξοδα της χρονιάς.');
-const RC_ROT = [-1.2, 1, -.8, 1.1];
-interface Slot { x: number; y: number; w: number; h?: number }
-const receipt = (r: Receipt, k: number, s: Slot, fin: boolean) => `
-  <div class="rc" id="r${k}" style="left:${s.x}px;top:${s.y}px;width:${s.w}px;${s.h ? `height:${s.h}px;` : ''}z-index:${k + 2};${fin ? `transform:rotate(${RC_ROT[k]}deg)` : ''}">
-    <div class="rh">${esc(r.head)}</div>
-    ${r.lines.length ? `<div class="rl">${r.lines.map(([l, a]) => `<div><span>${esc(UP(l))}</span><span>${esc(fe(a))}</span></div>`).join('')}</div>` : ''}
-    <div class="rs"><span class="st" id="st${k}"${fin ? ' style="opacity:1;transform:rotate(-4deg)"' : ''}>ΔΕΝ ΕΚΠΙΠΤΕΙ</span></div>
-    <div class="rt"><span>ΣΥΝΟΛΟ</span><b>${esc(fe(r.total))}</b></div>
-  </div>`;
-/** Αριστερά οι τρεις μικρές, δεξιά η μακριά, κεντραρισμένη στο ύψος τους. */
-const receiptSlots = (x: number, y: number, w: number, gap: number, shortH: number, longH: number): Slot[] => {
-  const cw = (w - gap) / 2, colH = 3 * shortH + 2 * 16;
-  return [0, 1, 2].map((k): Slot => ({ x, y: y + k * (shortH + 16), w: cw, h: shortH }))
-    .concat([{ x: x + cw + gap, y: y + Math.round((colH - longH) / 2), w: cw }]);
+const RC_ROT = [-3, 2.5, -2, 2.2];   // μόνο στην πτήση· κάθε απόδειξη προσγειώνεται ίσια
+const RC_H = 176, RC_GUT = 20, RC_COL = 3 * RC_H + 2 * RC_GUT;
+const receipts = (f: Frame, fin: boolean) => {
+  const cw = (W(f) - RC_GUT) / 2;
+  const slots = [0, 1, 2].map(k => ({ x: 0, y: k * (RC_H + RC_GUT), h: RC_H })).concat([{ x: cw + RC_GUT, y: 0, h: RC_COL }]);
+  return `<div class="rcw" style="height:${RC_COL}px;margin-top:24px">${RC.map((r, k) => `
+    <div class="rc${r.lines.length ? ' long' : ''}" id="r${k}" style="left:${slots[k].x}px;top:${slots[k].y}px;width:${cw}px;height:${slots[k].h}px;z-index:${k + 2}"
+      data-col="${k < 3 ? 'L' : 'R'}"${k < 3 ? ' data-gap="rc"' : ''}>
+      <div class="rh">${esc(r.head)}</div>
+      ${r.lines.length ? `<div class="rl">${r.lines.map(([l, a]) => `<div><span>${esc(UP(l))}</span><span>${esc(fe(a))}</span></div>`).join('')}</div>` : ''}
+      <div class="rs"><span class="st" id="st${k}"${fin ? ' style="opacity:1;transform:rotate(-3deg)"' : ''}>ΔΕΝ ΕΚΠΙΠΤΕΙ</span></div>
+      <div class="rt"><span>ΣΥΝΟΛΟ</span><b>${esc(fe(r.total))}</b></div>
+    </div>`).join('')}</div>`;
 };
-const SHORT_H = 185, LONG_H = 470;
 
 // ── Ο καταρράκτης ────────────────────────────────────────────────────────
-interface WfG { x: number; y: number; w: number; top: number; base: number; colW: number }
 const WB = [
   { k: 'Ενοίκια', lo: 0, hi: GROSS, c: SLATE, val: run(0, GROSS), fin: eur(GROSS) },
   { k: 'Φόρος', lo: L1, hi: GROSS, c: SEG.tax, val: negRun(TAX), fin: NEG(TAX) },
@@ -170,16 +228,19 @@ const WB = [
   { k: 'Έξοδα', lo: NET, hi: L2, c: SEG.other, val: negRun(OTHER), fin: NEG(OTHER) },
   { k: 'Καθαρά', lo: 0, hi: NET, c: C.accent, val: run(0, NET), fin: eur(NET) },
 ];
-const waterfall = (g: WfG, fin: boolean) => {
-  const pitch = (g.w - g.colW) / 4, wy = (v: number) => g.base - (g.base - g.top) * v / GROSS;
-  return `<div class="wf" id="wf" style="left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.base + 70}px">
-    <i class="base" id="wbase" style="top:${g.base}px"></i>
-    ${[GROSS, L1, L2, NET].map((lvl, i) => `<i class="cn" id="cn${i}" style="left:${i * pitch + g.colW}px;top:${wy(lvl) - 1}px;width:${pitch - g.colW}px"></i>`).join('')}
+// Οι στήλες μπαίνουν 24px μέσα από τις άκρες: οι τιμές κεντράρονται στη στήλη
+// τους και μένουν μέσα στο γράφημα· η βάση πιάνει όλο το πλάτος.
+const WF_IN = 32, WF_LAB = 56, WF_CAT = 48;
+const waterfall = (f: Frame, colW: number, bars: number, fin: boolean) => {
+  const w = W(f), pitch = (w - 2 * WF_IN - colW) / 4, base = WF_LAB + bars, wy = (v: number) => base - bars * v / GROSS;
+  return `<div class="wf" id="wf" style="height:${base + WF_CAT}px;margin-top:${GAP_HEAD}px">
+    <i class="base" id="wbase" style="top:${base}px" data-col="LR"></i>
+    ${[GROSS, L1, L2, NET].map((lvl, i) => `<i class="cn" id="cn${i}" style="left:${WF_IN + i * pitch + colW}px;top:${wy(lvl) - 1}px;width:${pitch - colW}px"></i>`).join('')}
     ${WB.map((b, i) => {
-      const x = i * pitch, top = wy(b.hi), h = wy(b.lo) - top, net = i === 4;
-      return `<i class="wb${net ? ' net' : ''}" id="wb${i}" style="left:${x}px;top:${top}px;width:${g.colW}px;height:${h}px;--c:${b.c}"></i>
-        <span class="wv${net ? ' net r' : i === 0 ? ' l' : ''}" id="wv${i}" style="left:${i === 0 ? x : net ? x + g.colW : x + g.colW / 2}px;top:${top - 54}px;color:${net ? C.accent : i === 0 ? C.ink : b.c}">${esc(fin ? b.fin : b.val[0])}</span>
-        <span class="wk${net ? ' net' : ''}" id="wk${i}" style="left:${x + g.colW / 2}px;top:${g.base + 18}px">${esc(b.k)}</span>`;
+      const x = WF_IN + i * pitch, top = wy(b.hi), h = wy(b.lo) - top, net = i === 4;
+      return `<i class="wb${net ? ' net' : ''}" id="wb${i}" style="left:${x}px;top:${top}px;width:${colW}px;height:${h}px;--c:${b.c}"></i>
+        <span class="wv" id="wv${i}" data-cx="wb${i}" style="left:${x + colW / 2}px;top:${top - 48}px;color:${net ? C.accent : i === 0 ? C.ink : b.c}">${esc(fin ? b.fin : b.val[0])}</span>
+        <span class="wk${net ? ' net' : ''}" id="wk${i}" data-cx="wb${i}" style="left:${x + colW / 2}px;top:${base + 16}px">${esc(b.k)}</span>`;
     }).join('')}
   </div>`;
 };
@@ -187,31 +248,29 @@ const waterfall = (g: WfG, fin: boolean) => {
 // ── Τα 100€: μία πλάκα που κόβεται σε τέσσερις ζώνες ─────────────────────
 // ΚΑΝΕΝΑ ΣΧΕΔΙΟ ΧΑΡΤΟΝΟΜΙΣΜΑΤΟΣ. Ένα αντικείμενο από γυαλί και μέταλλο με
 // χαραγμένο «100€», που κόβεται σε ζώνες ανάλογες με τα μερίδια.
-interface SlabG { x: number; y: number; w: number; h: number; gap: number; lx: number; lw: number }
-const bands = (g: SlabG) => {
+const bands = (h: number) => {
   let off = 0;
-  return PARTS.map((x, k) => {
-    const h = Math.round(g.h * x.p / UNIT * 10) / 10, b = { k, top: off, h, cy: g.y + off + k * g.gap + h / 2 };
-    off += h;
-    return b;
-  });
+  return PARTS.map((x, k) => { const b = { k, top: off, h: Math.round(h * x.p / UNIT * 10) / 10 }; off += b.h; return b; });
 };
-const slab = (g: SlabG, mode: 'whole' | 'cut' | 'reel') => {
-  const B = bands(g), cut = mode === 'cut';
+/** `whole`: ακέραιη (κουίζ) · `cut`: κομμένη, όλες οι ζώνες στη θέση τους (story) · `reel`: για την κίνηση. */
+const slab = (f: Frame, w: number, h: number, gap: number, mode: 'whole' | 'cut' | 'reel', center = false) => {
+  const B = bands(h), cut = mode === 'cut', H = h + 3 * gap, lx = w + 40;
   const radius = (k: number) => cut ? `${R.s}px` : `${k === 0 ? R.l : 0}px ${k === 0 ? R.l : 0}px ${k === 3 ? R.l : 0}px ${k === 3 ? R.l : 0}px`;
-  return `<div class="slab" id="sl" style="left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.h + 3 * g.gap}px">
-    ${B.map(b => `<div class="band" id="nb${b.k}" style="top:${b.top}px;height:${b.h}px;border-radius:${radius(b.k)};${cut ? `transform:translateY(${b.k * g.gap}px)` : ''}">
-      <i class="bm" style="background-size:${g.w}px ${g.h}px,${g.w}px ${g.h}px;background-position:0 ${-b.top}px,0 ${-b.top}px"></i>
+  return `<div class="slw" style="height:${H}px;margin-top:${GAP_HEAD}px">
+  <div class="slab" id="sl" style="${center ? `left:${(W(f) - w) / 2}px` : 'left:0'};width:${w}px;height:${H}px" ${center ? 'data-ccol' : 'data-col="L"'}>
+    ${B.map(b => `<div class="band" id="nb${b.k}" style="top:${b.top}px;height:${b.h}px;border-radius:${radius(b.k)};${cut ? `transform:translateY(${b.k * gap}px)` : ''}">
+      <i class="bm" style="background-size:${w}px ${h}px,${w}px ${h}px;background-position:0 ${-b.top}px,0 ${-b.top}px"></i>
       <i class="bt" id="bt${b.k}" style="background:${b.k === 3 ? NET_GRAD : `linear-gradient(180deg,${PARTS[b.k].c},color-mix(in srgb,${PARTS[b.k].c} 72%,#0a1220))`};opacity:${cut ? 1 : 0}"></i>
       <i class="gh" id="bg${b.k}"></i></div>`).join('')}
-    ${mode === 'cut' ? '' : `<div class="eng" id="eng" style="top:${Math.round(g.h * .38)}px"><b>${UNIT}€</b></div>`}
+    ${mode === 'cut' ? '' : `<div class="eng" id="eng" style="top:${Math.round(h / 2 - 64)}px"><b>${UNIT}€</b></div>`}
     ${mode === 'reel' ? B.slice(1).map(b => `<i class="cut" id="cut${b.k}" style="top:${b.top - 1.5}px"></i>`).join('') : ''}
-    <i class="sglow" id="sgl" style="top:${B[3].top + 3 * g.gap}px;height:${B[3].h}px;opacity:${cut ? .5 : 0}"></i>
+    <i class="sglow" id="sgl" style="top:${B[3].top + 3 * gap}px;height:${B[3].h}px;opacity:${cut ? .5 : 0}"></i>
   </div>
   ${mode === 'whole' ? '' : B.map(b => {
-    const x = PARTS[b.k], net = x.k === 'net';
-    return `<div class="sll${net ? ' net' : ''}" id="sll${b.k}" style="left:${g.lx}px;top:${b.cy - 28}px;width:${g.lw}px"><i class="ld" id="sld${b.k}"></i><span>${esc(LABELS[x.k])}</span><b style="color:${net ? C.accent : x.c}">${esc(feWhole(x.p))}</b></div>`;
-  }).join('')}`;
+    const x = PARTS[b.k], net = x.k === 'net', cy = b.top + b.k * gap + b.h / 2;
+    return `<div class="sll${net ? ' net' : ''}" id="sll${b.k}" style="left:${lx}px;right:0;top:${cy - 28}px"><i class="ld" id="sld${b.k}"></i><span data-lx="sl">${esc(LABELS[x.k])}</span><b data-col="R" style="color:${net ? C.accent : x.c}">${esc(feWhole(x.p))}</b></div>`;
+  }).join('')}
+  </div>`;
 };
 
 // ── Το κινητό ────────────────────────────────────────────────────────────
@@ -221,103 +280,91 @@ const APP_ROWS: [string, string][] = [
   ['Φόρος και ΕΝΦΙΑ', NEG(TAX + ENFIA)],
   ['Επισκευές και έξοδα', NEG(OTHER)],
 ];
-interface PhoneG { x: number; y: number; w: number; visible: number }
-const phone = (g: PhoneG) => `
-  <div id="ph" class="deco" style="left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.visible + 260}px;
-    -webkit-mask-image:linear-gradient(180deg,#000 ${g.visible - 70}px,transparent ${g.visible}px)"><div class="scr"><div class="isl"></div><div class="ap">
+const PH_W = 756;
+/** Γεμίζει ό,τι μένει στη στήλη· σβήνει προς τα κάτω πριν από την υποσημείωση. */
+const phone = (f: Frame, h = 0) => `
+  <div class="phw${h ? ' fixed' : ''}" style="margin-top:${GAP_HEAD}px${h ? `;height:${h}px` : ''}">
+  <div id="ph" class="deco" data-ccol style="left:${(W(f) - PH_W) / 2}px;width:${PH_W}px"><div class="scr"><div class="isl"></div><div class="ap">
     <div class="ah" id="ah"><span class="m">${mark(30, C.ink)}</span><b>${esc(DEMO_PROPERTY.name)}</b><span class="y">${S.year}</span></div>
-    ${APP_ROWS.map(([k, v], i) => `<div class="ar" id="ar${i}"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}
+    ${APP_ROWS.map(([k, v], i) => `<div class="ar" id="ar${i}"><span>${esc(k)}</span><b data-rx="ph">${esc(v)}</b></div>`).join('')}
     <div class="abig" id="abg"><span>Σου μένουν</span><div><b id="anet">${esc(eur(NET))}</b><em>${PCT(P_NET)}</em></div></div>
     <div class="abar">${PARTS.map((x, k) => `<i id="ab${k}" style="flex:${x.v};background:${k === 3 ? C.accent : x.c}"></i>`).join('')}</div>
-    <div class="chips">${FEATS.map((f, k) => `<span id="ac${k}">${esc(f)}</span>`).join('')}</div>
-  </div></div></div>`;
+    <div class="chips">${FEATS.map((f2, k) => `<span id="ac${k}">${esc(f2)}</span>`).join('')}</div>
+  </div></div></div></div>`;
 
-// ═══ Οι θέσεις του reel ══════════════════════════════════════════════════
-const HB = { y: 840, h: 180, gap: 8 };
-const hbw = (v: number) => (850 - HB.gap * 3) * v / GROSS;
-const LOST_W = PARTS.slice(0, 3).reduce((s, x) => s + hbw(x.v), 0) + 2 * HB.gap;
+// ── Ο υπολογιστής καθαρής απόδοσης ──────────────────────────────────────
+const CALC_ICON = 'M6 2h12a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z|M8 5h8v4H8z|M8.5 13h.01|M12 13h.01|M15.5 13h.01|M8.5 17h.01|M12 17h.01|M15.5 17h.01';
+const LINK_ICON = 'M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1|M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1';
+const calc = (filled: boolean) => `
+  <div class="card calc" id="calc" style="margin-top:${GAP_HEAD}px" data-col="LR">
+    <div class="ch" data-lx="calc"><span class="ci">${icon(CALC_ICON, '#cfe0ff', 28, 1.8)}</span><b>Υπολογιστής καθαρής απόδοσης</b></div>
+    <div class="cf">${CALC_FIELDS.map((l, k) => `
+      <div class="fld"><span class="lb">${esc(l)}</span>
+        <div class="in" id="cin${k}" ${k % 2 ? 'data-rx="calc"' : 'data-lx="calc"'}><span class="v" id="cv${k}">${filled ? esc(CALC_VALUES[k]) : ''}</span><i class="caret" id="cc${k}"${!filled && k === 0 ? ' style="opacity:1"' : ''}></i>${CALC_UNITS[k] ? `<span class="u">${CALC_UNITS[k]}</span>` : ''}</div></div>`).join('')}
+    </div>
+    ${CALC_MATCH ? `<div class="cr" id="cres"><span data-lx="calc">Σου μένουν</span>
+      <div class="crv"><b id="crv" data-rx="calc"${filled ? '' : ' style="opacity:0"'}>${esc(eur(NET))}<em> · ${PCT(P_NET)}</em></b><i class="sk" id="csk"${filled ? '' : ' style="opacity:1"'}></i></div></div>` : ''}
+  </div>
+  <div class="urlr" id="urlr"><span class="chip" data-col="L"><span class="li">${icon(LINK_ICON, C.accent, 26, 2)}</span>${esc(CALC_URL)}</span>${NO_SIGNUP ? '<span class="lb" data-col="L">Δωρεάν, χωρίς εγγραφή</span>' : ''}</div>`;
+
+// ═══ Το reel ═════════════════════════════════════════════════════════════
+const HB = { w: W(REEL), h: 176, gap: 8, rowA: 56, rowB: 16 };
+const hbw = (v: number) => (HB.w - HB.gap * 3) * v / GROSS;
+const SEGX = PARTS.reduce<number[]>((a, x, k) => [...a, k ? a[k - 1] + hbw(PARTS[k - 1].v) + HB.gap : 0], []);
+const LOST_W = SEGX[3] - HB.gap;
+// Ετικέτα πιο φαρδιά από το κομμάτι της (ΕΝΦΙΑ): δεύτερη σειρά, με λεπτή γραμμή ως το κομμάτι.
+const TIER2 = PARTS.map(x => hbw(x.v) < 90);
+const HK_TIER = 40, HK_H = HB.rowA + HB.h + HB.rowB + 32 + (TIER2.some(Boolean) ? HK_TIER : 0);
 const LV = [GROSS, L1, L2, NET];
 const PV = [UNIT, UNIT - P_TAX, UNIT - P_TAX - P_ENFIA, P_NET];
 const HOOK_N = LV.slice(0, 3).map((a, k) => run(a, LV[k + 1], n => `${eur(n)}.`));
 const HOOK_P = PV.slice(0, 3).map((a, k) => pctRun(a, PV[k + 1]));
 const DROP = [.6, 1.1, 1.55];
-const HIT_Q = 2.6;
-
-const G1: GridG = { x: 90, y: 656, t: 44, g: 6, lx: 0, lw: 0 };
-G1.lx = G1.x + gridSide(G1) + 32; G1.lw = 940 - G1.lx;
-const RS = receiptSlots(90, 812, 850, 24, SHORT_H, LONG_H);
-const RC_T = RC.map((_, k) => .9 + k * .85);
-const CONTACT = 803;
+const HIT_Q = 2.7;
 const HIT_ZERO = 5.2;
-const WFG: WfG = { x: 90, y: 600, w: 850, top: 84, base: 736, colW: 128 };
 const WF_T = [.6, 1.45, 2.1, 2.75, 3.5];
-const SLG: SlabG = { x: 90, y: 688, w: 300, h: 672, gap: 10, lx: 410, lw: 520 };
+const SL = { w: 300, h: 620, gap: 10 };
 const HIT_NET = 3.3;
 const HAND = SC[5] - .5, LAND = SC[5] + 1.05;
-const PHG: PhoneG = { x: 162, y: 612, w: 756, visible: 804 };
+const CLR = 2.4, CLR_STEP = .55;   // ο υπολογιστής αδειάζει πεδίο πεδίο
 
 const HTML = `
   <!-- 1 · Το αγκίστρι: ορατό από το πρώτο καρέ -->
-  <section id="s0">
-    <div class="L eb mono" id="e0" style="top:340px"><i></i>ΠΑΡΑΔΕΙΓΜΑ · ${esc(UP(PROP_SPOKEN))}</div>
-    <div class="L hd" style="top:384px;font-size:84px">
-      <div class="mk"><div class="mi" id="q0">${esc(eur(GROSS))} ενοίκια.</div></div>
-      <div class="mk"><div class="mi" id="q1">Σου μένουν</div></div>
+  <section id="s0">${block(REEL, `
+    <div class="eb mono" id="e0" data-col="L"><i></i>ΠΑΡΑΔΕΙΓΜΑ · ${esc(UP(PROP_SPOKEN))}</div>
+    <div class="hd" style="font-size:88px;margin-top:16px" data-col="L">${mask('q0', `${esc(eur(GROSS))} ενοίκια.`)}${mask('q1', 'Σου μένουν')}</div>
+    <div class="hd" style="font-size:152px;letter-spacing:-.035em;margin-top:8px" data-col="L" data-hend>${mask('q2', `<span class="a" id="hn">${esc(HOOK_N[0][0])}</span>`)}</div>
+    <div class="hk" id="hk" style="height:${HK_H}px;margin-top:${GAP_HEAD}px" data-col="LR">
+      <span class="lb" id="hl0" style="left:0;top:8px">Το ενοίκιο της χρονιάς</span>
+      <span class="lb strong" id="hp" style="right:0;top:8px" data-col="R">${PCT(UNIT)}</span>
+      <div class="spn" id="hsp" style="left:0;width:${LOST_W}px"><b id="hsl">${esc(eur(LOST))}</b><i class="sl" id="hsx"></i></div>
+      <div class="hb" style="top:${HB.rowA}px;height:${HB.h}px;gap:${HB.gap}px">${PARTS.map((x, k) => `<div class="hs" id="hs${k}" style="width:${hbw(x.v)}px"><i class="fl" id="hf${k}"></i></div>`).join('')}</div>
+      ${PARTS.map((x, k) => `<span class="sgl" id="sg${k}" data-cx="hs${k}" style="left:${SEGX[k] + hbw(x.v) / 2}px;top:${HB.rowA + HB.h + HB.rowB + (TIER2[k] ? HK_TIER : 0)}px;color:${k === 3 ? C.accent : x.c}">${esc(SHORT[x.k])}</span>${TIER2[k]
+        ? `<i class="sgt" id="sgt${k}" style="left:${SEGX[k] + hbw(x.v) / 2 - 1}px;top:${HB.rowA + HB.h + 8}px;height:${HB.rowB + HK_TIER - 12}px;background:${x.c}"></i>` : ''}`).join('')}
     </div>
-    <div class="L hd" style="top:562px;font-size:156px;letter-spacing:-.035em">
-      <div class="mk"><div class="mi" id="q2"><span class="a" id="hn">${esc(HOOK_N[0][0])}</span></div></div>
-    </div>
-    <div class="L row" id="hlr" style="top:${HB.y - 46}px;width:850px"><span class="lb">Το ενοίκιο της χρονιάς</span><span class="lb strong" id="hp">${PCT(UNIT)}</span></div>
-    <div class="hb" id="hb" style="top:${HB.y}px;height:${HB.h}px;gap:${HB.gap}px">${PARTS.map((x, k) => `<div class="hs" style="width:${hbw(x.v)}px"><i class="gh" id="hg${k}"></i><i class="fl" id="hf${k}"></i></div>`).join('')}</div>
-    <div class="bk deco" id="hbk" style="top:${HB.y + HB.h + 20}px;width:${LOST_W}px"></div>
-    <div class="L qq" style="top:1110px">
-      <div class="mk"><div class="mi" id="q3">Πού πήγαν</div></div>
-      <div class="mk"><div class="mi" id="q4">τα <b>${esc(eur(LOST))}</b>;</div></div>
-    </div>
+    <div class="hd qq" style="font-size:88px;margin-top:${GAP_HEAD}px" data-col="L">${mask('q3', 'Πού πήγαν')}${mask('q4', `τα <b>${esc(eur(LOST))}</b>;`)}</div>`)}
   </section>
 
   <!-- 2 · Φόρος στα έσοδα -->
-  <section id="s1">
-    ${head(1, 'Ο ΦΟΡΟΣ', ['Φόρος στα έσοδα,', A('όχι στα καθαρά.')], 92, 384)}
-    <div class="L lb" id="tl" style="top:604px">Κάθε τετράγωνο: ${PCT(UNIT / TILES)} του ενοικίου</div>
-    ${grid(G1, false)}
-    ${ledger(90, 1172, 850)}
-  </section>
+  <section id="s1">${block(REEL, `${fhead(1, 'Ο ΦΟΡΟΣ', ['Φόρος στα έσοδα,', A('όχι στα καθαρά.')], 88)}${grid(38, 6, false)}${ledger()}`)}</section>
 
   <!-- 3 · Τα έξοδα δεν μειώνουν τον φόρο -->
-  <section id="s2">
-    ${head(2, 'ΤΑ ΕΞΟΔΑ', ['Τα έξοδα δεν', A('μειώνουν τον φόρο.')], 88, 384)}
-    ${taxCard(90, 592, 850, false)}
-    ${RC.map((r, k) => receipt(r, k, RS[k], false)).join('')}
-  </section>
+  <section id="s2">${block(REEL, `${fhead(2, 'ΤΑ ΕΞΟΔΑ', ['Τα έξοδα δεν', A('μειώνουν τον φόρο.')], 88)}${taxCard(false)}${receipts(REEL, false)}`)}</section>
 
   <!-- 4 · Ο καταρράκτης -->
-  <section id="s3">
-    ${head(3, 'Ο ΛΟΓΑΡΙΑΣΜΟΣ', ['Από τα ενοίκια', A('στην τσέπη.')], 96, 384)}
-    ${waterfall(WFG, false)}
-  </section>
+  <section id="s3">${block(REEL, `${fhead(3, 'Ο ΛΟΓΑΡΙΑΣΜΟΣ', ['Από τα ενοίκια', A('στην τσέπη.')], 88)}${waterfall(REEL, 112, 632, false)}`)}</section>
 
   <!-- 5 · Από κάθε 100€ ενοικίου -->
-  <section id="s4">
-    ${head(4, 'ΤΟ ΑΠΟΤΕΛΕΣΜΑ', [`Από κάθε ${UNIT}€`, 'ενοικίου,', A(`σου μένουν ${P_NET}€.`)], 88, 384)}
-    ${slab(SLG, 'reel')}
-  </section>
+  <section id="s4">${block(REEL, `${fhead(4, 'ΤΟ ΑΠΟΤΕΛΕΣΜΑ', [`Από κάθε ${UNIT}€`, 'ενοικίου,', A(`σου μένουν ${P_NET}€.`)], 88)}${slab(REEL, SL.w, SL.h, SL.gap, 'reel')}`)}</section>
 
   <!-- 6 · Η εφαρμογή -->
-  <section id="s5">
-    ${head(5, 'ΣΤΟ PROPERWISE', [`Όλο αυτό, ${A('αυτόματα.')}`], 84, 384)}
-    <div class="L sub2" id="c5" style="top:496px;width:850px">Το PROPERWISE κάνει αυτόν τον λογαριασμό για <b>το δικό σου ακίνητο</b>, κάθε μήνα.</div>
-    ${phone(PHG)}
-  </section>
+  <section id="s5">${block(REEL, `${fhead(5, 'Η ΕΦΑΡΜΟΓΗ', [`Όλο αυτό, ${A('αυτόματα.')}`], 80, false)}
+    ${sub('c5', 'Το PROPERWISE κάνει αυτόν τον λογαριασμό για <b>το δικό σου ακίνητο</b>, κάθε μήνα.', REEL)}${phone(REEL)}`)}</section>
 
-  <!-- 7 · Η ερώτηση -->
-  <section id="s6">
-    ${head(6, 'ΤΟ ΔΙΚΟ ΣΟΥ ΑΚΙΝΗΤΟ', ['Εσύ ξέρεις', 'πόσα σου μένουν', A('καθαρά;')], 104, 560)}
-    <div class="L lb" id="ql" style="top:936px">Το δικό σου ενοίκιο</div>
-    <div class="qb deco" id="qb" style="left:90px;top:980px;height:${HB.h}px"><i id="qs"></i></div>
-  </section>
+  <!-- 7 · Με τα δικά σου νούμερα -->
+  <section id="s6">${block(REEL, `${fhead(6, 'ΤΟ ΔΙΚΟ ΣΟΥ ΑΚΙΝΗΤΟ', ['Τώρα με τα δικά', A('σου νούμερα.')], 88)}${calc(true)}`)}</section>
 
-  <div class="foot" id="demo" style="top:1428px"><i></i><span>${esc(DEMO_1)}<br>${esc(DEMO_2)}</span></div>
+  ${foot(REEL_FOOT)}
   <i id="carry" class="deco"></i>`;
 
 // ── Το CSS: κοινό για reel και stories ───────────────────────────────────
@@ -325,135 +372,166 @@ const CSS = `
   /* Το φόντο: ένα φως (ο προβολέας) και κόκκος. Χωρίς σκόνη, χωρίς λάμψεις. */
   #dust,#amb{display:none}
   #bg{background:linear-gradient(180deg,#0b1424 0%,#080d17 55%,#070b12 100%)!important}
-  #spot{background:radial-gradient(closest-side,rgba(138,180,248,.2),rgba(138,180,248,.06) 55%,transparent)}
-  /* Τυπογραφία: ετικέτες 26, αραίωση ως .12em, τίτλοι στο −0,03em. */
-  .eb{font-size:26px;letter-spacing:.12em;gap:18px}
+  #spot{background:radial-gradient(closest-side,rgba(138,180,248,.15),rgba(138,180,248,.05) 55%,transparent)}
+  /* Τυπογραφία: ετικέτες 26, αραίωση ως .12em, τίτλοι στο −0,03em, ρυθμός 8. */
+  .eb{font-size:26px;line-height:32px;letter-spacing:.12em;gap:18px}
   .eb i{width:44px}
   #top .br{font-size:26px;letter-spacing:.12em}
-  .hd{letter-spacing:-.03em}
-  .lb{font-size:26px;font-weight:500;line-height:1.3;color:#9eabc0;white-space:nowrap}
+  .hd{letter-spacing:-.03em;line-height:1;white-space:nowrap}
+  .sub2{font-size:34px;line-height:48px}
+  .lb{font-size:26px;font-weight:500;line-height:32px;color:#9eabc0;white-space:nowrap}
   .lb.strong{font-weight:700;color:${C.ink}}
-  .foot{position:absolute;left:90px;display:flex;gap:16px;align-items:stretch;font-size:22px;line-height:1.4;color:#8a98ad}
+  .foot{position:absolute;left:90px;display:flex;gap:16px;align-items:stretch;font-size:22px;line-height:32px;color:#8a98ad}
   .foot i{flex:none;width:3px;border-radius:2px;background:${C.accent}88}
-  .card{border-radius:${R.m}px}
+  .blk{position:absolute;display:flex;flex-direction:column;justify-content:center}
+  .blk>*{flex:none}
+  .card{position:relative;border-radius:${R.m}px;padding:24px 32px}
 
   /* 1 · Αγκίστρι */
-  .hb{position:absolute;left:90px;width:850px;display:flex}
+  .hk{position:relative}
+  .hk>*{position:absolute}
+  .hb{left:0;right:0;display:flex}
   .hs{position:relative;height:100%}
-  .hs i{position:absolute;inset:0;border-radius:${R.m}px}
-  .hs .gh{border:2px dashed rgba(188,198,211,.4);opacity:0}
-  .hs .fl{background:${SLATE};box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 40px 80px -30px rgba(0,0,0,.85)}
-  .bk{position:absolute;left:90px;height:28px;border:2px solid rgba(188,198,211,.55);border-top:0;border-radius:0 0 ${R.s}px ${R.s}px;transform-origin:50% 0}
-  .qq{font-size:84px;font-weight:800;letter-spacing:-.03em;line-height:1.02;white-space:nowrap}
+  .hs .fl{position:absolute;inset:0;border-radius:${R.m}px;background:${SLATE};box-shadow:inset 0 1px 0 rgba(255,255,255,.22)}
+  .spn{top:0;height:44px}
+  .spn b{position:absolute;left:0;right:0;top:0;text-align:center;font-size:28px;line-height:32px;font-weight:800;color:${SEG.tax}}
+  .spn .sl{position:absolute;left:0;right:0;top:38px;height:12px;border:2px solid rgba(239,143,127,.7);border-bottom:0;border-radius:6px 6px 0 0;transform-origin:50% 50%}
+  .sgl{transform:translateX(-50%);font-size:26px;line-height:32px;font-weight:650;white-space:nowrap}
+  .sgt{width:2px;border-radius:1px;opacity:.6;transform-origin:50% 0}
   .qq b{color:${SEG.tax};font-weight:800}
 
   /* 2 · Τετράγωνα και καθολικό */
-  .tg{position:absolute;display:grid}
-  .tg i{display:block;border-radius:${R.s}px;background:${SLATE};box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
+  .tgw{position:relative}
+  .tg{position:absolute;left:0;top:0;display:grid}
+  .tg i{display:block;border-radius:10px;background:${SLATE};box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
   .lg{position:absolute;display:flex;align-items:center;gap:14px;height:56px}
   .lg .sw{flex:none;width:28px;height:28px;border-radius:8px}
-  .lg b{font-size:40px;font-weight:800;letter-spacing:-.02em;line-height:1}
-  .ledger{position:absolute;padding:8px 32px}
-  .lr{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;font-size:28px;line-height:1.25;color:#aebbd0;border-top:1px solid rgba(255,255,255,.08)}
-  .lr:first-child{border-top:0}
+  .lg b{font-size:40px;line-height:48px;font-weight:800;letter-spacing:-.02em}
+  .lr{display:flex;justify-content:space-between;align-items:center;height:48px;font-size:28px;line-height:36px;color:#aebbd0}
+  .lr + .lr{border-top:1px solid rgba(255,255,255,.08)}
   .lr b{font-weight:750;color:${C.ink}}
-  .dot{display:inline-block;width:16px;height:16px;border-radius:4px;margin-right:14px;vertical-align:middle}
+  .dot{display:inline-block;width:16px;height:16px;border-radius:4px;margin-right:14px;vertical-align:-1px}
 
   /* 3 · Κάρτα φόρου και αποδείξεις */
-  .taxc{position:absolute;padding:16px 32px 18px}
-  .taxc .tr{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:8px 0}
-  .taxc .tr + .tr{border-top:1px solid rgba(255,255,255,.08)}
-  .taxc .tr span{font-size:30px;font-weight:650;line-height:1.2}
-  .taxc .tr small{display:block;font-size:26px;font-weight:500;color:#9eabc0;margin-top:4px}
-  .taxc .tr b{font-size:48px;font-weight:850;letter-spacing:-.02em}
+  .taxc .tr{display:flex;justify-content:space-between;align-items:center;gap:24px}
+  .taxc .tr:first-child{height:64px}
+  .taxc .tr + .tr{height:56px;margin-top:16px}
+  .taxc .tr span{font-size:30px;font-weight:650;line-height:32px}
+  .taxc .tr small{display:block;font-size:26px;font-weight:500;line-height:32px;color:#9eabc0}
+  .taxc .tr b{font-size:48px;line-height:56px;font-weight:850;letter-spacing:-.02em}
   .tline{position:absolute;left:32px;right:32px;bottom:0;height:3px;border-radius:2px;background:${SEG.tax};opacity:.5}
-  .rc{position:absolute;padding:22px 24px 20px;color:#272c35;font-family:'Roboto Mono',monospace;display:flex;flex-direction:column;
+  .rcw{position:relative}
+  .rc{position:absolute;padding:20px 24px 16px;color:#272c35;font-family:'Roboto Mono',monospace;display:flex;flex-direction:column;
     background:linear-gradient(180deg,#f8f6f0,#f0ede5 70%,#e9e5dc);
     filter:drop-shadow(0 30px 40px rgba(0,0,0,.45)) drop-shadow(0 2px 2px rgba(0,0,0,.3));
     -webkit-mask:linear-gradient(#000,#000) 0 8px/100% calc(100% - 16px) no-repeat,
       conic-gradient(from 135deg at 50% 0,#000 90deg,#0000 0) top/16px 8px repeat-x,
       conic-gradient(from -45deg at 50% 100%,#000 90deg,#0000 0) bottom/16px 8px repeat-x}
   .rc:before{content:'';position:absolute;inset:0;background-image:${GRAIN};opacity:.16;mix-blend-mode:multiply}
-  .rh{font-size:23px;font-weight:700;letter-spacing:.02em;white-space:nowrap;padding-bottom:12px;border-bottom:2px dashed rgba(39,44,53,.4)}
-  .rl{padding:10px 0 8px;font-size:23px;letter-spacing:.01em;line-height:1.45}
+  .rh{font-size:23px;line-height:32px;font-weight:700;letter-spacing:.02em;white-space:nowrap;padding-bottom:8px;border-bottom:2px dashed rgba(39,44,53,.4)}
+  .rl{flex:1;display:flex;flex-direction:column;justify-content:space-around;font-size:23px;line-height:32px;letter-spacing:.01em}
   .rl div{display:flex;justify-content:space-between;gap:14px}
-  .rs{flex:1;display:flex;align-items:center;justify-content:flex-end;min-height:48px;border-bottom:3px double rgba(39,44,53,.55)}
-  .st{display:inline-block;padding:5px 12px;border:3px solid ${RED};border-radius:8px;color:${RED};font-size:23px;font-weight:700;letter-spacing:.06em;
+  /* Η σφραγίδα έχει δική της θέση, ίδια σε κάθε απόδειξη: 52px, 8 πάνω και 8 κάτω. */
+  .rs{flex:none;height:52px;display:flex;align-items:center;justify-content:flex-end;border-bottom:3px double rgba(39,44,53,.55)}
+  .rc:not(.long) .rs{margin-top:auto}
+  .st{display:inline-block;height:36px;padding:0 12px;border:3px solid ${RED};border-radius:8px;color:${RED};font-size:20px;line-height:30px;font-weight:700;letter-spacing:.06em;
     opacity:0;mix-blend-mode:multiply;-webkit-mask-image:${GRAIN},linear-gradient(#000,#000);-webkit-mask-size:200px,100%;-webkit-mask-composite:source-over}
-  .rt{display:flex;justify-content:space-between;align-items:baseline;padding-top:10px;font-size:23px;font-weight:700;letter-spacing:.06em}
-  .rt b{font-size:36px;letter-spacing:-.01em}
+  .rt{flex:none;display:flex;justify-content:space-between;align-items:baseline;height:48px;padding-top:8px;font-size:23px;font-weight:700;letter-spacing:.06em}
+  .rt b{font-size:34px;line-height:40px;letter-spacing:-.01em}
 
   /* 4 · Καταρράκτης */
-  .wf{position:absolute}
-  .wf .base{position:absolute;left:0;right:0;height:2px;background:rgba(188,198,211,.35);transform-origin:0 50%}
-  .wb{position:absolute;display:block;border-radius:${R.s}px;transform-origin:50% 100%;
+  .wf{position:relative}
+  .wf>*{position:absolute}
+  .wf .base{left:0;right:0;height:2px;background:rgba(188,198,211,.35);transform-origin:0 50%}
+  .wb{display:block;border-radius:${R.s}px;transform-origin:50% 100%;
     background:linear-gradient(180deg,var(--c),color-mix(in srgb,var(--c) 70%,#0a1220));box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
   .wb.net{background:${NET_GRAD}}
-  .wv{position:absolute;transform:translateX(-50%);font-size:34px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;line-height:42px}
-  .wv.l{transform:none} .wv.r{transform:translateX(-100%)}
-  .wk{position:absolute;transform:translateX(-50%);white-space:nowrap;font-size:28px;font-weight:600;color:#aebbd0}
+  .wv{transform:translateX(-50%);font-size:32px;line-height:40px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+  .wk{transform:translateX(-50%);white-space:nowrap;font-size:28px;line-height:32px;font-weight:600;color:#aebbd0}
   .wk.net{color:${C.accent}}
-  .cn{position:absolute;height:2px;background:rgba(220,228,240,.32);transform-origin:0 50%}
+  .cn{height:2px;background:rgba(220,228,240,.32);transform-origin:0 50%}
 
   /* 5 · Η πλάκα των 100€ */
-  .slab{position:absolute;isolation:isolate}
+  .slw{position:relative}
+  .slab{position:absolute;top:0;isolation:isolate}
   .band{position:absolute;left:0;right:0;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 30px 60px -20px rgba(0,0,0,.6)}
   .band i{position:absolute;inset:0;border-radius:inherit}
   .bm{background-image:linear-gradient(118deg,rgba(255,255,255,0) 28%,rgba(255,255,255,.13) 44%,rgba(255,255,255,0) 58%),linear-gradient(165deg,#5a76a3 0%,#33496f 48%,#1d2b47 100%)}
   .bm:after{content:'';position:absolute;inset:0;background-image:${GRAIN};opacity:.12;mix-blend-mode:overlay}
   .bt{opacity:0}
   .gh{border:2px dashed rgba(188,198,211,.42);opacity:0}
-  .eng{position:absolute;left:0;right:0;text-align:center}
+  .eng{position:absolute;left:0;right:0;text-align:center;line-height:128px}
   .eng b{font-size:112px;font-weight:850;letter-spacing:-.04em;color:rgba(240,245,255,.92);text-shadow:0 2px 0 rgba(0,0,0,.25),0 -1px 0 rgba(255,255,255,.25)}
-  .cut{position:absolute;left:-14px;right:-14px;height:3px;border-radius:2px;background:#fff;box-shadow:0 0 16px rgba(255,255,255,.8);transform:scaleX(0);transform-origin:0 50%}
+  .cut{position:absolute;left:0;right:0;height:3px;border-radius:2px;background:#fff;box-shadow:0 0 16px rgba(255,255,255,.8);transform:scaleX(0);transform-origin:0 50%}
   .sglow{position:absolute;left:0;right:0;border-radius:${R.s}px;background:${C.accent};filter:blur(46px);z-index:-1}
   .sll{position:absolute;display:flex;align-items:center;gap:16px;height:56px}
-  .sll .ld{flex:none;width:44px;height:2px;background:rgba(220,228,240,.4);transform-origin:0 50%}
-  .sll span{flex:1;font-size:30px;font-weight:600;color:#c3cddb;white-space:nowrap}
-  .sll b{font-size:44px;font-weight:850;letter-spacing:-.02em}
+  .sll .ld{flex:none;width:40px;height:2px;margin-left:-40px;background:rgba(220,228,240,.4);transform-origin:0 50%}
+  .sll span{flex:1;font-size:30px;line-height:40px;font-weight:600;color:#c3cddb;white-space:nowrap}
+  .sll b{font-size:44px;line-height:56px;font-weight:850;letter-spacing:-.02em}
   .sll.net span{color:${C.accent};font-weight:750}
 
   /* 6 · Κινητό, σε μεγέθη πραγματικής εφαρμογής */
-  #ph{position:absolute;border-radius:96px 96px 0 0;padding:16px 16px 0;
-    background:linear-gradient(145deg,#4a5568,#161d2a 38%,#2d3648);box-shadow:0 80px 140px rgba(0,0,0,.7),inset 0 0 0 2px rgba(255,255,255,.09)}
+  .phw{position:relative;flex:1 1 0!important;min-height:0}
+  .phw.fixed{flex:none!important}
+  #ph{position:absolute;top:0;bottom:-260px;border-radius:96px 96px 0 0;padding:16px 16px 0;
+    background:linear-gradient(145deg,#4a5568,#161d2a 38%,#2d3648);box-shadow:0 80px 140px rgba(0,0,0,.7),inset 0 0 0 2px rgba(255,255,255,.09);
+    -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 330px),transparent calc(100% - 260px))}
   #ph .scr{position:relative;width:100%;height:100%;border-radius:80px 80px 0 0;overflow:hidden;background:linear-gradient(180deg,#0e1626,#070b12 70%)}
   #ph .isl{position:absolute;left:50%;top:22px;width:168px;height:48px;margin-left:-84px;border-radius:26px;background:#000}
-  #ph .ap{padding:96px 40px 0}
-  #ph .ah{display:flex;align-items:center;gap:16px;font-size:30px;margin-bottom:12px}
+  #ph .ap{padding:88px 40px 0}
+  #ph .ah{display:flex;align-items:center;gap:16px;height:56px;font-size:30px;margin-bottom:8px}
   #ph .ah .m{width:56px;height:56px;border-radius:16px;background:${C.panel};border:1.5px solid ${C.rule};display:flex;align-items:center;justify-content:center}
   #ph .ah b{font-weight:700}
   #ph .ah .y{margin-left:auto;font-size:26px;color:${C.faint};font-family:'Roboto Mono',monospace}
-  #ph .ar{display:flex;justify-content:space-between;align-items:baseline;padding:13px 2px;border-top:1.5px solid ${C.rule};font-size:30px;color:${C.muted}}
+  #ph .ar{display:flex;justify-content:space-between;align-items:center;height:64px;border-top:1.5px solid ${C.rule};font-size:30px;color:${C.muted}}
   #ph .ar b{font-weight:700;color:${C.ink}}
-  #ph .abig{margin-top:12px;padding:18px 24px;border-radius:${R.m}px;background:${C.accent}14;border:1.5px solid ${C.accent}55}
-  #ph .abig span{font-size:26px;color:#a9bad3}
+  #ph .abig{margin-top:8px;padding:16px 24px;border-radius:${R.m}px;background:${C.accent}14;border:1.5px solid ${C.accent}55}
+  #ph .abig span{font-size:26px;line-height:32px;color:#a9bad3}
   #ph .abig div{display:flex;justify-content:space-between;align-items:baseline}
-  #ph .abig b{font-size:66px;font-weight:850;letter-spacing:-.03em;color:${C.accent};line-height:1.1}
+  #ph .abig b{font-size:64px;line-height:72px;font-weight:850;letter-spacing:-.03em;color:${C.accent}}
   #ph .abig em{font-style:normal;font-size:28px;font-weight:700;color:${C.accent}}
-  #ph .abar{display:flex;gap:6px;height:22px;margin-top:20px}
+  #ph .abar{display:flex;gap:6px;height:24px;margin-top:24px}
   #ph .abar i{display:block;border-radius:6px;transform-origin:0 50%}
-  #ph .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
-  #ph .chips span{font-size:26px;color:${C.muted};padding:9px 18px;border-radius:999px;border:1.5px solid ${C.rule}}
+  #ph .chips{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+  #ph .chips span{font-size:26px;line-height:32px;color:${C.muted};padding:8px 18px;border-radius:999px;border:1.5px solid ${C.rule}}
   #carry{position:absolute;left:0;top:0;width:10px;height:10px;opacity:0;background:${NET_GRAD};
     box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 50px ${C.accent}66;transform-origin:0 0}
 
-  /* 7 · Η ερώτηση */
-  .qb{position:absolute;width:850px;border-radius:${R.m}px;border:2px dashed rgba(138,180,248,.55);overflow:hidden}
-  .qb i{position:absolute;top:0;bottom:0;width:260px;background:linear-gradient(90deg,transparent,rgba(138,180,248,.2),transparent)}`;
+  /* 7 · Ο υπολογιστής */
+  .calc .ch{display:flex;align-items:center;gap:16px;height:48px}
+  .calc .ci{flex:none;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:rgba(138,180,248,.14);border:1px solid rgba(138,180,248,.3)}
+  .calc .ch b{font-size:34px;line-height:48px;font-weight:750;letter-spacing:-.01em}
+  .calc .cf{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:32px}
+  .calc .fld .lb{display:block}
+  .calc .in{display:flex;align-items:center;height:88px;margin-top:8px;padding:0 20px;border-radius:${R.s}px;background:rgba(7,11,18,.55);border:1.5px solid ${C.rule}}
+  .calc .in .v{font-size:40px;line-height:48px;font-weight:650;letter-spacing:-.01em;color:${C.ink}}
+  .calc .in .u{margin-left:auto;font-size:30px;color:#7d8da6}
+  .calc .caret{display:inline-block;width:3px;height:48px;margin-left:3px;border-radius:2px;background:${C.accent};opacity:0}
+  .calc .cr{display:flex;justify-content:space-between;align-items:center;height:64px;margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.1);box-sizing:content-box}
+  .calc .cr>span{font-size:34px;line-height:48px;font-weight:650}
+  .calc .crv{position:relative;display:flex;align-items:center;justify-content:flex-end;height:64px}
+  .calc .crv b{font-size:56px;line-height:64px;font-weight:850;letter-spacing:-.02em;color:${C.accent};white-space:nowrap}
+  .calc .crv em{font-style:normal;font-size:30px;font-weight:700;color:#a9c4ef}
+  .calc .sk{position:absolute;right:0;top:20px;width:280px;height:24px;border-radius:12px;opacity:0;
+    background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.12),rgba(255,255,255,.06));background-size:200% 100%}
+  .urlr{display:flex;flex-direction:column;align-items:flex-start;gap:12px;margin-top:24px}
+  .chip{display:inline-flex;align-items:center;gap:10px;height:56px;white-space:nowrap;flex:none;padding:0 20px 0 16px;border-radius:999px;background:rgba(138,180,248,.1);border:1.5px solid rgba(138,180,248,.4);
+    font-family:'Roboto Mono',monospace;font-size:26px;letter-spacing:0;color:${C.ink}}
+  .chip .li{display:grid;place-items:center;width:26px;height:26px}`;
 
 const JS = `
     const fin = (id, u, s, d, dy) => { const v = eo(p(u, s, s + (d || .55))); op($(id), v); tf($(id), 'translateY(' + ((dy == null ? 28 : dy) * (1 - v)) + 'px)'); return v; };
     const cnt = (id, arr, u, s, e) => { $(id).textContent = arr[Math.round(eo(p(u, s, e)) * (arr.length - 1))]; };
     const rgb = h => hex(h), mx = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k), css = a => 'rgb(' + a.map(Math.round).join(',') + ')';
     const oq = x => 1 - (1 - x) * (1 - x);
-    // Γεωμετρία της παράδοσης: μετριέται μία φορά, πριν από οποιονδήποτε μετασχηματισμό.
+    // Γεωμετρία: μετριέται μία φορά, πριν από οποιονδήποτε μετασχηματισμό.
     if (!window.G) {
       const cam = $('cam').getBoundingClientRect(), r = id => { const b = $(id).getBoundingClientRect(); return { x: b.left - cam.left, y: b.top - cam.top, w: b.width, h: b.height }; };
-      window.G = { n: r('nb3'), b: r('ab3') };
+      window.G = { n: r('nb3'), b: r('ab3'), tc: r('tc'), rc: [0, 1, 2, 3].map(k => r('r' + k)) };
     }
     const G = window.G;
-    op($('demo'), 1 - eo(p(t, S[6] - .3, S[6] + .2)));
     $('m4').textContent = D.free; $('m4').style.color = '${C.accent}';
+    op($('demo'), 1 - eo(p(t, D.END - .3, D.END + .2)));
 
     // ── 1 · Το αγκίστρι: το ενοίκιο λιγοστεύει μπροστά σου ─────────────
     u = scene(0);
@@ -462,27 +540,31 @@ const JS = `
     { let ph = 0; for (let k = 0; k < 3; k++) if (t >= D.drop[k]) ph = k;
       const s = D.drop[ph], i = Math.round(eo(p(t, s, s + .45)) * ${STEPS});
       $('hn').textContent = D.hookN[ph][i]; $('hp').textContent = D.hookP[ph][i]; }
-    // Πρώτο καρέ: μία συμπαγής μπάρα. Μετά ραγίζει στα τέσσερα κομμάτια της.
+    // Πρώτο καρέ: μία συμπαγής μπάρα. Ραγίζει στα τέσσερα, τα τρία μένουν ως σκιές στο χρώμα τους.
     const crack = eo(p(t, .1, .45));
     for (let k = 0; k < 4; k++) {
       const f = $('hf' + k), rl = k ? 20 * crack : 20, rr = k < 3 ? 20 * crack : 20;
       f.style.borderRadius = rl + 'px ' + rr + 'px ' + rr + 'px ' + rl + 'px';
       f.style.right = (k < 3 ? -${HB.gap} * (1 - crack) : 0) + 'px';
       if (k < 3) {
-        const s = D.drop[k], tint = eo(p(t, s - .25, s)), fall = ei(p(t, s, s + .5));
+        const s = D.drop[k], tint = eo(p(t, s - .25, s)), fade = eo(p(t, s, s + .5));
         f.style.background = css(mx(rgb('${SLATE}'), rgb(D.seg[k]), tint));
-        op(f, 1 - fall); tf(f, 'translateY(' + (180 * fall) + 'px) rotate(' + ((k - 1) * 6 * fall) + 'deg)');
-        op($('hg' + k), eo(p(t, s + .15, s + .55)));
+        op(f, 1 - .78 * fade); tf(f, 'translateY(' + (10 * Math.sin(Math.PI * fade)) + 'px)');
+        const lv = eo(p(t, s + .1, s + .5)); op($('sg' + k), lv); tf($('sg' + k), 'translate(-50%,' + (12 * (1 - lv)) + 'px)');
+        if ($('sgt' + k)) { op($('sgt' + k), .6 * lv); tf($('sgt' + k), 'scaleY(' + lv + ')'); }
       } else {
         // Ό,τι μένει γίνεται μπλε: το χρώμα των καθαρών σε όλο το reel.
         const v = eo(p(t, 2.0, 2.4));
         f.style.background = v >= 1 ? '${NET_GRAD}' : css(mx(rgb('${SLATE}'), rgb('${C.accent}'), v));
         f.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,.3),0 0 ' + (60 * v) + 'px rgba(138,180,248,' + (.35 * v) + ')';
+        const lv = eo(p(t, 2.1, 2.5)); op($('sg3'), lv); tf($('sg3'), 'translate(-50%,' + (12 * (1 - lv)) + 'px)');
       }
     }
-    { const v = eo(p(t, 2.1, 2.5)); op($('hbk'), v); tf($('hbk'), 'scaleY(' + v + ')'); }
+    op($('hl0'), 1 - eo(p(t, 1.8, 2.1)));
+    { const v = eo(p(t, 2.0, 2.4)); tf($('hsx'), 'scaleX(' + v + ')'); op($('hsx'), v > 0 ? 1 : 0);
+      const w = eo(p(t, 2.2, 2.6)); op($('hsl'), w); tf($('hsl'), 'translateY(' + (10 * (1 - w)) + 'px)'); }
     $('hp').style.color = t > 2.0 ? '${C.accent}' : '';
-    rev('q3', 2.3, null, .55); rev('q4', 2.42, null, .55); shine($('q2'), 2.7);
+    rev('q3', 2.4, null, .55); rev('q4', 2.52, null, .55); shine($('q2'), 2.8);
 
     // ── 2 · Ο φόρος: εκατό τετράγωνα, ένα για κάθε 1% του ενοικίου ─────
     u = scene(1); heads(1);
@@ -512,17 +594,17 @@ const JS = `
     op($('tz'), eo(p(u, D.hitZero, D.hitZero + .45)));
     { let bump = 0, glow = 0;
       for (let k = 0; k < 4; k++) {
-        const s = D.rcT[k], tc = s + .4, el = $('r' + k), Q = D.rs[k], rot0 = D.rot[k];
+        const s = D.rcT[k], tc = s + .4, el = $('r' + k), Q = G.rc[k], rot0 = D.rot[k];
         if (u < s) { op(el, 0); continue; }
         op(el, 1);
-        const cx = (540 - (Q.x + Q.w / 2)) * .3, cy = ${CONTACT} - Q.y;
+        const cx = (540 - (Q.x + Q.w / 2)) * .3, cy = G.tc.y + G.tc.h + 8 - Q.y;
         let x, y, rot;
-        if (u < tc) { const q = oq(p(u, s, tc)); x = cx * q; y = lerp(1960 - Q.y, cy, q); rot = rot0 * 5 * (1 - q) - rot0; }
-        else { const q = spring(p(u, tc, tc + .9)); x = cx * (1 - q); y = cy * (1 - q); rot = lerp(-rot0, rot0, q); }
+        if (u < tc) { const q = oq(p(u, s, tc)); x = cx * q; y = lerp(1960 - Q.y, cy, q); rot = rot0 * (2 - q); }
+        else { const q = spring(p(u, tc, tc + .9)); x = cx * (1 - q); y = cy * (1 - q); rot = rot0 * (1 - q); }
         tf(el, 'translate(' + x + 'px,' + y + 'px) rotate(' + rot + 'deg)');
         if (u > tc) { const d = u - tc; bump += Math.exp(-d * 14) * Math.sin(d * 42) * 7; glow = Math.max(glow, Math.exp(-d * 5)); }
         const sv = ei(p(u, tc - .1, tc)); op($('st' + k), sv > 0 ? 1 : 0);
-        tf($('st' + k), 'rotate(-4deg) scale(' + (1.9 - .9 * sv) + ')');
+        tf($('st' + k), 'rotate(-3deg) scale(' + (1.9 - .9 * sv) + ')');
       }
       if (u > .45) tf($('tc'), 'translateY(' + (-bump) + 'px)');
       op($('tln'), .5 + .5 * glow); $('tln').style.boxShadow = '0 0 ' + (24 * glow) + 'px ${SEG.tax}'; }
@@ -554,11 +636,9 @@ const JS = `
         const tr = k === 0 ? 28 - 16 * eo(p(u, 1.95, 2.3)) : rad, br = k === 3 ? 28 - 16 * eo(p(u, 1.95, 2.3)) : rad;
         b.style.borderRadius = tr + 'px ' + tr + 'px ' + br + 'px ' + br + 'px';
         tf(b, 'translateY(' + (D.gap * k * sep) + 'px)');
-        // Ό,τι φεύγει σβήνει από τη θέση του: το γέμισμα σύρεται έξω, μένει το περίγραμμα.
-        const wipe = lost ? 'translateX(' + (-104 * away) + '%)' : 'none';
-        tf(b.children[0], wipe); tf(b.children[1], wipe);
-        op($('bt' + k), tint);
-        op($('bg' + k), lost ? away : 0);
+        // Ό,τι φεύγει μένει ως σκιά στο χρώμα του, όπως στο αγκίστρι: χωρίς υλικό, στο 22%.
+        op(b.children[0], lost ? 1 - away : 1);
+        op($('bt' + k), tint * (lost ? 1 - .78 * away : 1));
         b.style.boxShadow = lost && away > .5 ? 'none' : '';
         const lv = eo(p(u, 2.2 + k * .15, 2.7 + k * .15));
         op($('sll' + k), lv * (lost ? 1 - .35 * away : 1)); tf($('sll' + k), 'translateX(' + (24 * (1 - lv)) + 'px)');
@@ -593,115 +673,168 @@ const JS = `
     fin('abg', u, 1.45, .55, 18); cnt('anet', D.netRun, u, 1.45, 2.15);
     for (let k = 0; k < 4; k++) fin('ac' + k, u, 2.1 + k * .14, .45, 12);
 
-    // ── 7 · Η ερώτηση ───────────────────────────────────────────────────
+    // ── 7 · Ο υπολογιστής: τα νούμερα του παραδείγματος σβήνουν, σειρά σου ─
     u = scene(6); heads(6);
-    fin('ql', u, .7, .5, 0);
-    { const v = eo(p(u, .8, 1.4)); op($('qb'), v); tf($('qb'), 'scaleX(' + (.96 + .04 * v) + ')'); tf($('qs'), 'translateX(' + (-300 + 1300 * ((u * .45) % 1)) + 'px)'); }`;
+    fin('calc', u, .45, .6, 40);
+    fin('urlr', u, 1.1, .5, 16);
+    { const C0 = D.clr, ST = D.clrStep, end = C0 + 3 * ST + .45;
+      let focus = -1;
+      for (let k = 0; k < 4; k++) {
+        const s = C0 + k * ST, q = p(u, s, s + .4), str = D.cv[k];
+        $('cv' + k).textContent = str.slice(0, Math.round(str.length * (1 - q)));
+        if (u >= s - .12 && u < s + .45) focus = k;
+      }
+      const blink = u >= end ? (Math.floor((u - end) * 2) % 2 === 0 ? 1 : 0) : 1;
+      for (let k = 0; k < 4; k++) op($('cc' + k), u >= end ? (k === 0 ? blink : 0) : (k === focus ? 1 : 0));
+      for (let k = 0; k < 4; k++) $('cin' + k).style.borderColor = (u >= end ? k === 0 : k === focus) ? 'rgba(138,180,248,.7)' : '';
+      if ($('crv')) { op($('crv'), 1 - eo(p(u, C0 + .05, C0 + .35))); op($('csk'), eo(p(u, C0 + .2, C0 + .6))); $('csk').style.backgroundPosition = (100 - (u * 40) % 200) + '% 0'; } }`;
 
 // ═══ Τα stories: επτά αφίσες, όχι καρέ του βίντεο ═══════════════════════
-// Περιεχόμενο μόνο ανάμεσα σε y 250 και 1670. Στα 1, 4 και 7 μένει άδεια
-// θέση ~220px για το αυτοκόλλητο (κουίζ, δημοσκόπηση, σύνδεσμος).
-const ST_SLOT = { y: 1330, h: 220 };
-interface Story { light: [number, number]; slot: boolean; foot: boolean; body: string; note: string }
-const sHead = (eb: string, lines: string[], size: number, top: number) =>
-  `<div class="L eb mono" style="top:${top - 44}px"><i></i>${esc(eb)}</div>
-   <div class="L hd" style="top:${top}px;font-size:${size}px">${lines.map(l => `<div>${l}</div>`).join('')}</div>`;
+interface Story { light: [number, number]; slot: boolean; foot: boolean; body: string }
 const STORIES: Story[] = [
   { // 1 · Κουίζ
-    light: [540, 1000], slot: true, foot: true, note: 'κουίζ',
-    body: `<div class="L eb mono" style="top:376px"><i></i>ΠΑΡΑΔΕΙΓΜΑ · ${esc(UP(PROP_SPOKEN))}</div>
-      <div class="L sub" style="top:420px;font-size:48px;color:#aebbd0">${esc(eur(GROSS))} ενοίκια τον χρόνο.</div>
-      <div class="L hd" style="top:500px;font-size:98px">Πόσα από τα ${UNIT}€<br>${A('σου μένουν;')}</div>
-      ${slab({ x: 340, y: 780, w: 400, h: 500, gap: 0, lx: 0, lw: 0 }, 'whole')}`,
+    light: [540, 1000], slot: true, foot: true,
+    body: block(STORY_S, `
+      <div class="eb mono" data-col="L"><i></i>ΠΑΡΑΔΕΙΓΜΑ · ${esc(UP(PROP_SPOKEN))}</div>
+      <div class="sub2" style="margin-top:16px;color:#aebbd0" data-col="L">${esc(eur(GROSS))} ενοίκια τον χρόνο.</div>
+      <div class="hd" style="font-size:96px;margin-top:16px" data-col="L" data-hend><div>Πόσα από τα ${UNIT}€</div><div>${A('σου μένουν;')}</div></div>
+      ${slab(STORY_S, 400, 520, 0, 'whole', true)}`),
   },
   { // 2 · Ο φόρος
-    light: [360, 1050], slot: false, foot: true, note: '',
-    body: `${sHead('Ο ΦΟΡΟΣ', ['Φόρος στα έσοδα,', A('όχι στα καθαρά.')], 100, 420)}
-      <div class="L sub2" style="top:650px;width:900px">Για έξοδα η εφορία αφαιρεί ένα σταθερό ${esc(PRES)} του ενοικίου, όσα κι αν ξόδεψες. Στο υπόλοιπο ${esc(TAXED_SHARE)} πληρώνεις φόρο ${esc(RATE)}.</div>
-      ${(() => { const g: GridG = { x: 90, y: 812, t: 46, g: 6, lx: 0, lw: 0 }; g.lx = g.x + gridSide(g) + 36; g.lw = 990 - g.lx; return grid(g, true); })()}
-      ${ledger(90, 1346, 900)}`,
+    light: [330, 1000], slot: false, foot: true,
+    body: block(STORY, `${fhead(null, 'Ο ΦΟΡΟΣ', ['Φόρος στα έσοδα,', A('όχι στα καθαρά.')], 88, false)}
+      ${sub('s2s', `Για έξοδα η εφορία αφαιρεί σταθερό ${esc(PRES)}, όσα κι αν ξόδεψες. Στο υπόλοιπο ${esc(TAXED_SHARE)} πληρώνεις φόρο ${esc(RATE)}.`, STORY)}
+      ${grid(40, 6, true)}${ledger()}`),
   },
   { // 3 · Τα έξοδα
-    light: [540, 1180], slot: false, foot: true, note: '',
-    body: `${sHead('ΤΑ ΕΞΟΔΑ', ['Τα έξοδα δεν', A('μειώνουν τον φόρο.')], 92, 420)}
-      <div class="L sub2" style="top:640px;width:900px">Επισκευές, ασφάλιση, ΕΝΦΙΑ: όσα κι αν πληρώσεις στην πράξη, ο φόρος μένει ίδιος.</div>
-      ${taxCard(90, 756, 900, true)}
-      ${(() => { const s = receiptSlots(90, 988, 900, 28, SHORT_H, LONG_H); return RC.map((r, k) => receipt(r, k, s[k], true)).join(''); })()}`,
+    light: [540, 1150], slot: false, foot: true,
+    body: block(STORY, `${fhead(null, 'ΤΑ ΕΞΟΔΑ', ['Τα έξοδα δεν', A('μειώνουν τον φόρο.')], 88, false)}
+      ${sub('s3s', 'Επισκευές, ασφάλιση, ΕΝΦΙΑ: όσα κι αν πληρώσεις στην πράξη, ο φόρος μένει ίδιος.', STORY)}
+      ${taxCard(true)}${receipts(STORY, true)}`),
   },
   { // 4 · Ο λογαριασμός, με δημοσκόπηση
-    light: [540, 980], slot: true, foot: true, note: 'δημοσκόπηση',
-    body: `${sHead('Ο ΛΟΓΑΡΙΑΣΜΟΣ', ['Από τα ενοίκια', A('στην τσέπη.')], 100, 420)}
-      ${waterfall({ x: 90, y: 640, w: 900, top: 84, base: 580, colW: 144 }, true)}`,
+    light: [540, 900], slot: true, foot: true,
+    body: block(STORY_S, `${fhead(null, 'Ο ΛΟΓΑΡΙΑΣΜΟΣ', ['Από τα ενοίκια', A('στην τσέπη.')], 88)}${waterfall(STORY_S, 120, 560, true)}`),
   },
   { // 5 · Το αποτέλεσμα
-    light: [300, 1150], slot: false, foot: true, note: '',
-    body: `${sHead('ΤΟ ΑΠΟΤΕΛΕΣΜΑ', [`Από κάθε ${UNIT}€`, 'ενοικίου,', A(`σου μένουν ${P_NET}€.`)], 96, 420)}
-      ${slab({ x: 90, y: 780, w: 320, h: 760, gap: 12, lx: 440, lw: 550 }, 'cut')}`,
+    light: [280, 1100], slot: false, foot: true,
+    body: block(STORY, `${fhead(null, 'ΤΟ ΑΠΟΤΕΛΕΣΜΑ', [`Από κάθε ${UNIT}€`, 'ενοικίου,', A(`σου μένουν ${P_NET}€.`)], 88)}${slab(STORY, 340, 780, 12, 'cut')}`),
   },
   { // 6 · Η εφαρμογή
-    light: [540, 1150], slot: false, foot: true, note: '',
-    body: `${sHead('ΣΤΟ PROPERWISE', ['Όλο αυτό,', A('αυτόματα.')], 100, 420)}
-      <div class="L sub2" style="top:650px;width:900px">Το PROPERWISE κάνει αυτόν τον λογαριασμό για <b>το δικό σου ακίνητο</b>, κάθε μήνα.</div>
-      ${phone({ x: 162, y: 800, w: 756, visible: 780 })}`,
+    light: [540, 1100], slot: false, foot: true,
+    body: block(STORY, `${fhead(null, 'Η ΕΦΑΡΜΟΓΗ', ['Όλο αυτό,', A('αυτόματα.')], 88, false)}
+      ${sub('s6s', 'Το PROPERWISE κάνει αυτόν τον λογαριασμό για <b>το δικό σου ακίνητο</b>, κάθε μήνα.', STORY)}${phone(STORY, 800)}`),
   },
-  { // 7 · Η ερώτηση, με σύνδεσμο
-    light: [540, 900], slot: true, foot: false, note: 'σύνδεσμος',
-    body: `${sHead('ΤΟ ΔΙΚΟ ΣΟΥ ΑΚΙΝΗΤΟ', ['Εσύ ξέρεις', 'πόσα σου μένουν', A('καθαρά;')], 104, 420)}
-      <div class="L lb" style="top:790px">Το δικό σου ενοίκιο</div>
-      <div class="qb" style="left:90px;top:834px;height:150px;width:900px"><i style="left:320px"></i></div>
-      <div class="L sbrand" style="top:1060px">${mark(56, C.ink)}<b>PROPERWISE</b></div>
-      <div class="L sub2" style="top:1146px;color:${C.ink}">${esc(TAGLINE)}</div>
-      <div class="L spill" style="top:1222px">Δωρεάν ${esc(FREE_WORDS)}</div>
-      <div class="L mono surl" style="top:1590px">PROPERWISE.GR</div>`,
+  { // 7 · Με τα δικά σου νούμερα, με σύνδεσμο
+    light: [540, 850], slot: true, foot: false,
+    body: block(STORY_S, `${fhead(null, 'ΤΟ ΔΙΚΟ ΣΟΥ ΑΚΙΝΗΤΟ', ['Τώρα με τα δικά', A('σου νούμερα.')], 88)}${calc(false)}`),
   },
 ];
 const STORY_CSS = `
   .story{position:absolute;inset:0}
-  .light{position:absolute;width:1200px;height:1200px;border-radius:50%;background:radial-gradient(closest-side,rgba(138,180,248,.2),rgba(138,180,248,.06) 55%,transparent)}
-  .shd{position:absolute;left:90px;right:90px;top:262px;display:flex;align-items:center;justify-content:space-between}
-  .shd .br{display:flex;align-items:center;gap:14px;font-size:26px;font-weight:800;letter-spacing:.12em}
-  .shd .n{font-family:'Roboto Mono',monospace;font-size:26px;letter-spacing:.12em;color:${C.faint}}
-  .sbrand{display:flex;align-items:center;gap:20px}
-  .sbrand b{font-size:44px;font-weight:850;letter-spacing:.06em}
-  .spill{padding:18px 32px;border-radius:999px;background:${C.accent};color:${C.onAccent};font-size:32px;font-weight:800;letter-spacing:-.01em}
-  .surl{font-size:26px;letter-spacing:.12em;color:${C.faint}}
-  .story .card{position:absolute}`;
+  .light{position:absolute;width:1200px;height:1200px;border-radius:50%;background:radial-gradient(closest-side,rgba(138,180,248,.15),rgba(138,180,248,.05) 55%,transparent)}
+  .shd{position:absolute;left:90px;right:90px;top:262px;height:34px;display:flex;align-items:center;justify-content:space-between}
+  .shd .br{display:flex;align-items:center;gap:14px;font-size:26px;line-height:34px;font-weight:800;letter-spacing:.12em}
+  .shd .n{font-family:'Roboto Mono',monospace;font-size:26px;letter-spacing:.12em;color:${C.faint}}`;
 const storyPage = (s: Story, n: number) => `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${BASE_CSS}${KIT_CSS}${CSS}${STORY_CSS}</style></head><body>
   <div id="bg"></div>
   <div class="light" style="left:${s.light[0] - 600}px;top:${s.light[1] - 600}px"></div>
   <div class="story">
-    <div class="shd"><div class="br">${mark(34, C.ink)}<span>PROPERWISE</span></div><span class="n">${n} / ${STORIES.length}</span></div>
+    <div class="shd"><div class="br" data-col="L">${mark(34, C.ink)}<span>PROPERWISE</span></div><span class="n" data-col="R">${n} / ${STORIES.length}</span></div>
     ${s.body}
-    ${s.foot ? `<div class="foot" style="top:1606px"><i></i><span>${esc(DEMO_1)}<br>${esc(DEMO_2)}</span></div>` : ''}
+    ${s.foot ? foot(STORY_FOOT) : ''}
   </div>
   <div class="vig"></div><div class="grain"></div>
   </body></html>`;
+
+// ═══ Ο έλεγχος στοίχισης ═════════════════════════════════════════════════
+// data-col L/R/LR: η ακμή πάνω στη στήλη · data-lx / data-rx: κοινή αριστερή /
+// δεξιά ακμή ανά ομάδα · data-gap: ίσα κενά ανά ομάδα · data-cx: κεντραρισμένο
+// στο στοιχείο με αυτό το id · data-ccol: κεντραρισμένο στη στήλη · data-hend:
+// το τέλος της κεφαλής (το κενό ως το περιεχόμενο μετριέται από εκεί).
 // Ως κείμενο: το tsx ντύνει τις ονομασμένες συναρτήσεις με βοηθό που ο περιηγητής δεν έχει.
-const STORY_CHECK = (slot: boolean) => `(() => {
-  const out = [], S = { y0: ${ST_SLOT.y}, y1: ${ST_SLOT.y + ST_SLOT.h} };
-  for (const el of Array.from(document.querySelectorAll('.story *'))) {
-    const r = el.getBoundingClientRect();
-    if (!r.width || !r.height) continue;
-    const own = Array.from(el.childNodes).some(n => n.nodeType === 3 && n.textContent.trim());
-    if (own && (r.left < 80 || r.right > 1000 || r.top < 250 || r.bottom > 1670))
-      out.push('έξω: ' + el.textContent.trim().slice(0, 30) + ' [' + Math.round(r.left) + ',' + Math.round(r.top) + '–' + Math.round(r.right) + ',' + Math.round(r.bottom) + ']');
-    if (${slot} && r.top < S.y1 && r.bottom > S.y0 && !(r.top <= S.y0 && r.bottom >= S.y1 && el.children.length))
-      out.push('στη θέση του αυτοκόλλητου: ' + (el.textContent.trim().slice(0, 30) || el.className));
+const AUDIT = (f: Frame, slot: { y: number; h: number } | null) => `(() => {
+  const F = ${JSON.stringify(f)}, SLOT = ${JSON.stringify(slot)};
+  const vis = el => { for (let e = el; e && e !== document.body; e = e.parentElement) { const s = getComputedStyle(e); if (Number(s.opacity) < .5 || s.display === 'none') return false; } return true; };
+  const all = sel => Array.from(document.querySelectorAll(sel)).filter(vis);
+  const rc = el => el.getBoundingClientRect();
+  const name = el => (el.id || el.className || el.tagName) + ' «' + (el.textContent || '').trim().slice(0, 18) + '»';
+  const out = { n: 0, edge: 0, share: 0, gap: 0, cx: 0, fails: [] };
+  const bad = (m) => out.fails.push(m);
+  for (const el of all('[data-col]')) {
+    const r = rc(el), c = el.dataset.col; out.n++;
+    if (el.scrollWidth > el.clientWidth + 1) bad('το κείμενο ξεχειλίζει από ' + name(el) + ' κατά ' + (el.scrollWidth - el.clientWidth) + 'px');
+    if (c.includes('L')) { const d = Math.abs(r.left - F.L); out.edge = Math.max(out.edge, d); if (d > 1) bad('αριστερή ακμή ' + name(el) + ' στο ' + r.left.toFixed(1)); }
+    if (c.includes('R')) { const d = Math.abs(r.right - F.R); out.edge = Math.max(out.edge, d); if (d > 1) bad('δεξιά ακμή ' + name(el) + ' στο ' + r.right.toFixed(1)); }
   }
+  for (const [attr, side] of [['lx', 'left'], ['rx', 'right']]) {
+    const groups = {};
+    for (const el of all('[data-' + attr + ']')) (groups[el.dataset[attr]] ||= []).push(rc(el)[side]);
+    for (const [g, xs] of Object.entries(groups)) { out.n += xs.length; const d = Math.max(...xs) - Math.min(...xs); out.share = Math.max(out.share, d); if (d > 1) bad('ομάδα ' + attr + ' «' + g + '» απόκλιση ' + d.toFixed(1)); }
+  }
+  { const groups = {};
+    for (const el of all('[data-gap]')) (groups[el.dataset.gap] ||= []).push(rc(el));
+    for (const [g, rs] of Object.entries(groups)) { if (rs.length < 3) continue; const gs = rs.slice(1).map((r, i) => r.top - rs[i].bottom); out.n += gs.length;
+      const d = Math.max(...gs) - Math.min(...gs); out.gap = Math.max(out.gap, d); if (d > 2) bad('κενά «' + g + '» ' + gs.map(x => x.toFixed(1)).join('/')); } }
+  for (const el of all('[data-cx]')) { const a = rc(el), b = rc(document.getElementById(el.dataset.cx)); out.n++;
+    const d = Math.abs((a.left + a.right) / 2 - (b.left + b.right) / 2); out.cx = Math.max(out.cx, d); if (d > 1) bad('κέντρο ' + name(el) + ' απόκλιση ' + d.toFixed(1)); }
+  for (const el of all('[data-ccol]')) { const a = rc(el); out.n++;
+    const d = Math.abs((a.left + a.right) / 2 - (F.L + F.R) / 2); out.cx = Math.max(out.cx, d); if (d > 1) bad('κέντρο στήλης ' + name(el) + ' απόκλιση ' + d.toFixed(1)); }
+  const blk = all('.blk')[0];
+  if (blk) {
+    const kids = Array.from(blk.children).filter(vis), first = rc(kids[0]), last = rc(kids[kids.length - 1]);
+    out.top = Math.round(first.top - F.top); out.bottom = Math.round(F.bottom - last.bottom);
+    const he = blk.querySelector('[data-hend]'); if (he && he.nextElementSibling) out.hgap = Math.round(rc(he.nextElementSibling).top - rc(he).bottom);
+    if (out.bottom < 0 || out.top < 0) bad('η στήλη ξεχειλίζει: πάνω ' + out.top + ', κάτω ' + out.bottom);
+  }
+  if (SLOT) for (const el of all('.story *')) { const r = rc(el); if (!r.width || !r.height) continue;
+    if (r.top < SLOT.y + SLOT.h && r.bottom > SLOT.y && !(r.top <= SLOT.y && r.bottom >= SLOT.y + SLOT.h && el.children.length)) bad('στη θέση του αυτοκόλλητου: ' + name(el)); }
+  for (const el of all('.story *')) { const r = rc(el); const own = Array.from(el.childNodes).some(n => n.nodeType === 3 && n.textContent.trim());
+    if (own && r.width && (r.left < 80 || r.right > 1000 || r.top < 250 || r.bottom > 1670)) bad('έξω από το story: ' + name(el)); }
   return out;
 })()`;
+interface AuditRow { where: string; n: number; edge: number; share: number; gap: number; cx: number; top?: number; bottom?: number; hgap?: number; fails: string[] }
+const auditRows: AuditRow[] = [];
+
+async function audit() {
+  const browser = await chromium.launch({ executablePath: chromePath(), args: ['--no-sandbox'] });
+  try {
+    const pg = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
+    await pg.setContent(page(X), { waitUntil: 'load' });
+    await pg.evaluate(() => document.fonts.ready);
+    for (const [k, t] of X.stills.slice(0, 7).entries()) {
+      await pg.evaluate((x: number) => (window as unknown as { render: (t: number) => void }).render(x), t);
+      // Το κάδρο χωρίς το ζουμ του περάσματος και το τίναγμα της κάμερας: μετριέται η σελίδα, όχι η κίνηση.
+      await pg.evaluate(`document.querySelectorAll('section').forEach(s => { s.style.transform = 'none'; s.style.filter = 'none'; }); document.getElementById('cam').style.transform = 'none';`);
+      auditRows.push({ where: `reel ${k + 1}`, ...((await pg.evaluate(AUDIT(REEL, null))) as Omit<AuditRow, 'where'>) });
+    }
+    for (const [i, s] of STORIES.entries()) {
+      await pg.setContent(storyPage(s, i + 1), { waitUntil: 'load' });
+      await pg.evaluate(() => document.fonts.ready);
+      auditRows.push({ where: `story ${i + 1}`, ...((await pg.evaluate(AUDIT(s.slot ? STORY_S : STORY, s.slot ? ST_SLOT : null))) as Omit<AuditRow, 'where'>) });
+    }
+  } finally {
+    await browser.close();
+  }
+  const pad = (s: string | number, n: number) => String(s).padStart(n);
+  console.log('\n  σκηνή      στοιχεία  ακμή  κοινή  κενά  κέντρο   πάνω  κάτω  τίτλος→  ');
+  for (const r of auditRows) console.log(`  ${r.where.padEnd(9)} ${pad(r.n, 9)} ${pad(r.edge.toFixed(1), 5)} ${pad(r.share.toFixed(1), 6)} ${pad(r.gap.toFixed(1), 5)} ${pad(r.cx.toFixed(1), 7)} ${pad(r.top ?? '', 6)} ${pad(r.bottom ?? '', 5)} ${pad(r.hgap ?? '', 7)}  ${r.fails.length ? '✗' : '✓'}`);
+  const hg = auditRows.map(r => r.hgap).filter((x): x is number => typeof x === 'number');
+  const fails = auditRows.flatMap(r => r.fails.map(f => `${r.where}: ${f}`));
+  if (Math.max(...hg) - Math.min(...hg) > 2) fails.push(`το κενό τίτλου–περιεχομένου διαφέρει: ${hg.join('/')}`);
+  if (fails.length) throw new Error(`Ο έλεγχος στοίχισης απέτυχε:\n  ${fails.slice(0, 30).join('\n  ')}`);
+  console.log('✓ στοίχιση: κάθε ακμή στη στήλη της (≤1px), κάθε επαναλαμβανόμενο κενό ίσο (≤2px)\n');
+}
 
 async function stories(dir: string) {
   const browser = await chromium.launch({ executablePath: chromePath(), args: ['--no-sandbox'] });
   try {
     for (const [i, s] of STORIES.entries()) {
-      const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
-      await page.setContent(storyPage(s, i + 1), { waitUntil: 'load' });
-      await page.evaluate(() => document.fonts.ready);
-      const bad = (await page.evaluate(STORY_CHECK(s.slot))) as string[];
-      if (bad.length) throw new Error(`story ${i + 1}: ${bad.slice(0, 6).join(' | ')}`);
-      await page.screenshot({ path: join(dir, `${i + 1}.png`) });
-      await page.close();
+      const pg = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
+      await pg.setContent(storyPage(s, i + 1), { waitUntil: 'load' });
+      await pg.evaluate(() => document.fonts.ready);
+      await pg.screenshot({ path: join(dir, `${i + 1}.png`) });
+      await pg.close();
       console.log(`  ✓ story ${i + 1}`);
     }
   } finally {
@@ -709,10 +842,12 @@ async function stories(dir: string) {
   }
 }
 
-/** Αντίγραφο για το Instagram, κάτω από 28 MB: H.264 δύο περασμάτων, ~3,85 Mbps, AAC 192k. */
+/** Αντίγραφο για το Instagram, κάτω από 28 MB: H.264 δύο περασμάτων, AAC 192k. */
 function igCopy(dir: string) {
   const FF = process.env.FFMPEG || 'ffmpeg', log = join(dir, 'x264pass'), out = join(dir, 'PROPERWISE-pou-pigan-ta-enoikia-instagram.mp4');
-  const v = ['-c:v', 'libx264', '-preset', 'slow', '-profile:v', 'high', '-level:v', '4.1', '-pix_fmt', 'yuv420p', '-b:v', '3850k', '-maxrate', '5M', '-bufsize', '8M',
+  // Ο ρυθμός βγαίνει από τη διάρκεια: 27,5 MB συνολικά, μείον ήχο και περιέκτη.
+  const kbps = Math.floor((27.5e6 * 8 / DUR - 192e3 - 30e3) / 1000);
+  const v = ['-c:v', 'libx264', '-preset', 'slow', '-profile:v', 'high', '-level:v', '4.1', '-pix_fmt', 'yuv420p', '-b:v', `${kbps}k`, '-maxrate', '5M', '-bufsize', '8M',
     '-g', '60', '-keyint_min', '60', '-sc_threshold', '0', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv', '-passlogfile', log];
   const a = spawnSync(FF, ['-y', '-loglevel', 'error', '-i', join(dir, 'reel.mp4'), ...v, '-pass', '1', '-an', '-f', 'mp4', '/dev/null'], { stdio: 'inherit' });
   const b = spawnSync(FF, ['-y', '-loglevel', 'error', '-i', join(dir, 'reel.mp4'), '-i', join(dir, 'sound.wav'), '-map', '0:v', '-map', '1:a', ...v, '-pass', '2',
@@ -721,11 +856,12 @@ function igCopy(dir: string) {
   if (a.status !== 0 || b.status !== 0) throw new Error('Το ffmpeg απέτυχε στο αντίγραφο του Instagram.');
   const mb = statSync(out).size / 1e6;
   if (mb >= 28) throw new Error(`Το αντίγραφο του Instagram είναι ${mb} MB.`);
-  console.log(`✓ ${out} (${Math.round(mb * 10) / 10} MB)`);
+  console.log(`✓ ${out} (${Math.round(mb * 10) / 10} MB, ${kbps} kbps)`);
 }
 
 // ═══ Τα κείμενα ═════════════════════════════════════════════════════════
 const LINK = 'https://properwise.gr';
+const CALC_LINK = `https://${CALC_URL}`;
 const CAPTION = [
   `${PROP_CAP}: ${eur(GROSS)} ενοίκια τον χρόνο. Καθαρά μένουν ${eur(NET)}.`,
   '',
@@ -735,11 +871,11 @@ const CAPTION = [
   '',
   `Από κάθε ${UNIT}€ ενοικίου, σου μένουν ${P_NET}€.`,
   '',
-  `Αυτό είναι το PROPERWISE. Ενοίκια, δαπάνες, φόροι και προθεσμίες για κάθε ακίνητο, σε μία εφαρμογή. Φωτογραφίζεις τον λογαριασμό και καταχωρείται. Ρωτάς ${ASSISTANT_ACC} και απαντά με τα δικά σου νούμερα.`,
+  `Τώρα με τα δικά σου νούμερα: ο υπολογιστής καθαρής απόδοσης στο ${CALC_URL}${NO_SIGNUP ? ', δωρεάν και χωρίς εγγραφή' : ''}. Βάζεις ενοίκιο, μήνες, ΕΝΦΙΑ και δαπάνες και βλέπεις πόσα σου μένουν.`,
+  '',
+  `Και στο PROPERWISE ο ίδιος λογαριασμός για κάθε ακίνητο, κάθε μήνα. Ενοίκια, δαπάνες, φόροι και προθεσμίες σε μία εφαρμογή. Φωτογραφίζεις τον λογαριασμό και καταχωρείται. Ρωτάς ${ASSISTANT_ACC} και απαντά με τα δικά σου νούμερα.`,
   '',
   'Αποθήκευσέ το για τη φορολογική δήλωση. Στείλ\' το σε κάποιον που νοικιάζει το σπίτι του.',
-  '',
-  'Εσύ ξέρεις πόσα σου μένουν καθαρά από το δικό σου;',
   '',
   `Δωρεάν ${FREE_WORDS}. Σύνδεσμος στο bio.`,
   '',
@@ -748,12 +884,12 @@ const CAPTION = [
   '#ακίνητα #ενοίκια #ΕΝΦΙΑ #φορολογία #ιδιοκτήτες #PROPERWISE',
 ].join('\n');
 
-const ALT = `Βίντεο ${Math.round(DUR)} δευτερολέπτων. ${PROP_CAP}: ${eur(GROSS)} ενοίκια τον χρόνο, σου μένουν ${eur(NET)}. Πού πήγαν τα ${eur(LOST)}; `
+const ALT = `Βίντεο ${Math.round(DUR)} δευτερολέπτων. ${PROP_CAP}: ${eur(GROSS)} ενοίκια τον χρόνο, σου μένουν ${eur(NET)}. Πού πήγαν τα ${eur(LOST)}; Η μπάρα του ενοικίου χωρίζεται σε φόρο, ΕΝΦΙΑ, έξοδα και ό,τι σου μένει. `
   + `Φόρος στα έσοδα, όχι στα καθαρά: σταθερή έκπτωση ${PRES} για επισκευές (${eur(PRESUMPTIVE)}), φορολογητέο εισόδημα ${eur(TAXABLE)}, φόρος εισοδήματος ${RATE} ${eur(TAX)}. `
   + `Τα έξοδα δεν μειώνουν τον φόρο: τέσσερις αποδείξεις (ΕΝΦΙΑ ${eur(ENFIA)}, ${TOP[0].label.toLocaleLowerCase('el')} ${eur(TOP[0].amount)}, ${TOP[1].label.toLocaleLowerCase('el')} ${eur(TOP[1].amount)} και άλλες ${REST.length} δαπάνες ${eur(REST_SUM)}) σφραγίζονται «Δεν εκπίπτει». Μείωση φόρου από τις αποδείξεις: ${feWhole(CUT)}. `
   + `Ο λογαριασμός: ${eur(GROSS)} μείον φόρος ${eur(TAX)}, μείον ΕΝΦΙΑ ${eur(ENFIA)}, μείον έξοδα ${eur(OTHER)}: μένουν ${eur(NET)}. `
   + `Από κάθε ${UNIT}€ ενοικίου: ${P_TAX}€ φόρος, ${P_ENFIA}€ ΕΝΦΙΑ, ${P_OTHER}€ επισκευές και έξοδα, σου μένουν ${P_NET}€. `
-  + `Η εφαρμογή PROPERWISE δείχνει τον ίδιο λογαριασμό για το ακίνητο. Εσύ ξέρεις πόσα σου μένουν καθαρά; Δωρεάν ${FREE_WORDS}, properwise.gr.`;
+  + `Η εφαρμογή PROPERWISE δείχνει τον ίδιο λογαριασμό για το ακίνητο. Τέλος ο υπολογιστής καθαρής απόδοσης στο ${CALC_URL}: τα πεδία ${CALC_FIELDS.map(f => `«${f}»`).join(', ').replace(/, (?=[^,]*$)/, ' και ')} αδειάζουν για τα δικά σου νούμερα.`;
 
 const STORY_ALT = [
   `Κουίζ: ${eur(GROSS)} ενοίκια τον χρόνο. Πόσα από τα ${UNIT}€ σου μένουν;`,
@@ -762,7 +898,7 @@ const STORY_ALT = [
   `Από τα ενοίκια στην τσέπη: ${eur(GROSS)}, μείον φόρος ${eur(TAX)}, ΕΝΦΙΑ ${eur(ENFIA)}, έξοδα ${eur(OTHER)}, μένουν ${eur(NET)}.`,
   `Από κάθε ${UNIT}€ ενοικίου, σου μένουν ${P_NET}€. Φόρος ${P_TAX}€, ΕΝΦΙΑ ${P_ENFIA}€, επισκευές και έξοδα ${P_OTHER}€.`,
   'Όλο αυτό, αυτόματα. Η εφαρμογή PROPERWISE δείχνει τον λογαριασμό του ακινήτου.',
-  `Εσύ ξέρεις πόσα σου μένουν καθαρά; PROPERWISE, δωρεάν ${FREE_WORDS}.`,
+  `Τώρα με τα δικά σου νούμερα: ο υπολογιστής καθαρής απόδοσης με άδεια πεδία, ${CALC_URL}${NO_SIGNUP ? ', δωρεάν, χωρίς εγγραφή' : ''}.`,
 ];
 
 const README = [
@@ -770,10 +906,13 @@ const README = [
   '',
   'Το carousel `carousel-1` σε κίνηση, για Instagram Reels και YouTube Shorts: 1080×1920, 30 fps,',
   `περίπου ${Math.round(DUR)}″, πρωτότυπη μουσική. Και επτά stories σχεδιασμένα ως αφίσες. Όλα τα ποσά από`,
-  'το ακίνητο επίδειξης (`lib/demo/sample.ts`) μέσα από την `incomeStatement`, όπως στο carousel.',
+  'το ακίνητο επίδειξης (`lib/demo/sample.ts`) μέσα από την `incomeStatement`, όπως στο carousel. Η τελευταία',
+  `σκηνή δείχνει τον υπολογιστή ${CALC_URL} με τις ετικέτες του component και αποτέλεσμα από την ίδια`,
+  '`propertyYield` που τρέχει η σελίδα.',
   '',
   '    npx tsx scripts/marketing/reelKathara.ts',
   '    STORIES_ONLY=1 npx tsx scripts/marketing/reelKathara.ts   # μόνο τα stories',
+  '    AUDIT_ONLY=1 npx tsx scripts/marketing/reelKathara.ts     # μόνο ο έλεγχος στοίχισης',
   '',
   'Στο `docs/marketing/reels/reel-kathara/`, έξω από το git:',
   '',
@@ -792,7 +931,7 @@ const README = [
   '',
   '## Stories',
   '',
-  'Με τη σειρά, την ίδια μέρα με το reel. Τα 1, 4 και 7 έχουν άδεια θέση κάτω από το γράφημα για το αυτοκόλλητο.',
+  'Με τη σειρά, την ίδια μέρα με το reel. Τα 1, 4 και 7 έχουν άδεια θέση 220px κάτω από το γράφημα για το αυτοκόλλητο.',
   '',
   `1. Κουίζ «Πόσα από τα ${UNIT}€ σου μένουν;». Επιλογές: ${UNIT - EXEMPT}€, ${UNIT - P_TAX}€, ${P_NET}€ (σωστό).`,
   '2. Ο φόρος (χωρίς αυτοκόλλητο).',
@@ -800,7 +939,7 @@ const README = [
   '4. Δημοσκόπηση «Το ήξερες ότι τα έξοδα δεν μειώνουν τον φόρο;». Επιλογές: «Το ήξερα», «Πρώτη φορά».',
   '5. Το αποτέλεσμα (χωρίς αυτοκόλλητο).',
   '6. Η εφαρμογή (χωρίς αυτοκόλλητο).',
-  '7. Σύνδεσμος στο properwise.gr με κείμενο «Δες τα δικά σου».',
+  `7. Αυτοκόλλητο συνδέσμου στο ${CALC_LINK} με κείμενο «Υπολόγισε τα δικά σου».`,
   '',
   'Εναλλακτικό κείμενο ανά story:',
   '',
@@ -818,33 +957,33 @@ const README = [
   '',
   `${eur(GROSS)} ενοίκια τον χρόνο, ${eur(NET)} καθαρά. Φόρος στα έσοδα, όχι στα καθαρά: στη μακροχρόνια μίσθωση η εφορία αφαιρεί μόνο μια σταθερή έκπτωση ${PRES} για επισκευές. Οι πραγματικές επισκευές, η ασφάλιση και ο ΕΝΦΙΑ δεν εκπίπτουν. Από κάθε ${UNIT}€ ενοικίου, σου μένουν ${P_NET}€.`,
   '',
-  `Το PROPERWISE κάνει αυτόν τον λογαριασμό για το δικό σου ακίνητο, κάθε μήνα. Δωρεάν ${FREE_WORDS}: ${LINK}`,
+  `Τώρα με τα δικά σου νούμερα: ${CALC_LINK}${NO_SIGNUP ? ' (δωρεάν, χωρίς εγγραφή)' : ''}. Το PROPERWISE κάνει αυτόν τον λογαριασμό για το δικό σου ακίνητο, κάθε μήνα. Δωρεάν ${FREE_WORDS}: ${LINK}`,
   '',
   `Παράδειγμα με δεδομένα επίδειξης: φυσικό πρόσωπο, μακροχρόνια μίσθωση, χρονιά ${S.year}. Για τη δική σου περίπτωση, ο λογιστής σου.`,
   '',
-  '**Ετικέτες:** ενοίκια, φόρος ενοικίων, ΕΝΦΙΑ, φορολογική δήλωση, ιδιοκτήτες ακινήτων, μακροχρόνια μίσθωση, ακίνητα, PROPERWISE',
+  '**Ετικέτες:** ενοίκια, φόρος ενοικίων, ΕΝΦΙΑ, φορολογική δήλωση, ιδιοκτήτες ακινήτων, μακροχρόνια μίσθωση, καθαρή απόδοση, ακίνητα, PROPERWISE',
   '',
   '## Καρφιτσωμένο σχόλιο',
   '',
-  `Εσύ ξέρεις πόσα σου μένουν καθαρά από το δικό σου; Δοκίμασέ το δωρεάν ${FREE_WORDS} στο properwise.gr.`,
+  `Βάλε τα δικά σου νούμερα στο ${CALC_URL}${NO_SIGNUP ? ', δωρεάν και χωρίς εγγραφή' : ''}. Πόσα σου μένουν καθαρά;`,
 ].join('\n');
 
 const X: Explainer = {
   slug: 'reel-kathara', file: 'PROPERWISE-pou-pigan-ta-enoikia.mp4',
-  scenes: SC, end: END, dur: DUR, html: HTML, css: CSS, heads: [0, 2, 2, 2, 3, 1, 3], js: JS,
+  scenes: SC, end: END, dur: DUR, html: HTML, css: CSS, heads: [0, 2, 2, 2, 3, 1, 2], js: JS,
   data: {
     free: UP(`Δωρεάν ${FREE_WORDS}`), drop: DROP, hookN: HOOK_N, hookP: HOOK_P, seg: PARTS.map(x => x.c),
     tiles: TILES, exempt: EXEMPT, ptax: P_TAX, taxRun: negRun(TAX),
-    rcT: RC_T, rs: RS, rot: RC_ROT, hitZero: HIT_ZERO,
+    rcT: RC.map((_, k) => .9 + k * .85), rot: RC_ROT, hitZero: HIT_ZERO,
     wfT: WF_T, wfV: WB.map(b => b.val),
-    gap: SLG.gap, hitNet: HIT_NET, hand: HAND, land: LAND,
-    netRun: run(0, NET),
+    gap: SL.gap, hitNet: HIT_NET, hand: HAND, land: LAND,
+    netRun: run(0, NET), cv: CALC_VALUES, clr: CLR, clrStep: CLR_STEP,
   },
   sound: m => {
-    // 1 · Τρία κομμάτια πέφτουν, ο μετρητής κατεβαίνει, η ερώτηση προσγειώνεται.
+    // 1 · Τρία κομμάτια σκουραίνουν, ο μετρητής κατεβαίνει, η ερώτηση προσγειώνεται.
     m.whoosh(0, .5, .04, true);
     DROP.forEach((s, k) => {
-      m.click(s, 1500 - k * 200, .07, (k - 1) * .3); m.boom(s + .45, .05);
+      m.click(s, 1500 - k * 200, .07, (k - 1) * .3); m.boom(s + .1, .04);
       for (let j = 0; j < 7; j++) m.click(s + j * .06, 3600, .016, .25);
       m.pluck(s + .02, [76, 72, 69][k], .04, (k - 1) * .3, .4);
     });
@@ -858,8 +997,8 @@ const X: Explainer = {
     for (let k = 0; k < P_TAX; k++) m.click(SC[1] + 3.6 + k * .05 + .1, 1800 + k * 30, .03, -.2);
     m.pluck(SC[1] + 4.5, 69, .05, 0, .4);
     // 3 · Τέσσερις αποδείξεις: σφύριγμα χαρτιού, χτύπημα, σφραγίδα, προσγείωση.
-    RC_T.forEach((s, k) => {
-      const tc = SC[2] + s + .4;
+    RC.forEach((_, k) => {
+      const tc = SC[2] + .9 + k * .85 + .4;
       m.whoosh(tc - .4, .42, .045, true);
       m.click(tc, 520, .14, (k % 2 ? .25 : -.25)); m.boom(tc, .045); m.clap(tc, .035);
       m.click(tc + .5, 1100, .04, (k % 2 ? .25 : -.25));
@@ -867,7 +1006,7 @@ const X: Explainer = {
     m.pluck(SC[2] + HIT_ZERO + .05, 64, .05, 0, .4); m.bell(SC[2] + HIT_ZERO + .1, 76, .03);
     // 4 · Ο καταρράκτης: κάθε σκαλί μια νότα πιο κάτω, τα καθαρά μια καμπάνα.
     m.sweep(SC[3] + WF_T[0], .6, 500, 1100, .012);
-    [79, 76, 72].forEach((n, k) => { m.pluck(SC[3] + WF_T[k + 1] + .1, n, .05, (k - 1) * .3, .45); m.click(SC[3] + WF_T[k + 1] + .45, 900, .05, (k - 1) * .3); });
+    [79, 76, 72].forEach((n2, k) => { m.pluck(SC[3] + WF_T[k + 1] + .1, n2, .05, (k - 1) * .3, .45); m.click(SC[3] + WF_T[k + 1] + .45, 900, .05, (k - 1) * .3); });
     m.bell(SC[3] + WF_T[4] + .2, 84, .035); m.pluck(SC[3] + WF_T[4] + .2, 72, .04, 0, .5);
     m.pluck(SC[3] + 4.45, 88, .03, 0, .6);
     // 5 · Η πλάκα: προσγειώνεται, κόβεται, οι ζώνες φεύγουν, τα καθαρά λάμπουν.
@@ -883,12 +1022,14 @@ const X: Explainer = {
     for (let k = 0; k < 3; k++) m.click(SC[5] + .65 + k * .15 + .05, 1400, .035, .2);
     m.pluck(SC[5] + 1.5, 81, .045, 0, .5);
     for (let k = 0; k < 4; k++) m.pluck(SC[5] + 2.1 + k * .14 + .05, [84, 86, 88, 91][k], .03, (k - 1.5) * .2, .5);
-    // 7 · Η ερώτηση.
-    m.pluck(SC[6] + .3, 77, .04, 0, .6); m.pluck(SC[6] + .45, 81, .035, 0, .6);
+    // 7 · Ο υπολογιστής: η κάρτα, ο σύνδεσμος, τα πεδία σβήνουν χαρακτήρα χαρακτήρα.
+    m.whoosh(SC[6] + .45, .6, .04, true); m.pluck(SC[6] + 1.15, 81, .035, 0, .5);
+    CALC_VALUES.forEach((s, k) => { for (let j = 0; j < s.length; j++) m.click(SC[6] + CLR + k * CLR_STEP + .4 * j / s.length, 2200, .03, .15); });
+    m.sweep(SC[6] + CLR + 3 * CLR_STEP + .1, .5, 1400, 900, .01);
   },
   checkAt: [SC[1] - .3, SC[2] - .3, SC[3] - .3, SC[4] - .3, SC[5] - .9, SC[6] - .3, END - .3, DUR - .2],
   cover: SC[1] - .45,
-  spots: [[540, 930], [340, 900], [515, 1080], [515, 1000], [300, 1040], [540, 1060], [540, 900]],
+  spots: [[515, 860], [330, 900], [515, 1000], [515, 900], [260, 960], [515, 1050], [515, 880]],
   hits: [HIT_Q, SC[2] + HIT_ZERO, SC[4] + HIT_NET],
   stills: [SC[1] - .35, SC[2] - .35, SC[3] - .35, SC[4] - .35, SC[5] - .9, SC[6] - .35, END - .35],
   caption: CAPTION,
@@ -896,8 +1037,11 @@ const X: Explainer = {
 };
 
 async function main() {
-  const dir = join(process.cwd(), 'docs/marketing/reels', X.slug);
+  const dir = join(ROOT, 'docs/marketing/reels', X.slug);
+  if (!NO_SIGNUP) console.warn('! Η διαδρομή του υπολογιστή δεν είναι δημόσια· η φράση «χωρίς εγγραφή» φεύγει.');
   if (process.env.STORIES_ONLY) { await stories(join(dir, 'stories')); return; }
+  if (!process.env.REEL_PREVIEW) await audit();
+  if (process.env.AUDIT_ONLY) return;
   await make(X);
   if (process.env.REEL_PREVIEW) return;
   // Τα stories του κιτ είναι καρέ του βίντεο· εδώ τα αντικαθιστούν οι αφίσες.
