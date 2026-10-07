@@ -63,12 +63,11 @@ const URL = siteUrl(GUIDE.href);
 
 export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-airbnb-takk-2026') });
 
-// ΟΧΙ ΣΥΝΔΕΣΜΟΣ ΣΤΟΝ ΟΔΗΓΟ ΑΜΑ ΚΑΙ ΠΡΟΔΙΑΓΡΑΦΩΝ (05.10.2026). Έχει ανοιχτό P0
-// και η σελίδα δεν στέλνει τον αναγνώστη εκεί ώσπου να διορθωθεί: ούτε στους
-// «Σχετικούς οδηγούς» ούτε μέσα στο κείμενο. Το `guideAt` σπάει το build αν η
-// διαδρομή μετονομαστεί, ώστε η εξαίρεση να μη σβήσει σιωπηλά. Φεύγει μαζί με
-// τη διόρθωση του P0.
-const RELATED_EXCLUDE = [guideAt('/odigos/vraxyxronia-ama-prodiagrafes-2026').href];
+// Ο ΣΥΝΔΕΣΜΟΣ ΣΤΟΝ ΟΔΗΓΟ ΑΜΑ ΓΥΡΙΣΕ (07/10/2026). Από τις 05.10 τον απέκλειε
+// ένα ανοιχτό P0: ο οδηγός ΑΜΑ έγραφε ότι και η κληρονομιά διαγράφει από το
+// Μητρώο και δεν ανέφερε τη Θεσσαλονίκη, αντίθετα με αυτή τη σελίδα. Διορθώθηκε
+// με την πηγή (άρθρο 111 παρ. 2Β και 2Γ ν.4446/2016, ν.5313/2026) και οι δύο
+// οδηγοί λένε πια το ίδιο.
 
 // ── Οι μορφές των αριθμών ──────────────────────────────────────────────────
 // Ακέραιο ποσό χωρίς δεκαδικά («8€»), όπως το γράφει ο νόμος· τα «0,50€» των
@@ -456,7 +455,7 @@ export default function Page() {
         {/* Συχνές ερωτήσεις */}
         <GuideFaq title="Ό,τι ρωτούν πριν αναρτήσουν" faq={FAQ} />
 
-        <RelatedGuides current={GUIDE} exclude={RELATED_EXCLUDE} />
+        <RelatedGuides current={GUIDE} />
 
         {/* Αποποίηση */}
         <div className="lg-note lg-note-fine" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>

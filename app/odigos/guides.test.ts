@@ -33,9 +33,10 @@ for (const g of GUIDES) {
   for (const x of r) inbound.set(x.href, inbound.get(x.href)! + 1);
 }
 // ── Το `exclude` ─────────────────────────────────────────────────────────
-// Ο οδηγός Airbnb δεν δείχνει τον οδηγό ΑΜΑ όσο εκείνος έχει ανοιχτό P0 (η
-// σελίδα του περνά `exclude`, examples.test.ts). Η θέση γεμίζει από τον
-// επόμενο του κύκλου και ο οδηγός ΑΜΑ δεν μένει ορφανός.
+// Ο μηχανισμός μένει για την επόμενη φορά που ένας οδηγός θα πρέπει να
+// σταματήσει να προτείνεται. Η πρώτη χρήση του (Airbnb → ΑΜΑ, 05.10.2026)
+// έκλεισε στις 07/10/2026 μαζί με το P0 του οδηγού ΑΜΑ: η σελίδα Airbnb δεν
+// περνά πια `exclude`, οπότε οι εισερχόμενοι μετριούνται χωρίς εξαίρεση.
 {
   const AIRBNB = '/odigos/airbnb-takk-2026', AMA = '/odigos/vraxyxronia-ama-prodiagrafes-2026';
   const airbnb = GUIDES.find(g => g.href === AIRBNB)!;
@@ -45,10 +46,6 @@ for (const g of GUIDES) {
   ok('exclude: ο ΑΜΑ λείπει', r.every(x => x.href !== AMA));
   ok('exclude: πάλι τέσσερις', r.length === 4);
   ok('exclude: χωρίς διπλούς και όχι ο εαυτός του', new Set(r.map(x => x.href)).size === 4 && r.every(x => x.href !== AIRBNB));
-  // Οι εισερχόμενοι όπως τους βλέπει ο αναγνώστης: με την εξαίρεση μέσα.
-  const before = relatedGuides(airbnb, 4);
-  for (const x of before) inbound.set(x.href, inbound.get(x.href)! - 1);
-  for (const x of r) inbound.set(x.href, inbound.get(x.href)! + 1);
 }
 const least = Math.min(...inbound.values());
 ok(`κανένας οδηγός δεν παίρνει λιγότερους από 3 συνδέσμους από άλλους οδηγούς (ελάχιστο ${least})`, least >= 3);
