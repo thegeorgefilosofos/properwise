@@ -236,7 +236,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
     try {
       const notice = adjustmentNoticeText({ tenantName: tenant.trim() || undefined, address: prop.address || undefined, effectiveDate: grDate(effective), method, res, cpiPeriod: index ? indexPeriodLabel(index.ym) : undefined, cpiShare75 });
       const issued = await issueDocument(supabase, {
-        userId, docType: 'Ειδοποίηση αναπροσαρμογής μισθώματος', // Ίδιος λόγος με το μισθωτήριο: το «αντικείμενο» είναι δημόσιο.
+        docType: 'Ειδοποίηση αναπροσαρμογής μισθώματος', // Ίδιος λόγος με το μισθωτήριο: το «αντικείμενο» είναι δημόσιο.
         subject: prop.name,
         period: `Ισχύς από ${grDate(effective)}`, summary: { currentRent: res.currentRent, newRent: res.newRent, pct: res.pctApplied, tenant: tenant.trim() },
       });
@@ -244,7 +244,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
         branding: branding ?? null, docType: 'Ειδοποίηση αναπροσαρμογής μισθώματος',
         title: 'Ειδοποίηση αναπροσαρμογής μισθώματος',
         subtitle: [prop.name, prop.address].filter(Boolean).join(' · '),
-        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, asOfLabel: 'Ημερομηνία', note: `Ισχύς από ${grDate(effective)}` },
+        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum, asOfLabel: 'Ημερομηνία', note: `Ισχύς από ${grDate(effective)}` },
         sections: [
           { type: 'note', text: notice },
           { type: 'rows', title: 'Στοιχεία αναπροσαρμογής', rows: [
@@ -567,7 +567,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
               </div>
 
               <div>
-                <div style={{ ...lbl, display: 'flex', alignItems: 'center', gap: 4 }}>Ηλεκτρονική υπογραφή<InfoHint>Η υπογραφή ενσωματώνεται στο PDF και, μαζί με το QR, το καθιστά επαληθεύσιμο έγγραφο.</InfoHint></div>
+                <div style={{ ...lbl, display: 'flex', alignItems: 'center', gap: 4 }}>Ηλεκτρονική υπογραφή<InfoHint>Η υπογραφή ενσωματώνεται στο PDF. Ο κωδικός QR οδηγεί στην καταχώρηση του εγγράφου στο μητρώο, όχι σε έλεγχο της υπογραφής.</InfoHint></div>
                 <SignaturePad onChange={setSig} height={92} />
               </div>
 

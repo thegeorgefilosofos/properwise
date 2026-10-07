@@ -1,6 +1,6 @@
 // Αυστηρά τεστ για το φορολογικό ημερολόγιο ακινήτων (greekTaxCalendar.ts).
 // Τρέξε: npx tsx lib/tax/greekTaxCalendar.test.ts
-import { greekPropertyTaxObligations, taxObligationToEvent, taxObligationNotes, nextWorkingDay, lastWorkingDayOfMonth, taxObligationsHorizon, taxProfileOf, taxEventSource, taxKindOfEventSource, taxKindMeta, taxObligationOfEventSource, isTaxEventSource, TAX_KINDS, TAX_EVENT_CATEGORY, CONFIDENCE_HINT, type TaxObligation } from './greekTaxCalendar'
+import { greekPropertyTaxObligations, taxObligationToEvent, taxObligationNotes, nextWorkingDay, lastWorkingDayOfMonth, taxObligationsHorizon, taxProfileOf, taxEventSource, taxKindOfEventSource, taxKindMeta, taxObligationOfEventSource, isTaxEventSource, TAX_KINDS, TAX_EVENT_CATEGORY, CONFIDENCE_HINT, INCOME_TAX_INSTALMENTS, type TaxObligation } from './greekTaxCalendar'
 import { isNonWorkingDay } from '../calendar/greekHolidays'
 import { AADE_DESTINATIONS, destinationForKind } from './aade'
 import { requirementsFor, WHO_LABEL, type Who } from '../accounting/dossier'
@@ -241,6 +241,17 @@ ok('κενό/ιδιοχρησία → owner', taxProfileOf({ status_detail: 'own
     /μισθωτ/.test(auto!.notes) && /συνταξιούχ/.test(auto!.notes))
   const y2027 = greekPropertyTaxObligations(2027, 'owner').find(o => o.kind === 'income-autofile')
   ok('ακολουθεί το έτος', y2027!.date === '2027-04-15')
+}
+
+// ── ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΕΙΝΑΙ ΤΟΥ ΝΟΜΟΥ ΚΑΙ ΖΟΥΝ ΣΕ ΜΙΑ ΣΤΑΘΕΡΑ ─────
+// ΚΦΕ άρθρο 67 παρ. 4 περ. α΄ (άρθρο 84 ν.5162/2024): οκτώ μηνιαίες δόσεις. Ο
+// αριθμός γράφεται εδώ δεύτερη φορά, με τα δικά του λόγια, ώστε λάθος στη
+// σταθερά να κοκκινίζει· και η σημείωση πρέπει να τον παίρνει από τη σταθερά.
+{
+  ok('οκτώ δόσεις φόρου εισοδήματος (άρθρο 67 παρ. 4 ΚΦΕ)', INCOME_TAX_INSTALMENTS === 8)
+  const decl = greekPropertyTaxObligations(2026, 'owner').find(o => o.kind === 'income-decl')!
+  ok('η σημείωση της δήλωσης λέει το πλήθος της σταθεράς',
+    decl.notes.includes(`σε έως ${INCOME_TAX_INSTALMENTS} δόσεις.`))
 }
 
 // ── report ───────────────────────────────────────────────────────────────────

@@ -366,7 +366,7 @@ export function scanPoolExhaustedMessage(canBuy = false): string {
 
 /** Μήνυμα όταν το πακέτο δεν έχει καθόλου τη Νόα. */
 export function assistantLockedMessage(canBuy = false): string {
-  const base = `${ASSISTANT_NAME} δεν περιλαμβάνεται στο δωρεάν πακέτο «${PLANS.free.name}».`;
+  const base = `Η ${ASSISTANT_NAME} δεν περιλαμβάνεται στο δωρεάν πακέτο «${PLANS.free.name}».`;
   return canBuy
     ? `${base} Με το πακέτο «${PLANS.solo.name}» παίρνεις ${LIMITS.solo.perMonth} ερωτήσεις τον μήνα.`
     : `${base} Υπάρχει στο πακέτο «${PLANS.solo.name}» και στα μεγαλύτερα.`;

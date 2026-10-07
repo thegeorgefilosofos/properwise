@@ -27,6 +27,7 @@ import {
 } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { monthGen } from '@/lib/core/months';
+import { ratePct, rateScale, rateSeries, topBracketFrom, bracketSlices } from '../taxText';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
@@ -54,6 +55,19 @@ const scaleText = (year: number) => {
 };
 const OLD_YEAR = FIRST_YEAR_NEW_BRACKETS - 1;
 
+// ΟΙ ΑΡΙΘΜΟΙ ΤΗΣ ΚΛΙΜΑΚΑΣ ΣΤΟ ΚΕΙΜΕΝΟ, ΑΠΟ ΤΑ ΚΛΙΜΑΚΙΑ (07/10/2026). Το «15 / 25 /
+// 35 / 45%», το «όριο 36.000€» και το «έως το 2025 σταματούσε στις 35.000€»
+// ήταν γραμμένα με το χέρι σε έξι σημεία, δίπλα στον πίνακα που τα υπολογίζει.
+const NEW = RENTAL_TAX_BRACKETS_2026;
+const OLD = rentalBracketsForYear(OLD_YEAR);
+const NEW_SCALE = rateScale(NEW);
+/** Το όριο του ανώτερου κλιμακίου: πάνω από αυτό ισχύει ο ανώτερος συντελεστής. */
+const THRESHOLD = topBracketFrom(NEW);
+const TOP_RATE = ratePct(NEW[NEW.length - 1].rate);
+/** Το κλιμάκιο κάτω από το ανώτερο, όπως ήταν πριν και όπως είναι τώρα. */
+const BELOW_TOP = NEW[NEW.length - 2];
+const BELOW_TOP_OLD = OLD[OLD.length - 2];
+
 // ΧΩΡΙΣ «ΠΛΗΡΗΣ ΟΔΗΓΟΣ». Ο οδηγός δεν καλύπτει συνιδιοκτησία, υπεκμίσθωση ή
 // δωρεάν παραχώρηση· ο τίτλος λέει τι καλύπτει αντί να υπόσχεται πληρότητα.
 const H1 = `Φορολογία ενοικίων 2026: κλίμακα, έκπτωση ${DEDUCTION}, τράπεζα`;
@@ -61,7 +75,7 @@ const TITLE = H1;
 // Κάτω από 160 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει. Με
 // τους 249 της πρώτης γραφής κοβόταν ακριβώς η ημερομηνία της τραπεζικής είσπραξης.
 const DESC =
-  `Πώς φορολογούνται τα ενοίκια το 2026: κλίμακα 15 / 25 / 35 / 45%, τεκμαρτή έκπτωση ${DEDUCTION} `
+  `Πώς φορολογούνται τα ενοίκια το 2026: κλίμακα ${NEW_SCALE}, τεκμαρτή έκπτωση ${DEDUCTION} `
   + `και τραπεζική είσπραξη (ν.5222/2025, από ${BANK_FROM}). Με παραδείγματα.`;
 const GUIDE = guideAt('/odigos/forologia-enoikion-2026');
 const URL = siteUrl(GUIDE.href);
@@ -74,12 +88,12 @@ const FAQ: GuideFaqItem[] = [
     q: 'Ισχύει η νέα κλίμακα στη δήλωση του 2026 (εισοδήματα 2025);',
     a: 'Όχι. Σύμφωνα με το άρθρο 47 παρ. 3 του ν.5246/2025, η νέα κλίμακα εφαρμόζεται '
      + 'για εισοδήματα από το φορολογικό έτος 2026, που δηλώνονται το 2027. Για τα εισοδήματα '
-     + 'του 2025 ισχύει ακόμη η προηγούμενη κλίμακα (15 / 35 / 45%).',
+     + `του ${OLD_YEAR} ισχύει ακόμη η προηγούμενη κλίμακα (${rateScale(OLD)}).`,
   },
   {
-    q: 'Φορολογείται όλο το ενοίκιο με 25% ή 35%;',
+    q: `Φορολογείται όλο το ενοίκιο με ${ratePct(NEW[1].rate)} ή ${ratePct(NEW[2].rate)};`,
     a: 'Όχι. Η κλίμακα είναι κλιμακωτή: κάθε τμήμα του εισοδήματος φορολογείται με τον '
-     + 'δικό του συντελεστή. Μόνο το ποσό πάνω από τα 36.000€ φτάνει στο 45%.',
+     + `δικό του συντελεστή. Μόνο το ποσό πάνω από τα ${feWhole(THRESHOLD)} φτάνει στο ${TOP_RATE}.`,
   },
   {
     q: `Η έκπτωση ${DEDUCTION} θέλει αποδείξεις;`,
@@ -127,7 +141,7 @@ const SCALE = RENTAL_TAX_BRACKETS_2026.map(b => [
 
 // Οι πηγές/νομική βάση, ορατές όπως στα εργαλεία (E-E-A-T).
 const SOURCES: string[] = [
-  'Κλίμακα ενοικίων 2026 (15 / 25 / 35 / 45%, όριο 36.000€): άρθρο 8 ν.5246/2025 (ΦΕΚ Α΄ 198/11.11.2025) · έναρξη ισχύος άρθρο 47 παρ. 3.',
+  `Κλίμακα ενοικίων 2026 (${NEW_SCALE}, όριο ${feWhole(THRESHOLD)}): άρθρο 8 ν.5246/2025 (ΦΕΚ Α΄ 198/11.11.2025) · έναρξη ισχύος άρθρο 47 παρ. 3.`,
   `Τεκμαρτή έκπτωση ${DEDUCTION}: άρθρο 39 παρ. 3 περ. α΄ ν.4172/2013 (ΚΦΕ).`,
   `Τραπεζική είσπραξη μισθωμάτων: άρθρο 210 ν.5222/2025 (ΦΕΚ Α΄ 134/28.07.2025), που προσθέτει παρ. 5 στο άρθρο 39 ΚΦΕ · η έναρξη ορίστηκε στην 01/04/2026 με το άρθρο 129 παρ. 1 ν.5264/2025 (ΦΕΚ Α΄ 239/19.12.2025), μετατέθηκε στην 01/10/2026 με το άρθρο 48 ν.5294/2026 (ΦΕΚ Α΄ 58/08.04.2026) και στην ${BANK_FROM} με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026).`,
 ];
@@ -162,15 +176,20 @@ const ROW_LABELS: [string, (e: Example) => string][] = [
 ];
 const exampleRows = (e: Example) => ROW_LABELS.map(([k, v]) => [k, v(e)] as const);
 
-const EX1 = example(650 * 12);
-const EX2 = example(1_800 * 12);
-const EX3_WITH = example(40_000);
-const EX3_WITHOUT = example(40_000, false);
-const THRESHOLD = RENTAL_TAX_BRACKETS_2026.at(-1)!.from;
+// Οι υποθέσεις των παραδειγμάτων· όλα τα υπόλοιπα ποσά βγαίνουν από τη μηχανή.
+const EX1_MONTHLY = 650;
+const EX2_MONTHLY = 1_800;
+const EX3_GROSS = 40_000;
+const EX1 = example(EX1_MONTHLY * 12);
+const EX2 = example(EX2_MONTHLY * 12);
+const EX3_WITH = example(EX3_GROSS);
+const EX3_WITHOUT = example(EX3_GROSS, false);
+/** Το παράδειγμα 2 κομμένο στα κλιμάκιά του: «τα πρώτα 12.000€ με 15% (1.800€)…». */
+const [EX2_LOW, EX2_HIGH] = bracketSlices(EX2.taxable, NEW);
 
 // Οι ενότητες τροφοδοτούν ΚΑΙ τις κεφαλίδες ΚΑΙ τα περιεχόμενα — μία πηγή.
 const S = {
-  scale: { id: 'klimaka', over: '1. Η κλίμακα', title: '15 / 25 / 35 / 45% (όριο 36.000€)' },
+  scale: { id: 'klimaka', over: '1. Η κλίμακα', title: `${NEW_SCALE} (όριο ${feWhole(THRESHOLD)})` },
   deduction: { id: 'ekptosi', over: '2. Δαπάνες', title: `Τεκμαρτή έκπτωση ${DEDUCTION}` },
   bank: { id: 'trapeziki-eispraxi', over: '3. Τρόπος πληρωμής', title: 'Η προϋπόθεση της τραπεζικής είσπραξης' },
   examples: { id: 'paradeigmata', over: '4. Στην πράξη', title: 'Τρία παραδείγματα σε ευρώ' },
@@ -203,7 +222,7 @@ export default function Page() {
           {'Αν εκμισθώνεις ακίνητο στην Ελλάδα, το εισόδημα από ενοίκια δεν μπαίνει στην ίδια κλίμακα με τον μισθό ή τη σύνταξη. Φορολογείται χωριστά, με δική του προοδευτική κλίμακα, από το πρώτο ευρώ.'}
         </p>
         <p className="lg-p">
-          {'Για τα εισοδήματα που αποκτώνται το φορολογικό έτος 2026 (και δηλώνονται το 2027) ισχύει η αναμορφωμένη κλίμακα του άρθρου 8 του ν.5246/2025: 15%, 25%, 35% και 45%. Το 35% καλύπτει πλέον έως και τις 36.000€ φορολογητέου εισοδήματος (έως το 2025 σταματούσε στις 35.000€).'}
+          {`Για τα εισοδήματα που αποκτώνται το φορολογικό έτος ${FIRST_YEAR_NEW_BRACKETS} (και δηλώνονται το ${FIRST_YEAR_NEW_BRACKETS + 1}) ισχύει η αναμορφωμένη κλίμακα του άρθρου 8 του ν.5246/2025: ${rateSeries(NEW)}. Το ${ratePct(BELOW_TOP.rate)} καλύπτει πλέον έως και τις ${feWhole(BELOW_TOP.to)} φορολογητέου εισοδήματος (έως το ${OLD_YEAR} σταματούσε στις ${feWhole(BELOW_TOP_OLD.to)}).`}
         </p>
         <p className="lg-p">
           {'Στόχος του οδηγού είναι να ξέρεις την τάξη μεγέθους πριν μιλήσεις με τον λογιστή σου.'}
@@ -218,7 +237,7 @@ export default function Page() {
           head={['Εισόδημα', 'Συντελεστής']} min="280px" rows={SCALE} />
         <ul className="lg-ul" style={{ marginTop: 16 }}>
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Κλιμακωτή φορολόγηση:'}</strong>{' κάθε τμήμα του φορολογητέου εισοδήματος φορολογείται με τον δικό του συντελεστή.'}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Χωρίς αφορολόγητο τύπου μισθωτών:'}</strong>{' από το πρώτο ευρώ ισχύει το 15%.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Χωρίς αφορολόγητο τύπου μισθωτών:'}</strong>{` από το πρώτο ευρώ ισχύει το ${ratePct(NEW[0].rate)}.`}</li>
           <li>{`Το φορολογητέο ποσό είναι συνήθως το ${TAXED_SHARE} των ακαθάριστων μισθωμάτων (δες την επόμενη ενότητα).`}</li>
         </ul>
         <p className="lg-p">
@@ -228,7 +247,7 @@ export default function Page() {
         {/* 2. Τεκμαρτή έκπτωση 5% */}
         <H2 {...S.deduction} />
         <p className="lg-p">
-          {'Νομική βάση: άρθρο 39 παρ. 3 περ. α΄ ν.4172/2013 (ΚΦΕ). Για φυσικό πρόσωπο που εκμισθώνει ή παραχωρεί ακίνητο, εκπίπτει ποσοστό πέντε τοις εκατό (5%) για δαπάνες επισκευής, συντήρησης, ανακαίνισης ή άλλες πάγιες και λειτουργικές δαπάνες, χωρίς προσκόμιση αποδείξεων για αυτή την τεκμαρτή δαπάνη.'}
+          {`Νομική βάση: άρθρο 39 παρ. 3 περ. α΄ ν.4172/2013 (ΚΦΕ). Για φυσικό πρόσωπο που εκμισθώνει ή παραχωρεί ακίνητο, εκπίπτει ποσοστό πέντε τοις εκατό (${DEDUCTION}) για δαπάνες επισκευής, συντήρησης, ανακαίνισης ή άλλες πάγιες και λειτουργικές δαπάνες, χωρίς προσκόμιση αποδείξεων για αυτή την τεκμαρτή δαπάνη.`}
         </p>
         <ul className="lg-ul">
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Ακαθάριστα ενοίκια έτους:'}</strong>{' Ε'}</li>
@@ -275,19 +294,19 @@ export default function Page() {
           {`Υποθέσεις: φυσικό πρόσωπο, μακροχρόνια μίσθωση, τεκμαρτή έκπτωση ${DEDUCTION}, κλίμακα 2026.`}
         </p>
 
-        <h3 style={eg}>Παράδειγμα 1: μηνιαίο ενοίκιο 650€ (ετήσιο {fe(EX1.gross)})</h3>
-        <p className="lg-p">{'Όλο το φορολογητέο μένει στο κλιμάκιο 15%.'}</p>
+        <h3 style={eg}>Παράδειγμα 1: μηνιαίο ενοίκιο {feWhole(EX1_MONTHLY)} (ετήσιο {fe(EX1.gross)})</h3>
+        <p className="lg-p">{`Όλο το φορολογητέο μένει στο κλιμάκιο ${ratePct(NEW[0].rate)}.`}</p>
         <GuideTable caption="Παράδειγμα 1" head={['Υπολογισμός', 'Αποτέλεσμα']} min="260px" rows={exampleRows(EX1)} />
 
-        <h3 style={eg}>Παράδειγμα 2: μηνιαίο ενοίκιο 1.800€ (ετήσιο {fe(EX2.gross)})</h3>
+        <h3 style={eg}>Παράδειγμα 2: μηνιαίο ενοίκιο {feWhole(EX2_MONTHLY)} (ετήσιο {fe(EX2.gross)})</h3>
         <p className="lg-p">
-          {'Τα πρώτα 12.000€ φορολογούνται με 15% (1.800€) και τα υπόλοιπα 8.520€ με 25% (2.130€).'}
+          {`Τα πρώτα ${feWhole(EX2_LOW.width)} φορολογούνται με ${ratePct(EX2_LOW.rate)} (${feWhole(EX2_LOW.tax)}) και τα υπόλοιπα ${feWhole(EX2_HIGH.width)} με ${ratePct(EX2_HIGH.rate)} (${feWhole(EX2_HIGH.tax)}).`}
         </p>
         <GuideTable caption="Παράδειγμα 2" head={['Υπολογισμός', 'Αποτέλεσμα']} min="260px" rows={exampleRows(EX2)} />
 
-        <h3 style={eg}>Παράδειγμα 3: το όριο των 36.000€</h3>
+        <h3 style={eg}>Παράδειγμα 3: το όριο των {feWhole(THRESHOLD)}</h3>
         <p className="lg-p">
-          {`Με φορολογητέο ακριβώς ${fe(THRESHOLD)} ο φόρος είναι ${fe(rentalIncomeTax(THRESHOLD, RENTAL_TAX_BRACKETS_2026))}, χωρίς καθόλου 45%. Πάνω από εκεί, ακαθάριστα ${fe(EX3_WITH.gross)} με και χωρίς την έκπτωση ${DEDUCTION}:`}
+          {`Με φορολογητέο ακριβώς ${fe(THRESHOLD)} ο φόρος είναι ${fe(rentalIncomeTax(THRESHOLD, RENTAL_TAX_BRACKETS_2026))}, χωρίς καθόλου ${TOP_RATE}. Πάνω από εκεί, ακαθάριστα ${fe(EX3_WITH.gross)} με και χωρίς την έκπτωση ${DEDUCTION}:`}
         </p>
         <div className="po-table-box" style={{ marginTop: 14 }}>
           <div className="po-scroll-x" style={{ overflowX: 'auto' }}>

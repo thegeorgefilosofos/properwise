@@ -14,7 +14,10 @@ import { T } from '@/components/tokens';
 import { ChipToggle } from '@/components/Theme';
 import { fn } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
-import { CustomSelect } from '@/app/dashboard/components/UIComponents';
+// ΧΩΡΙΣ `CustomSelect` ΕΔΩ. Ο επιλογέας ζει στο app/ToolSelect.tsx: το
+// UIComponents της εφαρμογής μπαίνει ολόκληρο στο πακέτο όποιου το εισάγει
+// (ημερολόγιο, μαζικές ενέργειες, πεδία αριθμών), 7,2 KB gzip. Η καθαρή
+// απόδοση και ο φόρος ενοικίων δεν έχουν κανέναν επιλογέα να το δικαιολογεί.
 
 /** Η ετικέτα πεδίου: μικρά κεφαλαία, όπως σε όλες τις φόρμες του προϊόντος. */
 export const TOOL_LABEL: CSSProperties = {
@@ -109,8 +112,8 @@ export function ToolNumField({ id, label, value, onChange, unit, unitPad = 34, m
 // Η στοίχιση είναι στην ΑΡΧΗ: η βοήθεια ζει κάτω από κάθε πεδίο, οπότε το
 // κάτω άκρο δεν είναι το κουτί. Οι ετικέτες κρατιούνται σε μία γραμμή.
 // ═══════════════════════════════════════════════════════════════════════════
-type ToolSpan = 1 | 2 | 'row';
-const spanClass = (span?: ToolSpan) =>
+export type ToolSpan = 1 | 2 | 'row';
+export const spanClass = (span?: ToolSpan) =>
   span === 2 ? 'po-tf-span2' : span === 'row' ? 'po-tf-row' : undefined;
 
 export function ToolFields({ children, xs2, className }: { children: ReactNode; xs2?: boolean; className?: string }) {
@@ -161,30 +164,6 @@ export function ToolSeg<V extends string>({ label, value, onChange, options, hin
         ))}
       </div>
       {hint && <ToolHint id={`${id}-h`}>{hint}</ToolHint>}
-    </div>
-  );
-}
-
-/**
- * Επιλογέας με την ετικέτα των πεδίων από πάνω του.
- *
- * Η ΕΤΙΚΕΤΑ ΤΗΝ ΓΡΑΦΕΙ Η ΣΕΛΙΔΑ, ΟΧΙ ΤΟ ΧΕΙΡΙΣΤΗΡΙΟ. Το `CustomSelect` φέρνει
- * τη δική του ετικέτα, με το στιλ των φορμών της εφαρμογής: πεζά, μεγαλύτερα,
- * άλλο βάρος. Δίπλα στα πεδία κειμένου, που έχουν κεφαλαία ετικέτα, η ίδια
- * σειρά θα είχε δύο τυπογραφίες. Περνά μόνο `ariaLabel`, ώστε ο αναγνώστης
- * οθόνης να ακούει το ίδιο που διαβάζει το μάτι. (Ο εγγενής `<select>` δεν
- * επιτρέπεται: scripts/guard-native-fields.mjs.)
- */
-export function ToolSelect({ label, value, onChange, options, hint, span }: {
-  label: string; value: string; onChange: (v: string) => void;
-  options: readonly { value: string; label: string }[];
-  hint?: ReactNode; span?: ToolSpan;
-}) {
-  return (
-    <div className={spanClass(span)}>
-      <span style={TOOL_LABEL}>{label}</span>
-      <CustomSelect ariaLabel={label} value={value} onChange={onChange} options={[...options]}/>
-      {hint && <ToolHint>{hint}</ToolHint>}
     </div>
   );
 }

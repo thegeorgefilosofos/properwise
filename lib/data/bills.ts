@@ -130,7 +130,8 @@ export async function matchingText<T = Partial<BillsRow>>(
 ): Promise<T[]> {
   let q = db.from(TABLE).select(columns).eq('property_id', propertyId);
   if (userId) q = q.eq('user_id', userId);
-  return rows<T>(q.or(orFilter).limit(limit));
+  // Με σειρά: χωρίς αυτήν η PostgREST δεν εγγυάται ποιες γραμμές χωρούν στο όριο.
+  return rows<T>(q.or(orFilter).order('due_date', { ascending: false }).limit(limit));
 }
 
 /**

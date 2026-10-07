@@ -59,6 +59,7 @@ import {
   Users,
   SearchX,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
 import {
   notify,
@@ -124,7 +125,7 @@ import {
   RenewalView,
 } from './TabTenantMoney';
 import { DashboardView, CommView, LegalTaxView, DamagesView, MaintenanceView } from './TabTenantCare';
-import { useLoad } from '@/app/hooks/useLoad';
+import { useLoad, type LoadTurn } from '@/app/hooks/useLoad';
 import { plural } from '@/lib/core/greek';
 import { ActionMenu } from '@/components/ActionMenu';
 import { navLabel } from '@/lib/nav/labels';
@@ -133,6 +134,54 @@ import { cleanDigits } from '@/lib/property/powerSupply';
 // ─── Design tokens, shared source of truth (components/Theme) ────────────────
 
 // ─── HTML escaping for values interpolated into document.write() templates ────
+
+// ─── Οριστική διαγραφή ενοικιαστή ─────────────────────────────────────────────
+// ΤΟ ΑΜΕΤΑΚΛΗΤΟ ΠΑΕΙ ΤΕΛΕΥΤΑΙΟ. Η διαγραφή ήταν τέσσερα αιτήματα από τον
+// περιηγητή: πρώτα το PDF του μισθωτηρίου, μετά οι δόσεις, οι φθορές και στο
+// τέλος ο ενοικιαστής. Αν αποτύγχανε ένα από τα δύο τελευταία, ο ενοικιαστής
+// έμενε χωρίς μισθωτήριο και χωρίς ιστορικό πληρωμών, που τροφοδοτεί το Ε2 και
+// τα έσοδα της χρονιάς.
+//
+// Τώρα οι γραμμές φεύγουν ΟΛΕΣ ΜΑΖΙ ή καμία, στη `delete_tenant` της βάσης
+// (20261007130000), με τα δικαιώματα του χρήστη. Τα αρχεία σβήνονται ΜΟΝΟ αφού
+// πετύχει εκείνη· αν αποτύχει το σβήσιμό τους, μένει αρχείο χωρίς κάτοχο, όχι
+// ενοικιαστής χωρίς ιστορικό και ο χρήστης το μαθαίνει.
+type DbErr = { message: string; code?: string } | null;
+export type TenantPurge =
+  | { ok: false; error: string }
+  | { ok: true; payments: number; damages: number; files: number; filesError: string | null };
+
+const PURGE_REFUSED: Record<string, string> = {
+  tenant_not_found: 'Ο ενοικιαστής δεν βρέθηκε. Ίσως διαγράφηκε ήδη ή δεν έχεις πρόσβαση σε αυτόν. Δεν διαγράφηκε τίποτα.',
+  tenant_not_deletable: 'Δεν έχεις δικαίωμα να διαγράψεις αυτόν τον ενοικιαστή. Δεν διαγράφηκε τίποτα.',
+  payments_not_deletable: 'Δεν έχεις δικαίωμα να διαγράψεις τις πληρωμές αυτού του ενοικιαστή, οπότε δεν διαγράφηκε τίποτα. Ζήτα τη διαγραφή από τον ιδιοκτήτη του λογαριασμού.',
+  damages_not_deletable: 'Δεν έχεις δικαίωμα να διαγράψεις τις φθορές αυτού του ενοικιαστή, οπότε δεν διαγράφηκε τίποτα. Ζήτα τη διαγραφή από τον ιδιοκτήτη του λογαριασμού.',
+};
+
+export async function purgeTenant(io: {
+  /** Η `delete_tenant`: γραμμές σε μία συναλλαγή, επιστρέφει τα αρχεία προς σβήσιμο. */
+  deleteRows: () => PromiseLike<{ data: unknown; error: DbErr }>;
+  /** Σβήσιμο από το `lease-documents`. Καλείται ΜΟΝΟ μετά την επιτυχία. */
+  removeFiles: (paths: string[]) => PromiseLike<{ error: DbErr }>;
+}): Promise<TenantPurge> {
+  const { data, error } = await io.deleteRows();
+  if (error) {
+    const known = Object.keys(PURGE_REFUSED).find(k => error.message?.includes(k));
+    return { ok: false, error: known ? PURGE_REFUSED[known] : `${failed('Ο ενοικιαστής δεν διαγράφηκε', error)} Δεν διαγράφηκε τίποτα.` };
+  }
+  const r = (data && typeof data === 'object' ? data : {}) as { paths?: unknown; payments?: unknown; damages?: unknown };
+  const paths = Array.isArray(r.paths) ? r.paths.filter((p): p is string => typeof p === 'string' && p.length > 0) : [];
+  let filesError: string | null = null;
+  if (paths.length) {
+    try {
+      const { error: rmErr } = await io.removeFiles(paths);
+      if (rmErr) filesError = failed('Ο ενοικιαστής διαγράφηκε, αλλά το μισθωτήριο δεν σβήστηκε από τα αρχεία', rmErr);
+    } catch (e) {
+      filesError = failed('Ο ενοικιαστής διαγράφηκε, αλλά το μισθωτήριο δεν σβήστηκε από τα αρχεία', e);
+    }
+  }
+  return { ok: true, payments: Number(r.payments) || 0, damages: Number(r.damages) || 0, files: paths.length, filesError };
+}
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 type DossierTab='overview'|'lease'|'condition'|'legal'|'comm'|'docs';
@@ -208,8 +257,12 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       sf('lease_end',calcEnd(form.lease_start,form.lease_type as LeaseType,form.custom_lease_days));
   }
 
-  const fetch_=useCallback(async()=>{
+  // Η ΠΑΛΙΑ ΑΠΑΝΤΗΣΗ ΔΕΝ ΓΡΑΦΕΙ. Με αλλαγή ακινήτου ή δύο ανανεώσεις στη σειρά,
+  // η φόρτωση του προηγούμενου μπορούσε να απαντήσει ΤΕΛΕΥΤΑΙΑ και να γράψει
+  // τους ενοικιαστές του κάτω από το νέο ακίνητο. Το `turn` το λέει.
+  const fetch_=useCallback(async(turn:LoadTurn)=>{
     const list=await tenantStore.ofProperty<Tenant>(supabase,propertyId,'*',userId);
+    if(!turn.isLatest()) return;
     const[pd,{data:dd},{data:cd},{data:md},own,pc]=await Promise.all([
       rentStore.ofProperty<RentPayment>(supabase,propertyId,'*',userId),
       supabase.from('tenant_damages').select('*').eq('property_id',propertyId).eq('user_id',userId).order('occurred_on',{ascending:false}),
@@ -222,6 +275,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       // ΑΘΡΟΙΣΜΑ και ότι το ποσό εδώ είναι μικρότερο από το πραγματικό.
       properties.count(supabase, userId),
     ]);
+    if(!turn.isLatest()) return;
     setTenants(list); setPayments(pd); setDamages((dd||[]) as TenantDamage[]); setComps((cd||[]) as RentComp[]); setMaint((md||[]) as MaintenanceReq[]);
     const sq=Number((own as {sqm?:number|null}|null)?.sqm);
     setPropSqm(Number.isFinite(sq)&&sq>0?sq:null);
@@ -229,7 +283,9 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     setLoadedFor(propertyId);
   },[propertyId,userId,supabase]);
 
-  useLoad(fetch_);
+  // Κάθε ανανέωση περνά από τον ίδιο δρόμο, ώστε να μετρά στην αρίθμηση.
+  const reload=useLoad(fetch_);
+  const refresh=useCallback(()=>reload({immediate:true}),[reload]);
 
   // Συγχρονισμός ημερολογίου/εργασιών για τους τρέχοντες ενοικιαστές (idempotent).
   // Η ΣΗΜΑΙΑ ΚΡΑΤΑΕΙ ΤΟ ΑΚΙΝΗΤΟ, ΟΧΙ ΕΝΑ ΝΑΙ. Ήταν `useRef(false)` που γινόταν
@@ -473,35 +529,28 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     }
     setSaving(false);setIsForm(false);
     notifyOk(editId?'Αποθηκεύτηκε':'Ενοικιαστής προστέθηκε');
-    await fetch_();
+    await refresh();
   };
 
   const markMovedOut=async(t:Tenant)=>{
     if(!(await confirmDialog(`Σήμανση αποχώρησης για «${t.full_name}»; Θα μεταφερθεί στους προηγούμενους ενοικιαστές.`))) return;
     if(!await saved('Η αποχώρηση δεν καταχωρήθηκε', tenantStore.markPast(supabase,t.id,todayISO()))) return;
-    notify('Ο ενοικιαστής μεταφέρθηκε στο ιστορικό'); fetch_();
+    notify('Ο ενοικιαστής μεταφέρθηκε στο ιστορικό'); void refresh();
   };
   const delTenant=async(t:Tenant)=>{
     if(!(await confirmDialog(`Οριστική διαγραφή «${t.full_name}»; Διαγράφονται μαζί οι πληρωμές του, που μετρούν στα έσοδα, οι φθορές και το μισθωτήριο που ανέβηκε.`,{tone:'negative',confirmLabel:'Οριστική διαγραφή'}))) return;
-    // ΤΟ ΜΙΣΘΩΤΗΡΙΟ ΕΜΕΝΕ ΣΤΟΝ ΧΩΡΟ ΑΠΟΘΗΚΕΥΣΗΣ. Η γραμμή του ενοικιαστή έφευγε,
-    // το PDF με όνομα, ΑΦΜ και διεύθυνση έμενε χωρίς κάτοχο στην οθόνη.
-    {
-      const folder=`${userId}/${t.id}`;
-      const{data:files,error:lsErr}=await supabase.storage.from('lease-documents').list(folder,{limit:1000});
-      if(lsErr){notifyError(failed('Το μισθωτήριο δεν βρέθηκε, η διαγραφή σταμάτησε',lsErr));return;}
-      if(files&&files.length>0){
-        const{error:rmErr}=await supabase.storage.from('lease-documents').remove(files.map(x=>`${folder}/${x.name}`));
-        if(rmErr){notifyError(failed('Το μισθωτήριο του ενοικιαστή δεν διαγράφηκε',rmErr));return;}
-      }
-    }
-    // Η ΣΕΙΡΑ ΕΧΕΙ ΣΗΜΑΣΙΑ: πρώτα τα εξαρτημένα, τελευταίος ο ενοικιαστής. Αν
-    // κάποιο βήμα αποτύχει, σταματάμε — αλλιώς μένουν ορφανές πληρωμές που δεν
-    // φαίνονται πουθενά και εξακολουθούν να μετράνε σε αθροίσματα.
-    if(!await saved('Οι πληρωμές του ενοικιαστή δεν διαγράφηκαν', rentStore.removeOfTenant(supabase,t.id))) return;
-    if(!await saved('Οι φθορές του ενοικιαστή δεν διαγράφηκαν', supabase.from('tenant_damages').delete().eq('tenant_id',t.id))) return;
-    if(!await saved('Ο ενοικιαστής δεν διαγράφηκε', tenantStore.remove(supabase,t.id))) return;
+    // ΟΛΑ Ή ΤΙΠΟΤΑ ΚΑΙ ΤΟ ΑΜΕΤΑΚΛΗΤΟ ΤΕΛΕΥΤΑΙΟ (βλ. `purgeTenant`). Οι γραμμές
+    // φεύγουν σε μία συναλλαγή· το PDF του μισθωτηρίου, με όνομα, ΑΦΜ και
+    // διεύθυνση, σβήνεται μόνο αφού εκείνη πετύχει.
+    const res=await purgeTenant({
+      deleteRows:()=>supabase.rpc('delete_tenant',{p_tenant_id:t.id}),
+      removeFiles:paths=>supabase.storage.from('lease-documents').remove(paths),
+    });
+    if(!res.ok){notifyError(res.error);return;}
     if(openId===t.id) setOpenId(null);
-    notify('Διαγράφηκε'); fetch_();
+    if(res.filesError) notifyError(res.filesError);
+    else notify('Διαγράφηκε');
+    void refresh();
   };
 
   // ── Έγγραφο μισθωτηρίου (PDF) ────────────────────────────────────────────────
@@ -513,7 +562,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     // Το αρχείο ανέβηκε ήδη. Αν δεν καταγραφεί το όνομά του, ο ενοικιαστής δεν
     // έχει συμβόλαιο πουθενά στην οθόνη — και το αρχείο υπάρχει, αόρατο.
     if(!await saved('Το συμβόλαιο ανέβηκε, αλλά δεν συνδέθηκε με τον ενοικιαστή',tenantStore.update(supabase,t.id,{lease_doc_name:file.name}))){setUploading(false);return;}
-    setUploading(false);notifyOk('Το PDF ανέβηκε');fetch_();
+    setUploading(false);notifyOk('Το PDF ανέβηκε');void refresh();
   };
   const openLeaseDoc=async(t:Tenant)=>{
     if(!t.lease_doc_name) return;
@@ -669,9 +718,11 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                       // ανοίγματος· χωρίς αυτό, η διαγραφή θα άνοιγε ΚΑΙ το ντοσιέ. Το
                       // `IconBtn` δέχεται ενέργεια χωρίς συμβάν, οπότε το φρένο ζει έξω του.
                       <div onClick={e=>e.stopPropagation()} style={{ display:'flex' }}>
-                        {/* Το «×» δεν είχε λεκτικό, μόνο σχήμα: το `label` λέει ΠΟΙΟΣ ενοικιαστής φεύγει. */}
-                        <IconBtn label={`Διαγραφή ενοικιαστή: ${t.full_name}`} title="Διαγραφή" onClick={()=>delTenant(t)}>
-                          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        {/* ΚΑΔΟΣ, ΟΧΙ «×». Το «×» στη γωνία μιας κάρτας διαβάζεται «κλείσιμο»,
+                            όχι οριστική διαγραφή με πληρωμές και μισθωτήριο. Ο τόνος `danger`
+                            τον βάφει κόκκινο, όπως κάθε κάδο της `.po-ico`· το `label` λέει ΠΟΙΟΣ φεύγει. */}
+                        <IconBtn label={`Διαγραφή ενοικιαστή: ${t.full_name}`} title="Διαγραφή ενοικιαστή" tone="danger" onClick={()=>delTenant(t)}>
+                          <Trash2 size={16} aria-hidden="true"/>
                         </IconBtn>
                       </div>
                     }>
@@ -785,16 +836,16 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
             <div style={{ display:'flex', flexDirection:'column' }}>
               <div>
                 <InfoBanner tone="info">Περιμένεις το ενοίκιο κάθε μήνα την <strong>{fn(Math.min(Math.max(1,dc.rent_due_day||1),28))}η</strong> ημέρα. Οι μηνιαίες δόσεις δημιουργούνται αυτόματα από την έναρξη της μίσθωσης.</InfoBanner>
-                <PaymentsView tenant={dc} propertyId={propertyId} userId={userId} payments={dcPayments} onRefresh={fetch_} plan={plan}/>
+                <PaymentsView tenant={dc} propertyId={propertyId} userId={userId} payments={dcPayments} onRefresh={refresh} plan={plan}/>
               </div>
-              <div style={{ borderTop:'1px solid var(--border-subtle)', marginTop:28, paddingTop:28 }}><DepositView tenant={dc} payments={dcPayments} damages={dcDamages} onReturned={fetch_}/></div>
+              <div style={{ borderTop:'1px solid var(--border-subtle)', marginTop:28, paddingTop:28 }}><DepositView tenant={dc} payments={dcPayments} damages={dcDamages} onReturned={refresh}/></div>
               <div style={{ borderTop:'1px solid var(--border-subtle)', marginTop:28, paddingTop:28 }}><RenewalView tenant={dc} userId={userId} comps={comps} sqm={propSqm}/></div>
             </div>
           )}
           {dossierTab==='condition'&&(
             <div style={{ display:'flex', flexDirection:'column' }}>
-              <DamagesView tenant={dc} propertyId={propertyId} userId={userId} damages={dcDamages} onRefresh={fetch_}/>
-              <div style={{ borderTop:'1px solid var(--border-subtle)', marginTop:28, paddingTop:28 }}><MaintenanceView tenant={dc} propertyId={propertyId} userId={userId} requests={dcMaint} others={dc?maint.filter(m=>m.tenant_id!==dc.id):maint} onRefresh={fetch_}/></div>
+              <DamagesView tenant={dc} propertyId={propertyId} userId={userId} damages={dcDamages} onRefresh={refresh}/>
+              <div style={{ borderTop:'1px solid var(--border-subtle)', marginTop:28, paddingTop:28 }}><MaintenanceView tenant={dc} propertyId={propertyId} userId={userId} requests={dcMaint} others={dc?maint.filter(m=>m.tenant_id!==dc.id):maint} onRefresh={refresh}/></div>
             </div>
           )}
           {dossierTab==='legal'&&<LegalTaxView tenant={dc} propertyCount={propertyCount}/>}
@@ -810,7 +861,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                         <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans, overflow:'hidden', textOverflow:'ellipsis' }}>{dc.lease_doc_name}</div>
                         <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>Ανεβασμένο συμβόλαιο</div>
                       </div>
-                      <button style={s.btnDng} onClick={async()=>{if(!dc.lease_doc_name)return;await supabase.storage.from('lease-documents').remove([`${userId}/${dc.id}/${dc.lease_doc_name}`]);if(!await saved('Το συμβόλαιο δεν αποσυνδέθηκε',tenantStore.update(supabase,dc.id,{lease_doc_url:null,lease_doc_name:null})))return;notify('PDF διαγράφηκε');fetch_();}}>Διαγραφή</button>
+                      <button style={s.btnDng} onClick={async()=>{if(!dc.lease_doc_name)return;await supabase.storage.from('lease-documents').remove([`${userId}/${dc.id}/${dc.lease_doc_name}`]);if(!await saved('Το συμβόλαιο δεν αποσυνδέθηκε',tenantStore.update(supabase,dc.id,{lease_doc_url:null,lease_doc_name:null})))return;notify('PDF διαγράφηκε');void refresh();}}>Διαγραφή</button>
                     </div>
                     {/* Το κάτω περιθώριο είναι θέση μέσα στη στήλη, όχι όψη του κουμπιού. */}
                     <div style={{ marginBottom:10 }}><Btn variant="primary" onClick={()=>openLeaseDoc(dc)}>Άνοιγμα PDF</Btn></div>

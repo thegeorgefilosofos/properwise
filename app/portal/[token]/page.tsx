@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/client';
 import { T, Btn, feAuto, feOr, fdLong, ABSENT_DATE } from '@/components/Theme';
 import { MONTHS_NOM } from '@/lib/core/months';
 import { callPortalWrite, portalWriteMessage, portalWriteOutcome, PORTAL_SAY, type RpcCall } from '@/lib/portal/writes';
+import { linkLoad, LINK_SAY } from '@/lib/portal/linkLoad';
 
 interface DueItem { id: string; year: number; month: number; amount: number; due_date: string | null; declared: boolean }
 
@@ -94,17 +95,17 @@ export default function TenantPortal() {
   useEffect(() => {
     (async () => {
       setState('loading');
-      const { data: meta, error: metaErr } = await supabase.rpc('portal_meta', { p_token: token });
+      const metaRes = await supabase.rpc('portal_meta', { p_token: token });
       // ΤΟ ΣΦΑΛΜΑ ΧΩΡΙΖΕΤΑΙ ΑΠΟ ΤΗΝ ΑΠΑΝΤΗΣΗ. Σφάλμα σημαίνει «δεν ρωτήθηκε»·
       // απάντηση χωρίς `found` σημαίνει «ρωτήθηκε και δεν υπάρχει».
-      if (metaErr) { setState('offline'); return; }
-      if (!meta || !(meta as { found?: boolean }).found) { setState('notfound'); return; }
-      if ((meta as { pin_required?: boolean }).pin_required) { setState('locked'); return; }
-      const { data: d, error } = await supabase.rpc('get_portal_data', { p_token: token });
-      if (error) { setState('offline'); return; }
+      const first = linkLoad(metaRes, m => !!(m as { found?: boolean } | null)?.found);
+      if (first !== 'ok') { setState(first); return; }
+      if ((metaRes.data as { pin_required?: boolean }).pin_required) { setState('locked'); return; }
+      const res = await supabase.rpc('get_portal_data', { p_token: token });
       // Αμυντικά: null ή { locked } χωρίς PIN σημαίνει μη έγκυρη κατάσταση.
-      if (!d || (d as { locked?: boolean }).locked) { setState('notfound'); return; }
-      applyData(d);
+      const next = linkLoad(res, d => !!d && !(d as { locked?: boolean }).locked);
+      if (next !== 'ok') { setState(next); return; }
+      applyData(res.data);
       setState('ok');
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -307,24 +308,25 @@ export default function TenantPortal() {
 
         {state === 'notfound' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Ο σύνδεσμος δεν είναι έγκυρος</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{LINK_SAY.notFoundTitle}</div>
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>Ζήτησε από τον ιδιοκτήτη έναν ενημερωμένο σύνδεσμο πύλης.</div>
           </div>
         )}
 
-        {/* Το ίδιο κουτί, άλλα λόγια: εδώ ο σύνδεσμος είναι μια χαρά και φταίει
-            η σύνδεση. Το κουμπί ξαναρωτά ΤΟΝ ΙΔΙΟ σύνδεσμο, χωρίς να χρειάζεται
-            ο ενοικιαστής να ψάξει το email από την αρχή. */}
+        {/* Το ίδιο κουτί, άλλα λόγια: εδώ η βάση δεν απάντησε, οπότε για τον
+            σύνδεσμο δεν ξέρουμε τίποτα και δεν βεβαιώνουμε τίποτα
+            (lib/portal/linkLoad.ts). Το κουμπί ξαναρωτά ΤΟΝ ΙΔΙΟ σύνδεσμο,
+            χωρίς να χρειάζεται ο ενοικιαστής να ψάξει το email από την αρχή. */}
         {state === 'offline' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Δεν φτάσαμε ως τον διακομιστή</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{LINK_SAY.offlineTitle}</div>
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: 16 }}>
-              Ο σύνδεσμός σου είναι εντάξει. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.
+              {LINK_SAY.offlineBody}
             </div>
             {/* Το κοινό κουμπί, όχι ζωγραφισμένο στο χέρι: ίδια όψη, ίδιες
                 καταστάσεις αιώρησης και εστίασης, ίδιο ύψος αφής με όλη την
                 εφαρμογή. */}
-            <Btn variant="primary" onClick={() => setTries(t => t + 1)}>Δοκίμασε ξανά</Btn>
+            <Btn variant="primary" onClick={() => setTries(t => t + 1)}>{LINK_SAY.retry}</Btn>
           </div>
         )}
 

@@ -11,6 +11,7 @@ export * from './status';
 export * from './expenses';
 export * from './income';
 export * from './hosting';
+export * from './platformFees';
 export * from './yield';
 export * from './enfia';
 export * from './taxpayer';

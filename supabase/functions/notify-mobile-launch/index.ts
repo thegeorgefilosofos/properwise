@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { emailShell, eyebrow, h, p, buttonPair, linkLine } from '../_shared/emailTemplates.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
+import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
 import { APP_URL as SITE } from '../_shared/site.ts'
 import { timingSafeEqual } from '../_shared/auth.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'

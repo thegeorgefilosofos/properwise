@@ -32,3 +32,20 @@ export function normalizeVerifyCode(raw: string): string {
   const date = m[1].replace(/O/g, '0');
   return m[2] ? `PO-${date}-${m[2]}` : `PO-${date}`;
 }
+
+/**
+ * ΤΟ ΑΠΟΤΥΠΩΜΑ ΟΠΩΣ ΤΟ ΔΙΑΒΑΖΕΙ ΑΝΘΡΩΠΟΣ, ΙΔΙΟ ΣΤΟ ΧΑΡΤΙ ΚΑΙ ΣΤΗΝ /verify.
+ *
+ * Το μητρώο κρατά ολόκληρο το sha256 (64 δεκαεξαδικά, 20261007100000). Για
+ * σύγκριση με το μάτι τυπώνονται τα πρώτα 16, κεφαλαία, σε τετράδες:
+ * «3F2A 9C10 B7E4 0D55». Το PDF και η σελίδα περνούν από ΑΥΤΗ τη συνάρτηση,
+ * ώστε να μη γίνει ποτέ η μία γραφή άλλη από την άλλη.
+ *
+ * Ό,τι δεν είναι sha256 (οι παλιές γραμμές με checksum του περιηγητή) δίνει
+ * κενό: εκεί δεν υπάρχει αποτύπωμα του διακομιστή για να συγκριθεί.
+ */
+export function fingerprintLabel(checksum: string | null | undefined): string {
+  const hex = (checksum ?? '').trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(hex)) return '';
+  return (grUpper(hex.slice(0, 16)).match(/.{4}/g) ?? []).join(' ');
+}

@@ -288,7 +288,7 @@ export async function buildMeetingPack(db: SupabaseClient, req: MeetingPackReque
   const missing = missingItems(input);
   const t = packTotals(properties);
   const issued = await issueDocument(db, {
-    userId, docType: 'Φάκελος για τον λογιστή', subject: `Φάκελος ${year}`, period: `Χρήση ${year}`,
+    docType: 'Φάκελος για τον λογιστή', subject: `Φάκελος ${year}`, period: `Χρήση ${year}`,
     summary: { properties: t.properties, gross: t.gross, differences: reconciliation.differences, missing: missing.length },
   });
   const cover = new Uint8Array(await (await reportPdfBlob(coverModel(input, issued))).arrayBuffer());

@@ -393,7 +393,7 @@ export function useAssistantActions({
         title, category,
         event_date: date, event_time: time || null, duration_minutes: time ? 60 : null,
         priority: 'high',
-        notes: `Ραντεβού που προγραμμάτισε ${ASSISTANT_NAME}. Θα σταλεί υπενθύμιση πριν από το ραντεβού (email, εφόσον είναι ενεργές οι ειδοποιήσεις· με ένα άγγιγμα και σε Viber/WhatsApp).`,
+        notes: `Ραντεβού που προγραμμάτισε η ${ASSISTANT_NAME}. Θα σταλεί υπενθύμιση πριν από το ραντεβού (email, εφόσον είναι ενεργές οι ειδοποιήσεις· με ένα άγγιγμα και σε Viber/WhatsApp).`,
       })]));
       const whenStr = `${new Date(date).toLocaleDateString('el-GR')}${time ? ` στις ${time}` : ''}`;
       setMsgs(m => [...m, { role: 'assistant', text: `Το έκλεισα. Πρόσθεσα το «${title}» για ${whenStr} στο Ημερολόγιο. Αν οι ειδοποιήσεις email είναι ενεργές, θα λάβεις υπενθύμιση πριν από το ραντεβού. Θέλεις να ανοίξω το Ημερολόγιο;`, action: { type: 'go', tab: 'calendar' } }]);

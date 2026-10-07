@@ -199,6 +199,87 @@ export function pendingDrafts(drafts: readonly ChecklistTaskDraft[], existingRef
   return drafts.filter(d => !have.has(d.ref))
 }
 
+// ── Πληρωμένος λογαριασμός ΕΝΦΙΑ → η ΙΔΙΑ δόση στις εκκρεμότητες ──────────
+
+/** Οι δόσεις πληρωμής ΕΝΦΙΑ (όχι η ανάρτηση του εκκαθαριστικού). */
+const ENFIA_PAYMENT_REF = /^tax:enfia-(first|instalment|last)-/
+
+/** Τα πεδία μιας εκκρεμότητας που χρειάζεται το ταίριασμα. */
+export interface EnfiaTaskLike {
+  id: string
+  description: string | null
+  status: string | null
+  due_date: string | null
+  ref?: string | null
+  /** Πότε την ξανάνοιξε ο χρήστης (`checklist_items.reopened_at`). */
+  reopened_at?: string | null
+}
+
+/** Τα πεδία ενός λογαριασμού που χρειάζεται το ταίριασμα. */
+export interface EnfiaBillLike {
+  paid: boolean | null
+  due_date: string | null
+  /** Πότε σημειώθηκε πληρωμένος (`bills.paid_at`, lib/data/bills: `paidFields`). */
+  paid_at?: string | null
+  /** Χωρίς `paid_at` (λογαριασμός γραμμένος ήδη πληρωμένος), η ώρα καταχώρησης. */
+  created_at?: string | null
+}
+
+const monthOf = (d: string | null | undefined): string | null =>
+  d && /^\d{4}-\d{2}/.test(d) ? d.slice(0, 7) : null
+
+/**
+ * Ποιες ανοιχτές εκκρεμότητες ΕΝΦΙΑ κλείνουν οι πληρωμένοι λογαριασμοί ΕΝΦΙΑ.
+ *
+ * ΤΟ ΛΑΘΟΣ ΠΟΥ ΔΙΟΡΘΩΝΕΙ: η καρτέλα ρωτούσε «υπάρχει ΕΝΑΣ λογαριασμός ΕΝΦΙΑ;»
+ * (χωρίς σειρά, χωρίς έτος) και, αν ήταν πληρωμένος, έκλεινε την ΠΡΩΤΗ ανοιχτή
+ * εργασία με «ενφια» στον τίτλο. Οι εργασίες γράφονται μία ανά δόση, οπότε η
+ * πληρωμένη δόση του Σεπτεμβρίου έκλεινε τη δόση του Μαρτίου του επόμενου
+ * έτους — και, επειδή η φόρτωση τρέχει μετά από κάθε αλλαγή, την ξανάκλεινε
+ * όσες φορές την άνοιγε ο χρήστης.
+ *
+ * Ο ΚΑΝΟΝΑΣ: ένας πληρωμένος λογαριασμός κλείνει ΜΟΝΟ τη δόση με προθεσμία στον
+ * ίδιο μήνα του ίδιου έτους. Κάθε δόση ΕΝΦΙΑ λήγει σε διαφορετικό μήνα, άρα ο
+ * μήνας είναι η ταυτότητα της δόσης. Εργασία χωρίς προθεσμία δεν κλείνει ποτέ
+ * αυτόματα: δεν ξέρουμε ποια δόση είναι. Η ανάρτηση του εκκαθαριστικού
+ * (`enfia-issue`) δεν είναι πληρωμή και δεν την κλείνει λογαριασμός.
+ *
+ * Η ΞΑΝΑΝΟΙΓΜΕΝΗ ΜΕΝΕΙ ΑΝΟΙΧΤΗ (07.10.2026). Ο χρήστης που ξε-τσεκάρει μια
+ * πληρωμένη δόση την έβλεπε ξανά κλειστή στην επόμενη φόρτωση: τίποτα δεν
+ * θυμόταν το ξανα-άνοιγμα. Τώρα το `reopened_at` το θυμάται και η εργασία
+ * κλείνει αυτόματα ΜΟΝΟ από λογαριασμό που πληρώθηκε ΜΕΤΑ από αυτό, δηλαδή
+ * από νέα πληρωμή. Λογαριασμός χωρίς καμία ώρα πληρωμής δεν υπερισχύει ποτέ
+ * της ρητής κίνησης του χρήστη.
+ */
+export function enfiaTasksPaidByBills(
+  tasks: readonly EnfiaTaskLike[], bills: readonly EnfiaBillLike[],
+): string[] {
+  // Ανά μήνα, η πιο πρόσφατη ώρα πληρωμής σε ms (−∞ όταν δεν είναι γνωστή).
+  const paidMonths = new Map<string, number>()
+  for (const b of bills) {
+    if (b.paid !== true) continue
+    const m = monthOf(b.due_date)
+    if (!m) continue
+    const parsed = Date.parse(b.paid_at || b.created_at || '')
+    const at = Number.isFinite(parsed) ? parsed : -Infinity
+    paidMonths.set(m, Math.max(at, paidMonths.get(m) ?? -Infinity))
+  }
+  if (paidMonths.size === 0) return []
+  return tasks.filter(t => {
+    if (t.status === 'done') return false
+    const ref = t.ref || null
+    const isPayment = ref
+      ? ENFIA_PAYMENT_REF.test(ref)
+      // Χειρόγραφη εργασία (χωρίς κλειδί υποχρέωσης): κρίνεται από τον τίτλο.
+      : (t.description || '').toLocaleLowerCase('el').normalize('NFD').replace(/\p{M}/gu, '').includes('ενφια')
+    const m = monthOf(t.due_date)
+    if (!isPayment || !m || !paidMonths.has(m)) return false
+    // Ξανανοίχτηκε από τον χρήστη: κλείνει μόνο πληρωμή μεταγενέστερη του ξανα-ανοίγματος.
+    if (!t.reopened_at) return true
+    return (paidMonths.get(m) as number) > Date.parse(t.reopened_at)
+  }).map(t => t.id)
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Ο ΦΥΛΑΚΑΣ ΤΟΥ ΠΑΡΑΣΤΑΤΙΚΟΥ
 //

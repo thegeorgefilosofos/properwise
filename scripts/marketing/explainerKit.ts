@@ -181,7 +181,7 @@ export interface Explainer {
   readme: string;
 }
 
-function page(x: Explainer): string {
+export function page(x: Explainer): string {
   const D = { S: x.scenes, END: x.end, heads: x.heads, spots: x.spots, hits: x.hits, ...(x.data ?? {}) };
   return `<!doctype html><html lang="el"><head><meta charset="utf-8"><style>${BASE_CSS}${KIT_CSS}${x.css}</style></head><body>
   <div id="bg"></div>

@@ -198,14 +198,35 @@ export const doneFields = () => ({
   status: 'done', completed: true, completed_at: new Date().toISOString(),
 });
 
-/** Και οι τρεις πίσω στο ανοιχτό. */
+/**
+ * Και οι τρεις πίσω στο ανοιχτό, με τη στιγμή του ξανα-ανοίγματος.
+ *
+ * ΤΟ `reopened_at` ΘΥΜΑΤΑΙ ΟΤΙ ΤΟ ΕΚΑΝΕ Ο ΧΡΗΣΤΗΣ (07.10.2026). Χωρίς αυτό, η
+ * ξανανοιγμένη δόση ΕΝΦΙΑ έμοιαζε με δόση που δεν έκλεισε ποτέ και το αυτόματο
+ * κλείσιμο από πληρωμένο λογαριασμό την ξανάκλεινε στην επόμενη φόρτωση
+ * (lib/checklist/obligationTasks: `enfiaTasksPaidByBills`).
+ */
 export const reopenFields = () => ({
-  status: 'pending', completed: false, completed_at: null,
+  status: 'pending', completed: false, completed_at: null, reopened_at: new Date().toISOString(),
 });
 
-/** Οι στήλες μιας κατάστασης, όποια κι αν είναι. Μία απόφαση, όχι τρεις. */
-export const statusFields = (status: string) =>
-  (status === 'done' ? doneFields() : { status, completed: false, completed_at: null });
+/** Κλειστή κατάσταση (`done` ή `skipped`); */
+const isClosedStatus = (s?: string | null): boolean =>
+  CLOSED_STATUSES.includes(String(s ?? '') as (typeof CLOSED_STATUSES)[number]);
+
+/**
+ * Οι στήλες μιας κατάστασης, όποια κι αν είναι. Μία απόφαση, όχι τρεις.
+ *
+ * Με το `from` (η κατάσταση πριν), η μετάβαση από κλειστή σε ανοιχτή γράφει και
+ * το `reopened_at`: είναι ξανα-άνοιγμα, όχι απλή αλλαγή κατάστασης.
+ */
+export const statusFields = (status: string, from?: string | null) => {
+  if (status === 'done') return doneFields();
+  const open = { status, completed: false, completed_at: null };
+  return isClosedStatus(from) && !isClosedStatus(status)
+    ? { ...open, reopened_at: new Date().toISOString() }
+    : open;
+};
 
 /** Κλείνει μία εργασία, με ό,τι άλλο τη συνοδεύει (κόστος, παραστατικό). */
 export function markDone(db: Db, id: string, extra: ChecklistPatch = {}) {
@@ -217,9 +238,12 @@ export function markDoneMany(db: Db, ids: string[]) {
   return db.from(TABLE).update(doneFields()).in('id', ids);
 }
 
-/** Αλλάζει κατάσταση, κρατώντας τις τρεις στήλες συμφωνημένες. */
-export function setStatus(db: Db, id: string, status: string) {
-  return db.from(TABLE).update(statusFields(status)).eq('id', id);
+/**
+ * Αλλάζει κατάσταση, κρατώντας τις τρεις στήλες συμφωνημένες. Το `from` είναι η
+ * κατάσταση που έβλεπε ο χρήστης: από κλειστή σε ανοιχτή γράφεται ξανα-άνοιγμα.
+ */
+export function setStatus(db: Db, id: string, status: string, from?: string | null) {
+  return db.from(TABLE).update(statusFields(status, from)).eq('id', id);
 }
 
 /** Συνδέει ή αποσυνδέει την εργασία με γεγονός ημερολογίου. */

@@ -18,9 +18,11 @@ import { PublicFooter, PublicNav, JsonLd } from './PublicChrome';
 import { T } from '@/components/tokens';
 import { hy } from '@/components/Hyphen';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
+import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
+import { athensParts } from '@/lib/core/time';
 import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, CARD_GAP, wrap, ic, check } from './landingKit'
 import {
-  FEATURES, FAQ_VISIBLE, FAQ, faqForSchema, WORKS_WITH, SECURITY, REFERRAL, LANDING_PLANS, FEATURED_PLAN,
+  featuresFor, FAQ_VISIBLE, FAQ, faqForSchema, WORKS_WITH, SECURITY, REFERRAL, LANDING_PLANS, FEATURED_PLAN,
 } from './landingContent'
 import { FaqList, NoaFeature, SectionHead, OwnerPlanCard, PlanCard } from './LandingParts'
 import { LandingStyles } from './LandingStyles'
@@ -141,6 +143,12 @@ export default async function Landing() {
     loggedIn = !!user;
   } catch { /* ο επισκέπτης βλέπει απλώς «Σύνδεση» */ }
   const { live: billingLive, pricingNotice } = billingWords();
+  // ΔΥΟ ΧΡΟΝΙΕΣ, ΔΥΟ ΠΗΓΕΣ. Η κάρτα «Φορολογία» μιλά για φέτος, άρα για τη
+  // σημερινή χρονιά της Αθήνας (η σελίδα αποδίδεται ανά αίτημα). Η κλίμακα
+  // ενοικίων είναι γεγονός του νόμου: ισχύει από το FIRST_YEAR_NEW_BRACKETS
+  // και αυτό δεν αλλάζει με το ημερολόγιο.
+  const features = featuresFor(athensParts().year);
+  const scaleYear = FIRST_YEAR_NEW_BRACKETS;
 
   return (
     <div className="lp-root min-h-dvh" data-mode="dark" style={{ color: TEXT, fontFamily: T.font.sans, overflowX: 'clip', position: 'relative' }}>
@@ -344,14 +352,14 @@ export default async function Landing() {
             διεθνές εργαλείο διαχείρισης: ότι ξέρει την ελληνική πραγματικότητα.
             Το «Ό,τι χρειάζεται το ακίνητό σου» ήταν αληθές και εντελώς άχρωμο,
             γιατί το ίδιο ακριβώς θα έγραφε και ο κάθε ανταγωνιστής. */}
-        <SectionHead over="Δυνατότητες" title="Σχεδιασμένο για την ελληνική αγορά ακινήτων" sub="ΕΝΦΙΑ, κοινόχρηστα, δήλωση μίσθωσης, κλίμακα ενοικίων 2026. Όλα με τους κανόνες και τις προθεσμίες του ελληνικού δικαίου." />
+        <SectionHead over="Δυνατότητες" title="Σχεδιασμένο για την ελληνική αγορά ακινήτων" sub={`ΕΝΦΙΑ, κοινόχρηστα, δήλωση μίσθωσης, κλίμακα ενοικίων ${scaleYear}. Όλα με τους κανόνες και τις προθεσμίες του ελληνικού δικαίου.`} />
         {/* ΡΗΤΑ ΤΡΕΙΣ ΣΤΗΛΕΣ ΓΙΑ ΕΞΙ ΚΑΡΤΕΣ. Με επτά κάρτες και auto-fit, η έβδομη
             έμενε ΜΟΝΗ ΤΗΣ σε τρίτη σειρά, με δύο κενά δίπλα της. Ένα ορφανό κελί
             είναι το πιο ορατό λάθος διάταξης που υπάρχει: δεν χρειάζεται να ξέρεις
             τίποτα από σχεδιασμό για να το προσέξεις. Έξι κάρτες κλείνουν σε τέλειο
             3×2 και η ενότητα διαβάζεται ως ένα σχήμα, όχι ως λίστα που ξέμεινε. */}
         <div className="lp-feat" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: CARD_GAP }}>
-          {FEATURES.map((f, i) => (
+          {features.map((f, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
               <div style={{ width: 38, height: 38, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg }}>{ic(f.i)}</div>
               <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{f.t}</h3>
@@ -398,7 +406,7 @@ export default async function Landing() {
 
       {/* ── Ζωντανό εργαλείο απόδοσης: αξία επιτόπου, με τον αληθινό μας μηχανισμό ── */}
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead over="Δες το μόνος σου" title="Πόσο σου αποδίδει πραγματικά;" sub="Ενδεικτική καθαρή απόδοση, με την ίδια φορολογική κλίμακα ενοικίων 2026 που τρέχει και μέσα στην εφαρμογή." />
+        <SectionHead over="Δες το μόνος σου" title="Πόσο σου αποδίδει πραγματικά;" sub={`Ενδεικτική καθαρή απόδοση, με την ίδια φορολογική κλίμακα ενοικίων ${scaleYear} που τρέχει και μέσα στην εφαρμογή.`} />
         <LandingCalculator cta={signupCta()} />
       </section>
 

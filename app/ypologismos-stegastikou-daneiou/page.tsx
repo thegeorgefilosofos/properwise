@@ -27,7 +27,7 @@ import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import { spitiMouOpen, spitiMouClosedSentence, SPITI_MOU } from '@/lib/loans/recommend';
 import { programDateLabel } from '@/lib/loans/programStatus';
 import { mortgagePlan, borrowingCapacity, type MarketFact, type MortgageMarket } from '@/lib/tools/stegastiko';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, ToolCta, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
@@ -190,7 +190,12 @@ export default async function Page() {
         {/* Ο υπολογιστής διαβάζει τη διεύθυνση, άρα θέλει όριο αναμονής: χωρίς
             αυτό ολόκληρη η σελίδα βγαίνει από τη στατική απόδοση. */}
         <Suspense fallback={<div style={{ minHeight: 560 }} aria-hidden/>}>
-          <MortgageCalculator market={market} today={today}/>
+          <MortgageCalculator market={market} today={today} cta={
+            <ToolCta
+              title="Θέλεις να βλέπεις τι χρωστάς ακόμη, κάθε μήνα;"
+              body="Το PROPERWISE κρατά το δάνειο μαζί με το ακίνητο: τη δόση, το υπόλοιπο που μένει και τους τόκους κάθε χρονιάς. Δεν εγκρίνει δάνεια και δεν μιλά για λογαριασμό καμίας τράπεζας."
+            />
+          }/>
         </Suspense>
 
         <ToolSources kind="loan" checked={null} />

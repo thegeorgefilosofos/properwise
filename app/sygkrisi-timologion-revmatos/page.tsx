@@ -22,7 +22,7 @@ import { athensToday } from '@/lib/core/time';
 import { feRate } from '@/lib/core/format';
 import { TARIFFS_VERIFIED, TARIFFS_MAX_AGE_DAYS, CATALOGUE_MONTH_GEN } from '@/lib/energy/catalogue';
 import { ETMEAR } from '@/lib/energy/tariff';
-import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
+import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, ToolCta, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
@@ -126,7 +126,12 @@ export default function Page() {
             σημερινή μέρα του διακομιστή είναι μόνο η πρώτη απόδοση· ο περιηγητής
             την ξανακρίνει (PowerCompare). */}
         <Suspense fallback={<div style={{ minHeight: 640 }} aria-hidden/>}>
-          <PowerCompare serverToday={athensToday()}/>
+          <PowerCompare serverToday={athensToday()} cta={
+            <ToolCta
+              title="Με τους δικούς σου λογαριασμούς, όχι με μια εκτίμηση;"
+              body="Στο PROPERWISE κρατάς τους λογαριασμούς ρεύματος κάθε ακινήτου και η ίδια σύγκριση τρέχει με τις δικές τους κιλοβατώρες."
+            />
+          }/>
         </Suspense>
 
         <ToolSources kind="power" checked={PRICE_FACTS.electricity.checkedAt} />

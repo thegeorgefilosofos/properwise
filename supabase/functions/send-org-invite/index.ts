@@ -15,7 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { emailShell, eyebrow, h, p, button } from '../_shared/emailTemplates.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
+import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
 import { APP_URL } from '../_shared/site.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'

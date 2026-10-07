@@ -30,7 +30,7 @@ import { totals } from '@/lib/clients/reports'
 import { climateLevyRates, isHighSeasonMonth } from '@/lib/billing/greekTax'
 import { isHouseType } from '@/lib/tax/shortTermTax'
 import { parseICal, guessChannel, icalToStayDrafts, stayKey, type ICalEvent } from '@/lib/clients/ical'
-import { useLoad } from '@/app/hooks/useLoad'
+import { useLoad, type LoadTurn } from '@/app/hooks/useLoad'
 import {
   type Client, type Stay, type Note, type PropRow, type InvItem, type ClientDoc, type IcalFeed,
   type Checkin, todayStr, isRecord, type FormState, emptyForm, type StayForm, emptyStay,
@@ -110,7 +110,7 @@ export function useClients({ userId }: ClientsProps) {
   const [docMsgOf, setDocMsgOf] = useState<{ clientId: string; msg: { text: string; error?: boolean } | null } | null>(null);
   const docFileRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (turn: LoadTurn) => {
     const [{ data: cl }, pr, it] = await Promise.all([
       supabase.from('clients').select('id,user_id,type,full_name,phone,email,notes,created_at,updated_at').eq('user_id', userId).order('created_at', { ascending: false }),
       properties.list<PropRow>(supabase, userId, { columns: 'id,name,prop_type,status_detail,client_id,sqm', orderBy: 'created_at' }),
@@ -118,14 +118,16 @@ export function useClients({ userId }: ClientsProps) {
       // ο λογιστής χρειάζεται δαπάνη με παραστατικό, όχι «έσπασε κάτι».
       inventory.ofUser<InvItem>(supabase, userId, 'id,name,property_id,current_value'),
     ]);
+    if (!turn.isLatest()) return;
     setClients((cl || []) as Client[]);
     setProps(pr);
     setInv(it);
     setLoading(false);
   }, [userId, supabase]);
 
-  const loadStays = useCallback(async () => {
+  const loadStays = useCallback(async (turn: LoadTurn) => {
     const data = await stayStore.ofUser<Stay>(supabase, userId, '*');
+    if (!turn.isLatest()) return;
     setStays((data || []) as Stay[]);
   }, [userId, supabase]);
 
@@ -170,21 +172,27 @@ export function useClients({ userId }: ClientsProps) {
   }, [userId, supabase]);
 
   // Τρεις φορτώσεις που ξεκινούν μαζί, δηλωμένες ως μία.
-  const loadAll = useCallback(() => Promise.all([load(), loadStays(), loadIcalFeeds()]), [load, loadStays, loadIcalFeeds]);
-  useLoad(loadAll);
+  const loadAll = useCallback((turn: LoadTurn) => Promise.all([load(turn), loadStays(turn), loadIcalFeeds()]), [load, loadStays, loadIcalFeeds]);
+  // ΜΙΑ ΡΙΠΗ, ΜΙΑ ΦΟΡΤΩΣΗ. Η εισαγωγή iCal γράφει τις κρατήσεις σε παρτίδες και
+  // κάθε γραμμή φέρνει δικό της συμβάν `client_stays`: εκατό κρατήσεις ήταν
+  // εκατό φορτώσεις διαμονών, με όποια απαντούσε τελευταία να γράφει. Τώρα τα
+  // συμβάντα συγχωνεύονται (useLoad, ~300ms) και η παλιά απάντηση δεν γράφει.
+  const reloadAll = useLoad(loadAll);
+  // Μετά από ενέργεια του χρήστη: αμέσως, μέσα στην ίδια αρίθμηση.
+  const refresh = useCallback(() => { void reloadAll({ immediate: true }); }, [reloadAll]);
 
   // Ζωντανή σύνδεση: πελάτες, διαμονές, σημειώσεις
   useEffect(() => {
     const ch = supabase.channel('clients-crm-' + userId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients', filter: `user_id=eq.${userId}` }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_stays', filter: `user_id=eq.${userId}` }, () => loadStays())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients', filter: `user_id=eq.${userId}` }, () => { void reloadAll(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_stays', filter: `user_id=eq.${userId}` }, () => { void reloadAll(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'client_notes', filter: `user_id=eq.${userId}` }, () => { if (openIdRef.current) loadNotes(openIdRef.current); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'client_documents', filter: `user_id=eq.${userId}` }, () => { if (openIdRef.current) loadDocs(openIdRef.current); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ical_feeds', filter: `user_id=eq.${userId}` }, () => loadIcalFeeds())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_properties', filter: `user_id=eq.${userId}` }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_properties', filter: `user_id=eq.${userId}` }, () => { void reloadAll(); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [userId, load, loadStays, loadNotes, loadDocs, loadIcalFeeds, supabase]);
+  }, [userId, reloadAll, loadNotes, loadDocs, loadIcalFeeds, supabase]);
 
   // ΤΟ ΑΔΕΙΟ ΔΕΝ ΑΠΟΘΗΚΕΥΕΤΑΙ, ΠΡΟΚΥΠΤΕΙ. Εδώ ένα effect άδειαζε τέσσερις
   // καταστάσεις σε κάθε αλλαγή πελάτη — και δεν προλάβαινε: μια αργοπορημένη
@@ -331,7 +339,7 @@ export function useClients({ userId }: ClientsProps) {
       : supabase.from('clients').insert(payload));
     setSaving(false);
     if (!ok) return;
-    setModalOpen(false); load();
+    setModalOpen(false); refresh();
   };
 
   const del = async (c: Client) => {
@@ -353,7 +361,7 @@ export function useClients({ userId }: ClientsProps) {
     }
     if (!await saved('Η καταχώρηση δεν διαγράφηκε', supabase.from('clients').delete().eq('id', c.id))) return;
     if (openId === c.id) setOpenId(null);
-    load();
+    refresh();
   };
 
   // Pre-check-in: φόρτωση υποβολών του ανοιχτού πελάτη + δημιουργία/αντιγραφή συνδέσμου
@@ -466,16 +474,16 @@ export function useClients({ userId }: ClientsProps) {
       }]));
     }
     setEmailBusy(false); setEmailOpen(false); setEmailText(''); setEmailDraft(null);
-    load(); loadStays();
+    refresh();
   };
 
   const linkProperty = async (clientId: string, propId: string) => {
     if (await saved('Το ακίνητο δεν συνδέθηκε',
-      properties.update(supabase, propId, { client_id: propId ? clientId : null }, userId))) load();
+      properties.update(supabase, propId, { client_id: propId ? clientId : null }, userId))) refresh();
   };
   const unlinkProperty = async (propId: string) => {
     if (await saved('Το ακίνητο δεν αποσυνδέθηκε',
-      properties.update(supabase, propId, { client_id: null }, userId))) load();
+      properties.update(supabase, propId, { client_id: null }, userId))) refresh();
   };
 
   // ── Διαμονές ──────────────────────────────────────────────────────────────
@@ -562,18 +570,18 @@ export function useClients({ userId }: ClientsProps) {
       : stayStore.add(supabase, [payload]));
     setSavingStay(false);
     if (!ok) return;
-    setStayFormOpen(false); loadStays();
+    setStayFormOpen(false); refresh();
   };
   const delStay = async (s: Stay) => {
     if (!(await confirmDialog('Να διαγραφεί η διαμονή;', { tone: 'negative', confirmLabel: 'Διαγραφή' }))) return;
-    if (await saved('Η διαμονή δεν διαγράφηκε', stayStore.remove(supabase, s.id))) loadStays();
+    if (await saved('Η διαμονή δεν διαγράφηκε', stayStore.remove(supabase, s.id))) refresh();
   };
   // Ένα κλικ από τη λίστα: δηλώθηκε / δεν δηλώθηκε. Η δήλωση βραχυχρόνιας
   // διαμονής είναι μία ανά κράτηση και η προθεσμία τρέχει — δεν πρέπει να
   // απαιτεί άνοιγμα φόρμας.
   const toggleDeclared = async (s: Stay) => {
     if (await saved('Η δήλωση της διαμονής δεν άλλαξε',
-      stayStore.update(supabase, s.id, { declared_at: isDeclared(s) ? null : new Date().toISOString() }))) loadStays();
+      stayStore.update(supabase, s.id, { declared_at: isDeclared(s) ? null : new Date().toISOString() }))) refresh();
   };
 
   // ── Σχόλια ────────────────────────────────────────────────────────────────
@@ -676,7 +684,7 @@ export function useClients({ userId }: ClientsProps) {
       } else {
         const failed = (data.results || []).filter((r: { ok: boolean }) => !r.ok).length;
         setIcalMsg({ text: `Συγχρονισμός ολοκληρώθηκε: ${data.inserted || 0} νέες κρατήσεις από ${data.feeds || 0} συνδέσμους${failed ? ` (${failed} με σφάλμα)` : ''}.`, error: failed > 0 });
-        loadStays(); load();
+        refresh();
       }
       loadIcalFeeds();
     } catch (e) {
@@ -717,7 +725,7 @@ export function useClients({ userId }: ClientsProps) {
     const existingKeys = new Set(stays.map(s => stayKey(s.property_id || '', s.check_in || '', s.check_out || '')));
     const fresh = drafts.filter(d => !existingKeys.has(stayKey(d.property_id, d.check_in, d.check_out)));
     const skipped = drafts.length - fresh.length;
-    if (fresh.length === 0) { setIcalMsg({ text: `Όλες οι ${drafts.length} κρατήσεις υπάρχουν ήδη. Καμία νέα εισαγωγή.` }); setIcalBusy(false); loadStays(); return; }
+    if (fresh.length === 0) { setIcalMsg({ text: `Όλες οι ${drafts.length} κρατήσεις υπάρχουν ήδη. Καμία νέα εισαγωγή.` }); setIcalBusy(false); refresh(); return; }
     const rows = fresh.map(d => ({
       user_id: userId, client_id: clientId, property_id: d.property_id,
       check_in: d.check_in, check_out: d.check_out, nights: d.nights, channel: d.channel,
@@ -726,12 +734,12 @@ export function useClients({ userId }: ClientsProps) {
     // Η παρτίδα των πενήντα ήταν γραμμένη εδώ· είναι κανόνας του πίνακα, όχι
     // της οθόνης και ζει πλέον στο στρώμα μαζί με τη διακοπή στο πρώτο σφάλμα.
     const { error } = await stayStore.addBatched(supabase, rows);
-    if (error) { setIcalMsg({ text: failed('Οι κρατήσεις δεν αποθηκεύτηκαν', error), error: true }); setIcalBusy(false); loadStays(); return; }
+    if (error) { setIcalMsg({ text: failed('Οι κρατήσεις δεν αποθηκεύτηκαν', error), error: true }); setIcalBusy(false); refresh(); return; }
     const inserted = rows.length;
     setIcalBusy(false);
     setIcalMsg({ text: `Εισήχθησαν ${inserted} κρατήσεις${skipped > 0 ? ` · ${skipped} υπήρχαν ήδη` : ''}.` });
     setIcalEvents(null); setIcalText(''); setIcalUrl('');
-    loadStays(); load();
+    refresh();
   };
 
   // ── Εξαγωγή σε φύλλο Excel ─────────────────────────────────────────────────────────────

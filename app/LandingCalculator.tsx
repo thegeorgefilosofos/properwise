@@ -2,7 +2,7 @@
 import { useId, useState } from 'react'
 import Link from 'next/link'
 import { T } from '@/components/tokens'
-import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax'
+import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax'
 import { fe, fp, fn } from '@/lib/core/format'
 import { parseAmount } from '@/lib/core/greek'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
@@ -172,12 +172,14 @@ export default function LandingCalculator({ cta }: { cta: string }) {
         <Control label="Αξία ακινήτου" hint="Τρέχουσα εμπορική αξία, για τον υπολογισμό απόδοσης" value={value} set={setValue} min={2000} max={1000000} step={1000} format={fe} />
         <Control label="Ετήσιες δαπάνες" hint="ΕΝΦΙΑ, ασφάλεια, συντήρηση, κοινόχρηστα ιδιοκτήτη" value={costs} set={setCosts} min={0} max={10000} step={100} format={fe} />
 
-        {/* Πού πέφτεις στην κλίμακα ενοικίων 2026 */}
+        {/* Πού πέφτεις στην κλίμακα ενοικίων. Η χρονιά της είναι του νόμου
+            (FIRST_YEAR_NEW_BRACKETS), όχι του ημερολογίου: την επόμενη
+            χρονιά η ίδια κλίμακα κρατά το ίδιο όνομα. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
           {/* ΣΤΑ 360 Η ΣΕΙΡΑ ΣΤΡΙΜΩΧΝΟΤΑΝ: τίτλος και ποσό κολλούσαν χωρίς
               αέρα ανάμεσα. Τυλίγεται και το ποσό μένει ακέραιο. */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '2px 12px', fontSize: 12, color: 'var(--text-tertiary)' }}>
-            <span>Κλίμακα ενοικίων 2026</span>
+            <span>Κλίμακα ενοικίων {FIRST_YEAR_NEW_BRACKETS}</span>
             <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>φορολογητέο {fe(taxable)}</span>
           </div>
           <div className="calc-track">
@@ -219,7 +221,7 @@ export default function LandingCalculator({ cta }: { cta: string }) {
             πρέπει να πείσει. Ο συλλαβισμός συνοδεύει τη στοίχιση — μόνη της τεντώνει
             τα κενά. Το ποσοστό κι οι ημερομηνίες είναι ψηφία: μένουν ακέραια. */}
         <p className="po-just" style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
-          {hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων 2026 (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
+          {hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων {FIRST_YEAR_NEW_BRACKETS} (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
           {/* Στα 320 η πλήρης φράση έσπαγε σε δύο γραμμές με το «σου» μόνο του. */}

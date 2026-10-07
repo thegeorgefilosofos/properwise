@@ -22,6 +22,7 @@ import { localDay } from '@/lib/core/time';
 import { fp, fn, feCompact, grUpper } from '@/lib/core/format';
 import { INK, INK_FAINT, INK_MUTED, PAPER_ALT, RULE, RULE_SOFT } from '@/lib/print/ink';
 import { BRAND_MARK_DATA_URL } from '@/lib/brand/mark';
+import { fingerprintLabel } from '@/lib/documents/verifyCode';
 
 // ── ΜΟΡΦΟΠΟΙΗΣΗ — ΙΔΙΑ ΜΕ ΤΗΝ ΟΘΟΝΗ ΚΑΙ ΜΕ ΤΙΣ ΕΚΤΥΠΩΣΕΙΣ ────────────────────
 // Ήταν τρίτο αντίγραφο των ίδιων τεσσάρων μορφοποιητών, με τις ίδιες τρεις
@@ -56,9 +57,10 @@ export type PdfSection =
   | { type: 'note'; title?: string; text: string };
 
 export interface PdfDocMeta {
-  id: string;                // αρ. εγγράφου, π.χ. PO-260721-4F7A2K
+  id: string;                // αρ. εγγράφου, π.χ. PO-260721-4F7A2K· κενό = εκτός μητρώου
   issuedAt: string;          // ISO timestamp
-  verifyUrl: string;         // δημόσιο URL επαλήθευσης
+  verifyUrl: string;         // δημόσιο URL επαλήθευσης· κενό = εκτός μητρώου
+  checksum?: string;         // αποτύπωμα sha256 του μητρώου (lib/documents/issue.ts)
   asOfLabel?: string;        // default «Ημερομηνία έκδοσης»
   asOfValue?: string;        // default = pDate(issuedAt)
   note?: string;             // π.χ. «Χρήση 2025» / «Περίοδος αναφοράς»
@@ -314,7 +316,7 @@ export function buildDocDefinition(model: PdfReportModel): Node {
     width: 'auto', alignment: 'right', stack: [
       { text: grUpper(asOfLabel), fontSize: 7.5, characterSpacing: 0.5, color: INK_FAINT, bold: true },
       { text: asOfValue, fontSize: 12, bold: true, color: INK, margin: [0, 2, 0, 0] },
-      { text: 'Αρ. εγγράφου ' + model.meta.id, fontSize: 8.5, color: INK_MUTED, margin: [0, 3, 0, 0] },
+      ...(model.meta.id ? [{ text: 'Αρ. εγγράφου ' + model.meta.id, fontSize: 8.5, color: INK_MUTED, margin: [0, 3, 0, 0] }] : []),
       ...(model.meta.note ? [{ text: model.meta.note, fontSize: 9, color: INK_MUTED, margin: [0, 2, 0, 0] }] : []),
     ],
   };
@@ -351,9 +353,18 @@ export function buildDocDefinition(model: PdfReportModel): Node {
     content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.7, lineColor: RULE }], margin: [0, 22, 0, 8] });
     content.push({ text: (model.branding?.companyName ? name + ' · ' : '') + model.disclaimer, fontSize: 8.5, color: INK_FAINT, lineHeight: 1.45 });
   }
-  // Το brand & η γνησιότητα μπαίνουν στο per-page footer — καμία επανάληψη colophon εδώ (πιο λιτό).
+  // Το brand & η καταχώρηση μπαίνουν στο per-page footer — καμία επανάληψη colophon εδώ (πιο λιτό).
 
   const issuedStr = pDateTime(model.meta.issuedAt);
+  // ══ ΤΟ ΥΠΟΣΕΛΙΔΟ ΕΓΡΑΦΕ «ΓΝΗΣΙΟ ΚΑΙ ΕΠΑΛΗΘΕΥΣΙΜΟ ΕΓΓΡΑΦΟ» ═══════════════
+  // Το PROPERWISE δεν ελέγχει τι γράφει ο εκδότης: ποσά, ονόματα, επωνυμία τα
+  // δηλώνει εκείνος. Αυτό που βεβαιώνει το μητρώο είναι ότι ΑΥΤΟΣ ο αριθμός
+  // εκδόθηκε, πότε, από ποιον λογαριασμό με ποια δηλωμένη επωνυμία και ότι η
+  // καταχώρηση δεν άλλαξε από τότε (20261007100000). Το «γνήσιο» υποσχόταν
+  // κάτι για το ΠΕΡΙΕΧΟΜΕΝΟ που κανείς δεν είχε ελέγξει. Το αποτύπωμα
+  // τυπώνεται για να συγκριθεί με αυτό που δείχνει η /verify.
+  const fingerprint = fingerprintLabel(model.meta.checksum);
+  const footLine = `Εκδόθηκε μέσω PROPERWISE στις ${issuedStr}` + (model.meta.id ? ` · Αρ. εγγράφου ${model.meta.id}` : '');
   return {
     pageSize: 'A4',
     pageMargins: [40, 44, 40, 62],
@@ -366,12 +377,15 @@ export function buildDocDefinition(model: PdfReportModel): Node {
         { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: RULE }] },
         {
           columns: [
-            { text: `PROPERWISE · Αρ. εγγράφου ${model.meta.id} · Εκδόθηκε ${issuedStr}`, fontSize: 7.5, color: INK_FAINT },
+            { text: footLine, fontSize: 7.5, color: INK_FAINT },
             { text: `Σελίδα ${currentPage} / ${pageCount}`, alignment: 'right', fontSize: 7.5, color: INK_FAINT },
           ], margin: [0, 6, 0, 0],
         },
         ...(model.meta.verifyUrl
-          ? [{ text: `Γνήσιο και επαληθεύσιμο έγγραφο: ${model.meta.verifyUrl}`, fontSize: 7, color: INK_FAINT, margin: [0, 2, 0, 0] }]
+          ? [
+              { text: `Επαλήθευση καταχώρησης: ${model.meta.verifyUrl}` + (fingerprint ? ` · Αποτύπωμα ${fingerprint}` : ''), fontSize: 7, color: INK_FAINT, margin: [0, 2, 0, 0] },
+              { text: 'Το περιεχόμενο το δηλώνει ο εκδότης. Το PROPERWISE καταγράφει την έκδοση και δεν βεβαιώνει την ακρίβειά του.', fontSize: 7, color: INK_FAINT, margin: [0, 1, 0, 0] },
+            ]
           : []),
       ],
     }),

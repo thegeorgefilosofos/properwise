@@ -19,7 +19,7 @@
 // μακροχρόνια «λάθος»· είναι δύο νόμιμες επιλογές με διαφορετικό ρίσκο και
 // διαφορετική δουλειά. Η έμφαση βγαίνει από μέγεθος και θέση.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useMemo, useId } from 'react';
+import { useMemo, useId, type ReactNode } from 'react';
 import { T, feAuto } from '@/components/tokens';
 import { fe, fn, fpRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
@@ -27,8 +27,9 @@ import { compareShortVsLong, netByOccupancy, HIGH_SEASON_NIGHTS, type SeasonSpre
 import { climateLevyRates, CLIMATE_LEVY_FROM_2025, FIRST_YEAR_CURRENT_LEVY } from '@/lib/billing/greekTax';
 import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
-import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
-import { ToolNumField, ToolSelect, ToolFields, ToolSeg, ToolHint, ToolHero } from '@/app/ToolParts';
+import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
+import { ToolNumField, ToolFields, ToolSeg, ToolHint, ToolHero } from '@/app/ToolParts';
+import { ToolSelect } from '@/app/ToolSelect';
 
 import LiveResult from '@/components/LiveResult';
 import { SPEC } from './spec';
@@ -64,7 +65,11 @@ const delta = (n: number) => {
   return c > 0 ? `+${fe(c)}` : c < 0 ? `−${fe(-c)}` : fe(0);
 };
 
-export function ShortVsLongCalculator({ today }: { today: string }) {
+export function ShortVsLongCalculator({ today, cta }: {
+  today: string;
+  /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
+  cta: ReactNode;
+}) {
   const [v, set] = useToolState(SPEC, PATH);
   const ids = {
     rent: useId(), price: useId(), occ: useId(), sqm: useId(),
@@ -417,10 +422,7 @@ export function ShortVsLongCalculator({ today }: { today: string }) {
 
       {/* Χωρίς λειτουργίες βραχυχρόνιας: δεν έχουν ανοίξει ακόμη και η
           πρόσκληση δεν υπόσχεται ό,τι δεν υπάρχει. */}
-      <ToolCta
-        title="Όποια κι αν διαλέξεις, τα έξοδα θέλουν τάξη."
-        body="Το PROPERWISE κρατά ενοίκια, λογαριασμούς και δαπάνες ανά ακίνητο και ετοιμάζει τα στοιχεία του Ε2 για τον λογιστή σου."
-      />
+      {cta}
     </div>
   );
 }

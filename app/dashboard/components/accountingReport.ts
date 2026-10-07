@@ -175,7 +175,7 @@ export async function downloadOfficialAccountingReport(c: AccountingReportCtx, o
   }
 
   const issued = await issueDocument(o.supabase, {
-    userId: o.userId, docType: 'Λογιστική αναφορά',
+    docType: 'Λογιστική αναφορά',
     // Ιδιος λόγος με το rentCertificate: το «αντικείμενο» είναι δημόσιο μέσω
     // της σελίδας επαλήθευσης, οπότε δεν κουβαλά τη διεύθυνση του ακινήτου.
     subject: c.propName,
@@ -186,7 +186,7 @@ export async function downloadOfficialAccountingReport(c: AccountingReportCtx, o
   const model: PdfReportModel = {
     branding: c.branding, docType: 'Λογιστική αναφορά', title: c.propName,
     subtitle: [c.regimeLabel, `Χρήση ${c.year}`, c.address].filter(Boolean).join(' · '),
-    meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, note: `Χρήση ${c.year}` },
+    meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum, note: `Χρήση ${c.year}` },
     sections, disclaimer: disclaimerOf(c),
   }
   await generateReportPdf(model, `Λογιστική_αναφορά_${c.propName}_${c.year}`)

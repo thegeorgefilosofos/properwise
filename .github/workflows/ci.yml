@@ -234,7 +234,7 @@ jobs:
         run: npm ci
 
       - name: Chromium για τις σουίτες περιηγητή
-        run: npx --yes playwright@1.62.1 install --with-deps chromium
+        run: npx --yes playwright@1.63.0 install --with-deps chromium
 
       - name: Production build
         run: npm run build
@@ -363,7 +363,7 @@ jobs:
         run: npm ci
 
       - name: Chromium για τις σουίτες περιηγητή
-        run: npx --yes playwright@1.62.1 install --with-deps chromium
+        run: npx --yes playwright@1.63.0 install --with-deps chromium
 
       # Ο πίνακας ελέγχου ζει πίσω από σύνδεση, οπότε καμία σουίτα δημόσιων
       # σελίδων δεν τον φτάνει. Ο πάγκος αποδίδει τα ΙΔΙΑ στοιχεία που τρέχουν
@@ -522,7 +522,7 @@ jobs:
         run: npm ci
 
       - name: Chromium για τις σουίτες περιηγητή
-        run: npx --yes playwright@1.62.1 install --with-deps chromium
+        run: npx --yes playwright@1.63.0 install --with-deps chromium
 
       # ΕΔΩ ΕΙΝΑΙ ΜΟΝΟ ΟΣΟΙ ΔΕΝ ΘΕΛΟΥΝ ΔΙΑΚΟΜΙΣΤΗ. Δύο σαρωτές λείπουν από τη
       # λίστα, ο καθένας για δικό του λόγο:
@@ -562,7 +562,7 @@ jobs:
         run: npm ci
 
       - name: Chromium για τις σουίτες περιηγητή
-        run: npx --yes playwright@1.62.1 install --with-deps chromium
+        run: npx --yes playwright@1.63.0 install --with-deps chromium
 
       # ΔΙΑΒΑΖΕΤΑΙ ΤΟ ΚΕΙΜΕΝΟ; Η εφαρμογή είχε ελέγχους για οριζόντια κύλιση,
       # για στόχους αφής και για ύψη πλακιδίων. Κανένας δεν ρωτούσε το
@@ -608,7 +608,7 @@ jobs:
         run: npm ci
 
       - name: WebKit — η μηχανή κάθε περιηγητή του iOS
-        run: npx --yes playwright@1.62.1 install --with-deps webkit
+        run: npx --yes playwright@1.63.0 install --with-deps webkit
 
       - name: Τίποτα κομμένο σε iPhone και iPad — blocking
         env:

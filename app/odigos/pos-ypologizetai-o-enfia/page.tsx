@@ -55,6 +55,12 @@ const pct = (n: number) => `${fn(n)}%`;
 const reduction = (key: string) => ENFIA_REDUCTIONS.find(r => r.key === key)!;
 const LOW_INCOME = reduction('low_income');
 const LARGE_FAMILY = reduction('large_family');
+// Τα όρια του άρθρου 7 έρχονται από τα πεδία της γραμμής, με την πηγή τους στο
+// lib/billing/enfia.ts. Ως τις 07/10/2026 ήταν γραμμένα με το χέρι στο κείμενο.
+const LOW_INCOME_LIMIT = LOW_INCOME.incomeLimit!;
+const LOW_INCOME_SQM = LOW_INCOME.maxBuildingSqm!;
+const LARGE_FAMILY_INCOME = LARGE_FAMILY.incomeLimit!;
+const LARGE_FAMILY_SQM = LARGE_FAMILY.maxBuildingSqm!;
 const INSURANCE = reduction('insurance');
 const INS_OVER = INSURANCE.pctOver!;
 const SMALL = reduction('small_settlement_2026');
@@ -94,8 +100,8 @@ const FAQ: GuideFaqItem[] = [
   {
     q: 'Υπάρχει απαλλαγή για πολύτεκνους ή αναπηρία;',
     a: `Ναι, ${pct(LARGE_FAMILY.pct)} απαλλαγή για τρίτεκνους/πολύτεκνους και για αναπηρία ≥80%, `
-     + 'με εισοδηματικά και περιουσιακά κριτήρια: εισόδημα έως 12.000€ (προσαυξημένο ανά μέλος) '
-     + 'και κτίσματα έως 150 τ.μ. Τα κριτήρια ελέγχονται από την ΑΑΔΕ.',
+     + `με εισοδηματικά και περιουσιακά κριτήρια: εισόδημα έως ${feWhole(LARGE_FAMILY_INCOME.base)} (προσαυξημένο ανά μέλος) `
+     + `και κτίσματα έως ${LARGE_FAMILY_SQM} τ.μ. Τα κριτήρια ελέγχονται από την ΑΑΔΕ.`,
   },
   {
     q: 'Ο ΕΝΦΙΑ αφαιρείται από τον φόρο ενοικίων;',
@@ -267,8 +273,8 @@ export default function Page() {
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Ασφαλισμένη κατοικία (σεισμός, πυρκαγιά, πλημμύρα):`}</strong>{` μείωση ${pct(INSURANCE.pct)} για αξία κατοικίας έως ${feWhole(INS_OVER.above)} ή ${pct(INS_OVER.pct)} πάνω από αυτό, για ασφάλιση όλου του προηγούμενου έτους. Για 3 έως 11 μήνες δίνεται αναλογικά. Χρειάζεται αίτηση στο myPROPERTY της ΑΑΔΕ, μέσα στην προθεσμία που ορίζεται κάθε χρόνο (απόφαση ΑΑΔΕ Α.1005/2026).`}</li>
           {/* ΕΛΕΙΠΕ, ΕΝΩ Ο ΥΠΟΛΟΓΙΣΜΟΣ ΤΗΝ ΕΦΑΡΜΟΖΕΙ. Οδηγός για το πώς μικραίνει
               ο ΕΝΦΙΑ, χωρίς τη μείωση χαμηλού εισοδήματος. Το ποσοστό έρχεται από
-              το ENFIA_REDUCTIONS, τα όρια από τη σημείωση της ίδιας γραμμής. */}
-          <li><strong style={{ color: 'var(--text-primary)' }}>{`Χαμηλό εισόδημα (κύρια κατοικία):`}</strong>{` μείωση ${pct(LOW_INCOME.pct)} με εισοδηματικά και περιουσιακά κριτήρια: εισόδημα έως 9.000€ (προσαυξημένο ανά μέλος) και κτίσματα έως 150 τ.μ. Τα κριτήρια ελέγχονται από την ΑΑΔΕ.`}</li>
+              το ENFIA_REDUCTIONS, τα όρια από τα πεδία της ίδιας γραμμής. */}
+          <li><strong style={{ color: 'var(--text-primary)' }}>{`Χαμηλό εισόδημα (κύρια κατοικία):`}</strong>{` μείωση ${pct(LOW_INCOME.pct)} με εισοδηματικά και περιουσιακά κριτήρια: εισόδημα έως ${feWhole(LOW_INCOME_LIMIT.base)} (προσαυξημένο ανά μέλος) και κτίσματα έως ${LOW_INCOME_SQM} τ.μ. Τα κριτήρια ελέγχονται από την ΑΑΔΕ.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Κύρια κατοικία μικρού οικισμού:`}</strong>{` μείωση ${pct(SMALL.pct)} για οικισμούς με λιγότερους από 1.500 κατοίκους, με αξία κατοικίας έως ${feWhole(SMALL.maxHomeValue!)}. Δεν ισχύει στην Περιφέρεια Αττικής, εκτός από την Περιφερειακή Ενότητα Νήσων. Ισχύει για τον ΕΝΦΙΑ ${SMALL.sinceYear}· από τον ΕΝΦΙΑ ${SMALL.pctFrom!.year} η κύρια κατοικία εκεί απαλλάσσεται πλήρως, με τα ίδια όρια.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Τρίτεκνοι, πολύτεκνοι και αναπηρία ≥80%:`}</strong>{` πλήρης απαλλαγή (${pct(LARGE_FAMILY.pct)}) με εισοδηματικά και περιουσιακά κριτήρια.`}</li>
         </ul>

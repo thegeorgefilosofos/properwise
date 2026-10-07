@@ -32,7 +32,7 @@ const ALLOWED = new Map([
     'δύο άξονες γύρω από κοινό μηδέν, με ασύμμετρες γωνίες ανά πλευρά'],
   ['app/dashboard/components/BillsBudget.tsx',
     'σύνθετα διαγράμματα προϋπολογισμού με επικαλύψεις και δείκτες ορίου'],
-  ['app/dashboard/components/TabLoanCalculator.tsx',
+  ['app/dashboard/components/loan/calc/CapacityLens.tsx',
     'μπάρες με απόλυτη θέση και δείκτες ορίου μέσα στην αυλακιά'],
   ['app/dashboard/components/TabLoan.tsx',
     'βαθμός με διακεκομμένο δείκτη στο 60% πάνω από το γέμισμα'],

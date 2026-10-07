@@ -358,7 +358,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
               {/* ΖΩΝΤΑΝΗ ΠΕΡΙΟΧΗ. Χωρίς αυτήν, όποιος ακούει την οθόνη έστελνε
                   ερώτηση και δεν άκουγε ποτέ την απάντηση. Το `log` διαβάζει
                   μόνο ό,τι ΠΡΟΣΤΙΘΕΤΑΙ: κάθε νέο μήνυμα και την ένδειξη ότι
-                  Νόα γράφει, όχι ξανά ολόκληρη τη συνομιλία. */}
+                  η Νόα γράφει, όχι ξανά ολόκληρη τη συνομιλία. */}
               <div ref={scrollRef} role="log" aria-live="polite" aria-relevant="additions" aria-label={`Συνομιλία με ${ASSISTANT_ACC}`} style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Η ΠΡΩΤΗ ΟΘΟΝΗ. Ο χαιρετισμός ΔΕΝ είναι συννεφάκι συνομιλίας: είναι
                     δήλωση για το τι βλέπει αυτή τη στιγμή στο ακίνητό σου, άρα διαβάζεται
@@ -380,7 +380,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                         {/* Η ΤΙΜΗ ΣΕ ΔΙΚΗ ΤΗΣ ΓΡΑΜΜΗ. Μέσα στην πρόταση, «4,99€» και «30» είναι
                             λέξεις που δεν κόβονται και σε πάνελ 300 εικονοστοιχείων η στοίχιση
                             άνοιγε τρύπες γύρω τους. */}
-                        <p style={{ ...TT.body, fontSize: 14, lineHeight: 1.55, margin: 0 }}>{hy(`${ASSISTANT_NAME} απαντά με τα δικά σου νούμερα, διαβάζει λογαριασμούς και σου θυμίζει προθεσμίες.`)}</p>
+                        <p style={{ ...TT.body, fontSize: 14, lineHeight: 1.55, margin: 0 }}>{hy(`Η ${ASSISTANT_NAME} απαντά με τα δικά σου νούμερα, διαβάζει λογαριασμούς και σου θυμίζει προθεσμίες.`)}</p>
                         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{`${fe(PLANS.solo.priceMonthly)} τον μήνα · ${aiLimitsFor('solo').perMonth} ερωτήσεις`}</div>
                         <div><Btn variant="primary" onClick={() => onNavigate('settings')}>Δες το πακέτο</Btn></div>
                       </div>
@@ -472,7 +472,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     </button>
                   </div>
                 )}
-                {busy && <div style={{ display: 'flex', gap: 4, padding: '4px 2px' }}><span className="sr-only">{ASSISTANT_NAME} γράφει…</span>{[0, 1, 2].map(i => <span key={i} aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)', animation: `pa-bounce 1s ${i * 0.15}s infinite ease-in-out` }} />)}</div>}
+                {busy && <div style={{ display: 'flex', gap: 4, padding: '4px 2px' }}><span className="sr-only">Η {ASSISTANT_NAME} γράφει…</span>{[0, 1, 2].map(i => <span key={i} aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)', animation: `pa-bounce 1s ${i * 0.15}s infinite ease-in-out` }} />)}</div>}
                 {/* Το κουτί του σφάλματος μετρά 332 εικονοστοιχεία: πάνελ 390,
                     μείον 32 το γέμισμα του σώματος, μείον 26 το δικό του. Το μήνυμα
                     του κλειδιού είναι 126 χαρακτήρες στα 12 — τρεις γραμμές με
@@ -632,7 +632,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
           /* ΤΟ ΠΑΝΕΛ ΚΑΘΕΤΑΙ ΠΑΝΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ, ΟΧΙ ΑΠΟ ΚΑΤΩ ΤΟΥ. Με σταθερό
              bottom:78px το κουμπί κλεισίματος (που κάθεται στο --fab-bottom,
              πάνω από την πλοήγηση) σκέπαζε την τελευταία γραμμή του πάνελ:
-             τη γνωστοποίηση ότι Νόα είναι τεχνητή νοημοσύνη. */
+             τη γνωστοποίηση ότι η Νόα είναι τεχνητή νοημοσύνη. */
           .pa-panel{right:8px;left:8px;bottom:calc(var(--fab-bottom) + var(--fab-h) + 10px);width:auto;max-width:none;height:min(560px,calc(100dvh - var(--fab-bottom) - var(--fab-h) - 34px))}
         }
         /* Η πρόσκληση μαζεύεται στο σήμα: μόλις κυλήσει η σελίδα και εξαρχής

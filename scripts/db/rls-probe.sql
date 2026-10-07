@@ -3855,3 +3855,164 @@ begin
   perform public.erase_account('f3f3f3f3-0000-4000-8000-0000000000c1');
   perform public.erase_account('f3f3f3f3-0000-4000-8000-0000000000e1');
 end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+--  ΤΟ ΜΗΤΡΩΟ ΤΩΝ ΕΓΓΡΑΦΩΝ: ΓΡΑΦΕΙ ΜΟΝΟ Η `issue_document`, ΤΙΠΟΤΑ ΔΕΝ ΑΛΛΑΖΕΙ
+-- ─────────────────────────────────────────────────────────────────────────
+--  Μέχρι την 20261007100000 ο χρήστης έγραφε στο `issued_documents` από τον
+--  περιηγητή ό,τι τύπο, αριθμό και ημερομηνία ήθελε, το άλλαζε μετά την
+--  εκτύπωση και η /verify έδειχνε ως εκδότη την ΤΡΕΧΟΥΣΑ επωνυμία του.
+--
+--  Η κορυφή του αρχείου δίνει insert/update/delete σε κάθε πίνακα, ώστε να
+--  κόβει η RLS και όχι η έλλειψη GRANT. Εδώ αυτό είναι σκόπιμο: η μετανάστευση
+--  ανακαλεί τα δικαιώματα, αλλά η άρνηση πρέπει να κρατά ΚΑΙ χωρίς την
+--  ανάκληση. Τρία στρώματα, το καθένα δοκιμασμένο μόνο του: χωρίς πολιτική
+--  εγγραφής, trigger που αρνείται κάθε UPDATE, ανακληθέντα δικαιώματα.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+set session "request.jwt.claims" = '';
+
+do $probe$
+declare
+  r uuid := 'f4f4f4f4-0000-4000-8000-0000000000a1';
+  s uuid := 'f4f4f4f4-0000-4000-8000-0000000000b1';
+begin
+  insert into auth.users(id, email) values (r, 'register@probe.test'), (s, 'register-mfa@probe.test');
+  insert into public.report_branding(user_id, enabled, company_name) values (r, true, 'Γραφείο Ρ');
+  -- Ο Σ έχει επαληθευμένη συσκευή: σε aal1 δεν εκδίδει τίποτα.
+  insert into auth.mfa_factors(user_id, factor_type, status) values (s, 'totp', 'verified');
+  -- Μια γραμμή όπως οι οκτώ της παραγωγής: checksum του περιηγητή (djb2).
+  insert into public.issued_documents(id, user_id, doc_type, subject, period, issued_at, summary, checksum, issuer)
+    values ('PO-260901-LEGACYAA', r, 'Βεβαίωση ενοικίου', 'Παλιό', 'Έτος 2025', '2026-09-01T10:00:00Z', '{}', '0ABCDEF', 'Γραφείο Ρ');
+
+  -- Ούτε ο ιδιοκτήτης της βάσης δεν αλλάζει εκδοθέν έγγραφο.
+  begin
+    update public.issued_documents set subject = 'Άλλο' where id = 'PO-260901-LEGACYAA';
+    raise exception 'ΜΗΤΡΩΟ: ο ρόλος postgres άλλαξε εκδοθέν έγγραφο';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: ούτε ο ιδιοκτήτης της βάσης αλλάζει εκδοθέν έγγραφο';
+end $probe$;
+
+set role authenticated;
+set session "probe.uid" = 'f4f4f4f4-0000-4000-8000-0000000000a1';
+set session "request.jwt.claims" = '{"aal":"aal1"}';
+
+do $probe$
+declare
+  r uuid := 'f4f4f4f4-0000-4000-8000-0000000000a1';
+  k int;
+  res json;
+  v record;
+begin
+  -- 1. Ο ΠΕΡΙΗΓΗΤΗΣ ΔΕΝ ΓΡΑΦΕΙ ΣΤΟ ΜΗΤΡΩΟ, ΑΚΟΜΗ ΚΑΙ ΜΕ GRANT.
+  begin
+    insert into public.issued_documents(id, user_id, doc_type, issuer)
+      values ('PO-240101-FORGEDAA', r, 'Βεβαίωση ενοικίου', 'Τράπεζα');
+    raise exception 'ΜΗΤΡΩΟ: ο χρήστης έγραψε απευθείας στο μητρώο';
+  exception when insufficient_privilege then null;
+  end;
+  update public.issued_documents set subject = 'Άλλο' where user_id = r;
+  get diagnostics k = row_count;
+  if k <> 0 then raise exception 'ΜΗΤΡΩΟ: ο χρήστης άλλαξε % εκδοθέντα έγγραφα', k; end if;
+  delete from public.issued_documents where user_id = r;
+  get diagnostics k = row_count;
+  if k <> 0 then raise exception 'ΜΗΤΡΩΟ: ο χρήστης έσβησε % εκδοθέντα έγγραφα', k; end if;
+  select count(*) into k from public.issued_documents;
+  if k <> 1 then raise exception 'ΜΗΤΡΩΟ: ο χρήστης βλέπει % δικά του έγγραφα αντί για 1', k; end if;
+
+  -- 2. Η ΠΟΡΤΑ: αριθμός, ώρα, εκδότης και αποτύπωμα από τον διακομιστή.
+  res := public.issue_document('Βεβαίωση ενοικίου', 'Αλεξάνδρας 12', 'Έτος 2026', '{"total": 7200, "months": 12}');
+  if (res->>'id') !~ '^PO-[0-9]{6}-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{8}$' then
+    raise exception 'ΜΗΤΡΩΟ: αριθμός εκτός μορφής: %', res->>'id';
+  end if;
+  if (res->>'checksum') !~ '^[0-9a-f]{64}$' then
+    raise exception 'ΜΗΤΡΩΟ: το αποτύπωμα δεν είναι sha256: %', res->>'checksum';
+  end if;
+  select * into v from public.verify_issued_document(res->>'id');
+  if v.issuer <> 'Γραφείο Ρ' or v.checksum <> res->>'checksum' or not v.intact then
+    raise exception 'ΜΗΤΡΩΟ: η επαλήθευση δεν βρήκε την έκδοση όπως γράφτηκε (%, %, %)', v.issuer, v.checksum, v.intact;
+  end if;
+  perform set_config('probe.issued', res->>'id', false);
+
+  -- 3. Ο ΚΛΕΙΣΤΟΣ ΚΑΤΑΛΟΓΟΣ ΚΑΙ ΤΑ ΟΡΙΑ.
+  begin
+    perform public.issue_document('Πιστοποιητικό τράπεζας', '', '', '{}');
+    raise exception 'ΜΗΤΡΩΟ: δέχτηκε τύπο εκτός καταλόγου';
+  exception when invalid_parameter_value then null;
+  end;
+  begin
+    perform public.issue_document('Βεβαίωση ενοικίου', repeat('α', 201), '', '{}');
+    raise exception 'ΜΗΤΡΩΟ: δέχτηκε αντικείμενο 201 χαρακτήρων';
+  exception when string_data_right_truncation then null;
+  end;
+  begin
+    perform public.issue_document('Βεβαίωση ενοικίου', '', '', '[1, 2]');
+    raise exception 'ΜΗΤΡΩΟ: δέχτηκε σύνοψη που δεν είναι αντικείμενο';
+  exception when invalid_parameter_value then null;
+  end;
+
+  -- 4. Η ΠΑΛΙΑ ΓΡΑΜΜΗ ΔΕΝ ΒΕΒΑΙΩΝΕΤΑΙ ΑΘΙΚΤΗ: μπορούσε να αλλάξει μέχρι σήμερα.
+  select * into v from public.verify_issued_document('PO-260901-LEGACYAA');
+  if v.intact then raise exception 'ΜΗΤΡΩΟ: γραμμή με checksum περιηγητή βεβαιώνεται άθικτη'; end if;
+
+  raise notice 'probe: το μητρώο γράφεται μόνο από την issue_document, με αριθμό, ώρα και αποτύπωμα του διακομιστή';
+end $probe$;
+
+-- 5. Η ΑΛΛΑΓΗ ΕΠΩΝΥΜΙΑΣ ΔΕΝ ΞΑΝΑΓΡΑΦΕΙ ΤΗΝ ΙΣΤΟΡΙΑ.
+reset role;
+update public.report_branding set company_name = 'Τράπεζα Πειραιώς'
+ where user_id = 'f4f4f4f4-0000-4000-8000-0000000000a1';
+
+-- 6. Ο ανώνυμος επαληθεύει, δεν εκδίδει.
+set role anon;
+set session "probe.uid" = '';
+set session "request.jwt.claims" = '';
+do $probe$
+declare v record;
+begin
+  select * into v from public.verify_issued_document(current_setting('probe.issued'));
+  if v.issuer <> 'Γραφείο Ρ' or not v.intact then
+    raise exception 'ΜΗΤΡΩΟ: η επωνυμία της σήμερα ξανάγραψε τον εκδότη (% / %)', v.issuer, v.intact;
+  end if;
+  -- Και η παλιά μορφή, που μένει για τη σελίδα της προηγούμενης έκδοσης.
+  select * into v from public.verify_document(current_setting('probe.issued'));
+  if v.issuer <> 'Γραφείο Ρ' then
+    raise exception 'ΜΗΤΡΩΟ: η verify_document δείχνει την επωνυμία της σήμερα (%)', v.issuer;
+  end if;
+  begin
+    perform public.issue_document('Βεβαίωση ενοικίου', '', '', '{}');
+    raise exception 'ΜΗΤΡΩΟ: ο ανώνυμος εξέδωσε έγγραφο';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: ο εκδότης μένει όπως ήταν στην έκδοση· ο ανώνυμος μόνο επαληθεύει';
+end $probe$;
+
+-- 7. Με συσκευή και κωδικό μόνο, δεν εκδίδεται τίποτα. Ούτε φαίνεται το ξένο.
+set role authenticated;
+set session "probe.uid" = 'f4f4f4f4-0000-4000-8000-0000000000b1';
+set session "request.jwt.claims" = '{"aal":"aal1"}';
+do $probe$
+declare k int;
+begin
+  begin
+    perform public.issue_document('Βεβαίωση ενοικίου', '', '', '{}');
+    raise exception 'ΔΙΑΡΡΟΗ 2FA: συνεδρία aal1 εξέδωσε έγγραφο';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'mfa_required' then raise; end if;
+  end;
+  perform set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+  select count(*) into k from public.issued_documents;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο Σ βλέπει % έγγραφα του Ρ', k; end if;
+  raise notice 'probe: χωρίς δεύτερο βήμα καμία έκδοση· κανείς δεν βλέπει το μητρώο άλλου';
+end $probe$;
+
+reset role;
+set session "probe.uid" = '';
+set session "request.jwt.claims" = '';
+do $probe$
+begin
+  perform public.erase_account('f4f4f4f4-0000-4000-8000-0000000000a1');
+  perform public.erase_account('f4f4f4f4-0000-4000-8000-0000000000b1');
+end $probe$;

@@ -16,7 +16,7 @@
 // ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΗΝ ΑΡΙΘΜΗΤΙΚΗ: lib/tools/stegastiko.ts, που καλεί τις ίδιες
 // συναρτήσεις δανείου με τον πίνακα ελέγχου. Η οθόνη δεν κάνει πράξεις.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
 import { fe, fn, fp, fpRate } from '@/lib/core/format';
@@ -27,7 +27,7 @@ import {
   type MortgageMarket, type RateKind,
 } from '@/lib/tools/stegastiko';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
-import { ToolCta, EstimateNote, ToolClampNote } from '@/app/PublicChrome';
+import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
 import { ToolNumField, ToolFields, ToolSeg, ToolHero, ToolLedger, ToolStats } from '@/app/ToolParts';
 import LiveResult from '@/components/LiveResult';
 
@@ -73,7 +73,11 @@ const Empty = ({ children }: { children: React.ReactNode }) => (
   <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>{children}</p>
 );
 
-export function MortgageCalculator({ market, today }: { market: MortgageMarket; today: string }) {
+export function MortgageCalculator({ market, today, cta }: {
+  market: MortgageMarket; today: string;
+  /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
+  cta: ReactNode;
+}) {
   // Η ΤΙΜΗ ΑΓΟΡΑΣ ΜΠΑΙΝΕΙ ΜΟΝΟ ΑΝ ΕΙΝΑΙ ΦΡΕΣΚΙΑ ΚΑΙ ΜΟΝΟ ΑΝ Η ΔΙΕΥΘΥΝΣΗ ΔΕΝ ΕΙΠΕ
   // ΑΛΛΗ. Παλιά τιμή δεν προτείνεται ως αφετηρία· γράφεται από κάτω με τη
   // δική της ημερομηνία, για αναφορά.
@@ -318,10 +322,7 @@ export function MortgageCalculator({ market, today }: { market: MortgageMarket; 
 
       <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
 
-      <ToolCta
-        title="Θέλεις να βλέπεις τι χρωστάς ακόμη, κάθε μήνα;"
-        body="Το PROPERWISE κρατά το δάνειο μαζί με το ακίνητο: τη δόση, το υπόλοιπο που μένει και τους τόκους κάθε χρονιάς. Δεν εγκρίνει δάνεια και δεν μιλά για λογαριασμό καμίας τράπεζας."
-      />
+      {cta}
     </div>
   );
 }

@@ -233,7 +233,7 @@ const COVER_ROWS = 8;
  * Το μοντέλο του PDF της σύνοψης, στο ίδιο σύστημα με κάθε επίσημο έγγραφο της
  * εφαρμογής (lib/pdf/pdfReport.ts): σήμα, αριθμός εγγράφου, υποσέλιδο σελίδας.
  */
-export function coverModel(input: MeetingPackInput, meta: { id: string; issuedAt: string; verifyUrl: string }): PdfReportModel {
+export function coverModel(input: MeetingPackInput, meta: { id: string; issuedAt: string; verifyUrl: string; checksum?: string }): PdfReportModel {
   const t = packTotals(input.properties);
   const r = input.reconciliation;
   const missing = missingItems(input);
@@ -294,7 +294,7 @@ export function coverModel(input: MeetingPackInput, meta: { id: string; issuedAt
     docType: 'Φάκελος για τον λογιστή',
     title: `Φορολογικό έτος ${input.year} · ΑΦΜ ${input.ownerAfm}`,
     subtitle: input.ownerName ?? undefined,
-    meta: { id: meta.id, issuedAt: meta.issuedAt, verifyUrl: meta.verifyUrl, note: `Χρήση ${input.year}` },
+    meta: { id: meta.id, issuedAt: meta.issuedAt, verifyUrl: meta.verifyUrl, checksum: meta.checksum, note: `Χρήση ${input.year}` },
     sections,
     disclaimer: `Τα ποσά βγαίνουν από τις καταχωρήσεις της εφαρμογής και, για τη σύγκριση, από το προσυμπληρωμένο Ε2 όπως ανέβηκε.${share} Ο φάκελος δεν υποβάλλει τίποτα και δεν υπολογίζει φόρο.`,
   };

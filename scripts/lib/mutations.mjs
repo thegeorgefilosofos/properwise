@@ -198,7 +198,13 @@ export const MUTATIONS = {
     // Η γενική με τον τόνο στο γιώτα, όπως ήταν στα Κοινόχρηστα.
     { add: 'components/__mut__.tsx', content: tsx('    <div>Ταμείο Κτηρίου</div>') },
   ] },
-  'assistant-name': { add: 'components/__mut__.tsx', content: tsx('    <div>Ο βοηθός σου προτείνει τρεις κινήσεις</div>') },
+  // Το άρθρο στο όνομα επιτρέπεται από 07/10/2026 («Η Νόα απαντά»). Οι
+  // ετικέτες δίπλα στο όνομα όχι: «βοηθός Νόα» και «η Νόα είναι δωρεάν».
+  'assistant-name': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Ο βοηθός σου προτείνει τρεις κινήσεις</div>') },
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Ο ψηφιακός βοηθός Νόα ξέρει τα ακίνητά σου</div>') },
+    { add: 'components/__mut__.tsx', content: tsx('    <div>Η Νόα είναι δωρεάν για όλους</div>') },
+  ] },
 
   // ── Βάση δεδομένων και ασφάλεια ───────────────────────────────────────
   // Οι μεταναστεύσεις είναι ΠΡΟΣΘΕΤΙΚΕΣ: μια νέα με το σφάλμα μέσα είναι η
@@ -250,7 +256,7 @@ export const MUTATIONS = {
   // ξεκολλά από το playwright-core.
   'chromium-path': { every: [
     { add: 'scripts/__mut__.mjs', content: "import { chromium } from 'playwright-core';\nawait chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });\n" },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.62.1 install', to: 'playwright@1.40.0 install' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.63.0 install', to: 'playwright@1.40.0 install' },
   ] },
   'email-audience': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
@@ -491,7 +497,9 @@ export const MUTATIONS = {
   'hand-buttons': { add: 'components/__mut__.tsx', content: tsx("    <button style={{ padding: 4 }}>Α</button>") },
   'surface-scale': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ height: 33, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>Α</div>") },
   'js-hover': { add: 'components/__mut__.tsx', content: 'export function P() {\n  return <div onMouseEnter={() => {}} onMouseLeave={() => {}}>Α</div>\n}\n' },
-  'type-scale': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ fontSize: 17 }}>Κείμενο εκτός κλίμακας</div>") },
+  // Μισό εικονοστοιχείο εκτός κλίμακας: το παλιό μοτίβο `(\d+)\b` το διάβαζε
+  // «12» και το άφηνε να περάσει. Αν ο φύλακας ξαναχάσει τα δεκαδικά, πρασινίζει.
+  'type-scale': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ fontSize: 12.5 }}>Κείμενο εκτός κλίμακας</div>") },
   'dead-exports': { add: 'lib/core/__mut__.ts', content: 'export const neverCalledByAnyone = () => 42\n' },
   'schema-drift': { add: 'lib/core/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('user_properties').select('stili_pou_den_yparxei')\n" },
 

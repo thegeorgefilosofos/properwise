@@ -19,6 +19,7 @@
 import { propertyIncome, type PropertyIncomeInput, type IncomeSource } from '@/lib/income/propertyIncome';
 import { roundHalfUp } from '@/lib/core/money';
 import { isLease, type PropertyStatus } from './status';
+import { YIELD_INCOME_LABELS, YIELD_INCOME_SHORT_LABELS } from './labels';
 
 export interface RentIncome {
   status: PropertyStatus;
@@ -59,4 +60,58 @@ export function rentIncome(i: RentIncomeInput): RentIncome {
     projected: let_ && inc.annualized !== inc.receivedToDate,
     unresolvedStays: inc.unresolvedStays,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΤΟ ΕΣΟΔΟ ΤΗΣ ΑΠΟΔΟΣΗΣ: ΕΝΑΣ ΟΡΙΣΜΟΣ ΓΙΑ ΕΠΙΣΚΟΠΗΣΗ ΚΑΙ ΑΠΟΔΟΣΕΙΣ (07.10.2026)
+// ─────────────────────────────────────────────────────────────────────────
+// Για το ίδιο ακίνητο με μίσθωση 650€ τον μήνα, εννέα πληρωμένες δόσεις και
+// μία καθυστερημένη, η Επισκόπηση έγραφε μεικτή απόδοση πάνω σε 7.800€ (το
+// μίσθωμα × 12) και οι Αποδόσεις πάνω στις δόσεις σε ετήσιο ρυθμό, 7.020€. Δύο
+// ποσοστά με το ίδιο όνομα για το ίδιο ακίνητο.
+//
+// Ο ΚΑΝΟΝΑΣ, όπως τον κάνει ο λογιστής:
+//   · ΑΠΟΔΟΣΗ = ό,τι αποδίδει το ακίνητο με τους όρους που ισχύουν. Με μίσθωση
+//     και μίσθωμα, το «αναμενόμενα με βάση τη μίσθωση» (μίσθωμα × 12). Μια
+//     καθυστερημένη δόση είναι οφειλή του ενοικιαστή, όχι πτώση της απόδοσης.
+//   · ΤΑΜΕΙΟ = ό,τι εισπράχθηκε ως σήμερα («εισπραγμένα ως σήμερα»). Γράφεται
+//     δίπλα, ποτέ στη θέση του πρώτου.
+//   · ΔΙΑΜΟΝΕΣ: δεν υπάρχει συμβόλαιο έτους, οπότε το δηλωτέο ως σήμερα σε
+//     ετήσιο ρυθμό, που μέσα στη χρονιά είναι εκτίμηση και το λέει.
+//   · ΔΟΣΕΙΣ ΧΩΡΙΣ ΜΙΣΘΩΜΑ ΤΡΕΧΟΝΤΟΣ ΕΝΟΙΚΙΑΣΤΗ: ο ετήσιος ρυθμός τους, εκτίμηση.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type YieldIncomeBasis = 'lease' | 'stays' | 'payments' | 'none';
+
+export interface YieldIncome {
+  /** Το ετήσιο έσοδο πάνω στο οποίο βγαίνει η απόδοση. */
+  annual: number;
+  basis: YieldIncomeBasis;
+  /** Το ταμείο: ό,τι εισπράχθηκε ως σήμερα. `null` όταν δεν καταγράφηκε τίποτα. */
+  received: number | null;
+  /** Το ετήσιο ποσό δεν είναι βέβαιο (προβολή μέσα στη χρονιά ή διαμονές χωρίς βάση ποσού). */
+  estimated: boolean;
+  /** Η βάση με λέξεις (YIELD_INCOME_LABELS). Κενό όταν δεν υπάρχει έσοδο. */
+  label: string;
+  /** Η ίδια σε στενό πλακίδιο (YIELD_INCOME_SHORT_LABELS). */
+  shortLabel: string;
+}
+
+/** Το ετήσιο έσοδο της απόδοσης και το ταμείο, από τα έσοδα του `rentIncome`. */
+export function yieldIncome(fi: RentIncome): YieldIncome {
+  const recorded = fi.source === 'stays' || fi.source === 'rent';
+  const received = recorded ? fi.received : null;
+  if (fi.source === 'stays') {
+    return { annual: fi.annualized, basis: 'stays', received, estimated: fi.estimated || fi.projected,
+      label: YIELD_INCOME_LABELS.stays, shortLabel: YIELD_INCOME_SHORT_LABELS.stays };
+  }
+  if (fi.expected > 0) {
+    return { annual: fi.expected, basis: 'lease', received, estimated: false,
+      label: YIELD_INCOME_LABELS.lease, shortLabel: YIELD_INCOME_SHORT_LABELS.lease };
+  }
+  if (fi.source === 'rent') {
+    return { annual: fi.annualized, basis: 'payments', received, estimated: fi.estimated || fi.projected,
+      label: YIELD_INCOME_LABELS.payments, shortLabel: YIELD_INCOME_SHORT_LABELS.payments };
+  }
+  return { annual: 0, basis: 'none', received, estimated: false, label: '', shortLabel: '' };
 }

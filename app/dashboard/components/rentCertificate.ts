@@ -95,7 +95,7 @@ export async function downloadOfficialRentCertificate(c: RentCertificateCtx, o: 
   const subject = c.propName
 
   const issued = await issueDocument(o.supabase, {
-    userId: o.userId, docType: 'Βεβαίωση ενοικίου',
+    docType: 'Βεβαίωση ενοικίου',
     subject, period: `Έτος ${c.year}`,
     summary: { total: c.total, months: c.months.length },
   })
@@ -103,7 +103,7 @@ export async function downloadOfficialRentCertificate(c: RentCertificateCtx, o: 
   const model: PdfReportModel = {
     branding: c.branding, docType: 'Βεβαίωση ενοικίου', title: `Βεβαίωση ενοικίου ${c.year}`,
     subtitle: subject,
-    meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, note: `Έτος ${c.year}` },
+    meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum, note: `Έτος ${c.year}` },
     sections,
     disclaimer: 'Η βεβαίωση συντάχθηκε με βάση τα καταχωρημένα, εισπραγμένα μισθώματα. Για τη χρήση της σε δηλώσεις/δικαστικές διαδικασίες, επιβεβαίωσε τα στοιχεία με τον λογιστή ή τον δικηγόρο σου.',
   }

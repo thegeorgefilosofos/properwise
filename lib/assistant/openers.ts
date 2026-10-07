@@ -166,7 +166,7 @@ export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerCont
 
   // Δεν έχουν φορτώσει ακόμη τα δεδομένα: δεν λέμε ούτε «βλέπω», ούτε «δεν έχεις».
   if (ctx === null) {
-    return `${hi}. Είμαι ${assistantName}. Κοιτάζω τα στοιχεία ${your}…`;
+    return `${hi}. Είμαι η ${assistantName}. Κοιτάζω τα στοιχεία ${your}…`;
   }
 
   const name = (ctx.propertyName || '').trim();
@@ -185,7 +185,7 @@ export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerCont
   if (knows.length === 0) {
     const enter = formal ? 'καταχωρήσετε' : 'καταχωρήσεις';
     const first = formal ? 'να καταχωρήσετε' : 'να καταχωρήσεις';
-    return `${hi}. Είμαι ${assistantName}. Μόλις ${enter} τα πρώτα στοιχεία ${scope}, θα απαντώ με βάση αυτά. ${you} τι ${first} πρώτα.`;
+    return `${hi}. Είμαι η ${assistantName}. Μόλις ${enter} τα πρώτα στοιχεία ${scope}, θα απαντώ με βάση αυτά. ${you} τι ${first} πρώτα.`;
   }
 
   const list = knows.length === 1 ? knows[0] : `${knows.slice(0, -1).join(', ')} και ${knows[knows.length - 1]}`;

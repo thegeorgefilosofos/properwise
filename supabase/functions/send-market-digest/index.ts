@@ -11,7 +11,7 @@
 import { emailShell, eyebrow, h, note, dataTable, listUnsubscribeHeaders } from '../_shared/emailTemplates.ts'
 import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
 ;
-import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
+import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { pct } from '../_shared/format.ts'

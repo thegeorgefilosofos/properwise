@@ -25,7 +25,7 @@
 //   supabase functions deploy send-client-email
 // ─────────────────────────────────────────────────────────────────────────
 import { NO_RESEND_KEY } from '../_shared/resendKey.ts'
-import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
+import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
 import { senderFrom } from '../_shared/sender.mjs'
 import { clientMessageEmail, fillClientHtml } from '../_shared/emailTemplates.ts'
 
