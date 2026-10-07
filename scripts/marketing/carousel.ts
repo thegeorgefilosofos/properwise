@@ -144,7 +144,7 @@ function k1(): string {
     ${chart('keep', 'Το ενοίκιο της χρονιάς', `${P_NET}% ΚΑΘΑΡΑ`, C.accent)}
     <p class="sub bridge">Πού πήγαν τα <b class="num">${esc(eur(LOST))}</b>;</p>
     <div class="rows tease">
-      ${PARTS.filter(x => x.k !== 'net').map(x => `<div class="row"><span><i class="dot" style="background:${x.c}"></i>${esc(x.label)}</span><em class="mono">${x.k === 'tax' ? '02' : '03'} →</em></div>`).join('')}
+      ${PARTS.filter(x => x.k !== 'net').map(x => `<div class="row"><span><i class="dot" style="background:${x.c}"></i>${esc(x.label)}</span><em class="mono">ΚΑΡΤΑ ${x.k === 'tax' ? '02' : '03'}</em></div>`).join('')}
     </div>`, `
     .pair{display:flex;flex-direction:column;gap:34px;margin-top:70px}
     .pk{font-size:21px;color:${C.faint}}
