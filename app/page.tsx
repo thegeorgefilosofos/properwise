@@ -2,7 +2,7 @@ import { BrandLogo } from '@/components/BrandMark';
 import Link from 'next/link';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 import { aiLimitsFor } from '@/lib/billing/aiLimits';
-import { TRIAL_OFFER, trialCta } from '@/lib/billing/trialOffer';
+import { TRIAL_OFFER, signupCta } from '@/lib/billing/trialOffer';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
 import { SITE, ORG_ID, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES, SOCIAL_PROFILES } from '@/lib/core/site';
@@ -273,7 +273,7 @@ export default async function Landing() {
             {loggedIn ? (
               <Link href="/dashboard" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>Άνοιξε τον πίνακά σου</Link>
             ) : (<>
-              <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>Ξεκίνα δωρεάν</Link>
+              <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>{signupCta()}</Link>
               <Link href="/login" style={{ background: 'transparent', color: 'var(--text-primary)', textDecoration: 'none', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: T.radius.pill, border: '1px solid var(--border-strong)', transition: 'border-color .15s, background .15s' }}>Έχω λογαριασμό</Link>
             </>)}
           </div>
@@ -399,7 +399,7 @@ export default async function Landing() {
       {/* ── Ζωντανό εργαλείο απόδοσης: αξία επιτόπου, με τον αληθινό μας μηχανισμό ── */}
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
         <SectionHead over="Δες το μόνος σου" title="Πόσο σου αποδίδει πραγματικά;" sub="Ενδεικτική καθαρή απόδοση, με την ίδια φορολογική κλίμακα ενοικίων 2026 που τρέχει και μέσα στην εφαρμογή." />
-        <LandingCalculator />
+        <LandingCalculator cta={signupCta()} />
       </section>
 
       {/* ── Security & trust ── */}
@@ -629,8 +629,8 @@ export default async function Landing() {
                 // ΡΗΜΑ, ΟΧΙ ΤΑΜΠΕΛΑ. Το «30 ημέρες δωρεάν» σε τέσσερα κουμπιά δεν
                 // έλεγε τι κάνει το πάτημα· η δοκιμή λέγεται στα ψιλά από κάτω.
                 // Και «δοκιμή» μόνο όπου η δοκιμή δίνει το πακέτο: πάνω από το
-                // TRIAL_PLAN το κουμπί λέει μόνο ότι η αρχή είναι δωρεάν.
-                cta={trialCta(id)}
+                // TRIAL_PLAN το κουμπί λέει ότι κάνεις εγγραφή (trialOffer.ts).
+                cta={signupCta(id)}
                 ctaGhost={id !== FEATURED_PLAN}
                 featured={id === FEATURED_PLAN}
               />
@@ -786,7 +786,7 @@ export default async function Landing() {
             <span className="lp-lede-line">Κάθε έγγραφο στη θέση του, κάθε προθεσμία στην ώρα της.</span>{' '}
             <span className="lp-lede-line">Και η επόμενη δήλωση θα σε βρει με τον φάκελο ήδη έτοιμο.</span>
           </p>
-          <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : 'Ξεκίνα δωρεάν'}</Link>
+          <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : signupCta()}</Link>
         </div>
       </section>
 

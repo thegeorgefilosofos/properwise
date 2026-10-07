@@ -116,7 +116,9 @@ function Stat({ label, value, big, tone }: { label: string; value: string; big?:
   )
 }
 
-export default function LandingCalculator() {
+// ΤΟ ΛΕΚΤΙΚΟ ΕΡΧΕΤΑΙ ΑΠΟ ΤΗΝ ΑΡΧΙΚΗ (`signupCta`, lib/billing/trialOffer.ts),
+// ώστε ο κανόνας να μη φορτώνεται στον περιηγητή για ένα σταθερό κείμενο.
+export default function LandingCalculator({ cta }: { cta: string }) {
   const [rent, setRent] = useState(650)
   const [value, setValue] = useState(180000)
   const [costs, setCosts] = useState(1200)
@@ -221,7 +223,7 @@ export default function LandingCalculator() {
         </p>
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
           {/* Στα 320 η πλήρης φράση έσπαγε σε δύο γραμμές με το «σου» μόνο του. */}
-          <span className="lp-hide-xxs">Ξεκίνα δωρεάν με το ακίνητό σου</span><span className="lp-only-xxs">Ξεκίνα δωρεάν</span>
+          <span className="lp-hide-xxs">{cta} με το ακίνητό σου</span><span className="lp-only-xxs">{cta}</span>
         </Link>
       </div>
     </div>

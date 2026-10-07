@@ -54,14 +54,12 @@ ok('κλίμακα 2026: 12.000 / 24.000 / 36.000 με 15 / 25 / 35 / 45%',
   rentalBracketsForYear(2026).map(b => `${b.from}:${b.rate}`).join() === '0:0.15,12000:0.25,24000:0.35,36000:0.45');
 
 // ── Η σελίδα ───────────────────────────────────────────────────────────────
-// Ο οδηγός ΑΜΑ έχει ανοιχτό P0: η σελίδα τον εξαιρεί από τους «Σχετικούς
-// οδηγούς» και δεν τον δείχνει πουθενά αλλού (ούτε `href` ούτε `link`).
+// Ο οδηγός ΑΜΑ ξαναμπαίνει στους «Σχετικούς οδηγούς» (07/10/2026): το P0 του
+// έκλεισε και οι δύο οδηγοί λένε το ίδιο για Θεσσαλονίκη και κληρονομιά.
 {
   const page = readFileSync('app/odigos/airbnb-takk-2026/page.tsx', 'utf8');
-  const AMA = '/odigos/vraxyxronia-ama-prodiagrafes-2026';
-  ok('η σελίδα περνά το exclude στους «Σχετικούς οδηγούς»', /<RelatedGuides current=\{GUIDE\} exclude=\{RELATED_EXCLUDE\} \/>/.test(page));
-  ok('το RELATED_EXCLUDE κρατά τον οδηγό ΑΜΑ', page.includes(`const RELATED_EXCLUDE = [guideAt('${AMA}').href];`));
-  ok('η διαδρομή του ΑΜΑ εμφανίζεται μόνο στην εξαίρεση', page.split(AMA).length - 1 === 1);
+  ok('η σελίδα δεν εξαιρεί πια κανέναν οδηγό', /<RelatedGuides current=\{GUIDE\} \/>/.test(page) && !page.includes('RELATED_EXCLUDE'));
+  ok('η σελίδα λέει τη μεταβίβαση εν ζωή, όχι την κληρονομιά', page.includes('η κληρονομική διαδοχή δεν εμπίπτει'));
   ok('η σύγκριση δείχνει στο εργαλείο', page.includes('href="/vraxyxronia-i-makroxronia"'));
 }
 

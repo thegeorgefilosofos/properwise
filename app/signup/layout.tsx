@@ -15,7 +15,8 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { siteUrl } from '@/lib/core/site';
 import { publicMetadata } from '../publicMetadata';
-import { TRIAL_DAYS } from '@/lib/billing/plans';
+import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
+import { TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { billingWords } from '@/lib/legal/billingWords';
 import { PlanTermsProvider } from './PlanTerms';
 
@@ -31,7 +32,11 @@ export function generateMetadata(): Metadata {
   // ως η αρχική και η παραπομπή χανόταν.
   return publicMetadata({
     title: 'Εγγραφή · PROPERWISE',
-    description: `Δημιούργησε λογαριασμό και ξεκίνα τη δοκιμή των ${TRIAL_DAYS} ημερών. ${billingWords().firstCharge}`,
+    // ΠΡΩΤΑ ΤΟ ΔΩΡΕΑΝ ΠΑΚΕΤΟ, ΜΕΤΑ Η ΔΟΚΙΜΗ (έλεγχος κειμένων 06.10.2026). Ελεγε
+    // σκέτο «ξεκίνα τη δοκιμή», ενώ τα «Ξεκίνα δωρεάν» της αρχικής φέρνουν εδώ
+    // όποιον διαλέγει το δωρεάν πακέτο. Η δοκιμή ισχύει για κάθε νέο λογαριασμό
+    // (`trialState`) και λέγεται με το πακέτο που δίνει, από τις πηγές τους.
+    description: `Δημιούργησε λογαριασμό στο δωρεάν πακέτο «${PLANS.free.name}». Κάθε νέος λογαριασμός ξεκινά με δοκιμή ${TRIAL_DAYS} ημερών στο «${PLANS[TRIAL_PLAN].name}». ${billingWords().firstCharge}`,
     url: siteUrl('/signup'),
   });
 }

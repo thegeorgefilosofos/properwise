@@ -18,7 +18,7 @@ import * as expenses from '@/lib/data/expenses'
 import * as tenantStore from '@/lib/data/tenants'
 import { CustomSelect, BulkActionBar } from './UIComponents';
 import { T, PageTitle, KPIGrid, Badge, Btn, ExportButton, EmptyState, InfoBanner, SecHdr, SelectBox, SkeletonKPIs, Skeleton, fe, fp, fixedCols, ABSENT_SHORT, Modal, TT, Stat, RecordCard, StatStrip } from '@/components/Theme';
-import { statusLabel, type StatusRow } from '@/lib/property/status';
+import { statusLabel, BY_KEY, type StatusRow } from '@/lib/property/status';
 import { propertyTypeLabel } from '@/lib/property/types';
 import { yearOccupancy } from '@/lib/clients/reports';
 import { rentIncome, propertyStatus, yearExpensesOf, YIELD_LABELS } from '@/lib/facts';
@@ -946,12 +946,19 @@ function Num({ v, muted, bold, tone, mark, title }: { v: string; muted?: boolean
 // Η στήλη δείχνει τη ΔΗΛΩΜΕΝΗ κατάσταση, σωστά. Όταν όμως η δήλωση λέει «Κενό»
 // και τα δεδομένα δείχνουν ενοικιαστή ή διαμονές φέτος, το ουδέτερο σήμα δίπλα
 // σε έσοδα 6.480€ διαβαζόταν ως ψέμα της οθόνης. Δεν διορθώνεται σιωπηλά (η
-// δήλωση είναι του ιδιοκτήτη)· σημειώνεται με ερωτηματικό και εξήγηση.
+// δήλωση είναι του ιδιοκτήτη)· σημειώνεται και εξηγείται.
+//
+// ΛΕΞΕΙΣ, ΟΧΙ ΕΡΩΤΗΜΑΤΙΚΟ. Ηταν «Κενό;». Το σήμα γράφεται με κεφαλαία, οπότε
+// διαβαζόταν «ΚΕΝΟ;», που μοιάζει με χαλασμένη ετικέτα και όχι με ερώτηση.
+// Το σήμα λέει τώρα τι συμβαίνει («Κενό, με έσοδα») και η εξήγηση λέει πού
+// διορθώνεται.
+// Η λέξη «Κενό» έρχεται από το lib/property/status.ts, όχι γραμμένη ξανά εδώ.
+const VACANT = BY_KEY.vacant.label;
 function StatusBadge({ r }: { r: Row }) {
-  if (r.statusLabel === 'Κενό' && r.mode !== 'vacant') {
+  if (r.statusLabel === VACANT && r.mode !== 'vacant') {
     return (
-      <span title="Η δηλωμένη κατάσταση διαφέρει από τα δεδομένα: υπάρχουν έσοδα φέτος. Διορθώνεται στα στοιχεία του ακινήτου.">
-        <Badge tone="warning">Κενό;</Badge>
+      <span title={`Το έχεις δηλώσει «${VACANT}», αλλά φέτος υπάρχουν έσοδα. Αν νοικιάζεται, άνοιξε το ακίνητο και διάλεξε τη σωστή κατάσταση από το κουμπί κατάστασης δίπλα στο όνομά του.`}>
+        <Badge tone="warning">{`${VACANT}, με έσοδα`}</Badge>
       </span>
     );
   }

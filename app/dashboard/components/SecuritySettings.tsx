@@ -18,13 +18,49 @@ import { SetList, SetRow, SetFact } from './SettingsKit';
 import { logActivity } from '@/lib/activity';
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password';
 import PasswordStrength from '@/components/PasswordStrength';
-import { SAY, failed } from '@/lib/core/dbError';
+import PasswordEye from '@/app/PasswordEye';
+import { failed } from '@/lib/core/dbError';
 
 // Η γεωμετρία της γραμμής (περιθώρια, περιγράμματα) έρχεται από το SettingsKit
 // και το `.po-settings`. Εδώ μένουν μόνο τα δύο που είναι ειδικά της ασφάλειας.
 const fieldLabel: CSSProperties = { ...TT.bodySm, marginBottom: 6, display: 'block' };
 const field: CSSProperties = settingsField;
 const note: CSSProperties = { ...TT.bodySm, marginTop: 10 };
+// Χώρος για το μάτι (44×44, στο δεξί άκρο), ώστε το κείμενο να μη χάνεται από κάτω του.
+const pwField: CSSProperties = { ...field, paddingRight: 48 };
+
+// ═══ ΑΛΛΑΓΗ ΚΩΔΙΚΟΥ: Ο ΤΡΕΧΩΝ ΚΩΔΙΚΟΣ ΤΟΝ ΕΛΕΓΧΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ ════════════
+// ΤΟ ΕΥΡΗΜΑ (έλεγχος ασφαλείας 06.10). Η αλλαγή έκανε σκέτο
+// `updateUser({ password })`: όποιος έβρισκε ξεκλείδωτο, συνδεδεμένο περιηγητή
+// άλλαζε τον κωδικό χωρίς να ξέρει τον παλιό και κρατούσε τον λογαριασμό. Οι
+// άλλες συνεδρίες έμεναν ανοιχτές, ενώ η επαναφορά τις έκλεινε.
+//
+// ΓΙΑΤΙ `current_password` ΚΑΙ ΟΧΙ `signInWithPassword`. Μια δοκιμαστική
+// σύνδεση θα έφτιαχνε ΝΕΑ συνεδρία σε `aal1` και θα έριχνε τον χρήστη με δύο
+// βήματα κάτω από το `aal2` που ζητά ο διαμεσολαβητής (lib/auth/mfa.ts). Το
+// `current_password` στέλνεται μέσα στο ίδιο `PUT /user` και ο Supabase Auth
+// το ελέγχει στον διακομιστή (internal/api/user.go), χωρίς νέα συνεδρία.
+//
+// ΙΣΧΥΕΙ ΜΟΝΟ ΜΕ ΤΗ ΡΥΘΜΙΣΗ ΑΝΟΙΧΤΗ. Ο διακομιστής ελέγχει τον τρέχοντα κωδικό
+// μόνο όταν στο Supabase Dashboard είναι ενεργό το «Require current password
+// when changing password» (Authentication → Sign In / Providers → Email·
+// GOTRUE_SECURITY_UPDATE_PASSWORD_REQUIRE_CURRENT_PASSWORD). Με τη ρύθμιση
+// κλειστή ο διακομιστής αγνοεί το πεδίο: η οθόνη το ζητά, αλλά ο έλεγχος δεν
+// γίνεται. Δεν υπάρχει έλεγχος μόνο στον περιηγητή εδώ, γιατί θα ήταν ψεύτικη
+// ασφάλεια: παρακάμπτεται με ένα αίτημα από την κονσόλα.
+//
+// ΟΙ ΑΡΝΗΣΕΙΣ ΠΟΥ ΔΙΟΡΘΩΝΕΙ Ο ΙΔΙΟΣ Ο ΧΡΗΣΤΗΣ λέγονται εδώ με το όνομά τους και
+// δεν αναφέρονται ως σφάλματα: λάθος κωδικός δεν είναι βλάβη. Οι κωδικοί είναι
+// του Supabase Auth (internal/api/apierrors/errorcode.go)· το κείμενό τους
+// είναι ίδιο και για τα δύο πρώτα, οπότε κρίνει μόνο το `code`. Ο,τι άλλο
+// περνά από το `failed()`.
+const PW_REFUSED: Record<string, string> = {
+  current_password_invalid: 'Ο τρέχων κωδικός δεν είναι σωστός.',
+  current_password_required: 'Γράψε τον τρέχοντα κωδικό σου για να τον αλλάξεις.',
+  same_password: 'Ο νέος κωδικός είναι ίδιος με τον τρέχοντα. Διάλεξε άλλον.',
+  insufficient_aal: 'Η αλλαγή κωδικού θέλει και τον κωδικό της επαλήθευσης δύο βημάτων. Αποσυνδέσου, μπες ξανά και δοκίμασε πάλι.',
+  reauthentication_needed: 'Για την αλλαγή κωδικού χρειάζεται πρόσφατη σύνδεση. Αποσυνδέσου, μπες ξανά και δοκίμασε πάλι.',
+};
 
 // ── Ελάχιστοι τοπικοί τύποι για τα αποτελέσματα του Supabase MFA ──────────
 interface MfaFactor { id: string; friendly_name?: string; factor_type: string; status: 'verified' | 'unverified' }
@@ -34,6 +70,17 @@ export default function SecuritySettings() {
   const supabase = createClient();
 
   // Κωδικός πρόσβασης
+  const [currentPass, setCurrentPass] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  // ΛΟΓΑΡΙΑΣΜΟΣ ΧΩΡΙΣ ΚΩΔΙΚΟ ΔΕΝ ΕΧΕΙ «ΤΡΕΧΟΝΤΑ». Οποιος μπήκε μόνο με Google
+  // δεν έχει ταυτότητα `email` και κανέναν κωδικό να γράψει: ο διακομιστής τον
+  // εξαιρεί κι αυτός (`user.HasPassword()`). Ώσπου να διαβαστεί, το πεδίο
+  // φαίνεται: η ασφαλής προεπιλογή. Αν ο διακομιστής ζητήσει τρέχοντα κωδικό
+  // που η οθόνη δεν περίμενε, το πεδίο εμφανίζεται (`askCurrent`).
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+  const [askCurrent, setAskCurrent] = useState(false);
+  const needCurrent = hasPassword !== false || askCurrent;
   const [newPass, setNewPass] = useState('');
   const [leakedPw, setLeakedPw] = useState<string | null>(null);
   // ΤΟ ΕΥΡΗΜΑ ΔΙΑΡΡΟΗΣ ΦΤΑΝΕΙ ΩΣ ΤΗΝ ΥΠΟΒΟΛΗ. Πριν, ζούσε μόνο μέσα στο
@@ -73,6 +120,8 @@ export default function SecuritySettings() {
       if (err) { setIdentityErr(failed('Τα στοιχεία του λογαριασμού δεν διαβάστηκαν', err)); return; }
       setEmail(data.user?.email ?? '');
       setLastSignIn(data.user?.last_sign_in_at ?? null);
+      const ids = data.user?.identities;
+      if (ids) setHasPassword(ids.some(i => i.provider === 'email'));
     })();
     return () => { alive = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,6 +278,14 @@ export default function SecuritySettings() {
   }
 
   async function savePassword() {
+    if (needCurrent && !currentPass) {
+      setPwMsg({ ok: false, text: PW_REFUSED.current_password_required });
+      return;
+    }
+    if (needCurrent && newPass === currentPass) {
+      setPwMsg({ ok: false, text: PW_REFUSED.same_password });
+      return;
+    }
     if (leaked) {
       setPwMsg({ ok: false, text: PASSWORD_MSG.leaked });
       return;
@@ -243,16 +300,39 @@ export default function SecuritySettings() {
     }
     setPwBusy(true);
     setPwMsg(null);
-    const { error } = await supabase.auth.updateUser({ password: newPass });
-    setPwBusy(false);
+    // Ο τρέχων κωδικός ταξιδεύει ΜΟΝΟ όταν η οθόνη τον ζήτησε. Το
+    // `current_password` είναι το όνομα που διαβάζει ο διακομιστής και που
+    // δηλώνει το `UserAttributes` του @supabase/auth-js 2.116: η βιβλιοθήκη
+    // στέλνει τα πεδία αυτούσια, χωρίς μετονομασία.
+    const { error } = await supabase.auth.updateUser(
+      needCurrent ? { password: newPass, current_password: currentPass } : { password: newPass },
+    );
     if (error) {
-      setPwMsg({ ok: false, text: SAY.changeFailed });
+      setPwBusy(false);
+      if (error.code === 'current_password_required') setAskCurrent(true);
+      const refused = error.code ? PW_REFUSED[error.code] : undefined;
+      setPwMsg({ ok: false, text: refused ?? failed('Ο κωδικός δεν άλλαξε', error) });
       return;
     }
+    void logActivity(supabase, 'password_changed', 'security');
+    // ═══ ΟΙ ΑΛΛΕΣ ΣΥΣΚΕΥΕΣ ΚΛΕΙΝΟΥΝ ΜΑΖΙ ΜΕ ΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΟ ═══════════════
+    // Ίδιο με την επαναφορά (app/reset-password): όποιος αλλάζει κωδικό επειδή
+    // υποψιάζεται διαρροή πρέπει να βγάλει έξω και όποιον κρατά ήδη συνεδρία.
+    // Μένει ανοιχτή μόνο αυτή η συσκευή. Αν το κλείσιμο αποτύχει, το λέμε και
+    // δείχνουμε το κουμπί που το κάνει, αντί να υποσχεθούμε κάτι που δεν έγινε.
+    const { error: outError } = await supabase.auth.signOut({ scope: 'others' });
+    setPwBusy(false);
+    setCurrentPass('');
     setNewPass('');
     setConfirm('');
-    setPwMsg({ ok: true, text: 'Ο κωδικός ενημερώθηκε.' });
-    void logActivity(supabase, 'password_changed', 'security');
+    setShowCurrent(false);
+    setShowNew(false);
+    setPwMsg({
+      ok: true,
+      text: outError
+        ? 'Ο κωδικός ενημερώθηκε, αλλά οι άλλες συσκευές δεν αποσυνδέθηκαν. Κλείσ’ τες με την «Αποσύνδεση από όλες τις συσκευές», παρακάτω.'
+        : 'Ο κωδικός ενημερώθηκε. Αποσυνδέσαμε κάθε άλλη συσκευή όπου ήταν ανοιχτός ο λογαριασμός σου.',
+    });
   }
 
   async function signOutEverywhere() {
@@ -277,18 +357,37 @@ export default function SecuritySettings() {
       {/* 1. Κωδικός πρόσβασης */}
       <SetRow title="Κωδικός πρόσβασης"
         desc={`${PASSWORD_MIN_LABEL}, με πεζό, κεφαλαίο, αριθμό και σύμβολο.`}>
+        {/* Ο τρέχων κωδικός στη δική του γραμμή, στο πλάτος μιας στήλης: είναι
+            άλλη ερώτηση («ποιος είσαι») από τα δύο πεδία του νέου κωδικού. */}
+        {needCurrent && (
+          <div {...fixedCols(2, 12, 'start')}>
+            <div style={{ marginBottom: 12 }}>
+              <label htmlFor="sec-current-pass" style={fieldLabel}>Τρέχων κωδικός</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="sec-current-pass" type={showCurrent ? 'text' : 'password'} autoComplete="current-password" className="po-field"
+                  required value={currentPass} onChange={e => setCurrentPass(e.target.value)} style={pwField}
+                />
+                <PasswordEye show={showCurrent} onToggle={() => setShowCurrent(s => !s)} />
+              </div>
+            </div>
+          </div>
+        )}
         <div {...fixedCols(2, 12, 'start')}>
           <div>
             <label htmlFor="sec-new-pass" style={fieldLabel}>Νέος κωδικός</label>
-            <input
-              id="sec-new-pass" type="password" autoComplete="new-password" className="po-field"
-              value={newPass} onChange={e => setNewPass(e.target.value)} style={field} aria-describedby="sec-pw-req"
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="sec-new-pass" type={showNew ? 'text' : 'password'} autoComplete="new-password" className="po-field"
+                value={newPass} onChange={e => setNewPass(e.target.value)} style={pwField} aria-describedby="sec-pw-req"
+              />
+              <PasswordEye show={showNew} onToggle={() => setShowNew(s => !s)} />
+            </div>
           </div>
           <div>
             <label htmlFor="sec-confirm-pass" style={fieldLabel}>Επιβεβαίωση</label>
             <input
-              id="sec-confirm-pass" type="password" autoComplete="new-password" className="po-field"
+              id="sec-confirm-pass" type={showNew ? 'text' : 'password'} autoComplete="new-password" className="po-field"
               value={confirm} onChange={e => setConfirm(e.target.value)} style={field}
             />
           </div>
@@ -300,7 +399,7 @@ export default function SecuritySettings() {
           </Btn>
         </div>
         {pwMsg && (
-          <div style={{ ...note, color: pwMsg.ok ? 'var(--text-secondary)' : 'var(--negative)' }}>{pwMsg.text}</div>
+          <div role={pwMsg.ok ? 'status' : 'alert'} style={{ ...note, color: pwMsg.ok ? 'var(--text-secondary)' : 'var(--negative)' }}>{pwMsg.text}</div>
         )}
       </SetRow>
 
