@@ -202,7 +202,12 @@ export function enfiaFloorKeyFromValue(floor: string | number | null | undefined
 // (ΦΕΚ Α΄ 130/18.07.2025):
 //   παρ. 1, μείωση 50%: συνολικό φορολογητέο οικογενειακό εισόδημα έως 9.000€,
 //          προσαυξημένο κατά 1.000€ για τον/τη σύζυγο και κάθε εξαρτώμενο μέλος,
-//          συνολική επιφάνεια κτισμάτων έως 150 τ.μ. (και όρια αξίας περιουσίας).
+//          συνολική επιφάνεια κτισμάτων έως 150 τ.μ. και συνολική αξία ακίνητης
+//          περιουσίας έως 85.000€ για τον άγαμο, 150.000€ «για τον έγγαμο και τον
+//          ή τη σύζυγό του ή τη μονογονεϊκή οικογένεια με ένα εξαρτώμενο τέκνο»
+//          και 200.000€ «για τον έγγαμο, τον ή τη σύζυγό του και τα εξαρτώμενα
+//          τέκνα τους ή τη μονογονεϊκή οικογένεια με δύο εξαρτώμενα τέκνα».
+//          Τρεις βαθμίδες, χωρίς προσαύξηση ανά επιπλέον τέκνο.
 //   παρ. 2, μείωση 100%: οικογένειες με τρία ή περισσότερα εξαρτώμενα τέκνα ή
 //          με μέλος με αναπηρία ≥80%, εισόδημα έως 12.000€ προσαυξημένο κατά
 //          1.000€ ανά μέλος, κτίσματα έως 150 τ.μ.
@@ -210,6 +215,9 @@ export function enfiaFloorKeyFromValue(floor: string | number | null | undefined
 // 2026 (ΠΟΜΙΔΑ, taxheaven). Ούτε το κείμενο του άρθρου ούτε η αντιστοίχιση
 // παραγράφων του ν.5219/2025 διαβάστηκαν από το πρωτογενές ΦΕΚ (βλ.
 // property_tax_code στο data/accounting-sources.json).
+// Τα τρία όρια αξίας της παρ. 1 επιβεβαιώθηκαν 07/10/2026 με την ίδια μέθοδο,
+// σε αποσπάσματα αναζήτησης από taxheaven.gr (Άρθρο 7 ν.4223/2013), ethnos.gr
+// («ΑΑΔΕ: Τα κριτήρια για απαλλαγή ή έκπτωση 50% στον ΕΝΦΙΑ») και newmoney.gr.
 // Μητρώο: lib/legal/validity.ts (enfia-relief-criteria).
 /** Μείωση 50% χαμηλού εισοδήματος: εισόδημα έως 9.000€ + 1.000€ ανά μέλος. */
 const LOW_INCOME_LIMIT = { base: 9_000, perMember: 1_000 } as const
@@ -217,10 +225,20 @@ const LOW_INCOME_LIMIT = { base: 9_000, perMember: 1_000 } as const
 const FULL_RELIEF_INCOME_LIMIT = { base: 12_000, perMember: 1_000 } as const
 /** Ανώτατη συνολική επιφάνεια κτισμάτων και για τις δύο. */
 const RELIEF_MAX_BUILDING_SQM = 150
+/**
+ * Μείωση 50%: ανώτατη συνολική αξία ακίνητης περιουσίας ανά τύπο οικογένειας
+ * (παρ. 1). Ο νόμος έχει τρεις σταθερές βαθμίδες, όχι ποσό ανά τέκνο.
+ */
+const LOW_INCOME_VALUE_LIMITS = { single: 85_000, couple: 150_000, family: 200_000 } as const
 
 /** «εισόδημα ≤9.000€ (+1.000€/μέλος), κτίσματα ≤150 τ.μ.»: το κείμενο της σημείωσης, από τα πεδία. */
 const reliefCriteria = (limit: { base: number; perMember: number }, sqm: number): string =>
   `εισόδημα ≤${feWhole(limit.base)} (+${feWhole(limit.perMember)}/μέλος), κτίσματα ≤${sqm} τ.μ.`
+
+/** «περιουσία ≤85.000€ (άγαμος), ≤150.000€ (…) ή ≤200.000€ (…)»: τα όρια αξίας της σημείωσης, από τα πεδία. */
+const valueCriteria = (v: { single: number; couple: number; family: number }): string =>
+  `περιουσία ≤${feWhole(v.single)} (άγαμος), ≤${feWhole(v.couple)} (έγγαμοι χωρίς τέκνα ή μονογονεϊκή οικογένεια με ένα τέκνο) `
+  + `ή ≤${feWhole(v.family)} (έγγαμοι με τέκνα ή μονογονεϊκή οικογένεια με δύο τέκνα)`
 
 // Εκπτώσεις/απαλλαγές κύριου φόρου (άρθρο 7 ν.4223/2013), ΕΠΙΠΛΕΟΝ της αυτόματης
 // μείωσης ανά συνολική αξία. Ο χρήστης επιλέγει όσες πληροί (με κριτήρια, βλ. note).
@@ -312,8 +330,16 @@ export const ENFIA_REDUCTIONS: {
   incomeLimit?: { base: number; perMember: number }
   /** Ανώτατη συνολική επιφάνεια κτισμάτων (τ.μ.) για το μέτρο. Ίδια σημείωση με το `incomeLimit`. */
   maxBuildingSqm?: number
+  /**
+   * ΑΝΩΤΑΤΗ ΣΥΝΟΛΙΚΗ ΑΞΙΑ ΑΚΙΝΗΤΗΣ ΠΕΡΙΟΥΣΙΑΣ ανά τύπο οικογένειας: `single` ο
+   * άγαμος· `couple` οι έγγαμοι χωρίς τέκνα ή η μονογονεϊκή οικογένεια με ένα
+   * εξαρτώμενο τέκνο· `family` οι έγγαμοι με εξαρτώμενα τέκνα ή η μονογονεϊκή
+   * οικογένεια με δύο. Ίδια σημείωση με το `incomeLimit`: η μηχανή δεν το κρίνει
+   * (δεν ξέρει την οικογενειακή κατάσταση), η σημείωση το τυπώνει από εδώ.
+   */
+  valueLimits?: { single: number; couple: number; family: number }
 }[] = [
-  { key: 'low_income', label: 'Χαμηλό εισόδημα (κύρια κατοικία)', pct: 50, incomeLimit: LOW_INCOME_LIMIT, maxBuildingSqm: RELIEF_MAX_BUILDING_SQM, note: `Μείωση 50% με κριτήρια: ${reliefCriteria(LOW_INCOME_LIMIT, RELIEF_MAX_BUILDING_SQM)}, περιουσία ≤85.000€ (άγαμος) / 200.000€ (έγγαμος με 2 τέκνα)` },
+  { key: 'low_income', label: 'Χαμηλό εισόδημα (κύρια κατοικία)', pct: 50, incomeLimit: LOW_INCOME_LIMIT, maxBuildingSqm: RELIEF_MAX_BUILDING_SQM, valueLimits: LOW_INCOME_VALUE_LIMITS, note: `Μείωση 50% με κριτήρια: ${reliefCriteria(LOW_INCOME_LIMIT, RELIEF_MAX_BUILDING_SQM)}, ${valueCriteria(LOW_INCOME_VALUE_LIMITS)}` },
   // Το κλειδί κρατά το «2026» επειδή είναι αποθηκευμένο στις επιλογές των χρηστών.
   { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού', pct: 50, sinceYear: 2026, pctFrom: { year: 2027, pct: 100 }, maxHomeValue: 400_000, excludesAtticaMainland: true, note: 'Αυτόματη μείωση 50% το 2026 και πλήρης απαλλαγή από το 2027, για οικισμούς κάτω των 1.500 κατ., αξία κατοικίας ≤400.000€. Δεν ισχύει στην Περιφέρεια Αττικής, εκτός από την Π.Ε. Νήσων.' },
   { key: 'large_family', label: 'Τρίτεκνοι / Πολύτεκνοι', pct: 100, incomeLimit: FULL_RELIEF_INCOME_LIMIT, maxBuildingSqm: RELIEF_MAX_BUILDING_SQM, note: `100% απαλλαγή με κριτήρια: ${reliefCriteria(FULL_RELIEF_INCOME_LIMIT, RELIEF_MAX_BUILDING_SQM)}` },

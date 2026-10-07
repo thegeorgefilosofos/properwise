@@ -21,6 +21,8 @@ ok('η εφαρμογή κερδίζει κάθε άλλο σήμα', signupSour
 ok('LinkedIn από την εφαρμογή του', signupSource(LI, '', '', HOST) === 'linkedin')
 ok('utm_source των δικών μας συνδέσμων', signupSource(SAFARI, '?utm_source=instagram&utm_medium=bio', '', HOST) === 'instagram')
 ok('utm_source άγνωστο: other, όχι ελεύθερο κείμενο', signupSource(SAFARI, '?utm_source=kati-allo', '', HOST) === 'other')
+ok('YouTube από utm_source', signupSource(SAFARI, '?utm_source=youtube&utm_medium=shorts', '', HOST) === 'youtube')
+ok('YouTube από referrer youtu.be', signupSource(SAFARI, '', 'https://youtu.be/abc', HOST) === 'youtube')
 ok('referrer Google', signupSource(DESKTOP, '', 'https://www.google.com/', HOST) === 'google')
 ok('referrer Bing: αναζήτηση', signupSource(DESKTOP, '', 'https://www.bing.com/search?q=x', HOST) === 'search')
 ok('από την αρχική μας: internal', signupSource(DESKTOP, '', 'https://properwise.gr/paketa', HOST) === 'internal')
@@ -38,18 +40,21 @@ ok('υπολογιστής όχι', !isMobileUa(DESKTOP))
 
 // ── ΟΙ ΚΑΤΑΛΟΓΟΙ ΕΙΝΑΙ ΟΙ ΙΔΙΟΙ ΜΕ ΤΗΣ ΒΑΣΗΣ ──────────────────────────────────
 const dir = 'supabase/migrations'
-const sql = readdirSync(dir).filter(f => f.includes('choni_tis_eggrafis')).map(f => readFileSync(`${dir}/${f}`, 'utf8')).join('\n')
+// Οι μεταναστεύσεις του χωνιού με τη σειρά τους· ισχύει ο τελευταίος ορισμός.
+const files = readdirSync(dir).filter(f => f.includes('choni_tis_eggrafis')).sort()
+const sql = files.map(f => readFileSync(`${dir}/${f}`, 'utf8')).join('\n')
+const last = <T,>(xs: T[]) => xs[xs.length - 1]
 ok('υπάρχει το migration του χωνιού', sql.includes('count_signup_step'))
 const quoted = (block: string) => new Set([...block.matchAll(/'([a-z_]+)'/g)].map(m => m[1]))
 const stepsInSql = quoted(/step\s+text\s+not null check \(step in \(([^)]*)\)/.exec(sql)?.[1] ?? '')
-const sourcesInSql = quoted(/source\s+text\s+not null check \(source in \(([^)]*)\)/.exec(sql)?.[1] ?? '')
+const sourcesInSql = quoted(last([...sql.matchAll(/check \(source in \(([^)]*)\)/g)])?.[1] ?? '')
 const steps = Object.values(SIGNUP_STEPS)
 ok('κάθε βήμα της εφαρμογής υπάρχει στη βάση', steps.every(s => stepsInSql.has(s)))
 ok('και η βάση δεν έχει βήμα που η εφαρμογή δεν στέλνει', stepsInSql.size === steps.length)
 ok('κάθε πηγή της εφαρμογής υπάρχει στη βάση', SIGNUP_SOURCES.every(s => sourcesInSql.has(s)))
 ok('και η βάση δεν έχει πηγή που η εφαρμογή δεν στέλνει', sourcesInSql.size === SIGNUP_SOURCES.length)
 // Η συνάρτηση ελέγχει ξανά τους ίδιους καταλόγους: ανοιχτή στον ανώνυμο, δεν δέχεται ελεύθερο κείμενο.
-const fn = sql.slice(sql.indexOf('create or replace function public.count_signup_step'))
+const fn = sql.slice(sql.lastIndexOf('create or replace function public.count_signup_step'))
 ok('η συνάρτηση ελέγχει κάθε βήμα', steps.every(s => fn.includes(`'${s}'`)))
 ok('η συνάρτηση ελέγχει κάθε πηγή', SIGNUP_SOURCES.every(s => fn.includes(`'${s}'`)))
 ok('και κλειδώνει το search_path', /set search_path = public, pg_temp/.test(fn))

@@ -4,7 +4,7 @@ import { useState, useEffect, useSyncExternalStore } from 'react'
 import { authClient } from '@/lib/supabase/lazy';
 import { leaveDevice } from '@/lib/localPrivacy'
 import Link from 'next/link'
-import AuthAside, { AuthMobileBrand } from '../AuthAside'
+import { AuthMobileBrand } from '../AuthMobileBrand'
 import PasswordEye from '../PasswordEye'
 import { checkPassword, PASSWORD_MIN_HINT, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
@@ -37,18 +37,6 @@ const readLink = (): Link => {
   if (q.has('error_code') || h.has('error_code') || q.has('error') || h.has('error')) return 'failed'
   return q.has('code') || h.has('access_token') ? 'checking' : 'none'
 }
-
-// ═══ ΣΤΗΝ ΕΠΑΝΑΦΟΡΑ ΤΟ ΠΑΝΕΛ ΛΕΕΙ ΤΙ ΠΡΟΣΤΑΤΕΥΕΙ, ΟΧΙ ΤΙ ΠΟΥΛΑΕΙ ═══════════
-// Ηταν τα ίδια τρία σημεία με την εγγραφή (σάρωση, Νόα, οικονομικά): διαφήμιση
-// σε οθόνη όπου κάποιος ίσως φοβάται ότι μπήκε άλλος στον λογαριασμό του. Τα
-// σημεία εδώ είναι όσα κάνει πράγματι η φόρμα από κάτω: το signOut({ scope:
-// 'others' }) του updatePassword και το ότι αλλάζει μόνο ο κωδικός. Το «κωδικός
-// που έχει διαρρεύσει δεν περνά» έφυγε (28.09.2026): το Leaked Password
-// Protection του παρόχου είναι κλειστό, άρα η υπόσχεση δεν ίσχυε.
-const RESET_PILLARS = [
-  { label: 'Κλείνουν οι άλλες συνδέσεις', text: 'Με τον νέο κωδικό αποσυνδέονται όλες οι άλλες συσκευές του λογαριασμού. Μένει ανοιχτή μόνο η συσκευή όπου τον άλλαξες.' },
-  { label: 'Τα δεδομένα σου δεν αγγίζονται', text: 'Ακίνητα, έγγραφα και κινήσεις μένουν όπως τα άφησες. Αλλάζει μόνο ο τρόπος που μπαίνεις.' },
-]
 
 export default function ResetPasswordPage() {
   // Ο ΣΥΝΔΕΣΜΟΣ ΤΟΥ EMAIL ΛΕΕΙ ΗΔΗ ΣΕ ΠΟΙΑ ΟΘΟΝΗ ΕΙΜΑΣΤΕ. Ηταν
@@ -170,129 +158,118 @@ export default function ResetPasswordPage() {
     </div>
   )
 
+  // Το περίγραμμα των δύο στηλών, ο σύνδεσμος παράκαμψης και το πάνελ
+  // (AuthAside) ζουν στο layout.tsx, στον διακομιστή, όπως στη Σύνδεση και στην
+  // Εγγραφή. Εδώ μένει μόνο ό,τι έχει κατάσταση: το <main> της φόρμας.
   return (
-    <div data-mode="dark" className="auth-split" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
+    <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
+      <div className="auth-form">
+        <AuthMobileBrand />
 
-      <a href="#main" className="skip-link">Μετάβαση στη φόρμα</a>
+        {mode === 'checking' && (
+          <>
+            <BackLink home />
+            <h1 style={h2s}>Επαναφορά κωδικού</h1>
+            <p role="status" style={subs}>Έλεγχος συνδέσμου…</p>
+          </>
+        )}
 
-      {/* LEFT, κοινό marketing panel (AuthAside) */}
-      <AuthAside
-        headline="Νέος κωδικός,"
-        accent="ίδια δεδομένα."
-        sub="Ξέχασες τον κωδικό σου; Ορίζεις καινούριο και τα δεδομένα σου μένουν όπως τα άφησες."
-        pillars={RESET_PILLARS}
-      />
+        {mode === 'request' && (
+          <>
+            {/* Ο ίδιος δρόμος πίσω με κάθε άλλη κατάσταση της Σύνδεσης και της
+                Εγγραφής: εδώ και στο «sent» έλειπε. */}
+            <BackLink home />
+            <h1 style={h2s}>Επαναφορά κωδικού</h1>
+            {linkFailed && (
+              <div role="alert" style={{ background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '12px 14px', fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)', marginBottom: 16 }}>
+                Ο σύνδεσμος έληξε ή άνοιξε σε άλλη συσκευή. Ζήτησε νέο εδώ και άνοιξέ τον στην ίδια συσκευή.
+              </div>
+            )}
+            <p style={subs}>Δώσε το email σου και θα σου στείλουμε έναν σύνδεσμο για να ορίσεις νέο κωδικό.</p>
+            <form onSubmit={sendReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label htmlFor="rp-email" style={label}>Ηλεκτρονικό ταχυδρομείο</label>
+                <input id="rp-email" name="email" autoComplete="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="onoma@email.com" style={field}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+              </div>
+              {errBox}
+              {/* `field` γιατί η υποβολή κρατά όλο το πλάτος της φόρμας, όπως πριν. */}
+              <Btn variant="primary" type="submit" field disabled={loading}>{loading ? 'Αποστολή…' : 'Στείλε σύνδεσμο'}</Btn>
+            </form>
+            <p style={{ fontSize: 13, marginTop: T.sp.xxl }}>
+              <Link href="/login" className="lp-link po-tap" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Επιστροφή στη σύνδεση</Link>
+            </p>
+          </>
+        )}
 
-      {/* RIGHT, form: <main>, όπως στη Σύνδεση και στην Εγγραφή. */}
-      <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
-        <div className="auth-form">
-          <AuthMobileBrand />
+        {mode === 'sent' && (
+          <>
+            <BackLink home />
+            {/* Η ΙΔΙΑ ΟΨΗ ΜΕ ΤΗΝ ΕΓΓΡΑΦΗ (app/MailSent.tsx). Εδώ η επιφύλαξη
+                είναι στο ίδιο το «σου στείλαμε»: η επαναφορά δεν λέει ποτέ αν
+                υπάρχει λογαριασμός, ώστε να μη γίνεται μηχανή ελέγχου email. */}
+            <MailSent
+              title="Άνοιξε το email σου"
+              email={email.trim()}
+              body={<>Αν υπάρχει λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επαναφοράς. Πάτησέ τον για να ορίσεις νέο κωδικό. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
+              footer={<>
+                Λάθος διεύθυνση;{' '}
+                <LinkBtn onClick={() => setMode('request')}>Γράψε άλλη</LinkBtn>
+                {' · '}
+                <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
+              </>}
+            />
+          </>
+        )}
 
-          {mode === 'checking' && (
-            <>
-              <BackLink home />
-              <h1 style={h2s}>Επαναφορά κωδικού</h1>
-              <p role="status" style={subs}>Έλεγχος συνδέσμου…</p>
-            </>
-          )}
-
-          {mode === 'request' && (
-            <>
-              {/* Ο ίδιος δρόμος πίσω με κάθε άλλη κατάσταση της Σύνδεσης και της
-                  Εγγραφής: εδώ και στο «sent» έλειπε. */}
-              <BackLink home />
-              <h1 style={h2s}>Επαναφορά κωδικού</h1>
-              {linkFailed && (
-                <div role="alert" style={{ background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '12px 14px', fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)', marginBottom: 16 }}>
-                  Ο σύνδεσμος έληξε ή άνοιξε σε άλλη συσκευή. Ζήτησε νέο εδώ και άνοιξέ τον στην ίδια συσκευή.
-                </div>
-              )}
-              <p style={subs}>Δώσε το email σου και θα σου στείλουμε έναν σύνδεσμο για να ορίσεις νέο κωδικό.</p>
-              <form onSubmit={sendReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <label htmlFor="rp-email" style={label}>Ηλεκτρονικό ταχυδρομείο</label>
-                  <input id="rp-email" name="email" autoComplete="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="onoma@email.com" style={field}
+        {mode === 'update' && (
+          <>
+            {/* ΤΟ ΤΕΤΑΡΤΟ ΑΔΙΕΞΟΔΟ ΤΗΣ ΙΔΙΑΣ ΟΙΚΟΓΕΝΕΙΑΣ. Οι δύο πρώτες οθόνες
+                της επαναφοράς προσφέρουν «Επιστροφή στη σύνδεση» και η
+                τελευταία «Συνέχεια στην εφαρμογή». Αυτή εδώ, όπου ο χρήστης
+                φτάνει από σύνδεσμο σε email, δεν είχε τίποτα: ούτε πίσω,
+                ούτε αρχική. Οποιος άνοιξε τον σύνδεσμο κατά λάθος έμενε
+                μπροστά σε μια φόρμα που δεν ζήτησε. */}
+            <BackLink home />
+            <h1 style={h2s}>Όρισε νέο κωδικό</h1>
+            <p style={subs}>{`Διάλεξε έναν ισχυρό κωδικό, ${PASSWORD_MIN_LABEL.toLowerCase()}.`}</p>
+            <form onSubmit={updatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label htmlFor="rp-password" style={label}>Νέος κωδικός</label>
+                <div style={{ position: 'relative' }}>
+                  <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_HINT} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
                     onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+                  {eye}
                 </div>
-                {errBox}
-                {/* `field` γιατί η υποβολή κρατά όλο το πλάτος της φόρμας, όπως πριν. */}
-                <Btn variant="primary" type="submit" field disabled={loading}>{loading ? 'Αποστολή…' : 'Στείλε σύνδεσμο'}</Btn>
-              </form>
-              <p style={{ fontSize: 13, marginTop: T.sp.xxl }}>
-                <Link href="/login" className="lp-link po-tap" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Επιστροφή στη σύνδεση</Link>
-              </p>
-            </>
-          )}
+                {password && <PasswordStrength password={password} id="rp-pw-req" onLeaked={setLeakedPw} />}
+              </div>
+              <div>
+                <label htmlFor="rp-confirm" style={label}>Επιβεβαίωση</label>
+                <input id="rp-confirm" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Ξαναγράψε τον κωδικό" aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'rp-confirm-err' : undefined} style={field}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+                {mismatch && <p id="rp-confirm-err" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '6px 0 0', lineHeight: 1.5 }}>{MISMATCH}</p>}
+              </div>
+              {errBox}
+              {/* Πατήσιμο πάντα, όπως στην Εγγραφή: το σβηστό κουμπί δεν έλεγε
+                  γιατί. Ο λόγος έρχεται από τον updatePassword, στο πλαίσιο. */}
+              <Btn variant="primary" type="submit" field disabled={loading}>{loading ? 'Αποθήκευση…' : 'Αποθήκευση κωδικού'}</Btn>
+            </form>
+          </>
+        )}
 
-          {mode === 'sent' && (
-            <>
-              <BackLink home />
-              {/* Η ΙΔΙΑ ΟΨΗ ΜΕ ΤΗΝ ΕΓΓΡΑΦΗ (app/MailSent.tsx). Εδώ η επιφύλαξη
-                  είναι στο ίδιο το «σου στείλαμε»: η επαναφορά δεν λέει ποτέ αν
-                  υπάρχει λογαριασμός, ώστε να μη γίνεται μηχανή ελέγχου email. */}
-              <MailSent
-                title="Άνοιξε το email σου"
-                email={email.trim()}
-                body={<>Αν υπάρχει λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επαναφοράς. Πάτησέ τον για να ορίσεις νέο κωδικό. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
-                footer={<>
-                  Λάθος διεύθυνση;{' '}
-                  <LinkBtn onClick={() => setMode('request')}>Γράψε άλλη</LinkBtn>
-                  {' · '}
-                  <Link href="/login" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
-                </>}
-              />
-            </>
-          )}
-
-          {mode === 'update' && (
-            <>
-              {/* ΤΟ ΤΕΤΑΡΤΟ ΑΔΙΕΞΟΔΟ ΤΗΣ ΙΔΙΑΣ ΟΙΚΟΓΕΝΕΙΑΣ. Οι δύο πρώτες οθόνες
-                  της επαναφοράς προσφέρουν «Επιστροφή στη σύνδεση» και η
-                  τελευταία «Συνέχεια στην εφαρμογή». Αυτή εδώ, όπου ο χρήστης
-                  φτάνει από σύνδεσμο σε email, δεν είχε τίποτα: ούτε πίσω,
-                  ούτε αρχική. Οποιος άνοιξε τον σύνδεσμο κατά λάθος έμενε
-                  μπροστά σε μια φόρμα που δεν ζήτησε. */}
-              <BackLink home />
-              <h1 style={h2s}>Όρισε νέο κωδικό</h1>
-              <p style={subs}>{`Διάλεξε έναν ισχυρό κωδικό, ${PASSWORD_MIN_LABEL.toLowerCase()}.`}</p>
-              <form onSubmit={updatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <label htmlFor="rp-password" style={label}>Νέος κωδικός</label>
-                  <div style={{ position: 'relative' }}>
-                    <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_HINT} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
-                      onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-                    {eye}
-                  </div>
-                  {password && <PasswordStrength password={password} id="rp-pw-req" onLeaked={setLeakedPw} />}
-                </div>
-                <div>
-                  <label htmlFor="rp-confirm" style={label}>Επιβεβαίωση</label>
-                  <input id="rp-confirm" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Ξαναγράψε τον κωδικό" aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'rp-confirm-err' : undefined} style={field}
-                    onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-                  {mismatch && <p id="rp-confirm-err" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '6px 0 0', lineHeight: 1.5 }}>{MISMATCH}</p>}
-                </div>
-                {errBox}
-                {/* Πατήσιμο πάντα, όπως στην Εγγραφή: το σβηστό κουμπί δεν έλεγε
-                    γιατί. Ο λόγος έρχεται από τον updatePassword, στο πλαίσιο. */}
-                <Btn variant="primary" type="submit" field disabled={loading}>{loading ? 'Αποθήκευση…' : 'Αποθήκευση κωδικού'}</Btn>
-              </form>
-            </>
-          )}
-
-          {mode === 'done' && (
-            <div style={{ textAlign: 'center' }} role="status">
-              {successIcon}
-              <h1 style={h2s}>Ο κωδικός άλλαξε</h1>
-              <p style={subs}>{othersOut
-                ? 'Αποσυνδέσαμε κάθε άλλη συσκευή όπου ήταν ανοιχτός ο λογαριασμός σου.'
-                : 'Ο νέος κωδικός ισχύει, αλλά οι άλλες συσκευές δεν αποσυνδέθηκαν. Κλείσ’ τες με την «Αποσύνδεση από όλες τις συσκευές», στον «Λογαριασμό», ενότητα «Ασφάλεια».'}</p>
-              {/* Προορισμός και όχι ενέργεια: με `href` γίνεται σύνδεσμος που ανοίγει
-                  και σε νέα καρτέλα, με την ίδια ακριβώς όψη. */}
-              <Btn variant="primary" href="/dashboard" field>Συνέχεια στην εφαρμογή</Btn>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
+        {mode === 'done' && (
+          <div style={{ textAlign: 'center' }} role="status">
+            {successIcon}
+            <h1 style={h2s}>Ο κωδικός άλλαξε</h1>
+            <p style={subs}>{othersOut
+              ? 'Αποσυνδέσαμε κάθε άλλη συσκευή όπου ήταν ανοιχτός ο λογαριασμός σου.'
+              : 'Ο νέος κωδικός ισχύει, αλλά οι άλλες συσκευές δεν αποσυνδέθηκαν. Κλείσ’ τες με την «Αποσύνδεση από όλες τις συσκευές», στον «Λογαριασμό», ενότητα «Ασφάλεια».'}</p>
+            {/* Προορισμός και όχι ενέργεια: με `href` γίνεται σύνδεσμος που ανοίγει
+                και σε νέα καρτέλα, με την ίδια ακριβώς όψη. */}
+            <Btn variant="primary" href="/dashboard" field>Συνέχεια στην εφαρμογή</Btn>
+          </div>
+        )}
+      </div>
+    </main>
   )
 }
