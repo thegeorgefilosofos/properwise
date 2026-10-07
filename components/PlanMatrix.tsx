@@ -26,7 +26,7 @@ import { FEATURE_LABEL, FEATURE_MIN_PLAN, planAtLeast, type Feature } from '@/li
 import { fn } from '@/components/tokens';
 import { fe } from '@/lib/core/format';
 import { Btn } from '@/components/Theme';
-import { trialCta, trialCovers } from '@/lib/billing/trialOffer';
+import { signupCta } from '@/lib/billing/trialOffer';
 
 export type ComparedPlan = Extract<PlanId, 'solo' | 'owner' | 'agency' | 'office'>;
 export const COMPARED: ComparedPlan[] = ['solo', 'owner', 'agency', 'office'];
@@ -189,12 +189,12 @@ const inSentence = (label: string) => label.charAt(0).toLocaleLowerCase('el-GR')
 const TrialCta = ({ id, recommended }: { id: ComparedPlan; recommended?: PlanId }) => (
   id === 'solo'
     ? <Btn variant="secondary" field href="/signup">
-        Ξεκίνα δωρεάν<span className="sr-only"> με το πακέτο «{PLANS.free.name}»</span>
+        {signupCta('free')}<span className="sr-only"> με το πακέτο «{PLANS.free.name}»</span>
       </Btn>
     : <Btn variant={id === recommended ? 'primary' : 'secondary'} field href={`/signup?plan=${id}&cycle=monthly`}>
-        {/* Το «Ξεκίνα δωρεάν με το πακέτο …» θα υποσχόταν δωρεάν το ίδιο το
-            πακέτο. Η δοκιμή δίνει μόνο όσα έχει το TRIAL_PLAN (trialOffer.ts). */}
-        {trialCta(id)}<span className="sr-only">{trialCovers(id) ? ` με το πακέτο «${PLANS[id].name}»` : `: πακέτο «${PLANS[id].name}»`}</span>
+        {/* Το λεκτικό ανά πακέτο το λέει ο κανόνας του trialOffer.ts· κανένα
+            δεν υπόσχεται πια δωρεάν πακέτο με τιμή. */}
+        {signupCta(id)}<span className="sr-only">{` με το πακέτο «${PLANS[id].name}»`}</span>
       </Btn>
 );
 

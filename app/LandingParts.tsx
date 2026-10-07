@@ -10,7 +10,7 @@ import { fe, feWhole } from '@/lib/core/format'
 import { T } from '@/components/tokens'
 import { hy } from '@/components/Hyphen'
 import { ASSISTANT_NAME, ASSISTANT_ACC } from '@/lib/assistant/identity'
-import { trialCta } from '@/lib/billing/trialOffer'
+import { signupCta } from '@/lib/billing/trialOffer'
 import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, wrap, check } from './landingKit'
 
 /** Μία ερώτηση, ένα σχήμα. Οι δύο λίστες (ορατές και κρυμμένες) δεν επιτρέπεται
@@ -249,7 +249,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
           {[...shared, freeScan].map(line)}
         </div>
-        {cta('/signup', 'Ξεκίνα δωρεάν')}
+        {cta('/signup', signupCta())}
       </div>
       <div className="pc-on">
         {price(fe(noa.priceMonthly), 'τον μήνα')}
@@ -264,7 +264,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
               του subgrid που μοιράζονται οι κάρτες. */}
           <div style={{ fontSize: 12, color: FAINT, lineHeight: 1.4, marginTop: 2 }}>{trialLine()}</div>
         </div>
-        {cta(`/signup?plan=solo&cycle=monthly`, trialCta('solo'))}
+        {cta(`/signup?plan=solo&cycle=monthly`, signupCta('solo'))}
         {billingLive && <Link href="/signup?plan=solo&cycle=annual" className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{`Ετήσια: ${paidMonths} μήνες αντί για 12`}</Link>}
       </div>
     </div>

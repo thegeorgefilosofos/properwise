@@ -16,6 +16,7 @@ import PasswordStrength from '@/components/PasswordStrength'
 import { hy } from '@/components/Hyphen'
 import { SAY, failed } from '@/lib/core/dbError';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
+import { signupCta } from '@/lib/billing/trialOffer';
 // Καθαρή λογική, χωρίς React/Supabase: ασφαλής σε 'use client'.
 import { planFromParam, cycleFromParam, planAtLeast, TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { continuation, carried } from '@/lib/auth/continuation';
@@ -920,8 +921,12 @@ export default function SignupPage() {
                 {/* Το κοινό κύριο κουμπί, όπως στη Σύνδεση και στην Επαναφορά: ήταν
                     χειροποίητο «χάπι» επειδή το Btn δεν περνούσε ούτε το
                     `aria-describedby` ούτε τη σβηστή όψη χωρίς `disabled`. */}
+                {/* ΤΟ ΛΕΚΤΙΚΟ ΑΚΟΛΟΥΘΕΙ ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΗΡΘΕ ΑΠΟ ΤΗΝ ΚΑΡΤΑ. Ηταν σταθερό
+                    «Ξεκίνα τη δοκιμή», οπότε όποιος πάτησε «Ξεκίνα δωρεάν» στην
+                    αρχική διάβαζε εδώ ότι ξεκινά δοκιμή. Ο ίδιος κανόνας με την
+                    κάρτα που πάτησε (lib/billing/trialOffer.ts). */}
                 <Btn variant="primary" type="submit" field describedBy={why ? 'su-cta-why' : undefined}>
-                  {loading ? 'Δημιουργία…' : 'Ξεκίνα τη δοκιμή'}
+                  {loading ? 'Δημιουργία…' : signupCta(chosenPlan)}
                 </Btn>
               </form>
               {emailFirst && <>

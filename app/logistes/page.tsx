@@ -31,6 +31,7 @@ import { billingWords } from '@/lib/legal/billingWords';
 import { ASSISTANT_NAME, ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 import { FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
+import { signupCta } from '@/lib/billing/trialOffer';
 import {
   PRO_PAID_TARGET, PRO_PAID_BONUS_MONTHS, STREAK_TARGET_MONTHS,
   PARTNER_WELCOME_MONTHS, PARTNER_MONTHLY_FREE_MONTHS, partnerWelcomeTier,
@@ -209,7 +210,7 @@ export default function Page() {
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, margin: '22px 0 0' }}>
               <a href={`#${S.folder.id}`} className="lp-cta lp-primary lp-press" style={cta}>Δες πώς φαίνεται ο φάκελος</a>
-              <Link href="/signup" className="lp-cta lp-press" style={{ ...cta, border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>Ξεκίνα δωρεάν</Link>
+              <Link href="/signup" className="lp-cta lp-press" style={{ ...cta, border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>{signupCta()}</Link>
             </div>
 
             {/* 1. Ο σύνδεσμος */}
@@ -341,7 +342,7 @@ export default function Page() {
                   {'Φτιάξε λογαριασμό και επικόλλησε τον σύνδεσμο που σου έστειλε ο ιδιοκτήτης. Αν έχεις ήδη λογαριασμό, οι πελάτες σου είναι ένα πάτημα μακριά.'}
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                  <Link href="/signup" className="lp-cta lp-primary lp-press" style={cta}>Ξεκίνα δωρεάν</Link>
+                  <Link href="/signup" className="lp-cta lp-primary lp-press" style={cta}>{signupCta()}</Link>
                   <Link href="/accountant/workspace" className="lp-cta lp-press" style={{ ...cta, border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>Οι πελάτες σου</Link>
                 </div>
                 <p style={{ margin: '16px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
