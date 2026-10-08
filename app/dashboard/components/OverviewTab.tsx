@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { heatingLabel } from '@/lib/property/heating'
 import { propertyTypeLabel } from '@/lib/property/types'
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import * as loanStore from '@/lib/data/loans'
 import * as stayStore from '@/lib/data/stays'
@@ -195,6 +195,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const [failedReads, setFailedReads] = useState<string[]>([]);
   /** Το «Δοκίμασε ξανά» τρέχει: το κουμπί σβήνει ώσπου να γυρίσει η απάντηση. */
   const [retrying, setRetrying] = useState(false);
+  // ΤΟ ΑΠΟΤΕΛΕΣΜΑ ΤΗΣ ΝΕΑΣ ΔΟΚΙΜΗΣ ΛΕΓΕΤΑΙ. Με επιτυχία η ειδοποίηση φεύγει μαζί
+  // με το κουμπί που είχε την εστίαση: χωρίς αυτά, ο χρήστης πληκτρολογίου
+  // βρισκόταν στην αρχή της σελίδας και ο αναγνώστης οθόνης δεν έλεγε τίποτα.
+  const retryAsked = useRef(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [retryNote, setRetryNote] = useState('');
 
   const propIds = useMemo(() => properties.map(p => p.id), [properties]);
 
@@ -263,6 +269,11 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     ]);
     if (failures.length) captureError(new Error('overview: αποτυχημένες αναγνώσεις'), { failed: failures.join(',') });
     setFailedReads(failures);
+    if (retryAsked.current) {
+      retryAsked.current = false;
+      setRetryNote(failures.length ? 'Η νέα δοκιμή δεν τα φόρτωσε όλα.' : 'Φορτώθηκαν όλα.');
+      if (!failures.length) headingRef.current?.focus();
+    }
     setClosedTax(closedTaxRefs(taxEvents.rows, doneTasks.rows));
     setExpenses((exp.rows||[]) as Expense[]); setBills(bil.rows); setTasks(tsk.data||[]); setTenant(ten.rows?.[0]||null);
     setRentPeriods(rp.rows); setMaint((mnt.data||[]) as OblMaint[]); setTenantFull(ten.rows?.[0]||null);
@@ -770,7 +781,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           `lib/nav/labels.ts`, την ίδια πηγή με το μενού και τη Νόα.
           Κρυφό ΟΠΤΙΚΑ, όχι από τον αναγνώστη: η μπάρα από πάνω δείχνει ήδη το
           ακίνητο και η οθόνη δεν αλλάζει ούτε ένα εικονοστοιχείο. */}
-      <h1 className="sr-only">{navLabel('overview')}</h1>
+      <h1 className="sr-only" ref={headingRef} tabIndex={-1}>{navLabel('overview')}</h1>
+      <p role="status" className="sr-only">{retryNote}</p>
       {/* Τι άλλαξε στους Όρους, μία φορά ανά έκδοση (lib/legal/policyNotice.ts). */}
       <PolicyNotice />
 
@@ -847,8 +859,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                 {failedSentence(failedReads)}{' '}
                 {moneyGap ? 'Ώσπου να διαβαστούν, δεν δείχνουμε σύνολα: θα ήταν μισά.' : 'Ό,τι βλέπεις από κάτω μπορεί να μην είναι πλήρες.'}
               </span>
-              <Btn disabled={retrying} onClick={() => {
+              {/* Σβηστό, όχι `disabled`: το `disabled` βγάζει την εστίαση από το
+                  κουμπί τη στιγμή που πατήθηκε (κανόνας του `dimmed`, Theme.tsx). */}
+              <Btn dimmed={retrying} onClick={() => {
+                if (retrying) return;
                 setRetrying(true);
+                setRetryNote('');
+                retryAsked.current = true;
                 void reload({ immediate: true }).finally(() => setRetrying(false));
               }}>{retrying ? 'Φορτώνω…' : 'Δοκίμασε ξανά'}</Btn>
             </div>
