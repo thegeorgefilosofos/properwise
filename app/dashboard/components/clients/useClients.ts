@@ -331,6 +331,9 @@ export function useClients({ userId }: ClientsProps) {
     setSaving(true);
     // Νέος επισκέπτης: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts). Οι Όροι
     // λένε «χωρίς αποδοχή τα στοιχεία δεν αποθηκεύονται» και εδώ αποθηκεύονταν.
+    // Η σύμβαση των Όρων δεν ονομάζει ακόμη τους επισκέπτες στις κατηγορίες
+    // υποκειμένων: η πύλη μένει, η επέκταση της σύμβασης είναι απόφαση του
+    // ιδιοκτήτη του έργου (βλ. DpaModal.tsx).
     if (!editing && !(await ensureDpa(supabase))) { setSaving(false); notifyError('Η καταχώρηση δεν αποθηκεύτηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.'); return; }
     const payload = {
       user_id: userId, type: 'client', full_name: f.full_name.trim(),

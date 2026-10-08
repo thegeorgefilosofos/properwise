@@ -1,4 +1,6 @@
 // npx tsx lib/legal/dpa.test.ts
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { dpaAccepted, ensureDpa, DPA_VERSION, DPA_EVENT, type DpaRequestDetail } from './dpa';
 
 let p = 0, f = 0;
@@ -42,6 +44,25 @@ const db = (meta: Record<string, unknown> | null, error: unknown = null) => ({
   ok(asked === 1, 'με σφάλμα στο getUser, το παράθυρο ξαναρωτά');
   g.window.removeEventListener(DPA_EVENT, seen);
   delete g.window;
+
+  // ΤΟ ΠΑΡΑΘΥΡΟ ΔΕΝ ΥΠΟΣΧΕΤΑΙ ΚΑΛΥΨΗ ΠΟΥ ΔΕΝ ΓΡΑΦΕΙ Η ΣΥΜΒΑΣΗ. Το άρθρο 28§3
+  // θέλει τις κατηγορίες υποκειμένων στη σύμβαση. Το παράθυρο έλεγε «ενοικιαστών
+  // και επισκεπτών», ενώ οι Όροι (/terms#epexergasia) γράφουν μόνο ενοικιαστές
+  // και συνεργάτες: η αποδοχή καταγραφόταν για κείμενο που δεν τους καλύπτει.
+  {
+    const flat = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+    const read = (...p: string[]) => readFileSync(join(process.cwd(), ...p), 'utf8');
+    const terms = flat(read('app', 'terms', 'page.tsx'));
+    const subjects = terms.match(/κατηγοριες υποκειμενων ειναι ([^·;.]+)/)?.[1] ?? '';
+    ok(subjects.length > 0, 'οι Όροι γράφουν κατηγορίες υποκειμένων');
+    const modal = read('app', 'dashboard', 'components', 'DpaModal.tsx');
+    const copy = flat([...modal.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)].map(m => m[1]).join(' '));
+    // Τα πρόσωπα που μπορεί να ονομάσει ένα παράθυρο αποδοχής σε αυτή την εφαρμογή.
+    const PEOPLE = ['ενοικιαστ', 'συνεργατ', 'επισκεπτ', 'φιλοξενουμεν', 'ταξιδιωτ', 'συνταξιδιωτ'];
+    const named = PEOPLE.filter(w => copy.includes(w));
+    ok(named.length > 0, 'το παράθυρο λέει ποιων τα στοιχεία καλύπτει');
+    for (const w of named) ok(subjects.includes(w), `το παράθυρο ονομάζει «${w}…» που δεν είναι στις κατηγορίες υποκειμένων των Όρων`);
+  }
 
   console.log(`\nlegal/dpa.ts — ${p} passed, ${f} failed`);
   if (f > 0) process.exit(1);
