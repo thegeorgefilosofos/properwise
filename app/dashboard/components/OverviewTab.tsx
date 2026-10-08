@@ -28,7 +28,7 @@ import { mergeLedger } from '@/lib/expenses/ledger'
 import { contractOverview } from '@/lib/contracts/overview'
 import { useAppPreferences } from './useAppPreferences'
 import {
-  T, Btn, SkeletonKPIs, Skeleton, EmptyState, KPIGrid, SecHdr, fp, feOr, fd, type KPIItem,
+  T, Btn, SkeletonKPIs, Skeleton, EmptyState, KPIGrid, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
 } from '@/components/Theme'
 import { FileText } from 'lucide-react'
 import {
@@ -52,6 +52,8 @@ import AgendaPanel from './AgendaPanel'
 import AssistantStrip from './AssistantStrip'
 import { cashPosition } from '@/lib/home/cash'
 import { buildAgenda, type SetupLike as SetupStep } from '@/lib/home/agenda'
+import { readFailures, moneyIncomplete, failedSentence } from '@/lib/home/readFailures'
+import { captureError } from '@/lib/observability/report'
 import { computeObligations, type OblMaint, type OblTenant } from './obligations'
 import { taxProfileOf } from '@/lib/tax/greekTaxCalendar'
 import PortalShare from './PortalShare'
@@ -186,35 +188,45 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const loading = loadedFor !== `${prop.id}|${year}`;
   /** Ανοιχτό παράθυρο είσπραξης ενοικίου από την κάρτα του Ταμείου. */
   const [receivingRent, setReceivingRent] = useState(false);
+  /** Οι περιοχές που δεν διαβάστηκαν στην τελευταία φόρτωση. Κενό σημαίνει όλα. */
+  const [failedReads, setFailedReads] = useState<string[]>([]);
+  /** Το «Δοκίμασε ξανά» τρέχει: το κουμπί σβήνει ώσπου να γυρίσει η απάντηση. */
+  const [retrying, setRetrying] = useState(false);
 
   const propIds = useMemo(() => properties.map(p => p.id), [properties]);
 
   const load = useCallback(async (turn: LoadTurn) => {
-    const [exp,bil,{ data:tsk },ten,ci,iv,ln,hs,allExp,allTen,{ data:allRc },rp,{ data:mnt },{ data:decl },yr,allYearRents,allStays,{ data:ownerRows },taxEvents,doneTasks] = await Promise.all([
-      expenseStore.ledger(supabase,prop.id,{ userId, from:`${year}-01-01`, columns:'*' }),
-      billStore.ofProperty<Bill>(supabase,prop.id,'*',userId),
+    // ═══ ΚΑΘΕ ΑΝΑΓΝΩΣΗ ΕΡΧΕΤΑΙ ΜΕ ΤΟ ΣΦΑΛΜΑ ΤΗΣ ═══════════════════════════════
+    // Ηταν είκοσι αναγνώσεις που γύριζαν ΜΟΝΟ τα δεδομένα: μια αποτυχία έφτανε
+    // στην οθόνη ως άδεια λίστα, δηλαδή «0€» στο Ταμείο και «Δεν εκκρεμεί
+    // τίποτα» στην ατζέντα, στην πρώτη οθόνη που βλέπει ο ιδιοκτήτης. Βρέθηκε
+    // στην αξιολόγηση της 08/10/2026. Τώρα κάθε αποτυχία έχει όνομα και η οθόνη
+    // λέει τι δεν διάβασε, αντί να το παρουσιάζει ως μηδέν.
+    const [exp,bil,tsk,ten,ci,iv,ln,hs,allExp,allTen,allRc,rp,mnt,decl,yr,allYearRents,allStays,ownerRows,taxEvents,doneTasks] = await Promise.all([
+      expenseStore.ledgerWithError(supabase,prop.id,{ userId, from:`${year}-01-01`, columns:'*' }),
+      billStore.ofPropertyWithError<Bill>(supabase,prop.id,'*',userId),
       // Δεν είναι πια πέντε για μια χωριστή κάρτα: τροφοδοτούν την ΕΝΙΑΙΑ
       // ατζέντα, που τις ταξινομεί μαζί με όλα τα υπόλοιπα κατά προθεσμία.
       supabase.from('maintenance_tasks').select('*').eq('property_id',prop.id).eq('user_id',userId).eq('completed',false).order('due_date').limit(60),
-      tenantStore.currentAll<Tenant & TenantFull>(supabase,prop.id,'id,monthly_rent,lease_start,lease_end,e_payment',userId),
-      checklist.open<{ due_date:string|null; status:string; priority:string }>(supabase,prop.id,checklist.AGENDA_COLUMNS,userId),
-      inventory.ofProperty<{ name?:string|null; warranty_expiry:string|null; condition:string|null }>(supabase,prop.id,'name,warranty_expiry,condition',userId),
-      loanStore.ofProperty(supabase,prop.id,userId),
-      stayStore.ofProperty<HostStay>(supabase,prop.id,stayStore.DECLARABLE_COLUMNS,userId),
+      tenantStore.currentAllWithError<Tenant & TenantFull>(supabase,prop.id,'id,monthly_rent,lease_start,lease_end,e_payment',userId),
+      checklist.openWithError<{ due_date:string|null; status:string; priority:string }>(supabase,prop.id,checklist.AGENDA_COLUMNS,userId),
+      inventory.ofPropertyWithError<{ name?:string|null; warranty_expiry:string|null; condition:string|null }>(supabase,prop.id,'name,warranty_expiry,condition',userId),
+      loanStore.ofPropertyWithError(supabase,prop.id,userId),
+      stayStore.ofPropertyWithError<HostStay>(supabase,prop.id,stayStore.DECLARABLE_COLUMNS,userId),
       // Χωριστά: ΟΛΕΣ οι δαπάνες (κάθε έτους) για το γράφημα με επιλογή έτους.
       // Οι επαναλαμβανόμενες (πάγιες) προβάλλονται στους επόμενους μήνες/έτη.
-      expenseStore.ledger(supabase,prop.id,{ userId, columns:'amount,date,category,is_recurring,recurring_frequency' }),
+      expenseStore.ledgerWithError(supabase,prop.id,{ userId, columns:'amount,date,category,is_recurring,recurring_frequency' }),
       // Μόνο πλήθη (head) για τα πλακίδια-σύνοψη Επαφές / Αρχείο.
       // ΟΛΟ το χαρτοφυλάκιο: ο φόρος ενοικίων είναι προοδευτικός στο ΣΥΝΟΛΟ (Ε1),
       // οπότε δεν αρκούν τα δεδομένα του επιλεγμένου ακινήτου. Ίδια σειρά
       // προτεραιότητας με το resolveRent: μισθωτήριο → actual → target → ακίνητο.
-      tenantStore.ofUser<TenRow & tenantStore.TenantStatus & OblTenant>(supabase,userId,'id,monthly_rent,property_id,e_payment,status,move_out_date,lease_start,lease_end'),
+      tenantStore.ofUserWithError<TenRow & tenantStore.TenantStatus & OblTenant>(supabase,userId,'id,monthly_rent,property_id,e_payment,status,move_out_date,lease_start,lease_end'),
       supabase.from('rent_config').select('property_id,actual_rent,target_rent').in('property_id',propIds).eq('user_id',userId),
       // ΤΟ ΤΑΜΕΙΟ. Μόνο οι ΑΠΛΗΡΩΤΕΣ περίοδοι — οι πληρωμένες είναι ιστορικό και
       // ζουν στον Ενοικιαστή. Ό,τι δεν εμφανίζεται, δεν κατεβαίνει.
       // ΚΑΙ ΤΟ `id`: με αυτό η κάρτα του Ταμείου εισπράττει επιτόπου, αντί να
       // στέλνει τον ιδιοκτήτη να ξαναβρεί τη δόση που μόλις του έδειξε.
-      rentStore.ofProperty<{ id:string|null; amount:number|null; due_date:string|null; paid:boolean|null; period_year:number|null; period_month:number|null }>(supabase,prop.id,'id,amount,due_date,paid,period_year,period_month',userId,{ paid:false }),
+      rentStore.ofPropertyWithError<{ id:string|null; amount:number|null; due_date:string|null; paid:boolean|null; period_year:number|null; period_month:number|null }>(supabase,prop.id,'id,amount,due_date,paid,period_year,period_month',userId,{ paid:false }),
       supabase.from('inventory_maintenance').select('task,item_name,next_due,est_cost').eq('property_id',prop.id),
       // ΠΟΤΕ ΚΑΤΑΓΡΑΦΗΚΕ Η ΔΗΛΩΣΗ ΜΙΣΘΩΣΗΣ. Η υποχρέωση εμφανιζόταν για ενενήντα
       // μέρες γύρω από την προθεσμία ασχέτως υποβολής, ενώ υποβάλλεται μία φορά.
@@ -222,25 +234,37 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       supabase.from('activity_log').select('created_at')
         .eq('user_id',userId).eq('action','lease_declaration_submitted').eq('entity_id',prop.id)
         .order('created_at',{ascending:false}).limit(1),
-      rentStore.ofProperty<IncomeRent>(supabase,prop.id,rentStore.INCOME_COLUMNS,userId,{ year }),
-      rentStore.ofUser<IncomeRent & { property_id: string }>(supabase,userId,`property_id,${rentStore.INCOME_COLUMNS}`,{ year }),
-      stayStore.ofUser<StayAmountLike & { property_id: string }>(supabase,userId,stayStore.PORTFOLIO_COLUMNS),
+      rentStore.ofPropertyWithError<IncomeRent>(supabase,prop.id,rentStore.INCOME_COLUMNS,userId,{ year }),
+      rentStore.ofUserWithError<IncomeRent & { property_id: string }>(supabase,userId,`property_id,${rentStore.INCOME_COLUMNS}`,{ year }),
+      stayStore.ofUserWithError<StayAmountLike & { property_id: string }>(supabase,userId,stayStore.PORTFOLIO_COLUMNS),
       profileType === 'professional'
         ? supabase.from('clients').select('id').eq('user_id',userId).eq('type','owner')
-        : Promise.resolve({ data: null }),
+        : Promise.resolve({ data: null, error: null }),
       // ΤΙ ΕΚΛΕΙΣΕ ΑΛΛΟΥ. Η δόση ΕΝΦΙΑ που σημειώθηκε πληρωμένη στο Ημερολόγιο ή
       // στις Εκκρεμότητες δεν ξαναεμφανίζεται εδώ (lib/facts/deadlines).
-      calendar.sourceStates(supabase,prop.id,{ prefix:'tax:' }),
-      checklist.closed<{ note:string|null; status:string|null }>(supabase,prop.id,'note,status',userId),
+      calendar.sourceStatesWithError(supabase,prop.id,{ prefix:'tax:' }),
+      checklist.closedWithError<{ note:string|null; status:string|null }>(supabase,prop.id,'note,status',userId),
     ]);
     // Νεότερη φόρτωση ξεκίνησε στο μεταξύ (ριπή ζωντανών συμβάντων, αλλαγή
     // ακινήτου ή έτους): η παλιά απάντηση δεν γράφει πάνω στη νέα.
     if (!turn.isLatest()) return;
-    setClosedTax(closedTaxRefs(taxEvents, doneTasks));
-    setExpenses((exp||[]) as Expense[]); setBills(bil); setTasks(tsk||[]); setTenant(ten?.[0]||null);
-    setRentPeriods(rp); setMaint((mnt||[]) as OblMaint[]); setTenantFull(ten?.[0]||null);
-    setLeaseDeclaredAt((decl?.[0]?.created_at as string|undefined) ?? null);
-    setChk(ci); setInv(iv); setLoans(ln); setHostStays(hs); setYearRents(yr); setAllExpenses((allExp||[]) as { amount:number; date:string; category:string; is_recurring?:boolean; recurring_frequency?:string|null }[]);
+    // Ποια περιοχή δεν διαβάστηκε. Η ετικέτα είναι αυτή που διαβάζει ο χρήστης.
+    const failures = readFailures([
+      ['Δαπάνες', exp.error], ['Δαπάνες', allExp.error], ['Λογαριασμοί', bil.error],
+      ['Ενοίκια', rp.error], ['Ενοίκια', yr.error], ['Ενοίκια', allYearRents.error], ['Ενοίκια', allRc.error],
+      ['Ενοικιαστές', ten.error], ['Ενοικιαστές', allTen.error], ['Δάνεια', ln.error],
+      ['Διαμονές', hs.error], ['Διαμονές', allStays.error], ['Ιδιοκτήτες', ownerRows.error],
+      ['Εκκρεμότητες', tsk.error], ['Εκκρεμότητες', ci.error], ['Εκκρεμότητες', decl.error],
+      ['Εκκρεμότητες', taxEvents.error], ['Εκκρεμότητες', doneTasks.error],
+      ['Εξοπλισμός', iv.error], ['Εξοπλισμός', mnt.error],
+    ]);
+    if (failures.length) captureError(new Error('overview: αποτυχημένες αναγνώσεις'), { failed: failures.join(',') });
+    setFailedReads(failures);
+    setClosedTax(closedTaxRefs(taxEvents.rows, doneTasks.rows));
+    setExpenses((exp.rows||[]) as Expense[]); setBills(bil.rows); setTasks(tsk.data||[]); setTenant(ten.rows?.[0]||null);
+    setRentPeriods(rp.rows); setMaint((mnt.data||[]) as OblMaint[]); setTenantFull(ten.rows?.[0]||null);
+    setLeaseDeclaredAt((decl.data?.[0]?.created_at as string|undefined) ?? null);
+    setChk(ci.rows); setInv(iv.rows); setLoans(ln.views); setHostStays(hs.rows); setYearRents(yr.rows); setAllExpenses((allExp.rows||[]) as { amount:number; date:string; category:string; is_recurring?:boolean; recurring_frequency?:string|null }[]);
     // ΑΚΡΙΒΩΣ οι στήλες του select('property_id,actual_rent,target_rent') — όχι
     // ολόκληρη η γραμμή του rent_config. Με `any` το `r.property_id` δεν
     // ελεγχόταν καν ως όνομα στήλης.
@@ -253,7 +277,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     // λάθος ακινήτου. Το κλειδί δηλώνεται `string` και οι ορφανές πετιούνται.
     type RcRow = { property_id: string | null; actual_rent: number | null; target_rent: number | null };
     const rcById = new Map<string, RcRow>();
-    ((allRc||[]) as RcRow[]).forEach(r => { if (r.property_id) rcById.set(r.property_id, r); });
+    ((allRc.data||[]) as RcRow[]).forEach(r => { if (r.property_id) rcById.set(r.property_id, r); });
     // Κρατάμε τον ΜΕΓΑΛΥΤΕΡΟ ενοικιαστή ανά ακίνητο, μαζί με τον τρόπο είσπραξής
     // ΤΟΥ: αλλιώς θα ζευγαρώναμε το ενοίκιο του ενός με τη δήλωση του άλλου.
     // `e_payment !== false` και όχι `=== true`: κενή στήλη σημαίνει «δεν το έχει
@@ -261,9 +285,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     // ΚΑΙ ΜΟΝΟ ΟΣΟΙ ΜΕΝΟΥΝ ΑΚΟΜΗ. Εδώ δεν υπήρχε κανένα φίλτρο κατάστασης: το
     // ενοίκιο μισθωτή που έφυγε πέρσι έμπαινε στη φορολογική ενοποίηση όλου του
     // χαρτοφυλακίου και μαζί του ο τρόπος είσπραξής του.
-    setLeavers(allTen.filter(t=>t.property_id===prop.id && !!t.move_out_date));
+    setLeavers(allTen.rows.filter(t=>t.property_id===prop.id && !!t.move_out_date));
     const tenById = new Map<string,{ monthly:number; viaBank:boolean }>();
-    allTen.filter(t=>!tenantStore.hasLeft(t)).forEach(t=>{
+    allTen.rows.filter(t=>!tenantStore.hasLeft(t)).forEach(t=>{
       const v = Number(t.monthly_rent)||0;
       if (v > (tenById.get(t.property_id)?.monthly ?? 0)) tenById.set(t.property_id, { monthly: v, viaBank: t.e_payment !== false });
     });
@@ -276,8 +300,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       return { property_id: p.id, monthly, viaBank: fromTenant?.viaBank ?? true };
     }));
     setPortfolioIncome({
-      rents: allYearRents, stays: allStays,
-      owners: ownerRows ? new Set((ownerRows as { id: string }[]).map(r => r.id)) : null,
+      rents: allYearRents.rows, stays: allStays.rows,
+      owners: ownerRows.data ? new Set((ownerRows.data as { id: string }[]).map(r => r.id)) : null,
     });
     setLoadedFor(`${prop.id}|${year}`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -536,6 +560,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // δαπάνες της χρονιάς.
   const heroIsNet = isLet(prop);
   const heroValue = heroIsNet ? annualRent - costs.total - estTax : projectedExpYear;
+  // ΜΙΣΟ ΣΥΝΟΛΟ ΔΙΑΒΑΖΕΤΑΙ ΣΑΝ ΟΛΟΚΛΗΡΟ. Αν δεν διαβάστηκε έστω μία περιοχή με
+  // ποσά, κανένα σύνολο της οθόνης δεν είναι αληθινό: το κεντρικό ποσό γίνεται
+  // «—», το Ταμείο και η ζώνη της χρονιάς κρύβονται και το PDF περιμένει.
+  const moneyGap = moneyIncomplete(failedReads);
   const taxNote = consolidationSummary(portfolioTax, fmtEur);
   // Εισπράττεται το ενοίκιο ΑΥΤΟΥ του ακινήτου μέσω τράπεζας; Κρίνει το κείμενο
   // δίπλα στον φόρο, όπως ο ίδιος έλεγχος κρίνει και το ποσό.
@@ -744,7 +772,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         <div style={{minWidth:0}}>
           <AthensNow style={{fontFamily:T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--text-tertiary)',letterSpacing:'0.02em',marginBottom:4,minHeight:15}}/>
           <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)'}}>{heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
-          <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{fmtEur(heroValue)}</div>
+          <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
+            ? <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-secondary)',letterSpacing:0}}>Δεν φορτώθηκε</span>
+            : fmtEur(heroValue)}</div>
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
               Εδώ γραφόταν ξανά, εξήντα εικονοστοιχεία κάτω από την ίδια
               πρόταση: όνομα, τύπος, κατάσταση, διεύθυνση — τα ίδια τέσσερα
@@ -763,7 +793,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
           Σάρωσε έγγραφο
         </Btn>
-        <Btn onClick={()=>printPropertyStatement({
+        <Btn disabled={moneyGap} title={moneyGap ? 'Η αναφορά περιμένει να φορτωθούν όλα τα ποσά' : undefined} onClick={()=>printPropertyStatement({
           propName: prop.name, address: prop.address||undefined, postalCode: prop.postal_code||undefined,
           propType: propertyTypeLabel(prop.prop_type)||'Ακίνητο',
           status: statusLabelOf(prop), year, propValue: propValue||undefined,
@@ -794,7 +824,26 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           εφαρμογή, ήταν αν μπήκε το ενοίκιο και τι πρέπει να πληρώσει. */}
       {/* Η Νόα πριν από το Ταμείο, όχι πίσω από πλωτό κουμπί στη γωνία. Είναι
           μία γραμμή, όχι κάρτα: παρούσα, χωρίς να διεκδικεί τη θέση των ποσών. */}
-      <AssistantStrip ctx={assistantCtx} />
+      {/* ΤΙ ΔΕΝ ΔΙΑΒΑΣΤΗΚΕ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ. Ως τις 08/10/2026 μια ανάγνωση που
+          έπεφτε γινόταν «0€» ή «Δεν εκκρεμεί τίποτα» (lib/home/readFailures.ts). */}
+      {failedReads.length > 0 && (
+        <div role="alert">
+          <InfoBanner tone="negative">
+            <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+              <span style={{flex:1,minWidth:220}}>
+                {failedSentence(failedReads)}{' '}
+                {moneyGap ? 'Ώσπου να διαβαστούν, δεν δείχνουμε σύνολα: θα ήταν μισά.' : 'Ό,τι βλέπεις από κάτω μπορεί να μην είναι πλήρες.'}
+              </span>
+              <Btn disabled={retrying} onClick={() => {
+                setRetrying(true);
+                void reload({ immediate: true }).finally(() => setRetrying(false));
+              }}>{retrying ? 'Φορτώνω…' : 'Δοκίμασε ξανά'}</Btn>
+            </div>
+          </InfoBanner>
+        </div>
+      )}
+      {/* Με μισά ποσά η Νόα θα έλεγε «βλέπω» για όσα δεν διάβασε. */}
+      {!moneyGap && <AssistantStrip ctx={assistantCtx} />}
 
       {/* ΤΟ «ΣΟΥ ΟΦΕΙΛΟΥΝ» ΜΟΝΟ ΣΕ ΜΑΚΡΟΧΡΟΝΙΑ.
           Το `isLet` περιλαμβάνει και τη βραχυχρόνια, όπου όμως: το ποσό
@@ -805,8 +854,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           για ένα μόνιμο μηδέν με νεκρό κουμπί. Στη βραχυχρόνια το «Οφείλεις»
           παίρνει όλο το πλάτος, που είναι και η αλήθεια: η είσπραξη γίνεται
           από την πλατφόρμα. */}
-      <CashHero cash={cash} showIncome={readStatus(prop) === 'rent_long'} onNavigate={onNavigate}
-                onRecordRent={receivableRent.length ? () => setReceivingRent(true) : null} />
+      {!moneyGap && (
+        <CashHero cash={cash} showIncome={readStatus(prop) === 'rent_long'} onNavigate={onNavigate}
+                  onRecordRent={receivableRent.length ? () => setReceivingRent(true) : null} />
+      )}
 
       {/* ΤΟ ΠΑΡΑΘΥΡΟ ΠΡΟΣΑΡΤΑΤΑΙ ΟΤΑΝ ΑΝΟΙΓΕΙ. Έτσι η ημερομηνία είσπραξης και ο
           τρόπος ξαναπαίρνουν τις προεπιλογές τους κάθε φορά, αντί να κουβαλούν
@@ -826,7 +877,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
 
       {/* Μία λίστα «τι χρειάζεται τώρα», στη θέση των τεσσάρων που έλεγαν εν
           μέρει τα ίδια πράγματα. Η συγχώνευση γίνεται στο lib/home/agenda.ts. */}
-      <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} />
+      <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} incomplete={failedReads.length > 0} />
 
       {/* ═══ ΤΟ ΖΕΥΓΟΣ ΓΡΑΦΗΜΑΤΩΝ ΕΦΥΓΕ ΑΠΟ ΕΔΩ ══════════════════════════
           Οι ίδιες δύο εικόνες — δαπάνες ανά μήνα και κατανομή ανά κατηγορία —
@@ -889,7 +940,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         </div>
         <div className="card">
           <h3 className="section-label"><span className="section-dot"/> Λογαριασμοί ανά μήνα</h3>
-          {billAverages.length===0
+          {moneyGap
+            ? <EmptyState icon={<FileText size={20}/>} title="Δεν φορτώθηκαν οι λογαριασμοί" hint="Πάτησε «Δοκίμασε ξανά» στην ειδοποίηση πιο πάνω."/>
+            : billAverages.length===0
             ? <EmptyState icon={<FileText size={20}/>} title="Κανένας λογαριασμός ακόμη" hint="Πρόσθεσε ρεύμα, νερό και πάγια για να δεις μέσους όρους."/>
             : <div style={{display:'flex',flexDirection:'column',gap:8}}>
                 {billAverages.slice(0,5).map(b => (
@@ -920,7 +973,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           ματιά. Είναι όλα το ίδιο πράγμα — αριθμός με ετικέτα — και πλέον
           δείχνουν έτσι. */}
       <SecHdr label={`Η χρονιά ${year}`} sub="Πού καταλήγει με ό,τι ξέρουμε σήμερα" />
-      {(() => {
+      {moneyGap ? (
+        <EmptyState icon={<FileText size={20}/>} title="Τα ποσά της χρονιάς περιμένουν" hint="Δεν φορτώθηκαν όλες οι καταχωρήσεις. Με μισές, τα σύνολα θα έβγαιναν μικρότερα από τα αληθινά."/>
+      ) : (() => {
         const net = annualRent - costs.total - estTax;   // μόνο για το σκέλος με έσοδα
         // ΜΙΑ ΖΩΝΗ ΑΡΙΘΜΩΝ, ΟΧΙ ΔΥΟ. Πιο πάνω υπήρχε δεύτερο πλέγμα «Η εικόνα
         // σήμερα» με «Μηνιαίο ενοίκιο», «Δαπάνες ως σήμερα» και τις δύο

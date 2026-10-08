@@ -50,12 +50,14 @@ export function AmortLens({ LA, totalInt, amortChart }: {
 
 export function TableLens({
   Y, exportAmortPdf, officialAmort, genOfficial, exportAmortCsv, amort, hoverRow, setHoverRow, loanType, propTypeLabel,
-  isNewBuilding, propertyId, borrower, SQM, areaLabel, fmaOwed, totalCosts, hasAgent, AGNT, agentPct,
+  isNewBuilding, propertyId, borrower, SQM, areaLabel, fmaOwed, fmaSub, totalCosts, hasAgent, AGNT, agentPct,
   hoverCost, setHoverCost, notaryCosts, LA,
 }: {
   Y: number; exportAmortPdf: () => void; officialAmort: () => Promise<void>; genOfficial: boolean; exportAmortCsv: () => void;
   amort: AmortRow[]; hoverRow: number | null; setHoverRow: SetState<number | null>; loanType: LoanType; propTypeLabel: string;
   isNewBuilding: boolean; propertyId: string; borrower: BorrowerType; SQM: number; areaLabel: string; fmaOwed: number;
+  /** Πώς βγήκε ο φόρος: «Πρώτη κατοικία», «3,09% πάνω από 200.000€» ή «3,09% επί αξίας». */
+  fmaSub: string;
   totalCosts: { tax: number; notary: number; landReg: number; legal: number; agent: number; other: number; total: number; downpayment: number; totalCash: number };
   hasAgent: boolean; AGNT: number; agentPct: string; hoverCost: number | null; setHoverCost: SetState<number | null>;
   notaryCosts: ReturnType<typeof calcNotaryFees>; LA: number;
@@ -213,7 +215,7 @@ export function TableLens({
             είναι στοιχεία που εξετάζεις ένα ένα. */}
         <div {...fixedCols(3, 8, 'stretch')} style={{...fixedCols(3, 8, 'stretch').style,marginBottom:12}}>
           {[
-            {label:'Φόρος μεταβίβασης (ΦΜΑ)',value:fmaOwed===0?'Απαλλαγή':fmtEur(fmaOwed),sub:fmaOwed===0?'Πρώτη κατοικία':'3,09% επί αξίας'},
+            {label:'Φόρος μεταβίβασης (ΦΜΑ)',value:fmaOwed===0?'Απαλλαγή':fmtEur(fmaOwed),sub:fmaSub},
             {label:'Συμβολαιογραφικά',value:fmtEur(totalCosts.notary),sub:'Κλιμακωτή αμοιβή'},
             {label:'Κτηματολόγιο και εγγραφή',value:fmtEur(totalCosts.landReg),sub:'0,475% επί αξίας'},
             {label:'Δικηγόρος ελέγχου τίτλων',value:fmtEur(totalCosts.legal),sub:'Έλεγχος + παρουσία'},

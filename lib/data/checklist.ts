@@ -59,9 +59,16 @@ export const isOpen = (t: { status?: string | null }): boolean =>
 export async function open<T = Partial<ChecklistItemsRow>>(
   db: Db, propertyId: string, columns: string, userId?: string,
 ): Promise<T[]> {
+  return (await openWithError<T>(db, propertyId, columns, userId)).rows;
+}
+
+/** Οι ανοιχτές εκκρεμότητες, με το σφάλμα ορατό: αποτυχία δεν είναι «δεν εκκρεμεί τίποτα». */
+export async function openWithError<T = Partial<ChecklistItemsRow>>(
+  db: Db, propertyId: string, columns: string, userId?: string,
+): Promise<ReadResult<T>> {
   let q = db.from(TABLE).select(columns).eq('property_id', propertyId);
   if (userId) q = q.eq('user_id', userId);
-  return readRows<T>(onlyOpen(q));
+  return read<T>(onlyOpen(q));
 }
 
 /**
@@ -87,9 +94,16 @@ export async function upcoming<T = Partial<ChecklistItemsRow>>(
 export async function closed<T = Partial<ChecklistItemsRow>>(
   db: Db, propertyId: string, columns: string, userId?: string,
 ): Promise<T[]> {
+  return (await closedWithError<T>(db, propertyId, columns, userId)).rows;
+}
+
+/** Οι κλειστές εκκρεμότητες, με το σφάλμα ορατό. */
+export async function closedWithError<T = Partial<ChecklistItemsRow>>(
+  db: Db, propertyId: string, columns: string, userId?: string,
+): Promise<ReadResult<T>> {
   let q = db.from(TABLE).select(columns).eq('property_id', propertyId).in('status', [...CLOSED_STATUSES]);
   if (userId) q = q.eq('user_id', userId);
-  return readRows<T>(q);
+  return read<T>(q);
 }
 
 /** Οι ανοιχτές εκκρεμότητες όλου του χαρτοφυλακίου. */

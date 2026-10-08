@@ -14,7 +14,7 @@ import { BORROWER_PROFILES, fmtEur, fmtPct, fmtPct1, taxableRental, type LoanTyp
 import { rentalRowsForYear } from '@/lib/billing/greekTax'
 import { athensParts } from '@/lib/core/time'
 import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate'
-import { TRANSFER_TAX_RATE } from '@/lib/accounting/transfer'
+import { transferTaxOn } from '@/lib/accounting/transfer'
 import { MARITAL_OPTIONS, CHILDREN_OPTIONS } from './model'
 import { Section, labelStyle, type SetState } from './Bits'
 import { StressBars } from './charts'
@@ -66,7 +66,11 @@ export function TaxLens({
               <Tile label="ΦΜΑ που αναλογεί" value={b} chars={w}/>
               <Tile label="Αξία ακινήτου" value={c} chars={w}/>
             </div>) })()}
-            {loanType==='first_home'&&PV<=fmaEx&&!isCommercial&&<div style={{padding:'10px 14px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.chip}}><p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>Δικαιούστε πλήρη απαλλαγή ΦΜΑ, εξοικονόμηση {fmtEur(PV*TRANSFER_TAX_RATE)}</p></div>}
+            {/* Η απαλλαγή αφαιρεί ποσό από τη βάση, δεν είναι κατώφλι: πάνω από το
+                όριο φορολογείται μόνο το υπερβάλλον, οπότε η εξοικονόμηση μένει. */}
+            {loanType==='first_home'&&!isCommercial&&<div style={{padding:'10px 14px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.chip}}><p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>{PV<=fmaEx
+              ? `Δικαιούσαι πλήρη απαλλαγή ΦΜΑ: γλιτώνεις ${fmtEur(transferTaxOn(PV))}.`
+              : `Η απαλλαγή καλύπτει τα πρώτα ${fmtEur(fmaEx)}: φόρο πληρώνεις μόνο για τα ${fmtEur(PV-fmaEx)} πάνω από αυτά και γλιτώνεις ${fmtEur(transferTaxOn(PV)-fmaOwed)}.`}</p></div>}
           </div>
           {loanType==='investment'&&(
             <div style={{padding:'12px 14px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>

@@ -265,9 +265,16 @@ export async function sources(db: Db, propertyId: string, match: EventMatch): Pr
 export async function sourceStates(
   db: Db, propertyId: string, match: EventMatch,
 ): Promise<{ source: string; status: string | null }[]> {
-  return (await readRows<{ source: string | null; status: string | null }>(
-    applyMatch(scoped(db, propertyId, 'source,status'), match)))
-    .map(r => ({ source: String(r.source || ''), status: r.status ?? null }));
+  return (await sourceStatesWithError(db, propertyId, match)).rows;
+}
+
+/** Οι ίδιες καταστάσεις, με το σφάλμα ορατό. */
+export async function sourceStatesWithError(
+  db: Db, propertyId: string, match: EventMatch,
+): Promise<ReadResult<{ source: string; status: string | null }>> {
+  const { rows, error } = await read<{ source: string | null; status: string | null }>(
+    applyMatch(scoped(db, propertyId, 'source,status'), match));
+  return { rows: rows.map(r => ({ source: String(r.source || ''), status: r.status ?? null })), error };
 }
 
 /** Οι τίτλοι όσων γεγονότων ταιριάζουν. */

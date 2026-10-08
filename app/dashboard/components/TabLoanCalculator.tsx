@@ -1,7 +1,7 @@
 'use client'
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { LensBar } from './LoanShared'
-import { fp } from '@/lib/core/format'
+import { fp, fpRate } from '@/lib/core/format'
 import { KPIGrid, Btn, ChipToggle, TT } from '@/components/Theme'
 import { createClient } from '@/lib/supabase/client'
 import * as properties from '@/lib/data/properties';
@@ -9,7 +9,7 @@ import { useReportBranding } from '@/lib/reportBranding'
 import { notify, notifyError } from '@/components/Toast';
 import {
   LOAN_TYPES,
-  calcMonthly, calcAmortization, calcFmaExemption, calcRentalTax, taxableRental,
+  calcMonthly, calcAmortization, calcFmaExemption, loanTransferTax, calcRentalTax, taxableRental,
   fmtEur, fmtPct, fmtPct1, type ComparisonBank,
   LoanType, RateType, BorrowerType, LoanScenario, MarketRates, SavedLoan, rateTypeLabel
 } from './TabLoanData'
@@ -235,9 +235,17 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   // ΚΑΙ Ο ΣΥΝΤΕΛΕΣΤΗΣ ΗΤΑΝ 3% ΑΝΤΙ ΓΙΑ 3,09%. Πάνω στον κύριο φόρο 3% μπαίνει
   // τέλος υπέρ δήμων ίσο με 3% ΤΟΥ ΦΟΡΟΥ. Το transfer.ts το είχε σωστά, εδώ
   // λειπε: τώρα και οι δύο οθόνες διαβάζουν την ίδια σταθερά.
+  //
+  // ΚΑΙ Ο ΚΑΝΟΝΑΣ ΤΗΣ ΑΠΑΛΛΑΓΗΣ ΗΤΑΝ ΑΛΛΟΣ. Εδώ γραφόταν «μέχρι το όριο τίποτα,
+  // πάνω από αυτό όλη η τιμή»: άγαμος στα 220.000€ πλήρωνε 6.798€, ενώ ο νόμος
+  // (και το transfer.ts) φορολογεί μόνο τις 20.000€ πάνω από το όριο, 618€. Η
+  // σταθερά ήταν κοινή· ο κανόνας όχι. Τώρα κοινός είναι και ο κανόνας.
+  const firstHomeTax = loanType==='first_home'&&!isCommercial
   const fmaOwed  = useMemo(()=>
-    loanType==='first_home'&&!isCommercial&&PV<=fmaEx ? 0 : PV*TRANSFER_TAX_RATE,
-  [isCommercial,loanType,PV,fmaEx])
+    loanTransferTax(PV, firstHomeTax, marital, CH),
+  [firstHomeTax,PV,marital,CH])
+  const fmaSub = fmaOwed===0 ? 'Πρώτη κατοικία'
+    : firstHomeTax ? `${fpRate(TRANSFER_TAX_RATE*100)} πάνω από ${fmtEur(fmaEx)}` : `${fpRate(TRANSFER_TAX_RATE*100)} επί αξίας`
   // Ενημερωτικό, όχι χρέωση: πόσο ΘΑ ηταν ο ΦΠΑ αν έπαυε η αναστολή.
   const vatOwed  = isNewBuilding?PV*NEW_BUILD_VAT_RATE:0
   const totalCosts = useMemo(()=>{
@@ -520,7 +528,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
       {lens==='table' && <TableLens Y={Y} exportAmortPdf={exportAmortPdf} officialAmort={officialAmort} genOfficial={genOfficial}
         exportAmortCsv={exportAmortCsv} amort={amort} hoverRow={hoverRow} setHoverRow={setHoverRow} loanType={loanType}
         propTypeLabel={propTypeLabel} isNewBuilding={isNewBuilding} propertyId={propertyId} borrower={borrower} SQM={SQM}
-        areaLabel={areaLabel} fmaOwed={fmaOwed} totalCosts={totalCosts} hasAgent={hasAgent} AGNT={AGNT} agentPct={agentPct}
+        areaLabel={areaLabel} fmaOwed={fmaOwed} fmaSub={fmaSub} totalCosts={totalCosts} hasAgent={hasAgent} AGNT={AGNT} agentPct={agentPct}
         hoverCost={hoverCost} setHoverCost={setHoverCost} notaryCosts={notaryCosts} LA={LA}/>}
 
     </div>
