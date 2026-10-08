@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { BASE_CSS, MOTION_JS, mask } from '../reelKit';
 import { mark } from '../igKit';
-import { C, COL, GAP_HEAD, K, SERIES, UP, esc, glyph, html as txt, type Facts } from './kit';
+import { C, COL, GAP_HEAD, K, SERIES, UP, esc, glyph, html as txt, plain } from './kit';
 import { TRANSITIONS, TRANSITIONS_JS, TRANSITION_LAYERS, transitionCss } from './transitions';
 import type { Built, SceneOut, ShortSpec } from './spec';
 import { SCENE_CSS } from './scenes';
@@ -83,7 +83,10 @@ export function page(b: Built): Page {
     const d = TRANSITIONS[sc.in];
     for (const need of d.needs ?? []) if (!sc.inOpts?.[need]) throw new Error(`Το πέρασμα ${sc.in} στη σκηνή ${k + 1} θέλει «${need}».`);
     const opts: Record<string, string> = {};
-    for (const [key, v] of Object.entries(sc.inOpts ?? {})) opts[key] = /^(word|sub)$/.test(key) ? UP(txtPlain(v, f)) : v;
+    // Η λέξη και ο υπότιτλος του slam μπαίνουν με textContent: σκέτο κείμενο, όχι HTML
+    // που ξηλώνεται. Το παλιό ξήλωμα /<[^>]+>/g το σήμανε το CodeQL (PR #390,
+    // js/incomplete-multi-character-sanitization) και άφηνε το «<» να φαίνεται «&lt;».
+    for (const [key, v] of Object.entries(sc.inOpts ?? {})) opts[key] = /^(word|sub)$/.test(key) ? UP(plain(v, f)) : v;
     // Η λέξη του slam προσγειώνεται μέσα στη στήλη: μέγεθος από το μήκος της (Inter 900, ~0,66em ανά γράμμα).
     if (opts.word) opts.size = String(Math.floor(Math.min(210, (COL.R - COL.L) / ([...opts.word].length * .66))));
     return { k, name: sc.in, B: at[k], pre: d.pre, post: d.post, opts };
@@ -98,6 +101,8 @@ export function page(b: Built): Page {
   const hits = outs.flatMap(o => o.hits ?? []);
   const shine = autoShine(outs.map(o => o.html).join(''), trs, hits, at, dur, beat);
   const measure = [...new Set(trs.flatMap(x => [x.opts.target, x.opts.from, x.opts.to, x.opts.at].filter(Boolean)))];
+  // Το JSON μπαίνει ωμό μέσα σε <script>: κάθε «<» γίνεται \u003c, ώστε κανένα κείμενο
+  // να μην κλείσει νωρίς τη σελίδα. Στον περιηγητή διαβάζεται ξανά ως «<».
   const D = {
     S: at, END: dur, beat, trs, hits, measure, shine, loop, accent: s.accent,
     note: outs.map((_, k) => !!(SC[k].params as { note?: boolean })?.note),
@@ -124,7 +129,7 @@ export function page(b: Built): Page {
   ${note ? `<div id="note" class="deco" data-col="L"><i></i><span>${note}</span></div>` : ''}
   <div class="vig"></div><div class="grain"></div>
   <script>
-  const D = ${JSON.stringify(D)};
+  const D = ${JSON.stringify(D).replace(/</g, '\\u003c')};
   ${MOTION_JS}
   ${TRANSITIONS_JS}
   ${ENGINE_JS}
@@ -132,7 +137,6 @@ export function page(b: Built): Page {
   </script></body></html>`;
   return { html, outs, settle, hits, trs, shine };
 }
-const txtPlain = (v: string, f: Facts) => txt(v, f).replace(/<[^>]+>/g, '').replace(/&amp;/g, '&');
 
 /** Η σελίδα: κεφαλίδα, πρόοδος, υποσημείωση, φόντο. Η στήλη και οι ζώνες από το kit. */
 const PAGE_CSS = (s: (typeof SERIES)[keyof typeof SERIES]) => `
