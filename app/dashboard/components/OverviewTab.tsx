@@ -52,7 +52,10 @@ import AgendaPanel from './AgendaPanel'
 import AssistantStrip from './AssistantStrip'
 import { cashPosition } from '@/lib/home/cash'
 import { buildAgenda, type SetupLike as SetupStep } from '@/lib/home/agenda'
-import { readFailures, moneyIncomplete, failedSentence } from '@/lib/home/readFailures'
+import {
+  readFailures, moneyIncomplete, failedSentence, trustedStep, trustedInsight, trustedObligation,
+  LEASE_DECL_AREA, TAX_DEADLINES_AREA,
+} from '@/lib/home/readFailures'
 import { captureError } from '@/lib/observability/report'
 import { computeObligations, type OblMaint, type OblTenant } from './obligations'
 import { taxProfileOf } from '@/lib/tax/greekTaxCalendar'
@@ -254,8 +257,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       ['Ενοίκια', rp.error], ['Ενοίκια', yr.error], ['Ενοίκια', allYearRents.error], ['Ενοίκια', allRc.error],
       ['Ενοικιαστές', ten.error], ['Ενοικιαστές', allTen.error], ['Δάνεια', ln.error],
       ['Διαμονές', hs.error], ['Διαμονές', allStays.error], ['Ιδιοκτήτες', ownerRows.error],
-      ['Εκκρεμότητες', tsk.error], ['Εκκρεμότητες', ci.error], ['Εκκρεμότητες', decl.error],
-      ['Εκκρεμότητες', taxEvents.error], ['Εκκρεμότητες', doneTasks.error],
+      ['Εκκρεμότητες', tsk.error], ['Εκκρεμότητες', ci.error], [LEASE_DECL_AREA, decl.error],
+      [TAX_DEADLINES_AREA, taxEvents.error], [TAX_DEADLINES_AREA, doneTasks.error],
       ['Εξοπλισμός', iv.error], ['Εξοπλισμός', mnt.error],
     ]);
     if (failures.length) captureError(new Error('overview: αποτυχημένες αναγνώσεις'), { failed: failures.join(',') });
@@ -564,6 +567,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // ποσά, κανένα σύνολο της οθόνης δεν είναι αληθινό: το κεντρικό ποσό γίνεται
   // «—», το Ταμείο και η ζώνη της χρονιάς κρύβονται και το PDF περιμένει.
   const moneyGap = moneyIncomplete(failedReads);
+  // Οι μέσοι όροι λογαριασμών βγαίνουν από το ημερολόγιο (λογαριασμοί και
+  // δαπάνες μαζί). Περιμένουν μόνο αυτές τις δύο αναγνώσεις, όχι τα ενοίκια.
+  const ledgerGap = failedReads.includes('Λογαριασμοί') || failedReads.includes('Δαπάνες');
   const taxNote = consolidationSummary(portfolioTax, fmtEur);
   // Εισπράττεται το ενοίκιο ΑΥΤΟΥ του ακινήτου μέσω τράπεζας; Κρίνει το κείμενο
   // δίπλα στον φόρο, όπως ο ίδιος έλεγχος κρίνει και το ποσό.
@@ -663,7 +669,11 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     // ενοικιαστή», για ακίνητο που δεν έχει ενοικιαστή και δεν θα αποκτήσει,
     // και το μακροχρόνιο «τιμή ανά νύχτα». Τα βήματα ρύθμισης είναι του
     // ΕΠΙΛΕΓΜΕΝΟΥ ακινήτου, οπότε ρωτούν και την κατάστασή του.
-  ] as SetupStep[]).filter(s => tabVisible(s.nav) && stepFitsProperty(s.key, prop));
+    //
+    // ΚΑΙ ΒΗΜΑ ΠΟΥ ΔΕΝ ΞΕΡΟΥΜΕ ΑΝ ΕΓΙΝΕ. Το «δεν έγινε» βγαίνει από άδεια λίστα·
+    // αν η λίστα είναι άδεια επειδή η ανάγνωση έπεσε, το βήμα είναι ψέμα
+    // (lib/home/readFailures.ts).
+  ] as SetupStep[]).filter(s => tabVisible(s.nav) && stepFitsProperty(s.key, prop) && trustedStep(s.key, failedReads));
 
   // ── ΜΙΑ ΛΙΣΤΑ, ΟΧΙ ΤΕΣΣΕΡΙΣ ──────────────────────────────────────────────
   // Πριν, αυτή η οθόνη σέρβιρε τέσσερις ανεξάρτητες μηχανές συμβουλής τη μία
@@ -701,7 +711,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // κανόνα εξαρτήσεων και εμπόδιζε τον μεταγλωττιστή του React να απομνημονεύσει
   // ΟΛΟΚΛΗΡΟ το σημείο. Ιδιο σκεπτικό με το RentAdjustmentModal.
   const agendaAll =
-    buildAgenda({ insights, obligations: [...obligations, ...taskObligations],
+    // Ό,τι στηρίζεται σε περιοχή που δεν διαβάστηκε δεν μπαίνει: η πληρωμένη
+    // δόση ΕΝΦΙΑ δεν ξαναγίνεται οφειλή επειδή έπεσε μια ανάγνωση.
+    buildAgenda({ insights: insights.filter(i => trustedInsight(i.id, failedReads)),
+                  obligations: [...obligations.filter(o => trustedObligation(o, failedReads)), ...taskObligations],
                   setup: setupSteps, today: todayIso,
                   horizonDays: prefs.agendaHorizonDays })
       // ── ΔΥΟ ΚΑΝΟΝΕΣ ΓΙΑ ΤΗΝ ΙΔΙΑ ΛΙΣΤΑ ────────────────────────────────
@@ -940,7 +953,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         </div>
         <div className="card">
           <h3 className="section-label"><span className="section-dot"/> Λογαριασμοί ανά μήνα</h3>
-          {moneyGap
+          {ledgerGap
             ? <EmptyState icon={<FileText size={20}/>} title="Δεν φορτώθηκαν οι λογαριασμοί" hint="Πάτησε «Δοκίμασε ξανά» στην ειδοποίηση πιο πάνω."/>
             : billAverages.length===0
             ? <EmptyState icon={<FileText size={20}/>} title="Κανένας λογαριασμός ακόμη" hint="Πρόσθεσε ρεύμα, νερό και πάγια για να δεις μέσους όρους."/>
@@ -974,7 +987,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           δείχνουν έτσι. */}
       <SecHdr label={`Η χρονιά ${year}`} sub="Πού καταλήγει με ό,τι ξέρουμε σήμερα" />
       {moneyGap ? (
-        <EmptyState icon={<FileText size={20}/>} title="Τα ποσά της χρονιάς περιμένουν" hint="Δεν φορτώθηκαν όλες οι καταχωρήσεις. Με μισές, τα σύνολα θα έβγαιναν μικρότερα από τα αληθινά."/>
+        <EmptyState icon={<FileText size={20}/>} title="Τα ποσά της χρονιάς περιμένουν" hint="Δεν φορτώθηκαν όλες οι καταχωρήσεις. Με μισές, τα σύνολα δεν θα ήταν αληθινά."/>
       ) : (() => {
         const net = annualRent - costs.total - estTax;   // μόνο για το σκέλος με έσοδα
         // ΜΙΑ ΖΩΝΗ ΑΡΙΘΜΩΝ, ΟΧΙ ΔΥΟ. Πιο πάνω υπήρχε δεύτερο πλέγμα «Η εικόνα

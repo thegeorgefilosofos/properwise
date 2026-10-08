@@ -195,6 +195,11 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const [xferPrice,setXferPrice] = useState<number|''>('')
   const [xferFirstHome,setXferFirstHome] = useState(false)
   const [xferAgent,setXferAgent] = useState(true)
+  // Η απαλλαγή πρώτης κατοικίας εξαρτάται από την οικογένεια. Χωρίς αυτά τα
+  // δύο, ο έγγαμος στα 250.000€ έβλεπε 1.545€ φόρο, με υπόδειξη δίπλα που
+  // έγραφε «250.000€ έγγαμος». Η καρτέλα Δάνειο τα ρωτούσε ήδη.
+  const [xferMarried,setXferMarried] = useState(false)
+  const [xferChildren,setXferChildren] = useState(0)
   const [openAdvisory,setOpenAdvisory] = useState<string|null>(null)
   const [advisoryOpen,setAdvisoryOpen] = useState(false)
   const [changesOpen,setChangesOpen] = useState(false)
@@ -736,7 +741,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
 
   // Κόστος μεταβίβασης: προεπιλογή τιμήματος η αξία του ακινήτου (αν υπάρχει).
   const xferEffectivePrice = xferPrice!=='' ? Number(xferPrice) : (Number(prop?.value)||0)
-  const xfer = useMemo(()=>transferCosts({ side:xferSide, price:xferEffectivePrice, firstHome:xferFirstHome, useAgent:xferAgent, acquisitionCost:xferSide==='sell'?(Number(prop?.value)||0):0 }),[xferSide,xferEffectivePrice,xferFirstHome,xferAgent,prop])
+  const xfer = useMemo(()=>transferCosts({ side:xferSide, price:xferEffectivePrice, firstHome:xferFirstHome, married:xferMarried, children:xferChildren, useAgent:xferAgent, acquisitionCost:xferSide==='sell'?(Number(prop?.value)||0):0 }),[xferSide,xferEffectivePrice,xferFirstHome,xferMarried,xferChildren,xferAgent,prop])
 
   // Πρόβλεψη: για τρέχον έτος με βάση τον τρέχοντα μήνα· για κλεισμένο/μελλοντικό, ισόποσα στους 12.
   const provMonth = year===athensYear() ? athensNow().getMonth()+1 : 1
@@ -1069,6 +1074,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     firstYears, updateFirstYears, distribution, setDistribution, claimedUncollected,
     setClaimedUncollected, rentsBankOverride, setRentsBankOverride, xferSide, setXferSide,
     xferPrice, setXferPrice, xferFirstHome, setXferFirstHome, xferAgent, setXferAgent, openAdvisory,
+    xferMarried, setXferMarried, xferChildren, setXferChildren,
     setOpenAdvisory, advisoryOpen, setAdvisoryOpen, changesOpen, setChangesOpen, reconOpen,
     setReconOpen, ledgerOpen, setLedgerOpen, consolOpen, setConsolOpen, balanceOpen, setBalanceOpen,
     openChange, setOpenChange, advisoryRef, changesRef, showBankImport, setShowBankImport,

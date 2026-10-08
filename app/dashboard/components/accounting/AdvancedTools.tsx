@@ -19,6 +19,8 @@ import type { RegulatoryUpdate } from '@/lib/accounting/updates2026'
 import { MONTHS_NOM } from '@/lib/core/months'
 import { AsOfNote } from '@/components/AsOfNote'
 import { taxLimitAsOf } from '@/lib/facts/taxLimits'
+import { firstHomeExemption } from '@/lib/accounting/transfer'
+import { feWhole } from '@/lib/core/format'
 
 export function TaxScaleCard({ businessMode, taxRows, statement, hoverBracket, setHoverBracket }: Pick<AccountingProps & AccountingState,
   'businessMode' | 'taxRows' | 'statement' | 'hoverBracket' | 'setHoverBracket'
@@ -263,11 +265,15 @@ export function ChangesCard({
 export function TransferCostCard({
   xferOpen, setXferOpen, xferSide, setXferSide, xferPrice, setXferPrice, prop, xferFirstHome,
   setXferFirstHome, xferAgent, setXferAgent, xferEffectivePrice, xfer,
+  xferMarried, setXferMarried, xferChildren, setXferChildren,
 }: Pick<AccountingProps & AccountingState,
   'xferOpen' | 'setXferOpen' | 'xferSide' | 'setXferSide' | 'xferPrice' | 'setXferPrice' | 'prop' |
   'xferFirstHome' | 'setXferFirstHome' | 'xferAgent' | 'setXferAgent' | 'xferEffectivePrice' |
-  'xfer'
+  'xfer' | 'xferMarried' | 'setXferMarried' | 'xferChildren' | 'setXferChildren'
 >) {
+  // Το όριο που ΕΦΑΡΜΟΖΕΤΑΙ, με τα στοιχεία που έδωσες. Η υπόδειξη έγραφε δύο
+  // όρια με το χέρι ενώ ο υπολογισμός εφάρμοζε πάντα του άγαμου.
+  const exemption = firstHomeExemption({ married: xferMarried, children: xferChildren })
   return (
     <div style={card}>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:xferOpen?16:0 }}>
@@ -299,7 +305,23 @@ export function TransferCostCard({
           <span style={{ color:'var(--text-tertiary)' }}>€</span>
         </label>
         {xferSide==='buy'&&(
-          <Check checked={xferFirstHome} onChange={setXferFirstHome} label="Πρώτη κατοικία" hint="Απαλλαγή φόρου μεταβίβασης έως το όριο αξίας (200.000€ άγαμος / 250.000€ έγγαμος)." />
+          <Check checked={xferFirstHome} onChange={setXferFirstHome} label="Πρώτη κατοικία" hint={`Απαλλαγή φόρου μεταβίβασης ως ${feWhole(exemption)}: φόρος μόνο για ό,τι ξεπερνά το όριο.`} />
+        )}
+        {xferSide==='buy'&&xferFirstHome&&(
+          <>
+            <div role="group" aria-label="Οικογενειακή κατάσταση" style={{ display:'flex', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:2, gap:2 }}>
+              {([[false,'Άγαμος'],[true,'Έγγαμος']] as [boolean,string][]).map(([m,label])=>(
+                <ChipToggle key={label} on={xferMarried===m} shape="seg" onClick={()=>setXferMarried(m)}>{label}</ChipToggle>
+              ))}
+            </div>
+            <label style={{ display:'flex', alignItems:'center', gap:8, fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily: T.font.sans }}>
+              <span>Τέκνα</span>
+              <input id="xfer-children" type="number" inputMode="numeric" min={0} max={20} value={xferChildren} onKeyDown={e=>{ if(e.key==='-'||e.key==='e'||e.key==='+'||e.key==='.'||e.key===',') e.preventDefault() }} onChange={e=>setXferChildren(Math.min(20,Math.max(0,Math.floor(Number(e.target.value)||0))))}
+                onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-default)'}
+                style={{ width:64, height:T.h.lg, padding:'10px 12px', borderRadius:T.radius.inner, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right', outline:'none', transition:'border-color 0.14s' }}/>
+            </label>
+            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans }}>Όριο απαλλαγής {feWhole(exemption)}</span>
+          </>
         )}
         <Check checked={xferAgent} onChange={setXferAgent} label="Μεσίτης" hint="Μεσιτική αμοιβή ~2% + ΦΠΑ." />
       </div>

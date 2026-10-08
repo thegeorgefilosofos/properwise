@@ -6,7 +6,8 @@
 // οθόνη. Καθαρά δεδομένα και καθαρές συναρτήσεις, χωρίς React: τα ελέγχει το
 // loan/calc/model.test.ts χωρίς περιηγητή.
 // ═══════════════════════════════════════════════════════════════════════════
-import { fp } from '@/lib/core/format'
+import { fp, feWhole } from '@/lib/core/format'
+import { firstHomeExemption } from '@/lib/accounting/transfer'
 import { LOAN_TYPES, BORROWER_PROFILES, rateRange, type LoanType, type RateType, type BorrowerType } from '../../TabLoanData'
 import { greekWhen, MONTH_MEAN } from '@/lib/market/ecb'
 import { monthGen } from '@/lib/core/months'
@@ -61,8 +62,12 @@ export const euriborPeriod = (asOf: string, basis: string): string => {
 }
 export const RATE_TYPE_OPTIONS = [{value:'fixed',label:'Σταθερό',description:'Σταθερό για την επιλεγμένη περίοδο'},{value:'variable',label:'Κυμαινόμενο',description:'Euribor συν περιθώριο τράπεζας'},{value:'mixed',label:'Μεικτό',description:'Σταθερό αρχικά, μετά κυμαινόμενο'}]
 export const FIXED_PERIOD_OPTIONS = ['3','5','10','15','20'].map(v=>({value:v,label:`${v} χρόνια`,description:v==='5'?'Πιο συνηθισμένο':v==='10'?'Καλή ισορροπία':''}))
-export const MARITAL_OPTIONS   = [{value:'single',label:'Άγαμος / Άγαμη',description:'Όριο ΦΜΑ: 200.000€'},{value:'married',label:'Έγγαμος / Έγγαμη',description:'Όριο ΦΜΑ: 250.000€'}]
-export const CHILDREN_OPTIONS  = [0,1,2,3,4,5].map(n=>({value:String(n),label:n===0?'Χωρίς τέκνα':`${n} εξαρτώμεν${n===1?'ο':'α'} τέκν${n===1?'ο':'α'}`,description:n===0?'':n===1?'+25.000€':n===2?'+50.000€':`+${50+(n-2)*30}.000€`}))
+// ΤΑ ΟΡΙΑ ΤΗΣ ΑΠΑΛΛΑΓΗΣ ΑΠΟ ΤΟ transfer.ts, ΟΧΙ ΓΡΑΜΜΕΝΑ ΕΔΩ. Η καρτέλα είχε
+// δεύτερο αντίγραφο του πίνακα και δίπλα του άλλον κανόνα· οι περιγραφές των
+// επιλογών ήταν το τρίτο αντίγραφο.
+const kidsExtra = (n: number) => firstHomeExemption({ children: n }) - firstHomeExemption({ children: 0 })
+export const MARITAL_OPTIONS   = [{value:'single',label:'Άγαμος / Άγαμη',description:`Όριο ΦΜΑ: ${feWhole(firstHomeExemption({ married: false }))}`},{value:'married',label:'Έγγαμος / Έγγαμη',description:`Όριο ΦΜΑ: ${feWhole(firstHomeExemption({ married: true }))}`}]
+export const CHILDREN_OPTIONS  = [0,1,2,3,4,5].map(n=>({value:String(n),label:n===0?'Χωρίς τέκνα':`${n} εξαρτώμεν${n===1?'ο':'α'} τέκν${n===1?'ο':'α'}`,description:n===0?'':`+${feWhole(kidsExtra(n))}`}))
 export const PROP_TYPE_OPTIONS = PROPERTY_TYPES.map(p=>({value:p.value,label:p.label,description:p.desc}))
 
 // ══ ΤΟ ΕΠΙΤΟΚΙΟ ΤΟΥ ΝΕΟΥ ΑΓΟΡΑΣΤΗ ΗΤΑΝ ΤΟΥ «ΣΠΙΤΙ ΜΟΥ ΙΙ» ══════════════════

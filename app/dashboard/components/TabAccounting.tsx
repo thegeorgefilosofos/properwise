@@ -54,6 +54,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     firstYears, updateFirstYears, distribution, setDistribution, claimedUncollected,
     setClaimedUncollected, rentsBankOverride, setRentsBankOverride, xferSide, setXferSide,
     xferPrice, setXferPrice, xferFirstHome, setXferFirstHome, xferAgent, setXferAgent, openAdvisory,
+    xferMarried, setXferMarried, xferChildren, setXferChildren,
     setOpenAdvisory, advisoryOpen, setAdvisoryOpen, changesOpen, setChangesOpen, reconOpen,
     setReconOpen, ledgerOpen, setLedgerOpen, consolOpen, setConsolOpen, balanceOpen, setBalanceOpen,
     openChange, setOpenChange, advisoryRef, changesRef, showBankImport, setShowBankImport,
@@ -855,6 +856,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           xferOpen={xferOpen} setXferOpen={setXferOpen} xferSide={xferSide} setXferSide={setXferSide}
           xferPrice={xferPrice} setXferPrice={setXferPrice} prop={prop} xferFirstHome={xferFirstHome}
           setXferFirstHome={setXferFirstHome} xferAgent={xferAgent} setXferAgent={setXferAgent}
+          xferMarried={xferMarried} setXferMarried={setXferMarried} xferChildren={xferChildren} setXferChildren={setXferChildren}
           xferEffectivePrice={xferEffectivePrice} xfer={xfer}
         />
 
