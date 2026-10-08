@@ -506,6 +506,14 @@ export const MUTATIONS = {
   'z-layers': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ zIndex: 12345 }}>Α</div>") },
   'hand-buttons': { add: 'components/__mut__.tsx', content: tsx("    <button style={{ padding: 4 }}>Α</button>") },
   'surface-scale': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ height: 33, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>Α</div>") },
+  // Δύο κανόνες, δύο αποδείξεις. Μία λέξη στο κείμενο του οδηγού χωρίς
+  // απόφαση για την ημερομηνία: ακριβώς οι τρεις οδηγοί του 257d87c, που
+  // άλλαξαν δεκάδες γραμμές με την ίδια «Τελευταία ενημέρωση». Και σφραγίδα
+  // που δείχνει σε οδηγό που δεν υπάρχει, με τον πραγματικό να μένει χωρίς.
+  'guide-updated': { every: [
+    { file: 'app/odigos/plafon-3-emporikes-misthoseis-2026/page.tsx', from: 'Αν εκμισθώνεις επαγγελματικό ακίνητο', to: 'Αν εκμισθώνεις ένα επαγγελματικό ακίνητο' },
+    { file: 'app/odigos/guideStamps.json', from: '"/odigos/plafon-3-emporikes-misthoseis-2026"', to: '"/odigos/__mut__"' },
+  ] },
   'js-hover': { add: 'components/__mut__.tsx', content: 'export function P() {\n  return <div onMouseEnter={() => {}} onMouseLeave={() => {}}>Α</div>\n}\n' },
   // Μισό εικονοστοιχείο εκτός κλίμακας: το παλιό μοτίβο `(\d+)\b` το διάβαζε
   // «12» και το άφηνε να περάσει. Αν ο φύλακας ξαναχάσει τα δεκαδικά, πρασινίζει.
