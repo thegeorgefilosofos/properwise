@@ -120,16 +120,20 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
       const ids = selProps.map(p => p.id);
 
       // ── Άντληση δεδομένων περιόδου (RLS: μόνο του χρήστη) ──────────────────
-      const rentQ = rentStore.ofProperties<{ property_id: string; period_year: number; period_month: number; amount: number | null; paid: boolean | null }>(
+      const rentQ = rentStore.ofPropertiesWithError<{ property_id: string; period_year: number; period_month: number; amount: number | null; paid: boolean | null }>(
         supabase, ids, `property_id,${rentStore.PERIOD_COLUMNS}`, userId, { year, month });
       const from = `${year}-${String(month || 1).padStart(2, '0')}-01`;
       const to = month > 0 ? monthEndIso(year, month) : `${year}-12-31`;
-      const [rentData, expData] = await Promise.all([
+      const [rentRes, expRes] = await Promise.all([
         rentQ,
-        expenses.inRange(supabase, ids, from, to, 'property_id,date,amount,category'),
+        expenses.inRangeWithError(supabase, ids, from, to, 'property_id,date,amount,category'),
       ]);
-      const rents = rentData as RentRow[];
-      const exps = expData as unknown as ExpRow[];
+      // Αποτυχημένη ανάγνωση εδώ έβγαζε αναφορά με 0,00€, με αριθμό εγγράφου και
+      // QR. Το σφάλμα πέφτει στο `catch` πριν από οποιαδήποτε έκδοση.
+      const readError = rentRes.error ?? expRes.error;
+      if (readError) throw readError;
+      const rents = rentRes.rows as RentRow[];
+      const exps = expRes.rows as unknown as ExpRow[];
 
       // ── Συγκεντρωτικά ─────────────────────────────────────────────────────
       // ── ΔΕΔΟΥΛΕΥΜΕΝΗ ΒΑΣΗ ΚΑΙ ΤΟ ΛΕΜΕ ────────────────────────────────────
@@ -251,16 +255,18 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
     setXlsxBusy(true);
     try {
       const ids = selProps.map(p => p.id);
-      const rentQ = rentStore.ofProperties<{ property_id: string; period_year: number; period_month: number; amount: number | null; paid: boolean | null }>(
+      const rentQ = rentStore.ofPropertiesWithError<{ property_id: string; period_year: number; period_month: number; amount: number | null; paid: boolean | null }>(
         supabase, ids, `property_id,${rentStore.PERIOD_COLUMNS}`, userId, { year, month });
       const from = `${year}-${String(month || 1).padStart(2, '0')}-01`;
       const to = month > 0 ? monthEndIso(year, month) : `${year}-12-31`;
-      const [rentData, expData] = await Promise.all([
+      const [rentRes, expRes] = await Promise.all([
         rentQ,
-        expenses.inRange(supabase, ids, from, to, 'property_id,date,amount,category'),
+        expenses.inRangeWithError(supabase, ids, from, to, 'property_id,date,amount,category'),
       ]);
-      const rents = rentData as RentRow[];
-      const exps = expData as unknown as ExpRow[];
+      const readError = rentRes.error ?? expRes.error;
+      if (readError) throw readError;
+      const rents = rentRes.rows as RentRow[];
+      const exps = expRes.rows as unknown as ExpRow[];
       const rows: PortfolioRow[] = selProps.map(p => ({
         name: p.name,
         expected: rents.filter(r => r.property_id === p.id).reduce((s, r) => s + num(r.amount), 0),

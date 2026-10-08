@@ -130,7 +130,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
     const nameById = new Map(props.filter(p => propIds.has(p.id)).map(p => [p.id, p.name]));
     const from = `${year}-${String(month || 1).padStart(2, '0')}-01`;
     const to = month > 0 ? monthEndIso(year, month) : `${year}-12-31`;
-    const [rentData, expData, loanData, stayData] = await Promise.all([
+    const [rentRes, expRes, loanRes, stayRes] = await Promise.all([
       // ΧΩΡΙΣ ΦΙΛΤΡΟ ΠΕΡΙΟΔΟΥ ΣΤΟΝ ΔΙΑΚΟΜΙΣΤΗ ΚΑΙ ΓΙ' ΑΥΤΟ ΥΠΑΡΧΕΙ ΛΟΓΟΣ.
       // Το `period_year` λέει ΤΙ ΜΗΝΑ αφορά η δόση, όχι πότε εισπράχθηκε. Το
       // ημερολόγιο είναι ταμειακό: κρατά ό,τι μπήκε στο ταμείο μέσα στην
@@ -138,16 +138,21 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
       // Ιανουάριο και το φιλτράρισμα γίνεται με τον έναν κανόνα του
       // lib/data/rent.ts. Οι στήλες είναι έξι αριθμοί ανά δόση: δώδεκα γραμμές
       // τον χρόνο ανά ακίνητο δεν είναι φορτίο που αξίζει λάθος βιβλίο.
-      rentStore.ofProperties(supabase, selIds, `property_id,${rentStore.LEDGER_COLUMNS}`, userId, { paid: true }),
-      expenseStore.inRange(supabase, selIds, from, to),
-      loanStore.ofUser(supabase, userId),
+      rentStore.ofPropertiesWithError(supabase, selIds, `property_id,${rentStore.LEDGER_COLUMNS}`, userId, { paid: true }),
+      expenseStore.inRangeWithError(supabase, selIds, from, to),
+      loanStore.ofUserWithError(supabase, userId),
       // ΟΙ ΔΙΑΜΟΝΕΣ ΕΡΧΟΝΤΑΙ ΑΠΟ ΟΛΟ ΤΟ ΧΑΡΤΟΦΥΛΑΚΙΟ ΚΑΙ ΚΟΒΟΝΤΑΙ ΕΔΩ.
       // Το `client_stays.property_id` είναι nullable (baseline:1882): ερώτημα
       // με `.in(property_id, …)` θα άφηνε έξω τις ιστορικές γραμμές χωρίς
       // ακίνητο. Οι στήλες είναι οι PORTFOLIO_COLUMNS και όχι σκέτο `total`:
       // το ωμό total είναι το payout, όχι το δηλωτέο ακαθάριστο (stays.ts:8-17).
-      stayStore.ofUser<StayRow>(supabase, userId, stayStore.PORTFOLIO_COLUMNS),
+      stayStore.ofUserWithError<StayRow>(supabase, userId, stayStore.PORTFOLIO_COLUMNS),
     ]);
+    // Ημερολόγιο χωρίς τα έσοδα ή τους τόκους που δεν διαβάστηκαν βγαίνει
+    // «ισοσκελισμένο» και λάθος. Το σφάλμα πέφτει στο `catch` του καλούντα.
+    const bad = rentRes.error ?? expRes.error ?? loanRes.error ?? stayRes.error;
+    if (bad) throw bad;
+    const rentData = rentRes.rows, expData = expRes.rows, loanData = loanRes.views, stayData = stayRes.rows;
     type RentRow = rentStore.BookableRent & { property_id: string | null };
     const incomes: IncomeRec[] = rentStore.collectedIn((rentData || []) as RentRow[], year, month).map(r => ({
       date: rentStore.bookDate(r),

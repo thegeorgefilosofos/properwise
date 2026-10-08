@@ -132,10 +132,11 @@ async function asyncChecks() {
       { property_id: 'p1', id: 'b', afm: '2', status: 'active', move_out_date: null, lease_start: '2026-03-01', lease_end: null, created_at: '2026-02-20' },
       { property_id: 'p2', id: 'c', afm: '3', status: 'active', move_out_date: null, lease_start: '2026-01-01', lease_end: null, created_at: '2026-01-01' },
     ]);
-    const { inYear, known } = await inYearByProperty<{ property_id?: string | null; id: string; lease_start?: string | null; status?: string | null }>(db, 'u1', 2025, 'afm');
+    const { inYear, known, error } = await inYearByProperty<{ property_id?: string | null; id: string; lease_start?: string | null; status?: string | null }>(db, 'u1', 2025, 'afm');
     ok('έτος 2025: στο p1 ο μισθωτής του 2025, όχι ο σημερινός', inYear.get('p1')?.map(t => t.id).join() === 'a');
     ok('έτος 2025: το p2 δεν έχει μίσθωση', !inYear.has('p2'));
     ok('έτος 2025: και τα δύο έχουν ιστορικό', known.has('p1') && known.has('p2'));
+    ok('έτος 2025: επιτυχής ανάγνωση χωρίς σφάλμα', error === null);
     ok('ζητήθηκαν id, λήξη και αποχώρηση',
       ['id', 'lease_end', 'move_out_date', 'lease_start', 'property_id'].every(c => calls[0].columns.split(',').includes(c)));
     ok('φίλτρο χρήστη', calls[0].filters.some(([c, v]) => c === 'user_id' && v === 'u1'));

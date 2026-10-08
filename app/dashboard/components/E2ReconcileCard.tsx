@@ -61,6 +61,9 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
   const [loaded, setLoaded] = useState<E2Loaded | null>(null);
   const [aade, setAade] = useState<StoredE2Row[]>([]);
   const [readFailed, setReadFailed] = useState(false);
+  // Τα ΔΙΚΑ σου στοιχεία δεν διαβάστηκαν (ακίνητα, μισθώσεις, δόσεις, ΑΦΜ).
+  // Χωριστά από το `readFailed`, που αφορά μόνο το ανεβασμένο της ΑΑΔΕ.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [declRefs, setDeclRefs] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   // Για ποιο έτος ήρθαν τα δεδομένα που φαίνονται: η ανανέωση του ίδιου έτους
@@ -113,6 +116,18 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
         setAade(pre.rows);
         setReadFailed(pre.failed);
         setDeclRefs(refs);
+        setLoadFailed(false);
+        setLoadedFor(year);
+      } catch (e) {
+        // Πριν από αυτό η απόρριψη έμενε χωρίς χειρισμό και η κάρτα έδειχνε την
+        // κενή κατάσταση, σαν να μην είχες ακίνητο με ΑΤΑΚ. Το `setLoaded(null)`
+        // σβήνει παλιό `result`, ώστε να μη γραφτεί κατάσταση στον λογιστή από
+        // στοιχεία που δεν ξαναδιαβάστηκαν· το `setLoadedFor` περνά την πρόωρη
+        // επιστροφή της φόρτωσης για να φανεί το μήνυμα.
+        if (!alive) return;
+        console.error('[E2ReconcileCard] φόρτωση:', e);
+        setLoaded(null);
+        setLoadFailed(true);
         setLoadedFor(year);
       } finally { if (alive) setLoading(false); }
     })();
@@ -171,6 +186,19 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
   };
 
   if (loading && loadedFor !== year) return null;
+
+  if (loadFailed) {
+    return (
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <p role="alert" style={{ ...TT.bodySm, color: 'var(--negative)', margin: 0, flex: 1, minWidth: 220 }}>
+            Τα στοιχεία σου για το Ε2 {year} δεν διαβάστηκαν. Δεν σημαίνει ότι λείπουν.
+          </p>
+          <Btn variant="secondary" onClick={() => setReload(n => n + 1)}>Δοκίμασε ξανά</Btn>
+        </div>
+      </div>
+    );
+  }
 
   if (!loaded || !loaded.properties.length) {
     return (
